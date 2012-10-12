@@ -55,6 +55,16 @@ test_expect_success 'setup' '
     git rm file12 &&
     git commit -m "branch1 changes" &&
 
+    git checkout -b stash1 master &&
+    echo stash1 change file11 >file11 &&
+    git add file11 &&
+    git commit -m "stash1 changes" &&
+
+    git checkout -b stash2 master &&
+    echo stash2 change file11 >file11 &&
+    git add file11 &&
+    git commit -m "stash2 changes" &&
+
     git checkout master &&
     git submodule update -N &&
     echo master updated >file1 &&
@@ -193,7 +203,35 @@ test_expect_success 'mergetool skips resolved paths when rerere is active' '
     git reset --hard
 '
 
+test_expect_success 'conflicted stash sets up rerere'  '
+    git config rerere.enabled true &&
+    git checkout stash1 &&
+    echo "Conflicting stash content" >file11 &&
+    git stash &&
+
+    git checkout --detach stash2 &&
+    test_must_fail git stash apply &&
+
+    test -n "$(git ls-files -u)" &&
+    conflicts="$(git rerere remaining)" &&
+    test "$conflicts" = "file11" &&
+    output="$(git mergetool --no-prompt)" &&
+    test "$output" != "No files need merging" &&
+
+    git commit -am "save the stash resolution" &&
+
+    git reset --hard stash2 &&
+    test_must_fail git stash apply &&
+
+    test -n "$(git ls-files -u)" &&
+    conflicts="$(git rerere remaining)" &&
+    test -z "$conflicts" &&
+    output="$(git mergetool --no-prompt)" &&
+    test "$output" = "No files need merging"
+'
+
 test_expect_success 'mergetool takes partial path' '
+    git reset --hard
     git config rerere.enabled false &&
     git checkout -b test12 branch1 &&
     git submodule update -N &&
@@ -468,6 +506,19 @@ test_expect_success 'file with no base' '
     git mergetool --no-prompt --tool mybase -- both &&
     >expected &&
     test_cmp both expected &&
+    git reset --hard master >/dev/null 2>&1
+'
+
+test_expect_success 'custom commands override built-ins' '
+    git checkout -b test14 branch1 &&
+    git config mergetool.defaults.cmd "cat \"\$REMOTE\" >\"\$MERGED\"" &&
+    git config mergetool.defaults.trustExitCode true &&
+    test_must_fail git merge master &&
+    git mergetool --no-prompt --tool defaults -- both &&
+    echo master both added >expected &&
+    test_cmp both expected &&
+    git config --unset mergetool.defaults.cmd &&
+    git config --unset mergetool.defaults.trustExitCode &&
     git reset --hard master >/dev/null 2>&1
 '
 

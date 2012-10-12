@@ -11,6 +11,16 @@ tree, index, and tree objects.
 
 . ./test-lib.sh
 
+HT='	'
+
+echo 2>/dev/null > "Name with an${HT}HT"
+if ! test -f "Name with an${HT}HT"
+then
+	# since FAT/NTFS does not allow tabs in filenames, skip this test
+	skip_all='Your filesystem does not allow tabs in filenames'
+	test_done
+fi
+
 p0='no-funny'
 p1='tabs	," (dq) and spaces'
 p2='just space'
@@ -23,20 +33,8 @@ test_expect_success 'setup' '
 	EOF
 
 	{ cat "$p0" >"$p1" || :; } &&
-	{ echo "Foo Bar Baz" >"$p2" || :; } &&
-
-	if test -f "$p1" && cmp "$p0" "$p1"
-	then
-		test_set_prereq TABS_IN_FILENAMES
-	fi
+	{ echo "Foo Bar Baz" >"$p2" || :; }
 '
-
-if ! test_have_prereq TABS_IN_FILENAMES
-then
-	# since FAT/NTFS does not allow tabs in filenames, skip this test
-	skip_all='Your filesystem does not allow tabs in filenames'
-	test_done
-fi
 
 test_expect_success 'setup: populate index and tree' '
 	git update-index --add "$p0" "$p2" &&
@@ -71,7 +69,7 @@ test_expect_success 'ls-files -z does not quote funny filename' '
 	tabs	," (dq) and spaces
 	EOF
 	git ls-files -z >ls-files.z &&
-	perl -pe "y/\000/\012/" <ls-files.z >current &&
+	"$PERL_PATH" -pe "y/\000/\012/" <ls-files.z >current &&
 	test_cmp expected current
 '
 
@@ -108,7 +106,7 @@ test_expect_success 'diff-index -z does not quote funny filename' '
 	tabs	," (dq) and spaces
 	EOF
 	git diff-index -z --name-status $t0 >diff-index.z &&
-	perl -pe "y/\000/\012/" <diff-index.z >current &&
+	"$PERL_PATH" -pe "y/\000/\012/" <diff-index.z >current &&
 	test_cmp expected current
 '
 
@@ -118,7 +116,7 @@ test_expect_success 'diff-tree -z does not quote funny filename' '
 	tabs	," (dq) and spaces
 	EOF
 	git diff-tree -z --name-status $t0 $t1 >diff-tree.z &&
-	perl -pe y/\\000/\\012/ <diff-tree.z >current &&
+	"$PERL_PATH" -pe y/\\000/\\012/ <diff-tree.z >current &&
 	test_cmp expected current
 '
 

@@ -33,12 +33,12 @@
  *
  */
 static const char * const builtin_clone_usage[] = {
-	"git clone [options] [--] <repo> [<dir>]",
+	N_("git clone [options] [--] <repo> [<dir>]"),
 	NULL
 };
 
 static int option_no_checkout, option_bare, option_mirror, option_single_branch = -1;
-static int option_local, option_no_hardlinks, option_shared, option_recursive;
+static int option_local = -1, option_no_hardlinks, option_shared, option_recursive;
 static char *option_template, *option_depth;
 static char *option_origin = NULL;
 static char *option_branch = NULL;
@@ -61,43 +61,43 @@ static int opt_parse_reference(const struct option *opt, const char *arg, int un
 static struct option builtin_clone_options[] = {
 	OPT__VERBOSITY(&option_verbosity),
 	OPT_BOOL(0, "progress", &option_progress,
-		 "force progress reporting"),
+		 N_("force progress reporting")),
 	OPT_BOOLEAN('n', "no-checkout", &option_no_checkout,
-		    "don't create a checkout"),
-	OPT_BOOLEAN(0, "bare", &option_bare, "create a bare repository"),
+		    N_("don't create a checkout")),
+	OPT_BOOLEAN(0, "bare", &option_bare, N_("create a bare repository")),
 	{ OPTION_BOOLEAN, 0, "naked", &option_bare, NULL,
-		"create a bare repository",
+		N_("create a bare repository"),
 		PARSE_OPT_NOARG | PARSE_OPT_HIDDEN },
 	OPT_BOOLEAN(0, "mirror", &option_mirror,
-		    "create a mirror repository (implies bare)"),
-	OPT_BOOLEAN('l', "local", &option_local,
-		    "to clone from a local repository"),
+		    N_("create a mirror repository (implies bare)")),
+	OPT_BOOL('l', "local", &option_local,
+		N_("to clone from a local repository")),
 	OPT_BOOLEAN(0, "no-hardlinks", &option_no_hardlinks,
-		    "don't use local hardlinks, always copy"),
+		    N_("don't use local hardlinks, always copy")),
 	OPT_BOOLEAN('s', "shared", &option_shared,
-		    "setup as shared repository"),
+		    N_("setup as shared repository")),
 	OPT_BOOLEAN(0, "recursive", &option_recursive,
-		    "initialize submodules in the clone"),
+		    N_("initialize submodules in the clone")),
 	OPT_BOOLEAN(0, "recurse-submodules", &option_recursive,
-		    "initialize submodules in the clone"),
-	OPT_STRING(0, "template", &option_template, "template-directory",
-		   "directory from which templates will be used"),
-	OPT_CALLBACK(0 , "reference", &option_reference, "repo",
-		     "reference repository", &opt_parse_reference),
-	OPT_STRING('o', "origin", &option_origin, "name",
-		   "use <name> instead of 'origin' to track upstream"),
-	OPT_STRING('b', "branch", &option_branch, "branch",
-		   "checkout <branch> instead of the remote's HEAD"),
-	OPT_STRING('u', "upload-pack", &option_upload_pack, "path",
-		   "path to git-upload-pack on the remote"),
-	OPT_STRING(0, "depth", &option_depth, "depth",
-		    "create a shallow clone of that depth"),
+		    N_("initialize submodules in the clone")),
+	OPT_STRING(0, "template", &option_template, N_("template-directory"),
+		   N_("directory from which templates will be used")),
+	OPT_CALLBACK(0 , "reference", &option_reference, N_("repo"),
+		     N_("reference repository"), &opt_parse_reference),
+	OPT_STRING('o', "origin", &option_origin, N_("name"),
+		   N_("use <name> instead of 'origin' to track upstream")),
+	OPT_STRING('b', "branch", &option_branch, N_("branch"),
+		   N_("checkout <branch> instead of the remote's HEAD")),
+	OPT_STRING('u', "upload-pack", &option_upload_pack, N_("path"),
+		   N_("path to git-upload-pack on the remote")),
+	OPT_STRING(0, "depth", &option_depth, N_("depth"),
+		    N_("create a shallow clone of that depth")),
 	OPT_BOOL(0, "single-branch", &option_single_branch,
-		    "clone only one branch, HEAD or --branch"),
-	OPT_STRING(0, "separate-git-dir", &real_git_dir, "gitdir",
-		   "separate git dir from working tree"),
-	OPT_STRING_LIST('c', "config", &option_config, "key=value",
-			"set config inside the new repository"),
+		    N_("clone only one branch, HEAD or --branch")),
+	OPT_STRING(0, "separate-git-dir", &real_git_dir, N_("gitdir"),
+		   N_("separate git dir from working tree")),
+	OPT_STRING_LIST('c', "config", &option_config, N_("key=value"),
+			N_("set config inside the new repository")),
 	OPT_END()
 };
 
@@ -236,7 +236,7 @@ static int add_one_reference(struct string_list_item *item, void *cb_data)
 	/* Beware: real_path() and mkpath() return static buffer */
 	ref_git = xstrdup(real_path(item->string));
 	if (is_directory(mkpath("%s/.git/objects", ref_git))) {
-		char *ref_git_git = xstrdup(mkpath("%s/.git", ref_git));
+		char *ref_git_git = mkpathdup("%s/.git", ref_git);
 		free(ref_git);
 		ref_git = ref_git_git;
 	} else if (!is_directory(mkpath("%s/objects", ref_git)))
@@ -342,7 +342,7 @@ static void copy_or_link_directory(struct strbuf *src, struct strbuf *dest,
 		if (!option_no_hardlinks) {
 			if (!link(src->buf, dest->buf))
 				continue;
-			if (option_local)
+			if (option_local > 0)
 				die_errno(_("failed to create link '%s'"), dest->buf);
 			option_no_hardlinks = 1;
 		}
@@ -433,8 +433,11 @@ static struct ref *wanted_peer_refs(const struct ref *refs,
 
 		if (!option_branch)
 			remote_head = guess_remote_head(head, refs, 0);
-		else
-			remote_head = find_remote_branch(refs, option_branch);
+		else {
+			local_refs = NULL;
+			tail = &local_refs;
+			remote_head = copy_ref(find_remote_branch(refs, option_branch));
+		}
 
 		if (!remote_head && option_branch)
 			warning(_("Could not find remote branch %s to clone."),
@@ -607,6 +610,54 @@ static void write_config(struct string_list *config)
 	}
 }
 
+static void write_refspec_config(const char* src_ref_prefix,
+		const struct ref* our_head_points_at,
+		const struct ref* remote_head_points_at, struct strbuf* branch_top)
+{
+	struct strbuf key = STRBUF_INIT;
+	struct strbuf value = STRBUF_INIT;
+
+	if (option_mirror || !option_bare) {
+		if (option_single_branch && !option_mirror) {
+			if (option_branch) {
+				if (strstr(our_head_points_at->name, "refs/tags/"))
+					strbuf_addf(&value, "+%s:%s", our_head_points_at->name,
+						our_head_points_at->name);
+				else
+					strbuf_addf(&value, "+%s:%s%s", our_head_points_at->name,
+						branch_top->buf, option_branch);
+			} else if (remote_head_points_at) {
+				strbuf_addf(&value, "+%s:%s%s", remote_head_points_at->name,
+						branch_top->buf,
+						skip_prefix(remote_head_points_at->name, "refs/heads/"));
+			}
+			/*
+			 * otherwise, the next "git fetch" will
+			 * simply fetch from HEAD without updating
+			 * any remote tracking branch, which is what
+			 * we want.
+			 */
+		} else {
+			strbuf_addf(&value, "+%s*:%s*", src_ref_prefix, branch_top->buf);
+		}
+		/* Configure the remote */
+		if (value.len) {
+			strbuf_addf(&key, "remote.%s.fetch", option_origin);
+			git_config_set_multivar(key.buf, value.buf, "^$", 0);
+			strbuf_reset(&key);
+
+			if (option_mirror) {
+				strbuf_addf(&key, "remote.%s.mirror", option_origin);
+				git_config_set(key.buf, "true");
+				strbuf_reset(&key);
+			}
+		}
+	}
+
+	strbuf_release(&key);
+	strbuf_release(&value);
+}
+
 int cmd_clone(int argc, const char **argv, const char *prefix)
 {
 	int is_bundle = 0, is_local;
@@ -668,7 +719,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		die(_("repository '%s' does not exist"), repo_name);
 	else
 		repo = repo_name;
-	is_local = path && !is_bundle;
+	is_local = option_local != 0 && path && !is_bundle;
 	if (is_local && option_depth)
 		warning(_("--depth is ignored in local clones; use file:// instead."));
 
@@ -697,7 +748,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		git_dir = xstrdup(dir);
 	else {
 		work_tree = dir;
-		git_dir = xstrdup(mkpath("%s/.git", dir));
+		git_dir = mkpathdup("%s/.git", dir);
 	}
 
 	if (!option_bare) {
@@ -705,7 +756,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		if (safe_create_leading_directories_const(work_tree) < 0)
 			die_errno(_("could not create leading directories of '%s'"),
 				  work_tree);
-		if (!dest_exists && mkdir(work_tree, 0755))
+		if (!dest_exists && mkdir(work_tree, 0777))
 			die_errno(_("could not create work tree dir '%s'."),
 				  work_tree);
 		set_git_work_tree(work_tree);
@@ -752,20 +803,6 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	}
 
 	strbuf_addf(&value, "+%s*:%s*", src_ref_prefix, branch_top.buf);
-
-	if (option_mirror || !option_bare) {
-		/* Configure the remote */
-		strbuf_addf(&key, "remote.%s.fetch", option_origin);
-		git_config_set_multivar(key.buf, value.buf, "^$", 0);
-		strbuf_reset(&key);
-
-		if (option_mirror) {
-			strbuf_addf(&key, "remote.%s.mirror", option_origin);
-			git_config_set(key.buf, "true");
-			strbuf_reset(&key);
-		}
-	}
-
 	strbuf_addf(&key, "remote.%s.url", option_origin);
 	git_config_set(key.buf, repo);
 	strbuf_reset(&key);
@@ -849,6 +886,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			install_branch_config(0, "master", option_origin,
 					      "refs/heads/master");
 	}
+
+	write_refspec_config(src_ref_prefix, our_head_points_at,
+			remote_head_points_at, &branch_top);
 
 	if (is_local)
 		clone_local(path, git_dir);

@@ -25,7 +25,7 @@
 static int diff_detect_rename_default;
 static int diff_rename_limit_default = 400;
 static int diff_suppress_blank_empty;
-int diff_use_color_default = -1;
+static int diff_use_color_default = -1;
 static const char *diff_word_regex_cfg;
 static const char *external_diff_cmd_cfg;
 int diff_auto_refresh_index = 1;
@@ -574,6 +574,7 @@ static void emit_rewrite_lines(struct emit_callback *ecb,
 	if (!endp) {
 		const char *plain = diff_get_color(ecb->color_diff,
 						   DIFF_PLAIN);
+		putc('\n', ecb->opt->file);
 		emit_line_0(ecb->opt, plain, reset, '\\',
 			    nneof, strlen(nneof));
 	}
@@ -1397,11 +1398,11 @@ int print_stat_summary(FILE *fp, int files, int insertions, int deletions)
 
 	if (!files) {
 		assert(insertions == 0 && deletions == 0);
-		return fputs(_(" 0 files changed\n"), fp);
+		return fprintf(fp, "%s\n", " 0 files changed");
 	}
 
 	strbuf_addf(&sb,
-		    Q_(" %d file changed", " %d files changed", files),
+		    (files == 1) ? " %d file changed" : " %d files changed",
 		    files);
 
 	/*
@@ -1418,8 +1419,7 @@ int print_stat_summary(FILE *fp, int files, int insertions, int deletions)
 		 * do not translate it.
 		 */
 		strbuf_addf(&sb,
-			    Q_(", %d insertion(+)", ", %d insertions(+)",
-			       insertions),
+			    (insertions == 1) ? ", %d insertion(+)" : ", %d insertions(+)",
 			    insertions);
 	}
 
@@ -1429,8 +1429,7 @@ int print_stat_summary(FILE *fp, int files, int insertions, int deletions)
 		 * do not translate it.
 		 */
 		strbuf_addf(&sb,
-			    Q_(", %d deletion(-)", ", %d deletions(-)",
-			       deletions),
+			    (deletions == 1) ? ", %d deletion(-)" : ", %d deletions(-)",
 			    deletions);
 	}
 	strbuf_addch(&sb, '\n');
@@ -2541,12 +2540,12 @@ void free_filespec(struct diff_filespec *spec)
 }
 
 void fill_filespec(struct diff_filespec *spec, const unsigned char *sha1,
-		   unsigned short mode)
+		   int sha1_valid, unsigned short mode)
 {
 	if (mode) {
 		spec->mode = canon_mode(mode);
 		hashcpy(spec->sha1, sha1);
-		spec->sha1_valid = !is_null_sha1(sha1);
+		spec->sha1_valid = sha1_valid;
 	}
 }
 
@@ -2619,22 +2618,6 @@ static int reuse_worktree_file(const char *name, const unsigned char *sha1, int 
 	return 0;
 }
 
-static int populate_from_stdin(struct diff_filespec *s)
-{
-	struct strbuf buf = STRBUF_INIT;
-	size_t size = 0;
-
-	if (strbuf_read(&buf, 0, 0) < 0)
-		return error("error while reading from stdin %s",
-				     strerror(errno));
-
-	s->should_munmap = 0;
-	s->data = strbuf_detach(&buf, &size);
-	s->size = size;
-	s->should_free = 1;
-	return 0;
-}
-
 static int diff_populate_gitlink(struct diff_filespec *s, int size_only)
 {
 	int len;
@@ -2683,9 +2666,6 @@ int diff_populate_filespec(struct diff_filespec *s, int size_only)
 		struct strbuf buf = STRBUF_INIT;
 		struct stat st;
 		int fd;
-
-		if (!strcmp(s->path, "-"))
-			return populate_from_stdin(s);
 
 		if (lstat(s->path, &st) < 0) {
 			if (errno == ENOENT) {
@@ -3011,9 +2991,8 @@ static void run_diff_cmd(const char *pgm,
 	int complete_rewrite = (p->status == DIFF_STATUS_MODIFIED) && p->score;
 	int must_show_header = 0;
 
-	if (!DIFF_OPT_TST(o, ALLOW_EXTERNAL))
-		pgm = NULL;
-	else {
+
+	if (DIFF_OPT_TST(o, ALLOW_EXTERNAL)) {
 		struct userdiff_driver *drv = userdiff_find_by_path(attr_path);
 		if (drv && drv->external)
 			pgm = drv->external;
@@ -3048,7 +3027,7 @@ static void diff_fill_sha1_info(struct diff_filespec *one)
 	if (DIFF_FILE_VALID(one)) {
 		if (!one->sha1_valid) {
 			struct stat st;
-			if (!strcmp(one->path, "-")) {
+			if (one->is_stdin) {
 				hashcpy(one->sha1, null_sha1);
 				return;
 			}
@@ -3092,6 +3071,9 @@ static void run_diff(struct diff_filepair *p, struct diff_options *o)
 	attr_path = name;
 	if (o->prefix_length)
 		strip_prefix(o->prefix_length, &name, &other);
+
+	if (!DIFF_OPT_TST(o, ALLOW_EXTERNAL))
+		pgm = NULL;
 
 	if (DIFF_PAIR_UNMERGED(p)) {
 		run_diff_cmd(pgm, name, NULL, attr_path,
@@ -3204,7 +3186,7 @@ void diff_setup(struct diff_options *options)
 	}
 }
 
-int diff_setup_done(struct diff_options *options)
+void diff_setup_done(struct diff_options *options)
 {
 	int count = 0;
 
@@ -3303,8 +3285,6 @@ int diff_setup_done(struct diff_options *options)
 		options->output_format = DIFF_FORMAT_NO_OUTPUT;
 		DIFF_OPT_SET(options, EXIT_WITH_STATUS);
 	}
-
-	return 0;
 }
 
 static int opt_arg(const char *arg, int arg_short, const char *arg_long, int *val)
@@ -4710,6 +4690,7 @@ static int is_submodule_ignored(const char *path, struct diff_options *options)
 void diff_addremove(struct diff_options *options,
 		    int addremove, unsigned mode,
 		    const unsigned char *sha1,
+		    int sha1_valid,
 		    const char *concatpath, unsigned dirty_submodule)
 {
 	struct diff_filespec *one, *two;
@@ -4741,9 +4722,9 @@ void diff_addremove(struct diff_options *options,
 	two = alloc_filespec(concatpath);
 
 	if (addremove != '+')
-		fill_filespec(one, sha1, mode);
+		fill_filespec(one, sha1, sha1_valid, mode);
 	if (addremove != '-') {
-		fill_filespec(two, sha1, mode);
+		fill_filespec(two, sha1, sha1_valid, mode);
 		two->dirty_submodule = dirty_submodule;
 	}
 
@@ -4756,6 +4737,7 @@ void diff_change(struct diff_options *options,
 		 unsigned old_mode, unsigned new_mode,
 		 const unsigned char *old_sha1,
 		 const unsigned char *new_sha1,
+		 int old_sha1_valid, int new_sha1_valid,
 		 const char *concatpath,
 		 unsigned old_dirty_submodule, unsigned new_dirty_submodule)
 {
@@ -4770,6 +4752,8 @@ void diff_change(struct diff_options *options,
 		const unsigned char *tmp_c;
 		tmp = old_mode; old_mode = new_mode; new_mode = tmp;
 		tmp_c = old_sha1; old_sha1 = new_sha1; new_sha1 = tmp_c;
+		tmp = old_sha1_valid; old_sha1_valid = new_sha1_valid;
+			new_sha1_valid = tmp;
 		tmp = old_dirty_submodule; old_dirty_submodule = new_dirty_submodule;
 			new_dirty_submodule = tmp;
 	}
@@ -4780,8 +4764,8 @@ void diff_change(struct diff_options *options,
 
 	one = alloc_filespec(concatpath);
 	two = alloc_filespec(concatpath);
-	fill_filespec(one, old_sha1, old_mode);
-	fill_filespec(two, new_sha1, new_mode);
+	fill_filespec(one, old_sha1, old_sha1_valid, old_mode);
+	fill_filespec(two, new_sha1, new_sha1_valid, new_mode);
 	one->dirty_submodule = old_dirty_submodule;
 	two->dirty_submodule = new_dirty_submodule;
 

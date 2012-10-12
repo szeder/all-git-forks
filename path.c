@@ -48,7 +48,7 @@ char *mksnpath(char *buf, size_t n, const char *fmt, ...)
 	return cleanup_path(buf);
 }
 
-static char *git_vsnpath(char *buf, size_t n, const char *fmt, va_list args)
+static char *vsnpath(char *buf, size_t n, const char *fmt, va_list args)
 {
 	const char *git_dir = get_git_dir();
 	size_t len;
@@ -70,21 +70,37 @@ bad:
 
 char *git_snpath(char *buf, size_t n, const char *fmt, ...)
 {
+	char *ret;
 	va_list args;
 	va_start(args, fmt);
-	(void)git_vsnpath(buf, n, fmt, args);
+	ret = vsnpath(buf, n, fmt, args);
 	va_end(args);
-	return buf;
+	return ret;
 }
 
 char *git_pathdup(const char *fmt, ...)
 {
-	char path[PATH_MAX];
+	char path[PATH_MAX], *ret;
 	va_list args;
 	va_start(args, fmt);
-	(void)git_vsnpath(path, sizeof(path), fmt, args);
+	ret = vsnpath(path, sizeof(path), fmt, args);
 	va_end(args);
-	return xstrdup(path);
+	return xstrdup(ret);
+}
+
+char *mkpathdup(const char *fmt, ...)
+{
+	char *path;
+	struct strbuf sb = STRBUF_INIT;
+	va_list args;
+
+	va_start(args, fmt);
+	strbuf_vaddf(&sb, fmt, args);
+	va_end(args);
+	path = xstrdup(cleanup_path(sb.buf));
+
+	strbuf_release(&sb);
+	return path;
 }
 
 char *mkpath(const char *fmt, ...)
@@ -103,23 +119,40 @@ char *mkpath(const char *fmt, ...)
 
 char *git_path(const char *fmt, ...)
 {
-	const char *git_dir = get_git_dir();
 	char *pathname = get_pathname();
 	va_list args;
-	unsigned len;
+	char *ret;
 
-	len = strlen(git_dir);
-	if (len > PATH_MAX-100)
-		return bad_path;
-	memcpy(pathname, git_dir, len);
-	if (len && git_dir[len-1] != '/')
-		pathname[len++] = '/';
 	va_start(args, fmt);
-	len += vsnprintf(pathname + len, PATH_MAX - len, fmt, args);
+	ret = vsnpath(pathname, PATH_MAX, fmt, args);
 	va_end(args);
-	if (len >= PATH_MAX)
-		return bad_path;
-	return cleanup_path(pathname);
+	return ret;
+}
+
+void home_config_paths(char **global, char **xdg, char *file)
+{
+	char *xdg_home = getenv("XDG_CONFIG_HOME");
+	char *home = getenv("HOME");
+	char *to_free = NULL;
+
+	if (!home) {
+		if (global)
+			*global = NULL;
+	} else {
+		if (!xdg_home) {
+			to_free = mkpathdup("%s/.config", home);
+			xdg_home = to_free;
+		}
+		if (global)
+			*global = mkpathdup("%s/.gitconfig", home);
+	}
+
+	if (!xdg_home)
+		*xdg = NULL;
+	else
+		*xdg = mkpathdup("%s/git/%s", xdg_home, file);
+
+	free(to_free);
 }
 
 char *git_path_submodule(const char *path, const char *fmt, ...)

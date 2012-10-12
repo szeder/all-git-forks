@@ -22,9 +22,9 @@
 #include "cache-tree.h"
 
 static const char * const git_reset_usage[] = {
-	"git reset [--mixed | --soft | --hard | --merge | --keep] [-q] [<commit>]",
-	"git reset [-q] <commit> [--] <paths>...",
-	"git reset --patch [<commit>] [--] [<paths>...]",
+	N_("git reset [--mixed | --soft | --hard | --merge | --keep] [-q] [<commit>]"),
+	N_("git reset [-q] <commit> [--] <paths>..."),
+	N_("git reset --patch [<commit>] [--] [<paths>...]"),
 	NULL
 };
 
@@ -235,17 +235,17 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 	struct commit *commit;
 	struct strbuf msg = STRBUF_INIT;
 	const struct option options[] = {
-		OPT__QUIET(&quiet, "be quiet, only report errors"),
+		OPT__QUIET(&quiet, N_("be quiet, only report errors")),
 		OPT_SET_INT(0, "mixed", &reset_type,
-						"reset HEAD and index", MIXED),
-		OPT_SET_INT(0, "soft", &reset_type, "reset only HEAD", SOFT),
+						N_("reset HEAD and index"), MIXED),
+		OPT_SET_INT(0, "soft", &reset_type, N_("reset only HEAD"), SOFT),
 		OPT_SET_INT(0, "hard", &reset_type,
-				"reset HEAD, index and working tree", HARD),
+				N_("reset HEAD, index and working tree"), HARD),
 		OPT_SET_INT(0, "merge", &reset_type,
-				"reset HEAD, index and working tree", MERGE),
+				N_("reset HEAD, index and working tree"), MERGE),
 		OPT_SET_INT(0, "keep", &reset_type,
-				"reset HEAD but keep local changes", KEEP),
-		OPT_BOOLEAN('p', "patch", &patch_mode, "select hunks interactively"),
+				N_("reset HEAD but keep local changes"), KEEP),
+		OPT_BOOLEAN('p', "patch", &patch_mode, N_("select hunks interactively")),
 		OPT_END()
 	};
 
@@ -276,7 +276,7 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 		 * Otherwise, argv[i] could be either <rev> or <paths> and
 		 * has to be unambiguous.
 		 */
-		else if (!get_sha1(argv[i], sha1)) {
+		else if (!get_sha1_committish(argv[i], sha1)) {
 			/*
 			 * Ok, argv[i] looks like a rev; it should not
 			 * be a filename.
@@ -285,13 +285,19 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 			rev = argv[i++];
 		} else {
 			/* Otherwise we treat this as a filename */
-			verify_filename(prefix, argv[i]);
+			verify_filename(prefix, argv[i], 1);
 		}
 	}
 
-	if (get_sha1(rev, sha1))
+	if (get_sha1_committish(rev, sha1))
 		die(_("Failed to resolve '%s' as a valid ref."), rev);
 
+	/*
+	 * NOTE: As "git reset $treeish -- $path" should be usable on
+	 * any tree-ish, this is not strictly correct. We are not
+	 * moving the HEAD to any commit; we are merely resetting the
+	 * entries in the index to that of a treeish.
+	 */
 	commit = lookup_commit_reference(sha1);
 	if (!commit)
 		die(_("Could not parse object '%s'."), rev);
