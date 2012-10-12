@@ -5,7 +5,7 @@ Maintainer: Gerrit Pape <pape@smarden.org>
 Uploaders: Jonathan Nieder <jrnieder@gmail.com>
 Build-Depends: libz-dev,
  libcurl4-gnutls-dev | libcurl3-gnutls-dev, libexpat1-dev,
- subversion, libsvn-perl | libsvn-core-perl,
+ subversion, libsvn-perl | libsvn-core-perl, libyaml-perl,
  tcl8.5, gettext,
  libhttp-date-perl | libtime-modules-perl,
  cvs, cvsps, libdbd-sqlite3-perl,

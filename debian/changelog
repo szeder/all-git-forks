@@ -4,7 +4,6 @@ git (1:1.8.0~rc2-1~exp0) experimental; urgency=low
   * new upstream release candidate.
     * git-svn: ignore SIGPIPE so serf can recover from HTTP timeouts
       (closes: #526989).
-    * git-svn: use YAML format for mergeinfo cache when possible.
     * git-svn: use platform specific auth providers.
     * am: support --include option.
     * format-patch: do not use bogus email addresses in message ids.
@@ -14,12 +13,11 @@ git (1:1.8.0~rc2-1~exp0) experimental; urgency=low
     * cli: add Italian and Vietnamese translations.
     * push: introduce new push.default mode "simple".  It aspires to
       become the default some day.
-  * debian/diff/0012-Makefile-add-a-knob-to-turn-off-...diff: remove;
-    fixed upstream.
+  * debian/diff:
+    * 0013...0031: remove; applied upstream.
+    * 0012-Makefile-add-a-knob-to-turn-off-...diff: remove; fixed
+      upstream.
   * update debian/copyright.
-  * debian/control: git-svn: Depends: libyaml-perl for platform- and
-    version-independent .git/svn/.caches format (thx Tim Retout for
-    the analysis; closes: #587650).
   * debian/control: gitweb: Recommends: libhttp-date-perl or
     libtime-module-perl for If-Modified-Since support; Build-Depends:
     same to support test suite.
@@ -31,6 +29,28 @@ git (1:1.8.0~rc2-1~exp0) experimental; urgency=low
   * new upstream release.
 
  -- Gerrit Pape <pape@smarden.org>  Tue, 19 Jun 2012 12:30:27 +0000
+
+git (1:1.7.10.4-2) unstable; urgency=low
+
+  * debian/diff:
+    * 0013...0030: new from the upstream 'master' branch: git svn:
+      adapt to svn 1.7 changes:
+      * normalize paths and URLs passed to Subversion (thx Michael G.
+        Schwern; closes: #678137)
+      * use correct "svn cp" syntax when checking git svn's mangling
+        of @-signs in branch names (svn became stricter).
+      * commit filetype changes between a regular file and symlink as
+        replacement (deletion followed by addition) instead of
+        modification of files.  Otherwise, clients pulling the change
+        with "svn update" hit an assertion failure (svn issue 4091).
+    * 0031-git-svn-use-YAML-format-...diff: new from 1.7.11: git svn:
+      use YAML format for mergeinfo cache when possible.
+  * debian/control: git-svn: Depends: libyaml-perl for platform- and
+    version-independent .git/svn/.caches format; Build-Depends:
+    libyaml-perl for tests (thx Tim Retout for the analysis; closes:
+    #587650).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 12 Oct 2012 13:27:36 -0700
 
 git (1:1.7.10.4-1) unstable; urgency=low
 
