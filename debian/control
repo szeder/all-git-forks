@@ -5,7 +5,7 @@ Maintainer: Gerrit Pape <pape@smarden.org>
 Uploaders: Jonathan Nieder <jrnieder@gmail.com>
 Build-Depends: libz-dev,
  libcurl4-gnutls-dev | libcurl3-gnutls-dev, libexpat1-dev,
- subversion, libsvn-perl | libsvn-core-perl,
+ subversion, libsvn-perl | libsvn-core-perl, libyaml-perl,
  tcl8.5, gettext,
  cvs, cvsps, libdbd-sqlite3-perl,
  unzip, libio-pty-perl,
@@ -147,7 +147,7 @@ Description: fast, scalable, distributed revision control system (cvs interopera
 
 Package: git-svn
 Architecture: all
-Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), libsvn-perl | libsvn-core-perl, libwww-perl, libterm-readkey-perl
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), libsvn-perl | libsvn-core-perl, libyaml-perl, libwww-perl, libterm-readkey-perl
 Suggests: git-doc, subversion
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (svn interoperability)
