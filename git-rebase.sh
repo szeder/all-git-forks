@@ -27,6 +27,7 @@ stat!              display a diffstat of what changed upstream
 n,no-stat!         do not show diffstat of what changed upstream
 verify             allow pre-rebase hook to run
 rerere-autoupdate  allow rerere to update index with resolved conflicts
+stash-pop          'git stash' before the rebase & 'git stash pop' after
 root!              rebase all reachable commits up to the root(s)
 autosquash         move commits that begin with squash!/fixup! under -i
 committer-date-is-author-date! passed to 'git am'
@@ -251,6 +252,9 @@ do
 		git_am_opt="$git_am_opt -q"
 		verbose=
 		diffstat=
+		;;
+	--stash-pop)
+		stash_pop=true
 		;;
 	--whitespace)
 		shift
@@ -480,7 +484,13 @@ case "$#" in
 	;;
 esac
 
-require_clean_work_tree "rebase" "$(gettext "Please commit or stash them.")"
+if test true != "$stash_pop"
+then
+	require_clean_work_tree "rebase" "$(gettext "Please commit or stash them.")"
+else
+	git stash
+	trap "git stash pop" EXIT
+fi
 
 # Now we are rebasing commits $upstream..$orig_head (or with --root,
 # everything leading up to $orig_head) on top of $onto

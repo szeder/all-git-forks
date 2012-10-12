@@ -4,7 +4,7 @@
 #
 # Fetch one or more remote refs and merge it/them into the current HEAD.
 
-USAGE='[-n | --no-stat] [--[no-]commit] [--[no-]squash] [--[no-]ff] [-s strategy]... [<fetch-options>] <repo> <head>...'
+USAGE='[-n | --no-stat] [--[no-]commit] [--[no-]squash] [--[no-]ff] [--stash-pop] [-s strategy]... [<fetch-options>] <repo> <head>...'
 LONG_USAGE='Fetch one or more remote refs and merge it/them into the current HEAD.'
 SUBDIRECTORY_OK=Yes
 OPTIONS_SPEC=
@@ -84,6 +84,8 @@ do
 		no_ff=--no-ff ;;
 	--ff-only)
 		ff_only=--ff-only ;;
+	--stash-pop)
+		stash_pop=true ;;
 	-s=*|--s=*|--st=*|--str=*|--stra=*|--strat=*|--strate=*|\
 		--strateg=*|--strategy=*|\
 	-s|--s|--st|--str|--stra|--strat|--strate|--strateg|--strategy)
@@ -196,7 +198,8 @@ test true = "$rebase" && {
 		then
 			die "$(gettext "updating an unborn branch with changes added to the index")"
 		fi
-	else
+	elif test true != "$stash_pop"
+	then
 		require_clean_work_tree "pull with rebase" "Please commit or stash them."
 	fi
 	oldremoteref= &&
@@ -280,6 +283,10 @@ case "$rebase" in
 true)
 	eval="git-rebase $diffstat $strategy_args $merge_args"
 	eval="$eval --onto $merge_head ${oldremoteref:-$merge_head}"
+	if test true = "$stash_pop"
+	then
+		eval="$eval --stash-pop"
+	fi
 	;;
 *)
 	eval="git-merge $diffstat $no_commit $edit $squash $no_ff $ff_only"
