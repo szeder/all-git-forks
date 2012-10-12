@@ -106,7 +106,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	install -m0644 contrib/completion/git-completion.bash \
 	  '$(GIT)'/etc/bash_completion.d/git
 	# sanity check that #642603 fix is still in place
-	test $(stat -c%h \
+	test $$(stat -c%h \
 	  '$(GIT)'/usr/lib/git-core/git-branch) -le 10
 	# gitweb
 	install -d -m0755 '$(GIT)'/usr/share/gitweb
