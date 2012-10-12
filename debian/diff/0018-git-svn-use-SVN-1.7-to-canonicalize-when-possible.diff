@@ -1,0 +1,51 @@
+From c0a72bbb2a7e4fd244cfcb268c55f9af8ee63274 Mon Sep 17 00:00:00 2001
+From: "Michael G. Schwern" <schwern@pobox.com>
+Date: Sat, 28 Jul 2012 02:38:27 -0700
+Subject: git-svn: use SVN 1.7 to canonicalize when possible
+
+No change on SVN 1.6.  The tests all pass with SVN 1.6 if
+canonicalize_url() does nothing, so tests passing doesn't have
+much meaning.
+
+The tests are so messed up right now with SVN 1.7 it isn't really
+useful to check.  They will be useful later.
+
+[ew: commit title]
+[jn: load SVN::Base on demand]
+
+Signed-off-by: Eric Wong <normalperson@yhbt.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ git-svn.perl |   16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/git-svn.perl b/git-svn.perl
+index 18f963d..02249b6 100755
+--- a/git-svn.perl
++++ b/git-svn.perl
+@@ -1252,6 +1252,22 @@ sub canonicalize_path {
+ }
+ 
+ sub canonicalize_url {
++	my $url = shift;
++
++	::_req_svn();
++
++	# The 1.7 way to do it
++	if ( defined &SVN::_Core::svn_uri_canonicalize ) {
++		return SVN::_Core::svn_uri_canonicalize($url);
++	}
++	# There wasn't a 1.6 way to do it, so we do it ourself.
++	else {
++		return _canonicalize_url_ourselves($url);
++	}
++}
++
++
++sub _canonicalize_url_ourselves {
+ 	my ($url) = @_;
+ 	$url =~ s#^([^:]+://[^/]*/)(.*)$#$1 . canonicalize_path($2)#e;
+ 	return $url;
+-- 
+1.7.10.4
+

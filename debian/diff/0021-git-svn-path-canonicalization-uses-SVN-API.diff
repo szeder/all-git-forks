@@ -1,0 +1,64 @@
+From e0fdd786a0fa23df21fdaa7847e56ea2e374c4e4 Mon Sep 17 00:00:00 2001
+From: "Michael G. Schwern" <schwern@pobox.com>
+Date: Sat, 28 Jul 2012 02:38:31 -0700
+Subject: git-svn: path canonicalization uses SVN API
+
+All tests pass with SVN 1.6.  SVN 1.7 remains broken, not worrying
+about it yet.
+
+SVN changed its path canonicalization API between 1.6 and 1.7.
+http://svnbook.red-bean.com/en/1.6/svn.developer.usingapi.html#svn.developer.usingapi.urlpath
+http://svnbook.red-bean.com/en/1.7/svn.developer.usingapi.html#svn.developer.usingapi.urlpath
+
+The SVN API does not accept foo/.. but it also doesn't canonicalize
+it.  We have to do it ourselves.
+
+[ew: commit title, fall back if SVN <= 1.6 fails to canonicalize]
+[jn: load SVN::Base on demand]
+
+Signed-off-by: Eric Wong <normalperson@yhbt.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ git-svn.perl |   26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+diff --git a/git-svn.perl b/git-svn.perl
+index e7d0fb8..b14f4ad 100755
+--- a/git-svn.perl
++++ b/git-svn.perl
+@@ -1245,6 +1245,32 @@ sub _collapse_dotdot {
+ 
+ 
+ sub canonicalize_path {
++	my $path = shift;
++	my $rv;
++
++	::_req_svn();
++
++	# The 1.7 way to do it
++	if ( defined &SVN::_Core::svn_dirent_canonicalize ) {
++		$path = _collapse_dotdot($path);
++		$rv = SVN::_Core::svn_dirent_canonicalize($path);
++	}
++	# The 1.6 way to do it
++	# This can return undef on subversion-perl-1.4.2-2.el5 (CentOS 5.2)
++	elsif ( defined &SVN::_Core::svn_path_canonicalize ) {
++		$path = _collapse_dotdot($path);
++		$rv = SVN::_Core::svn_path_canonicalize($path);
++	}
++
++	return $rv if defined $rv;
++
++	# No SVN API canonicalization is available, or the SVN API
++	# didn't return a successful result, do it ourselves
++	return _canonicalize_path_ourselves($path);
++}
++
++
++sub _canonicalize_path_ourselves {
+ 	my ($path) = @_;
+ 	my $dot_slash_added = 0;
+ 	if (substr($path, 0, 1) ne "/") {
+-- 
+1.7.10.4
+

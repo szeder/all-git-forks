@@ -1,0 +1,60 @@
+From ed94bdaf04c932d088c25742b50576d5fbadfd2e Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Tue, 9 Oct 2012 01:41:45 -0700
+Subject: svn test: escape peg revision separator using empty peg rev
+
+This test script uses "svn cp" to create a branch with an @-sign in
+its name:
+
+	svn cp "pr ject/trunk" "pr ject/branches/not-a@{0}reflog"
+
+That sets up for later tests that fetch the branch and check that git
+svn mangles the refname appropriately.
+
+Unfortunately, modern svn versions interpret path arguments with an
+@-sign as an example of path@revision syntax (which pegs a path to a
+particular revision) and truncate the path or error out with message
+"svn: E205000: Syntax error parsing peg revision '{0}reflog'".
+
+When using subversion 1.6.x, escaping the @ sign as %40 avoids trouble
+(see 08fd28bb, 2010-07-08).  Newer versions are stricter:
+
+	$ svn cp "$repo/pr ject/trunk" "$repo/pr ject/branches/not-a%40{reflog}"
+	svn: E205000: Syntax error parsing peg revision '%7B0%7Dreflog'
+
+The recommended method for escaping a literal @ sign in a path passed
+to subversion is to add an empty peg revision at the end of the path
+("branches/not-a@{0}reflog@").  Do that.
+
+Pre-1.6.12 versions of Subversion probably treat the trailing @ as
+another literal @-sign (svn issue 3651).  Luckily ever since
+v1.8.0-rc0~155^2~7 (t9118: workaround inconsistency between SVN
+versions, 2012-07-28) the test can survive that.
+
+Tested with Debian Subversion 1.6.12dfsg-6 and 1.7.5-1 and r1395837
+of Subversion trunk (1.8.x).
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+Tested-by: Michael J Gruber <git@drmicha.warpmail.net>
+Signed-off-by: Eric Wong <normalperson@yhbt.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ t/t9118-git-svn-funky-branch-names.sh |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/t/t9118-git-svn-funky-branch-names.sh b/t/t9118-git-svn-funky-branch-names.sh
+index 193d3ca..15f93b4 100755
+--- a/t/t9118-git-svn-funky-branch-names.sh
++++ b/t/t9118-git-svn-funky-branch-names.sh
+@@ -28,7 +28,7 @@ test_expect_success 'setup svnrepo' '
+ 	svn_cmd cp -m "trailing .lock" "$svnrepo/pr ject/trunk" \
+ 			"$svnrepo/pr ject/branches/trailing_dotlock.lock" &&
+ 	svn_cmd cp -m "reflog" "$svnrepo/pr ject/trunk" \
+-			"$svnrepo/pr ject/branches/not-a%40{0}reflog" &&
++			"$svnrepo/pr ject/branches/not-a@{0}reflog@" &&
+ 	start_httpd
+ 	'
+ 
+-- 
+1.7.10.4
+

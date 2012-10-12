@@ -1,0 +1,98 @@
+From f39fef0a43e4c755837593229a39828e45611e77 Mon Sep 17 00:00:00 2001
+From: "Michael G. Schwern" <schwern@pobox.com>
+Date: Sat, 28 Jul 2012 02:38:29 -0700
+Subject: git-svn: add join_paths() to safely concatenate paths
+
+Otherwise you might wind up with things like...
+
+    my $path1 = undef;
+    my $path2 = 'foo';
+    my $path = $path1 . '/' . $path2;
+
+creating '/foo'.  Or this...
+
+    my $path1 = 'foo/';
+    my $path2 = 'bar';
+    my $path = $path1 . '/' . $path2;
+
+creating 'foo//bar'.
+
+Could have used File::Spec, but I'm shying away from it due to SVN
+1.7's pickiness about paths.  Felt it would be better to have our own
+we can control completely.
+
+[ew: commit title]
+[jn: drop unused unit test]
+
+Signed-off-by: Eric Wong <normalperson@yhbt.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ git-svn.perl |   38 ++++++++++++++++++++++++++++++++++----
+ 1 file changed, 34 insertions(+), 4 deletions(-)
+
+diff --git a/git-svn.perl b/git-svn.perl
+index 045105b..e7d0fb8 100755
+--- a/git-svn.perl
++++ b/git-svn.perl
+@@ -1285,6 +1285,38 @@ sub _canonicalize_url_ourselves {
+ 	return $url;
+ }
+ 
++=head3 join_paths
++
++    my $new_path = join_paths(@paths);
++
++Appends @paths together into a single path.  Any empty paths are ignored.
++
++=cut
++
++sub join_paths {
++	my @paths = @_;
++
++	@paths = grep { defined $_ && length $_ } @paths;
++
++	return '' unless @paths;
++	return $paths[0] if @paths == 1;
++
++	my $new_path = shift @paths;
++	$new_path =~ s{/+$}{};
++
++	my $last_path = pop @paths;
++	$last_path =~ s{^/+}{};
++
++	for my $path (@paths) {
++		$path =~ s{^/+}{};
++		$path =~ s{/+$}{};
++		$new_path .= "/$path";
++	}
++
++	return $new_path .= "/$last_path";
++}
++
++
+ # get_svnprops(PATH)
+ # ------------------
+ # Helper for cmd_propget and cmd_proplist below.
+@@ -1298,7 +1330,7 @@ sub get_svnprops {
+ 	$path = $cmd_dir_prefix . $path;
+ 	fatal("No such file or directory: $path") unless -e $path;
+ 	my $is_dir = -d $path ? 1 : 0;
+-	$path = $gs->{path} . '/' . $path;
++	$path = join_paths($gs->{path}, $path);
+ 
+ 	# canonicalize the path (otherwise libsvn will abort or fail to
+ 	# find the file)
+@@ -2342,9 +2374,7 @@ sub init_remote_config {
+ 			}
+ 			my $old_path = $self->path;
+ 			$url =~ s!^\Q$min_url\E(/|$)!!;
+-			if (length $old_path) {
+-				$url .= "/$old_path";
+-			}
++			$url = ::join_paths($url, $old_path);
+ 			$self->path($url);
+ 			$url = $min_url;
+ 		}
+-- 
+1.7.10.4
+

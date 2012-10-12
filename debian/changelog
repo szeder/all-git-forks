@@ -1,3 +1,18 @@
+git (1:1.7.10.4-1.1) unstable; urgency=low
+
+  * debian/diff/0013...0030: new from the upstream 'master' branch:
+    * git svn: adapt to svn 1.7 changes:
+      * normalize paths and URLs passed to Subversion (thx Michael G.
+        Schwern; closes: #678137)
+      * use correct "svn cp" syntax when checking git svn's mangling
+        of @-signs in branch names (svn became stricter).
+      * commit filetype changes between a regular file and symlink as
+        replacement (deletion followed by addition) instead of
+        modification of files.  Otherwise, clients pulling the change
+        with "svn update" hit an assertion failure (svn issue 4091).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 12 Oct 2012 13:20:07 -0700
+
 git (1:1.7.10.4-1) unstable; urgency=low
 
   * new upstream point release (thx Jonathan Nieder).

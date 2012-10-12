@@ -1,0 +1,61 @@
+From 566a4860db8bd4334e7fe4c1ffab1530f33afa8f Mon Sep 17 00:00:00 2001
+From: "Michael G. Schwern" <schwern@pobox.com>
+Date: Sat, 28 Jul 2012 02:47:49 -0700
+Subject: git-svn: canonicalize earlier
+
+Just a few things I noticed.  Its good to canonicalize as early as
+possible.
+
+[ew: commit title]
+
+Signed-off-by: Eric Wong <normalperson@yhbt.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ git-svn.perl |   10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/git-svn.perl b/git-svn.perl
+index ba006fc..b25f628 100755
+--- a/git-svn.perl
++++ b/git-svn.perl
+@@ -1531,16 +1531,16 @@ sub cmd_info {
+ 	# canonicalize_path() will return "" to make libsvn 1.5.x happy,
+ 	$path = "." if $path eq "";
+ 
+-	my $full_url = $url . ($fullpath eq "" ? "" : "/$fullpath");
++	my $full_url = canonicalize_url( $url . ($fullpath eq "" ? "" : "/$fullpath") );
+ 
+ 	if ($_url) {
+-		print canonicalize_url($full_url), "\n";
++		print "$full_url\n";
+ 		return;
+ 	}
+ 
+ 	my $result = "Path: $path\n";
+ 	$result .= "Name: " . basename($path) . "\n" if $file_type ne "dir";
+-	$result .= "URL: " . canonicalize_url($full_url) . "\n";
++	$result .= "URL: $full_url\n";
+ 
+ 	eval {
+ 		my $repos_root = $gs->repos_root;
+@@ -5581,7 +5581,7 @@ ()
+ 
+ sub new {
+ 	my ($class, $url) = @_;
+-	$url =~ s!/+$!!;
++	$url = ::canonicalize_url($url);
+ 	return $RA if ($RA && $RA->url eq $url);
+ 
+ 	::_req_svn();
+@@ -5613,7 +5613,7 @@ sub new {
+ 			$Git::SVN::Prompt::_no_auth_cache = 1;
+ 		}
+ 	} # no warnings 'once'
+-	my $self = SVN::Ra->new(url => ::canonicalize_url($url), auth => $baton,
++	my $self = SVN::Ra->new(url => $url, auth => $baton,
+ 	                      config => $config,
+ 			      pool => SVN::Pool->new,
+ 	                      auth_provider_callbacks => $callbacks);
+-- 
+1.7.10.4
+

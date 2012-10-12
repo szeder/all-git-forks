@@ -1,0 +1,57 @@
+From 7f944a129dfd3662bdbfaa09c9ff8f7ba177cf45 Mon Sep 17 00:00:00 2001
+From: "Michael G. Schwern" <schwern@pobox.com>
+Date: Sat, 28 Jul 2012 02:38:28 -0700
+Subject: git-svn: factor out _collapse_dotdot function
+
+The SVN API functions will not accept ../foo but their canonicalization
+functions will not collapse it.  So we'll have to do it ourselves.
+
+_collapse_dotdot() works better than the existing regex did.
+
+This will be used shortly when canonicalize_path() starts using the
+SVN API.
+
+[ew: commit title]
+[jn: drop unused unit test]
+
+Signed-off-by: Eric Wong <normalperson@yhbt.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ git-svn.perl |   14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/git-svn.perl b/git-svn.perl
+index 02249b6..045105b 100755
+--- a/git-svn.perl
++++ b/git-svn.perl
+@@ -1232,6 +1232,18 @@ sub cmd_mkdirs {
+ 	$gs->mkemptydirs($_revision);
+ }
+ 
++# Turn foo/../bar into bar
++sub _collapse_dotdot {
++	my $path = shift;
++
++	1 while $path =~ s{/[^/]+/+\.\.}{};
++	1 while $path =~ s{[^/]+/+\.\./}{};
++	1 while $path =~ s{[^/]+/+\.\.}{};
++
++	return $path;
++}
++
++
+ sub canonicalize_path {
+ 	my ($path) = @_;
+ 	my $dot_slash_added = 0;
+@@ -1243,7 +1255,7 @@ sub canonicalize_path {
+ 	# good reason), so let's do this manually.
+ 	$path =~ s#/+#/#g;
+ 	$path =~ s#/\.(?:/|$)#/#g;
+-	$path =~ s#/[^/]+/\.\.##g;
++	$path = _collapse_dotdot($path);
+ 	$path =~ s#/$##g;
+ 	$path =~ s#^\./## if $dot_slash_added;
+ 	$path =~ s#^/##;
+-- 
+1.7.10.4
+

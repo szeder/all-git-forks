@@ -1,0 +1,78 @@
+From 36f97461bb3b18f7b33fa0f82452dba2989085b1 Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Tue, 9 Oct 2012 03:12:39 -0700
+Subject: git svn: work around SVN 1.7 mishandling of svn:special changes
+
+Subversion represents symlinks as ordinary files with content starting
+with "link " and the svn:special property set to "*".  Thus a file can
+switch between being a symlink and a non-symlink simply by toggling
+its svn:special property, and new checkouts will automatically write a
+file of the appropriate type.  Likewise, in subversion 1.6 and older,
+running "svn update" would notice changes in filetype and update the
+working copy appropriately.
+
+Starting in subversion 1.7 (issue 4091), changes to the svn:special
+property trip an assertion instead:
+
+	$ svn up svn-tree
+	Updating 'svn-tree':
+	svn: E235000: In file 'subversion/libsvn_wc/update_editor.c' \
+	line 1583: assertion failed (action == svn_wc_conflict_action_edit \
+	|| action == svn_wc_conflict_action_delete || action == \
+	svn_wc_conflict_action_replace)
+
+Revisions prepared with ordinary svn commands ("svn add" and not "svn
+propset") don't trip this because they represent these filetype
+changes using a replace operation, which is approximately equivalent
+to removal followed by adding a new file and works fine.  Follow suit.
+
+Noticed using t9100.  After this change, git-svn's file-to-symlink
+changes are sent in a format that modern "svn update" can handle and
+tests t9100.11-13 pass again.
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+Signed-off-by: Eric Wong <normalperson@yhbt.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ git-svn.perl |   25 ++++++++++++++++++++++++-
+ 1 file changed, 24 insertions(+), 1 deletion(-)
+
+diff --git a/git-svn.perl b/git-svn.perl
+index 9d57aa0..40ccdd5 100755
+--- a/git-svn.perl
++++ b/git-svn.perl
+@@ -5439,7 +5439,30 @@ sub M {
+ 	$self->close_file($fbat,undef,$self->{pool});
+ }
+ 
+-sub T { shift->M(@_) }
++sub T {
++	my ($self, $m, $deletions) = @_;
++
++	# Work around subversion issue 4091: toggling the "is a
++	# symlink" property requires removing and re-adding a
++	# file or else "svn up" on affected clients trips an
++	# assertion and aborts.
++	if (($m->{mode_b} =~ /^120/ && $m->{mode_a} !~ /^120/) ||
++	    ($m->{mode_b} !~ /^120/ && $m->{mode_a} =~ /^120/)) {
++		$self->D({
++			mode_a => $m->{mode_a}, mode_b => '000000',
++			sha1_a => $m->{sha1_a}, sha1_b => '0' x 40,
++			chg => 'D', file_b => $m->{file_b}
++		});
++		$self->A({
++			mode_a => '000000', mode_b => $m->{mode_b},
++			sha1_a => '0' x 40, sha1_b => $m->{sha1_b},
++			chg => 'A', file_b => $m->{file_b}
++		});
++		return;
++	}
++
++	$self->M($m, $deletions);
++}
+ 
+ sub change_file_prop {
+ 	my ($self, $fbat, $pname, $pval) = @_;
+-- 
+1.7.10.4
+

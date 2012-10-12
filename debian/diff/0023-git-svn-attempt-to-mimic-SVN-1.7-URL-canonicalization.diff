@@ -1,0 +1,98 @@
+From 80702a1f9be362436715ad9c3fa01ef74ddfd6e4 Mon Sep 17 00:00:00 2001
+From: "Michael G. Schwern" <schwern@pobox.com>
+Date: Sat, 28 Jul 2012 02:47:47 -0700
+Subject: git-svn: attempt to mimic SVN 1.7 URL canonicalization
+
+Previously, our URL canonicalization didn't do much of anything.
+Now it actually escapes and collapses slashes.  This is mostly a cut & paste
+of escape_url from git-svn.
+
+This is closer to how SVN 1.7's canonicalization behaves.  Doing it with
+1.6 lets us chase down some problems caused by more effective canonicalization
+without having to deal with all the other 1.7 issues on top of that.
+
+* Remote URLs have to be canonicalized otherwise Git::SVN->find_existing_remote
+  will think they're different.
+
+* The SVN remote is now written to the git config canonicalized.  That
+  should be ok.  Adjust a test to account for that.
+
+[ew: commit title]
+[jn: drop unused unit test]
+
+Signed-off-by: Eric Wong <normalperson@yhbt.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ git-svn.perl               |   23 +++++++++++++++++++----
+ t/t9107-git-svn-migrate.sh |    4 +++-
+ 2 files changed, 22 insertions(+), 5 deletions(-)
+
+diff --git a/git-svn.perl b/git-svn.perl
+index c491111..a47ec74 100755
+--- a/git-svn.perl
++++ b/git-svn.perl
+@@ -1305,10 +1305,25 @@ sub canonicalize_url {
+ }
+ 
+ 
++sub _canonicalize_url_path {
++	my ($uri_path) = @_;
++
++	my @parts;
++	foreach my $part (split m{/+}, $uri_path) {
++		$part =~ s/([^~\w.%+-]|%(?![a-fA-F0-9]{2}))/sprintf("%%%02X",ord($1))/eg;
++		push @parts, $part;
++	}
++
++	return join('/', @parts);
++}
++
+ sub _canonicalize_url_ourselves {
+ 	my ($url) = @_;
+-	$url =~ s#^([^:]+://[^/]*/)(.*)$#$1 . canonicalize_path($2)#e;
+-	return $url;
++	if ($url =~ m#^([^:]+)://([^/]*)(.*)$#) {
++		my ($scheme, $domain, $uri) = ($1, $2, _canonicalize_url_path(canonicalize_path($3)));
++		$url = "$scheme://$domain$uri";
++	}
++	$url;
+ }
+ 
+ =head3 join_paths
+@@ -2281,9 +2296,9 @@ sub read_all_remotes {
+ 		} elsif (m!^(.+)\.usesvmprops=\s*(.*)\s*$!) {
+ 			$r->{$1}->{svm} = {};
+ 		} elsif (m!^(.+)\.url=\s*(.*)\s*$!) {
+-			$r->{$1}->{url} = $2;
++			$r->{$1}->{url} = ::canonicalize_url($2);
+ 		} elsif (m!^(.+)\.pushurl=\s*(.*)\s*$!) {
+-			$r->{$1}->{pushurl} = $2;
++			$r->{$1}->{pushurl} = ::canonicalize_url($2);
+ 		} elsif (m!^(.+)\.ignore-refs=\s*(.*)\s*$!) {
+ 			$r->{$1}->{ignore_refs_regex} = $2;
+ 		} elsif (m!^(.+)\.(branches|tags)=$svn_refspec$!) {
+diff --git a/t/t9107-git-svn-migrate.sh b/t/t9107-git-svn-migrate.sh
+index 289fc31..e7b103d 100755
+--- a/t/t9107-git-svn-migrate.sh
++++ b/t/t9107-git-svn-migrate.sh
+@@ -27,6 +27,8 @@ test_expect_success 'setup old-looking metadata' '
+ head=`git rev-parse --verify refs/heads/git-svn-HEAD^0`
+ test_expect_success 'git-svn-HEAD is a real HEAD' "test -n '$head'"
+ 
++svnrepo_escaped=`echo $svnrepo | sed 's/ /%20/'`
++
+ test_expect_success 'initialize old-style (v0) git svn layout' '
+ 	mkdir -p "$GIT_DIR"/git-svn/info "$GIT_DIR"/svn/info &&
+ 	echo "$svnrepo" > "$GIT_DIR"/git-svn/info/url &&
+@@ -35,7 +37,7 @@ test_expect_success 'initialize old-style (v0) git svn layout' '
+ 	! test -d "$GIT_DIR"/git svn &&
+ 	git rev-parse --verify refs/${remotes_git_svn}^0 &&
+ 	git rev-parse --verify refs/remotes/svn^0 &&
+-	test "$(git config --get svn-remote.svn.url)" = "$svnrepo" &&
++	test "$(git config --get svn-remote.svn.url)" = "$svnrepo_escaped" &&
+ 	test `git config --get svn-remote.svn.fetch` = \
+              ":refs/${remotes_git_svn}"
+ 	'
+-- 
+1.7.10.4
+

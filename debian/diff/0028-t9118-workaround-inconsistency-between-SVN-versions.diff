@@ -1,0 +1,46 @@
+From cb36ce89042a9aa04e5f2cdbbce16810c580991e Mon Sep 17 00:00:00 2001
+From: "Michael G. Schwern" <schwern@pobox.com>
+Date: Sat, 28 Jul 2012 02:47:45 -0700
+Subject: t9118: workaround inconsistency between SVN versions
+
+SVN 1.7 will truncate "not-a%40{0}" to just "not-a".
+
+Rather than guess what SVN is going to do for each version, make the test use
+the branch name that was actually created.
+
+[ew: commit title]
+
+Signed-off-by: Eric Wong <normalperson@yhbt.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ t/t9118-git-svn-funky-branch-names.sh |    7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/t/t9118-git-svn-funky-branch-names.sh b/t/t9118-git-svn-funky-branch-names.sh
+index 63fc982..193d3ca 100755
+--- a/t/t9118-git-svn-funky-branch-names.sh
++++ b/t/t9118-git-svn-funky-branch-names.sh
+@@ -32,6 +32,11 @@ test_expect_success 'setup svnrepo' '
+ 	start_httpd
+ 	'
+ 
++# SVN 1.7 will truncate "not-a%40{0]" to just "not-a".
++# Look at what SVN wound up naming the branch and use that.
++# Be sure to escape the @ if it shows up.
++non_reflog=`svn_cmd ls "$svnrepo/pr ject/branches" | grep not-a | sed 's/\///' | sed 's/@/%40/'`
++
+ test_expect_success 'test clone with funky branch names' '
+ 	git svn clone -s "$svnrepo/pr ject" project &&
+ 	(
+@@ -42,7 +47,7 @@ test_expect_success 'test clone with funky branch names' '
+ 		git rev-parse "refs/remotes/%2Eleading_dot" &&
+ 		git rev-parse "refs/remotes/trailing_dot%2E" &&
+ 		git rev-parse "refs/remotes/trailing_dotlock%2Elock" &&
+-		git rev-parse "refs/remotes/not-a%40{0}reflog"
++		git rev-parse "refs/remotes/$non_reflog"
+ 	)
+ 	'
+ 
+-- 
+1.7.10.4
+

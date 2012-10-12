@@ -1,0 +1,55 @@
+From 253d877dcbf42385af8101a941da6f202942a1f0 Mon Sep 17 00:00:00 2001
+From: "Michael G. Schwern" <schwern@pobox.com>
+Date: Sat, 28 Jul 2012 02:38:32 -0700
+Subject: Git::SVN{,::Ra}: canonicalize earlier
+
+This canonicalizes paths and urls as early as possible so we don't
+have to remember to do it at the point of use.  It will fix a swath
+of SVN 1.7 problems in one go.
+
+Its ok to double canonicalize things.
+
+SVN 1.7 still fails, still not worrying about that.
+
+[ew: commit title]
+
+Signed-off-by: Eric Wong <normalperson@yhbt.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ git-svn.perl |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/git-svn.perl b/git-svn.perl
+index b14f4ad..c491111 100755
+--- a/git-svn.perl
++++ b/git-svn.perl
+@@ -4366,7 +4366,7 @@ sub path {
+ 
+ 	if (@_) {
+ 		my $path = shift;
+-		$self->{path} = $path;
++		$self->{path} = ::canonicalize_path($path);
+ 		return;
+ 	}
+ 
+@@ -4378,7 +4378,7 @@ sub url {
+ 
+ 	if (@_) {
+ 		my $url = shift;
+-		$self->{url} = $url;
++		$self->{url} = ::canonicalize_url($url);
+ 		return;
+ 	}
+ 
+@@ -5656,7 +5656,7 @@ sub url {
+ 
+ 	if (@_) {
+ 		my $url = shift;
+-		$self->{url} = $url;
++		$self->{url} = ::canonicalize_url($url);
+ 		return;
+ 	}
+ 
+-- 
+1.7.10.4
+
