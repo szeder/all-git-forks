@@ -1,7 +1,7 @@
-From 20b9777d8e6f7bc3e77855755fc5bec14f298048 Mon Sep 17 00:00:00 2001
+From b5c029e62b0a79119bdac89879fb4b34d0e51541 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:41:28 -0500
-Subject: [PATCH 08/11] tcp: unify ipv4 and ipv6 code paths
+Subject: tcp: unify ipv4 and ipv6 code paths
 
 In order to support old ipv4- and current mixed ipv4/ipv6 systems, git
 code that makes use of DNS facilities currently involves implementing
@@ -95,10 +95,10 @@ Improved-by: Erik Faye-Lund <kusmabite@gmail.com>
  create mode 100644 dns-ipv6.h
 
 diff --git a/Makefile b/Makefile
-index f33cf46..96c70ff 100644
+index 8813595..47fe2a8 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -1669,6 +1669,11 @@ ifdef NO_TRUSTABLE_FILEMODE
+@@ -1782,6 +1782,11 @@ ifdef NO_TRUSTABLE_FILEMODE
  endif
  ifdef NO_IPV6
  	BASIC_CFLAGS += -DNO_IPV6
@@ -108,8 +108,8 @@ index f33cf46..96c70ff 100644
 +	LIB_OBJS += dns-ipv6.o
 +	LIB_H += dns-ipv6.h
  endif
- ifdef NO_UINTMAX_T
- 	BASIC_CFLAGS += -Duintmax_t=uint32_t
+ ifdef NO_INTPTR_T
+ 	COMPAT_CFLAGS += -DNO_INTPTR_T
 diff --git a/dns-ipv4.c b/dns-ipv4.c
 new file mode 100644
 index 0000000..8820c9e
@@ -366,12 +366,12 @@ index 9263e0d..4239daf 100644
 -	int gai;
 -	static char addrbuf[HOST_NAME_MAX + 1];
 -	struct sockaddr_in *sin_addr;
--
--	memset(&hints, 0, sizeof(hints));
--	hints.ai_flags = AI_CANONNAME;
 +	resolver_result ai;
 +	resolved_address i;
  
+-	memset(&hints, 0, sizeof(hints));
+-	hints.ai_flags = AI_CANONNAME;
+-
 -	gai = getaddrinfo(hostname, NULL, &hints, &ai);
 -	if (gai)
 +	if (dns_resolve(hostname, NULL,
@@ -570,5 +570,5 @@ index 9263e0d..4239daf 100644
  {
  	int sockfd = git_tcp_connect_sock(host, flags);
 -- 
-1.7.10
+1.7.10.4
 
