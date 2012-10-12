@@ -162,18 +162,26 @@ require_work_tree () {
 	die "fatal: $0 cannot be used without a working tree."
 }
 
+have_unstaged_changes () {
+	! git diff-files --quiet --ignore-submodules
+}
+
+have_uncommitted_changes () {
+	! git diff-index --cached --quiet --ignore-submodules HEAD --
+}
+
 require_clean_work_tree () {
 	git rev-parse --verify HEAD >/dev/null || exit 1
 	git update-index -q --ignore-submodules --refresh
 	err=0
 
-	if ! git diff-files --quiet --ignore-submodules
+	if have_unstaged_changes
 	then
 		echo >&2 "Cannot $1: You have unstaged changes."
 		err=1
 	fi
 
-	if ! git diff-index --cached --quiet --ignore-submodules HEAD --
+	if have_uncommitted_changes
 	then
 		if [ $err = 0 ]
 		then
