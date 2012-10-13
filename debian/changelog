@@ -1,18 +1,37 @@
 git (1:1.8.0~rc2-1~exp0) experimental; urgency=low
 
-  [ Jonathan Nieder ]
-  * new upstream release candidate.
+  * new upstream release candidate (see RelNotes/1.7.11.txt,
+    1.7.12.txt, 1.8.0.txt)
     * git-svn: ignore SIGPIPE so serf can recover from HTTP timeouts
       (closes: #526989).
     * git-svn: use platform specific auth providers.
+    * git-svn: handle errors and concurrent commits in dcommit
+      (closes: #676904).
     * am: support --include option.
+    * grep: add a grep.patternType configuration setting.
+    * daemon: --access-hook for authentication logging and policy.
+    * merge-base: expose --is-ancestor helper for scripts.
+    * branch: support --set-upstream-to with simpler syntax than
+      --set-upstream.
     * format-patch: do not use bogus email addresses in message ids.
     * http: trim trailing newline from /etc/mailname.
+    * do not ignore port in ssh URLs with ipv6 literals
+      (closes: #646178).
+    * look in ~/.config/git/config (XDG_CONFIG_HOME can override this)
+      before ~/.gitconfig for configuration.
+    * [core] excludesfile and attributes file default to
+      ~/.config/git/ignore and ~/.config/git/attributes.
     * var doc: advertise current DEFAULT_PAGER and DEFAULT_EDITOR
       settings (closes: #666250).
+    * git-blame.el: address elisp warnings from emacs:
+      * use mapc instead of mapchar (closes: #611931).
+      * do not use goto-line in lisp code (closes: #611933).
+      * use with-current-buffer where appropriate (closes: #611932).
     * cli: add Italian and Vietnamese translations.
-    * push: introduce new push.default mode "simple".  It aspires to
-      become the default some day.
+    * push: introduce new push.default mode "simple".  It will be the
+      default in the next major release.
+
+  [ Jonathan Nieder ]
   * debian/diff:
     * 0013...0031: remove; applied upstream.
     * 0012-Makefile-add-a-knob-to-turn-off-...diff: remove; fixed
