@@ -225,6 +225,11 @@ _get_comp_words_by_ref ()
 fi
 fi
 
+__gitcompadd ()
+{
+	COMPREPLY=($(compgen -W "$1" -P "$2" -S "$4" -- "$3"))
+}
+
 # Generates completion reply with compgen, appending a space to possible
 # completion words, if necessary.
 # It accepts 1 to 4 arguments:
@@ -238,13 +243,11 @@ __gitcomp ()
 
 	case "$cur_" in
 	--*=)
-		COMPREPLY=()
+		__gitcompadd
 		;;
 	*)
 		local IFS=$'\n'
-		COMPREPLY=($(compgen -P "${2-}" \
-			-W "$(__gitcomp_1 "${1-}" "${4-}")" \
-			-- "$cur_"))
+		__gitcompadd "$(__gitcomp_1 "${1-}" "${4-}")" "${2-}" "$cur_" ""
 		;;
 	esac
 }
@@ -261,7 +264,7 @@ __gitcomp ()
 __gitcomp_nl ()
 {
 	local IFS=$'\n'
-	COMPREPLY=($(compgen -P "${2-}" -S "${4- }" -W "$1" -- "${3-$cur}"))
+	__gitcompadd "$1" "${2-}" "${3-$cur}" "${4- }"
 }
 
 __git_heads ()
@@ -486,7 +489,7 @@ __git_complete_remote_or_refspec ()
 			case "$cmd" in
 			push) no_complete_refspec=1 ;;
 			fetch)
-				COMPREPLY=()
+				__gitcompadd
 				return
 				;;
 			*) ;;
@@ -502,7 +505,7 @@ __git_complete_remote_or_refspec ()
 		return
 	fi
 	if [ $no_complete_refspec = 1 ]; then
-		COMPREPLY=()
+		__gitcompadd
 		return
 	fi
 	[ "$remote" = "." ] && remote=
@@ -776,7 +779,7 @@ _git_am ()
 			"
 		return
 	esac
-	COMPREPLY=()
+	__gitcompadd
 }
 
 _git_apply ()
@@ -796,7 +799,7 @@ _git_apply ()
 			"
 		return
 	esac
-	COMPREPLY=()
+	__gitcompadd
 }
 
 _git_add ()
@@ -811,7 +814,7 @@ _git_add ()
 			"
 		return
 	esac
-	COMPREPLY=()
+	__gitcompadd
 }
 
 _git_archive ()
@@ -856,7 +859,7 @@ _git_bisect ()
 		__gitcomp_nl "$(__git_refs)"
 		;;
 	*)
-		COMPREPLY=()
+		__gitcompadd
 		;;
 	esac
 }
@@ -969,7 +972,7 @@ _git_clean ()
 		return
 		;;
 	esac
-	COMPREPLY=()
+	__gitcompadd
 }
 
 _git_clone ()
@@ -993,7 +996,7 @@ _git_clone ()
 		return
 		;;
 	esac
-	COMPREPLY=()
+	__gitcompadd
 }
 
 _git_commit ()
@@ -1027,7 +1030,7 @@ _git_commit ()
 			"
 		return
 	esac
-	COMPREPLY=()
+	__gitcompadd
 }
 
 _git_describe ()
@@ -1158,7 +1161,7 @@ _git_fsck ()
 		return
 		;;
 	esac
-	COMPREPLY=()
+	__gitcompadd
 }
 
 _git_gc ()
@@ -1169,7 +1172,7 @@ _git_gc ()
 		return
 		;;
 	esac
-	COMPREPLY=()
+	__gitcompadd
 }
 
 _git_gitk ()
@@ -1246,7 +1249,7 @@ _git_init ()
 		return
 		;;
 	esac
-	COMPREPLY=()
+	__gitcompadd
 }
 
 _git_ls_files ()
@@ -1265,7 +1268,7 @@ _git_ls_files ()
 		return
 		;;
 	esac
-	COMPREPLY=()
+	__gitcompadd
 }
 
 _git_ls_remote ()
@@ -1381,7 +1384,7 @@ _git_mergetool ()
 		return
 		;;
 	esac
-	COMPREPLY=()
+	__gitcompadd
 }
 
 _git_merge_base ()
@@ -1397,7 +1400,7 @@ _git_mv ()
 		return
 		;;
 	esac
-	COMPREPLY=()
+	__gitcompadd
 }
 
 _git_name_rev ()
@@ -1567,7 +1570,7 @@ _git_send_email ()
 		return
 		;;
 	esac
-	COMPREPLY=()
+	__gitcompadd
 }
 
 _git_stage ()
@@ -1620,7 +1623,7 @@ _git_config ()
 		local remote="${prev#remote.}"
 		remote="${remote%.fetch}"
 		if [ -z "$cur" ]; then
-			COMPREPLY=("refs/heads/")
+			__gitcompadd "refs/heads/"
 			return
 		fi
 		__gitcomp_nl "$(__git_refs_remotes "$remote")"
@@ -1680,7 +1683,7 @@ _git_config ()
 		return
 		;;
 	*.*)
-		COMPREPLY=()
+		__gitcompadd
 		return
 		;;
 	esac
@@ -2060,7 +2063,7 @@ _git_remote ()
 		__gitcomp "$c"
 		;;
 	*)
-		COMPREPLY=()
+		__gitcompadd
 		;;
 	esac
 }
@@ -2104,7 +2107,7 @@ _git_rm ()
 		return
 		;;
 	esac
-	COMPREPLY=()
+	__gitcompadd
 }
 
 _git_shortlog ()
@@ -2174,7 +2177,7 @@ _git_stash ()
 			if [ -z "$(__git_find_on_cmdline "$save_opts")" ]; then
 				__gitcomp "$subcommands"
 			else
-				COMPREPLY=()
+				__gitcompadd
 			fi
 			;;
 		esac
@@ -2187,14 +2190,14 @@ _git_stash ()
 			__gitcomp "--index --quiet"
 			;;
 		show,--*|drop,--*|branch,--*)
-			COMPREPLY=()
+			__gitcompadd
 			;;
 		show,*|apply,*|drop,*|pop,*|branch,*)
 			__gitcomp_nl "$(git --git-dir="$(__gitdir)" stash list \
 					| sed -n -e 's/:.*//p')"
 			;;
 		*)
-			COMPREPLY=()
+			__gitcompadd
 			;;
 		esac
 	fi
@@ -2311,7 +2314,7 @@ _git_svn ()
 			__gitcomp "--revision= --parent"
 			;;
 		*)
-			COMPREPLY=()
+			__gitcompadd
 			;;
 		esac
 	fi
@@ -2336,13 +2339,13 @@ _git_tag ()
 
 	case "$prev" in
 	-m|-F)
-		COMPREPLY=()
+		__gitcompadd
 		;;
 	-*|tag)
 		if [ $f = 1 ]; then
 			__gitcomp_nl "$(__git_tags)"
 		else
-			COMPREPLY=()
+			__gitcompadd
 		fi
 		;;
 	*)
