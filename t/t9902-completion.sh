@@ -39,19 +39,18 @@ _get_comp_words_by_ref ()
 	done
 }
 
-print_comp ()
+__gitcompadd ()
 {
-	local IFS=$'\n'
-	echo "${COMPREPLY[*]}" > out
+	compgen -P "${2-}" -S "${4- }" -W "$1" -- "${3-$cur}" > out
 }
 
 run_completion ()
 {
-	local -a COMPREPLY _words
+	local -a _words
 	local _cword
 	_words=( $1 )
 	(( _cword = ${#_words[@]} - 1 ))
-	__git_wrap__git_main && print_comp
+	__git_wrap__git_main
 }
 
 test_completion ()
@@ -79,12 +78,10 @@ test_expect_success '__gitcomp - trailing space - options' '
 	--reset-author Z
 	EOF
 	(
-		local -a COMPREPLY &&
 		cur="--re" &&
 		__gitcomp "--dry-run --reuse-message= --reedit-message=
 				--reset-author" &&
-		IFS="$newline" &&
-		echo "${COMPREPLY[*]}" > out
+		IFS="$newline"
 	) &&
 	test_cmp expected out
 '
@@ -97,12 +94,10 @@ test_expect_success '__gitcomp - trailing space - config keys' '
 	browser.Z
 	EOF
 	(
-		local -a COMPREPLY &&
 		cur="br" &&
 		__gitcomp "branch. branch.autosetupmerge
 				branch.autosetuprebase browser." &&
-		IFS="$newline" &&
-		echo "${COMPREPLY[*]}" > out
+		IFS="$newline"
 	) &&
 	test_cmp expected out
 '
@@ -113,12 +108,10 @@ test_expect_success '__gitcomp - option parameter' '
 	resolve Z
 	EOF
 	(
-		local -a COMPREPLY &&
 		cur="--strategy=re" &&
 		__gitcomp "octopus ours recursive resolve subtree
 			" "" "re" &&
-		IFS="$newline" &&
-		echo "${COMPREPLY[*]}" > out
+		IFS="$newline"
 	) &&
 	test_cmp expected out
 '
@@ -129,12 +122,10 @@ test_expect_success '__gitcomp - prefix' '
 	branch.maint.mergeoptions Z
 	EOF
 	(
-		local -a COMPREPLY &&
 		cur="branch.me" &&
 		__gitcomp "remote merge mergeoptions rebase
 			" "branch.maint." "me" &&
-		IFS="$newline" &&
-		echo "${COMPREPLY[*]}" > out
+		IFS="$newline"
 	) &&
 	test_cmp expected out
 '
@@ -145,12 +136,10 @@ test_expect_success '__gitcomp - suffix' '
 	branch.maint.Z
 	EOF
 	(
-		local -a COMPREPLY &&
 		cur="branch.me" &&
 		__gitcomp "master maint next pu
 			" "branch." "ma" "." &&
-		IFS="$newline" &&
-		echo "${COMPREPLY[*]}" > out
+		IFS="$newline"
 	) &&
 	test_cmp expected out
 '
