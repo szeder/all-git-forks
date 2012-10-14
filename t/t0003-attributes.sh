@@ -206,6 +206,16 @@ test_expect_success 'root subdir attribute test' '
 	attr_check subdir/a/i unspecified
 '
 
+test_expect_success 'negative patterns' '
+	echo "!f test=bar" >.gitattributes &&
+	test_must_fail git check-attr test -- f
+'
+
+test_expect_success 'patterns starting with exclamation' '
+	echo "\!f test=foo" >.gitattributes &&
+	attr_check "!f" foo
+'
+
 test_expect_success 'setup bare' '
 	git clone --bare . bare.git &&
 	cd bare.git
@@ -240,20 +250,6 @@ test_expect_success 'bare repository: test info/attributes' '
 	attr_check a/c/f f &&
 	attr_check a/i a/i &&
 	attr_check subdir/a/i unspecified
-'
-
-test_expect_success 'leave bare' '
-	cd ..
-'
-
-test_expect_success 'negative patterns' '
-	echo "!f test=bar" >.gitattributes &&
-	test_must_fail git check-attr test -- f
-'
-
-test_expect_success 'patterns starting with exclamation' '
-	echo "\!f test=foo" >.gitattributes &&
-	attr_check "!f" foo
 '
 
 test_done
