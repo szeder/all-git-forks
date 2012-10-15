@@ -661,12 +661,29 @@ struct chunk {
 	size_t len;
 };
 
+enum flush_type {
+	no_flush,
+	flush_right,
+	flush_left,
+	flush_left_and_steal,
+	flush_both
+};
+
+enum trunc_type {
+	trunc_none,
+	trunc_left,
+	trunc_middle,
+	trunc_right
+};
+
 struct format_commit_context {
 	const struct commit *commit;
 	const struct pretty_print_context *pretty_ctx;
 	unsigned commit_header_parsed:1;
 	unsigned commit_message_parsed:1;
 	unsigned commit_signature_parsed:1;
+	enum flush_type flush_type;
+	enum trunc_type truncate;
 	struct {
 		char *gpg_output;
 		char good_bad;
@@ -674,6 +691,8 @@ struct format_commit_context {
 	} signature;
 	char *message;
 	size_t width, indent1, indent2;
+	unsigned use_color;
+	int padding;
 
 	/* These offsets are relative to the start of the commit message. */
 	struct chunk author;
@@ -808,23 +827,6 @@ static void parse_commit_message(struct format_commit_context *c)
 	c->commit_message_parsed = 1;
 }
 
-static void format_decoration(struct strbuf *sb, const struct commit *commit)
-{
-	struct name_decoration *d;
-	const char *prefix = " (";
-
-	load_ref_decorations(DECORATE_SHORT_REFS);
-	d = lookup_decoration(&name_decoration, &commit->object);
-	while (d) {
-		strbuf_addstr(sb, prefix);
-		prefix = ", ";
-		strbuf_addstr(sb, d->name);
-		d = d->next;
-	}
-	if (prefix[0] == ',')
-		strbuf_addch(sb, ')');
-}
-
 static void strbuf_wrap(struct strbuf *sb, size_t pos,
 			size_t width, size_t indent1, size_t indent2)
 {
@@ -924,7 +926,126 @@ static int format_reflog_person(struct strbuf *sb,
 	return format_person_part(sb, part, ident, strlen(ident), dmode);
 }
 
-static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
+static size_t parse_color_placeholder(struct strbuf *sb,
+				      const char *placeholder,
+				      struct format_commit_context *c)
+{
+	if (placeholder[1] == '(') {
+		const char *end = strchr(placeholder + 2, ')');
+		char color[COLOR_MAXLEN];
+		if (!end)
+			return 0;
+		if (!prefixcmp(placeholder + 1, "(auto")) {
+			/*
+			 * use_color decreased after every
+			 * format_commit_one() so we lose one right
+			 * after parsing "%C". Which is why we add an
+			 * extra one to use_color here.
+			 */
+			if (placeholder[6] == ',') {
+				char *next;
+				int v = strtoul(placeholder + 7, &next, 10);
+				if (next == end)
+					c->use_color = v + 1;
+				else
+					return 0;
+			} else
+				c->use_color = 2;
+			return end - placeholder + 1;
+		}
+		color_parse_mem(placeholder + 2,
+				end - (placeholder + 2),
+				"--pretty format", color);
+		strbuf_addstr(sb, color);
+		return end - placeholder + 1;
+	}
+	if (!prefixcmp(placeholder + 1, "red")) {
+		strbuf_addstr(sb, GIT_COLOR_RED);
+		return 4;
+	}
+	if (!prefixcmp(placeholder + 1, "green")) {
+		strbuf_addstr(sb, GIT_COLOR_GREEN);
+		return 6;
+	}
+	if (!prefixcmp(placeholder + 1, "blue")) {
+		strbuf_addstr(sb, GIT_COLOR_BLUE);
+		return 5;
+	}
+	if (!prefixcmp(placeholder + 1, "reset")) {
+		strbuf_addstr(sb, GIT_COLOR_RESET);
+		return 6;
+	}
+	return 0;
+}
+
+static size_t parse_padding_placeholder(struct strbuf *sb,
+					const char *placeholder,
+					struct format_commit_context *c)
+{
+	const char *ch = placeholder;
+	enum flush_type flush_type;
+	int to_column = 0;
+
+	switch (*ch++) {
+	case '<':
+		flush_type = flush_right;
+		break;
+	case '>':
+		if (*ch == '<') {
+			flush_type = flush_both;
+			ch++;
+		} else if (*ch == '>') {
+			flush_type = flush_left_and_steal;
+			ch++;
+		} else
+			flush_type = flush_left;
+		break;
+	default:
+		return 0;
+	}
+
+	/* the next value means "wide enough to that column" */
+	if (*ch == '|') {
+		to_column = 1;
+		ch++;
+	}
+
+	if (*ch == '(') {
+		const char *start = ch + 1;
+		const char *end = start + strcspn(start, ",)");
+		char *next;
+		int width;
+		if (!end || end == start)
+			return 0;
+		width = strtoul(start, &next, 10);
+		if (next == start || width == 0)
+			return 0;
+		c->padding = to_column ? -width : width;
+		c->flush_type = flush_type;
+
+		if (*end == ',') {
+			start = end + 1;
+			end = strchr(start, ')');
+			if (!end || end == start)
+				return 0;
+			if (!prefixcmp(start, "trunc)"))
+				c->truncate = trunc_right;
+			else if (!prefixcmp(start, "ltrunc)"))
+				c->truncate = trunc_left;
+			else if (!prefixcmp(start, "mtrunc)"))
+				c->truncate = trunc_middle;
+			else
+				return 0;
+		} else
+			c->truncate = trunc_none;
+
+		return end - placeholder + 1;
+	}
+	return 0;
+}
+
+static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
+				const char *placeholder,
 				void *context)
 {
 	struct format_commit_context *c = context;
@@ -936,31 +1057,7 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 	/* these are independent of the commit */
 	switch (placeholder[0]) {
 	case 'C':
-		if (placeholder[1] == '(') {
-			const char *end = strchr(placeholder + 2, ')');
-			char color[COLOR_MAXLEN];
-			if (!end)
-				return 0;
-			color_parse_mem(placeholder + 2,
-					end - (placeholder + 2),
-					"--pretty format", color);
-			strbuf_addstr(sb, color);
-			return end - placeholder + 1;
-		}
-		if (!prefixcmp(placeholder + 1, "red")) {
-			strbuf_addstr(sb, GIT_COLOR_RED);
-			return 4;
-		} else if (!prefixcmp(placeholder + 1, "green")) {
-			strbuf_addstr(sb, GIT_COLOR_GREEN);
-			return 6;
-		} else if (!prefixcmp(placeholder + 1, "blue")) {
-			strbuf_addstr(sb, GIT_COLOR_BLUE);
-			return 5;
-		} else if (!prefixcmp(placeholder + 1, "reset")) {
-			strbuf_addstr(sb, GIT_COLOR_RESET);
-			return 6;
-		} else
-			return 0;
+		return parse_color_placeholder(sb, placeholder, c);
 	case 'n':		/* newline */
 		strbuf_addch(sb, '\n');
 		return 1;
@@ -998,6 +1095,10 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 			return end - placeholder + 1;
 		} else
 			return 0;
+
+	case '<':
+	case '>':
+		return parse_padding_placeholder(sb, placeholder, c);
 	}
 
 	/* these depend on the commit */
@@ -1006,13 +1107,17 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 
 	switch (placeholder[0]) {
 	case 'H':		/* commit hash */
+		strbuf_addstr(sb, diff_get_color(c->use_color, DIFF_COMMIT));
 		strbuf_addstr(sb, sha1_to_hex(commit->object.sha1));
+		strbuf_addstr(sb, diff_get_color(c->use_color, DIFF_RESET));
 		return 1;
 	case 'h':		/* abbreviated commit hash */
+		strbuf_addstr(sb, diff_get_color(c->use_color, DIFF_COMMIT));
 		if (add_again(sb, &c->abbrev_commit_hash))
 			return 1;
 		strbuf_addstr(sb, find_unique_abbrev(commit->object.sha1,
 						     c->pretty_ctx->abbrev));
+		strbuf_addstr(sb, diff_get_color(c->use_color, DIFF_RESET));
 		c->abbrev_commit_hash.len = sb->len - c->abbrev_commit_hash.off;
 		return 1;
 	case 'T':		/* tree hash */
@@ -1049,7 +1154,7 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 		strbuf_addstr(sb, get_revision_mark(NULL, commit));
 		return 1;
 	case 'd':
-		format_decoration(sb, commit);
+		format_decoration(sb, commit, c->use_color);
 		return 1;
 	case 'g':		/* reflog info */
 		switch(placeholder[1]) {
@@ -1149,9 +1254,111 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 	return 0;	/* unknown placeholder */
 }
 
-static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
+static size_t format_and_pad_commit(struct strbuf *sb, /* in UTF-8 */
+				    const char *placeholder,
+				    struct format_commit_context *c)
+{
+	struct strbuf local_sb = STRBUF_INIT;
+	int consumed, len, padding = c->padding;
+	if (padding < 0) {
+		const char *start = strrchr(sb->buf, '\n');
+		int occupied;
+		if (!start)
+			start = sb->buf;
+		occupied = utf8_strnwidth(start, -1, 1);
+		padding = (-padding) - occupied;
+	}
+	consumed = format_commit_one(&local_sb, placeholder, c);
+	len = utf8_strnwidth(local_sb.buf, -1, 1);
+
+	if (c->flush_type == flush_left_and_steal) {
+		const char *ch = sb->buf + sb->len - 1;
+		while (len > padding && ch > sb->buf) {
+			const char *p;
+			if (*ch == ' ') {
+				ch--;
+				padding++;
+				continue;
+			}
+			/* check for trailing ansi sequences */
+			if (*ch != 'm')
+				break;
+			p = ch - 1;
+			while (ch - p < 10 && *p != '\033')
+				p--;
+			if (*p != '\033' ||
+			    ch + 1 - p != display_mode_esc_sequence_len(p))
+				break;
+			/*
+			 * got a good ansi sequence, put it back to
+			 * local_sb as we're cutting sb
+			 */
+			strbuf_insert(&local_sb, 0, p, ch + 1 - p);
+			ch = p - 1;
+		}
+		strbuf_setlen(sb, ch + 1 - sb->buf);
+		c->flush_type = flush_left;
+	}
+
+	if (len > padding) {
+		switch (c->truncate) {
+		case trunc_left:
+			strbuf_utf8_replace(&local_sb,
+					    0, len - (padding - 2),
+					    "..");
+			break;
+		case trunc_middle:
+			strbuf_utf8_replace(&local_sb,
+					    padding / 2 - 1,
+					    len - (padding - 2),
+					    "..");
+			break;
+		case trunc_right:
+			strbuf_utf8_replace(&local_sb,
+					    padding - 2, len - (padding - 2),
+					    "..");
+			break;
+		case trunc_none:
+			break;
+		}
+		strbuf_addstr(sb, local_sb.buf);
+	} else {
+		int sb_len = sb->len, offset;
+		switch (c->flush_type) {
+		case flush_left:
+			offset = padding - len;
+			break;
+		case flush_right:
+			offset = 0;
+			break;
+		case flush_both:
+			offset = (padding - len) / 2;
+			break;
+		case flush_left_and_steal:
+		case no_flush: /* to make gcc happy */
+			break;
+		}
+		/*
+		 * we calculate padding in columns, now
+		 * convert it back to chars
+		 */
+		padding = padding - len + local_sb.len;
+		strbuf_grow(sb, padding);
+		strbuf_setlen(sb, sb_len + padding);
+		memset(sb->buf + sb_len, ' ', sb->len - sb_len);
+		memcpy(sb->buf + sb_len + offset, local_sb.buf,
+		       local_sb.len);
+	}
+	strbuf_release(&local_sb);
+	c->flush_type = no_flush;
+	return consumed;
+}
+
+static size_t format_commit_item(struct strbuf *sb, /* in UTF-8 */
+				 const char *placeholder,
 				 void *context)
 {
+	struct format_commit_context *c = context;
 	int consumed;
 	size_t orig_len;
 	enum {
@@ -1178,7 +1385,12 @@ static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
 		placeholder++;
 
 	orig_len = sb->len;
-	consumed = format_commit_one(sb, placeholder, context);
+	if (c->flush_type != no_flush)
+		consumed = format_and_pad_commit(sb, placeholder, context);
+	else
+		consumed = format_commit_one(sb, placeholder, context);
+	if (c->use_color)
+		c->use_color--;
 	if (magic == NO_MAGIC)
 		return consumed;
 
@@ -1230,24 +1442,31 @@ void format_commit_message(const struct commit *commit,
 	struct format_commit_context context;
 	static const char utf8[] = "UTF-8";
 	const char *output_enc = pretty_ctx->output_encoding;
+	char *enc;
 
 	memset(&context, 0, sizeof(context));
 	context.commit = commit;
 	context.pretty_ctx = pretty_ctx;
 	context.wrap_start = sb->len;
 	context.message = commit->buffer;
-	if (output_enc) {
-		char *enc = get_header(commit, "encoding");
-		if (strcmp(enc ? enc : utf8, output_enc)) {
-			context.message = logmsg_reencode(commit, output_enc);
-			if (!context.message)
-				context.message = commit->buffer;
-		}
-		free(enc);
+	enc = get_header(commit, "encoding");
+	if (enc && strcmp(utf8, enc)) {
+		context.message = reencode_string(context.message, utf8, enc);
+		if (!context.message)
+			context.message = commit->buffer;
 	}
+	free(enc);
 
 	strbuf_expand(sb, format, format_commit_item, &context);
 	rewrap_message_tail(sb, &context, 0, 0, 0);
+
+	if (output_enc && strcmp(utf8, output_enc)) {
+		char *out = reencode_string(sb->buf, output_enc, utf8);
+		if (out) {
+			int len = strlen(out);
+			strbuf_attach(sb, out, len, len + 1);
+		}
+	}
 
 	if (context.message != commit->buffer)
 		free(context.message);
