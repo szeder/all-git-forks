@@ -347,7 +347,8 @@ void parse_exclude_pattern(const char **pattern,
 }
 
 void add_exclude(const char *string, const char *base,
-		 int baselen, struct exclude_list *el)
+		 int baselen, struct exclude_list *el,
+		 const char *src, int srcpos)
 {
 	struct exclude *x;
 	int patternlen;
@@ -371,6 +372,8 @@ void add_exclude(const char *string, const char *base,
 	x->base = base;
 	x->baselen = baselen;
 	x->flags = flags;
+	x->src = src;
+	x->srcpos = srcpos;
 	ALLOC_GROW(el->excludes, el->nr + 1, el->alloc);
 	el->excludes[el->nr++] = x;
 }
@@ -418,7 +421,7 @@ int add_excludes_from_file_to_list(const char *fname,
 				   int check_index)
 {
 	struct stat st;
-	int fd, i;
+	int fd, i, lineno = 1;
 	size_t size = 0;
 	char *buf, *entry;
 
@@ -461,8 +464,10 @@ int add_excludes_from_file_to_list(const char *fname,
 		if (buf[i] == '\n') {
 			if (entry != buf + i && entry[0] != '#') {
 				buf[i - (i && buf[i-1] == '\r')] = 0;
-				add_exclude(entry, base, baselen, el);
+				add_exclude(entry, base, baselen, el,
+					    fname, lineno);
 			}
+			lineno++;
 			entry = buf + i + 1;
 		}
 	}
@@ -493,8 +498,10 @@ static void prep_exclude(struct dir_struct *dir, const char *base, int baselen)
 		    !strncmp(dir->basebuf, base, stk->baselen))
 			break;
 		dir->exclude_stack = stk->prev;
-		while (stk->exclude_ix < el->nr)
-			free(el->excludes[--el->nr]);
+		while (stk->exclude_ix < el->nr) {
+			struct exclude *exclude = el->excludes[--el->nr];
+			free(exclude);
+		}
 		free(stk->filebuf);
 		free(stk);
 	}
@@ -521,7 +528,14 @@ static void prep_exclude(struct dir_struct *dir, const char *base, int baselen)
 		memcpy(dir->basebuf + current, base + current,
 		       stk->baselen - current);
 		strcpy(dir->basebuf + stk->baselen, dir->exclude_per_dir);
-		add_excludes_from_file_to_list(dir->basebuf,
+
+		/*
+		 * dir->basebuf gets reused by the traversal, but we
+		 * need fname to remain unchanged to ensure the src
+		 * member of each struct exclude correctly back-references
+		 * its source file.
+		 */
+		add_excludes_from_file_to_list(strdup(dir->basebuf),
 					       dir->basebuf, stk->baselen,
 					       &stk->filebuf, el, 1);
 		dir->exclude_stack = stk;
