@@ -117,6 +117,7 @@ extern void parse_exclude_pattern(const char **string, int *patternlen, int *fla
 extern void add_exclude(const char *string, const char *base,
 			int baselen, struct exclude_list *el, const char *src, int srcpos);
 extern void free_excludes(struct exclude_list *el);
+extern void free_directory(struct dir_struct *dir);
 extern int file_exists(const char *);
 
 extern int is_inside_dir(const char *dir);
