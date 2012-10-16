@@ -155,11 +155,12 @@ proc unmerged_files {files} {
 }
 
 proc parseviewargs {n arglist} {
-    global vdatemode vmergeonly vflags vdflags vrevs vfiltered vorigargs env
-    global worddiff git_version
+    global vdatemode vmergeonly vlimitdiffs vflags vdflags vrevs vfiltered vorigargs env
+    global limitdiffs worddiff git_version
 
     set vdatemode($n) 0
     set vmergeonly($n) 0
+    set vlimitdiffs($n) 1
     set glflags {}
     set diffargs {}
     set nextisval 0
@@ -187,7 +188,7 @@ proc parseviewargs {n arglist} {
 	    "--no-renames" - "--full-index" - "--binary" - "--abbrev=*" -
 	    "--find-copies-harder" - "-l*" - "--ext-diff" - "--no-ext-diff" -
 	    "--src-prefix=*" - "--dst-prefix=*" - "--no-prefix" -
-	    "-O*" - "--text" - "--full-diff" - "--ignore-space-at-eol" -
+	    "-O*" - "--text" - "--ignore-space-at-eol" -
 	    "--ignore-space-change" - "-U*" - "--unified=*" {
 		# These request or affect diff output, which we don't want.
 		# Some could be used to set our defaults for diff display.
@@ -250,6 +251,9 @@ proc parseviewargs {n arglist} {
 	    }
 	    "--no-replace-objects" {
 		set env(GIT_NO_REPLACE_OBJECTS) "1"
+	    }
+	    "--full-diff" {
+		set vlimitdiffs($n) 0
 	    }
 	    "-*" {
 		# Other flag arguments including -<n>
@@ -7571,10 +7575,10 @@ proc diffcmd {ids flags} {
 }
 
 proc gettreediffs {ids} {
-    global treediff treepending limitdiffs vfilelimit curview
+    global treediff treepending limitdiffs vlimitdiffs vfilelimit curview
 
     set cmd [diffcmd $ids {--no-commit-id}]
-    if {$limitdiffs && $vfilelimit($curview) ne {}} {
+    if {$limitdiffs && $vlimitdiffs($curview) && $vfilelimit($curview) ne {}} {
 	    set cmd [concat $cmd -- $vfilelimit($curview)]
     }
     if {[catch {set gdtf [open $cmd r]}]} return
@@ -7587,7 +7591,7 @@ proc gettreediffs {ids} {
 
 proc gettreediffline {gdtf ids} {
     global treediff treediffs treepending diffids diffmergeid
-    global cmitmode vfilelimit curview limitdiffs perfile_attrs
+    global cmitmode vfilelimit curview perfile_attrs
 
     set nr 0
     set sublist {}
@@ -7665,7 +7669,7 @@ proc getblobdiffs {ids} {
     global diffcontext
     global ignorespace
     global worddiff
-    global limitdiffs vfilelimit curview
+    global limitdiffs vlimitdiffs vfilelimit curview
     global diffencoding targetline diffnparents
     global git_version currdiffsubmod
 
@@ -7684,7 +7688,7 @@ proc getblobdiffs {ids} {
     if {$worddiff ne [mc "Line diff"]} {
 	append cmd " --word-diff=porcelain"
     }
-    if {$limitdiffs && $vfilelimit($curview) ne {}} {
+    if {$limitdiffs && $vlimitdiffs($curview) && $vfilelimit($curview) ne {}} {
 	set cmd [concat $cmd -- $vfilelimit($curview)]
     }
     if {[catch {set bdf [open $cmd r]} err]} {
