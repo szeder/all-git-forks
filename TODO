@@ -1,0 +1,3 @@
+Handle case in which .gitignore is already checked into SVN
+Optional: Configuration option in which .gitignore is checked into SVN
+Handle case in which .gitignore is ignored by svn:ignore
