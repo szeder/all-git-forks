@@ -14,8 +14,7 @@ test_fail() {
 	'
 }
 
-TRASH_ROOT="$PWD"
-ROOT_PARENT=$(dirname "$TRASH_ROOT")
+ROOT_PARENT=$(dirname "$TRASH_DIRECTORY")
 
 
 unset GIT_CEILING_DIRECTORIES
@@ -32,16 +31,16 @@ test_prefix ceil_at_parent ""
 GIT_CEILING_DIRECTORIES="$ROOT_PARENT/"
 test_prefix ceil_at_parent_slash ""
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY"
 test_prefix ceil_at_trash ""
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/"
 test_prefix ceil_at_trash_slash ""
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/sub"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/sub"
 test_prefix ceil_at_sub ""
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/sub/"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/sub/"
 test_prefix ceil_at_sub_slash ""
 
 
@@ -56,55 +55,55 @@ export GIT_CEILING_DIRECTORIES
 GIT_CEILING_DIRECTORIES=""
 test_prefix subdir_ceil_empty "sub/dir/"
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY"
 test_fail subdir_ceil_at_trash
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/"
 test_fail subdir_ceil_at_trash_slash
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/sub"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/sub"
 test_fail subdir_ceil_at_sub
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/sub/"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/sub/"
 test_fail subdir_ceil_at_sub_slash
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/sub/dir"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/sub/dir"
 test_prefix subdir_ceil_at_subdir "sub/dir/"
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/sub/dir/"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/sub/dir/"
 test_prefix subdir_ceil_at_subdir_slash "sub/dir/"
 
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/su"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/su"
 test_prefix subdir_ceil_at_su "sub/dir/"
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/su/"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/su/"
 test_prefix subdir_ceil_at_su_slash "sub/dir/"
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/sub/di"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/sub/di"
 test_prefix subdir_ceil_at_sub_di "sub/dir/"
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/sub/di"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/sub/di"
 test_prefix subdir_ceil_at_sub_di_slash "sub/dir/"
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/subdi"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/subdi"
 test_prefix subdir_ceil_at_subdi "sub/dir/"
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/subdi"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/subdi"
 test_prefix subdir_ceil_at_subdi_slash "sub/dir/"
 
 
-GIT_CEILING_DIRECTORIES="/foo:$TRASH_ROOT/sub"
+GIT_CEILING_DIRECTORIES="/foo:$TRASH_DIRECTORY/sub"
 test_fail second_of_two
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/sub:/bar"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/sub:/bar"
 test_fail first_of_two
 
-GIT_CEILING_DIRECTORIES="/foo:$TRASH_ROOT/sub:/bar"
+GIT_CEILING_DIRECTORIES="/foo:$TRASH_DIRECTORY/sub:/bar"
 test_fail second_of_three
 
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/sub"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/sub"
 GIT_DIR=../../.git
 export GIT_DIR
 test_prefix git_dir_specified ""
@@ -123,41 +122,41 @@ export GIT_CEILING_DIRECTORIES
 GIT_CEILING_DIRECTORIES=""
 test_prefix sd_ceil_empty "s/d/"
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY"
 test_fail sd_ceil_at_trash
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/"
 test_fail sd_ceil_at_trash_slash
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/s"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/s"
 test_fail sd_ceil_at_s
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/s/"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/s/"
 test_fail sd_ceil_at_s_slash
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/s/d"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/s/d"
 test_prefix sd_ceil_at_sd "s/d/"
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/s/d/"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/s/d/"
 test_prefix sd_ceil_at_sd_slash "s/d/"
 
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/su"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/su"
 test_prefix sd_ceil_at_su "s/d/"
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/su/"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/su/"
 test_prefix sd_ceil_at_su_slash "s/d/"
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/s/di"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/s/di"
 test_prefix sd_ceil_at_s_di "s/d/"
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/s/di"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/s/di"
 test_prefix sd_ceil_at_s_di_slash "s/d/"
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/sdi"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/sdi"
 test_prefix sd_ceil_at_sdi "s/d/"
 
-GIT_CEILING_DIRECTORIES="$TRASH_ROOT/sdi"
+GIT_CEILING_DIRECTORIES="$TRASH_DIRECTORY/sdi"
 test_prefix sd_ceil_at_sdi_slash "s/d/"
 
 
