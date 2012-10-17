@@ -239,65 +239,6 @@ static int read_index_extension(struct index_state *istate,
 	return 0;
 }
 
-static int read_index_v2(struct index_state *istate, void *mmap, int mmap_size)
-{
-	int i;
-	unsigned long src_offset;
-	struct cache_version_header *hdr;
-	struct cache_header *hdr_v2;
-	struct strbuf previous_name_buf = STRBUF_INIT, *previous_name;
-
-	hdr = mmap;
-	hdr_v2 = (struct cache_header *)((char *)mmap + sizeof(*hdr));
-	istate->version = ntohl(hdr->hdr_version);
-	istate->cache_nr = ntohl(hdr_v2->hdr_entries);
-	istate->cache_alloc = alloc_nr(istate->cache_nr);
-	istate->cache = xcalloc(istate->cache_alloc, sizeof(struct cache_entry *));
-	istate->initialized = 1;
-
-	if (istate->version == 4)
-		previous_name = &previous_name_buf;
-	else
-		previous_name = NULL;
-
-	src_offset = sizeof(*hdr) + sizeof(*hdr_v2);
-	for (i = 0; i < istate->cache_nr; i++) {
-		struct ondisk_cache_entry *disk_ce;
-		struct cache_entry *ce;
-		unsigned long consumed;
-
-		disk_ce = (struct ondisk_cache_entry *)((char *)mmap + src_offset);
-		ce = create_from_disk(disk_ce, &consumed, previous_name);
-		set_index_entry(istate, i, ce);
-
-		src_offset += consumed;
-	}
-	strbuf_release(&previous_name_buf);
-
-	while (src_offset <= mmap_size - 20 - 8) {
-		/* After an array of active_nr index entries,
-		 * there can be arbitrary number of extended
-		 * sections, each of which is prefixed with
-		 * extension name (4-byte) and section length
-		 * in 4-byte network byte order.
-		 */
-		uint32_t extsize;
-		memcpy(&extsize, (char *)mmap + src_offset + 4, 4);
-		extsize = ntohl(extsize);
-		if (read_index_extension(istate,
-					(const char *) mmap + src_offset,
-					(char *) mmap + src_offset + 8,
-					extsize) < 0)
-			goto unmap;
-		src_offset += 8;
-		src_offset += extsize;
-	}
-	return 0;
-unmap:
-	munmap(mmap, mmap_size);
-	die("index file corrupt");
-}
-
 static int read_index_filtered_v2(struct index_state *istate, struct filter_opts *opts)
 {
 	int i;
@@ -693,7 +634,6 @@ int index_name_pos_v2(struct index_state *istate, const char *name, int namelen)
 struct index_ops v2_ops = {
 	match_stat_basic,
 	verify_hdr,
-	read_index_v2,
 	read_index_filtered_v2,
 	write_index_v2,
 	for_each_index_entry_v2,
