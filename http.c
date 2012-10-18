@@ -602,35 +602,47 @@ void run_active_slot(struct active_request_slot *slot)
 	int max_fd;
 	struct timeval select_timeout;
 	int finished = 0;
+	long curl_timeout;
 
 	slot->finished = &finished;
 	while (!finished) {
 		step_active_slots();
 
 		if (slot->in_use) {
-#if LIBCURL_VERSION_NUM >= 0x070f04
-			long curl_timeout;
-			curl_multi_timeout(curlm, &curl_timeout);
-			if (curl_timeout == 0) {
-				continue;
-			} else if (curl_timeout == -1) {
-				select_timeout.tv_sec  = 0;
-				select_timeout.tv_usec = 50000;
-			} else {
-				select_timeout.tv_sec  =  curl_timeout / 1000;
-				select_timeout.tv_usec = (curl_timeout % 1000) * 1000;
-			}
-#else
-			select_timeout.tv_sec  = 0;
-			select_timeout.tv_usec = 50000;
-#endif
-
 			max_fd = -1;
 			FD_ZERO(&readfds);
 			FD_ZERO(&writefds);
 			FD_ZERO(&excfds);
 			curl_multi_fdset(curlm, &readfds, &writefds, &excfds, &max_fd);
 
+#if LIBCURL_VERSION_NUM >= 0x070f04
+			/* It will sometimes happen that curl_multi_fdset() doesn't
+			   return any file descriptors.  In that case, it's recommended
+			   that the application sleep for a short time before running
+			   curl_multi_perform() again.
+
+			   http://curl.haxx.se/libcurl/c/curl_multi_fdset.html
+			*/
+			if (max_fd == -1) {
+				select_timeout.tv_sec  = 0;
+				select_timeout.tv_usec = 50000;
+			} else {
+				curl_timeout = 0;
+				curl_multi_timeout(curlm, &curl_timeout);
+				if (curl_timeout == 0) {
+					continue;
+				} else if (curl_timeout == -1) {
+					select_timeout.tv_sec  = 0;
+					select_timeout.tv_usec = 50000;
+				} else {
+					select_timeout.tv_sec  =  curl_timeout / 1000;
+					select_timeout.tv_usec = (curl_timeout % 1000) * 1000;
+				}
+			}
+#else
+			select_timeout.tv_sec  = 0;
+			select_timeout.tv_usec = 50000;
+#endif
 			select(max_fd+1, &readfds, &writefds, &excfds, &select_timeout);
 		}
 	}
