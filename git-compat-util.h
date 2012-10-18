@@ -506,6 +506,7 @@ extern const char tolower_trans_tbl[256];
 #undef isdigit
 #undef isalpha
 #undef isalnum
+#undef isprint
 #undef islower
 #undef isupper
 #undef tolower
@@ -513,7 +514,7 @@ extern const char tolower_trans_tbl[256];
 #undef iscntrl
 #undef ispunct
 #undef isxdigit
-#undef isprint
+
 extern const unsigned char sane_ctype[256];
 #define GIT_SPACE 0x01
 #define GIT_DIGIT 0x02
@@ -529,6 +530,7 @@ extern const unsigned char sane_ctype[256];
 #define isdigit(x) sane_istest(x,GIT_DIGIT)
 #define isalpha(x) sane_istest(x,GIT_ALPHA)
 #define isalnum(x) sane_istest(x,GIT_ALPHA | GIT_DIGIT)
+#define isprint(x) ((x) >= 0x20 && (x) <= 0x7e)
 #define islower(x) sane_iscase(x, 1)
 #define isupper(x) sane_iscase(x, 0)
 #define is_glob_special(x) sane_istest(x,GIT_GLOB_SPECIAL)
@@ -537,9 +539,6 @@ extern const unsigned char sane_ctype[256];
 #define ispunct(x) sane_istest(x, GIT_PUNCT | GIT_REGEX_SPECIAL | \
 		GIT_GLOB_SPECIAL | GIT_PATHSPEC_MAGIC)
 #define isxdigit(x) (hexval_table[x] != -1)
-#define isprint(x) (sane_istest(x, GIT_ALPHA | GIT_DIGIT | GIT_SPACE | \
-		GIT_PUNCT | GIT_REGEX_SPECIAL | GIT_GLOB_SPECIAL | \
-		GIT_PATHSPEC_MAGIC))
 #define tolower(x) sane_case((unsigned char)(x), 0x20)
 #define toupper(x) sane_case((unsigned char)(x), 0)
 #define is_pathspec_magic(x) sane_istest(x,GIT_PATHSPEC_MAGIC)
