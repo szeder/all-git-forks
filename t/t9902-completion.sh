@@ -277,4 +277,9 @@ test_expect_failure 'complete tree filename with metacharacters' '
 	EOF
 '
 
+test_expect_success 'send-email' '
+	test_completion "git send-email --cov" "--cover-letter " &&
+	test_completion "git send-email ma" "master "
+'
+
 test_done
