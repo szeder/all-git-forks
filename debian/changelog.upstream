@@ -1,3 +1,34 @@
+Version v1.8.0-rc3; changes since v1.8.0-rc2:
+---------------------------------------------
+
+Dylan Alex Simon (1):
+      gitweb.cgi: fix "comitter_tz" typo in feed
+
+Jeff King (1):
+      http: fix segfault in handle_curl_result
+
+Jiang Xin (1):
+      l10n: Update git.pot (3 new, 6 removed messages)
+
+Junio C Hamano (3):
+      Update draft release notes to 1.8.0
+      Git 1.7.12.4
+      Git 1.8.0-rc3
+
+Peter Krefting (1):
+      l10n: Update Swedish translation (1964t0f0u)
+
+Richard Fearn (1):
+      Fix spelling error in post-receive-email hook
+
+Thomas Ackermann (1):
+      Documentation/RelNotes: remove "updated up to this revision" markers
+
+Tran Ngoc Quan (2):
+      l10n: vi.po: update translation upto cc76011
+      l10n: vi.po: update from v1.8.0-rc2-4-g42e55
+
+
 Version v1.8.0-rc2; changes since v1.8.0-rc1:
 ---------------------------------------------
 
@@ -79,7 +110,7 @@ Tobias Ulmer (1):
       silence git gc --auto --quiet output
 
 
-Version v1.8.0-rc0; changes since v1.7.12.3:
+Version v1.8.0-rc0; changes since v1.7.12.4:
 --------------------------------------------
 
 Adrian Johnson (1):
@@ -101,9 +132,6 @@ Carlos Martín Nieto (4):
 
 Chris Webb (1):
       cherry-pick: add --allow-empty-message option
-
-Dave Borowitz (1):
-      Documentation/Makefile: Allow custom XMLTO binary
 
 David Aguilar (12):
       difftool: Simplify print_tool_help()
@@ -162,7 +190,7 @@ Johannes Sixt (3):
       rebase -i: fix misleading error message after 'exec no-such' instruction
       rebase -i: suggest using --edit-todo to fix an unknown instruction
 
-Junio C Hamano (45):
+Junio C Hamano (42):
       daemon: --access-hook option
       Kick off cycle towards 1.8.0
       First half of the second batch for 1.8.0
@@ -178,12 +206,9 @@ Junio C Hamano (45):
       The third batch for 1.8.0
       Update mailmap for a handful of folks
       The fourth batch for 1.8.0
-      merge: teach -Xours/-Xtheirs to binary ll-merge driver
-      attr: "binary" attribute should choose built-in "binary" merge driver
       Cull items fixed in maintenance branches
       First half of the fifth batch for 1.8.0
       Second half of the fifth batch for 1.8.0
-      ll-merge: warn about inability to merge binary files only when we can't
       Start merging the sixth batch for 1.8.0
       The sixth batch for 1.8.0
       Draft release notes to 1.8.0
@@ -383,22 +408,11 @@ Peter Krefting (3):
       Update Swedish translation (1967t0f0u)
       l10n: Fixes to Swedish translation
 
-Philip Oakley (5):
-      Doc: shallow clone deepens _to_ new depth
-      Doc: separate gitignore pattern sources
-      Doc add: link gitignore
-      Doc clean: add See Also link
-      Doc branch: show -vv option and alternative
-
 Philipp A. Hartmann (1):
       contrib: add credential helper for GnomeKeyring
 
 Ralf Thielow (1):
       l10n: de.po: translate 2 new messages
-
-Ramkumar Ramachandra (2):
-      t/test-lib: make sure Git has already been built
-      test-lib: use $SHELL_PATH, not $SHELL
 
 Ramsay Allan Jones (12):
       t3300-*.sh: Fix a TAP parse error
@@ -437,6 +451,52 @@ Thomas Rast (2):
 Tran Ngoc Quan (2):
       l10n: vi.po & TEAMS: review Vietnamese translation
       l10n: vi.po: update to v1.7.12-146-g16d26
+
+
+Version v1.7.12.4; changes since v1.7.12.3:
+-------------------------------------------
+
+Ben Walton (1):
+      tests: "cp -a" is a GNUism
+
+Dave Borowitz (1):
+      Documentation/Makefile: Allow custom XMLTO binary
+
+Dylan Alex Simon (1):
+      gitweb.cgi: fix "comitter_tz" typo in feed
+
+Jeff King (1):
+      http: fix segfault in handle_curl_result
+
+Junio C Hamano (6):
+      merge: teach -Xours/-Xtheirs to binary ll-merge driver
+      attr: "binary" attribute should choose built-in "binary" merge driver
+      ll-merge: warn about inability to merge binary files only when we can't
+      t1450: the order the objects are checked is undefined
+      gitcli: parse-options lets you omit tail of long options
+      Git 1.7.12.4
+
+Nguyễn Thái Ngọc Duy (2):
+      gitignore.txt: suggestions how to get literal # or ! at the beginning
+      attr: a note about the order of .gitattributes lookup
+
+Philip Oakley (5):
+      Doc: shallow clone deepens _to_ new depth
+      Doc: separate gitignore pattern sources
+      Doc add: link gitignore
+      Doc clean: add See Also link
+      Doc branch: show -vv option and alternative
+
+Ramkumar Ramachandra (3):
+      t/test-lib: make sure Git has already been built
+      test-lib: use $SHELL_PATH, not $SHELL
+      Git url doc: mark ftp/ftps as read-only and deprecate them
+
+Richard Fearn (1):
+      Fix spelling error in post-receive-email hook
+
+Simon Ruderich (1):
+      l10n: de.po: fix a few minor typos
 
 
 Version v1.7.12.3; changes since v1.7.12.2:
