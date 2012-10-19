@@ -15,12 +15,10 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-For each pathname given via the command-line or from a file via
-`--stdin`, this command will list the first exclude pattern found (if
-any) which explicitly excludes or includes that pathname.  Note that
-within any given exclude file, later patterns take precedence over
-earlier ones, so any matching pattern which this command outputs may
-not be the one you would immediately expect.
+For each pathname given via the command-line or from a file
+via `--stdin`, show the pattern from .gitignore (or other
+input files to the exclude mechanism) that decides if the
+pathname is excluded.
 
 OPTIONS
 -------
