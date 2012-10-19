@@ -38,6 +38,8 @@ static const char **refmap_str;
 static int refmap_nr, refmap_alloc;
 static struct string_list refs = STRING_LIST_INIT_DUP;
 static struct string_list path_for_ref = STRING_LIST_INIT_NODUP;
+static struct string_list excludes = STRING_LIST_INIT_DUP;
+static struct string_list relexcludes = STRING_LIST_INIT_DUP;
 
 struct svn_entry {
 	struct svn_entry *next;
@@ -106,6 +108,11 @@ static int config(const char *key, const char *value, void *dummy) {
 				if (!value) return -1;
 				ALLOC_GROW(refmap_str, refmap_nr+1, refmap_alloc);
 				refmap_str[refmap_nr++] = xstrdup(value);
+				return 0;
+
+			} else if (!strcmp(sub, ".exclude")) {
+				if (!value) return -1;
+				string_list_insert(&relexcludes, value);
 				return 0;
 			}
 		}
@@ -436,25 +443,35 @@ err:
 
 
 static void do_connect(void) {
-	struct strbuf urlb = STRBUF_INIT;
+	int i;
+	struct strbuf buf = STRBUF_INIT;
 	const char *p = defcred.protocol;
-	strbuf_addstr(&urlb, url);
+	strbuf_addstr(&buf, url);
 
 	if (!strcmp(p, "http") || !strcmp(p, "https")) {
-		proto = svn_http_connect(remote, &urlb, &defcred, &uuid);
+		proto = svn_http_connect(remote, &buf, &defcred, &uuid);
 	} else if (!strcmp(p, "svn")) {
-		proto = svn_connect(&urlb, &defcred, &uuid);
+		proto = svn_connect(&buf, &defcred, &uuid);
 	} else {
 		die("don't know how to handle url %s", url);
 	}
 
-	if (prefixcmp(url, urlb.buf))
-		die("server returned different url (%s) then expected (%s)", urlb.buf, url);
+	if (prefixcmp(url, buf.buf))
+		die("server returned different url (%s) then expected (%s)", buf.buf, url);
 
-	relpath = url + urlb.len;
+	relpath = url + buf.len;
 	strbuf_addf(&refdir, "refs/svn/%s", uuid.buf);
 
-	strbuf_release(&urlb);
+	for (i = 0; i < relexcludes.nr; i++) {
+		strbuf_reset(&buf);
+		strbuf_addstr(&buf, relpath);
+		strbuf_addch(&buf, '/');
+		strbuf_addstr(&buf, relexcludes.items[i].string);
+		clean_svn_path(&buf);
+		string_list_insert(&excludes, buf.buf);
+	}
+
+	strbuf_release(&buf);
 }
 
 static void add_list_dir(const char *path) {
@@ -468,6 +485,7 @@ static void add_list_dir(const char *path) {
 
 static void list(void) {
 	int i, j, latest;
+	struct strbuf buf = STRBUF_INIT;
 
 	for_each_ref_in(refdir.buf, &load_ref_cb, NULL);
 
@@ -480,8 +498,7 @@ static void list(void) {
 		return;
 
 	for (i = 0; i < refmap_nr; i++) {
-		struct strbuf buf = STRBUF_INIT;
-
+		strbuf_reset(&buf);
 		strbuf_addstr(&buf, relpath);
 
 		if (*refmap[i].src) {
@@ -506,6 +523,9 @@ static void list(void) {
 				strbuf_addstr(&buf, dirs.items[j].string);
 				strbuf_addstr(&buf, after);
 
+				if (string_list_has_string(&excludes, buf.buf))
+					continue;
+
 				if (!*after || proto->isdir(buf.buf, listrev)) {
 					add_list_dir(buf.buf);
 				}
@@ -516,9 +536,9 @@ static void list(void) {
 		} else if (proto->isdir(buf.buf, listrev)) {
 			add_list_dir(buf.buf);
 		}
-
-		strbuf_release(&buf);
 	}
+
+	strbuf_release(&buf);
 }
 
 
