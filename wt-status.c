@@ -928,34 +928,40 @@ static void show_bisect_in_progress(struct wt_status *s,
 	wt_status_print_trailer(s);
 }
 
+static void wt_status_get_state(struct wt_status *s,
+				struct wt_status_state *state)
+{
+	struct stat st;
+	memset(state, 0, sizeof(*state));
+
+	if (!stat(git_path("MERGE_HEAD"), &st)) {
+		state->merge_in_progress = 1;
+	} else if (!stat(git_path("rebase-apply"), &st)) {
+		if (!stat(git_path("rebase-apply/applying"), &st)) {
+			state->am_in_progress = 1;
+			if (!stat(git_path("rebase-apply/patch"), &st) && !st.st_size)
+				state->am_empty_patch = 1;
+		} else {
+			state->rebase_in_progress = 1;
+		}
+	} else if (!stat(git_path("rebase-merge"), &st)) {
+		if (!stat(git_path("rebase-merge/interactive"), &st))
+			state->rebase_interactive_in_progress = 1;
+		else
+			state->rebase_in_progress = 1;
+	} else if (!stat(git_path("CHERRY_PICK_HEAD"), &st)) {
+		state->cherry_pick_in_progress = 1;
+	}
+	if (!stat(git_path("BISECT_LOG"), &st))
+		state->bisect_in_progress = 1;
+}
+
 static void wt_status_print_state(struct wt_status *s)
 {
 	const char *state_color = color(WT_STATUS_HEADER, s);
 	struct wt_status_state state;
-	struct stat st;
 
-	memset(&state, 0, sizeof(state));
-
-	if (!stat(git_path("MERGE_HEAD"), &st)) {
-		state.merge_in_progress = 1;
-	} else if (!stat(git_path("rebase-apply"), &st)) {
-		if (!stat(git_path("rebase-apply/applying"), &st)) {
-			state.am_in_progress = 1;
-			if (!stat(git_path("rebase-apply/patch"), &st) && !st.st_size)
-				state.am_empty_patch = 1;
-		} else {
-			state.rebase_in_progress = 1;
-		}
-	} else if (!stat(git_path("rebase-merge"), &st)) {
-		if (!stat(git_path("rebase-merge/interactive"), &st))
-			state.rebase_interactive_in_progress = 1;
-		else
-			state.rebase_in_progress = 1;
-	} else if (!stat(git_path("CHERRY_PICK_HEAD"), &st)) {
-		state.cherry_pick_in_progress = 1;
-	}
-	if (!stat(git_path("BISECT_LOG"), &st))
-		state.bisect_in_progress = 1;
+	wt_status_get_state(s, &state);
 
 	if (state.merge_in_progress)
 		show_merge_in_progress(s, &state, state_color);
@@ -1222,6 +1228,313 @@ void wt_shortstatus_print(struct wt_status *s)
 		it = &(s->ignored.items[i]);
 		wt_shortstatus_other(it, s, "!!");
 	}
+}
+
+static int cmp_items(const void *a, const void *b)
+{
+	const struct string_list_item *const *one = a;
+	const struct string_list_item *const *two = b;
+	return strcmp((*one)->string, (*two)->string);
+}
+
+static const char *col_unmerged = GIT_COLOR_CYAN;
+static const char *col_added = GIT_COLOR_GREEN;
+static const char *col_deleted = GIT_COLOR_RED;
+static const char *col_updated = GIT_COLOR_MAGENTA;
+static const char *col_tracked = GIT_COLOR_YELLOW;
+static const char *col_reset = GIT_COLOR_RESET;
+
+#define SHOW_TRACKED		8
+#define SHOW_UNMERGED		9
+#define SHOW_ADDED		10
+#define SHOW_DELETED		11
+#define SHOW_UPDATED		12
+#define SHOW_WORKTREE_DELETED	13
+#define SHOW_WORKTREE_UPDATED	14
+#define SHOW_UNTRACKED		15
+#define SHOW_IGNORED		16
+
+static void wt_altstatus_unmerged(struct wt_status *s,
+				  const char *name,
+				  struct wt_status_change_data *d,
+				  struct strbuf *out,
+				  struct string_list *footnotes,
+				  int *shown_how)
+{
+	struct strbuf onebuf = STRBUF_INIT;
+	const char *one;
+	const char *how = "";
+
+	switch (d->stagemask) {
+	case 1: how = "DD"; break; /* both deleted */
+	case 2: how = "AU"; break; /* added by us */
+	case 3: how = "UD"; break; /* deleted by them */
+	case 4: how = "UA"; break; /* added by them */
+	case 5: how = "DU"; break; /* deleted by us */
+	case 6: how = "AA"; break; /* both added */
+	case 7: how = "UU"; break; /* both modified */
+	}
+
+	if (!shown_how[d->stagemask]) {
+		const char *legend = NULL;
+		shown_how[d->stagemask] = 1;
+		switch (d->stagemask) {
+		case 1: legend = "[DD] deleted by both"; break;
+		case 2: legend = "[AU] added by us"; break;
+		case 3: legend = "[UD] deleted by them"; break;
+		case 4: legend = "[UA] added by them"; break;
+		case 5: legend = "[DU] deleted by us"; break;
+		case 6: legend = "[AA] added by both"; break;
+		case 7: legend = "[UU] modified by both"; break;
+		}
+		if (legend)
+			string_list_append(footnotes, xstrdup(legend));
+	}
+
+	if (!shown_how[SHOW_UNMERGED]) {
+		struct strbuf legend = STRBUF_INIT;
+		strbuf_addf(&legend, "%sfile%s -> unmerged entry",
+			    col_unmerged, col_reset);
+		string_list_append(footnotes, strbuf_detach(&legend, NULL));
+		shown_how[SHOW_UNMERGED] = 1;
+	}
+
+	one = quote_path(name, -1, &onebuf, s->prefix);
+	if (*one != '"' && strchr(one, ' ') != NULL) {
+		putchar('"');
+		strbuf_addch(&onebuf, '"');
+		one = onebuf.buf;
+	}
+	strbuf_addf(out," %s%s%s [%s]", col_unmerged, one, col_reset, how);
+	strbuf_release(&onebuf);
+}
+
+static void wt_altstatus_tracked(struct wt_status *s,
+				 const char *name,
+				 struct wt_status_change_data *d,
+				 struct strbuf *out,
+				 struct string_list *footnotes,
+				 int *shown_how)
+{
+	struct strbuf onebuf = STRBUF_INIT;
+	const char *one;
+	const char *color;
+
+	one = quote_path(name, -1, &onebuf, s->prefix);
+	if (*one != '"' && strchr(one, ' ') != NULL) {
+		putchar('"');
+		strbuf_addch(&onebuf, '"');
+		one = onebuf.buf;
+	}
+
+	switch (d->worktree_status) {
+	case DIFF_STATUS_DELETED:
+		color = col_deleted;
+		if (!shown_how[SHOW_WORKTREE_DELETED]) {
+			struct strbuf legend = STRBUF_INIT;
+			strbuf_addf(&legend, "%s[  ]%s -> removed from worktree",
+				    col_deleted, col_reset);
+			string_list_append(footnotes, strbuf_detach(&legend, NULL));
+			shown_how[SHOW_WORKTREE_DELETED] = 1;
+		}
+		break;
+	case 0:
+		color = col_tracked;
+		if (!shown_how[SHOW_TRACKED]) {
+			struct strbuf legend = STRBUF_INIT;
+			strbuf_addf(&legend, "%sfile%s -> worktree same as in index",
+				    col_tracked, col_reset);
+			string_list_append(footnotes, strbuf_detach(&legend, NULL));
+			shown_how[SHOW_TRACKED] = 1;
+		}
+		break;
+	default:
+		color = col_updated;
+		if (!shown_how[SHOW_WORKTREE_UPDATED]) {
+			struct strbuf legend = STRBUF_INIT;
+			strbuf_addf(&legend, "%sfile%s -> modified in worktree",
+				    col_updated, col_reset);
+			string_list_append(footnotes, strbuf_detach(&legend, NULL));
+			shown_how[SHOW_WORKTREE_UPDATED] = 1;
+		}
+	}
+
+	switch (d->index_status) {
+	case DIFF_STATUS_ADDED:
+		strbuf_addf(out, "%s[ %s%s%s ]%s",
+			    col_added, color, one,
+			    col_added, col_reset);
+		if (!shown_how[SHOW_ADDED]) {
+			struct strbuf legend = STRBUF_INIT;
+			strbuf_addf(&legend, "%sfile%s -> added to index",
+				    col_added, col_reset);
+			string_list_append(footnotes, strbuf_detach(&legend, NULL));
+			shown_how[SHOW_ADDED] = 1;
+		}
+		break;
+	case DIFF_STATUS_DELETED:
+		strbuf_addf(out, "%s[ %s%s%s ]%s",
+			    col_deleted, color, one,
+			    col_deleted, col_reset);
+		if (!shown_how[SHOW_DELETED]) {
+			struct strbuf legend = STRBUF_INIT;
+			strbuf_addf(&legend, "%sfile%s -> removed from index",
+				    col_deleted, col_reset);
+			string_list_append(footnotes, strbuf_detach(&legend, NULL));
+			shown_how[SHOW_DELETED] = 1;
+		}
+		break;
+	case 0:
+		strbuf_addf(out, "  %s%s%s", color, one, col_reset);
+		break;
+	default:
+		strbuf_addf(out, "%s[ %s%s%s ]%s",
+			    col_updated, color, one,
+			    col_updated, col_reset);
+		if (!shown_how[SHOW_UPDATED]) {
+			struct strbuf legend = STRBUF_INIT;
+			strbuf_addf(&legend, "%s[  ]%s -> changes in index",
+				    col_updated, col_reset);
+			string_list_append(footnotes, strbuf_detach(&legend, NULL));
+			shown_how[SHOW_UPDATED] = 1;
+		}
+	}
+
+	strbuf_release(&onebuf);
+
+	/* extra things at the end */
+	switch (d->worktree_status) {
+	case DIFF_STATUS_ADDED:
+	case DIFF_STATUS_DELETED:
+		break;
+	case DIFF_STATUS_TYPE_CHANGED:
+		/* FIXME */
+		strbuf_addf(out, "%s+x%s", GIT_COLOR_YELLOW,
+			    GIT_COLOR_RESET);
+		break;
+	case 0:
+		break;
+	}
+
+	if (d->head_path) {
+		struct strbuf tmp = STRBUF_INIT;
+		int id = footnotes->nr + 1;
+		strbuf_addf(out, " [%d]", id);
+		one = quote_path(d->head_path, -1, &onebuf, s->prefix);
+		if (*one != '"' && strchr(one, ' ') != NULL) {
+			putchar('"');
+			strbuf_addch(&onebuf, '"');
+			one = onebuf.buf;
+		}
+		strbuf_addf(&tmp, "[%d] renamed from %s", id, onebuf.buf);
+		strbuf_release(&onebuf);
+		string_list_append(footnotes, strbuf_detach(&tmp, NULL));
+	}
+}
+
+void wt_altstatus_print(struct wt_status *s)
+{
+	int i, n;
+	struct string_list_item **all, **p;
+	struct string_list footnotes = STRING_LIST_INIT_NODUP;
+	struct string_list output = STRING_LIST_INIT_NODUP;
+	struct column_options copts;
+	struct wt_status_state state;
+	int shown_how[17];
+
+	n = s->untracked.nr + s->ignored.nr + s->change.nr;
+	p = all = xmalloc(sizeof(*all) * n);
+
+	for (i = 0; i < s->change.nr; i++)
+		*p++ = s->change.items + i;
+	for (i = 0; i < s->untracked.nr; i++)
+		*p++ = s->untracked.items + i;
+	for (i = 0; i < s->ignored.nr; i++)
+		*p++ = s->ignored.items + i;
+	qsort(all, n, sizeof(*all), cmp_items);
+
+	wt_status_get_state(s, &state);
+	if (state.merge_in_progress)
+		printf("%s(Merge in progress)%s\n",
+		       GIT_COLOR_YELLOW,
+		       GIT_COLOR_RESET);
+	else if (state.am_in_progress)
+		printf("%s(git-am in progress)%s\n",
+		       GIT_COLOR_YELLOW,
+		       GIT_COLOR_RESET);
+	else if (state.rebase_in_progress || state.rebase_interactive_in_progress)
+		printf("%s(Rebase in progress)%s\n",
+		       GIT_COLOR_YELLOW,
+		       GIT_COLOR_RESET);
+	else if (state.cherry_pick_in_progress)
+		printf("%s(Cherry-pick in progress)%s\n",
+		       GIT_COLOR_YELLOW,
+		       GIT_COLOR_RESET);
+	if (state.bisect_in_progress)
+		printf("%s(Bisect in progress)%s\n",
+		       GIT_COLOR_YELLOW,
+		       GIT_COLOR_RESET);
+
+	memset(shown_how, 0, sizeof(shown_how));
+
+	memset(&copts, 0, sizeof(copts));
+	copts.padding = 1;
+
+	for (i = 0; i < n; i++) {
+		struct string_list_item *it = all[i];
+		struct strbuf out = STRBUF_INIT;
+
+		if (it >= s->change.items &&
+		    it < s->change.items + s->change.nr) {
+			struct wt_status_change_data *d;
+
+			d = it->util;
+			if (d->stagemask)
+				wt_altstatus_unmerged(s, it->string, d, &out, &footnotes, shown_how);
+			else
+				wt_altstatus_tracked(s, it->string, d, &out, &footnotes, shown_how);
+		} else {
+			struct strbuf onebuf = STRBUF_INIT;
+			const char *one;
+
+			one = quote_path(it->string, -1, &onebuf, s->prefix);
+			if (*one != '"' && strchr(one, ' ') != NULL) {
+				putchar('"');
+				strbuf_addch(&onebuf, '"');
+				one = onebuf.buf;
+			}
+
+			if (it >= s->untracked.items &&
+				 it < s->untracked.items + s->untracked.nr) {
+				strbuf_addf(&out, "  %s", one);
+				if (!shown_how[SHOW_UNTRACKED]) {
+					string_list_append(&footnotes, xstrdup("file -> untracked file"));
+					shown_how[SHOW_UNTRACKED] = 1;
+				}
+			} else if (it >= s->ignored.items &&
+				 it < s->ignored.items + s->ignored.nr) {
+				strbuf_addf(&out, "[ %s ]", one);
+				if (!shown_how[SHOW_IGNORED]) {
+					string_list_append(&footnotes, xstrdup("[file] -> ignored file"));
+					shown_how[SHOW_IGNORED] = 1;
+				}
+			} else
+				die("Where does this item come from?");
+
+			strbuf_release(&onebuf);
+		}
+		string_list_append(&output, strbuf_detach(&out, NULL));
+	}
+	print_columns(&output, s->colopts, &copts);
+	string_list_clear(&output, 0);
+
+	if (footnotes.nr) {
+		printf("\n");
+		memset(&copts, 0, sizeof(copts));
+		copts.padding = 3;
+		print_columns(&footnotes, s->colopts, &copts);
+	}
+	string_list_clear(&footnotes, 0);
 }
 
 void wt_porcelain_print(struct wt_status *s)
