@@ -378,6 +378,7 @@ static struct cmd_struct commands[] = {
 	{ "archive", cmd_archive },
 	{ "bisect--helper", cmd_bisect__helper, RUN_SETUP },
 	{ "blame", cmd_blame, RUN_SETUP },
+	{ "blame-tree", cmd_blame_tree, RUN_SETUP },
 	{ "branch", cmd_branch, RUN_SETUP },
 	{ "bundle", cmd_bundle, RUN_SETUP_GENTLY },
 	{ "cat-file", cmd_cat_file, RUN_SETUP },
