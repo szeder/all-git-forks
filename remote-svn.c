@@ -1345,7 +1345,7 @@ static void push(struct refspec *spec) {
 		struct object *onew;
 		struct commit *cnew, *svnbase;
 
-		if (read_ref(spec->src, sha1))
+		if (read_ref(spec->src, sha1) && get_sha1_hex(spec->src, sha1))
 			die("invalid ref %s", spec->src);
 
 		onew = parse_object(sha1);
