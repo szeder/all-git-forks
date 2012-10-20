@@ -601,7 +601,7 @@ static int log_worker(struct conn *c) {
 	for (;;) {
 		/* start of log entry */
 		if (read_list(c)) {
-			if (read_done(c)) goto err;
+			read_done(c);
 			if (read_success(c)) goto err;
 			break;
 		}
@@ -1100,14 +1100,18 @@ static int svn_has_change(const char *path, int from, int to) {
 		from /* log start */
 	     );
 
+	if (read_success(c))
+		die("log failed");
+
 	while (!read_list(c)) {
 		ret = 1;
 		read_end(c);
 	}
 
-	if (read_done(c) || read_success(c)) {
+	read_done(c);
+
+	if (read_success(c))
 		die("log failed");
-	}
 
 	return ret;
 }
