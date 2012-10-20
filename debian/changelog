@@ -36,11 +36,16 @@ git (1:1.8.0~rc3-1~exp0) experimental; urgency=low
     * 0013...0031: remove; applied upstream.
     * 0012-Makefile-add-a-knob-to-turn-off-...diff: remove; fixed
       upstream.
+  * debian/rules:
+    * install German translation.
+    * use NO_INSTALL_HARDLINKS=1 instead of NO_HARDLINKS=1 in OPTS
+      (thx Tomáš Myšík and Anders Kaseorg; see #683568).
+    * install-arch: sanity-check that built-ins still do not approach
+      btrfs hardlink limit (see #642603).
   * update debian/copyright.
   * debian/control: gitweb: Recommends: libhttp-date-perl or
     libtime-module-perl for If-Modified-Since support; Build-Depends:
     same to support test suite.
-  * debian/rules: install German translation.
   * debian/implicit: use order-only dependencies so "debian/rules
     binary-arch" does not try to build documentation.
 
