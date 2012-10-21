@@ -1426,7 +1426,7 @@ static void get_commit_info(struct commit *commit,
 			    int detailed)
 {
 	int len;
-	const char *subject;
+	const char *subject, *encoding;
 	char *reencoded, *message;
 	static char author_name[1024];
 	static char author_mail[1024];
@@ -1447,7 +1447,8 @@ static void get_commit_info(struct commit *commit,
 			die("Cannot read commit %s",
 			    sha1_to_hex(commit->object.sha1));
 	}
-	reencoded = reencode_commit_message(commit, NULL);
+	encoding = get_log_output_encoding();
+	reencoded = logmsg_reencode(commit, encoding);
 	message   = reencoded ? reencoded : commit->buffer;
 	ret->author = author_name;
 	ret->author_mail = author_mail;
