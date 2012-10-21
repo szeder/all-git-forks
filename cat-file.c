@@ -20,7 +20,7 @@ int main(int argc, char **argv)
     //引数が1個の場合のみOK
     //そうでないならエラー扱い
 	if (argc != 2) {
-		usage("cat-file: cat-file <sha1>"); // exit(1);
+		usage("Error:invalid argument"); // exit(1);
     }
 
     //argv[1]は標準引数１個目を表す。
