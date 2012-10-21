@@ -10,8 +10,10 @@ int main(int argc, char **argv)
 	char template[] = "temp_git_file_XXXXXX";
 	int fd;
 
-	if (argc != 2 || get_sha1_hex(argv[1], sha1))
+	if (argc != 2 || get_sha1_hex(argv[1], sha1)) {
 		usage("cat-file: cat-file <sha1>");
+    }
+
 	buf = read_sha1_file(sha1, type, &size);
 	if (!buf)
 		exit(1);
