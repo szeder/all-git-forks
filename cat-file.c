@@ -18,6 +18,7 @@ int main(int argc, char **argv)
     }
 
     //argv[1]は標準引数１個目を表す。
+    //printf("argv[1] = %s\n", argv[1]);
 	if (get_sha1_hex(argv[1], sha1)) {
 		usage("cat-file: cat-file <sha1>"); // exit(1);
     }
