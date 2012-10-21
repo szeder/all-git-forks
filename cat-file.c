@@ -4,7 +4,13 @@
 // Usage: ./cat-file foobar
 int main(int argc, char **argv)
 {
+    // http://nanoappli.com/blog/archives/3539
+    // unsigned charというのはデータ型のひとつ。
+    // 格納できる値の範囲がcharと異なる。
+    // char                  -128 - 127
+    // unsigned char          0 - 255
 	unsigned char sha1[20];
+
 	char type[20];
 	void *buf;
 	unsigned long size;
