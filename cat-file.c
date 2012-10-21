@@ -10,7 +10,13 @@ int main(int argc, char **argv)
 	char template[] = "temp_git_file_XXXXXX";
 	int fd;
 
-	if (argc != 2 || get_sha1_hex(argv[1], sha1)) {
+    //引数が1個の場合のみOK
+    //そうでないならエラー扱い
+	if (argc != 2) {
+		usage("cat-file: cat-file <sha1>"); // exit(1);
+    }
+
+	if (get_sha1_hex(argv[1], sha1)) {
 		usage("cat-file: cat-file <sha1>"); // exit(1);
     }
 
