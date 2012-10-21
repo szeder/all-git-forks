@@ -1,6 +1,7 @@
 #include "cache.h"
 #include <string.h>
 
+// Usage: ./cat-file foobar
 int main(int argc, char **argv)
 {
 	unsigned char sha1[20];
@@ -16,6 +17,7 @@ int main(int argc, char **argv)
 		usage("cat-file: cat-file <sha1>"); // exit(1);
     }
 
+    //argv[1]は標準引数１個目を表す。
 	if (get_sha1_hex(argv[1], sha1)) {
 		usage("cat-file: cat-file <sha1>"); // exit(1);
     }
