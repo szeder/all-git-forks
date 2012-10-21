@@ -1,4 +1,5 @@
 #include "cache.h"
+#include <string.h>
 
 const char *sha1_file_directory = NULL;
 struct cache_entry **active_cache = NULL;
