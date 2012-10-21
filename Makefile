@@ -8,7 +8,9 @@ all: $(PROG)
 install: $(PROG)
 	install $(PROG) $(HOME)/bin/
 
-LIBS= -lssl
+# inflate, deflate系のエラの対策で、zliが必要
+# undefined reference to `SHA1_Init' の対策で libcryptoが必要
+LIBS= -lssl -lcrypto -lz
 
 init-db: init-db.o
 
