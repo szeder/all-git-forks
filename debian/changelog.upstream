@@ -1,3 +1,42 @@
+Version v1.8.0; changes since v1.8.0-rc3:
+-----------------------------------------
+
+Andrew Wong (2):
+      git-gui: Detect full path when parsing arguments
+      git-gui: Don't prepend the prefix if value looks like a full path
+
+Beat Bolli (2):
+      git-gui: Fix a loose/lose mistake
+      git-gui: remove .git/CHERRY_PICK_HEAD after committing
+
+Benjamin Kerensa (1):
+      git-gui: fix a typo in po/ files
+
+Clemens Buchacher (1):
+      git-gui: fix git-gui crash due to uninitialized variable
+
+Heiko Voigt (1):
+      git-gui: open console when using --trace on windows
+
+Junio C Hamano (1):
+      Git 1.8.0
+
+Marcus Karlsson (1):
+      git-gui: Use PWD if it exists on Mac OS X
+
+Pat Thoyts (2):
+      git-gui: preserve commit messages in utf-8
+      git-gui 0.17
+
+Ralf Thielow (3):
+      git-gui: de.po: consistently add untranslated hook names within braces
+      git-gui: de.po: translate "bare" as "bloß"
+      git-gui: de.po: translate "remote" as "extern"
+
+Vitaly _Vi Shukela (1):
+      git-gui: Fix semi-working shortcuts for unstage and revert
+
+
 Version v1.8.0-rc3; changes since v1.8.0-rc2:
 ---------------------------------------------
 

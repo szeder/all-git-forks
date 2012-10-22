@@ -1,7 +1,7 @@
-git (1:1.8.0~rc3-1) experimental; urgency=low
+git (1:1.8.0-1~exp1) experimental; urgency=low
 
-  * new upstream release candidate (see RelNotes/1.7.11.txt,
-    1.7.12.txt, 1.8.0.txt)
+  * new upstream release (see RelNotes/1.7.11.txt, RelNotes/1.7.12.txt,
+    RelNotes/1.8.0.txt)
     * git-svn: ignore SIGPIPE so serf can recover from HTTP timeouts
       (closes: #526989).
     * git-svn: use platform specific auth providers.
@@ -52,7 +52,7 @@ git (1:1.8.0~rc3-1) experimental; urgency=low
   [ Gerrit Pape ]
   * new upstream release.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 20 Oct 2012 11:28:24 -0700
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 21 Oct 2012 22:54:14 -0700
 
 git (1:1.7.10.4-2) unstable; urgency=low
 
