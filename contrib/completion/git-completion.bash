@@ -238,7 +238,6 @@ __gitcomp ()
 
 	case "$cur_" in
 	--*=)
-		COMPREPLY=()
 		;;
 	*)
 		local IFS=$'\n'
@@ -486,7 +485,6 @@ __git_complete_remote_or_refspec ()
 			case "$cmd" in
 			push) no_complete_refspec=1 ;;
 			fetch)
-				COMPREPLY=()
 				return
 				;;
 			*) ;;
@@ -502,7 +500,6 @@ __git_complete_remote_or_refspec ()
 		return
 	fi
 	if [ $no_complete_refspec = 1 ]; then
-		COMPREPLY=()
 		return
 	fi
 	[ "$remote" = "." ] && remote=
@@ -776,7 +773,6 @@ _git_am ()
 			"
 		return
 	esac
-	COMPREPLY=()
 }
 
 _git_apply ()
@@ -796,7 +792,6 @@ _git_apply ()
 			"
 		return
 	esac
-	COMPREPLY=()
 }
 
 _git_add ()
@@ -811,7 +806,6 @@ _git_add ()
 			"
 		return
 	esac
-	COMPREPLY=()
 }
 
 _git_archive ()
@@ -856,7 +850,6 @@ _git_bisect ()
 		__gitcomp_nl "$(__git_refs)"
 		;;
 	*)
-		COMPREPLY=()
 		;;
 	esac
 }
@@ -969,7 +962,6 @@ _git_clean ()
 		return
 		;;
 	esac
-	COMPREPLY=()
 }
 
 _git_clone ()
@@ -993,7 +985,6 @@ _git_clone ()
 		return
 		;;
 	esac
-	COMPREPLY=()
 }
 
 _git_commit ()
@@ -1027,7 +1018,6 @@ _git_commit ()
 			"
 		return
 	esac
-	COMPREPLY=()
 }
 
 _git_describe ()
@@ -1158,7 +1148,6 @@ _git_fsck ()
 		return
 		;;
 	esac
-	COMPREPLY=()
 }
 
 _git_gc ()
@@ -1169,7 +1158,6 @@ _git_gc ()
 		return
 		;;
 	esac
-	COMPREPLY=()
 }
 
 _git_gitk ()
@@ -1246,7 +1234,6 @@ _git_init ()
 		return
 		;;
 	esac
-	COMPREPLY=()
 }
 
 _git_ls_files ()
@@ -1265,7 +1252,6 @@ _git_ls_files ()
 		return
 		;;
 	esac
-	COMPREPLY=()
 }
 
 _git_ls_remote ()
@@ -1381,7 +1367,6 @@ _git_mergetool ()
 		return
 		;;
 	esac
-	COMPREPLY=()
 }
 
 _git_merge_base ()
@@ -1397,7 +1382,6 @@ _git_mv ()
 		return
 		;;
 	esac
-	COMPREPLY=()
 }
 
 _git_name_rev ()
@@ -1567,7 +1551,6 @@ _git_send_email ()
 		return
 		;;
 	esac
-	COMPREPLY=()
 }
 
 _git_stage ()
@@ -1680,7 +1663,6 @@ _git_config ()
 		return
 		;;
 	*.*)
-		COMPREPLY=()
 		return
 		;;
 	esac
@@ -2060,7 +2042,6 @@ _git_remote ()
 		__gitcomp "$c"
 		;;
 	*)
-		COMPREPLY=()
 		;;
 	esac
 }
@@ -2104,7 +2085,6 @@ _git_rm ()
 		return
 		;;
 	esac
-	COMPREPLY=()
 }
 
 _git_shortlog ()
@@ -2173,8 +2153,6 @@ _git_stash ()
 		*)
 			if [ -z "$(__git_find_on_cmdline "$save_opts")" ]; then
 				__gitcomp "$subcommands"
-			else
-				COMPREPLY=()
 			fi
 			;;
 		esac
@@ -2187,14 +2165,12 @@ _git_stash ()
 			__gitcomp "--index --quiet"
 			;;
 		show,--*|drop,--*|branch,--*)
-			COMPREPLY=()
 			;;
 		show,*|apply,*|drop,*|pop,*|branch,*)
 			__gitcomp_nl "$(git --git-dir="$(__gitdir)" stash list \
 					| sed -n -e 's/:.*//p')"
 			;;
 		*)
-			COMPREPLY=()
 			;;
 		esac
 	fi
@@ -2311,7 +2287,6 @@ _git_svn ()
 			__gitcomp "--revision= --parent"
 			;;
 		*)
-			COMPREPLY=()
 			;;
 		esac
 	fi
@@ -2336,13 +2311,10 @@ _git_tag ()
 
 	case "$prev" in
 	-m|-F)
-		COMPREPLY=()
 		;;
 	-*|tag)
 		if [ $f = 1 ]; then
 			__gitcomp_nl "$(__git_tags)"
-		else
-			COMPREPLY=()
 		fi
 		;;
 	*)
