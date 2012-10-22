@@ -74,15 +74,12 @@ newline=$'\n'
 
 test_gitcomp ()
 {
+	local -a COMPREPLY &&
 	sed -e 's/Z$//' > expected &&
-	(
-		local -a COMPREPLY &&
-		cur="$1" &&
-		shift &&
-		__gitcomp "$@" &&
-		IFS="$newline" &&
-		echo "${COMPREPLY[*]}" > out
-	) &&
+	cur="$1" &&
+	shift &&
+	__gitcomp "$@" &&
+	print_comp &&
 	test_cmp expected out
 }
 
