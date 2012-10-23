@@ -1248,11 +1248,11 @@ static void print_summary(const char *prefix, const unsigned char *sha1,
 	format_commit_message(commit, "%an <%ae>", &author_ident, &pctx);
 	format_commit_message(commit, "%cn <%ce>", &committer_ident, &pctx);
 	if (strbuf_cmp(&author_ident, &committer_ident)) {
-		strbuf_addstr(&format, "\n Author: ");
+		strbuf_addstr(&format, _("\n Author: "));
 		strbuf_addbuf_percentquote(&format, &author_ident);
 	}
 	if (!user_ident_sufficiently_given()) {
-		strbuf_addstr(&format, "\n Committer: ");
+		strbuf_addstr(&format, _("\n Committer: "));
 		strbuf_addbuf_percentquote(&format, &committer_ident);
 		if (advice_implicit_identity) {
 			strbuf_addch(&format, '\n');

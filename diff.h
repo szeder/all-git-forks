@@ -54,6 +54,9 @@ typedef struct strbuf *(*diff_prefix_fn_t)(struct diff_options *opt, void *data)
 
 #define DIFF_FORMAT_CALLBACK	0x1000
 
+/* Never output translated content, used by format-patch et.al */
+#define DIFF_FORMAT_ENGLISH		0x2000
+
 #define DIFF_OPT_RECURSIVE           (1 <<  0)
 #define DIFF_OPT_TREE_IN_RECURSIVE   (1 <<  1)
 #define DIFF_OPT_BINARY              (1 <<  2)
@@ -334,6 +337,6 @@ extern struct userdiff_driver *get_textconv(struct diff_filespec *one);
 extern int parse_rename_score(const char **cp_p);
 
 extern int print_stat_summary(FILE *fp, int files,
-			      int insertions, int deletions);
+			      int insertions, int deletions, struct diff_options *options);
 
 #endif /* DIFF_H */

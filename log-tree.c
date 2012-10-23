@@ -601,8 +601,12 @@ void show_log(struct rev_info *opt)
 					&ctx.need_8bit_cte);
 	} else if (opt->commit_format != CMIT_FMT_USERFORMAT) {
 		fputs(diff_get_color_opt(&opt->diffopt, DIFF_COMMIT), stdout);
+		/*
+		 * TRANSLATORS: This string precedes the commit identifier in git log
+		 * output.
+		 */
 		if (opt->commit_format != CMIT_FMT_ONELINE)
-			fputs("commit ", stdout);
+			fputs(_("commit "), stdout);
 
 		if (!opt->graph)
 			put_revision_mark(opt, commit);
@@ -612,8 +616,11 @@ void show_log(struct rev_info *opt)
 			show_parents(commit, abbrev_commit);
 		if (opt->children.name)
 			show_children(opt, commit, abbrev_commit);
+		/*
+		 * TRANSLATORS: %s is a commit identifier.
+		 */
 		if (parent)
-			printf(" (from %s)",
+			printf(_(" (from %s)"),
 			       find_unique_abbrev(parent->object.sha1,
 						  abbrev_commit));
 		show_decorations(opt, commit);

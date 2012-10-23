@@ -114,7 +114,8 @@ extern void pretty_print_commit(const struct pretty_print_context *pp,
 extern void pp_commit_easy(enum cmit_fmt fmt, const struct commit *commit,
 			   struct strbuf *sb);
 void pp_user_info(const struct pretty_print_context *pp,
-		  const char *what, struct strbuf *sb,
+		  const char *what, const char *whatdate, int extra_padding,
+		  struct strbuf *sb,
 		  const char *line, const char *encoding);
 void pp_title_line(const struct pretty_print_context *pp,
 		   const char **msg_p,

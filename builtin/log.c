@@ -381,7 +381,7 @@ static void show_tagger(char *buf, int len, struct rev_info *rev)
 
 	pp.fmt = rev->commit_format;
 	pp.date_mode = rev->date_mode;
-	pp_user_info(&pp, "Tagger", &out, buf, get_log_output_encoding());
+	pp_user_info(&pp, _("Tagger"), _("TaggerDate"), 0, &out, buf, get_log_output_encoding());
 	printf("%s", out.buf);
 	strbuf_release(&out);
 }
@@ -804,7 +804,7 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	msg = body;
 	pp.fmt = CMIT_FMT_EMAIL;
 	pp.date_mode = DATE_RFC2822;
-	pp_user_info(&pp, NULL, &sb, committer, encoding);
+	pp_user_info(&pp, NULL, NULL, 0, &sb, committer, encoding);
 	pp_title_line(&pp, &msg, &sb, encoding, need_8bit_cte);
 	pp_remainder(&pp, &msg, &sb, 0);
 	add_branch_description(&sb, branch_name);
@@ -1222,6 +1222,8 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 
 	/* Always generate a patch */
 	rev.diffopt.output_format |= DIFF_FORMAT_PATCH;
+	/* Never translate format-patch output */
+	rev.diffopt.output_format |= DIFF_FORMAT_ENGLISH;
 
 	if (!DIFF_OPT_TST(&rev.diffopt, TEXT) && !no_binary_diff)
 		DIFF_OPT_SET(&rev.diffopt, BINARY);

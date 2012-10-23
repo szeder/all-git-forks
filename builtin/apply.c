@@ -3644,7 +3644,7 @@ static void stat_patch_list(struct patch *patch)
 		show_stats(patch);
 	}
 
-	print_stat_summary(stdout, files, adds, dels);
+	print_stat_summary(stdout, files, adds, dels, NULL);
 }
 
 static void numstat_patch_list(struct patch *patch)

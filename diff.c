@@ -1391,18 +1391,22 @@ static void fill_print_name(struct diffstat_file *file)
 	file->print_name = pname;
 }
 
-int print_stat_summary(FILE *fp, int files, int insertions, int deletions)
+int print_stat_summary(FILE *fp, int files, int insertions, int deletions, struct diff_options *options)
 {
 	struct strbuf sb = STRBUF_INIT;
 	int ret;
 
+	int english = options && !!(options->output_format & DIFF_FORMAT_ENGLISH);
+
 	if (!files) {
 		assert(insertions == 0 && deletions == 0);
-		return fprintf(fp, "%s\n", " 0 files changed");
+		return fprintf(fp, "%s\n", english ? " 0 files changed"
+		                                   : _(" 0 files changed"));
 	}
 
 	strbuf_addf(&sb,
-		    (files == 1) ? " %d file changed" : " %d files changed",
+		    english ? ((files == 1) ? " %d file changed" : " %d files changed")
+		            : Q_(" %d file changed", " %d files changed", files),
 		    files);
 
 	/*
@@ -1419,7 +1423,9 @@ int print_stat_summary(FILE *fp, int files, int insertions, int deletions)
 		 * do not translate it.
 		 */
 		strbuf_addf(&sb,
-			    (insertions == 1) ? ", %d insertion(+)" : ", %d insertions(+)",
+			    english ? ((insertions == 1) ? ", %d insertion(+)" : ", %d insertions(+)")
+			            : Q_(", %d insertion(+)", ", %d insertions(+)",
+			                 insertions),
 			    insertions);
 	}
 
@@ -1429,7 +1435,9 @@ int print_stat_summary(FILE *fp, int files, int insertions, int deletions)
 		 * do not translate it.
 		 */
 		strbuf_addf(&sb,
-			    (deletions == 1) ? ", %d deletion(-)" : ", %d deletions(-)",
+			    english ? ((deletions == 1) ? ", %d deletion(-)" : ", %d deletions(-)")
+			            : Q_(", %d deletion(-)", ", %d deletions(-)",
+			                 deletions),
 			    deletions);
 	}
 	strbuf_addch(&sb, '\n');
@@ -1681,7 +1689,7 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 		extra_shown = 1;
 	}
 	fprintf(options->file, "%s", line_prefix);
-	print_stat_summary(options->file, total_files, adds, dels);
+	print_stat_summary(options->file, total_files, adds, dels, options);
 }
 
 static void show_shortstats(struct diffstat_t *data, struct diff_options *options)
@@ -1710,7 +1718,7 @@ static void show_shortstats(struct diffstat_t *data, struct diff_options *option
 				options->output_prefix_data);
 		fprintf(options->file, "%s", msg->buf);
 	}
-	print_stat_summary(options->file, total_files, adds, dels);
+	print_stat_summary(options->file, total_files, adds, dels, options);
 }
 
 static void show_numstat(struct diffstat_t *data, struct diff_options *options)

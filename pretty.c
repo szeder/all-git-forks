@@ -320,7 +320,8 @@ needquote:
 }
 
 void pp_user_info(const struct pretty_print_context *pp,
-		  const char *what, struct strbuf *sb,
+		  const char *what, const char *whatdate, int extra_padding,
+		  struct strbuf *sb,
 		  const char *line, const char *encoding)
 {
 	char *date;
@@ -365,24 +366,37 @@ void pp_user_info(const struct pretty_print_context *pp,
 		}
 		strbuf_add(sb, name_tail, namelen - display_name_length);
 		strbuf_addch(sb, '\n');
-	} else {
-		strbuf_addf(sb, "%s: %.*s%.*s\n", what,
-			      (pp->fmt == CMIT_FMT_FULLER) ? 4 : 0,
-			      "    ", namelen, line);
-	}
-	switch (pp->fmt) {
-	case CMIT_FMT_MEDIUM:
-		strbuf_addf(sb, "Date:   %s\n", show_date(time, tz, pp->date_mode));
-		break;
-	case CMIT_FMT_EMAIL:
 		strbuf_addf(sb, "Date: %s\n", show_date(time, tz, DATE_RFC2822));
-		break;
-	case CMIT_FMT_FULLER:
-		strbuf_addf(sb, "%sDate: %s\n", what, show_date(time, tz, pp->date_mode));
-		break;
-	default:
-		/* notin' */
-		break;
+	} else {
+		/*
+		 * Calculate the padding to use to get the two fields we are outputting
+		 * here aligned. We are passed the padding we need to get these fields
+		 * aligned with whatever fields are output in other calls to
+		 * pp_user_info().
+		 *
+		 * FIXME: strlen() used to measure string width; should use mblen()
+		 * or similar, but since that is expensive, it should be done further
+		 * up the callstack, not on each commit. */
+		int datelen = 0, whatlen = 0;
+
+		if (pp->fmt != CMIT_FMT_FULLER)
+			whatdate = _("Date");
+		if (pp->fmt == CMIT_FMT_MEDIUM || pp->fmt == CMIT_FMT_FULLER) {
+			datelen = whatdate ? strlen(whatdate) : 0;
+			whatlen = what ? strlen(what) : 0;
+		}
+
+		strbuf_addf(sb, "%s: %.*s%.*s%.*s\n", what,
+		            (datelen > whatlen ? datelen - whatlen : 0), "                ",
+		            extra_padding, "                ",
+			        namelen, line);
+
+ 		if (pp->fmt == CMIT_FMT_MEDIUM || pp->fmt == CMIT_FMT_FULLER) {
+			strbuf_addf(sb, "%s: %.*s%.*s%s\n", whatdate,
+				        (whatlen > datelen ? whatlen - datelen : 0), "                ",
+			            extra_padding, "                ",
+			            show_date(time, tz, pp->date_mode));
+		}
 	}
 }
 
@@ -1218,6 +1232,39 @@ static void pp_header(const struct pretty_print_context *pp,
 		      struct strbuf *sb)
 {
 	int parents_shown = 0;
+	const char *author_label = _("Author");
+	const char *authordate_label = _("AuthorDate");
+	const char *commit_label = _("Commit");
+	const char *commitdate_label = _("CommitDate");
+	int extra_padding_author = 0, extra_padding_commit = 0;
+
+	/*
+	 * Calculate the padding to use to get all the fields aligned.
+	 *
+	 * pp_user_info() makes sure to align the Author and Date strings, but
+	 * we aso need to align between the Author and Commit block (if outputting
+	 * FULL or FULLER
+	 *
+	 * FIXME: strlen() used to measure string width; should use mblen()
+	 * or similar, but since that is expensive, it should be done further
+	 * up the callstack, not on each commit. */
+	if (pp->fmt == CMIT_FMT_FULL || pp->fmt == CMIT_FMT_FULLER) {
+		int author_label_width = strlen(author_label);
+		int commit_label_width = strlen(commit_label);
+
+		if (pp->fmt == CMIT_FMT_FULLER) {
+			int authordate_label_width = strlen(authordate_label);
+			int commitdate_label_width = strlen(commitdate_label);
+			if (authordate_label_width > author_label_width)
+				author_label_width = authordate_label_width;
+			if (commitdate_label_width > commit_label_width)
+				commit_label_width = commitdate_label_width;
+		}
+		extra_padding_author = commit_label_width > author_label_width
+			? commit_label_width - author_label_width : 0; 
+		extra_padding_commit = author_label_width > commit_label_width
+			? author_label_width - commit_label_width : 0; 
+	}
 
 	for (;;) {
 		const char *line = *msg_p;
@@ -1262,12 +1309,12 @@ static void pp_header(const struct pretty_print_context *pp,
 		 */
 		if (!memcmp(line, "author ", 7)) {
 			strbuf_grow(sb, linelen + 80);
-			pp_user_info(pp, "Author", sb, line + 7, encoding);
+			pp_user_info(pp, author_label, authordate_label, extra_padding_author, sb, line + 7, encoding);
 		}
 		if (!memcmp(line, "committer ", 10) &&
 		    (pp->fmt == CMIT_FMT_FULL || pp->fmt == CMIT_FMT_FULLER)) {
 			strbuf_grow(sb, linelen + 80);
-			pp_user_info(pp, "Commit", sb, line + 10, encoding);
+			pp_user_info(pp, commit_label, commitdate_label, extra_padding_commit, sb, line + 10, encoding);
 		}
 	}
 }
