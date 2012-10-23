@@ -1,11 +1,14 @@
-Git v1.8.0 Release Notes
-========================
+Git v1.8.0 릴리즈 노트
+======================
 
-Backward compatibility notes
-----------------------------
+하위 호환성 노트
+----------------
 
 In the next major release (not *this* one), we will change the
 behavior of the "git push" command.
+
+다음 메이저 업데이트에서(이번은 아님) 우리는 "git push" 명령의
+동작을 변경할 예정입니다.
 
 When "git push [$there]" does not say what to push, we have used the
 traditional "matching" semantics so far (all your branches were sent
@@ -17,27 +20,52 @@ preference configuration variable "push.default" to change this, and
 "git push" will warn about the upcoming change until you set this
 variable in this release.
 
+"git push [$there]" 명령을 통해 어떤 브랜치를 push 할지 지정하지 않아도
+관습적인 "matching" 방식을 사용하여 리모트에 있는 브랜치와 같은 이름의
+모든 로컬 브랜치에 대한 내용을 전송했습니다. 이제는 "simple" 방식을
+사용하여 현재 브랜치만 리모트에 연결된(integrate with) 동일한 이름의
+브랜치로 push 합니다. 환경 설정 중 "push.default" 값을 통해 이 방식을
+설정할 수 있습니다. 이번 버전 이후의 버전에서는 이 값을 설정하지 않으면
+"git push" 명령에서 해당 경고 메시지를 나타낼 것입니다.
+
 "git branch --set-upstream" is deprecated and may be removed in a
 relatively distant future.  "git branch [-u|--set-upstream-to]" has
 been introduced with a saner order of arguments.
 
+"git branch --set-upstream" 명령은 조만간 없어질 예정입니다. 대신 인자
+순서가 좀 더 자연스러운 "git branch [-u|--set-upstream-to]" 명령을
+사용합니다.
 
-Updates since v1.7.12
+
+v1.7.12 이후 업데이트
 ---------------------
 
 UI, Workflows & Features
 
+UI, 워크플로우 & 주요기능
+
  * A credential helper for Win32 to allow access to the keychain of
    the logged-in user has been added.
 
+ * Win32 환경에서 로그인 한 유저의 키체인을 사용하기 위한 인증 정보
+   헬퍼(credential helper for Win32)가 추가되었습니다.
+
  * An initial port to HP NonStop.
+
+ * HP NonStop 지원을 위한 코드가 추가되었습니다.
 
  * A credential helper to allow access to the Gnome keyring has been
    added.
 
+ * Gnome Keyring 접근을 위한 인증 정보 헬퍼가 추가되었습니다.
+
  * When "git am" sanitizes the "Subject:" line, we strip the prefix from
    "Re: subject" and also from a less common "re: subject", but left
    the even less common "RE: subject" intact.  Now we strip that too.
+
+ * "git am" 명령이 "Subject:" 라인을 처리할 때 "Re: subject" 또는
+   "re: subject" 에서 앞의 "re: " 부분을 제거할 때 "RE: subject" 는
+   제거가 되지 않았는데 마찬가지로 제거되도록 기능을 수정하였다.
 
  * It was tempting to say "git branch --set-upstream origin/master",
    but that tells Git to arrange the local branch "origin/master" to
@@ -48,6 +76,9 @@ UI, Workflows & Features
 
  * "git cherry-pick" learned the "--allow-empty-message" option to
    allow it to replay a commit without any log message.
+
+ * "git cherry-pick" 명령에서 로그 메시지를 남기지 않고 커밋을
+   적용할 수 있도록 "--allow-empty-message" 옵션이 추가되었다.
 
  * After "git cherry-pick -s" gave control back to the user asking
    help to resolve conflicts, concluding "git commit" used to need to
@@ -83,13 +114,22 @@ UI, Workflows & Features
 
 Foreign Interface
 
+외부 인터페이스
+
  * "git svn" has been updated to work with SVN 1.7.
+
+ * "git svn" 명령을 업데이트 하여 SVN 1.7과도 잘 동작한다.
 
  * "git p4" learned the "--conflicts" option to specify what to do when
    encountering a conflict during "p4 submit".
 
+ * "git p4" 명령에 "--conflicts" 옵션을 추가하여 "p4 submit" 명령을 실행
+   할 때 충돌 상황에서 어떻게 해야하는지 지정할 수 있게 되었다.
+
 
 Performance, Internal Implementation, etc.
+
+성능 개선, 내부 구현, 기타 등등
 
  * Git ships with a fall-back regexp implementation for platforms with
    buggy regexp library, but it was easy for people to keep using their
@@ -133,9 +173,11 @@ Performance, Internal Implementation, etc.
 
 Also contains minor documentation updates and code clean-ups.
 
+또한 문서 마이너 업데이트 및 코드를 정리하였습니다.
 
-Fixes since v1.7.12
--------------------
+
+v1.7.12 이후 수정사항
+---------------------
 
 Unless otherwise noted, all the fixes since v1.7.12 in the
 maintenance track are contained in this release (see release notes
