@@ -228,6 +228,16 @@ void strbuf_vaddf(struct strbuf *sb, const char *fmt, va_list ap)
 	strbuf_setlen(sb, sb->len + len);
 }
 
+void strbuf_strftime(struct strbuf *sb, const char *fmt, struct tm *tm)
+{
+	int len;
+
+	if (!strbuf_avail(sb))
+		strbuf_grow(sb, 256);
+	len = strftime(sb->buf + sb->len, sb->alloc - sb->len, fmt, tm);
+	strbuf_setlen(sb, sb->len + len);
+}
+
 void strbuf_expand(struct strbuf *sb, const char *format, expand_fn_t fn,
 		   void *context)
 {

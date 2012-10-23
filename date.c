@@ -203,7 +203,7 @@ const char *show_date(unsigned long time, int tz, enum date_mode mode)
 			weekday_names[tm->tm_wday], tm->tm_mday,
 			month_names[tm->tm_mon], tm->tm_year + 1900,
 			tm->tm_hour, tm->tm_min, tm->tm_sec, tz);
-	else
+	else if (mode == DATE_RAW)
 		strbuf_addf(&timebuf, "%.3s %.3s %d %02d:%02d:%02d %d%c%+05d",
 				weekday_names[tm->tm_wday],
 				month_names[tm->tm_mon],
@@ -212,6 +212,8 @@ const char *show_date(unsigned long time, int tz, enum date_mode mode)
 				tm->tm_year + 1900,
 				(mode == DATE_LOCAL) ? 0 : ' ',
 				tz);
+	else
+		strbuf_strftime(&timebuf,"%c",tm);
 	return timebuf.buf;
 }
 
