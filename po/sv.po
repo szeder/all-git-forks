@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: git 1.7.12\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
-"POT-Creation-Date: 2012-10-16 08:38+0800\n"
-"PO-Revision-Date: 2012-10-16 08:36+0100\n"
+"POT-Creation-Date: 2012-10-23 12:30+0100\n"
+"PO-Revision-Date: 2012-10-23 12:30+0100\n"
 "Last-Translator: Peter Krefting <peter@softwolves.pp.se>\n"
 "Language-Team: Swedish <tp-sv@listor.tp-sv.se>\n"
 "Language: sv\n"
@@ -145,7 +145,7 @@ msgid "Repository lacks these prerequisite commits:"
 msgstr "Arkivet saknar dessa nödvändiga incheckningar:"
 
 #: bundle.c:164 sequencer.c:562 sequencer.c:994 builtin/log.c:290
-#: builtin/log.c:727 builtin/log.c:1313 builtin/log.c:1529 builtin/merge.c:347
+#: builtin/log.c:727 builtin/log.c:1315 builtin/log.c:1531 builtin/merge.c:347
 #: builtin/shortlog.c:181
 msgid "revision walk setup failed"
 msgstr "misslyckades skapa revisionstraversering"
@@ -317,7 +317,32 @@ msgstr ""
 "Hittade fel i konfigurationsvariabeln \"diff.dirstat\":\n"
 "%s"
 
-#: diff.c:3458
+#: diff.c:1404
+msgid " 0 files changed"
+msgstr " 0 filer ändrade"
+
+#: diff.c:1409
+#, c-format
+msgid " %d file changed"
+msgid_plural " %d files changed"
+msgstr[0] " %d fil ändrad"
+msgstr[1] " %d filer ändrade"
+
+#: diff.c:1427
+#, c-format
+msgid ", %d insertion(+)"
+msgid_plural ", %d insertions(+)"
+msgstr[0] ", %d tillägg(+)"
+msgstr[1] ", %d tillägg(+)"
+
+#: diff.c:1439
+#, c-format
+msgid ", %d deletion(-)"
+msgid_plural ", %d deletions(-)"
+msgstr[0] ", %d borttagning(-)"
+msgstr[1] ", %d borttagningar(-)"
+
+#: diff.c:3466
 #, c-format
 msgid ""
 "Failed to parse --dirstat/-X option parameter:\n"
@@ -407,6 +432,15 @@ msgstr[0] ""
 msgstr[1] ""
 "\n"
 "Menade du ett av dessa?"
+
+#: log-tree.c:609
+msgid "commit "
+msgstr "incheckning "
+
+#: log-tree.c:623
+#, c-format
+msgid " (from %s)"
+msgstr " (från %s)"
 
 #: merge-recursive.c:190
 #, c-format
@@ -682,6 +716,26 @@ msgstr "     eller: %s"
 #, c-format
 msgid "    %s"
 msgstr "    %s"
+
+#: pretty.c:379
+msgid "Date"
+msgstr "Datum"
+
+#: pretty.c:1269
+msgid "Author"
+msgstr "Författare"
+
+#: pretty.c:1269
+msgid "AuthorDate"
+msgstr "Författardatum"
+
+#: pretty.c:1274
+msgid "Commit"
+msgstr "Incheckning"
+
+#: pretty.c:1274
+msgid "CommitDate"
+msgstr "Incheckningsdatum"
 
 #: remote.c:1632
 #, c-format
@@ -1334,11 +1388,6 @@ msgstr "före "
 msgid ", behind "
 msgstr ", efter "
 
-#: compat/precompose_utf8.c:58 builtin/clone.c:341
-#, c-format
-msgid "failed to unlink '%s'"
-msgstr "misslyckades ta bort länken \"%s\""
-
 #: builtin/add.c:19
 msgid "git add [options] [--] <filepattern>..."
 msgstr "git add [flaggor] [--] <filmönster>..."
@@ -1414,7 +1463,7 @@ msgid "dry run"
 msgstr "testkörning"
 
 #: builtin/add.c:320 builtin/apply.c:4354 builtin/commit.c:1154
-#: builtin/count-objects.c:82 builtin/fsck.c:613 builtin/log.c:1477
+#: builtin/count-objects.c:82 builtin/fsck.c:613 builtin/log.c:1479
 #: builtin/mv.c:62 builtin/read-tree.c:112
 msgid "be verbose"
 msgstr "var pratsam"
@@ -3065,6 +3114,11 @@ msgstr "%s finns och är ingen katalog"
 msgid "failed to stat %s\n"
 msgstr "misslyckades ta status på %s\n"
 
+#: builtin/clone.c:341
+#, c-format
+msgid "failed to unlink '%s'"
+msgstr "misslyckades ta bort länken \"%s\""
+
 #: builtin/clone.c:346
 #, c-format
 msgid "failed to create link '%s'"
@@ -3524,6 +3578,22 @@ msgstr "kunde inte slå upp en precis skapad incheckning"
 #: builtin/commit.c:1244
 msgid "could not parse newly created commit"
 msgstr "kunde inte tolka en precis skapad incheckning"
+
+#: builtin/commit.c:1251
+msgid ""
+"\n"
+" Author: "
+msgstr ""
+"\n"
+" Författare: "
+
+#: builtin/commit.c:1255
+msgid ""
+"\n"
+" Committer: "
+msgstr ""
+"\n"
+" Incheckare: "
 
 #: builtin/commit.c:1285
 msgid "detached HEAD"
@@ -5277,6 +5347,14 @@ msgstr "dekoreringsflaggor"
 msgid "Final output: %d %s\n"
 msgstr "Slututdata: %d %s\n"
 
+#: builtin/log.c:384
+msgid "Tagger"
+msgstr "Taggare"
+
+#: builtin/log.c:384
+msgid "TaggerDate"
+msgstr "Taggardatum"
+
 #: builtin/log.c:403 builtin/log.c:494
 #, c-format
 msgid "Could not read object %s"
@@ -5466,30 +5544,30 @@ msgstr "kan inte använda --name-status"
 msgid "--check does not make sense"
 msgstr "kan inte använda --check"
 
-#: builtin/log.c:1239
+#: builtin/log.c:1241
 msgid "standard output, or directory, which one?"
 msgstr "standard ut, eller katalog, vilken skall det vara?"
 
-#: builtin/log.c:1241
+#: builtin/log.c:1243
 #, c-format
 msgid "Could not create directory '%s'"
 msgstr "Kunde inte skapa katalogen \"%s\""
 
-#: builtin/log.c:1394
+#: builtin/log.c:1396
 msgid "Failed to create output files"
 msgstr "Misslyckades skapa utdatafiler"
 
-#: builtin/log.c:1443
+#: builtin/log.c:1445
 msgid "git cherry [-v] [<upstream> [<head> [<limit>]]]"
 msgstr "git cherry [-v] [<uppström> [<huvud> [<gräns>]]]"
 
-#: builtin/log.c:1498
+#: builtin/log.c:1500
 #, c-format
 msgid ""
 "Could not find a tracked remote branch, please specify <upstream> manually.\n"
 msgstr "Kunde inte hitta en spårad fjärrgren, ange <uppström> manuellt.\n"
 
-#: builtin/log.c:1511 builtin/log.c:1513 builtin/log.c:1525
+#: builtin/log.c:1513 builtin/log.c:1515 builtin/log.c:1527
 #, c-format
 msgid "Unknown commit %s"
 msgstr "Okänd incheckning %s"
@@ -9355,23 +9433,11 @@ msgstr "# Undermodulers ändringar att checka in:"
 msgid "Synchronizing submodule url for '$name'"
 msgstr "Synkroniserar undermodul-url för \"$name\""
 
-#~ msgid " 0 files changed"
-#~ msgstr " 0 filer ändrade"
+#~ msgid "Date:   %s\n"
+#~ msgstr "Datum:  %s\n"
 
-#~ msgid " %d file changed"
-#~ msgid_plural " %d files changed"
-#~ msgstr[0] " %d fil ändrad"
-#~ msgstr[1] " %d filer ändrade"
-
-#~ msgid ", %d insertion(+)"
-#~ msgid_plural ", %d insertions(+)"
-#~ msgstr[0] ", %d tillägg(+)"
-#~ msgstr[1] ", %d tillägg(+)"
-
-#~ msgid ", %d deletion(-)"
-#~ msgid_plural ", %d deletions(-)"
-#~ msgstr[0] ", %d borttagning(-)"
-#~ msgstr[1] ", %d borttagningar(-)"
+#~ msgid "%sDate: %s\n"
+#~ msgstr "%sDatum: %s\n"
 
 #~ msgid "Auto packing the repository for optimum performance.\n"
 #~ msgstr "Packar arkivet automatiskt för optimal prestanda.\n"
