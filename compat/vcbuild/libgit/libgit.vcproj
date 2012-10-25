@@ -616,6 +616,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\..\version.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\..\walker.h"
 				>
 			</File>
@@ -682,11 +686,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\win32\poll.c"
+				RelativePath="..\..\poll\poll.c"
 				>
 			</File>
 			<File
-				RelativePath="..\..\win32\poll.h"
+				RelativePath="..\..\poll\poll.h"
 				>
 			</File>
 			<File
@@ -1271,6 +1275,10 @@
 			</File>
 			<File
 				RelativePath="..\..\..\varint.c"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\version.c"
 				>
 			</File>
 			<File
