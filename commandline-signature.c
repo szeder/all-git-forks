@@ -31,3 +31,8 @@ if(strcmp(signature,"My signature\n"))
   else
     return 1;
 }
+
+const char *get_signing_key_commandline(void)
+{
+return "Foo's key.";
+}

@@ -39,7 +39,7 @@ int verify_signed_buffer(const char *payload, size_t payload_size,
 
   }
 
-  char* get_signing_key(void)
+const char *get_signing_key(void)
   {
   if(strcmp(signature_mode, "commandline")){
     return get_signing_key_commandline();
