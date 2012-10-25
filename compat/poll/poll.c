@@ -31,7 +31,7 @@
 #include <sys/types.h>
 
 /* Specification.  */
-#include <poll.h>
+#include "poll.h"
 
 #include <errno.h>
 #include <limits.h>

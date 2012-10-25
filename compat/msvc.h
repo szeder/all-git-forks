@@ -76,14 +76,14 @@ int mingw_fstat(int fd, struct stat *buf);
 /*Git runtime infomation*/
 #define SHA1_HEADER "block-sha1\\sha1.h"
 #define GIT_EXEC_PATH "bin"
-#define GIT_VERSION "1.7.11.1"
-#define GIT_VERSION_VER 1,7,11,1
-#define GIT_VERSION_STRVER "1, 7, 11, 1\0"
+#define GIT_VERSION "1.8.0"
+#define GIT_VERSION_VER 1,8,0
+#define GIT_VERSION_STRVER "1, 8, 0\0"
 #define BINDIR "bin"
 #define PREFIX "."
 #define GIT_MAN_PATH "man"
 #define GIT_INFO_PATH "info"
 #define GIT_HTML_PATH "html"
 #define DEFAULT_GIT_TEMPLATE_DIR "templates"
-#define GIT_HTTP_USER_AGENT "git/1.7.11.1"
+#define GIT_USER_AGENT "git/1.8.0"
 #endif
