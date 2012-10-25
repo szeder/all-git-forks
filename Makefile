@@ -359,7 +359,8 @@ STRIP ?= strip
 # runtime figures out where they are based on the path to the executable.
 # This can help installing the suite in a relocatable way.
 
-prefix = $(HOME)
+#prefix = $(HOME)
+prefix = /tmp/git
 bindir_relative = bin
 bindir = $(prefix)/$(bindir_relative)
 mandir = share/man
@@ -636,7 +637,9 @@ LIB_H += fmt-merge-msg.h
 LIB_H += fsck.h
 LIB_H += gettext.h
 LIB_H += git-compat-util.h
+LIB_H += signature-interface.h
 LIB_H += gpg-interface.h
+LIB_H += commandline-signature.h
 LIB_H += graph.h
 LIB_H += grep.h
 LIB_H += hash.h
@@ -747,7 +750,9 @@ LIB_OBJS += environment.o
 LIB_OBJS += exec_cmd.o
 LIB_OBJS += fsck.o
 LIB_OBJS += gettext.o
+LIB_OBJS += signature-interface.o
 LIB_OBJS += gpg-interface.o
+LIB_OBJS += commandline-signature.o
 LIB_OBJS += graph.o
 LIB_OBJS += grep.o
 LIB_OBJS += hash.o

@@ -26,7 +26,7 @@ int git_gpg_config(const char *var, const char *value, void *cb)
 	return 0;
 }
 
-const char *get_signing_key(void)
+const char *get_signing_key_gpg(void)
 {
 	if (configured_signing_key)
 		return configured_signing_key;
@@ -39,7 +39,7 @@ const char *get_signing_key(void)
  * strbuf instance, which would cause the detached signature appended
  * at the end.
  */
-int sign_buffer(struct strbuf *buffer, struct strbuf *signature, const char *signing_key)
+int sign_buffer_gpg(struct strbuf *buffer, struct strbuf *signature, const char *signing_key)
 {
 	struct child_process gpg;
 	const char *args[4];
@@ -97,7 +97,7 @@ int sign_buffer(struct strbuf *buffer, struct strbuf *signature, const char *sig
  * Run "gpg" to see if the payload matches the detached signature.
  * gpg_output, when set, receives the diagnostic output from GPG.
  */
-int verify_signed_buffer(const char *payload, size_t payload_size,
+int verify_signed_buffer_gpg(const char *payload, size_t payload_size,
 			 const char *signature, size_t signature_size,
 			 struct strbuf *gpg_output)
 {

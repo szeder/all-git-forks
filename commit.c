@@ -6,7 +6,9 @@
 #include "diff.h"
 #include "revision.h"
 #include "notes.h"
-#include "gpg-interface.h"
+//#include "gpg-interface.h"
+//#include "commandline-signature.h"
+#include "signature-interface.h"
 #include "mergesort.h"
 
 static struct commit_extra_header *read_commit_extra_header_lines(const char *buf, size_t len, const char **);
