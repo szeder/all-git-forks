@@ -1,7 +1,7 @@
 #include "cache.h"
 //#include "run-command.h"
 #include "strbuf.h"
-#include "commandline-signature.h"
+#include "generic-signature.h"
 
 
 /*
