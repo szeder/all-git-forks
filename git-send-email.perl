@@ -636,15 +636,15 @@ EOT
 	my $need_8bit_cte = file_has_nonascii($compose_filename);
 	my $in_body = 0;
 	my $summary_empty = 1;
+	if (!defined $compose_encoding) {
+		$compose_encoding = "UTF-8";
+	}
 	while(<$c>) {
 		next if m/^GIT:/;
 		if ($in_body) {
 			$summary_empty = 0 unless (/^\n$/);
 		} elsif (/^\n$/) {
 			$in_body = 1;
-			if (!defined $compose_encoding) {
-				$compose_encoding = "UTF-8";
-			}
 			if ($need_8bit_cte) {
 				print $c2 "MIME-Version: 1.0\n",
 					 "Content-Type: text/plain; ",
@@ -657,9 +657,7 @@ EOT
 			$initial_subject = $1;
 			my $subject = $initial_subject;
 			$_ = "Subject: " .
-				($subject =~ /[^[:ascii:]]/ ?
-				 quote_rfc2047($subject) :
-				 $subject) .
+				quote_subject($subject, $compose_encoding) .
 				"\n";
 		} elsif (/^In-Reply-To:\s*(.+)\s*$/i) {
 			$initial_reply_to = $1;
@@ -905,6 +903,22 @@ sub is_rfc2047_quoted {
 	my $encoded_text = qr/[!->@-~]+/;
 	length($s) <= 75 &&
 	$s =~ m/^(?:"[[:ascii:]]*"|=\?$token\?$token\?$encoded_text\?=)$/o;
+}
+
+sub subject_needs_rfc2047_quoting {
+	my $s = shift;
+
+	return ($s =~ /[^[:ascii:]]/) || ($s =~ /=\?/);
+}
+
+sub quote_subject {
+	local $subject = shift;
+	my $encoding = shift || 'UTF-8';
+
+	if (subject_needs_rfc2047_quoting($subject)) {
+		return quote_rfc2047($subject, $encoding);
+	}
+	return $subject;
 }
 
 # use the simplest quoting being able to handle the recipient
@@ -1328,7 +1342,7 @@ foreach my $t (@files) {
 	}
 
 	if ($broken_encoding{$t} && !is_rfc2047_quoted($subject)) {
-		$subject = quote_rfc2047($subject, $auto_8bit_encoding);
+		$subject = quote_subject($subject, $auto_8bit_encoding);
 	}
 
 	if (defined $author and $author ne $sender) {
