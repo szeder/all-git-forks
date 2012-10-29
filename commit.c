@@ -6,8 +6,6 @@
 #include "diff.h"
 #include "revision.h"
 #include "notes.h"
-//#include "gpg-interface.h"
-//#include "commandline-signature.h"
 #include "signature-interface.h"
 #include "mergesort.h"
 
@@ -905,13 +903,13 @@ struct commit_list *reduce_heads(struct commit_list *heads)
 	return result;
 }
 
-static const char gpg_sig_header[] = "gpgsig";
-static const int gpg_sig_header_len = sizeof(gpg_sig_header) - 1;
-
 static int do_sign_commit(struct strbuf *buf, const char *keyid)
 {
 	struct strbuf sig = STRBUF_INIT;
 	int inspos, copypos;
+
+	const char* sig_header = get_sig_header();
+	int sig_header_len = get_sig_header_len();
 
 	/* find the end of the header */
 	inspos = strstr(buf->buf, "\n\n") - buf->buf + 1;
@@ -929,8 +927,8 @@ static int do_sign_commit(struct strbuf *buf, const char *keyid)
 		int len = (eol - bol) + !!*eol;
 
 		if (!copypos) {
-			strbuf_insert(buf, inspos, gpg_sig_header, gpg_sig_header_len);
-			inspos += gpg_sig_header_len;
+		  strbuf_insert(buf, inspos, sig_header, sig_header_len);
+			inspos += sig_header_len;
 		}
 		strbuf_insert(buf, inspos++, " ", 1);
 		strbuf_insert(buf, inspos, bol, len);
@@ -964,9 +962,8 @@ int parse_signed_commit(const unsigned char *sha1,
 		next = next ? next + 1 : tail;
 		if (in_signature && line[0] == ' ')
 			sig = line + 1;
-		else if (!prefixcmp(line, gpg_sig_header) &&
-			 line[gpg_sig_header_len] == ' ')
-			sig = line + gpg_sig_header_len + 1;
+		else 
+		  sig = parse_for_signature(line);
 		if (sig) {
 			strbuf_add(signature, sig, next - sig);
 			saw_signature = 1;
