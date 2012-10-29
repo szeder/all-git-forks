@@ -1,6 +1,6 @@
 #include "cache.h"
 #include "gpg-interface.h"
-#include "commandline-signature.h"
+#include "generic-signature.h"
 
 #define signature_mode "commandline"
 /*
