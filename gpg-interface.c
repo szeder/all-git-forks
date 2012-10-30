@@ -8,22 +8,6 @@
 static char *configured_signing_key;
 static const char *gpg_program = "gpg";
 
-
-struct signature_scheme* get_scheme_gpg(void)
-{
-  static struct signature_scheme scheme;
-  if(scheme.sign_buffer == NULL){
-    //initialize the structure
-    scheme.sig_header = "gpgsig";
-    scheme.sig_header_len = strlen(scheme.sig_header);
-    scheme.sign_buffer = &sign_buffer_gpg;
-    scheme.verify_signed_buffer = &verify_signed_buffer_gpg;
-    scheme.get_signing_key = &get_signing_key_gpg;
-  }
-  return &scheme;
-}
-
-
 void set_signing_key(const char *key)
 {
 	free(configured_signing_key);

@@ -3,21 +3,6 @@
 #include "signature-interface.h"
 #include "generic-signature.h"
 
-struct signature_scheme* get_scheme_generic(void)
-{
-  static struct signature_scheme scheme;
-  if(scheme.sign_buffer == NULL){
-    //initialize the structure
-    scheme.sig_header = "genericsig";
-    scheme.sig_header_len = strlen(scheme.sig_header);
-    scheme.sign_buffer = &sign_buffer_generic;
-    scheme.verify_signed_buffer = &verify_signed_buffer_generic;
-    scheme.get_signing_key = &get_signing_key_generic;
-  }
-
-  return &scheme;
-}
-
 /*
  * Create a detached signature for the contents of "buffer" and append
  * it after "signature"; "buffer" and "signature" can be the same
