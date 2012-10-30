@@ -1,6 +1,8 @@
 #ifndef GPG_INTERFACE_H
 #define GPG_INTERFACE_H
 
+#include "signature-interface.h"
+
 static const char sig_header_name_gpg[] = "gpgsig";
 
 extern int sign_buffer_gpg(struct strbuf *buffer, struct strbuf *signature, const char *signing_key);
