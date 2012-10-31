@@ -44,6 +44,10 @@ git (1:1.8.0-0.1) experimental; urgency=low
       btrfs hardlink limit (see #642603).
     * git: install git-prompt.sh from contrib/completion to
       /usr/lib/git-core/git-sh-prompt.
+    * git: install completion script to
+      /usr/share/bash-completion/completions/{git,gitk}.  This allows
+      bash-completion 2.0 to load it on the fly when completing
+      arguments to git commands.
   * debian/rules, debian/git.conffiles, debian/git-prompt.completion:
     /etc/bash_completion.d/git-prompt: new; source
     /usr/lib/git-core/git-sh-prompt so .bashrc files that rely on the
