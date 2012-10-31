@@ -105,6 +105,11 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	install -d -m0755 '$(GIT)'/etc/bash_completion.d
 	install -m0644 contrib/completion/git-completion.bash \
 	  '$(GIT)'/etc/bash_completion.d/git
+	# bash prompt
+	install -m0644 contrib/completion/git-prompt.sh \
+	  '$(GIT)'/usr/lib/git-core/git-sh-prompt
+	install -m0644 debian/git-prompt.completion \
+	  '$(GIT)'/etc/bash_completion.d/git-prompt
 	# sanity check that #642603 fix is still in place
 	test $$(stat -c%h \
 	  '$(GIT)'/usr/lib/git-core/git-branch) -le 10

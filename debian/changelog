@@ -1,4 +1,4 @@
-git (1:1.8.0-1~exp1) experimental; urgency=low
+git (1:1.8.0-0.1) experimental; urgency=low
 
   * new upstream release (see RelNotes/1.7.11.txt, RelNotes/1.7.12.txt,
     RelNotes/1.8.0.txt)
@@ -42,6 +42,13 @@ git (1:1.8.0-1~exp1) experimental; urgency=low
       (thx Tomáš Myšík and Anders Kaseorg; see #683568).
     * install-arch: sanity-check that built-ins still do not approach
       btrfs hardlink limit (see #642603).
+    * git: install git-prompt.sh from contrib/completion to
+      /usr/lib/git-core/git-sh-prompt.
+  * debian/rules, debian/git.conffiles, debian/git-prompt.completion:
+    /etc/bash_completion.d/git-prompt: new; source
+    /usr/lib/git-core/git-sh-prompt so .bashrc files that rely on the
+    completion lib defining __git_ps1 can continue to work (thx Danny
+    Yates and Anders Kaseorg).
   * update debian/copyright.
   * debian/control: gitweb: Recommends: libhttp-date-perl or
     libtime-module-perl for If-Modified-Since support; Build-Depends:
