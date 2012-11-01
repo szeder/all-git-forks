@@ -45,14 +45,18 @@ git (1:1.8.0-0.1) experimental; urgency=low
     * git: install git-prompt.sh from contrib/completion to
       /usr/lib/git-core/git-sh-prompt.
     * git: install completion script to
-      /usr/share/bash-completion/completions/{git,gitk}.  This allows
-      bash-completion 2.0 to load it on the fly when completing
-      arguments to git commands.
+      /usr/share/bash-completion/completions/{git,gitk} instead of
+      /etc/bash_completion.d.  This allows bash-completion 2.0 to load
+      it on the fly when completing arguments to git commands.
+  * debian/control: Breaks: bash-completion (<< 1:1.90-1).
+  * debian/git.preinst, debian/git.postinst, debian/git.postrm:
+    remove /etc/bash_completion.d/git on upgrade if unmodified.
   * debian/rules, debian/git.conffiles, debian/git-prompt.completion:
     /etc/bash_completion.d/git-prompt: new; source
     /usr/lib/git-core/git-sh-prompt so .bashrc files that rely on the
     completion lib defining __git_ps1 can continue to work (thx Danny
     Yates and Anders Kaseorg).
+  * debian/git.conffiles: remove /etc/bash_completion.d/git.
   * update debian/copyright.
   * debian/control: gitweb: Recommends: libhttp-date-perl or
     libtime-module-perl for If-Modified-Since support; Build-Depends:

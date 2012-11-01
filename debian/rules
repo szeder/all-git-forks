@@ -102,9 +102,6 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	# don't include gitk's lib
 	rm -rf '$(GIT)'/usr/share/gitk/
 	# bash completion
-	install -d -m0755 '$(GIT)'/etc/bash_completion.d
-	install -m0644 contrib/completion/git-completion.bash \
-	  '$(GIT)'/etc/bash_completion.d/git
 	install -d -m0755 '$(GIT)'/usr/share/bash-completion/completions
 	install -m0644 contrib/completion/git-completion.bash \
 	  '$(GIT)'/usr/share/bash-completion/completions/git
@@ -112,6 +109,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	# bash prompt
 	install -m0644 contrib/completion/git-prompt.sh \
 	  '$(GIT)'/usr/lib/git-core/git-sh-prompt
+	install -d -m0755 '$(GIT)'/etc/bash_completion.d
 	install -m0644 debian/git-prompt.completion \
 	  '$(GIT)'/etc/bash_completion.d/git-prompt
 	# sanity check that #642603 fix is still in place
