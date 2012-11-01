@@ -22,7 +22,7 @@ rm_conffile () {
   fi
 }
 
-rm_conffile /etc/bash_completion.d/git "$1" "$2" '1:1.8.0-0.1~'
+rm_conffile /etc/bash_completion.d/git "$1" "$2" '1:1.8.0-1~'
 
 removed_conffile=/etc/emacs/site-start.d/50git-core.el
 rm_conffile "$removed_conffile" "$1" "$2" '1:1.7.4.1-2~'

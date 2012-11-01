@@ -1,4 +1,4 @@
-git (1:1.8.0-0.1) experimental; urgency=low
+git (1:1.8.0-1) experimental; urgency=low
 
   * new upstream release (see RelNotes/1.7.11.txt, RelNotes/1.7.12.txt,
     RelNotes/1.8.0.txt)
@@ -67,7 +67,7 @@ git (1:1.8.0-0.1) experimental; urgency=low
   [ Gerrit Pape ]
   * new upstream release.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 21 Oct 2012 22:54:14 -0700
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 31 Oct 2012 17:58:10 -0700
 
 git (1:1.7.10.4-2) unstable; urgency=low
 
