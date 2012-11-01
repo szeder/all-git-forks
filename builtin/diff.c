@@ -297,6 +297,10 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 	DIFF_OPT_SET(&rev.diffopt, ALLOW_EXTERNAL);
 	DIFF_OPT_SET(&rev.diffopt, ALLOW_TEXTCONV);
 
+	/* Set SUBMODULE_LOG if diff.submodule config var was set */
+	if (submodule_format_cfg && !strcmp(submodule_format_cfg, "log"))
+		DIFF_OPT_SET(&rev.diffopt, SUBMODULE_LOG);
+
 	if (nongit)
 		die(_("Not a git repository"));
 	argc = setup_revisions(argc, argv, &rev, NULL);

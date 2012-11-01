@@ -29,6 +29,7 @@ static int diff_use_color_default = -1;
 static int diff_context_default = 3;
 static const char *diff_word_regex_cfg;
 static const char *external_diff_cmd_cfg;
+const char *submodule_format_cfg;
 int diff_auto_refresh_index = 1;
 static int diff_mnemonic_prefix;
 static int diff_no_prefix;
@@ -168,6 +169,8 @@ int git_diff_ui_config(const char *var, const char *value, void *cb)
 		diff_stat_graph_width = git_config_int(var, value);
 		return 0;
 	}
+	if (!strcmp(var, "diff.submodule"))
+		return git_config_string(&submodule_format_cfg, var, value);
 	if (!strcmp(var, "diff.external"))
 		return git_config_string(&external_diff_cmd_cfg, var, value);
 	if (!strcmp(var, "diff.wordregex"))
@@ -3656,6 +3659,8 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 	else if (!prefixcmp(arg, "--submodule=")) {
 		if (!strcmp(arg + 12, "log"))
 			DIFF_OPT_SET(options, SUBMODULE_LOG);
+		if (!strcmp(arg + 12, "short"))
+			DIFF_OPT_CLR(options, SUBMODULE_LOG);
 	}
 
 	/* misc options */
