@@ -6,24 +6,34 @@ url="$2"
 
 dir="$GIT_DIR/testgit/$alias"
 prefix="refs/testgit/$alias"
-refspec="refs/heads/*:${prefix}/heads/*"
+
+default_refspec="refs/heads/*:${prefix}/heads/*"
+
+refspec="${GIT_REMOTE_TESTGIT_REFSPEC-$default_refspec}"
 
 gitmarks="$dir/git.marks"
 testgitmarks="$dir/testgit.marks"
+
+test -z "$refspec" && prefix="refs"
 
 export GIT_DIR="$url/.git"
 
 mkdir -p "$dir"
 
-test -e "$gitmarks" || echo -n > "$gitmarks"
-test -e "$testgitmarks" || echo -n > "$testgitmarks"
+if [ -z "$GIT_REMOTE_TESTGIT_NO_MARKS" ]; then
+    test -e "$gitmarks" || echo -n > "$gitmarks"
+    test -e "$testgitmarks" || echo -n > "$testgitmarks"
+else
+    echo -n > "$gitmarks"
+    echo -n > "$testgitmarks"
+fi
 
 while read line; do
     case "$line" in
     capabilities)
         echo 'import'
         echo 'export'
-        echo "refspec $refspec"
+        test -n "$refspec" && echo "refspec $refspec"
         echo "*import-marks $gitmarks"
         echo "*export-marks $gitmarks"
         echo
