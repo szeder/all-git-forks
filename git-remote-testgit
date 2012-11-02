@@ -59,7 +59,18 @@ while read line; do
             sed -e "s#refs/heads/#${prefix}/heads/#g"
         ;;
     export)
+        declare -A before after
+
+        eval $(git for-each-ref --format='before[%(refname)]=%(objectname)')
+
         git fast-import --{import,export}-marks="$testgitmarks" --quiet
+
+        eval $(git for-each-ref --format='after[%(refname)]=%(objectname)')
+
+        for ref in "${!after[@]}"; do
+            test "${before[$ref]}" ==  "${after[$ref]}" && continue
+            echo "ok $ref"
+        done
         echo
         ;;
     '')
