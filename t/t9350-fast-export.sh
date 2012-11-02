@@ -469,4 +469,10 @@ test_expect_success 'refs are updated even if no commits need to be exported' '
 	test_cmp expected actual
 '
 
+test_expect_success 'proper extra refs handling' '
+	git fast-export master ^master master..master > actual &&
+	echo -n > expected &&
+	test_cmp expected actual
+'
+
 test_done

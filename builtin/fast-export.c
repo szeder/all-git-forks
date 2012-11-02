@@ -529,7 +529,9 @@ static void get_tags_and_duplicates(struct object_array *pending,
 		 * sure it gets properly upddated eventually.
 		 */
 		if (commit->util || commit->object.flags & SHOWN)
-			string_list_append(extra_refs, full_name)->util = commit;
+			if (!(commit->object.flags & UNINTERESTING))
+				string_list_append(extra_refs, full_name)->util = commit;
+
 		if (!commit->util)
 			commit->util = full_name;
 	}
