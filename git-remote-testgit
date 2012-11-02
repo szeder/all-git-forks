@@ -55,8 +55,10 @@ while read line; do
 
         echo "feature import-marks=$gitmarks"
         echo "feature export-marks=$gitmarks"
-        git fast-export --use-done-feature --{import,export}-marks="$testgitmarks" $refs | \
+        echo "feature done"
+        git fast-export --{import,export}-marks="$testgitmarks" $refs | \
             sed -e "s#refs/heads/#${prefix}/heads/#g"
+        echo "done"
         ;;
     export)
         declare -A before after
