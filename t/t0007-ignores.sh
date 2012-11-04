@@ -5,7 +5,7 @@ test_description=check-ignore
 . ./test-lib.sh
 
 init_vars () {
-	global_excludes="$HOME/global-excludes"
+	global_excludes="$(pwd)/global-excludes"
 }
 
 enable_global_excludes () {
@@ -77,18 +77,24 @@ test_check_ignore () {
 }
 
 test_expect_success_multi () {
+	prereq=
+	if test $# -eq 4
+	then
+		prereq=$1
+		shift
+	fi
 	testname="$1" expect_verbose="$2" code="$3"
 
 	expect=$( echo "$expect_verbose" | sed -e 's/.*	//' )
 
-	test_expect_success "$testname" "
+	test_expect_success $prereq "$testname" "
 		expect '$expect' &&
 		$code
 	"
 
 	for quiet_opt in '-q' '--quiet'
 	do
-		test_expect_success "$testname${quiet_opt:+ with $quiet_opt}" "
+		test_expect_success $prereq "$testname${quiet_opt:+ with $quiet_opt}" "
 			expect '' &&
 			$code
 		"
@@ -97,7 +103,7 @@ test_expect_success_multi () {
 
 	for verbose_opt in '-v' '--verbose'
 	do
-		test_expect_success "$testname${verbose_opt:+ with $verbose_opt}" "
+		test_expect_success $prereq "$testname${verbose_opt:+ with $verbose_opt}" "
 			expect '$expect_verbose' &&
 			$code
 		"
@@ -108,7 +114,10 @@ test_expect_success_multi () {
 test_expect_success 'setup' '
 	init_vars
 	mkdir -p a/b/ignored-dir a/submodule b &&
-	ln -s b a/symlink &&
+	if test_have_prereq SYMLINKS
+	then
+		ln -s b a/symlink
+	fi &&
 	(
 		cd a/submodule &&
 		git init &&
@@ -326,16 +335,16 @@ test_expect_success 'cd to ignored sub-directory with -v' '
 #
 # test handling of symlinks
 
-test_expect_success_multi 'symlink' '' '
+test_expect_success_multi SYMLINKS 'symlink' '' '
 	test_check_ignore "a/symlink" 1
 '
 
-test_expect_success_multi 'beyond a symlink' '' '
+test_expect_success_multi SYMLINKS 'beyond a symlink' '' '
 	test_check_ignore "a/symlink/foo" 128 &&
 	test_stderr "fatal: '\''a/symlink/foo'\'' is beyond a symbolic link"
 '
 
-test_expect_success_multi 'beyond a symlink from subdirectory' '' '
+test_expect_success_multi SYMLINKS 'beyond a symlink from subdirectory' '' '
 	(
 		cd a &&
 		test_check_ignore "symlink/foo" 128
