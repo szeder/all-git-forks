@@ -541,7 +541,7 @@ our %feature = (
 	# $feature{'remote_heads'}{'default'} = [1];
 	# To have project specific config enable override in $GITWEB_CONFIG
 	# $feature{'remote_heads'}{'override'} = 1;
-	# and in project config gitweb.remote_heads = 0|1;
+	# and in project config gitweb.remoteheads = 0|1;
 	'remote_heads' => {
 		'sub' => sub { feature_bool('remote_heads', @_) },
 		'override' => 0,
@@ -2702,6 +2702,7 @@ sub git_get_project_config {
 		$key = lc($key);
 	}
 	$key =~ s/^gitweb\.//;
+	$key =~ s/_//g;
 	return if ($key =~ m/\W/);
 
 	# type sanity check
