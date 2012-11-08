@@ -3499,6 +3499,9 @@ void diff_setup_done(struct diff_options *options)
 
 	if (DIFF_OPT_TST(options, FOLLOW_RENAMES) && options->pathspec.nr != 1)
 		die(_("--follow requires exactly one pathspec"));
+
+	if (options->pathspec.has_wildcard && options->max_depth_valid)
+		die("max-depth cannot be used with wildcard pathspecs");
 }
 
 static int opt_arg(const char *arg, int arg_short, const char *arg_long, int *val)
@@ -4062,6 +4065,10 @@ int diff_opt_parse(struct diff_options *options,
 		if (options->use_color != GIT_COLOR_ALWAYS)
 			options->use_color = GIT_COLOR_NEVER;
 		return argcount;
+	} else if ((argcount = parse_long_opt("max-depth", av, &optarg))) {
+		DIFF_OPT_SET(options, RECURSIVE);
+		options->max_depth = strtol(optarg, NULL, 10);
+		options->max_depth_valid = 1;
 	} else
 		return 0;
 	return 1;
