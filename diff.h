@@ -156,6 +156,15 @@ struct diff_options {
 	diff_prefix_fn_t output_prefix;
 	int output_prefix_length;
 	void *output_prefix_data;
+
+	/*
+	 * The extra "valid" flag is a slight hack. The value "0" is perfectly
+	 * valid for max-depth. We would normally use -1 to indicate "not set",
+	 * but there are many code paths which assume that assume that just
+	 * zero-ing out a diff_options is enough to initialize it.
+	 */
+	int max_depth;
+	int max_depth_valid;
 };
 
 enum color_diff {

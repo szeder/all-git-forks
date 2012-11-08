@@ -3295,6 +3295,9 @@ void diff_setup_done(struct diff_options *options)
 		options->output_format = DIFF_FORMAT_NO_OUTPUT;
 		DIFF_OPT_SET(options, EXIT_WITH_STATUS);
 	}
+
+	if (options->pathspec.has_wildcard && options->max_depth_valid)
+		die("max-depth cannot be used with wildcard pathspecs");
 }
 
 static int opt_arg(const char *arg, int arg_short, const char *arg_long, int *val)
@@ -3741,6 +3744,10 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 			die_errno("Could not open '%s'", optarg);
 		options->close_file = 1;
 		return argcount;
+	} else if (!prefixcmp(arg, "--max-depth=")) {
+		DIFF_OPT_SET(options, RECURSIVE);
+		options->max_depth = strtol(arg + 12, NULL, 10);
+		options->max_depth_valid = 1;
 	} else
 		return 0;
 	return 1;
