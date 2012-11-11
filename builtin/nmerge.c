@@ -101,6 +101,7 @@ static struct cache_entry *next_tree_entry(struct tree_desc *t)
 
 void diff_tree_index(const unsigned char *tree, struct index_state *index_b)
 {
+	struct cache_entry *a, *b;
 	struct tree_desc t;
 	int pos_b;
 	int cmp = 0;
@@ -109,7 +110,6 @@ void diff_tree_index(const unsigned char *tree, struct index_state *index_b)
 
 	pos_b = 0;
 	while (1) {
-		struct cache_entry *a, *b;
 		const char *name;
 		const char *kind;
 
@@ -148,13 +148,13 @@ void diff_tree_index(const unsigned char *tree, struct index_state *index_b)
 
 void diff_index_index(struct index_state *index_a, struct index_state *index_b)
 {
+	struct cache_entry *a, *b;
 	int pos_a, pos_b;
 	int cmp = 0;
 
 	pos_a = 0;
 	pos_b = 0;
 	while (1) {
-		struct cache_entry *a, *b;
 		const char *name;
 		const char *kind;
 
