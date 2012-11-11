@@ -29,6 +29,15 @@ check () {
 	test_cmp expected actual
 }
 
+setup () {
+	(
+	echo "[ui]"
+	echo "username = A U Thor <author@example.com>"
+	) >> "$HOME"/.hgrc
+}
+
+setup
+
 test_expect_success 'cloning' '
   test_when_finished "rm -rf gitrepo*" &&
 
