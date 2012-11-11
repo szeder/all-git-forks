@@ -1,4 +1,5 @@
-#!bash
+#!/bin/bash
+# The above line is important as this script can be executed when used with tcsh.
 #
 # bash/zsh completion support for core Git.
 #
@@ -18,10 +19,30 @@
 # To use these routines:
 #
 #    1) Copy this file to somewhere (e.g. ~/.git-completion.sh).
-#    2) Add the following line to your .bashrc/.zshrc:
+#       For tcsh:
+#          - the file must be in your ${HOME} directory
+#          - the file must be named .git-completion.sh
+#          - the file must have executable permissions
+#    2) Add the following line to your .bashrc/.zshrc/.tcshrc/.cshrc:
 #        source ~/.git-completion.sh
 #    3) Consider changing your PS1 to also show the current branch,
-#       see git-prompt.sh for details.
+#       see git-prompt.sh for details (not supported for csh/tcsh).
+
+######################################################################
+# -- tcsh --
+######################################################################
+# Must begin with this to avoid any bash syntax that can't be parsed
+# by tcsh.  The below code must work with tcsh and not cause a syntax
+# error with bash.
+# Checks if we are being sourced by tcsh, in which case we execute the
+# tcsh code and exit (before we hit any bash code).
+test "$0" = "tcsh" && \
+	complete git  'p,*,`${HOME}/.git-completion.sh "${COMMAND_LINE}"`,' && \
+	complete gitk 'p,*,`${HOME}/.git-completion.sh "${COMMAND_LINE}"`,' && \
+	exit
+######################################################################
+# -- end tcsh --
+######################################################################
 
 if [[ -n ${ZSH_VERSION-} ]]; then
 	autoload -U +X bashcompinit && bashcompinit
@@ -2481,3 +2502,54 @@ __git_complete gitk __gitk_main
 if [ Cygwin = "$(uname -o 2>/dev/null)" ]; then
 __git_complete git.exe __git_main
 fi
+
+######################################################################
+# -- tcsh --
+######################################################################
+
+# Method that will output the result of the completion done by
+# the bash completion script, so that it can be re-used by tcsh.
+_git_tcsh ()
+{
+   # Set COMP_WORDS and COMP_CWORD as bash would because that is what
+   # the above git bash completion script expects.
+
+   # Set COMP_WORDS to the command-line as bash would.
+   COMP_WORDS=($1)
+
+   # Set COMP_CWORD to the cursor location as bash would.
+   # From tcsh, the provided command-line is only until the cursor,
+   # so the cursor location is always at the last element.
+   # We must check for a space as the last character which will
+   # tell us that the previous word is complete and the cursor
+   # is on the next word.
+   if [ "${1: -1}" == " " ]
+   then
+      # The last character is a space, so our location is at the end
+      # of the command-line array
+      COMP_CWORD=${#COMP_WORDS[@]}
+   else
+      # The last character is not a space, so our location is on the
+      # last word of the command-line array, so we must decrement the
+      # count by 1
+      COMP_CWORD=$((${#COMP_WORDS[@]}-1))
+   fi
+
+   # Call _git() or _gitk() of the bash script, based on the first
+   # element of the command-line
+   _${COMP_WORDS[0]}
+
+   # Print the result that is stored in the bash variable ${COMPREPLY}
+   for i in ${COMPREPLY[@]}; do
+      echo "$i"
+   done
+}
+
+if [ "$1" ] ; then
+  # If there is an argument, we know the script is being executed
+  # from tcsh so go ahead and run the tcsh function
+  _git_tcsh "$1"
+fi
+######################################################################
+# -- end tcsh --
+######################################################################
