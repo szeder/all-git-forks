@@ -51,6 +51,8 @@ int launch_editor(const char *path, struct strbuf *buffer, const char *const *en
 		sigchain_push(SIGINT, SIG_IGN);
 		ret = finish_command(&p);
 		sigchain_pop(SIGINT);
+		if (WIFSIGNALED(ret) && WTERMSIG(ret) == SIGINT)
+			raise(SIGINT);
 		if (ret)
 			return error("There was a problem with the editor '%s'.",
 					editor);
