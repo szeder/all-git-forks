@@ -99,6 +99,18 @@ static struct cache_entry *next_tree_entry(struct tree_desc *t)
 	return ce;
 }
 
+static int do_cmp(struct cache_entry *a, struct cache_entry *b)
+{
+	if (a && b)
+		return cmp_name(a, b);
+	else if (a && !b)
+		return -1;
+	else if (!a && b)
+		return 1;
+	else
+		return 0;
+}
+
 void diff_tree_index(const unsigned char *tree, struct index_state *index_b)
 {
 	struct cache_entry *a, *b;
@@ -143,6 +155,94 @@ void diff_tree_index(const unsigned char *tree, struct index_state *index_b)
 		printf("%s %s\n", kind, name);
 
 		free(a);
+	}
+}
+
+void diff_tree_index_index(const unsigned char *tree, struct index_state *index_a, struct index_state *index_b)
+{
+	struct cache_entry *a, *b, *base;
+	struct tree_desc t;
+	int pos_a, pos_b;
+	int cmp_a, cmp_b, cmp_ab;
+
+	fill_tree_descriptor(&t, tree);
+
+	pos_a = 0;
+	pos_b = 0;
+	cmp_a = 0;
+	cmp_b = 0;
+	cmp_ab = 0;
+	while (1) {
+		struct cache_entry *ea, *eb, *ebase;
+		const char *name;
+		const char *kind;
+
+		if (cmp_a >= 0 && cmp_b >= 0)
+			base = next_tree_entry(&t);
+		if (cmp_a <= 0 && cmp_ab <= 0)
+			a = next_entry_stage(index_a, &pos_a, 0);
+		if (cmp_b <= 0 && cmp_ab >= 0)
+			b = next_entry_stage(index_b, &pos_b, 0);
+
+		cmp_a = do_cmp(a, base);
+		cmp_b = do_cmp(b, base);
+		cmp_ab = do_cmp(a, b);
+
+		ea = eb = ebase = NULL;
+		if (cmp_a >= 0 && cmp_b >= 0)
+			ebase = base;
+		if (cmp_a <= 0 && cmp_ab <= 0)
+			ea = a;
+		if (cmp_b <= 0 && cmp_ab >= 0)
+			eb = b;
+
+		if (ea && eb) {
+			name = ea->name;
+			if (hashcmp(ea->sha1, eb->sha1)) {
+				if (!ebase) {
+					kind = "add/add C";
+				} else if (!hashcmp(ea->sha1, ebase->sha1)) {
+					kind = "same/mod";
+				} else if (!hashcmp(eb->sha1, ebase->sha1)) {
+					kind = "mod/same";
+				} else {
+					kind = "mod/mod C";
+				}
+			} else {
+				if (!ebase) {
+					kind = "add/add";
+				} else if (hashcmp(ea->sha1, ebase->sha1)) {
+					kind = "mod/mod";
+				} else {
+					kind = "same/same";
+				}
+			}
+		} else if (ea && !eb) {
+			name = ea->name;
+			if (!ebase) {
+				kind = "add/same";
+			} else if (hashcmp(ea->sha1, ebase->sha1)) {
+				kind = "mod/del C";
+			} else {
+				kind = "same/del";
+			}
+		} else if (!ea && eb) {
+			name = eb->name;
+			if (!ebase) {
+				kind = "same/add";
+			} else if (hashcmp(eb->sha1, ebase->sha1)) {
+				kind = "del/mod C";
+			} else {
+				kind = "del/same";
+			}
+		} else if (ebase) {
+			name = ebase->name;
+			kind = "del/del";
+		} else {
+			break;
+		}
+
+		printf("%10s %s\n", kind, name);
 	}
 }
 
@@ -215,6 +315,9 @@ int cmd_nmerge(int argc, const char **argv, const char *unused_prefix)
 
 	printf("diff_index_index\n");
 	diff_index_index(&the_index, &result);
+
+	printf("diff_tree_index_index\n");
+	diff_tree_index_index(head_sha1, &the_index, &result);
 
 	write_to_index(&result);
 
