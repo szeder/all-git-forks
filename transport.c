@@ -740,10 +740,12 @@ void transport_print_push_status(const char *dest, struct ref *refs,
 		    ref->status != REF_STATUS_OK)
 			n += print_one_push_status(ref, dest, n, porcelain);
 		if (ref->status == REF_STATUS_REJECT_NONFASTFORWARD) {
+			if (!ref->forwardable)
+				*reject_mask |= REJECT_ALREADY_EXISTS;
 			if (!strcmp(head, ref->name))
-				*reject_mask |= NON_FF_HEAD;
+				*reject_mask |= REJECT_NON_FF_HEAD;
 			else
-				*reject_mask |= NON_FF_OTHER;
+				*reject_mask |= REJECT_NON_FF_OTHER;
 		}
 	}
 }
