@@ -222,8 +222,7 @@ static const char message_advice_checkout_pull_push[] =
 
 static const char message_advice_ref_already_exists[] =
 	N_("Updates were rejected because a matching reference already exists in\n"
-	   "the remote and the update is not a fast-forward.  Use git push -f if\n"
-	   "you really want to make this update.");
+	   "the remote.  Use git push -f if you really want to make this update.");
 
 static void advise_pull_before_push(void)
 {
