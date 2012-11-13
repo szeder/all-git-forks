@@ -1672,13 +1672,15 @@ proc parsecommit {id contents listed} {
     foreach line [split $header "\n"] {
 	set line [split $line " "]
 	set tag [lindex $line 0]
-	if {$tag == "author"} {
-	    set audate [lrange $line end-1 end]
-	    set auname [join [lrange $line 1 end-2] " "]
-	} elseif {$tag == "committer"} {
-	    set comdate [lrange $line end-1 end]
-	    set comname [join [lrange $line 1 end-2] " "]
-	}
+        if {$tag == "author"} {
+            regexp -lineanchor {\nauthor([^<]*)<([^>]*)>\s+([^\s]+)\s+([^\s]+)} $header all auname email audate timezone
+            set auname [string trim $auname]
+            set auname "$auname <$email>"
+        } elseif {$tag == "committer"} {
+            regexp -lineanchor {\ncommitter([^<]*)<([^>]*)>\s+([^\s]+)\s+([^\s]+)} $header all comname email comdate timezone
+            set comname [string trim $comname]
+            set comname "$comname <$email>"
+        }
     }
     set headline {}
     # take the first non-blank line of the comment as the headline
