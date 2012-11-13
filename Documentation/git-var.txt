@@ -9,11 +9,16 @@ git-var - Show a git logical variable
 SYNOPSIS
 --------
 [verse]
-'git var' ( -l | <variable> )
+'git var' ( -l | <variable>... )
 
 DESCRIPTION
 -----------
-Prints a git logical variable.
+Prints one or more git logical variables, separated by newlines.
+
+Note that some variables may contain newlines themselves (e.g.,
+`GIT_EDITOR`), and it is therefore possible to receive ambiguous output
+when requesting multiple variables. This can be mitigated by putting any
+such variables at the end of the list.
 
 OPTIONS
 -------
