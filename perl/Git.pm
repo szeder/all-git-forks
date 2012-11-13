@@ -737,7 +737,7 @@ sub remote_refs {
 }
 
 
-=item ident ( TYPE | IDENTSTR )
+=item ident ( TYPE | IDENTSTR [, options] )
 
 =item ident_person ( TYPE | IDENTSTR | IDENTARRAY )
 
@@ -749,6 +749,10 @@ The C<ident> method retrieves the ident information from C<git var>
 and either returns it as a scalar string or as an array with the fields parsed.
 Alternatively, it can take a prepared ident string (e.g. from the commit
 object) and just parse it.
+
+If the C<explicit> option is set to 1, the returned array will contain an
+additional boolean specifying whether the ident was configured explicitly by
+the user.
 
 C<ident_person> returns the person part of the ident - name and email;
 it can take the same arguments as C<ident> or the array returned by C<ident>.
@@ -763,17 +767,22 @@ The synopsis is like:
 =cut
 
 sub ident {
-	my ($self, $type) = _maybe_self(@_);
-	my $identstr;
+	my ($self, $type, %options) = _maybe_self(@_);
+	my ($identstr, $explicit);
 	if (lc $type eq lc 'committer' or lc $type eq lc 'author') {
-		my @cmd = ('var', 'GIT_'.uc($type).'_IDENT');
+		my $uc = uc($type);
+		my @cmd = ('var', "GIT_${uc}_IDENT", "GIT_${uc}_EXPLICIT");
 		unshift @cmd, $self if $self;
-		$identstr = command_oneline(@cmd);
+		($identstr, $explicit) = command(@cmd);
 	} else {
 		$identstr = $type;
 	}
 	if (wantarray) {
-		return $identstr =~ /^(.*) <(.*)> (\d+ [+-]\d{4})$/;
+		my @ret = $identstr =~ /^(.*) <(.*)> (\d+ [+-]\d{4})$/;
+		if ($options{explicit} && defined $explicit) {
+			push @ret, $explicit;
+		}
+		return @ret;
 	} else {
 		return $identstr;
 	}
@@ -781,8 +790,11 @@ sub ident {
 
 sub ident_person {
 	my ($self, @ident) = _maybe_self(@_);
-	$#ident == 0 and @ident = $self ? $self->ident($ident[0]) : ident($ident[0]);
-	return "$ident[0] <$ident[1]>";
+	$#ident == 0 and @ident = $self ?
+				  $self->ident($ident[0], explicit => 1) :
+				  ident($ident[0], explicit => 1);
+	my $ret = "$ident[0] <$ident[1]>";
+	return wantarray ? ($ret, @ident[3]) : $ret;
 }
 
 
