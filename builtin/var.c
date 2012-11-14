@@ -26,13 +26,40 @@ static const char *pager(int flag)
 	return pgm;
 }
 
+static const char *explicit_ident(const char * (*get_ident)(int),
+				  int (*check_ident)(void))
+{
+	/*
+	 * Prime the "explicit" flag by getting the identity.
+	 * We do not want to be strict here, because we would not want
+	 * to die on bogus implicit values, but instead just report that they
+	 * are not explicit.
+	 */
+	get_ident(0);
+	return check_ident() ? "1" : "0";
+}
+
+static const char *committer_explicit(int flag)
+{
+	return explicit_ident(git_committer_info,
+			      committer_ident_sufficiently_given);
+}
+
+static const char *author_explicit(int flag)
+{
+	return explicit_ident(git_author_info,
+			      author_ident_sufficiently_given);
+}
+
 struct git_var {
 	const char *name;
 	const char *(*read)(int);
 };
 static struct git_var git_vars[] = {
 	{ "GIT_COMMITTER_IDENT", git_committer_info },
+	{ "GIT_COMMITTER_EXPLICIT", committer_explicit },
 	{ "GIT_AUTHOR_IDENT",   git_author_info },
+	{ "GIT_AUTHOR_EXPLICIT", author_explicit },
 	{ "GIT_EDITOR", editor },
 	{ "GIT_PAGER", pager },
 	{ "", NULL },
@@ -73,8 +100,7 @@ static int show_config(const char *var, const char *value, void *cb)
 
 int cmd_var(int argc, const char **argv, const char *prefix)
 {
-	const char *val = NULL;
-	if (argc != 2)
+	if (argc < 2)
 		usage(var_usage);
 
 	if (strcmp(argv[1], "-l") == 0) {
@@ -83,11 +109,13 @@ int cmd_var(int argc, const char **argv, const char *prefix)
 		return 0;
 	}
 	git_config(git_default_config, NULL);
-	val = read_var(argv[1]);
-	if (!val)
-		usage(var_usage);
 
-	printf("%s\n", val);
+	while (*++argv) {
+		const char *val = read_var(*argv);
+		if (!val)
+			usage(var_usage);
+		printf("%s\n", val);
+	}
 
 	return 0;
 }
