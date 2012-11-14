@@ -114,7 +114,7 @@ msgstr ""
 
 #: archive.c:346 builtin/archive.c:95 builtin/notes.c:619
 msgid "command"
-msgstr ""
+msgstr "komut"
 
 #: archive.c:347 builtin/archive.c:96
 msgid "path to the remote git-upload-archive command"
@@ -133,7 +133,7 @@ msgstr ""
 #: bundle.c:89 builtin/commit.c:672
 #, c-format
 msgid "could not open '%s'"
-msgstr ""
+msgstr "'%s' açılamadı"
 
 #: bundle.c:140
 msgid "Repository lacks these prerequisite commits:"
@@ -234,15 +234,15 @@ msgstr ""
 #, c-format
 msgid "%lu second ago"
 msgid_plural "%lu seconds ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%lu saniye önce"
+msgstr[1] "%lu saniye önce"
 
 #: date.c:108
 #, c-format
 msgid "%lu minute ago"
 msgid_plural "%lu minutes ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%lu dakika önce"
+msgstr[1] "%lu dakika önce"
 
 #: date.c:115
 #, c-format
