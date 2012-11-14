@@ -1305,6 +1305,8 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 	struct ref *ref;
 
 	for (ref = remote_refs; ref; ref = ref->next) {
+		int force_ref_update = ref->force || force_update;
+
 		if (ref->peer_ref)
 			hashcpy(ref->new_sha1, ref->peer_ref->new_sha1);
 		else if (!send_mirror)
@@ -1336,15 +1338,35 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 		 *     always allowed.
 		 */
 
-		ref->nonfastforward =
-			!ref->deletion &&
-			!is_null_sha1(ref->old_sha1) &&
-			(!has_sha1_file(ref->old_sha1)
-			  || !ref_newer(ref->new_sha1, ref->old_sha1));
+		if (prefixcmp(ref->name, "refs/tags/")) {
+			struct object *old = parse_object(ref->old_sha1);
+			struct object *new = parse_object(ref->new_sha1);
+			ref->forwardable = (old && new &&
+			  old->type == OBJ_COMMIT && new->type == OBJ_COMMIT);
+		}
 
-		if (ref->nonfastforward && !ref->force && !force_update) {
-			ref->status = REF_STATUS_REJECT_NONFASTFORWARD;
-			continue;
+		ref->update =
+			!ref->deletion &&
+			!is_null_sha1(ref->old_sha1);
+
+		if (ref->update) {
+			ref->nonfastforward =
+				!has_sha1_file(ref->old_sha1)
+				  || !ref_newer(ref->new_sha1, ref->old_sha1);
+
+			if (!ref->forwardable) {
+				ref->requires_force = 1;
+				if (!force_ref_update) {
+					ref->status = REF_STATUS_REJECT_ALREADY_EXISTS;
+					continue;
+				}
+			} else if (ref->nonfastforward) {
+				ref->requires_force = 1;
+				if (!force_ref_update) {
+					ref->status = REF_STATUS_REJECT_NONFASTFORWARD;
+					continue;
+				}
+			}
 		}
 	}
 }
