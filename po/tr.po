@@ -1,22 +1,22 @@
-# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
-#, fuzzy
+# tes, 2012.
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
+"Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2012-10-16 08:38+0800\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"PO-Revision-Date: 2012-11-14 20:00+0200\n"
+"Last-Translator: tes\n"
+"Language-Team: Turkish <kde-i18n-doc@kde.org>\n"
+"Language: tr\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<"
+"=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+"X-Generator: Lokalize 1.4\n"
 
 #: advice.c:40
 #, c-format
@@ -151,6 +151,7 @@ msgid "The bundle contains %d ref"
 msgid_plural "The bundle contains %d refs"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: bundle.c:192
 msgid "The bundle records a complete history."
@@ -162,6 +163,7 @@ msgid "The bundle requires this ref"
 msgid_plural "The bundle requires these %d refs"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: bundle.c:294
 msgid "rev-list died"
@@ -236,6 +238,7 @@ msgid "%lu second ago"
 msgid_plural "%lu seconds ago"
 msgstr[0] "%lu saniye önce"
 msgstr[1] "%lu saniye önce"
+msgstr[2] "%lu saniye önce"
 
 #: date.c:108
 #, c-format
@@ -243,41 +246,47 @@ msgid "%lu minute ago"
 msgid_plural "%lu minutes ago"
 msgstr[0] "%lu dakika önce"
 msgstr[1] "%lu dakika önce"
+msgstr[2] "%lu dakika önce"
 
 #: date.c:115
 #, c-format
 msgid "%lu hour ago"
 msgid_plural "%lu hours ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%lu saat önce"
+msgstr[1] "%lu saat önce"
+msgstr[2] "%lu saat önce"
 
 #: date.c:122
 #, c-format
 msgid "%lu day ago"
 msgid_plural "%lu days ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%lu gün önce"
+msgstr[1] "%lu gün önce"
+msgstr[2] "%lu gün önce"
 
 #: date.c:128
 #, c-format
 msgid "%lu week ago"
 msgid_plural "%lu weeks ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%lu hafta önce"
+msgstr[1] "%lu hafta önce"
+msgstr[2] "%lu hafta önce"
 
 #: date.c:135
 #, c-format
 msgid "%lu month ago"
 msgid_plural "%lu months ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%lu ay önce"
+msgstr[1] "%lu ay önce"
+msgstr[2] "%lu ay önce"
 
 #: date.c:146
 #, c-format
 msgid "%lu year"
 msgid_plural "%lu years"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%lu yıl"
+msgstr[1] "%lu yıl"
+msgstr[2] "%lu yıl"
 
 #: date.c:149
 #, c-format
@@ -285,13 +294,15 @@ msgid "%s, %lu month ago"
 msgid_plural "%s, %lu months ago"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: date.c:154 date.c:159
 #, c-format
 msgid "%lu year ago"
 msgid_plural "%lu years ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%lu yıl önce"
+msgstr[1] "%lu yıl önce"
+msgstr[2] "%lu yıl önce"
 
 #: diff.c:105
 #, c-format
@@ -337,7 +348,7 @@ msgstr ""
 #: grep.c:1458
 #, c-format
 msgid "'%s': %s"
-msgstr ""
+msgstr "'%s': %s"
 
 #: grep.c:1469
 #, c-format
@@ -390,6 +401,7 @@ msgid_plural ""
 "Did you mean one of these?"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: merge-recursive.c:190
 #, c-format
@@ -623,6 +635,7 @@ msgid "found %u common ancestor:"
 msgid_plural "found %u common ancestors:"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: merge-recursive.c:1940
 msgid "merge returned no commit"
@@ -651,12 +664,12 @@ msgstr ""
 #: parse-options.c:516
 #, c-format
 msgid "   or: %s"
-msgstr ""
+msgstr "   veya: %s"
 
 #: parse-options.c:519
 #, c-format
 msgid "    %s"
-msgstr ""
+msgstr "    %s"
 
 #: remote.c:1632
 #, c-format
@@ -664,6 +677,7 @@ msgid "Your branch is ahead of '%s' by %d commit.\n"
 msgid_plural "Your branch is ahead of '%s' by %d commits.\n"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: remote.c:1638
 #, c-format
@@ -672,6 +686,7 @@ msgid_plural ""
 "Your branch is behind '%s' by %d commits, and can be fast-forwarded.\n"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: remote.c:1646
 #, c-format
@@ -683,6 +698,7 @@ msgid_plural ""
 "and have %d and %d different commits each, respectively.\n"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: sequencer.c:123 builtin/merge.c:864 builtin/merge.c:977
 #: builtin/merge.c:1087 builtin/merge.c:1097
@@ -1085,7 +1101,7 @@ msgstr ""
 #: wt-status.c:321
 #, c-format
 msgid "unknown:    %s"
-msgstr ""
+msgstr "bilinmiyor:    %s"
 
 #: wt-status.c:324
 #, c-format
@@ -1519,6 +1535,7 @@ msgid_plural ""
 "components (line %d)"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: builtin/apply.c:1654
 msgid "new file depends on old contents"
@@ -1589,6 +1606,7 @@ msgid "Hunk #%d succeeded at %d (offset %d line)."
 msgid_plural "Hunk #%d succeeded at %d (offset %d lines)."
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: builtin/apply.c:2801
 #, c-format
@@ -1645,7 +1663,7 @@ msgstr ""
 #: builtin/apply.c:3241 builtin/apply.c:3384 builtin/apply.c:3406
 #, c-format
 msgid "%s: %s"
-msgstr ""
+msgstr "%s: %s"
 
 #: builtin/apply.c:3246 builtin/apply.c:3400
 #, c-format
@@ -1752,6 +1770,7 @@ msgid "Applying patch %%s with %d reject..."
 msgid_plural "Applying patch %%s with %d rejects..."
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: builtin/apply.c:3997
 #, c-format
@@ -1912,6 +1931,7 @@ msgid "squelched %d whitespace error"
 msgid_plural "squelched %d whitespace errors"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: builtin/apply.c:4431 builtin/apply.c:4441
 #, c-format
@@ -1919,6 +1939,7 @@ msgid "%d line adds whitespace errors."
 msgid_plural "%d lines add whitespace errors."
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: builtin/archive.c:17
 #, c-format
@@ -2624,6 +2645,7 @@ msgid_plural ""
 "%s\n"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: builtin/checkout.c:700
 #, c-format
@@ -2738,7 +2760,7 @@ msgstr ""
 
 #: builtin/checkout.c:1026 builtin/log.c:1111 parse-options.h:241
 msgid "style"
-msgstr ""
+msgstr "stil"
 
 #: builtin/checkout.c:1027
 msgid "conflict style (merge or diff3)"
@@ -3622,7 +3644,7 @@ msgstr ""
 
 #: builtin/config.c:57
 msgid "Action"
-msgstr ""
+msgstr "Eylem"
 
 #: builtin/config.c:58
 msgid "get value: name [value-regex]"
@@ -4171,7 +4193,7 @@ msgstr ""
 
 #: builtin/fmt-merge-msg.c:660
 msgid "text"
-msgstr ""
+msgstr "metin"
 
 #: builtin/fmt-merge-msg.c:661
 msgid "use <text> as start of message"
@@ -4667,6 +4689,7 @@ msgid "cannot fill %d byte"
 msgid_plural "cannot fill %d bytes"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: builtin/index-pack.c:237
 msgid "early EOF"
@@ -4736,6 +4759,7 @@ msgid "premature end of pack file, %lu byte missing"
 msgid_plural "premature end of pack file, %lu bytes missing"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: builtin/index-pack.c:558
 msgid "serious inflate inconsistency"
@@ -4834,6 +4858,7 @@ msgid "pack has %d unresolved delta"
 msgid_plural "pack has %d unresolved deltas"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: builtin/index-pack.c:1150
 #, c-format
@@ -4898,6 +4923,7 @@ msgid "non delta: %d object"
 msgid_plural "non delta: %d objects"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: builtin/index-pack.c:1455
 #, c-format
@@ -4905,6 +4931,7 @@ msgid "chain length = %d: %lu object"
 msgid_plural "chain length = %d: %lu objects"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: builtin/index-pack.c:1482
 msgid "Cannot come back to cwd"
@@ -5268,7 +5295,7 @@ msgstr ""
 
 #: builtin/log.c:1114
 msgid "signature"
-msgstr ""
+msgstr "imza"
 
 #: builtin/log.c:1115
 msgid "add a signature"
@@ -5528,7 +5555,7 @@ msgstr ""
 
 #: builtin/merge.c:202 builtin/notes.c:870 builtin/revert.c:112
 msgid "strategy"
-msgstr ""
+msgstr "strateji"
 
 #: builtin/merge.c:203
 msgid "merge strategy to use"
@@ -7008,6 +7035,7 @@ msgid_plural ""
 "to delete them, use:"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: builtin/remote.c:943
 #, c-format
@@ -7134,6 +7162,7 @@ msgid "  Remote branch:%s"
 msgid_plural "  Remote branches:%s"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: builtin/remote.c:1154 builtin/remote.c:1181
 msgid " (status not queried)"
@@ -7144,6 +7173,7 @@ msgid "  Local branch configured for 'git pull':"
 msgid_plural "  Local branches configured for 'git pull':"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: builtin/remote.c:1171
 msgid "  Local refs will be mirrored by 'git push'"
@@ -7155,6 +7185,7 @@ msgid "  Local ref configured for 'git push'%s:"
 msgid_plural "  Local refs configured for 'git push'%s:"
 msgstr[0] ""
 msgstr[1] ""
+msgstr[2] ""
 
 #: builtin/remote.c:1199
 msgid "set refs/remotes/<name>/HEAD according to remote"
@@ -7996,7 +8027,7 @@ msgstr ""
 
 #: builtin/update-index.c:745
 msgid "(+/-)x"
-msgstr ""
+msgstr "(+/-)x"
 
 #: builtin/update-index.c:746
 msgid "override the executable bit of the listed files"
@@ -8974,3 +9005,4 @@ msgstr ""
 #, sh-format
 msgid "Synchronizing submodule url for '$name'"
 msgstr ""
+
