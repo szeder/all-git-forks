@@ -305,6 +305,12 @@ all::
 #   DEFAULT_EDITOR='$GIT_FALLBACK_EDITOR',
 #   DEFAULT_EDITOR='"C:\Program Files\Vim\gvim.exe" --nofork'
 #
+# You can define DEFAULT_DOC_TARGET to something other than "all" to change it
+# from the built-in default of generating manpages and htmldocs.  e.g.
+#
+#   DEFAULT_DOC_TARGET='man html info pdf'
+#   DEFAULT_DOC_TARGET='html'
+#
 # Define COMPUTE_HEADER_DEPENDENCIES to "yes" if you want dependencies on
 # header files to be automatically computed, to avoid rebuilding objects when
 # an unrelated header file changes.  Define it to "no" to use the hard-coded
@@ -1516,6 +1522,8 @@ ifneq (,$(SOCKLEN_T))
 	BASIC_CFLAGS += -Dsocklen_t=$(SOCKLEN_T)
 endif
 
+DEFAULT_DOC_TARGET ?= all
+
 ifeq ($(uname_S),Darwin)
 	ifndef NO_FINK
 		ifeq ($(shell test -d /sw/lib && echo y),y)
@@ -2499,7 +2507,7 @@ $(XDIFF_LIB): $(XDIFF_OBJS)
 $(VCSSVN_LIB): $(VCSSVN_OBJS)
 	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $(VCSSVN_OBJS)
 
-export DEFAULT_EDITOR DEFAULT_PAGER
+export DEFAULT_EDITOR DEFAULT_PAGER DEFAULT_DOC_TARGET
 
 doc:
 	$(MAKE) -C Documentation all
