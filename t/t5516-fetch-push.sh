@@ -368,7 +368,7 @@ test_expect_success 'push with colon-less refspec (2)' '
 		git branch -D frotz
 	fi &&
 	git tag -f frotz &&
-	git push testrepo frotz &&
+	git push -f testrepo frotz &&
 	check_push_result $the_commit tags/frotz &&
 	check_push_result $the_first_commit heads/frotz
 
@@ -926,6 +926,34 @@ test_expect_success 'push into aliased refs (inconsistent)' '
 		git branch bar &&
 		test_must_fail git push ../child1 foo bar 2>stderr &&
 		grep "refusing inconsistent update" stderr
+	)
+'
+
+test_expect_success 'push tag requires --force to update remote tag' '
+	mk_test heads/master &&
+	mk_child child1 &&
+	mk_child child2 &&
+	(
+		cd child1 &&
+		git tag lw_tag &&
+		git tag -a -m "message 1" ann_tag &&
+		git push ../child2 lw_tag &&
+		git push ../child2 ann_tag &&
+		>file1 &&
+		git add file1 &&
+		git commit -m "file1" &&
+		git tag -f lw_tag &&
+		git tag -f -a -m "message 2" ann_tag &&
+		test_must_fail git push ../child2 lw_tag &&
+		test_must_fail git push ../child2 ann_tag &&
+		git push --force ../child2 lw_tag &&
+		git push --force ../child2 ann_tag &&
+		git tag -f lw_tag HEAD~ &&
+		git tag -f -a -m "message 3" ann_tag &&
+		test_must_fail git push ../child2 lw_tag &&
+		test_must_fail git push ../child2 ann_tag &&
+		git push --force ../child2 lw_tag &&
+		git push --force ../child2 ann_tag
 	)
 '
 
