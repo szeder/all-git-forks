@@ -615,8 +615,10 @@ static void import_marks(char *input_file)
 			die("corrupt mark line: %s", line);
 
 		object = parse_object(sha1);
-		if (!object)
-			die ("Could not read blob %s", sha1_to_hex(sha1));
+		if (!object) {
+			warning("Could not read blob %s", sha1_to_hex(sha1));
+			continue;
+		}
 
 		if (object->flags & SHOWN)
 			error("Object %s already has a mark", sha1_to_hex(sha1));
