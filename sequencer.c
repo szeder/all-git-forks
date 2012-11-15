@@ -1058,21 +1058,95 @@ static int ends_rfc2822_footer(struct strbuf *sb, int ignore_footer)
 	return 1;
 }
 
+/*
+ * Search for "^[-A-Za-z]+: [^@]+@" pattern. It usually matches
+ * Signed-off-by: and Acked-by: lines.
+ */
+static int detect_any_signoff(char *letter, int size)
+{
+	char *cp;
+	int seen_colon = 0;
+	int seen_at = 0;
+	int seen_name = 0;
+	int seen_head = 0;
+
+	cp = letter + size;
+	while (letter <= --cp && *cp == '\n')
+		continue;
+
+	while (letter <= cp) {
+		char ch = *cp--;
+		if (ch == '\n')
+			break;
+
+		if (!seen_at) {
+			if (ch == '@')
+				seen_at = 1;
+			continue;
+		}
+		if (!seen_colon) {
+			if (ch == '@')
+				return 0;
+			else if (ch == ':')
+				seen_colon = 1;
+			else
+				seen_name = 1;
+			continue;
+		}
+		if (('A' <= ch && ch <= 'Z') ||
+		    ('a' <= ch && ch <= 'z') ||
+		    ch == '-') {
+			seen_head = 1;
+			continue;
+		}
+		/* no empty last line doesn't match */
+		return 0;
+	}
+	return seen_head && seen_name;
+}
+
 void append_signoff(struct strbuf *msgbuf, int ignore_footer)
 {
 	struct strbuf sob = STRBUF_INIT;
-	int i;
+	const char *cp;
+	int i, has_signoff = 0;
+	int signoff_header_len = strlen(sign_off_header);
 
 	strbuf_addstr(&sob, sign_off_header);
 	strbuf_addstr(&sob, fmt_name(getenv("GIT_COMMITTER_NAME"),
 				getenv("GIT_COMMITTER_EMAIL")));
-	strbuf_addch(&sob, '\n');
 	for (i = msgbuf->len - 1 - ignore_footer; i > 0 && msgbuf->buf[i - 1] != '\n'; i--)
 		; /* do nothing */
-	if (prefixcmp(msgbuf->buf + i, sob.buf)) {
-		if (!i || !ends_rfc2822_footer(msgbuf, ignore_footer))
-			strbuf_splice(msgbuf, msgbuf->len - ignore_footer, 0, "\n", 1);
-		strbuf_splice(msgbuf, msgbuf->len - ignore_footer, 0, sob.buf, sob.len);
+
+	/* First see if we already have the sign-off by the signer */
+	cp = msgbuf->buf;
+	while ((cp = strstr(cp, sign_off_header)) &&
+	       cp + signoff_header_len < msgbuf->buf + msgbuf->len - ignore_footer) {
+
+		if (cp > msgbuf->buf && cp[-1] != '\n' && cp[-1] != '\r') {
+			/*
+			 * Signed-off-by: found in the middle of the
+			 * commit message is not really a sign off
+			 */
+			cp += signoff_header_len;
+			continue;
+		}
+		has_signoff = 1;
+
+	       if (cp + sob.len >= msgbuf->buf + msgbuf->len)
+		       break;
+	       if (!strncmp(cp, sob.buf, sob.len) && isspace(cp[sob.len]))
+		       return;	/* we already have him */
+	       cp += signoff_header_len;
 	}
+
+	if (!has_signoff)
+		has_signoff = detect_any_signoff(msgbuf->buf,
+						 msgbuf->len - ignore_footer);
+
+	if (!i || (!has_signoff && !ends_rfc2822_footer(msgbuf, ignore_footer)))
+		strbuf_splice(msgbuf, msgbuf->len - ignore_footer, 0, "\n", 1);
+	strbuf_addch(&sob, '\n');
+	strbuf_splice(msgbuf, msgbuf->len - ignore_footer, 0, sob.buf, sob.len);
 	strbuf_release(&sob);
 }
