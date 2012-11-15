@@ -9,11 +9,16 @@ git-var - Show a git logical variable
 SYNOPSIS
 --------
 [verse]
-'git var' ( -l | <variable> )
+'git var' ( -l | <variable>... )
 
 DESCRIPTION
 -----------
-Prints a git logical variable.
+Prints one or more git logical variables, separated by newlines.
+
+Note that some variables may contain newlines themselves (e.g.,
+`GIT_EDITOR`), and it is therefore possible to receive ambiguous output
+when requesting multiple variables. This can be mitigated by putting any
+such variables at the end of the list.
 
 OPTIONS
 -------
@@ -34,8 +39,16 @@ VARIABLES
 GIT_AUTHOR_IDENT::
     The author of a piece of code.
 
+GIT_AUTHOR_EXPLICIT::
+    Outputs "1" if the author identity was provided explicitly by the
+    user (in the config or environment), or "0" if it was determined
+    implicitly from the system.
+
 GIT_COMMITTER_IDENT::
     The person who put a piece of code into git.
+
+GIT_COMMITTER_EXPLICIT::
+    Like GIT_AUTHOR_EXPLICIT, but for the committer ident.
 
 GIT_EDITOR::
     Text editor for use by git commands.  The value is meant to be
