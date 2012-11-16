@@ -15,6 +15,7 @@
 #include "sigchain.h"
 #include "submodule.h"
 #include "ll-merge.h"
+#include "string-list.h"
 
 #ifdef NO_FAST_WORKING_DIRECTORY
 #define FAST_WORKING_DIRECTORY 0
@@ -26,6 +27,7 @@ static int diff_detect_rename_default;
 static int diff_rename_limit_default = 400;
 static int diff_suppress_blank_empty;
 static int diff_use_color_default = -1;
+static int diff_context_default = 3;
 static const char *diff_word_regex_cfg;
 static const char *external_diff_cmd_cfg;
 int diff_auto_refresh_index = 1;
@@ -68,26 +70,30 @@ static int parse_diff_color_slot(const char *var, int ofs)
 	return -1;
 }
 
-static int parse_dirstat_params(struct diff_options *options, const char *params,
+static int parse_dirstat_params(struct diff_options *options, const char *params_string,
 				struct strbuf *errmsg)
 {
-	const char *p = params;
-	int p_len, ret = 0;
+	char *params_copy = xstrdup(params_string);
+	struct string_list params = STRING_LIST_INIT_NODUP;
+	int ret = 0;
+	int i;
 
-	while (*p) {
-		p_len = strchrnul(p, ',') - p;
-		if (!memcmp(p, "changes", p_len)) {
+	if (*params_copy)
+		string_list_split_in_place(&params, params_copy, ',', -1);
+	for (i = 0; i < params.nr; i++) {
+		const char *p = params.items[i].string;
+		if (!strcmp(p, "changes")) {
 			DIFF_OPT_CLR(options, DIRSTAT_BY_LINE);
 			DIFF_OPT_CLR(options, DIRSTAT_BY_FILE);
-		} else if (!memcmp(p, "lines", p_len)) {
+		} else if (!strcmp(p, "lines")) {
 			DIFF_OPT_SET(options, DIRSTAT_BY_LINE);
 			DIFF_OPT_CLR(options, DIRSTAT_BY_FILE);
-		} else if (!memcmp(p, "files", p_len)) {
+		} else if (!strcmp(p, "files")) {
 			DIFF_OPT_CLR(options, DIRSTAT_BY_LINE);
 			DIFF_OPT_SET(options, DIRSTAT_BY_FILE);
-		} else if (!memcmp(p, "noncumulative", p_len)) {
+		} else if (!strcmp(p, "noncumulative")) {
 			DIFF_OPT_CLR(options, DIRSTAT_CUMULATIVE);
-		} else if (!memcmp(p, "cumulative", p_len)) {
+		} else if (!strcmp(p, "cumulative")) {
 			DIFF_OPT_SET(options, DIRSTAT_CUMULATIVE);
 		} else if (isdigit(*p)) {
 			char *end;
@@ -99,24 +105,21 @@ static int parse_dirstat_params(struct diff_options *options, const char *params
 				while (isdigit(*++end))
 					; /* nothing */
 			}
-			if (end - p == p_len)
+			if (!*end)
 				options->dirstat_permille = permille;
 			else {
-				strbuf_addf(errmsg, _("  Failed to parse dirstat cut-off percentage '%.*s'\n"),
-					    p_len, p);
+				strbuf_addf(errmsg, _("  Failed to parse dirstat cut-off percentage '%s'\n"),
+					    p);
 				ret++;
 			}
 		} else {
-			strbuf_addf(errmsg, _("  Unknown dirstat parameter '%.*s'\n"),
-				    p_len, p);
+			strbuf_addf(errmsg, _("  Unknown dirstat parameter '%s'\n"), p);
 			ret++;
 		}
 
-		p += p_len;
-
-		if (*p)
-			p++; /* more parameters, swallow separator */
 	}
+	string_list_clear(&params, 0);
+	free(params_copy);
 	return ret;
 }
 
@@ -139,6 +142,12 @@ int git_diff_ui_config(const char *var, const char *value, void *cb)
 {
 	if (!strcmp(var, "diff.color") || !strcmp(var, "color.diff")) {
 		diff_use_color_default = git_config_colorbool(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "diff.context")) {
+		diff_context_default = git_config_int(var, value);
+		if (diff_context_default < 0)
+			return -1;
 		return 0;
 	}
 	if (!strcmp(var, "diff.renames")) {
@@ -3170,7 +3179,7 @@ void diff_setup(struct diff_options *options)
 	options->break_opt = -1;
 	options->rename_limit = -1;
 	options->dirstat_permille = diff_dirstat_permille_default;
-	options->context = 3;
+	options->context = diff_context_default;
 	DIFF_OPT_SET(options, RENAME_EMPTY);
 
 	options->change = diff_change;
@@ -4870,4 +4879,20 @@ size_t fill_textconv(struct userdiff_driver *driver,
 	}
 
 	return size;
+}
+
+void setup_diff_pager(struct diff_options *opt)
+{
+	/*
+	 * If the user asked for our exit code, then either they want --quiet
+	 * or --exit-code. We should definitely not bother with a pager in the
+	 * former case, as we will generate no output. Since we still properly
+	 * report our exit code even when a pager is run, we _could_ run a
+	 * pager with --exit-code. But since we have not done so historically,
+	 * and because it is easy to find people oneline advising "git diff
+	 * --exit-code" in hooks and other scripts, we do not do so.
+	 */
+	if (!DIFF_OPT_TST(opt, EXIT_WITH_STATUS) &&
+	    check_pager_config("diff") != 0)
+		setup_pager();
 }
