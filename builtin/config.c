@@ -4,7 +4,7 @@
 #include "parse-options.h"
 
 static const char *const builtin_config_usage[] = {
-	"git config [options]",
+	N_("git config [options]"),
 	NULL
 };
 
@@ -49,33 +49,33 @@ static int respect_includes = -1;
 #define TYPE_PATH (1<<3)
 
 static struct option builtin_config_options[] = {
-	OPT_GROUP("Config file location"),
-	OPT_BOOLEAN(0, "global", &use_global_config, "use global config file"),
-	OPT_BOOLEAN(0, "system", &use_system_config, "use system config file"),
-	OPT_BOOLEAN(0, "local", &use_local_config, "use repository config file"),
-	OPT_STRING('f', "file", &given_config_file, "file", "use given config file"),
-	OPT_GROUP("Action"),
-	OPT_BIT(0, "get", &actions, "get value: name [value-regex]", ACTION_GET),
-	OPT_BIT(0, "get-all", &actions, "get all values: key [value-regex]", ACTION_GET_ALL),
-	OPT_BIT(0, "get-regexp", &actions, "get values for regexp: name-regex [value-regex]", ACTION_GET_REGEXP),
-	OPT_BIT(0, "replace-all", &actions, "replace all matching variables: name value [value_regex]", ACTION_REPLACE_ALL),
-	OPT_BIT(0, "add", &actions, "adds a new variable: name value", ACTION_ADD),
-	OPT_BIT(0, "unset", &actions, "removes a variable: name [value-regex]", ACTION_UNSET),
-	OPT_BIT(0, "unset-all", &actions, "removes all matches: name [value-regex]", ACTION_UNSET_ALL),
-	OPT_BIT(0, "rename-section", &actions, "rename section: old-name new-name", ACTION_RENAME_SECTION),
-	OPT_BIT(0, "remove-section", &actions, "remove a section: name", ACTION_REMOVE_SECTION),
-	OPT_BIT('l', "list", &actions, "list all", ACTION_LIST),
-	OPT_BIT('e', "edit", &actions, "opens an editor", ACTION_EDIT),
-	OPT_STRING(0, "get-color", &get_color_slot, "slot", "find the color configured: [default]"),
-	OPT_STRING(0, "get-colorbool", &get_colorbool_slot, "slot", "find the color setting: [stdout-is-tty]"),
-	OPT_GROUP("Type"),
-	OPT_BIT(0, "bool", &types, "value is \"true\" or \"false\"", TYPE_BOOL),
-	OPT_BIT(0, "int", &types, "value is decimal number", TYPE_INT),
-	OPT_BIT(0, "bool-or-int", &types, "value is --bool or --int", TYPE_BOOL_OR_INT),
-	OPT_BIT(0, "path", &types, "value is a path (file or directory name)", TYPE_PATH),
-	OPT_GROUP("Other"),
-	OPT_BOOLEAN('z', "null", &end_null, "terminate values with NUL byte"),
-	OPT_BOOL(0, "includes", &respect_includes, "respect include directives on lookup"),
+	OPT_GROUP(N_("Config file location")),
+	OPT_BOOLEAN(0, "global", &use_global_config, N_("use global config file")),
+	OPT_BOOLEAN(0, "system", &use_system_config, N_("use system config file")),
+	OPT_BOOLEAN(0, "local", &use_local_config, N_("use repository config file")),
+	OPT_STRING('f', "file", &given_config_file, N_("file"), N_("use given config file")),
+	OPT_GROUP(N_("Action")),
+	OPT_BIT(0, "get", &actions, N_("get value: name [value-regex]"), ACTION_GET),
+	OPT_BIT(0, "get-all", &actions, N_("get all values: key [value-regex]"), ACTION_GET_ALL),
+	OPT_BIT(0, "get-regexp", &actions, N_("get values for regexp: name-regex [value-regex]"), ACTION_GET_REGEXP),
+	OPT_BIT(0, "replace-all", &actions, N_("replace all matching variables: name value [value_regex]"), ACTION_REPLACE_ALL),
+	OPT_BIT(0, "add", &actions, N_("add a new variable: name value"), ACTION_ADD),
+	OPT_BIT(0, "unset", &actions, N_("remove a variable: name [value-regex]"), ACTION_UNSET),
+	OPT_BIT(0, "unset-all", &actions, N_("remove all matches: name [value-regex]"), ACTION_UNSET_ALL),
+	OPT_BIT(0, "rename-section", &actions, N_("rename section: old-name new-name"), ACTION_RENAME_SECTION),
+	OPT_BIT(0, "remove-section", &actions, N_("remove a section: name"), ACTION_REMOVE_SECTION),
+	OPT_BIT('l', "list", &actions, N_("list all"), ACTION_LIST),
+	OPT_BIT('e', "edit", &actions, N_("open an editor"), ACTION_EDIT),
+	OPT_STRING(0, "get-color", &get_color_slot, N_("slot"), N_("find the color configured: [default]")),
+	OPT_STRING(0, "get-colorbool", &get_colorbool_slot, N_("slot"), N_("find the color setting: [stdout-is-tty]")),
+	OPT_GROUP(N_("Type")),
+	OPT_BIT(0, "bool", &types, N_("value is \"true\" or \"false\""), TYPE_BOOL),
+	OPT_BIT(0, "int", &types, N_("value is decimal number"), TYPE_INT),
+	OPT_BIT(0, "bool-or-int", &types, N_("value is --bool or --int"), TYPE_BOOL_OR_INT),
+	OPT_BIT(0, "path", &types, N_("value is a path (file or directory name)"), TYPE_PATH),
+	OPT_GROUP(N_("Other")),
+	OPT_BOOLEAN('z', "null", &end_null, N_("terminate values with NUL byte")),
+	OPT_BOOL(0, "includes", &respect_includes, N_("respect include directives on lookup")),
 	OPT_END(),
 };
 
@@ -160,8 +160,8 @@ static int show_config(const char *key_, const char *value_, void *cb)
 
 static int get_value(const char *key_, const char *regex_)
 {
-	int ret = -1;
-	char *global = NULL, *repo_config = NULL;
+	int ret = CONFIG_GENERIC_ERROR;
+	char *global = NULL, *xdg = NULL, *repo_config = NULL;
 	const char *system_wide = NULL, *local;
 	struct config_include_data inc = CONFIG_INCLUDE_INIT;
 	config_fn_t fn;
@@ -169,12 +169,10 @@ static int get_value(const char *key_, const char *regex_)
 
 	local = given_config_file;
 	if (!local) {
-		const char *home = getenv("HOME");
 		local = repo_config = git_pathdup("config");
-		if (home)
-			global = xstrdup(mkpath("%s/.gitconfig", home));
 		if (git_config_system())
 			system_wide = git_etc_gitconfig();
+		home_config_paths(&global, &xdg, "config");
 	}
 
 	if (use_key_regexp) {
@@ -198,11 +196,14 @@ static int get_value(const char *key_, const char *regex_)
 		if (regcomp(key_regexp, key, REG_EXTENDED)) {
 			fprintf(stderr, "Invalid key pattern: %s\n", key_);
 			free(key);
+			ret = CONFIG_INVALID_PATTERN;
 			goto free_strings;
 		}
 	} else {
-		if (git_config_parse_key(key_, &key, NULL))
+		if (git_config_parse_key(key_, &key, NULL)) {
+			ret = CONFIG_INVALID_KEY;
 			goto free_strings;
+		}
 	}
 
 	if (regex_) {
@@ -214,6 +215,7 @@ static int get_value(const char *key_, const char *regex_)
 		regexp = (regex_t*)xmalloc(sizeof(regex_t));
 		if (regcomp(regexp, regex_, REG_EXTENDED)) {
 			fprintf(stderr, "Invalid pattern: %s\n", regex_);
+			ret = CONFIG_INVALID_PATTERN;
 			goto free_strings;
 		}
 	}
@@ -229,6 +231,8 @@ static int get_value(const char *key_, const char *regex_)
 
 	if (do_all && system_wide)
 		git_config_from_file(fn, system_wide, data);
+	if (do_all && xdg)
+		git_config_from_file(fn, xdg, data);
 	if (do_all && global)
 		git_config_from_file(fn, global, data);
 	if (do_all)
@@ -238,6 +242,8 @@ static int get_value(const char *key_, const char *regex_)
 		git_config_from_file(fn, local, data);
 	if (!do_all && !seen && global)
 		git_config_from_file(fn, global, data);
+	if (!do_all && !seen && xdg)
+		git_config_from_file(fn, xdg, data);
 	if (!do_all && !seen && system_wide)
 		git_config_from_file(fn, system_wide, data);
 
@@ -255,6 +261,7 @@ static int get_value(const char *key_, const char *regex_)
 free_strings:
 	free(repo_config);
 	free(global);
+	free(xdg);
 	return ret;
 }
 
@@ -379,13 +386,25 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 	}
 
 	if (use_global_config) {
-		char *home = getenv("HOME");
-		if (home) {
-			char *user_config = xstrdup(mkpath("%s/.gitconfig", home));
-			given_config_file = user_config;
-		} else {
+		char *user_config = NULL;
+		char *xdg_config = NULL;
+
+		home_config_paths(&user_config, &xdg_config, "config");
+
+		if (!user_config)
+			/*
+			 * It is unknown if HOME/.gitconfig exists, so
+			 * we do not know if we should write to XDG
+			 * location; error out even if XDG_CONFIG_HOME
+			 * is set and points at a sane location.
+			 */
 			die("$HOME not set");
-		}
+
+		if (access_or_warn(user_config, R_OK) &&
+		    xdg_config && !access_or_warn(xdg_config, R_OK))
+			given_config_file = xdg_config;
+		else
+			given_config_file = user_config;
 	}
 	else if (use_system_config)
 		given_config_file = git_etc_gitconfig();

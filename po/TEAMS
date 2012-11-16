@@ -17,7 +17,8 @@ Leader:		Ævar Arnfjörð Bjarmason <avarab@gmail.com>
 
 Language:	it (Italian)
 Repository:	https://github.com/quizzlo/git-po-it/
-Leader:		Marco Paolone <marcopaolone@gmail.com>
+Leader:		Marco Paolone <marcopaolone AT gmail.com>
+Members:	Stefano Lattarini <stefano.lattarini AT gmail.com>
 
 Language:	nl (Dutch)
 Repository:	https://github.com/vfr-nl/git-po/
@@ -32,8 +33,9 @@ Repository:	https://github.com/nafmo/git-l10n-sv/
 Leader:		Peter Krefting <peter@softwolves.pp.se>
 
 Language:	vi (Vietnamese)
-Repository:	https://github.com/vnwildman/git.git
+Repository:	https://github.com/vnwildman/git/
 Leader:		Trần Ngọc Quân <vnwildman AT gmail.com>
+Members:	Nguyễn Thái Ngọc Duy <pclouds AT gmail.com>
 
 Language:	zh_CN (Simplified Chinese)
 Repository:	https://github.com/gotgit/git-po-zh_CN/

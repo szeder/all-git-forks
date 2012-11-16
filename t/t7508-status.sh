@@ -80,7 +80,7 @@ test_expect_success 'status --column' '
 #	dir1/untracked dir2/untracked untracked
 #	dir2/modified  output
 EOF
-	test_cmp expect output
+	test_i18ncmp expect output
 '
 
 cat >expect <<\EOF
@@ -941,7 +941,7 @@ test_expect_success 'status -s submodule summary (clean submodule)' '
 
 test_expect_success 'status -z implies porcelain' '
 	git status --porcelain |
-	perl -pe "s/\012/\000/g" >expect &&
+	"$PERL_PATH" -pe "s/\012/\000/g" >expect &&
 	git status -z >output &&
 	test_cmp expect output
 '

@@ -16,7 +16,7 @@
 #include "bulk-checkin.h"
 
 static const char * const builtin_add_usage[] = {
-	"git add [options] [--] <filepattern>...",
+	N_("git add [options] [--] <filepattern>..."),
 	NULL
 };
 static int patch_interactive, add_interactive, edit_interactive;
@@ -260,7 +260,7 @@ int interactive_add(int argc, const char **argv, const char *prefix, int patch)
 
 static int edit_patch(int argc, const char **argv, const char *prefix)
 {
-	char *file = xstrdup(git_path("ADD_EDIT.patch"));
+	char *file = git_pathdup("ADD_EDIT.patch");
 	const char *apply_argv[] = { "apply", "--recount", "--cached",
 		NULL, NULL };
 	struct child_process child;
@@ -281,7 +281,7 @@ static int edit_patch(int argc, const char **argv, const char *prefix)
 	argc = setup_revisions(argc, argv, &rev, NULL);
 	rev.diffopt.output_format = DIFF_FORMAT_PATCH;
 	DIFF_OPT_SET(&rev.diffopt, IGNORE_DIRTY_SUBMODULES);
-	out = open(file, O_CREAT | O_WRONLY, 0644);
+	out = open(file, O_CREAT | O_WRONLY, 0666);
 	if (out < 0)
 		die (_("Could not open '%s' for writing."), file);
 	rev.diffopt.file = xfdopen(out, "w");
@@ -303,6 +303,7 @@ static int edit_patch(int argc, const char **argv, const char *prefix)
 		die (_("Could not apply '%s'"), file);
 
 	unlink(file);
+	free(file);
 	return 0;
 }
 
@@ -315,19 +316,19 @@ static int verbose = 0, show_only = 0, ignored_too = 0, refresh_only = 0;
 static int ignore_add_errors, addremove, intent_to_add, ignore_missing = 0;
 
 static struct option builtin_add_options[] = {
-	OPT__DRY_RUN(&show_only, "dry run"),
-	OPT__VERBOSE(&verbose, "be verbose"),
+	OPT__DRY_RUN(&show_only, N_("dry run")),
+	OPT__VERBOSE(&verbose, N_("be verbose")),
 	OPT_GROUP(""),
-	OPT_BOOLEAN('i', "interactive", &add_interactive, "interactive picking"),
-	OPT_BOOLEAN('p', "patch", &patch_interactive, "select hunks interactively"),
-	OPT_BOOLEAN('e', "edit", &edit_interactive, "edit current diff and apply"),
-	OPT__FORCE(&ignored_too, "allow adding otherwise ignored files"),
-	OPT_BOOLEAN('u', "update", &take_worktree_changes, "update tracked files"),
-	OPT_BOOLEAN('N', "intent-to-add", &intent_to_add, "record only the fact that the path will be added later"),
-	OPT_BOOLEAN('A', "all", &addremove, "add changes from all tracked and untracked files"),
-	OPT_BOOLEAN( 0 , "refresh", &refresh_only, "don't add, only refresh the index"),
-	OPT_BOOLEAN( 0 , "ignore-errors", &ignore_add_errors, "just skip files which cannot be added because of errors"),
-	OPT_BOOLEAN( 0 , "ignore-missing", &ignore_missing, "check if - even missing - files are ignored in dry run"),
+	OPT_BOOLEAN('i', "interactive", &add_interactive, N_("interactive picking")),
+	OPT_BOOLEAN('p', "patch", &patch_interactive, N_("select hunks interactively")),
+	OPT_BOOLEAN('e', "edit", &edit_interactive, N_("edit current diff and apply")),
+	OPT__FORCE(&ignored_too, N_("allow adding otherwise ignored files")),
+	OPT_BOOLEAN('u', "update", &take_worktree_changes, N_("update tracked files")),
+	OPT_BOOLEAN('N', "intent-to-add", &intent_to_add, N_("record only the fact that the path will be added later")),
+	OPT_BOOLEAN('A', "all", &addremove, N_("add changes from all tracked and untracked files")),
+	OPT_BOOLEAN( 0 , "refresh", &refresh_only, N_("don't add, only refresh the index")),
+	OPT_BOOLEAN( 0 , "ignore-errors", &ignore_add_errors, N_("just skip files which cannot be added because of errors")),
+	OPT_BOOLEAN( 0 , "ignore-missing", &ignore_missing, N_("check if - even missing - files are ignored in dry run")),
 	OPT_END(),
 };
 
@@ -443,6 +444,9 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 
 	if (pathspec) {
 		int i;
+		struct path_exclude_check check;
+
+		path_exclude_check_init(&check, &dir);
 		if (!seen)
 			seen = find_used_pathspec(pathspec);
 		for (i = 0; pathspec[i]; i++) {
@@ -450,7 +454,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 			    && !file_exists(pathspec[i])) {
 				if (ignore_missing) {
 					int dtype = DT_UNKNOWN;
-					if (excluded(&dir, pathspec[i], &dtype))
+					if (path_excluded(&check, pathspec[i], -1, &dtype))
 						dir_add_ignored(&dir, pathspec[i], strlen(pathspec[i]));
 				} else
 					die(_("pathspec '%s' did not match any files"),
@@ -458,6 +462,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 			}
 		}
 		free(seen);
+		path_exclude_check_clear(&check);
 	}
 
 	plug_bulk_checkin();

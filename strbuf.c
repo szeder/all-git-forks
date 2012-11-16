@@ -44,7 +44,9 @@ void strbuf_release(struct strbuf *sb)
 
 char *strbuf_detach(struct strbuf *sb, size_t *sz)
 {
-	char *res = sb->alloc ? sb->buf : NULL;
+	char *res;
+	strbuf_grow(sb, 0);
+	res = sb->buf;
 	if (sz)
 		*sz = sb->len;
 	strbuf_init(sb, 0);
@@ -104,35 +106,30 @@ void strbuf_ltrim(struct strbuf *sb)
 	sb->buf[sb->len] = '\0';
 }
 
-struct strbuf **strbuf_split_buf(const char *str, size_t slen, int delim, int max)
+struct strbuf **strbuf_split_buf(const char *str, size_t slen,
+				 int terminator, int max)
 {
-	int alloc = 2, pos = 0;
-	const char *n, *p;
-	struct strbuf **ret;
+	struct strbuf **ret = NULL;
+	size_t nr = 0, alloc = 0;
 	struct strbuf *t;
 
-	ret = xcalloc(alloc, sizeof(struct strbuf *));
-	p = n = str;
-	while (n < str + slen) {
-		int len;
-		if (max <= 0 || pos + 1 < max)
-			n = memchr(n, delim, slen - (n - str));
-		else
-			n = NULL;
-		if (pos + 1 >= alloc) {
-			alloc = alloc * 2;
-			ret = xrealloc(ret, sizeof(struct strbuf *) * alloc);
+	while (slen) {
+		int len = slen;
+		if (max <= 0 || nr + 1 < max) {
+			const char *end = memchr(str, terminator, slen);
+			if (end)
+				len = end - str + 1;
 		}
-		if (!n)
-			n = str + slen - 1;
-		len = n - p + 1;
 		t = xmalloc(sizeof(struct strbuf));
 		strbuf_init(t, len);
-		strbuf_add(t, p, len);
-		ret[pos] = t;
-		ret[++pos] = NULL;
-		p = ++n;
+		strbuf_add(t, str, len);
+		ALLOC_GROW(ret, nr + 2, alloc);
+		ret[nr++] = t;
+		str += len;
+		slen -= len;
 	}
+	ALLOC_GROW(ret, nr + 1, alloc); /* In case string was empty */
+	ret[nr] = NULL;
 	return ret;
 }
 
@@ -445,8 +442,8 @@ static int is_rfc3986_unreserved(char ch)
 		ch == '-' || ch == '_' || ch == '.' || ch == '~';
 }
 
-void strbuf_add_urlencode(struct strbuf *sb, const char *s, size_t len,
-			  int reserved)
+static void strbuf_add_urlencode(struct strbuf *sb, const char *s, size_t len,
+				 int reserved)
 {
 	strbuf_grow(sb, len);
 	while (len--) {
@@ -463,15 +460,6 @@ void strbuf_addstr_urlencode(struct strbuf *sb, const char *s,
 			     int reserved)
 {
 	strbuf_add_urlencode(sb, s, strlen(s), reserved);
-}
-
-void strbuf_addf_ln(struct strbuf *sb, const char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-	strbuf_vaddf(sb, fmt, ap);
-	va_end(ap);
-	strbuf_addch(sb, '\n');
 }
 
 int printf_ln(const char *fmt, ...)

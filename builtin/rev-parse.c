@@ -195,6 +195,12 @@ static int anti_reference(const char *refname, const unsigned char *sha1, int fl
 	return 0;
 }
 
+static int show_abbrev(const unsigned char *sha1, void *cb_data)
+{
+	show_rev(NORMAL, sha1, NULL);
+	return 0;
+}
+
 static void show_datestring(const char *flag, const char *datestr)
 {
 	static char buffer[100];
@@ -224,6 +230,7 @@ static int try_difference(const char *arg)
 	const char *next;
 	const char *this;
 	int symmetric;
+	static const char head_by_default[] = "HEAD";
 
 	if (!(dotdot = strstr(arg, "..")))
 		return 0;
@@ -235,10 +242,21 @@ static int try_difference(const char *arg)
 	next += symmetric;
 
 	if (!*next)
-		next = "HEAD";
+		next = head_by_default;
 	if (dotdot == arg)
-		this = "HEAD";
-	if (!get_sha1(this, sha1) && !get_sha1(next, end)) {
+		this = head_by_default;
+
+	if (this == head_by_default && next == head_by_default &&
+	    !symmetric) {
+		/*
+		 * Just ".."?  That is not a range but the
+		 * pathspec for the parent directory.
+		 */
+		*dotdot = '.';
+		return 0;
+	}
+
+	if (!get_sha1_committish(this, sha1) && !get_sha1_committish(next, end)) {
 		show_rev(NORMAL, end, next);
 		show_rev(symmetric ? NORMAL : REVERSED, sha1, this);
 		if (symmetric) {
@@ -278,7 +296,7 @@ static int try_parent_shorthands(const char *arg)
 		return 0;
 
 	*dotdot = 0;
-	if (get_sha1(arg, sha1))
+	if (get_sha1_committish(arg, sha1))
 		return 0;
 
 	if (!parents_only)
@@ -318,15 +336,15 @@ static int cmd_parseopt(int argc, const char **argv, const char *prefix)
 {
 	static int keep_dashdash = 0, stop_at_non_option = 0;
 	static char const * const parseopt_usage[] = {
-		"git rev-parse --parseopt [options] -- [<args>...]",
+		N_("git rev-parse --parseopt [options] -- [<args>...]"),
 		NULL
 	};
 	static struct option parseopt_opts[] = {
 		OPT_BOOLEAN(0, "keep-dashdash", &keep_dashdash,
-					"keep the `--` passed as an arg"),
+					N_("keep the `--` passed as an arg")),
 		OPT_BOOLEAN(0, "stop-at-non-option", &stop_at_non_option,
-					"stop parsing after the "
-					"first non-option argument"),
+					N_("stop parsing after the "
+					   "first non-option argument")),
 		OPT_END(),
 	};
 
@@ -443,11 +461,11 @@ static void die_no_single_rev(int quiet)
 }
 
 static const char builtin_rev_parse_usage[] =
-"git rev-parse --parseopt [options] -- [<args>...]\n"
-"   or: git rev-parse --sq-quote [<arg>...]\n"
-"   or: git rev-parse [options] [<arg>...]\n"
-"\n"
-"Run \"git rev-parse --parseopt -h\" for more information on the first usage.";
+N_("git rev-parse --parseopt [options] -- [<args>...]\n"
+   "   or: git rev-parse --sq-quote [<arg>...]\n"
+   "   or: git rev-parse [options] [<arg>...]\n"
+   "\n"
+   "Run \"git rev-parse --parseopt -h\" for more information on the first usage.");
 
 int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 {
@@ -486,7 +504,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 
 		if (as_is) {
 			if (show_file(arg) && as_is < 2)
-				verify_filename(prefix, arg);
+				verify_filename(prefix, arg, 0);
 			continue;
 		}
 		if (!strcmp(arg,"-n")) {
@@ -587,6 +605,10 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 			}
 			if (!strcmp(arg, "--all")) {
 				for_each_ref(show_reference, NULL);
+				continue;
+			}
+			if (!prefixcmp(arg, "--disambiguate=")) {
+				for_each_abbrev(arg + 15, show_abbrev, NULL);
 				continue;
 			}
 			if (!strcmp(arg, "--bisect")) {
@@ -734,7 +756,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 		as_is = 1;
 		if (!show_file(arg))
 			continue;
-		verify_filename(prefix, arg);
+		verify_filename(prefix, arg, 1);
 	}
 	if (verify) {
 		if (revs_count == 1) {

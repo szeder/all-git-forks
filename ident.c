@@ -93,7 +93,7 @@ static void copy_email(const struct passwd *pw, struct strbuf *email)
 	add_domainname(email);
 }
 
-const char *ident_default_name(void)
+static const char *ident_default_name(void)
 {
 	if (!git_default_name.len) {
 		copy_gecos(xgetpwuid_self(), &git_default_name);
@@ -117,7 +117,7 @@ const char *ident_default_email(void)
 	return git_default_email.buf;
 }
 
-const char *ident_default_date(void)
+static const char *ident_default_date(void)
 {
 	if (!git_default_date[0])
 		datestamp(git_default_date, sizeof(git_default_date));
@@ -210,8 +210,10 @@ int split_ident_line(struct ident_split *split, const char *line, int len)
 			split->name_end = cp + 1;
 			break;
 		}
-	if (!split->name_end)
-		return status;
+	if (!split->name_end) {
+		/* no human readable name */
+		split->name_end = split->name_begin;
+	}
 
 	for (cp = split->mail_begin; cp < line + len; cp++)
 		if (*cp == '>') {

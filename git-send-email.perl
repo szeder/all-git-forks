@@ -56,6 +56,7 @@ git send-email [options] <file | directory | rev-list options >
     --in-reply-to           <str>  * Email "In-Reply-To:"
     --annotate                     * Review each patch that will be sent in an editor.
     --compose                      * Open an editor for introduction.
+    --compose-encoding      <str>  * Encoding to assume for introduction.
     --8bit-encoding         <str>  * Encoding to assume 8bit mails if undeclared
 
   Sending:
@@ -198,6 +199,7 @@ my ($identity, $aliasfiletype, @alias_files, $smtp_domain);
 my ($validate, $confirm);
 my (@suppress_cc);
 my ($auto_8bit_encoding);
+my ($compose_encoding);
 
 my ($debug_net_smtp) = 0;		# Net::SMTP, see send_message()
 
@@ -231,6 +233,7 @@ my %config_settings = (
     "confirm"   => \$confirm,
     "from" => \$sender,
     "assume8bitencoding" => \$auto_8bit_encoding,
+    "composeencoding" => \$compose_encoding,
 );
 
 my %config_path_settings = (
@@ -315,6 +318,7 @@ my $rc = GetOptions("h" => \$help,
 		    "validate!" => \$validate,
 		    "format-patch!" => \$format_patch,
 		    "8bit-encoding=s" => \$auto_8bit_encoding,
+		    "compose-encoding=s" => \$compose_encoding,
 		    "force" => \$force,
 	 );
 
@@ -632,6 +636,9 @@ EOT
 	my $need_8bit_cte = file_has_nonascii($compose_filename);
 	my $in_body = 0;
 	my $summary_empty = 1;
+	if (!defined $compose_encoding) {
+		$compose_encoding = "UTF-8";
+	}
 	while(<$c>) {
 		next if m/^GIT:/;
 		if ($in_body) {
@@ -641,7 +648,7 @@ EOT
 			if ($need_8bit_cte) {
 				print $c2 "MIME-Version: 1.0\n",
 					 "Content-Type: text/plain; ",
-					   "charset=UTF-8\n",
+					   "charset=$compose_encoding\n",
 					 "Content-Transfer-Encoding: 8bit\n";
 			}
 		} elsif (/^MIME-Version:/i) {
@@ -650,9 +657,7 @@ EOT
 			$initial_subject = $1;
 			my $subject = $initial_subject;
 			$_ = "Subject: " .
-				($subject =~ /[^[:ascii:]]/ ?
-				 quote_rfc2047($subject) :
-				 $subject) .
+				quote_subject($subject, $compose_encoding) .
 				"\n";
 		} elsif (/^In-Reply-To:\s*(.+)\s*$/i) {
 			$initial_reply_to = $1;
@@ -681,6 +686,7 @@ sub ask {
 	my ($prompt, %arg) = @_;
 	my $valid_re = $arg{valid_re};
 	my $default = $arg{default};
+	my $confirm_only = $arg{confirm_only};
 	my $resp;
 	my $i = 0;
 	return defined $default ? $default : undef
@@ -697,6 +703,12 @@ sub ask {
 		}
 		if (!defined $valid_re or $resp =~ /$valid_re/) {
 			return $resp;
+		}
+		if ($confirm_only) {
+			my $yesno = $term->readline("Are you sure you want to use <$resp> [y/N]? ");
+			if (defined $yesno && $yesno =~ /y/i) {
+				return $resp;
+			}
 		}
 	}
 	return undef;
@@ -745,13 +757,16 @@ my $prompting = 0;
 if (!defined $sender) {
 	$sender = $repoauthor || $repocommitter || '';
 	$sender = ask("Who should the emails appear to be from? [$sender] ",
-	              default => $sender);
+	              default => $sender,
+		      valid_re => qr/\@.*\./, confirm_only => 1);
 	print "Emails will be sent from: ", $sender, "\n";
 	$prompting++;
 }
 
 if (!@initial_to && !defined $to_cmd) {
-	my $to = ask("Who should the emails be sent to? ");
+	my $to = ask("Who should the emails be sent to (if any)? ",
+		     default => "",
+		     valid_re => qr/\@.*\./, confirm_only => 1);
 	push @initial_to, parse_address_line($to) if defined $to; # sanitized/validated later
 	$prompting++;
 }
@@ -777,7 +792,9 @@ sub expand_one_alias {
 
 if ($thread && !defined $initial_reply_to && $prompting) {
 	$initial_reply_to = ask(
-		"Message-ID to be used as In-Reply-To for the first email? ");
+		"Message-ID to be used as In-Reply-To for the first email (if any)? ",
+		default => "",
+		valid_re => qr/\@.*\./, confirm_only => 1);
 }
 if (defined $initial_reply_to) {
 	$initial_reply_to =~ s/^\s*<?//;
@@ -862,11 +879,13 @@ $time = time - scalar $#files;
 sub unquote_rfc2047 {
 	local ($_) = @_;
 	my $encoding;
-	if (s/=\?([^?]+)\?q\?(.*)\?=/$2/g) {
+	s{=\?([^?]+)\?q\?(.*?)\?=}{
 		$encoding = $1;
-		s/_/ /g;
-		s/=([0-9A-F]{2})/chr(hex($1))/eg;
-	}
+		my $e = $2;
+		$e =~ s/_/ /g;
+		$e =~ s/=([0-9A-F]{2})/chr(hex($1))/eg;
+		$e;
+	}eg;
 	return wantarray ? ($_, $encoding) : $_;
 }
 
@@ -884,6 +903,22 @@ sub is_rfc2047_quoted {
 	my $encoded_text = qr/[!->@-~]+/;
 	length($s) <= 75 &&
 	$s =~ m/^(?:"[[:ascii:]]*"|=\?$token\?$token\?$encoded_text\?=)$/o;
+}
+
+sub subject_needs_rfc2047_quoting {
+	my $s = shift;
+
+	return ($s =~ /[^[:ascii:]]/) || ($s =~ /=\?/);
+}
+
+sub quote_subject {
+	local $subject = shift;
+	my $encoding = shift || 'UTF-8';
+
+	if (subject_needs_rfc2047_quoting($subject)) {
+		return quote_rfc2047($subject, $encoding);
+	}
+	return $subject;
 }
 
 # use the simplest quoting being able to handle the recipient
@@ -1307,7 +1342,7 @@ foreach my $t (@files) {
 	}
 
 	if ($broken_encoding{$t} && !is_rfc2047_quoted($subject)) {
-		$subject = quote_rfc2047($subject, $auto_8bit_encoding);
+		$subject = quote_subject($subject, $auto_8bit_encoding);
 	}
 
 	if (defined $author and $author ne $sender) {

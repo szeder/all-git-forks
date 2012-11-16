@@ -353,7 +353,7 @@ retry:
 
 		c = *text;
 		if (!c || isspace(c)) {
-			if (w < width || !space) {
+			if (w <= width || !space) {
 				const char *start = bol;
 				if (!c && text == start)
 					return w;
@@ -423,6 +423,13 @@ int is_encoding_utf8(const char *name)
 	return 0;
 }
 
+int same_encoding(const char *src, const char *dst)
+{
+	if (is_encoding_utf8(src) && is_encoding_utf8(dst))
+		return 1;
+	return !strcasecmp(src, dst);
+}
+
 /*
  * Given a buffer and its encoding, return it re-encoded
  * with iconv.  If the conversion fails, returns NULL.
@@ -433,19 +440,12 @@ int is_encoding_utf8(const char *name)
 #else
 	typedef char * iconv_ibp;
 #endif
-char *reencode_string(const char *in, const char *out_encoding, const char *in_encoding)
+char *reencode_string_iconv(const char *in, size_t insz, iconv_t conv)
 {
-	iconv_t conv;
-	size_t insz, outsz, outalloc;
+	size_t outsz, outalloc;
 	char *out, *outpos;
 	iconv_ibp cp;
 
-	if (!in_encoding)
-		return NULL;
-	conv = iconv_open(out_encoding, in_encoding);
-	if (conv == (iconv_t) -1)
-		return NULL;
-	insz = strlen(in);
 	outsz = insz;
 	outalloc = outsz + 1; /* for terminating NUL */
 	out = xmalloc(outalloc);
@@ -459,7 +459,6 @@ char *reencode_string(const char *in, const char *out_encoding, const char *in_e
 			size_t sofar;
 			if (errno != E2BIG) {
 				free(out);
-				iconv_close(conv);
 				return NULL;
 			}
 			/* insz has remaining number of bytes.
@@ -478,6 +477,20 @@ char *reencode_string(const char *in, const char *out_encoding, const char *in_e
 			break;
 		}
 	}
+	return out;
+}
+
+char *reencode_string(const char *in, const char *out_encoding, const char *in_encoding)
+{
+	iconv_t conv;
+	char *out;
+
+	if (!in_encoding)
+		return NULL;
+	conv = iconv_open(out_encoding, in_encoding);
+	if (conv == (iconv_t) -1)
+		return NULL;
+	out = reencode_string_iconv(in, strlen(in), conv);
 	iconv_close(conv);
 	return out;
 }

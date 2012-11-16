@@ -3,21 +3,9 @@
 # Copyright (c) 2012 Felipe Contreras
 #
 
-if test -n "$BASH" && test -z "$POSIXLY_CORRECT"; then
-	# we are in full-on bash mode
-	true
-elif type bash >/dev/null 2>&1; then
-	# execute in full-on bash mode
-	unset POSIXLY_CORRECT
-	exec bash "$0" "$@"
-else
-	echo '1..0 #SKIP skipping bash completion tests; bash not available'
-	exit 0
-fi
-
 test_description='test bash completion'
 
-. ./test-lib.sh
+. ./lib-bash.sh
 
 complete ()
 {
@@ -63,7 +51,7 @@ run_completion ()
 	local _cword
 	_words=( $1 )
 	(( _cword = ${#_words[@]} - 1 ))
-	__git_wrap_main_git && print_comp
+	__git_wrap__git_main && print_comp
 }
 
 test_completion ()
@@ -71,6 +59,15 @@ test_completion ()
 	test $# -gt 1 && echo "$2" > expected
 	run_completion "$@" &&
 	test_cmp expected out
+}
+
+# Like test_completion, but reads expectation from stdin,
+# which is convenient when it is multiline. We also process "_" into
+# spaces to make test vectors more readable.
+test_completion_long ()
+{
+	tr _ " " >expected &&
+	test_completion "$1"
 }
 
 newline=$'\n'
@@ -238,6 +235,62 @@ test_expect_success 'general options plus command' '
 	test_completion "git --paginate check" "checkout " &&
 	test_completion "git --info-path check" "checkout " &&
 	test_completion "git --no-replace-objects check" "checkout "
+'
+
+test_expect_success 'setup for ref completion' '
+	echo content >file1 &&
+	echo more >file2 &&
+	git add . &&
+	git commit -m one &&
+	git branch mybranch &&
+	git tag mytag
+'
+
+test_expect_success 'checkout completes ref names' '
+	test_completion_long "git checkout m" <<-\EOF
+	master_
+	mybranch_
+	mytag_
+	EOF
+'
+
+test_expect_success 'show completes all refs' '
+	test_completion_long "git show m" <<-\EOF
+	master_
+	mybranch_
+	mytag_
+	EOF
+'
+
+test_expect_success '<ref>: completes paths' '
+	test_completion_long "git show mytag:f" <<-\EOF
+	file1_
+	file2_
+	EOF
+'
+
+test_expect_success 'complete tree filename with spaces' '
+	echo content >"name with spaces" &&
+	git add . &&
+	git commit -m spaces &&
+	test_completion_long "git show HEAD:nam" <<-\EOF
+	name with spaces_
+	EOF
+'
+
+test_expect_failure 'complete tree filename with metacharacters' '
+	echo content >"name with \${meta}" &&
+	git add . &&
+	git commit -m meta &&
+	test_completion_long "git show HEAD:nam" <<-\EOF
+	name with ${meta}_
+	name with spaces_
+	EOF
+'
+
+test_expect_success 'send-email' '
+	test_completion "git send-email --cov" "--cover-letter " &&
+	test_completion "git send-email ma" "master "
 '
 
 test_done

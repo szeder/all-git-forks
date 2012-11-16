@@ -31,9 +31,7 @@ static int apply_delta(int argc, char *argv[])
 		die_errno("cannot close preimage");
 	if (buffer_deinit(&delta))
 		die_errno("cannot close delta");
-	buffer_reset(&preimage);
 	strbuf_release(&preimage_view.buf);
-	buffer_reset(&delta);
 	return 0;
 }
 
@@ -42,7 +40,7 @@ int main(int argc, char *argv[])
 	if (argc == 2) {
 		if (svndump_init(argv[1]))
 			return 1;
-		svndump_read(NULL);
+		svndump_read(NULL, "refs/heads/master", "refs/notes/svn/revs");
 		svndump_deinit();
 		svndump_reset();
 		return 0;

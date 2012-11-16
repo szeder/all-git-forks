@@ -11,6 +11,7 @@
 #include "list-objects.h"
 #include "run-command.h"
 #include "sigchain.h"
+#include "version.h"
 
 static const char upload_pack_usage[] = "git upload-pack [--strict] [--timeout=<n>] <dir>";
 
@@ -726,17 +727,14 @@ static int send_ref(const char *refname, const unsigned char *sha1, int flag, vo
 		" include-tag multi_ack_detailed";
 	struct object *o = lookup_unknown_object(sha1);
 	const char *refname_nons = strip_namespace(refname);
-
-	if (o->type == OBJ_NONE) {
-		o->type = sha1_object_info(sha1, NULL);
-		if (o->type < 0)
-		    die("git upload-pack: cannot find object %s:", sha1_to_hex(sha1));
-	}
+	unsigned char peeled[20];
 
 	if (capabilities)
-		packet_write(1, "%s %s%c%s%s\n", sha1_to_hex(sha1), refname_nons,
+		packet_write(1, "%s %s%c%s%s agent=%s\n",
+			     sha1_to_hex(sha1), refname_nons,
 			     0, capabilities,
-			     stateless_rpc ? " no-done" : "");
+			     stateless_rpc ? " no-done" : "",
+			     git_user_agent_sanitized());
 	else
 		packet_write(1, "%s %s\n", sha1_to_hex(sha1), refname_nons);
 	capabilities = NULL;
@@ -744,11 +742,8 @@ static int send_ref(const char *refname, const unsigned char *sha1, int flag, vo
 		o->flags |= OUR_REF;
 		nr_our_refs++;
 	}
-	if (o->type == OBJ_TAG) {
-		o = deref_tag_noverify(o);
-		if (o)
-			packet_write(1, "%s %s^{}\n", sha1_to_hex(o->sha1), refname_nons);
-	}
+	if (!peel_ref(refname, peeled))
+		packet_write(1, "%s %s^{}\n", sha1_to_hex(peeled), refname_nons);
 	return 0;
 }
 

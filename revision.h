@@ -41,6 +41,10 @@ struct rev_cmdline_info {
 	} *rev;
 };
 
+#define REVISION_WALK_WALK 0
+#define REVISION_WALK_NO_WALK_SORTED 1
+#define REVISION_WALK_NO_WALK_UNSORTED 2
+
 struct rev_info {
 	/* Starting list */
 	struct commit_list *commits;
@@ -62,7 +66,7 @@ struct rev_info {
 	/* Traversal flags */
 	unsigned int	dense:1,
 			prune:1,
-			no_walk:1,
+			no_walk:2,
 			show_all:1,
 			remove_empty_trees:1,
 			simplify_history:1,
@@ -107,6 +111,7 @@ struct rev_info {
 
 	/* Format info */
 	unsigned int	shown_one:1,
+			shown_dashes:1,
 			show_merge:1,
 			show_notes:1,
 			show_notes_given:1,
@@ -184,6 +189,7 @@ struct setup_revision_opt {
 	void (*tweak)(struct rev_info *, struct setup_revision_opt *);
 	const char *submodule;
 	int assume_dashdash;
+	unsigned revarg_opt;
 };
 
 extern void init_revisions(struct rev_info *revs, const char *prefix);
@@ -191,7 +197,9 @@ extern int setup_revisions(int argc, const char **argv, struct rev_info *revs, s
 extern void parse_revision_opt(struct rev_info *revs, struct parse_opt_ctx_t *ctx,
 				 const struct option *options,
 				 const char * const usagestr[]);
-extern int handle_revision_arg(const char *arg, struct rev_info *revs,int flags,int cant_be_filename);
+#define REVARG_CANNOT_BE_FILENAME 01
+#define REVARG_COMMITTISH 02
+extern int handle_revision_arg(const char *arg, struct rev_info *revs, int flags, unsigned revarg_opt);
 
 extern void reset_revision_walk(void);
 extern int prepare_revision_walk(struct rev_info *revs);

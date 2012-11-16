@@ -574,8 +574,7 @@ static void calculate_changed_submodule_paths(void)
 			DIFF_OPT_SET(&diff_opts, RECURSIVE);
 			diff_opts.output_format |= DIFF_FORMAT_CALLBACK;
 			diff_opts.format_callback = submodule_collect_changed_cb;
-			if (diff_setup_done(&diff_opts) < 0)
-				die("diff_setup_done failed");
+			diff_setup_done(&diff_opts);
 			diff_tree_sha1(parent->item->object.sha1, commit->object.sha1, "", &diff_opts);
 			diffcore_std(&diff_opts);
 			diff_flush(&diff_opts);
@@ -589,13 +588,13 @@ static void calculate_changed_submodule_paths(void)
 	initialized_fetch_ref_tips = 0;
 }
 
-int fetch_populated_submodules(int num_options, const char **options,
+int fetch_populated_submodules(const struct argv_array *options,
 			       const char *prefix, int command_line_option,
 			       int quiet)
 {
-	int i, result = 0, argc = 0, default_argc;
+	int i, result = 0;
 	struct child_process cp;
-	const char **argv;
+	struct argv_array argv = ARGV_ARRAY_INIT;
 	struct string_list_item *name_for_path;
 	const char *work_tree = get_git_work_tree();
 	if (!work_tree)
@@ -605,17 +604,13 @@ int fetch_populated_submodules(int num_options, const char **options,
 		if (read_cache() < 0)
 			die("index file corrupt");
 
-	/* 6: "fetch" (options) --recurse-submodules-default default "--submodule-prefix" prefix NULL */
-	argv = xcalloc(num_options + 6, sizeof(const char *));
-	argv[argc++] = "fetch";
-	for (i = 0; i < num_options; i++)
-		argv[argc++] = options[i];
-	argv[argc++] = "--recurse-submodules-default";
-	default_argc = argc++;
-	argv[argc++] = "--submodule-prefix";
+	argv_array_push(&argv, "fetch");
+	for (i = 0; i < options->argc; i++)
+		argv_array_push(&argv, options->argv[i]);
+	argv_array_push(&argv, "--recurse-submodules-default");
+	/* default value, "--submodule-prefix" and its value are added later */
 
 	memset(&cp, 0, sizeof(cp));
-	cp.argv = argv;
 	cp.env = local_repo_env;
 	cp.git_cmd = 1;
 	cp.no_stdin = 1;
@@ -675,16 +670,21 @@ int fetch_populated_submodules(int num_options, const char **options,
 			if (!quiet)
 				printf("Fetching submodule %s%s\n", prefix, ce->name);
 			cp.dir = submodule_path.buf;
-			argv[default_argc] = default_argv;
-			argv[argc] = submodule_prefix.buf;
+			argv_array_push(&argv, default_argv);
+			argv_array_push(&argv, "--submodule-prefix");
+			argv_array_push(&argv, submodule_prefix.buf);
+			cp.argv = argv.argv;
 			if (run_command(&cp))
 				result = 1;
+			argv_array_pop(&argv);
+			argv_array_pop(&argv);
+			argv_array_pop(&argv);
 		}
 		strbuf_release(&submodule_path);
 		strbuf_release(&submodule_git_dir);
 		strbuf_release(&submodule_prefix);
 	}
-	free(argv);
+	argv_array_clear(&argv);
 out:
 	string_list_clear(&changed_submodule_paths, 1);
 	return result;
@@ -759,6 +759,86 @@ unsigned is_submodule_modified(const char *path, int ignore_untracked)
 	return dirty_submodule;
 }
 
+int submodule_uses_gitfile(const char *path)
+{
+	struct child_process cp;
+	const char *argv[] = {
+		"submodule",
+		"foreach",
+		"--quiet",
+		"--recursive",
+		"test -f .git",
+		NULL,
+	};
+	struct strbuf buf = STRBUF_INIT;
+	const char *git_dir;
+
+	strbuf_addf(&buf, "%s/.git", path);
+	git_dir = read_gitfile(buf.buf);
+	if (!git_dir) {
+		strbuf_release(&buf);
+		return 0;
+	}
+	strbuf_release(&buf);
+
+	/* Now test that all nested submodules use a gitfile too */
+	memset(&cp, 0, sizeof(cp));
+	cp.argv = argv;
+	cp.env = local_repo_env;
+	cp.git_cmd = 1;
+	cp.no_stdin = 1;
+	cp.no_stderr = 1;
+	cp.no_stdout = 1;
+	cp.dir = path;
+	if (run_command(&cp))
+		return 0;
+
+	return 1;
+}
+
+int ok_to_remove_submodule(const char *path)
+{
+	struct stat st;
+	ssize_t len;
+	struct child_process cp;
+	const char *argv[] = {
+		"status",
+		"--porcelain",
+		"-u",
+		"--ignore-submodules=none",
+		NULL,
+	};
+	struct strbuf buf = STRBUF_INIT;
+	int ok_to_remove = 1;
+
+	if ((lstat(path, &st) < 0) || is_empty_dir(path))
+		return 1;
+
+	if (!submodule_uses_gitfile(path))
+		return 0;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.argv = argv;
+	cp.env = local_repo_env;
+	cp.git_cmd = 1;
+	cp.no_stdin = 1;
+	cp.out = -1;
+	cp.dir = path;
+	if (start_command(&cp))
+		die("Could not run 'git status --porcelain -uall --ignore-submodules=none' in submodule %s", path);
+
+	len = strbuf_read(&buf, cp.out, 1024);
+	if (len > 2)
+		ok_to_remove = 0;
+	close(cp.out);
+
+	if (finish_command(&cp))
+		die("'git status --porcelain -uall --ignore-submodules=none' failed in submodule %s", path);
+
+	strbuf_release(&buf);
+	return ok_to_remove;
+}
+
 static int find_first_merges(struct object_array *result, const char *path,
 		struct commit *a, struct commit *b)
 {
@@ -789,7 +869,7 @@ static int find_first_merges(struct object_array *result, const char *path,
 		die("revision walk setup failed");
 	while ((commit = get_revision(&revs)) != NULL) {
 		struct object *o = &(commit->object);
-		if (in_merge_bases(b, &commit, 1))
+		if (in_merge_bases(b, commit))
 			add_object_array(o, NULL, &merges);
 	}
 	reset_revision_walk();
@@ -804,7 +884,7 @@ static int find_first_merges(struct object_array *result, const char *path,
 		contains_another = 0;
 		for (j = 0; j < merges.nr; j++) {
 			struct commit *m2 = (struct commit *) merges.objects[j].item;
-			if (i != j && in_merge_bases(m2, &m1, 1)) {
+			if (i != j && in_merge_bases(m2, m1)) {
 				contains_another = 1;
 				break;
 			}
@@ -866,18 +946,18 @@ int merge_submodule(unsigned char result[20], const char *path,
 	}
 
 	/* check whether both changes are forward */
-	if (!in_merge_bases(commit_base, &commit_a, 1) ||
-	    !in_merge_bases(commit_base, &commit_b, 1)) {
+	if (!in_merge_bases(commit_base, commit_a) ||
+	    !in_merge_bases(commit_base, commit_b)) {
 		MERGE_WARNING(path, "commits don't follow merge-base");
 		return 0;
 	}
 
 	/* Case #1: a is contained in b or vice versa */
-	if (in_merge_bases(commit_a, &commit_b, 1)) {
+	if (in_merge_bases(commit_a, commit_b)) {
 		hashcpy(result, b);
 		return 1;
 	}
-	if (in_merge_bases(commit_b, &commit_a, 1)) {
+	if (in_merge_bases(commit_b, commit_a)) {
 		hashcpy(result, a);
 		return 1;
 	}

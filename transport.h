@@ -106,6 +106,7 @@ struct transport {
 #define TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND 256
 
 #define TRANSPORT_SUMMARY_WIDTH (2 * DEFAULT_ABBREV + 3)
+#define TRANSPORT_SUMMARY(x) (int)(TRANSPORT_SUMMARY_WIDTH + strlen(x) - gettext_width(x)), (x)
 
 /* Returns a transport suitable for the url */
 struct transport *transport_get(struct remote *, const char *);
@@ -174,4 +175,9 @@ void transport_print_push_status(const char *dest, struct ref *refs,
 typedef void alternate_ref_fn(const struct ref *, void *);
 extern void for_each_alternate_ref(alternate_ref_fn, void *);
 
+struct send_pack_args;
+extern int send_pack(struct send_pack_args *args,
+		     int fd[], struct child_process *conn,
+		     struct ref *remote_refs,
+		     struct extra_have_objects *extra_have);
 #endif
