@@ -1004,13 +1004,14 @@ struct ref {
 		requires_force:1,
 		merge:1,
 		nonfastforward:1,
-		is_a_tag:1,
+		forwardable:1,
 		update:1,
 		deletion:1;
 	enum {
 		REF_STATUS_NONE = 0,
 		REF_STATUS_OK,
 		REF_STATUS_REJECT_NONFASTFORWARD,
+		REF_STATUS_REJECT_ALREADY_EXISTS,
 		REF_STATUS_REJECT_NODELETE,
 		REF_STATUS_UPTODATE,
 		REF_STATUS_REMOTE_REJECT,

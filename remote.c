@@ -1311,14 +1311,24 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 		 *     to overwrite it; you would not know what you are losing
 		 *     otherwise.
 		 *
-		 * (3) if both new and old are commit-ish, and new is a
-		 *     descendant of old, it is OK.
+		 * (3) if new is commit-ish and old is a commit, new is a
+		 *     descendant of old, and the reference is not of the
+		 *     refs/tags/ hierarchy it is OK.
 		 *
 		 * (4) regardless of all of the above, removing :B is
 		 *     always allowed.
 		 */
 
-		ref->is_a_tag = !prefixcmp(ref->name, "refs/tags/");
+		if (prefixcmp(ref->name, "refs/tags/")) {
+			/* Additionally, disallow fast-forwarding if
+			 * the old object is not a commit.  This kicks
+			 * out annotated tags that might pass the
+			 * is_newer() test but dangle if the reference
+			 * is updated.
+			 */
+			struct object *obj = parse_object(ref->old_sha1);
+			ref->forwardable = !obj || obj->type == OBJ_COMMIT;
+		}
 
 		ref->update =
 			!ref->deletion &&
@@ -1329,7 +1339,13 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 				!has_sha1_file(ref->old_sha1)
 				  || !ref_newer(ref->new_sha1, ref->old_sha1);
 
-			if (ref->nonfastforward) {
+			if (!ref->forwardable) {
+				ref->requires_force = 1;
+				if (!force_ref_update) {
+					ref->status = REF_STATUS_REJECT_ALREADY_EXISTS;
+					continue;
+				}
+			} else if (ref->nonfastforward) {
 				ref->requires_force = 1;
 				if (!force_ref_update) {
 					ref->status = REF_STATUS_REJECT_NONFASTFORWARD;
