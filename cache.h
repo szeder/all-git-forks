@@ -1002,6 +1002,7 @@ struct ref {
 	unsigned int force:1,
 		merge:1,
 		nonfastforward:1,
+		is_a_tag:1,
 		deletion:1;
 	enum {
 		REF_STATUS_NONE = 0,

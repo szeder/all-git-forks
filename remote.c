@@ -1316,6 +1316,8 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 		 *     always allowed.
 		 */
 
+		ref->is_a_tag = !prefixcmp(ref->name, "refs/tags/");
+
 		ref->nonfastforward =
 			!ref->deletion &&
 			!is_null_sha1(ref->old_sha1) &&
