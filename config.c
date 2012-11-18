@@ -1433,6 +1433,7 @@ int git_config_set_multivar_in_file(const char *config_filename,
 		if ((store.seen == 0 && value == NULL) ||
 				(store.seen > 1 && multi_replace == 0)) {
 			ret = CONFIG_NOTHING_SET;
+			close(in_fd);
 			goto out_free;
 		}
 
