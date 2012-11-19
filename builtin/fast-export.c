@@ -483,7 +483,7 @@ static void get_tags_and_duplicates(struct object_array *pending,
 	for (i = 0; i < pending->nr; i++) {
 		struct object_array_entry *e = pending->objects + i;
 		unsigned char sha1[20];
-		struct commit *commit = commit;
+		struct commit *commit;
 		char *full_name;
 
 		if (dwim_ref(e->name, strlen(e->name), sha1, &full_name) != 1)
@@ -523,10 +523,16 @@ static void get_tags_and_duplicates(struct object_array *pending,
 				typename(e->item->type));
 			continue;
 		}
-		if (commit->util)
-			/* more than one name for the same object */
-			string_list_append(extra_refs, full_name)->util = commit;
-		else
+
+		/*
+		 * This ref will not be updated through a commit, lets make
+		 * sure it gets properly upddated eventually.
+		 */
+		if (commit->util || commit->object.flags & SHOWN)
+			if (!(commit->object.flags & UNINTERESTING))
+				string_list_append(extra_refs, full_name)->util = commit;
+
+		if (!commit->util)
 			commit->util = full_name;
 	}
 }
@@ -613,6 +619,10 @@ static void import_marks(char *input_file)
 
 		if (object->flags & SHOWN)
 			error("Object %s already has a mark", sha1_to_hex(sha1));
+
+		if (object->type != 1)
+			/* only commits */
+			continue;
 
 		mark_object(object, mark);
 		if (last_idnum < mark)
