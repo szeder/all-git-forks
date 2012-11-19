@@ -137,7 +137,8 @@ static int collect_config(const char *key_, const char *value_, void *cb)
 		else
 			sprintf(value, "%d", v);
 	} else if (types == TYPE_PATH) {
-		git_config_pathname(&vptr, key_, value_);
+		if (git_config_pathname(&vptr, key_, value_) < 0)
+			return -1;
 		must_free_vptr = 1;
 	} else if (value_) {
 		vptr = value_;
