@@ -146,4 +146,13 @@ extern int strcmp_icase(const char *a, const char *b);
 extern int strncmp_icase(const char *a, const char *b, size_t count);
 extern int fnmatch_icase(const char *pattern, const char *string, int flags);
 
+/*
+ * The prefix part of pattern must not contains wildcards.
+ */
+#define GF_PATHNAME 1
+#define GF_ONESTAR  2
+
+extern int git_fnmatch(const char *pattern, const char *string,
+		       int flags, int prefix);
+
 #endif
