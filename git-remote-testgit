@@ -21,7 +21,8 @@ mkdir -p "$dir"
 test -e "$gitmarks" || > "$gitmarks"
 test -e "$testgitmarks" || > "$testgitmarks"
 
-while read line; do
+while read line
+do
 	case $line in
 	capabilities)
 		echo 'import'
@@ -39,7 +40,8 @@ while read line; do
 		;;
 	import*)
 		# read all import lines
-		while true; do
+		while true
+		do
 			ref="${line#* }"
 			refs="$refs $ref"
 			read line
@@ -48,8 +50,9 @@ while read line; do
 
 		echo "feature import-marks=$gitmarks"
 		echo "feature export-marks=$gitmarks"
-		git fast-export --use-done-feature --{import,export}-marks="$testgitmarks" $refs | \
-			sed -e "s#refs/heads/#${prefix}/heads/#g"
+		git fast-export --use-done-feature \
+		    --{import,export}-marks="$testgitmarks" $refs |
+		sed -e "s#refs/heads/#${prefix}/heads/#g"
 		;;
 	export)
 		git fast-import --{import,export}-marks="$testgitmarks" --quiet
