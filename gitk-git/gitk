@@ -2544,6 +2544,7 @@ proc makewindow {} {
 	{mc "Compare with marked commit" command compare_commits}
 	{mc "Diff this -> marked commit" command {diffvsmark 0}}
 	{mc "Diff marked commit -> this" command {diffvsmark 1}}
+	{mc "Show" command show_commit}
     }
     $rowctxmenu configure -tearoff 0
 
@@ -8588,6 +8589,19 @@ proc compare_commits {} {
     if {![commitinview $markedid $curview]} return
     addtohistory [list do_cmp_commits $markedid $rowmenuid]
     do_cmp_commits $markedid $rowmenuid
+}
+
+proc show_commit {} {
+    global rowmenuid viewargs
+
+    # TODO Ensure editor screen is updated
+    # FIXME If no commits have been explicitly specified,
+	# HEAD is shown by gitk,
+	# but HEAD isn't shown after adding $rowmenuid.
+	# The fix would be to add HEAD to viewargs(1)
+	# if no commits have been explicitly specified.
+    set viewargs(1) "$viewargs(1) $rowmenuid"
+    run reloadcommits
 }
 
 proc getpatchid {id} {
