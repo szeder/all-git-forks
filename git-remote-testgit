@@ -20,12 +20,13 @@ export GIT_DIR="$url/.git"
 
 mkdir -p "$dir"
 
-if [ -z "$GIT_REMOTE_TESTGIT_NO_MARKS" ]; then
-	test -e "$gitmarks" || > "$gitmarks"
-	test -e "$testgitmarks" || > "$testgitmarks"
+if test -z "$GIT_REMOTE_TESTGIT_NO_MARKS"
+then
+	test -e "$gitmarks" || >"$gitmarks"
+	test -e "$testgitmarks" || >"$testgitmarks"
 else
-	> "$gitmarks"
-	> "$testgitmarks"
+	>"$gitmarks"
+	>"$testgitmarks"
 fi
 
 while read line
