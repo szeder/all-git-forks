@@ -440,9 +440,9 @@ test_expect_success 'fast-export quotes pathnames' '
 	)
 '
 
-test_expect_success 'test biridectionality' '
-	echo -n > marks-cur &&
-	echo -n > marks-new &&
+test_expect_success 'test bidirectionality' '
+	>marks-cur &&
+	>marks-new &&
 	git init marks-test &&
 	git fast-export --export-marks=marks-cur --import-marks=marks-cur --branches | \
 	git --git-dir=marks-test/.git fast-import --export-marks=marks-new --import-marks=marks-new &&
