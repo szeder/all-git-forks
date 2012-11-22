@@ -58,7 +58,7 @@ msgstr ""
 
 #: archive.c:322
 msgid "archive format"
-msgstr ""
+msgstr "arşiv biçimi"
 
 #: archive.c:323 builtin/log.c:1079
 msgid "prefix"
@@ -74,7 +74,7 @@ msgstr ""
 #: builtin/ls-files.c:494 builtin/ls-files.c:497 builtin/notes.c:540
 #: builtin/notes.c:697 builtin/read-tree.c:107 parse-options.h:149
 msgid "file"
-msgstr ""
+msgstr "dosya"
 
 #: archive.c:326 builtin/archive.c:92
 msgid "write the archive to this file"
@@ -292,8 +292,8 @@ msgstr[2] "%lu yıl"
 #, c-format
 msgid "%s, %lu month ago"
 msgid_plural "%s, %lu months ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%s, %lu ay önce"
+msgstr[1] "%s, %lu ay önce"
 msgstr[2] ""
 
 #: date.c:154 date.c:159
@@ -605,7 +605,7 @@ msgstr ""
 #: merge-recursive.c:1770
 #, c-format
 msgid "Adding %s"
-msgstr ""
+msgstr "%s ekleniyor"
 
 #: merge-recursive.c:1787
 msgid "Fatal merge failure, shouldn't happen."
@@ -657,7 +657,7 @@ msgstr ""
 #: parse-options.c:512
 #, c-format
 msgid "usage: %s"
-msgstr ""
+msgstr "kullanım: %s"
 
 #. TRANSLATORS: the colon here should align with the
 #. one in "usage: %s" translation
@@ -862,12 +862,12 @@ msgstr ""
 #: sequencer.c:715
 #, c-format
 msgid "Invalid key: %s"
-msgstr ""
+msgstr "Geçersiz anahtar: %s"
 
 #: sequencer.c:718
 #, c-format
 msgid "Invalid value for %s: %s"
-msgstr ""
+msgstr "%s için geçersiz değer"
 
 #: sequencer.c:730
 #, c-format
@@ -1071,22 +1071,22 @@ msgstr ""
 #: wt-status.c:303
 #, c-format
 msgid "new file:   %s"
-msgstr ""
+msgstr "yeni dosya:   %s"
 
 #: wt-status.c:306
 #, c-format
 msgid "copied:     %s -> %s"
-msgstr ""
+msgstr "kopyalandı:     %s -> %s"
 
 #: wt-status.c:309
 #, c-format
 msgid "deleted:    %s"
-msgstr ""
+msgstr "silindi:    %s"
 
 #: wt-status.c:312
 #, c-format
 msgid "modified:   %s"
-msgstr ""
+msgstr "değiştirildi:    %s"
 
 #: wt-status.c:315
 #, c-format
@@ -1866,7 +1866,7 @@ msgstr ""
 
 #: builtin/apply.c:4337
 msgid "action"
-msgstr ""
+msgstr "eylem"
 
 #: builtin/apply.c:4338
 msgid "detect new or modified lines that have whitespace errors"
@@ -2425,11 +2425,11 @@ msgstr ""
 
 #: builtin/cat-file.c:267
 msgid "show object type"
-msgstr ""
+msgstr "nesne türünü göster"
 
 #: builtin/cat-file.c:268
 msgid "show object size"
-msgstr ""
+msgstr "nesne boyutunu göster"
 
 #: builtin/cat-file.c:270
 msgid "exit with zero when there's no error"
@@ -2732,7 +2732,7 @@ msgstr ""
 
 #: builtin/checkout.c:1018
 msgid "new branch"
-msgstr ""
+msgstr "yeni dal"
 
 #: builtin/checkout.c:1018
 msgid "new unparented branch"
@@ -3119,11 +3119,11 @@ msgstr ""
 
 #: builtin/commit.c:34
 msgid "git commit [options] [--] <filepattern>..."
-msgstr ""
+msgstr "git commit [seçenekler] [--] <filepattern>..."
 
 #: builtin/commit.c:39
 msgid "git status [options] [--] <filepattern>..."
-msgstr ""
+msgstr "git status [seçenekler] [--] <filepattern>..."
 
 #: builtin/commit.c:44
 msgid ""
@@ -3450,7 +3450,7 @@ msgstr ""
 
 #: builtin/commit.c:1360 builtin/gc.c:178
 msgid "date"
-msgstr ""
+msgstr "tarih"
 
 #: builtin/commit.c:1360
 msgid "override date for commit"
@@ -3459,7 +3459,7 @@ msgstr ""
 #: builtin/commit.c:1361 builtin/merge.c:206 builtin/notes.c:537
 #: builtin/notes.c:694 builtin/tag.c:457
 msgid "message"
-msgstr ""
+msgstr "mesaj"
 
 #: builtin/commit.c:1361
 msgid "commit message"
@@ -3724,7 +3724,7 @@ msgstr ""
 
 #: builtin/config.c:76
 msgid "Other"
-msgstr ""
+msgstr "Diğer"
 
 #: builtin/config.c:77
 msgid "terminate values with NUL byte"
@@ -3880,7 +3880,7 @@ msgstr ""
 
 #: builtin/diff.c:301
 msgid "Not a git repository"
-msgstr ""
+msgstr "Bu bir git deposu değil"
 
 #: builtin/diff.c:344
 #, c-format
@@ -4079,7 +4079,7 @@ msgstr ""
 #: builtin/fetch.c:393 builtin/fetch.c:685
 #, c-format
 msgid "cannot open %s: %s\n"
-msgstr ""
+msgstr "%s açılamadı: %s\n"
 
 #: builtin/fetch.c:402
 #, c-format
@@ -4110,7 +4110,7 @@ msgstr ""
 
 #: builtin/fetch.c:557
 msgid "[deleted]"
-msgstr ""
+msgstr "[silindi]"
 
 #: builtin/fetch.c:558 builtin/remote.c:1055
 msgid "(none)"
@@ -4245,7 +4245,7 @@ msgstr ""
 
 #: builtin/fsck.c:608
 msgid "git fsck [options] [<object>...]"
-msgstr ""
+msgstr "git fsck [seçenekler] [<object>...]"
 
 #: builtin/fsck.c:614
 msgid "show unreachable objects"
@@ -4294,7 +4294,7 @@ msgstr ""
 #: builtin/gc.c:63
 #, c-format
 msgid "Invalid %s: '%s'"
-msgstr ""
+msgstr "%s geçersiz: '%s'"
 
 #: builtin/gc.c:90
 #, c-format
@@ -4357,7 +4357,7 @@ msgstr ""
 #: builtin/grep.c:654
 #, c-format
 msgid "cannot open '%s'"
-msgstr ""
+msgstr "'%s' açılamadı"
 
 #: builtin/grep.c:729
 msgid "search in index instead of in the work tree"
@@ -4425,7 +4425,7 @@ msgstr ""
 
 #: builtin/grep.c:767
 msgid "show filenames"
-msgstr ""
+msgstr "dosya adlarını göster"
 
 #: builtin/grep.c:769
 msgid "show filenames relative to top directory"
@@ -4667,7 +4667,7 @@ msgstr ""
 #: builtin/help.c:447 builtin/help.c:454
 #, c-format
 msgid "usage: %s%s"
-msgstr ""
+msgstr "kullanım: %s%s"
 
 #: builtin/help.c:470
 #, c-format
@@ -5122,7 +5122,7 @@ msgstr ""
 
 #: builtin/log.c:38
 msgid "   or: git show [options] <object>..."
-msgstr ""
+msgstr "   veya: git show [seçenek] <object>..."
 
 #: builtin/log.c:100
 msgid "suppress diff output"
@@ -5149,7 +5149,7 @@ msgstr ""
 #: builtin/log.c:518
 #, c-format
 msgid "Unknown type: %d"
-msgstr ""
+msgstr "Bilinmeyen tür: %d"
 
 #: builtin/log.c:608
 msgid "format.headers without value"
@@ -6283,7 +6283,7 @@ msgstr ""
 
 #: builtin/notes.c:867
 msgid "General options"
-msgstr ""
+msgstr "Genel seçenekler"
 
 #: builtin/notes.c:869
 msgid "Merge options"
@@ -7052,7 +7052,7 @@ msgstr ""
 
 #: builtin/remote.c:950
 msgid " ???"
-msgstr ""
+msgstr " ???"
 
 #: builtin/remote.c:991
 #, c-format
@@ -7084,11 +7084,11 @@ msgstr ""
 
 #: builtin/remote.c:1051
 msgid "create"
-msgstr ""
+msgstr "oluştur"
 
 #: builtin/remote.c:1054
 msgid "delete"
-msgstr ""
+msgstr "sil"
 
 #: builtin/remote.c:1058
 msgid "up to date"
