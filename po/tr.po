@@ -37,7 +37,7 @@ msgstr ""
 
 #: archive.c:10
 msgid "git archive [options] <tree-ish> [<path>...]"
-msgstr ""
+msgstr "git archive [seçenek] <tree-ish> [<path>...]"
 
 #: archive.c:11
 msgid "git archive --list"
@@ -587,15 +587,15 @@ msgstr ""
 #: merge-recursive.c:1724
 #, c-format
 msgid "Removing %s"
-msgstr ""
+msgstr "%s kaldırılıyor"
 
 #: merge-recursive.c:1749
 msgid "file/directory"
-msgstr ""
+msgstr "dosya/dizin"
 
 #: merge-recursive.c:1755
 msgid "directory/file"
-msgstr ""
+msgstr "dizin/dosya"
 
 #: merge-recursive.c:1760
 #, c-format
@@ -613,7 +613,7 @@ msgstr ""
 
 #: merge-recursive.c:1806
 msgid "Already up-to-date!"
-msgstr ""
+msgstr "Zaten güncel!"
 
 #: merge-recursive.c:1815
 #, c-format
@@ -652,7 +652,7 @@ msgstr ""
 
 #: parse-options.c:494
 msgid "..."
-msgstr ""
+msgstr "..."
 
 #: parse-options.c:512
 #, c-format
@@ -867,7 +867,7 @@ msgstr "Geçersiz anahtar: %s"
 #: sequencer.c:718
 #, c-format
 msgid "Invalid value for %s: %s"
-msgstr "%s için geçersiz değer"
+msgstr "%s için geçersiz değer: %s"
 
 #: sequencer.c:730
 #, c-format
@@ -907,12 +907,12 @@ msgstr ""
 #: sequencer.c:817 builtin/apply.c:4005
 #, c-format
 msgid "cannot open %s: %s"
-msgstr ""
+msgstr "%s açılamadı: %s"
 
 #: sequencer.c:820
 #, c-format
 msgid "cannot read %s: %s"
-msgstr ""
+msgstr "%s okunamadı: %s"
 
 #: sequencer.c:821
 msgid "unexpected end of file"
@@ -8175,7 +8175,7 @@ msgstr ""
 
 #: common-cmds.h:8
 msgid "Add file contents to the index"
-msgstr ""
+msgstr "İndekse dosya içeriğini ekle"
 
 #: common-cmds.h:9
 msgid "Find by binary search the change that introduced a bug"
@@ -8183,7 +8183,7 @@ msgstr ""
 
 #: common-cmds.h:10
 msgid "List, create, or delete branches"
-msgstr ""
+msgstr "Dalları listele, oluştur veya sil"
 
 #: common-cmds.h:11
 msgid "Checkout a branch or paths to the working tree"
@@ -8191,7 +8191,7 @@ msgstr ""
 
 #: common-cmds.h:12
 msgid "Clone a repository into a new directory"
-msgstr ""
+msgstr "Yeni bir dizine yeni bir depo kolanla"
 
 #: common-cmds.h:13
 msgid "Record changes to the repository"
@@ -8215,7 +8215,7 @@ msgstr ""
 
 #: common-cmds.h:18
 msgid "Show commit logs"
-msgstr ""
+msgstr "Commit kayıtlarını göster"
 
 #: common-cmds.h:19
 msgid "Join two or more development histories together"
