@@ -555,7 +555,7 @@ msgstr ""
 
 #: merge-recursive.c:1564
 msgid "modified"
-msgstr ""
+msgstr "değiştirildi"
 
 #: merge-recursive.c:1574
 msgid "content"
@@ -1058,7 +1058,7 @@ msgstr ""
 
 #: wt-status.c:285
 msgid "new commits, "
-msgstr ""
+msgstr "yeni commits, "
 
 #: wt-status.c:287
 msgid "modified content, "
@@ -1224,7 +1224,7 @@ msgstr ""
 
 #: wt-status.c:1013
 msgid "Ignored files"
-msgstr ""
+msgstr "Dosyalar yoksayıldı"
 
 #: wt-status.c:1015
 #, c-format
@@ -1237,7 +1237,7 @@ msgstr ""
 
 #: wt-status.c:1023
 msgid "No changes"
-msgstr ""
+msgstr "Değişiklik yok"
 
 #: wt-status.c:1028
 #, c-format
@@ -1308,7 +1308,7 @@ msgstr ""
 
 #: builtin/add.c:19
 msgid "git add [options] [--] <filepattern>..."
-msgstr ""
+msgstr "git add [seçenek] [--] <dosyakalıbı>..."
 
 #: builtin/add.c:62
 #, c-format
@@ -1345,12 +1345,12 @@ msgstr ""
 
 #: builtin/add.c:276
 msgid "Could not read the index"
-msgstr ""
+msgstr "Dizin okunamadı"
 
 #: builtin/add.c:286
 #, c-format
 msgid "Could not open '%s' for writing."
-msgstr ""
+msgstr "'%s'yazmak için açılmadı"
 
 #: builtin/add.c:290
 msgid "Could not write patch"
@@ -1433,11 +1433,11 @@ msgstr ""
 
 #: builtin/add.c:354
 msgid "no files added"
-msgstr ""
+msgstr "dosya eklenmedi"
 
 #: builtin/add.c:360
 msgid "adding files failed"
-msgstr ""
+msgstr "dosya ekleme başarısız"
 
 #: builtin/add.c:392
 msgid "-A and -u are mutually incompatible"
@@ -3119,11 +3119,11 @@ msgstr ""
 
 #: builtin/commit.c:34
 msgid "git commit [options] [--] <filepattern>..."
-msgstr "git commit [seçenekler] [--] <filepattern>..."
+msgstr "git commit [seçenekler] [--] <dosyakalıbı>..."
 
 #: builtin/commit.c:39
 msgid "git status [options] [--] <filepattern>..."
-msgstr "git status [seçenekler] [--] <filepattern>..."
+msgstr "git status [seçenekler] [--] <dosyakalıbı>..."
 
 #: builtin/commit.c:44
 msgid ""
