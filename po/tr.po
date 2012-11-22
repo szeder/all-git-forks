@@ -8155,7 +8155,7 @@ msgstr ""
 
 #: git.c:16
 msgid "See 'git help <command>' for more information on a specific command."
-msgstr ""
+msgstr "Belirli bir komut hakkında daha fazla bilgi için bakınız 'git help <komut>' "
 
 #: parse-options.h:156
 msgid "no-op (backward compatibility)"
@@ -8191,7 +8191,7 @@ msgstr ""
 
 #: common-cmds.h:12
 msgid "Clone a repository into a new directory"
-msgstr "Yeni bir dizine yeni bir depo kolanla"
+msgstr "Yeni bir dizine yeni bir depo klonla"
 
 #: common-cmds.h:13
 msgid "Record changes to the repository"
