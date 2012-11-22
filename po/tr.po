@@ -8243,7 +8243,7 @@ msgstr ""
 
 #: common-cmds.h:25
 msgid "Remove files from the working tree and from the index"
-msgstr ""
+msgstr "İndeks ve çalışma ağacından dosyaları kaldır"
 
 #: common-cmds.h:26
 msgid "Show various types of objects"
@@ -8251,11 +8251,11 @@ msgstr ""
 
 #: common-cmds.h:27
 msgid "Show the working tree status"
-msgstr ""
+msgstr "Çalışma ağacı durumunu göster"
 
 #: common-cmds.h:28
 msgid "Create, list, delete or verify a tag object signed with GPG"
-msgstr ""
+msgstr "GPG ile imzalanan bir nesne etiketini listele, oluştur, sil veya doğrula"
 
 #: git-am.sh:50
 msgid "You need to set your committer info first"
