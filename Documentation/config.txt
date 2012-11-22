@@ -997,6 +997,12 @@ commit.status::
 	commit message template when using an editor to prepare the commit
 	message.  Defaults to true.
 
+commit.verbose::
+	A boolean to enable/disable inclusion of a diff in commit messages, as though
+	the --verbose flag had been passed to commit. Defaults to false. Note that
+	this will also affect the behavior of git commit when it is invoked from a
+	script.
+
 commit.template::
 	Specify a file to use as the template for new commit messages.
 	"`~/`" is expanded to the value of `$HOME` and "`~user/`" to the
