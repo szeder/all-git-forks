@@ -141,7 +141,7 @@ test_expect_success 'pulling without marks' '
 	compare_refs local2 HEAD server HEAD
 '
 
-test_expect_failure 'pushing without marks' '
+test_expect_success 'pushing without marks' '
 	test_when_finished "(cd local2 && git reset --hard origin)" &&
 	(cd local2 &&
 	echo content >>file &&

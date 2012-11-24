@@ -799,7 +799,7 @@ static int push_refs_with_export(struct transport *transport,
 		if (ref->peer_ref)
 			string_list_append(&revlist_args, ref->peer_ref->name);
 
-		if (!data->refspecs)
+		if (!data->refspecs || !data->import_marks)
 			continue;
 		private = apply_refspecs(data->refspecs, data->refspec_nr, ref->name);
 		if (private && strcmp(private, ref->name) && !get_sha1(private, sha1)) {
