@@ -796,6 +796,9 @@ static int push_refs_with_export(struct transport *transport,
 		if (ref->deletion)
 			die("remote-helpers do not support ref deletion");
 
+		if (ref->peer_ref)
+			string_list_append(&revlist_args, ref->peer_ref->name);
+
 		if (!data->refspecs)
 			continue;
 		private = apply_refspecs(data->refspecs, data->refspec_nr, ref->name);
@@ -804,9 +807,6 @@ static int push_refs_with_export(struct transport *transport,
 			string_list_append(&revlist_args, strbuf_detach(&buf, NULL));
 		}
 		free(private);
-
-		if (ref->peer_ref)
-			string_list_append(&revlist_args, ref->peer_ref->name);
 
 	}
 
