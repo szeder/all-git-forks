@@ -158,4 +158,12 @@ test_expect_success 'push ref with existing object' '
 	compare_refs local dup server dup
 '
 
+test_expect_success 'push all with existing object' '
+	(cd local &&
+	git branch dup2 master &&
+	git push origin --all
+	) &&
+	compare_refs local dup2 server dup2
+'
+
 test_done
