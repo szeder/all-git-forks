@@ -126,7 +126,7 @@ test_expect_success 'pulling with straight refspec' '
 	compare_refs local2 HEAD server HEAD
 '
 
-test_expect_failure 'pushing with straight refspec' '
+test_expect_success 'pushing with straight refspec' '
 	test_when_finished "(cd local2 && git reset --hard origin)" &&
 	(cd local2 &&
 	echo content >>file &&
