@@ -303,7 +303,7 @@ test_expect_success 'dropping tag of filtered out object' '
 (
 	cd limit-by-paths &&
 	git fast-export --tag-of-filtered-object=drop mytag -- there > output &&
-	test_cmp output expected
+	test_cmp expected output
 )
 '
 
@@ -320,7 +320,7 @@ test_expect_success 'rewriting tag of filtered out object' '
 (
 	cd limit-by-paths &&
 	git fast-export --tag-of-filtered-object=rewrite mytag -- there > output &&
-	test_cmp output expected
+	test_cmp expected output
 )
 '
 
@@ -351,7 +351,7 @@ test_expect_failure 'no exact-ref revisions included' '
 	(
 		cd limit-by-paths &&
 		git fast-export master~2..master~1 > output &&
-		test_cmp output expected
+		test_cmp expected output
 	)
 '
 
@@ -438,6 +438,20 @@ test_expect_success 'fast-export quotes pathnames' '
 	 git rev-list HEAD >actual &&
 	 test_cmp ../expect actual
 	)
+'
+
+test_expect_success 'test bidirectionality' '
+	>marks-cur &&
+	>marks-new &&
+	git init marks-test &&
+	git fast-export --export-marks=marks-cur --import-marks=marks-cur --branches | \
+	git --git-dir=marks-test/.git fast-import --export-marks=marks-new --import-marks=marks-new &&
+	(cd marks-test &&
+	git reset --hard &&
+	echo Wohlauf > file &&
+	git commit -a -m "back in time") &&
+	git --git-dir=marks-test/.git fast-export --export-marks=marks-new --import-marks=marks-new --branches | \
+	git fast-import --export-marks=marks-cur --import-marks=marks-cur
 '
 
 test_done

@@ -483,7 +483,7 @@ static void get_tags_and_duplicates(struct object_array *pending,
 	for (i = 0; i < pending->nr; i++) {
 		struct object_array_entry *e = pending->objects + i;
 		unsigned char sha1[20];
-		struct commit *commit = commit;
+		struct commit *commit;
 		char *full_name;
 
 		if (dwim_ref(e->name, strlen(e->name), sha1, &full_name) != 1)
@@ -613,6 +613,10 @@ static void import_marks(char *input_file)
 
 		if (object->flags & SHOWN)
 			error("Object %s already has a mark", sha1_to_hex(sha1));
+
+		if (object->type != OBJ_COMMIT)
+			/* only commits */
+			continue;
 
 		mark_object(object, mark);
 		if (last_idnum < mark)
