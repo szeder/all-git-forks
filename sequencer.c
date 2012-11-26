@@ -1023,7 +1023,6 @@ static int ends_rfc2822_footer(struct strbuf *sb, int ignore_footer)
 	int hit = 0;
 	int i, j, k;
 	int len = sb->len - ignore_footer;
-	int first = 1;
 	const char *buf = sb->buf;
 
 	for (i = len - 1; i > 0; i--) {
@@ -1039,11 +1038,6 @@ static int ends_rfc2822_footer(struct strbuf *sb, int ignore_footer)
 		for (k = i; k < len && buf[k] != '\n'; k++)
 			; /* do nothing */
 		k++;
-
-		if ((buf[k] == ' ' || buf[k] == '\t') && !first)
-			continue;
-
-		first = 0;
 
 		for (j = 0; i + j < len; j++) {
 			ch = buf[i + j];
