@@ -260,14 +260,47 @@ static void append_signoff(struct strbuf *sb, const char *signoff)
 	int has_signoff = 0;
 	char *cp;
 
-	cp = sb->buf;
+	/*
+	 * Only search in the last paragrah, don't be fooled by a
+	 * paragraph full of valid S-o-b in the middle.
+	 */
+	cp = sb->buf + sb->len - 1;
+	while (cp > sb->buf) {
+		if (cp[0] == '\n' && cp[1] == '\n') {
+			cp += 2;
+			break;
+		}
+		cp--;
+	}
 
 	/* First see if we already have the sign-off by the signer */
 	while ((cp = strstr(cp, signed_off_by))) {
+		const char *s = cp;
+		cp += strlen(signed_off_by);
+
+		if (!has_signoff && s > sb->buf) {
+			/*
+			 * S-o-b in the middle of a sentence is not
+			 * really S-o-b
+			 */
+			if (s[-1] != '\n')
+				continue;
+
+			if (s - 1 > sb->buf && s[-2] == '\n')
+				; /* the first S-o-b */
+			else if (!detect_any_signoff(sb->buf, s - sb->buf))
+				/*
+				 * The previous line looks like an
+				 * S-o-b. There's still no guarantee
+				 * that it's an actual S-o-b. For that
+				 * we need to look back until we find
+				 * a blank line, which is too costly.
+				 */
+				continue;
+		}
 
 		has_signoff = 1;
 
-		cp += strlen(signed_off_by);
 		if (cp + signoff_len >= sb->buf + sb->len)
 			break;
 		if (strncmp(cp, signoff, signoff_len))
