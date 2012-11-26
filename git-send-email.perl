@@ -436,9 +436,8 @@ if (0) {
 	}
 }
 
-my ($repoauthor, $repocommitter);
-($repoauthor) = Git::ident_person(@repo, 'author');
-($repocommitter) = Git::ident_person(@repo, 'committer');
+my ($repoauthor, $author_explicit) = Git::ident_person(@repo, 'author');
+my ($repocommitter, $committer_explicit) = Git::ident_person(@repo, 'committer');
 
 # Verify the user input
 
@@ -755,12 +754,17 @@ if (!$force) {
 
 my $prompting = 0;
 if (!defined $sender) {
-	$sender = $repoauthor || $repocommitter || '';
-	$sender = ask("Who should the emails appear to be from? [$sender] ",
-	              default => $sender,
-		      valid_re => qr/\@.*\./, confirm_only => 1);
-	print "Emails will be sent from: ", $sender, "\n";
-	$prompting++;
+	($sender, my $explicit) =
+		defined $repoauthor ? ($repoauthor, $author_explicit) :
+		defined $repocommitter ? ($repocommitter, $committer_explicit) :
+		('', 0);
+	if (!$explicit) {
+		$sender = ask("Who should the emails appear to be from? [$sender] ",
+			      default => $sender,
+			      valid_re => qr/\@.*\./, confirm_only => 1);
+		print "Emails will be sent from: ", $sender, "\n";
+		$prompting++;
+	}
 }
 
 if (!@initial_to && !defined $to_cmd) {
