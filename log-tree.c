@@ -9,6 +9,7 @@
 #include "string-list.h"
 #include "color.h"
 #include "gpg-interface.h"
+#include "sequencer.h"
 
 struct decoration name_decoration = { "object names" };
 
@@ -204,125 +205,6 @@ void show_decorations(struct rev_info *opt, struct commit *commit)
 		decoration = decoration->next;
 	}
 	putchar(')');
-}
-
-/*
- * Search for "^[-A-Za-z]+: [^@]+@" pattern. It usually matches
- * Signed-off-by: and Acked-by: lines.
- */
-static int detect_any_signoff(char *letter, int size)
-{
-	char *cp;
-	int seen_colon = 0;
-	int seen_at = 0;
-	int seen_name = 0;
-	int seen_head = 0;
-
-	cp = letter + size;
-	while (letter <= --cp && *cp == '\n')
-		continue;
-
-	while (letter <= cp) {
-		char ch = *cp--;
-		if (ch == '\n')
-			break;
-
-		if (!seen_at) {
-			if (ch == '@')
-				seen_at = 1;
-			continue;
-		}
-		if (!seen_colon) {
-			if (ch == '@')
-				return 0;
-			else if (ch == ':')
-				seen_colon = 1;
-			else
-				seen_name = 1;
-			continue;
-		}
-		if (('A' <= ch && ch <= 'Z') ||
-		    ('a' <= ch && ch <= 'z') ||
-		    ch == '-') {
-			seen_head = 1;
-			continue;
-		}
-		/* no empty last line doesn't match */
-		return 0;
-	}
-	return seen_head && seen_name;
-}
-
-static void append_signoff(struct strbuf *sb, int flags)
-{
-	char* signoff = xstrdup(fmt_name(getenv("GIT_COMMITTER_NAME"),
-					 getenv("GIT_COMMITTER_EMAIL")));
-	static const char sign_off_header[] = "Signed-off-by: ";
-	size_t signoff_len = strlen(signoff);
-	int has_signoff = 0;
-	char *cp;
-
-	/*
-	 * Only search in the last paragrah, don't be fooled by a
-	 * paragraph full of valid S-o-b in the middle.
-	 */
-	cp = sb->buf + sb->len - 1;
-	while (cp > sb->buf) {
-		if (cp[0] == '\n' && cp[1] == '\n') {
-			cp += 2;
-			break;
-		}
-		cp--;
-	}
-
-	/* First see if we already have the sign-off by the signer */
-	while ((cp = strstr(cp, sign_off_header))) {
-		const char *s = cp;
-		cp += strlen(sign_off_header);
-
-		if (!has_signoff && s > sb->buf) {
-			/*
-			 * S-o-b in the middle of a sentence is not
-			 * really S-o-b
-			 */
-			if (s[-1] != '\n')
-				continue;
-
-			if (s - 1 > sb->buf && s[-2] == '\n')
-				; /* the first S-o-b */
-			else if (!detect_any_signoff(sb->buf, s - sb->buf))
-				/*
-				 * The previous line looks like an
-				 * S-o-b. There's still no guarantee
-				 * that it's an actual S-o-b. For that
-				 * we need to look back until we find
-				 * a blank line, which is too costly.
-				 */
-				continue;
-		}
-
-		has_signoff = 1;
-
-		if (cp + signoff_len >= sb->buf + sb->len)
-			break;
-		if (strncmp(cp, signoff, signoff_len))
-			continue;
-		if (!isspace(cp[signoff_len]))
-			continue;
-		/* we already have him */
-		return;
-	}
-
-	if (!has_signoff)
-		has_signoff = detect_any_signoff(sb->buf, sb->len);
-
-	if (!has_signoff)
-		strbuf_addch(sb, '\n');
-
-	strbuf_addstr(sb, sign_off_header);
-	strbuf_add(sb, signoff, signoff_len);
-	strbuf_addch(sb, '\n');
-	free(signoff);
 }
 
 static unsigned int digits_in_number(unsigned int number)
@@ -712,7 +594,7 @@ void show_log(struct rev_info *opt)
 	pretty_print_commit(&ctx, commit, &msgbuf);
 
 	if (opt->add_signoff)
-		append_signoff(&msgbuf, 0);
+		append_signoff(&msgbuf, 0, 1);
 
 	if ((ctx.fmt != CMIT_FMT_USERFORMAT) &&
 	    ctx.notes_message && *ctx.notes_message) {
