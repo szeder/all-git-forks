@@ -272,7 +272,7 @@ unmap:
 }
 
 static int read_entry(struct cache_entry **ce, struct directory_entry *de,
-		      unsigned long *entry_offset,
+		      unsigned int *entry_offset,
 		      void **mmap, unsigned long mmap_size,
 		      unsigned int *foffsetblock)
 {
@@ -583,7 +583,7 @@ static void resolve_undo_convert_v5(struct index_state *istate,
 }
 
 static int read_entries(struct index_state *istate, struct directory_entry **de,
-			unsigned long *entry_offset, void **mmap,
+			unsigned int *entry_offset, void **mmap,
 			unsigned long mmap_size, int *nr,
 			unsigned int *foffsetblock)
 {
@@ -651,7 +651,7 @@ static int read_entries(struct index_state *istate, struct directory_entry **de,
 
 static int read_index_full_v5(struct index_state *istate)
 {
-	unsigned long entry_offset;
+	unsigned int entry_offset;
 	unsigned int dir_offset, dir_table_offset;
 	struct cache_version_header *hdr;
 	struct cache_header *hdr_v5;
@@ -686,18 +686,18 @@ static int read_index_full_v5(struct index_state *istate)
 	return 0;
 }
 
-static int read_index_filtered_v5(struct index_state *istate, struct filter_opts *opts)
+static struct directory_entry *read_head_directories(struct index_state *istate,
+						unsigned int *entry_offset,
+						unsigned int *foffsetblock,
+						unsigned int *ndir)
 {
-	unsigned long entry_offset;
 	unsigned int dir_offset, dir_table_offset;
 	struct cache_version_header *hdr;
 	struct cache_header *hdr_v5;
-	struct directory_entry *root_directory, *de;
-	int nr;
-	unsigned int foffsetblock;
+	struct directory_entry *root_directory;
 
 	hdr = istate->mmap;
-	hdr_v5 = ptr_add(istate->mmap, sizeof(*hdr));
+	hdr_v5 = istate->mmap + sizeof(*hdr);
 	istate->version = ntohl(hdr->hdr_version);
 	istate->cache_nr = ntohl(hdr_v5->hdr_nfile);
 	istate->cache_alloc = alloc_nr(istate->cache_nr);
@@ -709,15 +709,71 @@ static int read_index_filtered_v5(struct index_state *istate, struct filter_opts
 	dir_table_offset = sizeof(*hdr) + sizeof(*hdr_v5) + 4;
 	root_directory = read_directories(&dir_offset, &dir_table_offset, istate->mmap, istate->mmap_size);
 
-	entry_offset = ntohl(hdr_v5->hdr_fblockoffset);
+	*entry_offset = ntohl(hdr_v5->hdr_fblockoffset);
+	*foffsetblock = dir_offset;
+	*ndir = ntohl(hdr_v5->hdr_ndir);
+	return root_directory;
+}
 
-	nr = 0;
-	foffsetblock = dir_offset;
+static int read_index_filtered_v5(struct index_state *istate, struct filter_opts *opts)
+{
+	struct directory_entry *root_directory, *de;
+	unsigned int foffsetblock, entry_offset, ndir;
+	int i, n, nr = 0;
+	const char **adjusted_pathspec;
+	int need_root = 0;
+	char *seen, *oldpath;
+
+	root_directory = read_head_directories(istate, &entry_offset, &foffsetblock, &ndir);
+
+	if (!opts || !opts->pathspec) {
+		need_root = 1;
+	} else {
+		seen = xcalloc(1, ndir);
+		for (de = root_directory; de->next; de = de->next)
+			match_pathspec(opts->pathspec, de->pathname, de->de_pathlen, 0, seen);
+		for (n = 0; opts->pathspec[n]; n++)
+			/* just count */;
+		adjusted_pathspec = xmalloc((n + 1) * sizeof(char *));
+		adjusted_pathspec[n] = NULL;
+		for (i = 0; i < n; i++) {
+			if (seen[i] == MATCHED_EXACTLY)
+				adjusted_pathspec[i] = opts->pathspec[i];
+			else {
+				char *super = strdup(opts->pathspec[i]);
+				int len = strlen(super);
+				while (len && super[len-1] == '/') /* strip trailing / */
+					super[--len] = '\0';
+				while (len && super[--len] != '/') /* scan backwards to next / */
+					;
+				if (len >= 0)
+					super[len--] = '\0';
+				if (len <= 0) {
+					need_root = 1;
+					break;
+				}
+				adjusted_pathspec[i] = super;
+			}
+		}
+	}
+
 	de = root_directory;
-	while (de)
-		if (read_entries(istate, &de, &entry_offset, &istate->mmap,
-				istate->mmap_size, &nr, &foffsetblock) < 0)
-			return -1;
+	while (de) {
+		if (need_root || match_pathspec(adjusted_pathspec, de->pathname, de->de_pathlen, 0, NULL)) {
+			unsigned int subdir_foffsetblock = de->de_foffset + foffsetblock;
+			unsigned int *off = istate->mmap + subdir_foffsetblock;
+			unsigned int subdir_entry_offset = entry_offset + ntoh_l(*off);
+			oldpath = de->pathname;
+			do {
+				if (read_entries(istate, &de, &subdir_entry_offset, &istate->mmap,
+						    istate->mmap_size, &nr, &foffsetblock) < 0)
+					return -1;
+			} while (de && !prefixcmp(de->pathname, oldpath));
+		} else
+			de = de->next;
+	}
+	istate->cache_nr = nr;
+
 	istate->cache_tree = cache_tree_convert_v5(root_directory);
 	istate->internal_version = 2;
 	return 0;
@@ -726,7 +782,7 @@ static int read_index_filtered_v5(struct index_state *istate, struct filter_opts
 int for_each_index_entry_v5(struct index_state *istate, each_cache_entry_fn fn, void *cb_data)
 {
 	int i, ret = 0;
-	struct filter_opts *opts= istate->filter_opts;
+	struct filter_opts *opts = istate->filter_opts;
 
 	/*
 	 * We always load the whole index in index_v2, because

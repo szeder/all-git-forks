@@ -1262,9 +1262,10 @@ int read_index_filtered(struct index_state *istate, struct filter_opts *opts)
 	istate->internal_ops = &v2_internal_ops;
 
 	/* The index has already been read */
-	if (istate->initialized == 1 && ((istate->filter_opts == NULL && opts == NULL)
-					 || !memcmp(istate->filter_opts, opts, sizeof(*opts))))
-		return 0;
+	if (istate->initialized == 1 &&
+		(((istate->filter_opts == NULL || opts == NULL) && istate->filter_opts != opts)
+				|| (!memcmp(istate->filter_opts, opts, sizeof(*opts)))))
+		return -1;
 
 	/* if istate->ops is not set we don't have an index file */
 	if (!istate->ops)
