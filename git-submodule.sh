@@ -515,6 +515,68 @@ cmd_init()
 	done
 }
 
+handle_on_demand_update () {
+	if test "$subsha1" != "$sha1" -o -n "$force"
+	then
+		subforce=$force
+		# If we don't already have a -f flag and the submodule has never been checked out
+		if test -z "$subsha1" -a -z "$force"
+		then
+			subforce="-f"
+		fi
+
+		if test -z "$nofetch"
+		then
+			# Run fetch only if $sha1 isn't present or it
+			# is not reachable from a ref.
+			(clear_local_git_env; cd "$sm_path" &&
+				( (rev=$(git rev-list -n 1 $sha1 --not --all 2>/dev/null) &&
+				 test -z "$rev") || git-fetch)) ||
+			die "$(eval_gettext "Unable to fetch in submodule path '\$sm_path'")"
+		fi
+
+		# Is this something we just cloned?
+		case ";$cloned_modules;" in
+		*";$name;"*)
+			# then there is no local change to integrate
+			update_module= ;;
+		esac
+
+		must_die_on_failure=
+		case "$update_module" in
+		rebase)
+			command="git rebase"
+			die_msg="$(eval_gettext "Unable to rebase '\$sha1' in submodule path '\$sm_path'")"
+			say_msg="$(eval_gettext "Submodule path '\$sm_path': rebased into '\$sha1'")"
+			must_die_on_failure=yes
+			;;
+		merge)
+			command="git merge"
+			die_msg="$(eval_gettext "Unable to merge '\$sha1' in submodule path '\$sm_path'")"
+			say_msg="$(eval_gettext "Submodule path '\$sm_path': merged in '\$sha1'")"
+			must_die_on_failure=yes
+			;;
+		*)
+			command="git checkout $subforce -q"
+			die_msg="$(eval_gettext "Unable to checkout '\$sha1' in submodule path '\$sm_path'")"
+			say_msg="$(eval_gettext "Submodule path '\$sm_path': checked out '\$sha1'")"
+			;;
+		esac
+
+		if (clear_local_git_env; cd "$sm_path" && $command "$sha1")
+		then
+			say "$say_msg"
+		elif test -n "$must_die_on_failure"
+		then
+			die_with_status 2 "$die_msg"
+		else
+			err="${err};$die_msg"
+			continue
+		fi
+
+	fi
+}
+
 #
 # Update each submodule path to correct revision, using clone and checkout as needed
 #
@@ -631,64 +693,7 @@ Maybe you want to use 'update --init'?")"
 			die "$(eval_gettext "Unable to find current revision in submodule path '\$sm_path'")"
 		fi
 
-		if test "$subsha1" != "$sha1" -o -n "$force"
-		then
-			subforce=$force
-			# If we don't already have a -f flag and the submodule has never been checked out
-			if test -z "$subsha1" -a -z "$force"
-			then
-				subforce="-f"
-			fi
-
-			if test -z "$nofetch"
-			then
-				# Run fetch only if $sha1 isn't present or it
-				# is not reachable from a ref.
-				(clear_local_git_env; cd "$sm_path" &&
-					( (rev=$(git rev-list -n 1 $sha1 --not --all 2>/dev/null) &&
-					 test -z "$rev") || git-fetch)) ||
-				die "$(eval_gettext "Unable to fetch in submodule path '\$sm_path'")"
-			fi
-
-			# Is this something we just cloned?
-			case ";$cloned_modules;" in
-			*";$name;"*)
-				# then there is no local change to integrate
-				update_module= ;;
-			esac
-
-			must_die_on_failure=
-			case "$update_module" in
-			rebase)
-				command="git rebase"
-				die_msg="$(eval_gettext "Unable to rebase '\$sha1' in submodule path '\$sm_path'")"
-				say_msg="$(eval_gettext "Submodule path '\$sm_path': rebased into '\$sha1'")"
-				must_die_on_failure=yes
-				;;
-			merge)
-				command="git merge"
-				die_msg="$(eval_gettext "Unable to merge '\$sha1' in submodule path '\$sm_path'")"
-				say_msg="$(eval_gettext "Submodule path '\$sm_path': merged in '\$sha1'")"
-				must_die_on_failure=yes
-				;;
-			*)
-				command="git checkout $subforce -q"
-				die_msg="$(eval_gettext "Unable to checkout '\$sha1' in submodule path '\$sm_path'")"
-				say_msg="$(eval_gettext "Submodule path '\$sm_path': checked out '\$sha1'")"
-				;;
-			esac
-
-			if (clear_local_git_env; cd "$sm_path" && $command "$sha1")
-			then
-				say "$say_msg"
-			elif test -n "$must_die_on_failure"
-			then
-				die_with_status 2 "$die_msg"
-			else
-				err="${err};$die_msg"
-				continue
-			fi
-		fi
+		handle_on_demand_update
 
 		if test -n "$recursive"
 		then
