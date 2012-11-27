@@ -85,12 +85,12 @@ test_expect_success 'pushing to local repo' '
 	compare_refs localclone2 HEAD server2 HEAD
 '
 
-test_expect_failure 'synch with changes from localclone' '
+test_expect_success 'synch with changes from localclone' '
 	(cd clone &&
 	 git pull)
 '
 
-test_expect_failure 'pushing remote local repo' '
+test_expect_success 'pushing remote local repo' '
 	(cd clone &&
 	echo content >>file &&
 	git commit -a -m four &&
@@ -111,7 +111,7 @@ test_expect_success 'fetch new branch' '
 	compare_refs public HEAD localclone FETCH_HEAD
 '
 
-test_expect_failure 'fetch multiple branches' '
+test_expect_success 'fetch multiple branches' '
 	(cd localclone &&
 	 git fetch
 	) &&
@@ -119,7 +119,7 @@ test_expect_failure 'fetch multiple branches' '
 	compare_refs server new localclone refs/remotes/origin/new
 '
 
-test_expect_failure 'push when remote has extra refs' '
+test_expect_success 'push when remote has extra refs' '
 	(cd clone &&
 	 echo content >>file &&
 	 git commit -a -m six &&
