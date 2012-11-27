@@ -5,10 +5,10 @@
 # Copyright (c) 2007 Lars Hjemli
 
 dashless=$(basename "$0" | sed -e 's/-/ /')
-USAGE="[--quiet] add [-b branch] [-f|--force] [--reference <repository>] [--] <repository> [<path>]
+USAGE="[--quiet] add [-b branch] [--local-branch[=<branch>]] [-f|--force] [--reference <repository>] [--] <repository> [<path>]
    or: $dashless [--quiet] status [--cached] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] init [--] [<path>...]
-   or: $dashless [--quiet] update [--init] [-N|--no-fetch] [-f|--force] [--rebase] [--reference <repository>] [--merge] [--recursive] [--] [<path>...]
+   or: $dashless [--quiet] update [--init] [-N|--no-fetch] [-f|--force] [--branch] [--rebase] [--reference <repository>] [--merge] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] summary [--cached|--files] [--summary-limit <n>] [commit] [--] [<path>...]
    or: $dashless [--quiet] foreach [--recursive] <command>
    or: $dashless [--quiet] sync [--] [<path>...]"
@@ -20,6 +20,8 @@ require_work_tree
 
 command=
 branch=
+local_branch=
+local_branch_empty=
 force=
 reference=
 cached=
@@ -257,6 +259,12 @@ cmd_add()
 			branch=$2
 			shift
 			;;
+		--local-branch)
+			local_branch_empty=true
+			;;
+		--local-branch=*)
+			local_branch="${1#*=}"
+			;;
 		-f | --force)
 			force=$1
 			;;
@@ -328,6 +336,11 @@ cmd_add()
 	git ls-files --error-unmatch "$sm_path" > /dev/null 2>&1 &&
 	die "$(eval_gettext "'\$sm_path' already exists in the index")"
 
+	if test -z "$local_branch" && test "$local_branch_empty" = "true"
+	then
+		local_branch="${branch:=HEAD}"
+	fi
+
 	if test -z "$force" && ! git add --dry-run --ignore-missing "$sm_path" > /dev/null 2>&1
 	then
 		eval_gettextln "The following path is ignored by one of your .gitignore files:
@@ -366,6 +379,10 @@ Use -f if you really want to add it." >&2
 
 	git config -f .gitmodules submodule."$sm_path".path "$sm_path" &&
 	git config -f .gitmodules submodule."$sm_path".url "$repo" &&
+	if test -n "$local_branch"
+	then
+		git config -f .gitmodules submodule."$sm_path".branch "$local_branch"
+	fi &&
 	git add --force .gitmodules ||
 	die "$(eval_gettext "Failed to register submodule '\$sm_path'")"
 }
@@ -488,6 +505,13 @@ cmd_init()
 		test -n "$(git config submodule."$name".update)" ||
 		git config submodule."$name".update "$upd" ||
 		die "$(eval_gettext "Failed to register update mode for submodule path '\$sm_path'")"
+
+		# Copy "branch" setting when it is not set yet
+		branch="$(git config -f .gitmodules submodule."$name".branch)"
+		test -z "$branch" ||
+		test -n "$(git config submodule."$name".branch)" ||
+		git config submodule."$name".branch "$branch" ||
+		die "$(eval_gettext "Failed to register branch for submodule path '\$sm_path'")"
 	done
 }
 
@@ -514,6 +538,9 @@ cmd_update()
 			;;
 		-f|--force)
 			force=$1
+			;;
+		-b|--branch)
+			update="branch"
 			;;
 		-r|--rebase)
 			update="rebase"
@@ -569,6 +596,7 @@ cmd_update()
 		fi
 		name=$(module_name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
+		branch=$(git config submodule."$name".branch)
 		if ! test -z "$update"
 		then
 			update_module=$update

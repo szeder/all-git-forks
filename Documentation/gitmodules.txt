@@ -47,6 +47,11 @@ submodule.<name>.update::
 	This config option is overridden if 'git submodule update' is given
 	the '--merge', '--rebase' or '--checkout' options.
 
+submodule.<name>.branch::
+	A local branch name for the submodule (to avoid headless operation).
+	Set with the "--local-branch" option to "git submodule add", or
+	directly using "git config".
+
 submodule.<name>.fetchRecurseSubmodules::
 	This option can be used to control recursive fetching of this
 	submodule. If this option is also present in the submodules entry in

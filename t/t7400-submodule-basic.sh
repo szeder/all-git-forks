@@ -133,6 +133,7 @@ test_expect_success 'submodule add --branch' '
 	(
 		cd addtest &&
 		git submodule add -b initial "$submodurl" submod-branch &&
+		test -z "$(git config -f .gitmodules submodule.submod-branch.branch)" &&
 		git submodule init
 	) &&
 
@@ -209,6 +210,48 @@ test_expect_success 'submodule add with ./, /.. and // in path' '
 	test_cmp expect heads &&
 	test_cmp expect head &&
 	test_cmp empty untracked
+'
+
+test_expect_success 'submodule add --local-branch' '
+	(
+		cd addtest &&
+		git submodule add --local-branch "$submodurl" submod-follow-head &&
+		test "$(git config -f .gitmodules submodule.submod-follow-head.branch)" = "HEAD"
+	)
+'
+
+test_expect_success 'submodule add --local-branch --branch' '
+	(
+		cd addtest &&
+		git submodule add --local-branch -b initial "$submodurl" submod-auto-follow &&
+		test "$(git config -f .gitmodules submodule.submod-auto-follow.branch)" = "initial"
+	)
+'
+
+test_expect_success 'submodule add --local-branch=<name> --branch' '
+	(
+		cd addtest &&
+		git submodule add --local-branch=final -b initial "$submodurl" submod-follow &&
+		test "$(git config -f .gitmodules submodule.submod-follow.branch)" = "final"
+	)
+'
+
+test_expect_success 'init should register submodule branch in .git/config' '
+	(
+		cd addtest &&
+		git submodule init &&
+		test "$(git config submodule.submod-follow.branch)" = "final"
+	)
+'
+
+test_expect_success 'local config should override .gitmodules branch' '
+	(
+		cd addtest &&
+		rm -fr submod-follow &&
+		git config submodule.submod-follow.branch initial
+		git submodule init &&
+		test "$(git config submodule.submod-follow.branch)" = "initial"
+	)
 '
 
 test_expect_success 'setup - add an example entry to .gitmodules' '

@@ -6,7 +6,8 @@
 test_description='Test updating submodules
 
 This test verifies that "git submodule update" detaches the HEAD of the
-submodule and "git submodule update --rebase/--merge" does not detach the HEAD.
+submodule and "git submodule update --branch/--rebase/--merge" does not
+detach the HEAD.
 '
 
 . ./test-lib.sh
@@ -132,6 +133,53 @@ test_expect_success 'submodule update --force forcibly checks out submodules' '
 	 (cd submodule &&
 	  test "$(git status -s file)" = ""
 	 )
+	)
+'
+
+test_expect_success 'submodule update --branch detaches without submodule.<name>.branch' '
+	(cd super/submodule &&
+	  git checkout master
+	) &&
+	(cd super &&
+	 (cd submodule &&
+	  compare_head
+	 ) &&
+	 git submodule update --branch submodule &&
+	 (cd submodule &&
+	  test "$(git status -s file)" = ""
+	 )
+	)
+'
+
+test_expect_success 'submodule update --branch staying on master' '
+	(cd super/submodule &&
+	  git checkout master
+	) &&
+	(cd super &&
+	 (cd submodule &&
+	  compare_head
+	 ) &&
+	 git config submodule.submodule.branch master
+	 git submodule update --branch submodule &&
+	 cd submodule &&
+	 test "refs/heads/master" = "$(git symbolic-ref -q HEAD)" &&
+	 compare_head
+	)
+'
+
+test_expect_success 'submodule update --branch creating a new branch' '
+	(cd super/submodule &&
+	  git checkout master
+	) &&
+	(cd super &&
+	 (cd submodule &&
+	  compare_head
+	 ) &&
+	 git config submodule.submodule.branch new-branch
+	 git submodule update --branch submodule &&
+	 cd submodule &&
+	 test "refs/heads/new-branch" = "$(git symbolic-ref -q HEAD)" &&
+	 compare_head
 	)
 '
 
