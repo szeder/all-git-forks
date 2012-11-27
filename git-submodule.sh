@@ -183,6 +183,7 @@ module_clone()
 	sm_path=$1
 	url=$2
 	reference="$3"
+	branch="$4"
 	quiet=
 	if test -n "$GIT_QUIET"
 	then
@@ -209,6 +210,8 @@ module_clone()
 			clear_local_git_env
 			git clone $quiet -n ${reference:+"$reference"} \
 				--separate-git-dir "$gitdir" "$url" "$sm_path"
+			test -n "$branch" && (cd $sm_path &&
+				git checkout -t origin/$branch)
 		) ||
 		die "$(eval_gettext "Clone of '\$url' into submodule path '\$sm_path' failed")"
 	fi
@@ -361,7 +364,7 @@ Use -f if you really want to add it." >&2
 
 	else
 
-		module_clone "$sm_path" "$realrepo" "$reference" || exit
+		module_clone "$sm_path" "$realrepo" "$reference" "$local_branch" || exit
 		(
 			clear_local_git_env
 			cd "$sm_path" &&
@@ -577,6 +580,12 @@ handle_on_demand_update () {
 	fi
 }
 
+handle_tracking_branch_update () {
+	(clear_local_git_env; cd "$sm_path" &&
+		git-checkout $branch && git-pull --ff-only) ||
+	die "$(eval_gettext "Unable to pull branch '\$branch' in submodule path '\$sm_path'")"
+}
+
 #
 # Update each submodule path to correct revision, using clone and checkout as needed
 #
@@ -648,6 +657,7 @@ cmd_update()
 	cloned_modules=
 	module_list "$@" | {
 	err=
+	floating_submodules=
 	while read mode sha1 stage sm_path
 	do
 		die_if_unmatched "$mode"
@@ -684,7 +694,7 @@ Maybe you want to use 'update --init'?")"
 
 		if ! test -d "$sm_path"/.git -o -f "$sm_path"/.git
 		then
-			module_clone "$sm_path" "$url" "$reference"|| exit
+			module_clone "$sm_path" "$url" "$reference" "$branch" || exit
 			cloned_modules="$cloned_modules;$name"
 			subsha1=
 		else
@@ -693,7 +703,13 @@ Maybe you want to use 'update --init'?")"
 			die "$(eval_gettext "Unable to find current revision in submodule path '\$sm_path'")"
 		fi
 
-		handle_on_demand_update
+		if test "$update_module" = "branch"
+		then
+			handle_tracking_branch_update
+			floating_submodules="$floating_submodules $sm_path"
+		else
+			handle_on_demand_update
+		fi
 
 		if test -n "$recursive"
 		then
@@ -726,6 +742,11 @@ Maybe you want to use 'update --init'?")"
 		done
 		IFS=$OIFS
 		exit 1
+	fi
+	if test -n "$floating_submodules"
+	then
+		git add $floating_submodules &&
+		git commit -m "Updated submodules"
 	fi
 	}
 }
