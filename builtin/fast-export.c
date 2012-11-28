@@ -30,6 +30,7 @@ static int fake_missing_tagger;
 static int use_done_feature;
 static int no_data;
 static int full_tree;
+static struct string_list extra_refs = STRING_LIST_INIT_NODUP;
 
 static int parse_opt_signed_tag_mode(const struct option *opt,
 				     const char *arg, int unset)
@@ -474,80 +475,91 @@ static void handle_tag(const char *name, struct tag *tag)
 	       (int)message_size, (int)message_size, message ? message : "");
 }
 
-static void get_tags_and_duplicates(struct object_array *pending,
-				    struct string_list *extra_refs)
+static struct commit *get_commit(struct rev_cmdline_entry *e, char *full_name)
 {
-	struct tag *tag;
+	switch (e->item->type) {
+	case OBJ_COMMIT:
+		return (struct commit *)e->item;
+	case OBJ_TAG: {
+		struct tag *tag = (struct tag *)e->item;
+
+		/* handle nested tags */
+		while (tag && tag->object.type == OBJ_TAG) {
+			parse_object(tag->object.sha1);
+			string_list_append(&extra_refs, full_name)->util = tag;
+			tag = (struct tag *)tag->tagged;
+		}
+		if (!tag)
+			die("Tag %s points nowhere?", e->name);
+		return (struct commit *)tag;
+		break;
+	}
+	default:
+		return NULL;
+	}
+}
+
+static void get_tags_and_duplicates(struct rev_cmdline_info *info)
+{
 	int i;
 
-	for (i = 0; i < pending->nr; i++) {
-		struct object_array_entry *e = pending->objects + i;
+	for (i = 0; i < info->nr; i++) {
+		struct rev_cmdline_entry *e = info->rev + i;
 		unsigned char sha1[20];
-		struct commit *commit = commit;
+		struct commit *commit;
 		char *full_name;
+
+		if (e->flags & UNINTERESTING)
+			continue;
 
 		if (dwim_ref(e->name, strlen(e->name), sha1, &full_name) != 1)
 			continue;
 
-		switch (e->item->type) {
-		case OBJ_COMMIT:
-			commit = (struct commit *)e->item;
-			break;
-		case OBJ_TAG:
-			tag = (struct tag *)e->item;
-
-			/* handle nested tags */
-			while (tag && tag->object.type == OBJ_TAG) {
-				parse_object(tag->object.sha1);
-				string_list_append(extra_refs, full_name)->util = tag;
-				tag = (struct tag *)tag->tagged;
-			}
-			if (!tag)
-				die ("Tag %s points nowhere?", e->name);
-			switch(tag->object.type) {
-			case OBJ_COMMIT:
-				commit = (struct commit *)tag;
-				break;
-			case OBJ_BLOB:
-				handle_object(tag->object.sha1);
-				continue;
-			default: /* OBJ_TAG (nested tags) is already handled */
-				warning("Tag points to object of unexpected type %s, skipping.",
-					typename(tag->object.type));
-				continue;
-			}
-			break;
-		default:
+		commit = get_commit(e, full_name);
+		if (!commit) {
 			warning("%s: Unexpected object of type %s, skipping.",
 				e->name,
 				typename(e->item->type));
 			continue;
 		}
-		if (commit->util)
-			/* more than one name for the same object */
-			string_list_append(extra_refs, full_name)->util = commit;
-		else
+
+		switch(commit->object.type) {
+		case OBJ_COMMIT:
+			break;
+		case OBJ_BLOB:
+			handle_object(commit->object.sha1);
+			continue;
+		default: /* OBJ_TAG (nested tags) is already handled */
+			warning("Tag points to object of unexpected type %s, skipping.",
+				typename(commit->object.type));
+			continue;
+		}
+
+		/*
+		 * This ref will not be updated through a commit, lets make
+		 * sure it gets properly updated eventually.
+		 */
+		if (commit->util || commit->object.flags & SHOWN)
+			string_list_append(&extra_refs, full_name)->util = commit;
+		if (!commit->util)
 			commit->util = full_name;
 	}
 }
 
-static void handle_tags_and_duplicates(struct string_list *extra_refs)
+static void handle_tags_and_duplicates(void)
 {
-	struct commit *commit;
 	int i;
 
-	for (i = extra_refs->nr - 1; i >= 0; i--) {
-		const char *name = extra_refs->items[i].string;
-		struct object *object = extra_refs->items[i].util;
+	for (i = extra_refs.nr - 1; i >= 0; i--) {
+		const char *name = extra_refs.items[i].string;
+		struct object *object = extra_refs.items[i].util;
 		switch (object->type) {
 		case OBJ_TAG:
 			handle_tag(name, (struct tag *)object);
 			break;
 		case OBJ_COMMIT:
 			/* create refs pointing to already seen commits */
-			commit = (struct commit *)object;
-			printf("reset %s\nfrom :%d\n\n", name,
-			       get_object_mark(&commit->object));
+			printf("reset %s\nfrom :%d\n\n", name, get_object_mark(object));
 			show_progress();
 			break;
 		}
@@ -614,6 +626,10 @@ static void import_marks(char *input_file)
 		if (object->flags & SHOWN)
 			error("Object %s already has a mark", sha1_to_hex(sha1));
 
+		if (object->type != OBJ_COMMIT)
+			/* only commits */
+			continue;
+
 		mark_object(object, mark);
 		if (last_idnum < mark)
 			last_idnum = mark;
@@ -627,7 +643,6 @@ int cmd_fast_export(int argc, const char **argv, const char *prefix)
 {
 	struct rev_info revs;
 	struct object_array commits = OBJECT_ARRAY_INIT;
-	struct string_list extra_refs = STRING_LIST_INIT_NODUP;
 	struct commit *commit;
 	char *export_filename = NULL, *import_filename = NULL;
 	struct option options[] = {
@@ -677,7 +692,7 @@ int cmd_fast_export(int argc, const char **argv, const char *prefix)
 	if (import_filename && revs.prune_data.nr)
 		full_tree = 1;
 
-	get_tags_and_duplicates(&revs.pending, &extra_refs);
+	get_tags_and_duplicates(&revs.cmdline);
 
 	if (prepare_revision_walk(&revs))
 		die("revision walk setup failed");
@@ -693,7 +708,7 @@ int cmd_fast_export(int argc, const char **argv, const char *prefix)
 		}
 	}
 
-	handle_tags_and_duplicates(&extra_refs);
+	handle_tags_and_duplicates();
 
 	if (export_filename)
 		export_marks(export_filename);
