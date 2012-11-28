@@ -17,13 +17,13 @@ if ! "$PYTHON_PATH" -c 'import bzrlib'; then
 	test_done
 fi
 
-cmd=<<EOF
+cmd='
 import bzrlib
 bzrlib.initialize()
 import bzrlib.plugin
 bzrlib.plugin.load_plugins()
 import bzrlib.plugins.fastimport
-EOF
+'
 
 if ! "$PYTHON_PATH" -c "$cmd"; then
 	echo "consider setting BZR_PLUGIN_PATH=$HOME/.bazaar/plugins" 1>&2
