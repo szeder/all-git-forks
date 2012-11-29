@@ -8,7 +8,8 @@ dashless=$(basename "$0" | sed -e 's/-/ /')
 USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <repository>] [--] <repository> [<path>]
    or: $dashless [--quiet] status [--cached] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] init [--] [<path>...]
-   or: $dashless [--quiet] update [--init] [-N|--no-fetch] [-f|--force] [--rebase] [--reference <repository>] [--merge] [--recursive] [--] [<path>...]
+   or: $dashless [--quiet] update [--init] [--remote] [-N|--no-fetch] [-f|--force] [--rebase] [--reference <repository>] [--merge] [--recursive] [--] [<path>...]
+ges
    or: $dashless [--quiet] summary [--cached|--files] [--summary-limit <n>] [commit] [--] [<path>...]
    or: $dashless [--quiet] foreach [--recursive] <command>
    or: $dashless [--quiet] sync [--recursive] [--] [<path>...]"
@@ -26,6 +27,7 @@ cached=
 recursive=
 init=
 files=
+remote=
 nofetch=
 update=
 prefix=
@@ -390,6 +392,10 @@ Use -f if you really want to add it." >&2
 
 	git config -f .gitmodules submodule."$sm_name".path "$sm_path" &&
 	git config -f .gitmodules submodule."$sm_name".url "$repo" &&
+	if test -n "$branch"
+	then
+		git config -f .gitmodules submodule."$sm_name".branch "$branch"
+	fi &&
 	git add --force .gitmodules ||
 	die "$(eval_gettext "Failed to register submodule '\$sm_path'")"
 }
@@ -533,6 +539,9 @@ cmd_update()
 		-i|--init)
 			init=1
 			;;
+		--remote)
+			remote=1
+			;;
 		-N|--no-fetch)
 			nofetch=1
 			;;
@@ -593,6 +602,12 @@ cmd_update()
 		fi
 		name=$(module_name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
+		branch=$(git config submodule."$name".branch)
+		if test -z "$branch"
+		then  # fall back on .gitmodules
+			branch=$(git config -f .gitmodules submodule."$name".branch)
+		fi
+		branch="${branch:-master}"
 		if ! test -z "$update"
 		then
 			update_module=$update
@@ -625,6 +640,19 @@ Maybe you want to use 'update --init'?")"
 			subsha1=$(clear_local_git_env; cd "$sm_path" &&
 				git rev-parse --verify HEAD) ||
 			die "$(eval_gettext "Unable to find current revision in submodule path '\$sm_path'")"
+		fi
+
+		if test -n "$remote"
+		then
+			if test -z "$nofetch"
+			then
+				# Fetch remote before determining tracking $sha1
+				(clear_local_git_env; cd "$sm_path" && git-fetch) ||
+				die "$(eval_gettext "Unable to fetch in submodule path '\$sm_path'")"
+			fi
+			sha1=$(clear_local_git_env; cd "$sm_path" &&
+				git rev-parse --verify origin/"$branch") ||
+			die "$(eval_gettext "Unable to find current origin/$branch revision in submodule path '\$sm_path'")"
 		fi
 
 		if test "$subsha1" != "$sha1" -o -n "$force"
