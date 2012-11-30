@@ -30,6 +30,113 @@ nofetch=
 update=
 prefix=
 
+#
+# Print a string classifying a repository URL.
+#
+# $1 = url
+#
+url_type ()
+{
+	url="$1"
+	case "$url" in
+	*:*)
+		type='remote'
+		;;
+	/*)
+		type='absolute'
+		;;
+	*)
+		type='relative'
+		;;
+	esac
+	printf '%s' "$type"
+}
+
+#
+# Join URLs, removing extra ./, ../, etc.
+#
+# $1 = base url
+# $2 = relative url
+#
+# If $2 is not relative, it will be returned unaltered.
+#
+join_urls ()
+{
+	base="$1"
+	relative="$2"
+
+	relative_type=$(url_type "$relative")
+	if test "$relative_type" != 'relative' -o -z "$base"
+	then
+		printf '%s' "$relative"
+		return
+	fi
+
+	base_type=$(url_type "$base")
+	if test "$base_type" = 'relative'
+	then
+		base="${base%/}/"  # ensure a trailing slash, e.g. '..' -> '../'
+		case "$base" in
+		./*|../*)
+			;;
+		*)
+			base="./$base"  # convert 'a/b/...' to './a/b/...'
+			;;
+		esac
+	fi
+
+	base="${base%/}"
+	sep=/
+
+	while test -n "$relative"
+	do
+		relative="${relative%/}/"  # ensure a trailing slash, e.g. '..' -> '../'
+		case "$relative" in
+		../*)
+			case "$base" in
+			..|../..|../*/..)
+				break;;
+			*/*)
+				base="${base%/*}"
+				;;
+			*:*)
+				base="${base%:*}"
+				sep=:
+				;;
+			/|.)
+				die "$(eval_gettext "cannot strip one component off remote '\$base'")"
+				;;
+			*)
+				base=.
+				;;
+			esac
+			relative="${relative#../}"
+			;;
+		./*)
+			relative="${relative#./}"
+			;;
+		*)
+			break;;
+		esac
+	done
+	if test -z "$relative"
+	then
+		sep=
+	fi
+	url="$base$sep${relative%/}"
+	while test -n "url"
+	do
+		case "$url" in
+		./*)
+			url="${url#./}"
+			;;
+		*)
+			break;;
+		esac
+	done
+	printf '%s' "$url"
+}
+
 # The function takes at most 2 arguments. The first argument is the
 # URL that navigates to the submodule origin repo. When relative, this URL
 # is relative to the superproject origin URL repo. The second up_path
@@ -48,59 +155,42 @@ prefix=
 # the superproject working tree otherwise.
 resolve_relative_url ()
 {
-	remote=$(get_default_remote)
-	remoteurl=$(git config "remote.$remote.url") ||
-		remoteurl=$(pwd) # the repository is its own authoritative upstream
 	url="$1"
-	remoteurl=${remoteurl%/}
-	sep=/
 	up_path="$2"
 
-	case "$remoteurl" in
-	*:*|/*)
-		is_relative=
-		;;
-	./*|../*)
-		is_relative=t
-		;;
-	*)
-		is_relative=t
-		remoteurl="./$remoteurl"
-		;;
-	esac
+	url_type=$(url_type "$url")
+	if test "$url_type" = 'relative'
+	then
+		remote=$(get_default_remote)
+		remote_url=$(git config "remote.$remote.url") ||
+			remote_url=$(pwd) # the repository is its own authoritative upstream
+		remote_type=$(url_type "$remote_url")
+		if test "$remote_type" = 'relative' -a -n "${up_path}"
+		then
+			remote_url=$(join_urls "${up_path}" "${remote_url}")
+		fi
+		url=$(join_urls "$remote_url" "$url")
+	fi
+	printf '%s' "$url"
+}
 
-	while test -n "$url"
-	do
-		case "$url" in
-		../*)
-			url="${url#../}"
-			case "$remoteurl" in
-			*/*)
-				remoteurl="${remoteurl%/*}"
-				;;
-			*:*)
-				remoteurl="${remoteurl%:*}"
-				sep=:
-				;;
-			*)
-				if test -z "$is_relative" || test "." = "$remoteurl"
-				then
-					die "$(eval_gettext "cannot strip one component off url '\$remoteurl'")"
-				else
-					remoteurl=.
-				fi
-				;;
-			esac
-			;;
-		./*)
-			url="${url#./}"
-			;;
-		*)
-			break;;
-		esac
-	done
-	remoteurl="$remoteurl$sep${url%/}"
-	echo "${is_relative:+${up_path}}${remoteurl#./}"
+#
+# Get submodules up_path (for resolve_relative_url)
+#
+# $1 = $sm_path, as returned by module_list()
+#
+get_up_path()
+{
+	sm_path="$1"
+	if test -n "$sm_path"
+	then
+		# rewrite foo/bar as ../.. to find path from
+		# submodule work tree to superproject work tree
+		up_path="$(printf '%s' "$sm_path" | sed "s/[^/][^/]*/../g")" &&
+		# guarantee a trailing /
+		up_path="${up_path%/}/" &&
+		printf '%s' "$up_path"
+	fi
 }
 
 #
@@ -177,6 +267,50 @@ get_submodule_config()
 	printf '%s' "${value:-$default}"
 }
 
+#
+# Print the .gitmodules-configured submodule URL.
+#
+# $1 = submodule name
+# $2 = $sm_path, as returned by module_list()
+#
+# This expands relative URLs from .gitmodules so they are relative to
+# the submodule's remote repository.
+#
+get_submodule_url_from_gitmodules()
+{
+	name="$1"
+	sm_path="$2"
+	url=$(git config -f .gitmodules submodule."$name".url)
+	url=$(resolve_relative_url "${url:-.}" "$up_path")
+	printf '%s' "$url"
+}
+
+#
+# Print the configured submodule URL.
+#
+# $1 = submodule name
+# $2 = $sm_path, as returned by module_list()
+#
+# This is similar to get_submodule_config() for submodule.<name>.url,
+# but it also expands relative URLs from .gitmodules so they are
+# relative to the submodule's working directory.
+#
+get_submodule_url()
+{
+	name="$1"
+	sm_path="$2"
+	url=$(git config submodule."$name".url)
+	if test -n "$url"
+	then
+		# already resolved relative to the superproject's default remote
+		up_path=$(get_up_path "$sm_path")
+		url=$(join_urls "$up_path" "$url")
+	else
+		# resolve relative to superproject's default remote
+		url=$(get_submodule_url_from_gitmodules "$name" "$sm_path")
+	fi
+	printf '%s' "$url"
+}
 
 #
 # Map submodule path to submodule name
@@ -326,19 +460,8 @@ cmd_add()
 	fi
 
 	# assure repo is absolute or relative to parent
-	case "$repo" in
-	./*|../*)
-		# dereference source url relative to parent's url
-		realrepo=$(resolve_relative_url "$repo") || exit
-		;;
-	*:*|/*)
-		# absolute url
-		realrepo=$repo
-		;;
-	*)
-		die "$(eval_gettext "repo URL: '\$repo' must be absolute or begin with ./|../")"
-	;;
-	esac
+	realrepo=$(resolve_relative_url "$repo") ||
+	die "$(eval_gettext "repo URL: '\$repo' must be absolute or begin with ./|../")"
 
 	# normalize path:
 	# multiple //; leading ./; /./; /../; trailing /
@@ -386,7 +509,6 @@ Use -f if you really want to add it." >&2
 			esac
 		) || die "$(eval_gettext "Unable to checkout submodule '\$sm_path'")"
 	fi
-	git config submodule."$sm_path".url "$realrepo"
 
 	git add $force "$sm_path" ||
 	die "$(eval_gettext "Failed to add submodule '\$sm_path'")"
@@ -493,16 +615,10 @@ cmd_init()
 		# Copy url setting when it is not set yet
 		if test -z "$(git config "submodule.$name.url")"
 		then
-			url=$(git config -f .gitmodules submodule."$name".url)
+			url=$(get_submodule_url "$name")
 			test -z "$url" &&
-			die "$(eval_gettext "No url found for submodule path '\$sm_path' in .gitmodules")"
+			die "$(eval_gettext "No url found for submodule path '\$sm_path'")"
 
-			# Possibly a url relative to parent
-			case "$url" in
-			./*|../*)
-				url=$(resolve_relative_url "$url") || exit
-				;;
-			esac
 			git config submodule."$name".url "$url" ||
 			die "$(eval_gettext "Failed to register url for submodule path '\$sm_path'")"
 
@@ -595,12 +711,12 @@ cmd_update()
 			continue
 		fi
 		name=$(module_name "$sm_path") || exit
-		url=$(git config submodule."$name".url)
+		url=$(get_submodule_url "$name" "$sm_path")
 		if ! test -z "$update"
 		then
 			update_module=$update
 		else
-			update_module=$(git config submodule."$name".update)
+			update_module=$(get_submodule_config "$name" update)
 		fi
 
 		if test "$update_module" = "none"
@@ -621,7 +737,8 @@ Maybe you want to use 'update --init'?")"
 
 		if ! test -d "$sm_path"/.git -o -f "$sm_path"/.git
 		then
-			module_clone "$sm_path" "$url" "$reference"|| exit
+			super_url=$(get_submodule_url "$name")  # relative to superproject
+			module_clone "$sm_path" "$super_url" "$reference"|| exit
 			cloned_modules="$cloned_modules;$name"
 			subsha1=
 		else
@@ -986,7 +1103,7 @@ cmd_status()
 	do
 		die_if_unmatched "$mode"
 		name=$(module_name "$sm_path") || exit
-		url=$(git config submodule."$name".url)
+		url=$(get_submodule_url "$name" "$sm_path")
 		displaypath="$prefix$sm_path"
 		if test "$stage" = U
 		then
@@ -1055,41 +1172,26 @@ cmd_sync()
 	do
 		die_if_unmatched "$mode"
 		name=$(module_name "$sm_path")
-		url=$(git config -f .gitmodules --get submodule."$name".url)
-
-		# Possibly a url relative to parent
-		case "$url" in
-		./*|../*)
-			# rewrite foo/bar as ../.. to find path from
-			# submodule work tree to superproject work tree
-			up_path="$(echo "$sm_path" | sed "s/[^/][^/]*/../g")" &&
-			# guarantee a trailing /
-			up_path=${up_path%/}/ &&
-			# path from submodule work tree to submodule origin repo
-			sub_origin_url=$(resolve_relative_url "$url" "$up_path") &&
-			# path from superproject work tree to submodule origin repo
-			super_config_url=$(resolve_relative_url "$url") || exit
-			;;
-		*)
-			sub_origin_url="$url"
-			super_config_url="$url"
-			;;
-		esac
+		# .gitmodules-style (unresolved) url for the submodule origin repo
+		super_config_url=$(get_submodule_config "$name" url)
+		# path from submodule work tree to submodule origin repo
+		sub_origin_url=$(get_submodule_url "$name" "$sm_path")
 
 		if git config "submodule.$name.url" >/dev/null 2>/dev/null
 		then
-			say "$(eval_gettext "Synchronizing submodule url for '\$name'")"
+			say "$(eval_gettext "Synchronizing submodule url for '\$name' (superproject config)")"
 			git config submodule."$name".url "$super_config_url"
+		fi
 
-			if test -e "$sm_path"/.git
-			then
-			(
-				clear_local_git_env
-				cd "$sm_path"
-				remote=$(get_default_remote)
-				git config remote."$remote".url "$sub_origin_url"
-			)
-			fi
+		if test -e "$sm_path"/.git
+		then
+		say "$(eval_gettext "Synchronizing submodule url for '\$name' (subproject config)")"
+		(
+			clear_local_git_env
+			cd "$sm_path"
+			remote=$(get_default_remote)
+			git config remote."$remote".url "$sub_origin_url"
+		)
 		fi
 	done
 }
