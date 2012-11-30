@@ -959,6 +959,13 @@ the possible corner cases (git doesn't do it, either).  Committing
 renamed and copied files is fully supported if they're similar enough
 for git to detect them.
 
+SVN tags (if tracked using options '--tags' or '--stdlayout') are
+imported as git branches, prefixing the tag name with 'tags/'.
+This is because tags in SVN behave more like git branches: The contents
+of a tag need not be identical to the tagged commit, and it is possible
+(though discouraged) to commit changes to a tag (because a tag is just a
+directory copy, thus technically the same as a branch).
+
 CONFIGURATION
 -------------
 
