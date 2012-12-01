@@ -11,7 +11,7 @@ USAGE="[--quiet] add [-b branch] [-f|--force] [--reference <repository>] [--] <r
    or: $dashless [--quiet] update [--init] [-N|--no-fetch] [-f|--force] [--rebase] [--reference <repository>] [--merge] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] summary [--cached|--files] [--summary-limit <n>] [commit] [--] [<path>...]
    or: $dashless [--quiet] foreach [--recursive] <command>
-   or: $dashless [--quiet] sync [--] [<path>...]"
+   or: $dashless [--quiet] sync [--local] [--no-local] [--] [<path>...]"
 OPTIONS_SPEC=
 . git-sh-setup
 . git-sh-i18n
@@ -28,6 +28,7 @@ init=
 files=
 nofetch=
 update=
+local=
 prefix=
 
 #
@@ -1147,11 +1148,20 @@ cmd_status()
 #
 cmd_sync()
 {
+	local=1
 	while test $# -ne 0
 	do
 		case "$1" in
 		-q|--quiet)
 			GIT_QUIET=1
+			shift
+			;;
+		--local)
+			local=1
+			shift
+			;;
+		--no-local)
+			local=
 			shift
 			;;
 		--)
@@ -1172,26 +1182,26 @@ cmd_sync()
 	do
 		die_if_unmatched "$mode"
 		name=$(module_name "$sm_path")
-		# .gitmodules-style (unresolved) url for the submodule origin repo
-		super_config_url=$(get_submodule_config "$name" url)
-		# path from submodule work tree to submodule origin repo
-		sub_origin_url=$(get_submodule_url "$name" "$sm_path")
 
-		if git config "submodule.$name.url" >/dev/null 2>/dev/null
+		if test -n "$local" || git config "submodule.$name.url" >/dev/null 2>/dev/null
 		then
+			# path from supermodule work tree to submodule origin repo
+			super_config_url=$(get_submodule_url_from_gitmodules "$name")
 			say "$(eval_gettext "Synchronizing submodule url for '\$name' (superproject config)")"
 			git config submodule."$name".url "$super_config_url"
 		fi
 
 		if test -e "$sm_path"/.git
 		then
-		say "$(eval_gettext "Synchronizing submodule url for '\$name' (subproject config)")"
-		(
-			clear_local_git_env
-			cd "$sm_path"
-			remote=$(get_default_remote)
-			git config remote."$remote".url "$sub_origin_url"
-		)
+			# path from submodule work tree to submodule origin repo
+			sub_origin_url=$(get_submodule_url "$name" "$sm_path")
+			say "$(eval_gettext "Synchronizing submodule url for '\$name' (subproject config)")"
+			(
+				clear_local_git_env
+				cd "$sm_path"
+				remote=$(get_default_remote)
+				git config remote."$remote".url "$sub_origin_url"
+			)
 		fi
 	done
 }
