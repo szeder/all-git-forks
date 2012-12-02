@@ -234,12 +234,49 @@ module_list()
 	'
 }
 
-die_if_unmatched ()
+module_list_active()
 {
-	if test "$1" = "#unmatched"
+	if test -n "$*"
 	then
-		exit 1
+		explicit='t'
+	else
+		explicit=
 	fi
+	module_list "$@" |
+	while read mode sha1 stage sm_path
+	do
+		if test "$mode" = '#unmatched'
+		then
+			echo "$mode"
+			continue
+		fi
+		name=$(module_name "$sm_path")
+		active=$(get_submodule_active "$name")
+		if test -n "$explicit" -a -z "$active"
+		then
+			mode='#explicit-but-inactive'
+			active='no, but return anyway'
+		fi
+		if test -n "$active"
+		then
+			printf '%s %s %s\t%s\n' "$mode" "$sha1" "$stage" "$sm_path"
+		fi
+	done
+}
+
+die_on_module_list_error ()
+{
+	mode="$1"
+	sm_path="$2"
+	case "$mode" in
+	'#unmatched')
+		exit 1
+		;;
+	'#explicit-but-inactive')
+		say "$(eval_gettext "Submodule path '\$sm_path' not initialized")"
+		exit 1
+		;;
+	esac
 }
 
 #
@@ -248,6 +285,7 @@ die_if_unmatched ()
 # $1 = submodule name
 # $2 = option name
 # $3 = default value
+# $4+ = config options (e.g. --bool)
 #
 # Checks in the usual git-config places first (for overrides),
 # otherwise it falls back on .gitmodules.  This allows you to
@@ -260,12 +298,42 @@ get_submodule_config()
 	name="$1"
 	option="$2"
 	default="$3"
-	value=$(git config submodule."$name"."$option")
+	shift 2; shift  # shift options into "$@", split because default is optional
+	value=$(git config "$@" submodule."$name"."$option")
 	if test -z "$value"
 	then
-		value=$(git config -f .gitmodules submodule."$name"."$option")
+		value=$(git config -f .gitmodules "$@" submodule."$name"."$option")
 	fi
 	printf '%s' "${value:-$default}"
+}
+
+#
+# Return 't' or '' (false) if the submodule is active.
+#
+# $1 = submodule name
+#
+get_submodule_active()
+{
+	active=$(get_submodule_config "$name" active '' --bool)
+	if test -z "$active"
+	then
+		# upgrade from older versions of Git
+		active='false'
+		update=$(get_submodule_config "$name" update)
+		if test 'update' != 'none'
+		then
+			url=$(git config submodule."$name".url)
+			if test -n "$url"
+			then
+				active='true'
+				git config submodule."$name".active 'true'
+			fi
+		fi
+	fi
+	if test "$active" = 'true'
+	then
+		echo 't'
+	fi
 }
 
 #
@@ -565,10 +633,10 @@ cmd_foreach()
 	# command in the subshell (and a recursive call to this function)
 	exec 3<&0
 
-	module_list |
+	module_list_active |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode"
+		die_on_module_list_error "$mode" "$sm_path"
 		if test -e "$sm_path"/.git
 		then
 			say "$(eval_gettext "Entering '\$prefix\$sm_path'")"
@@ -618,31 +686,26 @@ cmd_init()
 		shift
 	done
 
+	if test -n "$*"
+	then
+		explicit='t'
+	else
+		explicit=
+	fi
 	module_list "$@" |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode"
-		name=$(module_name "$sm_path") || exit
-
-		# Copy url setting when it is not set yet
-		if test -z "$(git config "submodule.$name.url")"
-		then
-			url=$(get_submodule_url "$name")
-			test -z "$url" &&
-			die "$(eval_gettext "No url found for submodule path '\$sm_path'")"
-
-			git config submodule."$name".url "$url" ||
-			die "$(eval_gettext "Failed to register url for submodule path '\$sm_path'")"
-
-			say "$(eval_gettext "Submodule '\$name' (\$url) registered for path '\$sm_path'")"
-		fi
-
-		# Copy "update" setting when it is not set yet
-		upd="$(git config -f .gitmodules submodule."$name".update)"
-		test -z "$upd" ||
-		test -n "$(git config submodule."$name".update)" ||
-		git config submodule."$name".update "$upd" ||
-		die "$(eval_gettext "Failed to register update mode for submodule path '\$sm_path'")"
+		die_on_module_list_error "$mode" "$sm_path"
+		(
+			name=$(module_name "$sm_path") &&
+			update=$(get_submodule_config "$name" update) &&
+			if test -n "$explicit" -o "$update" != 'none'
+			then
+				git config submodule."$name".active true
+			else
+				git config submodule."$name".active false
+			fi
+		) || die "$(eval_gettext "Unable to activate submodule at '\$sm_path'")"
 	done
 }
 
@@ -712,11 +775,11 @@ cmd_update()
 	fi
 
 	cloned_modules=
-	module_list "$@" | {
+	module_list_active "$@" | {
 	err=
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode"
+		die_on_module_list_error "$mode" "$sm_path"
 		if test "$stage" = U
 		then
 			echo >&2 "Skipping unmerged submodule $sm_path"
@@ -742,8 +805,7 @@ cmd_update()
 			# Only mention uninitialized submodules when its
 			# path have been specified
 			test "$#" != "0" &&
-			say "$(eval_gettext "Submodule path '\$sm_path' not initialized
-Maybe you want to use 'update --init'?")"
+			say "$(eval_gettext "No URL configured for submodule path '\$sm_path'")"
 			continue
 		fi
 
@@ -1113,16 +1175,16 @@ cmd_status()
 	module_list "$@" |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode"
+		die_on_module_list_error "$mode" "$sm_path"
 		name=$(module_name "$sm_path") || exit
-		url=$(get_submodule_url "$name" "$sm_path")
+		active=$(get_submodule_active "$name")
 		displaypath="$prefix$sm_path"
 		if test "$stage" = U
 		then
 			say "U$sha1 $displaypath"
 			continue
 		fi
-		if test -z "$url" || ! test -d "$sm_path"/.git -o -f "$sm_path"/.git
+		if test -z "$active" || ! test -d "$sm_path"/.git -o -f "$sm_path"/.git
 		then
 			say "-$sha1 $displaypath"
 			continue;
@@ -1188,10 +1250,10 @@ cmd_sync()
 		esac
 	done
 	cd_to_toplevel
-	module_list "$@" |
+	module_list_active "$@" |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode"
+		die_on_module_list_error "$mode" "$sm_path"
 		name=$(module_name "$sm_path")
 
 		if test -n "$local" || git config "submodule.$name.url" >/dev/null 2>/dev/null
