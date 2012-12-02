@@ -32,7 +32,7 @@ static void restore_term(void)
 	term_fd = -1;
 }
 
-static int disable_echo()
+static int disable_echo(void)
 {
 	struct termios t;
 
