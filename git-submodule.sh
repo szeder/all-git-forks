@@ -496,7 +496,18 @@ Use -f if you really want to add it." >&2
 		else
 			die "$(eval_gettext "'\$sm_path' already exists and is not a valid git repo")"
 		fi
-
+		# if the submodule's remote URL is not set, set it
+		up_path=$(get_up_path "$sm_path")
+		sub_url=$(join_urls "$up_path" "$realrepo")
+		(
+			clear_local_git_env
+			cd "$sm_path" &&
+			remote=$(get_default_remote) &&
+			if ! git config remote."$remote".url > /dev/null 2>/dev/null
+			then
+				git config remote."$remote".url "$sub_url"
+			fi
+		) || die "$(eval_gettext "Unable to configure submodule remote '\$sm_path'")"
 	else
 
 		module_clone "$sm_path" "$realrepo" "$reference" || exit
