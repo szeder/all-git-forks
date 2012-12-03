@@ -113,6 +113,7 @@ static void checkout_all(const char *prefix, int prefix_length)
 			errs++;
 		last_ce = ce;
 	}
+	checkout_remaining_link_copies();
 	if (last_ce && to_tempfile)
 		write_tempfile_record(last_ce->name, prefix_length);
 	if (errs)

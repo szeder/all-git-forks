@@ -2,6 +2,17 @@
 #include "blob.h"
 #include "dir.h"
 #include "streaming.h"
+#include <string.h>
+#include <stdio.h>
+
+int nnn;
+int xlink(const char *from, const char *to)
+{
+	int ret = link(from,to);
+	printf("#%d,link %s,%s, ret=%d, errno=%d\n", nnn++, from, to, ret, errno);
+	return ret;
+}
+#define link(s,e) xlink(s,e)
 
 static void create_directories(const char *path, int path_len,
 			       const struct checkout *state)
@@ -134,6 +145,209 @@ static int streaming_write_entry(struct cache_entry *ce, char *path,
 	return result;
 }
 
+struct postlink {
+	struct cache_entry *ce;
+	char *from,*to;
+};
+static struct postlink *postlinks = NULL;
+static int npostlinks = 0;
+static int maxpostlinks = 0;
+static int resolved = 0;
+int lasttry = 0;
+
+void add_postlink(struct cache_entry *ce, char *from, char *to)
+{
+	if (npostlinks >= maxpostlinks) {
+		if (maxpostlinks == 0)
+			maxpostlinks = 64;
+		else
+			maxpostlinks *= 2;
+		postlinks = realloc(postlinks, maxpostlinks*sizeof(struct postlink));
+	}
+	postlinks[npostlinks].ce = ce;
+	postlinks[npostlinks].to = xstrdup(to);
+	postlinks[npostlinks].from = xstrdup(from);
+	npostlinks++;
+}
+
+void release_postlink(void)
+{
+	int i;
+	for (i = 0; i < npostlinks; ++i) {
+		free(postlinks[i].from);
+		free(postlinks[i].to);
+	}
+	free(postlinks);
+	postlinks = NULL;
+	npostlinks = 0;
+	maxpostlinks = 0;
+}
+
+static int recursive_link(const char *src, const char *dst) {
+	// printf("recursive_link %s %s\n", src, dst);
+	struct stat buf;
+	struct dirent *dp;
+	struct strbuf dstb = STRBUF_INIT;
+	struct strbuf srcb = STRBUF_INIT;
+	int err = stat(dst, &buf);
+	DIR *d = opendir(src);
+	if (!d)
+		return ENOENT;
+	if (err && errno == ENOENT) {
+		err = mkdir(dst, 0777);
+		if (err)
+			return err;
+		else
+			resolved++;
+	} else if (!(buf.st_mode & S_IFDIR))
+		return EEXIST;
+	err = 0;
+	while ((dp = readdir(d)) != NULL) {
+		if (is_dot_or_dotdot(dp->d_name))
+			continue;
+		strbuf_add(&dstb, dst, strlen(dst));
+		strbuf_add(&dstb, "/", 1);
+		strbuf_add(&dstb, dp->d_name, strlen(dp->d_name));
+		strbuf_add(&srcb, src, strlen(src));
+		strbuf_add(&srcb, "/", 1);
+		strbuf_add(&srcb, dp->d_name, strlen(dp->d_name));
+		if (!stat(srcb.buf, &buf)) {
+			if (buf.st_mode & S_IFDIR) {
+				if (recursive_link(srcb.buf, dstb.buf)) {
+					err = -1;
+				}
+			} else {
+				int r1,r2;
+				r1 = unlink(dstb.buf);
+				if (r1)
+					error("unlink %s = %d, errno=%d\n", dstb.buf, r1, errno);
+				r2 = link(srcb.buf, dstb.buf);
+				if (r2) {
+					if (maxpostlinks >= 0) {
+						error("cannot link %s to %s", srcb.buf, dstb.buf);
+					}
+					err = -1;
+				}
+				if (r1 && !r2)
+					resolved++;
+			}
+		} else {
+			if (maxpostlinks >= 0) {
+				error("cannot link %s to %s", srcb.buf, dstb.buf);
+			}
+			err = -1;
+		}
+		strbuf_reset(&srcb);
+		strbuf_reset(&dstb);
+	}
+	strbuf_release(&dstb);
+	strbuf_release(&srcb);
+	closedir(d);
+	return err;
+}
+
+static void resolvelink(struct strbuf *src, struct strbuf *dst)
+{
+	if (0 == strncmp(src->buf, "../", 3)) {
+		char *p = dst->buf + dst->len - 1;
+		while (p > dst->buf && *p != '/')
+			--p;
+		if (*p != '/')
+			return;
+		--p;
+		while (p > dst->buf && *p != '/')
+			--p;
+		strbuf_remove(src, 0, 3);
+		if (*p == '/')
+			strbuf_insert(src, 0, dst->buf, p - dst->buf + 1);
+		resolvelink(src, dst);
+	} else if (0 == strncmp(src->buf, "./", 2)) {
+		strbuf_remove(src, 0, 2);
+		resolvelink(src, dst);
+	}
+}
+
+static int fakesymlink(const char *old, const char *new)
+{
+	struct stat buf;
+	int st;
+	int err;
+	char dir[MAXPATHLEN];
+	char cdir[MAXPATHLEN];
+	char *dend;
+	struct strbuf src = STRBUF_INIT;
+	struct strbuf dst = STRBUF_INIT;
+	strcpy(dir, new);
+	dend = strrchr(dir, '/');
+	if (dend) {
+		*dend = 0;
+		if (!getcwd(cdir, MAXPATHLEN))
+			return -1;
+	}
+	strbuf_add(&src, old, strlen(old));
+	strbuf_add(&dst, new, strlen(new));
+	resolvelink(&src, &dst);
+	if (0 == (st = stat(src.buf, &buf))) {
+		if (buf.st_mode & (S_IFREG | S_IFLNK)) {
+			int r = unlink(dst.buf);
+			err = link(src.buf, dst.buf);
+			if (!err && !r)
+				resolved++;
+			if (err)
+				error("Failed to link %s %s\n", src.buf, dst.buf);
+		} else if (buf.st_mode & S_IFDIR) {
+			err = recursive_link(src.buf, dst.buf);
+			if (maxpostlinks < 0)
+				err = 1;
+//			printf("%d <- recursive_link\n", err);
+		} else {
+			error("mode:Failed to link %s %s\n", src.buf, dst.buf);
+			err = -1;
+		}
+	} else {
+		error("stat:Failed to link %s %s\n", src.buf, dst.buf);
+		err = -1;
+	}
+	strbuf_release(&src);
+	strbuf_release(&dst);
+	return err;
+}
+
+int checkout_remaining_link_copies(void)
+{
+	int j;
+	int err = 0;
+	maxpostlinks = -1;
+	resolved = 1;
+
+	/* stupid, each iteration should resolve at least one entry */
+	do {
+		if (resolved == 0)
+			lasttry = 1;
+		resolved = 0;
+		for (j = 0; j < npostlinks; ++j) {
+			struct postlink *e = &postlinks[j];
+			if (e->from) {
+				if (0 == fakesymlink(e->from, e->to)) {
+					if (e->ce) {
+						struct stat st;
+						if (0 == stat(e->to, &st))
+							fill_stat_cache_info(e->ce, &st);
+					}
+					free(e->from);
+					e->from = NULL;
+				} else {
+					if (lasttry) {
+						err = 1;
+					}
+				}
+			}
+		}
+	} while (resolved > 0 && !lasttry);
+	release_postlink();
+	return err;
+}
+
 static int write_entry(struct cache_entry *ce, char *path, const struct checkout *state, int to_tempfile)
 {
 	unsigned int ce_mode_s_ifmt = ce->ce_mode & S_IFMT;
@@ -161,8 +375,16 @@ static int write_entry(struct cache_entry *ce, char *path, const struct checkout
 			return error("unable to read sha1 file of %s (%s)",
 				path, sha1_to_hex(ce->sha1));
 
-		if (ce_mode_s_ifmt == S_IFLNK && has_symlinks && !to_tempfile) {
-			ret = symlink(new, path);
+		if (ce_mode_s_ifmt == S_IFLNK && (has_symlinks || copy_symlinks) && !to_tempfile) {
+			if (copy_symlinks) {
+				ret = fakesymlink(new, path);
+				if (ret < 0) {
+					// Could not copy now, assume we can do it later
+					add_postlink(ce, new, path);
+					ret = 0;
+				}
+			} else
+				ret = symlink(new, path);
 			free(new);
 			if (ret)
 				return error("unable to create symlink %s (%s)",
@@ -267,8 +489,16 @@ int checkout_entry(struct cache_entry *ce, const struct checkout *state, char *t
 			if (!state->force)
 				return error("%s is a directory", path);
 			remove_subtree(path);
-		} else if (unlink(path))
-			return error("unable to unlink old '%s' (%s)", path, strerror(errno));
+		} else {
+			if (unlink(path)) {
+//				printf("has_symlinks=%d, copy_symlinks=%d\n", has_symlinks, copy_symlinks);
+				if (copy_symlinks) {
+					remove_subtree(path);
+				} else {
+					return error("unable to unlink old '%s' (%s)", path, strerror(errno));
+				}
+			}
+		}
 	} else if (state->not_new)
 		return 0;
 	create_directories(path, len, state);

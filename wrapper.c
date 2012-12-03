@@ -2,6 +2,7 @@
  * Various trivial helper wrappers around standard functions
  */
 #include "cache.h"
+#include "dir.h"
 
 static void do_nothing(size_t size)
 {
@@ -400,7 +401,23 @@ int rmdir_or_warn(const char *file)
 
 int remove_or_warn(unsigned int mode, const char *file)
 {
-	return S_ISGITLINK(mode) ? rmdir_or_warn(file) : unlink_or_warn(file);
+	if (S_ISGITLINK(mode))
+		return rmdir_or_warn(file);
+	if (S_ISLNK(mode) && copy_symlinks) {
+		struct stat sb;
+		if (!stat(file, &sb)) {
+			if (S_IFDIR & sb.st_mode) {
+				struct strbuf dir = STRBUF_INIT;
+				strbuf_add(&dir, file, strlen(file));
+				return remove_dir_recursively(&dir, 0);
+			} else {
+				return unlink_or_warn(file);
+			}
+		} else {
+			perror("oops");
+		}
+	}
+	return unlink_or_warn(file);
 }
 
 void warn_on_inaccessible(const char *path)

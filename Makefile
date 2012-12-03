@@ -344,7 +344,12 @@ endif
 CFLAGS = -g -O2 -Wall -Werror \
 	-Wno-pointer-to-int-cast \
 	-Wold-style-definition \
-	-Wdeclaration-after-statement
+	-Wdeclaration-after-statement \
+	-Wno-deprecated-declarations \
+	-Wstrict-prototypes \
+	-Wdeclaration-after-statement \
+	-Wno-pointer-to-int-cast \
+
 LDFLAGS =
 ALL_CFLAGS = $(CPPFLAGS) $(CFLAGS)
 ALL_LDFLAGS = $(LDFLAGS)
@@ -442,6 +447,7 @@ SCRIPT_SH += git-bisect.sh
 SCRIPT_SH += git-difftool--helper.sh
 SCRIPT_SH += git-filter-branch.sh
 SCRIPT_SH += git-lost-found.sh
+SCRIPT_SH += git-ln.sh
 SCRIPT_SH += git-merge-octopus.sh
 SCRIPT_SH += git-merge-one-file.sh
 SCRIPT_SH += git-merge-resolve.sh

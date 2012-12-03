@@ -576,7 +576,13 @@ static int git_default_core_config(const char *var, const char *value)
 	}
 
 	if (!strcmp(var, "core.symlinks")) {
-		has_symlinks = git_config_bool(var, value);
+		if (0 == strcasecmp("copy", value)) {
+			copy_symlinks = 1;
+			has_symlinks = 1; // TODO: reconsider
+		} else {
+			has_symlinks = git_config_bool(var, value);
+			copy_symlinks = 0;
+		}
 		return 0;
 	}
 

@@ -229,6 +229,7 @@ static int check_updates(struct unpack_trees_options *o)
 			}
 		}
 	}
+	errs |= checkout_remaining_link_copies();
 	stop_progress(&progress);
 	if (o->update)
 		git_attr_set_direction(GIT_ATTR_CHECKIN, NULL);
@@ -1226,6 +1227,16 @@ static int verify_uptodate_1(struct cache_entry *ce,
 		 */
 		if (S_ISGITLINK(ce->ce_mode))
 			return 0;
+//
+//		if (copy_symlinks) {
+//			printf("%s, %0x A=%d, B=%d, c=%d\n", ce->name, st.st_mode, S_ISLNK(ce->ce_mode), (ce->ce_flags&CE_VALID), S_ISDIR(st.st_mode));
+//			if (S_ISLNK(ce->ce_mode) /*&& (ce->ce_flags&CE_VALID)*/ && S_ISDIR(st.st_mode))
+//				return 0;
+//			printf("%s, %0x A=%d, B=%d, c=%d\n", ce->name, st.st_mode, S_ISLNK(ce->ce_mode), (ce->ce_flags&CE_VALID), S_ISREG(st.st_mode));
+//			if (S_ISLNK(ce->ce_mode) /*&& (ce->ce_flags&CE_VALID)*/ && S_ISREG(st.st_mode))
+//				return 0;
+//
+//		}
 		errno = 0;
 	}
 	if (errno == ENOENT)

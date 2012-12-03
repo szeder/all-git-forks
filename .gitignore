@@ -72,6 +72,7 @@
 /git-init
 /git-init-db
 /git-instaweb
+/git-ln
 /git-log
 /git-lost-found
 /git-ls-files

@@ -328,6 +328,8 @@ static int checkout_paths(const struct checkout_opts *opts,
 		}
 	}
 
+	checkout_remaining_link_copies();
+
 	if (write_cache(newfd, active_cache, active_nr) ||
 	    commit_locked_index(lock_file))
 		die(_("unable to write new index file"));
