@@ -83,7 +83,7 @@ test_expect_success '"git submodule sync" should not vivify uninteresting submod
 	 git pull &&
 	 git submodule sync &&
 	 test -z "$(git config submodule.submodule.url)" &&
-	 git submodule sync submodule &&
+	 test_must_fail git submodule sync submodule &&
 	 test -z "$(git config submodule.submodule.url)"
 	)
 '
