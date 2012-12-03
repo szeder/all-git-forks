@@ -777,4 +777,15 @@ test_expect_success 'submodule add with an existing name fails unless forced' '
 	)
 '
 
+test_expect_success 'submodule deinit should unregister submodule url from .git/config' '
+	url=$(git config submodule.example.url) &&
+	git submodule deinit &&
+	test -z "$(git config submodule.example.url)"
+'
+
+test_expect_success 'submodule deinit complains only when explicitly used on an uninitialized submodule' '
+	git submodule deinit &&
+	test_must_fail git submodule deinit example
+'
+
 test_done
