@@ -248,22 +248,6 @@ test_expect_success 'submodule update - checkout in .git/config' '
 	)
 '
 
-test_expect_success 'submodule init picks up rebase' '
-	(cd super &&
-	 git config -f .gitmodules submodule.rebasing.update rebase &&
-	 git submodule init rebasing &&
-	 test "rebase" = "$(git config submodule.rebasing.update)"
-	)
-'
-
-test_expect_success 'submodule init picks up merge' '
-	(cd super &&
-	 git config -f .gitmodules submodule.merging.update merge &&
-	 git submodule init merging &&
-	 test "merge" = "$(git config submodule.merging.update)"
-	)
-'
-
 test_expect_success 'submodule update --merge  - ignores --merge  for new submodules' '
 	(cd super &&
 	 rm -rf submodule &&
@@ -316,14 +300,6 @@ test_expect_success 'submodule update ignores update=rebase config for new submo
 	)
 '
 
-test_expect_success 'submodule init picks up update=none' '
-	(cd super &&
-	 git config -f .gitmodules submodule.none.update none &&
-	 git submodule init none &&
-	 test "none" = "$(git config submodule.none.update)"
-	)
-'
-
 test_expect_success 'submodule update - update=none in .git/config' '
 	(cd super &&
 	 git config submodule.submodule.update none &&
@@ -361,6 +337,9 @@ test_expect_success 'submodule update - update=none in .git/config but --checkou
 
 test_expect_success 'submodule update --init skips submodule with update=none' '
 	(cd super &&
+	 git config -f .gitmodules submodule.rebasing.update rebase &&
+	 git config -f .gitmodules submodule.merging.update merge &&
+	 git config -f .gitmodules submodule.none.update none &&
 	 git add .gitmodules &&
 	 git commit -m ".gitmodules"
 	) &&
