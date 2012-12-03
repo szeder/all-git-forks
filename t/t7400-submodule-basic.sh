@@ -248,14 +248,10 @@ test_expect_success 'status should initially be "missing"' '
 	grep "^-$rev1" lines
 '
 
-test_expect_success 'init should register submodule url in .git/config' '
-	echo git://example.com/init.git >expect &&
-
+test_expect_success 'init should register submodule active in .git/config' '
 	git submodule init &&
-	git config submodule.example.url >url &&
 	git config submodule.example.url ./.subrepo &&
-
-	test_cmp expect url
+	test "$(git config submodule.example.active)" = "true"
 '
 
 test_failure_with_unknown_submodule () {
