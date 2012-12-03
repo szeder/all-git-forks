@@ -478,6 +478,7 @@ test_expect_success 'use superproject as upstream when path is relative and no u
 		cd addtest &&
 		git submodule add ../repo relative &&
 		test "$(git config -f .gitmodules submodule.relative.url)" = ../repo &&
+		git submodule init relative &&
 		git submodule sync relative &&
 		test "$(git config submodule.relative.url)" = "$submodurl/repo"
 	)
