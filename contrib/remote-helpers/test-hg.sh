@@ -32,7 +32,7 @@ check () {
 setup () {
 	(
 	echo "[ui]"
-	echo "username = A U Thor <author@example.com>"
+	echo "username = H G Wells <wells@example.com>"
 	) >> "$HOME"/.hgrc
 }
 

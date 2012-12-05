@@ -56,6 +56,12 @@ def hgmode(mode):
     m = { '0100755': 'x', '0120000': 'l' }
     return m.get(mode, '')
 
+def get_config(config):
+    cmd = ['git', 'config', '--get', config]
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    output, _ = process.communicate()
+    return output
+
 class Marks:
 
     def __init__(self, path):
@@ -714,6 +720,14 @@ def do_export(parser):
     if peer:
         parser.repo.push(peer, force=False)
 
+def fix_path(alias, repo, orig_url):
+    repo_url = util.url(repo.url())
+    url = util.url(orig_url)
+    if str(url) == str(repo_url):
+        return
+    cmd = ['git', 'config', 'remote.%s.url' % alias, "hg::%s" % repo_url]
+    subprocess.call(cmd)
+
 def main(args):
     global prefix, dirname, branches, bmarks
     global marks, blob_marks, parsed_refs
@@ -727,12 +741,10 @@ def main(args):
     hg_git_compat = False
     track_branches = True
     try:
-        cmd = ['git', 'config', '--get', 'remote-hg.hg-git-compat']
-        if subprocess.check_output(cmd) == 'true\n':
+        if get_config('remote-hg.hg-git-compat') == 'true\n':
             hg_git_compat = True
             track_branches = False
-        cmd = ['git', 'config', '--get', 'remote-hg.track-branches']
-        if subprocess.check_output(cmd) == 'false\n':
+        if get_config('remote-hg.track-branches') == 'false\n':
             track_branches = False
     except subprocess.CalledProcessError:
         pass
@@ -761,6 +773,9 @@ def main(args):
 
     repo = get_repo(url, alias)
     prefix = 'refs/hg/%s' % alias
+
+    if not is_tmp:
+        fix_path(alias, peer or repo, url)
 
     if not os.path.exists(dirname):
         os.makedirs(dirname)
