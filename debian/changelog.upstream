@@ -1,3 +1,416 @@
+Version v1.8.1-rc0; changes since v1.8.0.1:
+-------------------------------------------
+
+Antoine Pelisse (1):
+      Fix typo in remote set-head usage
+
+Ben Walton (1):
+      Use character class for sed expression instead of \s
+
+Brandon Casey (1):
+      usage.c: detect recursion in die routines and bail out immediately
+
+Chris Rorvick (1):
+      git-cvsimport: allow author-specific timezones
+
+Dmitry Ivankov (1):
+      vcs-svn: add fast_export_note to create notes
+
+Enrico Scholz (1):
+      emacs: make 'git-status' work with separate git dirs
+
+Eric S. Raymond (2):
+      doc/fast-import: clarify how content states are built
+      Documentation: how to add a new command
+
+Felipe Contreras (32):
+      completion: add format-patch options to send-email
+      Add new remote-hg transport helper
+      remote-hg: add support for pushing
+      remote-hg: add support for remote pushing
+      remote-hg: add support to push URLs
+      remote-hg: make sure the encoding is correct
+      remote-hg: match hg merge behavior
+      remote-hg: add support for hg-git compat mode
+      remote-hg: add compat for hg-git author fixes
+      remote-hg: fake bookmark when there's none
+      remote-hg: add basic tests
+      test-lib: avoid full path to store test results
+      remote-hg: add bidirectional tests
+      remote-hg: add tests to compare with hg-git
+      remote-hg: add extra author test
+      remote-hg: add option to not track branches
+      remote-hg: the author email can be null
+      remote-hg: fix compatibility with older versions of hg
+      remote-hg: try the 'tip' if no checkout present
+      remote-hg: avoid bad refs
+      completion: add comment for test_completion()
+      completion: standardize final space marker in tests
+      completion: simplify tests using test_completion_long()
+      completion: consolidate test_completion*() tests
+      completion: refactor __gitcomp related tests
+      completion: simplify __gitcomp() test helper
+      completion: add new zsh completion
+      completion: start moving to the new zsh completion
+      send-email: avoid questions when user has an ident
+      remote-hg: fix for files with spaces
+      remote-hg: fix for older versions of python
+      completion: fix warning for zsh
+
+Florian Achleitner (15):
+      Implement a remote helper for svn in C
+      Add git-remote-testsvn to Makefile
+      Add svndump_init_fd to allow reading dumps from arbitrary FDs
+      Add argv_array_detach and argv_array_free_detached
+      Connect fast-import to the remote-helper via pipe, adding 'bidi-import' capability
+      Add documentation for the 'bidi-import' capability of remote-helpers
+      When debug==1, start fast-import with "--stats" instead of "--quiet"
+      remote-svn, vcs-svn: Enable fetching to private refs
+      Allow reading svn dumps from files via file:// urls
+      Create a note for every imported commit containing svn metadata
+      remote-svn: Activate import/export-marks for fast-import
+      remote-svn: add incremental import
+      Add a svnrdump-simulator replaying a dump file for testing
+      remote-svn: add marks-file regeneration
+      Add a test script for remote-svn
+
+Gunnlaugur Þór Briem (1):
+      Document git-svn fetch --log-window-size parameter
+
+Jeff King (32):
+      pager: drop "wait for output to run less" hack
+      peel_ref: use faster deref_tag_noverify
+      peel_ref: do not return a null sha1
+      peel_ref: check object type before loading
+      upload-pack: use peel_ref for ref advertisements
+      remote-curl: do not call run_slot repeatedly
+      http: do not set up curl auth after a 401
+      strbuf: always return a non-NULL value from strbuf_detach
+      status: add --long output format option
+      git-sh-setup: refactor ident-parsing functions
+      filter-branch: use git-sh-setup's ident parsing functions
+      t1300: style updates
+      t1300: remove redundant test
+      t1300: test "git config --get-all" more thoroughly
+      git-config: remove memory leak of key regexp
+      git-config: fix regexp memory leaks on error conditions
+      git-config: collect values instead of immediately printing
+      git-config: do not complain about duplicate entries
+      git-config: use git_config_with_options
+      pickaxe: hoist empty needle check
+      pickaxe: use textconv for -S counting
+      remote-curl: hoist gzip buffer size to top of post_rpc
+      remote-curl: retry failed requests for auth even with gzip
+      cvsimport: work around perl tzset issue
+      test-lib: allow negation of prerequisites
+      t7502: factor out autoident prerequisite
+      ident: make user_ident_explicitly_given static
+      ident: keep separate "explicit" flags for author and committer
+      diff: rename "set" variable
+      t: add tests for "git var"
+      t9001: check send-email behavior with implicit sender
+      status: respect advice.statusHints for ahead/behind advice
+
+Jeff Muizelaar (1):
+      diff: diff.context configuration gives default to -U
+
+Jens Lehmann (5):
+      submodule: teach rm to remove submodules unless they contain a git directory
+      Teach "git submodule add" the --name option
+      submodule add: Fail when .git/modules/<name> already exists unless forced
+      submodule status: remove unused orig_* variables
+      Teach rm to remove submodules when given with a trailing '/'
+
+Jiang Xin (1):
+      l10n: Update git.pot (14 new, 3 removed messages)
+
+Joachim Schmitz (1):
+      fix 'make test' for HP NonStop
+
+Johan Herland (3):
+      t1400-update-ref: Add test verifying bug with symrefs in delete_ref()
+      Fix failure to delete a packed ref through a symref
+      git symbolic-ref --delete $symref
+
+Johannes Sixt (1):
+      maybe_flush_or_die: move a too-loose Windows specific error
+
+Junio C Hamano (30):
+      t4055: avoid use of sed 'a' command
+      log --grep: accept --basic-regexp and --perl-regexp
+      log: honor grep.* configuration
+      coloured git-prompt: paint detached HEAD marker in red
+      pretty: remove reencode_commit_message()
+      format_note(): simplify API
+      pretty: prepare notes message at a centralized place
+      pretty_print_commit(): do not append notes message
+      format-patch: append --signature after notes
+      format-patch --notes: show notes after three-dashes
+      Documentation: decribe format-patch --notes
+      get_fetch_map(): tighten checks on dest refs
+      reencode_string(): introduce and use same_encoding()
+      format-patch: add a blank line between notes and diffstat
+      Start 1.8.1 cycle
+      Sixth batch for 1.8.1
+      Update draft release notes for 1.8.1
+      Update draft release notes to 1.8.1
+      test: add failing tests for "diff --stat" to t4049
+      diff --stat: status of unmodified pair in diff-q is not zero
+      diff --stat: use "file" temporary variable to refer to data->files[i]
+      diff --stat: move the "total count" logic to the last loop
+      diff --stat: do not count "unmerged" entries
+      diff --shortstat: do not count "unmerged" entries
+      Documentation/git-push.txt: clarify the "push from satellite" workflow
+      Start preparing for 1.8.0.2
+      Update draft release notes to 1.8.1
+      t4049: refocus tests
+      Update draft release notes to 1.8.1
+      Git 1.8.1-rc0
+
+Karsten Blees (1):
+      update-index/diff-index: use core.preloadindex to improve performance
+
+Krzysztof Mazur (11):
+      git-send-email: introduce compose-encoding
+      git-send-email: use compose-encoding for Subject
+      git-send-email: skip RFC2047 quoting for ASCII subjects
+      git-send-email: introduce quote_subject()
+      git-send-email: add rfc2047 quoting for "=?"
+      doc: git-reset: make "<mode>" optional
+      git-send-email: remove garbage after email address
+      git-send-email: fix fallback code in extract_valid_address()
+      git-send-email: remove invalid addresses earlier
+      git-send-email: ask what to do with an invalid email address
+      git-send-email: allow edit invalid email address
+
+Linus Torvalds (1):
+      Fix "git diff --stat" for interesting - but empty - file changes
+
+Marc Khouzam (2):
+      tcsh-completion re-using git-completion.bash
+      Support for git aliasing for tcsh completion
+
+Mark Levedahl (2):
+      Update cygwin.c for new mingw-64 win32 api headers
+      USE CGYWIN_V15_WIN32API as macro to select api for cygwin
+
+Mark Szepieniec (1):
+      Documentation: improve phrasing in git-push.txt
+
+Matt Kraai (1):
+      docs: move submodule section
+
+Matthew Ogilvie (10):
+      cvsserver t9400: add basic 'cvs log' test
+      cvsserver: removed unused sha1Or-k mode from kopts_from_path
+      cvsserver: add comments about database schema/usage
+      cvsserver update: comment about how we shouldn't remove a user-modified file
+      cvsserver: remove unused functions _headrev and gethistory
+      cvsserver: clean up client request handler map comments
+      cvsserver: split up long lines in req_{status,diff,log}
+      cvsserver: use whole CVS rev number in-process; don't strip "1." prefix
+      cvsserver: cvs add: do not expand directory arguments
+      cvsserver status: provide real sticky info
+
+Matthieu Moy (3):
+      status: add advice on how to push/pull to tracking branch
+      git-remote-mediawiki: escape ", \, and LF in file names
+      git-fast-import.txt: improve documentation for quoted paths
+
+Michael Haggerty (12):
+      parse_dirstat_params(): use string_list to split comma-separated string
+      strbuf_split_buf(): use ALLOC_GROW()
+      strbuf_split_buf(): simplify iteration
+      strbuf_split*(): rename "delim" parameter to "terminator"
+      strbuf_split*(): document functions
+      string_list: add a function string_list_remove_empty_items()
+      Initialize sort_uniq_list using named constant
+      combine_notes_cat_sort_uniq(): sort and dedup lines all at once
+      notes: fix handling of colon-separated values
+      string_list_add_refs_from_colon_sep(): use string_list_split()
+      link_alt_odb_entries(): use string_list_split_in_place()
+      link_alt_odb_entries(): take (char *, len) rather than two pointers
+
+Michael J Gruber (1):
+      replace: parse revision argument for -d
+
+Nguyễn Thái Ngọc Duy (17):
+      attr: avoid strlen() on every match
+      attr: avoid searching for basename on every match
+      exclude: stricten a length check in EXC_FLAG_ENDSWITH case
+      exclude: split basename matching code into a separate function
+      exclude: fix a bug in prefix compare optimization
+      exclude: split pathname matching code into a separate function
+      gitignore: make pattern parsing code a separate function
+      attr: more matching optimizations from .gitignore
+      tree-walk: use enum interesting instead of integer
+      Move try_merge_command and checkout_fast_forward to libgit.a
+      Move estimate_bisect_steps to libgit.a
+      Move print_commit_list to libgit.a
+      Move setup_diff_pager to libgit.a
+      send-pack: move core code to libgit.a
+      fetch-pack: remove global (static) configuration variable "args"
+      fetch-pack: move core code to libgit.a
+      compat/fnmatch: fix off-by-one character class's length check
+
+Patrick Palka (1):
+      Documentation: improve the example of overriding LESS via core.pager
+
+Paul Gortmaker (1):
+      Makefile: hide stderr of curl-config test
+
+Pete Wyckoff (7):
+      git p4: RCS expansion should not span newlines
+      git p4: catch p4 describe errors
+      git p4: handle servers without move support
+      git p4: catch p4 errors when streaming file contents
+      git p4 test: display unresolvable host error
+      git p4: fix labelDetails typo in exception
+      git p4: remove unneeded cmd initialization
+
+Peter Krefting (1):
+      l10n: Update Swedish translation (1975t0f0u)
+
+Phil Hord (3):
+      t7407: Fix recursive submodule test
+      Teach --recursive to submodule sync
+      Add tests for submodule sync --recursive
+
+Phil Pennock (1):
+      gitweb: make remote_heads config setting work
+
+Philip Oakley (4):
+      Doc SubmittingPatches: Mention --notes option after "cover letter"
+      Doc notes: Include the format-patch --notes option
+      Doc format-patch: clarify --notes use case
+      Doc User-Manual: Patch cover letter, three dashes, and --notes
+
+Ralf Thielow (1):
+      completion: add options --single-branch and --branch to "git clone"
+
+Ramkumar Ramachandra (4):
+      remote-hg: add missing config for basic tests
+      Documentation: move diff.wordRegex from config.txt to diff-config.txt
+      diff: introduce diff.submodule configuration variable
+      submodule: display summary header in bold
+
+Ramsay Allan Jones (2):
+      builtin/config.c: Fix a sparse warning
+      remote-curl.c: Fix a compiler warning
+
+Richard Hubbell (1):
+      gitweb.perl: fix %highlight_ext mappings
+
+SZEDER Gábor (1):
+      completion: remove 'help' duplicate from porcelain commands
+
+Simon Oosthoek (3):
+      Allow __git_ps1 to be used in PROMPT_COMMAND
+      show color hints based on state of the git tree
+      Fix up colored git-prompt
+
+Stefan Zager (1):
+      submodule add: fix handling of --reference=<repo> option
+
+Stefano Lattarini (1):
+      configure: fix some output message
+
+Thomas Ackermann (6):
+      Split over-long synopsis in git-fetch-pack.txt into several lines
+      Shorten two over-long lines in git-bisect-lk2009.txt by abbreviating some sha1
+      Change headline of technical/send-pack-pipeline.txt to not confuse its content with content from git-send-pack.txt
+      Documentation/technical: convert plain text files to asciidoc
+      Documentation/howto: convert plain text files to asciidoc
+      Documentation: build html for all files in technical and howto
+
+Tom Jones (1):
+      Add -S, --gpg-sign option to manpage of "git commit"
+
+Torsten Bögershausen (1):
+      Fix t9200 on case insensitive file systems
+
+Tran Ngoc Quan (2):
+      l10n: vi.po: update to git-v1.7.12-437-g1084f
+      l10n: vi.po: Update follow git-v1.8.0-273-g2d242
+
+W. Trevor King (1):
+      git-submodule: wrap branch option with "<>" in usage strings.
+
+
+Version v1.8.0.1; changes since v1.8.0:
+---------------------------------------
+
+Andreas Schwab (1):
+      commit: fixup misplacement of --no-post-rewrite description
+
+Ben Walton (1):
+      Remove the hard coded length limit on variable names in config files
+
+Carlos Martín Nieto (1):
+      config: don't segfault when given --path with a missing value
+
+David Aguilar (1):
+      mergetools/p4merge: Handle "/dev/null"
+
+Jan H. Schönherr (7):
+      utf8: fix off-by-one wrapping of text
+      format-patch: do not wrap non-rfc2047 headers too early
+      format-patch: do not wrap rfc2047 encoded headers too late
+      format-patch: introduce helper function last_line_length()
+      format-patch: make rfc2047 encoding more strict
+      format-patch: fix rfc2047 address encoding with respect to rfc822 specials
+      format-patch tests: check quoting/encoding in To: and Cc: headers
+
+Jeff King (3):
+      diff_grep: use textconv buffers for add/deleted files
+      gitweb: escape html in rss title
+      checkout: print a message when switching unborn branches
+
+Junio C Hamano (9):
+      builtin/grep.c: make configuration callback more reusable
+      grep: move the configuration parsing logic to grep.[ch]
+      grep: move pattern-type bits support to top-level grep.[ch]
+      revisions: initialize revs->grep_filter using grep_init()
+      log --grep: use the same helper to set -E/-F options as "git grep"
+      test-lib: Fix say_color () not to interpret \a\b\c in the message
+      Start preparing for 1.8.0.1
+      Further preparation for 1.8.0.1
+      Git 1.8.0.1
+
+Marc Khouzam (1):
+      Completion must sort before using uniq
+
+Matthieu Moy (2):
+      Documentation: remote tracking branch -> remote-tracking branch
+      Document 'git commit --no-edit' explicitly
+
+Michael J Gruber (1):
+      push/pull: adjust missing upstream help text to changed interface
+
+Nguyễn Thái Ngọc Duy (1):
+      grep: stop looking at random places for .gitattributes
+
+Phil Hord (1):
+      git-pull: Avoid merge-base on detached head
+
+Philip Oakley (1):
+      Doc repository-layout: Show refs/replace
+
+René Scharfe (6):
+      refs: lock symref that is to be deleted, not its target
+      branch: factor out check_branch_commit()
+      branch: factor out delete_branch_config()
+      branch: delete symref branch, not its target
+      branch: skip commit checks when deleting symref branches
+      branch: show targets of deleted symrefs, not sha1s
+
+Romain Francoise (1):
+      mailmap: avoid out-of-bounds memory access
+
+Stefan Zager (1):
+      Fix potential hang in https handshake
+
+
 Version v1.8.0; changes since v1.8.0-rc3:
 -----------------------------------------
 
