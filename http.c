@@ -631,6 +631,18 @@ void run_active_slot(struct active_request_slot *slot)
 			FD_ZERO(&excfds);
 			curl_multi_fdset(curlm, &readfds, &writefds, &excfds, &max_fd);
 
+			/*
+			 * It can happen that curl_multi_timeout returns a pathologically
+			 * long timeout when curl_multi_fdset returns no file descriptors
+			 * to read.  See commit message for more details.
+			 */
+			if (max_fd < 0 &&
+			    (select_timeout.tv_sec > 0 ||
+			     select_timeout.tv_usec > 50000)) {
+				select_timeout.tv_sec  = 0;
+				select_timeout.tv_usec = 50000;
+			}
+
 			select(max_fd+1, &readfds, &writefds, &excfds, &select_timeout);
 		}
 	}
@@ -745,8 +757,7 @@ char *get_remote_object_url(const char *url, const char *hex,
 	return strbuf_detach(&buf, NULL);
 }
 
-int handle_curl_result(struct active_request_slot *slot,
-		       struct slot_results *results)
+int handle_curl_result(struct slot_results *results)
 {
 	if (results->curl_result == CURLE_OK) {
 		credential_approve(&http_auth);
@@ -759,7 +770,6 @@ int handle_curl_result(struct active_request_slot *slot,
 			return HTTP_NOAUTH;
 		} else {
 			credential_fill(&http_auth);
-			init_curl_http_auth(slot->curl);
 			return HTTP_REAUTH;
 		}
 	} else {
@@ -821,7 +831,7 @@ static int http_request(const char *url, void *result, int target, int options)
 
 	if (start_active_slot(slot)) {
 		run_active_slot(slot);
-		ret = handle_curl_result(slot, &results);
+		ret = handle_curl_result(&results);
 	} else {
 		error("Unable to start HTTP request for %s", url);
 		ret = HTTP_START_FAILED;
