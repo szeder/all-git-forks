@@ -14,6 +14,24 @@ struct cache_header {
 	unsigned int hdr_nextension;
 };
 
+struct dir_tree_entry {
+	int level_read;
+	struct dir_tree_entry **down;
+	struct cache_entry **ce;
+	struct conflict_entry **conflict;
+	unsigned int conflict_size;
+	unsigned int de_foffset;
+	unsigned int de_cr;
+	unsigned int de_ncr;
+	unsigned int de_nsubtrees;
+	unsigned int de_nfiles;
+	unsigned int de_nentries;
+	unsigned char sha1[20];
+	unsigned short de_flags;
+	unsigned int de_pathlen;
+	char pathname[FLEX_ARRAY];
+};
+
 /*****************************************************************
  * Index File I/O
  *****************************************************************/
@@ -157,6 +175,41 @@ static struct cache_entry *cache_entry_from_ondisk(struct ondisk_cache_entry *on
 	return ce;
 }
 
+static struct cache_entry *cache_entry_from_ondisk_tree(struct ondisk_cache_entry *ondisk,
+						   struct dir_tree_entry *de,
+						   char *name,
+						   size_t len,
+						   size_t prefix_len)
+{
+	struct cache_entry *ce = xmalloc(cache_entry_size(len + de->de_pathlen));
+	int flags;
+
+	flags = ntoh_s(ondisk->flags);
+	ce->ce_ctime.sec  = 0;
+	ce->ce_mtime.sec  = ntoh_l(ondisk->mtime.sec);
+	ce->ce_ctime.nsec = 0;
+	ce->ce_mtime.nsec = ntoh_l(ondisk->mtime.nsec);
+	ce->ce_dev        = 0;
+	ce->ce_ino        = 0;
+	ce->ce_mode       = ntoh_s(ondisk->mode);
+	ce->ce_uid        = 0;
+	ce->ce_gid        = 0;
+	ce->ce_size       = ntoh_l(ondisk->size);
+	ce->ce_flags      = flags & CE_STAGEMASK;
+	ce->ce_flags     |= flags & CE_VALID;
+	ce->ce_flags     |= flags & CE_SMUDGED;
+	if (flags & CE_INTENT_TO_ADD_V5)
+		ce->ce_flags |= CE_INTENT_TO_ADD;
+	if (flags & CE_SKIP_WORKTREE_V5)
+		ce->ce_flags |= CE_SKIP_WORKTREE;
+	ce->ce_stat_crc   = ntoh_l(ondisk->stat_crc);
+	ce->ce_namelen    = len + de->de_pathlen;
+	hashcpy(ce->sha1, ondisk->sha1);
+	memcpy(ce->name, de->pathname, de->de_pathlen);
+	memcpy(ce->name + de->de_pathlen, name, len);
+	ce->name[len + de->de_pathlen] = '\0';
+	return ce;
+}
 static struct directory_entry *directory_entry_from_ondisk(struct ondisk_directory_entry *ondisk,
 						   const char *name,
 						   size_t len)
@@ -175,6 +228,36 @@ static struct directory_entry *directory_entry_from_ondisk(struct ondisk_directo
 	de->de_nentries   = ntoh_l(ondisk->nentries);
 	de->de_pathlen    = len;
 	hashcpy(de->sha1, ondisk->sha1);
+	return de;
+}
+
+static struct dir_tree_entry *dir_tree_entry_from_ondisk(struct ondisk_directory_entry *ondisk,
+						   const char *name,
+						   size_t len)
+{
+	struct dir_tree_entry *de = xmalloc(dir_tree_entry_size(len));
+
+
+	memcpy(de->pathname, name, len);
+	de->pathname[len] = '\0';
+	de->de_flags      = ntoh_s(ondisk->flags);
+	de->de_foffset    = ntoh_l(ondisk->foffset);
+	de->de_cr         = ntoh_l(ondisk->cr);
+	de->de_ncr        = ntoh_l(ondisk->ncr);
+	de->de_nsubtrees  = ntoh_l(ondisk->nsubtrees);
+	de->de_nfiles     = ntoh_l(ondisk->nfiles);
+	de->de_nentries   = ntoh_l(ondisk->nentries);
+	de->de_pathlen    = len;
+	hashcpy(de->sha1, ondisk->sha1);
+	de->level_read    = 0;
+	/*
+	 * + 2 is just a heuristic, so that the list size
+	 * doesn't have to be increased every time a file,
+	 * directory or conflict is added
+	 */
+	de->down          = xcalloc(de->de_nsubtrees + 2, sizeof(de));
+	de->ce            = xcalloc(de->de_nfiles + 2, sizeof(struct cache_entry*));
+	de->conflict      = xcalloc(de->de_ncr + 2, sizeof(struct conflict_entry*));
 	return de;
 }
 
@@ -296,7 +379,35 @@ static int read_entry(struct cache_entry **ce, struct directory_entry *de,
 		ntoh_l(*filecrc)))
 		return -1;
 
-	/* TODO: return error if crc code is wrong */
+	*entry_offset += len + 1 + sizeof(*disk_ce) + 4;
+	return 0;
+}
+
+static int read_entry_tree(struct cache_entry **ce, struct dir_tree_entry *de,
+		      unsigned int *entry_offset,
+		      void **mmap, unsigned long mmap_size,
+		      unsigned int *foffsetblock)
+{
+	int len, offset_to_offset;
+	char *name;
+	uint32_t foffsetblockcrc;
+	uint32_t *filecrc, *beginning, *end;
+	struct ondisk_cache_entry *disk_ce;
+
+	name = ptr_add(*mmap, *entry_offset);
+	beginning = ptr_add(*mmap, *foffsetblock);
+	end = ptr_add(*mmap, *foffsetblock + 4);
+	len = ntoh_l(*end) - ntoh_l(*beginning) - sizeof(struct ondisk_cache_entry) - 5;
+	disk_ce = ptr_add(*mmap, *entry_offset + len + 1);
+	*ce = cache_entry_from_ondisk_tree(disk_ce, de, name, len, de->de_pathlen);
+	filecrc = ptr_add(*mmap, *entry_offset + len + 1 + sizeof(*disk_ce));
+	offset_to_offset = htonl(*foffsetblock);
+	foffsetblockcrc = crc32(0, (Bytef*)&offset_to_offset, 4);
+	if (!check_crc32(foffsetblockcrc,
+		ptr_add(*mmap, *entry_offset), len + 1 + sizeof(*disk_ce),
+		ntoh_l(*filecrc)))
+		return -1;
+
 	*entry_offset += len + 1 + sizeof(*disk_ce) + 4;
 	return 0;
 }
@@ -376,6 +487,25 @@ struct conflict_entry *create_new_conflict(char *name, int len, int pathlen)
 	return conflict_entry;
 }
 
+void add_part_to_conflict_entry_tree(struct dir_tree_entry *de,
+					struct conflict_entry *entry,
+					struct conflict_part *conflict_part)
+{
+
+	struct conflict_part *conflict_search;
+
+	entry->nfileconflicts++;
+	de->conflict_size += sizeof(struct ondisk_conflict_part);
+	if (!entry->entries)
+		entry->entries = conflict_part;
+	else {
+		conflict_search = entry->entries;
+		while (conflict_search->next)
+			conflict_search = conflict_search->next;
+		conflict_search->next = conflict_part;
+	}
+}
+
 void add_part_to_conflict_entry(struct directory_entry *de,
 					struct conflict_entry *entry,
 					struct conflict_part *conflict_part)
@@ -434,6 +564,60 @@ static int read_conflicts(struct conflict_entry **head,
 			cp = conflict_part_from_ondisk(ondisk);
 			cp->next = NULL;
 			add_part_to_conflict_entry(de, conflict_new, cp);
+			offset += sizeof(struct ondisk_conflict_part);
+		}
+		filecrc = ptr_add(*mmap, offset);
+		free(full_name);
+		if (!check_crc32(0, crc_start,
+			len + 1 + 4 + conflict_new->nfileconflicts
+			* sizeof(struct ondisk_conflict_part),
+			ntoh_l(*filecrc)))
+			return -1;
+		croffset = offset + 4;
+		conflict_entry_push(head, &tail, conflict_new);
+	}
+	return 0;
+}
+
+static int read_conflicts_tree(struct conflict_entry **head,
+			  struct dir_tree_entry *de,
+			  void **mmap, unsigned long mmap_size)
+{
+	struct conflict_entry *tail;
+	unsigned int croffset, i;
+	char *full_name;
+
+	croffset = de->de_cr;
+	tail = NULL;
+	for (i = 0; i < de->de_ncr; i++) {
+		struct conflict_entry *conflict_new;
+		unsigned int len, *nfileconflicts;
+		char *name;
+		void *crc_start;
+		int k, offset;
+		uint32_t *filecrc;
+
+		offset = croffset;
+		crc_start = ptr_add(*mmap, offset);
+		name = ptr_add(*mmap, offset);
+		len = strlen(name);
+		offset += len + 1;
+		nfileconflicts = ptr_add(*mmap, offset);
+		offset += 4;
+
+		full_name = xmalloc(sizeof(char) * (len + de->de_pathlen));
+		memcpy(full_name, de->pathname, de->de_pathlen);
+		memcpy(full_name + de->de_pathlen, name, len);
+		conflict_new = create_new_conflict(full_name,
+				len + de->de_pathlen, de->de_pathlen);
+		for (k = 0; k < ntoh_l(*nfileconflicts); k++) {
+			struct ondisk_conflict_part *ondisk;
+			struct conflict_part *cp;
+
+			ondisk = ptr_add(*mmap, offset);
+			cp = conflict_part_from_ondisk(ondisk);
+			cp->next = NULL;
+			add_part_to_conflict_entry_tree(de, conflict_new, cp);
 			offset += sizeof(struct ondisk_conflict_part);
 		}
 		filecrc = ptr_add(*mmap, offset);
@@ -649,6 +833,85 @@ static int read_entries(struct index_state *istate, struct directory_entry **de,
 	return 0;
 }
 
+typedef int each_dir_tree_entry_fn(struct dir_tree_entry **de, void *);
+
+struct read_entries_opts {
+	struct index_state *istate;
+	struct dir_tree_entry **de;
+	unsigned int *entry_offset;
+	void **mmap;
+	unsigned long mmap_size;
+	unsigned int foffsetblock;
+};
+
+static int read_entries_tree(struct dir_tree_entry **de, struct read_entry_opts *opts)
+{
+	struct conflict_entry *conflict_queue;
+	struct cache_entry *ce;
+	int i;
+
+	conflict_queue = NULL;
+	if (read_conflicts_tree(&conflict_queue, *de, opts->mmap, opts->mmap_size) < 0)
+		return -1;
+	resolve_undo_convert_v5(opts_>istate, conflict_queue);
+	for (i = 0; i < (*de)->de_nfiles; i++) {
+		if (read_entry_tree(&ce,
+				*de,
+				opts->entry_offset,
+				opts->mmap,
+				opts->mmap_size,
+				opts->foffsetblock) < 0)
+			return -1;
+
+		(*de)->ce[i] = ce;
+		opts->foffsetblock += 4;
+	}
+	for (i = 0; i < (*de)->de_ncr; i++)
+	{
+		(*de)->conflict[i] = conflict_queue;
+		conflict_entry_head_remove(&conflict_queue);
+	}
+
+		/* Add the conflicted entries at the end of the index file
+		 * to the in memory format
+		 */
+		/* if (conflict_queue && */
+		/*     (conflict_queue->entries->flags & CONFLICT_CONFLICTED) != 0 && */
+		/*     !cache_name_compare(conflict_queue->name, conflict_queue->namelen, */
+		/* 			ce->name, ce_namelen(ce))) { */
+		/* 	struct conflict_part *cp; */
+		/* 	cp = conflict_queue->entries; */
+		/* 	cp = cp->next; */
+		/* 	while (cp) { */
+		/* 		ce = convert_conflict_part(cp, */
+		/* 				conflict_queue->name, */
+		/* 				conflict_queue->namelen); */
+		/* 		ce_queue_push(&head, &tail, ce); */
+		/* 		conflict_part_head_remove(&cp); */
+		/* 	} */
+		/* 	conflict_entry_head_remove(&conflict_queue); */
+		/* } */
+	/* } */
+
+	/* while (head) { */
+	/* 	if (*de != NULL */
+	/* 	    && strcmp(head->name, (*de)->pathname) > 0) { */
+	/* 		read_entries(istate, */
+	/* 				de, */
+	/* 				entry_offset, */
+	/* 				mmap, */
+	/* 				mmap_size, */
+	/* 				nr, */
+	/* 				foffsetblock); */
+	/* 	} else { */
+	/* 		ce = ce_queue_pop(&head); */
+	/* 		set_index_entry(istate, *nr, ce); */
+	/* 		(*nr)++; */
+	/* 	} */
+	/* } */
+	return 0;
+}
+
 static int read_index_full_v5(struct index_state *istate)
 {
 	unsigned int entry_offset;
@@ -686,7 +949,59 @@ static int read_index_full_v5(struct index_state *istate)
 	return 0;
 }
 
-static struct directory_entry *read_head_directories(struct index_state *istate,
+static struct dir_tree_entry *read_directories_tree(unsigned int *dir_offset,
+						unsigned int *dir_table_offset,
+						void *mmap,
+						int mmap_size)
+{
+	int i, ondisk_directory_size;
+	uint32_t *filecrc, *beginning, *end;
+	struct ondisk_directory_entry *disk_de;
+	struct dir_tree_entry *de;
+	unsigned int data_len, len;
+	char *name;
+
+	ondisk_directory_size = sizeof(disk_de->flags)
+		+ sizeof(disk_de->foffset)
+		+ sizeof(disk_de->cr)
+		+ sizeof(disk_de->ncr)
+		+ sizeof(disk_de->nsubtrees)
+		+ sizeof(disk_de->nfiles)
+		+ sizeof(disk_de->nentries)
+		+ sizeof(disk_de->sha1);
+	name = ptr_add(mmap, *dir_offset);
+	beginning = ptr_add(mmap, *dir_table_offset);
+	end = ptr_add(mmap, *dir_table_offset + 4);
+	len = ntoh_l(*end) - ntoh_l(*beginning) - ondisk_directory_size - 5;
+	disk_de = ptr_add(mmap, *dir_offset + len + 1);
+	de = dir_tree_entry_from_ondisk(disk_de, name, len);
+
+	/* Length of pathname + nul byte for termination + size of
+	 * members of ondisk_directory_entry. (Just using the size
+	 * of the stuct doesn't work, because there may be padding
+	 * bytes for the struct)
+	 */
+	data_len = len + 1 + ondisk_directory_size;
+
+	filecrc = ptr_add(mmap, *dir_offset + data_len);
+	if (!check_crc32(0, ptr_add(mmap, *dir_offset), data_len, ntoh_l(*filecrc)))
+		goto unmap;
+
+	*dir_table_offset += 4;
+	*dir_offset += data_len + 4; /* crc code */
+
+	for (i = 0; i < de->de_nsubtrees; i++) {
+		de->down[i] = read_directories_tree(dir_offset, dir_table_offset,
+						mmap, mmap_size);
+	}
+
+	return de;
+unmap:
+	munmap(mmap, mmap_size);
+	die("directory crc doesn't match for '%s'", de->pathname);
+}
+
+static struct dir_tree_entry *read_head_directories(struct index_state *istate,
 						unsigned int *entry_offset,
 						unsigned int *foffsetblock,
 						unsigned int *ndir)
@@ -694,7 +1009,7 @@ static struct directory_entry *read_head_directories(struct index_state *istate,
 	unsigned int dir_offset, dir_table_offset;
 	struct cache_version_header *hdr;
 	struct cache_header *hdr_v5;
-	struct directory_entry *root_directory;
+	struct dir_tree_entry *root_directory;
 
 	hdr = istate->mmap;
 	hdr_v5 = istate->mmap + sizeof(*hdr);
@@ -707,7 +1022,7 @@ static struct directory_entry *read_head_directories(struct index_state *istate,
 	/* Skip size of the header + crc sum + size of offsets */
 	dir_offset = sizeof(*hdr) + sizeof(*hdr_v5) + 4 + (ntohl(hdr_v5->hdr_ndir) + 1) * 4;
 	dir_table_offset = sizeof(*hdr) + sizeof(*hdr_v5) + 4;
-	root_directory = read_directories(&dir_offset, &dir_table_offset, istate->mmap, istate->mmap_size);
+	root_directory = read_directories_tree(&dir_offset, &dir_table_offset, istate->mmap, istate->mmap_size);
 
 	*entry_offset = ntohl(hdr_v5->hdr_fblockoffset);
 	*foffsetblock = dir_offset;
@@ -717,71 +1032,69 @@ static struct directory_entry *read_head_directories(struct index_state *istate,
 
 static int read_index_filtered_v5(struct index_state *istate, struct filter_opts *opts)
 {
-	struct directory_entry *root_directory, *de;
+	struct dir_tree_entry *root_directory, *de;
 	unsigned int foffsetblock, entry_offset, ndir;
 	int i, n, nr = 0;
 	const char **adjusted_pathspec;
 	int need_root = 0;
 	char *seen, *oldpath;
+	struct read_entry_opts read_opts;
 
 	root_directory = read_head_directories(istate, &entry_offset, &foffsetblock, &ndir);
 
-	if (!opts || !opts->pathspec) {
-		need_root = 1;
-	} else {
-		seen = xcalloc(1, ndir);
-		for (de = root_directory; de->next; de = de->next)
-			match_pathspec(opts->pathspec, de->pathname, de->de_pathlen, 0, seen);
-		for (n = 0; opts->pathspec[n]; n++)
-			/* just count */;
-		adjusted_pathspec = xmalloc((n + 1) * sizeof(char *));
-		adjusted_pathspec[n] = NULL;
-		for (i = 0; i < n; i++) {
-			if (seen[i] == MATCHED_EXACTLY)
-				adjusted_pathspec[i] = opts->pathspec[i];
-			else {
-				char *super = strdup(opts->pathspec[i]);
-				int len = strlen(super);
-				while (len && super[len-1] == '/') /* strip trailing / */
-					super[--len] = '\0';
-				while (len && super[--len] != '/') /* scan backwards to next / */
-					;
-				if (len >= 0)
-					super[len--] = '\0';
-				if (len <= 0) {
-					need_root = 1;
-					break;
-				}
-				adjusted_pathspec[i] = super;
-			}
-		}
-	}
+	/* if (!opts || !opts->pathspec) { */
+	/* 	need_root = 1; */
+	/* } else { */
+	/* 	seen = xcalloc(1, ndir); */
+	/* 	for (de = root_directory; de->next; de = de->next) */
+	/* 		match_pathspec(opts->pathspec, de->pathname, de->de_pathlen, 0, seen); */
+	/* 	for (n = 0; opts->pathspec[n]; n++) */
+	/* 		/1* just count *1/; */
+	/* 	adjusted_pathspec = xmalloc((n + 1) * sizeof(char *)); */
+	/* 	adjusted_pathspec[n] = NULL; */
+	/* 	for (i = 0; i < n; i++) { */
+	/* 		if (seen[i] == MATCHED_EXACTLY) */
+	/* 			adjusted_pathspec[i] = opts->pathspec[i]; */
+	/* 		else { */
+	/* 			char *super = strdup(opts->pathspec[i]); */
+	/* 			int len = strlen(super); */
+	/* 			while (len && super[len-1] == '/') /1* strip trailing / *1/ */
+	/* 				super[--len] = '\0'; */
+	/* 			while (len && super[--len] != '/') /1* scan backwards to next / *1/ */
+	/* 				; */
+	/* 			if (len >= 0) */
+	/* 				super[len--] = '\0'; */
+	/* 			if (len <= 0) { */
+	/* 				need_root = 1; */
+	/* 				break; */
+	/* 			} */
+	/* 			adjusted_pathspec[i] = super; */
+	/* 		} */
+	/* 	} */
+	/* } */
 
+	for_each_dir_entry(root_directory, read_entries_tree, read_opts);
 	de = root_directory;
-	while (de) {
-		if (need_root || match_pathspec(adjusted_pathspec, de->pathname, de->de_pathlen, 0, NULL)) {
-			unsigned int subdir_foffsetblock = de->de_foffset + foffsetblock;
-			unsigned int *off = istate->mmap + subdir_foffsetblock;
-			unsigned int subdir_entry_offset = entry_offset + ntoh_l(*off);
-			oldpath = de->pathname;
-			do {
-				if (read_entries(istate, &de, &subdir_entry_offset, &istate->mmap,
-						    istate->mmap_size, &nr, &foffsetblock) < 0)
-					return -1;
-			} while (de && !prefixcmp(de->pathname, oldpath));
-		} else
-			de = de->next;
+	nsubtrees = 1;
+	while (de->down) {
+		for (i = 0; i < nsubtrees; i++) {
+			if (read_entries_tree(istate, &de, &entry_offset, &istate->mmap,
+						istate->mmap_size, &nr, &foffsetblock) < 0)
+				return -1;
+		}
+		nsubtrees = de->nsubtrees;
+		de = de->down;
 	}
-	istate->cache_nr = nr;
+	istate->dir_tree = root_directory;
 
-	istate->cache_tree = cache_tree_convert_v5(root_directory);
-	istate->internal_version = 2;
+	/* istate->cache_tree = cache_tree_convert_v5(root_directory); */
+	istate->internal_version = 5;
 	return 0;
 }
 
 int for_each_index_entry_v5(struct index_state *istate, each_cache_entry_fn fn, void *cb_data)
 {
-	int i, ret = 0;
+	int i, ret = 0, nsubdir = 1;
 	struct filter_opts *opts = istate->filter_opts;
 
 	/*
@@ -789,7 +1102,7 @@ int for_each_index_entry_v5(struct index_state *istate, each_cache_entry_fn fn, 
 	 * we cannot support partial writing, and filter the
 	 * unwanted entries out when iterating
 	 */
-	for (i = 0; i < istate->cache_nr; i++) {
+	for (i = 0; i < nsubdir; i++) {
 		struct cache_entry *ce = istate->cache[i];
 
 		if (opts && !opts->read_staged && ce_stage(ce))

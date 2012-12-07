@@ -321,6 +321,7 @@ static inline unsigned int canon_mode(unsigned int mode)
 
 #define cache_entry_size(len) (offsetof(struct cache_entry,name) + (len) + 1)
 #define directory_entry_size(len) (offsetof(struct directory_entry,pathname) + (len) + 1)
+#define dir_tree_entry_size(len) (offsetof(struct dir_tree_entry,pathname) + (len) + 1)
 #define conflict_entry_size(len) (offsetof(struct conflict_entry,name) + (len) + 1)
 
 struct filter_opts {
