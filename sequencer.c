@@ -17,7 +17,9 @@
 
 #define GIT_REFLOG_ACTION "GIT_REFLOG_ACTION"
 
-void remove_sequencer_state(void)
+const char sign_off_header[] = "Signed-off-by: ";
+
+static void remove_sequencer_state(void)
 {
 	struct strbuf seq_dir = STRBUF_INIT;
 
@@ -58,7 +60,7 @@ static int get_message(struct commit *commit, struct commit_message *out)
 
 	out->reencoded_message = NULL;
 	out->message = commit->buffer;
-	if (strcmp(encoding, git_commit_encoding))
+	if (same_encoding(encoding, git_commit_encoding))
 		out->reencoded_message = reencode_string(commit->buffer,
 					git_commit_encoding, encoding);
 	if (out->reencoded_message)
@@ -189,7 +191,7 @@ static int fast_forward_to(const unsigned char *to, const unsigned char *from)
 	struct ref_lock *ref_lock;
 
 	read_cache();
-	if (checkout_fast_forward(from, to))
+	if (checkout_fast_forward(from, to, 1))
 		exit(1); /* the callee should have complained already */
 	ref_lock = lock_any_ref_for_update("HEAD", from, 0);
 	return write_ref_sha1(ref_lock, to, "cherry-pick");
@@ -232,6 +234,9 @@ static int do_recursive_merge(struct commit *base, struct commit *next,
 		/* TRANSLATORS: %s will be "revert" or "cherry-pick" */
 		die(_("%s: Unable to write new index file"), action_name(opts));
 	rollback_lock_file(&index_lock);
+
+	if (opts->signoff)
+		append_signoff(msgbuf, 0);
 
 	if (!clean) {
 		int i;
@@ -291,7 +296,8 @@ static int is_index_unchanged(void)
  * If we are revert, or if our cherry-pick results in a hand merge,
  * we had better say that the current user is responsible for that.
  */
-static int run_git_commit(const char *defmsg, struct replay_opts *opts)
+static int run_git_commit(const char *defmsg, struct replay_opts *opts,
+			  int allow_empty)
 {
 	struct argv_array array;
 	int rc;
@@ -307,8 +313,11 @@ static int run_git_commit(const char *defmsg, struct replay_opts *opts)
 		argv_array_push(&array, defmsg);
 	}
 
-	if (opts->allow_empty)
+	if (allow_empty)
 		argv_array_push(&array, "--allow-empty");
+
+	if (opts->allow_empty_message)
+		argv_array_push(&array, "--allow-empty-message");
 
 	rc = run_command_v_opt(array.argv, RUN_GIT_CMD);
 	argv_array_clear(&array);
@@ -335,6 +344,44 @@ static int is_original_commit_empty(struct commit *commit)
 	return !hashcmp(ptree_sha1, commit->tree->object.sha1);
 }
 
+/*
+ * Do we run "git commit" with "--allow-empty"?
+ */
+static int allow_empty(struct replay_opts *opts, struct commit *commit)
+{
+	int index_unchanged, empty_commit;
+
+	/*
+	 * Three cases:
+	 *
+	 * (1) we do not allow empty at all and error out.
+	 *
+	 * (2) we allow ones that were initially empty, but
+	 * forbid the ones that become empty;
+	 *
+	 * (3) we allow both.
+	 */
+	if (!opts->allow_empty)
+		return 0; /* let "git commit" barf as necessary */
+
+	index_unchanged = is_index_unchanged();
+	if (index_unchanged < 0)
+		return index_unchanged;
+	if (!index_unchanged)
+		return 0; /* we do not have to say --allow-empty */
+
+	if (opts->keep_redundant_commits)
+		return 1;
+
+	empty_commit = is_original_commit_empty(commit);
+	if (empty_commit < 0)
+		return empty_commit;
+	if (!empty_commit)
+		return 0;
+	else
+		return 1;
+}
+
 static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 {
 	unsigned char head[20];
@@ -344,8 +391,6 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 	char *defmsg = NULL;
 	struct strbuf msgbuf = STRBUF_INIT;
 	int res;
-	int empty_commit;
-	int index_unchanged;
 
 	if (opts->no_commit) {
 		/*
@@ -471,10 +516,6 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 		free_commit_list(remotes);
 	}
 
-	empty_commit = is_original_commit_empty(commit);
-	if (empty_commit < 0)
-		return empty_commit;
-
 	/*
 	 * If the merge was clean or if it failed due to conflict, we write
 	 * CHERRY_PICK_HEAD for the subsequent invocation of commit to use.
@@ -495,27 +536,11 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 		print_advice(res == 1, opts);
 		rerere(opts->allow_rerere_auto);
 	} else {
-		index_unchanged = is_index_unchanged();
-		/*
-		 * If index_unchanged is less than 0, that indicates we either
-		 * couldn't parse HEAD or the index, so error out here.
-		 */
-		if (index_unchanged < 0)
-			return index_unchanged;
-
-		if (!empty_commit && !opts->keep_redundant_commits && index_unchanged)
-			/*
-			 * The head tree and the index match
-			 * meaning the commit is empty.  Since it wasn't created
-			 * empty (based on the previous test), we can conclude
-			 * the commit has been made redundant.  Since we don't
-			 * want to keep redundant commits, we can just return
-			 * here, skipping this commit
-			 */
-			return 0;
-
+		int allow = allow_empty(opts, commit);
+		if (allow < 0)
+			return allow;
 		if (!opts->no_commit)
-			res = run_git_commit(defmsg, opts);
+			res = run_git_commit(defmsg, opts, allow);
 	}
 
 	free_message(&msg);
@@ -526,7 +551,11 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 
 static void prepare_revs(struct replay_opts *opts)
 {
-	if (opts->action != REPLAY_REVERT)
+	/*
+	 * picking (but not reverting) ranges (but not individual revisions)
+	 * should be done in reverse
+	 */
+	if (opts->action == REPLAY_PICK && !opts->revs->no_walk)
 		opts->revs->reverse ^= 1;
 
 	if (prepare_revision_walk(opts->revs))
@@ -986,4 +1015,64 @@ int sequencer_pick_revisions(struct replay_opts *opts)
 	save_head(sha1_to_hex(sha1));
 	save_opts(opts);
 	return pick_commits(todo_list, opts);
+}
+
+static int ends_rfc2822_footer(struct strbuf *sb, int ignore_footer)
+{
+	int ch;
+	int hit = 0;
+	int i, j, k;
+	int len = sb->len - ignore_footer;
+	int first = 1;
+	const char *buf = sb->buf;
+
+	for (i = len - 1; i > 0; i--) {
+		if (hit && buf[i] == '\n')
+			break;
+		hit = (buf[i] == '\n');
+	}
+
+	while (i < len - 1 && buf[i] == '\n')
+		i++;
+
+	for (; i < len; i = k) {
+		for (k = i; k < len && buf[k] != '\n'; k++)
+			; /* do nothing */
+		k++;
+
+		if ((buf[k] == ' ' || buf[k] == '\t') && !first)
+			continue;
+
+		first = 0;
+
+		for (j = 0; i + j < len; j++) {
+			ch = buf[i + j];
+			if (ch == ':')
+				break;
+			if (isalnum(ch) ||
+			    (ch == '-'))
+				continue;
+			return 0;
+		}
+	}
+	return 1;
+}
+
+void append_signoff(struct strbuf *msgbuf, int ignore_footer)
+{
+	struct strbuf sob = STRBUF_INIT;
+	int i;
+
+	strbuf_addstr(&sob, sign_off_header);
+	strbuf_addstr(&sob, fmt_name(getenv("GIT_COMMITTER_NAME"),
+				getenv("GIT_COMMITTER_EMAIL")));
+	strbuf_addch(&sob, '\n');
+	for (i = msgbuf->len - 1 - ignore_footer; i > 0 && msgbuf->buf[i - 1] != '\n'; i--)
+		; /* do nothing */
+	if (prefixcmp(msgbuf->buf + i, sob.buf)) {
+		if (!i || !ends_rfc2822_footer(msgbuf, ignore_footer))
+			strbuf_splice(msgbuf, msgbuf->len - ignore_footer, 0, "\n", 1);
+		strbuf_splice(msgbuf, msgbuf->len - ignore_footer, 0, sob.buf, sob.len);
+	}
+	strbuf_release(&sob);
 }

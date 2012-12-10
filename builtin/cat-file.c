@@ -91,7 +91,7 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name)
 	unsigned long size;
 	struct object_context obj_context;
 
-	if (get_sha1_with_context(obj_name, sha1, &obj_context))
+	if (get_sha1_with_context(obj_name, 0, sha1, &obj_context))
 		die("Not a valid object name %s", obj_name);
 
 	buf = NULL;
@@ -146,7 +146,7 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name)
 			die("git cat-file --textconv %s: <object> must be <sha1:path>",
 			    obj_name);
 
-		if (!textconv_object(obj_context.path, obj_context.mode, sha1, &buf, &size))
+		if (!textconv_object(obj_context.path, obj_context.mode, sha1, 1, &buf, &size))
 			die("git cat-file --textconv: unable to run textconv on %s",
 			    obj_name);
 		break;
@@ -244,8 +244,8 @@ static int batch_objects(int print_contents)
 }
 
 static const char * const cat_file_usage[] = {
-	"git cat-file (-t|-s|-e|-p|<type>|--textconv) <object>",
-	"git cat-file (--batch|--batch-check) < <list_of_objects>",
+	N_("git cat-file (-t|-s|-e|-p|<type>|--textconv) <object>"),
+	N_("git cat-file (--batch|--batch-check) < <list_of_objects>"),
 	NULL
 };
 
@@ -263,19 +263,19 @@ int cmd_cat_file(int argc, const char **argv, const char *prefix)
 	const char *exp_type = NULL, *obj_name = NULL;
 
 	const struct option options[] = {
-		OPT_GROUP("<type> can be one of: blob, tree, commit, tag"),
-		OPT_SET_INT('t', NULL, &opt, "show object type", 't'),
-		OPT_SET_INT('s', NULL, &opt, "show object size", 's'),
+		OPT_GROUP(N_("<type> can be one of: blob, tree, commit, tag")),
+		OPT_SET_INT('t', NULL, &opt, N_("show object type"), 't'),
+		OPT_SET_INT('s', NULL, &opt, N_("show object size"), 's'),
 		OPT_SET_INT('e', NULL, &opt,
-			    "exit with zero when there's no error", 'e'),
-		OPT_SET_INT('p', NULL, &opt, "pretty-print object's content", 'p'),
+			    N_("exit with zero when there's no error"), 'e'),
+		OPT_SET_INT('p', NULL, &opt, N_("pretty-print object's content"), 'p'),
 		OPT_SET_INT(0, "textconv", &opt,
-			    "for blob objects, run textconv on object's content", 'c'),
+			    N_("for blob objects, run textconv on object's content"), 'c'),
 		OPT_SET_INT(0, "batch", &batch,
-			    "show info and content of objects fed from the standard input",
+			    N_("show info and content of objects fed from the standard input"),
 			    BATCH),
 		OPT_SET_INT(0, "batch-check", &batch,
-			    "show info about objects fed from the standard input",
+			    N_("show info about objects fed from the standard input"),
 			    BATCH_CHECK),
 		OPT_END()
 	};

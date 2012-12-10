@@ -1,6 +1,6 @@
 #!/bin/sh
 
-test_description='git-p4 rcs keywords'
+test_description='git p4 rcs keywords'
 
 . ./lib-git-p4.sh
 
@@ -147,7 +147,7 @@ test_expect_success 'scrub ko files differently' '
 	)
 '
 
-# hack; git-p4 submit should do it on its own
+# hack; git p4 submit should do it on its own
 test_expect_success 'cleanup after failure' '
 	(
 		cd "$cli" &&
@@ -155,13 +155,29 @@ test_expect_success 'cleanup after failure' '
 	)
 '
 
+# perl $File:: bug check
+test_expect_success 'ktext expansion should not expand multi-line $File::' '
+	(
+		cd "$cli" &&
+		cat >lv.pm <<-\EOF
+		my $wanted = sub { my $f = $File::Find::name;
+				    if ( -f && $f =~ /foo/ ) {
+		EOF
+		p4 add -t ktext lv.pm &&
+		p4 submit -d "lv.pm"
+	) &&
+	test_when_finished cleanup_git &&
+	git p4 clone --dest="$git" //depot &&
+	(
+		cd "$git" &&
+		test_cmp "$cli/lv.pm" lv.pm
+	)
+'
+
 #
 # Do not scrub anything but +k or +ko files.  Sneak a change into
 # the cli file so that submit will get a conflict.  Make sure that
 # scrubbing doesn't make a mess of things.
-#
-# Assumes that git-p4 exits leaving the p4 file open, with the
-# conflict-generating patch unapplied.
 #
 # This might happen only if the git repo is behind the p4 repo at
 # submit time, and there is a conflict.
@@ -181,19 +197,16 @@ test_expect_success 'do not scrub plain text' '
 			sed -i "s/^line5/line5 p4 edit/" file_text &&
 			p4 submit -d "file5 p4 edit"
 		) &&
-		! git p4 submit &&
+		echo s | test_expect_code 1 git p4 submit &&
 		(
-			# exepct something like:
-			#    file_text - file(s) not opened on this client
-			# but not copious diff output
+			# make sure the file is not left open
 			cd "$cli" &&
-			p4 diff file_text >wc &&
-			test_line_count = 1 wc
+			! p4 fstat -T action file_text
 		)
 	)
 '
 
-# hack; git-p4 submit should do it on its own
+# hack; git p4 submit should do it on its own
 test_expect_success 'cleanup after failure 2' '
 	(
 		cd "$cli" &&
@@ -244,9 +257,9 @@ test_expect_success 'cope with rcs keyword expansion damage' '
 		cd "$git" &&
 		git config git-p4.skipSubmitEdit true &&
 		git config git-p4.attemptRCSCleanup true &&
-		(cd ../cli && p4_append_to_file kwfile1.c) &&
+		(cd "$cli" && p4_append_to_file kwfile1.c) &&
 		old_lines=$(wc -l <kwfile1.c) &&
-		perl -n -i -e "print unless m/Revision:/" kwfile1.c &&
+		"$PERL_PATH" -n -i -e "print unless m/Revision:/" kwfile1.c &&
 		new_lines=$(wc -l <kwfile1.c) &&
 		test $new_lines = $(($old_lines - 1)) &&
 
@@ -342,44 +355,6 @@ test_expect_failure 'Add keywords in git which do not match the default p4 value
 
 	)
 '
-
-# Check that the existing merge conflict handling still works.
-# Modify kwfile1.c in git, and delete in p4. We should be able
-# to skip the git commit.
-#
-test_expect_success 'merge conflict handling still works' '
-	test_when_finished cleanup_git &&
-	(
-		cd "$cli" &&
-		echo "Hello:\$Id\$" >merge2.c &&
-		echo "World" >>merge2.c &&
-		p4 add -t ktext merge2.c &&
-		p4 submit -d "add merge test file"
-	) &&
-	git p4 clone --dest="$git" //depot &&
-	(
-		cd "$git" &&
-		sed -e "/Hello/d" merge2.c >merge2.c.tmp &&
-		mv merge2.c.tmp merge2.c &&
-		git add merge2.c &&
-		git commit -m "Modifying merge2.c"
-	) &&
-	(
-		cd "$cli" &&
-		p4 delete merge2.c &&
-		p4 submit -d "remove merge test file"
-	) &&
-	(
-		cd "$git" &&
-		test -f merge2.c &&
-		git config git-p4.skipSubmitEdit true &&
-		git config git-p4.attemptRCSCleanup true &&
-		!(echo "s" | git p4 submit) &&
-		git rebase --skip &&
-		! test -f merge2.c
-	)
-'
-
 
 test_expect_success 'kill p4d' '
 	kill_p4d

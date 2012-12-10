@@ -123,16 +123,6 @@ test_expect_success 'attribute matching is case insensitive when core.ignorecase
 
 '
 
-test_expect_success 'check whether FS is case-insensitive' '
-	mkdir junk &&
-	echo good >junk/CamelCase &&
-	echo bad >junk/camelcase &&
-	if test "$(cat junk/CamelCase)" != good
-	then
-		test_set_prereq CASE_INSENSITIVE_FS
-	fi
-'
-
 test_expect_success CASE_INSENSITIVE_FS 'additional case insensitivity tests' '
 	test_must_fail attr_check a/B/D/g "a/b/d/*" "-c core.ignorecase=0" &&
 	test_must_fail attr_check A/B/D/NO "a/b/d/*" "-c core.ignorecase=0" &&
@@ -204,6 +194,16 @@ test_expect_success 'attribute test: --cached option' '
 test_expect_success 'root subdir attribute test' '
 	attr_check a/i a/i &&
 	attr_check subdir/a/i unspecified
+'
+
+test_expect_success 'negative patterns' '
+	echo "!f test=bar" >.gitattributes &&
+	test_must_fail git check-attr test -- f
+'
+
+test_expect_success 'patterns starting with exclamation' '
+	echo "\!f test=foo" >.gitattributes &&
+	attr_check "!f" foo
 '
 
 test_expect_success 'setup bare' '

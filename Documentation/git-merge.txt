@@ -99,7 +99,7 @@ commit or stash your changes before running 'git merge'.
 	more than two parents (affectionately called an Octopus merge).
 +
 If no commit is given from the command line, and if `merge.defaultToUpstream`
-configuration variable is set, merge the remote tracking branches
+configuration variable is set, merge the remote-tracking branches
 that the current branch is configured to use as its upstream.
 See also the configuration section of this manual page.
 
@@ -181,7 +181,7 @@ final result verbatim.  When both sides made changes to the same area,
 however, git cannot randomly pick one side over the other, and asks you to
 resolve it by leaving what both sides did to that area.
 
-By default, git uses the same style as that is used by "merge" program
+By default, git uses the same style as the one used by the "merge" program
 from the RCS suite to present such a conflicted hunk, like this:
 
 ------------

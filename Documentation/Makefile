@@ -24,8 +24,30 @@ SP_ARTICLES = user-manual
 SP_ARTICLES += howto/revert-branch-rebase
 SP_ARTICLES += howto/using-merge-subtree
 SP_ARTICLES += howto/using-signed-tag-in-pull-request
+SP_ARTICLES += howto/use-git-daemon
+SP_ARTICLES += howto/update-hook-example
+SP_ARTICLES += howto/setup-git-server-over-http
+SP_ARTICLES += howto/separating-topic-branches
+SP_ARTICLES += howto/revert-a-faulty-merge
+SP_ARTICLES += howto/recover-corrupted-blob-object
+SP_ARTICLES += howto/rebuild-from-update-hook
+SP_ARTICLES += howto/rebuild-from-update-hook
+SP_ARTICLES += howto/rebase-from-internal-branch
+SP_ARTICLES += howto/maintain-git
 API_DOCS = $(patsubst %.txt,%,$(filter-out technical/api-index-skel.txt technical/api-index.txt, $(wildcard technical/api-*.txt)))
 SP_ARTICLES += $(API_DOCS)
+
+TECH_DOCS = technical/index-format
+TECH_DOCS += technical/pack-format
+TECH_DOCS += technical/pack-heuristics
+TECH_DOCS += technical/pack-protocol
+TECH_DOCS += technical/protocol-capabilities
+TECH_DOCS += technical/protocol-common
+TECH_DOCS += technical/racy-git
+TECH_DOCS += technical/send-pack-pipeline
+TECH_DOCS += technical/shallow
+TECH_DOCS += technical/trivial-merge
+SP_ARTICLES += $(TECH_DOCS)
 SP_ARTICLES += technical/api-index
 
 DOC_HTML += $(patsubst %,%.html,$(ARTICLES) $(SP_ARTICLES))
@@ -44,9 +66,10 @@ man5dir=$(mandir)/man5
 man7dir=$(mandir)/man7
 # DESTDIR=
 
-ASCIIDOC=asciidoc
+ASCIIDOC = asciidoc
 ASCIIDOC_EXTRA =
 MANPAGE_XSL = manpage-normal.xsl
+XMLTO = xmlto
 XMLTO_EXTRA =
 INSTALL?=install
 RM ?= rm -f
@@ -66,12 +89,6 @@ endif
 -include ../config.mak
 
 #
-# For asciidoc ...
-#	-7.1.2,	set ASCIIDOC7
-#	8.0-,	no extra settings are needed
-#
-
-#
 # For docbook-xsl ...
 #	-1.68.1,	no extra settings are needed?
 #	1.69.0,		set ASCIIDOC_ROFF?
@@ -81,9 +98,6 @@ endif
 #	1.73.0-,	no extra settings are needed
 #
 
-ifndef ASCIIDOC7
-ASCIIDOC_EXTRA += -a asciidoc7compatible
-endif
 ifdef DOCBOOK_XSL_172
 ASCIIDOC_EXTRA += -a git-asciidoc-no-roff
 MANPAGE_XSL = manpage-1.72.xsl
@@ -133,15 +147,6 @@ ifdef DEFAULT_EDITOR
 DEFAULT_EDITOR_SQ = $(subst ','\'',$(DEFAULT_EDITOR))
 ASCIIDOC_EXTRA += -a 'git-default-editor=$(DEFAULT_EDITOR_SQ)'
 endif
-
-#
-# Please note that there is a minor bug in asciidoc.
-# The version after 6.0.3 _will_ include the patch found here:
-#   http://marc.theaimsgroup.com/?l=git&m=111558757202243&w=2
-#
-# Until that version is released you may have to apply the patch
-# yourself - yes, all 6 characters of it!
-#
 
 QUIET_SUBDIR0  = +$(MAKE) -C # space to separate -C and subdir
 QUIET_SUBDIR1  =
@@ -248,7 +253,7 @@ clean:
 	$(RM) *.texi *.texi+ *.texi++ git.info gitman.info
 	$(RM) *.pdf
 	$(RM) howto-index.txt howto/*.html doc.dep
-	$(RM) technical/api-*.html technical/api-index.txt
+	$(RM) technical/*.html technical/api-index.txt
 	$(RM) $(cmds_txt) *.made
 	$(RM) manpage-base-url.xsl
 
@@ -263,7 +268,7 @@ manpage-base-url.xsl: manpage-base-url.xsl.in
 
 %.1 %.5 %.7 : %.xml manpage-base-url.xsl
 	$(QUIET_XMLTO)$(RM) $@ && \
-	xmlto -m $(MANPAGE_XSL) $(XMLTO_EXTRA) man $<
+	$(XMLTO) -m $(MANPAGE_XSL) $(XMLTO_EXTRA) man $<
 
 %.xml : %.txt
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
@@ -280,7 +285,8 @@ technical/api-index.txt: technical/api-index-skel.txt \
 	technical/api-index.sh $(patsubst %,%.txt,$(API_DOCS))
 	$(QUIET_GEN)cd technical && '$(SHELL_PATH_SQ)' ./api-index.sh
 
-$(patsubst %,%.html,$(API_DOCS) technical/api-index): %.html : %.txt
+technical/%.html: ASCIIDOC_EXTRA += -a git-relative-html-prefix=../
+$(patsubst %,%.html,$(API_DOCS) technical/api-index $(TECH_DOCS)): %.html : %.txt
 	$(QUIET_ASCIIDOC)$(ASCIIDOC) -b xhtml11 -f asciidoc.conf \
 		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) $*.txt
 
@@ -333,6 +339,7 @@ $(patsubst %,%.html,$(ARTICLES)) : %.html : %.txt
 
 WEBDOC_DEST = /pub/software/scm/git/docs
 
+howto/%.html: ASCIIDOC_EXTRA += -a git-relative-html-prefix=../
 $(patsubst %.txt,%.html,$(wildcard howto/*.txt)): %.html : %.txt
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
 	sed -e '1,/^$$/d' $< | $(ASCIIDOC) $(ASCIIDOC_EXTRA) -b xhtml11 - >$@+ && \
@@ -359,5 +366,8 @@ require-htmlrepo::
 
 quick-install-html: require-htmlrepo
 	'$(SHELL_PATH_SQ)' ./install-doc-quick.sh $(HTML_REPO) $(DESTDIR)$(htmldir)
+
+print-man1:
+	@for i in $(MAN1_TXT); do echo $$i; done
 
 .PHONY: FORCE

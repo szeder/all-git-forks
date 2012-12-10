@@ -19,7 +19,7 @@
 #include "quote.h"
 
 static const char *fast_export_usage[] = {
-	"git fast-export [rev-list-opts]",
+	N_("git fast-export [rev-list-opts]"),
 	NULL
 };
 
@@ -185,6 +185,8 @@ static void print_path(const char *path)
 	int need_quote = quote_c_style(path, NULL, NULL, 0);
 	if (need_quote)
 		quote_c_style(path, NULL, stdout, 0);
+	else if (strchr(path, ' '))
+		printf("\"%s\"", path);
 	else
 		printf("%s", path);
 }
@@ -610,7 +612,7 @@ static void import_marks(char *input_file)
 			die ("Could not read blob %s", sha1_to_hex(sha1));
 
 		if (object->flags & SHOWN)
-			error("Object %s already has a mark", sha1);
+			error("Object %s already has a mark", sha1_to_hex(sha1));
 
 		mark_object(object, mark);
 		if (last_idnum < mark)
@@ -630,24 +632,24 @@ int cmd_fast_export(int argc, const char **argv, const char *prefix)
 	char *export_filename = NULL, *import_filename = NULL;
 	struct option options[] = {
 		OPT_INTEGER(0, "progress", &progress,
-			    "show progress after <n> objects"),
-		OPT_CALLBACK(0, "signed-tags", &signed_tag_mode, "mode",
-			     "select handling of signed tags",
+			    N_("show progress after <n> objects")),
+		OPT_CALLBACK(0, "signed-tags", &signed_tag_mode, N_("mode"),
+			     N_("select handling of signed tags"),
 			     parse_opt_signed_tag_mode),
-		OPT_CALLBACK(0, "tag-of-filtered-object", &tag_of_filtered_mode, "mode",
-			     "select handling of tags that tag filtered objects",
+		OPT_CALLBACK(0, "tag-of-filtered-object", &tag_of_filtered_mode, N_("mode"),
+			     N_("select handling of tags that tag filtered objects"),
 			     parse_opt_tag_of_filtered_mode),
-		OPT_STRING(0, "export-marks", &export_filename, "file",
-			     "Dump marks to this file"),
-		OPT_STRING(0, "import-marks", &import_filename, "file",
-			     "Import marks from this file"),
+		OPT_STRING(0, "export-marks", &export_filename, N_("file"),
+			     N_("Dump marks to this file")),
+		OPT_STRING(0, "import-marks", &import_filename, N_("file"),
+			     N_("Import marks from this file")),
 		OPT_BOOLEAN(0, "fake-missing-tagger", &fake_missing_tagger,
-			     "Fake a tagger when tags lack one"),
+			     N_("Fake a tagger when tags lack one")),
 		OPT_BOOLEAN(0, "full-tree", &full_tree,
-			     "Output full tree for each commit"),
+			     N_("Output full tree for each commit")),
 		OPT_BOOLEAN(0, "use-done-feature", &use_done_feature,
-			     "Use the done feature to terminate the stream"),
-		OPT_BOOL(0, "no-data", &no_data, "Skip output of blob data"),
+			     N_("Use the done feature to terminate the stream")),
+		OPT_BOOL(0, "no-data", &no_data, N_("Skip output of blob data")),
 		OPT_END()
 	};
 

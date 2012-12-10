@@ -36,6 +36,8 @@ test_expect_success 'setup remote repository' '
 	mv test_repo.git "$HTTPD_DOCUMENT_ROOT_PATH"
 '
 
+setup_askpass_helper
+
 cat >exp <<EOF
 GET  /smart/test_repo.git/info/refs?service=git-upload-pack HTTP/1.1 200
 POST /smart/test_repo.git/git-upload-pack HTTP/1.1 200
@@ -64,7 +66,10 @@ test_expect_success 'no empty path components' '
 
 test_expect_success 'clone remote repository' '
 	rm -rf test_repo_clone &&
-	git clone $HTTPD_URL/smart/test_repo.git test_repo_clone
+	git clone $HTTPD_URL/smart/test_repo.git test_repo_clone &&
+	(
+		cd test_repo_clone && git config push.default matching
+	)
 '
 
 test_expect_success 'push to remote repository (standard)' '
@@ -263,6 +268,30 @@ test_expect_success 'http push respects GIT_COMMITTER_* in reflog' '
 	git --git-dir="$HTTPD_DOCUMENT_ROOT_PATH/test_repo.git" \
 		log -g -1 --format="%gn <%ge>" >actual &&
 	echo "Custom User <custom@example.com>" >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success 'push over smart http with auth' '
+	cd "$ROOT_PATH/test_repo_clone" &&
+	echo push-auth-test >expect &&
+	test_commit push-auth-test &&
+	set_askpass user@host &&
+	git push "$HTTPD_URL"/auth/smart/test_repo.git &&
+	git --git-dir="$HTTPD_DOCUMENT_ROOT_PATH/test_repo.git" \
+		log -1 --format=%s >actual &&
+	expect_askpass both user@host &&
+	test_cmp expect actual
+'
+
+test_expect_success 'push to auth-only-for-push repo' '
+	cd "$ROOT_PATH/test_repo_clone" &&
+	echo push-half-auth >expect &&
+	test_commit push-half-auth &&
+	set_askpass user@host &&
+	git push "$HTTPD_URL"/auth-push/smart/test_repo.git &&
+	git --git-dir="$HTTPD_DOCUMENT_ROOT_PATH/test_repo.git" \
+		log -1 --format=%s >actual &&
+	expect_askpass both user@host &&
 	test_cmp expect actual
 '
 

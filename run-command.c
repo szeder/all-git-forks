@@ -53,13 +53,14 @@ static void mark_child_for_cleanup(pid_t pid)
 
 static void clear_child_for_cleanup(pid_t pid)
 {
-	struct child_to_clean **last, *p;
+	struct child_to_clean **pp;
 
-	last = &children_to_clean;
-	for (p = children_to_clean; p; p = p->next) {
-		if (p->pid == pid) {
-			*last = p->next;
-			free(p);
+	for (pp = &children_to_clean; *pp; pp = &(*pp)->next) {
+		struct child_to_clean *clean_me = *pp;
+
+		if (clean_me->pid == pid) {
+			*pp = clean_me->next;
+			free(clean_me);
 			return;
 		}
 	}
@@ -139,6 +140,8 @@ int sane_execvp(const char *file, char * const argv[])
 	 */
 	if (errno == EACCES && !strchr(file, '/'))
 		errno = exists_in_PATH(file) ? EACCES : ENOENT;
+	else if (errno == ENOTDIR && !strchr(file, '/'))
+		errno = ENOENT;
 	return -1;
 }
 
@@ -393,16 +396,6 @@ fail_pipe:
 				else
 					unsetenv(*cmd->env);
 			}
-		}
-		if (cmd->preexec_cb) {
-			/*
-			 * We cannot predict what the pre-exec callback does.
-			 * Forgo parent notification.
-			 */
-			close(child_notifier);
-			child_notifier = -1;
-
-			cmd->preexec_cb();
 		}
 		if (cmd->git_cmd) {
 			execv_git_cmd(cmd->argv);

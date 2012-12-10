@@ -101,6 +101,12 @@ OPTIONS
 	The option core.warnAmbiguousRefs is used to select the strict
 	abbreviation mode.
 
+--disambiguate=<prefix>::
+	Show every object whose name begins with the given prefix.
+	The <prefix> must be at least 4 hexadecimal digits long to
+	avoid listing each and every object in the repository by
+	mistake.
+
 --all::
 	Show all refs found in `refs/`.
 
@@ -137,7 +143,8 @@ shown.  If the pattern does not contain a globbing character (`?`,
 
 --git-dir::
 	Show `$GIT_DIR` if defined. Otherwise show the path to
-	the .git directory, relative to the current directory.
+	the .git directory. The path shown, when relative, is
+	relative to the current working directory.
 +
 If `$GIT_DIR` is not defined and the current directory
 is not detected to lie in a git repository or work tree

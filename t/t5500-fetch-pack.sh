@@ -125,6 +125,11 @@ test_expect_success 'single branch object count' '
 	test_cmp expected count.singlebranch
 '
 
+test_expect_success 'single given branch clone' '
+	git clone --single-branch --branch A "file://$(pwd)/." branch-a &&
+	test_must_fail git --git-dir=branch-a/.git rev-parse origin/B
+'
+
 test_expect_success 'clone shallow' '
 	git clone --no-single-branch --depth 2 "file://$(pwd)/." shallow
 '
@@ -276,7 +281,7 @@ test_expect_success 'clone shallow with --branch' '
 '
 
 test_expect_success 'clone shallow object count' '
-	echo "in-pack: 12" > count3.expected &&
+	echo "in-pack: 6" > count3.expected &&
 	GIT_DIR=shallow3/.git git count-objects -v |
 		grep "^in-pack" > count3.actual &&
 	test_cmp count3.expected count3.actual
@@ -386,10 +391,55 @@ test_expect_success 'fetch mixed refs from cmdline and stdin' '
 test_expect_success 'test duplicate refs from stdin' '
 	(
 	cd client &&
-	test_must_fail git fetch-pack --stdin --no-progress .. <../input.dup
+	git fetch-pack --stdin --no-progress .. <../input.dup
 	) >output &&
 	cut -d " " -f 2 <output | sort >actual &&
 	test_cmp expect actual
+'
+
+test_expect_success 'set up tests of missing reference' '
+	cat >expect-error <<-\EOF
+	error: no such remote ref refs/heads/xyzzy
+	EOF
+'
+
+test_expect_success 'test lonely missing ref' '
+	(
+		cd client &&
+		test_must_fail git fetch-pack --no-progress .. refs/heads/xyzzy
+	) >/dev/null 2>error-m &&
+	test_cmp expect-error error-m
+'
+
+test_expect_success 'test missing ref after existing' '
+	(
+		cd client &&
+		test_must_fail git fetch-pack --no-progress .. refs/heads/A refs/heads/xyzzy
+	) >/dev/null 2>error-em &&
+	test_cmp expect-error error-em
+'
+
+test_expect_success 'test missing ref before existing' '
+	(
+		cd client &&
+		test_must_fail git fetch-pack --no-progress .. refs/heads/xyzzy refs/heads/A
+	) >/dev/null 2>error-me &&
+	test_cmp expect-error error-me
+'
+
+test_expect_success 'test --all, --depth, and explicit head' '
+	(
+		cd client &&
+		git fetch-pack --no-progress --all --depth=1 .. refs/heads/A
+	) >out-adh 2>error-adh
+'
+
+test_expect_success 'test --all, --depth, and explicit tag' '
+	git tag OLDTAG refs/heads/B~5 &&
+	(
+		cd client &&
+		git fetch-pack --no-progress --all --depth=1 .. refs/tags/OLDTAG
+	) >out-adt 2>error-adt
 '
 
 test_done
