@@ -1,8 +1,36 @@
-Version v1.8.1-rc0; changes since v1.8.0.1:
--------------------------------------------
+Version v1.8.1-rc1; changes since v1.8.1-rc0:
+---------------------------------------------
 
-Antoine Pelisse (1):
-      Fix typo in remote set-head usage
+Jiang Xin (1):
+      l10n: Update git.pot (5 new, 1 removed messages)
+
+Junio C Hamano (3):
+      Update draft release notes to 1.8.0.2
+      Documentation/diff-config: work around AsciiDoc misfortune
+      Git 1.8.1-rc1
+
+Matthieu Moy (1):
+      document that statusHints affects git checkout
+
+Peter Krefting (1):
+      l10n: Update Swedish translation (1979t0f0u)
+
+Ralf Thielow (2):
+      l10n: de.po: translate 825 new messages
+      l10n: de.po: translate 22 new messages
+
+Ramkumar Ramachandra (4):
+      t4041 (diff-submodule-option): don't hardcode SHA-1 in expected outputs
+      t4041 (diff-submodule-option): parse digests sensibly
+      t4041 (diff-submodule-option): rewrite add_file() routine
+      t4041 (diff-submodule-option): modernize style
+
+Tran Ngoc Quan (1):
+      l10n: vi.po: update to git-v1.8.0.1-347-gf94c3
+
+
+Version v1.8.1-rc0; changes since v1.8.0.2:
+-------------------------------------------
 
 Ben Walton (1):
       Use character class for sed expression instead of \s
@@ -19,8 +47,7 @@ Dmitry Ivankov (1):
 Enrico Scholz (1):
       emacs: make 'git-status' work with separate git dirs
 
-Eric S. Raymond (2):
-      doc/fast-import: clarify how content states are built
+Eric S. Raymond (1):
       Documentation: how to add a new command
 
 Felipe Contreras (32):
@@ -127,15 +154,13 @@ Jiang Xin (1):
 Joachim Schmitz (1):
       fix 'make test' for HP NonStop
 
-Johan Herland (3):
-      t1400-update-ref: Add test verifying bug with symrefs in delete_ref()
-      Fix failure to delete a packed ref through a symref
+Johan Herland (1):
       git symbolic-ref --delete $symref
 
 Johannes Sixt (1):
       maybe_flush_or_die: move a too-loose Windows specific error
 
-Junio C Hamano (30):
+Junio C Hamano (20):
       t4055: avoid use of sed 'a' command
       log --grep: accept --basic-regexp and --perl-regexp
       log: honor grep.* configuration
@@ -148,22 +173,12 @@ Junio C Hamano (30):
       format-patch --notes: show notes after three-dashes
       Documentation: decribe format-patch --notes
       get_fetch_map(): tighten checks on dest refs
-      reencode_string(): introduce and use same_encoding()
       format-patch: add a blank line between notes and diffstat
       Start 1.8.1 cycle
       Sixth batch for 1.8.1
       Update draft release notes for 1.8.1
       Update draft release notes to 1.8.1
-      test: add failing tests for "diff --stat" to t4049
-      diff --stat: status of unmodified pair in diff-q is not zero
-      diff --stat: use "file" temporary variable to refer to data->files[i]
-      diff --stat: move the "total count" logic to the last loop
-      diff --stat: do not count "unmerged" entries
-      diff --shortstat: do not count "unmerged" entries
-      Documentation/git-push.txt: clarify the "push from satellite" workflow
-      Start preparing for 1.8.0.2
       Update draft release notes to 1.8.1
-      t4049: refocus tests
       Update draft release notes to 1.8.1
       Git 1.8.1-rc0
 
@@ -183,9 +198,6 @@ Krzysztof Mazur (11):
       git-send-email: ask what to do with an invalid email address
       git-send-email: allow edit invalid email address
 
-Linus Torvalds (1):
-      Fix "git diff --stat" for interesting - but empty - file changes
-
 Marc Khouzam (2):
       tcsh-completion re-using git-completion.bash
       Support for git aliasing for tcsh completion
@@ -193,9 +205,6 @@ Marc Khouzam (2):
 Mark Levedahl (2):
       Update cygwin.c for new mingw-64 win32 api headers
       USE CGYWIN_V15_WIN32API as macro to select api for cygwin
-
-Mark Szepieniec (1):
-      Documentation: improve phrasing in git-push.txt
 
 Matt Kraai (1):
       docs: move submodule section
@@ -212,10 +221,8 @@ Matthew Ogilvie (10):
       cvsserver: cvs add: do not expand directory arguments
       cvsserver status: provide real sticky info
 
-Matthieu Moy (3):
+Matthieu Moy (1):
       status: add advice on how to push/pull to tracking branch
-      git-remote-mediawiki: escape ", \, and LF in file names
-      git-fast-import.txt: improve documentation for quoted paths
 
 Michael Haggerty (12):
       parse_dirstat_params(): use string_list to split comma-separated string
@@ -234,7 +241,7 @@ Michael Haggerty (12):
 Michael J Gruber (1):
       replace: parse revision argument for -d
 
-Nguyễn Thái Ngọc Duy (17):
+Nguyễn Thái Ngọc Duy (16):
       attr: avoid strlen() on every match
       attr: avoid searching for basename on every match
       exclude: stricten a length check in EXC_FLAG_ENDSWITH case
@@ -251,16 +258,11 @@ Nguyễn Thái Ngọc Duy (17):
       send-pack: move core code to libgit.a
       fetch-pack: remove global (static) configuration variable "args"
       fetch-pack: move core code to libgit.a
-      compat/fnmatch: fix off-by-one character class's length check
 
 Patrick Palka (1):
       Documentation: improve the example of overriding LESS via core.pager
 
-Paul Gortmaker (1):
-      Makefile: hide stderr of curl-config test
-
-Pete Wyckoff (7):
-      git p4: RCS expansion should not span newlines
+Pete Wyckoff (6):
       git p4: catch p4 describe errors
       git p4: handle servers without move support
       git p4: catch p4 errors when streaming file contents
@@ -285,9 +287,6 @@ Philip Oakley (4):
       Doc format-patch: clarify --notes use case
       Doc User-Manual: Patch cover letter, three dashes, and --notes
 
-Ralf Thielow (1):
-      completion: add options --single-branch and --branch to "git clone"
-
 Ramkumar Ramachandra (4):
       remote-hg: add missing config for basic tests
       Documentation: move diff.wordRegex from config.txt to diff-config.txt
@@ -297,9 +296,6 @@ Ramkumar Ramachandra (4):
 Ramsay Allan Jones (2):
       builtin/config.c: Fix a sparse warning
       remote-curl.c: Fix a compiler warning
-
-Richard Hubbell (1):
-      gitweb.perl: fix %highlight_ext mappings
 
 SZEDER Gábor (1):
       completion: remove 'help' duplicate from porcelain commands
@@ -332,6 +328,63 @@ Torsten Bögershausen (1):
 Tran Ngoc Quan (2):
       l10n: vi.po: update to git-v1.7.12-437-g1084f
       l10n: vi.po: Update follow git-v1.8.0-273-g2d242
+
+
+Version v1.8.0.2; changes since v1.8.0.1:
+-----------------------------------------
+
+Antoine Pelisse (1):
+      Fix typo in remote set-head usage
+
+Eric S. Raymond (1):
+      doc/fast-import: clarify how content states are built
+
+Johan Herland (2):
+      t1400-update-ref: Add test verifying bug with symrefs in delete_ref()
+      Fix failure to delete a packed ref through a symref
+
+Junio C Hamano (13):
+      reencode_string(): introduce and use same_encoding()
+      test: add failing tests for "diff --stat" to t4049
+      diff --stat: status of unmodified pair in diff-q is not zero
+      diff --stat: use "file" temporary variable to refer to data->files[i]
+      diff --stat: move the "total count" logic to the last loop
+      diff --stat: do not count "unmerged" entries
+      diff --shortstat: do not count "unmerged" entries
+      Documentation/git-push.txt: clarify the "push from satellite" workflow
+      Start preparing for 1.8.0.2
+      t4049: refocus tests
+      Update draft release notes to 1.8.0.2
+      git(1): remove a defunct link to "list of authors"
+      Git 1.8.0.2
+
+Linus Torvalds (1):
+      Fix "git diff --stat" for interesting - but empty - file changes
+
+Mark Szepieniec (1):
+      Documentation: improve phrasing in git-push.txt
+
+Matthieu Moy (2):
+      git-remote-mediawiki: escape ", \, and LF in file names
+      git-fast-import.txt: improve documentation for quoted paths
+
+Nguyễn Thái Ngọc Duy (1):
+      compat/fnmatch: fix off-by-one character class's length check
+
+Paul Gortmaker (1):
+      Makefile: hide stderr of curl-config test
+
+Pete Wyckoff (1):
+      git p4: RCS expansion should not span newlines
+
+Ralf Thielow (1):
+      completion: add options --single-branch and --branch to "git clone"
+
+Richard Hubbell (1):
+      gitweb.perl: fix %highlight_ext mappings
+
+Sébastien Loriot (1):
+      Documentation/git-stash.txt: add a missing verb
 
 W. Trevor King (1):
       git-submodule: wrap branch option with "<>" in usage strings.
