@@ -1344,8 +1344,9 @@ static void get_ac_line(const char *inbuf, const char *what,
 			int mail_len, char *mail,
 			unsigned long *time, const char **tz)
 {
-	int len, tzlen, maillen;
-	char *tmp, *endp, *timepos, *mailpos;
+	struct ident_split ident;
+	int len, tzlen, maillen, namelen;
+	char *tmp, *endp, *mailpos;
 
 	tmp = strstr(inbuf, what);
 	if (!tmp)
@@ -1356,7 +1357,10 @@ static void get_ac_line(const char *inbuf, const char *what,
 		len = strlen(tmp);
 	else
 		len = endp - tmp;
-	if (person_len <= len) {
+	if (person_len <= len)
+		goto error_out;
+
+	if (split_ident_line(&ident, tmp, len)) {
 	error_out:
 		/* Ugh */
 		*tz = "(unknown)";
@@ -1365,47 +1369,26 @@ static void get_ac_line(const char *inbuf, const char *what,
 		*time = 0;
 		return;
 	}
-	memcpy(person, tmp, len);
 
-	tmp = person;
-	tmp += len;
-	*tmp = 0;
-	while (person < tmp && *tmp != ' ')
-		tmp--;
-	if (tmp <= person)
-		goto error_out;
-	*tz = tmp+1;
-	tzlen = (person+len)-(tmp+1);
+	namelen = ident.name_end - ident.name_begin;
+	memcpy(person, ident.name_begin, namelen);
+	person[namelen] = 0;
 
-	*tmp = 0;
-	while (person < tmp && *tmp != ' ')
-		tmp--;
-	if (tmp <= person)
-		goto error_out;
-	*time = strtoul(tmp, NULL, 10);
-	timepos = tmp;
+	maillen = ident.mail_end - ident.mail_begin + 2;
+	memcpy(mail, ident.mail_begin - 1, maillen);
+	mail[maillen] = 0;
 
-	*tmp = 0;
-	while (person < tmp && !(*tmp == ' ' && tmp[1] == '<'))
-		tmp--;
-	if (tmp <= person)
-		return;
-	mailpos = tmp + 1;
-	*tmp = 0;
-	maillen = timepos - tmp;
-	memcpy(mail, mailpos, maillen);
+	*time = strtoul(ident.date_begin, NULL, 10);
+
+	tzlen = ident.tz_end - ident.tz_begin;
+
+	/* Place tz at the end of person */
+	*tz = tmp = person + person_len - (tzlen + 1);
+	memcpy(tmp, ident.tz_begin, tzlen);
+	tmp[tzlen] = 0;
 
 	if (!mailmap.nr)
 		return;
-
-	/*
-	 * mailmap expansion may make the name longer.
-	 * make room by pushing stuff down.
-	 */
-	tmp = person + person_len - (tzlen + 1);
-	memmove(tmp, *tz, tzlen);
-	tmp[tzlen] = 0;
-	*tz = tmp;
 
 	/*
 	 * Now, convert both name and e-mail using mailmap
