@@ -399,55 +399,75 @@ void pp_user_info(const struct pretty_print_context *pp,
 		  const char *what, struct strbuf *sb,
 		  const char *line, const char *encoding)
 {
+	char person_name[1024];
+	char person_mail[1024];
+	struct ident_split ident;
+	int linelen, namelen;
+	char *line_end, *date;
 	int max_length = 78; /* per rfc2822 */
-	char *date;
-	int namelen;
 	unsigned long time;
 	int tz;
 
 	if (pp->fmt == CMIT_FMT_ONELINE)
 		return;
-	date = strchr(line, '>');
-	if (!date)
+
+	line_end = strchr(line, '\n');
+	if (!line_end)
 		return;
-	namelen = ++date - line;
-	time = strtoul(date, &date, 10);
+
+	linelen = ++line_end - line;
+	if (split_ident_line(&ident, line, linelen))
+		return;
+
+	memcpy(person_mail, ident.mail_begin, ident.mail_end - ident.mail_begin);
+	person_mail[ident.mail_end - ident.mail_begin] = 0;
+
+	memcpy(person_name, ident.name_begin, ident.name_end - ident.name_begin);
+	person_name[ident.name_end - ident.name_begin] = 0;
+
+	if (pp->mailmap)
+		map_user(pp->mailmap, person_mail, sizeof(person_mail),
+			 person_name, sizeof(person_name));
+
+	namelen = strlen(person_name) + strlen(person_mail);
+	time = strtoul(ident.date_begin, &date, 10);
 	tz = strtol(date, NULL, 10);
 
 	if (pp->fmt == CMIT_FMT_EMAIL) {
-		char *name_tail = strchr(line, '<');
 		int display_name_length;
-		if (!name_tail)
-			return;
-		while (line < name_tail && isspace(name_tail[-1]))
-			name_tail--;
-		display_name_length = name_tail - line;
+
+		display_name_length = strlen(person_name);
+
 		strbuf_addstr(sb, "From: ");
-		if (needs_rfc2047_encoding(line, display_name_length, RFC2047_ADDRESS)) {
-			add_rfc2047(sb, line, display_name_length,
+		if (needs_rfc2047_encoding(person_name, display_name_length, RFC2047_ADDRESS)) {
+			add_rfc2047(sb, person_name, display_name_length,
 						encoding, RFC2047_ADDRESS);
 			max_length = 76; /* per rfc2047 */
-		} else if (needs_rfc822_quoting(line, display_name_length)) {
+		} else if (needs_rfc822_quoting(person_name,
+						display_name_length)) {
 			struct strbuf quoted = STRBUF_INIT;
-			add_rfc822_quoted(&quoted, line, display_name_length);
+			add_rfc822_quoted(&quoted, person_name,
+					  display_name_length);
 			strbuf_add_wrapped_bytes(sb, quoted.buf, quoted.len,
 							-6, 1, max_length);
 			strbuf_release(&quoted);
 		} else {
-			strbuf_add_wrapped_bytes(sb, line, display_name_length,
-							-6, 1, max_length);
+			strbuf_add_wrapped_bytes(sb, person_name,
+						 display_name_length,
+						 -6, 1, max_length);
 		}
-		if (namelen - display_name_length + last_line_length(sb) > max_length) {
+		if (namelen - display_name_length + last_line_length(sb) > max_length)
 			strbuf_addch(sb, '\n');
-			if (!isspace(name_tail[0]))
-				strbuf_addch(sb, ' ');
-		}
-		strbuf_add(sb, name_tail, namelen - display_name_length);
+
+		strbuf_addch(sb, ' ');
+		strbuf_addch(sb, '<');
+		strbuf_add(sb, person_mail, strlen(person_mail));
+		strbuf_addch(sb, '>');
 		strbuf_addch(sb, '\n');
 	} else {
-		strbuf_addf(sb, "%s: %.*s%.*s\n", what,
+		strbuf_addf(sb, "%s: %.*s%s <%s>\n", what,
 			      (pp->fmt == CMIT_FMT_FULLER) ? 4 : 0,
-			      "    ", namelen, line);
+			    "    ", person_name, person_mail);
 	}
 	switch (pp->fmt) {
 	case CMIT_FMT_MEDIUM:
