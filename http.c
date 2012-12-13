@@ -42,6 +42,7 @@ static long curl_low_speed_limit = -1;
 static long curl_low_speed_time = -1;
 static int curl_ftp_no_epsv;
 static const char *curl_http_proxy;
+static const char *curl_proxy_user_name = NULL, *curl_proxy_user_pass = NULL;
 static const char *curl_cookie_file;
 static struct credential http_auth = CREDENTIAL_INIT;
 static int http_proactive_auth;
@@ -191,6 +192,11 @@ static int http_options(const char *var, const char *value, void *cb)
 	}
 	if (!strcmp("http.proxy", var))
 		return git_config_string(&curl_http_proxy, var, value);
+	if (!strcmp("http.proxyuser", var))
+		return git_config_string(&curl_proxy_user_name, var, value);
+	if (!strcmp("http.proxypass", var))
+		return git_config_string(&curl_proxy_user_pass, var, value);
+
 
 	if (!strcmp("http.cookiefile", var))
 		return git_config_string(&curl_cookie_file, var, value);
@@ -308,6 +314,14 @@ static CURL *get_curl_handle(void)
 	if (curl_http_proxy) {
 		curl_easy_setopt(result, CURLOPT_PROXY, curl_http_proxy);
 		curl_easy_setopt(result, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
+	}
+
+	if(curl_proxy_user_name && curl_proxy_user_pass){
+		/* Concatenate the username, password */
+		struct strbuf up = STRBUF_INIT;
+		strbuf_addf(&up, "%s:%s", curl_proxy_user_name, curl_proxy_user_pass);
+		curl_easy_setopt(result, CURLOPT_PROXYUSERPWD,
+				strbuf_detach(&up, NULL));
 	}
 
 	return result;
