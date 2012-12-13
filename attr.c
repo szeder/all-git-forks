@@ -566,20 +566,13 @@ static void bootstrap_attr_stack(void)
 
 static const char *find_basename(const char *path)
 {
-	char pathbuf[PATH_MAX];
-	int pathlen;
-	const char *cp;
+	const char *cp, *last_slash = NULL;
 
-	pathlen =strlen(path);
-	if (path[pathlen-1] != '/') {
-		cp =strrchr(path, '/');
-		return cp ? cp + 1: path;
-	} else {
-		strncpy(pathbuf, path, pathlen);
-		pathbuf[pathlen-1] = '\0';
-		cp =strrchr(pathbuf, '/');
-		return cp ? path + (cp - pathbuf) + 1 : path;
+	for (cp = path; *cp; cp++) {
+		if (*cp == '/' && cp[1])
+			last_slash = cp;
 	}
+	return last_slash ? last_slash + 1 : path;
 }
 
 static void prepare_attr_stack(const char *path)
