@@ -259,7 +259,8 @@ int map_user(struct string_list *map,
 	char *end_of_email;
 	struct string_list_item *item;
 	struct mailmap_entry *me;
-	char buf[1024], *mailbuf;
+	struct strbuf buf = STRBUF_INIT;
+	char *mailbuf;
 	int i;
 
 	/* figure out space requirement for email */
@@ -270,15 +271,13 @@ int map_user(struct string_list *map,
 		if (!end_of_email)
 			return 0;
 	}
-	if (end_of_email - email + 1 < sizeof(buf))
-		mailbuf = buf;
-	else
-		mailbuf = xmalloc(end_of_email - email + 1);
 
 	/* downcase the email address */
+	strbuf_grow(&buf, end_of_email - email);
 	for (i = 0; i < end_of_email - email; i++)
-		mailbuf[i] = tolower(email[i]);
-	mailbuf[i] = 0;
+		strbuf_addch(&buf, tolower(email[i]));
+	strbuf_addch(&buf, 0);
+	mailbuf = strbuf_detach(&buf, 0);
 
 	debug_mm("map_user: map '%s' <%s>\n", name, mailbuf);
 	item = string_list_lookup(map, mailbuf);
@@ -292,8 +291,7 @@ int map_user(struct string_list *map,
 				item = subitem;
 		}
 	}
-	if (mailbuf != buf)
-		free(mailbuf);
+	free(mailbuf);
 	if (item != NULL) {
 		struct mailmap_info *mi = (struct mailmap_info *)item->util;
 		if (mi->name == NULL && (mi->email == NULL || maxlen_email == 0)) {
