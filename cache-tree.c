@@ -166,12 +166,8 @@ static int verify_cache(struct cache_entry **cache,
 				fprintf(stderr, "...\n");
 				break;
 			}
-			if (ce_stage(ce))
-				fprintf(stderr, "%s: unmerged (%s)\n",
-					ce->name, sha1_to_hex(ce->sha1));
-			else
-				fprintf(stderr, "%s: not added yet\n",
-					ce->name);
+			fprintf(stderr, "%s: unmerged (%s)\n",
+				ce->name, sha1_to_hex(ce->sha1));
 		}
 	}
 	if (funny)
@@ -248,6 +244,7 @@ static int update_one(struct cache_tree *it,
 	int missing_ok = flags & WRITE_TREE_MISSING_OK;
 	int dryrun = flags & WRITE_TREE_DRY_RUN;
 	int i;
+	int to_invalidate = 0;
 
 	if (0 <= it->entry_count && has_sha1_file(it->sha1))
 		return it->entry_count;
@@ -324,7 +321,14 @@ static int update_one(struct cache_tree *it,
 			if (!sub)
 				die("cache-tree.c: '%.*s' in '%s' not found",
 				    entlen, path + baselen, path);
-			i += sub->cache_tree->entry_count - 1;
+			i--; /* this entry is already counted in "sub" */
+			if (sub->cache_tree->entry_count < 0) {
+				i -= sub->cache_tree->entry_count;
+				sub->cache_tree->entry_count = -1;
+				to_invalidate = 1;
+			}
+			else
+				i += sub->cache_tree->entry_count;
 			sha1 = sub->cache_tree->sha1;
 			mode = S_IFDIR;
 		}
@@ -339,8 +343,23 @@ static int update_one(struct cache_tree *it,
 				mode, sha1_to_hex(sha1), entlen+baselen, path);
 		}
 
-		if (ce->ce_flags & (CE_REMOVE | CE_INTENT_TO_ADD))
-			continue; /* entry being removed or placeholder */
+		/*
+		 * CE_REMOVE entries are removed before the index is
+		 * written to disk. Skip them to remain consistent
+		 * with the future on-disk index.
+		 */
+		if (ce->ce_flags & CE_REMOVE)
+			continue;
+
+		/*
+		 * CE_INTENT_TO_ADD entries exist on on-disk index but
+		 * they are not part of generated trees. Invalidate up
+		 * to root to force cache-tree users to read elsewhere.
+		 */
+		if (ce->ce_flags & CE_INTENT_TO_ADD) {
+			to_invalidate = 1;
+			continue;
+		}
 
 		strbuf_grow(&buffer, entlen + 100);
 		strbuf_addf(&buffer, "%o %.*s%c", mode, entlen, path + baselen, '\0');
@@ -360,7 +379,7 @@ static int update_one(struct cache_tree *it,
 	}
 
 	strbuf_release(&buffer);
-	it->entry_count = i;
+	it->entry_count = to_invalidate ? -i : i;
 #if DEBUG
 	fprintf(stderr, "cache-tree update-one (%d ent, %d subtree) %s\n",
 		it->entry_count, it->subtree_nr,
@@ -381,6 +400,15 @@ int cache_tree_update(struct cache_tree *it,
 	i = update_one(it, cache, entries, "", 0, flags);
 	if (i < 0)
 		return i;
+	/*
+	 * update_one() uses negative entry_count as a way to mark an
+	 * entry invalid _and_ pass the number of entries back to
+	 * itself at the parent level. This is for internal use and
+	 * should not be leaked out after the top-level update_one
+	 * exits.
+	 */
+	if (it->entry_count < 0)
+		it->entry_count = -1;
 	return 0;
 }
 
