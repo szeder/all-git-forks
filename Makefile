@@ -78,6 +78,8 @@ all::
 #
 # Define NO_MEMMEM if you don't have memmem.
 #
+# Define NO_GETPAGESIZE if you don't have getpagesize.
+#
 # Define NO_STRLCPY if you don't have strlcpy.
 #
 # Define NO_STRTOUMAX if you don't have both strtoimax and strtoumax in the
@@ -1439,6 +1441,20 @@ else
 	NO_CURL = YesPlease
 endif
 endif
+ifeq ($(uname_S),QNX)
+	COMPAT_CFLAGS += -DSA_RESTART=0
+	NEEDS_SOCKET = YesPlease
+	NO_MKDTEMP = YesPlease
+	NO_MKSTEMPS = YesPlease
+	NO_FNMATCH_CASEFOLD = YesPlease
+	NO_GETPAGESIZE = YesPlease
+	NO_ICONV = YesPlease
+	NO_MEMMEM = YesPlease
+	NO_NSEC = YesPlease
+	NO_STRCASESTR = YesPlease
+	NO_STRLCPY = YesPlease
+	PTHREAD_LIBS =
+endif
 
 -include config.mak.autogen
 -include config.mak
@@ -1849,6 +1865,9 @@ endif
 ifdef NO_MEMMEM
 	COMPAT_CFLAGS += -DNO_MEMMEM
 	COMPAT_OBJS += compat/memmem.o
+endif
+ifdef NO_GETPAGESIZE
+	COMPAT_CFLAGS += -DNO_GETPAGESIZE
 endif
 ifdef INTERNAL_QSORT
 	COMPAT_CFLAGS += -DINTERNAL_QSORT
