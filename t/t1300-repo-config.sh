@@ -1087,4 +1087,8 @@ test_expect_success 'barf on incomplete string' '
 	grep " line 3 " error
 '
 
+test_expect_success 'reading config from strbuf' '
+	test-config strbuf
+'
+
 test_done
