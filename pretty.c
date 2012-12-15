@@ -593,14 +593,14 @@ char *logmsg_reencode(const struct commit *commit,
 	return out;
 }
 
-static int mailmap_name(char *email, int email_len, char *name, int name_len)
+static int mailmap_name(struct strbuf *mail, struct strbuf *name)
 {
 	static struct string_list *mail_map;
 	if (!mail_map) {
 		mail_map = xcalloc(1, sizeof(*mail_map));
 		read_mailmap(mail_map, NULL);
 	}
-	return mail_map->nr && map_user(mail_map, email, email_len, name, name_len);
+	return mail_map->nr && map_user(mail_map, mail, name);
 }
 
 static size_t format_person_part(struct strbuf *sb, char part,
@@ -610,38 +610,38 @@ static size_t format_person_part(struct strbuf *sb, char part,
 	const int placeholder_len = 2;
 	int tz;
 	unsigned long date = 0;
-	char person_name[1024];
-	char person_mail[1024];
+	struct strbuf person_name = STRBUF_INIT;
+	struct strbuf person_mail = STRBUF_INIT;
 	struct ident_split s;
-	const char *name_start, *name_end, *mail_start, *mail_end;
 
 	if (split_ident_line(&s, msg, len) < 0)
 		goto skip;
 
-	name_start = s.name_begin;
-	name_end = s.name_end;
-	mail_start = s.mail_begin;
-	mail_end = s.mail_end;
+	strbuf_add(&person_name, s.name_begin, (int)(s.name_end - s.name_begin));
+	strbuf_add(&person_mail, s.mail_begin, (int)(s.mail_end - s.mail_begin));
 
 	if (part == 'N' || part == 'E') { /* mailmap lookup */
-		snprintf(person_name, sizeof(person_name), "%.*s",
-			 (int)(name_end - name_start), name_start);
-		snprintf(person_mail, sizeof(person_mail), "%.*s",
-			 (int)(mail_end - mail_start), mail_start);
-		mailmap_name(person_mail, sizeof(person_mail), person_name, sizeof(person_name));
-		name_start = person_name;
-		name_end = name_start + strlen(person_name);
-		mail_start = person_mail;
-		mail_end = mail_start +  strlen(person_mail);
+		mailmap_name(&person_mail, &person_name);
 	}
 	if (part == 'n' || part == 'N') {	/* name */
-		strbuf_add(sb, name_start, name_end-name_start);
+		strbuf_addbuf(sb, &person_name);
+
+		strbuf_release(&person_name);
+		strbuf_release(&person_mail);
+
 		return placeholder_len;
 	}
 	if (part == 'e' || part == 'E') {	/* email */
-		strbuf_add(sb, mail_start, mail_end-mail_start);
+		strbuf_addbuf(sb, &person_mail);
+
+		strbuf_release(&person_name);
+		strbuf_release(&person_mail);
+
 		return placeholder_len;
 	}
+
+	strbuf_release(&person_name);
+	strbuf_release(&person_mail);
 
 	if (!s.date_begin)
 		goto skip;

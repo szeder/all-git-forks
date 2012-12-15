@@ -187,57 +187,52 @@ void clear_mailmap(struct string_list *map)
 	debug_mm("mailmap: cleared\n");
 }
 
-int map_user(struct string_list *map,
-	     char *email, int maxlen_email, char *name, int maxlen_name)
+int map_user(struct string_list *map, struct strbuf *mail, struct strbuf *name)
 {
-	char *end_of_email;
+
 	struct string_list_item *item;
 	struct mailmap_entry *me;
-	struct strbuf mailbuf = STRBUF_INIT;
+	struct strbuf lowermail = STRBUF_INIT;
 	int i;
 
-	/* figure out space requirement for email */
-	end_of_email = strchr(email, '>');
-	if (!end_of_email) {
-		/* email passed in might not be wrapped in <>, but end with a \0 */
-		end_of_email = memchr(email, '\0', maxlen_email);
-		if (!end_of_email)
-			return 0;
-	}
-
 	/* downcase the email address */
-	strbuf_grow(&mailbuf, end_of_email - email);
-	for (i = 0; i < end_of_email - email; i++)
-		strbuf_addch(&mailbuf, tolower(email[i]));
+	strbuf_grow(&lowermail, mail->len);
+	for (i = 0; i < mail->len; i++)
+		strbuf_addch(&lowermail, tolower(mail->buf[i]));
 
-	debug_mm("map_user: map '%s' <%s>\n", name, mailbuf.buf);
-	item = string_list_lookup(map, mailbuf.buf);
+	debug_mm("map_user: map '%s' <%s>\n", name->buf, lowermail.buf);
+	item = string_list_lookup(map, lowermail.buf);
 	if (item != NULL) {
 		me = (struct mailmap_entry *)item->util;
 		if (me->namemap.nr) {
 			/* The item has multiple items, so we'll look up on name too */
 			/* If the name is not found, we choose the simple entry      */
-			struct string_list_item *subitem = string_list_lookup(&me->namemap, name);
+			struct string_list_item *subitem = string_list_lookup(&me->namemap, name->buf);
 			if (subitem)
 				item = subitem;
 		}
 	}
-	strbuf_release(&mailbuf);
+	strbuf_release(&lowermail);
 	if (item != NULL) {
 		struct mailmap_info *mi = (struct mailmap_info *)item->util;
-		if (mi->name == NULL && (mi->email == NULL || maxlen_email == 0)) {
+		if (mi->name == NULL && mi->email == NULL) {
 			debug_mm("map_user:  -- (no simple mapping)\n");
 			return 0;
 		}
-		if (maxlen_email && mi->email)
-			strlcpy(email, mi->email, maxlen_email);
-		else
-			*end_of_email = '\0';
-		if (maxlen_name && mi->name)
-			strlcpy(name, mi->name, maxlen_name);
-		debug_mm("map_user:  to '%s' <%s>\n", name, mi->email ? mi->email : "");
+		if (mi->email) {
+			strbuf_reset(mail);
+			strbuf_addstr(mail, mi->email);
+		}
+
+		if (mi->name) {
+			strbuf_reset(name);
+			strbuf_addstr(name, mi->name);
+		}
+
+		debug_mm("map_user:  to '%s' <%s>\n", name->buf, mi->email ? mi->email : "");
 		return 1;
 	}
+
 	debug_mm("map_user:  --\n");
 	return 0;
 }

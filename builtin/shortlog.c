@@ -36,38 +36,29 @@ static void insert_one_record(struct shortlog *log,
 	const char *dot3 = log->common_repo_prefix;
 	char *buffer, *p;
 	struct string_list_item *item;
-	char namebuf[1024];
-	char emailbuf[1024];
-	size_t len;
 	const char *eol;
 	struct strbuf subject = STRBUF_INIT;
+	struct strbuf name = STRBUF_INIT;
+	struct strbuf mail = STRBUF_INIT;
 	struct ident_split ident;
 
 	if (split_ident_line(&ident, author, strlen(author)))
 		return;
 
-	/* copy author name to namebuf, to support matching on both name and email */
-	len = ident.name_end - ident.name_begin;
-	memcpy(namebuf, ident.name_begin, len);
-	namebuf[len] = 0;
+	strbuf_add(&mail, ident.mail_begin, ident.mail_end - ident.mail_begin);
+	strbuf_add(&name, ident.name_begin, ident.name_end - ident.name_begin);
 
-	/* copy email name to emailbuf, to allow email replacement as well */
-	len = ident.mail_end - ident.mail_begin;
-	memcpy(emailbuf, ident.mail_begin, len);
-	emailbuf[len] = 0;
+	map_user(&log->mailmap, &mail, &name);
 
-	map_user(&log->mailmap, emailbuf, sizeof(emailbuf), namebuf, sizeof(namebuf));
-	len = strlen(namebuf);
+	if (log->email)
+		strbuf_addf(&name, " <%s>", mail.buf);
 
-	if (log->email) {
-		size_t room = sizeof(namebuf) - len - 1;
-		int maillen = strlen(emailbuf);
-		snprintf(namebuf + len, room, " <%.*s>", maillen, emailbuf);
-	}
-
-	item = string_list_insert(&log->list, namebuf);
+	item = string_list_insert(&log->list, name.buf);
 	if (item->util == NULL)
 		item->util = xcalloc(1, sizeof(struct string_list));
+
+	strbuf_release(&name);
+	strbuf_release(&mail);
 
 	/* Skip any leading whitespace, including any blank lines. */
 	while (*oneline && isspace(*oneline))
