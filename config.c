@@ -13,6 +13,9 @@
 typedef struct config_file {
 	struct config_file *prev;
 	FILE *f;
+	int is_strbuf;
+	struct strbuf *strbuf_contents;
+	int strbuf_pos;
 	const char *name;
 	int linenr;
 	int eof;
@@ -23,6 +26,46 @@ typedef struct config_file {
 static config_file *cf;
 
 static int zlib_compression_seen;
+
+static int config_file_valid(struct config_file *file)
+{
+	if (file->f)
+		return 1;
+	if (file->is_strbuf)
+		return 1;
+
+	return 0;
+}
+
+static int config_fgetc(struct config_file *file)
+{
+	if (!file->is_strbuf)
+		return fgetc(file->f);
+
+	if (file->strbuf_pos < file->strbuf_contents->len)
+		return file->strbuf_contents->buf[file->strbuf_pos++];
+
+	return EOF;
+}
+
+static int config_ungetc(int c, struct config_file *file)
+{
+	if (!file->is_strbuf)
+		return ungetc(c, file->f);
+
+	if (file->strbuf_pos > 0)
+		return file->strbuf_contents->buf[--file->strbuf_pos];
+
+	return EOF;
+}
+
+static long config_ftell(struct config_file *file)
+{
+	if (!file->is_strbuf)
+		return ftell(file->f);
+
+	return file->strbuf_pos;
+}
 
 #define MAX_INCLUDE_DEPTH 10
 static const char include_depth_advice[] =
@@ -169,16 +212,15 @@ int git_config_from_parameters(config_fn_t fn, void *data)
 static int get_next_char(void)
 {
 	int c;
-	FILE *f;
 
 	c = '\n';
-	if (cf && ((f = cf->f) != NULL)) {
-		c = fgetc(f);
+	if (cf && config_file_valid(cf)) {
+		c = config_fgetc(cf);
 		if (c == '\r') {
 			/* DOS like systems */
-			c = fgetc(f);
+			c = config_fgetc(cf);
 			if (c != '\n') {
-				ungetc(c, f);
+				config_ungetc(c, cf);
 				c = '\r';
 			}
 		}
@@ -894,6 +936,9 @@ int git_config_from_file(config_fn_t fn, const char *filename, void *data)
 		/* push config-file parsing state stack */
 		top.prev = cf;
 		top.f = f;
+		top.is_strbuf = 0;
+		top.strbuf_contents = NULL;
+		top.strbuf_pos = 0;
 		top.name = filename;
 		top.linenr = 1;
 		top.eof = 0;
@@ -910,6 +955,34 @@ int git_config_from_file(config_fn_t fn, const char *filename, void *data)
 
 		fclose(f);
 	}
+	return ret;
+}
+
+int git_config_from_strbuf(config_fn_t fn, struct strbuf *strbuf, void *data)
+{
+	int ret;
+	config_file top;
+
+	/* push config-file parsing state stack */
+	top.prev = cf;
+	top.f = NULL;
+	top.is_strbuf = 1;
+	top.strbuf_contents = strbuf;
+	top.strbuf_pos = 0;
+	top.name = "";
+	top.linenr = 1;
+	top.eof = 0;
+	strbuf_init(&top.value, 1024);
+	strbuf_init(&top.var, 1024);
+	cf = &top;
+
+	ret = git_parse_file(fn, data);
+
+	/* pop config-file parsing state stack */
+	strbuf_release(&top.value);
+	strbuf_release(&top.var);
+	cf = top.prev;
+
 	return ret;
 }
 
@@ -1039,7 +1112,6 @@ static int store_aux(const char *key, const char *value, void *cb)
 {
 	const char *ep;
 	size_t section_len;
-	FILE *f = cf->f;
 
 	switch (store.state) {
 	case KEY_SEEN:
@@ -1051,7 +1123,7 @@ static int store_aux(const char *key, const char *value, void *cb)
 				return 1;
 			}
 
-			store.offset[store.seen] = ftell(f);
+			store.offset[store.seen] = config_ftell(cf);
 			store.seen++;
 		}
 		break;
@@ -1078,19 +1150,19 @@ static int store_aux(const char *key, const char *value, void *cb)
 		 * Do not increment matches: this is no match, but we
 		 * just made sure we are in the desired section.
 		 */
-		store.offset[store.seen] = ftell(f);
+		store.offset[store.seen] = config_ftell(cf);
 		/* fallthru */
 	case SECTION_END_SEEN:
 	case START:
 		if (matches(key, value)) {
-			store.offset[store.seen] = ftell(f);
+			store.offset[store.seen] = config_ftell(cf);
 			store.state = KEY_SEEN;
 			store.seen++;
 		} else {
 			if (strrchr(key, '.') - key == store.baselen &&
 			      !strncmp(key, store.key, store.baselen)) {
 					store.state = SECTION_SEEN;
-					store.offset[store.seen] = ftell(f);
+					store.offset[store.seen] = config_ftell(cf);
 			}
 		}
 	}
