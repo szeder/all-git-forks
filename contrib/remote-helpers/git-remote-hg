@@ -712,6 +712,7 @@ def do_export(parser):
                 continue
 
             if not bookmarks.pushbookmark(parser.repo, bmark, old, node):
+                print "error %s" % ref
                 continue
 
         elif ref.startswith('refs/tags/'):
