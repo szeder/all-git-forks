@@ -2587,6 +2587,12 @@ GIT-BUILD-OPTIONS: FORCE
 ifdef GIT_TEST_OPTS
 	@echo GIT_TEST_OPTS=\''$(subst ','\'',$(subst ','\'',$(GIT_TEST_OPTS)))'\' >>$@
 endif
+ifdef GIT_TEST_PRINT
+	@echo GIT_TEST_PRINT=\''$(subst ','\'',$(subst ','\'',$(GIT_TEST_PRINT)))'\' >>$@
+endif
+ifdef GIT_TEST_PRINT_LN
+	@echo GIT_TEST_PRINT_LN=\''$(subst ','\'',$(subst ','\'',$(GIT_TEST_PRINT_LN)))'\' >>$@
+endif
 ifdef GIT_TEST_CMP
 	@echo GIT_TEST_CMP=\''$(subst ','\'',$(subst ','\'',$(GIT_TEST_CMP)))'\' >>$@
 endif
