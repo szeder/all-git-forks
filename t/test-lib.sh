@@ -188,7 +188,7 @@ then
 		pass)
 			tput setaf 2;;            # green
 		info)
-			tput setaf 3;;            # brown
+			tput bold; tput setaf 6;; # bold cyan
 		*)
 			test -n "$quiet" && return;;
 		esac
