@@ -57,10 +57,10 @@ test_expect_failure 'pretend we have a known breakage' '
 
 run_sub_test_lib_test () {
 	name="$1" descr="$2" # stdin is the body of the test code
-	mkdir $name &&
+	mkdir "$name" &&
 	(
-		cd $name &&
-		cat >$name.sh <<-EOF &&
+		cd "$name" &&
+		cat >"$name.sh" <<-EOF &&
 		#!$SHELL_PATH
 
 		test_description='$descr (run in sub test-lib)
@@ -72,17 +72,17 @@ run_sub_test_lib_test () {
 		# Point to the t/test-lib.sh, which isn't in ../ as usual
 		. "\$TEST_DIRECTORY"/test-lib.sh
 		EOF
-		cat >>$name.sh &&
-		chmod +x $name.sh &&
+		cat >>"$name.sh" &&
+		chmod +x "$name.sh" &&
 		export TEST_DIRECTORY &&
-		./$name.sh >out 2>err
+		./"$name.sh" >out 2>err
 	)
 }
 
 check_sub_test_lib_test () {
 	name="$1" # stdin is the expected output from the test
 	(
-		cd $name &&
+		cd "$name" &&
 		! test -s err &&
 		sed -e 's/^> //' -e 's/Z$//' >expect &&
 		test_cmp expect out
