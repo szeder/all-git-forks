@@ -258,6 +258,27 @@ test_expect_success 'init should register submodule url in .git/config' '
 	test_cmp expect url
 '
 
+test_failure_with_unknown_submodule () {
+	test_must_fail git submodule $1 no-such-submodule 2>output.err &&
+	grep "^error: .*no-such-submodule" output.err
+}
+
+test_expect_success 'init should fail with unknown submodule' '
+	test_failure_with_unknown_submodule init
+'
+
+test_expect_success 'update should fail with unknown submodule' '
+	test_failure_with_unknown_submodule update
+'
+
+test_expect_success 'status should fail with unknown submodule' '
+	test_failure_with_unknown_submodule status
+'
+
+test_expect_success 'sync should fail with unknown submodule' '
+	test_failure_with_unknown_submodule sync
+'
+
 test_expect_success 'update should fail when path is used by a file' '
 	echo hello >expect &&
 
@@ -417,11 +438,8 @@ test_expect_success 'moving to a commit without submodule does not leave empty d
 	git checkout second
 '
 
-test_expect_success 'submodule <invalid-path> warns' '
-
-	git submodule no-such-submodule 2> output.err &&
-	grep "^error: .*no-such-submodule" output.err
-
+test_expect_success 'submodule <invalid-subcommand> fails' '
+	test_must_fail git submodule no-such-subcommand
 '
 
 test_expect_success 'add submodules without specifying an explicit path' '
@@ -659,6 +677,81 @@ test_expect_success 'moving the superproject does not break submodules' '
 	(
 		cd addtest2 &&
 		git submodule status >actual &&
+		test_cmp expect actual
+	)
+'
+
+test_expect_success 'submodule add --name allows to replace a submodule with another at the same path' '
+	(
+		cd addtest2 &&
+		(
+			cd repo &&
+			echo "$submodurl/repo" >expect &&
+			git config remote.origin.url >actual &&
+			test_cmp expect actual &&
+			echo "gitdir: ../.git/modules/repo" >expect &&
+			test_cmp expect .git
+		) &&
+		rm -rf repo &&
+		git rm repo &&
+		git submodule add -q --name repo_new "$submodurl/bare.git" repo >actual &&
+		test ! -s actual &&
+		echo "gitdir: ../.git/modules/submod" >expect &&
+		test_cmp expect submod/.git &&
+		(
+			cd repo &&
+			echo "$submodurl/bare.git" >expect &&
+			git config remote.origin.url >actual &&
+			test_cmp expect actual &&
+			echo "gitdir: ../.git/modules/repo_new" >expect &&
+			test_cmp expect .git
+		) &&
+		echo "repo" >expect &&
+		git config -f .gitmodules submodule.repo.path >actual &&
+		test_cmp expect actual &&
+		git config -f .gitmodules submodule.repo_new.path >actual &&
+		test_cmp expect actual&&
+		echo "$submodurl/repo" >expect &&
+		git config -f .gitmodules submodule.repo.url >actual &&
+		test_cmp expect actual &&
+		echo "$submodurl/bare.git" >expect &&
+		git config -f .gitmodules submodule.repo_new.url >actual &&
+		test_cmp expect actual &&
+		echo "$submodurl/repo" >expect &&
+		git config submodule.repo.url >actual &&
+		test_cmp expect actual &&
+		echo "$submodurl/bare.git" >expect &&
+		git config submodule.repo_new.url >actual &&
+		test_cmp expect actual
+	)
+'
+
+test_expect_success 'submodule add with an existing name fails unless forced' '
+	(
+		cd addtest2 &&
+		rm -rf repo &&
+		git rm repo &&
+		test_must_fail git submodule add -q --name repo_new "$submodurl/repo.git" repo &&
+		test ! -d repo &&
+		echo "repo" >expect &&
+		git config -f .gitmodules submodule.repo_new.path >actual &&
+		test_cmp expect actual&&
+		echo "$submodurl/bare.git" >expect &&
+		git config -f .gitmodules submodule.repo_new.url >actual &&
+		test_cmp expect actual &&
+		echo "$submodurl/bare.git" >expect &&
+		git config submodule.repo_new.url >actual &&
+		test_cmp expect actual &&
+		git submodule add -f -q --name repo_new "$submodurl/repo.git" repo &&
+		test -d repo &&
+		echo "repo" >expect &&
+		git config -f .gitmodules submodule.repo_new.path >actual &&
+		test_cmp expect actual&&
+		echo "$submodurl/repo.git" >expect &&
+		git config -f .gitmodules submodule.repo_new.url >actual &&
+		test_cmp expect actual &&
+		echo "$submodurl/repo.git" >expect &&
+		git config submodule.repo_new.url >actual &&
 		test_cmp expect actual
 	)
 '

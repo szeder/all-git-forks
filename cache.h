@@ -442,7 +442,6 @@ extern int discard_index(struct index_state *);
 extern int unmerged_index(const struct index_state *);
 extern int verify_path(const char *path);
 extern struct cache_entry *index_name_exists(struct index_state *istate, const char *name, int namelen, int igncase);
-extern int index_name_stage_pos(const struct index_state *, const char *name, int namelen, int stage);
 extern int index_name_pos(const struct index_state *, const char *name, int namelen);
 #define ADD_CACHE_OK_TO_ADD 1		/* Ok to add */
 #define ADD_CACHE_OK_TO_REPLACE 2	/* Ok to replace file/directory */
@@ -902,9 +901,7 @@ extern const char *git_author_info(int);
 extern const char *git_committer_info(int);
 extern const char *fmt_ident(const char *name, const char *email, const char *date_str, int);
 extern const char *fmt_name(const char *name, const char *email);
-extern const char *ident_default_name(void);
 extern const char *ident_default_email(void);
-extern const char *ident_default_date(void);
 extern const char *git_editor(void);
 extern const char *git_pager(int stdout_is_tty);
 extern int git_ident_config(const char *, const char *, void *);
@@ -947,9 +944,7 @@ struct cache_def {
 extern int has_symlink_leading_path(const char *name, int len);
 extern int threaded_has_symlink_leading_path(struct cache_def *, const char *, int);
 extern int check_leading_path(const char *name, int len);
-extern int threaded_check_leading_path(struct cache_def *cache, const char *name, int len);
 extern int has_dirs_only_path(const char *name, int len, int prefix_len);
-extern int threaded_has_dirs_only_path(struct cache_def *cache, const char *name, int len, int prefix_len);
 extern void schedule_dir_for_removal(const char *name, int len);
 extern void remove_scheduled_dirs(void);
 
@@ -1038,7 +1033,9 @@ struct extra_have_objects {
 };
 extern struct ref **get_remote_heads(int in, struct ref **list, unsigned int flags, struct extra_have_objects *);
 extern int server_supports(const char *feature);
-extern const char *parse_feature_request(const char *features, const char *feature);
+extern int parse_feature_request(const char *features, const char *feature);
+extern const char *server_feature_value(const char *feature, int *len_ret);
+extern const char *parse_feature_value(const char *feature_list, const char *feature, int *len_ret);
 
 extern struct packed_git *parse_pack_index(unsigned char *sha1, const char *idx_path);
 
@@ -1108,6 +1105,7 @@ extern int update_server_info(int);
 #define CONFIG_NO_WRITE 4
 #define CONFIG_NOTHING_SET 5
 #define CONFIG_INVALID_PATTERN 6
+#define CONFIG_GENERIC_ERROR 7
 
 typedef int (*config_fn_t)(const char *, const char *, void *);
 extern int git_default_config(const char *, const char *, void *);
@@ -1151,11 +1149,8 @@ struct config_include_data {
 #define CONFIG_INCLUDE_INIT { 0 }
 extern int git_config_include(const char *name, const char *value, void *data);
 
-#define IDENT_NAME_GIVEN 01
-#define IDENT_MAIL_GIVEN 02
-#define IDENT_ALL_GIVEN (IDENT_NAME_GIVEN|IDENT_MAIL_GIVEN)
-extern int user_ident_explicitly_given;
-extern int user_ident_sufficiently_given(void);
+extern int committer_ident_sufficiently_given(void);
+extern int author_ident_sufficiently_given(void);
 
 extern const char *git_commit_encoding;
 extern const char *git_log_output_encoding;
@@ -1185,6 +1180,7 @@ extern int pager_in_use(void);
 extern int pager_use_color;
 extern int term_columns(void);
 extern int decimal_width(int);
+extern int check_pager_config(const char *cmd);
 
 extern const char *editor_program;
 extern const char *askpass_program;
@@ -1205,7 +1201,6 @@ extern void alloc_report(void);
 /* trace.c */
 __attribute__((format (printf, 1, 2)))
 extern void trace_printf(const char *format, ...);
-extern void trace_vprintf(const char *key, const char *format, va_list ap);
 __attribute__((format (printf, 2, 3)))
 extern void trace_argv_printf(const char **argv, const char *format, ...);
 extern void trace_repo_setup(const char *prefix);
@@ -1268,8 +1263,15 @@ struct startup_info {
 };
 extern struct startup_info *startup_info;
 
-/* builtin/merge.c */
-int checkout_fast_forward(const unsigned char *from, const unsigned char *to);
+/* merge.c */
+struct commit_list;
+int try_merge_command(const char *strategy, size_t xopts_nr,
+		const char **xopts, struct commit_list *common,
+		const char *head_arg, struct commit_list *remotes);
+int checkout_fast_forward(const unsigned char *from,
+			  const unsigned char *to,
+			  int overwrite_ignore);
+
 
 int sane_execvp(const char *file, char *const argv[]);
 

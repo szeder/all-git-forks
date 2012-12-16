@@ -631,6 +631,18 @@ void run_active_slot(struct active_request_slot *slot)
 			FD_ZERO(&excfds);
 			curl_multi_fdset(curlm, &readfds, &writefds, &excfds, &max_fd);
 
+			/*
+			 * It can happen that curl_multi_timeout returns a pathologically
+			 * long timeout when curl_multi_fdset returns no file descriptors
+			 * to read.  See commit message for more details.
+			 */
+			if (max_fd < 0 &&
+			    (select_timeout.tv_sec > 0 ||
+			     select_timeout.tv_usec > 50000)) {
+				select_timeout.tv_sec  = 0;
+				select_timeout.tv_usec = 50000;
+			}
+
 			select(max_fd+1, &readfds, &writefds, &excfds, &select_timeout);
 		}
 	}
@@ -745,6 +757,32 @@ char *get_remote_object_url(const char *url, const char *hex,
 	return strbuf_detach(&buf, NULL);
 }
 
+int handle_curl_result(struct slot_results *results)
+{
+	if (results->curl_result == CURLE_OK) {
+		credential_approve(&http_auth);
+		return HTTP_OK;
+	} else if (missing_target(results))
+		return HTTP_MISSING_TARGET;
+	else if (results->http_code == 401) {
+		if (http_auth.username && http_auth.password) {
+			credential_reject(&http_auth);
+			return HTTP_NOAUTH;
+		} else {
+			credential_fill(&http_auth);
+			return HTTP_REAUTH;
+		}
+	} else {
+#if LIBCURL_VERSION_NUM >= 0x070c00
+		if (!curl_errorstr[0])
+			strlcpy(curl_errorstr,
+				curl_easy_strerror(results->curl_result),
+				sizeof(curl_errorstr));
+#endif
+		return HTTP_ERROR;
+	}
+}
+
 /* http_request() targets */
 #define HTTP_REQUEST_STRBUF	0
 #define HTTP_REQUEST_FILE	1
@@ -789,29 +827,11 @@ static int http_request(const char *url, void *result, int target, int options)
 
 	curl_easy_setopt(slot->curl, CURLOPT_URL, url);
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPHEADER, headers);
+	curl_easy_setopt(slot->curl, CURLOPT_ENCODING, "gzip");
 
 	if (start_active_slot(slot)) {
 		run_active_slot(slot);
-		if (results.curl_result == CURLE_OK)
-			ret = HTTP_OK;
-		else if (missing_target(&results))
-			ret = HTTP_MISSING_TARGET;
-		else if (results.http_code == 401) {
-			if (http_auth.username && http_auth.password) {
-				credential_reject(&http_auth);
-				ret = HTTP_NOAUTH;
-			} else {
-				credential_fill(&http_auth);
-				init_curl_http_auth(slot->curl);
-				ret = HTTP_REAUTH;
-			}
-		} else {
-			if (!curl_errorstr[0])
-				strlcpy(curl_errorstr,
-					curl_easy_strerror(results.curl_result),
-					sizeof(curl_errorstr));
-			ret = HTTP_ERROR;
-		}
+		ret = handle_curl_result(&results);
 	} else {
 		error("Unable to start HTTP request for %s", url);
 		ret = HTTP_START_FAILED;
@@ -819,9 +839,6 @@ static int http_request(const char *url, void *result, int target, int options)
 
 	curl_slist_free_all(headers);
 	strbuf_release(&buf);
-
-	if (ret == HTTP_OK)
-		credential_approve(&http_auth);
 
 	return ret;
 }

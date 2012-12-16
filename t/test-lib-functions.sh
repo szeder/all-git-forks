@@ -144,11 +144,22 @@ test_pause () {
 
 test_commit () {
 	notick= &&
-	if test "z$1" = "z--notick"
-	then
-		notick=yes
+	signoff= &&
+	while test $# != 0
+	do
+		case "$1" in
+		--notick)
+			notick=yes
+			;;
+		--signoff)
+			signoff="$1"
+			;;
+		*)
+			break
+			;;
+		esac
 		shift
-	fi &&
+	done &&
 	file=${2:-"$1.t"} &&
 	echo "${3-$1}" > "$file" &&
 	git add "$file" &&
@@ -156,7 +167,7 @@ test_commit () {
 	then
 		test_tick
 	fi &&
-	git commit -m "$1" &&
+	git commit $signoff -m "$1" &&
 	git tag "$1"
 }
 
@@ -264,6 +275,15 @@ test_have_prereq () {
 
 	for prerequisite
 	do
+		case "$prerequisite" in
+		!*)
+			negative_prereq=t
+			prerequisite=${prerequisite#!}
+			;;
+		*)
+			negative_prereq=
+		esac
+
 		case " $lazily_tested_prereq " in
 		*" $prerequisite "*)
 			;;
@@ -283,10 +303,20 @@ test_have_prereq () {
 		total_prereq=$(($total_prereq + 1))
 		case "$satisfied_prereq" in
 		*" $prerequisite "*)
+			satisfied_this_prereq=t
+			;;
+		*)
+			satisfied_this_prereq=
+		esac
+
+		case "$satisfied_this_prereq,$negative_prereq" in
+		t,|,t)
 			ok_prereq=$(($ok_prereq + 1))
 			;;
 		*)
-			# Keep a list of missing prerequisites
+			# Keep a list of missing prerequisites; restore
+			# the negative marker if necessary.
+			prerequisite=${negative_prereq:+!}$prerequisite
 			if test -z "$missing_prereq"
 			then
 				missing_prereq=$prerequisite

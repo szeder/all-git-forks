@@ -18,16 +18,6 @@ swapping compression and hashing order, the person who is making the
 modification *should* take notice and update the test vectors here.
 '
 
-################################################################
-# It appears that people try to run tests without building...
-
-../git >/dev/null
-if test $? != 1
-then
-	echo >&2 'You do not seem to have built git yet.'
-	exit 1
-fi
-
 . ./test-lib.sh
 
 ################################################################
@@ -122,6 +112,38 @@ test_expect_success DONTHAVEIT,HAVEIT 'unmet prerequisites causes test to be ski
 if test $haveit$donthaveit$donthaveiteither != yesyesyes
 then
 	say "bug in test framework: multiple prerequisite tags do not work reliably"
+	exit 1
+fi
+
+test_lazy_prereq LAZY_TRUE true
+havetrue=no
+test_expect_success LAZY_TRUE 'test runs if lazy prereq is satisfied' '
+	havetrue=yes
+'
+donthavetrue=yes
+test_expect_success !LAZY_TRUE 'missing lazy prereqs skip tests' '
+	donthavetrue=no
+'
+
+if test "$havetrue$donthavetrue" != yesyes
+then
+	say 'bug in test framework: lazy prerequisites do not work'
+	exit 1
+fi
+
+test_lazy_prereq LAZY_FALSE false
+nothavefalse=no
+test_expect_success !LAZY_FALSE 'negative lazy prereqs checked' '
+	nothavefalse=yes
+'
+havefalse=yes
+test_expect_success LAZY_FALSE 'missing negative lazy prereqs will skip' '
+	havefalse=no
+'
+
+if test "$nothavefalse$havefalse" != yesyes
+then
+	say 'bug in test framework: negative lazy prerequisites do not work'
 	exit 1
 fi
 
@@ -448,24 +470,6 @@ test_expect_success 'update-index D/F conflict' '
 	git update-index --add --replace path2 path0/file2 &&
 	numpath0=$(git ls-files path0 | wc -l) &&
 	test $numpath0 = 1
-'
-
-test_expect_success SYMLINKS 'real path works as expected' '
-	mkdir first &&
-	ln -s ../.git first/.git &&
-	mkdir second &&
-	ln -s ../first second/other &&
-	mkdir third &&
-	dir="$(cd .git; pwd -P)" &&
-	dir2=third/../second/other/.git &&
-	test "$dir" = "$(test-path-utils real_path $dir2)" &&
-	file="$dir"/index &&
-	test "$file" = "$(test-path-utils real_path $dir2/index)" &&
-	basename=blub &&
-	test "$dir/$basename" = "$(cd .git && test-path-utils real_path "$basename")" &&
-	ln -s ../first/file .git/syml &&
-	sym="$(cd first; pwd -P)"/file &&
-	test "$sym" = "$(test-path-utils real_path "$dir2/syml")"
 '
 
 test_expect_success 'very long name in the index handled sanely' '

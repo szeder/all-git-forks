@@ -12,6 +12,7 @@
 #include "string-list.h"
 #include "sha1-array.h"
 #include "connected.h"
+#include "version.h"
 
 static const char receive_pack_usage[] = "git receive-pack <git-dir>";
 
@@ -121,10 +122,11 @@ static void show_ref(const char *path, const unsigned char *sha1)
 	if (sent_capabilities)
 		packet_write(1, "%s %s\n", sha1_to_hex(sha1), path);
 	else
-		packet_write(1, "%s %s%c%s%s\n",
+		packet_write(1, "%s %s%c%s%s agent=%s\n",
 			     sha1_to_hex(sha1), path, 0,
 			     " report-status delete-refs side-band-64k quiet",
-			     prefer_ofs_delta ? " ofs-delta" : "");
+			     prefer_ofs_delta ? " ofs-delta" : "",
+			     git_user_agent_sanitized());
 	sent_capabilities = 1;
 }
 
@@ -478,7 +480,6 @@ static const char *update(struct command *cmd)
 	    !prefixcmp(name, "refs/heads/")) {
 		struct object *old_object, *new_object;
 		struct commit *old_commit, *new_commit;
-		struct commit_list *bases, *ent;
 
 		old_object = parse_object(old_sha1);
 		new_object = parse_object(new_sha1);
@@ -491,12 +492,7 @@ static const char *update(struct command *cmd)
 		}
 		old_commit = (struct commit *)old_object;
 		new_commit = (struct commit *)new_object;
-		bases = get_merge_bases(old_commit, new_commit, 1);
-		for (ent = bases; ent; ent = ent->next)
-			if (!hashcmp(old_sha1, ent->item->object.sha1))
-				break;
-		free_commit_list(bases);
-		if (!ent) {
+		if (!in_merge_bases(old_commit, new_commit)) {
 			rp_error("denying non-fast-forward %s"
 				 " (you should pull first)", name);
 			return "non-fast-forward";
@@ -699,7 +695,7 @@ static void execute_commands(struct command *commands, const char *unpacker_erro
 
 	if (unpacker_error) {
 		for (cmd = commands; cmd; cmd = cmd->next)
-			cmd->error_string = "n/a (unpacker error)";
+			cmd->error_string = "unpacker error";
 		return;
 	}
 
@@ -799,7 +795,7 @@ static const char *parse_pack_header(struct pack_header *hdr)
 
 static const char *pack_lockfile;
 
-static const char *unpack(void)
+static const char *unpack(int err_fd)
 {
 	struct pack_header hdr;
 	const char *hdr_err;
@@ -819,6 +815,7 @@ static const char *unpack(void)
 
 	if (ntohl(hdr.hdr_entries) < unpack_limit) {
 		int code, i = 0;
+		struct child_process child;
 		const char *unpacker[5];
 		unpacker[i++] = "unpack-objects";
 		if (quiet)
@@ -827,7 +824,12 @@ static const char *unpack(void)
 			unpacker[i++] = "--strict";
 		unpacker[i++] = hdr_arg;
 		unpacker[i++] = NULL;
-		code = run_command_v_opt(unpacker, RUN_GIT_CMD);
+		memset(&child, 0, sizeof(child));
+		child.argv = unpacker;
+		child.no_stdout = 1;
+		child.err = err_fd;
+		child.git_cmd = 1;
+		code = run_command(&child);
 		if (!code)
 			return NULL;
 		return "unpack-objects abnormal exit";
@@ -852,6 +854,7 @@ static const char *unpack(void)
 		memset(&ip, 0, sizeof(ip));
 		ip.argv = keeper;
 		ip.out = -1;
+		ip.err = err_fd;
 		ip.git_cmd = 1;
 		status = start_command(&ip);
 		if (status) {
@@ -866,6 +869,26 @@ static const char *unpack(void)
 		}
 		return "index-pack abnormal exit";
 	}
+}
+
+static const char *unpack_with_sideband(void)
+{
+	struct async muxer;
+	const char *ret;
+
+	if (!use_sideband)
+		return unpack(0);
+
+	memset(&muxer, 0, sizeof(muxer));
+	muxer.proc = copy_to_sideband;
+	muxer.in = -1;
+	if (start_async(&muxer))
+		return NULL;
+
+	ret = unpack(muxer.in);
+
+	finish_async(&muxer);
+	return ret;
 }
 
 static void report(struct command *commands, const char *unpack_status)
@@ -965,7 +988,7 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 		const char *unpack_status = NULL;
 
 		if (!delete_only(commands))
-			unpack_status = unpack();
+			unpack_status = unpack_with_sideband();
 		execute_commands(commands, unpack_status);
 		if (pack_lockfile)
 			unlink_or_warn(pack_lockfile);
@@ -977,7 +1000,8 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 			const char *argv_gc_auto[] = {
 				"gc", "--auto", "--quiet", NULL,
 			};
-			run_command_v_opt(argv_gc_auto, RUN_GIT_CMD);
+			int opt = RUN_GIT_CMD | RUN_COMMAND_STDOUT_TO_STDERR;
+			run_command_v_opt(argv_gc_auto, opt);
 		}
 		if (auto_update_server_info)
 			update_server_info(0);

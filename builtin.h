@@ -21,7 +21,6 @@ struct fmt_merge_msg_opts {
 
 extern int fmt_merge_msg(struct strbuf *in, struct strbuf *out,
 			 struct fmt_merge_msg_opts *);
-extern void commit_notes(struct notes_tree *t, const char *msg);
 
 struct notes_rewrite_cfg {
 	struct notes_tree **trees;
@@ -33,17 +32,12 @@ struct notes_rewrite_cfg {
 	int mode_from_env;
 };
 
-combine_notes_fn parse_combine_notes_fn(const char *v);
 struct notes_rewrite_cfg *init_copy_notes_for_rewrite(const char *cmd);
 int copy_note_for_rewrite(struct notes_rewrite_cfg *c,
 			  const unsigned char *from_obj, const unsigned char *to_obj);
 void finish_copy_notes_for_rewrite(struct notes_rewrite_cfg *c);
 
-extern int check_pager_config(const char *cmd);
-struct diff_options;
-extern void setup_diff_pager(struct diff_options *);
-
-extern int textconv_object(const char *path, unsigned mode, const unsigned char *sha1, char **buf, unsigned long *buf_size);
+extern int textconv_object(const char *path, unsigned mode, const unsigned char *sha1, int sha1_valid, char **buf, unsigned long *buf_size);
 
 extern int cmd_add(int argc, const char **argv, const char *prefix);
 extern int cmd_annotate(int argc, const char **argv, const char *prefix);

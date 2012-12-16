@@ -424,7 +424,7 @@ int cache_name_compare(const char *name1, int len1, const char *name2, int len2)
 	return cache_name_stage_compare(name1, len1, 0, name2, len2, 0);
 }
 
-int index_name_stage_pos(const struct index_state *istate, const char *name, int namelen, int stage)
+static int index_name_stage_pos(const struct index_state *istate, const char *name, int namelen, int stage)
 {
 	int first, last;
 
@@ -1796,6 +1796,8 @@ int write_index(struct index_state *istate, int newfd)
 			continue;
 		if (!ce_uptodate(ce) && is_racy_timestamp(istate, ce))
 			ce_smudge_racily_clean_entry(ce);
+		if (is_null_sha1(ce->sha1))
+			return error("cache entry has null sha1: %s", ce->name);
 		if (ce_write_entry(&c, newfd, ce, previous_name) < 0)
 			return -1;
 	}

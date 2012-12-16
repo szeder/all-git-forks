@@ -90,6 +90,8 @@ all::
 #
 # Define NO_MKDTEMP if you don't have mkdtemp in the C library.
 #
+# Define MKDIR_WO_TRAILING_SLASH if your mkdir() can't deal with trailing slash.
+#
 # Define NO_MKSTEMPS if you don't have mkstemps in the C library.
 #
 # Define NO_STRTOK_R if you don't have strtok_r in the C library.
@@ -143,6 +145,12 @@ all::
 #
 # Define NEEDS_LIBICONV if linking with libc is not enough (Darwin).
 #
+# Define NEEDS_LIBINTL_BEFORE_LIBICONV if you need libintl before libiconv.
+#
+# Define NO_INTPTR_T if you don't have intptr_t nor uintptr_t.
+#
+# Define NO_UINTMAX_T if you don't have uintmax_t.
+#
 # Define NEEDS_SOCKET if linking with libc is not enough (SunOS,
 # Patrick Mauritz).
 #
@@ -152,10 +160,20 @@ all::
 #
 # Define NO_MMAP if you want to avoid mmap.
 #
+# Define NO_SYS_POLL_H if you don't have sys/poll.h.
+#
+# Define NO_POLL if you do not have or don't want to use poll().
+# This also implies NO_SYS_POLL_H.
+#
 # Define NO_PTHREADS if you do not have or do not want to use Pthreads.
 #
 # Define NO_PREAD if you have a problem with pread() system call (e.g.
 # cygwin1.dll before v1.5.22).
+#
+# Define NO_SETITIMER if you don't have setitimer()
+#
+# Define NO_STRUCT_ITIMERVAL if you don't have struct itimerval
+# This also implies NO_SETITIMER
 #
 # Define NO_THREAD_SAFE_PREAD if your pread() implementation is not
 # thread-safe. (e.g. compat/pread.c or cygwin)
@@ -356,7 +374,7 @@ htmldir = share/doc/git-doc
 ETC_GITCONFIG = $(sysconfdir)/gitconfig
 ETC_GITATTRIBUTES = $(sysconfdir)/gitattributes
 lib = lib
-# DESTDIR=
+# DESTDIR =
 pathsep = :
 
 export prefix bindir sharedir sysconfdir gitwebdir localedir
@@ -477,6 +495,7 @@ PROGRAM_OBJS += sh-i18n--envsubst.o
 PROGRAM_OBJS += shell.o
 PROGRAM_OBJS += show-index.o
 PROGRAM_OBJS += upload-pack.o
+PROGRAM_OBJS += remote-testsvn.o
 
 # Binary suffix, set to .exe for Windows builds
 X =
@@ -496,11 +515,13 @@ TEST_PROGRAMS_NEED_X += test-mergesort
 TEST_PROGRAMS_NEED_X += test-mktemp
 TEST_PROGRAMS_NEED_X += test-parse-options
 TEST_PROGRAMS_NEED_X += test-path-utils
+TEST_PROGRAMS_NEED_X += test-regex
 TEST_PROGRAMS_NEED_X += test-revision-walking
 TEST_PROGRAMS_NEED_X += test-run-command
 TEST_PROGRAMS_NEED_X += test-scrap-cache-tree
 TEST_PROGRAMS_NEED_X += test-sha1
 TEST_PROGRAMS_NEED_X += test-sigchain
+TEST_PROGRAMS_NEED_X += test-string-list
 TEST_PROGRAMS_NEED_X += test-subprocess
 TEST_PROGRAMS_NEED_X += test-svn-fe
 
@@ -554,9 +575,9 @@ endif
 export PERL_PATH
 export PYTHON_PATH
 
-LIB_FILE=libgit.a
-XDIFF_LIB=xdiff/lib.a
-VCSSVN_LIB=vcs-svn/lib.a
+LIB_FILE = libgit.a
+XDIFF_LIB = xdiff/lib.a
+VCSSVN_LIB = vcs-svn/lib.a
 
 LIB_H += xdiff/xinclude.h
 LIB_H += xdiff/xmacros.h
@@ -595,10 +616,10 @@ LIB_H += compat/bswap.h
 LIB_H += compat/cygwin.h
 LIB_H += compat/mingw.h
 LIB_H += compat/obstack.h
+LIB_H += compat/poll/poll.h
 LIB_H += compat/precompose_utf8.h
 LIB_H += compat/terminal.h
 LIB_H += compat/win32/dirent.h
-LIB_H += compat/win32/poll.h
 LIB_H += compat/win32/pthread.h
 LIB_H += compat/win32/syslog.h
 LIB_H += connected.h
@@ -725,6 +746,7 @@ LIB_OBJS += editor.o
 LIB_OBJS += entry.o
 LIB_OBJS += environment.o
 LIB_OBJS += exec_cmd.o
+LIB_OBJS += fetch-pack.o
 LIB_OBJS += fsck.o
 LIB_OBJS += gettext.o
 LIB_OBJS += gpg-interface.o
@@ -742,6 +764,7 @@ LIB_OBJS += lockfile.o
 LIB_OBJS += log-tree.o
 LIB_OBJS += mailmap.o
 LIB_OBJS += match-trees.o
+LIB_OBJS += merge.o
 LIB_OBJS += merge-file.o
 LIB_OBJS += merge-recursive.o
 LIB_OBJS += mergesort.o
@@ -776,6 +799,7 @@ LIB_OBJS += rerere.o
 LIB_OBJS += resolve-undo.o
 LIB_OBJS += revision.o
 LIB_OBJS += run-command.o
+LIB_OBJS += send-pack.o
 LIB_OBJS += sequencer.o
 LIB_OBJS += server-info.o
 LIB_OBJS += setup.o
@@ -1062,6 +1086,7 @@ ifeq ($(uname_O),Cygwin)
 		NO_SYMLINK_HEAD = YesPlease
 		NO_IPV6 = YesPlease
 		OLD_ICONV = UnfortunatelyYes
+		CYGWIN_V15_WIN32API = YesPlease
 	endif
 	NO_THREAD_SAFE_PREAD = YesPlease
 	NEEDS_LIBICONV = YesPlease
@@ -1114,7 +1139,7 @@ ifeq ($(uname_S),NetBSD)
 endif
 ifeq ($(uname_S),AIX)
 	DEFAULT_PAGER = more
-	NO_STRCASESTR=YesPlease
+	NO_STRCASESTR = YesPlease
 	NO_MEMMEM = YesPlease
 	NO_MKDTEMP = YesPlease
 	NO_MKSTEMPS = YesPlease
@@ -1122,7 +1147,7 @@ ifeq ($(uname_S),AIX)
 	NO_NSEC = YesPlease
 	FREAD_READS_DIRECTORIES = UnfortunatelyYes
 	INTERNAL_QSORT = UnfortunatelyYes
-	NEEDS_LIBICONV=YesPlease
+	NEEDS_LIBICONV = YesPlease
 	BASIC_CFLAGS += -D_LARGE_FILES
 	ifeq ($(shell expr "$(uname_V)" : '[1234]'),1)
 		NO_PTHREADS = YesPlease
@@ -1130,13 +1155,13 @@ ifeq ($(uname_S),AIX)
 		PTHREAD_LIBS = -lpthread
 	endif
 	ifeq ($(shell expr "$(uname_V).$(uname_R)" : '5\.1'),3)
-		INLINE=''
+		INLINE = ''
 	endif
 	GIT_TEST_CMP = cmp
 endif
 ifeq ($(uname_S),GNU)
 	# GNU/Hurd
-	NO_STRLCPY=YesPlease
+	NO_STRLCPY = YesPlease
 	NO_MKSTEMPS = YesPlease
 	HAVE_PATHS_H = YesPlease
 	LIBC_CONTAINS_LIBINTL = YesPlease
@@ -1162,9 +1187,9 @@ ifeq ($(uname_S),IRIX)
 	NEEDS_LIBGEN = YesPlease
 endif
 ifeq ($(uname_S),IRIX64)
-	NO_SETENV=YesPlease
+	NO_SETENV = YesPlease
 	NO_UNSETENV = YesPlease
-	NO_STRCASESTR=YesPlease
+	NO_STRCASESTR = YesPlease
 	NO_MEMMEM = YesPlease
 	NO_MKSTEMPS = YesPlease
 	NO_MKDTEMP = YesPlease
@@ -1178,14 +1203,14 @@ ifeq ($(uname_S),IRIX64)
 	NO_REGEX = YesPlease
 	NO_FNMATCH_CASEFOLD = YesPlease
 	SNPRINTF_RETURNS_BOGUS = YesPlease
-	SHELL_PATH=/usr/gnu/bin/bash
+	SHELL_PATH = /usr/gnu/bin/bash
 	NEEDS_LIBGEN = YesPlease
 endif
 ifeq ($(uname_S),HP-UX)
 	INLINE = __inline
-	NO_IPV6=YesPlease
-	NO_SETENV=YesPlease
-	NO_STRCASESTR=YesPlease
+	NO_IPV6 = YesPlease
+	NO_SETENV = YesPlease
+	NO_STRCASESTR = YesPlease
 	NO_MEMMEM = YesPlease
 	NO_MKSTEMPS = YesPlease
 	NO_STRLCPY = YesPlease
@@ -1216,7 +1241,7 @@ ifeq ($(uname_S),Windows)
 	NO_PREAD = YesPlease
 	NEEDS_CRYPTO_WITH_SSL = YesPlease
 	NO_LIBGEN_H = YesPlease
-	NO_SYS_POLL_H = YesPlease
+	NO_POLL = YesPlease
 	NO_SYMLINK_HEAD = YesPlease
 	NO_IPV6 = YesPlease
 	NO_UNIX_SOCKETS = YesPlease
@@ -1257,7 +1282,7 @@ ifeq ($(uname_S),Windows)
 	BASIC_CFLAGS = -nologo -I. -I../zlib -Icompat/vcbuild -Icompat/vcbuild/include -DWIN32 -D_CONSOLE -DHAVE_STRING_H -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE
 	COMPAT_OBJS = compat/msvc.o compat/winansi.o \
 		compat/win32/pthread.o compat/win32/syslog.o \
-		compat/win32/poll.o compat/win32/dirent.o
+		compat/win32/dirent.o
 	COMPAT_CFLAGS = -D__USE_MINGW_ACCESS -DNOGDI -DHAVE_STRING_H -DHAVE_ALLOCA_H -Icompat -Icompat/regex -Icompat/win32 -DSTRIP_EXTENSION=\".exe\"
 	BASIC_LDFLAGS = -IGNORE:4217 -IGNORE:4049 -NOLOGO -SUBSYSTEM:CONSOLE -NODEFAULTLIB:MSVCRT.lib
 	EXTLIBS = user32.lib advapi32.lib shell32.lib wininet.lib ws2_32.lib
@@ -1307,12 +1332,71 @@ ifeq ($(uname_S),Minix)
 	NO_CURL =
 	NO_EXPAT =
 endif
+ifeq ($(uname_S),NONSTOP_KERNEL)
+	# Needs some C99 features, "inline" is just one of them.
+	# INLINE='' would just replace one set of warnings with another and
+	# still not compile in c89 mode, due to non-const array initializations.
+	CC = cc -c99
+	# Disable all optimization, seems to result in bad code, with -O or -O2
+	# or even -O1 (default), /usr/local/libexec/git-core/git-pack-objects
+	# abends on "git push". Needs more investigation.
+	CFLAGS = -g -O0
+	# We'd want it to be here.
+	prefix = /usr/local
+	# Our's are in ${prefix}/bin (perl might also be in /usr/bin/perl).
+	PERL_PATH = ${prefix}/bin/perl
+	PYTHON_PATH = ${prefix}/bin/python
+
+	# As detected by './configure'.
+	# Missdetected, hence commented out, see below.
+	#NO_CURL = YesPlease
+	# Added manually, see above.
+	NEEDS_SSL_WITH_CURL = YesPlease
+	HAVE_LIBCHARSET_H = YesPlease
+	NEEDS_LIBICONV = YesPlease
+	NEEDS_LIBINTL_BEFORE_LIBICONV = YesPlease
+	NO_SYS_SELECT_H = UnfortunatelyYes
+	NO_D_TYPE_IN_DIRENT = YesPlease
+	NO_HSTRERROR = YesPlease
+	NO_STRCASESTR = YesPlease
+	NO_FNMATCH_CASEFOLD = YesPlease
+	NO_MEMMEM = YesPlease
+	NO_STRLCPY = YesPlease
+	NO_SETENV = YesPlease
+	NO_UNSETENV = YesPlease
+	NO_MKDTEMP = YesPlease
+	NO_MKSTEMPS = YesPlease
+	# Currently libiconv-1.9.1.
+	OLD_ICONV = UnfortunatelyYes
+	NO_REGEX = YesPlease
+	NO_PTHREADS = UnfortunatelyYes
+
+	# Not detected (nor checked for) by './configure'.
+	# We don't have SA_RESTART on NonStop, unfortunalety.
+	COMPAT_CFLAGS += -DSA_RESTART=0
+	# Apparently needed in compat/fnmatch/fnmatch.c.
+	COMPAT_CFLAGS += -DHAVE_STRING_H=1
+	NO_ST_BLOCKS_IN_STRUCT_STAT = YesPlease
+	NO_NSEC = YesPlease
+	NO_PREAD = YesPlease
+	NO_MMAP = YesPlease
+	NO_POLL = YesPlease
+	NO_INTPTR_T = UnfortunatelyYes
+	# Bug report 10-120822-4477 submitted to HP NonStop development.
+	MKDIR_WO_TRAILING_SLASH = YesPlease
+	# RFE 10-120912-4693 submitted to HP NonStop development.
+	NO_SETITIMER = UnfortunatelyYes
+	SANE_TOOL_PATH = /usr/coreutils/bin:/usr/local/bin
+	SHELL_PATH = /usr/local/bin/bash
+	# as of H06.25/J06.14, we might better use this
+	#SHELL_PATH = /usr/coreutils/bin/bash
+endif
 ifneq (,$(findstring MINGW,$(uname_S)))
 	pathsep = ;
 	NO_PREAD = YesPlease
 	NEEDS_CRYPTO_WITH_SSL = YesPlease
 	NO_LIBGEN_H = YesPlease
-	NO_SYS_POLL_H = YesPlease
+	NO_POLL = YesPlease
 	NO_SYMLINK_HEAD = YesPlease
 	NO_UNIX_SOCKETS = YesPlease
 	NO_SETENV = YesPlease
@@ -1347,13 +1431,13 @@ ifneq (,$(findstring MINGW,$(uname_S)))
 	COMPAT_CFLAGS += -DSTRIP_EXTENSION=\".exe\"
 	COMPAT_OBJS += compat/mingw.o compat/winansi.o \
 		compat/win32/pthread.o compat/win32/syslog.o \
-		compat/win32/poll.o compat/win32/dirent.o
+		compat/win32/dirent.o
 	EXTLIBS += -lws2_32
 	PTHREAD_LIBS =
 	X = .exe
 	SPARSE_FLAGS = -Wno-one-bit-signed-bitfield
 ifneq (,$(wildcard ../THIS_IS_MSYSGIT))
-	htmldir=doc/git/html/
+	htmldir = doc/git/html/
 	prefix =
 	INSTALL = /bin/install
 	EXTLIBS += /mingw/lib/libz.a
@@ -1475,7 +1559,7 @@ else
 		CURL_LIBCURL = -lcurl
 	endif
 	ifdef NEEDS_SSL_WITH_CURL
-		CURL_LIBCURL +=	-lssl
+		CURL_LIBCURL += -lssl
 		ifdef NEEDS_CRYPTO_WITH_SSL
 			CURL_LIBCURL += -lcrypto
 		endif
@@ -1489,7 +1573,7 @@ else
 	REMOTE_CURL_NAMES = $(REMOTE_CURL_PRIMARY) $(REMOTE_CURL_ALIASES)
 	PROGRAM_OBJS += http-fetch.o
 	PROGRAMS += $(REMOTE_CURL_NAMES)
-	curl_check := $(shell (echo 070908; curl-config --vernum) | sort -r | sed -ne 2p)
+	curl_check := $(shell (echo 070908; curl-config --vernum) 2>/dev/null | sort -r | sed -ne 2p)
 	ifeq "$(curl_check)" "070908"
 		ifndef NO_EXPAT
 			PROGRAM_OBJS += http-push.o
@@ -1542,6 +1626,9 @@ ifdef NEEDS_LIBICONV
 		ICONV_LINK = -L$(ICONVDIR)/$(lib) $(CC_LD_DYNPATH)$(ICONVDIR)/$(lib)
 	else
 		ICONV_LINK =
+	endif
+	ifdef NEEDS_LIBINTL_BEFORE_LIBICONV
+		ICONV_LINK += -lintl
 	endif
 	EXTLIBS += $(ICONV_LINK) -liconv
 endif
@@ -1601,6 +1688,11 @@ ifdef NO_GETTEXT
 	BASIC_CFLAGS += -DNO_GETTEXT
 	USE_GETTEXT_SCHEME ?= fallthrough
 endif
+ifdef NO_POLL
+	NO_SYS_POLL_H = YesPlease
+	COMPAT_CFLAGS += -DNO_POLL -Icompat/poll
+	COMPAT_OBJS += compat/poll/poll.o
+endif
 ifdef NO_STRCASESTR
 	COMPAT_CFLAGS += -DNO_STRCASESTR
 	COMPAT_OBJS += compat/strcasestr.o
@@ -1639,6 +1731,10 @@ ifdef NO_MKDTEMP
 	COMPAT_CFLAGS += -DNO_MKDTEMP
 	COMPAT_OBJS += compat/mkdtemp.o
 endif
+ifdef MKDIR_WO_TRAILING_SLASH
+	COMPAT_CFLAGS += -DMKDIR_WO_TRAILING_SLASH
+	COMPAT_OBJS += compat/mkdir.o
+endif
 ifdef NO_MKSTEMPS
 	COMPAT_CFLAGS += -DNO_MKSTEMPS
 endif
@@ -1670,6 +1766,13 @@ endif
 ifdef OBJECT_CREATION_USES_RENAMES
 	COMPAT_CFLAGS += -DOBJECT_CREATION_MODE=1
 endif
+ifdef NO_STRUCT_ITIMERVAL
+	COMPAT_CFLAGS += -DNO_STRUCT_ITIMERVAL
+	NO_SETITIMER = YesPlease
+endif
+ifdef NO_SETITIMER
+	COMPAT_CFLAGS += -DNO_SETITIMER
+endif
 ifdef NO_PREAD
 	COMPAT_CFLAGS += -DNO_PREAD
 	COMPAT_OBJS += compat/pread.o
@@ -1686,6 +1789,9 @@ ifdef NO_TRUSTABLE_FILEMODE
 endif
 ifdef NO_IPV6
 	BASIC_CFLAGS += -DNO_IPV6
+endif
+ifdef NO_INTPTR_T
+	COMPAT_CFLAGS += -DNO_INTPTR_T
 endif
 ifdef NO_UINTMAX_T
 	BASIC_CFLAGS += -Duintmax_t=uint32_t
@@ -1792,6 +1898,9 @@ ifdef NO_REGEX
 	COMPAT_CFLAGS += -Icompat/regex
 	COMPAT_OBJS += compat/regex/regex.o
 endif
+ifdef CYGWIN_V15_WIN32API
+	COMPAT_CFLAGS += -DCYGWIN_V15_WIN32API
+endif
 
 ifdef USE_NED_ALLOCATOR
        COMPAT_CFLAGS += -Icompat/nedmalloc
@@ -1811,15 +1920,15 @@ ifneq (,$(XDL_FAST_HASH))
 endif
 
 ifeq ($(TCLTK_PATH),)
-NO_TCLTK=NoThanks
+NO_TCLTK = NoThanks
 endif
 
 ifeq ($(PERL_PATH),)
-NO_PERL=NoThanks
+NO_PERL = NoThanks
 endif
 
 ifeq ($(PYTHON_PATH),)
-NO_PYTHON=NoThanks
+NO_PYTHON = NoThanks
 endif
 
 QUIET_SUBDIR0  = +$(MAKE) -C # space to separate -C and subdir
@@ -1866,13 +1975,13 @@ PROFILE_DIR := $(CURDIR)
 ifeq ("$(PROFILE)","GEN")
 	CFLAGS += -fprofile-generate=$(PROFILE_DIR) -DNO_NORETURN=1
 	EXTLIBS += -lgcov
-	export CCACHE_DISABLE=t
-	V=1
+	export CCACHE_DISABLE = t
+	V = 1
 else
 ifneq ("$(PROFILE)","")
 	CFLAGS += -fprofile-use=$(PROFILE_DIR) -fprofile-correction -DNO_NORETURN=1
-	export CCACHE_DISABLE=t
-	V=1
+	export CCACHE_DISABLE = t
+	V = 1
 endif
 endif
 
@@ -2352,6 +2461,10 @@ git-http-push$X: revision.o http.o http-push.o GIT-LDFLAGS $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
 		$(LIBS) $(CURL_LIBCURL) $(EXPAT_LIBEXPAT)
 
+git-remote-testsvn$X: remote-testsvn.o GIT-LDFLAGS $(GITLIBS) $(VCSSVN_LIB)
+	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS) \
+	$(VCSSVN_LIB)
+
 $(REMOTE_CURL_ALIASES): $(REMOTE_CURL_PRIMARY)
 	$(QUIET_LNCP)$(RM) $@ && \
 	ln $< $@ 2>/dev/null || \
@@ -2539,6 +2652,7 @@ bin-wrappers/%: wrap-for-bin.sh
 # with that.
 
 export NO_SVN_TESTS
+export TEST_NO_MALLOC_CHECK
 
 ### Testing rules
 
@@ -2716,7 +2830,7 @@ git.spec: git.spec.in GIT-VERSION-FILE
 	sed -e 's/@@VERSION@@/$(GIT_VERSION)/g' < $< > $@+
 	mv $@+ $@
 
-GIT_TARNAME=git-$(GIT_VERSION)
+GIT_TARNAME = git-$(GIT_VERSION)
 dist: git.spec git-archive$(X) configure
 	./git-archive --format=tar \
 		--prefix=$(GIT_TARNAME)/ HEAD^{tree} > $(GIT_TARNAME).tar

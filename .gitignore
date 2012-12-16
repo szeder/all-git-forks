@@ -125,6 +125,7 @@
 /git-remote-fd
 /git-remote-ext
 /git-remote-testgit
+/git-remote-testsvn
 /git-repack
 /git-replace
 /git-repo-config
@@ -189,10 +190,12 @@
 /test-mktemp
 /test-parse-options
 /test-path-utils
+/test-regex
 /test-revision-walking
 /test-run-command
 /test-sha1
 /test-sigchain
+/test-string-list
 /test-subprocess
 /test-svn-fe
 /common-cmds.h

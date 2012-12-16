@@ -95,15 +95,16 @@ static struct discovery* discover_refs(const char *service)
 	struct strbuf buffer = STRBUF_INIT;
 	struct discovery *last = last_discovery;
 	char *refs_url;
-	int http_ret, is_http = 0, proto_git_candidate = 1;
+	int http_ret, maybe_smart = 0;
 
 	if (last && !strcmp(service, last->service))
 		return last;
 	free_discovery(last);
 
 	strbuf_addf(&buffer, "%sinfo/refs", url);
-	if (!prefixcmp(url, "http://") || !prefixcmp(url, "https://")) {
-		is_http = 1;
+	if ((!prefixcmp(url, "http://") || !prefixcmp(url, "https://")) &&
+	     git_env_bool("GIT_SMART_HTTP", 1)) {
+		maybe_smart = 1;
 		if (!strchr(url, '?'))
 			strbuf_addch(&buffer, '?');
 		else
@@ -113,19 +114,6 @@ static struct discovery* discover_refs(const char *service)
 	refs_url = strbuf_detach(&buffer, NULL);
 
 	http_ret = http_get_strbuf(refs_url, &buffer, HTTP_NO_CACHE);
-
-	/* try again with "plain" url (no ? or & appended) */
-	if (http_ret != HTTP_OK && http_ret != HTTP_NOAUTH) {
-		free(refs_url);
-		strbuf_reset(&buffer);
-
-		proto_git_candidate = 0;
-		strbuf_addf(&buffer, "%sinfo/refs", url);
-		refs_url = strbuf_detach(&buffer, NULL);
-
-		http_ret = http_get_strbuf(refs_url, &buffer, HTTP_NO_CACHE);
-	}
-
 	switch (http_ret) {
 	case HTTP_OK:
 		break;
@@ -144,8 +132,7 @@ static struct discovery* discover_refs(const char *service)
 	last->buf_alloc = strbuf_detach(&buffer, &last->len);
 	last->buf = last->buf_alloc;
 
-	if (is_http && proto_git_candidate
-		&& 5 <= last->len && last->buf[4] == '#') {
+	if (maybe_smart && 5 <= last->len && last->buf[4] == '#') {
 		/* smart HTTP response; validate that the service
 		 * pkt-line matches our request.
 		 */
@@ -362,16 +349,17 @@ static size_t rpc_in(char *ptr, size_t eltsize,
 
 static int run_slot(struct active_request_slot *slot)
 {
-	int err = 0;
+	int err;
 	struct slot_results results;
 
 	slot->results = &results;
 	slot->curl_result = curl_easy_perform(slot->curl);
 	finish_active_slot(slot);
 
-	if (results.curl_result != CURLE_OK) {
-		err |= error("RPC failed; result=%d, HTTP code = %ld",
-			results.curl_result, results.http_code);
+	err = handle_curl_result(&results);
+	if (err != HTTP_OK && err != HTTP_REAUTH) {
+		error("RPC failed; result=%d, HTTP code = %ld",
+		      results.curl_result, results.http_code);
 	}
 
 	return err;
@@ -392,7 +380,7 @@ static int probe_rpc(struct rpc_state *rpc)
 	curl_easy_setopt(slot->curl, CURLOPT_NOBODY, 0);
 	curl_easy_setopt(slot->curl, CURLOPT_POST, 1);
 	curl_easy_setopt(slot->curl, CURLOPT_URL, rpc->service_url);
-	curl_easy_setopt(slot->curl, CURLOPT_ENCODING, "");
+	curl_easy_setopt(slot->curl, CURLOPT_ENCODING, NULL);
 	curl_easy_setopt(slot->curl, CURLOPT_POSTFIELDS, "0000");
 	curl_easy_setopt(slot->curl, CURLOPT_POSTFIELDSIZE, 4);
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPHEADER, headers);
@@ -412,6 +400,7 @@ static int post_rpc(struct rpc_state *rpc)
 	struct curl_slist *headers = NULL;
 	int use_gzip = rpc->gzip_request;
 	char *gzip_body = NULL;
+	size_t gzip_size = 0;
 	int err, large_request = 0;
 
 	/* Try to load the entire request, if we can fit it into the
@@ -436,21 +425,24 @@ static int post_rpc(struct rpc_state *rpc)
 	}
 
 	if (large_request) {
-		err = probe_rpc(rpc);
-		if (err)
-			return err;
+		do {
+			err = probe_rpc(rpc);
+		} while (err == HTTP_REAUTH);
+		if (err != HTTP_OK)
+			return -1;
 	}
 
+	headers = curl_slist_append(headers, rpc->hdr_content_type);
+	headers = curl_slist_append(headers, rpc->hdr_accept);
+	headers = curl_slist_append(headers, "Expect:");
+
+retry:
 	slot = get_active_slot();
 
 	curl_easy_setopt(slot->curl, CURLOPT_NOBODY, 0);
 	curl_easy_setopt(slot->curl, CURLOPT_POST, 1);
 	curl_easy_setopt(slot->curl, CURLOPT_URL, rpc->service_url);
-	curl_easy_setopt(slot->curl, CURLOPT_ENCODING, "");
-
-	headers = curl_slist_append(headers, rpc->hdr_content_type);
-	headers = curl_slist_append(headers, rpc->hdr_accept);
-	headers = curl_slist_append(headers, "Expect:");
+	curl_easy_setopt(slot->curl, CURLOPT_ENCODING, "gzip");
 
 	if (large_request) {
 		/* The request body is large and the size cannot be predicted.
@@ -469,24 +461,32 @@ static int post_rpc(struct rpc_state *rpc)
 			fflush(stderr);
 		}
 
+	} else if (gzip_body) {
+		/*
+		 * If we are looping to retry authentication, then the previous
+		 * run will have set up the headers and gzip buffer already,
+		 * and we just need to send it.
+		 */
+		curl_easy_setopt(slot->curl, CURLOPT_POSTFIELDS, gzip_body);
+		curl_easy_setopt(slot->curl, CURLOPT_POSTFIELDSIZE, gzip_size);
+
 	} else if (use_gzip && 1024 < rpc->len) {
 		/* The client backend isn't giving us compressed data so
 		 * we can try to deflate it ourselves, this may save on.
 		 * the transfer time.
 		 */
-		size_t size;
 		git_zstream stream;
 		int ret;
 
 		memset(&stream, 0, sizeof(stream));
 		git_deflate_init_gzip(&stream, Z_BEST_COMPRESSION);
-		size = git_deflate_bound(&stream, rpc->len);
-		gzip_body = xmalloc(size);
+		gzip_size = git_deflate_bound(&stream, rpc->len);
+		gzip_body = xmalloc(gzip_size);
 
 		stream.next_in = (unsigned char *)rpc->buf;
 		stream.avail_in = rpc->len;
 		stream.next_out = (unsigned char *)gzip_body;
-		stream.avail_out = size;
+		stream.avail_out = gzip_size;
 
 		ret = git_deflate(&stream, Z_FINISH);
 		if (ret != Z_STREAM_END)
@@ -496,16 +496,16 @@ static int post_rpc(struct rpc_state *rpc)
 		if (ret != Z_OK)
 			die("cannot deflate request; zlib end error %d", ret);
 
-		size = stream.total_out;
+		gzip_size = stream.total_out;
 
 		headers = curl_slist_append(headers, "Content-Encoding: gzip");
 		curl_easy_setopt(slot->curl, CURLOPT_POSTFIELDS, gzip_body);
-		curl_easy_setopt(slot->curl, CURLOPT_POSTFIELDSIZE, size);
+		curl_easy_setopt(slot->curl, CURLOPT_POSTFIELDSIZE, gzip_size);
 
 		if (options.verbosity > 1) {
 			fprintf(stderr, "POST %s (gzip %lu to %lu bytes)\n",
 				rpc->service_name,
-				(unsigned long)rpc->len, (unsigned long)size);
+				(unsigned long)rpc->len, (unsigned long)gzip_size);
 			fflush(stderr);
 		}
 	} else {
@@ -526,6 +526,10 @@ static int post_rpc(struct rpc_state *rpc)
 	curl_easy_setopt(slot->curl, CURLOPT_FILE, rpc);
 
 	err = run_slot(slot);
+	if (err == HTTP_REAUTH && !large_request)
+		goto retry;
+	if (err != HTTP_OK)
+		err = -1;
 
 	curl_slist_free_all(headers);
 	free(gzip_body);
