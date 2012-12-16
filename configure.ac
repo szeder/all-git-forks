@@ -699,6 +699,12 @@ AC_CHECK_HEADER([sys/poll.h],
 [NO_SYS_POLL_H=UnfortunatelyYes])
 GIT_CONF_SUBST([NO_SYS_POLL_H])
 #
+# Define NO_SYS_PARAM_H if you don't have sys/param.h
+AC_CHECK_HEADER([sys/param.h],
+[NO_SYS_PARAM_H=],
+[NO_SYS_PARAM_H=UnfortunatelyYes])
+GIT_CONF_SUBST([NO_SYS_PARAM_H])
+#
 # Define NO_INTTYPES_H if you don't have inttypes.h
 AC_CHECK_HEADER([inttypes.h],
 [NO_INTTYPES_H=],
@@ -752,6 +758,14 @@ AC_CHECK_MEMBER(struct dirent.d_type,
 [NO_D_TYPE_IN_DIRENT=YesPlease],
 [#include <dirent.h>])
 GIT_CONF_SUBST([NO_D_TYPE_IN_DIRENT])
+#
+# Define NO_GECOS_IN_PWENT if you don't have pw_gecos in struct passwd
+# in the C library.
+AC_CHECK_MEMBER(struct passwd.pw_gecos,
+[NO_GECOS_IN_PWENT=],
+[NO_GECOS_IN_PWENT=YesPlease],
+[#include <pwd.h>])
+GIT_CONF_SUBST([NO_GECOS_IN_PWENT])
 #
 # Define NO_SOCKADDR_STORAGE if your platform does not have struct
 # sockaddr_storage.
@@ -872,6 +886,12 @@ AC_CHECK_HEADER([libcharset.h],
 [HAVE_LIBCHARSET_H=YesPlease],
 [HAVE_LIBCHARSET_H=])
 GIT_CONF_SUBST([HAVE_LIBCHARSET_H])
+#
+# Define HAVE_STRINGS_H if you have strings.h
+AC_CHECK_HEADER([strings.h],
+[HAVE_STRINGS_H=YesPlease],
+[HAVE_STRINGS_H=])
+GIT_CONF_SUBST([HAVE_STRINGS_H])
 # Define CHARSET_LIB if libiconv does not export the locale_charset symbol
 # and libcharset does
 CHARSET_LIB=
