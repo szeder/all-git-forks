@@ -23,7 +23,7 @@ TRACK_TCLTK = $(subst ','\'',-DTCLTK_PATH='$(TCLTK_PATH_SQ)')
 GIT-TCLTK-VARS: FORCE
 	@VARS='$(TRACK_TCLTK)'; \
 		if test x"$$VARS" != x"`cat $@ 2>/dev/null`" ; then \
-			echo 1>&2 "    * new Tcl/Tk interpreter location"; \
+			echo >&2 "    * new Tcl/Tk interpreter location"; \
 			echo "$$VARS" >$@; \
 		fi
 
