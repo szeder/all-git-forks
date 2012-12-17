@@ -25,6 +25,14 @@ branch.
 
 	Update the index, working tree, and HEAD to reflect the
 	specified branch.
++
+If <branch> is not found but there does exist a tracking branch in
+exactly one remote (call it <remote>) with a matching name, treat as
+equivalent to
++
+------------
+$ git checkout -b <branch> --track <remote>/<branch>
+------------
 
 'git checkout' -b|-B <new_branch> [<start point>]::
 
