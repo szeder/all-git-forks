@@ -1283,7 +1283,7 @@ int read_index_filtered(struct index_state *istate, struct filter_opts *opts)
 	if (istate->internal_version == 2)
 		istate->internal_ops = &v2_internal_ops;
 	else
-		die("read-cache: read to an internal format that is not supported");
+		istate->internal_ops = &v5_internal_ops;
 	return 0;
 }
 
@@ -1312,7 +1312,6 @@ int get_index_entry_pos(struct index_state *istate, char *name, int namelen,
 		return 0;
 	return istate->internal_ops->index_name_pos(istate, name, namelen);
 }
-
 
 struct cache_entry *get_index_entry_by_name(struct index_state *istate, char *name,
 		int namelen, struct filter_opts *opts)

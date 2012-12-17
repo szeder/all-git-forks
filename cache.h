@@ -337,6 +337,7 @@ struct filter_opts {
 
 struct index_state {
 	struct cache_entry **cache;
+	struct dir_tree_entry *dir_tree;
 	unsigned int version, internal_version;
 	unsigned int cache_nr, cache_alloc, cache_changed;
 	struct string_list *resolve_undo;

@@ -48,9 +48,9 @@ test_perf "v5: update-index" "
 	git update-index --index-version=5 >/dev/null
 "
 
-test_perf "v5: grep nonexistent -- subdir" "
-	test_must_fail git grep nonexistent -- $subdir >/dev/null
-"
+# test_perf "v5: grep nonexistent -- subdir" "
+# 	test_must_fail git grep nonexistent -- $subdir >/dev/null
+# "
 
 test_perf "v5: ls-files -- subdir" "
 	git ls-files $subdir >/dev/null

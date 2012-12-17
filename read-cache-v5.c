@@ -841,19 +841,20 @@ struct read_entries_opts {
 	unsigned int *entry_offset;
 	void **mmap;
 	unsigned long mmap_size;
-	unsigned int foffsetblock;
+	unsigned int *foffsetblock;
 };
 
-static int read_entries_tree(struct dir_tree_entry **de, struct read_entry_opts *opts)
+static int read_entries_tree(struct dir_tree_entry **de, void *cb_data)
 {
 	struct conflict_entry *conflict_queue;
+	struct read_entries_opts *opts = (struct read_entries_opts *)cb_data;
 	struct cache_entry *ce;
 	int i;
 
 	conflict_queue = NULL;
 	if (read_conflicts_tree(&conflict_queue, *de, opts->mmap, opts->mmap_size) < 0)
 		return -1;
-	resolve_undo_convert_v5(opts_>istate, conflict_queue);
+	resolve_undo_convert_v5(opts->istate, conflict_queue);
 	for (i = 0; i < (*de)->de_nfiles; i++) {
 		if (read_entry_tree(&ce,
 				*de,
@@ -864,13 +865,14 @@ static int read_entries_tree(struct dir_tree_entry **de, struct read_entry_opts 
 			return -1;
 
 		(*de)->ce[i] = ce;
-		opts->foffsetblock += 4;
+		*opts->foffsetblock += 4;
 	}
 	for (i = 0; i < (*de)->de_ncr; i++)
 	{
 		(*de)->conflict[i] = conflict_queue;
 		conflict_entry_head_remove(&conflict_queue);
 	}
+	(*de)->level_read = 1;
 
 		/* Add the conflicted entries at the end of the index file
 		 * to the in memory format
@@ -1030,15 +1032,27 @@ static struct dir_tree_entry *read_head_directories(struct index_state *istate,
 	return root_directory;
 }
 
+static void for_each_dir_entry(struct dir_tree_entry **de,
+			       each_dir_tree_entry_fn fn,
+			       void *opts)
+{
+	int i;
+
+	fn(de, opts);
+	for (i = 0; i < (*de)->de_nsubtrees; i++) {
+		for_each_dir_entry(&(*de)->down[i], fn, opts);
+	}
+}
+
 static int read_index_filtered_v5(struct index_state *istate, struct filter_opts *opts)
 {
-	struct dir_tree_entry *root_directory, *de;
+	struct dir_tree_entry *root_directory;
 	unsigned int foffsetblock, entry_offset, ndir;
 	int i, n, nr = 0;
 	const char **adjusted_pathspec;
 	int need_root = 0;
 	char *seen, *oldpath;
-	struct read_entry_opts read_opts;
+	struct read_entries_opts read_opts;
 
 	root_directory = read_head_directories(istate, &entry_offset, &foffsetblock, &ndir);
 
@@ -1073,18 +1087,12 @@ static int read_index_filtered_v5(struct index_state *istate, struct filter_opts
 	/* 	} */
 	/* } */
 
-	for_each_dir_entry(root_directory, read_entries_tree, read_opts);
-	de = root_directory;
-	nsubtrees = 1;
-	while (de->down) {
-		for (i = 0; i < nsubtrees; i++) {
-			if (read_entries_tree(istate, &de, &entry_offset, &istate->mmap,
-						istate->mmap_size, &nr, &foffsetblock) < 0)
-				return -1;
-		}
-		nsubtrees = de->nsubtrees;
-		de = de->down;
-	}
+	read_opts.istate = istate;
+	read_opts.entry_offset = &entry_offset;
+	read_opts.mmap = &istate->mmap;
+	read_opts.mmap_size = istate->mmap_size;
+	read_opts.foffsetblock = &foffsetblock;
+	for_each_dir_entry(&root_directory, read_entries_tree, &read_opts);
 	istate->dir_tree = root_directory;
 
 	/* istate->cache_tree = cache_tree_convert_v5(root_directory); */
@@ -1092,32 +1100,87 @@ static int read_index_filtered_v5(struct index_state *istate, struct filter_opts
 	return 0;
 }
 
+void each_index_entry(struct dir_tree_entry *de, struct filter_opts *opts, 
+		      each_cache_entry_fn fn, void *cb_data)
+{
+	int i, j = 0, k = 0, l;
+	if (de->de_nsubtrees == 0 && de->level_read) {
+		for (; k < de->de_nfiles; k++) {
+			struct cache_entry *ce = de->ce[k];
+			if (opts && !opts->read_staged && ce_stage(ce))
+				continue;
+			if (opts && !match_pathspec(opts->pathspec, ce->name, ce_namelen(ce),
+						    opts->max_prefix_len, opts->seen))
+				continue;
+
+			fn(ce, cb_data);
+			if (ce_stage(ce)) {
+				for (j = 0; cache_name_compare(ce->name, ce_namelen(ce),
+							  de->conflict[j]->name, strlen(de->conflict[j]->name)); j++)
+					; /* just find the right entry */
+				struct conflict_entry *entry = de->conflict[j];
+				struct conflict_part *part = entry->entries;
+				for (l = 0; l < de->conflict[j]->nfileconflicts; l++) {
+					/* 
+					 * yes i do feel guilty about this, but the
+					 * saves one strlen
+					 */
+					ce = convert_conflict_part(part, entry->name, ce_namelen(ce));
+					fn(ce, cb_data);
+					part = part->next;
+				}
+				j++;
+			}
+
+		}
+	}			
+	for (i = 0; i < de->de_nsubtrees; i++) {
+		if (de->level_read) {
+			for (; k < de->de_nfiles; k++) {
+				struct cache_entry *ce = de->ce[k];
+
+				printf("%s\n", ce->name);
+				if (opts && !opts->read_staged && ce_stage(ce))
+					continue;
+				if (cache_name_compare(de->pathname, de->de_pathlen,
+						       ce->name, ce->ce_namelen) > 0)
+					break;
+				if (opts && !match_pathspec(opts->pathspec, ce->name,
+							    ce_namelen(ce),
+							    opts->max_prefix_len, opts->seen))
+					continue;
+
+				fn(ce, cb_data);
+				if (ce_stage(ce)) {
+					for (j = 0; cache_name_compare(ce->name, ce_namelen(ce),
+								       de->conflict[j]->name, strlen(de->conflict[j]->name)); j++)
+						; /* just find the right entry */
+
+					struct conflict_entry *entry = de->conflict[j];
+					struct conflict_part *part = entry->entries;
+					for (l = 0; l < de->conflict[j]->nfileconflicts; l++) {
+						/* 
+						 * yes i do feel guilty about this, but the
+						 * saves one strlen
+						 */
+						ce = convert_conflict_part(part, entry->name, ce_namelen(ce));
+						fn(ce, cb_data);
+						part = part->next;
+					}
+					j++;
+				}
+			}
+		}
+		each_index_entry(de->down[i], opts, fn, cb_data);
+	}
+}
+
 int for_each_index_entry_v5(struct index_state *istate, each_cache_entry_fn fn, void *cb_data)
 {
-	int i, ret = 0, nsubdir = 1;
+	int ret = 0;
 	struct filter_opts *opts = istate->filter_opts;
 
-	/*
-	 * We always load the whole index in index_v2, because
-	 * we cannot support partial writing, and filter the
-	 * unwanted entries out when iterating
-	 */
-	for (i = 0; i < nsubdir; i++) {
-		struct cache_entry *ce = istate->cache[i];
-
-		if (opts && !opts->read_staged && ce_stage(ce))
-			continue;
-
-		if (opts && opts->pathspec && S_ISGITLINK(ce->ce_mode))
-			strip_trailing_slash_from_submodules(ce, opts->pathspec);
-
-		if (opts && !match_pathspec(opts->pathspec, ce->name, ce_namelen(ce),
-					opts->max_prefix_len, opts->seen))
-			continue;
-
-		if ((ret = fn(istate->cache[i], cb_data)))
-			break;
-	}
+	each_index_entry(istate->dir_tree, istate->filter_opts, fn, cb_data);
 	if (opts && !opts->max_prefix) {
 		opts->max_prefix = common_prefix(opts->pathspec);
 		opts->max_prefix_len = opts->max_prefix ? strlen(opts->max_prefix) : 0;
