@@ -22,17 +22,18 @@ also update `HEAD` to set the specified branch as the current
 branch.
 
 'git checkout' [<branch>]::
-'git checkout' -b|-B <new_branch> [<start point>]::
-'git checkout' [--detach] [<commit>]::
 
-	This form switches branches by updating the index, working
-	tree, and HEAD to reflect the specified branch or commit.
-+
-If `-b` is given, a new branch is created as if linkgit:git-branch[1]
-were called and then checked out; in this case you can
-use the `--track` or `--no-track` options, which will be passed to
-'git branch'.  As a convenience, `--track` without `-b` implies branch
-creation; see the description of `--track` below.
+	Update the index, working tree, and HEAD to reflect the
+	specified branch.
+
+'git checkout' -b|-B <new_branch> [<start point>]::
+
+	Specifying `-b` causes a new branch to be created as if
+	linkgit:git-branch[1] were called and then checked out.  In
+	this case you can use the `--track` or `--no-track` options,
+	which will be passed to 'git branch'.  As a convenience,
+	`--track` without `-b` implies branch creation; see the
+	description of `--track` below.
 +
 If `-B` is given, <new_branch> is created if it doesn't exist; otherwise, it
 is reset. This is the transactional equivalent of
@@ -44,6 +45,13 @@ $ git checkout <branch>
 +
 that is to say, the branch is not reset/created unless "git checkout" is
 successful.
+
+'git checkout' [--detach] [<commit>]::
+
+	Update the index and working tree to reflect the specified
+	commit and set HEAD to point directly to <commit> (see
+	"DETACHED HEAD" section.)  Passing `--detach` forces this
+	behavior even if <commit> is a branch.
 
 'git checkout' [-p|--patch] [<tree-ish>] [--] <pathspec>...::
 
