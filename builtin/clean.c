@@ -34,22 +34,42 @@ static int exclude_cb(const struct option *opt, const char *arg, int unset)
 	return 0;
 }
 
+static void print_filtered(const char *msg, struct string_list *lst)
+{
+	int i;
+	char *name;
+	char *dir = 0;
+
+	sort_string_list(lst);
+
+	for (i = 0; i < lst->nr; i++) {
+		name = lst->items[i].string;
+		if (dir == 0 || strncmp(name, dir, strlen(dir)) != 0)
+			printf("%s %s\n", msg, name);
+		if (name[strlen(name) - 1] == '/')
+			dir = name;
+	}
+}
+
 int cmd_clean(int argc, const char **argv, const char *prefix)
 {
 	int i;
-	int show_only = 0, remove_directories = 0, quiet = 0, ignored = 0;
+	int dry_run = 0, remove_directories = 0, quiet = 0, ignored = 0;
 	int ignored_only = 0, config_set = 0, errors = 0;
 	int rm_flags = REMOVE_DIR_KEEP_NESTED_GIT;
 	struct strbuf directory = STRBUF_INIT;
 	struct dir_struct dir;
 	static const char **pathspec;
 	struct strbuf buf = STRBUF_INIT;
+	struct string_list dels = STRING_LIST_INIT_DUP;
+	struct string_list skips = STRING_LIST_INIT_DUP;
+	struct string_list errs = STRING_LIST_INIT_DUP;
 	struct string_list exclude_list = STRING_LIST_INIT_NODUP;
 	const char *qname;
 	char *seen = NULL;
 	struct option options[] = {
 		OPT__QUIET(&quiet, N_("do not print names of files removed")),
-		OPT__DRY_RUN(&show_only, N_("dry run")),
+		OPT__DRY_RUN(&dry_run, N_("dry run")),
 		OPT__FORCE(&force, N_("force")),
 		OPT_BOOLEAN('d', NULL, &remove_directories,
 				N_("remove whole directories")),
@@ -77,7 +97,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 	if (ignored && ignored_only)
 		die(_("-x and -X cannot be used together"));
 
-	if (!show_only && !force) {
+	if (!dry_run && !force) {
 		if (config_set)
 			die(_("clean.requireForce set to true and neither -n nor -f given; "
 				  "refusing to clean"));
@@ -150,43 +170,45 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 		if (S_ISDIR(st.st_mode)) {
 			strbuf_addstr(&directory, ent->name);
 			qname = quote_path_relative(directory.buf, directory.len, &buf, prefix);
-			if (show_only && (remove_directories ||
-			    (matches == MATCHED_EXACTLY))) {
-				printf(_("Would remove %s\n"), qname);
-			} else if (remove_directories ||
-				   (matches == MATCHED_EXACTLY)) {
-				if (!quiet)
-					printf(_("Removing %s\n"), qname);
-				if (remove_dir_recursively(&directory,
-							   rm_flags) != 0) {
-					warning(_("failed to remove %s"), qname);
-					errors++;
-				}
-			} else if (show_only) {
-				printf(_("Would not remove %s\n"), qname);
-			} else {
-				printf(_("Not removing %s\n"), qname);
+			if (remove_directories || (matches == MATCHED_EXACTLY)) {
+				remove_dir_recursively_with_dryrun(&directory, rm_flags, dry_run,
+						&dels, &skips, &errs, prefix);
 			}
 			strbuf_reset(&directory);
 		} else {
 			if (pathspec && !matches)
 				continue;
 			qname = quote_path_relative(ent->name, -1, &buf, prefix);
-			if (show_only) {
-				printf(_("Would remove %s\n"), qname);
-				continue;
-			} else if (!quiet) {
-				printf(_("Removing %s\n"), qname);
-			}
-			if (unlink(ent->name) != 0) {
-				warning(_("failed to remove %s"), qname);
-				errors++;
+			if (dry_run)
+				string_list_append(&dels, qname);
+			else {
+				if (unlink(ent->name) != 0)
+					string_list_append(&errs, qname);
+				else
+					string_list_append(&dels, qname);
 			}
 		}
 	}
+
+	if (!quiet) {
+		if (dry_run) {
+			print_filtered("Would remove", &dels);
+			print_filtered("Would ignore untracked git repository", &skips);
+		} else {
+			print_filtered("Removing", &dels);
+			print_filtered("warning: ignoring untracked git repository", &skips);
+		}
+	}
+
+	errors = errs.nr;
+	if (errors)
+		print_filtered("warning: failed to remove", &errs);
+
 	free(seen);
 
 	strbuf_release(&directory);
+	string_list_clear(&dels, 0);
+	string_list_clear(&errs, 0);
 	string_list_clear(&exclude_list, 0);
 	return (errors != 0);
 }
