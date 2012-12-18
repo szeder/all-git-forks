@@ -91,6 +91,7 @@ struct pretty_print_context {
 	struct reflog_walk_info *reflog_info;
 	const char *output_encoding;
 	struct string_list *mailmap;
+	int color;
 };
 
 struct userformat_want {

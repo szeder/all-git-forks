@@ -593,6 +593,7 @@ void show_log(struct rev_info *opt)
 	ctx.reflog_info = opt->reflog_info;
 	ctx.fmt = opt->commit_format;
 	ctx.mailmap = opt->mailmap;
+	ctx.color = opt->diffopt.use_color;
 	pretty_print_commit(&ctx, commit, &msgbuf);
 
 	if (opt->add_signoff)
