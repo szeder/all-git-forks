@@ -367,6 +367,30 @@ unmap:
 	die("index file corrupt");
 }
 
+struct cache_entry *get_index_entry_ours_v2(struct index_state *istate, const char *name,
+					    int namelen, struct filter_opts *opts)
+{
+	int pos;
+
+	pos = index_name_pos(istate, name, namelen);
+	if (pos < 0) {
+		/*
+		 * We might be in the middle of a merge, in which
+		 * case we would read stage #2 (ours).
+		 */
+		int i;
+		for (i = -pos - 1;
+		     (pos < 0 && i < istate->cache_nr &&
+		      !strcmp(istate->cache[i]->name, name));
+		     i++)
+			if (ce_stage(istate->cache[i]) == 2)
+				pos = i;
+	}
+	if (pos < 0)
+		return NULL;
+	return istate->cache[pos];
+}
+
 #define WRITE_BUFFER_SIZE 8192
 static unsigned char write_buffer[WRITE_BUFFER_SIZE];
 static unsigned long write_buffer_len;
@@ -700,5 +724,6 @@ struct index_ops v2_ops = {
 
 struct internal_ops v2_internal_ops = {
 	for_each_index_entry_v2,
-	index_name_pos_v2
+	index_name_pos_v2,
+	get_index_entry_ours_v2
 };

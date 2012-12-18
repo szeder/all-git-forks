@@ -459,6 +459,8 @@ extern int get_index_entry_pos(struct index_state *, char *name, int namelen,
 		struct filter_opts *opts);
 extern struct cache_entry *get_index_entry_by_name(struct index_state *, char *name,
 		int namelen, struct filter_opts *opts);
+extern struct cache_entry *get_index_entry_ours(struct index_state * istate, const char *name,
+						int namelen, struct filter_opts *opts);
 
 typedef int each_cache_entry_fn(struct cache_entry *ce, void *);
 extern int for_each_index_entry(struct index_state *istate,

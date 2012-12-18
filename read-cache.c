@@ -1225,9 +1225,16 @@ int read_index_filtered(struct index_state *istate, struct filter_opts *opts)
 {
 	if (!istate->open)
 		index_open(istate);
+
+	/*
+	 * The default internal memory format is v2, use that ops, if not otherwise
+	 * specified
+	 */
+	istate->internal_ops = &v2_internal_ops;
+
 	/* The index has already been read */
 	if (istate->initialized == 1 && ((istate->filter_opts == NULL && opts == NULL)
-				|| !memcmp(istate->filter_opts, opts, sizeof(*opts))))
+					 || !memcmp(istate->filter_opts, opts, sizeof(*opts))))
 		return 0;
 
 	/* if istate->ops is not set we don't have an index file */
@@ -1290,6 +1297,17 @@ struct cache_entry *get_index_entry_by_name(struct index_state *istate, char *na
 	if (pos >= istate->cache_nr)
 		return NULL;
 	return istate->cache[pos];
+}
+
+struct cache_entry *get_index_entry_ours(struct index_state *istate, const char *name,
+					 int namelen, struct filter_opts *opts)
+{
+	read_index_filtered(istate, opts);
+	if (!istate->internal_ops) {
+		fprintf(stderr, "internal ops null\n");
+		return NULL;
+	}
+	return istate->internal_ops->get_index_entry_ours(istate, name, namelen, istate->filter_opts);
 }
 
 static int index_changed(struct stat *st_old, struct stat *st_new)

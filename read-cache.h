@@ -34,6 +34,8 @@ struct index_ops {
 struct internal_ops {
 	int (*for_each_index_entry)(struct index_state *istate, each_cache_entry_fn fn, void *cb_data);
 	int (*index_name_pos)(struct index_state *istate, const char *name, int namelen);
+	struct cache_entry *(*get_index_entry_ours)(struct index_state *istate, const char *name,
+						    int namelen, struct filter_opts *opts);
 };
 
 extern struct index_ops v2_ops;
