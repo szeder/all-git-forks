@@ -22,12 +22,11 @@ also update `HEAD` to set the specified branch as the current
 branch.
 
 'git checkout' <branch>::
-
-	Prepare to work on building new history on <branch>, by
-	pointing the HEAD to the branch and updating the index and
-	the files in the working tree.  Local modifications to the
-	files in the working tree are kept, so that they can be
-	committed on the <branch>.
+	To prepare for working on <branch>, switch to it by updating
+	the index and the files in the working tree, and by pointing
+	HEAD at the branch. Local modifications to the files in the
+	working tree are kept, so that they can be committed to the
+	<branch>.
 +
 If <branch> is not found but there does exist a tracking branch in
 exactly one remote (call it <remote>) with a matching name, treat as
@@ -65,12 +64,12 @@ successful.
 'git checkout' --detach [<commit>]::
 'git checkout' <commit>::
 
-	Prepare to work on building new history on top of <commit>,
-	by detaching HEAD at the commit (see "DETACHED HEAD"
-	section), and updating the index and the files in the
-	working tree.  Local modifications to the files in the
-	working tree are kept, so that they can be committed on the
-	<branch>.
+	Prepare to work on top of <commit>, by detaching HEAD at it
+	(see "DETACHED HEAD" section), and updating the index and the
+	files in the working tree.  Local modifications to the files
+	in the working tree are kept, so that the resulting working
+	tree will be the state recorded in the commit plus the local
+	modifications.
 +
 Passing `--detach` forces this behavior even if <commit> is a branch.
 
