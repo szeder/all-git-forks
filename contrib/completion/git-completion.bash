@@ -13,6 +13,7 @@
 #    *) .git/remotes file names
 #    *) git 'subcommands'
 #    *) tree paths within 'ref:path/to/file' expressions
+#    *) file paths within current working directory and index
 #    *) common --long-options
 #
 # To use these routines:
@@ -233,6 +234,59 @@ __gitcomp_nl ()
 	COMPREPLY=($(compgen -P "${2-}" -S "${4- }" -W "$1" -- "${3-$cur}"))
 }
 
+# Perl filter used to process path list returned by ls-files and
+# diff-index --name-only commands, in order to list file names
+# relative to a specified directory, and append a slash to directory
+# names.
+# The script expects the prefix path in the "pfx" environ variable.
+# The output must be processed with the uniq filter, to remove
+# duplicate directories.
+# XXX remove duplicates in the Perl script ?
+__git_index_file_list_filter='$pfx = $ENV{"pfx"};
+			$idx = index($_, $pfx);
+			if ($idx == 0) {
+				$_ = substr $_, length($pfx);
+				@segments = split("/", $_);
+				if ($segments[1]) {
+					print $segments[0], "/\n"
+				} else {
+					print $segments[0], "\n"
+				}
+			}'
+
+# __git_files accepts 1 or 2 arguments:
+# 1: A string for file index status mode ("c", "m", "d", "o"), as
+#    supported by git ls-files command.  This is required.
+# 2: An optional directory path.  If provided, only files within the
+#    specified directory are listed.  Sub directories are never recursed.
+#    Path must have a trailing slash.
+__git_files ()
+{
+	local dir="$(__gitdir)" flags="-${1}"
+
+	if [ -d "$dir" ]; then
+		git --git-dir="$dir" ls-files --exclude-standard ${flags} ${pfx} \
+			| pfx=$2 perl -ne "${__git_index_file_list_filter}" \
+			| uniq
+		return
+	fi
+}
+
+# __git_commit_files accepts 1 optional argument: a directory path.
+# If provided, only files within the specified directory are listed.
+# Sub directories are never recursed.  Path must have a trailing slash.
+__git_commit_files ()
+{
+	local dir="$(__gitdir)"
+
+	if [ -d "$dir" ]; then
+		git --git-dir="$dir" diff-index --name-only HEAD \
+			| pfx=$1 perl -ne "${__git_index_file_list_filter}" \
+			| uniq
+		return
+	fi
+}
+
 __git_heads ()
 {
 	local dir="$(__gitdir)"
@@ -429,6 +483,25 @@ __git_complete_revlist_file ()
 	esac
 }
 
+
+# __git_complete_index_file requires 1 argument, the file index
+# status mode
+_git_complete_index_file ()
+{
+	local pfx cur_="$cur" flags=${1}
+	case "$cur_" in
+		?*/*)
+			pfx="${cur_%/*}"
+			cur_="${cur_##*/}"
+			pfx="${pfx}/"
+
+			__gitcomp_nl "$(__git_files ${flags} ${pfx})" "$pfx" "$cur_" ""
+			;;
+		*)
+			__gitcomp_nl "$(__git_files ${flags})" "" "$cur_" ""
+			;;
+	esac
+}
 
 __git_complete_file ()
 {
@@ -770,8 +843,6 @@ _git_apply ()
 
 _git_add ()
 {
-	__git_has_doubledash && return
-
 	case "$cur" in
 	--*)
 		__gitcomp "
@@ -780,7 +851,8 @@ _git_add ()
 			"
 		return
 	esac
-	COMPREPLY=()
+	# XXX should we check for --update and --all options ?
+	_git_complete_index_file "om"
 }
 
 _git_archive ()
@@ -930,15 +1002,14 @@ _git_cherry_pick ()
 
 _git_clean ()
 {
-	__git_has_doubledash && return
-
 	case "$cur" in
 	--*)
 		__gitcomp "--dry-run --quiet"
 		return
 		;;
 	esac
-	COMPREPLY=()
+	# XXX should we check for -x option ?
+	_git_complete_index_file "o"
 }
 
 _git_clone ()
@@ -969,7 +1040,7 @@ _git_clone ()
 
 _git_commit ()
 {
-	__git_has_doubledash && return
+	local pfx cur_=${cur}
 
 	case "$cur" in
 	--cleanup=*)
@@ -997,8 +1068,20 @@ _git_commit ()
 			--verbose --quiet --fixup= --squash=
 			"
 		return
+		;;
+	?*/*)
+		pfx="${cur_%/*}"
+		cur_="${cur_##*/}"
+		pfx="${pfx}/"
+
+		__gitcomp_nl "$(__git_commit_files ${pfx})" "$pfx" "$cur_" ""
+		return
+		;;
+	*)
+		__gitcomp_nl "$(__git_commit_files)" "" "$cur_" ""
+		return
+		;;
 	esac
-	COMPREPLY=()
 }
 
 _git_describe ()
@@ -1216,8 +1299,6 @@ _git_init ()
 
 _git_ls_files ()
 {
-	__git_has_doubledash && return
-
 	case "$cur" in
 	--*)
 		__gitcomp "--cached --deleted --modified --others --ignored
@@ -1230,7 +1311,9 @@ _git_ls_files ()
 		return
 		;;
 	esac
-	COMPREPLY=()
+	# XXX ignore options like --modified and always suggest all cached
+	# files.
+	_git_complete_index_file "c"
 }
 
 _git_ls_remote ()
@@ -1362,7 +1445,8 @@ _git_mv ()
 		return
 		;;
 	esac
-	COMPREPLY=()
+	# XXX needs more work
+	_git_complete_index_file "c"
 }
 
 _git_name_rev ()
@@ -2068,15 +2152,13 @@ _git_revert ()
 
 _git_rm ()
 {
-	__git_has_doubledash && return
-
 	case "$cur" in
 	--*)
 		__gitcomp "--cached --dry-run --ignore-unmatch --quiet"
 		return
 		;;
 	esac
-	COMPREPLY=()
+	_git_complete_index_file "c"
 }
 
 _git_shortlog ()
