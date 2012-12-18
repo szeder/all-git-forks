@@ -363,30 +363,18 @@ static struct attr_stack *read_attr_from_file(const char *path, int macro_ok)
 
 static void *read_index_data(const char *path)
 {
-	int pos, len;
+	int len;
 	unsigned long sz;
 	enum object_type type;
 	void *data;
 	struct index_state *istate = use_index ? use_index : &the_index;
+	struct cache_entry *ce;
 
 	len = strlen(path);
-	pos = index_name_pos(istate, path, len);
-	if (pos < 0) {
-		/*
-		 * We might be in the middle of a merge, in which
-		 * case we would read stage #2 (ours).
-		 */
-		int i;
-		for (i = -pos - 1;
-		     (pos < 0 && i < istate->cache_nr &&
-		      !strcmp(istate->cache[i]->name, path));
-		     i++)
-			if (ce_stage(istate->cache[i]) == 2)
-				pos = i;
-	}
-	if (pos < 0)
+	ce = get_index_entry_ours(istate, path, len, NULL);
+	if (!ce)
 		return NULL;
-	data = read_sha1_file(istate->cache[pos]->sha1, &type, &sz);
+	data = read_sha1_file(ce->sha1, &type, &sz);
 	if (!data || type != OBJ_BLOB) {
 		free(data);
 		return NULL;
