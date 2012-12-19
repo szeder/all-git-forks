@@ -35,6 +35,7 @@ static int error_unmatch;
 static char *ps_matched;
 static const char *with_tree;
 static int exc_given;
+static int exclude_args;
 
 static const char *tag_cached = "";
 static const char *tag_unmerged = "";
@@ -203,7 +204,7 @@ static void show_ru_info(void)
 static int ce_excluded(struct path_exclude_check *check, struct cache_entry *ce)
 {
 	int dtype = ce_to_dtype(ce);
-	return path_excluded(check, ce->name, ce_namelen(ce), &dtype);
+	return is_path_excluded(check, ce->name, ce_namelen(ce), &dtype);
 }
 
 static void show_files(struct dir_struct *dir)
@@ -423,7 +424,7 @@ static int option_parse_exclude(const struct option *opt,
 	struct exclude_list *list = opt->value;
 
 	exc_given = 1;
-	add_exclude(arg, "", 0, list);
+	add_exclude(arg, "", 0, list, "--exclude option", --exclude_args);
 
 	return 0;
 }
