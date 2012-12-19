@@ -235,6 +235,15 @@ core.trustctime::
 	crawlers and some backup systems).
 	See linkgit:git-update-index[1]. True by default.
 
+core.ignorezerostat::
+	Affects the interpretation of some fields in the index. If
+	unset has no effect. When set to a comma separated list of fields,
+	each of the fields in the index will be excluded from comparison with
+	working tree if the index value is zero. The following fields
+	are recognzed: uid, gid, ctime, ino and dev. When ctime is ignored
+	the setting of 'core.trustctime' is overridden by by this config
+	value.
+
 core.quotepath::
 	The commands that output paths (e.g. 'ls-files',
 	'diff'), when not given the `-z` option, will quote

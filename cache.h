@@ -536,6 +536,14 @@ extern int delete_ref(const char *, const unsigned char *sha1, int delopt);
 /* Environment bits from configuration mechanism */
 extern int trust_executable_bit;
 extern int trust_ctime;
+extern unsigned int CHECK_NONZERO_stat;
+#define CHECK_NONZERO_STAT_UID (1<<0)
+#define CHECK_NONZERO_STAT_GID (1<<1)
+#define CHECK_NONZERO_STAT_CTIME (1<<2)
+#define CHECK_NONZERO_STAT_INO (1<<3)
+#define CHECK_NONZERO_STAT_DEV (1<<4)
+#define CHECK_NONZERO_STAT_MASK ((1<<5)-1)
+
 extern int quote_path_fully;
 extern int has_symlinks;
 extern int minimum_abbrev, default_abbrev;

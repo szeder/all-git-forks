@@ -566,6 +566,31 @@ static int git_default_core_config(const char *var, const char *value)
 		trust_ctime = git_config_bool(var, value);
 		return 0;
 	}
+	if (!strcmp(var, "core.ignorezerostat")) {
+		char *copy, *tok;
+		git_config_string(&copy, "core.ignorezerostat", value);
+		check_nonzero_stat = CHECK_NONZERO_STAT_MASK;
+		tok = strtok(value, ",");
+		while (tok) {
+			if (strcasecmp(tok, "uid") == 0)
+				check_nonzero_stat &= ~CHECK_NONZERO_STAT_UID;
+			else if (strcasecmp(tok, "gid") == 0)
+				check_nonzero_stat &= ~CHECK_NONZERO_STAT_GID;
+			else if (strcasecmp(tok, "ctime") == 0) {
+				check_nonzero_stat &= ~CHECK_NONZERO_STAT_CTIME;
+				trust_ctime = 0;
+			} else if (strcasecmp(tok, "ino") == 0)
+				check_nonzero_stat &= ~CHECK_NONZERO_STAT_INO;
+			else if (strcasecmp(tok, "dev") == 0)
+				check_nonzero_stat &= ~CHECK_NONZERO_STAT_DEV;
+			else
+				die_bad_config(var);
+			tok = strtok(NULL, ",");
+		}
+		if (check_nonzero_stat >= CHECK_NONZERO_STAT_MASK)
+			die_bad_config(var);
+		free(copy);
+	}
 
 	if (!strcmp(var, "core.quotepath")) {
 		quote_path_fully = git_config_bool(var, value);
