@@ -204,6 +204,15 @@ do
 	esac
 done
 
+if test -z "$GIT_TEST_PRINT"
+then
+	GIT_TEST_PRINT="printf %s"
+fi
+if test -z "$GIT_TEST_PRINT_LN"
+then
+	GIT_TEST_PRINT_LN="printf %s\n"
+fi
+
 if test -n "$color"
 then
 	say_color () {
@@ -225,7 +234,7 @@ then
 			test -n "$quiet" && return;;
 		esac
 		shift
-		printf "%s" "$*"
+		$GIT_TEST_PRINT "$*"
 		tput sgr0
 		echo
 		)
@@ -234,7 +243,7 @@ else
 	say_color() {
 		test -z "$1" && test -n "$quiet" && return
 		shift
-		printf "%s\n" "$*"
+		$GIT_TEST_PRINT_LN "$*"
 	}
 fi
 
