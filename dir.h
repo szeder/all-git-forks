@@ -138,6 +138,10 @@ extern void setup_standard_excludes(struct dir_struct *dir);
 #define REMOVE_DIR_KEEP_NESTED_GIT 02
 #define REMOVE_DIR_KEEP_TOPLEVEL 04
 extern int remove_dir_recursively(struct strbuf *path, int flag);
+extern int remove_dir_recursively_with_dryrun(struct strbuf *path,
+			int flag, int dryrun, struct string_list *dels,
+			struct string_list *skips, struct string_list *errs,
+			const char *prefix);
 
 /* tries to remove the path with empty directories along it, ignores ENOENT */
 extern int remove_path(const char *path);
