@@ -176,6 +176,8 @@ do
 		debug=t; shift ;;
 	-i|--i|--im|--imm|--imme|--immed|--immedi|--immedia|--immediat|--immediate)
 		immediate=t; shift ;;
+	--fail-passed-todo)
+		fail_passed_todo=t; shift ;;
 	-l|--l|--lo|--lon|--long|--long-|--long-t|--long-te|--long-tes|--long-test|--long-tests)
 		GIT_TEST_LONG=t; export GIT_TEST_LONG; shift ;;
 	-h|--h|--he|--hel|--help)
@@ -309,6 +311,7 @@ test_failure_ () {
 test_known_broken_ok_ () {
 	test_fixed=$(($test_fixed+1))
 	say_color error "ok $test_count - $@ # TODO known breakage vanished"
+	test "$fail_passed_todo" = "" || { GIT_EXIT_OK=t; exit 1; }
 }
 
 test_known_broken_failure_ () {
