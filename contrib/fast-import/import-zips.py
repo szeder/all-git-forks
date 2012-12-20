@@ -13,6 +13,11 @@ from sys import argv, exit
 from time import mktime
 from zipfile import ZipFile
 
+if sys.hexversion < 0x01060000:
+        # The limiter is the zipfile module
+        sys.stderr.write("import-zips.py: requires Python 1.6.0 or later.")
+        sys.exit(1)
+
 if len(argv) < 2:
 	print 'Usage:', argv[0], '<zipfile>...'
 	exit(1)

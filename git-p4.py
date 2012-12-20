@@ -12,6 +12,11 @@ import optparse, sys, os, marshal, subprocess, shelve
 import tempfile, getopt, os.path, time, platform
 import re, shutil
 
+if sys.hexversion < 0x02040000:
+    # The limiter is the subprocess module
+    sys.stderr.write("git-p4.py: requires Python 2.4 or later.")
+    sys.exit(1)
+
 verbose = False
 
 # Only labels/tags matching this will be imported/exported
