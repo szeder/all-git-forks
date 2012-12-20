@@ -4,13 +4,13 @@ diff_cmd () {
 	rm_remote=
 	if test "/dev/null" = "$LOCAL"
 	then
-		LOCAL="./p4merge-dev-null.LOCAL.$$"
+		LOCAL="$(create_empty_file)"
 		>"$LOCAL"
 		rm_local=true
 	fi
 	if test "/dev/null" = "$REMOTE"
 	then
-		REMOTE="./p4merge-dev-null.REMOTE.$$"
+		REMOTE="$(create_empty_file)"
 		>"$REMOTE"
 		rm_remote=true
 	fi
@@ -32,4 +32,8 @@ merge_cmd () {
 	$base_present || >"$BASE"
 	"$merge_tool_path" "$BASE" "$LOCAL" "$REMOTE" "$MERGED"
 	check_unchanged
+}
+
+create_empty_file () {
+	mktemp -t git-difftool-p4merge-empty-file.XXXXXX
 }
