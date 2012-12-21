@@ -1,3 +1,6 @@
+# The default target of this Makefile is...
+all::
+
 MAN1_TXT= \
 	$(filter-out $(addsuffix .txt, $(ARTICLES) $(SP_ARTICLES)), \
 		$(wildcard git-*.txt)) \
@@ -87,6 +90,8 @@ endif
 -include ../config.mak.autogen
 -include ../config.mak
 
+DEFAULT_DOC_TARGET ?= html man
+
 #
 # For docbook-xsl ...
 #	-1.68.1,	no extra settings are needed?
@@ -173,7 +178,7 @@ ifndef V
 endif
 endif
 
-all: html man
+all:: $(DEFAULT_DOC_TARGET)
 
 html: $(DOC_HTML)
 
