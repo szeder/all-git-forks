@@ -10,16 +10,20 @@ git-unpack-file - Creates a temporary file with a blob's contents
 SYNOPSIS
 --------
 [verse]
-'git unpack-file' <blob>
+'git unpack-file' [-t] <blob>
 
 DESCRIPTION
 -----------
 Creates a file holding the contents of the blob specified by sha1. It
-returns the name of the temporary file in the following format:
-	.merge_file_XXXXX
+returns the name of the temporary file (by default `.merge_file_XXXXX`).
+
 
 OPTIONS
 -------
+-t::
+	The temporary file is created in `$TMPDIR` directory,
+	instead of the current directory.
+
 <blob>::
 	Must be a blob id
 
