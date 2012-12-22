@@ -15,7 +15,7 @@ static struct string_list config_name_for_path;
 static struct string_list config_fetch_recurse_submodules_for_name;
 static struct string_list config_ignore_for_name;
 static int config_fetch_recurse_submodules = RECURSE_SUBMODULES_ON_DEMAND;
-static struct string_list changed_submodule_paths;
+static struct string_list changed_submodule_names;
 static int initialized_fetch_ref_tips;
 static struct sha1_array ref_tips_before_fetch;
 static struct sha1_array ref_tips_after_fetch;
@@ -507,14 +507,14 @@ static void changed_submodule_add(const unsigned char *sha1, const char *path,
 			     struct strbuf name)
 {
 	struct string_list_item *exists;
-	exists = unsorted_string_list_lookup(&changed_submodule_paths, path);
+	exists = unsorted_string_list_lookup(&changed_submodule_names, name.buf);
 	if (!exists)
-		string_list_append(&changed_submodule_paths, xstrdup(path));
+		string_list_append(&changed_submodule_names, xstrdup(name.buf));
 }
 
 static struct string_list_item *lookup_changed_submodule(const char *name)
 {
-	return unsorted_string_list_lookup(&changed_submodule_paths, name);
+	return unsorted_string_list_lookup(&changed_submodule_names, name);
 }
 
 static const char *lookup_config_name_for_path(const char *path)
@@ -600,22 +600,8 @@ static void submodule_collect_changed_cb(struct diff_queue_struct *q,
 		if (!S_ISGITLINK(p->two->mode))
 			continue;
 
-		if (S_ISGITLINK(p->one->mode)) {
-			/* NEEDSWORK: We should honor the name configured in
-			 * the .gitmodules file of the commit we are examining
-			 * here to be able to correctly follow submodules
-			 * being moved around. */
-			if (!is_submodule_commit_present(p->two->path, p->two->sha1))
-				add_changed_submodule(commit_sha1, p->two->path);
-		} else {
-			/* Submodule is new or was moved here */
-			/* NEEDSWORK: When the .git directories of submodules
-			 * live inside the superprojects .git directory some
-			 * day we should fetch new submodules directly into
-			 * that location too when config or options request
-			 * that so they can be checked out from there. */
-			continue;
-		}
+		if (!is_submodule_commit_present(p->two->path, p->two->sha1))
+			add_changed_submodule(commit_sha1, p->two->path);
 	}
 }
 
@@ -664,7 +650,7 @@ static void calculate_changed_submodule_paths(void)
 
 	/*
 	 * Collect all submodules (whether checked out or not) for which new
-	 * commits have been recorded upstream in "changed_submodule_paths".
+	 * commits have been recorded upstream in "changed_submodule_names".
 	 */
 	while ((commit = get_revision(&rev))) {
 		struct commit_list *parent = commit->parents;
@@ -737,7 +723,7 @@ int fetch_populated_submodules(const struct argv_array *options,
 				if ((intptr_t)fetch_recurse_submodules_option->util == RECURSE_SUBMODULES_OFF)
 					continue;
 				if ((intptr_t)fetch_recurse_submodules_option->util == RECURSE_SUBMODULES_ON_DEMAND) {
-					if (!lookup_changed_submodule(ce->name))
+					if (!lookup_changed_submodule(name))
 						continue;
 					default_argv = "on-demand";
 				}
@@ -746,13 +732,13 @@ int fetch_populated_submodules(const struct argv_array *options,
 				    gitmodules_is_unmerged)
 					continue;
 				if (config_fetch_recurse_submodules == RECURSE_SUBMODULES_ON_DEMAND) {
-					if (!lookup_changed_submodule(ce->name))
+					if (!lookup_changed_submodule(name))
 						continue;
 					default_argv = "on-demand";
 				}
 			}
 		} else if (command_line_option == RECURSE_SUBMODULES_ON_DEMAND) {
-			if (!lookup_changed_submodule(ce->name))
+			if (!lookup_changed_submodule(name))
 				continue;
 			default_argv = "on-demand";
 		}
@@ -783,7 +769,7 @@ int fetch_populated_submodules(const struct argv_array *options,
 	}
 	argv_array_clear(&argv);
 out:
-	string_list_clear(&changed_submodule_paths, 1);
+	string_list_clear(&changed_submodule_names, 1);
 	return result;
 }
 
