@@ -1,0 +1,27 @@
+About reading and applying configuration of non-checked out revisions during fetch
+==================================================================================
+
+1. During collection phase:
+   For each revision that changes a submodule store:
+	* commit sha1 (for subsequent readings of the same config)
+	* path
+	* name
+
+2. During fetch phase:
+   For each index entry that is a gitlink:
+   	* lookup module name from checked out config and local
+	* check if that module name is in the collection
+	* do as said in checked out config and local
+	* remove module from collection
+
+3. Next step implementation for during fetch:
+   For each leftover submodule in collection:
+   	* lookup config from collection
+		** if all fetch configuration are the same:
+			*** read configuration from revisions
+		** read local configuration superseeding revisions config
+		** if it does not exist in .git/modules
+			*** clone into ./git/modules if configured so
+		** else
+			*** fetch if configured so
+	* remove module from collection
