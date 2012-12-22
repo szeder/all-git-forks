@@ -178,10 +178,10 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
-				InlineFunctionExpansion="1"
 				EnableIntrinsicFunctions="true"
 				AdditionalIncludeDirectories="..\..\..;..\..\..\..\zlib;..\..;..\;..\include;..\..\..\compat;..\..\..\compat\fnmatch;..\..\..\compat\regex;..\..\..\compat\win32;.\;..\..\..\..\libcurl\include"
 				PreprocessorDefinitions="WIN32;_LIB;HAVE_STRING_H;USE_WIN32_MMAP"
+				StringPooling="true"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="0"
 				RuntimeLibrary="2"
@@ -245,10 +245,10 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
-				InlineFunctionExpansion="1"
 				EnableIntrinsicFunctions="true"
 				AdditionalIncludeDirectories="..\..\..;..\..\..\..\zlib;..\..;..\;..\include;..\..\..\compat;..\..\..\compat\fnmatch;..\..\..\compat\regex;..\..\..\compat\win32;.\;..\..\..\..\libcurl\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;HAVE_STRING_H;USE_WIN32_MMAP;WIN64"
+				StringPooling="true"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
