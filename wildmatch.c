@@ -77,14 +77,17 @@ static int dowild(const uchar *p, const uchar *text, unsigned int flags)
 			continue;
 		case '?':
 			/* Match anything but '/'. */
-			if (t_ch == '/')
+			if ((flags & WM_PATHNAME) && t_ch == '/')
 				return WM_NOMATCH;
 			continue;
 		case '*':
 			if (*++p == '*') {
 				const uchar *prev_p = p - 2;
 				while (*++p == '*') {}
-				if ((prev_p == text || *prev_p == '/') ||
+				if (!(flags & WM_PATHNAME))
+					/* without WM_PATHNAME, '*' == '**' */
+					special = 1;
+				else if ((prev_p == text || *prev_p == '/') ||
 				    (*p == '\0' || *p == '/' ||
 				     (p[0] == '\\' && p[1] == '/'))) {
 					/*
@@ -103,7 +106,8 @@ static int dowild(const uchar *p, const uchar *text, unsigned int flags)
 				} else
 					return WM_ABORT_MALFORMED;
 			} else
-				special = 0;
+				/* without WM_PATHNAME, '*' == '**' */
+				special = flags & WM_PATHNAME ? 0 : 1;
 			if (*p == '\0') {
 				/* Trailing "**" matches everything.  Trailing "*" matches
 				 * only if there are no more slash characters. */
@@ -214,7 +218,8 @@ static int dowild(const uchar *p, const uchar *text, unsigned int flags)
 				} else if (t_ch == p_ch)
 					matched = 1;
 			} while (prev_ch = p_ch, (p_ch = *++p) != ']');
-			if (matched == special || t_ch == '/')
+			if (matched == special ||
+			    ((flags & WM_PATHNAME) && t_ch == '/'))
 				return WM_NOMATCH;
 			continue;
 		}
