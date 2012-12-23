@@ -18,9 +18,6 @@ typedef unsigned char uchar;
 #define NEGATE_CLASS	'!'
 #define NEGATE_CLASS2	'^'
 
-#define FALSE 0
-#define TRUE 1
-
 #define CC_EQ(class, len, litmatch) ((len) == sizeof (litmatch)-1 \
 				    && *(class) == *(litmatch) \
 				    && strncmp((char*)class, litmatch, len) == 0)
@@ -55,7 +52,7 @@ typedef unsigned char uchar;
 #define ISXDIGIT(c) (ISASCII(c) && isxdigit(c))
 
 /* Match pattern "p" against "text" */
-static int dowild(const uchar *p, const uchar *text, int force_lower_case)
+static int dowild(const uchar *p, const uchar *text, unsigned int flags)
 {
 	uchar p_ch;
 
@@ -63,10 +60,10 @@ static int dowild(const uchar *p, const uchar *text, int force_lower_case)
 		int matched, special;
 		uchar t_ch, prev_ch;
 		if ((t_ch = *text) == '\0' && p_ch != '*')
-			return ABORT_ALL;
-		if (force_lower_case && ISUPPER(t_ch))
+			return WM_ABORT_ALL;
+		if ((flags & WM_CASEFOLD) && ISUPPER(t_ch))
 			t_ch = tolower(t_ch);
-		if (force_lower_case && ISUPPER(p_ch))
+		if ((flags & WM_CASEFOLD) && ISUPPER(p_ch))
 			p_ch = tolower(p_ch);
 		switch (p_ch) {
 		case '\\':
@@ -76,18 +73,21 @@ static int dowild(const uchar *p, const uchar *text, int force_lower_case)
 			/* FALLTHROUGH */
 		default:
 			if (t_ch != p_ch)
-				return NOMATCH;
+				return WM_NOMATCH;
 			continue;
 		case '?':
 			/* Match anything but '/'. */
-			if (t_ch == '/')
-				return NOMATCH;
+			if ((flags & WM_PATHNAME) && t_ch == '/')
+				return WM_NOMATCH;
 			continue;
 		case '*':
 			if (*++p == '*') {
 				const uchar *prev_p = p - 2;
 				while (*++p == '*') {}
-				if ((prev_p == text || *prev_p == '/') ||
+				if (!(flags & WM_PATHNAME))
+					/* without WM_PATHNAME, '*' == '**' */
+					special = 1;
+				else if ((prev_p == text || *prev_p == '/') ||
 				    (*p == '\0' || *p == '/' ||
 				     (p[0] == '\\' && p[1] == '/'))) {
 					/*
@@ -100,33 +100,67 @@ static int dowild(const uchar *p, const uchar *text, int force_lower_case)
 					 * both foo/bar and foo/a/bar.
 					 */
 					if (p[0] == '/' &&
-					    dowild(p + 1, text, force_lower_case) == MATCH)
-						return MATCH;
-					special = TRUE;
+					    dowild(p + 1, text, flags) == WM_MATCH)
+						return WM_MATCH;
+					special = 1;
 				} else
-					return ABORT_MALFORMED;
+					return WM_ABORT_MALFORMED;
 			} else
-				special = FALSE;
+				/* without WM_PATHNAME, '*' == '**' */
+				special = flags & WM_PATHNAME ? 0 : 1;
 			if (*p == '\0') {
 				/* Trailing "**" matches everything.  Trailing "*" matches
 				 * only if there are no more slash characters. */
 				if (!special) {
 					if (strchr((char*)text, '/') != NULL)
-						return NOMATCH;
+						return WM_NOMATCH;
 				}
-				return MATCH;
+				return WM_MATCH;
+			} else if (*p == '/' && (flags & WM_PATHNAME) && !special) {
+				/*
+				 * an asterisk followed by a slash
+				 * with WM_PATHNAME matches the next
+				 * directory
+				 */
+				const char *slash = strchr((char*)text, '/');
+				if (!slash)
+					return WM_NOMATCH;
+				text = (const uchar*)slash;
+				/* the slash is consumed by the top-level for loop */
+				break;
 			}
 			while (1) {
 				if (t_ch == '\0')
 					break;
-				if ((matched = dowild(p, text,  force_lower_case)) != NOMATCH) {
-					if (!special || matched != ABORT_TO_STARSTAR)
+				/*
+				 * Try to advance faster when an asterisk is
+				 * followed by a literal. We know in this case
+				 * that the the string before the literal
+				 * must belong to "*".
+				 */
+				if (!is_glob_special(*p)) {
+					p_ch = *p;
+					if ((flags & WM_CASEFOLD) && ISUPPER(p_ch))
+						p_ch = tolower(p_ch);
+					while ((t_ch = *text) != '\0' &&
+					       (!(flags & WM_PATHNAME) || t_ch != '/')) {
+						if ((flags & WM_CASEFOLD) && ISUPPER(t_ch))
+							t_ch = tolower(t_ch);
+						if (t_ch == p_ch)
+							break;
+						text++;
+					}
+					if (t_ch != p_ch)
+						return WM_NOMATCH;
+				}
+				if ((matched = dowild(p, text,  flags)) != WM_NOMATCH) {
+					if (!special || matched != WM_ABORT_TO_STARSTAR)
 						return matched;
 				} else if (!special && t_ch == '/')
-					return ABORT_TO_STARSTAR;
+					return WM_ABORT_TO_STARSTAR;
 				t_ch = *++text;
 			}
-			return ABORT_ALL;
+			return WM_ABORT_ALL;
 		case '[':
 			p_ch = *++p;
 #ifdef NEGATE_CLASS2
@@ -134,101 +168,102 @@ static int dowild(const uchar *p, const uchar *text, int force_lower_case)
 				p_ch = NEGATE_CLASS;
 #endif
 			/* Assign literal TRUE/FALSE because of "matched" comparison. */
-			special = p_ch == NEGATE_CLASS? TRUE : FALSE;
+			special = p_ch == NEGATE_CLASS;
 			if (special) {
 				/* Inverted character class. */
 				p_ch = *++p;
 			}
 			prev_ch = 0;
-			matched = FALSE;
+			matched = 0;
 			do {
 				if (!p_ch)
-					return ABORT_ALL;
+					return WM_ABORT_ALL;
 				if (p_ch == '\\') {
 					p_ch = *++p;
 					if (!p_ch)
-						return ABORT_ALL;
+						return WM_ABORT_ALL;
 					if (t_ch == p_ch)
-						matched = TRUE;
+						matched = 1;
 				} else if (p_ch == '-' && prev_ch && p[1] && p[1] != ']') {
 					p_ch = *++p;
 					if (p_ch == '\\') {
 						p_ch = *++p;
 						if (!p_ch)
-							return ABORT_ALL;
+							return WM_ABORT_ALL;
 					}
 					if (t_ch <= p_ch && t_ch >= prev_ch)
-						matched = TRUE;
+						matched = 1;
 					p_ch = 0; /* This makes "prev_ch" get set to 0. */
 				} else if (p_ch == '[' && p[1] == ':') {
 					const uchar *s;
 					int i;
 					for (s = p += 2; (p_ch = *p) && p_ch != ']'; p++) {} /*SHARED ITERATOR*/
 					if (!p_ch)
-						return ABORT_ALL;
+						return WM_ABORT_ALL;
 					i = p - s - 1;
 					if (i < 0 || p[-1] != ':') {
 						/* Didn't find ":]", so treat like a normal set. */
 						p = s - 2;
 						p_ch = '[';
 						if (t_ch == p_ch)
-							matched = TRUE;
+							matched = 1;
 						continue;
 					}
 					if (CC_EQ(s,i, "alnum")) {
 						if (ISALNUM(t_ch))
-							matched = TRUE;
+							matched = 1;
 					} else if (CC_EQ(s,i, "alpha")) {
 						if (ISALPHA(t_ch))
-							matched = TRUE;
+							matched = 1;
 					} else if (CC_EQ(s,i, "blank")) {
 						if (ISBLANK(t_ch))
-							matched = TRUE;
+							matched = 1;
 					} else if (CC_EQ(s,i, "cntrl")) {
 						if (ISCNTRL(t_ch))
-							matched = TRUE;
+							matched = 1;
 					} else if (CC_EQ(s,i, "digit")) {
 						if (ISDIGIT(t_ch))
-							matched = TRUE;
+							matched = 1;
 					} else if (CC_EQ(s,i, "graph")) {
 						if (ISGRAPH(t_ch))
-							matched = TRUE;
+							matched = 1;
 					} else if (CC_EQ(s,i, "lower")) {
 						if (ISLOWER(t_ch))
-							matched = TRUE;
+							matched = 1;
 					} else if (CC_EQ(s,i, "print")) {
 						if (ISPRINT(t_ch))
-							matched = TRUE;
+							matched = 1;
 					} else if (CC_EQ(s,i, "punct")) {
 						if (ISPUNCT(t_ch))
-							matched = TRUE;
+							matched = 1;
 					} else if (CC_EQ(s,i, "space")) {
 						if (ISSPACE(t_ch))
-							matched = TRUE;
+							matched = 1;
 					} else if (CC_EQ(s,i, "upper")) {
 						if (ISUPPER(t_ch))
-							matched = TRUE;
+							matched = 1;
 					} else if (CC_EQ(s,i, "xdigit")) {
 						if (ISXDIGIT(t_ch))
-							matched = TRUE;
+							matched = 1;
 					} else /* malformed [:class:] string */
-						return ABORT_ALL;
+						return WM_ABORT_ALL;
 					p_ch = 0; /* This makes "prev_ch" get set to 0. */
 				} else if (t_ch == p_ch)
-					matched = TRUE;
+					matched = 1;
 			} while (prev_ch = p_ch, (p_ch = *++p) != ']');
-			if (matched == special || t_ch == '/')
-				return NOMATCH;
+			if (matched == special ||
+			    ((flags & WM_PATHNAME) && t_ch == '/'))
+				return WM_NOMATCH;
 			continue;
 		}
 	}
 
-	return *text ? NOMATCH : MATCH;
+	return *text ? WM_NOMATCH : WM_MATCH;
 }
 
 /* Match the "pattern" against the "text" string. */
-int wildmatch(const char *pattern, const char *text, int flags)
+int wildmatch(const char *pattern, const char *text,
+	      unsigned int flags, struct wildopts *wo)
 {
-	return dowild((const uchar*)pattern, (const uchar*)text,
-		      flags & FNM_CASEFOLD ? 1 :0);
+	return dowild((const uchar*)pattern, (const uchar*)text, flags);
 }
