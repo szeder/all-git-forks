@@ -43,22 +43,28 @@ AUTHOR_RE = re.compile('^([^<>]+?)? ?<([^<>]*)>$')
 AUTHOR_HG_RE = re.compile('^(.*?) ?<(.*?)(?:>(.+)?)?$')
 RAW_AUTHOR_RE = re.compile('^(\w+) (?:(.+)? )?<(.*)> (\d+) ([+-]\d+)')
 
+
 def die(msg, *args):
     sys.stderr.write('ERROR: %s\n' % (msg % args))
     sys.exit(1)
 
+
 def warn(msg, *args):
     sys.stderr.write('WARNING: %s\n' % (msg % args))
+
 
 def gitmode(flags):
     return 'l' in flags and '120000' or 'x' in flags and '100755' or '100644'
 
+
 def gittz(tz):
     return '%+03d%02d' % (-tz / 3600, -tz % 3600 / 60)
 
+
 def hgmode(mode):
-    m = { '0100755': 'x', '0120000': 'l' }
+    m = {'0100755': 'x', '0120000': 'l'}
     return m.get(mode, '')
+
 
 def get_config(config):
     cmd = ['git', 'config', '--get', config]
@@ -66,8 +72,8 @@ def get_config(config):
     output, _ = process.communicate()
     return output
 
-class Marks:
 
+class Marks:
     def __init__(self, path):
         self.path = path
         self.tips = {}
@@ -91,7 +97,11 @@ class Marks:
             self.rev_marks[mark] = int(rev)
 
     def dict(self):
-        return { 'tips': self.tips, 'marks': self.marks, 'last-mark' : self.last_mark }
+        return {
+            'tips': self.tips,
+            'marks': self.marks,
+            'last-mark': self.last_mark
+        }
 
     def store(self):
         json.dump(self.dict(), open(self.path, 'w'))
@@ -124,8 +134,8 @@ class Marks:
     def set_tip(self, branch, tip):
         self.tips[branch] = tip
 
-class Parser:
 
+class Parser:
     def __init__(self, repo):
         self.repo = repo
         self.line = self.get_line()
@@ -192,11 +202,13 @@ class Parser:
         tz = ((tz / 100) * 3600) + ((tz % 100) * 60)
         return (user, int(date), -tz)
 
+
 def export_file(fc):
     d = fc.data()
     print "M %s inline %s" % (gitmode(fc.flags()), fc.path())
     print "data %d" % len(d)
     print d
+
 
 def get_filechanges(repo, ctx, parent):
     modified = set()
@@ -217,6 +229,7 @@ def get_filechanges(repo, ctx, parent):
 
     return added | modified, removed
 
+
 def fixup_user_git(user):
     name = mail = None
     user = user.replace('"', '')
@@ -229,6 +242,7 @@ def fixup_user_git(user):
         if m:
             name = m.group(1).strip()
     return (name, mail)
+
 
 def fixup_user_hg(user):
     def sanitize(name):
@@ -251,6 +265,7 @@ def fixup_user_hg(user):
 
     return (name, mail)
 
+
 def fixup_user(user):
     global mode, bad_mail
 
@@ -265,6 +280,7 @@ def fixup_user(user):
         mail = bad_mail
 
     return '%s <%s>' % (name, mail)
+
 
 def get_repo(url, alias):
     global dirname, peer
@@ -286,13 +302,16 @@ def get_repo(url, alias):
 
     return repo
 
+
 def rev_to_mark(rev):
     global marks
     return marks.from_rev(rev)
 
+
 def mark_to_rev(mark):
     global marks
     return marks.to_rev(mark)
+
 
 def export_ref(repo, name, kind, head):
     global prefix, marks, mode
@@ -390,21 +409,26 @@ def export_ref(repo, name, kind, head):
 
     marks.set_tip(ename, rev)
 
+
 def export_tag(repo, tag):
     export_ref(repo, tag, 'tags', repo[tag])
+
 
 def export_bookmark(repo, bmark):
     head = bmarks[bmark]
     export_ref(repo, bmark, 'bookmarks', head)
+
 
 def export_branch(repo, branch):
     tip = get_branch_tip(repo, branch)
     head = repo[tip]
     export_ref(repo, branch, 'branches', head)
 
+
 def export_head(repo):
     global g_head
     export_ref(repo, g_head[0], 'bookmarks', g_head[1])
+
 
 def do_capabilities(parser):
     global prefix, dirname
@@ -423,6 +447,7 @@ def do_capabilities(parser):
 
     print
 
+
 def get_branch_tip(repo, branch):
     global branches
 
@@ -438,6 +463,7 @@ def get_branch_tip(repo, branch):
             return repo.branchtip(branch)
 
     return heads[0]
+
 
 def list_head(repo, cur):
     global g_head, bmarks
@@ -459,6 +485,7 @@ def list_head(repo, cur):
 
     print "@refs/heads/%s HEAD" % head
     g_head = (head, node)
+
 
 def do_list(parser):
     global branches, bmarks, mode, track_branches
@@ -489,6 +516,7 @@ def do_list(parser):
         print "? refs/tags/%s" % tag
 
     print
+
 
 def do_import(parser):
     repo = parser.repo
@@ -526,6 +554,7 @@ def do_import(parser):
 
     print 'done'
 
+
 def parse_blob(parser):
     global blob_marks
 
@@ -536,13 +565,15 @@ def parse_blob(parser):
     blob_marks[mark] = data
     parser.next()
 
+
 def get_merge_files(repo, p1, p2, files):
     for e in repo[p1].files():
         if e not in files:
             if e not in repo[p1].manifest():
                 continue
-            f = { 'ctx' : repo[p1][e] }
+            f = {'ctx': repo[p1][e]}
             files[e] = f
+
 
 def parse_commit(parser):
     global marks, blob_marks, bmarks, parsed_refs
@@ -576,10 +607,10 @@ def parse_commit(parser):
         if parser.check('M'):
             t, m, mark_ref, path = line.split(' ', 3)
             mark = int(mark_ref[1:])
-            f = { 'mode' : hgmode(m), 'data' : blob_marks[mark] }
+            f = {'mode': hgmode(m), 'data': blob_marks[mark]}
         elif parser.check('D'):
             t, path = line.split(' ')
-            f = { 'deleted' : True }
+            f = {'deleted': True}
         else:
             die('Unknown file command: %s' % line)
         files[path] = f
@@ -652,6 +683,7 @@ def parse_commit(parser):
     parsed_refs[ref] = node
     marks.new_mark(rev, commit_mark)
 
+
 def parse_reset(parser):
     global parsed_refs
 
@@ -669,6 +701,7 @@ def parse_reset(parser):
     node = parser.repo.changelog.node(mark_to_rev(from_mark))
     parsed_refs[ref] = node
 
+
 def parse_tag(parser):
     name = parser[1]
     parser.next()
@@ -680,6 +713,7 @@ def parse_tag(parser):
     parser.next()
 
     # nothing to do
+
 
 def do_export(parser):
     global parsed_refs, bmarks, peer
@@ -724,6 +758,7 @@ def do_export(parser):
     if peer:
         parser.repo.push(peer, force=False)
 
+
 def fix_path(alias, repo, orig_url):
     repo_url = util.url(repo.url())
     url = util.url(orig_url)
@@ -731,6 +766,7 @@ def fix_path(alias, repo, orig_url):
         return
     cmd = ['git', 'config', 'remote.%s.url' % alias, "hg::%s" % repo_url]
     subprocess.call(cmd)
+
 
 def main(args):
     global prefix, dirname, branches, bmarks
