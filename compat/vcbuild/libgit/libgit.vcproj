@@ -28,8 +28,6 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				Description="Create Dumy header file"
-				CommandLine="IF NOT EXIST $(InputDir)\..\sys\param.h echo ;&gt; $(InputDir)\..\sys\param.h&#x0D;&#x0A;IF NOT EXIST $(InputDir)\..\include\utime.h echo ;&gt; $(InputDir)\..\include\utime.h&#x0D;&#x0A;IF NOT EXIST $(InputDir)\..\sys\type.h echo ;&gt; $(InputDir)\..\sys\type.h&#x0D;&#x0A;"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
@@ -94,8 +92,6 @@
 			>
 			<Tool
 				Name="VCPreBuildEventTool"
-				Description="Create Dumy header file"
-				CommandLine="IF NOT EXIST $(InputDir)\..\sys\param.h echo ;&gt; $(InputDir)\..\sys\param.h&#x0D;&#x0A;IF NOT EXIST $(InputDir)\..\include\utime.h echo ;&gt; $(InputDir)\..\include\utime.h&#x0D;&#x0A;IF NOT EXIST $(InputDir)\..\sys\type.h echo ;&gt; $(InputDir)\..\sys\type.h&#x0D;&#x0A;"
 			/>
 			<Tool
 				Name="VCCustomBuildTool"
