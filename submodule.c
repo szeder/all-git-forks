@@ -16,6 +16,7 @@ static struct string_list config_fetch_recurse_submodules_for_name;
 static struct string_list config_ignore_for_name;
 static int config_fetch_recurse_submodules = RECURSE_SUBMODULES_ON_DEMAND;
 static struct string_list changed_submodule_names;
+static struct hash_table parsed_submodule_commits;
 static int initialized_fetch_ref_tips;
 static struct sha1_array ref_tips_before_fetch;
 static struct sha1_array ref_tips_after_fetch;
@@ -488,6 +489,63 @@ static int is_submodule_commit_present(const char *path, unsigned char sha1[20])
 	return is_present;
 }
 
+struct parsed_commit {
+	unsigned char *sha1;
+	struct parsed_commit *next;
+};
+
+static unsigned int hash_sha1(const unsigned char *sha1)
+{
+	unsigned int hash;
+	memcpy(&hash, sha1, sizeof(hash));
+	return hash;
+}
+
+static int lookup_parsed_commit(const unsigned char *sha1)
+{
+	unsigned int hash = hash_sha1(sha1);
+	struct parsed_commit *c = lookup_hash(hash, &parsed_submodule_commits);
+
+	while (c && hashcmp(c->sha1, sha1))
+		c = c->next;
+
+	if (c)
+		return 1;
+
+	return 0;
+}
+
+static void add_parsed_commit(const unsigned char *sha1)
+{
+	unsigned int hash;
+	void **pos;
+	struct parsed_commit *entry = xmalloc(sizeof(*entry));
+
+	entry->sha1 = xmalloc(sizeof(null_sha1));
+	hashcpy(entry->sha1, sha1);
+	entry->next = NULL;
+
+	hash = hash_sha1(sha1);
+	pos = insert_hash(hash, entry, &parsed_submodule_commits);
+	if (pos) {
+		entry->next = *pos;
+		*pos = entry;
+	}
+}
+
+static int free_one_parsed_commit(void *ptr, void *data)
+{
+	struct parsed_commit *entry = ptr;
+	free(entry->sha1);
+	free(entry);
+}
+
+static void free_parsed_commits()
+{
+	for_each_hash(&parsed_submodule_commits, free_one_parsed_commit, NULL);
+	free_hash(&parsed_submodule_commits);
+}
+
 static int read_sha1_strbuf(struct strbuf *s, const unsigned char *sha1,
 			    enum object_type *type)
 {
@@ -600,8 +658,11 @@ static void submodule_collect_changed_cb(struct diff_queue_struct *q,
 		if (!S_ISGITLINK(p->two->mode))
 			continue;
 
-		if (!is_submodule_commit_present(p->two->path, p->two->sha1))
+		if (!is_submodule_commit_present(p->two->path, p->two->sha1) &&
+		    !lookup_parsed_commit(commit_sha1)) {
 			add_changed_submodule(commit_sha1, p->two->path);
+			add_parsed_commit(commit_sha1);
+		}
 	}
 }
 
@@ -632,6 +693,8 @@ static void calculate_changed_submodule_paths(void)
 	struct rev_info rev;
 	struct commit *commit;
 	struct argv_array argv = ARGV_ARRAY_INIT;
+
+	init_hash(&parsed_submodule_commits);
 
 	/* No need to check if there are no submodules configured */
 	if (!config_name_for_path.nr)
@@ -673,6 +736,7 @@ static void calculate_changed_submodule_paths(void)
 	sha1_array_clear(&ref_tips_before_fetch);
 	sha1_array_clear(&ref_tips_after_fetch);
 	initialized_fetch_ref_tips = 0;
+	free_parsed_commits();
 }
 
 int fetch_populated_submodules(const struct argv_array *options,
