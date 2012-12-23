@@ -43,6 +43,21 @@ AUTHOR_RE = re.compile('^([^<>]+?)? ?<([^<>]*)>$')
 AUTHOR_HG_RE = re.compile('^(.*?) ?<(.*?)(?:>(.+)?)?$')
 RAW_AUTHOR_RE = re.compile('^(\w+) (?:(.+)? )?<(.*)> (\d+) ([+-]\d+)')
 
+# Global variables used throughout.
+bad_mail = None
+bad_name = None
+blob_marks = None
+bmarks = None
+branches = None
+dirname = None
+g_head = None
+marks = None
+mode = None
+parsed_refs = None
+peer = None
+prefix = None
+track_branches = None
+
 
 def die(msg, *args):
     sys.stderr.write('ERROR: %s\n' % (msg % args))
