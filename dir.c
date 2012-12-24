@@ -649,10 +649,12 @@ static struct exclude *last_exclude_matching_from_list(const char *pathname,
 	if (!el->nr)
 		return NULL;	/* undefined */
 
+        fprintf(stderr, "exc? from %s: %s %s\n", el->src, pathname, basename);
 	for (i = el->nr - 1; 0 <= i; i--) {
 		struct exclude *x = el->excludes[i];
 		const char *exclude = x->pattern;
 		int prefix = x->nowildcardlen;
+                //fprintf(stderr, "exc? %s %s =~ /%s/\n", pathname, basename, exclude);
 
 		if (x->flags & EXC_FLAG_MUSTBEDIR) {
 			if (*dtype == DT_UNKNOWN)
@@ -714,8 +716,10 @@ static struct exclude *last_exclude_matching(struct dir_struct *dir,
 	prep_exclude(dir, pathname, basename-pathname);
 
 	for (i = EXC_CMDL; i <= EXC_FILE; i++) {
+                fprintf(stderr, "i %d\n", i);
 		group = dir->exclude_list_groups[i];
 		for (j = group.nr - 1; j >= 0; j--) {
+                        fprintf(stderr, "  j %d\n", j);
 			exclude = last_exclude_matching_from_list(
 				pathname, pathlen, basename, dtype_p,
 				&group.ary[j]);
@@ -1211,15 +1215,19 @@ static int read_directory_recursive(struct dir_struct *dir,
 	int contents = 0;
 	struct dirent *de;
 	struct strbuf path = STRBUF_INIT;
+        enum path_treatment treatment;
 
 	strbuf_add(&path, base, baselen);
+        fprintf(stderr, "%s\n", path.buf);
 
 	fdir = opendir(path.len ? path.buf : ".");
 	if (!fdir)
 		goto out;
 
 	while ((de = readdir(fdir)) != NULL) {
-		switch (treat_path(dir, de, &path, baselen, simplify)) {
+		treatment = treat_path(dir, de, &path, baselen, simplify);
+                fprintf(stderr, "  %s %d\n", path.buf, treatment);
+                switch (treatment) {
 		case path_recurse:
 			contents += read_directory_recursive(dir, path.buf,
 							     path.len, 0,
@@ -1233,11 +1241,13 @@ static int read_directory_recursive(struct dir_struct *dir,
 		contents++;
 		if (check_only)
 			break;
+                fprintf(stderr, "    + %s\n", path.buf);
 		dir_add_name(dir, path.buf, path.len);
 	}
 	closedir(fdir);
  out:
 	strbuf_release(&path);
+        fprintf(stderr, "----\n");
 
 	return contents;
 }
