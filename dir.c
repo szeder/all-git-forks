@@ -349,7 +349,7 @@ void parse_exclude_pattern(const char **pattern,
 }
 
 void add_exclude(const char *string, const char *base,
-		 int baselen, struct exclude_list *el)
+		 int baselen, struct exclude_list *el, int srcpos)
 {
 	struct exclude *x;
 	int patternlen;
@@ -373,8 +373,10 @@ void add_exclude(const char *string, const char *base,
 	x->base = base;
 	x->baselen = baselen;
 	x->flags = flags;
+	x->srcpos = srcpos;
 	ALLOC_GROW(el->excludes, el->nr + 1, el->alloc);
 	el->excludes[el->nr++] = x;
+	x->el = el;
 }
 
 static void *read_skip_worktree_file_from_index(const char *path, size_t *size)
@@ -420,7 +422,7 @@ int add_excludes_from_file_to_list(const char *fname,
 				   int check_index)
 {
 	struct stat st;
-	int fd, i;
+	int fd, i, lineno = 1;
 	size_t size = 0;
 	char *buf, *entry;
 
@@ -463,18 +465,37 @@ int add_excludes_from_file_to_list(const char *fname,
 		if (buf[i] == '\n') {
 			if (entry != buf + i && entry[0] != '#') {
 				buf[i - (i && buf[i-1] == '\r')] = 0;
-				add_exclude(entry, base, baselen, el);
+				add_exclude(entry, base, baselen, el, lineno);
 			}
+			lineno++;
 			entry = buf + i + 1;
 		}
 	}
 	return 0;
 }
 
+struct exclude_list *add_exclude_list(struct dir_struct *dir,
+				      int group_type, const char *src)
+{
+	struct exclude_list *el;
+	struct exclude_list_group *group;
+
+	group = &dir->exclude_list_groups[group_type];
+	ALLOC_GROW(group->ary, group->nr + 1, group->alloc);
+	el = &group->ary[group->nr++];
+	memset(el, 0, sizeof(*el));
+	el->src = src;
+	return el;
+}
+
+/*
+ * Used to set up core.excludesfile and .git/info/exclude lists.
+ */
 void add_excludes_from_file(struct dir_struct *dir, const char *fname)
 {
-	if (add_excludes_from_file_to_list(fname, "", 0, NULL,
-					   &dir->exclude_list[EXC_FILE], 0) < 0)
+	struct exclude_list *el;
+	el = add_exclude_list(dir, EXC_FILE, fname);
+	if (add_excludes_from_file_to_list(fname, "", 0, NULL, el, 0) < 0)
 		die("cannot use %s as an exclude file", fname);
 }
 
@@ -484,6 +505,7 @@ void add_excludes_from_file(struct dir_struct *dir, const char *fname)
  */
 static void prep_exclude(struct dir_struct *dir, const char *base, int baselen)
 {
+	struct exclude_list_group group;
 	struct exclude_list *el;
 	struct exclude_stack *stk = NULL;
 	int current;
@@ -493,14 +515,15 @@ static void prep_exclude(struct dir_struct *dir, const char *base, int baselen)
 		return; /* too long a path -- ignore */
 
 	/* Pop the directories that are not the prefix of the path being checked. */
-	el = &dir->exclude_list[EXC_DIRS];
 	while ((stk = dir->exclude_stack) != NULL) {
 		if (stk->baselen <= baselen &&
 		    !strncmp(dir->basebuf, base, stk->baselen))
 			break;
 		dir->exclude_stack = stk->prev;
-		while (stk->exclude_ix < el->nr)
-			free(el->excludes[--el->nr]);
+		group = dir->exclude_list_groups[EXC_DIRS];
+		el = &group.ary[dir->exclude_stack->exclude_ix-1];
+		free((char *)el->src);
+		free_excludes(el);
 		free(stk->filebuf);
 		free(stk);
 	}
@@ -523,10 +546,17 @@ static void prep_exclude(struct dir_struct *dir, const char *base, int baselen)
 		}
 		stk->prev = dir->exclude_stack;
 		stk->baselen = cp - base;
-		stk->exclude_ix = el->nr;
 		memcpy(dir->basebuf + current, base + current,
 		       stk->baselen - current);
 		strcpy(dir->basebuf + stk->baselen, dir->exclude_per_dir);
+		/*
+		 * dir->basebuf gets reused by the traversal, but we
+		 * need fname to remain unchanged to ensure the src
+		 * member of each struct exclude correctly back-references
+		 * its source file.
+		 */
+		el = add_exclude_list(dir, EXC_DIRS, strdup(dir->basebuf));
+		stk->exclude_ix = dir->exclude_list_groups[EXC_DIRS].nr;
 		add_excludes_from_file_to_list(dir->basebuf,
 					       dir->basebuf, stk->baselen,
 					       &stk->filebuf, el, 1);
@@ -675,18 +705,23 @@ static struct exclude *last_exclude_matching(struct dir_struct *dir,
 					     int *dtype_p)
 {
 	int pathlen = strlen(pathname);
-	int st;
+	int i, j;
+	struct exclude_list_group group;
 	struct exclude *exclude;
 	const char *basename = strrchr(pathname, '/');
 	basename = (basename) ? basename+1 : pathname;
 
 	prep_exclude(dir, pathname, basename-pathname);
-	for (st = EXC_CMDL; st <= EXC_FILE; st++) {
-		exclude = last_exclude_matching_from_list(
-			pathname, pathlen, basename, dtype_p,
-			&dir->exclude_list[st]);
-		if (exclude)
-			return exclude;
+
+	for (i = EXC_CMDL; i <= EXC_FILE; i++) {
+		group = dir->exclude_list_groups[i];
+		for (j = group.nr - 1; j >= 0; j--) {
+			exclude = last_exclude_matching_from_list(
+				pathname, pathlen, basename, dtype_p,
+				&group.ary[j]);
+			if (exclude)
+				return exclude;
+		}
 	}
 	return NULL;
 }

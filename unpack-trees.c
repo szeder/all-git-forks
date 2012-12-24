@@ -1005,6 +1005,7 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 {
 	int i, ret;
 	static struct cache_entry *dfc;
+	char *exclude_file;
 	struct exclude_list el;
 
 	if (len > MAX_UNPACK_TREES)
@@ -1019,7 +1020,8 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 	if (!core_apply_sparse_checkout || !o->update)
 		o->skip_sparse_checkout = 1;
 	if (!o->skip_sparse_checkout) {
-		if (add_excludes_from_file_to_list(git_path("info/sparse-checkout"), "", 0, NULL, &el, 0) < 0)
+		exclude_file = git_path("info/sparse-checkout");
+		if (add_excludes_from_file_to_list(exclude_file, "", 0, NULL, &el, 0) < 0)
 			o->skip_sparse_checkout = 1;
 		else
 			o->el = &el;
