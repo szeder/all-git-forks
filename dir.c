@@ -1090,6 +1090,7 @@ static enum path_treatment treat_one_path(struct dir_struct *dir,
 					  int dtype, struct dirent *de)
 {
 	int exclude = is_excluded(dir, path->buf, &dtype);
+        fprintf(stderr, "exc? %s %d\n", path->buf, exclude);
 	if (exclude && (dir->flags & DIR_COLLECT_IGNORED)
 	    && exclude_matches_pathspec(path->buf, path->len, simplify))
 		dir_add_ignored(dir, path->buf, path->len);
@@ -1176,15 +1177,19 @@ static int read_directory_recursive(struct dir_struct *dir,
 	int contents = 0;
 	struct dirent *de;
 	struct strbuf path = STRBUF_INIT;
+        enum path_treatment treatment;
 
 	strbuf_add(&path, base, baselen);
+        fprintf(stderr, "%s\n", path.buf);
 
 	fdir = opendir(path.len ? path.buf : ".");
 	if (!fdir)
 		goto out;
 
 	while ((de = readdir(fdir)) != NULL) {
-		switch (treat_path(dir, de, &path, baselen, simplify)) {
+		treatment = treat_path(dir, de, &path, baselen, simplify);
+                fprintf(stderr, "  %s %d\n", path.buf, treatment);
+                switch (treatment) {
 		case path_recurse:
 			contents += read_directory_recursive(dir, path.buf,
 							     path.len, 0,
@@ -1198,11 +1203,13 @@ static int read_directory_recursive(struct dir_struct *dir,
 		contents++;
 		if (check_only)
 			break;
+                fprintf(stderr, "    + %s\n", path.buf);
 		dir_add_name(dir, path.buf, path.len);
 	}
 	closedir(fdir);
  out:
 	strbuf_release(&path);
+        fprintf(stderr, "----\n");
 
 	return contents;
 }
