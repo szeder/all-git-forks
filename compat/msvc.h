@@ -73,6 +73,10 @@ int mingw_fstat(int fd, struct stat *buf);
 #define	NO_CURL
 #define	NO_PTHREADS 
 
+#endif
+
+#ifndef __MSVC__VERSION
+#define __MSVC__VERSION
 /*Git runtime infomation*/
 #define SHA1_HEADER "block-sha1\\sha1.h"
 #define GIT_EXEC_PATH "bin"
