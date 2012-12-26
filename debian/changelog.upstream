@@ -1,3 +1,104 @@
+Version v1.8.1-rc3; changes since v1.8.1-rc2:
+---------------------------------------------
+
+Adam Spiers (2):
+      SubmittingPatches: add convention of prefixing commit messages
+      Documentation: move support for old compilers to CodingGuidelines
+
+Chris Rorvick (2):
+      Documentation/git-checkout.txt: clarify usage
+      Documentation/git-checkout.txt: document 70c9ac2 behavior
+
+Jeff King (5):
+      .mailmap: match up some obvious names/emails
+      .mailmap: fix broken entry for Martin Langhoff
+      .mailmap: normalize emails for Jeff King
+      .mailmap: normalize emails for Linus Torvalds
+      contrib: update stats/mailmap script
+
+John Keeping (1):
+      Documentation: don't link to example mail addresses
+
+Junio C Hamano (5):
+      fetch --tags: clarify documentation
+      README: it does not matter who the current maintainer is
+      t7004: do not create unneeded gpghome/gpg.conf when GPG is not used
+      Documentation: Describe "git diff <blob> <blob>" separately
+      Git 1.8.1-rc3
+
+Nguyễn Thái Ngọc Duy (1):
+      index-format.txt: clarify what is "invalid"
+
+Sebastian Leske (4):
+      git-svn: Document branches with at-sign(@).
+      git-svn: Recommend use of structure options.
+      git-svn: Expand documentation for --follow-parent
+      git-svn: Note about tags.
+
+Sitaram Chamarty (1):
+      clarify -M without % symbol in diff-options
+
+Stefano Lattarini (1):
+      README: Git is released under the GPLv2, not just "the GPL"
+
+Thomas Ackermann (3):
+      Remove misleading date from api-index-skel.txt
+      Remove duplicate entry in ./Documentation/Makefile
+      Move ./technical/api-command.txt to ./howto/new-command.txt
+
+
+Version v1.8.1-rc2; changes since v1.8.1-rc1:
+---------------------------------------------
+
+Anders Kaseorg (1):
+      git-prompt: Document GIT_PS1_DESCRIBE_STYLE
+
+Erik Faye-Lund (7):
+      mingw: correct exit-code for SIGALRM's SIG_DFL
+      mingw: make fgetc raise SIGINT if apropriate
+      compat/terminal: factor out echo-disabling
+      compat/terminal: separate input and output handles
+      mingw: reuse tty-version of git_terminal_prompt
+      mingw: get rid of getpass implementation
+      mingw_rmdir: do not prompt for retry when non-empty
+
+Jeff King (1):
+      remote-testsvn: fix unitialized variable
+
+Junio C Hamano (5):
+      git(1): remove a defunct link to "list of authors"
+      Git 1.8.0.2
+      git-prompt.sh: update PROMPT_COMMAND documentation
+      git(1): show link to contributor summary page
+      Git 1.8.1-rc2
+
+Manlio Perillo (1):
+      git.txt: add missing info about --git-dir command-line option
+
+Marc Khouzam (1):
+      Add file completion to tcsh git completion.
+
+Matthew Daley (1):
+      Fix sizeof usage in get_permutations
+
+Max Horn (6):
+      git-remote-helpers.txt: document invocation before input format
+      git-remote-helpers.txt: document missing capabilities
+      git-remote-helpers.txt: minor grammar fix
+      git-remote-helpers.txt: rearrange description of capabilities
+      git-remote-helpers.txt: clarify command <-> capability correspondences
+      git-remote-helpers.txt: clarify options & ref list attributes
+
+Stefano Lattarini (1):
+      Makefile: whitespace style fixes in macro definitions
+
+Sébastien Loriot (1):
+      Documentation/git-stash.txt: add a missing verb
+
+Thomas Ackermann (1):
+      Renumber list in api-command.txt
+
+
 Version v1.8.1-rc1; changes since v1.8.1-rc0:
 ---------------------------------------------
 
@@ -3190,7 +3291,7 @@ Version v1.7.10-rc1; changes since v1.7.10-rc0:
 Alex Zepeda (1):
       verify-tag: Parse GPG configuration options.
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Fix fixed string (non-regexp) project search
 
 Jens Lehmann (3):
@@ -3295,10 +3396,10 @@ Felipe Contreras (4):
       remote: refactor code into alloc_delete_ref()
       push: add '--prune' option
 
-Frederic Heitzmann (1):
+Frédéric Heitzmann (1):
       completion: add --interactive option to git svn dcommit
 
-Jakub Narebski (11):
+Jakub Narębski (11):
       gitweb: improve usability of projects search form
       gitweb: Make project search respect project_filter
       gitweb: Harden and improve $project_filter page title
@@ -3580,7 +3681,7 @@ Junio C Hamano (2):
 Version v1.7.9.5; changes since v1.7.9.4:
 -----------------------------------------
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Fix actionless dispatch for non-existent objects
 
 Jonathan Nieder (2):
@@ -3613,7 +3714,7 @@ Rodrigo Silva (MestreLion) (1):
 Version v1.7.9.4; changes since v1.7.9.3:
 -----------------------------------------
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Fix fixed string (non-regexp) project search
 
 Junio C Hamano (6):
@@ -3648,7 +3749,7 @@ Clemens Buchacher (1):
 Dmitry V. Levin (1):
       Makefile: add thread-utils.h to LIB_H
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: Fix "heads" view when there is no current branch
       gitweb: Handle invalid regexp in regexp search
 
@@ -3746,7 +3847,7 @@ Felipe Contreras (3):
       completion: use ls -1 instead of rolling a loop to do that ourselves
       completion: simplify __gitcomp and __gitcomp_nl implementations
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: Allow UTF-8 encoded CGI query parameters and path_info
       gitweb: Fix 'grep' search for multiple matches in file
 
@@ -3831,7 +3932,7 @@ Clemens Buchacher (2):
 David Aguilar (1):
       mergetool: Provide an empty file when needed
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       git.spec: Workaround localized messages not put in any RPM
 
 Jeff King (4):
@@ -3898,7 +3999,7 @@ Michael Haggerty (1):
 Version v1.7.9-rc2; changes since v1.7.9-rc1:
 ---------------------------------------------
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: Fix file links in "grep" search
       gitweb: Harden "grep" search against filenames with ':'
 
@@ -4016,7 +4117,7 @@ Gary Gibbons (5):
 Gustaf Hendeby (1):
       Add built-in diff patterns for MATLAB code
 
-Jakub Narebski (6):
+Jakub Narębski (6):
       gitweb: Refactor diff body line classification
       gitweb: Extract formatting of diff chunk header
       gitweb: Give side-by-side diff extra CSS styling
@@ -4299,7 +4400,7 @@ Clemens Buchacher (1):
 D Waitzman (1):
       Documentation/gitweb: trivial English fixes
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Fix actionless dispatch for non-existent objects
 
 Johannes Sixt (1):
@@ -4403,7 +4504,7 @@ Clemens Buchacher (2):
 Jack Nagel (1):
       Add MYMETA.json to perl/.gitignore
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Fix fallback mode of to_utf8 subroutine
 
 Jens Lehmann (1):
@@ -4819,7 +4920,7 @@ Heiko Voigt (4):
 Hui Wang (1):
       sha1_file: normalize alt_odb path before comparing and storing
 
-Jakub Narebski (5):
+Jakub Narębski (5):
       gitweb: Add gitweb(1) manpage for gitweb itself
       Documentation: Link to gitweb(1) and gitweb.conf(5) in other manpages
       Documentation: Add gitweb config variables to git-config(1)
@@ -5255,7 +5356,7 @@ Christian Couder (1):
 Haitao Li (1):
       date.c: Support iso8601 timezone formats
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Strip non-printable characters from syntax highlighter output
 
 Jeff King (8):
@@ -5711,7 +5812,7 @@ Fredrik Gustafsson (2):
       git-sh-setup: add die_with_status
       submodule update: continue when a checkout fails
 
-Jakub Narebski (14):
+Jakub Narębski (14):
       gitweb.js: No need for inProgress in blame_incremental.js
       gitweb.js: No need for loop in blame_incremental's handleResponse()
       gitweb.js: use setTimeout rather than setInterval in blame_incremental.js
@@ -6218,7 +6319,7 @@ Heiko Voigt (2):
 Jack Nagel (1):
       Documentation: minor grammatical fix in rev-list-options.txt
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: Serve text/* 'blob_plain' as text/plain with $prevent_xss
       gitweb: Serve */*+xml 'blob_plain' as text/plain with $prevent_xss
 
@@ -6345,7 +6446,7 @@ Christof Krüger (1):
 Dmitry Ivankov (1):
       Fix typo: existant->existent
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: 'pickaxe' and 'grep' features requires 'search' to be enabled
 
 Jeff King (2):
@@ -6380,7 +6481,7 @@ Brandon Casey (2):
       t7508: demonstrate status's failure to use --porcelain format with -z
       builtin/commit.c: set status_format _after_ option parsing
 
-Jakub Narebski (4):
+Jakub Narębski (4):
       gitweb: Move information about installation from README to INSTALL
       gitweb: Describe CSSMIN and JSMIN in gitweb/INSTALL
       gitweb: Move "Requirements" up in gitweb/INSTALL
@@ -6437,7 +6538,7 @@ Heiko Voigt (1):
 Ingo Molnar (1):
       hashcmp(): inline memcmp() by hand to optimize
 
-Jakub Narebski (13):
+Jakub Narębski (13):
       gitweb: Restructure projects list generation
       gitweb: Change the way "content tags" ('ctags') are handled
       gitweb: Mark matched 'ctag' / contents tag (?by_tag=foo)
@@ -6882,7 +6983,7 @@ Dima Sharov (1):
 Guy Rouillier (1):
       Look for password in both CVS and CVSNT password files.
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       git-instaweb: Simplify build dependency on gitweb
       Remove gitweb/gitweb.cgi and other legacy targets from main Makefile
 
@@ -7075,7 +7176,7 @@ Dan McGee (2):
       Remove old binaries from .gitignore
       Fix two unused variable warnings in gcc 4.6
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Fix parsing of negative fractional timezones in JavaScript
 
 Jared Hance (1):
@@ -7289,7 +7390,7 @@ Jakob Pfender (2):
       object.h: Remove obsolete struct object_refs
       git-completion: Add git help completion for aliases
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Make i18n (encoding) tests in t9500 leave clean state
 
 Jay Soffian (4):
@@ -7605,7 +7706,7 @@ René Scharfe (1):
 Version v1.7.4.4; changes since v1.7.4.3:
 -----------------------------------------
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       git-instaweb: Change how gitweb.psgi is made runnable as standalone app
       gitweb: Fix parsing of negative fractional timezones in JavaScript
 
@@ -7742,7 +7843,7 @@ Eric Hanchrow (1):
 Erik Faye-Lund (1):
       mingw: add minimum getrlimit() compatibility stub
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: Always call parse_date with timezone parameter
       gitweb: Fix handling of fractional timezones in parse_date
 
@@ -7853,7 +7954,7 @@ Version v1.7.4.1; changes since v1.7.4:
 Chris Packham (1):
       clone: fixup recurse_submodules option
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Mention optional Perl modules in INSTALL
 
 Jens Lehmann (2):
@@ -8196,7 +8297,7 @@ Ilari Liusvaara (4):
       git-remote-ext
       remote-fd/ext: finishing touches after code review
 
-Jakub Narebski (12):
+Jakub Narębski (12):
       t/gitweb-lib.sh: Use GIT_BUILD_DIR
       t/gitweb-lib.sh: Use tabs for indent consistently
       gitweb: Move call to evaluate_git_version after evaluate_gitweb_config
@@ -8659,7 +8760,7 @@ Version v1.7.3.5; changes since v1.7.3.4:
 Brandon Casey (1):
       test-lib.sh/test_decode_color(): use octal not hex in awk script
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Include links to feeds in HTML header only for '200 OK' response
 
 Jeff King (1):
@@ -8740,7 +8841,7 @@ Gabriel Corona (2):
       t5550: test HTTP authentication and userinfo decoding
       Fix username and password extraction from HTTP URLs
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Introduce esc_attr to escape attributes of HTML elements
 
 Jari Aalto (1):
@@ -9313,7 +9414,7 @@ Heiko Voigt (4):
       Implement automatic fast-forward merge for submodules
       add configuration variable for --autosquash option of interactive rebase
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Fix typo in run() subroutine
 
 Jared Hance (5):
@@ -9614,7 +9715,7 @@ Thomas Rast (4):
 Version v1.7.2.5; changes since v1.7.2.4:
 -----------------------------------------
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Introduce esc_attr to escape attributes of HTML elements
 
 Junio C Hamano (1):
@@ -9666,7 +9767,7 @@ Brandon Casey (2):
       Makefile: link builtins residing in bin directory to main git binary too
       Makefile: make hard/symbolic links for non-builtins too
 
-Daniel Johnson (1):
+Dan Johnson (1):
       fetch: allow command line --tags to override config
 
 David Aguilar (1):
@@ -9767,7 +9868,7 @@ Heiko Voigt (5):
       git-gui: fix PATH environment for mingw development environment
       git-gui: fix shortcut creation on cygwin
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       diff: strip extra "/" when stripping prefix
 
 Jonathan Nieder (7):
@@ -10024,7 +10125,7 @@ Dylan Reid (1):
 Heiko Voigt (1):
       add missing && to submodule-merge testcase
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Move evaluate_gitweb_config out of run_request
 
 Jeff King (3):
@@ -10260,7 +10361,7 @@ Henrik Grubbström (2):
       convert: Safer handling of $Id$ contraction.
       convert: Keep foreign $Id$ on checkout.
 
-Jakub Narebski (16):
+Jakub Narębski (16):
       Export more test-related variables when running external tests
       gitweb: href(..., -path_info => 0|1)
       gitweb: Use nonlocal jump instead of 'exit' in die_error
@@ -10484,7 +10585,7 @@ Will Palmer (4):
 Version v1.7.1.4; changes since v1.7.1.3:
 -----------------------------------------
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Introduce esc_attr to escape attributes of HTML elements
 
 Junio C Hamano (1):
@@ -10654,7 +10755,7 @@ Ian McLean (1):
 Ian Ward Comfort (1):
       rebase -i: Abort cleanly if new base cannot be checked out
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       autoconf: Check if <paths.h> exists and set HAVE_PATHS_H
 
 Jay Soffian (3):
@@ -11043,7 +11144,7 @@ Dave Olszewski (1):
 Eric Blake (1):
       Makefile: update defaults for modern Cygwin
 
-Eric Raymond (1):
+Eric S. Raymond (1):
       Integrate version 3 ciabot scripts into contrib/.
 
 Erik Faye-Lund (5):
@@ -11067,7 +11168,7 @@ Ian Ward Comfort (1):
 Ilari Liusvaara (1):
       Allow '+', '-' and '.' in remote helper names
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: esc_html (short) error message in die_error
       gitweb: Protect escaping functions against calling on undef
 
@@ -11328,7 +11429,7 @@ josh robb (1):
 Version v1.7.0.9; changes since v1.7.0.8:
 -----------------------------------------
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Introduce esc_attr to escape attributes of HTML elements
 
 Junio C Hamano (1):
@@ -11488,7 +11589,7 @@ Holger Weiß (3):
       Link against libiconv on IRIX
       Documentation: show-ref <pattern>s are optional
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: git_get_project_config requires only $git_dir, not also $project
 
 Jan Stępień (1):
@@ -11635,7 +11736,7 @@ Gabriel Filion (1):
 Hitoshi Mitake (1):
       git-imap-send: Convert LF to CRLF before storing patch to draft box
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: Die if there are parsing errors in config file
       gitweb: Fix project-specific feature override behavior
 
@@ -11846,7 +11947,7 @@ Giuseppe Bilotta (4):
 Heiko Voigt (1):
       git-gui: fix shortcut for menu "Commit/Revert Changes"
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Make running t9501 test with '--debug' reliable and usable
 
 Jeff Epler (1):
@@ -12149,7 +12250,7 @@ Ilari Liusvaara (15):
       rev-parse --glob
       rev-parse --branches/--tags/--remotes=pattern
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb.js: Workaround for IE8 bug
 
 James P. Howard, II (1):
@@ -12551,7 +12652,7 @@ Hitoshi Mitake (1):
 Jacob Helwig (1):
       filter-branch: Fix error message for --prune-empty --commit-filter
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Introduce esc_attr to escape attributes of HTML elements
 
 Jeff King (2):
@@ -12884,7 +12985,7 @@ Guillermo S. Romero (1):
 Heiko Voigt (1):
       git gui: make current branch default in "remote delete branch" merge check
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Describe (possible) gitweb.js minification in gitweb/README
 
 Jan Krüger (1):
@@ -13006,7 +13107,7 @@ Felipe Contreras (3):
 Horst H. von Brand (1):
       git-pull.sh: Fix call to git-merge for new command format
 
-Jakub Narebski (10):
+Jakub Narębski (10):
       gitweb: Add optional "time to generate page" info in footer
       gitweb: Incremental blame (using JavaScript)
       gitweb: Colorize 'blame_incremental' view during processing
@@ -13179,7 +13280,7 @@ Heiko Voigt (1):
 Ingmar Vanhassel (1):
       import-tars: Add support for tarballs compressed with lzma, xz
 
-Jakub Narebski (4):
+Jakub Narębski (4):
       gitweb: Add 'show-sizes' feature to show blob sizes in tree view
       gitweb: Refactor 'log' action generation, adding git_log_body()
       gitweb: Refactor common parts of 'log' and 'shortlog' views
@@ -13436,7 +13537,7 @@ Björn Gustavsson (3):
 Greg Brockman (1):
       Check size of path buffer before writing into it
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Introduce esc_attr to escape attributes of HTML elements
 
 Jay Soffian (1):
@@ -13692,7 +13793,7 @@ Gisle Aas (2):
 Giuseppe Bilotta (1):
       gitweb: fix esc_param
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Do not show 'patch' link for merge commits
 
 Jan Krüger (1):
@@ -14216,7 +14317,7 @@ Heiko Voigt (2):
       cvsimport: add test illustrating a bug in cvsps
       cvsimport: extend testcase about patchset order to contain branches
 
-Jakub Narebski (6):
+Jakub Narębski (6):
       gitweb: Make .error style generic
       gitweb: Mark boundary commits in 'blame' view
       gitweb: Use "previous" header of git-blame -p in 'blame' view
@@ -14336,12 +14437,10 @@ Linus Torvalds (12):
 Luke Diamand (1):
       git-p4: stream from perforce to speed up clones
 
-Mark A Rada (3):
+Mark Rada (6):
       gitweb: support to globally disable a snapshot format
       gitweb: update INSTALL regarding specific snapshot settings
       gitweb: add support for XZ compressed snapshots
-
-Mark Rada (3):
       gitweb: improve snapshot error handling
       gitweb: split test suite into library and tests
       gitweb: add t9501 tests for checking HTTP status codes
@@ -14471,7 +14570,7 @@ Greg Brockman (1):
 Greg Price (1):
       commit: --cleanup is a message option
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Introduce esc_attr to escape attributes of HTML elements
 
 Jan Krüger (1):
@@ -14623,7 +14722,7 @@ Björn Steinbrink (1):
 Erik Faye-Lund (1):
       send-email: remove debug trace
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb/README: Document $base_url
 
 Jeff King (3):
@@ -14647,7 +14746,7 @@ Junio C Hamano (5):
       am: allow individual e-mail files as input
       GIT 1.6.4.1
 
-Mark A Rada (1):
+Mark Rada (1):
       git-instaweb: fix mod_perl detection for apache2
 
 Matthieu Moy (3):
@@ -14766,7 +14865,7 @@ Matthias Andree (1):
 Nanako Shiraishi (1):
       Documentation/config.txt: a variable can be defined on the section header line
 
-Robert Allan Zeh (1):
+Robert Zeh (1):
       git svn: add gc command
 
 Thomas Rast (1):
@@ -15028,7 +15127,7 @@ Heiko Voigt (2):
 Hunter, D. Seth (1):
       http-push: fix xml_entities() string parsing overrun
 
-Jakub Narebski (10):
+Jakub Narębski (10):
       gitweb: Remove function prototypes (cleanup)
       gitweb: Do not use bareword filehandles
       gitweb: Always use three argument form of open
@@ -17011,7 +17110,7 @@ Fabian Franz (1):
 Jacob Helwig (1):
       Add 'rm -f' equivalent to 'git rm' example of filter-branch --index-filter
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Better regexp for SHA-1 committag match
 
 Jeff King (1):
@@ -17224,7 +17323,7 @@ Jake Goulding (3):
       Make has_commit() non-static
       git-tag: Add --contains option
 
-Jakub Narebski (4):
+Jakub Narębski (4):
       gitweb: Move 'lineno' id from link to row element in git_blame
       gitweb: A bit of code cleanup in git_blame()
       gitweb: cache $parent_commit info in git_blame()
@@ -17381,9 +17480,6 @@ Pierre Habouzit (1):
 Ralf Wildenhues (1):
       Fix naming scheme for configure cache variables.
 
-Ray Chuan (1):
-      http-push: refactor lock-related headers creation for curl requests
-
 René Scharfe (9):
       diff: add option to show context between close hunks
       strbuf: instate cleanup rule in case of non-memory errors
@@ -17433,7 +17529,8 @@ Steve Haslam (1):
 Sverre Rabbelier (1):
       Allow cloning an empty repository
 
-Tay Ray Chuan (3):
+Tay Ray Chuan (4):
+      http-push: refactor lock-related headers creation for curl requests
       http-push: refactor request url creation
       http-push: add back underscore separator before lock token
       http-push: wrap signature of get_remote_object_url
@@ -18038,7 +18135,7 @@ Brandon Casey (1):
 Deskin Miller (1):
       git-svn: Make following parents atomic
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Fix bug in insert_file() subroutine
 
 Jeff King (5):
@@ -18108,7 +18205,7 @@ Giuseppe Bilotta (2):
       gitweb: make gitweb_check_feature a boolean wrapper
       Update comment on gitweb_check/get_feature
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: Fix handling of non-ASCII characters in inserted HTML files
       gitweb: Make project specific override for 'grep' feature work
 
@@ -18426,7 +18523,7 @@ Gustaf Hendeby (2):
 Heikki Orsila (1):
       diff --dirstat-by-file: count changed files, not lines
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Better processing format string in custom links in navbar
 
 Jan Krüger (1):
@@ -19035,7 +19132,7 @@ Daniel Lowe (1):
 Davide Libenzi (1):
       xdiff: give up scanning similar lines early
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Make project specific override for 'grep' feature work
 
 Jan Krüger (1):
@@ -19146,7 +19243,7 @@ Deskin Miller (2):
 Gustaf Hendeby (1):
       git-gui: Help identify aspell version on Windows too
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       Documentation/gitattributes: Add subsection header for each attribute
 
 Jan Krüger (1):
@@ -19299,7 +19396,7 @@ Heikki Orsila (2):
 Imre Deak (1):
       builtin-apply: fix typo leading to stack corruption
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: Fix two 'uninitialized value' warnings in git_tree()
       gitweb: Add path_info tests to t/t9500-gitweb-standalone-no-errors.sh
 
@@ -19993,7 +20090,7 @@ Cesar Eduardo Barros (1):
 Daniel Barkalow (1):
       In perforce, RCS keywords are case-sensitive
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: More about how gitweb gets 'owner' of repository
 
 Johannes Schindelin (9):
@@ -20203,7 +20300,7 @@ Frederik Schwarzer (1):
 Ian Katz (1):
       tutorial: use prompt with user names in example, to clarify who is doing what
 
-Jakub Narebski (4):
+Jakub Narębski (4):
       gitweb: Separate filling list of projects info
       gitweb: Separate generating 'sort by' table header
       t/README: Add 'Skipping Tests' section below 'Running Tests'
@@ -20998,7 +21095,7 @@ Fred Maranhão (1):
 Geoffrey Irving (1):
       doc: adding gitman.info and *.texi to .gitignore
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: Make it work with $GIT containing spaces
       Use 'trash directory' thoroughly in t/test-lib.sh
 
@@ -21108,7 +21205,7 @@ Daniel Barkalow (1):
 Dirk Süsserott (1):
       Documentation/git-mailsplit: Enhanced description of -o option
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Add charset info to "raw" output of 'text/plain' blobs
 
 Jeff King (1):
@@ -21157,7 +21254,7 @@ Gerrit Pape (2):
       Documentation/git-bundle.txt: fix synopsis
       commit --interactive: properly update the index before commiting
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: Remove gitweb/test/ directory
       gitweb: Fix "next" link on bottom of page
 
@@ -21448,7 +21545,7 @@ Heikki Orsila (7):
 Imran M Yousuf (1):
       Use '-f' option to point to the .gitmodules file
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Use feed link according to current view
 
 Jeff King (12):
@@ -21931,7 +22028,7 @@ Daniel Barkalow (1):
 Dirk Süsserott (1):
       Documentation/git-request-pull: Fixed a typo ("send" -> "end")
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Fix 'history' view for deleted files with history
 
 Jeff King (1):
@@ -21998,7 +22095,7 @@ Eric Wong (1):
 Gerrit Pape (1):
       gitk: Fix changing colors through Edit->Preferences
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       Revert "gitweb: Add 'status_str' to parse_difftree_raw_line output"
 
 Junio C Hamano (2):
@@ -22253,6 +22350,12 @@ Charles Bailey (6):
       git-mergetool documentaiton: show toolnames in typewriter font
       merge-tool documentation: describe custom command usage
 
+Cheng Renquan (4):
+      cleanup: remove unused git_checkout_config
+      whatchanged documentation: share description of --pretty with others
+      specify explicit "--pretty=medium" with `git log/show/whatchanged`
+      log/show/whatchanged: introduce format.pretty configuration
+
 Christian Couder (17):
       help: make 'git-help--browse' usable outside 'git-help'.
       help--browse: add '--config' option to check a config option for a browser.
@@ -22326,12 +22429,6 @@ David Brown (1):
 David Kågedal (1):
       git.el: Set process-environment instead of invoking env
 
-Denis Cheng (4):
-      cleanup: remove unused git_checkout_config
-      whatchanged documentation: share description of --pretty with others
-      specify explicit "--pretty=medium" with `git log/show/whatchanged`
-      log/show/whatchanged: introduce format.pretty configuration
-
 Dmitry Potapov (3):
       git-web--browse: do not start the browser with nohup
       Make private quote_path() in wt-status.c available as quote_path_relative()
@@ -22352,7 +22449,7 @@ Gerrit Pape (4):
       builtin-tag.c: remove cruft
       hash-object: cleanup handling of command line options
 
-Jakub Narebski (11):
+Jakub Narębski (11):
       gitweb: Fix displaying unchopped argument in chop_and_escape_str
       gitweb: Add new option -nohtml to quot_xxx subroutines
       gitweb: Fix bug in href(..., -replay=>1) when using 'pathinfo' form
@@ -22967,7 +23064,7 @@ Eric Wong (1):
 Guanqun Lu (1):
       Fix the wrong output of `git-show v1.3.0~155^2~4` in documentation.
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Fix bug in href(..., -replay=>1) when using 'pathinfo' form
 
 Jeff King (2):
@@ -22996,7 +23093,7 @@ Junio C Hamano (9):
 Linus Torvalds (1):
       rev-parse: fix meaning of rev~ vs rev~0.
 
-Marc-Andre Lureau (2):
+Marc-André Lureau (2):
       git-svn: fix find-rev error message when missing arg
       git-cvsimport: fix merging with remote parent branch
 
@@ -23307,7 +23404,7 @@ Christian Couder (3):
       Documentation: help: specify supported html browsers.
       instaweb: use 'browser.<tool>.path' config option if it's set.
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Add info about $projectroot and $projects_list to gitweb/README
 
 Jean-Luc Herren (1):
@@ -23356,7 +23453,7 @@ Eric Wong (1):
 Gustaf Hendeby (1):
       send-email, fix breakage in combination with --compose
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       autoconf: define NO_SYS_SELECT_H on systems without <sys/select.h>.
 
 Johannes Schindelin (1):
@@ -23450,7 +23547,7 @@ Grégoire Barbier (4):
       http-push: fail when info/refs exists and is already locked
       http-push and http-fetch: handle URLs without trailing /
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       autoconf: Add checking for unsetenv function
 
 Jean-Luc Herren (1):
@@ -23695,7 +23792,7 @@ Gustaf Hendeby (2):
       Make git send-email accept $EDITOR with arguments
       shortlog manpage documentation: work around asciidoc markup issues
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: fix whitespace in config_to_multi (indent with tab)
 
 Jeff King (2):
@@ -23788,7 +23885,7 @@ J. Bruce Fields (8):
       builtin-apply: minor cleanup of whitespace detection
       builtin-apply: stronger indent-with-on-tab fixing
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: disambiguate heads and tags withs the same name
       gitweb: Teach "a=blob" action to be more lenient about blob/file mime type
 
@@ -23995,6 +24092,9 @@ Carlos Rica (5):
 Charles Bailey (1):
       Fix clone not to ignore depth when performing a local clone
 
+Cheng Renquan (1):
+      gitweb: the commitdiff is very commonly used, it's needed on search page, too
+
 Chris Pettitt (3):
       git-p4 support for perforce renames.
       git-p4: Add a helper function to parse the full git diff-tree output.
@@ -24100,9 +24200,6 @@ David Symonds (7):
       git-checkout: Test for relative path use.
       Mention that git-rm can be an appropriate resolution as well as git-add.
 
-Denis Cheng (1):
-      gitweb: the commitdiff is very commonly used, it's needed on search page, too
-
 Dmitry Potapov (1):
       preserve executable bits in zip archives
 
@@ -24169,7 +24266,7 @@ J. Bruce Fields (3):
       git-rebase: fix -C option
       errors: "strict subset" -> "ancestor"
 
-Jakub Narebski (18):
+Jakub Narębski (18):
       gitweb: Fix and simplify "split patch" detection
       gitweb: Always set 'from_file' and 'to_file' in parse_difftree_raw_line
       gitweb: Add 'status_str' to parse_difftree_raw_line output
@@ -24514,7 +24611,8 @@ Junio C Hamano (157):
       RPM spec: Adjust htmldir
       GIT 1.5.4-rc0
 
-Kevin Leung (1):
+Kevin Leung (2):
+      git-p4: Fix typo in --detect-labels
       git-stash: Display help message if git-stash is run with wrong sub-commands
 
 Kirill (1):
@@ -25009,9 +25107,6 @@ Shawn O. Pearce (106):
       git-gui 0.9.0
       Remove git-status from list of scripts as it is builtin
 
-Shun Kei Leung (1):
-      git-p4: Fix typo in --detect-labels
-
 Simon Hausmann (10):
       git-p4: Always call 'p4 sync ...' before submitting to Perforce.
       git-p4: After submission to p4 always synchronize from p4 again (into refs/remotes). Whether to rebase HEAD or not is still left as question to the end-user.
@@ -25232,7 +25327,7 @@ Gerrit Pape (4):
       git-daemon: fix remote port number in log entry
       git-mailsplit: with maildirs not only process cur/, but also new/
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Update config file example for snapshot feature in gitweb/INSTALL
 
 Jeff King (2):
@@ -25508,7 +25603,7 @@ Glenn Rempe (1):
 J. Bruce Fields (1):
       user-manual: don't assume refs are stored under .git/refs
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: Remove parse_from_to_diffinfo code from git_patchset_body
       gitweb: No difftree output for trivial merge
 
@@ -25788,7 +25883,7 @@ J. Bruce Fields (5):
       user-manual: use pithier example commit
       user-manual: fix incorrect header level
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Fix escaping HTML of project owner in 'projects_list' and     'summary' views
 
 Jari Aalto (1):
@@ -26007,7 +26102,7 @@ J. Bruce Fields (4):
       documentation: use the word "index" in the git-add manual page
       documentation: use the word "index" in the git-commit man page
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Fix handling of $file_name in feed generation
 
 Johannes Schindelin (4):
@@ -26153,7 +26248,7 @@ Han-Wen Nienhuys (2):
       Sort output of "p4 change" in incremental import before further
       Fix style nit in Python slicing.
 
-Jakub Narebski (3):
+Jakub Narębski (3):
       gitweb: Show submodule entries in the 'tree' view
       gitweb: Simplify 'opt' parameter validation, add "no merges" feeds
       gitweb: Allow for multivalued parameters passed to href subroutine
@@ -26322,7 +26417,7 @@ Eric Wong (1):
 Francis Moreau (1):
       Fix git-branch documentation when using remote refs
 
-Jakub Narebski (3):
+Jakub Narębski (3):
       gitweb cleanup: Move @diff_opts declaration earlier
       gitweb: Fix support for legacy gitweb config for snapshots
       gitweb: More detailed error messages for snapshot format
@@ -26414,7 +26509,7 @@ Eric Wong (1):
 Greg KH (1):
       make git-send-email.perl handle email addresses with no names when Email::Valid is present
 
-Jakub Narebski (3):
+Jakub Narębski (3):
       Update git-merge documentation.
       Document long options '--message=<msg>' and '--no-commit'
       Document git commit --untracked-files and --verbose
@@ -26845,7 +26940,7 @@ Han-Wen Nienhuys (28):
       print error message when p4 print fails (eg. due to permission problems)
       also strip p4/ from local imports.
 
-Jakub Narebski (16):
+Jakub Narębski (16):
       gitweb: Add test t9500 for gitweb (as standalone script)
       Add an option to git-ls-tree to display also the size of blob
       gitweb: Provide links to commitdiff to each parent in 'commitdiff' view
@@ -27532,7 +27627,7 @@ J. Bruce Fields (4):
       Documentation: user-manual todo
       tutorial: use "project history" instead of "changelog" in header
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       Generated spec file to be ignored is named git.spec and not git-core.spec
 
 Johannes Schindelin (2):
@@ -27644,7 +27739,7 @@ Frank Lichtenheld (7):
       git-config: Various small fixes to asciidoc documentation
       git-config: Improve documentation of git-config file handling
 
-Jakub Narebski (3):
+Jakub Narębski (3):
       Documentation: Clean up links in GIT Glossary
       Replace the last 'dircache's by 'index'
       Documentation: Add definition of "evil merge" to GIT Glossary
@@ -27772,7 +27867,7 @@ J. Bruce Fields (14):
       user-manual: discourage shared repository
       user-manual: finding commits referencing given file content
 
-Jakub Narebski (10):
+Jakub Narębski (10):
       gitweb: Test if $from_id and $to_id are defined before comparison
       gitweb: Check if requested object exists
       gitweb: Fix "Use of unitialized value" warnings in empty repository
@@ -27886,7 +27981,7 @@ J. Bruce Fields (7):
       user-manual: stop deprecating the manual
       user-manual: fix clone and fetch typos
 
-Jakub Narebski (6):
+Jakub Narębski (6):
       gitweb: Add parsing of raw combined diff format to parse_difftree_raw_line
       gitweb: Add combined diff support to git_difftree_body
       gitweb: Add combined diff support to git_patchset_body
@@ -28010,7 +28105,7 @@ Daniel Barkalow (1):
 Frank Lichtenheld (1):
       cvsserver: Handle re-added files correctly
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       diff format documentation: describe raw combined diff format
 
 James Bowes (1):
@@ -28257,7 +28352,7 @@ Frank Lichtenheld (16):
       cvsserver: Document the GIT branches -> CVS modules mapping more prominently
       config.txt: Add gitcvs.db* variables
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: Whitespace cleanup - tabs are for indent, spaces are for align (3)
       gitweb: Quote hash keys, and do not use barewords keys
 
@@ -28511,7 +28606,7 @@ J. Bruce Fields (10):
       user-manual: listing commits reachable from some refs not others
       user-manual: reorganize public git repo discussion
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Add a few comments about %feature hash
 
 Jan Hudec (1):
@@ -28603,7 +28698,7 @@ J. Bruce Fields (7):
       user-manual: stop deprecating the manual
       user-manual: fix clone and fetch typos
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       diff format documentation: describe raw combined diff format
 
 James Bowes (1):
@@ -28839,7 +28934,7 @@ Geert Bosch (1):
 Gerrit Pape (1):
       rename contrib/hooks/post-receieve-email to contrib/hooks/post-receive-email.
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Fix bug in "blobdiff" view for split (e.g. file to symlink) patches
 
 Jim Meyering (1):
@@ -28909,7 +29004,7 @@ Gerrit Pape (2):
 H. Peter Anvin (1):
       git-upload-pack: make sure we close unused pipe ends
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: Support comparing blobs (files) with different names
       Documentation: A few minor fixes to Git User's Manual
 
@@ -28960,7 +29055,7 @@ Gerrit Pape (3):
 H. Peter Anvin (1):
       git-upload-pack: make sure we close unused pipe ends
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: Add example of config file and how to generate projects list to gitweb/INSTALL
       gitweb: Cleanup and uniquify die_error calls
 
@@ -29031,7 +29126,7 @@ J. Bruce Fields (5):
       glossary: clean up cross-references
       user-manual: introduce "branch" and "branch head" differently
 
-Jakub Narebski (4):
+Jakub Narębski (4):
       gitweb: Fix "next" link in commit view
       gitweb: Don't escape attributes in CGI.pm HTML methods
       gitweb: Fix not marking signoff lines in "log" view
@@ -29278,7 +29373,7 @@ Fredrik Kuivinen (1):
 J. Bruce Fields (1):
       Make git-send-email aware of Cc: lines.
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Don't escape attributes in CGI.pm HTML methods
 
 James Bowes (3):
@@ -29571,7 +29666,7 @@ J. Bruce Fields (5):
       glossary: clean up cross-references
       user-manual: introduce "branch" and "branch head" differently
 
-Jakub Narebski (4):
+Jakub Narębski (4):
       gitweb: Fix "next" link in commit view
       gitweb: Don't escape attributes in CGI.pm HTML methods
       gitweb: Fix not marking signoff lines in "log" view
@@ -29906,7 +30001,7 @@ Dotan Barak (1):
 Eric Wong (1):
       git-svn: correctly handle boolean options via git-config
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       git-blame: Add Emacs Lisp file headers and GNU GPL boilerplate
       git-blame: Change installation instructions
 
@@ -30595,7 +30690,7 @@ J. Bruce Fields (31):
       user-manual: point to README for gitweb information
       user-manual: todo's
 
-Jakub Narebski (3):
+Jakub Narębski (3):
       Documentation/config.txt: Document config file syntax better
       t/t1300-repo-config.sh: value continued on next line
       Documentation/config.txt: Correct info about subsection name
@@ -30954,7 +31049,7 @@ J. Bruce Fields (9):
       Documentation: clarify definition of "reachable"
       Documentation: add git-remote man page
 
-Jakub Narebski (14):
+Jakub Narębski (14):
       gitweb: Add mod_perl version string to "generator" meta header
       gitweb: Precompile CGI routines for mod_perl
       Add info about new test families (8 and 9) to t/README
@@ -31305,7 +31400,7 @@ J. Bruce Fields (5):
       Documentation: update git-clone man page with new behavior
       Documentation: simpler shared repository creation
 
-Jakub Narebski (26):
+Jakub Narębski (26):
       gitweb: Protect against possible warning in git_commitdiff
       gitweb: Buffer diff header to deal with split patches + git_patchset_body refactoring
       gitweb: Default to $hash_base or HEAD for $hash in "commit" and "commitdiff"
@@ -31745,7 +31840,7 @@ Eric Wong (3):
       git-svn: don't die on rebuild when --upgrade is specified
       git-svn: fix dcommit losing changes when out-of-date from svn
 
-Jakub Narebski (3):
+Jakub Narębski (3):
       gitweb: Better git-unquoting and gitweb-quoting of pathnames
       gitweb: Use character or octal escape codes (and add span.cntrl) in esc_path
       gitweb: New improved patchset view
@@ -31830,7 +31925,7 @@ Eric Wong (3):
       git-svn: avoid printing filenames of files we're not tracking
       git-svn: don't die on rebuild when --upgrade is specified
 
-Jakub Narebski (14):
+Jakub Narębski (14):
       gitweb: Improve git_print_page_path
       gitweb: Add '..' (up directory) to tree view if applicable
       gitweb: Get rid of git_print_simplified_log
@@ -32092,7 +32187,7 @@ Eric Wong (3):
       git-svn: don't die on rebuild when --upgrade is specified
       git-svn: fix dcommit losing changes when out-of-date from svn
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       Documentation: Transplanting branch with git-rebase --onto
 
 Jeff King (1):
@@ -32131,7 +32226,7 @@ Edgar Toernig (1):
 J. Bruce Fields (1):
       Documentation: updates to "Everyday GIT"
 
-Jakub Narebski (3):
+Jakub Narębski (3):
       diff-format.txt: Combined diff format documentation supplement
       diff-format.txt: Correct information about pathnames quoting in patch format
       gitweb: Check git base URLs before generating URL from it
@@ -32197,7 +32292,7 @@ Alexandre Julliard (1):
 J. Bruce Fields (1):
       Make prune also run prune-packed
 
-Jakub Narebski (2):
+Jakub Narębski (2):
       gitweb: Whitespace cleanup - tabs are for indent, spaces are for align (2)
       gitweb: Do not esc_html $basedir argument to git_print_tree_entry
 
@@ -32330,7 +32425,7 @@ Dennis Stosberg (2):
 Franck Bui-Huu (1):
       Add git-upload-archive to the main git man page
 
-Jakub Narebski (1):
+Jakub Narębski (1):
       gitweb: Cleanup Git logo and Git logo target generation
 
 Junio C Hamano (9):
@@ -32465,7 +32560,7 @@ Franck Bui-Huu (10):
 Haavard Skinnemoen (1):
       git-send-email: Don't set author_not_sender from Cc: lines
 
-Jakub Narebski (138):
+Jakub Narębski (138):
       gitweb: whitespace cleanup
       gitweb: Use list for of open for running git commands, thorougly.
       gitweb: simplify git_get_hash_by_path
@@ -33174,7 +33269,7 @@ Version v1.4.2-rc3; changes since v1.4.2-rc2:
 Gerrit Pape (1):
       Build on Debian GNU/kFreeBSD
 
-Jakub Narebski (11):
+Jakub Narębski (11):
       Allow INSTALL, bindir, mandir to be set in main Makefile
       Rename man1 and man7 variables to man1dir and man7dir
       autoconf: Use autoconf to write installation directories to config.mak.autogen
@@ -33405,7 +33500,7 @@ Eric Wong (12):
       git-fetch: fix a bashism (==)
       git-svn: don't check for migrations/upgrades on commit-diff
 
-Jakub Narebski (3):
+Jakub Narębski (3):
       send-email: format 2822 datestring ourselves.
       Wrap long lines in docstrings in contrib/emacs/git.el
       Display help for Git mode after pressing `h' or `?' in *git-status*
@@ -33778,7 +33873,7 @@ Florian Forster (9):
 Fredrik Kuivinen (1):
       blame: Add --time to produce raw timestamps
 
-Jakub Narebski (15):
+Jakub Narębski (15):
       Update gitweb README: gitweb is now included with git
       Move gitweb style to gitweb.css
       gitweb: safely output binary files for 'blob_plain' action
