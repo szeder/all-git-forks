@@ -35,6 +35,7 @@ static int error_unmatch;
 static char *ps_matched;
 static const char *with_tree;
 static int exc_given;
+static int exclude_args;
 
 static const char *tag_cached = "";
 static const char *tag_unmerged = "";
@@ -528,9 +529,9 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 
 	argc = parse_options(argc, argv, prefix, builtin_ls_files_options,
 			ls_files_usage, 0);
-	el = add_exclude_list(&dir, EXC_CMDL);
+	el = add_exclude_list(&dir, EXC_CMDL, "--exclude option");
 	for (i = 0; i < exclude_list.nr; i++) {
-		add_exclude(exclude_list.items[i].string, "", 0, el);
+		add_exclude(exclude_list.items[i].string, "", 0, el, --exclude_args);
 	}
 	if (show_tag || show_valid_bit) {
 		tag_cached = "H ";
