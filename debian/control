@@ -3,10 +3,10 @@ Section: vcs
 Priority: optional
 Maintainer: Gerrit Pape <pape@smarden.org>
 Uploaders: Jonathan Nieder <jrnieder@gmail.com>
-Build-Depends: libz-dev,
+Build-Depends: libz-dev, libpcre3-dev, gettext,
  libcurl4-gnutls-dev | libcurl3-gnutls-dev, libexpat1-dev,
  subversion, libsvn-perl | libsvn-core-perl, libyaml-perl,
- tcl8.5, gettext,
+ tcl8.5,
  libhttp-date-perl | libtime-modules-perl,
  cvs, cvsps, libdbd-sqlite3-perl,
  unzip, libio-pty-perl,
