@@ -13,6 +13,7 @@ SYNOPSIS
 	      [--reference <repository>] [--] <repository> [<path>]
 'git submodule' [--quiet] status [--cached] [--recursive] [--] [<path>...]
 'git submodule' [--quiet] init [--] [<path>...]
+'git submodule' [--quiet] deinit [--] [<path>...]
 'git submodule' [--quiet] update [--init] [-N|--no-fetch] [--rebase]
 	      [--reference <repository>] [--merge] [--recursive] [--] [<path>...]
 'git submodule' [--quiet] summary [--cached|--files] [(-n|--summary-limit) <n>]
@@ -133,6 +134,17 @@ init::
 	you can also just use `git submodule update --init` without
 	the explicit 'init' step if you do not intend to customize
 	any submodule locations.
+
+deinit::
+	Unregister the submodules, i.e. remove the whole `submodule.$name`
+	section from .git/config. Further calls to `git submodule update`,
+	`git submodule foreach` and `git submodule sync` will skip any
+	unregistered submodules until they are initialized again, so use
+	this command if you don't want to have a local checkout of the
+	submodule in your work tree anymore (but note that this command
+	does not remove the submodule work tree). If you really want to
+	remove a submodule from the repository and commit that, use
+	linkgit:git-rm[1] instead.
 
 update::
 	Update the registered submodules, i.e. clone missing submodules and
