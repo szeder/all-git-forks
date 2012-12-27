@@ -23,6 +23,9 @@ struct exclude_list {
 		const char *base;
 		int baselen;
 		int flags;
+		const char *src;
+		int srcpos; /* counting starts from 1 for line numbers in ignore files,
+			       and from -1 decrementing for patterns from CLI (--exclude) */
 	} **excludes;
 };
 
@@ -76,8 +79,8 @@ extern int within_depth(const char *name, int namelen, int depth, int max_depth)
 extern int fill_directory(struct dir_struct *dir, const char **pathspec);
 extern int read_directory(struct dir_struct *, const char *path, int len, const char **pathspec);
 
-extern int excluded_from_list(const char *pathname, int pathlen, const char *basename,
-			      int *dtype, struct exclude_list *el);
+extern int is_excluded_from_list(const char *pathname, int pathlen, const char *basename,
+				 int *dtype, struct exclude_list *el);
 struct dir_entry *dir_add_ignored(struct dir_struct *dir, const char *pathname, int len);
 
 /*
@@ -91,26 +94,30 @@ extern int match_pathname(const char *, int,
 			  const char *, int, int, int);
 
 /*
- * The excluded() API is meant for callers that check each level of leading
- * directory hierarchies with excluded() to avoid recursing into excluded
+ * The is_excluded() API is meant for callers that check each level of leading
+ * directory hierarchies with is_excluded() to avoid recursing into excluded
  * directories.  Callers that do not do so should use this API instead.
  */
 struct path_exclude_check {
 	struct dir_struct *dir;
+	struct exclude *exclude;
 	struct strbuf path;
 };
 extern void path_exclude_check_init(struct path_exclude_check *, struct dir_struct *);
 extern void path_exclude_check_clear(struct path_exclude_check *);
-extern int path_excluded(struct path_exclude_check *, const char *, int namelen, int *dtype);
+extern struct exclude *last_exclude_matching_path(struct path_exclude_check *, const char *,
+						  int namelen, int *dtype);
+extern int is_path_excluded(struct path_exclude_check *, const char *, int namelen, int *dtype);
 
 
 extern int add_excludes_from_file_to_list(const char *fname, const char *base, int baselen,
-					  char **buf_p, struct exclude_list *which, int check_index);
+					  char **buf_p, struct exclude_list *el, int check_index);
 extern void add_excludes_from_file(struct dir_struct *, const char *fname);
 extern void parse_exclude_pattern(const char **string, int *patternlen, int *flags, int *nowildcardlen);
 extern void add_exclude(const char *string, const char *base,
-			int baselen, struct exclude_list *which);
+			int baselen, struct exclude_list *el, const char *src, int srcpos);
 extern void free_excludes(struct exclude_list *el);
+extern void free_directory(struct dir_struct *dir);
 extern int file_exists(const char *);
 
 extern int is_inside_dir(const char *dir);
