@@ -50,6 +50,11 @@
 import os, sys, commands, socket, urllib
 from xml.sax.saxutils import escape
 
+if sys.hexversion < 0x02000000:
+        # The limiter is the xml.sax module
+        sys.stderr.write("ciabot.py: requires Python 2.0.0 or later.")
+        sys.exit(1)
+
 # Changeset URL prefix for your repo: when the commit ID is appended
 # to this, it should point at a CGI that will display the commit
 # through gitweb or something similar. The defaults will probably
