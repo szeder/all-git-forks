@@ -821,15 +821,17 @@ def main(args):
     marks = Marks(marks_path)
 
     parser = Parser(repo)
+
+    command_map = {
+        'capabilities': do_capabilities,
+        'list': do_list,
+        'import': do_import,
+        'export': do_export
+    }
     for line in parser:
-        if parser.check('capabilities'):
-            do_capabilities(parser)
-        elif parser.check('list'):
-            do_list(parser)
-        elif parser.check('import'):
-            do_import(parser)
-        elif parser.check('export'):
-            do_export(parser)
+        command = line.split()[0]
+        if command in command_map:
+            command_map[command](parser)
         else:
             die('unhandled command: %s' % line)
         sys.stdout.flush()
