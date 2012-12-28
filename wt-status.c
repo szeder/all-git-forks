@@ -516,7 +516,7 @@ static void wt_status_collect_untracked(struct wt_status *s)
 
 	if (s->show_ignored_files) {
 		dir.nr = 0;
-		dir.flags = DIR_SHOW_IGNORED | DIR_SHOW_OTHER_DIRECTORIES;
+		dir.flags = DIR_SHOW_IGNORED;
 		fill_directory(&dir, s->pathspec);
 		for (i = 0; i < dir.nr; i++) {
 			struct dir_entry *ent = dir.entries[i];
