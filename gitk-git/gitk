@@ -2544,6 +2544,7 @@ proc makewindow {} {
 	{mc "Compare with marked commit" command compare_commits}
 	{mc "Diff this -> marked commit" command {diffvsmark 0}}
 	{mc "Diff marked commit -> this" command {diffvsmark 1}}
+	{mc "Visualize this merge" command visualize_merge}
     }
     $rowctxmenu configure -tearoff 0
 
@@ -2581,6 +2582,31 @@ proc makewindow {} {
 	{mc "Run git gui blame on this line" command {external_blame_diff}}
     }
     $diff_menu configure -tearoff 0
+}
+
+# Return the number of parents for a given sha1 id
+proc get_numparents_from_id {id} {
+    global parentlist
+    set row [rowofcommit $id]
+    return [llength [lindex $parentlist $row]]
+}
+
+proc visualize_merge {} {
+    global parents currentid parentlist
+    global rowmenuid
+
+    set num_parents [get_numparents_from_id $rowmenuid]
+    set row [rowofcommit $rowmenuid]
+
+    if {$num_parents >= 2} {
+	set revlist $rowmenuid
+	for { set i 1 } {$i < $num_parents} {incr i} {
+
+	    set revlist "$revlist [lindex $parentlist $row 0]..[lindex $parentlist $row $i] $rowmenuid"
+	}
+	
+	eval exec gitk $revlist
+    }
 }
 
 # Windows sends all mouse wheel events to the current focused window, not
@@ -8517,6 +8543,13 @@ proc rowmenu {x y id} {
 	$menu entryconfigure 9 -state $mstate
 	$menu entryconfigure 10 -state $mstate
 	$menu entryconfigure 11 -state $mstate
+
+	# Disable visualize-merge on only one parent
+	if {[get_numparents_from_id $id] == 1} {
+	    $menu entryconfigure 15 -state disabled
+	} else {
+	    $menu entryconfigure 15 -state normal
+	}
     } else {
 	set menu $fakerowmenu
     }
