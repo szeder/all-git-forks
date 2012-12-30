@@ -303,7 +303,7 @@ static int simple_length(const char *match)
 	}
 }
 
-static int no_wildcard(const char *string)
+int no_wildcard(const char *string)
 {
 	return string[simple_length(string)] == '\0';
 }

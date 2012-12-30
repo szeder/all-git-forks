@@ -173,7 +173,7 @@ static struct pathspec_magic {
 
 /*
  * Take an element of a pathspec and check for magic signatures.
- * Append the result to the prefix.
+ * Append the result to the prefix. Return the magic bitmap.
  *
  * For now, we only parse the syntax and throw out anything other than
  * "top" magic.
@@ -184,7 +184,10 @@ static struct pathspec_magic {
  * the prefix part must always match literally, and a single stupid
  * string cannot express such a case.
  */
-static const char *prefix_pathspec(const char *prefix, int prefixlen, const char *elt)
+static unsigned prefix_pathspec(struct pathspec_item *item,
+				const char **raw,
+				const char *prefix, int prefixlen,
+				const char *elt)
 {
 	unsigned magic = 0;
 	const char *copyfrom = elt;
@@ -240,39 +243,90 @@ static const char *prefix_pathspec(const char *prefix, int prefixlen, const char
 	}
 
 	if (magic & PATHSPEC_FROMTOP)
-		return xstrdup(copyfrom);
+		item->match = xstrdup(copyfrom);
 	else
-		return prefix_path(prefix, prefixlen, copyfrom);
+		item->match = prefix_path(prefix, prefixlen, copyfrom);
+	*raw = item->match;
+	item->len = strlen(item->match);
+	item->use_wildcard = !no_wildcard(item->match);
+	return magic;
+}
+
+static int pathspec_item_cmp(const void *a_, const void *b_)
+{
+	struct pathspec_item *a, *b;
+
+	a = (struct pathspec_item *)a_;
+	b = (struct pathspec_item *)b_;
+	return strcmp(a->match, b->match);
+}
+
+/*
+ * Given command line arguments and a prefix, convert the input to
+ * pathspec. die() if any magic other than specified in
+ * "allowed_magic" is used.
+ */
+static void parse_pathspec(struct pathspec *pathspec,
+			   unsigned allowed_magic,
+			   const char *prefix, const char **argv)
+{
+	struct pathspec_item *item;
+	const char *entry = *argv;
+	int i, n, prefixlen;
+
+	memset(pathspec, 0, sizeof(*pathspec));
+
+	/* No arguments, no prefix -> no pathspec */
+	if (!entry && !prefix)
+		return;
+
+	/* No arguments with prefix -> prefix pathspec */
+	if (!entry) {
+		static const char *raw[2];
+
+		pathspec->items = item = xmalloc(sizeof(*item));
+		item->match = prefix;
+		/*item->nowildcard_len = */item->len = strlen(prefix);
+		/*item->flags = 0;*/
+		item->use_wildcard = 0;
+		raw[0] = prefix;
+		raw[1] = NULL;
+		pathspec->nr = 1;
+		pathspec->raw = raw;
+		return;
+	}
+
+	n = 0;
+	while (argv[n])
+		n++;
+
+	pathspec->nr = n;
+	pathspec->items = item = xmalloc(sizeof(*item) * n);
+	pathspec->raw = argv;
+	prefixlen = prefix ? strlen(prefix) : 0;
+
+	for (i = 0; i < n; i++) {
+		unsigned applied_magic;
+		const char *arg = argv[i];
+
+		applied_magic = prefix_pathspec(item + i, argv + i,
+						prefix, prefixlen, arg);
+		if (applied_magic & ~allowed_magic)
+			die(_("pathspec magic in '%s' is not supported"
+			      " by this command"), arg);
+		if (item[i].use_wildcard)
+			pathspec->has_wildcard = 1;
+	}
+
+	qsort(pathspec->items, pathspec->nr,
+	      sizeof(struct pathspec_item), pathspec_item_cmp);
 }
 
 const char **get_pathspec(const char *prefix, const char **pathspec)
 {
-	const char *entry = *pathspec;
-	const char **src, **dst;
-	int prefixlen;
-
-	if (!prefix && !entry)
-		return NULL;
-
-	if (!entry) {
-		static const char *spec[2];
-		spec[0] = prefix;
-		spec[1] = NULL;
-		return spec;
-	}
-
-	/* Otherwise we have to re-write the entries.. */
-	src = pathspec;
-	dst = pathspec;
-	prefixlen = prefix ? strlen(prefix) : 0;
-	while (*src) {
-		*(dst++) = prefix_pathspec(prefix, prefixlen, *src);
-		src++;
-	}
-	*dst = NULL;
-	if (!*pathspec)
-		return NULL;
-	return pathspec;
+	struct pathspec ps;
+	parse_pathspec(&ps, PATHSPEC_FROMTOP, prefix, pathspec);
+	return ps.raw;
 }
 
 /*
