@@ -7,8 +7,10 @@
  */
 #include "cache.h"
 #include "dir.h"
+#include "quote.h"
 #include "refs.h"
 #include "wildmatch.h"
+#include "string-list.h"
 
 struct path_simplify {
 	int len;
@@ -1326,11 +1328,30 @@ int is_empty_dir(const char *path)
 	return ret;
 }
 
-static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up)
+static void append_dir_name(struct string_list *dels, struct string_list *skips,
+		struct string_list *errs, char *name, const char * prefix, int failed, int isdir)
+{
+	struct strbuf quoted = STRBUF_INIT;
+
+	quote_path_relative(name, strlen(name), &quoted, prefix);
+	if (isdir && quoted.buf[strlen(quoted.buf) -1] != '/')
+		strbuf_addch(&quoted, '/');
+
+	if (skips)
+		string_list_append(skips, quoted.buf);
+	else if (!failed && dels)
+		string_list_append(dels, quoted.buf);
+	else if (errs)
+		string_list_append(errs, quoted.buf);
+}
+
+static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up,
+	int dry_run, struct string_list *dels, struct string_list *skips,
+	struct string_list *errs, const char *prefix)
 {
 	DIR *dir;
 	struct dirent *e;
-	int ret = 0, original_len = path->len, len, kept_down = 0;
+	int ret = 0, original_len = path->len, len, kept_down = 0, res = 0;
 	int only_empty = (flag & REMOVE_DIR_EMPTY_ONLY);
 	int keep_toplevel = (flag & REMOVE_DIR_KEEP_TOPLEVEL);
 	unsigned char submodule_head[20];
@@ -1338,6 +1359,7 @@ static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up)
 	if ((flag & REMOVE_DIR_KEEP_NESTED_GIT) &&
 	    !resolve_gitlink_ref(path->buf, "HEAD", submodule_head)) {
 		/* Do not descend and nuke a nested git work tree. */
+		append_dir_name(NULL, skips, NULL, path->buf, prefix, 0, 1);
 		if (kept_up)
 			*kept_up = 1;
 		return 0;
@@ -1347,8 +1369,13 @@ static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up)
 	dir = opendir(path->buf);
 	if (!dir) {
 		/* an empty dir could be removed even if it is unreadble */
-		if (!keep_toplevel)
-			return rmdir(path->buf);
+		if (!keep_toplevel) {
+			res = 0;
+			if (!dry_run)
+				res = rmdir(path->buf);
+			append_dir_name(dels, NULL, errs, path->buf, prefix, res, 1);
+			return res;
+		}
 		else
 			return -1;
 	}
@@ -1366,10 +1393,17 @@ static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up)
 		if (lstat(path->buf, &st))
 			; /* fall thru */
 		else if (S_ISDIR(st.st_mode)) {
-			if (!remove_dir_recurse(path, flag, &kept_down))
+			if (!remove_dir_recurse(path, flag, &kept_down, dry_run, dels,
+						skips, errs, prefix))
 				continue; /* happy */
-		} else if (!only_empty && !unlink(path->buf))
-			continue; /* happy, too */
+		} else if (!only_empty) {
+			res = 0;
+			if (!dry_run)
+				res = unlink(path->buf);
+			append_dir_name(dels, NULL, errs, path->buf, prefix, res, 0);
+			if (!res)
+				continue; /* happy, too */
+		}
 
 		/* path too long, stat fails, or non-directory still exists */
 		ret = -1;
@@ -1378,8 +1412,12 @@ static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up)
 	closedir(dir);
 
 	strbuf_setlen(path, original_len);
-	if (!ret && !keep_toplevel && !kept_down)
-		ret = rmdir(path->buf);
+	if (!ret && !keep_toplevel && !kept_down) {
+		ret = 0;
+		if (!dry_run)
+			ret = rmdir(path->buf);
+		append_dir_name(dels, NULL, errs, path->buf, prefix, res, 1);
+	}
 	else if (kept_up)
 		/*
 		 * report the uplevel that it is not an error that we
@@ -1391,7 +1429,14 @@ static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up)
 
 int remove_dir_recursively(struct strbuf *path, int flag)
 {
-	return remove_dir_recurse(path, flag, NULL);
+	return remove_dir_recurse(path, flag, NULL, 0, NULL, NULL, NULL, NULL);
+}
+
+int remove_dir_recursively_with_dryrun(struct strbuf *path, int flag,
+		int dry_run, struct string_list *dels, struct string_list *skips,
+		struct string_list *errs, const char *prefix)
+{
+	return remove_dir_recurse(path, flag, NULL, dry_run, dels, skips, errs, prefix);
 }
 
 void setup_standard_excludes(struct dir_struct *dir)
