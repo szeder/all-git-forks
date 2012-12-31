@@ -1076,6 +1076,13 @@ static enum path_treatment treat_one_path(struct dir_struct *dir,
 			return path_ignored;
 	}
 
+	/*
+	 * Don't recurse into ignored directories when looking for
+	 * ignored files, but still show the directory as ignored.
+	 */
+	if (exclude && (dir->flags & DIR_SHOW_IGNORED) && dtype == DT_DIR)
+		return path_handled;
+
 	switch (dtype) {
 	default:
 		return path_ignored;
