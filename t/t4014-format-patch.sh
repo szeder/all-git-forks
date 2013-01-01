@@ -993,7 +993,7 @@ EOF
 '
 
 test_expect_success 'signoff: commit with only subject that does not end with NL' '
-	echo -n subject | append_signoff >actual &&
+	printf subject | append_signoff >actual &&
 	cat >expected <<\EOF &&
 4:Subject: [PATCH] subject
 8:
