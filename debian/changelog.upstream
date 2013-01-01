@@ -1,3 +1,30 @@
+Version v1.8.1; changes since v1.8.1-rc3:
+-----------------------------------------
+
+Junio C Hamano (3):
+      git(1): show link to contributor summary page
+      Git 1.8.0.3
+      Git 1.8.1
+
+Max Horn (1):
+      git-remote-helpers.txt: document invocation before input format
+
+Ramkumar Ramachandra (1):
+      Documentation: move diff.wordRegex from config.txt to diff-config.txt
+
+Sebastian Leske (4):
+      git-svn: Document branches with at-sign(@).
+      git-svn: Recommend use of structure options.
+      git-svn: Expand documentation for --follow-parent
+      git-svn: Note about tags.
+
+Simon Oosthoek (1):
+      make __git_ps1 accept a third parameter in pcmode
+
+Thomas Ackermann (1):
+      Sort howto documents in howto-index.txt
+
+
 Version v1.8.1-rc3; changes since v1.8.1-rc2:
 ---------------------------------------------
 
@@ -130,7 +157,7 @@ Tran Ngoc Quan (1):
       l10n: vi.po: update to git-v1.8.0.1-347-gf94c3
 
 
-Version v1.8.1-rc0; changes since v1.8.0.2:
+Version v1.8.1-rc0; changes since v1.8.0.3:
 -------------------------------------------
 
 Ben Walton (1):
@@ -202,10 +229,7 @@ Florian Achleitner (15):
       remote-svn: add marks-file regeneration
       Add a test script for remote-svn
 
-Gunnlaugur Þór Briem (1):
-      Document git-svn fetch --log-window-size parameter
-
-Jeff King (32):
+Jeff King (30):
       pager: drop "wait for output to run less" hack
       peel_ref: use faster deref_tag_noverify
       peel_ref: do not return a null sha1
@@ -225,8 +249,6 @@ Jeff King (32):
       git-config: collect values instead of immediately printing
       git-config: do not complain about duplicate entries
       git-config: use git_config_with_options
-      pickaxe: hoist empty needle check
-      pickaxe: use textconv for -S counting
       remote-curl: hoist gzip buffer size to top of post_rpc
       remote-curl: retry failed requests for auth even with gzip
       cvsimport: work around perl tzset issue
@@ -286,13 +308,12 @@ Junio C Hamano (20):
 Karsten Blees (1):
       update-index/diff-index: use core.preloadindex to improve performance
 
-Krzysztof Mazur (11):
+Krzysztof Mazur (10):
       git-send-email: introduce compose-encoding
       git-send-email: use compose-encoding for Subject
       git-send-email: skip RFC2047 quoting for ASCII subjects
       git-send-email: introduce quote_subject()
       git-send-email: add rfc2047 quoting for "=?"
-      doc: git-reset: make "<mode>" optional
       git-send-email: remove garbage after email address
       git-send-email: fix fallback code in extract_valid_address()
       git-send-email: remove invalid addresses earlier
@@ -412,23 +433,93 @@ Stefan Zager (1):
 Stefano Lattarini (1):
       configure: fix some output message
 
-Thomas Ackermann (6):
-      Split over-long synopsis in git-fetch-pack.txt into several lines
-      Shorten two over-long lines in git-bisect-lk2009.txt by abbreviating some sha1
-      Change headline of technical/send-pack-pipeline.txt to not confuse its content with content from git-send-pack.txt
-      Documentation/technical: convert plain text files to asciidoc
-      Documentation/howto: convert plain text files to asciidoc
-      Documentation: build html for all files in technical and howto
-
-Tom Jones (1):
-      Add -S, --gpg-sign option to manpage of "git commit"
-
 Torsten Bögershausen (1):
       Fix t9200 on case insensitive file systems
 
 Tran Ngoc Quan (2):
       l10n: vi.po: update to git-v1.7.12-437-g1084f
       l10n: vi.po: Update follow git-v1.8.0-273-g2d242
+
+
+Version v1.8.0.3; changes since v1.8.0.2:
+-----------------------------------------
+
+Adam Spiers (2):
+      SubmittingPatches: add convention of prefixing commit messages
+      Documentation: move support for old compilers to CodingGuidelines
+
+Anders Kaseorg (1):
+      git-prompt: Document GIT_PS1_DESCRIBE_STYLE
+
+Chris Rorvick (2):
+      Documentation/git-checkout.txt: clarify usage
+      Documentation/git-checkout.txt: document 70c9ac2 behavior
+
+Gunnlaugur Þór Briem (1):
+      Document git-svn fetch --log-window-size parameter
+
+Jeff King (7):
+      pickaxe: hoist empty needle check
+      pickaxe: use textconv for -S counting
+      .mailmap: match up some obvious names/emails
+      .mailmap: fix broken entry for Martin Langhoff
+      .mailmap: normalize emails for Jeff King
+      .mailmap: normalize emails for Linus Torvalds
+      contrib: update stats/mailmap script
+
+John Keeping (1):
+      Documentation: don't link to example mail addresses
+
+Junio C Hamano (6):
+      fetch --tags: clarify documentation
+      README: it does not matter who the current maintainer is
+      t7004: do not create unneeded gpghome/gpg.conf when GPG is not used
+      Documentation: Describe "git diff <blob> <blob>" separately
+      git(1): show link to contributor summary page
+      Git 1.8.0.3
+
+Krzysztof Mazur (1):
+      doc: git-reset: make "<mode>" optional
+
+Manlio Perillo (1):
+      git.txt: add missing info about --git-dir command-line option
+
+Matthew Daley (1):
+      Fix sizeof usage in get_permutations
+
+Max Horn (1):
+      git-remote-helpers.txt: document invocation before input format
+
+Nguyễn Thái Ngọc Duy (1):
+      index-format.txt: clarify what is "invalid"
+
+Ramkumar Ramachandra (1):
+      Documentation: move diff.wordRegex from config.txt to diff-config.txt
+
+Sebastian Leske (4):
+      git-svn: Document branches with at-sign(@).
+      git-svn: Recommend use of structure options.
+      git-svn: Expand documentation for --follow-parent
+      git-svn: Note about tags.
+
+Sitaram Chamarty (1):
+      clarify -M without % symbol in diff-options
+
+Stefano Lattarini (1):
+      README: Git is released under the GPLv2, not just "the GPL"
+
+Thomas Ackermann (8):
+      Split over-long synopsis in git-fetch-pack.txt into several lines
+      Shorten two over-long lines in git-bisect-lk2009.txt by abbreviating some sha1
+      Change headline of technical/send-pack-pipeline.txt to not confuse its content with content from git-send-pack.txt
+      Documentation/technical: convert plain text files to asciidoc
+      Documentation/howto: convert plain text files to asciidoc
+      Documentation: build html for all files in technical and howto
+      Remove misleading date from api-index-skel.txt
+      Sort howto documents in howto-index.txt
+
+Tom Jones (1):
+      Add -S, --gpg-sign option to manpage of "git commit"
 
 
 Version v1.8.0.2; changes since v1.8.0.1:
