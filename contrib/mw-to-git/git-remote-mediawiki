@@ -41,6 +41,11 @@ use constant NULL_SHA1 => "0000000000000000000000000000000000000000";
 # Used on Git's side to reflect empty edit messages on the wiki
 use constant EMPTY_MESSAGE => '*Empty MediaWiki Message*';
 
+# MediaWiki 在 1.17 之前有使用 xxlimit=max 就會發生系統錯誤的 bug：
+# https://bugzilla.wikimedia.org/show_bug.cgi?id=24564
+# 在這裡用一個向後兼容的 "500"，如果用的是 1.17 版以上的 MW，可以把常數改成 "max"。
+use constant PARAMETER_MAX => "500"; 
+
 my $remotename = $ARGV[0];
 my $url = $ARGV[1];
 
@@ -272,7 +277,7 @@ sub get_mw_tracked_categories {
 			action => 'query',
 			list => 'categorymembers',
 			cmtitle => $category,
-			cmlimit => 'max' } )
+			cmlimit => PARAMETER_MAX } )
 			|| die $mediawiki->{error}->{code} . ': '
 				. $mediawiki->{error}->{details};
 		foreach my $page (@{$mw_pages}) {
@@ -287,7 +292,7 @@ sub get_mw_all_pages {
 	my $mw_pages = $mediawiki->list({
 		action => 'query',
 		list => 'allpages',
-		aplimit => 'max'
+		aplimit => PARAMETER_MAX
 	});
 	if (!defined($mw_pages)) {
 		print STDERR "fatal: could not get the list of wiki pages.\n";
@@ -385,7 +390,7 @@ sub get_all_mediafiles {
 		action => 'query',
 		list => 'allpages',
 		apnamespace => get_mw_namespace_id("File"),
-		aplimit => 'max'
+		aplimit => PARAMETER_MAX
 	});
 	if (!defined($mw_pages)) {
 		print STDERR "fatal: could not get the list of pages for media files.\n";
@@ -421,7 +426,7 @@ sub get_linked_mediafiles {
 			prop => 'links|images',
 			titles => $mw_titles,
 			plnamespace => get_mw_namespace_id("File"),
-			pllimit => 'max'
+			pllimit => PARAMETER_MAX
 		};
 		my $result = $mediawiki->api($query);
 
@@ -664,7 +669,7 @@ sub fetch_mw_revisions_for_page {
 		rvprop => 'ids',
 		rvdir => 'newer',
 		rvstartid => $fetch_from,
-		rvlimit => 500,
+		rvlimit => PARAMETER_MAX,
 		pageids => $id,
 	};
 
