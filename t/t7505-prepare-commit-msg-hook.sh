@@ -172,11 +172,12 @@ test_expect_success 'with failing hook (merge)' '
 	git checkout -B other HEAD@{1} &&
 	echo "more" >> file &&
 	git add file &&
-	chmod -x $HOOK &&
+	rm -f "$HOOK" &&
 	git commit -m other &&
-	chmod +x $HOOK &&
+	write_script "$HOOK" <<-EOF
+	exit 1
+	EOF
 	git checkout - &&
-	head=`git rev-parse HEAD` &&
 	test_must_fail git merge other
 
 '
