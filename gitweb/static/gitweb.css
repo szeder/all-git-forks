@@ -546,6 +546,16 @@ a.linenr {
 	text-decoration: none
 }
 
+a.linenr:hover, a.linenr:target {
+	color: #444444;
+	background-color: #ff4;
+}
+
+a.linenr:hover::before, a.linenr:target::before {
+	content: '⚓';
+	position: absolute;
+}
+
 a.rss_logo {
 	float: right;
 	padding: 3px 0px;
