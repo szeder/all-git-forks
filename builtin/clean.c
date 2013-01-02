@@ -21,12 +21,12 @@ static const char *const builtin_clean_usage[] = {
 	NULL
 };
 
-static const char* MSG_REMOVE = "Removing %s\n";
-static const char* MSG_WOULD_REMOVE = "Would remove %s\n";
-static const char* MSG_WOULD_NOT_REMOVE = "Would not remove %s\n";
-static const char* MSG_WOULD_IGNORE_GIT_DIR = "Would ignore untracked git repository %s\n";
-static const char* MSG_WARN_GIT_DIR_IGNORE = "ignoring untracked git repository %s";
-static const char* MSG_WARN_REMOVE_FAILED = "failed to remove %s";
+static const char *MSG_REMOVE = N_("Removing %s\n");
+static const char *MSG_WOULD_REMOVE = N_("Would remove %s\n");
+/* static const char *MSG_WOULD_NOT_REMOVE = N_("Would not remove %s\n"); unused??? */
+static const char *MSG_WOULD_IGNORE_GIT_DIR = N_("Would ignore untracked git repository %s\n");
+static const char *MSG_WARN_GIT_DIR_IGNORE = N_("ignoring untracked git repository %s");
+static const char *MSG_WARN_REMOVE_FAILED = N_("failed to remove %s");
 
 static int git_clean_config(const char *var, const char *value, void *cb)
 {
@@ -272,7 +272,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 				warning(_(MSG_WARN_REMOVE_FAILED), qname);
 				errors++;
 			} else if (!quiet)
-				printf(dry_run ? _(MSG_WOULD_REMOVE) :_(MSG_REMOVE), qname);
+				printf(dry_run ? _(MSG_WOULD_REMOVE) : _(MSG_REMOVE), qname);
 		}
 	}
 	free(seen);
