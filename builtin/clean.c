@@ -10,6 +10,7 @@
 #include "cache.h"
 #include "dir.h"
 #include "parse-options.h"
+#include "refs.h"
 #include "string-list.h"
 #include "quote.h"
 
@@ -19,6 +20,13 @@ static const char *const builtin_clean_usage[] = {
 	N_("git clean [-d] [-f] [-n] [-q] [-e <pattern>] [-x | -X] [--] <paths>..."),
 	NULL
 };
+
+static const char* MSG_REMOVE = "Removing %s\n";
+static const char* MSG_WOULD_REMOVE = "Would remove %s\n";
+static const char* MSG_WOULD_NOT_REMOVE = "Would not remove %s\n";
+static const char* MSG_WOULD_IGNORE_GIT_DIR = "Would ignore untracked git repository %s\n";
+static const char* MSG_WARN_GIT_DIR_IGNORE = "ignoring untracked git repository %s";
+static const char* MSG_WARN_REMOVE_FAILED = "failed to remove %s";
 
 static int git_clean_config(const char *var, const char *value, void *cb)
 {
@@ -34,11 +42,109 @@ static int exclude_cb(const struct option *opt, const char *arg, int unset)
 	return 0;
 }
 
+static int remove_dirs(struct strbuf *path, const char *prefix, int force_flag,
+		int dry_run, int quiet, int *dir_gone)
+{
+	DIR *dir;
+	struct strbuf quoted = STRBUF_INIT;
+	struct dirent *e;
+	int res = 0, ret = 0, gone = 1, original_len = path->len, len, i;
+	unsigned char submodule_head[20];
+	struct string_list dels = STRING_LIST_INIT_DUP;
+
+	*dir_gone = 1;
+
+	quote_path_relative(path->buf, strlen(path->buf), &quoted, prefix);
+	if ((force_flag & REMOVE_DIR_KEEP_NESTED_GIT) &&
+	    !resolve_gitlink_ref(path->buf, "HEAD", submodule_head)) {
+		if (dry_run && !quiet)
+			printf(_(MSG_WOULD_IGNORE_GIT_DIR), quoted.buf);
+		else if (!dry_run)
+			warning(_(MSG_WARN_GIT_DIR_IGNORE), quoted.buf);
+
+		*dir_gone = 0;
+		return 0;
+	}
+
+	dir = opendir(path->buf);
+	if (!dir) {
+		/* an empty dir could be removed even if it is unreadble */
+		res = dry_run ? 0 : rmdir(path->buf);
+		if (res) {
+			warning(_(MSG_WARN_REMOVE_FAILED), quoted.buf);
+			*dir_gone = 0;
+		}
+		return res;
+	}
+
+	if (path->buf[original_len - 1] != '/')
+		strbuf_addch(path, '/');
+
+	len = path->len;
+	while ((e = readdir(dir)) != NULL) {
+		struct stat st;
+		if (is_dot_or_dotdot(e->d_name))
+			continue;
+
+		strbuf_setlen(path, len);
+		strbuf_addstr(path, e->d_name);
+		quote_path_relative(path->buf, strlen(path->buf), &quoted, prefix);
+		if (lstat(path->buf, &st))
+			; /* fall thru */
+		else if (S_ISDIR(st.st_mode)) {
+			if (remove_dirs(path, prefix, force_flag, dry_run, quiet, &gone))
+				ret = 1;
+			if (gone)
+				string_list_append(&dels, quoted.buf);
+			else
+				*dir_gone = 0;
+			continue;
+		} else {
+			res = dry_run ? 0 : unlink(path->buf);
+			if (!res)
+				string_list_append(&dels, quoted.buf);
+			else {
+				warning(_(MSG_WARN_REMOVE_FAILED), quoted.buf);
+				*dir_gone = 0;
+				ret = 1;
+			}
+			continue;
+		}
+
+		/* path too long, stat fails, or non-directory still exists */
+		*dir_gone = 0;
+		ret = 1;
+		break;
+	}
+	closedir(dir);
+
+	strbuf_setlen(path, original_len);
+	quote_path_relative(path->buf, strlen(path->buf), &quoted, prefix);
+
+	if (*dir_gone) {
+		res = dry_run ? 0 : rmdir(path->buf);
+		if (!res)
+			*dir_gone = 1;
+		else {
+			warning(_(MSG_WARN_REMOVE_FAILED), quoted.buf);
+			*dir_gone = 0;
+			ret = 1;
+		}
+	}
+
+	if (!*dir_gone && !quiet) {
+		for (i = 0; i < dels.nr; i++)
+			printf(dry_run ?  _(MSG_WOULD_REMOVE) : _(MSG_REMOVE), dels.items[i].string);
+	}
+	string_list_clear(&dels, 0);
+	return ret;
+}
+
 int cmd_clean(int argc, const char **argv, const char *prefix)
 {
-	int i;
-	int show_only = 0, remove_directories = 0, quiet = 0, ignored = 0;
-	int ignored_only = 0, config_set = 0, errors = 0;
+	int i, res;
+	int dry_run = 0, remove_directories = 0, quiet = 0, ignored = 0;
+	int ignored_only = 0, config_set = 0, errors = 0, gone = 1;
 	int rm_flags = REMOVE_DIR_KEEP_NESTED_GIT;
 	struct strbuf directory = STRBUF_INIT;
 	struct dir_struct dir;
@@ -49,7 +155,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 	char *seen = NULL;
 	struct option options[] = {
 		OPT__QUIET(&quiet, N_("do not print names of files removed")),
-		OPT__DRY_RUN(&show_only, N_("dry run")),
+		OPT__DRY_RUN(&dry_run, N_("dry run")),
 		OPT__FORCE(&force, N_("force")),
 		OPT_BOOLEAN('d', NULL, &remove_directories,
 				N_("remove whole directories")),
@@ -77,7 +183,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 	if (ignored && ignored_only)
 		die(_("-x and -X cannot be used together"));
 
-	if (!show_only && !force) {
+	if (!dry_run && !force) {
 		if (config_set)
 			die(_("clean.requireForce set to true and neither -n nor -f given; "
 				  "refusing to clean"));
@@ -150,38 +256,23 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 		if (S_ISDIR(st.st_mode)) {
 			strbuf_addstr(&directory, ent->name);
 			qname = quote_path_relative(directory.buf, directory.len, &buf, prefix);
-			if (show_only && (remove_directories ||
-			    (matches == MATCHED_EXACTLY))) {
-				printf(_("Would remove %s\n"), qname);
-			} else if (remove_directories ||
-				   (matches == MATCHED_EXACTLY)) {
-				if (!quiet)
-					printf(_("Removing %s\n"), qname);
-				if (remove_dir_recursively(&directory,
-							   rm_flags) != 0) {
-					warning(_("failed to remove %s"), qname);
+			if (remove_directories || (matches == MATCHED_EXACTLY)) {
+				if (remove_dirs(&directory, prefix, rm_flags, dry_run, quiet, &gone))
 					errors++;
-				}
-			} else if (show_only) {
-				printf(_("Would not remove %s\n"), qname);
-			} else {
-				printf(_("Not removing %s\n"), qname);
+				if (gone && !quiet)
+					printf(dry_run ? _(MSG_WOULD_REMOVE) : _(MSG_REMOVE), qname);
 			}
 			strbuf_reset(&directory);
 		} else {
 			if (pathspec && !matches)
 				continue;
 			qname = quote_path_relative(ent->name, -1, &buf, prefix);
-			if (show_only) {
-				printf(_("Would remove %s\n"), qname);
-				continue;
-			} else if (!quiet) {
-				printf(_("Removing %s\n"), qname);
-			}
-			if (unlink(ent->name) != 0) {
-				warning(_("failed to remove %s"), qname);
+			res = dry_run ? 0 : unlink(ent->name);
+			if (res) {
+				warning(_(MSG_WARN_REMOVE_FAILED), qname);
 				errors++;
-			}
+			} else if (!quiet)
+				printf(dry_run ? _(MSG_WOULD_REMOVE) :_(MSG_REMOVE), qname);
 		}
 	}
 	free(seen);
