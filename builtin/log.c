@@ -1027,8 +1027,22 @@ static char *find_branch_name(struct rev_info *rev)
 		else
 			return NULL;
 	}
-	if (positive < 0)
+	if (positive < 0) {
+		/*
+		 * No actual ref from command line, but "HEAD" from
+		 * rev->def was added in setup_revisions()
+		 * e.g. format-patch --cover-letter -12
+		 */
+		if (!rev->cmdline.nr &&
+		    rev->pending.nr == 1 &&
+		    !strcmp(rev->pending.objects[0].name, "HEAD")) {
+			const char *ref;
+			ref = resolve_ref_unsafe("HEAD", branch_sha1, 1, NULL);
+			if (ref && !prefixcmp(ref, "refs/heads/"))
+				return xstrdup(ref + strlen("refs/heads/"));
+		}
 		return NULL;
+	}
 	strbuf_addf(&buf, "refs/heads/%s", rev->cmdline.rev[positive].name);
 	branch = resolve_ref_unsafe(buf.buf, branch_sha1, 1, NULL);
 	if (!branch ||
