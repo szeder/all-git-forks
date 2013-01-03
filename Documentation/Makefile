@@ -1,3 +1,6 @@
+# The default target of this Makefile is...
+all::
+
 MAN1_TXT= \
 	$(filter-out $(addsuffix .txt, $(ARTICLES) $(SP_ARTICLES)), \
 		$(wildcard git-*.txt)) \
@@ -88,6 +91,9 @@ endif
 -include ../config.mak.autogen
 -include ../config.mak
 
+DEFAULT_DOC_TARGET ?= html man
+DEFAULT_DOC_INSTALL_TARGET ?= $(DEFAULT_DOC_TARGET)
+
 #
 # For docbook-xsl ...
 #	-1.68.1,	no extra settings are needed?
@@ -174,7 +180,7 @@ ifndef V
 endif
 endif
 
-all: html man
+all:: $(DEFAULT_DOC_TARGET)
 
 html: $(DOC_HTML)
 
@@ -189,7 +195,7 @@ info: git.info gitman.info
 
 pdf: user-manual.pdf
 
-install: install-man
+install: $(patsubst %,install-%,$(DEFAULT_DOC_INSTALL_TARGET))
 
 install-man: man
 	$(INSTALL) -d -m 755 $(DESTDIR)$(man1dir)
