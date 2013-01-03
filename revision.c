@@ -13,6 +13,7 @@
 #include "decorate.h"
 #include "log-tree.h"
 #include "string-list.h"
+#include "mailmap.h"
 
 volatile show_early_output_fn_t show_early_output;
 
@@ -2219,6 +2220,51 @@ static int rewrite_parents(struct rev_info *revs, struct commit *commit)
 	return 0;
 }
 
+static int commit_rewrite_person(struct strbuf *buf, const char *what, struct string_list *mailmap)
+{
+	char *person, *endp;
+	size_t len;
+	struct strbuf name = STRBUF_INIT;
+	struct strbuf mail = STRBUF_INIT;
+	struct ident_split ident;
+
+	person = strstr(buf->buf, what);
+	if (!person)
+		goto left_intact;
+
+	person += strlen(what);
+	endp = strchr(person, '\n');
+	if (!endp)
+		goto left_intact;
+
+	len = endp - person;
+
+	if (split_ident_line(&ident, person, len))
+		goto left_intact;
+
+	strbuf_add(&name, ident.name_begin, ident.name_end - ident.name_begin);
+	strbuf_add(&mail, ident.mail_begin, ident.mail_end - ident.mail_begin);
+
+	if (map_user(mailmap, &mail, &name)) {
+		strbuf_addf(&name, " <%s>", mail.buf);
+
+		strbuf_splice(buf, ident.name_begin - buf->buf,
+			      ident.mail_end - ident.name_begin + 1,
+			      name.buf, name.len);
+
+		strbuf_release(&name);
+		strbuf_release(&mail);
+
+		return 1;
+	}
+
+left_intact:
+	strbuf_release(&name);
+	strbuf_release(&mail);
+
+	return 0;
+}
+
 static int commit_match(struct commit *commit, struct rev_info *opt)
 {
 	int retval;
@@ -2236,6 +2282,14 @@ static int commit_match(struct commit *commit, struct rev_info *opt)
 	/* Copy the commit to temporary if we are using "fake" headers */
 	if (buf.len)
 		strbuf_addstr(&buf, commit->buffer);
+
+	if (opt->grep_filter.header_list && opt->mailmap) {
+		if (!buf.len)
+			strbuf_addstr(&buf, commit->buffer);
+
+		commit_rewrite_person(&buf, "\nauthor ", opt->mailmap);
+		commit_rewrite_person(&buf, "\ncommitter ", opt->mailmap);
+	}
 
 	/* Append "fake" message parts as needed */
 	if (opt->show_notes) {
