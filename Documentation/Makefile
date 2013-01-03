@@ -69,6 +69,7 @@ endif
 -include ../config.mak
 
 DEFAULT_DOC_TARGET ?= html man
+DEFAULT_DOC_INSTALL_TARGET ?= $(DEFAULT_DOC_TARGET)
 
 #
 # For docbook-xsl ...
@@ -171,7 +172,7 @@ info: git.info gitman.info
 
 pdf: user-manual.pdf
 
-install: install-man
+install: $(patsubst %,install-%,$(DEFAULT_DOC_INSTALL_TARGET))
 
 install-man: man
 	$(INSTALL) -d -m 755 $(DESTDIR)$(man1dir)
