@@ -209,7 +209,13 @@ static struct match_attr *parse_attr_line(const char *line, const char *src,
 	if (!*cp || *cp == '#')
 		return NULL;
 	name = cp;
-	namelen = strcspn(name, blank);
+	namelen = 0;
+	while (name[namelen] != '\0' && !strchr(blank, name[namelen])) {
+		if (name[namelen] == '\\' && name[namelen + 1] != '\0')
+			namelen += 2;
+		else
+			namelen++;
+	}
 	if (strlen(ATTRIBUTE_MACRO_PREFIX) < namelen &&
 	    starts_with(name, ATTRIBUTE_MACRO_PREFIX)) {
 		if (!macro_ok) {

@@ -20,9 +20,9 @@ Each line in `gitattributes` file is of form:
 
 	pattern	attr1 attr2 ...
 
-That is, a pattern followed by an attributes list,
-separated by whitespaces.  When the pattern matches the
-path in question, the attributes listed on the line are given to
+That is, a pattern followed by an attributes list, separated by
+whitespaces that are not quoted by a backslash. When the pattern matches
+the path in question, the attributes listed on the line are given to
 the path.
 
 Each attribute can be in one of these states for a given path:

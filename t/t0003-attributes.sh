@@ -23,6 +23,7 @@ test_expect_success 'setup' '
 		echo "offon -test test"
 		echo "no notest"
 		echo "A/e/F test=A/e/F"
+		echo "A\\ b test=space"
 	) >.gitattributes &&
 	(
 		echo "g test=a/g" &&
@@ -193,6 +194,10 @@ test_expect_success 'attribute test: --cached option' '
 test_expect_success 'root subdir attribute test' '
 	attr_check a/i a/i &&
 	attr_check subdir/a/i unspecified
+'
+
+test_expect_success 'quoting in pattern' '
+	attr_check "A b" space
 '
 
 test_expect_success 'negative patterns' '
