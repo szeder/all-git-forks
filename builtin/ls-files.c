@@ -35,6 +35,7 @@ static int error_unmatch;
 static char *ps_matched;
 static const char *with_tree;
 static int exc_given;
+static int exclude_args;
 
 static const char *tag_cached = "";
 static const char *tag_unmerged = "";
@@ -420,10 +421,10 @@ static int option_parse_z(const struct option *opt,
 static int option_parse_exclude(const struct option *opt,
 				const char *arg, int unset)
 {
-	struct exclude_list *list = opt->value;
+	struct exclude_list_group *group = opt->value;
 
 	exc_given = 1;
-	add_exclude(arg, "", 0, list);
+	add_exclude(arg, "", 0, &group->ary[0], --exclude_args);
 
 	return 0;
 }
@@ -488,7 +489,7 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 			N_("show unmerged files in the output")),
 		OPT_BOOLEAN(0, "resolve-undo", &show_resolve_undo,
 			    N_("show resolve-undo information")),
-		{ OPTION_CALLBACK, 'x', "exclude", &dir.exclude_list[EXC_CMDL], N_("pattern"),
+		{ OPTION_CALLBACK, 'x', "exclude", &dir.exclude_list_groups[EXC_CMDL], N_("pattern"),
 			N_("skip files matching pattern"),
 			0, option_parse_exclude },
 		{ OPTION_CALLBACK, 'X', "exclude-from", &dir, N_("file"),
@@ -523,6 +524,7 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 	if (read_cache() < 0)
 		die("index file corrupt");
 
+	add_exclude_list(&dir, EXC_CMDL, "--exclude option");
 	argc = parse_options(argc, argv, prefix, builtin_ls_files_options,
 			ls_files_usage, 0);
 	if (show_tag || show_valid_bit) {
