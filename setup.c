@@ -266,9 +266,9 @@ static int pathspec_item_cmp(const void *a_, const void *b_)
  * pathspec. die() if any magic other than specified in
  * "allowed_magic" is used.
  */
-static void parse_pathspec(struct pathspec *pathspec,
-			   unsigned allowed_magic,
-			   const char *prefix, const char **argv)
+void parse_pathspec(struct pathspec *pathspec,
+		    unsigned allowed_magic,
+		    const char *prefix, const char **argv)
 {
 	struct pathspec_item *item;
 	const char *entry = *argv;

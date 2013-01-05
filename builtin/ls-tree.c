@@ -166,7 +166,7 @@ int cmd_ls_tree(int argc, const char **argv, const char *prefix)
 	if (get_sha1(argv[0], sha1))
 		die("Not a valid object name %s", argv[0]);
 
-	init_pathspec(&pathspec, get_pathspec(prefix, argv + 1));
+	parse_pathspec(&pathspec, PATHSPEC_FROMTOP, prefix, argv + 1);
 	for (i = 0; i < pathspec.nr; i++)
 		pathspec.items[i].use_wildcard = 0;
 	pathspec.has_wildcard = 0;

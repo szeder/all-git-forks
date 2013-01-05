@@ -546,10 +546,9 @@ static int do_reupdate(int ac, const char **av,
 	 */
 	int pos;
 	int has_head = 1;
-	const char **paths = get_pathspec(prefix, av + 1);
 	struct pathspec pathspec;
 
-	init_pathspec(&pathspec, paths);
+	parse_pathspec(&pathspec, PATHSPEC_FROMTOP, prefix, av + 1);
 
 	if (read_ref("HEAD", head_sha1))
 		/* If there is no HEAD, that means it is an initial
