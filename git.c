@@ -394,6 +394,7 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "stripspace", cmd_stripspace },
 		{ "symbolic-ref", cmd_symbolic_ref, RUN_SETUP },
 		{ "tag", cmd_tag, RUN_SETUP },
+		{ "talk", cmd_talk, RUN_SETUP },
 		{ "tar-tree", cmd_tar_tree },
 		{ "unpack-file", cmd_unpack_file, RUN_SETUP },
 		{ "unpack-objects", cmd_unpack_objects, RUN_SETUP },
