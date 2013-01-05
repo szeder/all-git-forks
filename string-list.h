@@ -62,6 +62,8 @@ struct string_list_item *string_list_insert(struct string_list *list, const char
 struct string_list_item *string_list_insert_at_index(struct string_list *list,
 						     int insert_at, const char *string);
 struct string_list_item *string_list_lookup(struct string_list *list, const char *string);
+struct string_list_item *string_list_lookup_extended(struct string_list *list,
+    const char *string, int case_sensitive, size_t n);
 
 /*
  * Remove all but the first of consecutive entries with the same

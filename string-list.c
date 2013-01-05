@@ -4,13 +4,21 @@
 /* if there is no exact match, point to the index where the entry could be
  * inserted */
 static int get_entry_index(const struct string_list *list, const char *string,
-		int *exact_match)
+		int *exact_match, int case_sensitive, size_t n)
 {
 	int left = -1, right = list->nr;
 
 	while (left + 1 < right) {
+		int compare;
 		int middle = (left + right) / 2;
-		int compare = strcmp(string, list->items[middle].string);
+		if (case_sensitive)
+			compare = strncmp(string, list->items[middle].string, n);
+		else
+			compare = strncasecmp(string, list->items[middle].string, n);
+		/* Make sure our string is not a substring of item string */
+		if (!compare && n != -1)
+			if (list->items[middle].string[n] != '\0')
+				compare = -1;
 		if (compare < 0)
 			right = middle;
 		else if (compare > 0)
@@ -29,7 +37,7 @@ static int get_entry_index(const struct string_list *list, const char *string,
 static int add_entry(int insert_at, struct string_list *list, const char *string)
 {
 	int exact_match = 0;
-	int index = insert_at != -1 ? insert_at : get_entry_index(list, string, &exact_match);
+	int index = insert_at != -1 ? insert_at : get_entry_index(list, string, &exact_match, 1, -1);
 
 	if (exact_match)
 		return -1 - index;
@@ -70,7 +78,7 @@ struct string_list_item *string_list_insert_at_index(struct string_list *list,
 int string_list_has_string(const struct string_list *list, const char *string)
 {
 	int exact_match;
-	get_entry_index(list, string, &exact_match);
+	get_entry_index(list, string, &exact_match, 1, -1);
 	return exact_match;
 }
 
@@ -78,7 +86,7 @@ int string_list_find_insert_index(const struct string_list *list, const char *st
 				  int negative_existing_index)
 {
 	int exact_match;
-	int index = get_entry_index(list, string, &exact_match);
+	int index = get_entry_index(list, string, &exact_match, 1, -1);
 	if (exact_match)
 		index = -1 - (negative_existing_index ? index : 0);
 	return index;
@@ -86,7 +94,17 @@ int string_list_find_insert_index(const struct string_list *list, const char *st
 
 struct string_list_item *string_list_lookup(struct string_list *list, const char *string)
 {
-	int exact_match, i = get_entry_index(list, string, &exact_match);
+	int exact_match, i = get_entry_index(list, string, &exact_match, 1, -1);
+	if (!exact_match)
+		return NULL;
+	return list->items + i;
+}
+
+struct string_list_item *string_list_lookup_extended(struct string_list *list,
+    const char *string, int case_sensitive, size_t n)
+{
+	int exact_match, i = get_entry_index(list, string, &exact_match,
+					     case_sensitive, n);
 	if (!exact_match)
 		return NULL;
 	return list->items + i;
