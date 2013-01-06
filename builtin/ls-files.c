@@ -349,7 +349,9 @@ void overlay_tree_on_cache(const char *tree_name, const char *prefix)
 	}
 }
 
-int report_path_error(const char *ps_matched, const char **pathspec, const char *prefix)
+int report_path_error(const char *ps_matched,
+		      const struct pathspec *pathspec,
+		      const char *prefix)
 {
 	/*
 	 * Make sure all pathspec matched; otherwise it is an error.
@@ -357,7 +359,7 @@ int report_path_error(const char *ps_matched, const char **pathspec, const char 
 	struct strbuf sb = STRBUF_INIT;
 	const char *name;
 	int num, errors = 0;
-	for (num = 0; pathspec[num]; num++) {
+	for (num = 0; num < pathspec->nr; num++) {
 		int other, found_dup;
 
 		if (ps_matched[num])
@@ -367,11 +369,11 @@ int report_path_error(const char *ps_matched, const char **pathspec, const char 
 		 * twice.  Do not barf on such a mistake.
 		 */
 		for (found_dup = other = 0;
-		     !found_dup && pathspec[other];
+		     !found_dup && pathspec->raw[other];
 		     other++) {
 			if (other == num || !ps_matched[other])
 				continue;
-			if (!strcmp(pathspec[other], pathspec[num]))
+			if (!strcmp(pathspec->raw[other], pathspec->raw[num]))
 				/*
 				 * Ok, we have a match already.
 				 */
@@ -380,7 +382,7 @@ int report_path_error(const char *ps_matched, const char **pathspec, const char 
 		if (found_dup)
 			continue;
 
-		name = quote_path_relative(pathspec[num], -1, &sb, prefix);
+		name = quote_path_relative(pathspec->raw[num], -1, &sb, prefix);
 		error("pathspec '%s' did not match any file(s) known to git.",
 		      name);
 		errors++;
@@ -572,7 +574,7 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 
 	if (ps_matched) {
 		int bad;
-		bad = report_path_error(ps_matched, pathspec.raw, prefix);
+		bad = report_path_error(ps_matched, &pathspec, prefix);
 		if (bad)
 			fprintf(stderr, "Did you forget to 'git add'?\n");
 
