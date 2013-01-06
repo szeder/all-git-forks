@@ -45,7 +45,7 @@ struct checkout_opts {
 
 	int branch_exists;
 	const char *prefix;
-	const char **pathspec;
+	struct pathspec pathspec;
 	struct tree *source_tree;
 };
 
@@ -256,39 +256,37 @@ static int checkout_paths(const struct checkout_opts *opts,
 
 	if (opts->patch_mode)
 		return run_add_interactive(revision, "--patch=checkout",
-					   opts->pathspec);
+					   opts->pathspec.raw);
 
 	lock_file = xcalloc(1, sizeof(struct lock_file));
 
 	newfd = hold_locked_index(lock_file, 1);
-	if (read_cache_preload(opts->pathspec) < 0)
+	if (read_cache_preload(opts->pathspec.raw) < 0)
 		return error(_("corrupt index file"));
 
 	if (opts->source_tree)
-		read_tree_some(opts->source_tree, opts->pathspec);
+		read_tree_some(opts->source_tree, opts->pathspec.raw);
 
-	for (pos = 0; opts->pathspec[pos]; pos++)
-		;
-	ps_matched = xcalloc(1, pos);
+	ps_matched = xcalloc(1, opts->pathspec.nr);
 
 	for (pos = 0; pos < active_nr; pos++) {
 		struct cache_entry *ce = active_cache[pos];
 		if (opts->source_tree && !(ce->ce_flags & CE_UPDATE))
 			continue;
-		match_pathspec(opts->pathspec, ce->name, ce_namelen(ce), 0, ps_matched);
+		match_pathspec_depth(&opts->pathspec, ce->name, ce_namelen(ce), 0, ps_matched);
 	}
 
-	if (report_path_error(ps_matched, opts->pathspec, opts->prefix))
+	if (report_path_error(ps_matched, opts->pathspec.raw, opts->prefix))
 		return 1;
 
 	/* "checkout -m path" to recreate conflicted state */
 	if (opts->merge)
-		unmerge_cache(opts->pathspec);
+		unmerge_cache(opts->pathspec.raw);
 
 	/* Any unmerged paths? */
 	for (pos = 0; pos < active_nr; pos++) {
 		struct cache_entry *ce = active_cache[pos];
-		if (match_pathspec(opts->pathspec, ce->name, ce_namelen(ce), 0, NULL)) {
+		if (match_pathspec_depth(&opts->pathspec, ce->name, ce_namelen(ce), 0, NULL)) {
 			if (!ce_stage(ce))
 				continue;
 			if (opts->force) {
@@ -315,7 +313,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 		struct cache_entry *ce = active_cache[pos];
 		if (opts->source_tree && !(ce->ce_flags & CE_UPDATE))
 			continue;
-		if (match_pathspec(opts->pathspec, ce->name, ce_namelen(ce), 0, NULL)) {
+		if (match_pathspec_depth(&opts->pathspec, ce->name, ce_namelen(ce), 0, NULL)) {
 			if (!ce_stage(ce)) {
 				errs |= checkout_entry(ce, &state, NULL);
 				continue;
@@ -960,7 +958,7 @@ static int switch_unborn_to_new_branch(const struct checkout_opts *opts)
 static int checkout_branch(struct checkout_opts *opts,
 			   struct branch_info *new)
 {
-	if (opts->pathspec)
+	if (opts->pathspec.nr)
 		die(_("paths cannot be used with switching branches"));
 
 	if (opts->patch_mode)
@@ -1110,9 +1108,9 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	}
 
 	if (argc) {
-		opts.pathspec = get_pathspec(prefix, argv);
+		parse_pathspec(&opts.pathspec, PATHSPEC_FROMTOP, 0, prefix, argv);
 
-		if (!opts.pathspec)
+		if (!opts.pathspec.nr)
 			die(_("invalid path specification"));
 
 		/*
@@ -1144,7 +1142,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		strbuf_release(&buf);
 	}
 
-	if (opts.patch_mode || opts.pathspec)
+	if (opts.patch_mode || opts.pathspec.nr)
 		return checkout_paths(&opts, new.name);
 	else
 		return checkout_branch(&opts, &new);
