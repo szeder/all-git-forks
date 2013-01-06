@@ -503,7 +503,7 @@ static void wt_status_collect_untracked(struct wt_status *s)
 			DIR_SHOW_OTHER_DIRECTORIES | DIR_HIDE_EMPTY_DIRECTORIES;
 	setup_standard_excludes(&dir);
 
-	fill_directory(&dir, s->pathspec.raw);
+	fill_directory(&dir, &s->pathspec);
 	for (i = 0; i < dir.nr; i++) {
 		struct dir_entry *ent = dir.entries[i];
 		if (cache_name_is_other(ent->name, ent->len) &&
@@ -517,7 +517,7 @@ static void wt_status_collect_untracked(struct wt_status *s)
 		dir.flags = DIR_SHOW_IGNORED;
 		if (s->show_untracked_files != SHOW_ALL_UNTRACKED_FILES)
 			dir.flags |= DIR_SHOW_OTHER_DIRECTORIES;
-		fill_directory(&dir, s->pathspec.raw);
+		fill_directory(&dir, &s->pathspec);
 		for (i = 0; i < dir.nr; i++) {
 			struct dir_entry *ent = dir.entries[i];
 			if (cache_name_is_other(ent->name, ent->len) &&
