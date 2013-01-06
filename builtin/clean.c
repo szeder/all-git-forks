@@ -45,6 +45,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 	static const char **pathspec;
 	struct strbuf buf = STRBUF_INIT;
 	struct string_list exclude_list = STRING_LIST_INIT_NODUP;
+	struct exclude_list *el;
 	const char *qname;
 	char *seen = NULL;
 	struct option options[] = {
@@ -97,10 +98,9 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 	if (!ignored)
 		setup_standard_excludes(&dir);
 
-	add_exclude_list(&dir, EXC_CMDL);
+	el = add_exclude_list(&dir, EXC_CMDL);
 	for (i = 0; i < exclude_list.nr; i++)
-		add_exclude(exclude_list.items[i].string, "", 0,
-			    &dir.exclude_list_group[EXC_CMDL].el[0]);
+		add_exclude(exclude_list.items[i].string, "", 0, el);
 
 	pathspec = get_pathspec(prefix, argv);
 
