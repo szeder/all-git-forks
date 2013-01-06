@@ -250,6 +250,8 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 	*raw = item->match;
 	item->len = strlen(item->match);
 	item->nowildcard_len = simple_length(item->match);
+	if (item->nowildcard_len < prefixlen)
+		item->nowildcard_len = prefixlen;
 	return magic;
 }
 
