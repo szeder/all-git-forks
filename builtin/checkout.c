@@ -281,7 +281,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 
 	/* "checkout -m path" to recreate conflicted state */
 	if (opts->merge)
-		unmerge_cache(opts->pathspec.raw);
+		unmerge_cache(&opts->pathspec);
 
 	/* Any unmerged paths? */
 	for (pos = 0; pos < active_nr; pos++) {
