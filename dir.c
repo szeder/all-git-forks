@@ -72,7 +72,7 @@ char *common_prefix(const char **pathspec)
 	return len ? xmemdupz(*pathspec, len) : NULL;
 }
 
-int fill_directory(struct dir_struct *dir, const char **pathspec)
+int fill_directory(struct dir_struct *dir, const struct pathspec *pathspec)
 {
 	size_t len;
 
@@ -80,10 +80,10 @@ int fill_directory(struct dir_struct *dir, const char **pathspec)
 	 * Calculate common prefix for the pathspec, and
 	 * use that to optimize the directory walk
 	 */
-	len = common_prefix_len(pathspec);
+	len = common_prefix_len(pathspec->raw);
 
 	/* Read the directory and prune it */
-	read_directory(dir, pathspec ? *pathspec : "", len, pathspec);
+	read_directory(dir, pathspec->nr ? pathspec->raw[0] : "", len, pathspec);
 	return len;
 }
 
@@ -1211,14 +1211,14 @@ static int treat_leading_path(struct dir_struct *dir,
 	return rc;
 }
 
-int read_directory(struct dir_struct *dir, const char *path, int len, const char **pathspec)
+int read_directory(struct dir_struct *dir, const char *path, int len, const struct pathspec *pathspec)
 {
 	struct path_simplify *simplify;
 
 	if (has_symlink_leading_path(path, len))
 		return dir->nr;
 
-	simplify = create_simplify(pathspec);
+	simplify = create_simplify(pathspec ? pathspec->raw : NULL);
 	if (!len || treat_leading_path(dir, path, len, simplify))
 		read_directory_recursive(dir, path, len, 0, simplify);
 	free_simplify(simplify);

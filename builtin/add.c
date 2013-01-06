@@ -429,7 +429,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 		}
 
 		/* This picks up the paths that are not tracked */
-		baselen = fill_directory(&dir, pathspec.raw);
+		baselen = fill_directory(&dir, &pathspec);
 		if (pathspec.nr)
 			seen = prune_directory(&dir, pathspec.raw, baselen);
 	}
