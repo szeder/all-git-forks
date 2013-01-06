@@ -68,11 +68,11 @@ int cmd_rerere(int argc, const char **argv, const char *prefix)
 		return rerere(flags);
 
 	if (!strcmp(argv[0], "forget")) {
-		const char **pathspec;
+		struct pathspec pathspec;
 		if (argc < 2)
 			warning("'git rerere forget' without paths is deprecated");
-		pathspec = get_pathspec(prefix, argv + 1);
-		return rerere_forget(pathspec);
+		parse_pathspec(&pathspec, PATHSPEC_FROMTOP, 0, prefix, argv + 1);
+		return rerere_forget(&pathspec);
 	}
 
 	fd = setup_rerere(&merge_rr, flags);
