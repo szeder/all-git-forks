@@ -473,6 +473,9 @@ extern int index_name_is_other(const struct index_state *, const char *, int);
 extern int ie_match_stat(const struct index_state *, struct cache_entry *, struct stat *, unsigned int);
 extern int ie_modified(const struct index_state *, struct cache_entry *, struct stat *, unsigned int);
 
+/* Pathspec magic */
+#define PATHSPEC_FROMTOP    (1<<0)
+
 struct pathspec {
 	const char **raw; /* get_pathspec() result, not freed by free_pathspec() */
 	int nr;
@@ -487,6 +490,9 @@ struct pathspec {
 };
 
 extern int init_pathspec(struct pathspec *, const char **);
+extern void parse_pathspec(struct pathspec *pathspec, unsigned magic,
+			   unsigned flags, const char *prefix,
+			   const char **args);
 extern void free_pathspec(struct pathspec *);
 extern int ce_path_match(const struct cache_entry *ce, const struct pathspec *pathspec);
 
