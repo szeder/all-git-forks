@@ -149,10 +149,6 @@ files that aren't ignored are present in the submodules work tree.
 Ignored files are deemed expendable and won't stop a submodule's work
 tree from being removed.
 
-If you only want to remove the local checkout of a submodule from your
-work tree without committing that use `git submodule deinit` instead
-(see linkgit:git-submodule[1]).
-
 EXAMPLES
 --------
 `git rm Documentation/\*.txt`::

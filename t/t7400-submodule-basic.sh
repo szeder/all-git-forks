@@ -757,16 +757,4 @@ test_expect_success 'submodule add with an existing name fails unless forced' '
 	)
 '
 
-test_expect_success 'submodule deinit should remove the whole submodule section from .git/config' '
-	git config submodule.example.foo bar &&
-	git submodule deinit &&
-	test -z "$(git config submodule.example.url)" &&
-	test -z "$(git config submodule.example.foo)"
-'
-
-test_expect_success 'submodule deinit complains only when explicitly used on an uninitialized submodule' '
-	git submodule deinit &&
-	test_must_fail git submodule deinit example
-'
-
 test_done
