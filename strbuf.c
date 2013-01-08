@@ -511,3 +511,117 @@ int fprintf_ln(FILE *fp, const char *fmt, ...)
 		return -1;
 	return ret + 1;
 }
+
+struct compiled_format* format_alloc(void)
+{
+	return xcalloc(1, sizeof(struct compiled_format));
+}
+
+void format_free(struct compiled_format **compiled)
+{
+	if (!*compiled)
+		return;
+	strbuf_release(&(*compiled)->fmt);
+	free((*compiled)->functions);
+	free(*compiled);
+	*compiled = NULL;
+}
+
+static size_t handle_constant(struct strbuf *sb, const char *fmt, void *context)
+{
+	const char *start = fmt;
+	size_t count = 0;
+	do {
+		count += (*fmt) & 0x7F;
+		++fmt;
+	} while (fmt[-1] & 0x80);
+
+	strbuf_add(sb, fmt, count);
+	return 1 + fmt + count - start;
+}
+
+void format_compile(struct compiled_format *compiled, const char *fmt,
+		    compile_fn_t fn, void *context)
+{
+	strbuf_init(&compiled->fmt, strlen(fmt));
+	free(compiled->functions);
+	compiled->functions = NULL;
+	compiled->nr_functions = 1;
+	compiled->alloc_functions = 0;
+	ALLOC_GROW(compiled->functions, 1, compiled->alloc_functions);
+	compiled->functions[0] = handle_constant;
+
+	for (;;) {
+		const char *percent;
+		size_t consumed;
+
+		percent = strchrnul(fmt, '%');
+		format_append_constant(compiled, fmt, percent - fmt);
+		if (!*percent)
+			break;
+		fmt = percent + 1;
+
+		if (*fmt == '%') {
+			format_append_constant(compiled, "%", 1);
+			++fmt;
+			continue;
+		}
+
+		consumed = fn(compiled, fmt, context);
+		if (consumed)
+			fmt += consumed;
+		else
+			format_append_constant(compiled, "%", 1);
+	}
+}
+
+void format_expand(struct compiled_format *compiled, struct strbuf *out, void *context)
+{
+	const char *fmt = compiled->fmt.buf;
+	const char *end = fmt + compiled->fmt.len;
+	size_t fn;
+	while (fmt < end) {
+		fn = *fmt;
+		if (fn >= compiled->nr_functions)
+			die("BUG: invalid function in compiled format string");
+		fmt += (compiled->functions[fn])(out, fmt + 1, context);
+	}
+}
+
+void format_append_constant(struct compiled_format *fmt, const char *value, size_t len)
+{
+	size_t remaining = len;
+	if (!len)
+		return;
+
+	strbuf_addch(&fmt->fmt, 0);
+	do {
+		char c = remaining & 0x7F;
+		if (remaining > 0x7F) {
+			c |= 0x80;
+			remaining -= 0x7F;
+		} else
+			remaining = 0;
+		strbuf_addch(&fmt->fmt, c);
+	} while (remaining);
+	strbuf_add(&fmt->fmt, value, len);
+}
+
+void format_append_cb(struct compiled_format *fmt, format_fn_t cb, const char *args, size_t len)
+{
+	size_t i;
+	for (i = 0; i < fmt->nr_functions; i++)
+		if (cb == fmt->functions[i])
+			break;
+
+	if (i == fmt->nr_functions) {
+		if (i > 255)
+			die("BUG: too many callback functions in format string");
+
+		ALLOC_GROW(fmt->functions, i + 1, fmt->alloc_functions);
+		fmt->functions[i] = cb;
+		fmt->nr_functions += 1;
+	}
+	strbuf_addch(&fmt->fmt, i);
+	strbuf_add(&fmt->fmt, args, len);
+}

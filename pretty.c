@@ -12,6 +12,7 @@
 #include "gpg-interface.h"
 
 static char *user_format;
+static struct compiled_format *compiled_user_format;
 static struct cmt_fmt_map {
 	const char *name;
 	enum cmit_fmt format;
@@ -27,6 +28,7 @@ static struct cmt_fmt_map *find_commit_format(const char *sought);
 static void save_user_format(struct rev_info *rev, const char *cp, int is_tformat)
 {
 	free(user_format);
+	format_free(&compiled_user_format);
 	user_format = xstrdup(cp);
 	if (is_tformat)
 		rev->use_terminator = 1;
@@ -616,6 +618,11 @@ static size_t format_person_part(struct strbuf *sb, char part,
 	mail_start = s.mail_begin;
 	mail_end = s.mail_end;
 
+	if (part == ';') {
+		strbuf_add(sb, name_start, 1+mail_end-name_start);
+		return placeholder_len;
+	}
+
 	if (part == 'N' || part == 'E') { /* mailmap lookup */
 		snprintf(person_name, sizeof(person_name), "%.*s",
 			 (int)(name_end - name_start), name_start);
@@ -947,6 +954,377 @@ static int format_reflog_person(struct strbuf *sb,
 	return format_person_part(sb, part, ident, strlen(ident), dmode);
 }
 
+static void append_ul(struct strbuf *sb, unsigned long v)
+{
+	for (;;) {
+		strbuf_addch(sb, v & 0x7F);
+		if (v <= 0x7F)
+			break;
+		v -= 0x7F;
+	}
+}
+
+static const char *extract_ul(const char *fmt, unsigned long *out)
+{
+	*out = 0;
+	for (;;) {
+		const char c = *fmt;
+		*out += c & 0x7F;
+		++fmt;
+		if (!(c & 0x80))
+			break;
+	}
+	return fmt;
+}
+
+static size_t format_apply_magic(struct strbuf *sb, const char *fmt, void *context)
+{
+	char magic = fmt[0];
+	++fmt;
+}
+
+static size_t format_rewrap(struct strbuf *sb, const char *fmt, void *context)
+{
+	struct format_commit_context *c = context;
+	unsigned long width = 0, indent1 = 0, indent2 = 0;
+	const char *start = fmt;
+
+	fmt = extract_ul(fmt, &width);
+	if (*fmt == ',') {
+		fmt = extract_ul(fmt + 1, &indent1);
+		if (*fmt == ',')
+			fmt = extract_ul(fmt + 1, &indent2);
+	}
+	rewrap_message_tail(sb, c, width, indent1, indent2);
+	return 1 + fmt - start;
+}
+
+static size_t format_commit_hash(struct strbuf *sb, const char *fmt, void *context)
+{
+	struct format_commit_context *c = context;
+	const struct commit *commit = c->commit;
+	strbuf_addstr(sb, sha1_to_hex(commit->object.sha1));
+	return 1;
+}
+
+static size_t format_abbrev_commit_hash(struct strbuf *sb, const char *fmt, void *context)
+{
+	struct format_commit_context *c = context;
+	const struct commit *commit = c->commit;
+	if (add_again(sb, &c->abbrev_commit_hash))
+		return 1;
+	strbuf_addstr(sb, find_unique_abbrev(commit->object.sha1,
+					     c->pretty_ctx->abbrev));
+	c->abbrev_commit_hash.len = sb->len - c->abbrev_commit_hash.off;
+	return 1;
+}
+
+static size_t format_tree_hash(struct strbuf *sb, const char *fmt, void *context)
+{
+	struct format_commit_context *c = context;
+	const struct commit *commit = c->commit;
+	strbuf_addstr(sb, sha1_to_hex(commit->tree->object.sha1));
+	return 1;
+}
+
+static size_t format_abbrev_tree_hash(struct strbuf *sb, const char *fmt, void *context)
+{
+	struct format_commit_context *c = context;
+	const struct commit *commit = c->commit;
+	if (add_again(sb, &c->abbrev_tree_hash))
+		return 1;
+	strbuf_addstr(sb, find_unique_abbrev(commit->tree->object.sha1,
+					     c->pretty_ctx->abbrev));
+	c->abbrev_tree_hash.len = sb->len - c->abbrev_tree_hash.off;
+	return 1;
+}
+
+static size_t format_author(struct strbuf *sb, const char *fmt, void *context)
+{
+	struct format_commit_context *c = context;
+	const char *msg = c->message;
+
+	if (!c->commit_header_parsed)
+		parse_commit_header(c);
+	return format_person_part(sb, fmt[0],
+			   msg + c->author.off, c->author.len,
+			   c->pretty_ctx->date_mode);
+}
+
+static size_t format_committer(struct strbuf *sb, const char *fmt, void *context)
+{
+	struct format_commit_context *c = context;
+	const char *msg = c->message;
+
+	if (!c->commit_header_parsed)
+		parse_commit_header(c);
+	return format_person_part(sb, fmt[0],
+			   msg + c->committer.off, c->committer.len,
+			   c->pretty_ctx->date_mode);
+}
+
+static size_t format_encoding(struct strbuf *sb, const char *fmt, void *context)
+{
+	struct format_commit_context *c = context;
+	const char *msg = c->message;
+
+	if (!c->commit_header_parsed)
+		parse_commit_header(c);
+	strbuf_add(sb, msg + c->encoding.off, c->encoding.len);
+	return 1;
+}
+
+static size_t format_raw_body(struct strbuf *sb, const char *fmt, void *context)
+{
+	struct format_commit_context *c = context;
+	const char *msg = c->message;
+
+	if (!c->commit_header_parsed)
+		parse_commit_header(c);
+	/* message_off is always left at the initial newline */
+	strbuf_addstr(sb, msg + c->message_off + 1);
+	return 1;
+}
+
+static size_t compile_cb(struct compiled_format *fmt, const char *placeholder,
+			 void *context)
+{
+	struct pretty_print_context *c = context;
+	char magic = '\0';
+	int h1, h2;
+
+	switch (placeholder[0]) {
+	case '-':
+	case '+':
+	case ' ':
+		magic = placeholder[0];
+		break;
+	default:
+		magic = '\0';
+		break;
+	}
+	if (magic)
+		placeholder++;
+	format_append_cb(fmt, format_apply_magic, placeholder, 1);
+
+	/* these are independent of the commit */
+	switch (placeholder[0]) {
+	case 'C':
+		if (placeholder[1] == '(') {
+			const char *begin = placeholder + 2;
+			const char *end = strchr(begin, ')');
+			char color[COLOR_MAXLEN];
+
+			if (!end)
+				return 0;
+			if (!memcmp(begin, "auto,", 5)) {
+				if (!want_color(c->color))
+					return end - placeholder + 1;
+				begin += 5;
+			}
+			color_parse_mem(begin,
+					end - begin,
+					"--pretty format", color);
+			format_append_constantstr(fmt, color);
+			return end - placeholder + 1;
+		}
+		if (!prefixcmp(placeholder + 1, "red")) {
+			format_append_constantstr(fmt, GIT_COLOR_RED);
+			return 4;
+		} else if (!prefixcmp(placeholder + 1, "green")) {
+			format_append_constantstr(fmt, GIT_COLOR_GREEN);
+			return 6;
+		} else if (!prefixcmp(placeholder + 1, "blue")) {
+			format_append_constantstr(fmt, GIT_COLOR_BLUE);
+			return 5;
+		} else if (!prefixcmp(placeholder + 1, "reset")) {
+			format_append_constantstr(fmt, GIT_COLOR_RESET);
+			return 6;
+		} else
+			return 0;
+	case 'n':		/* newline */
+		format_append_constantstr(fmt, "\n");
+		return 1;
+	case 'x':
+		/* %x00 == NUL, %x0a == LF, etc. */
+		if (0 <= (h1 = hexval_table[0xff & placeholder[1]]) &&
+		    h1 <= 16 &&
+		    0 <= (h2 = hexval_table[0xff & placeholder[2]]) &&
+		    h2 <= 16) {
+			char b[2];
+			b[0] = (h1<<4)|h2;
+			b[1] = '\0';
+			format_append_constantstr(fmt, b);
+			return 3;
+		} else
+			return 0;
+	case 'w':
+		if (placeholder[1] == '(') {
+			struct strbuf args = STRBUF_INIT;
+			unsigned long width = 0, indent1 = 0, indent2 = 0;
+			char *next;
+			const char *start = placeholder + 2;
+			const char *end = strchr(start, ')');
+			if (!end)
+				return 0;
+			if (end > start) {
+				width = strtoul(start, &next, 10);
+				append_ul(&args, width);
+				if (*next == ',') {
+					indent1 = strtoul(next + 1, &next, 10);
+					strbuf_addch(&args, ',');
+					append_ul(&args, indent1);
+					if (*next == ',') {
+						indent2 = strtoul(next + 1,
+								 &next, 10);
+						strbuf_addch(&args, ',');
+						append_ul(&args, indent2);
+					}
+				}
+				if (*next != ')')
+					return 0;
+			} else
+				strbuf_addch(&args, '\0');
+			format_append_cb(fmt, format_rewrap, args.buf, args.len);
+			return end - placeholder + 1;
+		} else
+			return 0;
+	case 'H':		/* commit hash */
+		format_append_cb0(fmt, format_commit_hash);
+		return 1;
+	case 'h':		/* abbreviated commit hash */
+		format_append_cb0(fmt, format_abbrev_commit_hash);
+		return 1;
+	case 'T':		/* tree hash */
+		format_append_cb0(fmt, format_tree_hash);
+		return 1;
+	case 't':		/* abbreviated tree hash */
+		format_append_cb0(fmt, format_abbrev_tree_hash);
+		return 1;
+#if 0
+	case 'P':		/* parent hashes */
+		for (p = commit->parents; p; p = p->next) {
+			if (p != commit->parents)
+				strbuf_addch(sb, ' ');
+			strbuf_addstr(sb, sha1_to_hex(p->item->object.sha1));
+		}
+		return 1;
+	case 'p':		/* abbreviated parent hashes */
+		if (add_again(sb, &c->abbrev_parent_hashes))
+			return 1;
+		for (p = commit->parents; p; p = p->next) {
+			if (p != commit->parents)
+				strbuf_addch(sb, ' ');
+			strbuf_addstr(sb, find_unique_abbrev(
+					p->item->object.sha1,
+					c->pretty_ctx->abbrev));
+		}
+		c->abbrev_parent_hashes.len = sb->len -
+		                              c->abbrev_parent_hashes.off;
+		return 1;
+	case 'm':		/* left/right/bottom */
+		strbuf_addstr(sb, get_revision_mark(NULL, commit));
+		return 1;
+	case 'd':
+		format_decoration(sb, commit);
+		return 1;
+	case 'g':		/* reflog info */
+		switch(placeholder[1]) {
+		case 'd':	/* reflog selector */
+		case 'D':
+			if (c->pretty_ctx->reflog_info)
+				get_reflog_selector(sb,
+						    c->pretty_ctx->reflog_info,
+						    c->pretty_ctx->date_mode,
+						    c->pretty_ctx->date_mode_explicit,
+						    (placeholder[1] == 'd'));
+			return 2;
+		case 's':	/* reflog message */
+			if (c->pretty_ctx->reflog_info)
+				get_reflog_message(sb, c->pretty_ctx->reflog_info);
+			return 2;
+		case 'n':
+		case 'N':
+		case 'e':
+		case 'E':
+			return format_reflog_person(sb,
+						    placeholder[1],
+						    c->pretty_ctx->reflog_info,
+						    c->pretty_ctx->date_mode);
+		}
+		return 0;	/* unknown %g placeholder */
+	case 'N':
+		if (c->pretty_ctx->notes_message) {
+			strbuf_addstr(sb, c->pretty_ctx->notes_message);
+			return 1;
+		}
+		return 0;
+	}
+
+	if (placeholder[0] == 'G') {
+		if (!c->commit_signature_parsed)
+			parse_commit_signature(c);
+		switch (placeholder[1]) {
+		case 'G':
+			if (c->signature.gpg_output)
+				strbuf_addstr(sb, c->signature.gpg_output);
+			break;
+		case '?':
+			switch (c->signature.good_bad) {
+			case 'G':
+			case 'B':
+				strbuf_addch(sb, c->signature.good_bad);
+			}
+			break;
+		case 'S':
+			if (c->signature.signer)
+				strbuf_addstr(sb, c->signature.signer);
+			break;
+		}
+		return 2;
+	}
+
+
+	/* For the rest we have to parse the commit header. */
+	if (!c->commit_header_parsed)
+		parse_commit_header(c);
+
+	switch (placeholder[0]) {
+#endif
+	case 'a':	/* author ... */
+		format_append_cb(fmt, format_author, &placeholder[1], 1);
+		return 2;
+	case 'c':	/* committer ... */
+		format_append_cb(fmt, format_committer, &placeholder[1], 1);
+		return 2;
+	case 'e':	/* encoding */
+		format_append_cb0(fmt, format_encoding);
+		return 1;
+	case 'B':	/* raw body */
+		format_append_cb0(fmt, format_raw_body);
+		return 1;
+#if 0
+	}
+
+	/* Now we need to parse the commit message. */
+	if (!c->commit_message_parsed)
+		parse_commit_message(c);
+
+	switch (placeholder[0]) {
+	case 's':	/* subject */
+		format_subject(sb, msg + c->subject_off, " ");
+		return 1;
+	case 'f':	/* sanitized subject */
+		format_sanitized_subject(sb, msg + c->subject_off);
+		return 1;
+	case 'b':	/* body */
+		strbuf_addstr(sb, msg + c->body_off);
+		return 1;
+#endif
+	}
+	return 0;	/* unknown placeholder */
+}
+
 static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 				void *context)
 {
@@ -1062,6 +1440,10 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 			strbuf_addstr(sb, sha1_to_hex(p->item->object.sha1));
 		}
 		return 1;
+	case 'M':		/* abbreviated parent hashes if a merge */
+		if (!commit->parents || !commit->parents->next)
+			return 1;
+		/* fall through */
 	case 'p':		/* abbreviated parent hashes */
 		if (add_again(sb, &c->abbrev_parent_hashes))
 			return 1;
@@ -1276,13 +1658,37 @@ void format_commit_message(const struct commit *commit,
 	free(context.signature.signer);
 }
 
+void format_commit_message_compiled(const struct commit *commit,
+				    struct compiled_format *format, struct strbuf *sb,
+				    const struct pretty_print_context *pretty_ctx)
+{
+	struct format_commit_context context;
+	const char *output_enc = pretty_ctx->output_encoding;
+
+	memset(&context, 0, sizeof(context));
+	context.commit = commit;
+	context.pretty_ctx = pretty_ctx;
+	context.wrap_start = sb->len;
+	context.message = logmsg_reencode(commit, output_enc);
+	if (!context.message)
+		context.message = commit->buffer;
+
+	format_expand(format, sb, &context);
+	rewrap_message_tail(sb, &context, 0, 0, 0);
+
+	if (context.message != commit->buffer)
+		free(context.message);
+	free(context.signature.gpg_output);
+	free(context.signature.signer);
+}
+
 static void pp_header(const struct pretty_print_context *pp,
 		      const char *encoding,
 		      const struct commit *commit,
 		      const char **msg_p,
 		      struct strbuf *sb)
 {
-	int parents_shown = 0;
+	int parents_shown = 1;
 
 	for (;;) {
 		const char *line = *msg_p;
@@ -1424,7 +1830,11 @@ void pretty_print_commit(const struct pretty_print_context *pp,
 	int need_8bit_cte = pp->need_8bit_cte;
 
 	if (pp->fmt == CMIT_FMT_USERFORMAT) {
-		format_commit_message(commit, user_format, sb, pp);
+		if (!compiled_user_format) {
+			compiled_user_format = format_alloc();
+			format_compile(compiled_user_format, user_format, compile_cb, pp);
+		}
+		format_commit_message_compiled(commit, compiled_user_format, sb, pp);
 		return;
 	}
 

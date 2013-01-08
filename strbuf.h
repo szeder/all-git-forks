@@ -172,4 +172,32 @@ extern int printf_ln(const char *fmt, ...);
 __attribute__((format (printf,2,3)))
 extern int fprintf_ln(FILE *fp, const char *fmt, ...);
 
+
+struct compiled_format;
+typedef size_t (*format_fn_t)(struct strbuf *sb, const char *fmt, void *context);
+struct compiled_format {
+	struct strbuf fmt;
+	format_fn_t *functions;
+	size_t nr_functions;
+	size_t alloc_functions;
+
+};
+typedef size_t (*compile_fn_t) (struct compiled_format *fmt, const char *placeholder, void *context);
+
+extern struct compiled_format *format_alloc(void);
+extern void format_free(struct compiled_format **compiled);
+extern void format_compile(struct compiled_format *compiled, const char *fmt,
+			   compile_fn_t fn, void *context);
+extern void format_expand(struct compiled_format *compiled, struct strbuf *out, void *context);
+extern void format_append_constant(struct compiled_format *fmt, const char *value, size_t len);
+static inline void format_append_constantstr(struct compiled_format *fmt, const char *value)
+{
+	format_append_constant(fmt, value, strlen(value));
+}
+extern void format_append_cb(struct compiled_format *fmt, format_fn_t cb, const char *args, size_t len);
+static inline void format_append_cb0(struct compiled_format *fmt, format_fn_t cb)
+{
+	format_append_cb(fmt, cb, "", 0);
+}
+
 #endif /* STRBUF_H */
