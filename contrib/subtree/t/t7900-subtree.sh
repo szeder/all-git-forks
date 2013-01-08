@@ -143,7 +143,7 @@ test_expect_success 'merge fetched subproj' '
 
 test_expect_success 'add main-sub5' '
         create subdir/main-sub5 &&
-        git commit -m "main-sub5"
+	git commit -m "subproj: main-sub5"
 '
 
 test_expect_success 'add main6' '
@@ -153,7 +153,7 @@ test_expect_success 'add main6' '
 
 test_expect_success 'add main-sub7' '
         create subdir/main-sub7 &&
-        git commit -m "main-sub7"
+	git commit -m "subproj: main-sub7"
 '
 
 test_expect_success 'fetch new subproj history' '
@@ -226,9 +226,17 @@ test_expect_success 'check hash of split' '
 	check_equal ''"$new_hash"'' "$subdir_hash"
 '
 
+test_expect_success 'check --unannotate' '
+	spl1=$(git subtree split --unannotate='"subproj:"' --prefix subdir --onto FETCH_HEAD --message "Split & rejoin" --rejoin) &&
+	undo &&
+	git subtree split --unannotate='"subproj:"' --prefix subdir --onto FETCH_HEAD --branch splitunann &&
+	check_equal ''"$(git rev-parse splitunann)"'' "$spl1" &&
+	check_equal ''"$(git log splitunann | grep subproj)"'' ""
+'
+
 test_expect_success 'check split with --branch for an existing branch' '
-        spl1=''"$(git subtree split --annotate='"'*'"' --prefix subdir --onto FETCH_HEAD --message "Split & rejoin" --rejoin)"'' &&
-        undo &&
+	spl1=''"$(git subtree split --annotate='"'*'"' --prefix subdir --onto FETCH_HEAD --message "Split & rejoin" --rejoin)"'' &&
+	undo &&
         git branch splitbr2 sub1 &&
         git subtree split --annotate='"'*'"' --prefix subdir --onto FETCH_HEAD --branch splitbr2 &&
         check_equal ''"$(git rev-parse splitbr2)"'' "$spl1"
