@@ -151,7 +151,6 @@ int write_archive_entries(struct archiver_args *args,
 	struct archiver_context context;
 	struct unpack_trees_options opts;
 	struct tree_desc t;
-	struct pathspec pathspec;
 	int err;
 
 	if (args->baselen > 0 && args->base[args->baselen - 1] == '/') {
@@ -186,10 +185,8 @@ int write_archive_entries(struct archiver_args *args,
 		git_attr_set_direction(GIT_ATTR_INDEX, &the_index);
 	}
 
-	init_pathspec(&pathspec, args->pathspec);
-	err = read_tree_recursive(args->tree, "", 0, 0, &pathspec,
+	err = read_tree_recursive(args->tree, "", 0, 0, &args->pathspec,
 				  write_archive_entry, &context);
-	free_pathspec(&pathspec);
 	if (err == READ_TREE_RECURSIVE)
 		err = 0;
 	return err;
@@ -222,7 +219,7 @@ static int path_exists(struct tree *tree, const char *path)
 	struct pathspec pathspec;
 	int ret;
 
-	init_pathspec(&pathspec, paths);
+	parse_pathspec(&pathspec, 0, 0, "", paths);
 	ret = read_tree_recursive(tree, "", 0, 0, &pathspec, reject_entry, NULL);
 	free_pathspec(&pathspec);
 	return ret != 0;
@@ -231,8 +228,9 @@ static int path_exists(struct tree *tree, const char *path)
 static void parse_pathspec_arg(const char **pathspec,
 		struct archiver_args *ar_args)
 {
-	ar_args->pathspec = pathspec = get_pathspec("", pathspec);
-	if (pathspec) {
+	parse_pathspec(&ar_args->pathspec, PATHSPEC_FROMTOP, 0, "", pathspec);
+	if (ar_args->pathspec.nr) {
+		pathspec = ar_args->pathspec.raw;
 		while (*pathspec) {
 			if (!path_exists(ar_args->tree, *pathspec))
 				die("path not found: %s", *pathspec);
