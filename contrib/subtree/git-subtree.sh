@@ -504,12 +504,16 @@ cmd_add()
 	ensure_clean
 	
 	if [ $# -eq 1 ]; then
+		git rev-parse -q --verify "$1^{commit}" >/dev/null ||
+		die "'$1' does not refer to a commit"
 		"cmd_add_commit" "$@"
 	elif [ $# -eq 2 ]; then
+		git rev-parse -q --verify "$2^{commit}" >/dev/null ||
+		die "'$2' does not refer to a commit"
 		"cmd_add_repository" "$@"
 	else
-	    say "error: parameters were '$@'"
-	    die "Provide either a refspec or a repository and refspec."
+		say "error: parameters were '$@'"
+		die "Provide either a commit or a repository and commit."
 	fi
 }
 
