@@ -200,7 +200,6 @@ static void die_if_unmerged_cache(int reset_type)
 
 const char **parse_args(int argc, const char **argv, const char *prefix, const char **rev_ret)
 {
-	int i = 0;
 	const char *rev = "HEAD";
 	unsigned char unused[20];
 	/*
@@ -211,34 +210,34 @@ const char **parse_args(int argc, const char **argv, const char *prefix, const c
 	 * git reset [-opts] -- <paths>...
 	 * git reset [-opts] <paths>...
 	 *
-	 * At this point, argv[i] points immediately after [-opts].
+	 * At this point, argv points immediately after [-opts].
 	 */
 
-	if (i < argc) {
-		if (!strcmp(argv[i], "--")) {
-			i++; /* reset to HEAD, possibly with paths */
-		} else if (i + 1 < argc && !strcmp(argv[i+1], "--")) {
-			rev = argv[i];
-			i += 2;
+	if (argc) {
+		if (!strcmp(argv[0], "--")) {
+			argv++; /* reset to HEAD, possibly with paths */
+		} else if (argc > 1 && !strcmp(argv[1], "--")) {
+			rev = argv[0];
+			argv += 2;
 		}
 		/*
-		 * Otherwise, argv[i] could be either <rev> or <paths> and
+		 * Otherwise, argv[0] could be either <rev> or <paths> and
 		 * has to be unambiguous.
 		 */
-		else if (!get_sha1_committish(argv[i], unused)) {
+		else if (!get_sha1_committish(argv[0], unused)) {
 			/*
-			 * Ok, argv[i] looks like a rev; it should not
+			 * Ok, argv[0] looks like a rev; it should not
 			 * be a filename.
 			 */
-			verify_non_filename(prefix, argv[i]);
-			rev = argv[i++];
+			verify_non_filename(prefix, argv[0]);
+			rev = *argv++;
 		} else {
 			/* Otherwise we treat this as a filename */
-			verify_filename(prefix, argv[i], 1);
+			verify_filename(prefix, argv[0], 1);
 		}
 	}
 	*rev_ret = rev;
-	return i < argc ? get_pathspec(prefix, argv + i) : NULL;
+	return *argv ? get_pathspec(prefix, argv) : NULL;
 }
 
 int cmd_reset(int argc, const char **argv, const char *prefix)
