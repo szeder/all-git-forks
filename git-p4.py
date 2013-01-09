@@ -2295,7 +2295,7 @@ class P4Sync(Command, P4UserMap):
                     print("Excluded %s" % f['path'])
                 continue
             else:
-                if [p for p in branchPrefixes if p4PathStartsWith(f['path'], p)]:
+                if [p for p in self.branchPrefixes if p4PathStartsWith(f['path'], p)]:
                     new_files.append (f)
                 else:
                     print("Ignoring file outside of prefix: %s" % f['path'])
@@ -2421,7 +2421,7 @@ class P4Sync(Command, P4UserMap):
                 # find the corresponding git commit; take the oldest commit
                 changelist = int(change['change'])
                 gitCommit = read_pipe(["git", "rev-list", "--max-count=1",
-                     "--reverse", ":/\[git-p4:.*change = %d\]" % changelist])
+                     "--reverse", ':/\[git-p4:.*change = %d\]' % changelist])
                 if len(gitCommit) == 0:
                     print "could not find git commit for changelist %d" % changelist
                 else:
