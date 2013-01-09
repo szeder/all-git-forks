@@ -129,8 +129,9 @@ test_expect_success 'setup' '
 		one
 		ignored-*
 	EOF
-	touch {,a/}{not-ignored,ignored-{and-untracked,but-in-index}} &&
-	git add -f {,a/}ignored-but-in-index
+	touch not-ignored ignored-and-untracked ignored-but-in-index &&
+	touch a/not-ignored a/ignored-and-untracked a/ignored-but-in-index &&
+	git add -f ignored-but-in-index a/ignored-but-in-index &&
 	cat <<-\EOF >a/.gitignore &&
 		two*
 		*three
