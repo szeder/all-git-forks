@@ -198,7 +198,8 @@ static void die_if_unmerged_cache(int reset_type)
 
 }
 
-const char **parse_args(int argc, const char **argv, const char *prefix, const char **rev_ret) {
+const char **parse_args(int argc, const char **argv, const char *prefix, const char **rev_ret)
+{
 	int i = 0;
 	const char *rev = "HEAD";
 	unsigned char unused[20];
