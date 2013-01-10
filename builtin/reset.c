@@ -240,7 +240,8 @@ const char **parse_args(int argc, const char **argv, const char *prefix, const c
 	return *argv ? get_pathspec(prefix, argv) : NULL;
 }
 
-static int update_refs(const char *rev, const unsigned char *sha1) {
+static int update_refs(const char *rev, const unsigned char *sha1)
+{
 	int update_ref_status;
 	struct strbuf msg = STRBUF_INIT;
 	unsigned char *orig = NULL, sha1_orig[20],
@@ -252,8 +253,7 @@ static int update_refs(const char *rev, const unsigned char *sha1) {
 		orig = sha1_orig;
 		set_reflog_message(&msg, "updating ORIG_HEAD", NULL);
 		update_ref(msg.buf, "ORIG_HEAD", orig, old_orig, 0, MSG_ON_ERR);
-	}
-	else if (old_orig)
+	} else if (old_orig)
 		delete_ref("ORIG_HEAD", old_orig, 0);
 	set_reflog_message(&msg, "updating HEAD", rev);
 	update_ref_status = update_ref(msg.buf, "HEAD", sha1, orig, 0, MSG_ON_ERR);
