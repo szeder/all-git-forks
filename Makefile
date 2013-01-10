@@ -74,9 +74,13 @@ all::
 # Define NO_D_TYPE_IN_DIRENT if your platform defines DT_UNKNOWN but lacks
 # d_type in struct dirent (Cygwin 1.5, fixed in Cygwin 1.7).
 #
+# Define HAVE_STRINGS_H if you have strings.h and need it for strcasecmp.
+#
 # Define NO_STRCASESTR if you don't have strcasestr.
 #
 # Define NO_MEMMEM if you don't have memmem.
+#
+# Define NO_GETPAGESIZE if you don't have getpagesize.
 #
 # Define NO_STRLCPY if you don't have strlcpy.
 #
@@ -164,6 +168,10 @@ all::
 #
 # Define NO_POLL if you do not have or don't want to use poll().
 # This also implies NO_SYS_POLL_H.
+#
+# Define NEEDS_SYS_PARAM_H if you need to include sys/param.h to compile,
+# *PLEASE* REPORT to git@vger.kernel.org if your platform needs this;
+# we want to know more about the issue.
 #
 # Define NO_PTHREADS if you do not have or do not want to use Pthreads.
 #
@@ -470,7 +478,7 @@ SCRIPT_PERL += git-relink.perl
 SCRIPT_PERL += git-send-email.perl
 SCRIPT_PERL += git-svn.perl
 
-SCRIPT_PYTHON += git-remote-testgit.py
+SCRIPT_PYTHON += git-remote-testpy.py
 SCRIPT_PYTHON += git-p4.py
 
 SCRIPTS = $(patsubst %.sh,%,$(SCRIPT_SH)) \
@@ -1354,6 +1362,7 @@ ifeq ($(uname_S),NONSTOP_KERNEL)
 	# Added manually, see above.
 	NEEDS_SSL_WITH_CURL = YesPlease
 	HAVE_LIBCHARSET_H = YesPlease
+	HAVE_STRINGS_H = YesPlease
 	NEEDS_LIBICONV = YesPlease
 	NEEDS_LIBINTL_BEFORE_LIBICONV = YesPlease
 	NO_SYS_SELECT_H = UnfortunatelyYes
@@ -1448,6 +1457,22 @@ ifneq (,$(wildcard ../THIS_IS_MSYSGIT))
 else
 	NO_CURL = YesPlease
 endif
+endif
+ifeq ($(uname_S),QNX)
+	COMPAT_CFLAGS += -DSA_RESTART=0
+	HAVE_STRINGS_H = YesPlease
+	NEEDS_SOCKET = YesPlease
+	NO_FNMATCH_CASEFOLD = YesPlease
+	NO_GETPAGESIZE = YesPlease
+	NO_ICONV = YesPlease
+	NO_MEMMEM = YesPlease
+	NO_MKDTEMP = YesPlease
+	NO_MKSTEMPS = YesPlease
+	NO_NSEC = YesPlease
+	NO_PTHREADS = YesPlease
+	NO_R_TO_GCC_LINKER = YesPlease
+	NO_STRCASESTR = YesPlease
+	NO_STRLCPY = YesPlease
 endif
 
 -include config.mak.autogen
@@ -1656,6 +1681,9 @@ endif
 ifdef NO_D_INO_IN_DIRENT
 	BASIC_CFLAGS += -DNO_D_INO_IN_DIRENT
 endif
+ifdef NO_GECOS_IN_PWENT
+	BASIC_CFLAGS += -DNO_GECOS_IN_PWENT
+endif
 ifdef NO_ST_BLOCKS_IN_STRUCT_STAT
 	BASIC_CFLAGS += -DNO_ST_BLOCKS_IN_STRUCT_STAT
 endif
@@ -1748,6 +1776,9 @@ ifdef NO_SYS_SELECT_H
 endif
 ifdef NO_SYS_POLL_H
 	BASIC_CFLAGS += -DNO_SYS_POLL_H
+endif
+ifdef NEEDS_SYS_PARAM_H
+	BASIC_CFLAGS += -DNEEDS_SYS_PARAM_H
 endif
 ifdef NO_INTTYPES_H
 	BASIC_CFLAGS += -DNO_INTTYPES_H
@@ -1860,6 +1891,9 @@ ifdef NO_MEMMEM
 	COMPAT_CFLAGS += -DNO_MEMMEM
 	COMPAT_OBJS += compat/memmem.o
 endif
+ifdef NO_GETPAGESIZE
+	COMPAT_CFLAGS += -DNO_GETPAGESIZE
+endif
 ifdef INTERNAL_QSORT
 	COMPAT_CFLAGS += -DINTERNAL_QSORT
 	COMPAT_OBJS += compat/qsort.o
@@ -1883,6 +1917,10 @@ endif
 ifdef HAVE_LIBCHARSET_H
 	BASIC_CFLAGS += -DHAVE_LIBCHARSET_H
 	EXTLIBS += $(CHARSET_LIB)
+endif
+
+ifdef HAVE_STRINGS_H
+	BASIC_CFLAGS += -DHAVE_STRINGS_H
 endif
 
 ifdef HAVE_DEV_TTY
@@ -2184,7 +2222,7 @@ endef
 GIT-SCRIPT-DEFINES: FORCE
 	@FLAGS='$(SCRIPT_DEFINES)'; \
 	    if test x"$$FLAGS" != x"`cat $@ 2>/dev/null`" ; then \
-		echo 1>&2 "    * new script parameters"; \
+		echo >&2 "    * new script parameters"; \
 		echo "$$FLAGS" >$@; \
             fi
 
@@ -2246,7 +2284,7 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)) git-instaweb: % : unimplemented.sh
 endif # NO_PERL
 
 ifndef NO_PYTHON
-$(patsubst %.py,%,$(SCRIPT_PYTHON)): GIT-CFLAGS GIT-PREFIX
+$(patsubst %.py,%,$(SCRIPT_PYTHON)): GIT-CFLAGS GIT-PREFIX GIT-PYTHON-VARS
 $(patsubst %.py,%,$(SCRIPT_PYTHON)): % : %.py
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C git_remote_helpers -s \
@@ -2276,8 +2314,14 @@ configure: configure.ac GIT-VERSION-FILE
 	$(RM) $<+
 
 ifdef AUTOCONFIGURED
-config.status: configure
-	$(QUIET_GEN)if test -f config.status; then \
+# We avoid depending on 'configure' here, because it gets rebuilt
+# every time GIT-VERSION-FILE is modified, only to update the embedded
+# version number string, which config.status does not care about.  We
+# do want to recheck when the platform/environment detection logic
+# changes, hence this depends on configure.ac.
+config.status: configure.ac
+	$(QUIET_GEN)$(MAKE) configure && \
+	if test -f config.status; then \
 	  ./config.status --recheck; \
 	else \
 	  ./configure; \
@@ -2565,7 +2609,7 @@ TRACK_PREFIX = $(bindir_SQ):$(gitexecdir_SQ):$(template_dir_SQ):$(prefix_SQ):\
 GIT-PREFIX: FORCE
 	@FLAGS='$(TRACK_PREFIX)'; \
 	if test x"$$FLAGS" != x"`cat GIT-PREFIX 2>/dev/null`" ; then \
-		echo 1>&2 "    * new prefix flags"; \
+		echo >&2 "    * new prefix flags"; \
 		echo "$$FLAGS" >GIT-PREFIX; \
 	fi
 
@@ -2574,7 +2618,7 @@ TRACK_CFLAGS = $(CC):$(subst ','\'',$(ALL_CFLAGS)):$(USE_GETTEXT_SCHEME)
 GIT-CFLAGS: FORCE
 	@FLAGS='$(TRACK_CFLAGS)'; \
 	    if test x"$$FLAGS" != x"`cat GIT-CFLAGS 2>/dev/null`" ; then \
-		echo 1>&2 "    * new build flags"; \
+		echo >&2 "    * new build flags"; \
 		echo "$$FLAGS" >GIT-CFLAGS; \
             fi
 
@@ -2583,7 +2627,7 @@ TRACK_LDFLAGS = $(subst ','\'',$(ALL_LDFLAGS))
 GIT-LDFLAGS: FORCE
 	@FLAGS='$(TRACK_LDFLAGS)'; \
 	    if test x"$$FLAGS" != x"`cat GIT-LDFLAGS 2>/dev/null`" ; then \
-		echo 1>&2 "    * new link flags"; \
+		echo >&2 "    * new link flags"; \
 		echo "$$FLAGS" >GIT-LDFLAGS; \
             fi
 
@@ -2625,14 +2669,14 @@ ifdef GIT_PERF_MAKE_OPTS
 	@echo GIT_PERF_MAKE_OPTS=\''$(subst ','\'',$(subst ','\'',$(GIT_PERF_MAKE_OPTS)))'\' >>$@
 endif
 
-### Detect Tck/Tk interpreter path changes
-ifndef NO_TCLTK
-TRACK_VARS = $(subst ','\'',-DTCLTK_PATH='$(TCLTK_PATH_SQ)')
+### Detect Python interpreter path changes
+ifndef NO_PYTHON
+TRACK_PYTHON = $(subst ','\'',-DPYTHON_PATH='$(PYTHON_PATH_SQ)')
 
-GIT-GUI-VARS: FORCE
-	@VARS='$(TRACK_VARS)'; \
+GIT-PYTHON-VARS: FORCE
+	@VARS='$(TRACK_PYTHON)'; \
 	    if test x"$$VARS" != x"`cat $@ 2>/dev/null`" ; then \
-		echo 1>&2 "    * new Tcl/Tk interpreter location"; \
+		echo >&2 "    * new Python interpreter location"; \
 		echo "$$VARS" >$@; \
             fi
 endif
@@ -2911,8 +2955,8 @@ ifndef NO_TCLTK
 	$(MAKE) -C gitk-git clean
 	$(MAKE) -C git-gui clean
 endif
-	$(RM) GIT-VERSION-FILE GIT-CFLAGS GIT-LDFLAGS GIT-GUI-VARS GIT-BUILD-OPTIONS
-	$(RM) GIT-USER-AGENT GIT-PREFIX GIT-SCRIPT-DEFINES
+	$(RM) GIT-VERSION-FILE GIT-CFLAGS GIT-LDFLAGS GIT-BUILD-OPTIONS
+	$(RM) GIT-USER-AGENT GIT-PREFIX GIT-SCRIPT-DEFINES GIT-PYTHON-VARS
 
 .PHONY: all install profile-clean clean strip
 .PHONY: shell_compatibility_test please_set_SHELL_PATH_to_a_more_modern_shell

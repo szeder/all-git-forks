@@ -155,7 +155,7 @@ test_expect_failure 'additional command line cc (rfc822)' '
 	git config --replace-all format.headers "Cc: R E Cipient <rcipient@example.com>" &&
 	git format-patch --cc="S. E. Cipient <scipient@example.com>" --stdout master..side | sed -e "/^\$/q" >patch5 &&
 	grep "^Cc: R E Cipient <rcipient@example.com>,\$" patch5 &&
-	grep "^ *"S. E. Cipient" <scipient@example.com>\$" patch5
+	grep "^ *\"S. E. Cipient\" <scipient@example.com>\$" patch5
 '
 
 test_expect_success 'command line headers' '
@@ -183,7 +183,7 @@ test_expect_success 'command line To: header (ascii)' '
 test_expect_failure 'command line To: header (rfc822)' '
 
 	git format-patch --to="R. E. Cipient <rcipient@example.com>" --stdout master..side | sed -e "/^\$/q" >patch8 &&
-	grep "^To: "R. E. Cipient" <rcipient@example.com>\$" patch8
+	grep "^To: \"R. E. Cipient\" <rcipient@example.com>\$" patch8
 '
 
 test_expect_failure 'command line To: header (rfc2047)' '
@@ -203,7 +203,7 @@ test_expect_failure 'configuration To: header (rfc822)' '
 
 	git config format.to "R. E. Cipient <rcipient@example.com>" &&
 	git format-patch --stdout master..side | sed -e "/^\$/q" >patch9 &&
-	grep "^To: "R. E. Cipient" <rcipient@example.com>\$" patch9
+	grep "^To: \"R. E. Cipient\" <rcipient@example.com>\$" patch9
 '
 
 test_expect_failure 'configuration To: header (rfc2047)' '
@@ -961,6 +961,48 @@ test_expect_success 'format patch ignores color.ui' '
 	test_config color.ui always &&
 	git format-patch --stdout -1 >actual &&
 	test_cmp expect actual
+'
+
+test_expect_success 'cover letter using branch description (1)' '
+	git checkout rebuild-1 &&
+	test_config branch.rebuild-1.description hello &&
+	git format-patch --stdout --cover-letter master >actual &&
+	grep hello actual >/dev/null
+'
+
+test_expect_success 'cover letter using branch description (2)' '
+	git checkout rebuild-1 &&
+	test_config branch.rebuild-1.description hello &&
+	git format-patch --stdout --cover-letter rebuild-1~2..rebuild-1 >actual &&
+	grep hello actual >/dev/null
+'
+
+test_expect_success 'cover letter using branch description (3)' '
+	git checkout rebuild-1 &&
+	test_config branch.rebuild-1.description hello &&
+	git format-patch --stdout --cover-letter ^master rebuild-1 >actual &&
+	grep hello actual >/dev/null
+'
+
+test_expect_success 'cover letter using branch description (4)' '
+	git checkout rebuild-1 &&
+	test_config branch.rebuild-1.description hello &&
+	git format-patch --stdout --cover-letter master.. >actual &&
+	grep hello actual >/dev/null
+'
+
+test_expect_success 'cover letter using branch description (5)' '
+	git checkout rebuild-1 &&
+	test_config branch.rebuild-1.description hello &&
+	git format-patch --stdout --cover-letter -2 HEAD >actual &&
+	grep hello actual >/dev/null
+'
+
+test_expect_success 'cover letter using branch description (6)' '
+	git checkout rebuild-1 &&
+	test_config branch.rebuild-1.description hello &&
+	git format-patch --stdout --cover-letter -2 >actual &&
+	grep hello actual >/dev/null
 '
 
 test_done

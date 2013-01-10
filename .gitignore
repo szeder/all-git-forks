@@ -1,8 +1,8 @@
 /GIT-BUILD-OPTIONS
 /GIT-CFLAGS
 /GIT-LDFLAGS
-/GIT-GUI-VARS
 /GIT-PREFIX
+/GIT-PYTHON-VARS
 /GIT-SCRIPT-DEFINES
 /GIT-USER-AGENT
 /GIT-VERSION-FILE
@@ -124,7 +124,7 @@
 /git-remote-ftps
 /git-remote-fd
 /git-remote-ext
-/git-remote-testgit
+/git-remote-testpy
 /git-remote-testsvn
 /git-repack
 /git-replace
@@ -171,7 +171,6 @@
 /git-whatchanged
 /git-write-tree
 /git-core-*/?*
-/gitk-git/gitk-wish
 /gitweb/GITWEB-BUILD-OPTIONS
 /gitweb/gitweb.cgi
 /gitweb/static/gitweb.js
