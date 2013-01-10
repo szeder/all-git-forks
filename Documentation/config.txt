@@ -923,6 +923,13 @@ column.tag::
 	Specify whether to output tag listing in `git tag` in columns.
 	See `column.ui` for details.
 
+commit.cleanup::
+	This setting overrides the default of the `--cleanup` option in
+	`git commit`. See linkgit:git-commit[1] for details. Changing the
+	default can be useful if you want to use the comment character (#)
+	consistently within your commit messages, in which case you would
+	like to change the default to 'whitespace'.
+
 commit.status::
 	A boolean to enable/disable inclusion of status information in the
 	commit message template when using an editor to prepare the commit
