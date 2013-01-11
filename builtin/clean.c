@@ -96,8 +96,7 @@ static int remove_dirs(struct strbuf *path, const char *prefix, int force_flag,
 			if (gone) {
 				quote_path_relative(path->buf, strlen(path->buf), &quoted, prefix);
 				string_list_append(&dels, quoted.buf);
-			}
-			else
+			} else
 				*dir_gone = 0;
 			continue;
 		} else {
@@ -105,8 +104,7 @@ static int remove_dirs(struct strbuf *path, const char *prefix, int force_flag,
 			if (!res) {
 				quote_path_relative(path->buf, strlen(path->buf), &quoted, prefix);
 				string_list_append(&dels, quoted.buf);
-			}
-			else {
+			} else {
 				quote_path_relative(path->buf, strlen(path->buf), &quoted, prefix);
 				warning(_(msg_warn_remove_failed), quoted.buf);
 				*dir_gone = 0;
