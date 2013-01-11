@@ -273,7 +273,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 		match_pathspec_depth(&opts->pathspec, ce->name, ce_namelen(ce), 0, ps_matched);
 	}
 
-	if (report_path_error(ps_matched, opts->pathspec.raw, opts->prefix))
+	if (report_path_error(ps_matched, &opts->pathspec, opts->prefix))
 		return 1;
 
 	/* "checkout -m path" to recreate conflicted state */
