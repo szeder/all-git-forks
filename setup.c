@@ -266,9 +266,9 @@ static int pathspec_item_cmp(const void *a_, const void *b_)
  * Given command line arguments and a prefix, convert the input to
  * pathspec. die() if any magic other than ones in magic_mask.
  */
-static void parse_pathspec(struct pathspec *pathspec,
-			   unsigned magic_mask, unsigned flags,
-			   const char *prefix, const char **argv)
+void parse_pathspec(struct pathspec *pathspec,
+		    unsigned magic_mask, unsigned flags,
+		    const char *prefix, const char **argv)
 {
 	struct pathspec_item *item;
 	const char *entry = *argv;
