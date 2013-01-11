@@ -93,9 +93,9 @@ static int check_ignore(int argc, const char **argv, const char *prefix)
 	 * should not be ignored, in order to be consistent with
 	 * 'git status', 'git add' etc.
 	 */
-	seen = find_pathspecs_matching_against_index(pathspec.raw);
+	seen = find_pathspecs_matching_against_index(&pathspec);
 	for (i = 0; i < pathspec.nr; i++) {
-		const char *full_path = pathspec.raw[i];
+		const char *full_path = pathspec.items[i].match;
 		if (!seen[i]) {
 			exclude = last_exclude_matching_path(&check, full_path,
 							     -1, &dtype);
