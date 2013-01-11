@@ -468,19 +468,19 @@ void add_exclude(const char *string, const char *base,
 
 static void *read_skip_worktree_file_from_index(const char *path, size_t *size)
 {
-	int pos, len;
+	int len;
 	unsigned long sz;
 	enum object_type type;
 	void *data;
 	struct index_state *istate = &the_index;
+	struct cache_entry *ce;
 
 	len = strlen(path);
-	pos = index_name_pos(istate, path, len);
-	if (pos < 0)
+	if (!get_index_entry_by_name(istate, path, len, &ce))
 		return NULL;
-	if (!ce_skip_worktree(istate->cache[pos]))
+	if (!ce_skip_worktree(ce))
 		return NULL;
-	data = read_sha1_file(istate->cache[pos]->sha1, &type, &sz);
+	data = read_sha1_file(ce->sha1, &type, &sz);
 	if (!data || type != OBJ_BLOB) {
 		free(data);
 		return NULL;
@@ -968,16 +968,13 @@ static enum exist_status directory_exists_in_index_icase(const char *dirname, in
  */
 static enum exist_status directory_exists_in_index(const char *dirname, int len)
 {
-	int pos;
+	struct cache_entry *ce;
 
 	if (ignore_case)
 		return directory_exists_in_index_icase(dirname, len);
 
-	pos = cache_name_pos(dirname, len);
-	if (pos < 0)
-		pos = -pos-1;
-	while (pos < active_nr) {
-		struct cache_entry *ce = active_cache[pos++];
+	get_cache_entry_by_name(dirname, len, &ce);
+	while (ce) {
 		unsigned char endchar;
 
 		if (strncmp(ce->name, dirname, len))
@@ -989,6 +986,7 @@ static enum exist_status directory_exists_in_index(const char *dirname, int len)
 			return index_directory;
 		if (!endchar && S_ISGITLINK(ce->ce_mode))
 			return index_gitdir;
+		ce = next_cache_entry(ce);
 	}
 	return index_nonexistent;
 }
@@ -1114,7 +1112,6 @@ static int exclude_matches_pathspec(const char *path, int len,
 
 static int get_index_dtype(const char *path, int len)
 {
-	int pos;
 	struct cache_entry *ce;
 
 	ce = cache_name_exists(path, len, 0);
@@ -1131,18 +1128,18 @@ static int get_index_dtype(const char *path, int len)
 	}
 
 	/* Try to look it up as a directory */
-	pos = cache_name_pos(path, len);
-	if (pos >= 0)
+	if (get_cache_entry_by_name(path, len, &ce));
 		return DT_UNKNOWN;
-	pos = -pos-1;
-	while (pos < active_nr) {
-		ce = active_cache[pos++];
+
+	while (ce) {
 		if (strncmp(ce->name, path, len))
 			break;
 		if (ce->name[len] > '/')
 			break;
-		if (ce->name[len] < '/')
+		if (ce->name[len] < '/') {
+			ce = next_cache_entry(ce);
 			continue;
+		}
 		if (!ce_uptodate(ce))
 			break;	/* continue? */
 		return DT_DIR;
