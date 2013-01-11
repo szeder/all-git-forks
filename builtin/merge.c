@@ -788,17 +788,24 @@ static const char merge_editor_comment[] =
 N_("Please enter a commit message to explain why this merge is necessary,\n"
    "especially if it merges an updated upstream into a topic branch.\n"
    "\n"
-   "Lines starting with '#' will be ignored, and an empty message aborts\n"
+   "Lines starting with '%c' will be ignored, and an empty message aborts\n"
    "the commit.\n");
 
 static void prepare_to_commit(struct commit_list *remoteheads)
 {
 	struct strbuf msg = STRBUF_INIT;
-	const char *comment = _(merge_editor_comment);
+	const char *commentf = _(merge_editor_comment);
 	strbuf_addbuf(&msg, &merge_msg);
 	strbuf_addch(&msg, '\n');
-	if (0 < option_edit)
-		strbuf_add_lines(&msg, "# ", comment, strlen(comment));
+	if (0 < option_edit) {
+		struct strbuf hint = STRBUF_INIT;
+		char comment_head[3];
+
+		sprintf(comment_head, "%c ", comment_line_char);
+		strbuf_addf(&hint, commentf, comment_line_char);
+		strbuf_add_lines(&msg, comment_head, hint.buf, hint.len);
+		strbuf_release(&hint);
+	}
 	write_merge_msg(&msg);
 	if (run_hook(get_index_file(), "prepare-commit-msg",
 		     git_path("MERGE_MSG"), "merge", NULL, NULL))
