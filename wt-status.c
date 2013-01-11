@@ -434,7 +434,7 @@ static void wt_status_collect_changes_worktree(struct wt_status *s)
 	}
 	rev.diffopt.format_callback = wt_status_collect_changed_cb;
 	rev.diffopt.format_callback_data = s;
-	init_pathspec(&rev.prune_data, s->pathspec);
+	rev.prune_data = s->pathspec;
 	run_diff_files(&rev, 0);
 }
 
@@ -459,22 +459,20 @@ static void wt_status_collect_changes_index(struct wt_status *s)
 	rev.diffopt.detect_rename = 1;
 	rev.diffopt.rename_limit = 200;
 	rev.diffopt.break_opt = 0;
-	init_pathspec(&rev.prune_data, s->pathspec);
+	rev.prune_data = s->pathspec;
 	run_diff_index(&rev, 1);
 }
 
 static void wt_status_collect_changes_initial(struct wt_status *s)
 {
-	struct pathspec pathspec;
 	int i;
 
-	init_pathspec(&pathspec, s->pathspec);
 	for (i = 0; i < active_nr; i++) {
 		struct string_list_item *it;
 		struct wt_status_change_data *d;
 		struct cache_entry *ce = active_cache[i];
 
-		if (!ce_path_match(ce, &pathspec))
+		if (!ce_path_match(ce, &s->pathspec))
 			continue;
 		it = string_list_insert(&s->change, ce->name);
 		d = it->util;
@@ -489,7 +487,6 @@ static void wt_status_collect_changes_initial(struct wt_status *s)
 		else
 			d->index_status = DIFF_STATUS_ADDED;
 	}
-	free_pathspec(&pathspec);
 }
 
 static void wt_status_collect_untracked(struct wt_status *s)
@@ -505,11 +502,11 @@ static void wt_status_collect_untracked(struct wt_status *s)
 			DIR_SHOW_OTHER_DIRECTORIES | DIR_HIDE_EMPTY_DIRECTORIES;
 	setup_standard_excludes(&dir);
 
-	fill_directory(&dir, s->pathspec);
+	fill_directory(&dir, s->pathspec.raw);
 	for (i = 0; i < dir.nr; i++) {
 		struct dir_entry *ent = dir.entries[i];
 		if (cache_name_is_other(ent->name, ent->len) &&
-		    match_pathspec(s->pathspec, ent->name, ent->len, 0, NULL))
+		    match_pathspec_depth(&s->pathspec, ent->name, ent->len, 0, NULL))
 			string_list_insert(&s->untracked, ent->name);
 		free(ent);
 	}
@@ -517,11 +514,11 @@ static void wt_status_collect_untracked(struct wt_status *s)
 	if (s->show_ignored_files) {
 		dir.nr = 0;
 		dir.flags = DIR_SHOW_IGNORED | DIR_SHOW_OTHER_DIRECTORIES;
-		fill_directory(&dir, s->pathspec);
+		fill_directory(&dir, s->pathspec.raw);
 		for (i = 0; i < dir.nr; i++) {
 			struct dir_entry *ent = dir.entries[i];
 			if (cache_name_is_other(ent->name, ent->len) &&
-			    match_pathspec(s->pathspec, ent->name, ent->len, 0, NULL))
+			    match_pathspec_depth(&s->pathspec, ent->name, ent->len, 0, NULL))
 				string_list_insert(&s->ignored, ent->name);
 			free(ent);
 		}
