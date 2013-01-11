@@ -182,6 +182,8 @@ struct cache_entry {
 #error "CE_EXTENDED_FLAGS out of range"
 #endif
 
+struct pathspec;
+
 /*
  * Copy the sha1 and stat state of a cache entry from one to
  * another. But we never change the name, or the hash state!
@@ -434,7 +436,7 @@ extern int init_db(const char *template_dir, unsigned int flags);
 
 /* Initialize and use the cache information */
 extern int read_index(struct index_state *);
-extern int read_index_preload(struct index_state *, const char **pathspec);
+extern int read_index_preload(struct index_state *, const struct pathspec *pathspec);
 extern int read_index_from(struct index_state *, const char *path);
 extern int is_index_unborn(struct index_state *);
 extern int read_index_unmerged(struct index_state *);
@@ -474,7 +476,9 @@ extern int index_name_is_other(const struct index_state *, const char *, int);
 extern int ie_match_stat(const struct index_state *, struct cache_entry *, struct stat *, unsigned int);
 extern int ie_modified(const struct index_state *, struct cache_entry *, struct stat *, unsigned int);
 
-#define PATHSPEC_ONESTAR 1	/* the pathspec pattern sastisfies GFNM_ONESTAR */
+/* Pathspec magic */
+#define PATHSPEC_FROMTOP (1<<0)
+#define PATHSPEC_ONESTAR (1<<1)	/* the pathspec pattern sastisfies GFNM_ONESTAR */
 
 struct pathspec {
 	const char **raw; /* get_pathspec() result, not freed by free_pathspec() */
@@ -491,6 +495,10 @@ struct pathspec {
 };
 
 extern int init_pathspec(struct pathspec *, const char **);
+extern void parse_pathspec(struct pathspec *pathspec, unsigned magic,
+			   unsigned flags, const char *prefix,
+			   const char **args);
+void strip_trailing_slash_from_submodules(struct pathspec *pathspec);
 extern void free_pathspec(struct pathspec *);
 extern int ce_path_match(const struct cache_entry *ce, const struct pathspec *pathspec);
 
@@ -508,7 +516,7 @@ extern void fill_stat_cache_info(struct cache_entry *ce, struct stat *st);
 #define REFRESH_IGNORE_MISSING	0x0008	/* ignore non-existent */
 #define REFRESH_IGNORE_SUBMODULES	0x0010	/* ignore submodules */
 #define REFRESH_IN_PORCELAIN	0x0020	/* user friendly output, not "needs update" */
-extern int refresh_index(struct index_state *, unsigned int flags, const char **pathspec, char *seen, const char *header_msg);
+extern int refresh_index(struct index_state *, unsigned int flags, const struct pathspec *pathspec, char *seen, const char *header_msg);
 
 struct lock_file {
 	struct lock_file *next;
@@ -1236,7 +1244,7 @@ void packet_trace_identity(const char *prog);
  * return 0 if success, 1 - if addition of a file failed and
  * ADD_FILES_IGNORE_ERRORS was specified in flags
  */
-int add_files_to_cache(const char *prefix, const char **pathspec, int flags);
+int add_files_to_cache(const char *prefix, const struct pathspec *pathspec, int flags);
 
 /* diff.c */
 extern int diff_auto_refresh_index;
@@ -1270,7 +1278,7 @@ extern int ws_blank_line(const char *line, int len, unsigned ws_rule);
 #define ws_tab_width(rule)     ((rule) & WS_TAB_WIDTH_MASK)
 
 /* ls-files */
-int report_path_error(const char *ps_matched, const char **pathspec, const char *prefix);
+int report_path_error(const char *ps_matched, const struct pathspec *pathspec, const char *prefix);
 void overlay_tree_on_cache(const char *tree_name, const char *prefix);
 
 char *alias_lookup(const char *alias);
