@@ -1440,6 +1440,26 @@ int init_pathspec(struct pathspec *pathspec, const char **paths)
 	return 0;
 }
 
+void strip_trailing_slash_from_submodules(struct pathspec *pathspec)
+{
+	int i;
+	for (i = 0; i < pathspec->nr; i++) {
+		const char *p = pathspec->raw[i];
+		int len = strlen(p), pos;
+
+		if (len < 1 || p[len - 1] != '/')
+			continue;
+		pos = cache_name_pos(p, len - 1);
+		if (pos >= 0 && S_ISGITLINK(active_cache[pos]->ce_mode)) {
+			char *path = xstrndup(p, len - 1);
+			pathspec->raw[i] = path;
+			pathspec->items[i].match = path;
+			pathspec->items[i].len = len - 1;
+			pathspec->items[i].nowildcard_len = simple_length(path);
+		}
+	}
+}
+
 void free_pathspec(struct pathspec *pathspec)
 {
 	free(pathspec->items);
