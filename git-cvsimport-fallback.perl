@@ -1,4 +1,8 @@
 #!/usr/bin/perl
+# This code became obsolete in January 2013, and is retained only as a
+# fallback from git-cvsimport.py for users who have only cvsps-2.x.
+# It (and the code in cvsimport.py that calls it) should be removed
+# once the 3.x version has had a reasonable time to propagate.
 
 # This tool is copyright (c) 2005, Matthias Urlichs.
 # It is released under the Gnu Public License, version 2.
@@ -26,6 +30,10 @@ use IO::Socket;
 use IO::Pipe;
 use POSIX qw(strftime tzset dup2 ENOENT);
 use IPC::Open2;
+
+print(STDERR "You do not appear to have cvsps 3.x.\n");
+print(STDERR "Falling back to unmaintained Perl cvsimport for cvsps 2.x.\n");
+print(STDERR "Upgrade your cvsps for best results.\n");
 
 $SIG{'PIPE'}="IGNORE";
 set_timezone('UTC');
