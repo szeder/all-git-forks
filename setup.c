@@ -280,6 +280,9 @@ void parse_pathspec(struct pathspec *pathspec,
 	if (!entry && !prefix)
 		return;
 
+	if (!*argv && (flags & PATHSPEC_EMPTY_MATCH_ALL))
+		return;
+
 	/* No arguments with prefix -> prefix pathspec */
 	if (!entry) {
 		static const char *raw[2];

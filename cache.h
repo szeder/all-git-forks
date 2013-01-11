@@ -476,6 +476,9 @@ extern int ie_modified(const struct index_state *, struct cache_entry *, struct 
 /* Pathspec magic */
 #define PATHSPEC_FROMTOP    (1<<0)
 
+/* Pathspec flags */
+#define PATHSPEC_EMPTY_MATCH_ALL (1<<0) /* No args means match everything */
+
 struct pathspec {
 	const char **raw; /* get_pathspec() result, not freed by free_pathspec() */
 	int nr;
