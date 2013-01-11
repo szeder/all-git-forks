@@ -153,33 +153,6 @@ static char *prune_directory(struct dir_struct *dir, const char **pathspec, int 
 	return seen;
 }
 
-static void treat_gitlinks(const char **pathspec)
-{
-	int i;
-
-	if (!pathspec || !*pathspec)
-		return;
-
-	for (i = 0; i < active_nr; i++) {
-		struct cache_entry *ce = active_cache[i];
-		if (S_ISGITLINK(ce->ce_mode)) {
-			int len = ce_namelen(ce), j;
-			for (j = 0; pathspec[j]; j++) {
-				int len2 = strlen(pathspec[j]);
-				if (len2 <= len || pathspec[j][len] != '/' ||
-				    memcmp(ce->name, pathspec[j], len))
-					continue;
-				if (len2 == len + 1)
-					/* strip trailing slash */
-					pathspec[j] = xstrndup(ce->name, len);
-				else
-					die (_("Path '%s' is in submodule '%.*s'"),
-						pathspec[j], len, ce->name);
-			}
-		}
-	}
-}
-
 static void refresh(int verbose, const char **pathspec)
 {
 	char *seen;
@@ -197,21 +170,18 @@ static void refresh(int verbose, const char **pathspec)
         free(seen);
 }
 
-static const char **validate_pathspec(int argc, const char **argv, const char *prefix)
+static void validate_pathspec(const char **pathspec, const char *prefix)
 {
-	const char **pathspec = get_pathspec(prefix, argv);
+	const char **p;
+	if (!pathspec)
+		return;
 
-	if (pathspec) {
-		const char **p;
-		for (p = pathspec; *p; p++) {
-			if (has_symlink_leading_path(*p, strlen(*p))) {
-				int len = prefix ? strlen(prefix) : 0;
-				die(_("'%s' is beyond a symbolic link"), *p + len);
-			}
+	for (p = pathspec; *p; p++) {
+		if (has_symlink_leading_path(*p, strlen(*p))) {
+			int len = prefix ? strlen(prefix) : 0;
+			die(_("'%s' is beyond a symbolic link"), *p + len);
 		}
 	}
-
-	return pathspec;
 }
 
 int run_add_interactive(const char *revision, const char *patch_mode,
@@ -248,7 +218,8 @@ int interactive_add(int argc, const char **argv, const char *prefix, int patch)
 	const char **pathspec = NULL;
 
 	if (argc) {
-		pathspec = validate_pathspec(argc, argv, prefix);
+		pathspec = get_pathspec(prefix, argv);
+		validate_pathspec(pathspec, prefix);
 		if (!pathspec)
 			return -1;
 	}
@@ -367,7 +338,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 {
 	int exit_status = 0;
 	int newfd;
-	const char **pathspec;
+	struct pathspec pathspec;
 	struct dir_struct dir;
 	int flags;
 	int add_new_files;
@@ -415,11 +386,12 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 		fprintf(stderr, _("Maybe you wanted to say 'git add .'?\n"));
 		return 0;
 	}
-	pathspec = validate_pathspec(argc, argv, prefix);
+	parse_pathspec(&pathspec, PATHSPEC_FROMTOP, 0, prefix, argv);
+	validate_pathspec(pathspec.raw, prefix);
 
 	if (read_cache() < 0)
 		die(_("index file corrupt"));
-	treat_gitlinks(pathspec);
+	treat_gitlinks(&pathspec);
 
 	if (add_new_files) {
 		int baselen;
@@ -432,33 +404,33 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 		}
 
 		/* This picks up the paths that are not tracked */
-		baselen = fill_directory(&dir, pathspec);
-		if (pathspec)
-			seen = prune_directory(&dir, pathspec, baselen);
+		baselen = fill_directory(&dir, pathspec.raw);
+		if (pathspec.nr)
+			seen = prune_directory(&dir, pathspec.raw, baselen);
 	}
 
 	if (refresh_only) {
-		refresh(verbose, pathspec);
+		refresh(verbose, pathspec.raw);
 		goto finish;
 	}
 
-	if (pathspec) {
+	if (pathspec.nr) {
 		int i;
 		struct path_exclude_check check;
 
 		path_exclude_check_init(&check, &dir);
 		if (!seen)
-			seen = find_used_pathspec(pathspec);
-		for (i = 0; pathspec[i]; i++) {
-			if (!seen[i] && pathspec[i][0]
-			    && !file_exists(pathspec[i])) {
+			seen = find_used_pathspec(pathspec.raw);
+		for (i = 0; pathspec.raw[i]; i++) {
+			if (!seen[i] && pathspec.raw[i][0]
+			    && !file_exists(pathspec.raw[i])) {
 				if (ignore_missing) {
 					int dtype = DT_UNKNOWN;
-					if (path_excluded(&check, pathspec[i], -1, &dtype))
-						dir_add_ignored(&dir, pathspec[i], strlen(pathspec[i]));
+					if (path_excluded(&check, pathspec.raw[i], -1, &dtype))
+						dir_add_ignored(&dir, pathspec.raw[i], strlen(pathspec.raw[i]));
 				} else
 					die(_("pathspec '%s' did not match any files"),
-					    pathspec[i]);
+					    pathspec.raw[i]);
 			}
 		}
 		free(seen);
@@ -467,7 +439,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 
 	plug_bulk_checkin();
 
-	exit_status |= add_files_to_cache(prefix, pathspec, flags);
+	exit_status |= add_files_to_cache(prefix, pathspec.raw, flags);
 
 	if (add_new_files)
 		exit_status |= add_files(&dir, flags);

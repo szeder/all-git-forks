@@ -1460,6 +1460,38 @@ void strip_trailing_slash_from_submodules(struct pathspec *pathspec)
 	}
 }
 
+void treat_gitlinks(struct pathspec *pathspec)
+{
+	int i;
+
+	for (i = 0; i < active_nr; i++) {
+		struct cache_entry *ce = active_cache[i];
+		int len = ce_namelen(ce), j;
+
+		if (!S_ISGITLINK(ce->ce_mode))
+			continue;
+
+		for (j = 0; j < pathspec->nr; j++) {
+			int len2 = strlen(pathspec->raw[j]);
+			if (len2 <= len || pathspec->raw[j][len] != '/' ||
+			    memcmp(ce->name, pathspec->raw[j], len))
+				continue;
+			if (len2 == len + 1) {
+				/* strip trailing slash */
+				char *path = xstrndup(ce->name, len);
+				pathspec->raw[j] = path;
+				pathspec->items[j].match = path;
+				pathspec->items[j].len = len;
+				pathspec->items[j].nowildcard_len = simple_length(path);
+			} else
+				die (_("Path '%s' is in submodule '%.*s'"),
+				     pathspec->raw[j], len, ce->name);
+		}
+	}
+}
+
+
+
 void free_pathspec(struct pathspec *pathspec)
 {
 	free(pathspec->items);

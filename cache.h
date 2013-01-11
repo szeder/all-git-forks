@@ -497,6 +497,7 @@ extern void parse_pathspec(struct pathspec *pathspec, unsigned magic,
 			   unsigned flags, const char *prefix,
 			   const char **args);
 void strip_trailing_slash_from_submodules(struct pathspec *pathspec);
+void treat_gitlinks(struct pathspec *pathspec);
 extern void free_pathspec(struct pathspec *);
 extern int ce_path_match(const struct cache_entry *ce, const struct pathspec *pathspec);
 
