@@ -655,7 +655,7 @@ static int rerere_forget_one_path(const char *path, struct string_list *rr)
 	return 0;
 }
 
-int rerere_forget(const char **pathspec)
+int rerere_forget(struct pathspec *pathspec)
 {
 	int i, fd;
 	struct string_list conflict = STRING_LIST_INIT_DUP;
@@ -666,12 +666,12 @@ int rerere_forget(const char **pathspec)
 
 	fd = setup_rerere(&merge_rr, RERERE_NOAUTOUPDATE);
 
-	unmerge_cache(pathspec);
+	unmerge_cache(pathspec->raw);
 	find_conflict(&conflict);
 	for (i = 0; i < conflict.nr; i++) {
 		struct string_list_item *it = &conflict.items[i];
-		if (!match_pathspec(pathspec, it->string, strlen(it->string),
-				    0, NULL))
+		if (!match_pathspec_depth(pathspec, it->string, strlen(it->string),
+					  0, NULL))
 			continue;
 		rerere_forget_one_path(it->string, &merge_rr);
 	}
