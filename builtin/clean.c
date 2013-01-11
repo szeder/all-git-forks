@@ -103,7 +103,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 
 	parse_pathspec(&pathspec, PATHSPEC_FROMTOP, 0, prefix, argv);
 
-	fill_directory(&dir, pathspec.raw);
+	fill_directory(&dir, &pathspec);
 
 	if (pathspec.nr)
 		seen = xmalloc(pathspec.nr);
