@@ -100,26 +100,24 @@ int add_files_to_cache(const char *prefix,
 	return !!data.add_errors;
 }
 
-static char *prune_directory(struct dir_struct *dir, const char **pathspec, int prefix)
+static char *prune_directory(struct dir_struct *dir, struct pathspec *pathspec, int prefix)
 {
 	char *seen;
-	int i, specs;
+	int i;
 	struct dir_entry **src, **dst;
 
-	for (specs = 0; pathspec[specs];  specs++)
-		/* nothing */;
-	seen = xcalloc(specs, 1);
+	seen = xcalloc(pathspec->nr, 1);
 
 	src = dst = dir->entries;
 	i = dir->nr;
 	while (--i >= 0) {
 		struct dir_entry *entry = *src++;
-		if (match_pathspec(pathspec, entry->name, entry->len,
-				   prefix, seen))
+		if (match_pathspec_depth(pathspec, entry->name, entry->len,
+					 prefix, seen))
 			*dst++ = entry;
 	}
 	dir->nr = dst - dir->entries;
-	add_pathspec_matches_against_index(pathspec, seen, specs);
+	add_pathspec_matches_against_index(pathspec, seen);
 	return seen;
 }
 
@@ -409,7 +407,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 		/* This picks up the paths that are not tracked */
 		baselen = fill_directory(&dir, &pathspec);
 		if (pathspec.nr)
-			seen = prune_directory(&dir, pathspec.raw, baselen);
+			seen = prune_directory(&dir, &pathspec, baselen);
 	}
 
 	if (refresh_only) {
@@ -423,23 +421,23 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 
 		path_exclude_check_init(&check, &dir);
 		if (!seen)
-			seen = find_pathspecs_matching_against_index(pathspec.raw);
+			seen = find_pathspecs_matching_against_index(&pathspec);
 
 		/*
 		 * file_exists() assumes exact match
 		 */
 		GUARD_PATHSPEC(&pathspec, PATHSPEC_FROMTOP);
 
-		for (i = 0; pathspec.raw[i]; i++) {
-			if (!seen[i] && pathspec.raw[i][0]
-			    && !file_exists(pathspec.raw[i])) {
+		for (i = 0; i < pathspec.nr; i++) {
+			const char *path = pathspec.items[i].match;
+			if (!seen[i] && !file_exists(path)) {
 				if (ignore_missing) {
 					int dtype = DT_UNKNOWN;
-					if (is_path_excluded(&check, pathspec.raw[i], -1, &dtype))
-						dir_add_ignored(&dir, pathspec.raw[i], strlen(pathspec.raw[i]));
+					if (is_path_excluded(&check, path, -1, &dtype))
+						dir_add_ignored(&dir, path, pathspec.items[i].len);
 				} else
 					die(_("pathspec '%s' did not match any files"),
-					    pathspec.raw[i]);
+					    pathspec.items[i].original);
 			}
 		}
 		free(seen);
