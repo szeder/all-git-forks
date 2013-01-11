@@ -250,7 +250,7 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 	}
 
 	parse_pathspec(&pathspec, PATHSPEC_FROMTOP, 0, prefix, argv);
-	refresh_index(&the_index, REFRESH_QUIET, pathspec.raw, NULL, NULL);
+	refresh_index(&the_index, REFRESH_QUIET, &pathspec, NULL, NULL);
 
 	seen = NULL;
 	seen = xcalloc(pathspec.nr, 1);
