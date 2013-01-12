@@ -150,7 +150,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 	int rm_flags = REMOVE_DIR_KEEP_NESTED_GIT;
 	struct strbuf directory = STRBUF_INIT;
 	struct dir_struct dir;
-	static const char **pathspec;
+	struct pathspec pathspec;
 	struct strbuf buf = STRBUF_INIT;
 	struct string_list exclude_list = STRING_LIST_INIT_NODUP;
 	const char *qname;
@@ -210,12 +210,12 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 		add_exclude(exclude_list.items[i].string, "", 0,
 			    &dir.exclude_list_group[EXC_CMDL].el[0], -(i+1));
 
-	pathspec = get_pathspec(prefix, argv);
+	parse_pathspec(&pathspec, PATHSPEC_FROMTOP, 0, prefix, argv);
 
-	fill_directory(&dir, pathspec);
+	fill_directory(&dir, &pathspec);
 
-	if (pathspec)
-		seen = xmalloc(argc > 0 ? argc : 1);
+	if (pathspec.nr)
+		seen = xmalloc(pathspec.nr);
 
 	for (i = 0; i < dir.nr; i++) {
 		struct dir_entry *ent = dir.entries[i];
@@ -250,10 +250,10 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 		if (lstat(ent->name, &st))
 			continue;
 
-		if (pathspec) {
-			memset(seen, 0, argc > 0 ? argc : 1);
-			matches = match_pathspec(pathspec, ent->name, len,
-						 0, seen);
+		if (pathspec.nr) {
+			memset(seen, 0, pathspec.nr);
+			matches = match_pathspec_depth(&pathspec, ent->name, len,
+						       0, seen);
 		}
 
 		if (S_ISDIR(st.st_mode)) {
@@ -268,7 +268,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 			}
 			strbuf_reset(&directory);
 		} else {
-			if (pathspec && !matches)
+			if (pathspec.nr && !matches)
 				continue;
 			res = dry_run ? 0 : unlink(ent->name);
 			if (res) {

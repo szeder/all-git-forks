@@ -98,7 +98,7 @@ char *common_prefix(const char **pathspec)
 	return len ? xmemdupz(*pathspec, len) : NULL;
 }
 
-int fill_directory(struct dir_struct *dir, const char **pathspec)
+int fill_directory(struct dir_struct *dir, const struct pathspec *pathspec)
 {
 	size_t len;
 
@@ -106,10 +106,10 @@ int fill_directory(struct dir_struct *dir, const char **pathspec)
 	 * Calculate common prefix for the pathspec, and
 	 * use that to optimize the directory walk
 	 */
-	len = common_prefix_len(pathspec);
+	len = common_prefix_len(pathspec->raw);
 
 	/* Read the directory and prune it */
-	read_directory(dir, pathspec ? *pathspec : "", len, pathspec);
+	read_directory(dir, pathspec->nr ? pathspec->raw[0] : "", len, pathspec);
 	return len;
 }
 
@@ -337,7 +337,7 @@ int match_pathspec_depth(const struct pathspec *ps,
 /*
  * Return the length of the "simple" part of a path match limiter.
  */
-static int simple_length(const char *match)
+int simple_length(const char *match)
 {
 	int len = -1;
 
@@ -1431,14 +1431,14 @@ static int treat_leading_path(struct dir_struct *dir,
 	return rc;
 }
 
-int read_directory(struct dir_struct *dir, const char *path, int len, const char **pathspec)
+int read_directory(struct dir_struct *dir, const char *path, int len, const struct pathspec *pathspec)
 {
 	struct path_simplify *simplify;
 
 	if (has_symlink_leading_path(path, len))
 		return dir->nr;
 
-	simplify = create_simplify(pathspec);
+	simplify = create_simplify(pathspec ? pathspec->raw : NULL);
 	if (!len || treat_leading_path(dir, path, len, simplify))
 		read_directory_recursive(dir, path, len, 0, simplify);
 	free_simplify(simplify);
@@ -1668,6 +1668,58 @@ int init_pathspec(struct pathspec *pathspec, const char **paths)
 
 	return 0;
 }
+
+void strip_trailing_slash_from_submodules(struct pathspec *pathspec)
+{
+	int i;
+	for (i = 0; i < pathspec->nr; i++) {
+		const char *p = pathspec->raw[i];
+		int len = strlen(p), pos;
+
+		if (len < 1 || p[len - 1] != '/')
+			continue;
+		pos = cache_name_pos(p, len - 1);
+		if (pos >= 0 && S_ISGITLINK(active_cache[pos]->ce_mode)) {
+			char *path = xstrndup(p, len - 1);
+			pathspec->raw[i] = path;
+			pathspec->items[i].match = path;
+			pathspec->items[i].len = len - 1;
+			pathspec->items[i].nowildcard_len = simple_length(path);
+		}
+	}
+}
+
+void treat_gitlinks(struct pathspec *pathspec)
+{
+	int i;
+
+	for (i = 0; i < active_nr; i++) {
+		struct cache_entry *ce = active_cache[i];
+		int len = ce_namelen(ce), j;
+
+		if (!S_ISGITLINK(ce->ce_mode))
+			continue;
+
+		for (j = 0; j < pathspec->nr; j++) {
+			int len2 = strlen(pathspec->raw[j]);
+			if (len2 <= len || pathspec->raw[j][len] != '/' ||
+			    memcmp(ce->name, pathspec->raw[j], len))
+				continue;
+			if (len2 == len + 1) {
+				/* strip trailing slash */
+				char *path = xstrndup(ce->name, len);
+				pathspec->raw[j] = path;
+				pathspec->items[j].match = path;
+				pathspec->items[j].len = len;
+				pathspec->items[j].nowildcard_len = simple_length(path);
+			} else
+				die (_("Path '%s' is in submodule '%.*s'"),
+				     pathspec->raw[j], len, ce->name);
+		}
+	}
+}
+
+
 
 void free_pathspec(struct pathspec *pathspec)
 {
