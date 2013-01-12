@@ -7,8 +7,7 @@ setup_cvs_test_repository t9604
 
 test_expect_success 'check timestamps are UTC (TZ=CST6CDT)' '
 
-	TZ=CST6CDT git cvsimport -p"-x" -C module-1 module &&
-	git cvsimport -p"-x" -C module-1 module &&
+	TZ=CST6CDT git cvsimport -C module-1 module &&
 	(
 		cd module-1 &&
 		git log --format="%s %ai"
@@ -42,7 +41,7 @@ test_expect_success 'check timestamps with author-specific timezones' '
 	user3=User Three <user3@domain.org> EST5EDT
 	user4=User Four <user4@domain.org> MST7MDT
 	EOF
-	git cvsimport -p"-x" -A cvs-authors -C module-2 module &&
+	git cvsimport -A cvs-authors -C module-2 module &&
 	(
 		cd module-2 &&
 		git log --format="%s %ai %an"

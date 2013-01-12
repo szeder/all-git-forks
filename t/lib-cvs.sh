@@ -15,7 +15,7 @@ export CVS
 
 cvsps_version=`cvsps -h 2>&1 | sed -ne 's/cvsps version //p'`
 case "$cvsps_version" in
-2.1 | 2.2*)
+2.1 | 2.2* | 3.*)
 	;;
 '')
 	skip_all='skipping cvsimport tests, cvsps not found'
@@ -26,6 +26,21 @@ case "$cvsps_version" in
 	test_done
 	;;
 esac
+
+if ! test_have_prereq PYTHON
+then
+	skipall='skipping cvsimport tests, no python'
+	test_done
+fi
+
+python -c '
+import sys
+if sys.hexversion < 0x02070000:
+	sys.exit(1)
+' || {
+	skip_all='skipping cvsimport tests, python too old (< 2.7)'
+	test_done
+}
 
 setup_cvs_test_repository () {
 	CVSROOT="$(pwd)/.cvsroot" &&
