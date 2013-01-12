@@ -144,7 +144,7 @@ static int git_config_rename(const char *var, const char *value)
 	return git_config_bool(var,value) ? DIFF_DETECT_RENAME : 0;
 }
 
-static long parse_algorithm_value(const char *value)
+long parse_algorithm_value(const char *value)
 {
 	if (!value || !strcasecmp(value, "myers"))
 		return 0;
@@ -3633,6 +3633,16 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		options->xdl_opts = DIFF_WITH_ALG(options, PATIENCE_DIFF);
 	else if (!strcmp(arg, "--histogram"))
 		options->xdl_opts = DIFF_WITH_ALG(options, HISTOGRAM_DIFF);
+	else if (!prefixcmp(arg, "--diff-algorithm=")) {
+		long value = parse_algorithm_value(arg+17);
+		if (value < 0)
+			return error("option diff-algorithm accepts \"myers\", "
+				     "\"minimal\", \"patience\" and \"histogram\"");
+		/* clear out previous settings */
+		DIFF_XDL_CLR(options, NEED_MINIMAL);
+		options->xdl_opts &= ~XDF_DIFF_ALGORITHM_MASK;
+		options->xdl_opts |= value;
+	}
 
 	/* flags options */
 	else if (!strcmp(arg, "--binary")) {
