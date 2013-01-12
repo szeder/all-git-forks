@@ -5,10 +5,11 @@
 static int inside_git_dir = -1;
 static int inside_work_tree = -1;
 
-static char *prefix_path_gently(const char *prefix, int len, const char *path)
+char *prefix_path_gently(const char *prefix, int *p_len, const char *path)
 {
 	const char *orig = path;
 	char *sanitized;
+	int len = *p_len;
 	if (is_absolute_path(orig)) {
 		const char *temp = real_path(path);
 		sanitized = xmalloc(len + strlen(temp) + 1);
@@ -19,7 +20,7 @@ static char *prefix_path_gently(const char *prefix, int len, const char *path)
 			memcpy(sanitized, prefix, len);
 		strcpy(sanitized + len, path);
 	}
-	if (normalize_path_copy(sanitized, sanitized))
+	if (normalize_path_copy_len(sanitized, sanitized, p_len))
 		goto error_out;
 	if (is_absolute_path(orig)) {
 		size_t root_len, len, total;
@@ -44,7 +45,7 @@ static char *prefix_path_gently(const char *prefix, int len, const char *path)
 
 char *prefix_path(const char *prefix, int len, const char *path)
 {
-	char *r = prefix_path_gently(prefix, len, path);
+	char *r = prefix_path_gently(prefix, &len, path);
 	if (!r)
 		die("'%s' is outside repository", path);
 	return r;
@@ -53,7 +54,7 @@ char *prefix_path(const char *prefix, int len, const char *path)
 int path_inside_repo(const char *prefix, const char *path)
 {
 	int len = prefix ? strlen(prefix) : 0;
-	char *r = prefix_path_gently(prefix, len, path);
+	char *r = prefix_path_gently(prefix, &len, path);
 	if (r) {
 		free(r);
 		return 1;
