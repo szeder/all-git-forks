@@ -27,6 +27,21 @@ case "$cvsps_version" in
 	;;
 esac
 
+if ! test_have_prereq PYTHON
+then
+	skipall='skipping cvsimport tests, no python'
+	test_done
+fi
+
+python -c '
+import sys
+if sys.hexversion < 0x02070000:
+	sys.exit(1)
+' || {
+	skip_all='skipping cvsimport tests, python too old (< 2.7)'
+	test_done
+}
+
 setup_cvs_test_repository () {
 	CVSROOT="$(pwd)/.cvsroot" &&
 	cp -r "$TEST_DIRECTORY/$1/cvsroot" "$CVSROOT" &&
