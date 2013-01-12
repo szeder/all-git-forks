@@ -45,7 +45,7 @@ void stripspace(struct strbuf *sb, int skip_comments)
 		eol = memchr(sb->buf + i, '\n', sb->len - i);
 		len = eol ? eol - (sb->buf + i) + 1 : sb->len - i;
 
-		if (skip_comments && len && sb->buf[i] == '#') {
+		if (skip_comments && len && sb->buf[i] == comment_line_char) {
 			newlen = 0;
 			continue;
 		}

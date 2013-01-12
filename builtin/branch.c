@@ -706,11 +706,19 @@ static int edit_branch_description(const char *branch_name)
 	read_branch_desc(&buf, branch_name);
 	if (!buf.len || buf.buf[buf.len-1] != '\n')
 		strbuf_addch(&buf, '\n');
+	/*
+	 * NEEDSWORK: introduce a strbuf_commented_addf(), possibly
+	 * sharing code with status_vprintf(), that makes each line
+	 * commented with comment_line_char, and use it here and from
+	 * other places (e.g. write_commented_object() and create_note()
+	 * in builtin/notes.c and create_tag() in builtin/tag.c).
+	 */
 	strbuf_addf(&buf,
-		    "# Please edit the description for the branch\n"
-		    "#   %s\n"
-		    "# Lines starting with '#' will be stripped.\n",
-		    branch_name);
+		    "%c Please edit the description for the branch\n"
+		    "%c   %s\n"
+		    "%c Lines starting with '%c' will be stripped.\n",
+		    comment_line_char, comment_line_char,
+		    branch_name, comment_line_char, comment_line_char);
 	fp = fopen(git_path(edit_description), "w");
 	if ((fwrite(buf.buf, 1, buf.len, fp) < buf.len) || fclose(fp)) {
 		strbuf_release(&buf);

@@ -469,8 +469,10 @@ static void fmt_tag_signature(struct strbuf *tagbuf,
 	}
 	strbuf_complete_line(tagbuf);
 	if (sig->len) {
+		char comment_head[3];
+		sprintf(comment_head, "%c ", comment_line_char);
 		strbuf_addch(tagbuf, '\n');
-		strbuf_add_lines(tagbuf, "# ", sig->buf, sig->len);
+		strbuf_add_lines(tagbuf, comment_head, sig->buf, sig->len);
 	}
 }
 
