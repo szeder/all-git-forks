@@ -15,7 +15,7 @@ export CVS
 
 cvsps_version=`cvsps -h 2>&1 | sed -ne 's/cvsps version //p'`
 case "$cvsps_version" in
-2.1 | 2.2*)
+2.1 | 2.2* | 3.*)
 	;;
 '')
 	skip_all='skipping cvsimport tests, cvsps not found'
