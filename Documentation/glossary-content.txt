@@ -323,6 +323,10 @@ top `/`;;
 	The magic word `top` (mnemonic: `/`) makes the pattern match
 	from the root of the working tree, even when you are running
 	the command from inside a subdirectory.
+
+literal;;
+	Wildcards in the pattern such as `*` or `?` are treated
+	as literal characters.
 --
 +
 Currently only the slash `/` is recognized as the "magic signature",
