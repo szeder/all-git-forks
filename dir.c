@@ -1649,6 +1649,7 @@ int init_pathspec(struct pathspec *pathspec, const char **paths)
 		const char *path = paths[i];
 
 		item->match = path;
+		item->original = path;
 		item->len = strlen(path);
 		item->flags = 0;
 		if (limit_pathspec_to_literal()) {
