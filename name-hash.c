@@ -144,16 +144,19 @@ static void hash_index_entry(struct index_state *istate, struct cache_entry *ce)
 		add_dir_entry(istate, ce);
 }
 
+static int hash_entry(struct cache_entry *ce, void *istate)
+{
+	hash_index_entry((struct index_state *)istate, ce);
+	return 0;
+}
+
 static void lazy_init_name_hash(struct index_state *istate)
 {
-	int nr;
-
 	if (istate->name_hash_initialized)
 		return;
 	if (istate->cache_nr)
 		preallocate_hash(&istate->name_hash, istate->cache_nr);
-	for (nr = 0; nr < istate->cache_nr; nr++)
-		hash_index_entry(istate, istate->cache[nr]);
+	for_each_index_entry(istate, hash_entry, istate);
 	istate->name_hash_initialized = 1;
 }
 
