@@ -253,6 +253,9 @@ all::
 #
 # Define NO_PYTHON if you do not want Python scripts or libraries at all.
 #
+# Define CVSPS2_PATH if you cannot invoke cvsps (version 2.x) as "cvsps"
+# using your $PATH; if you do not have any, define CVSPS2_PATH=NoThanks.
+#
 # Define NO_TCLTK if you do not want Tcl/Tk GUI.
 #
 # The TCL_PATH variable governs the location of the Tcl interpreter
@@ -440,6 +443,7 @@ unexport CDPATH
 
 SCRIPT_SH += git-am.sh
 SCRIPT_SH += git-bisect.sh
+SCRIPT_SH += git-cvsimport.sh
 SCRIPT_SH += git-difftool--helper.sh
 SCRIPT_SH += git-filter-branch.sh
 SCRIPT_SH += git-lost-found.sh
@@ -468,12 +472,15 @@ SCRIPT_PERL += git-add--interactive.perl
 SCRIPT_PERL += git-difftool.perl
 SCRIPT_PERL += git-archimport.perl
 SCRIPT_PERL += git-cvsexportcommit.perl
-SCRIPT_PERL += git-cvsimport.perl
+ifneq ($(CVSPS2_PATH),NoThanks)
+SCRIPT_PERL += git-cvsimport-2.perl
+endif
 SCRIPT_PERL += git-cvsserver.perl
 SCRIPT_PERL += git-relink.perl
 SCRIPT_PERL += git-send-email.perl
 SCRIPT_PERL += git-svn.perl
 
+SCRIPT_PYTHON += git-p4.py
 SCRIPT_PYTHON += git-remote-testpy.py
 SCRIPT_PYTHON += git-p4.py
 

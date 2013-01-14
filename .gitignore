@@ -40,6 +40,7 @@
 /git-credential-store
 /git-cvsexportcommit
 /git-cvsimport
+/git-cvsimport-2
 /git-cvsserver
 /git-daemon
 /git-diff
