@@ -22,6 +22,9 @@ case "$TEST_CVSPS_VERSION" in
 	if test "$CVSPS2_PATH" = NoThanks
 	then
 		skip_all='skipping cvsimport tests, cvsps(2) not used'
+	elif ! test_have_prereq PERL
+	then
+		skip_all='skipping cvsimport tests, Perl not available'
 	else
 		case $($CVSPS2_PATH -h 2>&1 | sed -ne 's/cvsps version //p') in
 		2.1 | 2.2*)
@@ -39,6 +42,10 @@ case "$TEST_CVSPS_VERSION" in
 	if test "$CVSPS3_PATH" = NoThanks
 	then
 		skip_all='skipping cvsimport tests, cvsps(3) not used'
+	elif ! test_have_prereq PYTHON
+	then
+		# NEEDSWORK: we may need Python lower-bound prerequisite
+		skip_all='skipping cvsimport tests, Python not available'
 	else
 		case $($CVSPS3_PATH -h 2>&1 | sed -ne 's/cvsps version //p') in
 		3.*)

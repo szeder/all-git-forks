@@ -3,14 +3,14 @@
 test_description='git cvsimport basic tests'
 . ./lib-cvs.sh
 
-test_expect_success PERL 'setup cvsroot environment' '
+test_expect_success 'setup cvsroot environment' '
 	CVSROOT=$(pwd)/cvsroot &&
 	export CVSROOT
 '
 
-test_expect_success PERL 'setup cvsroot' '$CVS init'
+test_expect_success 'setup cvsroot' '$CVS init'
 
-test_expect_success PERL 'setup a cvs module' '
+test_expect_success 'setup a cvs module' '
 
 	mkdir "$CVSROOT/module" &&
 	$CVS co -d module-cvs module &&
@@ -42,23 +42,23 @@ EOF
 	)
 '
 
-test_expect_success PERL 'import a trivial module' '
+test_expect_success 'import a trivial module' '
 
 	git cvsimport -a -R -z 0 -C module-git module &&
 	test_cmp module-cvs/o_fortuna module-git/o_fortuna
 
 '
 
-test_expect_success PERL 'pack refs' '(cd module-git && git gc)'
+test_expect_success 'pack refs' '(cd module-git && git gc)'
 
-test_expect_success PERL 'initial import has correct .git/cvs-revisions' '
+test_expect_success 'initial import has correct .git/cvs-revisions' '
 
 	(cd module-git &&
 	 git log --format="o_fortuna 1.1 %H" -1) > expected &&
 	test_cmp expected module-git/.git/cvs-revisions
 '
 
-test_expect_success PERL 'update cvs module' '
+test_expect_success 'update cvs module' '
 	(cd module-cvs &&
 	cat <<EOF >o_fortuna &&
 O Fortune,
@@ -86,7 +86,7 @@ EOF
 	)
 '
 
-test_expect_success PERL 'update git module' '
+test_expect_success 'update git module' '
 
 	(cd module-git &&
 	git config cvsimport.trackRevisions true &&
@@ -97,7 +97,7 @@ test_expect_success PERL 'update git module' '
 
 '
 
-test_expect_success PERL 'update has correct .git/cvs-revisions' '
+test_expect_success 'update has correct .git/cvs-revisions' '
 
 	(cd module-git &&
 	 git log --format="o_fortuna 1.1 %H" -1 HEAD^ &&
@@ -105,7 +105,7 @@ test_expect_success PERL 'update has correct .git/cvs-revisions' '
 	test_cmp expected module-git/.git/cvs-revisions
 '
 
-test_expect_success PERL 'update cvs module' '
+test_expect_success 'update cvs module' '
 
 	(cd module-cvs &&
 		echo 1 >tick &&
@@ -114,7 +114,7 @@ test_expect_success PERL 'update cvs module' '
 	)
 '
 
-test_expect_success PERL 'cvsimport.module config works' '
+test_expect_success 'cvsimport.module config works' '
 
 	(cd module-git &&
 		git config cvsimport.module module &&
@@ -126,7 +126,7 @@ test_expect_success PERL 'cvsimport.module config works' '
 
 '
 
-test_expect_success PERL 'second update has correct .git/cvs-revisions' '
+test_expect_success 'second update has correct .git/cvs-revisions' '
 
 	(cd module-git &&
 	 git log --format="o_fortuna 1.1 %H" -1 HEAD^^ &&
@@ -135,7 +135,7 @@ test_expect_success PERL 'second update has correct .git/cvs-revisions' '
 	test_cmp expected module-git/.git/cvs-revisions
 '
 
-test_expect_success PERL 'import from a CVS working tree' '
+test_expect_success 'import from a CVS working tree' '
 
 	$CVS co -d import-from-wt module &&
 	(cd import-from-wt &&
@@ -148,12 +148,12 @@ test_expect_success PERL 'import from a CVS working tree' '
 
 '
 
-test_expect_success PERL 'no .git/cvs-revisions created by default' '
+test_expect_success 'no .git/cvs-revisions created by default' '
 
 	! test -e import-from-wt/.git/cvs-revisions
 
 '
 
-test_expect_success PERL 'test entire HEAD' 'test_cmp_branch_tree master'
+test_expect_success 'test entire HEAD' 'test_cmp_branch_tree master'
 
 test_done
