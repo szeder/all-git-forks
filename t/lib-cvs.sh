@@ -13,7 +13,9 @@ fi
 CVS="cvs -f"
 export CVS
 
-cvsps_version=`cvsps -h 2>&1 | sed -ne 's/cvsps version //p'`
+CVSPS="$CVSPS2_PATH"
+
+cvsps_version=`$CVSPS -h 2>&1 | sed -ne 's/cvsps version //p'`
 case "$cvsps_version" in
 2.1 | 2.2*)
 	;;

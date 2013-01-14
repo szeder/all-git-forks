@@ -576,9 +576,11 @@ endif
 ifndef PYTHON_PATH
 	PYTHON_PATH = /usr/bin/python
 endif
+ifndef CVSPS2_PATH
+	CVSPS2_PATH = cvsps
+endif
 
-export PERL_PATH
-export PYTHON_PATH
+export PERL_PATH PYTHON_PATH CVSPS2_PATH
 
 LIB_FILE = libgit.a
 XDIFF_LIB = xdiff/lib.a
@@ -1516,6 +1518,7 @@ SHELL_PATH_SQ = $(subst ','\'',$(SHELL_PATH))
 PERL_PATH_SQ = $(subst ','\'',$(PERL_PATH))
 PYTHON_PATH_SQ = $(subst ','\'',$(PYTHON_PATH))
 TCLTK_PATH_SQ = $(subst ','\'',$(TCLTK_PATH))
+CVSPS2_PATH_SQ = $(subst ','\'',$(CVSPS2_PATH))
 DIFF_SQ = $(subst ','\'',$(DIFF))
 
 LIBS = $(GITLIBS) $(EXTLIBS)
@@ -1729,6 +1732,7 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl GIT-VERSION-FILE
 	    -e '	H' \
 	    -e '	x' \
 	    -e '}' \
+	    -e 's|@@CVSPS2_PATH@@|$(CVSPS2_PATH_SQ)|g' \
 	    -e 's/@@GIT_VERSION@@/$(GIT_VERSION)/g' \
 	    $@.perl >$@+ && \
 	chmod +x $@+ && \
@@ -2107,6 +2111,7 @@ GIT-LDFLAGS: FORCE
 GIT-BUILD-OPTIONS: FORCE
 	@echo SHELL_PATH=\''$(subst ','\'',$(SHELL_PATH_SQ))'\' >$@
 	@echo PERL_PATH=\''$(subst ','\'',$(PERL_PATH_SQ))'\' >>$@
+	@echo CVSPS2_PATH=\''$(subst ','\'',$(CVSPS2_PATH_SQ))'\' >>$@
 	@echo DIFF=\''$(subst ','\'',$(subst ','\'',$(DIFF)))'\' >>$@
 	@echo PYTHON_PATH=\''$(subst ','\'',$(PYTHON_PATH_SQ))'\' >>$@
 	@echo TAR=\''$(subst ','\'',$(subst ','\'',$(TAR)))'\' >>$@
