@@ -41,6 +41,7 @@
 /git-cvsexportcommit
 /git-cvsimport
 /git-cvsimport-2
+/git-cvsimport-3
 /git-cvsserver
 /git-daemon
 /git-diff

@@ -256,6 +256,9 @@ all::
 # Define CVSPS2_PATH if you cannot invoke cvsps (version 2.x) as "cvsps"
 # using your $PATH; if you do not have any, define CVSPS2_PATH=NoThanks.
 #
+# Define CVSPS3_PATH if you cannot invoke cvsps (version 3.x) as "cvsps"
+# using your $PATH; if you do not have any, define CVSPS3_PATH=NoThanks.
+#
 # Define NO_TCLTK if you do not want Tcl/Tk GUI.
 #
 # The TCL_PATH variable governs the location of the Tcl interpreter
@@ -480,9 +483,11 @@ SCRIPT_PERL += git-relink.perl
 SCRIPT_PERL += git-send-email.perl
 SCRIPT_PERL += git-svn.perl
 
+ifneq ($(CVSPS3_PATH),NoThanks)
+SCRIPT_PYTHON += git-cvsimport-3.py
+endif
 SCRIPT_PYTHON += git-p4.py
 SCRIPT_PYTHON += git-remote-testpy.py
-SCRIPT_PYTHON += git-p4.py
 
 SCRIPTS = $(patsubst %.sh,%,$(SCRIPT_SH)) \
 	  $(patsubst %.perl,%,$(SCRIPT_PERL)) \
@@ -586,8 +591,11 @@ endif
 ifndef CVSPS2_PATH
 	CVSPS2_PATH = cvsps
 endif
+ifndef CVSPS3_PATH
+	CVSPS3_PATH = cvsps
+endif
 
-export PERL_PATH PYTHON_PATH CVSPS2_PATH
+export PERL_PATH PYTHON_PATH CVSPS2_PATH CVSPS3_PATH
 
 LIB_FILE = libgit.a
 XDIFF_LIB = xdiff/lib.a
@@ -1526,6 +1534,7 @@ PERL_PATH_SQ = $(subst ','\'',$(PERL_PATH))
 PYTHON_PATH_SQ = $(subst ','\'',$(PYTHON_PATH))
 TCLTK_PATH_SQ = $(subst ','\'',$(TCLTK_PATH))
 CVSPS2_PATH_SQ = $(subst ','\'',$(CVSPS2_PATH))
+CVSPS3_PATH_SQ = $(subst ','\'',$(CVSPS3_PATH))
 DIFF_SQ = $(subst ','\'',$(DIFF))
 
 LIBS = $(GITLIBS) $(EXTLIBS)
@@ -1768,12 +1777,14 @@ ifndef NO_PYTHON
 $(patsubst %.py,%,$(SCRIPT_PYTHON)): GIT-CFLAGS GIT-PREFIX GIT-PYTHON-VARS
 $(patsubst %.py,%,$(SCRIPT_PYTHON)): % : %.py
 	$(QUIET_GEN)$(RM) $@ $@+ && \
-	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C git_remote_helpers -s \
+	INSTLIBDIR_SQ=`MAKEFLAGS= $(MAKE) -C git_remote_helpers -s \
 		--no-print-directory prefix='$(prefix_SQ)' DESTDIR='$(DESTDIR_SQ)' \
-		instlibdir` && \
+		instlibdir | \
+		sed -e "s/'/'\''/g"` && \
 	sed -e '1s|#!.*python|#!$(PYTHON_PATH_SQ)|' \
 	    -e 's|\(os\.getenv("GITPYTHONLIB"\)[^)]*)|\1,"@@INSTLIBDIR@@")|' \
-	    -e 's|@@INSTLIBDIR@@|'"$$INSTLIBDIR"'|g' \
+	    -e 's|@@CVSPS3_PATH@@|$(CVSPS3_PATH_SQ)|g' \
+	    -e 's|@@INSTLIBDIR@@|'"$$INSTLIBDIR_SQ"'|g' \
 	    $@.py >$@+ && \
 	chmod +x $@+ && \
 	mv $@+ $@
@@ -2119,6 +2130,7 @@ GIT-BUILD-OPTIONS: FORCE
 	@echo SHELL_PATH=\''$(subst ','\'',$(SHELL_PATH_SQ))'\' >$@
 	@echo PERL_PATH=\''$(subst ','\'',$(PERL_PATH_SQ))'\' >>$@
 	@echo CVSPS2_PATH=\''$(subst ','\'',$(CVSPS2_PATH_SQ))'\' >>$@
+	@echo CVSPS3_PATH=\''$(subst ','\'',$(CVSPS3_PATH_SQ))'\' >>$@
 	@echo DIFF=\''$(subst ','\'',$(subst ','\'',$(DIFF)))'\' >>$@
 	@echo PYTHON_PATH=\''$(subst ','\'',$(PYTHON_PATH_SQ))'\' >>$@
 	@echo TAR=\''$(subst ','\'',$(subst ','\'',$(TAR)))'\' >>$@
