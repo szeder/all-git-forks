@@ -1,3 +1,11 @@
+git (1:1.8.1-1.1) experimental; urgency=low
+
+  * debian/git.NEWS.Debian: bash completion script moved to
+    /usr/share/bash-completion/completions/ (thx Philipp Marek;
+    closes: #698055).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 13 Jan 2013 22:32:05 -0800
+
 git (1:1.8.1-1) experimental; urgency=low
 
   * new upstream release (see RelNotes/1.8.1.txt).

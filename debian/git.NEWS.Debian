@@ -1,3 +1,28 @@
+git (1:1.8.0-1) experimental; urgency=low
+
+  Git's bash completion script is now loaded on the fly when tab
+  completion is attempted for the 'git' or 'gitk' command.  This
+  change involved moving the completion script.  If your ~/.bashrc
+  previously contained
+
+    . /etc/bash_completion.d/git
+
+  then it should be corrected to
+
+    if [ -e /usr/share/bash-completion/completions/git ]; then
+      . /usr/share/bash-completion/completions/git
+    elif [ -e /etc/bash_completion.d/git ]; then
+      . /etc/bash_completion.d/git
+    fi
+
+  or, better,
+
+    . /etc/bash_completion
+
+  See /usr/share/doc/bash-completion/README.Debian for details.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 13 Jan 2013 08:59:42 -0800
+
 git (1:1.7.0.4-2~exp0) experimental; urgency=low
 
   The Debian package 'git-core' has been renamed to 'git'.  Before
