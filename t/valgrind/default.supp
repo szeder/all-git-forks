@@ -49,3 +49,11 @@
 	Memcheck:Addr4
 	fun:copy_ref
 }
+
+{
+	ignore-memcmp-reading-too-much-in-bsearch-callback
+	Memcheck:Addr4
+	fun:ref_entry_cmp_sslice
+	fun:bsearch
+	fun:search_ref_dir
+}
