@@ -8,6 +8,7 @@ HOOKDIR="$(git rev-parse --git-dir)/hooks"
 HOOK="$HOOKDIR/pre-push"
 mkdir -p "$HOOKDIR"
 write_script "$HOOK" <<EOF
+cat >/dev/null
 exit 0
 EOF
 
@@ -19,6 +20,7 @@ test_expect_success 'setup' '
 	git push parent1 HEAD:foreign
 '
 write_script "$HOOK" <<EOF
+cat >/dev/null
 exit 1
 EOF
 
