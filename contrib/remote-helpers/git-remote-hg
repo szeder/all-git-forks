@@ -290,6 +290,23 @@ def mark_to_rev(mark):
     global marks
     return marks.to_rev(mark)
 
+def list_changesets(repo, tip):
+    global marks
+
+    # List all commits from tip, that are not marked
+    changesets = []
+    branches = [repo[tip]]
+
+    while len(branches):
+        changeset = branches.pop()
+        if not changeset:
+            continue
+        if not marks.is_marked(changeset.rev()):
+            changesets.append(changeset.rev())
+        branches.extend(changeset.parents())
+
+    return changesets[::-1]
+
 def export_ref(repo, name, kind, head):
     global prefix, marks, mode
 
@@ -300,13 +317,11 @@ def export_ref(repo, name, kind, head):
     if tip and tip == head.rev():
         # nothing to do
         return
-    revs = xrange(tip, head.rev() + 1)
     count = 0
 
-    revs = [rev for rev in revs if not marks.is_marked(rev)]
+    revs = list_changesets(repo, tip)
 
     for rev in revs:
-
         c = repo[rev]
         (manifest, user, (time, tz), files, desc, extra) = repo.changelog.read(c.node())
         rev_branch = extra['branch']
