@@ -236,15 +236,13 @@ static int read_merge_config(const char *var, const char *value, void *cb)
 	 * especially, we do not want to look at variables such as
 	 * "merge.summary", "merge.tool", and "merge.verbosity".
 	 */
-	if (prefixcmp(var, "merge.") || (ep = strrchr(var, '.')) == var + 5)
+	if (match_config_key(var, "merge", &name, &namelen, &ep) < 0 || !name)
 		return 0;
 
 	/*
 	 * Find existing one as we might be processing merge.<name>.var2
 	 * after seeing merge.<name>.var1.
 	 */
-	name = var + 6;
-	namelen = ep - name;
 	for (fn = ll_user_merge; fn; fn = fn->next)
 		if (!strncmp(fn->name, name, namelen) && !fn->name[namelen])
 			break;
@@ -255,8 +253,6 @@ static int read_merge_config(const char *var, const char *value, void *cb)
 		*ll_user_merge_tail = fn;
 		ll_user_merge_tail = &(fn->next);
 	}
-
-	ep++;
 
 	if (!strcmp("name", ep)) {
 		if (!value)
