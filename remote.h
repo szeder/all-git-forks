@@ -13,13 +13,13 @@ struct remote {
 
 	const char *foreign_vcs;
 
-	const char **url;
+	const char **url, **fromurl;
 	int url_nr;
-	int url_alloc;
+	int url_alloc, fromurl_alloc;
 
-	const char **pushurl;
+	const char **pushurl, **frompushurl;
 	int pushurl_nr;
-	int pushurl_alloc;
+	int pushurl_alloc, frompushurl_alloc;
 
 	const char **push_refspec;
 	struct refspec *push;

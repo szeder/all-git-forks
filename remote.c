@@ -108,28 +108,34 @@ static void add_fetch_refspec(struct remote *remote, const char *ref)
 	remote->fetch_refspec[remote->fetch_refspec_nr++] = ref;
 }
 
-static void add_url(struct remote *remote, const char *url)
+static void add_url(struct remote *remote, const char *url, const char *fromurl)
 {
 	ALLOC_GROW(remote->url, remote->url_nr + 1, remote->url_alloc);
+	ALLOC_GROW(remote->fromurl, remote->url_nr + 1, remote->fromurl_alloc);
 	remote->url[remote->url_nr++] = url;
+	remote->fromurl[remote->url_nr] = fromurl;
+printf("added url %s (from %s)\n", url, fromurl ? fromurl : "");
 }
 
-static void add_pushurl(struct remote *remote, const char *pushurl)
+static void add_pushurl(struct remote *remote, const char *pushurl, const char *fromurl)
 {
 	ALLOC_GROW(remote->pushurl, remote->pushurl_nr + 1, remote->pushurl_alloc);
+	ALLOC_GROW(remote->frompushurl, remote->pushurl_nr + 1, remote->frompushurl_alloc);
 	remote->pushurl[remote->pushurl_nr++] = pushurl;
+	remote->frompushurl[remote->pushurl_nr] = fromurl;
+printf("added pushurl %s (from %s)\n", pushurl, fromurl ? fromurl : "");
 }
 
 static void add_pushurl_alias(struct remote *remote, const char *url)
 {
 	const char *pushurl = alias_url(url, &rewrites_push);
 	if (pushurl != url)
-		add_pushurl(remote, pushurl);
+		add_pushurl(remote, pushurl, url);
 }
 
 static void add_url_alias(struct remote *remote, const char *url)
 {
-	add_url(remote, alias_url(url, &rewrites));
+	add_url(remote, alias_url(url, &rewrites), url);
 	add_pushurl_alias(remote, url);
 }
 
@@ -411,12 +417,12 @@ static int handle_config(const char *key, const char *value, void *cb)
 		const char *v;
 		if (git_config_string(&v, key, value))
 			return -1;
-		add_url(remote, v);
+		add_url(remote, v, NULL);
 	} else if (!strcmp(subkey, ".pushurl")) {
 		const char *v;
 		if (git_config_string(&v, key, value))
 			return -1;
-		add_pushurl(remote, v);
+		add_pushurl(remote, v, NULL);
 	} else if (!strcmp(subkey, ".push")) {
 		const char *v;
 		if (git_config_string(&v, key, value))

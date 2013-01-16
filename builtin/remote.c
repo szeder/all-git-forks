@@ -1084,6 +1084,13 @@ static int show_push_info_item(struct string_list_item *item, void *cb_data)
 	return 0;
 }
 
+static const char *insteadof_or_plain(const char *fromurl)
+{
+	if (!fromurl)
+		return "(direct)";
+	return fromurl;
+}
+
 static int show(int argc, const char **argv)
 {
 	int no_query = 0, result = 0, query_flag = 0;
@@ -1117,17 +1124,19 @@ static int show(int argc, const char **argv)
 
 		printf_ln(_("* remote %s"), *argv);
 		printf_ln(_("  URLs:"));
-		printf_ln(_("    Fetch: %s"), states.remote->url_nr > 0 ?
-		       states.remote->url[0] : _("(no URL)"));
+		printf_ln(_("    Fetch: %s%s"), states.remote->url_nr > 0 ?
+		       states.remote->url[0] : _("(no URL)"), insteadof_or_plain(states.remote->fromurl[0]));
 		if (states.remote->pushurl_nr) {
 			url = states.remote->pushurl;
 			url_nr = states.remote->pushurl_nr;
+puts("pushUrls");
 		} else {
 			url = states.remote->url;
 			url_nr = states.remote->url_nr;
+puts("no pushURLs");
 		}
 		for (i = 0; i < url_nr; i++)
-			printf_ln(_("    Push:  %s"), url[i]);
+			printf_ln(_("    Push:  %s%s"), url[i], insteadof_or_plain(states.remote->frompushurl[i]));
 		if (!i)
 			printf_ln(_("    Push:  %s"), "(no URL)");
 		if (no_query)
