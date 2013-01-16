@@ -575,6 +575,12 @@ ssize_t strbuf_read_file(struct strbuf *sb, const char *path, size_t hint)
 	return len;
 }
 
+void strbuf_read_file_or_die(struct strbuf *sb, const char *path, size_t size)
+{
+	if (strbuf_read_file(sb, path, size) < 0)
+		die_errno(_("could not open or read '%s'"), path);
+}
+
 void strbuf_add_lines(struct strbuf *out, const char *prefix,
 		      const char *buf, size_t size)
 {

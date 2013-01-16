@@ -1502,8 +1502,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	} else if (signature_file) {
 		struct strbuf buf = STRBUF_INIT;
 
-		if (strbuf_read_file(&buf, signature_file, 128) < 0)
-			die_errno(_("unable to read signature file '%s'"), signature_file);
+		strbuf_read_file_or_die(&buf, signature_file, 128);
 		signature = strbuf_detach(&buf, NULL);
 	}
 
