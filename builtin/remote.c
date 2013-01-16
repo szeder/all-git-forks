@@ -1509,25 +1509,28 @@ static int get_one_entry(struct remote *remote, void *priv)
 {
 	struct string_list *list = priv;
 	struct strbuf url_buf = STRBUF_INIT;
-	const char **url;
-	int i, url_nr;
+	char *fetchurl0, *fetchurl1;
+	int i;
 
-	if (remote->url_nr > 0) {
-		strbuf_addf(&url_buf, "%s (fetch)", remote->url[0]);
+	if (remote->pushurl_nr > 0) {
+		fetchurl0 = "fetch";
+		fetchurl1 = "fetch fallback";
+	} else {
+		fetchurl0 = "fetch/push";
+		fetchurl1 = "fetch fallback/push";
+	}
+
+	for (i = 0; i < remote->url_nr; i++) {
+		strbuf_addf(&url_buf, "%s (%s)", remote->url[0], i ? fetchurl1 : fetchurl0);
 		string_list_append(list, remote->name)->util =
 				strbuf_detach(&url_buf, NULL);
-	} else
+	} /* else */
+	if (remote->url_nr == 0)
 		string_list_append(list, remote->name)->util = NULL;
-	if (remote->pushurl_nr) {
-		url = remote->pushurl;
-		url_nr = remote->pushurl_nr;
-	} else {
-		url = remote->url;
-		url_nr = remote->url_nr;
-	}
-	for (i = 0; i < url_nr; i++)
+
+	for (i = 0; i < remote->pushurl_nr; i++)
 	{
-		strbuf_addf(&url_buf, "%s (push)", url[i]);
+		strbuf_addf(&url_buf, "%s (push)", remote->pushurl[i]);
 		string_list_append(list, remote->name)->util =
 				strbuf_detach(&url_buf, NULL);
 	}
