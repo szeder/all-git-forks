@@ -1,4 +1,4 @@
-From dcae7a2e5fd695f17aa96a4e3b8902532661b85b Mon Sep 17 00:00:00 2001
+From 872eba953d4caf5e2459741c30e87331063bd1b7 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Thu, 11 Dec 2008 20:27:21 +0000
 Subject: [PATCH 01/11] hooks/post-receive-email: set encoding to utf-8
@@ -20,7 +20,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 file changed, 3 insertions(+)
 
 diff --git a/contrib/hooks/post-receive-email b/contrib/hooks/post-receive-email
-index 01af9df..dc184d0 100755
+index b2171a0..1702ea3 100755
 --- a/contrib/hooks/post-receive-email
 +++ b/contrib/hooks/post-receive-email
 @@ -233,6 +233,9 @@ generate_email_header()
@@ -34,5 +34,5 @@ index 01af9df..dc184d0 100755
  	X-Git-Reftype: $refname_type
  	X-Git-Oldrev: $oldrev
 -- 
-1.7.10
+1.7.10.4
 

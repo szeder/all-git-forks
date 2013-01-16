@@ -1,3 +1,132 @@
+Version v1.8.1.1; changes since v1.8.1:
+---------------------------------------
+
+Aaron Schrab (1):
+      Use longer alias names in subdirectory tests
+
+Adam Spiers (1):
+      api-allocation-growing.txt: encourage better variable naming
+
+Antoine Pelisse (1):
+      merge: Honor prepare-commit-msg return code
+
+Christian Couder (1):
+      Makefile: detect when PYTHON_PATH changes
+
+Jean-Noël AVILA (1):
+      Add directory pattern matching to attributes
+
+Jeff King (9):
+      run-command: drop silent_exec_failure arg from wait_or_whine
+      launch_editor: refactor to use start/finish_command
+      run-command: do not warn about child death from terminal
+      launch_editor: propagate signals from editor to git
+      completion: complete refs for "git commit -c"
+      refs: do not use cached refs in repack_without_ref
+      tests: turn on test-lint by default
+      fix compilation with NO_PTHREADS
+      run-command: encode signal death as a positive integer
+
+Jens Lehmann (1):
+      clone: support atomic operation with --separate-git-dir
+
+John Keeping (4):
+      git-fast-import(1): remove duplicate '--done' option
+      git-shortlog(1): document behaviour of zero-width wrap
+      git-fast-import(1): combine documentation of --[no-]relative-marks
+      git-fast-import(1): reorganise options
+
+Jonathan Nieder (6):
+      config, gitignore: failure to access with ENOTDIR is ok
+      config: treat user and xdg config permission problems as errors
+      doc: advertise GIT_CONFIG_NOSYSTEM
+      config: exit on error accessing any config file
+      build: do not automatically reconfigure unless configure.ac changed
+      docs: manpage XML depends on asciidoc.conf
+
+Junio C Hamano (20):
+      apply.c:update_pre_post_images(): the preimage can be truncated
+      format_commit_message(): simplify calls to logmsg_reencode()
+      sh-setup: work around "unset IFS" bug in some shells
+      fetch: ignore wildcarded refspecs that update local symbolic refs
+      xmkstemp(): avoid showing truncated template more carefully
+      t0200: "locale" may not exist
+      t9502: do not assume GNU tar
+      t4014: fix arguments to grep
+      t3600: Avoid "cp -a", which is a GNUism
+      t9020: use configured Python to run the test helper
+      compat/fnmatch: update old-style definition to ANSI
+      t9200: let "cvs init" create the test repository
+      merge --no-edit: do not credit people involved in the side branch
+      SubmittingPatches: who am I and who cares?
+      SubmittingPatches: mention subsystems with dedicated repositories
+      Documentation: full-ness of a bundle is significant for cloning
+      SubmittingPatches: remove overlong checklist
+      SubmittingPatches: give list and maintainer addresses
+      Prepare for 1.8.1.1
+      Git 1.8.1.1
+
+Kirill Brilliantov (1):
+      Documentation: correct example restore from bundle
+
+Mark Levedahl (1):
+      Makefile: add comment on CYGWIN_V15_WIN32API
+
+Matthew Daley (1):
+      gitweb: Sort projects with undefined ages last
+
+Max Horn (1):
+      configure.ac: fix pthreads detection on Mac OS X
+
+Michael Schubert (2):
+      git-subtree: ignore git-subtree executable
+      git-subtree: fix typo in manpage
+
+Michał Kiedrowicz (1):
+      graph.c: infinite loop in git whatchanged --graph -m
+
+Nguyễn Thái Ngọc Duy (4):
+      cache-tree: remove dead i-t-a code in verify_cache()
+      cache-tree: replace "for" loops in update_one with "while" loops
+      cache-tree: fix writing cache-tree when CE_REMOVE is present
+      cache-tree: invalidate i-t-a paths after generating trees
+
+Orgad Shaneh (1):
+      gitweb: fix error in sanitize when highlight is enabled
+
+Paul Fox (1):
+      launch_editor: ignore terminal signals while editor has control
+
+Rene Bredlau (1):
+      http.c: Avoid username prompt for certifcate credentials
+
+René Scharfe (2):
+      archive-tar: split long paths more carefully
+      t1402: work around shell quoting issue on NetBSD
+
+Sebastian Schuberth (1):
+      nedmalloc: Fix a compile warning (exposed as error) with GCC 4.7.2
+
+Steffen Prohaska (2):
+      shortlog: fix wrapping lines of wraplen
+      strbuf_add_wrapped*(): Remove unused return value
+
+Sven Strickroth (3):
+      git-svn, perl/Git.pm: add central method for prompting passwords
+      perl/Git.pm: Honor SSH_ASKPASS as fallback if GIT_ASKPASS is not set
+      git-svn, perl/Git.pm: extend and use Git->prompt method for querying users
+
+Thomas Ackermann (1):
+      Remove Documentation/pt_BR/gittutorial.txt
+
+Torsten Bögershausen (2):
+      t9810: Do not use sed -i
+      t9020: which is not portable
+
+W. Trevor King (1):
+      remote-hg: Fix biridectionality -> bidirectionality typos
+
+
 Version v1.8.1; changes since v1.8.1-rc3:
 -----------------------------------------
 

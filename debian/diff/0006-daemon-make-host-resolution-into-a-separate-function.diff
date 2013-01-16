@@ -1,7 +1,7 @@
-From ef5110398f7b921a7409f3caf9b898952cab2974 Mon Sep 17 00:00:00 2001
+From f91e9ce55d32a192dad7ad4da10255a9ea808ad9 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:38:45 -0500
-Subject: daemon: make host resolution into a separate function
+Subject: [PATCH 06/11] daemon: make host resolution into a separate function
 
 The locate_host() function looks up the IP address and canonical
 hostname of the host named by its argument.  If it succeeds,

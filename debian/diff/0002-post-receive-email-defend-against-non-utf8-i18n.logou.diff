@@ -1,4 +1,4 @@
-From 354b26a6d6a4d98878352ccd050c10b1b84cab24 Mon Sep 17 00:00:00 2001
+From 8b336f075c50d6571f1ce326b1b22fbc683d7c65 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 7 Oct 2011 04:06:02 -0500
 Subject: [PATCH 02/11] post-receive-email: defend against non-utf8
@@ -25,7 +25,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 file changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/contrib/hooks/post-receive-email b/contrib/hooks/post-receive-email
-index dc184d0..b59e03c 100755
+index 1702ea3..8ca6607 100755
 --- a/contrib/hooks/post-receive-email
 +++ b/contrib/hooks/post-receive-email
 @@ -464,7 +464,7 @@ generate_delete_branch_email()
@@ -79,5 +79,5 @@ index dc184d0..b59e03c 100755
  }
  
 -- 
-1.7.10
+1.7.10.4
 
