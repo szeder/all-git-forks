@@ -31,6 +31,11 @@ from git_remote_helpers.git.exporter import GitExporter
 from git_remote_helpers.git.importer import GitImporter
 from git_remote_helpers.git.non_local import NonLocalGit
 
+if sys.hexversion < 0x01050200:
+    # os.makedirs() is the limiter
+    sys.stderr.write("git-remote-testgit: requires Python 1.5.2 or later.\n")
+    sys.exit(1)
+
 def get_repo(alias, url):
     """Returns a git repository object initialized for usage.
     """
@@ -91,7 +96,7 @@ def do_capabilities(repo, args):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
 
-    path = os.path.join(dirname, 'testgit.marks')
+    path = os.path.join(dirname, 'git.marks')
 
     print "*export-marks %s" % path
     if os.path.exists(path):
@@ -159,6 +164,11 @@ def do_import(repo, args):
         ref = line[7:].strip()
         refs.append(ref)
 
+    print "feature done"
+
+    if os.environ.get("GIT_REMOTE_TESTGIT_FAILURE"):
+        die('Told to fail')
+
     repo = update_local_repo(repo)
     repo.exporter.export_repo(repo.gitdir, refs)
 
@@ -171,6 +181,9 @@ def do_export(repo, args):
 
     if not repo.gitdir:
         die("Need gitdir to export")
+
+    if os.environ.get("GIT_REMOTE_TESTGIT_FAILURE"):
+        die('Told to fail')
 
     update_local_repo(repo)
     changed = repo.importer.do_import(repo.gitdir)

@@ -203,7 +203,7 @@ static void show_ru_info(void)
 static int ce_excluded(struct path_exclude_check *check, struct cache_entry *ce)
 {
 	int dtype = ce_to_dtype(ce);
-	return path_excluded(check, ce->name, ce_namelen(ce), &dtype);
+	return is_path_excluded(check, ce->name, ce_namelen(ce), &dtype);
 }
 
 static void show_files(struct dir_struct *dir)
@@ -337,7 +337,7 @@ void overlay_tree_on_cache(const char *tree_name, const char *prefix)
 		matchbuf[0] = prefix;
 		matchbuf[1] = NULL;
 		init_pathspec(&pathspec, matchbuf);
-		pathspec.items[0].use_wildcard = 0;
+		pathspec.items[0].nowildcard_len = pathspec.items[0].len;
 	} else
 		init_pathspec(&pathspec, NULL);
 	if (read_tree(tree, 1, &pathspec))
