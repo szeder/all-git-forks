@@ -381,6 +381,11 @@ extern ssize_t strbuf_read_once(struct strbuf *, int fd, size_t hint);
 extern ssize_t strbuf_read_file(struct strbuf *sb, const char *path, size_t hint);
 
 /**
+ * Similar to strbuf_read_file() but except die() is called on error.
+ */
+extern void strbuf_read_file_or_die(struct strbuf *sb, const char *path, size_t size);
+
+/**
  * Read the target of a symbolic link, specified by its path.  The third
  * argument can be used to give a hint about the size, to avoid reallocs.
  */
