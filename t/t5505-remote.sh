@@ -144,8 +144,9 @@ EOF
 
 cat > test/expect << EOF
 * remote origin
-  Fetch URL: $(pwd)/one
-  Push  URL: $(pwd)/one
+  URLs:
+    Fetch: $(pwd)/one
+    Push:  $(pwd)/one
   HEAD branch: master
   Remote branches:
     master new (next fetch will store in remotes/origin)
@@ -161,8 +162,9 @@ cat > test/expect << EOF
     master pushes to master   (local out of date)
     master pushes to upstream (create)
 * remote two
-  Fetch URL: ../two
-  Push  URL: ../three
+  URLs:
+    Fetch: ../two
+    Push:  ../three
   HEAD branch (remote HEAD is ambiguous, may be one of the following):
     another
     master
@@ -203,8 +205,9 @@ test_expect_success 'show' '
 
 cat > test/expect << EOF
 * remote origin
-  Fetch URL: $(pwd)/one
-  Push  URL: $(pwd)/one
+  URLs:
+    Fetch: $(pwd)/one
+    Push:  $(pwd)/one
   HEAD branch: (not queried)
   Remote branches: (status not queried)
     master

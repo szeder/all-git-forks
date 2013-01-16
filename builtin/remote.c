@@ -1116,7 +1116,8 @@ static int show(int argc, const char **argv)
 		get_remote_ref_states(*argv, &states, query_flag);
 
 		printf_ln(_("* remote %s"), *argv);
-		printf_ln(_("  Fetch URL: %s"), states.remote->url_nr > 0 ?
+		printf_ln(_("  URLs:"));
+		printf_ln(_("    Fetch: %s"), states.remote->url_nr > 0 ?
 		       states.remote->url[0] : _("(no URL)"));
 		if (states.remote->pushurl_nr) {
 			url = states.remote->pushurl;
@@ -1126,9 +1127,9 @@ static int show(int argc, const char **argv)
 			url_nr = states.remote->url_nr;
 		}
 		for (i = 0; i < url_nr; i++)
-			printf_ln(_("  Push  URL: %s"), url[i]);
+			printf_ln(_("    Push:  %s"), url[i]);
 		if (!i)
-			printf_ln(_("  Push  URL: %s"), "(no URL)");
+			printf_ln(_("    Push:  %s"), "(no URL)");
 		if (no_query)
 			printf_ln(_("  HEAD branch: %s"), "(not queried)");
 		else if (!states.heads.nr)
