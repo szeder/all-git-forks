@@ -293,6 +293,12 @@ all::
 # Define USE_NED_ALLOCATOR if you want to replace the platforms default
 # memory allocators with the nedmalloc allocator written by Niall Douglas.
 #
+# Define USE_LUA to the package name pkg-config command knows your version
+# of Lua as (e.g. "make USE_LUA=lua5.2"). Alternatively, you can set it to
+# any non-empty string and define LUA_INCLUDE_ARG and LUA_LINK_ARG yourself
+# (e.g. "make USE_LUA=YesPlease LUA_INCLUDE_ARG=-I/usr/local/include/lua
+# LUA_LINK_ARG=-llua") appropriately.
+#
 # Define NO_REGEX if you have no or inferior regex support in your C library.
 #
 # Define CYGWIN_V15_WIN32API if you are using Cygwin v1.7.x but are not
@@ -674,6 +680,7 @@ LIB_H += levenshtein.h
 LIB_H += list-objects.h
 LIB_H += ll-merge.h
 LIB_H += log-tree.h
+LIB_H += lua-commit.h
 LIB_H += mailmap.h
 LIB_H += merge-file.h
 LIB_H += merge-recursive.h
@@ -790,6 +797,7 @@ LIB_OBJS += list-objects.o
 LIB_OBJS += ll-merge.o
 LIB_OBJS += lockfile.o
 LIB_OBJS += log-tree.o
+LIB_OBJS += lua-commit.o
 LIB_OBJS += mailmap.o
 LIB_OBJS += match-trees.o
 LIB_OBJS += merge.o
@@ -1441,6 +1449,13 @@ endif
 ifdef USE_NED_ALLOCATOR
        COMPAT_CFLAGS += -Icompat/nedmalloc
        COMPAT_OBJS += compat/nedmalloc/nedmalloc.o
+endif
+
+ifdef USE_LUA
+	LUA_INCLUDE_ARG ?= $(shell pkg-config --cflags $(USE_LUA))
+	LUA_LINK_ARG ?= $(shell pkg-config --libs $(USE_LUA))
+	BASIC_CFLAGS += -DUSE_LUA $(LUA_INCLUDE_ARG)
+	EXTLIBS += $(LUA_LINK_ARG)
 endif
 
 ifdef GIT_TEST_CMP_USE_COPIED_CONTEXT
