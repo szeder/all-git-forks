@@ -2057,6 +2057,14 @@ transfer.fsckObjects::
 	not set, the value of this variable is used instead.
 	Defaults to false.
 
+transfer.hiderefs::
+	String(s) `upload-pack` and `receive-pack` use to decide
+	which refs to omit from their initial advertisement.  Use
+	more than one transfer.hiderefs configuration variables to
+	specify multiple prefix strings. A ref that has one of these
+	strings as its prefix is excluded, and is hidden from
+	`git clone --mirror` and `git push :`.
+
 transfer.unpackLimit::
 	When `fetch.unpackLimit` or `receive.unpackLimit` are
 	not set, the value of this variable is used instead.
