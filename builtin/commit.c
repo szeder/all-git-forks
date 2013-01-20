@@ -13,6 +13,7 @@
 #include "diff.h"
 #include "diffcore.h"
 #include "commit.h"
+#include "crypto-interface.h"
 #include "revision.h"
 #include "wt-status.h"
 #include "run-command.h"
@@ -89,7 +90,7 @@ static int edit_flag = -1; /* unspecified */
 static int quiet, verbose, no_verify, allow_empty, dry_run, renew_authorship;
 static int no_post_rewrite, allow_empty_message;
 static char *untracked_files_arg, *force_date, *ignore_submodule_arg;
-static char *sign_commit;
+static char *sign_commit, *crypto_sign_commit;
 
 /*
  * The default commit message cleanup mode will remove the lines
@@ -1385,6 +1386,8 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		OPT_BOOLEAN(0, "status", &include_status, N_("include status in commit message template")),
 		{ OPTION_STRING, 'S', "gpg-sign", &sign_commit, N_("key id"),
 		  N_("GPG sign commit"), PARSE_OPT_OPTARG, NULL, (intptr_t) "" },
+        { OPTION_STRING, 'x', "crypto-sign", &crypto_sign_commit, N_("key id"),
+          N_("CRYPTO sign commit"), PARSE_OPT_OPTARG, NULL, (intptr_t)""},
 		/* end commit message options */
 
 		OPT_GROUP(N_("Commit contents options")),
@@ -1553,6 +1556,9 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		rollback_index_files();
 		die(_("failed to write commit object"));
 	}
+    if(crypto_sign_commit != NULL){
+        crypto_sign_buffer(NULL, NULL, NULL);
+    }
 	strbuf_release(&author_ident);
 	free_commit_extra_headers(extra);
 
