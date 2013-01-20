@@ -548,6 +548,39 @@ our %feature = (
 		'sub' => sub { feature_bool('remote_heads', @_) },
 		'override' => 0,
 		'default' => [0]},
+
+	# Enable links to bugtracking system
+	# Convert references to issues to clickable links
+	#
+	# To enable system wide have in $GITWEB_CONFIG
+	# $feature{'log.bugtraq.regexp'}{'default'} = ['<regexp>'];
+	# To have project specific config enable override in $GITWEB_CONFIG
+	# $feature{'log.bugtraq.regexp'}{'override'} = 1;
+	# and in project config gitweb.log.bugtraq.regexp = ''|<regexp>;
+	#
+	# Nota bene: spaces in log messages are already converted to &nbsp;
+	# 	so, take it into account when you set regexp
+	'log.bugtraq.regexp' => {
+		'sub' => sub { feature_bool('log.bugtraq.regexp', @_) },
+		'override' => 1,
+		'default' => ['']},
+
+	# $feature{'log.bugtraq.subst'}{'default'} = ['<substitution>'];
+	# To have project specific config enable override in $GITWEB_CONFIG
+	# $feature{'log.bugtraq.subst'}{'override'} = 1;
+	# and in project config gitweb.log.bugtraq.subst = ''|<substitution>;
+
+	# For example, with
+	# 	$feature{'log.bugtraq.regexp'}{'default'} = ['(\bfixed:(\&nbsp;|\s)*)(#(\d+))\b'];
+	#	$feature{'log.bugtraq.subst'}{'default'} = ['$1<a href="\/mantisbt\/view.php?id=$4">$3<\/a>'];
+	# commit message
+	# 	'fixed: #154: some error summary'
+	# becomes
+	# 	'fixed:&nbsp;<a href="/mantisbt/view.php?id=154">#154</a>: some error summary'
+	'log.bugtraq.subst' => {
+		'sub' => sub { feature_bool('log.bugtraq.subst', @_) },
+		'override' => 1,
+		'default' => ['']},
 );
 
 sub gitweb_get_feature {
@@ -1976,6 +2009,12 @@ sub format_log_line_html {
 		$cgi->a({-href => href(action=>"object", hash=>$1),
 					-class => "text"}, $1);
 	}eg;
+	my ($re) = gitweb_get_feature('log.bugtraq.regexp');
+	if ($re) {
+		my ($subst) = gitweb_get_feature('log.bugtraq.subst');
+		my $eval = '$line =~ s/'.$re.'/'.$subst.'/g';
+		eval $eval;
+	}
 
 	return $line;
 }
