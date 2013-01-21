@@ -646,13 +646,34 @@ static void submodule_collect_changed_cb(struct diff_queue_struct *q,
 
 		submodule_config = get_submodule_config_for_commit_path(&submodule_config_cache,
 				commit_sha1, p->two->path);
-		if (!submodule_config)
-			continue;
+		if (!submodule_config) {
+			/* we found no configuration for this entry lets check the
+			 * default which could have been passed on the commandline */
+			if (config_fetch_recurse_submodules == RECURSE_SUBMODULES_OFF)
+				continue;
+			if (config_fetch_recurse_submodules == RECURSE_SUBMODULES_ON_DEMAND)
+				if (is_submodule_commit_present(p->two->path, p->two->sha1))
+					continue;
 
+			string_list_append(&changed_submodule_names, xstrdup(submodule_config->name.buf));
+			continue;
+		}
+
+		/* if its already in the list for fetching skip it */
 		name_item = unsorted_string_list_lookup(&changed_submodule_names, submodule_config->name.buf);
 		if (name_item)
 			continue;
 
+		/* Check what is configured in .gitmodules for this revision */
+		if (submodule_config->fetch_recurse_submodules == RECURSE_SUBMODULES_OFF)
+			continue;
+
+		if (submodule_config->fetch_recurse_submodules == RECURSE_SUBMODULES_ON) {
+			string_list_append(&changed_submodule_names, xstrdup(submodule_config->name.buf));
+			continue;
+		}
+
+		/* on-demand or default is the last possibility */
 		if (is_submodule_commit_present(p->two->path, p->two->sha1))
 			continue;
 
