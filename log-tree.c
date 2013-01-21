@@ -253,9 +253,11 @@ static int detect_any_signoff(char *letter, int size)
 	return seen_head && seen_name;
 }
 
-static void append_signoff(struct strbuf *sb, const char *signoff)
+static void append_signoff(struct strbuf *sb, int ignore_footer, int no_dup_sob)
 {
 	static const char signed_off_by[] = "Signed-off-by: ";
+	char *signoff = xstrdup(fmt_name(getenv("GIT_COMMITTER_NAME"),
+					       getenv("GIT_COMMITTER_EMAIL")));
 	size_t signoff_len = strlen(signoff);
 	int has_signoff = 0;
 	char *cp;
@@ -275,6 +277,7 @@ static void append_signoff(struct strbuf *sb, const char *signoff)
 		if (!isspace(cp[signoff_len]))
 			continue;
 		/* we already have him */
+		free(signoff);
 		return;
 	}
 
@@ -287,6 +290,7 @@ static void append_signoff(struct strbuf *sb, const char *signoff)
 	strbuf_addstr(sb, signed_off_by);
 	strbuf_add(sb, signoff, signoff_len);
 	strbuf_addch(sb, '\n');
+	free(signoff);
 }
 
 static unsigned int digits_in_number(unsigned int number)
@@ -662,8 +666,10 @@ void show_log(struct rev_info *opt)
 	/*
 	 * And then the pretty-printed message itself
 	 */
-	if (ctx.need_8bit_cte >= 0)
-		ctx.need_8bit_cte = has_non_ascii(opt->add_signoff);
+	if (ctx.need_8bit_cte >= 0 && opt->add_signoff)
+		ctx.need_8bit_cte =
+			has_non_ascii(fmt_name(getenv("GIT_COMMITTER_NAME"),
+					       getenv("GIT_COMMITTER_EMAIL")));
 	ctx.date_mode = opt->date_mode;
 	ctx.date_mode_explicit = opt->date_mode_explicit;
 	ctx.abbrev = opt->diffopt.abbrev;
@@ -674,7 +680,7 @@ void show_log(struct rev_info *opt)
 	pretty_print_commit(&ctx, commit, &msgbuf);
 
 	if (opt->add_signoff)
-		append_signoff(&msgbuf, opt->add_signoff);
+		append_signoff(&msgbuf, 0, 1);
 
 	if ((ctx.fmt != CMIT_FMT_USERFORMAT) &&
 	    ctx.notes_message && *ctx.notes_message) {
