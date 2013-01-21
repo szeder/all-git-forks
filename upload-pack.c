@@ -12,6 +12,7 @@
 #include "run-command.h"
 #include "sigchain.h"
 #include "version.h"
+#include "string-list.h"
 
 static const char upload_pack_usage[] = "git upload-pack [--strict] [--timeout=<n>] <dir>";
 
@@ -28,10 +29,13 @@ static const char upload_pack_usage[] = "git upload-pack [--strict] [--timeout=<
 
 static unsigned long oldest_have;
 
-static int multi_ack, nr_our_refs;
+static int multi_ack;
+static int nr_our_refs; /* This counts both advertised and unadvertised */
 static int no_done;
 static int use_thin_pack, use_ofs_delta, use_include_tag;
 static int no_progress, daemon_mode;
+static struct string_list *hide_refs;
+static int allow_tip_sha1_in_want;
 static int shallow_nr;
 static struct object_array have_obj;
 static struct object_array want_obj;
@@ -729,36 +733,26 @@ static void receive_needs(void)
 	free(shallows.objects);
 }
 
-static int send_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
+static int ref_is_hidden(const char *refname)
 {
-	static const char *capabilities = "multi_ack thin-pack side-band"
-		" side-band-64k ofs-delta shallow no-progress"
-		" include-tag multi_ack_detailed";
-	struct object *o = lookup_unknown_object(sha1);
-	const char *refname_nons = strip_namespace(refname);
-	unsigned char peeled[20];
+	struct string_list_item *item;
 
-	if (capabilities)
-		packet_write(1, "%s %s%c%s%s agent=%s\n",
-			     sha1_to_hex(sha1), refname_nons,
-			     0, capabilities,
-			     stateless_rpc ? " no-done" : "",
-			     git_user_agent_sanitized());
-	else
-		packet_write(1, "%s %s\n", sha1_to_hex(sha1), refname_nons);
-	capabilities = NULL;
-	if (!(o->flags & OUR_REF)) {
-		o->flags |= OUR_REF;
-		nr_our_refs++;
+	if (!hide_refs)
+		return 0;
+	for_each_string_list_item(item, hide_refs) {
+		int len;
+		if (prefixcmp(refname, item->string))
+			continue;
+		len = strlen(item->string);
+		if (!refname[len] || refname[len] == '/')
+			return 1;
 	}
-	if (!peel_ref(refname, peeled))
-		packet_write(1, "%s %s^{}\n", sha1_to_hex(peeled), refname_nons);
 	return 0;
 }
 
 static int mark_our_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
 {
-	struct object *o = parse_object(sha1);
+	struct object *o = lookup_unknown_object(sha1);
 	if (!o)
 		die("git upload-pack: cannot find object %s:", sha1_to_hex(sha1));
 	if (!(o->flags & OUR_REF)) {
@@ -768,11 +762,48 @@ static int mark_our_ref(const char *refname, const unsigned char *sha1, int flag
 	return 0;
 }
 
+static int send_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
+{
+	static const char *capabilities = "multi_ack thin-pack side-band"
+		" side-band-64k ofs-delta shallow no-progress"
+		" include-tag multi_ack_detailed";
+	const char *refname_nons = strip_namespace(refname);
+	unsigned char peeled[20];
+
+	mark_our_ref(refname, sha1, flag, cb_data);
+	if (allow_tip_sha1_in_want && ref_is_hidden(refname))
+		return 0;
+
+	if (capabilities)
+		packet_write(1, "%s %s%c%s%s%s agent=%s\n",
+			     sha1_to_hex(sha1), refname_nons,
+			     0, capabilities,
+			     allow_tip_sha1_in_want ? " allow-tip-sha1-in-want" : "",
+			     stateless_rpc ? " no-done" : "",
+			     git_user_agent_sanitized());
+	else
+		packet_write(1, "%s %s\n", sha1_to_hex(sha1), refname_nons);
+	capabilities = NULL;
+	if (!peel_ref(refname, peeled))
+		packet_write(1, "%s %s^{}\n", sha1_to_hex(peeled), refname_nons);
+	return 0;
+}
+
+static int check_hidden_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
+{
+	if (!ref_is_hidden(refname))
+		return 0;
+	allow_tip_sha1_in_want = 1;
+	return 1; /* terminate iteration over refs early */
+}
+
 static void upload_pack(void)
 {
 	if (advertise_refs || !stateless_rpc) {
 		reset_timeout();
 		head_ref_namespaced(send_ref, NULL);
+		if (hide_refs)
+			for_each_namespaced_ref(check_hidden_ref, NULL);
 		for_each_namespaced_ref(send_ref, NULL);
 		packet_flush(1);
 	} else {
@@ -787,6 +818,28 @@ static void upload_pack(void)
 		get_common_commits();
 		create_pack_file();
 	}
+}
+
+static int upload_pack_config(const char *var, const char *value, void *unused)
+{
+	if (!strcmp("uploadpack.hiderefs", var)) {
+		char *ref;
+		int len;
+
+		if (!value)
+			return config_error_nonbool(var);
+		ref = xstrdup(value);
+		len = strlen(ref);
+		while (len && ref[len - 1] == '/')
+			ref[--len] = '\0';
+		if (!hide_refs) {
+			hide_refs = xcalloc(1, sizeof(*hide_refs));
+			hide_refs->strdup_strings = 1;
+		}
+		string_list_append(hide_refs, ref);
+		return 0;
+	}
+	return 0;
 }
 
 int main(int argc, char **argv)
@@ -840,6 +893,7 @@ int main(int argc, char **argv)
 		die("'%s' does not appear to be a git repository", dir);
 	if (is_repository_shallow())
 		die("attempt to fetch/clone from a shallow repository");
+	git_config(upload_pack_config, NULL);
 	if (getenv("GIT_DEBUG_SEND_PACK"))
 		debug_fd = atoi(getenv("GIT_DEBUG_SEND_PACK"));
 	upload_pack();
