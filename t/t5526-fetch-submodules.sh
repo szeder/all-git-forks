@@ -450,4 +450,35 @@ test_expect_success "don't fetch submodule when newly recorded commits are alrea
 	test_i18ncmp expect.err actual.err
 '
 
+test_expect_success "fetch new commits when submodule got renamed" '
+	(
+		cd submodule &&
+		git checkout -b rename_sub &&
+		echo a >a &&
+		git add a &&
+		git commit -ma &&
+		git rev-parse HEAD >../expect
+	) &&
+	git clone . downstream2 &&
+	(
+		cd downstream2 &&
+		git submodule update --init --recursive &&
+		git checkout -b rename &&
+		mv submodule submodule_renamed &&
+		git config -f .gitmodules submodule.submodule.path submodule_renamed &&
+		git add submodule_renamed .gitmodules &&
+		git commit -m "rename submodule -> submodule-renamed" &&
+		git push origin rename
+	) &&
+	(
+		cd downstream &&
+		git fetch --recurse-submodules=on-demand &&
+		(
+			cd submodule &&
+			git rev-parse origin/rename_sub >../../actual
+		)
+	) &&
+	test_cmp expect actual
+'
+
 test_done

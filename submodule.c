@@ -14,7 +14,7 @@
 #include "blob.h"
 
 static int config_fetch_recurse_submodules = RECURSE_SUBMODULES_ON_DEMAND;
-static struct string_list changed_submodule_paths;
+static struct string_list changed_submodule_names;
 static int initialized_fetch_ref_tips;
 static struct sha1_array ref_tips_before_fetch;
 static struct sha1_array ref_tips_after_fetch;
@@ -526,30 +526,28 @@ static void submodule_collect_changed_cb(struct diff_queue_struct *q,
 					 struct diff_options *options,
 					 void *data)
 {
+	const unsigned char *commit_sha1 = data;
 	int i;
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *p = q->queue[i];
+		struct string_list_item *name_item;
+		const struct submodule *submodule;
+
 		if (!S_ISGITLINK(p->two->mode))
 			continue;
 
-		if (S_ISGITLINK(p->one->mode)) {
-			/* NEEDSWORK: We should honor the name configured in
-			 * the .gitmodules file of the commit we are examining
-			 * here to be able to correctly follow submodules
-			 * being moved around. */
-			struct string_list_item *path;
-			path = unsorted_string_list_lookup(&changed_submodule_paths, p->two->path);
-			if (!path && !is_submodule_commit_present(p->two->path, p->two->sha1))
-				string_list_append(&changed_submodule_paths, xstrdup(p->two->path));
-		} else {
-			/* Submodule is new or was moved here */
-			/* NEEDSWORK: When the .git directories of submodules
-			 * live inside the superprojects .git directory some
-			 * day we should fetch new submodules directly into
-			 * that location too when config or options request
-			 * that so they can be checked out from there. */
+		submodule = submodule_from_path(commit_sha1, p->two->path);
+		if (!submodule)
 			continue;
-		}
+
+		name_item = unsorted_string_list_lookup(&changed_submodule_names, submodule->name);
+		if (name_item)
+			continue;
+
+		if (is_submodule_commit_present(p->two->path, p->two->sha1))
+			continue;
+
+		string_list_append(&changed_submodule_names, xstrdup(submodule->name));
 	}
 }
 
@@ -598,7 +596,7 @@ static void calculate_changed_submodule_paths(void)
 
 	/*
 	 * Collect all submodules (whether checked out or not) for which new
-	 * commits have been recorded upstream in "changed_submodule_paths".
+	 * commits have been recorded upstream in "changed_submodule_names".
 	 */
 	while ((commit = get_revision(&rev))) {
 		struct commit_list *parent = commit->parents;
@@ -608,6 +606,7 @@ static void calculate_changed_submodule_paths(void)
 			DIFF_OPT_SET(&diff_opts, RECURSIVE);
 			diff_opts.output_format |= DIFF_FORMAT_CALLBACK;
 			diff_opts.format_callback = submodule_collect_changed_cb;
+			diff_opts.format_callback_data = commit->object.sha1;
 			diff_setup_done(&diff_opts);
 			diff_tree_sha1(parent->item->object.sha1, commit->object.sha1, "", &diff_opts);
 			diffcore_std(&diff_opts);
@@ -674,7 +673,7 @@ int fetch_populated_submodules(const struct argv_array *options,
 					continue;
 				if (submodule->fetch_recurse ==
 						RECURSE_SUBMODULES_ON_DEMAND) {
-					if (!unsorted_string_list_lookup(&changed_submodule_paths, ce->name))
+					if (!unsorted_string_list_lookup(&changed_submodule_names, submodule->name))
 						continue;
 					default_argv = "on-demand";
 				}
@@ -683,13 +682,13 @@ int fetch_populated_submodules(const struct argv_array *options,
 				    gitmodules_is_unmerged)
 					continue;
 				if (config_fetch_recurse_submodules == RECURSE_SUBMODULES_ON_DEMAND) {
-					if (!unsorted_string_list_lookup(&changed_submodule_paths, ce->name))
+					if (!unsorted_string_list_lookup(&changed_submodule_names, submodule->name))
 						continue;
 					default_argv = "on-demand";
 				}
 			}
 		} else if (command_line_option == RECURSE_SUBMODULES_ON_DEMAND) {
-			if (!unsorted_string_list_lookup(&changed_submodule_paths, ce->name))
+			if (!unsorted_string_list_lookup(&changed_submodule_names, submodule->name))
 				continue;
 			default_argv = "on-demand";
 		}
@@ -720,7 +719,7 @@ int fetch_populated_submodules(const struct argv_array *options,
 	}
 	argv_array_clear(&argv);
 out:
-	string_list_clear(&changed_submodule_paths, 1);
+	string_list_clear(&changed_submodule_names, 1);
 	return result;
 }
 
