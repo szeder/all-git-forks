@@ -1046,7 +1046,28 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'signoff: some random signoff-alike' '
+test_expect_success 'signoff: misc conforming footer elements' '
+	append_signoff <<\EOF >actual &&
+subject
+
+body
+
+Signed-off-by: my@house
+(cherry picked from commit da39a3ee5e6b4b0d3255bfef95601890afd80709)
+Tested-by: Some One <someone@example.com>
+Bug: 1234
+EOF
+	cat >expected <<\EOF &&
+4:Subject: [PATCH] subject
+8:
+10:
+11:Signed-off-by: my@house
+15:Signed-off-by: C O Mitter <committer@example.com>
+EOF
+	test_cmp expected actual
+'
+
+test_expect_success 'signoff: some random signoff-alike' '
 	append_signoff <<\EOF >actual &&
 subject
 
@@ -1062,7 +1083,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'signoff: not really a signoff' '
+test_expect_success 'signoff: not really a signoff' '
 	append_signoff <<\EOF >actual &&
 subject
 
@@ -1078,7 +1099,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'signoff: not really a signoff (2)' '
+test_expect_success 'signoff: not really a signoff (2)' '
 	append_signoff <<\EOF >actual &&
 subject
 
@@ -1095,7 +1116,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'signoff: valid S-o-b paragraph in the middle' '
+test_expect_success 'signoff: valid S-o-b paragraph in the middle' '
 	append_signoff <<\EOF >actual &&
 subject
 
@@ -1163,7 +1184,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'signoff: detect garbage in non-conforming footer' '
+test_expect_success 'signoff: detect garbage in non-conforming footer' '
 	append_signoff <<\EOF >actual &&
 subject
 
