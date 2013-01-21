@@ -14,7 +14,7 @@ DESCRIPTION
 -----------
 
 With no options and no COMMAND given, the synopsis of the 'git'
-command and a list of the most commonly used git commands are printed
+command and a list of the most commonly used Git commands are printed
 on the standard output.
 
 If the option '--all' or '-a' is given, then all available commands are
