@@ -11,6 +11,8 @@
 #include "split-index.h"
 #include "dir.h"
 
+#define SAME_CONTENT_SIZE_LIMIT (1024 * 1024)
+
 /*
  * Error messages expected by scripts out of plumbing commands such as
  * read-tree.  Non-scripted Porcelain is not required to use these messages
@@ -1463,6 +1465,7 @@ static int check_ok_to_remove(const char *name, int len, int dtype,
 			      struct unpack_trees_options *o)
 {
 	const struct cache_entry *result;
+	unsigned long ce_size;
 
 	/*
 	 * It may be that the 'lstat()' succeeded even though
@@ -1502,6 +1505,34 @@ static int check_ok_to_remove(const char *name, int len, int dtype,
 	result = index_file_exists(&o->result, name, len, 0);
 	if (result) {
 		if (result->ce_flags & CE_REMOVE)
+			return 0;
+	}
+
+	/*
+	 * If it has the same content that we are going to overwrite,
+	 * there's no point in complaining. We still overwrite it in
+	 * the end though.
+	 */
+	if (ce &&
+	    S_ISREG(st->st_mode) && S_ISREG(ce->ce_mode) &&
+	    (!trust_executable_bit ||
+	     (0100 & (ce->ce_mode ^ st->st_mode)) == 0) &&
+	    st->st_size < SAME_CONTENT_SIZE_LIMIT &&
+	    sha1_object_info(ce->oid.hash, &ce_size) == OBJ_BLOB &&
+	    ce_size == st->st_size) {
+		void *buffer = NULL;
+		unsigned long size;
+		enum object_type type;
+		struct strbuf sb = STRBUF_INIT;
+		int matched =
+			strbuf_read_file(&sb, ce->name, ce_size) == ce_size &&
+			(buffer = read_sha1_file(ce->oid.hash, &type, &size)) != NULL &&
+			type == OBJ_BLOB &&
+			size == ce_size &&
+			!memcmp(buffer, sb.buf, size);
+		free(buffer);
+		strbuf_release(&sb);
+		if (matched)
 			return 0;
 	}
 
