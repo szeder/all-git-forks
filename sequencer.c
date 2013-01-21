@@ -1110,11 +1110,15 @@ void append_signoff(struct strbuf *msgbuf, int ignore_footer, int no_dup_sob)
 	for (i = msgbuf->len - 1 - ignore_footer; i > 0 && msgbuf->buf[i - 1] != '\n'; i--)
 		; /* do nothing */
 
-	if (i)
-		has_footer = has_conforming_footer(msgbuf, &sob, ignore_footer);
+	if (msgbuf->buf[i] != '\n') {
+		if (i)
+			has_footer = has_conforming_footer(msgbuf, &sob,
+					ignore_footer);
 
-	if (!has_footer)
-		strbuf_splice(msgbuf, msgbuf->len - ignore_footer, 0, "\n", 1);
+		if (!has_footer)
+			strbuf_splice(msgbuf, msgbuf->len - ignore_footer, 0,
+					"\n", 1);
+	}
 
 	if (has_footer != 3 && (!no_dup_sob || has_footer != 2))
 		strbuf_splice(msgbuf, msgbuf->len - ignore_footer, 0,
