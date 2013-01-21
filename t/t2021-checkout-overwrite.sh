@@ -51,4 +51,22 @@ test_expect_success SYMLINKS 'the symlink remained' '
 	test -h a/b
 '
 
+test_expect_success 'do not abort on overwriting an existing file with the same content' '
+	echo abc >bar &&
+	git add bar &&
+	git commit -m "new file" &&
+	git reset HEAD^ &&
+	git checkout HEAD@{1}
+'
+
+test_expect_success POSIXPERM 'do abort on an existing file, same content but different permission' '
+	git checkout -f HEAD^ &&
+	echo abc >bar &&
+	git add bar &&
+	git commit -m "new file" &&
+	git reset HEAD^ &&
+	chmod a+x bar &&
+	test_must_fail git checkout HEAD@{1}
+'
+
 test_done
