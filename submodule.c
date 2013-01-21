@@ -1,5 +1,6 @@
 #include "cache.h"
 #include "submodule.h"
+#include "submodule-config-cache.h"
 #include "dir.h"
 #include "diff.h"
 #include "commit.h"
@@ -12,11 +13,12 @@
 #include "argv-array.h"
 #include "blob.h"
 
+struct submodule_config_cache submodule_config_cache;
 static struct string_list config_name_for_path;
 static struct string_list config_fetch_recurse_submodules_for_name;
 static struct string_list config_ignore_for_name;
 static int config_fetch_recurse_submodules = RECURSE_SUBMODULES_ON_DEMAND;
-static struct string_list changed_submodule_paths;
+static struct string_list changed_submodule_names;
 static int initialized_fetch_ref_tips;
 static struct sha1_array ref_tips_before_fetch;
 static struct sha1_array ref_tips_after_fetch;
@@ -616,34 +618,167 @@ static int is_submodule_commit_present(const char *path, unsigned char sha1[20])
 	return is_present;
 }
 
+struct parse_submodule_config_parameter {
+	unsigned char *gitmodule_sha1;
+	struct submodule_config_cache *cache;
+};
+
+static int name_and_item_from_var(const char *var, struct strbuf *name, struct strbuf *item)
+{
+	/* find the name and add it */
+	strbuf_addstr(name, var + strlen("submodule."));
+	char *end = strrchr(name->buf, '.');
+	if (!end) {
+		strbuf_release(name);
+		return 0;
+	}
+	*end = '\0';
+	if (((end + 1) - name->buf) < name->len)
+		strbuf_addstr(item, end + 1);
+
+	return 1;
+}
+
+static struct submodule_config *lookup_or_create_by_name(struct submodule_config_cache *cache,
+		unsigned char *gitmodule_sha1, const char *name)
+{
+	struct submodule_config *config;
+	config = submodule_config_cache_lookup_name(cache, gitmodule_sha1, name);
+	if (config)
+		return config;
+
+	config = xmalloc(sizeof(*config));
+
+	strbuf_init(&config->name, 1024);
+	strbuf_addstr(&config->name, name);
+
+	strbuf_init(&config->path, 1024);
+
+	hashcpy(config->gitmodule_sha1, gitmodule_sha1);
+	config->fetch_recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
+	config->next = NULL;
+
+	submodule_config_cache_insert(cache, config);
+
+	return config;
+}
+
+static void warn_multiple_config(struct submodule_config *config, const char *option)
+{
+	warning("%s:.gitmodules, multiple configurations found for submodule.%s.%s. "
+			"Skipping second one!", sha1_to_hex(config->gitmodule_sha1),
+			option, config->name.buf);
+}
+
+static int parse_submodule_config_into_cache(const char *var, const char *value, void *data)
+{
+	struct parse_submodule_config_parameter *me = data;
+	struct submodule_config *submodule_config;
+
+	/* We only read submodule.<name> entries */
+	if (prefixcmp(var, "submodule."))
+		return 0;
+
+	struct strbuf name = STRBUF_INIT, item = STRBUF_INIT;
+	if (!name_and_item_from_var(var, &name, &item))
+		return 0;
+
+	submodule_config = lookup_or_create_by_name(me->cache, me->gitmodule_sha1, name.buf);
+
+	if (!suffixcmp(var, ".path")) {
+		if (*submodule_config->path.buf != '\0') {
+			warn_multiple_config(submodule_config, "path");
+			return 0;
+		}
+		strbuf_addstr(&submodule_config->path, value);
+		submodule_config_cache_update_path(me->cache, submodule_config);
+	}
+
+	if (!suffixcmp(var, ".fetchrecursesubmodules")) {
+		if (submodule_config->fetch_recurse_submodules != RECURSE_SUBMODULES_DEFAULT) {
+			warn_multiple_config(submodule_config, "fetchrecursesubmodules");
+			return 0;
+		}
+		submodule_config->fetch_recurse_submodules =
+			parse_fetch_recurse_submodules_arg(var, value);
+	}
+
+	strbuf_release(&name);
+	strbuf_release(&item);
+
+	return 0;
+}
+
+static struct submodule_config *get_submodule_config_for_commit_path(struct submodule_config_cache *cache,
+		const unsigned char *commit_sha1, const char *path)
+{
+	struct strbuf rev = STRBUF_INIT;
+	unsigned long config_size;
+	char *config;
+	unsigned char sha1[20];
+	enum object_type type;
+	struct submodule_config *submodule_config = NULL;
+	struct parse_submodule_config_parameter parameter;
+
+
+	strbuf_addf(&rev, "%s:.gitmodules", sha1_to_hex(commit_sha1));
+	if (get_sha1(rev.buf, sha1) < 0)
+		goto free_rev;
+
+	submodule_config = submodule_config_cache_lookup_path(cache, sha1, path);
+	if (submodule_config)
+		goto free_rev;
+
+	config = read_sha1_file(sha1, &type, &config_size);
+	if (!config)
+		goto free_rev;
+
+	if (type != OBJ_BLOB) {
+		free(config);
+		goto free_rev;
+	}
+
+	/* fill the submodule config into the cache */
+	parameter.cache = cache;
+	parameter.gitmodule_sha1 = sha1;
+	git_config_from_buf(parse_submodule_config_into_cache, rev.buf,
+			config, config_size, &parameter);
+	free(config);
+
+	submodule_config = submodule_config_cache_lookup_path(cache, sha1, path);
+
+free_rev:
+	strbuf_release(&rev);
+	return submodule_config;
+}
+
 static void submodule_collect_changed_cb(struct diff_queue_struct *q,
 					 struct diff_options *options,
 					 void *data)
 {
+	const unsigned char *commit_sha1 = data;
 	int i;
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *p = q->queue[i];
+		struct string_list_item *name_item;
+		struct submodule_config *submodule_config;
+
 		if (!S_ISGITLINK(p->two->mode))
 			continue;
 
-		if (S_ISGITLINK(p->one->mode)) {
-			/* NEEDSWORK: We should honor the name configured in
-			 * the .gitmodules file of the commit we are examining
-			 * here to be able to correctly follow submodules
-			 * being moved around. */
-			struct string_list_item *path;
-			path = unsorted_string_list_lookup(&changed_submodule_paths, p->two->path);
-			if (!path && !is_submodule_commit_present(p->two->path, p->two->sha1))
-				string_list_append(&changed_submodule_paths, xstrdup(p->two->path));
-		} else {
-			/* Submodule is new or was moved here */
-			/* NEEDSWORK: When the .git directories of submodules
-			 * live inside the superprojects .git directory some
-			 * day we should fetch new submodules directly into
-			 * that location too when config or options request
-			 * that so they can be checked out from there. */
+		submodule_config = get_submodule_config_for_commit_path(&submodule_config_cache,
+				commit_sha1, p->two->path);
+		if (!submodule_config)
 			continue;
-		}
+
+		name_item = unsorted_string_list_lookup(&changed_submodule_names, submodule_config->name.buf);
+		if (name_item)
+			continue;
+
+		if (is_submodule_commit_present(p->two->path, p->two->sha1))
+			continue;
+
+		string_list_append(&changed_submodule_names, xstrdup(submodule_config->name.buf));
 	}
 }
 
@@ -679,6 +814,8 @@ static void calculate_changed_submodule_paths(void)
 	if (!config_name_for_path.nr)
 		return;
 
+	submodule_config_cache_init(&submodule_config_cache);
+
 	init_revisions(&rev, NULL);
 	argv_array_push(&argv, "--"); /* argv[0] program name */
 	sha1_array_for_each_unique(&ref_tips_after_fetch,
@@ -692,7 +829,7 @@ static void calculate_changed_submodule_paths(void)
 
 	/*
 	 * Collect all submodules (whether checked out or not) for which new
-	 * commits have been recorded upstream in "changed_submodule_paths".
+	 * commits have been recorded upstream in "changed_submodule_names".
 	 */
 	while ((commit = get_revision(&rev))) {
 		struct commit_list *parent = commit->parents;
@@ -702,6 +839,7 @@ static void calculate_changed_submodule_paths(void)
 			DIFF_OPT_SET(&diff_opts, RECURSIVE);
 			diff_opts.output_format |= DIFF_FORMAT_CALLBACK;
 			diff_opts.format_callback = submodule_collect_changed_cb;
+			diff_opts.format_callback_data = commit->object.sha1;
 			diff_setup_done(&diff_opts);
 			diff_tree_sha1(parent->item->object.sha1, commit->object.sha1, "", &diff_opts);
 			diffcore_std(&diff_opts);
@@ -714,6 +852,8 @@ static void calculate_changed_submodule_paths(void)
 	sha1_array_clear(&ref_tips_before_fetch);
 	sha1_array_clear(&ref_tips_after_fetch);
 	initialized_fetch_ref_tips = 0;
+
+	submodule_config_cache_free(&submodule_config_cache);
 }
 
 int fetch_populated_submodules(const struct argv_array *options,
@@ -767,7 +907,7 @@ int fetch_populated_submodules(const struct argv_array *options,
 				if ((intptr_t)fetch_recurse_submodules_option->util == RECURSE_SUBMODULES_OFF)
 					continue;
 				if ((intptr_t)fetch_recurse_submodules_option->util == RECURSE_SUBMODULES_ON_DEMAND) {
-					if (!unsorted_string_list_lookup(&changed_submodule_paths, ce->name))
+					if (!unsorted_string_list_lookup(&changed_submodule_names, name))
 						continue;
 					default_argv = "on-demand";
 				}
@@ -776,13 +916,13 @@ int fetch_populated_submodules(const struct argv_array *options,
 				    gitmodules_is_unmerged)
 					continue;
 				if (config_fetch_recurse_submodules == RECURSE_SUBMODULES_ON_DEMAND) {
-					if (!unsorted_string_list_lookup(&changed_submodule_paths, ce->name))
+					if (!unsorted_string_list_lookup(&changed_submodule_names, name))
 						continue;
 					default_argv = "on-demand";
 				}
 			}
 		} else if (command_line_option == RECURSE_SUBMODULES_ON_DEMAND) {
-			if (!unsorted_string_list_lookup(&changed_submodule_paths, ce->name))
+			if (!unsorted_string_list_lookup(&changed_submodule_names, name))
 				continue;
 			default_argv = "on-demand";
 		}
@@ -813,7 +953,7 @@ int fetch_populated_submodules(const struct argv_array *options,
 	}
 	argv_array_clear(&argv);
 out:
-	string_list_clear(&changed_submodule_paths, 1);
+	string_list_clear(&changed_submodule_names, 1);
 	return result;
 }
 
