@@ -621,6 +621,21 @@ static void calculate_changed_submodule_paths(void)
 	initialized_fetch_ref_tips = 0;
 }
 
+static int get_fetch_recurse_config(const struct submodule *submodule, int command_line_option)
+{
+	if (command_line_option != RECURSE_SUBMODULES_DEFAULT)
+		return command_line_option;
+
+	if (submodule->fetch_recurse != RECURSE_SUBMODULES_NONE)
+		/* local config overrules everything except commandline */
+		return submodule->fetch_recurse;
+
+	if (gitmodules_is_unmerged)
+		return RECURSE_SUBMODULES_OFF;
+
+	return config_fetch_recurse_submodules;
+}
+
 int fetch_populated_submodules(const struct argv_array *options,
 			       const char *prefix, int command_line_option,
 			       int quiet)
@@ -663,34 +678,19 @@ int fetch_populated_submodules(const struct argv_array *options,
 		if (!submodule)
 			submodule = submodule_from_name(null_sha1, ce->name);
 
-		default_argv = "yes";
-		if (command_line_option == RECURSE_SUBMODULES_DEFAULT) {
-			if (submodule &&
-			    submodule->fetch_recurse !=
-						RECURSE_SUBMODULES_NONE) {
-				if (submodule->fetch_recurse ==
-						RECURSE_SUBMODULES_OFF)
-					continue;
-				if (submodule->fetch_recurse ==
-						RECURSE_SUBMODULES_ON_DEMAND) {
-					if (!unsorted_string_list_lookup(&changed_submodule_names, submodule->name))
-						continue;
-					default_argv = "on-demand";
-				}
-			} else {
-				if ((config_fetch_recurse_submodules == RECURSE_SUBMODULES_OFF) ||
-				    gitmodules_is_unmerged)
-					continue;
-				if (config_fetch_recurse_submodules == RECURSE_SUBMODULES_ON_DEMAND) {
-					if (!unsorted_string_list_lookup(&changed_submodule_names, submodule->name))
-						continue;
-					default_argv = "on-demand";
-				}
-			}
-		} else if (command_line_option == RECURSE_SUBMODULES_ON_DEMAND) {
+		switch (get_fetch_recurse_config(submodule, command_line_option)) {
+		default:
+		case RECURSE_SUBMODULES_DEFAULT:
+		case RECURSE_SUBMODULES_ON_DEMAND:
 			if (!unsorted_string_list_lookup(&changed_submodule_names, submodule->name))
 				continue;
 			default_argv = "on-demand";
+			break;
+		case RECURSE_SUBMODULES_ON:
+			default_argv = "yes";
+			break;
+		case RECURSE_SUBMODULES_OFF:
+			continue;
 		}
 
 		strbuf_addf(&submodule_path, "%s/%s", work_tree, ce->name);
