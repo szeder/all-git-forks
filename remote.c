@@ -1318,32 +1318,22 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 		 */
 
 		if (!ref->deletion && !is_null_sha1(ref->old_sha1)) {
-			if (!prefixcmp(ref->name, "refs/tags/")) {
-				if (!force_ref_update) {
-					ref->status = REF_STATUS_REJECT_ALREADY_EXISTS;
-					continue;
-				}
+			int status = 0;
+
+			if (!prefixcmp(ref->name, "refs/tags/"))
+				status = REF_STATUS_REJECT_ALREADY_EXISTS;
+			else if (!has_sha1_file(ref->old_sha1))
+				status = REF_STATUS_REJECT_FETCH_FIRST;
+			else if (!lookup_commit_reference_gently(ref->old_sha1, 1) ||
+				 !lookup_commit_reference_gently(ref->new_sha1, 1))
+				status = REF_STATUS_REJECT_NEEDS_FORCE;
+			else if (!ref_newer(ref->new_sha1, ref->old_sha1))
+				status = REF_STATUS_REJECT_NONFASTFORWARD;
+
+			if (!force_ref_update)
+				ref->status = status;
+			else if (status)
 				ref->forced_update = 1;
-			} else if (!has_sha1_file(ref->old_sha1)) {
-				if (!force_ref_update) {
-					ref->status = REF_STATUS_REJECT_FETCH_FIRST;
-					continue;
-				}
-				ref->forced_update = 1;
-			} else if (!lookup_commit_reference_gently(ref->old_sha1, 1) ||
-				   !lookup_commit_reference_gently(ref->new_sha1, 1)) {
-				if (!force_ref_update) {
-					ref->status = REF_STATUS_REJECT_NEEDS_FORCE;
-					continue;
-				}
-				ref->forced_update = 1;
-			} else if (!ref_newer(ref->new_sha1, ref->old_sha1)) {
-				if (!force_ref_update) {
-					ref->status = REF_STATUS_REJECT_NONFASTFORWARD;
-					continue;
-				}
-				ref->forced_update = 1;
-			}
 		}
 	}
 }
