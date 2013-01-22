@@ -655,13 +655,16 @@ static void submodule_collect_changed_cb(struct diff_queue_struct *q,
 				if (is_submodule_commit_present(p->two->path, p->two->sha1))
 					continue;
 
-			string_list_append(&changed_submodule_names, xstrdup(submodule_config->name.buf));
+			name_item = string_list_append(&changed_submodule_names, xstrdup(submodule_config->name.buf));
+			name_item->util = (void *) RECURSE_SUBMODULES_DEFAULT;
 			continue;
 		}
 
 		/* if its already in the list for fetching skip it */
 		name_item = unsorted_string_list_lookup(&changed_submodule_names, submodule_config->name.buf);
 		if (name_item)
+			/* TODO: if util is on-demand/default and we got yes/on-demand we
+			 * should probably override that */
 			continue;
 
 		/* Check what is configured in .gitmodules for this revision */
@@ -669,7 +672,8 @@ static void submodule_collect_changed_cb(struct diff_queue_struct *q,
 			continue;
 
 		if (submodule_config->fetch_recurse_submodules == RECURSE_SUBMODULES_ON) {
-			string_list_append(&changed_submodule_names, xstrdup(submodule_config->name.buf));
+			name_item = string_list_append(&changed_submodule_names, xstrdup(submodule_config->name.buf));
+			name_item->util = (void *) RECURSE_SUBMODULES_ON;
 			continue;
 		}
 
@@ -677,7 +681,17 @@ static void submodule_collect_changed_cb(struct diff_queue_struct *q,
 		if (is_submodule_commit_present(p->two->path, p->two->sha1))
 			continue;
 
-		string_list_append(&changed_submodule_names, xstrdup(submodule_config->name.buf));
+		if (submodule_config->fetch_recurse_submodules == RECURSE_SUBMODULES_ON_DEMAND) {
+			name_item = string_list_append(&changed_submodule_names, xstrdup(submodule_config->name.buf));
+			name_item->util = (void *) RECURSE_SUBMODULES_ON_DEMAND;
+			continue;
+		}
+
+		if (config_fetch_recurse_submodules == RECURSE_SUBMODULES_OFF)
+			continue;
+
+		name_item = string_list_append(&changed_submodule_names, xstrdup(submodule_config->name.buf));
+		name_item->util = (void *) RECURSE_SUBMODULES_DEFAULT;
 	}
 }
 
@@ -757,17 +771,25 @@ static void calculate_changed_submodule_paths(void)
 
 static int get_fetch_recurse_config(const char *name, int command_line_option)
 {
+	struct string_list_item *fetch_recurse_submodules_option;
+
 	if (command_line_option != RECURSE_SUBMODULES_DEFAULT)
 		return command_line_option;
 
-	struct string_list_item *fetch_recurse_submodules_option;
 	fetch_recurse_submodules_option = unsorted_string_list_lookup(&config_fetch_recurse_submodules_for_name, name);
 	if (fetch_recurse_submodules_option)
 		/* local config overrules everything except commandline */
 		return (intptr_t)fetch_recurse_submodules_option->util;
 
+	if (config_fetch_recurse_submodules == RECURSE_SUBMODULES_ON)
+		return config_fetch_recurse_submodules;
+
 	if (gitmodules_is_unmerged)
 		return RECURSE_SUBMODULES_OFF;
+
+	fetch_recurse_submodules_option = unsorted_string_list_lookup(&changed_submodule_names, name);
+	if (fetch_recurse_submodules_option)
+		return (intptr_t)fetch_recurse_submodules_option->util;
 
 	return config_fetch_recurse_submodules;
 }
@@ -824,7 +846,8 @@ int fetch_populated_submodules(const struct argv_array *options,
 			default:
 			case RECURSE_SUBMODULES_DEFAULT:
 			case RECURSE_SUBMODULES_ON_DEMAND:
-			if (!unsorted_string_list_lookup(&changed_submodule_names, name))
+			if (!unsorted_string_list_lookup(&changed_submodule_names, name) &&
+					command_line_option == RECURSE_SUBMODULES_DEFAULT)
 				continue;
 			default_argv = "on-demand";
 			break;
@@ -842,16 +865,23 @@ int fetch_populated_submodules(const struct argv_array *options,
 		if (!git_dir)
 			git_dir = submodule_git_dir.buf;
 		if (is_directory(git_dir)) {
+			struct strbuf recurse_option = STRBUF_INIT;
 			if (!quiet)
 				printf("Fetching submodule %s%s\n", prefix, ce->name);
 			cp.dir = submodule_path.buf;
 			argv_array_push(&argv, default_argv);
+			if (command_line_option != RECURSE_SUBMODULES_DEFAULT) {
+				strbuf_addf(&recurse_option, "--recurse-submodules=%s", default_argv);
+				argv_array_push(&argv, recurse_option.buf);
+			}
 			argv_array_push(&argv, "--submodule-prefix");
 			argv_array_push(&argv, submodule_prefix.buf);
 			cp.argv = argv.argv;
 			if (run_command(&cp))
 				result = 1;
 			argv_array_pop(&argv);
+			if (command_line_option != RECURSE_SUBMODULES_DEFAULT)
+				argv_array_pop(&argv);
 			argv_array_pop(&argv);
 			argv_array_pop(&argv);
 		}
@@ -861,7 +891,7 @@ int fetch_populated_submodules(const struct argv_array *options,
 	}
 	argv_array_clear(&argv);
 out:
-	string_list_clear(&changed_submodule_names, 1);
+	string_list_clear(&changed_submodule_names, 0);
 	return result;
 }
 
