@@ -1318,17 +1318,26 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 		 */
 
 		if (!ref->deletion && !is_null_sha1(ref->old_sha1)) {
-			int nonfastforward =
-				!has_sha1_file(ref->old_sha1)
-				|| !ref_newer(ref->new_sha1, ref->old_sha1);
-
 			if (!prefixcmp(ref->name, "refs/tags/")) {
 				if (!force_ref_update) {
 					ref->status = REF_STATUS_REJECT_ALREADY_EXISTS;
 					continue;
 				}
 				ref->forced_update = 1;
-			} else if (nonfastforward) {
+			} else if (!has_sha1_file(ref->old_sha1)) {
+				if (!force_ref_update) {
+					ref->status = REF_STATUS_REJECT_FETCH_FIRST;
+					continue;
+				}
+				ref->forced_update = 1;
+			} else if (!lookup_commit_reference_gently(ref->old_sha1, 1) ||
+				   !lookup_commit_reference_gently(ref->new_sha1, 1)) {
+				if (!force_ref_update) {
+					ref->status = REF_STATUS_REJECT_NEEDS_FORCE;
+					continue;
+				}
+				ref->forced_update = 1;
+			} else if (!ref_newer(ref->new_sha1, ref->old_sha1)) {
 				if (!force_ref_update) {
 					ref->status = REF_STATUS_REJECT_NONFASTFORWARD;
 					continue;
@@ -1517,7 +1526,8 @@ int ref_newer(const unsigned char *new_sha1, const unsigned char *old_sha1)
 	struct commit_list *list, *used;
 	int found = 0;
 
-	/* Both new and old must be commit-ish and new is descendant of
+	/*
+	 * Both new and old must be commit-ish and new is descendant of
 	 * old.  Otherwise we require --force.
 	 */
 	o = deref_tag(parse_object(old_sha1), NULL, 0);
