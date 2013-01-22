@@ -335,7 +335,7 @@ static int tar_filter_config(const char *var, const char *value, void *data)
 	if (prefixcmp(var, "tar."))
 		return 0;
 	dot = strrchr(var, '.');
-	if (dot == var + 9)
+	if (dot == var + 3)
 		return 0;
 
 	name = var + 4;
