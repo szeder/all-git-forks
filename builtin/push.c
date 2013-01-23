@@ -217,6 +217,13 @@ static const char message_advice_ref_already_exists[] =
 	N_("Updates were rejected because the destination reference already exists\n"
 	   "in the remote.");
 
+static const char message_advice_ref_fetch_first[] =
+	N_("Updates were rejected; you need to fetch the destination reference\n"
+	   "to decide what to do.\n");
+
+static const char message_advice_ref_needs_force[] =
+	N_("Updates were rejected; you need to force update.\n");
+
 static void advise_pull_before_push(void)
 {
 	if (!advice_push_non_ff_current || !advice_push_update_rejected)
@@ -236,6 +243,20 @@ static void advise_ref_already_exists(void)
 	if (!advice_push_already_exists || !advice_push_update_rejected)
 		return;
 	advise(_(message_advice_ref_already_exists));
+}
+
+static void advise_ref_fetch_first(void)
+{
+	if (!advice_push_fetch_first || !advice_push_update_rejected)
+		return;
+	advise(_(message_advice_ref_fetch_first));
+}
+
+static void advise_ref_needs_force(void)
+{
+	if (!advice_push_needs_force || !advice_push_update_rejected)
+		return;
+	advise(_(message_advice_ref_needs_force));
 }
 
 static int push_with_options(struct transport *transport, int flags)
@@ -268,6 +289,10 @@ static int push_with_options(struct transport *transport, int flags)
 		advise_checkout_pull_push();
 	} else if (reject_reasons & REJECT_ALREADY_EXISTS) {
 		advise_ref_already_exists();
+	} else if (reject_reasons & REJECT_FETCH_FIRST) {
+		advise_ref_fetch_first();
+	} else if (reject_reasons & REJECT_NEEDS_FORCE) {
+		advise_ref_needs_force();
 	}
 
 	return 1;
