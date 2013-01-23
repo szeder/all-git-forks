@@ -198,7 +198,7 @@ behavior:
 * `fix` outputs warnings for a few such errors, and applies the
   patch after fixing them (`strip` is a synonym --- the tool
   used to consider only trailing whitespace characters as errors, and the
-  fix involved 'stripping' them, but modern gits do more).
+  fix involved 'stripping' them, but modern Gits do more).
 * `error` outputs warnings for a few such errors, and refuses
   to apply the patch.
 * `error-all` is similar to `error` but shows all errors.

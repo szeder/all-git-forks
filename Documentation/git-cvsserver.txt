@@ -3,7 +3,7 @@ git-cvsserver(1)
 
 NAME
 ----
-git-cvsserver - A CVS server emulator for git
+git-cvsserver - A CVS server emulator for Git
 
 SYNOPSIS
 --------
@@ -291,14 +291,14 @@ Variable substitution
 In `dbdriver` and `dbuser` you can use the following variables:
 
 %G::
-	git directory name
+	Git directory name
 %g::
-	git directory name, where all characters except for
+	Git directory name, where all characters except for
 	alpha-numeric ones, `.`, and `-` are replaced with
 	`_` (this should make it easier to use the directory
 	name in a filename if wanted)
 %m::
-	CVS module/git head name
+	CVS module/Git head name
 %a::
 	access method (one of "ext" or "pserver")
 %u::

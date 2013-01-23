@@ -3,7 +3,7 @@ git-help(1)
 
 NAME
 ----
-git-help - display help information about git
+git-help - Display help information about Git
 
 SYNOPSIS
 --------

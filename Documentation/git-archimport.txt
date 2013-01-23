@@ -3,7 +3,7 @@ git-archimport(1)
 
 NAME
 ----
-git-archimport - Import an Arch repository into git
+git-archimport - Import an Arch repository into Git
 
 
 SYNOPSIS

@@ -64,7 +64,7 @@ COMMANDS
 
 Clone
 ~~~~~
-Generally, 'git p4 clone' is used to create a new git directory
+Generally, 'git p4 clone' is used to create a new Git directory
 from an existing p4 repository:
 ------------
 $ git p4 clone //depot/path/project
@@ -494,7 +494,7 @@ git-p4.detectCopiesHarder::
 	Detect copies harder.  See linkgit:git-diff[1].  A boolean.
 
 git-p4.preserveUser::
-	On submit, re-author changes to reflect the git author,
+	On submit, re-author changes to reflect the Git author,
 	regardless of who invokes 'git p4 submit'.
 
 git-p4.allowMissingP4Users::
