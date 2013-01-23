@@ -1,5 +1,8 @@
 #!/bin/sh
 
+: ${TEST_CVSPS_VERSION=2}
+export TEST_CVSPS_VERSION
+
 . ./test-lib.sh
 
 unset CVS_SERVER
@@ -13,19 +16,62 @@ fi
 CVS="cvs -f"
 export CVS
 
-cvsps_version=`cvsps -h 2>&1 | sed -ne 's/cvsps version //p'`
-case "$cvsps_version" in
-2.1 | 2.2*)
+skip_all=
+case "$TEST_CVSPS_VERSION" in
+2)
+	if test "$CVSPS2_PATH" = NoThanks
+	then
+		skip_all='skipping cvsimport tests, cvsps(2) not used'
+	elif ! test_have_prereq PERL
+	then
+		skip_all='skipping cvsimport tests, Perl not available'
+	else
+		case $($CVSPS2_PATH -h 2>&1 | sed -ne 's/cvsps version //p') in
+		2.1 | 2.2*)
+			;;
+		'')
+			skip_all='skipping cvsimport tests, cvsps(2) not found'
+			;;
+		*)
+			skip_all='skipping cvsimport tests, unsupported cvsps(2)'
+			;;
+		esac
+	fi
 	;;
-'')
-	skip_all='skipping cvsimport tests, cvsps not found'
-	test_done
+3)
+	if test "$CVSPS3_PATH" = NoThanks
+	then
+		skip_all='skipping cvsimport tests, cvsps(3) not used'
+	elif ! test_have_prereq PYTHON
+	then
+		# NEEDSWORK: we may need Python lower-bound prerequisite
+		skip_all='skipping cvsimport tests, Python not available'
+	else
+		case $($CVSPS3_PATH -h 2>&1 | sed -ne 's/cvsps version //p') in
+		3.*)
+			;;
+		'')
+			skip_all='skipping cvsimport tests, cvsps(3) not found'
+			;;
+		*)
+			skip_all='skipping cvsimport tests, unsupported cvsps(3)'
+			;;
+		esac
+	fi
 	;;
 *)
-	skip_all='skipping cvsimport tests, unsupported cvsps version'
-	test_done
+	echo >&2 "Bug in test: set TEST_CVSPS_VESION to either 2 or 3"
+	exit 1
 	;;
 esac
+
+GIT_CVSPS_VERSION=$TEST_CVSPS_VERSION
+export GIT_CVSPS_VERSION
+
+if test -n "$skip_all"
+then
+	test_done
+fi
 
 setup_cvs_test_repository () {
 	CVSROOT="$(pwd)/.cvsroot" &&
