@@ -45,7 +45,7 @@ struct remote
 `receivepack`, `uploadpack`::
 
 	The configured helper programs to run on the remote side, for
-	git-native protocols.
+	Git-native protocols.
 
 `http_proxy`::
 

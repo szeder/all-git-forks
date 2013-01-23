@@ -3,7 +3,7 @@ gitcvs-migration(7)
 
 NAME
 ----
-gitcvs-migration - git for CVS users
+gitcvs-migration - Git for CVS users
 
 SYNOPSIS
 --------

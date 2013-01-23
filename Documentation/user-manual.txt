@@ -1439,7 +1439,7 @@ fundamentally different ways to fix the problem:
 
 	2. You can go back and modify the old commit.  You should
 	never do this if you have already made the history public;
-	git does not normally expect the "history" of a project to
+	Git does not normally expect the "history" of a project to
 	change, and cannot correctly perform repeated merges from
 	a branch that has had its history changed.
 
@@ -3671,7 +3671,7 @@ Unable to checkout '261dfac35cb99d380eb966e102c1197139f7fa24' in submodule path 
 
 In older Git versions it could be easily forgotten to commit new or modified
 files in a submodule, which silently leads to similar problems as not pushing
-the submodule changes. Starting with git 1.7.0 both "git status" and "git diff"
+the submodule changes. Starting with Git 1.7.0 both "git status" and "git diff"
 in the superproject show submodules as modified when they contain new or
 modified files to protect against accidentally committing such a state. "git
 diff" will also add a "-dirty" to the work tree side when generating patch

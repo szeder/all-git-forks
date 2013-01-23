@@ -5,7 +5,7 @@ Adding a new built-in
 ---------------------
 
 There are 4 things to do to add a built-in command implementation to
-git:
+Git:
 
 . Define the implementation of the built-in command `foo` with
   signature:
