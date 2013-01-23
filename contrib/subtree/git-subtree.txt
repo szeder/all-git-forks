@@ -9,7 +9,8 @@ git-subtree - Merge subtrees together and split repository into subtrees
 SYNOPSIS
 --------
 [verse]
-'git subtree' add   -P <prefix> <commit>
+'git subtree' add   -P <prefix> <refspec>
+'git subtree' add   -P <prefix> <repository> <refspec>
 'git subtree' pull  -P <prefix> <repository> <refspec...>
 'git subtree' push  -P <prefix> <repository> <refspec...>
 'git subtree' merge -P <prefix> <commit>
@@ -197,6 +198,21 @@ OPTIONS FOR split
 	one.  That will prevent merging from working correctly. 
 	git subtree tries to make it work anyway, particularly
 	if you use --rejoin, but it may not always be effective.
+
+--unannotate=<annotation>::
+	This option is only valid for the split command.
+
+	When generating synthetic history, try to remove the prefix
+	<annotation> from each commit message (using bash's "strip
+	shortest match from beginning" command, which supports
+	globbing).  This makes sense if you format library commits
+	like "library: Change something or other" when you're working
+	in your project's repository, but you want to remove this
+	prefix when pushing back to the library's upstream repository.
+	(In this case --unannotate='*: ' would work well.)
+
+	Like --annotate,  you need to use the same <annotation>
+	whenever you split, or you may run into problems.
 
 -b <branch>::
 --branch=<branch>::
