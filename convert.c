@@ -465,10 +465,8 @@ static int read_convert_config(const char *var, const char *value, void *cb)
 	 * External conversion drivers are configured using
 	 * "filter.<name>.variable".
 	 */
-	if (prefixcmp(var, "filter.") || (ep = strrchr(var, '.')) == var + 6)
+	if (match_config_key(var, "filter", &name, &namelen, &ep) < 0 || !name)
 		return 0;
-	name = var + 7;
-	namelen = ep - name;
 	for (drv = user_convert; drv; drv = drv->next)
 		if (!strncmp(drv->name, name, namelen) && !drv->name[namelen])
 			break;
@@ -478,8 +476,6 @@ static int read_convert_config(const char *var, const char *value, void *cb)
 		*user_convert_tail = drv;
 		user_convert_tail = &(drv->next);
 	}
-
-	ep++;
 
 	/*
 	 * filter.<name>.smudge and filter.<name>.clean specifies
