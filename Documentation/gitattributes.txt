@@ -449,7 +449,7 @@ String::
 	specify one or more options, as described in the following
 	section. The options for the diff driver "foo" are defined
 	by the configuration variables in the "diff.foo" section of the
-	git config file.
+	Git config file.
 
 
 Defining an external diff driver
@@ -675,7 +675,7 @@ attribute in the `.gitattributes` file:
 *.ps -diff
 ------------------------
 
-This will cause git to generate `Binary files differ` (or a binary
+This will cause Git to generate `Binary files differ` (or a binary
 patch, if binary patches are enabled) instead of a regular diff.
 
 However, one may also want to specify other diff driver attributes. For
