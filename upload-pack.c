@@ -47,7 +47,9 @@ static int stateless_rpc;
 
 static void reset_timeout(void)
 {
+	#ifndef NO_SETITIMER
 	alarm(timeout);
+	#endif
 }
 
 static int strip(char *line, int len)

@@ -198,7 +198,9 @@ static void show_early_header(struct rev_info *rev, const char *stage, int nr)
 	printf(_("Final output: %d %s\n"), nr, stage);
 }
 
+#ifndef NO_SETITIMER
 static struct itimerval early_output_timer;
+#endif
 
 static void log_show_early(struct rev_info *revs, struct commit_list *list)
 {
@@ -240,9 +242,12 @@ static void log_show_early(struct rev_info *revs, struct commit_list *list)
 	 * trigger every second even if we're blocked on a
 	 * reader!
 	 */
+
+	#ifndef NO_SETITIMER
 	early_output_timer.it_value.tv_sec = 0;
 	early_output_timer.it_value.tv_usec = 500000;
 	setitimer(ITIMER_REAL, &early_output_timer, NULL);
+	#endif
 }
 
 static void early_output(int signal)
@@ -274,9 +279,11 @@ static void setup_early_output(struct rev_info *rev)
 	 *
 	 * This is a one-time-only trigger.
 	 */
+	#ifndef NO_SETITIMER
 	early_output_timer.it_value.tv_sec = 0;
 	early_output_timer.it_value.tv_usec = 100000;
 	setitimer(ITIMER_REAL, &early_output_timer, NULL);
+	#endif
 }
 
 static void finish_early_output(struct rev_info *rev)

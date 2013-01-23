@@ -45,7 +45,10 @@ static void progress_interval(int signum)
 static void set_progress_signal(void)
 {
 	struct sigaction sa;
+
+	#ifndef NO_SETITIMER
 	struct itimerval v;
+	#endif
 
 	progress_update = 0;
 
@@ -55,16 +58,21 @@ static void set_progress_signal(void)
 	sa.sa_flags = SA_RESTART;
 	sigaction(SIGALRM, &sa, NULL);
 
+	#ifndef NO_SETITIMER
 	v.it_interval.tv_sec = 1;
 	v.it_interval.tv_usec = 0;
 	v.it_value = v.it_interval;
 	setitimer(ITIMER_REAL, &v, NULL);
+	#endif
 }
 
 static void clear_progress_signal(void)
 {
+	#ifndef NO_SETITIMER
 	struct itimerval v = {{0,},};
 	setitimer(ITIMER_REAL, &v, NULL);
+	#endif
+
 	signal(SIGALRM, SIG_IGN);
 	progress_update = 0;
 }

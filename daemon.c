@@ -611,9 +611,15 @@ static int execute(void)
 	if (addr)
 		loginfo("Connection from %s:%s", addr, port);
 
+	#ifndef NO_SETITIMER
 	alarm(init_timeout ? init_timeout : timeout);
+	#endif
+
 	pktlen = packet_read_line(0, line, sizeof(line));
+
+	#ifndef NO_SETITIMER
 	alarm(0);
+	#endif
 
 	len = strlen(line);
 	if (pktlen != len)
