@@ -1068,7 +1068,7 @@ and requires you to have a log-in privilege over `ssh` to the
 remote machine.  It finds out the set of objects the other side
 lacks by exchanging the head commits both ends have and
 transfers (close to) minimum set of objects.  It is by far the
-most efficient way to exchange git objects between repositories.
+most efficient way to exchange Git objects between repositories.
 
 Local directory::
 	`/path/to/repo.git/`
@@ -1077,7 +1077,7 @@ This transport is the same as SSH transport but uses 'sh' to run
 both ends on the local machine instead of running other end on
 the remote machine via 'ssh'.
 
-git Native::
+Git Native::
 	`git://remote.machine/path/to/repo.git/`
 +
 This transport was designed for anonymous downloading.  Like SSH
