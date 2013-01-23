@@ -18,7 +18,7 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-Lets you rewrite git revision history by rewriting the branches mentioned
+Lets you rewrite Git revision history by rewriting the branches mentioned
 in the <rev-list options>, applying custom filters on each revision.
 Those filters can modify each tree (e.g. removing a file or running
 a perl rewrite on all files) or information about each commit.

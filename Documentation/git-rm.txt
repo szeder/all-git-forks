@@ -75,7 +75,7 @@ DISCUSSION
 The <file> list given to the command can be exact pathnames,
 file glob patterns, or leading directory names.  The command
 removes only the paths that are known to Git.  Giving the name of
-a file that you have not told git about does not remove that file.
+a file that you have not told Git about does not remove that file.
 
 File globbing matches across directory boundaries.  Thus, given
 two directories `d` and `d2`, there is a difference between

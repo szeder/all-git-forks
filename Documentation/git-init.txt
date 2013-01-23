@@ -59,7 +59,7 @@ DIRECTORY" section below.)
 
 Instead of initializing the repository where it is supposed to be,
 place a filesytem-agnostic Git symbolic link there, pointing to the
-specified Git path, and initialize a Git repository at the path. The
+specified path, and initialize a Git repository at the path. The
 result is Git repository can be separated from working tree. If this
 is reinitialization, the repository will be moved to the specified
 path.

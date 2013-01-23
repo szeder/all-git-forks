@@ -27,7 +27,7 @@ OPTIONS
 -------
 -d::
 	Remove untracked directories in addition to untracked files.
-	If an untracked directory is managed by a different git
+	If an untracked directory is managed by a different Git
 	repository, it is not removed by default.  Use -f option twice
 	if you really want to remove such a directory.
 
