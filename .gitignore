@@ -184,6 +184,7 @@
 /test-delta
 /test-dump-cache-tree
 /test-scrap-cache-tree
+/test-generation
 /test-genrandom
 /test-index-version
 /test-line-buffer
