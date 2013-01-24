@@ -65,6 +65,8 @@ static struct cached_object empty_tree = {
 
 static struct packed_git *last_found_pack;
 
+static void read_info_alternates(const char * relative_base,
+				 int depth, int external);
 static struct cached_object *find_cached_object(const unsigned char *sha1,
 						unsigned int origin)
 {
@@ -263,7 +265,10 @@ static int git_open_noatime(const char *name);
  * SHA1, an extra slash for the first level indirection, and the
  * terminating NUL.
  */
-static int link_alt_odb_entry(const char *entry, const char *relative_base, int depth)
+static int link_alt_odb_entry(const char *entry,
+			      const char *relative_base,
+			      int depth,
+			      int external)
 {
 	const char *objdir = get_object_directory();
 	struct alternate_object_database *ent;
@@ -293,6 +298,7 @@ static int link_alt_odb_entry(const char *entry, const char *relative_base, int 
 	memcpy(ent->base, pathbuf.buf, pfxlen);
 	strbuf_release(&pathbuf);
 
+	ent->external = external;
 	ent->name = ent->base + pfxlen + 1;
 	ent->base[pfxlen + 3] = '/';
 	ent->base[pfxlen] = ent->base[entlen-1] = 0;
@@ -326,15 +332,19 @@ static int link_alt_odb_entry(const char *entry, const char *relative_base, int 
 	ent->next = NULL;
 
 	/* recursively add alternates */
-	read_info_alternates(ent->base, depth + 1);
+	read_info_alternates(ent->base, depth + 1, 0);
 
 	ent->base[pfxlen] = '/';
+
+	if (external)
+		object_database_contaminated = 1;
 
 	return 0;
 }
 
 static void link_alt_odb_entries(const char *alt, int len, int sep,
-				 const char *relative_base, int depth)
+				 const char *relative_base,
+				 int depth, int external)
 {
 	struct string_list entries = STRING_LIST_INIT_NODUP;
 	char *alt_copy;
@@ -356,14 +366,16 @@ static void link_alt_odb_entries(const char *alt, int len, int sep,
 			error("%s: ignoring relative alternate object store %s",
 					relative_base, entry);
 		} else {
-			link_alt_odb_entry(entry, relative_base, depth);
+			link_alt_odb_entry(entry, relative_base,
+					   depth, external);
 		}
 	}
 	string_list_clear(&entries, 0);
 	free(alt_copy);
 }
 
-void read_info_alternates(const char * relative_base, int depth)
+static void read_info_alternates(const char * relative_base,
+				 int depth, int external)
 {
 	char *map;
 	size_t mapsz;
@@ -387,9 +399,16 @@ void read_info_alternates(const char * relative_base, int depth)
 	map = xmmap(NULL, mapsz, PROT_READ, MAP_PRIVATE, fd, 0);
 	close(fd);
 
-	link_alt_odb_entries(map, mapsz, '\n', relative_base, depth);
+	link_alt_odb_entries(map, mapsz, '\n', relative_base,
+			     depth, external);
 
 	munmap(map, mapsz);
+}
+
+void read_external_info_alternates(const char *relative_base,
+				   int depth)
+{
+	read_info_alternates(relative_base, depth, 1);
 }
 
 void add_to_alternates_file(const char *reference)
@@ -401,7 +420,7 @@ void add_to_alternates_file(const char *reference)
 	if (commit_lock_file(lock))
 		die("could not close alternates file");
 	if (alt_odb_tail)
-		link_alt_odb_entries(alt, strlen(alt), '\n', NULL, 0);
+		link_alt_odb_entries(alt, strlen(alt), '\n', NULL, 0, 0);
 }
 
 void foreach_alt_odb(alt_odb_fn fn, void *cb)
@@ -431,9 +450,9 @@ void prepare_alt_odb(void)
 	if (!alt) alt = "";
 
 	alt_odb_tail = &alt_odb_list;
-	link_alt_odb_entries(alt, strlen(alt), PATH_SEP, NULL, 0);
+	link_alt_odb_entries(alt, strlen(alt), PATH_SEP, NULL, 0, 0);
 
-	read_info_alternates(get_object_directory(), 0);
+	read_info_alternates(get_object_directory(), 0, 0);
 }
 
 static int has_loose_object_extended(const unsigned char *sha1,
