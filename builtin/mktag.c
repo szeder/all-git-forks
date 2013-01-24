@@ -23,7 +23,10 @@ static int verify_object(const unsigned char *sha1, const char *expected_type)
 	int ret = -1;
 	enum object_type type;
 	unsigned long size;
-	void *buffer = read_sha1_file(sha1, &type, &size);
+	void *buffer = read_sha1_file_extended(sha1,
+					       ODB_CACHED | ODB_LOCAL | ODB_ALT,
+					       &type, &size,
+					       READ_SHA1_FILE_REPLACE);
 	const unsigned char *repl = lookup_replace_object(sha1);
 
 	if (buffer) {
