@@ -2929,6 +2929,13 @@ int has_sha1_file(const unsigned char *sha1)
 	return has_sha1_file_extended(sha1, odb_default);
 }
 
+int has_sha1_file_proper(const unsigned char *sha1)
+{
+	if (find_cached_object(sha1, ODB_CACHED))
+		return 1;
+	return has_sha1_file_extended(sha1, ODB_LOCAL | ODB_ALT);
+}
+
 static void check_tree(const void *buf, size_t size)
 {
 	struct tree_desc desc;

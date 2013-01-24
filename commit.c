@@ -1343,6 +1343,10 @@ int commit_tree_extended(const struct strbuf *msg, unsigned char *tree,
 	/* Not having i18n.commitencoding is the same as having utf-8 */
 	encoding_is_utf8 = is_encoding_utf8(git_commit_encoding);
 
+	if (object_database_contaminated && !has_sha1_file_proper(tree))
+		return error(_("cannot create a commit with external tree %s"),
+			     sha1_to_hex(tree));
+
 	strbuf_init(&buffer, 8192); /* should avoid reallocs for the headers */
 	strbuf_addf(&buffer, "tree %s\n", sha1_to_hex(tree));
 
@@ -1354,6 +1358,11 @@ int commit_tree_extended(const struct strbuf *msg, unsigned char *tree,
 	while (parents) {
 		struct commit_list *next = parents->next;
 		struct commit *parent = parents->item;
+
+		if (object_database_contaminated &&
+		    !has_sha1_file_proper(parent->object.sha1))
+			return error(_("cannot create a commit with external commit %s"),
+				     sha1_to_hex(parent->object.sha1));
 
 		strbuf_addf(&buffer, "parent %s\n",
 			    sha1_to_hex(parent->object.sha1));
