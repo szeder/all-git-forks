@@ -38,12 +38,10 @@ test_expect_success \
 test_expect_success \
 	'browser paths are properly quoted' '
 	echo fake: http://example.com/foo >expect &&
-	cat >"fake browser" <<-\EOF &&
-	#!/bin/sh
+	write_script "fake browser" <<-\EOF &&
 	echo fake: "$@"
 	EOF
-	chmod +x "fake browser" &&
-	git config browser.w3m.path "`pwd`/fake browser" &&
+	git config browser.w3m.path "$(pwd)/fake browser" &&
 	test_web_browse w3m http://example.com/foo
 '
 
