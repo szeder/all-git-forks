@@ -53,14 +53,14 @@ static void output_exclude(const char *path, struct exclude *exclude)
 	}
 }
 
-static int check_ignore(const char *prefix, const char **pathspec)
+static int check_ignore(int argc, const char **argv, const char *prefix)
 {
 	struct dir_struct dir;
-	const char *path, *full_path;
 	char *seen;
 	int num_ignored = 0, dtype = DT_UNKNOWN, i;
 	struct path_exclude_check check;
 	struct exclude *exclude;
+	struct pathspec pathspec;
 
 	/* read_cache() is only necessary so we can watch out for submodules. */
 	if (read_cache() < 0)
@@ -70,11 +70,22 @@ static int check_ignore(const char *prefix, const char **pathspec)
 	dir.flags |= DIR_COLLECT_IGNORED;
 	setup_standard_excludes(&dir);
 
-	if (!pathspec || !*pathspec) {
+	if (!argc) {
 		if (!quiet)
 			fprintf(stderr, "no pathspec given.\n");
 		return 0;
 	}
+
+	/*
+	 * check-ignore just needs paths. Magic beyond :/ is really
+	 * irrelevant.
+	 */
+	parse_pathspec(&pathspec,
+		       PATHSPEC_ALL_MAGIC & ~PATHSPEC_FROMTOP,
+		       PATHSPEC_SYMLINK_LEADING_PATH |
+		       PATHSPEC_STRIP_SUBMODULE_SLASH_EXPENSIVE |
+		       PATHSPEC_KEEP_ORDER,
+		       prefix, argv);
 
 	path_exclude_check_init(&check, &dir);
 	/*
@@ -82,19 +93,16 @@ static int check_ignore(const char *prefix, const char **pathspec)
 	 * should not be ignored, in order to be consistent with
 	 * 'git status', 'git add' etc.
 	 */
-	seen = find_pathspecs_matching_against_index(pathspec);
-	for (i = 0; pathspec[i]; i++) {
-		path = pathspec[i];
-		full_path = prefix_path(prefix, prefix
-					? strlen(prefix) : 0, path);
-		full_path = check_path_for_gitlink(full_path);
-		die_if_path_beyond_symlink(full_path, prefix);
+	seen = find_pathspecs_matching_against_index(pathspec.raw);
+	for (i = 0; i < pathspec.nr; i++) {
+		const char *full_path = pathspec.raw[i];
 		if (!seen[i]) {
 			exclude = last_exclude_matching_path(&check, full_path,
 							     -1, &dtype);
 			if (exclude) {
 				if (!quiet)
-					output_exclude(path, exclude);
+					output_exclude(pathspec.items[i].original,
+						       exclude);
 				num_ignored++;
 			}
 		}
@@ -129,7 +137,7 @@ static int check_ignore_stdin_paths(const char *prefix)
 	}
 	ALLOC_GROW(pathspec, nr + 1, alloc);
 	pathspec[nr] = NULL;
-	num_ignored = check_ignore(prefix, (const char **)pathspec);
+	num_ignored = check_ignore(nr, (const char **)pathspec, prefix);
 	maybe_flush_or_die(stdout, "attribute to stdout");
 	strbuf_release(&buf);
 	strbuf_release(&nbuf);
@@ -165,7 +173,7 @@ int cmd_check_ignore(int argc, const char **argv, const char *prefix)
 	if (stdin_paths) {
 		num_ignored = check_ignore_stdin_paths(prefix);
 	} else {
-		num_ignored = check_ignore(prefix, argv);
+		num_ignored = check_ignore(argc, argv, prefix);
 		maybe_flush_or_die(stdout, "ignore to stdout");
 	}
 
