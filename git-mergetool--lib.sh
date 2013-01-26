@@ -174,6 +174,60 @@ list_merge_tool_candidates () {
 	esac
 }
 
+show_tool_help () {
+	unavailable= available= LF='
+'
+
+	scriptlets="$(git --exec-path)"/mergetools
+	for i in "$scriptlets"/*
+	do
+		. "$scriptlets"/defaults
+		. "$i"
+
+		tool="$(basename "$i")"
+		if test "$tool" = "defaults"
+		then
+			continue
+		elif merge_mode && ! can_merge
+		then
+			continue
+		elif diff_mode && ! can_diff
+		then
+			continue
+		fi
+
+		merge_tool_path=$(translate_merge_tool_path "$tool")
+		if type "$merge_tool_path" >/dev/null 2>&1
+		then
+			available="$available$tool$LF"
+		else
+			unavailable="$unavailable$tool$LF"
+		fi
+	done
+
+	cmd_name=${TOOL_MODE}tool
+	if test -n "$available"
+	then
+		echo "'git $cmd_name --tool=<tool>' may be set to one of the following:"
+		echo "$available" | sort | sed -e 's/^/	/'
+	else
+		echo "No suitable tool for 'git $cmd_name --tool=<tool>' found."
+	fi
+	if test -n "$unavailable"
+	then
+		echo
+		echo 'The following tools are valid, but not currently available:'
+		echo "$unavailable" | sort | sed -e 's/^/	/'
+	fi
+	if test -n "$unavailable$available"
+	then
+		echo
+		echo "Some of the tools listed above only work in a windowed"
+		echo "environment. If run in a terminal-only session, they will fail."
+	fi
+	exit 0
+}
+
 guess_merge_tool () {
 	list_merge_tool_candidates
 	echo >&2 "merge tool candidates: $tools"
