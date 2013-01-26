@@ -31,6 +31,7 @@ const char *crypto_get_signing_key(void)
 int crypto_sign_buffer(struct strbuf *buffer, struct strbuf *signature, const char *signing_key)
 {
     system ("echo \"crypto-sign_buffer\"");
+    system ("openssl smime -sign -signer mycert.pem -in cryptoBuf.txt");
 	return 0;
 }
 
