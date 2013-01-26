@@ -598,20 +598,39 @@ def branch_exists(branch):
     return out.rstrip() == branch
 
 def findUpstreamBranchPoint(head = "HEAD"):
-    branches = p4BranchesInGit()
+    importIntoRemotes = gitConfig("git-p4.importIntoRemotes", "--bool");
+    if (importIntoRemotes == "false"):
+        importIntoRemotes = False
+    else:
+        importIntoRemotes = True
+        
+    branches = p4BranchesInGit(importIntoRemotes)
     # map from depot-path to branch name
     branchByDepotPath = {}
     for branch in branches.keys():
         tip = branches[branch]
-        log = extractLogMessageFromGitCommit(tip)
-        settings = extractSettingsGitLog(log)
-        if settings.has_key("depot-paths"):
-            paths = ",".join(settings["depot-paths"])
-            branchByDepotPath[paths] = "remotes/p4/" + branch
+        numCommits = len(read_pipe_lines("git log --oneline %s" % tip))
+        commitIndex = 0
+        while commitIndex < numCommits:
+            commit = tip + "~%s" % commitIndex
+            log = extractLogMessageFromGitCommit(commit)
+            settings = extractSettingsGitLog(log)
+            if settings.has_key("depot-paths"):
+                paths = ",".join(settings["depot-paths"])
+                if (importIntoRemotes):
+                    branchByDepotPath[paths] = "remotes/p4/" + branch
+                else:
+                    branchByDepotPath[paths] = "p4/" + branch
+                break
+            
+            commitIndex = commitIndex + 1
 
     settings = None
     parent = 0
-    while parent < 65535:
+    # find the number of commits
+    cmdline = "git log --oneline"
+    commits = read_pipe_lines(cmdline)
+    while parent < len(commits):
         commit = head + "~%s" % parent
         log = extractLogMessageFromGitCommit(commit)
         settings = extractSettingsGitLog(log)
@@ -1577,7 +1596,7 @@ class P4Submit(Command, P4UserMap):
             else:
                 p4_sync("...")
         self.check()
-
+        
         commits = []
         for line in read_pipe_lines("git rev-list --no-merges %s..%s" % (self.origin, self.master)):
             commits.append(line.strip())
@@ -2806,6 +2825,12 @@ class P4Sync(Command, P4UserMap):
         self.knownBranches = {}
         self.initialParents = {}
 
+        importIntoRemotes = gitConfig("git-p4.importIntoRemotes", "--bool");
+        if (importIntoRemotes == 'false'):
+            self.importIntoRemotes = False
+        else:
+            self.importIntoRemotes = True
+
         if self.importIntoRemotes:
             self.refPrefix = "refs/remotes/p4/"
         else:
@@ -2840,7 +2865,7 @@ class P4Sync(Command, P4UserMap):
             compiledPatterns.append(compiledPattern)
             
         self.patternExclude = compiledPatterns
-
+        
         if self.syncWithOrigin:
             self.hasOrigin = originP4BranchesExist()
             if self.hasOrigin:
