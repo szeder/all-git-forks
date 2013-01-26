@@ -15,6 +15,13 @@ current branch to the branch with the same name, only when the current
 branch is set to integrate with that remote branch.  There is a user
 preference configuration variable "push.default" to change this.
 
+"git push $there tag v1.2.3" used to allow replacing a tag v1.2.3
+that already exists in the repository $there, if the rewritten tag
+you are pushing points at a commit that is a decendant of a commit
+that the old tag v1.2.3 points at.  This was found to be error prone
+and starting with this release, any attempt to update an existing
+ref under refs/tags/ hierarchy will fail, without "--force".
+
 
 Updates since v1.8.1
 --------------------
@@ -38,13 +45,21 @@ UI, Workflows & Features
  * Scripts can ask Git that wildcard patterns in pathspecs they give do
    not have any significance, i.e. take them as literal strings.
 
- * The pathspec code learned to grok "foo/**/bar" as a pattern that
-   matches "bar" in 0-or-more levels of subdirectory in "foo".
+ * The patterns in .gitignore and .gitattributes files can have **/,
+   as a pattern that matches 0 or more levels of subdirectory.
+   E.g. "foo/**/bar" matches "bar" in "foo" itself or in a
+   subdirectory of "foo".
 
  * "git blame" (and "git diff") learned the "--no-follow" option.
 
+ * "git check-ignore" command to help debugging .gitignore files has
+   been added.
+
  * "git cherry-pick" can be used to replay a root commit to an unborn
    branch.
+
+ * "git commit" can be told to use --cleanup=whitespace by setting the
+   configuration variable commit.cleanup to 'whitespace'.
 
  * "git fetch --mirror" and fetch that uses other forms of refspec
    with wildcard used to attempt to update a symbolic ref that match
@@ -62,14 +77,28 @@ UI, Workflows & Features
    allows patches from rerolled series to be stored under different
    names and makes it easier to reuse cover letter messsages.
 
+ * "git log" and friends can be told with --use-mailmap option to
+   rewrite the names and email addresses of people using the mailmap
+   mechanism.
+
  * "git push" now requires "-f" to update a tag, even if it is a
    fast-forward, as tags are meant to be fixed points.
+
+ * "git push" will stop without doing anything if the new "pre-push"
+   hook exists and exits with a failure.
 
  * When "git rebase" fails to generate patches to be applied (e.g. due
    to oom), it failed to detect the failure and instead behaved as if
    there were nothing to do.  A workaround to use a temporary file has
    been applied, but we probably would want to revisit this later, as
    it hurts the common case of not failing at all.
+
+ * Input and preconditions to "git reset" has been loosened where
+   appropriate.  "git reset $fromtree Makefile" requires $fromtree to
+   be any tree (it used to require it to be a commit), for example.
+   "git reset" (without options or parameters) used to error out when
+   you do not have any commits in your history, but it now gives you
+   an empty index (to match non-existent commit you are not even on).
 
  * "git submodule" started learning a new mode to integrate with the
    tip of the remote branch (as opposed to integrating with the commit
@@ -83,6 +112,11 @@ Foreign Interface
 
  * A new remote helper to interact with bzr has been added to contrib/.
 
+ * "git p4" got various bugfixes around its branch handling.
+
+ * The remote helper to interact with Hg in contrib/ has seen a few
+   fixes.
+
 
 Performance, Internal Implementation, etc.
 
@@ -92,12 +126,32 @@ Performance, Internal Implementation, etc.
  * Matching paths with common forms of pathspecs that contain wildcard
    characters has been optimized further.
 
+ * "git reset" internals has been reworked and should be faster in
+   general. We tried to be careful not to break any behaviour but
+   there could be corner cases, especially when running the command
+   from a conflicted state, that we may have missed.
+
  * The implementation of "imap-send" has been updated to reuse xml
-   quoting code from http-push codepath.
+   quoting code from http-push codepath, and lost a lot of unused
+   code.
 
  * There is a simple-minded checker for the test scripts in t/
    directory to catch most common mistakes (it is not enabled by
    default).
+
+ * You can build with USE_WILDMATCH=YesPlease to use a replacement
+   implementation of pattern matching logic used for pathname-like
+   things, e.g. refnames and paths in the repository.  This new
+   implementation is not expected change the existing behaviour of Git
+   in this release, except for "git for-each-ref" where you can now
+   say "refs/**/master" and match with both refs/heads/master and
+   refs/remotes/origin/master.  We plan to use this new implementation
+   in wider places (e.g. "git ls-files '**/Makefile' may find Makefile
+   at the top-level, and "git log '**/t*.sh'" may find commits that
+   touch a shell script whose name begins with "t" at any level) in
+   future versions of Git, but we are not there yet.  By building with
+   USE_WILDMATCH, using the resulting Git daily and reporting when you
+   find breakages, you can help us get closer to that goal.
 
 
 Also contains minor documentation updates and code clean-ups.
@@ -138,8 +192,10 @@ details).
 
  * The attribute mechanism didn't allow limiting attributes to be
    applied to only a single directory itself with "path/" like the
-   exclude mechanism does.
-   (merge 94bc671 ja/directory-attrs later to maint).
+   exclude mechanism does.  The initial implementation of this that
+   was merged to 'maint' and 1.8.1.2 was with a severe performance
+   degradations and needs to merge a fix-up topic.
+   (merge 9db9eec nd/fix-directory-attrs-off-by-one later to maint).
 
  * "git apply" misbehaved when fixing whitespace breakages by removing
    excess trailing blank lines.
@@ -152,6 +208,14 @@ details).
  * "git archive" did not record uncompressed size in the header when
    streaming a zip archive, which confused some implementations of unzip.
    (merge 5ea2c84 rs/zip-with-uncompressed-size-in-the-header later to maint).
+
+ * "git clean" showed what it was going to do, but sometimes end up
+   finding that it was not allowed to do so, which resulted in a
+   confusing output (e.g. after saying that it will remove an
+   untracked directory, it found an embedded git repository there
+   which it is not allowed to remove).  It now performs the actions
+   and then reports the outcome more faithfully.
+   (merge f538a91 zk/clean-report-failure later to maint).
 
  * When "git clone --separate-git-dir=$over_there" is interrupted, it
    failed to remove the real location of the $GIT_DIR it created.
@@ -177,6 +241,14 @@ details).
  * After "git add -N" and then writing a tree object out of the
    index, the cache-tree data structure got corrupted.
    (merge eec3e7e nd/invalidate-i-t-a-cache-tree later to maint).
+
+ * "git clone" used to allow --bare and --separate-git-dir=$there
+   options at the same time, which was nonsensical.
+   (merge 95b63f1 nd/clone-no-separate-git-dir-with-bare later to maint).
+
+ * "git rebase --preserve-merges" lost empty merges in recent versions
+   of Git.
+   (merge 9869778 ph/rebase-preserve-all-merges later to maint).
 
  * "git merge --no-edit" computed who were involved in the work done
    on the side branch, even though that information is to be discarded
@@ -212,6 +284,14 @@ details).
    whose length exactly is the wrap width, "git shortlog -w" failed
    to add a newline after such a line.
    (merge e0db176 sp/shortlog-missing-lf later to maint).
+
+ * Command line completion leaked an unnecessary error message while
+   looking for possible matches with paths in <tree-ish>.
+   (merge ca87dd6 ds/completion-silence-in-tree-path-probe later to maint).
+
+ * Command line completion for "tcsh" emitted an unwanted space
+   after completing a single directory name.
+   (merge 92f1c04 mk/complete-tcsh later to maint).
 
  * Some shells do not behave correctly when IFS is unset; work it
    around by explicitly setting it to the default value.
