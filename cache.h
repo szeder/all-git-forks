@@ -182,6 +182,8 @@ struct cache_entry {
 #error "CE_EXTENDED_FLAGS out of range"
 #endif
 
+struct pathspec;
+
 /*
  * Copy the sha1 and stat state of a cache entry from one to
  * another. But we never change the name, or the hash state!
@@ -474,27 +476,7 @@ extern int index_name_is_other(const struct index_state *, const char *, int);
 extern int ie_match_stat(const struct index_state *, struct cache_entry *, struct stat *, unsigned int);
 extern int ie_modified(const struct index_state *, struct cache_entry *, struct stat *, unsigned int);
 
-#define PATHSPEC_ONESTAR 1	/* the pathspec pattern sastisfies GFNM_ONESTAR */
-
-struct pathspec {
-	const char **raw; /* get_pathspec() result, not freed by free_pathspec() */
-	int nr;
-	unsigned int has_wildcard:1;
-	unsigned int recursive:1;
-	int max_depth;
-	struct pathspec_item {
-		const char *match;
-		int len;
-		int nowildcard_len;
-		int flags;
-	} *items;
-};
-
-extern int init_pathspec(struct pathspec *, const char **);
-extern void free_pathspec(struct pathspec *);
 extern int ce_path_match(const struct cache_entry *ce, const struct pathspec *pathspec);
-
-extern int limit_pathspec_to_literal(void);
 
 #define HASH_WRITE_OBJECT 1
 #define HASH_FORMAT_CHECK 2
