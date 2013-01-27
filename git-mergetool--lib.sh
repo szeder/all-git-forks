@@ -2,6 +2,37 @@
 # git-mergetool--lib is a library for common merge tool functions
 MERGE_TOOLS_DIR=$(git --exec-path)/mergetools
 
+mode_ok () {
+	if diff_mode
+	then
+		can_diff
+	elif merge_mode
+	then
+		can_merge
+	else
+		false
+	fi
+}
+
+is_available () {
+	merge_tool_path=$(translate_merge_tool_path "$1") &&
+	type "$merge_tool_path" >/dev/null 2>&1
+}
+
+filter_tools () {
+	filter="$1"
+	prefix="$2"
+	(
+		cd "$MERGE_TOOLS_DIR" && ls -1 *
+	) |
+	while read tool
+	do
+		setup_tool "$tool" 2>/dev/null &&
+		(eval "$filter" "$tool") &&
+		printf "$prefix$tool\n"
+	done
+}
+
 diff_mode() {
 	test "$TOOL_MODE" = diff
 }
@@ -199,27 +230,13 @@ list_merge_tool_candidates () {
 }
 
 show_tool_help () {
-	unavailable= available= LF='
-'
-	for i in "$MERGE_TOOLS_DIR"/*
-	do
-		tool=$(basename "$i")
-		setup_tool "$tool" 2>/dev/null || continue
-
-		merge_tool_path=$(translate_merge_tool_path "$tool")
-		if type "$merge_tool_path" >/dev/null 2>&1
-		then
-			available="$available$tool$LF"
-		else
-			unavailable="$unavailable$tool$LF"
-		fi
-	done
-
 	cmd_name=${TOOL_MODE}tool
+	available=$(filter_tools 'mode_ok && is_available' '\t\t')
+	unavailable=$(filter_tools 'mode_ok && ! is_available' '\t\t')
 	if test -n "$available"
 	then
 		echo "'git $cmd_name --tool=<tool>' may be set to one of the following:"
-		echo "$available" | sort | sed -e 's/^/	/'
+		printf "$available"
 	else
 		echo "No suitable tool for 'git $cmd_name --tool=<tool>' found."
 	fi
@@ -227,7 +244,7 @@ show_tool_help () {
 	then
 		echo
 		echo 'The following tools are valid, but not currently available:'
-		echo "$unavailable" | sort | sed -e 's/^/	/'
+		printf "$unavailable"
 	fi
 	if test -n "$unavailable$available"
 	then
@@ -250,17 +267,12 @@ $tools
 	printf "$msg" >&2
 
 	# Loop over each candidate and stop when a valid merge tool is found.
-	for i in $tools
+	for tool in $tools
 	do
-		merge_tool_path=$(translate_merge_tool_path "$i")
-		if type "$merge_tool_path" >/dev/null 2>&1
-		then
-			echo "$i"
-			return 0
-		fi
+		is_available "$tool" && echo "$tool" && return 0
 	done
 
-	echo >&2 "No known merge resolution program available."
+	echo >&2 "No known ${TOOL_MODE} tool is available."
 	return 1
 }
 
