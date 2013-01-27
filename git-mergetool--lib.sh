@@ -57,8 +57,28 @@ setup_tool () {
 		return 2
 	fi
 
-	# Load the default functions
-	. "$MERGE_TOOLS_DIR/include/defaults.sh"
+	# Fallback definitions, to be overriden by tools.
+	can_merge () {
+		return 0
+	}
+
+	can_diff () {
+		return 0
+	}
+
+	diff_cmd () {
+		status=1
+		return $status
+	}
+
+	merge_cmd () {
+		status=1
+		return $status
+	}
+
+	translate_merge_tool_path () {
+		echo "$1"
+	}
 
 	# Load the redefined functions
 	. "$MERGE_TOOLS_DIR/$tool"
