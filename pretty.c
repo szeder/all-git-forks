@@ -409,7 +409,7 @@ void pp_user_info(const struct pretty_print_context *pp,
 	}
 
 	linelen = ++line_end - line;
-	if (split_ident_line(&ident, line, linelen))
+	if (split_ident_line(&ident, line, linelen) || !ident.date_begin)
 		return;
 
 
