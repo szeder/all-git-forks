@@ -2,6 +2,42 @@
 # git-mergetool--lib is a library for common merge tool functions
 MERGE_TOOLS_DIR=$(git --exec-path)/mergetools
 
+mode_ok () {
+	if diff_mode
+	then
+		can_diff
+	elif merge_mode
+	then
+		can_merge
+	else
+		false
+	fi
+}
+
+is_available () {
+	merge_tool_path=$(translate_merge_tool_path "$1") &&
+	type "$merge_tool_path" >/dev/null 2>&1
+}
+
+show_tool_names () {
+	condition=${1:-true} per_line_prefix=${2:-} preamble=${3:-}
+
+	( cd "$MERGE_TOOLS_DIR" && ls -1 * ) |
+	while read toolname
+	do
+		if setup_tool "$toolname" 2>/dev/null &&
+			(eval "$condition" "$toolname")
+		then
+			if test -n "$preamble"
+			then
+				echo "$preamble"
+				preamble=
+			fi
+			printf "%s%s\n" "$per_line_prefix" "$tool"
+		fi
+	done
+}
+
 diff_mode() {
 	test "$TOOL_MODE" = diff
 }
@@ -199,35 +235,21 @@ list_merge_tool_candidates () {
 }
 
 show_tool_help () {
-	unavailable= available= LF='
-'
-	for i in "$MERGE_TOOLS_DIR"/*
-	do
-		tool=$(basename "$i")
-		setup_tool "$tool" 2>/dev/null || continue
-
-		merge_tool_path=$(translate_merge_tool_path "$tool")
-		if type "$merge_tool_path" >/dev/null 2>&1
-		then
-			available="$available$tool$LF"
-		else
-			unavailable="$unavailable$tool$LF"
-		fi
-	done
-
-	cmd_name=${TOOL_MODE}tool
+	tool_opt="'git ${TOOL_MODE}tool --tool-<tool>'"
+	available=$(show_tool_names 'mode_ok && is_available' '\t\t' \
+		"$tool_opt may be set to one of the following:")
+	unavailable=$(show_tool_names 'mode_ok && ! is_available' '\t\t' \
+		"The following tools are valid, but not currently available:")
 	if test -n "$available"
 	then
-		echo "'git $cmd_name --tool=<tool>' may be set to one of the following:"
-		echo "$available" | sort | sed -e 's/^/	/'
+		echo "$available"
 	else
 		echo "No suitable tool for 'git $cmd_name --tool=<tool>' found."
 	fi
 	if test -n "$unavailable"
 	then
 		echo
-		echo 'The following tools are valid, but not currently available:'
-		echo "$unavailable" | sort | sed -e 's/^/	/'
+		echo "$unavailable"
 	fi
 	if test -n "$unavailable$available"
 	then
@@ -249,17 +271,12 @@ guess_merge_tool () {
 	EOF
 
 	# Loop over each candidate and stop when a valid merge tool is found.
-	for i in $tools
+	for tool in $tools
 	do
-		merge_tool_path=$(translate_merge_tool_path "$i")
-		if type "$merge_tool_path" >/dev/null 2>&1
-		then
-			echo "$i"
-			return 0
-		fi
+		is_available "$tool" && echo "$tool" && return 0
 	done
 
-	echo >&2 "No known merge resolution program available."
+	echo >&2 "No known ${TOOL_MODE} tool is available."
 	return 1
 }
 
