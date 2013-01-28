@@ -104,6 +104,16 @@ def read_pipe(c, ignore_error=False):
 
     return val
 
+def pipe_commands(s, t):
+    if verbose:
+        print "Piping [%s] | [%s]" % (s, t)
+        
+    p1 = subprocess.Popen([s], stdout=PIPE)
+    p2 = subprocess.Popen([t], stdin=p1.stdout, stdout=PIPE)
+    p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
+    (output, errors) = p2.communicate()
+    return p1.returncode & p2.returncode
+
 def p4_read_pipe(c, ignore_error=False):
     real_cmd = p4_build_cmd(c)
     return read_pipe(real_cmd, ignore_error)
@@ -1052,7 +1062,7 @@ class P4Submit(Command, P4UserMap):
     def p4UserForCommit(self,id):
         # Return the tuple (perforce user,git email) for a given git commit id
         self.getUserMapFromPerforceServer()
-        gitEmail = read_pipe("git log --max-count=1 --format='%%ae' %s" % id)
+        gitEmail = read_pipe('git log --max-count=1 --format="%%ae" %s' % id)
         gitEmail = gitEmail.strip()
         if not self.emails.has_key(gitEmail):
             return (None,gitEmail)
@@ -1206,25 +1216,40 @@ class P4Submit(Command, P4UserMap):
         filesToChangeExecBit = {}
 
         for line in diff:
+            if (self.verbose):
+                print "Parsing diff entry [%s]" % line.rstrip("\n")
+                
             diff = parseDiffTreeEntry(line)
             modifier = diff['status']
             path = diff['src']
             if modifier == "M":
+                if (self.verbose):
+                    print "P4 editing [%s]" % path
+                    
                 p4_edit(path)
                 if isModeExecChanged(diff['src_mode'], diff['dst_mode']):
                     filesToChangeExecBit[path] = diff['dst_mode']
                 editedFiles.add(path)
             elif modifier == "A":
+                if (self.verbose):
+                    print "P4 adding [%s]" % path
+
                 filesToAdd.add(path)
                 filesToChangeExecBit[path] = diff['dst_mode']
                 if path in filesToDelete:
                     filesToDelete.remove(path)
             elif modifier == "D":
+                if (self.verbose):
+                    print "P4 deleting [%s]" % path
+
                 filesToDelete.add(path)
                 if path in filesToAdd:
                     filesToAdd.remove(path)
             elif modifier == "C":
                 src, dest = diff['src'], diff['dst']
+                if (self.verbose):
+                    print "P4 integrating [src : %s] with [dest : %s]" % (src, dest)
+
                 p4_integrate(src, dest)
                 pureRenameCopy.add(dest)
                 if diff['src_sha1'] != diff['dst_sha1']:
@@ -1238,6 +1263,9 @@ class P4Submit(Command, P4UserMap):
                 editedFiles.add(dest)
             elif modifier == "R":
                 src, dest = diff['src'], diff['dst']
+                if (self.verbose):
+                    print "P4 moving [src : %s] with [dest : %s]" % (src, dest)
+
                 if self.p4HasMoveCommand:
                     p4_edit(src)        # src must be open before move
                     p4_move(src, dest)  # opens for (move/delete, move/add)
@@ -1262,6 +1290,10 @@ class P4Submit(Command, P4UserMap):
         patchcmd = diffcmd + " | git apply "
         tryPatchCmd = patchcmd + "--check -"
         applyPatchCmd = patchcmd + "--check --apply -"
+        
+        if (self.verbose):
+            print "Trying patch command [%s]" % tryPatchCmd
+            
         patch_succeeded = True
 
         if os.system(tryPatchCmd) != 0:
@@ -1606,7 +1638,7 @@ class P4Submit(Command, P4UserMap):
             self.checkAuthorship = False
         else:
             self.checkAuthorship = True
-
+        
         if self.preserveUser:
             self.checkValidP4Users(commits)
 
