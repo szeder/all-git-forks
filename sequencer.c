@@ -1020,16 +1020,19 @@ int sequencer_pick_revisions(struct replay_opts *opts)
 static int ends_rfc2822_footer(struct strbuf *sb, int ignore_footer)
 {
 	int ch;
-	int hit = 0;
+	int last_char_was_nl, this_char_is_nl;
 	int i, j, k;
 	int len = sb->len - ignore_footer;
 	int first = 1;
 	const char *buf = sb->buf;
 
+	/* find start of last paragraph */
+	last_char_was_nl = 0;
 	for (i = len - 1; i > 0; i--) {
-		if (hit && buf[i] == '\n')
+		this_char_is_nl = (buf[i] == '\n');
+		if (last_char_was_nl && this_char_is_nl)
 			break;
-		hit = (buf[i] == '\n');
+		last_char_was_nl = this_char_is_nl;
 	}
 
 	while (i < len - 1 && buf[i] == '\n')
