@@ -18,6 +18,7 @@
 #define GIT_REFLOG_ACTION "GIT_REFLOG_ACTION"
 
 const char sign_off_header[] = "Signed-off-by: ";
+static const char cherry_picked_prefix[] = "(cherry picked from commit ";
 
 static void remove_sequencer_state(void)
 {
@@ -492,7 +493,7 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 		}
 
 		if (opts->record_origin) {
-			strbuf_addstr(&msgbuf, "(cherry picked from commit ");
+			strbuf_addstr(&msgbuf, cherry_picked_prefix);
 			strbuf_addstr(&msgbuf, sha1_to_hex(commit->object.sha1));
 			strbuf_addstr(&msgbuf, ")\n");
 		}
@@ -1017,11 +1018,36 @@ int sequencer_pick_revisions(struct replay_opts *opts)
 	return pick_commits(todo_list, opts);
 }
 
-static int ends_rfc2822_footer(struct strbuf *sb, int ignore_footer)
+static int is_rfc2822_line(const char *buf, int len)
 {
-	int ch;
+	int i;
+
+	for (i = 0; i < len; i++) {
+		int ch = buf[i];
+		if (ch == ':')
+			break;
+		if (isalnum(ch) || (ch == '-'))
+			continue;
+		return 0;
+	}
+
+	return 1;
+}
+
+static int is_cherry_picked_from_line(const char *buf, int len)
+{
+	/*
+	 * We only care that it looks roughly like (cherry picked from ...)
+	 */
+	return !prefixcmp(buf, cherry_picked_prefix) &&
+		(buf[len - 1] == ')' ||
+		 (buf[len - 1] == '\n' && buf[len - 2] == ')'));
+}
+
+static int has_conforming_footer(struct strbuf *sb, int ignore_footer)
+{
 	int last_char_was_nl, this_char_is_nl;
-	int i, j, k;
+	int i, k;
 	int len = sb->len - ignore_footer;
 	const char *buf = sb->buf;
 
@@ -1042,15 +1068,9 @@ static int ends_rfc2822_footer(struct strbuf *sb, int ignore_footer)
 			; /* do nothing */
 		k++;
 
-		for (j = 0; i + j < len; j++) {
-			ch = buf[i + j];
-			if (ch == ':')
-				break;
-			if (isalnum(ch) ||
-			    (ch == '-'))
-				continue;
+		if (!(is_rfc2822_line(buf + i, k - i) ||
+			is_cherry_picked_from_line(buf + i, k - i)))
 			return 0;
-		}
 	}
 	return 1;
 }
@@ -1067,7 +1087,7 @@ void append_signoff(struct strbuf *msgbuf, int ignore_footer)
 	for (i = msgbuf->len - 1 - ignore_footer; i > 0 && msgbuf->buf[i - 1] != '\n'; i--)
 		; /* do nothing */
 	if (prefixcmp(msgbuf->buf + i, sob.buf)) {
-		if (!i || !ends_rfc2822_footer(msgbuf, ignore_footer))
+		if (!i || !has_conforming_footer(msgbuf, ignore_footer))
 			strbuf_splice(msgbuf, msgbuf->len - ignore_footer, 0, "\n", 1);
 		strbuf_splice(msgbuf, msgbuf->len - ignore_footer, 0, sob.buf, sob.len);
 	}
