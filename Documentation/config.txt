@@ -2063,7 +2063,8 @@ transfer.hiderefs::
 	more than one transfer.hiderefs configuration variables to
 	specify multiple prefix strings. A ref that has one of these
 	strings as its prefix is excluded, and is hidden from
-	`git clone --mirror` and `git push :`.
+	`git clone --mirror` and `git push :`.  An attempt to update
+	or delete a hidden ref by `git push` is	rejected.
 
 transfer.unpackLimit::
 	When `fetch.unpackLimit` or `receive.unpackLimit` are

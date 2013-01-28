@@ -696,6 +696,20 @@ static int iterate_receive_command_list(void *cb_data, unsigned char sha1[20])
 	return -1; /* end of list */
 }
 
+static void reject_updates_to_hidden(struct command *commands)
+{
+	struct command *cmd;
+
+	for (cmd = commands; cmd; cmd = cmd->next) {
+		if (cmd->error_string || !ref_is_hidden(cmd->ref_name))
+			continue;
+		if (is_null_sha1(cmd->new_sha1))
+			cmd->error_string = "deny deleting a hidden ref";
+		else
+			cmd->error_string = "deny updating a hidden ref";
+	}
+}
+
 static void execute_commands(struct command *commands, const char *unpacker_error)
 {
 	struct command *cmd;
@@ -711,6 +725,8 @@ static void execute_commands(struct command *commands, const char *unpacker_erro
 	if (check_everything_connected(iterate_receive_command_list,
 				       0, &cmd))
 		set_connectivity_errors(commands);
+
+	reject_updates_to_hidden(commands);
 
 	if (run_receive_hook(commands, pre_receive_hook, 0)) {
 		for (cmd = commands; cmd; cmd = cmd->next) {
