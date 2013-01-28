@@ -37,6 +37,9 @@ static int add_submodule_odb(const char *path)
 	int ret = 0;
 	const char *git_dir;
 
+	if (!(odb_default & ODB_EXTALT))
+		die("BUG: this command does not support submodule odb");
+
 	strbuf_addf(&objects_directory, "%s/.git", path);
 	git_dir = read_gitfile(objects_directory.buf);
 	if (git_dir) {

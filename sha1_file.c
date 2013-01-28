@@ -37,6 +37,10 @@ static inline uintmax_t sz_fmt(size_t s) { return s; }
 const unsigned char null_sha1[20];
 
 /*
+ * Some commands may not want to touch ODB_EXTALT at all. So
+ * ODB_EXTALT is only enabled later, not now, when we know which
+ * command is running.
+ *
  * clear_delta_base_cache() may be needed if odb_default is changed to
  * a narrower origin set.
  */
@@ -433,10 +437,12 @@ void foreach_alt_odb(alt_odb_fn fn, void *cb)
 			return;
 }
 
-static inline int match_origin(unsigned int origin, int pack_local)
+static inline int match_origin(unsigned int origin,
+			       struct alternate_object_database *alt)
 {
-	return (pack_local && (origin & ODB_LOCAL)) ||
-		(!pack_local && (origin & ODB_ALT));
+	return (!alt && (origin & ODB_LOCAL)) ||
+		(alt && (origin & ODB_ALT)    && !alt->external) ||
+		(alt && (origin & ODB_EXTALT) &&  alt->external);
 }
 
 void prepare_alt_odb(void)
@@ -464,10 +470,12 @@ static int has_loose_object_extended(const unsigned char *sha1,
 			return 1;
 	}
 
-	if (origin & ODB_ALT) {
+	if (origin & (ODB_ALT | ODB_EXTALT)) {
 		struct alternate_object_database *alt;
 		prepare_alt_odb();
 		for (alt = alt_odb_list; alt; alt = alt->next) {
+			if (!match_origin(origin, alt))
+				continue;
 			fill_sha1_path(alt->name, sha1);
 			if (!access(alt->base, F_OK))
 				return 1;
@@ -478,7 +486,7 @@ static int has_loose_object_extended(const unsigned char *sha1,
 
 int has_loose_object_nonlocal(const unsigned char *sha1)
 {
-	unsigned int origin = ODB_ALT;
+	unsigned int origin = ODB_ALT | ODB_EXTALT;
 	return has_loose_object_extended(sha1, origin);
 }
 
@@ -1354,7 +1362,7 @@ static int open_sha1_file(const unsigned char *sha1, unsigned int origin)
 	    (fd = git_open_noatime(name)) >= 0)
 		return fd;
 
-	if (!(origin & ODB_ALT)) {
+	if (!(origin & (ODB_ALT | ODB_EXTALT))) {
 		errno = ENOENT;
 		return -1;
 	}
@@ -1362,6 +1370,8 @@ static int open_sha1_file(const unsigned char *sha1, unsigned int origin)
 	prepare_alt_odb();
 	errno = ENOENT;
 	for (alt = alt_odb_list; alt; alt = alt->next) {
+		if (!match_origin(origin, alt))
+			continue;
 		name = alt->name;
 		fill_sha1_path(name, sha1);
 		fd = git_open_noatime(alt->base);
@@ -2330,7 +2340,7 @@ static int fill_pack_entry(const unsigned char *sha1,
 {
 	off_t offset;
 
-	if (!match_origin(origin, p->pack_local))
+	if (!match_origin(origin, p->alt))
 		return 0;
 
 	if (p->num_bad_objects) {

@@ -242,6 +242,7 @@ static int handle_alias(int *argcp, const char ***argv)
  * RUN_SETUP for reading from the configuration file.
  */
 #define NEED_WORK_TREE		(1<<3)
+#define NO_ODB_EXTALT		(1<<4)
 
 struct cmd_struct {
 	const char *cmd;
@@ -258,6 +259,9 @@ static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
 	prefix = NULL;
 	help = argc == 2 && !strcmp(argv[1], "-h");
 	if (!help) {
+		if (!(p->option & NO_ODB_EXTALT))
+			odb_default |= ODB_EXTALT;
+
 		if (p->option & RUN_SETUP)
 			prefix = setup_git_directory();
 		if (p->option & RUN_SETUP_GENTLY) {
@@ -349,7 +353,7 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "grep", cmd_grep, RUN_SETUP_GENTLY },
 		{ "hash-object", cmd_hash_object },
 		{ "help", cmd_help },
-		{ "index-pack", cmd_index_pack, RUN_SETUP_GENTLY },
+		{ "index-pack", cmd_index_pack, RUN_SETUP_GENTLY | NO_ODB_EXTALT },
 		{ "init", cmd_init_db },
 		{ "init-db", cmd_init_db },
 		{ "log", cmd_log, RUN_SETUP },
@@ -392,7 +396,7 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "repo-config", cmd_repo_config, RUN_SETUP_GENTLY },
 		{ "rerere", cmd_rerere, RUN_SETUP },
 		{ "reset", cmd_reset, RUN_SETUP },
-		{ "rev-list", cmd_rev_list, RUN_SETUP },
+		{ "rev-list", cmd_rev_list, RUN_SETUP | NO_ODB_EXTALT },
 		{ "rev-parse", cmd_rev_parse },
 		{ "revert", cmd_revert, RUN_SETUP | NEED_WORK_TREE },
 		{ "rm", cmd_rm, RUN_SETUP },
@@ -408,7 +412,7 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "tag", cmd_tag, RUN_SETUP },
 		{ "tar-tree", cmd_tar_tree },
 		{ "unpack-file", cmd_unpack_file, RUN_SETUP },
-		{ "unpack-objects", cmd_unpack_objects, RUN_SETUP },
+		{ "unpack-objects", cmd_unpack_objects, RUN_SETUP | NO_ODB_EXTALT },
 		{ "update-index", cmd_update_index, RUN_SETUP },
 		{ "update-ref", cmd_update_ref, RUN_SETUP },
 		{ "update-server-info", cmd_update_server_info, RUN_SETUP },

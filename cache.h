@@ -754,6 +754,7 @@ int offset_1st_component(const char *path);
  * function cals explicitly.
  */
 #define ODB_DEFAULT	8
+#define ODB_EXTALT	16	/* add_submodule_odb() */
 
 extern unsigned int odb_default;
 
