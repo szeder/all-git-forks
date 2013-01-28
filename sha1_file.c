@@ -37,6 +37,12 @@ static inline uintmax_t sz_fmt(size_t s) { return s; }
 const unsigned char null_sha1[20];
 
 /*
+ * clear_delta_base_cache() may be needed if odb_default is changed to
+ * a narrower origin set.
+ */
+unsigned int odb_default = ODB_DEFAULT | ODB_LOCAL | ODB_ALT | ODB_CACHED;
+
+/*
  * This is meant to hold a *small* number of objects that you would
  * want read_sha1_file() to be able to return, but yet you do not want
  * to write them into the object store (e.g. a browse-only
@@ -59,10 +65,14 @@ static struct cached_object empty_tree = {
 
 static struct packed_git *last_found_pack;
 
-static struct cached_object *find_cached_object(const unsigned char *sha1)
+static struct cached_object *find_cached_object(const unsigned char *sha1,
+						unsigned int origin)
 {
 	int i;
 	struct cached_object *co = cached_objects;
+
+	if (!(origin & ODB_CACHED))
+		return NULL;
 
 	for (i = 0; i < cached_object_nr; i++, co++) {
 		if (!hashcmp(co->sha1, sha1))
@@ -404,6 +414,12 @@ void foreach_alt_odb(alt_odb_fn fn, void *cb)
 			return;
 }
 
+static inline int match_origin(unsigned int origin, int pack_local)
+{
+	return (pack_local && (origin & ODB_LOCAL)) ||
+		(!pack_local && (origin & ODB_ALT));
+}
+
 void prepare_alt_odb(void)
 {
 	const char *alt;
@@ -420,28 +436,31 @@ void prepare_alt_odb(void)
 	read_info_alternates(get_object_directory(), 0);
 }
 
-static int has_loose_object_local(const unsigned char *sha1)
+static int has_loose_object_extended(const unsigned char *sha1,
+				     unsigned int origin)
 {
-	char *name = sha1_file_name(sha1);
-	return !access(name, F_OK);
-}
-
-int has_loose_object_nonlocal(const unsigned char *sha1)
-{
-	struct alternate_object_database *alt;
-	prepare_alt_odb();
-	for (alt = alt_odb_list; alt; alt = alt->next) {
-		fill_sha1_path(alt->name, sha1);
-		if (!access(alt->base, F_OK))
+	if (origin & ODB_LOCAL) {
+		char *name = sha1_file_name(sha1);
+		if (!access(name, F_OK))
 			return 1;
+	}
+
+	if (origin & ODB_ALT) {
+		struct alternate_object_database *alt;
+		prepare_alt_odb();
+		for (alt = alt_odb_list; alt; alt = alt->next) {
+			fill_sha1_path(alt->name, sha1);
+			if (!access(alt->base, F_OK))
+				return 1;
+		}
 	}
 	return 0;
 }
 
-static int has_loose_object(const unsigned char *sha1)
+int has_loose_object_nonlocal(const unsigned char *sha1)
 {
-	return has_loose_object_local(sha1) ||
-	       has_loose_object_nonlocal(sha1);
+	unsigned int origin = ODB_ALT;
+	return has_loose_object_extended(sha1, origin);
 }
 
 static unsigned int pack_used_ctr;
@@ -1303,15 +1322,20 @@ static int git_open_noatime(const char *name)
 	}
 }
 
-static int open_sha1_file(const unsigned char *sha1)
+static int open_sha1_file(const unsigned char *sha1, unsigned int origin)
 {
 	int fd;
 	char *name = sha1_file_name(sha1);
 	struct alternate_object_database *alt;
 
-	fd = git_open_noatime(name);
-	if (fd >= 0)
+	if ((origin & ODB_LOCAL) &&
+	    (fd = git_open_noatime(name)) >= 0)
 		return fd;
+
+	if (!(origin & ODB_ALT)) {
+		errno = ENOENT;
+		return -1;
+	}
 
 	prepare_alt_odb();
 	errno = ENOENT;
@@ -1325,12 +1349,14 @@ static int open_sha1_file(const unsigned char *sha1)
 	return -1;
 }
 
-void *map_sha1_file(const unsigned char *sha1, unsigned long *size)
+void *map_sha1_file(const unsigned char *sha1,
+		    unsigned int origin,
+		    unsigned long *size)
 {
 	void *map;
 	int fd;
 
-	fd = open_sha1_file(sha1);
+	fd = open_sha1_file(sha1, origin);
 	map = NULL;
 	if (fd >= 0) {
 		struct stat st;
@@ -1872,7 +1898,8 @@ static void clear_delta_base_cache_entry(struct delta_base_cache_entry *ent)
 	delta_base_cached -= ent->size;
 }
 
-static void *cache_or_unpack_entry(struct packed_git *p, off_t base_offset,
+static void *cache_or_unpack_entry(struct packed_git *p,
+				   unsigned int origin, off_t base_offset,
 	unsigned long *base_size, enum object_type *type, int keep_cache)
 {
 	struct delta_base_cache_entry *ent;
@@ -1880,8 +1907,9 @@ static void *cache_or_unpack_entry(struct packed_git *p, off_t base_offset,
 
 	ent = get_delta_base_cache_entry(p, base_offset);
 
-	if (!eq_delta_base_cache_entry(ent, p, base_offset))
-		return unpack_entry(p, base_offset, type, base_size);
+	if (!(origin & ODB_DEFAULT) || /* only cache the default case */
+	    !eq_delta_base_cache_entry(ent, p, base_offset))
+		return unpack_entry(p, origin, base_offset, type, base_size);
 
 	ret = ent->data;
 
@@ -1949,7 +1977,9 @@ static void add_delta_base_cache(struct packed_git *p, off_t base_offset,
 	delta_base_cache_lru.prev = &ent->lru;
 }
 
-static void *read_object(const unsigned char *sha1, enum object_type *type,
+static void *read_object(const unsigned char *sha1,
+			 unsigned int origin,
+			 enum object_type *type,
 			 unsigned long *size);
 
 static void write_pack_access_log(struct packed_git *p, off_t obj_offset)
@@ -1979,7 +2009,8 @@ struct unpack_entry_stack_ent {
 	unsigned long size;
 };
 
-void *unpack_entry(struct packed_git *p, off_t obj_offset,
+void *unpack_entry(struct packed_git *p,
+		   unsigned int origin, off_t obj_offset,
 		   enum object_type *final_type, unsigned long *final_size)
 {
 	struct pack_window *w_curs = NULL;
@@ -2090,7 +2121,7 @@ void *unpack_entry(struct packed_git *p, off_t obj_offset,
 
 		data = NULL;
 
-		if (base)
+		if (base && (origin & ODB_DEFAULT))
 			add_delta_base_cache(p, obj_offset, base, base_size, type);
 
 		if (!base) {
@@ -2110,7 +2141,7 @@ void *unpack_entry(struct packed_git *p, off_t obj_offset,
 				      sha1_to_hex(base_sha1), (uintmax_t)obj_offset,
 				      p->pack_name);
 				mark_bad_packed_object(p, base_sha1);
-				base = read_object(base_sha1, &type, &base_size);
+				base = read_object(base_sha1, origin, &type, &base_size);
 			}
 		}
 
@@ -2271,10 +2302,14 @@ int is_pack_valid(struct packed_git *p)
 }
 
 static int fill_pack_entry(const unsigned char *sha1,
+			   unsigned int origin,
 			   struct pack_entry *e,
 			   struct packed_git *p)
 {
 	off_t offset;
+
+	if (!match_origin(origin, p->pack_local))
+		return 0;
 
 	if (p->num_bad_objects) {
 		unsigned i;
@@ -2304,7 +2339,9 @@ static int fill_pack_entry(const unsigned char *sha1,
 	return 1;
 }
 
-static int find_pack_entry(const unsigned char *sha1, struct pack_entry *e)
+static int find_pack_entry(const unsigned char *sha1,
+			   unsigned int origin,
+			   struct pack_entry *e)
 {
 	struct packed_git *p;
 
@@ -2312,11 +2349,12 @@ static int find_pack_entry(const unsigned char *sha1, struct pack_entry *e)
 	if (!packed_git)
 		return 0;
 
-	if (last_found_pack && fill_pack_entry(sha1, e, last_found_pack))
+	if (last_found_pack &&
+	    fill_pack_entry(sha1, origin, e, last_found_pack))
 		return 1;
 
 	for (p = packed_git; p; p = p->next) {
-		if (p == last_found_pack || !fill_pack_entry(sha1, e, p))
+		if (p == last_found_pack || !fill_pack_entry(sha1, origin, e, p))
 			continue;
 
 		last_found_pack = p;
@@ -2346,7 +2384,7 @@ static int sha1_loose_object_info(const unsigned char *sha1, unsigned long *size
 	git_zstream stream;
 	char hdr[32];
 
-	map = map_sha1_file(sha1, &mapsize);
+	map = map_sha1_file(sha1, odb_default, &mapsize);
 	if (!map)
 		return error("unable to find %s", sha1_to_hex(sha1));
 	if (unpack_sha1_header(&stream, map, mapsize, hdr, sizeof(hdr)) < 0)
@@ -2367,8 +2405,9 @@ int sha1_object_info_extended(const unsigned char *sha1, struct object_info *oi)
 	struct cached_object *co;
 	struct pack_entry e;
 	int status, rtype;
+	unsigned int origin = odb_default;
 
-	co = find_cached_object(sha1);
+	co = find_cached_object(sha1, origin);
 	if (co) {
 		if (oi->sizep)
 			*(oi->sizep) = co->size;
@@ -2376,7 +2415,7 @@ int sha1_object_info_extended(const unsigned char *sha1, struct object_info *oi)
 		return co->type;
 	}
 
-	if (!find_pack_entry(sha1, &e)) {
+	if (!find_pack_entry(sha1, origin, &e)) {
 		/* Most likely it's a loose object. */
 		status = sha1_loose_object_info(sha1, oi->sizep);
 		if (status >= 0) {
@@ -2386,7 +2425,7 @@ int sha1_object_info_extended(const unsigned char *sha1, struct object_info *oi)
 
 		/* Not a loose object; someone else may have just packed it. */
 		reprepare_packed_git();
-		if (!find_pack_entry(sha1, &e))
+		if (!find_pack_entry(sha1, origin, &e))
 			return status;
 	}
 
@@ -2416,15 +2455,26 @@ int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
 }
 
 static void *read_packed_sha1(const unsigned char *sha1,
+			      unsigned int origin,
 			      enum object_type *type, unsigned long *size)
 {
 	struct pack_entry e;
 	void *data;
 
-	if (!find_pack_entry(sha1, &e))
+	if (!find_pack_entry(sha1, origin, &e))
 		return NULL;
-	data = cache_or_unpack_entry(e.p, e.offset, size, type, 1);
-	if (!data) {
+	data = cache_or_unpack_entry(e.p, origin, e.offset, size, type, 1);
+	if (!data &&
+	    /*
+	     * If a user attempts to read from a single source via
+	     * read_sha1_file_extended and the object has base in
+	     * another source, it'll come here. It's not as bad as the
+	     * corrupted pack we're handling in the below block
+	     * because the user asked to do so and must be able to
+	     * deal with the consequences. Just return NULL in this
+	     * case without marking the sha-1 "bad".
+	     */
+	    !(origin & ODB_DEFAULT)) {
 		/*
 		 * We're probably in deep shit, but let's try to fetch
 		 * the required object anyway from another pack or loose.
@@ -2434,7 +2484,7 @@ static void *read_packed_sha1(const unsigned char *sha1,
 		error("failed to read object %s at offset %"PRIuMAX" from %s",
 		      sha1_to_hex(sha1), (uintmax_t)e.offset, e.p->pack_name);
 		mark_bad_packed_object(e.p, sha1);
-		data = read_object(sha1, type, size);
+		data = read_object(sha1, origin, type, size);
 	}
 	return data;
 }
@@ -2445,7 +2495,7 @@ int pretend_sha1_file(void *buf, unsigned long len, enum object_type type,
 	struct cached_object *co;
 
 	hash_sha1_file(buf, len, typename(type), sha1);
-	if (has_sha1_file(sha1) || find_cached_object(sha1))
+	if (has_sha1_file(sha1) || find_cached_object(sha1, odb_default))
 		return 0;
 	if (cached_object_alloc <= cached_object_nr) {
 		cached_object_alloc = alloc_nr(cached_object_alloc);
@@ -2462,31 +2512,33 @@ int pretend_sha1_file(void *buf, unsigned long len, enum object_type type,
 	return 0;
 }
 
-static void *read_object(const unsigned char *sha1, enum object_type *type,
+static void *read_object(const unsigned char *sha1,
+			 unsigned int origin,
+			 enum object_type *type,
 			 unsigned long *size)
 {
 	unsigned long mapsize;
 	void *map, *buf;
 	struct cached_object *co;
 
-	co = find_cached_object(sha1);
+	co = find_cached_object(sha1, origin);
 	if (co) {
 		*type = co->type;
 		*size = co->size;
 		return xmemdupz(co->buf, co->size);
 	}
 
-	buf = read_packed_sha1(sha1, type, size);
+	buf = read_packed_sha1(sha1, origin, type, size);
 	if (buf)
 		return buf;
-	map = map_sha1_file(sha1, &mapsize);
+	map = map_sha1_file(sha1, origin, &mapsize);
 	if (map) {
 		buf = unpack_sha1_file(map, mapsize, type, size, sha1);
 		munmap(map, mapsize);
 		return buf;
 	}
 	reprepare_packed_git();
-	return read_packed_sha1(sha1, type, size);
+	return read_packed_sha1(sha1, origin, type, size);
 }
 
 /*
@@ -2495,6 +2547,7 @@ static void *read_object(const unsigned char *sha1, enum object_type *type,
  * messages themselves.
  */
 void *read_sha1_file_extended(const unsigned char *sha1,
+			      unsigned int origin,
 			      enum object_type *type,
 			      unsigned long *size,
 			      unsigned flag)
@@ -2506,7 +2559,7 @@ void *read_sha1_file_extended(const unsigned char *sha1,
 		? lookup_replace_object(sha1) : sha1;
 
 	errno = 0;
-	data = read_object(repl, type, size);
+	data = read_object(repl, origin, type, size);
 	if (data)
 		return data;
 
@@ -2518,7 +2571,7 @@ void *read_sha1_file_extended(const unsigned char *sha1,
 		die("replacement %s not found for %s",
 		    sha1_to_hex(repl), sha1_to_hex(sha1));
 
-	if (has_loose_object(repl)) {
+	if (has_loose_object_extended(repl, origin)) {
 		path = sha1_file_name(sha1);
 		die("loose object %s (stored in %s) is corrupt",
 		    sha1_to_hex(repl), path);
@@ -2803,9 +2856,9 @@ int force_object_loose(const unsigned char *sha1, time_t mtime)
 	int hdrlen;
 	int ret;
 
-	if (has_loose_object(sha1))
+	if (has_loose_object_extended(sha1, odb_default))
 		return 0;
-	buf = read_packed_sha1(sha1, &type, &len);
+	buf = read_packed_sha1(sha1, odb_default, &type, &len);
 	if (!buf)
 		return error("cannot read sha1_file for %s", sha1_to_hex(sha1));
 	hdrlen = sprintf(hdr, "%s %lu", typename(type), len) + 1;
@@ -2826,16 +2879,22 @@ int has_pack_index(const unsigned char *sha1)
 int has_sha1_pack(const unsigned char *sha1)
 {
 	struct pack_entry e;
-	return find_pack_entry(sha1, &e);
+	return find_pack_entry(sha1, odb_default, &e);
+}
+
+static int has_sha1_file_extended(const unsigned char *sha1,
+				  unsigned origin)
+{
+	struct pack_entry e;
+
+	if (find_pack_entry(sha1, origin, &e))
+		return 1;
+	return has_loose_object_extended(sha1, origin);
 }
 
 int has_sha1_file(const unsigned char *sha1)
 {
-	struct pack_entry e;
-
-	if (find_pack_entry(sha1, &e))
-		return 1;
-	return has_loose_object(sha1);
+	return has_sha1_file_extended(sha1, odb_default);
 }
 
 static void check_tree(const void *buf, size_t size)

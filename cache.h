@@ -744,12 +744,28 @@ char *strip_path_suffix(const char *path, const char *suffix);
 int daemon_avoid_alias(const char *path);
 int offset_1st_component(const char *path);
 
+#define ODB_LOCAL	1	/* $GIT_DIR/objects */
+#define ODB_ALT		2	/* $GIT_DIR/objects/info/alternates */
+#define ODB_CACHED	4	/* empty tree or pretend_sha1_file */
+/*
+ * this flag is used to track if the origin selection is from
+ * "odb_default" below. Not a real source, not to be passed to any
+ * function cals explicitly.
+ */
+#define ODB_DEFAULT	8
+
+extern unsigned int odb_default;
+
 /* object replacement */
 #define READ_SHA1_FILE_REPLACE 1
-extern void *read_sha1_file_extended(const unsigned char *sha1, enum object_type *type, unsigned long *size, unsigned flag);
+extern void *read_sha1_file_extended(const unsigned char *sha1,
+				     unsigned int origin,
+				     enum object_type *type,
+				     unsigned long *size,
+				     unsigned flag);
 static inline void *read_sha1_file(const unsigned char *sha1, enum object_type *type, unsigned long *size)
 {
-	return read_sha1_file_extended(sha1, type, size, READ_SHA1_FILE_REPLACE);
+	return read_sha1_file_extended(sha1, odb_default, type, size, READ_SHA1_FILE_REPLACE);
 }
 extern const unsigned char *do_lookup_replace_object(const unsigned char *sha1);
 static inline const unsigned char *lookup_replace_object(const unsigned char *sha1)
@@ -765,7 +781,7 @@ extern int hash_sha1_file(const void *buf, unsigned long len, const char *type, 
 extern int write_sha1_file(const void *buf, unsigned long len, const char *type, unsigned char *return_sha1);
 extern int pretend_sha1_file(void *, unsigned long, enum object_type, unsigned char *);
 extern int force_object_loose(const unsigned char *sha1, time_t mtime);
-extern void *map_sha1_file(const unsigned char *sha1, unsigned long *size);
+extern void *map_sha1_file(const unsigned char *sha1, unsigned int, unsigned long *size);
 extern int unpack_sha1_header(git_zstream *stream, unsigned char *map, unsigned long mapsize, void *buffer, unsigned long bufsiz);
 extern int parse_sha1_header(const char *hdr, unsigned long *sizep);
 
@@ -1091,7 +1107,7 @@ extern const unsigned char *nth_packed_object_sha1(struct packed_git *, uint32_t
 extern off_t nth_packed_object_offset(const struct packed_git *, uint32_t);
 extern off_t find_pack_entry_one(const unsigned char *, struct packed_git *);
 extern int is_pack_valid(struct packed_git *);
-extern void *unpack_entry(struct packed_git *, off_t, enum object_type *, unsigned long *);
+extern void *unpack_entry(struct packed_git *, unsigned int, off_t, enum object_type *, unsigned long *);
 extern unsigned long unpack_object_header_buffer(const unsigned char *buf, unsigned long len, enum object_type *type, unsigned long *sizep);
 extern unsigned long get_size_from_delta(struct packed_git *, struct pack_window **, off_t);
 extern int unpack_object_header(struct packed_git *, struct pack_window **, off_t *, unsigned long *);

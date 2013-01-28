@@ -332,7 +332,7 @@ static struct stream_vtbl loose_vtbl = {
 
 static open_method_decl(loose)
 {
-	st->u.loose.mapped = map_sha1_file(sha1, &st->u.loose.mapsize);
+	st->u.loose.mapped = map_sha1_file(sha1, odb_default, &st->u.loose.mapsize);
 	if (!st->u.loose.mapped)
 		return -1;
 	if (unpack_sha1_header(&st->z,
@@ -483,7 +483,7 @@ static struct stream_vtbl incore_vtbl = {
 
 static open_method_decl(incore)
 {
-	st->u.incore.buf = read_sha1_file_extended(sha1, type, &st->size, 0);
+	st->u.incore.buf = read_sha1_file_extended(sha1, odb_default, type, &st->size, 0);
 	st->u.incore.read_ptr = 0;
 	st->vtbl = &incore_vtbl;
 

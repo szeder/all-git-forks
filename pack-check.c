@@ -116,7 +116,7 @@ static int verify_packfile(struct packed_git *p,
 					    sha1_to_hex(entries[i].sha1),
 					    p->pack_name, (uintmax_t)offset);
 		}
-		data = unpack_entry(p, entries[i].offset, &type, &size);
+		data = unpack_entry(p, odb_default, entries[i].offset, &type, &size);
 		if (!data)
 			err = error("cannot unpack %s from %s at offset %"PRIuMAX"",
 				    sha1_to_hex(entries[i].sha1), p->pack_name,
