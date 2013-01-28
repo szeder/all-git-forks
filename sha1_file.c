@@ -958,7 +958,8 @@ static void try_to_free_pack_memory(size_t size)
 	release_pack_memory(size, -1);
 }
 
-struct packed_git *add_packed_git(const char *path, int path_len, int local)
+struct packed_git *add_packed_git(const char *path, int path_len,
+				  struct alternate_object_database *alt)
 {
 	static int have_set_try_to_free_routine;
 	struct stat st;
@@ -994,7 +995,8 @@ struct packed_git *add_packed_git(const char *path, int path_len, int local)
 	 * actually mapping the pack file.
 	 */
 	p->pack_size = st.st_size;
-	p->pack_local = local;
+	p->pack_local = !alt;
+	p->alt = alt;
 	p->mtime = st.st_mtime;
 	if (path_len < 40 || get_sha1_hex(path + path_len - 40, p->sha1))
 		hashclr(p->sha1);
@@ -1082,7 +1084,8 @@ static void report_pack_garbage(struct string_list *list)
 	report_helper(list, seen_bits, first, list->nr);
 }
 
-static void prepare_packed_git_one(char *objdir, int local)
+static void prepare_packed_git_one(char *objdir,
+				   struct alternate_object_database *alt)
 {
 	/* Ensure that this buffer is large enough so that we can
 	   append "/pack/" without clobbering the stack even if
@@ -1133,7 +1136,7 @@ static void prepare_packed_git_one(char *objdir, int local)
 			     * See if it really is a valid .idx file with
 			     * corresponding .pack file that we can map.
 			     */
-			    (p = add_packed_git(path, len + namelen, local)) != NULL)
+			    (p = add_packed_git(path, len + namelen, alt)) != NULL)
 				install_packed_git(p);
 		}
 
@@ -1213,11 +1216,11 @@ void prepare_packed_git(void)
 
 	if (prepare_packed_git_run_once)
 		return;
-	prepare_packed_git_one(get_object_directory(), 1);
+	prepare_packed_git_one(get_object_directory(), NULL);
 	prepare_alt_odb();
 	for (alt = alt_odb_list; alt; alt = alt->next) {
 		alt->name[-1] = 0;
-		prepare_packed_git_one(alt->base, 0);
+		prepare_packed_git_one(alt->base, alt);
 		alt->name[-1] = '/';
 	}
 	rearrange_packed_git();

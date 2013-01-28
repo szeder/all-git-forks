@@ -1009,6 +1009,7 @@ struct pack_window {
 extern struct packed_git {
 	struct packed_git *next;
 	struct pack_window *windows;
+	struct alternate_object_database *alt;
 	off_t pack_size;
 	const void *index_data;
 	size_t index_size;
@@ -1102,7 +1103,7 @@ extern void close_pack_windows(struct packed_git *);
 extern void unuse_pack(struct pack_window **);
 extern void free_pack_by_name(const char *);
 extern void clear_delta_base_cache(void);
-extern struct packed_git *add_packed_git(const char *, int, int);
+extern struct packed_git *add_packed_git(const char *, int, struct alternate_object_database *);
 extern const unsigned char *nth_packed_object_sha1(struct packed_git *, uint32_t);
 extern off_t nth_packed_object_offset(const struct packed_git *, uint32_t);
 extern off_t find_pack_entry_one(const unsigned char *, struct packed_git *);
