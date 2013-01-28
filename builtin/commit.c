@@ -534,7 +534,10 @@ static void determine_author_info(struct strbuf *author_ident)
 
 	if (force_author) {
 		const char *lb = strstr(force_author, " <");
-		const char *rb = strchr(force_author, '>');
+		const char *rb;
+		if (lb) {
+		    rb = strchr(lb, '>');
+		}
 
 		if (!lb || !rb)
 			die(_("malformed --author parameter"));
