@@ -20,6 +20,67 @@
 const char sign_off_header[] = "Signed-off-by: ";
 static const char cherry_picked_prefix[] = "(cherry picked from commit ";
 
+static int is_rfc2822_line(const char *buf, int len)
+{
+	int i;
+
+	for (i = 0; i < len; i++) {
+		int ch = buf[i];
+		if (ch == ':')
+			break;
+		if (isalnum(ch) || (ch == '-'))
+			continue;
+		return 0;
+	}
+
+	return 1;
+}
+
+static int is_cherry_picked_from_line(const char *buf, int len)
+{
+	/*
+	 * We only care that it looks roughly like (cherry picked from ...)
+	 */
+	return !prefixcmp(buf, cherry_picked_prefix) &&
+		(buf[len - 1] == ')' ||
+		 (buf[len - 1] == '\n' && buf[len - 2] == ')'));
+}
+
+static int has_conforming_footer(struct strbuf *sb, int ignore_footer)
+{
+	int last_char_was_nl, this_char_is_nl;
+	int i, k;
+	int len = sb->len - ignore_footer;
+	const char *buf = sb->buf;
+
+	/* find start of last paragraph */
+	last_char_was_nl = 0;
+	for (i = len - 1; i > 0; i--) {
+		this_char_is_nl = (buf[i] == '\n');
+		if (last_char_was_nl && this_char_is_nl)
+			break;
+		last_char_was_nl = this_char_is_nl;
+	}
+
+	/* require at least one blank line */
+	if (!last_char_was_nl || buf[i] != '\n')
+		return 0;
+
+	while (i < len - 1 && buf[i] == '\n')
+		i++;
+
+	for (; i < len; i = k) {
+		for (k = i; k < len && buf[k] != '\n'; k++)
+			; /* do nothing */
+		k++;
+
+		if (!(is_rfc2822_line(buf + i, k - i) ||
+			is_cherry_picked_from_line(buf + i, k - i)))
+			return 0;
+	}
+	return 1;
+}
+
 static void remove_sequencer_state(void)
 {
 	struct strbuf seq_dir = STRBUF_INIT;
@@ -493,6 +554,8 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 		}
 
 		if (opts->record_origin) {
+			if (!has_conforming_footer(&msgbuf, 0))
+				strbuf_addch(&msgbuf, '\n');
 			strbuf_addstr(&msgbuf, cherry_picked_prefix);
 			strbuf_addstr(&msgbuf, sha1_to_hex(commit->object.sha1));
 			strbuf_addstr(&msgbuf, ")\n");
@@ -1016,63 +1079,6 @@ int sequencer_pick_revisions(struct replay_opts *opts)
 	save_head(sha1_to_hex(sha1));
 	save_opts(opts);
 	return pick_commits(todo_list, opts);
-}
-
-static int is_rfc2822_line(const char *buf, int len)
-{
-	int i;
-
-	for (i = 0; i < len; i++) {
-		int ch = buf[i];
-		if (ch == ':')
-			break;
-		if (isalnum(ch) || (ch == '-'))
-			continue;
-		return 0;
-	}
-
-	return 1;
-}
-
-static int is_cherry_picked_from_line(const char *buf, int len)
-{
-	/*
-	 * We only care that it looks roughly like (cherry picked from ...)
-	 */
-	return !prefixcmp(buf, cherry_picked_prefix) &&
-		(buf[len - 1] == ')' ||
-		 (buf[len - 1] == '\n' && buf[len - 2] == ')'));
-}
-
-static int has_conforming_footer(struct strbuf *sb, int ignore_footer)
-{
-	int last_char_was_nl, this_char_is_nl;
-	int i, k;
-	int len = sb->len - ignore_footer;
-	const char *buf = sb->buf;
-
-	/* find start of last paragraph */
-	last_char_was_nl = 0;
-	for (i = len - 1; i > 0; i--) {
-		this_char_is_nl = (buf[i] == '\n');
-		if (last_char_was_nl && this_char_is_nl)
-			break;
-		last_char_was_nl = this_char_is_nl;
-	}
-
-	while (i < len - 1 && buf[i] == '\n')
-		i++;
-
-	for (; i < len; i = k) {
-		for (k = i; k < len && buf[k] != '\n'; k++)
-			; /* do nothing */
-		k++;
-
-		if (!(is_rfc2822_line(buf + i, k - i) ||
-			is_cherry_picked_from_line(buf + i, k - i)))
-			return 0;
-	}
-	return 1;
 }
 
 void append_signoff(struct strbuf *msgbuf, int ignore_footer)
