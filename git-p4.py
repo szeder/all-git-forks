@@ -108,11 +108,16 @@ def pipe_commands(s, t):
     if verbose:
         print "Piping [%s] | [%s]" % (s, t)
         
-    p1 = subprocess.Popen([s], stdout=PIPE)
-    p2 = subprocess.Popen([t], stdin=p1.stdout, stdout=PIPE)
+    p1 = subprocess.Popen(s, stdout=subprocess.PIPE)
+    p2 = subprocess.Popen(t, stdin=p1.stdout, stdout=subprocess.PIPE)
     p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
     (output, errors) = p2.communicate()
-    return p1.returncode & p2.returncode
+    
+    if (verbose):
+        print "OUT -> [%s]" % output
+        print "ERR -> [%s]" % errors        
+    
+    return p2.returncode
 
 def p4_read_pipe(c, ignore_error=False):
     real_cmd = p4_build_cmd(c)
@@ -1287,16 +1292,16 @@ class P4Submit(Command, P4UserMap):
                 die("unknown modifier %s for %s" % (modifier, path))
 
         diffcmd = "git format-patch -k --stdout \"%s^\"..\"%s\"" % (id, id)
-        patchcmd = diffcmd + " | git apply "
-        tryPatchCmd = patchcmd + "--check -"
-        applyPatchCmd = patchcmd + "--check --apply -"
+        tryPatchCmd = "git apply --check -"
+        applyPatchCmd = "git apply --check --apply -"
         
         if (self.verbose):
+            print "Trying diff command [%s]" % diffcmd
             print "Trying patch command [%s]" % tryPatchCmd
             
         patch_succeeded = True
 
-        if os.system(tryPatchCmd) != 0:
+        if pipe_commands(diffcmd, tryPatchCmd) != 0:
             fixed_rcs_keywords = False
             patch_succeeded = False
             print "Unfortunately applying the change failed!"
@@ -1340,7 +1345,7 @@ class P4Submit(Command, P4UserMap):
         #
         # Apply the patch for real, and do add/delete/+x handling.
         #
-        system(applyPatchCmd)
+        pipe_commands(diffcmd, applyPatchCmd)
 
         for f in filesToAdd:
             p4_add(f)
