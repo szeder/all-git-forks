@@ -8,6 +8,7 @@
 #include "notes.h"
 #include "gpg-interface.h"
 #include "mergesort.h"
+#include "commit-metapack.h"
 
 static struct commit_extra_header *read_commit_extra_header_lines(const char *buf, size_t len, const char **);
 
@@ -306,6 +307,24 @@ int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long s
 	return 0;
 }
 
+static int parse_commit_metapack(struct commit *item)
+{
+	const unsigned char *tree, *p1, *p2;
+	uint32_t ts;
+
+	if (commit_metapack(item->object.sha1, &ts, &tree, &p1, &p2) < 0)
+		return -1;
+
+	item->date = ts;
+	item->tree = lookup_tree(tree);
+	commit_list_insert(lookup_commit(p1), &item->parents);
+	if (!is_null_sha1(p2))
+		commit_list_insert(lookup_commit(p2), &item->parents->next);
+
+	item->object.parsed = 1;
+	return 0;
+}
+
 int parse_commit(struct commit *item)
 {
 	enum object_type type;
@@ -317,6 +336,10 @@ int parse_commit(struct commit *item)
 		return -1;
 	if (item->object.parsed)
 		return 0;
+
+	if (!save_commit_buffer && !parse_commit_metapack(item))
+		return 0;
+
 	buffer = read_sha1_file(item->object.sha1, &type, &size);
 	if (!buffer)
 		return error("Could not read %s",
