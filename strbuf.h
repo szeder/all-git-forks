@@ -42,6 +42,8 @@ static inline void strbuf_setlen(struct strbuf *sb, size_t len) {
 extern void strbuf_trim(struct strbuf *);
 extern void strbuf_rtrim(struct strbuf *);
 extern void strbuf_ltrim(struct strbuf *);
+extern void strbuf_chompmem(struct strbuf *, const void *, size_t);
+extern void strbuf_chompstr(struct strbuf *, const char *);
 extern int strbuf_cmp(const struct strbuf *, const struct strbuf *);
 
 /*

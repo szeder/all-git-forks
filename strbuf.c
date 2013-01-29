@@ -106,6 +106,17 @@ void strbuf_ltrim(struct strbuf *sb)
 	sb->buf[sb->len] = '\0';
 }
 
+void strbuf_chompmem(struct strbuf *sb, const void *data, size_t len)
+{
+	if (sb->len >= len && !memcmp(data, sb->buf + sb->len - len, len))
+		strbuf_setlen(sb, sb->len - len);
+}
+
+void strbuf_chompstr(struct strbuf *sb, const char *str)
+{
+	strbuf_chompmem(sb, str, strlen(str));
+}
+
 struct strbuf **strbuf_split_buf(const char *str, size_t slen,
 				 int terminator, int max)
 {
