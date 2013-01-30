@@ -1095,4 +1095,28 @@ test_expect_success 'push to update a hidden ref' '
 	check_push_result $the_first_commit hidden/three
 '
 
+test_expect_failure 'allow push to update a hidden ref' '
+	mk_test heads/master hidden/one hidden/two hidden/three &&
+	(
+		cd testrepo &&
+		git config transfer.hiderefs refs/hidden &&
+		git config receive.allowupdatestohidden yes
+	) &&
+
+	# push to unhidden ref succeeds normally
+	git push testrepo master:refs/heads/master &&
+	check_push_result $the_commit heads/master &&
+
+	# push to update a hidden ref should succeed
+	git push testrepo master:refs/hidden/one &&
+	check_push_result $the_commit heads/master &&
+
+	# push to delete a hidden ref should succeed
+	git push testrepo :refs/hidden/two &&
+	(
+		cd testrepo &&
+		test_must_fail git show-ref -q refs/hidden/one
+	)
+'
+
 test_done

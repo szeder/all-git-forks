@@ -41,6 +41,7 @@ static int auto_gc = 1;
 static const char *head_name;
 static void *head_name_to_free;
 static int sent_capabilities;
+static int allow_updates_to_hidden;
 
 static enum deny_action parse_deny_action(const char *var, const char *value)
 {
@@ -116,6 +117,11 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 
 	if (strcmp(var, "receive.autogc") == 0) {
 		auto_gc = git_config_bool(var, value);
+		return 0;
+	}
+
+	if (strcmp(var, "receive.allowupdatestohidden") == 0) {
+		allow_updates_to_hidden = git_config_bool(var, value);
 		return 0;
 	}
 
@@ -726,7 +732,8 @@ static void execute_commands(struct command *commands, const char *unpacker_erro
 				       0, &cmd))
 		set_connectivity_errors(commands);
 
-	reject_updates_to_hidden(commands);
+	if (!allow_updates_to_hidden)
+		reject_updates_to_hidden(commands);
 
 	if (run_receive_hook(commands, pre_receive_hook, 0)) {
 		for (cmd = commands; cmd; cmd = cmd->next) {
