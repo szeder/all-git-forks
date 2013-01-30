@@ -33,9 +33,9 @@ show_tool_names () {
 				then
 					echo "$preamble"
 					preamble=
-					shown_any=yes
 				fi
-				printf "%s%s\n" "$per_line_prefix" "$tool"
+				shown_any=yes
+				printf "%s%s\n" "$per_line_prefix" "$toolname"
 			fi
 		done
 		test -n "$shown_any"
@@ -243,6 +243,7 @@ show_tool_help () {
 
 	tab='	' av_shown= unav_shown=
 
+	cmd_name=${TOOL_MODE}tool
 	if show_tool_names 'mode_ok && is_available' "$tab$tab" \
 		"$tool_opt may be set to one of the following:"
 	then
