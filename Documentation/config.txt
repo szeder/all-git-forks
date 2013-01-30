@@ -1849,6 +1849,12 @@ receive.updateserverinfo::
 	If set to true, git-receive-pack will run git-update-server-info
 	after receiving data from git-push and updating refs.
 
+receive.allowupdatestohidden::
+	When `transfer.hiderefs` is in effect, allow `receive-pack`
+	to accept a push request that asks to update or delete a
+	hidden ref (by default, such a request is rejected).
+	see also `transfer.hiderefs`.
+
 remote.<name>.url::
 	The URL of a remote repository.  See linkgit:git-fetch[1] or
 	linkgit:git-push[1].
