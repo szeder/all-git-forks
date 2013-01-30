@@ -21,6 +21,7 @@ is_available () {
 
 show_tool_names () {
 	condition=${1:-true} per_line_prefix=${2:-} preamble=${3:-}
+	not_found_msg=${4:-}
 
 	shown_any=
 	( cd "$MERGE_TOOLS_DIR" && ls ) | {
@@ -31,13 +32,19 @@ show_tool_names () {
 			then
 				if test -n "$preamble"
 				then
-					echo "$preamble"
+					printf "%s\n" "$preamble"
 					preamble=
 				fi
 				shown_any=yes
 				printf "%s%s\n" "$per_line_prefix" "$toolname"
 			fi
 		done
+
+		if test -n "$preamble" && test -n "$not_found_msg"
+		then
+			printf "%s\n" "$not_found_msg"
+		fi
+
 		test -n "$shown_any"
 	}
 }
@@ -241,30 +248,27 @@ list_merge_tool_candidates () {
 show_tool_help () {
 	tool_opt="'git ${TOOL_MODE}tool --tool-<tool>'"
 
-	tab='	' av_shown= unav_shown=
+	tab='	'
+	LF='
+'
+	any_shown=no
 
 	cmd_name=${TOOL_MODE}tool
-	if show_tool_names 'mode_ok && is_available' "$tab$tab" \
-		"$tool_opt may be set to one of the following:"
-	then
-		av_shown=yes
-	else
-		echo "No suitable tool for 'git $cmd_name --tool=<tool>' found."
-		av_shown=no
-	fi
+	show_tool_names 'mode_ok && is_available' "$tab$tab" \
+		"$tool_opt may be set to one of the following:" \
+		"No suitable tool for 'git $cmd_name --tool=<tool>' found." &&
+		any_shown=yes
 
-	if show_tool_names 'mode_ok && ! is_available' "$tab$tab" \
-		"The following tools are valid, but not currently available:"
-	then
-		unav_shown=yes
-	fi
+	show_tool_names 'mode_ok && ! is_available' "$tab$tab" \
+		"${LF}The following tools are valid, but not currently available:" &&
+		any_shown=yes
 
-	case ",$av_shown,$unav_shown," in
-	*,yes,*)
+	if test "$any_shown" = yes
+	then
 		echo
 		echo "Some of the tools listed above only work in a windowed"
 		echo "environment. If run in a terminal-only session, they will fail."
-	esac
+	fi
 	exit 0
 }
 
