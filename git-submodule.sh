@@ -5,10 +5,10 @@
 # Copyright (c) 2007 Lars Hjemli
 
 dashless=$(basename "$0" | sed -e 's/-/ /')
-USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <repository>] [--] <repository> [<path>]
+USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <repository>] [--object-cache <repository>] [--] <repository> [<path>]
    or: $dashless [--quiet] status [--cached] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] init [--] [<path>...]
-   or: $dashless [--quiet] update [--init] [--remote] [-N|--no-fetch] [-f|--force] [--rebase] [--reference <repository>] [--merge] [--recursive] [--] [<path>...]
+   or: $dashless [--quiet] update [--init] [--remote] [-N|--no-fetch] [-f|--force] [--rebase] [--reference <repository>] [--object-cache <repository>] [--merge] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] summary [--cached|--files] [--summary-limit <n>] [commit] [--] [<path>...]
    or: $dashless [--quiet] foreach [--recursive] <command>
    or: $dashless [--quiet] sync [--recursive] [--] [<path>...]"
@@ -22,6 +22,7 @@ command=
 branch=
 force=
 reference=
+object_cache=
 cached=
 recursive=
 init=
@@ -210,6 +211,7 @@ module_clone()
 	name=$2
 	url=$3
 	reference="$4"
+	object_cache="$5"
 	quiet=
 	if test -n "$GIT_QUIET"
 	then
@@ -233,6 +235,7 @@ module_clone()
 		(
 			clear_local_git_env
 			git clone $quiet -n ${reference:+"$reference"} \
+				${object_cache:+"$object_cache"} \
 				--separate-git-dir "$gitdir" "$url" "$sm_path"
 		) ||
 		die "$(eval_gettext "Clone of '\$url' into submodule path '\$sm_path' failed")"
@@ -289,6 +292,14 @@ cmd_add()
 			;;
 		-q|--quiet)
 			GIT_QUIET=1
+			;;
+		--object-cache)
+			case "$2" in '') usage ;; esac
+			object_cache="--object-cache=$2"
+			shift
+			;;
+		--object-cache=*)
+			object_cache="$1"
 			;;
 		--reference)
 			case "$2" in '') usage ;; esac
@@ -399,7 +410,7 @@ Use -f if you really want to add it." >&2
 				echo "$(eval_gettext "Reactivating local git directory for submodule '\$sm_name'.")"
 			fi
 		fi
-		module_clone "$sm_path" "$sm_name" "$realrepo" "$reference" || exit
+		module_clone "$sm_path" "$sm_name" "$realrepo" "$reference" "$object_cache" || exit
 		(
 			clear_local_git_env
 			cd "$sm_path" &&
@@ -576,6 +587,15 @@ cmd_update()
 		-r|--rebase)
 			update="rebase"
 			;;
+		--object-cache)
+			case "$2" in '') usage ;; esac
+			object_cache="--object-cache=$2"
+			orig_flags="$orig_flags $(git rev-parse --sq-quote "$1")"
+			shift
+			;;
+		--object-cache=*)
+			object_cache="$1"
+			;;
 		--reference)
 			case "$2" in '') usage ;; esac
 			reference="--reference=$2"
@@ -653,7 +673,7 @@ Maybe you want to use 'update --init'?")"
 
 		if ! test -d "$sm_path"/.git -o -f "$sm_path"/.git
 		then
-			module_clone "$sm_path" "$name" "$url" "$reference" || exit
+			module_clone "$sm_path" "$name" "$url" "$reference" "$object_cache" || exit
 			cloned_modules="$cloned_modules;$name"
 			subsha1=
 		else

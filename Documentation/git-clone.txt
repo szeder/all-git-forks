@@ -103,6 +103,16 @@ objects from the source repository into a pack in the cloned repository.
 +
 *NOTE*: see the NOTE for the `--shared` option.
 
+--object-cache <repository>::
+	If the cache repository is on the local machine, automatically obtain
+	objects from it during the initial clone operation, and write any
+	fetched objects back to the cache afterwards.
++
+This is simlar to `--reference` in terms of its network costs,
+but uses more disk space and doesn't expose you to data loss risks,
+as it runs `git repack` in both repositories, and avoids the need for
+the fragile `.git/objects/info/alternatives` mechanism.
+
 --quiet::
 -q::
 	Operate quietly.  Progress is not reported to the standard

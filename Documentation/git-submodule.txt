@@ -301,6 +301,11 @@ SHA-1.  If you don't want to fetch, you should use `submodule update
 *NOTE*: Do *not* use this option unless you have read the note
 for linkgit:git-clone[1]'s `--reference` and `--shared` options carefully.
 
+--object-cache <repository>::
+	This option is only valid for add and update commands.  These
+	commands sometimes need to clone a remote repository. In this case,
+	this option will be passed to the linkgit:git-clone[1] command.
+
 --recursive::
 	This option is only valid for foreach, update and status commands.
 	Traverse submodules recursively. The operation is performed not

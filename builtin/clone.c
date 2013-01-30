@@ -47,7 +47,9 @@ static char *option_upload_pack = "git-upload-pack";
 static int option_verbosity;
 static int option_progress = -1;
 static struct string_list option_config;
+static struct string_list option_object_cache;
 static struct string_list option_reference;
+
 
 static int opt_parse_reference(const struct option *opt, const char *arg, int unset)
 {
@@ -82,6 +84,8 @@ static struct option builtin_clone_options[] = {
 		    N_("initialize submodules in the clone")),
 	OPT_STRING(0, "template", &option_template, N_("template-directory"),
 		   N_("directory from which templates will be used")),
+	OPT_CALLBACK(0 , "object-cache", &option_object_cache, N_("repo"),
+		     N_("object cache repository"), &opt_parse_reference),
 	OPT_CALLBACK(0 , "reference", &option_reference, N_("repo"),
 		     N_("reference repository"), &opt_parse_reference),
 	OPT_STRING('o', "origin", &option_origin, N_("name"),
@@ -253,6 +257,24 @@ static int add_one_reference(struct string_list_item *item, void *cb_data)
 static void setup_reference(void)
 {
 	for_each_string_list(&option_reference, add_one_reference, NULL);
+}
+
+static void setup_object_cache(void)
+{
+	for_each_string_list(&option_object_cache, add_one_reference, NULL);
+}
+
+static int copy_objects_to_cache(struct string_list_item *item, void *cb_data)
+{
+	/* cd item->string */
+	/* git remote add --fetch cache_`date` $just_checkedout_repo */
+}
+
+static void finalize_object_cache(void)
+{
+	/* git repack */
+	/* remove_alternatives_file() */
+	for_each_string_list(&option_object_cache, copy_objects_to_cache, NULL);
 }
 
 static void copy_alternates(struct strbuf *src, struct strbuf *dst,
@@ -810,6 +832,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	strbuf_addf(&key, "remote.%s.url", option_origin);
 	git_config_set(key.buf, repo);
 	strbuf_reset(&key);
+
+	if (option_object_cache.nr)
+		setup_object_cache();
 
 	if (option_reference.nr)
 		setup_reference();

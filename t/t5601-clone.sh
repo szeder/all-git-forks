@@ -280,4 +280,14 @@ test_expect_success 'clone checking out a tag' '
 	test_cmp fetch.expected fetch.actual
 '
 
+test_expect_success 'clone --cache from original has no alternates' '
+	git clone --bare src cache &&
+	git clone --shared --bare src src-6 &&
+	git clone --cache=cache --bare src-6 target-11 &&
+	test ! -s target-11/objects/info/alternates
+'
+
+# TODO: also clone another repo and assert that cache gains refs
+# and none of the target repos grow larger than their parents.
+
 test_done
