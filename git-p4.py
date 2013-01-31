@@ -3392,6 +3392,12 @@ def main():
                                    formatter = HelpFormatter())
 
     (cmd, args) = parser.parse_args(sys.argv[2:], cmd);
+    
+    if not cmd.verbose:
+        verboseFromConfig = gitConfig("git-p4.verbose", "--bool")
+        if verboseFromConfig == 'true' :
+            cmd.verbose = True
+    
     global verbose
     verbose = cmd.verbose
     if cmd.needsGit:
