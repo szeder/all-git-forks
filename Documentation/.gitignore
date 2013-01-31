@@ -1,5 +1,6 @@
 *.xml
 *.html
+!git-remote-helpers.html
 *.[1-8]
 *.made
 *.texi

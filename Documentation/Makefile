@@ -1,7 +1,7 @@
 MAN1_TXT= \
 	$(filter-out $(addsuffix .txt, $(ARTICLES) $(SP_ARTICLES)), \
 		$(wildcard git-*.txt)) \
-	gitk.txt gitweb.txt git.txt
+	gitk.txt gitweb.txt git.txt gitremote-helpers.txt
 MAN5_TXT=gitattributes.txt gitignore.txt gitmodules.txt githooks.txt \
 	gitrepository-layout.txt gitweb.conf.txt
 MAN7_TXT=gitcli.txt gittutorial.txt gittutorial-2.txt \
@@ -13,7 +13,7 @@ MAN_TXT = $(MAN1_TXT) $(MAN5_TXT) $(MAN7_TXT)
 MAN_XML=$(patsubst %.txt,%.xml,$(MAN_TXT))
 MAN_HTML=$(patsubst %.txt,%.html,$(MAN_TXT))
 
-DOC_HTML=$(MAN_HTML)
+DOC_HTML=$(MAN_HTML) git-remote-helpers.html
 
 ARTICLES = howto-index
 ARTICLES += everyday
