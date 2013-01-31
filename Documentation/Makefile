@@ -13,7 +13,8 @@ MAN_TXT = $(MAN1_TXT) $(MAN5_TXT) $(MAN7_TXT)
 MAN_XML=$(patsubst %.txt,%.xml,$(MAN_TXT))
 MAN_HTML=$(patsubst %.txt,%.html,$(MAN_TXT))
 
-DOC_HTML=$(MAN_HTML) git-remote-helpers.html
+OBSOLETE_HTML = git-remote-helpers.html
+DOC_HTML=$(MAN_HTML) $(OBSOLETE_HTML)
 
 ARTICLES = howto-index
 ARTICLES += everyday
@@ -258,6 +259,12 @@ clean:
 $(MAN_HTML): %.html : %.txt asciidoc.conf
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
 	$(ASCIIDOC) -b xhtml11 -d manpage -f asciidoc.conf \
+		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) -o $@+ $< && \
+	mv $@+ $@
+
+$(OBSOLETE_HTML): %.html : %.txto asciidoc.conf
+	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
+	$(ASCIIDOC) -b xhtml11 -f asciidoc.conf \
 		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) -o $@+ $< && \
 	mv $@+ $@
 
