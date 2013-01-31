@@ -2661,8 +2661,8 @@ off_t nth_packed_object_offset(const struct packed_git *p, uint32_t n)
 	}
 }
 
-off_t find_pack_entry_one(const unsigned char *sha1,
-				  struct packed_git *p)
+int find_pack_entry_pos(const unsigned char *sha1,
+			struct packed_git *p)
 {
 	const uint32_t *level1_ofs = p->index_data;
 	const unsigned char *index = p->index_data;
@@ -2675,7 +2675,7 @@ off_t find_pack_entry_one(const unsigned char *sha1,
 
 	if (!index) {
 		if (open_pack_index(p))
-			return 0;
+			return -1;
 		level1_ofs = p->index_data;
 		index = p->index_data;
 	}
@@ -2702,9 +2702,7 @@ off_t find_pack_entry_one(const unsigned char *sha1,
 	if (use_lookup) {
 		int pos = sha1_entry_pos(index, stride, 0,
 					 lo, hi, p->num_objects, sha1);
-		if (pos < 0)
-			return 0;
-		return nth_packed_object_offset(p, pos);
+		return pos;
 	}
 
 	do {
@@ -2715,15 +2713,24 @@ off_t find_pack_entry_one(const unsigned char *sha1,
 			printf("lo %u hi %u rg %u mi %u\n",
 			       lo, hi, hi - lo, mi);
 		if (!cmp)
-			return nth_packed_object_offset(p, mi);
+			return mi;
 		if (cmp > 0)
 			hi = mi;
 		else
 			lo = mi+1;
 	} while (lo < hi);
-	return 0;
+	return -1;
 }
 
+off_t find_pack_entry_one(const unsigned char *sha1,
+				  struct packed_git *p)
+{
+	int pos = find_pack_entry_pos(sha1, p);
+	if (pos < 0)
+		return 0;
+	else
+		return nth_packed_object_offset(p, pos);
+}
 int is_pack_valid(struct packed_git *p)
 {
 	/* An already open pack is known to be valid. */
