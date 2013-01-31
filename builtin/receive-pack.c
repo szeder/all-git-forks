@@ -41,6 +41,7 @@ static int auto_gc = 1;
 static const char *head_name;
 static void *head_name_to_free;
 static int sent_capabilities;
+static int allow_updates_to_hidden;
 
 static enum deny_action parse_deny_action(const char *var, const char *value)
 {
@@ -59,6 +60,11 @@ static enum deny_action parse_deny_action(const char *var, const char *value)
 
 static int receive_pack_config(const char *var, const char *value, void *cb)
 {
+	int status = parse_hide_refs_config(var, value, cb);
+
+	if (status)
+		return status;
+
 	if (strcmp(var, "receive.denydeletes") == 0) {
 		deny_deletes = git_config_bool(var, value);
 		return 0;
@@ -114,11 +120,19 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 		return 0;
 	}
 
+	if (strcmp(var, "receive.allowupdatestohidden") == 0) {
+		allow_updates_to_hidden = git_config_bool(var, value);
+		return 0;
+	}
+
 	return git_default_config(var, value, cb);
 }
 
 static void show_ref(const char *path, const unsigned char *sha1)
 {
+	if (ref_is_hidden(path))
+		return;
+
 	if (sent_capabilities)
 		packet_write(1, "%s %s\n", sha1_to_hex(sha1), path);
 	else
@@ -685,6 +699,20 @@ static int iterate_receive_command_list(void *cb_data, unsigned char sha1[20])
 	return -1; /* end of list */
 }
 
+static void reject_updates_to_hidden(struct command *commands)
+{
+	struct command *cmd;
+
+	for (cmd = commands; cmd; cmd = cmd->next) {
+		if (cmd->error_string || !ref_is_hidden(cmd->ref_name))
+			continue;
+		if (is_null_sha1(cmd->new_sha1))
+			cmd->error_string = "deny deleting a hidden ref";
+		else
+			cmd->error_string = "deny updating a hidden ref";
+	}
+}
+
 static void execute_commands(struct command *commands, const char *unpacker_error)
 {
 	struct command *cmd;
@@ -700,6 +728,9 @@ static void execute_commands(struct command *commands, const char *unpacker_erro
 	if (check_everything_connected(iterate_receive_command_list,
 				       0, &cmd))
 		set_connectivity_errors(commands);
+
+	if (!allow_updates_to_hidden)
+		reject_updates_to_hidden(commands);
 
 	if (run_receive_hook(commands, "pre-receive", 0)) {
 		for (cmd = commands; cmd; cmd = cmd->next) {
