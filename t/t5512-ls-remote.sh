@@ -126,4 +126,13 @@ test_expect_success 'Report match with --exit-code' '
 	test_cmp expect actual
 '
 
+test_expect_success 'Hide some refs' '
+	test_config transfer.hiderefs refs/tags &&
+	git ls-remote . >actual &&
+	test_unconfig transfer.hiderefs &&
+	git ls-remote . |
+	sed -e "/	refs\/tags\//d" >expect &&
+	test_cmp expect actual
+'
+
 test_done
