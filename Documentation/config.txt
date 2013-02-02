@@ -1884,6 +1884,12 @@ receive.updateserverinfo::
 	If set to true, git-receive-pack will run git-update-server-info
 	after receiving data from git-push and updating refs.
 
+receive.allowupdatestohidden::
+	When `transfer.hiderefs` is in effect, allow `receive-pack`
+	to accept a push request that asks to update or delete a
+	hidden ref (by default, such a request is rejected).
+	see also `transfer.hiderefs`.
+
 remote.<name>.url::
 	The URL of a remote repository.  See linkgit:git-fetch[1] or
 	linkgit:git-push[1].
@@ -2092,10 +2098,27 @@ transfer.fsckObjects::
 	not set, the value of this variable is used instead.
 	Defaults to false.
 
+transfer.hiderefs::
+	String(s) `upload-pack` and `receive-pack` use to decide
+	which refs to omit from their initial advertisement.  Use
+	more than one transfer.hiderefs configuration variables to
+	specify multiple prefix strings. A ref that are under the
+	hierarchies listed on the value of this variable is excluded,
+	and is hidden from `git ls-remote`, `git fetch`, `git push :`,
+	etc.  An attempt to update or delete a hidden ref by `git push`
+	is rejected, and an attempt to fetch a hidden ref by `git fetch`
+	will fail.  See also `uploadpack.allowtipsha1inwant`.
+
 transfer.unpackLimit::
 	When `fetch.unpackLimit` or `receive.unpackLimit` are
 	not set, the value of this variable is used instead.
 	The default value is 100.
+
+uploadpack.allowtipsha1inwant::
+	When `transfer.hiderefs` is in effect, allow `upload-pack`
+	to accept a fetch request that asks for an object at the tip
+	of a hidden ref (by default, such a request is rejected).
+	see also `transfer.hiderefs`.
 
 url.<base>.insteadOf::
 	Any URL that starts with this value will be rewritten to
