@@ -158,14 +158,49 @@ Sending
 --smtp-pass[=<password>]::
 	Password for SMTP-AUTH. The argument is optional: If no
 	argument is specified, then the empty string is used as
-	the password. Default is the value of 'sendemail.smtppass',
-	however '--smtp-pass' always overrides this value.
+	the password. Default is the value of 'sendemail.smtppass'
+	or value read from ~/.authinfo file, however '--smtp-pass'
+	always overrides this value.
 +
-Furthermore, passwords need not be specified in configuration files
-or on the command line. If a username has been specified (with
+Furthermore, passwords need not be specified in configuration files or
+on the command line. If a username has been specified (with
 '--smtp-user' or a 'sendemail.smtpuser'), but no password has been
-specified (with '--smtp-pass' or 'sendemail.smtppass'), then the
-user is prompted for a password while the input is masked for privacy.
+specified (with '--smtp-pass', 'sendemail.smtppass' or via
+~/.authinfo file), then the user is prompted for a password while
+the input is masked for privacy.
++
+The ~/.authinfo file should contain a line with the following
+format:
++
+  machine <domain> port <port> login <user> password <pass>
++
+Instead of `machine <domain>` pair a `default` token can be used
+instead in which case all domains will match.  Similarly, `port
+<port>` and `login <user>` pairs can be omitted in which case matching
+of the given value will be skipped.  `<port>` can be either an integer
+or a symbolic name.  Lines are interpreted in order and password from
+the first line that matches will be used.  For instance, one may end
+up with:
++
+  machine example.com login jane port ssmtp password smtppassword
+  machine example.com login jane            password janepassword
+  default             login janedoe         password doepassword
++
+if she wants to use `smtppassword` for authenticating as `jane` to
+a service at example.com:465 (SSMTP), `janepassword` for all other
+services at example.com; and `doepassword` when authonticating as
+`janedoe` to any service.  If ~/.authinfo file is missing,
+'git-send-email' will also try ~/.netrc file (even though parsing is
+not fully compatible with ftp's .netrc file format).
++
+Note that you should never make ~/.authinfo file world-readable.  To
+help guarantee that, you might want to create the file with the
+following command:
++
+  ( umask 077; cat >~/.authinfo <<EOF
+  ... file contents ...
+  EOF
+  )
 
 --smtp-server=<host>::
 	If set, specifies the outgoing SMTP server to use (e.g.

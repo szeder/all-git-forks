@@ -1045,6 +1045,86 @@ sub maildomain {
 	return maildomain_net() || maildomain_mta() || 'localhost.localdomain';
 }
 
+
+sub read_password_from_stdin {
+	my $line;
+
+	system "stty -echo";
+
+	do {
+		print "Password: ";
+		$line = <STDIN>;
+		print "\n";
+	} while (!defined $line);
+
+	system "stty echo";
+
+	chomp $line;
+	return $line;
+}
+
+sub authinfo_is_port_eq {
+	my ($from_file, $value, $filename) = @_;
+
+	if (!defined $from_file) {
+		return 1;
+	} elsif ($from_file =~ /^\d+$/) {
+		return $from_file == $value;
+	}
+
+	my $port = getservbyname $from_file, 'tcp';
+	if (!defined $port) {
+		print STDERR "$filename: invalid port name: $from_file\n";
+		return;
+	}
+
+	return $port == $value;
+}
+
+sub read_password_from_authinfo {
+	my $filename = join '/', $ENV{'HOME'}, $_[0] // '.authinfo';
+	my $fd;
+	if (!open $fd, '<', $filename) {
+		return;
+	}
+
+	my $password;
+	while (my $line = <$fd>) {
+		$line =~ s/^\s+|\s+$//g;
+		my @line = split /\s+/, $line;
+		my %line;
+		while (@line) {
+			my $token = shift @line;
+			if ($token eq 'default') {
+				$line{'machine'} = $smtp_server;
+			} elsif (@line) {
+				$line{$token} = shift @line;
+			}
+		}
+
+		if (defined $line{'password'} &&
+		    defined $line{'machine'} &&
+		    $line{'machine'} eq $smtp_server &&
+		    (!defined $line{'login'} ||
+		     $line{'login'} eq $smtp_authuser) &&
+		    authinfo_is_port_eq($line{'port'}, $smtp_server_port, $filename)) {
+			$password = $line{'password'};
+			last;
+		}
+	}
+
+	close $fd;
+	return $password;
+}
+
+sub read_password {
+	return
+	  read_password_from_authinfo '.authinfo' ||
+	  read_password_from_authinfo '.netrc' ||
+	  read_password_from_stdin;
+}
+
+
 # Returns 1 if the message was sent, and 0 otherwise.
 # In actuality, the whole program dies when there
 # is an error sending a message.
@@ -1194,18 +1274,7 @@ X-Mailer: git-send-email $gitversion
 			};
 
 			if (!defined $smtp_authpass) {
-
-				system "stty -echo";
-
-				do {
-					print "Password: ";
-					$_ = <STDIN>;
-					print "\n";
-				} while (!defined $_);
-
-				chomp($smtp_authpass = $_);
-
-				system "stty echo";
+				$smtp_authpass = read_password
 			}
 
 			$auth ||= $smtp->auth( $smtp_authuser, $smtp_authpass ) or die $smtp->message;
