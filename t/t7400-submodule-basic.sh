@@ -778,4 +778,28 @@ test_expect_success 'submodule add with an existing name fails unless forced' '
 	)
 '
 
+test_expect_success 'submodule deinit should remove the whole submodule section from .git/config' '
+	git config submodule.example.foo bar &&
+	git submodule deinit init &&
+	test -z "$(git config submodule.example.url)" &&
+	test -z "$(git config submodule.example.foo)"
+'
+
+test_expect_success 'submodule deinit . deinits all initialized submodules' '
+	git submodule update --init &&
+	git config submodule.example.foo bar &&
+	test_must_fail git submodule deinit &&
+	git submodule deinit . &&
+	test -z "$(git config submodule.example.url)" &&
+	test -z "$(git config submodule.example.foo)"
+'
+
+test_expect_success 'submodule deinit complains when explicitly used on an uninitialized submodule' '
+	git submodule update --init &&
+	git submodule deinit init >actual &&
+	test_i18ngrep "Submodule .example. (.*) unregistered for path .init" actual
+	git submodule deinit init >actual &&
+	test_i18ngrep "No url found for submodule path .init. in .git/config" actual
+'
+
 test_done
