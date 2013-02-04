@@ -8,6 +8,7 @@ dashless=$(basename "$0" | sed -e 's/-/ /')
 USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <repository>] [--] <repository> [<path>]
    or: $dashless [--quiet] status [--cached] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] init [--] [<path>...]
+   or: $dashless [--quiet] deinit [-f|--force] [--] <path>...
    or: $dashless [--quiet] update [--init] [-N|--no-fetch] [-f|--force] [--rebase] [--reference <repository>] [--merge] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] summary [--cached|--files] [--summary-limit <n>] [commit] [--] [<path>...]
    or: $dashless [--quiet] foreach [--recursive] <command>
@@ -512,6 +513,70 @@ cmd_init()
 		test -n "$(git config submodule."$name".update)" ||
 		git config submodule."$name".update "$upd" ||
 		die "$(eval_gettext "Failed to register update mode for submodule path '\$sm_path'")"
+	done
+}
+
+#
+# Unregister submodules from .git/config and remove their work tree
+#
+# $@ = requested paths (use '.' to deinit all submodules)
+#
+cmd_deinit()
+{
+	# parse $args after "submodule ... init".
+	while test $# -ne 0
+	do
+		case "$1" in
+		-f|--force)
+			force=$1
+			;;
+		-q|--quiet)
+			GIT_QUIET=1
+			;;
+		--)
+			shift
+			break
+			;;
+		-*)
+			usage
+			;;
+		*)
+			break
+			;;
+		esac
+		shift
+	done
+
+	if test $# = 0
+	then
+		die "$(eval_gettext "Use '.' if you really want to deinitialize all submodules")"
+	fi
+
+	module_list "$@" |
+	while read mode sha1 stage sm_path
+	do
+		die_if_unmatched "$mode"
+		name=$(module_name "$sm_path") || exit
+		url=$(git config submodule."$name".url)
+		if test -z "$url"
+		then
+			say "$(eval_gettext "No url found for submodule path '\$sm_path' in .git/config")"
+			continue
+		fi
+
+		# Remove the submodule work tree
+		if test -z "$force"
+		then
+			git rm -n "$sm_path" ||
+			die "$(eval_gettext "Submodule work tree $sm_path contains local modifications, use '-f' to discard them")"
+		fi
+		rm -rf "$sm_path"
+		mkdir "$sm_path"
+
+		# Remove the whole section so we have a clean state when the
+		# user later decides to init this submodule again
+		git config --remove-section submodule."$name" &&
+		say "$(eval_gettext "Submodule '\$name' (\$url) unregistered for path '\$sm_path'")"
 	done
 }
 
@@ -1108,7 +1173,7 @@ cmd_sync()
 while test $# != 0 && test -z "$command"
 do
 	case "$1" in
-	add | foreach | init | update | status | summary | sync)
+	add | foreach | init | deinit | update | status | summary | sync)
 		command=$1
 		;;
 	-q|--quiet)
