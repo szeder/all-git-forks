@@ -57,6 +57,7 @@ sub new {
 	$self->{file_prop} = {};
 	$self->{absent_dir} = {};
 	$self->{absent_file} = {};
+	$self->{no_changes} = 1;
 	require Git::IndexInfo;
 	$self->{gii} = $git_svn->tmp_index_do(sub { Git::IndexInfo->new });
 	$self->{pathnameencoding} = Git::config('svn.pathnameencoding');
@@ -303,6 +304,7 @@ sub change_file_prop {
 sub apply_textdelta {
 	my ($self, $fb, $exp) = @_;
 	return undef if $self->is_path_ignored($fb->{path});
+	$self->{no_changes} = 0;
 	my $fh = $::_repository->temp_acquire('svn_delta');
 	# $fh gets auto-closed() by SVN::TxDelta::apply(),
 	# (but $base does not,) so dup() it for reading in close_file

@@ -1210,7 +1210,8 @@ sub do_fetch {
 	unless ($self->ra->gs_do_update($last_rev, $rev, $self, $ed)) {
 		die "SVN connection failed somewhere...\n";
 	}
-	$self->make_log_entry($rev, \@parents, $ed);
+	return $self->make_log_entry($rev, \@parents, $ed) unless $ed->{no_changes};
+	undef;
 }
 
 sub mkemptydirs {
