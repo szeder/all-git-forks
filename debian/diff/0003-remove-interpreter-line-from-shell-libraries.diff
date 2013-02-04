@@ -1,7 +1,7 @@
-From bc6999f4ba3bfda672ce032f8760bf5efd52c195 Mon Sep 17 00:00:00 2001
+From 7f76958f54e996a64fba1556604e46d7ee1c6469 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Tue, 13 Mar 2012 20:01:17 -0500
-Subject: [PATCH 03/11] remove #!interpreter line from shell libraries
+Subject: remove #!interpreter line from shell libraries
 
 In a shell snippet meant to be sourced by another shell script,
 an initial #!/bin/sh line is just a comment and has no effect on
@@ -38,14 +38,14 @@ Suggested by Russ Allbery through lintian.
 
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
- git-mergetool--lib.sh      |    3 +--
- git-parse-remote.sh        |    4 +++-
- git-rebase--am.sh          |    3 ++-
- git-rebase--interactive.sh |    8 +++-----
- git-rebase--merge.sh       |    4 +++-
- git-sh-i18n.sh             |    5 ++---
- git-sh-setup.sh            |    9 +++------
- t/test-lib.sh              |    6 ++----
+ git-mergetool--lib.sh      | 3 +--
+ git-parse-remote.sh        | 4 +++-
+ git-rebase--am.sh          | 3 ++-
+ git-rebase--interactive.sh | 8 +++-----
+ git-rebase--merge.sh       | 4 +++-
+ git-sh-i18n.sh             | 5 ++---
+ git-sh-setup.sh            | 9 +++------
+ t/test-lib.sh              | 6 ++----
  8 files changed, 19 insertions(+), 23 deletions(-)
 
 diff --git a/git-mergetool--lib.sh b/git-mergetool--lib.sh
@@ -147,10 +147,10 @@ index 795edd2..f8e36ca 100644
  # Having this variable in your environment would break scripts because
  # you would cause "cd" to be taken to unexpected places.  If you
 diff --git a/t/test-lib.sh b/t/test-lib.sh
-index f50f834..ab24c03 100644
+index fc42d3a..079007f 100644
 --- a/t/test-lib.sh
 +++ b/t/test-lib.sh
-@@ -474,11 +474,9 @@ then
+@@ -476,11 +476,9 @@ then
  
  	make_valgrind_symlink () {
  		# handle only executables, unless they are shell libraries that
@@ -165,5 +165,5 @@ index f50f834..ab24c03 100644
  
  		base=$(basename "$1")
 -- 
-1.7.10.4
+1.8.1.1
 

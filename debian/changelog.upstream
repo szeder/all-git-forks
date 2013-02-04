@@ -1,3 +1,60 @@
+Version v1.8.1.2; changes since v1.8.1.1:
+-----------------------------------------
+
+Antoine Pelisse (3):
+      dir.c: Make git-status --ignored more consistent
+      git-status: Test --ignored behavior
+      status: always report ignored tracked directories
+
+Dylan Smith (1):
+      git-completion.bash: silence "not a valid object" errors
+
+Eric S. Raymond (1):
+      Remove the suggestion to use parsecvs, which is currently broken.
+
+John Keeping (1):
+      git-for-each-ref.txt: 'raw' is a supported date format
+
+Jonathan Nieder (1):
+      contrib/vim: simplify instructions for old vim support
+
+Junio C Hamano (2):
+      Start preparing for 1.8.1.2
+      Git 1.8.1.2
+
+Marc Khouzam (1):
+      Prevent space after directories in tcsh completion
+
+Michael Haggerty (8):
+      Introduce new static function real_path_internal()
+      real_path_internal(): add comment explaining use of cwd
+      Introduce new function real_path_if_valid()
+      longest_ancestor_length(): use string_list_split()
+      longest_ancestor_length(): take a string_list argument for prefixes
+      longest_ancestor_length(): require prefix list entries to be normalized
+      setup_git_directory_gently_1(): resolve symlinks in ceiling paths
+      string_list_longest_prefix(): remove function
+
+Nguyễn Thái Ngọc Duy (1):
+      attr: make it build with DEBUG_ATTR again
+
+Nickolai Zeldovich (1):
+      git-send-email: treat field names as case-insensitively
+
+Peter Eisentraut (1):
+      git-commit-tree(1): correct description of defaults
+
+René Scharfe (5):
+      archive-zip: write uncompressed size into header even with streaming
+      t0024, t5000: clear variable UNZIP, use GIT_UNZIP instead
+      t0024, t5000: use test_lazy_prereq for UNZIP
+      t5000, t5003: move ZIP tests into their own script
+      t5003: check if unzip supports symlinks
+
+Sebastian Staudt (1):
+      config.txt: Document help.htmlpath config parameter
+
+
 Version v1.8.1.1; changes since v1.8.1:
 ---------------------------------------
 

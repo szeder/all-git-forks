@@ -1,3 +1,9 @@
+git (1:1.8.1.2-1) experimental; urgency=low
+
+  * new upstream point release.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 03 Feb 2013 23:01:24 -0800
+
 git (1:1.8.1.1-1) experimental; urgency=low
 
   [ Jonathan Nieder ]
