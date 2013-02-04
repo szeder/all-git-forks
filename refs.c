@@ -3,6 +3,7 @@
 #include "object.h"
 #include "tag.h"
 #include "dir.h"
+#include "string-list.h"
 
 /*
  * Make sure "ref" is something reasonable to have under ".git/refs/";
@@ -2553,4 +2554,44 @@ char *shorten_unambiguous_ref(const char *refname, int strict)
 
 	free(short_name);
 	return xstrdup(refname);
+}
+
+static struct string_list *hide_refs;
+
+int parse_hide_refs_config(const char *var, const char *value, void *unused)
+{
+	if (!strcmp("transfer.hiderefs", var)) {
+		char *ref;
+		int len;
+
+		if (!value)
+			return config_error_nonbool(var);
+		ref = xstrdup(value);
+		len = strlen(ref);
+		while (len && ref[len - 1] == '/')
+			ref[--len] = '\0';
+		if (!hide_refs) {
+			hide_refs = xcalloc(1, sizeof(*hide_refs));
+			hide_refs->strdup_strings = 1;
+		}
+		string_list_append(hide_refs, ref);
+	}
+	return 0;
+}
+
+int ref_is_hidden(const char *refname)
+{
+	struct string_list_item *item;
+
+	if (!hide_refs)
+		return 0;
+	for_each_string_list_item(item, hide_refs) {
+		int len;
+		if (prefixcmp(refname, item->string))
+			continue;
+		len = strlen(item->string);
+		if (!refname[len] || refname[len] == '/')
+			return 1;
+	}
+	return 0;
 }
