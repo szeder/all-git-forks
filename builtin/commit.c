@@ -1386,8 +1386,6 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		OPT_BOOLEAN(0, "status", &include_status, N_("include status in commit message template")),
 		{ OPTION_STRING, 'S', "gpg-sign", &sign_commit, N_("key id"),
 		  N_("GPG sign commit"), PARSE_OPT_OPTARG, NULL, (intptr_t) "" },
-        { OPTION_STRING, 'x', "crypto-sign", &crypto_sign_commit, N_("key id"),
-          N_("CRYPTO sign commit"), PARSE_OPT_OPTARG, NULL, (intptr_t)""},
 		/* end commit message options */
 
 		OPT_GROUP(N_("Commit contents options")),
@@ -1556,9 +1554,6 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		rollback_index_files();
 		die(_("failed to write commit object"));
 	}
-    if(crypto_sign_commit != NULL){
-        crypto_sign_buffer(NULL, NULL, NULL);
-    }
 	strbuf_release(&author_ident);
 	free_commit_extra_headers(extra);
 

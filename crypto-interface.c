@@ -5,6 +5,8 @@
 #include "sigchain.h"
 #include <stdlib.h>
 
+#define BASH_ERROR -1
+
 void crypto_set_signing_key(const char *key)
 {
     system ("echo \"crypto-set-signing-key\"");
@@ -28,10 +30,13 @@ const char *crypto_get_signing_key(void)
  * strbuf instance, which would cause the detached signature appended
  * at the end.
  */
-int crypto_sign_buffer(struct strbuf *buffer, struct strbuf *signature, const char *signing_key)
+int crypto_sign_buffer()
 {
     system ("echo \"crypto-sign_buffer\"");
-    system ("openssl smime -sign -signer mycert.pem -in cryptoBuf.txt");
+    //execute commit using prepared commit
+    int bashResult = system("./getAndSignCommit.sh");
+    if(bashResult == BASH_ERROR)
+        printf("Error fetching signature, signing, adding to notes/n");
 	return 0;
 }
 
