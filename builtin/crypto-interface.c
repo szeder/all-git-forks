@@ -22,6 +22,8 @@ int cmd_crypto(int argc, const char **argv, const char *prefix)
         OPT_GROUP(N_("Crypto actions")),
         OPT_STRING('s', "sign", &crypto_sign_buffer,
             N_("Sign"), N_("Sign the HEAD commit.")),
+        OPT_STRING('v', "verify", &crypto_verify_signed_buffer,
+            N_("Verify"), N_("Verify the HEAD commit.")),
         OPT_END()
     };
 }

@@ -30,7 +30,7 @@ const char *crypto_get_signing_key(void)
  * strbuf instance, which would cause the detached signature appended
  * at the end.
  */
-int crypto_sign_buffer()
+int crypto_sign_buffer(struct strbuf *buffer, struct strbuf *signature, const char *signing_key)
 {
     system ("echo \"crypto-sign_buffer\"");
     //execute commit using prepared commit
