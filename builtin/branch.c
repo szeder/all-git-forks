@@ -706,11 +706,11 @@ static int edit_branch_description(const char *branch_name)
 	read_branch_desc(&buf, branch_name);
 	if (!buf.len || buf.buf[buf.len-1] != '\n')
 		strbuf_addch(&buf, '\n');
-	strbuf_addf(&buf,
-		    "# Please edit the description for the branch\n"
-		    "#   %s\n"
-		    "# Lines starting with '#' will be stripped.\n",
-		    branch_name);
+	strbuf_commented_addf(&buf,
+		    "Please edit the description for the branch\n"
+		    "  %s\n"
+		    "Lines starting with '%c' will be stripped.\n",
+		    branch_name, comment_line_char);
 	fp = fopen(git_path(edit_description), "w");
 	if ((fwrite(buf.buf, 1, buf.len, fp) < buf.len) || fclose(fp)) {
 		strbuf_release(&buf);
@@ -850,11 +850,11 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		const char *branch_name;
 		struct strbuf branch_ref = STRBUF_INIT;
 
-		if (detached)
-			die("Cannot give description to detached HEAD");
-		if (!argc)
+		if (!argc) {
+			if (detached)
+				die("Cannot give description to detached HEAD");
 			branch_name = head;
-		else if (argc == 1)
+		} else if (argc == 1)
 			branch_name = argv[0];
 		else
 			usage_with_options(builtin_branch_usage, options);
