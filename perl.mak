@@ -1,5 +1,9 @@
 # Rules to build Git commands written in perl
 
+ifndef GIT_ROOT_DIR
+	GIT_ROOT_DIR = .
+endif
+
 ifndef PERL_PATH
 	PERL_PATH = /usr/bin/perl
 endif
@@ -11,12 +15,11 @@ NO_PERL = NoThanks
 endif
 
 ifndef NO_PERL
-$(patsubst %.perl,%,$(SCRIPT_PERL)): perl/perl.mak
+$(patsubst %.perl,%,$(SCRIPT_PERL)): $(GIT_ROOT_DIR)/perl/perl.mak
 
-
-$(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl GIT-VERSION-FILE
+$(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl $(GIT_ROOT_DIR)/GIT-VERSION-FILE
 	$(QUIET_GEN)$(RM) $@ $@+ && \
-	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C perl -s --no-print-directory instlibdir` && \
+	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C $(GIT_ROOT_DIR)/perl -s --no-print-directory instlibdir` && \
 	sed -e '1{' \
 	    -e '	s|#!.*perl|#!$(PERL_PATH_SQ)|' \
 	    -e '	h' \
