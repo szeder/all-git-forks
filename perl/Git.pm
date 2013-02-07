@@ -59,7 +59,8 @@ require Exporter;
                 command_bidi_pipe command_close_bidi_pipe
                 version exec_path html_path hash_object git_cmd_try
                 remote_refs prompt
-                temp_acquire temp_release temp_reset temp_path);
+                temp_acquire temp_release temp_reset temp_path
+                credential);
 
 
 =head1 DESCRIPTION
@@ -1012,6 +1013,113 @@ sub _close_cat_blob {
 	delete @$self{@vars};
 }
 
+
+sub _credential_read {
+	my %credential;
+	my ($reader, $op) = (@_);
+	while (<$reader>) {
+		if (!/^([^=\s]+)=(.*?)\s*$/) {
+			throw Error::Simple("unable to parse git credential $op response:\n$_");
+		}
+		$credential{$1} = $2;
+	}
+	return %credential;
+}
+
+sub _credential_write {
+	my ($credential, $writer) = @_;
+
+	for my $key (sort {
+		# url overwrites other fields, so it must come first
+		return -1 if $a eq 'url';
+		return  1 if $b eq 'url';
+		return $a cmp $b;
+	} keys %$credential) {
+		if (defined $credential->{$key} && length $credential->{$key}) {
+			print $writer $key, '=', $credential->{$key}, "\n";
+		}
+	}
+	print $writer "\n";
+}
+
+sub _credential_run {
+	my ($self, $credential, $op) = _maybe_self(@_);
+
+	my ($pid, $reader, $writer, $ctx) = command_bidi_pipe('credential', $op);
+
+	_credential_write $credential, $writer;
+	close $writer;
+
+	if ($op eq "fill") {
+		%$credential = _credential_read $reader, $op;
+	} elsif (<$reader>) {
+		throw Error::Simple("unexpected output from git credential $op response:\n$_\n");
+	}
+
+	command_close_bidi_pipe($pid, $reader, undef, $ctx);
+}
+
+=item credential( CREDENTIAL_HASH [, OPERATION ] )
+
+=item credential( CREDENTIAL_HASH, CODE )
+
+Executes C<git credential> for a given set of credentials and
+specified operation.  In both form C<CREDENTIAL_HASH> needs to be
+a reference to a hash which stores credentials.  Under certain
+conditions the hash can change.
+
+In the first form, C<OPERATION> can be C<'fill'> (or omitted),
+C<'approve'> or C<'reject'>, and function will execute corresponding
+C<git credential> sub-command.  In case of C<'fill'> the values stored
+in C<CREDENTIAL_HASH> will be changed to the ones returned by the
+C<git credential> command.  The usual usage would look something like:
+
+	my %cred = (
+		'protocol' => 'https',
+		'host' => 'example.com',
+		'username' => 'bob'
+	);
+	Git::credential \%cred;
+	if (try_to_authenticate($cred{'username'}, $cred{'password'})) {
+		Git::credential \%cred, 'approve';
+		... do more stuff ...
+	} else {
+		Git::credential \%cred, 'reject';
+	}
+
+In the second form, C<CODE> needs to be a reference to a subroutine.
+The function will execute C<git credential fill> to fill provided
+credential hash, than call C<CODE> with C<CREDENTIAL_HASH> as the sole
+argument, and finally depending on C<CODE>'s return value execute
+C<git credential approve> (if return value yields true) or C<git
+credential reject> (otherwise).  The return value is the same as what
+C<CODE> returned.  With this form, the usage might look as follows:
+
+	if (Git::credential {
+		'protocol' => 'https',
+		'host' => 'example.com',
+		'username' => 'bob'
+	}, sub {
+		my $cred = shift;
+		return try_to_authenticate($cred->{'username'}, $cred->{'password'});
+	}) {
+		... do more stuff ...
+	}
+
+=cut
+
+sub credential {
+	my ($self, $credential, $op_or_code) = (_maybe_self(@_), 'fill');
+
+	if ('CODE' eq ref $op_or_code) {
+		_credential_run $credential, 'fill';
+		my $ret = $op_or_code->($credential);
+		_credential_run $credential, $ret ? 'approve' : 'reject';
+		return $ret;
+	} else {
+		_credential_run $credential, $op_or_code;
+	}
+}
 
 { # %TEMP_* Lexical Context
 
