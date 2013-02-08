@@ -51,7 +51,7 @@ License: GPL-2+
 
 Files: vcs-svn/*
 Copyright: © 2010, David Barr <david.barr@cordelta.com>
-           © 2008, Jason Evans <jasone@canonware.com>
+           © 2010, Jonathan Nieder <jrnieder@gmail.com>
            © 2005, Stefan Hegny, hydrografix Consulting GmbH,
                    Frankfurt/Main, Germany
                    and others, see http://svn2cc.sarovar.org
