@@ -83,7 +83,7 @@ Bisect reset
 ~~~~~~~~~~~~
 
 After a bisect session, to clean up the bisection state and return to
-the original HEAD, issue the following command:
+the original HEAD (i.e., to finish bisect), issue the following command:
 
 ------------------------------------------------
 $ git bisect reset
