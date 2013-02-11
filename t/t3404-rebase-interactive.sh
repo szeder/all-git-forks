@@ -940,4 +940,20 @@ test_expect_success 'rebase --edit-todo can be used to modify todo' '
 	test L = $(git cat-file commit HEAD | sed -ne \$p)
 '
 
+test_expect_success 'rebase -i respects core.commentchar' '
+	git reset --hard &&
+	git checkout E^0 &&
+	git config core.commentchar "\\" &&
+	test_when_finished "git config --unset core.commentchar" &&
+	cat >comment-lines.sh <<EOF &&
+#!$SHELL_PATH
+sed -e "2,\$ s/^/\\\\\\/" "\$1" >"\$1".tmp
+mv "\$1".tmp "\$1"
+EOF
+	chmod a+x comment-lines.sh &&
+	test_set_editor "$(pwd)/comment-lines.sh" &&
+	git rebase -i B &&
+	test B = $(git cat-file commit HEAD^ | sed -ne \$p)
+'
+
 test_done
