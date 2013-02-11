@@ -883,6 +883,7 @@ class P4Debug(Command):
         self.needsGit = False
 
     def run(self, args):
+        self.gitdir = cd_to_gitroot(self.needsGit)
         j = 0
         for output in p4CmdList(args):
             print 'Element: %d' % j
@@ -900,6 +901,7 @@ class P4RollBack(Command):
         self.rollbackLocalBranches = False
 
     def run(self, args):
+        self.gitdir = cd_to_gitroot(self.needsGit)
         if len(args) != 1:
             return False
         maxChange = int(args[0])
@@ -1557,6 +1559,7 @@ class P4Submit(Command, P4UserMap):
                     print "created p4 label for tag %s" % name
 
     def run(self, args):
+        self.gitdir = cd_to_gitroot(self.needsGit)
         if len(args) == 0:
             self.master = currentGitBranch()
             if len(self.master) == 0 or not gitBranchExists("refs/heads/%s" % self.master):
@@ -2853,6 +2856,7 @@ class P4Sync(Command, P4UserMap):
 
 
     def run(self, args):
+        self.gitdir = cd_to_gitroot(self.needsGit)
         self.depotPaths = []
         self.changeRange = ""
         self.previousDepotPaths = []
@@ -3204,6 +3208,7 @@ class P4Rebase(Command):
                             + "rebases the current work (branch) against it")
 
     def run(self, args):
+        self.gitdir = cd_to_gitroot(self.needsGit)
         sync = P4Sync()
         sync.importLabels = self.importLabels
         sync.run([])
@@ -3255,6 +3260,7 @@ class P4Clone(P4Sync):
         return os.path.split(depotDir)[1]
 
     def run(self, args):
+        self.gitdir = cd_to_gitroot(self.needsGit)
         if len(args) < 1:
             return False
 
@@ -3313,6 +3319,7 @@ class P4Branches(Command):
         self.verbose = False
 
     def run(self, args):
+        self.gitdir = cd_to_gitroot(self.needsGit)
         if originP4BranchesExist():
             createOrUpdateBranchesFromOrigin()
 
@@ -3361,6 +3368,20 @@ commands = {
     "branches" : P4Branches
 }
 
+def cd_to_gitroot(needsGit):
+    if needsGit:
+        gitdir = os.path.abspath(".git")
+        if not isValidGitDir(gitdir):
+            gitdir = read_pipe("git rev-parse --git-dir").strip()
+            if os.path.exists(gitdir):
+                cdup = read_pipe("git rev-parse --show-cdup").strip()
+                if len(cdup) > 0:
+                    chdir(cdup);
+            else:
+                die("fatal: cannot locate git repository at %s" % cmd.gitdir)
+    
+        os.environ["GIT_DIR"] = gitdir
+        return gitdir
 
 def main():
     if len(sys.argv[1:]) == 0:
@@ -3397,6 +3418,8 @@ def main():
         verboseFromConfig = gitConfig("git-p4.verbose", "--bool")
         if verboseFromConfig == 'true' :
             cmd.verbose = True
+            
+    
     
     global verbose
     verbose = cmd.verbose
