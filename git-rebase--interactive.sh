@@ -108,8 +108,8 @@ mark_action_done () {
 	sed -e 1q < "$todo" >> "$done"
 	sed -e 1d < "$todo" >> "$todo".new
 	mv -f "$todo".new "$todo"
-	new_count=$(git stripspace --strip-comments < "$done" | wc -l)
-	total=$(($new_count+$(git stripspace --strip-comments < "$todo" | wc -l)))
+	new_count=$(git stripspace --strip-comments <"$done" | wc -l)
+	total=$(($new_count + $(git stripspace --strip-comments <"$todo" | wc -l)))
 	if test "$last_count" != "$new_count"
 	then
 		last_count=$new_count
@@ -119,7 +119,7 @@ mark_action_done () {
 }
 
 append_todo_help () {
-	git stripspace --comment-lines >>"$todo" <<EOF
+	git stripspace --comment-lines >>"$todo" <<\EOF
 
 Commands:
  p, pick = use commit
@@ -182,8 +182,6 @@ die_abort () {
 }
 
 has_action () {
-	echo "space stripped actions:" >&2
-	git stripspace --strip-comments <"$1" >&2
 	test -n "$(git stripspace --strip-comments <"$1")"
 }
 
@@ -807,7 +805,7 @@ edit-todo)
 	git stripspace --strip-comments <"$todo" >"$todo".new
 	mv -f "$todo".new "$todo"
 	append_todo_help
-	git stripspace --comment-lines >>"$todo" <<EOF
+	git stripspace --comment-lines >>"$todo" <<\EOF
 
 You are editing the todo file of an ongoing interactive rebase.
 To continue rebase after editing, run:
@@ -943,10 +941,12 @@ test -s "$todo" || echo noop >> "$todo"
 test -n "$autosquash" && rearrange_squash "$todo"
 test -n "$cmd" && add_exec_commands "$todo"
 
-echo >>"$todo"
-printf '%s\n' "$comment_char Rebase $shortrevisions onto $shortonto" >>"$todo"
+cat >>"$todo" <<EOF
+
+$comment_char Rebase $shortrevisions onto $shortonto
+EOF
 append_todo_help
-git stripspace --comment-lines >>"$todo" <<EOF
+git stripspace --comment-lines >>"$todo" <<\EOF
 
 However, if you remove everything, the rebase will be aborted.
 
