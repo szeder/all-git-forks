@@ -1227,7 +1227,17 @@ void graph_show_commit(struct git_graph *graph)
 	if (!graph)
 		return;
 
-	while (!shown_commit_line && !graph_is_commit_finished(graph)) {
+	/*
+	 * When showing a diff of a merge against each of its parents, we
+	 * are called once for each parent without graph_update having been
+	 * called.  In this case, simply output a single padding line.
+	 */
+	if (graph_is_commit_finished(graph)) {
+		graph_show_padding(graph);
+		shown_commit_line = 1;
+	}
+
+	while (!shown_commit_line) {
 		shown_commit_line = graph_next_line(graph, &msgbuf);
 		fwrite(msgbuf.buf, sizeof(char), msgbuf.len, stdout);
 		if (!shown_commit_line)
