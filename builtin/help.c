@@ -6,7 +6,6 @@
 #include "cache.h"
 #include "builtin.h"
 #include "exec_cmd.h"
-#include "common-cmds.h"
 #include "parse-options.h"
 #include "run-command.h"
 #include "column.h"
@@ -237,21 +236,21 @@ static int add_man_viewer_cmd(const char *name,
 
 static int add_man_viewer_info(const char *var, const char *value)
 {
-	const char *name = var + 4;
-	const char *subkey = strrchr(name, '.');
+	const char *name, *subkey;
+	int namelen;
 
-	if (!subkey)
+	if (parse_config_key(var, "man", &name, &namelen, &subkey) < 0 || !name)
 		return 0;
 
-	if (!strcmp(subkey, ".path")) {
+	if (!strcmp(subkey, "path")) {
 		if (!value)
 			return config_error_nonbool(var);
-		return add_man_viewer_path(name, subkey - name, value);
+		return add_man_viewer_path(name, namelen, value);
 	}
-	if (!strcmp(subkey, ".cmd")) {
+	if (!strcmp(subkey, "cmd")) {
 		if (!value)
 			return config_error_nonbool(var);
-		return add_man_viewer_cmd(name, subkey - name, value);
+		return add_man_viewer_cmd(name, namelen, value);
 	}
 
 	return 0;
@@ -286,23 +285,6 @@ static int git_help_config(const char *var, const char *value, void *cb)
 }
 
 static struct cmdnames main_cmds, other_cmds;
-
-void list_common_cmds_help(void)
-{
-	int i, longest = 0;
-
-	for (i = 0; i < ARRAY_SIZE(common_cmds); i++) {
-		if (longest < strlen(common_cmds[i].name))
-			longest = strlen(common_cmds[i].name);
-	}
-
-	puts(_("The most commonly used git commands are:"));
-	for (i = 0; i < ARRAY_SIZE(common_cmds); i++) {
-		printf("   %s   ", common_cmds[i].name);
-		mput_char(' ', longest - strlen(common_cmds[i].name));
-		puts(_(common_cmds[i].help));
-	}
-}
 
 static int is_git_command(const char *s)
 {
