@@ -60,7 +60,8 @@ require Exporter;
                 version exec_path html_path hash_object git_cmd_try
                 remote_refs prompt
                 get_tz_offset
-                temp_acquire temp_release temp_reset temp_path);
+                temp_acquire temp_release temp_reset temp_path
+                credential credential_read credential_write);
 
 
 =head1 DESCRIPTION
@@ -420,7 +421,7 @@ and it is the fourth value returned by C<command_bidi_pipe()>.  The call idiom
 is:
 
 	my ($pid, $in, $out, $ctx) = $r->command_bidi_pipe('cat-file --batch-check');
-	print "000000000\n" $out;
+	print $out "000000000\n";
 	while (<$in>) { ... }
 	$r->command_close_bidi_pipe($pid, $in, $out, $ctx);
 
@@ -428,13 +429,26 @@ Note that you should not rely on whatever actually is in C<CTX>;
 currently it is simply the command name but in future the context might
 have more complicated structure.
 
+C<PIPE_IN> and C<PIPE_OUT> may be C<undef> if they have been closed prior to
+calling this function.  This may be useful in a query-response type of
+commands where caller first writes a query and later reads response, eg:
+
+	my ($pid, $in, $out, $ctx) = $r->command_bidi_pipe('cat-file --batch-check');
+	print $out "000000000\n";
+	close $out;
+	while (<$in>) { ... }
+	$r->command_close_bidi_pipe($pid, $in, undef, $ctx);
+
+This idiom may prevent potential dead locks caused by data sent to the output
+pipe not being flushed and thus not reaching the executed command.
+
 =cut
 
 sub command_close_bidi_pipe {
 	local $?;
-	my ($pid, $in, $out, $ctx) = @_;
+	my ($self, $pid, $in, $out, $ctx) = _maybe_self(@_);
 	foreach my $fh ($in, $out) {
-		unless (close $fh) {
+		if (defined $fh && !close $fh) {
 			if ($!) {
 				carp "error closing pipe: $!";
 			} elsif ($? >> 8) {
@@ -1022,6 +1036,156 @@ sub _close_cat_blob {
 	delete @$self{@vars};
 }
 
+
+=item credential_read( FILE_HANDLE )
+
+Reads credential key-value pairs from C<FILE_HANDLE>.  Reading stops at EOF or
+when an empty line is encountered.  Each line must be of the form C<key=value>
+with a non-empty key.  Function returns a hash with all read values.  Any
+white space (other then new-line character) is preserved.
+
+=cut
+
+sub credential_read {
+	my ($self, $reader) = _maybe_self(@_);
+	my %credential;
+	while (<$reader>) {
+		chomp;
+		if ($_ eq '') {
+			last;
+		} elsif (!/^([^=]+)=(.*)$/) {
+			throw Error::Simple("unable to parse git credential data:\n$_");
+		}
+		$credential{$1} = $2;
+	}
+	return %credential;
+}
+
+=item credential_write( FILE_HANDLE, CREDENTIAL_HASH )
+
+Writes credential key-value pairs from hash referenced by C<CREDENTIAL_HASH>
+to C<FILE_HANDLE>.  Keys and values cannot contain new-line or NUL byte
+characters, and key cannot contain equal sign nor be empty (if they do
+Error::Simple is thrown).  Any white space is preserved.  If value for a key
+is C<undef>, it will be skipped.
+
+If C<'url'> key exists it will be written first.  (All the other key-value
+pairs are written in sorted order but you should not depend on that).  Once
+all lines are written, an empty line is printed.
+
+=cut
+
+sub credential_write {
+	my ($self, $writer, $credential) = _maybe_self(@_);
+	my ($key, $value);
+
+	# Check if $credential is valid prior to writing anything
+	while (($key, $value) = each %$credential) {
+		if (!defined $key || !length $key) {
+			throw Error::Simple("credential key empty or undefined");
+		} elsif ($key =~ /[=\n\0]/) {
+			throw Error::Simple("credential key contains invalid characters: $key");
+		} elsif (defined $value && $value =~ /[\n\0]/) {
+			throw Error::Simple("credential value for key=$key contains invalid characters: $value");
+		}
+	}
+
+	for $key (sort {
+		# url overwrites other fields, so it must come first
+		return -1 if $a eq 'url';
+		return  1 if $b eq 'url';
+		return $a cmp $b;
+	} keys %$credential) {
+		if (defined $credential->{$key}) {
+			print $writer $key, '=', $credential->{$key}, "\n";
+		}
+	}
+	print $writer "\n";
+}
+
+sub _credential_run {
+	my ($self, $credential, $op) = _maybe_self(@_);
+
+	my ($pid, $reader, $writer, $ctx) = command_bidi_pipe('credential', $op);
+
+	credential_write $writer, $credential;
+	close $writer;
+
+	if ($op eq "fill") {
+		%$credential = credential_read $reader;
+	} elsif (<$reader>) {
+		throw Error::Simple("unexpected output from git credential $op response:\n$_\n");
+	}
+
+	command_close_bidi_pipe($pid, $reader, undef, $ctx);
+}
+
+=item credential( CREDENTIAL_HASH [, OPERATION ] )
+
+=item credential( CREDENTIAL_HASH, CODE )
+
+Executes C<git credential> for a given set of credentials and
+specified operation.  In both forms C<CREDENTIAL_HASH> needs to be
+a reference to a hash which stores credentials.  Under certain
+conditions the hash can change.
+
+In the first form, C<OPERATION> can be C<'fill'> (or omitted),
+C<'approve'> or C<'reject'>, and function will execute corresponding
+C<git credential> sub-command.  In case of C<'fill'> the values stored
+in C<CREDENTIAL_HASH> will be changed to the ones returned by the
+C<git credential> command.  The usual usage would look something like:
+
+	my %cred = (
+		'protocol' => 'https',
+		'host' => 'example.com',
+		'username' => 'bob'
+	);
+	Git::credential \%cred;
+	if (try_to_authenticate($cred{'username'}, $cred{'password'})) {
+		Git::credential \%cred, 'approve';
+		... do more stuff ...
+	} else {
+		Git::credential \%cred, 'reject';
+	}
+
+In the second form, C<CODE> needs to be a reference to a subroutine.
+The function will execute C<git credential fill> to fill the provided
+credential hash, then call C<CODE> with C<CREDENTIAL> as the sole
+argument. If C<CODE>'s return value is defined, the function will
+execute C<git credential approve> (if return value yields true) or
+C<git credential reject> (if return value is false). If the return
+value is undef, nothing at all is executed; this is useful, for
+example, if the credential could neither be verified nor rejected due
+to an unrelated network error. The return value is the same as what
+C<CODE> returned.  With this form, the usage might look as follows:
+
+	if (Git::credential {
+		'protocol' => 'https',
+		'host' => 'example.com',
+		'username' => 'bob'
+	}, sub {
+		my $cred = shift;
+		return try_to_authenticate($cred->{'username'}, $cred->{'password'});
+	}) {
+		... do more stuff ...
+	}
+
+=cut
+
+sub credential {
+	my ($self, $credential, $op_or_code) = (_maybe_self(@_), 'fill');
+
+	if ('CODE' eq ref $op_or_code) {
+		_credential_run $credential, 'fill';
+		my $ret = $op_or_code->($credential);
+		if (defined $ret) {
+			_credential_run $credential, $ret ? 'approve' : 'reject';
+		}
+		return $ret;
+	} else {
+		_credential_run $credential, $op_or_code;
+	}
+}
 
 { # %TEMP_* Lexical Context
 
