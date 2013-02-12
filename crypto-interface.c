@@ -30,7 +30,7 @@ const char *crypto_get_signing_key(void)
  * strbuf instance, which would cause the detached signature appended
  * at the end.
  */
-int crypto_sign_buffer(struct strbuf *buffer, struct strbuf *signature, const char *signing_key)
+int crypto_sign_buffer(/* intentionally blank for now */)
 {
     system ("echo \"crypto-sign_buffer\"");
     //execute commit using prepared commit
@@ -43,9 +43,7 @@ int crypto_sign_buffer(struct strbuf *buffer, struct strbuf *signature, const ch
 /*
  * Run  to see if the payload matches the detached signature.
  */
-int crypto_verify_signed_buffer(const char *payload, size_t payload_size,
-        const char *signature, size_t signature_size,
-        struct strbuf *gpg_output){
+int crypto_verify_signed_buffer( /* intentionally blank for now */ ){
     system ("echo \"crypto-verify_signed_buffer\"");
 	return 0;
 }

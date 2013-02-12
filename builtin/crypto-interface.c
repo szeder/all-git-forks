@@ -26,4 +26,12 @@ int cmd_crypto(int argc, const char **argv, const char *prefix)
             N_("Verify"), N_("Verify the HEAD commit.")),
         OPT_END()
     };
+
+    // TEMPORARY
+    if(strcmp(argv[1], "-s") == 0){
+        printf("Sign \n");
+        crypto_sign_buffer();
+    }
+    if(strcmp(argv[1], "--verify") == 0)
+        crypto_verify_signed_buffer();
 }
