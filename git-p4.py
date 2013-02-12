@@ -618,7 +618,7 @@ def gitConfigBool(key):
 def gitConfigList(key):
     if not _gitConfig.has_key(key):
         s = read_pipe(["git", "config", "--get-all", key], ignore_error=True)
-        _gitConfig[key] = s.strip().splitLines()
+        _gitConfig[key] = s.strip().splitlines()
     return _gitConfig[key]
 
 def p4BranchesInGit(branchesAreInRemotes=True):
@@ -665,11 +665,7 @@ def branch_exists(branch):
     return out.rstrip() == branch
 
 def findUpstreamBranchPoint(head = "HEAD"):
-    importIntoRemotes = gitConfig("git-p4.importIntoRemotes", "--bool");
-    if (importIntoRemotes == "false"):
-        importIntoRemotes = False
-    else:
-        importIntoRemotes = True
+    importIntoRemotes = gitConfigBool("git-p4.importIntoRemotes");
         
     branches = p4BranchesInGit(importIntoRemotes)
     # map from depot-path to branch name
@@ -2926,11 +2922,7 @@ class P4Sync(Command, P4UserMap):
         self.knownBranches = {}
         self.initialParents = {}
 
-        importIntoRemotes = gitConfig("git-p4.importIntoRemotes", "--bool");
-        if (importIntoRemotes == 'false'):
-            self.importIntoRemotes = False
-        else:
-            self.importIntoRemotes = True
+        self.importIntoRemotes = gitConfigBool("git-p4.importIntoRemotes")
 
         if self.importIntoRemotes:
             self.refPrefix = "refs/remotes/p4/"
@@ -3478,11 +3470,8 @@ def main():
     (cmd, args) = parser.parse_args(sys.argv[2:], cmd);
     
     if not cmd.verbose:
-        verboseFromConfig = gitConfig("git-p4.verbose", "--bool")
-        if verboseFromConfig == 'true' :
-            cmd.verbose = True
-            
-    
+        if gitConfigBool("git-p4.verbose"):
+            cmd.verbose = True                
     
     global verbose
     verbose = cmd.verbose
