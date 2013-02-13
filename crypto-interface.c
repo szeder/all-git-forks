@@ -30,22 +30,43 @@ const char *crypto_get_signing_key(void)
  * strbuf instance, which would cause the detached signature appended
  * at the end.
  */
-int crypto_sign_buffer()
+int crypto_sign_buffer(char * pem)
 {
-    system ("echo \"crypto-sign_buffer\"");
-    //execute commit using prepared commit
-    int bashResult = system("./getAndSignCommit.sh");
+    char * script = "HASH=$(git log -n1 | cut -d ' ' -f 2 | head -n1); \
+                     FILE=$(date +\%s); \
+                     git show $(HASH) > \"$FILE\".txt; \
+                     openssl cms -sign -in \"$FILE\".txt -text -out \"$FILE\".msg -signer myCert.pem ; \
+                     git notes --ref=crypto add -F \"$FILE\".msg HEAD; \
+                     rm \"$FILE\".txt \"$FILE\".msg; \
+                     echo \"Pushing signed note to the origin\"; \
+                     git push origin refs/notes/crypto/*; ";
+    int bashResult = system(script);
     if(bashResult == BASH_ERROR)
-        printf("Error fetching signature, signing, adding to notes/n");
+        printf("Error fetching signature, signing, adding to notes\n");
 	return 0;
 }
 
 /*
  * Run  to see if the payload matches the detached signature.
  */
-int crypto_verify_signed_buffer(const char *payload, size_t payload_size,
-        const char *signature, size_t signature_size,
-        struct strbuf *gpg_output){
-    system ("echo \"crypto-verify_signed_buffer\"");
+int crypto_verify_signed_buffer( char * pem ){
+    char * script = "NOTEID=$(git notes --ref=crypto | cut -d ' ' -f 1 | head -n1); \
+                    COMMITID=$(git notes --ref=crypto | cut -d ' ' -f 2 | head -n1); \
+                    TIME=$(date +\%s); \
+                    git show $NOTEID > \"$TIME\".msg; \
+                    git show $COMMITID > \"$TIME\".cmt; \
+                    openssl smime -verify -in \"$TIME\".msg -noverify -signer \"$TIME\".pem -out \"$TIME\".data 2> /dev/null; \
+                    echo \"Verifying the signature: ...\"; \
+                    openssl cms -verify -in \"$TIME\".msg -noverify -signer \"$TIME\".pem -out \"$TIME\".data; \
+                    tail -n +3 \"$TIME\".data > \"$TIME\"2.data; \
+                    if diff -w --brief <(sort \"$TIME\".cmt) <(sort \"$TIME\"2.data) > /dev/null ; then \
+                        echo \"Verification passed for commit: $COMMITID\"; \
+                    else \
+                        echo \"Verification FAILS for commit: $COMMITID\"; \
+                    fi; \
+                    rm \"$TIME\"*;";
+    int bashResult = system("./verifyLiteCMS.sh");
+    //if(bashResult == BASH_ERROR);
+    //    printf("Error fetching signature for the head commit and verifying\n");
 	return 0;
 }
