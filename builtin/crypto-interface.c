@@ -29,9 +29,14 @@ int cmd_crypto(int argc, const char **argv, const char *prefix)
 
     // TEMPORARY
     if(strcmp(argv[1], "-s") == 0){
+        char * pem = malloc(sizeof(argv[2]));
+        strcpy(pem, argv[2]);
         printf("Sign \n");
-        crypto_sign_buffer();
+        crypto_sign_buffer(pem);
     }
-    if(strcmp(argv[1], "--verify") == 0)
-        crypto_verify_signed_buffer();
+    if(strcmp(argv[1], "--verify") == 0){
+        char * pem = malloc(sizeof(argv[2]));
+        strcpy(pem, argv[2]);
+        crypto_verify_signed_buffer(pem);
+    }
 }

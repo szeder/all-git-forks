@@ -30,11 +30,17 @@ const char *crypto_get_signing_key(void)
  * strbuf instance, which would cause the detached signature appended
  * at the end.
  */
-int crypto_sign_buffer(/* intentionally blank for now */)
+int crypto_sign_buffer(char * pem)
 {
-    system ("echo \"crypto-sign_buffer\"");
-    //execute commit using prepared commit
-    int bashResult = system("./getAndSignCommit.sh");
+    char * script = "HASH=$(git log -n1 | cut -d ' ' -f 2 | head -n1); \
+                     FILE=$(date +\%s).txt; \
+                     git show $(HASH) > \"$FILE\"; \
+                     openssl cms -sign -in \"$FILE\" -text -out \"$FILE\" -signer myCert.pem ; \
+                     git notes --ref=crypto add -F \"$FILE\" HEAD; \
+                     rm \"$FILE\"; \
+                     echo \"Pushing signed note to the origin\"; \
+                     git push origin refs/notes/crypto/*; ";
+    int bashResult = system(script);
     if(bashResult == BASH_ERROR)
         printf("Error fetching signature, signing, adding to notes/n");
 	return 0;
@@ -43,7 +49,7 @@ int crypto_sign_buffer(/* intentionally blank for now */)
 /*
  * Run  to see if the payload matches the detached signature.
  */
-int crypto_verify_signed_buffer( /* intentionally blank for now */ ){
+int crypto_verify_signed_buffer( char * pem ){
     system ("echo \"crypto-verify_signed_buffer\"");
 	return 0;
 }
