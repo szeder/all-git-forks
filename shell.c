@@ -63,10 +63,16 @@ static void cd_to_homedir(void)
 
 static void run_shell(void)
 {
-	int done = 0;
+	int done = 0, status;
 	static const char *help_argv[] = { HELP_COMMAND, NULL };
 	/* Print help if enabled */
-	run_command_v_opt(help_argv, RUN_SILENT_EXEC_FAILURE);
+	status = run_command_v_opt(help_argv, RUN_SILENT_EXEC_FAILURE);
+	if (!status)
+		; /* success */
+	else if (status == -1 && errno == ENOENT)
+		; /* help disabled */
+	else
+		exit(status);
 
 	do {
 		struct strbuf line = STRBUF_INIT;
