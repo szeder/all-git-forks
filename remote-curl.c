@@ -101,6 +101,15 @@ static int read_packets_until_flush(char **buf, size_t *len)
 	}
 }
 
+static int verify_ref_advertisement(char *buf, size_t len)
+{
+	/*
+	 * Our function parameters are copies, so we do not
+	 * have to care that read_packets will increment our pointers.
+	 */
+	return read_packets_until_flush(&buf, &len);
+}
+
 static struct discovery* discover_refs(const char *service)
 {
 	struct strbuf exp = STRBUF_INIT;
@@ -173,6 +182,9 @@ static struct discovery* discover_refs(const char *service)
 		if (read_packets_until_flush(&last->buf, &last->len) < 0)
 			die("smart-http metadata lines are invalid at %s",
 			    refs_url);
+
+		if (verify_ref_advertisement(last->buf, last->len) < 0)
+			die("ref advertisement is invalid at %s", refs_url);
 
 		last->proto_git = 1;
 	}
