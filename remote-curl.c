@@ -90,6 +90,17 @@ static void free_discovery(struct discovery *d)
 	}
 }
 
+static int read_packets_until_flush(char **buf, size_t *len)
+{
+	while (1) {
+		int r = packet_get_line(NULL, buf, len);
+		if (r < 0)
+			return -1;
+		if (r == 0)
+			return 0;
+	}
+}
+
 static struct discovery* discover_refs(const char *service)
 {
 	struct strbuf exp = STRBUF_INIT;
@@ -155,11 +166,13 @@ static struct discovery* discover_refs(const char *service)
 
 		/* The header can include additional metadata lines, up
 		 * until a packet flush marker.  Ignore these now, but
-		 * in the future we might start to scan them.
+		 * in the future we might start to scan them. However, we do
+		 * still check to make sure we are getting valid packet lines,
+		 * ending with a flush.
 		 */
-		strbuf_reset(&buffer);
-		while (packet_get_line(&buffer, &last->buf, &last->len) > 0)
-			strbuf_reset(&buffer);
+		if (read_packets_until_flush(&last->buf, &last->len) < 0)
+			die("smart-http metadata lines are invalid at %s",
+			    refs_url);
 
 		last->proto_git = 1;
 	}
