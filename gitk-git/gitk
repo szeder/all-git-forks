@@ -2584,6 +2584,7 @@ proc makewindow {} {
     makemenu $flist_menu {
 	{mc "Highlight this too" command {flist_hl 0}}
 	{mc "Highlight this only" command {flist_hl 1}}
+        {mc "File history browser for this only" command {flist_hb 0}}
 	{mc "External diff" command {external_diff}}
 	{mc "Blame parent commit" command {external_blame 1}}
     }
@@ -3352,7 +3353,7 @@ proc pop_flist_menu {w X Y x y} {
 	set xdiffstate "disabled"
     }
     # Disable "External diff" item in tree mode
-    $flist_menu entryconf 2 -state $xdiffstate
+    $flist_menu entryconf 3 -state $xdiffstate
     tk_popup $flist_menu $X $Y
 }
 
@@ -11981,6 +11982,577 @@ if {[tk windowingsystem] eq "win32"} {
 }
 
 getcommits {}
+
+# Bindings to make canvases scroll.  Canvases have no bindings at all
+# by default.
+proc scrollbindings {bindtag} {
+        # Page keys
+        bind $bindtag <ButtonPress-1>    [list focus %W]
+        bind $bindtag <Next>  [list %W yview scroll  1 pages]
+        bind $bindtag <Prior> [list %W yview scroll -1 pages]
+        bind $bindtag <Up>    [list %W yview scroll -1 units]
+        bind $bindtag <Down>  [list %W yview scroll  1 units]
+        bind $bindtag <Left>  [list %W xview scroll -1 pages]
+        bind $bindtag <Right> [list %W xview scroll  1 pages]
+        # Middle button dragging
+        bind $bindtag <B2-Motion> [list dragbind %W %x %y]
+        # Wheelmouse
+        bind $bindtag <MouseWheel> [list wheelbind %W %D]
+        bind $bindtag <ButtonPress-4> [list %W yview scroll -1 pages]
+        bind $bindtag <ButtonPress-5> [list %W yview scroll 1 pages]
+}
+
+
+proc diff_revision {revA revB} {
+        global flist_menu_file
+        global extdifftool
+        global id2file
+
+        set fileA $id2file($revA)
+        set fileB $id2file($revB)
+
+        set diffdir [gitknewtmpdir]
+
+        if {$diffdir eq {}} return
+
+        # gather files to diff
+        set difffromfile [external_diff_get_one_file $revA $fileA $diffdir]
+        set difftofile [external_diff_get_one_file $revB $fileB $diffdir]
+
+        if {$difffromfile ne {} && $difftofile ne {}} {
+                set cmd [list [shellsplit $extdifftool] $difffromfile $difftofile]
+                if {[catch {set fl [open |$cmd r]} err]} {
+                        file delete -force $diffdir
+                        error_popup "$extdifftool: [mc "command failed:"] $err"
+                } else {
+                        fconfigure $fl -blocking 0
+                        filerun $fl [list delete_at_eof $fl $diffdir]
+                }
+        }
+}
+
+namespace eval ::logcanvas {
+        variable instance 0
+
+        proc new {filename how scope} {
+                #
+                # Creates a new log canvas.
+                #
+                variable instance
+                set my_idx $instance
+                incr instance
+                global current_tagname
+                global module_dir
+
+                variable sys
+                variable loc
+
+                namespace eval $my_idx {
+                        set my_idx [uplevel {concat $my_idx}]
+                        set how [uplevel {concat $how}]
+                        set filename [uplevel {concat $filename}]
+                        set scope [uplevel {concat $scope}]
+
+                        #variable cmd_log
+                        # Global constants scaled by current scaling factor for this instance
+                        variable curr
+                        global tcl_platform
+                        # User options for info display for this instance
+                        variable opt
+                        variable revwho
+                        variable revdate
+                        variable revtime
+                        variable revstate
+                        variable revbranches
+                        variable branchrevs
+                        variable revcomment
+                        variable revtags
+                        variable revbtags
+                        variable revpath
+                        variable sel_tag
+                        set sel_tag(A) {}
+                        set sel_tag(B) {}
+                        variable sel_rev
+                        variable revnum_current
+                        set sel_rev(A) {}
+                        set sel_rev(B) {}
+                        variable logcanvas ".logcanvas$my_idx"
+
+                        set sys_loc [split $how {,}]
+                        set sys [lindex $sys_loc 0]
+                        set loc [lindex $sys_loc 1]
+
+                        proc SetCommitIds {idList} {
+                                variable commitIds
+
+                                set commitIds $idList
+                        }
+
+                        proc GetCommitter {id} {
+                                variable committer
+                                set committer [exec git log --pretty=format:%an -n 1 $id]
+                                return $committer
+                        }
+
+                        proc GetDate {id} {
+                                variable date
+                                set date [exec git log --pretty=format:%ad -n 1 $id]
+                                return $date
+                        }
+
+                        proc GetLogMessage {id} {
+                                variable msg
+                                set msg [exec git log --pretty=format:%B -n 1 $id]
+                                return $msg
+                        }
+
+                        proc GetShortCommitId {id} {
+                                variable sid
+                                set sid [exec git log --pretty=format:%h -n 1 $id]
+                                return $sid
+                        }
+
+                        proc GetDrawText { sid committer date } {
+                                variable text
+                                set text {}
+                                append text $sid
+                                append text "\n"
+                                append text $committer
+                                append text "\n"
+                                append text $date
+                                append text "\n"
+                                return $text
+                        }
+
+                        proc ClearSelection {AorB} {
+                                variable logcanvas
+                                variable sel_tag
+                                variable sel_rev
+                                #catch {$logcanvas.canvas itemconfigure Sel$AorB -outline black}
+                                catch {$logcanvas.canvas itemconfigure Sel$AorB -fill gray90}
+                                $logcanvas.canvas dtag Sel$AorB
+                                $logcanvas.up.rev${AorB}_rvers configure -text {}
+                                $logcanvas.up.log${AorB}_rlogfm.rcomment configure -state normal
+                                $logcanvas.up.log${AorB}_rlogfm.rcomment delete 1.0 end
+                                $logcanvas.up.log${AorB}_rlogfm.rcomment configure -state disabled
+                                $logcanvas.up.rev${AorB}_rwho configure -text {}
+                                $logcanvas.up.rev${AorB}_rdate configure -text {}
+                                set sel_tag($AorB) {}
+                                set sel_rev($AorB) {}
+                                return
+                        }
+
+                        proc SetSelection {AorB revision} {
+                                variable logcanvas
+                                variable revdate
+                                variable sel_rev
+
+                                ClearSelection $AorB
+                                set other [expr {$AorB == "A" ? {B} : {A}}]
+                                if {$revision == $sel_rev($other)} { ClearSelection $other }
+
+                                $logcanvas.up.rev${AorB}_rvers configure -text $revision
+
+                                if {$revision != {} } {
+                                        $logcanvas.up.rev${AorB}_rwho configure -text [GetCommitter $revision]
+                                        $logcanvas.up.log${AorB}_rlogfm.rcomment configure -state normal
+                                        $logcanvas.up.log${AorB}_rlogfm.rcomment insert end [GetLogMessage $revision]
+                                        $logcanvas.up.log${AorB}_rlogfm.rcomment configure -state disabled
+                                }
+                                $logcanvas.canvas itemconfigure SelA -fill Green
+                                $logcanvas.canvas itemconfigure SelB -fill Red
+                                set sel_rev($AorB) $revision
+                                return
+                        }
+
+                        proc RevSelect {AorB} {
+                                variable logcanvas
+                                set t [$logcanvas.canvas gettags current]
+                                SetSelection $AorB \
+                                        [string range [lindex $t [lsearch -glob $t {R*}]] 1 end]
+                                return
+                        }
+
+                        proc DiffRevision { revA revB filename } {
+                                diff_revision $revA $revB
+                        }
+
+                        proc DrawCurrent { x y box_width box_height revision } {
+
+                                variable font_bold
+                                variable curr_x
+                                variable curr_y
+                                variable logcanvas
+
+                                set curr_x $x
+                                set curr_y $y
+                                # draw the box
+                                set tx [expr {$x + $box_width}]
+                                set ty [expr {$y - $box_height}]
+                                $logcanvas.canvas create rectangle \
+                                        $x $y $tx $ty \
+                                        -width 4 -fill gray90 -outline red3
+                                set pad \
+                                        [expr {($box_width - \
+                                                                [font measure $font_bold -displayof $logcanvas.canvas {You are}]) \
+                                                           / 3}]
+                                set ty [expr {$y - [expr {$box_height/2}]}]
+                                # add the contents
+                                $logcanvas.canvas create text \
+                                        [expr {$x + $box_width - $pad}] $ty \
+                                        -text "You are\nhere" -anchor e \
+                                        -fill red3 \
+                                        -font $font_bold
+                                return
+                        }
+
+                        proc DrawRevision { x y box_width box_height revision} {
+                                variable font_bold
+                                variable curr_x
+                                variable curr_y
+                                variable logcanvas
+
+                                set committer [GetCommitter $revision]
+                                set date [GetDate $revision]
+                                set sid [GetShortCommitId $revision]
+                                set text [GetDrawText $sid $committer $date]
+
+                                set curr_x $x
+                                set curr_y $y
+                                # draw the box
+                                set tx [expr {$x + $box_width}]
+                                set ty [expr {$y - $box_height}]
+                                $logcanvas.canvas create rectangle \
+                                        $x $y $tx $ty \
+                                        -width 4 -fill gray90 -outline red3 \
+                                        -tag [list box R$revision rect$revision active]
+                                set pad \
+                                        [expr {($box_width -[font measure $font_bold \
+                                                                                         -displayof $logcanvas.canvas {$text}]) }]
+                                set ty [expr {$y - [expr {$box_height/2}]}]
+                                # add the contents
+                                $logcanvas.canvas create text \
+                                        [expr {$x + $pad}] $ty \
+                                        -text $text -anchor e \
+                                        -fill red3 \
+                                        -font $font_bold \
+                                        -tags [list R$revision box active]
+                                return
+                        }
+
+                        proc DrawTree { filename } {
+                                variable font_norm
+                                variable font_norm_h
+                                variable font_bold
+                                variable font_bold_h
+                                variable logcanvas
+                                variable commitIds
+
+                                set my_size 8
+                                set font_norm [font create \
+                                                                   -family Helvetica -size $my_size]
+                                set font_norm_h [font metrics \
+                                                                         $font_norm -displayof $logcanvas -linespace]
+                                set font_bold [font create \
+                                                                   -family Helvetica -size $my_size -weight bold]
+                                set font_bold_h [font metrics \
+                                                                         $font_bold -displayof $logcanvas -linespace]
+
+                                set height 100
+
+                                DrawCurrent 100 $height 300 100 "bla"
+
+                                foreach id $commitIds {
+                                        set height [expr $height + 110]
+                                        DrawRevision 100 $height 300 100 $id
+                                }
+                        }
+
+                        toplevel $logcanvas
+                        wm title $logcanvas "$sys Log $filename"
+                        $logcanvas configure -menu $logcanvas.menubar
+                        menu $logcanvas.menubar
+
+                        $logcanvas.menubar add cascade -label "File"\
+                                -menu $logcanvas.menubar.file -underline 0
+                        menu $logcanvas.menubar.file -tearoff 0
+                        $logcanvas.menubar.file add command -label "Close" -underline 0 \
+                                -command [namespace code {$logcanvas.close invoke}]
+                        $logcanvas.menubar.file add command -label "Exit" -underline 1 \
+                                -command { exit }
+                        wm protocol $logcanvas WM_DELETE_WINDOW \
+                                [namespace code {$logcanvas.close invoke}]
+                        frame $logcanvas.up -relief groove -border 2
+                        set disbg [lindex [$logcanvas.up configure -background] 4]
+                        label $logcanvas.up.lfname -width 12 -anchor w
+                        entry $logcanvas.up.rfname -font $textfont -relief groove
+
+                        pack $logcanvas.up -side top -fill x
+                        foreach fm {A B} {
+                                label $logcanvas.up.rev${fm}_lvers -text "Revision $fm"
+                                label $logcanvas.up.rev${fm}_rvers -text {} \
+                                        -anchor w -font $textfont
+
+                                label $logcanvas.up.rev${fm}_ldate -text "Committed"
+                                label $logcanvas.up.rev${fm}_rdate -text {} \
+                                        -anchor w -font $textfont
+                                label $logcanvas.up.rev${fm}_lwho -text " by "
+                                label $logcanvas.up.rev${fm}_rwho -text {} \
+                                        -anchor w -font $textfont
+                                label $logcanvas.up.log${fm}_lcomment -text "Log $fm"
+
+                                frame $logcanvas.up.log${fm}_rlogfm -bd 3
+                                text  $logcanvas.up.log${fm}_rlogfm.rcomment -height 5 \
+                                        -state disabled \
+                                        -yscrollcommand [namespace code\
+                                                                                 "$logcanvas.up.log${fm}_rlogfm.yscroll set"]
+                                scrollbar $logcanvas.up.log${fm}_rlogfm.yscroll \
+                                        -command [namespace code\
+                                                                  "$logcanvas.up.log${fm}_rlogfm.rcomment yview"]
+                        }
+
+                        grid columnconf $logcanvas.up 5 -weight 1
+                        grid $logcanvas.up.lfname -column 0 -row 0 -sticky nw
+                        grid $logcanvas.up.rfname -column 1 -row 0 -columnspan 5 -sticky ew
+                        grid $logcanvas.up.revA_lvers -column 0 -row 1 -sticky w
+                        grid $logcanvas.up.revA_rvers -column 1 -row 1 -sticky w
+                        grid $logcanvas.up.revA_ldate -column 2 -row 1 -sticky w
+                        grid $logcanvas.up.revA_rdate -column 3 -row 1 -sticky w
+                        grid $logcanvas.up.revA_lwho -column 4 -row 1 -sticky w
+                        grid $logcanvas.up.revA_rwho -column 5 -row 1 -sticky ew
+                        grid $logcanvas.up.logA_lcomment -column 0 -row 2 -sticky nw
+                        grid $logcanvas.up.logA_rlogfm -column 1 -row 2 -columnspan 7 -sticky ew
+                        pack $logcanvas.up.logA_rlogfm.yscroll -side right -fill y
+                        pack $logcanvas.up.logA_rlogfm.rcomment -side left -fill x -expand y
+                        grid $logcanvas.up.revB_lvers -column 0 -row 3 -sticky w
+                        grid $logcanvas.up.revB_rvers -column 1 -row 3 -sticky w
+                        grid $logcanvas.up.revB_ldate -column 2 -row 3 -sticky w
+                        grid $logcanvas.up.revB_rdate -column 3 -row 3 -sticky w
+                        grid $logcanvas.up.revB_lwho -column 4 -row 3 -sticky w
+                        grid $logcanvas.up.revB_rwho -column 5 -row 3 -sticky ew
+                        grid $logcanvas.up.logB_lcomment -column 0 -row 4 -sticky nw
+                        grid $logcanvas.up.logB_rlogfm -column 1 -row 4 -columnspan 7 -sticky ew
+                        pack $logcanvas.up.logB_rlogfm.yscroll -side right -fill y
+                        pack $logcanvas.up.logB_rlogfm.rcomment -side left -fill x -expand y
+                        # Pack the bottom before the middle so it doesnt disappear if
+                        # the window is resized smaller
+                        frame $logcanvas.down -relief groove -border 2
+                        pack $logcanvas.down -side bottom -fill x
+
+                        # The canvas for the big picture
+                        canvas $logcanvas.canvas -relief sunken -border 2 \
+                                -height 300 \
+                                -yscrollcommand [namespace code "$logcanvas.yscroll set"] \
+                                -xscrollcommand [namespace code "$logcanvas.xscroll set"]
+                        scrollbar $logcanvas.xscroll -relief sunken -orient horizontal \
+                                -command [namespace code "$logcanvas.canvas xview"]
+                        scrollbar $logcanvas.yscroll -relief sunken \
+                                -command [namespace code "$logcanvas.canvas yview"]
+                        #
+                        # Create buttons
+                        #
+                        button $logcanvas.diff  -text "Diff"\
+                                -command [namespace code {
+                                        DiffRevision [$logcanvas.up.revA_rvers cget -text] \
+                                                [$logcanvas.up.revB_rvers cget -text] $filename
+                                }]
+                        button $logcanvas.close -text "Close" \
+                                -command [namespace code {
+                                        variable logcanvas
+                                        destroy $logcanvas
+                                        namespace delete [namespace current]
+                                }]
+
+                        #
+                        # Put the canvas on to the display.
+                        #
+                        pack $logcanvas.xscroll -side bottom -fill x -padx 1 -pady 1
+                        pack $logcanvas.yscroll -side right -fill y -padx 1 -pady 1
+                        pack $logcanvas.canvas -fill both -expand 1
+                        scrollbindings $logcanvas.canvas
+
+                        pack $logcanvas.diff \
+                                -in $logcanvas.down -side left \
+                                -ipadx 4 -ipady 4
+                        pack $logcanvas.close \
+                                -in $logcanvas.down -side right \
+                                -fill both -expand 1
+
+                        #
+                        # Window manager stuff.
+                        #
+                        wm minsize $logcanvas 1 1
+
+                        $logcanvas.canvas bind active <Enter> \
+                                "$logcanvas.canvas config -cursor hand2"
+                        $logcanvas.canvas bind active <Leave> \
+                                "$logcanvas.canvas config -cursor {}"
+
+
+                        $logcanvas.canvas bind tag <Button-1> \
+                                [namespace code "PopupTags %X %Y"]
+
+                        $logcanvas.canvas bind box <ButtonPress-1> \
+                                [namespace code "RevSelect A"]
+                        # Tcl/TK for Windows doesn't do Button 3, so we duplicate it on Button 2
+                        $logcanvas.canvas bind box <ButtonPress-2> \
+                                [namespace code "RevSelect B"]
+                        $logcanvas.canvas bind box <ButtonPress-3> \
+                                [namespace code "RevSelect B"]
+
+                        focus $logcanvas.canvas
+                        # FIXME: Why isn't there a bbox when we get here?
+                        # Then the yview moveto doesn't work, although it does in tkinter
+                        $logcanvas.canvas xview moveto 0
+                        $logcanvas.canvas yview moveto 0
+
+                        return [list [namespace current] $logcanvas]
+                }
+        }
+}
+
+
+proc flist_hb {only} {
+        global flist_menu_file
+
+        set x [shellquote $flist_menu_file]
+        git_file_history $x
+}
+
+proc git_file_history {file} {
+
+        if {$file == ""} {
+                error_popup "[mc "File history browser for file %s not implemented yet" $file]"
+                return
+        }
+
+        ::git_filelog::new "Git,loc" "$file"
+}
+
+namespace eval ::git_filelog {
+        variable instance 0
+
+        proc new {how filename} {
+                variable instance
+                variable commit_ids
+                set my_idx $instance
+                incr instance
+
+                namespace eval $my_idx {
+                        set filename [uplevel {concat $filename}]
+                        set how [uplevel {concat $filename}]
+
+                        variable command
+                        variable rev_list
+                        variable rev_ids
+                        variable rev_id
+                        variable rev_date
+                        variable rev_comment
+                        variable rev_commiter
+                        variable id 0
+                        variable lc
+
+                        set newlc [logcanvas::new $filename $how [namespace current]]
+                        set ln [lindex $newlc 0]
+                        set lc [lindex $newlc 1]
+
+                        set command "git log --follow --pretty=format:%H --name-only -- $filename"
+                        if {[catch {set fd [open [concat | $command] r]} err]} {
+                                error_popup "[mc "Error executing git log:"] $err"
+                                return 0
+                        }
+                        #set i [reg_instance $fd]
+                        #fconfigure $fd -blocking 1
+                        #filerun $fd [list eval_commit_id $fd $ln]
+                        eval_commit_id $fd $ln
+
+                        $ln\::DrawTree $filename
+
+                }
+                return [namespace current]
+        }
+}
+
+proc eval_commit_id {fd ln} {
+
+        set stuff [read $fd 500000]
+        if {$stuff == {} && [eof $fd]} {
+                set stuff "\0"
+        }
+        if {$stuff == {}} {
+                if {![eof $fd]} {
+                        return 1
+                }
+                # set it blocking so we wait for the process to terminate
+                fconfigure $fd -blocking 1
+                if {[catch {close $fd} err]} {
+                        set fv {}
+                        if {[string range $err 0 4] == "usage"} {
+                                set err "Gitk: error reading commits$fv:\
+                                                bad arguments to git log."
+                        } else {
+                                set err "Error reading commits$fv: $err"
+                        }
+                        error_popup $err
+                }
+                return 0
+        }
+        set start 0
+        set gotsome 0
+        set commit_ids {}
+
+        # every commid has 3 lines
+        # first line: commit id
+        # second line: file name
+        # third line: empty line
+
+    set line 0
+        set id {}
+        global id2file
+
+        while 1 {
+                set i [string first "\n" $stuff $start]
+                incr line
+                if {$i < 0} {
+                        set cmit [string range $stuff $start end]
+                        if { $line == 1 } {
+                                lappend commit_ids $cmit
+                                set id $cmit
+                        }
+                        if { $line == 2 } {
+                                set pos [llength $commit_ids]
+                                set id [lindex $commit_ids $pos]
+                                set id2file($id) $cmit
+                        }
+                        break
+                }
+                if {$start == 0} {
+                        set cmit [string range $stuff 0 [expr {$i - 1}]]
+                        if { $line == 1 } {
+                                lappend commit_ids $cmit
+                                set id $cmit
+                        }
+                        if { $line == 2 } {
+                                set id2file($id) $cmit
+                        }
+                } else {
+                        set cmit [string range $stuff $start [expr {$i - 1}]]
+                        if { $line == 1 } {
+                                lappend commit_ids $cmit
+                                set id $cmit
+                        }
+                        if { $line == 2 } {
+                                set id2file($id) $cmit
+                        }
+                }
+                if { $line == 3 } {
+                        set line 0
+                }
+                set start [expr {$i + 1}]
+        }
+
+        $ln\::SetCommitIds $commit_ids
+}
 
 # Local variables:
 # mode: tcl
