@@ -1,7 +1,7 @@
-From 0d62dabae0c405876c706263a489e7de6a6fd6c6 Mon Sep 17 00:00:00 2001
+From d6cea9521274c11b086c9d989f0d06128ceb3790 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:46:20 -0500
-Subject: [PATCH 10/11] transport: optionally honor DNS SRV records
+Subject: transport: optionally honor DNS SRV records
 
 SRV records are an extra layer of indirection on top of A/AAAA records
 mapping from domain names and service types to the hostnames of
@@ -52,19 +52,19 @@ Based on a patch by Julien Cristau <jcristau@debian.org>.
 
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
- Makefile |   10 ++
- srv.c    |  321 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- srv.h    |   15 +++
- tcp.c    |  100 ++++++++++++++------
+ Makefile |  10 ++
+ srv.c    | 321 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ srv.h    |  15 +++
+ tcp.c    | 100 ++++++++++++++------
  4 files changed, 418 insertions(+), 28 deletions(-)
  create mode 100644 srv.c
  create mode 100644 srv.h
 
 diff --git a/Makefile b/Makefile
-index 43415f0..2a4018b 100644
+index da9acf8..9bf9b4d 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -158,6 +158,10 @@ all::
+@@ -168,6 +168,10 @@ all::
  # Notably on Solaris hstrerror resides in libresolv and on Solaris 7
  # inet_ntop and inet_pton additionally reside there.
  #
@@ -75,7 +75,7 @@ index 43415f0..2a4018b 100644
  # Define NO_MMAP if you want to avoid mmap.
  #
  # Define NO_SYS_POLL_H if you don't have sys/poll.h.
-@@ -684,6 +688,7 @@ LIB_H += sha1-lookup.h
+@@ -721,6 +725,7 @@ LIB_H += sha1-lookup.h
  LIB_H += shortlog.h
  LIB_H += sideband.h
  LIB_H += sigchain.h
@@ -83,7 +83,7 @@ index 43415f0..2a4018b 100644
  LIB_H += strbuf.h
  LIB_H += streaming.h
  LIB_H += string-list.h
-@@ -1652,6 +1657,11 @@ endif
+@@ -1186,6 +1191,11 @@ endif
  ifdef NEEDS_NSL
  	EXTLIBS += -lnsl
  endif
@@ -529,7 +529,6 @@ index 83f0313..c27a0d7 100644
  		if (flags & CONNECT_VERBOSE)
 -			fprintf(stderr, "%s ", dns_name(&i));
 -		break;
--	}
 +			fprintf(stderr, "done.\nConnecting to %s (port %s) ... ",
 +					hosts[j].hostname, hosts[j].port);
 +
@@ -554,15 +553,16 @@ index 83f0313..c27a0d7 100644
 +				fprintf(stderr, "%s ", dns_name(&i));
 +			break;
 +		}
- 
--	dns_free(ai);
++
 +		dns_free(ai);
- 
--	if (sockfd < 0)
++
 +		if (sockfd >= 0)
 +			break;
-+	}
-+
+ 	}
+ 
+-	dns_free(ai);
+-
+-	if (sockfd < 0)
 +	if (gai || sockfd < 0)
  		die("unable to connect to %s:\n%s", host, error_message.buf);
  
@@ -582,5 +582,5 @@ index 83f0313..c27a0d7 100644
  }
  
 -- 
-1.7.10.4
+1.8.1.3
 

@@ -1,3 +1,566 @@
+Version v1.8.2-rc0; changes since v1.8.1.3:
+-------------------------------------------
+
+Aaron Schrab (3):
+      hooks: Add function to check if a hook exists
+      push: Add support for pre-push hooks
+      Add sample pre-push hook script
+
+Adam Spiers (29):
+      tests: test number comes first in 'not ok $count - $message'
+      tests: paint known breakages in yellow
+      tests: paint skipped tests in blue
+      tests: change info messages from yellow/brown to cyan
+      tests: refactor mechanics of testing in a sub test-lib
+      tests: test the test framework more thoroughly
+      tests: paint unexpectedly fixed known breakages in bold red
+      api-directory-listing.txt: update to match code
+      Improve documentation and comments regarding directory traversal API
+      dir.c: rename cryptic 'which' variable to more consistent name
+      dir.c: rename path_excluded() to is_path_excluded()
+      dir.c: rename excluded_from_list() to is_excluded_from_list()
+      dir.c: rename excluded() to is_excluded()
+      dir.c: refactor is_excluded_from_list()
+      dir.c: refactor is_excluded()
+      dir.c: refactor is_path_excluded()
+      dir.c: rename free_excludes() to clear_exclude_list()
+      dir.c: use a single struct exclude_list per source of excludes
+      dir.c: keep track of where patterns came from
+      dir.c: provide clear_directory() for reclaiming dir_struct memory
+      dir.c: improve docs for match_pathspec() and match_pathspec_depth()
+      add.c: remove unused argument from validate_pathspec()
+      add.c: move pathspec matchers into new pathspec.c for reuse
+      pathspec.c: rename newly public functions for clarity
+      add.c: extract check_path_for_gitlink() from treat_gitlinks() for reuse
+      add.c: extract new die_if_path_beyond_symlink() for reuse
+      setup.c: document get_pathspec()
+      add git-check-ignore sub-command
+      clean.c, ls-files.c: respect encapsulation of exclude_list_groups
+
+Adam Tkac (1):
+      contrib/subtree: honor DESTDIR
+
+Alexey Shumkin (1):
+      t7102 (reset): don't hardcode SHA-1 in expected outputs
+
+Andrej E Baranov (1):
+      gitweb: refer to picon/gravatar images over the same scheme
+
+Andrew Wong (3):
+      rebase: Handle cases where format-patch fails
+      gitk: Refactor code for binding modified function keys
+      gitk: Use bindshiftfunctionkey to bind Shift-F5
+
+Antoine Pelisse (8):
+      Use split_ident_line to parse author and committer
+      mailmap: simplify map_user() interface
+      mailmap: add mailmap structure to rev_info and pp
+      pretty: use mailmap to display username and email
+      log: add --use-mailmap option
+      test: add test for --use-mailmap option
+      log: grep author/committer using mailmap
+      log: add log.mailmap configuration option
+
+Asheesh Laroia (1):
+      git-mergetool: print filename when it contains %
+
+Barry Wardell (1):
+      git-svn: Simplify calculation of GIT_DIR
+
+Ben Walton (3):
+      Move Git::SVN::get_tz to Git::get_tz_offset
+      perl/Git.pm: fix get_tz_offset to properly handle DST boundary cases
+      cvsimport: format commit timestamp ourselves without using strftime
+
+Chris Hiestand (1):
+      Add Auto-Submitted header to post-receive-email
+
+Chris Rorvick (10):
+      push: return reject reasons as a bitset
+      push: add advice for rejected tag reference
+      push: keep track of "update" state separately
+      push: flag updates that require force
+      push: require force for refs under refs/tags/
+      push: require force for annotated tags
+      push: clarify rejection of update to non-commit-ish
+      push: cleanup push rules comment
+      push: rename config variable for more general use
+      push: allow already-exists advice to be disabled
+
+Christian Couder (4):
+      Makefile: remove tracking of TCLTK_PATH
+      Makefile: detect when PYTHON_PATH changes
+      Makefile: replace "echo 1>..." with "echo >..."
+      gitk: Ignore gitk-wish buildproduct
+
+Christoph J. Thompson (1):
+      Honor configure's htmldir switch
+
+David A. Greene (3):
+      contrib/subtree: remove test number comments
+      contrib/subtree: better error handling for 'subtree add'
+      contrib/subtree: fix synopsis
+
+David Aguilar (10):
+      mergetools/p4merge: Honor $TMPDIR for the /dev/null placeholder
+      mergetools/vim: remove redundant diff command
+      mergetool--lib: improve show_tool_help() output
+      mergetools: simplify how we handle "vim" and "defaults"
+      mergetool--lib: simplify command expressions
+      mergetool--lib: improve the help text in guess_merge_tool()
+      mergetool--lib: add functions for finding available tools
+      doc: generate a list of valid merge tools
+      difftool--helper: fix printf usage
+      p4merge: fix printf usage
+
+David Michael (3):
+      Support builds when sys/param.h is missing
+      Detect when the passwd struct is missing pw_gecos
+      Generalize the inclusion of strings.h
+
+Eric S. Raymond (1):
+      Add checks to Python scripts for version dependencies.
+
+Eric Wong (1):
+      git-svn: cleanup sprintf usage for uppercasing hex
+
+Erik Faye-Lund (1):
+      parse-options: report uncorrupted multi-byte options
+
+Felipe Contreras (26):
+      remote-testgit: properly check for errors
+      fast-export: avoid importing blob marks
+      remote-testgit: fix direction of marks
+      remote-helpers: fix failure message
+      Add new remote-bzr transport helper
+      remote-bzr: add support for pushing
+      remote-bzr: add support for remote repositories
+      Rename git-remote-testgit to git-remote-testpy
+      Add new simplified git-remote-testgit
+      remote-testgit: remove non-local functionality
+      remote-testgit: remove irrelevant test
+      remote-testgit: cleanup tests
+      remote-testgit: exercise more features
+      remote-testgit: report success after an import
+      remote-testgit: implement the "done" feature manually
+      fast-export: trivial cleanup
+      fast-export: fix comparison in tests
+      fast-export: don't handle uninteresting refs
+      fast-export: make sure updated refs get updated
+      remote-bzr: update working tree upon pushing
+      remote-bzr: add simple tests
+      remote-bzr: add support for fecthing special modes
+      remote-bzr: add support to push special modes
+      remote-bzr: add support for older versions of bzr
+      remote-bzr: detect local repositories
+      remote-hg: store converted URL
+
+Jeff King (29):
+      fsck: warn about '.' and '..' in trees
+      fsck: warn about ".git" in trees
+      mailmap: refactor mailmap parsing for non-file sources
+      mailmap: support reading mailmap from blobs
+      mailmap: clean up read_mailmap error handling
+      mailmap: fix some documentation loose-ends for mailmap.blob
+      mailmap: default mailmap.blob in bare repositories
+      make error()'s constant return value more visible
+      silence some -Wuninitialized false positives
+      add global --literal-pathspecs option
+      Makefile: hoist uname autodetection to config.mak.uname
+      config: add helper function for parsing key names
+      archive-tar: use parse_config_key when parsing config
+      convert some config callbacks to parse_config_key
+      userdiff: drop parse_driver function
+      submodule: use parse_config_key when parsing config
+      submodule: simplify memory handling in config parsing
+      help: use parse_config_key for man config
+      reflog: use parse_config_key in config callback
+      commit: drop useless xstrdup of commit message
+      logmsg_reencode: never return NULL
+      logmsg_reencode: lazily load missing commit buffers
+      fetch: run gc --auto after fetching
+      fetch-pack: avoid repeatedly re-scanning pack directory
+      docs: clarify git-branch --list behavior
+      branch: let branch filters imply --list
+      Documentation/Makefile: clean up MAN*_TXT lists
+      http_request: reset "type" strbuf before adding
+      log: re-encode commit messages before grepping
+
+Jesper L. Nielsen (1):
+      contrib/subtree: make the manual directory if needed
+
+Jiang Xin (2):
+      l10n: Update git.pot (11 new, 7 removed messages)
+      Add utf8_fprintf helper that returns correct number of columns
+
+Johannes Sixt (1):
+      t6130-pathspec-noglob: Windows does not allow a file named "f*"
+
+John Keeping (27):
+      git-svn: teach find-rev to find near matches
+      git_remote_helpers: allow building with Python 3
+      git_remote_helpers: fix input when running under Python 3
+      git_remote_helpers: force rebuild if python version changes
+      git_remote_helpers: use 2to3 if building with Python 3
+      svn-fe: allow svnrdump_sim.py to run with Python 3
+      git-remote-testpy: hash bytes explicitly
+      git-remote-testpy: don't do unbuffered text I/O
+      git-remote-testpy: call print as a function
+      git-mergetool: move show_tool_help to mergetool--lib
+      git-mergetool: remove redundant assignment
+      git-mergetool: don't hardcode 'mergetool' in show_tool_help
+      git-difftool: use git-mergetool--lib for "--tool-help"
+      mergetool--lib: don't call "exit" in setup_tool
+      git-remote-testpy: fix path hashing on Python 3
+      CodingGuidelines: add Python coding guidelines
+      Rename {git- => git}remote-helpers.txt
+      mergetool--lib: list user configured tools in '--tool-help'
+      builtin/apply: tighten (dis)similarity index parsing
+      t4038: add tests for "diff --cc --raw <trees>"
+      graph: output padding for merge subsequent parents
+      diff: write prefix to the correct file
+      diff.c: make constant string arguments const
+      diff: add diff_line_prefix function
+      diff.c: use diff_line_prefix() where applicable
+      combine-diff.c: teach combined diffs about line prefix
+      rebase -i: respect core.commentchar
+
+Jonathan Nieder (2):
+      Git::SVN::Editor::T: pass $deletions to ->A and ->D
+      git svn: do not overescape URLs (fallback case)
+
+Junio C Hamano (54):
+      diff: accept --no-follow option
+      blame: pay attention to --no-follow
+      t6006: clean up whitespace
+      log --format: teach %C(auto,black) to respect color config
+      git-compat-util.h: do not #include <sys/param.h> by default
+      builtin/log.c: drop unused "numbered" parameter from make_cover_letter()
+      builtin/log.c: drop redundant "numbered_files" parameter from make_cover_letter()
+      builtin/log.c: stop using global patch_suffix
+      get_patch_filename(): simplify function signature
+      get_patch_filename(): drop "just-numbers" hack
+      get_patch_filename(): split into two functions
+      format-patch: add --reroll-count=$N option
+      Start 1.8.2 cycle
+      format-patch: document and test --reroll-count
+      Update draft release notes to 1.8.2
+      format-patch: give --reroll-count a short synonym -v
+      Update draft release notes to 1.8.2
+      string-list: allow case-insensitive string list
+      Update draft release notes to 1.8.2
+      mailmap: remove email copy and length limitation
+      log --use-mailmap: optimize for cases without --author/--committer search
+      Update draft release notes to 1.8.2
+      clone: do not export and unexport GIT_CONFIG
+      Update draft release notes to 1.8.2
+      Makefile: add description on PERL/PYTHON_PATH
+      Update draft release notes to 1.8.2
+      Allow custom "comment char"
+      push: fix "refs/tags/ hierarchy cannot be updated without --force"
+      Update draft release notes to 1.8.2
+      upload-pack: share more code
+      Update draft release notes to 1.8.2
+      Update draft release notes to 1.8.2
+      push: further clean up fields of "struct ref"
+      push: further simplify the logic to assign rejection reason
+      push: introduce REJECT_FETCH_FIRST and REJECT_NEEDS_FORCE
+      push: finishing touches to explain REJECT_ALREADY_EXISTS better
+      Update draft release notes to 1.8.2
+      Update draft release notes to 1.8.2
+      upload-pack: simplify request validation
+      git_remote_helpers: remove GIT-PYTHON-VERSION upon "clean"
+      Update draft release notes to 1.8.2
+      Documentation: describe the "repository" in repository-layout
+      combine-diff: lift 32-way limit of combined diff
+      Update draft release notes to 1.8.2
+      t5551: fix expected error output
+      apply: verify submodule commit object name better
+      Update draft release notes to 1.8.2
+      upload/receive-pack: allow hiding ref hierarchies
+      Update draft release notes to 1.8.2
+      Update draft release notes to 1.8.2
+      Update draft release notes to 1.8.2
+      Documentation/git-add: kill remaining <filepattern>
+      Update draft release notes to 1.8.2
+      Git 1.8.2-rc0
+
+Manlio Perillo (1):
+      git-completion.bash: add support for path completion
+
+Marc Khouzam (1):
+      completion: handle path completion and colon for tcsh script
+
+Marcus Karlsson (1):
+      gitk: Fix crash when not using themed widgets
+
+Martin Erik Werner (3):
+      shell prompt: add bash.showUntrackedFiles option
+      t9903: add tests for bash.showUntrackedFiles
+      t9903: add extra tests for bash.showDirtyState
+
+Martin von Zweigbergk (21):
+      oneway_merge(): only lstat() when told to update worktree
+      reset $pathspec: no need to discard index
+      reset $pathspec: exit with code 0 if successful
+      reset.c: pass pathspec around instead of (prefix, argv) pair
+      reset: don't allow "git reset -- $pathspec" in bare repo
+      reset.c: extract function for parsing arguments
+      reset.c: remove unnecessary variable 'i'
+      reset.c: extract function for updating {ORIG_,}HEAD
+      reset.c: share call to die_if_unmerged_cache()
+      reset --keep: only write index file once
+      reset: avoid redundant error message
+      reset.c: replace switch by if-else
+      reset.c: move update_index_refresh() call out of read_from_tree()
+      reset.c: move lock, write and commit out of update_index_refresh()
+      reset [--mixed]: only write index file once
+      reset.c: finish entire cmd_reset() whether or not pathspec is given
+      reset.c: inline update_index_refresh()
+      reset $sha1 $pathspec: require $sha1 only to be treeish
+      reset: allow reset on unborn branch
+      reset [--mixed]: use diff-based reset whether or not pathspec was given
+      reset: update documentation to require only tree-ish with paths
+
+Matt Kraai (5):
+      Make lock local to fetch_pack
+      Port to QNX
+      Use __VA_ARGS__ for all of error's arguments
+      Allow building with xmlparse.h
+      Makefile: don't run "rm" without any files
+
+Matthew Ogilvie (10):
+      cvsserver: factor out git-log parsing logic
+      cvsserver: cleanup extra slashes in filename arguments
+      cvsserver: define a tag name character escape mechanism
+      cvsserver: add misc commit lookup, file meta data, and file listing functions
+      cvsserver: implement req_Sticky and related utilities
+      cvsserver: generalize getmeta() to recognize commit refs
+      cvsserver: Add version awareness to argsfromdir
+      cvsserver: support -r and sticky tags for most operations
+      cvsserver: add t9402 to test branch and tag refs
+      cvsserver Documentation: new cvs ... -r support
+
+Matthieu Moy (5):
+      add: warn when -u or -A is used without pathspec
+      Makefile: make script-related rules usable from subdirectories
+      git-remote-mediawiki: use toplevel's Makefile
+      Replace filepattern with pathspec for consistency
+      completion: support 'git config --local'
+
+Max Horn (2):
+      remote-hg: fix handling of file perms when pushing
+      fix clang -Wunused-value warnings for error functions
+
+Michael Haggerty (22):
+      Add new function strbuf_add_xml_quoted()
+      xml_entities(): use function strbuf_addstr_xml_quoted()
+      lf_to_crlf(): NUL-terminate msg_data::data
+      imap-send: store all_msgs as a strbuf
+      imap-send: correctly report errors reading from stdin
+      imap-send: change msg_data from storing (ptr, len) to storing strbuf
+      wrap_in_html(): use strbuf_addstr_xml_quoted()
+      wrap_in_html(): process message in bulk rather than line-by-line
+      imap-send.c: remove msg_data::flags, which was always zero
+      imap-send.c: remove struct msg_data
+      iamp-send.c: remove unused struct imap_store_conf
+      imap-send.c: remove struct store_conf
+      imap-send.c: remove struct message
+      imap-send.c: remove some unused fields from struct store
+      imap-send.c: inline parse_imap_list() in parse_list()
+      imap-send.c: remove struct imap argument to parse_imap_list_l()
+      imap-send.c: remove namespace fields from struct imap
+      imap-send.c: remove unused field imap_store::trashnc
+      imap-send.c: use struct imap_store instead of struct store
+      imap-send.c: remove unused field imap_store::uidvalidity
+      imap-send.c: fold struct store into struct imap_store
+      imap-send.c: simplify logic in lf_to_crlf()
+
+Michael J Gruber (1):
+      git-bisect.txt: clarify that reset quits bisect
+
+Michal Privoznik (3):
+      git-completion.bash: Autocomplete --minimal and --histogram for git-diff
+      config: Introduce diff.algorithm variable
+      diff: Introduce --diff-algorithm command line option
+
+Nguyễn Thái Ngọc Duy (44):
+      ctype: make sane_ctype[] const array
+      ctype: support iscntrl, ispunct, isxdigit and isprint
+      Import wildmatch from rsync
+      wildmatch: remove unnecessary functions
+      wildmatch: follow Git's coding convention
+      Integrate wildmatch to git
+      t3070: disable unreliable fnmatch tests
+      wildmatch: make wildmatch's return value compatible with fnmatch
+      wildmatch: remove static variable force_lower_case
+      wildmatch: fix case-insensitive matching
+      wildmatch: adjust "**" behavior
+      wildmatch: make /**/ match zero or more directories
+      Support "**" wildcard in .gitignore and .gitattributes
+      pathspec: save the non-wildcard length part
+      test-wildmatch: avoid Windows path mangling
+      pathspec: do exact comparison on the leading non-wildcard part
+      pathspec: apply "*.c" optimization from exclude
+      tree_entry_interesting: do basedir compare on wildcard patterns when possible
+      config.txt: a few lines about branch.<name>.description
+      wildmatch: fix "**" special case
+      wildmatch: rename constants and update prototype
+      compat/fnmatch: respect NO_FNMATCH* even on glibc
+      wildmatch: make dowild() take arbitrary flags
+      wildmatch: replace variable 'special' with better named ones
+      wildmatch: support "no FNM_PATHNAME" mode
+      test-wildmatch: add "perf" command to compare wildmatch and fnmatch
+      wildmatch: make a special case for "*/" with FNM_PATHNAME
+      wildmatch: advance faster in <asterisk> + <literal> patterns
+      Makefile: add USE_WILDMATCH to use wildmatch as fnmatch
+      branch: delete branch description if it's empty
+      t4014: a few more tests on cover letter using branch description
+      format-patch: pick up correct branch name from symbolic ref
+      format-patch: pick up branch description when no ref is specified
+      upload-pack: only accept commits from "shallow" line
+      clone: forbid --bare --separate-git-dir <dir>
+      fetch: add --unshallow for turning shallow repo into complete one
+      upload-pack: fix off-by-one depth calculation in shallow clone
+      fetch: elaborate --depth action
+      Update :/abc ambiguity check
+      grep: avoid accepting ambiguous revision
+      branch: reject -D/-d without branch name
+      branch: give a more helpful message on redundant arguments
+      branch: mark more strings for translation
+      status: show the branch name if possible in in-progress info
+
+Paul Mackerras (3):
+      gitk: Fix display of branch names on some commits
+      gitk: Improve display of list of nearby tags and heads
+      gitk: Display important heads even when there are many
+
+Pete Wyckoff (35):
+      git p4: test sync/clone --branch behavior
+      git p4: rearrange and simplify hasOrigin handling
+      git p4: add comments to p4BranchesInGit
+      git p4: inline listExistingP4GitBranches
+      git p4: create p4/HEAD on initial clone
+      git p4: verify expected refs in clone --bare test
+      git p4: clone --branch should checkout master
+      git p4 doc: fix branch detection example
+      git p4: allow short ref names to --branch
+      git p4: rearrange self.initialParent use
+      git p4: fail gracefully on sync with no master branch
+      git p4: fix sync --branch when no master branch
+      git p4 test: keep P4CLIENT changes inside subshells
+      git p4: fix submit when no master branch
+      git p4: temp branch name should use / even on windows
+      git p4: remove unused imports
+      git p4: generate better error message for bad depot path
+      git p4 test: use client_view to build the initial client
+      git p4 test: avoid loop in client_view
+      git p4 test: use client_view in t9806
+      git p4 test: start p4d inside its db dir
+      git p4 test: translate windows paths for cygwin
+      git p4: remove unreachable windows \r\n conversion code
+      git p4: scrub crlf for utf16 files on windows
+      git p4 test: newline handling
+      git p4 test: use LineEnd unix in windows tests too
+      git p4 test: avoid wildcard * in windows
+      git p4: cygwin p4 client does not mark read-only
+      git p4 test: use test_chmod for cygwin
+      git p4: disable read-only attribute before deleting
+      git p4: avoid shell when mapping users
+      git p4: avoid shell when invoking git rev-list
+      git p4: avoid shell when invoking git config --get-all
+      git p4: avoid shell when calling git config
+      git p4: introduce gitConfigBool
+
+Peter Krefting (2):
+      gitk: Update Swedish translation (296t)
+      l10n: Update Swedish translation (1983t0f0u)
+
+Peter Wu (1):
+      git-svn: do not escape certain characters in paths
+
+Ralf Thielow (6):
+      l10n: de.po: address the user formally
+      commit: make default of "cleanup" option configurable
+      l10n: de.po: fix some minor issues
+      l10n: de.po: translate 11 new messages
+      l10n: de.po: translate "revision" consistently as "Revision"
+      l10n: de.po: translate "reset" as "neu setzen"
+
+Ramsay Allan Jones (1):
+      t3070: Disable some failing fnmatch tests
+
+René Scharfe (3):
+      t0008: avoid brace expansion
+      pretty: use prefixcmp instead of memcmp on NUL-terminated strings
+      refs: use strncmp() instead of strlen() and memcmp()
+
+Robin Rosenberg (1):
+      Enable minimal stat checking
+
+Shawn O. Pearce (1):
+      Verify Content-Type from smart HTTP servers
+
+Stefan Haller (6):
+      gitk: Synchronize highlighting in file view when scrolling diff
+      gitk: Highlight current search hit in orange
+      gitk: Highlight first search result immediately on incremental search
+      gitk: Work around empty back and forward images when buttons are disabled
+      gitk: Fix error message when clicking on a connecting line
+      gitk: When searching, only highlight files when in Patch mode
+
+Stephen Boyd (2):
+      gpg: allow translation of more error messages
+      run-command: be more informative about what failed
+
+Sven Strickroth (2):
+      mergetools: support TortoiseGitMerge
+      mergetools: teach tortoisemerge to handle filenames with SP correctly
+
+Techlive Zheng (1):
+      contrib/subtree: use %B for split subject/body
+
+Ted Zlatanov (1):
+      Update CodingGuidelines for Perl
+
+Thomas Ackermann (5):
+      Documentation: avoid poor-man's small caps GIT
+      Documentation: the name of the system is 'Git', not 'git'
+      Documentation: do not use undefined terms git-dir and git-file
+      Documentation: add a description for 'gitfile' to glossary
+      Documentation: StGit is the right spelling, not StGIT
+
+Torsten Bögershausen (9):
+      t9402: sed -i is not portable
+      t9402: improve check_end_tree() and check_end_full_tree()
+      t9402: Dont use test_must_fail cvs
+      t9402: No space after IO-redirection
+      t9402: Add missing &&; Code style
+      t9402: Simplify git ls-tree
+      t9402: Rename check.cvsCount and check.list
+      t9402: Use TABs for indentation
+      test: Add check-non-portable-shell.pl
+
+Tran Ngoc Quan (1):
+      l10n: vi.po: updated Vietnamese translation
+
+W. Trevor King (8):
+      submodule: add get_submodule_config helper funtion
+      submodule update: add --remote for submodule's upstream changes
+      submodule add: If --branch is given, record it in .gitmodules
+      user-manual: Fix 'both: so' -> 'both; so' typo
+      user-manual: Fix 'http' -> 'HTTP' typos
+      user-manual: Fix 'you - Git' -> 'you--Git' typo
+      user-manual: Rewrite git-gc section for automatic packing
+      user-manual: Update for receive.denyCurrentBranch=refuse
+
+Wang Sheng (1):
+      l10n: zh_CN.po: 800+ new translations on command usages
+
+Zoltan Klinger (1):
+      git-clean: Display more accurate delete messages
+
+
 Version v1.8.1.3; changes since v1.8.1.2:
 -----------------------------------------
 

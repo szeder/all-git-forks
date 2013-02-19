@@ -1,4 +1,4 @@
-From 7f76958f54e996a64fba1556604e46d7ee1c6469 Mon Sep 17 00:00:00 2001
+From a83943b3889fde8977ed7cc6377c07aa83e9f106 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Tue, 13 Mar 2012 20:01:17 -0500
 Subject: remove #!interpreter line from shell libraries
@@ -49,16 +49,16 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  8 files changed, 19 insertions(+), 23 deletions(-)
 
 diff --git a/git-mergetool--lib.sh b/git-mergetool--lib.sh
-index f013a03..0148078 100644
+index e338be5..94b554d 100644
 --- a/git-mergetool--lib.sh
 +++ b/git-mergetool--lib.sh
 @@ -1,5 +1,4 @@
 -#!/bin/sh
 -# git-mergetool--lib is a library for common merge tool functions
 +# git-mergetool--lib is a shell library for common merge tool functions
- diff_mode() {
- 	test "$TOOL_MODE" = diff
- }
+ 
+ : ${MERGE_TOOLS_DIR=$(git --exec-path)/mergetools}
+ 
 diff --git a/git-parse-remote.sh b/git-parse-remote.sh
 index 0e87e09..55fe8d5 100644
 --- a/git-parse-remote.sh
@@ -72,7 +72,7 @@ index 0e87e09..55fe8d5 100644
  # git-ls-remote could be called from outside a git managed repository;
  # this would fail in that case and would issue an error message.
 diff --git a/git-rebase--am.sh b/git-rebase--am.sh
-index 392ebc9..1a86f28 100644
+index 97f31dc..1ee7479 100644
 --- a/git-rebase--am.sh
 +++ b/git-rebase--am.sh
 @@ -1,4 +1,5 @@
@@ -83,7 +83,7 @@ index 392ebc9..1a86f28 100644
  # Copyright (c) 2010 Junio C Hamano.
  #
 diff --git a/git-rebase--interactive.sh b/git-rebase--interactive.sh
-index 44901d5..480a0ef 100644
+index 048a140..7b4ac99 100644
 --- a/git-rebase--interactive.sh
 +++ b/git-rebase--interactive.sh
 @@ -1,11 +1,9 @@
@@ -147,10 +147,10 @@ index 795edd2..f8e36ca 100644
  # Having this variable in your environment would break scripts because
  # you would cause "cd" to be taken to unexpected places.  If you
 diff --git a/t/test-lib.sh b/t/test-lib.sh
-index fc42d3a..079007f 100644
+index 9e7f6b4..e3abbb4 100644
 --- a/t/test-lib.sh
 +++ b/t/test-lib.sh
-@@ -476,11 +476,9 @@ then
+@@ -483,11 +483,9 @@ then
  
  	make_valgrind_symlink () {
  		# handle only executables, unless they are shell libraries that
@@ -165,5 +165,5 @@ index fc42d3a..079007f 100644
  
  		base=$(basename "$1")
 -- 
-1.8.1.1
+1.8.1.3
 

@@ -1,5 +1,6 @@
-git (1:1.8.1.3-1.1) experimental; urgency=low
+git (1:1.8.2~rc0-0.1) experimental; urgency=low
 
+  * new upstream release candidate.
   * git-svn: no longer Depends: libwww-perl (thx RjY; closes:
     #699536).
   * update debian/copyright (closes: #699930).
