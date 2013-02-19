@@ -1,4 +1,4 @@
-git (1:1.8.2~rc0-0.1) experimental; urgency=low
+git (1:1.8.2~rc0-1) experimental; urgency=low
 
   The default behavior of "git push" when run without specifying any
   ref names will change in the upcoming Git 2.0 release.
