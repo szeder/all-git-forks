@@ -1,6 +1,10 @@
 git (1:1.8.2~rc0-0.1) experimental; urgency=low
 
   * new upstream release candidate.
+    * push: require force for refs under refs/tags/.
+    * push: require force for annotated tags.
+  * debian/git.NEWS.Debian: advertise upcoming change to default
+    behavior of argumentless "git push [<remote>]".
   * git-svn: no longer Depends: libwww-perl (thx RjY; closes:
     #699536).
   * update debian/copyright (closes: #699930).
