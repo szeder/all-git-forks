@@ -234,9 +234,10 @@ int packet_get_line(struct strbuf *out,
 	*src_len -= 4;
 	len -= 4;
 
-	strbuf_add(out, *src_buf, len);
+	if (out)
+		strbuf_add(out, *src_buf, len);
+	packet_trace(*src_buf, len, 0);
 	*src_buf += len;
 	*src_len -= len;
-	packet_trace(out->buf, out->len, 0);
 	return len;
 }
