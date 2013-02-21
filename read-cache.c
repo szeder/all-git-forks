@@ -1273,6 +1273,7 @@ static int verify_hdr(struct cache_header *hdr, unsigned long size)
 static int read_index_extension(struct index_state *istate,
 				const char *ext, void *data, unsigned long sz)
 {
+	fprintf(stderr, "ext %x %lu\n", CACHE_EXT(ext), sz);
 	switch (CACHE_EXT(ext)) {
 	case CACHE_EXT_TREE:
 		istate->cache_tree = cache_tree_read(data, sz);
