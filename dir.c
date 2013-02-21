@@ -17,8 +17,11 @@ struct path_simplify {
 	const char *path;
 };
 
-static int read_directory_recursive(struct dir_struct *dir, const char *path, int len,
-	int check_only, const struct path_simplify *simplify);
+static void read_directory_recursive(struct dir_struct *dir,
+				     const char *path, int len,
+				     int check_only,
+				     const struct path_simplify *simplify,
+				     int *contents);
 static int get_dtype(struct dirent *de, const char *path, int len);
 
 /* helper string functions with support for the ignore_case flag */
@@ -1034,6 +1037,7 @@ static enum directory_treatment treat_directory(struct dir_struct *dir,
 	const char *dirname, int len, int exclude,
 	const struct path_simplify *simplify)
 {
+	int contents = 0;
 	/* The "len-1" is to strip the final '/' */
 	switch (directory_exists_in_index(dirname, len-1)) {
 	case index_directory:
@@ -1065,19 +1069,19 @@ static enum directory_treatment treat_directory(struct dir_struct *dir,
 	 * check if it contains only ignored files
 	 */
 	if ((dir->flags & DIR_SHOW_IGNORED) && !exclude) {
-		int ignored;
 		dir->flags &= ~DIR_SHOW_IGNORED;
 		dir->flags |= DIR_HIDE_EMPTY_DIRECTORIES;
-		ignored = read_directory_recursive(dir, dirname, len, 1, simplify);
+		read_directory_recursive(dir, dirname, len, 1, simplify, &contents);
 		dir->flags &= ~DIR_HIDE_EMPTY_DIRECTORIES;
 		dir->flags |= DIR_SHOW_IGNORED;
 
-		return ignored ? ignore_directory : show_directory;
+		return contents ? ignore_directory : show_directory;
 	}
 	if (!(dir->flags & DIR_SHOW_IGNORED) &&
 	    !(dir->flags & DIR_HIDE_EMPTY_DIRECTORIES))
 		return show_directory;
-	if (!read_directory_recursive(dir, dirname, len, 1, simplify))
+	read_directory_recursive(dir, dirname, len, 1, simplify, &contents);
+	if (!contents)
 		return ignore_directory;
 	return show_directory;
 }
@@ -1242,9 +1246,23 @@ enum path_treatment {
 static enum path_treatment treat_one_path(struct dir_struct *dir,
 					  struct strbuf *path,
 					  const struct path_simplify *simplify,
-					  int dtype, struct dirent *de)
+					  int dtype, struct dirent *de,
+					  int exclude_shortcut_ok)
 {
-	int exclude = is_excluded(dir, path->buf, &dtype);
+	int exclude;
+
+	if (dtype == DT_UNKNOWN)
+		dtype = get_dtype(de, path->buf, path->len);
+
+	if (exclude_shortcut_ok &&
+	    !(dir->flags & DIR_SHOW_IGNORED) &&
+	    !(dir->flags & DIR_COLLECT_IGNORED) &&
+	    dtype != DT_DIR &&
+	    cache_name_exists(path->buf, path->len, ignore_case))
+		return path_ignored;
+
+	exclude = is_excluded(dir, path->buf, &dtype);
+
 	if (exclude && (dir->flags & DIR_COLLECT_IGNORED)
 	    && exclude_matches_pathspec(path->buf, path->len, simplify))
 		dir_add_ignored(dir, path->buf, path->len);
@@ -1255,9 +1273,6 @@ static enum path_treatment treat_one_path(struct dir_struct *dir,
 	 */
 	if (exclude && !(dir->flags & DIR_SHOW_IGNORED))
 		return path_ignored;
-
-	if (dtype == DT_UNKNOWN)
-		dtype = get_dtype(de, path->buf, path->len);
 
 	switch (dtype) {
 	default:
@@ -1290,7 +1305,8 @@ static enum path_treatment treat_path(struct dir_struct *dir,
 				      struct dirent *de,
 				      struct strbuf *path,
 				      int baselen,
-				      const struct path_simplify *simplify)
+				      const struct path_simplify *simplify,
+				      int exclude_shortcut_ok)
 {
 	int dtype;
 
@@ -1302,7 +1318,7 @@ static enum path_treatment treat_path(struct dir_struct *dir,
 		return path_ignored;
 
 	dtype = DTYPE(de);
-	return treat_one_path(dir, path, simplify, dtype, de);
+	return treat_one_path(dir, path, simplify, dtype, de, exclude_shortcut_ok);
 }
 
 /*
@@ -1314,13 +1330,13 @@ static enum path_treatment treat_path(struct dir_struct *dir,
  * Also, we ignore the name ".git" (even if it is not a directory).
  * That likely will not change.
  */
-static int read_directory_recursive(struct dir_struct *dir,
-				    const char *base, int baselen,
-				    int check_only,
-				    const struct path_simplify *simplify)
+static void read_directory_recursive(struct dir_struct *dir,
+				     const char *base, int baselen,
+				     int check_only,
+				     const struct path_simplify *simplify,
+				     int *contents)
 {
 	DIR *fdir;
-	int contents = 0;
 	struct dirent *de;
 	struct strbuf path = STRBUF_INIT;
 
@@ -1331,18 +1347,29 @@ static int read_directory_recursive(struct dir_struct *dir,
 		goto out;
 
 	while ((de = readdir(fdir)) != NULL) {
-		switch (treat_path(dir, de, &path, baselen, simplify)) {
+		switch (treat_path(dir, de, &path, baselen,
+				   simplify,
+				   !check_only && !contents)) {
 		case path_recurse:
-			contents += read_directory_recursive(dir, path.buf,
-							     path.len, 0,
-							     simplify);
+			read_directory_recursive(dir, path.buf,
+						 path.len, 0,
+						 simplify,
+						 contents);
 			continue;
 		case path_ignored:
 			continue;
 		case path_handled:
 			break;
 		}
-		contents++;
+		/*
+		 * Update the last argument to treat_path if anything
+		 * else is done after this point. This is because if
+		 * treat_path's exclude_shortcut_ok is true, it may
+		 * incorrectly return path_ignored (and never reaches
+		 * this part) instead of path_handled.
+		 */
+		if (contents)
+			(*contents)++;
 		if (check_only)
 			break;
 		dir_add_name(dir, path.buf, path.len);
@@ -1350,8 +1377,6 @@ static int read_directory_recursive(struct dir_struct *dir,
 	closedir(fdir);
  out:
 	strbuf_release(&path);
-
-	return contents;
 }
 
 static int cmp_name(const void *p1, const void *p2)
@@ -1420,7 +1445,7 @@ static int treat_leading_path(struct dir_struct *dir,
 		if (simplify_away(sb.buf, sb.len, simplify))
 			break;
 		if (treat_one_path(dir, &sb, simplify,
-				   DT_DIR, NULL) == path_ignored)
+				   DT_DIR, NULL, 0) == path_ignored)
 			break; /* do not recurse into it */
 		if (len <= baselen) {
 			rc = 1;
@@ -1440,7 +1465,7 @@ int read_directory(struct dir_struct *dir, const char *path, int len, const char
 
 	simplify = create_simplify(pathspec);
 	if (!len || treat_leading_path(dir, path, len, simplify))
-		read_directory_recursive(dir, path, len, 0, simplify);
+		read_directory_recursive(dir, path, len, 0, simplify, NULL);
 	free_simplify(simplify);
 	qsort(dir->entries, dir->nr, sizeof(struct dir_entry *), cmp_name);
 	qsort(dir->ignored, dir->ignored_nr, sizeof(struct dir_entry *), cmp_name);
