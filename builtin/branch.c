@@ -550,6 +550,48 @@ static int calc_maxwidth(struct ref_list *refs)
 	return w;
 }
 
+static char *get_head_description(void)
+{
+	struct stat st;
+	struct strbuf sb = STRBUF_INIT;
+	struct strbuf result = STRBUF_INIT;
+	int bisect = 0;
+	int ret;
+	if (!stat(git_path("rebase-merge"), &st) && S_ISDIR(st.st_mode))
+		ret = strbuf_read_file(&sb, git_path("rebase-merge/head-name"), 0);
+	else if (!access(git_path("rebase-apply/rebasing"), F_OK))
+		ret = strbuf_read_file(&sb, git_path("rebase-apply/head-name"), 0);
+	else if (!access(git_path("BISECT_LOG"), F_OK)) {
+		ret = strbuf_read_file(&sb, git_path("BISECT_START"), 0);
+		bisect = 1;
+	} else
+		return xstrdup(_("(no branch)"));
+
+	if (ret <= 0) {
+		if (bisect)
+			return xstrdup(_("(no branch, bisecting)"));
+		else
+			return xstrdup(_("_(no branch, rebasing)"));
+	}
+
+	while (sb.len && sb.buf[sb.len - 1] == '\n')
+		strbuf_setlen(&sb, sb.len - 1);
+
+	if (bisect) {
+		unsigned char sha1[20];
+		if (!get_sha1_hex(sb.buf, sha1))
+			strbuf_addstr(&result, _("(no branch, bisecting)"));
+		else
+			strbuf_addf(&result, _("(no branch, bisecting %s)"), sb.buf);
+	} else {
+		if (!prefixcmp(sb.buf, "refs/heads/"))
+			strbuf_addf(&result, _("(no branch, rebasing %s)"), sb.buf + 11);
+		else
+			strbuf_addstr(&result, _("(no branch, rebasing)"));
+	}
+	strbuf_release(&sb);
+	return strbuf_detach(&result, NULL);
+}
 
 static void show_detached(struct ref_list *ref_list)
 {
@@ -557,7 +599,7 @@ static void show_detached(struct ref_list *ref_list)
 
 	if (head_commit && is_descendant_of(head_commit, ref_list->with_commit)) {
 		struct ref_item item;
-		item.name = xstrdup(_("(no branch)"));
+		item.name = get_head_description();
 		item.width = utf8_strwidth(item.name);
 		item.kind = REF_LOCAL_BRANCH;
 		item.dest = NULL;
