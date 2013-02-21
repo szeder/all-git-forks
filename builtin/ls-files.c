@@ -24,6 +24,7 @@ static int show_resolve_undo;
 static int show_modified;
 static int show_killed;
 static int show_valid_bit;
+static int show_index_info;
 static int line_terminator = '\n';
 static int debug_mode;
 
@@ -154,9 +155,23 @@ static void show_ce_entry(const char *tag, struct cache_entry *ce)
 		tag = alttag;
 	}
 
-	if (!show_stage) {
+	if (!show_stage && !show_index_info) {
 		fputs(tag, stdout);
 	} else {
+		if (show_index_info)
+			printf("%08x.%08x %08x.%08x "
+			       "%08x %08x %08x %08x %08x %08x %08x\t",
+			       ce->ce_ctime.sec,
+			       ce->ce_ctime.nsec,
+			       ce->ce_mtime.sec,
+			       ce->ce_mtime.nsec,
+			       ce->ce_dev,
+			       ce->ce_ino,
+			       ce->ce_uid,
+			       ce->ce_gid,
+			       ce->ce_size,
+			       ce->ce_flags,
+			       ce->ce_namelen);
 		printf("%s%06o %s %d\t",
 		       tag,
 		       ce->ce_mode,
@@ -479,6 +494,8 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 			DIR_SHOW_IGNORED),
 		OPT_BOOLEAN('s', "stage", &show_stage,
 			N_("show staged contents' object name in the output")),
+		OPT_BOOLEAN(0, "index-info", &show_index_info,
+			N_("show all content in an index entry")),
 		OPT_BOOLEAN('k', "killed", &show_killed,
 			N_("show files on the filesystem that need to be removed")),
 		OPT_BIT(0, "directory", &dir.flags,
