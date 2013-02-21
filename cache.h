@@ -128,6 +128,7 @@ struct cache_entry {
 	unsigned int ce_gid;
 	unsigned int ce_size;
 	unsigned int ce_flags;
+	unsigned int ce5_flags;
 	unsigned int ce_namelen;
 	unsigned char sha1[20];
 	struct cache_entry *next;

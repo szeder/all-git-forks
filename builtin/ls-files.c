@@ -160,11 +160,12 @@ static void show_ce_entry(const char *tag, struct cache_entry *ce)
 	} else {
 		if (show_index_info)
 			printf("%08x.%08x %08x.%08x "
-			       "%08x %08x %08x %08x %08x %08x %08x\t",
+			       "%08x %08x %08x %08x %08x %08x %08x %08x\t",
 			       ce->ce_ctime.sec,
 			       ce->ce_ctime.nsec,
 			       ce->ce_mtime.sec,
 			       ce->ce_mtime.nsec,
+			       ce->ce5_flags,
 			       ce->ce_dev,
 			       ce->ce_ino,
 			       ce->ce_uid,

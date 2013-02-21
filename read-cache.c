@@ -1532,6 +1532,7 @@ static struct cache_entry *create_from_disk_v5(const unsigned char *data,
 	ce->ce_gid   = ce_tmp.ce_gid;
 	ce->ce_size  = ce_tmp.ce_size;
 	ce->ce_flags = ce_tmp.ce_flags;
+	ce->ce5_flags = flags;
 	ce->ce_namelen = previous_name->len;
 	hashcpy(ce->sha1, ce_tmp.sha1);
 	memcpy(ce->name, previous_name->buf, previous_name->len + 1);
