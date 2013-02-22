@@ -1127,9 +1127,10 @@ void append_signoff(struct strbuf *msgbuf, int ignore_footer, unsigned flag)
 		const char *append_newlines = NULL;
 		size_t len = msgbuf->len - ignore_footer;
 
-		if (len && msgbuf->buf[len - 1] != '\n')
+		/* ensure a blank line precedes our signoff */
+		if (!len || msgbuf->buf[len - 1] != '\n')
 			append_newlines = "\n\n";
-		else if (len > 1 && msgbuf->buf[len - 2] != '\n')
+		else if (len == 1 || msgbuf->buf[len - 2] != '\n')
 			append_newlines = "\n";
 
 		if (append_newlines)
