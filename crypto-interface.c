@@ -74,6 +74,15 @@ int crypto_verify_signed_buffer(  )
 	return 0;
 }
 
+// Helper function which does "--ref=crypto"
+void set_notes_ref(const char * ref)
+{
+    struct strbuf sb = STRBUF_INIT;
+    strbuf_addstr(&sb, ref);
+    expand_notes_ref(&sb);
+    setenv("GIT_NOTES_REF", sb.buf, 1);
+}
+
 const unsigned char * get_note_for_commit(const char * commit_ref)
 {
     struct notes_tree *t;
@@ -85,12 +94,7 @@ const unsigned char * get_note_for_commit(const char * commit_ref)
         die(_("Failed to resolve '%s' as a valid ref."), commit_ref);
 
     // Set the ENV to the right namespace
-    struct strbuf sb = STRBUF_INIT;
-    strbuf_addstr(&sb, "crypto");
-    expand_notes_ref(&sb);
-    setenv("GIT_NOTES_REF", sb.buf, 1);
-    printf("what is %s\n", sb.buf);
-    strbuf_release(&sb);
+    set_notes_ref("crypto");
 
     // Since the env is set &default_notes_tree points at crypto
     init_notes(NULL, NULL, NULL, 0);
