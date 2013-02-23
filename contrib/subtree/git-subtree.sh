@@ -548,10 +548,9 @@ cmd_add()
 
 cmd_add_repository()
 {
-	echo "git fetch" "$@"
 	repository=$1
 	refspec=$2
-	git fetch "$@" || exit $?
+	cmd_fetch "$@"
 	revs=FETCH_HEAD
 	set -- $revs
 	cmd_add_commit "$@"
@@ -727,8 +726,13 @@ cmd_merge()
 
 cmd_fetch()
 {
+	echo git fetch "$@"
 	git fetch "$@" || exit $?
 	echo "FETCH_HEAD is $(git rev-parse FETCH_HEAD)"
+	repository="$1"
+	branch="$2"
+	git config -f .git/subtree-heads subtree."$repository".${branch} \
+		$(git rev-parse FETCH_HEAD)
 }
 
 cmd_pull()
@@ -749,11 +753,9 @@ cmd_pull()
 		else
 			echo "Pulling into $dir from $repository $refspec"
 		fi
-		echo "git fetch using: " $repository $refspec
-		git fetch "$repository" "$refspec" || exit $?
+		cmd_fetch "$repository" "$refspec"
 	else
-		echo "git fetch using: $@"
-		git fetch "$@" || exit $?
+		cmd_fetch "$@"
 	fi
 	revs=FETCH_HEAD
 	set -- $revs
