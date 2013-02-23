@@ -4,6 +4,8 @@
 #include "crypto-interface.h"
 #include "sigchain.h"
 #include <stdlib.h>
+#include "notes.h"
+#include "string-list.h"
 
 #define BASH_ERROR -1
 
@@ -30,15 +32,15 @@ const char *crypto_get_signing_key(void)
  * strbuf instance, which would cause the detached signature appended
  * at the end.
  */
-int crypto_sign_buffer(char * pem)
+int crypto_sign_buffer( )
 {
     char * script = "HASH=$(git log -n1 | cut -d ' ' -f 2 | head -n1); \
                      FILE=$(date +\%s); \
                      git show $(HASH) > \"$FILE\".txt; \
-                     openssl cms -sign -in \"$FILE\".txt -text -out \"$FILE\".msg -signer myCert.pem ; \
+                     openssl cms -sign -in \"$FILE\".txt -text -out \"$FILE\".msg -signer ~/myCert.pem ; \
                      git notes --ref=crypto add -F \"$FILE\".msg HEAD; \
-                     rm \"$FILE\".txt \"$FILE\".msg; \
-                     echo \"Pushing signed note to the origin\"; \
+                     rm \"$FILE\".txt \"$FILE\".msg; ";
+    char * extra =  "echo \"Pushing signed note to the origin\"; \
                      git push origin refs/notes/crypto/*; ";
     int bashResult = system(script);
     if(bashResult == BASH_ERROR)
@@ -49,7 +51,8 @@ int crypto_sign_buffer(char * pem)
 /*
  * Run  to see if the payload matches the detached signature.
  */
-int crypto_verify_signed_buffer( char * pem ){
+int crypto_verify_signed_buffer(  )
+{
     char * script = "NOTEID=$(git notes --ref=crypto | cut -d ' ' -f 1 | head -n1); \
                     COMMITID=$(git notes --ref=crypto | cut -d ' ' -f 2 | head -n1); \
                     TIME=$(date +\%s); \
@@ -69,4 +72,33 @@ int crypto_verify_signed_buffer( char * pem ){
     //if(bashResult == BASH_ERROR);
     //    printf("Error fetching signature for the head commit and verifying\n");
 	return 0;
+}
+
+const unsigned char * get_note_for_commit(const char * commit_ref)
+{
+    struct notes_tree *t;
+    unsigned char object[20];
+    const unsigned char * note;
+
+    // convert the hex to the commit object
+    if(get_sha1(commit_ref, object))
+        die(_("Failed to resolve '%s' as a valid ref."), commit_ref);
+
+    // Set the ENV to the right namespace
+    struct strbuf sb = STRBUF_INIT;
+    strbuf_addstr(&sb, "crypto");
+    expand_notes_ref(&sb);
+    setenv("GIT_NOTES_REF", sb.buf, 1);
+    printf("what is %s\n", sb.buf);
+    strbuf_release(&sb);
+
+    // Since the env is set &default_notes_tree points at crypto
+    init_notes(NULL, NULL, NULL, 0);
+    t = &default_notes_tree;
+
+    // Get our note
+    note = get_note(t, object);
+    if(!note)
+        return 0;
+    return sha1_to_hex(note); // return the sha ref
 }
