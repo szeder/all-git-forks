@@ -16,4 +16,11 @@ extern const char * crypto_get_signing_key(void);
  **/
 extern const unsigned char * get_note_for_commit(const char *);
 
+/**
+ * Given the sha1 of a note this function returns the
+ *  pretty char* of the note.
+ *
+ * If no note is found this dies.
+ */
+char * get_note_from_sha1(const char *);
 #endif

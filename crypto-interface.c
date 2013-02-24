@@ -106,3 +106,31 @@ const unsigned char * get_note_for_commit(const char * commit_ref)
         return 0;
     return sha1_to_hex(note); // return the sha ref
 }
+
+char * get_note_from_sha1(const char * ref)
+{
+    unsigned char sha1[20];
+    enum object_type type;
+    unsigned long size;
+    char * buf;
+    //void * data; // Unused for now
+
+    if(get_sha1(ref, sha1)){
+        die(_("Failed to resolve '%s' as a valid ref."), ref);
+    }
+
+    // Get the type and size of the object(note)
+    type = sha1_object_info(sha1, &size);
+    // Get the pretty char *
+    buf = read_sha1_file(sha1, &type, &size);
+
+    // This line should return the blob but it's a function we
+    // dont have access too easily
+    //data = read_object(sha1, type, size);
+
+    if(!buf)
+        die("Cannot read object %s", ref);
+    return buf;
+}
+
+	//return stream_blob_to_fd(1, sha1, NULL, 0);
