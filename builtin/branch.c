@@ -490,7 +490,10 @@ static void print_ref_item(struct ref_item *item, int maxwidth, int verbose,
 	char c;
 	int color;
 	struct commit *commit = item->commit;
-	struct strbuf out = STRBUF_INIT, name = STRBUF_INIT;
+	struct strbuf out = STRBUF_INIT, name = STRBUF_INIT, desc = STRBUF_INIT;
+	int endlinepos = 0;
+	int strpos = 0;
+	char buf[255];
 
 	if (!matches_merge_filter(commit))
 		return;
@@ -533,6 +536,18 @@ static void print_ref_item(struct ref_item *item, int maxwidth, int verbose,
 		string_list_append(&output, out.buf);
 	} else {
 		printf("%s\n", out.buf);
+		read_branch_desc(&desc, item->name);
+		while (strpos <= desc.len) {
+			if (desc.buf[strpos] == '\n' || desc.buf[strpos] == '\r\n') {
+
+				// printf("%s\n", out.buf);
+				//                         end,      start
+				sprintf(buf, "    %.*s\n", strpos+1, desc.buf+endlinepos);
+				printf("the buffer: %s", buf);
+				endlinepos = strpos+1;
+			}
+			++strpos;
+		}
 	}
 	strbuf_release(&name);
 	strbuf_release(&out);
