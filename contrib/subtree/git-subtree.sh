@@ -10,6 +10,7 @@ fi
 OPTS_SPEC="\
 git subtree add   --prefix=<prefix> <commit>
 git subtree add   --prefix=<prefix> <repository> <commit>
+git subtree fetch --prefix=<prefix> [<repository> <refspec...>]
 git subtree merge --prefix=<prefix> <commit>
 git subtree pull  --prefix=<prefix> [<repository> <refspec...>]
 git subtree push  --prefix=<prefix> [<repository> <refspec...>]
@@ -101,7 +102,7 @@ done
 command="$1"
 shift
 case "$command" in
-	add|merge|pull) default= ;;
+	add|merge|pull|fetch) default= ;;
 	split|push) default="--default HEAD" ;;
 	*) die "Unknown command '$command'" ;;
 esac
@@ -119,7 +120,7 @@ esac
 
 dir="$(dirname "$prefix/.")"
 
-if [ "$command" != "pull" -a "$command" != "add" -a "$command" != "push" ]; then
+if [ "$command" != "pull" -a "$command" != "add" -a "$command" != "push" -a "$command" != "fetch" ]; then
 	revs=$(git rev-parse $default --revs-only "$@") || exit $?
 	dirs="$(git rev-parse --no-revs --no-flags "$@")" || exit $?
 	if [ -n "$dirs" ]; then
@@ -722,6 +723,12 @@ cmd_merge()
 			git merge -Xsubtree="$prefix" $rev
 		fi
 	fi
+}
+
+cmd_fetch()
+{
+	git fetch "$@" || exit $?
+	echo "FETCH_HEAD is $(git rev-parse FETCH_HEAD)"
 }
 
 cmd_pull()
