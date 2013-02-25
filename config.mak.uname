@@ -527,14 +527,21 @@ ifeq ($(uname_S),QNX)
 	HAVE_STRINGS_H = YesPlease
 	NEEDS_SOCKET = YesPlease
 	NO_FNMATCH_CASEFOLD = YesPlease
-	NO_GETPAGESIZE = YesPlease
-	NO_ICONV = YesPlease
 	NO_MEMMEM = YesPlease
-	NO_MKDTEMP = YesPlease
-	NO_MKSTEMPS = YesPlease
 	NO_NSEC = YesPlease
-	NO_PTHREADS = YesPlease
 	NO_R_TO_GCC_LINKER = YesPlease
-	NO_STRCASESTR = YesPlease
-	NO_STRLCPY = YesPlease
+	# All QNX 6.x versions have pthread functions in libc;
+	# getpagesize and others are also supported.
+	ifeq ($(shell expr "$(uname_R)" : '6\.[0-9]\.[0-9]'),5)
+		PTHREAD_LIBS = ""
+	else
+		NO_PTHREADS = YesPlease
+		NO_GETPAGESIZE = YesPlease
+		NO_STRCASESTR = YesPlease
+		NO_MKSTEMPS = YesPlease
+		NO_MKDTEMP = YesPlease
+		NO_STRLCPY = YesPlease
+		NO_ICONV = YesPlease
+		NO_GETTEXT = YesPlease
+	endif
 endif
