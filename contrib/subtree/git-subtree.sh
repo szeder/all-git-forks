@@ -11,8 +11,8 @@ OPTS_SPEC="\
 git subtree add   --prefix=<prefix> <commit>
 git subtree add   --prefix=<prefix> <repository> <commit>
 git subtree merge --prefix=<prefix> <commit>
-git subtree pull  --prefix=<prefix> <repository> <refspec...>
-git subtree push  --prefix=<prefix> <repository> <refspec...>
+git subtree pull  --prefix=<prefix> [<repository> <refspec...>]
+git subtree push  --prefix=<prefix> [<repository> <refspec...>]
 git subtree split --prefix=<prefix> <commit...>
 --
 h,help        show the help
@@ -489,6 +489,31 @@ ensure_clean()
 	fi
 }
 
+add_subtree () {
+	if test $# -eq 1
+	then
+		# Only a commit provided, thus use the current repository
+		repository="."
+		branch="$1"
+	elif test $# -eq 2
+	then
+		repository="$1"
+		branch="$2"
+	fi
+	git config -f .gitsubtree subtree."$dir".pull "$repository $branch"
+	git config -f .gitsubtree subtree."$dir".push "$repository $branch"
+}
+
+get_subtree_pull () {
+	remote="$(git config -f .gitsubtree subtree.$dir.pull)"
+	echo "$remote"
+}
+
+get_subtree_push () {
+	remote="$(git config -f .gitsubtree subtree.$dir.push)"
+	echo "$remote"
+}
+
 cmd_add()
 {
 	if [ -e "$dir" ]; then
@@ -496,7 +521,9 @@ cmd_add()
 	fi
 
 	ensure_clean
-	
+
+	add_subtree "$@"
+
 	if [ $# -eq 1 ]; then
 	    git rev-parse -q --verify "$1^{commit}" >/dev/null ||
 	    die "'$1' does not refer to a commit"
@@ -700,7 +727,23 @@ cmd_merge()
 cmd_pull()
 {
 	ensure_clean
-	git fetch "$@" || exit $?
+	if test $# -eq 0
+	then
+		subtree=($(get_subtree_pull))
+		repository=${subtree[0]}
+		refspec=${subtree[1]}
+		if test "$repository" == "."
+		then
+			echo "Pulling into $dir from branch $refspec"
+		else
+			echo "Pulling into $dir from $repository $refspec"
+		fi
+		echo "git fetch using: " $repository $refspec
+		git fetch "$repository" "$refspec" || exit $?
+	else
+		echo "git fetch using: $@"
+		git fetch "$@" || exit $?
+	fi
 	revs=FETCH_HEAD
 	set -- $revs
 	cmd_merge "$@"
@@ -708,16 +751,29 @@ cmd_pull()
 
 cmd_push()
 {
-	if [ $# -ne 2 ]; then
-	    die "You must provide <repository> <refspec>"
+	repository=$1
+	refspec=$2
+	if test $# -eq 0
+	then
+		subtree=($(get_subtree_push))
+		repository=${subtree[0]}
+		refspec=${subtree[1]}
+		if test "$repository" == "."
+		then
+			echo "Pushing from $dir into branch $refspec"
+		else
+			echo "Pushing from $dir into $repository as $refspec"
+		fi
+	elif test $# -ne 2
+	then
+		die "You must provide <repository> <refspec>, or a <prefix> listed in .gitsubtree"
 	fi
-	if [ -e "$dir" ]; then
-	    repository=$1
-	    refspec=$2
-	    echo "git push using: " $repository $refspec
-	    git push $repository $(git subtree split --prefix=$prefix):refs/heads/$refspec
+	if test -e "$dir"
+	then
+		echo "git push using: " $repository $refspec
+		git push $repository $(git subtree split --prefix=$prefix):refs/heads/$refspec
 	else
-	    die "'$dir' must already exist. Try 'git subtree add'."
+		die "'$dir' must already exist. Try 'git subtree add'."
 	fi
 }
 
