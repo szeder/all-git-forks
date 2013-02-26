@@ -46,6 +46,37 @@ static long config_file_ftell(struct config *conf)
 	return ftell(f);
 }
 
+struct config_strbuf {
+	struct strbuf *strbuf;
+	int pos;
+};
+
+static int config_strbuf_fgetc(struct config *conf)
+{
+	struct config_strbuf *str = conf->data;
+
+	if (str->pos < str->strbuf->len)
+		return str->strbuf->buf[str->pos++];
+
+	return EOF;
+}
+
+static int config_strbuf_ungetc(int c, struct config *conf)
+{
+	struct config_strbuf *str = conf->data;
+
+	if (str->pos > 0)
+		return str->strbuf->buf[--str->pos];
+
+	return EOF;
+}
+
+static long config_strbuf_ftell(struct config *conf)
+{
+	struct config_strbuf *str = conf->data;
+	return str->pos;
+}
+
 #define MAX_INCLUDE_DEPTH 10
 static const char include_depth_advice[] =
 "exceeded maximum include depth (%d) while including\n"
@@ -959,6 +990,22 @@ int git_config_from_file(config_fn_t fn, const char *filename, void *data)
 		fclose(f);
 	}
 	return ret;
+}
+
+int git_config_from_strbuf(config_fn_t fn, struct strbuf *strbuf, void *data)
+{
+	struct config top;
+	struct config_strbuf str;
+
+	str.strbuf = strbuf;
+	str.pos = 0;
+
+	top.data = &str;
+	top.fgetc = config_strbuf_fgetc;
+	top.ungetc = config_strbuf_ungetc;
+	top.ftell = config_strbuf_ftell;
+
+	return do_config_from(&top, fn, data);
 }
 
 const char *git_etc_gitconfig(void)
