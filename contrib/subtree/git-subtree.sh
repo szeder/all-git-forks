@@ -730,6 +730,10 @@ cmd_pull()
 	if test $# -eq 0
 	then
 		subtree=($(get_subtree_pull))
+		if test -z $subtree
+		then
+			die "Subtree not known"
+		fi
 		repository=${subtree[0]}
 		refspec=${subtree[1]}
 		if test "$repository" == "."
@@ -756,6 +760,10 @@ cmd_push()
 	if test $# -eq 0
 	then
 		subtree=($(get_subtree_push))
+		if test -z $subtree
+		then
+			die "Subtree not known"
+		fi
 		repository=${subtree[0]}
 		refspec=${subtree[1]}
 		if test "$repository" == "."
