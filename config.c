@@ -10,19 +10,41 @@
 #include "strbuf.h"
 #include "quote.h"
 
-typedef struct config_file {
-	struct config_file *prev;
-	FILE *f;
+struct config {
+	struct config *prev;
+	void *data;
 	const char *name;
 	int linenr;
 	int eof;
 	struct strbuf value;
 	struct strbuf var;
-} config_file;
 
-static config_file *cf;
+	int (*fgetc)(struct config *c);
+	int (*ungetc)(int c, struct config *conf);
+	long (*ftell)(struct config *c);
+};
+
+static struct config *cf;
 
 static int zlib_compression_seen;
+
+static int config_file_fgetc(struct config *conf)
+{
+	FILE *f = conf->data;
+	return fgetc(f);
+}
+
+static int config_file_ungetc(int c, struct config *conf)
+{
+	FILE *f = conf->data;
+	return ungetc(c, f);
+}
+
+static long config_file_ftell(struct config *conf)
+{
+	FILE *f = conf->data;
+	return ftell(f);
+}
 
 #define MAX_INCLUDE_DEPTH 10
 static const char include_depth_advice[] =
@@ -172,13 +194,12 @@ static int get_next_char(void)
 
 	c = '\n';
 	if (cf) {
-		FILE *f = cf->f;
-		c = fgetc(f);
+		c = cf->fgetc(cf);
 		if (c == '\r') {
 			/* DOS like systems */
-			c = fgetc(f);
+			c = cf->fgetc(cf);
 			if (c != '\n') {
-				ungetc(c, f);
+				cf->ungetc(c, cf);
 				c = '\r';
 			}
 		}
@@ -896,7 +917,7 @@ int git_default_config(const char *var, const char *value, void *dummy)
 	return 0;
 }
 
-static int do_config_from(struct config_file *top, config_fn_t fn, void *data)
+static int do_config_from(struct config *top, config_fn_t fn, void *data)
 {
 	int ret;
 
@@ -925,10 +946,13 @@ int git_config_from_file(config_fn_t fn, const char *filename, void *data)
 
 	ret = -1;
 	if (f) {
-		config_file top;
+		struct config top;
 
-		top.f = f;
+		top.data = f;
 		top.name = filename;
+		top.fgetc = config_file_fgetc;
+		top.ungetc = config_file_ungetc;
+		top.ftell = config_file_ftell;
 
 		ret = do_config_from(&top, fn, data);
 
@@ -1063,7 +1087,6 @@ static int store_aux(const char *key, const char *value, void *cb)
 {
 	const char *ep;
 	size_t section_len;
-	FILE *f = cf->f;
 
 	switch (store.state) {
 	case KEY_SEEN:
@@ -1075,7 +1098,7 @@ static int store_aux(const char *key, const char *value, void *cb)
 				return 1;
 			}
 
-			store.offset[store.seen] = ftell(f);
+			store.offset[store.seen] = cf->ftell(cf);
 			store.seen++;
 		}
 		break;
@@ -1102,19 +1125,19 @@ static int store_aux(const char *key, const char *value, void *cb)
 		 * Do not increment matches: this is no match, but we
 		 * just made sure we are in the desired section.
 		 */
-		store.offset[store.seen] = ftell(f);
+		store.offset[store.seen] = cf->ftell(cf);
 		/* fallthru */
 	case SECTION_END_SEEN:
 	case START:
 		if (matches(key, value)) {
-			store.offset[store.seen] = ftell(f);
+			store.offset[store.seen] = cf->ftell(cf);
 			store.state = KEY_SEEN;
 			store.seen++;
 		} else {
 			if (strrchr(key, '.') - key == store.baselen &&
 			      !strncmp(key, store.key, store.baselen)) {
 					store.state = SECTION_SEEN;
-					store.offset[store.seen] = ftell(f);
+					store.offset[store.seen] = cf->ftell(cf);
 			}
 		}
 	}
