@@ -8,12 +8,15 @@ if [ $# -eq 0 ]; then
     set -- -h
 fi
 OPTS_SPEC="\
-git subtree add   --prefix=<prefix> <commit>
-git subtree add   --prefix=<prefix> <repository> <commit>
-git subtree merge --prefix=<prefix> <commit>
-git subtree pull  --prefix=<prefix> <repository> <refspec...>
-git subtree push  --prefix=<prefix> <repository> <refspec...>
-git subtree split --prefix=<prefix> <commit...>
+git subtree add    --prefix=<prefix> <commit>
+git subtree add    --prefix=<prefix> <repository> <commit>
+git subtree fetch  --prefix=<prefix> [<repository> <refspec...>]
+git subtree link   --prefix=<prefix> <repository> <refspec...>
+git subtree merge  --prefix=<prefix> <commit>
+git subtree pull   --prefix=<prefix> [<repository> <refspec...>]
+git subtree push   --prefix=<prefix> [<repository> <refspec...>]
+git subtree split  --prefix=<prefix> <commit...>
+git subtree status --prefix=<prefix> [<repository> <refspec...>]
 --
 h,help        show the help
 q             quiet
@@ -101,8 +104,8 @@ done
 command="$1"
 shift
 case "$command" in
-	add|merge|pull) default= ;;
-	split|push) default="--default HEAD" ;;
+	add|merge|pull|fetch|link) default= ;;
+	split|push|status) default="--default HEAD" ;;
 	*) die "Unknown command '$command'" ;;
 esac
 
@@ -119,7 +122,8 @@ esac
 
 dir="$(dirname "$prefix/.")"
 
-if [ "$command" != "pull" -a "$command" != "add" -a "$command" != "push" ]; then
+if [ "$command" != "pull" -a "$command" != "add" -a "$command" != "push" \
+	-a "$command" != "fetch" -a "$command" != "status" -a "$command" != "link" ]; then
 	revs=$(git rev-parse $default --revs-only "$@") || exit $?
 	dirs="$(git rev-parse --no-revs --no-flags "$@")" || exit $?
 	if [ -n "$dirs" ]; then
@@ -489,6 +493,31 @@ ensure_clean()
 	fi
 }
 
+add_subtree () {
+	if test $# -eq 1
+	then
+		# Only a commit provided, thus use the current repository
+		repository="."
+		branch="$1"
+	elif test $# -eq 2
+	then
+		repository="$1"
+		branch="$2"
+	fi
+	git config -f .gitsubtree subtree."$dir".pull "$repository $branch"
+	git config -f .gitsubtree subtree."$dir".push "$repository $branch"
+}
+
+get_subtree_pull () {
+	remote="$(git config -f .gitsubtree subtree.$dir.pull)"
+	echo "$remote"
+}
+
+get_subtree_push () {
+	remote="$(git config -f .gitsubtree subtree.$dir.push)"
+	echo "$remote"
+}
+
 cmd_add()
 {
 	if [ -e "$dir" ]; then
@@ -496,7 +525,9 @@ cmd_add()
 	fi
 
 	ensure_clean
-	
+
+	add_subtree "$@"
+
 	if [ $# -eq 1 ]; then
 	    git rev-parse -q --verify "$1^{commit}" >/dev/null ||
 	    die "'$1' does not refer to a commit"
@@ -518,12 +549,40 @@ cmd_add()
 	fi
 }
 
+cmd_link()
+{
+	debug "Linking $dir..."
+	if test ! -e "$dir"
+	then
+		die "'$dir' doesn't exists.  Try adding instead."
+	fi
+
+	ensure_clean
+
+	add_subtree "$@"
+
+	if [ $# -eq 1 ]; then
+	    git rev-parse -q --verify "$1^{commit}" >/dev/null ||
+	    die "'$1' does not refer to a commit"
+	elif [ $# -eq 2 ]; then
+	    # Technically we could accept a refspec here but we're
+	    # just going to turn around and add FETCH_HEAD under the
+	    # specified directory.  Allowing a refspec might be
+	    # misleading because we won't do anything with any other
+	    # branches fetched via the refspec.
+	    git rev-parse -q --verify "$2^{commit}" >/dev/null ||
+	    die "'$2' does not refer to a commit"
+	else
+	    say "error: parameters were '$@'"
+	    die "Provide either a commit or a repository and commit."
+	fi
+}
+
 cmd_add_repository()
 {
-	echo "git fetch" "$@"
 	repository=$1
 	refspec=$2
-	git fetch "$@" || exit $?
+	cmd_fetch "$@"
 	revs=FETCH_HEAD
 	set -- $revs
 	cmd_add_commit "$@"
@@ -697,10 +756,54 @@ cmd_merge()
 	fi
 }
 
+cmd_fetch()
+{
+	if test $# -eq 0
+	then
+		subtree=($(get_subtree_push))
+		if test -z $subtree
+		then
+			die "Subtree not known"
+		fi
+		repository=${subtree[0]}
+		branch=${subtree[1]}
+	elif test $# -eq 1
+	then
+		repository="."
+		branch="$1"
+	else
+		repository="$1"
+		branch="$2"
+	fi
+	echo git fetch "$repository" "$branch"
+	git fetch "$repository" "$branch" || exit $?
+	echo "FETCH_HEAD is $(git rev-parse FETCH_HEAD)"
+	git config -f .git/subtree-heads subtree."$repository".${branch} \
+		$(git rev-parse FETCH_HEAD)
+}
+
 cmd_pull()
 {
 	ensure_clean
-	git fetch "$@" || exit $?
+	if test $# -eq 0
+	then
+		subtree=($(get_subtree_pull))
+		if test -z $subtree
+		then
+			die "Subtree not known"
+		fi
+		repository=${subtree[0]}
+		refspec=${subtree[1]}
+		if test "$repository" == "."
+		then
+			echo "Pulling into $dir from branch $refspec"
+		else
+			echo "Pulling into $dir from $repository $refspec"
+		fi
+		cmd_fetch "$repository" "$refspec"
+	else
+		cmd_fetch "$@"
+	fi
 	revs=FETCH_HEAD
 	set -- $revs
 	cmd_merge "$@"
@@ -708,16 +811,84 @@ cmd_pull()
 
 cmd_push()
 {
-	if [ $# -ne 2 ]; then
-	    die "You must provide <repository> <refspec>"
+	repository=$1
+	refspec=$2
+	if test $# -eq 0
+	then
+		subtree=($(get_subtree_push))
+		if test -z $subtree
+		then
+			die "Subtree not known"
+		fi
+		repository=${subtree[0]}
+		refspec=${subtree[1]}
+		if test "$repository" == "."
+		then
+			echo "Pushing from $dir into branch $refspec"
+		else
+			echo "Pushing from $dir into $repository as $refspec"
+		fi
+	elif test $# -ne 2
+	then
+		die "You must provide <repository> <refspec>, or a <prefix> listed in .gitsubtree"
 	fi
-	if [ -e "$dir" ]; then
-	    repository=$1
-	    refspec=$2
-	    echo "git push using: " $repository $refspec
-	    git push $repository $(git subtree split --prefix=$prefix):refs/heads/$refspec
+	if test -e "$dir"
+	then
+		echo "git push using: " $repository $refspec
+		git push $repository $(git subtree split --prefix=$prefix):refs/heads/$refspec
 	else
-	    die "'$dir' must already exist. Try 'git subtree add'."
+		die "'$dir' must already exist. Try 'git subtree add'."
+	fi
+}
+
+cmd_status()
+{
+	debug "Status $dir..."
+	mine=$(git subtree split -q --prefix="$dir")
+	if test $# -eq 0
+	then
+		subtree=($(get_subtree_push))
+		if test -z $subtree
+		then
+			die "Subtree not known"
+		fi
+		repository=${subtree[0]}
+		branch=${subtree[1]}
+	elif test $# -eq 1
+	then
+		repository="."
+		branch="$1"
+	else
+		repository="$1"
+		branch="$2"
+	fi
+	theirs=$(git config -f .git/subtree-heads subtree."$repository".$branch)
+	if test -z $theirs
+	then
+		echo "HEAD in $repository $branch not know. Try git subtree fetch."
+		exit 0
+	fi
+	base=$(git merge-base $mine $theirs)
+	if test -z $base
+	then
+		echo "No common ancestor found!"
+		exit 0
+	fi
+	if test $base == $mine
+	then
+		if test $base == $theirs
+		then
+			echo "Everything up-to-date in $dir"
+		else
+			echo "Behind remote - pull available"
+		fi
+	else
+		if test $base == $theirs
+		then
+			echo "Ahead of remote - push available"
+		else
+			echo "Both subtree and remote have diverged"
+		fi
 	fi
 }
 

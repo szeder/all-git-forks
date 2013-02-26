@@ -465,4 +465,52 @@ test_expect_success 'verify one file change per commit' '
         ))
 '
 
+# return to mainline
+cd ../..
+
+# .gitsubtree
+test_expect_success 'added repository appears in .gitsubtree' '
+	git subtree add --prefix=copy0 sub1 &&
+	remote="$(git config -f .gitsubtree subtree.copy0.pull)" &&
+	check_equal "$remote" ". sub1" &&
+	remote="$(git config -f .gitsubtree subtree.copy0.push)" &&
+	check_equal "$remote" ". sub1"
+'
+
+test_expect_success 'change in subtree is pushed okay' '
+	(
+		cd copy0 &&
+		create new_file &&
+		git commit -m"Added new_file"
+	) &&
+	git ls-tree refs/heads/sub1 >output &&
+	! grep "new_file$" output &&
+	git subtree push --prefix=copy0 &&
+	git ls-tree refs/heads/sub1 >output &&
+	grep "new_file$" output
+'
+
+test_expect_success 'pull into subtree okay' '
+	git subtree add --prefix=copy1 sub1 &&
+	git subtree add --prefix=copy2 sub1 &&
+	(
+		cd copy1 &&
+		create new_file_in_copy1 &&
+		git commit -m"Added new_file_in_copy1"
+	) &&
+	git subtree push --prefix=copy1 &&
+	git subtree pull --prefix=copy2 >output &&
+	grep "^ create mode 100644 copy2/new_file_in_copy1$" output
+'
+
+test_expect_success 'replace outdated entry in .gitsubtree' '
+	git config -f .gitsubtree subtree.copy3.pull ". sub2" &&
+	git config -f .gitsubtree subtree.copy3.push ". sub2" &&
+	git subtree add --prefix=copy3 sub1 &&
+	remote="$(git config -f .gitsubtree subtree.copy3.pull)" &&
+	check_equal "$remote" ". sub1" &&
+	remote="$(git config -f .gitsubtree subtree.copy3.push)" &&
+	check_equal "$remote" ". sub1"
+'
+
 test_done
