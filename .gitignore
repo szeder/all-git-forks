@@ -65,6 +65,7 @@
 /git-http-push
 /git-imap-send
 /git-index-pack
+/git-index-walk
 /git-init
 /git-init-db
 /git-instaweb

@@ -372,6 +372,7 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "hash-object", cmd_hash_object },
 		{ "help", cmd_help },
 		{ "index-pack", cmd_index_pack, RUN_SETUP_GENTLY },
+		{ "index-walk", cmd_index_walk, RUN_SETUP },
 		{ "init", cmd_init_db },
 		{ "init-db", cmd_init_db },
 		{ "log", cmd_log, RUN_SETUP },

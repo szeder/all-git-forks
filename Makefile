@@ -843,6 +843,7 @@ BUILTIN_OBJS += builtin/grep.o
 BUILTIN_OBJS += builtin/hash-object.o
 BUILTIN_OBJS += builtin/help.o
 BUILTIN_OBJS += builtin/index-pack.o
+BUILTIN_OBJS += builtin/index-walk.o
 BUILTIN_OBJS += builtin/init-db.o
 BUILTIN_OBJS += builtin/log.o
 BUILTIN_OBJS += builtin/ls-files.o
