@@ -8,13 +8,14 @@ if [ $# -eq 0 ]; then
     set -- -h
 fi
 OPTS_SPEC="\
-git subtree add   --prefix=<prefix> <commit>
-git subtree add   --prefix=<prefix> <repository> <commit>
-git subtree fetch --prefix=<prefix> [<repository> <refspec...>]
-git subtree merge --prefix=<prefix> <commit>
-git subtree pull  --prefix=<prefix> [<repository> <refspec...>]
-git subtree push  --prefix=<prefix> [<repository> <refspec...>]
-git subtree split --prefix=<prefix> <commit...>
+git subtree add    --prefix=<prefix> <commit>
+git subtree add    --prefix=<prefix> <repository> <commit>
+git subtree fetch  --prefix=<prefix> [<repository> <refspec...>]
+git subtree merge  --prefix=<prefix> <commit>
+git subtree pull   --prefix=<prefix> [<repository> <refspec...>]
+git subtree push   --prefix=<prefix> [<repository> <refspec...>]
+git subtree split  --prefix=<prefix> <commit...>
+git subtree status --prefix=<prefix> [<repository> <refspec...>]
 --
 h,help        show the help
 q             quiet
@@ -103,7 +104,7 @@ command="$1"
 shift
 case "$command" in
 	add|merge|pull|fetch) default= ;;
-	split|push) default="--default HEAD" ;;
+	split|push|status) default="--default HEAD" ;;
 	*) die "Unknown command '$command'" ;;
 esac
 
@@ -120,7 +121,8 @@ esac
 
 dir="$(dirname "$prefix/.")"
 
-if [ "$command" != "pull" -a "$command" != "add" -a "$command" != "push" -a "$command" != "fetch" ]; then
+if [ "$command" != "pull" -a "$command" != "add" -a "$command" != "push" \
+	-a "$command" != "fetch" -a "$command" != "status" ]; then
 	revs=$(git rev-parse $default --revs-only "$@") || exit $?
 	dirs="$(git rev-parse --no-revs --no-flags "$@")" || exit $?
 	if [ -n "$dirs" ]; then
@@ -726,11 +728,26 @@ cmd_merge()
 
 cmd_fetch()
 {
-	echo git fetch "$@"
-	git fetch "$@" || exit $?
+	if test $# -eq 0
+	then
+		subtree=($(get_subtree_push))
+		if test -z $subtree
+		then
+			die "Subtree not known"
+		fi
+		repository=${subtree[0]}
+		branch=${subtree[1]}
+	elif test $# -eq 1
+	then
+		repository="."
+		branch="$1"
+	else
+		repository="$1"
+		branch="$2"
+	fi
+	echo git fetch "$repository" "$branch"
+	git fetch "$repository" "$branch" || exit $?
 	echo "FETCH_HEAD is $(git rev-parse FETCH_HEAD)"
-	repository="$1"
-	branch="$2"
 	git config -f .git/subtree-heads subtree."$repository".${branch} \
 		$(git rev-parse FETCH_HEAD)
 }
@@ -791,6 +808,57 @@ cmd_push()
 		git push $repository $(git subtree split --prefix=$prefix):refs/heads/$refspec
 	else
 		die "'$dir' must already exist. Try 'git subtree add'."
+	fi
+}
+
+cmd_status()
+{
+	debug "Status $dir..."
+	mine=$(git subtree split -q --prefix="$dir")
+	if test $# -eq 0
+	then
+		subtree=($(get_subtree_push))
+		if test -z $subtree
+		then
+			die "Subtree not known"
+		fi
+		repository=${subtree[0]}
+		branch=${subtree[1]}
+	elif test $# -eq 1
+	then
+		repository="."
+		branch="$1"
+	else
+		repository="$1"
+		branch="$2"
+	fi
+	theirs=$(git config -f .git/subtree-heads subtree."$repository".$branch)
+	if test -z $theirs
+	then
+		echo "HEAD in $repository $branch not know. Try git subtree fetch."
+		exit 0
+	fi
+	base=$(git merge-base $mine $theirs)
+	if test -z $base
+	then
+		echo "No common ancestor found!"
+		exit 0
+	fi
+	if test $base == $mine
+	then
+		if test $base == $theirs
+		then
+			echo "Everything up-to-date in $dir"
+		else
+			echo "Behind remote - pull available"
+		fi
+	else
+		if test $base == $theirs
+		then
+			echo "Ahead of remote - push available"
+		else
+			echo "Both subtree and remote have diverged"
+		fi
 	fi
 }
 
