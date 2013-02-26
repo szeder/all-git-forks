@@ -169,10 +169,10 @@ int git_config_from_parameters(config_fn_t fn, void *data)
 static int get_next_char(void)
 {
 	int c;
-	FILE *f;
 
 	c = '\n';
-	if (cf && ((f = cf->f) != NULL)) {
+	if (cf) {
+		FILE *f = cf->f;
 		c = fgetc(f);
 		if (c == '\r') {
 			/* DOS like systems */
