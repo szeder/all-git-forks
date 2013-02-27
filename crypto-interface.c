@@ -1,11 +1,16 @@
-#include "cache.h"
-#include "run-command.h"
-#include "strbuf.h"
 #include "crypto-interface.h"
-#include "sigchain.h"
-#include <stdlib.h>
+#include "cache.h"
+#include "commit.h"
+#include "diff.h"
+#include "list-objects.h"
 #include "notes.h"
+#include "object.h"
+#include "revision.h"
+#include "run-command.h"
+#include "sigchain.h"
+#include "strbuf.h"
 #include "string-list.h"
+#include <stdlib.h>
 
 #define BASH_ERROR -1
 
@@ -72,6 +77,41 @@ int crypto_verify_signed_buffer(  )
     //if(bashResult == BASH_ERROR);
     //    printf("Error fetching signature for the head commit and verifying\n");
 	return 0;
+}
+
+char ** get_commit_list()
+{
+    // Set up
+    struct rev_info revs;
+    init_revisions(&revs, NULL);
+    revs.abbrev = DEFAULT_ABBREV;
+    revs.commit_format = CMIT_FMT_UNSPECIFIED;
+
+    const char *arg[] = {"rev-list", "--all"};
+    setup_revisions(2, arg, &revs, NULL);
+	if (prepare_revision_walk(&revs))
+		die("revision walk setup failed");
+
+    // Taken from traverse_commit_list
+    int i;
+    struct commit *commit;
+    struct strbuf base;
+
+    while((commit = get_revision(&revs)) != NULL){
+        if(commit->tree)
+            add_pending_object(&revs, &(commit->tree->object), "");
+    }
+
+    char **list = malloc(sizeof(char*) * (revs.pending.nr + 1));
+    for(i = 0; i < revs.pending.nr; ++i) {
+		struct object_array_entry *pending = revs.pending.objects + i;
+		struct object *obj = pending->item;
+		const char *name = pending->name;
+        list[i] = sha1_to_hex(obj->sha1);
+    }
+    list[revs.pending.nr] = NULL;
+
+    return list;
 }
 
 // Helper function which does "--ref=crypto"

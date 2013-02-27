@@ -7,6 +7,8 @@ extern int crypto_git_config(const char *, const char *, void *);
 extern void crypto_set_signing_key(const char *);
 extern const char * crypto_get_signing_key(void);
 
+extern char ** get_commit_list();
+
 /**
  * Given a reference to a commit this function looks for an
  * associated note in the crypto notes namespace
