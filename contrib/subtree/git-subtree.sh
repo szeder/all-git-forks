@@ -11,6 +11,7 @@ OPTS_SPEC="\
 git subtree add    --prefix=<prefix> <commit>
 git subtree add    --prefix=<prefix> <repository> <commit>
 git subtree fetch  --prefix=<prefix> [<repository> <refspec...>]
+git subtree link   --prefix=<prefix> <repository> <refspec...>
 git subtree merge  --prefix=<prefix> <commit>
 git subtree pull   --prefix=<prefix> [<repository> <refspec...>]
 git subtree push   --prefix=<prefix> [<repository> <refspec...>]
@@ -103,7 +104,7 @@ done
 command="$1"
 shift
 case "$command" in
-	add|merge|pull|fetch) default= ;;
+	add|merge|pull|fetch|link) default= ;;
 	split|push|status) default="--default HEAD" ;;
 	*) die "Unknown command '$command'" ;;
 esac
@@ -122,7 +123,7 @@ esac
 dir="$(dirname "$prefix/.")"
 
 if [ "$command" != "pull" -a "$command" != "add" -a "$command" != "push" \
-	-a "$command" != "fetch" -a "$command" != "status" ]; then
+	-a "$command" != "fetch" -a "$command" != "status" -a "$command" != "link" ]; then
 	revs=$(git rev-parse $default --revs-only "$@") || exit $?
 	dirs="$(git rev-parse --no-revs --no-flags "$@")" || exit $?
 	if [ -n "$dirs" ]; then
@@ -542,6 +543,36 @@ cmd_add()
 	    die "'$2' does not refer to a commit"
 
 	    "cmd_add_repository" "$@"
+	else
+	    say "error: parameters were '$@'"
+	    die "Provide either a commit or a repository and commit."
+	fi
+}
+
+cmd_link()
+{
+	debug "Linking $dir..."
+	if test ! -e "$dir"
+	then
+		die "'$dir' doesn't exists.  Try adding instead."
+	fi
+
+	ensure_clean
+
+	add_subtree "$@"
+
+	if [ $# -eq 1 ]; then
+	    git rev-parse -q --verify "$1^{commit}" >/dev/null ||
+	    die "'$1' does not refer to a commit"
+	elif [ $# -eq 2 ]; then
+	    case "$2" in
+		*\**) # Avoid pulling in multiple branches
+			die "'$2' contains a wildcard"
+			;;
+		*\:*) # Don't create a local branch for the subtree
+			die "'$2' contains a local branch name"
+			;;
+	    esac
 	else
 	    say "error: parameters were '$@'"
 	    die "Provide either a commit or a repository and commit."
