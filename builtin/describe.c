@@ -435,6 +435,9 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 	if (longformat && abbrev == 0)
 		die(_("--long is incompatible with --abbrev=0"));
 
+	if (pattern && all)
+		die(_("--match is incompatible with --all"));
+
 	if (contains) {
 		const char **args = xmalloc((7 + argc) * sizeof(char *));
 		int i = 0;
