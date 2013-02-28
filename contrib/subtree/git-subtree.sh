@@ -582,6 +582,36 @@ cmd_link()
 	fi
 }
 
+cmd_link()
+{
+	debug "Linking $dir..."
+	if test ! -e "$dir"
+	then
+		die "'$dir' doesn't exists.  Try adding instead."
+	fi
+
+	ensure_clean
+
+	add_subtree "$@"
+
+	if [ $# -eq 1 ]; then
+	    git rev-parse -q --verify "$1^{commit}" >/dev/null ||
+	    die "'$1' does not refer to a commit"
+	elif [ $# -eq 2 ]; then
+	    case "$2" in
+		*\**) # Avoid pulling in multiple branches
+			die "'$2' contains a wildcard"
+			;;
+		*\:*) # Don't create a local branch for the subtree
+			die "'$2' contains a local branch name"
+			;;
+	    esac
+	else
+	    say "error: parameters were '$@'"
+	    die "Provide either a commit or a repository and commit."
+	fi
+}
+
 cmd_add_repository()
 {
 	repository=$1
