@@ -534,6 +534,15 @@ cmd_add()
 
 	    "cmd_add_commit" "$@"
 	elif [ $# -eq 2 ]; then
+	    case "$2" in
+		*\**) # Avoid pulling in multiple branches
+			die "'$2' contains a wildcard"
+			;;
+		*\:*) # Don't create a local branch for the subtree
+			die "'$2' contains a local branch name"
+			;;
+	    esac
+
 	    "cmd_add_repository" "$@"
 	else
 	    say "error: parameters were '$@'"
@@ -557,13 +566,16 @@ cmd_link()
 	    git rev-parse -q --verify "$1^{commit}" >/dev/null ||
 	    die "'$1' does not refer to a commit"
 	elif [ $# -eq 2 ]; then
-	    # Technically we could accept a refspec here but we're
-	    # just going to turn around and add FETCH_HEAD under the
-	    # specified directory.  Allowing a refspec might be
-	    # misleading because we won't do anything with any other
-	    # branches fetched via the refspec.
-	    git rev-parse -q --verify "$2^{commit}" >/dev/null ||
-	    die "'$2' does not refer to a commit"
+	    case "$2" in
+		*\**) # Avoid pulling in multiple branches
+			die "'$2' contains a wildcard"
+			;;
+		*\:*) # Don't create a local branch for the subtree
+			die "'$2' contains a local branch name"
+			;;
+	    esac
+
+	    "cmd_add_repository" "$@"
 	else
 	    say "error: parameters were '$@'"
 	    die "Provide either a commit or a repository and commit."
