@@ -13,14 +13,15 @@ canned_test () {
 		git log $1 >actual &&
 		test_cmp \"\$TEST_DIRECTORY\"/t4211/expect.$2 actual
 	"
-	cp actual "$TEST_DIRECTORY"/t4211/expect.$2
 }
 
 canned_test "-L 4,12:a.c simple" simple-f
 canned_test "-L 4,+9:a.c simple" simple-f
 canned_test "-L '/long f/,/^}/:a.c' simple" simple-f
+canned_test "-L :f:a.c simple" simple-f-to-main
 
 canned_test "-L '/main/,/^}/:a.c' simple" simple-main
+canned_test "-L :main:a.c simple" simple-main-to-end
 
 canned_test "-L 1,+4:a.c simple" beginning-of-file
 canned_test "-L 0,+5:a.c simple" beginning-of-file

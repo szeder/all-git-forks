@@ -22,3 +22,10 @@ of lines before or after the line given by <start>.
 A literal dollar sign can be used as a shorthand for the last line in
 the file.
 +
+
+- :regex
++
+If the entire range is of the form :regex, it denotes the range from
+the first funcname line that matches <regex>, up to the next funcname
+line.
++
