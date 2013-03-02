@@ -113,4 +113,79 @@ test_expect_success 'check --cc --raw with forty trees' '
 	grep "^::::::::::::::::::::::::::::::::::::::::[^:]" out
 '
 
+test_expect_success 'setup combined ignore spaces' '
+	git checkout master &&
+	>test &&
+	git add test &&
+	git commit -m initial &&
+
+	echo "
+	always coalesce
+	eol space coalesce \n\
+	space  change coalesce
+	all spa ces coalesce
+	eol spaces \n\
+	space  change
+	all spa ces" >test &&
+	git commit -m "change three" -a &&
+
+	git checkout -b side HEAD^ &&
+	echo "
+	always coalesce
+	eol space coalesce
+	space change coalesce
+	all spaces coalesce
+	eol spaces
+	space change
+	all spaces" >test &&
+	git commit -m indent -a &&
+
+	test_must_fail git merge master &&
+	echo "
+	eol spaces \n\
+	space  change
+	all spa ces" > test &&
+	git commit -m merged -a
+'
+
+test_expect_success 'check combined output (no ignore space)' '
+	git show | test_i18ngrep "^-\s*eol spaces" &&
+	git show | test_i18ngrep "^-\s*eol space coalesce" &&
+	git show | test_i18ngrep "^-\s*space change" &&
+	git show | test_i18ngrep "^-\s*space change coalesce" &&
+	git show | test_i18ngrep "^-\s*all spaces" &&
+	git show | test_i18ngrep "^-\s*all spaces coalesce" &&
+	git show | test_i18ngrep "^--\s*always coalesce"
+'
+
+test_expect_success 'check combined output (ignore space at eol)' '
+	git show --ignore-space-at-eol | test_i18ngrep "^\s*eol spaces" &&
+	git show --ignore-space-at-eol | test_i18ngrep "^--\s*eol space coalesce" &&
+	git show --ignore-space-at-eol | test_i18ngrep "^-\s*space change" &&
+	git show --ignore-space-at-eol | test_i18ngrep "^-\s*space change coalesce" &&
+	git show --ignore-space-at-eol | test_i18ngrep "^-\s*all spaces" &&
+	git show --ignore-space-at-eol | test_i18ngrep "^-\s*all spaces coalesce" &&
+	git show --ignore-space-at-eol | test_i18ngrep "^--\s*always coalesce"
+'
+
+test_expect_success 'check combined output (ignore space change)' '
+	git show -b | test_i18ngrep "^\s*eol spaces" &&
+	git show -b | test_i18ngrep "^--\s*eol space coalesce" &&
+	git show -b | test_i18ngrep "^\s*space  change" &&
+	git show -b | test_i18ngrep "^--\s*space change coalesce" &&
+	git show -b | test_i18ngrep "^-\s*all spaces" &&
+	git show -b | test_i18ngrep "^-\s*all spaces coalesce" &&
+	git show -b | test_i18ngrep "^--\s*always coalesce"
+'
+
+test_expect_success 'check combined output (ignore all spaces)' '
+	git show -w | test_i18ngrep "^\s*eol spaces" &&
+	git show -w | test_i18ngrep "^--\s*eol space coalesce" &&
+	git show -w | test_i18ngrep "^\s*space  change" &&
+	git show -w | test_i18ngrep "^--\s*space change coalesce" &&
+	git show -w | test_i18ngrep "^\s*all spa ces" &&
+	git show -w | test_i18ngrep "^--\s*all spaces coalesce" &&
+	git show -w | test_i18ngrep "^--\s*always coalesce"
+'
+
 test_done
