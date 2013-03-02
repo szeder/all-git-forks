@@ -1,4 +1,62 @@
-Version v1.8.2-rc0; changes since v1.8.1.3:
+Version v1.8.2-rc1; changes since v1.8.2-rc0:
+---------------------------------------------
+
+Adam Spiers (1):
+      t0008: document test_expect_success_multi
+
+Greg Price (1):
+      Documentation: "advice" is uncountable
+
+Jeff King (1):
+      Makefile: avoid infinite loop on configure.ac change
+
+Jiang Xin (5):
+      l10n: Update git.pot (35 new, 14 removed messages)
+      l10n: zh_CN.po: translate 35 new messages
+      l10n: git.pot: v1.8.2 round 3 (5 new)
+      l10n: zh_CN.po: translate 5 new messages
+      Bugfix: undefined htmldir in config.mak.autogen
+
+Junio C Hamano (8):
+      doc: mention tracking for pull.default
+      user-manual: typofix (ofthe->of the)
+      RelNotes 1.8.2: push-simple will not be in effect in this release
+      imap-send: move #ifdef around
+      name-hash: allow hashing an empty string
+      Git 1.8.1.4
+      Prepare for 1.8.1.5
+      Git 1.8.2-rc1
+
+Martin Erik Werner (1):
+      shell-prompt: clean up nested if-then
+
+Matthieu Moy (1):
+      git.txt: update description of the configuration mechanism
+
+Oswald Buddenhagen (2):
+      imap-send: the subject of SSL certificate must match the host
+      imap-send: support subjectAltName as well
+
+Peter Krefting (2):
+      l10n: Update Swedish translation (2004t0f0u)
+      l10n: Update Swedish translation (2009t0f0u)
+
+Tran Ngoc Quan (2):
+      l10n: vi.po: update new strings (2004t0u0f)
+      l10n: vi.po: Updated 5 new messages (2009t0f0u)
+
+W. Trevor King (8):
+      user-manual: use 'remote add' to setup push URLs
+      user-manual: give 'git push -f' as an alternative to +master
+      user-manual: mention 'git remote add' for remote branch config
+      user-manual: use 'git config --global user.*' for setup
+      user-manual: use -o latest.tar.gz to create a gzipped tarball
+      user-manual: Reorganize the reroll sections, adding 'git rebase -i'
+      user-manual: Use request-pull to generate "please pull" text
+      user-manual: Flesh out uncommitted changes and submodule updates
+
+
+Version v1.8.2-rc0; changes since v1.8.1.5:
 -------------------------------------------
 
 Aaron Schrab (3):
@@ -43,9 +101,6 @@ Adam Tkac (1):
 Alexey Shumkin (1):
       t7102 (reset): don't hardcode SHA-1 in expected outputs
 
-Andrej E Baranov (1):
-      gitweb: refer to picon/gravatar images over the same scheme
-
 Andrew Wong (3):
       rebase: Handle cases where format-patch fails
       gitk: Refactor code for binding modified function keys
@@ -61,16 +116,8 @@ Antoine Pelisse (8):
       log: grep author/committer using mailmap
       log: add log.mailmap configuration option
 
-Asheesh Laroia (1):
-      git-mergetool: print filename when it contains %
-
 Barry Wardell (1):
       git-svn: Simplify calculation of GIT_DIR
-
-Ben Walton (3):
-      Move Git::SVN::get_tz to Git::get_tz_offset
-      perl/Git.pm: fix get_tz_offset to properly handle DST boundary cases
-      cvsimport: format commit timestamp ourselves without using strftime
 
 Chris Hiestand (1):
       Add Auto-Submitted header to post-receive-email
@@ -101,8 +148,7 @@ David A. Greene (3):
       contrib/subtree: better error handling for 'subtree add'
       contrib/subtree: fix synopsis
 
-David Aguilar (10):
-      mergetools/p4merge: Honor $TMPDIR for the /dev/null placeholder
+David Aguilar (7):
       mergetools/vim: remove redundant diff command
       mergetool--lib: improve show_tool_help() output
       mergetools: simplify how we handle "vim" and "defaults"
@@ -110,8 +156,6 @@ David Aguilar (10):
       mergetool--lib: improve the help text in guess_merge_tool()
       mergetool--lib: add functions for finding available tools
       doc: generate a list of valid merge tools
-      difftool--helper: fix printf usage
-      p4merge: fix printf usage
 
 David Michael (3):
       Support builds when sys/param.h is missing
@@ -123,9 +167,6 @@ Eric S. Raymond (1):
 
 Eric Wong (1):
       git-svn: cleanup sprintf usage for uppercasing hex
-
-Erik Faye-Lund (1):
-      parse-options: report uncorrupted multi-byte options
 
 Felipe Contreras (26):
       remote-testgit: properly check for errors
@@ -155,7 +196,7 @@ Felipe Contreras (26):
       remote-bzr: detect local repositories
       remote-hg: store converted URL
 
-Jeff King (29):
+Jeff King (28):
       fsck: warn about '.' and '..' in trees
       fsck: warn about ".git" in trees
       mailmap: refactor mailmap parsing for non-file sources
@@ -183,20 +224,18 @@ Jeff King (29):
       docs: clarify git-branch --list behavior
       branch: let branch filters imply --list
       Documentation/Makefile: clean up MAN*_TXT lists
-      http_request: reset "type" strbuf before adding
       log: re-encode commit messages before grepping
 
 Jesper L. Nielsen (1):
       contrib/subtree: make the manual directory if needed
 
-Jiang Xin (2):
+Jiang Xin (1):
       l10n: Update git.pot (11 new, 7 removed messages)
-      Add utf8_fprintf helper that returns correct number of columns
 
 Johannes Sixt (1):
       t6130-pathspec-noglob: Windows does not allow a file named "f*"
 
-John Keeping (27):
+John Keeping (24):
       git-svn: teach find-rev to find near matches
       git_remote_helpers: allow building with Python 3
       git_remote_helpers: fix input when running under Python 3
@@ -213,10 +252,7 @@ John Keeping (27):
       mergetool--lib: don't call "exit" in setup_tool
       git-remote-testpy: fix path hashing on Python 3
       CodingGuidelines: add Python coding guidelines
-      Rename {git- => git}remote-helpers.txt
       mergetool--lib: list user configured tools in '--tool-help'
-      builtin/apply: tighten (dis)similarity index parsing
-      t4038: add tests for "diff --cc --raw <trees>"
       graph: output padding for merge subsequent parents
       diff: write prefix to the correct file
       diff.c: make constant string arguments const
@@ -229,7 +265,7 @@ Jonathan Nieder (2):
       Git::SVN::Editor::T: pass $deletions to ->A and ->D
       git svn: do not overescape URLs (fallback case)
 
-Junio C Hamano (54):
+Junio C Hamano (52):
       diff: accept --no-follow option
       blame: pay attention to --no-follow
       t6006: clean up whitespace
@@ -272,9 +308,7 @@ Junio C Hamano (54):
       git_remote_helpers: remove GIT-PYTHON-VERSION upon "clean"
       Update draft release notes to 1.8.2
       Documentation: describe the "repository" in repository-layout
-      combine-diff: lift 32-way limit of combined diff
       Update draft release notes to 1.8.2
-      t5551: fix expected error output
       apply: verify submodule commit object name better
       Update draft release notes to 1.8.2
       upload/receive-pack: allow hiding ref hierarchies
@@ -341,11 +375,10 @@ Matthew Ogilvie (10):
       cvsserver: add t9402 to test branch and tag refs
       cvsserver Documentation: new cvs ... -r support
 
-Matthieu Moy (5):
+Matthieu Moy (4):
       add: warn when -u or -A is used without pathspec
       Makefile: make script-related rules usable from subdirectories
       git-remote-mediawiki: use toplevel's Makefile
-      Replace filepattern with pathspec for consistency
       completion: support 'git config --local'
 
 Max Horn (2):
@@ -376,15 +409,12 @@ Michael Haggerty (22):
       imap-send.c: fold struct store into struct imap_store
       imap-send.c: simplify logic in lf_to_crlf()
 
-Michael J Gruber (1):
-      git-bisect.txt: clarify that reset quits bisect
-
 Michal Privoznik (3):
       git-completion.bash: Autocomplete --minimal and --histogram for git-diff
       config: Introduce diff.algorithm variable
       diff: Introduce --diff-algorithm command line option
 
-Nguyễn Thái Ngọc Duy (44):
+Nguyễn Thái Ngọc Duy (43):
       ctype: make sane_ctype[] const array
       ctype: support iscntrl, ispunct, isxdigit and isprint
       Import wildmatch from rsync
@@ -419,7 +449,6 @@ Nguyễn Thái Ngọc Duy (44):
       format-patch: pick up correct branch name from symbolic ref
       format-patch: pick up branch description when no ref is specified
       upload-pack: only accept commits from "shallow" line
-      clone: forbid --bare --separate-git-dir <dir>
       fetch: add --unshallow for turning shallow repo into complete one
       upload-pack: fix off-by-one depth calculation in shallow clone
       fetch: elaborate --depth action
@@ -498,9 +527,6 @@ René Scharfe (3):
 Robin Rosenberg (1):
       Enable minimal stat checking
 
-Shawn O. Pearce (1):
-      Verify Content-Type from smart HTTP servers
-
 Stefan Haller (6):
       gitk: Synchronize highlighting in file view when scrolling diff
       gitk: Highlight current search hit in orange
@@ -544,21 +570,116 @@ Torsten Bögershausen (9):
 Tran Ngoc Quan (1):
       l10n: vi.po: updated Vietnamese translation
 
-W. Trevor King (8):
+W. Trevor King (3):
       submodule: add get_submodule_config helper funtion
       submodule update: add --remote for submodule's upstream changes
       submodule add: If --branch is given, record it in .gitmodules
-      user-manual: Fix 'both: so' -> 'both; so' typo
-      user-manual: Fix 'http' -> 'HTTP' typos
-      user-manual: Fix 'you - Git' -> 'you--Git' typo
-      user-manual: Rewrite git-gc section for automatic packing
-      user-manual: Update for receive.denyCurrentBranch=refuse
 
 Wang Sheng (1):
       l10n: zh_CN.po: 800+ new translations on command usages
 
+
+Version v1.8.1.5; changes since v1.8.1.4:
+-----------------------------------------
+
+Andrej E Baranov (1):
+      gitweb: refer to picon/gravatar images over the same scheme
+
+Andrew Wong (1):
+      Documentation/githooks: Fix linkgit
+
+Asheesh Laroia (1):
+      git-mergetool: print filename when it contains %
+
+Ben Walton (3):
+      Move Git::SVN::get_tz to Git::get_tz_offset
+      perl/Git.pm: fix get_tz_offset to properly handle DST boundary cases
+      cvsimport: format commit timestamp ourselves without using strftime
+
+Brad King (1):
+      Documentation/submodule: Add --force to update synopsis
+
+David Aguilar (3):
+      mergetools/p4merge: Honor $TMPDIR for the /dev/null placeholder
+      difftool--helper: fix printf usage
+      p4merge: fix printf usage
+
+Erik Faye-Lund (1):
+      parse-options: report uncorrupted multi-byte options
+
+Greg Price (1):
+      Documentation: "advice" is uncountable
+
+Jeff King (2):
+      http_request: reset "type" strbuf before adding
+      Makefile: avoid infinite loop on configure.ac change
+
+Jiang Xin (1):
+      Add utf8_fprintf helper that returns correct number of columns
+
+John Keeping (3):
+      Rename {git- => git}remote-helpers.txt
+      builtin/apply: tighten (dis)similarity index parsing
+      t4038: add tests for "diff --cc --raw <trees>"
+
+Junio C Hamano (7):
+      doc: mention tracking for pull.default
+      combine-diff: lift 32-way limit of combined diff
+      t5551: fix expected error output
+      user-manual: typofix (ofthe->of the)
+      Prepare for 1.8.1.5
+      Update draft release notes to 1.8.1.5
+      Git 1.8.1.5
+
+Matthieu Moy (1):
+      git.txt: update description of the configuration mechanism
+
+Michael J Gruber (1):
+      git-bisect.txt: clarify that reset quits bisect
+
+Nguyễn Thái Ngọc Duy (1):
+      clone: forbid --bare --separate-git-dir <dir>
+
+Shawn O. Pearce (1):
+      Verify Content-Type from smart HTTP servers
+
+Thomas Rast (1):
+      Make !pattern in .gitattributes non-fatal
+
+W. Trevor King (4):
+      user-manual: Update for receive.denyCurrentBranch=refuse
+      user-manual: Reorganize the reroll sections, adding 'git rebase -i'
+      user-manual: Use request-pull to generate "please pull" text
+      user-manual: Flesh out uncommitted changes and submodule updates
+
 Zoltan Klinger (1):
       git-clean: Display more accurate delete messages
+
+
+Version v1.8.1.4; changes since v1.8.1.3:
+-----------------------------------------
+
+Junio C Hamano (2):
+      imap-send: move #ifdef around
+      Git 1.8.1.4
+
+Matthieu Moy (1):
+      Replace filepattern with pathspec for consistency
+
+Oswald Buddenhagen (2):
+      imap-send: the subject of SSL certificate must match the host
+      imap-send: support subjectAltName as well
+
+W. Trevor King (9):
+      user-manual: Fix 'both: so' -> 'both; so' typo
+      user-manual: Fix 'http' -> 'HTTP' typos
+      user-manual: Fix 'you - Git' -> 'you--Git' typo
+      user-manual: Rewrite git-gc section for automatic packing
+      user-manual: use 'remote add' to setup push URLs
+      user-manual: give 'git push -f' as an alternative to +master
+      user-manual: mention 'git remote add' for remote branch config
+      user-manual: use 'git config --global user.*' for setup
+      user-manual: use -o latest.tar.gz to create a gzipped tarball
 
 
 Version v1.8.1.3; changes since v1.8.1.2:
