@@ -1,3 +1,12 @@
+git (1:1.8.2~rc2-1) experimental; urgency=low
+
+  * new upstream release candidate.
+    * skip readlink() of entries in GIT_CEILING_DIRECTORIES after an
+      empty entry (thx Anders Kaseorg and Michael Haggerty).
+  * update debian/copyright.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 03 Mar 2013 15:22:27 -0800
+
 git (1:1.8.2~rc1-1) experimental; urgency=low
 
   * new upstream release candidate.

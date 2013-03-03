@@ -3,7 +3,7 @@ Upstream-Contact: git@vger.kernel.org
 Source: http://code.google.com/p/git-core/downloads/list
 
 Files: *
-Copyright: © 2005-2012, Linus Torvalds and others.
+Copyright: © 2005-2013, Linus Torvalds and others.
 License: GPL-2
 
 Files: xdiff/*
@@ -16,7 +16,7 @@ Copyright: © 2010, Google Inc.
 License: EDL-1.0
 
 Files: gitk-git/*
-Copyright: © 2005-2011, Paul Mackerras, et al.
+Copyright: © 2005-2012, Paul Mackerras, et al.
 License: GPL-2+
 
 Files: git-gui/*
@@ -136,11 +136,6 @@ License: dlmalloc
 Files: compat/regex/*
 Copyright: © 1985, 1989-93, 1995-2010, Free Software Foundation, Inc.
 Name: Extended regular expression matching and search library
-License: LGPL-2.1+
-
-Files: compat/strtok_r.c
-Copyright: © 1991, 1996-1999, 2001, 2004, Free Software Foundation, Inc.
-Name: Reentrant string tokenizer.  Generic version.
 License: LGPL-2.1+
 
 Files: compat/obstack.c compat/obstack.h

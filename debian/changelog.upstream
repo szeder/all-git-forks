@@ -1,3 +1,31 @@
+Version v1.8.2-rc2; changes since v1.8.2-rc1:
+---------------------------------------------
+
+Andrew Wong (1):
+      Documentation/githooks: Fix linkgit
+
+Brad King (1):
+      Documentation/submodule: Add --force to update synopsis
+
+Erik Faye-Lund (1):
+      Revert "compat: add strtok_r()"
+
+Junio C Hamano (3):
+      Update draft release notes to 1.8.1.5
+      Git 1.8.1.5
+      Git 1.8.2-rc2
+
+Karsten Blees (2):
+      wincred: accept CRLF on stdin to simplify console usage
+      wincred: improve compatibility with windows versions
+
+Michael Haggerty (1):
+      Provide a mechanism to turn off symlink resolution in ceiling paths
+
+Thomas Rast (1):
+      Make !pattern in .gitattributes non-fatal
+
+
 Version v1.8.2-rc1; changes since v1.8.2-rc0:
 ---------------------------------------------
 
