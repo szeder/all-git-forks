@@ -9,13 +9,17 @@ git-subtree - Merge subtrees together and split repository into subtrees
 SYNOPSIS
 --------
 [verse]
-'git subtree' add   -P <prefix> <refspec>
-'git subtree' add   -P <prefix> <repository> <refspec>
-'git subtree' pull  -P <prefix> <repository> <refspec...>
-'git subtree' push  -P <prefix> <repository> <refspec...>
-'git subtree' merge -P <prefix> <commit>
-'git subtree' split -P <prefix> [OPTIONS] [<commit>]
-
+'git subtree' add   --prefix=<prefix> <repository> <refspec>
+'git subtree' merge --prefix=<prefix> <commit>
+'git subtree' pull  --prefix=<prefix> [<repository> [<refspec>...]]
+'git subtree' pull-all
+'git subtree' push-all
+'git subtree' push  --prefix=<prefix> [<repository> [<refspec>...]]
+'git subtree' list
+'git subtree' split --prefix=<prefix> <commit...>
+'git subtree' from-submodule --prefix=<prefix>
+'git subtree' prune
+'git subtree' diff  --prefix=<prefix> [<repository> [<refspec>...]]
 
 DESCRIPTION
 -----------
@@ -92,12 +96,21 @@ pull::
 	Exactly like 'merge', but parallels 'git pull' in that
 	it fetches the given commit from the specified remote
 	repository.
-	
+
+pull-all::
+	Perform a pull operation on all in .gittrees registered subtrees.
+
 push::
-	Does a 'split' (see below) using the <prefix> supplied
+	Does a 'split' (see above) using the <prefix> supplied
 	and then does a 'git push' to push the result to the 
 	repository and refspec. This can be used to push your
 	subtree to different branches of the remote repository.
+
+push-all::
+	Perform a pull operation on all in .gittrees registered subtrees.
+
+list::
+	Show a list of the in .gittrees registered subtrees
 
 split::
 	Extract a new, synthetic project history from the
@@ -123,6 +136,16 @@ split::
 	Note that if you use '--squash' when you merge, you
 	should usually not just '--rejoin' when you split.
 
+from-submodule::
+	Convert a git submodule to a subtree.
+	The module is removed from the .gitmodules file and
+	the repo contents are integrated as a subtree.
+
+prune::
+	Cleanup .gittrees entries for which the subtree nolonger exists.
+
+diff::
+	TO BE DOCUMENTED
 
 OPTIONS
 -------
@@ -255,6 +278,13 @@ OPTIONS FOR split
 	'--rejoin' when you split, because you don't want the
 	subproject's history to be part of your project anyway.
 
+OPTIONS FOR push
+----------------
+-f::
+--force::
+  Uses 'git push --force'.
+
+
 
 EXAMPLE 1. Add command
 ----------------------
@@ -270,7 +300,7 @@ git-extensions repository in ~/git-extensions/:
 name
 
 You can omit the --squash flag, but doing so will increase the number
-of commits that are incldued in your local repository.
+of commits that are included in your local repository.
 
 We now have a ~/git-extensions/git-subtree directory containing code
 from the master branch of git://github.com/apenwarr/git-subtree.git

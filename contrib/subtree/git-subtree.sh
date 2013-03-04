@@ -8,12 +8,17 @@ if [ $# -eq 0 ]; then
     set -- -h
 fi
 OPTS_SPEC="\
-git subtree add   --prefix=<prefix> <commit>
-git subtree add   --prefix=<prefix> <repository> <commit>
+git subtree add   --prefix=<prefix> <repository> <refspec>
 git subtree merge --prefix=<prefix> <commit>
-git subtree pull  --prefix=<prefix> <repository> <refspec...>
-git subtree push  --prefix=<prefix> <repository> <refspec...>
+git subtree pull  --prefix=<prefix> [<repository> [<refspec>...]]
+git subtree pull-all
+git subtree push-all
+git subtree push  --prefix=<prefix> [<repository> [<refspec>...]]
+git subtree list
 git subtree split --prefix=<prefix> <commit...>
+git subtree from-submodule --prefix=<prefix>
+git subtree prune
+git subtree diff  --prefix=<prefix> [<repository> [<refspec>...]]
 --
 h,help        show the help
 q             quiet
@@ -26,6 +31,8 @@ b,branch=     create a new branch from the split subtree
 ignore-joins  ignore prior --rejoin commits
 onto=         try connecting new tree to an existing one
 rejoin        merge the new branch back into HEAD
+ options for 'push'
+f,force	      use force push
  options for 'add', 'merge', 'pull' and 'push'
 squash        merge subtree changes as a single commit
 "
@@ -82,8 +89,9 @@ while [ $# -gt 0 ]; do
 		--annotate) annotate="$1"; shift ;;
 		--no-annotate) annotate= ;;
 		-b) branch="$1"; shift ;;
-		-P) prefix="$1"; shift ;;
+		-P|--prefix) prefix="$1"; shift ;;
 		-m) message="$1"; shift ;;
+		-f|--force) force=1 ;;
 		--no-prefix) prefix= ;;
 		--onto) onto="$1"; shift ;;
 		--no-onto) onto= ;;
@@ -98,19 +106,26 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
+# Remove trailing slash
+prefix="${prefix%/}";
+
 command="$1"
 shift
 case "$command" in
-	add|merge|pull) default= ;;
-	split|push) default="--default HEAD" ;;
+	add|merge|pull|pull-all|push-all|from-submodule|prune) default= ;;
+	split|push|diff|list) default="--default HEAD" ;;
 	*) die "Unknown command '$command'" ;;
 esac
 
-if [ -z "$prefix" ]; then
+if [ -z "$prefix" -a "$command" != "pull-all" -a "$command" != "push-all" -a "$command" != "list" -a "$command" != "prune" ]; then
 	die "You must provide the --prefix option."
 fi
 
 case "$command" in
+	pull-all);;
+	push-all);;
+	list);;
+	prune);;
 	add) [ -e "$prefix" ] && 
 		die "prefix '$prefix' already exists." ;;
 	*)   [ -e "$prefix" ] || 
@@ -119,7 +134,7 @@ esac
 
 dir="$(dirname "$prefix/.")"
 
-if [ "$command" != "pull" -a "$command" != "add" -a "$command" != "push" ]; then
+if [ "$command" != "pull" -a "$command" != "add" -a "$command" != "push" -a "$command" != "pull-all" -a "$command" != "diff" ]; then
 	revs=$(git rev-parse $default --revs-only "$@") || exit $?
 	dirs="$(git rev-parse --no-revs --no-flags "$@")" || exit $?
 	if [ -n "$dirs" ]; then
@@ -297,7 +312,7 @@ copy_commit()
 	# We're going to set some environment vars here, so
 	# do it in a subshell to get rid of them safely later
 	debug copy_commit "{$1}" "{$2}" "{$3}"
-	git log -1 --pretty=format:'%an%n%ae%n%ad%n%cn%n%ce%n%cd%n%B' "$1" |
+	git log -1 --pretty=format:'%an%n%ae%n%ad%n%cn%n%ce%n%cd%n%s%n%n%b' "$1" |
 	(
 		read GIT_AUTHOR_NAME
 		read GIT_AUTHOR_EMAIL
@@ -498,23 +513,12 @@ cmd_add()
 	ensure_clean
 	
 	if [ $# -eq 1 ]; then
-	    git rev-parse -q --verify "$1^{commit}" >/dev/null ||
-	    die "'$1' does not refer to a commit"
-
-	    "cmd_add_commit" "$@"
+		"cmd_add_commit" "$@"
 	elif [ $# -eq 2 ]; then
-	    # Technically we could accept a refspec here but we're
-	    # just going to turn around and add FETCH_HEAD under the
-	    # specified directory.  Allowing a refspec might be
-	    # misleading because we won't do anything with any other
-	    # branches fetched via the refspec.
-	    git rev-parse -q --verify "$2^{commit}" >/dev/null ||
-	    die "'$2' does not refer to a commit"
-
-	    "cmd_add_repository" "$@"
+		"cmd_add_repository" "$@"
 	else
 	    say "error: parameters were '$@'"
-	    die "Provide either a commit or a repository and commit."
+	    die "Provide either a refspec or a repository and refspec."
 	fi
 }
 
@@ -527,6 +531,14 @@ cmd_add_repository()
 	revs=FETCH_HEAD
 	set -- $revs
 	cmd_add_commit "$@"
+
+	# now add it to our list of repos
+	git config -f .gittrees --unset subtree.$dir.url
+	git config -f .gittrees --add subtree.$dir.url $repository
+	git config -f .gittrees --unset subtree.$dir.path
+	git config -f .gittrees --add subtree.$dir.path $dir
+	git config -f .gittrees --unset subtree.$dir.branch
+	git config -f .gittrees --add subtree.$dir.branch $refspec
 }
 
 cmd_add_commit()
@@ -592,7 +604,8 @@ cmd_split()
 	eval "$grl" |
 	while read rev parents; do
 		revcount=$(($revcount + 1))
-		say -n "$revcount/$revmax ($createcount)"
+		say -n "$revcount/$revmax ($createcount)
+"
 		debug "Processing commit: $rev"
 		exists=$(cache_get $rev)
 		if [ -n "$exists" ]; then
@@ -699,26 +712,168 @@ cmd_merge()
 
 cmd_pull()
 {
-	ensure_clean
-	git fetch "$@" || exit $?
-	revs=FETCH_HEAD
-	set -- $revs
-	cmd_merge "$@"
-}
-
-cmd_push()
-{
-	if [ $# -ne 2 ]; then
-	    die "You must provide <repository> <refspec>"
+	if [ $# -gt 2 ]; then
+		die "You should provide either <refspec> or <repository> <refspec>"
 	fi
 	if [ -e "$dir" ]; then
-	    repository=$1
-	    refspec=$2
-	    echo "git push using: " $repository $refspec
-	    git push $repository $(git subtree split --prefix=$prefix):refs/heads/$refspec
+		ensure_clean
+		if [ $# -eq 1 ]; then
+			repository=$(git config -f .gittrees subtree.$prefix.url)
+			refspec=$1
+		elif [ $# -eq 2 ]; then
+			repository=$1
+			refspec=$2
+		else
+			repository=$(git config -f .gittrees subtree.$prefix.url)
+			refspec=$(git config -f .gittrees subtree.$prefix.branch)
+		fi
+		git fetch $repository $refspec || exit $?
+		echo "git fetch using: " $repository $refspec
+		revs=FETCH_HEAD
+		set -- $revs
+		cmd_merge "$@"
+	else
+		die "'$dir' must already exist. Try 'git subtree add'."
+	fi
+}
+
+cmd_diff()
+{
+	if [ -e "$dir" ]; then
+		if [ $# -eq 1 ]; then
+			repository=$(git config -f .gittrees subtree.$prefix.url)
+			refspec=$1
+		elif [ $# -eq 2 ]; then
+			repository=$1
+			refspec=$2
+		else
+			repository=$(git config -f .gittrees subtree.$prefix.url)
+			refspec=$(git config -f .gittrees subtree.$prefix.branch)
+		fi
+		# this is ugly, but I don't know of a better way to do it. My git-fu is weak.
+		# git diff-tree expects a treeish, but I have only a repository and branch name.
+		# I don't know how to turn that into a treeish without creating a remote.
+		# Please change this if you know a better way!
+		tmp_remote=__diff-tmp
+		git remote rm $tmp_remote > /dev/null 2>&1
+		git remote add -t $refspec $tmp_remote $repository > /dev/null
+		# we fetch as a separate step so we can pass -q (quiet), which isn't an option for "git remote"
+		# could this instead be "git fetch -q $repository $refspec" and leave aside creating the remote?
+		# Still need a treeish for the diff-tree command...
+		git fetch -q $tmp_remote
+		git diff-tree -p refs/remotes/$tmp_remote/$refspec
+		git remote rm $tmp_remote > /dev/null 2>&1
+	else
+		die "Cannot resolve directory '$dir'. Please point to an existing subtree directory to diff. Try 'git subtree add' to add a subtree."
+	fi
+}
+cmd_push()
+{
+	if [ $# -gt 2 ]; then
+		die "You shold provide either <refspec> or <repository> <refspec>"
+	fi
+	if [ -e "$dir" ]; then
+		if [ $# -eq 1 ]; then
+			repository=$(git config -f .gittrees subtree.$prefix.url)
+			refspec=$1
+		elif [ $# -eq 2 ]; then
+			repository=$1
+			refspec=$2
+		else
+			repository=$(git config -f .gittrees subtree.$prefix.url)
+			refspec=$(git config -f .gittrees subtree.$prefix.branch)
+		fi
+
+		push_opts=
+		if [ "$force" == "1" ]; then
+		  push_opts="$push_opts --force"
+		fi
+
+		echo "git push using: " $repository $refspec
+		rev=$(git subtree split --prefix=$prefix)
+		if [ -n "$rev" ]; then
+			git push $push_opts $repository $rev:refs/heads/$refspec
+		else
+			die "Couldn't push, 'git subtree split' failed."
+		fi
 	else
 	    die "'$dir' must already exist. Try 'git subtree add'."
 	fi
+}
+
+subtree_list()
+{
+	git config -f .gittrees -l | grep subtree | grep path | grep -o '=.*' | grep -o '[^=].*' |
+	while read path; do
+		repository=$(git config -f .gittrees subtree.$path.url)
+		refspec=$(git config -f .gittrees subtree.$path.branch)
+		echo "	$path		(merged from $repository branch $refspec) "
+	done
+}
+
+cmd_list()
+{
+  subtree_list
+}
+
+cmd_from-submodule()
+{
+	ensure_clean
+
+	local submodule_sha=$(git submodule status $prefix | cut -d ' ' -f 2)
+	local submodule_orig_repo=$(git config --file .gitmodules submodule.$prefix.url)
+
+	# Remove references to submodule.
+	git config --remove-section submodule.$prefix
+	git config --file .gitmodules --remove-section submodule.$prefix
+	git add .gitmodules
+
+	# Move submodule aside.
+	local tmp_repo="$(mktemp -d /tmp/git-subtree.XXXXX)"
+	rm -r $tmp_repo
+	mv $prefix $tmp_repo
+	git rm $prefix
+
+	# Commit changes.
+	git commit -m "Remove '$prefix/' submodule"
+
+	# subtree add from submodule repo.
+	# TODO: Could be determin HEAD to be a specific branch
+	cmd_add_repository $tmp_repo HEAD
+
+	# Update .gittrees with the original repo url
+	git config --file .gittrees --unset subtree.$prefix.url
+	git config --file .gittrees subtree.$prefix.url $submodule_orig_repo
+
+	# Remove submodule repo.
+	rm -rf $tmp_repo
+}
+
+cmd_prune()
+{
+	git config -f .gittrees -l | grep subtree | grep path | grep -o '=.*' | grep -o '[^=].*' |
+	while read path; do
+		if [ ! -e "$path" ]; then
+			echo "pruning $path"
+			git config -f .gittrees --remove-section subtree.$path
+		fi
+	done
+}
+
+cmd_pull-all()
+{
+	git config -f .gittrees -l | grep subtree | grep path | grep -o '=.*' | grep -o '[^=].*' |
+	while read path; do
+		git subtree pull -P $path $(git config -f .gittrees subtree.$path.url) $(git config -f .gittrees subtree.$path.branch) || exit $?
+	done
+}
+
+cmd_push-all()
+{
+	git config -f .gittrees -l | grep subtree | grep path | grep -o '=.*' | grep -o '[^=].*' |
+	while read path; do
+		git subtree push -P $path $(git config -f .gittrees subtree.$path.url) $(git config -f .gittrees subtree.$path.branch) || exit $?
+	done
 }
 
 "cmd_$command" "$@"
