@@ -398,6 +398,7 @@ static int reset_tree(struct tree *tree, const struct checkout_opts *o,
 
 struct branch_info {
 	const char *name; /* The short name used */
+	const char *full_ref; /* The full name of a real ref */
 	const char *path; /* The full name of a real branch */
 	struct commit *commit; /* The named commit */
 };
@@ -589,7 +590,8 @@ static void update_refs_for_switch(const struct checkout_opts *opts,
 	if (!old_desc && old->commit)
 		old_desc = sha1_to_hex(old->commit->object.sha1);
 	strbuf_addf(&msg, "checkout: moving from %s to %s",
-		    old_desc ? old_desc : "(invalid)", new->name);
+		    old_desc ? old_desc : "(invalid)",
+		    new->full_ref ? new->full_ref : new->name);
 
 	if (!strcmp(new->name, "HEAD") && !new->path && !opts->force_detach) {
 		/* Nothing to do. */
@@ -907,10 +909,21 @@ static int parse_branchname_arg(int argc, const char **argv,
 	setup_branch_path(new);
 
 	if (!check_refname_format(new->path, 0) &&
-	    !read_ref(new->path, branch_rev))
+	    !read_ref(new->path, branch_rev)) {
 		hashcpy(rev, branch_rev);
-	else
+		new->full_ref = xstrdup(new->path);
+	} else {
+		char *real_ref = NULL;
+		unsigned char sha1[20];
 		new->path = NULL; /* not an existing branch */
+		if (dwim_ref(new->name, strlen(new->name), sha1,
+			     &real_ref) == 1 &&
+		    !hashcmp(sha1, rev)) {
+			new->full_ref = real_ref;
+			real_ref = NULL;
+		}
+		free(real_ref);
+	}
 
 	new->commit = lookup_commit_reference_gently(rev, 1);
 	if (!new->commit) {
