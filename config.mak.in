@@ -12,6 +12,7 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 #INSTALL = @INSTALL@		# needs install-sh or install.sh in sources
 
 prefix = @prefix@
+exec_prefix = @exec_prefix@
 bindir = @bindir@
 gitexecdir = @libexecdir@/git-core
 datarootdir = @datarootdir@
