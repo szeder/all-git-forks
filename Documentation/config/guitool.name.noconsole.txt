@@ -1,0 +1,4 @@
+guitool.<name>.noconsole::
+	Run the command silently, without creating a window to display its
+	output.
+

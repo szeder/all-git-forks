@@ -1,0 +1,11 @@
+gitcvs.usecrlfattr::
+	If true, the server will look up the end-of-line conversion
+	attributes for files to determine the '-k' modes to use. If
+	the attributes force Git to treat a file as text,
+	the '-k' mode will be left blank so CVS clients will
+	treat it as text. If they suppress text conversion, the file
+	will be set with '-kb' mode, which suppresses any newline munging
+	the client might otherwise do. If the attributes do not allow
+	the file type to be determined, then 'gitcvs.allbinary' is
+	used. See linkgit:gitattributes[5].
+

@@ -1,0 +1,5 @@
+user.email::
+	Your email address to be recorded in any newly created commits.
+	Can be overridden by the 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_EMAIL', and
+	'EMAIL' environment variables.  See linkgit:git-commit-tree[1].
+

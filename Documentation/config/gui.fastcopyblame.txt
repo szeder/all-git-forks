@@ -1,0 +1,5 @@
+gui.fastcopyblame::
+	If true, 'git gui blame' uses `-C` instead of `-C -C` for original
+	location detection. It makes blame significantly faster on huge
+	repositories at the expense of less thorough copy detection.
+

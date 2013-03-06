@@ -1,0 +1,6 @@
+core.preferSymlinkRefs::
+	Instead of the default "symref" format for HEAD
+	and other symbolic reference files, use symbolic links.
+	This is sometimes needed to work with old scripts that
+	expect HEAD to be a symbolic link.
+

@@ -1,0 +1,26 @@
+column.ui::
+	Specify whether supported commands should output in columns.
+	This variable consists of a list of tokens separated by spaces
+	or commas:
++
+--
+`always`;;
+	always show in columns
+`never`;;
+	never show in columns
+`auto`;;
+	show in columns if the output is to the terminal
+`column`;;
+	fill columns before rows (default)
+`row`;;
+	fill rows before columns
+`plain`;;
+	show in one column
+`dense`;;
+	make unequal size columns to utilize more space
+`nodense`;;
+	make equal size columns
+--
++
+This option defaults to 'never'.
+

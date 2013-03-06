@@ -1,0 +1,4 @@
+remote.<name>.push::
+	The default set of "refspec" for linkgit:git-push[1]. See
+	linkgit:git-push[1].
+

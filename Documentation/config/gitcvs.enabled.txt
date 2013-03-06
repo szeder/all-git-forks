@@ -1,0 +1,4 @@
+gitcvs.enabled::
+	Whether the CVS server interface is enabled for this repository.
+	See linkgit:git-cvsserver[1].
+

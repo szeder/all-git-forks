@@ -1,0 +1,6 @@
+format.to::
+format.cc::
+	Additional recipients to include in a patch to be submitted
+	by mail.  See the --to and --cc options in
+	linkgit:git-format-patch[1].
+

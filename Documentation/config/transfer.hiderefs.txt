@@ -1,0 +1,5 @@
+transfer.hiderefs::
+	This variable can be used to set both `receive.hiderefs`
+	and `uploadpack.hiderefs` at the same time to the same
+	values.  See entries for these other variables.
+

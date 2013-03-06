@@ -1,0 +1,3 @@
+mergetool.prompt::
+	Prompt before each invocation of the merge resolution program.
+

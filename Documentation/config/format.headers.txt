@@ -1,0 +1,4 @@
+format.headers::
+	Additional email headers to include in a patch to be submitted
+	by mail.  See linkgit:git-format-patch[1].
+

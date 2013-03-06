@@ -1,0 +1,3 @@
+gitweb.snapshot::
+	See linkgit:gitweb.conf[5] for description.
+

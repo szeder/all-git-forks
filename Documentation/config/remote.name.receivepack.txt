@@ -1,0 +1,4 @@
+remote.<name>.receivepack::
+	The default program to execute on the remote side when pushing.  See
+	option \--receive-pack of linkgit:git-push[1].
+

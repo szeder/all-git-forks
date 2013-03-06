@@ -1,0 +1,5 @@
+guitool.<name>.revunmerged::
+	Show only unmerged branches in the 'revprompt' subdialog.
+	This is useful for tools similar to merge or rebase, but not
+	for things like checkout or reset.
+

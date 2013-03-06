@@ -1,0 +1,7 @@
+mergetool.keepTemporaries::
+	When invoking a custom merge tool, Git uses a set of temporary
+	files to pass to the tool. If the tool returns an error and this
+	variable is set to `true`, then these temporary files will be
+	preserved, otherwise they will be removed after the tool has
+	exited. Defaults to `false`.
+

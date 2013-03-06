@@ -1,0 +1,6 @@
+color.status::
+	A boolean to enable/disable color in the output of
+	linkgit:git-status[1]. May be set to `always`,
+	`false` (or `never`) or `auto` (or `true`), in which case colors are used
+	only when the output is to a terminal. Defaults to false.
+

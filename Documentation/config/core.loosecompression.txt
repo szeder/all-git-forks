@@ -1,0 +1,7 @@
+core.loosecompression::
+	An integer -1..9, indicating the compression level for objects that
+	are not in a pack file. -1 is the zlib default. 0 means no
+	compression, and 1..9 are various speed/size tradeoffs, 9 being
+	slowest.  If not set,  defaults to core.compression.  If that is
+	not set,  defaults to 1 (best speed).
+

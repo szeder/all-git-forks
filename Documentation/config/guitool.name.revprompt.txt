@@ -1,0 +1,5 @@
+guitool.<name>.revprompt::
+	Request a single valid revision from the user, and set the
+	'REVISION' environment variable. In other aspects this option
+	is similar to 'argprompt', and can be used together with it.
+

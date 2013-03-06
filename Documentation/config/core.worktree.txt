@@ -1,0 +1,22 @@
+core.worktree::
+	Set the path to the root of the working tree.
+	This can be overridden by the GIT_WORK_TREE environment
+	variable and the '--work-tree' command line option.
+	The value can be an absolute path or relative to the path to
+	the .git directory, which is either specified by --git-dir
+	or GIT_DIR, or automatically discovered.
+	If --git-dir or GIT_DIR is specified but none of
+	--work-tree, GIT_WORK_TREE and core.worktree is specified,
+	the current working directory is regarded as the top level
+	of your working tree.
++
+Note that this variable is honored even when set in a configuration
+file in a ".git" subdirectory of a directory and its value differs
+from the latter directory (e.g. "/path/to/.git/config" has
+core.worktree set to "/different/path"), which is most likely a
+misconfiguration.  Running Git commands in the "/path/to" directory will
+still use "/different/path" as the root of the work tree and can cause
+confusion unless you know what you are doing (e.g. you are creating a
+read-only snapshot of the same index to a location different from the
+repository's usual working tree).
+

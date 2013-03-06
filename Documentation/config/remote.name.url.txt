@@ -1,0 +1,4 @@
+remote.<name>.url::
+	The URL of a remote repository.  See linkgit:git-fetch[1] or
+	linkgit:git-push[1].
+

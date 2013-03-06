@@ -1,0 +1,3 @@
+difftool.prompt::
+	Prompt before each invocation of the diff tool.
+

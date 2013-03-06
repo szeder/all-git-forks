@@ -1,0 +1,4 @@
+guitool.<name>.needsfile::
+	Run the tool only if a diff is selected in the GUI. It guarantees
+	that 'FILENAME' is not empty.
+

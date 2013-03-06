@@ -1,0 +1,5 @@
+instaweb.modulepath::
+	The default module path for linkgit:git-instaweb[1] to use
+	instead of /usr/lib/apache2/modules.  Only used if httpd
+	is Apache.
+

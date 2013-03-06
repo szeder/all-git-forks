@@ -1,0 +1,9 @@
+uploadpack.hiderefs::
+	String(s) `upload-pack` uses to decide which refs to omit
+	from its initial advertisement.  Use more than one
+	definitions to specify multiple prefix strings. A ref that
+	are under the hierarchies listed on the value of this
+	variable is excluded, and is hidden from `git ls-remote`,
+	`git fetch`, etc.  An attempt to fetch a hidden ref by `git
+	fetch` will fail.
+

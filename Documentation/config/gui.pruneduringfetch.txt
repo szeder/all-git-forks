@@ -1,0 +1,4 @@
+gui.pruneduringfetch::
+	"true" if linkgit:git-gui[1] should prune remote-tracking branches when
+	performing a fetch. The default value is "false".
+

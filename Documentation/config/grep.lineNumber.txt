@@ -1,0 +1,3 @@
+grep.lineNumber::
+	If set to true, enable '-n' option by default.
+

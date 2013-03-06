@@ -1,0 +1,3 @@
+sendemail.smtpssl::
+	Deprecated alias for 'sendemail.smtpencryption = ssl'.
+

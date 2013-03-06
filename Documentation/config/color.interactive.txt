@@ -1,0 +1,6 @@
+color.interactive::
+	When set to `always`, always use colors for interactive prompts
+	and displays (such as those used by "git-add --interactive").
+	When false (or `never`), never.  When set to `true` or `auto`, use
+	colors only when the output is to the terminal. Defaults to false.
+

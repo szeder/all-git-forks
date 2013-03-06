@@ -1,0 +1,4 @@
+instaweb.browser::
+	Specify the program that will be used to browse your working
+	repository in gitweb. See linkgit:git-instaweb[1].
+

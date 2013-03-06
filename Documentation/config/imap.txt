@@ -1,0 +1,4 @@
+imap::
+	The configuration variables in the 'imap' section are described
+	in linkgit:git-imap-send[1].
+

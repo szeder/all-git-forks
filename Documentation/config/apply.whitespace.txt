@@ -1,0 +1,4 @@
+apply.whitespace::
+	Tells 'git apply' how to handle whitespaces, in the same way
+	as the '--whitespace' option. See linkgit:git-apply[1].
+

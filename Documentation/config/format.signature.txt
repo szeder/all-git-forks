@@ -1,0 +1,6 @@
+format.signature::
+	The default for format-patch is to output a signature containing
+	the Git version number. Use this variable to change that default.
+	Set this variable to the empty string ("") to suppress
+	signature generation.
+

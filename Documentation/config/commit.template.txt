@@ -1,0 +1,5 @@
+commit.template::
+	Specify a file to use as the template for new commit messages.
+	"`~/`" is expanded to the value of `$HOME` and "`~user/`" to the
+	specified user's home directory.
+

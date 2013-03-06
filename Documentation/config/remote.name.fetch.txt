@@ -1,0 +1,4 @@
+remote.<name>.fetch::
+	The default set of "refspec" for linkgit:git-fetch[1]. See
+	linkgit:git-fetch[1].
+

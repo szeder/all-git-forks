@@ -1,0 +1,5 @@
+http.sslCert::
+	File containing the SSL certificate when fetching or pushing
+	over HTTPS. Can be overridden by the 'GIT_SSL_CERT' environment
+	variable.
+

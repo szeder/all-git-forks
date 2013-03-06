@@ -1,0 +1,6 @@
+gc.pruneexpire::
+	When 'git gc' is run, it will call 'prune --expire 2.weeks.ago'.
+	Override the grace period with this config variable.  The value
+	"now" may be used to disable this  grace period and always prune
+	unreachable objects immediately.
+

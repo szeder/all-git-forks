@@ -1,0 +1,7 @@
+gc.auto::
+	When there are approximately more than this many loose
+	objects in the repository, `git gc --auto` will pack them.
+	Some Porcelain commands use this command to perform a
+	light-weight garbage collection from time to time.  The
+	default value is 6700.  Setting this to 0 disables it.
+

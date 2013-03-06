@@ -1,0 +1,4 @@
+http.maxRequests::
+	How many HTTP requests to launch in parallel. Can be overridden
+	by the 'GIT_HTTP_MAX_REQUESTS' environment variable. Default is 5.
+

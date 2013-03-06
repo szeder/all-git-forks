@@ -1,0 +1,4 @@
+color.pager::
+	A boolean to enable/disable colored output when the pager is in
+	use (default is true).
+

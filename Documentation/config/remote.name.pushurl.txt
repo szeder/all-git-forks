@@ -1,0 +1,3 @@
+remote.<name>.pushurl::
+	The push URL of a remote repository.  See linkgit:git-push[1].
+

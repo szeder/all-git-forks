@@ -1,0 +1,8 @@
+core.fsyncobjectfiles::
+	This boolean will enable 'fsync()' when writing object files.
++
+This is a total waste of time and effort on a filesystem that orders
+data writes properly, but can be useful for filesystems that do not use
+journalling (traditional UNIX filesystems) or that only journal metadata
+and not file contents (OS X's HFS+, or Linux ext3 with "data=writeback").
+

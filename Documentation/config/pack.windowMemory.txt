@@ -1,0 +1,6 @@
+pack.windowMemory::
+	The window memory size limit used by linkgit:git-pack-objects[1]
+	when no limit is given on the command line.  The value can be
+	suffixed with "k", "m", or "g".  Defaults to 0, meaning no
+	limit.
+

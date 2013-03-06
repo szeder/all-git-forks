@@ -1,0 +1,4 @@
+showbranch.default::
+	The default set of branches for linkgit:git-show-branch[1].
+	See linkgit:git-show-branch[1].
+

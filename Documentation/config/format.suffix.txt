@@ -1,0 +1,5 @@
+format.suffix::
+	The default for format-patch is to output files with the suffix
+	`.patch`. Use this variable to change that suffix (make sure to
+	include the dot if you want it).
+

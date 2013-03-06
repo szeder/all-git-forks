@@ -1,0 +1,9 @@
+pack.packSizeLimit::
+	The maximum size of a pack.  This setting only affects
+	packing to a file when repacking, i.e. the git:// protocol
+	is unaffected.  It can be overridden by the `--max-pack-size`
+	option of linkgit:git-repack[1]. The minimum size allowed is
+	limited to 1 MiB. The default is unlimited.
+	Common unit suffixes of 'k', 'm', or 'g' are
+	supported.
+

@@ -1,0 +1,4 @@
+gitweb.owner::
+gitweb.url::
+	See linkgit:gitweb[1] for description.
+

@@ -1,0 +1,4 @@
+sendemail.thread::
+sendemail.validate::
+	See linkgit:git-send-email[1] for description.
+

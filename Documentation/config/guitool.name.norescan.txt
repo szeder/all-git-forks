@@ -1,0 +1,4 @@
+guitool.<name>.norescan::
+	Don't rescan the working directory for changes after the tool
+	finishes execution.
+

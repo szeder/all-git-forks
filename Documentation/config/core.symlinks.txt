@@ -1,0 +1,11 @@
+core.symlinks::
+	If false, symbolic links are checked out as small plain files that
+	contain the link text. linkgit:git-update-index[1] and
+	linkgit:git-add[1] will not change the recorded type to regular
+	file. Useful on filesystems like FAT that do not support
+	symbolic links.
++
+The default is true, except linkgit:git-clone[1] or linkgit:git-init[1]
+will probe and set core.symlinks false if appropriate when the repository
+is created.
+

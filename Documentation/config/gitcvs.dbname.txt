@@ -1,0 +1,8 @@
+gitcvs.dbname::
+	Database used by git-cvsserver to cache revision information
+	derived from the Git repository. The exact meaning depends on the
+	used database driver, for SQLite (which is the default driver) this
+	is a filename. Supports variable substitution (see
+	linkgit:git-cvsserver[1] for details). May not contain semicolons (`;`).
+	Default: '%Ggitcvs.%m.sqlite'
+

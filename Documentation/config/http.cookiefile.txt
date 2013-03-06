@@ -1,0 +1,8 @@
+http.cookiefile::
+	File containing previously stored cookie lines which should be used
+	in the Git http session, if they match the server. The file format
+	of the file to read cookies from should be plain HTTP headers or
+	the Netscape/Mozilla cookie file format (see linkgit:curl[1]).
+	NOTE that the file specified with http.cookiefile is only used as
+	input. No cookies will be stored in the file.
+

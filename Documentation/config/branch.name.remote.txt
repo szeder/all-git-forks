@@ -1,0 +1,5 @@
+branch.<name>.remote::
+	When in branch <name>, it tells 'git fetch' and 'git push' which
+	remote to fetch from/push to.  It defaults to `origin` if no remote is
+	configured. `origin` is also used if you are not on any branch.
+

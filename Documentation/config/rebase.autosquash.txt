@@ -1,0 +1,3 @@
+rebase.autosquash::
+	If set to true enable '--autosquash' option by default.
+

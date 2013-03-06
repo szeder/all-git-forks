@@ -1,0 +1,6 @@
+core.commentchar::
+	Commands such as `commit` and `tag` that lets you edit
+	messages consider a line that begins with this character
+	commented, and removes them after the editor returns
+	(default '#').
+

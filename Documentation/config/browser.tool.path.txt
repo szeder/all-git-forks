@@ -1,0 +1,5 @@
+browser.<tool>.path::
+	Override the path for the given tool that may be used to
+	browse HTML help (see '-w' option in linkgit:git-help[1]) or a
+	working repository in gitweb (see linkgit:git-instaweb[1]).
+

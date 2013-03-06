@@ -1,0 +1,5 @@
+user.name::
+	Your full name to be recorded in any newly created commits.
+	Can be overridden by the 'GIT_AUTHOR_NAME' and 'GIT_COMMITTER_NAME'
+	environment variables.  See linkgit:git-commit-tree[1].
+

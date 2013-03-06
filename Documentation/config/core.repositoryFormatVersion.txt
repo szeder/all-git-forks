@@ -1,0 +1,4 @@
+core.repositoryFormatVersion::
+	Internal variable identifying the repository format and layout
+	version.
+

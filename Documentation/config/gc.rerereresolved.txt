@@ -1,0 +1,5 @@
+gc.rerereresolved::
+	Records of conflicted merge you resolved earlier are
+	kept for this many days when 'git rerere gc' is run.
+	The default is 60 days.  See linkgit:git-rerere[1].
+

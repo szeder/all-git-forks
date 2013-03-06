@@ -1,0 +1,6 @@
+http.proxy::
+	Override the HTTP proxy, normally configured using the 'http_proxy',
+	'https_proxy', and 'all_proxy' environment variables (see
+	`curl(1)`).  This can be overridden on a per-remote basis; see
+	remote.<name>.proxy
+

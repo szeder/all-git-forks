@@ -1,0 +1,18 @@
+core.gitProxy::
+	A "proxy command" to execute (as 'command host port') instead
+	of establishing direct connection to the remote server when
+	using the Git protocol for fetching. If the variable value is
+	in the "COMMAND for DOMAIN" format, the command is applied only
+	on hostnames ending with the specified domain string. This variable
+	may be set multiple times and is matched in the given order;
+	the first match wins.
++
+Can be overridden by the 'GIT_PROXY_COMMAND' environment variable
+(which always applies universally, without the special "for"
+handling).
++
+The special string `none` can be used as the proxy command to
+specify that no proxy be used for a given domain pattern.
+This is useful for excluding servers inside a firewall from
+proxy use, while defaulting to a common proxy for external domains.
+

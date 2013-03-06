@@ -1,0 +1,3 @@
+guitool.<name>.confirm::
+	Show a confirmation dialog before actually running the tool.
+

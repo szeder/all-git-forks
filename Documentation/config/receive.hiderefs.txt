@@ -1,0 +1,9 @@
+receive.hiderefs::
+	String(s) `receive-pack` uses to decide which refs to omit
+	from its initial advertisement.  Use more than one
+	definitions to specify multiple prefix strings. A ref that
+	are under the hierarchies listed on the value of this
+	variable is excluded, and is hidden when responding to `git
+	push`, and an attempt to update or delete a hidden ref by
+	`git push` is rejected.
+

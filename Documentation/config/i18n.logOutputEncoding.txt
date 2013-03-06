@@ -1,0 +1,4 @@
+i18n.logOutputEncoding::
+	Character encoding the commit messages are converted to when
+	running 'git log' and friends.
+

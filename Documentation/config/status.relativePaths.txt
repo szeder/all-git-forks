@@ -1,0 +1,6 @@
+status.relativePaths::
+	By default, linkgit:git-status[1] shows paths relative to the
+	current directory. Setting this variable to `false` shows paths
+	relative to the repository root (this was the default for Git
+	prior to v1.5.4).
+

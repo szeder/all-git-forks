@@ -1,0 +1,9 @@
+core.excludesfile::
+	In addition to '.gitignore' (per-directory) and
+	'.git/info/exclude', Git looks into this file for patterns
+	of files which are not meant to be tracked.  "`~/`" is expanded
+	to the value of `$HOME` and "`~user/`" to the specified user's
+	home directory. Its default value is $XDG_CONFIG_HOME/git/ignore.
+	If $XDG_CONFIG_HOME is either not set or empty, $HOME/.config/git/ignore
+	is used instead. See linkgit:gitignore[5].
+

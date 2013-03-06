@@ -1,0 +1,4 @@
+instaweb.httpd::
+	The HTTP daemon command-line to start gitweb on your working
+	repository. See linkgit:git-instaweb[1].
+

@@ -1,0 +1,6 @@
+grep.patternType::
+	Set the default matching behavior. Using a value of 'basic', 'extended',
+	'fixed', or 'perl' will enable the '--basic-regexp', '--extended-regexp',
+	'--fixed-strings', or '--perl-regexp' option accordingly, while the
+	value 'default' will return to the default matching behavior.
+

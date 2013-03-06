@@ -1,0 +1,5 @@
+grep.extendedRegexp::
+	If set to true, enable '--extended-regexp' option by default. This
+	option is ignored when the 'grep.patternType' option is set to a value
+	other than 'default'.
+

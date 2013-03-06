@@ -1,0 +1,9 @@
+core.fileMode::
+	If false, the executable bit differences between the index and
+	the working tree are ignored; useful on broken filesystems like FAT.
+	See linkgit:git-update-index[1].
++
+The default is true, except linkgit:git-clone[1] or linkgit:git-init[1]
+will probe and set core.fileMode false if appropriate when the
+repository is created.
+

@@ -1,0 +1,3 @@
+pull.twohead::
+	The default merge strategy to use when pulling a single branch.
+

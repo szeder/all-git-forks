@@ -1,0 +1,6 @@
+gitcvs.dbuser, gitcvs.dbpass::
+	Database user and password. Only useful if setting 'gitcvs.dbdriver',
+	since SQLite has no concept of database users and/or passwords.
+	'gitcvs.dbuser' supports variable substitution (see
+	linkgit:git-cvsserver[1] for details).
+

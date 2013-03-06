@@ -1,0 +1,4 @@
+remote.<name>.mirror::
+	If true, pushing to this remote will automatically behave
+	as if the `--mirror` option was given on the command line.
+
