@@ -60,7 +60,7 @@ test_expect_success setup '
 #           /   \
 #  init -- a     d
 #    \      \   /
-#     g       c
+#     g       c---h
 #
 # a in the main repository records to sub-a in the submodule and
 # analogous b and c. d should be automatically found by merging c into
@@ -109,7 +109,17 @@ test_expect_success 'setup for merge search' '
 	(cd sub &&
 	 git checkout -b sub-g sub-c) &&
 	git add sub &&
-	git commit -a -m "g")
+	git commit -a -m "g" &&
+
+	git checkout -b h c &&
+	(cd sub &&
+	 git checkout -b sub-h sub-c &&
+	 echo "file-h" >file-h &&
+	 git add file-h &&
+	 git commit -m "sub-h") &&
+	git add sub &&
+	git commit -a -m "h"
+	)
 '
 
 test_expect_success 'merge with one side as a fast-forward of the other' '
@@ -144,6 +154,31 @@ test_expect_success 'merging should fail for ambiguous common parent' '
 	grep $(cat expect1) actual > /dev/null &&
 	grep $(cat expect2) actual > /dev/null &&
 	git reset --hard)
+'
+
+test_expect_success 'merging should succeed with common rewind' '
+	(cd merge-search &&
+		git checkout -b common-rewind-base init &&
+		(cd sub &&
+			git checkout sub-b
+		) &&
+		git add sub &&
+		git commit -m "common-rewind-base" &&
+		git checkout -b common-rewind-a common-rewind-base &&
+		(cd sub &&
+			git checkout sub-c
+		) &&
+		git add sub &&
+		git commit -m "common-rewind-a" &&
+		git checkout -b common-rewind-b common-rewind-base &&
+		(cd sub &&
+			git checkout sub-h
+		) &&
+		git add sub &&
+		git commit -m "common-rewind-b" &&
+		git checkout -b common-rewind-merge common-rewind-a &&
+		git merge common-rewind-b
+	)
 '
 
 # in a situation like this

@@ -911,6 +911,44 @@ static void print_commit(struct commit *commit)
 #define MERGE_WARNING(path, msg) \
 	warning("Failed to merge submodule %s (%s)", path, msg);
 
+static int is_common_rewind(struct commit *base, struct commit *a, struct commit *b)
+{
+	struct commit_list *merge_bases_a, *merge_bases_b;
+	int result;
+
+	/* find single rewind commit for a */
+	merge_bases_a = get_merge_bases(a, base, 1);
+	if (!merge_bases_a || commit_list_count(merge_bases_a) != 1)
+		return 0;
+
+	/* find single rewind commit for b */
+	merge_bases_b = get_merge_bases(b, base, 1);
+	if (!merge_bases_b || commit_list_count(merge_bases_b) != 1)
+		return 0;
+
+	/* see if we rewind to the same commit */
+	result = !hashcmp(merge_bases_a->item->object.sha1,
+			  merge_bases_b->item->object.sha1);
+	free_commit_list(merge_bases_a);
+	free_commit_list(merge_bases_b);
+
+	return result;
+}
+
+static int commits_follow_merge_base(struct commit *commit_base,
+		struct commit *commit_a, struct commit *commit_b)
+{
+	/* check whether both changes are forward */
+	if (in_merge_bases(commit_base, commit_a) &&
+	    in_merge_bases(commit_base, commit_b))
+		return 1;
+
+	if (is_common_rewind(commit_base, commit_a, commit_b))
+		return 1;
+
+	return 0;
+}
+
 int merge_submodule(unsigned char result[20], const char *path,
 		    const unsigned char base[20], const unsigned char a[20],
 		    const unsigned char b[20], int search)
@@ -944,9 +982,7 @@ int merge_submodule(unsigned char result[20], const char *path,
 		return 0;
 	}
 
-	/* check whether both changes are forward */
-	if (!in_merge_bases(commit_base, commit_a) ||
-	    !in_merge_bases(commit_base, commit_b)) {
+	if (!commits_follow_merge_base(commit_base, commit_a, commit_b)) {
 		MERGE_WARNING(path, "commits don't follow merge-base");
 		return 0;
 	}
