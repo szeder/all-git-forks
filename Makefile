@@ -418,6 +418,7 @@ BASIC_CFLAGS = -I.
 BASIC_LDFLAGS =
 
 # Guard against environment variables
+BUILTIN_H = 
 BUILTIN_OBJS =
 BUILT_INS =
 COMPAT_CFLAGS =
@@ -846,6 +847,8 @@ LIB_OBJS += ws.o
 LIB_OBJS += wt-status.o
 LIB_OBJS += xdiff-interface.o
 LIB_OBJS += zlib.o
+
+BUILTIN_H += builtin/config.h
 
 BUILTIN_OBJS += builtin/add.o
 BUILTIN_OBJS += builtin/annotate.o
@@ -2449,7 +2452,7 @@ else
 # should _not_ be included here, since they are necessary even when
 # building an object for the first time.
 
-$(OBJECTS): $(LIB_H)
+$(OBJECTS): $(LIB_H) 
 endif
 
 exec_cmd.sp exec_cmd.s exec_cmd.o: GIT-PREFIX
@@ -2552,7 +2555,7 @@ XGETTEXT_FLAGS_C = $(XGETTEXT_FLAGS) --language=C \
 XGETTEXT_FLAGS_SH = $(XGETTEXT_FLAGS) --language=Shell \
 	--keyword=gettextln --keyword=eval_gettextln
 XGETTEXT_FLAGS_PERL = $(XGETTEXT_FLAGS) --keyword=__ --language=Perl
-LOCALIZED_C := $(C_OBJ:o=c) $(LIB_H) $(GENERATED_H)
+LOCALIZED_C := $(C_OBJ:o=c) $(LIB_H) $(GENERATED_H) $(BUILTIN_H)
 LOCALIZED_SH := $(SCRIPT_SH)
 LOCALIZED_PERL := $(SCRIPT_PERL)
 

@@ -12,6 +12,8 @@
 #include "builtin.h"
 #include "run-command.h"
 #include "parse-options.h"
+#include "builtin/config.h"
+
 
 // To be filled in later see other builtin/*.c files for examples
 static const char * const git_crypto_usage[] = {};
@@ -19,8 +21,8 @@ static const char * const git_crypto_usage[] = {};
 
 static int sign(const char *ref)
 {
+    int return_value = get_value("user.certificate",'\0');
     // Waiting to convert this to C to pass in our ref arg
-    //crypto_sign_buffer();
     printf("Dummy C sign handler in builtin/crypto-interface\n");
     return 0;
 }
