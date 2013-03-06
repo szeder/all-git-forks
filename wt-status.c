@@ -1001,7 +1001,68 @@ static void read_and_strip_branch(struct strbuf *sb,
 		*branch = xstrdup(*branch);
 }
 
-void wt_status_get_state(struct wt_status_state *state)
+struct grab_1st_switch_cbdata {
+	struct strbuf buf;
+	unsigned char nsha1[20];
+};
+
+static int grab_1st_switch(unsigned char *osha1, unsigned char *nsha1,
+			   const char *email, unsigned long timestamp, int tz,
+			   const char *message, void *cb_data)
+{
+	struct grab_1st_switch_cbdata *cb = cb_data;
+	const char *target = NULL, *end;
+
+	if (prefixcmp(message, "checkout: moving from "))
+		return 0;
+	message += strlen("checkout: moving from ");
+	target = strstr(message, " to ");
+	if (!target)
+		return 0;
+	target += strlen(" to ");
+	strbuf_reset(&cb->buf);
+	hashcpy(cb->nsha1, nsha1);
+	for (end = target; *end && *end != '\n'; end++)
+		;
+	strbuf_add(&cb->buf, target, end - target);
+	return 0;
+}
+
+static void wt_status_get_detached_from(struct wt_status_state *state)
+{
+	struct grab_1st_switch_cbdata cb;
+	struct commit *commit;
+	unsigned char sha1[20];
+	char *ref = NULL;
+
+	strbuf_init(&cb.buf, 0);
+	if (for_each_recent_reflog_ent("HEAD", grab_1st_switch, 4096, &cb))
+		for_each_reflog_ent("HEAD", grab_1st_switch, &cb);
+	if (!cb.buf.len)
+		return;
+
+	if (dwim_ref(cb.buf.buf, cb.buf.len, sha1, &ref) == 1 &&
+	    (commit = lookup_commit_reference_gently(sha1, 1)) != NULL &&
+	    !hashcmp(cb.nsha1, commit->object.sha1)) {
+		int ofs;
+		if (!prefixcmp(ref, "refs/tags/"))
+			ofs = strlen("refs/tags/");
+		else if (!prefixcmp(ref, "refs/remotes/"))
+			ofs = strlen("refs/remotes/");
+		else
+			ofs = 0;
+		state->detached_from = xstrdup(ref + ofs);
+	} else
+		state->detached_from =
+			xstrdup(find_unique_abbrev(cb.nsha1, DEFAULT_ABBREV));
+	hashcpy(state->detached_sha1, cb.nsha1);
+
+	free(ref);
+	strbuf_release(&cb.buf);
+}
+
+void wt_status_get_state(struct wt_status_state *state,
+			 int get_detached_from)
 {
 	struct strbuf branch = STRBUF_INIT;
 	struct strbuf onto = STRBUF_INIT;
@@ -1040,6 +1101,10 @@ void wt_status_get_state(struct wt_status_state *state)
 		read_and_strip_branch(&branch, &state->branch,
 				      "BISECT_START");
 	}
+
+	if (get_detached_from)
+		wt_status_get_detached_from(state);
+
 	strbuf_release(&branch);
 	strbuf_release(&onto);
 }
@@ -1066,7 +1131,8 @@ void wt_status_print(struct wt_status *s)
 	const char *branch_status_color = color(WT_STATUS_HEADER, s);
 	struct wt_status_state state;
 
-	wt_status_get_state(&state);
+	wt_status_get_state(&state,
+			    s->branch && !strcmp(s->branch, "HEAD"));
 
 	if (s->branch) {
 		const char *on_what = _("On branch ");
@@ -1074,9 +1140,19 @@ void wt_status_print(struct wt_status *s)
 		if (!prefixcmp(branch_name, "refs/heads/"))
 			branch_name += 11;
 		else if (!strcmp(branch_name, "HEAD")) {
-			branch_name = "";
 			branch_status_color = color(WT_STATUS_NOBRANCH, s);
-			on_what = _("Not currently on any branch.");
+			if (state.detached_from) {
+				unsigned char sha1[20];
+				branch_name = state.detached_from;
+				if (!get_sha1("HEAD", sha1) &&
+				    !hashcmp(sha1, state.detached_sha1))
+					on_what = _("HEAD detached at ");
+				else
+					on_what = _("HEAD detached from ");
+			} else {
+				branch_name = "";
+				on_what = _("Not currently on any branch.");
+			}
 		}
 		status_printf(s, color(WT_STATUS_HEADER, s), "");
 		status_printf_more(s, branch_status_color, "%s", on_what);
@@ -1088,6 +1164,7 @@ void wt_status_print(struct wt_status *s)
 	wt_status_print_state(s, &state);
 	free(state.branch);
 	free(state.onto);
+	free(state.detached_from);
 
 	if (s->is_initial) {
 		status_printf_ln(s, color(WT_STATUS_HEADER, s), "");
