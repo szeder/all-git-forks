@@ -970,7 +970,7 @@ static void show_bisect_in_progress(struct wt_status *s,
  * Extract branch information from rebase/bisect
  */
 static void read_and_strip_branch(struct strbuf *sb,
-				  const char **branch,
+				  char **branch,
 				  const char *path)
 {
 	unsigned char sha1[20];
@@ -994,52 +994,62 @@ static void read_and_strip_branch(struct strbuf *sb,
 		strbuf_addstr(sb, abbrev);
 		*branch = sb->buf;
 	} else if (!strcmp(sb->buf, "detached HEAD")) /* rebase */
-		;
+		*branch = NULL;
 	else			/* bisect */
 		*branch = sb->buf;
+	if (*branch)
+		*branch = xstrdup(*branch);
+}
+
+void wt_status_get_state(struct wt_status_state *state)
+{
+	struct strbuf branch = STRBUF_INIT;
+	struct strbuf onto = STRBUF_INIT;
+	struct stat st;
+
+	memset(state, 0, sizeof(*state));
+
+	if (!stat(git_path("MERGE_HEAD"), &st)) {
+		state->merge_in_progress = 1;
+	} else if (!stat(git_path("rebase-apply"), &st)) {
+		if (!stat(git_path("rebase-apply/applying"), &st)) {
+			state->am_in_progress = 1;
+			if (!stat(git_path("rebase-apply/patch"), &st) && !st.st_size)
+				state->am_empty_patch = 1;
+		} else {
+			state->rebase_in_progress = 1;
+			read_and_strip_branch(&branch, &state->branch,
+					      "rebase-apply/head-name");
+			read_and_strip_branch(&onto, &state->onto,
+					      "rebase-apply/onto");
+		}
+	} else if (!stat(git_path("rebase-merge"), &st)) {
+		if (!stat(git_path("rebase-merge/interactive"), &st))
+			state->rebase_interactive_in_progress = 1;
+		else
+			state->rebase_in_progress = 1;
+		read_and_strip_branch(&branch, &state->branch,
+				      "rebase-merge/head-name");
+		read_and_strip_branch(&onto, &state->onto,
+				      "rebase-merge/onto");
+	} else if (!stat(git_path("CHERRY_PICK_HEAD"), &st)) {
+		state->cherry_pick_in_progress = 1;
+	}
+	if (!stat(git_path("BISECT_LOG"), &st)) {
+		state->bisect_in_progress = 1;
+		read_and_strip_branch(&branch, &state->branch,
+				      "BISECT_START");
+	}
+	strbuf_release(&branch);
+	strbuf_release(&onto);
 }
 
 static void wt_status_print_state(struct wt_status *s)
 {
 	const char *state_color = color(WT_STATUS_HEADER, s);
-	struct strbuf branch = STRBUF_INIT;
-	struct strbuf onto = STRBUF_INIT;
 	struct wt_status_state state;
-	struct stat st;
 
-	memset(&state, 0, sizeof(state));
-
-	if (!stat(git_path("MERGE_HEAD"), &st)) {
-		state.merge_in_progress = 1;
-	} else if (!stat(git_path("rebase-apply"), &st)) {
-		if (!stat(git_path("rebase-apply/applying"), &st)) {
-			state.am_in_progress = 1;
-			if (!stat(git_path("rebase-apply/patch"), &st) && !st.st_size)
-				state.am_empty_patch = 1;
-		} else {
-			state.rebase_in_progress = 1;
-			read_and_strip_branch(&branch, &state.branch,
-					      "rebase-apply/head-name");
-			read_and_strip_branch(&onto, &state.onto,
-					      "rebase-apply/onto");
-		}
-	} else if (!stat(git_path("rebase-merge"), &st)) {
-		if (!stat(git_path("rebase-merge/interactive"), &st))
-			state.rebase_interactive_in_progress = 1;
-		else
-			state.rebase_in_progress = 1;
-		read_and_strip_branch(&branch, &state.branch,
-				      "rebase-merge/head-name");
-		read_and_strip_branch(&onto, &state.onto,
-				      "rebase-merge/onto");
-	} else if (!stat(git_path("CHERRY_PICK_HEAD"), &st)) {
-		state.cherry_pick_in_progress = 1;
-	}
-	if (!stat(git_path("BISECT_LOG"), &st)) {
-		state.bisect_in_progress = 1;
-		read_and_strip_branch(&branch, &state.branch,
-				      "BISECT_START");
-	}
+	wt_status_get_state(&state);
 
 	if (state.merge_in_progress)
 		show_merge_in_progress(s, &state, state_color);
@@ -1051,8 +1061,8 @@ static void wt_status_print_state(struct wt_status *s)
 		show_cherry_pick_in_progress(s, &state, state_color);
 	if (state.bisect_in_progress)
 		show_bisect_in_progress(s, &state, state_color);
-	strbuf_release(&branch);
-	strbuf_release(&onto);
+	free(state.branch);
+	free(state.onto);
 }
 
 void wt_status_print(struct wt_status *s)
