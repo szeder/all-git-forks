@@ -104,14 +104,10 @@ apply to the index. See EDITING PATCHES below.
 	<pathspec>.  This removes as well as modifies index entries to
 	match the working tree, but adds no new files.
 +
-If no <pathspec> is given when `-u` option is used, Git used
-to update all tracked files in the current directory and its
-subdirectories. We would eventually want to change this to operate
-on the entire working tree, not limiting it to the current
-directory, to make it consistent with `git commit -a` and other
-commands.  In order to avoid harming users who are used to the old
-default, Git *errors out* when no <pathspec> is given to train their
-fingers to explicitly type `git add -u .` when they mean it.
+If no <pathspec> is given when `-u` option is used, all
+tracked files in the entire working tree are updated (old versions
+of Git used to limit the update to the current directory and its
+subdirectories).
 
 -A::
 --all::
@@ -120,14 +116,10 @@ fingers to explicitly type `git add -u .` when they mean it.
 	entry.	This adds, modifies, and removes index entries to
 	match the working tree.
 +
-If no <pathspec> is given when `-A` option is used, Git used
-to update all files in the current directory and its
-subdirectories. We would eventually want to change this to operate
-on the entire working tree, not limiting it to the current
-directory, to make it consistent with `git commit -a` and other
-commands.  In order to avoid harming users who are used to the old
-default, Git *errors out* when no <pathspec> is given to train their
-fingers to explicitly type `git add -A .` when they mean it.
+If no <pathspec> is given when `-A` option is used, all
+files in the entire working tree are updated (old versions
+of Git used to limit the update to the current directory and its
+subdirectories).
 
 -N::
 --intent-to-add::
