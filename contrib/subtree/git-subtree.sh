@@ -110,10 +110,10 @@ shift
 case "$command" in
 	add|merge|pull|from-submodule|pull-all|push-all) default= ;;
 	*) die "Unknown command '$command'" ;;
-    split|push|diff) default="--default HEAD" ;;
+    split|push|diff|list) default="--default HEAD" ;;
 esac
 
-if [ -z "$prefix" -a "$command" != "pull-all" -a "$command" != "push-all" ]; then
+if [ -z "$prefix" -a "$command" != "pull-all" -a "$command" != "push-all" -a "$command" != "list" ]; then
 	die "You must provide the --prefix option."
 fi
 
@@ -808,6 +808,21 @@ cmd_from-submodule()
 
 	# Remove submodule repo.
 	rm -rf $tmp_repo
+}
+
+subtree_list() 
+{
+    git config -f .gittrees -l | grep subtree | grep path | grep -o '=.*' | grep -o '[^=].*' |
+    while read path; do 
+        repository=$(git config -f .gittrees subtree.$path.url)
+        refspec=$(git config -f .gittrees subtree.$path.branch)
+        echo "    $path        (merged from $repository branch $refspec) "
+    done
+}
+
+cmd_list()
+{
+  subtree_list 
 }
 
 cmd_pull-all()
