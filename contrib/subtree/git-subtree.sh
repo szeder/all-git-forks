@@ -789,6 +789,7 @@ cmd_from-submodule()
 	ensure_clean
 
 	local submodule_sha=$(git submodule status $prefix | cut -d ' ' -f 2)
+	local submodule_orig_repo=$(git config --file .gitmodules submodule.$prefix.url)
 
 	# Remove references to submodule.
 	git config --remove-section submodule.$prefix
@@ -806,6 +807,10 @@ cmd_from-submodule()
 
 	# subtree add from submodule repo.
 	cmd_add_repository $tmp_repo HEAD
+
+	# Update .gittrees with the original repo url
+	git config --file .gittrees --unset subtree.$prefix.url
+	git config --file .gittrees subtree.$prefix.url $submodule_orig_repo
 
 	# Remove submodule repo.
 	rm -rf $tmp_repo
