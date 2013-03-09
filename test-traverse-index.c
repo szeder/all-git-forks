@@ -14,12 +14,11 @@ static const unsigned char *sha1_from_obj_nr(unsigned int obj_nr)
 {
 	int i;
 	static unsigned char sha1[20];
-	unsigned int bitwidth = bitsizeof(sha1[0]);
 
-	for (i = 0; i < DIV_CEIL(sizeof(obj_nr), sizeof(sha1[0])); i++)
-		sha1[i] = (obj_nr >> (i * bitwidth)) & ~(1 << bitwidth);
-	for (; i < ARRAY_SIZE(sha1); i++)
+	for (i = 0; i < ARRAY_SIZE(sha1); i++)
 		sha1[i] = 0;
+	for (i = 0; i < sizeof(obj_nr); i++)
+		sha1[i] = (obj_nr >> (i * CHAR_BIT)) & ~(1 << CHAR_BIT);
 
 	return sha1;
 }
