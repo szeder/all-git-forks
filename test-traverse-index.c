@@ -41,19 +41,14 @@ static struct cache_entry *create_cache_entry(const struct tree_entry *entry)
 	return ce;
 }
 
-static void test_index(void)
+static void test_index(struct tree_entry *sample, int n_samples)
 {
 	int i;
 	struct index_state *index;
-	struct tree_entry sample[] = {
-		{ 1, "a"},
-		{ 2, "c"},
-		{ 3, "b"}
-	};
 
 	index = xcalloc(1, sizeof(*index));
 
-	for (i = 0; i < ARRAY_SIZE(sample); i++) {
+	for (i = 0; i < n_samples; i++) {
 		struct cache_entry *ce;
 		ce = create_cache_entry(&sample[i]);
 		if (add_index_entry(index, ce, ADD_CACHE_OK_TO_ADD) < 0)
@@ -64,12 +59,23 @@ static void test_index(void)
 	free(index);
 }
 
+static void all_tests(void)
+{
+	struct tree_entry sample[] = {
+		{ 1, "a"},
+		{ 2, "c"},
+		{ 3, "b"}
+	};
+
+	test_index(sample, ARRAY_SIZE(sample));
+}
+
 int main(int argc, char **argv)
 {
 	if (argc > 1)
 		usage(usage_msg);
 
-	test_index();
+	all_tests();
 
 	return 0;
 }
