@@ -18,6 +18,7 @@ git subtree pull-all
 git subtree split --prefix=<prefix> <commit...>
 git subtree diff  --prefix=<prefix> [<repository> [<refspec>...]]
 git subtree from-submodule --prefix=<prefix>
+git subtree prune
 --
 h,help        show the help
 q             quiet
