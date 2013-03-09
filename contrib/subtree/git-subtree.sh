@@ -15,6 +15,7 @@ git subtree pull  --prefix=<prefix> <repository> <refspec...>
 git subtree pull-all
 git subtree push-all
 git subtree push  --prefix=<prefix> <repository> <refspec...>
+git subtree list
 git subtree split --prefix=<prefix> <commit...>
 git subtree diff  --prefix=<prefix> [<repository> [<refspec>...]]
 git subtree from-submodule --prefix=<prefix>
