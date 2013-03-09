@@ -3,7 +3,7 @@
 
 static const char *usage_msg = "test-traverse-index";
 
-struct ce_sample {
+struct tree_entry {
 	unsigned int obj_nr;
 	const char *path;
 };
@@ -24,16 +24,16 @@ static const unsigned char *sha1_from_obj_nr(unsigned int obj_nr)
 	return sha1;
 }
 
-static struct cache_entry *create_cache_entry(const struct ce_sample *sample)
+static struct cache_entry *create_cache_entry(const struct tree_entry *entry)
 {
 	int mode = 0100644;
 	struct cache_entry *ce;
-	int namelen = strlen(sample->path);
+	int namelen = strlen(entry->path);
 	unsigned size = cache_entry_size(namelen);
 
 	ce = xcalloc(1, size);
-	hashcpy(ce->sha1, sha1_from_obj_nr(sample->obj_nr));
-	memcpy(ce->name, sample->path, namelen);
+	hashcpy(ce->sha1, sha1_from_obj_nr(entry->obj_nr));
+	memcpy(ce->name, entry->path, namelen);
 	ce->ce_mode = create_ce_mode(mode);
 	ce->ce_flags = create_ce_flags(0);
 	ce->ce_namelen = namelen;
@@ -45,7 +45,7 @@ static void test_index(void)
 {
 	int i;
 	struct index_state *index;
-	struct ce_sample sample[] = {
+	struct tree_entry sample[] = {
 		{ 1, "a"},
 		{ 2, "c"},
 		{ 3, "b"}
