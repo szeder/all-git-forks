@@ -59,6 +59,21 @@ static void test_index(struct tree_entry *sample, int n_samples)
 	free(index);
 }
 
+static void test_tree(struct tree_entry *sample, int n_samples)
+{
+	int i;
+	unsigned int mode = 0100644;
+	struct strbuf treebuf = STRBUF_INIT;
+
+	for (i = 0; i < n_samples; i++) {
+		struct tree_entry *entry = &sample[i];
+		strbuf_addf(&treebuf, "%o %s%c", mode, entry->path, '\0');
+		strbuf_add(&treebuf, sha1_from_obj_nr(entry->obj_nr), 20);
+	}
+
+	strbuf_release(&treebuf);
+}
+
 static void all_tests(void)
 {
 	struct tree_entry sample[] = {
@@ -68,6 +83,7 @@ static void all_tests(void)
 	};
 
 	test_index(sample, ARRAY_SIZE(sample));
+	test_tree(sample, ARRAY_SIZE(sample));
 }
 
 int main(int argc, char **argv)
