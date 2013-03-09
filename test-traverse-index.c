@@ -41,7 +41,7 @@ static struct cache_entry *create_cache_entry(const struct ce_sample *sample)
 	return ce;
 }
 
-int main(int argc, char **argv)
+static void test_index(void)
 {
 	int i;
 	struct index_state *index;
@@ -50,9 +50,6 @@ int main(int argc, char **argv)
 		{ 2, "c"},
 		{ 3, "b"}
 	};
-
-	if (argc > 1)
-		usage(usage_msg);
 
 	index = xcalloc(1, sizeof(*index));
 
@@ -65,6 +62,14 @@ int main(int argc, char **argv)
 
 	discard_index(index);
 	free(index);
+}
+
+int main(int argc, char **argv)
+{
+	if (argc > 1)
+		usage(usage_msg);
+
+	test_index();
 
 	return 0;
 }
