@@ -108,6 +108,9 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
+# Remove trailing slash
+prefix="${prefix%/}";
+
 command="$1"
 shift
 case "$command" in
