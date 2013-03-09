@@ -105,12 +105,12 @@ done
 command="$1"
 shift
 case "$command" in
-	add|merge|pull|from-submodule|pull-all|push-all) default= ;;
+    add|merge|pull|from-submodule|pull-all|push-all|prune) default= ;;
 	*) die "Unknown command '$command'" ;;
     split|push|diff|list) default="--default HEAD" ;;
 esac
 
-if [ -z "$prefix" -a "$command" != "pull-all" -a "$command" != "push-all" -a "$command" != "list" ]; then
+if [ -z "$prefix" -a "$command" != "pull-all" -a "$command" != "push-all" -a "$command" != "list" -a "$command" != "prune" ]; then
 	die "You must provide the --prefix option."
 fi
 
@@ -837,6 +837,17 @@ subtree_list()
 cmd_list()
 {
   subtree_list 
+}
+
+cmd_prune()
+{
+    git config -f .gittrees -l | grep subtree | grep path | grep -o '=.*' | grep -o '[^=].*' |
+    while read path; do
+        if [ ! -e "$path" ]; then
+            echo "pruning $path"
+            git config -f .gittrees --remove-section subtree.$path
+        fi
+    done
 }
 
 cmd_pull-all()
