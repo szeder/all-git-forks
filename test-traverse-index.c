@@ -41,7 +41,7 @@ static struct cache_entry *create_cache_entry(const struct tree_entry *entry)
 	return ce;
 }
 
-static void test_index(struct tree_entry *sample, int n_samples)
+static struct index_state *create_index(struct tree_entry *sample, int n_samples)
 {
 	int i;
 	struct index_state *index;
@@ -55,21 +55,36 @@ static void test_index(struct tree_entry *sample, int n_samples)
 			die(_("unable to add cache entry: %s"), ce->name);
 	}
 
+	return index;
+}
+
+static void test_index(struct tree_entry *sample, int n_samples)
+{
+	struct index_state *index;
+
+	index = create_index(sample, n_samples);
+
 	discard_index(index);
 	free(index);
 }
 
-static void test_tree(struct tree_entry *sample, int n_samples)
+static void create_tree(struct strbuf *treebuf, struct tree_entry *sample, int n_samples)
 {
 	int i;
 	unsigned int mode = 0100644;
-	struct strbuf treebuf = STRBUF_INIT;
 
 	for (i = 0; i < n_samples; i++) {
 		struct tree_entry *entry = &sample[i];
-		strbuf_addf(&treebuf, "%o %s%c", mode, entry->path, '\0');
-		strbuf_add(&treebuf, sha1_from_obj_nr(entry->obj_nr), 20);
+		strbuf_addf(treebuf, "%o %s%c", mode, entry->path, '\0');
+		strbuf_add(treebuf, sha1_from_obj_nr(entry->obj_nr), 20);
 	}
+}
+
+static void test_tree(struct tree_entry *sample, int n_samples)
+{
+	struct strbuf treebuf = STRBUF_INIT;
+
+	create_tree(&treebuf, sample, n_samples);
 
 	strbuf_release(&treebuf);
 }
