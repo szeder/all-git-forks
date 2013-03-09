@@ -9,13 +9,16 @@ git-subtree - Merge subtrees together and split repository into subtrees
 SYNOPSIS
 --------
 [verse]
-'git subtree' add   -P <prefix> <refspec>
-'git subtree' add   -P <prefix> <repository> <refspec>
-'git subtree' pull  -P <prefix> <repository> <refspec...>
-'git subtree' push  -P <prefix> <repository> <refspec...>
-'git subtree' merge -P <prefix> <commit>
-'git subtree' split -P <prefix> [OPTIONS] [<commit>]
-
+'git subtree' add   --prefix=<prefix> <repository> <refspec>
+'git subtree' merge --prefix=<prefix> <commit>
+'git subtree' pull  --prefix=<prefix> [<repository> [<refspec>...]]
+'git subtree' pull-all
+'git subtree' push-all
+'git subtree' push  --prefix=<prefix> [<repository> [<refspec>...]]
+'git subtree' split --prefix=<prefix> <commit...>
+'git subtree' from-submodule --prefix=<prefix>
+'git subtree' prune
+'git subtree' diff  --prefix=<prefix> [<repository> [<refspec>...]]
 
 DESCRIPTION
 -----------
