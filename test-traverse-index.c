@@ -43,18 +43,25 @@ static struct cache_entry *create_cache_entry(const struct ce_sample *sample)
 
 int main(int argc, char **argv)
 {
-	struct cache_entry *ce;
+	int i;
 	struct index_state *index;
-	struct ce_sample sample = { 1, "a"};
+	struct ce_sample sample[] = {
+		{ 1, "a"},
+		{ 2, "c"},
+		{ 3, "b"}
+	};
 
 	if (argc > 1)
 		usage(usage_msg);
 
 	index = xcalloc(1, sizeof(*index));
 
-	ce = create_cache_entry(&sample);
-	if (add_index_entry(index, ce, ADD_CACHE_OK_TO_ADD) < 0)
-		die(_("unable to add cache entry: %s"), sample.path);
+	for (i = 0; i < ARRAY_SIZE(sample); i++) {
+		struct cache_entry *ce;
+		ce = create_cache_entry(&sample[i]);
+		if (add_index_entry(index, ce, ADD_CACHE_OK_TO_ADD) < 0)
+			die(_("unable to add cache entry: %s"), ce->name);
+	}
 
 	discard_index(index);
 	free(index);
