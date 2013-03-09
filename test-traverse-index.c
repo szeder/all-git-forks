@@ -1,5 +1,6 @@
 #include "git-compat-util.h"
 #include "cache.h"
+#include "tree-walk.h"
 
 static const char *usage_msg = "test-traverse-index";
 
@@ -79,11 +80,29 @@ static void create_tree(struct strbuf *treebuf, struct tree_entry *sample, int n
 	}
 }
 
+#define OBJ_NR_SIZE sizeof(((struct tree_entry *)NULL)->obj_nr)
+
+static void traverse_tree(char *buffer, int len)
+{
+	struct tree_desc desc;
+
+	init_tree_desc(&desc, buffer, len);
+	while (desc.size) {
+		char *sha1hex;
+
+		sha1hex = sha1_to_hex(desc.entry.sha1);
+		sha1hex[2*OBJ_NR_SIZE] = '\0';
+		printf("%s %s\n", sha1hex, desc.entry.path);
+		update_tree_entry(&desc);
+	}
+}
+
 static void test_tree(struct tree_entry *sample, int n_samples)
 {
 	struct strbuf treebuf = STRBUF_INIT;
 
 	create_tree(&treebuf, sample, n_samples);
+	traverse_tree(treebuf.buf, treebuf.len);
 
 	strbuf_release(&treebuf);
 }
