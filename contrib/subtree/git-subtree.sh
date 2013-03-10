@@ -712,13 +712,21 @@ cmd_merge()
 
 cmd_pull()
 {
-    if [ $# -ne 1 ]; then
-	    die "You must provide <branch>"
+  if [ $# -gt 2 ]; then
+	    die "You should provide either <refspec> or <repository> <refspec>"
 	fi
 	if [ -e "$dir" ]; then
 	    ensure_clean
-	    repository=$(git config -f .gittrees subtree.$prefix.url)
-	    refspec=$1
+      if [ $# -eq 1 ]; then 
+	      repository=$(git config -f .gittrees subtree.$prefix.url)
+	      refspec=$1
+      elif [ $# -eq 2 ]; then 
+        repository=$1
+        refspec=$2
+      else 
+	      repository=$(git config -f .gittrees subtree.$prefix.url)
+        refspec=$(git config -f .gittrees subtree.$prefix.branch)
+      fi
 	    git fetch $repository $refspec || exit $?
 	    echo "git fetch using: " $repository $refspec
 	    revs=FETCH_HEAD
@@ -731,12 +739,20 @@ cmd_pull()
 
 cmd_push()
 {
-	if [ $# -ne 1 ]; then
-	    die "You must provide <branch>"
+	if [ $# -gt 2 ]; then
+	    die "You shold provide either <refspec> or <repository> <refspec>"
 	fi
 	if [ -e "$dir" ]; then
-	    repository=$(git config -f .gittrees subtree.$prefix.url)
-	    refspec=$1
+      if [ $# -eq 1 ]; then 
+	      repository=$(git config -f .gittrees subtree.$prefix.url)
+        refspec=$1
+      elif [ $# -eq 2 ]; then 
+        repository=$1
+        refspec=$2
+      else
+	      repository=$(git config -f .gittrees subtree.$prefix.url)
+        refspec=$(git config -f .gittrees subtree.$prefix.branch)
+      fi
 	    echo "git push using: " $repository $refspec
 	    git push $repository $(git subtree split --prefix=$prefix):refs/heads/$refspec
 	else
