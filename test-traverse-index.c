@@ -87,6 +87,7 @@ static void test_traverse_tree(const struct tree_entry_list *sample,
 
 	/* end of tree */
 	assert(tree_iter_eof(&iter));
+	tree_iter_release(&iter);
 }
 
 static void test_tree(const struct tree_entry_list *sample)
@@ -133,7 +134,7 @@ static void tree_entry_list_init(struct tree_entry_list *list, struct tree_entry
 		tree_entry_init(&list->entry[i], &spec[i]);
 }
 
-static void tree_entry_list_free(struct tree_entry_list *list)
+static void tree_entry_list_release(struct tree_entry_list *list)
 {
 	free(list->entry);
 	list->entry = NULL;
@@ -154,7 +155,7 @@ static void all_tests(void)
 	test_index(&sample);
 	test_tree(&sample);
 
-	tree_entry_list_free(&sample);
+	tree_entry_list_release(&sample);
 }
 
 int main(int argc, char **argv)

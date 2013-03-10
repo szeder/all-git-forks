@@ -12,6 +12,12 @@ int tree_iter_eof(const struct tree_iter *iter)
 	return !iter->entry.path;
 }
 
+void tree_iter_release(struct tree_iter *iter)
+{
+	free(iter->cb_data);
+	iter->cb_data = NULL;
+}
+
 static void tree_entry_init_from_tree_desc(struct tree_entry *entry,
 		struct tree_desc *desc)
 {
