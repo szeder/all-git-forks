@@ -113,9 +113,9 @@ prefix="${prefix%/}";
 command="$1"
 shift
 case "$command" in
-    add|merge|pull|from-submodule|pull-all|push-all|prune) default= ;;
+	add|merge|pull|pull-all|push-all|from-submodule|prune) default= ;;
+	split|push|diff|list) default="--default HEAD" ;;
 	*) die "Unknown command '$command'" ;;
-    split|push|diff|list) default="--default HEAD" ;;
 esac
 
 if [ -z "$prefix" -a "$command" != "pull-all" -a "$command" != "push-all" -a "$command" != "list" -a "$command" != "prune" ]; then
