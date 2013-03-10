@@ -14,6 +14,7 @@ git subtree merge --prefix=<prefix> <commit>
 git subtree pull  --prefix=<prefix> [<repository> [<refspec>...]]
 git subtree push  --prefix=<prefix> [<repository> [<refspec>...]]
 git subtree split --prefix=<prefix> <commit...>
+git subtree from-submodule --prefix=<prefix>
 --
 h,help        show the help
 q             quiet
@@ -104,7 +105,7 @@ prefix="${prefix%/}";
 command="$1"
 shift
 case "$command" in
-	add|merge|pull) default= ;;
+	add|merge|pull|from-submodule) default= ;;
 	split|push) default="--default HEAD" ;;
 	*) die "Unknown command '$command'" ;;
 esac
@@ -744,6 +745,33 @@ cmd_push()
 	else
 	    die "'$dir' must already exist. Try 'git subtree add'."
 	fi
+}
+
+cmd_from-submodule()
+{
+	ensure_clean
+
+	local submodule_sha=$(git submodule status $prefix | cut -d ' ' -f 2)
+
+	# Remove references to submodule.
+	git config --remove-section submodule.$prefix
+	git config --file .gitmodules --remove-section submodule.$prefix
+	git add .gitmodules
+
+	# Move submodule aside.
+	local tmp_repo="$(mktemp -d /tmp/git-subtree.XXXXX)"
+	rm -r $tmp_repo
+	mv $prefix $tmp_repo
+	git rm $prefix
+
+	# Commit changes.
+	git commit -m "Remove '$prefix/' submodule"
+
+	# subtree add from submodule repo.
+	cmd_add_repository $tmp_repo HEAD
+
+	# Remove submodule repo.
+	rm -rf $tmp_repo
 }
 
 "cmd_$command" "$@"
