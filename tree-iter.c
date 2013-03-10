@@ -18,16 +18,22 @@ void tree_iter_release(struct tree_iter *iter)
 	iter->cb_data = NULL;
 }
 
+static void tree_entry_setnull(struct tree_entry *entry)
+{
+	entry->path = NULL;
+	hashcpy(entry->sha1, null_sha1);
+}
+
 static void tree_entry_init_from_tree_desc(struct tree_entry *entry,
 		struct tree_desc *desc)
 {
-	if (desc->size) {
-		entry->path = desc->entry.path;
-		hashcpy(entry->sha1, desc->entry.sha1);
-	} else {
-		entry->path = NULL;
-		hashcpy(entry->sha1, null_sha1);
+	if (!desc->size) {
+		tree_entry_setnull(entry);
+		return;
 	}
+
+	entry->path = desc->entry.path;
+	hashcpy(entry->sha1, desc->entry.sha1);
 }
 
 static void tree_iter_next_tree(struct tree_iter *iter)
