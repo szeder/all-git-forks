@@ -527,6 +527,14 @@ cmd_add_repository()
 	revs=FETCH_HEAD
 	set -- $revs
 	cmd_add_commit "$@"
+
+	# now add it to our list of repos
+	git config -f .gittrees --unset subtree."$dir".url
+	git config -f .gittrees --add subtree."$dir".url "$repository"
+	git config -f .gittrees --unset subtree."$dir".path
+	git config -f .gittrees --add subtree."$dir".path "$dir"
+	git config -f .gittrees --unset subtree."$dir".branch
+	git config -f .gittrees --add subtree."$dir".branch "$refspec"
 }
 
 cmd_add_commit()
