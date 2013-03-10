@@ -10,6 +10,22 @@ struct tree_entry {
 	const char *path;
 };
 
+struct tree_iter {
+	struct tree_entry entry;
+	void (*next)(struct tree_iter *);
+	void *cb_data;
+};
+
+void tree_iter_next(struct tree_iter *iter)
+{
+	iter->next(iter);
+}
+
+int tree_iter_eof(const struct tree_iter *iter)
+{
+	return !iter->entry.path;
+}
+
 struct tree_entry_list {
 	struct tree_entry *entry;
 	int len;
@@ -73,27 +89,57 @@ static void create_tree(struct strbuf *treebuf, const struct tree_entry_list *sa
 	}
 }
 
+static void tree_entry_init_from_tree_desc(struct tree_entry *entry,
+		struct tree_desc *desc)
+{
+	if (desc->size) {
+		entry->path = desc->entry.path;
+		hashcpy(entry->sha1, desc->entry.sha1);
+	} else {
+		entry->path = NULL;
+		hashcpy(entry->sha1, null_sha1);
+	}
+}
+
+static void tree_iter_next_tree(struct tree_iter *iter)
+{
+	struct tree_desc *desc = iter->cb_data;
+
+	update_tree_entry(desc);
+	tree_entry_init_from_tree_desc(&iter->entry, desc);
+}
+
+void tree_iter_init_tree(struct tree_iter *iter, char *buffer, int size)
+{
+	struct tree_desc *desc = xmalloc(sizeof(*desc));
+
+	init_tree_desc(desc, buffer, size);
+	tree_entry_init_from_tree_desc(&iter->entry, desc);
+	iter->next = tree_iter_next_tree;
+	iter->cb_data = desc;
+}
+
 #define OBJ_NR_SIZE sizeof(((struct tree_entry *)NULL)->obj_nr)
 
 static void test_traverse_tree(const struct tree_entry_list *sample,
-		char *buffer, int len)
+		char *buffer, int size)
 {
 	int i;
-	struct tree_desc desc;
+	struct tree_iter iter;
 
-	init_tree_desc(&desc, buffer, len);
+	tree_iter_init_tree(&iter, buffer, size);
 	for (i = 0; i < sample->len; i++) {
 		struct tree_entry *entry = &sample->entry[i];
 
-		assert(desc.size);
-		assert(!hashcmp(desc.entry.sha1, entry->sha1));
-		assert(!strcmp(desc.entry.path, entry->path));
+		assert(iter.entry.path);
+		assert(!hashcmp(iter.entry.sha1, entry->sha1));
+		assert(!strcmp(iter.entry.path, entry->path));
 
-		update_tree_entry(&desc);
+		tree_iter_next(&iter);
 	}
 
 	/* end of tree */
-	assert(!desc.size);
+	assert(tree_iter_eof(&iter));
 }
 
 static void test_tree(const struct tree_entry_list *sample)
