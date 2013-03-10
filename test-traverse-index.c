@@ -1,37 +1,14 @@
 #include <assert.h>
 #include "git-compat-util.h"
 #include "cache.h"
-#include "tree-walk.h"
+#include "tree-iter.h"
 
 static const char *usage_msg = "test-traverse-index";
-
-struct tree_entry {
-	unsigned char sha1[20];
-	const char *path;
-};
-
-struct tree_iter {
-	struct tree_entry entry;
-	void (*next)(struct tree_iter *);
-	void *cb_data;
-};
-
-void tree_iter_next(struct tree_iter *iter)
-{
-	iter->next(iter);
-}
-
-int tree_iter_eof(const struct tree_iter *iter)
-{
-	return !iter->entry.path;
-}
 
 struct tree_entry_list {
 	struct tree_entry *entry;
 	int len;
 };
-
-#define DIV_CEIL(num, den) (((num)+(den)-1)/(den))
 
 static struct cache_entry *create_cache_entry(const struct tree_entry *entry)
 {
@@ -87,36 +64,6 @@ static void create_tree(struct strbuf *treebuf, const struct tree_entry_list *sa
 		strbuf_addf(treebuf, "%o %s%c", mode, entry->path, '\0');
 		strbuf_add(treebuf, entry->sha1, 20);
 	}
-}
-
-static void tree_entry_init_from_tree_desc(struct tree_entry *entry,
-		struct tree_desc *desc)
-{
-	if (desc->size) {
-		entry->path = desc->entry.path;
-		hashcpy(entry->sha1, desc->entry.sha1);
-	} else {
-		entry->path = NULL;
-		hashcpy(entry->sha1, null_sha1);
-	}
-}
-
-static void tree_iter_next_tree(struct tree_iter *iter)
-{
-	struct tree_desc *desc = iter->cb_data;
-
-	update_tree_entry(desc);
-	tree_entry_init_from_tree_desc(&iter->entry, desc);
-}
-
-void tree_iter_init_tree(struct tree_iter *iter, char *buffer, int size)
-{
-	struct tree_desc *desc = xmalloc(sizeof(*desc));
-
-	init_tree_desc(desc, buffer, size);
-	tree_entry_init_from_tree_desc(&iter->entry, desc);
-	iter->next = tree_iter_next_tree;
-	iter->cb_data = desc;
 }
 
 #define OBJ_NR_SIZE sizeof(((struct tree_entry *)NULL)->obj_nr)
