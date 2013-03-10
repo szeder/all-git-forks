@@ -6,9 +6,13 @@
 static const char *usage_msg = "test-traverse-index";
 
 struct tree_entry {
+	unsigned char sha1[20];
+	const char *path;
+};
+
+struct tree_entry_spec {
 	unsigned int obj_nr;
 	const char *path;
-	unsigned char sha1[20];
 };
 
 static const unsigned char *sha1_from_obj_nr(unsigned int obj_nr)
@@ -24,9 +28,10 @@ static const unsigned char *sha1_from_obj_nr(unsigned int obj_nr)
 	return sha1;
 }
 
-static void tree_entry_init(struct tree_entry *entry)
+static void tree_entry_init(struct tree_entry *entry, struct tree_entry_spec *spec)
 {
-	hashcpy(entry->sha1, sha1_from_obj_nr(entry->obj_nr));
+	entry->path = spec->path;
+	hashcpy(entry->sha1, sha1_from_obj_nr(spec->obj_nr));
 }
 
 #define DIV_CEIL(num, den) (((num)+(den)-1)/(den))
@@ -121,18 +126,24 @@ static void test_tree(struct tree_entry *sample, int n_samples)
 static void all_tests(void)
 {
 	int i;
+	int n_samples;
+	struct tree_entry *sample;
 
-	struct tree_entry sample[] = {
+	struct tree_entry_spec sample_spec[] = {
 		{ 1, "a"},
 		{ 2, "c"},
 		{ 3, "b"}
 	};
 
-	for (i = 0; i < ARRAY_SIZE(sample); i++)
-		tree_entry_init(&sample[i]);
+	n_samples = ARRAY_SIZE(sample_spec);
+	sample = xmalloc(n_samples * sizeof(*sample));
+	for (i = 0; i < n_samples; i++)
+		tree_entry_init(&sample[i], &sample_spec[i]);
 
-	test_index(sample, ARRAY_SIZE(sample));
-	test_tree(sample, ARRAY_SIZE(sample));
+	test_index(sample, n_samples);
+	test_tree(sample, n_samples);
+
+	free(sample);
 }
 
 int main(int argc, char **argv)
