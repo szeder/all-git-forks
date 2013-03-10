@@ -68,35 +68,35 @@ static void create_tree(struct strbuf *treebuf, const struct tree_entry_list *sa
 
 #define OBJ_NR_SIZE sizeof(((struct tree_entry *)NULL)->obj_nr)
 
-static void test_traverse_tree(const struct tree_entry_list *sample,
-		char *buffer, int size)
+static void test_traverse_tree(struct tree_iter *iter,
+		const struct tree_entry_list *sample)
 {
 	int i;
-	struct tree_iter iter;
-
-	tree_iter_init_tree(&iter, buffer, size);
 	for (i = 0; i < sample->len; i++) {
 		struct tree_entry *entry = &sample->entry[i];
 
-		assert(iter.entry.path);
-		assert(!hashcmp(iter.entry.sha1, entry->sha1));
-		assert(!strcmp(iter.entry.path, entry->path));
+		assert(iter->entry.path);
+		assert(!hashcmp(iter->entry.sha1, entry->sha1));
+		assert(!strcmp(iter->entry.path, entry->path));
 
-		tree_iter_next(&iter);
+		tree_iter_next(iter);
 	}
 
 	/* end of tree */
-	assert(tree_iter_eof(&iter));
-	tree_iter_release(&iter);
+	assert(tree_iter_eof(iter));
 }
 
 static void test_tree(const struct tree_entry_list *sample)
 {
 	struct strbuf treebuf = STRBUF_INIT;
+	struct tree_iter iter;
 
 	create_tree(&treebuf, sample);
-	test_traverse_tree(sample, treebuf.buf, treebuf.len);
 
+	tree_iter_init_tree(&iter, treebuf.buf, treebuf.len);
+	test_traverse_tree(&iter, sample);
+
+	tree_iter_release(&iter);
 	strbuf_release(&treebuf);
 }
 
