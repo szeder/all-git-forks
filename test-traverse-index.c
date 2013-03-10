@@ -10,6 +10,24 @@ struct tree_entry_list {
 	int len;
 };
 
+static void test_traverse_tree(struct tree_iter *iter,
+		const struct tree_entry_list *sample)
+{
+	int i;
+	for (i = 0; i < sample->len; i++) {
+		struct tree_entry *entry = &sample->entry[i];
+
+		assert(iter->entry.path);
+		assert(!hashcmp(iter->entry.sha1, entry->sha1));
+		assert(!strcmp(iter->entry.path, entry->path));
+
+		tree_iter_next(iter);
+	}
+
+	/* end of tree */
+	assert(tree_iter_eof(iter));
+}
+
 static struct cache_entry *create_cache_entry(const struct tree_entry *entry)
 {
 	int mode = 0100644;
@@ -47,9 +65,14 @@ static struct index_state *create_index(const struct tree_entry_list *sample)
 static void test_index(const struct tree_entry_list *sample)
 {
 	struct index_state *index;
+	struct tree_iter iter;
 
 	index = create_index(sample);
 
+	tree_iter_init_index(&iter, index);
+	test_traverse_tree(&iter, sample);
+
+	tree_iter_release(&iter);
 	discard_index(index);
 	free(index);
 }
@@ -64,26 +87,6 @@ static void create_tree(struct strbuf *treebuf, const struct tree_entry_list *sa
 		strbuf_addf(treebuf, "%o %s%c", mode, entry->path, '\0');
 		strbuf_add(treebuf, entry->sha1, 20);
 	}
-}
-
-#define OBJ_NR_SIZE sizeof(((struct tree_entry *)NULL)->obj_nr)
-
-static void test_traverse_tree(struct tree_iter *iter,
-		const struct tree_entry_list *sample)
-{
-	int i;
-	for (i = 0; i < sample->len; i++) {
-		struct tree_entry *entry = &sample->entry[i];
-
-		assert(iter->entry.path);
-		assert(!hashcmp(iter->entry.sha1, entry->sha1));
-		assert(!strcmp(iter->entry.path, entry->path));
-
-		tree_iter_next(iter);
-	}
-
-	/* end of tree */
-	assert(tree_iter_eof(iter));
 }
 
 static void test_tree(const struct tree_entry_list *sample)
@@ -146,8 +149,8 @@ static void all_tests(void)
 	struct tree_entry_list sample;
 	struct tree_entry_spec sample_spec[] = {
 		{ 1, "a"},
-		{ 2, "c"},
-		{ 3, "b"}
+		{ 2, "b"},
+		{ 3, "c"}
 	};
 
 	tree_entry_list_init(&sample, sample_spec, ARRAY_SIZE(sample_spec));

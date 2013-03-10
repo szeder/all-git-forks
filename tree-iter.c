@@ -53,3 +53,42 @@ void tree_iter_init_tree(struct tree_iter *iter, char *buffer, int size)
 	iter->next = tree_iter_next_tree;
 	iter->cb_data = desc;
 }
+
+struct index_desc {
+	const struct index_state *index;
+	int pos;
+};
+
+static void tree_entry_init_from_index_desc(struct tree_entry *entry,
+		struct index_desc *desc)
+{
+	struct cache_entry *ce;
+
+	if (desc->pos >= desc->index->cache_nr) {
+		tree_entry_setnull(entry);
+		return;
+	}
+
+	ce = desc->index->cache[desc->pos];
+	entry->path = ce->name;
+	hashcpy(entry->sha1, ce->sha1);
+}
+
+static void tree_iter_next_index(struct tree_iter *iter)
+{
+	struct index_desc *desc = iter->cb_data;
+
+	desc->pos++;
+	tree_entry_init_from_index_desc(&iter->entry, desc);
+}
+
+void tree_iter_init_index(struct tree_iter *iter, const struct index_state *index)
+{
+	struct index_desc *desc = xcalloc(1, sizeof(*desc));
+
+	desc->index = index;
+	tree_entry_init_from_index_desc(&iter->entry, desc);
+
+	iter->next = tree_iter_next_index;
+	iter->cb_data = desc;
+}
