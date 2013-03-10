@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "git-compat-util.h"
 #include "cache.h"
 #include "tree-walk.h"
@@ -7,9 +8,8 @@ static const char *usage_msg = "test-traverse-index";
 struct tree_entry {
 	unsigned int obj_nr;
 	const char *path;
+	unsigned char sha1[20];
 };
-
-#define DIV_CEIL(num, den) (((num)+(den)-1)/(den))
 
 static const unsigned char *sha1_from_obj_nr(unsigned int obj_nr)
 {
@@ -24,6 +24,13 @@ static const unsigned char *sha1_from_obj_nr(unsigned int obj_nr)
 	return sha1;
 }
 
+static void tree_entry_init(struct tree_entry *entry)
+{
+	hashcpy(entry->sha1, sha1_from_obj_nr(entry->obj_nr));
+}
+
+#define DIV_CEIL(num, den) (((num)+(den)-1)/(den))
+
 static struct cache_entry *create_cache_entry(const struct tree_entry *entry)
 {
 	int mode = 0100644;
@@ -32,7 +39,7 @@ static struct cache_entry *create_cache_entry(const struct tree_entry *entry)
 	unsigned size = cache_entry_size(namelen);
 
 	ce = xcalloc(1, size);
-	hashcpy(ce->sha1, sha1_from_obj_nr(entry->obj_nr));
+	hashcpy(ce->sha1, entry->sha1);
 	memcpy(ce->name, entry->path, namelen);
 	ce->ce_mode = create_ce_mode(mode);
 	ce->ce_flags = create_ce_flags(0);
@@ -76,25 +83,29 @@ static void create_tree(struct strbuf *treebuf, struct tree_entry *sample, int n
 	for (i = 0; i < n_samples; i++) {
 		struct tree_entry *entry = &sample[i];
 		strbuf_addf(treebuf, "%o %s%c", mode, entry->path, '\0');
-		strbuf_add(treebuf, sha1_from_obj_nr(entry->obj_nr), 20);
+		strbuf_add(treebuf, entry->sha1, 20);
 	}
 }
 
 #define OBJ_NR_SIZE sizeof(((struct tree_entry *)NULL)->obj_nr)
 
-static void traverse_tree(char *buffer, int len)
+static void test_traverse_tree(struct tree_entry *sample, int n_samples,
+		char *buffer, int len)
 {
+	int i;
 	struct tree_desc desc;
 
 	init_tree_desc(&desc, buffer, len);
-	while (desc.size) {
-		char *sha1hex;
+	for (i = 0; i < n_samples; i++) {
+		assert(desc.size);
+		assert(!hashcmp(desc.entry.sha1, sample[i].sha1));
+		assert(!strcmp(desc.entry.path, sample[i].path));
 
-		sha1hex = sha1_to_hex(desc.entry.sha1);
-		sha1hex[2*OBJ_NR_SIZE] = '\0';
-		printf("%s %s\n", sha1hex, desc.entry.path);
 		update_tree_entry(&desc);
 	}
+
+	/* end of tree */
+	assert(!desc.size);
 }
 
 static void test_tree(struct tree_entry *sample, int n_samples)
@@ -102,18 +113,23 @@ static void test_tree(struct tree_entry *sample, int n_samples)
 	struct strbuf treebuf = STRBUF_INIT;
 
 	create_tree(&treebuf, sample, n_samples);
-	traverse_tree(treebuf.buf, treebuf.len);
+	test_traverse_tree(sample, n_samples, treebuf.buf, treebuf.len);
 
 	strbuf_release(&treebuf);
 }
 
 static void all_tests(void)
 {
+	int i;
+
 	struct tree_entry sample[] = {
 		{ 1, "a"},
 		{ 2, "c"},
 		{ 3, "b"}
 	};
+
+	for (i = 0; i < ARRAY_SIZE(sample); i++)
+		tree_entry_init(&sample[i]);
 
 	test_index(sample, ARRAY_SIZE(sample));
 	test_tree(sample, ARRAY_SIZE(sample));
