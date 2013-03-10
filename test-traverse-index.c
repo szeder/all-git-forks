@@ -10,6 +10,102 @@ struct tree_entry {
 	const char *path;
 };
 
+struct tree_entry_list {
+	struct tree_entry *entry;
+	int len;
+};
+
+#define DIV_CEIL(num, den) (((num)+(den)-1)/(den))
+
+static struct cache_entry *create_cache_entry(const struct tree_entry *entry)
+{
+	int mode = 0100644;
+	struct cache_entry *ce;
+	int namelen = strlen(entry->path);
+	unsigned size = cache_entry_size(namelen);
+
+	ce = xcalloc(1, size);
+	hashcpy(ce->sha1, entry->sha1);
+	memcpy(ce->name, entry->path, namelen);
+	ce->ce_mode = create_ce_mode(mode);
+	ce->ce_flags = create_ce_flags(0);
+	ce->ce_namelen = namelen;
+
+	return ce;
+}
+
+static struct index_state *create_index(const struct tree_entry_list *sample)
+{
+	int i;
+	struct index_state *index;
+
+	index = xcalloc(1, sizeof(*index));
+
+	for (i = 0; i < sample->len; i++) {
+		struct cache_entry *ce;
+		ce = create_cache_entry(&sample->entry[i]);
+		if (add_index_entry(index, ce, ADD_CACHE_OK_TO_ADD) < 0)
+			die(_("unable to add cache entry: %s"), ce->name);
+	}
+
+	return index;
+}
+
+static void test_index(const struct tree_entry_list *sample)
+{
+	struct index_state *index;
+
+	index = create_index(sample);
+
+	discard_index(index);
+	free(index);
+}
+
+static void create_tree(struct strbuf *treebuf, const struct tree_entry_list *sample)
+{
+	int i;
+	unsigned int mode = 0100644;
+
+	for (i = 0; i < sample->len; i++) {
+		struct tree_entry *entry = &sample->entry[i];
+		strbuf_addf(treebuf, "%o %s%c", mode, entry->path, '\0');
+		strbuf_add(treebuf, entry->sha1, 20);
+	}
+}
+
+#define OBJ_NR_SIZE sizeof(((struct tree_entry *)NULL)->obj_nr)
+
+static void test_traverse_tree(const struct tree_entry_list *sample,
+		char *buffer, int len)
+{
+	int i;
+	struct tree_desc desc;
+
+	init_tree_desc(&desc, buffer, len);
+	for (i = 0; i < sample->len; i++) {
+		struct tree_entry *entry = &sample->entry[i];
+
+		assert(desc.size);
+		assert(!hashcmp(desc.entry.sha1, entry->sha1));
+		assert(!strcmp(desc.entry.path, entry->path));
+
+		update_tree_entry(&desc);
+	}
+
+	/* end of tree */
+	assert(!desc.size);
+}
+
+static void test_tree(const struct tree_entry_list *sample)
+{
+	struct strbuf treebuf = STRBUF_INIT;
+
+	create_tree(&treebuf, sample);
+	test_traverse_tree(sample, treebuf.buf, treebuf.len);
+
+	strbuf_release(&treebuf);
+}
+
 struct tree_entry_spec {
 	unsigned int obj_nr;
 	const char *path;
@@ -34,116 +130,38 @@ static void tree_entry_init(struct tree_entry *entry, struct tree_entry_spec *sp
 	hashcpy(entry->sha1, sha1_from_obj_nr(spec->obj_nr));
 }
 
-#define DIV_CEIL(num, den) (((num)+(den)-1)/(den))
-
-static struct cache_entry *create_cache_entry(const struct tree_entry *entry)
-{
-	int mode = 0100644;
-	struct cache_entry *ce;
-	int namelen = strlen(entry->path);
-	unsigned size = cache_entry_size(namelen);
-
-	ce = xcalloc(1, size);
-	hashcpy(ce->sha1, entry->sha1);
-	memcpy(ce->name, entry->path, namelen);
-	ce->ce_mode = create_ce_mode(mode);
-	ce->ce_flags = create_ce_flags(0);
-	ce->ce_namelen = namelen;
-
-	return ce;
-}
-
-static struct index_state *create_index(struct tree_entry *sample, int n_samples)
+static void tree_entry_list_init(struct tree_entry_list *list, struct tree_entry_spec *spec, int len)
 {
 	int i;
-	struct index_state *index;
 
-	index = xcalloc(1, sizeof(*index));
-
-	for (i = 0; i < n_samples; i++) {
-		struct cache_entry *ce;
-		ce = create_cache_entry(&sample[i]);
-		if (add_index_entry(index, ce, ADD_CACHE_OK_TO_ADD) < 0)
-			die(_("unable to add cache entry: %s"), ce->name);
-	}
-
-	return index;
+	list->len = len;
+	list->entry = xmalloc(len * sizeof(*list->entry));
+	for (i = 0; i < len; i++)
+		tree_entry_init(&list->entry[i], &spec[i]);
 }
 
-static void test_index(struct tree_entry *sample, int n_samples)
+static void tree_entry_list_free(struct tree_entry_list *list)
 {
-	struct index_state *index;
-
-	index = create_index(sample, n_samples);
-
-	discard_index(index);
-	free(index);
-}
-
-static void create_tree(struct strbuf *treebuf, struct tree_entry *sample, int n_samples)
-{
-	int i;
-	unsigned int mode = 0100644;
-
-	for (i = 0; i < n_samples; i++) {
-		struct tree_entry *entry = &sample[i];
-		strbuf_addf(treebuf, "%o %s%c", mode, entry->path, '\0');
-		strbuf_add(treebuf, entry->sha1, 20);
-	}
-}
-
-#define OBJ_NR_SIZE sizeof(((struct tree_entry *)NULL)->obj_nr)
-
-static void test_traverse_tree(struct tree_entry *sample, int n_samples,
-		char *buffer, int len)
-{
-	int i;
-	struct tree_desc desc;
-
-	init_tree_desc(&desc, buffer, len);
-	for (i = 0; i < n_samples; i++) {
-		assert(desc.size);
-		assert(!hashcmp(desc.entry.sha1, sample[i].sha1));
-		assert(!strcmp(desc.entry.path, sample[i].path));
-
-		update_tree_entry(&desc);
-	}
-
-	/* end of tree */
-	assert(!desc.size);
-}
-
-static void test_tree(struct tree_entry *sample, int n_samples)
-{
-	struct strbuf treebuf = STRBUF_INIT;
-
-	create_tree(&treebuf, sample, n_samples);
-	test_traverse_tree(sample, n_samples, treebuf.buf, treebuf.len);
-
-	strbuf_release(&treebuf);
+	free(list->entry);
+	list->entry = NULL;
+	list->len = 0;
 }
 
 static void all_tests(void)
 {
-	int i;
-	int n_samples;
-	struct tree_entry *sample;
-
+	struct tree_entry_list sample;
 	struct tree_entry_spec sample_spec[] = {
 		{ 1, "a"},
 		{ 2, "c"},
 		{ 3, "b"}
 	};
 
-	n_samples = ARRAY_SIZE(sample_spec);
-	sample = xmalloc(n_samples * sizeof(*sample));
-	for (i = 0; i < n_samples; i++)
-		tree_entry_init(&sample[i], &sample_spec[i]);
+	tree_entry_list_init(&sample, sample_spec, ARRAY_SIZE(sample_spec));
 
-	test_index(sample, n_samples);
-	test_tree(sample, n_samples);
+	test_index(&sample);
+	test_tree(&sample);
 
-	free(sample);
+	tree_entry_list_free(&sample);
 }
 
 int main(int argc, char **argv)
