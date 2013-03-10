@@ -11,8 +11,8 @@ OPTS_SPEC="\
 git subtree add   --prefix=<prefix> <commit>
 git subtree add   --prefix=<prefix> <repository> <commit>
 git subtree merge --prefix=<prefix> <commit>
-git subtree pull  --prefix=<prefix> <repository> <refspec...>
-git subtree push  --prefix=<prefix> <repository> <refspec...>
+git subtree pull  --prefix=<prefix> [<repository> [<refspec>...]]
+git subtree push  --prefix=<prefix> [<repository> [<refspec>...]]
 git subtree split --prefix=<prefix> <commit...>
 --
 h,help        show the help
