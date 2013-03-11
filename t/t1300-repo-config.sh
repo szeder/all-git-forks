@@ -1087,4 +1087,28 @@ test_expect_success 'barf on incomplete string' '
 	grep " line 3 " error
 '
 
+test_expect_success 'reading config from strbuf' '
+	cat >expect <<-\EOF &&
+	var: some.value, value: content
+	EOF
+	test-config strbuf 12345:.gitmodules >actual <<-\EOF &&
+	[some]
+		value = content
+	EOF
+	test_cmp expect actual
+'
+
+test_expect_success 'reading config from strbuf with error' '
+	touch expect.out &&
+	cat >expect.err <<-\EOF &&
+	fatal: bad config file line 2 in 12345:.gitmodules
+	EOF
+	test_must_fail test-config strbuf 12345:.gitmodules >actual.out 2>actual.err <<-\EOF &&
+	[some]
+		value = "
+	EOF
+	test_cmp expect.out actual.out &&
+	test_cmp expect.err actual.err
+'
+
 test_done
