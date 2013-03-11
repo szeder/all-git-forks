@@ -369,7 +369,21 @@ sub gs_fetch_loop_common {
 	my ($self, $base, $head, $gsv, $globs) = @_;
 	return if ($base > $head);
 	my $inc = $_log_window_size;
-	my ($min, $max) = ($base, $head < $base + $inc ? $head : $base + $inc);
+	my @badrevs; # @@ Need to work this out.
+	my $min = $base;
+	my $max = $head < $min + $inc ? $head : $min + $inc;
+	foreach $badrev (sort @badrevs) {
+		if ($min == $badrev) {
+			$min += 1;
+			$max = $head < $min + $inc ? $head : $min + $inc;
+		}
+		if (($min < $badrev) and ($max >= $badrev)) {
+			$max = $badrev - 1;
+		}
+		if ($max < $badrev) {
+			last;
+		}
+	}
 	my $longest_path = longest_common_path($gsv, $globs);
 	my $ra_url = $self->url;
 	my $find_trailing_edge;
@@ -462,8 +476,19 @@ sub gs_fetch_loop_common {
 		}
 		last if $max >= $head;
 		$min = $max + 1;
-		$max += $inc;
-		$max = $head if ($max > $head);
+		$max = $head < $min + $inc ? $head : $min + $inc;
+		foreach $badrev (sort @badrevs) {
+			if ($min == $badrev) {
+				$min += 1;
+				$max = $head < $min + $inc ? $head : $min + $inc;
+			}
+			if (($min < $badrev) and ($max >= $badrev)) {
+				$max = $badrev - 1;
+			}
+			if ($max < $badrev) {
+				last;
+			}
+		}
 	}
 	Git::SVN::gc();
 }
