@@ -2,6 +2,7 @@
 #include "git-compat-util.h"
 #include "cache.h"
 #include "tree-iter.h"
+#include "ntree-iter.h"
 
 static const char *usage_msg = "test-traverse-index";
 
@@ -9,6 +10,34 @@ struct tree_entry_list {
 	struct tree_entry *entry;
 	int len;
 };
+
+static int tree_entry_cmp(struct tree_entry *a, struct tree_entry *b)
+{
+	return hashcmp(a->sha1, b->sha1) || strcmp(a->path, b->path);
+}
+
+static void ntree_iter_verify(struct tree_iter *iter, int n_trees,
+		const struct tree_entry_list *expected)
+{
+	int pos;
+	struct tree_entry **entry = xcalloc(n_trees, sizeof(*entry));
+
+	for (pos = 0; pos < expected->len; pos++) {
+		int i;
+
+		assert(!ntree_iter_read_entry(iter, n_trees, entry));
+		for (i = 0; i < n_trees; i++) {
+			assert(entry[i]);
+			assert(entry[i]->path);
+			assert(!tree_entry_cmp(entry[i], &expected->entry[pos]));
+		}
+
+		ntree_iter_next(iter, n_trees);
+	}
+	assert(ntree_iter_read_entry(iter, n_trees, entry));
+
+	free(entry);
+}
 
 static void test_traverse_tree(struct tree_iter *iter,
 		const struct tree_entry_list *sample)
@@ -18,8 +47,7 @@ static void test_traverse_tree(struct tree_iter *iter,
 		struct tree_entry *entry = &sample->entry[i];
 
 		assert(iter->entry.path);
-		assert(!hashcmp(iter->entry.sha1, entry->sha1));
-		assert(!strcmp(iter->entry.path, entry->path));
+		assert(!tree_entry_cmp(&iter->entry, entry));
 
 		tree_iter_next(iter);
 	}
@@ -103,6 +131,28 @@ static void test_tree(const struct tree_entry_list *sample)
 	strbuf_release(&treebuf);
 }
 
+static void test_ntree(const struct tree_entry_list *sample)
+{
+	struct tree_iter iter[2];
+	struct strbuf treebuf = STRBUF_INIT;
+	struct index_state *index;
+
+	memset(iter, 0, sizeof(iter));
+
+	create_tree(&treebuf, sample);
+	tree_iter_init_tree(&iter[0], treebuf.buf, treebuf.len);
+
+	index = create_index(sample);
+	tree_iter_init_index(&iter[1], index);
+
+	ntree_iter_verify(iter, ARRAY_SIZE(iter), sample);
+
+	ntree_iter_release(iter, ARRAY_SIZE(iter));
+	strbuf_release(&treebuf);
+	discard_index(index);
+	free(index);
+}
+
 struct tree_entry_spec {
 	unsigned int obj_nr;
 	const char *path;
@@ -157,6 +207,7 @@ static void all_tests(void)
 
 	test_index(&sample);
 	test_tree(&sample);
+	test_ntree(&sample);
 
 	tree_entry_list_release(&sample);
 }
