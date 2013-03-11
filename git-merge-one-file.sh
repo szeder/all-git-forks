@@ -104,35 +104,28 @@ case "${1:-.}${2:-.}${3:-.}" in
 		;;
 	esac
 
-	src2=`git-unpack-file $3`
+	ret=0
+	src1=$(git-unpack-file $2)
+	src2=$(git-unpack-file $3)
 	case "$1" in
 	'')
-		echo "Added $4 in both, but differently."
-		# This extracts OUR file in $orig, and uses git apply to
-		# remove lines that are unique to ours.
-		orig=`git-unpack-file $2`
-		sz0=`wc -c <"$orig"`
-		@@DIFF@@ -u -La/$orig -Lb/$orig $orig $src2 | git apply --no-add
-		sz1=`wc -c <"$orig"`
-
-		# If we do not have enough common material, it is not
-		# worth trying two-file merge using common subsections.
-		expr $sz0 \< $sz1 \* 2 >/dev/null || : >$orig
+		echo "ERROR: Added $4 in both, but differently."
+		ret=1
+		orig=$(git-unpack-file $2)
+		create_virtual_base "$orig" "$src1" "$src2"
 		;;
 	*)
 		echo "Auto-merging $4"
-		orig=`git-unpack-file $1`
+		orig=$(git-unpack-file $1)
 		;;
 	esac
 
 	# Be careful for funny filename such as "-L" in "$4", which
 	# would confuse "merge" greatly.
-	src1=`git-unpack-file $2`
 	git merge-file "$src1" "$orig" "$src2"
-	ret=$?
-	msg=
-	if [ $ret -ne 0 ]; then
-		msg='content conflict'
+	if [ $? -ne 0 ]; then
+		echo "ERROR: Content conflict in $4"
+		ret=1
 	fi
 
 	# Create the working tree file, using "our tree" version from the
@@ -141,18 +134,11 @@ case "${1:-.}${2:-.}${3:-.}" in
 	rm -f -- "$orig" "$src1" "$src2"
 
 	if [ "$6" != "$7" ]; then
-		if [ -n "$msg" ]; then
-			msg="$msg, "
-		fi
-		msg="${msg}permissions conflict: $5->$6,$7"
-		ret=1
-	fi
-	if [ "$1" = '' ]; then
+		echo "ERROR: Permissions conflict: $5->$6,$7"
 		ret=1
 	fi
 
 	if [ $ret -ne 0 ]; then
-		echo "ERROR: $msg in $4"
 		exit 1
 	fi
 	exec git update-index -- "$4"
