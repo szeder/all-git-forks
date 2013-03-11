@@ -10,6 +10,47 @@ struct tree_entry_list {
 	int len;
 };
 
+static void traverse_tree_any(struct tree_iter *iter, int n_trees,
+		const struct tree_entry_list *expected)
+{
+	struct tree_entry **entry = xcalloc(n_trees, sizeof(*entry));
+
+	while (1) {
+		int i;
+		const char *first;
+
+		first = NULL;
+		for (i = 0; i < n_trees; i++) {
+			if (!first) {
+				first = iter[i].entry.path;
+				continue;
+			}
+
+		}
+		if (!first)
+			break;
+
+		for (i = 0; i < n_trees; i++) {
+			if (!strcmp(iter[i].entry.path, first))
+				entry[i] = &iter[i].entry;
+			else
+				entry[i] = NULL;
+		}
+
+		for (i = 0; i < n_trees; i++) {
+			if (i > 0)
+				printf("\t");
+			printf("%s", entry[i]->path);
+		}
+		printf("\n");
+
+		for (i = 0; i < n_trees; i++)
+			tree_iter_next(&iter[i]);
+	}
+
+	free(entry);
+}
+
 static void test_traverse_tree(struct tree_iter *iter,
 		const struct tree_entry_list *sample)
 {
@@ -103,6 +144,31 @@ static void test_tree(const struct tree_entry_list *sample)
 	strbuf_release(&treebuf);
 }
 
+void test_traverse_tree_any(const struct tree_entry_list *sample)
+{
+	int i;
+	int n_trees = 2;
+	struct tree_iter *iter = xcalloc(n_trees, sizeof(*iter));
+	struct strbuf treebuf = STRBUF_INIT;
+	struct index_state *index;
+
+	create_tree(&treebuf, sample);
+	tree_iter_init_tree(&iter[0], treebuf.buf, treebuf.len);
+
+	index = create_index(sample);
+	tree_iter_init_index(&iter[1], index);
+
+	traverse_tree_any(iter, n_trees, sample);
+
+	for (i = 0; i < n_trees; i++)
+		tree_iter_release(&iter[i]);
+
+	strbuf_release(&treebuf);
+	discard_index(index);
+	free(index);
+	free(iter);
+}
+
 struct tree_entry_spec {
 	unsigned int obj_nr;
 	const char *path;
@@ -157,6 +223,7 @@ static void all_tests(void)
 
 	test_index(&sample);
 	test_tree(&sample);
+	test_traverse_tree_any(&sample);
 
 	tree_entry_list_release(&sample);
 }
