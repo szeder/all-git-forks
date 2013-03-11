@@ -1,0 +1,206 @@
+Despite common sense CVS is still widely used. And while there are tools
+for migration from CVS to GIT, it is hard to migrate a huge project
+right away. And current state of CVS support in GIT is not satisfactory
+for the very most users. Even if user was able to import and track
+changes with git-cvsimport, nobody likes git-cvsexport, because it
+requires CVS checkout.
+
+More over git-cvsimport is a troublesome. Mostly because of cvsps tool
+it relies on for parsing CVS history and forming commits.
+
+Another big feature that git-cvsimport does not have is kind of
+"shallow" clones of CVS repo. CVS allows to checkout part of source tree
+and other user does not suffer that much from big binary files. But
+importing those changes in GIT and following clones are a really painful.
+
+
+In my case git-cvsimport (cvsps) failed, and I end up fixing cvsps at
+first, and then rewriting cvsps functionality in git-cvsimport. Then I
+had to rewrite git-cvsexportcommit to get some painless way to push
+changes back in CVS.
+Now I want to rework those tools, and release them. Please comment on
+design below:
+
+OBJECTIVE
+---------
+Develop tool for "painless" CVS integration.
+
+USE CASES
+---------
+Personal individual use (one developer)
+Shared repository, synchronized with CVS via special daemon 
+
+TOOLS NAMING AND FUNCTIONS
+--------------------------
+Idea is to mimic basic stock git commands and some options they provide,
+but still emphasize you are still working with CVS:
+git-cvsclone/git-cvsfetch/git-cvspush
+
+git-cvssyncd - daemon to keep git reposity in sync with CVS (daemon
+should work with bare repository)
+
+CONFIGURATION:
+--------------
+CVS is not distributed version control, no multiple remotes needed.
+Current idea is to use "cvs" as "kind of remote" name.
+
+[cvs]
+	root = [:method:][[user][:password]@]hostname[:[port]]/path/to/repository
+	module = module/path
+	options for patch aggregator
+
+cvs.root   is in a form of well know CVSROOT
+cvs.module is relative path to module or some module subdirectory
+
+CVS BRANCHES:
+-------------
+CVS branches should be stored as usual refs, in:
+
+refs/remotes/cvs/*
+
+It provides many benefits:
+* nice and clear CVS branch naming for users
+  cvs/HEAD cvs/BRACH1 cvs/REL_2_0
+* solves Git HEAD vs CVS HEAD collision
+* CVS history cannot be and should not be edited, and storing branches
+  as remotes does exactly that
+
+Disadvantages:
+* when having a shared git repo, kept in sync with git-syncd, users
+ have to edit fetch refs specs to fetch remote branches. i.e.
+
+ [remote "team"]
+	url = ssh://.../cvs-repo.git
+	fetch = refs/remotes/cvs/*:refs/remotes/cvs/*
+	...
+
+CVS METADATA
+------------
+No functional CVS tools can be written without storing minimal CVS
+metadata. In fact the only peace of meta required is CVS revision. This
+metadata has to be used when changes are pushed back to CVS. Besides
+that metadata helps to validate CVS synchronization process and catch
+errors early.
+
+STORING METADATA
+----------------
+Git notes is used to store CVS Metadata. For every CVS branch
+
+refs/remotes/cvs/*
+
+there should be
+
+refs/notes/cvs/*
+
+notes branch and every imported CVS commit should
+have a note, that includes a full list of files in commit tree with
+their revisions. Besides that some other type of information might be
+stored there in key/value form.
+
+Sample format:
+key1=value2
+--
+<CVS revision1>:<file1 name>\n
+<CVS revision2>:<file2 name>\n
+...
+<CVS revisionN>:<fileN name>\n
+
+May be it's a good idea to sort note by file names, to ease manual
+editing (in case of problem investigation)/inspection with
+`git notes --ref=cvs/BRANCH show/edit`
+
+METADATA USAGE
+--------------
+Current patch aggregation code uses metadata to understand which
+files are already in repository and when some revision is skipped
+and error should be reported.
+
+Generally patch aggregator strictly controls that every file
+revision follows by correct file revision. It warns when special cases
+occur (i.e. manual revision specification 1.2.3.4 -> 1.2.4.0).
+
+CVSFETCH
+--------
+cvsfetch work based on 2 CVS protocol commands:
+rlog          - to fetch history
+co (checkout) - to fetch files (one at a time, or full checkout for
+		shallow clones)
+
+cvsfetch sets time of earliest revision in imported CVS commit as author
+date and last one as comitter date.
+
+CVSPUSH
+-------
+Whenever commits are pushed, cvspush finds the first ancestor which has
+CVS metadata and uses it to perform following CVS protocol commands:
+status        - server complains when newer file revisions are committed
+		already, but has to done to avoid breaking commits or
+		failing in between commits
+ci (commit)   - to commit files
+add           - to add new directories (not needed for files)
+remove        - to remove files
+
+Also creating and pushing new branches should be easy to implement.
+git cvspush HEAD:new_cvs_branch
+
+CVS AUTHORS CONVERSION
+----------------------
+git-cvsimport uses special file in git directory called cvs-authors. In
+format:
+userid=name <email>
+
+To ease this file sharing it will be stored as git notes:
+
+refs/notes/cvs-authors
+
+HOOKS
+-----
+author-look-up - will be called every time new id is fetched and could
+		not be reloved via refs/notes/cvs-authors
+		This hook may go to ldap/bug tracker to find out
+		full author name and email. Or just abort cvsfetch.
+
+BINARY FILES
+------------
+CVS does not make people who commit big binary files suffer. But git
+users will suffer. And there are cases when people commit entire .ISO
+images without hesitation. To address this issue following method could
+be applied.
+
+* cvsfetch ignore paths
+* convert those file to small text files with actual cvs link
+  i.e.
+$ cat hypervisor/rel4.2.iso
+CVSBLOB use cvs checkout -r 1.13 hypervisor/rel4.2.iso
+
+In both cases pathes could be controlled via:
+
+refs/notes/cvs-blob-paths
+or
+.git/info/cvs-blob-paths
+
+And also cvs.blobsize configuration option.
+
+Second option allows to actaully perform update and delete of such
+files.
+
+For shared repositories. When sync is done via git-cvssyncd:
+~~~~~~~~~~~~~~~~~~~~~~~
+Binary files could be fetches on special branches in
+
+refs/remotes/cvs_blobs/*
+
+And blob-free branches cotain files
+
+BLOB SHA1 HASH
+
+This way people who doesn't need binary would not have to fetch them.
+And other can fetch refs/remotes/cvs_blobs/* branches
+and get files they needed via SHA1
+or all at once with:
+
+git merge --no-commit --strategy=theirs
+
+GIT INTEGRATION
+---------------
+plumbing commands or API?

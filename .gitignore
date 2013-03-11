@@ -40,6 +40,8 @@
 /git-credential-cache
 /git-credential-cache--daemon
 /git-credential-store
+/git-cvsfetch
+/git-cvsclone
 /git-cvsexportcommit
 /git-cvsimport
 /git-cvsserver
@@ -129,6 +131,7 @@
 /git-remote-testgit
 /git-remote-testpy
 /git-remote-testsvn
+/git-remote-cvs
 /git-repack
 /git-replace
 /git-repo-config

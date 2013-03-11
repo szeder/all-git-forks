@@ -430,6 +430,7 @@ COMPAT_CFLAGS =
 COMPAT_OBJS =
 XDIFF_OBJS =
 VCSSVN_OBJS =
+VCSCVS_OBJS =
 GENERATED_H =
 EXTRA_CPPFLAGS =
 LIB_H =
@@ -547,6 +548,7 @@ PROGRAM_OBJS += shell.o
 PROGRAM_OBJS += show-index.o
 PROGRAM_OBJS += upload-pack.o
 PROGRAM_OBJS += remote-testsvn.o
+PROGRAM_OBJS += remote-cvs.o
 
 # Binary suffix, set to .exe for Windows builds
 X =
@@ -632,6 +634,7 @@ export PYTHON_PATH
 LIB_FILE = libgit.a
 XDIFF_LIB = xdiff/lib.a
 VCSSVN_LIB = vcs-svn/lib.a
+VCSCVS_LIB = vcs-cvs/lib.a
 
 GENERATED_H += common-cmds.h
 
@@ -1890,10 +1893,14 @@ VCSSVN_OBJS += vcs-svn/fast_export.o
 VCSSVN_OBJS += vcs-svn/svndiff.o
 VCSSVN_OBJS += vcs-svn/svndump.o
 
+VCSCVS_OBJS += vcs-cvs/client.o
+VCSCVS_OBJS += vcs-cvs/meta.o
+
 TEST_OBJS := $(patsubst test-%$X,test-%.o,$(TEST_PROGRAMS))
 OBJECTS := $(LIB_OBJS) $(BUILTIN_OBJS) $(PROGRAM_OBJS) $(TEST_OBJS) \
 	$(XDIFF_OBJS) \
 	$(VCSSVN_OBJS) \
+	$(VCSCVS_OBJS) \
 	git.o
 ifndef NO_CURL
 	OBJECTS += http.o http-walker.o remote-curl.o
@@ -2055,6 +2062,10 @@ git-remote-testsvn$X: remote-testsvn.o GIT-LDFLAGS $(GITLIBS) $(VCSSVN_LIB)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS) \
 	$(VCSSVN_LIB)
 
+git-remote-cvs$X: remote-cvs.o GIT-LDFLAGS $(GITLIBS) $(VCSCVS_LIB)
+	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
+	$(VCSCVS_LIB) $(LIBS)
+
 $(REMOTE_CURL_ALIASES): $(REMOTE_CURL_PRIMARY)
 	$(QUIET_LNCP)$(RM) $@ && \
 	ln $< $@ 2>/dev/null || \
@@ -2072,6 +2083,9 @@ $(XDIFF_LIB): $(XDIFF_OBJS)
 	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
 
 $(VCSSVN_LIB): $(VCSSVN_OBJS)
+	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
+
+$(VCSCVS_LIB): $(VCSCVS_OBJS)
 	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
 
 export DEFAULT_EDITOR DEFAULT_PAGER
@@ -2477,7 +2491,7 @@ profile-clean:
 
 clean: profile-clean coverage-clean
 	$(RM) *.o *.res block-sha1/*.o ppc/*.o compat/*.o compat/*/*.o xdiff/*.o vcs-svn/*.o \
-		builtin/*.o $(LIB_FILE) $(XDIFF_LIB) $(VCSSVN_LIB)
+		vcs-cvs/*.o builtin/*.o $(LIB_FILE) $(XDIFF_LIB) $(VCSSVN_LIB) $(VCSCVS_LIB)
 	$(RM) $(ALL_PROGRAMS) $(SCRIPT_LIB) $(BUILT_INS) git$X
 	$(RM) $(TEST_PROGRAMS) $(NO_INSTALL)
 	$(RM) -r bin-wrappers $(dep_dirs)
