@@ -74,7 +74,7 @@ struct branch_meta {
 	struct patchset_list *patchset_list;
 
 	struct hash_table *last_commit_revision_hash; // path -> file_revision_meta hash
-	time_t last_revision;
+	time_t last_revision_timestamp;
 
 	unsigned int fuzz_time;
 };

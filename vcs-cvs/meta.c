@@ -160,6 +160,34 @@ void add_file_revision(struct branch_meta *meta,
 	struct patchset *patchset;
 	unsigned int hash;
 
+	/*
+	 * TODO:
+	 * check import date, check branch last imported commit,
+	 * compare and skip earlier revisions
+	 */
+	/*int rev1_br;
+	int rev1_ver;
+	int rev1_len;
+	int rev2_br;
+	int rev2_ver;
+	int rev2_len;
+
+	rev1_len = get_branch_rev(rev1, &rev1_br, &rev1_ver);
+	rev2_len = get_branch_rev(rev2, &rev2_br, &rev2_ver);
+
+	if (rev1_len == -1 || rev2_len == -1 || rev1_len != rev2_len ||
+	    strncmp(rev1, rev2, rev1_len) != 0)
+		return 0;
+
+	if (rev1_br == rev2_br) {
+		if (rev1_ver + 1 == rev2_ver)
+			return 1;
+		return 0;
+	}
+
+	if (rev2_ver == 0 && rev1_br + 1 == rev2_br)
+		return 1;*/
+
 	rev = xcalloc(1, sizeof(struct file_revision));
 	rev->path = xstrdup(path);
 	rev->revision = xstrdup(revision);
@@ -278,7 +306,7 @@ void find_safe_cancellation_points(struct branch_meta *meta)
 		if (!patchset->next ||
 		    max_timestamp < patchset->next->timestamp) {
 			patchset->cancellation_point = max_timestamp;
-			meta->last_revision = max_timestamp;
+			meta->last_revision_timestamp = max_timestamp;
 		}
 
 		patchset = patchset->next;
@@ -495,10 +523,30 @@ void aggregate_patchsets(struct branch_meta *meta)
 
 	fprintf(stderr, "GONNA VALIDATE\n");
 	validate_patchsets(meta);
-	//find_safe_cancellation_points(meta);
-	arrange_commit_time(meta);
+	find_safe_cancellation_points(meta);
+	//arrange_commit_time(meta);
 	fprintf(stderr, "SLEEP ps=%ld\n", ps);
 	//sleep(100);
+}
+
+static time_t get_commit_author_time(const char *branch_ref)
+{
+/*	struct pretty_print_context pctx = {0};
+	struct strbuf author_ident = STRBUF_INIT;
+	struct strbuf committer_ident = STRBUF_INIT;
+	unsigned char sha1[20];
+	struct commit *commit;
+
+	if (get_sha1_commit(branch_ref, sha1))
+		die("cannot find last commit on branch ref %s", branch_ref);
+
+	commit = lookup_commit(sha1);
+	if (parse_commit(commit))
+		die("cannot parse commit %s", sha1_to_hex(sha1));
+
+	format_commit_message(cm, "%an <%ae>", &author_ident, &pctx);
+	format_commit_message(cm, "%cn <%ce>", &committer_ident, &pctx);*/
+	return 0;
 }
 
 struct branch_meta *new_branch_meta(const char *branch_name)
@@ -522,6 +570,9 @@ struct branch_meta *new_branch_meta(const char *branch_name)
 	if (ref_exists(meta_ref.buf)) {
 		strbuf_addf(&branch_ref, "%s%s", get_ref_prefix(), branch_name);
 		load_cvs_revision_meta(new, branch_ref.buf, meta_ref.buf);
+
+		if (!new->last_revision_timestamp)
+			new->last_revision_timestamp = get_commit_author_time(branch_ref.buf);
 	}
 
 	strbuf_release(&meta_ref);
@@ -726,8 +777,8 @@ int load_cvs_revision_meta(struct branch_meta *meta,
 			break;
 		fprintf(stderr, "option: %s=>%s\n", first, second);
 		if (strcmp(first, "UPDATE") == 0) {
-			meta->last_revision = atol(second);
-			if (meta->last_revision == 0)
+			meta->last_revision_timestamp = atol(second);
+			if (meta->last_revision_timestamp == 0)
 				die("cvs metadata next UPDATE time is wrong");
 		}
 	}
@@ -815,8 +866,8 @@ int save_cvs_revision_meta(struct branch_meta *meta,
 {
 	struct strbuf sb;
 	strbuf_init(&sb, meta->revision_hash->nr * 64);
-	if (meta->last_revision)
-		strbuf_addf(&sb, "UPDATE:%ld\n", meta->last_revision);
+	if (meta->last_revision_timestamp)
+		strbuf_addf(&sb, "UPDATE:%ld\n", meta->last_revision_timestamp);
 	strbuf_addstr(&sb, "-\n");
 
 	for_each_hash(meta->revision_hash, save_revision_meta, &sb);

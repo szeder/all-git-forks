@@ -9,6 +9,7 @@
 #include "vcs-cvs/meta.h"
 #include "notes.h"
 #include "argv-array.h"
+#include "commit.h"
 
 /*
  * TODO:
@@ -22,7 +23,7 @@
  */
 
 static const char trace_key[] = "GIT_TRACE_REMOTE_HELPER_PROTO";
-unsigned long fileMemoryLimit = 50*1024*1024; /* 50m */
+unsigned long fileMemoryLimit = 2 * 1024 * 1024 * 1024L; //50*1024*1024; /* 50m */
 
 //static int dump_from_file;
 //static const char *private_ref;
@@ -41,6 +42,17 @@ struct cvs_transport *cvs = NULL;
 struct meta_map *branch_meta_map;
 static const char *cvsroot = NULL;
 static const char *cvsmodule = NULL;
+
+#define HASH_TABLE_INIT { 0, 0, NULL }
+static struct hash_table cvsauthors_hash = HASH_TABLE_INIT;
+static int cvsauthors_hash_modified = 0;
+struct cvsauthor {
+	char *userid;
+	char *ident;
+};
+static char *cvsauthors_lookup(const char *userid);
+static void cvsauthors_add(char *userid, char *ident);
+static void cvsauthors_load();
 
 static int cmd_capabilities(const char *line);
 static int cmd_option(const char *line);
@@ -61,6 +73,19 @@ static const struct input_command_entry input_command_list[] = {
 	{ "list", cmd_list, 0 },
 	{ NULL, NULL }
 };
+
+unsigned int hash_userid(const char *userid)
+{
+	//unsigned int hash = 0x123;
+	unsigned int hash = 0x12375903;
+
+	while (*userid) {
+		unsigned char c = *userid++;
+		//c = icase_hash(c);
+		hash = hash*101 + c;
+	}
+	return hash;
+}
 
 static inline const char *strbuf_hex_unprintable(struct strbuf *sb)
 {
@@ -187,7 +212,7 @@ static const char *gettext_after(const char *str, const char *what)
 static int cmd_capabilities(const char *line)
 {
 	helper_printf("import\n");
-	helper_printf("export\n");
+	helper_printf("push\n");
 	helper_printf("option\n");
 	//helper_printf("refspec refs/heads/*:%s*\n\n", ref_prefix);
 	helper_printf("\n");
@@ -461,10 +486,84 @@ static int commit_revision(void *ptr, void *data)
 	return 0;
 }
 
+static int run_author_convert_hook(const char *userid, struct strbuf *author_ident)
+{
+	struct child_process proc;
+	const char *argv[3];
+	int code;
+
+	argv[0] = find_hook("cvs-author-convert");
+	if (!argv[0])
+		return 0;
+
+	argv[1] = userid;
+	argv[2] = NULL;
+
+	memset(&proc, 0, sizeof(proc));
+	proc.argv = argv;
+	proc.out = -1;
+
+	code = start_command(&proc);
+	if (code)
+		return code;
+
+	strbuf_getwholeline_fd(author_ident, proc.out, '\n');
+	strbuf_trim(author_ident);
+	close(proc.out);
+	return finish_command(&proc);
+}
+
+static char *author_convert_via_hook(const char *userid)
+{
+	struct strbuf author_ident = STRBUF_INIT;
+
+	if (run_author_convert_hook(userid, &author_ident))
+		return NULL;
+
+	if (!author_ident.len) {
+		strbuf_addf(&author_ident, "%s <unknown>", userid);
+		return strbuf_detach(&author_ident, NULL);
+	}
+
+	/*
+	 * TODO: proper verify
+	 */
+	const char *lt;
+	const char *gt;
+
+	lt = index(author_ident.buf, '<');
+	gt = index(author_ident.buf, '>');
+
+	if (!lt && !gt)
+		strbuf_addstr(&author_ident, " <unknown>");
+
+	return strbuf_detach(&author_ident, NULL);
+}
+
+static const char *author_convert(const char *userid)
+{
+	char *ident;
+
+	ident = cvsauthors_lookup(userid);
+	if (ident)
+		return ident;
+
+	ident = author_convert_via_hook(userid);
+	if (ident)
+		cvsauthors_add(xstrdup(userid), ident);
+
+	return ident;
+}
+
 static int markid = 0;
 static int commit_patchset(struct patchset *ps, const char *branch_name, struct strbuf *parent_mark)
 {
+	struct strbuf commit = STRBUF_INIT;
+	const char *ident;
 	markid++;
+
+	//'cvs-import-commit'
+	//'cvs-author-convert'
 
 	/*
 	'commit' SP <ref> LF
@@ -478,10 +577,24 @@ static int commit_patchset(struct patchset *ps, const char *branch_name, struct 
 	LF?
 	*/
 
+	/*s->fp = fopen(git_path(commit_editmsg), "w");
+	if (s->fp == NULL)
+		die_errno(_("could not open '%s'"), git_path(commit_editmsg));
+
+	strbuf_attach
+
+	run_hook(index_file, "commit-msg", git_path(commit_editmsg), NULL)) {*/
+
+	ident = author_convert(ps->author);
+	if (!ident)
+		die("failed to resolve cvs userid %s", ps->author);
+
 	helper_printf("commit %s%s\n", get_ref_prefix(), branch_name);
 	helper_printf("mark :%d\n", markid);
-	helper_printf("author %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp);
-	helper_printf("committer %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp_last);
+	//helper_printf("author %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp);
+	//helper_printf("committer %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp_last);
+	helper_printf("author %s %ld +0000\n", ident, ps->timestamp);
+	helper_printf("committer %s %ld +0000\n", ident, ps->timestamp_last);
 	helper_printf("data %zu\n", strlen(ps->msg));
 	helper_printf("%s\n", ps->msg);
 	if (parent_mark->len)
@@ -497,7 +610,21 @@ static int commit_meta_revision(void *ptr, void *data)
 {
 	struct file_revision *rev = ptr;
 
-	helper_printf("%s:%c:%s\n", rev->revision, rev->isdead ? '-' : '+', rev->path);
+	if (!rev->isdead)
+		helper_printf("%s:%s\n", rev->revision, rev->path);
+	//helper_printf("%s:%c:%s\n", rev->revision, rev->isdead ? '-' : '+', rev->path);
+	return 0;
+}
+
+static int print_revision_changes(void *ptr, void *data)
+{
+	struct file_revision *rev = ptr;
+
+	if (!rev->isdead)
+		helper_printf("updated %s %s\n", rev->revision, rev->path);
+	else
+		helper_printf("deleted %s %s\n", rev->revision, rev->path);
+	//helper_printf("%s:%c:%s\n", rev->revision, rev->isdead ? '-' : '+', rev->path);
 	return 0;
 }
 
@@ -509,12 +636,15 @@ static int commit_meta(struct hash_table *meta, struct patchset *ps, const char 
 	//helper_printf("author %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp);
 	helper_printf("committer %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp_last);
 	helper_printf("data <<EOM\n");
-	helper_printf("cvs meta\n");
+	helper_printf("cvs meta update\n");
+	for_each_hash(ps->revision_hash, print_revision_changes, NULL);
 	helper_printf("EOM\n");
 	if (parent_mark->len)
 		helper_printf("from %s\n", parent_mark->buf);
 	helper_printf("N inline %s\n", commit_mark->buf);
 	helper_printf("data <<EON\n");
+	if (ps->cancellation_point)
+		helper_printf("UPDATE:%ld\n", ps->cancellation_point);
 	helper_printf("--\n");
 	for_each_hash(meta, commit_meta_revision, NULL);
 	helper_printf("EON\n");
@@ -567,9 +697,17 @@ static int cmd_import(const char *line)
 	struct branch_meta *branch_meta;
 	int psnum = 0;
 
+	cvsauthors_load();
 	strbuf_addf(&branch_ref, "%s%s", get_meta_ref_prefix(), branch_name);
 
-	branch_meta = meta_map_find(branch_meta_map, branch_name);
+	/*
+	 * FIXME
+	 */
+	//if (!strcmp(branch_name, "master"))
+	//	branch_meta = meta_map_find(branch_meta_map, "HEAD");
+	//else
+		branch_meta = meta_map_find(branch_meta_map, branch_name);
+
 	if (!branch_meta && !ref_exists(branch_ref.buf))
 		die("Cannot find meta for branch %s\n", branch_name);
 
@@ -597,6 +735,13 @@ static int cmd_import(const char *line)
 		ps = ps->next;
 	}
 	fprintf(stderr, "Branch: %s Commits number: %d\n", branch_name, psnum);
+	helper_printf("checkpoint\n");
+	helper_flush();
+
+	if (initial_import && !strcmp(branch_name, "HEAD")) {
+		helper_printf("reset HEAD\n");
+		helper_printf("from %s\n", commit_mark_sb.buf);
+	}
 
 	strbuf_release(&commit_mark_sb);
 	strbuf_release(&meta_mark_sb);
@@ -681,7 +826,7 @@ void add_file_revision_cb(const char *branch,
 		meta_map_add(branch_meta_map, branch, meta);
 	}
 
-	if (meta->last_revision < timestamp)
+	if (meta->last_revision_timestamp < timestamp)
 		add_file_revision(meta, path, revision, author, msg, timestamp, isdead);
 	called++;
 }
@@ -710,11 +855,24 @@ static int cmd_list(const char *line)
 		fprintf(stderr, "CB CALLED: %d\n", called);
 
 		for_each_branch_meta(branch_meta, branch_meta_map) {
-			helper_printf("? refs/heads/%s\n", branch_meta->branch_name);
+			/*
+			 * FIXME:
+			 */
+			//if (!strcmp(branch_meta->branch_name, "HEAD"))
+			//	helper_printf("? refs/heads/master\n");
+			//else
+				helper_printf("? refs/heads/%s\n", branch_meta->branch_name);
 		}
 		helper_printf("\n");
 	}
 	else {
+		/*
+		 * FIXME: we'll skip branches which were not imported during
+		 * initial import. If some changes for these branches arrives
+		 * and import will pick it up this time, then history will be
+		 * truncated. Have to detect this case and do full rlog for
+		 * importing such branches.
+		 */
 		cvs_rlog(cvs, 0, 0, add_file_revision_cb, branch_meta_map);
 		fprintf(stderr, "CB CALLED: %d\n", called);
 
@@ -776,6 +934,91 @@ static int do_command(struct strbuf *line)
 	return 0;
 }
 
+static char *cvsauthors_lookup(const char *userid)
+{
+	struct cvsauthor *auth;
+
+	auth = lookup_hash(hash_userid(userid), &cvsauthors_hash);
+	if (auth)
+		return auth->ident;
+
+	return NULL;
+}
+
+static void cvsauthors_add(char *userid, char *ident)
+{
+	struct cvsauthor *auth;
+	struct cvsauthor **ppauth;
+
+	auth = xmalloc(sizeof(*auth));
+	auth->userid = userid;
+	auth->ident = ident;
+
+	ppauth = (struct cvsauthor **)insert_hash(hash_userid(userid), auth, &cvsauthors_hash);
+	if (ppauth) {
+		if (strcmp((*ppauth)->userid, auth->userid))
+			error("cvs-authors userid hash colision %s %s", (*ppauth)->userid, auth->userid);
+		else
+			error("cvs-authors userid dup %s", auth->userid);
+	}
+	cvsauthors_hash_modified = 1;
+}
+
+static void cvsauthors_load()
+{
+	struct strbuf line = STRBUF_INIT;
+	char *p;
+	FILE *fd;
+
+	if (cvsauthors_hash.size)
+		return;
+
+	fd = fopen(git_path("cvs-authors"), "r");
+	if (!fd)
+		return;
+
+	while (!strbuf_getline(&line, fd, '\n')) {
+		p = strchr(line.buf, '=');
+		if (!p) {
+			warning("bad formatted cvs-authors line: %s", line.buf);
+			continue;
+		}
+		*p++ = '\0';
+
+		cvsauthors_add(xstrdup(line.buf), xstrdup(p));
+	}
+
+	fclose(fd);
+	strbuf_release(&line);
+	cvsauthors_hash_modified = 0;
+}
+
+static int cvsauthor_item_store(void *ptr, void *data)
+{
+	struct cvsauthor *auth = ptr;
+	FILE *fd = data;
+
+	fprintf(fd, "%s=%s\n", auth->userid, auth->ident);
+	free(auth->userid);
+	free(auth->ident);
+	free(auth);
+	return 0;
+}
+
+static void cvsauthors_store()
+{
+	if (!cvsauthors_hash_modified)
+		return;
+
+	FILE *fd = fopen(git_path("cvs-authors"), "w");
+	if (!fd)
+		return;
+
+	for_each_hash(&cvsauthors_hash, cvsauthor_item_store, fd);
+	fclose(fd);
+	free_hash(&cvsauthors_hash);
+}
+
 static int parse_cvs_spec(const char *spec)
 {
 	/*
@@ -806,6 +1049,9 @@ int main(int argc, const char **argv)
 	struct strbuf ref_prefix_sb = STRBUF_INIT;
 	static struct remote *remote;
 	const char *cvs_root_module;
+
+	setenv("TZ", "UTC", 1);
+	tzset();
 
 	git_extract_argv0_path(argv[0]);
 	setup_git_directory();
@@ -892,6 +1138,26 @@ int main(int argc, const char **argv)
 
 		fprintf(stderr, "done, rc=%d\n", ret);
 	}
+
+	/*if (ref_exists("refs/remotes/cvs/HEAD")) {
+		struct pretty_print_context pctx = {0};
+		struct strbuf author_ident = STRBUF_INIT;
+		struct strbuf committer_ident = STRBUF_INIT;
+		unsigned char sha1[20];
+
+		if (get_sha1_commit("refs/remotes/cvs/HEAD" "c71ad2674f80b384", sha1))
+			die("cannot find commit");
+		struct commit *cm;
+		cm = lookup_commit(sha1);
+		if (parse_commit(cm))
+			die("cannot parse commit");
+
+		format_commit_message(cm, "%an <%ae>", &author_ident, &pctx);
+		format_commit_message(cm, "%cn <%ce>", &committer_ident, &pctx);
+		sleep(5);
+	}*/
+
+	cvsauthors_store();
 
 	strbuf_release(&buf);
 	strbuf_release(&url_sb);
