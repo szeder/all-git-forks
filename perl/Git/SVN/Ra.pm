@@ -365,6 +365,50 @@ sub longest_common_path {
 	$longest_path;
 }
 
+sub get_bad_revs {
+	my ($self,) = @_;
+
+	# @@ This is utterly bogus -- it's the code for reading the different configured Subversion repositories
+	foreach (grep { s/^svn-remote\.// } command(qw/config -l/)) {
+		if (m!^(.+)\.fetch=$svn_refspec$!) {
+			my ($remote, $local_ref, $remote_ref) = ($1, $2, $3);
+			die("svn-remote.$remote: remote ref '$remote_ref' "
+			    . "must start with 'refs/'\n")
+				unless $remote_ref =~ m{^refs/};
+			$local_ref = uri_decode($local_ref);
+			$r->{$remote}->{fetch}->{$local_ref} = $remote_ref;
+			$r->{$remote}->{svm} = {} if $use_svm_props;
+		} elsif (m!^(.+)\.usesvmprops=\s*(.*)\s*$!) {
+			$r->{$1}->{svm} = {};
+		} elsif (m!^(.+)\.url=\s*(.*)\s*$!) {
+			$r->{$1}->{url} = canonicalize_url($2);
+		} elsif (m!^(.+)\.pushurl=\s*(.*)\s*$!) {
+			$r->{$1}->{pushurl} = canonicalize_url($2);
+		} elsif (m!^(.+)\.ignore-refs=\s*(.*)\s*$!) {
+			$r->{$1}->{ignore_refs_regex} = $2;
+		} elsif (m!^(.+)\.(branches|tags)=$svn_refspec$!) {
+			my ($remote, $t, $local_ref, $remote_ref) =
+			                                     ($1, $2, $3, $4);
+			die("svn-remote.$remote: remote ref '$remote_ref' ($t) "
+			    . "must start with 'refs/'\n")
+				unless $remote_ref =~ m{^refs/};
+			$local_ref = uri_decode($local_ref);
+
+			require Git::SVN::GlobSpec;
+			my $rs = {
+			    t => $t,
+			    remote => $remote,
+			    path => Git::SVN::GlobSpec->new($local_ref, 1),
+			    ref => Git::SVN::GlobSpec->new($remote_ref, 0) };
+			if (length($rs->{ref}->{right}) != 0) {
+				die "The '*' glob character must be the last ",
+				    "character of '$remote_ref'\n";
+			}
+			push @{ $r->{$remote}->{$t} }, $rs;
+		}
+	}
+}
+
 sub gs_fetch_loop_common {
 	my ($self, $base, $head, $gsv, $globs) = @_;
 	return if ($base > $head);
