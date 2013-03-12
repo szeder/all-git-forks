@@ -49,6 +49,7 @@ all::
 # Define NO_GETTEXT if you don't want Git output to be translated.
 # A translated Git requires GNU libintl or another gettext implementation,
 # plus libintl-perl at runtime.
+NO_GETTEXT = YesPlease
 #
 # Define USE_GETTEXT_SCHEME and set it to 'fallthrough', if you don't trust
 # the installed gettext translation of the shell scripts output.
@@ -415,7 +416,7 @@ SPARSE_FLAGS =
 # be built by a different compiler. (Note that this is an artifact now
 # but it still might be nice to keep that distinction.)
 BASIC_CFLAGS = -I.
-BASIC_LDFLAGS =
+BASIC_LDFLAGS = 
 
 # Guard against environment variables
 BUILTIN_OBJS =

@@ -699,6 +699,8 @@ static int do_fetch(struct transport *transport,
 	struct ref *rm;
 	int autotags = (transport->remote->fetch_tags == 1);
 
+	printf ("Gretchen, stop trying to make fetch happen! It's not going to happen!\n");
+
 	for_each_ref(add_existing, &existing_refs);
 
 	if (tags == TAGS_DEFAULT) {
