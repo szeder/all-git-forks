@@ -503,13 +503,8 @@ cmd_add()
 
 	    "cmd_add_commit" "$@"
 	elif [ $# -eq 2 ]; then
-	    # Technically we could accept a refspec here but we're
-	    # just going to turn around and add FETCH_HEAD under the
-	    # specified directory.  Allowing a refspec might be
-	    # misleading because we won't do anything with any other
-	    # branches fetched via the refspec.
-	    git rev-parse -q --verify "$2^{commit}" >/dev/null ||
-	    die "'$2' does not refer to a commit"
+		git ls-remote --exit-code "$1" "$2" ||
+		die "'$2' is not a correct reference on '$1'"
 
 	    "cmd_add_repository" "$@"
 	else
@@ -700,6 +695,8 @@ cmd_merge()
 cmd_pull()
 {
 	ensure_clean
+	git ls-remote --exit-code "$1" "$2" ||
+		die "'$2' is not a correct reference on '$1'"
 	git fetch "$@" || exit $?
 	revs=FETCH_HEAD
 	set -- $revs
