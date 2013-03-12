@@ -1556,6 +1556,7 @@ PERL_PATH_SQ = $(subst ','\'',$(PERL_PATH))
 PYTHON_PATH_SQ = $(subst ','\'',$(PYTHON_PATH))
 TCLTK_PATH_SQ = $(subst ','\'',$(TCLTK_PATH))
 DIFF_SQ = $(subst ','\'',$(DIFF))
+FIND_SQ = $(subst ','\'',$(FIND))
 
 LIBS = $(GITLIBS) $(EXTLIBS)
 
@@ -1629,7 +1630,7 @@ ifndef NO_TCLTK
 	$(QUIET_SUBDIR0)gitk-git $(QUIET_SUBDIR1) all
 endif
 ifndef NO_PERL
-	$(QUIET_SUBDIR0)perl $(QUIET_SUBDIR1) PERL_PATH='$(PERL_PATH_SQ)' prefix='$(prefix_SQ)' localedir='$(localedir_SQ)' all
+	$(QUIET_SUBDIR0)perl $(QUIET_SUBDIR1) FIND='$(FIND_SQ)' PERL_PATH='$(PERL_PATH_SQ)' prefix='$(prefix_SQ)' localedir='$(localedir_SQ)' all
 endif
 ifndef NO_PYTHON
 	$(QUIET_SUBDIR0)git_remote_helpers $(QUIET_SUBDIR1) PYTHON_PATH='$(PYTHON_PATH_SQ)' prefix='$(prefix_SQ)' all
@@ -1748,19 +1749,16 @@ $(SCRIPT_LIB) : % : %.sh GIT-SCRIPT-DEFINES
 ifndef NO_PERL
 $(patsubst %.perl,%,$(SCRIPT_PERL)): perl/perl.mak
 
-perl/perl.mak: perl/PM.stamp
+perl/perl.mak: FORCE
+	$(QUIET_SUBDIR0)perl $(QUIET_SUBDIR1) PERL_PATH='$(PERL_PATH_SQ)' FIND='$(FIND_SQ)' prefix='$(prefix_SQ)' $(@F)
 
-perl/PM.stamp: FORCE
-	$(QUIET_GEN)$(FIND) perl -type f -name '*.pm' | sort >$@+ && \
-	{ cmp $@+ $@ >/dev/null 2>/dev/null || mv $@+ $@; } && \
-	$(RM) $@+
+GIT-PERL-INSTLIBDIR: perl/perl.mak
+	$(QUIET_GEN)MAKEFLAGS= $(MAKE) -C perl -f perl.mak -s --no-print-directory instlibdir >$@+ && \
+	mv $@+ $@
 
-perl/perl.mak: GIT-CFLAGS GIT-PREFIX perl/Makefile perl/Makefile.PL
-	$(QUIET_SUBDIR0)perl $(QUIET_SUBDIR1) PERL_PATH='$(PERL_PATH_SQ)' prefix='$(prefix_SQ)' $(@F)
-
-$(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl GIT-VERSION-FILE
+$(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl GIT-VERSION-FILE GIT-PERL-INSTLIBDIR
 	$(QUIET_GEN)$(RM) $@ $@+ && \
-	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C perl -s --no-print-directory instlibdir` && \
+	INSTLIBDIR=`cat GIT-PERL-INSTLIBDIR` && \
 	sed -e '1{' \
 	    -e '	s|#!.*perl|#!$(PERL_PATH_SQ)|' \
 	    -e '	h' \

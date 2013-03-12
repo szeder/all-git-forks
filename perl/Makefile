@@ -24,6 +24,13 @@ clean:
 
 $(makfile): PM.stamp
 
+.PHONY: FORCE
+
+PM.stamp: FORCE
+	$(QUIET)$(FIND) . -type f -name '*.pm' | sort >$@+ && \
+	{ cmp $@+ $@ >/dev/null 2>/dev/null || mv $@+ $@; } && \
+	$(RM) $@+
+
 ifdef NO_PERL_MAKEMAKER
 instdir_SQ = $(subst ','\'',$(prefix)/lib)
 
