@@ -531,7 +531,7 @@ cmd_add_repository()
 
 cmd_add_commit()
 {
-	revs=$(git rev-parse $default --revs-only "$@") || exit $?
+	revs=$(git rev-parse $default --revs-only "$1^{commit}") || exit $?
 	set -- $revs
 	rev="$1"
 	
@@ -655,7 +655,7 @@ cmd_split()
 
 cmd_merge()
 {
-	revs=$(git rev-parse $default --revs-only "$@") || exit $?
+	revs=$(git rev-parse $default --revs-only "$1^{commit}") || exit $?
 	ensure_clean
 	
 	set -- $revs
