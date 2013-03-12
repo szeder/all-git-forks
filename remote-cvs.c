@@ -54,6 +54,9 @@ static char *cvsauthors_lookup(const char *userid);
 static void cvsauthors_add(char *userid, char *ident);
 static void cvsauthors_load();
 
+static const char import_commit_edit[] = "IMPORT_COMMIT_EDIT";
+static int have_import_hook = 0;
+
 static int cmd_capabilities(const char *line);
 static int cmd_option(const char *line);
 static int cmd_import(const char *line);
@@ -558,12 +561,11 @@ static const char *author_convert(const char *userid)
 static int markid = 0;
 static int commit_patchset(struct patchset *ps, const char *branch_name, struct strbuf *parent_mark)
 {
-	struct strbuf commit = STRBUF_INIT;
-	const char *ident;
+	/*
+	 * TODO: clean extra lines in commit messages
+	 */
+	const char *author_ident;
 	markid++;
-
-	//'cvs-import-commit'
-	//'cvs-author-convert'
 
 	/*
 	'commit' SP <ref> LF
@@ -577,26 +579,66 @@ static int commit_patchset(struct patchset *ps, const char *branch_name, struct 
 	LF?
 	*/
 
-	/*s->fp = fopen(git_path(commit_editmsg), "w");
-	if (s->fp == NULL)
-		die_errno(_("could not open '%s'"), git_path(commit_editmsg));
-
-	strbuf_attach
-
-	run_hook(index_file, "commit-msg", git_path(commit_editmsg), NULL)) {*/
-
-	ident = author_convert(ps->author);
-	if (!ident)
+	author_ident = author_convert(ps->author);
+	if (!author_ident)
 		die("failed to resolve cvs userid %s", ps->author);
 
-	helper_printf("commit %s%s\n", get_ref_prefix(), branch_name);
-	helper_printf("mark :%d\n", markid);
-	//helper_printf("author %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp);
-	//helper_printf("committer %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp_last);
-	helper_printf("author %s %ld +0000\n", ident, ps->timestamp);
-	helper_printf("committer %s %ld +0000\n", ident, ps->timestamp_last);
-	helper_printf("data %zu\n", strlen(ps->msg));
-	helper_printf("%s\n", ps->msg);
+	if (have_import_hook) {
+		struct strbuf line = STRBUF_INIT;
+		struct strbuf commit = STRBUF_INIT;
+		FILE *fp;
+		int rc;
+
+		strbuf_addf(&commit, "author %s %ld +0000\n", author_ident, ps->timestamp);
+		strbuf_addf(&commit, "committer %s %ld +0000\n", author_ident, ps->timestamp_last);
+		strbuf_addf(&commit, "%s\n", ps->msg);
+
+		fp = fopen(git_path(import_commit_edit), "w");
+		if (fp == NULL)
+			die_errno(_("could not open '%s'"), git_path(import_commit_edit));
+		if (fwrite(commit.buf, 1, commit.len, fp) < commit.len)
+			die("could not write %s", import_commit_edit);
+		fclose(fp);
+
+		rc = run_hook(NULL, "cvs-import-commit", git_path(import_commit_edit), NULL);
+		if (rc)
+			die("cvs-import-commit hook rc %d, abording import", rc);
+
+		fp = fopen(git_path(import_commit_edit), "r");
+		if (fp == NULL)
+			die_errno(_("could not open '%s'"), git_path(import_commit_edit));
+
+		helper_printf("commit %s%s\n", get_ref_prefix(), branch_name);
+		helper_printf("mark :%d\n", markid);
+		rc = strbuf_getline(&line, fp, '\n');
+		if (rc)
+			die("could not read %s", git_path(import_commit_edit));
+		helper_printf("%s\n", line.buf); // author
+		rc = strbuf_getline(&line, fp, '\n');
+		if (rc)
+			die("could not read %s", git_path(import_commit_edit));
+		helper_printf("%s\n", line.buf); // committer
+
+		strbuf_reset(&commit);
+		while (!strbuf_getline(&line, fp, '\n')) {
+			strbuf_addf(&commit, "%s\n", line.buf);
+		}
+		fclose(fp);
+
+		helper_printf("data %zu\n", commit.len);
+		helper_printf("%s\n", commit.buf);
+	}
+	else {
+		helper_printf("commit %s%s\n", get_ref_prefix(), branch_name);
+		helper_printf("mark :%d\n", markid);
+		//helper_printf("author %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp);
+		//helper_printf("committer %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp_last);
+		helper_printf("author %s %ld +0000\n", author_ident, ps->timestamp);
+		helper_printf("committer %s %ld +0000\n", author_ident, ps->timestamp_last);
+		helper_printf("data %zu\n", strlen(ps->msg));
+		helper_printf("%s\n", ps->msg);
+
+	}
 	if (parent_mark->len)
 		helper_printf("from %s\n", parent_mark->buf);
 	for_each_hash(ps->revision_hash, commit_revision, NULL);
@@ -697,7 +739,6 @@ static int cmd_import(const char *line)
 	struct branch_meta *branch_meta;
 	int psnum = 0;
 
-	cvsauthors_load();
 	strbuf_addf(&branch_ref, "%s%s", get_meta_ref_prefix(), branch_name);
 
 	/*
@@ -711,10 +752,12 @@ static int cmd_import(const char *line)
 	if (!branch_meta && !ref_exists(branch_ref.buf))
 		die("Cannot find meta for branch %s\n", branch_name);
 
-	aggregate_patchsets(branch_meta);
+	//aggregate_patchsets(branch_meta);
 
 	init_hash(&meta_revision_hash);
 	merge_revision_hash(&meta_revision_hash, branch_meta->last_commit_revision_hash);
+
+	cvsauthors_load();
 
 	struct patchset *ps = branch_meta->patchset_list->head;
 	while (ps) {
@@ -734,13 +777,19 @@ static int cmd_import(const char *line)
 
 		ps = ps->next;
 	}
-	fprintf(stderr, "Branch: %s Commits number: %d\n", branch_name, psnum);
-	helper_printf("checkpoint\n");
-	helper_flush();
+	if (psnum) {
+		fprintf(stderr, "Branch: %s Commits number: %d\n", branch_name, psnum);
 
-	if (initial_import && !strcmp(branch_name, "HEAD")) {
-		helper_printf("reset HEAD\n");
-		helper_printf("from %s\n", commit_mark_sb.buf);
+		helper_printf("checkpoint\n");
+		helper_flush();
+
+		if (initial_import && !strcmp(branch_name, "HEAD")) {
+			helper_printf("reset HEAD\n");
+			helper_printf("from %s\n", commit_mark_sb.buf);
+		}
+	}
+	else {
+		fprintf(stderr, "Branch: %s is up to date\n", branch_name);
 	}
 
 	strbuf_release(&commit_mark_sb);
@@ -809,6 +858,7 @@ static int cmd_import(const char *line)
 }
 
 static int called = 0;
+static int skipped = 0;
 void add_file_revision_cb(const char *branch,
 			  const char *path,
 			  const char *revision,
@@ -828,6 +878,8 @@ void add_file_revision_cb(const char *branch,
 
 	if (meta->last_revision_timestamp < timestamp)
 		add_file_revision(meta, path, revision, author, msg, timestamp, isdead);
+	else
+		skipped++;
 	called++;
 }
 
@@ -835,7 +887,7 @@ int on_each_ref(const char *refname, const unsigned char *sha1, int flags, void 
 {
 	struct meta_map *branch_meta_map = cb_data;
 
-	if (!meta_map_find(branch_meta_map, refname));
+	if (!meta_map_find(branch_meta_map, refname))
 		helper_printf("? refs/heads/%s\n", refname);
 	return 0;
 }
@@ -853,15 +905,19 @@ static int cmd_list(const char *line)
 	if (initial_import) {
 		cvs_rlog(cvs, 0, 0, add_file_revision_cb, branch_meta_map);
 		fprintf(stderr, "CB CALLED: %d\n", called);
+		fprintf(stderr, "SKIPPED: %d\n", skipped);
 
 		for_each_branch_meta(branch_meta, branch_meta_map) {
+			aggregate_patchsets(branch_meta->meta);
+			if (branch_meta->meta->patchset_list->head)
+				helper_printf("? refs/heads/%s\n", branch_meta->branch_name);
 			/*
 			 * FIXME:
 			 */
 			//if (!strcmp(branch_meta->branch_name, "HEAD"))
 			//	helper_printf("? refs/heads/master\n");
 			//else
-				helper_printf("? refs/heads/%s\n", branch_meta->branch_name);
+			//	helper_printf("? refs/heads/%s\n", branch_meta->branch_name);
 		}
 		helper_printf("\n");
 	}
@@ -875,14 +931,22 @@ static int cmd_list(const char *line)
 		 */
 		cvs_rlog(cvs, 0, 0, add_file_revision_cb, branch_meta_map);
 		fprintf(stderr, "CB CALLED: %d\n", called);
+		fprintf(stderr, "SKIPPED: %d\n", skipped);
 
+		/*
+		 * FIXME: try to print only branches that have changes
+		 */
 		for_each_branch_meta(branch_meta, branch_meta_map) {
-			helper_printf("? refs/heads/%s\n", branch_meta->branch_name);
+			aggregate_patchsets(branch_meta->meta);
+			if (branch_meta->meta->patchset_list->head)
+				helper_printf("? refs/heads/%s\n", branch_meta->branch_name);
+			else
+				fprintf(stderr, "Branch: %s is up to date\n", branch_meta->branch_name);
+			//helper_printf("? refs/heads/%s\n", branch_meta->branch_name);
 		}
 
-		for_each_ref_in(get_meta_ref_prefix(), on_each_ref, branch_meta_map);
-		//helper_printf("? %s\n\n", remote_ref);
-		//helper_printf("? %s\n\n", "refs/heads/HEAD");
+		//for_each_ref_in(get_meta_ref_prefix(), on_each_ref, branch_meta_map);
+		helper_printf("\n");
 	}
 	helper_flush();
 	return 0;
@@ -1119,6 +1183,9 @@ int main(int argc, const char **argv)
 
 	branch_meta_map = xmalloc(sizeof(*branch_meta_map));
 	meta_map_init(branch_meta_map);
+
+	if (find_hook("cvs-import-commit"))
+		have_import_hook = 1;
 
 	while (1) {
 		if (helper_strbuf_getline(&buf, stdin, '\n') == EOF) {
