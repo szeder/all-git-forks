@@ -319,6 +319,10 @@ static int show_modified(struct rev_info *revs,
 		return -1;
 	}
 
+	if (!cached && hashcmp(old->sha1, new->sha1)) {
+		sha1 = null_sha1;
+	}
+
 	if (revs->combine_merges && !cached &&
 	    (hashcmp(sha1, old->sha1) || hashcmp(old->sha1, new->sha1))) {
 		struct combine_diff_path *p;
