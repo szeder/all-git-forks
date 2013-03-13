@@ -207,9 +207,11 @@ static const char *prefix_pathspec(const char *prefix, int prefixlen, const char
 		     *copyfrom && *copyfrom != ')';
 		     copyfrom = nextat) {
 			size_t len = strcspn(copyfrom, ",)");
-			if (copyfrom[len] == ')')
+			if (copyfrom[len] == '\0')
 				nextat = copyfrom + len;
-			else
+			else if (copyfrom[len] == ')')
+				nextat = copyfrom + len;
+			else if (copyfrom[len] == ',')
 				nextat = copyfrom + len + 1;
 			if (!len)
 				continue;
@@ -223,8 +225,9 @@ static const char *prefix_pathspec(const char *prefix, int prefixlen, const char
 				die("Invalid pathspec magic '%.*s' in '%s'",
 				    (int) len, copyfrom, elt);
 		}
-		if (*copyfrom == ')')
-			copyfrom++;
+		if (*copyfrom != ')')
+			die("Missing ')' at the end of pathspec magic in '%s'", elt);
+		copyfrom++;
 	} else {
 		/* shorthand */
 		for (copyfrom = elt + 1;
