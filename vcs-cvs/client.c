@@ -1675,7 +1675,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 					if (ret < size)
 						die("Cannot checkout buf: truncated: %zu read out of %zu", ret, size);
 
-					file.file.buf[ret] = '\0';
+					strbuf_setlen(&file.file, ret);
 				}
 				else {
 					// FIXME:

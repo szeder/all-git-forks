@@ -21,6 +21,7 @@ struct file_revision {
 	int ismeta:1;
 	int isdead:1;
 	int ismerged:1;
+	int isexec:1;
 	int mark:24;
 	struct file_revision *prev;
 	//struct file_revision *next;
@@ -39,6 +40,7 @@ struct file_revision_meta {
 	int ismeta:1;
 	int isdead:1;
 	int ismerged:1;
+	int isexec:1;
 	int mark:24;
 };
 
@@ -99,11 +101,13 @@ void add_file_revision_meta(struct branch_meta *meta,
 		       const char *path,
 		       const char *revision,
 		       int isdead,
+		       int isexec,
 		       int mark);
 void add_file_revision_meta_hash(struct hash_table *meta_hash,
 		       const char *path,
 		       const char *revision,
 		       int isdead,
+		       int isexec,
 		       int mark);
 
 void aggregate_patchsets(struct branch_meta *meta);
@@ -141,5 +145,8 @@ int load_cvs_revision_meta(struct branch_meta *meta,
 int save_cvs_revision_meta(struct branch_meta *meta,
 			   const char *commit_ref,
 			   const char *notes_ref);
+
+char *read_note_of(unsigned char sha1[20], const char *notes_ref, unsigned long *size);
+char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, char *p);
 
 #endif

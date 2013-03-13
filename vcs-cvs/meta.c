@@ -438,11 +438,24 @@ int get_branch_rev(const char *rev, int *br, int *ver)
 	return p1 - rev;
 }
 
+int is_prev_branch(const char *rev1, const char *rev2)
+{
+	size_t len1 = strlen(rev1);
+	size_t len2 = strlen(rev2);
+
+	if (len1 < len2 &&
+	    rev2[len1] == '.' &&
+	    !strncmp(rev1, rev2, len1))
+		return 1;
+	return 0;
+}
+
 /*
  * returns 1 is rev1 is previos revision for rev2
  * cases:
  *	1.2.3.9 -> 1.2.3.10
  *	1.2.3.9 -> 1.2.4.0
+ *	1.2 -> 1.2.2.1
  */
 int is_prev_rev(const char *rev1, const char *rev2)
 {
@@ -456,9 +469,16 @@ int is_prev_rev(const char *rev1, const char *rev2)
 	rev1_len = get_branch_rev(rev1, &rev1_br, &rev1_ver);
 	rev2_len = get_branch_rev(rev2, &rev2_br, &rev2_ver);
 
-	if (rev1_len == -1 || rev2_len == -1 || rev1_len != rev2_len ||
-	    strncmp(rev1, rev2, rev1_len) != 0)
+	if (rev1_len == -1 || rev2_len == -1)
 		return 0;
+
+	if (rev1_len != rev2_len) {
+		if (is_prev_branch(rev1, rev2))
+			return 1;
+
+		if (strncmp(rev1, rev2, rev1_len))
+			return 0;
+	}
 
 	if (rev1_br == rev2_br) {
 		if (rev1_ver + 1 == rev2_ver)
@@ -736,27 +756,24 @@ void meta_map_release(struct meta_map *map)
 /*
  * metadata work
  */
-char *read_note_of(const char *commit_ref, const char *notes_ref, unsigned long *size)
+
+char *read_note_of(unsigned char sha1[20], const char *notes_ref, unsigned long *size)
 {
 	struct notes_tree *t;
-	unsigned char object[20];
 	const unsigned char *note;
 	enum object_type type;
 	char *buf;
 
-	if (get_sha1(commit_ref, object))
-		die(_("Failed to resolve '%s' as a valid ref."), commit_ref);
-
 	t = xcalloc(1, sizeof(*t));
 	init_notes(t, notes_ref, combine_notes_overwrite, 0);
-	note = get_note(t, object);
+	note = get_note(t, sha1);
 	if (!note)
-		die(_("No note found for object %s."), sha1_to_hex(object));
+		die(_("No note found for sha1 %s."), sha1_to_hex(sha1));
 
-	fprintf(stderr, "note %s:\n", sha1_to_hex(note));
+	//fprintf(stderr, "note %s:\n", sha1_to_hex(note));
 	buf = read_sha1_file(note, &type, size);
 	if (!buf)
-		die("Cannot read object %s", sha1_to_hex(note));
+		die("Cannot read sha1 %s", sha1_to_hex(note));
 	//const char *show_args[3] = {"show", sha1_to_hex(note), NULL};
 
 	free_notes(t);
@@ -765,10 +782,20 @@ char *read_note_of(const char *commit_ref, const char *notes_ref, unsigned long 
 	return buf;
 }
 
+char *read_ref_note(const char *commit_ref, const char *notes_ref, unsigned long *size)
+{
+	unsigned char sha1[20];
+	if (get_sha1(commit_ref, sha1))
+		die(_("Failed to resolve '%s' as a valid ref."), commit_ref);
+
+	return read_note_of(sha1, notes_ref, size);
+}
+
 void add_file_revision_meta_hash(struct hash_table *meta_hash,
 		       const char *path,
 		       const char *revision,
 		       int isdead,
+		       int isexec,
 		       int mark)
 {
 	void **pos;
@@ -780,6 +807,7 @@ void add_file_revision_meta_hash(struct hash_table *meta_hash,
 	rev_meta->revision = xstrdup(revision);
 	rev_meta->ismeta = 1;
 	rev_meta->isdead = isdead;
+	rev_meta->isexec = isexec;
 	rev_meta->mark = mark;
 
 	hash = hash_path(path);
@@ -794,9 +822,10 @@ void add_file_revision_meta(struct branch_meta *meta,
 		       const char *path,
 		       const char *revision,
 		       int isdead,
+		       int isexec,
 		       int mark)
 {
-	add_file_revision_meta_hash(meta->last_commit_revision_hash, path, revision, isdead, mark);
+	add_file_revision_meta_hash(meta->last_commit_revision_hash, path, revision, isdead, isexec, mark);
 }
 
 char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, char *p)
@@ -835,12 +864,12 @@ int load_cvs_revision_meta(struct branch_meta *meta,
 	char *second;
 	unsigned long size;
 
-	buf = read_note_of(commit_ref, notes_ref, &size);
+	buf = read_ref_note(commit_ref, notes_ref, &size);
 	if (!buf)
 		return -1;
 
 	p = buf;
-	while ((p = parse_meta_line(buf,size, &first, &second, p))) {
+	while ((p = parse_meta_line(buf, size, &first, &second, p))) {
 		if (strcmp(first, "--") == 0)
 			break;
 		fprintf(stderr, "option: %s=>%s\n", first, second);
@@ -853,7 +882,7 @@ int load_cvs_revision_meta(struct branch_meta *meta,
 
 	while ((p = parse_meta_line(buf,size, &first, &second, p))) {
 		//fprintf(stderr, "revinfo: %s=>%s\n", first, second);
-		add_file_revision_meta(meta, second, first, 0, 0);
+		add_file_revision_meta(meta, second, first, 0, 0, 0);
 	}
 
 	//write_or_die(1, buf, size);

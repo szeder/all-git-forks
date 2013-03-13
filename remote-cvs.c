@@ -747,13 +747,12 @@ static int update_revision_hash(void *ptr, void *data)
 	int isdead:1;
 	struct strbuf file;
 };
-
-#define CVSFILE_INIT { STRBUF_INIT, STRBUF_INIT, 0, 0, 0, 0, STRBUF_INIT };
 */
 void on_file_checkout(struct cvsfile *file, void *data)
 {
 	struct hash_table *meta_revision_hash = data;
 	int mark;
+	int isexec;
 
 	/*
 	 * FIXME: support files on disk
@@ -762,7 +761,12 @@ void on_file_checkout(struct cvsfile *file, void *data)
 		die("no support for files on disk yet");
 
 	mark = commit_blob(file->file.buf, file->file.len);
-	add_file_revision_meta_hash(meta_revision_hash, file->path.buf, file->revision.buf, file->isdead, mark);
+
+	if (file->mode & 0100)
+		isexec = 1;
+	else
+		isexec = 0;
+	add_file_revision_meta_hash(meta_revision_hash, file->path.buf, file->revision.buf, file->isdead, isexec, mark);
 }
 
 static int checkout_branch(const char *branch_name, time_t import_time, struct hash_table *meta_revision_hash)
@@ -832,13 +836,136 @@ static const char *find_parent_branch(const char *branch_name, struct hash_table
 	struct find_rev_data find_rev_data = { NULL, 0 };
 	for_each_hash(meta_revision_hash, find_longest_rev, &find_rev_data);
 
+
+	if (find_rev_data.dots == 0)
+		die("longest revision is 0");
+
+	if (find_rev_data.dots == 1)
+		return xstrdup("HEAD");
+
 	return get_rev_branch(find_rev_data.file_meta);
 }
 
+static int compare_commit_meta(unsigned char sha1[20], const char *meta_ref, struct hash_table *meta_revision_hash)
+{
+	struct file_revision_meta *file_meta;
+	char *buf;
+	char *p;
+	char *revision;
+	char *path;
+	unsigned long size;
+	int rev_mismatches = 0;
+
+	buf = read_note_of(sha1, meta_ref, &size);
+	if (!buf)
+		return -1;
+
+	p = buf;
+	while ((p = parse_meta_line(buf, size, &revision, &path, p))) {
+		if (strcmp(revision, "--") == 0)
+			break;
+	}
+
+	while ((p = parse_meta_line(buf,size, &revision, &path, p))) {
+		file_meta = lookup_hash(hash_path(path), meta_revision_hash);
+		if (!file_meta ||
+		    strcmp(file_meta->revision, revision))
+			rev_mismatches++;
+	}
+
+	free(buf);
+	return rev_mismatches;
+}
+
+static const char *find_branch_fork_point(const char *parent_branch_name, time_t time, struct hash_table *meta_revision_hash)
+{
+	unsigned char sha1[20];
+	struct commit *commit;
+	struct strbuf branch_ref = STRBUF_INIT;
+	struct strbuf branch_meta_ref = STRBUF_INIT;
+	const char *commit_ref = NULL;
+	int rev_mismatches_min = INT_MAX;
+	int rev_mismatches;
+
+	save_commit_buffer = 0;
+
+	strbuf_addf(&branch_ref, "%s%s", get_ref_prefix(), parent_branch_name);
+	strbuf_addf(&branch_meta_ref, "%s%s", get_meta_ref_prefix(), parent_branch_name);
+
+	if (get_sha1_commit(branch_ref.buf, sha1))
+		die("cannot find last commit on branch ref %s", branch_ref.buf);
+
+	commit = lookup_commit(sha1);
+
+	for (;;) {
+		if (parse_commit(commit))
+			die("cannot parse commit %s", sha1_to_hex(sha1));
+
+		if (commit->date <= time) {
+			rev_mismatches = compare_commit_meta(commit->object.sha1, branch_meta_ref.buf, meta_revision_hash);
+			if (rev_mismatches == -1)
+				return NULL;
+
+			if (!rev_mismatches) {
+				fprintf(stderr, "find_branch_fork_point - perfect match\n");
+				commit_ref = sha1_to_hex(commit->object.sha1);
+				break;
+			}
+
+			if (rev_mismatches_min < rev_mismatches)
+				break;
+
+			if (rev_mismatches_min > rev_mismatches) {
+				rev_mismatches_min = rev_mismatches;
+				commit_ref = sha1_to_hex(commit->object.sha1);
+			}
+		}
+
+		if (!commit->parents)
+			break;
+		commit = commit->parents->item;
+	}
+
+	return commit_ref;
+}
+
+static int commit_revision_by_mark(void *ptr, void *data)
+{
+	struct file_revision_meta *rev = ptr;
+
+	helper_printf("M 100%.3o :%d %s\n", rev->isexec ? 0755 : 0644, rev->mark, rev->path);
+	//helper_printf("\n");
+
+	return 0;
+}
+
+static int commit_branch_initial(struct hash_table *meta_revision_hash,
+		const char *branch_name, time_t date, const char *parent_commit_ref,
+		const char *parent_branch_name)
+{
+	markid++;
+
+	helper_printf("commit %s%s\n", get_ref_prefix(), branch_name);
+	helper_printf("mark :%d\n", markid);
+	helper_printf("author git-remote-cvs <none> %ld +0000\n", date);
+	helper_printf("committer git-remote-cvs <none> %ld +0000\n", date);
+	helper_printf("data <<EON\n");
+	helper_printf("initial import of branch: %s\nparent branch: %s\n", branch_name, parent_branch_name);
+	helper_printf("EON\n");
+	//helper_printf("merge %s\n", parent_commit_ref);
+	helper_printf("from %s\n", parent_commit_ref);
+	helper_printf("deleteall\n");
+	for_each_hash(meta_revision_hash, commit_revision_by_mark, NULL);
+	helper_flush();
+
+	return markid;
+}
 static int import_branch(const char *branch_name, struct branch_meta *branch_meta)
 {
 	int rc;
+	int mark;
 	const char *parent_branch_name;
+	const char *parent_commit;
 	time_t import_time = find_first_commit_time(branch_meta);
 	if (!import_time)
 		die("import time is 0");
@@ -846,18 +973,29 @@ static int import_branch(const char *branch_name, struct branch_meta *branch_met
 	fprintf(stderr, "import time is %s\n", show_date(import_time, 0, DATE_RFC2822));
 
 	rc = checkout_branch(branch_name, import_time, branch_meta->last_commit_revision_hash);
-	if (!is_empty_hash(branch_meta->last_commit_revision_hash))
-		parent_branch_name = find_parent_branch(branch_name, branch_meta->last_commit_revision_hash);
-	else
-		parent_branch_name = "HEAD";
+	if (rc == -1)
+		die("initial branch checkout failed %s", branch_name);
+
+	if (is_empty_hash(branch_meta->last_commit_revision_hash))
+		return 0;
+
+	parent_branch_name = find_parent_branch(branch_name, branch_meta->last_commit_revision_hash);
 	fprintf(stderr, "PARENT BRANCH FOR: %s is %s\n", branch_name, parent_branch_name);
 	/*
 	 * if parent is not updated yet, import parent first
 	 */
-	// find parent commit
-	// commit
+	parent_commit = find_branch_fork_point(parent_branch_name,
+						import_time,
+						branch_meta->last_commit_revision_hash);
+	fprintf(stderr, "PARENT COMMIT: %s\n", parent_commit);
+
+	mark = commit_branch_initial(branch_meta->last_commit_revision_hash,
+					branch_name,
+					import_time,
+					parent_commit,
+					parent_branch_name);
 	// commit_meta
-	return rc;
+	return mark;
 }
 
 static void merge_revision_hash(struct hash_table *meta, struct hash_table *update)
@@ -900,7 +1038,11 @@ static int cmd_import(const char *line)
 		/*
 		 * no meta, do cvs checkout
 		 */
-		import_branch(branch_name, branch_meta);
+		mark = import_branch(branch_name, branch_meta);
+		if (mark == -1)
+			die("import_branch failed %s", branch_name);
+		if (mark > 0)
+			strbuf_addf(&commit_mark_sb, ":%d", mark);
 	}
 	aggregate_patchsets(branch_meta);
 
