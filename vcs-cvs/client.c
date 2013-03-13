@@ -1082,7 +1082,8 @@ enum
 	NEED_START_LOG		= 4,
 	NEED_REVISION		= 5,
 	NEED_DATE_AUTHOR_STATE	= 6,
-	NEED_EOM		= 7
+	NEED_EOM		= 7,
+	SKIP_LINES		= 8
 };
 
 int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
@@ -1333,9 +1334,38 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 	return 0;
 }
 
+static void unixtime_to_date(time_t timestamp, struct strbuf *date)
+{
+	struct tm date_tm;
+
+	strbuf_reset(date);
+	strbuf_grow(date, 32);
+
+	setenv("TZ", "UTC", 1);
+	tzset();
+
+	memset(&date_tm, 0, sizeof(date_tm));
+	gmtime_r(&timestamp, &date_tm);
+
+	date->len = strftime(date->buf, date->alloc, "%d %m/%d %T", &date_tm);
+}
+
 int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until, add_rev_fn_t cb, void *data)
 {
 	ssize_t ret;
+
+	if (since) {
+		/*struct strbuf date = STRBUF_INIT;
+		fprintf(stderr, "git date: %s\n", show_date(since, 0, DATE_RFC2822));
+		unixtime_to_date(since, &date);
+		fprintf(stderr, "ud date: %s\n", date.buf);
+		fprintf(stderr, "git date: %s\n", show_date(since, 0, DATE_RFC2822));*/
+		ret = cvs_write(cvs,
+				WR_NOFLUSH,
+				"Argument -d\n"
+				"Argument %s<1 Jan 2038 05:00:00 -0000\n",
+				show_date(since, 0, DATE_RFC2822));
+	}
 
 	ret = cvs_write(cvs,
 			WR_FLUSH,
@@ -1560,6 +1590,13 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 {
 	int rc = -1;
 	ssize_t ret;
+	if (date) {
+		cvs_write(cvs,
+			WR_NOFLUSH,
+			"Argument -D\n"
+			"Argument %s\n",
+			show_date(date, 0, DATE_RFC2822));
+	}
 	ret = cvs_write(cvs,
 			WR_FLUSH,
 			"Argument -N\n"
@@ -1567,8 +1604,6 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 			"Argument -kk\n"
 			"Argument -r\n"
 			"Argument %s\n"
-			//"Argument -D\n"
-			//"Argument 2 Mar 2012 13:24:41 -0000\n"
 			"Argument --\n"
 			"Argument %s\n"
 			"Directory .\n"
@@ -1671,8 +1706,10 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 			rc = 0;
 		}
 
-		if (!strcmp(cvs->rd_line_buf.buf, "ok"))
+		if (!strcmp(cvs->rd_line_buf.buf, "ok")) {
+			rc = 0;
 			break;
+		}
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "error")) {
 			fprintf(stderr, "CVS Error: %s", cvs->rd_line_buf.buf);
@@ -1727,4 +1764,85 @@ int cvs_status(struct cvs_transport *cvs, const char *file, const char *revision
 		return -1;
 
 	return 0;
+}
+
+const char *cvs_get_rev_branch(struct cvs_transport *cvs, const char *file, const char *revision)
+{
+	ssize_t ret;
+	ret = cvs_write(cvs,
+			WR_FLUSH,
+			"Argument -h\n"
+			"Argument --\n"
+			"Argument %s/%s\n"
+			"rlog\n",
+			cvs->module, file);
+	if (ret == -1)
+		die("Cannot send rlog command");
+
+	struct strbuf reply = STRBUF_INIT;
+	struct strbuf branch = STRBUF_INIT;
+
+	struct strbuf branch_name = STRBUF_INIT;
+	struct strbuf branch_rev = STRBUF_INIT;
+
+	size_t len;
+	strbuf_grow(&reply, CVS_MAX_LINE);
+	int state = NEED_RCS_FILE;
+	int found = 0;
+
+	strbuf_addstr(&branch, revision);
+	strip_last_rev_num(&branch);
+
+	while (1) {
+		ret = cvs_getreply_firstmatch(cvs, &reply, "M ");
+		if (ret == -1)
+			return NULL;
+		else if (ret == 1) /* ok from server */
+			break;
+
+		len = strlen(reply.buf);
+		strbuf_setlen(&reply, len);
+		if (len && reply.buf[len - 1] == '\n')
+			strbuf_setlen(&reply, len - 1);
+
+		switch(state) {
+		case NEED_RCS_FILE:
+			if (!prefixcmp(reply.buf, "RCS file: "))
+				state = NEED_SYMS;
+			break;
+		case NEED_SYMS:
+			if (!prefixcmp(reply.buf, "symbolic names:"))
+				state = NEED_EOS;
+			break;
+		case NEED_EOS:
+			if (!isspace(reply.buf[0])) {
+				state = SKIP_LINES;
+			}
+			else {
+				strbuf_ltrim(&reply);
+
+				if (parse_sym(&reply, &branch_name, &branch_rev) == sym_branch &&
+				    !strbuf_cmp(&branch_rev, &branch)) {
+					found = 1;
+					state = SKIP_LINES;
+				}
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (state != SKIP_LINES)
+		die("Cannot parse revision rlog, parser state %d", state);
+
+	strbuf_release(&branch_rev);
+	strbuf_release(&reply);
+	strbuf_release(&branch);
+
+	if (found)
+		return strbuf_detach(&branch_name, NULL);
+
+	strbuf_release(&branch_name);
+	return NULL;
 }

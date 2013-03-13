@@ -91,7 +91,7 @@ static inline const char *hex_unprintable(const char *sb)
 	return strbuf_detach(&out, NULL);
 }
 
-#define max_comment 8192
+/*#define max_comment 8192
 static unsigned int strcmp_whitesp_ignore(const char *str1, const char *str2)
 {
 	char buf1[max_comment];
@@ -122,6 +122,43 @@ static unsigned int strcmp_whitesp_ignore(const char *str1, const char *str2)
 	rc = strcmp(buf1, buf2);
 	if (rc != 0)
 		fprintf(stderr, "cmp: %d\n'%s'\n'%s'\n'%s'\n'%s'\n", rc, hex_unprintable(buf1), hex_unprintable(buf2), hex_unprintable(o1), hex_unprintable(o2));
+
+	return rc;
+}*/
+
+static unsigned int strcmp_whitesp_ignore(const char *str1, const char *str2)
+{
+	static struct strbuf buf1 = STRBUF_INIT;
+	static struct strbuf buf2 = STRBUF_INIT;
+	const char *o1 = str1;
+	const char *o2 = str2;
+
+	strbuf_grow(&buf1, strlen(str1));
+	strbuf_grow(&buf2, strlen(str2));
+
+	char *p1 = buf1.buf;
+	char *p2 = buf2.buf;
+
+	while (*str1) {
+		if (!isspace(*str1))
+			*p1++ = tolower(*str1);
+		str1++;
+	}
+	*p1 = '\0';
+	strbuf_setlen(&buf1, p1 - buf1.buf);
+
+	while (*str2) {
+		if (!isspace(*str2))
+			*p2++ = tolower(*str2);
+		str2++;
+	}
+	*p2 = '\0';
+	strbuf_setlen(&buf2, p2 - buf2.buf);
+
+	int rc;
+	rc = strbuf_cmp(&buf1, &buf2);
+	if (rc != 0)
+		fprintf(stderr, "cmp: %d\n'%s'\n'%s'\n'%s'\n'%s'\n", rc, hex_unprintable(buf1.buf), hex_unprintable(buf2.buf), hex_unprintable(o1), hex_unprintable(o2));
 
 	return rc;
 }
@@ -211,6 +248,25 @@ void add_file_revision(struct branch_meta *meta,
 	}
 	rev->patchset = patchset;
 	revision_list_add(rev, meta->rev_list);
+}
+
+time_t find_first_commit_time(struct branch_meta *meta)
+{
+	time_t min;
+	int i;
+
+	if (!meta->rev_list->nr)
+		return 0;
+
+	min = meta->rev_list->item[0]->timestamp;
+	for (i = 1; i < meta->rev_list->nr; i++) {
+		fprintf(stderr, "min search %s %s %s\n", meta->rev_list->item[i]->path,
+			meta->rev_list->item[i]->revision, show_date(meta->rev_list->item[i]->timestamp, 0, DATE_RFC2822));
+		if (min > meta->rev_list->item[i]->timestamp)
+			min = meta->rev_list->item[i]->timestamp;
+	}
+
+	return min;
 }
 
 static void patchset_list_add(struct patchset *patchset, struct patchset_list *list)
@@ -425,10 +481,7 @@ static int compare_rev_by_timestamp(const void *p1, const void *p2)
 	else if (rev1->timestamp > rev2->timestamp)
 		return 1;
 
-	if (is_prev_rev(p1, p2))
-		return -1;
-	else
-		return 1;
+	return 0;
 }
 
 void aggregate_patchsets(struct branch_meta *meta)
@@ -712,7 +765,11 @@ char *read_note_of(const char *commit_ref, const char *notes_ref, unsigned long 
 	return buf;
 }
 
-void add_file_revision_meta(const char *rev, const char *path, struct hash_table *rev_hash)
+void add_file_revision_meta_hash(struct hash_table *meta_hash,
+		       const char *path,
+		       const char *revision,
+		       int isdead,
+		       int mark)
 {
 	void **pos;
 	unsigned int hash;
@@ -720,15 +777,26 @@ void add_file_revision_meta(const char *rev, const char *path, struct hash_table
 
 	rev_meta = xcalloc(1, sizeof(*rev_meta));
 	rev_meta->path = xstrdup(path);
-	rev_meta->revision = xstrdup(rev);
+	rev_meta->revision = xstrdup(revision);
 	rev_meta->ismeta = 1;
+	rev_meta->isdead = isdead;
+	rev_meta->mark = mark;
 
 	hash = hash_path(path);
-	pos = insert_hash(hash, rev_meta, rev_hash);
+	pos = insert_hash(hash, rev_meta, meta_hash);
 	if (pos) {
 		die("add_file_revision_meta collision");
 		*pos = rev_meta;
 	}
+}
+
+void add_file_revision_meta(struct branch_meta *meta,
+		       const char *path,
+		       const char *revision,
+		       int isdead,
+		       int mark)
+{
+	add_file_revision_meta_hash(meta->last_commit_revision_hash, path, revision, isdead, mark);
 }
 
 char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, char *p)
@@ -785,7 +853,7 @@ int load_cvs_revision_meta(struct branch_meta *meta,
 
 	while ((p = parse_meta_line(buf,size, &first, &second, p))) {
 		//fprintf(stderr, "revinfo: %s=>%s\n", first, second);
-		add_file_revision_meta(first, second, meta->last_commit_revision_hash);
+		add_file_revision_meta(meta, second, first, 0, 0);
 	}
 
 	//write_or_die(1, buf, size);

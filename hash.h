@@ -47,4 +47,9 @@ static inline void preallocate_hash(struct hash_table *table, unsigned int elts)
 	table->array = xcalloc(sizeof(struct hash_table_entry), table->size);
 }
 
+static inline int is_empty_hash(struct hash_table *table)
+{
+	return !table->size;
+}
+
 #endif

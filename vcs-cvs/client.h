@@ -99,5 +99,6 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
  *
  */
 int cvs_status(struct cvs_transport *cvs, const char *file, const char *revision, int *status);
+const char *cvs_get_rev_branch(struct cvs_transport *cvs, const char *file, const char *revision);
 
 #endif
