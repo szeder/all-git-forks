@@ -629,6 +629,8 @@ static int commit_patchset(struct patchset *ps, const char *branch_name, struct 
 
 		helper_printf("data %zu\n", commit.len);
 		helper_printf("%s\n", commit.buf);
+		strbuf_release(&line);
+		strbuf_release(&commit);
 	}
 	else {
 		helper_printf("commit %s%s\n", get_ref_prefix(), branch_name);
@@ -804,7 +806,7 @@ int count_dots(const char *rev)
 	return dots;
 }
 
-static const char *get_rev_branch(struct file_revision_meta *file_meta)
+static char *get_rev_branch(struct file_revision_meta *file_meta)
 {
 	return cvs_get_rev_branch(cvs, file_meta->path, file_meta->revision);
 }
@@ -831,7 +833,7 @@ static int find_longest_rev(void *ptr, void *data)
 /*
  * FIXME: longest revision is not always parent
  */
-static const char *find_parent_branch(const char *branch_name, struct hash_table *meta_revision_hash)
+static char *find_parent_branch(const char *branch_name, struct hash_table *meta_revision_hash)
 {
 	struct find_rev_data find_rev_data = { NULL, 0 };
 	for_each_hash(meta_revision_hash, find_longest_rev, &find_rev_data);
@@ -903,8 +905,15 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 
 		if (commit->date <= time) {
 			rev_mismatches = compare_commit_meta(commit->object.sha1, branch_meta_ref.buf, meta_revision_hash);
-			if (rev_mismatches == -1)
-				return NULL;
+			if (rev_mismatches == -1) {
+				/*
+				 * TODO: compare_commit_meta return -1 if no
+				 * metadata note available for commit. Is this
+				 * an error?
+				 * commit_ref = NULL;
+				 */
+				break;
+			}
 
 			if (!rev_mismatches) {
 				fprintf(stderr, "find_branch_fork_point - perfect match\n");
@@ -926,6 +935,8 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 		commit = commit->parents->item;
 	}
 
+	strbuf_release(&branch_ref);
+	strbuf_release(&branch_meta_ref);
 	return commit_ref;
 }
 
@@ -964,7 +975,7 @@ static int import_branch(const char *branch_name, struct branch_meta *branch_met
 {
 	int rc;
 	int mark;
-	const char *parent_branch_name;
+	char *parent_branch_name;
 	const char *parent_commit;
 	time_t import_time = find_first_commit_time(branch_meta);
 	if (!import_time)
@@ -980,6 +991,8 @@ static int import_branch(const char *branch_name, struct branch_meta *branch_met
 		return 0;
 
 	parent_branch_name = find_parent_branch(branch_name, branch_meta->last_commit_revision_hash);
+	if (!parent_branch_name)
+		die("Cannot find parent branch for: %s", branch_name);
 	fprintf(stderr, "PARENT BRANCH FOR: %s is %s\n", branch_name, parent_branch_name);
 	/*
 	 * if parent is not updated yet, import parent first
@@ -995,6 +1008,7 @@ static int import_branch(const char *branch_name, struct branch_meta *branch_met
 					parent_commit,
 					parent_branch_name);
 	// commit_meta
+	free(parent_branch_name);
 	return mark;
 }
 
@@ -1086,6 +1100,8 @@ static int cmd_import(const char *line)
 
 	strbuf_release(&commit_mark_sb);
 	strbuf_release(&meta_mark_sb);
+	strbuf_release(&branch_ref);
+	free_hash(&meta_revision_hash);
 
 /*	int code;
 	int dumpin_fd;
@@ -1539,5 +1555,6 @@ int main(int argc, const char **argv)
 	strbuf_release(&buf);
 	strbuf_release(&url_sb);
 	strbuf_release(&private_ref_sb);
+	strbuf_release(&ref_prefix_sb);
 	return 0;
 }

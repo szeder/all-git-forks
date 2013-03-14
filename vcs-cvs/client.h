@@ -86,6 +86,7 @@ struct cvsfile {
 };
 
 #define CVSFILE_INIT { STRBUF_INIT, STRBUF_INIT, 0, 0, 0, 0, STRBUF_INIT };
+void cvsfile_release(struct cvsfile *file);
 
 typedef void (*handle_file_fn_t)(struct cvsfile *file, void *data);
 int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t date, handle_file_fn_t cb, void *data);
@@ -99,6 +100,6 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
  *
  */
 int cvs_status(struct cvs_transport *cvs, const char *file, const char *revision, int *status);
-const char *cvs_get_rev_branch(struct cvs_transport *cvs, const char *file, const char *revision);
+char *cvs_get_rev_branch(struct cvs_transport *cvs, const char *file, const char *revision);
 
 #endif

@@ -1586,6 +1586,13 @@ static int parse_entry(const char *entry, struct strbuf *revision)
 	return 0;
 }
 
+void cvsfile_release(struct cvsfile *file)
+{
+	strbuf_release(&file->path);
+	strbuf_release(&file->revision);
+	strbuf_release(&file->file);
+}
+
 int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t date, handle_file_fn_t cb, void *data)
 {
 	int rc = -1;
@@ -1717,6 +1724,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 		}
 	}
 
+	cvsfile_release(&file);
 	return rc;
 }
 
@@ -1766,7 +1774,7 @@ int cvs_status(struct cvs_transport *cvs, const char *file, const char *revision
 	return 0;
 }
 
-const char *cvs_get_rev_branch(struct cvs_transport *cvs, const char *file, const char *revision)
+char *cvs_get_rev_branch(struct cvs_transport *cvs, const char *file, const char *revision)
 {
 	ssize_t ret;
 	ret = cvs_write(cvs,
