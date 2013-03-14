@@ -18,11 +18,11 @@ struct file_revision {
 	//struct file_revision *hash_tbl_chain;
 	char *path;
 	char *revision;
-	int ismeta:1;
-	int isdead:1;
-	int ismerged:1;
-	int isexec:1;
-	int mark:24;
+	unsigned int ismeta:1;
+	unsigned int isdead:1;
+	unsigned int ismerged:1;
+	unsigned int isexec:1;
+	unsigned int mark:24;
 	struct file_revision *prev;
 	//struct file_revision *next;
 	struct patchset *patchset;
@@ -37,11 +37,11 @@ struct file_revision_meta {
 	//struct file_revision *hash_tbl_chain;
 	char *path;
 	char *revision;
-	int ismeta:1;
-	int isdead:1;
-	int ismerged:1;
-	int isexec:1;
-	int mark:24;
+	unsigned int ismeta:1;
+	unsigned int isdead:1;
+	unsigned int ismerged:1;
+	unsigned int isexec:1;
+	unsigned int mark:24;
 };
 
 struct file_revision_list {

@@ -115,11 +115,11 @@ static inline const char *strbuf_hex_unprintable(struct strbuf *sb)
 }
 
 enum direction {
-	outgoing,
-	incomming,
+	OUT,
+	IN
 };
 
-static void remote_helper_proto_trace(const char *buf, size_t len, enum direction dir)
+static void remote_helper_proto_trace(const char *buf, size_t len, int direction)
 {
 	struct strbuf out = STRBUF_INIT;
 	struct strbuf **lines, **it;
@@ -131,11 +131,11 @@ static void remote_helper_proto_trace(const char *buf, size_t len, enum directio
 	for (it = lines; *it; it++) {
 		if (it == lines)
 			strbuf_addf(&out, "RHELPER %4zu %s %s\n", len,
-			            dir == outgoing ? "->" : "<-",
+				    direction == OUT ? "->" : "<-",
 				    strbuf_hex_unprintable(*it));
 		else
 			strbuf_addf(&out, "RHELPER      %s %s\n",
-			            dir == outgoing ? "->" : "<-",
+				    direction == OUT ? "->" : "<-",
 				    strbuf_hex_unprintable(*it));
 	}
 	strbuf_list_free(lines);
@@ -159,7 +159,7 @@ static ssize_t helper_printf(const char *fmt, ...)
 		va_start(args, fmt);
 		strbuf_vaddf(&tracebuf, fmt, args);
 		va_end(args);
-		remote_helper_proto_trace(tracebuf.buf, tracebuf.len, outgoing);
+		remote_helper_proto_trace(tracebuf.buf, tracebuf.len, OUT);
 		strbuf_release(&tracebuf);
 	}
 
@@ -171,7 +171,7 @@ static ssize_t helper_write(const char *buf, size_t len)
 {
 	ssize_t written;
 	if (trace_want(trace_key))
-		remote_helper_proto_trace(buf, len, outgoing);
+		remote_helper_proto_trace(buf, len, OUT);
 
 	written = fwrite(buf, 1, len, stdout);
 
@@ -195,7 +195,7 @@ static int helper_strbuf_getline(struct strbuf *sb, FILE *fp, int term)
 		return EOF;
 
 	if (trace_want(trace_key)) {
-		remote_helper_proto_trace(sb->buf, sb->len, incomming);
+		remote_helper_proto_trace(sb->buf, sb->len, IN);
 	}
 
 	if (sb->buf[sb->len-1] == term)
@@ -460,7 +460,6 @@ static int commit_revision(void *ptr, void *data)
 	static struct cvsfile file = CVSFILE_INIT;
 	struct file_revision *rev = ptr;
 	int rc;
-	int mode;
 
 	fprintf(stderr, "commit_revision %s %s\n", rev->path, rev->revision);
 
@@ -479,11 +478,7 @@ static int commit_revision(void *ptr, void *data)
 	}
 
 	//helper_printf("M 100%.3o %s %s\n", hash, rev->path);
-	if (file.mode & 0100)
-		mode = 0755;
-	else
-		mode = 0644;
-	helper_printf("M 100%.3o inline %s\n", mode, rev->path);
+	helper_printf("M 100%.3o inline %s\n", file.isexec ? 0755 : 0644, rev->path);
 	helper_printf("data %zu\n", file.file.len);
 	helper_write(file.file.buf, file.file.len);
 	helper_printf("\n");
@@ -754,7 +749,6 @@ void on_file_checkout(struct cvsfile *file, void *data)
 {
 	struct hash_table *meta_revision_hash = data;
 	int mark;
-	int isexec;
 
 	/*
 	 * FIXME: support files on disk
@@ -764,11 +758,7 @@ void on_file_checkout(struct cvsfile *file, void *data)
 
 	mark = commit_blob(file->file.buf, file->file.len);
 
-	if (file->mode & 0100)
-		isexec = 1;
-	else
-		isexec = 0;
-	add_file_revision_meta_hash(meta_revision_hash, file->path.buf, file->revision.buf, file->isdead, isexec, mark);
+	add_file_revision_meta_hash(meta_revision_hash, file->path.buf, file->revision.buf, file->isdead, file->isexec, mark);
 }
 
 static int checkout_branch(const char *branch_name, time_t import_time, struct hash_table *meta_revision_hash)

@@ -5,6 +5,105 @@
 
 #include <string.h>
 
+#define DB_CACHE
+#ifdef DB_CACHE
+#include <db.h>
+static DB *db_cache = NULL;
+
+static void db_cache_close()
+{
+	if (db_cache)
+		db_cache->close(db_cache, 0);
+}
+
+static void db_cache_init()
+{
+	const char *db_path;
+
+	if (db_cache)
+		return;
+
+	db_path = getenv("GIT_REMOTE_CVS_DB_CACHE");
+	if (!db_path)
+		return;
+
+	if (db_create(&db_cache, NULL, 0))
+		die("cannot create db_cache descriptor");
+
+	if (db_cache->open(db_cache, NULL, db_path, NULL, DB_BTREE, DB_CREATE, 0664) != 0)
+		die("cannot open/create db_cache at %s", db_path);
+
+	atexit(db_cache_close);
+}
+
+static DBT *dbt_set(DBT *dbt, void *buf, size_t size)
+{
+	memset(dbt, 0, sizeof(*dbt));
+	dbt->data = buf;
+	dbt->size = size;
+
+	return dbt;
+}
+
+static void db_cache_add(const char *path, const char *revision, int isexec, struct strbuf *file)
+{
+	struct strbuf key_sb = STRBUF_INIT;
+	int rc;
+	DBT key;
+	DBT value;
+
+	if (!db_cache)
+		return;
+
+	/*
+	 * last byte of struct strbuf is used to store isexec bit.
+	 */
+	file->buf[file->len] = isexec;
+
+	strbuf_addf(&key_sb, "%s:%s", revision, path);
+	dbt_set(&key, key_sb.buf, key_sb.len);
+	dbt_set(&value, file->buf, file->len+1); // +1 for isexec bit
+	rc = db_cache->put(db_cache, NULL, &key, &value, DB_NOOVERWRITE);
+	if (rc)
+		error("db_cache put failed with rc: %d", rc);
+
+	file->buf[file->len] = 0;
+	strbuf_release(&key_sb);
+}
+
+static int db_cache_get(const char *path, const char *revision, int *isexec, struct strbuf *file)
+{
+	struct strbuf key_sb = STRBUF_INIT;
+	int rc;
+	DBT key;
+	DBT value;
+
+	if (!db_cache)
+		return DB_NOTFOUND;
+
+	strbuf_addf(&key_sb, "%s:%s", revision, path);
+	dbt_set(&key, key_sb.buf, key_sb.len);
+	memset(&value, 0, sizeof(value));
+	rc = db_cache->get(db_cache, NULL, &key, &value, 0);
+	if (rc && rc != DB_NOTFOUND)
+		error("db_cache get failed with rc: %d", rc);
+
+	if (!rc) {
+		strbuf_reset(file);
+		strbuf_add(file, value.data, value.size);
+		/*
+		 * last byte of value is used to store isexec bit.
+		 */
+		file->len--;
+		*isexec = file->buf[file->len];
+		file->buf[file->len] = 0;
+	}
+
+	strbuf_release(&key_sb);
+	return rc;
+}
+#endif
+
 static const char trace_key[] = "GIT_TRACE_CVS_PROTO";
 extern unsigned long fileMemoryLimit;
 
@@ -227,8 +326,8 @@ struct child_process *cvs_init_transport(struct cvs_transport *cvs,
 }
 
 enum direction {
-	outgoing,
-	incomming,
+	OUT,
+	IN
 };
 
 static inline const char *strbuf_hex_unprintable(struct strbuf *sb)
@@ -265,11 +364,11 @@ static void cvs_proto_trace(const char *buf, size_t len, enum direction dir)
 	for (it = lines; *it; it++) {
 		if (it == lines)
 			strbuf_addf(&out, "CVS %4zu %s %s\n", len,
-			            dir == outgoing ? "->" : "<-",
+			            dir == OUT ? "->" : "<-",
 				    strbuf_hex_unprintable(*it));
 		else
 			strbuf_addf(&out, "CVS      %s %s\n",
-			            dir == outgoing ? "->" : "<-",
+			            dir == OUT ? "->" : "<-",
 				    strbuf_hex_unprintable(*it));
 	}
 	strbuf_list_free(lines);
@@ -286,7 +385,7 @@ static void cvs_proto_ztrace(size_t len, size_t zlen, enum direction dir)
 		return;
 
 	strbuf_addf(&out, "CVS ZLIB %s %zu z%zu\n",
-			            dir == outgoing ? "->" : "<-",
+			            dir == OUT ? "->" : "<-",
 				    len, zlen);
 	trace_strbuf(trace_key, &out);
 	strbuf_release(&out);
@@ -324,7 +423,7 @@ static ssize_t z_write_in_full(int fd, git_zstream *wr_stream, const void *buf, 
 		written += ret;
 	}
 
-	cvs_proto_ztrace(len, written, outgoing);
+	cvs_proto_ztrace(len, written, OUT);
 	return written;
 }
 
@@ -356,13 +455,13 @@ static ssize_t cvs_write(struct cvs_transport *cvs, int flush, const char *fmt, 
 	if (written == -1)
 		return -1;
 
-	cvs_proto_trace(cvs->wr_buf.buf, cvs->compress ? cvs->wr_buf.len : written, outgoing);
+	cvs_proto_trace(cvs->wr_buf.buf, cvs->compress ? cvs->wr_buf.len : written, OUT);
 	strbuf_reset(&cvs->wr_buf);
 
 	return 0;
 }
 
-static ssize_t cvs_write_full(struct cvs_transport *cvs, const char *buf, size_t len)
+/*static ssize_t cvs_write_full(struct cvs_transport *cvs, const char *buf, size_t len)
 {
 	ssize_t written;
 
@@ -377,11 +476,11 @@ static ssize_t cvs_write_full(struct cvs_transport *cvs, const char *buf, size_t
 	if (written == -1)
 		return -1;
 
-	cvs_proto_trace(cvs->wr_buf.buf, cvs->compress ? len : written, outgoing);
+	cvs_proto_trace(cvs->wr_buf.buf, cvs->compress ? len : written, OUT);
 	strbuf_reset(&cvs->wr_buf);
 
 	return 0;
-}
+}*/
 
 static ssize_t z_xread(int fd, git_zstream *rd_stream, void *zbuf, size_t zbuf_len,
 		       void *buf, size_t buf_len)
@@ -414,7 +513,7 @@ static ssize_t z_xread(int fd, git_zstream *rd_stream, void *zbuf, size_t zbuf_l
 
 		zreadn -= rd_stream->avail_in;
 		readn = buf_len - rd_stream->avail_out;
-		cvs_proto_ztrace(readn, zreadn, incomming);
+		cvs_proto_ztrace(readn, zreadn, IN);
 	} while(!readn || ret);
 
 	return readn;
@@ -454,7 +553,7 @@ static ssize_t cvs_readline(struct cvs_transport *cvs, struct strbuf *sb)
 			linelen = newline - cvs->rd_buf.buf;
 			strbuf_add(sb, cvs->rd_buf.buf, linelen);
 
-			cvs_proto_trace(cvs->rd_buf.buf, linelen + 1, incomming);
+			cvs_proto_trace(cvs->rd_buf.buf, linelen + 1, IN);
 
 			cvs->rd_buf.buf += linelen + 1;
 			cvs->rd_buf.len -= linelen + 1;
@@ -475,7 +574,7 @@ static ssize_t cvs_readline(struct cvs_transport *cvs, struct strbuf *sb)
 			readn = xread(cvs->fd[0], cvs->rd_buf.buf, sizeof(cvs->rd_buf.data));
 
 		if (readn <= 0) {
-			cvs_proto_trace(NULL, 0, incomming);
+			cvs_proto_trace(NULL, 0, IN);
 			return -1;
 		}
 
@@ -527,7 +626,7 @@ static ssize_t cvs_read_full(struct cvs_transport *cvs, char *buf, ssize_t size)
 		die("read full failed");
 
 	readn += ret;
-	cvs_proto_trace(buf, readn, incomming);
+	cvs_proto_trace(buf, readn, IN);
 	return readn;
 }
 
@@ -551,7 +650,7 @@ static ssize_t z_finish_write(int fd, git_zstream *wr_stream)
 	if (written == -1)
 		return -1;
 
-	cvs_proto_ztrace(0, written, outgoing);
+	cvs_proto_ztrace(0, written, OUT);
 	return written;
 }
 
@@ -564,7 +663,7 @@ static void z_terminate_gently(struct cvs_transport *cvs)
 		readn = z_xread(cvs->fd[0], &cvs->rd_stream,
 				cvs->rd_zbuf, sizeof(cvs->rd_zbuf),
 				cvs->rd_buf.buf, sizeof(cvs->rd_buf.data));
-		cvs_proto_trace(cvs->rd_buf.buf, readn, incomming);
+		cvs_proto_trace(cvs->rd_buf.buf, readn, IN);
 	} while(readn);
 }
 
@@ -715,6 +814,10 @@ struct cvs_transport *cvs_connect(const char *cvsroot, const char *module)
 {
 	struct cvs_transport *cvs;
 	struct strbuf sb = STRBUF_INIT;
+
+#ifdef DB_CACHE
+	db_cache_init();
+#endif
 
 	cvs = xcalloc(1, sizeof(*cvs));
 	cvs->rd_buf.buf = cvs->rd_buf.data;
@@ -1334,7 +1437,7 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 	return 0;
 }
 
-static void unixtime_to_date(time_t timestamp, struct strbuf *date)
+/*static void unixtime_to_date(time_t timestamp, struct strbuf *date)
 {
 	struct tm date_tm;
 
@@ -1348,7 +1451,7 @@ static void unixtime_to_date(time_t timestamp, struct strbuf *date)
 	gmtime_r(&timestamp, &date_tm);
 
 	date->len = strftime(date->buf, date->alloc, "%d %m/%d %T", &date_tm);
-}
+}*/
 
 int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until, add_rev_fn_t cb, void *data)
 {
@@ -1444,10 +1547,42 @@ int parse_mode(const char *str)
 	return mode;
 }
 
+static unsigned int hash_buf(const char *buf, size_t size)
+{
+	unsigned int hash = 0x12375903;
+
+	while (size) {
+		unsigned char c = *buf++;
+		hash = hash*101 + c;
+		size--;
+	}
+	return hash;
+}
+
 int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *revision, struct cvsfile *content)
 {
 	int rc = -1;
 	ssize_t ret;
+
+	strbuf_copystr(&content->path, file);
+	strbuf_copystr(&content->revision, revision);
+	content->isdead = 0;
+	content->isbin = 0;
+	content->ismem = 0;
+	strbuf_reset(&content->file);
+
+#ifdef DB_CACHE
+	int isexec = 0;
+	if (!db_cache_get(file, revision, &isexec, &content->file)) {
+		content->isexec = isexec;
+		content->ismem = 1;
+		content->isdead = 0;
+		fprintf(stderr, "db_cache get file: %s rev: %s size: %zu isexec: %u hash: %u\n",
+			file, revision, content->file.len, content->isexec, hash_buf(content->file.buf, content->file.len));
+		return 0;
+	}
+#endif
+
 	ret = cvs_write(cvs,
 			WR_FLUSH,
 			"Argument -N\n"
@@ -1475,13 +1610,6 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 	strbuf_complete_line_ch(&file_full_path, '/');
 	strbuf_addstr(&file_full_path, file);
 
-	strbuf_copystr(&content->path, file);
-	strbuf_copystr(&content->revision, revision);
-	content->isdead = 0;
-	content->isbin = 0;
-	content->ismem = 0;
-	strbuf_reset(&content->file);
-
 	while (1) {
 		ret = cvs_readline(cvs, &cvs->rd_line_buf);
 		if (ret <= 0)
@@ -1507,7 +1635,7 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 			mode = parse_mode(cvs->rd_line_buf.buf);
 			if (mode == -1)
 				die("Cannot parse checked out file mode %s", cvs->rd_line_buf.buf);
-			content->mode = mode;
+			content->isexec = !!(mode & 0111);
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
 				return -1;
@@ -1530,7 +1658,13 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 					if (ret < size)
 						die("Cannot checkout buf: truncated: %zu read out of %zu", ret, size);
 
-					strbuf_setlen(&content->file, ret);
+					strbuf_setlen(&content->file, size);
+
+#ifdef DB_CACHE
+					db_cache_add(file, revision, content->isexec, &content->file);
+					fprintf(stderr, "db_cache add file: %s rev: %s size: %zu isexec: %u hash: %u\n",
+						file, revision, content->file.len, content->isexec, hash_buf(content->file.buf, content->file.len));
+#endif
 				}
 				else {
 					// FIXME:
@@ -1659,7 +1793,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 			mode = parse_mode(cvs->rd_line_buf.buf);
 			if (mode == -1)
 				die("Cannot parse checked out file mode %s", cvs->rd_line_buf.buf);
-			file.mode = mode;
+			file.isexec = !!(mode & 0111);
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
 				return -1;
@@ -1667,7 +1801,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 			if (!size && strcmp(cvs->rd_line_buf.buf, "0"))
 				die("Cannot parse file size %s", cvs->rd_line_buf.buf);
 
-			fprintf(stderr, "checkout %s rev %s mode %o size %zu\n", file.file.buf, file.revision.buf, file.mode, size);
+			fprintf(stderr, "checkout %s rev %s mode %o size %zu\n", file.path.buf, file.revision.buf, mode, size);
 
 			if (size) {
 				// FIXME:

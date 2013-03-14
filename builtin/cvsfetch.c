@@ -237,12 +237,84 @@ int git_cvsfetch_config(const char *var, const char *value, void *dummy)
 	return git_default_config(var, value, dummy);
 }
 
+#include "diff.h"
+#include "revision.h"
+#include "log-tree.h"
+#include "builtin.h"
+#include "tag.h"
+#include "reflog-walk.h"
+
+static int cmd_log_walk(struct rev_info *rev)
+{
+	struct commit *commit;
+	int saved_nrl = 0;
+	int saved_dcctc = 0;
+
+	if (prepare_revision_walk(rev))
+		die(_("revision walk setup failed"));
+
+	/*
+	 * For --check and --exit-code, the exit code is based on CHECK_FAILED
+	 * and HAS_CHANGES being accumulated in rev->diffopt, so be careful to
+	 * retain that state information if replacing rev->diffopt in this loop
+	 */
+	while ((commit = get_revision(rev)) != NULL) {
+		printf("here\b");
+		if (!log_tree_commit(rev, commit) &&
+		    rev->max_count >= 0)
+			/*
+			 * We decremented max_count in get_revision,
+			 * but we didn't actually show the commit.
+			 */
+			rev->max_count++;
+		if (!rev->reflog_info) {
+			/* we allow cycles in reflog ancestry */
+			free(commit->buffer);
+			commit->buffer = NULL;
+		}
+		free_commit_list(commit->parents);
+		commit->parents = NULL;
+		if (saved_nrl < rev->diffopt.needed_rename_limit)
+			saved_nrl = rev->diffopt.needed_rename_limit;
+		if (rev->diffopt.degraded_cc_to_c)
+			saved_dcctc = 1;
+	}
+	rev->diffopt.degraded_cc_to_c = saved_dcctc;
+	rev->diffopt.needed_rename_limit = saved_nrl;
+
+	if (rev->diffopt.output_format & DIFF_FORMAT_CHECKDIFF &&
+	    DIFF_OPT_TST(&rev->diffopt, CHECK_FAILED)) {
+		return 02;
+	}
+	return diff_result_code(&rev->diffopt, 0);
+}
+
+void rev_walk(const char *branch_name, const char *prefix)
+{
+	struct rev_info rev;
+	struct setup_revision_opt opt;
+
+	//init_grep_defaults();
+	//git_config(git_log_config, NULL);
+
+	init_revisions(&rev, NULL);
+	//init_revisions(&rev, prefix);
+	//rev.always_show_header = 1;
+	//memset(&opt, 0, sizeof(opt));
+	//opt.def = "HEAD";
+	//opt.revarg_opt = REVARG_COMMITTISH;
+	//cmd_log_init(argc, argv, prefix, &rev, &opt);
+	printf("walk rc %d\n", cmd_log_walk(&rev));
+}
+
 //int main(int argc, const char *argv[])
 int cmd_cvsfetch(int argc, const char **argv, const char *prefix)
 {
 	int ret;
 	int i;
-	printf("cmd_cvsfetch [prefix='%s']", prefix);
+	printf("cmd_cvsfetch [prefix='%s']\n", prefix);
+	rev_walk("HEAD", prefix);
+	exit(0);
 	for (i = 0; i < argc; i++) {
 		printf(" '%s'", argv[i]);
 	}

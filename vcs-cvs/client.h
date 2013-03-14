@@ -78,10 +78,10 @@ int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until, add_rev_fn_t
 struct cvsfile {
 	struct strbuf path;
 	struct strbuf revision;
-	int mode;
-	int isdead:1;
-	int isbin:1;        /* for commit */
-	int ismem:1;        /* true if file contents are in file variable, false if just temp file name */
+	unsigned int isexec:1;
+	unsigned int isdead:1;
+	unsigned int isbin:1;        /* for commit */
+	unsigned int ismem:1;        /* true if file contents are in file variable, false if just temp file name */
 	struct strbuf file; /* file or path depends on ismem */
 };
 
