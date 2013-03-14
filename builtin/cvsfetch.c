@@ -206,7 +206,7 @@ void on_file_checkout(struct cvsfile *file, void *data)
 {
 	printf("--------------------\n");
 	printf("file: %s rev: %s\n", file->path.buf, file->revision.buf);
-	printf("mode: %o isdead: %d isbin: %d ismem: %d\n", file->mode, file->isdead, file->isbin, file->ismem);
+	printf("exec: %u isdead: %u isbin: %d ismem: %d\n", file->isexec, file->isdead, file->isbin, file->ismem);
 	if (file->ismem) {
 		printf("size: %zu\n", file->file.len);
 		printf("-----------\n%s", file->file.buf);

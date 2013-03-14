@@ -260,8 +260,8 @@ time_t find_first_commit_time(struct branch_meta *meta)
 
 	min = meta->rev_list->item[0]->timestamp;
 	for (i = 1; i < meta->rev_list->nr; i++) {
-		fprintf(stderr, "min search %s %s %s\n", meta->rev_list->item[i]->path,
-			meta->rev_list->item[i]->revision, show_date(meta->rev_list->item[i]->timestamp, 0, DATE_RFC2822));
+		//fprintf(stderr, "min search %s %s %s\n", meta->rev_list->item[i]->path,
+		//	meta->rev_list->item[i]->revision, show_date(meta->rev_list->item[i]->timestamp, 0, DATE_RFC2822));
 		if (min > meta->rev_list->item[i]->timestamp)
 			min = meta->rev_list->item[i]->timestamp;
 	}

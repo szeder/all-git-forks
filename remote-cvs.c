@@ -17,7 +17,6 @@
  * - depth
  * - check that metadata correspond to ls-tree files (all files have rev, but no extra)
  * - authors ref/note
- * - branch parents
  * - safe cancelation point + update time for branch OR ref cmp
  */
 
