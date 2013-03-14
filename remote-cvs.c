@@ -21,7 +21,7 @@
  * - safe cancelation point + update time for branch OR ref cmp
  */
 
-static const char trace_key[] = "GIT_TRACE_REMOTE_HELPER_PROTO";
+static const char trace_key[] = "GIT_TRACE_CVS_HELPER";
 /*
  * FIXME:
  */
@@ -775,7 +775,7 @@ static int checkout_branch(const char *branch_name, time_t import_time, struct h
 
 	rc = cvs_checkout_branch(cvs_co, branch_name, import_time, on_file_checkout, meta_revision_hash);
 	if (rc)
-		error("cvs checkout of %s date %ld failed", branch_name, import_time);
+		die("cvs checkout of %s date %ld failed", branch_name, import_time);
 
 	return cvs_terminate(cvs_co);
 }

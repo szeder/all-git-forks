@@ -10,30 +10,52 @@
 #include <db.h>
 static DB *db_cache = NULL;
 
-static void db_cache_close()
+static void db_cache_release(DB *db)
 {
-	if (db_cache)
-		db_cache->close(db_cache, 0);
+	if (db)
+		db->close(db, 0);
 }
 
-static void db_cache_init()
+static void db_cache_release_default()
 {
-	const char *db_path;
+	db_cache_release(db_cache);
+}
 
+static DB *db_cache_init(const char *name, int *exists)
+{
+	DB *db;
+	const char *db_dir;
+	struct strbuf db_path = STRBUF_INIT;
+
+	db_dir = getenv("GIT_CACHE_CVS_DIR");
+	if (!db_dir)
+		return NULL;
+
+	if (db_create(&db, NULL, 0))
+		die("cannot create db_cache descriptor");
+
+	strbuf_addf(&db_path, "%s/%s", db_dir, name);
+
+	if (exists) {
+		*exists = 0;
+		if (!access(db_path.buf, R_OK | W_OK))
+			*exists = 1;
+	}
+
+	if (db->open(db, NULL, db_path.buf, NULL, DB_BTREE, DB_CREATE, 0664) != 0)
+		die("cannot open/create db_cache at %s", db_path.buf);
+
+	strbuf_release(&db_path);
+	return db;
+}
+
+static void db_cache_init_default()
+{
 	if (db_cache)
 		return;
 
-	db_path = getenv("GIT_REMOTE_CVS_DB_CACHE");
-	if (!db_path)
-		return;
-
-	if (db_create(&db_cache, NULL, 0))
-		die("cannot create db_cache descriptor");
-
-	if (db_cache->open(db_cache, NULL, db_path, NULL, DB_BTREE, DB_CREATE, 0664) != 0)
-		die("cannot open/create db_cache at %s", db_path);
-
-	atexit(db_cache_close);
+	db_cache = db_cache_init("cvscache.db", NULL);
+	atexit(db_cache_release_default);
 }
 
 static DBT *dbt_set(DBT *dbt, void *buf, size_t size)
@@ -45,14 +67,14 @@ static DBT *dbt_set(DBT *dbt, void *buf, size_t size)
 	return dbt;
 }
 
-static void db_cache_add(const char *path, const char *revision, int isexec, struct strbuf *file)
+static void db_cache_add(DB *db, const char *path, const char *revision, int isexec, struct strbuf *file)
 {
 	struct strbuf key_sb = STRBUF_INIT;
 	int rc;
 	DBT key;
 	DBT value;
 
-	if (!db_cache)
+	if (!db)
 		return;
 
 	/*
@@ -63,7 +85,7 @@ static void db_cache_add(const char *path, const char *revision, int isexec, str
 	strbuf_addf(&key_sb, "%s:%s", revision, path);
 	dbt_set(&key, key_sb.buf, key_sb.len);
 	dbt_set(&value, file->buf, file->len+1); // +1 for isexec bit
-	rc = db_cache->put(db_cache, NULL, &key, &value, DB_NOOVERWRITE);
+	rc = db->put(db, NULL, &key, &value, DB_NOOVERWRITE);
 	if (rc)
 		error("db_cache put failed with rc: %d", rc);
 
@@ -71,20 +93,20 @@ static void db_cache_add(const char *path, const char *revision, int isexec, str
 	strbuf_release(&key_sb);
 }
 
-static int db_cache_get(const char *path, const char *revision, int *isexec, struct strbuf *file)
+static int db_cache_get(DB *db, const char *path, const char *revision, int *isexec, struct strbuf *file)
 {
 	struct strbuf key_sb = STRBUF_INIT;
 	int rc;
 	DBT key;
 	DBT value;
 
-	if (!db_cache)
+	if (!db)
 		return DB_NOTFOUND;
 
 	strbuf_addf(&key_sb, "%s:%s", revision, path);
 	dbt_set(&key, key_sb.buf, key_sb.len);
 	memset(&value, 0, sizeof(value));
-	rc = db_cache->get(db_cache, NULL, &key, &value, 0);
+	rc = db->get(db, NULL, &key, &value, 0);
 	if (rc && rc != DB_NOTFOUND)
 		error("db_cache get failed with rc: %d", rc);
 
@@ -101,6 +123,77 @@ static int db_cache_get(const char *path, const char *revision, int *isexec, str
 
 	strbuf_release(&key_sb);
 	return rc;
+}
+
+static DB *db_cache_init_branch(const char *branch, time_t date, int *exists)
+{
+	DB *db;
+	struct strbuf db_name = STRBUF_INIT;
+
+	strbuf_addf(&db_name, "cvscache.%s.%ld.db", branch, date);
+	db = db_cache_init(db_name.buf, exists);
+	strbuf_release(&db_name);
+	return db;
+}
+
+static unsigned int hash_buf(const char *buf, size_t size)
+{
+	unsigned int hash = 0x12375903;
+
+	while (size) {
+		unsigned char c = *buf++;
+		hash = hash*101 + c;
+		size--;
+	}
+	return hash;
+}
+
+static int db_cache_for_each(DB *db, handle_file_fn_t cb, void *data)
+{
+	DBC *cur;
+	DBT key;
+	DBT value;
+	int rc;
+	void *p;
+	struct cvsfile file = CVSFILE_INIT;
+
+	if (db->cursor(db, NULL, &cur, 0))
+		return -1;
+
+	memset(&key, 0, sizeof(key));
+	memset(&value, 0, sizeof(value));
+	while (!(rc = cur->get(cur, &key, &value, DB_NEXT))) {
+		strbuf_reset(&file.path);
+		strbuf_reset(&file.revision);
+		file.isdead = 0;
+		file.isbin = 0;
+		file.ismem = 1;
+		strbuf_reset(&file.file);
+
+		p = memchr(key.data, ':', key.size);
+		if (!p)
+			die("invalid db_cache key format");
+
+		strbuf_add(&file.revision, key.data, p - key.data);
+		p++;
+		strbuf_add(&file.path, p, key.size - (p - key.data));
+		strbuf_add(&file.file, value.data, value.size);
+		/*
+		 * last byte of value is used to store isexec bit.
+		 */
+		file.file.len--;
+		file.isexec = file.file.buf[file.file.len];
+		file.file.buf[file.file.len] = 0;
+
+		fprintf(stderr, "db_cache foreach file: %s rev: %s size: %zu isexec: %u hash: %u\n",
+			file.path.buf, file.revision.buf, file.file.len, file.isexec, hash_buf(file.file.buf, file.file.len));
+		cb(&file, data);
+	}
+
+	cur->close(cur);
+	if (rc == DB_NOTFOUND)
+		return 0;
+	return -1;
 }
 #endif
 
@@ -816,7 +909,7 @@ struct cvs_transport *cvs_connect(const char *cvsroot, const char *module)
 	struct strbuf sb = STRBUF_INIT;
 
 #ifdef DB_CACHE
-	db_cache_init();
+	db_cache_init_default();
 #endif
 
 	cvs = xcalloc(1, sizeof(*cvs));
@@ -1225,29 +1318,49 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 	branch_rev_list_init(&branch_list);
 
 	size_t len;
-	//FILE *rlog = fopen("/work/tmp/rlog", "r");
-	//FILE *rlog = fopen("/work/tmp/zfsp.rlog", "r");
-	//if (!rlog)
-	//	die("Cannot open rlog");
-
+	int read_rlog = 0;
+	int write_rlog = 0;
+	FILE *rlog = NULL;
+	const char *rlog_path = getenv("GIT_CACHE_CVS_RLOG");
+	if (rlog_path) {
+		if (!access(rlog_path, R_OK)) {
+			read_rlog = 1;
+			rlog = fopen(rlog_path, "r");
+			if (!rlog)
+				die("cannot open %s for reading", rlog_path);
+		}
+		else {
+			write_rlog = 1;
+			rlog = fopen(rlog_path, "w");
+			if (!rlog)
+				die("cannot open %s for writing", rlog_path);
+		}
+	}
 	//free(cvs->full_module_path);
 	//cvs->full_module_path = xstrdup("/cvs/se/cvs/all/se/");
 	//cvs->full_module_path = xstrdup("/cvs/zfsp/cvs/");
 	strbuf_grow(&reply, CVS_MAX_LINE);
 
 	while (1) {
-		ret = cvs_getreply_firstmatch(cvs, &reply, "M ");
-		if (ret == -1)
-			return -1;
-		else if (ret == 1) /* ok from server */
-			break;
-		//if (!fgets(reply.buf, reply.alloc, rlog))
-		//	break;
+		if (read_rlog) {
+			if (!fgets(reply.buf, reply.alloc, rlog))
+				break;
 
-		len = strlen(reply.buf);
-		strbuf_setlen(&reply, len);
-		if (len && reply.buf[len - 1] == '\n')
-			strbuf_setlen(&reply, len - 1);
+			len = strlen(reply.buf);
+			strbuf_setlen(&reply, len);
+			if (len && reply.buf[len - 1] == '\n')
+				strbuf_setlen(&reply, len - 1);
+		}
+		else {
+			ret = cvs_getreply_firstmatch(cvs, &reply, "M ");
+			if (ret == -1)
+				return -1;
+			else if (ret == 1) /* ok from server */
+				break;
+
+			if (write_rlog)
+				fprintf(rlog, "%s\n", reply.buf);
+		}
 
 		switch(state) {
 		case NEED_RCS_FILE:
@@ -1420,6 +1533,9 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 		}
 	}
 
+	if (rlog)
+		fclose(rlog);
+
 	if (state != NEED_RCS_FILE)
 		die("Cannot parse rlog, parser state %d", state);
 
@@ -1456,6 +1572,9 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until, add_rev_fn_t cb, void *data)
 {
 	ssize_t ret;
+	const char *rlog_path = getenv("GIT_CACHE_CVS_RLOG");
+	if (rlog_path && !access(rlog_path, R_OK))
+		return parse_cvs_rlog(cvs, cb, data);
 
 	if (since) {
 		/*struct strbuf date = STRBUF_INIT;
@@ -1547,18 +1666,6 @@ int parse_mode(const char *str)
 	return mode;
 }
 
-static unsigned int hash_buf(const char *buf, size_t size)
-{
-	unsigned int hash = 0x12375903;
-
-	while (size) {
-		unsigned char c = *buf++;
-		hash = hash*101 + c;
-		size--;
-	}
-	return hash;
-}
-
 int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *revision, struct cvsfile *content)
 {
 	int rc = -1;
@@ -1573,7 +1680,7 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 
 #ifdef DB_CACHE
 	int isexec = 0;
-	if (!db_cache_get(file, revision, &isexec, &content->file)) {
+	if (!db_cache_get(db_cache, file, revision, &isexec, &content->file)) {
 		content->isexec = isexec;
 		content->ismem = 1;
 		content->isdead = 0;
@@ -1661,7 +1768,7 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 					strbuf_setlen(&content->file, size);
 
 #ifdef DB_CACHE
-					db_cache_add(file, revision, content->isexec, &content->file);
+					db_cache_add(db_cache, file, revision, content->isexec, &content->file);
 					fprintf(stderr, "db_cache add file: %s rev: %s size: %zu isexec: %u hash: %u\n",
 						file, revision, content->file.len, content->isexec, hash_buf(content->file.buf, content->file.len));
 #endif
@@ -1731,7 +1838,20 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 {
 	int rc = -1;
 	ssize_t ret;
+#ifdef DB_CACHE
+	int exists = 0;
+	DB *db = NULL;
+#endif
 	if (date) {
+#ifdef DB_CACHE
+		db = db_cache_init_branch(branch, date, &exists);
+		if (db && exists) {
+			rc = db_cache_for_each(db, cb, data);
+			db_cache_release(db);
+			return rc;
+		}
+#endif
+
 		cvs_write(cvs,
 			WR_NOFLUSH,
 			"Argument -D\n"
@@ -1764,7 +1884,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 	while (1) {
 		ret = cvs_readline(cvs, &cvs->rd_line_buf);
 		if (ret <= 0)
-			return -1;
+			break;
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "E "))
 			fprintf(stderr, "CVS E: %s\n", cvs->rd_line_buf.buf + 2);
@@ -1773,30 +1893,31 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 		    strbuf_startswith(&cvs->rd_line_buf, "Updated")) {
 			strbuf_reset(&file.path);
 			strbuf_reset(&file.revision);
+			file.isexec = 0;
 			file.isdead = 0;
 			file.isbin = 0;
 			file.ismem = 0;
 			strbuf_reset(&file.file);
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
-				return -1;
+				break;
 			if (!strbuf_gettext_after(&cvs->rd_line_buf, cvs->full_module_path, &file.path))
 				die("Checked out file name doesn't start with module path %s %s", cvs->rd_line_buf.buf, cvs->full_module_path);
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
-				return -1;
+				break;
 			if (parse_entry(cvs->rd_line_buf.buf, &file.revision))
 				die("Cannot parse checked out file entry line %s", cvs->rd_line_buf.buf);
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
-				return -1;
+				break;
 			mode = parse_mode(cvs->rd_line_buf.buf);
 			if (mode == -1)
 				die("Cannot parse checked out file mode %s", cvs->rd_line_buf.buf);
 			file.isexec = !!(mode & 0111);
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
-				return -1;
+				break;
 			size = atoi(cvs->rd_line_buf.buf);
 			if (!size && strcmp(cvs->rd_line_buf.buf, "0"))
 				die("Cannot parse file size %s", cvs->rd_line_buf.buf);
@@ -1817,6 +1938,11 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 						die("Cannot checkout buf: truncated: %zu read out of %zu", ret, size);
 
 					strbuf_setlen(&file.file, ret);
+#ifdef DB_CACHE
+					db_cache_add(db, file.path.buf, file.revision.buf, file.isexec, &file.file);
+					fprintf(stderr, "db_cache branch add file: %s rev: %s size: %zu isexec: %u hash: %u\n",
+						file.path.buf, file.revision.buf, file.file.len, file.isexec, hash_buf(file.file.buf, file.file.len));
+#endif
 				}
 				else {
 					// FIXME:
@@ -1825,7 +1951,6 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 			}
 
 			cb(&file, data);
-			rc = 0;
 		}
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "Removed") ||
@@ -1838,13 +1963,12 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 			strbuf_reset(&file.file);
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
-				return -1;
+				break;
 			if (!strbuf_gettext_after(&cvs->rd_line_buf, cvs->full_module_path, &file.path))
 				die("Checked out file name doesn't start with module path %s %s", cvs->rd_line_buf.buf, cvs->full_module_path);
 
 			file.ismem = 0;
 			file.isdead = 1;
-			rc = 0;
 		}
 
 		if (!strcmp(cvs->rd_line_buf.buf, "ok")) {
@@ -1859,6 +1983,9 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 	}
 
 	cvsfile_release(&file);
+#ifdef DB_CACHE
+	db_cache_release(db);
+#endif
 	return rc;
 }
 
