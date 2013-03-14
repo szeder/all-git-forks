@@ -80,6 +80,17 @@ test_expect_success 'change gets noticed' '
 
 '
 
+test_expect_success 'non-qualified update in subdir updates from the root' '
+	(
+		cd dir1 &&
+		echo even more >>sub2 &&
+		git add -u
+	) &&
+	: >expect &&
+	git diff-files --name-only >actual &&
+	test_cmp expect actual
+'
+
 test_expect_success SYMLINKS 'replace a file with a symlink' '
 
 	rm foo &&
