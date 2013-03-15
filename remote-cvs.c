@@ -43,6 +43,7 @@ struct cvs_transport *cvs = NULL;
 struct meta_map *branch_meta_map;
 static const char *cvsroot = NULL;
 static const char *cvsmodule = NULL;
+static struct string_list *import_branch_list = NULL;
 
 #define HASH_TABLE_INIT { 0, 0, NULL }
 static struct hash_table cvsauthors_hash = HASH_TABLE_INIT;
@@ -60,22 +61,25 @@ static int have_import_hook = 0;
 
 static int cmd_capabilities(const char *line);
 static int cmd_option(const char *line);
-static int cmd_import(const char *line);
+static int cmd_batch_import(struct string_list *list);
 static int cmd_list(const char *line);
+static int import_branch_by_name(const char *branch_name);
 
 typedef int (*input_command_handler)(const char *);
+typedef int (*input_batch_command_handler)(struct string_list *);
 struct input_command_entry {
 	const char *name;
 	input_command_handler fn;
+	input_batch_command_handler batch_fn;
 	unsigned char batchable;	/* whether the command starts or is part of a batch */
 };
 
 static const struct input_command_entry input_command_list[] = {
-	{ "capabilities", cmd_capabilities, 0 },
-	{ "option", cmd_option, 0 },
-	{ "import", cmd_import, 1 },
-	{ "list", cmd_list, 0 },
-	{ NULL, NULL }
+	{ "capabilities", cmd_capabilities, NULL, 0 },
+	{ "option", cmd_option, NULL, 0 },
+	{ "import", NULL, cmd_batch_import, 1 },
+	{ "list", cmd_list, NULL, 0 },
+	{ NULL, NULL, NULL, 0 }
 };
 
 unsigned int hash_userid(const char *userid)
@@ -965,6 +969,7 @@ static int import_branch(const char *branch_name, struct branch_meta *branch_met
 	int rc;
 	int mark;
 	char *parent_branch_name;
+	struct string_list_item *item;
 	const char *parent_commit;
 	time_t import_time = find_first_commit_time(branch_meta);
 	if (!import_time)
@@ -986,6 +991,13 @@ static int import_branch(const char *branch_name, struct branch_meta *branch_met
 	/*
 	 * if parent is not updated yet, import parent first
 	 */
+	item = unsorted_string_list_lookup(import_branch_list, parent_branch_name);
+	if (item && !item->util) {
+		fprintf(stderr, "fetching parent first\n");
+		import_branch_by_name(item->string);
+		item->util = (void*)1;
+	}
+
 	parent_commit = find_branch_fork_point(parent_branch_name,
 						import_time,
 						branch_meta->last_commit_revision_hash);
@@ -1006,17 +1018,13 @@ static void merge_revision_hash(struct hash_table *meta, struct hash_table *upda
 	for_each_hash(update, update_revision_hash, meta);
 }
 
-static int cmd_import(const char *line)
+static int import_branch_by_name(const char *branch_name)
 {
-	const char *branch_name;
 	static int mark;
 	struct strbuf commit_mark_sb = STRBUF_INIT;
 	struct strbuf meta_mark_sb = STRBUF_INIT;
 	struct strbuf branch_ref = STRBUF_INIT;
 	struct hash_table meta_revision_hash;
-
-	if (!(branch_name = gettext_after(line, "import refs/heads/")))
-		die("Malformed import command (wrong ref prefix)");
 
 	fprintf(stderr, "importing CVS branch %s\n", branch_name);
 
@@ -1036,7 +1044,7 @@ static int cmd_import(const char *line)
 	if (!branch_meta && !ref_exists(branch_ref.buf))
 		die("Cannot find meta for branch %s\n", branch_name);
 
-	if (!branch_meta->last_commit_revision_hash->size &&
+	if (is_empty_hash(branch_meta->last_commit_revision_hash) &&
 	    strcmp(branch_name, "HEAD")) {
 		/*
 		 * no meta, do cvs checkout
@@ -1151,6 +1159,36 @@ static int cmd_import(const char *line)
 		argv_array_clear(&svndump_argv);
 	}
 */
+	return 0;
+}
+
+static int cmd_batch_import(struct string_list *list)
+{
+	struct string_list_item *item;
+	const char *branch_name;
+
+	for_each_string_list_item(item, list) {
+		if (!(branch_name = gettext_after(item->string, "import refs/heads/")))
+			die("Malformed import command (wrong ref prefix) %s", item->string);
+
+		memmove(item->string, branch_name, strlen(branch_name) + 1); // move including \0
+	}
+
+	import_branch_list = list;
+
+	item = unsorted_string_list_lookup(list, "HEAD");
+	if (item) {
+		import_branch_by_name(item->string);
+		item->util = (void*)1;
+	}
+
+	for_each_string_list_item(item, list) {
+		if (!item->util) {
+			import_branch_by_name(item->string);
+			item->util = (void*)1;
+		}
+	}
+
 	return 0;
 }
 
@@ -1278,9 +1316,10 @@ static int do_command(struct strbuf *line)
 	 */
 	if (line->len == 0) {
 		if (batch_cmd) {
-			struct string_list_item *item;
-			for_each_string_list_item(item, &batchlines)
-				batch_cmd->fn(item->string);
+			//struct string_list_item *item;
+			//for_each_string_list_item(item, &batchlines)
+			//	batch_cmd->fn(item->string);
+			batch_cmd->batch_fn(&batchlines);
 			terminate_batch();
 			batch_cmd = NULL;
 			string_list_clear(&batchlines, 0);

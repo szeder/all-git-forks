@@ -42,6 +42,8 @@ static DB *db_cache_init(const char *name, int *exists)
 			*exists = 1;
 	}
 
+	//db->set_bt_compress(db, NULL, NULL);
+
 	if (db->open(db, NULL, db_path.buf, NULL, DB_BTREE, DB_CREATE, 0664) != 0)
 		die("cannot open/create db_cache at %s", db_path.buf);
 
