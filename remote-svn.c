@@ -473,7 +473,7 @@ static void do_connect(void) {
 	const char *p = defcred.protocol;
 	strbuf_addstr(&buf, url);
 
-	if (!strcmp(p, "http") || !strcmp(p, "https")) {
+	if (!strcmp(p, "http") || !strcmp(p, "https") || !strcmp(p, "svn+http") || !strcmp(p, "svn+https")) {
 		proto = svn_http_connect(remote, &buf, &defcred, &uuid);
 	} else if (!strcmp(p, "svn")) {
 		proto = svn_connect(&buf, &defcred, &uuid);

@@ -1187,11 +1187,14 @@ struct svn_proto proto_http = {
 };
 
 struct svn_proto *svn_http_connect(struct remote *remote, struct strbuf *purl, struct credential *cred, struct strbuf *puuid) {
-	char *p;
-	http_init(remote, purl->buf, 0);
+	char *p = purl->buf;
+	if (!strncmp(purl->buf, "svn+", 4)) {
+		p += 4;
+	}
+	http_init(remote, p, 0);
 
 	http_auth = cred;
-	strbuf_add(&url, purl->buf, purl->len);
+	strbuf_addstr(&url, p);
 
 	init_request(&main_request);
 
