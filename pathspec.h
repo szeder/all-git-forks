@@ -34,6 +34,7 @@ struct pathspec {
 #define PATHSPEC_STRIP_SUBMODULE_SLASH_CHEAP (1<<3)
 #define PATHSPEC_SYMLINK_LEADING_PATH (1<<4)
 #define PATHSPEC_STRIP_SUBMODULE_SLASH_EXPENSIVE (1<<5)
+#define PATHSPEC_PREFIX_ORIGIN (1<<6)
 
 extern int init_pathspec(struct pathspec *, const char **);
 extern void parse_pathspec(struct pathspec *pathspec,
