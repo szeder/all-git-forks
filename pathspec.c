@@ -270,9 +270,19 @@ void parse_pathspec(struct pathspec *pathspec,
 	if (!entry && !prefix)
 		return;
 
+	if ((flags & PATHSPEC_PREFER_CWD) &&
+	    (flags & PATHSPEC_PREFER_FULL))
+		die("BUG: PATHSPEC_PREFER_CWD and PATHSPEC_PREFER_FULL are incompatible");
+
 	/* No arguments with prefix -> prefix pathspec */
 	if (!entry) {
 		static const char *raw[2];
+
+		if (flags & PATHSPEC_PREFER_FULL)
+			return;
+
+		if (!(flags & PATHSPEC_PREFER_CWD))
+			die("BUG: parse_pathspec cannot take no arguments in this case");
 
 		pathspec->items = item = xmalloc(sizeof(*item));
 		item->match = prefix;
@@ -338,7 +348,8 @@ const char **get_pathspec(const char *prefix, const char **pathspec)
 	struct pathspec ps;
 	parse_pathspec(&ps,
 		       PATHSPEC_ALL_MAGIC & ~PATHSPEC_FROMTOP,
-		       0, prefix, pathspec);
+		       PATHSPEC_PREFER_CWD,
+		       prefix, pathspec);
 	return ps.raw;
 }
 
