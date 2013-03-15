@@ -266,6 +266,9 @@ void parse_pathspec(struct pathspec *pathspec,
 
 	memset(pathspec, 0, sizeof(*pathspec));
 
+	if (flags & PATHSPEC_MAXDEPTH_VALID)
+		pathspec->magic |= PATHSPEC_MAXDEPTH;
+
 	/* No arguments, no prefix -> no pathspec */
 	if (!entry && !prefix)
 		return;
@@ -320,8 +323,9 @@ void parse_pathspec(struct pathspec *pathspec,
 		pathspec->magic |= item[i].magic;
 	}
 
-	qsort(pathspec->items, pathspec->nr,
-	      sizeof(struct pathspec_item), pathspec_item_cmp);
+	if (pathspec->magic & PATHSPEC_MAXDEPTH)
+		qsort(pathspec->items, pathspec->nr,
+		      sizeof(struct pathspec_item), pathspec_item_cmp);
 }
 
 /*
