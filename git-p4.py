@@ -59,6 +59,10 @@ def p4_build_cmd(cmd):
     password = gitConfig("git-p4.password")
     if len(password) > 0:
         real_cmd += ["-P", password]
+    else:
+        ret = subprocess.call(["p4","-u",gitConfig("git-p4.user"),"-p",gitConfig("git-p4.port"),"login","-s"],stdout=subprocess.PIPE)
+        if ret:
+            subprocess.call(["p4","-u","eric_hsu","-p","tw-p4proxy:1667","login"])
 
     port = gitConfig("git-p4.port")
     if len(port) > 0:
