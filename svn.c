@@ -3,6 +3,7 @@
 #include "attr.h"
 #include "cache-tree.h"
 #include "unpack-trees.h"
+#include "quote.h"
 #include <zlib.h>
 
 #ifndef min
@@ -76,38 +77,223 @@ void clean_svn_path(struct strbuf *b) {
 	}
 }
 
-int parse_svn_revision(struct commit* c) {
+static const char *svn_field(struct commit *c, const char *field) {
 	char *p;
 
-	if (!c) return 0;
+	if (!c) return "";
 	if (parse_commit(c)) goto err;
 
-	p = strstr(c->buffer, "\nrevision ");
-	if (!p) goto err;
-	p += strlen("\nrevision ");
-
-	return atoi(p);
+	p = strstr(c->buffer, field);
+	return p ? p + strlen(field) : "";
 err:
 	die("invalid svn commit %s", cmt_to_hex(c));
 }
 
-const char *parse_svn_path(struct commit* c) {
+int get_svn_revision(struct commit *c) {
+	return atoi(svn_field(c, "\nrevision "));
+}
+
+const char *get_svn_path(struct commit *c) {
 	static struct strbuf buf = STRBUF_INIT;
-	char *p;
-
-	if (!c) return NULL;
-	if (parse_commit(c)) goto err;
-
-	p = strstr(c->buffer, "\npath ");
-	if (!p) goto err;
-	p += strlen("\npath ");
-
+	const char *p = svn_field(c, "\npath ");
 	strbuf_reset(&buf);
 	strbuf_add(&buf, p, strcspn(p, "\n"));
 	clean_svn_path(&buf);
 	return buf.buf;
-err:
-	die("invalid svn commit %s", cmt_to_hex(c));
+}
+
+/* mergeinfo is the implicit mergeinfo ranges from the revision trail
+ * and copy history */
+struct mergeinfo *get_mergeinfo(struct commit *c) {
+	static struct strbuf buf = STRBUF_INIT;
+	const char *p = svn_field(c, "\nmergeinfo ");
+	strbuf_reset(&buf);
+	unquote_c_style(&buf, p, NULL);
+	return parse_svn_mergeinfo(buf.buf);
+}
+
+/* svn:mergeinfo is a copy of the explicit mergeinfo stored in svn */
+struct mergeinfo *get_svn_mergeinfo(struct commit *c) {
+	static struct strbuf buf = STRBUF_INIT;
+	const char *p = svn_field(c, "\nsvn:mergeinfo ");
+	strbuf_reset(&buf);
+	unquote_c_style(&buf, p, NULL);
+	return parse_svn_mergeinfo(buf.buf);
+}
+
+struct mergeinfo {
+	struct range *ranges;
+	struct strbuf buf;
+	unsigned int dirty : 1;
+};
+
+struct range {
+	struct range *next;
+	char *path;
+	int from, to;
+};
+
+static int cmp_range(const struct range *ra, const struct range *rb) {
+	int d = strcmp(ra->path, rb->path);
+	return d ? d : ra->from - rb->from;
+}
+
+static void compact_svn_mergeinfo(struct mergeinfo *m) {
+	struct range **mr = &m->ranges;
+	while (*mr && (*mr)->next) {
+		struct range *a = *mr;
+		struct range *b = (*mr)->next;
+
+		if (strcmp(a->path, b->path) || a->to < b->from-1) {
+			mr = &b->next;
+		} else {
+			*mr = b;
+			b->from = a->from;
+			free(a->path);
+			free(a);
+		}
+	}
+}
+
+/* merge add into m, but don't include any ranges in rm */
+void merge_svn_mergeinfo(struct mergeinfo *m, const struct mergeinfo *add, const struct mergeinfo *rm) {
+	const struct range *ar = add->ranges, *rr = rm ? rm->ranges : NULL;
+	struct range **mr = &m->ranges;
+
+	while (ar) {
+		struct range *r = xmalloc(sizeof(*r));
+		r->from = ar->from;
+		r->to = ar->to;
+
+		while (rr && r->from <= r->to) {
+			int d = cmp_range(rr, r);
+
+			if (d < 0) {
+				rr = rr->next;
+			} else if (d == 0) {
+				r->from = rr->to + 1;
+			} else if (rr->from <= r->to) {
+				r->to = rr->from - 1;
+				break;
+			} else {
+				break;
+			}
+		}
+
+		if (r->from > r->to) {
+			free(r);
+			continue;
+		}
+
+		while (*mr && cmp_range(*mr, r) < 0) {
+			mr = &(*mr)->next;
+		}
+
+		r->path = xstrdup(ar->path);
+		r->next = *mr;
+		*mr = r;
+		m->dirty = 1;
+	}
+
+	compact_svn_mergeinfo(m);
+}
+
+void add_svn_mergeinfo(struct mergeinfo *m, const char *path, int from, int to) {
+	struct range newrange = {NULL, (char*)path, from, to};
+	struct mergeinfo newinfo = {&newrange};
+	merge_svn_mergeinfo(m, &newinfo, NULL);
+}
+
+void free_svn_mergeinfo(struct mergeinfo *m) {
+	if (m) {
+		while (m->ranges) {
+			struct range *r = m->ranges;
+			m->ranges = r->next;
+			free(r->path);
+			free(r);
+		}
+		strbuf_release(&m->buf);
+		free(m);
+	}
+}
+
+struct mergeinfo *parse_svn_mergeinfo(const char *info) {
+	/* format is path:rev,frev-trev\npath2:.... */
+	struct mergeinfo *m = xcalloc(1, sizeof(*m));
+	const char *p = info;
+
+	while (*p) {
+		const char *line, *colon;
+
+		line = p;
+		colon = strchr(p, ':');
+		if (!colon) continue;
+
+		for (p = colon; *p != '\0' && *p != '\n';) {
+			struct range *r, **mr;
+
+			r = xmalloc(sizeof(*r));
+			r->from = strtol(p, (char**)&p, 10);
+
+			if (*p == '-') {
+				r->to = strtol(p, (char**)&p, 10);
+			} else {
+				r->to = r->from;
+			}
+
+			if (*p == ',')
+				p++;
+
+			mr = &m->ranges;
+			while (*mr && cmp_range(*mr, r) < 0) {
+				mr = &(*mr)->next;
+			}
+
+			r->path = xmemdupz(line, colon - line);
+			r->next = *mr;
+			*mr = r;
+		}
+
+		if (*p == '\0')
+			break;
+
+		p++;
+	}
+
+	compact_svn_mergeinfo(m);
+	strbuf_addstr(&m->buf, info);
+	return m;
+}
+
+const char *make_svn_mergeinfo(struct mergeinfo *m) {
+	struct range *r;
+	char *path = NULL;
+
+	if (!m->dirty) {
+		return m->buf.buf;
+	}
+
+	strbuf_reset(&m->buf);
+
+	for (r = m->ranges; r != NULL; r = r->next) {
+		if (strcmp(r->path, path)) {
+			strbuf_complete_line(&m->buf);
+			strbuf_addstr(&m->buf, r->path);
+			strbuf_addch(&m->buf, ':');
+			path = r->path;
+		} else {
+			strbuf_addch(&m->buf, ',');
+		}
+
+		if (r->from == r->to) {
+			strbuf_addf(&m->buf, "%d", r->from);
+		} else {
+			strbuf_addf(&m->buf, "%d-%d", r->from, r->to);
+		}
+	}
+
+	m->dirty = 0;
+	return m->buf.buf;
 }
 
 struct commit* svn_commit(struct commit *c) {
@@ -125,7 +311,9 @@ struct commit* svn_parent(struct commit* c) {
 int write_svn_commit(
 	struct commit *svn, struct commit *git,
 	const unsigned char *tree, const char *ident,
-	const char *path, int rev, unsigned char *ret)
+	const char *path, int rev,
+	struct mergeinfo *mi, struct mergeinfo *mi_svn,
+	unsigned char *ret)
 {
 	int err;
 	struct strbuf buf = STRBUF_INIT;
@@ -138,10 +326,25 @@ int write_svn_commit(
 	strbuf_addf(&buf,
 		"author %s\n"
 		"committer %s\n"
-		"path %s\n"
-		"revision %d\n\n",
-		ident, ident, path, rev);
+		"revision %d\n",
+		ident, ident, rev);
 
+	if (path && *path)
+		strbuf_addf(&buf, "path %s\n", path);
+
+	if (mi) {
+		strbuf_addstr(&buf, "mergeinfo \"");
+		quote_c_style(make_svn_mergeinfo(mi), &buf, NULL, 1);
+		strbuf_addstr(&buf, "\"\n");
+	}
+
+	if (mi_svn) {
+		strbuf_addstr(&buf, "svn:mergeinfo \"");
+		quote_c_style(make_svn_mergeinfo(mi_svn), &buf, NULL, 1);
+		strbuf_addstr(&buf, "\"\n");
+	}
+
+	strbuf_addch(&buf, '\n');
 	err = write_sha1_file(buf.buf, buf.len, "commit", ret);
 	strbuf_release(&buf);
 	return err;

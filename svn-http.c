@@ -929,10 +929,12 @@ static void http_send_file(const char *svnpath, struct strbuf *data, int create)
 		die("put failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
 }
 
-static void http_start_commit(int type, const char *log, const char *path, int rev, const char *copy, int copyrev) {
+static void http_start_commit(int type, const char *log, const char *path, int rev, const char *copy, int copyrev, struct mergeinfo *mi) {
 	struct strbuf buf = STRBUF_INIT;
 	struct request *h = &main_request;
 	struct strbuf *b;
+
+	/* TODO use mergeinfo */
 
 	strbuf_reset(&cmt_activity);
 	strbuf_reset(&cmt_work_path);

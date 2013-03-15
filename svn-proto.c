@@ -637,6 +637,11 @@ static int log_worker(struct conn *c) {
 
 				l.copysrc = strbuf_detach(&copy, NULL);
 				l.copyrev = (int) copyrev;
+
+			} else if (name.len == plen && !memcmp(name.buf, l.path, plen)) {
+				/* may be property changes on the branch
+				 * folder itself */
+				l.copy_modified = 1;
 			}
 
 			read_end(c);
@@ -713,6 +718,9 @@ static int update_worker(struct conn *c) {
 	struct strbuf before = STRBUF_INIT;
 	struct strbuf after = STRBUF_INIT;
 	struct strbuf diff = STRBUF_INIT;
+	struct strbuf branch_token = STRBUF_INIT;
+	struct strbuf prop = STRBUF_INIT;
+	struct strbuf value = STRBUF_INIT;
 	struct svn_update u;
 	int skip = 0, ret;
 	int create = 0;
@@ -741,7 +749,7 @@ static int update_worker(struct conn *c) {
 		/* path rev start-empty */
 		sendf(c, "( set-path ( 0: %d false ) )\n", u.copyrev);
 
-		skip = strlen(u.copy) + 1;
+		skip = strlen(u.copy);
 	} else {
 		/* [rev] target recurse */
 		sendf(c, "( update ( ( %d ) %d:%s true ) )\n",
@@ -775,12 +783,30 @@ static int update_worker(struct conn *c) {
 		} else if (!strcmp(s, "add-dir")) {
 			/* path, parent-token, child-token, [copy-path, copy-rev] */
 			if (read_string(c, &name)) goto err;
-			read_command_end(c);
 			clean_svn_path(&name);
 
-			strbuf_addf(&u.head, "add-dir");
-			arg_quote(&u.head, name.buf + skip);
-			strbuf_addch(&u.head, '\n');
+			if (name.len == skip) {
+				if (skip_string(c)) goto err;
+				if (read_string(c, &branch_token)) goto err;
+			} else {
+				strbuf_addf(&u.head, "add-dir");
+				arg_quote(&u.head, name.buf + skip);
+				strbuf_addch(&u.head, '\n');
+			}
+
+			read_command_end(c);
+
+		} else if (!strcmp(s, "open-dir")) {
+			/* path, parent-token, child-token, rev */
+			if (read_string(c, &name)) goto err;
+			clean_svn_path(&name);
+
+			if (name.len == skip) {
+				if (skip_string(c)) goto err;
+				if (read_string(c, &branch_token)) goto err;
+			}
+
+			read_command_end(c);
 
 		} else if (!strcmp(s, "open-file")) {
 			/* name, dir-token, file-token, rev */
@@ -839,6 +865,24 @@ static int update_worker(struct conn *c) {
 			strbuf_addstr(&u.head, "delete-entry");
 			arg_quote(&u.head, name.buf + skip);
 			strbuf_addch(&u.head, '\n');
+
+		} else if (!strcmp(s, "change-dir-prop")) {
+			/* dir-token, name, [value] */
+			strbuf_reset(&value);
+			if (read_string(c, &name)) goto err;
+			if (read_string(c, &prop)) goto err;
+			if (have_optional(c)) {
+				read_string(c, &value);
+				read_end(c);
+			}
+
+			read_command_end(c);
+
+			if (!strbuf_cmp(&name, &branch_token) && !strcmp(prop.buf, "svn:mergeinfo")) {
+				strbuf_addstr(&u.head, "set-mergeinfo");
+				arg_quote(&u.head, value.buf);
+				strbuf_addch(&u.head, '\n');
+			}
 
 		} else {
 			read_command_end(c);
@@ -988,7 +1032,7 @@ static void svn_delete(const char *p) {
 			(int) strlen(p+1), p+1, dir);
 }
 
-static void svn_start_commit(int type, const char *log, const char *path, int rev, const char *copy, int copyrev) {
+static void svn_start_commit(int type, const char *log, const char *path, int rev, const char *copy, int copyrev, struct mergeinfo *mi) {
 	struct conn *c = &main_connection;
 	int dir;
 
@@ -1022,6 +1066,12 @@ static void svn_start_commit(int type, const char *log, const char *path, int re
 			dir, dir + 1);
 
 		dir_changed(++dir, path);
+	}
+
+	if (type != SVN_DELETE && mi) {
+		const char *str = make_svn_mergeinfo(mi);
+		sendf(c, "( change-dir-prop ( 3:d%02X 13:svn:mergeinfo %d:%s ) )\n",
+			dir, (int) strlen(str), str);
 	}
 }
 

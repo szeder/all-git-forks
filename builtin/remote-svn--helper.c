@@ -9,6 +9,23 @@
 static struct index_state svn_index;
 static int svn_eol = EOL_UNSET;
 
+static void trypause(void) {
+	static int env = -1;
+
+	if (env == -1) {
+		env = getenv("GIT_REMOTE_SVN_HELPER_PAUSE") != NULL;
+	}
+
+	if (env) {
+		struct stat st;
+		int fd = open("remote-svn-helper-pause", O_CREAT|O_RDWR, 0666);
+		close(fd);
+		while (!stat("remote-svn-helper-pause", &st)) {
+			sleep(1);
+		}
+	}
+}
+
 static const char* cmt_to_hex(struct commit* c) {
 	return sha1_to_hex(c ? c->object.sha1 : null_sha1);
 }
@@ -176,6 +193,7 @@ static void delete_entry(const char *name) {
 }
 
 static struct commit *checkout_git;
+static struct mergeinfo *mergeinfo, *svn_mergeinfo;
 
 static void command(char *cmd, char *arg) {
 	static struct strbuf buf = STRBUF_INIT;
@@ -186,11 +204,13 @@ static void command(char *cmd, char *arg) {
 		int rev = strtol(arg, &arg, 10);
 		struct commit *svn = lookup_commit_reference_by_name(ref);
 
-		while (svn && parse_svn_revision(svn) > rev) {
+		while (svn && get_svn_revision(svn) > rev) {
 			svn = svn_parent(svn);
 		}
 
 		checkout_git = svn_commit(svn);
+		mergeinfo = get_mergeinfo(svn);
+		svn_mergeinfo = get_svn_mergeinfo(svn);
 
 		svn_checkout_index(&svn_index, svn);
 		svn_checkout_index(&the_index, checkout_git);
@@ -200,6 +220,8 @@ static void command(char *cmd, char *arg) {
 		svn_checkout_index(&the_index, NULL);
 
 		checkout_git = NULL;
+		mergeinfo = parse_svn_mergeinfo("");
+		svn_mergeinfo = parse_svn_mergeinfo("");
 
 		/* add .gitattributes so the eol behaviour is
 		 * maintained. This can be changed on the git side later
@@ -251,12 +273,20 @@ static void command(char *cmd, char *arg) {
 		char *slash = strrchr(path, '/');
 		struct commit *svn = lookup_commit_reference_by_name(fref);
 
-		while (svn && parse_svn_revision(svn) > frev) {
+		while (svn && get_svn_revision(svn) > frev) {
 			svn = svn_parent(svn);
 		}
 
-		if (write_svn_commit(NULL, svn_commit(svn), cmt_tree(svn), ident, path, trev, sha1))
+		mergeinfo = get_mergeinfo(svn);
+		svn_mergeinfo = get_svn_mergeinfo(svn);
+		add_svn_mergeinfo(mergeinfo, path, trev, trev);
+
+		if (write_svn_commit(NULL, svn_commit(svn), cmt_tree(svn), ident, path, trev, mergeinfo, svn_mergeinfo, sha1))
 			die_errno("write svn commit");
+
+		free_svn_mergeinfo(mergeinfo);
+		free_svn_mergeinfo(svn_mergeinfo);
+		mergeinfo = svn_mergeinfo = NULL;
 
 		update_ref("remote-svn", tref, sha1, null_sha1, 0, DIE_ON_ERR);
 
@@ -292,7 +322,7 @@ static void command(char *cmd, char *arg) {
 		struct commit *svn = lookup_commit_reference_by_name(ref);
 		struct commit *git = checkout_git;
 
-		if (parse_svn_revision(svn) != baserev)
+		if (get_svn_revision(svn) != baserev)
 			die("unexpected intermediate commit");
 
 		if (!git || hashcmp(idx_tree(&the_index), cmt_tree(git))) {
@@ -319,7 +349,9 @@ static void command(char *cmd, char *arg) {
 			git = lookup_commit(sha1);
 		}
 
-		if (write_svn_commit(svn, git, idx_tree(&svn_index), ident, path, newrev, sha1))
+		add_svn_mergeinfo(mergeinfo, path, baserev+1, newrev);
+
+		if (write_svn_commit(svn, git, idx_tree(&svn_index), ident, path, newrev, mergeinfo, svn_mergeinfo, sha1))
 			die_errno("write svn commit");
 
 		update_ref("remote-svn", ref, sha1, svn ? svn->object.sha1 : null_sha1, 0, DIE_ON_ERR);
@@ -329,6 +361,10 @@ static void command(char *cmd, char *arg) {
 		if (!read_ref(buf.buf, sha1)) {
 			delete_ref(buf.buf, sha1, 0);
 		}
+
+		free_svn_mergeinfo(mergeinfo);
+		free_svn_mergeinfo(svn_mergeinfo);
+		mergeinfo = svn_mergeinfo = NULL;
 
 	} else if (!strcmp(cmd, "add-dir")) {
 		char *path = unquote_arg(arg, &arg);
@@ -352,12 +388,17 @@ static void command(char *cmd, char *arg) {
 
 		if (*path == '/') path++;
 		change_file(cmd[0] == 'a', path, &buf, before, after);
+
+	} else if (!strcmp(cmd, "set-mergeinfo")) {
+		char *info = unquote_arg(arg, &arg);
+		free_svn_mergeinfo(svn_mergeinfo);
+		svn_mergeinfo = parse_svn_mergeinfo(info);
 	}
 }
 
 int cmd_remote_svn__update(int argc, const char **argv, const char *prefix) {
 	struct commit *svn = lookup_commit_reference_by_name(*(++argv));
-	const char *path = parse_svn_path(svn);
+	const char *path = get_svn_path(svn);
 	struct commit_list *cmts = NULL;
 	struct strbuf author = STRBUF_INIT;
 	struct strbuf ref = STRBUF_INIT;
@@ -366,7 +407,7 @@ int cmd_remote_svn__update(int argc, const char **argv, const char *prefix) {
 	/* old setup is svn first, git second */
 	for (;;) {
 		struct commit *git;
-		int rev = parse_svn_revision(svn);
+		int rev = get_svn_revision(svn);
 		if (!rev) break;
 		start = rev;
 		if (svn->parents->next) {
@@ -398,7 +439,7 @@ int cmd_remote_svn__update(int argc, const char **argv, const char *prefix) {
 		strbuf_reset(&author);
 		strbuf_add(&author, p, strcspn(p, "\n"));
 
-		if (write_svn_commit(svn, git, cmt_tree(oldsvn), author.buf, path, parse_svn_revision(oldsvn), sha1))
+		if (write_svn_commit(svn, git, cmt_tree(oldsvn), author.buf, path, get_svn_revision(oldsvn), NULL, NULL, sha1))
 			die_errno("write svn commit");
 
 		update_ref("remote-svn", ref.buf, sha1, svn ? svn->object.sha1 : null_sha1, 0, DIE_ON_ERR);
@@ -412,6 +453,8 @@ int cmd_remote_svn__update(int argc, const char **argv, const char *prefix) {
 
 int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 	struct strbuf buf = STRBUF_INIT;
+
+	trypause();
 
 	git_config(&config, NULL);
 	core_eol = svn_eol;
