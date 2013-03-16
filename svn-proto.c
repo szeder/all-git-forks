@@ -3,14 +3,6 @@
 #include "quote.h"
 #include <openssl/md5.h>
 
-#ifndef NO_PTHREADS
-#include <pthread.h>
-static pthread_mutex_t lock;
-#else
-#define pthread_mutex_lock(x)
-#define pthread_mutex_unlock(x)
-#endif
-
 #ifndef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #endif
@@ -27,6 +19,14 @@ static const char *user_agent;
 static struct strbuf url;
 static struct credential *svn_auth;
 struct conn main_connection;
+
+static void init_connection(struct conn *c) {
+	memset(c, 0, sizeof(*c));
+	c->fd = -1;
+	strbuf_init(&c->buf, 0);
+	strbuf_init(&c->indbg, 0);
+	strbuf_init(&c->word, 0);
+}
 
 static int readc(struct conn *c) {
 	if (c->b == c->e) {
@@ -560,33 +560,41 @@ static void svn_list(const char *path, int rev, struct string_list *dirs) {
 	strbuf_release(&buf);
 }
 
-static int log_worker(struct conn *c) {
+
+
+
+
+
+static struct svn_entry *make_entry(struct svnref *r) {
+	if (!r->cmts || r->cmts->rev) {
+		struct svn_entry *c = xcalloc(1, sizeof(*c));
+		c->next = r->cmts;
+		r->cmts = c;
+	}
+	return r->cmts;
+}
+
+static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
+	struct conn *c = &main_connection;
 	struct strbuf name = STRBUF_INIT;
 	struct strbuf author = STRBUF_INIT;
 	struct strbuf time = STRBUF_INIT;
 	struct strbuf msg = STRBUF_INIT;
-	struct svn_log l;
-	size_t plen;
-	int ret;
+	struct strbuf paths = STRBUF_INIT;
+	int64_t rev;
+	int i;
 
-	pthread_mutex_lock(&lock);
-	ret = next_log(&l);
-	pthread_mutex_unlock(&lock);
+	for (i = 0; i < refnr; i++) {
+		strbuf_addf("%d:%s ", (int) strlen(refs[i]->path), refs[i]->path);
+	}
 
-	if (ret) return ret;
-
-	plen = strlen(l.path);
-	do_connect(c, NULL);
-
-	sendf(c, "( log ( ( %d:%s ) " /* (path...) */
+	sendf(c, "( log ( ( %s) " /* (path...) */
 		"( %d ) ( %d ) " /* start/end revno */
-		"%s true " /* changed-paths strict-node */
+		"true true " /* changed-paths strict-node */
 		") )\n",
-		(int) plen,
-		l.path,
-		l.end,
-		l.start,
-		l.get_copysrc ? "true" : "false"
+		paths.buf,
+		end,
+		start
 	     );
 
 	if (read_success(c)) goto err;
@@ -609,39 +617,61 @@ static int log_worker(struct conn *c) {
 		/* start changed path entries */
 		if (read_list(c)) goto err;
 
-		while (l.get_copysrc && !read_list(c)) {
+		while (!read_list(c)) {
 			/* path A|D|R|M [copy-path copy-rev] */
+			int ismodify;
 			if (read_string(c, &name)) goto err;
-			read_word(c);
+			ismodify = !strcmp(read_word(c), "M");
 
 			clean_svn_path(&name);
 
-			if (name.len > plen && !memcmp(name.buf, l.path, plen)) {
-				l.copy_modified = 1;
+			for (i = 0; i < refnr; i++) {
+				struct svnref *r = refs[i];
 
-			} else if (name.len <= plen
-				&& !memcmp(name.buf, l.path, name.len)
-				&& have_optional(c))
-			{
-				struct strbuf copy = STRBUF_INIT;
-				int64_t copyrev;
+				if (r->cmts && r->cmts->new_branch)
+					continue;
 
-				/* copy-path, copy-rev */
-				if (read_string(c, &copy)) goto err;
-				copyrev = read_number(c);
-				if (copyrev <= 0 || copyrev > INT_MAX) goto err;
-				read_end(c);
+				if (!strncmp(name.buf, r->path, strlen(r->path))
+					&& name.buf[strlen(r->path)] == '/')
+				{
+					/* change to a file within this
+					 * branch */
+					struct svn_entry *c = make_entry(r);
+					c->copy_modified = 1;
 
-				clean_svn_path(&copy);
-				strbuf_addstr(&copy, l.path + name.len);
+				} else if (!strncmp(r->path, name.buf, name.len)
+					&& (r->path[name.buf] == '/' || r->path[name.len] == '\0')
+					&& have_optional(c))
+				{
+					/* copy to the branch root or to
+					 * a parent */
+					struct svn_entry *c = make_entry(r);
+					struct strbuf copy = STRBUF_INIT;
+					int64_t copyrev;
 
-				l.copysrc = strbuf_detach(&copy, NULL);
-				l.copyrev = (int) copyrev;
+					/* copy-path, copy-rev */
+					if (read_string(c, &copy)) goto err;
+					copyrev = read_number(c);
+					if (copyrev <= 0 || copyrev > INT_MAX) goto err;
+					read_end(c);
 
-			} else if (name.len == plen && !memcmp(name.buf, l.path, plen)) {
-				/* may be property changes on the branch
-				 * folder itself */
-				l.copy_modified = 1;
+					clean_svn_path(&copy);
+					strbuf_addstr(&copy, l.path + name.len);
+
+					c->copysrc = strbuf_detach(&copy, NULL);
+					c->copyrev = (int) copyrev;
+					c->new_branch = 1;
+
+				} else if (!strcmp(name.buf, r->path)) {
+					struct svn_entry *c = make_entry(r);
+					if (ismodify) {
+						/* may be property changes on the branch
+						 * folder itself */
+						c->copy_modified = 1;
+					} else {
+						c->new_branch = 1;
+					}
+				}
 			}
 
 			read_end(c);
@@ -650,48 +680,55 @@ static int log_worker(struct conn *c) {
 		/* end of changed path entries */
 		read_end(c);
 
-		if (!l.get_copysrc) {
-			/* rev number */
-			int64_t rev = read_number(c);
-			if (rev <= 0) goto err;
+		/* rev number */
+		rev = read_number(c);
+		if (rev <= 0) goto err;
 
-			/* author */
-			if (read_list(c)) goto err;
-			read_string(c, &author);
-			read_end(c);
+		/* author */
+		if (read_list(c)) goto err;
+		read_string(c, &author);
+		read_end(c);
 
-			/* timestamp */
-			if (read_list(c)) goto err;
-			read_string(c, &time);
-			read_end(c);
+		/* timestamp */
+		if (read_list(c)) goto err;
+		read_string(c, &time);
+		read_end(c);
 
-			/* log message */
-			if (read_list(c)) goto err;
-			read_string(c, &msg);
-			read_end(c);
+		/* log message */
+		if (read_list(c)) goto err;
+		read_string(c, &msg);
+		read_end(c);
 
-			pthread_mutex_lock(&lock);
-			cmt_read(&l, rev, author.buf, time.buf, msg.buf);
-			pthread_mutex_unlock(&lock);
+		for (i = 0; i < refs; i++) {
+			struct svn_entry *c = refs[i]->cmts;
+			if (c && !c->rev) {
+				c->rev = (int) rev;
+				c->ident = svn_to_ident(author.buf, timestamp.buf);
+				c->msg = strdup(msg.buf);
+				cmt_read(refs[i]);
+			}
 		}
 
 		read_end(c);
 		read_newline(c);
 	}
 
-	pthread_mutex_lock(&lock);
-	log_read(&l);
-	pthread_mutex_unlock(&lock);
-
 	strbuf_release(&name);
 	strbuf_release(&author);
 	strbuf_release(&time);
 	strbuf_release(&msg);
+	strbuf_release(&paths);
 	return 0;
 
 err:
 	die("malformed log");
 }
+
+
+
+
+
+
 
 static void read_text_delta(struct conn *c, struct strbuf *d) {
 	strbuf_reset(d);
@@ -713,7 +750,8 @@ static void read_text_delta(struct conn *c, struct strbuf *d) {
 	}
 }
 
-static int update_worker(struct conn *c) {
+static void svn_read_update(const char *path, struct svn_entry *cmt) {
+	struct conn *c = &main_connection;
 	struct strbuf name = STRBUF_INIT;
 	struct strbuf before = STRBUF_INIT;
 	struct strbuf after = STRBUF_INIT;
@@ -721,50 +759,38 @@ static int update_worker(struct conn *c) {
 	struct strbuf branch_token = STRBUF_INIT;
 	struct strbuf prop = STRBUF_INIT;
 	struct strbuf value = STRBUF_INIT;
-	struct svn_update u;
-	int skip = 0, ret;
-	int create = 0;
+	int skip = 0;
+	int create = -1;
 
-	strbuf_init(&u.head, 0);
-	strbuf_init(&u.tail, 0);
-
-	pthread_mutex_lock(&lock);
-	ret = next_update(&u);
-	pthread_mutex_unlock(&lock);
-
-	if (ret) return ret;
-
-	do_connect(c, NULL);
-
-	if (u.copyrev) {
+	if (cmt->copysrc) {
 		/* [rev] target recurse target-url */
 		sendf(c, "( switch ( ( %d ) %d:%s true %d:%s%s ) )\n",
-				u.rev,
-				(int) strlen(u.copy),
-				u.copy,
-				(int) (url.len + strlen(u.path)),
+				cmt->rev,
+				(int) strlen(cmt->copysrc),
+				cmt->copysrc,
+				(int) (url.len + strlen(path)),
 				url.buf,
-				u.path);
+				path);
 
 		/* path rev start-empty */
-		sendf(c, "( set-path ( 0: %d false ) )\n", u.copyrev);
+		sendf(c, "( set-path ( 0: %d false ) )\n", cmt->copyrev);
 
-		skip = strlen(u.copy);
+		skip = strlen(cmt->copysrc);
 	} else {
 		/* [rev] target recurse */
 		sendf(c, "( update ( ( %d ) %d:%s true ) )\n",
-				u.rev,
-				(int) strlen(u.path),
-				u.path);
+				cmt->rev,
+				(int) strlen(path),
+				path);
 
 		/* path rev start-empty */
-		if (u.new_branch) {
-			sendf(c, "( set-path ( 0: %d true ) )\n", u.rev);
+		if (cmt->new_branch) {
+			sendf(c, "( set-path ( 0: %d true ) )\n", cmt->rev);
 		} else {
-			sendf(c, "( set-path ( 0: %d false ) )\n", u.rev - 1);
+			sendf(c, "( set-path ( 0: %d false ) )\n", cmt->rev - 1);
 		}
 
-		skip = strlen(u.path);
+		skip = strlen(path);
 	}
 
 	sendf(c, "( finish-report ( ) )\n");
@@ -789,9 +815,8 @@ static int update_worker(struct conn *c) {
 				if (skip_string(c)) goto err;
 				if (read_string(c, &branch_token)) goto err;
 			} else {
-				strbuf_addf(&u.head, "add-dir");
-				arg_quote(&u.head, name.buf + skip);
-				strbuf_addch(&u.head, '\n');
+				fwrite_helper("add-dir\n");
+				write_helper(name.buf+skip, name.len+1-skip);
 			}
 
 			read_command_end(c);
@@ -834,6 +859,8 @@ static int update_worker(struct conn *c) {
 			read_text_delta(c, &diff);
 
 		} else if (!strcmp(s, "close-file")) {
+			if (create < 0) goto err;
+
 			/* file-token, [text-checksum] */
 			if (skip_string(c)) goto err;
 			if (have_optional(c)) {
@@ -845,16 +872,20 @@ static int update_worker(struct conn *c) {
 			/* we need to ignore file changes that only
 			 * change the file metadata */
 			if (diff.len) {
-				strbuf_addstr(&u.head, create ? "add-file" : "open-file");
-				arg_quote(&u.head, name.buf + skip);
-				strbuf_addf(&u.head, " %d \"%s\" \"%s\"\n", (int) diff.len, before.buf, after.buf);
-				strbuf_add(&u.head, diff.buf, diff.len);
-				strbuf_complete_line(&u.head);
+				fwrite_helper("%s %d \"%s\" \"%s\"\n",
+						create ? "add-file" : "open-file",
+						(int) diff.len,
+						before.buf,
+						after.buf);
+
+				write_helper(name.buf+skip, name.len+1-skip);
+				write_helper(diff.buf, diff.len);
 			}
 
 			strbuf_release(&diff);
 			strbuf_reset(&before);
 			strbuf_reset(&after);
+			create = -1;
 
 		} else if (!strcmp(s, "delete-entry")) {
 			/* name, [revno], dir-token */
@@ -862,9 +893,8 @@ static int update_worker(struct conn *c) {
 			read_command_end(c);
 			clean_svn_path(&name);
 
-			strbuf_addstr(&u.head, "delete-entry");
-			arg_quote(&u.head, name.buf + skip);
-			strbuf_addch(&u.head, '\n');
+			fwrite_helper("delete-entry\n");
+			write_helper(name.buf+skip, name.len+1-skip);
 
 		} else if (!strcmp(s, "change-dir-prop")) {
 			/* dir-token, name, [value] */
@@ -879,9 +909,8 @@ static int update_worker(struct conn *c) {
 			read_command_end(c);
 
 			if (!strbuf_cmp(&name, &branch_token) && !strcmp(prop.buf, "svn:mergeinfo")) {
-				strbuf_addstr(&u.head, "set-mergeinfo");
-				arg_quote(&u.head, value.buf);
-				strbuf_addch(&u.head, '\n');
+				fwrite_helper("set-mergeinfo\n");
+				write_helper(value.buf, value.len+1);
 			}
 
 		} else {
@@ -889,14 +918,14 @@ static int update_worker(struct conn *c) {
 		}
 	}
 
+	if (create < 0) goto err;
+
 	sendf(c, "( success ( ) )\n");
 
 	pthread_mutex_lock(&lock);
 	update_read(&u);
 	pthread_mutex_unlock(&lock);
 
-	strbuf_release(&u.head);
-	strbuf_release(&u.tail);
 	strbuf_release(&name);
 	strbuf_release(&before);
 	strbuf_release(&after);
@@ -907,64 +936,6 @@ err:
 	die("malformed update");
 }
 
-
-static void init_connection(struct conn *c) {
-	memset(c, 0, sizeof(*c));
-	c->fd = -1;
-	strbuf_init(&c->buf, 0);
-	strbuf_init(&c->indbg, 0);
-	strbuf_init(&c->word, 0);
-}
-
-typedef int (*worker_fn)(struct conn*);
-
-#ifndef NO_PTHREADS
-static void *run_worker(void *data) {
-	worker_fn fn = data;
-	struct conn c;
-	init_connection(&c);
-
-	while (!fn(&c)) {
-	}
-
-	strbuf_release(&c.word);
-	strbuf_release(&c.indbg);
-	strbuf_release(&c.buf);
-	close(c.fd);
-
-	return NULL;
-}
-#endif
-
-static void spawn_workers(worker_fn fn) {
-#ifndef NO_PTHREADS
-	int i;
-	pthread_t *threads = malloc((svn_max_requests - 1) * sizeof(threads[0]));
-	pthread_mutex_init(&lock, NULL);
-	for (i = 0; i < svn_max_requests-1; i++) {
-		pthread_create(&threads[i], NULL, &run_worker, fn);
-	}
-#endif
-
-	while (!fn(&main_connection)) {
-	}
-
-#ifndef NO_PTHREADS
-	for (i = 0; i < svn_max_requests-1; i++) {
-		pthread_join(threads[i], NULL);
-	}
-	pthread_mutex_destroy(&lock);
-	free(threads);
-#endif
-}
-
-static void svn_read_logs(void) {
-	spawn_workers(&log_worker);
-}
-
-static void svn_read_updates(void) {
-	spawn_workers(&update_worker);
-}
 
 static struct strbuf cpath = STRBUF_INIT;
 static int cdepth;
@@ -1172,8 +1143,8 @@ struct svn_proto proto_svn = {
 	&svn_get_latest,
 	&svn_list,
 	&svn_isdir,
-	&svn_read_logs,
-	&svn_read_updates,
+	&svn_read_log,
+	&svn_read_update,
 	&svn_start_commit,
 	&svn_finish_commit,
 	&svn_mkdir,

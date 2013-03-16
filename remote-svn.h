@@ -63,6 +63,8 @@ struct svn_update {
 	unsigned int new_branch : 1;
 };
 
+const char *svn_to_ident(const char *username, const char *time);
+
 void update_read(struct svn_update *u);
 int next_update(struct svn_update *u);
 

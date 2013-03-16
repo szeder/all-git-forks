@@ -331,7 +331,7 @@ static void parse_authors(void) {
 	close(fd);
 }
 
-static const char *svn_to_ident(const char *username, const char *time) {
+const char *svn_to_ident(const char *username, const char *time) {
 	int i;
 	struct author *a;
 	struct strbuf buf = STRBUF_INIT;
@@ -637,24 +637,27 @@ static void read_logs(void) {
 		}
 
 		proto->read_log(refs, refnr, start, end);
-
-		for (i = 0; i < refnr; i++) {
-			struct svnref *r = refs[i];
-			if (r->cmts && r->cmts->new_branch) {
-				set_ref_start(r, r->cmts->rev);
-			}
-			if (r->cmts && r->cmts->copysrc) {
-				request_log(r->cmts->copysrc, r->cmts->copyrev, NULL);
-			}
-		}
-
 		refnr = 0;
 	}
 
 	stop_progress(&progress);
 }
 
-void cmt_read(void) {
+void cmt_read(struct svnref *r) {
+	struct svn_entry *c = r->cmts;
+	if (!c->next) {
+		c->rev = c->rev;
+	}
+	if (c->new_branch) {
+		set_ref_start(r, c->rev);
+	}
+	if (c->copysrc) {
+		request_log(c->copysrc, c->copyrev, NULL);
+	}
+	if (c->copyrev > c->rev) {
+		die("copy revision newer then destination");
+	}
+
 	display_progress(progress, ++cmts_to_fetch);
 }
 
@@ -803,6 +806,9 @@ static void fetch_updates(void) {
 			}
 			fwrite_helper("\n");
 		}
+
+		fwrite_helper("havelog %d %d\n",
+			r->rev, r->havelog);
 	}
 }
 
