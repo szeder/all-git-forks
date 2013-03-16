@@ -77,6 +77,11 @@ separated by a blank line, a la `git log`.
 1. Consider an example where some subset of the blessed lines are reordered.
 2. Become certain about the hunk-local hypothesis.  Is this actually reasonable?
 3. Sketch the implementation.
+  1. understand git blame
+    - we want to set up a build with debug symbols
+    - we want to run tests via gdb
+    - ultimately we want to run a git-blame test in gdb
+  2. sketch the implementation
 4. Express examples as tests.
 
 
