@@ -636,6 +636,10 @@ XDIFF_LIB = xdiff/lib.a
 VCSSVN_LIB = vcs-svn/lib.a
 VCSCVS_LIB = vcs-cvs/lib.a
 
+LIB_H += vcs-cvs/client.h
+LIB_H += vcs-cvs/meta.h
+LIB_H += vcs-cvs/proto-trace.h
+
 GENERATED_H += common-cmds.h
 
 LIB_H += advice.h
@@ -1895,6 +1899,7 @@ VCSSVN_OBJS += vcs-svn/svndump.o
 
 VCSCVS_OBJS += vcs-cvs/client.o
 VCSCVS_OBJS += vcs-cvs/meta.o
+VCSCVS_OBJS += vcs-cvs/proto-trace.o
 
 TEST_OBJS := $(patsubst test-%$X,test-%.o,$(TEST_PROGRAMS))
 OBJECTS := $(LIB_OBJS) $(BUILTIN_OBJS) $(PROGRAM_OBJS) $(TEST_OBJS) \

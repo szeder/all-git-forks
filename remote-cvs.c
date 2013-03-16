@@ -7,9 +7,11 @@
 #include "run-command.h"
 #include "vcs-cvs/client.h"
 #include "vcs-cvs/meta.h"
+#include "vcs-cvs/proto-trace.h"
 #include "notes.h"
 #include "argv-array.h"
 #include "commit.h"
+#include "progress.h"
 
 /*
  * TODO:
@@ -21,6 +23,7 @@
  */
 
 static const char trace_key[] = "GIT_TRACE_CVS_HELPER";
+static const char trace_proto[] = "RHELPER";
 /*
  * FIXME:
  */
@@ -38,11 +41,14 @@ static int progress = 0;
 static int followtags = 0;
 static int dry_run = 0;
 static int initial_import = 0;
+static struct progress *progress_state;
+static struct progress *progress_rlog;
 
 static int revisions_all_branches_total = 0;
 static int revisions_all_branches_fetched = 0;
 static int skipped = 0;
 static time_t import_start_time = 0;
+static off_t fetched_total_size = 0;
 
 struct cvs_transport *cvs = NULL;
 struct meta_map *branch_meta_map;
@@ -123,55 +129,6 @@ static inline const char *strbuf_hex_unprintable(struct strbuf *sb)
 	return sb->buf;
 }
 
-enum direction {
-	OUT,
-	IN
-};
-
-static void remote_helper_proto_trace_len_only(size_t len, int direction)
-{
-	struct strbuf out = STRBUF_INIT;
-
-	if (!trace_want(trace_key))
-		return;
-
-	strbuf_addf(&out, "RHELPER %4zu %s ...\n", len,
-		    direction == OUT ? "->" : "<-");
-
-	trace_strbuf(trace_key, &out);
-	strbuf_release(&out);
-}
-
-static void remote_helper_proto_trace(const char *buf, size_t len, int direction)
-{
-	if (len > 32*1024) {
-		remote_helper_proto_trace_len_only(len, direction);
-		return;
-	}
-
-	struct strbuf out = STRBUF_INIT;
-	struct strbuf **lines, **it;
-
-	if (!trace_want(trace_key))
-		return;
-
-	lines = strbuf_split_buf(buf, len, '\n', 0);
-	for (it = lines; *it; it++) {
-		if (it == lines)
-			strbuf_addf(&out, "RHELPER %4zu %s %s\n", len,
-				    direction == OUT ? "->" : "<-",
-				    strbuf_hex_unprintable(*it));
-		else
-			strbuf_addf(&out, "RHELPER      %s %s\n",
-				    direction == OUT ? "->" : "<-",
-				    strbuf_hex_unprintable(*it));
-	}
-	strbuf_list_free(lines);
-
-	trace_strbuf(trace_key, &out);
-	strbuf_release(&out);
-}
-
 static ssize_t helper_printf(const char *fmt, ...) __attribute__((format (printf, 1, 2)));
 static ssize_t helper_printf(const char *fmt, ...)
 {
@@ -187,7 +144,7 @@ static ssize_t helper_printf(const char *fmt, ...)
 		va_start(args, fmt);
 		strbuf_vaddf(&tracebuf, fmt, args);
 		va_end(args);
-		remote_helper_proto_trace(tracebuf.buf, tracebuf.len, OUT);
+		proto_trace(tracebuf.buf, tracebuf.len, OUT);
 		strbuf_release(&tracebuf);
 	}
 
@@ -198,8 +155,7 @@ static ssize_t helper_printf(const char *fmt, ...)
 static ssize_t helper_write(const char *buf, size_t len)
 {
 	ssize_t written;
-	if (trace_want(trace_key))
-		remote_helper_proto_trace(buf, len, OUT);
+	proto_trace(buf, len, OUT_BLOB);
 
 	written = fwrite(buf, 1, len, stdout);
 
@@ -222,9 +178,7 @@ static int helper_strbuf_getline(struct strbuf *sb, FILE *fp, int term)
 	if (strbuf_getwholeline(sb, fp, term))
 		return EOF;
 
-	if (trace_want(trace_key)) {
-		remote_helper_proto_trace(sb->buf, sb->len, IN);
-	}
+	proto_trace(sb->buf, sb->len, IN);
 
 	if (sb->buf[sb->len-1] == term)
 		strbuf_setlen(sb, sb->len-1);
@@ -298,141 +252,6 @@ static void terminate_batch(void)
 	helper_flush();
 }
 
-/* NOTE: 'ref' refers to a git reference, while 'rev' refers to a svn revision. */
-/*static char *read_ref_note(const unsigned char sha1[20])
-{
-	const unsigned char *note_sha1;
-	char *msg = NULL;
-	unsigned long msglen;
-	enum object_type type;
-
-	init_notes(NULL, notes_ref, NULL, 0);
-	if (!(note_sha1 = get_note(NULL, sha1)))
-		return NULL;	// note tree not found
-	if (!(msg = read_sha1_file(note_sha1, &type, &msglen)))
-		error("Empty notes tree. %s", notes_ref);
-	else if (!msglen || type != OBJ_BLOB) {
-		error("Note contains unusable content. "
-			"Is something else using this notes tree? %s", notes_ref);
-		free(msg);
-		msg = NULL;
-	}
-	free_notes(NULL);
-	return msg;
-}
-
-static int parse_rev_note(const char *msg, struct rev_note *res)
-{
-	const char *key, *value, *end;
-	size_t len;
-
-	while (*msg) {
-		end = strchr(msg, '\n');
-		len = end ? end - msg : strlen(msg);
-
-		key = "Revision-number: ";
-		if (!prefixcmp(msg, key)) {
-			long i;
-			char *end;
-			value = msg + strlen(key);
-			i = strtol(value, &end, 0);
-			if (end == value || i < 0 || i > UINT32_MAX)
-				return -1;
-			res->rev_nr = i;
-			return 0;
-		}
-		msg += len + 1;
-	}
-	// didn't find it
-	return -1;
-}
-
-static int note2mark_cb(const unsigned char *object_sha1,
-		const unsigned char *note_sha1, char *note_path,
-		void *cb_data)
-{
-	FILE *file = (FILE *)cb_data;
-	char *msg;
-	unsigned long msglen;
-	enum object_type type;
-	struct rev_note note;
-
-	if (!(msg = read_sha1_file(note_sha1, &type, &msglen)) ||
-			!msglen || type != OBJ_BLOB) {
-		free(msg);
-		return 1;
-	}
-	if (parse_rev_note(msg, &note))
-		return 2;
-	if (fprintf(file, ":%d %s\n", note.rev_nr, sha1_to_hex(object_sha1)) < 1)
-		return 3;
-	return 0;
-}
-
-static void regenerate_marks(void)
-{
-	int ret;
-	FILE *marksfile = fopen(marksfilename, "w+");
-
-	if (!marksfile)
-		die_errno("Couldn't create mark file %s.", marksfilename);
-	ret = for_each_note(NULL, 0, note2mark_cb, marksfile);
-	if (ret)
-		die("Regeneration of marks failed, returned %d.", ret);
-	fclose(marksfile);
-}
-
-static void check_or_regenerate_marks(int latestrev)
-{
-	FILE *marksfile;
-	struct strbuf sb = STRBUF_INIT;
-	struct strbuf line = STRBUF_INIT;
-	int found = 0;
-
-	if (latestrev < 1)
-		return;
-
-	init_notes(NULL, notes_ref, NULL, 0);
-	marksfile = fopen(marksfilename, "r");
-	if (!marksfile) {
-		regenerate_marks();
-		marksfile = fopen(marksfilename, "r");
-		if (!marksfile)
-			die_errno("cannot read marks file %s!", marksfilename);
-		fclose(marksfile);
-	} else {
-		strbuf_addf(&sb, ":%d ", latestrev);
-		while (strbuf_getline(&line, marksfile, '\n') != EOF) {
-			if (!prefixcmp(line.buf, sb.buf)) {
-				found++;
-				break;
-			}
-		}
-		fclose(marksfile);
-		if (!found)
-			regenerate_marks();
-	}
-	free_notes(NULL);
-	strbuf_release(&sb);
-	strbuf_release(&line);
-}*/
-
-static void unixtime_to_date(time_t timestamp, struct strbuf *date)
-{
-	struct tm date_tm;
-
-	strbuf_reset(date);
-	strbuf_grow(date, 32);
-
-	setenv("TZ", "UTC", 1);
-	tzset();
-
-	memset(&date_tm, 0, sizeof(date_tm));
-	gmtime_r(&timestamp, &date_tm);
-
-	date->len = strftime(date->buf, date->alloc, "%Y/%m/%d %T", &date_tm);
-}
-
 static int print_revision(void *ptr, void *data)
 {
 	struct file_revision *rev = ptr;
@@ -458,27 +277,23 @@ static int print_revision(void *ptr, void *data)
 	return 0;
 }
 
-static struct strbuf sb1 = STRBUF_INIT;
-static struct strbuf sb2 = STRBUF_INIT;
-static struct strbuf sb3 = STRBUF_INIT;
 static void print_ps(struct cvs_transport *cvs, struct patchset *ps)
 {
-	unixtime_to_date(ps->timestamp, &sb1);
-	unixtime_to_date(ps->timestamp_last, &sb2);
-	unixtime_to_date(ps->cancellation_point, &sb3);
 
-	fprintf(stderr, "%s\n"
-	       "%s\n"
-	       "%s\n"
-	       "%s\n"
-	       "\n"
-	       "%s\n"
-	       "\n",
-	       author_convert(ps->author),
-	       sb1.buf,
-	       sb2.buf,
-	       sb3.buf,
-	       ps->msg);
+	fprintf(stderr,
+		"Author: %s\n"
+		"AuthorDate: %s\n",
+		author_convert(ps->author),
+		show_date(ps->timestamp, 0, DATE_NORMAL));
+	fprintf(stderr,
+		"CommitDate: %s\n",
+		show_date(ps->timestamp_last, 0, DATE_NORMAL));
+	fprintf(stderr,
+		"UpdateDate: %s\n"
+		"\n"
+		"%s\n",
+		show_date(ps->cancellation_point, 0, DATE_NORMAL),
+		ps->msg);
 
 	for_each_hash(ps->revision_hash, print_revision, cvs);
 }
@@ -527,14 +342,14 @@ static int commit_revision(void *ptr, void *data)
 
 	//fprintf(stderr, "commit_revision %s %s\n", rev->path, rev->revision);
 	revisions_all_branches_fetched++;
-	fprintf(stderr, "checkout [%d/%d] all branches,%sETA] %s %s",
+	/*fprintf(stderr, "checkout [%d/%d] all branches,%sETA] %s %s",
 			revisions_all_branches_fetched,
 			revisions_all_branches_total,
 			get_import_time_estimation(),
 			rev->path, rev->revision);
-
+	*/
 	if (rev->isdead) {
-		fprintf(stderr, " dead\n");
+	//	fprintf(stderr, " dead\n");
 		helper_printf("D %s\n", rev->path);
 		return 0;
 	}
@@ -543,17 +358,21 @@ static int commit_revision(void *ptr, void *data)
 	if (rc == -1)
 		die("Cannot checkout file %s rev %s", rev->path, rev->revision);
 
+	fetched_total_size += file.file.len;
+	display_progress(progress_state, revisions_all_branches_fetched);
+	display_throughput(progress_state, fetched_total_size);
+
 	if (file.isdead) {
-		fprintf(stderr, " (fetched) dead\n");
+	//	fprintf(stderr, " (fetched) dead\n");
 		helper_printf("D %s\n", rev->path);
 		return 0;
 	}
 
-	if (file.iscached)
+	/*if (file.iscached)
 		fprintf(stderr, " (fetched from cache) isexec %u size %zu\n", file.isexec, file.file.len);
 	else
 		fprintf(stderr, " mode %.3o size %zu\n", file.mode, file.file.len);
-
+	*/
 	//helper_printf("M 100%.3o %s %s\n", hash, rev->path);
 	helper_printf("M 100%.3o inline %s\n", file.isexec ? 0755 : 0644, rev->path);
 	helper_printf("data %zu\n", file.file.len);
@@ -1159,7 +978,6 @@ static int import_branch_by_name(const char *branch_name)
 		fprintf(stderr, "Branch: %s Commit: %d/%d\n", branch_name, psnum, pstotal);
 		print_ps(cvs, ps);
 		fprintf(stderr, "--<<------------------\n\n");
-
 		mark = commit_patchset(ps, branch_name, &commit_mark_sb);
 		strbuf_reset(&commit_mark_sb);
 		strbuf_addf(&commit_mark_sb, ":%d", mark);
@@ -1270,6 +1088,8 @@ static int cmd_batch_import(struct string_list *list)
 	import_branch_list = list;
 	import_start_time = time(NULL);
 
+	progress_state = start_progress("Receiving revisions", revisions_all_branches_total);
+
 	item = unsorted_string_list_lookup(list, "HEAD");
 	if (item) {
 		import_branch_by_name(item->string);
@@ -1283,6 +1103,7 @@ static int cmd_batch_import(struct string_list *list)
 		}
 	}
 
+	stop_progress(&progress_state);
 	return 0;
 }
 
@@ -1308,6 +1129,7 @@ void add_file_revision_cb(const char *branch,
 	else
 		skipped++;
 	revisions_all_branches_total++;
+	display_progress(progress_rlog, revisions_all_branches_total);
 }
 
 static time_t update_since = 0;
@@ -1342,7 +1164,9 @@ static int cmd_list(const char *line)
 	struct meta_map_entry *branch_meta;
 
 	if (initial_import) {
+		progress_rlog = start_progress("revisions info", 0);
 		rc = cvs_rlog(cvs, 0, 0, add_file_revision_cb, branch_meta_map);
+		stop_progress(&progress_rlog);
 		if (rc == -1)
 			die("rlog failed");
 		fprintf(stderr, "Totol revisions: %d\n", revisions_all_branches_total);

@@ -7,6 +7,10 @@
 #define ZBUF_SIZE 16384
 #define RDBUF_SIZE ZBUF_SIZE
 
+/*
+ * TODO: add cvs sessions id or smth to trace
+ */
+
 enum cvs_protocol {
 	cvs_proto_local,
 	cvs_proto_pserver,

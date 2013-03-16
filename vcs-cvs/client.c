@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "run-command.h"
 #include "vcs-cvs/client.h"
+#include "vcs-cvs/proto-trace.h"
 #include "pkt-line.h"
 #include "sigchain.h"
 
@@ -236,6 +237,7 @@ static int db_cache_for_each(DB *db, handle_file_fn_t cb, void *data)
 #endif
 
 static const char trace_key[] = "GIT_TRACE_CVS_PROTO";
+static const char trace_proto[] = "CVS";
 extern unsigned long fileMemoryLimit;
 
 /*
@@ -459,91 +461,6 @@ struct child_process *cvs_init_transport(struct cvs_transport *cvs,
 	return conn;
 }
 
-enum direction {
-	OUT,
-	IN
-};
-
-static inline const char *strbuf_hex_unprintable(struct strbuf *sb)
-{
-	static const char hex[] = "0123456789abcdef";
-	struct strbuf out = STRBUF_INIT;
-	char *c;
-
-	for (c = sb->buf; c < sb->buf + sb->len; c++) {
-		if (isprint(*c)) {
-			strbuf_addch(&out, *c);
-		}
-		else {
-			strbuf_addch(&out, '\\');
-			strbuf_addch(&out, hex[(unsigned char)*c >> 4]);
-			strbuf_addch(&out, hex[*c & 0xf]);
-		}
-	}
-
-	strbuf_swap(sb, &out);
-	strbuf_release(&out);
-	return sb->buf;
-}
-
-static void cvs_proto_trace_len_only(size_t len, enum direction dir)
-{
-	struct strbuf out = STRBUF_INIT;
-
-	if (!trace_want(trace_key))
-		return;
-
-	strbuf_addf(&out, "CVS %4zu %s ...\n", len,
-		    dir == OUT ? "->" : "<-");
-
-	trace_strbuf(trace_key, &out);
-	strbuf_release(&out);
-}
-
-static void cvs_proto_trace(const char *buf, size_t len, enum direction dir)
-{
-	if (len > 32*1024) {
-		cvs_proto_trace_len_only(len, dir);
-		return;
-	}
-
-	struct strbuf out = STRBUF_INIT;
-	struct strbuf **lines, **it;
-
-	if (!trace_want(trace_key))
-		return;
-
-	lines = strbuf_split_buf(buf, len, '\n', 0);
-	for (it = lines; *it; it++) {
-		if (it == lines)
-			strbuf_addf(&out, "CVS %4zu %s %s\n", len,
-			            dir == OUT ? "->" : "<-",
-				    strbuf_hex_unprintable(*it));
-		else
-			strbuf_addf(&out, "CVS      %s %s\n",
-			            dir == OUT ? "->" : "<-",
-				    strbuf_hex_unprintable(*it));
-	}
-	strbuf_list_free(lines);
-
-	trace_strbuf(trace_key, &out);
-	strbuf_release(&out);
-}
-
-static void cvs_proto_ztrace(size_t len, size_t zlen, enum direction dir)
-{
-	struct strbuf out = STRBUF_INIT;
-
-	if (!trace_want(trace_key))
-		return;
-
-	strbuf_addf(&out, "CVS ZLIB %s %zu z%zu\n",
-			            dir == OUT ? "->" : "<-",
-				    len, zlen);
-	trace_strbuf(trace_key, &out);
-	strbuf_release(&out);
-}
-
 static ssize_t z_write_in_full(int fd, git_zstream *wr_stream, const void *buf, size_t len)
 {
 	unsigned char zbuf[ZBUF_SIZE];
@@ -576,7 +493,7 @@ static ssize_t z_write_in_full(int fd, git_zstream *wr_stream, const void *buf, 
 		written += ret;
 	}
 
-	cvs_proto_ztrace(len, written, OUT);
+	proto_ztrace(len, written, OUT);
 	if (flush != Z_SYNC_FLUSH)
 		die("no Z_SYNC_FLUSH");
 	return written;
@@ -610,7 +527,7 @@ static ssize_t cvs_write(struct cvs_transport *cvs, int flush, const char *fmt, 
 	if (written == -1)
 		return -1;
 
-	cvs_proto_trace(cvs->wr_buf.buf, cvs->compress ? cvs->wr_buf.len : written, OUT);
+	proto_trace(cvs->wr_buf.buf, cvs->compress ? cvs->wr_buf.len : written, OUT);
 	strbuf_reset(&cvs->wr_buf);
 
 	return 0;
@@ -631,7 +548,7 @@ static ssize_t cvs_write(struct cvs_transport *cvs, int flush, const char *fmt, 
 	if (written == -1)
 		return -1;
 
-	cvs_proto_trace(cvs->wr_buf.buf, cvs->compress ? len : written, OUT);
+	cvs_proto_trace(cvs->wr_buf.buf, cvs->compress ? len : written, OUT_BLOB);
 	strbuf_reset(&cvs->wr_buf);
 
 	return 0;
@@ -668,7 +585,7 @@ static ssize_t z_xread(int fd, git_zstream *rd_stream, void *zbuf, size_t zbuf_l
 
 		zreadn -= rd_stream->avail_in;
 		readn = buf_len - rd_stream->avail_out;
-		cvs_proto_ztrace(readn, zreadn, IN);
+		proto_ztrace(readn, zreadn, IN);
 	} while(!readn || ret);
 
 	return readn;
@@ -710,7 +627,7 @@ static ssize_t cvs_readline(struct cvs_transport *cvs, struct strbuf *sb)
 
 			if (trace_want(trace_key)) {
 				sb->buf[sb->len] = '\n';
-				cvs_proto_trace(sb->buf, sb->len + 1, IN);
+				proto_trace(sb->buf, sb->len + 1, IN);
 				sb->buf[sb->len] = '\0';
 			}
 
@@ -733,7 +650,7 @@ static ssize_t cvs_readline(struct cvs_transport *cvs, struct strbuf *sb)
 			readn = xread(cvs->fd[0], cvs->rd_buf.buf, sizeof(cvs->rd_buf.data));
 
 		if (readn <= 0) {
-			cvs_proto_trace(NULL, 0, IN);
+			proto_trace(NULL, 0, IN);
 			return -1;
 		}
 
@@ -785,7 +702,7 @@ static ssize_t cvs_read_full(struct cvs_transport *cvs, char *buf, ssize_t size)
 		die("read full failed");
 
 	readn += ret;
-	cvs_proto_trace(buf, readn, IN);
+	proto_trace(buf, readn, IN_BLOB);
 	return readn;
 }
 
@@ -809,7 +726,7 @@ static ssize_t z_finish_write(int fd, git_zstream *wr_stream)
 	if (written == -1)
 		return -1;
 
-	cvs_proto_ztrace(0, written, OUT);
+	proto_ztrace(0, written, OUT);
 	return written;
 }
 
@@ -822,7 +739,7 @@ static void z_terminate_gently(struct cvs_transport *cvs)
 		readn = z_xread(cvs->fd[0], &cvs->rd_stream,
 				cvs->rd_zbuf, sizeof(cvs->rd_zbuf),
 				cvs->rd_buf.buf, sizeof(cvs->rd_buf.data));
-		cvs_proto_trace(cvs->rd_buf.buf, readn, IN);
+		proto_trace(cvs->rd_buf.buf, readn, IN);
 	} while(readn);
 }
 
@@ -1628,22 +1545,6 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 	return 0;
 }
 
-/*static void unixtime_to_date(time_t timestamp, struct strbuf *date)
-{
-	struct tm date_tm;
-
-	strbuf_reset(date);
-	strbuf_grow(date, 32);
-
-	setenv("TZ", "UTC", 1);
-	tzset();
-
-	memset(&date_tm, 0, sizeof(date_tm));
-	gmtime_r(&timestamp, &date_tm);
-
-	date->len = strftime(date->buf, date->alloc, "%d %m/%d %T", &date_tm);
-}*/
-
 int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until, add_rev_fn_t cb, void *data)
 {
 	ssize_t ret;
@@ -1652,11 +1553,6 @@ int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until, add_rev_fn_t
 		return parse_cvs_rlog(cvs, cb, data);
 
 	if (since) {
-		/*struct strbuf date = STRBUF_INIT;
-		fprintf(stderr, "git date: %s\n", show_date(since, 0, DATE_RFC2822));
-		unixtime_to_date(since, &date);
-		fprintf(stderr, "ud date: %s\n", date.buf);
-		fprintf(stderr, "git date: %s\n", show_date(since, 0, DATE_RFC2822));*/
 		ret = cvs_write(cvs,
 				WR_NOFLUSH,
 				"Argument -d\n"
