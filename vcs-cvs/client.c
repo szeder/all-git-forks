@@ -1876,8 +1876,10 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 
 	while (1) {
 		ret = cvs_readline(cvs, &cvs->rd_line_buf);
-		if (ret <= 0)
+		if (ret < 0)
 			break;
+		if (!ret)
+			continue;
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "E "))
 			fprintf(stderr, "CVS E: %s\n", cvs->rd_line_buf.buf + 2);
