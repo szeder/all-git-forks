@@ -809,6 +809,7 @@ static void read_packed_refs(FILE *f, struct ref_dir *dir)
 	struct ref_entry *last = NULL;
 	char refline[PATH_MAX];
 	int flag = REF_ISPACKED;
+	int fully_peeled = 0;
 
 	while (fgets(refline, sizeof(refline), f)) {
 		unsigned char sha1[20];
@@ -819,13 +820,26 @@ static void read_packed_refs(FILE *f, struct ref_dir *dir)
 			const char *traits = refline + sizeof(header) - 1;
 			if (strstr(traits, " peeled "))
 				flag |= REF_KNOWS_PEELED;
+			if (strstr(traits, " fully-peeled "))
+				fully_peeled = 1;
 			/* perhaps other traits later as well */
 			continue;
 		}
 
 		refname = parse_ref_line(refline, sha1);
 		if (refname) {
-			last = create_ref_entry(refname, sha1, flag, 1);
+			/*
+			 * Older git did not write peel lines for anything
+			 * outside of refs/tags/; if the fully-peeled trait
+			 * is not set, we are dealing with such an older
+			 * git and cannot assume an omitted peel value
+			 * means the ref is not a tag object.
+			 */
+			int this_flag = flag;
+			if (!fully_peeled && prefixcmp(refname, "refs/tags/"))
+				this_flag &= ~REF_KNOWS_PEELED;
+
+			last = create_ref_entry(refname, sha1, this_flag, 1);
 			add_ref(dir, last);
 			continue;
 		}
