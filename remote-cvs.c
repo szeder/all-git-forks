@@ -49,7 +49,7 @@ static int revisions_all_branches_total = 0;
 static int revisions_all_branches_fetched = 0;
 static int skipped = 0;
 static time_t import_start_time = 0;
-static off_t fetched_total_size = 0;
+//static off_t fetched_total_size = 0;
 
 struct cvs_transport *cvs = NULL;
 struct meta_map *branch_meta_map;
@@ -342,9 +342,10 @@ static int commit_revision(void *ptr, void *data)
 	int rc;
 
 	revisions_all_branches_fetched++;
-	fprintf(stderr, "checkout [%d/%d] all branches,%sETA] %s %s",
+	fprintf(stderr, "checkout [%d/%d] (%.2lf%%) all branches,%sETA] %s %s",
 			revisions_all_branches_fetched,
 			revisions_all_branches_total,
+			(double)revisions_all_branches_fetched/(double)revisions_all_branches_total*100.,
 			get_import_time_estimation(),
 			rev->path, rev->revision);
 

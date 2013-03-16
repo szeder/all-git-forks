@@ -89,6 +89,10 @@ static DBT *dbt_set(DBT *dbt, void *buf, size_t size)
 	return dbt;
 }
 
+/*
+ * TODO:
+ * path should be module + file path, this will help with subprojects import
+ */
 static void db_cache_add(DB *db, const char *path, const char *revision, int isexec, struct strbuf *file)
 {
 	struct strbuf key_sb = STRBUF_INIT;
