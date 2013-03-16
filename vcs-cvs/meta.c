@@ -578,8 +578,11 @@ void aggregate_patchsets(struct branch_meta *meta)
 				if (get_branch_rev(rev->revision, &br, &ver) == -1)
 					die("bad revision format %s", rev->revision);
 
-				if (ver != 1)
-					error("new file version is not 1: %s %s", rev->path, rev->revision);
+				// TODO:
+				// is it good, but flood with error in current way of
+				// ignoring files added to another branch
+				// if (ver != 1)
+				//	error("new file version is not 1: %s %s", rev->path, rev->revision);
 				// TODO: check that file is new (revision .*1.1)
 			}
 		}

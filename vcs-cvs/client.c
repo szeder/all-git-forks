@@ -2,6 +2,7 @@
 #include "run-command.h"
 #include "vcs-cvs/client.h"
 #include "pkt-line.h"
+#include "sigchain.h"
 
 #include <string.h>
 
@@ -9,6 +10,8 @@
 #ifdef DB_CACHE
 #include <db.h>
 static DB *db_cache = NULL;
+static DB *db_cache_branch = NULL;
+static char *db_cache_branch_path = NULL;
 
 static void db_cache_release(DB *db)
 {
@@ -19,6 +22,21 @@ static void db_cache_release(DB *db)
 static void db_cache_release_default()
 {
 	db_cache_release(db_cache);
+	fprintf(stderr, "db_cache released");
+	if (db_cache_branch) {
+		db_cache_release(db_cache_branch);
+		db_cache_branch = NULL;
+		unlink(db_cache_branch_path);
+		fprintf(stderr, "db_cache %s removed", db_cache_branch_path);
+		free(db_cache_branch_path);
+	}
+}
+
+static void db_cache_release_default_on_signal(int signo)
+{
+	db_cache_release_default();
+	sigchain_pop(signo);
+	raise(signo);
 }
 
 static DB *db_cache_init(const char *name, int *exists)
@@ -58,6 +76,7 @@ static void db_cache_init_default()
 
 	db_cache = db_cache_init("cvscache.db", NULL);
 	atexit(db_cache_release_default);
+	sigchain_push_common(db_cache_release_default_on_signal);
 }
 
 static DBT *dbt_set(DBT *dbt, void *buf, size_t size)
@@ -134,8 +153,24 @@ static DB *db_cache_init_branch(const char *branch, time_t date, int *exists)
 
 	strbuf_addf(&db_name, "cvscache.%s.%ld.db", branch, date);
 	db = db_cache_init(db_name.buf, exists);
-	strbuf_release(&db_name);
+	if (db) {
+		db_cache_branch = db;
+		db_cache_branch_path = strbuf_detach(&db_name, NULL);
+	}
+	else {
+		strbuf_release(&db_name);
+	}
 	return db;
+}
+
+static void db_cache_release_branch(DB *db)
+{
+	db_cache_release(db);
+	db_cache_branch = NULL;
+	if (db_cache_branch_path) {
+		free(db_cache_branch_path);
+		db_cache_branch_path = NULL;
+	}
 }
 
 static unsigned int hash_buf(const char *buf, size_t size)
@@ -346,6 +381,7 @@ struct child_process *cvs_init_transport(struct cvs_transport *cvs,
 	struct child_process *conn = &no_fork;
 	const char **arg;
 	struct strbuf sport = STRBUF_INIT;
+	struct strbuf userathost = STRBUF_INIT;
 
 	/* Without this we cannot rely on waitpid() to tell
 	 * what happened to our children.
@@ -401,7 +437,8 @@ struct child_process *cvs_init_transport(struct cvs_transport *cvs,
 			*arg++ = putty ? "-P" : "-p";
 			*arg++ = sport.buf;
 		}
-		*arg++ = cvs->host;
+		strbuf_addf(&userathost, "%s@%s", cvs->username, cvs->host);
+		*arg++ = userathost.buf;
 	}
 	else {
 		/* remove repo-local variables from the environment */
@@ -418,6 +455,7 @@ struct child_process *cvs_init_transport(struct cvs_transport *cvs,
 	cvs->fd[1] = conn->in;  /* write to child's stdin */
 
 	strbuf_release(&sport);
+	strbuf_release(&userathost);
 	return conn;
 }
 
@@ -448,8 +486,27 @@ static inline const char *strbuf_hex_unprintable(struct strbuf *sb)
 	return sb->buf;
 }
 
+static void cvs_proto_trace_len_only(size_t len, enum direction dir)
+{
+	struct strbuf out = STRBUF_INIT;
+
+	if (!trace_want(trace_key))
+		return;
+
+	strbuf_addf(&out, "CVS %4zu %s ...\n", len,
+		    dir == OUT ? "->" : "<-");
+
+	trace_strbuf(trace_key, &out);
+	strbuf_release(&out);
+}
+
 static void cvs_proto_trace(const char *buf, size_t len, enum direction dir)
 {
+	if (len > 32*1024) {
+		cvs_proto_trace_len_only(len, dir);
+		return;
+	}
+
 	struct strbuf out = STRBUF_INIT;
 	struct strbuf **lines, **it;
 
@@ -520,6 +577,8 @@ static ssize_t z_write_in_full(int fd, git_zstream *wr_stream, const void *buf, 
 	}
 
 	cvs_proto_ztrace(len, written, OUT);
+	if (flush != Z_SYNC_FLUSH)
+		die("no Z_SYNC_FLUSH");
 	return written;
 }
 
@@ -649,11 +708,15 @@ static ssize_t cvs_readline(struct cvs_transport *cvs, struct strbuf *sb)
 			linelen = newline - cvs->rd_buf.buf;
 			strbuf_add(sb, cvs->rd_buf.buf, linelen);
 
-			cvs_proto_trace(cvs->rd_buf.buf, linelen + 1, IN);
+			if (trace_want(trace_key)) {
+				sb->buf[sb->len] = '\n';
+				cvs_proto_trace(sb->buf, sb->len + 1, IN);
+				sb->buf[sb->len] = '\0';
+			}
 
 			cvs->rd_buf.buf += linelen + 1;
 			cvs->rd_buf.len -= linelen + 1;
-			return linelen;
+			return sb->len;
 		}
 
 		if (cvs->rd_buf.len) {
@@ -881,7 +944,11 @@ static int cvs_negotiate(struct cvs_transport *cvs)
 
 	ret = cvs_write(cvs, WR_NOFLUSH, "UseUnchanged\n");
 
-	cvs_init_compress(cvs, 1);
+	const char *gzip = getenv("GZIP");
+	if (gzip)
+		cvs_init_compress(cvs, atoi(gzip));
+	else
+		cvs_init_compress(cvs, 1);
 
 	ret = cvs_write(cvs, WR_FLUSH, "version\n");
 	ret = cvs_getreply(cvs, &reply, "M ");
@@ -1718,12 +1785,17 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 		die("rlog to connect");
 
 	struct strbuf file_full_path = STRBUF_INIT;
+	struct strbuf file_mod_path = STRBUF_INIT;
 	int mode;
 	size_t size;
 
 	strbuf_addstr(&file_full_path, cvs->full_module_path);
 	strbuf_complete_line_ch(&file_full_path, '/');
 	strbuf_addstr(&file_full_path, file);
+
+	strbuf_addstr(&file_mod_path, cvs->module);
+	strbuf_complete_line_ch(&file_mod_path, '/');
+	strbuf_addstr(&file_mod_path, file);
 
 	while (1) {
 		ret = cvs_readline(cvs, &cvs->rd_line_buf);
@@ -1737,7 +1809,8 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 		    strbuf_startswith(&cvs->rd_line_buf, "Updated")) {
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
 				return -1;
-			if (strbuf_cmp(&cvs->rd_line_buf, &file_full_path))
+			if (strbuf_cmp(&cvs->rd_line_buf, &file_full_path) &&
+			    strbuf_cmp(&cvs->rd_line_buf, &file_mod_path))
 				die("Checked out file name doesn't match %s %s", cvs->rd_line_buf.buf, file_full_path.buf);
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
@@ -1794,7 +1867,8 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 		    strbuf_startswith(&cvs->rd_line_buf, "Remove-entry")) {
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
 				return -1;
-			if (strbuf_cmp(&cvs->rd_line_buf, &file_full_path))
+			if (strbuf_cmp(&cvs->rd_line_buf, &file_full_path) &&
+			    strbuf_cmp(&cvs->rd_line_buf, &file_mod_path))
 				die("Checked out file name doesn't match %s %s", cvs->rd_line_buf.buf, file_full_path.buf);
 
 			content->ismem = 0;
@@ -1812,6 +1886,7 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 	}
 
 	strbuf_release(&file_full_path);
+	strbuf_release(&file_mod_path);
 	return rc;
 }
 
@@ -1992,7 +2067,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 
 	cvsfile_release(&file);
 #ifdef DB_CACHE
-	db_cache_release(db);
+	db_cache_release_branch(db);
 #endif
 	return rc;
 }

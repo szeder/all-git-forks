@@ -122,8 +122,27 @@ enum direction {
 	IN
 };
 
+static void remote_helper_proto_trace_len_only(size_t len, int direction)
+{
+	struct strbuf out = STRBUF_INIT;
+
+	if (!trace_want(trace_key))
+		return;
+
+	strbuf_addf(&out, "RHELPER %4zu %s ...\n", len,
+		    direction == OUT ? "->" : "<-");
+
+	trace_strbuf(trace_key, &out);
+	strbuf_release(&out);
+}
+
 static void remote_helper_proto_trace(const char *buf, size_t len, int direction)
 {
+	if (len > 32*1024) {
+		remote_helper_proto_trace_len_only(len, direction);
+		return;
+	}
+
 	struct strbuf out = STRBUF_INIT;
 	struct strbuf **lines, **it;
 
@@ -1240,6 +1259,7 @@ int on_each_ref(const char *branch, const unsigned char *sha1, int flags, void *
 
 static int cmd_list(const char *line)
 {
+	int rc;
 	cvs = cvs_connect(cvsroot, cvsmodule);
 	if (!cvs)
 		return -1;
@@ -1249,7 +1269,9 @@ static int cmd_list(const char *line)
 	struct meta_map_entry *branch_meta;
 
 	if (initial_import) {
-		cvs_rlog(cvs, 0, 0, add_file_revision_cb, branch_meta_map);
+		rc = cvs_rlog(cvs, 0, 0, add_file_revision_cb, branch_meta_map);
+		if (rc == -1)
+			die("rlog failed");
 		fprintf(stderr, "CB CALLED: %d\n", called);
 		fprintf(stderr, "SKIPPED: %d\n", skipped);
 
@@ -1279,7 +1301,9 @@ static int cmd_list(const char *line)
 		 * truncated. Have to detect this case and do full rlog for
 		 * importing such branches.
 		 */
-		cvs_rlog(cvs, update_since, 0, add_file_revision_cb, branch_meta_map);
+		rc = cvs_rlog(cvs, update_since, 0, add_file_revision_cb, branch_meta_map);
+		if (rc == -1)
+			die("rlog failed");
 		fprintf(stderr, "CB CALLED: %d\n", called);
 		fprintf(stderr, "SKIPPED: %d\n", skipped);
 
