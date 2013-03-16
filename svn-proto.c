@@ -585,7 +585,7 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 	int i;
 
 	for (i = 0; i < refnr; i++) {
-		strbuf_addf("%d:%s ", (int) strlen(refs[i]->path), refs[i]->path);
+		strbuf_addf(&paths, "%d:%s ", (int) strlen(refs[i]->path), refs[i]->path);
 	}
 
 	sendf(c, "( log ( ( %s) " /* (path...) */
@@ -636,16 +636,16 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 				{
 					/* change to a file within this
 					 * branch */
-					struct svn_entry *c = make_entry(r);
-					c->copy_modified = 1;
+					struct svn_entry *cmt = make_entry(r);
+					cmt->copy_modified = 1;
 
 				} else if (!strncmp(r->path, name.buf, name.len)
-					&& (r->path[name.buf] == '/' || r->path[name.len] == '\0')
+					&& (r->path[name.len] == '/' || r->path[name.len] == '\0')
 					&& have_optional(c))
 				{
 					/* copy to the branch root or to
 					 * a parent */
-					struct svn_entry *c = make_entry(r);
+					struct svn_entry *cmt = make_entry(r);
 					struct strbuf copy = STRBUF_INIT;
 					int64_t copyrev;
 
@@ -656,20 +656,20 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 					read_end(c);
 
 					clean_svn_path(&copy);
-					strbuf_addstr(&copy, l.path + name.len);
+					strbuf_addstr(&copy, r->path + name.len);
 
-					c->copysrc = strbuf_detach(&copy, NULL);
-					c->copyrev = (int) copyrev;
-					c->new_branch = 1;
+					cmt->copysrc = strbuf_detach(&copy, NULL);
+					cmt->copyrev = (int) copyrev;
+					cmt->new_branch = 1;
 
 				} else if (!strcmp(name.buf, r->path)) {
-					struct svn_entry *c = make_entry(r);
+					struct svn_entry *cmt = make_entry(r);
 					if (ismodify) {
 						/* may be property changes on the branch
 						 * folder itself */
-						c->copy_modified = 1;
+						cmt->copy_modified = 1;
 					} else {
-						c->new_branch = 1;
+						cmt->new_branch = 1;
 					}
 				}
 			}
@@ -699,12 +699,12 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 		read_string(c, &msg);
 		read_end(c);
 
-		for (i = 0; i < refs; i++) {
-			struct svn_entry *c = refs[i]->cmts;
-			if (c && !c->rev) {
-				c->rev = (int) rev;
-				c->ident = svn_to_ident(author.buf, timestamp.buf);
-				c->msg = strdup(msg.buf);
+		for (i = 0; i < refnr; i++) {
+			struct svn_entry *cmt = refs[i]->cmts;
+			if (cmt && !cmt->rev) {
+				cmt->rev = (int) rev;
+				cmt->ident = strdup(svn_to_ident(author.buf, time.buf));
+				cmt->msg = strdup(msg.buf);
 				cmt_read(refs[i]);
 			}
 		}
@@ -718,7 +718,7 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 	strbuf_release(&time);
 	strbuf_release(&msg);
 	strbuf_release(&paths);
-	return 0;
+	return;
 
 err:
 	die("malformed log");
@@ -751,7 +751,7 @@ static void read_text_delta(struct conn *c, struct strbuf *d) {
 }
 
 /* updates the path to the relative path. empty if its the root */
-static void relative_path(struct strbuf *path, int skip) {
+static void relative_svn_path(struct strbuf *path, int skip) {
 	clean_svn_path(path);
 	if (path->len == skip) {
 		strbuf_reset(path);
@@ -821,7 +821,7 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 		} else if (!strcmp(s, "add-dir")) {
 			/* path, parent-token, child-token, [copy-path, copy-rev] */
 			if (read_string(c, &name)) goto err;
-			relative_path(&name, skip);
+			relative_svn_path(&name, skip);
 
 			if (name.len) {
 				helperf("add-dir %d:%s\n", name.len, name.buf);
@@ -836,7 +836,7 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 		} else if (!strcmp(s, "open-dir")) {
 			/* path, parent-token, child-token, rev */
 			if (read_string(c, &name)) goto err;
-			relative_path(&name, skip);
+			relative_svn_path(&name, skip);
 
 			if (!name.len) {
 				if (skip_string(c)) goto err;
@@ -849,14 +849,14 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 			/* name, dir-token, file-token, rev */
 			if (read_string(c, &name)) goto err;
 			read_command_end(c);
-			relative_path(&name, skip);
+			relative_svn_path(&name, skip);
 			create = 0;
 
 		} else if (!strcmp(s, "add-file")) {
 			/* name, dir-token, file-token, [copy-path, copy-rev] */
 			if (read_string(c, &name)) goto err;
 			read_command_end(c);
-			relative_path(&name, skip);
+			relative_svn_path(&name, skip);
 			create = 1;
 
 		} else if (!strcmp(s, "apply-textdelta")) {
@@ -888,7 +888,7 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 						create ? "add-file" : "open-file",
 						name.len, name.buf,
 						before.len, before.buf,
-						after.len, after.buf
+						after.len, after.buf,
 						diff.len, diff.buf);
 			}
 
@@ -901,7 +901,7 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 			/* name, [revno], dir-token */
 			if (read_string(c, &name)) goto err;
 			read_command_end(c);
-			relative_path(&name, skip);
+			relative_svn_path(&name, skip);
 
 			if (name.len) {
 				helperf("delete-entry %d:%s\n", name.len, name.buf);
@@ -932,15 +932,11 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 
 	sendf(c, "( success ( ) )\n");
 
-	pthread_mutex_lock(&lock);
-	update_read(&u);
-	pthread_mutex_unlock(&lock);
-
 	strbuf_release(&name);
 	strbuf_release(&before);
 	strbuf_release(&after);
 	strbuf_release(&diff);
-	return 0;
+	return;
 
 err:
 	die("malformed update");

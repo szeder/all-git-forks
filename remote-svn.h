@@ -33,7 +33,7 @@ struct svnref {
 	struct commit *svn; /* most recent gitsvn cmt */
 	int rev; /* most recent rev that we have fetched */
 	int start; /* oldest rev where the copy is at */
-	int havelog; /* latest rev we have logged to previously */
+	int logrev; /* latest rev we have logged to previously */
 
 	/* list of svn commits found during the log stage, starting at the
 	 * earliest */
@@ -55,20 +55,9 @@ struct svnref {
 	unsigned int force_push : 1;
 };
 
-struct svn_update {
-	int nr;
-	struct strbuf head, tail;
-	const char *path, *copy;
-	int rev, copyrev;
-	unsigned int new_branch : 1;
-};
-
 const char *svn_to_ident(const char *username, const char *time);
-
-void update_read(struct svn_update *u);
-int next_update(struct svn_update *u);
-
 void helperf(const char *fmt, ...);
+void cmt_read(struct svnref *r);
 
 /* commit types */
 #define SVN_MODIFY 0
