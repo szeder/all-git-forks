@@ -1,0 +1,116 @@
+
+commit  HEAD
+A       (Junio C Hamano 2005-11-02 15:19:13 -0800 12) struct object *deref_tag(struct object *o, const char *warn, int warnlen)
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 13) {
+D       (Linus Torvalds 2006-07-11 20:45:31 -0700 14) 	while (o && o->type == OBJ_TAG)
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 15) 		if (((struct tag *)o)->tagged)
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 16) 			o = parse_object(((struct tag *)o)->tagged->sha1);
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 17) 		else
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 18) 			o = NULL;
+A       (Junio C Hamano 2005-11-02 15:19:13 -0800 19) 	if (!o && warn) {
+A       (Junio C Hamano 2005-11-02 15:19:13 -0800 20) 		if (!warnlen)
+A       (Junio C Hamano 2005-11-02 15:19:13 -0800 21) 			warnlen = strlen(warn);
+A       (Junio C Hamano 2005-11-02 15:19:13 -0800 22) 		error("missing object referenced by '%.*s'", warnlen, warn);
+A       (Junio C Hamano 2005-11-02 15:19:13 -0800 23) 	}
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 24) 	return o;
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 25) }
+
+
+# git blame --recursive
+commit  A^
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 12) struct object *deref_tag(struct object *o, const char *warn, int warnlen)
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 13) {
+D       (Linus Torvalds 2006-07-11 20:45:31 -0700 14) 	while (o && o->type == OBJ_TAG)
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 15) 		if (((struct tag *)o)->tagged)
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 16) 			o = parse_object(((struct tag *)o)->tagged->sha1);
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 17) 		else
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 18) 			o = NULL;
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 19) 	if (!o && warn) {
+                                                          // here's a useless comment.  I hope someone
+                                                          // removes it in commit A.  Because really
+                                                          // it's just dumb.
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 20) 		if (!warnlen)
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 21) 			warnlen = strlen(warn);
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 22) 		error("missing object referenced by '%.*s'", warnlen, warn);
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 23) 	}
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 24) 	return o;
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 25) }
+
+# git blame --recursive
+commit  A^
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 12) struct object *deref_tag(struct object *o, const char *warn, int warnlen)
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 13) {
+D       (Linus Torvalds 2006-07-11 20:45:31 -0700 14) 	while (o && o->type == OBJ_TAG)
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 15) 		if (((struct tag *)o)->tagged)
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 16) 			o = parse_object(((struct tag *)o)->tagged->sha1);
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 17) 		else
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 18) 			o = NULL;
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 19) 	if (!o && warn) {
+                                                          // here's a useless comment.  I hope someone
+                                                          // removes it in commit A.  Because really
+                                                          // it's just dumb.
+                                           [+5 lines]
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 20) 		if (!warnlen)
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 21) 			warnlen = strlen(warn);
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 22) 		error("missing object referenced by '%.*s'", warnlen, warn);
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 23) 	}
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 24) 	return o;
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 25) }
+
+# git blame --recursive --context-window=2
+commit  A^
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 12) struct object *deref_tag(struct object *o, const char *warn, int warnlen)
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 13) {
+D       (Linus Torvalds 2006-07-11 20:45:31 -0700 14) 	while (o && o->type == OBJ_TAG)
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 15) 		if (((struct tag *)o)->tagged)
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 16) 			o = parse_object(((struct tag *)o)->tagged->sha1);
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 17) 		else
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 18) 			o = NULL;
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 19) 	if (!o && warn) {
+                                                          // here's a useless comment.  I hope someone
+                                                          // removes it in commit A.  Because really
+                                                          // it's just dumb.
+                                           [+5 lines]
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 20) 		if (!warnlen)
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 21) 			warnlen = strlen(warn);
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 22) 		error("missing object referenced by '%.*s'", warnlen, warn);
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 23) 	}
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 24) 	return o;
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 25) }
+
+
+# git blame --recursive --short
+commit  A^
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 12) struct object *deref_tag(struct object *o, const char *warn, int warnlen)
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 13) {
+D       (Linus Torvalds 2006-07-11 20:45:31 -0700 14) 	while (o && o->type == OBJ_TAG)
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 15) 		if (((struct tag *)o)->tagged)
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 16) 			o = parse_object(((struct tag *)o)->tagged->sha1);
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 17) 		else
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 18) 			o = NULL;
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 19) 	if (!o && warn) {
+                                           [+8 lines]
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 20) 		if (!warnlen)
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 21) 			warnlen = strlen(warn);
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 22) 		error("missing object referenced by '%.*s'", warnlen, warn);
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 23) 	}
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 24) 	return o;
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 25) }
+
+
+# git blame --recursive --veryshort
+commit  A^
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 12) struct object *deref_tag(struct object *o, const char *warn, int warnlen)
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 13) {
+D       (Linus Torvalds 2006-07-11 20:45:31 -0700 14) 	while (o && o->type == OBJ_TAG)
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 15) 		if (((struct tag *)o)->tagged)
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 16) 			o = parse_object(((struct tag *)o)->tagged->sha1);
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 17) 		else
+C       (Martin Koegler 2008-02-18 08:31:55 +0100 18) 			o = NULL;
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 19) 	if (!o && warn) {
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 20) 		if (!warnlen)
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 21) 			warnlen = strlen(warn);
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 22) 		error("missing object referenced by '%.*s'", warnlen, warn);
+A^      (Junio C Hamano 2005-11-02 15:19:13 -0800 23) 	}
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 24) 	return o;
+B       (Junio C Hamano 2005-08-05 00:47:56 -0700 25) }

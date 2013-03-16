@@ -2,11 +2,10 @@
 
 ## Use Case
 
-The user knows some set of lines she is interested in.  She can specify those
-lines by line number or regex (similar to what `git blame` already supports).
+The user is interested in some contiguous set of lines in some particular file.
 
-She wants to know the complete history for those lines: i.e. the shas and short
-messages for each commit that modified the line.
+She wants to know the complete history for those lines: i.e. the shas for each
+commit that modified the line.
 
 ##    Approaches
 
@@ -63,3 +62,26 @@ We want to keep tracing line history through these commits.
 For a target introduced line, which is necessarily an addition, we need to
 consider the introduced lines in the same hunk and match them against preceding
 removed lines in the same hunk, with "\n" in the edit distance alphabet.
+
+
+## Output
+
+Output should include the output of `git blame` for each iteration.  Each
+iteration will also have `commit <sha>` as its first line.  If colour is enabled
+this will be in the same colour as it is in git log.  Iterations will be
+separated by a blank line, a la `git log`.
+
+
+
+## Next Steps
+1. Consider an example where some subset of the blessed lines are reordered.
+2. Become certain about the hunk-local hypothesis.  Is this actually reasonable?
+3. Sketch the implementation.
+4. Express examples as tests.
+
+
+## Future Work
+To completely support the use case, we want another feature, namely for blame to
+support an output format that shows sha, author and short form commit message
+rather than sha, author and timestamp.
+
