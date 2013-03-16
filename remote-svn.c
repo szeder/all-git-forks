@@ -1,3 +1,4 @@
+/* vim: set noet ts=8 sw=8 sts=8: */
 #include "remote-svn.h"
 #include "exec_cmd.h"
 #include "refs.h"
@@ -40,43 +41,6 @@ static struct string_list refs = STRING_LIST_INIT_DUP;
 static struct string_list path_for_ref = STRING_LIST_INIT_NODUP;
 static struct string_list excludes = STRING_LIST_INIT_DUP;
 static struct string_list relexcludes = STRING_LIST_INIT_DUP;
-
-struct svn_entry {
-	struct svn_entry *next;
-	char *ident, *msg;
-	int mlen, rev;
-};
-
-/* svnref holds all the info we have about an svn branch starting at
- * start with a given path. This info is stored in a ref in refs/svn
- * (and an optional .tag). The start may not be valid until an
- * associated ref is found (svn != NULL) or a copy has been found for
- * the fetch. Refs are loaded on demand in workers and on the start of
- * fetch/push in the main process. */
-struct svnref {
-	struct svnref *next;
-
-	const char *path;
-	struct commit *svn;
-	int rev, start;
-
-	struct svn_entry *cmts, *cmts_last;
-	struct svnref *copysrc, *first_copier, *next_copier;
-	int logrev, copyrev;
-
-	struct string_list gitrefs;
-
-	struct refspec *push_spec;
-	struct commit *push_cmt;
-	struct object *push_obj;
-
-	unsigned int exists_at_head : 1;
-	unsigned int cmt_log_started : 1;
-	unsigned int cmt_log_finished : 1;
-	unsigned int need_copysrc_log : 1;
-	unsigned int copy_modified : 1;
-	unsigned int force_push : 1;
-};
 
 static int config(const char *key, const char *value, void *dummy) {
 	if (!strcmp(key, "svn.eol")) {
@@ -182,42 +146,37 @@ static const char *refpath(const char *s) {
 	return ref.buf;
 }
 
-static struct svnref *get_older_ref(struct svnref *r, int rev) {
-	struct svnref *s;
-	for (s = r; s != NULL; s = s->next) {
-		if (rev >= s->start) {
-			return s;
-		}
-	}
-
-	s = xcalloc(1, sizeof(*s));
-	s->path = r->path;
-
-	/* the ref couldn't be found above so it must be older then all
-	 * the existing refs */
-	while (r->next) {
-		r = r->next;
-	}
-
-	r->next = s;
-	return s;
-}
-
 /* By default assume this is a request for the newest ref that fits. If
  * this later turns out false, we will split the ref, adding an older
- * one.
+ * one using set_ref_start.
  */
 static struct svnref *get_ref(const char *path, int rev) {
 	struct string_list_item *item = string_list_insert(&refs, path);
+	struct svnref *r;
+
+	/* search the list of revs for this path */
+	for (r = item->util; r != NULL; r = r->next) {
+		if (rev >= r->start) {
+			return r;
+		}
+	}
+
+	/* we may have to create a new oldest ref */
+	r = xcalloc(1, sizeof(*r));
+	r->path = item->string;
+	r->gitrefs.strdup_strings = 1;
 
 	if (item->util) {
-		return get_older_ref(item->util, rev);
+		struct svnref *s = item->util;
+		while (s->next) {
+			s = s->next;
+		}
+		s->next = r;
 	} else {
-		struct svnref *r = xcalloc(1, sizeof(*r));
-		r->path = item->string;
 		item->util = r;
-		return r;
 	}
+
+	return r;
 }
 
 static struct svnref *get_push_ref(struct refspec *spec) {
@@ -246,11 +205,17 @@ static void set_ref_start(struct svnref *r, int start) {
 		return;
 
 	if (r->start) {
+		if (start <= r->start) {
+			die("internal: split ref to older start");
+		}
+
 		s = xcalloc(1, sizeof(*s));
+		s->gitrefs.strdup_strings = 1;
 		s->path = r->path;
 		s->start = r->start;
 		s->svn = r->svn;
 		s->rev = r->rev;
+
 		s->next = r->next;
 		r->next = s;
 	}
@@ -571,327 +536,132 @@ static void list(void) {
 
 
 
-/* logs may appear multiple times in the the log list if there revision
- * gets expanded
- */
 static struct svnref **logs;
 static int log_nr, log_alloc;
 static int cmts_to_fetch;
 
-static void request_log(struct svnref *r, int rev) {
-	if (rev <= r->logrev)
-		return;
+struct log_request {
+	char *path;
+	int rev;
+	char *gitref;
+};
 
-	if (!r->logrev) {
-		ALLOC_GROW(logs, log_nr+1, log_alloc);
-		logs[log_nr++] = r;
-	} else if (r->cmt_log_finished) {
-		r->cmt_log_started = 0;
-	}
-
-	r->logrev = rev;
+static int cmp_log_request(const void *u, const void *v) {
+	const struct log_request *a = u;
+	const struct log_request *b = v;
+	return a->rev - b->rev;
 }
 
-int next_log(struct svn_log *l) {
+static struct log_request *log_requests;
+int log_request_nr, log_request_alloc;
+
+static void request_log(const char *path, int rev, const char *gitref) {
+	struct log_request *r;
+	ALLOC_GROW(log_requests, log_request_nr+1, log_request_alloc);
+	r = log_requests[log_request_nr++];
+	r->path = strdup(path);
+	r->rev = rev;
+	r->gitref = gitref ? strdup(gitref) : NULL;
+	qsort(log_requests, log_request_nr, sizeof(log_requests[0]), &cmp_log_request);
+}
+
+static struct svnref *next_log(int *start, int *end) {
 	int i;
-	for (i = 0; i < log_nr; i++) {
-		struct svnref *r = logs[i];
+	for (i = log_request_nr-1; i >= 0; i--) {
+		struct svnref *ref;
+		struct log_request *l = &log_requests[i];
+		if (*end && l->rev != end) {
+			break;
+		}
 
-		if (r->logrev <= r->rev)
+		ref = get_ref(l->path, l->rev);
+		if (l->rev <= ref->havelog) {
+			if (l->gitref) {
+				string_list_insert(&refs->gitrefs, l->gitref);
+			}
+			free(l->path);
+			memmove(l, l+1, (log_request_nr-i-1)*sizeof(*l));
+			log_request_nr--;
 			continue;
-
-		if (!r->cmt_log_started) {
-			memset(l, 0, sizeof(*l));
-			l->ref = r;
-			l->path = r->path;
-			/* include the last revision we have on disk, so
-			 * that we can distinguish a replace in the
-			 * following commit */
-			if (r->cmts_last) {
-				l->start = r->cmts_last->rev;
-			} else if (r->rev) {
-				l->start = r->rev;
-			} else {
-				l->start = 1;
-			}
-			l->start = r->rev ? r->rev : 1;
-			l->end = r->logrev;
-			l->get_copysrc = 0;
-			r->cmt_log_started = 1;
-			return 0;
 		}
 
-		if (r->need_copysrc_log) {
-			memset(l, 0, sizeof(*l));
-			l->ref = r;
-			l->path = r->path;
-			l->start = r->start;
-			l->end = r->start;
-			l->get_copysrc = 1;
-			l->copy_modified = 0;
-			r->need_copysrc_log = 0;
-			return 0;
+		if (*start && ref->havelog + 1 != start) {
+			continue;
 		}
+
+		*start = ref->havelog + 1;
+		*end = l->rev;
+
+		if (l->gitref) {
+			string_list_insert(&ref->gitrefs, l->gitref);
+		}
+
+		/* set this before actually doing the log so next_log
+		 * can cull duplicate log requests */
+		ref->havelog = l->rev;
+
+		free(l->path);
+		memmove(l, l+1, (log_request_nr-i-1)*sizeof(*l));
+		log_request_nr--;
+
+		return ref;
 	}
 
-	return -1;
-}
-
-void cmt_read(struct svn_log *l, int rev, const char *author, const char *time, const char *msg) {
-	const char *ident = svn_to_ident(author, time);
-	int ilen = strlen(ident), mlen = strlen(msg);
-	struct svn_entry *e;
-
-	e = malloc(sizeof(*e) + ilen + 1 + mlen + 1);
-	e->ident = (char*) (e + 1);
-	e->msg = e->ident + ilen + 1;
-	e->mlen = mlen;
-	e->rev = rev;
-
-	memcpy(e->ident, ident, ilen + 1);
-	memcpy(e->msg, msg, mlen + 1);
-
-	e->next = l->cmts;
-	l->cmts = e;
-	if (!l->cmts_last)
-		l->cmts_last = e;
-
-	display_progress(progress, ++cmts_to_fetch);
-}
-
-void log_read(struct svn_log* l) {
-	struct svnref *r = l->ref;
-
-	if (!l->get_copysrc) {
-		if (!r->cmt_log_started || !l->cmts)
-			die("bug: unexpected log");
-
-		r->need_copysrc_log = 0;
-
-		if (l->cmts->rev > l->start || !r->start) {
-			struct svnref *c, *next;
-
-			/* the log stopped early so we need to find the
-			 * copy src */
-			set_ref_start(r, l->cmts->rev);
-			r->need_copysrc_log = 1;
-			r->cmts = l->cmts;
-			r->cmts_last = l->cmts_last;
-
-			/* this ref may not cover all the copiers,
-			 * rebuild the copy list moving some of them to
-			 * an older ref */
-			c = r->first_copier;
-			r->first_copier = NULL;
-			while (c != NULL) {
-				c->copysrc = get_older_ref(r, c->copyrev);
-
-				next = c->next_copier;
-				c->next_copier = c->copysrc->first_copier;
-				c->copysrc->first_copier = c;
-
-				request_log(c->copysrc, c->copyrev);
-
-				c = next;
-			}
-
-		} else {
-			/* dump the extra commit that is a copy of the
-			 * last commit of the previous log */
-			struct svn_entry *next = l->cmts->next;
-
-			if (next && r->cmts_last) {
-				r->cmts_last->next = next;
-				r->cmts_last = l->cmts_last;
-			} else if (next) {
-				r->cmts = next;
-				r->cmts_last = l->cmts_last;
-			}
-
-			display_progress(progress, --cmts_to_fetch);
-		}
-
-		if (l->end < r->logrev) {
-			/* in the interim another ref has required more commits */
-			r->cmt_log_started = 0;
-		} else {
-			r->cmt_log_finished = 1;
-		}
-
-	} else {
-		r->copyrev = l->copyrev;
-		r->copy_modified = l->copy_modified;
-
-		if (l->copyrev) {
-			r->copysrc = get_ref(l->copysrc, l->copyrev);
-			r->next_copier = r->copysrc->first_copier;
-			r->copysrc->first_copier = r;
-			request_log(r->copysrc, l->copyrev);
-		}
-	}
+	return NULL;
 }
 
 static void read_logs(void) {
+	struct svnref **refs = NULL;
+	int refnr = 0, refalloc = 0;
+
 	if (use_progress)
 		progress = start_progress("Counting commits", 0);
 
-	proto->read_logs();
+	for (;;) {
+		int start = 0;
+		int end = 0;
+
+		while (log_request_nr > 0) {
+			struct svnref *ref = next_log(&start, &end);
+			if (!ref) {
+				break;
+			}
+
+			ALLOC_GROW(refs, refnr+1, refalloc);
+			refs[refnr++] = ref;
+			log_request_nr--;
+		}
+
+		if (refnr == 0) {
+			break;
+		}
+
+		proto->read_log(refs, refnr, start, end);
+
+		for (i = 0; i < refnr; i++) {
+			struct svnref *r = refs[i];
+			if (r->cmts && r->cmts->new_branch) {
+				set_ref_start(r, r->cmts->rev);
+			}
+			if (r->cmts && r->cmts->copysrc) {
+				request_log(r->cmts->copysrc, r->cmts->copyrev, NULL);
+			}
+		}
+
+		refnr = 0;
+	}
+
 	stop_progress(&progress);
 }
 
-
-
-
-static int logs_fetched, cmts_fetched;
-static int updates_done, updates_nr;
-
-struct finished_update {
-	struct finished_update *next;
-	int nr;
-	struct strbuf buf;
-};
-
-static struct finished_update *finished_updates;
-static FILE *update_helper;
-
-static void send_to_helper(struct strbuf *b) {
-	if (b->len) {
-		if (svndbg >= 2) {
-			struct strbuf buf = STRBUF_INIT;
-			quote_path_fully = 1;
-			quote_c_style_counted(b->buf, b->len, &buf, NULL, 1);
-			fprintf(stderr, "to svn helper: %s\n", buf.buf);
-			strbuf_release(&buf);
-		}
-		fwrite(b->buf, 1, b->len, update_helper);
-	}
+void cmt_read(void) {
+	display_progress(progress, ++cmts_to_fetch);
 }
 
-void update_read(struct svn_update *u) {
-	if (u->rev)
-		display_progress(progress, ++cmts_fetched);
-
-	if (u->nr == updates_done) {
-		struct finished_update *f = finished_updates;
-
-		send_to_helper(&u->head);
-		send_to_helper(&u->tail);
-		updates_done++;
-
-		while (f && f->nr == updates_done) {
-			struct finished_update *next = f->next;
-			send_to_helper(&f->buf);
-			strbuf_release(&f->buf);
-			free(f);
-			updates_done++;
-			f = next;
-		}
-
-		finished_updates = f;
-	} else {
-		struct finished_update *g, *f = xcalloc(1, sizeof(*f));
-		f->nr = u->nr;
-		strbuf_init(&f->buf, 0);
-		strbuf_add(&u->head, u->tail.buf, u->tail.len);
-		strbuf_swap(&f->buf, &u->head);
-
-		g = finished_updates;
-		if (g && f->nr > g->nr) {
-			while (g->next && f->nr > g->next->nr) {
-				g = g->next;
-			}
-			f->next = g->next;
-			g->next = f;
-		} else {
-			f->next = g;
-			finished_updates = f;
-		}
-	}
-}
-
-int next_update(struct svn_update *u) {
-	if (updates_nr >= MAX_CMTS_PER_WORKER)
-		return -1;
-
-	u->nr = updates_nr++;
-	u->rev = 0;
-
-	while (logs_fetched < log_nr) {
-		struct svnref *r = logs[logs_fetched];
-		struct strbuf *h = &u->head;
-		struct strbuf *t = &u->tail;
-
-		if (r->cmts) {
-			struct svn_entry *c = r->cmts;
-			struct svnref *copy = c->rev == r->start ? r->copysrc : NULL;
-
-			u->path = r->path;
-			u->rev = c->rev;
-			u->new_branch = !r->rev;
-			u->copy = copy ? copy->path : NULL;
-			u->copyrev = copy ? r->copyrev : 0;
-
-			if (copy && !r->copy_modified) {
-				strbuf_addf(h, "branch %s %d %s %d",
-					refname(copy), r->copyrev,
-					refname(r), c->rev);
-
-				arg_quote(h, r->path);
-				arg_quote(h, c->ident);
-				strbuf_addf(h, " %d\n", c->mlen);
-				strbuf_add(h, c->msg, c->mlen);
-				strbuf_complete_line(h);
-
-			} else {
-				if (copy) {
-					strbuf_addf(h, "checkout %s %d\n",
-						refname(copy), r->copyrev);
-				} else if (r->rev) {
-					strbuf_addf(h, "checkout %s %d\n",
-						refname(r), r->rev);
-				} else {
-					strbuf_addstr(h, "reset\n");
-				}
 
 
-				strbuf_addf(t, "commit %s %d %d",
-					refname(r), r->rev, c->rev);
 
-				arg_quote(t, r->path);
-				arg_quote(t, c->ident);
-				strbuf_addf(t, " %d\n", c->mlen);
-				strbuf_add(t, c->msg, c->mlen);
-				strbuf_complete_line(t);
-			}
 
-			if (!c->next)
-				r->cmts_last = NULL;
-
-			r->rev = c->rev;
-			r->cmts = c->next;
-			free(c);
-			return 0;
-		}
-
-		if (!r->cmts && r->gitrefs.nr) {
-			int i;
-			strbuf_addf(h, "report %s", refname(r));
-			for (i = 0; i < r->gitrefs.nr; i++) {
-				strbuf_addf(h, " %s", r->gitrefs.items[i].string);
-			}
-			strbuf_complete_line(h);
-			string_list_clear(&r->gitrefs, 0);
-		}
-
-		logs_fetched++;
-	}
-
-	if (u->head.len) {
-		update_read(u);
-	}
-
-	return -1;
-}
 
 static int cmp_svnref_start(const void *u, const void *v) {
 	struct svnref *const *a = u;
@@ -899,59 +669,140 @@ static int cmp_svnref_start(const void *u, const void *v) {
 	return (*a)->start - (*b)->start;
 }
 
-static void fetch(void) {
+static struct child_process helper;
+static FILE* fhelper;
+
+static void start_helper() {
+	static const char *remote_svn_helper[] = {"remote-svn--helper", NULL};
+
+	memset(&helper, 0, sizeof(helper));
+	helper.argv = remote_svn_helper;
+	helper.in = -1;
+	helper.out = xdup(fileno(stdout));
+	helper.git_cmd = 1;
+
+	if (use_progress)
+		progress = start_progress("Fetching commits", cmts_to_fetch);
+
+	if (start_command(&ch))
+		die("failed to launch worker");
+
+	fhelper = xfdopen(ch.in, "wb");
+}
+
+static void stop_helper() {
+	static const char *gc_auto[] = {"gc", "--auto", NULL};
+	struct child_process ch;
+
+	if (!fhelper)
+		return;
+
+	fclose(fhelper);
+	fhelper = NULL;
+	if (finish_command(&helper))
+		die_errno("worker failed");
+
+	stop_progress(&progress);
+
+	memset(&ch, 0, sizeof(ch));
+	ch.argv = gc_auto;
+	ch.no_stdin = 1;
+	ch.no_stdout = 1;
+	ch.git_cmd = 1;
+	if (run_command(&ch))
+		die_errno("git gc --auto failed");
+}
+
+static void write_helper(const char *str, int len) {
+	if (!fhelper) {
+		start_helper();
+	}
+
+	if (svndbg >= 2) {
+		struct strbuf buf = STRBUF_INIT;
+		va_copy(aq, ap);
+		quote_path_fully = 1;
+		quote_c_style_counted(str, len, &buf, NULL, 1);
+		fprintf(stderr, "to svn helper: %s\n", buf.buf);
+		strbuf_release(&buf);
+	}
+
+	fwrite(str, 1, len, fhelper);
+}
+
+static void fwrite_helper(const char *fmt, ...) {
+	static struct strbuf buf = STRBUF_INIT;
+	va_list ap, aq;
+	va_start(ap, fmt);
+	strbuf_reset(&buf);
+	strbuf_addf(&buf, fmt, ap);
+	write_helper(buf.buf, buf.len);
+}
+
+static int cmts_fetched;
+
+static void fetch_update(struct svnref *r, struct svn_entry *c) {
+	struct svnref *copysrc = c->copysrc
+		? get_ref(c->copysrc, c->copyrev)
+		: NULL;
+
+	if (copysrc && !c->copy_modified) {
+		fwrite_helper("branch %s %d %s %d\n",
+			refname(copysrc), c->copyrev,
+			refname(r), c->rev);
+	} else if (copysrc) {
+		fwrite_helper("checkout %s %d\n", refname(copysrc), c->copyrev);
+		fwrite_helper("commit %s %d %d\n", refname(r), r->rev, c->rev);
+	} else if (r->rev) {
+		fwrite_helper("checkout %s %d\n", refname(copysrc), c->copyrev);
+		fwrite_helper("commit %s %d %d\n", refname(r), r->rev, c->rev);
+	} else {
+		fwrite_helper("reset\n");
+		fwrite_helper("commit %s %d %d\n", refname(r), r->rev, c->rev);
+	}
+
+	write_helper(r->path, strlen(r->path)+1);
+	write_helper(c->ident, strlen(c->ident)+1);
+	write_helper(c->msg, strlen(c->msg)+1);
+
+	display_progress(progress, ++cmts_fetched);
+
+	proto->read_update(r->path, c);
+}
+
+static void fetch_updates(void) {
+	int cmts_to_gc = g_cmts_to_gc;
+
 	/* sort by start so that copysrcs are requested first */
 	qsort(logs, log_nr, sizeof(logs[0]), &cmp_svnref_start);
 
-	logs_fetched = 0;
-	cmts_fetched = 0;
-
 	/* Farm the pending requests out to a subprocess so that we can
-	 * run git gc --auto after each chunk. Note that after calling
-	 * gc --auto, we can't rely on any locally loaded objects being
-	 * valid.
+	 * run git gc --auto after each chunk. We have to this as after
+	 * calling gc --auto, we can't rely on any locally loaded
+	 * objects being valid.
 	 */
-	while (logs_fetched < log_nr) {
-		static const char *gc_auto[] = {"gc", "--auto", NULL};
-		static const char *remote_svn_helper[] = {"remote-svn--helper", NULL};
 
-		struct child_process ch;
+	for (i = 0; i < log_nr; i++) {
+		struct svnref *r = logs[i];
+		struct svn_entry *c = r->cmts;
 
-		updates_done = 0;
-		updates_nr = 0;
+		for (c = r->cmts; c != NULL; c = c->next) {
+			fetch_update(r, c);
 
-		memset(&ch, 0, sizeof(ch));
-		ch.argv = remote_svn_helper;
-		ch.in = -1;
-		ch.out = xdup(fileno(stdout));
-		ch.git_cmd = 1;
+			if (--cmts_to_gc == 0) {
+				stop_helper();
+				cmts_to_gc = g_cmts_to_gc;
+			}
+		}
 
-		if (use_progress)
-			progress = start_progress("Fetching commits", cmts_to_fetch);
-
-		if (start_command(&ch))
-			die("failed to launch worker");
-
-		update_helper = xfdopen(ch.in, "wb");
-		proto->read_updates();
-
-		if (finished_updates)
-			die("bug: updates not flushed out");
-
-		fclose(update_helper);
-
-		stop_progress(&progress);
-
-		if (finish_command(&ch))
-			die_errno("worker failed");
-
-		memset(&ch, 0, sizeof(ch));
-		ch.argv = gc_auto;
-		ch.no_stdin = 1;
-		ch.no_stdout = 1;
-		ch.git_cmd = 1;
-		if (run_command(&ch))
-			die_errno("git gc --auto failed");
+		if (r->gitrefs.nr) {
+			int i;
+			fwrite_helper("report %s", refname(r));
+			for (i = 0; i < r->gitrefs.nr; i++) {
+				fwrite_helper(" %s", r->gitrefs.items[i].string);
+			}
+			fwrite_helper("\n");
+		}
 	}
 }
 
@@ -1516,11 +1367,6 @@ static void push(void) {
 
 
 
-void arg_quote(struct strbuf *buf, const char *arg) {
-	strbuf_addstr(buf, " \"");
-	quote_c_style(arg, buf, NULL, 1);
-	strbuf_addstr(buf, "\"");
-}
 
 static char* next_arg(char *arg, char **endp) {
 	char *p;
@@ -1534,7 +1380,7 @@ static char* next_arg(char *arg, char **endp) {
 static int command(char *cmd, char *arg) {
 	if (log_nr && !strcmp(cmd, "")) {
 		read_logs();
-		fetch();
+		fetch_updates();
 		printf("\n");
 		return 1;
 
@@ -1549,10 +1395,7 @@ static int command(char *cmd, char *arg) {
 		if (!path)
 			die("unexpected fetch ref %s", ref);
 
-		r = get_ref(path, listrev);
-		request_log(r, listrev);
-		r->gitrefs.strdup_strings = 1;
-		string_list_insert(&r->gitrefs, ref);
+		request_log(path, listrev, ref);
 
 	} else if (pushn && !strcmp(cmd, "")) {
 		int i;
