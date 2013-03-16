@@ -24,6 +24,7 @@
 
 static const char trace_key[] = "GIT_TRACE_CVS_HELPER";
 static const char trace_proto[] = "RHELPER";
+static const char dump_patchset[] = "GIT_DUMP_PATCHSETS";
 /*
  * FIXME:
  */
@@ -41,8 +42,8 @@ static int progress = 0;
 static int followtags = 0;
 static int dry_run = 0;
 static int initial_import = 0;
-static struct progress *progress_state;
-static struct progress *progress_rlog;
+//static struct progress *progress_state;
+//static struct progress *progress_rlog;
 
 static int revisions_all_branches_total = 0;
 static int revisions_all_branches_fetched = 0;
@@ -340,16 +341,15 @@ static int commit_revision(void *ptr, void *data)
 	struct file_revision *rev = ptr;
 	int rc;
 
-	//fprintf(stderr, "commit_revision %s %s\n", rev->path, rev->revision);
 	revisions_all_branches_fetched++;
-	/*fprintf(stderr, "checkout [%d/%d] all branches,%sETA] %s %s",
+	fprintf(stderr, "checkout [%d/%d] all branches,%sETA] %s %s",
 			revisions_all_branches_fetched,
 			revisions_all_branches_total,
 			get_import_time_estimation(),
 			rev->path, rev->revision);
-	*/
+
 	if (rev->isdead) {
-	//	fprintf(stderr, " dead\n");
+		fprintf(stderr, " dead\n");
 		helper_printf("D %s\n", rev->path);
 		return 0;
 	}
@@ -358,21 +358,21 @@ static int commit_revision(void *ptr, void *data)
 	if (rc == -1)
 		die("Cannot checkout file %s rev %s", rev->path, rev->revision);
 
-	fetched_total_size += file.file.len;
-	display_progress(progress_state, revisions_all_branches_fetched);
-	display_throughput(progress_state, fetched_total_size);
+	//fetched_total_size += file.file.len;
+	//display_progress(progress_state, revisions_all_branches_fetched);
+	//display_throughput(progress_state, fetched_total_size);
 
 	if (file.isdead) {
-	//	fprintf(stderr, " (fetched) dead\n");
+		fprintf(stderr, " (fetched) dead\n");
 		helper_printf("D %s\n", rev->path);
 		return 0;
 	}
 
-	/*if (file.iscached)
+	if (file.iscached)
 		fprintf(stderr, " (fetched from cache) isexec %u size %zu\n", file.isexec, file.file.len);
 	else
 		fprintf(stderr, " mode %.3o size %zu\n", file.mode, file.file.len);
-	*/
+
 	//helper_printf("M 100%.3o %s %s\n", hash, rev->path);
 	helper_printf("M 100%.3o inline %s\n", file.isexec ? 0755 : 0644, rev->path);
 	helper_printf("data %zu\n", file.file.len);
@@ -1088,7 +1088,7 @@ static int cmd_batch_import(struct string_list *list)
 	import_branch_list = list;
 	import_start_time = time(NULL);
 
-	progress_state = start_progress("Receiving revisions", revisions_all_branches_total);
+	//progress_state = start_progress("Receiving revisions", revisions_all_branches_total);
 
 	item = unsorted_string_list_lookup(list, "HEAD");
 	if (item) {
@@ -1103,7 +1103,7 @@ static int cmd_batch_import(struct string_list *list)
 		}
 	}
 
-	stop_progress(&progress_state);
+	//stop_progress(&progress_state);
 	return 0;
 }
 
@@ -1129,7 +1129,7 @@ void add_file_revision_cb(const char *branch,
 	else
 		skipped++;
 	revisions_all_branches_total++;
-	display_progress(progress_rlog, revisions_all_branches_total);
+	//display_progress(progress_rlog, revisions_all_branches_total);
 }
 
 static time_t update_since = 0;
@@ -1163,10 +1163,9 @@ static int cmd_list(const char *line)
 
 	struct meta_map_entry *branch_meta;
 
+	//progress_rlog = start_progress("revisions info", 0);
 	if (initial_import) {
-		progress_rlog = start_progress("revisions info", 0);
 		rc = cvs_rlog(cvs, 0, 0, add_file_revision_cb, branch_meta_map);
-		stop_progress(&progress_rlog);
 		if (rc == -1)
 			die("rlog failed");
 		fprintf(stderr, "Totol revisions: %d\n", revisions_all_branches_total);
@@ -1220,6 +1219,7 @@ static int cmd_list(const char *line)
 		//for_each_ref_in(get_meta_ref_prefix(), on_each_ref, branch_meta_map);
 		helper_printf("\n");
 	}
+	//stop_progress(&progress_rlog);
 	helper_flush();
 	return 0;
 }
