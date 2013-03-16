@@ -1,3 +1,31 @@
+Version v1.8.2; changes since v1.8.2-rc3:
+-----------------------------------------
+
+Antoine Pelisse (1):
+      perf: update documentation of GIT_PERF_REPEAT_COUNT
+
+Eric Wong (1):
+      git svn: consistent spacing after "W:" in warnings
+
+Greg Price (1):
+      add: Clarify documentation of -A and -u
+
+Jan Pešta (1):
+      git svn: ignore partial svn:mergeinfo
+
+Junio C Hamano (2):
+      Update draft release notes to 1.8.2
+      Git 1.8.2
+
+Kevin Bracey (2):
+      Translate git_more_info_string consistently
+      git.c: make usage match manual page
+
+Matthieu Moy (2):
+      add: update pathless 'add [-u|-A]' warning to reflect change of plan
+      git-completion.bash: zsh does not implement function redirection correctly
+
+
 Version v1.8.2-rc3; changes since v1.8.2-rc2:
 ---------------------------------------------
 
