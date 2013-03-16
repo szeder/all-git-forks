@@ -39,6 +39,11 @@ static int followtags = 0;
 static int dry_run = 0;
 static int initial_import = 0;
 
+static int revisions_all_branches_total = 0;
+static int revisions_all_branches_fetched = 0;
+static int skipped = 0;
+static time_t import_start_time = 0;
+
 struct cvs_transport *cvs = NULL;
 struct meta_map *branch_meta_map;
 static const char *cvsroot = NULL;
@@ -55,6 +60,7 @@ struct cvsauthor {
 static char *cvsauthors_lookup(const char *userid);
 static void cvsauthors_add(char *userid, char *ident);
 static void cvsauthors_load();
+static const char *author_convert(const char *userid);
 
 static const char import_commit_edit[] = "IMPORT_COMMIT_EDIT";
 static int have_import_hook = 0;
@@ -468,7 +474,7 @@ static void print_ps(struct cvs_transport *cvs, struct patchset *ps)
 	       "\n"
 	       "%s\n"
 	       "\n",
-	       ps->author,
+	       author_convert(ps->author),
 	       sb1.buf,
 	       sb2.buf,
 	       sb3.buf,
@@ -477,15 +483,58 @@ static void print_ps(struct cvs_transport *cvs, struct patchset *ps)
 	for_each_hash(ps->revision_hash, print_revision, cvs);
 }
 
+static const char *get_import_time_estimation()
+{
+	static const char *now = " 00:00, ";
+	static struct strbuf eta_sb = STRBUF_INIT;
+	time_t eta = time(NULL) - import_start_time;
+	struct tm tm_eta;
+
+	if (!eta)
+		return now;
+
+	eta = (double)eta / (double)revisions_all_branches_fetched *
+		(double)(revisions_all_branches_total - revisions_all_branches_fetched);
+
+	if (!eta)
+		return now;
+
+	memset(&tm_eta, 0, sizeof(tm_eta));
+	gmtime_r(&eta, &tm_eta);
+
+	strbuf_reset(&eta_sb);
+	if (tm_eta.tm_year - 70) // year since 1900, 1970 is unix time start
+		strbuf_addf(&eta_sb, " %d years, ", tm_eta.tm_year - 70);
+	if (tm_eta.tm_mon)
+		strbuf_addf(&eta_sb, " %d months, ", tm_eta.tm_mon);
+	if (tm_eta.tm_mday - 1)
+		strbuf_addf(&eta_sb, " %d days, ", tm_eta.tm_mday - 1);
+	if (tm_eta.tm_hour)
+		strbuf_addf(&eta_sb, " %d hours, ", tm_eta.tm_hour);
+	if (tm_eta.tm_min)
+		strbuf_addf(&eta_sb, " %d min, ", tm_eta.tm_min);
+	if (tm_eta.tm_sec)
+		strbuf_addf(&eta_sb, " %d sec, ", tm_eta.tm_sec);
+
+	return eta_sb.buf;
+}
+
 static int commit_revision(void *ptr, void *data)
 {
 	static struct cvsfile file = CVSFILE_INIT;
 	struct file_revision *rev = ptr;
 	int rc;
 
-	fprintf(stderr, "commit_revision %s %s\n", rev->path, rev->revision);
+	//fprintf(stderr, "commit_revision %s %s\n", rev->path, rev->revision);
+	revisions_all_branches_fetched++;
+	fprintf(stderr, "checkout [%d/%d] all branches,%sETA] %s %s",
+			revisions_all_branches_fetched,
+			revisions_all_branches_total,
+			get_import_time_estimation(),
+			rev->path, rev->revision);
 
 	if (rev->isdead) {
+		fprintf(stderr, " dead\n");
 		helper_printf("D %s\n", rev->path);
 		return 0;
 	}
@@ -495,9 +544,15 @@ static int commit_revision(void *ptr, void *data)
 		die("Cannot checkout file %s rev %s", rev->path, rev->revision);
 
 	if (file.isdead) {
+		fprintf(stderr, " (fetched) dead\n");
 		helper_printf("D %s\n", rev->path);
 		return 0;
 	}
+
+	if (file.iscached)
+		fprintf(stderr, " (fetched from cache) isexec %u size %zu\n", file.isexec, file.file.len);
+	else
+		fprintf(stderr, " mode %.3o size %zu\n", file.mode, file.file.len);
 
 	//helper_printf("M 100%.3o %s %s\n", hash, rev->path);
 	helper_printf("M 100%.3o inline %s\n", file.isexec ? 0755 : 0644, rev->path);
@@ -1037,6 +1092,20 @@ static void merge_revision_hash(struct hash_table *meta, struct hash_table *upda
 	for_each_hash(update, update_revision_hash, meta);
 }
 
+/*static void helper_checkpoint()
+{
+	struct strbuf buf = STRBUF_INIT;
+	helper_printf("checkpoint\n");
+	helper_printf("ls /tell/me/when/checkpoint/is/done\n");
+	if (helper_strbuf_getline(&buf, stdin, '\n') == EOF) {
+		if (ferror(stdin))
+			die("Error reading command stream");
+		else
+			die("Unexpected end of command stream");
+	}
+	helper_flush();
+}*/
+
 static int import_branch_by_name(const char *branch_name)
 {
 	static int mark;
@@ -1049,6 +1118,7 @@ static int import_branch_by_name(const char *branch_name)
 
 	struct branch_meta *branch_meta;
 	int psnum = 0;
+	int pstotal = 0;
 
 	strbuf_addf(&branch_ref, "%s%s", get_meta_ref_prefix(), branch_name);
 
@@ -1081,10 +1151,12 @@ static int import_branch_by_name(const char *branch_name)
 
 	cvsauthors_load();
 
+	pstotal = get_patchset_count(branch_meta);
 	struct patchset *ps = branch_meta->patchset_list->head;
 	while (ps) {
 		psnum++;
 		fprintf(stderr, "-->>------------------\n");
+		fprintf(stderr, "Branch: %s Commit: %d/%d\n", branch_name, psnum, pstotal);
 		print_ps(cvs, ps);
 		fprintf(stderr, "--<<------------------\n\n");
 
@@ -1104,8 +1176,10 @@ static int import_branch_by_name(const char *branch_name)
 
 		helper_printf("checkpoint\n");
 		helper_flush();
+		//helper_checkpoint();
 
 		if (initial_import && !strcmp(branch_name, "HEAD")) {
+			sleep(1);
 			helper_printf("reset HEAD\n");
 			helper_printf("from %s\n", commit_mark_sb.buf);
 		}
@@ -1194,6 +1268,7 @@ static int cmd_batch_import(struct string_list *list)
 	}
 
 	import_branch_list = list;
+	import_start_time = time(NULL);
 
 	item = unsorted_string_list_lookup(list, "HEAD");
 	if (item) {
@@ -1211,8 +1286,6 @@ static int cmd_batch_import(struct string_list *list)
 	return 0;
 }
 
-static int called = 0;
-static int skipped = 0;
 void add_file_revision_cb(const char *branch,
 			  const char *path,
 			  const char *revision,
@@ -1234,7 +1307,7 @@ void add_file_revision_cb(const char *branch,
 		add_file_revision(meta, path, revision, author, msg, timestamp, isdead);
 	else
 		skipped++;
-	called++;
+	revisions_all_branches_total++;
 }
 
 static time_t update_since = 0;
@@ -1272,8 +1345,8 @@ static int cmd_list(const char *line)
 		rc = cvs_rlog(cvs, 0, 0, add_file_revision_cb, branch_meta_map);
 		if (rc == -1)
 			die("rlog failed");
-		fprintf(stderr, "CB CALLED: %d\n", called);
-		fprintf(stderr, "SKIPPED: %d\n", skipped);
+		fprintf(stderr, "Totol revisions: %d\n", revisions_all_branches_total);
+		fprintf(stderr, "Skipped revisions: %d\n", skipped);
 
 		for_each_branch_meta(branch_meta, branch_meta_map) {
 			//aggregate_patchsets(branch_meta->meta);
@@ -1304,8 +1377,8 @@ static int cmd_list(const char *line)
 		rc = cvs_rlog(cvs, update_since, 0, add_file_revision_cb, branch_meta_map);
 		if (rc == -1)
 			die("rlog failed");
-		fprintf(stderr, "CB CALLED: %d\n", called);
-		fprintf(stderr, "SKIPPED: %d\n", skipped);
+		fprintf(stderr, "Totol revisions: %d\n", revisions_all_branches_total);
+		fprintf(stderr, "Skipped revisions: %d\n", skipped);
 
 		/*
 		 * FIXME: try to print only branches that have changes
@@ -1490,7 +1563,8 @@ int main(int argc, const char **argv)
 	static struct remote *remote;
 	const char *cvs_root_module;
 
-	//sleep(5);
+	if (getenv("WAIT_GDB"))
+		sleep(5);
 
 	setenv("TZ", "UTC", 1);
 	tzset();

@@ -22,12 +22,12 @@ static void db_cache_release(DB *db)
 static void db_cache_release_default()
 {
 	db_cache_release(db_cache);
-	fprintf(stderr, "db_cache released");
+	fprintf(stderr, "db_cache released\n");
 	if (db_cache_branch) {
 		db_cache_release(db_cache_branch);
 		db_cache_branch = NULL;
 		unlink(db_cache_branch_path);
-		fprintf(stderr, "db_cache %s removed", db_cache_branch_path);
+		fprintf(stderr, "db_cache %s removed\n", db_cache_branch_path);
 		free(db_cache_branch_path);
 	}
 }
@@ -1741,26 +1741,36 @@ int parse_mode(const char *str)
 	return mode;
 }
 
+static void cvsfile_reset(struct cvsfile *file)
+{
+	strbuf_reset(&file->path);
+	strbuf_reset(&file->revision);
+	file->isexec = 0;
+	file->isdead = 0;
+	file->isbin = 0;
+	file->ismem = 0;
+	file->iscached = 0;
+	file->mode = 0;
+	strbuf_reset(&file->file);
+}
+
 int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *revision, struct cvsfile *content)
 {
 	int rc = -1;
 	ssize_t ret;
 
+	cvsfile_reset(content);
 	strbuf_copystr(&content->path, file);
 	strbuf_copystr(&content->revision, revision);
-	content->isdead = 0;
-	content->isbin = 0;
-	content->ismem = 0;
-	strbuf_reset(&content->file);
 
 #ifdef DB_CACHE
 	int isexec = 0;
 	if (!db_cache_get(db_cache, file, revision, &isexec, &content->file)) {
 		content->isexec = isexec;
 		content->ismem = 1;
-		content->isdead = 0;
-		fprintf(stderr, "db_cache get file: %s rev: %s size: %zu isexec: %u hash: %u\n",
-			file, revision, content->file.len, content->isexec, hash_buf(content->file.buf, content->file.len));
+		content->iscached = 1;
+		//fprintf(stderr, "db_cache get file: %s rev: %s size: %zu isexec: %u hash: %u\n",
+		//	file, revision, content->file.len, content->isexec, hash_buf(content->file.buf, content->file.len));
 		return 0;
 	}
 #endif
@@ -1823,6 +1833,7 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 			mode = parse_mode(cvs->rd_line_buf.buf);
 			if (mode == -1)
 				die("Cannot parse checked out file mode %s", cvs->rd_line_buf.buf);
+			content->mode = mode;
 			content->isexec = !!(mode & 0111);
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
@@ -1831,13 +1842,12 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 			if (!size && strcmp(cvs->rd_line_buf.buf, "0"))
 				die("Cannot parse file size %s", cvs->rd_line_buf.buf);
 
-			fprintf(stderr, "checkout %s rev %s mode %o size %zu\n", file, revision, mode, size);
+			//fprintf(stderr, "checkout %s rev %s mode %o size %zu\n", file, revision, mode, size);
 
 			if (size) {
 				// FIXME:
 				if (size <= fileMemoryLimit) {
 					content->ismem = 1;
-					content->isdead = 0;
 
 					strbuf_grow(&content->file, size);
 					ret = cvs_read_full(cvs, content->file.buf, size);
@@ -1850,8 +1860,9 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 
 #ifdef DB_CACHE
 					db_cache_add(db_cache, file, revision, content->isexec, &content->file);
-					fprintf(stderr, "db_cache add file: %s rev: %s size: %zu isexec: %u hash: %u\n",
-						file, revision, content->file.len, content->isexec, hash_buf(content->file.buf, content->file.len));
+					//content->iscached = 1;
+					//fprintf(stderr, "db_cache add file: %s rev: %s size: %zu isexec: %u hash: %u\n",
+					//	file, revision, content->file.len, content->isexec, hash_buf(content->file.buf, content->file.len));
 #endif
 				}
 				else {
@@ -1871,7 +1882,6 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 			    strbuf_cmp(&cvs->rd_line_buf, &file_mod_path))
 				die("Checked out file name doesn't match %s %s", cvs->rd_line_buf.buf, file_full_path.buf);
 
-			content->ismem = 0;
 			content->isdead = 1;
 			rc = 0;
 		}
@@ -1930,7 +1940,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 		db = db_cache_init_branch(branch, date, &exists);
 		if (db && exists) {
 			rc = db_cache_for_each(db, cb, data);
-			db_cache_release(db);
+			db_cache_release_branch(db);
 			return rc;
 		}
 #endif
@@ -1974,13 +1984,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "Created") ||
 		    strbuf_startswith(&cvs->rd_line_buf, "Updated")) {
-			strbuf_reset(&file.path);
-			strbuf_reset(&file.revision);
-			file.isexec = 0;
-			file.isdead = 0;
-			file.isbin = 0;
-			file.ismem = 0;
-			strbuf_reset(&file.file);
+			cvsfile_reset(&file);
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
 				break;
@@ -1997,6 +2001,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 			mode = parse_mode(cvs->rd_line_buf.buf);
 			if (mode == -1)
 				die("Cannot parse checked out file mode %s", cvs->rd_line_buf.buf);
+			file.mode = mode;
 			file.isexec = !!(mode & 0111);
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
@@ -2023,8 +2028,9 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 					strbuf_setlen(&file.file, ret);
 #ifdef DB_CACHE
 					db_cache_add(db, file.path.buf, file.revision.buf, file.isexec, &file.file);
-					fprintf(stderr, "db_cache branch add file: %s rev: %s size: %zu isexec: %u hash: %u\n",
-						file.path.buf, file.revision.buf, file.file.len, file.isexec, hash_buf(file.file.buf, file.file.len));
+					file.iscached = 1;
+					//fprintf(stderr, "db_cache branch add file: %s rev: %s size: %zu isexec: %u hash: %u\n",
+					//	file.path.buf, file.revision.buf, file.file.len, file.isexec, hash_buf(file.file.buf, file.file.len));
 #endif
 				}
 				else {
@@ -2038,19 +2044,13 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "Removed") ||
 		    strbuf_startswith(&cvs->rd_line_buf, "Remove-entry")) {
-			strbuf_reset(&file.path);
-			strbuf_reset(&file.revision);
-			file.isdead = 0;
-			file.isbin = 0;
-			file.ismem = 0;
-			strbuf_reset(&file.file);
+			cvsfile_reset(&file);
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
 				break;
 			if (!strbuf_gettext_after(&cvs->rd_line_buf, cvs->full_module_path, &file.path))
 				die("Checked out file name doesn't start with module path %s %s", cvs->rd_line_buf.buf, cvs->full_module_path);
 
-			file.ismem = 0;
 			file.isdead = 1;
 		}
 

@@ -269,6 +269,19 @@ time_t find_first_commit_time(struct branch_meta *meta)
 	return min;
 }
 
+int get_patchset_count(struct branch_meta *meta)
+{
+	int psnum = 0;
+	struct patchset *ps = meta->patchset_list->head;
+
+	while (ps) {
+		psnum++;
+		ps = ps->next;
+	}
+
+	return psnum;
+}
+
 static void patchset_list_add(struct patchset *patchset, struct patchset_list *list)
 {
 	if (list->head)

@@ -112,6 +112,7 @@ void add_file_revision_meta_hash(struct hash_table *meta_hash,
 
 void aggregate_patchsets(struct branch_meta *meta);
 time_t find_first_commit_time(struct branch_meta *meta);
+int get_patchset_count(struct branch_meta *meta);
 void free_branch_meta(struct branch_meta *meta);
 
 /*

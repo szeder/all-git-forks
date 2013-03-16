@@ -82,10 +82,12 @@ struct cvsfile {
 	unsigned int isdead:1;
 	unsigned int isbin:1;        /* for commit */
 	unsigned int ismem:1;        /* true if file contents are in file variable, false if just temp file name */
+	unsigned int iscached:1;
+	unsigned int mode;
 	struct strbuf file; /* file or path depends on ismem */
 };
 
-#define CVSFILE_INIT { STRBUF_INIT, STRBUF_INIT, 0, 0, 0, 0, STRBUF_INIT };
+#define CVSFILE_INIT { STRBUF_INIT, STRBUF_INIT, 0, 0, 0, 0, 0, 0, STRBUF_INIT };
 void cvsfile_release(struct cvsfile *file);
 
 typedef void (*handle_file_fn_t)(struct cvsfile *file, void *data);
