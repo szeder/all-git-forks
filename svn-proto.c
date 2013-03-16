@@ -750,6 +750,18 @@ static void read_text_delta(struct conn *c, struct strbuf *d) {
 	}
 }
 
+/* updates the path to the relative path. empty if its the root */
+static void relative_path(struct strbuf *path, int skip) {
+	clean_svn_path(path);
+	if (path->len == skip) {
+		strbuf_reset(path);
+	} else {
+		strbuf_remove(path, 0, skip);
+		if (path->buf[0] == '/')
+			strbuf_remove(path, 0, 1);
+	}
+}
+
 static void svn_read_update(const char *path, struct svn_entry *cmt) {
 	struct conn *c = &main_connection;
 	struct strbuf name = STRBUF_INIT;
@@ -809,14 +821,14 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 		} else if (!strcmp(s, "add-dir")) {
 			/* path, parent-token, child-token, [copy-path, copy-rev] */
 			if (read_string(c, &name)) goto err;
-			clean_svn_path(&name);
+			relative_path(&name, skip);
 
-			if (name.len == skip) {
+			if (name.len) {
+				helperf("add-dir %d:%s\n", name.len, name.buf);
+			} else {
+				/* parent-token, child-token */
 				if (skip_string(c)) goto err;
 				if (read_string(c, &branch_token)) goto err;
-			} else {
-				fwrite_helper("add-dir\n");
-				write_helper(name.buf+skip, name.len+1-skip);
 			}
 
 			read_command_end(c);
@@ -824,9 +836,9 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 		} else if (!strcmp(s, "open-dir")) {
 			/* path, parent-token, child-token, rev */
 			if (read_string(c, &name)) goto err;
-			clean_svn_path(&name);
+			relative_path(&name, skip);
 
-			if (name.len == skip) {
+			if (!name.len) {
 				if (skip_string(c)) goto err;
 				if (read_string(c, &branch_token)) goto err;
 			}
@@ -837,14 +849,14 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 			/* name, dir-token, file-token, rev */
 			if (read_string(c, &name)) goto err;
 			read_command_end(c);
-			clean_svn_path(&name);
+			relative_path(&name, skip);
 			create = 0;
 
 		} else if (!strcmp(s, "add-file")) {
 			/* name, dir-token, file-token, [copy-path, copy-rev] */
 			if (read_string(c, &name)) goto err;
 			read_command_end(c);
-			clean_svn_path(&name);
+			relative_path(&name, skip);
 			create = 1;
 
 		} else if (!strcmp(s, "apply-textdelta")) {
@@ -872,14 +884,12 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 			/* we need to ignore file changes that only
 			 * change the file metadata */
 			if (diff.len) {
-				fwrite_helper("%s %d \"%s\" \"%s\"\n",
+				helperf("%s %d:%s %d:%s %d:%s %d:%s\n",
 						create ? "add-file" : "open-file",
-						(int) diff.len,
-						before.buf,
-						after.buf);
-
-				write_helper(name.buf+skip, name.len+1-skip);
-				write_helper(diff.buf, diff.len);
+						name.len, name.buf,
+						before.len, before.buf,
+						after.len, after.buf
+						diff.len, diff.buf);
 			}
 
 			strbuf_release(&diff);
@@ -891,10 +901,11 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 			/* name, [revno], dir-token */
 			if (read_string(c, &name)) goto err;
 			read_command_end(c);
-			clean_svn_path(&name);
+			relative_path(&name, skip);
 
-			fwrite_helper("delete-entry\n");
-			write_helper(name.buf+skip, name.len+1-skip);
+			if (name.len) {
+				helperf("delete-entry %d:%s\n", name.len, name.buf);
+			}
 
 		} else if (!strcmp(s, "change-dir-prop")) {
 			/* dir-token, name, [value] */
@@ -909,8 +920,7 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 			read_command_end(c);
 
 			if (!strbuf_cmp(&name, &branch_token) && !strcmp(prop.buf, "svn:mergeinfo")) {
-				fwrite_helper("set-mergeinfo\n");
-				write_helper(value.buf, value.len+1);
+				helperf("set-mergeinfo %d:%s\n", value.len, value.buf);
 			}
 
 		} else {

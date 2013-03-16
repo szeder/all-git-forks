@@ -68,8 +68,7 @@ const char *svn_to_ident(const char *username, const char *time);
 void update_read(struct svn_update *u);
 int next_update(struct svn_update *u);
 
-void fwrite_helper(const char *fmt, ...);
-void write_helper(const char *str, int len);
+void helperf(const char *fmt, ...);
 
 /* commit types */
 #define SVN_MODIFY 0

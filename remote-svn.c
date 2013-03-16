@@ -114,7 +114,7 @@ static void *map_lookup(struct string_list *list, const char *key) {
 	return item ? item->util : NULL;
 }
 
-static const char *refname(struct svnref *r) {
+static const char *refszname(struct svnref *r) {
 	static struct strbuf ref[2] = {STRBUF_INIT, STRBUF_INIT};
 	static int bufnr;
 
@@ -673,7 +673,7 @@ static int cmp_svnref_start(const void *u, const void *v) {
 }
 
 static struct child_process helper;
-static FILE* fhelper;
+static FILE* helper_file;
 
 static void start_helper() {
 	static const char *remote_svn_helper[] = {"remote-svn--helper", NULL};
@@ -690,18 +690,18 @@ static void start_helper() {
 	if (start_command(&ch))
 		die("failed to launch worker");
 
-	fhelper = xfdopen(ch.in, "wb");
+	helper_file = xfdopen(ch.in, "wb");
 }
 
 static void stop_helper() {
 	static const char *gc_auto[] = {"gc", "--auto", NULL};
 	struct child_process ch;
 
-	if (!fhelper)
+	if (!helper_file)
 		return;
 
-	fclose(fhelper);
-	fhelper = NULL;
+	fclose(helper_file);
+	helper_file = NULL;
 	if (finish_command(&helper))
 		die_errno("worker failed");
 
@@ -717,7 +717,7 @@ static void stop_helper() {
 }
 
 static void write_helper(const char *str, int len) {
-	if (!fhelper) {
+	if (!helper_file) {
 		start_helper();
 	}
 
@@ -730,10 +730,10 @@ static void write_helper(const char *str, int len) {
 		strbuf_release(&buf);
 	}
 
-	fwrite(str, 1, len, fhelper);
+	fwrite(str, 1, len, helper_file);
 }
 
-static void fwrite_helper(const char *fmt, ...) {
+void helperf(const char *fmt, ...) {
 	static struct strbuf buf = STRBUF_INIT;
 	va_list ap, aq;
 	va_start(ap, fmt);
@@ -750,23 +750,28 @@ static void fetch_update(struct svnref *r, struct svn_entry *c) {
 		: NULL;
 
 	if (copysrc && !c->copy_modified) {
-		fwrite_helper("branch %s %d %s %d\n",
-			refname(copysrc), c->copyrev,
-			refname(r), c->rev);
-	} else if (copysrc) {
-		fwrite_helper("checkout %s %d\n", refname(copysrc), c->copyrev);
-		fwrite_helper("commit %s %d %d\n", refname(r), r->rev, c->rev);
-	} else if (r->rev) {
-		fwrite_helper("checkout %s %d\n", refname(copysrc), c->copyrev);
-		fwrite_helper("commit %s %d %d\n", refname(r), r->rev, c->rev);
+		helperf("branch %s %d %s %d %d:%s %d:%s %d:%s\n",
+				refszname(copysrc), c->copyrev,
+				refszname(r), c->rev,
+				(int) strlen(r->path), r->path,
+				(int) strlen(c->ident), c->ident,
+				(int) strlen(c->msg), c->msg);
 	} else {
-		fwrite_helper("reset\n");
-		fwrite_helper("commit %s %d %d\n", refname(r), r->rev, c->rev);
-	}
+		if (copysrc) {
+			helperf("checkout %s %d\n", refszname(copysrc), c->copyrev);
+		} else if (r->rev) {
+			helperf("checkout %s %d\n", refszname(copysrc), c->copyrev);
+		} else {
+			helperf("reset\n");
+		}
 
-	write_helper(r->path, strlen(r->path)+1);
-	write_helper(c->ident, strlen(c->ident)+1);
-	write_helper(c->msg, strlen(c->msg)+1);
+		helperf("commit %s %d %d %d:%s %d:%s %d:%s\n",
+				refszname(r),
+				r->rev, c->rev,
+				(int) strlen(r->path), r->path,
+				(int) strlen(c->ident), c->ident,
+				(int) strlen(c->msg), c->msg);
+	}
 
 	display_progress(progress, ++cmts_fetched);
 
@@ -800,15 +805,21 @@ static void fetch_updates(void) {
 
 		if (r->gitrefs.nr) {
 			int i;
-			fwrite_helper("report %s", refname(r));
 			for (i = 0; i < r->gitrefs.nr; i++) {
-				fwrite_helper(" %s", r->gitrefs.items[i].string);
+				const char *gitref = r->gitrefs.items[i].string;
+				helperf("report %s %d:%s\n",
+						refszname(r),
+						(int) strlen(gitref),
+						gitref);
 			}
-			fwrite_helper("\n");
 		}
 
-		fwrite_helper("havelog %d %d\n",
-			r->rev, r->havelog);
+		if (r->havelog > r->rev) {
+			helperf("havelog %s %d %d\n",
+					refszname(r),
+					r->rev,
+					r->havelog);
+		}
 	}
 }
 

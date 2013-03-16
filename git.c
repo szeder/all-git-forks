@@ -410,7 +410,6 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "remote-ext", cmd_remote_ext },
 		{ "remote-fd", cmd_remote_fd },
 		{ "remote-svn--helper", cmd_remote_svn__helper, RUN_SETUP },
-		{ "remote-svn--update", cmd_remote_svn__update, RUN_SETUP },
 		{ "replace", cmd_replace, RUN_SETUP },
 		{ "repo-config", cmd_repo_config, RUN_SETUP_GENTLY },
 		{ "rerere", cmd_rerere, RUN_SETUP },
