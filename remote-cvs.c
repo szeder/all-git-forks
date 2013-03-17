@@ -998,7 +998,7 @@ static int import_branch_by_name(const char *branch_name)
 		//helper_checkpoint();
 
 		if (initial_import && !strcmp(branch_name, "HEAD")) {
-			sleep(1);
+			//sleep(1);
 			helper_printf("reset HEAD\n");
 			helper_printf("from %s\n", commit_mark_sb.buf);
 		}
@@ -1222,6 +1222,7 @@ static int cmd_list(const char *line)
 	}
 	//stop_progress(&progress_rlog);
 	helper_flush();
+	revisions_all_branches_total -= skipped;
 	return 0;
 }
 

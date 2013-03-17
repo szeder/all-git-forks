@@ -1518,8 +1518,9 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 					tags_max = tags;
 				if (is_dead &&
 				    !prefixcmp(message.buf, "file ") &&
-				    strstr(message.buf, "was initially added on branch")) {
-					fprintf(stderr, "skipping initial add to another branch file: %s rev: %s\n", file.buf, revision.buf);
+				    (strstr(message.buf, "was initially added on branch") ||
+				     strstr(message.buf, "was added on branch"))) {
+					//fprintf(stderr, "skipping initial add to another branch file: %s rev: %s\n", file.buf, revision.buf);
 				}
 				else if (!skip_unknown)
 					cb(branch.buf, file.buf, revision.buf, author.buf, message.buf, timestamp, is_dead, data);
