@@ -150,4 +150,11 @@ int save_cvs_revision_meta(struct branch_meta *meta,
 char *read_note_of(unsigned char sha1[20], const char *notes_ref, unsigned long *size);
 char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, char *p);
 
+/*
+ * return -1 on error
+ * revision_meta_hash == NULL if metadata was not loaded
+ */
+int load_revision_meta(unsigned char *sha1, const char *notes_ref, struct hash_table **revision_meta_hash);
+int has_revision_meta(unsigned char *sha1, const char *notes_ref);
+
 #endif

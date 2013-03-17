@@ -12,6 +12,8 @@
 #include "argv-array.h"
 #include "commit.h"
 #include "progress.h"
+#include "diff.h"
+#include "string-list.h"
 
 /*
  * TODO:
@@ -74,8 +76,10 @@ static int have_import_hook = 0;
 
 static int cmd_capabilities(const char *line);
 static int cmd_option(const char *line);
-static int cmd_batch_import(struct string_list *list);
 static int cmd_list(const char *line);
+static int cmd_list_for_push(const char *line);
+static int cmd_batch_import(struct string_list *list);
+static int cmd_batch_push(struct string_list *list);
 static int import_branch_by_name(const char *branch_name);
 
 typedef int (*input_command_handler)(const char *);
@@ -91,6 +95,12 @@ static const struct input_command_entry input_command_list[] = {
 	{ "capabilities", cmd_capabilities, NULL, 0 },
 	{ "option", cmd_option, NULL, 0 },
 	{ "import", NULL, cmd_batch_import, 1 },
+	{ "push", NULL, cmd_batch_push, 1 },
+	/*
+	 * FIXME:
+	 * `list for-push` should go before `list`, or later would always be run
+	 */
+	{ "list for-push", cmd_list_for_push, NULL, 0 },
 	{ "list", cmd_list, NULL, 0 },
 	{ NULL, NULL, NULL, 0 }
 };
@@ -244,13 +254,6 @@ static int cmd_option(const char *line)
 	helper_printf("ok\n");
 	helper_flush();
 	return 0;
-}
-
-static void terminate_batch(void)
-{
-	/* terminate a current batch's fast-import stream */
-	helper_printf("done\n");
-	helper_flush();
 }
 
 static int print_revision(void *ptr, void *data)
@@ -788,7 +791,7 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 
 	for (;;) {
 		if (parse_commit(commit))
-			die("cannot parse commit %s", sha1_to_hex(sha1));
+			die("cannot parse commit %s", sha1_to_hex(commit->object.sha1));
 
 		if (commit->date <= time) {
 			rev_mismatches = compare_commit_meta(commit->object.sha1, branch_meta_ref.buf, meta_revision_hash);
@@ -1104,6 +1107,323 @@ static int cmd_batch_import(struct string_list *list)
 		}
 	}
 
+	helper_printf("done\n");
+	helper_flush();
+	//stop_progress(&progress_state);
+	return 0;
+}
+
+/*
+ * iterates over commits until it finds the one with cvs metadata (point where
+ * git local topic branch was started)
+ */
+static int prepare_push_commit_list(unsigned char *sha1, const char *meta_ref, struct commit_list **push_list)
+{
+	struct hash_table *revision_meta_hash;
+	struct commit *commit;
+
+	*push_list = NULL;
+
+	commit = lookup_commit(sha1);
+	for (;;) {
+		if (parse_commit(commit))
+			die("cannot parse commit %s", sha1_to_hex(commit->object.sha1));
+
+		fprintf(stderr, "adding push list commit: %s date: %s commit: %p\n",
+			sha1_to_hex(commit->object.sha1), show_date(commit->date, 0, DATE_NORMAL), commit);
+		commit_list_insert(commit, push_list);
+		load_revision_meta(commit->object.sha1, meta_ref, &revision_meta_hash);
+		if (revision_meta_hash) {
+			commit->util = revision_meta_hash;
+			fprintf(stderr, "adding push list commit meta: %p\n", commit);
+			break;
+		}
+
+		if (!commit->parents)
+			break;
+		if (commit_list_count(commit->parents) > 1)
+			die("pushing of merge commits is not supported");
+
+		commit = commit->parents->item;
+	}
+
+	if (!revision_meta_hash) {
+		free_commit_list(*push_list);
+		*push_list = NULL;
+		return -1;
+	}
+
+	return 0;
+}
+
+static int check_file_list_remote_status(struct string_list *file_list, struct hash_table *revision_meta_hash)
+{
+	struct string_list_item *item;
+	for_each_string_list_item(item, file_list) {
+		fprintf(stderr, "status %s\n", item->string);
+	}
+	return 0;
+}
+
+/*
+ * TODO: move this stuff somewhere. Pack in structure and add util to diff_options?
+ */
+static struct string_list new_directory_list = STRING_LIST_INIT_DUP; // used to create non-existing directories
+static struct string_list touched_file_list = STRING_LIST_INIT_DUP; // used for status before pushing changes
+static struct hash_table *base_revision_meta_hash = NULL;
+static struct commit *current_commit = NULL; // used to save string_list of file path / cvsfile per commit
+struct sha1_mod {
+	unsigned char sha1[20];
+	unsigned mode;
+};
+
+static struct sha1_mod *make_sha1_mod(const unsigned char *sha1, unsigned mode)
+{
+	struct sha1_mod *sm = xmalloc(sizeof(*sm));
+	memcpy(sm->sha1, sha1, 20);
+	sm->mode = mode;
+
+	return sm;
+}
+
+static void add_commit_file(struct commit *commit, const char *path, const unsigned char *sha1, unsigned mode)
+{
+	struct string_list *file_list = current_commit->util;
+	if (!file_list) {
+		file_list = xcalloc(1, sizeof(*file_list));
+		file_list->strdup_strings = 1;
+		current_commit->util = file_list;
+	}
+
+	string_list_append(file_list, path)->util = make_sha1_mod(sha1, mode);;
+}
+
+static void on_file_change(struct diff_options *options,
+			   unsigned old_mode, unsigned new_mode,
+			   const unsigned char *old_sha1,
+			   const unsigned char *new_sha1,
+			   int old_sha1_valid, int new_sha1_valid,
+			   const char *concatpath,
+			   unsigned old_dirty_submodule, unsigned new_dirty_submodule)
+{
+	struct file_revision_meta *rev;
+
+	if (S_ISLNK(new_mode))
+		die("CVS does not support symlinks");
+
+	if ((S_ISDIR(old_mode) && !S_ISDIR(new_mode)) ||
+	    (!S_ISDIR(old_mode) && S_ISDIR(new_mode)))
+		die("CVS cannot handle file paths which used to de directories and vice versa");
+
+	if (S_ISDIR(new_mode))
+		return;
+
+	fprintf(stderr, "------\nfile changed: %s "
+			"mode: %o -> %o "
+			"sha: %d %s -> %d %s\n",
+			concatpath,
+			old_mode, new_mode,
+			old_sha1_valid,
+			sha1_to_hex(old_sha1),
+			new_sha1_valid,
+			sha1_to_hex(new_sha1));
+
+	/*
+	 * TODO: verify that old meta exists
+	 * - note case when file added in previous commit and no metadata exist
+	 */
+	rev = lookup_hash(hash_path(concatpath), base_revision_meta_hash);
+	if (!rev) {
+		/*
+		 * FIXME:
+		 */
+	}
+	string_list_append(&touched_file_list, concatpath)->util = rev;
+	add_commit_file(current_commit, concatpath, new_sha1, new_mode);
+}
+
+static void on_file_addremove(struct diff_options *options,
+			      int addremove, unsigned mode,
+			      const unsigned char *sha1,
+			      int sha1_valid,
+			      const char *concatpath, unsigned dirty_submodule)
+{
+	fprintf(stderr, "------\n%s %s: %s "
+			"mode: %o "
+			"sha: %d %s\n",
+			S_ISDIR(mode) ? "dir" : "file",
+			addremove == '+' ? "add" : "remove",
+			concatpath,
+			mode,
+			sha1_valid,
+			sha1_to_hex(sha1));
+
+	if (S_ISDIR(mode)) {
+		string_list_append(&new_directory_list, concatpath);
+		return;
+	}
+
+	/*
+	 * FIXME: meta needed?
+	 */
+	string_list_append(&touched_file_list, concatpath);
+	add_commit_file(current_commit, concatpath, sha1, mode);
+}
+
+static int push_commit_list_to_cvs(struct commit_list *push_list, const char *cvs_branch)
+{
+	struct commit *commit;
+	struct commit *parent;
+	struct commit *base;
+	struct hash_table *revision_meta_hash;
+
+	struct diff_options diffopt;
+	diff_setup(&diffopt);
+	diffopt.change = on_file_change;
+	diffopt.add_remove = on_file_addremove;
+	DIFF_OPT_SET(&diffopt, RECURSIVE);
+	DIFF_OPT_SET(&diffopt, TREE_IN_RECURSIVE);
+	DIFF_OPT_SET(&diffopt, IGNORE_SUBMODULES);
+
+	base = push_list->item;
+	revision_meta_hash = base->util;
+	if (!revision_meta_hash)
+		die("push failed: base commit does not have CVS metadata");
+
+	fprintf(stderr, "base commit: %s date: %s on CVS branch: %s\n",
+			sha1_to_hex(base->object.sha1), show_date(base->date, 0, DATE_NORMAL), cvs_branch);
+
+	base_revision_meta_hash = revision_meta_hash;
+	string_list_clear(&new_directory_list, 0);
+	string_list_clear(&touched_file_list, 0);
+
+	while ((push_list = push_list->next)) {
+		commit = push_list->item;
+		parent = commit->parents->item;
+
+		fprintf(stderr, "\n-----------------------------\npushing: %s date: %s to CVS branch: %s\n",
+			sha1_to_hex(commit->object.sha1), show_date(commit->date, 0, DATE_NORMAL), cvs_branch);
+
+		current_commit = commit;
+		diff_tree_sha1(parent->object.sha1, commit->object.sha1, "", &diffopt);
+	}
+
+	sort_string_list(&new_directory_list);
+	string_list_remove_duplicates(&new_directory_list, 0);
+	sort_string_list(&touched_file_list);
+	string_list_remove_duplicates(&touched_file_list, 0);
+
+	/*
+	 * TODO:
+	 */
+	if (check_file_list_remote_status(&touched_file_list, revision_meta_hash))
+		return 1;
+
+	/*
+	 * TODO:
+	 * - do create dirs
+	 * - do push changes one by one
+	 * - update metadata???
+	 */
+
+	return 0;
+}
+
+/*
+ * TODO:
+ *  - do new branch creation on force push
+ *  - tag support
+ */
+static int push_branch(const char *src, const char *dst, int force)
+{
+	int rc = -1;
+	const char *cvs_branch;
+	struct strbuf meta_ref_sb = STRBUF_INIT;
+
+	cvs_branch = strrchr(dst, '/');
+	if (!cvs_branch)
+		die("Malformed destination branch name");
+	cvs_branch++;
+
+	fprintf(stderr, "pushing %s to %s (CVS branch: %s) force: %d\n", src, dst, cvs_branch, force);
+
+	unsigned char sha1[20];
+	if (get_sha1(src, sha1))
+		die(_("Failed to resolve '%s' as a valid ref."), src);
+
+	strbuf_addf(&meta_ref_sb, "%s%s", get_meta_ref_prefix(), cvs_branch);
+	if (!ref_exists(meta_ref_sb.buf))
+		die("No metadata for CVS branch %s. No support for new CVS branch creation yet", cvs_branch);
+
+	struct commit_list *push_list = NULL;
+
+	if (prepare_push_commit_list(sha1, meta_ref_sb.buf, &push_list))
+		die("prepare_push_commit_list failed");
+
+	/*
+	 * prepare_push_commit_list always put commit with cvs metadata first,
+	 * that should not be pushed
+	 */
+	if (commit_list_count(push_list) > 1) {
+		push_commit_list_to_cvs(push_list, cvs_branch);
+	}
+	else {
+		fprintf(stderr, "Nothing to push");
+		//rc = 0;
+	}
+
+	free_commit_list(push_list);
+	strbuf_release(&meta_ref_sb);
+	return rc;
+}
+
+static int cmd_batch_push(struct string_list *list)
+{
+	struct string_list_item *item;
+	const char *srcdst;
+	const char *src;
+	const char *dst;
+	char *p;
+	int force;
+
+	for_each_string_list_item(item, list) {
+		if (!(srcdst = gettext_after(item->string, "push ")) ||
+		    !strchr(srcdst, ':'))
+			die("Malformed push command: %s", item->string);
+
+		memmove(item->string, srcdst, strlen(srcdst) + 1); // move including \0
+	}
+
+	//import_branch_list = list;
+	//import_start_time = time(NULL);
+
+	//progress_state = start_progress("Receiving revisions", revisions_all_branches_total);
+
+	for_each_string_list_item(item, list) {
+		srcdst = item->string;
+		force = 0;
+		if (srcdst[0] == '+') {
+			force = 1;
+			srcdst++;
+		}
+		p = strchr(srcdst, ':');
+		if (!p)
+			die("Malformed push source-destination specification: %s", srcdst);
+		*p++ = '\0';
+
+		src = srcdst;
+		dst = p;
+
+		if (!push_branch(src, dst, force)) {
+			helper_printf("ok %s\n", dst);
+		}
+		else {
+			helper_printf("error %s %s\n", dst, "not implemented yet ;-)");
+		}
+	}
+
+	helper_printf("\n");
+	helper_flush();
 	//stop_progress(&progress_state);
 	return 0;
 }
@@ -1134,7 +1454,7 @@ void add_file_revision_cb(const char *branch,
 }
 
 static time_t update_since = 0;
-int on_each_ref(const char *branch, const unsigned char *sha1, int flags, void *data)
+static int on_each_ref(const char *branch, const unsigned char *sha1, int flags, void *data)
 {
 	struct meta_map *branch_meta_map = data;
 	struct branch_meta *meta;
@@ -1226,6 +1546,29 @@ static int cmd_list(const char *line)
 	return 0;
 }
 
+static int print_meta_branch_name(const char *branch, const unsigned char *sha1, int flags, void *data)
+{
+	helper_printf("? refs/heads/%s\n", branch);
+	return 0;
+}
+
+static int cmd_list_for_push(const char *line)
+{
+	cvs = cvs_connect(cvsroot, cvsmodule);
+	if (!cvs)
+		return -1;
+
+	fprintf(stderr, "connected to cvs server\n");
+
+	//progress_rlog = start_progress("revisions info", 0);
+	for_each_ref_in(get_meta_ref_prefix(), print_meta_branch_name, branch_meta_map);
+	helper_printf("\n");
+
+	//stop_progress(&progress_rlog);
+	helper_flush();
+	return 0;
+}
+
 static int do_command(struct strbuf *line)
 {
 	const struct input_command_entry *p = input_command_list;
@@ -1243,7 +1586,6 @@ static int do_command(struct strbuf *line)
 			//for_each_string_list_item(item, &batchlines)
 			//	batch_cmd->fn(item->string);
 			batch_cmd->batch_fn(&batchlines);
-			terminate_batch();
 			batch_cmd = NULL;
 			string_list_clear(&batchlines, 0);
 			return 0;	/* end of the batch, continue reading other commands. */

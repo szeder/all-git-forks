@@ -778,19 +778,17 @@ char *read_note_of(unsigned char sha1[20], const char *notes_ref, unsigned long 
 	struct notes_tree *t;
 	const unsigned char *note;
 	enum object_type type;
-	char *buf;
+	char *buf = NULL;
 
 	t = xcalloc(1, sizeof(*t));
 	init_notes(t, notes_ref, combine_notes_overwrite, 0);
 	note = get_note(t, sha1);
-	if (!note)
-		die(_("No note found for sha1 %s."), sha1_to_hex(sha1));
-
-	//fprintf(stderr, "note %s:\n", sha1_to_hex(note));
-	buf = read_sha1_file(note, &type, size);
-	if (!buf)
-		die("Cannot read sha1 %s", sha1_to_hex(note));
-	//const char *show_args[3] = {"show", sha1_to_hex(note), NULL};
+	if (note) {
+		//fprintf(stderr, "note %s:\n", sha1_to_hex(note));
+		buf = read_sha1_file(note, &type, size);
+		if (!buf)
+			die("Cannot read sha1 %s", sha1_to_hex(note));
+	}
 
 	free_notes(t);
 	free(t);
@@ -903,6 +901,50 @@ int load_cvs_revision_meta(struct branch_meta *meta,
 
 	//write_or_die(1, buf, size);
 	//fprintf(stderr, "end\n");
+	free(buf);
+	return 0;
+}
+
+int has_revision_meta(unsigned char *sha1, const char *notes_ref)
+{
+	struct notes_tree *t;
+	const unsigned char *note;
+
+	t = xcalloc(1, sizeof(*t));
+	init_notes(t, notes_ref, combine_notes_overwrite, 0);
+	note = get_note(t, sha1);
+
+	free_notes(t);
+	free(t);
+	return !!note;
+}
+
+int load_revision_meta(unsigned char *sha1, const char *notes_ref, struct hash_table **revision_meta_hash)
+{
+	char *buf;
+	char *p;
+	char *first;
+	char *second;
+	unsigned long size;
+	*revision_meta_hash = NULL;
+
+	buf = read_note_of(sha1, notes_ref, &size);
+	if (!buf)
+		return 0;
+
+	*revision_meta_hash = xmalloc(sizeof(struct hash_table));
+	init_hash(*revision_meta_hash);
+
+	p = buf;
+	while ((p = parse_meta_line(buf, size, &first, &second, p))) {
+		if (strcmp(first, "--") == 0)
+			break;
+	}
+
+	while ((p = parse_meta_line(buf,size, &first, &second, p))) {
+		add_file_revision_meta_hash(*revision_meta_hash, second, first, 0, 0, 0);
+	}
+
 	free(buf);
 	return 0;
 }
