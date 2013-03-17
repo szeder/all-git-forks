@@ -7,8 +7,6 @@
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #endif
 
-#define MAX_DBG_WIDTH INT_MAX
-
 #define malformed_die() die("protocol error %s:%d", __FILE__, __LINE__)
 
 struct conn {
@@ -61,40 +59,32 @@ static ssize_t read_svn(struct conn *c, void* p, size_t n) {
 	return n;
 }
 
-static void writedebug(struct conn *c, struct strbuf *s, int rxtx) {
+static void writedebug(struct conn *c, struct strbuf *s, int tx) {
 	struct strbuf buf = STRBUF_INIT;
-	strbuf_addf(&buf, "%c", rxtx);
+	strbuf_addf(&buf, "S%c", tx ? '+' : '-');
 	if (s->len && s->buf[0] != ' ')
 		strbuf_addch(&buf, ' ');
-	quote_c_style_counted(s->buf, min(s->len - 1, MAX_DBG_WIDTH), &buf, NULL, 1);
-	if (buf.len >= MAX_DBG_WIDTH-3) {
-		strbuf_setlen(&buf, MAX_DBG_WIDTH-3);
-		strbuf_addstr(&buf, "...");
-	}
+	quote_c_style_counted(s->buf, s->len - 1, &buf, NULL, 1);
 	strbuf_addch(&buf, '\n');
 	fwrite(buf.buf, 1, buf.len, stderr);
 	strbuf_release(&buf);
-}
-
-static void sendbuf(struct conn *c) {
-	struct strbuf *s = &c->buf;
-
-	if (svndbg >= 2)
-		writedebug(c, s, '+');
-
-	if (write_in_full(c->fd, s->buf, s->len) != s->len)
-		die_errno("write");
 }
 
 __attribute__((format (printf,2,3)))
 static void sendf(struct conn *c, const char* fmt, ...);
 
 static void sendf(struct conn *c, const char* fmt, ...) {
+	struct strbuf *s = &c->buf;
 	va_list ap;
 	va_start(ap, fmt);
 	strbuf_reset(&c->buf);
 	strbuf_vaddf(&c->buf, fmt, ap);
-	sendbuf(c);
+
+	if (svndbg >= 2)
+		writedebug(c, &c->buf, 1);
+
+	if (write_in_full(c->fd, c->buf.buf, c->buf.len) != c->buf.len)
+		die_errno("write");
 }
 
 /* returns -1 if it can't find a number */
@@ -200,8 +190,8 @@ static int append_string(struct conn *c, struct strbuf* s, int limitdbg) {
 	}
 
 	if (svndbg >= 2) {
-		if (limitdbg && n > 64) {
-			strbuf_add(&c->indbg, s->buf + s->len - n, 64);
+		if (limitdbg && n > 20) {
+			strbuf_add(&c->indbg, s->buf + s->len - n, 20);
 			strbuf_addstr(&c->indbg, "...");
 		} else {
 			strbuf_add(&c->indbg, s->buf + s->len - n, n);
@@ -216,62 +206,105 @@ static int read_string(struct conn *c, struct strbuf *s) {
 	return append_string(c, s, 0);
 }
 
-static int skip_string(struct conn *c) {
-	struct strbuf buf = STRBUF_INIT;
-	int r = append_string(c, &buf, 1);
-	strbuf_release(&buf);
-	return r;
+static int do_skip_one(struct conn *c, int ch) {
+	if (ch == EOF) {
+		return -1;
+
+	} else if ('0' <= ch && ch <= '9') {
+		char buf[4096];
+		ssize_t n, dbg = 0;
+
+		unreadc(c);
+		n = read_number(c);
+		if (n < 0)
+			return -1;
+
+		if (readc(c) != ':') {
+			/* number */
+			unreadc(c);
+			return 0;
+		}
+
+		/* string */
+		if (svndbg >= 2) {
+			strbuf_addch(&c->indbg, ':');
+			dbg = min(20, n);
+		}
+
+		while (n) {
+			ssize_t r = read_svn(c, buf, min(n, sizeof(buf)));
+			if (r <= 0)
+				die_errno("read");
+
+			if (dbg >= r) {
+				strbuf_add(&c->indbg, buf, r);
+			} else if (dbg > 0) {
+				strbuf_add(&c->indbg, buf, dbg);
+				strbuf_addstr(&c->indbg, "...");
+			}
+
+			dbg -= r;
+			n -= r;
+		}
+
+		return 0;
+
+	} else {
+		if (!read_word(c))
+			return -1;
+
+		return 0;
+	}
 }
 
 static void read_end(struct conn *c) {
 	int parens = 1;
 	while (parens > 0) {
 		int ch = readc(c);
-		if (ch == EOF)
-			die(_("socket close whilst looking for list close"));
 
-		if (ch == '(') {
-			if (svndbg >= 2)
-				strbuf_addstr(&c->indbg, " (");
-			parens++;
-		} else if (ch == ')') {
+		while (ch == ' ' || ch == '\n') {
+			ch = readc(c);
+		}
+
+		if (ch == ')') {
 			if (svndbg >= 2)
 				strbuf_addstr(&c->indbg, " )");
 			parens--;
-		} else if (ch == ' ' || ch == '\n') {
-			/* whitespace */
-		} else if ('0' <= ch && ch <= '9') {
-			/* number or string */
-			size_t n;
-			char buf[4096];
 
-			unreadc(c);
-			n = read_number(c);
-
-			ch = readc(c);
-			if (ch != ':') {
-				/* number */
-				unreadc(c);
-				continue;
-			}
-
-			/* string */
+		} else if (ch == '(') {
 			if (svndbg >= 2)
-				strbuf_addch(&c->indbg, ':');
+				strbuf_addstr(&c->indbg, " (");
+			parens++;
 
-			while (n) {
-				ssize_t r = read_svn(c, buf, min(n, sizeof(buf)));
-				if (r <= 0)
-					die_errno("read");
-				if (svndbg >= 2)
-					strbuf_add(&c->indbg, buf, r);
-				n -= r;
-			}
 		} else {
 			unreadc(c);
-			if (!read_word(c))
-				die(_("unexpected character %c"), ch);
+			if (do_skip_one(c, ch))
+				malformed_die();
 		}
+	}
+}
+
+static int skip_next(struct conn *c) {
+	int ch = readc(c);
+
+	while (ch == ' ' || ch == '\n') {
+		ch = readc(c);
+	}
+
+	if (ch == ')') {
+		if (svndbg >= 2)
+			strbuf_addstr(&c->indbg, " )");
+		return -1;
+
+	} else if (ch == '(') {
+		if (svndbg >= 2)
+			strbuf_addstr(&c->indbg, " (");
+		read_end(c);
+		return 0;
+
+	} else {
+		unreadc(c);
+		return do_skip_one(c, ch);
 	}
 }
 
@@ -301,7 +334,7 @@ static const char* read_command(struct conn *c) {
 static void read_newline(struct conn *c) {
 	if (svndbg >= 2) {
 		strbuf_addch(&c->indbg, '\n');
-		writedebug(c, &c->indbg, '-');
+		writedebug(c, &c->indbg, 0);
 		strbuf_reset(&c->indbg);
 	}
 }
@@ -694,7 +727,9 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 
 		/* log message */
 		if (read_list(c)) malformed_die();
-		read_string(c, &msg);
+		strbuf_reset(&msg);
+		append_string(c, &msg, 1);
+		strbuf_complete_line(&msg);
 		read_end(c);
 
 		for (i = 0; i < refnr; i++) {
@@ -735,7 +770,7 @@ static void read_text_delta(struct conn *c, struct strbuf *d) {
 
 		} else if (!strcmp(s, "textdelta-chunk")) {
 			/* file-token, chunk */
-			if (skip_string(c) || append_string(c, d, 1)) {
+			if (skip_next(c) || append_string(c, d, 1)) {
 				die("invalid textdelta command");
 			}
 		}
@@ -818,10 +853,10 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 			relative_svn_path(&name, skip);
 
 			if (name.len) {
-				helperf("add-dir %d:%s\n", name.len, name.buf);
+				helperf("add-dir %d:%s\n", (int) name.len, name.buf);
 			} else {
 				/* parent-token, child-token */
-				if (skip_string(c)) malformed_die();
+				if (skip_next(c)) malformed_die();
 				if (read_string(c, &branch_token)) malformed_die();
 			}
 
@@ -833,7 +868,7 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 			relative_svn_path(&name, skip);
 
 			if (!name.len) {
-				if (skip_string(c)) malformed_die();
+				if (skip_next(c)) malformed_die();
 				if (read_string(c, &branch_token)) malformed_die();
 			}
 
@@ -855,7 +890,7 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 
 		} else if (!strcmp(s, "apply-textdelta")) {
 			/* file-token, [base-checksum] */
-			if (skip_string(c)) malformed_die();
+			if (skip_next(c)) malformed_die();
 			if (have_optional(c)) {
 				if (read_string(c, &before)) malformed_die();
 				read_end(c);
@@ -868,7 +903,7 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 			if (create < 0) malformed_die();
 
 			/* file-token, [text-checksum] */
-			if (skip_string(c)) malformed_die();
+			if (skip_next(c)) malformed_die();
 			if (have_optional(c)) {
 				if (read_string(c, &after)) malformed_die();
 				read_end(c);
@@ -880,10 +915,10 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 			if (diff.len) {
 				helperf("%s %d:%s %d:%s %d:%s %d:",
 						create ? "add-file" : "open-file",
-						name.len, name.buf,
-						before.len, before.buf,
-						after.len, after.buf,
-						diff.len);
+						(int) name.len, name.buf,
+						(int) before.len, before.buf,
+						(int) after.len, after.buf,
+						(int) diff.len);
 				write_helper(diff.buf, diff.len, 1);
 			}
 
@@ -899,7 +934,7 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 			relative_svn_path(&name, skip);
 
 			if (name.len) {
-				helperf("delete-entry %d:%s\n", name.len, name.buf);
+				helperf("delete-entry %d:%s\n", (int) name.len, name.buf);
 			}
 
 		} else if (!strcmp(s, "change-dir-prop")) {
@@ -915,7 +950,7 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 			read_command_end(c);
 
 			if (!strbuf_cmp(&name, &branch_token) && !strcmp(prop.buf, "svn:mergeinfo")) {
-				helperf("set-mergeinfo %d:%s\n", value.len, value.buf);
+				helperf("set-mergeinfo %d:%s\n", (int) value.len, value.buf);
 			}
 
 		} else {
@@ -1038,7 +1073,7 @@ static void svn_start_commit(int type, const char *log, const char *path, int re
 
 	if (type != SVN_DELETE && mi) {
 		const char *str = make_svn_mergeinfo(mi);
-		sendf(c, "( change-dir-prop ( 3:d%02X 13:svn:mergeinfo %d:%s ) )\n",
+		sendf(c, "( change-dir-prop ( 3:d%02X 13:svn:mergeinfo ( %d:%s ) ) )\n",
 			dir, (int) strlen(str), str);
 	}
 }
@@ -1088,13 +1123,29 @@ static void svn_send_file(const char *path, struct strbuf *diff, int create) {
 
 	while (n < diff->len) {
 		size_t sz = min(diff->len - n, 64*1024);
-
 		strbuf_reset(&c->buf);
 		strbuf_addf(&c->buf, "( textdelta-chunk ( 1:f %d:", (int) sz);
+
+		if (svndbg >= 2) {
+			struct strbuf dbg = STRBUF_INIT;
+			strbuf_addstr(&dbg, c->buf.buf);
+			if (sz > 20) {
+				strbuf_add(&dbg, diff->buf + n, 20);
+				strbuf_addstr(&dbg, "...");
+			} else {
+				strbuf_add(&dbg, diff->buf + n, sz);
+			}
+			strbuf_addstr(&dbg, " ) )\n");
+			writedebug(c, &dbg, 1);
+			strbuf_release(&dbg);
+		}
+
 		strbuf_add(&c->buf, diff->buf + n, sz);
 		strbuf_addstr(&c->buf, " ) )\n");
 
-		sendbuf(c);
+		if (write_in_full(c->fd, c->buf.buf, c->buf.len) != c->buf.len)
+			die_errno("write");
+
 		n += sz;
 	}
 

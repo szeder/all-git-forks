@@ -57,6 +57,7 @@ struct svnref {
 
 const char *svn_to_ident(const char *username, const char *time);
 void write_helper(const char *str, int len, int limitdbg);
+__attribute__((format (printf,1,2)))
 void helperf(const char *fmt, ...);
 void cmt_read(struct svnref *r);
 

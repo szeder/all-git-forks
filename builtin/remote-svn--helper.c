@@ -8,6 +8,7 @@
 
 static struct index_state svn_index;
 static int svn_eol = EOL_UNSET;
+static int verbose;
 
 static void trypause(void) {
 	static int env = -1;
@@ -60,6 +61,8 @@ static int config(const char *key, const char *value, void *dummy) {
 	return git_default_config(key, value, dummy);
 }
 
+static struct strbuf indbg = STRBUF_INIT;
+
 static void read_atom(struct strbuf* buf) {
 	strbuf_reset(buf);
 	for (;;) {
@@ -69,6 +72,11 @@ static void read_atom(struct strbuf* buf) {
 		} else if (!isspace(ch)) {
 			strbuf_addch(buf, ch);
 		}
+	}
+
+	if (verbose) {
+		strbuf_addch(&indbg, ' ');
+		strbuf_addstr(&indbg, buf->buf);
 	}
 }
 
@@ -89,14 +97,39 @@ static int read_number(void) {
 		}
 	}
 
+	if (verbose)
+		strbuf_addf(&indbg, " %d", num);
+
 	return num;
 }
 
-static void read_string(struct strbuf *buf) {
+static void read_string(struct strbuf *s) {
 	int len = read_number();
-	strbuf_reset(buf);
-	if (strbuf_fread(buf, len, stdin) != len)
+	strbuf_reset(s);
+	if (strbuf_fread(s, len, stdin) != len)
 		die_errno("read");
+
+	if (verbose) {
+		static struct strbuf qbuf = STRBUF_INIT;
+		strbuf_addch(&indbg, ':');
+		strbuf_reset(&qbuf);
+
+		if (s->len > 20) {
+			quote_c_style_counted(s->buf, 20, &qbuf, NULL, 1);
+			strbuf_add(&indbg, qbuf.buf, qbuf.len);
+			strbuf_addstr(&indbg, "...");
+		} else {
+			quote_c_style_counted(s->buf, s->len, &qbuf, NULL, 1);
+			strbuf_add(&indbg, qbuf.buf, qbuf.len);
+		}
+	}
+}
+
+static void read_command(void) {
+	if (verbose) {
+		fprintf(stderr, "H-%s\n", indbg.buf);
+	}
+	strbuf_reset(&indbg);
 }
 
 static void add_dir(const char *name) {
@@ -254,6 +287,7 @@ static void report(const char *ref, const char *gitref) {
 
 	struct commit *svn = lookup_commit_reference_by_name(ref);
 	struct commit *git = svn_commit(svn);
+	const char *hex;
 
 	if (!prefixcmp(gitref, "refs/tags/")) {
 		strbuf_reset(&buf);
@@ -261,11 +295,16 @@ static void report(const char *ref, const char *gitref) {
 		if (read_ref(buf.buf, sha1)) {
 			hashcpy(sha1, git->object.sha1);
 		}
-
-		printf("fetched %s %s\n", sha1_to_hex(sha1), gitref);
+		hex = sha1_to_hex(sha1);
 	} else {
-		printf("fetched %s %s\n", cmt_to_hex(git), gitref);
+		hex = cmt_to_hex(git);
 	}
+
+	if (verbose) {
+		fprintf(stderr, "r+ fetched %s %s\n", hex, gitref);
+	}
+
+	printf("fetched %s %s\n", hex, gitref);
 }
 
 static void havelog(const char *ref, int rev, const char *logrev) {
@@ -440,18 +479,27 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 		if (!strcmp(cmd.buf, "")) {
 			break;
 
+		} else if (!strcmp(cmd.buf, "verbose")) {
+			read_command();
+			verbose = 1;
+
 		} else if (!strcmp(cmd.buf, "checkout")) {
 			int rev;
 			read_string(&ref);
 			rev = read_number();
+			read_command();
+
 			checkout(ref.buf, rev);
 
 		} else if (!strcmp(cmd.buf, "reset")) {
+			read_command();
 			reset();
 
 		} else if (!strcmp(cmd.buf, "report")) {
 			read_string(&ref);
 			read_string(&gitref);
+			read_command();
+
 			report(ref.buf, gitref.buf);
 
 		} else if (!strcmp(cmd.buf, "havelog")) {
@@ -459,8 +507,9 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 			read_string(&ref);
 			rev = read_number();
 			read_atom(&logrev);
-			strbuf_complete_line(&logrev);
+			read_command();
 
+			strbuf_complete_line(&logrev);
 			havelog(ref.buf, rev, logrev.buf);
 
 		} else if (!strcmp(cmd.buf, "branch")) {
@@ -473,6 +522,7 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 			read_string(&path);
 			read_string(&ident);
 			read_string(&msg);
+			read_command();
 
 			branch(copyref.buf, copyrev, ref.buf, rev, path.buf, ident.buf, msg.buf);
 
@@ -485,16 +535,19 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 			read_string(&path);
 			read_string(&ident);
 			read_string(&msg);
+			read_command();
 
 			commit(ref.buf, baserev, rev, path.buf, ident.buf, msg.buf);
 
 		} else if (!strcmp(cmd.buf, "add-dir")) {
 			read_string(&path);
+			read_command();
 
 			add_dir(path.buf);
 
 		} else if (!strcmp(cmd.buf, "delete-entry")) {
 			read_string(&path);
+			read_command();
 
 			remove_path_from_index(&svn_index, path.buf);
 			remove_path_from_index(&the_index, path.buf);
@@ -504,16 +557,19 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 			read_string(&before);
 			read_string(&after);
 			read_string(&diff);
+			read_command();
 
 			change_file(cmd.buf[0] == 'a', path.buf, &diff, before.buf, after.buf);
 
 		} else if (!strcmp(cmd.buf, "set-mergeinfo")) {
 			read_string(&buf);
+			read_command();
 
 			free_svn_mergeinfo(svn_mergeinfo);
 			svn_mergeinfo = parse_svn_mergeinfo(buf.buf);
 
 		} else if (!strcmp(cmd.buf, "test")) {
+			read_command();
 			test_svn_mergeinfo();
 		}
 

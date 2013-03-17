@@ -90,6 +90,23 @@ static int config(const char *key, const char *value, void *dummy) {
 	return git_default_config(key, value, dummy);
 }
 
+__attribute__((format (printf,1,2)))
+static void remotef(const char *fmt, ...);
+
+static void remotef(const char *fmt, ...) {
+	va_list ap, aq;
+	va_start(ap, fmt);
+	if (svndbg >= 2) {
+		static struct strbuf buf = STRBUF_INIT;
+		va_copy(aq, ap);
+		strbuf_reset(&buf);
+		strbuf_addf(&buf, "R+ ");
+		strbuf_vaddf(&buf, fmt, aq);
+		strbuf_complete_line(&buf);
+		fwrite(buf.buf, 1, buf.len, stderr);
+	}
+	vprintf(fmt, ap);
+}
 
 static void trypause(void) {
 	static int env = -1;
@@ -494,10 +511,12 @@ static void do_connect(void) {
 }
 
 static void add_list_dir(const char *path) {
-	char *ref = apply_refspecs(refmap, refmap_nr, refpath(path));
-	struct string_list_item *item = string_list_insert(&path_for_ref, ref);
-	item->util = strdup(path);
-	printf("? %s\n", ref);
+	char *gitref = apply_refspecs(refmap, refmap_nr, refpath(path));
+	struct string_list_item *item = string_list_insert(&path_for_ref, gitref);
+	struct svnref *ref = get_ref(path, listrev);
+	ref->exists_at_head = 1;
+	item->util = ref;
+	remotef("? %s\n", gitref);
 }
 
 static void list(void) {
@@ -509,7 +528,7 @@ static void list(void) {
 	latest = proto->get_latest();
 	listrev = min(latest, listrev);
 
-	printf("@refs/heads/master HEAD\n");
+	remotef("@refs/heads/master HEAD\n");
 
 	if (!listrev)
 		return;
@@ -708,10 +727,18 @@ static void start_helper() {
 	if (use_progress)
 		progress = start_progress("Fetching commits", cmts_to_fetch);
 
+	if (svndbg)
+		fprintf(stderr, "starting git remote-svn--helper\n");
+
 	if (start_command(&helper))
-		die("failed to launch worker");
+		die_errno("failed to launch helper");
 
 	helper_file = xfdopen(helper.in, "wb");
+	if (!helper_file)
+		die_errno("failed to launch helper");
+
+	if (svndbg >= 2)
+		helperf("verbose\n");
 }
 
 static void stop_helper() {
@@ -728,6 +755,11 @@ static void stop_helper() {
 
 	stop_progress(&progress);
 
+	if (svndbg) {
+		fprintf(stderr, "finished git remote-svn--helper\n");
+		fprintf(stderr, "running git gc --auto\n");
+	}
+
 	memset(&ch, 0, sizeof(ch));
 	ch.argv = gc_auto;
 	ch.no_stdin = 1;
@@ -735,22 +767,21 @@ static void stop_helper() {
 	ch.git_cmd = 1;
 	if (run_command(&ch))
 		die_errno("git gc --auto failed");
+
+	if (svndbg)
+		fprintf(stderr, "finished git gc --auto\n");
 }
 
 void write_helper(const char *str, int len, int limitdbg) {
-	if (!helper_file) {
-		start_helper();
-	}
-
 	if (svndbg >= 2) {
 		struct strbuf buf = STRBUF_INIT;
 		int sz = len;
-		if (limitdbg && sz > 64)
-			sz = 64;
+		if (limitdbg && sz > 20)
+			sz = 20;
 		if (str[len-1] == '\n')
 			sz--;
 		quote_c_style_counted(str, sz, &buf, NULL, 1);
-		fprintf(stderr, "H %s%s\n", buf.buf, (sz < len-1 ? "..." : ""));
+		fprintf(stderr, "H+ %s%s\n", buf.buf, (sz < len-1 ? "..." : ""));
 		strbuf_release(&buf);
 	}
 
@@ -760,6 +791,11 @@ void write_helper(const char *str, int len, int limitdbg) {
 void helperf(const char *fmt, ...) {
 	static struct strbuf buf = STRBUF_INIT;
 	va_list ap;
+
+	if (!helper_file) {
+		start_helper();
+	}
+
 	va_start(ap, fmt);
 	strbuf_reset(&buf);
 	strbuf_vaddf(&buf, fmt, ap);
@@ -774,12 +810,14 @@ static void fetch_update(struct svnref *r, struct svn_entry *c) {
 		: NULL;
 
 	if (copysrc && !c->copy_modified) {
-		helperf("branch %s %d %s %d %d:%s %d:%s %d:%s\n",
+		helperf("branch %s %d %s %d %d:%s %d:%s %d:",
 				refszname(copysrc), c->copyrev,
 				refszname(r), c->rev,
 				(int) strlen(r->path), r->path,
 				(int) strlen(c->ident), c->ident,
-				(int) strlen(c->msg), c->msg);
+				(int) strlen(c->msg));
+
+		write_helper(c->msg, strlen(c->msg), 1);
 	} else {
 		if (copysrc) {
 			helperf("checkout %s %d\n", refszname(copysrc), c->copyrev);
@@ -791,12 +829,14 @@ static void fetch_update(struct svnref *r, struct svn_entry *c) {
 
 		proto->read_update(r->path, c);
 
-		helperf("commit %s %d %d %d:%s %d:%s %d:%s\n",
+		helperf("commit %s %d %d %d:%s %d:%s %d:",
 				refszname(r),
 				r->rev, c->rev,
 				(int) strlen(r->path), r->path,
 				(int) strlen(c->ident), c->ident,
-				(int) strlen(c->msg), c->msg);
+				(int) strlen(c->msg));
+
+		write_helper(c->msg, strlen(c->msg), 1);
 
 	}
 
@@ -926,7 +966,7 @@ static void change(struct diff_options* op,
 {
 	struct cache_entry *ce;
 
-	if (svndbg) fprintf(stderr, "change mode %x/%x sha1 %s/%s path %s\n",
+	if (svndbg) fprintf(stderr, "change mode %x/%x sha1 %.10s/%.10s path %s\n",
 			omode, nmode, sha1_to_hex(osha1), sha1_to_hex(nsha1), path);
 
 	/* dont care about changed directories */
@@ -950,7 +990,7 @@ static void addremove(struct diff_options *op,
 		const char *path,
 		unsigned dsubmodule)
 {
-	if (svndbg) fprintf(stderr, "addrm %c mode %x sha1 %s path %s\n",
+	if (svndbg) fprintf(stderr, "addrm %c mode %x sha1 %.10s path %s\n",
 			addrm, mode, sha1_to_hex(sha1), path);
 
 	if (addrm == '-') {
@@ -1008,34 +1048,6 @@ static const char *push_message(struct object *obj, int use_cmt_msg) {
 	}
 }
 
-/* When pushing commits we have the following goals:
- * a) svn log should look the same as git log --first-parent
- * b) svn log --use-merge-history should look the same as git log
- * c) commits shouldn't be pushed more than once
- * d) minimise replaces on existing svn branches
- *	- commits which are reachable from more than one git head are
- *	prioritised to the existing svn branches
- *
- * In order to do this we trace from the new heads back and categorize
- * each commit with one of the following priorities.
- *
- * cmt->util holds a svn_push for FIRST_PARENT*, and the svn commit for
- * IN_SVN
- */
-
-#define SECOND_PARENT 1
-#define FIRST_PARENT_NEW 2
-#define FIRST_PARENT 3
-#define IN_SVN 4
-#define SVNCMT 5
-
-struct svn_push {
-	struct svn_push *next;
-	struct object *obj;
-	struct svnref *ref;
-	struct refspec *spec;
-};
-
 static int push_commit(struct svnref *r, int type, struct object *obj, const char *specdst, int use_cmt_msg) {
 	static struct strbuf buf = STRBUF_INIT;
 
@@ -1057,10 +1069,6 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
 		struct commit_list *pp = cmt->parents;
 		struct commit *sc = pp->item->util;
 
-		if (pp->item->object.flags != IN_SVN) {
-			die("internal: parent not in svn");
-		}
-
 		svnbase = sc;
 
 		if (type == SVN_ADD || type == SVN_REPLACE) {
@@ -1070,7 +1078,9 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
 
 		/* mergeinfo contains the svn revs that follow the copy
 		 * path (first parent), svn_mergeinfo is all paths from
-		 * obj minus the direct path */
+		 * obj minus the direct path. We need to merge in all of
+		 * the direct and indirect paths from our second+
+		 * parents excluding our own direct path. */
 
 		mergeinfo = get_mergeinfo(sc);
 		svn_mergeinfo = get_svn_mergeinfo(sc);
@@ -1140,7 +1150,7 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
 
 	if (rev <= 0) {
 		/* TODO get the full error message */
-		printf("error %s commit failed\n", specdst);
+		remotef("error %s commit failed\n", specdst);
 		return -1;
 	}
 
@@ -1150,11 +1160,11 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
 	if (type == SVN_MODIFY && r->logrev+1 < rev
 		&& proto->has_change(r->path, r->logrev+1, rev-1))
 	{
-		printf("error %s non-fast forward\n", specdst);
+		remotef("error %s non-fast forward\n", specdst);
 		return -1;
 	}
 
-	add_svn_mergeinfo(mergeinfo, r->path, r->logrev+1, rev);
+	add_svn_mergeinfo(mergeinfo, r->path, r->rev+1, rev);
 
 	/* update the svn ref */
 
@@ -1205,6 +1215,34 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
 	return 0;
 }
 
+/* When pushing commits we have the following goals:
+ * a) svn log should look the same as git log --first-parent
+ * b) svn log --use-merge-history should look the same as git log
+ * c) commits shouldn't be pushed more than once
+ * d) minimise replaces on existing svn branches
+ *	- commits which are reachable from more than one git head are
+ *	prioritised to the existing svn branches
+ *
+ * In order to do this we trace from the new heads back and categorize
+ * each commit with one of the following priorities.
+ *
+ * cmt->util holds a svn_push for FIRST_PARENT*, and the svn commit for
+ * IN_SVN
+ */
+
+#define SECOND_PARENT 1
+#define FIRST_PARENT_NEW 2
+#define FIRST_PARENT 3
+#define IN_SVN 4
+#define SVNCMT 5
+
+struct svn_push {
+	struct svn_push *next;
+	struct object *obj;
+	struct svnref *ref;
+	struct refspec *spec;
+};
+
 /* list of commits found during the push traversal sorted by date then
  * flags (newest svncmt first)
  */
@@ -1249,6 +1287,7 @@ static void insert_commit(struct commit *cmt, int type, void *util) {
 		new_commits++;
 
 	cmt->object.flags = type;
+	cmt->util = util;
 	commit_list_insert(cmt, pp);
 }
 
@@ -1333,11 +1372,6 @@ static void push(void) {
 				}
 			}
 
-			if (type > SECOND_PARENT) {
-				commit_list_insert(c, &cmts);
-				cmts_to_push++;
-			}
-
 			new_commits--;
 		}
 	}
@@ -1345,12 +1379,38 @@ static void push(void) {
 	if (use_progress)
 		progress = start_progress("Pushing commits", cmts_to_push);
 
-	/* Push all the new commits */
+	/* We now push all the commits. We maintain a stack in cmts and
+	 * do a depth first search so that parent commits are processed
+	 * first. We can't build a list from the priority tagging as the
+	 * date is unreliable (parents can be newer).
+	 */
+	for (push = push_heads; push != NULL; push = push->next) {
+		struct object *obj = deref_tag_noverify(push->obj);
+		if (obj->type == OBJ_COMMIT) {
+			commit_list_insert((struct commit*) obj, &cmts);
+		}
+	}
+
 	while (cmts) {
-		struct commit *c = pop_commit(&cmts);
+		struct commit *c = cmts->item;
 		struct svn_push *p = c->util;
 		struct svnref *r = p->ref;
+		struct commit_list *pp;
 		int type;
+
+		for (pp = c->parents; pp != NULL; pp = pp->next) {
+			if (pp->item->object.flags != IN_SVN) {
+				commit_list_insert(pp->item, &cmts);
+			}
+		}
+
+		/* We had at least one parent not in svn. We will come
+		 * back to this commit later. */
+		if (cmts->item != c) {
+			continue;
+		}
+
+		pop_commit(&cmts);
 
 		if (!r->exists_at_head) {
 			type = SVN_ADD;
@@ -1367,7 +1427,7 @@ static void push(void) {
 		}
 
 		if (!p->spec->force && type == SVN_REPLACE) {
-			printf("error %s non-fast forward\n", p->spec->dst);
+			remotef("error %s non-fast forward\n", p->spec->dst);
 			return;
 		}
 
@@ -1378,6 +1438,9 @@ static void push(void) {
 
 		if (push_commit(r, type, &c->object, p->spec->dst, 1))
 			return;
+
+		c->object.flags = IN_SVN;
+		c->util = r->svn;
 	}
 
 	/* Finally push through branch changes which weren't covered by
@@ -1394,7 +1457,7 @@ static void push(void) {
 			proto->start_commit(SVN_DELETE, empty_log_message, r->path, r->logrev+1, NULL, 0, NULL);
 
 			if (proto->finish_commit(NULL) <= 0) {
-				printf("error %s commit failed\n", spec->dst);
+				remotef("error %s commit failed\n", spec->dst);
 				return;
 			}
 
@@ -1405,7 +1468,7 @@ static void push(void) {
 			int use_cmt_msg = push->obj->type == OBJ_TAG;
 
 			if (!spec->force && type == SVN_REPLACE) {
-				printf("error %s non-fast forward\n", spec->dst);
+				remotef("error %s non-fast forward\n", spec->dst);
 				return;
 			}
 
@@ -1413,7 +1476,7 @@ static void push(void) {
 				return;
 		}
 
-		printf("ok %s\n", spec->dst);
+		remotef("ok %s\n", spec->dst);
 	}
 }
 
@@ -1438,7 +1501,7 @@ static int command(char *cmd, char *arg) {
 	if (log_request_nr && !strcmp(cmd, "")) {
 		read_logs();
 		fetch_updates();
-		printf("\n");
+		remotef("\n");
 		return 1;
 
 	} else if (!strcmp(cmd, "fetch")) {
@@ -1465,7 +1528,7 @@ static int command(char *cmd, char *arg) {
 		}
 
 		push();
-		printf("\n");
+		remotef("\n");
 		return 1;
 
 	} else if (!strcmp(cmd, "push")) {
@@ -1476,23 +1539,23 @@ static int command(char *cmd, char *arg) {
 		pushv[pushn++] = spec;
 
 	} else if (!strcmp(cmd, "capabilities")) {
-		printf("option\n");
-		printf("fetch\n");
-		printf("*fetch-unknown\n");
-		printf("push\n");
-		printf("\n");
+		remotef("option\n");
+		remotef("fetch\n");
+		remotef("*fetch-unknown\n");
+		remotef("push\n");
+		remotef("\n");
 
 	} else if (!strcmp(cmd, "option")) {
 		char *opt = next_arg(arg, &arg);
 
 		if (!strcmp(opt, "verbosity")) {
 			verbose = strtol(arg, &arg, 10);
-			printf("ok\n");
+			remotef("ok\n");
 		} else if (!strcmp(opt, "progress")) {
 			use_progress = !strcmp(next_arg(arg, &arg), "true");
-			printf("ok\n");
+			remotef("ok\n");
 		} else {
-			printf("unsupported\n");
+			remotef("unsupported\n");
 		}
 
 		if (use_progress && verbose <= 1) {
@@ -1507,7 +1570,7 @@ static int command(char *cmd, char *arg) {
 		}
 		do_connect();
 		list();
-		printf("\n");
+		remotef("\n");
 
 	} else if (*cmd) {
 		die("unexpected command %s", cmd);
@@ -1564,8 +1627,10 @@ int main(int argc, const char **argv) {
 	parse_authors();
 
 	while (strbuf_getline(&buf, stdin, '\n') != EOF) {
-		char *arg = buf.buf;
-		char *cmd = next_arg(arg, &arg);
+		char *cmd, *arg = buf.buf;
+		if (svndbg >= 2)
+			fprintf(stderr, "R- %s\n", buf.buf);
+		cmd = next_arg(arg, &arg);
 		if (command(cmd, arg))
 			break;
 		fflush(stdout);
