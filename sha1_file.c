@@ -122,6 +122,15 @@ int safe_create_leading_directories(char *path)
 			}
 		}
 		else if (mkdir(path, 0777)) {
+			if (errno == EEXIST) {
+				/*
+				 * We could be racing with another process to
+				 * create the directory.  As long as the
+				 * directory gets created, we don't care.
+				 */
+				if (stat(path, &st) && S_ISDIR(st.st_mode))
+					continue;
+			}
 			*pos = '/';
 			return -1;
 		}
