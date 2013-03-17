@@ -53,6 +53,7 @@ struct svnref {
 	unsigned int need_copysrc_log : 1;
 	unsigned int copy_modified : 1;
 	unsigned int force_push : 1;
+	unsigned int is_tag : 1;
 };
 
 const char *svn_to_ident(const char *username, const char *time);

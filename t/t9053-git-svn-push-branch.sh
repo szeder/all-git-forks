@@ -151,9 +151,6 @@ test_expect_success 'create tag' '
 	cd ../../..
 '
 
-init_trunk_rev=`latest_revision`
-init_trunk_path=Tags/SimpleTag
-
 test_expect_success 'create annotated tag' '
 	git checkout trunk &&
 	git tag -m "annotate tag" AnnotatedTag &&
@@ -169,9 +166,6 @@ test_expect_success 'create annotated tag' '
 	check_branched $init_trunk_path $init_trunk_rev &&
 	cd ../../..
 '
-
-init_trunk_rev=`latest_revision`
-init_trunk_path=Tags/AnnotatedTag
 
 test_expect_success 'replace branch' '
 	git checkout -b ReplaceBranch trunk &&
@@ -232,15 +226,22 @@ test_expect_success 'replace tag' '
 	cd ../../.. &&
 	echo "bar2" > file2.txt &&
 	git add file2.txt &&
-	git commit -a -m "dummy commit" &&
+	git commit -a -m "dummy commit 1" &&
+	echo "bar3" > file3.txt &&
+	git add file3.txt &&
+	git commit -a -m "dummy commit 2" &&
 	git tag -f -m "create replace tag" ReplaceTag &&
 	test_must_fail git push -v svn ReplaceTag &&
-	git push -v -f svn ReplaceTag &&
+	GIT_REMOTE_SVN_PAUSE=1 git push -v -f svn ReplaceTag &&
 	cd svnco &&
 	svn_cmd up &&
 	cd Tags/ReplaceTag &&
 	test_svn_subject "create replace tag" &&
-	test_svn_subject "after replace tag" PREV &&
+	test_svn_subject "dummy commit 2" $((`latest_revision`-1)) &&
+	test_svn_subject "dummy commit 1" $((`latest_revision`-2)) &&
+	test_svn_subject "after replace tag" $((`latest_revision`-3)) &&
+	test_file file2.txt "bar2" &&
+	test_file file3.txt "bar3" &&
 	cd ../../.. &&
 	git checkout trunk &&
 	git branch -D temp

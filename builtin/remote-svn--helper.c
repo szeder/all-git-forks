@@ -330,7 +330,7 @@ static void havelog(const char *ref, int rev, const char *logrev) {
 }
 
 static void branch(const char *copyref, int copyrev,
-		const char *ref, int rev,
+		const char *ref, int rev, int istag,
 		const char *path, const char *ident, const char *msg)
 {
 	static struct strbuf buf = STRBUF_INIT;
@@ -349,7 +349,7 @@ static void branch(const char *copyref, int copyrev,
 	add_svn_mergeinfo(mergeinfo, path, rev, rev);
 
 	if (write_svn_commit(NULL, svn_commit(svn), cmt_tree(svn),
-				ident, path, rev,
+				ident, path, rev, istag,
 				mergeinfo, svn_mergeinfo, sha1)) {
 		die_errno("write svn commit");
 	}
@@ -389,7 +389,7 @@ static void branch(const char *copyref, int copyrev,
 	}
 }
 
-static void commit(const char *ref, int baserev, int rev,
+static void commit(const char *ref, int baserev, int rev, int istag,
 		const char *path, const char *ident, const char *msg)
 {
 	static struct strbuf buf = STRBUF_INIT;
@@ -430,7 +430,7 @@ static void commit(const char *ref, int baserev, int rev,
 	}
 
 	if (write_svn_commit(svn, git, idx_tree(&svn_index),
-				ident, path, rev,
+				ident, path, rev, istag,
 				mergeinfo, svn_mergeinfo, sha1)) {
 		die_errno("write svn commit");
 	}
@@ -513,31 +513,33 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 			havelog(ref.buf, rev, logrev.buf);
 
 		} else if (!strcmp(cmd.buf, "branch")) {
-			int copyrev, rev;
+			int copyrev, rev, istag;
 
 			read_string(&copyref);
 			copyrev = read_number();
 			read_string(&ref);
 			rev = read_number();
+			istag = read_number();
 			read_string(&path);
 			read_string(&ident);
 			read_string(&msg);
 			read_command();
 
-			branch(copyref.buf, copyrev, ref.buf, rev, path.buf, ident.buf, msg.buf);
+			branch(copyref.buf, copyrev, ref.buf, rev, istag, path.buf, ident.buf, msg.buf);
 
 		} else if (!strcmp(cmd.buf, "commit")) {
-			int baserev, rev;
+			int baserev, rev, istag;
 
 			read_string(&ref);
 			baserev = read_number();
 			rev = read_number();
+			istag = read_number();
 			read_string(&path);
 			read_string(&ident);
 			read_string(&msg);
 			read_command();
 
-			commit(ref.buf, baserev, rev, path.buf, ident.buf, msg.buf);
+			commit(ref.buf, baserev, rev, istag, path.buf, ident.buf, msg.buf);
 
 		} else if (!strcmp(cmd.buf, "add-dir")) {
 			read_string(&path);

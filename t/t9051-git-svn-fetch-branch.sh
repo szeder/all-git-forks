@@ -20,7 +20,6 @@ test_expect_success 'setup branches' '
 	svn_cmd up &&
 	cd .. &&
 	git fetch -v svn &&
-	git fetch -v svn &&
 	git checkout svn/trunk &&
 	test_file file.txt "other"
 '

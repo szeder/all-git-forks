@@ -102,6 +102,10 @@ const char *get_svn_path(struct commit *c) {
 	return buf.buf;
 }
 
+int get_svn_istag(struct commit *c) {
+	return atoi(svn_field(c, "\ntag "));
+}
+
 /* mergeinfo is the implicit mergeinfo ranges from the revision trail
  * and copy history */
 struct mergeinfo *get_mergeinfo(struct commit *c) {
@@ -393,7 +397,7 @@ struct commit* svn_parent(struct commit* c) {
 int write_svn_commit(
 	struct commit *svn, struct commit *git,
 	const unsigned char *tree, const char *ident,
-	const char *path, int rev,
+	const char *path, int rev, int istag,
 	struct mergeinfo *mi, struct mergeinfo *mi_svn,
 	unsigned char *ret)
 {
@@ -424,6 +428,10 @@ int write_svn_commit(
 		strbuf_addstr(&buf, "svn:mergeinfo \"");
 		quote_c_style(make_svn_mergeinfo(mi_svn), &buf, NULL, 1);
 		strbuf_addstr(&buf, "\"\n");
+	}
+
+	if (istag) {
+		strbuf_addstr(&buf, "tag 1\n");
 	}
 
 	strbuf_addch(&buf, '\n');

@@ -19,6 +19,7 @@ int get_svn_revision(struct commit *cmt);
 const char *get_svn_path(struct commit *cmt);
 struct mergeinfo *get_svn_mergeinfo(struct commit *cmt);
 struct mergeinfo *get_mergeinfo(struct commit *cmt);
+int get_svn_istag(struct commit *cmt);
 
 struct mergeinfo *parse_svn_mergeinfo(const char *info);
 void merge_svn_mergeinfo(struct mergeinfo *m, const struct mergeinfo *add, const struct mergeinfo *rm);
@@ -30,8 +31,8 @@ void test_svn_mergeinfo(void);
 int write_svn_commit(
 	struct commit *svn, struct commit *git,
 	const unsigned char *tree, const char *ident,
-	const char *path, int rev,
+	const char *path, int rev, int istag,
 	struct mergeinfo *mi, struct mergeinfo *svn_mi,
-	unsigned char *ret);
+        unsigned char *ret);
 
 #endif
