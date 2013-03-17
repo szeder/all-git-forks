@@ -122,17 +122,13 @@ int safe_create_leading_directories(char *path)
 			}
 		}
 		else if (mkdir(path, 0777)) {
-			if (errno == EEXIST) {
-				/*
-				 * We could be racing with another process to
-				 * create the directory.  As long as the
-				 * directory gets created, we don't care.
-				 */
-				if (stat(path, &st) && S_ISDIR(st.st_mode))
-					continue;
+			if (errno == EEXIST &&
+			    !stat(path, &st) && S_ISDIR(st.st_mode)) {
+				; /* somebody created it since we checked */
+			} else {
+				*pos = '/';
+				return -1;
 			}
-			*pos = '/';
-			return -1;
 		}
 		else if (adjust_shared_perm(path)) {
 			*pos = '/';
