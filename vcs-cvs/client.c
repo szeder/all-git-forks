@@ -1870,9 +1870,14 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 	if (ret == -1)
 		die("rlog to connect");
 
+	struct strbuf mod_path = STRBUF_INIT;
 	struct cvsfile file = CVSFILE_INIT;
 	int mode;
 	size_t size;
+
+
+	strbuf_addstr(&mod_path, cvs->module);
+	strbuf_complete_line_ch(&mod_path, '/');
 
 	while (1) {
 		ret = cvs_readline(cvs, &cvs->rd_line_buf);
@@ -1890,7 +1895,8 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
 				break;
-			if (!strbuf_gettext_after(&cvs->rd_line_buf, cvs->full_module_path, &file.path))
+			if (!strbuf_gettext_after(&cvs->rd_line_buf, cvs->full_module_path, &file.path) &&
+			    !strbuf_gettext_after(&cvs->rd_line_buf, mod_path.buf, &file.path))
 				die("Checked out file name doesn't start with module path %s %s", cvs->rd_line_buf.buf, cvs->full_module_path);
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
@@ -1950,7 +1956,8 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
 				break;
-			if (!strbuf_gettext_after(&cvs->rd_line_buf, cvs->full_module_path, &file.path))
+			if (!strbuf_gettext_after(&cvs->rd_line_buf, cvs->full_module_path, &file.path) &&
+			    !strbuf_gettext_after(&cvs->rd_line_buf, mod_path.buf, &file.path))
 				die("Checked out file name doesn't start with module path %s %s", cvs->rd_line_buf.buf, cvs->full_module_path);
 
 			file.isdead = 1;
@@ -1968,6 +1975,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 	}
 
 	cvsfile_release(&file);
+	strbuf_release(&mod_path);
 #ifdef DB_CACHE
 	db_cache_release_branch(db);
 #endif
