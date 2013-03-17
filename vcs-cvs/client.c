@@ -1947,6 +1947,9 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 					die("Cannot checkout big file %s rev %s size %zu", file.file.buf, file.revision.buf, size);
 				}
 			}
+			else {
+				file.ismem = 1;
+			}
 
 			cb(&file, data);
 		}
