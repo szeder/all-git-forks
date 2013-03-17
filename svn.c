@@ -144,8 +144,9 @@ static void compact_svn_mergeinfo(struct mergeinfo *m) {
 		struct range *a = *mr;
 		struct range *b = (*mr)->next;
 
+		/* see if we can compact a and b together */
 		if (strcmp(a->path, b->path) || a->to < b->from-1) {
-			mr = &b->next;
+			mr = &(*mr)->next;
 		} else {
 			*mr = b;
 			b->from = a->from;
@@ -157,42 +158,65 @@ static void compact_svn_mergeinfo(struct mergeinfo *m) {
 
 /* merge add into m, but don't include any ranges in rm */
 void merge_svn_mergeinfo(struct mergeinfo *m, const struct mergeinfo *add, const struct mergeinfo *rm) {
-	const struct range *ar = add->ranges, *rr = rm ? rm->ranges : NULL;
+	const struct range *rr = rm ? rm->ranges : NULL;
+	const struct range *ar;
 	struct range **mr = &m->ranges;
 
-	while (ar) {
-		struct range *r = xmalloc(sizeof(*r));
-		r->from = ar->from;
-		r->to = ar->to;
+	for (ar = add->ranges; ar != NULL; ar = ar->next) {
+		int next = ar->from;
+		int to = ar->to;
 
-		while (rr && r->from <= r->to) {
-			int d = cmp_range(rr, r);
+		/* ranges are sorted in ascending path/from order
+		 * so if we start with
+		 * add	  ------- from 1, to 7
+		 * rm	 ----     from 0, to 3
+		 * want	     ---- from 4, to 7, next 8
+		 *
+		 * add	-------- from 0, to 7
+		 * rm	  -----  from 2, to 6
+		 * want	--       from 0, to 1, next 2
+		 * want	       - from 7, to 7, next 8
+		 *
+		 * add  -------  from 0, to 6
+		 * rm        --- from 5, to 7
+		 * want -----    from 0, to 4, next 6
+		 * want          next 8
+		 */
 
-			if (d < 0) {
+		while (next <= to) {
+			struct range *r;
+
+			if (rr && strcmp(ar->path, rr->path) < 0) {
 				rr = rr->next;
-			} else if (d == 0) {
-				r->from = rr->to + 1;
-			} else if (rr->from <= r->to) {
-				r->to = rr->from - 1;
-				break;
-			} else {
-				break;
+				continue;
 			}
-		}
 
-		if (r->from > r->to) {
-			free(r);
-			continue;
-		}
+			if (rr && rr->to < next) {
+				rr = rr->next;
+				continue;
+			}
 
-		while (*mr && cmp_range(*mr, r) < 0) {
-			mr = &(*mr)->next;
-		}
+			if (rr && rr->from <= next) {
+				next = rr->to + 1;
+				continue;
+			}
 
-		r->path = xstrdup(ar->path);
-		r->next = *mr;
-		*mr = r;
-		m->dirty = 1;
+			r = malloc(sizeof(*r));
+			r->path = xstrdup(ar->path);
+			r->from = next;
+			r->to = rr ? rr->from - 1 : INT_MAX;
+			if (r->to > to) {
+				r->to = to;
+			}
+			while (*mr && cmp_range(*mr, r) < 0) {
+				mr = &(*mr)->next;
+			}
+			r->next = *mr;
+			*mr = r;
+			m->dirty = 1;
+
+			next = r->to + 1;
+		}
 	}
 
 	compact_svn_mergeinfo(m);
@@ -202,6 +226,44 @@ void add_svn_mergeinfo(struct mergeinfo *m, const char *path, int from, int to) 
 	struct range newrange = {NULL, (char*)path, from, to};
 	struct mergeinfo newinfo = {&newrange};
 	merge_svn_mergeinfo(m, &newinfo, NULL);
+}
+
+void test_svn_mergeinfo(void) {
+	struct range add1 = {NULL, (char*)"/foo", 1, 7};
+	struct range add2 = {NULL, (char*)"/foo", 0, 7};
+	struct range add3 = {NULL, (char*)"/foo", 0, 6};
+	struct range rm1 = {NULL, (char*)"/foo", 0, 3};
+	struct range rm2 = {NULL, (char*)"/foo", 2, 6};
+	struct range rm3 = {NULL, (char*)"/foo", 5, 7};
+	struct mergeinfo madd1 = {&add1};
+	struct mergeinfo madd2 = {&add2};
+	struct mergeinfo madd3 = {&add3};
+	struct mergeinfo mrm1 = {&rm1};
+	struct mergeinfo mrm2 = {&rm2};
+	struct mergeinfo mrm3 = {&rm3};
+	struct mergeinfo *mi1 = parse_svn_mergeinfo("bar:2-3\ngob:7,8-10");
+	struct mergeinfo *mi2 = parse_svn_mergeinfo("");
+	struct mergeinfo *mi3 = parse_svn_mergeinfo("");
+	const char *str;
+
+	merge_svn_mergeinfo(mi1, &madd1, &mrm1);
+	str = make_svn_mergeinfo(mi1);
+	if (strcmp(str, "/bar:2-3\n/foo:4-7\n/gob:7-10"))
+		die("mergeinfo1 got %s wanted /bar:2-3\n/foo:4-7\n/gob:7-10", str);
+
+	merge_svn_mergeinfo(mi2, &madd2, &mrm2);
+	str = make_svn_mergeinfo(mi2);
+	if (strcmp(str, "/foo:0-1,7"))
+		die("mergeinfo2 got %s wanted /foo:0-1,7", str);
+
+	merge_svn_mergeinfo(mi3, &madd3, &mrm3);
+	str = make_svn_mergeinfo(mi3);
+	if (strcmp(str, "/foo:0-4"))
+		die("mergeinfo3 got %s wanted /foo:0-4", str);
+
+	free_svn_mergeinfo(mi1);
+	free_svn_mergeinfo(mi2);
+	free_svn_mergeinfo(mi3);
 }
 
 void free_svn_mergeinfo(struct mergeinfo *m) {
@@ -222,6 +284,8 @@ struct mergeinfo *parse_svn_mergeinfo(const char *info) {
 	struct mergeinfo *m = xcalloc(1, sizeof(*m));
 	const char *p = info;
 
+	strbuf_init(&m->buf, 0);
+
 	while (*p) {
 		const char *line, *colon;
 
@@ -229,27 +293,43 @@ struct mergeinfo *parse_svn_mergeinfo(const char *info) {
 		colon = strchr(p, ':');
 		if (!colon) continue;
 
-		for (p = colon; *p != '\0' && *p != '\n';) {
-			struct range *r, **mr;
+		strbuf_reset(&m->buf);
+		strbuf_add(&m->buf, line, colon - line);
+		clean_svn_path(&m->buf);
 
-			r = xmalloc(sizeof(*r));
-			r->from = strtol(p, (char**)&p, 10);
+		for (p = colon+1; *p != '\0' && *p != '\n';) {
+			struct range *r, **mr;
+			char *end;
+			int from, to;
+
+			from = strtol(p, &end, 10);
+			if (end == p)
+				goto end;
+			p = end;
 
 			if (*p == '-') {
-				r->to = strtol(p, (char**)&p, 10);
+				p++;
+				to = strtol(p, &end, 10);
+				if (end == p)
+					goto end;
+				p = end;
 			} else {
-				r->to = r->from;
+				to = from;
 			}
 
 			if (*p == ',')
 				p++;
+
+			r = xmalloc(sizeof(*r));
+			r->path = xmemdupz(m->buf.buf, m->buf.len);
+			r->from = from;
+			r->to = to;
 
 			mr = &m->ranges;
 			while (*mr && cmp_range(*mr, r) < 0) {
 				mr = &(*mr)->next;
 			}
 
-			r->path = xmemdupz(line, colon - line);
 			r->next = *mr;
 			*mr = r;
 		}
@@ -260,7 +340,9 @@ struct mergeinfo *parse_svn_mergeinfo(const char *info) {
 		p++;
 	}
 
+end:
 	compact_svn_mergeinfo(m);
+	strbuf_reset(&m->buf);
 	strbuf_addstr(&m->buf, info);
 	return m;
 }
@@ -276,13 +358,13 @@ const char *make_svn_mergeinfo(struct mergeinfo *m) {
 	strbuf_reset(&m->buf);
 
 	for (r = m->ranges; r != NULL; r = r->next) {
-		if (strcmp(r->path, path)) {
+		if (path && !strcmp(r->path, path)) {
+			strbuf_addch(&m->buf, ',');
+		} else {
 			strbuf_complete_line(&m->buf);
 			strbuf_addstr(&m->buf, r->path);
 			strbuf_addch(&m->buf, ':');
 			path = r->path;
-		} else {
-			strbuf_addch(&m->buf, ',');
 		}
 
 		if (r->from == r->to) {

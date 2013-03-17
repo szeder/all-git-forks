@@ -243,7 +243,7 @@ static int load_ref_cb(const char* refname, const unsigned char* sha1, int flags
 	char *logrev;
 	int rev;
 
-	if (!ext || ext[0] < '0' || ext[0] > '9')
+	if (!ext || ext[1] < '0' || ext[1] > '9')
 		return 0;
 
 	svn = lookup_commit(sha1);
@@ -260,10 +260,12 @@ static int load_ref_cb(const char* refname, const unsigned char* sha1, int flags
 	{
 		r->logrev = atoi(logrev);
 		free(logrev);
-	} else {
-		r->logrev = rev;
 	}
 	strbuf_reset(&buf);
+
+	if (r->logrev < rev) {
+		r->logrev = rev;
+	}
 
 	return 0;
 }
@@ -468,7 +470,7 @@ static void do_connect(void) {
 	} else
 #endif
 	if (!strcmp(p, "svn")) {
-		proto = svn_connect(&buf, &defcred, &uuid);
+		proto = svn_proto_connect(&buf, &defcred, &uuid);
 	} else {
 		die("don't know how to handle url %s", url);
 	}
@@ -652,7 +654,6 @@ static void read_logs(void) {
 
 			ALLOC_GROW(refs, refnr+1, refalloc);
 			refs[refnr++] = ref;
-			log_request_nr--;
 		}
 
 		if (refnr == 0) {
@@ -677,9 +678,6 @@ void cmt_read(struct svnref *r) {
 	}
 	if (c->copyrev > c->rev) {
 		die("copy revision newer then destination");
-	}
-	if (!c->next) {
-		r->rev = c->rev;
 	}
 	display_progress(progress, ++cmts_to_fetch);
 }
@@ -739,16 +737,20 @@ static void stop_helper() {
 		die_errno("git gc --auto failed");
 }
 
-static void write_helper(const char *str, int len) {
+void write_helper(const char *str, int len, int limitdbg) {
 	if (!helper_file) {
 		start_helper();
 	}
 
 	if (svndbg >= 2) {
 		struct strbuf buf = STRBUF_INIT;
-		quote_path_fully = 1;
-		quote_c_style_counted(str, len, &buf, NULL, 1);
-		fprintf(stderr, "to svn helper: %s\n", buf.buf);
+		int sz = len;
+		if (limitdbg && sz > 64)
+			sz = 64;
+		if (str[len-1] == '\n')
+			sz--;
+		quote_c_style_counted(str, sz, &buf, NULL, 1);
+		fprintf(stderr, "H %s%s\n", buf.buf, (sz < len-1 ? "..." : ""));
 		strbuf_release(&buf);
 	}
 
@@ -760,8 +762,8 @@ void helperf(const char *fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
 	strbuf_reset(&buf);
-	strbuf_addf(&buf, fmt, ap);
-	write_helper(buf.buf, buf.len);
+	strbuf_vaddf(&buf, fmt, ap);
+	write_helper(buf.buf, buf.len, 0);
 }
 
 static int cmts_fetched;
@@ -782,10 +784,12 @@ static void fetch_update(struct svnref *r, struct svn_entry *c) {
 		if (copysrc) {
 			helperf("checkout %s %d\n", refszname(copysrc), c->copyrev);
 		} else if (r->rev) {
-			helperf("checkout %s %d\n", refszname(copysrc), c->copyrev);
+			helperf("checkout %s %d\n", refszname(r), r->rev);
 		} else {
 			helperf("reset\n");
 		}
+
+		proto->read_update(r->path, c);
 
 		helperf("commit %s %d %d %d:%s %d:%s %d:%s\n",
 				refszname(r),
@@ -793,11 +797,11 @@ static void fetch_update(struct svnref *r, struct svn_entry *c) {
 				(int) strlen(r->path), r->path,
 				(int) strlen(c->ident), c->ident,
 				(int) strlen(c->msg), c->msg);
+
 	}
 
+	r->rev = c->rev;
 	display_progress(progress, ++cmts_fetched);
-
-	proto->read_update(r->path, c);
 }
 
 static void fetch_updates(void) {
@@ -837,27 +841,33 @@ static void fetch_updates(void) {
 				cmts_to_gc = g_cmts_to_gc;
 			}
 		}
+	}
 
-		if (r->gitrefs.nr) {
-			int i;
-			for (i = 0; i < r->gitrefs.nr; i++) {
-				const char *gitref = r->gitrefs.items[i].string;
-				helperf("report %s %d:%s\n",
-						refszname(r),
-						(int) strlen(gitref),
-						gitref);
+	for (i = 0; i < refs.nr; i++) {
+		struct svnref *r;
+		for (r = refs.items[i].util; r != NULL; r = r->next) {
+			if (r->gitrefs.nr) {
+				int i;
+				for (i = 0; i < r->gitrefs.nr; i++) {
+					const char *gitref = r->gitrefs.items[i].string;
+					helperf("report %s %d:%s\n",
+							refszname(r),
+							(int) strlen(gitref),
+							gitref);
+				}
 			}
-		}
 
-		if (r->logrev > r->rev) {
-			helperf("havelog %s %d %d\n",
-					refszname(r),
-					r->rev,
-					r->logrev);
+			if (r->logrev > r->rev) {
+				helperf("havelog %s %d %d\n",
+						refszname(r),
+						r->rev,
+						r->logrev);
+			}
 		}
 	}
 
 	free(logs);
+	stop_helper();
 }
 
 

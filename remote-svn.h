@@ -56,6 +56,7 @@ struct svnref {
 };
 
 const char *svn_to_ident(const char *username, const char *time);
+void write_helper(const char *str, int len, int limitdbg);
 void helperf(const char *fmt, ...);
 void cmt_read(struct svnref *r);
 
@@ -84,7 +85,7 @@ struct svn_proto {
 	int (*has_change)(const char* /*path*/, int /*from*/, int /*to*/);
 };
 
-struct svn_proto *svn_connect(struct strbuf *purl, struct credential *cred, struct strbuf *uuid);
+struct svn_proto *svn_proto_connect(struct strbuf *purl, struct credential *cred, struct strbuf *uuid);
 struct svn_proto *svn_http_connect(struct remote *remote, struct strbuf *purl, struct credential *cred, struct strbuf *puuid);
 
 #endif

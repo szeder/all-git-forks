@@ -3,6 +3,10 @@
 test_description="git remote-svn fetch $svn_proto"
 . ./lib-git-remote-svn.sh
 
+test_expect_success 'mergeinfo' '
+	echo "test" | git remote-svn--helper
+'
+
 test_expect_success 'fetch empty' '
 	git fetch -v svn &&
 	test_must_fail git checkout svn/master
@@ -22,6 +26,8 @@ export SVN_PASSWORD=pass
 date=`svn_date HEAD svnco`
 
 test_expect_success 'fetch repo' '
+	#GIT_REMOTE_SVN_HELPER_PAUSE=1 git fetch -v svn &&
+	#GIT_REMOTE_SVN_PAUSE=1 git fetch -v svn &&
 	git fetch -v svn &&
 	git checkout svn/master &&
 	test -d empty-dir &&
@@ -41,6 +47,8 @@ test_expect_success 'auto crlf' '
 	echo "* text=auto" > .git/info/attributes &&
 	git config remote.svn.eol crlf &&
 	git config core.eol lf &&
+	#GIT_REMOTE_SVN_HELPER_PAUSE=1 git fetch -v svn &&
+	#GIT_REMOTE_SVN_PAUSE=1 git fetch -v svn &&
 	git fetch -v svn &&
 	git checkout svn/master &&
 	echo "666f6f0a6261720a" | xxd -r -p > crlf_test.txt &&

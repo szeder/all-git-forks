@@ -25,6 +25,7 @@ void merge_svn_mergeinfo(struct mergeinfo *m, const struct mergeinfo *add, const
 void add_svn_mergeinfo(struct mergeinfo *m, const char *path, int from, int to);
 void free_svn_mergeinfo(struct mergeinfo *m);
 const char *make_svn_mergeinfo(struct mergeinfo *m);
+void test_svn_mergeinfo(void);
 
 int write_svn_commit(
 	struct commit *svn, struct commit *git,

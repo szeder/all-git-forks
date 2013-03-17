@@ -81,7 +81,7 @@ static int read_number(void) {
 		if (ch == EOF || (haveval && (ch < '0' || ch > '9')))
 			break;
 
-		if ('0' < ch && ch < '9') {
+		if ('0' <= ch && ch <= '9') {
 			num = (num * 10) + (ch - '0');
 			haveval = 1;
 		} else if (!isspace(ch)) {
@@ -215,6 +215,8 @@ static void checkout(const char *ref, int rev) {
 	mergeinfo = get_mergeinfo(svn);
 	svn_mergeinfo = get_svn_mergeinfo(svn);
 
+	add_svn_mergeinfo(mergeinfo, get_svn_path(svn), get_svn_revision(svn), rev);
+
 	svn_checkout_index(&svn_index, svn);
 	svn_checkout_index(&the_index, git_checkout);
 }
@@ -303,6 +305,8 @@ static void branch(const char *copyref, int copyrev,
 
 	mergeinfo = get_mergeinfo(svn);
 	svn_mergeinfo = get_svn_mergeinfo(svn);
+
+	add_svn_mergeinfo(mergeinfo, get_svn_path(svn), get_svn_revision(svn), copyrev);
 	add_svn_mergeinfo(mergeinfo, path, rev, rev);
 
 	if (write_svn_commit(NULL, svn_commit(svn), cmt_tree(svn),
@@ -330,6 +334,8 @@ static void branch(const char *copyref, int copyrev,
 			slash ? slash+1 : path,
 			ident,
 			msg);
+
+	strbuf_complete_line(&buf);
 
 	if (!write_sha1_file(buf.buf, buf.len, "tag", sha1)) {
 		strbuf_reset(&buf);
@@ -370,13 +376,19 @@ static void commit(const char *ref, int baserev, int rev,
 			"%s",
 			ident, ident, msg);
 
+		strbuf_complete_line(&buf);
+
 		if (write_sha1_file(buf.buf, buf.len, "commit", sha1))
 			die_errno("write git commit");
 
 		git = lookup_commit(sha1);
 	}
 
-	add_svn_mergeinfo(mergeinfo, path, baserev+1, rev);
+	if (baserev) {
+		add_svn_mergeinfo(mergeinfo, path, baserev+1, rev);
+	} else {
+		add_svn_mergeinfo(mergeinfo, path, rev, rev);
+	}
 
 	if (write_svn_commit(svn, git, idx_tree(&svn_index),
 				ident, path, rev,
@@ -447,6 +459,7 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 			read_string(&ref);
 			rev = read_number();
 			read_atom(&logrev);
+			strbuf_complete_line(&logrev);
 
 			havelog(ref.buf, rev, logrev.buf);
 
@@ -460,7 +473,6 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 			read_string(&path);
 			read_string(&ident);
 			read_string(&msg);
-			strbuf_complete_line(&msg);
 
 			branch(copyref.buf, copyrev, ref.buf, rev, path.buf, ident.buf, msg.buf);
 
@@ -473,7 +485,6 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 			read_string(&path);
 			read_string(&ident);
 			read_string(&msg);
-			strbuf_complete_line(&msg);
 
 			commit(ref.buf, baserev, rev, path.buf, ident.buf, msg.buf);
 
@@ -501,7 +512,12 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 
 			free_svn_mergeinfo(svn_mergeinfo);
 			svn_mergeinfo = parse_svn_mergeinfo(buf.buf);
+
+		} else if (!strcmp(cmd.buf, "test")) {
+			test_svn_mergeinfo();
 		}
+
+		fflush(stdout);
 	}
 
 	return 0;
