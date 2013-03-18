@@ -74,7 +74,6 @@ __attribute__((format (printf,2,3)))
 static void sendf(struct conn *c, const char* fmt, ...);
 
 static void sendf(struct conn *c, const char* fmt, ...) {
-	struct strbuf *s = &c->buf;
 	va_list ap;
 	va_start(ap, fmt);
 	strbuf_reset(&c->buf);
