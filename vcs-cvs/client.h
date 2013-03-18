@@ -89,10 +89,12 @@ struct cvsfile {
 	unsigned int iscached:1;
 	unsigned int mode;
 	struct strbuf file; /* file or path depends on ismem */
+	void *util;         /* used to store sha1 during check in (used in prepare file content callback) */
 };
 
-#define CVSFILE_INIT { STRBUF_INIT, STRBUF_INIT, 0, 0, 0, 0, 0, 0, STRBUF_INIT };
+#define CVSFILE_INIT { STRBUF_INIT, STRBUF_INIT, 0, 0, 0, 0, 0, 0, STRBUF_INIT, NULL };
 void cvsfile_release(struct cvsfile *file);
+void cvsfile_init(struct cvsfile *file);
 
 typedef void (*handle_file_fn_t)(struct cvsfile *file, void *data);
 int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t date, handle_file_fn_t cb, void *data);
@@ -105,7 +107,18 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 /*
  *
  */
-int cvs_status(struct cvs_transport *cvs, const char *file, const char *revision, int *status);
+int cvs_status(struct cvs_transport *cvs, struct cvsfile *files, int count);
+
+int cvs_create_directories(struct cvs_transport *cvs,  struct string_list *dirs);
+
+typedef void (*prepare_file_content_fn_t)(struct cvsfile *file, void *data);
+typedef void (*release_file_content_fn_t)(struct cvsfile *file, void *data);
+int cvs_checkin(struct cvs_transport *cvs, const char *branch,
+		struct cvsfile *files, int count,
+		prepare_file_content_fn_t prepare_cb,
+		release_file_content_fn_t release_cb,
+		void *data);
+
 char *cvs_get_rev_branch(struct cvs_transport *cvs, const char *file, const char *revision);
 
 #endif

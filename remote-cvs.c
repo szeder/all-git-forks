@@ -1156,15 +1156,6 @@ static int prepare_push_commit_list(unsigned char *sha1, const char *meta_ref, s
 	return 0;
 }
 
-static int check_file_list_remote_status(struct string_list *file_list, struct hash_table *revision_meta_hash)
-{
-	struct string_list_item *item;
-	for_each_string_list_item(item, file_list) {
-		fprintf(stderr, "status %s\n", item->string);
-	}
-	return 0;
-}
-
 /*
  * TODO: move this stuff somewhere. Pack in structure and add util to diff_options?
  */
@@ -1270,11 +1261,85 @@ static void on_file_addremove(struct diff_options *options,
 	add_commit_file(current_commit, concatpath, sha1, mode);
 }
 
+static int check_file_list_remote_status(struct string_list *file_list, struct hash_table *revision_meta_hash)
+{
+	struct cvsfile *files;
+	int count = file_list->nr;
+	int rc;
+	int i;
+
+	files = xcalloc(count, sizeof(*files));
+	for (i = 0; i < count; i++) {
+		fprintf(stderr, "status %s\n", file_list->items[i].string);
+		cvsfile_init(&files[i]);
+		strbuf_addstr(&files[i].path, file_list->items[i].string);
+		/*
+		 * add revision
+		 */
+	}
+
+	for (i = 0; i < count; i++)
+		cvsfile_release(&files[i]);
+	rc = cvs_status(cvs, files, count);
+	free(files);
+	return rc;
+}
+
+static int create_remote_directories(struct string_list *new_directory_list)
+{
+	struct string_list_item *item;
+	for_each_string_list_item(item, new_directory_list) {
+		fprintf(stderr, "directory add %s\n", item->string);
+	}
+	return cvs_create_directories(cvs, new_directory_list);
+}
+
+static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch)
+{
+	struct string_list *file_list;
+	struct string_list_item *item;
+	struct cvsfile *files;
+	struct sha1_mod *sm;
+	int count;
+	int rc;
+	int i;
+	if (!commit->util)
+		return -1;
+
+	fprintf(stderr, "pushing commit %s to CVS branch %s\n", sha1_to_hex(commit->object.sha1), cvs_branch);
+
+	file_list = commit->util;
+	sort_string_list(file_list);
+	count = file_list->nr;
+
+	files = xcalloc(count, sizeof(*files));
+	for (i = 0; i < count; i++) {
+		cvsfile_init(&files[i]);
+		item = &file_list->items[i];
+		sm = item->util;
+		if (!sm)
+			die("No sha1 mod accociated with file being checked in");
+
+		fprintf(stderr, "check in file: %s sha1: %s mod: %.4o\n", item->string, sha1_to_hex(sm->sha1), sm->mode);
+		strbuf_addstr(&files[i].path, item->string);
+		/*
+		 * add revision
+		 */
+	}
+
+	for (i = 0; i < count; i++)
+		cvsfile_release(&files[i]);
+	rc = cvs_checkin(cvs, cvs_branch, files, count, NULL, NULL, NULL);
+	free(files);
+	return rc;
+}
+
 static int push_commit_list_to_cvs(struct commit_list *push_list, const char *cvs_branch)
 {
 	struct commit *commit;
 	struct commit *parent;
 	struct commit *base;
+	struct commit_list *push_list_it;
 	struct hash_table *revision_meta_hash;
 
 	struct diff_options diffopt;
@@ -1297,8 +1362,9 @@ static int push_commit_list_to_cvs(struct commit_list *push_list, const char *cv
 	string_list_clear(&new_directory_list, 0);
 	string_list_clear(&touched_file_list, 0);
 
-	while ((push_list = push_list->next)) {
-		commit = push_list->item;
+	push_list_it = push_list;
+	while ((push_list_it = push_list_it->next)) {
+		commit = push_list_it->item;
 		parent = commit->parents->item;
 
 		fprintf(stderr, "\n-----------------------------\npushing: %s date: %s to CVS branch: %s\n",
@@ -1313,15 +1379,29 @@ static int push_commit_list_to_cvs(struct commit_list *push_list, const char *cv
 	sort_string_list(&touched_file_list);
 	string_list_remove_duplicates(&touched_file_list, 0);
 
+	push_list_it = push_list;
+	while ((push_list_it = push_list_it->next)) {
+		commit = push_list_it->item;
+		if (!commit->util)
+			die("No files changed in pending commit: %s", sha1_to_hex(commit->object.sha1));
+	}
 	/*
 	 * TODO:
 	 */
 	if (check_file_list_remote_status(&touched_file_list, revision_meta_hash))
 		return 1;
 
+	if (create_remote_directories(&new_directory_list))
+		return 1;
+
+	push_list_it = push_list;
+	while ((push_list_it = push_list_it->next)) {
+		commit = push_list_it->item;
+		if (push_commit_to_cvs(commit, cvs_branch))
+			return 1;
+	}
 	/*
 	 * TODO:
-	 * - do create dirs
 	 * - do push changes one by one
 	 * - update metadata???
 	 */

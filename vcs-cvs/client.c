@@ -1653,6 +1653,7 @@ static void cvsfile_reset(struct cvsfile *file)
 	file->iscached = 0;
 	file->mode = 0;
 	strbuf_reset(&file->file);
+	file->util = NULL;
 }
 
 int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *revision, struct cvsfile *content)
@@ -1821,6 +1822,20 @@ static int parse_entry(const char *entry, struct strbuf *revision)
 	return 0;
 }
 
+void cvsfile_init(struct cvsfile *file)
+{
+	strbuf_init(&file->path, 0);
+	strbuf_init(&file->revision, 0);
+	file->isexec = 0;
+	file->isdead = 0;
+	file->isbin = 0;
+	file->ismem = 0;
+	file->iscached = 0;
+	file->mode = 0;
+	strbuf_init(&file->file, 0);
+	file->util = NULL;
+}
+
 void cvsfile_release(struct cvsfile *file)
 {
 	strbuf_release(&file->path);
@@ -1986,9 +2001,10 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 	return rc;
 }
 
-int cvs_status(struct cvs_transport *cvs, const char *file, const char *revision, int *status)
+int cvs_status(struct cvs_transport *cvs, struct cvsfile *files, int count)
+//int cvs_status(struct cvs_transport *cvs, const char *file, const char *revision, int *status)
 {
-	ssize_t ret;
+/*	ssize_t ret;
 
 	struct strbuf basename = STRBUF_INIT;
 	struct strbuf rel_dir = STRBUF_INIT;
@@ -2027,8 +2043,22 @@ int cvs_status(struct cvs_transport *cvs, const char *file, const char *revision
 
 	ret = cvs_getreply(cvs, &basename, "ok");
 	if (ret)
-		return -1;
+		return -1;*/
 
+	return 0;
+}
+
+int cvs_create_directories(struct cvs_transport *cvs,  struct string_list *dirs)
+{
+	return 0;
+}
+
+int cvs_checkin(struct cvs_transport *cvs, const char *branch,
+			struct cvsfile *files, int count,
+			prepare_file_content_fn_t prepare_cb,
+			release_file_content_fn_t release_cb,
+			void *data)
+{
 	return 0;
 }
 
