@@ -1269,10 +1269,11 @@ struct ondisk_cache_entry_extended {
 			    ondisk_cache_entry_extended_size(ce_namelen(ce)) : \
 			    ondisk_cache_entry_size(ce_namelen(ce)))
 
-static int verify_hdr(struct cache_header *hdr, unsigned long size)
+static int verify_hdr(struct cache_header *hdr,
+		      unsigned long size,
+		      unsigned char *sha1)
 {
 	git_SHA_CTX c;
-	unsigned char sha1[20];
 	int hdr_version;
 
 	if (hdr->hdr_signature != htonl(CACHE_SIGNATURE))
@@ -1461,7 +1462,7 @@ int read_index_from(struct index_state *istate, const char *path)
 	close(fd);
 
 	hdr = mmap;
-	if (verify_hdr(hdr, mmap_size) < 0)
+	if (verify_hdr(hdr, mmap_size, istate->sha1) < 0)
 		goto unmap;
 
 	istate->version = ntohl(hdr->hdr_version);

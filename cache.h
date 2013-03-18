@@ -279,6 +279,7 @@ struct index_state {
 		 initialized : 1;
 	struct hash_table name_hash;
 	struct hash_table dir_hash;
+	unsigned char sha1[20];
 };
 
 extern struct index_state the_index;
