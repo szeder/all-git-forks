@@ -1,0 +1,21 @@
+git-gh(1)
+=========
+
+NAME
+----
+git-gh - a collection of helpers to work with GitHub
+
+SYNOPSIS
+--------
+[verse]
+git gh fork
+
+DESCRIPTION
+-----------
+Currently, the only implemented subcommand is "fork".  When you have
+an existing project cloned from GitHub, you can fork it to your user
+by simply issuing `git gh fork`.
+
+SEE ALSO
+--------
+https://github.com/defunkt/hub
