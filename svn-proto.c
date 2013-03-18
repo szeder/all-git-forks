@@ -613,6 +613,7 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 	struct strbuf time = STRBUF_INIT;
 	struct strbuf msg = STRBUF_INIT;
 	struct strbuf paths = STRBUF_INIT;
+	struct strbuf copy = STRBUF_INIT;
 	int64_t rev;
 	int i;
 
@@ -652,8 +653,18 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 		while (!read_list(c)) {
 			/* path A|D|R|M [copy-path copy-rev] */
 			int ismodify;
+			int64_t copyrev = -1;
 			if (read_string(c, &name)) malformed_die(c);
 			ismodify = !strcmp(read_word(c), "M");
+
+			if (have_optional(c)) {
+				/* copy-path, copy-rev */
+				if (read_string(c, &copy)) malformed_die(c);
+				copyrev = read_number(c);
+				if (copyrev <= 0 || copyrev > INT_MAX) malformed_die(c);
+				if (read_end(c)) malformed_die(c);
+				clean_svn_path(&copy);
+			}
 
 			clean_svn_path(&name);
 
@@ -676,24 +687,17 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 
 				} else if (!strncmp(r->path, name.buf, name.len)
 					&& (r->path[name.len] == '/' || r->path[name.len] == '\0')
-					&& have_optional(c))
+					&& copyrev > 0)
 				{
 					/* copy to the branch root or to
 					 * a parent */
 					struct svn_entry *cmt = make_entry(r);
-					struct strbuf copy = STRBUF_INIT;
-					int64_t copyrev;
+					struct strbuf buf = STRBUF_INIT;
 
-					/* copy-path, copy-rev */
-					if (read_string(c, &copy)) malformed_die(c);
-					copyrev = read_number(c);
-					if (copyrev <= 0 || copyrev > INT_MAX) malformed_die(c);
-					if (read_end(c)) malformed_die(c);
+					strbuf_add(&buf, copy.buf, copy.len);
+					strbuf_addstr(&buf, r->path + name.len);
 
-					clean_svn_path(&copy);
-					strbuf_addstr(&copy, r->path + name.len);
-
-					cmt->copysrc = strbuf_detach(&copy, NULL);
+					cmt->copysrc = strbuf_detach(&buf, NULL);
 					cmt->copyrev = (int) copyrev;
 					cmt->new_branch = 1;
 
