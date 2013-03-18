@@ -1261,37 +1261,45 @@ static void on_file_addremove(struct diff_options *options,
 	add_commit_file(current_commit, concatpath, sha1, mode);
 }
 
-static int check_file_list_remote_status(struct string_list *file_list, struct hash_table *revision_meta_hash)
+static int check_file_list_remote_status(const char *cvs_branch, struct string_list *file_list, struct hash_table *revision_meta_hash)
 {
 	struct cvsfile *files;
+	struct file_revision_meta *rev;
 	int count = file_list->nr;
 	int rc;
 	int i;
 
 	files = xcalloc(count, sizeof(*files));
 	for (i = 0; i < count; i++) {
-		fprintf(stderr, "status %s\n", file_list->items[i].string);
 		cvsfile_init(&files[i]);
 		strbuf_addstr(&files[i].path, file_list->items[i].string);
+
+		rev = lookup_hash(hash_path(files[i].path.buf), base_revision_meta_hash);
+		if (rev)
+			strbuf_addstr(&files[i].revision, rev->revision);
 		/*
-		 * add revision
+		else
+		 * FIXME:
+		 * What to do with new files?
 		 */
+
+		fprintf(stderr, "status: %s rev: %s\n", files[i].path.buf, files[i].revision.buf);
 	}
 
+	rc = cvs_status(cvs, cvs_branch, files, count);
 	for (i = 0; i < count; i++)
 		cvsfile_release(&files[i]);
-	rc = cvs_status(cvs, files, count);
 	free(files);
 	return rc;
 }
 
-static int create_remote_directories(struct string_list *new_directory_list)
+static int create_remote_directories(const char *cvs_branch, struct string_list *new_directory_list)
 {
 	struct string_list_item *item;
 	for_each_string_list_item(item, new_directory_list) {
 		fprintf(stderr, "directory add %s\n", item->string);
 	}
-	return cvs_create_directories(cvs, new_directory_list);
+	return cvs_create_directories(cvs, cvs_branch, new_directory_list);
 }
 
 static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch)
@@ -1388,11 +1396,12 @@ static int push_commit_list_to_cvs(struct commit_list *push_list, const char *cv
 	/*
 	 * TODO:
 	 */
-	if (check_file_list_remote_status(&touched_file_list, revision_meta_hash))
+	if (string_list_remove_duplicates  create_remote_directories(cvs_branch, &new_directory_list))
 		return 1;
 
-	if (create_remote_directories(&new_directory_list))
+	if (check_file_list_remote_status(cvs_branch, &touched_file_list, revision_meta_hash))
 		return 1;
+
 
 	push_list_it = push_list;
 	while ((push_list_it = push_list_it->next)) {
@@ -1445,7 +1454,8 @@ static int push_branch(const char *src, const char *dst, int force)
 	 * that should not be pushed
 	 */
 	if (commit_list_count(push_list) > 1) {
-		push_commit_list_to_cvs(push_list, cvs_branch);
+		if (push_commit_list_to_cvs(push_list, cvs_branch))
+			die("push failed");
 	}
 	else {
 		fprintf(stderr, "Nothing to push");

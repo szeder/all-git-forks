@@ -107,13 +107,13 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 /*
  *
  */
-int cvs_status(struct cvs_transport *cvs, struct cvsfile *files, int count);
+int cvs_status(struct cvs_transport *cvs, const char *cvs_branch, struct cvsfile *files, int count);
 
-int cvs_create_directories(struct cvs_transport *cvs,  struct string_list *dirs);
+int cvs_create_directories(struct cvs_transport *cvs, const char *cvs_branch, struct string_list *dirs);
 
 typedef void (*prepare_file_content_fn_t)(struct cvsfile *file, void *data);
 typedef void (*release_file_content_fn_t)(struct cvsfile *file, void *data);
-int cvs_checkin(struct cvs_transport *cvs, const char *branch,
+int cvs_checkin(struct cvs_transport *cvs, const char *cvs_branch,
 		struct cvsfile *files, int count,
 		prepare_file_content_fn_t prepare_cb,
 		release_file_content_fn_t release_cb,

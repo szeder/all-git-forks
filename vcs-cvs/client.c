@@ -4,8 +4,13 @@
 #include "vcs-cvs/proto-trace.h"
 #include "pkt-line.h"
 #include "sigchain.h"
+#include "string-list.h"
 
 #include <string.h>
+
+/*
+ * rework full_module_path, should not end with /
+ */
 
 #define DB_CACHE
 #ifdef DB_CACHE
@@ -2001,55 +2006,284 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 	return rc;
 }
 
-int cvs_status(struct cvs_transport *cvs, struct cvsfile *files, int count)
-//int cvs_status(struct cvs_transport *cvs, const char *file, const char *revision, int *status)
+static int is_sticky(const char *cvs_branch)
 {
-/*	ssize_t ret;
+	return (!cvs_branch || !strcmp(cvs_branch, "HEAD"));
+}
 
-	struct strbuf basename = STRBUF_INIT;
-	struct strbuf rel_dir = STRBUF_INIT;
+int cvs_status(struct cvs_transport *cvs, const char *cvs_branch, struct cvsfile *files, int count)
+{
+/*
+"Argument --\n
+Directory .\n
+/home/dummy/devel/SVC/cvs2/sources/smod\n
+Entry /Makefile/1.3///\n
+Modified Makefile\n
+u=rw,g=rw,o=r\n
+60\n
+# build targets\n
+#\n
+# TODO: build util\n
+# TODO: build daemon\n
+#\n
+Entry /TODO/1.3///\n
+Unchanged TODO\n
+Directory dii\n
+/home/dummy/devel/SVC/cvs2/sources/smod/dii\n
+Entry /moo/1.1///\n
+Unchanged moo\n
+Directory include\n
+/home/dummy/devel/SVC/cvs2/sources/smod/include\n
+Entry /util.h/1.1///\n
+Unchanged util.h\n
+Directory lib\n
+/home/dummy/devel/SVC/cvs2/sources/smod/lib\n
+Entry /Makefile/1.1///\n
+Unchanged Makefile\n
+Directory src\n
+/home/dummy/devel/SVC/cvs2/sources/smod/src\n
+Entry /daemon.c/1.2///\n
+Unchanged daemon.c\n
+Entry /util.c/1.2///\n
+Unchanged util.c\n
+Directory .\n
+/home/dummy/devel/SVC/cvs2/sources/smod\n
+status\n
+"
 
-	strbuf_copystr(&rel_dir, cvs->module);
+"Argument --\n
+Directory include\n
+/home/dummy/devel/SVC/cvs2/sources/smod/include\n
+Entry /compat.h/0///\n
+Modified compat.h\n
+u=rw,g=rw,o=r\n
+8\n
+// TODO\n
+Entry /util.h/1.1///\n
+Unchanged util.h\n
+Directory .\n
+/home/dummy/devel/SVC/cvs2/sources/smod\n
+Argument include/\n
+status\n
+"
 
-	char *p = strrchr(file, '/');
-	if (p) {
-		strbuf_copystr(&basename, p+1);
-		strbuf_addch(&rel_dir, '/');
-		strbuf_add(&rel_dir, file, p - file);
+"Argument --\n
+Directory .\n
+/home/dummy/devel/SVC/cvs2/sources/smod\n
+Sticky Tunstable\n
+Entry /EXPERIMENTAL/1.1.4.2///Tunstable\n
+Unchanged EXPERIMENTAL\n
+Entry /Makefile/1.3.2.2///Tunstable\n
+Unchanged Makefile\n
+Entry /TODO/1.2.2.2///Tunstable\n
+Unchanged TODO\n
+Directory include\n
+/home/dummy/devel/SVC/cvs2/sources/smod/include\n
+Sticky Tunstable\n
+Entry /lib.h/1.1.2.1///Tunstable\n
+Unchanged lib.h\n
+Entry /util.h/1.1///Tunstable\n
+Unchanged util.h\n
+Directory lib\n
+/home/dummy/devel/SVC/cvs2/sources/smod/lib\n
+Sticky Tunstable\n
+Entry /lib.c/1.1.2.2///Tunstable\n
+Unchanged lib.c\n
+Directory src\n
+/home/dummy/devel/SVC/cvs2/sources/smod/src\n
+Sticky Tunstable\n
+Entry /daemon.c/1.2.2.1///Tunstable\n
+Unchanged daemon.c\n
+Entry /lib_adapter.c/1.1.2.1///Tunstable\n
+Unchanged lib_adapter.c\n
+Entry /util.c/1.2///Tunstable\n
+Unchanged util.c\n
+Directory .\n
+/home/dummy/devel/SVC/cvs2/sources/smod\n
+Sticky Tunstable\n
+Argument .\n
+status\n
+"
+*/
+	struct strbuf reply = STRBUF_INIT;
+	struct strbuf file_basename_sb = STRBUF_INIT;
+	struct strbuf dir_repo_relative_sb = STRBUF_INIT;
+	int sticky;
+	const char *dir;
+	ssize_t ret;
+
+	sticky = is_sticky(cvs_branch);
+	cvs_write(cvs, WR_NOFLUSH, "Argument --\n");
+
+	struct cvsfile *file_it = files;
+	while (file_it < files + count) {
+		/*if (!file_it->revision.len) {
+			file_it++;
+			continue;
+		}*/
+
+		strbuf_copystr(&file_basename_sb, basename(file_it->path.buf));
+		dir = dirname(file_it->path.buf); // "." (dot) is what we want here if no directory in path
+		if (strcmp(dir, dir_repo_relative_sb.buf)) {
+			strbuf_copystr(&dir_repo_relative_sb, dir);
+			cvs_write(cvs, WR_NOFLUSH,
+					"Directory %s\n",
+					dir_repo_relative_sb.buf);
+
+			if (!strcmp(dir_repo_relative_sb.buf, ".")) {
+				cvs_write(cvs, WR_NOFLUSH,
+					"%s/%s\n",
+					cvs->repo_path, cvs->module);
+			}
+			else {
+				cvs_write(cvs, WR_NOFLUSH,
+					"%s/%s/%s\n",
+					cvs->repo_path, cvs->module, dir_repo_relative_sb.buf);
+			}
+
+			if (sticky) {
+				cvs_write(cvs, WR_NOFLUSH,
+					"Sticky T%s\n",
+					cvs_branch);
+			}
+		}
+
+		cvs_write(cvs, WR_NOFLUSH,
+					"Entry /%s/%s///%s%s\n"
+					"Unchanged %s\n",
+					file_basename_sb.buf,
+					file_it->revision.len ? file_it->revision.buf : "0",
+					sticky ? "T" : "", sticky ? cvs_branch : "",
+					file_basename_sb.buf);
+		file_it++;
 	}
-	else {
-		strbuf_copystr(&basename, file);
+
+	cvs_write(cvs, WR_NOFLUSH,	"Directory .\n"
+					"%s/%s\n",
+					cvs->repo_path, cvs->module);
+
+	if (sticky) {
+		cvs_write(cvs, WR_NOFLUSH,
+					"Sticky T%s\n",
+					cvs_branch);
 	}
 
-	ret = cvs_write(cvs,
-			WR_FLUSH,
-			"Argument --\n"
-			"Directory %s\n"
-			"%s/%s\n"
-			"Entry /%s/%s///\n"
-			"Unchanged %s\n"
-			//"Is-modified %s\n"
-			"Directory .\n"
-			"%s\n"
-			"status\n",
-			rel_dir.buf,
-			cvs->repo_path, rel_dir.buf,
-			basename.buf, revision,
-			basename.buf,
-			cvs->repo_path);
+	ret = cvs_write(cvs, WR_FLUSH, "status\n");
 
 	if (ret == -1)
-		die("rlog to connect");
+		die("cvs status failed");
 
-	ret = cvs_getreply(cvs, &basename, "ok");
+	ret = cvs_getreply(cvs, &reply, "ok");
 	if (ret)
-		return -1;*/
+		return -1;
 
 	return 0;
 }
-
-int cvs_create_directories(struct cvs_transport *cvs,  struct string_list *dirs)
+/*
+"Argument --\n
+Directory .\n
+/home/dummy/devel/SVC/cvs2/sources/smod\n
+Directory include\n
+/home/dummy/devel/SVC/cvs2/sources/smod/include\n
+Is-modified compat.h\n
+Directory .\n
+/home/dummy/devel/SVC/cvs2/sources/smod\n
+Argument include/compat.h\n
+add\n
+"
+*/
+int cvs_create_directories(struct cvs_transport *cvs, const char *cvs_branch, struct string_list *new_directory_list)
 {
+/*
+"Argument --\n
+Directory .\n
+/home/dummy/devel/SVC/cvs2/sources/smod\n
+Sticky Tunstable\n
+Directory src\n
+/home/dummy/devel/SVC/cvs2/sources/smod/src\n
+Sticky Tunstable\n
+Directory src/test\n
+/home/dummy/devel/SVC/cvs2/sources/smod/src/test\n
+Sticky Tunstable\n
+Directory src/test/auto\n
+/home/dummy/devel/SVC/cvs2/sources/smod/src/test/auto\n
+Sticky Tunstable\n
+Directory .\n
+/home/dummy/devel/SVC/cvs2/sources/smod\n
+Sticky Tunstable\n
+Argument src/test\n
+Argument src/test/auto\n
+add\n
+"
+"
+Argument --\n
+Directory .\n
+/home/dummy/devel/SVC/cvs2/sources/smod\n
+Sticky Tunstable\n
+Directory include\n
+/home/dummy/devel/SVC/cvs2/sources/smod/include\n
+Sticky Tunstable\n
+Directory .\n
+/home/dummy/devel/SVC/cvs2/sources/smod\n
+Sticky Tunstable\n
+Directory include/export\n
+/home/dummy/devel/SVC/cvs2/sources/smod/include/export\n
+Sticky Tunstable\n
+Directory include/import\n
+/home/dummy/devel/SVC/cvs2/sources/smod/include/import\n
+Sticky Tunstable\n
+Directory impl\n
+/home/dummy/devel/SVC/cvs2/sources/smod/impl\n
+Sticky Tunstable\n
+Directory .\n
+/home/dummy/devel/SVC/cvs2/sources/smod\n
+Sticky Tunstable\n
+Argument include/export\n
+Argument include/import\n
+Argument impl\n
+add\n
+"*/
+
+	struct strbuf reply = STRBUF_INIT;
+	int sticky;
+	//const char *dir;
+	//const char *base;
+	ssize_t ret;
+
+	sticky = is_sticky(cvs_branch);
+	cvs_write(cvs, WR_NOFLUSH, "Argument --\n");
+
+	cvs_write(cvs, WR_NOFLUSH,	"Directory .\n"
+					"%s/%s\n",
+					cvs->repo_path, cvs->module);
+
+	if (sticky) {
+		cvs_write(cvs, WR_NOFLUSH,
+					"Sticky T%s\n",
+					cvs_branch);
+	}
+
+	//struct string_list *dir_traversal_list = STRING_LIST_INIT_DUP;
+
+	struct string_list_item *item;
+	for_each_string_list_item(item, new_directory_list) {
+		//base = basename();
+		//dir = dirname(item->string);
+		//while (strcmp(dir, "."))
+		//	string_list_insert(&dir_traversal_list, dir);
+
+		cvs_write(cvs, WR_NOFLUSH, "Argument %s\n", item->string);
+	}
+
+	ret = cvs_write(cvs, WR_FLUSH, "add\n");
+
+	if (ret == -1)
+		die("cvs status failed");
+
+	ret = cvs_getreply(cvs, &reply, "ok");
+	if (ret)
+		return -1;
+
 	return 0;
 }
 
