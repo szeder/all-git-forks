@@ -213,7 +213,6 @@ static int do_skip_one(struct conn *c, int ch) {
 		char buf[4096];
 		ssize_t n, dbg = 0;
 
-		unreadc(c);
 		n = read_number(c);
 		if (n < 0)
 			return -1;
