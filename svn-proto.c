@@ -256,7 +256,7 @@ static int do_skip_one(struct conn *c, int ch) {
 	}
 }
 
-static void read_end(struct conn *c) {
+static int read_end(struct conn *c) {
 	int parens = 1;
 	while (parens > 0) {
 		int ch = readc(c);
@@ -278,9 +278,10 @@ static void read_end(struct conn *c) {
 		} else {
 			unreadc(c);
 			if (do_skip_one(c, ch))
-				malformed_die();
+				return -1;
 		}
 	}
+	return 0;
 }
 
 static int skip_next(struct conn *c) {
@@ -298,8 +299,7 @@ static int skip_next(struct conn *c) {
 	} else if (ch == '(') {
 		if (svndbg >= 2)
 			strbuf_addstr(&c->indbg, " (");
-		read_end(c);
-		return 0;
+		return read_end(c);
 
 	} else {
 		unreadc(c);
@@ -323,7 +323,8 @@ static const char* read_command(struct conn *c) {
 			read_string(c, &msg);
 			error("%s", msg.buf);
 			strbuf_release(&msg);
-			read_end(c);
+			if (read_end(c))
+				return NULL;
 		}
 	}
 
@@ -338,15 +339,17 @@ static void read_newline(struct conn *c) {
 	}
 }
 
-static void read_command_end(struct conn *c) {
-	read_end(c);
-	read_end(c);
+static int read_command_end(struct conn *c) {
+	if (read_end(c) || read_end(c))
+		return -1;
 	read_newline(c);
+	return 0;
 }
 
 static int read_success(struct conn *c) {
 	int ret = strcmp(read_command(c), "success");
-	read_command_end(c);
+	if (read_command_end(c))
+		return -1;
 	return ret;
 }
 
@@ -386,7 +389,7 @@ static void cram_md5(struct conn *c, const char* user, const char* pass) {
 	if (strcmp(s, "step")) malformed_die();
 	if (read_string(c, &chlg)) malformed_die();
 
-	read_command_end(c);
+	if (read_command_end(c)) malformed_die();
 
 	HMAC_Init(&hmac, (unsigned char*) pass, strlen(pass), EVP_md5());
 	HMAC_Update(&hmac, (unsigned char*) chlg.buf, chlg.len);
@@ -450,7 +453,7 @@ static void svn_connect(struct conn *c, struct strbuf *uuid) {
 	/* server hello: ( success ( minver maxver ) ) */
 	if (strcmp(read_command(c), "success")) malformed_die();
 	if (read_number(c) > 2 || read_number(c) < 2) malformed_die();
-	read_command_end(c);
+	if (read_command_end(c)) malformed_die();
 
 	/* server mechs: ( success ( ( mech... ) realm ) ) */
 	if (strcmp(read_command(c), "success")) malformed_die();
@@ -465,8 +468,8 @@ static void svn_connect(struct conn *c, struct strbuf *uuid) {
 			md5auth = 1;
 		}
 	}
-	read_end(c);
-	read_command_end(c);
+	if (read_end(c)) malformed_die();
+	if (read_command_end(c)) malformed_die();
 
 	if (!svn_auth->username && anon) {
 		/* argument is "anonymous" encoded in base64 */
@@ -500,7 +503,7 @@ auth_success:
 		if (read_string(c, uuid)) malformed_die();
 		if (read_string(c, &url)) malformed_die();
 	}
-	read_command_end(c);
+	if (read_command_end(c)) malformed_die();
 
 	/* reparent */
 	sendf(c, "( reparent ( %d:%s ) )\n", (int) url.len, url.buf);
@@ -532,7 +535,7 @@ static int svn_get_latest(void) {
 	if (strcmp(read_command(c), "success")) malformed_die();
 	n = read_number(c);
 	if (n < 0 || n > INT_MAX) malformed_die();
-	read_command_end(c);
+	if (read_command_end(c)) malformed_die();
 
 	return (int) n;
 }
@@ -551,7 +554,7 @@ static int svn_isdir(const char *path, int rev) {
 	if (!strcmp(read_command(c), "success")) {
 		s = read_word(c);
 	}
-	read_command_end(c);
+	if (read_command_end(c)) malformed_die();
 
 	return s && !strcmp(s, "dir");
 }
@@ -566,23 +569,25 @@ static void svn_list(const char *path, int rev, struct string_list *dirs) {
 	if (read_success(c)) return;
 
 	if (!strcmp(read_command(c), "success")) {
-		read_number(c);
-		read_list(c); /* props */
-		read_end(c);
-		read_list(c); /* dirents */
+		if (skip_next(c)) malformed_die(); /* rev */
+		if (skip_next(c)) malformed_die(); /* props */
+		if (read_list(c)) malformed_die(); /* dirents */
+
 		while (!read_list(c)) {
 			const char *s;
-			read_string(c, &buf);
+			if (read_string(c, &buf))
+				malformed_die();
 			s = read_word(c);
 			if (s && !strcmp(s, "dir")) {
 				clean_svn_path(&buf);
 				string_list_insert(dirs, buf.buf);
 			}
-			read_end(c);
+			if (read_end(c)) malformed_die();
 		}
-		read_end(c);
+
+		if (read_end(c)) malformed_die();
 	}
-	read_command_end(c);
+	if (read_command_end(c)) malformed_die();
 
 	strbuf_release(&buf);
 }
@@ -683,7 +688,7 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 					if (read_string(c, &copy)) malformed_die();
 					copyrev = read_number(c);
 					if (copyrev <= 0 || copyrev > INT_MAX) malformed_die();
-					read_end(c);
+					if (read_end(c)) malformed_die();
 
 					clean_svn_path(&copy);
 					strbuf_addstr(&copy, r->path + name.len);
@@ -704,11 +709,11 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 				}
 			}
 
-			read_end(c);
+			if (read_end(c)) malformed_die();
 		}
 
 		/* end of changed path entries */
-		read_end(c);
+		if (read_end(c)) malformed_die();
 
 		/* rev number */
 		rev = read_number(c);
@@ -717,19 +722,19 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 		/* author */
 		if (read_list(c)) malformed_die();
 		read_string(c, &author);
-		read_end(c);
+		if (read_end(c)) malformed_die();
 
 		/* timestamp */
 		if (read_list(c)) malformed_die();
 		read_string(c, &time);
-		read_end(c);
+		if (read_end(c)) malformed_die();
 
 		/* log message */
 		if (read_list(c)) malformed_die();
 		strbuf_reset(&msg);
 		append_string(c, &msg, 1);
 		strbuf_complete_line(&msg);
-		read_end(c);
+		if (read_end(c)) malformed_die();
 
 		for (i = 0; i < refnr; i++) {
 			struct svn_entry *cmt = refs[i]->cmts;
@@ -741,7 +746,7 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 			}
 		}
 
-		read_end(c);
+		if (read_end(c)) malformed_die();
 		read_newline(c);
 	}
 
@@ -764,7 +769,7 @@ static void read_text_delta(struct conn *c, struct strbuf *d) {
 		const char* s = read_command(c);
 
 		if (!strcmp(s, "textdelta-end")) {
-			read_command_end(c);
+			if (read_command_end(c)) malformed_die();
 			return;
 
 		} else if (!strcmp(s, "textdelta-chunk")) {
@@ -774,7 +779,7 @@ static void read_text_delta(struct conn *c, struct strbuf *d) {
 			}
 		}
 
-		read_command_end(c);
+		if (read_command_end(c)) malformed_die();
 	}
 }
 
@@ -839,11 +844,11 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 		const char *s = read_command(c);
 
 		if (!strcmp(s, "close-edit")) {
-			read_command_end(c);
+			if (read_command_end(c)) malformed_die();
 			break;
 
 		} else if (!strcmp(s, "abort-edit") || !strcmp(s, "failure")) {
-			read_command_end(c);
+			if (read_command_end(c)) malformed_die();
 			die("update aborted");
 
 		} else if (!strcmp(s, "add-dir")) {
@@ -859,7 +864,7 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 				if (read_string(c, &branch_token)) malformed_die();
 			}
 
-			read_command_end(c);
+			if (read_command_end(c)) malformed_die();
 
 		} else if (!strcmp(s, "open-dir")) {
 			/* path, parent-token, child-token, rev */
@@ -871,19 +876,19 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 				if (read_string(c, &branch_token)) malformed_die();
 			}
 
-			read_command_end(c);
+			if (read_command_end(c)) malformed_die();
 
 		} else if (!strcmp(s, "open-file")) {
 			/* name, dir-token, file-token, rev */
 			if (read_string(c, &name)) malformed_die();
-			read_command_end(c);
+			if (read_command_end(c)) malformed_die();
 			relative_svn_path(&name, skip);
 			create = 0;
 
 		} else if (!strcmp(s, "add-file")) {
 			/* name, dir-token, file-token, [copy-path, copy-rev] */
 			if (read_string(c, &name)) malformed_die();
-			read_command_end(c);
+			if (read_command_end(c)) malformed_die();
 			relative_svn_path(&name, skip);
 			create = 1;
 
@@ -892,9 +897,9 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 			if (skip_next(c)) malformed_die();
 			if (have_optional(c)) {
 				if (read_string(c, &before)) malformed_die();
-				read_end(c);
+				if (read_end(c)) malformed_die();
 			}
-			read_command_end(c);
+			if (read_command_end(c)) malformed_die();
 
 			read_text_delta(c, &diff);
 
@@ -905,9 +910,9 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 			if (skip_next(c)) malformed_die();
 			if (have_optional(c)) {
 				if (read_string(c, &after)) malformed_die();
-				read_end(c);
+				if (read_end(c)) malformed_die();
 			}
-			read_command_end(c);
+			if (read_command_end(c)) malformed_die();
 
 			/* we need to ignore file changes that only
 			 * change the file metadata */
@@ -929,7 +934,7 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 		} else if (!strcmp(s, "delete-entry")) {
 			/* name, [revno], dir-token */
 			if (read_string(c, &name)) malformed_die();
-			read_command_end(c);
+			if (read_command_end(c)) malformed_die();
 			relative_svn_path(&name, skip);
 
 			if (name.len) {
@@ -942,18 +947,18 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 			if (read_string(c, &name)) malformed_die();
 			if (read_string(c, &prop)) malformed_die();
 			if (have_optional(c)) {
-				read_string(c, &value);
-				read_end(c);
+				if (read_string(c, &value)) malformed_die();
+				if (read_end(c)) malformed_die();
 			}
 
-			read_command_end(c);
+			if (read_command_end(c)) malformed_die();
 
 			if (!strbuf_cmp(&name, &branch_token) && !strcmp(prop.buf, "svn:mergeinfo")) {
 				helperf("set-mergeinfo %d:%s\n", (int) value.len, value.buf);
 			}
 
 		} else {
-			read_command_end(c);
+			if (read_command_end(c)) malformed_die();
 		}
 	}
 
@@ -1091,10 +1096,10 @@ static int svn_finish_commit(struct strbuf *time) {
 	if (read_list(c)) malformed_die();
 	rev = (int) read_number(c);
 	if (have_optional(c) && time) {
-		read_string(c, time);
-		read_end(c);
+		if (read_string(c, time)) malformed_die();
+		if (read_end(c)) malformed_die();
 	}
-	read_end(c);
+	if (read_end(c)) malformed_die();
 	read_newline(c);
 	return rev;
 }
@@ -1171,12 +1176,10 @@ static int svn_has_change(const char *path, int from, int to) {
 
 	while (!read_list(c)) {
 		ret = 1;
-		read_end(c);
+		if (read_end(c)) malformed_die();
 	}
 
-	read_done(c);
-
-	if (read_success(c))
+	if (read_done(c)|| read_success(c))
 		die("log failed");
 
 	return ret;
