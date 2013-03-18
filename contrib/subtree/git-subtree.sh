@@ -119,7 +119,7 @@ esac
 
 dir="$(dirname "$prefix/.")"
 
-if [ "$command" != "pull" -a "$command" != "add" -a "$command" != "push" ]; then
+if ( test "$command" != "pull" ) && ( test "$command" != "add" ) && ( test "$command" != "push" ); then
 	revs=$(git rev-parse $default --revs-only "$@") || exit $?
 	dirs="$(git rev-parse --no-revs --no-flags "$@")" || exit $?
 	if [ -n "$dirs" ]; then
@@ -181,9 +181,9 @@ cache_set()
 {
 	oldrev="$1"
 	newrev="$2"
-	if [ "$oldrev" != "latest_old" \
-	     -a "$oldrev" != "latest_new" \
-	     -a -e "$cachedir/$oldrev" ]; then
+	if ( test "$oldrev" != "latest_old" ) \
+	     && ( test "$oldrev" != "latest_new" ) \
+	     && ( test -e "$cachedir/$oldrev" ); then
 		die "cache for $oldrev already exists!"
 	fi
 	echo "$newrev" >"$cachedir/$oldrev"
@@ -273,12 +273,12 @@ find_existing_splits()
 			git-subtree-split:) sub="$b" ;;
 			END)
 				debug "  Main is: '$main'"
-				if [ -z "$main" -a -n "$sub" ]; then
+				if ( test -z "$main" ) && ( test -n "$sub" ); then
 					# squash commits refer to a subtree
 					debug "  Squash: $sq from $sub"
 					cache_set "$sq" "$sub"
 				fi
-				if [ -n "$main" -a -n "$sub" ]; then
+				if ( test -n "$main" ) && (test -n "$sub" ); then
 					debug "  Prior: $main -> $sub"
 					cache_set $main $sub
 					cache_set $sub $sub
@@ -541,7 +541,7 @@ cmd_add_commit()
 	tree=$(git write-tree) || exit $?
 	
 	headrev=$(git rev-parse HEAD) || exit $?
-	if [ -n "$headrev" -a "$headrev" != "$rev" ]; then
+	if ( test -n "$headrev" ) && ( test "$headrev" != "$rev" ); then
 		headp="-p $headrev"
 	else
 		headp=
