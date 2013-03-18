@@ -320,6 +320,9 @@ static void havelog(const char *ref, int rev, const char *logrev) {
 		delete_ref(buf.buf, sha1, 0);
 	}
 
+	if (atoi(logrev) == rev)
+		return;
+
 	if (get_svn_revision(svn) != rev)
 		return;
 

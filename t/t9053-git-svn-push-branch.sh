@@ -7,8 +7,9 @@ function check_branched() {
 	copyfrom_path="$1"
 	copyfrom_rev="$2"
 	echo check_branched $1 $2
-	svn_cmd log --stop-on-copy -v --xml | grep copyfrom-path=\"/$copyfrom_path\" &&
-	svn_cmd log --stop-on-copy -v --xml | grep copyfrom-rev=\"$copyfrom_rev\"
+	svn_cmd log --stop-on-copy -v --xml | grep copyfrom
+	svn_cmd log --stop-on-copy -v --xml | grep -q copyfrom-path=\"/$copyfrom_path\" &&
+	svn_cmd log --stop-on-copy -v --xml | grep -q copyfrom-rev=\"$copyfrom_rev\"
 }
 
 test_expect_success 'setup branches' '
@@ -232,7 +233,7 @@ test_expect_success 'replace tag' '
 	git commit -a -m "dummy commit 2" &&
 	git tag -f -m "create replace tag" ReplaceTag &&
 	test_must_fail git push -v svn ReplaceTag &&
-	GIT_REMOTE_SVN_PAUSE=1 git push -v -f svn ReplaceTag &&
+	git push -v -f svn ReplaceTag &&
 	cd svnco &&
 	svn_cmd up &&
 	cd Tags/ReplaceTag &&
@@ -298,8 +299,6 @@ test_expect_success 'modify and create branch' '
 	cd svnco &&
 	svn_cmd up &&
 	cd .. &&
-	init_trunk_rev=`latest_revision`
-	init_trunk_path=Branches/MCBranch1 &&
 	echo "bar" > file2.txt &&
 	git add file2.txt &&
 	git commit -a -m "some modification on MCBranch1" &&
@@ -452,7 +451,7 @@ test_expect_success 'push left merge' '
 # |
 # RightMerged
 #
-# Check that RightMerged ends up as trunk, right, merge.
+# Check that RightMerged ends up as trunk, left, merge.
 
 test_expect_success 'push right merge' '
 	git checkout -b RightRight trunk &&
@@ -472,14 +471,14 @@ test_expect_success 'push right merge' '
 	echo "left" > left.txt &&
 	git add left.txt &&
 	git commit -m "left" &&
-	git checkout RightRight &&
-	git merge --no-ff "merge commit" HEAD RightLeft &&
-	git push -v svn HEAD:RightMerged &&
+	git merge --no-ff "merge commit" HEAD RightRight &&
+	test_must_fail git push -v svn HEAD:RightMerged &&
+	git push -f -v svn HEAD:RightMerged &&
 	cd svnco &&
 	svn_cmd up &&
 	cd Branches/RightMerged &&
 	test_svn_subject "merge commit" &&
-	test_svn_subject "right" PREV &&
+	test_svn_subject "left" PREV &&
 	svn_cmd log --stop-on-copy -v --xml | grep $prev_path &&
 	svn_cmd log --stop-on-copy -v --xml | grep $prev_rev &&
 	cd ../../..
