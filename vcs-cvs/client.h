@@ -91,7 +91,7 @@ struct cvsfile {
 	unsigned int isnew:1;
 	unsigned int iscached:1;
 	unsigned int mode;
-	struct strbuf file; /* file or path depends on ismem */
+	struct strbuf file; /* FIXME: file or path depends on ismem */
 	void *util;         /* used to store sha1 during check in (used in prepare file content callback) */
 };
 

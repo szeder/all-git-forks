@@ -546,8 +546,9 @@ static ssize_t cvs_write_full(struct cvs_transport *cvs, const char *buf, size_t
 {
 	ssize_t written;
 
-	if (cvs->wr_buf.len)
-		cvs_write(cvs, WR_FLUSH, NULL);
+	if (cvs->wr_buf.len &&
+	    cvs_write(cvs, WR_FLUSH, NULL))
+		return -1;
 
 	if (cvs->compress)
 		written = z_write_in_full(cvs->fd[1], &cvs->wr_stream, buf, len);
@@ -2545,7 +2546,8 @@ ok\n"
 		if (strbuf_gettext_after(&cvs->rd_line_buf, "M ", &line)) {
 			switch (state) {
 			case NEED_CHECK_IN:
-				if (strbuf_gettext_after(&line, "Checking in ", &path)) {
+				if (strbuf_gettext_after(&line, "Checking in ", &path) ||
+				    strbuf_gettext_after(&line, "Removing ", &path)) {
 					p = strchr(path.buf, ';');
 					if (p)
 						strbuf_setlen(&path, p - path.buf);
@@ -2651,6 +2653,23 @@ Argument include/util.h\n
 ci\n
 "
 */
+/*
+"Argument -m\n
+Argument remove it\n
+Argumentx \n
+Argument --\n
+Directory src\n
+/home/dummy/devel/SVC/cvs2/sources/smod/src\n
+Sticky Tunstable\n
+Entry /lib_adapter.c/-1.1.2.1///Tunstable\n
+Directory .\n
+/home/dummy/devel/SVC/cvs2/sources/smod\n
+Sticky Tunstable\n
+Argument src/lib_adapter.c\n
+ci\n
+"
+*/
+
 	struct strbuf file_basename_sb = STRBUF_INIT;
 	struct strbuf dir_repo_relative_sb = STRBUF_INIT;
 	struct strbuf dir_sb = STRBUF_INIT;
@@ -2705,7 +2724,8 @@ ci\n
 			}
 		}
 
-		cvs_write(cvs, WR_NOFLUSH,
+		if (!file_it->isdead) {
+			cvs_write(cvs, WR_NOFLUSH,
 					"Entry /%s/%s///%s%s\n"
 					"Modified %s\n"
 					"%s\n",
@@ -2714,9 +2734,18 @@ ci\n
 					sticky ? "T" : "", sticky ? cvs_branch : "",
 					file_basename_sb.buf,
 					file_it->isexec ? "u=rwx,g=rwx,o=rx" : "u=rw,g=rw,o=r");
-		cvs_write(cvs, WR_FLUSH, "%zu", file_it->file.len);
-		if (file_it->file.len)
-			cvs_write_full(cvs, file_it->file.buf, file_it->file.len);
+			cvs_write(cvs, WR_FLUSH, "%zu\n", file_it->file.len);
+			if (file_it->file.len)
+				cvs_write_full(cvs, file_it->file.buf, file_it->file.len);
+		}
+		else {
+			cvs_write(cvs, WR_NOFLUSH,
+					"Entry /%s/-%s///%s%s\n",
+					file_basename_sb.buf,
+					file_it->revision.buf,
+					sticky ? "T" : "",
+					sticky ? cvs_branch : "");
+		}
 		release_file_cb(file_it, data);
 		file_it++;
 	}

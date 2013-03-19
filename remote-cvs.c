@@ -1275,15 +1275,17 @@ static int prepare_file_content(struct cvsfile *file, void *data)
 	if (!sm)
 		die("Cannot prepare file content for commit, no sha1 known");
 
+	if (sm->addremove == '-')
+		return 0;
+
 	buf = read_sha1_file(sm->sha1, &type, &size);
 	if (!buf)
 		return -1;
 
 	/*
-	 * hack to avoid realloc, this strbuf will be no be modified,
-	 * only released in release_file_content
+	 * FIXME: no reallocs
 	 */
-	strbuf_attach(&file->file, buf, size, size + 1);
+	strbuf_attach(&file->file, buf, size, size);
 	return 0;
 }
 
@@ -1356,7 +1358,10 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 			if (!rev->revision)
 				die("commit succeeded, but cannot find meta file revision to update: %s", files[i].path.buf);
 			free(rev->revision);
-			rev->revision = strbuf_detach(&files[i].revision, NULL);
+			if (!files[i].isdead)
+				rev->revision = strbuf_detach(&files[i].revision, NULL);
+			else
+				rev->revision = NULL;
 		}
 	}
 
