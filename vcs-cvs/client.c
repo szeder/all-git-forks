@@ -1835,6 +1835,7 @@ void cvsfile_init(struct cvsfile *file)
 	file->isdead = 0;
 	file->isbin = 0;
 	file->ismem = 0;
+	file->isnew = 0;
 	file->iscached = 0;
 	file->mode = 0;
 	strbuf_init(&file->file, 0);
@@ -2006,9 +2007,224 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 	return rc;
 }
 
-static int is_sticky(const char *cvs_branch)
+static const char *status_replies[] = {
+	"Up-to-date",
+	"Locally Added",
+	"Classify Error",
+	"Needs Checkout",
+	"Needs Patch",
+	"Unresolved Conflict",
+	"Locally Removed",
+	"File had conflicts on merge",
+	"Locally Modified",
+	"Needs Merge"
+};
+
+enum cvs_status
 {
-	return (!cvs_branch || !strcmp(cvs_branch, "HEAD"));
+	STAT_UP_TO_DATE,
+	STAT_LOCALLY_ADDED,
+	STAT_CLASSIFY_ERROR,
+	STAT_NEEDS_CHECKOUT,
+	STAT_NEEDS_PATCH,
+	STAT_UNRESOLVED_CONFLICT,
+	STAT_LOCALLY_REMOVED,
+	STAT_FILE_HAD_CONFLICTS_ON_MERGE,
+	STAT_LOCALLY_MODIFIED,
+	STAT_NEEDS_MERGE,
+	STAT_UNKNOWN
+};
+
+int parse_status_state(const char *status)
+{
+	int i;
+	for (i = 0; i < STAT_UNKNOWN; i++)
+		if (!strcmp(status, status_replies[i]))
+			return i;
+
+	error("unknown cvs status reply: \"%s\"", status);
+	return STAT_UNKNOWN;
+}
+
+static struct cvsfile *cvsfile_find(struct cvsfile *files, int count, const char *path)
+{
+	int i;
+	/*
+	 * TODO: list is sorted, do a binary search
+	 */
+
+	for (i = 0; i < count; i++)
+		if (!strcmp(files[i].path.buf, path))
+			return &files[i];
+
+	return NULL;
+}
+
+#define CVS_FILE_STATUS_START "==================================================================="
+enum
+{
+	NEED_START_STATUS		= 0,
+	NEED_FILE_STATUS		= 1,
+	NEED_WORKING_REVISION		= 2,
+	NEED_REPOSITORY_REVISION	= 3
+};
+
+static int parse_update_cvs_status(struct cvs_transport *cvs, struct cvsfile *files, int count)
+{
+	struct strbuf line = STRBUF_INIT;
+	struct strbuf buf = STRBUF_INIT;
+	struct strbuf current_dir = STRBUF_INIT;
+	struct strbuf file_basename = STRBUF_INIT;
+	struct strbuf path = STRBUF_INIT;
+	struct strbuf status = STRBUF_INIT;
+	struct strbuf local_rev = STRBUF_INIT;
+	struct strbuf remote_rev = STRBUF_INIT;
+	struct cvsfile *file;
+	ssize_t ret;
+	char *p;
+	int status_state;
+	int rc = 0;
+
+	int state = NEED_START_STATUS;
+
+	while (1) {
+		ret = cvs_readline(cvs, &cvs->rd_line_buf);
+		if (ret <= 0) {
+			rc = -1;
+			break;
+		}
+
+		if (strbuf_startswith(&cvs->rd_line_buf, "E ")) {
+			if (!strbuf_gettext_after(&cvs->rd_line_buf, "E cvs status: Examining ", &current_dir))
+				fprintf(stderr, "CVS E: %s\n", cvs->rd_line_buf.buf + 2);
+		}
+
+		if (strbuf_gettext_after(&cvs->rd_line_buf, "M ", &line)) {
+/*
+M ===================================================================\0a
+M File: neeeeeeeewws     \09Status: Up-to-date\0a
+M \0a
+M    Working revision:\091.1.2.2\0a
+M    Repository revision:\091.1.2.2\09/home/dummy/devel/SVC/cvs/src/dir/neeeeeeeewws,v\0a
+M    Sticky Tag:\09\09mybranch (branch: 1.1.2)\0a
+M    Sticky Date:\09\09(none)\0a
+M    Sticky Options:\09(none)\0a
+M \0a
+E cvs status: Examining dir/some\0a
+E cvs status: Examining dir/some/new\0a
+M ===================================================================\0a
+M File: file_in_dirs     \09Status: Locally Added\0a
+M \0a
+M    Working revision:\09New file!\0a
+M    Repository revision:\09No revision control file\0a
+M    Sticky Tag:\09\09mybranch - MISSING from RCS file!\0a
+M    Sticky Date:\09\09(none)\0a
+M    Sticky Options:\09(none)\0a
+*/
+			switch (state) {
+			case NEED_START_STATUS:
+				if (strbuf_startswith(&line, CVS_FILE_STATUS_START)) {
+					strbuf_reset(&file_basename);
+					strbuf_reset(&path);
+					strbuf_reset(&status);
+					strbuf_reset(&local_rev);
+					strbuf_reset(&remote_rev);
+					state = NEED_FILE_STATUS;
+				}
+				break;
+			case NEED_FILE_STATUS:
+				if (strbuf_gettext_after(&line, "File: ", &buf)) {
+					p = strchr(buf.buf, '\t');
+					if (!p)
+						die("Cannot parse CVS status line file %s", line.buf);
+					strbuf_add(&file_basename, buf.buf, p - buf.buf);
+					strbuf_trim(&file_basename);
+
+					strbuf_remove(&buf, 0, p+1 - buf.buf);
+					if (!strbuf_gettext_after(&buf, "Status: ", &status))
+						die("Cannot parse CVS status line status %s", line.buf);
+					state = NEED_WORKING_REVISION;
+				}
+				break;
+			case NEED_WORKING_REVISION:
+				strbuf_trim(&line);
+				if (strbuf_gettext_after(&line, "Working revision:", &local_rev)) {
+					strbuf_trim(&local_rev);
+					p = strchr(local_rev.buf, '\t');
+					if (p)
+						strbuf_setlen(&local_rev, p - local_rev.buf);
+					state = NEED_REPOSITORY_REVISION;
+				}
+				break;
+			case NEED_REPOSITORY_REVISION:
+				strbuf_trim(&line);
+				if (strbuf_gettext_after(&line, "Repository revision:", &remote_rev)) {
+					strbuf_trim(&remote_rev);
+					p = strchr(remote_rev.buf, '\t');
+					if (p) {
+						strbuf_addstr(&path, p);
+						strbuf_trim(&path);
+						if (!suffixcmp(path.buf, ",v"))
+							strbuf_setlen(&path, path.len - 2);
+						strbuf_setlen(&remote_rev, p - remote_rev.buf);
+						p = strstr(path.buf, "/Attic/");
+						if (p)
+							strbuf_remove(&path, p - path.buf, strlen("/Attic"));
+						if (prefixcmp(path.buf, cvs->full_module_path))
+							die("File status path does not start with repository path");
+						strbuf_remove(&path, 0, strlen(cvs->full_module_path));
+					}
+					else if (current_dir.len) {
+						strbuf_addf(&path, "%s/%s", current_dir.buf, file_basename.buf);
+					}
+
+					fprintf(stderr, "file: %s status: %s rev local: %s rev remote: %s\n",
+						path.buf, status.buf, local_rev.buf, remote_rev.buf);
+
+					file = cvsfile_find(files, count, path.buf);
+					if (!file)
+						die("File status, found status for not requested file: %s", path.buf);
+
+					status_state = parse_status_state(status.buf);
+					switch (status_state) {
+					case STAT_UP_TO_DATE:
+						break;
+					case STAT_LOCALLY_ADDED:
+						if (!file->isnew)
+							rc = 1;
+						break;
+					default:
+						rc = 1;
+					}
+					/*
+					 * TODO: check status
+					 */
+
+					state = NEED_START_STATUS;
+				}
+				break;
+			}
+		}
+
+		if (!strcmp(cvs->rd_line_buf.buf, "ok"))
+			break;
+
+		if (strbuf_startswith(&cvs->rd_line_buf, "error")) {
+			fprintf(stderr, "CVS Error: %s", cvs->rd_line_buf.buf);
+			rc = -1;
+			break;
+		}
+	}
+
+	strbuf_release(&line);
+	strbuf_release(&buf);
+	strbuf_release(&current_dir);
+	strbuf_release(&file_basename);
+	strbuf_release(&path);
+	strbuf_release(&status);
+	strbuf_release(&local_rev);
+	strbuf_release(&remote_rev);
+	return rc;
 }
 
 int cvs_status(struct cvs_transport *cvs, const char *cvs_branch, struct cvsfile *files, int count)
@@ -2105,14 +2321,15 @@ Argument .\n
 status\n
 "
 */
-	struct strbuf reply = STRBUF_INIT;
 	struct strbuf file_basename_sb = STRBUF_INIT;
 	struct strbuf dir_repo_relative_sb = STRBUF_INIT;
+	struct strbuf dir_sb = STRBUF_INIT;
 	int sticky;
 	const char *dir;
 	ssize_t ret;
 
-	sticky = is_sticky(cvs_branch);
+	sticky = !!strcmp(cvs_branch, "HEAD");
+
 	cvs_write(cvs, WR_NOFLUSH, "Argument --\n");
 
 	struct cvsfile *file_it = files;
@@ -2123,7 +2340,8 @@ status\n
 		}*/
 
 		strbuf_copystr(&file_basename_sb, basename(file_it->path.buf));
-		dir = dirname(file_it->path.buf); // "." (dot) is what we want here if no directory in path
+		strbuf_copy(&dir_sb, &file_it->path);
+		dir = dirname(dir_sb.buf); // "." (dot) is what we want here if no directory in path
 		if (strcmp(dir, dir_repo_relative_sb.buf)) {
 			strbuf_copystr(&dir_repo_relative_sb, dir);
 			cvs_write(cvs, WR_NOFLUSH,
@@ -2173,25 +2391,9 @@ status\n
 	if (ret == -1)
 		die("cvs status failed");
 
-	ret = cvs_getreply(cvs, &reply, "ok");
-	if (ret)
-		return -1;
-
-	return 0;
+	return parse_update_cvs_status(cvs, files, count);
 }
-/*
-"Argument --\n
-Directory .\n
-/home/dummy/devel/SVC/cvs2/sources/smod\n
-Directory include\n
-/home/dummy/devel/SVC/cvs2/sources/smod/include\n
-Is-modified compat.h\n
-Directory .\n
-/home/dummy/devel/SVC/cvs2/sources/smod\n
-Argument include/compat.h\n
-add\n
-"
-*/
+
 int cvs_create_directories(struct cvs_transport *cvs, const char *cvs_branch, struct string_list *new_directory_list)
 {
 /*
@@ -2245,41 +2447,81 @@ add\n
 "*/
 
 	struct strbuf reply = STRBUF_INIT;
+	struct strbuf dir_sb = STRBUF_INIT;
 	int sticky;
-	//const char *dir;
-	//const char *base;
+	char *dir;
 	ssize_t ret;
+	struct string_list_item *item;
 
-	sticky = is_sticky(cvs_branch);
+	sticky = !!strcmp(cvs_branch, "HEAD");
 	cvs_write(cvs, WR_NOFLUSH, "Argument --\n");
+
+	/*
+	 * For some reason CVS require directory traversal
+	 */
+	struct string_list dir_traversal_list = STRING_LIST_INIT_DUP;
+	for_each_string_list_item(item, new_directory_list) {
+		strbuf_copystr(&dir_sb, item->string);
+		dir = dir_sb.buf;
+		do {
+			string_list_insert(&dir_traversal_list, dir);
+		} while ((dir = dirname(dir)) && strcmp(dir, "."));
+	}
+
+	strbuf_copystr(&dir_sb, ".");
+	sort_string_list(&dir_traversal_list);
+	string_list_remove_duplicates(&dir_traversal_list, 0);
+	for_each_string_list_item(item, &dir_traversal_list) {
+		if (prefixcmp(item->string, dir_sb.buf)) {
+			cvs_write(cvs, WR_NOFLUSH,
+					"Directory .\n"
+					"%s/%s\n",
+					cvs->repo_path, cvs->module);
+			if (sticky) {
+				cvs_write(cvs, WR_NOFLUSH,
+					"Sticky T%s\n",
+					cvs_branch);
+			}
+			strbuf_copystr(&dir_sb, item->string);
+		}
+
+		cvs_write(cvs, WR_NOFLUSH,
+					"Directory %s\n"
+					"%s/%s/%s\n",
+					item->string,
+					cvs->repo_path, cvs->module, item->string);
+		if (sticky) {
+			cvs_write(cvs, WR_NOFLUSH,
+					"Sticky T%s\n",
+					cvs_branch);
+		}
+	}
+	strbuf_release(&dir_sb);
+	string_list_clear(&dir_traversal_list, 0);
 
 	cvs_write(cvs, WR_NOFLUSH,	"Directory .\n"
 					"%s/%s\n",
 					cvs->repo_path, cvs->module);
-
 	if (sticky) {
 		cvs_write(cvs, WR_NOFLUSH,
 					"Sticky T%s\n",
 					cvs_branch);
 	}
-
-	//struct string_list *dir_traversal_list = STRING_LIST_INIT_DUP;
-
-	struct string_list_item *item;
 	for_each_string_list_item(item, new_directory_list) {
-		//base = basename();
-		//dir = dirname(item->string);
-		//while (strcmp(dir, "."))
-		//	string_list_insert(&dir_traversal_list, dir);
-
 		cvs_write(cvs, WR_NOFLUSH, "Argument %s\n", item->string);
 	}
-
 	ret = cvs_write(cvs, WR_FLUSH, "add\n");
 
 	if (ret == -1)
 		die("cvs status failed");
 
+/*
+ * TODO: verify directories added
+M Directory /home/dummy/devel/SVC/cvs/src/dir/some added to the repository\0a
+M --> Using per-directory sticky tag `mybranch'\0a
+M Directory /home/dummy/devel/SVC/cvs/src/dir/some/new added to the repository\0a
+M --> Using per-directory sticky tag `mybranch'\0a
+*/
 	ret = cvs_getreply(cvs, &reply, "ok");
 	if (ret)
 		return -1;

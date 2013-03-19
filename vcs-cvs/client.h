@@ -8,7 +8,9 @@
 #define RDBUF_SIZE ZBUF_SIZE
 
 /*
- * TODO: add cvs sessions id or smth to trace
+ * TODO:
+ * - add cvs sessions id or smth to trace
+ * - add error messages string_list, do not perform die
  */
 
 enum cvs_protocol {
@@ -86,13 +88,14 @@ struct cvsfile {
 	unsigned int isdead:1;
 	unsigned int isbin:1;        /* for commit */
 	unsigned int ismem:1;        /* true if file contents are in file variable, false if just temp file name */
+	unsigned int isnew:1;
 	unsigned int iscached:1;
 	unsigned int mode;
 	struct strbuf file; /* file or path depends on ismem */
 	void *util;         /* used to store sha1 during check in (used in prepare file content callback) */
 };
 
-#define CVSFILE_INIT { STRBUF_INIT, STRBUF_INIT, 0, 0, 0, 0, 0, 0, STRBUF_INIT, NULL };
+#define CVSFILE_INIT { STRBUF_INIT, STRBUF_INIT, 0, 0, 0, 0, 0, 0, 0, STRBUF_INIT, NULL };
 void cvsfile_release(struct cvsfile *file);
 void cvsfile_init(struct cvsfile *file);
 

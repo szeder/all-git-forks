@@ -22,6 +22,8 @@
  * - check that metadata correspond to ls-tree files (all files have rev, but no extra)
  * - authors ref/note
  * - safe cancelation point + update time for branch OR ref cmp
+ * - delay cvs connect until needed
+ * - support options (progress, verbosity, dry-run)
  */
 
 static const char trace_key[] = "GIT_TRACE_CVS_HELPER";
@@ -636,15 +638,6 @@ static int update_revision_hash(void *ptr, void *data)
 	return 0;
 }
 
-
-/*struct cvsfile {
-	struct strbuf path;
-	struct strbuf revision;
-	int mode;
-	int isdead:1;
-	struct strbuf file;
-};
-*/
 void on_file_checkout(struct cvsfile *file, void *data)
 {
 	struct hash_table *meta_revision_hash = data;
@@ -1166,18 +1159,20 @@ static struct commit *current_commit = NULL; // used to save string_list of file
 struct sha1_mod {
 	unsigned char sha1[20];
 	unsigned mode;
+	int addremove;
 };
 
-static struct sha1_mod *make_sha1_mod(const unsigned char *sha1, unsigned mode)
+static struct sha1_mod *make_sha1_mod(const unsigned char *sha1, unsigned mode, int addremove)
 {
 	struct sha1_mod *sm = xmalloc(sizeof(*sm));
 	memcpy(sm->sha1, sha1, 20);
 	sm->mode = mode;
+	sm->addremove = addremove;
 
 	return sm;
 }
 
-static void add_commit_file(struct commit *commit, const char *path, const unsigned char *sha1, unsigned mode)
+static void add_commit_file(struct commit *commit, const char *path, const unsigned char *sha1, unsigned mode, int addremove)
 {
 	struct string_list *file_list = current_commit->util;
 	if (!file_list) {
@@ -1186,7 +1181,7 @@ static void add_commit_file(struct commit *commit, const char *path, const unsig
 		current_commit->util = file_list;
 	}
 
-	string_list_append(file_list, path)->util = make_sha1_mod(sha1, mode);;
+	string_list_append(file_list, path)->util = make_sha1_mod(sha1, mode, addremove);;
 }
 
 static void on_file_change(struct diff_options *options,
@@ -1229,8 +1224,8 @@ static void on_file_change(struct diff_options *options,
 		 * FIXME:
 		 */
 	}
-	string_list_append(&touched_file_list, concatpath)->util = rev;
-	add_commit_file(current_commit, concatpath, new_sha1, new_mode);
+	string_list_append(&touched_file_list, concatpath);
+	add_commit_file(current_commit, concatpath, new_sha1, new_mode, 0);
 }
 
 static void on_file_addremove(struct diff_options *options,
@@ -1250,7 +1245,8 @@ static void on_file_addremove(struct diff_options *options,
 			sha1_to_hex(sha1));
 
 	if (S_ISDIR(mode)) {
-		string_list_append(&new_directory_list, concatpath);
+		if (addremove == '+')
+			string_list_append(&new_directory_list, concatpath);
 		return;
 	}
 
@@ -1258,7 +1254,10 @@ static void on_file_addremove(struct diff_options *options,
 	 * FIXME: meta needed?
 	 */
 	string_list_append(&touched_file_list, concatpath);
-	add_commit_file(current_commit, concatpath, sha1, mode);
+	/*
+	 * FIXME: add/remove flag
+	 */
+	add_commit_file(current_commit, concatpath, sha1, mode, addremove);
 }
 
 static int check_file_list_remote_status(const char *cvs_branch, struct string_list *file_list, struct hash_table *revision_meta_hash)
@@ -1277,10 +1276,11 @@ static int check_file_list_remote_status(const char *cvs_branch, struct string_l
 		rev = lookup_hash(hash_path(files[i].path.buf), base_revision_meta_hash);
 		if (rev)
 			strbuf_addstr(&files[i].revision, rev->revision);
-		/*
 		else
+			files[i].isnew = 1;
+		/*
 		 * FIXME:
-		 * What to do with new files?
+		 * What to do with new/remove files?
 		 */
 
 		fprintf(stderr, "status: %s rev: %s\n", files[i].path.buf, files[i].revision.buf);
@@ -1328,8 +1328,13 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch)
 		if (!sm)
 			die("No sha1 mod accociated with file being checked in");
 
-		fprintf(stderr, "check in file: %s sha1: %s mod: %.4o\n", item->string, sha1_to_hex(sm->sha1), sm->mode);
+		fprintf(stderr, "check in %c file: %s sha1: %s mod: %.4o\n",
+				sm->addremove ? sm->addremove : '*', item->string, sha1_to_hex(sm->sha1), sm->mode);
 		strbuf_addstr(&files[i].path, item->string);
+		if (sm->addremove == '+')
+			files[i].isnew = 1;
+		else if (sm->addremove == '-')
+			files[i].isdead = 1;
 		/*
 		 * add revision
 		 */
@@ -1396,11 +1401,14 @@ static int push_commit_list_to_cvs(struct commit_list *push_list, const char *cv
 	/*
 	 * TODO:
 	 */
-	if (string_list_remove_duplicates  create_remote_directories(cvs_branch, &new_directory_list))
+	if (new_directory_list.nr &&
+	    create_remote_directories(cvs_branch, &new_directory_list))
 		return 1;
 
-	if (check_file_list_remote_status(cvs_branch, &touched_file_list, revision_meta_hash))
+	if (check_file_list_remote_status(cvs_branch, &touched_file_list, revision_meta_hash)) {
+		error("You are not up-to date. Update your local repository copy first.");
 		return 1;
+	}
 
 
 	push_list_it = push_list;
@@ -1411,7 +1419,6 @@ static int push_commit_list_to_cvs(struct commit_list *push_list, const char *cv
 	}
 	/*
 	 * TODO:
-	 * - do push changes one by one
 	 * - update metadata???
 	 */
 
