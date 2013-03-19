@@ -1299,6 +1299,7 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 	struct string_list_item *item;
 	struct cvsfile *files;
 	struct sha1_mod *sm;
+	const char *commit_message;
 	int count;
 	int rc;
 	int i;
@@ -1345,7 +1346,8 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 		}
 	}
 
-	rc = cvs_checkin(cvs, cvs_branch, files, count, prepare_file_content, release_file_content, NULL);
+	find_commit_subject(commit->buffer, &commit_message);
+	rc = cvs_checkin(cvs, cvs_branch, commit_message, files, count, prepare_file_content, release_file_content, NULL);
 	if (!rc) {
 		for (i = 0; i < count; i++) {
 			rev = lookup_hash(hash_path(files[i].path.buf), revision_meta_hash);

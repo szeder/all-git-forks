@@ -2608,7 +2608,7 @@ ok\n"
 	return rc;
 }
 
-int cvs_checkin(struct cvs_transport *cvs, const char *cvs_branch,
+int cvs_checkin(struct cvs_transport *cvs, const char *cvs_branch, const char *message,
 			struct cvsfile *files, int count,
 			prepare_file_content_fn_t prepare_file_cb,
 			release_file_content_fn_t release_file_cb,
@@ -2654,12 +2654,23 @@ ci\n
 	struct strbuf file_basename_sb = STRBUF_INIT;
 	struct strbuf dir_repo_relative_sb = STRBUF_INIT;
 	struct strbuf dir_sb = STRBUF_INIT;
+	struct strbuf **lines, **it;
 	int sticky;
 	const char *dir;
 	ssize_t ret;
 
 	sticky = !!strcmp(cvs_branch, "HEAD");
 
+	cvs_write(cvs, WR_NOFLUSH, "Argument -m\n");
+	lines = strbuf_split_buf(message, strlen(message), '\n', 0);
+	for (it = lines; *it; it++) {
+		strbuf_rtrim(*it);
+		if (it == lines)
+			cvs_write(cvs, WR_NOFLUSH, "Argument %s\n", (*it)->buf);
+		else
+			cvs_write(cvs, WR_NOFLUSH, "Argumentx %s\n", (*it)->buf);
+	}
+	strbuf_list_free(lines);
 	cvs_write(cvs, WR_NOFLUSH, "Argument --\n");
 
 	struct cvsfile *file_it = files;
