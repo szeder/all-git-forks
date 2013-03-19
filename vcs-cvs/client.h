@@ -114,7 +114,7 @@ int cvs_status(struct cvs_transport *cvs, const char *cvs_branch, struct cvsfile
 
 int cvs_create_directories(struct cvs_transport *cvs, const char *cvs_branch, struct string_list *dirs);
 
-typedef void (*prepare_file_content_fn_t)(struct cvsfile *file, void *data);
+typedef int (*prepare_file_content_fn_t)(struct cvsfile *file, void *data);
 typedef void (*release_file_content_fn_t)(struct cvsfile *file, void *data);
 int cvs_checkin(struct cvs_transport *cvs, const char *cvs_branch,
 		struct cvsfile *files, int count,

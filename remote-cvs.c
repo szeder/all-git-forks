@@ -925,9 +925,11 @@ static void merge_revision_hash(struct hash_table *meta, struct hash_table *upda
 static int import_branch_by_name(const char *branch_name)
 {
 	static int mark;
+	unsigned char sha1[20];
 	struct strbuf commit_mark_sb = STRBUF_INIT;
 	struct strbuf meta_mark_sb = STRBUF_INIT;
 	struct strbuf branch_ref = STRBUF_INIT;
+	struct strbuf meta_branch_ref = STRBUF_INIT;
 	struct hash_table meta_revision_hash;
 
 	fprintf(stderr, "importing CVS branch %s\n", branch_name);
@@ -936,7 +938,8 @@ static int import_branch_by_name(const char *branch_name)
 	int psnum = 0;
 	int pstotal = 0;
 
-	strbuf_addf(&branch_ref, "%s%s", get_meta_ref_prefix(), branch_name);
+	strbuf_addf(&branch_ref, "%s%s", get_ref_prefix(), branch_name);
+	strbuf_addf(&meta_branch_ref, "%s%s", get_meta_ref_prefix(), branch_name);
 
 	/*
 	 * FIXME
@@ -946,9 +949,12 @@ static int import_branch_by_name(const char *branch_name)
 	//else
 		branch_meta = meta_map_find(branch_meta_map, branch_name);
 
-	if (!branch_meta && !ref_exists(branch_ref.buf))
+	if (!branch_meta && !ref_exists(meta_branch_ref.buf))
 		die("Cannot find meta for branch %s\n", branch_name);
 
+	/*
+	 * FIXME: support of repositories with no files :-)
+	 */
 	if (is_empty_hash(branch_meta->last_commit_revision_hash) &&
 	    strcmp(branch_name, "HEAD")) {
 		/*
@@ -959,6 +965,12 @@ static int import_branch_by_name(const char *branch_name)
 			die("import_branch failed %s", branch_name);
 		if (mark > 0)
 			strbuf_addf(&commit_mark_sb, ":%d", mark);
+	}
+	else {
+		if (!get_sha1(branch_ref.buf, sha1))
+			strbuf_addstr(&commit_mark_sb, sha1_to_hex(sha1));
+		if (!get_sha1(meta_branch_ref.buf, sha1))
+			strbuf_addstr(&meta_mark_sb, sha1_to_hex(sha1));
 	}
 	aggregate_patchsets(branch_meta);
 
@@ -1006,67 +1018,8 @@ static int import_branch_by_name(const char *branch_name)
 	strbuf_release(&commit_mark_sb);
 	strbuf_release(&meta_mark_sb);
 	strbuf_release(&branch_ref);
+	strbuf_release(&meta_branch_ref);
 	free_hash(&meta_revision_hash);
-
-/*	int code;
-	int dumpin_fd;
-	char *note_msg;
-	unsigned char head_sha1[20];
-	unsigned int startrev;
-	struct argv_array svndump_argv = ARGV_ARRAY_INIT;
-	struct child_process svndump_proc;
-
-	if (read_ref(private_ref, head_sha1))
-		startrev = 0;
-	else {
-		note_msg = read_ref_note(head_sha1);
-		if(note_msg == NULL) {
-			warning("No note found for %s.", private_ref);
-			startrev = 0;
-		} else {
-			struct rev_note note = { 0 };
-			if (parse_rev_note(note_msg, &note))
-				die("Revision number couldn't be parsed from note.");
-			startrev = note.rev_nr + 1;
-			free(note_msg);
-		}
-	}
-	check_or_regenerate_marks(startrev - 1);
-
-	if (dump_from_file) {
-		dumpin_fd = open(url, O_RDONLY);
-		if(dumpin_fd < 0)
-			die_errno("Couldn't open svn dump file %s.", url);
-	} else {
-		memset(&svndump_proc, 0, sizeof(struct child_process));
-		svndump_proc.out = -1;
-		argv_array_push(&svndump_argv, "svnrdump");
-		argv_array_push(&svndump_argv, "dump");
-		argv_array_push(&svndump_argv, url);
-		argv_array_pushf(&svndump_argv, "-r%u:HEAD", startrev);
-		svndump_proc.argv = svndump_argv.argv;
-
-		code = start_command(&svndump_proc);
-		if (code)
-			die("Unable to start %s, code %d", svndump_proc.argv[0], code);
-		dumpin_fd = svndump_proc.out;
-	}
-	helper_printf("feature import-marks-if-exists=%s\n"
-			"feature export-marks=%s\n", marksfilename, marksfilename);
-
-	svndump_init_fd(dumpin_fd, STDIN_FILENO);
-	svndump_read(url, private_ref, notes_ref);
-	svndump_deinit();
-	svndump_reset();
-
-	close(dumpin_fd);
-	if (!dump_from_file) {
-		code = finish_command(&svndump_proc);
-		if (code)
-			warning("%s, returned %d", svndump_proc.argv[0], code);
-		argv_array_clear(&svndump_argv);
-	}
-*/
 	return 0;
 }
 
@@ -1195,14 +1148,17 @@ static void on_file_change(struct diff_options *options,
 	struct file_revision_meta *rev;
 
 	if (S_ISLNK(new_mode))
-		die("CVS does not support symlinks");
+		die("CVS does not support symlinks: %s", concatpath);
 
 	if ((S_ISDIR(old_mode) && !S_ISDIR(new_mode)) ||
 	    (!S_ISDIR(old_mode) && S_ISDIR(new_mode)))
-		die("CVS cannot handle file paths which used to de directories and vice versa");
+		die("CVS cannot handle file paths which used to de directories and vice versa: %s", concatpath);
 
 	if (S_ISDIR(new_mode))
 		return;
+
+	if (!S_ISREG(new_mode))
+		die("CVC cannot handle non-regular files: %s", concatpath);
 
 	fprintf(stderr, "------\nfile changed: %s "
 			"mode: %o -> %o "
@@ -1234,6 +1190,9 @@ static void on_file_addremove(struct diff_options *options,
 			      int sha1_valid,
 			      const char *concatpath, unsigned dirty_submodule)
 {
+	if (S_ISLNK(mode))
+		die("CVS does not support symlinks: %s", concatpath);
+
 	fprintf(stderr, "------\n%s %s: %s "
 			"mode: %o "
 			"sha: %d %s\n",
@@ -1249,6 +1208,9 @@ static void on_file_addremove(struct diff_options *options,
 			string_list_append(&new_directory_list, concatpath);
 		return;
 	}
+
+	if (!S_ISREG(mode))
+		die("CVC cannot handle non-regular files: %s", concatpath);
 
 	/*
 	 * FIXME: meta needed?
@@ -1302,8 +1264,37 @@ static int create_remote_directories(const char *cvs_branch, struct string_list 
 	return cvs_create_directories(cvs, cvs_branch, new_directory_list);
 }
 
-static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch)
+static int prepare_file_content(struct cvsfile *file, void *data)
 {
+	enum object_type type;
+	void *buf;
+	unsigned long size;
+	struct sha1_mod *sm;
+
+	sm = file->util;
+	if (!sm)
+		die("Cannot prepare file content for commit, no sha1 known");
+
+	buf = read_sha1_file(sm->sha1, &type, &size);
+	if (!buf)
+		return -1;
+
+	/*
+	 * hack to avoid realloc, this strbuf will be no be modified,
+	 * only released in release_file_content
+	 */
+	strbuf_attach(&file->file, buf, size, size + 1);
+	return 0;
+}
+
+static void release_file_content(struct cvsfile *file, void *data)
+{
+	strbuf_release(&file->file);
+}
+
+static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, struct hash_table *revision_meta_hash)
+{
+	struct file_revision_meta *rev;
 	struct string_list *file_list;
 	struct string_list_item *item;
 	struct cvsfile *files;
@@ -1328,6 +1319,9 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch)
 		if (!sm)
 			die("No sha1 mod accociated with file being checked in");
 
+		files[i].util = sm;
+		files[i].isexec = !!(sm->mode & 0111);
+		files[i].mode = sm->mode;
 		fprintf(stderr, "check in %c file: %s sha1: %s mod: %.4o\n",
 				sm->addremove ? sm->addremove : '*', item->string, sha1_to_hex(sm->sha1), sm->mode);
 		strbuf_addstr(&files[i].path, item->string);
@@ -1335,14 +1329,37 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch)
 			files[i].isnew = 1;
 		else if (sm->addremove == '-')
 			files[i].isdead = 1;
-		/*
-		 * add revision
-		 */
+
+		rev = lookup_hash(hash_path(files[i].path.buf), revision_meta_hash);
+		if (rev) {
+			strbuf_addstr(&files[i].revision, rev->revision);
+			if (files[i].isnew)
+				warning("file: %s meta rev: %s is supposed to be new, but revision metadata was found",
+					files[i].path.buf, files[i].revision.buf);
+		}
+		else {
+			if (files[i].isnew)
+				add_file_revision_meta_hash(revision_meta_hash, files[i].path.buf, "0", 0, 1, 0);
+			else
+				die("file: %s has not revision metadata, and not new", files[i].path.buf);
+		}
+	}
+
+	rc = cvs_checkin(cvs, cvs_branch, files, count, prepare_file_content, release_file_content, NULL);
+	if (!rc) {
+		for (i = 0; i < count; i++) {
+			rev = lookup_hash(hash_path(files[i].path.buf), revision_meta_hash);
+			if (!rev)
+				die("commit succeeded, but cannot find meta file to update: %s", files[i].path.buf);
+			if (!rev->revision)
+				die("commit succeeded, but cannot find meta file revision to update: %s", files[i].path.buf);
+			free(rev->revision);
+			rev->revision = strbuf_detach(&files[i].revision, NULL);
+		}
 	}
 
 	for (i = 0; i < count; i++)
 		cvsfile_release(&files[i]);
-	rc = cvs_checkin(cvs, cvs_branch, files, count, NULL, NULL, NULL);
 	free(files);
 	return rc;
 }
@@ -1414,13 +1431,24 @@ static int push_commit_list_to_cvs(struct commit_list *push_list, const char *cv
 	push_list_it = push_list;
 	while ((push_list_it = push_list_it->next)) {
 		commit = push_list_it->item;
-		if (push_commit_to_cvs(commit, cvs_branch))
+		if (push_commit_to_cvs(commit, cvs_branch, revision_meta_hash))
 			return 1;
 	}
 	/*
 	 * TODO:
 	 * - update metadata???
+	 * - commit list cleanup
+	 * - util in commit list cleanup
 	 */
+	push_list_it = push_list;
+	while ((push_list_it = push_list_it->next)) {
+		commit = push_list_it->item;
+		if (commit->util) {
+			string_list_clear(commit->util, 1);
+			free(commit->util);
+			commit->util = 0;
+		}
+	}
 
 	return 0;
 }
@@ -1586,7 +1614,7 @@ static int cmd_list(const char *line)
 		rc = cvs_rlog(cvs, 0, 0, add_file_revision_cb, branch_meta_map);
 		if (rc == -1)
 			die("rlog failed");
-		fprintf(stderr, "Totol revisions: %d\n", revisions_all_branches_total);
+		fprintf(stderr, "Total revisions: %d\n", revisions_all_branches_total);
 		fprintf(stderr, "Skipped revisions: %d\n", skipped);
 
 		for_each_branch_meta(branch_meta, branch_meta_map) {
@@ -1618,7 +1646,7 @@ static int cmd_list(const char *line)
 		rc = cvs_rlog(cvs, update_since, 0, add_file_revision_cb, branch_meta_map);
 		if (rc == -1)
 			die("rlog failed");
-		fprintf(stderr, "Totol revisions: %d\n", revisions_all_branches_total);
+		fprintf(stderr, "Total revisions: %d\n", revisions_all_branches_total);
 		fprintf(stderr, "Skipped revisions: %d\n", skipped);
 
 		/*
