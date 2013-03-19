@@ -387,7 +387,7 @@ pathsep = :
 
 export prefix bindir sharedir sysconfdir gitwebdir localedir
 
-CC = cc
+CC = cc -lssl -lcrypto
 AR = ar
 RM = rm -f
 DIFF = diff
