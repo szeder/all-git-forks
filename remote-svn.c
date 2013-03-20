@@ -827,12 +827,14 @@ static void do_finish_update(struct svnref *r, struct svn_entry *c) {
 	fprintf(stderr, "finish commit %s %d\n", refname(r), c->rev);
 	c->fetched = 1;
 
+	if (c != current_commit)
+		return;
+
 	for (c = current_commit; c && c->fetched; c = c->next) {
 		fwrite(c->update.buf, 1, c->update.len, helper_file);
 		strbuf_release(&c->update);
+		display_progress(progress, ++cmts_fetched);
 	}
-
-	display_progress(progress, ++cmts_fetched);
 
 	if (cmts_fetched % g_cmts_to_gc == 0) {
 		stop_helper();
