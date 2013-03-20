@@ -16,21 +16,56 @@
 
 #define BASH_ERROR -1
 
-void crypto_set_signing_key(const char *key)
+
+int calc_sha256 (char* path, char output[65])
 {
-    system ("echo \"crypto-set-signing-key\"");
+    FILE* file = fopen(path, "rb");
+    if(!file) return -1;
+
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    const int bufSize = 32768;
+    char* buffer = malloc(bufSize);
+    int bytesRead = 0;
+    if(!buffer) return -1;
+    while((bytesRead = fread(buffer, 1, bufSize, file)))
+    {
+        SHA256_Update(&sha256, buffer, bytesRead);
+    }
+    SHA256_Final(hash, &sha256);
+
+    sha256_hash_string(hash, output);
+    fclose(file);
+    free(buffer);
+    return 0;
 }
 
-int crypto_git_config(const char *var, const char *value, void *cb)
+// The buffer passed to this MUST be 65 char's long
+void sha256(char * msg, char outputBuffer[65])
 {
-    system ("echo \"crypto-git-config\"");
-	return 0;
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, msg, strlen(msg));
+    SHA256_Final(hash, &sha256);
+    int i = 0;
+    for(i = 0; i < SHA256_DIGEST_LENGTH; ++i){
+        sprintf(outputBuffer + (i * 2), "%02x", hash[i]);
+    }
+    outputBuffer[64] = 0;
 }
 
-const char *crypto_get_signing_key(void)
+void sha256_hash_string (unsigned char hash[SHA256_DIGEST_LENGTH], char outputBuffer[65])
 {
-    system ("echo \"crypto-get-signing_key\"");
-	return "Some dummy key";
+    int i = 0;
+
+    for(i = 0; i < SHA256_DIGEST_LENGTH; i++)
+    {
+        sprintf(outputBuffer + (i * 2), "%02x", hash[i]);
+    }
+
+    outputBuffer[64] = 0;
 }
 
 BIO * create_bio(char * msg)
@@ -186,13 +221,11 @@ int verify_commit(char *commit_sha)
 
     // OpenSSL inst vars
     BIO *note_bio = NULL;
-    BIO *cmt_bio = NULL;
     BIO *content = NULL;
     CMS_ContentInfo *cms = NULL;
     X509_STORE *x509_st = X509_STORE_new(); // should be a param
 
     // Construct the objects needed to verify
-    cmt_bio = create_bio(commit);
     note_bio = create_bio(note);
     cms = SMIME_read_CMS(note_bio, &content);
 
@@ -207,45 +240,28 @@ int verify_commit(char *commit_sha)
         ret_val = ret_val | VERIFY_FAIL_BAD_SIG;
     }
 
-
+    static unsigned char buf[65];
+    sha256(commit, buf);
+    printf("test: %s\n", buf);
     // TODO compare sha2 in s/mime to existing commit obj
 
     return ret_val;
 
 }
 
-int calc_sha256 (char* path, char output[65])
+void crypto_set_signing_key(const char *key)
 {
-    FILE* file = fopen(path, "rb");
-    if(!file) return -1;
-    
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    const int bufSize = 32768;
-    char* buffer = malloc(bufSize);
-    int bytesRead = 0;
-    if(!buffer) return -1;
-    while((bytesRead = fread(buffer, 1, bufSize, file)))
-    {
-        SHA256_Update(&sha256, buffer, bytesRead);
-    }
-    SHA256_Final(hash, &sha256);
-    
-    sha256_hash_string(hash, output);
-    fclose(file);
-    free(buffer);
-    return 0;
+    system ("echo \"crypto-set-signing-key\"");
 }
 
-void sha256_hash_string (unsigned char hash[SHA256_DIGEST_LENGTH], char outputBuffer[65])
+int crypto_git_config(const char *var, const char *value, void *cb)
 {
-    int i = 0;
-    
-    for(i = 0; i < SHA256_DIGEST_LENGTH; i++)
-    {
-        sprintf(outputBuffer + (i * 2), "%02x", hash[i]);
-    }
-    
-    outputBuffer[64] = 0;
+    system ("echo \"crypto-git-config\"");
+	return 0;
+}
+
+const char *crypto_get_signing_key(void)
+{
+    system ("echo \"crypto-get-signing_key\"");
+	return "Some dummy key";
 }
