@@ -8,11 +8,12 @@
 //
 //
 #include <stdio.h>
-#include "crypto-interface.h"
 #include "builtin.h"
-#include "run-command.h"
-#include "parse-options.h"
 #include "builtin/config.h"
+#include "commit.h"
+#include "crypto-interface.h"
+#include "parse-options.h"
+#include "run-command.h"
 
 
 // To be filled in later see other builtin/*.c files for examples
@@ -54,6 +55,11 @@ int cmd_crypto(int argc, const char **argv, const char *prefix)
 
     argc = parse_options(argc, argv, prefix, options,
             git_crypto_usage, PARSE_OPT_STOP_AT_NON_OPTION);
+
+
+    // DEBUG here to force testing
+    //printf("\n\nreturn: \n %d\n", verify_commit("31789b477bbc2ecd3f92d3cee9234a91baaf8590"));
+
 
     if(!strcmp(argv[1], "sign") || sign_arg)
         result = sign(sign_arg);
