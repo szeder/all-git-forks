@@ -5,7 +5,6 @@
 
 #ifndef NO_PTHREADS
 #include <pthread.h>
-static pthread_mutex_t lock;
 #else
 #define pthread_mutex_lock(x)
 #define pthread_mutex_unlock(x)
@@ -150,7 +149,7 @@ static int read_list(struct conn *c) {
 	}
 }
 
-/* returns NULL if it can't find an atom, string only valid until next
+/* returns "" if it can't find an atom, string only valid until next
  * call to read_word */
 static const char *read_word(struct conn *c) {
 	int ch;
@@ -163,7 +162,7 @@ static const char *read_word(struct conn *c) {
 			break;
 		} else if (ch != ' ' && ch != '\n') {
 			unreadc(c);
-			return NULL;
+			return "";
 		}
 	}
 
@@ -178,7 +177,7 @@ static const char *read_word(struct conn *c) {
 	unreadc(c);
 	if (svndbg >= 2)
 		strbuf_addf(&c->indbg, " %s", c->word.buf);
-	return c->word.len ? c->word.buf : NULL;
+	return c->word.buf;
 }
 
 /* returns -1 if no string or an invalid string */
@@ -265,7 +264,7 @@ static int do_skip_one(struct conn *c, int ch) {
 		return 0;
 
 	} else {
-		if (!read_word(c))
+		if (*read_word(c) == '\0')
 			return -1;
 
 		return 0;
@@ -326,11 +325,10 @@ static int skip_next(struct conn *c) {
 static const char* read_command(struct conn *c) {
 	const char *cmd;
 
-	if (read_list(c)) malformed_die(c);
+	if (read_list(c)) return "";
 
 	cmd = read_word(c);
-	if (!cmd) malformed_die(c);
-	if (read_list(c)) malformed_die(c);
+	if (read_list(c)) return "";
 
 	if (!strcmp(cmd, "failure")) {
 		while (!read_list(c)) {
@@ -340,7 +338,7 @@ static const char* read_command(struct conn *c) {
 			error("%s", msg.buf);
 			strbuf_release(&msg);
 			if (read_end(c))
-				return NULL;
+				return "";
 		}
 	}
 
@@ -370,8 +368,7 @@ static int read_success(struct conn *c) {
 }
 
 static int read_done(struct conn *c) {
-	const char* s = read_word(c);
-	if (!s || strcmp(s, "done"))
+	if (strcmp(read_word(c), "done"))
 		return -1;
 	read_newline(c);
 	return 0;
@@ -396,13 +393,11 @@ static int have_optional(struct conn *c) {
 }
 
 static void cram_md5(struct conn *c, const char* user, const char* pass) {
-	const char *s;
 	unsigned char hash[16];
 	struct strbuf chlg = STRBUF_INIT;
 	HMAC_CTX hmac;
 
-	s = read_command(c);
-	if (strcmp(s, "step")) malformed_die(c);
+	if (strcmp(read_command(c), "step")) malformed_die(c);
 	if (read_string(c, &chlg)) malformed_die(c);
 
 	if (read_command_end(c)) malformed_die(c);
@@ -476,7 +471,7 @@ static void svn_connect(struct conn *c, struct strbuf *uuid) {
 	if (read_list(c)) malformed_die(c);
 	for (;;) {
 		const char *mech = read_word(c);
-		if (!mech) {
+		if (!strcmp(mech, "")) {
 			break;
 		} else if (!strcmp(mech, "ANONYMOUS")) {
 			anon = 1;
@@ -569,7 +564,7 @@ static int svn_isdir(const char *path, int rev) {
 	}
 	if (read_command_end(c)) malformed_die(c);
 
-	return s && !strcmp(s, "dir");
+	return !strcmp(s, "dir");
 }
 
 static void svn_list(const char *path, int rev, struct string_list *dirs) {
@@ -587,15 +582,16 @@ static void svn_list(const char *path, int rev, struct string_list *dirs) {
 		if (read_list(c)) malformed_die(c); /* dirents */
 
 		while (!read_list(c)) {
-			const char *s;
 			if (read_string(c, &buf))
 				malformed_die(c);
-			s = read_word(c);
-			if (s && !strcmp(s, "dir")) {
+
+			if (!strcmp(read_word(c), "dir")) {
 				clean_svn_path(&buf);
 				string_list_insert(dirs, buf.buf);
 			}
-			if (read_end(c)) malformed_die(c);
+
+			if (read_end(c))
+				malformed_die(c);
 		}
 
 		if (read_end(c)) malformed_die(c);
