@@ -60,6 +60,7 @@ struct strbuf_list {
 
 static int collect_config(const char *key_, const char *value_, void *cb);
 int get_value(const char *key_, const char *regex_);
+char * get_config_val(const char*key_, const char *regex_);
 static char *normalize_value(const char *key, const char *value);
 
 static int get_color_found;

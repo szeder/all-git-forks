@@ -21,7 +21,7 @@ static const char * const git_crypto_usage[] = {};
 
 static int sign(const char *ref)
 {
-    int return_value = get_value("user.certificate",'\0');
+    char * return_val2 = get_config_val("user.certificate",'\0');
     // Waiting to convert this to C to pass in our ref arg
     printf("Dummy C sign handler in builtin/crypto-interface\n");
     return 0;
