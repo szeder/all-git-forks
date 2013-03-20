@@ -3,6 +3,14 @@
 #include "quote.h"
 #include <openssl/md5.h>
 
+#ifndef NO_PTHREADS
+#include <pthread.h>
+static pthread_mutex_t lock;
+#else
+#define pthread_mutex_lock(x)
+#define pthread_mutex_unlock(x)
+#endif
+
 #ifndef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #endif
@@ -26,6 +34,15 @@ static void init_connection(struct conn *c) {
 	strbuf_init(&c->buf, 0);
 	strbuf_init(&c->indbg, 0);
 	strbuf_init(&c->word, 0);
+}
+
+static void reset_connection(struct conn *c) {
+	close(c->fd);
+	c->fd = -1;
+	c->b = c->e = 0;
+	strbuf_release(&c->buf);
+	strbuf_release(&c->word);
+	strbuf_release(&c->indbg);
 }
 
 static int readc(struct conn *c) {
@@ -517,10 +534,7 @@ static void svn_change_user(struct credential *cred) {
 	svn_auth = cred;
 
 	if (c->fd >= 0 && old != cred) {
-		close(c->fd);
-		c->fd = -1;
-		c->b = c->e = 0;
-		strbuf_reset(&c->indbg);
+		reset_connection(c);
 		svn_connect(c, NULL);
 	}
 }
@@ -798,8 +812,11 @@ static void relative_svn_path(struct strbuf *path, int skip) {
 	}
 }
 
-static void svn_read_update(const char *path, struct svn_entry *cmt) {
-	struct conn *c = &main_connection;
+#ifndef NO_PTHREADS
+static pthread_mutex_t update_lock = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
+static void *update_worker(void *p) {
 	struct strbuf name = STRBUF_INIT;
 	struct strbuf before = STRBUF_INIT;
 	struct strbuf after = STRBUF_INIT;
@@ -807,173 +824,232 @@ static void svn_read_update(const char *path, struct svn_entry *cmt) {
 	struct strbuf branch_token = STRBUF_INIT;
 	struct strbuf prop = STRBUF_INIT;
 	struct strbuf value = STRBUF_INIT;
-	int skip = 0;
-	int create = -1;
+	struct conn *c = p;
 
-	if (cmt->copysrc) {
-		/* [rev] target recurse target-url */
-		sendf(c, "( switch ( ( %d ) %d:%s true %d:%s%s ) )\n",
-				cmt->rev,
-				(int) strlen(cmt->copysrc),
-				cmt->copysrc,
-				(int) (url.len + strlen(path)),
-				url.buf,
-				path);
-
-		/* path rev start-empty */
-		sendf(c, "( set-path ( 0: %d false ) )\n", cmt->copyrev);
-
-		skip = strlen(cmt->copysrc);
-	} else {
-		/* [rev] target recurse */
-		sendf(c, "( update ( ( %d ) %d:%s true ) )\n",
-				cmt->rev,
-				(int) strlen(path),
-				path);
-
-		/* path rev start-empty */
-		if (cmt->new_branch) {
-			sendf(c, "( set-path ( 0: %d true ) )\n", cmt->rev);
-		} else {
-			sendf(c, "( set-path ( 0: %d false ) )\n", cmt->rev - 1);
-		}
-
-		skip = strlen(path);
-	}
-
-	sendf(c, "( finish-report ( ) )\n");
+	svn_connect(c, NULL);
 
 	for (;;) {
-		const char *s = read_command(c);
+		int skip = 0;
+		int create = -1;
+		struct svn_entry *cmt;
+		const char *path;
 
-		if (!strcmp(s, "close-edit")) {
-			if (read_command_end(c)) malformed_die(c);
+		pthread_mutex_lock(&update_lock);
+		cmt = svn_start_next_update();
+		pthread_mutex_unlock(&update_lock);
+
+		if (!cmt)
 			break;
 
-		} else if (!strcmp(s, "abort-edit") || !strcmp(s, "failure")) {
-			if (read_command_end(c)) malformed_die(c);
-			die("update aborted");
+		path = cmt->ref->path;
 
-		} else if (!strcmp(s, "add-dir")) {
-			/* path, parent-token, child-token, [copy-path, copy-rev] */
-			if (read_string(c, &name)) malformed_die(c);
-			relative_svn_path(&name, skip);
+		if (cmt->copysrc) {
+			/* [rev] target recurse target-url */
+			sendf(c, "( switch ( ( %d ) %d:%s true %d:%s%s ) )\n",
+					cmt->rev,
+					(int) strlen(cmt->copysrc),
+					cmt->copysrc,
+					(int) (url.len + strlen(path)),
+					url.buf,
+					path);
 
-			if (name.len) {
-				helperf("add-dir %d:%s\n", (int) name.len, name.buf);
-			} else {
-				/* parent-token, child-token */
-				if (skip_next(c)) malformed_die(c);
-				if (read_string(c, &branch_token)) malformed_die(c);
-			}
+			/* path rev start-empty */
+			sendf(c, "( set-path ( 0: %d false ) )\n", cmt->copyrev);
 
-			if (read_command_end(c)) malformed_die(c);
-
-		} else if (!strcmp(s, "open-dir")) {
-			/* path, parent-token, child-token, rev */
-			if (read_string(c, &name)) malformed_die(c);
-			relative_svn_path(&name, skip);
-
-			if (!name.len) {
-				if (skip_next(c)) malformed_die(c);
-				if (read_string(c, &branch_token)) malformed_die(c);
-			}
-
-			if (read_command_end(c)) malformed_die(c);
-
-		} else if (!strcmp(s, "open-file")) {
-			/* name, dir-token, file-token, rev */
-			if (read_string(c, &name)) malformed_die(c);
-			if (read_command_end(c)) malformed_die(c);
-			relative_svn_path(&name, skip);
-			create = 0;
-
-		} else if (!strcmp(s, "add-file")) {
-			/* name, dir-token, file-token, [copy-path, copy-rev] */
-			if (read_string(c, &name)) malformed_die(c);
-			if (read_command_end(c)) malformed_die(c);
-			relative_svn_path(&name, skip);
-			create = 1;
-
-		} else if (!strcmp(s, "apply-textdelta")) {
-			/* file-token, [base-checksum] */
-			if (skip_next(c)) malformed_die(c);
-			if (have_optional(c)) {
-				if (read_string(c, &before)) malformed_die(c);
-				if (read_end(c)) malformed_die(c);
-			}
-			if (read_command_end(c)) malformed_die(c);
-
-			read_text_delta(c, &diff);
-
-		} else if (!strcmp(s, "close-file")) {
-			if (create < 0) malformed_die(c);
-
-			/* file-token, [text-checksum] */
-			if (skip_next(c)) malformed_die(c);
-			if (have_optional(c)) {
-				if (read_string(c, &after)) malformed_die(c);
-				if (read_end(c)) malformed_die(c);
-			}
-			if (read_command_end(c)) malformed_die(c);
-
-			/* we need to ignore file changes that only
-			 * change the file metadata */
-			if (diff.len) {
-				helperf("%s %d:%s %d:%s %d:%s %d:",
-						create ? "add-file" : "open-file",
-						(int) name.len, name.buf,
-						(int) before.len, before.buf,
-						(int) after.len, after.buf,
-						(int) diff.len);
-				write_helper(diff.buf, diff.len, 1);
-			}
-
-			strbuf_release(&diff);
-			strbuf_reset(&before);
-			strbuf_reset(&after);
-			create = -1;
-
-		} else if (!strcmp(s, "delete-entry")) {
-			/* name, [revno], dir-token */
-			if (read_string(c, &name)) malformed_die(c);
-			if (read_command_end(c)) malformed_die(c);
-			relative_svn_path(&name, skip);
-
-			if (name.len) {
-				helperf("delete-entry %d:%s\n", (int) name.len, name.buf);
-			}
-
-		} else if (!strcmp(s, "change-dir-prop")) {
-			/* dir-token, name, [value] */
-			strbuf_reset(&value);
-			if (read_string(c, &name)) malformed_die(c);
-			if (read_string(c, &prop)) malformed_die(c);
-			if (have_optional(c)) {
-				if (read_string(c, &value)) malformed_die(c);
-				if (read_end(c)) malformed_die(c);
-			}
-
-			if (read_command_end(c)) malformed_die(c);
-
-			if (!strbuf_cmp(&name, &branch_token) && !strcmp(prop.buf, "svn:mergeinfo")) {
-				helperf("set-mergeinfo %d:%s\n", (int) value.len, value.buf);
-			}
-
+			skip = strlen(cmt->copysrc);
 		} else {
-			if (read_command_end(c)) malformed_die(c);
+			/* [rev] target recurse */
+			sendf(c, "( update ( ( %d ) %d:%s true ) )\n",
+					cmt->rev,
+					(int) strlen(path),
+					path);
+
+			/* path rev start-empty */
+			if (cmt->new_branch) {
+				sendf(c, "( set-path ( 0: %d true ) )\n", cmt->rev);
+			} else {
+				sendf(c, "( set-path ( 0: %d false ) )\n", cmt->rev - 1);
+			}
+
+			skip = strlen(path);
 		}
+
+		sendf(c, "( finish-report ( ) )\n");
+
+		for (;;) {
+			const char *s = read_command(c);
+
+			if (!strcmp(s, "close-edit")) {
+				if (read_command_end(c)) malformed_die(c);
+				break;
+
+			} else if (!strcmp(s, "abort-edit") || !strcmp(s, "failure")) {
+				if (read_command_end(c)) malformed_die(c);
+				die("update aborted");
+
+			} else if (!strcmp(s, "add-dir")) {
+				/* path, parent-token, child-token, [copy-path, copy-rev] */
+				if (read_string(c, &name)) malformed_die(c);
+				relative_svn_path(&name, skip);
+
+				if (name.len) {
+					helperf(cmt, "add-dir %d:%s\n",
+							(int) name.len,
+							name.buf);
+				} else {
+					/* parent-token, child-token */
+					if (skip_next(c)) malformed_die(c);
+					if (read_string(c, &branch_token)) malformed_die(c);
+				}
+
+				if (read_command_end(c)) malformed_die(c);
+
+			} else if (!strcmp(s, "open-dir")) {
+				/* path, parent-token, child-token, rev */
+				if (read_string(c, &name)) malformed_die(c);
+				relative_svn_path(&name, skip);
+
+				if (!name.len) {
+					if (skip_next(c)) malformed_die(c);
+					if (read_string(c, &branch_token)) malformed_die(c);
+				}
+
+				if (read_command_end(c)) malformed_die(c);
+
+			} else if (!strcmp(s, "open-file")) {
+				/* name, dir-token, file-token, rev */
+				if (read_string(c, &name)) malformed_die(c);
+				if (read_command_end(c)) malformed_die(c);
+				relative_svn_path(&name, skip);
+				create = 0;
+
+			} else if (!strcmp(s, "add-file")) {
+				/* name, dir-token, file-token, [copy-path, copy-rev] */
+				if (read_string(c, &name)) malformed_die(c);
+				if (read_command_end(c)) malformed_die(c);
+				relative_svn_path(&name, skip);
+				create = 1;
+
+			} else if (!strcmp(s, "apply-textdelta")) {
+				/* file-token, [base-checksum] */
+				if (skip_next(c)) malformed_die(c);
+				if (have_optional(c)) {
+					if (read_string(c, &before)) malformed_die(c);
+					if (read_end(c)) malformed_die(c);
+				}
+				if (read_command_end(c)) malformed_die(c);
+
+				read_text_delta(c, &diff);
+
+			} else if (!strcmp(s, "close-file")) {
+				if (create < 0) malformed_die(c);
+
+				/* file-token, [text-checksum] */
+				if (skip_next(c)) malformed_die(c);
+				if (have_optional(c)) {
+					if (read_string(c, &after)) malformed_die(c);
+					if (read_end(c)) malformed_die(c);
+				}
+				if (read_command_end(c)) malformed_die(c);
+
+				/* we need to ignore file changes that only
+				 * change the file metadata */
+				if (diff.len) {
+					helperf(cmt, "%s %d:%s %d:%s %d:%s %d:",
+							create ? "add-file" : "open-file",
+							(int) name.len, name.buf,
+							(int) before.len, before.buf,
+							(int) after.len, after.buf,
+							(int) diff.len);
+
+					write_helper(cmt, diff.buf, diff.len, 1);
+				}
+
+				strbuf_release(&diff);
+				strbuf_reset(&before);
+				strbuf_reset(&after);
+				create = -1;
+
+			} else if (!strcmp(s, "delete-entry")) {
+				/* name, [revno], dir-token */
+				if (read_string(c, &name)) malformed_die(c);
+				if (read_command_end(c)) malformed_die(c);
+				relative_svn_path(&name, skip);
+
+				if (name.len) {
+					helperf(cmt, "delete-entry %d:%s\n",
+							(int) name.len,
+							name.buf);
+				}
+
+			} else if (!strcmp(s, "change-dir-prop")) {
+				/* dir-token, name, [value] */
+				strbuf_reset(&value);
+				if (read_string(c, &name)) malformed_die(c);
+				if (read_string(c, &prop)) malformed_die(c);
+				if (have_optional(c)) {
+					if (read_string(c, &value)) malformed_die(c);
+					if (read_end(c)) malformed_die(c);
+				}
+
+				if (read_command_end(c)) malformed_die(c);
+
+				if (!strbuf_cmp(&name, &branch_token)
+				&& !strcmp(prop.buf, "svn:mergeinfo")) {
+					helperf(cmt, "set-mergeinfo %d:%s\n",
+							(int) value.len,
+							value.buf);
+				}
+
+			} else {
+				if (read_command_end(c)) malformed_die(c);
+			}
+		}
+
+		if (create >= 0) malformed_die(c);
+
+		sendf(c, "( success ( ) )\n");
+
+		pthread_mutex_lock(&update_lock);
+		svn_finish_update(cmt);
+		pthread_mutex_unlock(&update_lock);
 	}
-
-	if (create >= 0) malformed_die(c);
-
-	sendf(c, "( success ( ) )\n");
 
 	strbuf_release(&name);
 	strbuf_release(&before);
 	strbuf_release(&after);
 	strbuf_release(&diff);
+	strbuf_release(&branch_token);
+	strbuf_release(&prop);
+	strbuf_release(&value);
+
+	return NULL;
 }
+
+static void svn_read_updates(int cmts) {
+#ifndef NO_PTHREADS
+	int i, nr = min(cmts, svn_max_requests) - 1;
+	pthread_t *threads = malloc(nr * sizeof(threads[0]));
+	struct conn *conns = malloc(nr * sizeof(conns[0]));
+	for (i = 0; i < nr; i++) {
+		init_connection(&conns[i]);
+		pthread_create(&threads[i], NULL, &update_worker, &conns[i]);
+	}
+#endif
+
+	(void) cmts;
+	update_worker(&main_connection);
+
+#ifndef NO_PTHREADS
+	for (i = 0; i < nr; i++) {
+		pthread_join(threads[i], NULL);
+		reset_connection(&conns[i]);
+	}
+	free(threads);
+	free(conns);
+#endif
+}
+
 
 
 static struct strbuf cpath = STRBUF_INIT;
@@ -1195,7 +1271,7 @@ struct svn_proto proto_svn = {
 	&svn_list,
 	&svn_isdir,
 	&svn_read_log,
-	&svn_read_update,
+	&svn_read_updates,
 	&svn_start_commit,
 	&svn_finish_commit,
 	&svn_mkdir,

@@ -20,6 +20,7 @@
 
 #define MAX_CMTS_PER_WORKER 1000
 
+int svn_max_requests = 3;
 int svndbg = 1;
 static const char *url, *relpath, *authors_file, *empty_log_message = "";
 static struct strbuf refdir = STRBUF_INIT;
@@ -63,6 +64,10 @@ static int config(const char *key, const char *value, void *dummy) {
 
 	} else if (!strcmp(key, "svn.authors")) {
 		return git_config_string(&authors_file, key, value);
+
+	} else if (!strcmp(key, "svn.maxrequests")) {
+		svn_max_requests = git_config_int(key, value);
+		return 0;
 
 	} else if (!prefixcmp(key, "remote.")) {
 		const char *sub = key + strlen("remote.");
@@ -746,7 +751,7 @@ static void start_helper() {
 		die_errno("failed to launch helper");
 
 	if (svndbg >= 2)
-		helperf("verbose\n");
+		fprintf(helper_file, "verbose\n");
 }
 
 static void stop_helper() {
@@ -780,98 +785,160 @@ static void stop_helper() {
 		fprintf(stderr, "finished git gc --auto\n");
 }
 
-void write_helper(const char *str, int len, int limitdbg) {
+static struct svn_entry * volatile current_commit, *last_commit;
+
+void write_helper(struct svn_entry *c, const char *str, int len, int limitdbg) {
 	if (svndbg >= 2) {
 		struct strbuf buf = STRBUF_INIT;
-		int sz = len;
-		if (limitdbg && sz > 20)
-			sz = 20;
-		if (str[len-1] == '\n')
-			sz--;
-		quote_c_style_counted(str, sz, &buf, NULL, 1);
-		fprintf(stderr, "H+ %s%s\n", buf.buf, (sz < len-1 ? "..." : ""));
+		strbuf_addf(&buf, "H+ %d ", c->rev);
+		if (!limitdbg) {
+			strbuf_add(&buf, str, len);
+		} else if (len > 20) {
+			quote_c_style_counted(str, 20, &buf, NULL, 1);
+			strbuf_addstr(&buf, "...");
+		} else {
+			quote_c_style_counted(str, len, &buf, NULL, 1);
+		}
+		strbuf_complete_line(&buf);
+		fwrite(buf.buf, 1, buf.len, stderr);
 		strbuf_release(&buf);
 	}
 
-	fwrite(str, 1, len, helper_file);
+	if (c == current_commit) {
+		fwrite(c->update.buf, 1, c->update.len, helper_file);
+		strbuf_release(&c->update);
+		fwrite(str, 1, len, helper_file);
+	} else {
+		strbuf_add(&c->update, str, len);
+	}
 }
 
-void helperf(const char *fmt, ...) {
-	static struct strbuf buf = STRBUF_INIT;
+void helperf(struct svn_entry *c, const char *fmt, ...) {
 	va_list ap;
-
-	if (!helper_file) {
-		start_helper();
-	}
-
 	va_start(ap, fmt);
-	strbuf_reset(&buf);
-	strbuf_vaddf(&buf, fmt, ap);
-	write_helper(buf.buf, buf.len, 0);
+	strbuf_reset(&c->buf);
+	strbuf_vaddf(&c->buf, fmt, ap);
+	write_helper(c, c->buf.buf, c->buf.len, 0);
 }
 
 static int cmts_fetched;
 
-static void fetch_update(struct svnref *r, struct svn_entry *c) {
-	struct svnref *copysrc = c->copysrc
-		? get_ref(c->copysrc, c->copyrev)
-		: NULL;
+static void do_finish_update(struct svnref *r, struct svn_entry *c) {
+	fprintf(stderr, "finish commit %s %d\n", refname(r), c->rev);
+	c->fetched = 1;
 
-	if (copysrc && !c->copy_modified) {
-		helperf("branch %s %d %s %d %d %d:%s %d:%s %d:",
-				refszname(copysrc), c->copyrev,
-				refszname(r), c->rev,
-				r->is_tag,
-				(int) strlen(r->path), r->path,
-				(int) strlen(c->ident), c->ident,
-				(int) strlen(c->msg));
-
-		write_helper(c->msg, strlen(c->msg), 1);
-	} else {
-		if (copysrc) {
-			helperf("checkout %s %d\n", refszname(copysrc), c->copyrev);
-		} else if (r->rev) {
-			helperf("checkout %s %d\n", refszname(r), r->rev);
-		} else {
-			helperf("reset\n");
-		}
-
-		proto->read_update(r->path, c);
-
-		helperf("commit %s %d %d %d %d:%s %d:%s %d:",
-				refszname(r),
-				r->rev, c->rev,
-				r->is_tag,
-				(int) strlen(r->path), r->path,
-				(int) strlen(c->ident), c->ident,
-				(int) strlen(c->msg));
-
-		write_helper(c->msg, strlen(c->msg), 1);
-
+	for (c = current_commit; c && c->fetched; c = c->next) {
+		fwrite(c->update.buf, 1, c->update.len, helper_file);
+		strbuf_release(&c->update);
 	}
 
-	r->rev = c->rev;
 	display_progress(progress, ++cmts_fetched);
+
+	if (cmts_fetched % g_cmts_to_gc == 0) {
+		stop_helper();
+		start_helper();
+	}
+
+	__sync_synchronize();
+
+	current_commit = c;
+	if (c == NULL) {
+		last_commit = NULL;
+	}
+}
+
+struct svnref **fetch;
+int fetch_num, fetch_fin, fetch_alloc;
+
+struct svn_entry* svn_start_next_update(void) {
+	while (fetch_fin < fetch_num) {
+		struct svnref *r = fetch[fetch_fin];
+
+		while (r->cmts) {
+			struct svn_entry *c = r->cmts;
+			struct svnref *copysrc = c->copysrc
+				? get_ref(c->copysrc, c->copyrev)
+				: NULL;
+
+			c->ref = r;
+			c->prev = r->rev;
+			r->rev = c->rev;
+			strbuf_init(&c->update, 0);
+			strbuf_init(&c->buf, 0);
+			r->cmts = c->next;
+
+			if (last_commit) {
+				last_commit->next = c;
+			}
+
+			if (!current_commit) {
+				current_commit = c;
+			}
+
+			last_commit = c;
+
+			fprintf(stderr, "start commit %s %d\n", refname(r), c->rev);
+
+			if (copysrc && !c->copy_modified) {
+				helperf(c, "branch %s %d %s %d %d %d:%s %d:%s %d:",
+						refszname(copysrc), c->copyrev,
+						refszname(r), c->rev,
+						r->is_tag,
+						(int) strlen(r->path), r->path,
+						(int) strlen(c->ident), c->ident,
+						(int) strlen(c->msg));
+
+				write_helper(c, c->msg, strlen(c->msg), 1);
+				do_finish_update(r, c);
+
+			} else {
+				if (copysrc) {
+					helperf(c, "checkout %s %d\n", refszname(copysrc), c->copyrev);
+				} else if (c->prev) {
+					helperf(c, "checkout %s %d\n", refszname(r), c->prev);
+				} else {
+					helperf(c, "reset\n");
+				}
+
+				return c;
+			}
+		}
+
+		fetch_fin++;
+	}
+
+	return NULL;
+}
+
+void svn_finish_update(struct svn_entry *c) {
+	struct svnref *r = c->ref;
+	helperf(c, "commit %s %d %d %d %d:%s %d:%s %d:",
+			refszname(r),
+			c->prev, c->rev,
+			r->is_tag,
+			(int) strlen(r->path), r->path,
+			(int) strlen(c->ident), c->ident,
+			(int) strlen(c->msg));
+
+	write_helper(c, c->msg, strlen(c->msg), 1);
+	do_finish_update(r, c);
 }
 
 static void fetch_updates(void) {
-	struct svnref **logs = NULL;
-	int lognr = 0, logalloc = 0;
-	int cmts_to_gc = g_cmts_to_gc;
 	int i;
 
 	for (i = 0; i < refs.nr; i++) {
 		struct svnref *r;
 		for (r = refs.items[i].util; r != NULL; r = r->next) {
 			if (r->cmts) {
-				ALLOC_GROW(logs, lognr+1, logalloc);
-				logs[lognr++] = r;
+				ALLOC_GROW(fetch, fetch_num+1, fetch_alloc);
+				fetch[fetch_num++] = r;
 			}
 		}
 	}
 
 	/* sort by start so that copysrcs are requested first */
-	qsort(logs, lognr, sizeof(logs[0]), &cmp_svnref_start);
+	qsort(fetch, fetch_num, sizeof(fetch[0]), &cmp_svnref_start);
 
 	/* Farm the pending requests out to a subprocess so that we can
 	 * run git gc --auto after each chunk. We have to this as after
@@ -879,18 +946,14 @@ static void fetch_updates(void) {
 	 * objects being valid.
 	 */
 
-	for (i = 0; i < lognr; i++) {
-		struct svnref *r = logs[i];
-		struct svn_entry *c;
+	start_helper();
 
-		for (c = r->cmts; c != NULL; c = c->next) {
-			fetch_update(r, c);
+	if (cmts_to_fetch) {
+		proto->read_updates(cmts_to_fetch);
+	}
 
-			if (--cmts_to_gc == 0) {
-				stop_helper();
-				cmts_to_gc = g_cmts_to_gc;
-			}
-		}
+	if (current_commit) {
+		die("internal: haven't fetched all commits");
 	}
 
 	for (i = 0; i < refs.nr; i++) {
@@ -900,7 +963,7 @@ static void fetch_updates(void) {
 				int i;
 				for (i = 0; i < r->gitrefs.nr; i++) {
 					const char *gitref = r->gitrefs.items[i].string;
-					helperf("report %s %d:%s\n",
+					fprintf(helper_file, "report %s %d:%s\n",
 							refszname(r),
 							(int) strlen(gitref),
 							gitref);
@@ -910,11 +973,10 @@ static void fetch_updates(void) {
 			if (!r->exists_at_head)
 				r->logrev = r->rev;
 
-			helperf("havelog %s %d %d\n", refszname(r), r->rev, r->logrev);
+			fprintf(helper_file, "havelog %s %d %d\n", refszname(r), r->rev, r->logrev);
 		}
 	}
 
-	free(logs);
 	stop_helper();
 }
 

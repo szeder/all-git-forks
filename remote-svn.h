@@ -12,13 +12,16 @@ extern int svn_max_requests;
 
 struct svn_entry {
 	struct svn_entry *next;
+	struct svnref *ref;
 	char *ident, *msg;
-	int rev;
+	int rev, prev;
 
 	char *copysrc;
 	int copyrev;
+	struct strbuf update, buf;
 	unsigned int copy_modified : 1;
 	unsigned int new_branch : 1;
+	unsigned int fetched : 1;
 };
 
 /* svnref holds all the info we have about an svn branch starting at
@@ -57,10 +60,14 @@ struct svnref {
 };
 
 const char *svn_to_ident(const char *username, const char *time);
-void write_helper(const char *str, int len, int limitdbg);
-__attribute__((format (printf,1,2)))
-void helperf(const char *fmt, ...);
 void cmt_read(struct svnref *r);
+
+__attribute__((format (printf,2,3)))
+void helperf(struct svn_entry *c, const char *fmt, ...);
+void write_helper(struct svn_entry *c, const char *str, int len, int limitdbg);
+
+struct svn_entry* svn_start_next_update(void);
+void svn_finish_update(struct svn_entry *c);
 
 /* commit types */
 #define SVN_MODIFY 0
@@ -75,7 +82,8 @@ struct svn_proto {
 
 	/* start-end specifies the revision range inclusive */
 	void (*read_log)(struct svnref**, int /*refnr*/, int /*start*/, int /*end*/);
-	void (*read_update)(const char* /*path*/, struct svn_entry*);
+	/* call svn_start_next_update/svn_finish_update in a loop */
+	void (*read_updates)(int cmts);
 
 	void (*start_commit)(int /*type*/, const char* /*log*/, const char* /*path*/, int /*rev*/, const char* /*copy*/, int /*copyrev*/, struct mergeinfo*);
 	int (*finish_commit)(struct strbuf* /*time*/); /*returns rev*/
