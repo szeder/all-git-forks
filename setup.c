@@ -14,6 +14,8 @@ char *prefix_path_gently(const char *prefix, int *p_len, const char *path)
 		const char *temp = real_path(path);
 		sanitized = xmalloc(len + strlen(temp) + 1);
 		strcpy(sanitized, temp);
+		if (p_len)
+			*p_len = 0;
 	} else {
 		sanitized = xmalloc(len + strlen(path) + 1);
 		if (len)
