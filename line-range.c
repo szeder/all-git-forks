@@ -83,7 +83,7 @@ int parse_range_arg(const char *arg, nth_line_fn_t nth_line_cb,
 	arg = parse_loc(arg, nth_line_cb, cb_data, lines, 1, begin);
 
 	if (*arg == ',')
-		arg = parse_loc(arg+1, nth_line_cb, cb_data, lines, *begin+1, end);
+		arg = parse_loc(arg + 1, nth_line_cb, cb_data, lines, *begin + 1, end);
 
 	if (*arg)
 		return -1;
