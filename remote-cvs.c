@@ -212,9 +212,10 @@ static const char *gettext_after(const char *str, const char *what)
 static int cmd_capabilities(const char *line)
 {
 	helper_printf("import\n");
+	helper_printf("bidi-import\n");
 	helper_printf("push\n");
 	helper_printf("option\n");
-	//helper_printf("refspec refs/heads/*:%s*\n\n", ref_prefix);
+	helper_printf("refspec refs/heads/*:%s*\n", get_ref_prefix());
 	helper_printf("\n");
 	//helper_printf("refspec %s:%s\n\n", remote_ref, private_ref);
 	helper_flush();
@@ -1118,7 +1119,7 @@ struct sha1_mod {
 static struct sha1_mod *make_sha1_mod(const unsigned char *sha1, unsigned mode, int addremove)
 {
 	struct sha1_mod *sm = xmalloc(sizeof(*sm));
-	memcpy(sm->sha1, sha1, 20);
+	hashcpy(sm->sha1, sha1);
 	sm->mode = mode;
 	sm->addremove = addremove;
 
@@ -1923,12 +1924,12 @@ int main(int argc, const char **argv)
 	}*/
 
 	if (is_bare_repository()) {
-		strbuf_addstr(&ref_prefix_sb, "refs/heads/");
-		//strbuf_addstr(&ref_prefix_sb, "refs/cvs/heads/");
+		//strbuf_addstr(&ref_prefix_sb, "refs/heads/");
+		strbuf_addstr(&ref_prefix_sb, "refs/import/heads/");
 	}
 	else {
-		strbuf_addf(&ref_prefix_sb, "refs/remotes/%s/", remote->name);
-		//strbuf_addf(&ref_prefix_sb, "refs/cvs/remotes/%s/", remote->name);
+		//strbuf_addf(&ref_prefix_sb, "refs/remotes/%s/", remote->name);
+		strbuf_addf(&ref_prefix_sb, "refs/import/remotes/%s/", remote->name);
 	}
 	set_ref_prefix(ref_prefix_sb.buf);
 	fprintf(stderr, "%s\n", get_ref_prefix());

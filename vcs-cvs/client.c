@@ -643,7 +643,10 @@ static ssize_t cvs_readline(struct cvs_transport *cvs, struct strbuf *sb)
 
 			cvs->rd_buf.buf += linelen + 1;
 			cvs->rd_buf.len -= linelen + 1;
-			return sb->len;
+			/*
+			 * FIXME: returns length with '\n'
+			 */
+			return sb->len + 1;
 		}
 
 		if (cvs->rd_buf.len) {
@@ -1423,6 +1426,8 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 		case NEED_START_LOG:
 			if (!strcmp(reply.buf, CVS_LOG_BOUNDARY))
 				state = NEED_REVISION;
+			else if (!strcmp(reply.buf, CVS_FILE_BOUNDARY))
+				state = NEED_RCS_FILE;
 			break;
 		case NEED_REVISION:
 			if (strbuf_gettext_after(&reply, "revision ", &revision)) {
@@ -2205,7 +2210,10 @@ M    Sticky Options:\09(none)\0a
 						strbuf_remove(&path, 0, strlen(cvs->full_module_path));
 					}
 					else if (current_dir.len) {
-						strbuf_addf(&path, "%s/%s", current_dir.buf, file_basename.buf);
+						if (!strcmp(current_dir.buf, "."))
+							strbuf_copy(&path, &file_basename);
+						else
+							strbuf_addf(&path, "%s/%s", current_dir.buf, file_basename.buf);
 					}
 
 					fprintf(stderr, "file: %s status: %s rev local: %s rev remote: %s\n",
@@ -2344,7 +2352,7 @@ status\n
 		}
 
 		cvs_write(cvs, WR_NOFLUSH,
-					"Entry /%s/%s///%s%s\n"
+					"Entry /%s/%s//-kk/%s%s\n"
 					"Unchanged %s\n",
 					file_basename_sb.buf,
 					file_it->revision.len ? file_it->revision.buf : "0",
@@ -2726,7 +2734,7 @@ ci\n
 
 		if (!file_it->isdead) {
 			cvs_write(cvs, WR_NOFLUSH,
-					"Entry /%s/%s///%s%s\n"
+					"Entry /%s/%s//-kk/%s%s\n"
 					"Modified %s\n"
 					"%s\n",
 					file_basename_sb.buf,
@@ -2740,7 +2748,7 @@ ci\n
 		}
 		else {
 			cvs_write(cvs, WR_NOFLUSH,
-					"Entry /%s/-%s///%s%s\n",
+					"Entry /%s/-%s//-kk/%s%s\n",
 					file_basename_sb.buf,
 					file_it->revision.buf,
 					sticky ? "T" : "",
