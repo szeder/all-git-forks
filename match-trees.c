@@ -71,13 +71,13 @@ static int score_trees(const unsigned char *hash1, const unsigned char *hash2)
 	if (type != OBJ_TREE)
 		die("%s is not a tree", sha1_to_hex(hash2));
 	init_tree_desc(&two, two_buf, size);
-	while (one.size | two.size) {
-		const unsigned char *elem1 = elem1;
-		const unsigned char *elem2 = elem2;
-		const char *path1 = path1;
-		const char *path2 = path2;
-		unsigned mode1 = mode1;
-		unsigned mode2 = mode2;
+	while (one.size || two.size) {
+		const unsigned char *elem1 = NULL; /* make gcc happy */
+		const unsigned char *elem2 = NULL; /* make gcc happy */
+		const char *path1 = NULL; /* make gcc happy */
+		const char *path2 = NULL; /* make gcc happy */
+		unsigned mode1 = 0; /* make gcc happy */
+		unsigned mode2 = 0; /* make gcc happy */
 		int cmp;
 
 		if (one.size)
