@@ -1,0 +1,140 @@
+#!/usr/bin/perl
+
+use 5.008;
+use strict;
+use warnings;
+use Cwd qw(abs_path);
+use File::Path qw(make_path remove_tree);
+
+die("usage $0 <gitrepo> [<testdir>]") if scalar @ARGV < 1;
+
+my $git_repo_origin = shift @ARGV;
+my $testdir = shift @ARGV;
+my $cvs_repo;
+my $cvs_client_repo;
+my $git_repo;
+
+$testdir = "git-remote-cvs-testing" unless $testdir;
+$git_repo_origin = abs_path($git_repo_origin) if -d $git_repo_origin;
+$testdir = abs_path($testdir);
+
+print "=> repo $git_repo_origin\n";
+print "=> testdir $testdir\n";
+
+$cvs_repo = "$testdir/cvs_repo";
+$cvs_client_repo = "$testdir/cvs_client_repo";
+$git_repo = "$testdir/git_repo";
+
+make_path($testdir, $cvs_repo, $cvs_client_repo)
+	or die "failed to create directories $!";
+
+chdir($testdir) or die "$!";
+
+sub mk_cvs_repo() {
+	my $cvsroot = $cvs_repo;
+	print "=> creating cvs repo\n";
+	`cvs -d $cvsroot init`;
+	die "cvs init $?" if $?;
+	return $cvsroot;
+}
+
+sub mk_cvs_module_commit($;) {
+	my $cvsroot = shift;
+	print "=> making cvs repo initial commit\n";
+	chdir($cvs_client_repo) or die "$!";
+	`cvs -d $cvsroot co .`;
+	die "cvs co $?" if $?;
+
+	make_path("mod/src")
+		or die "failed to create directories $!";
+
+	`cvs -d $cvsroot add mod mod/src`;
+	die "cvs add $?" if $?;
+
+	`echo "dummy file" > mod/src/remove_me`;
+
+	`cvs -d $cvsroot add mod/src/remove_me`;
+	die "cvs add $?" if $?;
+
+	`cvs -d $cvsroot commit -m "initial cvs commit" mod/src/remove_me`;
+	die "cvs commit $?" if $?;
+
+	chdir($testdir) or die "$!";
+	return "mod/src";
+}
+
+my $cvsroot = mk_cvs_repo() or die "mkcvsrepo";
+my $cvsmodule = mk_cvs_module_commit($cvsroot);
+
+chdir($testdir) or die "$!";
+$ENV{GIT_TRACE_CVS_HELPER} = "$testdir/cvshelper.log";
+$ENV{GIT_TRACE_CVS_PROTO} = "$testdir/cvsproto.log";
+
+print "=> cloning cvs repo\n";
+`git clone -o cvs cvs:::fork:$cvsroot:$cvsmodule $git_repo | tee "$testdir/cvsclone.log"`;
+die "git clone cvs $?" if $?;
+
+print "=> cloning git repo\n";
+chdir($git_repo) or die "$!";
+`git remote add git $git_repo_origin`;
+die "git remote add $?" if $?;
+
+`git fetch git`;
+die "git fetch $git_repo_origin $?" if $?;
+
+my $initial_cherry_pick = 1;
+my $git_zero_sha1 = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+my $commit = "";
+#my $restart = $commit;
+my $old_tree = "";
+my $commits = 0;
+print "restarting from $commit\n";
+
+open(my $gi, "-|", "git log --reverse --format=\"%H %T\" git/master") or
+	die "Cannot run git log: $!\n";
+
+while ((my $line = <$gi>)) {
+	my ($commit_sha, $tree_sha) = split(' ', $line);
+	print "\n-----------------------------------------------------------\n";
+	print "=> commit $commit_sha tree $tree_sha\n";
+	print "-----------------------------------------------------------\n";
+	next if ($tree_sha eq $git_zero_sha1);
+	next if $old_tree eq $tree_sha;
+	#$restart = $commit_sha;
+	$old_tree = $tree_sha;
+	$commits++;
+	`git cherry-pick --allow-empty $commit_sha`;
+	die "git cherry-pick failed $?" if $?;
+
+	if ($initial_cherry_pick) {
+		$initial_cherry_pick = 0;
+
+		`git rm remove_me`;
+		die "git rm failed" if $?;
+		`git commit -m "initial file remove"`;
+		die "git commit failed" if $?;
+	}
+
+	`git push cvs HEAD:HEAD | tee --append $testdir/cvspushfetch.log`;
+	print "=> commits pushed: $commits\n";
+	#sleep(2);
+
+	`git fetch cvs | tee --append $testdir/cvspushfetch.log`;
+	die "git fetch failed" if $?;
+
+	my $test_tree_sha = `git log -1 --format="%T" cvs/HEAD`;
+	die "git log failed" if $?;
+
+	chomp($test_tree_sha);
+	die "tree sha $test_tree_sha, should be $tree_sha" if ($test_tree_sha ne $tree_sha);
+
+	`git rebase cvs/HEAD`;
+	die("git rebase failed") if $?;
+
+	print "=> commits pushed/fetched/verified: $commits\n";
+}
+close($gi);
+
+#END {
+#	print "restart from $restart\n";
+#}

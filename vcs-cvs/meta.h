@@ -89,7 +89,7 @@ struct branch_meta {
  */
 
 struct branch_meta *new_branch_meta(const char *branch_name);
-void add_file_revision(struct branch_meta *meta,
+int add_file_revision(struct branch_meta *meta,
 		       const char *path,
 		       const char *revision,
 		       const char *author,

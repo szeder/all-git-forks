@@ -872,7 +872,7 @@ static int cvs_negotiate(struct cvs_transport *cvs)
 
 	fprintf(stderr, "CVS Valid-responses: %s\n", reply.buf);
 
-	ret = cvs_write(cvs, WR_NOFLUSH, "UseUnchanged\n");
+	cvs_write(cvs, WR_NOFLUSH, "UseUnchanged\n");
 
 	const char *gzip = getenv("GZIP");
 	if (gzip)
@@ -881,6 +881,9 @@ static int cvs_negotiate(struct cvs_transport *cvs)
 		cvs_init_compress(cvs, 1);
 
 	ret = cvs_write(cvs, WR_FLUSH, "version\n");
+	if (ret)
+		die("cvs_write failed");
+
 	ret = cvs_getreply(cvs, &reply, "M ");
 	if (ret)
 		return -1;
@@ -1569,11 +1572,11 @@ int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until, add_rev_fn_t
 		return parse_cvs_rlog(cvs, cb, data);
 
 	if (since) {
-		ret = cvs_write(cvs,
-				WR_NOFLUSH,
-				"Argument -d\n"
-				"Argument %s<1 Jan 2038 05:00:00 -0000\n",
-				show_date(since, 0, DATE_RFC2822));
+		cvs_write(cvs,
+			WR_NOFLUSH,
+			"Argument -d\n"
+			"Argument %s<1 Jan 2038 05:00:00 -0000\n",
+			show_date(since, 0, DATE_RFC2822));
 	}
 
 	ret = cvs_write(cvs,

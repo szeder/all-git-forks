@@ -1417,15 +1417,16 @@ static int push_commit_list_to_cvs(struct commit_list *push_list, const char *cv
 	sort_string_list(&touched_file_list);
 	string_list_remove_duplicates(&touched_file_list, 0);
 
+	/*
+	 * filtered later
+	 *
 	push_list_it = push_list;
 	while ((push_list_it = push_list_it->next)) {
 		commit = push_list_it->item;
 		if (!commit->util)
 			die("No files changed in pending commit: %s", sha1_to_hex(commit->object.sha1));
 	}
-	/*
-	 * TODO:
-	 */
+	*/
 	if (new_directory_list.nr &&
 	    create_remote_directories(cvs_branch, &new_directory_list))
 		return 1;
@@ -1435,12 +1436,16 @@ static int push_commit_list_to_cvs(struct commit_list *push_list, const char *cv
 		return 1;
 	}
 
-
 	push_list_it = push_list;
 	while ((push_list_it = push_list_it->next)) {
 		commit = push_list_it->item;
-		if (push_commit_to_cvs(commit, cvs_branch, revision_meta_hash))
-			return 1;
+		if (commit->util) {
+			if (push_commit_to_cvs(commit, cvs_branch, revision_meta_hash))
+				return 1;
+		}
+		else {
+			warning("Skipping empty commit: %s", sha1_to_hex(commit->object.sha1));
+		}
 	}
 	/*
 	 * TODO:
@@ -1578,10 +1583,7 @@ void add_file_revision_cb(const char *branch,
 		meta_map_add(branch_meta_map, branch, meta);
 	}
 
-	if (meta->last_revision_timestamp < timestamp)
-		add_file_revision(meta, path, revision, author, msg, timestamp, isdead);
-	else
-		skipped++;
+	skipped += add_file_revision(meta, path, revision, author, msg, timestamp, isdead);
 	revisions_all_branches_total++;
 	//display_progress(progress_rlog, revisions_all_branches_total);
 }
@@ -1642,6 +1644,12 @@ static int cmd_list(const char *line)
 	}
 	else {
 		for_each_ref_in(get_meta_ref_prefix(), on_each_ref, branch_meta_map);
+		/*
+		 * handle case when last rlog didn't pick all files committed
+		 * last second (hit during autotests)
+		 */
+		if (update_since > 0)
+			update_since--;
 		fprintf(stderr, "update since: %ld\n", update_since);
 
 		/*

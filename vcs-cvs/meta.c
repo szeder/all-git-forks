@@ -91,41 +91,6 @@ static inline const char *hex_unprintable(const char *sb)
 	return strbuf_detach(&out, NULL);
 }
 
-/*#define max_comment 8192
-static unsigned int strcmp_whitesp_ignore(const char *str1, const char *str2)
-{
-	char buf1[max_comment];
-	char buf2[max_comment];
-	char *p1 = buf1;
-	char *p2 = buf2;
-	const char *o1 = str1;
-	const char *o2 = str2;
-
-	if (strlen(str1) >= max_comment || strlen(str2) >= max_comment)
-		die("strcmp_whitesp_ignore buf too small");
-
-	while (*str1) {
-		if (!isspace(*str1))
-			*p1++ = tolower(*str1);
-		str1++;
-	}
-	*p1 = '\0';
-
-	while (*str2) {
-		if (!isspace(*str2))
-			*p2++ = tolower(*str2);
-		str2++;
-	}
-	*p2 = '\0';
-
-	int rc;
-	rc = strcmp(buf1, buf2);
-	if (rc != 0)
-		fprintf(stderr, "cmp: %d\n'%s'\n'%s'\n'%s'\n'%s'\n", rc, hex_unprintable(buf1), hex_unprintable(buf2), hex_unprintable(o1), hex_unprintable(o2));
-
-	return rc;
-}*/
-
 static unsigned int strcmp_whitesp_ignore(const char *str1, const char *str2)
 {
 	static struct strbuf buf1 = STRBUF_INIT;
@@ -165,6 +130,9 @@ static unsigned int strcmp_whitesp_ignore(const char *str1, const char *str2)
 
 static void revision_list_add(struct file_revision *rev, struct file_revision_list *list)
 {
+	/*
+	 * TODO: replace with ALLOC_GROW
+	 */
 	if (list->size == list->nr) {
 		if (list->size == 0)
 			list->size = 64;
@@ -176,7 +144,8 @@ static void revision_list_add(struct file_revision *rev, struct file_revision_li
 	list->item[list->nr++] = rev;
 }
 
-void add_file_revision(struct branch_meta *meta,
+int rev_cmp(const char *rev1, const char *rev2);
+int add_file_revision(struct branch_meta *meta,
 		       const char *path,
 		       const char *revision,
 		       const char *author,
@@ -195,6 +164,7 @@ void add_file_revision(struct branch_meta *meta,
 	 */
 	struct file_revision *rev;
 	struct patchset *patchset;
+	struct file_revision_meta *prev_meta;
 	unsigned int hash;
 
 	/*
@@ -202,28 +172,18 @@ void add_file_revision(struct branch_meta *meta,
 	 * check import date, check branch last imported commit,
 	 * compare and skip earlier revisions
 	 */
-	/*int rev1_br;
-	int rev1_ver;
-	int rev1_len;
-	int rev2_br;
-	int rev2_ver;
-	int rev2_len;
+	if (meta->last_revision_timestamp > timestamp)
+		return 1;
 
-	rev1_len = get_branch_rev(rev1, &rev1_br, &rev1_ver);
-	rev2_len = get_branch_rev(rev2, &rev2_br, &rev2_ver);
+	hash = hash_path(path);
+	prev_meta = lookup_hash(hash, meta->last_commit_revision_hash);
+	if (prev_meta) {
+		if (strcmp(path, prev_meta->path))
+			die("file path hash collision: \"%s\" \"%s\"", path, prev_meta->path);
 
-	if (rev1_len == -1 || rev2_len == -1 || rev1_len != rev2_len ||
-	    strncmp(rev1, rev2, rev1_len) != 0)
-		return 0;
-
-	if (rev1_br == rev2_br) {
-		if (rev1_ver + 1 == rev2_ver)
+		if (rev_cmp(prev_meta->revision, revision) >= 0)
 			return 1;
-		return 0;
 	}
-
-	if (rev2_ver == 0 && rev1_br + 1 == rev2_br)
-		return 1;*/
 
 	rev = xcalloc(1, sizeof(struct file_revision));
 	rev->path = xstrdup(path);
@@ -248,6 +208,7 @@ void add_file_revision(struct branch_meta *meta,
 	}
 	rev->patchset = patchset;
 	revision_list_add(rev, meta->rev_list);
+	return 0;
 }
 
 time_t find_first_commit_time(struct branch_meta *meta)
@@ -504,10 +465,77 @@ int is_prev_rev(const char *rev1, const char *rev2)
 	return 0;
 }
 
-static int compare_rev_by_timestamp(const void *p1, const void *p2)
+/*
+ * TODO: make it work with revisions from diffent branches
+ */
+int rev_cmp(const char *rev1, const char *rev2)
 {
-	const struct file_revision *rev1 = *(void**)p1;
-	const struct file_revision *rev2 = *(void**)p2;
+	int rev1_br;
+	int rev1_ver;
+	int rev2_br;
+	int rev2_ver;
+	int rev1_len;
+	int rev2_len;
+
+	rev1_len = get_branch_rev(rev1, &rev1_br, &rev1_ver);
+	rev2_len = get_branch_rev(rev2, &rev2_br, &rev2_ver);
+
+	if (rev1_len == -1 || rev2_len == -1)
+		die("bad revisions: \"%s\", \"%s\"", rev1, rev2);
+
+	if (rev1_len != rev2_len) {
+		if (is_prev_branch(rev1, rev2))
+			return -1;
+
+		if (is_prev_branch(rev2, rev1))
+			return 1;
+
+		die("cannot compare revisions from different branches: \"%s\", \"%s\"", rev1, rev2);
+	}
+
+	if (strncmp(rev1, rev2, rev1_len))
+		die("cannot compare revisions from different branches: \"%s\", \"%s\"", rev1, rev2);
+
+	if (rev1_br < rev2_br)
+		return -1;
+	else if (rev1_br > rev2_br)
+		return 1;
+
+	if (rev1_ver < rev2_ver)
+		return -1;
+	else if (rev1_ver > rev2_ver)
+		return 1;
+
+	return 0;
+}
+
+static int compare_fix_rev(const void *p1, const void *p2)
+{
+	struct file_revision *rev1 = *(void**)p1;
+	struct file_revision *rev2 = *(void**)p2;
+
+	int is_same_file = !strcmp(rev1->path, rev2->path);
+
+	if (is_same_file) {
+		switch (rev_cmp(rev1->revision, rev2->revision)) {
+		case -1:
+			if (rev1->timestamp > rev2->timestamp) {
+				error("file: %s revision: %s time: %ld is later then revision: %s time: %ld (fixing)",
+					rev1->path, rev1->revision, rev1->timestamp, rev2->revision, rev2->timestamp);
+				rev2->timestamp = rev1->timestamp;
+			}
+			return -1;
+		case 1:
+			if (rev2->timestamp > rev1->timestamp) {
+				error("file: %s revision: %s time: %ld is later then revision: %s time: %ld (fixing)",
+					rev2->path, rev2->revision, rev2->timestamp, rev1->revision, rev1->timestamp);
+				rev1->timestamp = rev2->timestamp;
+			}
+			return 1;
+		case 0:
+			die("dup file: %s revision: %s", rev1->path, rev1->revision);
+		}
+	}
 
 	if (rev1->timestamp < rev2->timestamp)
 		return -1;
@@ -539,7 +567,7 @@ void aggregate_patchsets(struct branch_meta *meta)
 
 	int i;
 
-	qsort(meta->rev_list->item, meta->rev_list->nr, sizeof(void *), compare_rev_by_timestamp);
+	qsort(meta->rev_list->item, meta->rev_list->nr, sizeof(void *), compare_fix_rev);
 
 	fprintf(stderr, "SORT DONE\n");
 	for (i = 0; i < meta->rev_list->nr; i++) {
@@ -565,7 +593,8 @@ void aggregate_patchsets(struct branch_meta *meta)
 
 			rev->prev = prev;
 			if (!is_prev_rev(prev->revision, rev->revision)) {
-				error("revision sequence is wrong: file: %s %s %s -> %s", rev->path, prev->path, prev->revision, rev->revision);
+				//error("revision sequence is wrong: file: %s %s %s -> %s", rev->path, prev->path, prev->revision, rev->revision);
+				die("revision sequence is wrong: file: %s %s %s -> %s", rev->path, prev->path, prev->revision, rev->revision);
 			}
 
 			if (patchset->timestamp &&
