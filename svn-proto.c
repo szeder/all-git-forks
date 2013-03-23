@@ -601,6 +601,39 @@ static void svn_list(const char *path, int rev, struct string_list *dirs) {
 	strbuf_release(&buf);
 }
 
+static struct mergeinfo *svn_get_mergeinfo(const char *path, int rev) {
+	struct conn *c = &main_connection;
+	struct strbuf buf = STRBUF_INIT;
+	struct mergeinfo *ret = NULL;
+
+	sendf(c, "( get-dir ( %d:%s ( %d ) true false ) )\n",
+		(int) strlen(path), path, rev);
+
+	if (read_success(c)) return NULL;
+
+	if (!strcmp(read_command(c), "success")) {
+		if (skip_next(c)) malformed_die(c); /* rev */
+		if (read_list(c)) malformed_die(c); /* props */
+
+		while (!ret && !read_list(c)) {
+			if (read_string(c, &buf)) malformed_die(c);
+
+			if (!strcmp(buf.buf, "svn:mergeinfo")) {
+				if (read_string(c, &buf)) malformed_die(c);
+				ret = parse_svn_mergeinfo(buf.buf);
+			}
+
+			if (read_end(c)) malformed_die(c);
+		}
+
+		if (read_end(c)) malformed_die(c);
+	}
+
+	if (read_command_end(c)) malformed_die(c);
+
+	strbuf_release(&buf);
+	return ret;
+}
 
 
 
@@ -661,10 +694,10 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 
 		while (!read_list(c)) {
 			/* path A|D|R|M [copy-path copy-rev] */
-			int ismodify;
+			int isadd;
 			int64_t copyrev = -1;
 			if (read_string(c, &name)) malformed_die(c);
-			ismodify = !strcmp(read_word(c), "M");
+			isadd = !strcmp(read_word(c), "A");
 
 			if (have_optional(c)) {
 				/* copy-path, copy-rev */
@@ -710,15 +743,9 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 					cmt->copyrev = (int) copyrev;
 					cmt->new_branch = 1;
 
-				} else if (!strcmp(name.buf, r->path)) {
+				} else if (isadd && !strcmp(name.buf, r->path)) {
 					struct svn_entry *cmt = make_entry(r);
-					if (ismodify) {
-						/* may be property changes on the branch
-						 * folder itself */
-						cmt->copy_modified = 1;
-					} else {
-						cmt->new_branch = 1;
-					}
+					cmt->new_branch = 1;
 				}
 			}
 
@@ -817,9 +844,6 @@ static void *update_worker(void *p) {
 	struct strbuf before = STRBUF_INIT;
 	struct strbuf after = STRBUF_INIT;
 	struct strbuf diff = STRBUF_INIT;
-	struct strbuf branch_token = STRBUF_INIT;
-	struct strbuf prop = STRBUF_INIT;
-	struct strbuf value = STRBUF_INIT;
 	struct conn *c = p;
 
 	svn_connect(c, NULL);
@@ -892,22 +916,6 @@ static void *update_worker(void *p) {
 					helperf(cmt, "add-dir %d:%s\n",
 							(int) name.len,
 							name.buf);
-				} else {
-					/* parent-token, child-token */
-					if (skip_next(c)) malformed_die(c);
-					if (read_string(c, &branch_token)) malformed_die(c);
-				}
-
-				if (read_command_end(c)) malformed_die(c);
-
-			} else if (!strcmp(s, "open-dir")) {
-				/* path, parent-token, child-token, rev */
-				if (read_string(c, &name)) malformed_die(c);
-				relative_svn_path(&name, skip);
-
-				if (!name.len) {
-					if (skip_next(c)) malformed_die(c);
-					if (read_string(c, &branch_token)) malformed_die(c);
 				}
 
 				if (read_command_end(c)) malformed_die(c);
@@ -978,25 +986,6 @@ static void *update_worker(void *p) {
 							name.buf);
 				}
 
-			} else if (!strcmp(s, "change-dir-prop")) {
-				/* dir-token, name, [value] */
-				strbuf_reset(&value);
-				if (read_string(c, &name)) malformed_die(c);
-				if (read_string(c, &prop)) malformed_die(c);
-				if (have_optional(c)) {
-					if (read_string(c, &value)) malformed_die(c);
-					if (read_end(c)) malformed_die(c);
-				}
-
-				if (read_command_end(c)) malformed_die(c);
-
-				if (!strbuf_cmp(&name, &branch_token)
-				&& !strcmp(prop.buf, "svn:mergeinfo")) {
-					helperf(cmt, "set-mergeinfo %d:%s\n",
-							(int) value.len,
-							value.buf);
-				}
-
 			} else {
 				if (read_command_end(c)) malformed_die(c);
 			}
@@ -1015,9 +1004,6 @@ static void *update_worker(void *p) {
 	strbuf_release(&before);
 	strbuf_release(&after);
 	strbuf_release(&diff);
-	strbuf_release(&branch_token);
-	strbuf_release(&prop);
-	strbuf_release(&value);
 
 	return NULL;
 }
@@ -1114,7 +1100,7 @@ static void svn_delete(const char *p) {
 			(int) strlen(p+1), p+1, dir);
 }
 
-static void svn_start_commit(int type, const char *log, const char *path, int rev, const char *copy, int copyrev, struct mergeinfo *mi) {
+static void svn_start_commit(int type, const char *log, const char *path, int rev, const char *copy, int copyrev) {
 	struct conn *c = &main_connection;
 	int dir;
 
@@ -1149,12 +1135,14 @@ static void svn_start_commit(int type, const char *log, const char *path, int re
 
 		dir_changed(++dir, path);
 	}
+}
 
-	if (type != SVN_DELETE && mi) {
-		const char *str = make_svn_mergeinfo(mi);
-		sendf(c, "( change-dir-prop ( 3:d%02X 13:svn:mergeinfo ( %d:%s ) ) )\n",
-			dir, (int) strlen(str), str);
-	}
+static void svn_set_mergeinfo(const char *path, struct mergeinfo *mi) {
+	struct conn *c = &main_connection;
+	int dir = change_dir(path);
+	const char *str = make_svn_mergeinfo(mi);
+	sendf(c, "( change-dir-prop ( 3:d%02X 13:svn:mergeinfo ( %d:%s ) ) )\n",
+		dir, (int) strlen(str), str);
 }
 
 static int svn_finish_commit(struct strbuf *time) {
@@ -1268,8 +1256,10 @@ struct svn_proto proto_svn = {
 	&svn_isdir,
 	&svn_read_log,
 	&svn_read_updates,
+	&svn_get_mergeinfo,
 	&svn_start_commit,
 	&svn_finish_commit,
+	&svn_set_mergeinfo,
 	&svn_mkdir,
 	&svn_send_file,
 	&svn_delete,

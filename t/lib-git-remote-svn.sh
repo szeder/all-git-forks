@@ -82,8 +82,8 @@ test_git_date () {
 
 test_svn_subject () {
 	subject="$1"
-	revision=`test -n "$2" && echo "-r $2"`
-	commit_subject="`svn_cmd log -l 1 --xml $revision | grep '<msg>' | sed -re 's#<msg>(.*)#\1#g' | sed -re 's#(.*)</msg>#\1#g'`"
+	shift
+	commit_subject="`svn_cmd log -l 1 --xml "$@" | grep '<msg>' | sed -re 's#<msg>(.*)#\1#g' | sed -re 's#(.*)</msg>#\1#g'`"
 	echo test_svn_subject "$commit_subject" "$subject"
 	test "$commit_subject" = "$subject"
 }

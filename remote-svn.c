@@ -42,6 +42,7 @@ static struct string_list refs = STRING_LIST_INIT_DUP;
 static struct string_list path_for_ref = STRING_LIST_INIT_NODUP;
 static struct string_list excludes = STRING_LIST_INIT_DUP;
 static struct string_list relexcludes = STRING_LIST_INIT_DUP;
+static struct strbuf twig_path = STRBUF_INIT;
 
 static int config(const char *key, const char *value, void *dummy) {
 	if (!strcmp(key, "svn.eol")) {
@@ -67,6 +68,14 @@ static int config(const char *key, const char *value, void *dummy) {
 
 	} else if (!strcmp(key, "svn.maxrequests")) {
 		svn_max_requests = git_config_int(key, value);
+		return 0;
+
+	} else if (!strcmp(key, "svn.twigpath")) {
+		strbuf_reset(&twig_path);
+		if (value) {
+			strbuf_addstr(&twig_path, value);
+			string_list_insert(&relexcludes, value);
+		}
 		return 0;
 
 	} else if (!prefixcmp(key, "remote.")) {
@@ -219,6 +228,9 @@ static struct svnref *get_push_ref(struct refspec *spec) {
 
 	if (!path) {
 		char *p = apply_refspecs(refmap, refmap_nr, spec->dst);
+		if (!p) {
+			return NULL;
+		}
 		strbuf_reset(&buf);
 		strbuf_addstr(&buf, relpath);
 		strbuf_addch(&buf, '/');
@@ -260,41 +272,47 @@ static void set_ref_start(struct svnref *r, int start) {
 	r->start = start;
 }
 
-static int load_ref_cb(const char* refname, const unsigned char* sha1, int flags, void* cb_data) {
+static int load_ref_cb(const char* refname, const unsigned char* cmtsha1, int flags, void* cb_data) {
 	struct strbuf buf = STRBUF_INIT;
 	struct commit *svn;
 	struct svnref *r;
 	const char *ext = strrchr(refname, '.');
-	unsigned char logsha1[20];
+	unsigned char sha1[20];
 	enum object_type type;
 	size_t srcn;
-	char *logrev;
+	char *p;
 	int rev;
 
 	if (!ext || ext[1] < '0' || ext[1] > '9')
 		return 0;
 
-	svn = lookup_commit(sha1);
+	svn = lookup_commit(cmtsha1);
 	rev = get_svn_revision(svn);
 	r = get_ref(get_svn_path(svn), rev);
 	set_ref_start(r, atoi(ext + 1));
 	r->rev = rev;
 	r->svn = svn;
-	r->is_tag = get_svn_istag(svn);
 
+	strbuf_reset(&buf);
 	strbuf_addf(&buf, "%s%s.log", refdir.buf, refname);
 
-	if (!read_ref(buf.buf, logsha1)
-	&& (logrev = read_sha1_file(logsha1, &type, &srcn)) != NULL)
-	{
-		r->logrev = atoi(logrev);
-		free(logrev);
+	if (!read_ref(buf.buf, sha1) && (p = read_sha1_file(sha1, &type, &srcn)) != NULL) {
+		r->logrev = atoi(p);
+		free(p);
 	}
-	strbuf_reset(&buf);
 
 	if (r->logrev < rev) {
 		r->logrev = rev;
 	}
+
+	strbuf_reset(&buf);
+	strbuf_addf(&buf, "%s%s.tag", refdir.buf, refname);
+
+	if (!read_ref(buf.buf, sha1)) {
+		r->is_tag = 1;
+	}
+
+	strbuf_release(&buf);
 
 	return 0;
 }
@@ -517,6 +535,15 @@ static void do_connect(void) {
 		strbuf_addstr(&buf, relexcludes.items[i].string);
 		clean_svn_path(&buf);
 		string_list_insert(&excludes, buf.buf);
+	}
+
+	if (twig_path.len) {
+		strbuf_reset(&buf);
+		strbuf_addstr(&buf, relpath);
+		strbuf_addch(&buf, '/');
+		strbuf_addstr(&buf, twig_path.buf);
+		clean_svn_path(&buf);
+		strbuf_swap(&buf, &twig_path);
 	}
 
 	strbuf_release(&buf);
@@ -882,10 +909,9 @@ struct svn_entry* svn_start_next_update(void) {
 			fprintf(stderr, "start commit %s %d\n", refname(r), c->rev);
 
 			if (copysrc && !c->copy_modified) {
-				helperf(c, "branch %s %d %s %d %d %d:%s %d:%s %d:",
+				helperf(c, "branch %s %d %s %d %d:%s %d:%s %d:",
 						refszname(copysrc), c->copyrev,
 						refszname(r), c->rev,
-						r->is_tag,
 						(int) strlen(r->path), r->path,
 						(int) strlen(c->ident), c->ident,
 						(int) strlen(c->msg));
@@ -914,10 +940,9 @@ struct svn_entry* svn_start_next_update(void) {
 
 void svn_finish_update(struct svn_entry *c) {
 	struct svnref *r = c->ref;
-	helperf(c, "commit %s %d %d %d %d:%s %d:%s %d:",
+	helperf(c, "commit %s %d %d %d:%s %d:%s %d:",
 			refszname(r),
 			c->prev, c->rev,
-			r->is_tag,
 			(int) strlen(r->path), r->path,
 			(int) strlen(c->ident), c->ident,
 			(int) strlen(c->msg));
@@ -1120,6 +1145,116 @@ static const char *push_message(struct object *obj, int use_cmt_msg) {
 	}
 }
 
+#define PUSH_SECOND_PARENT 1
+#define PUSH_FIRST_PARENT_TAG 2
+#define PUSH_FIRST_PARENT_NEW 4
+#define PUSH_FIRST_PARENT 8
+#define PUSH_NEW_COMMIT_MASK 15
+#define PUSH_IN_SVN 16
+#define PUSH_SVN_CMT 32
+#define PUSH_MASK 63
+#define MI_FIRST_PARENT 0x40
+#define MI_MERGED_PARENT 0x80
+#define MI_IN_SVN 0x100
+#define MI_SVN_CMT 0x200
+#define MI_MASK 0x3C0
+
+static void insert_by_date(struct commit *c, struct commit_list **cmts, int mask) {
+	if (parse_commit(c))
+		die("invalid commit %s", sha1_to_hex(c->object.sha1));
+	if (!(c->object.flags & mask))
+		commit_list_insert_by_date(c, cmts);
+}
+
+static void insert_svn_commit(struct commit *svn, struct commit_list **cmts, int mask, int svncmt, int insvn) {
+	if (svn) {
+		struct commit *cmt = svn_commit(svn);
+
+		insert_by_date(svn, cmts, mask);
+		insert_by_date(cmt, cmts, mask);
+
+		svn->object.flags |= svncmt;
+
+		if (!(cmt->object.flags & insvn)) {
+			cmt->util = svn;
+			cmt->object.flags |= insvn;
+		}
+	}
+}
+
+static void compute_mergeinfo(struct commit *c, struct mergeinfo* mi) {
+	/* we want to find all parents of c recursively that are not
+	 * included in the first parent copy path */
+	struct commit_list *cmts = NULL;
+	struct commit_list *pp = c->parents;
+	int i, cmts_to_find = 0;
+
+	/* push the initial parents to find */
+	insert_by_date(pp->item, &cmts, MI_MASK);
+	pp->item->object.flags |= MI_FIRST_PARENT;
+
+	for (pp = pp->next; pp != NULL; pp = pp->next) {
+		struct commit *p = pp->item;
+		if (!(p->object.flags & MI_MERGED_PARENT)) {
+			cmts_to_find++;
+			insert_by_date(pp->item, &cmts, MI_MASK);
+			pp->item->object.flags |= MI_MERGED_PARENT;
+		}
+	}
+
+	/* push the svn heads */
+	for (i = 0; i < refs.nr; i++) {
+		struct svnref *r;
+		for (r = refs.items[i].util; r != NULL; r = r->next) {
+			if (!r->is_tag) {
+				insert_svn_commit(r->svn, &cmts, MI_MASK, MI_SVN_CMT, MI_IN_SVN);
+			}
+		}
+	}
+
+	while (cmts && cmts_to_find) {
+		c = pop_commit(&cmts);
+
+		if (c->object.flags & MI_SVN_CMT) {
+			insert_svn_commit(svn_parent(c), &cmts, MI_MASK, MI_SVN_CMT, MI_IN_SVN);
+
+		} else if (c->object.flags & MI_FIRST_PARENT) {
+			pp = c->parents;
+			if (pp) {
+				insert_by_date(pp->item, &cmts, MI_MASK);
+				pp->item->object.flags |= MI_FIRST_PARENT;
+				pp = pp->next;
+			}
+
+			if (c->object.flags & MI_MERGED_PARENT) {
+				cmts_to_find--;
+			}
+
+		} else if (c->object.flags & MI_MERGED_PARENT) {
+			if (c->object.flags & MI_IN_SVN) {
+				struct commit *svn = c->util;
+				const char *path = get_svn_path(svn);
+				int rev = get_svn_revision(svn);
+				add_svn_mergeinfo(mi, path, rev, rev);
+			}
+
+			cmts_to_find--;
+
+			for (pp = c->parents; pp != NULL; pp = pp->next) {
+				struct commit *p = pp->item;
+				if (!(p->object.flags & MI_MERGED_PARENT)) {
+					cmts_to_find++;
+					insert_by_date(pp->item, &cmts, MI_MASK);
+					pp->item->object.flags |= MI_MERGED_PARENT;
+				}
+			}
+		}
+	}
+
+	clear_object_flags(MI_MASK);
+	free_commit_list(cmts);
+}
+
 static int push_commit(struct svnref *r, int type, struct object *obj, const char *specdst, int use_cmt_msg) {
 	static struct strbuf buf = STRBUF_INIT;
 
@@ -1128,7 +1263,7 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
 	const char *copypath = NULL;
 	struct credential *cred = push_credential(obj, use_cmt_msg);
 	unsigned char sha1[20];
-	struct mergeinfo *mergeinfo, *svn_mergeinfo;
+	struct mergeinfo *mergeinfo;
 	struct commit *svnbase, *cmt;
 	struct diff_options op;
 
@@ -1140,9 +1275,11 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
 
 	if (!use_cmt_msg || obj->type == OBJ_TAG) {
 		svnbase = cmt->util;
-		mergeinfo = get_mergeinfo(svnbase);
-		svn_mergeinfo = get_svn_mergeinfo(svnbase);
 		if (!svnbase) die("internal: no base");
+
+		mergeinfo = proto->get_mergeinfo(
+				get_svn_path(svnbase),
+				get_svn_revision(svnbase));
 
 	} else if (cmt->parents) {
 		struct commit_list *pp = cmt->parents;
@@ -1150,37 +1287,17 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
 		svnbase = pp->item->util;
 		if (!svnbase) die("internal: no base");
 
-		/* mergeinfo contains the svn revs that follow the copy
-		 * path (first parent), svn_mergeinfo is all paths from
-		 * obj minus the direct path. We need to merge in all of
-		 * the direct and indirect paths from our second+
-		 * parents excluding our own direct path. */
+		mergeinfo = proto->get_mergeinfo(
+				get_svn_path(svnbase),
+				get_svn_revision(svnbase));
 
-		mergeinfo = get_mergeinfo(svnbase);
-		svn_mergeinfo = get_svn_mergeinfo(svnbase);
-		pp = pp->next;
-
-		while (pp) {
-			struct commit *sc = pp->item->util;
-
-			if (sc) {
-				struct mergeinfo *mi;
-				mi = get_mergeinfo(sc);
-				merge_svn_mergeinfo(svn_mergeinfo, mi, mergeinfo);
-				free_svn_mergeinfo(mi);
-
-				mi = get_svn_mergeinfo(sc);
-				merge_svn_mergeinfo(svn_mergeinfo, mi, mergeinfo);
-				free_svn_mergeinfo(mi);
-			}
-
-			pp = pp->next;
+		if (pp && pp->next) {
+			compute_mergeinfo(cmt, mergeinfo);
 		}
 
 	} else {
 		svnbase = NULL;
 		mergeinfo = parse_svn_mergeinfo("");
-		svn_mergeinfo = parse_svn_mergeinfo("");
 	}
 
 	if (type == SVN_ADD || type == SVN_REPLACE) {
@@ -1194,7 +1311,12 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
 	svn_checkout_index(&the_index, cmt);
 	svn_checkout_index(&svn_index, svnbase);
 
-	proto->start_commit(type, log, r->path, max(r->rev, copyrev) + 1, copypath, copyrev, svn_mergeinfo);
+	proto->start_commit(type, log, r->path, max(r->rev, copyrev) + 1, copypath, copyrev);
+
+	/* we always send mergeinfo so that at least some property
+	 * changes on the path so svn log picks up the commit for this
+	 * path */
+	proto->set_mergeinfo(r->path, mergeinfo);
 
 	diff_setup(&op);
 	op.output_format = DIFF_FORMAT_NO_OUTPUT;
@@ -1241,12 +1363,6 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
 		return -1;
 	}
 
-	if (type == SVN_MODIFY) {
-		add_svn_mergeinfo(mergeinfo, r->path, r->rev+1, rev);
-	} else {
-		add_svn_mergeinfo(mergeinfo, r->path, rev, rev);
-	}
-
 	/* update the svn ref */
 
 	if (!svn_index.cache_tree)
@@ -1255,9 +1371,7 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
 		die("failed to update cache tree");
 
 	if (write_svn_commit(r->svn, cmt, svn_index.cache_tree->sha1,
-				ident, r->path, rev, r->is_tag,
-				mergeinfo, svn_mergeinfo,
-				sha1)) {
+				ident, r->path, rev, sha1)) {
 		die("failed to write svn commit");
 	}
 
@@ -1298,7 +1412,6 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
 	}
 
 	free_svn_mergeinfo(mergeinfo);
-	free_svn_mergeinfo(svn_mergeinfo);
 
 	trypause();
 	return 0;
@@ -1318,16 +1431,9 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
  * In order to do this we trace from the new heads back and categorize
  * each commit with one of the following priorities.
  *
- * cmt->util holds a svn_push for FIRST_PARENT*, and the svn commit for
+ * cmt->util holds a svn_push for PUSH_FIRST_PARENT*, and the svn commit for
  * IN_SVN
  */
-
-#define SECOND_PARENT 1
-#define FIRST_PARENT_TAG 2
-#define FIRST_PARENT_NEW 3
-#define FIRST_PARENT 4
-#define IN_SVN 5
-#define SVNCMT 6
 
 struct svn_push {
 	struct svn_push *next;
@@ -1366,47 +1472,19 @@ static int is_first_parent(struct commit *child, struct commit *parent) {
  */
 static struct commit_list *push_all;
 static struct svn_push *push_heads;
-static int new_commits;
+static int push_cmts_to_find;
 
-static void insert_commit(struct commit *cmt, int type, void *util) {
-	struct commit_list **pp;
-	int oldtype = cmt->object.flags;
+static void insert_commit(struct commit *c, int flag, void *util) {
+	int flags = c->object.flags;
 
-	/* seen already by higher priority eg first parent or svn */
-	if (oldtype >= type)
-		return;
+	if ((flags & PUSH_MASK) < flag)
+		c->util = util;
 
-	if (oldtype) {
-		if (type < IN_SVN)
-			new_commits--;
+	if ((flags & PUSH_NEW_COMMIT_MASK) == 0)
+		push_cmts_to_find++;
 
-		/* we need to remove the commit from the list and
-		 * reinsert so it gets placed in the correct position */
-		for (pp = &push_all; *pp; pp = &(*pp)->next) {
-			if ((*pp)->item == cmt) {
-				pop_commit(pp);
-				break;
-			}
-		}
-	}
-
-	/* Sort by date then flags so svncmts are parsed before their
-	 * pointed to commits. */
-	for (pp = &push_all; *pp; pp = &(*pp)->next) {
-		if ((*pp)->item->date < cmt->date) {
-			break;
-		}
-		if ((*pp)->item->date == cmt->date && (*pp)->item->object.flags < type) {
-			break;
-		}
-	}
-
-	if (type < IN_SVN)
-		new_commits++;
-
-	cmt->object.flags = type;
-	cmt->util = util;
-	commit_list_insert(cmt, pp);
+	insert_by_date(c, &push_all, PUSH_MASK);
+	c->object.flags |= flag;
 }
 
 static struct refspec **pushv;
@@ -1415,16 +1493,33 @@ static size_t pushn, pusha;
 static void push(void) {
 	int i;
 	struct commit_list *cmts = NULL;
-	int cmts_to_push = 0;
+	int cmts_to_push = 0, cmts_to_find = 0;
 	struct svn_push *push;
+	struct refspec twig_spec;
+	struct svn_push *twig, twig_push;
+
+	if (twig_path.len) {
+		memset(&twig_spec, 0, sizeof(twig_spec));
+		twig_spec.force = 1;
+		twig_spec.dst = twig_path.buf;
+
+		memset(&twig_push, 0, sizeof(twig_push));
+		twig_push.ref = get_ref(twig_path.buf, INT_MAX);
+		twig_push.spec = &twig_spec;
+
+		twig = &twig_push;
+
+		if (proto->isdir(twig_path.buf, listrev)) {
+			twig_push.ref->exists_at_head = 1;
+		}
+	}
 
 	/* push all svn heads */
 	for (i = 0; i < refs.nr; i++) {
 		struct svnref *r;
 		for (r = refs.items[i].util; r != NULL; r = r->next) {
 			if (!r->is_tag) {
-				insert_commit(r->svn, SVNCMT, NULL);
-				insert_commit(svn_commit(r->svn), IN_SVN, r->svn);
+				insert_svn_commit(r->svn, &push_all, PUSH_MASK, PUSH_SVN_CMT, PUSH_IN_SVN);
 			}
 		}
 	}
@@ -1435,7 +1530,7 @@ static void push(void) {
 		struct object *obj = NULL;
 		struct commit *cmt = NULL;
 		struct svn_push *push;
-		int type;
+		int flag;
 
 		if (*spec->src) {
 			unsigned char sha1[20];
@@ -1454,29 +1549,34 @@ static void push(void) {
 		push->spec = spec;
 		push->obj = obj;
 
+		if (!push->ref) {
+			remotef("error %s not mapped\n", spec->dst);
+			return;
+		}
+
 		if (cmt) {
 			struct svnref *r = push->ref;
 
 			if (!prefixcmp(spec->dst, "refs/tags/")) {
 				r->is_tag = 1;
 				push->replace = 1;
-				type = FIRST_PARENT_TAG;
+				flag = PUSH_FIRST_PARENT_TAG;
 
 			} else if (!r->svn || !r->exists_at_head) {
-				type = FIRST_PARENT_NEW;
+				flag = PUSH_FIRST_PARENT_NEW;
 
 			} else if (is_first_parent(cmt, svn_commit(r->svn))) {
-				type = FIRST_PARENT;
+				flag = PUSH_FIRST_PARENT;
 
 			} else if (!spec->force) {
 				remotef("error %s non-fast forward\n", spec->dst);
 				return;
 
 			} else {
-				type = FIRST_PARENT_NEW;
+				flag = PUSH_FIRST_PARENT_NEW;
 			}
 
-			insert_commit(cmt, type, push);
+			insert_commit(cmt, flag, push);
 		}
 
 		push->next = push_heads;
@@ -1485,37 +1585,30 @@ static void push(void) {
 
 	/* Date based search the tree from the svn and new heads marking
 	 * commits with whether they need to be added to svn and if so
-	 * onto which branch. The search stops when we've run out of
-	 * non-svn commits by tracking the number of non-svn commits
-	 * added.
+	 * onto which branch.
 	 */
-	while (push_all && new_commits > 0) {
+	while (push_all && push_cmts_to_find > 0) {
 		struct commit *c = pop_commit(&push_all);
-		int type = c->object.flags;
+		int flags = c->object.flags;
 
-		if (type == SVNCMT) {
-			struct commit *sc = svn_parent(c);
-			if (sc) {
-				insert_commit(sc, SVNCMT, NULL);
-				insert_commit(svn_commit(sc), IN_SVN, sc);
-			}
+		if (flags & PUSH_SVN_CMT) {
+			insert_svn_commit(svn_parent(c), &push_all, PUSH_MASK, PUSH_SVN_CMT, PUSH_IN_SVN);
 
-		} else if (type < IN_SVN) {
-			struct commit_list *pp = c->parents;
-			for (pp = c->parents; pp != NULL; pp = pp->next) {
-				struct commit *p = pp->item;
-
-				if (parse_commit(p))
-					die("invalid commit %s", p->object.sha1);
-
-				if (pp == c->parents && type > SECOND_PARENT) {
-					insert_commit(p, type, c->util);
-				} else {
-					insert_commit(p, SECOND_PARENT, NULL);
+		} else if (flags & PUSH_NEW_COMMIT_MASK) {
+			if ((flags & PUSH_IN_SVN) == 0) {
+				struct commit_list *pp = c->parents;
+				if (pp) {
+					insert_commit(pp->item, flags, c->util);
+					pp = pp->next;
 				}
+				while (twig && pp) {
+					insert_commit(pp->item, PUSH_SECOND_PARENT, twig);
+					pp = pp->next;
+				}
+				cmts_to_push++;
 			}
 
-			new_commits--;
+			push_cmts_to_find--;
 		}
 	}
 
@@ -1543,14 +1636,14 @@ static void push(void) {
 		struct commit_list *pp;
 		int type;
 
-		if (c->object.flags == IN_SVN || c->object.flags == SECOND_PARENT) {
+		if ((c->object.flags & PUSH_IN_SVN) || (c->object.flags & PUSH_NEW_COMMIT_MASK) == 0) {
 			pop_commit(&cmts);
 			continue;
 		}
 
 		for (pp = c->parents; pp != NULL; pp = pp->next) {
-			int type = pp->item->object.flags;
-			if (type != IN_SVN && type != SECOND_PARENT) {
+			int flags = pp->item->object.flags;
+			if ((flags & PUSH_IN_SVN) == 0 && (flags & PUSH_NEW_COMMIT_MASK)) {
 				commit_list_insert(pp->item, &cmts);
 			}
 		}
@@ -1592,7 +1685,7 @@ static void push(void) {
 		if (push_commit(r, type, &c->object, p->spec->dst, 1))
 			return;
 
-		c->object.flags = IN_SVN;
+		c->object.flags |= PUSH_IN_SVN;
 		c->util = r->svn;
 		p->replace = 0;
 	}
@@ -1611,7 +1704,7 @@ static void push(void) {
 			unsigned char sha1[20];
 
 			proto->change_user(&defcred);
-			proto->start_commit(SVN_DELETE, empty_log_message, r->path, r->logrev+1, NULL, 0, NULL);
+			proto->start_commit(SVN_DELETE, empty_log_message, r->path, r->logrev+1, NULL, 0);
 
 			if (proto->finish_commit(NULL) <= 0) {
 				remotef("error %s commit failed\n", spec->dst);

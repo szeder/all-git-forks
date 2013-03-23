@@ -62,7 +62,7 @@ test_expect_success 'modify file' '
 	svn_cmd up &&
 	cd Trunk &&
 	test_svn_subject "git edit" &&
-	test_svn_subject "svn edit" PREV &&
+	test_svn_subject "svn edit" -r PREV &&
 	test_file file.txt "foo" &&
 	cd ../..
 '
@@ -83,7 +83,7 @@ test_expect_success 'modify file2' '
 	svn_cmd up &&
 	cd Trunk &&
 	test_svn_subject "git edit" &&
-	test_svn_subject "svn edit" PREV &&
+	test_svn_subject "svn edit" -r PREV &&
 	test_file svn.txt "foo" &&
 	cd ../..
 '
@@ -238,9 +238,9 @@ test_expect_success 'replace tag' '
 	svn_cmd up &&
 	cd Tags/ReplaceTag &&
 	test_svn_subject "create replace tag" &&
-	test_svn_subject "dummy commit 2" $((`latest_revision`-1)) &&
-	test_svn_subject "dummy commit 1" $((`latest_revision`-2)) &&
-	test_svn_subject "after replace tag" $((`latest_revision`-3)) &&
+	test_svn_subject "dummy commit 2" -r $((`latest_revision`-1)) &&
+	test_svn_subject "dummy commit 1" -r $((`latest_revision`-2)) &&
+	test_svn_subject "after replace tag" -r $((`latest_revision`-3)) &&
 	test_file file2.txt "bar2" &&
 	test_file file3.txt "bar3" &&
 	cd ../../.. &&
@@ -363,7 +363,7 @@ test_expect_success 'modify and replace branch' '
 	check_branched Branches/MRBranch2 $(($before_rev+1)) &&
 	cd ../MRBranch2 &&
 	test_svn_subject "C" &&
-	test_svn_subject "emptymsg" PREV &&
+	test_svn_subject "emptymsg" -r PREV &&
 	check_branched $init_trunk_path $init_trunk_rev &&
 	cd ../../..
 '
@@ -431,9 +431,27 @@ test_expect_success 'push left merge' '
 	test_file left.txt "left" &&
 	test_file right.txt "right" &&
 	test_svn_subject "merge commit" &&
-	test_svn_subject "left" PREV &&
+	test_svn_subject "left" -r PREV &&
+	test_must_fail test_svn_subject "right" --use-merge-history -r PREV &&
 	svn_cmd log --stop-on-copy -v --xml | grep $prev_path &&
 	svn_cmd log --stop-on-copy -v --xml | grep $prev_rev &&
+	cd ../../..
+'
+
+test_expect_success 'push left merge - twig' '
+	git reset --hard HEAD~ &&
+	git merge --no-ff "merge commit twig" HEAD LeftRight &&
+	git config svn.twigpath Branches/Twig &&
+	GIT_REMOTE_SVN_PAUSE=1 git push -f -v svn HEAD:LeftMerged &&
+	cd svnco &&
+	svn_cmd up &&
+	cd Branches/LeftMerged &&
+	test "`svn pget --strict svn:mergeinfo`" = "/Branches/Twig:`latest_revision Branches/Twig`" &&
+	test_file left.txt "left" &&
+	test_file right.txt "right" &&
+	test_svn_subject "merge commit 2" &&
+	test_svn_subject "left" -r PREV &&
+	test_svn_subject "right" --use-merge-history -r PREV &&
 	cd ../../..
 '
 
@@ -478,7 +496,7 @@ test_expect_success 'push right merge' '
 	svn_cmd up &&
 	cd Branches/RightMerged &&
 	test_svn_subject "merge commit" &&
-	test_svn_subject "left" PREV &&
+	test_svn_subject "left" -r PREV &&
 	svn_cmd log --stop-on-copy -v --xml | grep $prev_path &&
 	svn_cmd log --stop-on-copy -v --xml | grep $prev_rev &&
 	cd ../../..
@@ -543,9 +561,9 @@ test_expect_success 'intermingled commits' '
 	cd .. &&
 	rev=`latest_revision` &&
 	cd svnco/Branches/intermingled &&
-	test_svn_subject "commit 2" $rev &&
-	test_svn_subject "svn commit" $(($rev-1)) &&
-	test_svn_subject "commit 1" $(($rev-2)) &&
+	test_svn_subject "commit 2" -r $rev &&
+	test_svn_subject "svn commit" -r $(($rev-1)) &&
+	test_svn_subject "commit 1" -r $(($rev-2)) &&
 	cd ../../..
 '
 

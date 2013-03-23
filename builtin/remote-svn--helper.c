@@ -235,7 +235,6 @@ err:
 }
 
 static struct commit *git_checkout;
-static struct mergeinfo *mergeinfo, *svn_mergeinfo;
 
 static void checkout(const char *ref, int rev) {
 	struct commit *svn = lookup_commit_reference_by_name(ref);
@@ -245,11 +244,6 @@ static void checkout(const char *ref, int rev) {
 	}
 
 	git_checkout = svn_commit(svn);
-	mergeinfo = get_mergeinfo(svn);
-	svn_mergeinfo = get_svn_mergeinfo(svn);
-
-	add_svn_mergeinfo(mergeinfo, get_svn_path(svn), get_svn_revision(svn), rev);
-
 	svn_checkout_index(&svn_index, svn);
 	svn_checkout_index(&the_index, git_checkout);
 }
@@ -257,12 +251,9 @@ static void checkout(const char *ref, int rev) {
 static void reset(void) {
 	unsigned char sha1[20];
 
+	git_checkout = NULL;
 	svn_checkout_index(&svn_index, NULL);
 	svn_checkout_index(&the_index, NULL);
-
-	git_checkout = NULL;
-	mergeinfo = parse_svn_mergeinfo("");
-	svn_mergeinfo = parse_svn_mergeinfo("");
 
 	/* add .gitattributes so the eol behaviour is
 	 * maintained. This can be changed on the git side later
@@ -333,7 +324,7 @@ static void havelog(const char *ref, int rev, const char *logrev) {
 }
 
 static void branch(const char *copyref, int copyrev,
-		const char *ref, int rev, int istag,
+		const char *ref, int rev,
 		const char *path, const char *ident, const char *msg)
 {
 	static struct strbuf buf = STRBUF_INIT;
@@ -345,21 +336,10 @@ static void branch(const char *copyref, int copyrev,
 		svn = svn_parent(svn);
 	}
 
-	mergeinfo = get_mergeinfo(svn);
-	svn_mergeinfo = get_svn_mergeinfo(svn);
-
-	add_svn_mergeinfo(mergeinfo, get_svn_path(svn), get_svn_revision(svn), copyrev);
-	add_svn_mergeinfo(mergeinfo, path, rev, rev);
-
 	if (write_svn_commit(NULL, svn_commit(svn), cmt_tree(svn),
-				ident, path, rev, istag,
-				mergeinfo, svn_mergeinfo, sha1)) {
+				ident, path, rev, sha1)) {
 		die_errno("write svn commit");
 	}
-
-	free_svn_mergeinfo(mergeinfo);
-	free_svn_mergeinfo(svn_mergeinfo);
-	mergeinfo = svn_mergeinfo = NULL;
 
 	update_ref("remote-svn", ref, sha1, null_sha1, 0, DIE_ON_ERR);
 
@@ -392,7 +372,7 @@ static void branch(const char *copyref, int copyrev,
 	}
 }
 
-static void commit(const char *ref, int baserev, int rev, int istag,
+static void commit(const char *ref, int baserev, int rev,
 		const char *path, const char *ident, const char *msg)
 {
 	static struct strbuf buf = STRBUF_INIT;
@@ -426,15 +406,8 @@ static void commit(const char *ref, int baserev, int rev, int istag,
 		git = lookup_commit(sha1);
 	}
 
-	if (baserev) {
-		add_svn_mergeinfo(mergeinfo, path, baserev+1, rev);
-	} else {
-		add_svn_mergeinfo(mergeinfo, path, rev, rev);
-	}
-
 	if (write_svn_commit(svn, git, idx_tree(&svn_index),
-				ident, path, rev, istag,
-				mergeinfo, svn_mergeinfo, sha1)) {
+				ident, path, rev, sha1)) {
 		die_errno("write svn commit");
 	}
 
@@ -452,9 +425,6 @@ static void commit(const char *ref, int baserev, int rev, int istag,
 		delete_ref(buf.buf, sha1, 0);
 	}
 
-	free_svn_mergeinfo(mergeinfo);
-	free_svn_mergeinfo(svn_mergeinfo);
-	mergeinfo = svn_mergeinfo = NULL;
 }
 
 int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
@@ -516,33 +486,31 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 			havelog(ref.buf, rev, logrev.buf);
 
 		} else if (!strcmp(cmd.buf, "branch")) {
-			int copyrev, rev, istag;
+			int copyrev, rev;
 
 			read_string(&copyref);
 			copyrev = read_number();
 			read_string(&ref);
 			rev = read_number();
-			istag = read_number();
 			read_string(&path);
 			read_string(&ident);
 			read_string(&msg);
 			read_command();
 
-			branch(copyref.buf, copyrev, ref.buf, rev, istag, path.buf, ident.buf, msg.buf);
+			branch(copyref.buf, copyrev, ref.buf, rev, path.buf, ident.buf, msg.buf);
 
 		} else if (!strcmp(cmd.buf, "commit")) {
-			int baserev, rev, istag;
+			int baserev, rev;
 
 			read_string(&ref);
 			baserev = read_number();
 			rev = read_number();
-			istag = read_number();
 			read_string(&path);
 			read_string(&ident);
 			read_string(&msg);
 			read_command();
 
-			commit(ref.buf, baserev, rev, istag, path.buf, ident.buf, msg.buf);
+			commit(ref.buf, baserev, rev, path.buf, ident.buf, msg.buf);
 
 		} else if (!strcmp(cmd.buf, "add-dir")) {
 			read_string(&path);
@@ -565,13 +533,6 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 			read_command();
 
 			change_file(cmd.buf[0] == 'a', path.buf, &diff, before.buf, after.buf);
-
-		} else if (!strcmp(cmd.buf, "set-mergeinfo")) {
-			read_string(&buf);
-			read_command();
-
-			free_svn_mergeinfo(svn_mergeinfo);
-			svn_mergeinfo = parse_svn_mergeinfo(buf.buf);
 
 		} else if (!strcmp(cmd.buf, "test")) {
 			read_command();

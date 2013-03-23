@@ -397,9 +397,7 @@ struct commit* svn_parent(struct commit* c) {
 int write_svn_commit(
 	struct commit *svn, struct commit *git,
 	const unsigned char *tree, const char *ident,
-	const char *path, int rev, int istag,
-	struct mergeinfo *mi, struct mergeinfo *mi_svn,
-	unsigned char *ret)
+	const char *path, int rev, unsigned char *ret)
 {
 	int err;
 	struct strbuf buf = STRBUF_INIT;
@@ -417,22 +415,6 @@ int write_svn_commit(
 
 	if (path && *path)
 		strbuf_addf(&buf, "path %s\n", path);
-
-	if (mi) {
-		strbuf_addstr(&buf, "mergeinfo \"");
-		quote_c_style(make_svn_mergeinfo(mi), &buf, NULL, 1);
-		strbuf_addstr(&buf, "\"\n");
-	}
-
-	if (mi_svn) {
-		strbuf_addstr(&buf, "svn:mergeinfo \"");
-		quote_c_style(make_svn_mergeinfo(mi_svn), &buf, NULL, 1);
-		strbuf_addstr(&buf, "\"\n");
-	}
-
-	if (istag) {
-		strbuf_addstr(&buf, "tag 1\n");
-	}
 
 	strbuf_addch(&buf, '\n');
 	err = write_sha1_file(buf.buf, buf.len, "commit", ret);

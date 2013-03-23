@@ -85,8 +85,10 @@ struct svn_proto {
 	/* call svn_start_next_update/svn_finish_update in a loop */
 	void (*read_updates)(int cmts);
 
-	void (*start_commit)(int /*type*/, const char* /*log*/, const char* /*path*/, int /*rev*/, const char* /*copy*/, int /*copyrev*/, struct mergeinfo*);
+	struct mergeinfo *(*get_mergeinfo)(const char* /*path*/, int /*rev*/);
+	void (*start_commit)(int /*type*/, const char* /*log*/, const char* /*path*/, int /*rev*/, const char* /*copy*/, int /*copyrev*/);
 	int (*finish_commit)(struct strbuf* /*time*/); /*returns rev*/
+	void (*set_mergeinfo)(const char* /*path*/, struct mergeinfo*);
 	void (*mkdir)(const char* /*path*/);
 	void (*send_file)(const char* /*path*/, struct strbuf* /*diff*/, int /*create*/);
 	void (*delete)(const char* /*path*/);
