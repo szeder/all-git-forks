@@ -347,18 +347,22 @@ static int parse_cvsroot(struct cvs_transport *cvs, const char *cvsroot)
 		char *port;
 		next_tok = idx + 1;
 
-		idx = strchr(next_tok, '/');
-		if (!idx)
-			return -1;
+		if (*next_tok != '/') {
+			idx = strchr(next_tok, '/');
+			if (!idx)
+				return -1;
 
-		port = xstrndup(next_tok, idx - next_tok);
-		cvs->port = atoi(port);
-		free(port);
+			port = xstrndup(next_tok, idx - next_tok);
+			cvs->port = atoi(port);
+			free(port);
 
-		if (!cvs->port)
-			return -1;
+			if (!cvs->port)
+				return -1;
 
-		next_tok = idx;
+			next_tok = idx;
+			if (*next_tok == ':')
+				next_tok++;
+		}
 	}
 
 	/*

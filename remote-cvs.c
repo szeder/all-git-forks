@@ -24,6 +24,10 @@
  * - safe cancelation point + update time for branch OR ref cmp
  * - delay cvs connect until needed
  * - support options (progress, verbosity, dry-run)
+ *
+ * KNOWN PITFALLS:
+ * - CVS has not symlinks support
+ * - CVS file permittion history is not tracked (CVS have that feature commented)
  */
 
 static const char trace_key[] = "GIT_TRACE_CVS_HELPER";
