@@ -424,7 +424,45 @@ static void commit(const char *ref, int baserev, int rev,
 	if (!read_ref(buf.buf, sha1)) {
 		delete_ref(buf.buf, sha1, 0);
 	}
+}
 
+static int lookup_cb(const char *refname, const unsigned char *sha1, int flags, void *cb_data) {
+	const char *ext = strrchr(refname, '.');
+	struct commit *svn;
+	int rev = *(int*)cb_data;
+
+	if (!ext || ext[1] < '0' || ext[1] > '9')
+		return 0;
+
+	svn = lookup_commit(sha1);
+	while (svn && get_svn_revision(svn) > rev) {
+		svn = svn_parent(svn);
+	}
+
+	if (svn && get_svn_revision(svn) == rev) {
+		printf("%s\n", cmt_to_hex(svn_commit(svn)));
+		return 1;
+	}
+
+	return 0;
+}
+
+static void lookup(const char *uuid, const char *path, int rev) {
+	static struct strbuf buf = STRBUF_INIT;
+	const char *hex;
+	struct commit *svn;
+
+	strbuf_reset(&buf);
+	strbuf_addf(&buf, "refs/svn/%s", uuid);
+
+	while (*path) {
+		int ch = *(path++);
+		strbuf_addch(&buf, bad_ref_char(ch) ? '_' : ch);
+	}
+
+	if (!for_each_ref_in(buf.buf, &lookup_cb, &rev)) {
+		printf("\n");
+	}
 }
 
 int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
@@ -440,6 +478,7 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 	struct strbuf diff = STRBUF_INIT;
 	struct strbuf logrev = STRBUF_INIT;
 	struct strbuf buf = STRBUF_INIT;
+	struct strbuf uuid = STRBUF_INIT;
 
 	trypause();
 
@@ -537,6 +576,19 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 		} else if (!strcmp(cmd.buf, "test")) {
 			read_command();
 			test_svn_mergeinfo();
+
+		} else if (!strcmp(cmd.buf, "lookup")) {
+			int rev;
+			strbuf_reset(&path);
+
+			read_atom(&uuid);
+			rev = read_number();
+			strbuf_getline(&path, stdin, '\n');
+			read_command();
+
+			strbuf_trim(&path);
+			clean_svn_path(&path);
+			lookup(uuid.buf, path.buf, rev);
 		}
 
 		fflush(stdout);
