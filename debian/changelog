@@ -7,6 +7,8 @@ git (1:1.8.2-0.1) experimental; urgency=low
   * debian/implicit: depend on %.install instead of both install-arch
     and install-indep so "debian/rules binary-arch" does not try to
     build documentation.
+  * debian/rules build-indep, install-indep: build documentation even
+    if asciidoc is not detected.  Build-Depends: dpkg-dev (>= 1.16.2).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 09 Mar 2013 16:25:40 -0800
 
