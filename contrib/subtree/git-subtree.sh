@@ -14,6 +14,7 @@ git subtree merge --prefix=<prefix> <commit>
 git subtree pull  --prefix=<prefix> <repository> <refspec...>
 git subtree push  --prefix=<prefix> <repository> <refspec...>
 git subtree split --prefix=<prefix> <commit...>
+git subtree from-submodule --prefix=<prefix>
 --
 h,help        show the help
 q             quiet
@@ -114,7 +115,7 @@ prefix="${prefix%/}";
 command="$1"
 shift
 case "$command" in
-	add|merge|pull) default= ;;
+	add|merge|pull|from-submodule) default= ;;
 	split|push) default="--default HEAD" ;;
 	*) die "Unknown command '$command'" ;;
 esac
@@ -140,7 +141,14 @@ if ( test "$command" != "pull" ) && ( test "$command" != "add" ) && ( test "$com
 	fi
 fi
 
+# map command to a function
+case $command in
+	from-submodule) cmd=cmd_from_submodule;;
+	*) cmd="cmd_$command";;
+esac
+
 debug "command: {$command}"
+debug "function: {$function}"
 debug "quiet: {$quiet}"
 debug "revs: {$revs}"
 debug "dir: {$dir}"
@@ -766,4 +774,29 @@ cmd_push()
 	fi
 }
 
-"cmd_$command" "$@"
+cmd_from_submodule()
+{
+	ensure_clean
+
+	# Remove references to submodule.
+	git config --remove-section "submodule.$prefix"
+	git config --file .gitmodules --remove-section "submodule.$prefix"
+	git add .gitmodules
+
+	# Move submodule aside.
+	tmp_repo="$(mktemp -d git-subtree.XXXXX)"
+	rm -r $tmp_repo
+	mv "$prefix" $tmp_repo
+	git rm "$prefix"
+
+	# Commit changes.
+	git commit -m "Remove '$prefix/' submodule"
+
+	# subtree add from submodule repo.
+	cmd_add_repository $tmp_repo HEAD
+
+	# Remove submodule repo.
+	rm -rf $tmp_repo
+}
+
+"$cmd" "$@"
