@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # git-subtree.sh: split/join git repositories in subdirectories of this one
 #
@@ -63,6 +63,13 @@ say()
 	fi
 }
 
+say_progress()
+{
+	if [ -z "$quiet" ]; then
+		printf "%s\r" "$@" >&2
+	fi
+}
+
 assert()
 {
 	if "$@"; then
@@ -122,7 +129,7 @@ esac
 
 dir="$(dirname "$prefix/.")"
 
-if [ "$command" != "pull" -a "$command" != "add" -a "$command" != "push" ]; then
+if ( test "$command" != "pull" ) && ( test "$command" != "add" ) && ( test "$command" != "push" ); then
 	revs=$(git rev-parse $default --revs-only "$@") || exit $?
 	dirs="$(git rev-parse --no-revs --no-flags "$@")" || exit $?
 	if [ -n "$dirs" ]; then
@@ -184,9 +191,9 @@ cache_set()
 {
 	oldrev="$1"
 	newrev="$2"
-	if [ "$oldrev" != "latest_old" \
-	     -a "$oldrev" != "latest_new" \
-	     -a -e "$cachedir/$oldrev" ]; then
+	if ( test "$oldrev" != "latest_old" ) \
+	     && ( test "$oldrev" != "latest_new" ) \
+	     && ( test -e "$cachedir/$oldrev" ); then
 		die "cache for $oldrev already exists!"
 	fi
 	echo "$newrev" >"$cachedir/$oldrev"
@@ -276,12 +283,12 @@ find_existing_splits()
 			git-subtree-split:) sub="$b" ;;
 			END)
 				debug "  Main is: '$main'"
-				if [ -z "$main" -a -n "$sub" ]; then
+				if ( test -z "$main" ) && ( test -n "$sub" ); then
 					# squash commits refer to a subtree
 					debug "  Squash: $sq from $sub"
 					cache_set "$sq" "$sub"
 				fi
-				if [ -n "$main" -a -n "$sub" ]; then
+				if ( test -n "$main" ) && (test -n "$sub" ); then
 					debug "  Prior: $main -> $sub"
 					cache_set $main $sub
 					cache_set $sub $sub
@@ -314,7 +321,7 @@ copy_commit()
 			GIT_COMMITTER_NAME \
 			GIT_COMMITTER_EMAIL \
 			GIT_COMMITTER_DATE
-		(echo -n "$annotate"; cat ) |
+		(printf "$annotate"; cat ) |
 		git commit-tree "$2" $3  # reads the rest of stdin
 	) || die "Can't copy commit $1"
 }
@@ -544,7 +551,7 @@ cmd_add_commit()
 	tree=$(git write-tree) || exit $?
 	
 	headrev=$(git rev-parse HEAD) || exit $?
-	if [ -n "$headrev" -a "$headrev" != "$rev" ]; then
+	if ( test -n "$headrev" ) && ( test "$headrev" != "$rev" ); then
 		headp="-p $headrev"
 	else
 		headp=
@@ -595,7 +602,7 @@ cmd_split()
 	eval "$grl" |
 	while read rev parents; do
 		revcount=$(($revcount + 1))
-		say -ne "$revcount/$revmax ($createcount)\r"
+		say_progress "$revcount/$revmax ($createcount)"
 		debug "Processing commit: $rev"
 		exists=$(cache_get $rev)
 		if [ -n "$exists" ]; then
