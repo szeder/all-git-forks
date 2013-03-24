@@ -545,6 +545,18 @@ static int compare_fix_rev(const void *p1, const void *p2)
 	return 0;
 }
 
+void reverse_rev_list(struct file_revision_list *rev_list)
+{
+	struct file_revision *tmp;
+	int i;
+
+	for (i = 0; i < rev_list->nr / 2; i++) {
+		tmp = rev_list->item[i];
+		rev_list->item[i] = rev_list->item[rev_list->nr - 1 - i];
+		rev_list->item[rev_list->nr - 1 - i] = tmp;
+	}
+}
+
 void aggregate_patchsets(struct branch_meta *meta)
 {
 	// sort revisions list
@@ -567,6 +579,14 @@ void aggregate_patchsets(struct branch_meta *meta)
 
 	int i;
 
+	/*
+	 * Revisions goes latest first in rlog. Sorting by date is broken when
+	 * bunch of commits is pushed at the same time (timestamp is the same).
+	 * Keeping commits in histitorical order helps to avoid extra patchset
+	 * splits.
+	 * Update: somehow it makes it worse
+	 */
+	//reverse_rev_list(meta->rev_list);
 	qsort(meta->rev_list->item, meta->rev_list->nr, sizeof(void *), compare_fix_rev);
 
 	fprintf(stderr, "SORT DONE\n");

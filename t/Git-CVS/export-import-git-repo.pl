@@ -6,10 +6,11 @@ use warnings;
 use Cwd qw(abs_path);
 use File::Path qw(make_path remove_tree);
 
-die("usage $0 <gitrepo> [<testdir>]") if scalar @ARGV < 1;
+die("usage $0 <gitrepo> [<testdir>] [<cvsroot>]") if scalar @ARGV < 1;
 
 my $git_repo_origin = shift @ARGV;
 my $testdir = shift @ARGV;
+my $cvsroot = shift @ARGV;
 my $cvs_repo;
 my $cvs_client_repo;
 my $git_repo;
@@ -31,7 +32,7 @@ make_path($testdir, $cvs_repo, $cvs_client_repo)
 chdir($testdir) or die "$!";
 
 sub mk_cvs_repo() {
-	my $cvsroot = $cvs_repo;
+	$cvsroot = $cvs_repo unless $cvsroot;
 	print "=> creating cvs repo\n";
 	`cvs -d $cvsroot init`;
 	die "cvs init $?" if $?;
@@ -63,15 +64,17 @@ sub mk_cvs_module_commit($;) {
 	return "mod/src";
 }
 
-my $cvsroot = mk_cvs_repo() or die "mkcvsrepo";
+$cvsroot = mk_cvs_repo() or die "mkcvsrepo";
 my $cvsmodule = mk_cvs_module_commit($cvsroot);
 
 chdir($testdir) or die "$!";
 $ENV{GIT_TRACE_CVS_HELPER} = "$testdir/cvshelper.log";
 $ENV{GIT_TRACE_CVS_PROTO} = "$testdir/cvsproto.log";
 
-print "=> cloning cvs repo\n";
-`git clone -o cvs cvs:::fork:$cvsroot:$cvsmodule $git_repo | tee "$testdir/cvsclone.log"`;
+$cvsroot = ":fork:$cvsroot" unless $cvsroot =~ /^:/;
+
+print "=> cloning cvs repo $cvsroot\n";
+`git clone -o cvs cvs::$cvsroot:$cvsmodule $git_repo 2>&1 | tee "$testdir/cvsclone.log"`;
 die "git clone cvs $?" if $?;
 
 print "=> cloning git repo\n";
@@ -88,6 +91,8 @@ my $commit = "";
 #my $restart = $commit;
 my $old_tree = "";
 my $commits = 0;
+my $head_sha;
+my $fetched_count;
 print "restarting from $commit\n";
 
 open(my $gi, "-|", "git log --reverse --format=\"%H %T\" git/master") or
@@ -105,21 +110,24 @@ while ((my $line = <$gi>)) {
 	$commits++;
 	`git cherry-pick --allow-empty $commit_sha`;
 	die "git cherry-pick failed $?" if $?;
+	#next if $commits % 10;
 
 	if ($initial_cherry_pick) {
-		$initial_cherry_pick = 0;
-
 		`git rm remove_me`;
 		die "git rm failed" if $?;
 		`git commit -m "initial file remove"`;
 		die "git commit failed" if $?;
 	}
 
-	`git push cvs HEAD:HEAD | tee --append $testdir/cvspushfetch.log`;
+	`git push cvs HEAD:HEAD 2>&1 | tee --append $testdir/cvspushfetch.log`;
 	print "=> commits pushed: $commits\n";
 	#sleep(2);
 
-	`git fetch cvs | tee --append $testdir/cvspushfetch.log`;
+	$head_sha = `git rev-parse cvs/HEAD`;
+	die "git rev-parse failed" if $?;
+	chomp($head_sha);
+
+	`git fetch cvs 2>&1 | tee --append $testdir/cvspushfetch.log`;
 	die "git fetch failed" if $?;
 
 	my $test_tree_sha = `git log -1 --format="%T" cvs/HEAD`;
@@ -128,10 +136,16 @@ while ((my $line = <$gi>)) {
 	chomp($test_tree_sha);
 	die "tree sha $test_tree_sha, should be $tree_sha" if ($test_tree_sha ne $tree_sha);
 
+	$fetched_count = `git log --oneline $head_sha.. | wc -l`;
+	print "=> fetched commits: $fetched_count\n";
+	die "commits were splitted" if $fetched_count > 1 and !$initial_cherry_pick;
+
 	`git rebase cvs/HEAD`;
 	die("git rebase failed") if $?;
 
 	print "=> commits pushed/fetched/verified: $commits\n";
+
+	$initial_cherry_pick = 0;
 }
 close($gi);
 

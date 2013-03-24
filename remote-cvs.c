@@ -24,6 +24,9 @@
  * - safe cancelation point + update time for branch OR ref cmp
  * - delay cvs connect until needed
  * - support options (progress, verbosity, dry-run)
+ * - save CVS error and info messages in buffer
+ * - sort rlog, avoid extra commits splits done same seconds
+ * - parse and validate checkin properly
  *
  * KNOWN PITFALLS:
  * - CVS has not symlinks support

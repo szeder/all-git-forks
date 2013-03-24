@@ -1879,6 +1879,7 @@ void cvsfile_init(struct cvsfile *file)
 	file->ismem = 0;
 	file->isnew = 0;
 	file->iscached = 0;
+	file->hasstat = 0;
 	file->mode = 0;
 	strbuf_init(&file->file, 0);
 	file->util = NULL;
@@ -2241,10 +2242,7 @@ M    Sticky Options:\09(none)\0a
 					default:
 						rc = 1;
 					}
-					/*
-					 * TODO: check status
-					 */
-
+					file->hasstat = 1;
 					state = NEED_START_STATUS;
 				}
 				break;
@@ -2259,6 +2257,13 @@ M    Sticky Options:\09(none)\0a
 			rc = -1;
 			break;
 		}
+	}
+
+	struct cvsfile *file_it = files;
+	while (file_it < files + count) {
+		if (!file_it->hasstat)
+			die("Did get status for file: %s", file_it->path.buf);
+		file_it++;
 	}
 
 	strbuf_release(&line);
@@ -2326,11 +2331,6 @@ status\n
 
 	struct cvsfile *file_it = files;
 	while (file_it < files + count) {
-		/*if (!file_it->revision.len) {
-			file_it++;
-			continue;
-		}*/
-
 		strbuf_copystr(&file_basename_sb, basename(file_it->path.buf));
 		strbuf_copy(&dir_sb, &file_it->path);
 		dir = dirname(dir_sb.buf); // "." (dot) is what we want here if no directory in path
@@ -2528,7 +2528,8 @@ static int parse_cvs_checkin_reply(struct cvs_transport *cvs, struct cvsfile *fi
 
 /*
 "M ? impl/new\n
-M RCS file: /home/dummy/devel/SVC/cvs2/sources/smod/impl/Attic/decorator.impl,v\nM done\n
+M RCS file: /home/dummy/devel/SVC/cvs2/sources/smod/impl/Attic/decorator.impl,v\n
+M done\n
 M Checking in impl/decorator.impl;\n
 M /home/dummy/devel/SVC/cvs2/sources/smod/impl/Attic/decorator.impl,v  <--  decorator.impl\n
 M new revision: 1.1.2.1; previous revision: 1.1\n
@@ -2546,6 +2547,12 @@ Checked-in include/\n
 /home/dummy/devel/SVC/cvs2/sources/smod/include/util.h\n
 /util.h/1.1.2.1///Tunstable\n
 ok\n"
+CVS   65 <- M /home/dummy/tmp/moo/cvs_repo/mod/src/Makefile,v  <--  Makefile\0a
+CVS   24 <- M initial revision: 1.1\0a
+CVS   19 <- Mode u=rw,g=rw,o=r\0a
+CVS   14 <- Checked-in ./\0a
+CVS   17 <- mod/src/Makefile\0a
+CVS   20 <- /Makefile/1.1//-kk/\0a
 */
 	while (1) {
 		ret = cvs_readline(cvs, &cvs->rd_line_buf);
