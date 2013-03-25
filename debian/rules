@@ -29,6 +29,21 @@ ifneq (,$(findstring nocheck,$(DEB_BUILD_OPTIONS)))
   TEST =
 endif
 
+PKG_INDEP =
+PKG_INDEP += git-doc
+PKG_INDEP += git-arch
+PKG_INDEP += git-cvs
+PKG_INDEP += git-svn
+PKG_INDEP += git-daemon-run
+PKG_INDEP += git-daemon-sysvinit
+PKG_INDEP += git-email
+PKG_INDEP += git-gui
+PKG_INDEP += gitk
+PKG_INDEP += gitweb
+PKG_INDEP += git-all
+PKG_INDEP += git-el
+PKG_INDEP += git-man
+
 TMP =$(shell pwd)/tmp
 GIT =$(shell pwd)/debian/git
 
@@ -69,10 +84,10 @@ clean: deb-checkdir
 	  done
 	rm -rf '$(TMP)'
 	rm -f patch-stamp build-arch-stamp build-indep-stamp
-	rm -rf '$(GIT)' '$(GIT)'-doc '$(GIT)'-arch '$(GIT)'-cvs
-	rm -rf '$(GIT)'-svn '$(GIT)'-email '$(GIT)'-el
-	rm -rf '$(GIT)'-daemon-run '$(GIT)'-daemon-sysvinit '$(GIT)'-gui
-	rm -rf '$(GIT)'k '$(GIT)'web '$(GIT)'-all '$(GIT)'-man '$(GIT)'-core
+	set -e; \
+	  for i in '' $(patsubst git%,%,$(PKG_INDEP)) -core; do \
+	    rm -rf '$(GIT)'$$i; \
+	  done
 	rm -f debian/files debian/substvars changelog
 
 install: install-arch install-indep
@@ -295,13 +310,9 @@ binary-arch: install-arch git.deb
 	dpkg-shlibdeps '$(GIT)'/usr/bin/* '$(GIT)'/usr/lib/git-core/*
 	dpkg-gencontrol -isp -pgit -P'$(GIT)'
 	dpkg -b '$(GIT)' ..
-binary-indep: install-indep git-doc.deb git-arch.deb git-cvs.deb git-svn.deb \
-	  git-daemon-run.deb git-daemon-sysvinit.deb \
-	  git-email.deb git-gui.deb gitk.deb gitweb.deb \
-	  git-all.deb git-el.deb git-man.deb git-core.deb-DEBIAN
+binary-indep: install-indep $(patsubst %,%.deb,$(PKG_INDEP)) git-core.deb-DEBIAN
 	rm -f debian/substvars
-	for i in -doc -arch -cvs -svn -daemon-run -daemon-sysvinit \
-	 -email -gui k web -all -core -el -man; do \
+	for i in $(patsubst git%,%,$(PKG_INDEP)) -core; do \
 	  dpkg-gencontrol -isp -pgit$$i -P'$(GIT)'$$i && \
 	  dpkg -b '$(GIT)'$$i .. || exit 1; \
 	done
