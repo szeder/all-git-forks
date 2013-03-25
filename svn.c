@@ -701,3 +701,21 @@ void create_svndiff(struct strbuf *diff, const void *src, size_t sz) {
 		sz -= dsz;
 	}
 }
+
+int common_directory(const char* a, const char* b, int max, int* depth) {
+	int i = 0, off = 0;
+
+	while (a[i] && a[i] == b[i] && i < max) {
+		if (a[i] == '/') {
+			if (depth) (*depth)++;
+			off = i;
+		}
+		i++;
+	}
+
+	if (i == max) {
+		off = max;
+	}
+
+	return off;
+}

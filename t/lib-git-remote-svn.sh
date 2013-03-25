@@ -191,7 +191,7 @@ committer = C O Mitter <committer@example.com> # some comment
 		http)
 			$APACHE2 -f "$svnrepo/conf/httpd.conf"
 			;;
-	esac
+	esac &&
 	git remote add svn svn::$svnurl &&
 	git config user.name "C O Mitter" &&
 	git config user.email "committer@example.com" &&

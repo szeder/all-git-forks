@@ -404,7 +404,7 @@ static void parse_authors(void) {
 	close(fd);
 }
 
-const char *svn_to_ident(const char *username, const char *time) {
+static const char *svn_to_ident(const char *username, const char *time) {
 	int i;
 	struct author *a;
 	struct strbuf buf = STRBUF_INIT;
@@ -511,12 +511,9 @@ static void do_connect(void) {
 	const char *p = defcred.protocol;
 	strbuf_addstr(&buf, url);
 
-#if 0
 	if (!strcmp(p, "http") || !strcmp(p, "https") || !strcmp(p, "svn+http") || !strcmp(p, "svn+https")) {
 		proto = svn_http_connect(remote, &buf, &defcred, &uuid);
-	} else
-#endif
-	if (!strcmp(p, "svn")) {
+	} else if (!strcmp(p, "svn")) {
 		proto = svn_proto_connect(&buf, &defcred, &uuid);
 	} else {
 		die("don't know how to handle url %s", url);
@@ -621,6 +618,57 @@ static void list(void) {
 
 
 
+
+static struct svn_entry *make_entry(struct svnref *r) {
+	if (!r->cmts || r->cmts->rev) {
+		struct svn_entry *c = xcalloc(1, sizeof(*c));
+		c->next = r->cmts;
+		r->cmts = c;
+	}
+	return r->cmts;
+}
+
+void changed_path_read(struct svnref **refs, int refnr, int ismodify, const char *path, const char *copy, int copyrev) {
+	int i;
+	for (i = 0; i < refnr; i++) {
+		struct svnref *r = refs[i];
+
+		/* in the corner case where the server
+		 * is returning commits from the same
+		 * path but the previous branch */
+		if (r->cmts && r->cmts->rev && r->cmts->new_branch)
+			continue;
+
+		if (!strncmp(path, r->path, strlen(r->path))
+			&& path[strlen(r->path)] == '/')
+		{
+			/* change to a file within this
+			 * branch */
+			struct svn_entry *cmt = make_entry(r);
+			cmt->copy_modified = 1;
+
+		} else if (!strncmp(r->path, path, strlen(path))
+			&& (r->path[strlen(path)] == '/' || r->path[strlen(path)] == '\0')
+			&& copyrev > 0)
+		{
+			/* copy to the branch root or to
+			 * a parent */
+			struct svn_entry *cmt = make_entry(r);
+			struct strbuf buf = STRBUF_INIT;
+
+			strbuf_addstr(&buf, copy);
+			strbuf_addstr(&buf, r->path + strlen(path));
+
+			cmt->copysrc = strbuf_detach(&buf, NULL);
+			cmt->copyrev = (int) copyrev;
+			cmt->new_branch = 1;
+
+		} else if (!ismodify && !strcmp(path, r->path)) {
+			struct svn_entry *cmt = make_entry(r);
+			cmt->new_branch = 1;
+		}
+	}
+}
 
 
 struct log_request {
@@ -727,18 +775,28 @@ static void read_logs(void) {
 	free(refs);
 }
 
-void cmt_read(struct svnref *r) {
-	struct svn_entry *c = r->cmts;
-	if (c->new_branch) {
-		set_ref_start(r, c->rev);
+void cmt_read(struct svnref **refs, int refnr, int rev, const char *author, const char *time, const char *msg) {
+	int i;
+	for (i = 0; i < refnr; i++) {
+		struct svn_entry *c = refs[i]->cmts;
+		if (c && !c->rev) {
+			c->rev = rev;
+			c->ident = strdup(svn_to_ident(author, time));
+			c->msg = strdup(msg);
+
+			if (c->new_branch) {
+				set_ref_start(refs[i], c->rev);
+			}
+			if (c->copysrc) {
+				request_log(c->copysrc, c->copyrev, NULL);
+			}
+			if (c->copyrev > c->rev) {
+				die("copy revision newer then destination");
+			}
+			display_progress(progress, ++cmts_to_fetch);
+		}
 	}
-	if (c->copysrc) {
-		request_log(c->copysrc, c->copyrev, NULL);
-	}
-	if (c->copyrev > c->rev) {
-		die("copy revision newer then destination");
-	}
-	display_progress(progress, ++cmts_to_fetch);
+
 }
 
 

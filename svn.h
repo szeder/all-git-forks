@@ -30,4 +30,6 @@ int write_svn_commit(
 	const unsigned char *tree, const char *ident,
 	const char *path, int rev, unsigned char *ret);
 
+int common_directory(const char* a, const char* b, int max, int* depth);
+
 #endif

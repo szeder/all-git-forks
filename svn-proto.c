@@ -639,15 +639,6 @@ static struct mergeinfo *svn_get_mergeinfo(const char *path, int rev) {
 
 
 
-static struct svn_entry *make_entry(struct svnref *r) {
-	if (!r->cmts || r->cmts->rev) {
-		struct svn_entry *c = xcalloc(1, sizeof(*c));
-		c->next = r->cmts;
-		r->cmts = c;
-	}
-	return r->cmts;
-}
-
 static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 	struct conn *c = &main_connection;
 	struct strbuf name = STRBUF_INIT;
@@ -694,10 +685,10 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 
 		while (!read_list(c)) {
 			/* path A|D|R|M [copy-path copy-rev] */
-			int isadd;
+			int ismodify;
 			int64_t copyrev = -1;
 			if (read_string(c, &name)) malformed_die(c);
-			isadd = !strcmp(read_word(c), "A");
+			ismodify = !strcmp(read_word(c), "M");
 
 			if (have_optional(c)) {
 				/* copy-path, copy-rev */
@@ -710,44 +701,7 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 
 			clean_svn_path(&name);
 
-			for (i = 0; i < refnr; i++) {
-				struct svnref *r = refs[i];
-
-				/* in the corner case where the server
-				 * is returning commits from the same
-				 * path but the previous branch */
-				if (r->cmts && r->cmts->rev && r->cmts->new_branch)
-					continue;
-
-				if (!strncmp(name.buf, r->path, strlen(r->path))
-					&& name.buf[strlen(r->path)] == '/')
-				{
-					/* change to a file within this
-					 * branch */
-					struct svn_entry *cmt = make_entry(r);
-					cmt->copy_modified = 1;
-
-				} else if (!strncmp(r->path, name.buf, name.len)
-					&& (r->path[name.len] == '/' || r->path[name.len] == '\0')
-					&& copyrev > 0)
-				{
-					/* copy to the branch root or to
-					 * a parent */
-					struct svn_entry *cmt = make_entry(r);
-					struct strbuf buf = STRBUF_INIT;
-
-					strbuf_add(&buf, copy.buf, copy.len);
-					strbuf_addstr(&buf, r->path + name.len);
-
-					cmt->copysrc = strbuf_detach(&buf, NULL);
-					cmt->copyrev = (int) copyrev;
-					cmt->new_branch = 1;
-
-				} else if (isadd && !strcmp(name.buf, r->path)) {
-					struct svn_entry *cmt = make_entry(r);
-					cmt->new_branch = 1;
-				}
-			}
+			changed_path_read(refs, refnr, ismodify, name.buf, copy.buf, copyrev);
 
 			if (read_end(c)) malformed_die(c);
 		}
@@ -775,16 +729,7 @@ static void svn_read_log(struct svnref **refs, int refnr, int start, int end) {
 		append_string(c, &msg, 1);
 		strbuf_complete_line(&msg);
 		if (read_end(c)) malformed_die(c);
-
-		for (i = 0; i < refnr; i++) {
-			struct svn_entry *cmt = refs[i]->cmts;
-			if (cmt && !cmt->rev) {
-				cmt->rev = (int) rev;
-				cmt->ident = strdup(svn_to_ident(author.buf, time.buf));
-				cmt->msg = strdup(msg.buf);
-				cmt_read(refs[i]);
-			}
-		}
+		cmt_read(refs, refnr, (int) rev, author.buf, time.buf, msg.buf);
 
 		if (read_end(c)) malformed_die(c);
 		read_newline(c);
@@ -830,8 +775,6 @@ static void relative_svn_path(struct strbuf *path, int skip) {
 		strbuf_reset(path);
 	} else {
 		strbuf_remove(path, 0, skip);
-		if (path->buf[0] == '/')
-			strbuf_remove(path, 0, 1);
 	}
 }
 
@@ -1036,24 +979,6 @@ static void svn_read_updates(int cmts) {
 
 static struct strbuf cpath = STRBUF_INIT;
 static int cdepth;
-
-static size_t common_directory(const char* a, const char* b, size_t max, int* depth) {
-	size_t i = 0, off = 0;
-
-	while (a[i] && a[i] == b[i] && i < max) {
-		if (a[i] == '/') {
-			if (depth) (*depth)++;
-			off = i;
-		}
-		i++;
-	}
-
-	if (i == max) {
-		off = max;
-	}
-
-	return off;
-}
 
 static int change_dir(const char* path) {
 	const char *p;

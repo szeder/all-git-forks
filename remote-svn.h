@@ -59,8 +59,8 @@ struct svnref {
 	unsigned int is_tag : 1;
 };
 
-const char *svn_to_ident(const char *username, const char *time);
-void cmt_read(struct svnref *r);
+void changed_path_read(struct svnref **refs, int refnr, int ismodify, const char *path, const char *copy, int copyrev);
+void cmt_read(struct svnref **refs, int refnr, int rev, const char *author, const char *time, const char *msg);
 
 __attribute__((format (printf,2,3)))
 void helperf(struct svn_entry *c, const char *fmt, ...);

@@ -135,9 +135,13 @@ static void read_command(void) {
 static void add_dir(const char *name) {
 	struct strbuf buf = STRBUF_INIT;
 	struct cache_entry* ce;
-	char *p = strrchr(name, '/');
 	unsigned char sha1[20];
+	char *p;
 
+	if (*name == '/')
+		name++;
+
+	p = strrchr(name, '/');
 	/* add ./.gitempty */
 	if (write_sha1_file(NULL, 0, "blob", sha1))
 		die("failed to write .gitempty object");
@@ -179,11 +183,15 @@ static void change_file(
 {
 	struct strbuf buf = STRBUF_INIT;
 	struct cache_entry* ce;
-	char* p = strrchr(name, '/');
 	void *src = NULL;
 	unsigned long srcn = 0;
 	unsigned char sha1[20];
+	char* p;
 
+	if (*name == '/')
+		name++;
+
+	p = strrchr(name, '/');
 	if (p) {
 		/* remove ./.gitempty */
 		strbuf_reset(&buf);
@@ -533,6 +541,7 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 			read_string(&msg);
 			read_command();
 
+			clean_svn_path(&path);
 			branch(copyref.buf, copyrev, ref.buf, rev, path.buf, ident.buf, msg.buf);
 
 		} else if (!strcmp(cmd.buf, "commit")) {
@@ -546,6 +555,7 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 			read_string(&msg);
 			read_command();
 
+			clean_svn_path(&path);
 			commit(ref.buf, baserev, rev, path.buf, ident.buf, msg.buf);
 
 		} else if (!strcmp(cmd.buf, "add-dir")) {
@@ -558,8 +568,10 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 			read_string(&path);
 			read_command();
 
-			remove_path_from_index(&svn_index, path.buf);
-			remove_path_from_index(&the_index, path.buf);
+			if (path.len) {
+				remove_path_from_index(&svn_index, path.buf+1);
+				remove_path_from_index(&the_index, path.buf+1);
+			}
 
 		} else if (!strcmp(cmd.buf, "add-file") || !strcmp(cmd.buf, "open-file")) {
 			read_string(&path);
