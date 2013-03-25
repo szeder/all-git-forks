@@ -1493,7 +1493,7 @@ static size_t pushn, pusha;
 static void push(void) {
 	int i;
 	struct commit_list *cmts = NULL;
-	int cmts_to_push = 0, cmts_to_find = 0;
+	int cmts_to_push = 0;
 	struct svn_push *push;
 	struct refspec twig_spec;
 	struct svn_push *twig, twig_push;
