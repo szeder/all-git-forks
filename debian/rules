@@ -77,9 +77,20 @@ build-indep-stamp: patch-stamp build-arch-stamp
 	  MAN_TXT=../debian/git-remote-bzr.txt \
 	  ../debian/git-remote-bzr.1 \
 	  ../debian/git-remote-bzr.html
+	sed -e 's,/usr/bin/env python,/usr/bin/python,' \
+	  contrib/remote-helpers/git-remote-bzr >debian/git-remote-bzr
+	sed -e 's/test_have_prereq PYTHON/true/' \
+	  contrib/remote-helpers/test-bzr.sh >debian/test-bzr.sh
+	chmod +x debian/git-remote-bzr debian/test-bzr.sh
+	test -z '$(TEST)' || \
+	  PATH=$(CURDIR)/debian:$(PATH) \
+	    $(MAKE) -C t $(OPTS) $(CURDIR)/debian/test-bzr.sh || \
+	  PATH=$(CURDIR)/debian:$(PATH) GIT_TEST_OPTS=--verbose \
+	    $(MAKE) -C t $(OPTS) $(CURDIR)/debian/test-bzr.sh
 	touch build-indep-stamp
 
 clean: deb-checkdir
+	rm -f debian/git-remote-bzr debian/test-bzr.sh
 	rm -f debian/git-remote-bzr.xml debian/git-remote-bzr.html
 	rm -f Documentation/git-remote-bzr.1
 	$(MAKE) clean $(OPTS)
@@ -214,10 +225,8 @@ install-indep: build-arch-stamp build-indep-stamp
 	# git-bzr
 	rm -rf '$(GIT)'-bzr
 	install -d -m0755 '$(GIT)'-bzr/usr/lib/git-core
-	sed -e 's,/usr/bin/env python,/usr/bin/python,' \
-	  contrib/remote-helpers/git-remote-bzr \
-	  >'$(GIT)'-bzr/usr/lib/git-core/git-remote-bzr
-	chmod 0755 '$(GIT)'-bzr/usr/lib/git-core/git-remote-bzr
+	install -m0755 debian/git-remote-bzr \
+	  '$(GIT)'-bzr/usr/lib/git-core/
 	install -d -m0755 '$(GIT)'-bzr/usr/share/man/man1
 	install -m0644 Documentation/git-remote-bzr.1 \
 	  '$(GIT)'-bzr/usr/share/man/man1/
