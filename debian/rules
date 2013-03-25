@@ -91,6 +91,7 @@ clean: deb-checkdir
 	rm -f debian/files debian/substvars changelog
 
 install: install-arch install-indep
+git.install: install-arch
 install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	# git
 	rm -rf '$(GIT)'
@@ -154,6 +155,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	# upstream changelog
 	test -r changelog || ln -s debian/changelog.upstream changelog
 
+$(patsubst %,%.install,$(PKG_INDEP)) git-core.install: install-indep
 install-indep:
 	: 'Work around bug #478524'
 	set -e; if test '$(BUILD_DOCS)' = 1; \

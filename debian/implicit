@@ -15,11 +15,11 @@ deb-checkuid:
 	@rm -f $*.deb $*.deb-checkdir $*.deb-DEBIAN $*.deb-DEBIAN-dir \
 	  $*.deb-DEBIAN-scripts $*.deb-DEBIAN-md5sums
 
-%.deb-checkdir: | install-arch install-indep
+%.deb-checkdir: %.install
 	@test -d debian/$* || sh -cx '! : directory debian/$* missing'
 	@test "`id -u`" -eq 0 || sh -cx '! : need root privileges'
 
-%.deb-docs-base: | install-arch install-indep
+%.deb-docs-base: %.install
 	: implicit
 	@rm -f debian/$*/usr/share/doc/$*/* || :
 	@install -d -m0755 debian/$*/usr/share/doc/$*
@@ -84,7 +84,7 @@ deb-checkuid:
 	    debian/$*/usr/share/doc-base/$${i#debian/$*.doc-base.}" || exit 1; \
 	done
 
-%.deb-DEBIAN-base: | install-arch install-indep
+%.deb-DEBIAN-base: %.install
 	@rm -rf debian/$*/DEBIAN
 	: debian/$*/DEBIAN/
 	@install -d -m0755 debian/$*/DEBIAN

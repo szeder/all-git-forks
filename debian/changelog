@@ -2,6 +2,11 @@ git (1:1.8.2-0.1) experimental; urgency=low
 
   * new upstream release (see RelNotes/1.8.2.txt).
   * debian/control: Standards-Version: 3.9.4.0.
+  * debian/rules: define %.install depending on install-arch or
+    install-indep as appropriate for each package.
+  * debian/implicit: depend on %.install instead of both install-arch
+    and install-indep so "debian/rules binary-arch" does not try to
+    build documentation.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 09 Mar 2013 16:25:40 -0800
 
