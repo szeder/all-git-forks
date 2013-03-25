@@ -120,6 +120,7 @@ if test -z "$browser" ; then
 	fi
 	# SECURITYSESSIONID indicates an OS X GUI login session
 	if test -n "$SECURITYSESSIONID" \
+		-o "$TERM_PROGRAM" = "iTerm.app" \
 		-o "$TERM_PROGRAM" = "Apple_Terminal" ; then
 		browser_candidates="open $browser_candidates"
 	fi
