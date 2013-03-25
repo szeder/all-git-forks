@@ -35,6 +35,7 @@ endif
 PKG_INDEP =
 PKG_INDEP += git-doc
 PKG_INDEP += git-arch
+PKG_INDEP += git-bzr
 PKG_INDEP += git-cvs
 PKG_INDEP += git-svn
 PKG_INDEP += git-daemon-run
@@ -72,9 +73,15 @@ build-arch-stamp: patch-stamp
 build-indep: deb-checkdir build-indep-stamp
 build-indep-stamp: patch-stamp build-arch-stamp
 	$(MAKE) -CDocumentation man html $(DOC_OPTS)
+	$(MAKE) -CDocumentation $(DOC_OPTS) \
+	  MAN_TXT=../debian/git-remote-bzr.txt \
+	  ../debian/git-remote-bzr.1 \
+	  ../debian/git-remote-bzr.html
 	touch build-indep-stamp
 
 clean: deb-checkdir
+	rm -f debian/git-remote-bzr.xml debian/git-remote-bzr.html
+	rm -f Documentation/git-remote-bzr.1
 	$(MAKE) clean $(OPTS)
 	! test -e patch-stamp || \
 	  for i in `ls -1r debian/diff/*.diff debian/diff/*.patch \
@@ -204,6 +211,17 @@ install-indep: build-arch-stamp build-indep-stamp
 	install -m0644 '$(TMP)'/usr/share/man/man1/git-archimport.1 \
 	  '$(GIT)'-arch/usr/share/man/man1/
 	gzip -9 '$(GIT)'-arch/usr/share/man/man1/*.1
+	# git-bzr
+	rm -rf '$(GIT)'-bzr
+	install -d -m0755 '$(GIT)'-bzr/usr/lib/git-core
+	sed -e 's,/usr/bin/env python,/usr/bin/python,' \
+	  contrib/remote-helpers/git-remote-bzr \
+	  >'$(GIT)'-bzr/usr/lib/git-core/git-remote-bzr
+	chmod 0755 '$(GIT)'-bzr/usr/lib/git-core/git-remote-bzr
+	install -d -m0755 '$(GIT)'-bzr/usr/share/man/man1
+	install -m0644 Documentation/git-remote-bzr.1 \
+	  '$(GIT)'-bzr/usr/share/man/man1/
+	gzip -9 '$(GIT)'-bzr/usr/share/man/man1/*.1
 	# git-email
 	rm -rf '$(GIT)'-email
 	install -d -m0755 '$(GIT)'-email/usr/lib/git-core
