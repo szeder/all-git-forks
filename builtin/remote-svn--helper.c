@@ -439,7 +439,7 @@ static int lookup_cb(const char *refname, const unsigned char *sha1, int flags, 
 		svn = svn_parent(svn);
 	}
 
-	if (svn && get_svn_revision(svn) == rev) {
+	if (svn) {
 		printf("%s\n", cmt_to_hex(svn_commit(svn)));
 		return 1;
 	}
@@ -449,8 +449,6 @@ static int lookup_cb(const char *refname, const unsigned char *sha1, int flags, 
 
 static void lookup(const char *uuid, const char *path, int rev) {
 	static struct strbuf buf = STRBUF_INIT;
-	const char *hex;
-	struct commit *svn;
 
 	strbuf_reset(&buf);
 	strbuf_addf(&buf, "refs/svn/%s", uuid);
@@ -477,7 +475,6 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 	struct strbuf after = STRBUF_INIT;
 	struct strbuf diff = STRBUF_INIT;
 	struct strbuf logrev = STRBUF_INIT;
-	struct strbuf buf = STRBUF_INIT;
 	struct strbuf uuid = STRBUF_INIT;
 
 	trypause();
