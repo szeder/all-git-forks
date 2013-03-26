@@ -88,6 +88,7 @@ static int all, also, interactive, patch_interactive, only, amend, signoff;
 static int edit_flag = -1; /* unspecified */
 static int quiet, verbose, no_verify, allow_empty, dry_run, renew_authorship;
 static int no_post_rewrite, allow_empty_message;
+static int reverse_parent_order;
 static char *untracked_files_arg, *force_date, *ignore_submodule_arg;
 static char *sign_commit;
 
@@ -1398,6 +1399,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 			    N_("terminate entries with NUL")),
 		OPT_BOOLEAN(0, "amend", &amend, N_("amend previous commit")),
 		OPT_BOOLEAN(0, "no-post-rewrite", &no_post_rewrite, N_("bypass post-rewrite hook")),
+		OPT_BOOLEAN(0, "reverse-parent-order", &reverse_parent_order, N_("reverse order of parents")),
 		{ OPTION_STRING, 'u', "untracked-files", &untracked_files_arg, N_("mode"), N_("show untracked files, optional modes: all, normal, no. (Default: all)"), PARSE_OPT_OPTARG, NULL, (intptr_t)"all" },
 		/* end commit contents options */
 
@@ -1492,6 +1494,11 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 				die_errno(_("could not read MERGE_MODE"));
 			if (!strcmp(sb.buf, "no-ff"))
 				allow_fast_forward = 0;
+		}
+		/* Todo: Now only in case 'whence == FROM_MERGE' parents are reversed.
+		Clarify wheter that is what we want or not.*/
+		if (reverse_parent_order) {
+			commit_list_reverse(pptr);
 		}
 		if (allow_fast_forward)
 			parents = reduce_heads(parents);

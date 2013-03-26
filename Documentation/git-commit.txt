@@ -232,6 +232,10 @@ FROM UPSTREAM REBASE" section in linkgit:git-rebase[1].)
 --no-post-rewrite::
 	Bypass the post-rewrite hook.
 
+--reverse-parent-order::
+	Reverse order of commit's parents. MERGE_HEAD is the
+	first parent, HEAD the other parent.
+
 -i::
 --include::
 	Before making a commit out of staged contents so far,
