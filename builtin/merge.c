@@ -545,8 +545,6 @@ static void parse_branch_merge_options(char *bmo)
 
 static int git_merge_config(const char *k, const char *v, void *cb)
 {
-	int status;
-
 	if (branch && !prefixcmp(k, "branch.") &&
 		!prefixcmp(k + 7, branch) &&
 		!strcmp(k + 7 + strlen(branch), ".mergeoptions")) {
@@ -577,12 +575,10 @@ static int git_merge_config(const char *k, const char *v, void *cb)
 		return 0;
 	}
 
-	status = fmt_merge_msg_config(k, v, cb);
-	if (status)
-		return status;
-	status = git_gpg_config(k, v, NULL);
-	if (status)
-		return status;
+	if (fmt_merge_msg_config(k, v, cb) < 0)
+		return -1;
+	if (git_gpg_config(k, v, cb) < 0)
+		return -1;
 	return git_diff_ui_config(k, v, cb);
 }
 

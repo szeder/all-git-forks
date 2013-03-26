@@ -1302,7 +1302,6 @@ static void print_summary(const char *prefix, const unsigned char *sha1,
 static int git_commit_config(const char *k, const char *v, void *cb)
 {
 	struct wt_status *s = cb;
-	int status;
 
 	if (!strcmp(k, "commit.template"))
 		return git_config_pathname(&template_file, k, v);
@@ -1313,9 +1312,8 @@ static int git_commit_config(const char *k, const char *v, void *cb)
 	if (!strcmp(k, "commit.cleanup"))
 		return git_config_string(&cleanup_arg, k, v);
 
-	status = git_gpg_config(k, v, NULL);
-	if (status)
-		return status;
+	if (git_gpg_config(k, v, NULL) < 0)
+		return -1;
 	return git_status_config(k, v, s);
 }
 

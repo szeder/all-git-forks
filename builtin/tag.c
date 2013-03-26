@@ -256,9 +256,8 @@ static const char tag_template_nocleanup[] =
 
 static int git_tag_config(const char *var, const char *value, void *cb)
 {
-	int status = git_gpg_config(var, value, cb);
-	if (status)
-		return status;
+	if (git_gpg_config(var, value, cb) < 0)
+		return -1;
 	if (!prefixcmp(var, "column."))
 		return git_column_config(var, value, "tag", &colopts);
 	return git_default_config(var, value, cb);
