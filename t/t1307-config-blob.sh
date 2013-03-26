@@ -55,12 +55,17 @@ test_expect_success 'editing a blob is an error' '
 test_expect_success 'parse errors in blobs are properly attributed' '
 	cat >config <<-\EOF &&
 	[some]
-		value = "
+		value = 1
+		error = "
 	EOF
 	git add config &&
 	git commit -m broken &&
 
-	test_must_fail git config --blob=HEAD:config some.value 2>err &&
+	test_must_fail git config --blob=HEAD:config some.value 1>out 2>err &&
+
+	# Make sure there is no output of values on stdout
+	touch out.expect &&
+	test_cmp out.expect out &&
 
 	# just grep for our token as the exact error message is likely to
 	# change or be internationalized
