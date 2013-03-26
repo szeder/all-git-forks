@@ -1045,8 +1045,8 @@ static struct {
 	char result;
 	const char *check;
 } signature_check[] = {
-	{ 'G', "\n[GNUPG:] GOODSIG " },
-	{ 'B', "\n[GNUPG:] BADSIG " },
+	{ 'G', "[GNUPG:] GOODSIG " },
+	{ 'B', "[GNUPG:] BADSIG " },
 };
 
 static void parse_signature_lines(struct signature *sig)
@@ -1059,6 +1059,9 @@ static void parse_signature_lines(struct signature *sig)
 		const char *next;
 		if (!found)
 			continue;
+		if (found != buf)
+			if (found[-1] != '\n')
+				continue;
 		sig->check_result = signature_check[i].result;
 		found += strlen(signature_check[i].check);
 		sig->key = xmemdupz(found, 16);
