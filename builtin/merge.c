@@ -1251,6 +1251,8 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 					if (verbosity >= 0)
 						printf(_("Commit %s has a good GPG signature by %s (key fingerprint %s)\n"), hex, signature.signer, signature.key);
 					break;
+				case 'U':
+					die(_("Commit %s has a good GPG signature allegedly by %s, albeit from an untrusted key (fingerprint %s)."), hex, signature.signer, signature.key);
 				case 'B':
 					die(_("Commit %s has a bad GPG signature allegedly by %s (key fingerprint %s)."), hex, signature.signer, signature.key);
 				default: /* 'N' */

@@ -1045,6 +1045,8 @@ static struct {
 	char result;
 	const char *check;
 } signature_check[] = {
+	{ 'U', "\n[GNUPG:] TRUST_UNDEFINED" },
+	{ 'U', "\n[GNUPG:] TRUST_NEVER" },
 	{ 'G', "\n[GNUPG:] GOODSIG " },
 	{ 'B', "\n[GNUPG:] BADSIG " },
 };
