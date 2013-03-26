@@ -354,6 +354,8 @@ int find_commit_subject(const char *commit_buffer, const char **subject)
 	return eol - p;
 }
 
+/* creates a new commit_list with one commit pointing to the given item. A ptr
+to the new list is returned. */
 struct commit_list *commit_list_insert(struct commit *item, struct commit_list **list_p)
 {
 	struct commit_list *new_list = xmalloc(sizeof(struct commit_list));
@@ -418,6 +420,12 @@ void commit_list_sort_by_date(struct commit_list **list)
 {
 	*list = llist_mergesort(*list, commit_list_get_next, commit_list_set_next,
 				commit_list_compare_by_date);
+}
+
+void commit_list_reverse(struct commit_list **list)
+{
+	/* to be implemented */
+	assert(0);
 }
 
 struct commit *pop_most_recent_commit(struct commit_list **list,
