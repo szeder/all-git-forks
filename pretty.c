@@ -766,14 +766,7 @@ struct format_commit_context {
 	const struct pretty_print_context *pretty_ctx;
 	unsigned commit_header_parsed:1;
 	unsigned commit_message_parsed:1;
-	unsigned commit_signature_parsed:1;
-	struct {
-		char *gpg_output;
-		char *gpg_status;
-		char good_bad;
-		char *signer;
-		char *key;
-	} signature;
+	struct signature signature;
 	char *message;
 	size_t width, indent1, indent2;
 
@@ -955,64 +948,6 @@ static void rewrap_message_tail(struct strbuf *sb,
 	c->indent1 = new_indent1;
 	c->indent2 = new_indent2;
 }
-
-static struct {
-	char result;
-	const char *check;
-} signature_check[] = {
-	{ 'G', "\n[GNUPG:] GOODSIG " },
-	{ 'B', "\n[GNUPG:] BADSIG " },
-};
-
-static void parse_signature_lines(struct format_commit_context *ctx)
-{
-	const char *buf = ctx->signature.gpg_status;
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(signature_check); i++) {
-		const char *found = strstr(buf, signature_check[i].check);
-		const char *next;
-		if (!found)
-			continue;
-		ctx->signature.good_bad = signature_check[i].result;
-		found += strlen(signature_check[i].check);
-		ctx->signature.key = xmemdupz(found, 16);
-		found += 17;
-		next = strchrnul(found, '\n');
-		ctx->signature.signer = xmemdupz(found, next - found);
-		break;
-	}
-}
-
-static void parse_commit_signature(struct format_commit_context *ctx)
-{
-	struct strbuf payload = STRBUF_INIT;
-	struct strbuf signature = STRBUF_INIT;
-	struct strbuf gpg_output = STRBUF_INIT;
-	struct strbuf gpg_status = STRBUF_INIT;
-	int status;
-
-	ctx->commit_signature_parsed = 1;
-
-	if (parse_signed_commit(ctx->commit->object.sha1,
-				&payload, &signature) <= 0)
-		goto out;
-	status = verify_signed_buffer(payload.buf, payload.len,
-				      signature.buf, signature.len,
-				      &gpg_output, &gpg_status);
-	if (status && !gpg_output.len)
-		goto out;
-	ctx->signature.gpg_output = strbuf_detach(&gpg_output, NULL);
-	ctx->signature.gpg_status = strbuf_detach(&gpg_status, NULL);
-	parse_signature_lines(ctx);
-
- out:
-	strbuf_release(&gpg_status);
-	strbuf_release(&gpg_output);
-	strbuf_release(&payload);
-	strbuf_release(&signature);
-}
-
 
 static int format_reflog_person(struct strbuf *sb,
 				char part,
@@ -1199,18 +1134,18 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 	}
 
 	if (placeholder[0] == 'G') {
-		if (!c->commit_signature_parsed)
-			parse_commit_signature(c);
+		if (!c->signature.check_result)
+			check_commit_signature(c->commit, &(c->signature));
 		switch (placeholder[1]) {
 		case 'G':
 			if (c->signature.gpg_output)
 				strbuf_addstr(sb, c->signature.gpg_output);
 			break;
 		case '?':
-			switch (c->signature.good_bad) {
+			switch (c->signature.check_result) {
 			case 'G':
 			case 'B':
-				strbuf_addch(sb, c->signature.good_bad);
+				strbuf_addch(sb, c->signature.check_result);
 			}
 			break;
 		case 'S':
