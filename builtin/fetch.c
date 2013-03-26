@@ -856,6 +856,8 @@ static void add_options_to_argv(struct argv_array *argv)
 		argv_array_push(argv, "--force");
 	if (keep)
 		argv_array_push(argv, "--keep");
+	if (progress)
+		argv_array_push(argv, "--progress");
 	if (recurse_submodules == RECURSE_SUBMODULES_ON)
 		argv_array_push(argv, "--recurse-submodules");
 	else if (recurse_submodules == RECURSE_SUBMODULES_ON_DEMAND)
