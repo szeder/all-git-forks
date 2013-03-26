@@ -49,7 +49,7 @@ static const char * const builtin_merge_usage[] = {
 static int show_diffstat = 1, shortlog_len = -1, squash;
 static int option_commit = 1, allow_fast_forward = 1;
 static int fast_forward_only, option_edit = -1;
-static int allow_trivial = 1, have_message;
+static int allow_trivial = 1, have_message, verify_signatures;
 static int overwrite_ignore = 1;
 static struct strbuf merge_msg = STRBUF_INIT;
 static struct strategy **use_strategies;
@@ -199,6 +199,8 @@ static struct option builtin_merge_options[] = {
 	OPT_BOOLEAN(0, "ff-only", &fast_forward_only,
 		N_("abort if fast-forward is not possible")),
 	OPT_RERERE_AUTOUPDATE(&allow_rerere_auto),
+	OPT_BOOLEAN(0, "verify-signatures", &verify_signatures,
+		N_("Verify that the named commit has a valid GPG signature")),
 	OPT_CALLBACK('s', "strategy", &use_strategies, N_("strategy"),
 		N_("merge strategy to use"), option_parse_strategy),
 	OPT_CALLBACK('X', "strategy-option", &xopts, N_("option=value"),
@@ -1232,6 +1234,35 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	if (!head_commit || !argc)
 		usage_with_options(builtin_merge_usage,
 			builtin_merge_options);
+
+	if (verify_signatures) {
+		/* Verify the commit signatures */
+		for (p = remoteheads; p; p = p->next) {
+			struct commit *commit = p->item;
+			struct signature signature;
+			signature.check_result = 0;
+
+			check_commit_signature(commit, &signature);
+
+			char hex[41];
+			strcpy(hex, find_unique_abbrev(commit->object.sha1, DEFAULT_ABBREV));
+			switch(signature.check_result){
+				case 'G':
+					if (verbosity >= 0)
+						printf(_("Commit %s has a good GPG signature by %s (key fingerprint %s)\n"), hex, signature.signer, signature.key);
+					break;
+				case 'B':
+					die(_("Commit %s has a bad GPG signature allegedly by %s (key fingerprint %s)."), hex, signature.signer, signature.key);
+				default: /* 'N' */
+					die(_("Commit %s does not have a good GPG signature. In fact, commit %s does not have a GPG signature at all."), hex, hex);
+			}
+
+			free(signature.gpg_output);
+			free(signature.gpg_status);
+			free(signature.signer);
+			free(signature.key);
+		}
+	}
 
 	strbuf_addstr(&buf, "merge");
 	for (p = remoteheads; p; p = p->next)
