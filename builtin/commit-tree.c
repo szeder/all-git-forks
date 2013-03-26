@@ -28,7 +28,7 @@ static void new_parent(struct commit *parent, struct commit_list **parents_p)
 
 static int commit_tree_config(const char *var, const char *value, void *cb)
 {
-	int status = git_gpg_config(var, value, NULL);
+	int status = git_gpg_config(var, value, cb);
 	if (status)
 		return status;
 	return git_default_config(var, value, cb);

@@ -580,7 +580,7 @@ static int git_merge_config(const char *k, const char *v, void *cb)
 	status = fmt_merge_msg_config(k, v, cb);
 	if (status)
 		return status;
-	status = git_gpg_config(k, v, NULL);
+	status = git_gpg_config(k, v, cb);
 	if (status)
 		return status;
 	return git_diff_ui_config(k, v, cb);
