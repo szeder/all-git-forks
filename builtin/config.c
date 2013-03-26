@@ -223,9 +223,11 @@ static int get_value(const char *key_, const char *regex_)
 		}
 	}
 
-	git_config_with_options(collect_config, &values,
+	ret = git_config_with_options(collect_config, &values,
 				given_config_file, given_config_blob,
 				respect_includes);
+	if (ret < 0)
+		goto free_values;
 
 	ret = !values.nr;
 
@@ -235,6 +237,7 @@ static int get_value(const char *key_, const char *regex_)
 			fwrite(buf->buf, 1, buf->len, stdout);
 		strbuf_release(buf);
 	}
+free_values:
 	free(values.items);
 
 free_strings:
@@ -338,9 +341,10 @@ static int get_colorbool(int print)
 	get_colorbool_found = -1;
 	get_diff_color_found = -1;
 	get_color_ui_found = -1;
-	git_config_with_options(git_get_colorbool_config, NULL,
+	if (git_config_with_options(git_get_colorbool_config, NULL,
 				given_config_file, given_config_blob,
-				respect_includes);
+				respect_includes) < 0)
+		return -1;
 
 	if (get_colorbool_found < 0) {
 		if (!strcmp(get_colorbool_slot, "color.diff"))
