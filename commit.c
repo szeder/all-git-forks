@@ -422,10 +422,15 @@ void commit_list_sort_by_date(struct commit_list **list)
 				commit_list_compare_by_date);
 }
 
-void commit_list_reverse(struct commit_list **list)
+void commit_list_reverse(struct commit_list **list_p)
 {
-	/* to be implemented */
-	assert(0);
+  commit_list* new_list = 0;
+  while (*list_p) {
+    commit_list* next = (*list_p)->next;
+    (*list_p)->next = new_list;
+    new_list = *list_p;
+    *list_p = next;
+  }
 }
 
 struct commit *pop_most_recent_commit(struct commit_list **list,
