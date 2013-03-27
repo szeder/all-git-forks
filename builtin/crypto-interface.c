@@ -58,7 +58,7 @@ static int sign(int argc, const char **argv, const char *prefix)
     const char *trusted_arg = NULL;
     const char *key_arg = NULL;
     const char *commit_arg = NULL;
-    
+
     // The list of our options
     struct option options[] = {
         { OPTION_CALLBACK, 't', "trusted", &trusted_arg,
@@ -74,10 +74,10 @@ static int sign(int argc, const char **argv, const char *prefix)
     };
     argc = parse_options(argc, argv, prefix, options,
             git_crypto_usage, PARSE_OPT_STOP_AT_NON_OPTION);
-    
+
     //sign the commit
     sign_commit();
-    
+
 // LEGACY CODE - TODO delme
 
     //*********NOTES********//
@@ -98,75 +98,79 @@ static int sign(int argc, const char **argv, const char *prefix)
     */
 }
 
+// Should take a char* sha
+// Move the signing method into crypto-interface.c
  int sign_commit() {
     BIO * in = NULL;
     X509 * cert = NULL;
     EVP_PKEY * key = NULL;
     int ret = 1;
     CMS_ContentInfo * cms = NULL;
-    
+
     OpenSSL_add_all_algorithms();
     ERR_load_crypto_strings();
-    
+
     //get the path of the .pem file containing the private key
     char * pem = get_config_val("user.certificate", '\0');
-    
+
     //get the char * of the commit
+    // with the parameter char * sha it should use get_obj_by_ref
     char ** commit_list = get_commit_list();
-    
+
     //trim the trailing whitespace
     char * end;
     end = pem + strlen(pem) -1;
     while(end > pem && isspace(*end)) end--;
     //write new null terminator
     *(end+1) = 0;
-    
+
     //read in .pem file
     in = BIO_new_file(pem,"r");
-    
+
     //check for failure
     if(!in)
         goto err;
-    
+
     //setting X509 * cert from BIO which read from pem
     cert = PEM_read_bio_X509(in, NULL, 0, NULL);
-    
+
     BIO_reset(in);
-    
+
     //read EVP_KEY * key from BIO which read from pem
     key = PEM_read_bio_PrivateKey(in, NULL, 0, NULL);
-    
+
     //make sure these read in successfully
     if(!cert || !key)
         goto err;
-    
+
     char calc_hash[65];
-    
+
     //TODO not sure whether to use commit_list or commit_list2
-    char * commit_list2 = &commit_list;
+    char * commit_list2 = commit_list[1];
     printf("COMMIT LIST: %s\n", commit_list2);
-    
+
     //create a txt file to hold the commit path
+    // this will make a commit_list.txt file IN the repo
     FILE *file;
     file = fopen("commit_list.txt","w");
     fprintf(file,"%s", commit_list2);
     fclose(file);
-    
+
     //SHA2 on the char* that contains the commit path
     calc_sha256("commit_list.txt", calc_hash); //prev msg.txt
-    
+
     //remove the txt file
-    
+
     printf("SHA2 hash: %s\n ", calc_hash);
-    
+
     //put the hash into a BIO *
     BIO * data = BIO_new(BIO_s_mem());
     BIO_puts(data, calc_hash);
-     
+
     //check for failure
     if(!data)
         goto err;
-    
+
     //sign the message
     cms = CMS_sign(cert /*the certificate from .pem*/
                    ,key /*the private key from .pem*/
@@ -178,10 +182,10 @@ static int sign(int argc, const char **argv, const char *prefix)
      if(!cms)
          goto err;
 
-     
+
     //attempt to verify for debugging
      X509_STORE *x509_st = X509_STORE_new();
-     
+
      // Verify the s/smime message
      int err = CMS_verify(cms
                           , NULL /*stack x509*/
@@ -189,19 +193,19 @@ static int sign(int argc, const char **argv, const char *prefix)
                           , data /*indata*/
                           , NULL /*out bio not used*/
                           , CMS_NO_SIGNER_CERT_VERIFY);
-    
+
      //print whether or not verify was successful
      printf("Verify successful %d\n", err);
-    
+
     ret = 0;
-    
+
 err:
     if(ret)
     {
         fprintf(stderr, "Error Signing Data\n");
         ERR_print_errors_fp(stderr);
     }
-    
+
     if(cert)
         X509_free(cert);
     if(key)
@@ -210,7 +214,7 @@ err:
         BIO_free(data);
     if(in)
         BIO_free(in);
-    
+
     return ret;
 
 }
