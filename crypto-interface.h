@@ -26,4 +26,10 @@ extern char ** get_commit_list();
 extern int verify_commit(char * sha1);
 
 
+/**
+ * sign a commit using the sha1 ref
+ *
+ **/
+extern int sign_commit_sha(char * sha);
+
 #endif

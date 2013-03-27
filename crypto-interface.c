@@ -13,7 +13,12 @@
 #include "string-list.h"
 #include <openssl/bio.h>
 #include <openssl/cms.h>
-
+#include <openssl/ssl.h>
+#include <openssl/pem.h>
+#include <openssl/err.h>
+#include <openssl/pkcs7.h>
+#include <openssl/x509v3.h>
+#include <openssl/x509.h>
 #define BASH_ERROR -1
 
 
@@ -211,6 +216,119 @@ char * get_object_from_sha1(const char * ref)
     if(!buf)
         return NULL;
     return buf;
+}
+
+// Move the signing method into crypto-interface.c
+int sign_commit_sha(char * sha)
+{
+    printf("made it to sign\n");
+    BIO * in = NULL;
+    X509 * cert = NULL;
+    EVP_PKEY * key = NULL;
+    int ret = 1;
+    CMS_ContentInfo * cms = NULL;
+    
+    OpenSSL_add_all_algorithms();
+    ERR_load_crypto_strings();
+    
+    char * pem;
+    get_pem_path(&pem);
+    
+    printf("Pem returned: %s\n", pem);
+    
+    //trim the trailing whitespace
+    char * end;
+    end = pem + strlen(pem) - 1;
+    while(end > pem && isspace(*end)) end--;
+    //write new null terminator
+    *(end+1) = 0;
+    
+    //read in .pem file
+    in = BIO_new_file(pem,"r");
+    
+    //check for failure
+    if(!in)
+        goto err;
+    
+    //setting X509 * cert from BIO which read from pem
+    cert = PEM_read_bio_X509(in, NULL, 0, NULL);
+    
+    BIO_reset(in);
+    
+    //read EVP_KEY * key from BIO which read from pem
+    key = PEM_read_bio_PrivateKey(in, NULL, 0, NULL);
+    
+    //make sure these read in successfully
+    if(!cert || !key)
+        goto err;
+    
+    char calc_hash[65];
+    
+    char * commit_head = get_object_from_sha1(sha);
+    
+    printf("Pretty Commit: %s\n", commit_head);
+    
+    //SHA2 on the char* that contains the commit path
+    sha256(commit_head, calc_hash); //prev msg.txt
+    
+    //remove the txt file
+    
+    printf("SHA2 hash: %s\n ", calc_hash);
+    
+    //put the hash into a BIO *
+    BIO * data = BIO_new(BIO_s_mem());
+    BIO_puts(data, calc_hash);
+    
+    //check for failure
+    if(!data)
+        goto err;
+    
+    //sign the message
+    cms = CMS_sign(cert /*the certificate from .pem*/
+                   ,key /*the private key from .pem*/
+                   ,NULL /*stack of x509 certs, unneeded*/
+                   ,data /*the data to be signed, aka sha2 hash of commit*/
+                   ,CMS_DETACHED); /* flag for cleartext signing */
+    
+    //check for failure
+    if(!cms)
+        goto err;
+    
+    
+    //attempt to verify for debugging
+    X509_STORE *x509_st = X509_STORE_new();
+    
+    // Verify the s/smime message
+    int err = CMS_verify(cms
+                         , NULL /*stack x509*/
+                         , x509_st
+                         , data /*indata*/
+                         , NULL /*out bio not used*/
+                         , CMS_NO_SIGNER_CERT_VERIFY);
+    
+    //print whether or not verify was successful
+    printf("Verify successful %d\n", err);
+    
+    ret = 0;
+    
+err:
+    if(ret)
+    {
+        fprintf(stderr, "Error Signing Data\n");
+        ERR_print_errors_fp(stderr);
+    }
+    
+    if(cert)
+        X509_free(cert);
+    if(key)
+        EVP_PKEY_free(key);
+    if(data)
+        BIO_free(data);
+    if(in)
+        BIO_free(in);
+    
+    return ret;
+    
 }
 
 int verify_commit(char *commit_sha)
