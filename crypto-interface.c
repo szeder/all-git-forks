@@ -133,6 +133,13 @@ char ** get_commit_list()
     return list;
 }
 
+void free_cmt_list(char ** list){
+    if(list != NULL){
+        free_cmt_list(&(list[1]));
+        free(list);
+    }
+}
+
 // Helper function which does "--ref=crypto"
 void set_notes_ref(const char * ref)
 {
@@ -241,10 +248,12 @@ int verify_commit(char *commit_sha)
         ret_val = ret_val | VERIFY_FAIL_BAD_SIG;
     }
 
-    // TODO compare sha2 in s/mime to existing commit obj
+    // Get the sha256 of our commit object to compare
     static unsigned char commit_sha2[65];
     sha256(commit, commit_sha2);
 
+    // TODO know the file format perfectly of the smime
+    // to extract the original sha256
     char * buf = malloc(sizeof(char) * 65);
     BIO_read(content, buf, 65);
     printf("cms: %s\n", buf);
