@@ -240,13 +240,16 @@ int verify_commit(char *commit_sha)
         ret_val = ret_val | VERIFY_FAIL_BAD_SIG;
     }
 
-    static unsigned char buf[65];
-    sha256(commit, buf);
-    printf("test: %s\n", buf);
     // TODO compare sha2 in s/mime to existing commit obj
+    static unsigned char commit_sha2[65];
+    sha256(commit, commit_sha2);
+
+    char * buf = malloc(sizeof(char) * 65);
+    BIO_read(content, buf, 65);
+    printf("cms: %s\n", buf);
+    // We need to strcmp the two, aka no big deal
 
     return ret_val;
-
 }
 
 void crypto_set_signing_key(const char *key)
