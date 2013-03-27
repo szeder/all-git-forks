@@ -626,15 +626,38 @@ int match_basename(const char *basename, int basenamelen,
 		   int flags)
 {
 	if (prefix == patternlen) {
-		if (!strcmp_icase(pattern, basename))
+		if (patternlen == basenamelen &&
+		    !strncmp_icase(pattern, basename, basenamelen))
 			return 1;
 	} else if (flags & EXC_FLAG_ENDSWITH) {
+		/* "*literal" matching against "fooliteral" */
 		if (patternlen - 1 <= basenamelen &&
-		    !strcmp_icase(pattern + 1,
-				  basename + basenamelen - patternlen + 1))
+		    !strncmp_icase(pattern + 1,
+				   basename + basenamelen - (patternlen - 1),
+				   patternlen - 1))
 			return 1;
 	} else {
-		if (fnmatch_icase(pattern, basename, 0) == 0)
+		int match_status;
+		struct strbuf pat = STRBUF_INIT;
+		struct strbuf base = STRBUF_INIT;
+		const char *use_pat = pattern;
+		const char *use_base = basename;
+
+		if (pattern[patternlen]) {
+			strbuf_add(&pat, pattern, patternlen);
+			use_pat = pat.buf;
+		}
+		if (basename[basenamelen]) {
+			strbuf_add(&base, basename, basenamelen);
+			use_base = base.buf;
+		}
+		match_status = fnmatch_icase(use_pat, use_base, 0);
+		if (use_pat)
+			strbuf_release(&pat);
+		if (use_base)
+			strbuf_release(&base);
+
+		if (match_status == 0)
 			return 1;
 	}
 	return 0;
