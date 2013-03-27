@@ -75,8 +75,11 @@ static int sign(int argc, const char **argv, const char *prefix)
     argc = parse_options(argc, argv, prefix, options,
             git_crypto_usage, PARSE_OPT_STOP_AT_NON_OPTION);
 
+    //pass in ref for head commit only for now
+    char* commit = "HEAD";
+    
     //sign the commit
-    sign_commit();
+    sign_commit(commit);
 
 // LEGACY CODE - TODO delme
 
@@ -100,7 +103,7 @@ static int sign(int argc, const char **argv, const char *prefix)
 
 // Should take a char* sha
 // Move the signing method into crypto-interface.c
- int sign_commit() {
+ int sign_commit(char * commit) {
     BIO * in = NULL;
     X509 * cert = NULL;
     EVP_PKEY * key = NULL;
@@ -146,18 +149,18 @@ static int sign(int argc, const char **argv, const char *prefix)
     char calc_hash[65];
 
     //TODO not sure whether to use commit_list or commit_list2
-    char * commit_list2 = commit_list[1];
-    printf("COMMIT LIST: %s\n", commit_list2);
+    char * commit_head = commit_list[1];
+    printf("COMMIT LIST: %s\n", commit_head);
 
     //create a txt file to hold the commit path
     // this will make a commit_list.txt file IN the repo
-    FILE *file;
-    file = fopen("commit_list.txt","w");
-    fprintf(file,"%s", commit_list2);
-    fclose(file);
+//    FILE *file;
+//    file = fopen("commit_list.txt","w");
+//    fprintf(file,"%s", commit_head);
+//    fclose(file);
 
     //SHA2 on the char* that contains the commit path
-    calc_sha256("commit_list.txt", calc_hash); //prev msg.txt
+    sha256(commit_head, calc_hash); //prev msg.txt
 
     //remove the txt file
 
