@@ -261,8 +261,8 @@ static int verify(int argc, const char **argv, const char *prefix)
     if(!commit_arg){ // no commit arg so do all commits
         char **list = get_commit_list();
         for(char **commit = list; *commit != NULL; commit = commit + 1){
-            verify_status = verify_commit(commit_arg);
-            verify_err_helper(verify_status, commit_arg);
+            verify_status = verify_commit(*commit);
+            verify_err_helper(verify_status, *commit);
             ret_val = ret_val | verify_status;
         }
     }
@@ -275,7 +275,7 @@ static int verify(int argc, const char **argv, const char *prefix)
     if(ret_val == 0){
         printf("Verification SUCCESSFUL.\n");
     } else {
-        printf("Verification FAILURE - error codes:%d", ret_val);
+        printf("Verification FAILURE - error codes:%d\n", ret_val);
     }
     return ret_val;
 }

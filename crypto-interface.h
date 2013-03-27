@@ -16,6 +16,7 @@ extern void sha256_hash_string (unsigned char hash[SHA256_DIGEST_LENGTH], char o
  * the last item in the array is NULL
  **/
 extern char ** get_commit_list();
+extern void free_cmt_list(char**);
 
 
 /**
