@@ -140,6 +140,7 @@ void set_notes_ref(const char * ref)
     strbuf_addstr(&sb, ref);
     expand_notes_ref(&sb);
     setenv("GIT_NOTES_REF", sb.buf, 1);
+    strbuf_release(&sb);
 }
 
 /**
