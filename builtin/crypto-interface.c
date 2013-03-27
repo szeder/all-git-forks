@@ -172,7 +172,7 @@ static int sign(int argc, const char **argv, const char *prefix)
                    ,key /*the private key from .pem*/
                    ,NULL /*stack of x509 certs, unneeded*/
                    ,data /*the data to be signed, aka sha2 hash of commit*/
-                   ,CMS_TEXT); /* flag for cleartext signing */
+                   ,CMS_DETACHED); /* flag for cleartext signing */
 
      //check for failure
      if(!cms)
