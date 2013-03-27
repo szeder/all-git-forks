@@ -233,7 +233,7 @@ test_expect_success 'push with pushInsteadOf and explicit pushurl (pushInsteadOf
 test_expect_success 'push with matching heads' '
 
 	mk_test heads/master &&
-	git push testrepo &&
+	git push testrepo : &&
 	check_push_result $the_commit heads/master
 
 '
@@ -262,7 +262,7 @@ test_expect_success 'push --force with matching heads' '
 	mk_test heads/master &&
 	git push testrepo : &&
 	git commit --amend -massaged &&
-	git push --force testrepo &&
+	git push --force testrepo : &&
 	! check_push_result $the_commit heads/master &&
 	git reset --hard $the_commit
 
@@ -484,7 +484,7 @@ test_expect_success 'push with config remote.*.pushurl' '
 	git checkout master &&
 	test_config remote.there.url test2repo &&
 	test_config remote.there.pushurl testrepo &&
-	git push there &&
+	git push there : &&
 	check_push_result $the_commit heads/master
 '
 
@@ -495,7 +495,7 @@ test_expect_success 'push with dry-run' '
 		cd testrepo &&
 		old_commit=$(git show-ref -s --verify refs/heads/master)
 	) &&
-	git push --dry-run testrepo &&
+	git push --dry-run testrepo : &&
 	check_push_result $old_commit heads/master
 '
 
@@ -976,7 +976,7 @@ test_expect_success 'push --porcelain --dry-run rejected' '
 
 test_expect_success 'push --prune' '
 	mk_test heads/master heads/second heads/foo heads/bar &&
-	git push --prune testrepo &&
+	git push --prune testrepo : &&
 	check_push_result $the_commit heads/master &&
 	check_push_result $the_first_commit heads/second &&
 	! check_push_result $the_first_commit heads/foo heads/bar
