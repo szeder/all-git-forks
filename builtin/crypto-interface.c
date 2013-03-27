@@ -48,7 +48,20 @@ static int parse_commit_arg(const struct option *opt, const char *arg, int unset
 
 static int sign(const char *ref)
 {
+    //*********NOTES********//
+//    unsigned char object[20], new_note[20];
+//    const char * object_ref;
+//    const unsigned char * note;
+//    struct msg_arg msg = {  0, 0, STRBUF_INIT };
+//    
+//    create_note(object,&msg,0,note,new_note);
+    
+    
+    //*********NOTES********//
+    
+    
     char * return_val2 = get_config_val("user.certificate",'\0');
+        
     // Waiting to convert this to C to pass in our ref arg
     printf("Dummy C sign handler in builtin/crypto-interface\n");
     return 0;

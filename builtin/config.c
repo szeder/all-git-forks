@@ -259,7 +259,7 @@ char * get_config_val(const char *key_, const char *regex_)
 	ret = !values.nr;
     
     //open file to write to 
-    FILE * write_file = fopen("config_shit.txt","w");
+    FILE * write_file = fopen("config_file.txt","w");
     
 	for (i = 0; i < values.nr; i++) {
 		struct strbuf *buf = values.items + i;
@@ -282,17 +282,18 @@ free_strings:
     
     fclose(write_file);
     
-    FILE * read_file = fopen("config_shit.txt","r");
+    FILE * read_file = fopen("config_file.txt","r");
     
     
     //buffer to return (char*)
-    char return_buffer[100];
+    char * return_buffer;    
+    return_buffer = (char*)malloc(100);
     
     //read line to buffer
     fgets(return_buffer, 100, read_file);
     
     fclose(read_file);
-
+    
     return return_buffer;
 }
 
