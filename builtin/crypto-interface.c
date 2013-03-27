@@ -70,33 +70,12 @@ static int sign(int argc, const char **argv, const char *prefix)
 
     //pass in ref for head commit for signing by default
     sign_commit_sha("HEAD");
-
-// LEGACY CODE - TODO delme
-
-    //*********NOTES********//
-//    unsigned char object[20], new_note[20];
-//    const char * object_ref;
-//    const unsigned char * note;
-//    struct msg_arg msg = {  0, 0, STRBUF_INIT };
-//
-//    create_note(object,&msg,0,note,new_note);
-    //*********NOTES********//
-
-/*
-    char * return_val2 = get_config_val("user.certificate",'\0');
-
-    // Waiting to convert this to C to pass in our ref arg
-    printf("Dummy C sign handler in builtin/crypto-interface\n");
-    return 0;
-    */
+    
 }
 
 get_pem_path(char ** pem) {
     //get the path of the .pem file containing the private key
     *pem = get_config_val("user.certificate", '\0');
-    
-    printf("PEM : %s\n",pem);
-
 }
 
 static int verify(int argc, const char **argv, const char *prefix)

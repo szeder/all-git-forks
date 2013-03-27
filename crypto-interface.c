@@ -221,7 +221,6 @@ char * get_object_from_sha1(const char * ref)
 // Move the signing method into crypto-interface.c
 int sign_commit_sha(char * sha)
 {
-    printf("made it to sign\n");
     BIO * in = NULL;
     X509 * cert = NULL;
     EVP_PKEY * key = NULL;
@@ -231,10 +230,9 @@ int sign_commit_sha(char * sha)
     OpenSSL_add_all_algorithms();
     ERR_load_crypto_strings();
     
+    //get the path for our user certificate
     char * pem;
     get_pem_path(&pem);
-    
-    printf("Pem returned: %s\n", pem);
     
     //trim the trailing whitespace
     char * end;
@@ -262,19 +260,15 @@ int sign_commit_sha(char * sha)
     if(!cert || !key)
         goto err;
     
+    //char array to hold the sha2 hash
     char calc_hash[65];
     
+    //get the human readable actual commit
     char * commit_head = get_object_from_sha1(sha);
-    
-    printf("Pretty Commit: %s\n", commit_head);
-    
+        
     //SHA2 on the char* that contains the commit path
-    sha256(commit_head, calc_hash); //prev msg.txt
-    
-    //remove the txt file
-    
-    printf("SHA2 hash: %s\n ", calc_hash);
-    
+    sha256(commit_head, calc_hash);
+            
     //put the hash into a BIO *
     BIO * data = BIO_new(BIO_s_mem());
     BIO_puts(data, calc_hash);
@@ -293,21 +287,6 @@ int sign_commit_sha(char * sha)
     //check for failure
     if(!cms)
         goto err;
-    
-    
-    //attempt to verify for debugging
-    X509_STORE *x509_st = X509_STORE_new();
-    
-    // Verify the s/smime message
-    int err = CMS_verify(cms
-                         , NULL /*stack x509*/
-                         , x509_st
-                         , data /*indata*/
-                         , NULL /*out bio not used*/
-                         , CMS_NO_SIGNER_CERT_VERIFY);
-    
-    //print whether or not verify was successful
-    printf("Verify successful %d\n", err);
     
     ret = 0;
     
