@@ -182,8 +182,10 @@ const unsigned char * get_note_for_commit(const char * commit_ref)
 }
 
 /**
- * Given the sha1 of a note this function returns the
- *  pretty char* of the note.
+ * Given the sha1 of an object this function returns the
+ *  pretty char* of the object.
+ *
+ *  Works with commits or notes, really ANYTHING
  *
  * If no note is found this returns NULL.
  */
@@ -248,7 +250,7 @@ int verify_commit(char *commit_sha)
         ret_val = ret_val | VERIFY_FAIL_BAD_SIG;
     }
 
-    // Get the sha256 of our commit object to compare
+    // Get the sha256 of our commit object to comparet
     static unsigned char commit_sha2[65];
     sha256(commit, commit_sha2);
 
