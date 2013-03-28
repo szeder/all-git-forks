@@ -1045,8 +1045,8 @@ static struct {
 	char result;
 	const char *check;
 } signature_check[] = {
-	{ 'G', "[GNUPG:] GOODSIG " },
-	{ 'B', "[GNUPG:] BADSIG " },
+	{ 'G', "\n[GNUPG:] GOODSIG " },
+	{ 'B', "\n[GNUPG:] BADSIG " },
 };
 
 static void parse_signature_lines(struct signature *sig)
@@ -1055,15 +1055,18 @@ static void parse_signature_lines(struct signature *sig)
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(signature_check); i++) {
-		const char *found = strstr(buf, signature_check[i].check);
-		const char *next;
-		if (!found)
-			continue;
-		if (found != buf)
-			if (found[-1] != '\n')
+		const char *found, *next;
+
+		if (!prefixcmp(buf, signature_check[i].check + 1)) {
+			/* At the very beginning of the buffer */
+			found = buf + strlen(signature_check[i].check + 1);
+		} else {
+			found = strstr(buf, signature_check[i].check);
+			if (!found)
 				continue;
+			found +=  strlen(signature_check[i].check);
+		}
 		sig->check_result = signature_check[i].result;
-		found += strlen(signature_check[i].check);
 		sig->key = xmemdupz(found, 16);
 		found += 17;
 		next = strchrnul(found, '\n');
