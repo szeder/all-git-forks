@@ -658,13 +658,15 @@ add_recipients()
 		revspec=$oldrev..$newrev
 	fi
 
-	revspec="$1"
+	email_regexp="\b[a-z0-9.-]+@[a-z0-9.-]+\.[a-z0-9.-]+\b"
 
 	new_recipients=$(git rev-list --pretty $revspec | \
 					 grep -E -o -i "Cc:\s*$email_regexp" | \
 					 grep -E -o -i $email_regexp | \
-					 sort -u)
-	recipients="$recipients $new_recipients"
+					 sort -u | tr $'\n' ',')
+	if [ ! -z "$new_recipients" ]; then
+		recipients="$recipients,$new_recipients"
+	fi
 }
 
 
