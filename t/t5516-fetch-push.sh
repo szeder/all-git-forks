@@ -542,6 +542,21 @@ test_expect_success 'push with config remote.*.pushurl' '
 	check_push_result testrepo $the_commit heads/master
 '
 
+test_expect_success 'push with config branch.*.pushremote' '
+	mk_test up_repo heads/frotz &&
+	mk_test side_repo heads/quux &&
+	mk_test down_repo heads/master &&
+	test_config remote.up.url up_repo &&
+	test_config remote.pushdefault side_repo &&
+	test_config remote.down.url down_repo &&
+	test_config branch.master.remote up &&
+	test_config branch.master.pushremote down &&
+	git push &&
+	test_must_fail check_push_result up_repo $the_commit heads/master &&
+	test_must_fail check_push_result side_repo $the_commit heads/master &&
+	check_push_result down_repo $the_commit heads/master
+'
+
 # clean up the cruft left with the previous one
 git config --remove-section remote.there
 
