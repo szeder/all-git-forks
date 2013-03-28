@@ -6,8 +6,6 @@ License: 	GPL
 Group: 		Development/Tools
 URL: 		http://kernel.org/pub/software/scm/git/
 Source: 	http://kernel.org/pub/software/scm/git/%{name}-%{version}.tar.bz2
-Patch0:     git-minimal-rpm-spec.patch
-Patch1:     git-no-unused-stuff.patch
 
 BuildRequires:	zlib-devel >= 1.2, openssl-devel, curl-devel, expat-devel, gettext
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-buildroot
@@ -35,8 +33,6 @@ minimal dependencies.
 
 %prep
 %setup -q
-%patch0 -p1
-%patch1 -p1
 
 %build
 make %{extra_make_flags} %{_smp_mflags} CFLAGS="$RPM_OPT_FLAGS" \
