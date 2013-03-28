@@ -647,7 +647,7 @@ generate_delete_general_email()
 # Get "Cc:" from commits, and add this emails to recipients
 add_recipients()
 {
-	if [ "$scancommitforcc" = "false" -a "$scancommitforemails" = "false" ]; then
+	if [ ! "$scancommitforcc" = "true" ] && [ ! "$scancommitforemails" = "true" ]; then
 		return
 	fi
 
@@ -665,11 +665,11 @@ add_recipients()
 	email_regexp="\b[a-z0-9.-]+@[a-z0-9.-]+\.[a-z0-9.-]+\b"
 	new_recipients=""
 
-	if [ ! "$scancommitforemails" = "false" ]; then
+	if [ "$scancommitforemails" = "true" ]; then
 		new_recipients=$(git rev-list --pretty $revspec | \
 						 grep -E -o -i $email_regexp | \
 						 sort -u | tr $'\n' ',')
-	elif [ ! "$scancommitforcc" = "false" ]; then
+	elif [ "$scancommitforcc" = "true" ]; then
 		new_recipients=$(git rev-list --pretty $revspec | \
 						 grep -E -o -i "Cc:\s*$email_regexp" | \
 						 grep -E -o -i $email_regexp | \
@@ -780,8 +780,8 @@ custom_showrev=$(git config hooks.showrev)
 maxlines=$(git config hooks.emailmaxlines)
 diffopts=$(git config hooks.diffopts)
 : ${diffopts:="--stat --summary --find-copies-harder"}
-scancommitforcc=$(git config hooks.scancommitforcc --bool)
-scancommitforemails=$(git config hooks.scancommitforemails --bool)
+scancommitforcc=$(git config --bool hooks.scancommitforcc)
+scancommitforemails=$(git config --bool hooks.scancommitforemails)
 
 # --- Main loop
 # Allow dual mode: run from the command line just like the update hook, or
