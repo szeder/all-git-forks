@@ -666,11 +666,11 @@ add_recipients()
 	new_recipients=""
 
 	if [ "$scancommitforemails" = "true" ]; then
-		new_recipients=$(git rev-list --pretty $revspec | \
+		new_recipients=$(git rev-list --format=%B $revspec | \
 						 grep -E -o -i $email_regexp | \
 						 sort -u | tr $'\n' ',')
 	elif [ "$scancommitforcc" = "true" ]; then
-		new_recipients=$(git rev-list --pretty $revspec | \
+		new_recipients=$(git rev-list --format=%B $revspec | \
 						 grep -E -o -i "Cc:\s*$email_regexp" | \
 						 grep -E -o -i $email_regexp | \
 						 sort -u | tr $'\n' ',')
