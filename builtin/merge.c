@@ -1240,11 +1240,11 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		for (p = remoteheads; p; p = p->next) {
 			struct commit *commit = p->item;
 			struct signature signature;
-			signature.check_result = 0;
+			char hex[41];
 
+			memset(&signature, 0, sizeof(signature));
 			check_commit_signature(commit, &signature);
 
-			char hex[41];
 			strcpy(hex, find_unique_abbrev(commit->object.sha1, DEFAULT_ABBREV));
 			switch(signature.check_result){
 				case 'G':

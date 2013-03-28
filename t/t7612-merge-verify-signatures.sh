@@ -31,17 +31,17 @@ test_expect_success GPG 'create signed commits' '
 '
 
 test_expect_success GPG 'merge unsigned commit with verification' '
-	test_must_fail git merge --ff-only --verify-signatures side-unsigned 2> mergeerror &&
+	test_must_fail git merge --ff-only --verify-signatures side-unsigned 2>mergeerror &&
 	grep "does not have a GPG signature" mergeerror
 '
 
 test_expect_success GPG 'merge commit with bad signature with verification' '
-	test_must_fail git merge --ff-only --verify-signatures $(cat forged.commit) 2> mergeerror &&
+	test_must_fail git merge --ff-only --verify-signatures $(cat forged.commit) 2>mergeerror &&
 	grep "has a bad GPG signature" mergeerror
 '
 
 test_expect_success GPG 'merge signed commit with verification' '
-	git merge -v --ff-only --verify-signatures side-signed > mergeoutput &&
+	git merge -v --ff-only --verify-signatures side-signed >mergeoutput &&
 	grep "has a good GPG signature" mergeoutput
 '
 
