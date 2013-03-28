@@ -34,6 +34,7 @@ int git_inflate(git_zstream *, int flush);
 
 void git_deflate_init(git_zstream *, int level);
 void git_deflate_init_gzip(git_zstream *, int level);
+void git_deflate_init_raw(git_zstream *, int level);
 void git_deflate_end(git_zstream *);
 int git_deflate_abort(git_zstream *);
 int git_deflate_end_gently(git_zstream *);
@@ -341,9 +342,11 @@ static inline enum object_type object_type(unsigned int mode)
 		OBJ_BLOB;
 }
 
+/* Double-check local_repo_env below if you add to this list. */
 #define GIT_DIR_ENVIRONMENT "GIT_DIR"
 #define GIT_NAMESPACE_ENVIRONMENT "GIT_NAMESPACE"
 #define GIT_WORK_TREE_ENVIRONMENT "GIT_WORK_TREE"
+#define GIT_PREFIX_ENVIRONMENT "GIT_PREFIX"
 #define DEFAULT_GIT_DIR_ENVIRONMENT ".git"
 #define DB_ENVIRONMENT "GIT_OBJECT_DIRECTORY"
 #define INDEX_ENVIRONMENT "GIT_INDEX_FILE"
@@ -365,13 +368,24 @@ static inline enum object_type object_type(unsigned int mode)
 #define GIT_LITERAL_PATHSPECS_ENVIRONMENT "GIT_LITERAL_PATHSPECS"
 
 /*
- * Repository-local GIT_* environment variables
- * The array is NULL-terminated to simplify its usage in contexts such
- * environment creation or simple walk of the list.
- * The number of non-NULL entries is available as a macro.
+ * This environment variable is expected to contain a boolean indicating
+ * whether we should or should not treat:
+ *
+ *   GIT_DIR=foo.git git ...
+ *
+ * as if GIT_WORK_TREE=. was given. It's not expected that users will make use
+ * of this, but we use it internally to communicate to sub-processes that we
+ * are in a bare repo. If not set, defaults to true.
  */
-#define LOCAL_REPO_ENV_SIZE 9
-extern const char *const local_repo_env[LOCAL_REPO_ENV_SIZE + 1];
+#define GIT_IMPLICIT_WORK_TREE_ENVIRONMENT "GIT_IMPLICIT_WORK_TREE"
+
+/*
+ * Repository-local GIT_* environment variables; these will be cleared
+ * when git spawns a sub-process that runs inside another repository.
+ * The array is NULL-terminated, which makes it easy to pass in the "env"
+ * parameter of a run-command invocation, or to do a simple walk.
+ */
+extern const char * const local_repo_env[];
 
 extern int is_bare_repository_cfg;
 extern int is_bare_repository(void);
@@ -1017,7 +1031,8 @@ struct ref {
 		force:1,
 		forced_update:1,
 		merge:1,
-		deletion:1;
+		deletion:1,
+		matched:1;
 	enum {
 		REF_STATUS_NONE = 0,
 		REF_STATUS_OK,
@@ -1056,6 +1071,9 @@ extern const char *server_feature_value(const char *feature, int *len_ret);
 extern const char *parse_feature_value(const char *feature_list, const char *feature, int *len_ret);
 
 extern struct packed_git *parse_pack_index(unsigned char *sha1, const char *idx_path);
+
+/* A hook for count-objects to report invalid files in pack directory */
+extern void (*report_garbage)(const char *desc, const char *path);
 
 extern void prepare_packed_git(void);
 extern void reprepare_packed_git(void);

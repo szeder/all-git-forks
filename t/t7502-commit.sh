@@ -177,12 +177,20 @@ test_expect_success 'verbose respects diff config' '
 	git config --unset color.diff
 '
 
+mesg_with_comment_and_newlines='
+# text
+
+'
+
+test_expect_success 'prepare file with comment line and trailing newlines'  '
+	printf "%s" "$mesg_with_comment_and_newlines" >expect
+'
+
 test_expect_success 'cleanup commit messages (verbatim option,-t)' '
 
 	echo >>negative &&
-	{ echo;echo "# text";echo; } >expect &&
-	git commit --cleanup=verbatim -t expect -a &&
-	git cat-file -p HEAD |sed -e "1,/^\$/d" |head -n 3 >actual &&
+	git commit --cleanup=verbatim --no-status -t expect -a &&
+	git cat-file -p HEAD |sed -e "1,/^\$/d" >actual &&
 	test_cmp expect actual
 
 '
@@ -199,7 +207,7 @@ test_expect_success 'cleanup commit messages (verbatim option,-F)' '
 test_expect_success 'cleanup commit messages (verbatim option,-m)' '
 
 	echo >>negative &&
-	git commit --cleanup=verbatim -m "$(cat expect)" -a &&
+	git commit --cleanup=verbatim -m "$mesg_with_comment_and_newlines" -a &&
 	git cat-file -p HEAD |sed -e "1,/^\$/d">actual &&
 	test_cmp expect actual
 
@@ -255,32 +263,40 @@ test_expect_success 'cleanup commit message (fail on invalid cleanup mode config
 test_expect_success 'cleanup commit message (no config and no option uses default)' '
 	echo content >>file &&
 	git add file &&
-	test_set_editor "$TEST_DIRECTORY"/t7500/add-content-and-comment &&
-	git commit --no-status &&
+	(
+	  test_set_editor "$TEST_DIRECTORY"/t7500/add-content-and-comment &&
+	  git commit --no-status
+	) &&
 	commit_msg_is "commit message"
 '
 
 test_expect_success 'cleanup commit message (option overrides default)' '
 	echo content >>file &&
 	git add file &&
-	test_set_editor "$TEST_DIRECTORY"/t7500/add-content-and-comment &&
-	git commit --cleanup=whitespace --no-status &&
+	(
+	  test_set_editor "$TEST_DIRECTORY"/t7500/add-content-and-comment &&
+	  git commit --cleanup=whitespace --no-status
+	) &&
 	commit_msg_is "commit message # comment"
 '
 
 test_expect_success 'cleanup commit message (config overrides default)' '
 	echo content >>file &&
 	git add file &&
-	test_set_editor "$TEST_DIRECTORY"/t7500/add-content-and-comment &&
-	git -c commit.cleanup=whitespace commit --no-status &&
+	(
+	  test_set_editor "$TEST_DIRECTORY"/t7500/add-content-and-comment &&
+	  git -c commit.cleanup=whitespace commit --no-status
+	) &&
 	commit_msg_is "commit message # comment"
 '
 
 test_expect_success 'cleanup commit message (option overrides config)' '
 	echo content >>file &&
 	git add file &&
-	test_set_editor "$TEST_DIRECTORY"/t7500/add-content-and-comment &&
-	git -c commit.cleanup=whitespace commit --cleanup=default &&
+	(
+	  test_set_editor "$TEST_DIRECTORY"/t7500/add-content-and-comment &&
+	  git -c commit.cleanup=whitespace commit --cleanup=default
+	) &&
 	commit_msg_is "commit message"
 '
 
