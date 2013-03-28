@@ -65,6 +65,10 @@
 #   Default is "--stat --summary --find-copies-harder". Add -p to those
 #   options to include a unified diff of changes in addition to the usual
 #   summary output.
+# hooks.scancommitforcc
+#   If this option is set to true, than commit messages will be scanned for
+#   "Cc:" line and parse it for emails, and add this emails to recipients list
+#   Default: false
 #
 # Notes
 # -----
@@ -631,6 +635,24 @@ generate_delete_general_email()
 	echo $LOGEND
 }
 
+# Get "Cc:" from commits, and add this emails to recipients
+add_recipients()
+{
+	if [ "$scancommitforcc" = "false" ]; then
+		return
+	fi
+
+	email_regexp="\b[a-z0-9.-]+@[a-z0-9.-]+\.[a-z0-9.-]+\b"
+
+	revspec="$1"
+
+	new_recipients=$(git rev-list --pretty $revspec | \
+					 grep -E -o -i "Cc:\s*$email_regexp" | \
+					 grep -E -o -i $email_regexp | \
+					 sort -u)
+	recipients="$recipients $new_recipients"
+}
+
 
 # --------------- Miscellaneous utilities
 
@@ -655,6 +677,8 @@ show_new_revisions()
 		# Branch update; show revisions not part of $oldrev.
 		revspec=$oldrev..$newrev
 	fi
+
+	add_recipients $revspec
 
 	other_branches=$(git for-each-ref --format='%(refname)' refs/heads/ |
 	    grep -F -v $refname)
@@ -730,6 +754,7 @@ custom_showrev=$(git config hooks.showrev)
 maxlines=$(git config hooks.emailmaxlines)
 diffopts=$(git config hooks.diffopts)
 : ${diffopts:="--stat --summary --find-copies-harder"}
+scancommitforcc=$(git config hooks.scancommitforcc --bool)
 
 # --- Main loop
 # Allow dual mode: run from the command line just like the update hook, or
