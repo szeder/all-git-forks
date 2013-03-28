@@ -69,6 +69,10 @@
 #   If this option is set to true, than commit messages will be scanned for
 #   "Cc:" line and parse it for emails, and add this emails to recipients list
 #   Default: false
+# hooks.scancommitforemails
+#   If this option is set to true, than commit messages will be scanned for
+#   all emails, and add this emails to recipients list
+#   Default: false
 #
 # Notes
 # -----
@@ -643,7 +647,7 @@ generate_delete_general_email()
 # Get "Cc:" from commits, and add this emails to recipients
 add_recipients()
 {
-	if [ "$scancommitforcc" = "false" ]; then
+	if [ "$scancommitforcc" = "false" -a "$scancommitforemails" = "false" ]; then
 		return
 	fi
 
@@ -659,11 +663,19 @@ add_recipients()
 	fi
 
 	email_regexp="\b[a-z0-9.-]+@[a-z0-9.-]+\.[a-z0-9.-]+\b"
+	new_recipients=""
 
-	new_recipients=$(git rev-list --pretty $revspec | \
-					 grep -E -o -i "Cc:\s*$email_regexp" | \
-					 grep -E -o -i $email_regexp | \
-					 sort -u | tr $'\n' ',')
+	if [ ! "$scancommitforemails" = "false" ]; then
+		new_recipients=$(git rev-list --pretty $revspec | \
+						 grep -E -o -i $email_regexp | \
+						 sort -u | tr $'\n' ',')
+	elif [ ! "$scancommitforcc" = "false" ]; then
+		new_recipients=$(git rev-list --pretty $revspec | \
+						 grep -E -o -i "Cc:\s*$email_regexp" | \
+						 grep -E -o -i $email_regexp | \
+						 sort -u | tr $'\n' ',')
+	fi
+
 	if [ ! -z "$new_recipients" ]; then
 		recipients="$recipients,$new_recipients"
 	fi
@@ -769,6 +781,7 @@ maxlines=$(git config hooks.emailmaxlines)
 diffopts=$(git config hooks.diffopts)
 : ${diffopts:="--stat --summary --find-copies-harder"}
 scancommitforcc=$(git config hooks.scancommitforcc --bool)
+scancommitforemails=$(git config hooks.scancommitforemails --bool)
 
 # --- Main loop
 # Allow dual mode: run from the command line just like the update hook, or
