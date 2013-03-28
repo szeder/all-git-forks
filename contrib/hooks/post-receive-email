@@ -177,6 +177,11 @@ prep_for_email()
 		return 1
 	fi
 
+	# Annotation tag may be sended o different emails.
+	if [ ! "$refname_type" = "annotated tag" ]; then
+		add_recipients
+	fi
+
 	return 0
 }
 
@@ -642,7 +647,16 @@ add_recipients()
 		return
 	fi
 
-	email_regexp="\b[a-z0-9.-]+@[a-z0-9.-]+\.[a-z0-9.-]+\b"
+	# Revision range passed to rev-list differs for new vs. updated
+	# branches.
+	if [ "$change_type" = create ]
+	then
+		# Show all revisions exclusive to this (new) branch.
+		revspec=$newrev
+	else
+		# Branch update; show revisions not part of $oldrev.
+		revspec=$oldrev..$newrev
+	fi
 
 	revspec="$1"
 
@@ -677,8 +691,6 @@ show_new_revisions()
 		# Branch update; show revisions not part of $oldrev.
 		revspec=$oldrev..$newrev
 	fi
-
-	add_recipients $revspec
 
 	other_branches=$(git for-each-ref --format='%(refname)' refs/heads/ |
 	    grep -F -v $refname)
