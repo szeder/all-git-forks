@@ -520,6 +520,18 @@ test_expect_success 'push with config remote.*.push = HEAD' '
 git config --remove-section remote.there
 git config --remove-section branch.master
 
+test_expect_success 'push with remote.pushdefault' '
+	mk_test up_repo heads/frotz &&
+	mk_test down_repo heads/master &&
+	test_config remote.up.url up_repo &&
+	test_config remote.down.url down_repo &&
+	test_config branch.master.remote up &&
+	test_config remote.pushdefault down &&
+	git push &&
+	test_must_fail check_push_result up_repo $the_commit heads/master &&
+	check_push_result down_repo $the_commit heads/master
+'
+
 test_expect_success 'push with config remote.*.pushurl' '
 
 	mk_test testrepo heads/master &&
