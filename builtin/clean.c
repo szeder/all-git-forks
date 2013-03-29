@@ -13,6 +13,7 @@
 #include "refs.h"
 #include "string-list.h"
 #include "quote.h"
+#include "pathspec.h"
 
 static int force = -1; /* unset */
 
@@ -150,12 +151,11 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 	int rm_flags = REMOVE_DIR_KEEP_NESTED_GIT;
 	struct strbuf directory = STRBUF_INIT;
 	struct dir_struct dir;
-	static const char **pathspec;
+	struct pathspec pathspec;
 	struct strbuf buf = STRBUF_INIT;
 	struct string_list exclude_list = STRING_LIST_INIT_NODUP;
 	struct exclude_list *el;
 	const char *qname;
-	char *seen = NULL;
 	struct option options[] = {
 		OPT__QUIET(&quiet, N_("do not print names of files removed")),
 		OPT__DRY_RUN(&dry_run, N_("dry run")),
@@ -210,12 +210,11 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 	for (i = 0; i < exclude_list.nr; i++)
 		add_exclude(exclude_list.items[i].string, "", 0, el, -(i+1));
 
-	pathspec = get_pathspec(prefix, argv);
+	parse_pathspec(&pathspec, 0,
+		       PATHSPEC_PREFER_CWD,
+		       prefix, argv);
 
-	fill_directory(&dir, pathspec);
-
-	if (pathspec)
-		seen = xmalloc(argc > 0 ? argc : 1);
+	fill_directory(&dir, &pathspec);
 
 	for (i = 0; i < dir.nr; i++) {
 		struct dir_entry *ent = dir.entries[i];
@@ -250,11 +249,9 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 		if (lstat(ent->name, &st))
 			continue;
 
-		if (pathspec) {
-			memset(seen, 0, argc > 0 ? argc : 1);
-			matches = match_pathspec(pathspec, ent->name, len,
-						 0, seen);
-		}
+		if (pathspec.nr)
+			matches = match_pathspec_depth(&pathspec, ent->name,
+						       len, 0, NULL);
 
 		if (S_ISDIR(st.st_mode)) {
 			strbuf_addstr(&directory, ent->name);
@@ -268,7 +265,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 			}
 			strbuf_reset(&directory);
 		} else {
-			if (pathspec && !matches)
+			if (pathspec.nr && !matches)
 				continue;
 			res = dry_run ? 0 : unlink(ent->name);
 			if (res) {
@@ -281,7 +278,6 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 			}
 		}
 	}
-	free(seen);
 
 	strbuf_release(&directory);
 	string_list_clear(&exclude_list, 0);
