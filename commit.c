@@ -1041,6 +1041,73 @@ free_return:
 	free(buf);
 }
 
+static struct {
+	char result;
+	const char *check;
+} signature_check[] = {
+	{ 'U', "\n[GNUPG:] TRUST_UNDEFINED" },
+	{ 'U', "\n[GNUPG:] TRUST_NEVER" },
+	{ 'G', "\n[GNUPG:] GOODSIG " },
+	{ 'B', "\n[GNUPG:] BADSIG " },
+};
+
+static void parse_signature_lines(struct signature *sig)
+{
+	const char *buf = sig->gpg_status;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(signature_check); i++) {
+		const char *found, *next;
+
+		if (!prefixcmp(buf, signature_check[i].check + 1)) {
+			/* At the very beginning of the buffer */
+			found = buf + strlen(signature_check[i].check + 1);
+		} else {
+			found = strstr(buf, signature_check[i].check);
+			if (!found)
+				continue;
+			found +=  strlen(signature_check[i].check);
+		}
+		sig->check_result = signature_check[i].result;
+		sig->key = xmemdupz(found, 16);
+		found += 17;
+		next = strchrnul(found, '\n');
+		sig->signer = xmemdupz(found, next - found);
+		break;
+	}
+}
+
+void check_commit_signature(const struct commit* commit, struct signature *sig)
+{
+	struct strbuf payload = STRBUF_INIT;
+	struct strbuf signature = STRBUF_INIT;
+	struct strbuf gpg_output = STRBUF_INIT;
+	struct strbuf gpg_status = STRBUF_INIT;
+	int status;
+
+	sig->check_result = 'N';
+
+	if (parse_signed_commit(commit->object.sha1,
+				&payload, &signature) <= 0)
+		goto out;
+	status = verify_signed_buffer(payload.buf, payload.len,
+				      signature.buf, signature.len,
+				      &gpg_output, &gpg_status);
+	if (status && !gpg_output.len)
+		goto out;
+	sig->gpg_output = strbuf_detach(&gpg_output, NULL);
+	sig->gpg_status = strbuf_detach(&gpg_status, NULL);
+	parse_signature_lines(sig);
+
+ out:
+	strbuf_release(&gpg_status);
+	strbuf_release(&gpg_output);
+	strbuf_release(&payload);
+	strbuf_release(&signature);
+}
+
+
+
 void append_merge_tag_headers(struct commit_list *parents,
 			      struct commit_extra_header ***tail)
 {
