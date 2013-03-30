@@ -60,8 +60,10 @@ OPTIONS
 	instead.
 
 --verify::
-	The parameter given must be usable as a single, valid
-	object name.  Otherwise barf and abort.
+	If the parameter can be used as a single object name, output
+	that name; otherwise, emit an error message and exit with a
+	non-zero status.  Please note that the existence and validity
+	of the named object itself are not checked.
 
 -q::
 --quiet::
@@ -306,12 +308,12 @@ $ git rev-parse --verify HEAD
 * Print the commit object name from the revision in the $REV shell variable:
 +
 ------------
-$ git rev-parse --verify $REV
+$ git rev-parse --verify $REV^{commit}
 ------------
 +
 This will error out if $REV is empty or not a valid revision.
 
-* Same as above:
+* Similar to above:
 +
 ------------
 $ git rev-parse --default master --verify $REV
