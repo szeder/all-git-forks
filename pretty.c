@@ -653,7 +653,8 @@ char *logmsg_reencode(const struct commit *commit,
 		 * this point, we are done with msg. If we allocated a fresh
 		 * copy, we can free it.
 		 */
-		out = reencode_string(msg, output_encoding, use_encoding);
+		out = reencode_string(msg, strlen(msg),
+				      output_encoding, use_encoding, NULL);
 		if (out && msg != commit->buffer)
 			free(msg);
 	}
