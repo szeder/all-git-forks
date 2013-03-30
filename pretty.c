@@ -786,6 +786,7 @@ struct format_commit_context {
 	char *message;
 	char *commit_encoding;
 	size_t width, indent1, indent2;
+	int auto_color;
 
 	/* These offsets are relative to the start of the commit message. */
 	struct chunk author;
@@ -1028,7 +1029,7 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 	const struct commit *commit = c->commit;
 	const char *msg = c->message;
 	struct commit_list *p;
-	int h1, h2;
+	int h1, h2, use_color;
 
 	/* these are independent of the commit */
 	switch (placeholder[0]) {
@@ -1040,6 +1041,10 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 
 			if (!end)
 				return 0;
+			if (!prefixcmp(begin, "auto)")) {
+				c->auto_color = 1;
+				return end - placeholder + 1;
+			}
 			if (!prefixcmp(begin, "auto,")) {
 				if (!want_color(c->pretty_ctx->color))
 					return end - placeholder + 1;
@@ -1107,16 +1112,22 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 	/* these depend on the commit */
 	if (!commit->object.parsed)
 		parse_object(commit->object.sha1);
+	use_color = c->auto_color;
+	c->auto_color = 0;
 
 	switch (placeholder[0]) {
 	case 'H':		/* commit hash */
+		strbuf_addstr(sb, diff_get_color(use_color, DIFF_COMMIT));
 		strbuf_addstr(sb, sha1_to_hex(commit->object.sha1));
+		strbuf_addstr(sb, diff_get_color(use_color, DIFF_RESET));
 		return 1;
 	case 'h':		/* abbreviated commit hash */
+		strbuf_addstr(sb, diff_get_color(use_color, DIFF_COMMIT));
 		if (add_again(sb, &c->abbrev_commit_hash))
 			return 1;
 		strbuf_addstr(sb, find_unique_abbrev(commit->object.sha1,
 						     c->pretty_ctx->abbrev));
+		strbuf_addstr(sb, diff_get_color(use_color, DIFF_RESET));
 		c->abbrev_commit_hash.len = sb->len - c->abbrev_commit_hash.off;
 		return 1;
 	case 'T':		/* tree hash */
@@ -1153,7 +1164,7 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 		strbuf_addstr(sb, get_revision_mark(NULL, commit));
 		return 1;
 	case 'd':
-		format_decoration(sb, commit, 0);
+		format_decoration(sb, commit, use_color);
 		return 1;
 	case 'g':		/* reflog info */
 		switch(placeholder[1]) {
