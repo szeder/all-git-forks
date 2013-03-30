@@ -397,7 +397,7 @@ test_expect_success_multi SYMLINKS 'symlink' '' '
 
 test_expect_success_multi SYMLINKS 'beyond a symlink' '' '
 	test_check_ignore "a/symlink/foo" 128 &&
-	test_stderr "fatal: '\''a/symlink/foo'\'' is beyond a symbolic link"
+	test_stderr "fatal: pathspec '\''a/symlink/foo'\'' is beyond a symbolic link"
 '
 
 test_expect_success_multi SYMLINKS 'beyond a symlink from subdirectory' '' '
@@ -405,7 +405,7 @@ test_expect_success_multi SYMLINKS 'beyond a symlink from subdirectory' '' '
 		cd a &&
 		test_check_ignore "symlink/foo" 128
 	) &&
-	test_stderr "fatal: '\''symlink/foo'\'' is beyond a symbolic link"
+	test_stderr "fatal: pathspec '\''symlink/foo'\'' is beyond a symbolic link"
 '
 
 ############################################################################
@@ -414,7 +414,7 @@ test_expect_success_multi SYMLINKS 'beyond a symlink from subdirectory' '' '
 
 test_expect_success_multi 'submodule' '' '
 	test_check_ignore "a/submodule/one" 128 &&
-	test_stderr "fatal: Path '\''a/submodule/one'\'' is in submodule '\''a/submodule'\''"
+	test_stderr "fatal: Pathspec '\''a/submodule/one'\'' is in submodule '\''a/submodule'\''"
 '
 
 test_expect_success_multi 'submodule from subdirectory' '' '
@@ -422,7 +422,7 @@ test_expect_success_multi 'submodule from subdirectory' '' '
 		cd a &&
 		test_check_ignore "submodule/one" 128
 	) &&
-	test_stderr "fatal: Path '\''a/submodule/one'\'' is in submodule '\''a/submodule'\''"
+	test_stderr "fatal: Pathspec '\''submodule/one'\'' is in submodule '\''a/submodule'\''"
 '
 
 ############################################################################
