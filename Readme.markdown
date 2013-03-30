@@ -74,6 +74,10 @@ separated by a blank line, a la `git log`.
 
 
 ## Next Steps
+0. define gdb macros
+  - show the scoreboard
+  - show blame entry (sha, lines)
+  - define n to autolist
 1. Consider an example where some subset of the blessed lines are reordered.
 2. Become certain about the hunk-local hypothesis.  Is this actually reasonable?
 3. Sketch the implementation.
