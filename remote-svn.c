@@ -914,7 +914,6 @@ void helperf(struct svn_entry *c, const char *fmt, ...) {
 static int cmts_fetched;
 
 static void do_finish_update(struct svnref *r, struct svn_entry *c) {
-	fprintf(stderr, "finish commit %s %d\n", refname(r), c->rev);
 	c->fetched = 1;
 
 	if (c != current_commit)
@@ -968,8 +967,6 @@ struct svn_entry* svn_start_next_update(void) {
 			}
 
 			last_commit = c;
-
-			fprintf(stderr, "start commit %s %d\n", refname(r), c->rev);
 
 			if (copysrc && !c->copy_modified) {
 				helperf(c, "branch %s %d %s %d %d:%s %d:%s %d:",
