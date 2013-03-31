@@ -511,7 +511,7 @@ static void do_connect(void) {
 	const char *p = defcred.protocol;
 	strbuf_addstr(&buf, url);
 
-	if (!prefixcmp(p, "svn+")) {
+	if (!prefixcmp(url, "svn+")) {
 		strbuf_remove(&buf, 0, 4);
 		p += 4;
 	}
@@ -524,7 +524,7 @@ static void do_connect(void) {
 		die("don't know how to handle url %s", url);
 	}
 
-	if ((!prefixcmp(p, "svn+") && prefixcmp(url+4, buf.buf)) || prefixcmp(url, buf.buf))
+	if (prefixcmp(url + (!prefixcmp(url, "svn+") ? 4 : 0), buf.buf))
 		die("server returned different url (%s) then expected (%s)", buf.buf, url);
 
 	relpath = url + buf.len;
