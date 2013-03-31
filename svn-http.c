@@ -236,7 +236,10 @@ static int run_request(struct request *h) {
 	}
 
 	if (ret) {
-		http_error(h->url.buf, ret);
+		/* We don't use http_request so we want http_error to
+		 * log in all instances so feed a fake error to avoid
+		 * the check on HTTP_START_FAILED */
+		http_error(h->url.buf, HTTP_ERROR);
 	}
 
 	return ret;
