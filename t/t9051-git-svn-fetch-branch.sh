@@ -4,6 +4,8 @@ test_description="git remote-svn fetch branch $svn_proto"
 . ./lib-git-remote-svn.sh
 
 test_expect_success 'setup branches' '
+	git config core.askpass "$PWD/askpass" &&
+	git config "credential.$svnurl.username" committer &&
 	git config --add remote.svn.map "Trunk:refs/heads/trunk" &&
 	git config --add remote.svn.map "Branches/*:refs/heads/*" &&
 	git config --add remote.svn.map "Tags/*:refs/tags/*" &&

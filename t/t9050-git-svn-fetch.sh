@@ -8,6 +8,8 @@ test_expect_success 'mergeinfo' '
 '
 
 test_expect_success 'fetch empty' '
+	git config core.askpass "$PWD/askpass" &&
+	git config "credential.$svnurl.username" committer &&
 	git fetch -v svn &&
 	test_must_fail git checkout svn/master
 '
@@ -92,14 +94,14 @@ test_expect_success 'move folder' '
 final_sha1=`show_ref svn/master`
 
 test_expect_success 'clone' '
-	git clone -v -c core.attributesfile="$PWD/.git/info/attributes" -c svn.authors="$PWD/.git/svn-authors" svn::$svnurl gitco &&
+	git clone -v -c core.askpass="$PWD/askpass" -c "credential.$svnurl.username=committer" -c core.attributesfile="$PWD/.git/info/attributes" -c svn.authors="$PWD/.git/svn-authors" svn::$svnurl gitco &&
 	cd gitco &&
 	test `show_ref master` = $final_sha1 &&
 	cd ..
 '
 
 test_expect_success 'clone bare' '
-	git clone --bare -v -c core.attributesfile="$PWD/.git/info/attributes" -c svn.authors="$PWD/.git/svn-authors" svn::$svnurl gitco2 &&
+	git clone --bare -v -c core.askpass="$PWD/askpass" -c "credential.$svnurl.username=committer" -c core.attributesfile="$PWD/.git/info/attributes" -c svn.authors="$PWD/.git/svn-authors" svn::$svnurl gitco2 &&
 	cd gitco2 &&
 	test `show_ref master` = $final_sha1 &&
 	cd ..

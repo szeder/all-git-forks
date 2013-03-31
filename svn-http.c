@@ -26,7 +26,6 @@ struct request {
 	curl_write_callback hdrfunc;
 	void *callback_data;
 	void (*callback_func)(void *data);
-	unsigned int started : 1;
 	unsigned int just_opened : 1;
 };
 
@@ -161,8 +160,6 @@ static void process_request(struct request *h, XML_StartElementHandler start, XM
 	XML_SetUserData(h->parser, h);
 }
 
-static void request_finished(void *user);
-
 static void init_request(struct request *h) {
 	memset(h, 0, sizeof(*h));
 	h->parser = XML_ParserCreateNS("UTF-8", '|');
@@ -180,9 +177,8 @@ static void reset_request(struct request *h) {
 	h->hdrfunc = NULL;
 	h->method = NULL;
 	XML_ParserReset(h->parser, "UTF-8");
-	h->started = 0;
-	h->callback_func = &request_finished;
-	h->callback_data = h;
+	h->callback_func = NULL;
+	h->callback_data = NULL;
 }
 
 static void start_request(struct request *h) {
@@ -192,6 +188,7 @@ static void start_request(struct request *h) {
 	if (!defhdrs) {
 		defhdrs = curl_slist_append(defhdrs, "Expect:");
 		defhdrs = curl_slist_append(defhdrs, "DAV: http://subversion.tigris.org/xmlns/dav/svn/depth");
+		defhdrs = curl_slist_append(defhdrs, "Pragma: no-cache");
 	}
 
 	h->in.posn = 0;
@@ -224,33 +221,25 @@ static void start_request(struct request *h) {
 	if (!start_active_slot(h->slot)) {
 		die("request-log failed %d\n", (int) h->res.http_code);
 	}
-
-	h->started = 1;
-}
-
-static void request_finished(void *user) {
-	/* only cleanup the slot related data here, as this may be
-	 * called before we get a chance to parse the data */
-	struct request *h = user;
-
-	if (h->res.curl_result && h->res.http_code == 401) {
-		credential_fill(http_auth);
-		start_request(h);
-	} else {
-		h->slot = NULL;
-	}
 }
 
 static int run_request(struct request *h) {
-	if (!h->started) {
+	int ret;
+	start_request(h);
+	run_active_slot(h->slot);
+	ret = handle_curl_result(h->slot);
+
+	if (ret == HTTP_REAUTH) {
 		start_request(h);
-	}
-
-	while (h->slot) {
 		run_active_slot(h->slot);
+		ret = handle_curl_result(h->slot);
 	}
 
-	return h->res.curl_result;
+	if (ret) {
+		http_error(h->url.buf, ret);
+	}
+
+	return ret;
 }
 
 static int get_header(struct strbuf* buf, const char* hdr, char* ptr, size_t size) {
@@ -337,13 +326,6 @@ static void http_get_options(void) {
 
 	if (run_request(h))
 		goto err;
-
-	if (h->res.curl_result && (h->res.http_code == 401 || h->res.http_code == 403)) {
-		credential_reject(http_auth);
-		die("auth failed");
-	}
-
-	credential_approve(http_auth);
 
 	/* Pre 1.7 doesn't send the uuid/version-number as OPTION headers */
 	if (latest_rev < 0) {
@@ -727,14 +709,24 @@ static struct update *free_update;
 static void update_finished(void *user) {
 	struct update *u = user;
 	struct request *h = &u->req;
+	int ret = handle_curl_result(h->slot);
 
-	if (h->res.curl_result) {
+	switch (ret) {
+	case HTTP_REAUTH:
+		start_request(h);
+		break;
+
+	case HTTP_OK:
+		svn_finish_update(u->cmt);
+		u->next = free_update;
+		free_update = u;
+		break;
+
+	default:
+		http_error(h->url.buf, ret);
 		die("update failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
+		break;
 	}
-
-	svn_finish_update(u->cmt);
-	u->next = free_update;
-	free_update = u;
 }
 
 static int fill_read_updates(void *user) {

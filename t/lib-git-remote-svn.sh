@@ -161,6 +161,7 @@ AuthType Basic
 AuthName "SVN Repo"
 AuthBasicProvider file
 AuthUserFile "$svnrepo/conf/htpasswd"
+SVNPathAuthz off
 AuthzSVNAccessFile "$svnrepo/conf/access"
 Satisfy any
 </Location>
@@ -168,7 +169,7 @@ Satisfy any
 	htpasswd -bc "$svnrepo/conf/htpasswd" committer pass
 	cat > "$svnrepo/conf/access" <<!
 [/]
-* = r
+#* = r
 committer = rw
 !
 	cat > "$svnrepo/conf/passwd" <<!
