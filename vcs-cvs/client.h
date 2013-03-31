@@ -90,7 +90,7 @@ struct cvsfile {
 	unsigned int ismem:1;        /* true if file contents are in file variable, false if just temp file name */
 	unsigned int isnew:1;
 	unsigned int iscached:1;
-	unsigned int hasstat:1;
+	unsigned int handled:1;
 	unsigned int mode;
 	struct strbuf file; /* FIXME: file or path depends on ismem */
 	void *util;         /* used to store sha1 during check in (used in prepare file content callback) */

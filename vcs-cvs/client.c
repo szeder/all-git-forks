@@ -9,6 +9,7 @@
 #include <string.h>
 
 /*
+ * TODO:
  * rework full_module_path, should not end with /
  */
 
@@ -1879,7 +1880,7 @@ void cvsfile_init(struct cvsfile *file)
 	file->ismem = 0;
 	file->isnew = 0;
 	file->iscached = 0;
-	file->hasstat = 0;
+	file->handled = 0;
 	file->mode = 0;
 	strbuf_init(&file->file, 0);
 	file->util = NULL;
@@ -2242,7 +2243,7 @@ M    Sticky Options:\09(none)\0a
 					default:
 						rc = 1;
 					}
-					file->hasstat = 1;
+					file->handled = 1;
 					state = NEED_START_STATUS;
 				}
 				break;
@@ -2261,8 +2262,8 @@ M    Sticky Options:\09(none)\0a
 
 	struct cvsfile *file_it = files;
 	while (file_it < files + count) {
-		if (!file_it->hasstat)
-			die("Did get status for file: %s", file_it->path.buf);
+		if (!file_it->handled)
+			die("Did not get status for file: %s", file_it->path.buf);
 		file_it++;
 	}
 
@@ -2516,6 +2517,7 @@ static int parse_cvs_checkin_reply(struct cvs_transport *cvs, struct cvsfile *fi
 {
 	struct strbuf line = STRBUF_INIT;
 	struct strbuf buf = STRBUF_INIT;
+	struct strbuf repo_mod_path = STRBUF_INIT;
 	struct strbuf path = STRBUF_INIT;
 	struct strbuf new_rev = STRBUF_INIT;
 	struct strbuf old_rev = STRBUF_INIT;
@@ -2526,6 +2528,7 @@ static int parse_cvs_checkin_reply(struct cvs_transport *cvs, struct cvsfile *fi
 
 	int state = NEED_CHECK_IN;
 
+	strbuf_addf(&repo_mod_path, "%s/%s/", cvs->repo_path, cvs->module);
 /*
 "M ? impl/new\n
 M RCS file: /home/dummy/devel/SVC/cvs2/sources/smod/impl/Attic/decorator.impl,v\n
@@ -2538,6 +2541,7 @@ Mode u=rw,g=rw,o=r\n
 Checked-in impl/\n
 /home/dummy/devel/SVC/cvs2/sources/smod/impl/decorator.impl\n
 /decorator.impl/1.1.2.1///Tunstable\n
+
 M Checking in include/util.h;\n
 M /home/dummy/devel/SVC/cvs2/sources/smod/include/util.h,v  <--  util.h\n
 M new revision: 1.1.2.1; previous revision: 1.1\n
@@ -2547,12 +2551,20 @@ Checked-in include/\n
 /home/dummy/devel/SVC/cvs2/sources/smod/include/util.h\n
 /util.h/1.1.2.1///Tunstable\n
 ok\n"
+
 CVS   65 <- M /home/dummy/tmp/moo/cvs_repo/mod/src/Makefile,v  <--  Makefile\0a
 CVS   24 <- M initial revision: 1.1\0a
 CVS   19 <- Mode u=rw,g=rw,o=r\0a
 CVS   14 <- Checked-in ./\0a
 CVS   17 <- mod/src/Makefile\0a
 CVS   20 <- /Makefile/1.1//-kk/\0a
+
+CVS  107 <- M /home/dummy/tmp/moo/cvs_repo/mod/src/lib/Transforms/Scalar/DCE.cpp,v  <--  lib/Transforms/Scalar/DCE.cpp\0a
+CVS   44 <- M new revision: 1.6; previous revision: 1.5\0a
+CVS   19 <- Mode u=rw,g=rw,o=r\0a
+CVS   34 <- Checked-in lib/Transforms/Scalar/\0a
+CVS   38 <- mod/src/lib/Transforms/Scalar/DCE.cpp\0a
+CVS   19 <- /DCE.cpp/1.6//-kk/\0a
 */
 	while (1) {
 		ret = cvs_readline(cvs, &cvs->rd_line_buf);
@@ -2565,8 +2577,65 @@ CVS   20 <- /Makefile/1.1//-kk/\0a
 			fprintf(stderr, "CVS E: %s\n", cvs->rd_line_buf.buf + 2);
 		}
 
+		if (!prefixcmp(cvs->rd_line_buf.buf, "Checked-in ")) {
+			if (state != NEED_DONE)
+				die("skipped file during parsing checkin reply");
+			state = NEED_CHECK_IN;
+		}
+
 		if (strbuf_gettext_after(&cvs->rd_line_buf, "M ", &line)) {
 			switch (state) {
+			case NEED_CHECK_IN:
+				if (strbuf_gettext_after(&line, repo_mod_path.buf, &path)) {
+					p = strstr(path.buf, ",v  <--  ");
+					if (!p)
+						die("checkin path doesn't match expected pattern: '%s'", line.buf);
+
+					strbuf_setlen(&path, p - path.buf);
+					state = NEED_NEW_REVISION;
+				}
+				break;
+			case NEED_NEW_REVISION:
+				if (strbuf_gettext_after(&line, "new revision: ", &buf)) {
+					p = strchr(buf.buf, ';');
+					if (!p)
+						error("Checkin file cannot parse new revision line: %s", line.buf);
+					else {
+						strbuf_add(&new_rev, buf.buf, p - buf.buf);
+						if (!prefixcmp(p, "; previous revision: ")) {
+							p += strlen("; previous revision: ");
+							strbuf_addstr(&old_rev, p);
+						}
+					}
+				}
+				else if (strbuf_gettext_after(&line, "initial revision: ", &new_rev)) {
+					/*
+					 * TODO: validate
+					 */
+				}
+				else {
+					continue;
+				}
+
+				file = cvsfile_find(files, count, path.buf);
+				if (!file)
+					die("Checkin file info found for not requested file: %s", path.buf);
+				else if (strcmp(file->revision.buf, old_rev.buf) && !file->isnew) {
+					die("Checkin file %s old revision %s, but %s is reported",
+					      path.buf, file->revision.buf, old_rev.buf);
+					strbuf_copy(&file->revision, &new_rev);
+				}
+				else {
+					strbuf_copy(&file->revision, &new_rev);
+				}
+				file->handled = 1;
+
+				strbuf_reset(&path);
+				strbuf_reset(&new_rev);
+				strbuf_reset(&old_rev);
+				state = NEED_DONE;
+				break;
+			/*
 			case NEED_CHECK_IN:
 				if (strbuf_gettext_after(&line, "Checking in ", &path) ||
 				    strbuf_gettext_after(&line, "Removing ", &path)) {
@@ -2610,7 +2679,7 @@ CVS   20 <- /Makefile/1.1//-kk/\0a
 					strbuf_reset(&old_rev);
 					state = NEED_CHECK_IN;
 				}
-				break;
+				break;*/
 			}
 		}
 
@@ -2624,8 +2693,16 @@ CVS   20 <- /Makefile/1.1//-kk/\0a
 		}
 	}
 
+	struct cvsfile *file_it = files;
+	while (file_it < files + count) {
+		if (!file_it->handled)
+			die("Did not get checking confirmation for file: %s", file_it->path.buf);
+		file_it++;
+	}
+
 	strbuf_release(&line);
 	strbuf_release(&buf);
+	strbuf_release(&repo_mod_path);
 	strbuf_release(&path);
 	strbuf_release(&new_rev);
 	strbuf_release(&old_rev);

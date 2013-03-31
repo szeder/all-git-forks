@@ -17,7 +17,7 @@
 
 /*
  * TODO:
- * - skip dead file addition to HEAD branch
+ * -/+ skip dead file addition to HEAD branch
  * - depth
  * - check that metadata correspond to ls-tree files (all files have rev, but no extra)
  * - authors ref/note

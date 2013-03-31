@@ -85,6 +85,10 @@ die "git remote add $?" if $?;
 `git fetch git`;
 die "git fetch $git_repo_origin $?" if $?;
 
+#
+# TODO: add multiple commits pushes
+#
+
 my $initial_cherry_pick = 1;
 my $git_zero_sha1 = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 my $commit = "";
