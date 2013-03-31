@@ -505,14 +505,14 @@ err:
 
 
 
-static void do_connect(void) {
+static void do_connect(int ispush) {
 	int i;
 	struct strbuf buf = STRBUF_INIT;
 	const char *p = defcred.protocol;
 	strbuf_addstr(&buf, url);
 
 	if (!strcmp(p, "http") || !strcmp(p, "https")) {
-		proto = svn_http_connect(remote, &buf, &defcred, &uuid);
+		proto = svn_http_connect(remote, &buf, &defcred, &uuid, ispush);
 	} else if (!strcmp(p, "svn")) {
 		proto = svn_proto_connect(&buf, &defcred, &uuid);
 	} else {
@@ -1885,10 +1885,8 @@ static int command(char *cmd, char *arg) {
 		}
 
 	} else if (!strcmp(cmd, "list")) {
-		if (!strcmp(next_arg(arg, &arg), "for-push")) {
-			credential_fill(&defcred);
-		}
-		do_connect();
+		int ispush = !strcmp(next_arg(arg, &arg), "for-push");
+		do_connect(ispush);
 		list();
 		remotef("\n");
 

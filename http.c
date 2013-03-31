@@ -265,7 +265,7 @@ static CURL *get_curl_handle(void)
 	curl_easy_setopt(result, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
 #endif
 
-	if (http_proactive_auth)
+	if (http_proactive_auth || (http_auth && http_auth->password))
 		init_curl_http_auth(result);
 
 	if (ssl_cert != NULL)

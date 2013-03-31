@@ -1168,9 +1168,9 @@ struct svn_proto proto_http = {
 	&http_has_change,
 };
 
-struct svn_proto *svn_http_connect(struct remote *remote, struct strbuf *purl, struct credential *cred, struct strbuf *puuid) {
+struct svn_proto *svn_http_connect(struct remote *remote, struct strbuf *purl, struct credential *cred, struct strbuf *puuid, int ispush) {
 	char *p = purl->buf;
-	http_init(remote, p, 0);
+	http_init(remote, p, ispush);
 
 	http_auth = cred;
 	strbuf_addstr(&url, p);
