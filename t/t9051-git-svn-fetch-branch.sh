@@ -33,7 +33,6 @@ test_expect_success 'copied branch' '
 	svn_cmd up &&
 	cd .. &&
 	git fetch -v svn &&
-	test_mergeinfo /Branches/Branch.3 "\"/Branches/Branch:3\n/Trunk:1-2\"" &&
 	test `show_ref svn/trunk` = `show_ref svn/Branch`
 '
 
@@ -47,7 +46,6 @@ test_expect_success 'copied and edited branch' '
 	cd .. &&
 	git fetch -v svn &&
 	git checkout svn/CopiedBranch &&
-	test_mergeinfo /Branches/CopiedBranch.4 "\"/Branches/CopiedBranch:4\n/Trunk:1-3\"" &&
 	test_file file.txt "other" &&
 	test_file file2.txt "more" &&
 	test_git_subject HEAD "create copied branch" &&
@@ -67,7 +65,6 @@ test_expect_success 'edited and copied branch' '
 	cd .. &&
 	git fetch -v svn &&
 	git checkout svn/Edit_Copy_Branch &&
-	test_mergeinfo /Branches/Edit_Copy_Branch.5 "\"/Branches/Edit Copy Branch:5\n/Trunk:1-4\"" &&
 	test_file file.txt "other" &&
 	test_file file2.txt "more" &&
 	test_git_subject HEAD "create edit copy branch" &&

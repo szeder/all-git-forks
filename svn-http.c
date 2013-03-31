@@ -483,8 +483,8 @@ static struct mergeinfo *http_get_mergeinfo(const char *path, int rev) {
 		"</propfind>\n");
 
 	get_mergeinfo = NULL;
-	process_request(h, &xml_start, &list_xml_end);
-	if (run_request(h) && h->res.http_code) {
+	process_request(h, &xml_start, &get_mergeinfo_xml_end);
+	if (run_request(h) || !get_mergeinfo) {
 		die("mergeinfo propfind failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
 	}
 
@@ -901,7 +901,7 @@ static void http_set_mergeinfo(const char *path, struct mergeinfo *mi) {
 	strbuf_addstr(b, "<D:propertyupdate xmlns:D=\"DAV:\" xmlns:S=\"http://subversion.tigris.org/xmlns/svn/\">\n");
 	strbuf_addstr(b, " <D:set><D:prop><S:mergeinfo>");
 	encode_xml(b, make_svn_mergeinfo(mi));
-	strbuf_addstr(b, "</S:merginfo></D:prop></D:set>\n");
+	strbuf_addstr(b, "</S:mergeinfo></D:prop></D:set>\n");
 	strbuf_addstr(b, "</D:propertyupdate>\n");
 
 	if (run_request(h))

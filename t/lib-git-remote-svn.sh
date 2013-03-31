@@ -96,14 +96,6 @@ test_svn_author () {
 	test "$commit_author" = "$author"
 }
 
-test_mergeinfo () {
-	branch="$1"
-	expected="mergeinfo $2"
-	have="`git show-ref -s refs/svn/$uuid$1 | git cat-file --batch | grep '^mergeinfo'`"
-	echo test_mergeinfo "$expected" "$have"
-	test "$expected" = "$have"
-}
-
 show_ref () {
 	(git show-ref -s --head $1 | head -n 1) || echo $1
 }
@@ -134,6 +126,9 @@ test_expect_success 'start svnserve' '
 	mkdir "$svnrepo" &&
 	svnadmin create "$svnrepo" &&
 	uuid=`cat "$svnrepo/db/uuid"` &&
+	echo "#!/bin/sh" > askpass &&
+	echo "echo pass" >> askpass &&
+	chmod +x askpass &&
 	cat > "$svnrepo/conf/svnserve.conf" <<!
 [general]
 auth-access = write
