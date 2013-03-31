@@ -2796,6 +2796,14 @@ endif
 		ln -s "git-remote-http$X" "$$execdir/$$p" 2>/dev/null || \
 		cp "$$execdir/git-remote-http$X" "$$execdir/$$p" || exit; \
 	done && \
+	remote_svn_aliases="$(REMOTE_SVN_ALIASES)" && \
+	for p in $$remote_svn_aliases; do \
+		$(RM) "$$execdir/$$p" && \
+		test -z "$(NO_INSTALL_HARDLINKS)" && \
+		ln "$$execdir/git-remote-svn$X" "$$execdir/$$p" 2>/dev/null || \
+		ln -s "git-remote-svn$X" "$$execdir/$$p" 2>/dev/null || \
+		cp "$$execdir/git-remote-svn$X" "$$execdir/$$p" || exit; \
+	done && \
 	./check_bindir "z$$bindir" "z$$execdir" "$$bindir/git-add$X"
 
 install-gitweb:
