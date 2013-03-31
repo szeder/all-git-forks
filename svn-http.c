@@ -1175,9 +1175,6 @@ struct svn_proto proto_http = {
 
 struct svn_proto *svn_http_connect(struct remote *remote, struct strbuf *purl, struct credential *cred, struct strbuf *puuid) {
 	char *p = purl->buf;
-	if (!strncmp(purl->buf, "svn+", 4)) {
-		p += 4;
-	}
 	http_init(remote, p, 0);
 
 	http_auth = cred;

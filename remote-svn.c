@@ -511,7 +511,12 @@ static void do_connect(void) {
 	const char *p = defcred.protocol;
 	strbuf_addstr(&buf, url);
 
-	if (!strcmp(p, "http") || !strcmp(p, "https") || !strcmp(p, "svn+http") || !strcmp(p, "svn+https")) {
+	if (!prefixcmp(p, "svn+")) {
+		strbuf_remove(&buf, 0, 4);
+		p += 4;
+	}
+
+	if (!strcmp(p, "http") || !strcmp(p, "https")) {
 		proto = svn_http_connect(remote, &buf, &defcred, &uuid);
 	} else if (!strcmp(p, "svn")) {
 		proto = svn_proto_connect(&buf, &defcred, &uuid);
@@ -519,7 +524,7 @@ static void do_connect(void) {
 		die("don't know how to handle url %s", url);
 	}
 
-	if (prefixcmp(url, buf.buf))
+	if ((!prefixcmp(p, "svn+") && prefixcmp(url+4, buf.buf)) || prefixcmp(url, buf.buf))
 		die("server returned different url (%s) then expected (%s)", buf.buf, url);
 
 	relpath = url + buf.len;
