@@ -1544,7 +1544,6 @@ ifdef NO_CURL
 	REMOTE_CURL_PRIMARY =
 	REMOTE_CURL_ALIASES =
 	REMOTE_CURL_NAMES =
-	REMOTE_SVN_ALIASES =
 else
 	ifdef CURLDIR
 		# Try "-Wl,-rpath=$(CURLDIR)/$(lib)" in such a case.
@@ -1566,7 +1565,6 @@ else
 	REMOTE_CURL_PRIMARY = git-remote-http$X
 	REMOTE_CURL_ALIASES = git-remote-https$X git-remote-ftp$X git-remote-ftps$X
 	REMOTE_CURL_NAMES = $(REMOTE_CURL_PRIMARY) $(REMOTE_CURL_ALIASES)
-	REMOTE_SVN_ALIASES = git-remote-svn+http$X git-remote-svn+https$X
 	PROGRAM_OBJS += http-fetch.o
 	PROGRAMS += $(REMOTE_CURL_NAMES)
 	curl_check := $(shell (echo 070908; curl-config --vernum) | sort -r | sed -ne 2p)
@@ -2473,12 +2471,6 @@ git-remote-svn$X: remote-svn.o svn-proto.o svn-http.o http.o GIT-LDFLAGS $(GITLI
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
 		$(LIBS) $(PTHREAD_LIBS) $(CURL_LIBCURL) $(EXPAT_LIBEXPAT)
 
-$(REMOTE_SVN_ALIASES): git-remote-svn$X
-	$(QUIET_LNCP)$(RM) $@ && \
-	ln $< $@ 2>/dev/null || \
-	ln -s $< $@ 2>/dev/null || \
-	cp $< $@
-
 $(LIB_FILE): $(LIB_OBJS)
 	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $(LIB_OBJS)
 
@@ -2795,14 +2787,6 @@ endif
 		ln "$$execdir/git-remote-http$X" "$$execdir/$$p" 2>/dev/null || \
 		ln -s "git-remote-http$X" "$$execdir/$$p" 2>/dev/null || \
 		cp "$$execdir/git-remote-http$X" "$$execdir/$$p" || exit; \
-	done && \
-	remote_svn_aliases="$(REMOTE_SVN_ALIASES)" && \
-	for p in $$remote_svn_aliases; do \
-		$(RM) "$$execdir/$$p" && \
-		test -z "$(NO_INSTALL_HARDLINKS)" && \
-		ln "$$execdir/git-remote-svn$X" "$$execdir/$$p" 2>/dev/null || \
-		ln -s "git-remote-svn$X" "$$execdir/$$p" 2>/dev/null || \
-		cp "$$execdir/git-remote-svn$X" "$$execdir/$$p" || exit; \
 	done && \
 	./check_bindir "z$$bindir" "z$$execdir" "$$bindir/git-add$X"
 
