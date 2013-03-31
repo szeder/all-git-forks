@@ -1166,6 +1166,7 @@ struct svn_proto proto_http = {
 	&http_delete,
 	&http_change_user,
 	&http_has_change,
+	&http_cleanup,
 };
 
 struct svn_proto *svn_http_connect(struct remote *remote, struct strbuf *purl, struct credential *cred, struct strbuf *puuid, int ispush) {
@@ -1173,6 +1174,7 @@ struct svn_proto *svn_http_connect(struct remote *remote, struct strbuf *purl, s
 	http_init(remote, p, ispush);
 
 	http_auth = cred;
+	strbuf_reset(&url);
 	strbuf_addstr(&url, p);
 
 	init_request(&main_request);

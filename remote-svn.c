@@ -18,8 +18,6 @@
 #define max(a,b) ((a) < (b) ? (b) : (a))
 #endif
 
-#define MAX_CMTS_PER_WORKER 1000
-
 int svn_max_requests = 3;
 int svndbg = 1;
 static const char *url, *relpath, *authors_file, *empty_log_message = "";
@@ -28,7 +26,7 @@ static struct strbuf uuid = STRBUF_INIT;
 static int verbose = 1;
 static int use_progress;
 static int listrev = INT_MAX;
-static int g_cmts_to_gc = 1000;
+static int gcperiod = 1000;
 static enum eol svn_eol = EOL_UNSET;
 static struct index_state svn_index;
 static struct svn_proto *proto;
@@ -60,7 +58,7 @@ static int config(const char *key, const char *value, void *dummy) {
 		return git_config_string(&empty_log_message, key, value);
 
 	} else if (!strcmp(key, "svn.gcperiod")) {
-		g_cmts_to_gc = git_config_int(key, value);
+		gcperiod = git_config_int(key, value);
 		return 0;
 
 	} else if (!strcmp(key, "svn.authors")) {
@@ -523,7 +521,10 @@ static void do_connect(int ispush) {
 		die("server returned different url (%s) then expected (%s)", buf.buf, url);
 
 	relpath = url + buf.len;
+	strbuf_reset(&refdir);
 	strbuf_addf(&refdir, "refs/svn/%s", uuid.buf);
+
+	string_list_clear(&excludes, 0);
 
 	for (i = 0; i < relexcludes.nr; i++) {
 		strbuf_reset(&buf);
@@ -813,6 +814,10 @@ static int cmp_svnref_start(const void *u, const void *v) {
 static struct child_process helper;
 static FILE* helper_file;
 
+static int is_helper_started(void) {
+	return helper_file != NULL;
+}
+
 static void start_helper() {
 	static const char *remote_svn_helper[] = {"remote-svn--helper", NULL};
 
@@ -842,9 +847,6 @@ static void start_helper() {
 static void stop_helper() {
 	static const char *gc_auto[] = {"gc", "--auto", NULL};
 	struct child_process ch;
-
-	if (!helper_file)
-		return;
 
 	fclose(helper_file);
 	helper_file = NULL;
@@ -920,11 +922,9 @@ static void do_finish_update(struct svnref *r, struct svn_entry *c) {
 		display_progress(progress, ++cmts_fetched);
 	}
 
-	if (cmts_fetched % g_cmts_to_gc == 0) {
-		stop_helper();
-		start_helper();
-	}
-
+	/* make sure the previous data is written before updating
+	 * current_commit as write_helper can be called concurrently
+	 * with this function */
 	__sync_synchronize();
 
 	current_commit = c;
@@ -935,6 +935,7 @@ static void do_finish_update(struct svnref *r, struct svn_entry *c) {
 
 struct svnref **fetch;
 int fetch_num, fetch_fin, fetch_alloc;
+int cmts_started, next_gc_flush;
 
 struct svn_entry* svn_start_next_update(void) {
 	while (fetch_fin < fetch_num) {
@@ -945,6 +946,11 @@ struct svn_entry* svn_start_next_update(void) {
 			struct svnref *copysrc = c->copysrc
 				? get_ref(c->copysrc, c->copyrev)
 				: NULL;
+
+			if (cmts_started == next_gc_flush)
+				return NULL;
+
+			cmts_started++;
 
 			c->ref = r;
 			c->prev = r->rev;
@@ -1028,11 +1034,25 @@ static void fetch_updates(void) {
 	 * objects being valid.
 	 */
 
-	start_helper();
+	while (next_gc_flush < cmts_to_fetch) {
+		int cmts = min(gcperiod, cmts_to_fetch - next_gc_flush);
+		next_gc_flush += cmts;
 
-	if (cmts_to_fetch) {
-		proto->read_updates(cmts_to_fetch);
+		/* The GC can take awhile and the protocol connections
+		 * expire. So we explicitely close and then reopen them
+		 * later */
+		if (is_helper_started()) {
+			proto->disconnect();
+			stop_helper();
+			do_connect(0);
+		}
+
+		start_helper();
+		proto->read_updates(cmts);
 	}
+
+	if (!is_helper_started())
+		start_helper();
 
 	if (current_commit) {
 		die("internal: haven't fetched all commits");
@@ -1953,6 +1973,9 @@ int main(int argc, const char **argv) {
 			break;
 		fflush(stdout);
 	}
+
+	if (proto)
+		proto->disconnect();
 
 	return 0;
 }

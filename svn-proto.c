@@ -1173,6 +1173,10 @@ static int svn_has_change(const char *path, int from, int to) {
 	return ret;
 }
 
+static void svn_disconnect(void) {
+	reset_connection(&main_connection);
+}
+
 
 
 struct svn_proto proto_svn = {
@@ -1190,11 +1194,13 @@ struct svn_proto proto_svn = {
 	&svn_delete,
 	&svn_change_user,
 	&svn_has_change,
+	&svn_disconnect,
 };
 
 struct svn_proto* svn_proto_connect(struct strbuf *purl, struct credential *cred, struct strbuf *uuid) {
 	struct conn *c = &main_connection;
 	svn_auth = cred;
+	strbuf_reset(&url);
 	strbuf_add(&url, purl->buf, purl->len);
 
 	user_agent = git_user_agent();

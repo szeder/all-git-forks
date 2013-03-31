@@ -95,6 +95,8 @@ struct svn_proto {
 
 	void (*change_user)(struct credential*);
 	int (*has_change)(const char* /*path*/, int /*from*/, int /*to*/);
+
+	void (*disconnect)(void);
 };
 
 struct svn_proto *svn_proto_connect(struct strbuf *purl, struct credential *cred, struct strbuf *uuid);
