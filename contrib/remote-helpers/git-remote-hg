@@ -734,6 +734,7 @@ def do_export(parser):
 
     # handle bookmarks
     for bmark, node in p_bmarks:
+        ref = 'refs/heads' + bmark
         new = hghex(node)
 
         if bmark in bmarks:
