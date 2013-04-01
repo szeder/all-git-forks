@@ -136,6 +136,7 @@ Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}
  python, python-bzrlib
 Suggests: git-doc, bzr
 Conflicts: bzr-git
+Provides: git-remote-bzr
 Description: fast, scalable, distributed revision control system (bzr interoperability)
  Git is a popular version control system designed to handle very large
  projects with speed and efficiency; it is used for many high profile

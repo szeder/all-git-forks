@@ -226,10 +226,10 @@ install-indep: build-arch-stamp build-indep-stamp
 	rm -rf '$(GIT)'-bzr
 	install -d -m0755 '$(GIT)'-bzr/usr/lib/git-core
 	install -m0755 debian/git-remote-bzr \
-	  '$(GIT)'-bzr/usr/lib/git-core/
+	  '$(GIT)'-bzr/usr/lib/git-core/git-remote-bzr--git
 	install -d -m0755 '$(GIT)'-bzr/usr/share/man/man1
 	install -m0644 Documentation/git-remote-bzr.1 \
-	  '$(GIT)'-bzr/usr/share/man/man1/
+	  '$(GIT)'-bzr/usr/share/man/man1/git-remote-bzr--git.1
 	gzip -9 '$(GIT)'-bzr/usr/share/man/man1/*.1
 	# git-email
 	rm -rf '$(GIT)'-email

@@ -2,16 +2,19 @@ git (1:1.8.2-0.1) experimental; urgency=low
 
   * new upstream release (see RelNotes/1.8.2.txt).
   * add a git-bzr package with bzr remote helper (closes: #702697).
-    * debian/control: new package git-bzr; Priority: extra; Depends:
-      python, python-bzrlib; Conflicts: bzr-git; Build-Depends:
-      bzr, python, python-bzrlib for tests; package git now Suggests
-      and git-all Recommends: git-bzr.
+    * debian/control: new package git-bzr; Priority: extra; Provides:
+      git-remote-bzr; Depends: python, python-bzrlib; Conflicts:
+      bzr-git; Build-Depends: bzr, python, python-bzrlib for tests;
+      package git now Suggests and git-all Recommends: git-bzr.
     * debian/git-remote-bzr.txt: new; explain usage.
-    * debian/rules: process debian/git-remote-bzr.txt with git's
-      documentation toolchain and install to /usr/share/man/man1/;
-      munge contrib/remote-helpers/git-remote-bzr shebang line, run
-      tests, and install to /usr/lib/git-core.
+    * debian/rules: build git-remote-bzr documentation, munge script
+      shebang line, and install manpage (git-remote-bzr--git.1.gz)
+      and script (/usr/lib/git-core/git-remote-bzr--git) in git-bzr
+      package.
     * debian/git-doc.docs: install git-remote-bzr.html.
+    * debian/git-bzr.postinst, debian/git-bzr.prerm: new; provide
+      /usr/bin/git-remote-bzr through the alternatives system.
+    * debian/git-bzr.README.Debian: new; explain how to get started.
   * debian/control: Standards-Version: 3.9.4.0.
   * debian/rules: define %.install depending on install-arch or
     install-indep as appropriate for each package.
