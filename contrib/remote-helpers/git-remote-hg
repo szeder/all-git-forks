@@ -722,6 +722,7 @@ def do_export(parser):
     global parsed_refs, bmarks, peer
 
     p_bmarks = []
+    p_revs = []
 
     parser.next()
 
@@ -741,16 +742,20 @@ def do_export(parser):
 
     for ref, node in parsed_refs.iteritems():
         if ref.startswith('refs/heads/branches'):
+            p_revs.append(node)
             print "ok %s" % ref
         elif ref.startswith('refs/heads/'):
+            p_revs.append(node)
             bmark = ref[len('refs/heads/'):]
             p_bmarks.append((bmark, node))
             continue
         elif ref.startswith('refs/tags/'):
+            p_revs.append(node)
             tag = ref[len('refs/tags/'):]
             if mode == 'git':
                 msg = 'Added tag %s for changeset %s' % (tag, hghex(node[:6]));
                 parser.repo.tag([tag], node, msg, False, None, {})
+                p_revs.append(parser.repo['tip'].node())
             else:
                 parser.repo.tag([tag], node, None, True, None, {})
             print "ok %s" % ref
@@ -758,8 +763,8 @@ def do_export(parser):
             # transport-helper/fast-export bugs
             continue
 
-    if peer:
-        parser.repo.push(peer, force=force_push)
+    if peer and p_revs:
+        parser.repo.push(peer, force=force_push, revs=p_revs)
 
     # handle bookmarks
     for bmark, node in p_bmarks:
