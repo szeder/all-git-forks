@@ -60,10 +60,19 @@ OPTIONS
 	instead.
 
 --verify::
-	If the parameter can be used as a single object name, output
-	that name; otherwise, emit an error message and exit with a
-	non-zero status.  Please note that the existence and validity
-	of the named object itself are not checked.
+	Make sure the single given parameter can be turned into a
+	raw 20-byte SHA-1 that can be used to access the object
+	database, and emit it to the standard output. If it can't,
+	error out.
++
+If you want to make sure that the output actually names an object in
+your object database and/or can be used as a specific type of object
+you require, you can add "^{type}" peeling operator to the parmeter.
+For example, `git rev-parse "$VAR^{commit}"` will make sure `$VAR`
+names an existing object that is a commit-ish (i.e. a commit, or an
+annotated tag that points at a commit).  To make sure that `$VAR`
+names an existing object of any type, `git rev-parse "$VAR^{object}"`
+can be used.
 
 -q::
 --quiet::
