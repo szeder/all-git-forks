@@ -85,13 +85,15 @@ int add_files_to_cache(const char *prefix, const char **pathspec, int flags)
 {
 	struct update_callback_data data;
 	struct rev_info rev;
+
+	memset(&data, 0, sizeof(data));
+	data.flags = flags;
+
 	init_revisions(&rev, prefix);
 	setup_revisions(0, NULL, &rev, NULL);
 	init_pathspec(&rev.prune_data, pathspec);
 	rev.diffopt.output_format = DIFF_FORMAT_CALLBACK;
 	rev.diffopt.format_callback = update_callback;
-	data.flags = flags;
-	data.add_errors = 0;
 	rev.diffopt.format_callback_data = &data;
 	rev.max_count = 0; /* do not compare unmerged paths with stage #2 */
 	run_diff_files(&rev, DIFF_RACY_IS_MODIFIED);
@@ -325,35 +327,6 @@ static int add_files(struct dir_struct *dir, int flags)
 	return exit_status;
 }
 
-static void warn_pathless_add(const char *option_name, const char *short_name) {
-	/*
-	 * To be consistent with "git add -p" and most Git
-	 * commands, we should default to being tree-wide, but
-	 * this is not the original behavior and can't be
-	 * changed until users trained themselves not to type
-	 * "git add -u" or "git add -A". For now, we warn and
-	 * keep the old behavior. Later, the behavior can be changed
-	 * to tree-wide, keeping the warning for a while, and
-	 * eventually we can drop the warning.
-	 */
-	warning(_("The behavior of 'git add %s (or %s)' with no path argument from a\n"
-		  "subdirectory of the tree will change in Git 2.0 and should not be used anymore.\n"
-		  "To add content for the whole tree, run:\n"
-		  "\n"
-		  "  git add %s :/\n"
-		  "  (or git add %s :/)\n"
-		  "\n"
-		  "To restrict the command to the current directory, run:\n"
-		  "\n"
-		  "  git add %s .\n"
-		  "  (or git add %s .)\n"
-		  "\n"
-		  "With the current Git version, the command is restricted to the current directory."),
-		option_name, short_name,
-		option_name, short_name,
-		option_name, short_name);
-}
-
 int cmd_add(int argc, const char **argv, const char *prefix)
 {
 	int exit_status = 0;
@@ -364,8 +337,6 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	int add_new_files;
 	int require_pathspec;
 	char *seen = NULL;
-	const char *option_with_implicit_dot = NULL;
-	const char *short_option_with_implicit_dot = NULL;
 
 	git_config(add_config, NULL);
 
@@ -395,21 +366,11 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 
 	if (!show_only && ignore_missing)
 		die(_("Option --ignore-missing can only be used together with --dry-run"));
-	if (addremove) {
-		option_with_implicit_dot = "--all";
-		short_option_with_implicit_dot = "-A";
-	}
-	if (take_worktree_changes) {
-		option_with_implicit_dot = "--update";
-		short_option_with_implicit_dot = "-u";
-	}
-	if (option_with_implicit_dot && !argc) {
-		static const char *here[2] = { ".", NULL };
-		if (prefix)
-			warn_pathless_add(option_with_implicit_dot,
-					  short_option_with_implicit_dot);
+
+	if ((addremove || take_worktree_changes) && !argc) {
+		static const char *whole[2] = { ":/", NULL };
 		argc = 1;
-		argv = here;
+		argv = whole;
 	}
 
 	add_new_files = !take_worktree_changes && !refresh_only;
