@@ -1,7 +1,7 @@
-git (1:1.8.2-0.1) experimental; urgency=low
+git (1:1.8.2-1) experimental; urgency=low
 
   * new upstream release (see RelNotes/1.8.2.txt).
-  * add a git-bzr package with bzr remote helper (closes: #702697).
+  * package the bzr remote helper (closes: #702697).
     * debian/control: new package git-bzr; Priority: extra; Provides:
       git-remote-bzr; Depends: python, python-bzrlib; Conflicts:
       bzr-git; Build-Depends: bzr, python, python-bzrlib for tests;
@@ -22,10 +22,10 @@ git (1:1.8.2-0.1) experimental; urgency=low
     and install-indep so "debian/rules binary-arch" does not try to
     build documentation.
   * debian/rules build-indep, install-indep: build documentation even
-    if asciidoc is not detected.  Build-Depends: dpkg-dev (>= 1.16.2).
+    if asciidoc is not installed.  Build-Depends: dpkg-dev (>= 1.16.2).
   * debian/rules: handle DEB_BUILD_OPTIONS=parallel=<num>.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 09 Mar 2013 16:25:40 -0800
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 31 Mar 2013 22:06:58 -0700
 
 git (1:1.8.2~rc3-1) experimental; urgency=low
 
