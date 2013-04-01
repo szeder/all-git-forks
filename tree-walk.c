@@ -3,6 +3,7 @@
 #include "unpack-trees.h"
 #include "dir.h"
 #include "tree.h"
+#include "pathspec.h"
 
 static const char *get_mode(const char *str, unsigned int *modep)
 {
@@ -635,8 +636,16 @@ enum interesting tree_entry_interesting(const struct name_entry *entry,
 	enum interesting never_interesting = ps->has_wildcard ?
 		entry_not_interesting : all_entries_not_interesting;
 
+	GUARD_PATHSPEC(ps,
+		       PATHSPEC_FROMTOP |
+		       PATHSPEC_MAXDEPTH |
+		       PATHSPEC_LITERAL |
+		       PATHSPEC_GLOB);
+
 	if (!ps->nr) {
-		if (!ps->recursive || ps->max_depth == -1)
+		if (!ps->recursive ||
+		    !(ps->magic & PATHSPEC_MAXDEPTH) ||
+		    ps->max_depth == -1)
 			return all_entries_interesting;
 		return within_depth(base->buf + base_offset, baselen,
 				    !!S_ISDIR(entry->mode),
@@ -657,7 +666,9 @@ enum interesting tree_entry_interesting(const struct name_entry *entry,
 			if (!match_dir_prefix(base_str, match, matchlen))
 				goto match_wildcards;
 
-			if (!ps->recursive || ps->max_depth == -1)
+			if (!ps->recursive ||
+			    !(ps->magic & PATHSPEC_MAXDEPTH) ||
+			    ps->max_depth == -1)
 				return all_entries_interesting;
 
 			return within_depth(base_str + matchlen + 1,
@@ -675,8 +686,7 @@ enum interesting tree_entry_interesting(const struct name_entry *entry,
 				return entry_interesting;
 
 			if (item->nowildcard_len < item->len) {
-				if (!git_fnmatch(match + baselen, entry->path,
-						 item->flags & PATHSPEC_ONESTAR ? GFNM_ONESTAR : 0,
+				if (!git_fnmatch(item, match + baselen, entry->path,
 						 item->nowildcard_len - baselen))
 					return entry_interesting;
 
@@ -717,8 +727,7 @@ match_wildcards:
 
 		strbuf_add(base, entry->path, pathlen);
 
-		if (!git_fnmatch(match, base->buf + base_offset,
-				 item->flags & PATHSPEC_ONESTAR ? GFNM_ONESTAR : 0,
+		if (!git_fnmatch(item, match, base->buf + base_offset,
 				 item->nowildcard_len)) {
 			strbuf_setlen(base, base_offset + baselen);
 			return entry_interesting;
