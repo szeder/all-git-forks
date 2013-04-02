@@ -298,4 +298,21 @@ test_expect_success 'turn tree to file' '
 	test_cmp expect actual
 '
 
+test_expect_success 'add identical files to subdir' '
+	cat >expected <<\EXPECTED &&
+added in both
+  our    100644 43d5a8ed6ef6c00ff775008633f95787d088285d sub/ONE
+  their  100644 43d5a8ed6ef6c00ff775008633f95787d088285d sub/ONE
+EXPECTED
+
+	git reset --hard initial &&
+	mkdir sub &&
+	test_commit "sub-initial" "sub/initial" "initial" &&
+	test_commit "sub-add-a-b-same-A" "sub/ONE" "AAA" &&
+	git reset --hard sub-initial &&
+	test_commit "sub-add-a-b-same-B" "sub/ONE" "AAA" &&
+	git merge-tree sub-initial sub-add-a-b-same-A sub-add-a-b-same-B >actual &&
+	test_cmp expected actual
+'
+
 test_done
