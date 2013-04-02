@@ -10,7 +10,7 @@ Source: 	http://kernel.org/pub/software/scm/git/%{name}-%{version}.tar.bz2
 BuildRequires:	zlib-devel >= 1.2, openssl-devel, curl-devel, expat-devel, gettext
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-buildroot
 
-Requires:	zlib >= 1.2, rsync, less, openssh-clients, expat
+Requires:	zlib >= 1.2, less, openssh-clients, expat
 Provides:	git-core = %{version}-%{release}
 Obsoletes:	git-core <= 1.5.4.2
 Provides:  git = %{version}-%{release}
