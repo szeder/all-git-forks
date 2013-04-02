@@ -226,14 +226,27 @@ static inline void set_cloexec(int fd)
 		fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
 }
 
-static int wait_or_whine(pid_t pid, const char *argv0)
+static pid_t persistent_waitpid(struct child_process *cmd, pid_t pid, int *stat_loc)
+{
+	if (cmd->last_wait.code) {
+		errno = cmd->last_wait.failed_errno;
+		*stat_loc = cmd->last_wait.status;
+		return errno ? -1 : pid;
+	} else {
+		pid_t waiting;
+		while ((waiting = waitpid(pid, stat_loc, 0)) < 0 && errno == EINTR)
+			;	/* nothing */
+		return waiting;
+	}
+}
+
+static int wait_or_whine(struct child_process *cmd, pid_t pid, const char *argv0)
 {
 	int status, code = -1;
 	pid_t waiting;
 	int failed_errno = 0;
 
-	while ((waiting = waitpid(pid, &status, 0)) < 0 && errno == EINTR)
-		;	/* nothing */
+	waiting = persistent_waitpid(cmd, pid, &status);
 
 	if (waiting < 0) {
 		failed_errno = errno;
@@ -438,7 +451,7 @@ fail_pipe:
 		 * At this point we know that fork() succeeded, but execvp()
 		 * failed. Errors have been reported to our stderr.
 		 */
-		wait_or_whine(cmd->pid, cmd->argv[0]);
+		wait_or_whine(cmd, cmd->pid, cmd->argv[0]);
 		failed_errno = errno;
 		cmd->pid = -1;
 	}
@@ -543,7 +556,7 @@ fail_pipe:
 
 int finish_command(struct child_process *cmd)
 {
-	return wait_or_whine(cmd->pid, cmd->argv[0]);
+	return wait_or_whine(cmd, cmd->pid, cmd->argv[0]);
 }
 
 int run_command(struct child_process *cmd)
@@ -552,6 +565,27 @@ int run_command(struct child_process *cmd)
 	if (code)
 		return code;
 	return finish_command(cmd);
+}
+
+int check_command(struct child_process *cmd)
+{
+	int status;
+	pid_t waiting;
+	int failed_errno = 0;
+
+	waiting = waitpid(cmd->pid, &status, WNOHANG);
+
+	if (waiting != cmd->pid)
+		return 1;
+
+	if (waiting < 0)
+		failed_errno = errno;
+
+	cmd->last_wait.code = -1;
+	cmd->last_wait.failed_errno = failed_errno;
+	cmd->last_wait.status = status;
+
+	return 0;
 }
 
 static void prepare_run_command_v_opt(struct child_process *cmd,
@@ -730,7 +764,7 @@ error:
 int finish_async(struct async *async)
 {
 #ifdef NO_PTHREADS
-	return wait_or_whine(async->pid, "child process");
+	return wait_or_whine(cmd, async->pid, "child process");
 #else
 	void *ret = (void *)(intptr_t)(-1);
 
