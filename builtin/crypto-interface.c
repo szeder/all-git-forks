@@ -1,12 +1,7 @@
 //
-//  sign.c
+//  builtin/crypto-interface.c
 //
-//
-//  Created by Vincent Clasgens on 1/30/13.
-//  Modified by Dustin Dalen on 2/4/13.
-//  Modified by Vincent Clasgens 3/26/13
 //  University of Portland (Team Rogue)
-//
 //
 #include <stdio.h>
 #include "builtin.h"

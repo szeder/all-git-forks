@@ -230,7 +230,6 @@ int sign_commit(char *commit_sha){
     return ret_val;
 }
 
-<<<<<<< HEAD
 /*
  * get_pem_path
  *
@@ -239,9 +238,19 @@ int sign_commit(char *commit_sha){
  */
 char * get_pem_path()
 {
-    //get the path of the .pem file containing the private key
-=======
-// Move the signing method into crypto-interface.c
+    char * pem;
+    pem = get_config_val("user.certificate", '\0');
+
+    //trim the trailing whitespace
+    char * end;
+    end = pem + strlen(pem) - 1;
+    while(end > pem && isspace(*end)) end--;
+    //write new null terminator
+    *(end+1) = 0;
+
+    return pem;
+}
+
 
 //look at crypto-interface.h for info
 int sign_commit_sha256(EVP_KEY *key, X509* cert, X509_STORE* stack, char *cmt_sha)
@@ -275,19 +284,6 @@ int sign_commit_sha256(EVP_KEY *key, X509* cert, X509_STORE* stack, char *cmt_sh
     ERR_load_crypto_strings();
 
     //get the path for our user certificate
->>>>>>> 1f4fa97f9a0d61de8f9c88a99820f100ff6ada9c
-    char * pem;
-    pem = get_config_val("user.certificate", '\0');
-    
-    //trim the trailing whitespace
-    char * end;
-    end = pem + strlen(pem) - 1;
-    while(end > pem && isspace(*end)) end--;
-    //write new null terminator
-    *(end+1) = 0;
-    
-    return pem;
-}
 
 /*
  * get_key
@@ -300,22 +296,22 @@ BIO * get_key(char * pem)
     BIO * in = NULL;
     EVP_PKEY * key = NULL;
     int ret = 1;
-    
+
     //read in .pem file
     in = BIO_new_file(pem,"r");
-    
+
     //check for failure
     if(!in)
         goto keyfail;
-    
+
     //read EVP_KEY * key from BIO
     key = PEM_read_bio_PrivateKey(in, NULL, 0, NULL);
-    
+
     if(!key)
         goto keyfail;
-    
+
     ret = 0;
-    
+
 keyfail:
     if(ret)
     {
@@ -324,7 +320,7 @@ keyfail:
     }
     if(in)
         BIO_free(in);
-    
+
     return key;
 }
 
@@ -339,22 +335,22 @@ BIO * get_cert(char * pem)
     BIO * in = NULL;
     X509 * cert = NULL;
     int ret = 1;
-    
+
     //read in .pem file
     in = BIO_new_file(pem,"r");
-    
+
     //check for failure
     if(!in)
         goto certfail;
-    
+
     //setting X509 * cert from BIO which read from pem
     cert = PEM_read_bio_X509(in, NULL, 0, NULL);
-    
+
     if(!cert)
         goto certfail;
-    
+
     ret = 0;
-    
+
 certfail:
     if(ret)
     {
@@ -363,7 +359,7 @@ certfail:
     }
     if(in)
         BIO_free(in);
-    
+
     return cert;
 }
 
@@ -382,7 +378,7 @@ int sign_commit_sha(char * sha)
 
     //get the path of the .pem file containing the private key
     char * pem = get_pem_path();
-    
+
     //char array to hold the sha2 hash
     char calc_hash[65];
 
@@ -391,17 +387,17 @@ int sign_commit_sha(char * sha)
 
     //SHA2 on the char* that contains the commit path
     sha256(commit_head, calc_hash);
-    
+
     //put the hash into a BIO *
     BIO * data = BIO_new(BIO_s_mem());
     BIO_puts(data, calc_hash);
-    
+
     //get the private key
     key = get_key(pem);
-    
+
     //get the X_509 cert
     cert = get_cert(pem);
-    
+
     //check for failure
     if(!data)
         goto err;
