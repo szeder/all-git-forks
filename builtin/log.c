@@ -411,6 +411,20 @@ static int show_blob_object(const unsigned char *sha1, struct rev_info *rev)
 	return stream_blob_to_fd(1, sha1, NULL, 0);
 }
 
+static int show_link_object(const unsigned char *sha1, struct rev_info *rev)
+{
+	unsigned long size;
+	enum object_type type;
+	char *buf = read_sha1_file(sha1, &type, &size);
+
+	if (!buf)
+		return error(_("Could not read object %s"), sha1_to_hex(sha1));
+
+	assert(type == OBJ_LINK);
+	printf("%s", buf);
+	return 0;
+}
+
 static int show_tag_object(const unsigned char *sha1, struct rev_info *rev)
 {
 	unsigned long size;
@@ -533,6 +547,9 @@ int cmd_show(int argc, const char **argv, const char *prefix)
 			rev.pending.objects = NULL;
 			add_object_array(o, name, &rev.pending);
 			ret = cmd_log_walk(&rev);
+			break;
+		case OBJ_LINK:
+			ret = show_link_object(o->sha1, NULL);
 			break;
 		default:
 			ret = error(_("Unknown type: %d"), o->type);
