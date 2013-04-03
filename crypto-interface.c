@@ -275,6 +275,27 @@ int sign_commit_sha256(EVP_PKEY *key, X509* cert, X509_STORE* stack, char *cmt_s
                    ,CMS_DETACHED); /* flag for cleartext signing */
     // TODO check for errors
 
+    if(!cms)
+        printf("CMS FAILED");
+
+    printf("pretty note: %s\n", commit);
+
+    BIO * note_bio = NULL;
+
+    note_bio = create_bio(commit);
+
+    X509_STORE *x509_st = X509_STORE_new();
+
+    // Verify the s/smime message
+    int err = CMS_verify(cms
+                         , NULL /*stack x509*/
+                         , x509_st
+                         , note_bio
+                         , NULL /*out bio not used*/
+                         , CMS_NO_SIGNER_CERT_VERIFY);
+
+    printf("Verify status: %d\n", err);
+
     // TODO add notes
     struct notes_tree *t;
     unsigned const char *note;
