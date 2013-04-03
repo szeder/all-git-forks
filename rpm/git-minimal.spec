@@ -23,8 +23,9 @@ Git is a fast, scalable, distributed revision control system with an
 unusually rich command set that provides both high-level operations
 and full access to internals.
 
-The git-tiny rpm installs the cut down version of core tools with
-minimal dependencies.
+The git-minimal rpm installs the cut down version of core tools
+prepared for the Mer. It does not depend on tools and libraries that
+is not included in Mer (perl, python, rsync...)
 
 %define path_settings ETC_GITCONFIG=/etc/gitconfig prefix=%{_prefix} mandir=%{_mandir} htmldir=%{_docdir}/%{name}-%{version} gitexecdir=%{_bindir}
 
