@@ -10,7 +10,7 @@ Source: 	http://kernel.org/pub/software/scm/git/%{name}-%{version}.tar.bz2
 BuildRequires:	zlib-devel >= 1.2, openssl-devel, curl-devel, expat-devel, gettext
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-buildroot
 
-Requires:	zlib >= 1.2, less, openssh-clients, expat
+Requires:	zlib >= 1.2, openssh-clients, expat
 Provides:	git-core = %{version}-%{release}
 Obsoletes:	git-core <= 1.5.4.2
 Provides:  git = %{version}-%{release}
@@ -30,7 +30,7 @@ is not included in Mer (perl, python, rsync...)
 %define path_settings ETC_GITCONFIG=/etc/gitconfig prefix=%{_prefix} mandir=%{_mandir} htmldir=%{_docdir}/%{name}-%{version} gitexecdir=%{_bindir}
 
 
-%define extra_make_flags NO_PERL=1 NO_TCLTK=1 NO_PYTHON=1
+%define extra_make_flags NO_PERL=1 NO_TCLTK=1 NO_PYTHON=1 DEFAULT_PAGER=more
 
 %prep
 %setup -q
