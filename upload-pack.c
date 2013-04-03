@@ -36,6 +36,8 @@ static int use_thin_pack, use_ofs_delta, use_include_tag;
 static int no_progress, daemon_mode;
 static int allow_tip_sha1_in_want;
 static int shallow_nr;
+static struct string_list preseed = STRING_LIST_INIT_DUP;
+
 static struct object_array have_obj;
 static struct object_array want_obj;
 static struct object_array extra_edge_obj;
@@ -608,6 +610,13 @@ static void receive_needs(void)
 				die("Invalid deepen: %s", line);
 			continue;
 		}
+		if (!prefixcmp(line, "preseed")) {
+			int i = 0;
+			for (i = 0; i < preseed.nr; i++)
+				packet_write(1, "preseed %s\n", preseed.items[i].string);
+
+			continue;
+		}
 		if (prefixcmp(line, "want ") ||
 		    get_sha1_hex(line+5, sha1_buf))
 			die("git upload-pack: protocol error, "
@@ -746,11 +755,12 @@ static int send_ref(const char *refname, const unsigned char *sha1, int flag, vo
 		return 0;
 
 	if (capabilities)
-		packet_write(1, "%s %s%c%s%s%s agent=%s\n",
+		packet_write(1, "%s %s%c%s%s%s%s agent=%s\n",
 			     sha1_to_hex(sha1), refname_nons,
 			     0, capabilities,
 			     allow_tip_sha1_in_want ? " allow-tip-sha1-in-want" : "",
 			     stateless_rpc ? " no-done" : "",
+			     preseed.nr ? " preseed" : "",
 			     git_user_agent_sanitized());
 	else
 		packet_write(1, "%s %s\n", sha1_to_hex(sha1), refname_nons);
@@ -783,6 +793,8 @@ static void upload_pack(void)
 
 static int upload_pack_config(const char *var, const char *value, void *unused)
 {
+	if (!strcmp("uploadpack.preseed", var))
+		string_list_append(&preseed, value);
 	if (!strcmp("uploadpack.allowtipsha1inwant", var))
 		allow_tip_sha1_in_want = git_config_bool(var, value);
 	return parse_hide_refs_config(var, value, "uploadpack");
