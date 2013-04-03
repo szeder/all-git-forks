@@ -78,24 +78,65 @@ get_pem_path(char ** pem) {
     *pem = get_config_val("user.certificate", '\0');
 }
 
+void verify_err_helper(int err, char *commit){
+    switch(err){
+        case VERIFY_PASS:
+            printf("%s: Verification Success\n", commit);
+            break;
+        case VERIFY_FAIL_NO_NOTE:
+            printf("%s: Verification Warning, no signature for the commit.\n", commit);
+            break;
+        case VERIFY_FAIL_BAD_SIG:
+            printf("%s: Verification Failure, invalid signature for the commit.\n", commit);
+            break;
+        case VERIFY_FAIL_NOT_TRUSTED:
+            printf("%s: Verification Failure, untrusted signer for commit.\n", commit);
+            break;
+        case VERIFY_FAIL_COMPARE:
+            printf("%s: Verification Failure, commit is inconsistent with signature.\n", commit);
+            break;
+    }
+    return;
+}
+
 static int verify(int argc, const char **argv, const char *prefix)
 {
+    int ret_val = 0;
     const char *trusted_arg = NULL;
-    const char *commit_arg = NULL;
+    char *commit_arg = NULL;
     // The list of our options
     struct option options[] = {
-        { OPTION_CALLBACK, 't', "trusted", &trusted_arg,
-            N_("Trusted"), N_("Trusted list."), PARSE_OPT_NONEG,
-            parse_trusted_arg},
-        { OPTION_CALLBACK, 'c', "commit", &commit_arg,
-            N_("Commit"), N_("Commit to verify."), PARSE_OPT_NONEG,
-            parse_commit_arg},
+        OPT_STRING('t', "trusted", &trusted_arg, N_("trusted"),
+                N_("Trusted list of certificates.")),
+        OPT_STRING('c', "commit", &commit_arg, N_("commit"),
+                N_("Commit to verify")),
         OPT_END()
     };
     argc = parse_options(argc, argv, prefix, options,
             git_crypto_usage, PARSE_OPT_STOP_AT_NON_OPTION);
 
-    return 0;
+    int verify_status = 0; // Retrun val of each call to verify
+
+    if(!commit_arg){ // no commit arg so do all commits
+        char **list = get_commit_list();
+        for(char **commit = list; *commit != NULL; commit = commit + 1){
+            verify_status = verify_commit(*commit);
+            verify_err_helper(verify_status, *commit);
+            ret_val = ret_val | verify_status;
+        }
+    }
+    else { // verify only the specified commit
+        verify_status = verify_commit(commit_arg);
+        verify_err_helper(verify_status, commit_arg);
+        ret_val = ret_val | verify_status;
+    }
+
+    if(ret_val == 0){
+        printf("Verification SUCCESSFUL.\n");
+    } else {
+        printf("Verification FAILURE - error codes:%d\n", ret_val);
+    }
+    return ret_val;
 }
 
 int cmd_crypto(int argc, const char **argv, const char *prefix)
