@@ -19,58 +19,49 @@
 // To be filled in later see other builtin/*.c files for examples
 static const char * const git_crypto_usage[] = {};
 
-static int parse_sign_arg(const struct option *opt, const char *arg, int unset)
-{
-    // the arg is in opt->value
-    // we don't need to do anything to it this is a place holder
-    return 0;
-}
-
-static int parse_verify_arg(const struct option *opt, const char *arg, int unset)
-{
-    return 0;
-}
-
-static int parse_trusted_arg(const struct option *opt, const char *arg, int unset)
-{
-    return 0;
-}
-
-static int parse_key_arg(const struct option *opt, const char *arg, int unset)
-{
-    return 0;
-}
-
-static int parse_commit_arg(const struct option *opt, const char *arg, int unset)
-{
-    return 0;
-}
-
 static int sign(int argc, const char **argv, const char *prefix)
 {
+    int ret_val = 0;
     const char *trusted_arg = NULL;
     const char *key_arg = NULL;
     const char *commit_arg = NULL;
-
-    // The list of our options
+    // Options for the sign command
     struct option options[] = {
-        { OPTION_CALLBACK, 't', "trusted", &trusted_arg,
-            N_("Trusted"), N_("Trusted list."), PARSE_OPT_NONEG,
-            parse_trusted_arg},
-        { OPTION_CALLBACK, 'k', "key", &key_arg,
-            N_("Key"), N_("Signing Key."), PARSE_OPT_NONEG,
-            parse_key_arg},
-        { OPTION_CALLBACK, 'c', "commit", &commit_arg,
-            N_("Commit"), N_("Commit to verify."), PARSE_OPT_NONEG,
-            parse_commit_arg},
+        OPT_STRING('t', "trusted", &trusted_arg, N_("trusted"),
+                N_("Trusted list of certificates.")),
+        OPT_STRING('c', "commit", &commit_arg, N_("commit"),
+                N_("Commit to verify")),
+        OPT_STRING('k', "key", &key_arg, N_("key"),
+                N_("Signing key")),
         OPT_END()
     };
     argc = parse_options(argc, argv, prefix, options,
             git_crypto_usage, PARSE_OPT_STOP_AT_NON_OPTION);
 
-    //pass in ref for head commit for signing by default
-    sign_commit_sha("HEAD");
-    
+    if(!commit_arg){ // no commit arg so do all commits
+        commit_arg = "HEAD";
+    }
+    /*
+        char **list = get_commit_list();
+        for(char **commit = list; *commit != NULL; commit = commit + 1){
+            verify_status = verify_commit(*commit);
+            verify_err_helper(verify_status, *commit);
+            ret_val = ret_val | verify_status;
+        }
+    }
+    else { // verify only the specified commit
+        verify_status = verify_commit(commit_arg);
+        verify_err_helper(verify_status, commit_arg);
+        ret_val = ret_val | verify_status;
+    }
+
+    if(ret_val == 0){
+        printf("Verification SUCCESSFUL.\n");
+    } else {
+        printf("Verification FAILURE - error codes:%d\n", ret_val);
+    }
+    */
+    return ret_val;
 }
 
 void verify_err_helper(int err, char *commit){
@@ -110,7 +101,7 @@ static int verify(int argc, const char **argv, const char *prefix)
     argc = parse_options(argc, argv, prefix, options,
             git_crypto_usage, PARSE_OPT_STOP_AT_NON_OPTION);
 
-    int verify_status = 0; // Retrun val of each call to verify
+    int verify_status = 0; // Return val of each call to verify
 
     if(!commit_arg){ // no commit arg so do all commits
         char **list = get_commit_list();
