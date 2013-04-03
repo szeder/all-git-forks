@@ -138,12 +138,11 @@ static int verify(int argc, const char **argv, const char *prefix)
 int cmd_crypto(int argc, const char **argv, const char *prefix)
 {
     int result;
+    // TODO necessary?
     struct option options[] = {OPT_END()};
     argc = parse_options(argc, argv, prefix, options, NULL,
         PARSE_OPT_STOP_AT_NON_OPTION);
 
-    // DEBUG here to force testing
-    //printf("\n\nreturn: \n %d\n", verify_commit("31789b477bbc2ecd3f92d3cee9234a91baaf8590"));
 
     if(!strcmp(argv[0], "sign"))
         result = sign(argc, argv, prefix);
