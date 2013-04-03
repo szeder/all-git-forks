@@ -460,6 +460,10 @@ static int fetch_with_import(struct transport *transport,
 
 	if (finish_command(&fastimport))
 		die("Error while running fast-import");
+
+	if (!check_command(data->helper))
+		die("Error while running helper");
+
 	argv_array_free_detached(fastimport.argv);
 
 	/*
@@ -818,6 +822,10 @@ static int push_refs_with_export(struct transport *transport,
 
 	if (finish_command(&exporter))
 		die("Error while running fast-export");
+
+	if (!check_command(data->helper))
+		die("Error while running helper");
+
 	push_update_refs_status(data, remote_refs);
 	return 0;
 }
