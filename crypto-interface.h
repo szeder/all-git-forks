@@ -6,8 +6,8 @@
  *                  - David Garcia
  *                  - Sam Chase
  *  Last Modified: April 2, 2013
- *  
- *  Functions defined to sign and verify using 'git crypto' 
+ *
+ *  Functions defined to sign and verify using 'git crypto'
  *  command using CMS library within OpenSSL
  *
  *
@@ -25,12 +25,12 @@
 
 /**
  *  get_commit_list()
- *  
+ *
  *  Parameters: none
- *  
+ *
  *  Retrieves an array of char* which are the SHA's of the refs of each commit
- *      - with the last item being NULL 
- * 
+ *      - with the last item being NULL
+ *
  **/
 extern char ** get_commit_list();
 
@@ -48,11 +48,18 @@ extern char ** get_commit_list();
 extern void free_cmt_list(char**);
 
 /**
+ * get_pem_path()
+ *
+ * returns a char* to the path of the public key private key pair
+ **/
+extern char * get_pem_path();
+
+/**
  *  verify_commit()
  *
  *  Paramaters: char * sha1
  *      - SHA1 ref of commit to be verified
- *  
+ *
  *  Verifies the given SHA1 Ref of a commit and the note if one is present
  *
  **/
@@ -60,11 +67,11 @@ extern int verify_commit(char * sha1);
 
 /**
  *  sign_commit_sha()
- * 
+ *
  *  Parameters: char * sha
  *      - SHA1 ref of commit to be signed
- *  
- *  Signs a commit given a SHA1 ref of a commit 
+ *
+ *  Signs a commit given a SHA1 ref of a commit
  *
  *
  **/

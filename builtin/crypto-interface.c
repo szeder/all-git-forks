@@ -55,7 +55,7 @@ static int sign(int argc, const char **argv, const char *prefix)
     }
     cert = get_cert(cert_arg);
 
-    if(!trusted){ // get trusted list from config
+    if(!trusted_arg){ // get trusted list from config
 
     }
 

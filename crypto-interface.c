@@ -13,6 +13,7 @@
  **/
 
 #include "builtin/config.h"
+#include "blob.h"
 #include "cache.h"
 #include "commit.h"
 #include "crypto-interface.h"
@@ -253,15 +254,18 @@ char * get_pem_path()
 
 
 //look at crypto-interface.h for info
-int sign_commit_sha256(EVP_KEY *key, X509* cert, X509_STORE* stack, char *cmt_sha)
+int sign_commit_sha256(EVP_PKEY *key, X509* cert, X509_STORE* stack, char *cmt_sha)
 {
+    int ret_val;
     // get the pretty char* representation of the commit
-    char *commit = get_object_from_sha1(commit_sha);
+    char *commit = get_object_from_sha1(cmt_sha);
     // create the sha256 of it
     char commit_sha256[65];
     sha256(commit, commit_sha256);
     // create the bio we will use to sign
     BIO *input = create_bio(commit_sha256);
+    // cms object which is our smime object wrapped up
+    CMS_ContentInfo *cms = NULL;
 
     //sign the message
     cms = CMS_sign(cert /*the certificate from .pem*/
@@ -272,18 +276,37 @@ int sign_commit_sha256(EVP_KEY *key, X509* cert, X509_STORE* stack, char *cmt_sh
     // TODO check for errors
 
     // TODO add notes
+    struct notes_tree *t;
+    unsigned const char *note;
+    unsigned char object[20], new_note[20];
+    // get the object ref from sha_ref
+    if(get_sha1(cmt_sha, object))
+		die(_("Failed to resolve '%s' as a valid ref."), cmt_sha);
+    // get our note tree
+    init_notes(NULL, NULL, NULL, 0);
+    set_notes_ref("crypto");
+    t = &default_notes_tree;
+    if(prefixcmp(t->ref, "refs/notes/"))
+        die("Refusing to add notes outside of refs/notes/");
+    note = get_note(t, object);
+    if(note)
+        die("Already a crypto-note for %s, please delete it first to add a new note.", cmt_sha);
+    BIO *mimeOut = NULL;
+    SMIME_write_CMS(mimeOut, cms, input, NULL);
 
-    /*
-    BIO * in = NULL;
-    X509 * cert = NULL;
-    EVP_PKEY * key = NULL;
-    int ret = 1;
-    CMS_ContentInfo * cms = NULL;
+    // get the char * from the cms
+    struct strbuf buf = STRBUF_INIT;
+    BUF_MEM *bptr;
+    BIO_get_mem_ptr(mimeOut, &bptr);
+    BIO_set_close(mimeOut, BIO_NOCLOSE);
+    memcpy(buf.buf, bptr->data, bptr->length-1);
+    buf.buf[bptr->length-1] = 0;
 
-    OpenSSL_add_all_algorithms();
-    ERR_load_crypto_strings();
-
-    //get the path for our user certificate
+    // finally create the note
+	if(write_sha1_file(buf.buf, buf.len, blob_type, new_note))
+        die("unable to write crypto-note");
+    return ret_val;
+}
 
 /*
  * get_key
@@ -426,7 +449,6 @@ err:
         BIO_free(in);
 
     return ret;
-    */
 }
 
 //look at crypto-interface.h for info
