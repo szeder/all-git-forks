@@ -1,3 +1,16 @@
+/**
+ *  File: crypto-interface.c
+ *  Created by: Team Rogue (University of Portland)
+ *                  - Vince Clasgens
+ *                  - Dustin Dalen
+ *                  - David Garcia
+ *                  - Sam Chase
+ *  Last Modified: April 2, 2013
+ *  
+ *  Functions defined to sign and verify using 'git crypto' 
+ *  command using CMS library within OpenSSL
+ *
+ **/
 #include "cache.h"
 #include "commit.h"
 #include "crypto-interface.h"
@@ -21,7 +34,16 @@
 #include <openssl/x509.h>
 #define BASH_ERROR -1
 
-// The buffer passed to this MUST be 65 char's long
+/**
+ *  sha256()
+ *
+ *  Parameters: msg, outputBuffer
+ *      -msg: input to be SHA'd
+ *      -outputBuffer: buffer to be output (NEEDS to be 65 char's long)
+ *
+ *  Perform's SHA256 on a given input and returns it to the given buffer
+ *
+ **/
 void sha256(char * msg, char outputBuffer[65])
 {
     unsigned char hash[SHA256_DIGEST_LENGTH];
@@ -36,18 +58,15 @@ void sha256(char * msg, char outputBuffer[65])
     outputBuffer[64] = 0;
 }
 
-void sha256_hash_string (unsigned char hash[SHA256_DIGEST_LENGTH], char outputBuffer[65])
-{
-    int i = 0;
-
-    for(i = 0; i < SHA256_DIGEST_LENGTH; i++)
-    {
-        sprintf(outputBuffer + (i * 2), "%02x", hash[i]);
-    }
-
-    outputBuffer[64] = 0;
-}
-
+/**
+ *  create_bio()
+ *
+ *  Parameters: msg
+ *      - msg: ref of object/note
+ *
+ *  Creates and allocates a BIO given the ref of the object or note passed in
+ *
+ **/
 BIO * create_bio(char * msg)
 {
     BIO * bio = BIO_new(BIO_s_mem());
@@ -55,12 +74,17 @@ BIO * create_bio(char * msg)
     return bio;
 }
 
-/*
- * Create a detached signature for the contents of "buffer" and append
- * it after "signature"; "buffer" and "signature" can be the same
- * strbuf instance, which would cause the detached signature appended
- * at the end.
- */
+/**
+ *  crypto_sign_buffer()
+ *
+ *  Parameters: none
+ *
+ *  Creates a detached signatured for the contents of "buffer" and
+ *      appends it after "signature"; "buffer" and "signature" can 
+ *      be the same strbuf instance, which would caused the detached
+ *      signature appended at the end
+ *
+ **/
 int crypto_sign_buffer( )
 {
     char * script = "HASH=$(git log -n1 | cut -d ' ' -f 2 | head -n1); \
@@ -131,11 +155,16 @@ void set_notes_ref(const char * ref)
 }
 
 /**
- * Given a reference to a commit this function looks for an
- * associated note in the crypto notes namespace
+ *  get_note_from_commit()
  *
- * If one is found the sha1 ref is returned
- * If none is found 0 is returned
+ *  Parameters: commit_ref
+ *      - commit_ref: ref of a commit
+ *
+ *  Given ref of a given commit, searches for associated note in crypto
+ *      notes namespace
+ *      - if one is found the sha1 ref is returned
+ *      - if none are found 0 is returned
+ *
  **/
 const unsigned char * get_note_for_commit(const char * commit_ref)
 {
@@ -164,13 +193,16 @@ const unsigned char * get_note_for_commit(const char * commit_ref)
 }
 
 /**
- * Given the sha1 of an object this function returns the
- *  pretty char* of the object.
+ *  get_object_from_sha1()
+ 
+ *  Paramaters: ref
+ *      - ref: SHA1 of a commit
  *
- *  Works with commits or notes, really ANYTHING
+ *  Returns a pretty char* of the object
+ *      - works with commits or notes
+ *      - if no notes found, returns NULL
  *
- * If no note is found this returns NULL.
- */
+ **/
 char * get_object_from_sha1(const char * ref)
 {
     unsigned char sha1[20];
@@ -197,6 +229,14 @@ char * get_object_from_sha1(const char * ref)
     return buf;
 }
 
+/**
+ *  sign_commit()
+ *
+ *  Parameters: commit_sha
+ *      - commit_sha: SHA1 of the ref of a commit
+ *
+ *  Signs the given commit SHA ref
+ **/
 int sign_commit(char *commit_sha){
     int ret_val = VERIFY_PASS;
     // Get the pretty commit
@@ -216,6 +256,8 @@ int sign_commit(char *commit_sha){
 }
 
 // Move the signing method into crypto-interface.c
+
+//look at crypto-interface.h for info
 int sign_commit_sha(char * sha)
 {
     BIO * in = NULL;
@@ -306,6 +348,7 @@ err:
     return ret;
 }
 
+//look at crypto-interface.h for info
 int verify_commit(char *commit_sha)
 {
     int ret_val = VERIFY_PASS;
@@ -355,19 +398,3 @@ int verify_commit(char *commit_sha)
     return ret_val;
 }
 
-void crypto_set_signing_key(const char *key)
-{
-    system ("echo \"crypto-set-signing-key\"");
-}
-
-int crypto_git_config(const char *var, const char *value, void *cb)
-{
-    system ("echo \"crypto-git-config\"");
-	return 0;
-}
-
-const char *crypto_get_signing_key(void)
-{
-    system ("echo \"crypto-get-signing_key\"");
-	return "Some dummy key";
-}
