@@ -69,11 +69,6 @@ static int sign(int argc, const char **argv, const char *prefix)
     return ret_val;
 }
 
-get_pem_path(char ** pem) {
-    //get the path of the .pem file containing the private key
-    *pem = get_config_val("user.certificate", '\0');
-}
-
 void verify_err_helper(int err, char *commit){
     switch(err){
         case VERIFY_PASS:

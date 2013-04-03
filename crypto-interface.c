@@ -11,6 +11,8 @@
  *  command using CMS library within OpenSSL
  *
  **/
+
+#include "builtin/config.h"
 #include "cache.h"
 #include "commit.h"
 #include "crypto-interface.h"
@@ -228,6 +230,17 @@ int sign_commit(char *commit_sha){
     return ret_val;
 }
 
+<<<<<<< HEAD
+/*
+ * get_pem_path
+ *
+ * finds the path to the pem file stored in
+ * config and trims the whitespace
+ */
+char * get_pem_path()
+{
+    //get the path of the .pem file containing the private key
+=======
 // Move the signing method into crypto-interface.c
 
 //look at crypto-interface.h for info
@@ -262,35 +275,114 @@ int sign_commit_sha256(EVP_KEY *key, X509* cert, X509_STORE* stack, char *cmt_sh
     ERR_load_crypto_strings();
 
     //get the path for our user certificate
+>>>>>>> 1f4fa97f9a0d61de8f9c88a99820f100ff6ada9c
     char * pem;
-    get_pem_path(&pem);
-
+    pem = get_config_val("user.certificate", '\0');
+    
     //trim the trailing whitespace
     char * end;
     end = pem + strlen(pem) - 1;
     while(end > pem && isspace(*end)) end--;
     //write new null terminator
     *(end+1) = 0;
+    
+    return pem;
+}
 
+/*
+ * get_key
+ *
+ * extracts the private key from a pem file
+ *
+ */
+BIO * get_key(char * pem)
+{
+    BIO * in = NULL;
+    EVP_PKEY * key = NULL;
+    int ret = 1;
+    
     //read in .pem file
     in = BIO_new_file(pem,"r");
-
+    
     //check for failure
     if(!in)
-        goto err;
+        goto keyfail;
+    
+    //read EVP_KEY * key from BIO
+    key = PEM_read_bio_PrivateKey(in, NULL, 0, NULL);
+    
+    if(!key)
+        goto keyfail;
+    
+    ret = 0;
+    
+keyfail:
+    if(ret)
+    {
+        fprintf(stderr, "Error retrieving key\n");
+        ERR_print_errors_fp(stderr);
+    }
+    if(in)
+        BIO_free(in);
+    
+    return key;
+}
 
+/*
+ * get_key
+ *
+ * extracts an X_509 cert from a pem file
+ *
+ */
+BIO * get_cert(char * pem)
+{
+    BIO * in = NULL;
+    X509 * cert = NULL;
+    int ret = 1;
+    
+    //read in .pem file
+    in = BIO_new_file(pem,"r");
+    
+    //check for failure
+    if(!in)
+        goto certfail;
+    
     //setting X509 * cert from BIO which read from pem
     cert = PEM_read_bio_X509(in, NULL, 0, NULL);
+    
+    if(!cert)
+        goto certfail;
+    
+    ret = 0;
+    
+certfail:
+    if(ret)
+    {
+        fprintf(stderr, "Error retrieving key\n");
+        ERR_print_errors_fp(stderr);
+    }
+    if(in)
+        BIO_free(in);
+    
+    return cert;
+}
 
-    BIO_reset(in);
 
-    //read EVP_KEY * key from BIO which read from pem
-    key = PEM_read_bio_PrivateKey(in, NULL, 0, NULL);
+// Move the signing method into crypto-interface.c
+int sign_commit_sha(char * sha)
+{
+    BIO * in = NULL;
+    X509 * cert = NULL;
+    EVP_PKEY * key = NULL;
+    int ret = 1;
+    CMS_ContentInfo * cms = NULL;
 
-    //make sure these read in successfully
-    if(!cert || !key)
-        goto err;
+    OpenSSL_add_all_algorithms();
+    ERR_load_crypto_strings();
 
+    //get the path of the .pem file containing the private key
+    char * pem = get_pem_path();
+    
     //char array to hold the sha2 hash
     char calc_hash[65];
 
@@ -299,11 +391,17 @@ int sign_commit_sha256(EVP_KEY *key, X509* cert, X509_STORE* stack, char *cmt_sh
 
     //SHA2 on the char* that contains the commit path
     sha256(commit_head, calc_hash);
-
+    
     //put the hash into a BIO *
     BIO * data = BIO_new(BIO_s_mem());
     BIO_puts(data, calc_hash);
-
+    
+    //get the private key
+    key = get_key(pem);
+    
+    //get the X_509 cert
+    cert = get_cert(pem);
+    
     //check for failure
     if(!data)
         goto err;
