@@ -21,31 +21,6 @@
 #include <openssl/x509.h>
 #define BASH_ERROR -1
 
-
-int calc_sha256 (char* path, char output[65])
-{
-    FILE* file = fopen(path, "rb");
-    if(!file) return -1;
-
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    const int bufSize = 32768;
-    char* buffer = malloc(bufSize);
-    int bytesRead = 0;
-    if(!buffer) return -1;
-    while((bytesRead = fread(buffer, 1, bufSize, file)))
-    {
-        SHA256_Update(&sha256, buffer, bytesRead);
-    }
-    SHA256_Final(hash, &sha256);
-
-    sha256_hash_string(hash, output);
-    fclose(file);
-    free(buffer);
-    return 0;
-}
-
 // The buffer passed to this MUST be 65 char's long
 void sha256(char * msg, char outputBuffer[65])
 {
