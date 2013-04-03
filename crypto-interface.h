@@ -27,4 +27,10 @@ extern void free_cmt_list(char**);
 extern int verify_commit(char * sha1);
 
 
+/**
+ * sign a commit identified by using it's the sha1 ref
+ *
+ **/
+extern int sign_commit_sha(char * sha);
+
 #endif
