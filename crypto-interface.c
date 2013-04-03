@@ -192,6 +192,23 @@ char * get_object_from_sha1(const char * ref)
     return buf;
 }
 
+int sign_commit(char *commit_sha){
+    int ret_val = VERIFY_PASS;
+    // Get the pretty commit
+    char *commit = get_object_from_sha1(commit_sha);
+    char commit_sha256[65];
+    // Create the sha256
+    sha256(commit, commit_sha256);
+
+    // Get the tree to add the commit to
+    struct notes_tree *t;
+    set_notes_ref("crypto");
+    t = init_notes_check("add");
+
+
+    return ret_val;
+}
+
 int verify_commit(char *commit_sha)
 {
     int ret_val = VERIFY_PASS;
