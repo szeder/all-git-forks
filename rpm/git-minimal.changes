@@ -1,0 +1,3 @@
+* Wed Apr 03 2013 Denis Zalevskiy <denis.zalevskiy@jollamobile.com> - 1.8.2.1
+- Git w/o perl/python etc. dependencies
+- No rsync transport support
