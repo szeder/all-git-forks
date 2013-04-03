@@ -1,3 +1,4 @@
+#include "builtin/config.h"
 #include "cache.h"
 #include "commit.h"
 #include "crypto-interface.h"
@@ -226,11 +227,19 @@ int sign_commit_sha(char * sha)
 
     OpenSSL_add_all_algorithms();
     ERR_load_crypto_strings();
+<<<<<<< HEAD
 
     //get the path for our user certificate
     char * pem;
     get_pem_path(&pem);
 
+=======
+    
+    //get the path of the .pem file containing the private key
+    char * pem;
+    pem = get_config_val("user.certificate", '\0');
+    
+>>>>>>> Moved functionality for retrieving the config for signing from builtins crypto-interface.c to crypto-interface.c in the root folder
     //trim the trailing whitespace
     char * end;
     end = pem + strlen(pem) - 1;
@@ -265,7 +274,11 @@ int sign_commit_sha(char * sha)
 
     //SHA2 on the char* that contains the commit path
     sha256(commit_head, calc_hash);
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> Moved functionality for retrieving the config for signing from builtins crypto-interface.c to crypto-interface.c in the root folder
     //put the hash into a BIO *
     BIO * data = BIO_new(BIO_s_mem());
     BIO_puts(data, calc_hash);
