@@ -12,6 +12,7 @@
 #include "pack.h"
 #include "blob.h"
 #include "commit.h"
+#include "link.h"
 #include "run-command.h"
 #include "tag.h"
 #include "tree.h"
@@ -35,6 +36,7 @@
 static inline uintmax_t sz_fmt(size_t s) { return s; }
 
 const unsigned char null_sha1[20];
+void *upstream_url = NULL;
 
 /*
  * This is meant to hold a *small* number of objects that you would
@@ -2863,10 +2865,19 @@ int index_fd(unsigned char *sha1, int fd, struct stat *st,
 	return ret;
 }
 
+static int parse_origin_url(const char *key, const char *value, void *cb) {
+	if (!strcmp(key, "remote.origin.url"))
+		upstream_url = xstrdup(value);
+	return 0;
+}
+
 int index_path(unsigned char *sha1, const char *path, struct stat *st, unsigned flags)
 {
 	int fd;
 	struct strbuf sb = STRBUF_INIT;
+	char pathbuf[PATH_MAX];
+	const char *submodule_gitdir;
+	unsigned char checkout_rev[20];
 
 	switch (st->st_mode & S_IFMT) {
 	case S_IFREG:
@@ -2892,7 +2903,32 @@ int index_path(unsigned char *sha1, const char *path, struct stat *st, unsigned 
 		strbuf_release(&sb);
 		break;
 	case S_IFDIR:
-		return resolve_gitlink_ref(path, "HEAD", sha1);
+		/* gitlink.  Prepare and write a new link object to
+		 * the database.
+		 */
+
+		/* Figure out upstream_url */
+		sprintf(pathbuf, "%s/%s", path, ".git");
+		submodule_gitdir = resolve_gitdir(pathbuf);
+		sprintf(pathbuf, "%s/%s", submodule_gitdir, "config");
+		git_config_from_file(parse_origin_url, pathbuf, NULL);
+		if (!upstream_url)
+			die("Unable to read remote.origin.url from submodule");
+
+		/* Figure out checkout_rev */
+		if (resolve_gitlink_ref(path, "HEAD", checkout_rev) < 0)
+			die("Unable to resolve submodule HEAD");
+
+		/* Add fields to the strbuf */
+		strbuf_addf(&sb, "upstream_url = %s\n", (char *) upstream_url);
+		strbuf_addf(&sb, "checkout_rev = %s\n", sha1_to_hex(checkout_rev));
+		if (!(flags & HASH_WRITE_OBJECT))
+			hash_sha1_file(sb.buf, sb.len, link_type, sha1);
+		else if (write_sha1_file(sb.buf, sb.len, link_type, sha1))
+			return error("%s: failed to insert into database",
+				     path);
+		strbuf_release(&sb);
+		break;
 	default:
 		return error("%s: unsupported file type", path);
 	}

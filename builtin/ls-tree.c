@@ -6,7 +6,7 @@
 #include "cache.h"
 #include "blob.h"
 #include "tree.h"
-#include "commit.h"
+#include "link.h"
 #include "quote.h"
 #include "builtin.h"
 #include "parse-options.h"
@@ -76,7 +76,7 @@ static int show_tree(const unsigned char *sha1, const char *base, int baselen,
 			retval = READ_TREE_RECURSIVE;
 		 *
 		 */
-		type = commit_type;
+		type = link_type;
 	} else if (S_ISDIR(mode)) {
 		if (show_recursive(base, baselen, pathname)) {
 			retval = READ_TREE_RECURSIVE;

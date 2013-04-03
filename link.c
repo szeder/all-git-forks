@@ -20,6 +20,10 @@ struct link *lookup_link(const unsigned char *sha1)
 
 int parse_link_buffer(struct link *item, void *buffer, unsigned long size)
 {
+	char *bufptr = buffer;
+	char *tail = buffer + size;
+	char *eol;
+
 	if (item->object.parsed)
 		return 0;
 	item->object.parsed = 1;
