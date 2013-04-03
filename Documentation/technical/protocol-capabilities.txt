@@ -185,3 +185,11 @@ it is capable of accepting a zero-id value as the target
 value of a reference update.  It is not sent back by the client, it
 simply informs the client that it can be sent zero-id values
 to delete references.
+
+preseed
+-------
+
+The server can link to other resources that the client should attempt
+to contact first. It can be used to point to an upstream provider with
+more bandwidth or inform the client that a bundle is available, which
+is typically faster for the initial fetch.

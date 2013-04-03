@@ -2131,6 +2131,10 @@ uploadpack.allowtipsha1inwant::
 	of a hidden ref (by default, such a request is rejected).
 	see also `uploadpack.hiderefs`.
 
+uploadpack.pressedLocation::
+	Multivar containing the location of pressed sources to be sent
+	to a client upon request.
+
 url.<base>.insteadOf::
 	Any URL that starts with this value will be rewritten to
 	start, instead, with <base>. In cases where some site serves a
