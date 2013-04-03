@@ -320,7 +320,7 @@ enum object_type {
 	OBJ_TREE = 2,
 	OBJ_BLOB = 3,
 	OBJ_TAG = 4,
-	/* 5 for future expansion */
+	OBJ_LINK = 5,
 	OBJ_OFS_DELTA = 6,
 	OBJ_REF_DELTA = 7,
 	OBJ_ANY,
@@ -1243,6 +1243,7 @@ extern void *alloc_blob_node(void);
 extern void *alloc_tree_node(void);
 extern void *alloc_commit_node(void);
 extern void *alloc_tag_node(void);
+extern void *alloc_link_node(void);
 extern void *alloc_object_node(void);
 extern void alloc_report(void);
 

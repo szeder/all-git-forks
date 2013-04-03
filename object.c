@@ -4,6 +4,7 @@
 #include "tree.h"
 #include "commit.h"
 #include "tag.h"
+#include "link.h"
 
 static struct object **obj_hash;
 static int nr_objs, obj_hash_size;
@@ -24,6 +25,7 @@ static const char *object_type_strings[] = {
 	"tree",		/* OBJ_TREE = 2 */
 	"blob",		/* OBJ_BLOB = 3 */
 	"tag",		/* OBJ_TAG = 4 */
+	"link",		/* OBJ_LINK = 5 */
 };
 
 const char *typename(unsigned int type)
@@ -174,6 +176,13 @@ struct object *parse_object_buffer(const unsigned char *sha1, enum object_type t
 			if (parse_tag_buffer(tag, buffer, size))
 			       return NULL;
 			obj = &tag->object;
+		}
+	} else if (type == OBJ_LINK) {
+		struct link *link = lookup_link(sha1);
+		if (link) {
+			if (parse_link_buffer(link, buffer, size))
+			       return NULL;
+			obj = &link->object;
 		}
 	} else {
 		warning("object %s has unknown type id %d", sha1_to_hex(sha1), type);

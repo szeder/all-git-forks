@@ -15,6 +15,7 @@
 #include "tree.h"
 #include "commit.h"
 #include "tag.h"
+#include "link.h"
 
 #define BLOCKING 1024
 
@@ -49,6 +50,7 @@ DEFINE_ALLOCATOR(blob, struct blob)
 DEFINE_ALLOCATOR(tree, struct tree)
 DEFINE_ALLOCATOR(commit, struct commit)
 DEFINE_ALLOCATOR(tag, struct tag)
+DEFINE_ALLOCATOR(link, struct link)
 DEFINE_ALLOCATOR(object, union any_object)
 
 static void report(const char *name, unsigned int count, size_t size)
@@ -66,4 +68,5 @@ void alloc_report(void)
 	REPORT(tree);
 	REPORT(commit);
 	REPORT(tag);
+	REPORT(link);
 }
