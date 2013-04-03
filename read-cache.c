@@ -11,6 +11,7 @@
 #include "tree.h"
 #include "commit.h"
 #include "blob.h"
+#include "link.h"
 #include "resolve-undo.h"
 #include "strbuf.h"
 #include "varint.h"
@@ -128,19 +129,31 @@ static int ce_compare_link(struct cache_entry *ce, size_t expected_size)
 
 static int ce_compare_gitlink(struct cache_entry *ce)
 {
-	unsigned char sha1[20];
+	unsigned char checkout_rev_sha1[20], head_sha1[20];
+	void *buffer;
+	unsigned long size;
+	enum object_type type;
+	struct link link;
 
-	/*
-	 * We don't actually require that the .git directory
-	 * under GITLINK directory be a valid git directory. It
-	 * might even be missing (in case nobody populated that
-	 * sub-project).
-	 *
-	 * If so, we consider it always to match.
+	buffer = read_sha1_file(ce->sha1, &type, &size);
+
+	/* For compatibility with an older version: earlier, gitlinks
+	 * were represented as commit SHA-1s (that wouldn't resolve)
+	 * in the cache.
 	 */
-	if (resolve_gitlink_ref(ce->name, "HEAD", sha1) < 0)
+	if (!buffer) {
+		if (resolve_gitlink_ref(ce->name, "HEAD", head_sha1) < 0)
+			return 0;
+		return hashcmp(head_sha1, ce->sha1);
+	}
+
+	memset(&link, 0, sizeof(struct link));
+	if (parse_link_buffer(&link, buffer, size) < 0)
+		die("Cannot continue.");
+	if (resolve_gitlink_ref(ce->name, link.checkout_rev, checkout_rev_sha1) < 0 ||
+		resolve_gitlink_ref(ce->name, "HEAD", head_sha1) < 0)
 		return 0;
-	return hashcmp(sha1, ce->sha1);
+	return hashcmp(head_sha1, checkout_rev_sha1);
 }
 
 static int ce_modified_check_fs(struct cache_entry *ce, struct stat *st)
