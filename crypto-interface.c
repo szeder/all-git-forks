@@ -6,8 +6,8 @@
  *                  - David Garcia
  *                  - Sam Chase
  *  Last Modified: April 2, 2013
- *  
- *  Functions defined to sign and verify using 'git crypto' 
+ *
+ *  Functions defined to sign and verify using 'git crypto'
  *  command using CMS library within OpenSSL
  *
  **/
@@ -72,33 +72,6 @@ BIO * create_bio(char * msg)
     BIO * bio = BIO_new(BIO_s_mem());
     BIO_puts(bio, msg);
     return bio;
-}
-
-/**
- *  crypto_sign_buffer()
- *
- *  Parameters: none
- *
- *  Creates a detached signatured for the contents of "buffer" and
- *      appends it after "signature"; "buffer" and "signature" can 
- *      be the same strbuf instance, which would caused the detached
- *      signature appended at the end
- *
- **/
-int crypto_sign_buffer( )
-{
-    char * script = "HASH=$(git log -n1 | cut -d ' ' -f 2 | head -n1); \
-                     FILE=$(date +\%s); \
-                     git show $(HASH) > \"$FILE\".txt; \
-                     openssl cms -sign -in \"$FILE\".txt -text -out \"$FILE\".msg -signer ~/myCert.pem ; \
-                     git notes --ref=crypto add -F \"$FILE\".msg HEAD; \
-                     rm \"$FILE\".txt \"$FILE\".msg; ";
-    char * extra =  "echo \"Pushing signed note to the origin\"; \
-                     git push origin refs/notes/crypto/*; ";
-    int bashResult = system(script);
-    if(bashResult == BASH_ERROR)
-        printf("Error fetching signature, signing, adding to notes\n");
-	return 0;
 }
 
 char ** get_commit_list()
@@ -194,7 +167,7 @@ const unsigned char * get_note_for_commit(const char * commit_ref)
 
 /**
  *  get_object_from_sha1()
- 
+
  *  Paramaters: ref
  *      - ref: SHA1 of a commit
  *
@@ -238,7 +211,7 @@ char * get_object_from_sha1(const char * ref)
  *  Signs the given commit SHA ref
  **/
 int sign_commit(char *commit_sha){
-    int ret_val = VERIFY_PASS;
+    int ret_val = VERIFY_PASS; // TODO verify...?
     // Get the pretty commit
     char *commit = get_object_from_sha1(commit_sha);
     char commit_sha256[65];
@@ -258,8 +231,27 @@ int sign_commit(char *commit_sha){
 // Move the signing method into crypto-interface.c
 
 //look at crypto-interface.h for info
-int sign_commit_sha(char * sha)
+int sign_commit_sha256(EVP_KEY *key, X509* cert, X509_STORE* stack, char *cmt_sha)
 {
+    // get the pretty char* representation of the commit
+    char *commit = get_object_from_sha1(commit_sha);
+    // create the sha256 of it
+    char commit_sha256[65];
+    sha256(commit, commit_sha256);
+    // create the bio we will use to sign
+    BIO *input = create_bio(commit_sha256);
+
+    //sign the message
+    cms = CMS_sign(cert /*the certificate from .pem*/
+                   ,key /*the private key from .pem*/
+                   ,stack /*stack of x509 certs, unneeded*/
+                   ,input /*the data to be signed, aka sha2 hash of commit*/
+                   ,CMS_DETACHED); /* flag for cleartext signing */
+    // TODO check for errors
+
+    // TODO add notes
+
+    /*
     BIO * in = NULL;
     X509 * cert = NULL;
     EVP_PKEY * key = NULL;
@@ -316,12 +308,6 @@ int sign_commit_sha(char * sha)
     if(!data)
         goto err;
 
-    //sign the message
-    cms = CMS_sign(cert /*the certificate from .pem*/
-                   ,key /*the private key from .pem*/
-                   ,NULL /*stack of x509 certs, unneeded*/
-                   ,data /*the data to be signed, aka sha2 hash of commit*/
-                   ,CMS_DETACHED); /* flag for cleartext signing */
 
     //check for failure
     if(!cms)
@@ -346,6 +332,7 @@ err:
         BIO_free(in);
 
     return ret;
+    */
 }
 
 //look at crypto-interface.h for info

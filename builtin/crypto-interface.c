@@ -51,12 +51,12 @@ static int sign(int argc, const char **argv, const char *prefix)
     }
 
     if(!key_arg){ // no key argument so get it from the config
-
+        key_arg = get_pem_path();
     }// use the file to get the  now
     key = get_key(key_arg);
 
     if(!cert_arg){ // no cert arg get it from config
-
+        cert_arg = get_pem_path();
     }
     cert = get_cert(cert_arg);
 
