@@ -253,16 +253,18 @@ char * get_pem_path()
 
 
 //look at crypto-interface.h for info
-int sign_commit_sha256(EVP_KEY *key, X509* cert, X509_STORE* stack, char *cmt_sha)
+int sign_commit_sha256(EVP_PKEY *key, X509* cert, X509_STORE* stack, char *cmt_sha)
 {
     // get the pretty char* representation of the commit
-    char *commit = get_object_from_sha1(commit_sha);
+    char *commit = get_object_from_sha1(cmt_sha);
     // create the sha256 of it
     char commit_sha256[65];
     sha256(commit, commit_sha256);
     // create the bio we will use to sign
     BIO *input = create_bio(commit_sha256);
-
+    //the cms object for signing
+    CMS_ContentInfo * cms = NULL;
+    
     //sign the message
     cms = CMS_sign(cert /*the certificate from .pem*/
                    ,key /*the private key from .pem*/
@@ -270,7 +272,28 @@ int sign_commit_sha256(EVP_KEY *key, X509* cert, X509_STORE* stack, char *cmt_sh
                    ,input /*the data to be signed, aka sha2 hash of commit*/
                    ,CMS_DETACHED); /* flag for cleartext signing */
     // TODO check for errors
-
+    
+    if(!cms)
+        printf("CMS FAILED");
+    
+    printf("pretty note: %s\n", commit);
+    
+    BIO * note_bio = NULL;
+    
+    note_bio = create_bio(commit);
+    
+    X509_STORE *x509_st = X509_STORE_new();
+    
+    // Verify the s/smime message
+    int err = CMS_verify(cms
+                         , NULL /*stack x509*/
+                         , x509_st
+                         , note_bio
+                         , NULL /*out bio not used*/
+                         , CMS_NO_SIGNER_CERT_VERIFY);
+    
+    printf("Verify status: %d\n", err);
+}
     // TODO add notes
 
     /*
@@ -426,7 +449,6 @@ err:
         BIO_free(in);
 
     return ret;
-    */
 }
 
 //look at crypto-interface.h for info
