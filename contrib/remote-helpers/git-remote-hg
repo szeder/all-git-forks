@@ -772,6 +772,8 @@ def do_export(parser):
             p_revs.append(node)
             tag = ref[len('refs/tags/'):]
             tag = hgref(tag)
+            if tag in parser.repo.tags():
+                continue
             if mode == 'git':
                 msg = 'Added tag %s for changeset %s' % (tag, hghex(node[:6]));
                 parser.repo.tag([tag], node, msg, False, None, {})
