@@ -2878,6 +2878,7 @@ int index_path(unsigned char *sha1, const char *path, struct stat *st, unsigned 
 	char pathbuf[PATH_MAX];
 	const char *submodule_gitdir;
 	unsigned char checkout_rev[20];
+	char *ref_name;
 
 	switch (st->st_mode & S_IFMT) {
 	case S_IFREG:
@@ -2919,9 +2920,18 @@ int index_path(unsigned char *sha1, const char *path, struct stat *st, unsigned 
 		if (resolve_gitlink_ref(path, "HEAD", checkout_rev) < 0)
 			die("Unable to resolve submodule HEAD");
 
+		/* Construct a ref_name from path */
+		sprintf(pathbuf, "%s", path);
+		pathbuf[strlen(pathbuf) - 1] = '\0'; /* Remove trailing slash */
+		if (strchr(pathbuf, '/'))
+			ref_name = xstrdup(strrchr(pathbuf, '/') + 1);
+		else
+			ref_name = xstrdup(pathbuf);
+
 		/* Add fields to the strbuf */
 		strbuf_addf(&sb, "upstream_url = %s\n", (char *) upstream_url);
 		strbuf_addf(&sb, "checkout_rev = %s\n", sha1_to_hex(checkout_rev));
+		strbuf_addf(&sb, "ref_name = %s\n", ref_name);
 		if (!(flags & HASH_WRITE_OBJECT))
 			hash_sha1_file(sb.buf, sb.len, link_type, sha1);
 		else if (write_sha1_file(sb.buf, sb.len, link_type, sha1))
