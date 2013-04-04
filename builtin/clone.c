@@ -44,6 +44,7 @@ static char *option_template, *option_depth;
 static char *option_origin = NULL;
 static char *option_branch = NULL;
 static const char *real_git_dir;
+static const char *submodule_gitdir;
 static char *option_upload_pack = "git-upload-pack";
 static int option_verbosity;
 static int option_progress = -1;
@@ -707,11 +708,22 @@ static void write_refspec_config(const char* src_ref_prefix,
 	strbuf_release(&value);
 }
 
+static int git_clone_config(const char *var, const char *value, void *cb)
+{
+	if (!strcmp(var, "clone.submodulegitdir")) {
+		git_config_string(&submodule_gitdir, var, value);
+		return 0;
+	}
+	return git_default_config(var, value, cb);
+}
+
 int cmd_clone(int argc, const char **argv, const char *prefix)
 {
 	int is_bundle = 0, is_local;
 	struct stat buf;
 	const char *repo_name, *repo, *work_tree, *git_dir;
+	char dest_git_dir[PATH_MAX];
+	char cwd[PATH_MAX];
 	char *path, *dir;
 	int dest_exists;
 	const struct ref *refs, *remote_head;
@@ -725,6 +737,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	const char *src_ref_prefix = "refs/heads/";
 	struct remote *remote;
 	int err = 0, complete_refs_before_fetch = 1;
+	int nongit = 1;
 
 	struct refspec *refspec;
 	const char *fetch_pattern;
@@ -732,6 +745,14 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	junk_pid = getpid();
 
 	packet_trace_identity("clone");
+
+	/* setup_git_directory_gently without changing directories */
+	getcwd(cwd, sizeof(cwd) - 1);
+	setup_git_directory_gently(&nongit);
+	chdir(cwd);
+
+	git_config(git_clone_config, NULL);
+
 	argc = parse_options(argc, argv, prefix, builtin_clone_options,
 			     builtin_clone_usage, 0);
 
@@ -784,6 +805,14 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (dest_exists && !is_empty_dir(dir))
 		die(_("destination path '%s' already exists and is not "
 			"an empty directory."), dir);
+
+	if (!nongit && submodule_gitdir) {
+		sprintf(dest_git_dir, "%s/%s.git", real_path(submodule_gitdir), dir);
+		if (!stat(dest_git_dir, &buf) && !is_empty_dir(dest_git_dir))
+			die(_("destination path '%s' already exists and is not "
+					"an empty directory."), dest_git_dir);
+		real_git_dir = dest_git_dir;
+	}
 
 	strbuf_addf(&reflog_msg, "clone: from %s", repo);
 
