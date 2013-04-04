@@ -619,8 +619,9 @@ def do_list(parser):
     orig = peer if peer else repo
 
     for branch, heads in orig.branchmap().iteritems():
-        # only open heads
-        heads = [h for h in heads if not repo[h].closesbranch()]
+        if not os.environ.get('GITIFYHG_ALLOW_CLOSED_BRANCHES'):
+            # only open heads
+            heads = [h for h in heads if not repo[h].closesbranch()]
         if heads:
             branches[branch] = heads
 
