@@ -659,4 +659,47 @@ test_expect_success 'rm of file when it has become a directory' '
 	test_path_is_file d/f
 '
 
+test_expect_success 'set up commit with d/f' '
+	rm -rf d e &&
+	mkdir d &&
+	echo content >d/f &&
+	git add d &&
+	git commit -m d
+'
+
+test_expect_success SYMLINKS 'replace dir with symlink to dir (file missing)' '
+	git reset --hard &&
+	rm -rf d e &&
+	mkdir e &&
+	ln -s e d &&
+	git rm d/f &&
+	test_must_fail git rev-parse --verify :d/f &&
+	test -h d &&
+	test_path_is_dir e
+'
+
+test_expect_success SYMLINKS 'replace dir with symlink to dir (same content)' '
+	git reset --hard &&
+	rm -rf d e &&
+	mkdir e &&
+	echo content >e/f &&
+	ln -s e d &&
+	git rm d/f &&
+	test_must_fail git rev-parse --verify :d/f &&
+	test -h d &&
+	test_path_is_dir e
+'
+
+test_expect_success SYMLINKS 'replace dir with symlink to dir (new content)' '
+	git reset --hard &&
+	rm -rf d e &&
+	mkdir e &&
+	echo changed >e/f &&
+	ln -s e d &&
+	test_must_fail git rm d/f &&
+	git rev-parse --verify :d/f &&
+	test -h d &&
+	test_path_is_file e/f
+'
+
 test_done
