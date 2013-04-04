@@ -23,6 +23,7 @@ import subprocess
 import urllib
 import atexit
 import urlparse
+import time as ptime
 
 #
 # If you want to switch to hg-git compatibility mode:
@@ -109,6 +110,7 @@ class Marks:
         self.rev_marks = {}
         self.last_mark = 0
         self.version = 0
+        self.last_note_rev = 0
 
     def load(self):
         if not os.path.exists(self.path):
@@ -120,12 +122,13 @@ class Marks:
         self.marks = tmp['marks']
         self.last_mark = tmp['last-mark']
         self.version = tmp.get('version', 1)
+        self.last_note_rev = tmp['last-note-rev']
 
         for rev, mark in self.marks.iteritems():
             self.rev_marks[mark] = rev
 
     def dict(self):
-        return { 'tips': self.tips, 'marks': self.marks, 'last-mark' : self.last_mark, 'version' : self.version }
+        return { 'tips': self.tips, 'marks': self.marks, 'last-mark' : self.last_mark, 'version' : self.version, 'last-note-rev' : self.last_note_rev }
 
     def store(self):
         json.dump(self.dict(), open(self.path, 'w'))
@@ -138,6 +141,10 @@ class Marks:
 
     def to_rev(self, mark):
         return self.rev_marks[mark]
+
+    def next_mark(self):
+        self.last_mark += 1
+        return self.last_mark
 
     def get_mark(self, rev):
         self.last_mark += 1
@@ -360,6 +367,7 @@ def mark_to_rev(mark):
 
 def export_ref(repo, name, kind, head):
     global prefix, marks, mode
+    global commit_count
 
     ename = '%s/%s' % (kind, name)
     tip = marks.get_tip(ename)
@@ -462,6 +470,7 @@ def export_ref(repo, name, kind, head):
     print
 
     marks.set_tip(ename, head.hex())
+    commit_count += count
 
 def export_tag(repo, tag):
     export_ref(repo, tag, 'tags', repo[hgref(tag)])
@@ -579,6 +588,7 @@ def do_import(parser):
         print "feature import-marks=%s" % path
     print "feature export-marks=%s" % path
     print "feature force"
+    print "feature notes"
     sys.stdout.flush()
 
     tmp = encoding.encoding
@@ -601,6 +611,29 @@ def do_import(parser):
             export_tag(repo, tag)
 
         parser.next()
+
+    if commit_count > 0:
+        note_mark = marks.next_mark()
+        ref = "refs/notes/hg-%s" % alias
+
+        print "commit %s" % ref
+        print "mark :%d" % (note_mark)
+        print "committer remote-hg <> %s" % (ptime.strftime('%s %z'))
+        desc = "Notes\n"
+        print "data %d" % (len(desc))
+        print desc
+        if marks.last_note_rev:
+            print "from %s^0" % ref
+
+        tip = repo['tip'].rev()
+        for nrev in xrange(marks.last_note_rev, tip + 1):
+            rev = repo[nrev]
+            print "N inline :%u" % rev_to_mark(rev)
+            msg = rev.hex()
+            print "data %d" % (len(msg))
+            print msg
+        print
+        marks.last_note_rev = tip + 1
 
     encoding.encoding = tmp
 
@@ -900,11 +933,12 @@ def main(args):
     global marks, blob_marks, parsed_refs
     global peer, mode, bad_mail, bad_name
     global track_branches, force_push, is_tmp
-    global parsed_tags
+    global parsed_tags, alias, commit_count
 
     alias = args[1]
     url = args[2]
     peer = None
+    commit_count = 0
 
     hg_git_compat = False
     track_branches = True
