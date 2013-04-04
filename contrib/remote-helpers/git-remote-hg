@@ -565,20 +565,11 @@ def get_branch_tip(repo, branch):
 def list_head(repo, cur):
     global g_head, bmarks
 
-    head = bookmarks.readcurrent(repo)
-    if head:
-        node = repo[head]
-    else:
-        # fake bookmark from current branch
-        head = cur
-        node = repo['.']
-        if not node:
-            node = repo['tip']
-        if not node:
-            return
-        if head == 'default':
-            head = 'master'
-        bmarks[head] = node
+    head = 'master'
+    if not 'default' in repo:
+        return
+    node = repo['default']
+    bmarks[head] = node
 
     head = gitref(head)
     print "@refs/heads/%s HEAD" % head
