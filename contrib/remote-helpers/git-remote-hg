@@ -369,7 +369,7 @@ def get_repo(url, alias):
     except ImportError:
         pass
 
-    if hg.islocal(url):
+    if False:
         repo = hg.repository(myui, url)
         if not os.path.exists(dirname):
             os.makedirs(dirname)
