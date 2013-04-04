@@ -860,7 +860,7 @@ def main(args):
     else:
         mode = 'git'
         bad_mail = 'unknown'
-        bad_name = 'Unknown'
+        bad_name = ''
 
     if alias[4:] == url:
         is_tmp = True
