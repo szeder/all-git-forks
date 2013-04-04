@@ -75,10 +75,10 @@ static void diffgrep_consume(void *priv, char *line, unsigned long len)
 }
 
 static void fill_one(struct diff_filespec *one,
-		     mmfile_t *mf, struct userdiff_driver **textconv)
+		     mmfile_t *mf, struct userdiff_driver *textconv)
 {
 	if (DIFF_FILE_VALID(one)) {
-		mf->size = fill_textconv(*textconv, one, &mf->ptr);
+		mf->size = fill_textconv(textconv, one, &mf->ptr);
 	} else {
 		memset(mf, 0, sizeof(*mf));
 	}
@@ -101,8 +101,8 @@ static int diff_grep(struct diff_filepair *p, struct diff_options *o,
 		textconv_two = get_textconv(p->two);
 	}
 
-	fill_one(p->one, &mf1, &textconv_one);
-	fill_one(p->two, &mf2, &textconv_two);
+	fill_one(p->one, &mf1, textconv_one);
+	fill_one(p->two, &mf2, textconv_two);
 
 	if (!mf1.ptr) {
 		if (!mf2.ptr)
@@ -228,8 +228,8 @@ static int has_changes(struct diff_filepair *p, struct diff_options *o,
 	if (textconv_one == textconv_two && diff_unmodified_pair(p))
 		return 0;
 
-	fill_one(p->one, &mf1, &textconv_one);
-	fill_one(p->two, &mf2, &textconv_two);
+	fill_one(p->one, &mf1, textconv_one);
+	fill_one(p->two, &mf2, textconv_two);
 
 	if (!mf1.ptr) {
 		if (!mf2.ptr)
