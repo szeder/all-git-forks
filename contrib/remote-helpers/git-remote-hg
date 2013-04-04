@@ -750,6 +750,10 @@ def do_export(parser):
         else:
             die('unhandled export command: %s' % line)
 
+    # update heads
+    node = parser.repo['tip'].node()
+    parser.repo.dirstate.setparents(node)
+
     for ref, node in parsed_refs.iteritems():
         if ref.startswith('refs/heads/branches'):
             p_revs.append(node)
