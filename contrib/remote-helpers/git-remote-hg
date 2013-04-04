@@ -540,7 +540,7 @@ def export_ref(repo, name, kind, head):
     pending_revs = set(revs) - notes
     if pending_revs:
         note_mark = marks.next_mark()
-        ref = "refs/notes/hg"
+        ref = "refs/notes/hg-%s" % uuid
 
         print "commit %s" % ref
         print "mark :%d" % (note_mark)
