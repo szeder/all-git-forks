@@ -555,6 +555,8 @@ def do_list(parser):
             heads = repo.branchheads(branch)
             if len(heads):
                 branches[branch] = heads
+            else:
+                branches[branch] = list(repo[branch])
 
         for branch in branches:
             if branch == 'default':
