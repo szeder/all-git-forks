@@ -622,4 +622,84 @@ test_expect_success 'rm of a populated nested submodule with a nested .git direc
 	rm -rf submod
 '
 
+test_expect_success 'rm of d/f when d has become a non-directory' '
+	rm -rf d &&
+	mkdir d &&
+	>d/f &&
+	git add d &&
+	rm -rf d &&
+	>d &&
+	git rm d/f &&
+	test_must_fail git rev-parse --verify :d/f &&
+	test_path_is_file d
+'
+
+test_expect_success SYMLINKS 'rm of d/f when d has become a dangling symlink' '
+	rm -rf d &&
+	mkdir d &&
+	>d/f &&
+	git add d &&
+	rm -rf d &&
+	ln -s nonexistent d &&
+	git rm d/f &&
+	test_must_fail git rev-parse --verify :d/f &&
+	test -h d &&
+	test_path_is_missing d
+'
+
+test_expect_success 'rm of file when it has become a directory' '
+	rm -rf d &&
+	>d &&
+	git add d &&
+	rm -f d &&
+	mkdir d &&
+	>d/f &&
+	test_must_fail git rm d &&
+	git rev-parse --verify :d &&
+	test_path_is_file d/f
+'
+
+test_expect_success 'set up commit with d/f' '
+	rm -rf d e &&
+	mkdir d &&
+	echo content >d/f &&
+	git add d &&
+	git commit -m d
+'
+
+test_expect_success SYMLINKS 'replace dir with symlink to dir (file missing)' '
+	git reset --hard &&
+	rm -rf d e &&
+	mkdir e &&
+	ln -s e d &&
+	git rm d/f &&
+	test_must_fail git rev-parse --verify :d/f &&
+	test -h d &&
+	test_path_is_dir e
+'
+
+test_expect_success SYMLINKS 'replace dir with symlink to dir (same content)' '
+	git reset --hard &&
+	rm -rf d e &&
+	mkdir e &&
+	echo content >e/f &&
+	ln -s e d &&
+	git rm d/f &&
+	test_must_fail git rev-parse --verify :d/f &&
+	test -h d &&
+	test_path_is_dir e
+'
+
+test_expect_success SYMLINKS 'replace dir with symlink to dir (new content)' '
+	git reset --hard &&
+	rm -rf d e &&
+	mkdir e &&
+	echo changed >e/f &&
+	ln -s e d &&
+	test_must_fail git rm d/f &&
+	git rev-parse --verify :d/f &&
+	test -h d &&
+	test_path_is_file e/f
+'
+
 test_done
