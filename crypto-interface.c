@@ -256,27 +256,38 @@ char * get_pem_path()
 //look at crypto-interface.h for info
 int sign_commit_sha256(EVP_PKEY *key, X509* cert, X509_STORE* stack, char *cmt_sha)
 {
+    printf("Made it into sign_commit_sha256\n");
     int ret_val;
     // get the pretty char* representation of the commit
     char *commit = get_object_from_sha1(cmt_sha);
     // create the sha256 of it
     char commit_sha256[65];
     sha256(commit, commit_sha256);
+    printf("Sha'd the pretty commit\n");
+    printf("sha: %s\n", commit_sha256);
     // create the bio we will use to sign
     BIO *input = create_bio(commit_sha256);
+    printf("make our shacmt bio\n");
     // cms object which is our smime object wrapped up
     CMS_ContentInfo *cms = NULL;
-
+    printf("pre cms_sign\n");
+    if(key == NULL)
+        printf("key\n");
+    if(cert == NULL)
+        printf("cert\n");
+    if(input == NULL)
+        printf("input\n");
     //sign the message
+    // TODO SEGFAULT HERE
     cms = CMS_sign(cert /*the certificate from .pem*/
                    ,key /*the private key from .pem*/
-                   ,stack /*stack of x509 certs, unneeded*/
+                   ,NULL /*stack of x509 certs, unneeded*/
                    ,input /*the data to be signed, aka sha2 hash of commit*/
                    ,CMS_DETACHED); /* flag for cleartext signing */
-    // TODO check for errors
+    printf("post cms_sign\n");
 
     if(!cms)
-        printf("CMS FAILED");
+        printf("CMS FAILED\n");
 
     printf("pretty note: %s\n", commit);
 
@@ -296,7 +307,8 @@ int sign_commit_sha256(EVP_PKEY *key, X509* cert, X509_STORE* stack, char *cmt_s
 
     printf("Verify status: %d\n", err);
 
-    // TODO add notes
+    // Add the note to the tree
+    // TODO abstract this chunk out
     struct notes_tree *t;
     unsigned const char *note;
     unsigned char object[20], new_note[20];
@@ -327,6 +339,16 @@ int sign_commit_sha256(EVP_PKEY *key, X509* cert, X509_STORE* stack, char *cmt_s
 	if(write_sha1_file(buf.buf, buf.len, blob_type, new_note))
         die("unable to write crypto-note");
     return ret_val;
+    /*
+    if(cert)
+        X509_free(cert);
+    if(key)
+        EVP_PKEY_free(key);
+    if(data)
+        BIO_free(data);
+    if(in)
+        BIO_free(in);
+        */
 }
 
 /*
@@ -405,71 +427,6 @@ certfail:
         BIO_free(in);
 
     return cert;
-}
-
-
-// Move the signing method into crypto-interface.c
-int sign_commit_sha(char * sha)
-{
-    BIO * in = NULL;
-    X509 * cert = NULL;
-    EVP_PKEY * key = NULL;
-    int ret = 1;
-    CMS_ContentInfo * cms = NULL;
-
-    OpenSSL_add_all_algorithms();
-    ERR_load_crypto_strings();
-
-    //get the path of the .pem file containing the private key
-    char * pem = get_pem_path();
-
-    //char array to hold the sha2 hash
-    char calc_hash[65];
-
-    //get the human readable actual commit
-    char * commit_head = get_object_from_sha1(sha);
-
-    //SHA2 on the char* that contains the commit path
-    sha256(commit_head, calc_hash);
-
-    //put the hash into a BIO *
-    BIO * data = BIO_new(BIO_s_mem());
-    BIO_puts(data, calc_hash);
-
-    //get the private key
-    key = get_key(pem);
-
-    //get the X_509 cert
-    cert = get_cert(pem);
-
-    //check for failure
-    if(!data)
-        goto err;
-
-
-    //check for failure
-    if(!cms)
-        goto err;
-
-    ret = 0;
-
-err:
-    if(ret)
-    {
-        fprintf(stderr, "Error Signing Data\n");
-        ERR_print_errors_fp(stderr);
-    }
-
-    if(cert)
-        X509_free(cert);
-    if(key)
-        EVP_PKEY_free(key);
-    if(data)
-        BIO_free(data);
-    if(in)
-        BIO_free(in);
-
-    return ret;
 }
 
 //look at crypto-interface.h for info
