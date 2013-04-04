@@ -1095,6 +1095,8 @@ def do_export(parser):
                 continue
             tag = ref[len('refs/tags/'):]
             tag = hgref(tag)
+            if tag in parser.repo.tags():
+                continue
             author, msg = parsed_tags.get(tag, (None, None))
             if mode == 'git':
                 if not msg:
