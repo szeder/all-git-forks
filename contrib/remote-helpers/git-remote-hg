@@ -337,9 +337,7 @@ def get_repo(url, alias):
     except ImportError:
         pass
 
-    if hg.islocal(url):
-        repo = hg.repository(myui, url)
-    else:
+    if True:
         local_path = os.path.join(dirname, 'clone')
         if not os.path.exists(local_path):
             try:
