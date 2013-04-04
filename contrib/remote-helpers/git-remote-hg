@@ -557,6 +557,8 @@ def do_list(parser):
                 branches[branch] = heads
 
         for branch in branches:
+            if branch == 'default':
+                continue
             print "? refs/heads/branches/%s" % gitref(branch)
 
     for bmark in bmarks:
