@@ -190,8 +190,8 @@ OPTIONS
 	without changing its commit message.
 
 --amend::
-	Create a new commit and replace the tip of the current
-	branch. The recorded tree is prepared as usual (including
+	Replace the tip of the current branch by creating a new
+	commit. The recorded tree is prepared as usual (including
 	the effect of the `-i` and `-o` options and explicit
 	pathspec), and the message from the original commit is used
 	as the starting point, instead of an empty message, when no
