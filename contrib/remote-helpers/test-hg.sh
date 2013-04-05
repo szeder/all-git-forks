@@ -33,6 +33,8 @@ setup () {
 	(
 	echo "[ui]"
 	echo "username = H G Wells <wells@example.com>"
+	echo "[extensions]"
+	echo "mq ="
 	) >> "$HOME"/.hgrc
 }
 
@@ -152,6 +154,43 @@ test_expect_success 'authors' '
   git --git-dir=gitrepo/.git log --reverse --format="%an <%ae>" > actual &&
 
   test_cmp expected actual
+'
+
+test_expect_success 'strip' '
+  mkdir -p tmp && cd tmp &&
+  test_when_finished "cd .. && rm -rf tmp" &&
+
+  (
+  hg init hgrepo &&
+  cd hgrepo &&
+
+  echo one >> content &&
+  hg add content &&
+  hg commit -m one &&
+
+  echo two >> content &&
+  hg commit -m two
+  ) &&
+
+  git clone "hg::$PWD/hgrepo" gitrepo &&
+
+  (
+  cd hgrepo &&
+  hg strip -r 1 &&
+
+  echo three >> content &&
+  hg commit -m three &&
+
+  echo four >> content &&
+  hg commit -m four
+  ) &&
+
+  (cd gitrepo &&
+  git fetch &&
+  git log --format="%s" origin/master > ../actual) &&
+
+  hg -R hgrepo log --template "{desc}\n" > expected &&
+  test_cmp actual expected
 '
 
 test_done
