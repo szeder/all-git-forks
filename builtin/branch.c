@@ -18,6 +18,7 @@
 #include "string-list.h"
 #include "column.h"
 #include "utf8.h"
+#include "wt-status.h"
 
 static const char * const builtin_branch_usage[] = {
 	N_("git branch [options] [-r | -a] [--merged | --no-merged]"),
@@ -550,6 +551,29 @@ static int calc_maxwidth(struct ref_list *refs)
 	return w;
 }
 
+static char *get_head_description(void)
+{
+	struct strbuf desc = STRBUF_INIT;
+	struct wt_status_state state;
+	memset(&state, 0, sizeof(state));
+	wt_status_get_state(&state, 1);
+	if (state.rebase_in_progress ||
+	    state.rebase_interactive_in_progress)
+		strbuf_addf(&desc, _("(no branch, rebasing %s)"),
+			    state.branch);
+	else if (state.bisect_in_progress)
+		strbuf_addf(&desc, _("(no branch, bisect started on %s)"),
+			    state.branch);
+	else if (state.detached_from)
+		strbuf_addf(&desc, _("(detached from %s)"),
+			    state.detached_from);
+	else
+		strbuf_addstr(&desc, _("(no branch)"));
+	free(state.branch);
+	free(state.onto);
+	free(state.detached_from);
+	return strbuf_detach(&desc, NULL);
+}
 
 static void show_detached(struct ref_list *ref_list)
 {
@@ -557,7 +581,7 @@ static void show_detached(struct ref_list *ref_list)
 
 	if (head_commit && is_descendant_of(head_commit, ref_list->with_commit)) {
 		struct ref_item item;
-		item.name = xstrdup(_("(no branch)"));
+		item.name = get_head_description();
 		item.width = utf8_strwidth(item.name);
 		item.kind = REF_LOCAL_BRANCH;
 		item.dest = NULL;
@@ -880,7 +904,9 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		if (edit_branch_description(branch_name))
 			return 1;
 	} else if (rename) {
-		if (argc == 1)
+		if (!argc)
+			die(_("branch name required"));
+		else if (argc == 1)
 			rename_branch(head, argv[0], rename > 1);
 		else if (argc == 2)
 			rename_branch(argv[0], argv[1], rename > 1);

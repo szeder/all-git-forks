@@ -132,7 +132,6 @@ struct cache_entry {
 	unsigned int ce_namelen;
 	unsigned char sha1[20];
 	struct cache_entry *next;
-	struct cache_entry *dir_next;
 	char name[FLEX_ARRAY]; /* more */
 };
 
@@ -162,6 +161,9 @@ struct cache_entry {
 
 #define CE_UNPACKED          (1 << 24)
 #define CE_NEW_SKIP_WORKTREE (1 << 25)
+
+/* used to temporarily mark paths matched by pathspecs */
+#define CE_MATCHED           (1 << 26)
 
 /*
  * Extended on-disk flags
@@ -268,25 +270,15 @@ struct index_state {
 	unsigned name_hash_initialized : 1,
 		 initialized : 1;
 	struct hash_table name_hash;
+	struct hash_table dir_hash;
 };
 
 extern struct index_state the_index;
 
 /* Name hashing */
 extern void add_name_hash(struct index_state *istate, struct cache_entry *ce);
-/*
- * We don't actually *remove* it, we can just mark it invalid so that
- * we won't find it in lookups.
- *
- * Not only would we have to search the lists (simple enough), but
- * we'd also have to rehash other hash buckets in case this makes the
- * hash bucket empty (common). So it's much better to just mark
- * it.
- */
-static inline void remove_name_hash(struct cache_entry *ce)
-{
-	ce->ce_flags |= CE_UNHASHED;
-}
+extern void remove_name_hash(struct index_state *istate, struct cache_entry *ce);
+extern void free_name_hash(struct index_state *istate);
 
 
 #ifndef NO_THE_INDEX_COMPATIBILITY_MACROS
@@ -1064,7 +1056,9 @@ struct extra_have_objects {
 	int nr, alloc;
 	unsigned char (*array)[20];
 };
-extern struct ref **get_remote_heads(int in, struct ref **list, unsigned int flags, struct extra_have_objects *);
+extern struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
+				     struct ref **list, unsigned int flags,
+				     struct extra_have_objects *);
 extern int server_supports(const char *feature);
 extern int parse_feature_request(const char *features, const char *feature);
 extern const char *server_feature_value(const char *feature, int *len_ret);
