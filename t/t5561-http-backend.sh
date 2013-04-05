@@ -23,6 +23,10 @@ GET() {
 	test_cmp exp act
 }
 
+GET_BODY() {
+	curl "$HTTPD_URL/$SMART/repo.git/$1"
+}
+
 POST() {
 	curl --include --data "$2" \
 	--header "Content-Type: application/x-$1-request" \
@@ -134,6 +138,13 @@ POST /smart/repo.git/git-receive-pack HTTP/1.1 200 -
 ###
 GET  /smart/repo.git/info/refs?service=git-receive-pack HTTP/1.1 403 -
 POST /smart/repo.git/git-receive-pack HTTP/1.1 403 -
+
+###  namespace test
+###
+GET  /smart/repo.git/info/refs HTTP/1.1 200
+GET  /smart/repo.git/info/refs?service=git-upload-pack HTTP/1.1 200
+GET  /smart_namespace/repo.git/info/refs HTTP/1.1 200
+GET  /smart_namespace/repo.git/info/refs?service=git-upload-pack HTTP/1.1 200
 EOF
 test_expect_success 'server request log matches test results' '
 	sed -e "
