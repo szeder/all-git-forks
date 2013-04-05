@@ -460,6 +460,8 @@ extern void rename_index_entry_at(struct index_state *, int pos, const char *new
 extern int remove_index_entry_at(struct index_state *, int pos);
 extern void remove_marked_cache_entries(struct index_state *istate);
 extern int remove_file_from_index(struct index_state *, const char *path);
+extern int index_name_pos_also_unmerged(struct index_state *istate,
+					const char *path, int namelen);
 #define ADD_CACHE_VERBOSE 1
 #define ADD_CACHE_PRETEND 2
 #define ADD_CACHE_IGNORE_ERRORS	4

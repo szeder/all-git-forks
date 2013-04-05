@@ -9,6 +9,8 @@
 #include "diff.h"
 #include "revision.h"
 
+static int for_stdout_printing = 0;
+
 static int cat_file(struct cache_entry **src, struct unpack_trees_options *o) {
 	int cached, match_missing = 1;
 	unsigned dirty_submodule = 0;
@@ -32,7 +34,7 @@ static int cat_file(struct cache_entry **src, struct unpack_trees_options *o) {
 	return 0;
 }
 
-int cmd_cat_link(int argc, const char **argv, const char *prefix)
+int do_cat_link(int argc, const char **argv, const char *prefix)
 {
 	struct unpack_trees_options opts;
 	int cached = 1;
@@ -40,9 +42,6 @@ int cmd_cat_link(int argc, const char **argv, const char *prefix)
 	struct tree *tree;
 	struct tree_desc tree_desc;
 	struct object_array_entry *ent;
-
-	if (argc < 2)
-		die("Usage: git cat-link <link>");
 
 	init_revisions(&revs, prefix);
 	setup_revisions(argc, argv, &revs, NULL); /* For revs.prune_data */
@@ -79,5 +78,14 @@ int cmd_cat_link(int argc, const char **argv, const char *prefix)
 
 	init_tree_desc(&tree_desc, tree->buffer, tree->size);
 	unpack_trees(1, &tree_desc, &opts);
+	return 0;
+}
+
+int cmd_cat_link(int argc, const char **argv, const char *prefix)
+{
+	if (argc < 2)
+		die("Usage: git cat-link <link>");
+	for_stdout_printing = 1;
+	do_cat_link(argc, argv, prefix);
 	return 0;
 }

@@ -520,8 +520,8 @@ static int compare_name(struct cache_entry *ce, const char *path, int namelen)
 	return namelen != ce_namelen(ce) || memcmp(path, ce->name, namelen);
 }
 
-static int index_name_pos_also_unmerged(struct index_state *istate,
-	const char *path, int namelen)
+int index_name_pos_also_unmerged(struct index_state *istate,
+				const char *path, int namelen)
 {
 	int pos = index_name_pos(istate, path, namelen);
 	struct cache_entry *ce;
