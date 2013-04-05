@@ -43,6 +43,8 @@ log_arg= verbosity= progress= recurse_submodules=
 merge_args= edit=
 curr_branch=$(git symbolic-ref -q HEAD)
 curr_branch_short="${curr_branch#refs/heads/}"
+upstream=$(git config "branch.$curr_branch_short.merge")
+remote=$(git config "branch.$curr_branch_short.remote")
 rebase=$(git config --bool branch.$curr_branch_short.rebase)
 if test -z "$rebase"
 then
@@ -138,6 +140,48 @@ do
 	esac
 	shift
 done
+if test true = "$rebase"
+then
+    op_type=rebase
+    op_prep=against
+else
+    op_type=merge
+    op_prep=with
+fi
+
+check_args_against_config () {
+	# If fetch gets user-provided arguments, the user is
+	# overriding the upstream configuration, so we just let it
+	# continue.
+	if [ $# -gt 0 ]; then
+		return
+	fi
+
+	# Figure out what remote we're going to be fetching from
+	use_remote=origin
+	if [ -n "$remote" ]; then
+		use_remote="$remote"
+	fi
+
+	# If the remote doesn't have a fetch refspec, then fetch will
+	# mark the remote's HEAD for-merge regardless of what it is,
+	# and we don't have to check for anything
+	fetch=$(git config --get-all "remote.$use_remote.fetch")
+	if [ -z "$fetch" ]; then
+		return
+	fi
+
+	# The typical 'git pull' case where it should merge from the
+	# current branch's upstream. We can already check whether we
+	# we can do it. If HEAD is detached or there is no upstream
+	# branch, complain now.
+	if [ -z "$curr_branch_short" -o -z "$upstream" ]; then
+		. git-parse-remote
+		error_on_missing_default_upstream "pull" $op_type $op_prep \
+		    "git pull <remote> <branch>"
+		exit 1
+	fi
+}
 
 error_on_no_merge_candidates () {
 	exec >&2
@@ -150,19 +194,6 @@ error_on_no_merge_candidates () {
 			exit 1
 		esac
 	done
-
-	if test true = "$rebase"
-	then
-		op_type=rebase
-		op_prep=against
-	else
-		op_type=merge
-		op_prep=with
-	fi
-
-	curr_branch=${curr_branch#refs/heads/}
-	upstream=$(git config "branch.$curr_branch.merge")
-	remote=$(git config "branch.$curr_branch.remote")
 
 	if [ $# -gt 1 ]; then
 		if [ "$rebase" = true ]; then
@@ -177,10 +208,6 @@ error_on_no_merge_candidates () {
 		echo "You asked to pull from the remote '$1', but did not specify"
 		echo "a branch. Because this is not the default configured remote"
 		echo "for your current branch, you must specify a branch on the command line."
-	elif [ -z "$curr_branch" -o -z "$upstream" ]; then
-		. git-parse-remote
-		error_on_missing_default_upstream "pull" $op_type $op_prep \
-			"git pull <remote> <branch>"
 	else
 		echo "Your configuration specifies to $op_type $op_prep the ref '${upstream#refs/heads/}'"
 		echo "from the remote, but no such ref was fetched."
@@ -213,6 +240,8 @@ test true = "$rebase" && {
 		fi
 	done
 }
+
+check_args_against_config "$@"
 orig_head=$(git rev-parse -q --verify HEAD)
 git fetch $verbosity $progress $dry_run $recurse_submodules --update-head-ok "$@" || exit 1
 test -z "$dry_run" || exit 0
