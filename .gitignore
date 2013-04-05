@@ -21,6 +21,7 @@
 /git-branch
 /git-bundle
 /git-cat-file
+/git-cat-link
 /git-check-attr
 /git-check-ignore
 /git-check-ref-format

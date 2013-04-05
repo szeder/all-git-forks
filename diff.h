@@ -326,6 +326,12 @@ extern int diff_result_code(struct diff_options *, int);
 
 extern void diff_no_index(struct rev_info *, int, const char **, int, const char *);
 
+extern int get_stat_data(struct cache_entry *ce,
+			const unsigned char **sha1p,
+			unsigned int *modep,
+			int cached, int match_missing,
+			unsigned *dirty_submodule, struct diff_options *diffopt);
+
 extern int index_differs_from(const char *def, int diff_flags);
 
 extern size_t fill_textconv(struct userdiff_driver *driver,

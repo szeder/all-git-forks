@@ -246,11 +246,11 @@ static void diff_index_show_file(struct rev_info *revs,
 		       sha1, sha1_valid, ce->name, dirty_submodule);
 }
 
-static int get_stat_data(struct cache_entry *ce,
-			 const unsigned char **sha1p,
-			 unsigned int *modep,
-			 int cached, int match_missing,
-			 unsigned *dirty_submodule, struct diff_options *diffopt)
+int get_stat_data(struct cache_entry *ce,
+		const unsigned char **sha1p,
+		unsigned int *modep,
+		int cached, int match_missing,
+		unsigned *dirty_submodule, struct diff_options *diffopt)
 {
 	const unsigned char *sha1 = ce->sha1;
 	unsigned int mode = ce->ce_mode;
