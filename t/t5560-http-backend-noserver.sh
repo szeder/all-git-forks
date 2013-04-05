@@ -26,6 +26,13 @@ GET() {
 	test_cmp exp act
 }
 
+GET_BODY() {
+	REQUEST_METHOD="GET" && export REQUEST_METHOD &&
+	run_backend "/repo.git/$1" &&
+	sane_unset REQUEST_METHOD &&
+	tr '\015' Q <act.out | sed '1,/^Q$/d'
+}
+
 POST() {
 	REQUEST_METHOD="POST" && export REQUEST_METHOD &&
 	CONTENT_TYPE="application/x-$1-request" && export CONTENT_TYPE &&
