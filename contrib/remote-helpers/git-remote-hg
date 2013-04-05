@@ -822,8 +822,8 @@ def do_export(parser):
     print
 
 def fix_path(alias, repo, orig_url):
-    repo_url = util.url(repo.url())
-    url = util.url(orig_url)
+    repo_url, _ = hg.parseurl(repo.url())
+    url, _ = hg.parseurl(orig_url)
     if str(url) == str(repo_url):
         return
     cmd = ['git', 'config', 'remote.%s.url' % alias, "hg::%s" % repo_url]
