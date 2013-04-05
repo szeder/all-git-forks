@@ -116,4 +116,18 @@ test_expect_success 'log -S -i (nomatch)' '
 	test_cmp expect actual
 '
 
+test_expect_success 'log -S --textconv (missing textconv tool)' '
+	echo "* diff=test" >.gitattributes &&
+	test_must_fail git -c diff.test.textconv=missing log -Sfoo &&
+	rm .gitattributes
+'
+
+test_expect_success 'log -S --no-textconv (missing textconv tool)' '
+	echo "* diff=test" >.gitattributes &&
+	git -c diff.test.textconv=missing log -Sfoo --no-textconv >actual &&
+	>expect &&
+	test_cmp expect actual &&
+	rm .gitattributes
+'
+
 test_done
