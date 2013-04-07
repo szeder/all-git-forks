@@ -170,7 +170,7 @@ test_expect_success 'proper failure checks for fetching' '
 	(GIT_REMOTE_TESTGIT_FAILURE=1 &&
 	export GIT_REMOTE_TESTGIT_FAILURE &&
 	cd local &&
-	test_must_fail git fetch 2> error &&
+	test_must_fail git fetch 2>error &&
 	grep "Error while running helper" error
 	)
 '
@@ -180,7 +180,7 @@ test_expect_failure 'proper failure checks for pushing' '
 	(GIT_REMOTE_TESTGIT_FAILURE=1 &&
 	export GIT_REMOTE_TESTGIT_FAILURE &&
 	cd local &&
-	test_must_fail git push --all 2> error &&
+	test_must_fail git push --all 2>error &&
 	grep "Error while running helper" error
 	)
 '
