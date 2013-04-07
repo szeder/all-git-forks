@@ -22,7 +22,6 @@ fi
 
 # clone to a git repo
 git_clone () {
-	hg -R $1 bookmark -f -r tip master &&
 	git clone -q "hg::$PWD/$1" $2
 }
 
@@ -30,6 +29,7 @@ git_clone () {
 hg_clone () {
 	(
 	hg init $2 &&
+	hg -R $2 bookmark -i master &&
 	cd $1 &&
 	git push -q "hg::$PWD/../$2" 'refs/tags/*:refs/tags/*' 'refs/heads/*:refs/heads/*'
 	) &&
@@ -200,8 +200,8 @@ test_expect_success 'hg branch' '
 	hg_push hgrepo gitrepo &&
 	hg_clone gitrepo hgrepo2 &&
 
-	: TODO, avoid "master" bookmark &&
-	(cd hgrepo2 && hg checkout gamma) &&
+	: Back to the common revision &&
+	(cd hgrepo && hg checkout default) &&
 
 	hg_log hgrepo > expected &&
 	hg_log hgrepo2 > actual &&
