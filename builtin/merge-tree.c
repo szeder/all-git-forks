@@ -298,12 +298,17 @@ static int threeway_callback(int n, unsigned long mask, unsigned long dirmask, s
 {
 	/* Same in both? */
 	if (same_entry(entry+1, entry+2)) {
-		if (entry[0].sha1) {
+		if (entry[0].sha1 && !S_ISDIR(entry[0].mode)) {
 			/* Modified identically */
 			resolve(info, NULL, entry+1);
 			return mask;
 		}
-		/* "Both added the same" is left unresolved */
+		/*
+		 * "Both added the same" is left unresolved.  We also leave
+		 * "Both directories modified identically" unresolved in
+		 * order to catch changes where the same file (with the same
+		 * content) has been added to both directories.
+		 */
 	}
 
 	if (same_entry(entry+0, entry+1)) {
