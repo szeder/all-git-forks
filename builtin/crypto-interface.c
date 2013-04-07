@@ -62,8 +62,9 @@ static int sign(int argc, const char **argv, const char *prefix)
 
     printf("About to leave builtin/crypto-interface:sign\n");
 
-    ret_val = sign_commit_sha256(key, cert, stack, commit_arg);
-
+    //ret_val = sign_commit_sha256(key, cert, stack, commit_arg);
+    ret_val = sign_commit_old(commit_arg);
+    
     return ret_val;
 }
 

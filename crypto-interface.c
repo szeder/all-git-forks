@@ -266,7 +266,9 @@ int sign_commit_sha256(EVP_PKEY *key, X509* cert, X509_STORE* stack, char *cmt_s
     printf("Sha'd the pretty commit\n");
     printf("sha: %s\n", commit_sha256);
     // create the bio we will use to sign
-    BIO *input = create_bio(commit_sha256);
+    //BIO *input = create_bio(commit_sha256);
+    BIO * input = BIO_new(BIO_s_mem());
+    BIO_puts(input, commit_sha256);
     printf("make our shacmt bio\n");
     // cms object which is our smime object wrapped up
     CMS_ContentInfo *cms = NULL;
@@ -479,3 +481,148 @@ int verify_commit(char *commit_sha)
     return ret_val;
 }
 
+//the old sign method for debugging purposes
+int sign_commit_old(char *cmt_sha)
+{
+    
+    BIO * data = NULL;
+    BIO * in = NULL;
+    X509 * cert = NULL;
+    EVP_PKEY * key = NULL;
+    int ret = 1;
+    
+    //*********************************//
+    CMS_ContentInfo * cms = NULL;
+    int flags = CMS_DETACHED;
+    //*********************************//
+    
+    OpenSSL_add_all_algorithms();
+    ERR_load_crypto_strings();
+    
+    char * pem = get_pem_path();
+    //read in .pem file
+    in = BIO_new_file(pem,"r");
+    
+    printf("Pem is: %s\n", pem);
+    
+    if(!in)
+        goto err;
+    
+    //setting X509 * cert from BIO which read mycert.pem
+    cert = PEM_read_bio_X509(in, NULL, 0, NULL);
+    
+    BIO_reset(in);
+    
+    //read EVP_KEY * key from BIO which read from mycert.pem
+    key = PEM_read_bio_PrivateKey(in, NULL, 0, NULL);
+    
+    if(!cert || !key)
+        goto err;
+    
+    char calc_hash[65];
+    
+    // get the pretty char* representation of the commit
+    char *commit = get_object_from_sha1(cmt_sha);
+    // create the sha256 of it
+    //char commit_sha256[65];
+    
+    //TODO call SHA2 on the char* HERE  (msg.txt)
+    sha256(commit, calc_hash);
+    
+    printf("SHA2 hash: %s\n ", calc_hash);
+    
+    //the sha 2 hash of the pretty commit stored in a BIO
+    BIO * input = BIO_new(BIO_s_mem());
+    BIO_puts(input, calc_hash);
+    
+    if(!input)
+        goto err;
+    
+    //*********************************//
+    //sign the message
+    cms = CMS_sign(cert,key,NULL,input,flags);
+    
+    if(!cms)
+        goto err;
+    //*********************************//
+    
+    ret = 0;
+    
+err:
+    if(ret)
+    {
+        fprintf(stderr, "Error Signing Data\n");
+        ERR_print_errors_fp(stderr);
+    }
+    
+    if(cert)
+        X509_free(cert);
+    if(key)
+        EVP_PKEY_free(key);
+    if(data)
+        BIO_free(data);
+    if(in)
+        BIO_free(in);
+    
+    printf("post cms_sign\n");
+    
+    if(!cms)
+        printf("CMS FAILED\n");
+    
+    printf("pretty note: %s\n", commit);
+    
+    BIO * note_bio = NULL;
+    
+    note_bio = create_bio(commit);
+    
+    X509_STORE *x509_st = X509_STORE_new();
+    
+    // Verify the s/smime message (FOR DEBUGGING)
+    int err = CMS_verify(cms
+                         , NULL /*stack x509*/
+                         , x509_st
+                         , note_bio
+                         , NULL /*out bio not used*/
+                         , CMS_NO_SIGNER_CERT_VERIFY);
+    
+    printf("Verify status: %d\n", err);
+    
+    //**************************************//
+    // add commit to notes
+    //**************************************//
+    // Add the note to the tree
+    // TODO abstract this chunk out
+    struct notes_tree *t;
+    unsigned const char *note;
+    unsigned char object[20], new_note[20];
+    // get the object ref from sha_ref
+    if(get_sha1(cmt_sha, object))
+		die(_("Failed to resolve '%s' as a valid ref."), cmt_sha);
+    // get our note tree
+    init_notes(NULL, NULL, NULL, 0);
+    set_notes_ref("crypto");
+    t = &default_notes_tree;
+    if(prefixcmp(t->ref, "refs/notes/"))
+        die("Refusing to add notes outside of refs/notes/");
+    note = get_note(t, object);
+    if(note)
+        die("Already a crypto-note for %s, please delete it first to add a new note.", cmt_sha);
+    BIO *mimeOut = NULL;
+    SMIME_write_CMS(mimeOut, cms, input, NULL);
+    
+    // get the char * from the cms
+    struct strbuf buf = STRBUF_INIT;
+    BUF_MEM *bptr;
+    BIO_get_mem_ptr(mimeOut, &bptr);
+    BIO_set_close(mimeOut, BIO_NOCLOSE);
+    memcpy(buf.buf, bptr->data, bptr->length-1);
+    buf.buf[bptr->length-1] = 0;
+    
+    // finally create the note
+	if(write_sha1_file(buf.buf, buf.len, blob_type, new_note))
+        die("unable to write crypto-note");
+    return ret;
+
+    
+    return ret;
+}
