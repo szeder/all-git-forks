@@ -39,11 +39,16 @@ struct child_process {
 	unsigned stdout_to_stderr:1;
 	unsigned use_shell:1;
 	unsigned clean_on_exit:1;
+	struct last_status {
+		unsigned valid:1;
+		int status;
+	} last_status;
 };
 
 int start_command(struct child_process *);
 int finish_command(struct child_process *);
 int run_command(struct child_process *);
+int check_command(struct child_process *);
 
 extern char *find_hook(const char *name);
 extern int run_hook(const char *index_file, const char *name, ...);

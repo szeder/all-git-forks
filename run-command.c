@@ -226,14 +226,20 @@ static inline void set_cloexec(int fd)
 		fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
 }
 
-static int wait_or_whine(pid_t pid, const char *argv0)
+static int wait_or_whine(struct child_process *cmd, pid_t pid, const char *argv0)
 {
 	int status, code = -1;
 	pid_t waiting;
 	int failed_errno = 0;
 
-	while ((waiting = waitpid(pid, &status, 0)) < 0 && errno == EINTR)
-		;	/* nothing */
+	/* First try the last status from check_command() */
+	if (cmd && cmd->last_status.valid) {
+		status = cmd->last_status.status;
+		waiting = pid;
+	} else {
+		while ((waiting = waitpid(pid, &status, 0)) < 0 && errno == EINTR)
+			;	/* nothing */
+	}
 
 	if (waiting < 0) {
 		failed_errno = errno;
@@ -275,6 +281,8 @@ int start_command(struct child_process *cmd)
 	int fdin[2], fdout[2], fderr[2];
 	int failed_errno;
 	char *str;
+
+	cmd->last_status.valid = 0;
 
 	/*
 	 * In case of errors we must keep the promise to close FDs
@@ -438,7 +446,7 @@ fail_pipe:
 		 * At this point we know that fork() succeeded, but execvp()
 		 * failed. Errors have been reported to our stderr.
 		 */
-		wait_or_whine(cmd->pid, cmd->argv[0]);
+		wait_or_whine(cmd, cmd->pid, cmd->argv[0]);
 		failed_errno = errno;
 		cmd->pid = -1;
 	}
@@ -543,7 +551,7 @@ fail_pipe:
 
 int finish_command(struct child_process *cmd)
 {
-	return wait_or_whine(cmd->pid, cmd->argv[0]);
+	return wait_or_whine(cmd, cmd->pid, cmd->argv[0]);
 }
 
 int run_command(struct child_process *cmd)
@@ -552,6 +560,32 @@ int run_command(struct child_process *cmd)
 	if (code)
 		return code;
 	return finish_command(cmd);
+}
+
+int check_command(struct child_process *cmd)
+{
+	int status;
+	pid_t waiting;
+
+	if (cmd->last_status.valid)
+		return 0;
+
+	while ((waiting = waitpid(cmd->pid, &status, WNOHANG)) < 0 && errno == EINTR)
+		; /* nothing */
+
+	if (!waiting)
+		return 1;
+
+	if (waiting == cmd->pid) {
+		cmd->last_status.valid = 1;
+		cmd->last_status.status = status;
+		return 0;
+	}
+
+	if (waiting > 0)
+		die("BUG: waitpid reported a random pid?");
+
+	return 0;
 }
 
 static void prepare_run_command_v_opt(struct child_process *cmd,
@@ -730,7 +764,7 @@ error:
 int finish_async(struct async *async)
 {
 #ifdef NO_PTHREADS
-	return wait_or_whine(async->pid, "child process");
+	return wait_or_whine(NULL, async->pid, "child process");
 #else
 	void *ret = (void *)(intptr_t)(-1);
 
