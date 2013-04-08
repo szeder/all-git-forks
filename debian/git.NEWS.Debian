@@ -10,7 +10,7 @@ git (1:1.8.2~rc0-1) experimental; urgency=low
   pull" is configured to integrate with that branch.  You can get a
   glimpse of the future with
 
-	echo '[push] default = simple' >>~/.gitconfig
+  	echo '[push] default = simple' >>~/.gitconfig
 
   See Documentation/RelNotes/1.8.2.txt and the entry on push.default
   in git-config(1) for details.

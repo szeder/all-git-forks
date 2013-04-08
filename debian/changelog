@@ -1,6 +1,9 @@
 git (1:1.8.2.1-0.1) experimental; urgency=low
 
   * new upstream point release (see RelNotes/1.8.2.1.txt).
+  * debian/git.NEWS.Debian: add leading spaces before tab for
+    changelog parsers (thx Russ Allbery for suggesting it through
+    lintian).
   * debian/rules: respect <num> in DEB_BUILD_OPTIONS=parallel=<num>.
   * debian/implicit: check for debian/changelog.upstream.
   * debian/implicit: %.deb-DEBIAN-md5sums depends on
