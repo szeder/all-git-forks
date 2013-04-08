@@ -178,6 +178,10 @@ advice.*::
 		the template shown when writing commit messages in
 		linkgit:git-commit[1], and in the help message shown
 		by linkgit:git-checkout[1] when switching branch.
+	statusUoption::
+		Advise to consider using the `-u` option to linkgit:git-status[1]
+		when the command takes more than 2 seconds to enumerate untracked
+		files.
 	commitBeforeMerge::
 		Advice shown when linkgit:git-merge[1] refuses to
 		merge to avoid overwriting local changes.
@@ -443,7 +447,7 @@ core.sharedRepository::
 
 core.warnAmbiguousRefs::
 	If true, Git will warn you if the ref name you passed it is ambiguous
-	and might match multiple refs in the .git/refs/ tree. True by default.
+	and might match multiple refs in the repository. True by default.
 
 core.compression::
 	An integer -1..9, indicating a default compression level.
@@ -551,7 +555,7 @@ core.commentchar::
 	(default '#').
 
 sequence.editor::
-	Text editor used by `git rebase -i` for editing the rebase insn file.
+	Text editor used by `git rebase -i` for editing the rebase instruction file.
 	The value is meant to be interpreted by the shell when it is used.
 	It can be overridden by the `GIT_SEQUENCE_EDITOR` environment variable.
 	When not configured the default commit message editor is used instead.
