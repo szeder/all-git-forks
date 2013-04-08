@@ -1,21 +1,23 @@
-git (1:1.8.2.1-0.1) experimental; urgency=low
+git (1:1.8.2.1-1) experimental; urgency=low
 
   * new upstream point release (see RelNotes/1.8.2.1.txt).
+  * debian/implicit:
+    * check for debian/changelog.upstream.
+    * %.deb-DEBIAN-md5sums depends on /usr/share/doc/$pkg/doc/,
+      doc-base/, and lintian/ directories.
+    * do not remove files named after implicit targets.
+  * debian/rules:
+    * respect <num> in DEB_BUILD_OPTIONS=parallel=<num>.
+    * do not create ./changelog symlink (avoiding a race).
+    * override implicit git-core.deb-docs target, since git-core does
+      not have its own doc/ directory.
+  * debian/README.source: point to git.README.source (thx Helmut
+    Grohne; closes: #704580)
   * debian/git.NEWS.Debian: add leading spaces before tab for
     changelog parsers (thx Russ Allbery for suggesting it through
     lintian).
-  * debian/rules: respect <num> in DEB_BUILD_OPTIONS=parallel=<num>.
-  * debian/implicit: check for debian/changelog.upstream.
-  * debian/implicit: %.deb-DEBIAN-md5sums depends on
-    /usr/share/doc/$pkg/doc/, doc-base/, and lintian/ directories.
-  * debian/rules: do not create ./changelog symlink (avoiding a race).
-  * debian/rules: override implicit git-core.deb-docs target, since
-    git-core does not have its own doc/ directory.
-  * debian/implicit: do not remove files named after implicit targets.
-  * debian/README.source: point to git.README.source (thx Helmut
-    Grohne; closes: #704580)
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 07 Apr 2013 17:15:39 -0700
+ -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 08 Apr 2013 00:46:02 -0700
 
 git (1:1.8.2-1) experimental; urgency=low
 
