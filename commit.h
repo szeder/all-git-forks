@@ -16,11 +16,14 @@ struct commit {
 	struct object object;
 	void *util;
 	unsigned int indegree:8; /* see QUICK_INDEGREE_LIMIT in commit.c */
+	unsigned int encoding:8; /* see QUICK_ENCODING_LIMIT in commit.c */
 	unsigned long date;
 	struct commit_list *parents;
 	struct tree *tree;
 	char *buffer;
 };
+
+extern const char *get_commit_encoding(const struct commit *);
 
 extern int save_commit_buffer;
 extern const char *commit_type;

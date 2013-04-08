@@ -534,34 +534,6 @@ static void add_merge_info(const struct pretty_print_context *pp,
 	strbuf_addch(sb, '\n');
 }
 
-static char *get_header(const struct commit *commit, const char *msg,
-			const char *key)
-{
-	int key_len = strlen(key);
-	const char *line = msg;
-
-	while (line) {
-		const char *eol = strchr(line, '\n'), *next;
-
-		if (line == eol)
-			return NULL;
-		if (!eol) {
-			warning("malformed commit (header is missing newline): %s",
-				sha1_to_hex(commit->object.sha1));
-			eol = line + strlen(line);
-			next = NULL;
-		} else
-			next = eol + 1;
-		if (eol - line > key_len &&
-		    !strncmp(line, key, key_len) &&
-		    line[key_len] == ' ') {
-			return xmemdupz(line + key_len + 1, eol - line - key_len - 1);
-		}
-		line = next;
-	}
-	return NULL;
-}
-
 static char *replace_encoding_header(char *buf, const char *encoding)
 {
 	struct strbuf tmp = STRBUF_INIT;
@@ -598,7 +570,7 @@ char *logmsg_reencode(const struct commit *commit,
 {
 	static const char *utf8 = "UTF-8";
 	const char *use_encoding;
-	char *encoding;
+	const char *encoding;
 	char *msg = commit->buffer;
 	char *out;
 
@@ -617,7 +589,7 @@ char *logmsg_reencode(const struct commit *commit,
 
 	if (!output_encoding || !*output_encoding)
 		return msg;
-	encoding = get_header(commit, msg, "encoding");
+	encoding = get_commit_encoding(commit);
 	use_encoding = encoding ? encoding : utf8;
 	if (same_encoding(use_encoding, output_encoding)) {
 		/*
@@ -658,7 +630,6 @@ char *logmsg_reencode(const struct commit *commit,
 	if (out)
 		out = replace_encoding_header(out, output_encoding);
 
-	free(encoding);
 	/*
 	 * If the re-encoding failed, out might be NULL here; in that
 	 * case we just return the commit message verbatim.

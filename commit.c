@@ -78,10 +78,53 @@ struct commit *lookup_commit_reference_by_name(const char *name)
 	return commit;
 }
 
+#define QUICK_ENCODING_LIMIT 254 /* offset 1, as 0 is for "no encoding" */
+
+static int quick_encoding_used;
+static struct {
+	const char *encoding;
+	size_t sz;
+} quick_encoding[QUICK_ENCODING_LIMIT];
+static struct decoration slow_encoding;
+
+static void set_commit_encoding(struct commit *item, const char *encoding, size_t sz)
+{
+	int i;
+
+	for (i = 0; i < quick_encoding_used; i++) {
+		if (sz == quick_encoding[i].sz &&
+		    !memcmp(encoding, quick_encoding[i].encoding, sz)) {
+			item->encoding = i + 1;
+			return;
+		}
+	}
+	if (i < QUICK_ENCODING_LIMIT) {
+		quick_encoding[i].sz = sz;
+		quick_encoding[i].encoding = xmemdupz(encoding, sz);
+		item->encoding = i + 1;
+		quick_encoding_used++;
+		return;
+	}
+	item->encoding = QUICK_ENCODING_LIMIT;
+	add_decoration(&slow_encoding, &item->object, xmemdupz(encoding, sz));
+}
+
+const char *get_commit_encoding(const struct commit *item)
+{
+	int i;
+
+	if (!item->encoding)
+		return NULL;
+	i = item->encoding - 1; /* offset 1 */
+	if (i < QUICK_ENCODING_LIMIT)
+		return quick_encoding[i].encoding;
+	return lookup_decoration(&slow_encoding, &item->object);
+}
+
 static void parse_commit_standard_headers(const char *buf, const char *tail,
 					  struct commit *item)
 {
-	const char *dateptr;
+	const char *ptr;
 
 	item->date = 0;
 	if (buf + 6 >= tail)
@@ -98,13 +141,24 @@ static void parse_commit_standard_headers(const char *buf, const char *tail,
 		; /* skip to the end of the e-mail */
 	if (buf >= tail)
 		return;
-	dateptr = buf;
+	ptr = buf;
 	while (buf < tail && *buf++ != '\n')
 		; /* skip to the end of the line */
 	if (buf >= tail)
 		return;
-	/* dateptr < buf && buf[-1] == '\n', so strtoul will stop at buf-1 */
-	item->date = strtoul(dateptr, NULL, 10);
+	/* ptr < buf && buf[-1] == '\n', so strtoul will stop at buf-1 */
+	item->date = strtoul(ptr, NULL, 10);
+
+	item->encoding = 0; /* no encoding header */
+	if (memcmp(buf, "encoding ", 9))
+		return;
+	ptr = buf + 9;
+	while (buf < tail && *buf++ != '\n')
+		; /* skip to the end of the line */
+	if (buf >= tail)
+		return;
+	/* buf[-1] == '\n' that is the end of encoding */
+	set_commit_encoding(item, ptr, buf - ptr - 1);
 }
 
 static struct commit_graft **commit_graft;

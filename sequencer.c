@@ -116,8 +116,6 @@ static const char *action_name(const struct replay_opts *opts)
 	return opts->action == REPLAY_REVERT ? "revert" : "cherry-pick";
 }
 
-static char *get_encoding(const char *message);
-
 struct commit_message {
 	char *parent_label;
 	const char *label;
@@ -135,7 +133,7 @@ static int get_message(struct commit *commit, struct commit_message *out)
 
 	if (!commit->buffer)
 		return -1;
-	encoding = get_encoding(commit->buffer);
+	encoding = get_commit_encoding(commit);
 	if (!encoding)
 		encoding = "UTF-8";
 	if (!git_commit_encoding)
@@ -171,25 +169,6 @@ static void free_message(struct commit_message *msg)
 {
 	free(msg->parent_label);
 	free(msg->reencoded_message);
-}
-
-static char *get_encoding(const char *message)
-{
-	const char *p = message, *eol;
-
-	while (*p && *p != '\n') {
-		for (eol = p + 1; *eol && *eol != '\n'; eol++)
-			; /* do nothing */
-		if (!prefixcmp(p, "encoding ")) {
-			char *result = xmalloc(eol - 8 - p);
-			strlcpy(result, p + 9, eol - 8 - p);
-			return result;
-		}
-		p = eol;
-		if (*p == '\n')
-			p++;
-	}
-	return NULL;
 }
 
 static void write_cherry_pick_head(struct commit *commit, const char *pseudoref)
