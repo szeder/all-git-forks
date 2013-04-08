@@ -5,7 +5,7 @@ deb-checkdir:
 deb-checkuid:
 	@test "`id -u`" -eq 0 || sh -cx '! : need root privileges'
 
-%.deb: %.deb-docs %.deb-lintian %.deb-doc-base %.deb-DEBIAN
+%.deb: %.deb-share %.deb-DEBIAN
 	@rm -f $*.deb $*.deb-checkdir $*.deb-docs $*.deb-docs-base \
 	  $*.deb-docs-docs $*.deb-docs-examples \
 	  $*.deb-lintian $*.deb-doc-base $*.deb-DEBIAN \
@@ -86,6 +86,8 @@ deb-checkuid:
 	  sh -cx "install -m0644 $$i \
 	    debian/$*/usr/share/doc-base/$${i#debian/$*.doc-base.}" || exit 1; \
 	done
+%.deb-share: %.deb-docs %.deb-lintian %.deb-doc-base
+	: debian/$*/usr/share/doc,doc-base,lintian ok
 
 %.deb-DEBIAN-base: %.install
 	@rm -rf debian/$*/DEBIAN
@@ -102,7 +104,7 @@ deb-checkuid:
 	    sh -cx "install -m0755 debian/$*.$$i debian/$*/DEBIAN/$$i" \
 	      || exit 1; \
 	done
-%.deb-DEBIAN-md5sums: %.deb-DEBIAN-base %.deb-docs %.deb-lintian %.deb-doc-base
+%.deb-DEBIAN-md5sums: %.deb-DEBIAN-base %.deb-share
 	: debian/$*/DEBIAN/md5sums
 	@rm -f debian/$*/DEBIAN/md5sums
 	@cd debian/$* && find * -path 'DEBIAN' -prune -o \
