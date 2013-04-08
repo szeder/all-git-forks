@@ -78,31 +78,33 @@ struct commit *lookup_commit_reference_by_name(const char *name)
 	return commit;
 }
 
-static unsigned long parse_commit_date(const char *buf, const char *tail)
+static void parse_commit_standard_headers(const char *buf, const char *tail,
+					  struct commit *item)
 {
 	const char *dateptr;
 
+	item->date = 0;
 	if (buf + 6 >= tail)
-		return 0;
+		return;
 	if (memcmp(buf, "author", 6))
-		return 0;
+		return;
 	while (buf < tail && *buf++ != '\n')
-		/* nada */;
+		; /* skip to the end of the line */
 	if (buf + 9 >= tail)
-		return 0;
+		return;
 	if (memcmp(buf, "committer", 9))
-		return 0;
+		return;
 	while (buf < tail && *buf++ != '>')
-		/* nada */;
+		; /* skip to the end of the e-mail */
 	if (buf >= tail)
-		return 0;
+		return;
 	dateptr = buf;
 	while (buf < tail && *buf++ != '\n')
-		/* nada */;
+		; /* skip to the end of the line */
 	if (buf >= tail)
-		return 0;
+		return;
 	/* dateptr < buf && buf[-1] == '\n', so strtoul will stop at buf-1 */
-	return strtoul(dateptr, NULL, 10);
+	item->date = strtoul(dateptr, NULL, 10);
 }
 
 static struct commit_graft **commit_graft;
@@ -262,6 +264,11 @@ int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long s
 	if (item->object.parsed)
 		return 0;
 	item->object.parsed = 1;
+
+	/*
+	 * tree, 0-or-more parents, author and committer are required
+	 * and must appear in this order; no line folding is allowed.
+	 */
 	tail += size;
 	if (tail <= bufptr + 46 || memcmp(bufptr, "tree ", 5) || bufptr[45] != '\n')
 		return error("bogus commit object %s", sha1_to_hex(item->object.sha1));
@@ -301,8 +308,7 @@ int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long s
 			pptr = &commit_list_insert(new_parent, pptr)->next;
 		}
 	}
-	item->date = parse_commit_date(bufptr, tail);
-
+	parse_commit_standard_headers(bufptr, tail, item);
 	return 0;
 }
 
