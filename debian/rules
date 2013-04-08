@@ -105,7 +105,7 @@ clean: deb-checkdir
 	  for i in '' $(patsubst git%,%,$(PKG_INDEP)) -core; do \
 	    rm -rf '$(GIT)'$$i; \
 	  done
-	rm -f debian/files debian/substvars changelog
+	rm -f debian/files debian/substvars
 
 install: install-arch install-indep
 git.install: install-arch
@@ -169,8 +169,6 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	ln -s ../../../git-core/contrib/hooks \
 	  '$(GIT)'/usr/share/doc/git/contrib/
 	find '$(GIT)'/usr/share/doc/git/ -name .gitignore | xargs rm -f
-	# upstream changelog
-	test -r changelog || ln -s debian/changelog.upstream changelog
 
 $(patsubst %,%.install,$(PKG_INDEP)) git-core.install: install-indep
 install-indep: build-arch-stamp build-indep-stamp
@@ -323,8 +321,6 @@ install-indep: build-arch-stamp build-indep-stamp
 	rm -rf '$(GIT)'-core
 	install -d -m0755 '$(GIT)'-core/usr/share/doc
 	ln -s git '$(GIT)'-core/usr/share/doc/git-core
-	# upstream changelog
-	test -r changelog || ln -s debian/changelog.upstream changelog
 
 binary: binary-arch binary-indep
 binary-arch: install-arch git.deb
