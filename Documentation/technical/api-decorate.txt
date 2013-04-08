@@ -1,6 +1,37 @@
 decorate API
 ============
 
-Talk about <decorate.h>
+The decoration API is a mechanism to create and use a simple
+append-only hashtable to keep auxiliary information keyed by in-core
+objects.
 
-(Linus)
+Initialization
+--------------
+
+Prepare `struct decoration deco` somewhere in-core and
+`memset(&deco, 0, sizeof(&deco))` it.  This holds your hashtable.
+
+
+Adding
+------
+
+`add_decoration(struct decoration *deco, const struct object *obj,
+void *decoration)` remembers `decoration` for the given `obj`.
+
+The function overwrites the old `decoration` for the `obj`
+registered in the hashtable with the given `decoration`, and returns
+the old value.
+
+The `decoration` can be of any type that can be casted to `void *`
+and it is a responsibility of the caller to typecast it to more
+appropriate type.
+
+Looking up
+----------
+
+`lookup_decoration(struct decoration *deco, const struct object *obj)`
+returns the decoration the last call to `add_decoration()` added for
+the `obj`.  You cannot tell if `obj` does not appear in the hashtable
+at all, or if `obj` has decoration whose value is NULL, so if you want
+to use the decoration API for "Did I see this object?" hashtable,
+use decoration value that is _not_ NULL.
