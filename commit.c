@@ -506,6 +506,30 @@ struct commit *pop_commit(struct commit_list **stack)
 	return item;
 }
 
+#define QUICK_INDEGREE_LIMIT 255
+
+static inline void set_indegree(struct decoration *indegree,
+				struct commit *commit, intptr_t value)
+{
+	if (QUICK_INDEGREE_LIMIT <= value) {
+		commit->indegree = QUICK_INDEGREE_LIMIT;
+		add_decoration(indegree, &commit->object, (void *)value);
+	} else {
+		commit->indegree = value;
+	}
+}
+
+static inline intptr_t get_indegree(struct decoration *indegree,
+				    struct commit *commit)
+{
+	if (commit->indegree < QUICK_INDEGREE_LIMIT)
+		return commit->indegree;
+	else {
+		void *count = lookup_decoration(indegree, &commit->object);
+		return (intptr_t) count;
+	}
+}
+
 /*
  * Performs an in-place topological sort on the list supplied.
  */
@@ -514,15 +538,18 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 	struct commit_list *next, *orig = *list;
 	struct commit_list *work, **insert;
 	struct commit_list **pptr;
+	struct decoration id_overflow;
+	intptr_t count;
 
 	if (!orig)
 		return;
 	*list = NULL;
 
 	/* Mark them and clear the indegree */
+	memset(&id_overflow, 0, sizeof(id_overflow));
 	for (next = orig; next; next = next->next) {
 		struct commit *commit = next->item;
-		commit->indegree = 1;
+		set_indegree(&id_overflow, commit, 1);
 	}
 
 	/* update the indegree */
@@ -531,8 +558,9 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 		while (parents) {
 			struct commit *parent = parents->item;
 
-			if (parent->indegree)
-				parent->indegree++;
+			count = get_indegree(&id_overflow, parent);
+			if (count)
+				set_indegree(&id_overflow, parent, count + 1);
 			parents = parents->next;
 		}
 	}
@@ -549,7 +577,7 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 	for (next = orig; next; next = next->next) {
 		struct commit *commit = next->item;
 
-		if (commit->indegree == 1)
+		if (get_indegree(&id_overflow, commit) == 1)
 			insert = &commit_list_insert(commit, insert)->next;
 	}
 
@@ -571,7 +599,8 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 		for (parents = commit->parents; parents ; parents = parents->next) {
 			struct commit *parent = parents->item;
 
-			if (!parent->indegree)
+			count = get_indegree(&id_overflow, parent);
+			if (!count)
 				continue;
 
 			/*
@@ -579,7 +608,9 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 			 * when all their children have been emitted thereby
 			 * guaranteeing topological order.
 			 */
-			if (--parent->indegree == 1) {
+			count--;
+			set_indegree(&id_overflow, parent, count);
+			if (count == 1) {
 				if (!lifo)
 					commit_list_insert_by_date(parent, &work);
 				else
@@ -590,10 +621,11 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 		 * work_item is a commit all of whose children
 		 * have already been emitted. we can emit it now.
 		 */
-		commit->indegree = 0;
+		set_indegree(&id_overflow, commit, 0);
 		*pptr = work_item;
 		pptr = &work_item->next;
 	}
+	clear_decoration(&id_overflow, NULL);
 }
 
 /* merge-base stuff */
