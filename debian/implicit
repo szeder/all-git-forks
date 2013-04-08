@@ -6,14 +6,10 @@ deb-checkuid:
 	@test "`id -u`" -eq 0 || sh -cx '! : need root privileges'
 
 %.deb: %.deb-share %.deb-DEBIAN
-	@rm -f $*.deb $*.deb-checkdir $*.deb-docs $*.deb-docs-base \
-	  $*.deb-docs-docs $*.deb-docs-examples \
-	  $*.deb-lintian $*.deb-doc-base $*.deb-DEBIAN \
-	  $*.deb-DEBIAN-dir $*.deb-DEBIAN-scripts $*.deb-DEBIAN-md5sums
+	: $*.deb ok
 
 %.udeb: %.deb-DEBIAN
-	@rm -f $*.deb $*.deb-checkdir $*.deb-DEBIAN $*.deb-DEBIAN-dir \
-	  $*.deb-DEBIAN-scripts $*.deb-DEBIAN-md5sums
+	: $*.udeb ok
 
 %.deb-checkdir: %.install
 	@test -d debian/$* || sh -cx '! : directory debian/$* missing'

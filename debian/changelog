@@ -7,6 +7,7 @@ git (1:1.8.2-1.1) experimental; urgency=low
   * debian/rules: do not create ./changelog symlink (avoiding a race).
   * debian/rules: override implicit git-core.deb-docs target, since
     git-core does not have its own doc/ directory.
+  * debian/implicit: do not remove files named after implicit targets.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 07 Apr 2013 17:15:39 -0700
 
