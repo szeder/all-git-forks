@@ -2,7 +2,11 @@ git (1:1.8.2-1.1) experimental; urgency=low
 
   * debian/rules: respect <num> in DEB_BUILD_OPTIONS=parallel=<num>.
   * debian/implicit: check for debian/changelog.upstream.
+  * debian/implicit: %.deb-DEBIAN-md5sums depends on
+    /usr/share/doc/$pkg/doc/, doc-base/, and lintian/ directories.
   * debian/rules: do not create ./changelog symlink (avoiding a race).
+  * debian/rules: override implicit git-core.deb-docs target, since
+    git-core does not have its own doc/ directory.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 07 Apr 2013 17:15:39 -0700
 

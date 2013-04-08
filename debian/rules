@@ -322,6 +322,9 @@ install-indep: build-arch-stamp build-indep-stamp
 	install -d -m0755 '$(GIT)'-core/usr/share/doc
 	ln -s git '$(GIT)'-core/usr/share/doc/git-core
 
+git-core.deb-docs:
+	: no doc dir
+
 binary: binary-arch binary-indep
 binary-arch: install-arch git.deb
 	rm -f debian/substvars
