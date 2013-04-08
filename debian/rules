@@ -28,7 +28,7 @@ ifneq (,$(findstring nocheck,$(DEB_BUILD_OPTIONS)))
   TEST =
 endif
 ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
-  NUMJOBS = $(patsubst parallel=%,%,$(filter PARALLEL=%,$(DEB_BUILD_OPTIONS)))
+  NUMJOBS = $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
   MAKEFLAGS += -j$(NUMJOBS)
 endif
 
