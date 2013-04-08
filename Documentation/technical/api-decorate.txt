@@ -35,3 +35,25 @@ the `obj`.  You cannot tell if `obj` does not appear in the hashtable
 at all, or if `obj` has decoration whose value is NULL, so if you want
 to use the decoration API for "Did I see this object?" hashtable,
 use decoration value that is _not_ NULL.
+
+Iterating
+---------
+
+`for_each_decoration(struct decoration *deco, for_each_decoration_fn fn)`
+iterates over all the entries in the hashtable, and calls `fn` on each
+entry.  The `fn` callback function takes a single `struct object_decoration`
+as its parameter, that has `base` field that points at the `obj`
+given to an earlier call to `add_decoration` and `decoration` field
+that remembers the `decoration`.
+
+Clearing
+--------
+
+`clear_decoration(struct decoration *deco, for_each_decoration_fn fn)`,
+when `fn` is not NULL, iterates over all the entries and calls the
+callback function `fn` using `for_each_decoration`, and then frees
+the memory used for the hashtable but not the `struct decoration` itself.
+
+The callback function can be used to release the resource used by
+the `decoration` the earlier `add_decoration` registered to the
+hashtable.
