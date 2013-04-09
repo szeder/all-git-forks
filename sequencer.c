@@ -1062,8 +1062,15 @@ int sequencer_pick_revisions(struct replay_opts *opts)
 		if (prepare_revision_walk(opts->revs))
 			die(_("revision walk setup failed"));
 		cmit = get_revision(opts->revs);
-		if (!cmit || get_revision(opts->revs))
+		if (!cmit || get_revision(opts->revs)) {
+			unsigned char sha1[20];
+			if (!get_sha1(opts->revs->cmdline.rev->name, sha1)) {
+				enum object_type type = sha1_object_info(sha1, NULL);
+				if (type > 0 && type != OBJ_COMMIT)
+					die(_("Can't cherry-pick a %s"), typename(type));
+			}
 			die("BUG: expected exactly one commit from walk");
+		}
 		return single_pick(cmit, opts);
 	}
 
