@@ -78,31 +78,87 @@ struct commit *lookup_commit_reference_by_name(const char *name)
 	return commit;
 }
 
-static unsigned long parse_commit_date(const char *buf, const char *tail)
-{
-	const char *dateptr;
+#define QUICK_ENCODING_LIMIT 254 /* offset 1, as 0 is for "no encoding" */
 
+static int quick_encoding_used;
+static struct {
+	const char *encoding;
+	size_t sz;
+} quick_encoding[QUICK_ENCODING_LIMIT];
+static struct decoration slow_encoding;
+
+static void set_commit_encoding(struct commit *item, const char *encoding, size_t sz)
+{
+	int i;
+
+	for (i = 0; i < quick_encoding_used; i++) {
+		if (sz == quick_encoding[i].sz &&
+		    !memcmp(encoding, quick_encoding[i].encoding, sz)) {
+			item->encoding = i + 1;
+			return;
+		}
+	}
+	if (i < QUICK_ENCODING_LIMIT) {
+		quick_encoding[i].sz = sz;
+		quick_encoding[i].encoding = xmemdupz(encoding, sz);
+		item->encoding = i + 1;
+		quick_encoding_used++;
+		return;
+	}
+	item->encoding = QUICK_ENCODING_LIMIT;
+	add_decoration(&slow_encoding, &item->object, xmemdupz(encoding, sz));
+}
+
+const char *get_commit_encoding(const struct commit *item)
+{
+	int i;
+
+	if (!item->encoding)
+		return NULL;
+	i = item->encoding - 1; /* offset 1 */
+	if (i < QUICK_ENCODING_LIMIT)
+		return quick_encoding[i].encoding;
+	return lookup_decoration(&slow_encoding, &item->object);
+}
+
+static void parse_commit_standard_headers(const char *buf, const char *tail,
+					  struct commit *item)
+{
+	const char *ptr;
+
+	item->date = 0;
 	if (buf + 6 >= tail)
-		return 0;
+		return;
 	if (memcmp(buf, "author", 6))
-		return 0;
+		return;
 	while (buf < tail && *buf++ != '\n')
-		/* nada */;
+		; /* skip to the end of the line */
 	if (buf + 9 >= tail)
-		return 0;
+		return;
 	if (memcmp(buf, "committer", 9))
-		return 0;
+		return;
 	while (buf < tail && *buf++ != '>')
-		/* nada */;
+		; /* skip to the end of the e-mail */
 	if (buf >= tail)
-		return 0;
-	dateptr = buf;
+		return;
+	ptr = buf;
 	while (buf < tail && *buf++ != '\n')
-		/* nada */;
+		; /* skip to the end of the line */
 	if (buf >= tail)
-		return 0;
-	/* dateptr < buf && buf[-1] == '\n', so strtoul will stop at buf-1 */
-	return strtoul(dateptr, NULL, 10);
+		return;
+	/* ptr < buf && buf[-1] == '\n', so strtoul will stop at buf-1 */
+	item->date = strtoul(ptr, NULL, 10);
+
+	item->encoding = 0; /* no encoding header */
+	if (memcmp(buf, "encoding ", 9))
+		return;
+	ptr = buf + 9;
+	while (buf < tail && *buf++ != '\n')
+		; /* skip to the end of the line */
+	if (buf >= tail)
+		return;
+	/* buf[-1] == '\n' that is the end of encoding */
+	set_commit_encoding(item, ptr, buf - ptr - 1);
 }
 
 static struct commit_graft **commit_graft;
@@ -262,6 +318,11 @@ int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long s
 	if (item->object.parsed)
 		return 0;
 	item->object.parsed = 1;
+
+	/*
+	 * tree, 0-or-more parents, author and committer are required
+	 * and must appear in this order; no line folding is allowed.
+	 */
 	tail += size;
 	if (tail <= bufptr + 46 || memcmp(bufptr, "tree ", 5) || bufptr[45] != '\n')
 		return error("bogus commit object %s", sha1_to_hex(item->object.sha1));
@@ -301,8 +362,7 @@ int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long s
 			pptr = &commit_list_insert(new_parent, pptr)->next;
 		}
 	}
-	item->date = parse_commit_date(bufptr, tail);
-
+	parse_commit_standard_headers(bufptr, tail, item);
 	return 0;
 }
 
@@ -506,6 +566,30 @@ struct commit *pop_commit(struct commit_list **stack)
 	return item;
 }
 
+#define QUICK_INDEGREE_LIMIT 255
+
+static inline void set_indegree(struct decoration *indegree,
+				struct commit *commit, intptr_t value)
+{
+	if (QUICK_INDEGREE_LIMIT <= value) {
+		commit->indegree = QUICK_INDEGREE_LIMIT;
+		add_decoration(indegree, &commit->object, (void *)value);
+	} else {
+		commit->indegree = value;
+	}
+}
+
+static inline intptr_t get_indegree(struct decoration *indegree,
+				    struct commit *commit)
+{
+	if (commit->indegree < QUICK_INDEGREE_LIMIT)
+		return commit->indegree;
+	else {
+		void *count = lookup_decoration(indegree, &commit->object);
+		return (intptr_t) count;
+	}
+}
+
 /*
  * Performs an in-place topological sort on the list supplied.
  */
@@ -514,15 +598,18 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 	struct commit_list *next, *orig = *list;
 	struct commit_list *work, **insert;
 	struct commit_list **pptr;
+	struct decoration id_overflow;
+	intptr_t count;
 
 	if (!orig)
 		return;
 	*list = NULL;
 
 	/* Mark them and clear the indegree */
+	memset(&id_overflow, 0, sizeof(id_overflow));
 	for (next = orig; next; next = next->next) {
 		struct commit *commit = next->item;
-		commit->indegree = 1;
+		set_indegree(&id_overflow, commit, 1);
 	}
 
 	/* update the indegree */
@@ -531,8 +618,9 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 		while (parents) {
 			struct commit *parent = parents->item;
 
-			if (parent->indegree)
-				parent->indegree++;
+			count = get_indegree(&id_overflow, parent);
+			if (count)
+				set_indegree(&id_overflow, parent, count + 1);
 			parents = parents->next;
 		}
 	}
@@ -549,7 +637,7 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 	for (next = orig; next; next = next->next) {
 		struct commit *commit = next->item;
 
-		if (commit->indegree == 1)
+		if (get_indegree(&id_overflow, commit) == 1)
 			insert = &commit_list_insert(commit, insert)->next;
 	}
 
@@ -571,7 +659,8 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 		for (parents = commit->parents; parents ; parents = parents->next) {
 			struct commit *parent = parents->item;
 
-			if (!parent->indegree)
+			count = get_indegree(&id_overflow, parent);
+			if (!count)
 				continue;
 
 			/*
@@ -579,7 +668,9 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 			 * when all their children have been emitted thereby
 			 * guaranteeing topological order.
 			 */
-			if (--parent->indegree == 1) {
+			count--;
+			set_indegree(&id_overflow, parent, count);
+			if (count == 1) {
 				if (!lifo)
 					commit_list_insert_by_date(parent, &work);
 				else
@@ -590,10 +681,11 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 		 * work_item is a commit all of whose children
 		 * have already been emitted. we can emit it now.
 		 */
-		commit->indegree = 0;
+		set_indegree(&id_overflow, commit, 0);
 		*pptr = work_item;
 		pptr = &work_item->next;
 	}
+	clear_decoration(&id_overflow, NULL);
 }
 
 /* merge-base stuff */
