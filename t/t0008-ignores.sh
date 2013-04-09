@@ -216,11 +216,7 @@ test_expect_success_multi 'empty command line' '' '
 
 test_expect_success_multi '--stdin with empty STDIN' '' '
 	test_check_ignore "--stdin" 1 </dev/null &&
-	if test -n "$quiet_opt"; then
-		test_stderr ""
-	else
-		test_stderr "no pathspec given."
-	fi
+	test_stderr ""
 '
 
 test_expect_success '-q with multiple args' '
@@ -692,5 +688,23 @@ do
 	'
 done
 
+test_expect_success PIPE 'streaming support for --stdin' '
+	mkfifo in out &&
+	(git check-ignore -n -v --stdin <in >out &) &&
+
+	# We cannot just "echo >in" because check-ignore would get EOF
+	# after echo exited; instead we open the descriptor in our
+	# shell, and then echo to the fd. We make sure to close it at
+	# the end, so that the subprocess does get EOF and dies
+	# properly.
+	exec 9>in &&
+	test_when_finished "exec 9>&-" &&
+	echo >&9 one &&
+	read response <out &&
+	echo "$response" | grep "^\.gitignore:1:one	one" &&
+	echo >&9 two &&
+	read response <out &&
+	echo "$response" | grep "^::	two"
+'
 
 test_done
