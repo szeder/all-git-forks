@@ -10,6 +10,7 @@
 #include "string-list.h"
 #include "sha1-array.h"
 #include "argv-array.h"
+#include "blob.h"
 
 static struct string_list config_name_for_path;
 static struct string_list config_fetch_recurse_submodules_for_name;
@@ -19,6 +20,7 @@ static struct string_list changed_submodule_paths;
 static int initialized_fetch_ref_tips;
 static struct sha1_array ref_tips_before_fetch;
 static struct sha1_array ref_tips_after_fetch;
+void *upstream_url = NULL;
 
 /*
  * The following flag is set if the .gitmodules file is unmerged. We then
@@ -29,6 +31,78 @@ static struct sha1_array ref_tips_after_fetch;
  * ignored.
  */
 static int gitmodules_is_unmerged;
+
+static int parse_origin_url(const char *key, const char *value, void *cb) {
+	if (!strcmp(key, "remote.origin.url"))
+		upstream_url = xstrdup(value);
+	return 0;
+}
+
+/*
+ * Register a new module in .gitmodules.
+ */
+int register_new_submodule(const char *path)
+{
+	struct strbuf pathentry = STRBUF_INIT;
+	struct strbuf urlentry = STRBUF_INIT;
+	struct string_list_item *path_option;
+	struct strbuf pathbuf = STRBUF_INIT;
+	const char *submodule_girdir;
+
+	if (gitmodules_is_unmerged)
+		die(_("Cannot change unmerged .gitmodules, resolve merge conflicts first"));
+
+	/* Determine fullpath for setting path and remote.origin.url
+	 * for setting url
+	 */
+	fullpath = path;
+	strbuf_addf(pathbuf, "%s/.git", path);
+	submodule_gitdir = resolve_gitdir(pathbuf.buf);
+	strbuf_addf(pathbuf, "%s/config", submodule_gitdir);
+	git_config_from_file(parse_origin_url, pathbuf.buf, NULL);
+	if (!upsteram_url)
+		die(_("Could not determine remote.origin.url from submodule %s", path));
+
+	strbuf_addf(&pathentry, "submodule.%s.path", fullpath);
+	strbuf_addf(&urlentry, "submodule.%s.url", (char *)upstream_url);
+
+	if (git_config_set_in_file(".gitmodules", pathentry.buf, fullpath) < 0 ||
+		git_config_set_in_file(".gitmodules", urlentry.buf, upstream_url) < 0)
+		die(_("Could not update .gitmodules while adding %s"), path);
+
+	strbuf_release(&pathentry);
+	strbuf_release(&urlentry);
+	return 0;
+}
+
+void stage_updated_gitmodules(void)
+{
+	struct strbuf buf = STRBUF_INIT;
+	struct stat st;
+	int pos;
+	struct cache_entry *ce;
+	int namelen = strlen(".gitmodules");
+
+	pos = cache_name_pos(".gitmodules", strlen(".gitmodules"));
+	if (pos < 0) {
+		warning(_("could not find .gitmodules in index"));
+		return;
+	}
+	ce = active_cache[pos];
+	ce->ce_flags = namelen;
+	if (strbuf_read_file(&buf, ".gitmodules", 0) < 0)
+		die(_("reading updated .gitmodules failed"));
+	if (lstat(".gitmodules", &st) < 0)
+		die_errno(_("unable to stat updated .gitmodules"));
+	fill_stat_cache_info(ce, &st);
+	ce->ce_mode = ce_mode_from_stat(ce, st.st_mode);
+	if (remove_file_from_cache(".gitmodules") < 0)
+		die(_("unable to remove .gitmodules from index"));
+	if (write_sha1_file(buf.buf, buf.len, blob_type, ce->sha1))
+		die(_("adding updated .gitmodules failed"));
+	if (add_cache_entry(ce, ADD_CACHE_OK_TO_ADD|ADD_CACHE_OK_TO_REPLACE))
+		die(_("staging updated .gitmodules failed"));
+}
 
 static int add_submodule_odb(const char *path)
 {
@@ -1000,4 +1074,68 @@ int merge_submodule(unsigned char result[20], const char *path,
 
 	free(merges.objects);
 	return 0;
+}
+
+/* Update gitfile and core.worktree setting to connect work tree and git dir */
+void connect_work_tree_and_git_dir(const char *work_tree, const char *git_dir)
+{
+	struct strbuf core_worktree_setting = STRBUF_INIT;
+	struct strbuf configfile_name = STRBUF_INIT;
+	struct strbuf gitfile_content = STRBUF_INIT;
+	struct strbuf gitfile_name = STRBUF_INIT;
+	const char *real_work_tree = real_path(work_tree);
+	const char *pathspec[] = { real_work_tree, git_dir, NULL };
+	const char *max_prefix = common_prefix(pathspec);
+	FILE *fp;
+
+	if (max_prefix) {       /* skip common prefix */
+		size_t max_prefix_len = strlen(max_prefix);
+		real_work_tree += max_prefix_len;
+		git_dir += max_prefix_len;
+	}
+
+	/*
+	 * Update gitfile
+	 */
+	strbuf_addstr(&gitfile_content, "gitdir: ");
+	if (real_work_tree[0]) {
+		const char *s = real_work_tree;
+		do {
+			strbuf_addstr(&gitfile_content, "../");
+			s++;
+		} while ((s = strchr(s, '/')));
+	}
+	strbuf_addstr(&gitfile_content, git_dir);
+	strbuf_addch(&gitfile_content, '\n');
+
+	strbuf_addf(&gitfile_name, "%s/.git", work_tree);
+	fp = fopen(gitfile_name.buf, "w");
+	if (!fp)
+		die(_("Could not create git link %s"), gitfile_name.buf);
+	fprintf(fp, gitfile_content.buf);
+	fclose(fp);
+
+	strbuf_release(&gitfile_content);
+	strbuf_release(&gitfile_name);
+
+	/*
+	 * Update core.worktree setting
+	 */
+	if (git_dir[0]) {
+		const char *s = git_dir;
+		do {
+			strbuf_addstr(&core_worktree_setting, "../");
+			s++;
+		} while ((s = strchr(s, '/')));
+	}
+	strbuf_addstr(&core_worktree_setting, real_work_tree);
+
+	strbuf_addf(&configfile_name, "%s/config", git_dir);
+	if (git_config_set_in_file(configfile_name.buf, "core.worktree",
+				   core_worktree_setting.buf))
+		die(_("Could not set core.worktree in %s"),
+		    configfile_name.buf);
+
+	strbuf_release(&core_worktree_setting);
+	strbuf_release(&configfile_name);
 }

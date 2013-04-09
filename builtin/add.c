@@ -312,12 +312,15 @@ static int add_files(struct dir_struct *dir, int flags)
 		die(_("no files added"));
 	}
 
-	for (i = 0; i < dir->nr; i++)
+	for (i = 0; i < dir->nr; i++) {
 		if (add_file_to_cache(dir->entries[i]->name, flags)) {
 			if (!ignore_add_errors)
 				die(_("adding files failed"));
 			exit_status = 1;
 		}
+		/* Time to update .gitmodules, if necessary */
+	}
+
 	return exit_status;
 }
 
