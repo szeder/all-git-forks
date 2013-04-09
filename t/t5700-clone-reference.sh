@@ -188,7 +188,15 @@ test_expect_success 'fetch with incomplete alternates' '
 test_expect_success 'clone using repo with gitfile as a reference' '
 	git clone --separate-git-dir=L A M &&
 	git clone --reference=M A N &&
-	echo "$base_dir/L/objects" > expected &&
+	echo "$base_dir/L/objects" >expected &&
+	test_cmp expected "$base_dir/N/.git/objects/info/alternates"
+'
+
+test_expect_success 'clone using repo with gitfile as a reference' '
+	rm -fr L M &&
+	git clone --separate-git-dir=L A M &&
+	git clone --reference=M/.git A N &&
+	echo "$base_dir/L/objects" >expected &&
 	test_cmp expected "$base_dir/N/.git/objects/info/alternates"
 '
 
