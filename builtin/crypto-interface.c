@@ -36,7 +36,6 @@ static int sign(int argc, const char **argv, const char *prefix)
     argc = parse_options(argc, argv, prefix, options,
             git_crypto_usage, PARSE_OPT_STOP_AT_NON_OPTION);
 
-    printf("Parsed sign args\n");
     // Our Openssl variables for signing
     EVP_PKEY *key = NULL;
     X509 *cert = NULL;
@@ -60,11 +59,9 @@ static int sign(int argc, const char **argv, const char *prefix)
 
     }
 
-    printf("About to leave builtin/crypto-interface:sign\n");
-
     //ret_val = sign_commit_sha256(key, cert, stack, commit_arg);
     ret_val = sign_commit_old(commit_arg);
-    
+
     return ret_val;
 }
 
