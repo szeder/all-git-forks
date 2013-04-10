@@ -1192,7 +1192,7 @@ def main(args):
         bad_name = ''
     else:
         mode = 'git'
-        bad_mail = 'unknown'
+        bad_mail = ''
         bad_name = 'Unknown'
 
     if alias[4:] == url:
