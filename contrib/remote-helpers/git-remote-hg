@@ -741,7 +741,7 @@ def parse_tag(parser):
     data = parser.get_data()
     parser.next()
 
-    # nothing to do
+    parsed_tags[name] = (tagger, data)
 
 def do_export(parser):
     global parsed_refs, bmarks, peer
@@ -778,9 +778,11 @@ def do_export(parser):
             p_revs.append(node)
             tag = ref[len('refs/tags/'):]
             tag = hgref(tag)
+            author, msg = parsed_tags.get(tag, (None, None))
             if mode == 'git':
-                msg = 'Added tag %s for changeset %s' % (tag, hghex(node[:6]));
-                parser.repo.tag([tag], node, msg, False, None, {})
+                if not msg:
+                    msg = 'Added tag %s for changeset %s' % (tag, hghex(node[:6]));
+                parser.repo.tag([tag], node, msg, False, author[0], {})
                 p_revs.append(parser.repo['tip'].node())
             else:
                 parser.repo.tag([tag], node, None, True, None, {})
@@ -839,6 +841,7 @@ def main(args):
     global marks, blob_marks, parsed_refs
     global peer, mode, bad_mail, bad_name
     global track_branches, force_push, is_tmp
+    global parsed_tags
 
     alias = args[1]
     url = args[2]
@@ -881,6 +884,7 @@ def main(args):
     blob_marks = {}
     parsed_refs = {}
     marks = None
+    parsed_tags = {}
 
     repo = get_repo(url, alias)
     prefix = 'refs/hg/%s' % alias
