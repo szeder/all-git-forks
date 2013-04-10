@@ -525,8 +525,7 @@ int sign_commit_old(char *cmt_sha)
     sha256(commit, calc_hash);
 
     //the sha 2 hash of the pretty commit stored in a BIO
-    BIO * input = BIO_new(BIO_s_mem());
-    BIO_puts(input, calc_hash);
+    BIO * input = create_bio(calc_hash);
 
     if(!input)
         goto err;
@@ -564,7 +563,7 @@ err:
 
     printf("pretty note: %s\n", commit);
 
-    BIO * note_bio = NULL;
+    BIO * note_bio = create_bio("");
 
     note_bio = create_bio(commit);
 
@@ -595,17 +594,28 @@ err:
     if(get_sha1(cmt_sha, object))
 		die(_("Failed to resolve '%s' as a valid ref."), cmt_sha);
     // get our note tree
+
     printf("got the tree now init the note to add\n");
+
     init_notes(NULL, NULL, NULL, 0);
+
+    printf("init notes\n");
+
     set_notes_ref("crypto");
     t = &default_notes_tree;
+
+    printf("got default notes tree\n");
+
     if(prefixcmp(t->ref, "refs/notes/"))
         die("Refusing to add notes outside of refs/notes/");
     note = get_note(t, object);
     if(note)
         die("Already a crypto-note for %s, please delete it first to add a new note.", cmt_sha);
-    BIO *mimeOut = NULL;
-    SMIME_write_CMS(mimeOut, cms, input, NULL);
+    BIO *mimeOut = create_bio("");
+    printf("before write out cms\n");
+    // TODO SEGFAULT
+    SMIME_write_CMS(mimeOut, cms, input, 0);
+    printf("after write out cms\n");
 
     // get the char * from the cms
     struct strbuf buf = STRBUF_INIT;
