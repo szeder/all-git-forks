@@ -1174,7 +1174,7 @@ def main(args):
     global filenodes
     global fake_bmark, hg_version
     global dry_run
-    global notes, alias
+    global notes, uuid
 
     marks = None
     is_tmp = False
@@ -1207,7 +1207,10 @@ def main(args):
         is_tmp = True
         alias = hashlib.sha1(alias).hexdigest()
 
-    dirname = os.path.join(gitdir, 'hg', alias)
+    uurl = urlparse.urljoin("file://%s/" % os.getcwd(), url.decode('utf-8'))
+    uuid = hashlib.sha1(uurl.encode('utf-8')).hexdigest()
+
+    dirname = os.path.join(gitdir, 'hg', uuid)
     branches = {}
     bmarks = {}
     blob_marks = {}
@@ -1223,7 +1226,7 @@ def main(args):
     notes = set()
 
     repo = get_repo(url, alias)
-    prefix = 'refs/hg/%s' % alias
+    prefix = 'refs/hg/%s' % uuid
 
     if not is_tmp:
         fix_path(alias, peer or repo, url)
