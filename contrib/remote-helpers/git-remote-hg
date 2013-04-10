@@ -531,7 +531,7 @@ def export_ref(repo, name, kind, head):
     pending_revs = set(revs) - notes
     if pending_revs:
         note_mark = marks.next_mark()
-        ref = "refs/notes/hg-%s" % alias
+        ref = "refs/notes/hg-%s" % uuid
 
         print "commit %s" % ref
         print "mark :%d" % (note_mark)
@@ -1176,7 +1176,7 @@ def main(args):
     global filenodes
     global fake_bmark, hg_version
     global dry_run
-    global alias
+    global uuid
     global notes
 
     alias = args[1]
@@ -1202,8 +1202,11 @@ def main(args):
     else:
         is_tmp = False
 
+    uurl = urlparse.urljoin("file://%s/" % os.getcwd(), url.decode('utf-8'))
+    uuid = hashlib.sha1(uurl.encode('utf-8')).hexdigest()
+
     gitdir = os.environ['GIT_DIR']
-    dirname = os.path.join(gitdir, 'hg', alias)
+    dirname = os.path.join(gitdir, 'hg', uuid)
     branches = {}
     bmarks = {}
     blob_marks = {}
@@ -1220,7 +1223,7 @@ def main(args):
     notes = set()
 
     repo = get_repo(url, alias)
-    prefix = 'refs/hg/%s' % alias
+    prefix = 'refs/hg/%s' % uuid
 
     if not is_tmp:
         fix_path(alias, peer or repo, url)
