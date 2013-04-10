@@ -655,7 +655,7 @@ def parse_commit(parser):
 
     # Check if the ref is supposed to be a named branch
     if ref.startswith('refs/heads/branches/'):
-        extra['branch'] = ref.replace('refs/heads/branches/', '')
+        extra['branch'] = ref[len('refs/heads/branches/'):]
 
     if mode == 'hg':
         i = data.find('\n--HG--\n')
@@ -762,7 +762,7 @@ def do_export(parser):
 
     # handle bookmarks
     for bmark, node in p_bmarks:
-        ref = 'refs/heads' + bmark
+        ref = 'refs/heads/' + bmark
         new = hghex(node)
 
         if bmark in bmarks:
