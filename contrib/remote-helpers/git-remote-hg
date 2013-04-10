@@ -607,7 +607,7 @@ def do_import(parser):
 
     if commit_count > 0:
         note_mark = marks.next_mark()
-        ref = "refs/notes/hg-%s" % alias
+        ref = "refs/notes/hg-%s" % uuid
 
         print "commit %s" % ref
         print "mark :%d" % (note_mark)
@@ -941,7 +941,7 @@ def main(args):
     global marks, blob_marks, parsed_refs
     global peer, mode, bad_mail, bad_name
     global track_branches, force_push, is_tmp
-    global parsed_tags, alias, commit_count
+    global parsed_tags, uuid, commit_count
 
     alias = args[1]
     url = args[2]
@@ -978,8 +978,11 @@ def main(args):
     else:
         is_tmp = False
 
+    uurl = urlparse.urljoin("file://" + os.getcwd(), url.decode('utf-8'))
+    uuid = util.sha1(uurl.encode('utf-8')).hexdigest()
+
     gitdir = os.environ['GIT_DIR']
-    dirname = os.path.join(gitdir, 'hg', alias)
+    dirname = os.path.join(gitdir, 'hg', uuid)
     branches = {}
     bmarks = {}
     blob_marks = {}
@@ -988,7 +991,7 @@ def main(args):
     parsed_tags = {}
 
     repo = get_repo(url, alias)
-    prefix = 'refs/hg/%s' % alias
+    prefix = 'refs/hg/%s' % uuid
 
     if not is_tmp:
         fix_path(alias, peer or repo, url)
