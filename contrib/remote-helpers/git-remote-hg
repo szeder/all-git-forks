@@ -387,7 +387,7 @@ def export_ref(repo, name, kind, head):
         node = c.node()
 
         if marks.is_marked(c.hex()):
-            count += 1
+            # count += 1
             continue
 
         (manifest, user, (time, tz), files, desc, extra) = repo.changelog.read(node)
