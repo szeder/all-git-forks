@@ -200,4 +200,16 @@ test_expect_success 'push messages' '
 	)
 '
 
+test_expect_success 'push update refs' '
+	(cd local &&
+	git checkout -b update master &&
+	echo update >>file &&
+	git commit -a -m update &&
+	git push origin update
+	git rev-parse --verify testgit/origin/heads/update >expect &&
+	git rev-parse --verify remotes/origin/update >actual
+	test_cmp expect actual
+	)
+'
+
 test_done
