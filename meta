@@ -1,12 +1,12 @@
 Version: 1
-Previous: None
-Head: a62f952e194e5825d818b76ae39668adcbbf90f1
+Previous: 6c10f8a9b7e815c78694494acfa03eca2c61035e
+Head: 463b0ea22b5b9a882e8140d0308433d8cbd0d1fe
 Applied:
+Unapplied:
   doc-gitweb.conf.txt: 116d256f926db992a2c27b4a37bf6199505f400d
   doc-gitweb.txt: 1636e744c488cdf493d7eaa1eb1f58247278098a
   doc-link-to-gitweb.txt: 63fb095be298edb96a54ea519b6ea4401a770adf
   doc-config-gitweb: fb404cf2e51a5e04e3d4e88b6469b1ceccae4708
   gitweb-docs-in-spec: a62f952e194e5825d818b76ae39668adcbbf90f1
-Unapplied:
   doc-gitweb-manpages: f89ee2f9cb35fcd03cbb9969fc58ad62fab30415
 Hidden:
