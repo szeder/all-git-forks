@@ -3,10 +3,10 @@ Top:    4f0ecde669d8b55e97b964f0ce419863ed567fe1
 Author: Jakub Narebski <jnareb@gmail.com>
 Date:   2013-04-12 23:37:44 +0200
 
-gitweb.conf(5): Simplify description of GITWEB_CONFIG_SYSTEM
+gitweb/INSTALL: Simplify description of GITWEB_CONFIG_SYSTEM
 
 The flow of the text describing GITWEB_CONFIG_SYSTEM and
-GITWEB_CONFIG_COMMON in gitweb.conf(5) manpage is awkward.  "This is
+GITWEB_CONFIG_COMMON in gitweb/INSTALL is awkward.  "This is
 bad. Oh the other hand, better is broken. Therefore ..." forces
 readers to make multiple guesses while reading: "ok, bad, so you plan
 to change it and warn us about upcoming change?  oh, not that,
