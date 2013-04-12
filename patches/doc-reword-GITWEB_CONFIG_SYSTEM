@@ -1,0 +1,25 @@
+Bottom: e717ab3c92aecf5c4c06627daef025506d2c6335
+Top:    e717ab3c92aecf5c4c06627daef025506d2c6335
+Author: Jakub Narebski <jnareb@gmail.com>
+Date:   2013-04-12 23:37:44 +0200
+
+gitweb.conf(5): Simplify description of GITWEB_CONFIG_SYSTEM
+
+The flow of the text describing GITWEB_CONFIG_SYSTEM and
+GITWEB_CONFIG_COMMON in gitweb.conf(5) manpage is awkward.  "This is
+bad. Oh the other hand, better is broken. Therefore ..." forces
+readers to make multiple guesses while reading: "ok, bad, so you plan
+to change it and warn us about upcoming change?  oh, not that,
+changing it is bad, so we have to live with it?  oh, not that, there
+is another one that is common and that is what we can use".
+
+Better rewrite said paragraph to avoid such a mental roller-coaster in
+the first place.
+
+Signed-off-by: Junio Hamano <gitster@pobox.com>
+Signed-off-by: Jakub Narebski <jnareb@gmail.com>
+
+
+---
+
+
