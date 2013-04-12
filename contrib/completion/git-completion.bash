@@ -1828,7 +1828,7 @@ _git_config ()
 		local remote="${prev#remote.}"
 		remote="${remote%.fetch}"
 		if [ -z "$cur" ]; then
-			__gitcompadd "refs/heads/"
+			__gitcompadd "refs/heads/" "" "" ""
 			return
 		fi
 		__gitcomp_nl "$(__git_refs_remotes "$remote")"
