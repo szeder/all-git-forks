@@ -45,6 +45,15 @@ EOF
 	test_cmp expected actual
 "
 
+test_expect_success 'run summary from subdir' '
+	mkdir sub &&
+	(
+		cd sub &&
+		git submodule summary >../actual
+	) &&
+	test_cmp expected actual
+'
+
 commit_file sm1 &&
 head2=$(add_file sm1 foo3)
 
