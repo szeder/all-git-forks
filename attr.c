@@ -255,9 +255,11 @@ static struct match_attr *parse_attr_line(const char *line, const char *src,
 				      &res->u.pat.patternlen,
 				      &res->u.pat.flags,
 				      &res->u.pat.nowildcardlen);
-		if (res->u.pat.flags & EXC_FLAG_NEGATIVE)
-			die(_("Negative patterns are forbidden in git attributes\n"
-			      "Use '\\!' for literal leading exclamation."));
+		if (res->u.pat.flags & EXC_FLAG_NEGATIVE) {
+			warning(_("Negative patterns are ignored in git attributes\n"
+				  "Use '\\!' for literal leading exclamation."));
+			return NULL;
+		}
 	}
 	res->is_macro = is_macro;
 	res->num_attr = num_attr;
@@ -284,7 +286,7 @@ static struct match_attr *parse_attr_line(const char *line, const char *src,
  * (reading the file from top to bottom), .gitattribute of the root
  * directory (again, reading the file from top to bottom) down to the
  * current directory, and then scan the list backwards to find the first match.
- * This is exactly the same as what excluded() does in dir.c to deal with
+ * This is exactly the same as what is_excluded() does in dir.c to deal with
  * .gitignore
  */
 
@@ -564,17 +566,11 @@ static void bootstrap_attr_stack(void)
 	attr_stack = elem;
 }
 
-static void prepare_attr_stack(const char *path)
+static void prepare_attr_stack(const char *path, int dirlen)
 {
 	struct attr_stack *elem, *info;
-	int dirlen, len;
+	int len;
 	const char *cp;
-
-	cp = strrchr(path, '/');
-	if (!cp)
-		dirlen = 0;
-	else
-		dirlen = cp - path;
 
 	/*
 	 * At the bottom of the attribute stack is the built-in
@@ -661,20 +657,24 @@ static void prepare_attr_stack(const char *path)
 }
 
 static int path_matches(const char *pathname, int pathlen,
-			const char *basename,
+			int basename_offset,
 			const struct pattern *pat,
 			const char *base, int baselen)
 {
 	const char *pattern = pat->pattern;
 	int prefix = pat->nowildcardlen;
+	int isdir = (pathlen && pathname[pathlen - 1] == '/');
+
+	if ((pat->flags & EXC_FLAG_MUSTBEDIR) && !isdir)
+		return 0;
 
 	if (pat->flags & EXC_FLAG_NODIR) {
-		return match_basename(basename,
-				      pathlen - (basename - pathname),
+		return match_basename(pathname + basename_offset,
+				      pathlen - basename_offset - isdir,
 				      pattern, prefix,
 				      pat->patternlen, pat->flags);
 	}
-	return match_pathname(pathname, pathlen,
+	return match_pathname(pathname, pathlen - isdir,
 			      base, baselen,
 			      pattern, prefix, pat->patternlen, pat->flags);
 }
@@ -693,7 +693,7 @@ static int fill_one(const char *what, struct match_attr *a, int rem)
 
 		if (*n == ATTR__UNKNOWN) {
 			debug_set(what,
-				  a->is_macro ? a->u.attr->name : a->u.pattern,
+				  a->is_macro ? a->u.attr->name : a->u.pat.pattern,
 				  attr, v);
 			*n = v;
 			rem--;
@@ -703,7 +703,7 @@ static int fill_one(const char *what, struct match_attr *a, int rem)
 	return rem;
 }
 
-static int fill(const char *path, int pathlen, const char *basename,
+static int fill(const char *path, int pathlen, int basename_offset,
 		struct attr_stack *stk, int rem)
 {
 	int i;
@@ -713,7 +713,7 @@ static int fill(const char *path, int pathlen, const char *basename,
 		struct match_attr *a = stk->attrs[i];
 		if (a->is_macro)
 			continue;
-		if (path_matches(path, pathlen, basename,
+		if (path_matches(path, pathlen, basename_offset,
 				 &a->u.pat, base, stk->originlen))
 			rem = fill_one("fill", a, rem);
 	}
@@ -751,20 +751,30 @@ static int macroexpand_one(int attr_nr, int rem)
 static void collect_all_attrs(const char *path)
 {
 	struct attr_stack *stk;
-	int i, pathlen, rem;
-	const char *basename;
+	int i, pathlen, rem, dirlen;
+	const char *cp, *last_slash = NULL;
+	int basename_offset;
 
-	prepare_attr_stack(path);
+	for (cp = path; *cp; cp++) {
+		if (*cp == '/' && cp[1])
+			last_slash = cp;
+	}
+	pathlen = cp - path;
+	if (last_slash) {
+		basename_offset = last_slash + 1 - path;
+		dirlen = last_slash - path;
+	} else {
+		basename_offset = 0;
+		dirlen = 0;
+	}
+
+	prepare_attr_stack(path, dirlen);
 	for (i = 0; i < attr_nr; i++)
 		check_all_attr[i].value = ATTR__UNKNOWN;
 
-	basename = strrchr(path, '/');
-	basename = basename ? basename + 1 : path;
-
-	pathlen = strlen(path);
 	rem = attr_nr;
 	for (stk = attr_stack; 0 < rem && stk; stk = stk->prev)
-		rem = fill(path, pathlen, basename, stk, rem);
+		rem = fill(path, pathlen, basename_offset, stk, rem);
 }
 
 int git_check_attr(const char *path, int num, struct git_attr_check *check)

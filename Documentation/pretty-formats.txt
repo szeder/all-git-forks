@@ -131,8 +131,10 @@ The placeholders are:
 - '%B': raw body (unwrapped subject and body)
 - '%N': commit notes
 - '%GG': raw verification message from GPG for a signed commit
-- '%G?': show either "G" for Good or "B" for Bad for a signed commit
+- '%G?': show "G" for a Good signature, "B" for a Bad signature, "U" for a good,
+  untrusted signature and "N" for no signature
 - '%GS': show the name of the signer for a signed commit
+- '%GK': show the key used to sign a signed commit
 - '%gD': reflog selector, e.g., `refs/stash@{1}`
 - '%gd': shortened reflog selector, e.g., `stash@{1}`
 - '%gn': reflog identity name
@@ -144,7 +146,11 @@ The placeholders are:
 - '%Cgreen': switch color to green
 - '%Cblue': switch color to blue
 - '%Creset': reset color
-- '%C(...)': color specification, as described in color.branch.* config option
+- '%C(...)': color specification, as described in color.branch.* config option;
+  adding `auto,` at the beginning will emit color only when colors are
+  enabled for log output (by `color.diff`, `color.ui`, or `--color`, and
+  respecting the `auto` settings of the former if we are going to a
+  terminal)
 - '%m': left, right or boundary mark
 - '%n': newline
 - '%%': a raw '%'

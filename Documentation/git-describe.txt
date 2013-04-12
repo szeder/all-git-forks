@@ -81,8 +81,9 @@ OPTIONS
 	that points at object deadbee....).
 
 --match <pattern>::
-	Only consider tags matching the given pattern (can be used to avoid
-	leaking private tags made from the repository).
+	Only consider tags matching the given `glob(7)` pattern,
+	excluding the "refs/tags/" prefix.  This can be used to avoid
+	leaking private tags from the repository.
 
 --always::
 	Show uniquely abbreviated commit object as fallback.
@@ -131,7 +132,7 @@ closest tagname without any suffix:
 
 Note that the suffix you get if you type these commands today may be
 longer than what Linus saw above when he ran these commands, as your
-git repository may have new commits whose object names begin with
+Git repository may have new commits whose object names begin with
 975b that did not exist back then, and "-g975b" suffix alone may not
 be sufficient to disambiguate these commits.
 

@@ -15,7 +15,8 @@ extern const char git_more_info_string[];
 extern void prune_packed_objects(int);
 
 struct fmt_merge_msg_opts {
-	unsigned add_title:1;
+	unsigned add_title:1,
+		credit_people:1;
 	int shortlog_len;
 };
 
@@ -51,6 +52,7 @@ extern int cmd_cat_file(int argc, const char **argv, const char *prefix);
 extern int cmd_checkout(int argc, const char **argv, const char *prefix);
 extern int cmd_checkout_index(int argc, const char **argv, const char *prefix);
 extern int cmd_check_attr(int argc, const char **argv, const char *prefix);
+extern int cmd_check_ignore(int argc, const char **argv, const char *prefix);
 extern int cmd_check_ref_format(int argc, const char **argv, const char *prefix);
 extern int cmd_cherry(int argc, const char **argv, const char *prefix);
 extern int cmd_cherry_pick(int argc, const char **argv, const char *prefix);

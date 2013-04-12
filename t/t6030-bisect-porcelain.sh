@@ -164,7 +164,7 @@ test_expect_success 'bisect start: existing ".git/BISECT_START" not modified if 
 	cp .git/BISECT_START saved &&
 	test_must_fail git bisect start $HASH4 foo -- &&
 	git branch > branch.output &&
-	test_i18ngrep "* (no branch)" branch.output > /dev/null &&
+	test_i18ngrep "* (no branch, bisect started on other)" branch.output > /dev/null &&
 	test_cmp saved .git/BISECT_START
 '
 test_expect_success 'bisect start: no ".git/BISECT_START" if mistaken rev' '
@@ -676,9 +676,7 @@ test_expect_success 'bisect fails if tree is broken on trial commit' '
 check_same()
 {
 	echo "Checking $1 is the same as $2" &&
-	git rev-parse "$1" > expected.same &&
-	git rev-parse "$2" > expected.actual &&
-	test_cmp expected.same expected.actual
+	test_cmp_rev "$1" "$2"
 }
 
 test_expect_success 'bisect: --no-checkout - start commit bad' '

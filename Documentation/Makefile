@@ -1,19 +1,41 @@
-MAN1_TXT= \
-	$(filter-out $(addsuffix .txt, $(ARTICLES) $(SP_ARTICLES)), \
-		$(wildcard git-*.txt)) \
-	gitk.txt gitweb.txt git.txt
-MAN5_TXT=gitattributes.txt gitignore.txt gitmodules.txt githooks.txt \
-	gitrepository-layout.txt gitweb.conf.txt
-MAN7_TXT=gitcli.txt gittutorial.txt gittutorial-2.txt \
-	gitcvs-migration.txt gitcore-tutorial.txt gitglossary.txt \
-	gitdiffcore.txt gitnamespaces.txt gitrevisions.txt gitworkflows.txt
+# Guard against environment variables
+MAN1_TXT =
+MAN5_TXT =
+MAN7_TXT =
+
+MAN1_TXT += $(filter-out \
+		$(addsuffix .txt, $(ARTICLES) $(SP_ARTICLES)), \
+		$(wildcard git-*.txt))
+MAN1_TXT += git.txt
+MAN1_TXT += gitk.txt
+MAN1_TXT += gitremote-helpers.txt
+MAN1_TXT += gitweb.txt
+
+MAN5_TXT += gitattributes.txt
+MAN5_TXT += githooks.txt
+MAN5_TXT += gitignore.txt
+MAN5_TXT += gitmodules.txt
+MAN5_TXT += gitrepository-layout.txt
+MAN5_TXT += gitweb.conf.txt
+
+MAN7_TXT += gitcli.txt
+MAN7_TXT += gitcore-tutorial.txt
 MAN7_TXT += gitcredentials.txt
+MAN7_TXT += gitcvs-migration.txt
+MAN7_TXT += gitdiffcore.txt
+MAN7_TXT += gitglossary.txt
+MAN7_TXT += gitnamespaces.txt
+MAN7_TXT += gitrevisions.txt
+MAN7_TXT += gittutorial-2.txt
+MAN7_TXT += gittutorial.txt
+MAN7_TXT += gitworkflows.txt
 
 MAN_TXT = $(MAN1_TXT) $(MAN5_TXT) $(MAN7_TXT)
 MAN_XML=$(patsubst %.txt,%.xml,$(MAN_TXT))
 MAN_HTML=$(patsubst %.txt,%.html,$(MAN_TXT))
 
-DOC_HTML=$(MAN_HTML)
+OBSOLETE_HTML = git-remote-helpers.html
+DOC_HTML=$(MAN_HTML) $(OBSOLETE_HTML)
 
 ARTICLES = howto-index
 ARTICLES += everyday
@@ -21,6 +43,7 @@ ARTICLES += git-tools
 ARTICLES += git-bisect-lk2009
 # with their own formatting rules.
 SP_ARTICLES = user-manual
+SP_ARTICLES += howto/new-command
 SP_ARTICLES += howto/revert-branch-rebase
 SP_ARTICLES += howto/using-merge-subtree
 SP_ARTICLES += howto/using-signed-tag-in-pull-request
@@ -30,7 +53,6 @@ SP_ARTICLES += howto/setup-git-server-over-http
 SP_ARTICLES += howto/separating-topic-branches
 SP_ARTICLES += howto/revert-a-faulty-merge
 SP_ARTICLES += howto/recover-corrupted-blob-object
-SP_ARTICLES += howto/rebuild-from-update-hook
 SP_ARTICLES += howto/rebuild-from-update-hook
 SP_ARTICLES += howto/rebase-from-internal-branch
 SP_ARTICLES += howto/maintain-git
@@ -178,8 +200,6 @@ all: html man
 
 html: $(DOC_HTML)
 
-$(DOC_HTML) $(DOC_MAN1) $(DOC_MAN5) $(DOC_MAN7): asciidoc.conf
-
 man: man1 man5 man7
 man1: $(DOC_MAN1)
 man5: $(DOC_MAN5)
@@ -224,7 +244,11 @@ install-html: html
 #
 # Determine "include::" file references in asciidoc files.
 #
-doc.dep : $(wildcard *.txt) build-docdep.perl
+docdep_prereqs = \
+	mergetools-list.made $(mergetools_txt) \
+	cmd-list.made $(cmds_txt)
+
+doc.dep : $(docdep_prereqs) $(wildcard *.txt) build-docdep.perl
 	$(QUIET_GEN)$(RM) $@+ $@ && \
 	$(PERL_PATH) ./build-docdep.perl >$@+ $(QUIET_STDERR) && \
 	mv $@+ $@
@@ -248,18 +272,38 @@ cmd-list.made: cmd-list.perl ../command-list.txt $(MAN1_TXT)
 	$(PERL_PATH) ./cmd-list.perl ../command-list.txt $(QUIET_STDERR) && \
 	date >$@
 
+mergetools_txt = mergetools-diff.txt mergetools-merge.txt
+
+$(mergetools_txt): mergetools-list.made
+
+mergetools-list.made: ../git-mergetool--lib.sh $(wildcard ../mergetools/*)
+	$(QUIET_GEN)$(RM) $@ && \
+	$(SHELL_PATH) -c 'MERGE_TOOLS_DIR=../mergetools && \
+		. ../git-mergetool--lib.sh && \
+		show_tool_names can_diff "* " || :' >mergetools-diff.txt && \
+	$(SHELL_PATH) -c 'MERGE_TOOLS_DIR=../mergetools && \
+		. ../git-mergetool--lib.sh && \
+		show_tool_names can_merge "* " || :' >mergetools-merge.txt && \
+	date >$@
+
 clean:
 	$(RM) *.xml *.xml+ *.html *.html+ *.1 *.5 *.7
 	$(RM) *.texi *.texi+ *.texi++ git.info gitman.info
 	$(RM) *.pdf
 	$(RM) howto-index.txt howto/*.html doc.dep
 	$(RM) technical/*.html technical/api-index.txt
-	$(RM) $(cmds_txt) *.made
+	$(RM) $(cmds_txt) $(mergetools_txt) *.made
 	$(RM) manpage-base-url.xsl
 
-$(MAN_HTML): %.html : %.txt
+$(MAN_HTML): %.html : %.txt asciidoc.conf
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
 	$(ASCIIDOC) -b xhtml11 -d manpage -f asciidoc.conf \
+		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) -o $@+ $< && \
+	mv $@+ $@
+
+$(OBSOLETE_HTML): %.html : %.txto asciidoc.conf
+	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
+	$(ASCIIDOC) -b xhtml11 -f asciidoc.conf \
 		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) -o $@+ $< && \
 	mv $@+ $@
 
@@ -270,7 +314,7 @@ manpage-base-url.xsl: manpage-base-url.xsl.in
 	$(QUIET_XMLTO)$(RM) $@ && \
 	$(XMLTO) -m $(MANPAGE_XSL) $(XMLTO_EXTRA) man $<
 
-%.xml : %.txt
+%.xml : %.txt asciidoc.conf
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
 	$(ASCIIDOC) -b docbook -d manpage -f asciidoc.conf \
 		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) -o $@+ $< && \
@@ -286,7 +330,7 @@ technical/api-index.txt: technical/api-index-skel.txt \
 	$(QUIET_GEN)cd technical && '$(SHELL_PATH_SQ)' ./api-index.sh
 
 technical/%.html: ASCIIDOC_EXTRA += -a git-relative-html-prefix=../
-$(patsubst %,%.html,$(API_DOCS) technical/api-index $(TECH_DOCS)): %.html : %.txt
+$(patsubst %,%.html,$(API_DOCS) technical/api-index $(TECH_DOCS)): %.html : %.txt asciidoc.conf
 	$(QUIET_ASCIIDOC)$(ASCIIDOC) -b xhtml11 -f asciidoc.conf \
 		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) $*.txt
 
@@ -331,7 +375,7 @@ $(patsubst %.txt,%.texi,$(MAN_TXT)): %.texi : %.xml
 
 howto-index.txt: howto-index.sh $(wildcard howto/*.txt)
 	$(QUIET_GEN)$(RM) $@+ $@ && \
-	'$(SHELL_PATH_SQ)' ./howto-index.sh $(wildcard howto/*.txt) >$@+ && \
+	'$(SHELL_PATH_SQ)' ./howto-index.sh $(sort $(wildcard howto/*.txt)) >$@+ && \
 	mv $@+ $@
 
 $(patsubst %,%.html,$(ARTICLES)) : %.html : %.txt
@@ -348,8 +392,8 @@ $(patsubst %.txt,%.html,$(wildcard howto/*.txt)): %.html : %.txt
 install-webdoc : html
 	'$(SHELL_PATH_SQ)' ./install-webdoc.sh $(WEBDOC_DEST)
 
-# You must have a clone of git-htmldocs and git-manpages repositories
-# next to the git repository itself for the following to work.
+# You must have a clone of 'git-htmldocs' and 'git-manpages' repositories
+# next to the 'git' repository itself for the following to work.
 
 quick-install: quick-install-man
 
