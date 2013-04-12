@@ -1,0 +1,42 @@
+Bottom: 37fcb96ffd49c3398482153c2c7243e19b19a1b4
+Top:    e0820fd1ebbd879f7532c9c7a19e36a9d253c558
+Author: Jakub Narebski <jnareb@gmail.com>
+Date:   2011-10-15 23:27:21 +0200
+
+Documentation: Add gitweb config variables to git-config(1)
+
+Add a list of gitweb config variables to git-config(1) manpage, just
+linking to gitweb(1) or gitweb.conf(5).
+
+Signed-off-by: Jakub Narebski <jnareb@gmail.com>
+
+
+---
+
+diff --git a/Documentation/config.txt b/Documentation/config.txt
+index 03296b7..b30c7e6 100644
+--- a/Documentation/config.txt
++++ b/Documentation/config.txt
+@@ -1071,6 +1071,23 @@ All gitcvs variables except for 'gitcvs.usecrlfattr' and
+ is one of "ext" and "pserver") to make them apply only for the given
+ access method.
+ 
++gitweb.category::
++gitweb.description::
++gitweb.owner::
++gitweb.url::
++	See linkgit:gitweb[1] for description.
++
++gitweb.avatar::
++gitweb.blame::
++gitweb.grep::
++gitweb.highlight::
++gitweb.patches::
++gitweb.pickaxe::
++gitweb.remote_heads::
++gitweb.showsizes::
++gitweb.snapshot::
++	See linkgit:gitweb.conf[5] for description.
++
+ grep.lineNumber::
+ 	If set to true, enable '-n' option by default.

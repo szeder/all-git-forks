@@ -1,0 +1,92 @@
+Bottom: a51d2a80b852ca28fa3e5c78cf6aab5dc0ad58e5
+Top:    458ff7ca6e701f4223bc86152032b252652faa05
+Author: Jakub Narebski <jnareb@gmail.com>
+Date:   2011-10-15 23:27:22 +0200
+
+Documentation: Preparation for gitweb manpages
+
+Gitweb documentation currently consists of gitweb/README, gitweb/INSTALL
+and comments in gitweb source code.  This is harder to find, use and
+browse than manpages ("man gitweb" or "git help gitweb") and HTML
+documentation ("git help --web gitweb").
+
+The goal of the next two commits is to move documentation out of
+gitweb/README to gitweb.txt and gitweb.conf.txt manpages, reducing its
+size 10x from around 500 to around 50 lines (two pages), and to move
+information not related directly to building and installing gitweb out
+of gitweb/INSTALL.
+
+The idea is to have the gitweb manpage sources reside in AsciiDoc
+format in the Documentation/ directory, like for gitk and git-gui.
+This means that building git documentation (with "make doc") would
+also build gitweb manpages.
+
+An alternate solution would be to have gitweb documentation in the
+gitweb/ directory, perhaps in POD format (see perlpod(1)).
+
+
+This patch adds infrastructure for easy generation of only
+gitweb-related manpages.  It adds a currently empty 'gitweb-doc'
+target to Documentation/Makefile, and a 'doc' proxy target to
+gitweb/Makefile.
+
+This way to build only gitweb documentation in both 'man' and 'html'
+formats one can use
+
+  make -C gitweb doc
+
+or
+
+  cd gitweb; make doc
+
+This somewhat follows the idea of 'full-svn-test' and 'gitweb-test' in
+t/Makefile.  Note also that with alternate solution, where source of
+gitweb manpages would reside in the gitweb/ directory, "make doc"
+would invoke "make -C gitweb doc" to generate formatted docs.
+
+The gitweb.conf(5) and gitweb(1) manpages will be added in subsequent
+commits.
+
+[Commit message improved with help of Jonathan Nieder]
+
+Signed-off-by: Jakub Narebski <jnareb@gmail.com>
+
+
+---
+
+diff --git a/Documentation/Makefile b/Documentation/Makefile
+index 5513256..aebab11 100644
+--- a/Documentation/Makefile
++++ b/Documentation/Makefile
+@@ -170,6 +170,9 @@ info: git.info gitman.info
+ 
+ pdf: user-manual.pdf
+ 
++GITWEB_DOC = $(filter gitweb.%,$(DOC_HTML) $(DOC_MAN1) $(DOC_MAN5) $(DOC_MAN7))
++gitweb-doc: $(GITWEB_DOC)
++
+ install: install-man
+ 
+ install-man: man
+diff --git a/gitweb/Makefile b/gitweb/Makefile
+index 1c85b5f..3014d80 100644
+--- a/gitweb/Makefile
++++ b/gitweb/Makefile
+@@ -174,6 +174,11 @@ test-installed:
+ 	GITWEB_TEST_INSTALLED='$(DESTDIR_SQ)$(gitwebdir_SQ)' \
+ 		$(MAKE) -C ../t gitweb-test
+ 
++### Documentation
++
++doc:
++	$(MAKE) -C ../Documentation gitweb-doc
++
+ ### Installation rules
+ 
+ install: all
+@@ -187,5 +192,5 @@ install: all
+ clean:
+ 	$(RM) gitweb.cgi static/gitweb.min.js static/gitweb.min.css GITWEB-BUILD-OPTIONS
+ 
+-.PHONY: all clean install test test-installed .FORCE-GIT-VERSION-FILE FORCE
++.PHONY: all clean install test test-installed doc .FORCE-GIT-VERSION-FILE FORCE
