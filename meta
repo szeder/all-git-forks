@@ -1,7 +1,8 @@
 Version: 1
-Previous: 930f0d879f9b9cd6e2eebb7367b84a48371e5183
-Head: 528e4c30143b8de63db5df5508a9956435e9b330
+Previous: 0de9bc836f97de830137aef1d9b786596b34d01e
+Head: d7f7835c685569a99c98628b60bbd598d5f2d67d
 Applied:
   doc-reword-GITWEB_CONFIG_SYSTEM: 528e4c30143b8de63db5df5508a9956435e9b330
+  refresh-temp: d7f7835c685569a99c98628b60bbd598d5f2d67d
 Unapplied:
 Hidden:
