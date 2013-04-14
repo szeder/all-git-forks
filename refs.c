@@ -813,9 +813,13 @@ static struct ref_cache {
 	struct ref_cache *next;
 	struct ref_entry *loose;
 	struct ref_entry *packed;
-	/* The submodule name, or "" for the main repo. */
-	char name[FLEX_ARRAY];
-} *ref_cache;
+	/*
+	 * The submodule name, or "" for the main repo.  We allocate
+	 * length 1 rather than FLEX_ARRAY so that the main ref_cache
+	 * is initialized correctly.
+	 */
+	char name[1];
+} ref_cache, *submodule_ref_caches;
 
 static void clear_packed_ref_cache(struct ref_cache *refs)
 {
@@ -853,18 +857,18 @@ static struct ref_cache *create_ref_cache(const char *submodule)
  */
 static struct ref_cache *get_ref_cache(const char *submodule)
 {
-	struct ref_cache *refs = ref_cache;
-	if (!submodule)
-		submodule = "";
-	while (refs) {
+	struct ref_cache *refs;
+
+	if (!submodule || !*submodule)
+		return &ref_cache;
+
+	for (refs = submodule_ref_caches; refs; refs = refs->next)
 		if (!strcmp(submodule, refs->name))
 			return refs;
-		refs = refs->next;
-	}
 
 	refs = create_ref_cache(submodule);
-	refs->next = ref_cache;
-	ref_cache = refs;
+	refs->next = submodule_ref_caches;
+	submodule_ref_caches = refs;
 	return refs;
 }
 
@@ -1013,8 +1017,8 @@ static struct ref_dir *get_packed_refs(struct ref_cache *refs)
 
 void add_packed_ref(const char *refname, const unsigned char *sha1)
 {
-	add_ref(get_packed_refs(get_ref_cache(NULL)),
-			create_ref_entry(refname, sha1, REF_ISPACKED, 1));
+	add_ref(get_packed_refs(&ref_cache),
+		create_ref_entry(refname, sha1, REF_ISPACKED, 1));
 }
 
 /*
@@ -1189,7 +1193,7 @@ int resolve_gitlink_ref(const char *path, const char *refname, unsigned char *sh
  */
 static struct ref_entry *get_packed_ref(const char *refname)
 {
-	return find_ref(get_packed_refs(get_ref_cache(NULL)), refname);
+	return find_ref(get_packed_refs(&ref_cache), refname);
 }
 
 const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int reading, int *flag)
@@ -1590,7 +1594,7 @@ int head_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 
 int for_each_ref(each_ref_fn fn, void *cb_data)
 {
-	return do_for_each_ref(get_ref_cache(NULL), "", fn, 0, 0, cb_data);
+	return do_for_each_ref(&ref_cache, "", fn, 0, 0, cb_data);
 }
 
 int for_each_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
@@ -1600,7 +1604,7 @@ int for_each_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 
 int for_each_ref_in(const char *prefix, each_ref_fn fn, void *cb_data)
 {
-	return do_for_each_ref(get_ref_cache(NULL), prefix, fn, strlen(prefix), 0, cb_data);
+	return do_for_each_ref(&ref_cache, prefix, fn, strlen(prefix), 0, cb_data);
 }
 
 int for_each_ref_in_submodule(const char *submodule, const char *prefix,
@@ -1641,7 +1645,7 @@ int for_each_remote_ref_submodule(const char *submodule, each_ref_fn fn, void *c
 
 int for_each_replace_ref(each_ref_fn fn, void *cb_data)
 {
-	return do_for_each_ref(get_ref_cache(NULL), "refs/replace/", fn, 13, 0, cb_data);
+	return do_for_each_ref(&ref_cache, "refs/replace/", fn, 13, 0, cb_data);
 }
 
 int head_ref_namespaced(each_ref_fn fn, void *cb_data)
@@ -1664,7 +1668,7 @@ int for_each_namespaced_ref(each_ref_fn fn, void *cb_data)
 	struct strbuf buf = STRBUF_INIT;
 	int ret;
 	strbuf_addf(&buf, "%srefs/", get_git_namespace());
-	ret = do_for_each_ref(get_ref_cache(NULL), buf.buf, fn, 0, 0, cb_data);
+	ret = do_for_each_ref(&ref_cache, buf.buf, fn, 0, 0, cb_data);
 	strbuf_release(&buf);
 	return ret;
 }
@@ -1706,7 +1710,7 @@ int for_each_glob_ref(each_ref_fn fn, const char *pattern, void *cb_data)
 
 int for_each_rawref(each_ref_fn fn, void *cb_data)
 {
-	return do_for_each_ref(get_ref_cache(NULL), "", fn, 0,
+	return do_for_each_ref(&ref_cache, "", fn, 0,
 			       DO_FOR_EACH_INCLUDE_BROKEN, cb_data);
 }
 
@@ -1912,7 +1916,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 	 * name is a proper prefix of our refname.
 	 */
 	if (missing &&
-	     !is_refname_available(refname, NULL, get_packed_refs(get_ref_cache(NULL)))) {
+	     !is_refname_available(refname, NULL, get_packed_refs(&ref_cache))) {
 		last_errno = ENOTDIR;
 		goto error_return;
 	}
@@ -2101,7 +2105,7 @@ int pack_refs(unsigned int flags)
 
 	write_or_die(cbdata.fd, PACKED_REFS_HEADER, strlen(PACKED_REFS_HEADER));
 
-	do_for_each_entry(get_ref_cache(NULL), "", pack_one_ref, &cbdata);
+	do_for_each_entry(&ref_cache, "", pack_one_ref, &cbdata);
 	if (commit_lock_file(&packlock) < 0)
 		die_errno("unable to overwrite old ref-pack file");
 	prune_refs(cbdata.ref_to_prune);
@@ -2127,7 +2131,6 @@ static int repack_ref_fn(struct ref_entry *entry, void *cb_data)
 static int repack_without_ref(const char *refname)
 {
 	int fd;
-	struct ref_cache *refs = get_ref_cache(NULL);
 	struct ref_dir *packed;
 
 	if (!get_packed_ref(refname))
@@ -2138,8 +2141,8 @@ static int repack_without_ref(const char *refname)
 		unable_to_lock_error(git_path("packed-refs"), errno);
 		return error("cannot delete '%s' from packed refs", refname);
 	}
-	clear_packed_ref_cache(refs);
-	packed = get_packed_refs(refs);
+	clear_packed_ref_cache(&ref_cache);
+	packed = get_packed_refs(&ref_cache);
 	/* Remove refname from the cache. */
 	if (remove_entry(packed, refname) == -1) {
 		/*
@@ -2179,7 +2182,7 @@ int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
 	ret |= repack_without_ref(lock->ref_name);
 
 	unlink_or_warn(git_path("logs/%s", lock->ref_name));
-	clear_loose_ref_cache(get_ref_cache(NULL));
+	clear_loose_ref_cache(&ref_cache);
 	unlock_ref(lock);
 	return ret;
 }
@@ -2201,7 +2204,6 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 	struct stat loginfo;
 	int log = !lstat(git_path("logs/%s", oldrefname), &loginfo);
 	const char *symref = NULL;
-	struct ref_cache *refs = get_ref_cache(NULL);
 
 	if (log && S_ISLNK(loginfo.st_mode))
 		return error("reflog for %s is a symlink", oldrefname);
@@ -2213,10 +2215,10 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 	if (!symref)
 		return error("refname %s not found", oldrefname);
 
-	if (!is_refname_available(newrefname, oldrefname, get_packed_refs(refs)))
+	if (!is_refname_available(newrefname, oldrefname, get_packed_refs(&ref_cache)))
 		return 1;
 
-	if (!is_refname_available(newrefname, oldrefname, get_loose_refs(refs)))
+	if (!is_refname_available(newrefname, oldrefname, get_loose_refs(&ref_cache)))
 		return 1;
 
 	if (log && rename(git_path("logs/%s", oldrefname), git_path(TMP_RENAMED_LOG)))
@@ -2472,7 +2474,7 @@ int write_ref_sha1(struct ref_lock *lock,
 		unlock_ref(lock);
 		return -1;
 	}
-	clear_loose_ref_cache(get_ref_cache(NULL));
+	clear_loose_ref_cache(&ref_cache);
 	if (log_ref_write(lock->ref_name, lock->old_sha1, sha1, logmsg) < 0 ||
 	    (strcmp(lock->ref_name, lock->orig_ref_name) &&
 	     log_ref_write(lock->orig_ref_name, lock->old_sha1, sha1, logmsg) < 0)) {
