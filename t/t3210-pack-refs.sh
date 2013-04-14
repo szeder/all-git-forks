@@ -118,4 +118,40 @@ test_expect_success 'pack, prune and repack' '
 	test_cmp all-of-them again
 '
 
+test_expect_success 'explicit pack-refs with dangling packed reference' '
+	git commit --allow-empty -m "soon to be garbage-collected" &&
+	git pack-refs --all &&
+	git reset --hard HEAD^ &&
+	sleep 1 &&
+	git reflog expire --expire=now --all &&
+	git prune --expire=now &&
+	git pack-refs --all 2>result &&
+	test_cmp /dev/null result
+'
+
+test_expect_success 'delete ref with dangling packed version' '
+	git checkout -b lamb &&
+	git commit --allow-empty -m "future garbage" &&
+	git pack-refs --all &&
+	git reset --hard HEAD^ &&
+	git checkout master &&
+	sleep 1 &&
+	git reflog expire --expire=now --all &&
+	git prune --expire=now &&
+	git branch -d lamb 2>result &&
+	test_cmp /dev/null result
+'
+
+test_expect_failure 'delete ref while another dangling packed ref' '
+	git branch lamb &&
+	git commit --allow-empty -m "future garbage" &&
+	git pack-refs --all &&
+	git reset --hard HEAD^ &&
+	sleep 1 &&
+	git reflog expire --expire=now --all &&
+	git prune --expire=now &&
+	git branch -d lamb 2>result &&
+	test_cmp /dev/null result
+'
+
 test_done
