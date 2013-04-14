@@ -139,7 +139,7 @@ while ((my $line = <$gi>)) {
 	die "git log failed" if $?;
 	chomp($test_tree_sha);
 
-	$fetched_count = `git log --oneline $head_sha.. | wc -l`;
+	$fetched_count = `git log --oneline $head_sha..cvs/HEAD | wc -l`;
 	print "=> fetched commits: $fetched_count\n";
 
 	die "tree sha $test_tree_sha, should be $tree_sha" if ($test_tree_sha ne $tree_sha);
