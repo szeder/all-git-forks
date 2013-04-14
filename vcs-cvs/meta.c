@@ -128,7 +128,17 @@ static unsigned int strcmp_whitesp_ignore(const char *str1, const char *str2)
 	return rc;
 }
 
-static void revision_list_add(struct file_revision *rev, struct file_revision_list *list)
+static void free_file_revision_list(struct file_revision_list *list)
+{
+	if (!list)
+		return;
+
+	if (list->item)
+		free(list->item);
+	free(list);
+}
+
+static struct file_revision *revision_list_add(struct file_revision *rev, struct file_revision_list *list)
 {
 	/*
 	 * TODO: replace with ALLOC_GROW
@@ -142,6 +152,142 @@ static void revision_list_add(struct file_revision *rev, struct file_revision_li
 				      list->size * sizeof(void *));
 	}
 	list->item[list->nr++] = rev;
+	return rev;
+}
+
+struct rev_sort_util {
+	struct file_revision_list *lst1;
+	struct file_revision_list *lst2;
+	struct file_revision_list *cur_file;
+
+	struct file_revision_list *sorted;
+	char *cur_file_path;
+	unsigned int sorted_files;
+};
+
+static struct rev_sort_util *init_rev_sort_util()
+{
+	struct rev_sort_util *su = xcalloc(1, sizeof(struct rev_sort_util));
+
+	su->lst1 = xcalloc(1, sizeof(struct file_revision_list));
+	su->lst2 = xcalloc(1, sizeof(struct file_revision_list));
+	su->cur_file = xcalloc(1, sizeof(struct file_revision_list));
+
+	return su;
+}
+
+static struct file_revision **rev_list_tail(struct file_revision_list *lst)
+{
+	return &lst->item[lst->nr];
+}
+
+static void merge_sort(struct file_revision_list *first,
+		struct file_revision_list *second,
+		struct file_revision_list *result)
+{
+	struct file_revision **first_it = &first->item[0];
+	struct file_revision **second_it = &second->item[0];
+	struct file_revision *last = NULL;
+
+	while (first_it < rev_list_tail(first) &&
+	       second_it < rev_list_tail(second)) {
+
+		if ((*first_it)->timestamp > (*second_it)->timestamp) {
+			last = revision_list_add(*first_it++, result);
+		}
+		else if ((*first_it)->timestamp < (*second_it)->timestamp) {
+			last = revision_list_add(*second_it++, result);
+		}
+		else if (last && (*second_it)->patchset == last->patchset) {
+			last = revision_list_add(*second_it++, result);
+		}
+		else {
+			last = revision_list_add(*first_it++, result);
+		}
+	}
+
+	while (first_it < rev_list_tail(first))
+		revision_list_add(*first_it++, result);
+
+	while (second_it < rev_list_tail(second))
+		revision_list_add(*second_it++, result);
+
+	first->nr = 0;
+	second->nr = 0;
+}
+
+static void add_sort_file_revision(struct branch_meta *meta, struct file_revision *rev)
+{
+	struct rev_sort_util *su;
+
+	if (!meta->util)
+		meta->util = init_rev_sort_util();
+
+	su = meta->util;
+
+	if (!su->cur_file_path) {
+		su->cur_file_path = rev->path;
+	}
+	else if (strcmp(su->cur_file_path, rev->path)) {
+		/*
+		 * switched to next file
+		 */
+		if (!su->sorted) {
+			su->sorted = su->cur_file;
+			su->cur_file = su->lst1;
+			su->lst1 = su->sorted;
+		}
+		else {
+			struct file_revision_list *result = su->lst1;
+			if (result == su->sorted)
+				result = su->lst2;
+
+			if (su->sorted_files > su->sorted->nr)
+				die("su->sorted_files > su->sorted");
+			su->sorted_files = su->sorted->nr;
+			//fprintf(stderr, "%p sorted items %u adding %u file %s\n", meta, su->sorted->nr, su->cur_file->nr, su->cur_file->item[0]->path);
+			merge_sort(su->sorted, su->cur_file, result);
+			su->sorted = result;
+			if (su->sorted_files > su->sorted->nr)
+				die("su->sorted_files > su->sorted");
+			su->sorted_files = su->sorted->nr;
+		}
+		su->cur_file_path = rev->path;
+	}
+
+	revision_list_add(rev, su->cur_file);
+}
+
+static struct file_revision_list *finish_rev_sort(struct branch_meta *meta)
+{
+	struct rev_sort_util *su;
+	struct file_revision_list *sorted;
+
+	if (!meta->util)
+		return xcalloc(1, sizeof(struct file_revision_list));
+
+	su = meta->util;
+	if (!su->sorted) {
+		sorted = su->cur_file;
+	}
+	else {
+		struct file_revision_list *result = su->lst1;
+		if (result == su->sorted)
+			result = su->lst2;
+
+		merge_sort(su->sorted, su->cur_file, result);
+		sorted = result;
+	}
+
+	if (sorted != su->lst1)
+		free_file_revision_list(su->lst1);
+	if (sorted != su->lst2)
+		free_file_revision_list(su->lst2);
+	if (sorted != su->cur_file)
+		free_file_revision_list(su->cur_file);
+	free(su);
+	meta->util = NULL;
+	return sorted;
 }
 
 int rev_cmp(const char *rev1, const char *rev2);
@@ -207,7 +353,8 @@ int add_file_revision(struct branch_meta *meta,
 		}
 	}
 	rev->patchset = patchset;
-	revision_list_add(rev, meta->rev_list);
+
+	add_sort_file_revision(meta, rev);
 	return 0;
 }
 
@@ -278,8 +425,52 @@ static void patchset_add_file_revision(struct file_revision *rev, struct patchse
 	}
 }
 
-extern void print_ps(struct patchset *ps);
-//dummy
+static int print_revision(void *ptr, void *data)
+{
+	struct file_revision *rev = ptr;
+
+	if (rev->prev) {
+		struct file_revision *prev = rev->prev;
+		while (prev && prev->ismerged && prev->prev)
+			prev = prev->prev;
+		if (prev->ismerged)
+			fprintf(stderr, "\tunknown->%s-", rev->prev->revision);
+		else
+		fprintf(stderr, "\t%s->", rev->prev->revision);
+	}
+	else {
+		fprintf(stderr, "\tunknown->");
+	}
+	fprintf(stderr, "%s\t%s", rev->revision, rev->path);
+
+	if (rev->isdead)
+		fprintf(stderr, " (dead)\n");
+	else
+		fprintf(stderr, "\n");
+	return 0;
+}
+
+static void print_ps(struct patchset *ps)
+{
+
+	fprintf(stderr,
+		"Author: %s\n"
+		"AuthorDate: %s\n",
+		ps->author,
+		show_date(ps->timestamp, 0, DATE_NORMAL));
+	fprintf(stderr,
+		"CommitDate: %s\n",
+		show_date(ps->timestamp_last, 0, DATE_NORMAL));
+	fprintf(stderr,
+		"UpdateDate: %s\n"
+		"\n"
+		"%s\n",
+		show_date(ps->cancellation_point, 0, DATE_NORMAL),
+		ps->msg);
+
+	for_each_hash(ps->revision_hash, print_revision, NULL);
+}
+
 static int validate_patchset_order(void *ptr, void *data)
 {
 	struct file_revision *rev = ptr;
@@ -303,10 +494,10 @@ static int validate_patchset_order(void *ptr, void *data)
 			}
 			if (!valid) {
 				fprintf(stderr, "ps1\n");
-				//print_ps(rev->prev->patchset);
+				print_ps(rev->patchset);
 				fprintf(stderr, "ps2\n");
-				//print_ps(rev->patchset);
-				error("same date patchsets order is wrong");
+				print_ps(rev->prev->patchset);
+				error("same date patchsets order is wrong file %s", rev->path);
 			}
 		}
 		rev = rev->prev;
@@ -509,7 +700,7 @@ int rev_cmp(const char *rev1, const char *rev2)
 	return 0;
 }
 
-static int compare_fix_rev(const void *p1, const void *p2)
+int compare_fix_rev(const void *p1, const void *p2)
 {
 	struct file_revision *rev1 = *(void**)p1;
 	struct file_revision *rev2 = *(void**)p2;
@@ -555,6 +746,16 @@ void reverse_rev_list(struct file_revision_list *rev_list)
 		rev_list->item[i] = rev_list->item[rev_list->nr - 1 - i];
 		rev_list->item[rev_list->nr - 1 - i] = tmp;
 	}
+
+	for (i = 0; i < rev_list->nr; i++) {
+		tmp = rev_list->item[i];
+		fprintf(stderr, "%p %s %s\n", tmp->patchset, tmp->path, tmp->revision);
+	}
+}
+
+void finalize_revision_list(struct branch_meta *meta)
+{
+	meta->rev_list = finish_rev_sort(meta);
 }
 
 void aggregate_patchsets(struct branch_meta *meta)
@@ -586,8 +787,8 @@ void aggregate_patchsets(struct branch_meta *meta)
 	 * splits.
 	 * Update: somehow it makes it worse
 	 */
-	//reverse_rev_list(meta->rev_list);
-	qsort(meta->rev_list->item, meta->rev_list->nr, sizeof(void *), compare_fix_rev);
+	//qsort(meta->rev_list->item, meta->rev_list->nr, sizeof(void *), compare_fix_rev);
+	reverse_rev_list(meta->rev_list);
 
 	fprintf(stderr, "SORT DONE\n");
 	for (i = 0; i < meta->rev_list->nr; i++) {
@@ -618,7 +819,8 @@ void aggregate_patchsets(struct branch_meta *meta)
 			}
 
 			if (patchset->timestamp &&
-			    patchset->timestamp < prev->patchset->timestamp) {
+			    patchset->timestamp <= prev->patchset->timestamp) {
+			    //patchset->timestamp < prev->patchset->timestamp) {
 				split = 1;
 			}
 			*pos = rev;
@@ -660,6 +862,14 @@ void aggregate_patchsets(struct branch_meta *meta)
 	}
 
 	fprintf(stderr, "GONNA VALIDATE\n");
+	struct patchset *patchset = meta->patchset_list->head;
+	i = 0;
+	while (patchset) {
+		fprintf(stderr, "-> patchset %d\n", ++i);
+		print_ps(patchset);
+		patchset = patchset->next;
+	}
+
 	validate_patchsets(meta);
 	find_safe_cancellation_points(meta);
 	//arrange_commit_time(meta);
@@ -694,7 +904,7 @@ struct branch_meta *new_branch_meta(const char *branch_name)
 	struct branch_meta *new;
 	new = xcalloc(1, sizeof(struct branch_meta));
 
-	new->rev_list = xcalloc(1, sizeof(struct file_revision_list));
+	//new->rev_list = xcalloc(1, sizeof(struct file_revision_list));
 	new->patchset_hash = xcalloc(1, sizeof(struct hash_table));
 	new->revision_hash = xcalloc(1, sizeof(struct hash_table));
 	new->patchset_list = xcalloc(1, sizeof(struct patchset_list));

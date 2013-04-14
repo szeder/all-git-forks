@@ -56,9 +56,7 @@ struct patchset {
 	char *msg;
 	struct patchset *next; // patchset list <--- will be sorted by timestamp
 	struct hash_table *revision_hash; // path -> file_revision hash
-
-	time_t cancellation_point; // non zero if patchset is save cancellation point,
-				   // timestamp has to be used for next cvs update
+	time_t cancellation_point; // non zero if patchset is save cancellation point
 };
 
 struct patchset_list {
@@ -82,6 +80,7 @@ struct branch_meta {
 	time_t last_revision_timestamp;
 
 	unsigned int fuzz_time;
+	void *util;
 };
 
 /*
@@ -110,6 +109,7 @@ void add_file_revision_meta_hash(struct hash_table *meta_hash,
 		       int isexec,
 		       int mark);
 
+void finalize_revision_list(struct branch_meta *meta);
 void aggregate_patchsets(struct branch_meta *meta);
 time_t find_first_commit_time(struct branch_meta *meta);
 int get_patchset_count(struct branch_meta *meta);

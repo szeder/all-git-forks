@@ -1313,6 +1313,7 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 	int count;
 	int rc;
 	int i;
+	int need_new_cvs_session = 0;
 	if (!commit->util)
 		return -1;
 
@@ -1336,10 +1337,13 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 		fprintf(stderr, "check in %c file: %s sha1: %s mod: %.4o\n",
 				sm->addremove ? sm->addremove : '*', item->string, sha1_to_hex(sm->sha1), sm->mode);
 		strbuf_addstr(&files[i].path, item->string);
-		if (sm->addremove == '+')
+		if (sm->addremove == '+') {
 			files[i].isnew = 1;
-		else if (sm->addremove == '-')
+		}
+		else if (sm->addremove == '-') {
 			files[i].isdead = 1;
+			need_new_cvs_session = 1;
+		}
 
 		rev = lookup_hash(hash_path(files[i].path.buf), revision_meta_hash);
 		if (rev) {
@@ -1357,6 +1361,20 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 	}
 
 	find_commit_subject(commit->buffer, &commit_message);
+	/*
+	 * FIXME: CVS cannot handle few commits during single session sometimes.
+	 * Something has to do with same files added/modified/deleted. Try to
+	 * minimize new cvs sessions.
+	 */
+	if (need_new_cvs_session) {
+		fprintf(stderr, "extra cvs session\n");
+		rc = cvs_terminate(cvs);
+		if (rc)
+			die("ungraceful cvs session termination");
+		cvs = cvs_connect(cvsroot, cvsmodule);
+		if (!cvs)
+			die("failed to establish new cvs session");
+	}
 	rc = cvs_checkin(cvs, cvs_branch, commit_message, files, count, prepare_file_content, release_file_content, NULL);
 	if (!rc) {
 		for (i = 0; i < count; i++) {
@@ -1366,10 +1384,12 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 			if (!rev->revision)
 				die("commit succeeded, but cannot find meta file revision to update: %s", files[i].path.buf);
 			free(rev->revision);
-			if (!files[i].isdead)
+			rev->revision = strbuf_detach(&files[i].revision, NULL);
+			//fprintf(stderr, "new rev: %s %s\n", rev->revision, rev->path);
+			/*if (!files[i].isdead)
 				rev->revision = strbuf_detach(&files[i].revision, NULL);
 			else
-				rev->revision = NULL;
+				rev->revision = NULL;*/
 		}
 	}
 
@@ -1610,6 +1630,8 @@ static int on_each_ref(const char *branch, const unsigned char *sha1, int flags,
 	}
 
 	if (!update_since ||
+	    //FIXME: remember last update date somewhere or take last from
+	    //branch: update_since < meta->last_revision_timestamp)
 	    update_since > meta->last_revision_timestamp)
 		update_since = meta->last_revision_timestamp;
 	return 0;
@@ -1635,6 +1657,7 @@ static int cmd_list(const char *line)
 		fprintf(stderr, "Skipped revisions: %d\n", skipped);
 
 		for_each_branch_meta(branch_meta, branch_meta_map) {
+			finalize_revision_list(branch_meta->meta);
 			//aggregate_patchsets(branch_meta->meta);
 			//if (branch_meta->meta->patchset_list->head)
 			if (branch_meta->meta->rev_list->size)
@@ -1676,6 +1699,7 @@ static int cmd_list(const char *line)
 		 * FIXME: try to print only branches that have changes
 		 */
 		for_each_branch_meta(branch_meta, branch_meta_map) {
+			finalize_revision_list(branch_meta->meta);
 			//aggregate_patchsets(branch_meta->meta);
 			//if (branch_meta->meta->patchset_list->head)
 			if (branch_meta->meta->rev_list->size)

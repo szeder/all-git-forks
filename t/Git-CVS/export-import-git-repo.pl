@@ -97,6 +97,7 @@ my $old_tree = "";
 my $commits = 0;
 my $head_sha;
 my $fetched_count;
+my $commits_per_iter = 1;
 print "restarting from $commit\n";
 
 open(my $gi, "-|", "git log --reverse --format=\"%H %T\" git/master") or
@@ -114,7 +115,7 @@ while ((my $line = <$gi>)) {
 	$commits++;
 	`git cherry-pick --allow-empty $commit_sha`;
 	die "git cherry-pick failed $?" if $?;
-	#next if $commits % 10;
+	next if $commits % $commits_per_iter;
 
 	if ($initial_cherry_pick) {
 		`git rm remove_me`;
@@ -136,16 +137,19 @@ while ((my $line = <$gi>)) {
 
 	my $test_tree_sha = `git log -1 --format="%T" cvs/HEAD`;
 	die "git log failed" if $?;
-
 	chomp($test_tree_sha);
-	die "tree sha $test_tree_sha, should be $tree_sha" if ($test_tree_sha ne $tree_sha);
 
 	$fetched_count = `git log --oneline $head_sha.. | wc -l`;
 	print "=> fetched commits: $fetched_count\n";
-	die "commits were splitted" if $fetched_count > 1 and !$initial_cherry_pick;
 
-	`git rebase cvs/HEAD`;
-	die("git rebase failed") if $?;
+	die "tree sha $test_tree_sha, should be $tree_sha" if ($test_tree_sha ne $tree_sha);
+	#die "commits were splitted" if $fetched_count != 1 and !$initial_cherry_pick;
+	die "commits were splitted" if $fetched_count != $commits_per_iter and !$initial_cherry_pick;
+
+	#`git rebase cvs/HEAD`;
+	#die("git rebase failed") if $?;
+	`git reset --hard cvs/HEAD`;
+	die("git reset --hard cvs/HEAD failed") if $?;
 
 	print "=> commits pushed/fetched/verified: $commits\n";
 

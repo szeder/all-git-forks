@@ -1347,6 +1347,7 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 	//free(cvs->full_module_path);
 	//cvs->full_module_path = xstrdup("/cvs/se/cvs/all/se/");
 	//cvs->full_module_path = xstrdup("/cvs/zfsp/cvs/");
+	//cvs->full_module_path = xstrdup("/cvs/zfsp/cvs/scsn");
 	strbuf_grow(&reply, CVS_MAX_LINE);
 
 	while (1) {
@@ -2577,7 +2578,8 @@ CVS   19 <- /DCE.cpp/1.6//-kk/\0a
 			fprintf(stderr, "CVS E: %s\n", cvs->rd_line_buf.buf + 2);
 		}
 
-		if (!prefixcmp(cvs->rd_line_buf.buf, "Checked-in ")) {
+		if (!prefixcmp(cvs->rd_line_buf.buf, "Checked-in ") ||
+		    !prefixcmp(cvs->rd_line_buf.buf, "Remove-entry ")) {
 			if (state != NEED_DONE)
 				die("skipped file during parsing checkin reply");
 			state = NEED_CHECK_IN;
