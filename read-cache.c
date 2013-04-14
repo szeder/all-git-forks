@@ -1896,14 +1896,12 @@ int index_name_is_other(const struct index_state *istate, const char *name,
 	return 1;
 }
 
-void *read_blob_data_from_index_path(const char *path,
-				     struct index_state *use_index)
+void *read_blob_data_from_index(struct index_state *istate, const char *path)
 {
 	int pos, len;
 	unsigned long sz;
 	enum object_type type;
 	void *data;
-	struct index_state *istate = use_index ? use_index : &the_index;
 
 	len = strlen(path);
 	pos = index_name_pos(istate, path, len);
