@@ -532,15 +532,17 @@ static void sort_ref_dir(struct ref_dir *dir)
 
 /*
  * Return true iff the reference described by entry can be resolved to
- * an object in the database.  Emit a warning if the referred-to
- * object does not exist.
+ * an object in the database.  If report_errors is true, emit a
+ * warning if the referred-to object does not exist.
  */
-static int ref_resolves_to_object(struct ref_entry *entry)
+static int ref_resolves_to_object(struct ref_entry *entry, int report_errors)
 {
 	if (entry->flag & REF_ISBROKEN)
 		return 0;
 	if (!has_sha1_file(entry->u.value.sha1)) {
-		error("%s does not point to a valid object!", entry->name);
+		if (report_errors)
+			error("%s does not point to a valid object!",
+			      entry->name);
 		return 0;
 	}
 	return 1;
@@ -579,7 +581,7 @@ static int do_one_ref(struct ref_entry *entry, void *cb_data)
 		return 0;
 
 	if (!((data->flags & DO_FOR_EACH_INCLUDE_BROKEN) ||
-	      ref_resolves_to_object(entry)))
+	      ref_resolves_to_object(entry, 1)))
 		return 0;
 
 	current_ref = entry;
@@ -1898,8 +1900,9 @@ static int repack_without_ref_fn(struct ref_entry *entry, void *cb_data)
 
 	if (!strcmp(data->refname, entry->name))
 		return 0;
-	if (!ref_resolves_to_object(entry))
-		return 0; /* Skip broken refs */
+	/* Silently skip broken refs: */
+	if (!ref_resolves_to_object(entry, 0))
+		return 0;
 	len = snprintf(line, sizeof(line), "%s %s\n",
 		       sha1_to_hex(entry->u.value.sha1), entry->name);
 	/* this should not happen but just being defensive */
