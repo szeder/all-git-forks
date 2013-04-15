@@ -320,7 +320,8 @@ static void handle_commit(struct commit *commit, struct rev_info *rev)
 
 	mark_next_object(&commit->object);
 	if (!is_encoding_utf8(encoding))
-		reencoded = reencode_string(message, "UTF-8", encoding);
+		reencoded = reencode_string(message, strlen(message),
+					    "UTF-8", encoding, NULL);
 	if (!commit->parents)
 		printf("reset %s\n", (const char*)commit->util);
 	printf("commit %s\nmark :%"PRIu32"\n%.*s\n%.*s\ndata %u\n%s",

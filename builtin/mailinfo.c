@@ -486,7 +486,8 @@ static void convert_to_utf8(struct strbuf *line, const char *charset)
 
 	if (same_encoding(metainfo_charset, charset))
 		return;
-	out = reencode_string(line->buf, metainfo_charset, charset);
+	out = reencode_string(line->buf, line->len,
+			      metainfo_charset, charset, NULL);
 	if (!out)
 		die("cannot convert from %s to %s",
 		    charset, metainfo_charset);
