@@ -1155,7 +1155,11 @@ int load_cvs_revision_meta(struct branch_meta *meta,
 
 	while ((p = parse_meta_line(buf,size, &first, &second, p))) {
 		//fprintf(stderr, "revinfo: %s=>%s\n", first, second);
-		add_file_revision_meta(meta, second, first, 0, 0, 0);
+		int isdead = (second[0] == '-');
+		if (second[1] != ':')
+			die("malformed metadata: %s:%s", first, second);
+		second += 2;
+		add_file_revision_meta(meta, second, first, isdead, 0, 0);
 	}
 
 	//write_or_die(1, buf, size);
@@ -1201,7 +1205,11 @@ int load_revision_meta(unsigned char *sha1, const char *notes_ref, struct hash_t
 	}
 
 	while ((p = parse_meta_line(buf,size, &first, &second, p))) {
-		add_file_revision_meta_hash(*revision_meta_hash, second, first, 0, 0, 0);
+		int isdead = (second[0] == '-');
+		if (second[1] != ':')
+			die("malformed metadata: %s:%s", first, second);
+		second += 2;
+		add_file_revision_meta_hash(*revision_meta_hash, second, first, isdead, 0, 0);
 	}
 
 	free(buf);
@@ -1270,7 +1278,7 @@ static int save_revision_meta(void *ptr, void *data)
 	struct file_revision *rev = ptr;
 	struct strbuf *sb = data;
 
-	strbuf_addf(sb, "%s:%s\n", rev->revision, rev->path);
+	strbuf_addf(sb, "%s:%c:%s\n", rev->revision, rev->isdead ? '-' : '+', rev->path);
 	return 0;
 }
 
@@ -1282,7 +1290,7 @@ int save_cvs_revision_meta(struct branch_meta *meta,
 	strbuf_init(&sb, meta->revision_hash->nr * 64);
 	if (meta->last_revision_timestamp)
 		strbuf_addf(&sb, "UPDATE:%ld\n", meta->last_revision_timestamp);
-	strbuf_addstr(&sb, "-\n");
+	strbuf_addstr(&sb, "--\n");
 
 	for_each_hash(meta->revision_hash, save_revision_meta, &sb);
 

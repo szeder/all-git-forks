@@ -561,9 +561,9 @@ static int commit_meta_revision(void *ptr, void *data)
 {
 	struct file_revision *rev = ptr;
 
-	if (!rev->isdead)
-		helper_printf("%s:%s\n", rev->revision, rev->path);
-	//helper_printf("%s:%c:%s\n", rev->revision, rev->isdead ? '-' : '+', rev->path);
+	//if (!rev->isdead)
+	//	helper_printf("%s:%c:%s\n", rev->revision, rev->isdead ? '-' : '+', rev->path);
+	helper_printf("%s:%c:%s\n", rev->revision, rev->isdead ? '-' : '+', rev->path);
 	return 0;
 }
 
