@@ -57,6 +57,7 @@ struct patchset {
 	struct patchset *next; // patchset list <--- will be sorted by timestamp
 	struct hash_table *revision_hash; // path -> file_revision hash
 	time_t cancellation_point; // non zero if patchset is save cancellation point
+	unsigned int seq;
 };
 
 struct patchset_list {

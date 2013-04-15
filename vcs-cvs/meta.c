@@ -778,6 +778,7 @@ void aggregate_patchsets(struct branch_meta *meta)
 	//	iterate patchsets, maintain maxtime, is ps timestamp > maxtime -
 	//	safe cancelation point
 
+	unsigned int ps_seq = 0;
 	int i;
 
 	/*
@@ -785,7 +786,7 @@ void aggregate_patchsets(struct branch_meta *meta)
 	 * bunch of commits is pushed at the same time (timestamp is the same).
 	 * Keeping commits in histitorical order helps to avoid extra patchset
 	 * splits.
-	 * Update: somehow it makes it worse
+	 * TODO: topological sort same second
 	 */
 	//qsort(meta->rev_list->item, meta->rev_list->nr, sizeof(void *), compare_fix_rev);
 	reverse_rev_list(meta->rev_list);
@@ -819,8 +820,10 @@ void aggregate_patchsets(struct branch_meta *meta)
 			}
 
 			if (patchset->timestamp &&
-			    patchset->timestamp <= prev->patchset->timestamp) {
-			    //patchset->timestamp < prev->patchset->timestamp) {
+			    //patchset->timestamp <= prev->patchset->timestamp) {
+			    (patchset->timestamp < prev->patchset->timestamp ||
+				    (patchset->timestamp == prev->patchset->timestamp &&
+				     patchset->seq < prev->patchset->seq))) {
 				split = 1;
 			}
 			*pos = rev;
@@ -856,8 +859,10 @@ void aggregate_patchsets(struct branch_meta *meta)
 			patchset = split_patchset(patchset, meta->patchset_hash);
 		}
 		rev->patchset = patchset;
-		if (!patchset->timestamp)
+		if (!patchset->timestamp) {
 			patchset_list_add(patchset, meta->patchset_list);
+			patchset->seq = ++ps_seq;
+		}
 		patchset_add_file_revision(rev, patchset);
 	}
 
