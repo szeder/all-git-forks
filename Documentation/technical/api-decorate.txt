@@ -1,6 +1,59 @@
 decorate API
 ============
 
-Talk about <decorate.h>
+The decoration API is a mechanism to create and use a simple
+append-only hashtable to keep auxiliary information keyed by in-core
+objects.
 
-(Linus)
+Initialization
+--------------
+
+Prepare `struct decoration deco` somewhere in-core and
+`memset(&deco, 0, sizeof(&deco))` it.  This holds your hashtable.
+
+
+Adding
+------
+
+`add_decoration(struct decoration *deco, const struct object *obj,
+void *decoration)` remembers `decoration` for the given `obj`.
+
+The function overwrites the old `decoration` for the `obj`
+registered in the hashtable with the given `decoration`, and returns
+the old value.
+
+The `decoration` can be of any type that can be casted to `void *`
+and it is a responsibility of the caller to typecast it to more
+appropriate type.
+
+Looking up
+----------
+
+`lookup_decoration(struct decoration *deco, const struct object *obj)`
+returns the decoration the last call to `add_decoration()` added for
+the `obj`.  You cannot tell if `obj` does not appear in the hashtable
+at all, or if `obj` has decoration whose value is NULL, so if you want
+to use the decoration API for "Did I see this object?" hashtable,
+use decoration value that is _not_ NULL.
+
+Iterating
+---------
+
+`for_each_decoration(struct decoration *deco, for_each_decoration_fn fn)`
+iterates over all the entries in the hashtable, and calls `fn` on each
+entry.  The `fn` callback function takes a single `struct object_decoration`
+as its parameter, that has `base` field that points at the `obj`
+given to an earlier call to `add_decoration` and `decoration` field
+that remembers the `decoration`.
+
+Clearing
+--------
+
+`clear_decoration(struct decoration *deco, for_each_decoration_fn fn)`,
+when `fn` is not NULL, iterates over all the entries and calls the
+callback function `fn` using `for_each_decoration`, and then frees
+the memory used for the hashtable but not the `struct decoration` itself.
+
+The callback function can be used to release the resource used by
+the `decoration` the earlier `add_decoration` registered to the
+hashtable.

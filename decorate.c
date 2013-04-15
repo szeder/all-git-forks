@@ -86,3 +86,22 @@ void *lookup_decoration(struct decoration *n, const struct object *obj)
 			j = 0;
 	}
 }
+
+void for_each_decoration(struct decoration *n, for_each_decoration_fn fn)
+{
+	int i;
+
+	for (i = 0; i < n->size; i++) {
+		struct object_decoration *entry = &n->hash[i];
+		if (!entry->base)
+			continue;
+		fn(entry);
+	}
+}
+
+void clear_decoration(struct decoration *n, for_each_decoration_fn fn)
+{
+	if (fn)
+		for_each_decoration(n, fn);
+	free(n->hash);
+}
