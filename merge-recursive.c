@@ -497,6 +497,8 @@ static struct string_list *get_renames(struct merge_options *o,
 	diff_setup_done(&opts);
 	diff_tree_sha1(o_tree->object.sha1, tree->object.sha1, "", &opts);
 	diffcore_std(&opts);
+	if (opts.needed_rename_limit > opts.rename_limit)
+		diff_warn_rename_limit("diff.renamelimit", opts.needed_rename_limit, 0);
 	if (opts.needed_rename_limit > o->needed_rename_limit)
 		o->needed_rename_limit = opts.needed_rename_limit;
 	for (i = 0; i < diff_queued_diff.nr; ++i) {
