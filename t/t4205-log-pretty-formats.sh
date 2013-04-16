@@ -147,6 +147,45 @@ EOF
 	test_cmp expected actual
 '
 
+test_expect_success 'left alignment formatting with trunc' '
+	git log --pretty="format:%<(10,trunc)%s" >actual &&
+	# complete the incomplete line at the end
+	echo >>actual &&
+	cat <<\EOF | delete_trailing_dollar >expected &&
+message ..$
+message ..$
+add bar   $
+initial   $
+EOF
+	test_cmp expected actual
+'
+
+test_expect_success 'left alignment formatting with ltrunc' '
+	git log --pretty="format:%<(10,ltrunc)%s" >actual &&
+	# complete the incomplete line at the end
+	echo >>actual &&
+	cat <<\EOF | delete_trailing_dollar >expected &&
+..sage two$
+..sage one$
+add bar   $
+initial   $
+EOF
+	test_cmp expected actual
+'
+
+test_expect_success 'left alignment formatting with mtrunc' '
+	git log --pretty="format:%<(10,mtrunc)%s" >actual &&
+	# complete the incomplete line at the end
+	echo >>actual &&
+	cat <<\EOF | delete_trailing_dollar >expected &&
+mess.. two$
+mess.. one$
+add bar   $
+initial   $
+EOF
+	test_cmp expected actual
+'
+
 test_expect_success 'right alignment formatting' '
 	git log --pretty="format:%>(40)%s" >actual &&
 	# complete the incomplete line at the end
