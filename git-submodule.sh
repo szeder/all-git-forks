@@ -14,10 +14,13 @@ USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <re
    or: $dashless [--quiet] foreach [--recursive] <command>
    or: $dashless [--quiet] sync [--recursive] [--] [<path>...]"
 OPTIONS_SPEC=
+SUBDIRECTORY_OK=Yes
 . git-sh-setup
 . git-sh-i18n
 . git-parse-remote
 require_work_tree
+wt_prefix=$(git rev-parse --show-prefix)
+cd_to_toplevel
 
 command=
 branch=
@@ -112,6 +115,7 @@ resolve_relative_url ()
 #
 module_list()
 {
+	eval "set $(git rev-parse --sq --prefix "$wt_prefix" -- "$@")"
 	(
 		git ls-files --error-unmatch --stage -- "$@" ||
 		echo "unmatched pathspec exists"
@@ -334,6 +338,8 @@ cmd_add()
 	if test -z "$repo" -o -z "$sm_path"; then
 		usage
 	fi
+
+	sm_path="$wt_prefix$sm_path"
 
 	# assure repo is absolute or relative to parent
 	case "$repo" in
@@ -942,6 +948,7 @@ cmd_summary() {
 	fi
 
 	cd_to_toplevel
+	eval "set $(git rev-parse --sq --prefix "$wt_prefix" -- "$@")"
 	# Get modified modules cared by user
 	modules=$(git $diff_cmd $cached --ignore-submodules=dirty --raw $head -- "$@" |
 		sane_egrep '^:([0-7]* )?160000' |
