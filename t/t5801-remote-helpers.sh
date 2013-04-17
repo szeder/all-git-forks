@@ -166,4 +166,50 @@ test_expect_success 'push ref with existing object' '
 	compare_refs local dup server dup
 '
 
+test_expect_success 'proper failure checks for fetching' '
+	(GIT_REMOTE_TESTGIT_FAILURE=1 &&
+	export GIT_REMOTE_TESTGIT_FAILURE &&
+	cd local &&
+	test_must_fail git fetch 2> error &&
+	cat error &&
+	grep -q "Error while running fast-import" error
+	)
+'
+
+test_expect_success 'proper failure checks for pushing' '
+	(GIT_REMOTE_TESTGIT_FAILURE=1 &&
+	export GIT_REMOTE_TESTGIT_FAILURE &&
+	cd local &&
+	test_must_fail git push --all 2> error &&
+	cat error &&
+	grep -q "Reading from helper .git-remote-testgit. failed" error
+	)
+'
+
+test_expect_success 'push messages' '
+	(cd local &&
+	git checkout -b new_branch master &&
+	echo new >>file &&
+	git commit -a -m new &&
+	git push origin new_branch &&
+	git fetch origin &&
+	echo new >>file &&
+	git commit -a -m new &&
+	git push origin new_branch 2> msg &&
+	! grep "\[new branch\]" msg
+	)
+'
+
+test_expect_success 'push update refs' '
+	(cd local &&
+	git checkout -b update master &&
+	echo update >>file &&
+	git commit -a -m update &&
+	git push origin update
+	git rev-parse --verify testgit/origin/heads/update >expect &&
+	git rev-parse --verify remotes/origin/update >actual
+	test_cmp expect actual
+	)
+'
+
 test_done
