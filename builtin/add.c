@@ -28,6 +28,9 @@ struct update_callback_data {
 	int add_errors;
 	const char *implicit_dot;
 	size_t implicit_dot_len;
+
+	/* only needed for 2.0 transition preparation */
+	int warn_add_would_remove;
 };
 
 static const char *option_with_implicit_dot;
@@ -93,6 +96,17 @@ static int fix_unmerged_status(struct diff_filepair *p,
 		return DIFF_STATUS_MODIFIED;
 }
 
+static void warn_add_would_remove(const char *path)
+{
+	warning(_("In Git 2.0, 'git add <pathspec>...' will also update the\n"
+		  "index for paths removed from the working tree that match\n"
+		  "the given pathspec. If you want to 'add' only changed\n"
+		  "or newly created paths, say 'git add --no-all <pathspec>...'"
+		  " instead.\n\n"
+		  "'%s' would be removed from the index without --no-all."),
+		path);
+}
+
 static void update_callback(struct diff_queue_struct *q,
 			    struct diff_options *opt, void *cbdata)
 {
@@ -130,6 +144,10 @@ static void update_callback(struct diff_queue_struct *q,
 			}
 			break;
 		case DIFF_STATUS_DELETED:
+			if (data->warn_add_would_remove) {
+				warn_add_would_remove(path);
+				data->warn_add_would_remove = 0;
+			}
 			if (data->flags & ADD_CACHE_IGNORE_REMOVAL)
 				break;
 			if (!(data->flags & ADD_CACHE_PRETEND))
@@ -141,32 +159,28 @@ static void update_callback(struct diff_queue_struct *q,
 	}
 }
 
-int add_files_to_cache(const char *prefix, const char **pathspec, int flags)
+static void update_files_in_cache(const char *prefix, const char **pathspec,
+				  struct update_callback_data *data)
 {
-	struct update_callback_data data;
 	struct rev_info rev;
-
-	memset(&data, 0, sizeof(data));
-	data.flags = flags & ~ADD_CACHE_IMPLICIT_DOT;
-	if ((flags & ADD_CACHE_IMPLICIT_DOT) && prefix) {
-		/*
-		 * Check for modified files throughout the worktree so
-		 * update_callback has a chance to warn about changes
-		 * outside the cwd.
-		 */
-		data.implicit_dot = prefix;
-		data.implicit_dot_len = strlen(prefix);
-		pathspec = NULL;
-	}
 
 	init_revisions(&rev, prefix);
 	setup_revisions(0, NULL, &rev, NULL);
 	init_pathspec(&rev.prune_data, pathspec);
 	rev.diffopt.output_format = DIFF_FORMAT_CALLBACK;
 	rev.diffopt.format_callback = update_callback;
-	rev.diffopt.format_callback_data = &data;
+	rev.diffopt.format_callback_data = data;
 	rev.max_count = 0; /* do not compare unmerged paths with stage #2 */
 	run_diff_files(&rev, DIFF_RACY_IS_MODIFIED);
+}
+
+int add_files_to_cache(const char *prefix, const char **pathspec, int flags)
+{
+	struct update_callback_data data;
+
+	memset(&data, 0, sizeof(data));
+	data.flags = flags;
+	update_files_in_cache(prefix, pathspec, &data);
 	return !!data.add_errors;
 }
 
@@ -409,18 +423,6 @@ static int add_files(struct dir_struct *dir, int flags)
 	return exit_status;
 }
 
-static int directory_given(int argc, const char **argv)
-{
-	struct stat st;
-
-	while (argc--) {
-		if (!lstat(*argv, &st) && S_ISDIR(st.st_mode))
-			return 1;
-		argv++;
-	}
-	return 0;
-}
-
 int cmd_add(int argc, const char **argv, const char *prefix)
 {
 	int exit_status = 0;
@@ -432,6 +434,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	int require_pathspec;
 	char *seen = NULL;
 	int implicit_dot = 0;
+	struct update_callback_data update_data;
 
 	git_config(add_config, NULL);
 
@@ -457,15 +460,11 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 
 	/*
 	 * Warn when "git add pathspec..." was given without "-u" or "-A"
-	 * and pathspec... contains a directory name.
+	 * and pathspec... covers a removed path.
 	 */
-	if (!take_worktree_changes && addremove_explicit < 0 &&
-	    directory_given(argc, argv))
-		warning(_("In Git 2.0, 'git add <pathspec>...' will also update the\n"
-			  "index for paths removed from the working tree that match\n"
-			  "the given pathspec. If you want to 'add' only changed\n"
-			  "or newly created paths, say 'git add --no-all <pathspec>...'"
-			  " instead."));
+	memset(&update_data, 0, sizeof(update_data));
+	if (!take_worktree_changes && addremove_explicit < 0)
+		update_data.warn_add_would_remove = 1;
 
 	if (!take_worktree_changes && addremove_explicit < 0 && argc)
 		/*
@@ -562,8 +561,20 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 
 	plug_bulk_checkin();
 
-	exit_status |= add_files_to_cache(prefix, pathspec, flags);
+	if ((flags & ADD_CACHE_IMPLICIT_DOT) && prefix) {
+		/*
+		 * Check for modified files throughout the worktree so
+		 * update_callback has a chance to warn about changes
+		 * outside the cwd.
+		 */
+		update_data.implicit_dot = prefix;
+		update_data.implicit_dot_len = strlen(prefix);
+		pathspec = NULL;
+	}
+	update_data.flags = flags & ~ADD_CACHE_IMPLICIT_DOT;
+	update_files_in_cache(prefix, pathspec, &update_data);
 
+	exit_status |= !!update_data.add_errors;
 	if (add_new_files)
 		exit_status |= add_files(&dir, flags);
 
