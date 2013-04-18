@@ -186,6 +186,18 @@ test_expect_success 'push messages' '
 	! grep "\[new branch\]" msg
 '
 
+test_expect_success 'push update refs' '
+	(cd local &&
+	git checkout -b update master &&
+	echo update >>file &&
+	git commit -a -m update &&
+	git push origin update
+	git rev-parse --verify remotes/origin/update >expect &&
+	git rev-parse --verify testgit/origin/heads/update >actual &&
+	test_cmp expect actual
+	)
+'
+
 test_expect_success 'proper failure checks for fetching' '
 	(GIT_REMOTE_TESTGIT_FAILURE=1 &&
 	export GIT_REMOTE_TESTGIT_FAILURE &&
