@@ -35,7 +35,7 @@
 
 static const char trace_key[] = "GIT_TRACE_CVS_HELPER";
 static const char trace_proto[] = "RHELPER";
-static const char dump_patchset[] = "GIT_DUMP_PATCHSETS";
+static const char dump_cvs_commit[] = "GIT_DUMP_PATCHSETS";
 /*
  * FIXME:
  */
@@ -293,7 +293,7 @@ static int print_revision(void *ptr, void *data)
 	return 0;
 }
 
-static void print_ps(struct cvs_transport *cvs, struct patchset *ps)
+static void print_ps(struct cvs_transport *cvs, struct cvs_commit *ps)
 {
 
 	fprintf(stderr,
@@ -468,7 +468,7 @@ static const char *author_convert(const char *userid)
 }
 
 static int markid = 0;
-static int commit_patchset(struct patchset *ps, const char *branch_name, struct strbuf *parent_mark)
+static int commit_cvs_commit(struct cvs_commit *ps, const char *branch_name, struct strbuf *parent_mark)
 {
 	/*
 	 * TODO: clean extra lines in commit messages
@@ -581,7 +581,7 @@ static int print_revision_changes(void *ptr, void *data)
 	return 0;
 }
 
-static int commit_meta(struct hash_table *meta, struct patchset *ps, const char *branch_name, struct strbuf *commit_mark, struct strbuf *parent_mark)
+static int commit_meta(struct hash_table *meta, struct cvs_commit *ps, const char *branch_name, struct strbuf *commit_mark, struct strbuf *parent_mark)
 {
 	markid++;
 	helper_printf("commit %s%s\n", get_meta_ref_prefix(), branch_name);
@@ -984,22 +984,22 @@ static int import_branch_by_name(const char *branch_name)
 		if (!get_sha1(meta_branch_ref.buf, sha1))
 			strbuf_addstr(&meta_mark_sb, sha1_to_hex(sha1));
 	}
-	aggregate_patchsets(cvs_branch);
+	aggregate_cvs_commits(cvs_branch);
 
 	init_hash(&meta_revision_hash);
 	merge_revision_hash(&meta_revision_hash, cvs_branch->last_commit_revision_hash);
 
 	cvsauthors_load();
 
-	pstotal = get_patchset_count(cvs_branch);
-	struct patchset *ps = cvs_branch->patchset_list->head;
+	pstotal = get_cvs_commit_count(cvs_branch);
+	struct cvs_commit *ps = cvs_branch->cvs_commit_list->head;
 	while (ps) {
 		psnum++;
 		fprintf(stderr, "-->>------------------\n");
 		fprintf(stderr, "Branch: %s Commit: %d/%d\n", branch_name, psnum, pstotal);
 		print_ps(cvs, ps);
 		fprintf(stderr, "--<<------------------\n\n");
-		mark = commit_patchset(ps, branch_name, &commit_mark_sb);
+		mark = commit_cvs_commit(ps, branch_name, &commit_mark_sb);
 		strbuf_reset(&commit_mark_sb);
 		strbuf_addf(&commit_mark_sb, ":%d", mark);
 
@@ -1717,8 +1717,8 @@ static int cmd_list(const char *line)
 
 		for_each_cvs_branch(cvs_branch, cvs_branch_map) {
 			finalize_revision_list(cvs_branch->meta);
-			//aggregate_patchsets(cvs_branch->meta);
-			//if (cvs_branch->meta->patchset_list->head)
+			//aggregate_cvs_commits(cvs_branch->meta);
+			//if (cvs_branch->meta->cvs_commit_list->head)
 			if (cvs_branch->meta->rev_list->size)
 				helper_printf("? refs/heads/%s\n", cvs_branch->branch_name);
 			/*
@@ -1759,8 +1759,8 @@ static int cmd_list(const char *line)
 		 */
 		for_each_cvs_branch(cvs_branch, cvs_branch_map) {
 			finalize_revision_list(cvs_branch->meta);
-			//aggregate_patchsets(cvs_branch->meta);
-			//if (cvs_branch->meta->patchset_list->head)
+			//aggregate_cvs_commits(cvs_branch->meta);
+			//if (cvs_branch->meta->cvs_commit_list->head)
 			if (cvs_branch->meta->rev_list->size)
 				helper_printf("? refs/heads/%s\n", cvs_branch->branch_name);
 			else

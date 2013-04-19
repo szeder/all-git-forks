@@ -13,7 +13,7 @@ const char *get_private_ref_prefix();
 
 /*
  * struct represents a revision of a single file in CVS.
- * patchset field is always initialized and used
+ * cvs_commit field is always initialized and used
  * as author and msg placeholder, it may be changed
  * later during patch aggregation
  */
@@ -35,7 +35,7 @@ struct file_revision {
 	unsigned int ispushed:1;
 	unsigned int mark:24;
 	struct file_revision *prev;
-	struct patchset *patchset;
+	struct cvs_commit *cvs_commit;
 	time_t timestamp;
 };
 
@@ -44,20 +44,20 @@ struct file_revision_list {
 	struct file_revision **item;
 };
 
-struct patchset {
+struct cvs_commit {
 	time_t timestamp;
 	time_t timestamp_last;
 	char *author;
 	char *msg;
-	struct patchset *next; // patchset list <--- will be sorted by timestamp
+	struct cvs_commit *next; // cvs_commit list <--- will be sorted by timestamp
 	struct hash_table *revision_hash; // path -> file_revision hash
-	time_t cancellation_point; // non zero if patchset is save cancellation point
+	time_t cancellation_point; // non zero if cvs_commit is save cancellation point
 	unsigned int seq;
 };
 
-struct patchset_list {
-	struct patchset *head;
-	struct patchset *tail;
+struct cvs_commit_list {
+	struct cvs_commit *head;
+	struct cvs_commit *tail;
 };
 
 /*
@@ -67,10 +67,10 @@ struct patchset_list {
  */
 struct cvs_branch {
 	//TODO: branch name
-	struct hash_table *patchset_hash; // author_msg2ps -> patchset hash
+	struct hash_table *cvs_commit_hash; // author_msg2ps -> cvs_commit hash
 	struct hash_table *revision_hash; // path -> file_revision hash
 	struct file_revision_list *rev_list;
-	struct patchset_list *patchset_list;
+	struct cvs_commit_list *cvs_commit_list;
 
 	struct hash_table *last_commit_revision_hash; // path -> file_revision hash
 	time_t last_revision_timestamp;
@@ -107,9 +107,9 @@ void add_file_revision_hash(struct hash_table *meta_hash,
 		       int mark);
 
 void finalize_revision_list(struct cvs_branch *meta);
-void aggregate_patchsets(struct cvs_branch *meta);
+void aggregate_cvs_commits(struct cvs_branch *meta);
 time_t find_first_commit_time(struct cvs_branch *meta);
-int get_patchset_count(struct cvs_branch *meta);
+int get_cvs_commit_count(struct cvs_branch *meta);
 void free_cvs_branch(struct cvs_branch *meta);
 
 /*

@@ -217,7 +217,7 @@ static void merge_sort(struct file_revision_list *first,
 		else if ((*first_it)->timestamp < (*second_it)->timestamp) {
 			last = revision_list_add(*second_it++, result);
 		}
-		else if (last && (*second_it)->patchset == last->patchset) {
+		else if (last && (*second_it)->cvs_commit == last->cvs_commit) {
 			last = revision_list_add(*second_it++, result);
 		}
 		else {
@@ -322,13 +322,13 @@ int add_file_revision(struct cvs_branch *meta,
 	 * make and init file_revision structure
 	 * copy path and revision, timestamp, isdead
 	 * get author + msg hash
-	 * check patchset_hash hash and save patchset
-	 *	or create patchset with author_msg
+	 * check cvs_commit_hash hash and save cvs_commit
+	 *	or create cvs_commit with author_msg
 	 *
 	 * add to list
 	 */
 	struct file_revision *rev;
-	struct patchset *patchset;
+	struct cvs_commit *cvs_commit;
 	struct file_revision *prev_meta;
 	unsigned int hash;
 
@@ -357,21 +357,21 @@ int add_file_revision(struct cvs_branch *meta,
 	rev->isdead = isdead;
 
 	hash = hash_author_msg(author, msg);
-	patchset = lookup_hash(hash, meta->patchset_hash);
-	if (patchset == NULL) {
+	cvs_commit = lookup_hash(hash, meta->cvs_commit_hash);
+	if (cvs_commit == NULL) {
 		ps++;
-		patchset = xcalloc(1, sizeof(struct patchset));
-		patchset->author = xstrdup(author);
-		patchset->msg = xstrdup(msg);
-		insert_hash(hash, patchset, meta->patchset_hash);
+		cvs_commit = xcalloc(1, sizeof(struct cvs_commit));
+		cvs_commit->author = xstrdup(author);
+		cvs_commit->msg = xstrdup(msg);
+		insert_hash(hash, cvs_commit, meta->cvs_commit_hash);
 	}
 	else {
-		if (strcmp(author, patchset->author) !=0 ||
-		    strcmp_whitesp_ignore(msg, patchset->msg) != 0) {
-			die("patchset author/message hash collision");
+		if (strcmp(author, cvs_commit->author) !=0 ||
+		    strcmp_whitesp_ignore(msg, cvs_commit->msg) != 0) {
+			die("cvs_commit author/message hash collision");
 		}
 	}
-	rev->patchset = patchset;
+	rev->cvs_commit = cvs_commit;
 
 	add_sort_file_revision(meta, rev);
 	return 0;
@@ -396,10 +396,10 @@ time_t find_first_commit_time(struct cvs_branch *meta)
 	return min;
 }
 
-int get_patchset_count(struct cvs_branch *meta)
+int get_cvs_commit_count(struct cvs_branch *meta)
 {
 	int psnum = 0;
-	struct patchset *ps = meta->patchset_list->head;
+	struct cvs_commit *ps = meta->cvs_commit_list->head;
 
 	while (ps) {
 		psnum++;
@@ -409,35 +409,35 @@ int get_patchset_count(struct cvs_branch *meta)
 	return psnum;
 }
 
-static void patchset_list_add(struct patchset *patchset, struct patchset_list *list)
+static void cvs_commit_list_add(struct cvs_commit *cvs_commit, struct cvs_commit_list *list)
 {
 	if (list->head)
-		list->tail->next = patchset;
+		list->tail->next = cvs_commit;
 	else
-		list->head = patchset;
-	list->tail = patchset;
+		list->head = cvs_commit;
+	list->tail = cvs_commit;
 }
 
-static void patchset_add_file_revision(struct file_revision *rev, struct patchset *patchset)
+static void cvs_commit_add_file_revision(struct file_revision *rev, struct cvs_commit *cvs_commit)
 {
 	void **pos;
 	unsigned int hash;
 
-	patchset->timestamp_last = rev->timestamp;
+	cvs_commit->timestamp_last = rev->timestamp;
 
-	if (!patchset->timestamp) {
-		// fresh patchset
+	if (!cvs_commit->timestamp) {
+		// fresh cvs_commit
 
-		patchset->timestamp = rev->timestamp;
-		patchset->revision_hash = xcalloc(1, sizeof(struct hash_table));
+		cvs_commit->timestamp = rev->timestamp;
+		cvs_commit->revision_hash = xcalloc(1, sizeof(struct hash_table));
 	}
 
 	hash = hash_path(rev->path);
-	pos = insert_hash(hash, rev, patchset->revision_hash);
+	pos = insert_hash(hash, rev, cvs_commit->revision_hash);
 	if (pos) {
 		struct file_revision *old = *pos;
 		if (strcmp(old->path, rev->path))
-			die("patchset member path hash collision");
+			die("cvs_commit member path hash collision");
 		//TODO: show merged revisions
 		*pos = rev;
 		rev->ismerged = 1;
@@ -469,7 +469,7 @@ static int print_revision(void *ptr, void *data)
 	return 0;
 }
 
-static void print_ps(struct patchset *ps)
+static void print_ps(struct cvs_commit *ps)
 {
 
 	fprintf(stderr,
@@ -490,33 +490,33 @@ static void print_ps(struct patchset *ps)
 	for_each_hash(ps->revision_hash, print_revision, NULL);
 }
 
-static int validate_patchset_order(void *ptr, void *data)
+static int validate_cvs_commit_order(void *ptr, void *data)
 {
 	struct file_revision *rev = ptr;
 
 	while (rev->prev && !rev->prev->ismeta) {
-		if (rev->patchset->timestamp < rev->prev->patchset->timestamp) {
-			die("patchset order is wrong");
+		if (rev->cvs_commit->timestamp < rev->prev->cvs_commit->timestamp) {
+			die("cvs_commit order is wrong");
 		}
-		else if (rev->patchset->timestamp == rev->prev->patchset->timestamp &&
-			 rev->patchset != rev->prev->patchset) {
-			struct patchset *patchset;
+		else if (rev->cvs_commit->timestamp == rev->prev->cvs_commit->timestamp &&
+			 rev->cvs_commit != rev->prev->cvs_commit) {
+			struct cvs_commit *cvs_commit;
 			int valid = 0;
 
-			patchset = rev->prev->patchset;
-			while (patchset && patchset->next) {
-				if (patchset->next == rev->patchset) {
+			cvs_commit = rev->prev->cvs_commit;
+			while (cvs_commit && cvs_commit->next) {
+				if (cvs_commit->next == rev->cvs_commit) {
 					valid = 1;
 					break;
 				}
-				patchset = patchset->next;
+				cvs_commit = cvs_commit->next;
 			}
 			if (!valid) {
 				fprintf(stderr, "ps1\n");
-				print_ps(rev->patchset);
+				print_ps(rev->cvs_commit);
 				fprintf(stderr, "ps2\n");
-				print_ps(rev->prev->patchset);
-				error("same date patchsets order is wrong file %s", rev->path);
+				print_ps(rev->prev->cvs_commit);
+				error("same date cvs_commits order is wrong file %s", rev->path);
 			}
 		}
 		rev = rev->prev;
@@ -524,9 +524,9 @@ static int validate_patchset_order(void *ptr, void *data)
 	return 0;
 }
 
-int validate_patchsets(struct cvs_branch *meta)
+int validate_cvs_commits(struct cvs_branch *meta)
 {
-	return for_each_hash(meta->revision_hash, validate_patchset_order, NULL);
+	return for_each_hash(meta->revision_hash, validate_cvs_commit_order, NULL);
 }
 
 void find_safe_cancellation_points(struct cvs_branch *meta)
@@ -537,29 +537,29 @@ void find_safe_cancellation_points(struct cvs_branch *meta)
 	 * a commit is safe cancellation point if
 	 * it has no intersection with other commits
 	 */
-	struct patchset *patchset = meta->patchset_list->head;
+	struct cvs_commit *cvs_commit = meta->cvs_commit_list->head;
 
-	while (patchset) {
-		if (max_timestamp < patchset->timestamp_last)
-			max_timestamp = patchset->timestamp_last;
+	while (cvs_commit) {
+		if (max_timestamp < cvs_commit->timestamp_last)
+			max_timestamp = cvs_commit->timestamp_last;
 
-		if (!patchset->next ||
-		    max_timestamp < patchset->next->timestamp) {
-			patchset->cancellation_point = max_timestamp;
+		if (!cvs_commit->next ||
+		    max_timestamp < cvs_commit->next->timestamp) {
+			cvs_commit->cancellation_point = max_timestamp;
 			meta->last_revision_timestamp = max_timestamp;
 		}
 
-		patchset = patchset->next;
+		cvs_commit = cvs_commit->next;
 
-		/*if (!patchset->next) {
-			patchset->cancellation_point
-				= max_timestamp > patchset->timestamp_last
-				? max_timestamp : patchset->timestamp_last;
+		/*if (!cvs_commit->next) {
+			cvs_commit->cancellation_point
+				= max_timestamp > cvs_commit->timestamp_last
+				? max_timestamp : cvs_commit->timestamp_last;
 			break;
 		}
 
-		if (max_timestamp < patchset->timestamp &&
-		    patchset->timestamp_last < patchset->next->timestamp)*/
+		if (max_timestamp < cvs_commit->timestamp &&
+		    cvs_commit->timestamp_last < cvs_commit->next->timestamp)*/
 	}
 }
 
@@ -567,32 +567,32 @@ void arrange_commit_time(struct cvs_branch *meta)
 {
 	time_t max_timestamp = 0;
 
-	struct patchset *patchset = meta->patchset_list->head;
+	struct cvs_commit *cvs_commit = meta->cvs_commit_list->head;
 
-	while (patchset) {
-		if (max_timestamp < patchset->timestamp_last)
-			max_timestamp = patchset->timestamp_last;
+	while (cvs_commit) {
+		if (max_timestamp < cvs_commit->timestamp_last)
+			max_timestamp = cvs_commit->timestamp_last;
 		else
-			patchset->timestamp_last = max_timestamp;
+			cvs_commit->timestamp_last = max_timestamp;
 
-		patchset = patchset->next;
+		cvs_commit = cvs_commit->next;
 	}
 }
 
-static struct patchset *split_patchset(struct patchset *patchset, struct hash_table *patchset_hash)
+static struct cvs_commit *split_cvs_commit(struct cvs_commit *cvs_commit, struct hash_table *cvs_commit_hash)
 {
 	unsigned int hash;
-	struct patchset *new;
+	struct cvs_commit *new;
 	void **pos;
 
-	hash = hash_author_msg(patchset->author, patchset->msg);
+	hash = hash_author_msg(cvs_commit->author, cvs_commit->msg);
 
 	ps++;
-	new = xcalloc(1, sizeof(struct patchset));
-	new->author = xstrdup(patchset->author);
-	new->msg = xstrdup(patchset->msg);
+	new = xcalloc(1, sizeof(struct cvs_commit));
+	new->author = xstrdup(cvs_commit->author);
+	new->msg = xstrdup(cvs_commit->msg);
 
-	pos = insert_hash(hash, new, patchset_hash);
+	pos = insert_hash(hash, new, cvs_commit_hash);
 	if (pos)
 		*pos = new;
 	return new;
@@ -768,7 +768,7 @@ void reverse_rev_list(struct file_revision_list *rev_list)
 
 	for (i = 0; i < rev_list->nr; i++) {
 		tmp = rev_list->item[i];
-		fprintf(stderr, "%p %s %s\n", tmp->patchset, tmp->path, tmp->revision);
+		fprintf(stderr, "%p %s %s\n", tmp->cvs_commit, tmp->path, tmp->revision);
 	}
 }
 
@@ -777,24 +777,24 @@ void finalize_revision_list(struct cvs_branch *meta)
 	meta->rev_list = finish_rev_sort(meta);
 }
 
-void aggregate_patchsets(struct cvs_branch *meta)
+void aggregate_cvs_commits(struct cvs_branch *meta)
 {
 	// sort revisions list
 	// for each revision:
 	//	get revision_hash or check metadata
 	//	fill in prev
-	//	get patchset_hash hash
-	//		check if empty -> add to patchset list
-	//		or start new if prev is in newer patchset -> add to patchset list
-	//		adjust patchset timestamps and add revision to hash
-	//	adjust patchset
+	//	get cvs_commit_hash hash
+	//		check if empty -> add to cvs_commit list
+	//		or start new if prev is in newer cvs_commit -> add to cvs_commit list
+	//		adjust cvs_commit timestamps and add revision to hash
+	//	adjust cvs_commit
 	//
 	// validate:
 	//	iterate revision_hash and iterate list, check revisions sequence
-	//	and patchset sequence
+	//	and cvs_commit sequence
 	//
 	// find safe cancelation points
-	//	iterate patchsets, maintain maxtime, is ps timestamp > maxtime -
+	//	iterate cvs_commits, maintain maxtime, is ps timestamp > maxtime -
 	//	safe cancelation point
 
 	unsigned int ps_seq = 0;
@@ -803,7 +803,7 @@ void aggregate_patchsets(struct cvs_branch *meta)
 	/*
 	 * Revisions goes latest first in rlog. Sorting by date is broken when
 	 * bunch of commits is pushed at the same time (timestamp is the same).
-	 * Keeping commits in histitorical order helps to avoid extra patchset
+	 * Keeping commits in histitorical order helps to avoid extra cvs_commit
 	 * splits.
 	 * TODO: topological sort same second
 	 */
@@ -813,16 +813,16 @@ void aggregate_patchsets(struct cvs_branch *meta)
 	fprintf(stderr, "SORT DONE\n");
 	for (i = 0; i < meta->rev_list->nr; i++) {
 		struct file_revision *rev;
-		struct patchset *patchset;
+		struct cvs_commit *cvs_commit;
 		unsigned int hash;
 		void **pos;
 		int split = 0;
 
 		rev = meta->rev_list->item[i];
 
-		// get last patchset for this author + msg
-		hash = hash_author_msg(rev->patchset->author, rev->patchset->msg);
-		patchset = lookup_hash(hash, meta->patchset_hash);
+		// get last cvs_commit for this author + msg
+		hash = hash_author_msg(rev->cvs_commit->author, rev->cvs_commit->msg);
+		cvs_commit = lookup_hash(hash, meta->cvs_commit_hash);
 
 		hash = hash_path(rev->path);
 		pos = insert_hash(hash, rev, meta->revision_hash);
@@ -838,11 +838,11 @@ void aggregate_patchsets(struct cvs_branch *meta)
 				die("revision sequence is wrong: file: %s %s %s -> %s", rev->path, prev->path, prev->revision, rev->revision);
 			}
 
-			if (patchset->timestamp &&
-			    //patchset->timestamp <= prev->patchset->timestamp) {
-			    (patchset->timestamp < prev->patchset->timestamp ||
-				    (patchset->timestamp == prev->patchset->timestamp &&
-				     patchset->seq < prev->patchset->seq))) {
+			if (cvs_commit->timestamp &&
+			    //cvs_commit->timestamp <= prev->cvs_commit->timestamp) {
+			    (cvs_commit->timestamp < prev->cvs_commit->timestamp ||
+				    (cvs_commit->timestamp == prev->cvs_commit->timestamp &&
+				     cvs_commit->seq < prev->cvs_commit->seq))) {
 				split = 1;
 			}
 			*pos = rev;
@@ -874,27 +874,27 @@ void aggregate_patchsets(struct cvs_branch *meta)
 		}
 
 		if (split ||
-		    (patchset->timestamp && patchset->timestamp + meta->fuzz_time < rev->timestamp)) {
-			patchset = split_patchset(patchset, meta->patchset_hash);
+		    (cvs_commit->timestamp && cvs_commit->timestamp + meta->fuzz_time < rev->timestamp)) {
+			cvs_commit = split_cvs_commit(cvs_commit, meta->cvs_commit_hash);
 		}
-		rev->patchset = patchset;
-		if (!patchset->timestamp) {
-			patchset_list_add(patchset, meta->patchset_list);
-			patchset->seq = ++ps_seq;
+		rev->cvs_commit = cvs_commit;
+		if (!cvs_commit->timestamp) {
+			cvs_commit_list_add(cvs_commit, meta->cvs_commit_list);
+			cvs_commit->seq = ++ps_seq;
 		}
-		patchset_add_file_revision(rev, patchset);
+		cvs_commit_add_file_revision(rev, cvs_commit);
 	}
 
 	fprintf(stderr, "GONNA VALIDATE\n");
-	struct patchset *patchset = meta->patchset_list->head;
+	struct cvs_commit *cvs_commit = meta->cvs_commit_list->head;
 	i = 0;
-	while (patchset) {
-		fprintf(stderr, "-> patchset %d\n", ++i);
-		print_ps(patchset);
-		patchset = patchset->next;
+	while (cvs_commit) {
+		fprintf(stderr, "-> cvs_commit %d\n", ++i);
+		print_ps(cvs_commit);
+		cvs_commit = cvs_commit->next;
 	}
 
-	validate_patchsets(meta);
+	validate_cvs_commits(meta);
 	find_safe_cancellation_points(meta);
 	//arrange_commit_time(meta);
 	fprintf(stderr, "SLEEP ps=%ld\n", ps);
@@ -929,9 +929,9 @@ struct cvs_branch *new_cvs_branch(const char *branch_name)
 	new = xcalloc(1, sizeof(struct cvs_branch));
 
 	//new->rev_list = xcalloc(1, sizeof(struct file_revision_list));
-	new->patchset_hash = xcalloc(1, sizeof(struct hash_table));
+	new->cvs_commit_hash = xcalloc(1, sizeof(struct hash_table));
 	new->revision_hash = xcalloc(1, sizeof(struct hash_table));
-	new->patchset_list = xcalloc(1, sizeof(struct patchset_list));
+	new->cvs_commit_list = xcalloc(1, sizeof(struct cvs_commit_list));
 
 	new->fuzz_time = 2*60*60; // 2 hours
 
@@ -974,11 +974,11 @@ void free_cvs_branch(struct cvs_branch *meta)
 		free(rev);
 	}
 
-	struct patchset *patchset = meta->patchset_list->head;
-	if (patchset) {
-		while (patchset) {
-			struct patchset *delme = patchset;
-			patchset = patchset->next;
+	struct cvs_commit *cvs_commit = meta->cvs_commit_list->head;
+	if (cvs_commit) {
+		while (cvs_commit) {
+			struct cvs_commit *delme = cvs_commit;
+			cvs_commit = cvs_commit->next;
 
 			free(delme->author);
 			free(delme->msg);
@@ -994,13 +994,13 @@ void free_cvs_branch(struct cvs_branch *meta)
 		free(meta->rev_list->item);
 	free(meta->rev_list);
 
-	free_hash(meta->patchset_hash);
-	free(meta->patchset_hash);
+	free_hash(meta->cvs_commit_hash);
+	free(meta->cvs_commit_hash);
 
 	free_hash(meta->revision_hash);
 	free(meta->revision_hash);
 
-	free(meta->patchset_list);
+	free(meta->cvs_commit_list);
 
 	for_each_hash(meta->last_commit_revision_hash, free_hash_entry, NULL);
 	free_hash(meta->last_commit_revision_hash);
