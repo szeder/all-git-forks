@@ -147,7 +147,7 @@ static unsigned int strcmp_whitesp_ignore(const char *str1, const char *str2)
 	return rc;
 }
 
-static void free_file_revision_list(struct file_revision_list *list)
+static void free_cvs_revision_list(struct cvs_revision_list *list)
 {
 	if (!list)
 		return;
@@ -157,7 +157,7 @@ static void free_file_revision_list(struct file_revision_list *list)
 	free(list);
 }
 
-static struct file_revision *revision_list_add(struct file_revision *rev, struct file_revision_list *list)
+static struct cvs_revision *revision_list_add(struct cvs_revision *rev, struct cvs_revision_list *list)
 {
 	/*
 	 * TODO: replace with ALLOC_GROW
@@ -175,11 +175,11 @@ static struct file_revision *revision_list_add(struct file_revision *rev, struct
 }
 
 struct rev_sort_util {
-	struct file_revision_list *lst1;
-	struct file_revision_list *lst2;
-	struct file_revision_list *cur_file;
+	struct cvs_revision_list *lst1;
+	struct cvs_revision_list *lst2;
+	struct cvs_revision_list *cur_file;
 
-	struct file_revision_list *sorted;
+	struct cvs_revision_list *sorted;
 	char *cur_file_path;
 	unsigned int sorted_files;
 };
@@ -188,25 +188,25 @@ static struct rev_sort_util *init_rev_sort_util()
 {
 	struct rev_sort_util *su = xcalloc(1, sizeof(struct rev_sort_util));
 
-	su->lst1 = xcalloc(1, sizeof(struct file_revision_list));
-	su->lst2 = xcalloc(1, sizeof(struct file_revision_list));
-	su->cur_file = xcalloc(1, sizeof(struct file_revision_list));
+	su->lst1 = xcalloc(1, sizeof(struct cvs_revision_list));
+	su->lst2 = xcalloc(1, sizeof(struct cvs_revision_list));
+	su->cur_file = xcalloc(1, sizeof(struct cvs_revision_list));
 
 	return su;
 }
 
-static struct file_revision **rev_list_tail(struct file_revision_list *lst)
+static struct cvs_revision **rev_list_tail(struct cvs_revision_list *lst)
 {
 	return &lst->item[lst->nr];
 }
 
-static void merge_sort(struct file_revision_list *first,
-		struct file_revision_list *second,
-		struct file_revision_list *result)
+static void merge_sort(struct cvs_revision_list *first,
+		struct cvs_revision_list *second,
+		struct cvs_revision_list *result)
 {
-	struct file_revision **first_it = &first->item[0];
-	struct file_revision **second_it = &second->item[0];
-	struct file_revision *last = NULL;
+	struct cvs_revision **first_it = &first->item[0];
+	struct cvs_revision **second_it = &second->item[0];
+	struct cvs_revision *last = NULL;
 
 	while (first_it < rev_list_tail(first) &&
 	       second_it < rev_list_tail(second)) {
@@ -235,7 +235,7 @@ static void merge_sort(struct file_revision_list *first,
 	second->nr = 0;
 }
 
-static void add_sort_file_revision(struct cvs_branch *meta, struct file_revision *rev)
+static void add_sort_cvs_revision(struct cvs_branch *meta, struct cvs_revision *rev)
 {
 	struct rev_sort_util *su;
 
@@ -257,7 +257,7 @@ static void add_sort_file_revision(struct cvs_branch *meta, struct file_revision
 			su->lst1 = su->sorted;
 		}
 		else {
-			struct file_revision_list *result = su->lst1;
+			struct cvs_revision_list *result = su->lst1;
 			if (result == su->sorted)
 				result = su->lst2;
 
@@ -277,20 +277,20 @@ static void add_sort_file_revision(struct cvs_branch *meta, struct file_revision
 	revision_list_add(rev, su->cur_file);
 }
 
-static struct file_revision_list *finish_rev_sort(struct cvs_branch *meta)
+static struct cvs_revision_list *finish_rev_sort(struct cvs_branch *meta)
 {
 	struct rev_sort_util *su;
-	struct file_revision_list *sorted;
+	struct cvs_revision_list *sorted;
 
 	if (!meta->util)
-		return xcalloc(1, sizeof(struct file_revision_list));
+		return xcalloc(1, sizeof(struct cvs_revision_list));
 
 	su = meta->util;
 	if (!su->sorted) {
 		sorted = su->cur_file;
 	}
 	else {
-		struct file_revision_list *result = su->lst1;
+		struct cvs_revision_list *result = su->lst1;
 		if (result == su->sorted)
 			result = su->lst2;
 
@@ -299,18 +299,18 @@ static struct file_revision_list *finish_rev_sort(struct cvs_branch *meta)
 	}
 
 	if (sorted != su->lst1)
-		free_file_revision_list(su->lst1);
+		free_cvs_revision_list(su->lst1);
 	if (sorted != su->lst2)
-		free_file_revision_list(su->lst2);
+		free_cvs_revision_list(su->lst2);
 	if (sorted != su->cur_file)
-		free_file_revision_list(su->cur_file);
+		free_cvs_revision_list(su->cur_file);
 	free(su);
 	meta->util = NULL;
 	return sorted;
 }
 
 int rev_cmp(const char *rev1, const char *rev2);
-int add_file_revision(struct cvs_branch *meta,
+int add_cvs_revision(struct cvs_branch *meta,
 		       const char *path,
 		       const char *revision,
 		       const char *author,
@@ -319,7 +319,7 @@ int add_file_revision(struct cvs_branch *meta,
 		       int isdead)
 {
 	/*
-	 * make and init file_revision structure
+	 * make and init cvs_revision structure
 	 * copy path and revision, timestamp, isdead
 	 * get author + msg hash
 	 * check cvs_commit_hash hash and save cvs_commit
@@ -327,9 +327,9 @@ int add_file_revision(struct cvs_branch *meta,
 	 *
 	 * add to list
 	 */
-	struct file_revision *rev;
+	struct cvs_revision *rev;
 	struct cvs_commit *cvs_commit;
-	struct file_revision *prev_meta;
+	struct cvs_revision *prev_meta;
 	unsigned int hash;
 
 	/*
@@ -350,7 +350,7 @@ int add_file_revision(struct cvs_branch *meta,
 			return 1;
 	}
 
-	rev = xcalloc(1, sizeof(struct file_revision));
+	rev = xcalloc(1, sizeof(struct cvs_revision));
 	rev->path = xstrdup(path);
 	rev->revision = xstrdup(revision);
 	rev->timestamp = timestamp;
@@ -373,7 +373,7 @@ int add_file_revision(struct cvs_branch *meta,
 	}
 	rev->cvs_commit = cvs_commit;
 
-	add_sort_file_revision(meta, rev);
+	add_sort_cvs_revision(meta, rev);
 	return 0;
 }
 
@@ -418,7 +418,7 @@ static void cvs_commit_list_add(struct cvs_commit *cvs_commit, struct cvs_commit
 	list->tail = cvs_commit;
 }
 
-static void cvs_commit_add_file_revision(struct file_revision *rev, struct cvs_commit *cvs_commit)
+static void cvs_commit_add_cvs_revision(struct cvs_revision *rev, struct cvs_commit *cvs_commit)
 {
 	void **pos;
 	unsigned int hash;
@@ -435,7 +435,7 @@ static void cvs_commit_add_file_revision(struct file_revision *rev, struct cvs_c
 	hash = hash_path(rev->path);
 	pos = insert_hash(hash, rev, cvs_commit->revision_hash);
 	if (pos) {
-		struct file_revision *old = *pos;
+		struct cvs_revision *old = *pos;
 		if (strcmp(old->path, rev->path))
 			die("cvs_commit member path hash collision");
 		//TODO: show merged revisions
@@ -446,10 +446,10 @@ static void cvs_commit_add_file_revision(struct file_revision *rev, struct cvs_c
 
 static int print_revision(void *ptr, void *data)
 {
-	struct file_revision *rev = ptr;
+	struct cvs_revision *rev = ptr;
 
 	if (rev->prev) {
-		struct file_revision *prev = rev->prev;
+		struct cvs_revision *prev = rev->prev;
 		while (prev && prev->ismerged && prev->prev)
 			prev = prev->prev;
 		if (prev->ismerged)
@@ -492,7 +492,7 @@ static void print_ps(struct cvs_commit *ps)
 
 static int validate_cvs_commit_order(void *ptr, void *data)
 {
-	struct file_revision *rev = ptr;
+	struct cvs_revision *rev = ptr;
 
 	while (rev->prev && !rev->prev->ismeta) {
 		if (rev->cvs_commit->timestamp < rev->prev->cvs_commit->timestamp) {
@@ -721,8 +721,8 @@ int rev_cmp(const char *rev1, const char *rev2)
 
 int compare_fix_rev(const void *p1, const void *p2)
 {
-	struct file_revision *rev1 = *(void**)p1;
-	struct file_revision *rev2 = *(void**)p2;
+	struct cvs_revision *rev1 = *(void**)p1;
+	struct cvs_revision *rev2 = *(void**)p2;
 
 	int is_same_file = !strcmp(rev1->path, rev2->path);
 
@@ -755,9 +755,9 @@ int compare_fix_rev(const void *p1, const void *p2)
 	return 0;
 }
 
-void reverse_rev_list(struct file_revision_list *rev_list)
+void reverse_rev_list(struct cvs_revision_list *rev_list)
 {
-	struct file_revision *tmp;
+	struct cvs_revision *tmp;
 	int i;
 
 	for (i = 0; i < rev_list->nr / 2; i++) {
@@ -812,7 +812,7 @@ void aggregate_cvs_commits(struct cvs_branch *meta)
 
 	fprintf(stderr, "SORT DONE\n");
 	for (i = 0; i < meta->rev_list->nr; i++) {
-		struct file_revision *rev;
+		struct cvs_revision *rev;
 		struct cvs_commit *cvs_commit;
 		unsigned int hash;
 		void **pos;
@@ -827,7 +827,7 @@ void aggregate_cvs_commits(struct cvs_branch *meta)
 		hash = hash_path(rev->path);
 		pos = insert_hash(hash, rev, meta->revision_hash);
 		if (pos) {
-			struct file_revision *prev = *pos;
+			struct cvs_revision *prev = *pos;
 
 			if (strcmp(rev->path, prev->path))
 				die("file path hash collision");
@@ -849,10 +849,10 @@ void aggregate_cvs_commits(struct cvs_branch *meta)
 		}
 		else {
 			//TODO: check metadata if previous revision is there
-			struct file_revision *prev_meta;
+			struct cvs_revision *prev_meta;
 			prev_meta = lookup_hash(hash, meta->last_commit_revision_hash);
 			if (prev_meta) {
-				rev->prev = (struct file_revision *)prev_meta;
+				rev->prev = (struct cvs_revision *)prev_meta;
 				if (!is_prev_rev(prev_meta->revision, rev->revision)) {
 					die("meta revision sequence is wrong. path: %s %s->%s",
 						rev->path, prev_meta->revision, rev->revision);
@@ -882,7 +882,7 @@ void aggregate_cvs_commits(struct cvs_branch *meta)
 			cvs_commit_list_add(cvs_commit, meta->cvs_commit_list);
 			cvs_commit->seq = ++ps_seq;
 		}
-		cvs_commit_add_file_revision(rev, cvs_commit);
+		cvs_commit_add_cvs_revision(rev, cvs_commit);
 	}
 
 	fprintf(stderr, "GONNA VALIDATE\n");
@@ -928,7 +928,7 @@ struct cvs_branch *new_cvs_branch(const char *branch_name)
 	struct cvs_branch *new;
 	new = xcalloc(1, sizeof(struct cvs_branch));
 
-	//new->rev_list = xcalloc(1, sizeof(struct file_revision_list));
+	//new->rev_list = xcalloc(1, sizeof(struct cvs_revision_list));
 	new->cvs_commit_hash = xcalloc(1, sizeof(struct hash_table));
 	new->revision_hash = xcalloc(1, sizeof(struct hash_table));
 	new->cvs_commit_list = xcalloc(1, sizeof(struct cvs_commit_list));
@@ -954,7 +954,7 @@ struct cvs_branch *new_cvs_branch(const char *branch_name)
 
 int free_hash_entry(void *ptr, void *data)
 {
-	struct file_revision *rev_meta = ptr;
+	struct cvs_revision *rev_meta = ptr;
 	free(rev_meta->path);
 	free(rev_meta->revision);
 	free(rev_meta);
@@ -966,7 +966,7 @@ void free_cvs_branch(struct cvs_branch *meta)
 	int i;
 
 	for (i = 0; i < meta->rev_list->nr; i++) {
-		struct file_revision *rev;
+		struct cvs_revision *rev;
 		rev = meta->rev_list->item[i];
 
 		free(rev->path);
@@ -1088,7 +1088,7 @@ char *read_ref_note(const char *commit_ref, const char *notes_ref, unsigned long
 	return read_note_of(sha1, notes_ref, size);
 }
 
-void add_file_revision_hash(struct hash_table *meta_hash,
+void add_cvs_revision_hash(struct hash_table *meta_hash,
 		       const char *path,
 		       const char *revision,
 		       int isdead,
@@ -1097,7 +1097,7 @@ void add_file_revision_hash(struct hash_table *meta_hash,
 {
 	void **pos;
 	unsigned int hash;
-	struct file_revision *rev_meta;
+	struct cvs_revision *rev_meta;
 
 	rev_meta = xcalloc(1, sizeof(*rev_meta));
 	rev_meta->path = xstrdup(path);
@@ -1110,19 +1110,19 @@ void add_file_revision_hash(struct hash_table *meta_hash,
 	hash = hash_path(path);
 	pos = insert_hash(hash, rev_meta, meta_hash);
 	if (pos) {
-		die("add_file_revision collision");
+		die("add_cvs_revision collision");
 		*pos = rev_meta;
 	}
 }
 
-void add_file_revision_meta(struct cvs_branch *meta,
+void add_cvs_revision_meta(struct cvs_branch *meta,
 		       const char *path,
 		       const char *revision,
 		       int isdead,
 		       int isexec,
 		       int mark)
 {
-	add_file_revision_hash(meta->last_commit_revision_hash, path, revision, isdead, isexec, mark);
+	add_cvs_revision_hash(meta->last_commit_revision_hash, path, revision, isdead, isexec, mark);
 }
 
 static void meta_line_add_attr(struct strbuf *line, const char *attr, const char *value, int *want_comma)
@@ -1147,7 +1147,7 @@ enum {
 	ATTR_ISPUSHED
 };
 
-void format_meta_line(struct strbuf *line, struct file_revision *rev)
+void format_meta_line(struct strbuf *line, struct cvs_revision *rev)
 {
 	int want_comma = 0;
 	strbuf_reset(line);
@@ -1222,7 +1222,7 @@ int load_cvs_revision_meta(struct cvs_branch *meta,
 		if (second[1] != ':')
 			die("malformed metadata: %s:%s", first, second);
 		second += 2;
-		add_file_revision_meta(meta, second, first, isdead, 0, 0);
+		add_cvs_revision_meta(meta, second, first, isdead, 0, 0);
 	}
 
 	//write_or_die(1, buf, size);
@@ -1272,7 +1272,7 @@ int load_revision_meta(unsigned char *sha1, const char *notes_ref, struct hash_t
 		if (second[1] != ':')
 			die("malformed metadata: %s:%s", first, second);
 		second += 2;
-		add_file_revision_hash(*revision_meta_hash, second, first, isdead, 0, 0);
+		add_cvs_revision_hash(*revision_meta_hash, second, first, isdead, 0, 0);
 	}
 
 	free(buf);
@@ -1342,7 +1342,7 @@ static int save_note_for_ref(const char *commit_ref, const char *notes_ref, cons
 
 static int save_revision_meta_cb(void *ptr, void *data)
 {
-	struct file_revision *rev = ptr;
+	struct cvs_revision *rev = ptr;
 	struct strbuf *sb = data;
 
 	strbuf_addf(sb, "%s:%c:%s\n", rev->revision, rev->isdead ? '-' : '+', rev->path);

@@ -270,10 +270,10 @@ static int cmd_option(const char *line)
 
 static int print_revision(void *ptr, void *data)
 {
-	struct file_revision *rev = ptr;
+	struct cvs_revision *rev = ptr;
 
 	if (rev->prev) {
-		struct file_revision *prev = rev->prev;
+		struct cvs_revision *prev = rev->prev;
 		while (prev && prev->ismerged && prev->prev)
 			prev = prev->prev;
 		if (prev->ismerged)
@@ -353,7 +353,7 @@ static const char *get_import_time_estimation()
 static int commit_revision(void *ptr, void *data)
 {
 	static struct cvsfile file = CVSFILE_INIT;
-	struct file_revision *rev = ptr;
+	struct cvs_revision *rev = ptr;
 	int rc;
 
 	revisions_all_branches_fetched++;
@@ -561,7 +561,7 @@ static int commit_cvs_commit(struct cvs_commit *ps, const char *branch_name, str
 
 static int commit_meta_revision(void *ptr, void *data)
 {
-	struct file_revision *rev = ptr;
+	struct cvs_revision *rev = ptr;
 
 	//if (!rev->isdead)
 	//	helper_printf("%s:%c:%s\n", rev->revision, rev->isdead ? '-' : '+', rev->path);
@@ -571,7 +571,7 @@ static int commit_meta_revision(void *ptr, void *data)
 
 static int print_revision_changes(void *ptr, void *data)
 {
-	struct file_revision *rev = ptr;
+	struct cvs_revision *rev = ptr;
 
 	if (!rev->isdead)
 		helper_printf("updated %s %s\n", rev->revision, rev->path);
@@ -629,7 +629,7 @@ static int commit_blob(void *buf, size_t size)
 
 static int update_revision_hash(void *ptr, void *data)
 {
-	struct file_revision *rev = ptr;
+	struct cvs_revision *rev = ptr;
 	struct hash_table *meta = data;
 
 	unsigned int hash;
@@ -638,7 +638,7 @@ static int update_revision_hash(void *ptr, void *data)
 	hash = hash_path(rev->path);
 	pos = insert_hash(hash, rev, meta);
 	if (pos) {
-		struct file_revision *prev = *pos;
+		struct cvs_revision *prev = *pos;
 
 		if (strcmp(rev->path, prev->path))
 			die("file path hash collision");
@@ -661,7 +661,7 @@ void on_file_checkout(struct cvsfile *file, void *data)
 
 	mark = commit_blob(file->file.buf, file->file.len);
 
-	add_file_revision_hash(meta_revision_hash, file->path.buf, file->revision.buf, file->isdead, file->isexec, mark);
+	add_cvs_revision_hash(meta_revision_hash, file->path.buf, file->revision.buf, file->isdead, file->isexec, mark);
 }
 
 static int checkout_branch(const char *branch_name, time_t import_time, struct hash_table *meta_revision_hash)
@@ -699,18 +699,18 @@ int count_dots(const char *rev)
 	return dots;
 }
 
-static char *get_rev_branch(struct file_revision *file_meta)
+static char *get_rev_branch(struct cvs_revision *file_meta)
 {
 	return cvs_get_rev_branch(cvs, file_meta->path, file_meta->revision);
 }
 
 struct find_rev_data {
-	struct file_revision *file_meta;
+	struct cvs_revision *file_meta;
 	int dots;
 };
 static int find_longest_rev(void *ptr, void *data)
 {
-	struct file_revision *rev_meta = ptr;
+	struct cvs_revision *rev_meta = ptr;
 	struct find_rev_data *find_rev_data = data;
 	int dots;
 
@@ -743,7 +743,7 @@ static char *find_parent_branch(const char *branch_name, struct hash_table *meta
 
 static int compare_commit_meta(unsigned char sha1[20], const char *meta_ref, struct hash_table *meta_revision_hash)
 {
-	struct file_revision *file_meta;
+	struct cvs_revision *file_meta;
 	char *buf;
 	char *p;
 	char *revision;
@@ -836,7 +836,7 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 
 static int commit_revision_by_mark(void *ptr, void *data)
 {
-	struct file_revision *rev = ptr;
+	struct cvs_revision *rev = ptr;
 
 	helper_printf("M 100%.3o :%d %s\n", rev->isexec ? 0755 : 0644, rev->mark, rev->path);
 	//helper_printf("\n");
@@ -1157,7 +1157,7 @@ static void on_file_change(struct diff_options *options,
 			   const char *concatpath,
 			   unsigned old_dirty_submodule, unsigned new_dirty_submodule)
 {
-	struct file_revision *rev;
+	struct cvs_revision *rev;
 
 	if (S_ISLNK(new_mode))
 		die("CVS does not support symlinks: %s", concatpath);
@@ -1237,7 +1237,7 @@ static void on_file_addremove(struct diff_options *options,
 static int check_file_list_remote_status(const char *cvs_branch, struct string_list *file_list, struct hash_table *revision_meta_hash)
 {
 	struct cvsfile *files;
-	struct file_revision *rev;
+	struct cvs_revision *rev;
 	int count = file_list->nr;
 	int rc;
 	int i;
@@ -1335,7 +1335,7 @@ static char *run_export_hook(const char *hook_message)
 
 static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, struct hash_table *revision_meta_hash)
 {
-	struct file_revision *rev;
+	struct cvs_revision *rev;
 	struct string_list *file_list;
 	struct string_list_item *item;
 	struct cvsfile *files;
@@ -1389,7 +1389,7 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 		}
 		else {
 			if (files[i].isnew)
-				add_file_revision_hash(revision_meta_hash, files[i].path.buf, "0", 0, 1, 0);
+				add_cvs_revision_hash(revision_meta_hash, files[i].path.buf, "0", 0, 1, 0);
 			else
 				die("file: %s has not revision metadata, and not new", files[i].path.buf);
 		}
@@ -1651,7 +1651,7 @@ static int cmd_batch_push(struct string_list *list)
 	return 0;
 }
 
-void add_file_revision_cb(const char *branch,
+void add_cvs_revision_cb(const char *branch,
 			  const char *path,
 			  const char *revision,
 			  const char *author,
@@ -1668,7 +1668,7 @@ void add_file_revision_cb(const char *branch,
 		meta_map_add(cvs_branch_map, branch, meta);
 	}
 
-	skipped += add_file_revision(meta, path, revision, author, msg, timestamp, isdead);
+	skipped += add_cvs_revision(meta, path, revision, author, msg, timestamp, isdead);
 	revisions_all_branches_total++;
 	//display_progress(progress_rlog, revisions_all_branches_total);
 }
@@ -1709,7 +1709,7 @@ static int cmd_list(const char *line)
 
 	//progress_rlog = start_progress("revisions info", 0);
 	if (initial_import) {
-		rc = cvs_rlog(cvs, 0, 0, add_file_revision_cb, cvs_branch_map);
+		rc = cvs_rlog(cvs, 0, 0, add_cvs_revision_cb, cvs_branch_map);
 		if (rc == -1)
 			die("rlog failed");
 		fprintf(stderr, "Total revisions: %d\n", revisions_all_branches_total);
@@ -1748,7 +1748,7 @@ static int cmd_list(const char *line)
 		 * truncated. Have to detect this case and do full rlog for
 		 * importing such branches.
 		 */
-		rc = cvs_rlog(cvs, update_since, 0, add_file_revision_cb, cvs_branch_map);
+		rc = cvs_rlog(cvs, update_since, 0, add_cvs_revision_cb, cvs_branch_map);
 		if (rc == -1)
 			die("rlog failed");
 		fprintf(stderr, "Total revisions: %d\n", revisions_all_branches_total);

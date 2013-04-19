@@ -17,7 +17,7 @@ const char *get_private_ref_prefix();
  * as author and msg placeholder, it may be changed
  * later during patch aggregation
  */
-struct file_revision {
+struct cvs_revision {
 	char *path;
 	char *revision;
 	unsigned int ismeta:1;
@@ -34,14 +34,14 @@ struct file_revision {
 	 */
 	unsigned int ispushed:1;
 	unsigned int mark:24;
-	struct file_revision *prev;
+	struct cvs_revision *prev;
 	struct cvs_commit *cvs_commit;
 	time_t timestamp;
 };
 
-struct file_revision_list {
+struct cvs_revision_list {
 	unsigned int size, nr;
-	struct file_revision **item;
+	struct cvs_revision **item;
 };
 
 struct cvs_commit {
@@ -50,7 +50,7 @@ struct cvs_commit {
 	char *author;
 	char *msg;
 	struct cvs_commit *next; // cvs_commit list <--- will be sorted by timestamp
-	struct hash_table *revision_hash; // path -> file_revision hash
+	struct hash_table *revision_hash; // path -> cvs_revision hash
 	time_t cancellation_point; // non zero if cvs_commit is save cancellation point
 	unsigned int seq;
 };
@@ -68,11 +68,11 @@ struct cvs_commit_list {
 struct cvs_branch {
 	//TODO: branch name
 	struct hash_table *cvs_commit_hash; // author_msg2ps -> cvs_commit hash
-	struct hash_table *revision_hash; // path -> file_revision hash
-	struct file_revision_list *rev_list;
+	struct hash_table *revision_hash; // path -> cvs_revision hash
+	struct cvs_revision_list *rev_list;
 	struct cvs_commit_list *cvs_commit_list;
 
-	struct hash_table *last_commit_revision_hash; // path -> file_revision hash
+	struct hash_table *last_commit_revision_hash; // path -> cvs_revision hash
 	time_t last_revision_timestamp;
 
 	unsigned int fuzz_time;
@@ -84,7 +84,7 @@ struct cvs_branch {
  */
 
 struct cvs_branch *new_cvs_branch(const char *branch_name);
-int add_file_revision(struct cvs_branch *meta,
+int add_cvs_revision(struct cvs_branch *meta,
 		       const char *path,
 		       const char *revision,
 		       const char *author,
@@ -92,14 +92,14 @@ int add_file_revision(struct cvs_branch *meta,
 		       time_t timestamp,
 		       int isdead);
 
-void add_file_revision_meta(struct cvs_branch *meta,
+void add_cvs_revision_meta(struct cvs_branch *meta,
 		       const char *path,
 		       const char *revision,
 		       int isdead,
 		       int isexec,
 		       int mark);
 
-void add_file_revision_hash(struct hash_table *meta_hash,
+void add_cvs_revision_hash(struct hash_table *meta_hash,
 		       const char *path,
 		       const char *revision,
 		       int isdead,
@@ -151,7 +151,7 @@ char *parse_meta_line(char *buf, unsigned long len, char **first, char **second,
 /*
 revision=1.24.3.43,isdead=y,ispushed=y:path
  */
-void format_meta_line(struct strbuf *line, struct file_revision *meta);
+void format_meta_line(struct strbuf *line, struct cvs_revision *meta);
 
 /*
  * return -1 on error
