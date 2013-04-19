@@ -95,15 +95,15 @@ test_expect_success 'setup more remotes with unconventional refspecs' '
 	git fetch repo_d
 '
 
-test_expect_failure 'checkout of branch from multiple remotes fails #2' '
+test_expect_success 'checkout of branch from multiple remotes fails #2' '
 	test_must_fail git checkout bar
 '
 
-test_expect_failure 'checkout of branch from multiple remotes fails #3' '
+test_expect_success 'checkout of branch from multiple remotes fails #3' '
 	test_must_fail git checkout baz
 '
 
-test_expect_failure 'checkout of branch from a single remote succeeds #3' '
+test_expect_success 'checkout of branch from a single remote succeeds #3' '
 	git checkout spam &&
 	test_tracking_branch spam repo_c refs/remotes/extra_dir/repo_c/extra_dir/spam
 '
