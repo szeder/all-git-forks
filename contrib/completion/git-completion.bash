@@ -2712,6 +2712,9 @@ elif [[ -n ${BASH_VERSION-} ]]; then
 	fi
 fi
 
+# the rest of functions are meaningful only to bash
+test "$BASH_VERSION" || return
+
 __git_func_wrap ()
 {
 	local cur words cword prev

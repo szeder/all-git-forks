@@ -15,12 +15,6 @@
 #
 #  fpath=(~/.zsh/completion $fpath)
 
-complete ()
-{
-	# do nothing
-	return 0
-}
-
 zstyle -s ":completion:*:*:git:*" script script
 test -z "$script" && script="$(dirname ${funcsourcetrace[1]%:*})"/git-completion.bash
 ZSH_VERSION='' . "$script"
