@@ -108,7 +108,7 @@ test_expect_success 'checkout of branch from a single remote succeeds #3' '
 	test_tracking_branch spam repo_c refs/remotes/extra_dir/repo_c/extra_dir/spam
 '
 
-test_expect_failure 'checkout of branch from a single remote succeeds #4' '
+test_expect_success 'checkout of branch from a single remote succeeds #4' '
 	git checkout eggs &&
 	test_tracking_branch eggs repo_d refs/repo_d/eggs
 '
