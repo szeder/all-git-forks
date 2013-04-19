@@ -160,8 +160,26 @@ test_expect_success 'grep does not honor textconv' '
 	test_must_fail git grep Qfile
 '
 
+test_expect_success 'grep --textconv does honor textconv' '
+	echo "a:binaryQfile" >expect &&
+	git grep --textconv Qfile >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'grep --no-textconv does not honor textconv' '
+	test_must_fail git grep Qfile
+'
+
 test_expect_success 'grep blob does not honor textconv' '
 	test_must_fail git grep Qfile HEAD:a
+'
+
+test_expect_success 'grep --textconv blob does not honor textconv' '
+	test_must_fail git grep --textconv Qfile HEAD:a
+'
+
+test_expect_success 'grep --no-textconv blob does not honor textconv' '
+	test_must_fail git grep --no-textconv Qfile HEAD:a
 '
 
 test_done
