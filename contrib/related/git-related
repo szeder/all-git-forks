@@ -3,6 +3,8 @@
 # This script finds people that might be interested in a patch
 # usage: git related <files | rev-list options>
 
+require 'optparse'
+
 $since = '5-years-ago'
 $min_percent = 10
 $files = []
@@ -43,6 +45,20 @@ get_aliases if $get_aliases
 get_mailmap(File.join($base_dir, '.mailmap'))
 mailmap_file = %x[git config mailmap.file].chomp
 get_mailmap(mailmap_file)
+
+OptionParser.new do |opts|
+  opts.program_name = 'git related'
+  opts.banner = 'usage: git related [options] <files | rev-list options>'
+
+  opts.on('-p', '--min-percent N', Integer,
+          'Minium percentage of role participation') do |v|
+    $min_percent = v
+  end
+  opts.on('-d', '--since DATE',
+          'How far back to search for relevant commits') do |v|
+    $since = v
+  end
+end.parse!
 
 class Person
 
