@@ -90,8 +90,14 @@ test_expect_success 'status -v produces text' '
 	git reset --soft HEAD@{1}
 '
 
-test_expect_success 'show blob produces binary' '
+test_expect_success 'show blob produces text' '
 	git show HEAD:file >actual &&
+	printf "0\\n1\\n" >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success 'show --no-textconv blob produces binary' '
+	git show --no-textconv HEAD:file >actual &&
 	printf "\\0\\n\\1\\n" >expect &&
 	test_cmp expect actual
 '
