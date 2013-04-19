@@ -12,10 +12,11 @@
 
 long ps = 0;
 static const char *ref_prefix = NULL;
+static const char *ref_private_prefix = NULL;
 
 const char *get_meta_ref_prefix()
 {
-	return "refs/meta/";
+	return "refs/cvsmeta/";
 }
 
 void set_ref_prefix(const char *prefix)
@@ -26,6 +27,16 @@ void set_ref_prefix(const char *prefix)
 const char *get_ref_prefix()
 {
 	return ref_prefix;
+}
+
+void set_ref_private_prefix(const char *private_prefix)
+{
+	ref_private_prefix = xstrdup(private_prefix);
+}
+
+const char *get_ref_private_prefix()
+{
+	return ref_private_prefix;
 }
 
 static inline unsigned char icase_hash(unsigned char c)
@@ -1221,9 +1232,9 @@ int load_revision_meta(unsigned char *sha1, const char *notes_ref, struct hash_t
 	return 0;
 }
 
-void commit_meta(struct notes_tree *t, const char *notes_ref)
+void commit_meta(struct notes_tree *t, const char *notes_ref, const char *commit_msg)
 {
-	struct strbuf commit_msg = STRBUF_INIT;
+	struct strbuf commit_msg_sb = STRBUF_INIT;
 	unsigned char tree_sha1[20];
 	unsigned char parent_sha1[20];
 	unsigned char result_sha1[20];
@@ -1239,38 +1250,33 @@ void commit_meta(struct notes_tree *t, const char *notes_ref)
 		commit_list_insert(parent, &parents);
 	}
 
-	/*
-	 * message
-	 */
-	strbuf_addstr(&commit_msg, "boo");
-	if (commit_tree(&commit_msg, tree_sha1, parents, result_sha1, NULL, NULL))
+	strbuf_addstr(&commit_msg_sb, commit_msg);
+	if (commit_tree(&commit_msg_sb, tree_sha1, parents, result_sha1, NULL, NULL))
 		die("Failed to commit notes tree to database");
-	strbuf_release(&commit_msg);
+	strbuf_release(&commit_msg_sb);
 
 	/*
 	 * reflog
 	 */
-	update_ref("boom", notes_ref, result_sha1, NULL, 0, DIE_ON_ERR);
+	update_ref("cvs metadate update", notes_ref, result_sha1, NULL, 0, DIE_ON_ERR);
 }
 
-int save_note_for(const char *commit_ref, const char *notes_ref, char *buf, unsigned long len)
+static int save_note_for(const unsigned char *commit_sha1, const char *notes_ref,
+			const char *commit_msg, const char *note)
 {
 	struct notes_tree *t;
-	unsigned char note_sha1[20], commit_sha1[20];
-
-	if (get_sha1(commit_ref, commit_sha1))
-		die(_("Failed to resolve '%s' as a valid ref."), commit_ref);
+	unsigned char note_sha1[20];
 
 	t = xcalloc(1, sizeof(*t));
 	init_notes(t, notes_ref, combine_notes_overwrite, 0);
 
-	if (write_sha1_file(buf, len, blob_type, note_sha1))
+	if (write_sha1_file(note, strlen(note), blob_type, note_sha1))
 		error(_("unable to write note object"));
 
 	if (add_note(t, commit_sha1, note_sha1, combine_notes_overwrite) != 0)
 		die("add_note failed");
 
-	commit_meta(t, notes_ref);
+	commit_meta(t, notes_ref, commit_msg);
 
 	free_notes(t);
 	free(t);
@@ -1278,7 +1284,16 @@ int save_note_for(const char *commit_ref, const char *notes_ref, char *buf, unsi
 	return 0;
 }
 
-static int save_revision_meta(void *ptr, void *data)
+static int save_note_for_ref(const char *commit_ref, const char *notes_ref, const char *commit_msg, const char *note)
+{
+	unsigned char sha1[20];
+	if (get_sha1(commit_ref, sha1))
+		die(_("Failed to resolve '%s' as a valid ref."), commit_ref);
+
+	return save_note_for(sha1, notes_ref, commit_msg, note);
+}
+
+static int save_revision_meta_cb(void *ptr, void *data)
 {
 	struct file_revision *rev = ptr;
 	struct strbuf *sb = data;
@@ -1297,9 +1312,23 @@ int save_cvs_revision_meta(struct branch_meta *meta,
 		strbuf_addf(&sb, "UPDATE:%ld\n", meta->last_revision_timestamp);
 	strbuf_addstr(&sb, "--\n");
 
-	for_each_hash(meta->revision_hash, save_revision_meta, &sb);
+	for_each_hash(meta->revision_hash, save_revision_meta_cb, &sb);
 
-	save_note_for(commit_ref, notes_ref, sb.buf, sb.len);
+	save_note_for_ref(commit_ref, notes_ref, "cvs meta update", sb.buf);
+	strbuf_release(&sb);
+	return 0;
+}
+
+int save_revision_meta(unsigned char *sha1, const char *notes_ref, const char *msg, struct hash_table *revision_meta_hash)
+{
+	struct strbuf sb;
+	strbuf_init(&sb, revision_meta_hash->nr * 64);
+	//strbuf_addf(&sb, "UPDATE:%ld\n", meta->last_revision_timestamp);
+	strbuf_addstr(&sb, "--\n");
+
+	for_each_hash(revision_meta_hash, save_revision_meta_cb, &sb);
+
+	save_note_for(sha1, notes_ref, msg, sb.buf);
 	strbuf_release(&sb);
 	return 0;
 }

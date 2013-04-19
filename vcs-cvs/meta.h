@@ -4,10 +4,14 @@
 #include "hash.h"
 
 unsigned int hash_path(const char *path);
+
 const char *get_meta_ref_prefix();
 
 void set_ref_prefix(const char *);
 const char *get_ref_prefix();
+
+void set_ref_private_prefix(const char *);
+const char *get_ref_private_prefix();
 /*
  * struct represents a revision of a single file in CVS.
  * patchset field is always initialized and used
@@ -149,6 +153,7 @@ int save_cvs_revision_meta(struct branch_meta *meta,
 			   const char *notes_ref);
 
 char *read_note_of(unsigned char sha1[20], const char *notes_ref, unsigned long *size);
+
 char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, char *p);
 
 /*
@@ -156,6 +161,7 @@ char *parse_meta_line(char *buf, unsigned long len, char **first, char **second,
  * revision_meta_hash == NULL if metadata was not loaded
  */
 int load_revision_meta(unsigned char *sha1, const char *notes_ref, struct hash_table **revision_meta_hash);
+int save_revision_meta(unsigned char *sha1, const char *notes_ref, const char *msg, struct hash_table *revision_meta_hash);
 int has_revision_meta(unsigned char *sha1, const char *notes_ref);
 
 #endif

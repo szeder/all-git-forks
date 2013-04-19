@@ -2507,6 +2507,18 @@ M --> Using per-directory sticky tag `mybranch'\0a
 	return 0;
 }
 
+int inc_revision(struct strbuf *rev_sb)
+{
+	int num;
+	char *p = strrchr(rev_sb->buf, '.');
+	if (!p || !(num = atoi(++p)))
+		return -1;
+
+	strbuf_setlen(rev_sb, p - rev_sb->buf);
+	strbuf_addf(rev_sb, "%d", ++num);
+	return 0;
+}
+
 enum
 {
 	NEED_CHECK_IN		= 0,
@@ -2608,6 +2620,11 @@ CVS   19 <- /DCE.cpp/1.6//-kk/\0a
 							p += strlen("; previous revision: ");
 							strbuf_addstr(&old_rev, p);
 						}
+					}
+
+					if (!strcmp(new_rev.buf, "delete")) {
+						strbuf_copy(&new_rev, &old_rev);
+						inc_revision(&new_rev);
 					}
 				}
 				else if (strbuf_gettext_after(&line, "initial revision: ", &new_rev)) {

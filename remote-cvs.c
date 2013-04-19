@@ -81,7 +81,9 @@ static void cvsauthors_load();
 static const char *author_convert(const char *userid);
 
 static const char import_commit_edit[] = "IMPORT_COMMIT_EDIT";
+static const char export_commit_edit[] = "EXPORT_COMMIT_EDIT";
 static int have_import_hook = 0;
+static int have_export_hook = 0;
 
 static int cmd_capabilities(const char *line);
 static int cmd_option(const char *line);
@@ -222,7 +224,7 @@ static int cmd_capabilities(const char *line)
 	helper_printf("bidi-import\n");
 	helper_printf("push\n");
 	helper_printf("option\n");
-	helper_printf("refspec refs/heads/*:%s*\n", get_ref_prefix());
+	helper_printf("refspec refs/heads/*:%s*\n", get_ref_private_prefix());
 	helper_printf("\n");
 	//helper_printf("refspec %s:%s\n\n", remote_ref, private_ref);
 	helper_flush();
@@ -515,7 +517,7 @@ static int commit_patchset(struct patchset *ps, const char *branch_name, struct 
 		if (fp == NULL)
 			die_errno(_("could not open '%s'"), git_path(import_commit_edit));
 
-		helper_printf("commit %s%s\n", get_ref_prefix(), branch_name);
+		helper_printf("commit %s%s\n", get_ref_private_prefix(), branch_name);
 		helper_printf("mark :%d\n", markid);
 		rc = strbuf_getline(&line, fp, '\n');
 		if (rc)
@@ -538,7 +540,7 @@ static int commit_patchset(struct patchset *ps, const char *branch_name, struct 
 		strbuf_release(&commit);
 	}
 	else {
-		helper_printf("commit %s%s\n", get_ref_prefix(), branch_name);
+		helper_printf("commit %s%s\n", get_ref_private_prefix(), branch_name);
 		helper_printf("mark :%d\n", markid);
 		//helper_printf("author %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp);
 		//helper_printf("committer %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp_last);
@@ -782,6 +784,7 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 
 	save_commit_buffer = 0;
 
+	//strbuf_addf(&branch_ref, "%s%s", get_ref_private_prefix(), parent_branch_name);
 	strbuf_addf(&branch_ref, "%s%s", get_ref_prefix(), parent_branch_name);
 	strbuf_addf(&branch_meta_ref, "%s%s", get_meta_ref_prefix(), parent_branch_name);
 
@@ -847,7 +850,7 @@ static int commit_branch_initial(struct hash_table *meta_revision_hash,
 {
 	markid++;
 
-	helper_printf("commit %s%s\n", get_ref_prefix(), branch_name);
+	helper_printf("commit %s%s\n", get_ref_private_prefix(), branch_name);
 	helper_printf("mark :%d\n", markid);
 	helper_printf("author git-remote-cvs <none> %ld +0000\n", date);
 	helper_printf("committer git-remote-cvs <none> %ld +0000\n", date);
@@ -862,6 +865,7 @@ static int commit_branch_initial(struct hash_table *meta_revision_hash,
 
 	return markid;
 }
+
 static int import_branch(const char *branch_name, struct branch_meta *branch_meta)
 {
 	int rc;
@@ -946,7 +950,7 @@ static int import_branch_by_name(const char *branch_name)
 	int psnum = 0;
 	int pstotal = 0;
 
-	strbuf_addf(&branch_ref, "%s%s", get_ref_prefix(), branch_name);
+	strbuf_addf(&branch_ref, "%s%s", get_ref_private_prefix(), branch_name);
 	strbuf_addf(&meta_branch_ref, "%s%s", get_meta_ref_prefix(), branch_name);
 
 	/*
@@ -1302,6 +1306,33 @@ static void release_file_content(struct cvsfile *file, void *data)
 	strbuf_release(&file->file);
 }
 
+static char *run_export_hook(const char *hook_message)
+{
+	struct strbuf sb = STRBUF_INIT;
+	FILE *fp;
+	int rc;
+
+	fp = fopen(git_path(export_commit_edit), "w");
+	if (fp == NULL)
+		die_errno(_("could not open '%s'"), git_path(export_commit_edit));
+	if (fwrite(hook_message, 1, strlen(hook_message), fp) < strlen(hook_message))
+		die("could not write %s", export_commit_edit);
+	fclose(fp);
+
+	rc = run_hook(NULL, "cvs-export-commit", git_path(export_commit_edit), NULL);
+	if (rc)
+		die("cvs-export-commit hook rc %d, abording export", rc);
+
+	fp = fopen(git_path(export_commit_edit), "r");
+	if (fp == NULL)
+		die_errno(_("could not open '%s'"), git_path(export_commit_edit));
+
+	if (strbuf_read_file(&sb, git_path(export_commit_edit), 0) < 0)
+		die_errno(_("could not read '%s'"), git_path(export_commit_edit));
+	fclose(fp);
+	return strbuf_detach(&sb, NULL);
+}
+
 static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, struct hash_table *revision_meta_hash)
 {
 	struct file_revision_meta *rev;
@@ -1310,6 +1341,9 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 	struct cvsfile *files;
 	struct sha1_mod *sm;
 	const char *commit_message;
+	struct strbuf meta_ref_sb = STRBUF_INIT;
+	struct strbuf meta_commit_msg_sb = STRBUF_INIT;
+	char *hook_message = NULL;
 	int count;
 	int rc;
 	int i;
@@ -1318,6 +1352,7 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 		return -1;
 
 	fprintf(stderr, "pushing commit %s to CVS branch %s\n", sha1_to_hex(commit->object.sha1), cvs_branch);
+	strbuf_addstr(&meta_commit_msg_sb, "cvs meta update\n");
 
 	file_list = commit->util;
 	sort_string_list(file_list);
@@ -1361,6 +1396,14 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 	}
 
 	find_commit_subject(commit->buffer, &commit_message);
+	fprintf(stderr, "export hook '%s'\n", commit->buffer);
+	if (have_export_hook) {
+		hook_message = strstr(commit->buffer, "author ");
+		if (!hook_message)
+			die("unexpected commit format '%s'", commit->buffer);
+		commit_message = hook_message = run_export_hook(hook_message);
+	}
+
 	/*
 	 * FIXME: CVS cannot handle few commits during single session sometimes.
 	 * Something has to do with same files added/modified/deleted. Try to
@@ -1385,17 +1428,31 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 				die("commit succeeded, but cannot find meta file revision to update: %s", files[i].path.buf);
 			free(rev->revision);
 			rev->revision = strbuf_detach(&files[i].revision, NULL);
+			rev->isdead = files[i].isdead;
 			//fprintf(stderr, "new rev: %s %s\n", rev->revision, rev->path);
 			/*if (!files[i].isdead)
 				rev->revision = strbuf_detach(&files[i].revision, NULL);
 			else
 				rev->revision = NULL;*/
+			strbuf_addf(&meta_commit_msg_sb, "%s %s %s\n",
+							 rev->isdead ? "deleted" : "updated",
+							 rev->revision,
+							 rev->path);
 		}
+		/*
+		 * save metadata
+		 */
+		strbuf_addf(&meta_ref_sb, "%s%s", get_meta_ref_prefix(), cvs_branch);
+		save_revision_meta(commit->object.sha1, meta_ref_sb.buf, meta_commit_msg_sb.buf, revision_meta_hash);
 	}
 
 	for (i = 0; i < count; i++)
 		cvsfile_release(&files[i]);
 	free(files);
+	strbuf_release(&meta_ref_sb);
+	strbuf_release(&meta_commit_msg_sb);
+	if (hook_message)
+		free(hook_message);
 	return rc;
 }
 
@@ -1531,10 +1588,11 @@ static int push_branch(const char *src, const char *dst, int force)
 	if (commit_list_count(push_list) > 1) {
 		if (push_commit_list_to_cvs(push_list, cvs_branch))
 			die("push failed");
+		rc = 0;
 	}
 	else {
 		fprintf(stderr, "Nothing to push");
-		//rc = 0;
+		rc = 0;
 	}
 
 	free_commit_list(push_list);
@@ -1632,7 +1690,8 @@ static int on_each_ref(const char *branch, const unsigned char *sha1, int flags,
 	if (!update_since ||
 	    //FIXME: remember last update date somewhere or take last from
 	    //branch: update_since < meta->last_revision_timestamp)
-	    update_since > meta->last_revision_timestamp)
+	    update_since < meta->last_revision_timestamp)
+	    //update_since > meta->last_revision_timestamp)
 		update_since = meta->last_revision_timestamp;
 	return 0;
 }
@@ -1897,9 +1956,9 @@ static int parse_cvs_spec(const char *spec)
 
 int main(int argc, const char **argv)
 {
-	struct strbuf buf = STRBUF_INIT, url_sb = STRBUF_INIT,
-			private_ref_sb = STRBUF_INIT;
+	struct strbuf buf = STRBUF_INIT;
 	struct strbuf ref_prefix_sb = STRBUF_INIT;
+	struct strbuf ref_private_prefix_sb = STRBUF_INIT;
 	static struct remote *remote;
 	const char *cvs_root_module;
 
@@ -1916,6 +1975,7 @@ int main(int argc, const char **argv)
 		return 1;
 	}
 
+	git_config(git_default_config, NULL);
 	remote = remote_get(argv[1]);
 	cvs_root_module = (argc == 3) ? argv[2] : remote->url[0];
 
@@ -1923,61 +1983,33 @@ int main(int argc, const char **argv)
 		die("Malformed repository specification. "
 		    "Should be [:method:][[user][:password]@]hostname[:[port]]/path/to/repository:module/path");
 
-	//if (!prefixcmp(url_in, "file://")) {
-	//	dump_from_file = 1;
-	//	url = url_decode(url_in + sizeof("file://")-1);
-	//} else {
-	//	dump_from_file = 0;
-	//	end_url_with_slash(&url_sb, url_in);
-	//	url = url_sb.buf;
-	//}
-
-	//strbuf_addf(&private_ref_sb, "refs/svn/%s/master", remote->name);
-	//private_ref = private_ref_sb.buf;
-
-	//strbuf_addf(&notes_ref_sb, "refs/notes/%s/revs", remote->name);
-	//notes_ref = notes_ref_sb.buf;
-
-	//strbuf_addf(&marksfilename_sb, "%s/info/fast-import/remote-svn/%s.marks",
-	//	get_git_dir(), remote->name);
-	//marksfilename = marksfilename_sb.buf;
-
 	fprintf(stderr, "git_dir: %s\n", get_git_dir());
-
-	/*char **pe = environ;
-	while(*pe) {
-		fprintf(stderr, "env: %s\n", *pe);
-		pe++;
-	}*/
 
 	if (!ref_exists("HEAD")) {
 		fprintf(stderr, "Initial import!\n");
 		initial_import = 1;
 	}
 
-	/*int i;
-	for (i = 0; i < remote->fetch_refspec_nr; i++) {
-		fprintf(stderr, "refspec to fetch to: %s\n", remote->fetch->dst);
-		if (strstr(remote->fetch->dst, "remote"))
-			is_bare = 0;
-	}*/
-
 	if (is_bare_repository()) {
-		//strbuf_addstr(&ref_prefix_sb, "refs/heads/");
-		strbuf_addstr(&ref_prefix_sb, "refs/import/heads/");
+		strbuf_addstr(&ref_prefix_sb, "refs/heads/");
+		strbuf_addstr(&ref_private_prefix_sb, "refs/cvsimport/heads/");
 	}
 	else {
-		//strbuf_addf(&ref_prefix_sb, "refs/remotes/%s/", remote->name);
-		strbuf_addf(&ref_prefix_sb, "refs/import/remotes/%s/", remote->name);
+		strbuf_addf(&ref_prefix_sb, "refs/remotes/%s/", remote->name);
+		strbuf_addf(&ref_private_prefix_sb, "refs/cvsimport/remotes/%s/", remote->name);
 	}
 	set_ref_prefix(ref_prefix_sb.buf);
-	fprintf(stderr, "%s\n", get_ref_prefix());
+	set_ref_private_prefix(ref_private_prefix_sb.buf);
+	fprintf(stderr, "ref_prefix %s\n", get_ref_prefix());
+	fprintf(stderr, "ref_private_prefix %s\n", get_ref_private_prefix());
 
 	branch_meta_map = xmalloc(sizeof(*branch_meta_map));
 	meta_map_init(branch_meta_map);
 
 	if (find_hook("cvs-import-commit"))
 		have_import_hook = 1;
+	if (find_hook("cvs-export-commit"))
+		have_export_hook = 1;
 
 	while (1) {
 		if (helper_strbuf_getline(&buf, stdin, '\n') == EOF) {
@@ -1998,29 +2030,10 @@ int main(int argc, const char **argv)
 		fprintf(stderr, "done, rc=%d\n", ret);
 	}
 
-	/*if (ref_exists("refs/remotes/cvs/HEAD")) {
-		struct pretty_print_context pctx = {0};
-		struct strbuf author_ident = STRBUF_INIT;
-		struct strbuf committer_ident = STRBUF_INIT;
-		unsigned char sha1[20];
-
-		if (get_sha1_commit("refs/remotes/cvs/HEAD" "c71ad2674f80b384", sha1))
-			die("cannot find commit");
-		struct commit *cm;
-		cm = lookup_commit(sha1);
-		if (parse_commit(cm))
-			die("cannot parse commit");
-
-		format_commit_message(cm, "%an <%ae>", &author_ident, &pctx);
-		format_commit_message(cm, "%cn <%ce>", &committer_ident, &pctx);
-		sleep(5);
-	}*/
-
 	cvsauthors_store();
 
 	strbuf_release(&buf);
-	strbuf_release(&url_sb);
-	strbuf_release(&private_ref_sb);
+	strbuf_release(&ref_private_prefix_sb);
 	strbuf_release(&ref_prefix_sb);
 	return 0;
 }
