@@ -224,7 +224,7 @@ static int cmd_capabilities(const char *line)
 	helper_printf("bidi-import\n");
 	helper_printf("push\n");
 	helper_printf("option\n");
-	helper_printf("refspec refs/heads/*:%s*\n", get_ref_private_prefix());
+	helper_printf("refspec refs/heads/*:%s*\n", get_private_ref_prefix());
 	helper_printf("\n");
 	//helper_printf("refspec %s:%s\n\n", remote_ref, private_ref);
 	helper_flush();
@@ -517,7 +517,7 @@ static int commit_patchset(struct patchset *ps, const char *branch_name, struct 
 		if (fp == NULL)
 			die_errno(_("could not open '%s'"), git_path(import_commit_edit));
 
-		helper_printf("commit %s%s\n", get_ref_private_prefix(), branch_name);
+		helper_printf("commit %s%s\n", get_private_ref_prefix(), branch_name);
 		helper_printf("mark :%d\n", markid);
 		rc = strbuf_getline(&line, fp, '\n');
 		if (rc)
@@ -540,7 +540,7 @@ static int commit_patchset(struct patchset *ps, const char *branch_name, struct 
 		strbuf_release(&commit);
 	}
 	else {
-		helper_printf("commit %s%s\n", get_ref_private_prefix(), branch_name);
+		helper_printf("commit %s%s\n", get_private_ref_prefix(), branch_name);
 		helper_printf("mark :%d\n", markid);
 		//helper_printf("author %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp);
 		//helper_printf("committer %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp_last);
@@ -784,7 +784,7 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 
 	save_commit_buffer = 0;
 
-	//strbuf_addf(&branch_ref, "%s%s", get_ref_private_prefix(), parent_branch_name);
+	//strbuf_addf(&branch_ref, "%s%s", get_private_ref_prefix(), parent_branch_name);
 	strbuf_addf(&branch_ref, "%s%s", get_ref_prefix(), parent_branch_name);
 	strbuf_addf(&branch_meta_ref, "%s%s", get_meta_ref_prefix(), parent_branch_name);
 
@@ -850,7 +850,7 @@ static int commit_branch_initial(struct hash_table *meta_revision_hash,
 {
 	markid++;
 
-	helper_printf("commit %s%s\n", get_ref_private_prefix(), branch_name);
+	helper_printf("commit %s%s\n", get_private_ref_prefix(), branch_name);
 	helper_printf("mark :%d\n", markid);
 	helper_printf("author git-remote-cvs <none> %ld +0000\n", date);
 	helper_printf("committer git-remote-cvs <none> %ld +0000\n", date);
@@ -950,7 +950,7 @@ static int import_branch_by_name(const char *branch_name)
 	int psnum = 0;
 	int pstotal = 0;
 
-	strbuf_addf(&branch_ref, "%s%s", get_ref_private_prefix(), branch_name);
+	strbuf_addf(&branch_ref, "%s%s", get_private_ref_prefix(), branch_name);
 	strbuf_addf(&meta_branch_ref, "%s%s", get_meta_ref_prefix(), branch_name);
 
 	/*
@@ -1957,8 +1957,6 @@ static int parse_cvs_spec(const char *spec)
 int main(int argc, const char **argv)
 {
 	struct strbuf buf = STRBUF_INIT;
-	struct strbuf ref_prefix_sb = STRBUF_INIT;
-	struct strbuf ref_private_prefix_sb = STRBUF_INIT;
 	static struct remote *remote;
 	const char *cvs_root_module;
 
@@ -1990,18 +1988,9 @@ int main(int argc, const char **argv)
 		initial_import = 1;
 	}
 
-	if (is_bare_repository()) {
-		strbuf_addstr(&ref_prefix_sb, "refs/heads/");
-		strbuf_addstr(&ref_private_prefix_sb, "refs/cvsimport/heads/");
-	}
-	else {
-		strbuf_addf(&ref_prefix_sb, "refs/remotes/%s/", remote->name);
-		strbuf_addf(&ref_private_prefix_sb, "refs/cvsimport/remotes/%s/", remote->name);
-	}
-	set_ref_prefix(ref_prefix_sb.buf);
-	set_ref_private_prefix(ref_private_prefix_sb.buf);
+	set_ref_prefix_remote(remote->name);
 	fprintf(stderr, "ref_prefix %s\n", get_ref_prefix());
-	fprintf(stderr, "ref_private_prefix %s\n", get_ref_private_prefix());
+	fprintf(stderr, "private_ref_prefix %s\n", get_private_ref_prefix());
 
 	branch_meta_map = xmalloc(sizeof(*branch_meta_map));
 	meta_map_init(branch_meta_map);
@@ -2033,7 +2022,5 @@ int main(int argc, const char **argv)
 	cvsauthors_store();
 
 	strbuf_release(&buf);
-	strbuf_release(&ref_private_prefix_sb);
-	strbuf_release(&ref_prefix_sb);
 	return 0;
 }

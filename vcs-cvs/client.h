@@ -60,11 +60,6 @@ struct cvs_transport *cvs_connect(const char *cvsroot, const char *module);
 int cvs_terminate(struct cvs_transport *cvs);
 
 /*
- * list of tags (cvs branches)
- */
-char **cvs_gettags(struct cvs_transport *cvs);
-
-/*
  * generate metadata
  */
 typedef void (*add_rev_fn_t)(const char *branch,
@@ -97,8 +92,8 @@ struct cvsfile {
 };
 
 #define CVSFILE_INIT { STRBUF_INIT, STRBUF_INIT, 0, 0, 0, 0, 0, 0, 0, 0, STRBUF_INIT, NULL };
-void cvsfile_release(struct cvsfile *file);
 void cvsfile_init(struct cvsfile *file);
+void cvsfile_release(struct cvsfile *file);
 
 typedef void (*handle_file_fn_t)(struct cvsfile *file, void *data);
 int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t date, handle_file_fn_t cb, void *data);

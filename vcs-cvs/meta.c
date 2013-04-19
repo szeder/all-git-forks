@@ -12,16 +12,29 @@
 
 long ps = 0;
 static const char *ref_prefix = NULL;
-static const char *ref_private_prefix = NULL;
+static const char *private_ref_prefix = NULL;
+
+void set_ref_prefix_remote(const char *remote_name)
+{
+	struct strbuf ref_prefix_sb = STRBUF_INIT;
+	struct strbuf private_ref_prefix_sb = STRBUF_INIT;
+
+	if (is_bare_repository()) {
+		strbuf_addstr(&ref_prefix_sb, "refs/heads/");
+		strbuf_addstr(&private_ref_prefix_sb, "refs/cvsimport/heads/");
+	}
+	else {
+		strbuf_addf(&ref_prefix_sb, "refs/remotes/%s/", remote_name);
+		strbuf_addf(&private_ref_prefix_sb, "refs/cvsimport/remotes/%s/", remote_name);
+	}
+
+	ref_prefix = strbuf_detach(&ref_prefix_sb, NULL);
+	private_ref_prefix = strbuf_detach(&private_ref_prefix_sb, NULL);
+}
 
 const char *get_meta_ref_prefix()
 {
 	return "refs/cvsmeta/";
-}
-
-void set_ref_prefix(const char *prefix)
-{
-	ref_prefix = xstrdup(prefix);
 }
 
 const char *get_ref_prefix()
@@ -29,14 +42,9 @@ const char *get_ref_prefix()
 	return ref_prefix;
 }
 
-void set_ref_private_prefix(const char *private_prefix)
+const char *get_private_ref_prefix()
 {
-	ref_private_prefix = xstrdup(private_prefix);
-}
-
-const char *get_ref_private_prefix()
-{
-	return ref_private_prefix;
+	return private_ref_prefix;
 }
 
 static inline unsigned char icase_hash(unsigned char c)

@@ -6,13 +6,10 @@
 
 unsigned int hash_path(const char *path);
 
+void set_ref_prefix_remote(const char *remote_name);
 const char *get_meta_ref_prefix();
-
-void set_ref_prefix(const char *);
 const char *get_ref_prefix();
-
-void set_ref_private_prefix(const char *);
-const char *get_ref_private_prefix();
+const char *get_private_ref_prefix();
 
 /*
  * struct represents a revision of a single file in CVS.
