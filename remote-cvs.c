@@ -661,7 +661,7 @@ void on_file_checkout(struct cvsfile *file, void *data)
 
 	mark = commit_blob(file->file.buf, file->file.len);
 
-	add_file_revision_meta_hash(meta_revision_hash, file->path.buf, file->revision.buf, file->isdead, file->isexec, mark);
+	add_file_revision_hash(meta_revision_hash, file->path.buf, file->revision.buf, file->isdead, file->isexec, mark);
 }
 
 static int checkout_branch(const char *branch_name, time_t import_time, struct hash_table *meta_revision_hash)
@@ -699,18 +699,18 @@ int count_dots(const char *rev)
 	return dots;
 }
 
-static char *get_rev_branch(struct file_revision_meta *file_meta)
+static char *get_rev_branch(struct file_revision *file_meta)
 {
 	return cvs_get_rev_branch(cvs, file_meta->path, file_meta->revision);
 }
 
 struct find_rev_data {
-	struct file_revision_meta *file_meta;
+	struct file_revision *file_meta;
 	int dots;
 };
 static int find_longest_rev(void *ptr, void *data)
 {
-	struct file_revision_meta *rev_meta = ptr;
+	struct file_revision *rev_meta = ptr;
 	struct find_rev_data *find_rev_data = data;
 	int dots;
 
@@ -743,7 +743,7 @@ static char *find_parent_branch(const char *branch_name, struct hash_table *meta
 
 static int compare_commit_meta(unsigned char sha1[20], const char *meta_ref, struct hash_table *meta_revision_hash)
 {
-	struct file_revision_meta *file_meta;
+	struct file_revision *file_meta;
 	char *buf;
 	char *p;
 	char *revision;
@@ -761,7 +761,7 @@ static int compare_commit_meta(unsigned char sha1[20], const char *meta_ref, str
 			break;
 	}
 
-	while ((p = parse_meta_line(buf,size, &revision, &path, p))) {
+	while ((p = parse_meta_line(buf, size, &revision, &path, p))) {
 		file_meta = lookup_hash(hash_path(path), meta_revision_hash);
 		if (!file_meta ||
 		    strcmp(file_meta->revision, revision))
@@ -836,7 +836,7 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 
 static int commit_revision_by_mark(void *ptr, void *data)
 {
-	struct file_revision_meta *rev = ptr;
+	struct file_revision *rev = ptr;
 
 	helper_printf("M 100%.3o :%d %s\n", rev->isexec ? 0755 : 0644, rev->mark, rev->path);
 	//helper_printf("\n");
@@ -1157,7 +1157,7 @@ static void on_file_change(struct diff_options *options,
 			   const char *concatpath,
 			   unsigned old_dirty_submodule, unsigned new_dirty_submodule)
 {
-	struct file_revision_meta *rev;
+	struct file_revision *rev;
 
 	if (S_ISLNK(new_mode))
 		die("CVS does not support symlinks: %s", concatpath);
@@ -1237,7 +1237,7 @@ static void on_file_addremove(struct diff_options *options,
 static int check_file_list_remote_status(const char *cvs_branch, struct string_list *file_list, struct hash_table *revision_meta_hash)
 {
 	struct cvsfile *files;
-	struct file_revision_meta *rev;
+	struct file_revision *rev;
 	int count = file_list->nr;
 	int rc;
 	int i;
@@ -1335,7 +1335,7 @@ static char *run_export_hook(const char *hook_message)
 
 static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, struct hash_table *revision_meta_hash)
 {
-	struct file_revision_meta *rev;
+	struct file_revision *rev;
 	struct string_list *file_list;
 	struct string_list_item *item;
 	struct cvsfile *files;
@@ -1389,7 +1389,7 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 		}
 		else {
 			if (files[i].isnew)
-				add_file_revision_meta_hash(revision_meta_hash, files[i].path.buf, "0", 0, 1, 0);
+				add_file_revision_hash(revision_meta_hash, files[i].path.buf, "0", 0, 1, 0);
 			else
 				die("file: %s has not revision metadata, and not new", files[i].path.buf);
 		}
@@ -1588,7 +1588,7 @@ static int push_branch(const char *src, const char *dst, int force)
 	if (commit_list_count(push_list) > 1) {
 		if (push_commit_list_to_cvs(push_list, cvs_branch))
 			die("push failed");
-		rc = 0;
+		//rc = 0;
 	}
 	else {
 		fprintf(stderr, "Nothing to push");

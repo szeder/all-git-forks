@@ -321,7 +321,7 @@ int add_file_revision(struct branch_meta *meta,
 	 */
 	struct file_revision *rev;
 	struct patchset *patchset;
-	struct file_revision_meta *prev_meta;
+	struct file_revision *prev_meta;
 	unsigned int hash;
 
 	/*
@@ -841,7 +841,7 @@ void aggregate_patchsets(struct branch_meta *meta)
 		}
 		else {
 			//TODO: check metadata if previous revision is there
-			struct file_revision_meta *prev_meta;
+			struct file_revision *prev_meta;
 			prev_meta = lookup_hash(hash, meta->last_commit_revision_hash);
 			if (prev_meta) {
 				rev->prev = (struct file_revision *)prev_meta;
@@ -946,7 +946,7 @@ struct branch_meta *new_branch_meta(const char *branch_name)
 
 int free_hash_entry(void *ptr, void *data)
 {
-	struct file_revision_meta *rev_meta = ptr;
+	struct file_revision *rev_meta = ptr;
 	free(rev_meta->path);
 	free(rev_meta->revision);
 	free(rev_meta);
@@ -1080,7 +1080,7 @@ char *read_ref_note(const char *commit_ref, const char *notes_ref, unsigned long
 	return read_note_of(sha1, notes_ref, size);
 }
 
-void add_file_revision_meta_hash(struct hash_table *meta_hash,
+void add_file_revision_hash(struct hash_table *meta_hash,
 		       const char *path,
 		       const char *revision,
 		       int isdead,
@@ -1089,7 +1089,7 @@ void add_file_revision_meta_hash(struct hash_table *meta_hash,
 {
 	void **pos;
 	unsigned int hash;
-	struct file_revision_meta *rev_meta;
+	struct file_revision *rev_meta;
 
 	rev_meta = xcalloc(1, sizeof(*rev_meta));
 	rev_meta->path = xstrdup(path);
@@ -1102,7 +1102,7 @@ void add_file_revision_meta_hash(struct hash_table *meta_hash,
 	hash = hash_path(path);
 	pos = insert_hash(hash, rev_meta, meta_hash);
 	if (pos) {
-		die("add_file_revision_meta collision");
+		die("add_file_revision collision");
 		*pos = rev_meta;
 	}
 }
@@ -1114,9 +1114,48 @@ void add_file_revision_meta(struct branch_meta *meta,
 		       int isexec,
 		       int mark)
 {
-	add_file_revision_meta_hash(meta->last_commit_revision_hash, path, revision, isdead, isexec, mark);
+	add_file_revision_hash(meta->last_commit_revision_hash, path, revision, isdead, isexec, mark);
 }
 
+static void meta_line_add_attr(struct strbuf *line, const char *attr, const char *value, int *want_comma)
+{
+	if (*want_comma)
+		strbuf_addch(line, ',');
+	*want_comma = 1;
+	strbuf_addf(line, "%s=%s", attr, value);
+}
+
+const char *attributes[] = {
+	"synctime",
+	"revision",
+	"isdead",
+	"ispushed"
+};
+
+enum {
+	ATTR_SYNCTIME,
+	ATTR_REVISION,
+	ATTR_ISDEAD,
+	ATTR_ISPUSHED
+};
+
+void format_meta_line(struct strbuf *line, struct file_revision *rev)
+{
+	int want_comma = 0;
+	strbuf_reset(line);
+
+	meta_line_add_attr(line, attributes[ATTR_REVISION], rev->revision, &want_comma);
+
+	if (rev->isdead)
+		meta_line_add_attr(line, attributes[ATTR_ISDEAD], "y", &want_comma);
+
+	if (rev->ispushed)
+		meta_line_add_attr(line, attributes[ATTR_ISPUSHED], "y", &want_comma);
+
+	strbuf_addf(line, ":%s\n", rev->path);
+}
+
+//char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, struct string_list *attr_lst, char *p);
 char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, char *p)
 {
 	char *start = p;
@@ -1225,7 +1264,7 @@ int load_revision_meta(unsigned char *sha1, const char *notes_ref, struct hash_t
 		if (second[1] != ':')
 			die("malformed metadata: %s:%s", first, second);
 		second += 2;
-		add_file_revision_meta_hash(*revision_meta_hash, second, first, isdead, 0, 0);
+		add_file_revision_hash(*revision_meta_hash, second, first, isdead, 0, 0);
 	}
 
 	free(buf);

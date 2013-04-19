@@ -2,6 +2,7 @@
 #define META_H
 
 #include "hash.h"
+#include "string-list.h"
 
 unsigned int hash_path(const char *path);
 
@@ -12,6 +13,7 @@ const char *get_ref_prefix();
 
 void set_ref_private_prefix(const char *);
 const char *get_ref_private_prefix();
+
 /*
  * struct represents a revision of a single file in CVS.
  * patchset field is always initialized and used
@@ -19,33 +21,25 @@ const char *get_ref_private_prefix();
  * later during patch aggregation
  */
 struct file_revision {
-	//struct file_revision *hash_tbl_chain;
 	char *path;
 	char *revision;
 	unsigned int ismeta:1;
 	unsigned int isdead:1;
+
+	/*
+	 * multiple revisions of a file was merged together during patch aggregation
+	 */
 	unsigned int ismerged:1;
 	unsigned int isexec:1;
+
+	/*
+	 * file was pushed to cvs and fetching for verification is needed
+	 */
+	unsigned int ispushed:1;
 	unsigned int mark:24;
 	struct file_revision *prev;
-	//struct file_revision *next;
 	struct patchset *patchset;
 	time_t timestamp;
-};
-
-/*
- * smaller version of a struct file_revision that is used to
- * load file revisions information from metadata
- */
-struct file_revision_meta {
-	//struct file_revision *hash_tbl_chain;
-	char *path;
-	char *revision;
-	unsigned int ismeta:1;
-	unsigned int isdead:1;
-	unsigned int ismerged:1;
-	unsigned int isexec:1;
-	unsigned int mark:24;
 };
 
 struct file_revision_list {
@@ -81,7 +75,7 @@ struct branch_meta {
 	struct file_revision_list *rev_list;
 	struct patchset_list *patchset_list;
 
-	struct hash_table *last_commit_revision_hash; // path -> file_revision_meta hash
+	struct hash_table *last_commit_revision_hash; // path -> file_revision hash
 	time_t last_revision_timestamp;
 
 	unsigned int fuzz_time;
@@ -107,7 +101,8 @@ void add_file_revision_meta(struct branch_meta *meta,
 		       int isdead,
 		       int isexec,
 		       int mark);
-void add_file_revision_meta_hash(struct hash_table *meta_hash,
+
+void add_file_revision_hash(struct hash_table *meta_hash,
 		       const char *path,
 		       const char *revision,
 		       int isdead,
@@ -153,8 +148,13 @@ int save_cvs_revision_meta(struct branch_meta *meta,
 			   const char *notes_ref);
 
 char *read_note_of(unsigned char sha1[20], const char *notes_ref, unsigned long *size);
-
+//char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, struct string_list *attr_lst, char *p);
 char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, char *p);
+
+/*
+revision=1.24.3.43,isdead=y,ispushed=y:path
+ */
+void format_meta_line(struct strbuf *line, struct file_revision *meta);
 
 /*
  * return -1 on error

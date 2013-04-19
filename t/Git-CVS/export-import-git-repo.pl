@@ -146,11 +146,10 @@ while ((my $line = <$gi>)) {
 	#die "commits were splitted" if $fetched_count != 1 and !$initial_cherry_pick;
 	print "commits were splitted $commits_per_iter vs $fetched_count" if $fetched_count != $commits_per_iter and !$initial_cherry_pick;
 
-	die "wtf" if $fetched_count > 0;
 	#`git rebase cvs/HEAD`;
 	#die("git rebase failed") if $?;
-	#`git reset --hard cvs/HEAD`;
-	#die("git reset --hard cvs/HEAD failed") if $?;
+	`git reset --hard cvs/HEAD`;
+	die("git reset --hard cvs/HEAD failed") if $?;
 
 	print "=> commits pushed/fetched/verified: $commits\n";
 
