@@ -2,6 +2,9 @@
 #define CLIENT_H
 
 #include <time.h>
+#include "git-compat-util.h"
+#include "strbuf.h"
+#include "cache.h"
 
 #define CVS_MAX_LINE 4096
 #define ZBUF_SIZE 16384

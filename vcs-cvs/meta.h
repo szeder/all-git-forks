@@ -33,6 +33,7 @@ struct cvs_revision {
 	 * file was pushed to cvs and fetching for verification is needed
 	 */
 	unsigned int ispushed:1;
+
 	unsigned int mark:24;
 	struct cvs_revision *prev;
 	struct cvs_commit *cvs_commit;

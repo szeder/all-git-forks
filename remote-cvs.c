@@ -41,10 +41,6 @@ static const char dump_cvs_commit[] = "GIT_DUMP_PATCHSETS";
  */
 unsigned long fileMemoryLimit = 2 * 1024 * 1024 * 1024L; //50*1024*1024; /* 50m */
 
-//static int dump_from_file;
-//static const char *private_ref;
-//static const char *remote_ref = "refs/heads/master";
-//static const char *marksfilename, *notes_ref;
 struct rev_note { unsigned int rev_nr; };
 
 static int depth = 0;
@@ -107,10 +103,7 @@ static const struct input_command_entry input_command_list[] = {
 	{ "option", cmd_option, NULL, 0 },
 	{ "import", NULL, cmd_batch_import, 1 },
 	{ "push", NULL, cmd_batch_push, 1 },
-	/*
-	 * FIXME:
-	 * `list for-push` should go before `list`, or later would always be run
-	 */
+	// `list for-push` should go before `list`, or later would always be run
 	{ "list for-push", cmd_list_for_push, NULL, 0 },
 	{ "list", cmd_list, NULL, 0 },
 	{ NULL, NULL, NULL, 0 }
