@@ -235,7 +235,7 @@ static void merge_sort(struct file_revision_list *first,
 	second->nr = 0;
 }
 
-static void add_sort_file_revision(struct branch_meta *meta, struct file_revision *rev)
+static void add_sort_file_revision(struct cvs_branch *meta, struct file_revision *rev)
 {
 	struct rev_sort_util *su;
 
@@ -277,7 +277,7 @@ static void add_sort_file_revision(struct branch_meta *meta, struct file_revisio
 	revision_list_add(rev, su->cur_file);
 }
 
-static struct file_revision_list *finish_rev_sort(struct branch_meta *meta)
+static struct file_revision_list *finish_rev_sort(struct cvs_branch *meta)
 {
 	struct rev_sort_util *su;
 	struct file_revision_list *sorted;
@@ -310,7 +310,7 @@ static struct file_revision_list *finish_rev_sort(struct branch_meta *meta)
 }
 
 int rev_cmp(const char *rev1, const char *rev2);
-int add_file_revision(struct branch_meta *meta,
+int add_file_revision(struct cvs_branch *meta,
 		       const char *path,
 		       const char *revision,
 		       const char *author,
@@ -377,7 +377,7 @@ int add_file_revision(struct branch_meta *meta,
 	return 0;
 }
 
-time_t find_first_commit_time(struct branch_meta *meta)
+time_t find_first_commit_time(struct cvs_branch *meta)
 {
 	time_t min;
 	int i;
@@ -396,7 +396,7 @@ time_t find_first_commit_time(struct branch_meta *meta)
 	return min;
 }
 
-int get_patchset_count(struct branch_meta *meta)
+int get_patchset_count(struct cvs_branch *meta)
 {
 	int psnum = 0;
 	struct patchset *ps = meta->patchset_list->head;
@@ -524,12 +524,12 @@ static int validate_patchset_order(void *ptr, void *data)
 	return 0;
 }
 
-int validate_patchsets(struct branch_meta *meta)
+int validate_patchsets(struct cvs_branch *meta)
 {
 	return for_each_hash(meta->revision_hash, validate_patchset_order, NULL);
 }
 
-void find_safe_cancellation_points(struct branch_meta *meta)
+void find_safe_cancellation_points(struct cvs_branch *meta)
 {
 	time_t max_timestamp = 0;
 
@@ -563,7 +563,7 @@ void find_safe_cancellation_points(struct branch_meta *meta)
 	}
 }
 
-void arrange_commit_time(struct branch_meta *meta)
+void arrange_commit_time(struct cvs_branch *meta)
 {
 	time_t max_timestamp = 0;
 
@@ -772,12 +772,12 @@ void reverse_rev_list(struct file_revision_list *rev_list)
 	}
 }
 
-void finalize_revision_list(struct branch_meta *meta)
+void finalize_revision_list(struct cvs_branch *meta)
 {
 	meta->rev_list = finish_rev_sort(meta);
 }
 
-void aggregate_patchsets(struct branch_meta *meta)
+void aggregate_patchsets(struct cvs_branch *meta)
 {
 	// sort revisions list
 	// for each revision:
@@ -921,12 +921,12 @@ static time_t get_commit_author_time(const char *branch_ref)
 	return 0;
 }
 
-struct branch_meta *new_branch_meta(const char *branch_name)
+struct cvs_branch *new_cvs_branch(const char *branch_name)
 {
 	struct strbuf meta_ref = STRBUF_INIT;
 	struct strbuf branch_ref = STRBUF_INIT;
-	struct branch_meta *new;
-	new = xcalloc(1, sizeof(struct branch_meta));
+	struct cvs_branch *new;
+	new = xcalloc(1, sizeof(struct cvs_branch));
 
 	//new->rev_list = xcalloc(1, sizeof(struct file_revision_list));
 	new->patchset_hash = xcalloc(1, sizeof(struct hash_table));
@@ -961,7 +961,7 @@ int free_hash_entry(void *ptr, void *data)
 	return 0;
 }
 
-void free_branch_meta(struct branch_meta *meta)
+void free_cvs_branch(struct cvs_branch *meta)
 {
 	int i;
 
@@ -1016,7 +1016,7 @@ void meta_map_init(struct meta_map *map)
 	map->array = NULL;
 }
 
-void meta_map_add(struct meta_map *map, const char *branch_name, struct branch_meta *meta)
+void meta_map_add(struct meta_map *map, const char *branch_name, struct cvs_branch *meta)
 {
 	ALLOC_GROW(map->array, map->nr + 1, map->size);
 
@@ -1025,11 +1025,11 @@ void meta_map_add(struct meta_map *map, const char *branch_name, struct branch_m
 	++map->nr;
 }
 
-struct branch_meta *meta_map_find(struct meta_map *map, const char *branch_name)
+struct cvs_branch *meta_map_find(struct meta_map *map, const char *branch_name)
 {
 	struct meta_map_entry *item;
 
-	for_each_branch_meta(item, map)
+	for_each_cvs_branch(item, map)
 		if (!strcmp(item->branch_name, branch_name))
 			return item->meta;
 
@@ -1043,9 +1043,9 @@ void meta_map_release(struct meta_map *map)
 	if (!map->array)
 		return;
 
-	for_each_branch_meta(item, map) {
+	for_each_cvs_branch(item, map) {
 		free(item->branch_name);
-		free_branch_meta(item->meta);
+		free_cvs_branch(item->meta);
 	}
 
 	free(map->array);
@@ -1115,7 +1115,7 @@ void add_file_revision_hash(struct hash_table *meta_hash,
 	}
 }
 
-void add_file_revision_meta(struct branch_meta *meta,
+void add_file_revision_meta(struct cvs_branch *meta,
 		       const char *path,
 		       const char *revision,
 		       int isdead,
@@ -1190,7 +1190,7 @@ char *parse_meta_line(char *buf, unsigned long len, char **first, char **second,
 	return NULL;
 }
 
-int load_cvs_revision_meta(struct branch_meta *meta,
+int load_cvs_revision_meta(struct cvs_branch *meta,
 			   const char *commit_ref,
 			   const char *notes_ref)
 {
@@ -1349,7 +1349,7 @@ static int save_revision_meta_cb(void *ptr, void *data)
 	return 0;
 }
 
-int save_cvs_revision_meta(struct branch_meta *meta,
+int save_cvs_revision_meta(struct cvs_branch *meta,
 			   const char *commit_ref,
 			   const char *notes_ref)
 {

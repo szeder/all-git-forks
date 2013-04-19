@@ -63,7 +63,7 @@ static time_t import_start_time = 0;
 //static off_t fetched_total_size = 0;
 
 struct cvs_transport *cvs = NULL;
-struct meta_map *branch_meta_map;
+struct meta_map *cvs_branch_map;
 static const char *cvsroot = NULL;
 static const char *cvsmodule = NULL;
 static struct string_list *import_branch_list = NULL;
@@ -777,7 +777,7 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 	unsigned char sha1[20];
 	struct commit *commit;
 	struct strbuf branch_ref = STRBUF_INIT;
-	struct strbuf branch_meta_ref = STRBUF_INIT;
+	struct strbuf cvs_branch_ref = STRBUF_INIT;
 	const char *commit_ref = NULL;
 	int rev_mismatches_min = INT_MAX;
 	int rev_mismatches;
@@ -786,7 +786,7 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 
 	//strbuf_addf(&branch_ref, "%s%s", get_private_ref_prefix(), parent_branch_name);
 	strbuf_addf(&branch_ref, "%s%s", get_ref_prefix(), parent_branch_name);
-	strbuf_addf(&branch_meta_ref, "%s%s", get_meta_ref_prefix(), parent_branch_name);
+	strbuf_addf(&cvs_branch_ref, "%s%s", get_meta_ref_prefix(), parent_branch_name);
 
 	if (get_sha1_commit(branch_ref.buf, sha1))
 		die("cannot find last commit on branch ref %s", branch_ref.buf);
@@ -798,7 +798,7 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 			die("cannot parse commit %s", sha1_to_hex(commit->object.sha1));
 
 		if (commit->date <= time) {
-			rev_mismatches = compare_commit_meta(commit->object.sha1, branch_meta_ref.buf, meta_revision_hash);
+			rev_mismatches = compare_commit_meta(commit->object.sha1, cvs_branch_ref.buf, meta_revision_hash);
 			if (rev_mismatches == -1) {
 				/*
 				 * TODO: compare_commit_meta return -1 if no
@@ -830,7 +830,7 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 	}
 
 	strbuf_release(&branch_ref);
-	strbuf_release(&branch_meta_ref);
+	strbuf_release(&cvs_branch_ref);
 	return commit_ref;
 }
 
@@ -866,27 +866,27 @@ static int commit_branch_initial(struct hash_table *meta_revision_hash,
 	return markid;
 }
 
-static int import_branch(const char *branch_name, struct branch_meta *branch_meta)
+static int import_branch(const char *branch_name, struct cvs_branch *cvs_branch)
 {
 	int rc;
 	int mark;
 	char *parent_branch_name;
 	struct string_list_item *item;
 	const char *parent_commit;
-	time_t import_time = find_first_commit_time(branch_meta);
+	time_t import_time = find_first_commit_time(cvs_branch);
 	if (!import_time)
 		die("import time is 0");
 	import_time--;
 	fprintf(stderr, "import time is %s\n", show_date(import_time, 0, DATE_RFC2822));
 
-	rc = checkout_branch(branch_name, import_time, branch_meta->last_commit_revision_hash);
+	rc = checkout_branch(branch_name, import_time, cvs_branch->last_commit_revision_hash);
 	if (rc == -1)
 		die("initial branch checkout failed %s", branch_name);
 
-	if (is_empty_hash(branch_meta->last_commit_revision_hash))
+	if (is_empty_hash(cvs_branch->last_commit_revision_hash))
 		return 0;
 
-	parent_branch_name = find_parent_branch(branch_name, branch_meta->last_commit_revision_hash);
+	parent_branch_name = find_parent_branch(branch_name, cvs_branch->last_commit_revision_hash);
 	if (!parent_branch_name)
 		die("Cannot find parent branch for: %s", branch_name);
 	fprintf(stderr, "PARENT BRANCH FOR: %s is %s\n", branch_name, parent_branch_name);
@@ -902,10 +902,10 @@ static int import_branch(const char *branch_name, struct branch_meta *branch_met
 
 	parent_commit = find_branch_fork_point(parent_branch_name,
 						import_time,
-						branch_meta->last_commit_revision_hash);
+						cvs_branch->last_commit_revision_hash);
 	fprintf(stderr, "PARENT COMMIT: %s\n", parent_commit);
 
-	mark = commit_branch_initial(branch_meta->last_commit_revision_hash,
+	mark = commit_branch_initial(cvs_branch->last_commit_revision_hash,
 					branch_name,
 					import_time,
 					parent_commit,
@@ -946,7 +946,7 @@ static int import_branch_by_name(const char *branch_name)
 
 	fprintf(stderr, "importing CVS branch %s\n", branch_name);
 
-	struct branch_meta *branch_meta;
+	struct cvs_branch *cvs_branch;
 	int psnum = 0;
 	int pstotal = 0;
 
@@ -957,22 +957,22 @@ static int import_branch_by_name(const char *branch_name)
 	 * FIXME
 	 */
 	//if (!strcmp(branch_name, "master"))
-	//	branch_meta = meta_map_find(branch_meta_map, "HEAD");
+	//	cvs_branch = meta_map_find(cvs_branch_map, "HEAD");
 	//else
-		branch_meta = meta_map_find(branch_meta_map, branch_name);
+		cvs_branch = meta_map_find(cvs_branch_map, branch_name);
 
-	if (!branch_meta && !ref_exists(meta_branch_ref.buf))
+	if (!cvs_branch && !ref_exists(meta_branch_ref.buf))
 		die("Cannot find meta for branch %s\n", branch_name);
 
 	/*
 	 * FIXME: support of repositories with no files :-)
 	 */
-	if (is_empty_hash(branch_meta->last_commit_revision_hash) &&
+	if (is_empty_hash(cvs_branch->last_commit_revision_hash) &&
 	    strcmp(branch_name, "HEAD")) {
 		/*
 		 * no meta, do cvs checkout
 		 */
-		mark = import_branch(branch_name, branch_meta);
+		mark = import_branch(branch_name, cvs_branch);
 		if (mark == -1)
 			die("import_branch failed %s", branch_name);
 		if (mark > 0)
@@ -984,15 +984,15 @@ static int import_branch_by_name(const char *branch_name)
 		if (!get_sha1(meta_branch_ref.buf, sha1))
 			strbuf_addstr(&meta_mark_sb, sha1_to_hex(sha1));
 	}
-	aggregate_patchsets(branch_meta);
+	aggregate_patchsets(cvs_branch);
 
 	init_hash(&meta_revision_hash);
-	merge_revision_hash(&meta_revision_hash, branch_meta->last_commit_revision_hash);
+	merge_revision_hash(&meta_revision_hash, cvs_branch->last_commit_revision_hash);
 
 	cvsauthors_load();
 
-	pstotal = get_patchset_count(branch_meta);
-	struct patchset *ps = branch_meta->patchset_list->head;
+	pstotal = get_patchset_count(cvs_branch);
+	struct patchset *ps = cvs_branch->patchset_list->head;
 	while (ps) {
 		psnum++;
 		fprintf(stderr, "-->>------------------\n");
@@ -1659,13 +1659,13 @@ void add_file_revision_cb(const char *branch,
 			  time_t timestamp,
 			  int isdead,
 			  void *data) {
-	struct meta_map *branch_meta_map = data;
-	struct branch_meta *meta;
+	struct meta_map *cvs_branch_map = data;
+	struct cvs_branch *meta;
 
-	meta = meta_map_find(branch_meta_map, branch);
+	meta = meta_map_find(cvs_branch_map, branch);
 	if (!meta) {
-		meta = new_branch_meta(branch);
-		meta_map_add(branch_meta_map, branch, meta);
+		meta = new_cvs_branch(branch);
+		meta_map_add(cvs_branch_map, branch, meta);
 	}
 
 	skipped += add_file_revision(meta, path, revision, author, msg, timestamp, isdead);
@@ -1676,13 +1676,13 @@ void add_file_revision_cb(const char *branch,
 static time_t update_since = 0;
 static int on_each_ref(const char *branch, const unsigned char *sha1, int flags, void *data)
 {
-	struct meta_map *branch_meta_map = data;
-	struct branch_meta *meta;
+	struct meta_map *cvs_branch_map = data;
+	struct cvs_branch *meta;
 
-	meta = meta_map_find(branch_meta_map, branch);
+	meta = meta_map_find(cvs_branch_map, branch);
 	if (!meta) {
-		meta = new_branch_meta(branch);
-		meta_map_add(branch_meta_map, branch, meta);
+		meta = new_cvs_branch(branch);
+		meta_map_add(cvs_branch_map, branch, meta);
 
 		//helper_printf("? refs/heads/%s\n", branch);
 	}
@@ -1705,34 +1705,34 @@ static int cmd_list(const char *line)
 
 	fprintf(stderr, "connected to cvs server\n");
 
-	struct meta_map_entry *branch_meta;
+	struct meta_map_entry *cvs_branch;
 
 	//progress_rlog = start_progress("revisions info", 0);
 	if (initial_import) {
-		rc = cvs_rlog(cvs, 0, 0, add_file_revision_cb, branch_meta_map);
+		rc = cvs_rlog(cvs, 0, 0, add_file_revision_cb, cvs_branch_map);
 		if (rc == -1)
 			die("rlog failed");
 		fprintf(stderr, "Total revisions: %d\n", revisions_all_branches_total);
 		fprintf(stderr, "Skipped revisions: %d\n", skipped);
 
-		for_each_branch_meta(branch_meta, branch_meta_map) {
-			finalize_revision_list(branch_meta->meta);
-			//aggregate_patchsets(branch_meta->meta);
-			//if (branch_meta->meta->patchset_list->head)
-			if (branch_meta->meta->rev_list->size)
-				helper_printf("? refs/heads/%s\n", branch_meta->branch_name);
+		for_each_cvs_branch(cvs_branch, cvs_branch_map) {
+			finalize_revision_list(cvs_branch->meta);
+			//aggregate_patchsets(cvs_branch->meta);
+			//if (cvs_branch->meta->patchset_list->head)
+			if (cvs_branch->meta->rev_list->size)
+				helper_printf("? refs/heads/%s\n", cvs_branch->branch_name);
 			/*
 			 * FIXME:
 			 */
-			//if (!strcmp(branch_meta->branch_name, "HEAD"))
+			//if (!strcmp(cvs_branch->branch_name, "HEAD"))
 			//	helper_printf("? refs/heads/master\n");
 			//else
-			//	helper_printf("? refs/heads/%s\n", branch_meta->branch_name);
+			//	helper_printf("? refs/heads/%s\n", cvs_branch->branch_name);
 		}
 		helper_printf("\n");
 	}
 	else {
-		for_each_ref_in(get_meta_ref_prefix(), on_each_ref, branch_meta_map);
+		for_each_ref_in(get_meta_ref_prefix(), on_each_ref, cvs_branch_map);
 		/*
 		 * handle case when last rlog didn't pick all files committed
 		 * last second (hit during autotests)
@@ -1748,7 +1748,7 @@ static int cmd_list(const char *line)
 		 * truncated. Have to detect this case and do full rlog for
 		 * importing such branches.
 		 */
-		rc = cvs_rlog(cvs, update_since, 0, add_file_revision_cb, branch_meta_map);
+		rc = cvs_rlog(cvs, update_since, 0, add_file_revision_cb, cvs_branch_map);
 		if (rc == -1)
 			die("rlog failed");
 		fprintf(stderr, "Total revisions: %d\n", revisions_all_branches_total);
@@ -1757,18 +1757,18 @@ static int cmd_list(const char *line)
 		/*
 		 * FIXME: try to print only branches that have changes
 		 */
-		for_each_branch_meta(branch_meta, branch_meta_map) {
-			finalize_revision_list(branch_meta->meta);
-			//aggregate_patchsets(branch_meta->meta);
-			//if (branch_meta->meta->patchset_list->head)
-			if (branch_meta->meta->rev_list->size)
-				helper_printf("? refs/heads/%s\n", branch_meta->branch_name);
+		for_each_cvs_branch(cvs_branch, cvs_branch_map) {
+			finalize_revision_list(cvs_branch->meta);
+			//aggregate_patchsets(cvs_branch->meta);
+			//if (cvs_branch->meta->patchset_list->head)
+			if (cvs_branch->meta->rev_list->size)
+				helper_printf("? refs/heads/%s\n", cvs_branch->branch_name);
 			else
-				fprintf(stderr, "Branch: %s is up to date\n", branch_meta->branch_name);
-			//helper_printf("? refs/heads/%s\n", branch_meta->branch_name);
+				fprintf(stderr, "Branch: %s is up to date\n", cvs_branch->branch_name);
+			//helper_printf("? refs/heads/%s\n", cvs_branch->branch_name);
 		}
 
-		//for_each_ref_in(get_meta_ref_prefix(), on_each_ref, branch_meta_map);
+		//for_each_ref_in(get_meta_ref_prefix(), on_each_ref, cvs_branch_map);
 		helper_printf("\n");
 	}
 	//stop_progress(&progress_rlog);
@@ -1792,7 +1792,7 @@ static int cmd_list_for_push(const char *line)
 	fprintf(stderr, "connected to cvs server\n");
 
 	//progress_rlog = start_progress("revisions info", 0);
-	for_each_ref_in(get_meta_ref_prefix(), print_meta_branch_name, branch_meta_map);
+	for_each_ref_in(get_meta_ref_prefix(), print_meta_branch_name, cvs_branch_map);
 	helper_printf("\n");
 
 	//stop_progress(&progress_rlog);
@@ -1992,8 +1992,8 @@ int main(int argc, const char **argv)
 	fprintf(stderr, "ref_prefix %s\n", get_ref_prefix());
 	fprintf(stderr, "private_ref_prefix %s\n", get_private_ref_prefix());
 
-	branch_meta_map = xmalloc(sizeof(*branch_meta_map));
-	meta_map_init(branch_meta_map);
+	cvs_branch_map = xmalloc(sizeof(*cvs_branch_map));
+	meta_map_init(cvs_branch_map);
 
 	if (find_hook("cvs-import-commit"))
 		have_import_hook = 1;
@@ -2012,7 +2012,7 @@ int main(int argc, const char **argv)
 		strbuf_reset(&buf);
 	}
 
-	meta_map_release(branch_meta_map);
+	meta_map_release(cvs_branch_map);
 	if (cvs) {
 		int ret = cvs_terminate(cvs);
 

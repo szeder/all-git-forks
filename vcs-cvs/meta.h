@@ -61,11 +61,11 @@ struct patchset_list {
 };
 
 /*
- * struct branch_meta represents a branch in CVS
+ * struct cvs_branch represents a branch in CVS
  * with all metadata needed for patch aggregation
  * and consistency validation
  */
-struct branch_meta {
+struct cvs_branch {
 	//TODO: branch name
 	struct hash_table *patchset_hash; // author_msg2ps -> patchset hash
 	struct hash_table *revision_hash; // path -> file_revision hash
@@ -83,8 +83,8 @@ struct branch_meta {
  * main cmd parses options, parses refs, gives git branch ref and cvs branch
  */
 
-struct branch_meta *new_branch_meta(const char *branch_name);
-int add_file_revision(struct branch_meta *meta,
+struct cvs_branch *new_cvs_branch(const char *branch_name);
+int add_file_revision(struct cvs_branch *meta,
 		       const char *path,
 		       const char *revision,
 		       const char *author,
@@ -92,7 +92,7 @@ int add_file_revision(struct branch_meta *meta,
 		       time_t timestamp,
 		       int isdead);
 
-void add_file_revision_meta(struct branch_meta *meta,
+void add_file_revision_meta(struct cvs_branch *meta,
 		       const char *path,
 		       const char *revision,
 		       int isdead,
@@ -106,18 +106,18 @@ void add_file_revision_hash(struct hash_table *meta_hash,
 		       int isexec,
 		       int mark);
 
-void finalize_revision_list(struct branch_meta *meta);
-void aggregate_patchsets(struct branch_meta *meta);
-time_t find_first_commit_time(struct branch_meta *meta);
-int get_patchset_count(struct branch_meta *meta);
-void free_branch_meta(struct branch_meta *meta);
+void finalize_revision_list(struct cvs_branch *meta);
+void aggregate_patchsets(struct cvs_branch *meta);
+time_t find_first_commit_time(struct cvs_branch *meta);
+int get_patchset_count(struct cvs_branch *meta);
+void free_cvs_branch(struct cvs_branch *meta);
 
 /*
  * branch name to meta map
  */
 struct meta_map_entry {
 	char *branch_name;
-	struct branch_meta *meta;
+	struct cvs_branch *meta;
 };
 
 struct meta_map {
@@ -125,22 +125,22 @@ struct meta_map {
 	struct meta_map_entry *array;
 };
 
-#define for_each_branch_meta(item,map) \
+#define for_each_cvs_branch(item,map) \
 	for (item = (map)->array; item < (map)->array + (map)->nr; ++item)
 
 void meta_map_init(struct meta_map *map);
-void meta_map_add(struct meta_map *map, const char *branch_name, struct branch_meta *meta);
-struct branch_meta *meta_map_find(struct meta_map *map, const char *branch_name);
+void meta_map_add(struct meta_map *map, const char *branch_name, struct cvs_branch *meta);
+struct cvs_branch *meta_map_find(struct meta_map *map, const char *branch_name);
 void meta_map_release(struct meta_map *map);
 
 /*
  * metadata work
  */
-int load_cvs_revision_meta(struct branch_meta *meta,
+int load_cvs_revision_meta(struct cvs_branch *meta,
 			   const char *commit_ref,
 			   const char *notes_ref);
 
-int save_cvs_revision_meta(struct branch_meta *meta,
+int save_cvs_revision_meta(struct cvs_branch *meta,
 			   const char *commit_ref,
 			   const char *notes_ref);
 
