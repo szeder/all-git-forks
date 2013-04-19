@@ -742,21 +742,21 @@ test_expect_success 'format-patch --signature --cover-letter' '
 	test 2 = $(grep "my sig" output | wc -l)
 '
 
-test_expect_success 'format.signature="" supresses signatures' '
+test_expect_success 'format.signature="" suppresses signatures' '
 	git config format.signature "" &&
 	git format-patch --stdout -1 >output &&
 	check_patch output &&
 	! grep "^-- \$" output
 '
 
-test_expect_success 'format-patch --no-signature supresses signatures' '
+test_expect_success 'format-patch --no-signature suppresses signatures' '
 	git config --unset-all format.signature &&
 	git format-patch --stdout --no-signature -1 >output &&
 	check_patch output &&
 	! grep "^-- \$" output
 '
 
-test_expect_success 'format-patch --signature="" supresses signatures' '
+test_expect_success 'format-patch --signature="" suppresses signatures' '
 	git format-patch --stdout --signature="" -1 >output &&
 	check_patch output &&
 	! grep "^-- \$" output
@@ -1282,6 +1282,39 @@ test_expect_success 'cover letter using branch description (6)' '
 	test_config branch.rebuild-1.description hello &&
 	git format-patch --stdout --cover-letter -2 >actual &&
 	grep hello actual >/dev/null
+'
+
+test_expect_success 'cover letter with nothing' '
+	git format-patch --stdout --cover-letter >actual &&
+	test_line_count = 0 actual
+'
+
+test_expect_success 'cover letter auto' '
+	mkdir -p tmp &&
+	test_when_finished "rm -rf tmp;
+		git config --unset format.coverletter" &&
+
+	git config format.coverletter auto &&
+	git format-patch -o tmp -1 >list &&
+	test_line_count = 1 list &&
+	git format-patch -o tmp -2 >list &&
+	test_line_count = 3 list
+'
+
+test_expect_success 'cover letter auto user override' '
+	mkdir -p tmp &&
+	test_when_finished "rm -rf tmp;
+		git config --unset format.coverletter" &&
+
+	git config format.coverletter auto &&
+	git format-patch -o tmp --cover-letter -1 >list &&
+	test_line_count = 2 list &&
+	git format-patch -o tmp --cover-letter -2 >list &&
+	test_line_count = 3 list &&
+	git format-patch -o tmp --no-cover-letter -1 >list &&
+	test_line_count = 1 list &&
+	git format-patch -o tmp --no-cover-letter -2 >list &&
+	test_line_count = 2 list
 '
 
 test_done
