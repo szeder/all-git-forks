@@ -418,7 +418,7 @@ static void cvs_commit_list_add(struct cvs_commit *cvs_commit, struct cvs_commit
 	list->tail = cvs_commit;
 }
 
-static void cvs_commit_add_cvs_revision(struct cvs_revision *rev, struct cvs_commit *cvs_commit)
+static void cvs_commit_add_revision(struct cvs_revision *rev, struct cvs_commit *cvs_commit)
 {
 	void **pos;
 	unsigned int hash;
@@ -882,7 +882,7 @@ void aggregate_cvs_commits(struct cvs_branch *meta)
 			cvs_commit_list_add(cvs_commit, meta->cvs_commit_list);
 			cvs_commit->seq = ++ps_seq;
 		}
-		cvs_commit_add_cvs_revision(rev, cvs_commit);
+		cvs_commit_add_revision(rev, cvs_commit);
 	}
 
 	fprintf(stderr, "GONNA VALIDATE\n");
