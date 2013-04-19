@@ -1009,49 +1009,6 @@ void free_cvs_branch(struct cvs_branch *meta)
 	free(meta);
 }
 
-void meta_map_init(struct meta_map *map)
-{
-	map->size = 0;
-	map->nr = 0;
-	map->array = NULL;
-}
-
-void meta_map_add(struct meta_map *map, const char *branch_name, struct cvs_branch *meta)
-{
-	ALLOC_GROW(map->array, map->nr + 1, map->size);
-
-	map->array[map->nr].branch_name = xstrdup(branch_name);
-	map->array[map->nr].meta = meta;
-	++map->nr;
-}
-
-struct cvs_branch *meta_map_find(struct meta_map *map, const char *branch_name)
-{
-	struct meta_map_entry *item;
-
-	for_each_cvs_branch(item, map)
-		if (!strcmp(item->branch_name, branch_name))
-			return item->meta;
-
-	return NULL;
-}
-
-void meta_map_release(struct meta_map *map)
-{
-	struct meta_map_entry *item;
-
-	if (!map->array)
-		return;
-
-	for_each_cvs_branch(item, map) {
-		free(item->branch_name);
-		free_cvs_branch(item->meta);
-	}
-
-	free(map->array);
-	meta_map_init(map);
-}
-
 /*
  * metadata work
  */

@@ -114,27 +114,6 @@ int get_cvs_commit_count(struct cvs_branch *meta);
 void free_cvs_branch(struct cvs_branch *meta);
 
 /*
- * branch name to meta map
- */
-struct meta_map_entry {
-	char *branch_name;
-	struct cvs_branch *meta;
-};
-
-struct meta_map {
-	unsigned int size, nr;
-	struct meta_map_entry *array;
-};
-
-#define for_each_cvs_branch(item,map) \
-	for (item = (map)->array; item < (map)->array + (map)->nr; ++item)
-
-void meta_map_init(struct meta_map *map);
-void meta_map_add(struct meta_map *map, const char *branch_name, struct cvs_branch *meta);
-struct cvs_branch *meta_map_find(struct meta_map *map, const char *branch_name);
-void meta_map_release(struct meta_map *map);
-
-/*
  * metadata work
  */
 int load_cvs_revision_meta(struct cvs_branch *meta,

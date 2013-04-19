@@ -58,8 +58,8 @@ static int skipped = 0;
 static time_t import_start_time = 0;
 //static off_t fetched_total_size = 0;
 
-struct cvs_transport *cvs = NULL;
-struct meta_map *cvs_branch_map;
+static struct cvs_transport *cvs = NULL;
+static struct string_list cvs_branch_list = STRING_LIST_INIT_DUP;
 static const char *cvsroot = NULL;
 static const char *cvsmodule = NULL;
 static struct string_list *import_branch_list = NULL;
@@ -936,6 +936,7 @@ static int import_branch_by_name(const char *branch_name)
 	struct strbuf branch_ref = STRBUF_INIT;
 	struct strbuf meta_branch_ref = STRBUF_INIT;
 	struct hash_table meta_revision_hash;
+	struct string_list_item *li;
 
 	fprintf(stderr, "importing CVS branch %s\n", branch_name);
 
@@ -946,16 +947,10 @@ static int import_branch_by_name(const char *branch_name)
 	strbuf_addf(&branch_ref, "%s%s", get_private_ref_prefix(), branch_name);
 	strbuf_addf(&meta_branch_ref, "%s%s", get_meta_ref_prefix(), branch_name);
 
-	/*
-	 * FIXME
-	 */
-	//if (!strcmp(branch_name, "master"))
-	//	cvs_branch = meta_map_find(cvs_branch_map, "HEAD");
-	//else
-		cvs_branch = meta_map_find(cvs_branch_map, branch_name);
-
-	if (!cvs_branch && !ref_exists(meta_branch_ref.buf))
+	li = unsorted_string_list_lookup(&cvs_branch_list, branch_name);
+	if (!li && !ref_exists(meta_branch_ref.buf))
 		die("Cannot find meta for branch %s\n", branch_name);
+	cvs_branch = li->util;
 
 	/*
 	 * FIXME: support of repositories with no files :-)
@@ -1644,7 +1639,7 @@ static int cmd_batch_push(struct string_list *list)
 	return 0;
 }
 
-void add_cvs_revision_cb(const char *branch,
+void add_cvs_revision_cb(const char *branch_name,
 			  const char *path,
 			  const char *revision,
 			  const char *author,
@@ -1652,40 +1647,46 @@ void add_cvs_revision_cb(const char *branch,
 			  time_t timestamp,
 			  int isdead,
 			  void *data) {
-	struct meta_map *cvs_branch_map = data;
-	struct cvs_branch *meta;
+	struct string_list *cvs_branch_list = data;
+	struct string_list_item *li;
+	struct cvs_branch *cvs_branch;
 
-	meta = meta_map_find(cvs_branch_map, branch);
-	if (!meta) {
-		meta = new_cvs_branch(branch);
-		meta_map_add(cvs_branch_map, branch, meta);
+	li = unsorted_string_list_lookup(cvs_branch_list, branch_name);
+	if (!li) {
+		cvs_branch = new_cvs_branch(branch_name);
+		string_list_append(cvs_branch_list, branch_name)->util = cvs_branch;
+	}
+	else {
+		cvs_branch = li->util;
 	}
 
-	skipped += add_cvs_revision(meta, path, revision, author, msg, timestamp, isdead);
+	skipped += add_cvs_revision(cvs_branch, path, revision, author, msg, timestamp, isdead);
 	revisions_all_branches_total++;
 	//display_progress(progress_rlog, revisions_all_branches_total);
 }
 
 static time_t update_since = 0;
-static int on_each_ref(const char *branch, const unsigned char *sha1, int flags, void *data)
+static int on_each_ref(const char *branch_name, const unsigned char *sha1, int flags, void *data)
 {
-	struct meta_map *cvs_branch_map = data;
-	struct cvs_branch *meta;
+	struct string_list *cvs_branch_list = data;
+	struct string_list_item *li;
+	struct cvs_branch *cvs_branch;
 
-	meta = meta_map_find(cvs_branch_map, branch);
-	if (!meta) {
-		meta = new_cvs_branch(branch);
-		meta_map_add(cvs_branch_map, branch, meta);
-
-		//helper_printf("? refs/heads/%s\n", branch);
+	li = unsorted_string_list_lookup(cvs_branch_list, branch_name);
+	if (!li) {
+		cvs_branch = new_cvs_branch(branch_name);
+		string_list_append(cvs_branch_list, branch_name)->util = cvs_branch;
+	}
+	else {
+		cvs_branch = li->util;
 	}
 
 	if (!update_since ||
 	    //FIXME: remember last update date somewhere or take last from
-	    //branch: update_since < meta->last_revision_timestamp)
-	    update_since < meta->last_revision_timestamp)
-	    //update_since > meta->last_revision_timestamp)
-		update_since = meta->last_revision_timestamp;
+	    //branch: update_since < cvs_branch->last_revision_timestamp)
+	    update_since < cvs_branch->last_revision_timestamp)
+	    //update_since > cvs_branch->last_revision_timestamp)
+		update_since = cvs_branch->last_revision_timestamp;
 	return 0;
 }
 
@@ -1698,34 +1699,27 @@ static int cmd_list(const char *line)
 
 	fprintf(stderr, "connected to cvs server\n");
 
-	struct meta_map_entry *cvs_branch;
+	struct string_list_item *li;
+	struct cvs_branch *cvs_branch;
 
 	//progress_rlog = start_progress("revisions info", 0);
 	if (initial_import) {
-		rc = cvs_rlog(cvs, 0, 0, add_cvs_revision_cb, cvs_branch_map);
+		rc = cvs_rlog(cvs, 0, 0, add_cvs_revision_cb, &cvs_branch_list);
 		if (rc == -1)
 			die("rlog failed");
 		fprintf(stderr, "Total revisions: %d\n", revisions_all_branches_total);
 		fprintf(stderr, "Skipped revisions: %d\n", skipped);
 
-		for_each_cvs_branch(cvs_branch, cvs_branch_map) {
-			finalize_revision_list(cvs_branch->meta);
-			//aggregate_cvs_commits(cvs_branch->meta);
-			//if (cvs_branch->meta->cvs_commit_list->head)
-			if (cvs_branch->meta->rev_list->size)
-				helper_printf("? refs/heads/%s\n", cvs_branch->branch_name);
-			/*
-			 * FIXME:
-			 */
-			//if (!strcmp(cvs_branch->branch_name, "HEAD"))
-			//	helper_printf("? refs/heads/master\n");
-			//else
-			//	helper_printf("? refs/heads/%s\n", cvs_branch->branch_name);
+		for_each_string_list_item(li, &cvs_branch_list) {
+			cvs_branch = li->util;
+			finalize_revision_list(cvs_branch);
+			if (cvs_branch->rev_list->nr)
+				helper_printf("? refs/heads/%s\n", li->string);
 		}
 		helper_printf("\n");
 	}
 	else {
-		for_each_ref_in(get_meta_ref_prefix(), on_each_ref, cvs_branch_map);
+		for_each_ref_in(get_meta_ref_prefix(), on_each_ref, &cvs_branch_list);
 		/*
 		 * handle case when last rlog didn't pick all files committed
 		 * last second (hit during autotests)
@@ -1741,27 +1735,21 @@ static int cmd_list(const char *line)
 		 * truncated. Have to detect this case and do full rlog for
 		 * importing such branches.
 		 */
-		rc = cvs_rlog(cvs, update_since, 0, add_cvs_revision_cb, cvs_branch_map);
+		rc = cvs_rlog(cvs, update_since, 0, add_cvs_revision_cb, &cvs_branch_list);
 		if (rc == -1)
 			die("rlog failed");
 		fprintf(stderr, "Total revisions: %d\n", revisions_all_branches_total);
 		fprintf(stderr, "Skipped revisions: %d\n", skipped);
 
-		/*
-		 * FIXME: try to print only branches that have changes
-		 */
-		for_each_cvs_branch(cvs_branch, cvs_branch_map) {
-			finalize_revision_list(cvs_branch->meta);
-			//aggregate_cvs_commits(cvs_branch->meta);
-			//if (cvs_branch->meta->cvs_commit_list->head)
-			if (cvs_branch->meta->rev_list->size)
-				helper_printf("? refs/heads/%s\n", cvs_branch->branch_name);
+		for_each_string_list_item(li, &cvs_branch_list) {
+			cvs_branch = li->util;
+			finalize_revision_list(cvs_branch);
+			if (cvs_branch->rev_list->nr)
+				helper_printf("? refs/heads/%s\n", li->string);
 			else
-				fprintf(stderr, "Branch: %s is up to date\n", cvs_branch->branch_name);
-			//helper_printf("? refs/heads/%s\n", cvs_branch->branch_name);
+				fprintf(stderr, "Branch: %s is up to date\n", li->string);
 		}
 
-		//for_each_ref_in(get_meta_ref_prefix(), on_each_ref, cvs_branch_map);
 		helper_printf("\n");
 	}
 	//stop_progress(&progress_rlog);
@@ -1770,9 +1758,9 @@ static int cmd_list(const char *line)
 	return 0;
 }
 
-static int print_meta_branch_name(const char *branch, const unsigned char *sha1, int flags, void *data)
+static int print_meta_branch_name(const char *branch_name, const unsigned char *sha1, int flags, void *data)
 {
-	helper_printf("? refs/heads/%s\n", branch);
+	helper_printf("? refs/heads/%s\n", branch_name);
 	return 0;
 }
 
@@ -1785,7 +1773,7 @@ static int cmd_list_for_push(const char *line)
 	fprintf(stderr, "connected to cvs server\n");
 
 	//progress_rlog = start_progress("revisions info", 0);
-	for_each_ref_in(get_meta_ref_prefix(), print_meta_branch_name, cvs_branch_map);
+	for_each_ref_in(get_meta_ref_prefix(), print_meta_branch_name, NULL);
 	helper_printf("\n");
 
 	//stop_progress(&progress_rlog);
@@ -1947,6 +1935,11 @@ static int parse_cvs_spec(const char *spec)
 	return 0;
 }
 
+void cvs_branch_list_item_free(void *p, const char *str)
+{
+	free_cvs_branch(p);
+}
+
 int main(int argc, const char **argv)
 {
 	struct strbuf buf = STRBUF_INIT;
@@ -1985,9 +1978,6 @@ int main(int argc, const char **argv)
 	fprintf(stderr, "ref_prefix %s\n", get_ref_prefix());
 	fprintf(stderr, "private_ref_prefix %s\n", get_private_ref_prefix());
 
-	cvs_branch_map = xmalloc(sizeof(*cvs_branch_map));
-	meta_map_init(cvs_branch_map);
-
 	if (find_hook("cvs-import-commit"))
 		have_import_hook = 1;
 	if (find_hook("cvs-export-commit"))
@@ -2005,7 +1995,7 @@ int main(int argc, const char **argv)
 		strbuf_reset(&buf);
 	}
 
-	meta_map_release(cvs_branch_map);
+	string_list_clear_func(&cvs_branch_list, cvs_branch_list_item_free);
 	if (cvs) {
 		int ret = cvs_terminate(cvs);
 
