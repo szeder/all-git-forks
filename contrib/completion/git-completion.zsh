@@ -2,6 +2,8 @@
 
 # zsh completion wrapper for git
 #
+# Copyright (c) 2012-2013 Felipe Contreras <felipe.contreras@gmail.com>
+#
 # You need git's bash completion script installed somewhere, by default on the
 # same directory as this script.
 #
@@ -63,6 +65,74 @@ __gitcomp_file ()
 	compadd -Q -p "${2-}" -f -- ${=1} && _ret=0
 }
 
+__git_zsh_bash_func ()
+{
+	emulate -L ksh
+
+	local command=$1
+
+	local completion_func="_git_${command//-/_}"
+	declare -f $completion_func >/dev/null && $completion_func && return
+
+	local expansion=$(__git_aliased_command "$command")
+	if [ -n "$expansion" ]; then
+		completion_func="_git_${expansion//-/_}"
+		declare -f $completion_func >/dev/null && $completion_func
+	fi
+}
+
+__git_zsh_main ()
+{
+	local curcontext="$curcontext" state state_descr line
+	typeset -A opt_args
+	local -a orig_words
+
+	orig_words=( ${words[@]} )
+
+	_arguments -C \
+		'(-p --paginate --no-pager)'{-p,--paginate}'[Pipe all output into ''less'']' \
+		'(-p --paginate)--no-pager[Do not pipe git output into a pager]' \
+		'--git-dir=-[Set the path to the repository]: :_directories' \
+		'--bare[Treat the repository as a bare repository]' \
+		'(- :)--version[Prints the git suite version]' \
+		'--exec-path=-[Path to where your core git programs are installed]:: :_directories' \
+		'--html-path[Print the path where git''s HTML documentation is installed]' \
+		'--info-path[Print the path where the Info files are installed]' \
+		'--man-path[Print the manpath (see `man(1)`) for the man pages]' \
+		'--work-tree=-[Set the path to the working tree]: :_directories' \
+		'--namespace=-[Set the git namespace]' \
+		'--no-replace-objects[Do not use replacement refs to replace git objects]' \
+		'(- :)--help[Prints the synopsis and a list of the most commonly used commands]: :->arg' \
+		'(-): :->command' \
+		'(-)*:: :->arg' && return
+
+	case $state in
+	(command)
+		emulate ksh -c __git_compute_porcelain_commands
+		local -a porcelain aliases
+		porcelain=( ${=__git_porcelain_commands} )
+		aliases=( $(emulate ksh -c __git_aliases) )
+		_describe -t porcelain-commands 'porcelain commands' porcelain && _ret=0
+		_describe -t aliases 'aliases' aliases && _ret=0
+		;;
+	(arg)
+		local command="${words[1]}" __git_dir
+
+		if (( $+opt_args[--bare] )); then
+			__git_dir='.'
+		else
+			__git_dir=${opt_args[--git-dir]}
+		fi
+
+		(( $+opt_args[--help] )) && command='help'
+
+		words=( ${orig_words[@]} )
+
+		__git_zsh_bash_func $command
+		;;
+	esac
+}
+
 _git ()
 {
 	local _ret=1
@@ -72,7 +142,11 @@ _git ()
 	prev=${words[CURRENT-1]}
 	let cword=CURRENT-1
 
-	emulate ksh -c __${service}_main
+	if (( $+functions[__${service}_zsh_main] )); then
+		__${service}_zsh_main
+	else
+		emulate ksh -c __${service}_main
+	fi
 
 	let _ret && _default -S '' && _ret=0
 	return _ret
