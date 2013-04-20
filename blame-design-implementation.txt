@@ -1,0 +1,50 @@
+# Data Structures
+
+A scoreboard has the final commit (the starting point, since we moving back in
+time).  It has a linked list of blame_entries, which themselves contain lists of
+contiguous lines.
+
+blame_entry is a doubly linked list contiguous sequence of lines that share a
+suspect (the commit currently blamed).  The first suspect (of type origin) is
+the final commit, usually HEAD.  It 
+
+The origin is a blob (SHA) that plus some metadata.  It has a field that
+contains the SHA of its owning commit.  SHAs are stored in an encoded format and
+need to be decoded by sha1_to_hex.
+
+Blame uses struct object, a core data structure, whose semantics are, as yet,
+unclear.
+
+
+# The Metaphor
+
+An "accused" or "suspect" commit tries to demonstrate "scapegoat" that its
+parent is at "fault" for lines in the range.
+
+Note:  The metaphor is somewhat muddy because of the use of scapegoat as well as
+suspect.
+
+
+# Issues:
+
+1.  The lines blamed in the blame command may not be contiguous in history.
+
+2.  Line moves 
+
+We need to handle the insertions and deletions anchors of ranges of blamed
+lines.
+
+Interesting discovery:  git blame starts at a pseudo-commit which represents 
+the working tree, which allows blame to blame changes in a dirty working tree.
+
+
+# Code
+
+Entry:  assign_blame
+
+Main loop:
+
+
+When are blame_entries split?
+
+What's the stopping condition?
