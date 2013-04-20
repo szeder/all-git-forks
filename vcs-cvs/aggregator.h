@@ -56,20 +56,6 @@ int add_cvs_revision(struct cvs_branch *meta,
 		       time_t timestamp,
 		       int isdead);
 
-void add_cvs_revision_meta(struct cvs_branch *meta,
-		       const char *path,
-		       const char *revision,
-		       int isdead,
-		       int isexec,
-		       int mark);
-
-void add_cvs_revision_hash(struct hash_table *meta_hash,
-		       const char *path,
-		       const char *revision,
-		       int isdead,
-		       int isexec,
-		       int mark);
-
 void finalize_revision_list(struct cvs_branch *meta);
 void aggregate_cvs_commits(struct cvs_branch *meta);
 time_t find_first_commit_time(struct cvs_branch *meta);

@@ -7,6 +7,7 @@
 #include "run-command.h"
 #include "vcs-cvs/cvs-client.h"
 #include "vcs-cvs/meta-store.h"
+#include "vcs-cvs/aggregator.h"
 #include "vcs-cvs/proto-trace.h"
 #include "notes.h"
 #include "argv-array.h"

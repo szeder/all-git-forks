@@ -8,7 +8,6 @@
 #include "strbuf.h"
 #include "string-list.h"
 #include "vcs-cvs/cvs-types.h"
-#include "vcs-cvs/aggregator.h"
 
 unsigned int hash_path(const char *path);
 
@@ -25,8 +24,16 @@ int load_revision_meta(unsigned char *sha1, const char *notes_ref, time_t *times
 int save_revision_meta(unsigned char *sha1, const char *notes_ref, const char *msg, struct hash_table *revision_meta_hash);
 int has_revision_meta(unsigned char *sha1, const char *notes_ref);
 
+void add_cvs_revision_hash(struct hash_table *meta_hash,
+		       const char *path,
+		       const char *revision,
+		       int isdead,
+		       int isexec,
+		       int mark);
+
 char *read_note_of(unsigned char sha1[20], const char *notes_ref, unsigned long *size);
 //char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, struct string_list *attr_lst, char *p);
+
 char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, char *p);
 /*
 revision=1.24.3.43,isdead=y,ispushed=y:path

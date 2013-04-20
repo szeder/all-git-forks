@@ -95,16 +95,6 @@ void add_cvs_revision_hash(struct hash_table *meta_hash,
 	}
 }
 
-void add_cvs_revision_meta(struct cvs_branch *meta,
-		       const char *path,
-		       const char *revision,
-		       int isdead,
-		       int isexec,
-		       int mark)
-{
-	add_cvs_revision_hash(meta->last_commit_revision_hash, path, revision, isdead, isexec, mark);
-}
-
 static void meta_line_add_attr(struct strbuf *line, const char *attr, const char *value, int *want_comma)
 {
 	if (*want_comma)
