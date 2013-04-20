@@ -252,7 +252,7 @@ static const char *get_import_time_estimation()
 	return eta_sb.buf;
 }
 
-static int commit_revision(void *ptr, void *data)
+static int fast_export_revision_cb(void *ptr, void *data)
 {
 	static struct cvsfile file = CVSFILE_INIT;
 	struct cvs_revision *rev = ptr;
@@ -301,7 +301,7 @@ static int commit_revision(void *ptr, void *data)
 }
 
 static int markid = 0;
-static int commit_cvs_commit(struct cvs_commit *ps, const char *branch_name, struct strbuf *parent_mark)
+static int fast_export_cvs_commit(struct cvs_commit *ps, const char *branch_name, struct strbuf *parent_mark)
 {
 	/*
 	 * TODO: clean extra lines in commit messages
@@ -385,14 +385,14 @@ static int commit_cvs_commit(struct cvs_commit *ps, const char *branch_name, str
 	}
 	if (parent_mark->len)
 		helper_printf("from %s\n", parent_mark->buf);
-	for_each_hash(ps->revision_hash, commit_revision, NULL);
+	for_each_hash(ps->revision_hash, fast_export_revision_cb, NULL);
 	//helper_printf("\n");
 	helper_flush();
 
 	return markid;
 }
 
-static int commit_meta_revision(void *ptr, void *data)
+static int fast_export_revision_meta_cb(void *ptr, void *data)
 {
 	struct cvs_revision *rev = ptr;
 
@@ -402,7 +402,7 @@ static int commit_meta_revision(void *ptr, void *data)
 	return 0;
 }
 
-static int print_revision_changes(void *ptr, void *data)
+static int print_revision_changes_cb(void *ptr, void *data)
 {
 	struct cvs_revision *rev = ptr;
 
@@ -414,7 +414,7 @@ static int print_revision_changes(void *ptr, void *data)
 	return 0;
 }
 
-static int commit_meta(struct hash_table *meta, struct cvs_commit *ps, const char *branch_name, struct strbuf *commit_mark, struct strbuf *parent_mark)
+static int fast_export_commit_meta(struct hash_table *meta, struct cvs_commit *ps, const char *branch_name, struct strbuf *commit_mark, struct strbuf *parent_mark)
 {
 	markid++;
 	helper_printf("commit %s%s\n", get_meta_ref_prefix(), branch_name);
@@ -423,7 +423,7 @@ static int commit_meta(struct hash_table *meta, struct cvs_commit *ps, const cha
 	helper_printf("committer %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp_last);
 	helper_printf("data <<EOM\n");
 	helper_printf("cvs meta update\n");
-	for_each_hash(ps->revision_hash, print_revision_changes, NULL);
+	for_each_hash(ps->revision_hash, print_revision_changes_cb, NULL);
 	helper_printf("EOM\n");
 	if (parent_mark->len)
 		helper_printf("from %s\n", parent_mark->buf);
@@ -432,7 +432,7 @@ static int commit_meta(struct hash_table *meta, struct cvs_commit *ps, const cha
 	if (ps->cancellation_point)
 		helper_printf("UPDATE:%ld\n", ps->cancellation_point);
 	helper_printf("--\n");
-	for_each_hash(meta, commit_meta_revision, NULL);
+	for_each_hash(meta, fast_export_revision_meta_cb, NULL);
 	helper_printf("EON\n");
 	//helper_printf("\n");
 	helper_flush();
@@ -440,7 +440,7 @@ static int commit_meta(struct hash_table *meta, struct cvs_commit *ps, const cha
 	return markid;
 }
 
-static int commit_blob(void *buf, size_t size)
+static int fast_export_blob(void *buf, size_t size)
 {
 	/*
 	'blob' LF
@@ -481,7 +481,7 @@ static int update_revision_hash(void *ptr, void *data)
 	return 0;
 }
 
-void on_file_checkout(struct cvsfile *file, void *data)
+static void on_file_checkout_cb(struct cvsfile *file, void *data)
 {
 	struct hash_table *meta_revision_hash = data;
 	int mark;
@@ -492,7 +492,7 @@ void on_file_checkout(struct cvsfile *file, void *data)
 	if (!file->ismem)
 		die("no support for files on disk yet");
 
-	mark = commit_blob(file->file.buf, file->file.len);
+	mark = fast_export_blob(file->file.buf, file->file.len);
 
 	add_cvs_revision_hash(meta_revision_hash, file->path.buf, file->revision.buf, file->isdead, file->isexec, mark);
 }
@@ -509,14 +509,14 @@ static int checkout_branch(const char *branch_name, time_t import_time, struct h
 	if (!cvs_co)
 		return -1;
 
-	rc = cvs_checkout_branch(cvs_co, branch_name, import_time, on_file_checkout, meta_revision_hash);
+	rc = cvs_checkout_branch(cvs_co, branch_name, import_time, on_file_checkout_cb, meta_revision_hash);
 	if (rc)
 		die("cvs checkout of %s date %ld failed", branch_name, import_time);
 
 	return cvs_terminate(cvs_co);
 }
 
-int count_dots(const char *rev)
+static int count_dots(const char *rev)
 {
 	int dots = 0;
 
@@ -532,7 +532,7 @@ int count_dots(const char *rev)
 	return dots;
 }
 
-static char *get_rev_branch(struct cvs_revision *file_meta)
+static char *get_cvs_revision_branch(struct cvs_revision *file_meta)
 {
 	return cvs_get_rev_branch(cvs, file_meta->path, file_meta->revision);
 }
@@ -571,7 +571,7 @@ static char *find_parent_branch(const char *branch_name, struct hash_table *meta
 	if (find_rev_data.dots == 1)
 		return xstrdup("HEAD");
 
-	return get_rev_branch(find_rev_data.file_meta);
+	return get_cvs_revision_branch(find_rev_data.file_meta);
 }
 
 static int compare_commit_meta(unsigned char sha1[20], const char *meta_ref, struct hash_table *meta_revision_hash)
@@ -667,7 +667,7 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 	return commit_ref;
 }
 
-static int commit_revision_by_mark(void *ptr, void *data)
+static int fast_export_revision_by_mark(void *ptr, void *data)
 {
 	struct cvs_revision *rev = ptr;
 
@@ -677,7 +677,7 @@ static int commit_revision_by_mark(void *ptr, void *data)
 	return 0;
 }
 
-static int commit_branch_initial(struct hash_table *meta_revision_hash,
+static int fast_export_branch_initial(struct hash_table *meta_revision_hash,
 		const char *branch_name, time_t date, const char *parent_commit_ref,
 		const char *parent_branch_name)
 {
@@ -693,13 +693,13 @@ static int commit_branch_initial(struct hash_table *meta_revision_hash,
 	//helper_printf("merge %s\n", parent_commit_ref);
 	helper_printf("from %s\n", parent_commit_ref);
 	helper_printf("deleteall\n");
-	for_each_hash(meta_revision_hash, commit_revision_by_mark, NULL);
+	for_each_hash(meta_revision_hash, fast_export_revision_by_mark, NULL);
 	helper_flush();
 
 	return markid;
 }
 
-static int import_branch(const char *branch_name, struct cvs_branch *cvs_branch)
+static int make_initial_branch_import(const char *branch_name, struct cvs_branch *cvs_branch)
 {
 	int rc;
 	int mark;
@@ -738,7 +738,7 @@ static int import_branch(const char *branch_name, struct cvs_branch *cvs_branch)
 						cvs_branch->last_commit_revision_hash);
 	fprintf(stderr, "PARENT COMMIT: %s\n", parent_commit);
 
-	mark = commit_branch_initial(cvs_branch->last_commit_revision_hash,
+	mark = fast_export_branch_initial(cvs_branch->last_commit_revision_hash,
 					branch_name,
 					import_time,
 					parent_commit,
@@ -752,20 +752,6 @@ static void merge_revision_hash(struct hash_table *meta, struct hash_table *upda
 {
 	for_each_hash(update, update_revision_hash, meta);
 }
-
-/*static void helper_checkpoint()
-{
-	struct strbuf buf = STRBUF_INIT;
-	helper_printf("checkpoint\n");
-	helper_printf("ls /tell/me/when/checkpoint/is/done\n");
-	if (helper_strbuf_getline(&buf, stdin, '\n') == EOF) {
-		if (ferror(stdin))
-			die("Error reading command stream");
-		else
-			die("Unexpected end of command stream");
-	}
-	helper_flush();
-}*/
 
 static int import_branch_by_name(const char *branch_name)
 {
@@ -793,16 +779,16 @@ static int import_branch_by_name(const char *branch_name)
 	cvs_branch = li->util;
 
 	/*
-	 * FIXME: support of repositories with no files :-)
+	 * FIXME: support of repositories with no files
 	 */
 	if (is_empty_hash(cvs_branch->last_commit_revision_hash) &&
 	    strcmp(branch_name, "HEAD")) {
 		/*
 		 * no meta, do cvs checkout
 		 */
-		mark = import_branch(branch_name, cvs_branch);
+		mark = make_initial_branch_import(branch_name, cvs_branch);
 		if (mark == -1)
-			die("import_branch failed %s", branch_name);
+			die("make_initial_branch_import failed %s", branch_name);
 		if (mark > 0)
 			strbuf_addf(&commit_mark_sb, ":%d", mark);
 	}
@@ -827,12 +813,12 @@ static int import_branch_by_name(const char *branch_name)
 		fprintf(stderr, "Branch: %s Commit: %d/%d\n", branch_name, psnum, pstotal);
 		print_cvs_commit(ps);
 		fprintf(stderr, "--<<------------------\n\n");
-		mark = commit_cvs_commit(ps, branch_name, &commit_mark_sb);
+		mark = fast_export_cvs_commit(ps, branch_name, &commit_mark_sb);
 		strbuf_reset(&commit_mark_sb);
 		strbuf_addf(&commit_mark_sb, ":%d", mark);
 
 		merge_revision_hash(&meta_revision_hash, ps->revision_hash);
-		mark = commit_meta(&meta_revision_hash, ps, branch_name, &commit_mark_sb, &meta_mark_sb);
+		mark = fast_export_commit_meta(&meta_revision_hash, ps, branch_name, &commit_mark_sb, &meta_mark_sb);
 		strbuf_reset(&meta_mark_sb);
 		strbuf_addf(&meta_mark_sb, ":%d", mark);
 
@@ -1479,7 +1465,7 @@ static int cmd_batch_push(struct string_list *list)
 	return 0;
 }
 
-void add_cvs_revision_cb(const char *branch_name,
+static void add_cvs_revision_cb(const char *branch_name,
 			  const char *path,
 			  const char *revision,
 			  const char *author,
@@ -1690,7 +1676,7 @@ static int parse_cvs_spec(const char *spec)
 	return 0;
 }
 
-void cvs_branch_list_item_free(void *p, const char *str)
+static void cvs_branch_list_item_free(void *p, const char *str)
 {
 	free_cvs_branch(p);
 }
