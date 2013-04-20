@@ -61,5 +61,5 @@ void aggregate_cvs_commits(struct cvs_branch *meta);
 time_t find_first_commit_time(struct cvs_branch *meta);
 int get_cvs_commit_count(struct cvs_branch *meta);
 void free_cvs_branch(struct cvs_branch *meta);
-
+void print_cvs_commit(struct cvs_commit *cm);
 #endif

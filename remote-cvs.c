@@ -216,52 +216,6 @@ static int cmd_option(const char *line)
 	return 0;
 }
 
-static int print_revision(void *ptr, void *data)
-{
-	struct cvs_revision *rev = ptr;
-
-	if (rev->prev) {
-		struct cvs_revision *prev = rev->prev;
-		while (prev && prev->ismerged && prev->prev)
-			prev = prev->prev;
-		if (prev->ismerged)
-			fprintf(stderr, "\tunknown->%s-", rev->prev->revision);
-		else
-		fprintf(stderr, "\t%s->", rev->prev->revision);
-	}
-	else {
-		fprintf(stderr, "\tunknown->");
-	}
-	fprintf(stderr, "%s\t%s", rev->revision, rev->path);
-
-	if (rev->isdead)
-		fprintf(stderr, " (dead)\n");
-	else
-		fprintf(stderr, "\n");
-	return 0;
-}
-
-static void print_ps(struct cvs_transport *cvs, struct cvs_commit *ps)
-{
-
-	fprintf(stderr,
-		"Author: %s\n"
-		"AuthorDate: %s\n",
-		author_convert(ps->author),
-		show_date(ps->timestamp, 0, DATE_NORMAL));
-	fprintf(stderr,
-		"CommitDate: %s\n",
-		show_date(ps->timestamp_last, 0, DATE_NORMAL));
-	fprintf(stderr,
-		"UpdateDate: %s\n"
-		"\n"
-		"%s\n",
-		show_date(ps->cancellation_point, 0, DATE_NORMAL),
-		ps->msg);
-
-	for_each_hash(ps->revision_hash, print_revision, cvs);
-}
-
 static const char *get_import_time_estimation()
 {
 	static const char *now = " 00:00, ";
@@ -871,7 +825,7 @@ static int import_branch_by_name(const char *branch_name)
 		psnum++;
 		fprintf(stderr, "-->>------------------\n");
 		fprintf(stderr, "Branch: %s Commit: %d/%d\n", branch_name, psnum, pstotal);
-		print_ps(cvs, ps);
+		print_cvs_commit(ps);
 		fprintf(stderr, "--<<------------------\n\n");
 		mark = commit_cvs_commit(ps, branch_name, &commit_mark_sb);
 		strbuf_reset(&commit_mark_sb);

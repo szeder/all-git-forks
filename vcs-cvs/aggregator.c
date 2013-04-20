@@ -406,7 +406,7 @@ static void cvs_commit_add_revision(struct cvs_revision *rev, struct cvs_commit 
 	}
 }
 
-static int print_revision(void *ptr, void *data)
+static int print_cvs_revision(void *ptr, void *data)
 {
 	struct cvs_revision *rev = ptr;
 
@@ -431,25 +431,25 @@ static int print_revision(void *ptr, void *data)
 	return 0;
 }
 
-static void print_ps(struct cvs_commit *ps)
+void print_cvs_commit(struct cvs_commit *commit)
 {
 
 	fprintf(stderr,
 		"Author: %s\n"
 		"AuthorDate: %s\n",
-		ps->author,
-		show_date(ps->timestamp, 0, DATE_NORMAL));
+		commit->author,
+		show_date(commit->timestamp, 0, DATE_NORMAL));
 	fprintf(stderr,
 		"CommitDate: %s\n",
-		show_date(ps->timestamp_last, 0, DATE_NORMAL));
+		show_date(commit->timestamp_last, 0, DATE_NORMAL));
 	fprintf(stderr,
 		"UpdateDate: %s\n"
 		"\n"
 		"%s\n",
-		show_date(ps->cancellation_point, 0, DATE_NORMAL),
-		ps->msg);
+		show_date(commit->cancellation_point, 0, DATE_NORMAL),
+		commit->msg);
 
-	for_each_hash(ps->revision_hash, print_revision, NULL);
+	for_each_hash(commit->revision_hash, print_cvs_revision, NULL);
 }
 
 static int validate_cvs_commit_order(void *ptr, void *data)
@@ -474,10 +474,10 @@ static int validate_cvs_commit_order(void *ptr, void *data)
 				cvs_commit = cvs_commit->next;
 			}
 			if (!valid) {
-				fprintf(stderr, "ps1\n");
-				print_ps(rev->cvs_commit);
-				fprintf(stderr, "ps2\n");
-				print_ps(rev->prev->cvs_commit);
+				fprintf(stderr, "commit1\n");
+				print_cvs_commit(rev->cvs_commit);
+				fprintf(stderr, "commit2\n");
+				print_cvs_commit(rev->prev->cvs_commit);
 				error("same date cvs_commits order is wrong file %s", rev->path);
 			}
 		}
@@ -852,7 +852,7 @@ void aggregate_cvs_commits(struct cvs_branch *meta)
 	i = 0;
 	while (cvs_commit) {
 		fprintf(stderr, "-> cvs_commit %d\n", ++i);
-		print_ps(cvs_commit);
+		print_cvs_commit(cvs_commit);
 		cvs_commit = cvs_commit->next;
 	}
 
