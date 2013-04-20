@@ -9,6 +9,7 @@
 #include "vcs-cvs/meta-store.h"
 #include "vcs-cvs/aggregator.h"
 #include "vcs-cvs/proto-trace.h"
+#include "vcs-cvs/ident-utils.h"
 #include "notes.h"
 #include "argv-array.h"
 #include "commit.h"
@@ -65,18 +66,6 @@ static const char *cvsroot = NULL;
 static const char *cvsmodule = NULL;
 static struct string_list *import_branch_list = NULL;
 
-#define HASH_TABLE_INIT { 0, 0, NULL }
-static struct hash_table cvsauthors_hash = HASH_TABLE_INIT;
-static int cvsauthors_hash_modified = 0;
-struct cvsauthor {
-	char *userid;
-	char *ident;
-};
-static char *cvsauthors_lookup(const char *userid);
-static void cvsauthors_add(char *userid, char *ident);
-static void cvsauthors_load();
-static const char *author_convert(const char *userid);
-
 static const char import_commit_edit[] = "IMPORT_COMMIT_EDIT";
 static const char export_commit_edit[] = "EXPORT_COMMIT_EDIT";
 static int have_import_hook = 0;
@@ -109,41 +98,6 @@ static const struct input_command_entry input_command_list[] = {
 	{ "list", cmd_list, NULL, 0 },
 	{ NULL, NULL, NULL, 0 }
 };
-
-unsigned int hash_userid(const char *userid)
-{
-	//unsigned int hash = 0x123;
-	unsigned int hash = 0x12375903;
-
-	while (*userid) {
-		unsigned char c = *userid++;
-		//c = icase_hash(c);
-		hash = hash*101 + c;
-	}
-	return hash;
-}
-
-static inline const char *strbuf_hex_unprintable(struct strbuf *sb)
-{
-	static const char hex[] = "0123456789abcdef";
-	struct strbuf out = STRBUF_INIT;
-	char *c;
-
-	for (c = sb->buf; c < sb->buf + sb->len; c++) {
-		if (isprint(*c)) {
-			strbuf_addch(&out, *c);
-		}
-		else {
-			strbuf_addch(&out, '\\');
-			strbuf_addch(&out, hex[(unsigned char)*c >> 4]);
-			strbuf_addch(&out, hex[*c & 0xf]);
-		}
-	}
-
-	strbuf_swap(sb, &out);
-	strbuf_release(&out);
-	return sb->buf;
-}
 
 static ssize_t helper_printf(const char *fmt, ...) __attribute__((format (printf, 1, 2)));
 static ssize_t helper_printf(const char *fmt, ...)
@@ -390,75 +344,6 @@ static int commit_revision(void *ptr, void *data)
 	helper_printf("\n");
 
 	return 0;
-}
-
-static int run_author_convert_hook(const char *userid, struct strbuf *author_ident)
-{
-	struct child_process proc;
-	const char *argv[3];
-	int code;
-
-	argv[0] = find_hook("cvs-author-convert");
-	if (!argv[0])
-		return 0;
-
-	argv[1] = userid;
-	argv[2] = NULL;
-
-	memset(&proc, 0, sizeof(proc));
-	proc.argv = argv;
-	proc.out = -1;
-
-	code = start_command(&proc);
-	if (code)
-		return code;
-
-	strbuf_getwholeline_fd(author_ident, proc.out, '\n');
-	strbuf_trim(author_ident);
-	close(proc.out);
-	return finish_command(&proc);
-}
-
-static char *author_convert_via_hook(const char *userid)
-{
-	struct strbuf author_ident = STRBUF_INIT;
-
-	if (run_author_convert_hook(userid, &author_ident))
-		return NULL;
-
-	if (!author_ident.len) {
-		strbuf_addf(&author_ident, "%s <unknown>", userid);
-		return strbuf_detach(&author_ident, NULL);
-	}
-
-	/*
-	 * TODO: proper verify
-	 */
-	const char *lt;
-	const char *gt;
-
-	lt = index(author_ident.buf, '<');
-	gt = index(author_ident.buf, '>');
-
-	if (!lt && !gt)
-		strbuf_addstr(&author_ident, " <unknown>");
-
-	return strbuf_detach(&author_ident, NULL);
-}
-
-static const char *author_convert(const char *userid)
-{
-	char *ident;
-
-	ident = cvsauthors_lookup(userid);
-	if (ident)
-		return ident;
-
-	ident = author_convert_via_hook(userid);
-	if (ident)
-		cvsauthors_add(xstrdup(userid), ident);
-
-	return ident;
 }
 
 static int markid = 0;
@@ -978,7 +863,7 @@ static int import_branch_by_name(const char *branch_name)
 	init_hash(&meta_revision_hash);
 	merge_revision_hash(&meta_revision_hash, cvs_branch->last_commit_revision_hash);
 
-	cvsauthors_load();
+	cvs_authors_load();
 
 	pstotal = get_cvs_commit_count(cvs_branch);
 	struct cvs_commit *ps = cvs_branch->cvs_commit_list->head;
@@ -1828,91 +1713,6 @@ static int do_command(struct strbuf *line)
 	return 0;
 }
 
-static char *cvsauthors_lookup(const char *userid)
-{
-	struct cvsauthor *auth;
-
-	auth = lookup_hash(hash_userid(userid), &cvsauthors_hash);
-	if (auth)
-		return auth->ident;
-
-	return NULL;
-}
-
-static void cvsauthors_add(char *userid, char *ident)
-{
-	struct cvsauthor *auth;
-	struct cvsauthor **ppauth;
-
-	auth = xmalloc(sizeof(*auth));
-	auth->userid = userid;
-	auth->ident = ident;
-
-	ppauth = (struct cvsauthor **)insert_hash(hash_userid(userid), auth, &cvsauthors_hash);
-	if (ppauth) {
-		if (strcmp((*ppauth)->userid, auth->userid))
-			error("cvs-authors userid hash colision %s %s", (*ppauth)->userid, auth->userid);
-		else
-			error("cvs-authors userid dup %s", auth->userid);
-	}
-	cvsauthors_hash_modified = 1;
-}
-
-static void cvsauthors_load()
-{
-	struct strbuf line = STRBUF_INIT;
-	char *p;
-	FILE *fd;
-
-	if (!is_empty_hash(&cvsauthors_hash))
-		return;
-
-	fd = fopen(git_path("cvs-authors"), "r");
-	if (!fd)
-		return;
-
-	while (!strbuf_getline(&line, fd, '\n')) {
-		p = strchr(line.buf, '=');
-		if (!p) {
-			warning("bad formatted cvs-authors line: %s", line.buf);
-			continue;
-		}
-		*p++ = '\0';
-
-		cvsauthors_add(xstrdup(line.buf), xstrdup(p));
-	}
-
-	fclose(fd);
-	strbuf_release(&line);
-	cvsauthors_hash_modified = 0;
-}
-
-static int cvsauthor_item_store(void *ptr, void *data)
-{
-	struct cvsauthor *auth = ptr;
-	FILE *fd = data;
-
-	fprintf(fd, "%s=%s\n", auth->userid, auth->ident);
-	free(auth->userid);
-	free(auth->ident);
-	free(auth);
-	return 0;
-}
-
-static void cvsauthors_store()
-{
-	if (!cvsauthors_hash_modified)
-		return;
-
-	FILE *fd = fopen(git_path("cvs-authors"), "w");
-	if (!fd)
-		return;
-
-	for_each_hash(&cvsauthors_hash, cvsauthor_item_store, fd);
-	fclose(fd);
-	free_hash(&cvsauthors_hash);
-}
-
 static int parse_cvs_spec(const char *spec)
 {
 	/*
@@ -2003,7 +1803,7 @@ int main(int argc, const char **argv)
 		fprintf(stderr, "done, rc=%d\n", ret);
 	}
 
-	cvsauthors_store();
+	cvs_authors_store();
 
 	strbuf_release(&buf);
 	return 0;

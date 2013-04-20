@@ -640,6 +640,7 @@ LIB_H += vcs-cvs/aggregator.h
 LIB_H += vcs-cvs/cvs-cache.h
 LIB_H += vcs-cvs/cvs-client.h
 LIB_H += vcs-cvs/cvs-types.h
+LIB_H += vcs-cvs/ident-utils.h
 LIB_H += vcs-cvs/meta-store.h
 LIB_H += vcs-cvs/proto-trace.h
 
@@ -1903,6 +1904,7 @@ VCSSVN_OBJS += vcs-svn/svndump.o
 VCSCVS_OBJS += vcs-cvs/aggregator.o
 VCSCVS_OBJS += vcs-cvs/cvs-cache.o
 VCSCVS_OBJS += vcs-cvs/cvs-client.o
+VCSCVS_OBJS += vcs-cvs/ident-utils.o
 VCSCVS_OBJS += vcs-cvs/meta-store.o
 VCSCVS_OBJS += vcs-cvs/proto-trace.o
 
