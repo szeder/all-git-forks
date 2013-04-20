@@ -1078,7 +1078,7 @@ static int prepare_push_commit_list(unsigned char *sha1, const char *meta_ref, s
 		fprintf(stderr, "adding push list commit: %s date: %s commit: %p\n",
 			sha1_to_hex(commit->object.sha1), show_date(commit->date, 0, DATE_NORMAL), commit);
 		commit_list_insert(commit, push_list);
-		load_revision_meta(commit->object.sha1, meta_ref, &revision_meta_hash);
+		load_revision_meta(commit->object.sha1, meta_ref, NULL, &revision_meta_hash);
 		if (revision_meta_hash) {
 			commit->util = revision_meta_hash;
 			fprintf(stderr, "adding push list commit meta: %p\n", commit);

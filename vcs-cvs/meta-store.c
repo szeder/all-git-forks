@@ -68,15 +68,6 @@ char *read_note_of(unsigned char sha1[20], const char *notes_ref, unsigned long 
 	return buf;
 }
 
-char *read_ref_note(const char *commit_ref, const char *notes_ref, unsigned long *size)
-{
-	unsigned char sha1[20];
-	if (get_sha1(commit_ref, sha1))
-		die(_("Failed to resolve '%s' as a valid ref."), commit_ref);
-
-	return read_note_of(sha1, notes_ref, size);
-}
-
 void add_cvs_revision_hash(struct hash_table *meta_hash,
 		       const char *path,
 		       const char *revision,
@@ -179,47 +170,6 @@ char *parse_meta_line(char *buf, unsigned long len, char **first, char **second,
 	return NULL;
 }
 
-int load_cvs_revision_meta(struct cvs_branch *meta,
-			   const char *commit_ref,
-			   const char *notes_ref)
-{
-	char *buf;
-	char *p;
-	char *first;
-	char *second;
-	unsigned long size;
-
-	buf = read_ref_note(commit_ref, notes_ref, &size);
-	if (!buf)
-		return -1;
-
-	p = buf;
-	while ((p = parse_meta_line(buf, size, &first, &second, p))) {
-		if (strcmp(first, "--") == 0)
-			break;
-		fprintf(stderr, "option: %s=>%s\n", first, second);
-		if (strcmp(first, "UPDATE") == 0) {
-			meta->last_revision_timestamp = atol(second);
-			if (meta->last_revision_timestamp == 0)
-				die("cvs metadata next UPDATE time is wrong");
-		}
-	}
-
-	while ((p = parse_meta_line(buf,size, &first, &second, p))) {
-		//fprintf(stderr, "revinfo: %s=>%s\n", first, second);
-		int isdead = (second[0] == '-');
-		if (second[1] != ':')
-			die("malformed metadata: %s:%s", first, second);
-		second += 2;
-		add_cvs_revision_meta(meta, second, first, isdead, 0, 0);
-	}
-
-	//write_or_die(1, buf, size);
-	//fprintf(stderr, "end\n");
-	free(buf);
-	return 0;
-}
-
 int has_revision_meta(unsigned char *sha1, const char *notes_ref)
 {
 	struct notes_tree *t;
@@ -234,7 +184,7 @@ int has_revision_meta(unsigned char *sha1, const char *notes_ref)
 	return !!note;
 }
 
-int load_revision_meta(unsigned char *sha1, const char *notes_ref, struct hash_table **revision_meta_hash)
+int load_revision_meta(unsigned char *sha1, const char *notes_ref, time_t *timestamp, struct hash_table **revision_meta_hash)
 {
 	char *buf;
 	char *p;
@@ -254,6 +204,12 @@ int load_revision_meta(unsigned char *sha1, const char *notes_ref, struct hash_t
 	while ((p = parse_meta_line(buf, size, &first, &second, p))) {
 		if (strcmp(first, "--") == 0)
 			break;
+		fprintf(stderr, "option: %s=>%s\n", first, second);
+		if (!strcmp(first, "UPDATE") && timestamp) {
+			*timestamp = atol(second);
+			if (*timestamp == 0)
+				die("cvs metadata next UPDATE time is wrong");
+		}
 	}
 
 	while ((p = parse_meta_line(buf,size, &first, &second, p))) {
@@ -268,7 +224,7 @@ int load_revision_meta(unsigned char *sha1, const char *notes_ref, struct hash_t
 	return 0;
 }
 
-void commit_meta(struct notes_tree *t, const char *notes_ref, const char *commit_msg)
+static void commit_meta(struct notes_tree *t, const char *notes_ref, const char *commit_msg)
 {
 	struct strbuf commit_msg_sb = STRBUF_INIT;
 	unsigned char tree_sha1[20];
@@ -320,38 +276,12 @@ static int save_note_for(const unsigned char *commit_sha1, const char *notes_ref
 	return 0;
 }
 
-static int save_note_for_ref(const char *commit_ref, const char *notes_ref, const char *commit_msg, const char *note)
-{
-	unsigned char sha1[20];
-	if (get_sha1(commit_ref, sha1))
-		die(_("Failed to resolve '%s' as a valid ref."), commit_ref);
-
-	return save_note_for(sha1, notes_ref, commit_msg, note);
-}
-
 static int save_revision_meta_cb(void *ptr, void *data)
 {
 	struct cvs_revision *rev = ptr;
 	struct strbuf *sb = data;
 
 	strbuf_addf(sb, "%s:%c:%s\n", rev->revision, rev->isdead ? '-' : '+', rev->path);
-	return 0;
-}
-
-int save_cvs_revision_meta(struct cvs_branch *meta,
-			   const char *commit_ref,
-			   const char *notes_ref)
-{
-	struct strbuf sb;
-	strbuf_init(&sb, meta->revision_hash->nr * 64);
-	if (meta->last_revision_timestamp)
-		strbuf_addf(&sb, "UPDATE:%ld\n", meta->last_revision_timestamp);
-	strbuf_addstr(&sb, "--\n");
-
-	for_each_hash(meta->revision_hash, save_revision_meta_cb, &sb);
-
-	save_note_for_ref(commit_ref, notes_ref, "cvs meta update", sb.buf);
-	strbuf_release(&sb);
 	return 0;
 }
 

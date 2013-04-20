@@ -887,6 +887,7 @@ struct cvs_branch *new_cvs_branch(const char *branch_name)
 {
 	struct strbuf meta_ref = STRBUF_INIT;
 	struct strbuf branch_ref = STRBUF_INIT;
+	unsigned char sha1[20];
 	struct cvs_branch *new;
 	new = xcalloc(1, sizeof(struct cvs_branch));
 
@@ -897,17 +898,21 @@ struct cvs_branch *new_cvs_branch(const char *branch_name)
 
 	new->fuzz_time = 2*60*60; // 2 hours
 
-	new->last_commit_revision_hash = xcalloc(1, sizeof(struct hash_table));
-
 	strbuf_addf(&meta_ref, "%s%s", get_meta_ref_prefix(), branch_name);
 
 	if (ref_exists(meta_ref.buf)) {
 		strbuf_addf(&branch_ref, "%s%s", get_ref_prefix(), branch_name);
-		load_cvs_revision_meta(new, branch_ref.buf, meta_ref.buf);
+		if (get_sha1(branch_ref.buf, sha1))
+			die(_("Failed to resolve '%s' as a valid ref."), branch_ref.buf);
+
+		load_revision_meta(sha1, meta_ref.buf, &new->last_revision_timestamp, &new->last_commit_revision_hash);
 
 		if (!new->last_revision_timestamp)
 			new->last_revision_timestamp = get_commit_author_time(branch_ref.buf);
 	}
+
+	if (!new->last_revision_timestamp)
+		new->last_commit_revision_hash = xcalloc(1, sizeof(struct hash_table));
 
 	strbuf_release(&meta_ref);
 	strbuf_release(&branch_ref);
