@@ -8,7 +8,7 @@
 #include "blob.h"
 #include "refs.h"
 
-#include "vcs-cvs/meta.h"
+#include "vcs-cvs/meta-store.h"
 
 long ps = 0;
 static const char *ref_prefix = NULL;

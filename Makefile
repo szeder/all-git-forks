@@ -636,8 +636,8 @@ XDIFF_LIB = xdiff/lib.a
 VCSSVN_LIB = vcs-svn/lib.a
 VCSCVS_LIB = vcs-cvs/lib.a
 
-LIB_H += vcs-cvs/client.h
-LIB_H += vcs-cvs/meta.h
+LIB_H += vcs-cvs/cvs-client.h
+LIB_H += vcs-cvs/meta-store.h
 LIB_H += vcs-cvs/proto-trace.h
 LIB_H += vcs-cvs/cvs-cache.h
 
@@ -1898,8 +1898,8 @@ VCSSVN_OBJS += vcs-svn/fast_export.o
 VCSSVN_OBJS += vcs-svn/svndiff.o
 VCSSVN_OBJS += vcs-svn/svndump.o
 
-VCSCVS_OBJS += vcs-cvs/client.o
-VCSCVS_OBJS += vcs-cvs/meta.o
+VCSCVS_OBJS += vcs-cvs/cvs-client.o
+VCSCVS_OBJS += vcs-cvs/meta-store.o
 VCSCVS_OBJS += vcs-cvs/proto-trace.o
 VCSCVS_OBJS += vcs-cvs/cvs-cache.o
 

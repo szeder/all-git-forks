@@ -67,7 +67,6 @@ struct cvs_commit_list {
  * and consistency validation
  */
 struct cvs_branch {
-	//TODO: branch name
 	struct hash_table *cvs_commit_hash; // author_msg2ps -> cvs_commit hash
 	struct hash_table *revision_hash; // path -> cvs_revision hash
 	struct cvs_revision_list *rev_list;

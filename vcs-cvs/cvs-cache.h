@@ -5,7 +5,7 @@
 #define CVS_CACHE_H
 
 #include <db.h>
-#include "vcs-cvs/client.h"
+#include "vcs-cvs/cvs-client.h"
 #include "git-compat-util.h"
 #include "strbuf.h"
 

@@ -2,7 +2,7 @@
 #include "run-command.h"
 #include "pkt-line.h"
 #include "string-list.h"
-#include "vcs-cvs/client.h"
+#include "vcs-cvs/cvs-client.h"
 #include "vcs-cvs/proto-trace.h"
 #include "vcs-cvs/cvs-cache.h"
 
