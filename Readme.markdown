@@ -57,7 +57,7 @@ Or even her more annoying sister commit:
 +  c )
 ```
 
-We want to keep tracing line history through these commits. 
+We want to keep tracing line history through these commits.
 
 For a target introduced line, which is necessarily an addition, we need to
 consider the introduced lines in the same hunk and match them against preceding
@@ -74,6 +74,10 @@ separated by a blank line, a la `git log`.
 
 
 ## Next Steps
+0. define gdb macros
+  - show the scoreboard
+  - show blame entry (sha, lines)
+  - define n to autolist
 1. Consider an example where some subset of the blessed lines are reordered.
 2. Become certain about the hunk-local hypothesis.  Is this actually reasonable?
 3. Sketch the implementation.
@@ -83,6 +87,13 @@ separated by a blank line, a la `git log`.
     - ultimately we want to run a git-blame test in gdb
   2. sketch the implementation
 4. Express examples as tests.
+5. Sane gdbrc.
+
+
+##  Tests
+1. Test line reordering.  Hypothesis:  git blame's similarity computation 
+   already handles this for us.
+2. Test commit branching in blessed set
 
 
 ## Future Work
