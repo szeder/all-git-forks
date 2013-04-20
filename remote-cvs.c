@@ -43,8 +43,6 @@ static const char dump_cvs_commit[] = "GIT_DUMP_PATCHSETS";
  */
 unsigned long fileMemoryLimit = 2 * 1024 * 1024 * 1024L; //50*1024*1024; /* 50m */
 
-struct rev_note { unsigned int rev_nr; };
-
 static int depth = 0;
 static int verbosity = 0;
 static int progress = 0;
@@ -1620,9 +1618,6 @@ static int do_command(struct strbuf *line)
 	 */
 	if (line->len == 0) {
 		if (batch_cmd) {
-			//struct string_list_item *item;
-			//for_each_string_list_item(item, &batchlines)
-			//	batch_cmd->fn(item->string);
 			batch_cmd->batch_fn(&batchlines);
 			batch_cmd = NULL;
 			string_list_clear(&batchlines, 0);
