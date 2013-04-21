@@ -50,13 +50,6 @@ struct cvs_transport {
 };
 
 /*
- * rlog
- * branch name -> struct branch_meta (hash), create if none yet
- * per file: branch revision -> struct branch_meta (hash)
- *
- */
-
-/*
  * connect to cvs server, complete protocol negotiation
  */
 struct cvs_transport *cvs_connect(const char *cvsroot, const char *module);

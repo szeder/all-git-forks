@@ -32,7 +32,8 @@
  *
  * KNOWN PITFALLS:
  * - CVS has not symlinks support
- * - CVS file permittion history is not tracked (CVS have that feature commented)
+ * - CVS file permittions history is not tracked (CVS have that feature commented)
+ * - CVS file permittions cannot be changed for existing files
  */
 
 static const char trace_key[] = "GIT_TRACE_CVS_HELPER";
@@ -98,6 +99,7 @@ static const struct input_command_entry input_command_list[] = {
 };
 
 static ssize_t helper_printf(const char *fmt, ...) __attribute__((format (printf, 1, 2)));
+
 static ssize_t helper_printf(const char *fmt, ...)
 {
 	va_list args;
