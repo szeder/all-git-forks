@@ -7989,6 +7989,7 @@ proc getblobdiffline_close {} {
 }
 
 proc normalize_string {str} {
+    set str [string trim $str]
     set str [regsub -all {[ \r\n\t]+} $str " "]
     set str [regsub -all {([\{\}\(\)\[\]\*\+;,\\\/\+\*<>-]) ([a-zA-Z0-9_])} $str {\1\2}]
     set str [regsub -all {([a-zA-Z0-9_]) ([\{\}\(\)\[\]\*\+;,\\\/\+\*<>-])} $str {\1\2}]
@@ -7997,13 +7998,49 @@ proc normalize_string {str} {
     return $str
 }
 
+proc hunkfilter_resolve_pending {} {
+    global hunkfilter_data
+
+    set lines [dict get $hunkfilter_data pending_lines]
+    if {[llength $lines] == 0} {
+        return
+    }
+    set new [normalize_string [dict get $hunkfilter_data pending_new]]
+    set old [normalize_string [dict get $hunkfilter_data pending_old]]
+    set hunkfilter_data [dict replace $hunkfilter_data pending_lines {} pending_old "" pending_new ""]
+    if {$new ne $old} {
+        foreach line $lines {
+            set operation [string index $line 0]
+            dict lappend hunkfilter_data lines $line
+            case $operation {
+                " " { dict incr hunkfilter_data num_pass }
+                "+" { dict incr hunkfilter_data num_new }
+                "-" { dict incr hunkfilter_data num_old }
+                "\\" { }
+            }
+        }
+    } else {
+        foreach line $lines {
+            set operation [string index $line 0]
+            if {$operation eq " " || $operation eq "-"} { #show older lines to make "Show origin" work
+                dict lappend hunkfilter_data lines [string replace $line 0 0 " "]
+                dict incr hunkfilter_data num_pass
+            }
+        }
+    }
+}
+
 proc hunkfilter_flush {ids} {
     global hunkfilter_data
 
-    set old [normalize_string [dict get $hunkfilter_data oldlines]]
-    set new [normalize_string [dict get $hunkfilter_data newlines]]
-    if {$old ne $new} {
-        foreach cached_line [dict get $hunkfilter_data data] {
+    set num_old [dict get $hunkfilter_data num_old]
+    set num_new [dict get $hunkfilter_data num_new]
+    set num_pass [dict get $hunkfilter_data num_pass]
+    if {$num_old > 0 || $num_new > 0} {
+        set firstline [regsub {^(@@ -[0-9]+,)[0-9]+( \+[0-9]+,)[0-9]+( @@)} \
+                                [dict get $hunkfilter_data firstline] \
+                                "\\1[expr $num_pass + $num_old]\\2[expr $num_pass + $num_new]\\3"]
+        foreach cached_line [concat [list $firstline] [dict get $hunkfilter_data lines]] {
             catch {getblobdiffline_line $cached_line $ids fake_seehere} result options
             case [dict get $options -code] {
                 {0 4} { getblobdiffline_end 0 fake_seehere }
@@ -8021,9 +8058,14 @@ proc hunkfilter_check_start {line} {
 
     if {[string match "@@ *" $line] && $ignorespace && $worddiff eq [mc "Line diff"]} {
         set hunkfilter_data [dict create enabled 1 \
-                                         data [list $line] \
-                                         oldlines "" \
-                                         newlines ""]
+                                         firstline $line \
+                                         lines {} \
+                                         num_pass 0 \
+                                         num_old 0 \
+                                         num_new 0 \
+                                         pending_lines {} \
+                                         pending_old "" \
+                                         pending_new ""]
     }
 }
 
@@ -8045,20 +8087,24 @@ proc getblobdiffline_proxy_line {line ids seehere_name} {
         set operation [string index $line 0]
         case $operation {
             {" "} {
-                    dict lappend hunkfilter_data data $line
-                    dict set hunkfilter_data oldlines "[dict get $hunkfilter_data oldlines]$line_rest\n"
-                    dict set hunkfilter_data newlines "[dict get $hunkfilter_data newlines]$line_rest\n"
+                    if {[string trim $line_rest] eq "" && [llength [dict get $hunkfilter_data pending_lines]] > 0} {
+                        dict lappend hunkfilter_data pending_lines $line
+                    } else {
+                        hunkfilter_resolve_pending
+                        dict lappend hunkfilter_data lines $line
+                        dict incr hunkfilter_data num_pass
+                    }
                 }
             "+" {
-                    dict lappend hunkfilter_data data $line
-                    dict set hunkfilter_data newlines "[dict get $hunkfilter_data newlines]$line_rest\n"
+                    dict lappend hunkfilter_data pending_lines $line
+                    dict set hunkfilter_data pending_new "[dict get $hunkfilter_data pending_new]$line_rest\n"
                 }
             "-" {
-                    dict lappend hunkfilter_data data $line
-                    dict set hunkfilter_data oldlines "[dict get $hunkfilter_data oldlines]$line_rest\n"
+                    dict lappend hunkfilter_data pending_lines $line
+                    dict set hunkfilter_data pending_old "[dict get $hunkfilter_data pending_old]$line_rest\n"
                 }
             "\\" { # newline EOF
-                    dict lappend hunkfilter_data data $line
+                    dict lappend hunkfilter_data pending_lines $line
                 }
             default {
                     hunkfilter_flush $ids
@@ -8091,9 +8137,10 @@ proc getblobdiffline_proxy_end {is_eof seehere_name} {
 proc hunkfilter_init {channel} {
     global hunkfilter_data
 
-    if {[hunkfilter_enabled] && [llength [dict get $hunkfilter_data data]] > 0} {
+    if {[hunkfilter_enabled] \
+        && ([llength [dict get $hunkfilter_data lines]] > 0 || [llength [dict get $hunkfilter_data pending_lines]] > 0)} {
         puts "Lost hunkfilter data:"
-        foreach d [dict get $hunkfilter_data data] {
+        foreach d [concat [dict get $hunkfilter_data lines] [dict get $hunkfilter_data pending_lines]] {
             puts [list l: $d]
         }
     }
