@@ -7783,7 +7783,7 @@ proc getblobdiffline_line {line ids seehere_name} {
         if {![regexp {^diff (--cc|--git) } $line m type]} {
             set line [encoding convertfrom $line]
             $ctext insert end "$line\n" hunksep
-            return -code continue
+            return
         }
         # start of a new file
         set diffinhdr 1
@@ -7816,7 +7816,7 @@ proc getblobdiffline_line {line ids seehere_name} {
             if {!(($l & 1) && [string index $line $i] eq " " &&
                   [string range $line 2 [expr {$i - 1}]] eq \
                       [string range $line [expr {$i + 3}] end])} {
-                return -code continue
+                return
             }
             # unescape if quoted and chop off the a/ from the front
             if {[string index $line 0] eq "\""} {
@@ -7897,10 +7897,10 @@ proc getblobdiffline_line {line ids seehere_name} {
             makediffhdr $fname $ids
         } elseif {[string compare -length 3 $line "---"] == 0} {
             # do nothing
-            return -code continue
+            return
         } elseif {[string compare -length 3 $line "+++"] == 0} {
             set diffinhdr 0
-            return -code continue
+            return
         }
         $ctext insert end "$line\n" filesep
 
@@ -8041,11 +8041,7 @@ proc hunkfilter_flush {ids} {
                                 [dict get $hunkfilter_data firstline] \
                                 "\\1[expr $num_pass + $num_old]\\2[expr $num_pass + $num_new]\\3"]
         foreach cached_line [concat [list $firstline] [dict get $hunkfilter_data lines]] {
-            catch {getblobdiffline_line $cached_line $ids fake_seehere} result options
-            case [dict get $options -code] {
-                {0 4} { getblobdiffline_end 0 fake_seehere }
-                default { error [list Unexpected: $result $options] }
-            }
+            getblobdiffline_line $cached_line $ids fake_seehere
         }
     }
 
@@ -8116,12 +8112,7 @@ proc getblobdiffline_proxy_line {line ids seehere_name} {
     }
 
     if {![hunkfilter_enabled]} {
-        set ret [catch {getblobdiffline_line $line $ids seehere} result options]
-        case [dict get $options -code] {
-            0 { return $ret }
-            4 { return -code continue }
-            default { error [list Unexpected: $ret $result $options] }
-        }
+        getblobdiffline_line $line $ids seehere
     }
 }
 
