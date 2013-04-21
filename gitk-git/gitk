@@ -8006,8 +8006,7 @@ proc hunkfilter_flush {ids} {
         foreach cached_line $hunkfilter_data {
             catch {getblobdiffline_line $cached_line $ids fake_seehere} result options
             case [dict get $options -code] {
-                0 { getblobdiffline_end 0 fake_seehere }
-                4 { }
+                {0 4} { getblobdiffline_end 0 fake_seehere }
                 default { error [list Unexpected: $result $options] }
             }
         }
