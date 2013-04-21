@@ -7998,12 +7998,12 @@ proc normalize_string {str} {
 }
 
 proc hunkfilter_flush {ids} {
-    global hunkfilter_enabled hunkfilter_data hunkfilter_oldlines hunkfilter_newlines
+    global hunkfilter_data
 
-    set old [normalize_string $hunkfilter_oldlines]
-    set new [normalize_string $hunkfilter_newlines]
-    if {[normalize_string $hunkfilter_oldlines] ne [normalize_string $hunkfilter_newlines]} {
-        foreach cached_line $hunkfilter_data {
+    set old [normalize_string [dict get $hunkfilter_data oldlines]]
+    set new [normalize_string [dict get $hunkfilter_data newlines]]
+    if {$old ne $new} {
+        foreach cached_line [dict get $hunkfilter_data data] {
             catch {getblobdiffline_line $cached_line $ids fake_seehere} result options
             case [dict get $options -code] {
                 {0 4} { getblobdiffline_end 0 fake_seehere }
@@ -8012,59 +8012,64 @@ proc hunkfilter_flush {ids} {
         }
     }
 
-    set hunkfilter_enabled 0
-    set hunkfilter_data {}
-    set hunkfilter_newlines ""
-    set hunkfilter_oldlines ""
+    set hunkfilter_data [dict create enabled 0]
+}
+
+proc hunkfilter_check_start {line} {
+    global hunkfilter_data
+    global ignorespace worddiff
+
+    if {[string match "@@ *" $line] && $ignorespace && $worddiff eq [mc "Line diff"]} {
+        set hunkfilter_data [dict create enabled 1 \
+                                         data [list $line] \
+                                         oldlines "" \
+                                         newlines ""]
+    }
+}
+
+proc hunkfilter_enabled {} {
+    global hunkfilter_data
+    if {[info exists hunkfilter_data] && [dict get $hunkfilter_data enabled]} {
+        return 1
+    } else {
+        return 0
+    }
 }
 
 proc getblobdiffline_proxy_line {line ids seehere_name} {
-    global hunkfilter_enabled hunkfilter_data hunkfilter_oldlines hunkfilter_newlines
+    global hunkfilter_data
     upvar 1 $seehere_name seehere
-    global ignorespace worddiff
 
-    if {[info exists hunkfilter_enabled] && $hunkfilter_enabled} {
+    if {[hunkfilter_enabled]} {
         set line_rest [string range $line 1 end]
         set operation [string index $line 0]
         case $operation {
             {" "} {
-                    lappend hunkfilter_data $line
-                    set hunkfilter_oldlines "$hunkfilter_oldlines$line_rest\n"
-                    set hunkfilter_newlines "$hunkfilter_newlines$line_rest\n"
+                    dict lappend hunkfilter_data data $line
+                    dict set hunkfilter_data oldlines "[dict get $hunkfilter_data oldlines]$line_rest\n"
+                    dict set hunkfilter_data newlines "[dict get $hunkfilter_data newlines]$line_rest\n"
                 }
             "+" {
-                    lappend hunkfilter_data $line
-                    set hunkfilter_newlines "$hunkfilter_newlines$line_rest\n"
+                    dict lappend hunkfilter_data data $line
+                    dict set hunkfilter_data newlines "[dict get $hunkfilter_data newlines]$line_rest\n"
                 }
             "-" {
-                    lappend hunkfilter_data $line
-                    set hunkfilter_oldlines "$hunkfilter_oldlines$line_rest\n"
+                    dict lappend hunkfilter_data data $line
+                    dict set hunkfilter_data oldlines "[dict get $hunkfilter_data oldlines]$line_rest\n"
                 }
             "\\" { # newline EOF
-                    lappend hunkfilter_data $line
+                    dict lappend hunkfilter_data data $line
                 }
             default {
                     hunkfilter_flush $ids
-                    if {[string match "@@ *" $line] && $ignorespace && $worddiff eq [mc "Line diff"]} {
-                        set hunkfilter_enabled 1
-                        set hunkfilter_data [list $line]
-                        set hunkfilter_oldlines ""
-                        set hunkfilter_newlines ""
-                    } else {
-                        set hunkfilter_enabled 0
-                    }
+                    hunkfilter_check_start $line
                 }
         }
     } else {
-        if {[string match "@@ *" $line] && $ignorespace && $worddiff eq [mc "Line diff"]} {
-            set hunkfilter_enabled 1
-            set hunkfilter_data [list $line]
-            set hunkfilter_oldlines ""
-            set hunkfilter_newlines ""
-        }
+        hunkfilter_check_start $line
     }
 
-    if {![info exists hunkfilter_enabled] || !$hunkfilter_enabled} {
+    if {![hunkfilter_enabled]} {
         set ret [catch {getblobdiffline_line $line $ids seehere} result options]
         case [dict get $options -code] {
             0 { return $ret }
@@ -8075,30 +8080,30 @@ proc getblobdiffline_proxy_line {line ids seehere_name} {
 }
 
 proc getblobdiffline_proxy_end {is_eof seehere_name} {
+    global hunkfilter_data
     upvar 1 $seehere_name seehere
 
-    if {![info exists hunkfilter_enabled] || !$hunkfilter_enabled} {
+    if {[hunkfilter_enabled]} {
         getblobdiffline_end $is_eof seehere
     }
 }
 
 proc hunkfilter_init {channel} {
-    global hunkfilter_enabled hunkfilter_data
+    global hunkfilter_data
 
-    if {[info exists hunkfilter_enabled] && $hunkfilter_enabled \
-         && [info exists hunkfilter_data] && [llength $hunkfilter_data] > 0} {
+    if {[hunkfilter_enabled] && [llength [dict get $hunkfilter_data data]] > 0} {
         puts "Lost hunkfilter data:"
-        foreach d $hunkfilter_data {
+        foreach d [dict get $hunkfilter_data data] {
             puts [list l: $d]
         }
     }
-    set hunkfilter_enabled 0
+    set hunkfilter_data [dict create enabled 0]
 }
 
 proc getblobdiffline_proxy_close {ids} {
-    global hunkfilter_enabled hunkfilter_oldlines hunkfilter_newlines hunkfilter_data
+    global hunkfilter_data
 
-    if {[info exists hunkfilter_enabled] && $hunkfilter_enabled} {
+    if {[hunkfilter_enabled]} {
         hunkfilter_flush $ids
     }
 
