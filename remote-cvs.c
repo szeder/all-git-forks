@@ -60,10 +60,11 @@ static int skipped = 0;
 static time_t import_start_time = 0;
 //static off_t fetched_total_size = 0;
 
-static struct cvs_transport *cvs = NULL;
-static struct string_list cvs_branch_list = STRING_LIST_INIT_DUP;
-static const char *cvsroot = NULL;
 static const char *cvsmodule = NULL;
+static const char *cvsroot = NULL;
+static struct cvs_transport *cvs = NULL;
+static struct strbuf push_error_sb = STRBUF_INIT;
+static struct string_list cvs_branch_list = STRING_LIST_INIT_DUP;
 static struct string_list *import_branch_list = NULL;
 
 static const char import_commit_edit[] = "IMPORT_COMMIT_EDIT";
@@ -1401,10 +1402,13 @@ static int push_branch(const char *src, const char *dst, int force)
 	 * that should not be pushed
 	 */
 	if (commit_list_count(push_list) > 1) {
-		if (push_commit_list_to_cvs(push_list, cvs_branch))
-			die("push failed");
-		if (!no_refs_update_on_push)
-			rc = 0;
+		if (!push_commit_list_to_cvs(push_list, cvs_branch)) {
+			if (no_refs_update_on_push)
+				strbuf_addstr(&push_error_sb, "NO_REFS_UPDATE_ON_PUSH "
+					      "was set. Perform fetch to get pushed changes from CVS.");
+			else
+				rc = 0;
+		}
 	}
 	else {
 		fprintf(stderr, "Nothing to push");
@@ -1453,14 +1457,18 @@ static int cmd_batch_push(struct string_list *list)
 		src = srcdst;
 		dst = p;
 
+		strbuf_reset(&push_error_sb);
 		if (!push_branch(src, dst, force)) {
 			helper_printf("ok %s\n", dst);
 		}
 		else {
-			helper_printf("error %s %s\n", dst, "not implemented yet ;-)");
+			if (!push_error_sb.len)
+				strbuf_addstr(&push_error_sb, "pushing to CVS failed");
+			helper_printf("error %s %s\n", dst, push_error_sb.buf);
 		}
 	}
 
+	strbuf_release(&push_error_sb);
 	helper_printf("\n");
 	helper_flush();
 	//stop_progress(&progress_state);
