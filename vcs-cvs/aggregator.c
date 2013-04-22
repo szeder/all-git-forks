@@ -728,10 +728,10 @@ void reverse_rev_list(struct cvs_revision_list *rev_list)
 		rev_list->item[rev_list->nr - 1 - i] = tmp;
 	}
 
-	for (i = 0; i < rev_list->nr; i++) {
+	/*for (i = 0; i < rev_list->nr; i++) {
 		tmp = rev_list->item[i];
 		fprintf(stderr, "%p %s %s\n", tmp->cvs_commit, tmp->path, tmp->revision);
-	}
+	}*/
 }
 
 void finalize_revision_list(struct cvs_branch *meta)
@@ -849,12 +849,12 @@ void aggregate_cvs_commits(struct cvs_branch *meta)
 
 	fprintf(stderr, "GONNA VALIDATE\n");
 	struct cvs_commit *cvs_commit = meta->cvs_commit_list->head;
-	i = 0;
+	/*i = 0;
 	while (cvs_commit) {
 		fprintf(stderr, "-> cvs_commit %d\n", ++i);
 		print_cvs_commit(cvs_commit);
 		cvs_commit = cvs_commit->next;
-	}
+	}*/
 
 	validate_cvs_commits(meta);
 	find_safe_cancellation_points(meta);
