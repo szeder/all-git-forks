@@ -626,8 +626,7 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 
 	save_commit_buffer = 0;
 
-	//strbuf_addf(&branch_ref, "%s%s", get_private_ref_prefix(), parent_branch_name);
-	strbuf_addf(&branch_ref, "%s%s", get_ref_prefix(), parent_branch_name);
+	strbuf_addf(&branch_ref, "%s%s", get_private_ref_prefix(), parent_branch_name);
 	strbuf_addf(&cvs_branch_ref, "%s%s", get_meta_ref_prefix(), parent_branch_name);
 
 	if (get_sha1_commit(branch_ref.buf, sha1))
