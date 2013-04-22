@@ -50,6 +50,7 @@ static int progress = 0;
 static int followtags = 0;
 static int dry_run = 0;
 static int initial_import = 0;
+static int no_refs_update_on_push = 0;
 //static struct progress *progress_state;
 //static struct progress *progress_rlog;
 
@@ -1402,7 +1403,8 @@ static int push_branch(const char *src, const char *dst, int force)
 	if (commit_list_count(push_list) > 1) {
 		if (push_commit_list_to_cvs(push_list, cvs_branch))
 			die("push failed");
-		//rc = 0;
+		if (!no_refs_update_on_push)
+			rc = 0;
 	}
 	else {
 		fprintf(stderr, "Nothing to push");
@@ -1720,6 +1722,9 @@ int main(int argc, const char **argv)
 		have_import_hook = 1;
 	if (find_hook("cvs-export-commit"))
 		have_export_hook = 1;
+
+	if (getenv("NO_REFS_UPDATE_ON_PUSH"))
+		no_refs_update_on_push = 1;
 
 	while (1) {
 		if (helper_strbuf_getline(&buf, stdin, '\n') == EOF) {
