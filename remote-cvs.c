@@ -778,7 +778,7 @@ static int import_branch_by_name(const char *branch_name)
 	int psnum = 0;
 	int pstotal = 0;
 
-	strbuf_addf(&branch_ref, "%s%s", get_private_ref_prefix(), branch_name);
+	strbuf_addf(&branch_ref, "%s%s", get_ref_prefix(), branch_name);
 	strbuf_addf(&meta_branch_ref, "%s%s", get_meta_ref_prefix(), branch_name);
 
 	li = unsorted_string_list_lookup(&cvs_branch_list, branch_name);

@@ -911,7 +911,7 @@ struct cvs_branch *new_cvs_branch(const char *branch_name)
 			new->last_revision_timestamp = get_commit_author_time(branch_ref.buf);
 	}
 
-	if (!new->last_revision_timestamp)
+	if (!new->last_commit_revision_hash)
 		new->last_commit_revision_hash = xcalloc(1, sizeof(struct hash_table));
 
 	strbuf_release(&meta_ref);
