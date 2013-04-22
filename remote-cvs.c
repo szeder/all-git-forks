@@ -50,7 +50,14 @@ static int progress = 0;
 static int followtags = 0;
 static int dry_run = 0;
 static int initial_import = 0;
+
+/*
+ * FIXME:
+ * make this options configurable
+ * cvshelper.ignoreModeChange = true
+ */
 static int no_refs_update_on_push = 0;
+static int ignore_mode_change = 0;
 //static struct progress *progress_state;
 //static struct progress *progress_rlog;
 
@@ -986,7 +993,11 @@ static void on_file_change(struct diff_options *options,
 		return;
 
 	if (!S_ISREG(new_mode))
-		die("CVC cannot handle non-regular files: %s", concatpath);
+		die("CVS cannot handle non-regular files: %s", concatpath);
+
+	if (old_mode != new_mode && !ignore_mode_change)
+		die("CVS does not support file permission changes. "
+		    "Set cvshelper.ignoreModeChange to true if you want to ignore and push anyway.");
 
 	fprintf(stderr, "------\nfile changed: %s "
 			"mode: %o -> %o "
@@ -1038,7 +1049,7 @@ static void on_file_addremove(struct diff_options *options,
 	}
 
 	if (!S_ISREG(mode))
-		die("CVC cannot handle non-regular files: %s", concatpath);
+		die("CVS cannot handle non-regular files: %s", concatpath);
 
 	/*
 	 * FIXME: meta needed?
