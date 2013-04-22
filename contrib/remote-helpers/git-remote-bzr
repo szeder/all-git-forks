@@ -26,6 +26,7 @@ bzrlib.plugin.load_plugins()
 import bzrlib.generate_ids
 import bzrlib.transport
 import bzrlib.errors
+import bzrlib.ui
 
 import sys
 import os
@@ -735,6 +736,7 @@ def main(args):
         os.makedirs(dirname)
 
     repo = get_repo(url, alias)
+    bzrlib.ui.ui_factory.be_quiet(True)
 
     marks_path = os.path.join(dirname, 'marks-int')
     marks = Marks(marks_path)
