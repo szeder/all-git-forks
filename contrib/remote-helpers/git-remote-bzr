@@ -429,10 +429,10 @@ class CustomTree():
         changes = []
 
         def get_parent(dirname, basename):
-            parent_fid, mark = self.base_files.get(dirname, None)
+            parent_fid, mark = self.base_files.get(dirname, [None, None])
             if parent_fid:
                 return parent_fid
-            parent_fid, mark = self.files.get(dirname, None)
+            parent_fid, mark = self.files.get(dirname, [None, None])
             if parent_fid:
                 return parent_fid
             if basename == '':
@@ -648,7 +648,6 @@ def do_export(parser):
     for ref, revid in parsed_refs.iteritems():
         if ref == 'refs/heads/master':
             repo.generate_revision_history(revid, marks.get_tip('master'))
-            revno, revid = repo.last_revision_info()
             if peer:
                 try:
                     repo.push(peer, stop_revision=revid)
