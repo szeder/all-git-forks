@@ -83,7 +83,7 @@ class Marks:
         return self.marks[rev]
 
     def to_rev(self, mark):
-        return str(self.rev_marks[mark])
+        return self.rev_marks[mark]
 
     def next_mark(self):
         self.last_mark += 1
@@ -531,7 +531,7 @@ def c_style_unescape(string):
     return string
 
 def parse_commit(parser):
-    global marks, blob_marks, bmarks, parsed_refs
+    global marks, blob_marks, parsed_refs
     global mode
 
     parents = []
@@ -569,7 +569,7 @@ def parse_commit(parser):
             mark = int(mark_ref[1:])
             f = { 'mode' : m, 'mark' : mark }
         elif parser.check('D'):
-            t, path = line.split(' ')
+            t, path = line.split(' ', 1)
             f = { 'deleted' : True }
         else:
             die('Unknown file command: %s' % line)
@@ -579,7 +579,7 @@ def parse_commit(parser):
     repo = parser.repo
 
     committer, date, tz = committer
-    parents = [mark_to_rev(p) for p in parents]
+    parents = [str(mark_to_rev(p)) for p in parents]
     revid = bzrlib.generate_ids.gen_revision_id(committer, date)
     props = {}
     props['branch-nick'] = repo.nick
@@ -658,6 +658,7 @@ def do_export(parser):
                 wt = repo.bzrdir.open_workingtree()
                 wt.update()
         print "ok %s" % ref
+
     print
 
 def do_capabilities(parser):
