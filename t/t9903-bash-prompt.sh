@@ -243,7 +243,7 @@ test_expect_success 'prompt - inside bare repository' '
 '
 
 test_expect_success 'prompt - interactive rebase' '
-	printf " (b1|REBASE-i)" > expected
+	printf " (b1|REBASE-i 1/1)" > expected
 	echo "#!$SHELL_PATH" >fake_editor.sh &&
 	cat >>fake_editor.sh <<\EOF &&
 echo "edit $(git log -1 --format="%h")" > "$1"
@@ -260,7 +260,7 @@ EOF
 '
 
 test_expect_success 'prompt - rebase merge' '
-	printf " (b2|REBASE-m)" > expected &&
+	printf " (b2|REBASE-m 1/1)" > expected &&
 	git checkout b2 &&
 	test_when_finished "git checkout master" &&
 	test_must_fail git rebase --merge b1 b2 &&
@@ -270,7 +270,7 @@ test_expect_success 'prompt - rebase merge' '
 '
 
 test_expect_success 'prompt - rebase' '
-	printf " ((t2)|REBASE)" > expected &&
+	printf " ((t2)|REBASE 1/1)" > expected &&
 	git checkout b2 &&
 	test_when_finished "git checkout master" &&
 	test_must_fail git rebase b1 b2 &&
