@@ -33,6 +33,7 @@ import os
 import json
 import re
 import StringIO
+import atexit
 
 NAME_RE = re.compile('^([^<>]+)')
 AUTHOR_RE = re.compile('^([^<>]+?)? ?<([^<>]*)>$')
@@ -743,6 +744,7 @@ def main(args):
     blob_marks = {}
     parsed_refs = {}
     files_cache = {}
+    marks = None
 
     gitdir = os.environ['GIT_DIR']
     dirname = os.path.join(gitdir, 'bzr', alias)
@@ -770,6 +772,10 @@ def main(args):
             die('unhandled command: %s' % line)
         sys.stdout.flush()
 
+def bye():
+    if not marks:
+        return
     marks.store()
 
+atexit.register(bye)
 sys.exit(main(sys.argv))
