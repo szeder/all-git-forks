@@ -380,7 +380,7 @@ def get_repo(url, alias):
         shared_path = os.path.join(gitdir, 'hg')
         if not os.path.exists(shared_path):
             try:
-                peer, dstpeer = hg.clone(myui, {}, url, shared_path, update=False, pull=True)
+                hg.clone(myui, {}, url, shared_path, update=False, pull=True)
             except:
                 die('Repository error')
 
@@ -395,7 +395,7 @@ def get_repo(url, alias):
         try:
             peer = hg.peer(myui, {}, url)
         except:
-            die('Repository error p')
+            die('Repository error')
         repo.pull(peer, heads=None, force=True)
 
         rb = peer.listkeys('bookmarks')
