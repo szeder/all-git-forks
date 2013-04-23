@@ -83,7 +83,7 @@ class Marks:
         return self.marks[rev]
 
     def to_rev(self, mark):
-        return self.rev_marks[mark]
+        return str(self.rev_marks[mark])
 
     def next_mark(self):
         self.last_mark += 1
@@ -95,7 +95,7 @@ class Marks:
         return self.last_mark
 
     def is_marked(self, rev):
-        return str(rev) in self.marks
+        return rev in self.marks
 
     def new_mark(self, rev, mark):
         self.marks[rev] = mark
@@ -384,9 +384,6 @@ class CustomTree():
     def __init__(self, repo, revid, parents, files):
         global files_cache
 
-        self.repo = repo
-        self.revid = revid
-        self.parents = parents
         self.updates = {}
 
         def copy_tree(revid):
@@ -395,7 +392,7 @@ class CustomTree():
             repo.lock_read()
             try:
                 for path, entry in tree.iter_entries_by_dir():
-                    files[path] = entry.file_id
+                    files[path] = [entry.file_id, None]
             finally:
                 repo.unlock()
             return files
@@ -410,12 +407,18 @@ class CustomTree():
                 self.base_files = copy_tree(self.base_id)
 
         self.files = files_cache[revid] = self.base_files.copy()
+        self.rev_files = {}
+
+        for path, data in self.files.iteritems():
+            fid, mark = data
+            self.rev_files[fid] = [path, mark]
 
         for path, f in files.iteritems():
-            fid = self.files.get(path, None)
+            fid, mark = self.files.get(path, [None, None])
             if not fid:
                 fid = bzrlib.generate_ids.gen_file_id(path)
             f['path'] = path
+            self.rev_files[fid] = [path, mark]
             self.updates[fid] = f
 
     def last_revision(self):
@@ -425,16 +428,16 @@ class CustomTree():
         changes = []
 
         def get_parent(dirname, basename):
-            parent_fid = self.base_files.get(dirname, None)
+            parent_fid, mark = self.base_files.get(dirname, None)
             if parent_fid:
                 return parent_fid
-            parent_fid = self.files.get(dirname, None)
+            parent_fid, mark = self.files.get(dirname, None)
             if parent_fid:
                 return parent_fid
             if basename == '':
                 return None
             fid = bzrlib.generate_ids.gen_file_id(path)
-            d = add_entry(fid, dirname, 'directory')
+            add_entry(fid, dirname, 'directory')
             return fid
 
         def add_entry(fid, path, kind, mode = None):
@@ -455,9 +458,8 @@ class CustomTree():
                     (None, basename),
                     (None, kind),
                     (None, executable))
-            self.files[path] = change[0]
+            self.files[path] = [change[0], None]
             changes.append(change)
-            return change
 
         def update_entry(fid, path, kind, mode = None):
             dirname, basename = os.path.split(path)
@@ -477,9 +479,8 @@ class CustomTree():
                     (None, basename),
                     (None, kind),
                     (None, executable))
-            self.files[path] = change[0]
+            self.files[path] = [change[0], None]
             changes.append(change)
-            return change
 
         def remove_entry(fid, path, kind):
             dirname, basename = os.path.split(path)
@@ -494,7 +495,6 @@ class CustomTree():
                     (None, None))
             del self.files[path]
             changes.append(change)
-            return change
 
         for fid, f in self.updates.iteritems():
             path = f['path']
@@ -508,13 +508,22 @@ class CustomTree():
             else:
                 add_entry(fid, path, 'file', f['mode'])
 
+            self.files[path][1] = f['mark']
+            self.rev_files[fid][1] = f['mark']
+
         return changes
 
     def get_file_with_stat(self, file_id, path=None):
-        return (StringIO.StringIO(self.updates[file_id]['data']), None)
+        path, mark = self.rev_files[file_id]
+        return (StringIO.StringIO(blob_marks[mark]), None)
 
     def get_symlink_target(self, file_id):
-        return self.updates[file_id]['data']
+        path, mark = self.rev_files[file_id]
+        return blob_marks[mark]
+
+    def id2path(self, file_id):
+        path, mark = self.rev_files[file_id]
+        return path
 
 def c_style_unescape(string):
     if string[0] == string[-1] == '"':
@@ -558,7 +567,7 @@ def parse_commit(parser):
         if parser.check('M'):
             t, m, mark_ref, path = line.split(' ', 3)
             mark = int(mark_ref[1:])
-            f = { 'mode' : m, 'data' : blob_marks[mark] }
+            f = { 'mode' : m, 'mark' : mark }
         elif parser.check('D'):
             t, path = line.split(' ')
             f = { 'deleted' : True }
@@ -570,7 +579,7 @@ def parse_commit(parser):
     repo = parser.repo
 
     committer, date, tz = committer
-    parents = [str(mark_to_rev(p)) for p in parents]
+    parents = [mark_to_rev(p) for p in parents]
     revid = bzrlib.generate_ids.gen_revision_id(committer, date)
     props = {}
     props['branch-nick'] = repo.nick
