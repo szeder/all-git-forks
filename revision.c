@@ -432,7 +432,7 @@ static int rev_same_tree_as_empty(struct rev_info *revs, struct commit *commit)
 static void try_to_simplify_commit(struct rev_info *revs, struct commit *commit)
 {
 	struct commit_list **pp, *parent;
-	int tree_changed = 0, tree_same = 0, nth_parent = 0;
+	int tree_changed = 0, nth_parent = 0;
 
 	/*
 	 * If we don't do pruning, everything is interesting
@@ -474,7 +474,6 @@ static void try_to_simplify_commit(struct rev_info *revs, struct commit *commit)
 			    sha1_to_hex(p->object.sha1));
 		switch (rev_compare_tree(revs, p, commit)) {
 		case REV_TREE_SAME:
-			tree_same = 1;
 			if (!revs->simplify_history || (p->object.flags & UNINTERESTING)) {
 				/* Even if a merge with an uninteresting
 				 * side branch brought the entire change
@@ -516,7 +515,7 @@ static void try_to_simplify_commit(struct rev_info *revs, struct commit *commit)
 		}
 		die("bad tree compare for commit %s", sha1_to_hex(commit->object.sha1));
 	}
-	if (tree_changed && !tree_same)
+	if (tree_changed)
 		return;
 	commit->object.flags |= TREESAME;
 }
@@ -2043,9 +2042,20 @@ static struct commit_list **simplify_one(struct rev_info *revs, struct commit *c
 	 */
 	if (1 < cnt) {
 		struct commit_list *h = reduce_heads(commit->parents);
+		int orig_cnt = commit_list_count(commit->parents);
 		cnt = commit_list_count(h);
 		free_commit_list(commit->parents);
 		commit->parents = h;
+		if (cnt < orig_cnt && !(commit->object.flags & TREESAME)) {
+			/*
+			 * Rewrite will likely change the TREESAME state. E.g.
+			 * in example above, X could be TREESAME or not to its
+			 * remaining single parent, depending on how the merge
+			 * was resolved - most likely it is now TREESAME, but
+			 * it may not be.
+			 */
+			try_to_simplify_commit(revs, commit);
+		}
 	}
 
 	/*
