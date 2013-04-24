@@ -8120,7 +8120,7 @@ proc getblobdiffline_proxy_end {is_eof seehere_name} {
     global hunkfilter_data
     upvar 1 $seehere_name seehere
 
-    if {[hunkfilter_enabled]} {
+    if {![hunkfilter_enabled]} {
         getblobdiffline_end $is_eof seehere
     }
 }
