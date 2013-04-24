@@ -1354,6 +1354,7 @@ int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until, add_rev_fn_t
 
 	ret = cvs_write(cvs,
 			WR_FLUSH,
+			"Argument -S\n"
 			"Argument --\n"
 			"Argument %s\n"
 			"rlog\n",
