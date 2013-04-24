@@ -787,6 +787,10 @@ def get_branch_name(base, branch):
         name = 'master'
     else:
         name = name[:-1]
+
+    # XXX bzr has problems cloning with subdirs
+    name = name.replace('/', '+')
+
     return name
 
 def get_repo(url, alias):
