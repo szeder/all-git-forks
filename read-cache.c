@@ -1588,29 +1588,27 @@ int index_name_is_other(const struct index_state *istate, const char *name,
 
 void *read_blob_data_from_index(struct index_state *istate, const char *path, unsigned long *size)
 {
-	int pos, len;
+	int ret, len;
 	unsigned long sz;
 	enum object_type type;
 	void *data;
+	struct cache_entry *ce;
 
 	len = strlen(path);
-	pos = index_name_pos(istate, path, len);
-	if (pos < 0) {
+	ret = get_index_entry_by_name(istate, path, len, &ce);
+	if (!ret) {
 		/*
 		 * We might be in the middle of a merge, in which
 		 * case we would read stage #2 (ours).
 		 */
-		int i;
-		for (i = -pos - 1;
-		     (pos < 0 && i < istate->cache_nr &&
-		      !strcmp(istate->cache[i]->name, path));
-		     i++)
-			if (ce_stage(istate->cache[i]) == 2)
-				pos = i;
+		for (; !ret && ce && !strcmp(ce->name, path); ce = next_index_entry(ce))
+			if (ce_stage(ce) == 2)
+				ret = 1;
+
 	}
-	if (pos < 0)
+	if (!ret)
 		return NULL;
-	data = read_sha1_file(istate->cache[pos]->sha1, &type, &sz);
+	data = read_sha1_file(ce->sha1, &type, &sz);
 	if (!data || type != OBJ_BLOB) {
 		free(data);
 		return NULL;
