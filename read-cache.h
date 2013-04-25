@@ -11,7 +11,7 @@
 #define CACHE_EXT_TREE 0x54524545	/* "TREE" */
 #define CACHE_EXT_RESOLVE_UNDO 0x52455543 /* "REUC" */
 
-#define INDEX_FORMAT_DEFAULT 3
+#define INDEX_FORMAT_DEFAULT 5
 
 /*
  * Basic data structures for the directory cache
