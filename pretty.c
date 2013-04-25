@@ -438,8 +438,13 @@ void pp_user_info(const struct pretty_print_context *pp,
 	strbuf_add(&name, namebuf, namelen);
 
 	namelen = name.len + mail.len + 3; /* ' ' + '<' + '>' */
-	time = strtoul(ident.date_begin, &date, 10);
-	tz = strtol(date, NULL, 10);
+	if (ident.date_begin != NULL) {
+		time = strtoul(ident.date_begin, &date, 10);
+		tz = strtol(date, NULL, 10);
+	} else {
+		time = 0;
+		tz = 0;
+	}
 
 	if (pp->fmt == CMIT_FMT_EMAIL) {
 		strbuf_addstr(sb, "From: ");

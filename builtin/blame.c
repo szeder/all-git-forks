@@ -1375,10 +1375,18 @@ static void get_ac_line(const char *inbuf, const char *what,
 	maillen = ident.mail_end - ident.mail_begin;
 	mailbuf = ident.mail_begin;
 
-	*time = strtoul(ident.date_begin, NULL, 10);
+	if (ident.date_begin != NULL) {
+		*time = strtoul(ident.date_begin, NULL, 10);
+	} else {
+		*time = 0;
+	}
 
-	len = ident.tz_end - ident.tz_begin;
-	strbuf_add(tz, ident.tz_begin, len);
+	if (ident.tz_begin != NULL && ident.tz_end !=NULL) {
+		len = ident.tz_end - ident.tz_begin;
+		strbuf_add(tz, ident.tz_begin, len);
+	} else {
+		strbuf_addstr(tz, "(unknown)");
+	}
 
 	/*
 	 * Now, convert both name and e-mail using mailmap
