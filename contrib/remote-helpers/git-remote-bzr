@@ -367,6 +367,10 @@ def export_branch(repo, name):
             print "M %s :%u %s" % f
         print
 
+        if len(seq) > 1:
+            # let's skip branch revisions from the progress report
+            continue
+
         progress = (revno - tip_revno)
         if (progress % 100 == 0):
             print "progress revision %d '%s' (%d/%d)" % (revno, name, progress, total)
