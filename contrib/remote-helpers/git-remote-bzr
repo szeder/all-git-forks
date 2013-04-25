@@ -261,7 +261,7 @@ def export_files(tree, files):
             else:
                 mode = '100644'
 
-            # is the blog already exported?
+            # is the blob already exported?
             if h in filenodes:
                 mark = filenodes[h]
                 final.append((mode, mark, path))
@@ -887,8 +887,9 @@ def main(args):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
 
-    repo = get_repo(url, alias)
     bzrlib.ui.ui_factory.be_quiet(True)
+
+    repo = get_repo(url, alias)
 
     marks = Marks(gitdir, dirname)
 
