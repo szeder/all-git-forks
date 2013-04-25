@@ -796,7 +796,7 @@ def find_branches(repo, wanted):
             continue
 
         name = subdir = fn[:-len('.bzr/branch-format')]
-        name = name[:-1] if name != '.' else 'master'
+        name = name[:-1] if name != '' else 'master'
         name = name.replace('/', '+')
 
         if wanted and not name in wanted:
