@@ -128,20 +128,28 @@ int read_tree_recursive(struct tree *tree,
 	return ret;
 }
 
-static int cmp_cache_name_compare(const void *a_, const void *b_)
-{
-	const struct cache_entry *ce1, *ce2;
 
-	ce1 = *((const struct cache_entry **)a_);
-	ce2 = *((const struct cache_entry **)b_);
-	return cache_name_stage_compare(ce1->name, ce1->ce_namelen, ce_stage(ce1),
-				  ce2->name, ce2->ce_namelen, ce_stage(ce2));
+struct read_tree_data {
+	read_tree_fn_t fn;
+	int stage;
+};
+
+int get_read_tree_fn(struct cache_entry *ce, void *cb_data)
+{
+	struct read_tree_data *data = cb_data;
+
+	if (ce_stage(ce) == data->stage) {
+		data->fn = read_one_entry;
+		return 0;
+	}
+	return 1;
 }
 
 int read_tree(struct tree *tree, int stage, struct pathspec *match)
 {
 	read_tree_fn_t fn = NULL;
-	int i, err;
+	int err;
+	struct read_tree_data rtd;
 
 	/*
 	 * Currently the only existing callers of this function all
@@ -158,11 +166,10 @@ int read_tree(struct tree *tree, int stage, struct pathspec *match)
 	 * do it the original slow way, otherwise, append and then
 	 * sort at the end.
 	 */
-	for (i = 0; !fn && i < active_nr; i++) {
-		struct cache_entry *ce = active_cache[i];
-		if (ce_stage(ce) == stage)
-			fn = read_one_entry;
-	}
+	rtd.fn = fn;
+	rtd.stage = stage;
+	for_each_cache_entry(get_read_tree_fn, &rtd);
+	fn = rtd.fn;
 
 	if (!fn)
 		fn = read_one_entry_quick;
@@ -170,12 +177,7 @@ int read_tree(struct tree *tree, int stage, struct pathspec *match)
 	if (fn == read_one_entry || err)
 		return err;
 
-	/*
-	 * Sort the cache entry -- we need to nuke the cache tree, though.
-	 */
-	cache_tree_free(&active_cache_tree);
-	qsort(active_cache, active_nr, sizeof(active_cache[0]),
-	      cmp_cache_name_compare);
+	sort_cache();
 	return 0;
 }
 
