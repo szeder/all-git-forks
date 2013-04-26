@@ -323,7 +323,6 @@ def export_branch(branch, name):
         count += 1
         if (count % 100 == 0):
             print "progress revision %s (%d/%d)" % (revid, count, len(revs))
-            print "#############################################################"
 
     repo.unlock()
 
