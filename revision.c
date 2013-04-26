@@ -2106,7 +2106,31 @@ static int remove_marked_parents(struct rev_info *revs, struct commit *commit)
 {
 	struct treesame_state *ts = lookup_decoration(&revs->treesame, &commit->object);
 	struct commit_list **pp, *p;
+	struct commit *su = NULL, *sm = NULL;
 	int n, removed = 0;
+
+	/* Prescan - look for both marked and unmarked TREESAME parents */
+	for (p = commit->parents, n = 0; p; p = p->next, n++) {
+		if (ts->treesame[n]) {
+			if (p->item->object.flags & TMP_MARK) {
+				if (!sm) sm = p->item;
+			}
+			else {
+				if (!su) {
+					su = p->item;
+					break;
+				}
+			}
+		}
+	}
+
+	/* If we are TREESAME to a marked-for-deletion parent, but not to any
+	 * unmarked parents, unmark the first TREESAME parent. We don't want
+	 * to remove our "real" parent in the event of an "-s ours" type
+	 * merge.
+	 */
+	if (!su && sm)
+		sm->object.flags &= ~TMP_MARK;
 
 	pp = &commit->parents;
 	n = 0;
