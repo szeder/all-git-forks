@@ -44,12 +44,21 @@ AUTHOR_RE = re.compile('^([^<>]+?)? ?<([^<>]*)>$')
 EMAIL_RE = re.compile('^([^<>]+[^ \\\t<>])?\\b(?:[ \\t<>]*?)\\b([^ \\t<>]+@[^ \\t<>]+)')
 RAW_AUTHOR_RE = re.compile('^(\w+) (.+)? <(.*)> (\d+) ([+-]\d+)')
 
+SHOW_DEBUG = True
+
 def die(msg, *args):
     sys.stderr.write('ERROR: %s\n' % (msg % args))
     sys.exit(1)
 
 def warn(msg, *args):
     sys.stderr.write('WARNING: %s\n' % (msg % args))
+
+def info(msg, *args):
+    sys.stderr.write('%s\n' % (msg % args))
+
+def debug(msg, *args):
+    if SHOW_DEBUG:
+        sys.stderr.write('DEBUG: %s\n' % (msg % args))
 
 def gittz(tz):
     return '%+03d%02d' % (tz / 3600, tz % 3600 / 60)
@@ -300,6 +309,8 @@ def export_branch(repo, name):
     ref = '%s/heads/%s' % (prefix, name)
     tip = marks.get_tip(name)
 
+    debug("exporting branch '%s': from %s", name, tip)
+
     branch = bzrlib.branch.Branch.open(branches[name])
     repo = branch.repository
 
@@ -308,6 +319,8 @@ def export_branch(repo, name):
     tip_revno = branch.revision_id_to_revno(tip)
     last_revno, _ = branch.last_revision_info()
     total = last_revno - tip_revno
+
+    debug('calculated commits to export: %u', total)
 
     for revid, _, seq, _ in revs:
 
@@ -370,6 +383,8 @@ def export_branch(repo, name):
             print "M %s :%u %s" % f
         print
 
+        debug("imported: '%s': %s", name, revid)
+
         if len(seq) > 1:
             # let's skip branch revisions from the progress report
             continue
@@ -423,6 +438,8 @@ def do_import(parser):
         parser.next()
 
     print 'done'
+
+    debug('import done')
 
     sys.stdout.flush()
 
@@ -667,6 +684,8 @@ def parse_commit(parser):
     finally:
         branch.unlock()
 
+    debug("written: '%s': %s", branch.nick, revid)
+
     parsed_refs[ref] = revid
     marks.new_mark(revid, commit_mark)
 
@@ -712,6 +731,7 @@ def do_export(parser):
         branch.generate_revision_history(revid, marks.get_tip(name))
 
         if name in peers:
+            debug("pushing branch '%s': to %s", name, revid)
             peer = bzrlib.branch.Branch.open(peers[name])
             try:
                 peer.bzrdir.push_branch(branch, revision_id=revid)
@@ -778,22 +798,28 @@ def get_remote_branch(origin, remote_branch, name):
     global dirname, peers
 
     branch_path = os.path.join(dirname, 'clone', name)
-    if os.path.exists(branch_path):
-        # pull
+
+    try:
         d = bzrlib.bzrdir.BzrDir.open(branch_path)
         branch = d.open_branch()
-        try:
-            branch.pull(remote_branch, [], None, False)
-        except bzrlib.errors.DivergedBranches:
-            # use remote branch for now
-            return remote_branch
-    else:
+    except bzrlib.errors.NotBranchError:
         # clone
+        info("Cloning branch '%s'", name)
+
         d = origin.sprout(branch_path, None,
                 hardlink=True, create_tree_if_local=False,
                 force_new_repo=False,
                 source_branch=remote_branch)
         branch = d.open_branch()
+    else:
+        # pull
+        debug("pulling branch '%s'", name)
+
+        try:
+            branch.pull(remote_branch, [], None, False)
+        except bzrlib.errors.DivergedBranches:
+            # use remote branch for now
+            return remote_branch
 
     return branch
 
@@ -822,6 +848,8 @@ def find_branches(repo, wanted):
 def get_repo(url, alias):
     global dirname, peer, branches
 
+    debug("fetching remote '%s' '%s'", alias, url)
+
     normal_url = bzrlib.urlutils.normalize_url(url)
     origin = bzrlib.bzrdir.BzrDir.open(url)
     is_local = isinstance(origin.transport, bzrlib.transport.local.LocalTransport)
@@ -840,6 +868,8 @@ def get_repo(url, alias):
         clone_path = os.path.join(dirname, 'clone')
         if not os.path.exists(clone_path):
             os.mkdir(clone_path)
+
+    info('Updating bzr branches')
 
     try:
         repo = origin.open_repository()
@@ -894,6 +924,8 @@ def main(args):
     global is_tmp
     global branches, peers
 
+    debug('initializing')
+
     alias = args[1]
     url = args[2]
 
@@ -922,7 +954,7 @@ def main(args):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
 
-    bzrlib.ui.ui_factory.be_quiet(True)
+    bzrlib.ui.ui_factory.be_quiet(not SHOW_DEBUG)
 
     repo = get_repo(url, alias)
 
@@ -947,6 +979,8 @@ def main(args):
         else:
             die('unhandled command: %s' % line)
         sys.stdout.flush()
+
+    debug('finishing')
 
 def bye():
     if not marks:
