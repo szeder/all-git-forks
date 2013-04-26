@@ -71,42 +71,22 @@ def get_config(config):
 
 class Marks:
 
-    def __init__(self, gitdir, dirname):
-        self.marks_path = os.path.join(gitdir, 'bzr', '.marks-bzr')
-        self.remote_path = os.path.join(dirname, '.marks-bzr')
-        old_path = os.path.join(dirname, 'marks-int')
-
+    def __init__(self, path):
+        self.path = path
         self.tips = {}
         self.marks = {}
         self.rev_marks = {}
         self.last_mark = 0
-
-        if not os.path.exists(old_path):
-            self.load()
-        else:
-            self.old_load(old_path)
-            os.remove(old_path)
+        self.load()
 
     def load(self):
+        if not os.path.exists(self.path):
+            return
 
-        if os.path.exists(self.marks_path):
-            tmp = json.load(open(self.marks_path))
-            self.marks = tmp['marks']
-            self.last_mark = tmp['last-mark']
-
-            for rev, mark in self.marks.iteritems():
-                self.rev_marks[mark] = rev
-
-        if os.path.exists(self.remote_path):
-            tmp = json.load(open(self.remote_path))
-            self.tips = tmp['tips']
-
-    def old_load(self, path):
-
-        tmp = json.load(open(path))
+        tmp = json.load(open(self.path))
         self.tips = tmp['tips']
-        self.marks = tmp['marks'] # TODO remove
-        self.last_mark = tmp['last-mark'] # TODO remove
+        self.marks = tmp['marks']
+        self.last_mark = tmp['last-mark']
 
         for rev, mark in self.marks.iteritems():
             self.rev_marks[mark] = rev
@@ -115,10 +95,7 @@ class Marks:
         return { 'tips': self.tips, 'marks': self.marks, 'last-mark' : self.last_mark }
 
     def store(self):
-        d = { 'marks': self.marks, 'last-mark' : self.last_mark }
-        json.dump(d, open(self.marks_path, 'w'))
-        d = { 'tips': self.tips }
-        json.dump(d, open(self.remote_path, 'w'))
+        json.dump(self.dict(), open(self.path, 'w'))
 
     def __str__(self):
         return str(self.dict())
@@ -413,10 +390,10 @@ def export_tag(repo, name):
     print
 
 def do_import(parser):
-    global gitdir
+    global dirname
 
     repo = parser.repo
-    path = os.path.join(gitdir, 'bzr', '.marks-git')
+    path = os.path.join(dirname, 'marks-git')
 
     print "feature done"
     if os.path.exists(path):
@@ -750,14 +727,14 @@ def do_export(parser):
     print
 
 def do_capabilities(parser):
-    global gitdir
+    global dirname
 
     print "import"
     print "export"
     print "refspec refs/heads/*:%s/heads/*" % prefix
     print "refspec refs/tags/*:%s/tags/*" % prefix
 
-    path = os.path.join(gitdir, 'bzr', '.marks-git')
+    path = os.path.join(dirname, 'marks-git')
 
     if os.path.exists(path):
         print "*import-marks %s" % path
@@ -958,13 +935,8 @@ def main(args):
 
     repo = get_repo(url, alias)
 
-    marks = Marks(gitdir, dirname)
-
-    # move old marks
-    old_gitmarks = os.path.join(dirname, 'marks-git')
-    new_gitmarks = os.path.join(gitdir, 'bzr', '.marks-git')
-    if os.path.exists(old_gitmarks):
-        os.rename(old_gitmarks, new_gitmarks)
+    marks_path = os.path.join(dirname, 'marks-int')
+    marks = Marks(marks_path)
 
     parser = Parser(repo)
     for line in parser:
