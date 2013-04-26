@@ -13,6 +13,9 @@
 # or
 # % git clone bzr::lp:myrepo
 #
+# If you want to specify which branches you want track (per repo):
+# git config remote-bzr.branches 'trunk, devel, test'
+#
 
 import sys
 
@@ -801,8 +804,8 @@ def find_branches(repo, wanted):
         if not fn.endswith('.bzr/branch-format'):
             continue
 
-        name = subdir = fn[:-len('.bzr/branch-format')]
-        name = name[:-1] if name != '' else 'master'
+        name = subdir = fn[:-len('/.bzr/branch-format')]
+        name = name if name != '' else 'master'
         name = name.replace('/', '+')
 
         if wanted and not name in wanted:
