@@ -413,7 +413,7 @@ parent lines.
 	I  A  B  N  D  O
 -----------------------------------------------------------------------
 +
-`P` and `M` were excluded because they are TREESAME to a parent.  `E`,
+`P` and `M` were excluded because they are TREESAME to both parents.  `E`,
 `C` and `B` were all walked, but only `B` was !TREESAME, so the others
 do not appear.
 +
