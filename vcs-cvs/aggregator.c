@@ -848,8 +848,8 @@ void aggregate_cvs_commits(struct cvs_branch *meta)
 	}
 
 	fprintf(stderr, "GONNA VALIDATE\n");
-	struct cvs_commit *cvs_commit = meta->cvs_commit_list->head;
-	/*i = 0;
+	/*struct cvs_commit *cvs_commit = meta->cvs_commit_list->head;
+	i = 0;
 	while (cvs_commit) {
 		fprintf(stderr, "-> cvs_commit %d\n", ++i);
 		print_cvs_commit(cvs_commit);

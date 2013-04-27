@@ -18,6 +18,10 @@
 #include "string-list.h"
 
 /*
+ * FIXME:
+ * - import of new branch may fail, if parent branch ref is not created yet
+ *   (fast-import haven't created it yet)
+ *
  * TODO:
  * -/+ skip dead file addition to HEAD branch
  * - depth
@@ -91,6 +95,7 @@ static int cmd_list_for_push(const char *line);
 static int cmd_batch_import(struct string_list *list);
 static int cmd_batch_push(struct string_list *list);
 static int import_branch_by_name(const char *branch_name);
+static int validate_commit_meta_by_tree(const char *ref, struct hash_table *revision_meta_hash);
 
 typedef int (*input_command_handler)(const char *);
 typedef int (*input_batch_command_handler)(struct string_list *);
@@ -105,6 +110,7 @@ static const struct input_command_entry input_command_list[] = {
 	{ "capabilities", cmd_capabilities, NULL, 0 },
 	{ "option", cmd_option, NULL, 0 },
 	{ "import", NULL, cmd_batch_import, 1 },
+	{ "bidi-import", NULL, NULL, 0 },
 	{ "push", NULL, cmd_batch_push, 1 },
 	// `list for-push` should go before `list`, or later would always be run
 	{ "list for-push", cmd_list_for_push, NULL, 0 },
@@ -773,6 +779,7 @@ static int import_branch_by_name(const char *branch_name)
 	struct strbuf commit_mark_sb = STRBUF_INIT;
 	struct strbuf meta_mark_sb = STRBUF_INIT;
 	struct strbuf branch_ref = STRBUF_INIT;
+	struct strbuf branch_private_ref = STRBUF_INIT;
 	struct strbuf meta_branch_ref = STRBUF_INIT;
 	struct hash_table meta_revision_hash;
 	struct string_list_item *li;
@@ -840,15 +847,17 @@ static int import_branch_by_name(const char *branch_name)
 	if (psnum) {
 		fprintf(stderr, "Branch: %s Commits number: %d\n", branch_name, psnum);
 
-		helper_printf("checkpoint\n");
-		helper_flush();
-		//helper_checkpoint();
-
 		if (initial_import && !strcmp(branch_name, "HEAD")) {
-			//sleep(1);
 			helper_printf("reset HEAD\n");
 			helper_printf("from %s\n", commit_mark_sb.buf);
 		}
+
+		helper_printf("checkpoint\n");
+		helper_flush();
+		/*
+		 * FIXME: sync with fast-export
+		 */
+		invalidate_ref_cache(NULL);
 	}
 	else {
 		fprintf(stderr, "Branch: %s is up to date\n", branch_name);
@@ -857,6 +866,7 @@ static int import_branch_by_name(const char *branch_name)
 	strbuf_release(&commit_mark_sb);
 	strbuf_release(&meta_mark_sb);
 	strbuf_release(&branch_ref);
+	strbuf_release(&branch_private_ref);
 	strbuf_release(&meta_branch_ref);
 	free_hash(&meta_revision_hash);
 	return 0;
@@ -1632,6 +1642,108 @@ static int cmd_list_for_push(const char *line)
 	return 0;
 }
 
+static int validate_tree_entry(const unsigned char *sha1, const char *base,
+		int baselen, const char *filename, unsigned mode, int stage,
+		void *meta)
+{
+	struct cvs_revision *file_meta;
+	struct hash_table *revision_meta_hash = meta;
+	char path[PATH_MAX];
+
+	if (S_ISDIR(mode))
+		return READ_TREE_RECURSIVE;
+
+	snprintf(path, sizeof(path), "%s%s", base, filename);
+	fprintf(stderr, "validating: %s\n", path);
+	file_meta = lookup_hash(hash_path(path), revision_meta_hash);
+	if (!file_meta)
+		die("no meta for file %s\n", path);
+	if (file_meta->isdead)
+		die("file %s is dead in meta\n", path);
+
+	file_meta->util = 1; // mark revision is visited
+	return 0;
+}
+
+static int zero_cvs_revision_util(void *rev, void *data)
+{
+	struct cvs_revision *file_meta = rev;
+	file_meta->util = 0;
+
+	return 0;
+}
+
+static int validate_cvs_revision_util(void *rev, void *data)
+{
+	struct cvs_revision *file_meta = rev;
+
+	if (!file_meta->isdead &&
+	    !file_meta->util)
+		die("file %s exists in meta, but not in tree", file_meta->path);
+
+	return 0;
+}
+
+static int validate_commit_meta_by_tree(const char *ref, struct hash_table *revision_meta_hash)
+{
+	struct pathspec pathspec;
+	struct commit *commit;
+	unsigned char sha1[20];
+	int err;
+
+	fprintf(stderr, "validating commit meta by tree\n");
+
+	if (!ref_exists(ref))
+		die("ref does not exist %s", ref);
+
+	//if (get_sha1_commit(ref, sha1))
+	if (get_sha1(ref, sha1))
+		die("cannot find last commit on branch ref %s", ref);
+
+	commit = lookup_commit(sha1);
+	if (parse_commit(commit))
+		die("cannot parse commit %s", sha1_to_hex(sha1));
+
+	for_each_hash(revision_meta_hash, zero_cvs_revision_util, NULL);
+
+	init_pathspec(&pathspec, NULL);
+	err = read_tree_recursive(commit->tree, "", 0, 0, &pathspec,
+				  validate_tree_entry, revision_meta_hash);
+	free_pathspec(&pathspec);
+	if (err == READ_TREE_RECURSIVE)
+		err = 0;
+
+	for_each_hash(revision_meta_hash, validate_cvs_revision_util, NULL);
+	return err;
+}
+
+/*static int validate_cvs_branch_meta_by_tree(const char *branch_name)
+{
+	struct strbuf ref_sb = STRBUF_INIT;
+	struct strbuf meta_ref_sb = STRBUF_INIT;
+	struct hash_table *revision_meta_hash = NULL;
+	unsigned char commit_sha1[20];
+	int rc;
+
+	strbuf_addf(&ref_sb, "%s%s", get_ref_prefix(), branch_name);
+	strbuf_addf(&meta_ref_sb, "%s%s", get_meta_ref_prefix(), branch_name);
+
+	if (get_sha1(ref_sb.buf, commit_sha1))
+		die(_("Failed to resolve '%s' as a valid ref."), ref_sb.buf);
+
+	if (!ref_exists(meta_ref_sb.buf))
+		die("No metadata for branch %s", branch_name);
+
+	load_revision_meta(commit_sha1, meta_ref_sb.buf, NULL, &revision_meta_hash);
+	if (!revision_meta_hash)
+		die("Cannot load metadata for branch %s", branch_name);
+
+	rc = validate_commit_meta_by_tree(ref_sb.buf, revision_meta_hash);
+	strbuf_release(&ref_sb);
+	strbuf_release(&meta_ref_sb);
+	return rc;
+}*/
+
 static int do_command(struct strbuf *line)
 {
 	const struct input_command_entry *p = input_command_list;
@@ -1701,7 +1813,6 @@ static int parse_cvs_spec(const char *spec)
 int git_cvshelper_config(const char *var, const char *value, void *dummy)
 {
 	char *str = NULL;
-	fprintf(stderr, "git_cvshelper_config: %s = %s\n", var, value);
 
 	if (!strcmp(var, "cvshelper.ignoremodechange")) {
 		ignore_mode_change = git_config_bool(var, value);
@@ -1789,6 +1900,9 @@ int main(int argc, const char **argv)
 
 	if (getenv("NO_REFS_UPDATE_ON_PUSH"))
 		no_refs_update_on_push = 1;
+
+	//validate_cvs_branch_meta_by_tree("HEAD");
+	//return 0;
 
 	while (1) {
 		if (helper_strbuf_getline(&buf, stdin, '\n') == EOF) {

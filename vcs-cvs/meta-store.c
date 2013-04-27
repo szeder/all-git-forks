@@ -114,7 +114,6 @@ enum {
 	ATTR_SYNCTIME,
 	ATTR_REVISION,
 	ATTR_ISDEAD,
-	ATTR_ISPUSHED
 };
 
 void format_meta_line(struct strbuf *line, struct cvs_revision *rev)
@@ -126,9 +125,6 @@ void format_meta_line(struct strbuf *line, struct cvs_revision *rev)
 
 	if (rev->isdead)
 		meta_line_add_attr(line, attributes[ATTR_ISDEAD], "y", &want_comma);
-
-	if (rev->ispushed)
-		meta_line_add_attr(line, attributes[ATTR_ISPUSHED], "y", &want_comma);
 
 	strbuf_addf(line, ":%s\n", rev->path);
 }

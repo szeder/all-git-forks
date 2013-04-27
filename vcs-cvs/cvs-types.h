@@ -20,10 +20,7 @@ struct cvs_revision {
 	unsigned int ismerged:1;
 	unsigned int isexec:1;
 
-	/*
-	 * file was pushed to cvs and fetching for verification is needed
-	 */
-	unsigned int ispushed:1;
+	unsigned int util:1;
 
 	unsigned int mark:24;
 	struct cvs_revision *prev;
