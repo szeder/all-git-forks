@@ -29,11 +29,20 @@
  * - save CVS error and info messages in buffer
  * - sort rlog, avoid extra commits splits done same seconds
  * - parse and validate checkin properly
+ * - validation code: rls -R -d -e -D 'Apr 27 12:37:19 2013'
  *
  * KNOWN PITFALLS:
  * - CVS has not symlinks support
  * - CVS file permittions history is not tracked (CVS have that feature commented)
  * - CVS file permittions cannot be changed for existing files
+ *
+ * [cvshelper]
+ *	ignoreModeChange - bool
+ *	fileMemoryLimit - long
+ *	pushNoRefsUpdate - bool
+ *	verifyImport - bool
+ *	cvsProtoTrace - path
+ *	remoteHelperTrace - path
  */
 
 static const char trace_key[] = "GIT_TRACE_CVS_HELPER";
@@ -51,13 +60,9 @@ static int followtags = 0;
 static int dry_run = 0;
 static int initial_import = 0;
 
-/*
- * FIXME:
- * make this options configurable
- * cvshelper.ignoreModeChange = true
- */
 static int no_refs_update_on_push = 0;
 static int ignore_mode_change = 0;
+static int verify_import = 0;
 //static struct progress *progress_state;
 //static struct progress *progress_rlog;
 
@@ -1693,6 +1698,47 @@ static int parse_cvs_spec(const char *spec)
 	return 0;
 }
 
+int git_cvshelper_config(const char *var, const char *value, void *dummy)
+{
+	char *str = NULL;
+	fprintf(stderr, "git_cvshelper_config: %s = %s\n", var, value);
+
+	if (!strcmp(var, "cvshelper.ignoremodechange")) {
+		ignore_mode_change = git_config_bool(var, value);
+		return 0;
+	}
+	else if (!strcmp(var, "cvshelper.pushnorefsupdate")) {
+		no_refs_update_on_push = git_config_bool(var, value);
+		return 0;
+	}
+	else if (!strcmp(var, "cvshelper.verifyimport")) {
+		verify_import = git_config_bool(var, value);
+		return 0;
+	}
+	else if (!strcmp(var, "cvshelper.cvsprototrace")) {
+		if (git_config_pathname((const char **)&str, var, value) || !str)
+			return 1;
+
+		setenv("GIT_TRACE_CVS_PROTO", str, 0);
+		free(str);
+		return 0;
+	}
+	else if (!strcmp(var, "cvshelper.remotehelpertrace")) {
+		if (git_config_pathname((const char **)&str, var, value) || !str)
+			return 1;
+
+		setenv("GIT_TRACE_CVS_HELPER", str, 0);
+		free(str);
+		return 0;
+	}
+	else if (!strcmp(var, "cvshelper.filememorylimit")) {
+		fileMemoryLimit = git_config_ulong(var, value);
+		return 0;
+	}
+
+	return git_default_config(var, value, dummy);
+}
+
 static void cvs_branch_list_item_free(void *p, const char *str)
 {
 	free_cvs_branch(p);
@@ -1717,7 +1763,7 @@ int main(int argc, const char **argv)
 		return 1;
 	}
 
-	git_config(git_default_config, NULL);
+	git_config(git_cvshelper_config, NULL);
 	remote = remote_get(argv[1]);
 	cvs_root_module = (argc == 3) ? argv[2] : remote->url[0];
 
