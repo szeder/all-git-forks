@@ -1691,7 +1691,29 @@ _git_send_email ()
 
 _git_stage ()
 {
-	_git_add
+	__git_has_doubledash && return
+
+	local subcommands="add reset diff rm apply"
+	local subcommand="$(__git_find_on_cmdline "$subcommands")"
+	if [ -z "$subcommand" ]; then
+		__gitcomp "$subcommands"
+		return
+	fi
+
+	case "$subcommand" in
+	add)
+		_git_add;;
+	reset)
+		_git_reset;;
+	diff)
+		_git_diff;;
+	rm)
+		_git_rm;;
+	apply)
+		_git_apply;;
+	*)
+		_git_add;
+	esac
 }
 
 __git_config_get_set_variables ()
