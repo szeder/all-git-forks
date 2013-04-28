@@ -51,13 +51,21 @@ test_expect_success 'initialize source svn repo containing empty dirs' '
 		echo "Conflict file" > 5/.placeholder &&
 		mkdir 6/.placeholder &&
 		svn_cmd add 5/.placeholder 6/.placeholder &&
-		svn_cmd commit -m "Placeholder Namespace conflict"
+		svn_cmd commit -m "Placeholder Namespace conflict" &&
+
+		echo x >fil.txt &&
+		svn_cmd add fil.txt &&
+		svn_cmd commit -m "this commit should not kill git-svn"
 	) &&
 	rm -rf "$SVN_TREE"
 '
 
-test_expect_success 'clone svn repo with --preserve-empty-dirs' '
-	git svn clone "$svnrepo"/trunk --preserve-empty-dirs "$GIT_REPO"
+test_expect_success 'clone svn repo with --preserve-empty-dirs --stdlayout' '
+	git svn clone "$svnrepo" --preserve-empty-dirs --stdlayout "$GIT_REPO" || (
+		cd "$GIT_REPO"
+		git svn fetch # fetch the rest can succeed even if clone failed
+		false # this test still failed
+	)
 '
 
 # "$GIT_REPO"/1 should only contain the placeholder file.
@@ -81,11 +89,11 @@ test_expect_success 'add entry to previously empty directory' '
 	test -f "$GIT_REPO"/4/a/b/c/foo
 '
 
-# The HEAD~2 commit should not have introduced .gitignore placeholder files.
+# The HEAD~3 commit should not have introduced .gitignore placeholder files.
 test_expect_success 'remove non-last entry from directory' '
 	(
 		cd "$GIT_REPO" &&
-		git checkout HEAD~2
+		git checkout HEAD~3
 	) &&
 	test_must_fail test -f "$GIT_REPO"/2/.gitignore &&
 	test_must_fail test -f "$GIT_REPO"/3/.gitignore

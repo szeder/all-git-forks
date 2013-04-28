@@ -129,6 +129,7 @@ sub is_path_ignored {
 
 sub set_path_strip {
 	my ($self, $path) = @_;
+	$self->{path_prefix} = length $path ? ($path . "/") : "";
 	$self->{path_strip} = qr/^\Q$path\E(\/|$)/ if length $path;
 }
 
@@ -458,9 +459,12 @@ sub find_empty_directories {
 		my $skip_added = 0;
 		foreach my $t (qw/dir_prop file_prop/) {
 			foreach my $path (keys %{ $self->{$t} }) {
-				if (exists $self->{$t}->{dirname($path)}) {
-					$skip_added = 1;
-					last;
+				if (length $self->git_path($path)) {
+					$path = dirname($path);
+					if ($dir eq $self->git_path($path) && exists $self->{$t}->{$path}) {
+						$skip_added = 1;
+						last;
+					}
 				}
 			}
 			last if $skip_added;
@@ -477,7 +481,7 @@ sub find_empty_directories {
 		delete $files{$_} foreach (@deleted_gpath);
 
 		# Report the directory if there are no filenames left.
-		push @empty_dirs, $dir unless (scalar %files);
+		push @empty_dirs, ($self->{path_prefix} . $dir) unless (scalar %files);
 	}
 	@empty_dirs;
 }
