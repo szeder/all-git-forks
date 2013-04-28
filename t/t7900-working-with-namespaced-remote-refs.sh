@@ -84,4 +84,32 @@ test_expect_success 'work-around "clone" with namespaced remote refs' '
 	test_clone client
 '
 
+test_expect_success 'enter client repo' '
+	cd client
+'
+
+test_expect_failure 'short-hand notation expands correctly for remote-tracking branches' '
+	echo refs/remotes/origin/heads/master > expect &&
+	git rev-parse --symbolic-full-name refs/remotes/origin/heads/master > actual &&
+	test_cmp expect actual &&
+	git rev-parse --symbolic-full-name remotes/origin/heads/master > actual &&
+	test_cmp expect actual &&
+	git rev-parse --symbolic-full-name origin/heads/master > actual &&
+	test_cmp expect actual &&
+	git rev-parse --symbolic-full-name origin/master > actual &&
+	test_cmp expect actual
+'
+
+test_expect_failure 'remote-tracking branches are shortened correctly' '
+	echo origin/master > expect &&
+	git rev-parse --abbrev-ref refs/remotes/origin/heads/master > actual &&
+	test_cmp expect actual &&
+	git rev-parse --abbrev-ref remotes/origin/heads/master > actual &&
+	test_cmp expect actual &&
+	git rev-parse --abbrev-ref origin/heads/master > actual &&
+	test_cmp expect actual &&
+	git rev-parse --abbrev-ref origin/master > actual &&
+	test_cmp expect actual
+'
+
 test_done
