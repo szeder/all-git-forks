@@ -25,12 +25,15 @@ bzrlib.plugin.load_plugins()
 
 import bzrlib.generate_ids
 import bzrlib.transport
+import bzrlib.errors
+import bzrlib.ui
 
 import sys
 import os
 import json
 import re
 import StringIO
+import atexit, shutil, hashlib, urlparse, subprocess
 
 NAME_RE = re.compile('^([^<>]+)')
 AUTHOR_RE = re.compile('^([^<>]+?)? ?<([^<>]*)>$')
@@ -93,7 +96,7 @@ class Marks:
         return self.last_mark
 
     def is_marked(self, rev):
-        return self.marks.has_key(rev)
+        return rev in self.marks
 
     def new_mark(self, rev, mark):
         self.marks[rev] = mark
@@ -183,15 +186,24 @@ def get_filechanges(cur, prev):
 
     changes = cur.changes_from(prev)
 
+    def u(s):
+        return s.encode('utf-8')
+
     for path, fid, kind in changes.added:
-        modified[path] = fid
+        modified[u(path)] = fid
     for path, fid, kind in changes.removed:
-        removed[path] = None
+        removed[u(path)] = None
     for path, fid, kind, mod, _ in changes.modified:
-        modified[path] = fid
+        modified[u(path)] = fid
     for oldpath, newpath, fid, kind, mod, _ in changes.renamed:
-        removed[oldpath] = None
-        modified[newpath] = fid
+        removed[u(oldpath)] = None
+        if kind == 'directory':
+            lst = cur.list_files(from_dir=newpath, recursive=True)
+            for path, file_class, kind, fid, entry in lst:
+                if kind != 'directory':
+                    modified[u(newpath + '/' + path)] = fid
+        else:
+            modified[u(newpath)] = fid
 
     return modified, removed
 
@@ -214,7 +226,7 @@ def export_files(tree, files):
             else:
                 mode = '100644'
 
-            # is the blog already exported?
+            # is the blob already exported?
             if h in filenodes:
                 mark = filenodes[h]
                 final.append((mode, mark, path))
@@ -239,7 +251,7 @@ def export_files(tree, files):
     return final
 
 def export_branch(branch, name):
-    global prefix, dirname
+    global prefix
 
     ref = '%s/heads/%s' % (prefix, name)
     tip = marks.get_tip(name)
@@ -260,7 +272,12 @@ def export_branch(branch, name):
         tz = rev.timezone
         committer = rev.committer.encode('utf-8')
         committer = "%s %u %s" % (fixup_user(committer), time, gittz(tz))
-        author = committer
+        authors = rev.get_apparent_authors()
+        if authors:
+            author = authors[0].encode('utf-8')
+            author = "%s %u %s" % (fixup_user(author), time, gittz(tz))
+        else:
+            author = committer
         msg = rev.message.encode('utf-8')
 
         msg += '\n'
@@ -297,10 +314,10 @@ def export_branch(branch, name):
             else:
                 print "merge :%s" % m
 
+        for f in removed:
+            print "D %s" % (f,)
         for f in modified_final:
             print "M %s :%u %s" % f
-        for f in removed:
-            print "D %s" % (f)
         print
 
         count += 1
@@ -320,13 +337,12 @@ def export_branch(branch, name):
     marks.set_tip(name, revid)
 
 def export_tag(repo, name):
-    global tags
-    try:
-        print "reset refs/tags/%s" % name
-        print "from :%u" % rev_to_mark(tags[name])
-        print
-    except KeyError:
-        warn("TODO: fetch tag '%s'" % name)
+    global tags, prefix
+
+    ref = '%s/tags/%s' % (prefix, name)
+    print "reset %s" % ref
+    print "from :%u" % rev_to_mark(tags[name])
+    print
 
 def do_import(parser):
     global dirname
@@ -501,8 +517,13 @@ class CustomTree():
     def get_symlink_target(self, file_id):
         return self.updates[file_id]['data']
 
+def c_style_unescape(string):
+    if string[0] == string[-1] == '"':
+        return string.decode('string-escape')[1:-1]
+    return string
+
 def parse_commit(parser):
-    global marks, blob_marks, bmarks, parsed_refs
+    global marks, blob_marks, parsed_refs
     global mode
 
     parents = []
@@ -528,6 +549,10 @@ def parse_commit(parser):
         parents.append(parser.get_mark())
         parser.next()
 
+    # fast-export adds an extra newline
+    if data[-1] == '\n':
+        data = data[:-1]
+
     files = {}
 
     for line in parser:
@@ -540,6 +565,7 @@ def parse_commit(parser):
             f = { 'deleted' : True }
         else:
             die('Unknown file command: %s' % line)
+        path = c_style_unescape(path).decode('utf-8')
         files[path] = f
 
     repo = parser.repo
@@ -613,17 +639,17 @@ def do_export(parser):
     for ref, revid in parsed_refs.iteritems():
         if ref == 'refs/heads/master':
             repo.generate_revision_history(revid, marks.get_tip('master'))
-            revno, revid = repo.last_revision_info()
             if peer:
-                if hasattr(peer, "import_last_revision_info_and_tags"):
-                    peer.import_last_revision_info_and_tags(repo, revno, revid)
-                else:
-                    peer.import_last_revision_info(repo.repository, revno, revid)
-                wt = peer.bzrdir.open_workingtree()
+                try:
+                    repo.push(peer, stop_revision=revid)
+                except bzrlib.errors.DivergedBranches:
+                    print "error %s non-fast forward" % ref
+                    continue
             else:
                 wt = repo.bzrdir.open_workingtree()
-            wt.update()
+                wt.update()
         print "ok %s" % ref
+
     print
 
 def do_capabilities(parser):
@@ -632,6 +658,7 @@ def do_capabilities(parser):
     print "import"
     print "export"
     print "refspec refs/heads/*:%s/heads/*" % prefix
+    print "refspec refs/tags/*:%s/tags/*" % prefix
 
     path = os.path.join(dirname, 'marks-git')
 
@@ -641,12 +668,25 @@ def do_capabilities(parser):
 
     print
 
+def ref_is_valid(name):
+    return not True in [c in name for c in '~^: \\']
+
 def do_list(parser):
     global tags
     print "? refs/heads/%s" % 'master'
-    for tag, revid in parser.repo.tags.get_tag_dict().items():
+
+    branch = parser.repo
+    branch.lock_read()
+    for tag, revid in branch.tags.get_tag_dict().items():
+        try:
+            branch.revision_id_to_dotted_revno(revid)
+        except bzrlib.errors.NoSuchRevision:
+            continue
+        if not ref_is_valid(tag):
+            continue
         print "? refs/tags/%s" % tag
         tags[tag] = revid
+    branch.unlock()
     print "@refs/heads/%s HEAD" % 'master'
     print
 
@@ -678,28 +718,49 @@ def get_repo(url, alias):
 
     return branch
 
+def fix_path(alias, orig_url):
+    url = urlparse.urlparse(orig_url, 'file')
+    if url.scheme != 'file' or os.path.isabs(url.path):
+        return
+    abs_url = urlparse.urljoin("%s/" % os.getcwd(), orig_url)
+    cmd = ['git', 'config', 'remote.%s.url' % alias, "bzr::%s" % abs_url]
+    subprocess.call(cmd)
+
 def main(args):
     global marks, prefix, dirname
     global tags, filenodes
     global blob_marks
     global parsed_refs
     global files_cache
+    global is_tmp
 
     alias = args[1]
     url = args[2]
 
-    prefix = 'refs/bzr/%s' % alias
     tags = {}
     filenodes = {}
     blob_marks = {}
     parsed_refs = {}
     files_cache = {}
+    marks = None
 
+    if alias[5:] == url:
+        is_tmp = True
+        alias = hashlib.sha1(alias).hexdigest()
+    else:
+        is_tmp = False
+
+    prefix = 'refs/bzr/%s' % alias
     gitdir = os.environ['GIT_DIR']
     dirname = os.path.join(gitdir, 'bzr', alias)
 
+    if not is_tmp:
+        fix_path(alias, url)
+
     if not os.path.exists(dirname):
         os.makedirs(dirname)
+
+    bzrlib.ui.ui_factory.be_quiet(True)
 
     repo = get_repo(url, alias)
 
@@ -720,6 +781,13 @@ def main(args):
             die('unhandled command: %s' % line)
         sys.stdout.flush()
 
-    marks.store()
+def bye():
+    if not marks:
+        return
+    if not is_tmp:
+        marks.store()
+    else:
+        shutil.rmtree(dirname)
 
+atexit.register(bye)
 sys.exit(main(sys.argv))
