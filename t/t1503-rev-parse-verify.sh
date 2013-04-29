@@ -115,13 +115,18 @@ test_expect_success 'master@{n} for various n' '
 	test_must_fail git rev-parse --verify master@{$Np1}
 '
 
-test_expect_success 'empty @' '
+test_expect_success 'empty @ and ref@ without trailing {stuff}' '
+	test_when_finished "git branch -d twoago" &&
+	git branch twoago HEAD~2 &&
 	rev_hash=$(git rev-parse --verify @) &&
 	test "$rev_hash" = "$HASH4" &&
 	rev_hash=$(git rev-parse --verify HEAD@) &&
 	test "$rev_hash" = "$HASH4" &&
 	rev_hash=$(git rev-parse --verify master@) &&
-	test "$rev_hash" = "$HASH4"
+	test "$rev_hash" = "$HASH4" &&
+	rev_hash=$(git rev-parse --verify twoago@) &&
+	test "$rev_hash" = "$HASH2" &&
+	test_must_fail git rev-parse --verify nosuch@
 '
 
 test_done
