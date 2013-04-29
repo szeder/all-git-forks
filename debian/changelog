@@ -1,3 +1,13 @@
+git (1:1.8.3~rc0-1) experimental; urgency=low
+
+  * new upstream release candidate.
+    * remote-bzr: respect bzr "author" field in import (closes:
+      #705245).
+    * remote-bzr: allow re-add of a deleted file in the same commit
+      (closes: #704913, #704959).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 29 Apr 2013 00:29:14 -0700
+
 git (1:1.8.2.1-1) experimental; urgency=low
 
   * new upstream point release (see RelNotes/1.8.2.1.txt).

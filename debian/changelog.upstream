@@ -1,3 +1,642 @@
+Version v1.8.3-rc0; changes since v1.8.2.2:
+-------------------------------------------
+
+Aaron Schrab (2):
+      clone: Fix error message for reference repository
+      clone: Allow repo using gitfile as a reference
+
+Antoine Pelisse (5):
+      combine-diff: coalesce lost lines optimally
+      fast-export: Allow pruned-references in mark file
+      strbuf: create strbuf_humanise_bytes() to show byte sizes
+      count-objects: add -H option to humanize sizes
+      remote-hg: activate graphlog extension for hg_log()
+
+Brad King (1):
+      commit-tree: document -S option consistently
+
+Brandon Casey (11):
+      commit, cherry-pick -s: remove broken support for multiline rfc2822 fields
+      t/test-lib-functions.sh: allow to specify the tag name to test_commit
+      t/t3511: add some tests of 'cherry-pick -s' functionality
+      sequencer.c: recognize "(cherry picked from ..." as part of s-o-b footer
+      sequencer.c: require a conforming footer to be preceded by a blank line
+      sequencer.c: always separate "(cherry picked from" from commit body
+      sequencer.c: teach append_signoff how to detect duplicate s-o-b
+      sequencer.c: teach append_signoff to avoid adding a duplicate newline
+      Unify appending signoff in format-patch, commit and sequencer
+      t7502: perform commits using alternate editor in a subshell
+      git-commit: populate the edit buffer with 2 blank lines before s-o-b
+
+Brian Gernhardt (3):
+      t5550: do not assume the "matching" push is the default
+      t5551: do not assume the "matching" push is the default
+      t5570: do not assume the "matching" push is the default
+
+Christophe Simonis (3):
+      remote-bzr: fix directory renaming
+      remote-bzr: remove files before modifications
+      remote-bzr: fix utf-8 support for fetching
+
+David Aguilar (4):
+      difftool: silence uninitialized variable warning
+      t7800: update copyright notice
+      t7800: modernize tests
+      t7800: "defaults" is no longer a builtin tool name
+
+David Engster (1):
+      remote-bzr: set author if available
+
+Dusty Phillips (3):
+      remote-hg: add missing config variable in doc
+      remote-hg: push to the appropriate branch
+      remote-helpers: avoid has_key
+
+Felipe Contreras (64):
+      remote-bzr: avoid echo -n
+      remote-helpers: fix the run of all tests
+      remote-bzr: remove stale check code for tests
+      remote-hg: fix hg-git test-case
+      remote-bzr: only update workingtree on local repos
+      remote-bzr: avoid unreferred tags
+      remote-bzr: add utf-8 support for pushing
+      send-email: make annotate configurable
+      format-patch: improve head calculation for cover-letter
+      format-patch: refactor branch name calculation
+      log: update to OPT_BOOL
+      format-patch: add format.coverLetter configuration variable
+      format-patch: trivial cleanups
+      remote-bzr: improve tag handling
+      remote-hg: trivial cleanups
+      remote-hg: properly report errors on bookmark pushes
+      remote-hg: make sure fake bookmarks are updated
+      remote-hg: trivial test cleanups
+      remote-hg: redirect buggy mercurial output
+      remote-hg: split bookmark handling
+      remote-hg: refactor export
+      remote-hg: update remote bookmarks
+      remote-hg: update tags globally
+      remote-hg: force remote push
+      remote-hg: show more proper errors
+      remote-hg: add basic author tests
+      remote-hg: add simple mail test
+      remote-hg: fix bad state issue
+      remote-hg: fix bad file paths
+      completion: add more cherry-pick options
+      completion: trivial test improvement
+      completion: get rid of empty COMPREPLY assignments
+      rebase-am: explicitly disable cover-letter
+      completion: add new __gitcompadd helper
+      completion: add __gitcomp_nl tests
+      completion: get rid of compgen
+      completion: inline __gitcomp_1 to its sole callsite
+      completion: small optimization
+      branch: colour upstream branches
+      remote-bzr: fix prefix of tags
+      remote-hg: safer bookmark pushing
+      remote-hg: use python urlparse
+      remote-hg: properly mark branches up-to-date
+      remote-hg: add branch_tip() helper
+      remote-hg: add support for tag objects
+      remote-hg: custom method to write tags
+      remote-hg: write tags in the appropriate branch
+      remote-hg: add custom local tag write code
+      remote-hg: improve email sanitation
+      remote-hg: add support for schemes extension
+      remote-hg: don't update bookmarks unnecessarily
+      remote-hg: allow refs with spaces
+      remote-hg: small performance improvement
+      remote-hg: use marks instead of inlined files
+      remote-hg: strip extra newline
+      remote-bzr: use proper push method
+      remote-helpers: trivial cleanups
+      remote-hg: remove extra check
+      remote-bzr: fix bad state issue
+      remote-bzr: add support to push URLs
+      remote-hg: use hashlib instead of hg sha1 util
+      remote-bzr: store converted URL
+      remote-bzr: tell bazaar to be quiet
+      remote-bzr: strip extra newline
+
+Jacob Sarvis (1):
+      log: read gpg settings for signed commit verification
+
+Jeff King (53):
+      upload-pack: use get_sha1_hex to parse "shallow" lines
+      upload-pack: do not add duplicate objects to shallow list
+      upload-pack: remove packet debugging harness
+      fetch-pack: fix out-of-bounds buffer offset in get_ack
+      send-pack: prefer prefixcmp over memcmp in receive_status
+      upload-archive: do not copy repo name
+      upload-archive: use argv_array to store client arguments
+      write_or_die: raise SIGPIPE when we get EPIPE
+      pkt-line: move a misplaced comment
+      pkt-line: drop safe_write function
+      pkt-line: provide a generic reading function with options
+      pkt-line: teach packet_read_line to chomp newlines
+      pkt-line: move LARGE_PACKET_MAX definition from sideband
+      pkt-line: provide a LARGE_PACKET_MAX static buffer
+      pkt-line: share buffer/descriptor reading implementation
+      teach get_remote_heads to read from a memory buffer
+      remote-curl: pass buffer straight to get_remote_heads
+      remote-curl: move ref-parsing code up in file
+      remote-curl: always parse incoming refs
+      t2200: check that "add -u" limits itself to subdirectory
+      fast-export: rename handle_object function
+      fast-export: do not load blob objects twice
+      do not use GIT_TRACE_PACKET=3 in tests
+      stream_blob_to_fd: detect errors reading from stream
+      check_sha1_signature: check return value from read_istream
+      read_istream_filtered: propagate read error from upstream
+      avoid infinite loop in read_istream_loose
+      add test for streaming corrupt blobs
+      streaming_write_entry: propagate streaming errors
+      add tests for cloning corrupted repositories
+      clone: die on errors from unpack_trees
+      clone: run check_everything_connected
+      t1300: document some aesthetic failures of the config editor
+      clone: leave repo in place after checkout errors
+      t5516 (fetch-push): drop implicit arguments from helper functions
+      t3200: test --set-upstream-to with bogus refs
+      branch: factor out "upstream is not a branch" error messages
+      branch: improve error message for missing --set-upstream-to ref
+      branch: mention start_name in set-upstream error messages
+      branch: give advice when tracking start-point is missing
+      rm: do not complain about d/f conflicts during deletion
+      t3600: test behavior of reverse-d/f conflict
+      t3600: document failure of rm across symbolic links
+      http: add HTTP_KEEP_ERROR option
+      remote-curl: show server content on http errors
+      remote-curl: let servers override http 404 advice
+      remote-curl: always show friendlier 404 message
+      remote-curl: consistently report repo url for http errors
+      http: simplify http_error helper function
+      http: re-word http error message
+      remote-curl: die directly with http error messages
+      http: drop http_error function
+      http: set curl FAILONERROR each time we select a handle
+
+Jens Lehmann (2):
+      submodule: add 'deinit' command
+      submodule deinit: clarify work tree removal message
+
+Jiang Xin (3):
+      l10n: git.pot: v1.8.3 round 1 (54 new, 15 removed)
+      l10n: zh_CN.po: translate 54 messages (2048t0f0u)
+      i18n: branch: mark strings for translation
+
+John Keeping (16):
+      Makefile: make mandir, htmldir and infodir absolute
+      git-difftool(1): fix formatting of --symlink description
+      difftool: avoid double slashes in symlink targets
+      difftool --dir-diff: symlink all files matching the working tree
+      refs.c: fix fread error handling
+      t7800: move '--symlinks' specific test to the end
+      difftool: don't overwrite modified files
+      t7800: don't hide grep output
+      t7800: fix tests when difftool uses --no-symlinks
+      t7800: run --dir-diff tests with and without symlinks
+      submodule: print graph output next to submodule log
+      gitremote-helpers(1): clarify refspec behaviour
+      merge-tree: don't print entries that match "local"
+      fast-export: add --signed-tags=warn-strip mode
+      transport-helper: pass --signed-tags=warn-strip to fast-export
+      transport-helper: add 'signed-tags' capability
+
+John Koleszar (1):
+      http-backend: respect GIT_NAMESPACE with dumb clients
+
+John Szakmeister (1):
+      git-web--browse: recognize any TERM_PROGRAM as a GUI terminal on OS X
+
+Jonathan Nieder (12):
+      sequencer.c: rework search for start of footer to improve clarity
+      shell doc: emphasize purpose and security model
+      shell: new no-interactive-login command to print a custom message
+      push test: use test_config when appropriate
+      push test: simplify check of push result
+      push test: rely on &&-chaining instead of 'if bad; then echo Oops; fi'
+      add: make pathless 'add [-u|-A]' warning a file-global function
+      add: make warn_pathless_add() a no-op after first call
+      add -u: only show pathless 'add -u' warning when changes exist outside cwd
+      add -A: only show pathless 'add -A' warning when changes exist outside cwd
+      convert: The native line-ending is \r\n on MinGW
+      glossary: a revision is just a commit
+
+Jonathon Mah (1):
+      branch: give better message when no names specified for rename
+
+Junio C Hamano (53):
+      t5404: do not assume the "matching" push is the default
+      t5505: do not assume the "matching" push is the default
+      t5516: do not assume the "matching" push is the default
+      t5517: do not assume the "matching" push is the default
+      t5519: do not assume the "matching" push is the default
+      t5531: do not assume the "matching" push is the default
+      t7406: do not assume the "matching" push is the default
+      t9400: do not assume the "matching" push is the default
+      t9401: do not assume the "matching" push is the default
+      simplify-merges: drop merge from irrelevant side branch
+      config.mak.in: remove unused definitions
+      parse_fetch_refspec(): clarify the codeflow a bit
+      fetch: use struct ref to represent refs to be fetched
+      upload-pack: optionally allow fetching from the tips of hidden refs
+      fetch: fetch objects by their exact SHA-1 object names
+      Makefile: do not export mandir/htmldir/infodir
+      match_push_refs(): nobody sets src->peer_ref anymore
+      commit.c: add clear_commit_marks_many()
+      commit.c: add in_merge_bases_many()
+      commit.c: use clear_commit_marks_many() in in_merge_bases_many()
+      push: --follow-tags
+      for_each_reflog_ent(): extract a helper to process a single entry
+      for_each_recent_reflog_ent(): simplify opening of a reflog file
+      reflog: add for_each_reflog_ent_reverse() API
+      builtin/add.c: simplify boolean variables
+      git add: start preparing for "git add <pathspec>..." to default to "-A"
+      Start the post 1.8.2 cycle
+      The first wave of topics for 1.8.3
+      Update draft release notes to 1.8.3
+      merge-one-file: remove stale comment
+      merge-one-file: force content conflict for "both sides added" case
+      Second wave of topics toward 1.8.3
+      More topics from the second batch for 1.8.3
+      peel_onion: disambiguate to favor tree-ish when we know we want a tree-ish
+      peel_onion(): teach $foo^{object} peeler
+      Update draft release notes to 1.8.3
+      Update draft release notes to 1.8.3
+      Update draft release notes to 1.8.3
+      Update draft release notes to 1.8.3
+      Update draft release notes to 1.8.3
+      Revert 4b7f53da7618 (simplify-merges: drop merge from irrelevant side branch, 2013-01-17)
+      Update dtaft release notes to 1.8.3
+      Update draft release notes to 1.8.3
+      git add: rework the logic to warn "git add <pathspec>..." default change
+      Update draft release notes to 1.8.3
+      Update draft release notes to 1.8.3
+      git add: rephrase the "removal will cease to be ignored" warning
+      Update draft release notes to 1.8.3
+      git add: --ignore-removal is a better named --no-all
+      git add: rephrase -A/--no-all warning
+      Update draft release notes to 1.8.3
+      git add: avoid "-u/-A without pathspec" warning on stat-dirty paths
+      Git 1.8.3-rc0
+
+Karsten Blees (14):
+      dir.c: git-status --ignored: don't drop ignored directories
+      dir.c: git-status --ignored: don't list files in ignored directories
+      dir.c: git-status --ignored: don't list empty ignored directories
+      dir.c: git-ls-files --directories: don't hide empty directories
+      dir.c: git-status --ignored: don't list empty directories as ignored
+      dir.c: make 'git-status --ignored' work within leading directories
+      dir.c: git-clean -d -X: don't delete tracked directories
+      dir.c: factor out parts of last_exclude_matching for later reuse
+      dir.c: move prep_exclude
+      dir.c: unify is_excluded and is_path_excluded APIs
+      dir.c: replace is_path_excluded with now equivalent is_excluded API
+      dir.c: git-status: avoid is_excluded checks for tracked files
+      dir.c: git-status --ignored: don't scan the work tree three times
+      dir.c: git-status --ignored: don't scan the work tree twice
+
+Kevin Bracey (5):
+      mergetools/p4merge: swap LOCAL and REMOTE
+      mergetools/p4merge: create a base if none available
+      git-merge-one-file: style cleanup
+      git-merge-one-file: send "ERROR:" messages to stderr
+      checkout: abbreviate hash in suggest_reattach
+
+Kirill Smelkov (1):
+      Fix `make install` when configured with autoconf
+
+Lukas Fleischer (3):
+      attr.c: extract read_index_data() as read_blob_data_from_index()
+      read_blob_data_from_index(): optionally return the size of blob data
+      convert.c: remove duplicate code
+
+Matthieu Moy (3):
+      status: show 'revert' state and status hint
+      status: show commit sha1 in "You are currently reverting" message
+      add: add a blank line at the end of pathless 'add [-u|-A]' warning
+
+Michael Haggerty (1):
+      rev-parse: clarify documentation for the --verify option
+
+Michal Nazarewicz (6):
+      Git.pm: allow command_close_bidi_pipe to be called as method
+      Git.pm: fix example in command_close_bidi_pipe documentation
+      Git.pm: refactor command_close_bidi_pipe to use _cmd_close
+      Git.pm: allow pipes to be closed prior to calling command_close_bidi_pipe
+      Git.pm: add interface for git credential command
+      git-send-email: use git credential to obtain password
+
+Mike Gorchak (2):
+      date.c: fix unsigned time_t comparison
+      Fix time offset calculation in case of unsigned time_t
+
+Miklos Vajna (1):
+      cherry-pick: make sure all input objects are commits
+
+Miklós Fazekas (1):
+      git p4: avoid expanding client paths in chdir
+
+Modestas Vainius (1):
+      Support FTP-over-SSL/TLS for regular FTP
+
+Nguyễn Thái Ngọc Duy (28):
+      git-count-objects.txt: describe each line in -v output
+      t4014: more tests about appending s-o-b lines
+      format-patch: update append_signoff prototype
+      sha1_file: reorder code in prepare_packed_git_one()
+      count-objects: report garbage files in pack directory too
+      count-objects: report how much disk space taken by garbage files
+      wt-status: move strbuf into read_and_strip_branch()
+      wt-status: split wt_status_state parsing function out
+      wt-status: move wt_status_get_state() out to wt_status_print()
+      status: show more info than "currently not on any branch"
+      branch: show more information when HEAD is detached
+      Preallocate hash tables when the number of inserts are known in advance
+      status, branch: fix the misleading "bisecting" message
+      checkout: avoid unnecessary match_pathspec calls
+      checkout: add --ignore-skip-worktree-bits in sparse checkout mode
+      pretty: save commit encoding from logmsg_reencode if the caller needs it
+      pretty: get the correct encoding for --pretty:format=%e
+      pretty-formats.txt: wrap long lines
+      pretty: share code between format_decoration and show_decorations
+      utf8.c: move display_mode_esc_sequence_len() for use by other functions
+      utf8.c: add utf8_strnwidth() with the ability to skip ansi sequences
+      utf8.c: add reencode_string_len() that can handle NULs in string
+      pretty: two phase conversion for non utf-8 commits
+      pretty: split color parsing into a separate function
+      pretty: add %C(auto) for auto-coloring
+      pretty: support padding placeholders, %< %> and %><
+      pretty: support truncating in %>, %< and %><
+      pretty: support %>> that steal trailing spaces
+
+Pete Wyckoff (2):
+      git p4 test: make sure P4CONFIG relative path works
+      git p4 test: should honor symlink in p4 client root
+
+Peter Krefting (1):
+      l10n: Update Swedish translation (2048t0f0u)
+
+Peter van Zetten (1):
+      remote-hg: fix for files with spaces
+
+Phil Hord (1):
+      rebase: find orig_head unambiguously
+
+Philip Oakley (5):
+      builtin/help.c: split "-a" processing into two
+      builtin/help.c: add --guide option
+      builtin/help.c: add list_common_guides_help() function
+      help: mention -a and -g option, and 'git help <concept>' usage.
+      doc: include --guide option description for "git help"
+
+Ralf Thielow (1):
+      l10n: de.po: translate 54 new messages
+
+Ramkumar Ramachandra (14):
+      t5520: use test_config to set/unset git config variables (leftover bits)
+      remote.c: simplify a bit of code using git_config_string()
+      t5516 (fetch-push): update test description
+      remote.c: introduce a way to have different remotes for fetch/push
+      remote.c: introduce remote.pushdefault
+      remote.c: introduce branch.<name>.pushremote
+      git-shortlog.txt: remove (-h|--help) from OPTIONS
+      revisions.txt: clarify the .. and ... syntax
+      git-log.txt: order OPTIONS properly; move <since>..<until>
+      git-log.txt: generalize <since>..<until>
+      git-log.txt: rewrite note on why "--" may be required
+      git-shortlog.txt: make SYNOPSIS match log, update OPTIONS
+      builtin/log.c: make usage string consistent with doc
+      builtin/shortlog.c: make usage string consistent with log
+
+Ramsay Allan Jones (5):
+      msvc: Fix compilation errors caused by poll.h emulation
+      msvc: git-daemon: Fix linker "unresolved external" errors
+      msvc: Fix build by adding missing symbol defines
+      msvc: test-svn-fe: Fix linker "unresolved external" error
+      msvc: avoid collisions between "tags" and "TAGS"
+
+René Scharfe (1):
+      archive-zip: use deflateInit2() to ask for raw compressed data
+
+Sebastian Götte (5):
+      Move commit GPG signature verification to commit.c
+      commit.c/GPG signature verification: Also look at the first GPG status line
+      merge/pull: verify GPG signatures of commits being merged
+      merge/pull Check for untrusted good GPG signatures
+      pretty printing: extend %G? to include 'N' and 'U'
+
+Sebastian Schuberth (1):
+      git-svn: Support custom tunnel schemes instead of SSH only
+
+Simon Ruderich (4):
+      git-am: show the final log message on "Applying:" indicator
+      remote-hg: add 'insecure' option
+      remote-hg: document location of stored hg repository
+      help: mark common_guides[] as translatable
+
+Stefano Lattarini (1):
+      zlib: fix compilation failures with Sun C Compilaer
+
+Steven Walter (1):
+      safe_create_leading_directories: fix race that could give a false negative
+
+Ted Zlatanov (1):
+      Add contrib/credentials/netrc with GPG support
+
+Thomas Rast (9):
+      sha1_file: remove recursion in packed_object_info
+      Refactor parts of in_delta_base_cache/cache_or_unpack_entry
+      sha1_file: remove recursion in unpack_entry
+      Avoid loading commits twice in log with diffs
+      t/README: --valgrind already implies -v
+      tests: parameterize --valgrind option
+      tests --valgrind: provide a mode without --track-origins
+      tests: notice valgrind error in test_must_fail
+      read_revisions_from_stdin: make copies for handle_revision_arg
+
+Timotheus Pokorra (1):
+      remote-bzr: add utf-8 support for fetching
+
+Torstein Hegge (3):
+      t9903: Don't fail when run from path accessed through symlink
+      bisect: Store first bad commit as comment in log file
+      bisect: Log possibly bad, skipped commits at bisection end
+
+Torsten Bögershausen (4):
+      Make core.sharedRepository work under cygwin 1.7
+      path.c: simplify adjust_shared_perm()
+      path.c: optimize adjust_shared_perm()
+      test-bzr: portable shell and utf-8 strings for Mac OS
+
+Tran Ngoc Quan (1):
+      l10n: vi.po: Update translation (2048t0u0f)
+
+Yann Droneaud (12):
+      t3400: use test_config to set/unset git config variables
+      t4304: use test_config to set/unset git config variables
+      t4034: use test_config/test_unconfig to set/unset git config variables
+      t4202: use test_config/test_unconfig to set/unset git config variables
+      t5520: use test_config to set/unset git config variables
+      t5541: use test_config to set/unset git config variables
+      t7500: use test_config to set/unset git config variables
+      t7508: use test_config to set/unset git config variables
+      t9500: use test_config to set/unset git config variables
+      t7502: use test_config to set/unset git config variables
+      t7502: remove clear_config
+      t7600: use test_config to set/unset git config variables
+
+
+Version v1.8.2.2; changes since v1.8.2.1:
+-----------------------------------------
+
+Adam Spiers (1):
+      t: make PIPE a standard test prerequisite
+
+Antoine Pelisse (2):
+      fix clang -Wtautological-compare with unsigned enum
+      Allow combined diff to ignore white-spaces
+
+Benoit Bourbie (1):
+      Typo fix: replacing it's -> its
+
+Carlos Martín Nieto (1):
+      Documentation/git-commit: reword the --amend explanation
+
+David Aguilar (1):
+      help.c: add a compatibility comment to cmd_version()
+
+Felipe Contreras (2):
+      remote-hg: fix commit messages
+      prompt: fix untracked files for zsh
+
+Jakub Narębski (1):
+      gitweb/INSTALL: Simplify description of GITWEB_CONFIG_SYSTEM
+
+Jeff King (13):
+      submodule: clarify logic in show_submodule_summary
+      filter-branch: return to original dir after filtering
+      diffcore-pickaxe: remove fill_one()
+      diffcore-pickaxe: unify code for log -S/-G
+      show-branch: use strbuf instead of static buffer
+      doc/http-backend: clarify "half-auth" repo configuration
+      doc/http-backend: give some lighttpd config examples
+      doc/http-backend: match query-string in apache half-auth example
+      t/test-lib.sh: drop "$test" variable
+      usage: allow pluggable die-recursion checks
+      run-command: use thread-aware die_is_recursing routine
+      cat-file: print tags raw for "cat-file -p"
+      receive-pack: close sideband fd on early pack errors
+
+Jiang Xin (1):
+      i18n: make the translation of -u advice in one go
+
+Johannes Sixt (3):
+      rerere forget: grok files containing NUL
+      rerere forget: do not segfault if not all stages are present
+      t6200: avoid path mangling issue on Windows
+
+John Keeping (5):
+      diffcore-break: don't divide by zero
+      bisect: avoid signed integer overflow
+      git-merge(1): document diff-algorithm option to merge-recursive
+      diff: allow unstuck arguments with --diff-algorithm
+      t/test-lib.sh: fix TRASH_DIRECTORY handling
+
+Jonathan Nieder (1):
+      gitweb/INSTALL: GITWEB_CONFIG_SYSTEM is for backward compatibility
+
+Junio C Hamano (13):
+      merge: a random object may not necssarily be a commit
+      apply --whitespace=fix: avoid running over the postimage buffer
+      t5516: test interaction between pushURL and pushInsteadOf correctly
+      test: resurrect q_to_tab
+      t6200: use test_config/test_unconfig
+      t6200: test message for merging of an annotated tag
+      diffcore-pickaxe: port optimization from has_changes() to diff_grep()
+      diffcore-pickaxe: fix leaks in "log -S<block>" and "log -G<pattern>"
+      glossary: extend "detached HEAD" description
+      doc: clarify that "git daemon --user=<user>" option does not export HOME=~user
+      Start preparing for 1.8.2.2
+      Update draft release notes to 1.8.2.2
+      Git 1.8.2.2
+
+Kevin Bracey (1):
+      cherry-pick/revert: make usage say '<commit-ish>...'
+
+Lukas Fleischer (1):
+      bundle: Accept prerequisites without commit messages
+
+Martin von Gagern (1):
+      Documentation: Strip texinfo anchors to avoid duplicates
+
+Mårten Kongstad (1):
+      completion: remove duplicate block for "git commit -c"
+
+Paul Price (1):
+      fast-export: fix argument name in error messages
+
+Peter Eisentraut (1):
+      pull: Apply -q and -v options to rebase mode as well
+
+Ralf Thielow (2):
+      fmt-merge-msg: respect core.commentchar in people credits
+      fmt-merge-msg: use core.commentchar in tag signatures completely
+
+Ramkumar Ramachandra (4):
+      t3200 (branch): modernize style
+      send-email: use "return;" not "return undef;" on error codepaths
+      send-email: drop misleading function prototype
+      send-email: use the three-arg form of open in recipients_cmd
+
+René Scharfe (5):
+      match-trees: simplify score_trees() using tree_entry()
+      t5004: fix issue with empty archive test and bsdtar
+      archive: clarify explanation of --worktree-attributes
+      pretty: handle broken commit headers gracefully
+      blame: handle broken commit headers gracefully
+
+Robin Rosenberg (1):
+      bash: teach __git_ps1 about REVERT_HEAD
+
+Simon Ruderich (3):
+      diffcore-pickaxe: remove unnecessary call to get_textconv()
+      diffcore-pickaxe: respect --no-textconv
+      t/README: --immediate skips cleanup commands for failed tests
+
+Stefan Saasen (1):
+      Documentation: distinguish between ref and offset deltas in pack-format
+
+Stefano Lattarini (9):
+      doc: various spelling fixes
+      git-remote-mediawiki: spelling fixes
+      contrib/subtree: fix spelling of accidentally
+      obstack: fix spelling of similar
+      compat/regex: fix spelling and grammar in comments
+      compat/nedmalloc: fix spelling in comments
+      precompose-utf8: fix spelling of "want" in error message
+      kwset: fix spelling in comments
+      Correct common spelling mistakes in comments and tests
+
+Thomas Ackermann (4):
+      glossary: remove outdated/misleading/irrelevant entries
+      glossary: improve description of SHA-1 related topics
+      The name of the hash function is "SHA-1", not "SHA1"
+      glossary: improve definitions of refspec and pathspec
+
+Thomas Rast (2):
+      perl: redirect stderr to /dev/null instead of closing
+      t9700: do not close STDERR
+
+Torsten Bögershausen (5):
+      t9020: do not use export X=Y
+      t9501: do not use export X=Y
+      test-hg-bidi.sh: do not use export X=Y
+      test-hg-hg-git.sh: do not use export X=Y
+      t7409: do not use export X=Y
+
+
 Version v1.8.2.1; changes since v1.8.2:
 ---------------------------------------
 

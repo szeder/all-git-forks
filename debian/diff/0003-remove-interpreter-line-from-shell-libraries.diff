@@ -1,4 +1,4 @@
-From a83943b3889fde8977ed7cc6377c07aa83e9f106 Mon Sep 17 00:00:00 2001
+From cd8d315574582b6e44b5170f81b6e3e9ac2faa45 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Tue, 13 Mar 2012 20:01:17 -0500
 Subject: remove #!interpreter line from shell libraries
@@ -72,7 +72,7 @@ index 0e87e09..55fe8d5 100644
  # git-ls-remote could be called from outside a git managed repository;
  # this would fail in that case and would issue an error message.
 diff --git a/git-rebase--am.sh b/git-rebase--am.sh
-index 97f31dc..1ee7479 100644
+index f84854f..9e22c74 100644
 --- a/git-rebase--am.sh
 +++ b/git-rebase--am.sh
 @@ -1,4 +1,5 @@
@@ -130,7 +130,7 @@ index 6a27f68..e6c3116 100644
  # Export the TEXTDOMAIN* data that we need for Git
  TEXTDOMAIN=git
 diff --git a/git-sh-setup.sh b/git-sh-setup.sh
-index 795edd2..f8e36ca 100644
+index 2f78359..2b4fef0 100644
 --- a/git-sh-setup.sh
 +++ b/git-sh-setup.sh
 @@ -1,9 +1,6 @@
@@ -147,10 +147,10 @@ index 795edd2..f8e36ca 100644
  # Having this variable in your environment would break scripts because
  # you would cause "cd" to be taken to unexpected places.  If you
 diff --git a/t/test-lib.sh b/t/test-lib.sh
-index 9e7f6b4..e3abbb4 100644
+index ca6bdef..4bef913 100644
 --- a/t/test-lib.sh
 +++ b/t/test-lib.sh
-@@ -483,11 +483,9 @@ then
+@@ -489,11 +489,9 @@ then
  
  	make_valgrind_symlink () {
  		# handle only executables, unless they are shell libraries that
@@ -165,5 +165,5 @@ index 9e7f6b4..e3abbb4 100644
  
  		base=$(basename "$1")
 -- 
-1.8.1.3
+1.8.2.1
 
