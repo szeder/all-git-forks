@@ -115,4 +115,13 @@ test_expect_success 'master@{n} for various n' '
 	test_must_fail git rev-parse --verify master@{$Np1}
 '
 
+test_expect_success 'empty @' '
+	rev_hash=$(git rev-parse --verify @) &&
+	test "$rev_hash" = "$HASH4" &&
+	rev_hash=$(git rev-parse --verify HEAD@) &&
+	test "$rev_hash" = "$HASH4" &&
+	rev_hash=$(git rev-parse --verify master@) &&
+	test "$rev_hash" = "$HASH4"
+'
+
 test_done
