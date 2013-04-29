@@ -1143,6 +1143,7 @@ sub find_parent_branch {
 		($r0, $parent) = $gs->find_rev_before($r, 1);
 	}
 	if (defined $r0 && defined $parent) {
+		Git::SVN::Fetcher::_end_reimport($branch_from, $self->path);
 		print STDERR "Found branch parent: ($self->{ref_id}) $parent\n"
 		             unless $::_q > 1;
 		my $ed;
@@ -1395,6 +1396,7 @@ sub other_gs {
 			last if ($url eq $gs->metadata_url);
 			$ref_id .= '-';
 		}
+		Git::SVN::Fetcher::_begin_reimport($self->path);
 		print STDERR "Initializing parent: $ref_id\n" unless $::_q > 1;
 	}
 	$gs
