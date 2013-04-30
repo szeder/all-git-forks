@@ -19,6 +19,7 @@ sub new {
 	my ($class, $git_svn, $switch_path) = @_;
 	my $self = SVN::Delta::Editor->new;
 	bless $self, $class;
+	@deleted_gpath = ();
 	if (exists $git_svn->{last_commit}) {
 		$self->{c} = $git_svn->{last_commit};
 		$self->{empty_symlinks} =

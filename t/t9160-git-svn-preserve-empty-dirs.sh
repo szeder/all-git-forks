@@ -19,6 +19,12 @@ test_expect_success 'initialize source svn repo containing empty dirs' '
 	svn_cmd co "$svnrepo"/trunk "$SVN_TREE" &&
 	(
 		cd "$SVN_TREE" &&
+		mkdir -p module/foo module/bar &&
+		echo x >module/foo/file.txt &&
+		svn_cmd add module &&
+		svn_cmd commit -mx &&
+		svn_cmd mv module/foo/file.txt module/bar/file.txt &&
+		svn_cmd commit -mx &&
 		mkdir -p 1 2 3/a 3/b 4 5 6 &&
 		echo "First non-empty file"  > 2/file1.txt &&
 		echo "Second non-empty file" > 2/file2.txt &&
@@ -44,6 +50,8 @@ test_expect_success 'initialize source svn repo containing empty dirs' '
 		svn_cmd del 3/b &&
 		svn_cmd commit -m "delete non-last entry in directory" &&
 
+		svn_cmd rm -m"x" "$svnrepo"/trunk/module &&
+
 		svn_cmd del 2/file1.txt &&
 		svn_cmd del 3/a &&
 		svn_cmd commit -m "delete last entry in directory" &&
@@ -64,6 +72,11 @@ test_expect_success 'clone svn repo with --preserve-empty-dirs --stdlayout' '
 test_expect_success 'directory empty from inception' '
 	test -f "$GIT_REPO"/1/.gitignore &&
 	test $(find "$GIT_REPO"/1 -type f | wc -l) = "1"
+'
+
+# "$GIT_REPO"/module/ should not be recreated
+test_expect_success 'no recreating empty dir deleted earlier' '
+	test_must_fail test -d "$GIT_REPO"/module/
 '
 
 # "$GIT_REPO"/2 and "$GIT_REPO"/3 should only contain the placeholder file.
