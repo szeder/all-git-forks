@@ -996,9 +996,9 @@ int interpret_branch_name(const char *name, struct strbuf *buf)
 
 	if (!len)
 		return len; /* syntax Ok, not enough switches */
-	if (0 < len && len == namelen)
+	if (len > 0 && len == namelen)
 		return len; /* consumed all */
-	else if (0 < len) {
+	else if (len > 0) {
 		/* we have extra data, which might need further processing */
 		struct strbuf tmp = STRBUF_INIT;
 		int used = buf->len;
