@@ -1156,6 +1156,7 @@ sub find_parent_branch {
 			$self->{last_rev} = $r0;
 			$self->{last_commit} = $parent;
 			$ed = Git::SVN::Fetcher->new($self, $gs->path);
+			$ed->_end_reimport($branch_from, $self->path);
 			$gs->ra->gs_do_switch($r0, $rev, $gs,
 					      $self->full_url, $ed)
 			  or die "SVN connection failed somewhere...\n";
@@ -1174,6 +1175,7 @@ sub find_parent_branch {
 			print STDERR "Following parent with do_update\n"
 			             unless $::_q > 1;
 			$ed = Git::SVN::Fetcher->new($self);
+			$ed->_end_reimport($branch_from, $self->path);
 			$self->ra->gs_do_update($rev, $rev, $self, $ed)
 			  or die "SVN connection failed somewhere...\n";
 		}
@@ -1395,6 +1397,7 @@ sub other_gs {
 			last if ($url eq $gs->metadata_url);
 			$ref_id .= '-';
 		}
+		Git::SVN::Fetcher::_begin_reimport($self->path);
 		print STDERR "Initializing parent: $ref_id\n" unless $::_q > 1;
 	}
 	$gs
