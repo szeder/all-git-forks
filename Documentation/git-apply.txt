@@ -16,7 +16,7 @@ SYNOPSIS
 	  [--ignore-space-change | --ignore-whitespace ]
 	  [--whitespace=(nowarn|warn|fix|error|error-all)]
 	  [--exclude=<path>] [--include=<path>] [--directory=<root>]
-	  [--verbose] [<patch>...]
+	  [--verbose] [--no-work] [<patch>...]
 
 DESCRIPTION
 -----------
@@ -74,6 +74,10 @@ OPTIONS
 	Apply a patch without touching the working tree. Instead take the
 	cached data, apply the patch, and store the result in the index
 	without using the working tree. This implies `--index`.
+
+--[no-]work::
+	Apply a patch with or without touching the working tree, essentially
+	`--no-work` plus `--index` are the equivalent of `--cached`.
 
 -3::
 --3way::
