@@ -4,18 +4,19 @@ test_description='--ancestry-path'
 
 #          D---E-------F
 #         /     \       \
-#    B---C---G---H---I---J
+#    B---C-G0-G--H---I---J
 #   /                     \
 #  A-------K---------------L--M
 #
-#  D..M                 == E F G H I J K L M
+#  D..M                 == E F G G0 H I J K L M
 #  --ancestry-path D..M == E F H I J L M
 #
 #  D..M -- M.t                 == M
 #  --ancestry-path D..M -- M.t == M
 #
 #  G..M -- G.t                 == [nothing - was dropped in "-s ours" merge L]
-#  --ancestry-path G..M -- G.t == H J L
+#  --ancestry-path G..M -- G.t == H L  (H shown because both G and E are uninteresting)
+#  --ancestry-path G0..M-- G.t == G L
 
 . ./test-lib.sh
 
@@ -33,6 +34,7 @@ test_expect_success setup '
 	test_commit E &&
 	test_commit F &&
 	git reset --hard C &&
+	test_commit G0 &&
 	test_commit G &&
 	test_merge E H &&
 	test_commit I &&
@@ -44,7 +46,7 @@ test_expect_success setup '
 '
 
 test_expect_success 'rev-list D..M' '
-	for c in E F G H I J K L M; do echo $c; done >expect &&
+	for c in E F G G0 H I J K L M; do echo $c; done >expect &&
 	git rev-list --format=%s D..M |
 	sed -e "/^commit /d" |
 	sort >actual &&
@@ -82,8 +84,16 @@ test_expect_success 'rev-list G..M -- G.t' '
 '
 
 test_expect_success 'rev-list --ancestry-path G..M -- G.t' '
-	for c in H J L; do echo $c; done >expect &&
+	for c in H L; do echo $c; done >expect &&
 	git rev-list --ancestry-path --format=%s G..M -- G.t |
+	sed -e "/^commit /d" |
+	sort >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'rev-list --ancestry-path G0..M -- G.t' '
+	for c in G L; do echo $c; done >expect &&
+	git rev-list --ancestry-path --format=%s G0..M -- G.t |
 	sed -e "/^commit /d" |
 	sort >actual &&
 	test_cmp expect actual
