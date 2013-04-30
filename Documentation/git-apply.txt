@@ -12,7 +12,7 @@ SYNOPSIS
 'git apply' [--stat] [--numstat] [--summary] [--check] [--index] [--3way]
 	  [--apply] [--no-add] [--build-fake-ancestor=<file>] [-R | --reverse]
 	  [--allow-binary-replacement | --binary] [--reject] [-z]
-	  [-p<n>] [-C<n>] [--inaccurate-eof] [--recount] [--cached]
+	  [-p<n>] [-C<n>] [--inaccurate-eof] [--recount] [--cached|--staged]
 	  [--ignore-space-change | --ignore-whitespace ]
 	  [--whitespace=(nowarn|warn|fix|error|error-all)]
 	  [--exclude=<path>] [--include=<path>] [--directory=<root>]
@@ -66,6 +66,9 @@ OPTIONS
 	the file to be patched in the working tree is not
 	up-to-date, it is flagged as an error.  This flag also
 	causes the index file to be updated.
+
+--staged::
+	Synonym for --index.
 
 --cached::
 	Apply a patch without touching the working tree. Instead take the
