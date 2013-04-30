@@ -969,6 +969,21 @@ int get_sha1_mb(const char *name, unsigned char *sha1)
 	return st;
 }
 
+static int interpret_empty_at(const char *name, int namelen, int len, struct strbuf *buf)
+{
+	if (namelen - len <= 1 || name[len + 1] == '{')
+		return -1;
+
+	strbuf_reset(buf);
+	if (len == 0) {
+		strbuf_add(buf, "HEAD", 4);
+		return 1;
+	} else {
+		strbuf_add(buf, name, len);
+		return len + 1;
+	}
+}
+
 static int reinterpret(const char *name, int namelen, int len, struct strbuf *buf)
 {
 	/* we have extra data, which might need further processing */
@@ -1029,9 +1044,15 @@ int interpret_branch_name(const char *name, struct strbuf *buf)
 	cp = strchr(name, '@');
 	if (!cp)
 		return -1;
+
+	len = interpret_empty_at(name, namelen, cp - name, buf);
+	if (len > 0)
+		return reinterpret(name, namelen, len, buf);
+
 	tmp_len = upstream_mark(cp, namelen - (cp - name));
 	if (!tmp_len)
 		return -1;
+
 	len = cp + tmp_len - name;
 	cp = xstrndup(name, cp - name);
 	upstream = branch_get(*cp ? cp : NULL);
