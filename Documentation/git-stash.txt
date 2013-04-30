@@ -11,7 +11,7 @@ SYNOPSIS
 'git stash' list [<options>]
 'git stash' show [<stash>]
 'git stash' drop [-q|--quiet] [<stash>]
-'git stash' ( pop | apply ) [--index] [-q|--quiet] [<stash>]
+'git stash' ( pop | apply ) [--index|--stage] [-q|--quiet] [<stash>]
 'git stash' branch <branchname> [<stash>]
 'git stash' [save [-p|--patch] [-k|--[no-]keep-index|--[no-]stage] [-q|--quiet]
 	     [-u|--include-untracked] [-a|--all] [<message>]]
@@ -96,7 +96,7 @@ show [<stash>]::
 	it will accept any format known to 'git diff' (e.g., `git stash show
 	-p stash@{1}` to view the second most recent stash in patch form).
 
-pop [--index] [-q|--quiet] [<stash>]::
+pop [--index|--stage] [-q|--quiet] [<stash>]::
 
 	Remove a single stashed state from the stash list and apply it
 	on top of the current working tree state, i.e., do the inverse
@@ -110,12 +110,12 @@ and call `git stash drop` manually afterwards.
 If the `--index` option is used, then tries to reinstate not only the working
 tree's changes, but also the index's ones. However, this can fail, when you
 have conflicts (which are stored in the index, where you therefore can no
-longer apply the changes as they were originally).
+longer apply the changes as they were originally). `--stage` is a synonym.
 +
 When no `<stash>` is given, `stash@{0}` is assumed, otherwise `<stash>` must
 be a reference of the form `stash@{<revision>}`.
 
-apply [--index] [-q|--quiet] [<stash>]::
+apply [--index|--stage] [-q|--quiet] [<stash>]::
 
 	Like `pop`, but do not remove the state from the stash list. Unlike `pop`,
 	`<stash>` may be any commit that looks like a commit created by
