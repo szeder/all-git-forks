@@ -7,7 +7,7 @@ USAGE="list [<options>]
    or: $dashless drop [-q|--quiet] [<stash>]
    or: $dashless ( pop | apply ) [--index] [-q|--quiet] [<stash>]
    or: $dashless branch <branchname> [<stash>]
-   or: $dashless [save [--patch] [-k|--[no-]keep-index] [-q|--quiet]
+   or: $dashless [save [--patch] [-k|--[no-]keep-index|--[no-]stage] [-q|--quiet]
 		       [-u|--include-untracked] [-a|--all] [<message>]]
    or: $dashless clear"
 
@@ -203,6 +203,12 @@ save_stash () {
 			;;
 		--no-keep-index)
 			keep_index=n
+			;;
+		--stage)
+			keep_index=n
+			;;
+		--no-stage)
+			keep_index=t
 			;;
 		-p|--patch)
 			patch_mode=t
