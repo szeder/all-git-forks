@@ -1724,7 +1724,24 @@ const char *prettify_refname(const char *name)
 		0);
 }
 
-const char *ref_rev_parse_rules[] = {
+static void ref_expand_txtly(const struct ref_expand_rule *rule,
+			     char *dst, size_t dst_len,
+			     const char *shortname, size_t shortname_len)
+{
+	mksnpath(dst, dst_len, rule->pattern, shortname_len, shortname);
+}
+
+const struct ref_expand_rule ref_expand_rules[] = {
+	{ ref_expand_txtly, "%.*s" },
+	{ ref_expand_txtly, "refs/%.*s" },
+	{ ref_expand_txtly, "refs/tags/%.*s" },
+	{ ref_expand_txtly, "refs/heads/%.*s" },
+	{ ref_expand_txtly, "refs/remotes/%.*s" },
+	{ ref_expand_txtly, "refs/remotes/%.*s/HEAD" },
+	{ NULL, NULL }
+};
+
+static const char *ref_rev_parse_rules[] = {
 	"%.*s",
 	"refs/%.*s",
 	"refs/tags/%.*s",
@@ -1734,15 +1751,17 @@ const char *ref_rev_parse_rules[] = {
 	NULL
 };
 
-int refname_match(const char *abbrev_name, const char *full_name, const char **rules)
+int refname_match(const char *abbrev_name, const char *full_name,
+		  const struct ref_expand_rule *rules)
 {
-	const char **p;
+	const struct ref_expand_rule *p;
 	const int abbrev_name_len = strlen(abbrev_name);
+	char n[PATH_MAX];
 
-	for (p = rules; *p; p++) {
-		if (!strcmp(full_name, mkpath(*p, abbrev_name_len, abbrev_name))) {
+	for (p = rules; p->expand; p++) {
+		p->expand(p, n, sizeof(n), abbrev_name, abbrev_name_len);
+		if (!strcmp(full_name, n))
 			return 1;
-		}
 	}
 
 	return 0;
@@ -1807,21 +1826,22 @@ static char *substitute_branch_name(const char **string, int *len)
 int dwim_ref(const char *str, int len, unsigned char *sha1, char **ref)
 {
 	char *last_branch = substitute_branch_name(&str, &len);
-	const char **p, *r;
+	const struct ref_expand_rule *p;
+	const char *r;
 	int refs_found = 0;
 
 	*ref = NULL;
-	for (p = ref_rev_parse_rules; *p; p++) {
+	for (p = ref_expand_rules; p->expand; p++) {
 		char fullref[PATH_MAX];
 		unsigned char sha1_from_ref[20];
 		unsigned char *this_result;
 		int flag;
 
 		this_result = refs_found ? sha1_from_ref : sha1;
-		mksnpath(fullref, sizeof(fullref), *p, len, str);
+		p->expand(p, fullref, sizeof(fullref), str, len);
 		r = resolve_ref_unsafe(fullref, this_result, 1, &flag);
 		if (r) {
-			if (!refs_found++)
+			if ((!*ref || strcmp(*ref, r)) && !refs_found++)
 				*ref = xstrdup(r);
 			if (!warn_ambiguous_refs)
 				break;
@@ -1838,17 +1858,17 @@ int dwim_ref(const char *str, int len, unsigned char *sha1, char **ref)
 int dwim_log(const char *str, int len, unsigned char *sha1, char **log)
 {
 	char *last_branch = substitute_branch_name(&str, &len);
-	const char **p;
+	const struct ref_expand_rule *p;
 	int logs_found = 0;
 
 	*log = NULL;
-	for (p = ref_rev_parse_rules; *p; p++) {
+	for (p = ref_expand_rules; p->expand; p++) {
 		struct stat st;
 		unsigned char hash[20];
 		char path[PATH_MAX];
 		const char *ref, *it;
 
-		mksnpath(path, sizeof(path), *p, len, str);
+		p->expand(p, path, sizeof(path), str, len);
 		ref = resolve_ref_unsafe(path, hash, 1, NULL);
 		if (!ref)
 			continue;

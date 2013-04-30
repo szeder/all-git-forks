@@ -164,6 +164,17 @@ extern int for_each_reflog(each_ref_fn, void *);
 extern int check_refname_format(const char *refname, int flags);
 
 extern const char *prettify_refname(const char *refname);
+
+struct ref_expand_rule {
+	void (*expand)(const struct ref_expand_rule *rule,
+		       char *dst, size_t dst_len,
+		       const char *shortname, size_t shortname_len);
+	const char *pattern;
+};
+extern const struct ref_expand_rule ref_expand_rules[];
+extern int refname_match(const char *abbrev_name, const char *full_name,
+			 const struct ref_expand_rule *rules);
+
 extern char *shorten_unambiguous_ref(const char *refname, int strict);
 
 /** rename ref, return 0 on success **/
