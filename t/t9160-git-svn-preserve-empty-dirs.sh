@@ -15,7 +15,7 @@ say 'define NO_SVN_TESTS to skip git svn tests'
 GIT_REPO=git-svn-repo
 
 test_expect_success 'initialize source svn repo containing empty dirs' '
-	svn_cmd mkdir -m x "$svnrepo"/trunk &&
+	svn_cmd mkdir -m x "$svnrepo"/trunk "$svnrepo"/tags &&
 	svn_cmd co "$svnrepo"/trunk "$SVN_TREE" &&
 	(
 		cd "$SVN_TREE" &&
@@ -50,6 +50,7 @@ test_expect_success 'initialize source svn repo containing empty dirs' '
 		svn_cmd del 3/b &&
 		svn_cmd commit -m "delete non-last entry in directory" &&
 
+		svn_cmd cp -m"x" "$svnrepo"/trunk/module "$svnrepo"/tags/module_v1.0 &&
 		svn_cmd rm -m"x" "$svnrepo"/trunk/module &&
 
 		svn_cmd del 2/file1.txt &&
