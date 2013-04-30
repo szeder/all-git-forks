@@ -1,12 +1,17 @@
 package Git::SVN::Fetcher;
 use vars qw/@ISA $_ignore_regex $_preserve_empty_dirs $_placeholder_filename
+            $_pathnameencoding
+            $_package_inited
             @deleted_gpath %added_placeholder $repo_id/;
+my $private_ignore_regex;
 use strict;
 use warnings;
 use SVN::Delta;
 use Carp qw/croak/;
 use File::Basename qw/dirname/;
 use IO::File qw//;
+use File::Temp qw/tempfile/;
+use File::Copy qw/move/;
 use Git qw/command command_oneline command_noisy command_output_pipe
            command_input_pipe command_close_pipe
            command_bidi_pipe command_close_bidi_pipe/;
@@ -26,13 +31,17 @@ sub new {
 		                  _mark_empty_symlinks($git_svn, $switch_path);
 	}
 
+ if (!$_package_inited) {
+	$_package_inited = 1;
+
 	# some options are read globally, but can be overridden locally
 	# per [svn-remote "..."] section.  Command-line options will *NOT*
 	# override options set in an [svn-remote "..."] section
 	$repo_id = $git_svn->{repo_id};
+
 	my $k = "svn-remote.$repo_id.ignore-paths";
 	my $v = eval { command_oneline('config', '--get', $k) };
-	$self->{ignore_regex} = $v;
+	$private_ignore_regex = $v;
 
 	$k = "svn-remote.$repo_id.preserve-empty-dirs";
 	$v = eval { command_oneline('config', '--get', '--bool', $k) };
@@ -41,17 +50,21 @@ sub new {
 		$k = "svn-remote.$repo_id.placeholder-filename";
 		$v = eval { command_oneline('config', '--get', $k) };
 		$_placeholder_filename = $v;
-	}
 
-	# Load the list of placeholder files added during previous invocations.
-	$k = "svn-remote.$repo_id.added-placeholder";
-	$v = eval { command_oneline('config', '--get-all', $k) };
-	if ($_preserve_empty_dirs && $v) {
-		# command() prints errors to stderr, so we only call it if
-		# command_oneline() succeeded.
-		my @v = command('config', '--get-all', $k);
-		$added_placeholder{ dirname($_) } = $_ foreach @v;
+		# Load the list of placeholder files added during previous invocations.
+		$k = "svn-remote.$repo_id.added-placeholder";
+		$v = eval { command_oneline('config', '--get-all', $k) };
+		if ($v) {
+			# command() prints errors to stderr, so we only call it if
+			# command_oneline() succeeded.
+			my @v = command('config', '--get-all', $k);
+			$added_placeholder{ dirname($_) } = $_ foreach @v;
+		}
 	}
+	$_pathnameencoding = Git::config('svn.pathnameencoding');
+ }
+
+	$self->{_save_ph} = { %added_placeholder };
 
 	$self->{empty} = {};
 	$self->{dir_prop} = {};
@@ -60,7 +73,6 @@ sub new {
 	$self->{absent_file} = {};
 	require Git::IndexInfo;
 	$self->{gii} = $git_svn->tmp_index_do(sub { Git::IndexInfo->new });
-	$self->{pathnameencoding} = Git::config('svn.pathnameencoding');
 	$self;
 }
 
@@ -121,8 +133,8 @@ sub in_dot_git {
 sub is_path_ignored {
 	my ($self, $path) = @_;
 	return 1 if in_dot_git($path);
-	return 1 if defined($self->{ignore_regex}) &&
-	            $path =~ m!$self->{ignore_regex}!;
+	return 1 if defined($private_ignore_regex) &&
+	            $path =~ m!$private_ignore_regex!;
 	return 0 unless defined($_ignore_regex);
 	return 1 if $path =~ m!$_ignore_regex!o;
 	return 0;
@@ -145,7 +157,7 @@ sub open_directory {
 
 sub git_path {
 	my ($self, $path) = @_;
-	if (my $enc = $self->{pathnameencoding}) {
+	if (my $enc = $_pathnameencoding) {
 		require Encode;
 		Encode::from_to($path, 'UTF-8', $enc);
 	}
@@ -504,13 +516,60 @@ sub add_placeholder_file {
 	$added_placeholder{$dir} = $path;
 }
 
+sub backup_file {
+  my ( $filename ) = @_;
+
+  open(my $fh_src, "<", $filename) or die "cannot open < $filename: $!";
+  my ($fh_dst, $bkpname) = tempfile(DIR => dirname($filename)) or die "cannot create backup file: $!";
+  binmode $fh_src;
+  binmode $fh_dst;
+  while (<$fh_src>) {
+    print { $fh_dst } $_ or die "cannot write backup file: $!";
+  }
+  close($fh_src);
+  close($fh_dst);
+  $bkpname
+}
+
+sub stash_placeholder_file {
+	my ( $self, $add, $file ) = @_;
+	if (!defined $self->{bkconfig}) {
+		$self->{config} = $ENV{'GIT_CONFIG'} || $::_repository->repo_path . "/config";
+		$self->{bkconfig} = backup_file($self->{config});
+		$ENV{'GIT_CONFIG'} = $self->{bkconfig};
+	}
+	my $plus_or_minus;
+	my $k = "svn-remote.$repo_id.added-placeholder";
+	if ($add) {
+		$plus_or_minus = "+";
+		command_noisy('config', '--add',   $k, $file);
+	} else {
+		$plus_or_minus = "-";
+		my $value_regex = qr/^\Q$file\E$/;
+		$value_regex = substr($value_regex,4, -1); # remove "(?^:" and ")"
+		command_noisy('config', '--unset', $k, $value_regex);
+	}
+	print $plus_or_minus . "preserved empty dir: $file\n" unless $::_q;
+	undef
+}
+
 sub stash_placeholder_list {
 	my ($self) = @_;
-	my $k = "svn-remote.$repo_id.added-placeholder";
-	my $v = eval { command_oneline('config', '--get-all', $k) };
-	command_noisy('config', '--unset-all', $k) if $v;
-	foreach (values %added_placeholder) {
-		command_noisy('config', '--add', $k, $_);
+	local %ENV = %ENV;
+
+	for ( keys %added_placeholder ) {
+		if (!delete $self->{_save_ph}{$_}) {
+			$self->stash_placeholder_file(1, $added_placeholder{$_});
+		}
+	}
+
+	for ( keys %{$self->{_save_ph}} ) {
+		$self->stash_placeholder_file(0, $self->{_save_ph}{$_});
+	}
+
+	if (defined $self->{bkconfig}) {
+		move($self->{bkconfig}, $self->{config})
+			or die "cannot rename " . $self->{bkconfig} . " => " . $self->{config} . ": $!";
 	}
 }
 
