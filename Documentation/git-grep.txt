@@ -25,7 +25,7 @@ SYNOPSIS
 	   [-W | --function-context]
 	   [-f <file>] [-e] <pattern>
 	   [--and|--or|--not|(|)|-e <pattern>...]
-	   [ [--[no-]exclude-standard] [--cached | --no-index | --untracked] | <tree>...]
+	   [ [--[no-]exclude-standard] [--cached | --staged | --no-index | --untracked] | <tree>...]
 	   [--] [<pathspec>...]
 
 DESCRIPTION
@@ -59,6 +59,9 @@ OPTIONS
 --cached::
 	Instead of searching tracked files in the working tree, search
 	blobs registered in the index file.
+
+--staged::
+	Synonym for `--cached`.
 
 --no-index::
 	Search files in the current directory that is not managed by Git.
