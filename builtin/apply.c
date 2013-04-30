@@ -4509,6 +4509,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	int errs = 0;
 	int is_not_gitdir = !startup_info->have_repository;
 	int force_apply = 0;
+	int work = 1;
 
 	const char *whitespace_option = NULL;
 
@@ -4542,6 +4543,8 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 			N_("apply a patch without touching the working tree")),
 		OPT_BOOL(0, "unsafe-paths", &unsafe_paths,
 			N_("accept a patch that touches outside the working area")),
+		OPT_BOOL(0, "work", &work,
+			N_("modify the working tree")),
 		OPT_BOOL(0, "apply", &force_apply,
 			N_("also apply the patch (use with --stat/--summary/--check)")),
 		OPT_BOOL('3', "3way", &threeway,
@@ -4594,6 +4597,8 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	argc = parse_options(argc, argv, prefix, builtin_apply_options,
 			apply_usage, 0);
 
+	if (check_index && !work)
+		cached = 1;
 	if (apply_with_reject && threeway)
 		die("--reject and --3way cannot be used together.");
 	if (cached && threeway)
