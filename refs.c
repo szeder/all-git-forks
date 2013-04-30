@@ -4,6 +4,7 @@
 #include "tag.h"
 #include "dir.h"
 #include "string-list.h"
+#include "remote.h"
 
 /*
  * Make sure "ref" is something reasonable to have under ".git/refs/";
@@ -1758,12 +1759,102 @@ static char *ref_shorten_txtly(const struct ref_expand_rule *rule,
 	return xstrndup(refname + pre_len, match_len);
 }
 
+struct ref_expand_refspec_helper_data {
+	const struct ref_expand_rule *rule;
+	char *dst;
+	size_t dst_len;
+	const char *src;
+	size_t src_len;
+};
+
+static int ref_expand_refspec_helper(struct remote *remote, void *cb_data)
+{
+	struct ref_expand_refspec_helper_data *cb = cb_data;
+	struct refspec query;
+	char refspec_src[PATH_MAX];
+	size_t ref_start = strlen(remote->name) + 1;
+	if (prefixcmp(cb->src, remote->name) ||
+	    cb->src_len <= ref_start ||
+	    cb->src[ref_start - 1] != '/')
+		return 0;
+
+	mksnpath(refspec_src, sizeof(refspec_src), cb->rule->pattern,
+		 cb->src_len - ref_start, cb->src + ref_start);
+
+	memset(&query, 0, sizeof(struct refspec));
+	query.src = refspec_src;
+	if ((!remote_find_tracking(remote, &query)) &&
+	    strlen(query.dst) < cb->dst_len) {
+		strcpy(cb->dst, query.dst);
+		return 1;
+	}
+	return 0;
+}
+
+static void ref_expand_refspec(const struct ref_expand_rule *rule,
+			       char *dst, size_t dst_len,
+			       const char *shortname, size_t shortname_len)
+{
+	/*
+	 * Given shortname of the form "$remote/$ref", see if there is a
+	 * fetch refspec configured for $remote whose lhs matches
+	 * rule->pattern % $ref, and use the corresponding rhs of that
+	 * mapping as the expanded result of "$remote/$ref".
+	 */
+	const void *has_slash = memchr(shortname, '/', shortname_len);
+	struct ref_expand_refspec_helper_data cb = {
+		rule, dst, dst_len, shortname, shortname_len };
+	dst[0] = '\0';
+	if (has_slash)
+		for_each_remote(ref_expand_refspec_helper, &cb);
+}
+
+static int ref_shorten_refspec_helper(struct remote *remote, void *cb_data)
+{
+	struct ref_expand_refspec_helper_data *cb = cb_data;
+	struct refspec query;
+	char *lhs_ref;
+	int ret = 0;
+
+	memset(&query, 0, sizeof(struct refspec));
+	query.dst = (char *) cb->src;
+	if (!remote_find_tracking(remote, &query) &&
+	    (lhs_ref = ref_shorten_txtly(cb->rule, query.src))) {
+		/* refname matches rhs and rule->pattern matches lhs */
+		cb->dst_len = strlen(remote->name) + 1 + strlen(lhs_ref);
+		/* "$remote/$lhs_ref" should be shorter than src */
+		if (cb->dst_len < cb->src_len) {
+			cb->dst = xmalloc(cb->dst_len + 1);
+			snprintf(cb->dst, cb->dst_len + 1,
+				 "%s/%s", remote->name, lhs_ref);
+			ret = 1;
+		}
+		free(lhs_ref);
+	}
+	return ret;
+}
+
+static char *ref_shorten_refspec(const struct ref_expand_rule *rule,
+				 const char *refname)
+{
+	/*
+	 * See if there is a $remote with a fetch refspec that matches the
+	 * given refname on rhs, and will produce refs/heads/$ref on the
+	 * lhs. If so, construct "$remote/$ref" as the shorthand.
+	 */
+	struct ref_expand_refspec_helper_data cb = {
+		rule, NULL, 0, refname, strlen(refname) };
+	for_each_remote(ref_shorten_refspec_helper, &cb);
+	return cb.dst;
+}
+
 const struct ref_expand_rule ref_expand_rules_local[] = {
 	{ ref_expand_txtly, NULL, "%.*s" },
 	{ ref_expand_txtly, ref_shorten_txtly, "refs/%.*s" },
 	{ ref_expand_txtly, ref_shorten_txtly, "refs/tags/%.*s" },
 	{ ref_expand_txtly, ref_shorten_txtly, "refs/heads/%.*s" },
 	{ ref_expand_txtly, ref_shorten_txtly, "refs/remotes/%.*s" },
+	{ ref_expand_refspec, ref_shorten_refspec, "refs/heads/%.*s" },
 	{ ref_expand_txtly, ref_shorten_txtly, "refs/remotes/%.*s/HEAD" },
 	{ NULL, NULL, NULL }
 };
@@ -3028,13 +3119,14 @@ char *shorten_unambiguous_ref(const char *refname, int strict)
 
 			/*
 			 * the short name is ambiguous, if it resolves
-			 * (with this previous rule) to a valid ref
-			 * read_ref() returns 0 on success
+			 * (with this previous rule) to a valid
+			 * (but different) ref
 			 */
 			if (q->expand) {
 				q->expand(q, resolved, sizeof(resolved),
 					  short_name, short_name_len);
-				if (ref_exists(resolved))
+				if (strcmp(refname, resolved) &&
+				    ref_exists(resolved))
 					break;
 			}
 		}

@@ -88,7 +88,7 @@ test_expect_success 'enter client repo' '
 	cd client
 '
 
-test_expect_failure 'short-hand notation expands correctly for remote-tracking branches' '
+test_expect_success 'short-hand notation expands correctly for remote-tracking branches' '
 	echo refs/remotes/origin/heads/master > expect &&
 	git rev-parse --symbolic-full-name refs/remotes/origin/heads/master > actual &&
 	test_cmp expect actual &&
@@ -100,7 +100,7 @@ test_expect_failure 'short-hand notation expands correctly for remote-tracking b
 	test_cmp expect actual
 '
 
-test_expect_failure 'remote-tracking branches are shortened correctly' '
+test_expect_success 'remote-tracking branches are shortened correctly' '
 	echo origin/master > expect &&
 	git rev-parse --abbrev-ref refs/remotes/origin/heads/master > actual &&
 	test_cmp expect actual &&
@@ -110,6 +110,23 @@ test_expect_failure 'remote-tracking branches are shortened correctly' '
 	test_cmp expect actual &&
 	git rev-parse --abbrev-ref origin/master > actual &&
 	test_cmp expect actual
+'
+
+cat > expect.origin_master << EOF
+$server_master_b
+$server_master_a
+EOF
+
+cat > expect.origin_other << EOF
+$server_other_b
+$server_master_a
+EOF
+
+test_expect_success 'rev-list machinery should work with $remote/$branch' '
+	git rev-list origin/master > actual.origin_master &&
+	test_cmp expect.origin_master actual.origin_master &&
+	git rev-list origin/other > actual.origin_other &&
+	test_cmp expect.origin_other actual.origin_other
 '
 
 test_done
