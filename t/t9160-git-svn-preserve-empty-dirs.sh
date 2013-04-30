@@ -15,15 +15,13 @@ say 'define NO_SVN_TESTS to skip git svn tests'
 GIT_REPO=git-svn-repo
 
 test_expect_success 'initialize source svn repo containing empty dirs' '
-	svn_cmd mkdir -m x "$svnrepo"/trunk &&
+	svn_cmd mkdir -m x "$svnrepo"/trunk "$svnrepo"/tags &&
 	svn_cmd co "$svnrepo"/trunk "$SVN_TREE" &&
 	(
 		cd "$SVN_TREE" &&
 		mkdir -p module/foo module/bar &&
 		echo x >module/foo/file.txt &&
 		svn_cmd add module &&
-		svn_cmd commit -mx &&
-		svn_cmd mv module/foo/file.txt module/bar/file.txt &&
 		svn_cmd commit -mx &&
 		mkdir -p 1 2 3/a 3/b 4 5 6 &&
 		echo "First non-empty file"  > 2/file1.txt &&
@@ -50,11 +48,17 @@ test_expect_success 'initialize source svn repo containing empty dirs' '
 		svn_cmd del 3/b &&
 		svn_cmd commit -m "delete non-last entry in directory" &&
 
-		svn_cmd rm -m"x" "$svnrepo"/trunk/module &&
+		svn_cmd mv module/foo/file.txt module/bar/file.txt &&
+		svn_cmd commit -mx &&
+		svn_cmd cp "$svnrepo"/trunk "$svnrepo"/tags/v1.0 -m"create standard tag" &&
+		svn_cmd cp "$svnrepo"/trunk/module "$svnrepo"/tags/module_v1.0 -m"create non-standard tag" &&
+		svn_cmd rm -m"removed dir should not be recreated" "$svnrepo"/trunk/module &&
 
 		svn_cmd del 2/file1.txt &&
 		svn_cmd del 3/a &&
 		svn_cmd commit -m "delete last entry in directory" &&
+
+		svn_cmd mkdir "$svnrepo"/tags/v1.0/module/foo/baz "$svnrepo"/tags/module_v1.0/foo/baz -m"this commit should remove known .gitignore from tags" &&
 
 		echo "Conflict file" > 5/.placeholder &&
 		mkdir 6/.placeholder &&
@@ -103,6 +107,45 @@ test_expect_success 'remove non-last entry from directory' '
 	test_must_fail test -f "$GIT_REPO"/2/.gitignore &&
 	test_must_fail test -f "$GIT_REPO"/3/.gitignore
 '
+
+branchtests() {
+	branchname=$1
+	prefix=$2
+
+	test_expect_success "$branchname: "'existing placeholders are tracked when creating a branch' '
+		(
+			cd "$GIT_REPO" &&
+			git checkout "$branchname"
+		) &&
+		test -f "$GIT_REPO"/"$prefix"foo/baz/.gitignore &&
+		test_must_fail test -f "$GIT_REPO"/"$prefix"foo/.gitignore &&
+		test_must_fail test -f "$GIT_REPO"/"$prefix"bar/.gitignore
+	'
+
+	test_expect_success "$branchname: "'remove last entry from a directory' '
+		(
+			cd "$GIT_REPO" &&
+			git checkout HEAD~1
+		) &&
+		test -f "$GIT_REPO"/"$prefix"foo/.gitignore
+	'
+
+	test_expect_success "$branchname: "'add entry to previously empty directory' '
+		test_must_fail test -f "$GIT_REPO"/"$prefix"bar/.gitignore
+	'
+
+	# Skip 2 commits, one of them is empty commit of tag creation
+	test_expect_success "$branchname: "'create empty directory' '
+		(
+			cd "$GIT_REPO" &&
+			git checkout HEAD~2
+		) &&
+		test -f "$GIT_REPO"/"$prefix"bar/.gitignore
+	'
+}
+
+branchtests "tags/v1.0"        "module/"
+branchtests "tags/module_v1.0" ""
 
 # After re-cloning the repository with --placeholder-file specified, there
 # should be 5 files named ".placeholder" in the local Git repo.

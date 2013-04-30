@@ -2,6 +2,7 @@ package Git::SVN::Fetcher;
 use vars qw/@ISA $_ignore_regex $_preserve_empty_dirs $_placeholder_filename
             $_pathnameencoding
             $_package_inited
+            $_reimportpath
             @deleted_gpath %added_placeholder $repo_id/;
 my $private_ignore_regex;
 use strict;
@@ -161,11 +162,56 @@ sub git_path {
 		require Encode;
 		Encode::from_to($path, 'UTF-8', $enc);
 	}
-	if ($self->{path_strip}) {
-		$path =~ s!$self->{path_strip}!! or
-		  die "Failed to strip path '$path' ($self->{path_strip})\n";
+	_strip_path($path, $self->{path_strip})
+}
+
+sub _strip_path {
+	my ($path, $re_strip) = @_;
+	if ($re_strip) {
+		$path =~ s!$re_strip!! or
+		  die "Failed to strip path '$path' ($re_strip)\n";
 	}
 	$path;
+}
+
+sub _begin_reimport {
+	( $_reimportpath ) = @_;
+	undef
+}
+
+sub _end_reimport {
+	my ( $self, $branch_from, $branch_to ) = @_;
+	if (defined $_reimportpath) {
+		$_reimportpath = undef;
+	} else {
+		my $re_strip = qr/^\Q$branch_from\E(\/|$)/ if length $branch_from;
+		foreach (values %added_placeholder) {
+			my $path = $_;
+			if ( (!length $branch_from) || $path =~ s!$re_strip!! ) {
+				$path = $branch_to . (length $branch_to && length $path ? "/" : "") . $path;
+				$added_placeholder{ dirname($path) } = $path;
+			}
+		}
+	}
+	undef
+}
+
+sub svn2ph_path {
+	my ($self, $path) = @_;
+	if (defined $_reimportpath && defined $path) {
+		$path = _strip_path($path, $self->{path_strip});
+		$path = $_reimportpath . (length $_reimportpath && length $path ? "/" : "") . $path;
+	}
+	$path
+}
+
+sub ph2svn_path {
+	my ($self, $path) = @_;
+	if (defined $_reimportpath && defined $path) {
+		$path = _strip_path($path, qr/^\Q$_reimportpath\E(\/|$)/ ) if length $_reimportpath;
+		$path = $self->{path_prefix} . $path; # if not empty, path_prefix already ends with slash
+	}
+	$path
 }
 
 sub delete_entry {
@@ -196,7 +242,8 @@ sub delete_entry {
 		print "\tD\t$gpath\n" unless $::_q;
 	}
 	# Don't add to @deleted_gpath if we're deleting a placeholder file.
-	push @deleted_gpath, $gpath unless $added_placeholder{dirname($path)};
+	my $phkey = $self->svn2ph_path(dirname($path));
+	push @deleted_gpath, $gpath unless $added_placeholder{$phkey};
 	$self->{empty}->{$path} = 0;
 	undef;
 }
@@ -230,10 +277,12 @@ sub add_file {
 		delete $self->{empty}->{$dir};
 		$mode = '100644';
 
+		$dir = $self->svn2ph_path($dir);
 		if ($added_placeholder{$dir}) {
 			# Remove our placeholder file, if we created one.
-			delete_entry($self, $added_placeholder{$dir})
-				unless $path eq $added_placeholder{$dir};
+			my $svnph = $self->ph2svn_path($added_placeholder{$dir});
+			delete_entry($self, $svnph)
+				unless $path eq $svnph;
 			delete $added_placeholder{$dir}
 		}
 	}
@@ -264,9 +313,11 @@ sub add_directory {
 	delete $self->{empty}->{$dir};
 	$self->{empty}->{$path} = 1;
 
+	$dir = $self->svn2ph_path($dir);
 	if ($added_placeholder{$dir}) {
 		# Remove our placeholder file, if we created one.
-		delete_entry($self, $added_placeholder{$dir});
+		my $svnph = $self->ph2svn_path($added_placeholder{$dir});
+		delete_entry($self, $svnph);
 		delete $added_placeholder{$dir}
 	}
 
@@ -277,6 +328,10 @@ out:
 sub change_dir_prop {
 	my ($self, $db, $prop, $value) = @_;
 	return undef if $self->is_path_ignored($db->{path});
+	if ($self->{path_strip}) {
+		$db->{path} =~ m!$self->{path_strip}! or
+			return undef;
+	}
 	$self->{dir_prop}->{$db->{path}} ||= {};
 	$self->{dir_prop}->{$db->{path}}->{$prop} = $value;
 	undef;
@@ -513,6 +568,8 @@ sub add_placeholder_file {
 	delete $self->{empty}->{$dir} if exists $self->{empty}->{$dir};
 
 	# Keep track of any placeholder files we create.
+	$dir = $self->svn2ph_path($dir);
+	$path = $self->svn2ph_path($path);
 	$added_placeholder{$dir} = $path;
 }
 
