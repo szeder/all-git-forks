@@ -1028,7 +1028,7 @@ int git_config(config_fn_t fn, void *data)
  * Find all the stuff for git_config_set() below.
  */
 
-#define MAX_MATCHES 512
+#define MAX_MATCHES 8192
 
 static struct {
 	int baselen;
