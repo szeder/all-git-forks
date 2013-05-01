@@ -169,6 +169,8 @@ struct ref_expand_rule {
 	void (*expand)(const struct ref_expand_rule *rule,
 		       char *dst, size_t dst_len,
 		       const char *shortname, size_t shortname_len);
+	char *(*shorten)(const struct ref_expand_rule *rule,
+			 const char *refname);
 	const char *pattern;
 };
 extern const struct ref_expand_rule ref_expand_rules[];

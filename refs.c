@@ -1731,24 +1731,41 @@ static void ref_expand_txtly(const struct ref_expand_rule *rule,
 	mksnpath(dst, dst_len, rule->pattern, shortname_len, shortname);
 }
 
-const struct ref_expand_rule ref_expand_rules[] = {
-	{ ref_expand_txtly, "%.*s" },
-	{ ref_expand_txtly, "refs/%.*s" },
-	{ ref_expand_txtly, "refs/tags/%.*s" },
-	{ ref_expand_txtly, "refs/heads/%.*s" },
-	{ ref_expand_txtly, "refs/remotes/%.*s" },
-	{ ref_expand_txtly, "refs/remotes/%.*s/HEAD" },
-	{ NULL, NULL }
-};
+static char *ref_shorten_txtly(const struct ref_expand_rule *rule,
+			       const char *refname)
+{
+	/*
+	 * rule->pattern must be of the form "[pre]%.*s[post]". Check if
+	 * refname starts with "[pre]" and ends with "[post]". If so,
+	 * extract the middle part into a newly-allocated buffer, and
+	 * return it. Else - if refname does not match rule->pattern -
+	 * return NULL.
+	 */
+	size_t pre_len, post_start, post_len, match_len;
+	size_t ref_len = strlen(refname);
+	char *sep = strstr(rule->pattern, "%.*s");
+	if (!sep || strstr(sep + 4, "%.*s"))
+		die("invalid pattern in ref_rev_parse_rules_alt: %s", rule->pattern);
+	pre_len = sep - rule->pattern;
+	post_start = pre_len + 4;
+	post_len = strlen(rule->pattern + post_start);
+	if (pre_len + post_len >= ref_len)
+		return NULL; /* refname too short */
+	match_len = ref_len - (pre_len + post_len);
+	if (strncmp(refname, rule->pattern, pre_len) ||
+	    strncmp(refname + ref_len - post_len, rule->pattern + post_start, post_len))
+		return NULL; /* refname does not match */
+	return xstrndup(refname + pre_len, match_len);
+}
 
-static const char *ref_rev_parse_rules[] = {
-	"%.*s",
-	"refs/%.*s",
-	"refs/tags/%.*s",
-	"refs/heads/%.*s",
-	"refs/remotes/%.*s",
-	"refs/remotes/%.*s/HEAD",
-	NULL
+const struct ref_expand_rule ref_expand_rules[] = {
+	{ ref_expand_txtly, NULL, "%.*s" },
+	{ ref_expand_txtly, ref_shorten_txtly, "refs/%.*s" },
+	{ ref_expand_txtly, ref_shorten_txtly, "refs/tags/%.*s" },
+	{ ref_expand_txtly, ref_shorten_txtly, "refs/heads/%.*s" },
+	{ ref_expand_txtly, ref_shorten_txtly, "refs/remotes/%.*s" },
+	{ ref_expand_txtly, ref_shorten_txtly, "refs/remotes/%.*s/HEAD" },
+	{ NULL, NULL, NULL }
 };
 
 int refname_match(const char *abbrev_name, const char *full_name,
@@ -2965,68 +2982,35 @@ struct ref *find_ref_by_name(const struct ref *list, const char *name)
 	return NULL;
 }
 
-int shorten_ref(const char *refname, const char *pattern, char *short_name)
-{
-	/*
-	 * pattern must be of the form "[pre]%.*s[post]". Check if refname
-	 * starts with "[pre]" and ends with "[post]". If so, write the
-	 * middle part into short_name, and return the number of chars
-	 * written (not counting the added NUL-terminator). Otherwise,
-	 * if refname does not match pattern, return 0.
-	 */
-	size_t pre_len, post_start, post_len, match_len;
-	size_t ref_len = strlen(refname);
-	char *sep = strstr(pattern, "%.*s");
-	if (!sep || strstr(sep + 4, "%.*s"))
-		die("invalid pattern in ref_rev_parse_rules: %s", pattern);
-	pre_len = sep - pattern;
-	post_start = pre_len + 4;
-	post_len = strlen(pattern + post_start);
-	if (pre_len + post_len >= ref_len)
-		return 0; /* refname too short */
-	match_len = ref_len - (pre_len + post_len);
-	if (strncmp(refname, pattern, pre_len) ||
-	    strncmp(refname + ref_len - post_len, pattern + post_start, post_len))
-		return 0; /* refname does not match */
-	memcpy(short_name, refname + pre_len, match_len);
-	short_name[match_len] = '\0';
-	return match_len;
-}
-
 char *shorten_unambiguous_ref(const char *refname, int strict)
 {
 	int i;
 	char *short_name;
 
-	/* buffer for scanf result, at most refname must fit */
-	short_name = xstrdup(refname);
-
-	/* skip first rule, it will always match */
-	for (i = ARRAY_SIZE(ref_rev_parse_rules) - 1; i > 0 ; --i) {
+	for (i = ARRAY_SIZE(ref_expand_rules) - 1; i >= 0 ; --i) {
 		int j;
 		int rules_to_fail = i;
 		int short_name_len;
+		const struct ref_expand_rule *p = ref_expand_rules + i;
 
-		if (!ref_rev_parse_rules[i] ||
-		    !(short_name_len = shorten_ref(refname,
-						   ref_rev_parse_rules[i],
-						   short_name)))
+		if (!p->shorten || !(short_name = p->shorten(p, refname)))
 			continue;
+		short_name_len = strlen(short_name);
 
 		/*
 		 * in strict mode, all (except the matched one) rules
 		 * must fail to resolve to a valid non-ambiguous ref
 		 */
 		if (strict)
-			rules_to_fail = ARRAY_SIZE(ref_rev_parse_rules);
+			rules_to_fail = ARRAY_SIZE(ref_expand_rules);
 
 		/*
 		 * check if the short name resolves to a valid ref,
 		 * but use only rules prior to the matched one
 		 */
 		for (j = 0; j < rules_to_fail; j++) {
-			const char *rule = ref_rev_parse_rules[j];
-			char refname[PATH_MAX];
+			const struct ref_expand_rule *q = ref_expand_rules + j;
+			char resolved[PATH_MAX];
 
 			/* skip matched rule */
 			if (i == j)
@@ -3037,10 +3021,12 @@ char *shorten_unambiguous_ref(const char *refname, int strict)
 			 * (with this previous rule) to a valid ref
 			 * read_ref() returns 0 on success
 			 */
-			mksnpath(refname, sizeof(refname),
-				 rule, short_name_len, short_name);
-			if (ref_exists(refname))
-				break;
+			if (q->expand) {
+				q->expand(q, resolved, sizeof(resolved),
+					  short_name, short_name_len);
+				if (ref_exists(resolved))
+					break;
+			}
 		}
 
 		/*
@@ -3049,9 +3035,9 @@ char *shorten_unambiguous_ref(const char *refname, int strict)
 		 */
 		if (j == rules_to_fail)
 			return short_name;
+		free(short_name);
 	}
 
-	free(short_name);
 	return xstrdup(refname);
 }
 
