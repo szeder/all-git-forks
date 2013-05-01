@@ -95,7 +95,7 @@ void add_cvs_revision_hash(struct hash_table *meta_hash,
 	}
 }
 
-static void meta_line_add_attr(struct strbuf *line, const char *attr, const char *value, int *want_comma)
+/*static void meta_line_add_attr(struct strbuf *line, const char *attr, const char *value, int *want_comma)
 {
 	if (*want_comma)
 		strbuf_addch(line, ',');
@@ -114,23 +114,21 @@ enum {
 	ATTR_SYNCTIME,
 	ATTR_REVISION,
 	ATTR_ISDEAD,
-};
+};*/
 
-void format_meta_line(struct strbuf *line, struct cvs_revision *rev)
+void format_add_meta_line(struct strbuf *sb, struct cvs_revision *rev)
 {
-	int want_comma = 0;
-	strbuf_reset(line);
+	//int want_comma = 0;
 
-	meta_line_add_attr(line, attributes[ATTR_REVISION], rev->revision, &want_comma);
+	/*meta_line_add_attr(line, attributes[ATTR_REVISION], rev->revision, &want_comma);
 
 	if (rev->isdead)
-		meta_line_add_attr(line, attributes[ATTR_ISDEAD], "y", &want_comma);
+		meta_line_add_attr(line, attributes[ATTR_ISDEAD], "y", &want_comma);*/
 
-	strbuf_addf(line, ":%s\n", rev->path);
+	strbuf_addf(sb, "%s:%s:%s\n", rev->revision, rev->isdead ? "dead" : "", rev->path);
 }
 
-//char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, struct string_list *attr_lst, char *p);
-char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, char *p)
+/*char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, char *p)
 {
 	char *start = p;
 	*first = NULL;
@@ -154,6 +152,39 @@ char *parse_meta_line(char *buf, unsigned long len, char **first, char **second,
 		++p;
 	}
 	return NULL;
+}*/
+
+char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, char **attr, char *p)
+{
+	char *start = p;
+	char *sep;
+	*first = NULL;
+	*second = NULL;
+	*attr = NULL;
+
+	if (p >= buf + len)
+		return NULL;
+
+	p = memchr(p, '\n', p - (buf + len));
+	if (!p) // every meta line should end with '\n'
+		return NULL;
+	*p++ = 0;
+	*first = start;
+
+	sep = strchr(start, ':');
+	if (!sep)
+		return p;
+	*sep++ = '\0';
+	*second = sep;
+
+	sep = strchr(sep, ':');
+	if (!sep)
+		return p;
+	*sep++ = '\0';
+	*attr = *second;
+	*second = sep;
+
+	return p;
 }
 
 int has_revision_meta(unsigned char *sha1, const char *notes_ref)
@@ -176,6 +207,7 @@ int load_revision_meta(unsigned char *sha1, const char *notes_ref, time_t *times
 	char *p;
 	char *first;
 	char *second;
+	char *attr;
 	unsigned long size;
 	*revision_meta_hash = NULL;
 
@@ -187,7 +219,7 @@ int load_revision_meta(unsigned char *sha1, const char *notes_ref, time_t *times
 	init_hash(*revision_meta_hash);
 
 	p = buf;
-	while ((p = parse_meta_line(buf, size, &first, &second, p))) {
+	while ((p = parse_meta_line(buf, size, &first, &second, &attr, p))) {
 		if (strcmp(first, "--") == 0)
 			break;
 		fprintf(stderr, "option: %s=>%s\n", first, second);
@@ -198,11 +230,11 @@ int load_revision_meta(unsigned char *sha1, const char *notes_ref, time_t *times
 		}
 	}
 
-	while ((p = parse_meta_line(buf,size, &first, &second, p))) {
-		int isdead = (second[0] == '-');
-		if (second[1] != ':')
-			die("malformed metadata: %s:%s", first, second);
-		second += 2;
+	while ((p = parse_meta_line(buf, size, &first, &second, &attr, p))) {
+		int isdead;
+		if (!second || !attr)
+			die("malformed metadata: %s:%s:%s", first, attr, second);
+		isdead = !!strstr(attr, "dead");
 		add_cvs_revision_hash(*revision_meta_hash, second, first, isdead, 0, 0);
 	}
 
@@ -267,7 +299,7 @@ static int save_revision_meta_cb(void *ptr, void *data)
 	struct cvs_revision *rev = ptr;
 	struct strbuf *sb = data;
 
-	strbuf_addf(sb, "%s:%c:%s\n", rev->revision, rev->isdead ? '-' : '+', rev->path);
+	format_add_meta_line(sb, rev);
 	return 0;
 }
 

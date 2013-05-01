@@ -32,7 +32,6 @@
  * - support options (progress, verbosity, dry-run)
  * - save CVS error and info messages in buffer
  * - sort rlog, avoid extra commits splits done same seconds
- * - parse and validate checkin properly
  * - validation code: rls -R -d -e -D 'Apr 27 12:37:19 2013'
  *
  * KNOWN PITFALLS:
@@ -415,10 +414,9 @@ static int fast_export_cvs_commit(struct cvs_commit *ps, const char *branch_name
 static int fast_export_revision_meta_cb(void *ptr, void *data)
 {
 	struct cvs_revision *rev = ptr;
+	struct strbuf *sb = data;
 
-	//if (!rev->isdead)
-	//	helper_printf("%s:%c:%s\n", rev->revision, rev->isdead ? '-' : '+', rev->path);
-	helper_printf("%s:%c:%s\n", rev->revision, rev->isdead ? '-' : '+', rev->path);
+	format_add_meta_line(sb, rev);
 	return 0;
 }
 
@@ -436,6 +434,8 @@ static int print_revision_changes_cb(void *ptr, void *data)
 
 static int fast_export_commit_meta(struct hash_table *meta, struct cvs_commit *ps, const char *branch_name, struct strbuf *commit_mark, struct strbuf *parent_mark)
 {
+	struct strbuf sb = STRBUF_INIT;
+
 	markid++;
 	helper_printf("commit %s%s\n", get_meta_ref_prefix(), branch_name);
 	helper_printf("mark :%d\n", markid);
@@ -452,11 +452,13 @@ static int fast_export_commit_meta(struct hash_table *meta, struct cvs_commit *p
 	if (ps->cancellation_point)
 		helper_printf("UPDATE:%ld\n", ps->cancellation_point);
 	helper_printf("--\n");
-	for_each_hash(meta, fast_export_revision_meta_cb, NULL);
+	for_each_hash(meta, fast_export_revision_meta_cb, &sb);
+	helper_printf("%s", sb.buf);
 	helper_printf("EON\n");
 	//helper_printf("\n");
 	helper_flush();
 
+	strbuf_release(&sb);
 	return markid;
 }
 
@@ -601,21 +603,30 @@ static int compare_commit_meta(unsigned char sha1[20], const char *meta_ref, str
 	char *p;
 	char *revision;
 	char *path;
+	char *attr;
 	unsigned long size;
 	int rev_mismatches = 0;
+	int isdead;
 
 	buf = read_note_of(sha1, meta_ref, &size);
 	if (!buf)
 		return -1;
 
 	p = buf;
-	while ((p = parse_meta_line(buf, size, &revision, &path, p))) {
+	while ((p = parse_meta_line(buf, size, &revision, &path, &attr, p))) {
 		if (strcmp(revision, "--") == 0)
 			break;
 	}
 
-	while ((p = parse_meta_line(buf, size, &revision, &path, p))) {
+	while ((p = parse_meta_line(buf, size, &revision, &path, &attr, p))) {
+		if (!path || !attr)
+			die("malformed metadata: %s:%s:%s", revision, attr, path);
+		isdead = !!strstr(attr, "dead");
+
 		file_meta = lookup_hash(hash_path(path), meta_revision_hash);
+		if (!file_meta && isdead)
+			continue;
+
 		if (!file_meta ||
 		    strcmp(file_meta->revision, revision))
 			rev_mismatches++;
@@ -648,9 +659,12 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 	for (;;) {
 		if (parse_commit(commit))
 			die("cannot parse commit %s", sha1_to_hex(commit->object.sha1));
+		fprintf(stderr, "find_branch_fork_point: commit: %s date: %s commit: %p\n",
+			sha1_to_hex(commit->object.sha1), show_date(commit->date, 0, DATE_NORMAL), commit);
 
 		if (commit->date <= time) {
 			rev_mismatches = compare_commit_meta(commit->object.sha1, cvs_branch_ref.buf, meta_revision_hash);
+			fprintf(stderr, "rev_mismatches: %d\n", rev_mismatches);
 			if (rev_mismatches == -1) {
 				/*
 				 * TODO: compare_commit_meta return -1 if no

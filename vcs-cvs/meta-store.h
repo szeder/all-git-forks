@@ -32,12 +32,12 @@ void add_cvs_revision_hash(struct hash_table *meta_hash,
 		       int mark);
 
 char *read_note_of(unsigned char sha1[20], const char *notes_ref, unsigned long *size);
-//char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, struct string_list *attr_lst, char *p);
 
-char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, char *p);
+char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, char **attr, char *p);
 /*
-revision=1.24.3.43,isdead=y,ispushed=y:path
+1.24.3.43:dead:path
+1.24.3.43::path
  */
-void format_meta_line(struct strbuf *line, struct cvs_revision *meta);
+void format_add_meta_line(struct strbuf *sb, struct cvs_revision *meta);
 
 #endif
