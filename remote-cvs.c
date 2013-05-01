@@ -1654,7 +1654,7 @@ static int validate_tree_entry(const unsigned char *sha1, const char *base,
 		return READ_TREE_RECURSIVE;
 
 	snprintf(path, sizeof(path), "%s%s", base, filename);
-	fprintf(stderr, "validating: %s\n", path);
+	//fprintf(stderr, "validating: %s\n", path);
 	file_meta = lookup_hash(hash_path(path), revision_meta_hash);
 	if (!file_meta)
 		die("no meta for file %s\n", path);
@@ -1743,6 +1743,84 @@ static int validate_commit_meta_by_tree(const char *ref, struct hash_table *revi
 	strbuf_release(&meta_ref_sb);
 	return rc;
 }*/
+
+static void on_every_file_revision(const char *path, const char *revision, void *meta)
+{
+	struct cvs_revision *file_meta;
+	struct hash_table *revision_meta_hash = meta;
+
+	fprintf(stderr, "rls: validating: %s\n", path);
+	file_meta = lookup_hash(hash_path(path), revision_meta_hash);
+	if (!file_meta)
+		die("no meta for file %s\n", path);
+	if (file_meta->isdead)
+		die("file %s is dead in meta\n", path);
+	if (strcmp(revision, file_meta->revision))
+		die("file %s revision is wrong: meta %s cvs %s\n",
+		    path, file_meta->revision, revision);
+
+	file_meta->util = 1; // mark revision is visited
+}
+
+/*static int validate_cvs_branch_meta_by_cvs_rls(const char *branch_name)
+{
+	struct cvs_transport *cvs = cvs_connect(cvsroot, cvsmodule);
+	if (!cvs)
+		return -1;
+
+	return cvs_rls(cvs, branch_name, 0, 0, on_every_file_revision, NULL);
+}*/
+
+static int validate_commit_meta_by_rls(const char *branch_name, time_t timestamp, struct hash_table *revision_meta_hash)
+{
+	int rc;
+	struct cvs_transport *cvs = cvs_connect(cvsroot, cvsmodule);
+	if (!cvs)
+		return -1;
+
+	for_each_hash(revision_meta_hash, zero_cvs_revision_util, NULL);
+
+	fprintf(stderr, "validating commit meta by rls\n");
+
+	rc = cvs_rls(cvs, branch_name, 0, timestamp, on_every_file_revision, revision_meta_hash);
+
+	for_each_hash(revision_meta_hash, validate_cvs_revision_util, NULL);
+	return rc;
+}
+
+static int validate_cvs_branch_meta(const char *branch_name)
+{
+	struct strbuf ref_sb = STRBUF_INIT;
+	struct strbuf meta_ref_sb = STRBUF_INIT;
+	struct hash_table *revision_meta_hash = NULL;
+	time_t timestamp;
+	unsigned char commit_sha1[20];
+	int rc;
+
+	strbuf_addf(&ref_sb, "%s%s", get_ref_prefix(), branch_name);
+	strbuf_addf(&meta_ref_sb, "%s%s", get_meta_ref_prefix(), branch_name);
+
+	if (get_sha1(ref_sb.buf, commit_sha1))
+		die(_("Failed to resolve '%s' as a valid ref."), ref_sb.buf);
+
+	if (!ref_exists(meta_ref_sb.buf))
+		die("No metadata for branch %s", branch_name);
+
+	load_revision_meta(commit_sha1, meta_ref_sb.buf, &timestamp, &revision_meta_hash);
+	if (!revision_meta_hash)
+		die("Cannot load metadata for branch %s", branch_name);
+
+	rc = validate_commit_meta_by_tree(ref_sb.buf, revision_meta_hash);
+	if (!rc) {
+		if (!timestamp)
+			fprintf(stderr, "skipping meta check by rls, no commit timestamp\n");
+		else
+			rc = validate_commit_meta_by_rls(branch_name, timestamp, revision_meta_hash);
+	}
+	strbuf_release(&ref_sb);
+	strbuf_release(&meta_ref_sb);
+	return rc;
+}
 
 static int do_command(struct strbuf *line)
 {
@@ -1901,8 +1979,10 @@ int main(int argc, const char **argv)
 	if (getenv("NO_REFS_UPDATE_ON_PUSH"))
 		no_refs_update_on_push = 1;
 
-	//validate_cvs_branch_meta_by_tree("HEAD");
-	//return 0;
+	if (getenv("VERIFY_ONLY")) {
+		validate_cvs_branch_meta(getenv("VERIFY_ONLY"));
+		return 0;
+	}
 
 	while (1) {
 		if (helper_strbuf_getline(&buf, stdin, '\n') == EOF) {

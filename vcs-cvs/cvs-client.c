@@ -1366,6 +1366,131 @@ int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until, add_rev_fn_t
 	return parse_cvs_rlog(cvs, cb, data);
 }
 
+/*
+mod/src/docs:
+/Makefile.am/1.1/Sat Apr 27 18:27:51 2013/-kk/
+/hooks.sgml/1.1/Sat Apr 27 18:27:51 2013/-kk/
+D/examples////
+*/
+
+enum {
+	NEED_DIR = 1,
+	NEED_FILES = 2
+};
+
+int parse_cvs_rls(struct cvs_transport *cvs, on_rev_fn_t cb, void *data)
+{
+	struct strbuf reply = STRBUF_INIT;
+	ssize_t ret;
+
+	struct strbuf file = STRBUF_INIT;
+	struct strbuf revision = STRBUF_INIT;
+	struct strbuf dir = STRBUF_INIT;
+
+	char *rev_start;
+	char *rev_end;
+	int state = NEED_DIR;
+
+	strbuf_grow(&reply, CVS_MAX_LINE);
+
+	while (1) {
+		ret = cvs_getreply_firstmatch(cvs, &reply, "M ");
+		if (ret == -1)
+			return -1;
+		else if (ret == 1) /* ok from server */
+			break;
+
+		if (state == NEED_DIR) {
+			if (!reply.len)
+				continue;
+			if (reply.buf[0] == '/' || suffixcmp(reply.buf, ":"))
+				die("cvs rls parse failed: waiting for directory, got: %s", reply.buf);
+
+			if (!strbuf_gettext_after(&reply, cvs->module, &dir) || !dir.len)
+				die("cvs rls directory does not contain module path: %s", reply.buf);
+
+			strbuf_setlen(&dir, dir.len - 1);
+			if (dir.len) {
+				strbuf_remove(&dir, 0, 1);
+				strbuf_complete_line_ch(&dir, '/');
+			}
+			state = NEED_FILES;
+		}
+		else {
+			if (!reply.len) {
+				state = NEED_DIR;
+				continue;
+			}
+
+			if (reply.buf[0] != '/')
+				continue;
+
+			rev_start = strchr(reply.buf + 1, '/');
+			if (!rev_start)
+				die("malformed file entry: %s", reply.buf);
+			*rev_start++ = '\0';
+
+			rev_end = strchr(rev_start, '/');
+			if (!rev_end)
+				die("malformed file entry: %s", reply.buf);
+			*rev_end = '\0';
+
+			strbuf_reset(&file);
+			strbuf_addf(&file, "%s%s", dir.buf, reply.buf + 1);
+			strbuf_copystr(&revision, rev_start);
+
+			cb(file.buf, revision.buf, data);
+		}
+	}
+
+	strbuf_release(&file);
+	strbuf_release(&revision);
+	strbuf_release(&dir);
+	return 0;
+}
+
+int cvs_rls(struct cvs_transport *cvs, const char *branch, int show_dead, time_t date, on_rev_fn_t cb, void *data)
+{
+	ssize_t ret;
+
+	cvs_write(cvs,
+			WR_NOFLUSH,
+			"Argument -e\n"
+			"Argument -R\n");
+
+	if (show_dead)
+		cvs_write(cvs,
+			WR_NOFLUSH,
+			"Argument -d\n");
+
+	if (branch && strcmp(branch, "HEAD"))
+		cvs_write(cvs,
+			WR_NOFLUSH,
+			"Argument -r\n"
+			"Argument %s\n",
+			branch);
+
+	if (date)
+		cvs_write(cvs,
+			WR_NOFLUSH,
+			"Argument -D\n"
+			"Argument %s\n",
+			show_date(date, 0, DATE_RFC2822));
+
+
+	ret = cvs_write(cvs,
+			WR_FLUSH,
+			"Argument --\n"
+			"Argument %s\n"
+			"rlist\n",
+			cvs->module);
+
+	if (ret == -1)
+		die("Cannot send rlog command");
+
+	return parse_cvs_rls(cvs, cb, data);
+}
+
 static int verify_revision(const char *revision, const char *entry)
 {
 	char *rev_start;
@@ -1686,24 +1811,33 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 			"Argument %s\n",
 			show_date(date, 0, DATE_RFC2822));
 	}
-	ret = cvs_write(cvs,
-			WR_FLUSH,
+
+	cvs_write(cvs,
+			WR_NOFLUSH,
 			"Argument -N\n"
 			"Argument -P\n"
-			"Argument -kk\n"
+			"Argument -kk\n");
+
+	if (branch && strcmp(branch, "HEAD"))
+		cvs_write(cvs,
+			WR_NOFLUSH,
 			"Argument -r\n"
-			"Argument %s\n"
+			"Argument %s\n",
+			branch);
+
+
+	ret = cvs_write(cvs,
+			WR_FLUSH,
 			"Argument --\n"
 			"Argument %s\n"
 			"Directory .\n"
 			"%s\n"
 			"co\n",
-			branch ? branch : "HEAD",
 			cvs->module,
 			cvs->repo_path);
 
 	if (ret == -1)
-		die("rlog to connect");
+		return ret;
 
 	struct strbuf mod_path = STRBUF_INIT;
 	struct cvsfile file = CVSFILE_INIT;
