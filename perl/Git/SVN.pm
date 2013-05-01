@@ -1276,7 +1276,7 @@ sub get_untracked {
 	foreach (sort keys %$h) {
 		my $act = $h->{$_} ? '+empty_dir' : '-empty_dir';
 		push @out, "  $act: " . uri_encode($_);
-		warn "W: $act: $_\n";
+		print "$act: $_\n" unless $::_q;
 	}
 	foreach my $t (qw/dir_prop file_prop/) {
 		$h = $ed->{$t} or next;
