@@ -23,6 +23,7 @@
 
 static const char * const git_reset_usage[] = {
 	N_("git reset [--mixed | --soft | --hard | --merge | --keep] [-q] [<commit>]"),
+	N_("git reset [--stage | --work] [-q] [<commit>]"),
 	N_("git reset [-q] <tree-ish> [--] <paths>..."),
 	N_("git reset --patch [<tree-ish>] [--] [<paths>...]"),
 	NULL
@@ -254,6 +255,7 @@ static int reset_refs(const char *rev, const unsigned char *sha1)
 int cmd_reset(int argc, const char **argv, const char *prefix)
 {
 	int reset_type = NONE, update_ref_status = 0, quiet = 0;
+	int stage = -1, working_tree = -1;
 	int patch_mode = 0, unborn;
 	const char *rev;
 	unsigned char sha1[20];
@@ -269,6 +271,8 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 				N_("reset HEAD, index and working tree"), MERGE),
 		OPT_SET_INT(0, "keep", &reset_type,
 				N_("reset HEAD but keep local changes"), KEEP),
+		OPT_BOOL(0, "stage", &stage, N_("reset index")),
+		OPT_BOOL(0, "work", &working_tree, N_("reset working tree")),
 		OPT_BOOL('p', "patch", &patch_mode, N_("select hunks interactively")),
 		OPT_END()
 	};
@@ -299,6 +303,22 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 		if (!tree)
 			die(_("Could not parse object '%s'."), rev);
 		hashcpy(sha1, tree->object.sha1);
+	}
+
+	if (stage >= 0 || working_tree >= 0) {
+		if (reset_type != NONE)
+			die(_("--{stage,work} are incompatible with --{hard,mixed,soft,merge}"));
+
+		if (working_tree == 1) {
+			if (stage == 0)
+				die(_("--no-stage doesn't make sense with --work"));
+			reset_type = HARD;
+		} else {
+			if (stage == 1)
+				reset_type = NONE;
+			else
+				reset_type = SOFT;
+		}
 	}
 
 	if (patch_mode) {
