@@ -3,7 +3,8 @@ use vars qw/@ISA $_ignore_regex $_preserve_empty_dirs $_placeholder_filename
             $_pathnameencoding
             $_package_inited
             $_reimportpath
-            @deleted_gpath %added_placeholder $repo_id/;
+            $ph_db
+            @deleted_gpath $repo_id/;
 my $private_ignore_regex;
 use strict;
 use warnings;
@@ -11,8 +12,6 @@ use SVN::Delta;
 use Carp qw/croak/;
 use File::Basename qw/dirname/;
 use IO::File qw//;
-use File::Temp qw/tempfile/;
-use File::Copy qw/move/;
 use Git qw/command command_oneline command_noisy command_output_pipe
            command_input_pipe command_close_pipe
            command_bidi_pipe command_close_bidi_pipe/;
@@ -53,19 +52,11 @@ sub new {
 		$_placeholder_filename = $v;
 
 		# Load the list of placeholder files added during previous invocations.
-		$k = "svn-remote.$repo_id.added-placeholder";
-		$v = eval { command_oneline('config', '--get-all', $k) };
-		if ($v) {
-			# command() prints errors to stderr, so we only call it if
-			# command_oneline() succeeded.
-			my @v = command('config', '--get-all', $k);
-			$added_placeholder{ dirname($_) } = $_ foreach @v;
-		}
+		my $dbname = $::_repository->repo_path . "/svn/placeholders.db";
+		$ph_db = LoL::IMadeADb->new($dbname);
 	}
 	$_pathnameencoding = Git::config('svn.pathnameencoding');
  }
-
-	$self->{_save_ph} = { %added_placeholder };
 
 	$self->{empty} = {};
 	$self->{dir_prop} = {};
@@ -185,11 +176,11 @@ sub _end_reimport {
 		$_reimportpath = undef;
 	} else {
 		my $re_strip = qr/^\Q$branch_from\E(\/|$)/ if length $branch_from;
-		foreach (values %added_placeholder) {
+		for (keys %{ $ph_db->{paths} }) {
 			my $path = $_;
 			if ( (!length $branch_from) || $path =~ s!$re_strip!! ) {
 				$path = $branch_to . (length $branch_to && length $path ? "/" : "") . $path;
-				$added_placeholder{ dirname($path) } = $path;
+				$ph_db->add($path);
 			}
 		}
 	}
@@ -242,8 +233,8 @@ sub delete_entry {
 		print "\tD\t$gpath\n" unless $::_q;
 	}
 	# Don't add to @deleted_gpath if we're deleting a placeholder file.
-	my $phkey = $self->svn2ph_path(dirname($path));
-	push @deleted_gpath, $gpath unless $added_placeholder{$phkey};
+	my $phkey = $self->svn2ph_path($path);
+	push @deleted_gpath, $gpath unless exists $ph_db->{paths}{$phkey};
 	$self->{empty}->{$path} = 0;
 	undef;
 }
@@ -277,13 +268,13 @@ sub add_file {
 		delete $self->{empty}->{$dir};
 		$mode = '100644';
 
-		$dir = $self->svn2ph_path($dir);
-		if ($added_placeholder{$dir}) {
+		my $phkey = $self->svn2ph_path($dir) . "/$_placeholder_filename";
+		if (exists $ph_db->{paths}{$phkey}) {
 			# Remove our placeholder file, if we created one.
-			my $svnph = $self->ph2svn_path($added_placeholder{$dir});
+			my $svnph = $self->ph2svn_path($phkey);
 			delete_entry($self, $svnph)
 				unless $path eq $svnph;
-			delete $added_placeholder{$dir}
+			$ph_db->remove($phkey);
 		}
 	}
 
@@ -313,12 +304,12 @@ sub add_directory {
 	delete $self->{empty}->{$dir};
 	$self->{empty}->{$path} = 1;
 
-	$dir = $self->svn2ph_path($dir);
-	if ($added_placeholder{$dir}) {
+	my $phkey = $self->svn2ph_path($dir) . "/$_placeholder_filename";
+	if (exists $ph_db->{paths}{$phkey}) {
 		# Remove our placeholder file, if we created one.
-		my $svnph = $self->ph2svn_path($added_placeholder{$dir});
+		my $svnph = $self->ph2svn_path($phkey);
 		delete_entry($self, $svnph);
-		delete $added_placeholder{$dir}
+		$ph_db->remove($phkey);
 	}
 
 out:
@@ -505,7 +496,7 @@ sub close_edit {
 		# Finally, add a placeholder file to each empty directory.
 		$self->add_placeholder_file($_) foreach (@empty_dirs);
 
-		$self->stash_placeholder_list();
+		$ph_db->save();
 	}
 
 	$self->{git_commit_ok} = 1;
@@ -570,66 +561,119 @@ sub add_placeholder_file {
 	# Keep track of any placeholder files we create.
 	$dir = $self->svn2ph_path($dir);
 	$path = $self->svn2ph_path($path);
-	$added_placeholder{$dir} = $path;
+	$ph_db->add($path);
 }
+1;
 
-sub backup_file {
-  my ( $filename ) = @_;
+package LoL::IMadeADb;
 
-  open(my $fh_src, "<", $filename) or die "cannot open < $filename: $!";
-  my ($fh_dst, $bkpname) = tempfile(DIR => dirname($filename)) or die "cannot create backup file: $!";
-  binmode $fh_src;
-  binmode $fh_dst;
-  while (<$fh_src>) {
-    print { $fh_dst } $_ or die "cannot write backup file: $!";
+use File::Basename qw/dirname/;
+use File::Temp qw/tempfile/;
+use File::Copy qw/move/;
+
+sub new {
+  my $self;
+  ( my $class, $self->{dbname} )  = @_;
+  # open for read, then write. create if not exist
+  #msg "open $self->{dbname}";
+  open(my $fd, "+>>", $self->{dbname}) or die "cannot open < $self->{dbname}: $!";
+  seek($fd, 0, 0);
+  $self->{fd} = $fd;
+  #msg "opened";
+  $self->{paths} = {};
+  my $href = $self->{paths};
+
+  $self->{nlines} = 0;
+  my $lastcommit = 0;
+  my ( $c, $rest );
+  while(defined($c = getc($fd)) && defined($rest = <$fd>) && substr($rest, -1) eq "\n") {
+    $self->{nlines}++;
+    chomp($rest);
+    if ($c eq "c") {
+      $lastcommit = tell($fd);
+      #msg "lastcommit: " . $lastcommit;
+    } elsif ($c eq "+") {
+      $href->{$rest} = undef;
+    } elsif ($c eq "-") {
+      delete $href->{$rest};
+    }
+    #msg "line: '" . $c . $rest . "'";
   }
-  close($fh_src);
-  close($fh_dst);
-  $bkpname
+  if ($lastcommit < tell($fd)) {
+    print STDERR "rolling back incomplete file: " . $self->{dbname} . "\n";
+    seek($fd, $lastcommit, 0);
+    while(defined($c = getc($fd)) && substr(($rest = <$fd>), -1) eq "\n") {
+      $self->{nlines}--;
+      chomp($rest);
+      if ($c eq "+") {
+        delete $href->{$rest};
+      } else {
+        $href->{$rest} = undef;
+      }
+    }
+    truncate($fd, $lastcommit) or die "cannot truncate $self->{dbname}: $!";
+    print STDERR "rolling back incomplete file; done\n";
+  }
+  #msg "entries = " . (keys( %{ $href })+0) . ", nlines = " . $self->{nlines} . "\n";
+  bless $self, $class
 }
 
-sub stash_placeholder_file {
-	my ( $self, $add, $file ) = @_;
-	if (!defined $self->{bkconfig}) {
-		$self->{config} = $ENV{'GIT_CONFIG'} || $::_repository->repo_path . "/config";
-		$self->{bkconfig} = backup_file($self->{config});
-		$ENV{'GIT_CONFIG'} = $self->{bkconfig};
-	}
-	my $plus_or_minus;
-	my $k = "svn-remote.$repo_id.added-placeholder";
-	if ($add) {
-		$plus_or_minus = "+";
-		command_noisy('config', '--add',   $k, $file);
-	} else {
-		$plus_or_minus = "-";
-		my $value_regex = qr/^\Q$file\E$/;
-		$value_regex = substr($value_regex,4, -1); # remove "(?^:" and ")"
-		command_noisy('config', '--unset', $k, $value_regex);
-	}
-	print $plus_or_minus . "preserved empty dir: $file\n" unless $::_q;
-	undef
+sub add {
+  my ( $self , $path ) = @_;
+  if (!exists $self->{paths}{$path}) {
+    $self->{paths}{$path} = undef;
+    print { $self->{fd} } "+" . $path . "\n";
+    $self->{nlines}++;
+    $self->{changed} = 1;
+  }
+  undef
 }
 
-sub stash_placeholder_list {
-	my ($self) = @_;
-	local %ENV = %ENV;
-
-	for ( keys %added_placeholder ) {
-		if (!delete $self->{_save_ph}{$_}) {
-			$self->stash_placeholder_file(1, $added_placeholder{$_});
-		}
-	}
-
-	for ( keys %{$self->{_save_ph}} ) {
-		$self->stash_placeholder_file(0, $self->{_save_ph}{$_});
-	}
-
-	if (defined $self->{bkconfig}) {
-		move($self->{bkconfig}, $self->{config})
-			or die "cannot rename " . $self->{bkconfig} . " => " . $self->{config} . ": $!";
-	}
+sub remove {
+  my ( $self , $path ) = @_;
+  if (exists $self->{paths}{$path}) {
+    delete $self->{paths}{$path};
+    print { $self->{fd} } "-" . $path . "\n";
+    $self->{nlines}++;
+    $self->{changed} = 1;
+  }
+  undef
 }
 
+sub save {
+  my ( $self ) = @_;
+  return undef unless $self->{changed};
+  my $fd = $self->{fd};
+  my @keys = keys %{$self->{paths}};
+  if ( $self->{nlines} - @keys > 5000 ) {
+    #msg "compacting";
+    close($fd);
+    my $bkpdir = dirname($self->{dbname});
+    ($fd, my $bkpname) = tempfile(DIR => $bkpdir , SUFFIX => ".tmp" ) or die "cannot create backup file in: $bkpdir: $!";
+    $self->{nlines} = 1;
+    for (@keys) {
+      print { $fd } "+" . $_ . "\n" or die "cannot write backup file: $!";
+      $self->{nlines}++;
+    }
+    print { $fd } "c\n";
+    close($fd);
+    move($bkpname, $self->{dbname})
+      or die "cannot rename " . $bkpname . " => " . $self->{dbname} . ": $!";
+    open($self->{fd}, ">>", $self->{dbname}) or die "cannot open < $self->{dbname}: $!";
+  } else {
+    print { $fd } "c\n";
+    $self->{nlines}++;
+
+    # flush:
+    my $previous_default = select($fd);
+    $| ++;
+    $| --;
+    select($previous_default);
+  }
+  $self->{changed} = 0;
+  #print "entries = " . (@keys+0) . ", nlines = " . $self->{nlines} . "\n";
+  undef
+}
 1;
 __END__
 
