@@ -78,6 +78,12 @@ static void insert_obj_hash(struct object *obj, struct object **hash, unsigned i
 	hash[j] = obj;
 }
 
+static unsigned long count;
+static void dump_count(void)
+{
+	fprintf(stderr, "lookup count: %lu\n", count);
+}
+
 /*
  * Look up the record for the given sha1 in the hash map stored in
  * obj_hash.  Return NULL if it was not found.
@@ -86,6 +92,9 @@ struct object *lookup_object(const unsigned char *sha1)
 {
 	unsigned int i, first;
 	struct object *obj;
+
+	if (!count++)
+		atexit(dump_count);
 
 	if (!obj_hash)
 		return NULL;

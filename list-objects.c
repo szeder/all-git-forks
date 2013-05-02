@@ -64,15 +64,64 @@ static void process_gitlink(struct rev_info *revs,
 	/* Nothing to do */
 }
 
+static struct tree *skip_processed_entries(struct tree_desc *cur,
+					   struct tree_desc *old)
+{
+	while (cur->size && old->size) {
+		int cmp = base_name_compare(cur->entry.path,
+					    tree_entry_len(&cur->entry),
+					    0, /* ignore mode */
+					    old->entry.path,
+					    tree_entry_len(&old->entry),
+					    0);
+		if (cmp > 0) {
+			/*
+			 * Old tree has something we do not; ignore it, as it
+			 * was already processed.
+			 */
+			update_tree_entry(old);
+		}
+		else if (cmp == 0) {
+			/*
+			 * We have the same path; if the sha1s match, then we
+			 * have already processed it and can ignore. Otherwise,
+			 * return for processing, but also provide the old
+			 * tree so that we can recurse.
+			 */
+			if (!hashcmp(cur->entry.sha1, old->entry.sha1)) {
+				update_tree_entry(cur);
+				update_tree_entry(old);
+			}
+			else {
+				struct object *o = lookup_object(old->entry.sha1);
+				update_tree_entry(old);
+				if (o && o->type == OBJ_TREE)
+					return (struct tree *)o;
+				else
+					return NULL;
+			}
+		}
+		else {
+			/*
+			 * We have an entry the old one does not; we must look
+			 * at it (and there is no matching old tree to report).
+			 */
+			return NULL;
+		}
+	}
+	return NULL;
+}
+
 static void process_tree(struct rev_info *revs,
 			 struct tree *tree,
+			 struct tree *old_tree,
 			 show_object_fn show,
 			 struct strbuf *base,
 			 const char *name,
 			 void *cb_data)
 {
 	struct object *obj = &tree->object;
-	struct tree_desc desc;
+	struct tree_desc desc, old_desc;
 	struct name_entry entry;
 	enum interesting match = revs->diffopt.pathspec.nr == 0 ?
 		all_entries_interesting: entry_not_interesting;
@@ -98,7 +147,18 @@ static void process_tree(struct rev_info *revs,
 
 	init_tree_desc(&desc, tree->buffer, tree->size);
 
-	while (tree_entry(&desc, &entry)) {
+	if (old_tree)
+		init_tree_desc(&old_desc, old_tree->buffer, old_tree->size);
+	else
+		init_tree_desc(&old_desc, NULL, 0);
+
+	while (desc.size) {
+		struct tree *old_tree;
+
+		old_tree = skip_processed_entries(&desc, &old_desc);
+		if (!tree_entry(&desc, &entry))
+			break;
+
 		if (match != all_entries_interesting) {
 			match = tree_entry_interesting(&entry, base, 0,
 						       &revs->diffopt.pathspec);
@@ -110,7 +170,7 @@ static void process_tree(struct rev_info *revs,
 
 		if (S_ISDIR(entry.mode))
 			process_tree(revs,
-				     lookup_tree(entry.oid->hash),
+				     lookup_tree(entry.oid->hash), old_tree,
 				     show, base, entry.path,
 				     cb_data);
 		else if (S_ISGITLINK(entry.mode))
@@ -124,7 +184,6 @@ static void process_tree(struct rev_info *revs,
 				     cb_data);
 	}
 	strbuf_setlen(base, baselen);
-	free_tree_buffer(tree);
 }
 
 static void mark_edge_parents_uninteresting(struct commit *commit,
@@ -191,6 +250,7 @@ void traverse_commit_list(struct rev_info *revs,
 	int i;
 	struct commit *commit;
 	struct strbuf base;
+	struct tree *last_root_tree = NULL;
 
 	strbuf_init(&base, PATH_MAX);
 	while ((commit = get_revision(revs)) != NULL) {
@@ -217,8 +277,8 @@ void traverse_commit_list(struct rev_info *revs,
 		if (!path)
 			path = "";
 		if (obj->type == OBJ_TREE) {
-			process_tree(revs, (struct tree *)obj, show_object,
-				     &base, path, data);
+			process_tree(revs, (struct tree *)obj, last_root_tree,
+				     show_object, &base, path, data);
 			continue;
 		}
 		if (obj->type == OBJ_BLOB) {
