@@ -881,7 +881,7 @@ _git_apply ()
 		__gitcomp "
 			--stat --numstat --summary --check --index
 			--cached --index-info --reverse --reject --unidiff-zero
-			--apply --no-add --exclude=
+			--apply --no-add --exclude= --staged
 			--ignore-whitespace --ignore-space-change
 			--whitespace= --inaccurate-eof --verbose
 			"
@@ -1294,7 +1294,7 @@ _git_grep ()
 	case "$cur" in
 	--*)
 		__gitcomp "
-			--cached
+			--cached --staged
 			--text --ignore-case --word-regexp --invert-match
 			--full-name --line-number
 			--extended-regexp --basic-regexp --fixed-strings
@@ -2253,7 +2253,7 @@ _git_rm ()
 {
 	case "$cur" in
 	--*)
-		__gitcomp "--cached --dry-run --ignore-unmatch --quiet"
+		__gitcomp "--cached --staged --dry-run --ignore-unmatch --quiet"
 		return
 		;;
 	esac
@@ -2320,7 +2320,7 @@ _git_show_branch ()
 
 _git_stash ()
 {
-	local save_opts='--keep-index --no-keep-index --quiet --patch'
+	local save_opts='--keep-index --no-keep-index --stage --no-stage --quiet --patch'
 	local subcommands='save list show apply clear drop pop create branch'
 	local subcommand="$(__git_find_on_cmdline "$subcommands")"
 	if [ -z "$subcommand" ]; then
@@ -2340,7 +2340,7 @@ _git_stash ()
 			__gitcomp "$save_opts"
 			;;
 		apply,--*|pop,--*)
-			__gitcomp "--index --quiet"
+			__gitcomp "--index --stage --quiet"
 			;;
 		show,--*|drop,--*|branch,--*)
 			;;
