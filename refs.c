@@ -1758,7 +1758,17 @@ static char *ref_shorten_txtly(const struct ref_expand_rule *rule,
 	return xstrndup(refname + pre_len, match_len);
 }
 
-const struct ref_expand_rule ref_expand_rules[] = {
+const struct ref_expand_rule ref_expand_rules_local[] = {
+	{ ref_expand_txtly, NULL, "%.*s" },
+	{ ref_expand_txtly, ref_shorten_txtly, "refs/%.*s" },
+	{ ref_expand_txtly, ref_shorten_txtly, "refs/tags/%.*s" },
+	{ ref_expand_txtly, ref_shorten_txtly, "refs/heads/%.*s" },
+	{ ref_expand_txtly, ref_shorten_txtly, "refs/remotes/%.*s" },
+	{ ref_expand_txtly, ref_shorten_txtly, "refs/remotes/%.*s/HEAD" },
+	{ NULL, NULL, NULL }
+};
+
+const struct ref_expand_rule ref_expand_rules_remote[] = {
 	{ ref_expand_txtly, NULL, "%.*s" },
 	{ ref_expand_txtly, ref_shorten_txtly, "refs/%.*s" },
 	{ ref_expand_txtly, ref_shorten_txtly, "refs/tags/%.*s" },
@@ -1848,7 +1858,7 @@ int dwim_ref(const char *str, int len, unsigned char *sha1, char **ref)
 	int refs_found = 0;
 
 	*ref = NULL;
-	for (p = ref_expand_rules; p->expand; p++) {
+	for (p = ref_expand_rules_local; p->expand; p++) {
 		char fullref[PATH_MAX];
 		unsigned char sha1_from_ref[20];
 		unsigned char *this_result;
@@ -1879,7 +1889,7 @@ int dwim_log(const char *str, int len, unsigned char *sha1, char **log)
 	int logs_found = 0;
 
 	*log = NULL;
-	for (p = ref_expand_rules; p->expand; p++) {
+	for (p = ref_expand_rules_local; p->expand; p++) {
 		struct stat st;
 		unsigned char hash[20];
 		char path[PATH_MAX];
@@ -2987,11 +2997,11 @@ char *shorten_unambiguous_ref(const char *refname, int strict)
 	int i;
 	char *short_name;
 
-	for (i = ARRAY_SIZE(ref_expand_rules) - 1; i >= 0 ; --i) {
+	for (i = ARRAY_SIZE(ref_expand_rules_local) - 1; i >= 0 ; --i) {
 		int j;
 		int rules_to_fail = i;
 		int short_name_len;
-		const struct ref_expand_rule *p = ref_expand_rules + i;
+		const struct ref_expand_rule *p = ref_expand_rules_local + i;
 
 		if (!p->shorten || !(short_name = p->shorten(p, refname)))
 			continue;
@@ -3002,14 +3012,14 @@ char *shorten_unambiguous_ref(const char *refname, int strict)
 		 * must fail to resolve to a valid non-ambiguous ref
 		 */
 		if (strict)
-			rules_to_fail = ARRAY_SIZE(ref_expand_rules);
+			rules_to_fail = ARRAY_SIZE(ref_expand_rules_local);
 
 		/*
 		 * check if the short name resolves to a valid ref,
 		 * but use only rules prior to the matched one
 		 */
 		for (j = 0; j < rules_to_fail; j++) {
-			const struct ref_expand_rule *q = ref_expand_rules + j;
+			const struct ref_expand_rule *q = ref_expand_rules_local + j;
 			char resolved[PATH_MAX];
 
 			/* skip matched rule */

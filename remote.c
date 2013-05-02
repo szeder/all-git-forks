@@ -969,7 +969,8 @@ void sort_ref_list(struct ref **l, int (*cmp)(const void *, const void *))
 
 static int count_refspec_match(const char *pattern,
 			       struct ref *refs,
-			       struct ref **matched_ref)
+			       struct ref **matched_ref,
+			       int refs_from_remote)
 {
 	int patlen = strlen(pattern);
 	struct ref *matched_weak = NULL;
@@ -981,7 +982,9 @@ static int count_refspec_match(const char *pattern,
 		char *name = refs->name;
 		int namelen = strlen(name);
 
-		if (!refname_match(pattern, name, ref_expand_rules))
+		if (!refname_match(pattern, name, refs_from_remote ?
+				   ref_expand_rules_remote :
+				   ref_expand_rules_local))
 			continue;
 
 		/* A match is "weak" if it is with refs outside
@@ -1091,7 +1094,7 @@ static int match_explicit(struct ref *src, struct ref *dst,
 		return 0;
 
 	matched_src = matched_dst = NULL;
-	switch (count_refspec_match(rs->src, src, &matched_src)) {
+	switch (count_refspec_match(rs->src, src, &matched_src, 0)) {
 	case 1:
 		copy_src = 1;
 		break;
@@ -1121,7 +1124,7 @@ static int match_explicit(struct ref *src, struct ref *dst,
 			    matched_src->name);
 	}
 
-	switch (count_refspec_match(dst_value, dst, &matched_dst)) {
+	switch (count_refspec_match(dst_value, dst, &matched_dst, 1)) {
 	case 1:
 		break;
 	case 0:
@@ -1499,7 +1502,7 @@ int branch_merge_matches(struct branch *branch,
 {
 	if (!branch || i < 0 || i >= branch->merge_nr)
 		return 0;
-	return refname_match(branch->merge[i]->src, refname, ref_expand_rules);
+	return refname_match(branch->merge[i]->src, refname, ref_expand_rules_local);
 }
 
 static int ignore_symref_update(const char *refname)
@@ -1545,7 +1548,7 @@ static const struct ref *find_ref_by_name_abbrev(const struct ref *refs, const c
 {
 	const struct ref *ref;
 	for (ref = refs; ref; ref = ref->next) {
-		if (refname_match(name, ref->name, ref_expand_rules))
+		if (refname_match(name, ref->name, ref_expand_rules_remote))
 			return ref;
 	}
 	return NULL;

@@ -173,7 +173,8 @@ struct ref_expand_rule {
 			 const char *refname);
 	const char *pattern;
 };
-extern const struct ref_expand_rule ref_expand_rules[];
+extern const struct ref_expand_rule ref_expand_rules_local[];
+extern const struct ref_expand_rule ref_expand_rules_remote[];
 extern int refname_match(const char *abbrev_name, const char *full_name,
 			 const struct ref_expand_rule *rules);
 
