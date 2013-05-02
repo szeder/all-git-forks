@@ -6,6 +6,7 @@
  */
 #include "cache.h"
 #include "refs.h"
+#include "argv-array.h"
 #include "color.h"
 #include "commit.h"
 #include "diff.h"
@@ -25,6 +26,7 @@
 #include "streaming.h"
 #include "version.h"
 #include "mailmap.h"
+#include "rfc2822.h"
 #include "gpg-interface.h"
 
 /* Set a default date-time format for git log ("log.date" config variable) */
@@ -924,6 +926,153 @@ static char *find_branch_name(struct rev_info *rev)
 	return branch;
 }
 
+static const char *skip_quoted_string(const char *s)
+{
+	s++;	/* Skip initial DQ. */
+	while (*s) {
+		switch (*s) {
+		case '"':
+			return s;
+		case '\\':
+			s++;
+		}
+		s++;
+	}
+	return s;
+}
+
+static const char *skip_angle_addr(const char *s)
+{
+	s++;	/* Skip initial '<'. */
+	while (*s) {
+		switch (*s) {
+		case '"':
+			s = skip_quoted_string(s);
+			break;
+		case '>':
+			return s;
+		}
+		s++;
+	}
+	return s;
+}
+
+static const char *skip_comment(const char *s)
+{
+	s++;	/* Skip initial '('. */
+	while (*s) {
+		switch (*s) {
+		case '"':
+			s = skip_quoted_string(s);
+			break;
+		case '(':
+			s = skip_comment(s);
+			break;
+		case ')':
+			return s;
+		}
+		s++;
+	}
+	return s;
+}
+
+static void append_destination_addresses(struct string_list *list, const char *value)
+{
+	const char *start = value;
+
+	while (*value) {
+		switch (*value) {
+		case '"':
+			value = skip_quoted_string(value);
+			break;
+		case '<':
+			value = skip_angle_addr(value);
+			break;
+		case '(':
+			value = skip_comment(value);
+			break;
+		case ',':
+			while (isspace(*start))
+				start++;
+			if (start != value)
+				string_list_append_nodup(list,
+					xstrndup(start, value - start));
+			start = value + 1;
+			break;
+		}
+
+		/*
+		 * If we failed to find the end of a quoted-string, angle-addr
+		 * or comment we don't want to add the remainder to our list.
+		 */
+		if (!*value)
+			return;
+
+		value++;
+	}
+
+	while (isspace(*start))
+		start++;
+
+	if (*start)
+		string_list_append(list, start);
+}
+
+static int reply_to_msg_header(const char *header, const char *value,
+			       int message_header, void *context)
+{
+	if (!strcasecmp("From", header) ||
+	    !strcasecmp("To", header) ||
+	    !strcasecmp("Cc", header))
+	{
+		/*
+		 * Add anyone in the from, to or CC lists  of the message to
+		 * which we are replying to the recipient list for this
+		 * message.
+		 */
+		append_destination_addresses(&extra_cc, value);
+	}
+	return 0;
+}
+
+static void reply_to_msg_bodyline(struct strbuf *line, void *context)
+{
+	/* NEEDSWORK: quote the body in the reply. */
+}
+
+static void apply_reply_to_message(struct strbuf *headers,
+				   const char *message_id,
+				   const char *msgstore)
+{
+	struct child_process store = {0};
+	struct rfc2822_options msg_options = {0};
+	int code;
+
+	store.in = 0;
+	store.out = -1;
+	store.err = 0;
+	argv_array_pushf(&store.args, "git-msgstore-%s", msgstore);
+	argv_array_push(&store.args, message_id);
+	store.git_cmd = 0;
+	store.silent_exec_failure = 1;
+
+	code = start_command(&store);
+	if (code < 0 && errno == ENOENT)
+		die("Unable to find message store helper '%s'", msgstore);
+	else if (code != 0)
+		exit(code);
+
+	msg_options.in = xfdopen(store.out, "rb");
+	msg_options.header_cb = reply_to_msg_header;
+	msg_options.bodyline_cb = reply_to_msg_bodyline;
+	msg_options.metainfo_charset = get_commit_output_encoding();
+	rfc2822_parse(&msg_options, NULL);
+
+	code = finish_command(&store);
+	if (code)
+		die("Error in message store");
+}
+
 static void make_cover_letter(struct rev_info *rev, int use_stdout,
 			      struct commit *origin,
 			      int nr, struct commit **list,
@@ -1202,6 +1351,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	int zero_commit = 0;
 	struct commit *origin = NULL;
 	const char *in_reply_to = NULL;
+	const char *msgstore = NULL;
 	struct patch_ids ids;
 	struct strbuf buf = STRBUF_INIT;
 	int use_patch_format = 0;
@@ -1259,6 +1409,8 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 			    PARSE_OPT_OPTARG, from_callback },
 		OPT_STRING(0, "in-reply-to", &in_reply_to, N_("message-id"),
 			    N_("make first mail a reply to <message-id>")),
+		OPT_STRING(0, "msgstore", &msgstore, N_("store"),
+			    N_("find recipients using a message store")),
 		{ OPTION_CALLBACK, 0, "attach", &rev, N_("boundary"),
 			    N_("attach the patch"), PARSE_OPT_OPTARG,
 			    attach_callback },
@@ -1315,6 +1467,9 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		rev.reroll_count = reroll_count;
 		rev.subject_prefix = strbuf_detach(&sprefix, NULL);
 	}
+
+	if (in_reply_to && msgstore)
+		apply_reply_to_message(&buf, in_reply_to, msgstore);
 
 	for (i = 0; i < extra_hdr.nr; i++) {
 		strbuf_addstr(&buf, extra_hdr.items[i].string);

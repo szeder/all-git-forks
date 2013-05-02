@@ -159,6 +159,10 @@ will want to ensure that threading is disabled for `git send-email`.
 	reply to the given Message-Id, which avoids breaking threads to
 	provide a new patch series.
 
+--msgstore=<helper>::
+	Use the specified message store to find the message given by
+	`--in-reply-to` and add all of its recipients to the `Cc` header.
+
 --ignore-if-in-upstream::
 	Do not include a patch that matches a commit in
 	<until>..<since>.  This will examine all patches reachable

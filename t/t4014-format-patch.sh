@@ -673,6 +673,24 @@ test_expect_success 'format-patch --in-reply-to' '
 	grep "^References: <baz@foo.bar>" patch8
 '
 
+test_expect_success 'format-patch --in-reply-to --msgstore' '
+	GIT_TEST_MSGSTORE_MESSAGEID=msg1234@git.example.com &&
+	GIT_TEST_MSGSTORE_MESSAGE=$(cat <<-\EOF
+	From: "S. E. Nder" <snder@example.com>
+	To: R. E. Cipient <rcipient@example.com>
+	Cc: S E Cond <scond@example.com>, "S. E. Nder" <snder@example.com>
+	Subject: A message to be replied to
+	Date: Thu 2 May 2013
+
+	This is the body of the original message.
+	EOF
+	) &&
+	export GIT_TEST_MSGSTORE_MESSAGEID GIT_TEST_MSGSTORE_MESSAGE &&
+	git show &&
+	git format-patch --no-cc -1 --stdout --in-reply-to msg1234@git.example.com --msgstore=test >actual &&
+	cat actual
+'
+
 test_expect_success 'format-patch --signoff' '
 	git format-patch -1 --signoff --stdout >out &&
 	grep "^Signed-off-by: $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL>" out
