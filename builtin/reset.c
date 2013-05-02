@@ -23,7 +23,7 @@
 
 static const char * const git_reset_usage[] = {
 	N_("git reset [--mixed | --soft | --hard | --merge | --keep] [-q] [<commit>]"),
-	N_("git reset [--stage | --work] [-q] [<commit>]"),
+	N_("git reset [--stage | --work | --keep] [-q] [<commit>]"),
 	N_("git reset [-q] <tree-ish> [--] <paths>..."),
 	N_("git reset --patch [<tree-ish>] [--] [<paths>...]"),
 	NULL
@@ -295,8 +295,15 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 	}
 
 	if (stage >= 0 || working_tree >= 0) {
-		if (reset_type != NONE)
+		int keep = 0;
+
+		if (reset_type == KEEP) {
+			if (working_tree == 1)
+				die(_("--keep is incompatible with --work"));
+			keep = 1;
+		} else if (reset_type != NONE) {
 			die(_("--{stage,work} are incompatible with --{hard,mixed,soft,merge}"));
+		}
 
 		if (working_tree == 1) {
 			if (stage == 0)
@@ -304,7 +311,7 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 			reset_type = HARD;
 		} else {
 			if (stage == 1)
-				reset_type = NONE;
+				reset_type = keep ? KEEP : NONE;
 			else
 				reset_type = SOFT;
 		}
