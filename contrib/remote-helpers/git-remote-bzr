@@ -701,24 +701,31 @@ def do_export(parser):
             die('unhandled export command: %s' % line)
 
     for ref, revid in parsed_refs.iteritems():
-        name = ref[len('refs/heads/'):]
-        branch = get_remote_branch(name)
-        branch.generate_revision_history(revid, marks.get_tip(name))
+        if ref.startswith('refs/heads/'):
+            name = ref[len('refs/heads/'):]
+            branch = get_remote_branch(name)
+            branch.generate_revision_history(revid, marks.get_tip(name))
 
-        if name in peers:
-            debug("pushing branch '%s': to %s", name, revid)
-            peer = bzrlib.branch.Branch.open(peers[name])
+            if name in peers:
+                debug("pushing branch '%s': to %s", name, revid)
+                peer = bzrlib.branch.Branch.open(peers[name])
+                try:
+                    peer.bzrdir.push_branch(branch, revision_id=revid)
+                except bzrlib.errors.DivergedBranches:
+                    print "error %s non-fast forward" % ref
+                    continue
+
             try:
-                peer.bzrdir.push_branch(branch, revision_id=revid)
-            except bzrlib.errors.DivergedBranches:
-                print "error %s non-fast forward" % ref
-                continue
-
-        try:
-            wt = branch.bzrdir.open_workingtree()
-            wt.update()
-        except bzrlib.errors.NoWorkingTree:
+                wt = branch.bzrdir.open_workingtree()
+                wt.update()
+            except bzrlib.errors.NoWorkingTree:
+                pass
+        elif ref.startswith('refs/tags/'):
+            # TODO: implement tag push
             pass
+        else:
+            # transport-helper/fast-export bugs
+            continue
 
         print "ok %s" % ref
 
