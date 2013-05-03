@@ -4,6 +4,7 @@
 #include "help.h"
 #include "quote.h"
 #include "run-command.h"
+#include "commit.h"
 
 const char git_usage_string[] =
 	"git [--version] [--help] [-c name=value]\n"
@@ -146,6 +147,10 @@ static int handle_options(const char ***argv, int *argc, int *envchanged)
 			setenv(GIT_LITERAL_PATHSPECS_ENVIRONMENT, "0", 1);
 			if (envchanged)
 				*envchanged = 1;
+		} else if (!strcmp(cmd, "--shallow-file")) {
+			(*argv)++;
+			(*argc)--;
+			set_alternate_shallow_file((*argv)[0]);
 		} else {
 			fprintf(stderr, "Unknown option: %s\n", cmd);
 			usage(git_usage_string);
