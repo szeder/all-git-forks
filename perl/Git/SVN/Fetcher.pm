@@ -487,7 +487,7 @@ sub add_placeholder_file {
 	my $path = "$dir/$_placeholder_filename";
 	my $gpath = $self->git_path($path);
 
-	my $fh = $::_repository->temp_acquire($gpath);
+	my $fh = $::_repository->temp_acquire('placeholder');
 	my $hash = $::_repository->hash_and_insert_object(Git::temp_path($fh));
 	Git::temp_release($fh, 1);
 	$self->{gii}->update('100644', $hash, $gpath) or croak $!;
