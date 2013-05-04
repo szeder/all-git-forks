@@ -137,6 +137,8 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	rm -rf '$(GIT)'/usr/share/git-gui/
 	# don't include gitk's lib
 	rm -rf '$(GIT)'/usr/share/gitk/
+	# don't include git-svn's lib
+	rm -rf '$(GIT)'/usr/share/perl5/Git/SVN*
 	# bash completion
 	install -d -m0755 '$(GIT)'/usr/share/bash-completion/completions
 	install -m0644 contrib/completion/git-completion.bash \
@@ -192,6 +194,7 @@ install-indep: build-arch-stamp build-indep-stamp
 	 git-gui git-citool; do \
 	  rm -f '$(GIT)'-man/usr/share/man/man1/$$i*; \
 	done
+	rm -f '$(GIT)'-man/usr/share/man/man3/Git::SVN*.3pm
 	chmod 0644 '$(GIT)'-man/usr/share/man/man?/*.[0-9]*
 	gzip -9 '$(GIT)'-man/usr/share/man/man?/*.[0-9]*
 	# git-doc
@@ -209,6 +212,15 @@ install-indep: build-arch-stamp build-indep-stamp
 	    '$(GIT)'-$$i/usr/share/man/man1/ && \
 	  gzip -9 '$(GIT)'-$$i/usr/share/man/man1/*.1 || exit 1; \
 	done
+	install -d -m0755 '$(GIT)'-svn/usr/share/perl5/Git
+	cp -R '$(TMP)'/usr/share/perl5/Git/SVN* \
+	  '$(GIT)'-svn/usr/share/perl5/Git/
+	find '$(GIT)'-svn/usr/share/perl5/Git -type d | xargs chmod 0755
+	find '$(GIT)'-svn/usr/share/perl5/Git -type f | xargs chmod 0644
+	install -d -m0755 '$(GIT)'-svn/usr/share/man/man3
+	install -m 0644 '$(TMP)'/usr/share/man/man3/Git::SVN*.3pm \
+	  '$(GIT)'-svn/usr/share/man/man3/
+	gzip -9 '$(GIT)'-svn/usr/share/man/man3/*.3pm
 	# git-cvs
 	install -d -m0755 '$(GIT)'-cvs/usr/bin
 	install -m0755 '$(TMP)'/usr/bin/git-cvsserver '$(GIT)'-cvs/usr/bin/

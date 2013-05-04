@@ -2,9 +2,14 @@ git (1:1.8.3~rc1-1.1) experimental; urgency=low
 
   * debian/rules: install perl modules with correct permissions
     (thx Christian Schwartz for suggesting it through lintian).
-  * debian/rules: install perl module manpages to git-man package.
+  * move "git svn" perl helpers to the git-svn package.
+    * debian/rules: install Git::SVN and Git::SVN::* to the
+      git-svn package, not git.
+    * debian/control: git-svn: Breaks: and Replaces: old git.
+  * debian/rules: install perl module manpages to git-man and
+    git-svn packages, as appropriate.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 04 May 2013 14:51:22 -0700
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 04 May 2013 15:04:47 -0700
 
 git (1:1.8.3~rc1-1) experimental; urgency=low
 

@@ -182,7 +182,8 @@ Architecture: all
 Multi-Arch: foreign
 Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), libsvn-perl | libsvn-core-perl, libyaml-perl, libterm-readkey-perl
 Suggests: git-doc, subversion
-Replaces: cogito (<< 0.16rc2-0)
+Breaks: git (<< 1:1.8.3~rc1-1.)
+Replaces: git (<< 1:1.8.3~rc1-1.), cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (svn interoperability)
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used for many high profile
