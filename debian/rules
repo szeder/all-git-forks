@@ -84,6 +84,8 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	rm -f '$(GIT)'/usr/share/perl5/Error.pm
 	rm -rf '$(GIT)'/usr/share/man
 	chmod 644 '$(GIT)'/usr/share/perl5/Git.pm
+	find '$(GIT)'/usr/share/perl5/Git -type d | xargs chmod 0755
+	find '$(GIT)'/usr/share/perl5/Git -type f | xargs chmod 0644
 	: 'Disable preliminary German translation.'
 	rm -rf '$(GIT)'/usr/share/locale/de
 	# don't include arch, cvs, svn, email, gui tools, and gitk program
@@ -148,9 +150,8 @@ install-indep-real: build-arch-stamp build-indep-stamp
 	rm -rf '$(GIT)'-man
 	install -d -m0755 '$(GIT)'-man/usr/share/man/man3
 	DESTDIR='$(GIT)'-man $(MAKE) install-doc $(OPTS)
-	install -m 0644 '$(TMP)'/usr/share/man/man3/Git.3pm \
-	  '$(GIT)'-man/usr/share/man/man3/Git.3pm
-	rm -f '$(GIT)'-man/usr/share/man/man3/private-Error.3pm
+	install -m 0644 '$(TMP)'/usr/share/man/man3/Git* \
+	  '$(GIT)'-man/usr/share/man/man3/
 	# don't include arch, cvs, svn, email, gui, and gitk man pages
 	for i in git-archimport git-cvs git-svn git-send-email gitk \
 	 git-gui git-citool; do \

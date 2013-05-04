@@ -1,3 +1,11 @@
+git (1:1.7.10.4-2.1) unstable; urgency=low
+
+  * debian/rules: install perl modules with correct permissions
+    (thx Christian Schwartz for suggesting it through lintian).
+  * debian/rules: install perl module manpages to git-man package.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 04 May 2013 14:12:36 -0700
+
 git (1:1.7.10.4-2) unstable; urgency=low
 
   * debian/diff:
