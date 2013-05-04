@@ -722,7 +722,8 @@ def do_export(parser):
                 pass
         elif ref.startswith('refs/tags/'):
             # TODO: implement tag push
-            pass
+            print "error %s pushing tags not supported" % ref
+            continue
         else:
             # transport-helper/fast-export bugs
             continue
