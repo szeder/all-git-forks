@@ -1,3 +1,56 @@
+Version v1.8.3-rc1; changes since v1.8.3-rc0:
+---------------------------------------------
+
+Anders Granskogen Bjørnstad (1):
+      Documentation/git-commit: Typo under --edit
+
+Felipe Contreras (5):
+      completion: add missing format-patch options
+      documentation: trivial whitespace cleanups
+      complete: zsh: trivial simplification
+      complete: zsh: use zsh completion for the main cmd
+      completion: zsh: don't override suffix on _detault
+
+H. Merijn Brand (1):
+      Git.pm: call tempfile from File::Temp as a regular function
+
+John Keeping (2):
+      merge-tree: fix typo in "both changed identically"
+      t/Makefile: remove smoke test targets
+
+Junio C Hamano (2):
+      Update draft release notes to 1.8.3
+      Git 1.8.3-rc1
+
+Marc Branchaud (1):
+      Fix grammar in the 1.8.3 release notes.
+
+Ramkumar Ramachandra (5):
+      git-completion.bash: lexical sorting for diff.statGraphWidth
+      git-completion.bash: add diff.submodule to config list
+      git-completion.bash: complete branch.*.rebase as boolean
+      git-completion.bash: add branch.*.pushremote to config list
+      git-completion.bash: add remote.pushdefault to config list
+
+Ramsay Allan Jones (2):
+      clone: Make the 'junk_mode' symbol a file static
+      pretty: Fix bug in truncation support for %>, %< and %><
+
+René Scharfe (3):
+      pretty: simplify input line length calculation in pp_user_info()
+      pretty: simplify output line length calculation in pp_user_info()
+      pretty: remove intermediate strbufs from pp_user_info()
+
+Thomas Rast (4):
+      remote: add a test for extra arguments, according to docs
+      remote: check for superfluous arguments in 'git remote add'
+      remote: 'show' and 'prune' can take more than one remote
+      unpack_entry: avoid freeing objects in base cache
+
+Zoltan Klinger (1):
+      bash-prompt.sh: show where rebase is at when stopped
+
+
 Version v1.8.3-rc0; changes since v1.8.2.2:
 -------------------------------------------
 
