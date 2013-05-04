@@ -26,6 +26,7 @@ git (1:1.8.3~rc1-1.1) experimental; urgency=low
     * git: drop Breaks against old qgit and git-buildpackage.
     * git: drop Conflicts against git-core (<< 1:1.5.2~rc3-2.).
     * git-gui: no longer Replaces git-core (<< 1:1.5.2.2-3).
+  * Use source format 3.0 (quilt).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 04 May 2013 15:04:47 -0700
 
