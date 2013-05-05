@@ -8,6 +8,8 @@ git (1:1.8.3~rc1-1.1) experimental; urgency=low
     * debian/control: git-svn: Breaks: and Replaces: old git.
   * debian/rules: install perl module manpages to git-man and
     git-svn packages, as appropriate.
+  * debian/rules: mark hooks in /usr/share/git-core/contrib/hooks/
+    as executable (thx Olivier Berger; closes: #687391).
   * debian/control: drop Depends: and Build-Depends: libc6.1
     (>= 2.10.2-6) [ia64] workaround for #563882, since that bug did
     not affect any stable release.

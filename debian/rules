@@ -158,7 +158,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	ln -s gitweb.cgi '$(GIT)'/usr/share/gitweb/index.cgi
 	# contrib hooks
 	install -d -m0755 '$(GIT)'/usr/share/git-core/contrib/hooks
-	install -m0644 contrib/hooks/* \
+	install -m0755 contrib/hooks/* \
 	  '$(GIT)'/usr/share/git-core/contrib/hooks/
 	# contrib
 	install -d -m0755 '$(GIT)'/usr/share/doc/git
