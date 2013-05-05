@@ -625,6 +625,7 @@ static void import_marks(char *input_file)
 		char *line_end, *mark_end;
 		unsigned char sha1[20];
 		struct object *object;
+		struct commit *commit;
 		enum object_type type;
 
 		line_end = strchr(line, '\n');
@@ -648,7 +649,11 @@ static void import_marks(char *input_file)
 			/* only commits */
 			continue;
 
-		object = parse_object(sha1);
+		commit = lookup_commit(sha1);
+		if (!commit)
+			die("not a commit? can't happen: %s", sha1_to_hex(sha1));
+
+		object = &commit->object;
 
 		if (object->flags & SHOWN)
 			error("Object %s already has a mark", sha1_to_hex(sha1));
