@@ -116,7 +116,7 @@ check_result 'M L H B A' -- file
 check_result 'M L H B A' --parents -- file
 check_result 'M L J I H G F D B A' --full-history -- file
 check_result 'M L K J I H G F D B A' --full-history --parents -- file
-check_result 'M H L J I G F B A' --simplify-merges -- file
+check_result 'M H L J I G F B A' --simplify-merges -- file # should check that G has parent B
 check_result 'M L K G F D B A' --first-parent
 check_result 'M L G F B A' --first-parent -- file
 
