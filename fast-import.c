@@ -1826,7 +1826,7 @@ static void read_marks(void)
 		*end = 0;
 		mark = strtoumax(line + 1, &end, 10);
 		if (!mark || end == line + 1
-			|| *end != ' ' || get_sha1(end + 1, sha1))
+			|| *end != ' ' || get_sha1_hex(end + 1, sha1))
 			die("corrupt mark line: %s", line);
 		e = find_object(sha1);
 		if (!e) {
