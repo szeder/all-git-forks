@@ -4,16 +4,15 @@ Priority: optional
 Maintainer: Gerrit Pape <pape@smarden.org>
 Uploaders: Jonathan Nieder <jrnieder@gmail.com>
 Build-Depends: libz-dev, libpcre3-dev, gettext,
- libcurl4-gnutls-dev | libcurl3-gnutls-dev, libexpat1-dev,
- subversion, libsvn-perl | libsvn-core-perl, libyaml-perl,
+ libcurl4-gnutls-dev, libexpat1-dev,
+ subversion, libsvn-perl, libyaml-perl,
  tcl8.5,
  libhttp-date-perl | libtime-modules-perl,
  bzr, python, python-bzrlib,
  cvs, cvsps, libdbd-sqlite3-perl,
  unzip, libio-pty-perl,
- dpkg-dev (>= 1.16.2~),
- libc6.1 (>= 2.10.2-6) [ia64]
-Build-Depends-Indep: asciidoc (>> 8.0.0), xmlto, docbook-xsl (>> 1.72)
+ dpkg-dev (>= 1.16.2~)
+Build-Depends-Indep: asciidoc, xmlto, docbook-xsl
 Standards-Version: 3.9.4.0
 Homepage: http://git-scm.com/
 Vcs-Git: http://smarden.org/git/git.git/
@@ -23,20 +22,18 @@ Package: git
 Architecture: any
 Multi-Arch: foreign
 Depends: ${shlibs:Depends}, perl-modules, liberror-perl,
- git-man (>> ${source:Upstream-Version}), git-man (<< ${source:Upstream-Version}-.),
- libc6.1 (>= 2.10.2-6) [ia64]
+ git-man (>> ${source:Upstream-Version}), git-man (<< ${source:Upstream-Version}-.)
 Recommends: patch, less, rsync, ssh-client
 Suggests: gettext-base, git-daemon-run | git-daemon-sysvinit,
  git-doc, git-el, git-email, git-gui, gitk, gitweb,
  git-arch, git-bzr, git-cvs, git-svn
 Replaces: gitweb (<< 1:1.7.4~rc1),
- cogito (<< 0.16rc2-0), git-core (<< 1:1.7.0.4-1.)
+ git-core (<< 1:1.7.0.4-1.)
 Breaks: bash-completion (<< 1:1.90-1), gitweb (<< 1:1.7.4~rc1),
- qgit (<< 1.5.5), git-buildpackage (<< 0.4.38), cogito (<= 0.18.2+),
+ cogito (<= 0.18.2+),
  stgit (<< 0.15), stgit-contrib (<< 0.15), gitpkg (<< 0.15),
  guilt (<< 0.33), gitosis (<< 0.2+20090917-7),
  git-core (<< 1:1.7.0.4-1.)
-Conflicts: git-core (<< 1:1.5.2~rc3-2.)
 Provides: git-completion, git-core
 Description: fast, scalable, distributed revision control system
  Git is popular version control system designed to handle very large
@@ -58,7 +55,7 @@ Section: doc
 Architecture: all
 Multi-Arch: foreign
 Replaces: git (<< 1:1.7.4~rc1),
- cogito (<< 0.16rc2-0), git-core (<< 1:1.7.0.4-1.)
+ git-core (<< 1:1.7.0.4-1.)
 Breaks: git (<< 1:1.7.4~rc1)
 Description: fast, scalable, distributed revision control system (manual pages)
  Git is popular version control system designed to handle very large
@@ -114,7 +111,6 @@ Architecture: all
 Multi-Arch: foreign
 Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), tla
 Suggests: git-doc
-Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (arch interoperability)
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used for many high profile
@@ -156,7 +152,6 @@ Architecture: all
 Multi-Arch: foreign
 Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), cvsps, libdbd-sqlite3-perl
 Suggests: git-doc, cvs
-Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (cvs interoperability)
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used for many high profile
@@ -180,10 +175,10 @@ Description: fast, scalable, distributed revision control system (cvs interopera
 Package: git-svn
 Architecture: all
 Multi-Arch: foreign
-Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), libsvn-perl | libsvn-core-perl, libyaml-perl, libterm-readkey-perl
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), libsvn-perl, libyaml-perl, libterm-readkey-perl
 Suggests: git-doc, subversion
 Breaks: git (<< 1:1.8.3~rc1-1.)
-Replaces: git (<< 1:1.8.3~rc1-1.), cogito (<< 0.16rc2-0)
+Replaces: git (<< 1:1.8.3~rc1-1.)
 Description: fast, scalable, distributed revision control system (svn interoperability)
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used for many high profile
@@ -203,7 +198,6 @@ Multi-Arch: foreign
 Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.)
 Recommends: libemail-valid-perl, libnet-smtp-ssl-perl, libauthen-sasl-perl
 Suggests: git-doc
-Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (email add-on)
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used for many high profile
@@ -220,7 +214,7 @@ Description: fast, scalable, distributed revision control system (email add-on)
 Package: git-daemon-run
 Architecture: all
 Multi-Arch: foreign
-Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), runit (>= 1.8.0-2), adduser
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), runit, adduser
 Conflicts: git-daemon-sysvinit
 Description: fast, scalable, distributed revision control system (git-daemon service)
  Git is popular version control system designed to handle very large
@@ -262,7 +256,6 @@ Package: git-gui
 Architecture: all
 Multi-Arch: foreign
 Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), tk
-Replaces: git-core (<< 1:1.5.2.2-3)
 Recommends: gitk
 Suggests: git-doc, aspell
 Description: fast, scalable, distributed revision control system (GUI)
@@ -283,9 +276,8 @@ Description: fast, scalable, distributed revision control system (GUI)
 Package: gitk
 Architecture: all
 Multi-Arch: foreign
-Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), tk (>= 8.4)
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), tk
 Suggests: git-doc
-Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (revision tree visualizer)
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used for many high profile

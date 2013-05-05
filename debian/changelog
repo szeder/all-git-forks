@@ -8,6 +8,22 @@ git (1:1.8.3~rc1-1.1) experimental; urgency=low
     * debian/control: git-svn: Breaks: and Replaces: old git.
   * debian/rules: install perl module manpages to git-man and
     git-svn packages, as appropriate.
+  * debian/control: drop Depends: and Build-Depends: libc6.1
+    (>= 2.10.2-6) [ia64] workaround for #563882, since that bug did
+    not affect any stable release.
+  * debian/control: drop dependencies on pre-Debian 5.0 (lenny)
+    packages.
+    * do not accept libcurl3-gnutls-dev as a substitute for
+      libcurl4-gnutls-dev.
+    * do not accept libsvn-core-perl as a substitute for
+      libsvn-perl.
+    * make asciidoc, docbook-xsl, runit, and tk dependencies
+      unversioned.
+    * git, git-man, git-cvs, git-svn, git-email, gitk: drop Breaks
+      and Replaces against cogito (<< 0.16rc2-0).
+    * git: drop Breaks against old qgit and git-buildpackage.
+    * git: drop Conflicts against git-core (<< 1:1.5.2~rc3-2.).
+    * git-gui: no longer Replaces git-core (<< 1:1.5.2.2-3).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 04 May 2013 15:04:47 -0700
 
