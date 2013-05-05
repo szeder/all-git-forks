@@ -138,16 +138,16 @@ check_result 'M L G' F..M --first-parent -- file
 # Note that G is pruned when E is the bottom, even if it's the same commit list
 # If we want history since E, then we're quite happy to ignore G that took E.
 check_result 'M L K J I H G' E..M --ancestry-path
-check_outcome failure 'M L J I H' E..M --ancestry-path -- file # includes G
-check_outcome failure 'M L K J I H' E..M --ancestry-path --parents -- file
-check_outcome failure 'M H L J I' E..M --ancestry-path --simplify-merges -- file # includes G
+check_result 'M L J I H' E..M --ancestry-path -- file
+check_result 'M L K J I H' E..M --ancestry-path --parents -- file
+check_result 'M H L J I' E..M --ancestry-path --simplify-merges -- file
 
 # Should still be able to ignore I-J branch in simple log, despite limiting
 # to G.
 check_result 'M L K J I H' G..M
 check_result 'M H L K J I' G..M --topo-order
-check_outcome failure 'M L H' G..M -- file # includes J I
-check_outcome failure 'M L H' G..M --parents -- file # includes J I
+check_result 'M L H' G..M -- file
+check_result 'M L H' G..M --parents -- file
 check_result 'M L J I H' G..M --full-history -- file
 check_result 'M L K J I H' G..M --full-history --parents -- file
 check_result 'M H L J I' G..M --simplify-merges -- file
@@ -161,15 +161,15 @@ check_result 'M H L J I' G..M --ancestry-path --simplify-merges -- file
 # But --full-history shouldn't drop D on its own - without simplification,
 # we can't decide if the merge from INTERESTING commit C was sensible.
 check_result 'F D C' B..F
-check_outcome failure 'F' B..F -- file # includes D
-check_outcome failure 'F' B..F --parents -- file # includes D
+check_result 'F' B..F -- file
+check_result 'F' B..F --parents -- file
 check_result 'F D' B..F --full-history -- file
 check_result 'F D' B..F --full-history --parents -- file
 check_result 'F' B..F --simplify-merges -- file
 check_result 'F D' B..F --ancestry-path
-check_outcome failure 'F' B..F --ancestry-path -- file # includes D
-check_outcome failure 'F' B..F --ancestry-path --parents -- file # includes D
-check_outcome failure 'F' B..F --ancestry-path --simplify-merges -- file # includes D
+check_result 'F' B..F --ancestry-path -- file
+check_result 'F' B..F --ancestry-path --parents -- file
+check_result 'F' B..F --ancestry-path --simplify-merges -- file
 check_result 'F D' B..F --first-parent
 check_result 'F' B..F --first-parent -- file
 
@@ -178,7 +178,7 @@ check_result 'F' B..F --first-parent -- file
 check_result 'F D B' C..F
 check_result 'F B' C..F -- file
 check_result 'F B' C..F --parents -- file
-check_outcome failure 'F D B' C..F --full-history -- file # drops D
+check_result 'F D B' C..F --full-history -- file
 check_result 'F D B' C..F --full-history --parents -- file
 check_result 'F D B' C..F --simplify-merges -- file
 check_result 'F D' C..F --ancestry-path
