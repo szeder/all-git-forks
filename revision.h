@@ -175,6 +175,9 @@ struct rev_info {
 	int count_left;
 	int count_right;
 	int count_same;
+
+	void * pPrivate;
+	struct diffstat_t diffstat;
 };
 
 #define REV_TREE_SAME		0
