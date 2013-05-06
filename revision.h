@@ -192,6 +192,9 @@ struct rev_info {
 
 	/* copies of the parent lists, for --full-diff display */
 	struct saved_parents *saved_parents_slab;
+
+	void * pPrivate;
+	struct diffstat_t diffstat;
 };
 
 #define REV_TREE_SAME		0
