@@ -195,6 +195,9 @@ struct rev_info {
 
 	/* copies of the parent lists, for --full-diff display */
 	struct saved_parents *saved_parents_slab;
+
+	void * pPrivate;
+	struct diffstat_t diffstat;
 };
 
 extern int ref_excluded(struct string_list *, const char *path);
