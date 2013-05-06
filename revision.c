@@ -1305,12 +1305,16 @@ void init_revisions(struct rev_info *revs, const char *prefix)
 
 static void add_pending_commit_list(struct rev_info *revs,
                                     struct commit_list *commit_list,
+				    int whence,
                                     unsigned int flags)
 {
 	while (commit_list) {
 		struct object *object = &commit_list->item->object;
+		const char *sha1 = sha1_to_hex(object->sha1);
 		object->flags |= flags;
-		add_pending_object(revs, object, sha1_to_hex(object->sha1));
+		if (whence != REV_CMD_NONE)
+			add_rev_cmdline(revs, object, sha1, whence, flags);
+		add_pending_object(revs, object, sha1);
 		commit_list = commit_list->next;
 	}
 }
@@ -1332,7 +1336,7 @@ static void prepare_show_merge(struct rev_info *revs)
 	add_pending_object(revs, &head->object, "HEAD");
 	add_pending_object(revs, &other->object, "MERGE_HEAD");
 	bases = get_merge_bases(head, other, 1);
-	add_pending_commit_list(revs, bases, UNINTERESTING);
+	add_pending_commit_list(revs, bases, REV_CMD_MERGE_BASE, UNINTERESTING);
 	free_commit_list(bases);
 	head->object.flags |= SYMMETRIC_LEFT;
 
@@ -1420,6 +1424,7 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsi
 			if (symmetric) {
 				exclude = get_merge_bases(a, b, 1);
 				add_pending_commit_list(revs, exclude,
+							REV_CMD_MERGE_BASE,
 							flags_exclude);
 				free_commit_list(exclude);
 				a_flags = flags | SYMMETRIC_LEFT;
