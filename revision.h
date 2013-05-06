@@ -32,10 +32,12 @@ struct rev_cmdline_info {
 		struct object *item;
 		const char *name;
 		enum {
+			REV_CMD_NONE,
 			REV_CMD_REF,
 			REV_CMD_PARENTS_ONLY,
 			REV_CMD_LEFT,
 			REV_CMD_RIGHT,
+			REV_CMD_MERGE_BASE,
 			REV_CMD_REV
 		} whence;
 		unsigned flags;

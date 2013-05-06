@@ -173,6 +173,10 @@ check_result 'F' B..F --ancestry-path --simplify-merges -- file
 check_result 'F D' B..F --first-parent
 check_result 'F' B..F --first-parent -- file
 
+# E...F should be equivalent to E F ^B, and be able to drop D as above.
+check_result 'F' E F ^B -- file
+check_result 'F' E...F -- file
+
 # Any sort of full history of C..F should show D, as it's the connection to C,
 # and it differs from it.
 check_result 'F D B' C..F
