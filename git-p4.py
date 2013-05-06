@@ -1454,6 +1454,24 @@ class P4Submit(Command, P4UserMap):
             tmpFile = open(fileName, "rb")
             message = tmpFile.read()
             tmpFile.close()
+            
+            # HACK: If Perforce spontaneously generates Windows-style output,
+            #       compensate by assuming the entire p4 command went into
+            #       Windows mode.
+            if separatorLine not in message:
+                print "WARNING: Perforce has spontaneously decided to generate Windows-style output. Compensating."
+                
+                # Assume that Perforce is now inexplicably operating in Windows mode
+                self.isWindows = True
+                
+                # Retroactively rewrite expected output
+                submitTemplate = submitTemplate.replace("\n", "\r\n")
+                separatorLine = separatorLine.replace("\n", "\r\n")
+                newdiff = newdiff.replace("\n", "\r\n")
+                
+                if separatorLine not in message:
+                    raise ValueError('Confused. Thought Perforce went into Windows mode but apparently something else is wrong.')
+            
             submitTemplate = message[:message.index(separatorLine)]
             if self.isWindows:
                 submitTemplate = submitTemplate.replace("\r\n", "\n")
