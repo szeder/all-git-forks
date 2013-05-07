@@ -708,6 +708,7 @@ static struct ref_cache {
 	struct ref_cache *next;
 	struct ref_entry *loose;
 	struct ref_entry *packed;
+	struct stat_validity packed_validity;
 	/* The submodule name, or "" for the main repo. */
 	char name[FLEX_ARRAY];
 } *ref_cache;
@@ -717,6 +718,7 @@ static void clear_packed_ref_cache(struct ref_cache *refs)
 	if (refs->packed) {
 		free_ref_entry(refs->packed);
 		refs->packed = NULL;
+		stat_validity_clear(&refs->packed_validity);
 	}
 }
 
@@ -878,17 +880,25 @@ static void read_packed_refs(FILE *f, struct ref_dir *dir)
 
 static struct ref_dir *get_packed_refs(struct ref_cache *refs)
 {
+	const char *packed_refs_file;
+
+	if (*refs->name)
+		packed_refs_file = git_path_submodule(refs->name, "packed-refs");
+	else
+		packed_refs_file = git_path("packed-refs");
+
+	if (refs->packed &&
+	    !stat_validity_check(&refs->packed_validity, packed_refs_file))
+		clear_packed_ref_cache(refs);
+
 	if (!refs->packed) {
-		const char *packed_refs_file;
 		FILE *f;
 
 		refs->packed = create_dir_entry(refs, "", 0, 0);
-		if (*refs->name)
-			packed_refs_file = git_path_submodule(refs->name, "packed-refs");
-		else
-			packed_refs_file = git_path("packed-refs");
+
 		f = fopen(packed_refs_file, "r");
 		if (f) {
+			stat_validity_update(&refs->packed_validity, fileno(f));
 			read_packed_refs(f, get_ref_dir(refs->packed));
 			fclose(f);
 		}
