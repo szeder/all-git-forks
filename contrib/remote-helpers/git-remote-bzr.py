@@ -13,8 +13,8 @@
 # or
 # % git clone bzr::lp:myrepo
 #
-# If you want to specify which branches you want track (per repo):
-# git config remote-bzr.branches 'trunk, devel, test'
+# If you want to specify which branches you want track (per remote):
+# git config remote-bzr.origin.branches 'trunk, devel, test'
 #
 
 import sys
@@ -879,7 +879,7 @@ def get_repo(url, alias):
 
     info('Updating bzr branches')
 
-    wanted = get_config('remote-bzr.branches').rstrip().split(', ')
+    wanted = get_config('remote-bzr.%s.branches' % alias).rstrip().split(', ')
     # stupid python
     wanted = [e for e in wanted if e]
 
