@@ -1083,6 +1083,43 @@ static int get_packed_ref(const char *refname, unsigned char *sha1)
 	return -1;
 }
 
+/*
+ * This should be called from resolve_ref_unsafe when a loose ref cannot be
+ * accessed; err must represent the errno from the last attempt to access the
+ * loose ref, and the other options are forwarded from resolve_safe_unsaefe.
+ */
+static const char *handle_loose_ref_failure(int err,
+					    const char *refname,
+					    unsigned char *sha1,
+					    int reading,
+					    int *flag)
+{
+	/*
+	 * If we didn't get ENOENT, something is broken
+	 * with the loose ref, and we should not fallback,
+	 * but instead pretend it doesn't exist.
+	 */
+	if (err != ENOENT)
+		return NULL;
+
+	/*
+	 * The loose reference file does not exist;
+	 * check for a packed reference.
+	 */
+	if (!get_packed_ref(refname, sha1)) {
+		if (flag)
+			*flag |= REF_ISPACKED;
+		return refname;
+	}
+
+	/* The reference is not a packed reference, either. */
+	if (reading)
+		return NULL;
+
+	hashclr(sha1);
+	return refname;
+}
+
 const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int reading, int *flag)
 {
 	int depth = MAXDEPTH;
@@ -1107,26 +1144,9 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int rea
 
 		git_snpath(path, sizeof(path), "%s", refname);
 
-		if (lstat(path, &st) < 0) {
-			if (errno != ENOENT)
-				return NULL;
-			/*
-			 * The loose reference file does not exist;
-			 * check for a packed reference.
-			 */
-			if (!get_packed_ref(refname, sha1)) {
-				if (flag)
-					*flag |= REF_ISPACKED;
-				return refname;
-			}
-			/* The reference is not a packed reference, either. */
-			if (reading) {
-				return NULL;
-			} else {
-				hashclr(sha1);
-				return refname;
-			}
-		}
+		if (lstat(path, &st) < 0)
+			return handle_loose_ref_failure(errno, refname, sha1,
+							reading, flag);
 
 		/* Follow "normalized" - ie "refs/.." symlinks by hand */
 		if (S_ISLNK(st.st_mode)) {
@@ -1156,7 +1176,8 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int rea
 		 */
 		fd = open(path, O_RDONLY);
 		if (fd < 0)
-			return NULL;
+			return handle_loose_ref_failure(errno, refname, sha1,
+							reading, flag);
 		len = read_in_full(fd, buffer, sizeof(buffer)-1);
 		close(fd);
 		if (len < 0)
