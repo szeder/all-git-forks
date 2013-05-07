@@ -470,13 +470,12 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 		struct strbuf buf = STRBUF_INIT;
 		int ret;
 		/* try the @{-N} syntax for n-th checkout */
-		ret = interpret_branch_name(str+at, &buf);
-		if (ret > 0) {
+		ret = interpret_branch_name(str, &buf);
+		if (ret > 0)
 			/* substitute this branch name and restart */
 			return get_sha1_1(buf.buf, buf.len, sha1, 0);
-		} else if (ret == 0) {
+		else if (ret == 0)
 			return -1;
-		}
 		/* allow "@{...}" to mean the current branch reflog */
 		refs_found = dwim_ref("HEAD", 4, sha1, &real_ref);
 	} else if (reflog_len)
@@ -974,6 +973,38 @@ int get_sha1_mb(const char *name, unsigned char *sha1)
 	return st;
 }
 
+/* parse @something syntax, when 'something' is not {.*} */
+static int interpret_empty_at(const char *name, int namelen, int len, struct strbuf *buf)
+{
+	if (len || name[1] == '{')
+		return -1;
+
+	strbuf_reset(buf);
+	strbuf_add(buf, "HEAD", 4);
+	return 1;
+}
+
+static int reinterpret(const char *name, int namelen, int len, struct strbuf *buf)
+{
+	/* we have extra data, which might need further processing */
+	struct strbuf tmp = STRBUF_INIT;
+	int used = buf->len;
+	int ret;
+
+	strbuf_add(buf, name + len, namelen - len);
+	ret = interpret_branch_name(buf->buf, &tmp);
+	/* that data was not interpreted, remove our cruft */
+	if (ret < 0) {
+		strbuf_setlen(buf, used);
+		return len;
+	}
+	strbuf_reset(buf);
+	strbuf_addbuf(buf, &tmp);
+	strbuf_release(&tmp);
+	/* tweak for size of {-N} versus expanded ref name */
+	return ret - used + len;
+}
+
 /*
  * This reads short-hand syntax that not only evaluates to a commit
  * object name, but also can act as if the end user spelled the name
@@ -1005,34 +1036,23 @@ int interpret_branch_name(const char *name, struct strbuf *buf)
 
 	if (!len)
 		return len; /* syntax Ok, not enough switches */
-	if (0 < len && len == namelen)
+	if (len > 0 && len == namelen)
 		return len; /* consumed all */
-	else if (0 < len) {
-		/* we have extra data, which might need further processing */
-		struct strbuf tmp = STRBUF_INIT;
-		int used = buf->len;
-		int ret;
-
-		strbuf_add(buf, name + len, namelen - len);
-		ret = interpret_branch_name(buf->buf, &tmp);
-		/* that data was not interpreted, remove our cruft */
-		if (ret < 0) {
-			strbuf_setlen(buf, used);
-			return len;
-		}
-		strbuf_reset(buf);
-		strbuf_addbuf(buf, &tmp);
-		strbuf_release(&tmp);
-		/* tweak for size of {-N} versus expanded ref name */
-		return ret - used + len;
-	}
+	else if (len > 0)
+		return reinterpret(name, namelen, len, buf);
 
 	cp = strchr(name, '@');
 	if (!cp)
 		return -1;
+
+	len = interpret_empty_at(name, namelen, cp - name, buf);
+	if (len > 0)
+		return reinterpret(name, namelen, len, buf);
+
 	tmp_len = upstream_mark(cp, namelen - (cp - name));
 	if (!tmp_len)
 		return -1;
+
 	len = cp + tmp_len - name;
 	cp = xstrndup(name, cp - name);
 	upstream = branch_get(*cp ? cp : NULL);
