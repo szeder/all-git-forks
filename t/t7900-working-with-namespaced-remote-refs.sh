@@ -129,4 +129,14 @@ test_expect_success 'rev-list machinery should work with $remote/$branch' '
 	test_cmp expect.origin_other actual.origin_other
 '
 
+cat > expect.remote_branches << EOF
+origin/master
+origin/other
+EOF
+
+test_expect_success 'list remote branches should use $remote/$branch shorthand' '
+	git branch -r > actual.remote_branches &&
+	test_cmp expect.remote_branches actual.remote_branches
+'
+
 test_done
