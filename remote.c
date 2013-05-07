@@ -966,7 +966,7 @@ static int count_refspec_match(const char *pattern,
 		char *name = refs->name;
 		int namelen = strlen(name);
 
-		if (!refname_match(pattern, name, ref_rev_parse_rules))
+		if (!refname_match(pattern, name))
 			continue;
 
 		/* A match is "weak" if it is with refs outside
@@ -1506,7 +1506,7 @@ int branch_merge_matches(struct branch *branch,
 {
 	if (!branch || i < 0 || i >= branch->merge_nr)
 		return 0;
-	return refname_match(branch->merge[i]->src, refname, ref_fetch_rules);
+	return refname_match(branch->merge[i]->src, refname);
 }
 
 static int ignore_symref_update(const char *refname)
@@ -1552,7 +1552,7 @@ static const struct ref *find_ref_by_name_abbrev(const struct ref *refs, const c
 {
 	const struct ref *ref;
 	for (ref = refs; ref; ref = ref->next) {
-		if (refname_match(name, ref->name, ref_fetch_rules))
+		if (refname_match(name, ref->name))
 			return ref;
 	}
 	return NULL;

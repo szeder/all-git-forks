@@ -1883,27 +1883,91 @@ const char *prettify_refname(const char *name)
 		0);
 }
 
-const char *ref_rev_parse_rules[] = {
-	"%.*s",
-	"refs/%.*s",
-	"refs/tags/%.*s",
-	"refs/heads/%.*s",
-	"refs/remotes/%.*s",
-	"refs/remotes/%.*s/HEAD",
-	NULL
+static const char *refname_patterns[] = {
+	"%*",
+	"refs/%*",
+	"refs/tags/%*",
+	"refs/heads/%*",
+	"refs/remotes/%*",
+	"refs/remotes/%*/HEAD"
 };
 
-int refname_match(const char *abbrev_name, const char *full_name, const char **rules)
-{
-	const char **p;
-	const int abbrev_name_len = strlen(abbrev_name);
+struct wildcard_data {
+	const char *s;
+	size_t len;
+	int done;
+};
 
-	for (p = rules; *p; p++) {
-		if (!strcmp(full_name, mkpath(*p, abbrev_name_len, abbrev_name))) {
+static size_t refname_expand_helper(struct strbuf *sb, const char *placeholder,
+				    void *context)
+{
+	struct wildcard_data *cb = context;
+	if (*placeholder == '*' && !cb->done) {
+		strbuf_add(sb, cb->s, cb->len);
+		cb->done = 1;
+		return 1;
+	}
+	return 0;
+}
+
+static int refname_expand(struct strbuf *dst, const char *pattern,
+			  const char *shortname, size_t shortname_len)
+{
+	struct wildcard_data cbdata = { shortname, shortname_len, 0 };
+	strbuf_reset(dst);
+	strbuf_expand(dst, pattern, refname_expand_helper, &cbdata);
+	if (!cbdata.done)
+		strbuf_reset(dst);
+	return !cbdata.done;
+}
+
+static int refname_shorten(struct strbuf *dst, const char *pattern,
+			   const char *refname, size_t refname_len)
+{
+	/*
+	 * Match refname against pattern, using "%*" as wildcard, and
+	 * extract the wildcard-matching portion of refname into dst.
+	 * Return 0 on success (positive match, wildcard-matching portion
+	 * copied into dst), and non-zero on failure (no match, dst empty).
+	 */
+	const char *match_end;
+	struct strbuf **fragments = strbuf_split_str(pattern, '%', 2);
+	struct strbuf *prefix = fragments[0], *suffix = fragments[1];
+	assert(!fragments[2]);
+	assert(prefix->len && prefix->buf[prefix->len - 1] == '%');
+	assert(suffix->len && suffix->buf[0] == '*');
+
+	strbuf_reset(dst);
+	match_end = refname + refname_len - (suffix->len - 1);
+	if (refname_len <= (prefix->len - 1) + (suffix->len - 1) ||
+	    memcmp(prefix->buf, refname, prefix->len - 1) ||
+	    memcmp(suffix->buf + 1, match_end, suffix->len - 1)) {
+		strbuf_list_free(fragments);
+		return 1; /* refname does not match pattern */
+	}
+
+	refname += prefix->len - 1;
+	strbuf_add(dst, refname, match_end - refname);
+	strbuf_list_free(fragments);
+	return 0;
+}
+
+int refname_match(const char *abbrev_name, const char *full_name)
+{
+	size_t i;
+	const size_t abbrev_len = strlen(abbrev_name);
+	struct strbuf exp = STRBUF_INIT;
+
+	for (i = 0; i < ARRAY_SIZE(refname_patterns); i++) {
+		if (!refname_expand(&exp, refname_patterns[i],
+				    abbrev_name, abbrev_len) &&
+		    !strcmp(full_name, exp.buf)) {
+			strbuf_release(&exp);
 			return 1;
 		}
 	}
 
+	strbuf_release(&exp);
 	return 0;
 }
 
@@ -1966,30 +2030,33 @@ static char *substitute_branch_name(const char **string, int *len)
 int dwim_ref(const char *str, int len, unsigned char *sha1, char **ref)
 {
 	char *last_branch = substitute_branch_name(&str, &len);
-	const char **p, *r;
+	struct strbuf exp = STRBUF_INIT;
 	int refs_found = 0;
+	size_t i;
 
 	*ref = NULL;
-	for (p = ref_rev_parse_rules; *p; p++) {
-		char fullref[PATH_MAX];
+	for (i = 0; i < ARRAY_SIZE(refname_patterns); i++) {
 		unsigned char sha1_from_ref[20];
 		unsigned char *this_result;
+		const char *r;
 		int flag;
 
 		this_result = refs_found ? sha1_from_ref : sha1;
-		mksnpath(fullref, sizeof(fullref), *p, len, str);
-		r = resolve_ref_unsafe(fullref, this_result, 1, &flag);
+		if (refname_expand(&exp, refname_patterns[i], str, len))
+			continue;
+		r = resolve_ref_unsafe(exp.buf, this_result, 1, &flag);
 		if (r) {
-			if (!refs_found++)
+			if ((!*ref || strcmp(*ref, r)) && !refs_found++)
 				*ref = xstrdup(r);
 			if (!warn_ambiguous_refs)
 				break;
-		} else if ((flag & REF_ISSYMREF) && strcmp(fullref, "HEAD")) {
-			warning("ignoring dangling symref %s.", fullref);
-		} else if ((flag & REF_ISBROKEN) && strchr(fullref, '/')) {
-			warning("ignoring broken ref %s.", fullref);
+		} else if ((flag & REF_ISSYMREF) && strcmp(exp.buf, "HEAD")) {
+			warning("ignoring dangling symref %s.", exp.buf);
+		} else if ((flag & REF_ISBROKEN) && strchr(exp.buf, '/')) {
+			warning("ignoring broken ref %s.", exp.buf);
 		}
 	}
+	strbuf_release(&exp);
 	free(last_branch);
 	return refs_found;
 }
@@ -1997,24 +2064,25 @@ int dwim_ref(const char *str, int len, unsigned char *sha1, char **ref)
 int dwim_log(const char *str, int len, unsigned char *sha1, char **log)
 {
 	char *last_branch = substitute_branch_name(&str, &len);
-	const char **p;
+	struct strbuf path = STRBUF_INIT;
 	int logs_found = 0;
+	size_t i;
 
 	*log = NULL;
-	for (p = ref_rev_parse_rules; *p; p++) {
+	for (i = 0; i < ARRAY_SIZE(refname_patterns); i++) {
 		struct stat st;
 		unsigned char hash[20];
-		char path[PATH_MAX];
 		const char *ref, *it;
 
-		mksnpath(path, sizeof(path), *p, len, str);
-		ref = resolve_ref_unsafe(path, hash, 1, NULL);
+		if (refname_expand(&path, refname_patterns[i], str, len))
+			continue;
+		ref = resolve_ref_unsafe(path.buf, hash, 1, NULL);
 		if (!ref)
 			continue;
-		if (!stat(git_path("logs/%s", path), &st) &&
+		if (!stat(git_path("logs/%s", path.buf), &st) &&
 		    S_ISREG(st.st_mode))
-			it = path;
-		else if (strcmp(ref, path) &&
+			it = path.buf;
+		else if (strcmp(ref, path.buf) &&
 			 !stat(git_path("logs/%s", ref), &st) &&
 			 S_ISREG(st.st_mode))
 			it = ref;
@@ -2027,6 +2095,7 @@ int dwim_log(const char *str, int len, unsigned char *sha1, char **log)
 		if (!warn_ambiguous_refs)
 			break;
 	}
+	strbuf_release(&path);
 	free(last_branch);
 	return logs_found;
 }
@@ -3204,47 +3273,20 @@ struct ref *find_ref_by_name(const struct ref *list, const char *name)
 	return NULL;
 }
 
-static int shorten_ref(const char *refname, const char *pattern, char *short_name)
-{
-	/*
-	 * pattern must be of the form "[pre]%.*s[post]". If refname
-	 * starts with "[pre]" and ends with "[post]", extract the middle
-	 * part into short_name, and return the number of chars in the
-	 * middle part (not counting the added NUL-terminator). Otherwise,
-	 * if refname does not match pattern, return 0.
-	 */
-	int match_len;
-	const char *match_start, *sep = strstr(pattern, "%.*s");
-	if (!sep || strstr(sep + 4, "%.*s"))
-		die("invalid pattern in ref_rev_parse_rules: %s", pattern);
-	match_start = refname + (sep - pattern);
-	match_len = strlen(refname) - (strlen(pattern) - 4);
-	if (match_len <= 0 ||
-	    memcmp(refname, pattern, match_start - refname) ||
-	    strcmp(match_start + match_len, sep + 4))
-		return 0; /* refname does not match */
-	memcpy(short_name, match_start, match_len);
-	short_name[match_len] = '\0';
-	return match_len;
-}
-
 char *shorten_unambiguous_ref(const char *refname, int strict)
 {
+	size_t refname_len = strlen(refname);
 	int i;
-	char *short_name;
-
-	/* buffer for scanf result, at most refname must fit */
-	short_name = xstrdup(refname);
+	struct strbuf shortname = STRBUF_INIT;
+	struct strbuf expanded = STRBUF_INIT;
 
 	/* skip first rule, it will always match */
-	for (i = ARRAY_SIZE(ref_rev_parse_rules) - 2; i > 0; --i) {
+	for (i = ARRAY_SIZE(refname_patterns) - 1; i > 0; --i) {
 		int j;
 		int rules_to_fail = i;
-		int short_name_len;
 
-		if (!(short_name_len = shorten_ref(refname,
-						   ref_rev_parse_rules[i],
-						   short_name)))
+		if (refname_shorten(&shortname, refname_patterns[i],
+				    refname, refname_len))
 			continue;
 
 		/*
@@ -3252,16 +3294,13 @@ char *shorten_unambiguous_ref(const char *refname, int strict)
 		 * must fail to resolve to a valid non-ambiguous ref
 		 */
 		if (strict)
-			rules_to_fail = ARRAY_SIZE(ref_rev_parse_rules) - 1;
+			rules_to_fail = ARRAY_SIZE(refname_patterns);
 
 		/*
 		 * check if the short name resolves to a valid ref,
 		 * but use only rules prior to the matched one
 		 */
 		for (j = 0; j < rules_to_fail; j++) {
-			const char *rule = ref_rev_parse_rules[j];
-			char refname[PATH_MAX];
-
 			/* skip matched rule */
 			if (i == j)
 				continue;
@@ -3269,23 +3308,23 @@ char *shorten_unambiguous_ref(const char *refname, int strict)
 			/*
 			 * the short name is ambiguous, if it resolves
 			 * (with this previous rule) to a valid ref
-			 * read_ref() returns 0 on success
 			 */
-			mksnpath(refname, sizeof(refname),
-				 rule, short_name_len, short_name);
-			if (ref_exists(refname))
+			if (!refname_expand(&expanded, refname_patterns[j],
+					    shortname.buf, shortname.len) &&
+			    ref_exists(expanded.buf))
 				break;
 		}
+		strbuf_release(&expanded);
 
 		/*
 		 * short name is non-ambiguous if all previous rules
 		 * haven't resolved to a valid ref
 		 */
 		if (j == rules_to_fail)
-			return short_name;
+			return strbuf_detach(&shortname, NULL);
 	}
 
-	free(short_name);
+	strbuf_release(&shortname);
 	return xstrdup(refname);
 }
 

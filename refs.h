@@ -196,6 +196,9 @@ extern int for_each_reflog(each_ref_fn, void *);
 extern int check_refname_format(const char *refname, int flags);
 
 extern const char *prettify_refname(const char *refname);
+
+extern int refname_match(const char *abbrev_name, const char *full_name);
+
 extern char *shorten_unambiguous_ref(const char *refname, int strict);
 
 /** rename ref, return 0 on success **/
