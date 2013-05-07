@@ -1822,7 +1822,7 @@ static void read_marks(void)
 		*end = 0;
 		mark = strtoumax(line + 1, &end, 10);
 		if (!mark || end == line + 1
-			|| *end != ' ' || get_sha1(end + 1, sha1))
+			|| *end != ' ' || get_sha1_hex(end + 1, sha1))
 			die("corrupt mark line: %s", line);
 		e = find_object(sha1);
 		if (!e) {
@@ -2490,7 +2490,7 @@ static void note_change_n(struct branch *b, unsigned char *old_fanout)
 		if (commit_oe->type != OBJ_COMMIT)
 			die("Mark :%" PRIuMAX " not a commit", commit_mark);
 		hashcpy(commit_sha1, commit_oe->idx.sha1);
-	} else if (!get_sha1(p, commit_sha1)) {
+	} else if (!get_sha1_hex(p, commit_sha1)) {
 		unsigned long size;
 		char *buf = read_object_with_reference(commit_sha1,
 			commit_type, &size, commit_sha1);
@@ -2604,7 +2604,7 @@ static int parse_from(struct branch *b)
 			free(buf);
 		} else
 			parse_from_existing(b);
-	} else if (!get_sha1(from, b->sha1))
+	} else if (!get_sha1_hex(from, b->sha1))
 		parse_from_existing(b);
 	else
 		die("Invalid ref name or SHA1 expression: %s", from);
@@ -2632,7 +2632,7 @@ static struct hash_list *parse_merge(unsigned int *count)
 			if (oe->type != OBJ_COMMIT)
 				die("Mark :%" PRIuMAX " not a commit", idnum);
 			hashcpy(n->sha1, oe->idx.sha1);
-		} else if (!get_sha1(from, n->sha1)) {
+		} else if (!get_sha1_hex(from, n->sha1)) {
 			unsigned long size;
 			char *buf = read_object_with_reference(n->sha1,
 				commit_type, &size, n->sha1);
@@ -2792,7 +2792,7 @@ static void parse_new_tag(void)
 		oe = find_mark(from_mark);
 		type = oe->type;
 		hashcpy(sha1, oe->idx.sha1);
-	} else if (!get_sha1(from, sha1)) {
+	} else if (!get_sha1_hex(from, sha1)) {
 		struct object_entry *oe = find_object(sha1);
 		if (!oe) {
 			type = sha1_object_info(sha1, NULL);
