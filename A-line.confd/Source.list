@@ -114,6 +114,7 @@ compat/fnmatch/fnmatch.c
 compat/inet_ntop.c
 compat/inet_pton.c
 compat/memmem.c
+compat/mmap.c
 compat/strcasestr.c
 config.c
 connect.c

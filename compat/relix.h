@@ -16,6 +16,9 @@
 // Enable #pragma cplusplus over dynamic aggregate initializers.
 #define USE_CPLUSPLUS_FOR_INIT 1
 
+// MacRelix has mmap(), but we want the small window size
+#define NO_MMAP  1
+
 #define NO_CURL  1
 #define NO_EXPAT 1
 #define NO_ICONV 1
