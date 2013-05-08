@@ -862,6 +862,7 @@ static int get_sha1_oneline(const char *prefix, unsigned char *sha1,
 struct grab_nth_branch_switch_cbdata {
 	int remaining;
 	struct strbuf buf;
+	int detached;
 };
 
 static int grab_nth_branch_switch(unsigned char *osha1, unsigned char *nsha1,
@@ -880,9 +881,14 @@ static int grab_nth_branch_switch(unsigned char *osha1, unsigned char *nsha1,
 	if (!match || !target)
 		return 0;
 	if (--(cb->remaining) == 0) {
+		unsigned char sha1[20];
+
 		len = target - match;
 		strbuf_reset(&cb->buf);
 		strbuf_add(&cb->buf, match, len);
+		cb->detached = (len == 40 &&
+				!get_sha1_hex(match, sha1) &&
+				!hashcmp(osha1, sha1));
 		return 1; /* we are done */
 	}
 	return 0;
@@ -891,8 +897,12 @@ static int grab_nth_branch_switch(unsigned char *osha1, unsigned char *nsha1,
 /*
  * Parse @{-N} syntax, return the number of characters parsed
  * if successful; otherwise signal an error with negative value.
+ * The string in buf.buf is either a branch name (needs to be
+ * prefixed with "refs/heads/" if the caller wants to make it
+ * a fully spelled refname) or 40-hex object name of the detached
+ * HEAD, and *detached is set to true for the latter.
  */
-static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf)
+static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf, int *detached)
 {
 	long nth;
 	int retval;
@@ -917,6 +927,8 @@ static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf)
 	if (0 < for_each_reflog_ent_reverse("HEAD", grab_nth_branch_switch, &cb)) {
 		strbuf_reset(buf);
 		strbuf_add(buf, cb.buf.buf, cb.buf.len);
+		if (detached)
+			*detached = cb.detached;
 		retval = brace - name + 1;
 	}
 
@@ -992,7 +1004,7 @@ int interpret_branch_name(const char *name, struct strbuf *buf)
 	char *cp;
 	struct branch *upstream;
 	int namelen = strlen(name);
-	int len = interpret_nth_prior_checkout(name, buf);
+	int len = interpret_nth_prior_checkout(name, buf, NULL);
 	int tmp_len;
 
 	if (!len)
