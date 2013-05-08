@@ -1004,15 +1004,21 @@ int interpret_branch_name(const char *name, struct strbuf *buf)
 	char *cp;
 	struct branch *upstream;
 	int namelen = strlen(name);
-	int len = interpret_nth_prior_checkout(name, buf, NULL);
+	int detached;
+	int len = interpret_nth_prior_checkout(name, buf, &detached);
 	int tmp_len;
 
 	if (!len)
 		return len; /* syntax Ok, not enough switches */
 	if (0 < len && len == namelen)
 		return len; /* consumed all */
-	else if (0 < len) {
-		/* we have extra data, which might need further processing */
+	else if (0 < len && !detached) {
+		/*
+		 * We have extra data, which might need further
+		 * processing.  E.g. for the original "@{-1}@{u}" we
+		 * have converted @{-1} into buf and yet to process
+		 * the remaining @{u} part.
+		 */
 		struct strbuf tmp = STRBUF_INIT;
 		int used = buf->len;
 		int ret;
