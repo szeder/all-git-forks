@@ -42,10 +42,6 @@ int mingw_fstat(int fd, struct stat *buf);
 #undef ALREADY_DECLARED_STAT_FUNCS
 
 /* Git runtime infomation */
-#define RUNTIME_PREFIX
-#define PREFIX "."
-#define BINDIR "bin"
-
 #define SHA1_HEADER "block-sha1\\sha1.h"
 
 #define ETC_GITCONFIG "etc\\gitconfig"
