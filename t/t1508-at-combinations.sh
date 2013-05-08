@@ -4,22 +4,24 @@ test_description='test various @{X} syntax combinations together'
 . ./test-lib.sh
 
 check() {
-test_expect_${4:-success} "$1 = $3" "
-	if [ '$2' == 'commit' ]; then
+	test_expect_${4:-success} "$1 = $3" "
 		echo '$3' >expect &&
-		git log -1 --format=%s '$1' >actual
-	else
-		echo '$3' >expect &&
-		git rev-parse --symbolic-full-name '$1' >actual
-	fi &&
-	test_cmp expect actual
-"
+		if test '$2' = 'commit'
+		then
+			git log -1 --format=%s '$1' >actual
+		else
+			git rev-parse --symbolic-full-name '$1' >actual
+		fi &&
+		test_cmp expect actual
+	"
 }
+
 nonsense() {
-test_expect_${2:-success} "$1 is nonsensical" "
-	test_must_fail git log -1 '$1'
-"
+	test_expect_${2:-success} "$1 is nonsensical" "
+		test_must_fail git log -1 '$1'
+	"
 }
+
 fail() {
 	"$@" failure
 }
