@@ -792,7 +792,7 @@ static int push_refs_with_export(struct transport *transport,
 	struct ref *ref;
 	struct child_process *helper, exporter;
 	struct helper_data *data = transport->data;
-	struct string_list revlist_args = STRING_LIST_INIT_NODUP;
+	struct string_list revlist_args = STRING_LIST_INIT_DUP;
 	struct strbuf buf = STRBUF_INIT;
 
 	if (flags & TRANSPORT_PUSH_DRY_RUN) {
@@ -827,13 +827,23 @@ static int push_refs_with_export(struct transport *transport,
 			die("remote-helpers do not support ref deletion");
 		}
 
-		if (ref->peer_ref)
+		if (ref->peer_ref) {
+			if (strcmp(ref->name, ref->peer_ref->name)) {
+				struct strbuf buf = STRBUF_INIT;
+				strbuf_addf(&buf, "%s:%s", ref->peer_ref->name, ref->name);
+				string_list_append(&revlist_args, "--refspec");
+				string_list_append(&revlist_args, buf.buf);
+				strbuf_release(&buf);
+			}
 			string_list_append(&revlist_args, ref->peer_ref->name);
+		}
 
 	}
 
 	if (get_exporter(transport, &exporter, &revlist_args))
 		die("Couldn't run fast-export");
+
+	string_list_clear(&revlist_args, 1);
 
 	if (finish_command(&exporter))
 		die("Error while running fast-export");
