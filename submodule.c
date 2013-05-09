@@ -674,12 +674,12 @@ static int parse_submodule_config_into_cache(const char *var, const char *value,
 {
 	struct parse_submodule_config_parameter *me = data;
 	struct submodule_config *submodule_config;
+	struct strbuf name = STRBUF_INIT, item = STRBUF_INIT;
 
 	/* We only read submodule.<name> entries */
 	if (prefixcmp(var, "submodule."))
 		return 0;
 
-	struct strbuf name = STRBUF_INIT, item = STRBUF_INIT;
 	if (!name_and_item_from_var(var, &name, &item))
 		return 0;
 
