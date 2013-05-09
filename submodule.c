@@ -858,10 +858,11 @@ static void calculate_changed_submodule_paths(void)
 
 static int get_fetch_recurse_config(const char *name, int command_line_option)
 {
+	struct string_list_item *fetch_recurse_submodules_option;
+
 	if (command_line_option != RECURSE_SUBMODULES_DEFAULT)
 		return command_line_option;
 
-	struct string_list_item *fetch_recurse_submodules_option;
 	fetch_recurse_submodules_option = unsorted_string_list_lookup(&config_fetch_recurse_submodules_for_name, name);
 	if (fetch_recurse_submodules_option)
 		/* local config overrules everything except commandline */
