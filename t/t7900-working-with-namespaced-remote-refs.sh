@@ -83,7 +83,7 @@ test_expect_success 'enter client repo' '
 	cd client
 '
 
-test_expect_failure 'short-hand notation expands correctly for remote-tracking branches' '
+test_expect_success 'short-hand notation expands correctly for remote-tracking branches' '
 	echo refs/peers/origin/heads/master >expect &&
 	git rev-parse --symbolic-full-name refs/peers/origin/heads/master >actual &&
 	test_cmp expect actual &&
@@ -95,7 +95,7 @@ test_expect_failure 'short-hand notation expands correctly for remote-tracking b
 	test_cmp expect actual
 '
 
-test_expect_failure 'remote-tracking branches are shortened correctly' '
+test_expect_success 'remote-tracking branches are shortened correctly' '
 	echo origin/master >expect &&
 	git rev-parse --abbrev-ref refs/peers/origin/heads/master >actual &&
 	test_cmp expect actual &&

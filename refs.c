@@ -1889,7 +1889,10 @@ static const char *refname_patterns[] = {
 	"refs/tags/%*",
 	"refs/heads/%*",
 	"refs/remotes/%*",
-	"refs/remotes/%*/HEAD"
+	"refs/remotes/%*/HEAD",
+	"refs/peers/%*",
+	"refs/peers/%1/tags/%*",
+	"refs/peers/%1/heads/%*"
 };
 
 struct wildcard_data {
@@ -1906,6 +1909,15 @@ static size_t refname_expand_helper(struct strbuf *sb, const char *placeholder,
 		strbuf_add(sb, cb->s, cb->len);
 		cb->done = 1;
 		return 1;
+	} else if (*placeholder == '1' && !cb->done) {
+		const char *p = memchr(cb->s, '/', cb->len);
+		size_t copy_len = p ? p - cb->s : cb->len;
+		strbuf_add(sb, cb->s, copy_len);
+		if (copy_len < cb->len && cb->s[copy_len] == '/')
+			copy_len++;
+		cb->s += copy_len;
+		cb->len -= copy_len;
+		return 1;
 	}
 	return 0;
 }
@@ -1921,6 +1933,46 @@ static int refname_expand(struct strbuf *dst, const char *pattern,
 	return !cbdata.done;
 }
 
+static int handle_fragment(struct strbuf *dst, struct strbuf *fragment,
+			   int first, int last,
+			   const char *refname, size_t refname_len)
+{
+	const char *ref = refname, *p;
+	size_t ref_len = refname_len, trail_len;
+	if (!first) {
+		/* extract wildcard according to wildcard char */
+		switch (fragment->buf[0]) {
+		case '1':
+			/* extract up to next '/' from refname */
+			p = memchr(ref, '/', ref_len);
+			if (!p)
+				return -1;
+			strbuf_add(dst, ref, p - ref);
+			strbuf_addch(dst, '/');
+			ref_len -= p - ref;
+			ref += p - ref;
+			break;
+		case '*':
+			/* extract all up to matching trailer */
+			assert(last);
+			trail_len = fragment->len - 1;
+			if (trail_len > ref_len)
+				return -1;
+			strbuf_add(dst, ref, ref_len - trail_len);
+			ref += ref_len - trail_len;
+			ref_len -= ref_len - trail_len;
+			break;
+		}
+	}
+
+	/* match rest of fragment verbatim */
+	p = fragment->buf + (first ? 0 : 1); /* skip wildcard character */
+	trail_len = fragment->len - ((first ? 0 : 1) + (last ? 0 : 1));
+	if (trail_len > ref_len || memcmp(ref, p, trail_len))
+		return -1;
+	return (ref - refname) + trail_len;
+}
+
 static int refname_shorten(struct strbuf *dst, const char *pattern,
 			   const char *refname, size_t refname_len)
 {
@@ -1930,26 +1982,43 @@ static int refname_shorten(struct strbuf *dst, const char *pattern,
 	 * Return 0 on success (positive match, wildcard-matching portion
 	 * copied into dst), and non-zero on failure (no match, dst empty).
 	 */
-	const char *match_end;
-	struct strbuf **fragments = strbuf_split_str(pattern, '%', 2);
-	struct strbuf *prefix = fragments[0], *suffix = fragments[1];
-	assert(!fragments[2]);
-	assert(prefix->len && prefix->buf[prefix->len - 1] == '%');
-	assert(suffix->len && suffix->buf[0] == '*');
+	struct strbuf **fragments = strbuf_split_str(pattern, '%', 0);
+	struct strbuf **it;
+	int first = 1, last, ret = 1;
 
 	strbuf_reset(dst);
-	match_end = refname + refname_len - (suffix->len - 1);
-	if (refname_len <= (prefix->len - 1) + (suffix->len - 1) ||
-	    memcmp(prefix->buf, refname, prefix->len - 1) ||
-	    memcmp(suffix->buf + 1, match_end, suffix->len - 1)) {
-		strbuf_list_free(fragments);
-		return 1; /* refname does not match pattern */
-	}
+	for (it = fragments; *it; it++) {
+		int consumed;
+		struct strbuf *cur = *it;
+		last = *(it + 1) == NULL;
 
-	refname += prefix->len - 1;
-	strbuf_add(dst, refname, match_end - refname);
+		/* all but last ends with '%' */
+		assert(last || cur->buf[cur->len - 1] == '%');
+		/* all but first starts with '*' or '1' */
+		assert(first || cur->buf[0] == '*' || cur->buf[0] == '1');
+		/* only last starts with '*' */
+		assert((cur->buf[0] == '*' && last) ||
+		       (cur->buf[0] != '*' && !last));
+
+		consumed = handle_fragment(dst, cur, first, last,
+					   refname, refname_len);
+		if (consumed < 0)
+			goto cleanup;
+		else {
+			refname += consumed;
+			refname_len -= consumed;
+		}
+
+		first = 0;
+	}
+	if (refname_len == 0)
+		ret = 0;
+
+cleanup:
+	if (ret)
+		strbuf_reset(dst);
 	strbuf_list_free(fragments);
-	return 0;
+	return ret;
 }
 
 int refname_match(const char *abbrev_name, const char *full_name)
