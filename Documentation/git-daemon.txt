@@ -16,8 +16,10 @@ SYNOPSIS
 	     [--reuseaddr] [--detach] [--pid-file=<file>]
 	     [--enable=<service>] [--disable=<service>]
 	     [--allow-override=<service>] [--forbid-override=<service>]
-	     [--access-hook=<path>]
-	     [--inetd | [--listen=<host_or_ipaddr>] [--port=<n>] [--user=<user> [--group=<group>]]]
+	     [--access-hook=<path>] [--[no-]informative-errors]
+	     [--inetd |
+	      [--listen=<host_or_ipaddr>] [--port=<n>]
+	      [--user=<user> [--group=<group>]]]
 	     [<directory>...]
 
 DESCRIPTION
