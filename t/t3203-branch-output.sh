@@ -106,4 +106,19 @@ EOF
 	test_i18ncmp expect actual
 '
 
+test_expect_success 'git branch -a --merged handles broken refs gracefully' '
+	cat >expect <<EOF &&
+  branch-one
+  branch-two
+* master
+  remotes/origin/HEAD -> origin/branch-one
+  remotes/origin/branch-one
+  remotes/origin/branch-two
+EOF
+	git checkout master &&
+	echo "broken ref" > .git/refs/heads/broken &&
+	test_must_fail git branch -a --merged >actual &&
+	test_cmp expect actual
+'
+
 test_done
