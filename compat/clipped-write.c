@@ -1,5 +1,5 @@
-#include <limits.h>
-#include <unistd.h>
+#include "../git-compat-util.h"
+#undef write
 
 /*
  * Version of write that will write at most INT_MAX bytes.
