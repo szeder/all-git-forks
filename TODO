@@ -1,0 +1,4 @@
+
+* fix submodule_config_cache_lookup_name final name comparision
+* fix submodule_config_cache_lookup_path final path comparision
+
