@@ -950,7 +950,7 @@ def main(args):
 
     hg_git_compat = False
     track_branches = True
-    force_push = True
+    force_push = False
 
     try:
         if get_config('remote-hg.hg-git-compat') == 'true\n':
@@ -958,8 +958,8 @@ def main(args):
             track_branches = False
         if get_config('remote-hg.track-branches') == 'false\n':
             track_branches = False
-        if get_config('remote-hg.force-push') == 'false\n':
-            force_push = False
+        if get_config('remote-hg.force-push') == 'true\n':
+            force_push = True
     except subprocess.CalledProcessError:
         pass
 
