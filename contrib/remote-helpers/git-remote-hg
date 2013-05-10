@@ -477,8 +477,6 @@ def export_ref(repo, name, kind, head):
         else:
             modified, removed = get_filechanges(repo, c, parents[0])
 
-        desc += '\n'
-
         if mode == 'hg':
             extra_msg = ''
 
