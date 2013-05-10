@@ -1463,6 +1463,11 @@ ifndef NO_MSGFMT_EXTENDED_OPTIONS
 	MSGFMT += --check --statistics
 endif
 
+ifdef NEEDS_CLIPPED_WRITE
+	BASIC_CFLAGS += -DNEEDS_CLIPPED_WRITE
+	COMPAT_OBJS += compat/clipped-write.o
+endif
+
 ifneq (,$(XDL_FAST_HASH))
 	BASIC_CFLAGS += -DXDL_FAST_HASH
 endif
