@@ -424,33 +424,31 @@ static int append_similar_ref(const char *refname, const unsigned char *sha1,
 	return 0;
 }
 
-static struct string_list guess_refs(const char *ref)
+static struct strbuf guess_refs(const char *ref)
 {
+	int i;
 	struct similar_ref_cb ref_cb;
 	struct string_list similar_refs = STRING_LIST_INIT_NODUP;
+	struct strbuf help_str = STRBUF_INIT;
 
 	ref_cb.base_ref = ref;
 	ref_cb.similar_refs = &similar_refs;
 	for_each_ref(append_similar_ref, &ref_cb);
-	return similar_refs;
+	if (similar_refs.nr > 0)
+		strbuf_addstr(&help_str, Q_("\nDid you mean this?",
+					    "\nDid you mean one of these?",
+					    similar_refs.nr));
+	for (i = 0; i < similar_refs.nr; i++) {
+		strbuf_addstr(&help_str, "\n\t");
+		strbuf_addstr(&help_str, similar_refs.items[i].string);
+	}
+	return help_str;
 }
 
-void help_unknown_ref(const char *ref, const char *cmd, const char *error)
+void help_unknown_ref(const char *ref, const char *error)
 {
-	int i;
-	struct string_list suggested_refs = guess_refs(ref);
+	struct strbuf help_str = guess_refs(ref);
 
-	fprintf_ln(stderr, _("%s: %s - %s"), cmd, ref, error);
-
-	if (suggested_refs.nr > 0) {
-		fprintf_ln(stderr,
-			   Q_("\nDid you mean this?",
-			      "\nDid you mean one of these?",
-			      suggested_refs.nr));
-		for (i = 0; i < suggested_refs.nr; i++)
-			fprintf(stderr, "\t%s\n", suggested_refs.items[i].string);
-	}
-
-	string_list_clear(&suggested_refs, 0);
-	exit(1);
+	die(_("%s - %s\n"
+	      "%s"), ref, error, help_str.buf);
 }
