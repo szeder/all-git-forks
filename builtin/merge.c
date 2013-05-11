@@ -1053,8 +1053,11 @@ static struct commit_list *collect_parents(struct commit *head_commit,
 		remotes = &commit_list_insert(head_commit, remotes)->next;
 	for (i = 0; i < argc; i++) {
 		struct commit *commit = get_merge_parent(argv[i]);
-		if (!commit)
-			help_unknown_ref(argv[i], "not something we can merge");
+		if (!commit) {
+			const char *corrected_ref =
+				help_unknown_ref(argv[i], "not something we can merge");
+			commit = get_merge_parent(corrected_ref);
+		}
 		remotes = &commit_list_insert(commit, remotes)->next;
 	}
 	*remotes = NULL;

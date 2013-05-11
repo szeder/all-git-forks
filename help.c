@@ -406,9 +406,28 @@ int cmd_version(int argc, const char **argv, const char *prefix)
 	return 0;
 }
 
+struct ref_help_config_cb {
+	int autocorrect;
+	int autocorrect_refs;
+};
+
+#define REF_HELP_CONFIG_INIT {0, 1}
+
+static int ref_help_config(const char *var, const char *value, void *cb)
+{
+	struct ref_help_config_cb *config_cb = (struct ref_help_config_cb *)cb;
+
+	if (!strcmp(var, "help.autocorrect"))
+		config_cb->autocorrect = git_config_int(var, value);
+	if (!strcmp(var, "help.autocorrect.refs"))
+		config_cb->autocorrect_refs = git_config_int(var, value);
+
+	return git_default_config(var, value, cb);
+}
+
 struct similar_ref_cb {
 	const char *base_ref;
-	struct string_list *similar_refs;
+	struct string_list *suggested_refs;
 };
 
 static int append_similar_ref(const char *refname, const unsigned char *sha1,
@@ -419,35 +438,64 @@ static int append_similar_ref(const char *refname, const unsigned char *sha1,
 	/* A remote branch of the same name is deemed similar */
 	if (!prefixcmp(refname, "refs/remotes/") &&
 	    !strcmp(branch, cb->base_ref))
-		string_list_append(cb->similar_refs,
+		string_list_append(cb->suggested_refs,
 				   refname + strlen("refs/remotes/"));
 	return 0;
 }
 
-static struct strbuf guess_refs(const char *ref)
+static struct string_list guess_refs(const char *ref)
 {
-	int i;
 	struct similar_ref_cb ref_cb;
-	struct string_list similar_refs = STRING_LIST_INIT_NODUP;
-	struct strbuf help_str = STRBUF_INIT;
+	struct string_list suggested_refs = STRING_LIST_INIT_NODUP;
 
 	ref_cb.base_ref = ref;
-	ref_cb.similar_refs = &similar_refs;
+	ref_cb.suggested_refs = &suggested_refs;
 	for_each_ref(append_similar_ref, &ref_cb);
-	if (similar_refs.nr > 0)
-		strbuf_addstr(&help_str, Q_("\nDid you mean this?",
-					    "\nDid you mean one of these?",
-					    similar_refs.nr));
-	for (i = 0; i < similar_refs.nr; i++) {
-		strbuf_addstr(&help_str, "\n\t");
-		strbuf_addstr(&help_str, similar_refs.items[i].string);
-	}
-	return help_str;
+	return suggested_refs;
 }
 
-void help_unknown_ref(const char *ref, const char *error)
+const char *help_unknown_ref(const char *ref, const char *error)
 {
-	struct strbuf help_str = guess_refs(ref);
+	int i;
+	struct string_list suggested_refs = guess_refs(ref);
+	struct ref_help_config_cb config = REF_HELP_CONFIG_INIT;
+
+	git_config(ref_help_config, &config);
+
+	/*
+	 * Autocorrect if possible: Configuration variables 'help.autocorrect'
+	 * and 'help.autocorrect.refs' must both be non-zero.
+	 */
+
+	if (config.autocorrect_refs && config.autocorrect &&
+	    suggested_refs.nr == 1) {
+		const char *assumed = suggested_refs.items[0].string;
+		fprintf_ln(stderr,
+			   _("WARNING: %s - ref does not exist.\n"
+			     "Continuing under the assumption that you meant "
+			     "'%s'"), ref, assumed);
+		if (config.autocorrect > 0) {
+			fprintf_ln(stderr,
+				   _("in %0.1f seconds automatically..."),
+				   (float)config.autocorrect/10.0);
+			poll(NULL, 0, config.autocorrect * 100);
+		}
+		return assumed;
+	}
+
+	/* make a help string */
+
+	struct strbuf help_str = STRBUF_INIT;
+
+	if (suggested_refs.nr > 0) {
+		strbuf_addstr(&help_str, Q_("\nDid you mean this?",
+					    "\nDid you mean one of these?",
+					    suggested_refs.nr));
+		for (i = 0; i < suggested_refs.nr; i++) {
+			strbuf_addstr(&help_str, "\n\t");
+			strbuf_addstr(&help_str, suggested_refs.items[i].string);
+		}
+	}
 
 	die(_("%s - %s\n"
 	      "%s"), ref, error, help_str.buf);
