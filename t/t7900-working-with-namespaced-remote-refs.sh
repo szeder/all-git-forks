@@ -107,4 +107,25 @@ test_expect_success 'remote-tracking branches are shortened correctly' '
 	test_cmp expect actual
 '
 
+cat >expect.branch-r << EOF
+  origin/master
+  origin/other
+EOF
+
+test_expect_failure 'git branch -r should show remote-tracking branches' '
+	git branch -r >actual.branch-r &&
+	test_cmp expect.branch-r actual.branch-r
+'
+
+cat >expect.branch-a << EOF
+* master
+  peers/origin/heads/master
+  peers/origin/heads/other
+EOF
+
+test_expect_failure 'git branch -a should also show remote-tracking branches' '
+	git branch -a >actual.branch-a &&
+	test_cmp expect.branch-a actual.branch-a
+'
+
 test_done
