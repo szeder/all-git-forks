@@ -290,18 +290,16 @@ struct ref_list {
 	int kinds;
 };
 
-static char *resolve_symref(const char *src, const char *prefix)
+static void resolve_symref(struct strbuf *shortname, const char *pattern, const char *src)
 {
 	unsigned char sha1[20];
 	int flag;
-	const char *dst, *cp;
+	const char *dst;
 
 	dst = resolve_ref_unsafe(src, sha1, 0, &flag);
-	if (!(dst && (flag & REF_ISSYMREF)))
-		return NULL;
-	if (prefix && (cp = skip_prefix(dst, prefix)))
-		dst = cp;
-	return xstrdup(dst);
+	if (dst && (flag & REF_ISSYMREF) &&
+	    refname_shorten(shortname, pattern, dst, strlen(dst)))
+		strbuf_addstr(shortname, dst);
 }
 
 struct append_ref_cb {
@@ -328,74 +326,80 @@ static int append_ref(const char *refname, const unsigned char *sha1, int flags,
 	struct ref_list *ref_list = cb->ref_list;
 	struct ref_item *newitem;
 	struct commit *commit;
+	struct strbuf ref = STRBUF_INIT;
 	int kind, i;
-	const char *prefix, *orig_refname = refname;
+	const char *pattern;
+	size_t refname_len = strlen(refname);
 
 	static struct {
 		int kind;
-		const char *prefix;
-		int pfxlen;
+		const char *pattern;
 	} ref_kind[] = {
-		{ REF_LOCAL_BRANCH, "refs/heads/", 11 },
-		{ REF_REMOTE_BRANCH, "refs/remotes/", 13 },
+		{ REF_LOCAL_BRANCH, "refs/heads/%*" },
+		{ REF_REMOTE_BRANCH, "refs/remotes/%*" },
+		{ REF_REMOTE_BRANCH, "refs/peers/%1/heads/%*" },
 	};
 
 	/* Detect kind */
 	for (i = 0; i < ARRAY_SIZE(ref_kind); i++) {
-		prefix = ref_kind[i].prefix;
-		if (strncmp(refname, prefix, ref_kind[i].pfxlen))
+		if (refname_shorten(&ref, ref_kind[i].pattern, refname, refname_len))
 			continue;
 		kind = ref_kind[i].kind;
-		refname += ref_kind[i].pfxlen;
+		pattern = ref_kind[i].pattern;
 		break;
 	}
 	if (ARRAY_SIZE(ref_kind) <= i)
-		return 0;
+		goto out;
 
 	/* Don't add types the caller doesn't want */
 	if ((kind & ref_list->kinds) == 0)
-		return 0;
+		goto out;
 
-	if (!match_patterns(cb->pattern, refname))
-		return 0;
+	if (!match_patterns(cb->pattern, ref.buf))
+		goto out;
 
 	commit = NULL;
 	if (ref_list->verbose || ref_list->with_commit || merge_filter != NO_FILTER) {
 		commit = lookup_commit_reference_gently(sha1, 1);
 		if (!commit) {
-			cb->ret = error(_("branch '%s' does not point at a commit"), refname);
-			return 0;
+			cb->ret = error(_("branch '%s' does not point at a commit"), ref.buf);
+			goto out;
 		}
 
 		/* Filter with with_commit if specified */
 		if (!is_descendant_of(commit, ref_list->with_commit))
-			return 0;
+			goto out;
 
 		if (merge_filter != NO_FILTER)
 			add_pending_object(&ref_list->revs,
-					   (struct object *)commit, refname);
+					   (struct object *)commit, ref.buf);
 	}
+
+	/*
+	 * When displaying more than just remote-tracking branches, make the
+	 * remote-tracking branches more explicit, e.g. instead of printing
+	 * "origin/master", we should print "remote/origin/master" (or
+	 * "peers/origin/heads/master").
+	 */
+	if (kind == REF_REMOTE_BRANCH && ref_list->kinds != REF_REMOTE_BRANCH)
+		refname_shorten(&ref, "refs/%*", refname, refname_len);
 
 	ALLOC_GROW(ref_list->list, ref_list->index + 1, ref_list->alloc);
 
 	/* Record the new item */
 	newitem = &(ref_list->list[ref_list->index++]);
 	strbuf_init(&newitem->name, 0);
-	strbuf_addstr(&newitem->name, refname);
+	strbuf_addbuf(&newitem->name, &ref);
 	newitem->kind = kind;
 	newitem->commit = commit;
 	strbuf_init(&newitem->dest, 0);
-	orig_refname = resolve_symref(orig_refname, prefix);
-	if (orig_refname)
-		strbuf_addstr(&newitem->dest, orig_refname);
-	/* adjust for "remotes/" */
-	if (newitem->kind == REF_REMOTE_BRANCH &&
-	    ref_list->kinds != REF_REMOTE_BRANCH)
-		strbuf_insert(&newitem->name, 0, "remotes/", 8);
+	resolve_symref(&newitem->dest, pattern, refname);
 	newitem->width = utf8_strwidth(newitem->name.buf);
 	if (newitem->width > ref_list->maxwidth)
 		ref_list->maxwidth = newitem->width;
 
+out:
+	strbuf_release(&ref);
 	return 0;
 }
 

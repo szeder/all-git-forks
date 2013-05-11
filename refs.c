@@ -1973,8 +1973,8 @@ static int handle_fragment(struct strbuf *dst, struct strbuf *fragment,
 	return (ref - refname) + trail_len;
 }
 
-static int refname_shorten(struct strbuf *dst, const char *pattern,
-			   const char *refname, size_t refname_len)
+int refname_shorten(struct strbuf *dst, const char *pattern,
+		    const char *refname, size_t refname_len)
 {
 	/*
 	 * Match refname against pattern, using "%*" as wildcard, and

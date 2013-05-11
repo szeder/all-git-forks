@@ -197,6 +197,9 @@ extern int check_refname_format(const char *refname, int flags);
 
 extern const char *prettify_refname(const char *refname);
 
+extern int refname_shorten(struct strbuf *dst, const char *pattern,
+			   const char *refname, size_t refname_len);
+
 extern int refname_match(const char *abbrev_name, const char *full_name);
 
 extern char *shorten_unambiguous_ref(const char *refname, int strict);
