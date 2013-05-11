@@ -8,12 +8,16 @@ struct patch_id {
 
 struct patch_ids {
 	struct diff_options diffopts;
+	struct notes_tree *cache;
+	char *diffopts_hash;
+	size_t diffopts_hash_len;
 	int nr, alloc;
 	struct patch_id **table;
 	struct patch_id_bucket *patches;
 };
 
 int init_patch_ids(struct patch_ids *);
+int setup_patch_ids(struct patch_ids *);
 int free_patch_ids(struct patch_ids *);
 struct patch_id *add_commit_patch_id(struct commit *, struct patch_ids *);
 struct patch_id *has_commit_patch_id(struct commit *, struct patch_ids *);

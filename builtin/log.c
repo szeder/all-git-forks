@@ -758,6 +758,7 @@ static void get_patch_ids(struct rev_info *rev, struct patch_ids *ids)
 		die(_("Not a range."));
 
 	init_patch_ids(ids);
+	setup_patch_ids(ids);
 
 	/* given a range a..b get all patch ids for b..a */
 	init_revisions(&check_rev, rev->prefix);

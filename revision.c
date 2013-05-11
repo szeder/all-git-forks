@@ -632,6 +632,7 @@ static void cherry_pick_list(struct commit_list *list, struct rev_info *revs)
 	left_first = left_count < right_count;
 	init_patch_ids(&ids);
 	ids.diffopts.pathspec = revs->diffopt.pathspec;
+	setup_patch_ids(&ids);
 
 	/* Compute patch-ids for one side */
 	for (p = list; p; p = p->next) {

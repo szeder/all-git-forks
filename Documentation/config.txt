@@ -1798,6 +1798,13 @@ pager.<cmd>::
 	precedence over this option.  To disable pagination for all
 	commands, set `core.pager` or `GIT_PAGER` to `cat`.
 
+patchid.cacheRef::
+	The name of a notes ref in which to store patch IDs for commits.
+	The ref is taken to be in `refs/notes/` if it is not qualified.
++
+Note that the patch ID notes are never pruned automatically, so you may
+wish to periodically run `git notes --ref <ref> prune` against this ref.
+
 pretty.<name>::
 	Alias for a --pretty= format string, as specified in
 	linkgit:git-log[1]. Any aliases defined here can be used just
