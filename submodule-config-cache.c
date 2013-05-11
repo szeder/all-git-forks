@@ -74,8 +74,8 @@ struct submodule_config *submodule_config_cache_lookup_path(struct submodule_con
 	struct submodule_config *config = lookup_hash(hash, &cache->for_path);
 
 	while (config &&
-		hashcmp(config->gitmodule_sha1, gitmodule_sha1) &&
-		strcmp(path, config->path.buf))
+		(hashcmp(config->gitmodule_sha1, gitmodule_sha1) ||
+		 strcmp(path, config->path.buf)))
 		config = config->next;
 
 	return config;
@@ -88,8 +88,8 @@ struct submodule_config *submodule_config_cache_lookup_name(struct submodule_con
 	struct submodule_config *config = lookup_hash(hash, &cache->for_name);
 
 	while (config &&
-		hashcmp(config->gitmodule_sha1, gitmodule_sha1) &&
-		strcmp(name, config->name.buf))
+		(hashcmp(config->gitmodule_sha1, gitmodule_sha1) ||
+		 strcmp(name, config->name.buf)))
 		config = config->next;
 
 	return config;
