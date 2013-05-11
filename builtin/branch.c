@@ -384,7 +384,6 @@ static int append_ref(const char *refname, const unsigned char *sha1, int flags,
 	strbuf_addstr(&newitem->name, refname);
 	newitem->kind = kind;
 	newitem->commit = commit;
-	newitem->width = utf8_strwidth(refname);
 	strbuf_init(&newitem->dest, 0);
 	orig_refname = resolve_symref(orig_refname, prefix);
 	if (orig_refname)
@@ -392,7 +391,8 @@ static int append_ref(const char *refname, const unsigned char *sha1, int flags,
 	/* adjust for "remotes/" */
 	if (newitem->kind == REF_REMOTE_BRANCH &&
 	    ref_list->kinds != REF_REMOTE_BRANCH)
-		newitem->width += 8;
+		strbuf_insert(&newitem->name, 0, "remotes/", 8);
+	newitem->width = utf8_strwidth(newitem->name.buf);
 	if (newitem->width > ref_list->maxwidth)
 		ref_list->maxwidth = newitem->width;
 
@@ -510,12 +510,12 @@ static void add_verbose_info(struct strbuf *out, struct ref_item *item,
 }
 
 static void print_ref_item(struct ref_item *item, int maxwidth, int verbose,
-			   int abbrev, int current, char *prefix)
+			   int abbrev, int current)
 {
 	char c;
 	int color;
 	struct commit *commit = item->commit;
-	struct strbuf out = STRBUF_INIT, name = STRBUF_INIT;
+	struct strbuf out = STRBUF_INIT;
 
 	if (!matches_merge_filter(commit))
 		return;
@@ -538,15 +538,14 @@ static void print_ref_item(struct ref_item *item, int maxwidth, int verbose,
 		color = BRANCH_COLOR_CURRENT;
 	}
 
-	strbuf_addf(&name, "%s%s", prefix, item->name.buf);
 	if (verbose) {
-		int utf8_compensation = strlen(name.buf) - utf8_strwidth(name.buf);
+		int utf8_compensation = strlen(item->name.buf) - utf8_strwidth(item->name.buf);
 		strbuf_addf(&out, "%c %s%-*s%s", c, branch_get_color(color),
-			    maxwidth + utf8_compensation, name.buf,
+			    maxwidth + utf8_compensation, item->name.buf,
 			    branch_get_color(BRANCH_COLOR_RESET));
 	} else
 		strbuf_addf(&out, "%c %s%s%s", c, branch_get_color(color),
-			    name.buf, branch_get_color(BRANCH_COLOR_RESET));
+			    item->name.buf, branch_get_color(BRANCH_COLOR_RESET));
 
 	if (item->dest.len)
 		strbuf_addf(&out, " -> %s", item->dest.buf);
@@ -559,7 +558,6 @@ static void print_ref_item(struct ref_item *item, int maxwidth, int verbose,
 	} else {
 		printf("%s\n", out.buf);
 	}
-	strbuf_release(&name);
 	strbuf_release(&out);
 }
 
@@ -613,7 +611,7 @@ static void show_detached(struct ref_list *ref_list)
 		item.commit = head_commit;
 		if (item.width > ref_list->maxwidth)
 			ref_list->maxwidth = item.width;
-		print_ref_item(&item, ref_list->maxwidth, ref_list->verbose, ref_list->abbrev, 1, "");
+		print_ref_item(&item, ref_list->maxwidth, ref_list->verbose, ref_list->abbrev, 1);
 		strbuf_release(&item.name);
 	}
 }
@@ -661,11 +659,8 @@ static int print_ref_list(int kinds, int detached, int verbose, int abbrev, stru
 		int current = !detached &&
 			(ref_list.list[i].kind == REF_LOCAL_BRANCH) &&
 			!strcmp(ref_list.list[i].name.buf, head);
-		char *prefix = (kinds != REF_REMOTE_BRANCH &&
-				ref_list.list[i].kind == REF_REMOTE_BRANCH)
-				? "remotes/" : "";
 		print_ref_item(&ref_list.list[i], ref_list.maxwidth, verbose,
-			       abbrev, current, prefix);
+			       abbrev, current);
 	}
 
 	free_ref_list(&ref_list);
