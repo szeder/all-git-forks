@@ -1054,6 +1054,7 @@ ifeq ($(uname_S),Darwin)
 			BASIC_LDFLAGS += -L/opt/local/lib
 		endif
 	endif
+	COMMON_DIGEST_HMAC = YesPlease
 	NO_REGEX = YesPlease
 	PTHREAD_LIBS =
 endif
@@ -1392,6 +1393,10 @@ else
 	SHA1_HEADER = <openssl/sha.h>
 	EXTLIBS += $(LIB_4_CRYPTO)
 endif
+endif
+
+ifdef COMMON_DIGEST_HMAC
+	BASIC_CFLAGS += -DCOMMON_DIGEST_FOR_HMAC
 endif
 ifdef NO_PERL_MAKEMAKER
 	export NO_PERL_MAKEMAKER
