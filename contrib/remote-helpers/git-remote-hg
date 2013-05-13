@@ -12,7 +12,7 @@
 # For remote repositories a local clone is stored in
 # "$GIT_DIR/hg/origin/clone/.hg/".
 
-from mercurial import hg, ui, bookmarks, context, encoding, node, error, extensions
+from mercurial import hg, ui, bookmarks, context, encoding, node, error, extensions, discovery
 
 import re
 import sys
@@ -843,6 +843,54 @@ def write_tag(repo, tag, node, msg, author):
 
     return tagnode
 
+def push_unsafe(repo, remote, parsed_refs, p_revs):
+
+    unfi = repo.unfiltered()
+    force = force_push
+
+    fci = discovery.findcommonincoming
+    commoninc = fci(unfi, remote, force=force)
+    common, inc, remoteheads = commoninc
+    fco = discovery.findcommonoutgoing
+    outgoing = fco(unfi, remote, onlyheads=list(p_revs), commoninc=commoninc, force=force)
+
+    if not outgoing.missing:
+        # nothing to push
+        return None
+
+    if not force:
+        discovery.checkheads(unfi, remote, outgoing, remoteheads, True, bool(inc))
+
+    cg = repo.getlocalbundle('push', outgoing)
+
+    unbundle = remote.capable('unbundle')
+    if unbundle:
+        if force:
+            remoteheads = ['force']
+        return remote.unbundle(cg, remoteheads, 'push')
+    else:
+        return remote.addchangegroup(cg, 'push', repo.url())
+
+def push(repo, remote, parsed_refs, p_revs):
+    if not remote.canpush():
+        print "error cannot push"
+
+    if not p_revs:
+        # nothing to push
+        return
+
+    lock = None
+    unbundle = remote.capable('unbundle')
+    if not unbundle:
+        lock = remote.lock()
+    try:
+        ret = push_unsafe(repo, remote, parsed_refs, p_revs)
+    finally:
+        if lock is not None:
+            lock.release()
+
+    return ret
+
 def do_export(parser):
     global parsed_refs, bmarks, peer
 
@@ -910,7 +958,7 @@ def do_export(parser):
             continue
 
     if peer:
-        parser.repo.push(peer, force=force_push, newbranch=True, revs=list(p_revs))
+        push(parser.repo, peer, parsed_refs, p_revs)
 
         # update remote bookmarks
         remote_bmarks = peer.listkeys('bookmarks')
