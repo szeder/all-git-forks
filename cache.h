@@ -10,10 +10,17 @@
 
 #include SHA1_HEADER
 #ifndef git_SHA_CTX
+#ifdef COMMON_DIGEST_FOR_SHA1
+#define git_SHA_CTX	CC_SHA1_CTX
+#define git_SHA1_Init	CC_SHA1_Init
+#define git_SHA1_Update	CC_SHA1_Update
+#define git_SHA1_Final	CC_SHA1_Final
+#else
 #define git_SHA_CTX	SHA_CTX
 #define git_SHA1_Init	SHA1_Init
 #define git_SHA1_Update	SHA1_Update
 #define git_SHA1_Final	SHA1_Final
+#endif
 #endif
 
 #include <zlib.h>
