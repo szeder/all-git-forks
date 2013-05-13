@@ -213,7 +213,7 @@ test_expect_success 'authors' '
 	author_test zeta " test " "test <>" &&
 	author_test eta "test < test@example.com >" "test <test@example.com>" &&
 	author_test theta "test >test@example.com>" "test <test@example.com>" &&
-	author_test iota "test < test <at> example <dot> com>" "test <>" &&
+	author_test iota "test < test <at> example <dot> com>" "test <test at example dot com>" &&
 	author_test kappa "test@example.com" "Unknown <test@example.com>"
 	) &&
 
