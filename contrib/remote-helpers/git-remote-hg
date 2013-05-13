@@ -883,14 +883,7 @@ def write_tag(repo, tag, node, msg, author):
         user, date, tz = author
         date_tz = (date, tz)
     else:
-        cmd = ['git', 'var', 'GIT_COMMITTER_IDENT']
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        output, _ = process.communicate()
-        m = re.match('^.* <.*>', output)
-        if m:
-            user = m.group(0)
-        else:
-            user = repo.ui.username()
+        user = repo.ui.username()
         date_tz = None
 
     ctx = context.memctx(repo, (p1, p2), msg,
