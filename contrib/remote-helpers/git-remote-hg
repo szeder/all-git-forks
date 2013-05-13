@@ -893,7 +893,7 @@ def do_export(parser):
                 write_tag(parser.repo, tag, node, msg, author)
             else:
                 fp = parser.repo.opener('localtags', 'a')
-                fp.write('%s %s\n' % (hghex(node), tag))
+                fp.write('%s %s\n' % (node, tag))
                 fp.close()
             print "ok %s" % ref
         else:
