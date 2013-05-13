@@ -589,9 +589,12 @@ def do_list(parser):
     list_head(repo, cur)
 
     if track_branches:
-        for branch in repo.branchmap():
-            heads = repo.branchheads(branch)
-            if len(heads):
+        orig = peer if peer else repo
+
+        for branch, heads in orig.branchmap().iteritems():
+            # only open heads
+            heads = [h for h in heads if not repo[h].closesbranch()]
+            if heads:
                 branches[branch] = heads
 
         for branch in branches:
