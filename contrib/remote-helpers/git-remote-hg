@@ -357,6 +357,9 @@ def get_repo(url, alias):
                 die('Repository error')
             repo.pull(peer, heads=None, force=True)
 
+        rb = peer.listkeys('bookmarks')
+        bookmarks.updatefromremote(myui, repo, rb, url)
+
     return repo
 
 def rev_to_mark(rev):
@@ -850,7 +853,8 @@ def do_export(parser):
             continue
 
     if peer:
-        parser.repo.push(peer, force=force_push)
+        parser.repo.push(peer, force=force_push, newbranch=True)
+        remote_bmarks = peer.listkeys('bookmarks')
 
     # handle bookmarks
     for bmark, node in p_bmarks:
@@ -867,7 +871,8 @@ def do_export(parser):
 
         if bmark == 'master' and 'master' not in parser.repo._bookmarks:
             # fake bookmark
-            pass
+            print "ok %s" % ref
+            continue
         elif bookmarks.pushbookmark(parser.repo, bmark, old, new):
             # updated locally
             pass
@@ -876,8 +881,7 @@ def do_export(parser):
             continue
 
         if peer:
-            rb = peer.listkeys('bookmarks')
-            old = rb.get(bmark, '')
+            old = remote_bmarks.get(bmark, '')
             if not peer.pushkey('bookmarks', bmark, old, new):
                 print "error %s" % ref
                 continue
@@ -908,7 +912,7 @@ def main(args):
 
     hg_git_compat = False
     track_branches = True
-    force_push = True
+    force_push = False
 
     try:
         if get_config('remote-hg.hg-git-compat') == 'true\n':
@@ -916,8 +920,8 @@ def main(args):
             track_branches = False
         if get_config('remote-hg.track-branches') == 'false\n':
             track_branches = False
-        if get_config('remote-hg.force-push') == 'false\n':
-            force_push = False
+        if get_config('remote-hg.force-push') == 'true\n':
+            force_push = True
     except subprocess.CalledProcessError:
         pass
 
