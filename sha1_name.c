@@ -436,12 +436,18 @@ static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf);
 static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 {
 	static const char *warn_msg = "refname '%.*s' is ambiguous.";
+	unsigned char tmp_sha1[20];
 	char *real_ref = NULL;
 	int refs_found = 0;
 	int at, reflog_len, nth_prior = 0;
 
-	if (len == 40 && !get_sha1_hex(str, sha1))
+	if (len == 40 && !get_sha1_hex(str, sha1)) {
+		refs_found = dwim_ref(str, len, tmp_sha1, &real_ref);
+		if (refs_found > 0 && warn_ambiguous_refs)
+			warning(warn_msg, len, str);
+		free(real_ref);
 		return 0;
+	}
 
 	/* basic@{time or number or -number} format to query ref-log */
 	reflog_len = at = 0;
@@ -491,7 +497,9 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 	if (!refs_found)
 		return -1;
 
-	if (warn_ambiguous_refs && refs_found > 1)
+	if (warn_ambiguous_refs &&
+	    (refs_found > 1 ||
+	     !get_short_sha1(str, len, tmp_sha1, GET_SHA1_QUIETLY)))
 		warning(warn_msg, len, str);
 
 	if (reflog_len) {
