@@ -50,7 +50,7 @@ import time as ptime
 # Commits are modified to preserve hg information and allow bidirectionality.
 #
 
-NAME_RE = re.compile('^([^<>]+)')
+NAME_RE = re.compile('^([^<>]+) ?(.*)$')
 AUTHOR_RE = re.compile('^([^<>]+?)? ?<([^<>]*)>$')
 EMAIL_RE = re.compile('^([^<>]+[^ \\\t<>])?\\b(?:[ \\t<>]*?)\\b([^ \\t<>]+@[^ \\t<>]+)')
 AUTHOR_HG_RE = re.compile('^(.*?) ?<(.*?)(?:>(.+)?)?$')
@@ -321,7 +321,10 @@ def fixup_user_git(user):
         else:
             m = NAME_RE.match(user)
             if m:
-                name = m.group(1).strip()
+                name = m.group(1)
+                mail = m.group(2)
+                mail = mail.translate(None, "<>").strip()
+
     return (name, mail)
 
 def fixup_user_hg(user):
