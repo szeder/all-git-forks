@@ -319,7 +319,7 @@ test_expect_success 'remote update bookmark diverge' '
 	check_bookmark hgrepo diverge "bump bookmark"
 '
 
-test_expect_failure 'remote new bookmark multiple branch head' '
+test_expect_success 'remote new bookmark multiple branch head' '
 	test_when_finished "rm -rf gitrepo*" &&
 
 	(
