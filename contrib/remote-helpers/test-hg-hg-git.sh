@@ -114,8 +114,7 @@ setup () {
 setup
 
 test_expect_success 'executable bit' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	git init -q gitrepo &&
@@ -150,8 +149,7 @@ test_expect_success 'executable bit' '
 '
 
 test_expect_success 'symlink' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	git init -q gitrepo &&
@@ -181,8 +179,7 @@ test_expect_success 'symlink' '
 '
 
 test_expect_success 'merge conflict 1' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	hg init hgrepo1 &&
@@ -216,8 +213,7 @@ test_expect_success 'merge conflict 1' '
 '
 
 test_expect_success 'merge conflict 2' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	hg init hgrepo1 &&
@@ -251,8 +247,7 @@ test_expect_success 'merge conflict 2' '
 '
 
 test_expect_success 'converged merge' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	hg init hgrepo1 &&
@@ -287,8 +282,7 @@ test_expect_success 'converged merge' '
 '
 
 test_expect_success 'encoding' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	git init -q gitrepo &&
@@ -327,8 +321,7 @@ test_expect_success 'encoding' '
 '
 
 test_expect_success 'file removal' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	git init -q gitrepo &&
@@ -367,8 +360,7 @@ test_expect_success 'file removal' '
 '
 
 test_expect_success 'git tags' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	git init -q gitrepo &&
@@ -394,8 +386,7 @@ test_expect_success 'git tags' '
 '
 
 test_expect_success 'hg author' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	for x in hg git; do
 		(
@@ -461,8 +452,7 @@ test_expect_success 'hg author' '
 '
 
 test_expect_success 'hg branch' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	for x in hg git; do
 		(
@@ -498,8 +488,7 @@ test_expect_success 'hg branch' '
 '
 
 test_expect_success 'hg tags' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	for x in hg git; do
 		(
