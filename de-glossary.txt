@@ -1,0 +1,146 @@
+Basic repository objects:
+
+    blob           = Blob
+    tree           = Baum, Baum-Objekt, "Tree"-Objekt
+    submodule      = Submodul (suggested by JL) (before it was "Unterprojekt")
+    pack(noun)     = Archiv
+    pack(verb)     = packen
+    ancestor       = Vorfahre, Vorgänger, Vorgänger-Commit
+
+Content in a repository:
+
+    file(s)        = Datei(en)
+    tracked file   = beobachtete Datei
+    track file     = beobachte Datei
+    untracked file = unbeobachtete Datei
+    directory      = Verzeichnis
+
+Repositories / tracking concepts:
+
+    clone                  = klone
+    repository             = Projektarchiv, (or just Repository?)
+    bare repository        = bloßes Projektarchiv (-||-), (reines, pures Repository)
+    working directory      = Arbeitsverzeichnis
+
+    remote branch          = externer Zweig
+    remote tracking branch = externer Übernahmezweig
+    upstream branch        = -||-
+    tracking branch        = Übernahmezweig
+
+    remote repository      = externes Projektarchiv (or 'Fernarchiv', or just Repository)
+    remote(noun)           = -||- 
+    remote(adj)            = extern
+
+Authorship:
+
+    author    = Autor
+    committer = Eintragender (or Committer, Commit-Ersteller)
+    tagger    = Markierer (or Tagger, Tag-Ersteller)
+
+Commits, tags and other references:
+
+    HEAD           = Zweigspitze (HEAD)
+    detached HEAD  = losgelöste Zweigspitze (HEAD)
+
+    commit(noun)      = Version (or Commit)
+    commit(verb)      = eintragen (or commit(ten))
+    commit the result = das Ergebnis eintragen (committen)
+    parent commit     = Elternversion (Eltern-Commit)
+    child commit      = Kindversion (Kind-Commit)
+    commit message    = Versionsbeschreibung (Commit-Beschreibung)
+
+    stash(noun)          = Lager (der Stash)
+    stash(verb)          = einlagern ("stashen", "stash" benutzen)
+    unstash(verb)        = auslagern ("unstashen", "zurückladen")
+
+    reference      = Referenz
+    revision       = Revision (use Commit instead (see dfb4410 (glossary: a revision is just a commit))
+    branch         = Zweig (or Branch)
+    tag(noun)      = Markierung (or Tag)
+    tag(verb)      = markieren (or taggen, Tag erstellen)
+    annotated tag  = annotierte Markierung (-||-)
+    tag message    = Markierungsbeschreibung (or Tag-Beschreibung)
+
+    orphan commit    = 
+    orphan reference = 
+
+    boundary commit = Grenzversion (Grenz-Commit)
+    root commit     = Ursprungsversion (Ursprungs-Commit, Wurzel, Wurzel-Commit)
+
+    stage/index (noun) = Bereitstellung (Staging-Area, Index)
+    stage/index (verb) = stagen, für einen Commit vormerken, zur Staging Area hinzufügen, dem Index hinzufügen
+    unstage (verb)     = unstagen, aus Staging Area entfernen/nehmen, aus Index entfernen/nehmen
+
+The DAG:
+
+    commit graph = Versionsgraph (Commit-Graph)
+    merge = Zusammenführung (Merge)
+
+References in relation to other references:
+
+    branches that have diverged = Zweige sind divergiert
+    diverging references        = divergierte Referenzen
+    your branch is ahead        = dein Zweig ist voraus
+    your branch is behind       = dein Zweig ist hinterher
+
+Moving data around:
+
+    fetch = anfordern
+    pull  = zusammenführen
+    push  = versenden
+
+    fast-forward     = vorspulen
+    non-fast-forward = nicht vorspulen
+
+Commands:
+
+    log                = Log
+    interactive commit = interaktive Eintragung
+    cherry-pick        = (leave it as it is? maybe "herauspicken" or "pflücken"?)
+    rebase(verb)       = neu aufbauen
+    rebase(noun)       = Neuaufbau (? Maybe "Umpflanzen" or "Basisumbau")
+    archive            = archivieren
+    revert             = zurücknehmen
+    clean(verb)        = 
+    clean(noun)        =
+    merge              = zusammenführen, mergen
+
+    bundle(noun)       = Paket
+    bundle(verb)       = Paket erstellen
+    unbundle(verb)     = Paket entpacken
+
+    bisect             = binäre Suche
+    bisecting          = bei einer binären Suche sein, binäre Suche durchführen
+
+Diff/patch related:
+
+    diff               = Differenz
+    delta              = Differenz (or Delta)
+    patch              = Patch
+    apply              = anwenden
+    diffstat           = (leave it as it is)
+    hunk               = Bereich
+    whitespace         = Leerzeichen (FIXME?) (maybe "Leerraum")
+
+Still being worked out:
+
+    prune              = veraltete(n) Zweig(e) entfernen (...Branch(es)..)
+    checkout(verb)     = auschecken
+
+    git add      = hinzufügen
+
+    merge conflict = Merge-Konflikt (new)
+    3-way merge    = 3-Wege-Zusammenführung (3-Wege-Merge)
+    paths          = Pfade
+
+    symbolic link = symbolische Verknüfung
+    path = Pfad
+    link = Verknüpfung
+
+    reflog = Referenzprotokoll
+    partial commit = teilweise eintragen (teilweise committen, partiell committen)
+
+    reset = neu setzen (maybe "umsetzen"?)
+
+    register   = in die Konfiguration eintragen
+    unregister = aus der Konfiguration austragen
