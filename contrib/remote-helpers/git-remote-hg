@@ -839,6 +839,39 @@ def write_tag(repo, tag, node, msg, author):
 
     return tagnode
 
+def checkheads(repo, remote, p_revs):
+
+    remotemap = remote.branchmap()
+    if not remotemap:
+        # empty repo
+        return
+
+    new = {}
+
+    for node in p_revs:
+        ctx = repo[node]
+        branch = ctx.branch()
+        if not branch in remotemap:
+            # new branch
+            continue
+        new.setdefault(branch, []).append(ctx.rev())
+
+    for branch, heads in new.iteritems():
+        old = [repo.changelog.rev(x) for x in remotemap[branch]]
+        for rev in heads:
+            ancestors = repo.changelog.ancestors([rev], stoprev=min(old))
+            found = False
+
+            for x in old:
+                if x in ancestors:
+                    found = True
+                    break
+
+            if found:
+                continue
+
+            raise Exception("non-fast-forward")
+
 def push_unsafe(repo, remote, parsed_refs, p_revs):
 
     unfi = repo.unfiltered()
@@ -846,7 +879,7 @@ def push_unsafe(repo, remote, parsed_refs, p_revs):
 
     fci = discovery.findcommonincoming
     commoninc = fci(unfi, remote, force=force)
-    common, inc, remoteheads = commoninc
+    common, _, remoteheads = commoninc
     fco = discovery.findcommonoutgoing
     outgoing = fco(unfi, remote, onlyheads=list(p_revs), commoninc=commoninc, force=force)
 
@@ -855,7 +888,7 @@ def push_unsafe(repo, remote, parsed_refs, p_revs):
         return None
 
     if not force:
-        discovery.checkheads(unfi, remote, outgoing, remoteheads, True, bool(inc))
+        checkheads(unfi, remote, p_revs)
 
     cg = repo.getlocalbundle('push', outgoing)
 
