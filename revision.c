@@ -1112,16 +1112,17 @@ static int limit_list(struct rev_info *revs)
 		show(revs, newlist);
 		show_early_output = NULL;
 	}
-	if (revs->cherry_pick || revs->cherry_mark)
-		cherry_pick_list(newlist, revs);
-
-	if (revs->left_only || revs->right_only)
-		limit_left_right(newlist, revs);
 
 	if (bottom) {
 		limit_to_ancestry(bottom, newlist);
 		free_commit_list(bottom);
 	}
+
+	if (revs->cherry_pick || revs->cherry_mark)
+		cherry_pick_list(newlist, revs);
+
+	if (revs->left_only || revs->right_only)
+		limit_left_right(newlist, revs);
 
 	/*
 	 * Check if any commits have become TREESAME by some of their parents
