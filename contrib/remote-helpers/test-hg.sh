@@ -26,6 +26,12 @@ check () {
 	test_cmp expected actual
 }
 
+check_bookmark () {
+	echo $3 > expected &&
+	hg -R $1 log -r "bookmark('$2')" --template '{desc}\n' > actual &&
+	test_cmp expected actual
+}
+
 setup () {
 	(
 	echo "[ui]"
@@ -98,7 +104,7 @@ test_expect_success 'update bookmark' '
 	git push --quiet
 	) &&
 
-	hg -R hgrepo bookmarks | egrep "devel[	 ]+3:"
+	check_bookmark hgrepo devel devel
 '
 
 # cleanup previous stuff
