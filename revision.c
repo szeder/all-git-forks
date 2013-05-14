@@ -851,7 +851,7 @@ static void cherry_pick_list(struct commit_list *list, struct rev_info *revs)
 	for (p = list; p; p = p->next) {
 		struct commit *commit = p->item;
 		unsigned flags = commit->object.flags;
-		if (flags & BOUNDARY)
+		if (flags & (BOUNDARY | UNINTERESTING))
 			;
 		else if (flags & SYMMETRIC_LEFT)
 			left_count++;
@@ -871,7 +871,7 @@ static void cherry_pick_list(struct commit_list *list, struct rev_info *revs)
 		struct commit *commit = p->item;
 		unsigned flags = commit->object.flags;
 
-		if (flags & BOUNDARY)
+		if (flags & (BOUNDARY | UNINTERESTING))
 			continue;
 		/*
 		 * If we have fewer left, left_first is set and we omit
@@ -892,7 +892,7 @@ static void cherry_pick_list(struct commit_list *list, struct rev_info *revs)
 		struct patch_id *id;
 		unsigned flags = commit->object.flags;
 
-		if (flags & BOUNDARY)
+		if (flags & (BOUNDARY | UNINTERESTING))
 			continue;
 		/*
 		 * If we have fewer left, left_first is set and we omit
