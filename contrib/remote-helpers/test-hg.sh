@@ -449,4 +449,29 @@ test_expect_success 'remote double failed push' '
 	)
 '
 
+test_expect_success 'remote push with master bookmark' '
+	test_when_finished "rm -rf hgrepo gitrepo*" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+	echo zero > content &&
+	hg add content &&
+	hg commit -m zero &&
+	hg bookmark master &&
+	echo one > content &&
+	hg commit -m one
+	) &&
+
+	(
+	git clone "hg::hgrepo" gitrepo &&
+	cd gitrepo &&
+	echo two > content &&
+	git commit -a -m two &&
+	git push
+	) &&
+
+	check_branch hgrepo default two
+'
+
 test_done
