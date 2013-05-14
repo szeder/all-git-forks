@@ -558,11 +558,11 @@ def get_branch_tip(repo, branch):
 def list_head(repo, cur):
     global g_head, bmarks
 
-    if 'default' not in repo:
+    if 'default' not in branches:
         # empty repo
         return
 
-    node = repo['default']
+    node = repo[branch_tip('default')]
     head = 'master' if not 'master' in bmarks else 'default'
     bmarks[head] = node
 
@@ -578,18 +578,17 @@ def do_list(parser):
         bmarks[bmark] = repo[node]
 
     cur = repo.dirstate.branch()
+    orig = peer if peer else repo
+
+    for branch, heads in orig.branchmap().iteritems():
+        # only open heads
+        heads = [h for h in heads if not repo[h].closesbranch()]
+        if heads:
+            branches[branch] = heads
 
     list_head(repo, cur)
 
     if track_branches:
-        orig = peer if peer else repo
-
-        for branch, heads in orig.branchmap().iteritems():
-            # only open heads
-            heads = [h for h in heads if not repo[h].closesbranch()]
-            if heads:
-                branches[branch] = heads
-
         for branch in branches:
             print "? refs/heads/branches/%s" % gitref(branch)
 
