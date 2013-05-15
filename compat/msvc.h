@@ -42,7 +42,7 @@ int mingw_fstat(int fd, struct stat *buf);
 /* Git runtime infomation */
 #define SHA1_HEADER "block-sha1\\sha1.h"
 
-#define ETC_GITCONFIG "etc\\config"
+#define ETC_GITCONFIG "etc\\gitconfig"
 #define ETC_GITATTRIBUTES "etc\\gitattributes"
 #define GIT_EXEC_PATH "bin"
 #define GIT_MAN_PATH "man"
