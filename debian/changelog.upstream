@@ -1,3 +1,93 @@
+Version v1.8.3-rc2; changes since v1.8.3-rc1:
+---------------------------------------------
+
+Anand Kumria (1):
+      gitk: Display the date of a tag in a human-friendly way
+
+David Aguilar (1):
+      mergetools/kdiff3: do not use --auto when diffing
+
+Felipe Contreras (25):
+      remote-bzr: cleanup CustomTree
+      remote-bzr: delay blob fetching until the very end
+      remote-bzr: fix order of locking in CustomTree
+      remote-bzr: always try to update the worktree
+      remote-bzr: add support to push merges
+      remote-bzr: fixes for branch diverge
+      remote-bzr: fix partially pushed merge
+      remote-bzr: use branch variable when appropriate
+      remote-bzr: add support for bzr repos
+      remote-bzr: fix branch names
+      remote-bzr: add support for shared repo
+      remote-bzr: improve author sanitazion
+      remote-bzr: add custom method to find branches
+      remote-bzr: add option to specify branches
+      remote-bzr: improve progress reporting
+      remote-bzr: iterate revisions properly
+      remote-bzr: delay peer branch usage
+      remote-bzr: access branches only when needed
+      transport-helper: improve push messages
+      remote-bzr: convert all unicode keys to str
+      remote-bzr: avoid bad refs
+      remote-bzr: fix for disappeared revisions
+      remote-helpers: trivial cleanup
+      transport-helper: trivial style cleanup
+      gitk: Simplify file filtering
+
+Gauthier Östervall (1):
+      gitk: Move hard-coded colors to .gitk
+
+Jiang Xin (2):
+      l10n: git.pot: v1.8.3 round 2 (44 new, 12 removed)
+      l10n: zh_CN.po: translate 44 messages (2080t0f0u)
+
+John Keeping (1):
+      merge-tree: handle directory/empty conflict correctly
+
+Jonathan Nieder (1):
+      Git::SVN::*: add missing "NAME" section to perldoc
+
+Junio C Hamano (4):
+      Update draft release notes for 1.8.3
+      cherry-pick: picking a tag that resolves to a commit is OK
+      Git 1.8.2.3
+      Git 1.8.3-rc2
+
+Knut Franke (1):
+      gitk: Add menu item for reverting commits
+
+Martin Langhoff (1):
+      gitk: Add support for -G'regex' pickaxe variant
+
+Michael Contreras (1):
+      git-svn: avoid self-referencing mergeinfo
+
+Paul Mackerras (1):
+      gitk: Improve behaviour of drop-down lists
+
+Paul Walmsley (1):
+      git-svn: added an --include-path flag
+
+Peter Krefting (1):
+      l10n: Update Swedish translation (2080t0f0u)
+
+Ralf Thielow (1):
+      l10n: de.po: translate 44 new messages
+
+René Scharfe (2):
+      t5004: ignore pax global header file
+      t5004: avoid using tar for checking emptiness of archive
+
+Tair Sabirgaliev (1):
+      gitk: On OSX, bring the gitk window to front
+
+Torsten Bögershausen (1):
+      test-bzr: do not use unportable sed '\+'
+
+Tran Ngoc Quan (1):
+      l10n: Update Vietnamese translation (2080t0f0u)
+
+
 Version v1.8.3-rc1; changes since v1.8.3-rc0:
 ---------------------------------------------
 
@@ -51,7 +141,7 @@ Zoltan Klinger (1):
       bash-prompt.sh: show where rebase is at when stopped
 
 
-Version v1.8.3-rc0; changes since v1.8.2.2:
+Version v1.8.3-rc0; changes since v1.8.2.3:
 -------------------------------------------
 
 Aaron Schrab (2):
@@ -262,7 +352,7 @@ John Koleszar (1):
 John Szakmeister (1):
       git-web--browse: recognize any TERM_PROGRAM as a GUI terminal on OS X
 
-Jonathan Nieder (12):
+Jonathan Nieder (11):
       sequencer.c: rework search for start of footer to improve clarity
       shell doc: emphasize purpose and security model
       shell: new no-interactive-login command to print a custom message
@@ -274,7 +364,6 @@ Jonathan Nieder (12):
       add -u: only show pathless 'add -u' warning when changes exist outside cwd
       add -A: only show pathless 'add -A' warning when changes exist outside cwd
       convert: The native line-ending is \r\n on MinGW
-      glossary: a revision is just a commit
 
 Jonathon Mah (1):
       branch: give better message when no names specified for rename
@@ -498,7 +587,7 @@ Steven Walter (1):
 Ted Zlatanov (1):
       Add contrib/credentials/netrc with GPG support
 
-Thomas Rast (9):
+Thomas Rast (8):
       sha1_file: remove recursion in packed_object_info
       Refactor parts of in_delta_base_cache/cache_or_unpack_entry
       sha1_file: remove recursion in unpack_entry
@@ -507,7 +596,6 @@ Thomas Rast (9):
       tests: parameterize --valgrind option
       tests --valgrind: provide a mode without --track-origins
       tests: notice valgrind error in test_must_fail
-      read_revisions_from_stdin: make copies for handle_revision_arg
 
 Timotheus Pokorra (1):
       remote-bzr: add utf-8 support for fetching
@@ -539,6 +627,47 @@ Yann Droneaud (12):
       t7502: use test_config to set/unset git config variables
       t7502: remove clear_config
       t7600: use test_config to set/unset git config variables
+
+
+Version v1.8.2.3; changes since v1.8.2.2:
+-----------------------------------------
+
+Anders Granskogen Bjørnstad (1):
+      Documentation/git-commit: Typo under --edit
+
+David Aguilar (1):
+      mergetools/kdiff3: do not use --auto when diffing
+
+Felipe Contreras (5):
+      documentation: trivial whitespace cleanups
+      complete: zsh: trivial simplification
+      complete: zsh: use zsh completion for the main cmd
+      completion: zsh: don't override suffix on _detault
+      transport-helper: trivial style cleanup
+
+John Keeping (1):
+      t/Makefile: remove smoke test targets
+
+Jonathan Nieder (1):
+      glossary: a revision is just a commit
+
+Junio C Hamano (1):
+      Git 1.8.2.3
+
+Ramkumar Ramachandra (3):
+      git-completion.bash: lexical sorting for diff.statGraphWidth
+      git-completion.bash: add diff.submodule to config list
+      git-completion.bash: complete branch.*.rebase as boolean
+
+René Scharfe (2):
+      t5004: ignore pax global header file
+      t5004: avoid using tar for checking emptiness of archive
+
+Thomas Rast (4):
+      read_revisions_from_stdin: make copies for handle_revision_arg
+      remote: add a test for extra arguments, according to docs
+      remote: check for superfluous arguments in 'git remote add'
+      remote: 'show' and 'prune' can take more than one remote
 
 
 Version v1.8.2.2; changes since v1.8.2.1:

@@ -1,5 +1,7 @@
-git (1:1.8.3~rc1-1.1) experimental; urgency=low
+git (1:1.8.3~rc2-1) experimental; urgency=low
 
+  * new upstream release candidate.
+    * gitk: "grep diff" pickaxe variant (closes: #589283).
   * debian/rules: install perl modules with correct permissions
     (thx Christian Schwartz for suggesting it through lintian).
   * move "git svn" perl helpers to the git-svn package.
@@ -28,7 +30,7 @@ git (1:1.8.3~rc1-1.1) experimental; urgency=low
     * git-gui: no longer Replaces git-core (<< 1:1.5.2.2-3).
   * Use source format 3.0 (quilt).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 04 May 2013 15:04:47 -0700
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 15 May 2013 00:20:06 -0700
 
 git (1:1.8.3~rc1-1) experimental; urgency=low
 
