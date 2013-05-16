@@ -880,6 +880,9 @@ def get_repo(url, alias):
     if not wanted:
         try:
             repo = origin.open_repository()
+            if not repo.user_transport.listable():
+                # this repository is not usable for us
+                raise bzrlib.errors.NoRepositoryPresent(repo.bzrdir)
         except bzrlib.errors.NoRepositoryPresent:
             wanted = ['master']
 
