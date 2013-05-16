@@ -314,7 +314,7 @@ static void print_highlight_menu_stuff(struct menu_stuff *stuff, int **chosen)
 	struct strbuf menu = STRBUF_INIT;
 	int i;
 
-	if (MENU_STUFF_TYPE_MENU_ITEM == stuff->type) {
+	if (stuff->type == MENU_STUFF_TYPE_MENU_ITEM) {
 		struct menu_item *item;
 
 		item = (struct menu_item *)stuff->stuff;
@@ -339,7 +339,8 @@ static void print_highlight_menu_stuff(struct menu_stuff *stuff, int **chosen)
 			string_list_append(&menu_list, menu.buf);
 			strbuf_reset(&menu);
 		}
-	} else if (MENU_STUFF_TYPE_STRING_LIST == stuff->type) {
+
+	} else if (stuff->type == MENU_STUFF_TYPE_STRING_LIST) {
 		struct string_list_item *item;
 		struct strbuf buf = STRBUF_INIT;
 		i = 0;
@@ -347,9 +348,11 @@ static void print_highlight_menu_stuff(struct menu_stuff *stuff, int **chosen)
 		for_each_string_list_item(item, (struct string_list *)stuff->stuff) {
 			if ((*chosen)[i] < 0)
 				(*chosen)[i] = 0;
-			strbuf_addf(&menu, "%s%2d: %s", (*chosen)[i] ? "*" : " ", ++i, item->string);
+			strbuf_addf(&menu, "%s%2d: %s",
+				    (*chosen)[i] ? "*" : " ", i + 1, item->string);
 			string_list_append(&menu_list, menu.buf);
 			strbuf_reset(&menu);
+			i++;
 		}
 		strbuf_release(&buf);
 	}
