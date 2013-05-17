@@ -1,19 +1,19 @@
 language: python
-python:
-  - "2.7"
 
 env:
-  - HG_VERSION=2.5
+  - HG_VERSION=2.6.1 BZR_VERSION=2.6b2
+  - HG_VERSION=2.6.1 BZR_VERSION=2.5.1
+  - HG_VERSION=2.6.1 BZR_VERSION=2.2.3
+  - HG_VERSION=2.4 BZR_VERSION=2.5.1
+  - HG_VERSION=2.2 BZR_VERSION=2.5.1
+  - HG_VERSION=2.0 BZR_VERSION=2.5.1
+  - HG_VERSION=1.9 BZR_VERSION=2.5.1
 
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq git
-
-install:
-  - "pip install -q --use-mirrors Mercurial==$HG_VERSION"
+  - pip install -q --use-mirrors Mercurial==$HG_VERSION
+  - pip install -q --use-mirrors bzr==$BZR_VERSION
+  - pip install -q --use-mirrors hg-git
 
 script:
-  - git --version
-  - hg --version
   - make
-  - make -C contrib/remote-helpers test-hg.sh test-hg-bidi.sh test-hg-hg-git.sh
+  - make -C contrib/remote-helpers
