@@ -12,7 +12,7 @@
 # For remote repositories a local clone is stored in
 # "$GIT_DIR/hg/origin/clone/.hg/".
 
-from mercurial import hg, ui, bookmarks, context, encoding, node, error, extensions, discovery
+from mercurial import hg, ui, bookmarks, context, encoding, node, error, extensions, discovery, util
 
 import re
 import sys
@@ -85,6 +85,11 @@ def hgref(ref):
 
 def gitref(ref):
     return ref.replace(' ', '___')
+
+def check_version(*check):
+    if not hg_version:
+        return True
+    return hg_version >= check
 
 def get_config(config):
     cmd = ['git', 'config', '--get', config]
@@ -426,7 +431,7 @@ def export_ref(repo, name, kind, head):
 
     ename = '%s/%s' % (kind, name)
     tip = marks.get_tip(ename)
-    if tip in repo:
+    if tip and tip in repo:
         tip = repo[tip].rev()
     else:
         tip = 0
@@ -600,7 +605,7 @@ def do_list(parser):
 
     for branch, heads in orig.branchmap().iteritems():
         # only open heads
-        heads = [h for h in heads if not repo[h].closesbranch()]
+        heads = [h for h in heads if 'close' not in repo.changelog.read(h)[5]]
         if heads:
             branches[branch] = heads
 
@@ -862,7 +867,7 @@ def write_tag(repo, tag, node, msg, author):
 
     return (tagnode, branch)
 
-def checkheads_bmark(ref, ctx):
+def checkheads_bmark(repo, ref, ctx):
     if force_push:
         return True
 
@@ -873,7 +878,7 @@ def checkheads_bmark(ref, ctx):
 
     ctx_old = bmarks[bmark]
     ctx_new = ctx
-    if not ctx_old.descendant(ctx_new):
+    if not repo.changelog.descendant(ctx_old.rev(), ctx_new.rev()):
         print "error %s non-fast forward" % ref
         return False
 
@@ -897,7 +902,7 @@ def checkheads(repo, remote, p_revs):
             continue
         if not ref.startswith('refs/heads/branches'):
             if ref.startswith('refs/heads/'):
-                if not checkheads_bmark(ref, ctx):
+                if not checkheads_bmark(repo, ref, ctx):
                     ret = False
 
             # only check branches
@@ -907,7 +912,10 @@ def checkheads(repo, remote, p_revs):
     for branch, heads in new.iteritems():
         old = [repo.changelog.rev(x) for x in remotemap[branch]]
         for rev in heads:
-            ancestors = repo.changelog.ancestors([rev], stoprev=min(old))
+            if check_version(2, 3):
+                ancestors = repo.changelog.ancestors([rev], stoprev=min(old))
+            else:
+                ancestors = repo.changelog.ancestors(rev)
             found = False
 
             for x in old:
@@ -946,7 +954,7 @@ def push_unsafe(repo, remote, parsed_refs, p_revs):
         return remote.addchangegroup(cg, 'push', repo.url())
 
 def push(repo, remote, parsed_refs, p_revs):
-    if not remote.canpush():
+    if hasattr(remote, 'canpush') and not remote.canpush():
         print "error cannot push"
 
     if not p_revs:
@@ -1065,7 +1073,7 @@ def main(args):
     global track_branches, force_push, is_tmp
     global parsed_tags
     global filenodes
-    global fake_bmark
+    global fake_bmark, hg_version
 
     alias = args[1]
     url = args[2]
@@ -1100,6 +1108,10 @@ def main(args):
     parsed_tags = {}
     filenodes = {}
     fake_bmark = None
+    try:
+        hg_version = tuple(int(e) for e in util.version().split('.'))
+    except:
+        hg_version = None
 
     repo = get_repo(url, alias)
     prefix = 'refs/hg/%s' % alias
