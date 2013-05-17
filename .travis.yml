@@ -7,7 +7,7 @@ env:
   - HG_VERSION=2.4 BZR_VERSION=2.5.1
   - HG_VERSION=2.2 BZR_VERSION=2.5.1
   - HG_VERSION=2.0 BZR_VERSION=2.5.1
-  - HG_VERSION=1.9 BZR_VERSION=2.5.1
+  - HG_VERSION=1.9.3 BZR_VERSION=2.5.1
 
 before_install:
   - pip install -q --use-mirrors Mercurial==$HG_VERSION
