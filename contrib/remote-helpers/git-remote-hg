@@ -521,10 +521,18 @@ def get_branch_tip(repo, branch):
 
     return heads[0]
 
+def get_current_bookmark(repo):
+    head = bookmarks.readcurrent(repo)
+    if not head:
+        return None
+    if repo[head] != repo['.']:
+        return None
+    return head
+
 def list_head(repo, cur):
     global g_head, bmarks
 
-    head = bookmarks.readcurrent(repo)
+    head = get_current_bookmark(repo)
     if head:
         node = repo[head]
     else:
