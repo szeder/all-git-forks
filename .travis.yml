@@ -15,5 +15,6 @@ before_install:
   - pip install -q --use-mirrors hg-git
 
 script:
+  - export GIT_TEST_OPTS='-v'
   - make
   - make -C contrib/remote-helpers
