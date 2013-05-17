@@ -1,0 +1,19 @@
+language: python
+python:
+  - "2.7"
+
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install git
+
+install:
+  - "pip install -q --use-mirrors Mercurial==$HG_VERSION"
+
+env:
+  - HG_VERSION=2.5
+
+script:
+  - git --version
+  - hg --version
+  - make
+  - make -C contrib/remote-helpers test-hg.sh test-hg-bidi.sh test-hg-hg-git.sh
