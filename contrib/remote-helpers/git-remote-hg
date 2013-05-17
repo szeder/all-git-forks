@@ -938,7 +938,7 @@ def push_unsafe(repo, remote, parsed_refs, p_revs):
 
     fci = discovery.findcommonincoming
     commoninc = fci(repo, remote, force=force)
-    common, inc, remoteheads = commoninc
+    common, _, remoteheads = commoninc
 
     if not force and not checkheads(repo, remote, p_revs):
         return None
