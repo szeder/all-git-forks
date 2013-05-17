@@ -1005,7 +1005,8 @@ def do_export(parser):
                 continue
 
             print "ok %s" % ref
-            if bmark != fake_bmark:
+            if bmark != fake_bmark and \
+                    not (bmark == 'master' and bmark not in parser.repo._bookmarks):
                 p_bmarks.append((ref, bmark, old, new))
 
             p_revs[bnode] = ref
