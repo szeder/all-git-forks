@@ -26,17 +26,6 @@ check () {
 	test_cmp expected actual
 }
 
-check_bookmark () {
-	if [ -n "$3" ]; then
-		echo $3 > expected &&
-		hg -R $1 log -r "bookmark('$2')" --template '{desc}\n' > actual &&
-		test_cmp expected actual
-	else
-		hg -R $1 bookmarks > out &&
-		! grep $2 out
-	fi
-}
-
 check_branch () {
 	if [ -n "$3" ]; then
 		echo $3 > expected &&
@@ -48,13 +37,28 @@ check_branch () {
 	fi
 }
 
+check_bookmark () {
+	if [ -n "$3" ]; then
+		echo $3 > expected &&
+		hg -R $1 log -r "bookmark('$2')" --template '{desc}\n' > actual &&
+		test_cmp expected actual
+	else
+		hg -R $1 bookmarks > out &&
+		! grep $2 out
+	fi
+}
+
 setup () {
 	(
 	echo "[ui]"
 	echo "username = H G Wells <wells@example.com>"
 	echo "[extensions]"
 	echo "mq ="
-	) >> "$HOME"/.hgrc
+	) >> "$HOME"/.hgrc &&
+
+	GIT_AUTHOR_DATE="2007-01-01 00:00:00 +0230" &&
+	GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE" &&
+	export GIT_COMMITTER_DATE GIT_AUTHOR_DATE
 }
 
 setup
@@ -178,40 +182,97 @@ test_expect_success 'authors' '
 '
 
 test_expect_success 'strip' '
-  mkdir -p tmp && cd tmp &&
-  test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf hgrepo gitrepo" &&
 
-  (
-  hg init hgrepo &&
-  cd hgrepo &&
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
 
-  echo one >> content &&
-  hg add content &&
-  hg commit -m one &&
+	echo one >> content &&
+	hg add content &&
+	hg commit -m one &&
 
-  echo two >> content &&
-  hg commit -m two
-  ) &&
+	echo two >> content &&
+	hg commit -m two
+	) &&
 
-  git clone "hg::$PWD/hgrepo" gitrepo &&
+	git clone "hg::hgrepo" gitrepo &&
 
-  (
-  cd hgrepo &&
-  hg strip -r 1 &&
+	(
+	cd hgrepo &&
+	hg strip 1 &&
 
-  echo three >> content &&
-  hg commit -m three &&
+	echo three >> content &&
+	hg commit -m three &&
 
-  echo four >> content &&
-  hg commit -m four
-  ) &&
+	echo four >> content &&
+	hg commit -m four
+	) &&
 
-  (cd gitrepo &&
-  git fetch &&
-  git log --format="%s" origin/master > ../actual) &&
+	(
+	cd gitrepo &&
+	git fetch &&
+	git log --format="%s" origin/master > ../actual
+	) &&
 
-  hg -R hgrepo log --template "{desc}\n" > expected &&
-  test_cmp actual expected
+	hg -R hgrepo log --template "{desc}\n" > expected &&
+	test_cmp actual expected
+'
+
+test_expect_success 'remote push with master bookmark' '
+	test_when_finished "rm -rf hgrepo gitrepo*" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+	echo zero > content &&
+	hg add content &&
+	hg commit -m zero &&
+	hg bookmark master &&
+	echo one > content &&
+	hg commit -m one
+	) &&
+
+	(
+	git clone "hg::hgrepo" gitrepo &&
+	cd gitrepo &&
+	echo two > content &&
+	git commit -a -m two &&
+	git push
+	) &&
+
+	check_branch hgrepo default two
+'
+
+cat > expected <<EOF
+changeset:   0:6e2126489d3d
+tag:         tip
+user:        A U Thor <author@example.com>
+date:        Mon Jan 01 00:00:00 2007 +0230
+summary:     one
+
+EOF
+
+test_expect_success 'remote push from master branch' '
+	test_when_finished "rm -rf hgrepo gitrepo*" &&
+
+	hg init hgrepo &&
+
+	(
+	git init gitrepo &&
+	cd gitrepo &&
+	git remote add origin "hg::../hgrepo" &&
+	echo one > content &&
+	git add content &&
+	git commit -a -m one &&
+	git push origin master
+	) &&
+
+	hg -R hgrepo log > actual &&
+	cat actual &&
+	test_cmp expected actual &&
+
+	check_branch hgrepo default one
 '
 
 GIT_REMOTE_HG_TEST_REMOTE=1
@@ -295,8 +356,8 @@ test_expect_success 'remote update bookmark diverge' '
 
 	(
 	cd hgrepo &&
-	hg bookmark diverge -r tip^
-	hg checkout diverge
+	hg checkout tip^ &&
+	hg bookmark diverge
 	) &&
 
 	git clone "hg::hgrepo" gitrepo &&
@@ -351,7 +412,7 @@ test_expect_success 'remote big push' '
 	hg commit -m one &&
 	hg bookmark bad_bmark2 &&
 	hg bookmark good_bmark &&
-	hg bookmark -i &&
+	hg bookmark -i good_bmark &&
 	hg -q branch good_branch &&
 	echo "good branch" > content &&
 	hg commit -m "good branch" &&
@@ -447,31 +508,6 @@ test_expect_success 'remote double failed push' '
 	test_expect_code 1 git push &&
 	test_expect_code 1 git push
 	)
-'
-
-test_expect_success 'remote push with master bookmark' '
-	test_when_finished "rm -rf hgrepo gitrepo*" &&
-
-	(
-	hg init hgrepo &&
-	cd hgrepo &&
-	echo zero > content &&
-	hg add content &&
-	hg commit -m zero &&
-	hg bookmark master &&
-	echo one > content &&
-	hg commit -m one
-	) &&
-
-	(
-	git clone "hg::hgrepo" gitrepo &&
-	cd gitrepo &&
-	echo two > content &&
-	git commit -a -m two &&
-	git push
-	) &&
-
-	check_branch hgrepo default two
 '
 
 test_done
