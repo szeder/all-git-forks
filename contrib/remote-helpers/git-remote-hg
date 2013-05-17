@@ -926,23 +926,16 @@ def checkheads(repo, remote, p_revs):
 
 def push_unsafe(repo, remote, parsed_refs, p_revs):
 
-    unfi = repo.unfiltered()
     force = force_push
 
     fci = discovery.findcommonincoming
-    commoninc = fci(unfi, remote, force=force)
-    common, _, remoteheads = commoninc
-    fco = discovery.findcommonoutgoing
-    outgoing = fco(unfi, remote, onlyheads=list(p_revs), commoninc=commoninc, force=force)
+    commoninc = fci(repo, remote, force=force)
+    common, inc, remoteheads = commoninc
 
-    if not outgoing.missing:
-        # nothing to push
+    if not force and not checkheads(repo, remote, p_revs):
         return None
 
-    if not force and not checkheads(unfi, remote, p_revs):
-        return None
-
-    cg = repo.getlocalbundle('push', outgoing)
+    cg = repo.getbundle('push', heads=list(p_revs), common=common)
 
     unbundle = remote.capable('unbundle')
     if unbundle:
