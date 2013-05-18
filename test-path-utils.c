@@ -1,6 +1,19 @@
 #include "cache.h"
 #include "string-list.h"
 
+#define PARSE_ARGV_STRING(var, input) do { \
+	if (!strcmp(input, "<null>")) { \
+		var = NULL; \
+	} else if (!strcmp(input, "<empty>")) { \
+		var = ""; \
+	} else if (*input == '<' || *input == '(') { \
+		fprintf(stderr, "Bad value: %s\n", input); \
+		return 1; \
+	} else { \
+		var = input; \
+	} \
+} while (0)
+
 /*
  * A "string_list_each_func_t" function that normalizes an entry from
  * GIT_CEILING_DIRECTORIES.  If the path is unusable for some reason,
@@ -100,6 +113,18 @@ int main(int argc, char **argv)
 	if (argc == 4 && !strcmp(argv[1], "strip_path_suffix")) {
 		char *prefix = strip_path_suffix(argv[2], argv[3]);
 		printf("%s\n", prefix ? prefix : "(null)");
+		return 0;
+	}
+
+	if (argc == 4 && !strcmp(argv[1], "relative_path")) {
+		const char *abs, *base, *rel;
+		PARSE_ARGV_STRING(abs, argv[2]);
+		PARSE_ARGV_STRING(base, argv[3]);
+		rel = relative_path(abs, base);
+		if (!rel)
+			puts("(null)");
+		else
+			puts(strlen(rel) > 0 ? rel : "(empty)");
 		return 0;
 	}
 
