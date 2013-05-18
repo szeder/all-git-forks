@@ -988,6 +988,24 @@ static int git_default_push_config(const char *var, const char *value)
 	return 0;
 }
 
+static int git_default_fetch_config(const char *var, const char *value)
+{
+	if (strcmp(var, "fetch.default"))
+		return 0;
+
+	if (!value)
+		return config_error_nonbool(var);
+	else if (!strcmp(value, "simple"))
+		fetch_default = FETCH_DEFAULT_SIMPLE;
+	else if (!strcmp(value, "current"))
+		fetch_default = FETCH_DEFAULT_CURRENT;
+	else {
+		error("Malformed value for %s: %s", var, value);
+		return error("Must be simple, or current.");
+	}
+	return 0;
+}
+
 static int git_default_mailmap_config(const char *var, const char *value)
 {
 	if (!strcmp(var, "mailmap.file"))
@@ -1015,6 +1033,9 @@ int git_default_config(const char *var, const char *value, void *dummy)
 
 	if (!prefixcmp(var, "push."))
 		return git_default_push_config(var, value);
+
+	if (!prefixcmp(var, "fetch."))
+		return git_default_fetch_config(var, value);
 
 	if (!prefixcmp(var, "mailmap."))
 		return git_default_mailmap_config(var, value);

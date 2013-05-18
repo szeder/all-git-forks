@@ -622,10 +622,17 @@ enum git_mode {
 	MODE_PROGRESS
 };
 
+enum fetch_default_type {
+	FETCH_DEFAULT_UNSPECIFIED = 0,
+	FETCH_DEFAULT_SIMPLE,
+	FETCH_DEFAULT_CURRENT
+};
+
 extern enum branch_track git_branch_track;
 extern enum rebase_setup_type autorebase;
 extern enum push_default_type push_default;
 extern enum git_mode git_mode;
+extern enum fetch_default_type fetch_default;
 
 enum object_creation_mode {
 	OBJECT_CREATION_USES_HARDLINKS = 0,
