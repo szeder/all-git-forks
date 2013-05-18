@@ -2243,6 +2243,15 @@ push.recurseSubmodules::
 	is retained. You may override this configuration at time of push by
 	specifying '--recurse-submodules=check|on-demand|no'.
 
+fetch.default::
+	Defines the action `git fetch` should take if no remote is specified
+	on the command line. Possible values are:
++
+--
+* `current` - fetch from the upstream of the current branch.
+* `simple` - always fetch from `origin`.
+--
+
 rebase.stat::
 	Whether to show a diffstat of what changed upstream since the last
 	rebase. False by default.
