@@ -16,7 +16,7 @@ then
 	test_done
 fi
 
-if ! python -c 'import mercurial'
+if ! "$PYTHON_PATH" -c 'import mercurial'
 then
 	skip_all='skipping remote-hg tests; mercurial not available'
 	test_done

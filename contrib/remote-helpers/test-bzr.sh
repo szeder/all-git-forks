@@ -13,7 +13,7 @@ then
 	test_done
 fi
 
-if ! python -c 'import bzrlib'
+if ! "$PYTHON_PATH" -c 'import bzrlib'
 then
 	skip_all='skipping remote-bzr tests; bzr not available'
 	test_done
