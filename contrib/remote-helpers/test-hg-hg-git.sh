@@ -17,13 +17,13 @@ then
 	test_done
 fi
 
-if ! python -c 'import mercurial' > /dev/null 2>&1
+if ! "$PYTHON_PATH" -c 'import mercurial' > /dev/null 2>&1
 then
 	skip_all='skipping remote-hg tests; mercurial not available'
 	test_done
 fi
 
-if ! python -c 'import hggit' > /dev/null 2>&1
+if ! "$PYTHON_PATH" -c 'import hggit' > /dev/null 2>&1
 then
 	skip_all='skipping remote-hg tests; hg-git not available'
 	test_done
