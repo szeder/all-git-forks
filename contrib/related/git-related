@@ -8,6 +8,12 @@ $min_percent = 10
 $files = []
 $rev_args = []
 
+KNOWN_ROLES = {
+  'Signed-off' => :signer,
+  'Reviewed' => :reviewer,
+  'Acked' => :acker,
+}
+
 class Person
 
   attr_reader :roles
@@ -77,9 +83,12 @@ class Commit
           msg = true
         end
       else
-        if line =~ /^(Signed-off|Reviewed|Acked)-by: ([^<>]+) <(\S+?)>$/
+        role_regex = KNOWN_ROLES.keys.join('|')
+        if line =~ /^(#{role_regex})-by: ([^<>]+) <(\S+?)>$/
           person = Persons.get($2, $3)
-          person.add_role(@id, :signer) if person != author
+          role = KNOWN_ROLES[$1]
+          next if role == :signer and person == author
+          person.add_role(@id, role)
         end
       end
     end
