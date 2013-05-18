@@ -1397,7 +1397,7 @@ sub other_gs {
 			last if ($url eq $gs->metadata_url);
 			$ref_id .= '-';
 		}
-		Git::SVN::Fetcher::_begin_reimport($self->path);
+		Git::SVN::Fetcher::_begin_reimport($ref_id);
 		print STDERR "Initializing parent: $ref_id\n" unless $::_q > 1;
 	}
 	$gs

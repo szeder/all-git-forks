@@ -41,5 +41,5 @@ test_expect_success 'initialize source svn repo containing empty dirs' '
 test_expect_success 'clone svn repo with --preserve-empty-dirs --stdlayout' '
 	git svn clone "$svnrepo" --preserve-empty-dirs --stdlayout "$GIT_REPO"
 '
-
+exit 1
 test_done
