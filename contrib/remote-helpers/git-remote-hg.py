@@ -1125,6 +1125,10 @@ def main(args):
     marks_path = os.path.join(dirname, 'marks-hg')
     marks = Marks(marks_path, repo)
 
+    if sys.platform == 'win32':
+        import msvcrt
+        msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
+
     parser = Parser(repo)
     for line in parser:
         if parser.check('capabilities'):
