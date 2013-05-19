@@ -1,11 +1,11 @@
 Basic repository objects:
 
     blob           = Blob
-    tree           = Baum, Baum-Objekt, "Tree"-Objekt
-    submodule      = Submodul (suggested by JL) (before it was "Unterprojekt")
-    pack(noun)     = Archiv
-    pack(verb)     = packen
-    ancestor       = Vorfahre, Vorgänger, Vorgänger-Commit
+    tree           = Baum, Baum-Objekt (bevorzugt), "Tree"-Objekt
+    submodule      = Submodul
+    pack(noun)     = Pack-Datei
+    pack(verb)     = packen (ggf. Pack-Datei erstellen)
+    ancestor       = Vorfahre, Vorgänger, Vorgänger-Commit (bevorzugt)
 
 Content in a repository:
 
@@ -17,71 +17,74 @@ Content in a repository:
 
 Repositories / tracking concepts:
 
-    clone                  = klone
-    repository             = Projektarchiv, (or just Repository?)
-    bare repository        = bloßes Projektarchiv (-||-), (reines, pures Repository)
+    clone (verb)           = klonen
+    clone (noun)           = der Klon
+    repository             = Repository
+				
+    bare repository        = Bare Repository
     working directory      = Arbeitsverzeichnis
+    working tree           = -||-
 
-    remote branch          = externer Zweig
-    remote tracking branch = externer Übernahmezweig
-    upstream branch        = -||-
-    tracking branch        = Übernahmezweig
+    remote branch          = Remote-Branch
+    remote-tracking branch = Remote-Tracking-Branch
+    upstream branch        = Upstream-Branch
 
-    remote repository      = externes Projektarchiv (or 'Fernarchiv', or just Repository)
+    remote repository      = Remote-Repository
     remote(noun)           = -||- 
-    remote(adj)            = extern
+    remote(adj)            = extern, entfernt liegend
 
 Authorship:
 
     author    = Autor
-    committer = Eintragender (or Committer, Commit-Ersteller)
-    tagger    = Markierer (or Tagger, Tag-Ersteller)
+    committer = Commit-Ersteller
+    tagger    = Tag-Ersteller
 
 Commits, tags and other references:
 
-    HEAD           = Zweigspitze (HEAD)
-    detached HEAD  = losgelöste Zweigspitze (HEAD)
+    HEAD           = HEAD
+		Konzept aus der Git-Welt, daher nicht zu übersetzen.
+    detached HEAD  = losgelöster HEAD
 
-    commit(noun)      = Version (or Commit)
-    commit(verb)      = eintragen (or commit(ten))
-    commit the result = das Ergebnis eintragen (committen)
-    parent commit     = Elternversion (Eltern-Commit)
-    child commit      = Kindversion (Kind-Commit)
-    commit message    = Versionsbeschreibung (Commit-Beschreibung)
+    commit(noun)      = Commit
+    commit(verb)      = committen
+    commit the result = das Ergebnis committen
+    parent commit     = Eltern-Commit
+    child commit      = Kind-Commit
+    commit message    = Commit-Beschreibung
 
-    stash(noun)          = Lager (der Stash)
-    stash(verb)          = einlagern ("stashen", "stash" benutzen)
-    unstash(verb)        = auslagern ("unstashen", "zurückladen")
+    stash(noun)       = der Stash
+    stash(verb)       = "stashen", "stash" benutzen (bevorzugt)
+    unstash(verb)     = "unstashen", "zurückladen", "aus 'stash' zurückladen" (bevorzugt)	
 
     reference      = Referenz
-    revision       = Revision (use Commit instead (see dfb4410 (glossary: a revision is just a commit))
-    branch         = Zweig (or Branch)
-    tag(noun)      = Markierung (or Tag)
-    tag(verb)      = markieren (or taggen, Tag erstellen)
-    annotated tag  = annotierte Markierung (-||-)
-    tag message    = Markierungsbeschreibung (or Tag-Beschreibung)
+    revision       = Commit
+    branch         = Branch
+    tag(noun)      = Tag
+    tag(verb)      = taggen, Tag erstellen
+    annotated tag  = annotierter Tag
+    tag message    = Tag-Beschreibung
 
     orphan commit    = 
     orphan reference = 
 
-    boundary commit = Grenzversion (Grenz-Commit)
-    root commit     = Ursprungsversion (Ursprungs-Commit, Wurzel, Wurzel-Commit)
+    boundary commit = Grenz-Commit
+    root commit     = Ursprungs-Commit, Wurzel-Commit
 
-    stage/index (noun) = Bereitstellung (Staging-Area, Index)
-    stage/index (verb) = stagen, für einen Commit vormerken, zur Staging Area hinzufügen, dem Index hinzufügen
-    unstage (verb)     = unstagen, aus Staging Area entfernen/nehmen, aus Index entfernen/nehmen
+    stage/index (noun) = Staging-Area, Index
+    stage/index (verb) = (für einen | zum) Commit vormerken (bevorzugt), zur Staging Area hinzufügen, dem Index hinzufügen
+    unstage (verb)     = aus Staging Area entfernen, aus Index entfernen
 
 The DAG:
 
-    commit graph = Versionsgraph (Commit-Graph)
-    merge = Zusammenführung (Merge)
+    commit graph = Commit-Graph
+    merge = Merge
 
 References in relation to other references:
 
-    branches that have diverged = Zweige sind divergiert
+    branches that have diverged = Branches sind divergiert
     diverging references        = divergierte Referenzen
-    your branch is ahead        = dein Zweig ist voraus
-    your branch is behind       = dein Zweig ist hinterher
+    your branch is ahead        = Ihr Branch ist voraus
+    your branch is behind       = Ihr Branch ist hinterher
 
 Moving data around:
 
@@ -95,15 +98,15 @@ Moving data around:
 Commands:
 
     log                = Log
-    interactive commit = interaktive Eintragung
-    cherry-pick        = (leave it as it is? maybe "herauspicken" or "pflücken"?)
-    rebase(verb)       = neu aufbauen
-    rebase(noun)       = Neuaufbau (? Maybe "Umpflanzen" or "Basisumbau")
+    interactive commit = interaktiver Commit
+    cherry-pick        = "cherry-pick" benutzen
+    rebase(verb)       = "rebase" benutzen
+    rebase(noun)       = "rebase"
     archive            = archivieren
     revert             = zurücknehmen
-    clean(verb)        = 
-    clean(noun)        =
-    merge              = zusammenführen, mergen
+    clean(verb)        = säubern/aufräumen 
+    clean(noun)        = Säuberung
+    merge              = zusammenführen
 
     bundle(noun)       = Paket
     bundle(verb)       = Paket erstellen
@@ -120,17 +123,17 @@ Diff/patch related:
     apply              = anwenden
     diffstat           = (leave it as it is)
     hunk               = Bereich
-    whitespace         = Leerzeichen (FIXME?) (maybe "Leerraum")
+    whitespace         = Whitespace
 
 Still being worked out:
 
-    prune              = veraltete(n) Zweig(e) entfernen (...Branch(es)..)
+    prune              = veraltete(n) Branch(es) entfernen
     checkout(verb)     = auschecken
 
     git add      = hinzufügen
 
-    merge conflict = Merge-Konflikt (new)
-    3-way merge    = 3-Wege-Zusammenführung (3-Wege-Merge)
+    merge conflict = Merge-Konflikt
+    3-way merge    = 3-Wege-Merge
     paths          = Pfade
 
     symbolic link = symbolische Verknüfung
@@ -138,7 +141,8 @@ Still being worked out:
     link = Verknüpfung
 
     reflog = Referenzprotokoll
-    partial commit = teilweise eintragen (teilweise committen, partiell committen)
+    partial commit (verb) = teilweise committen, partiell committen
+    partial commit (noun) = Teil-Commit
 
     reset = neu setzen (maybe "umsetzen"?)
 
