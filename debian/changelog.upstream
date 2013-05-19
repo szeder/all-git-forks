@@ -1,3 +1,40 @@
+Version v1.8.3-rc3; changes since v1.8.3-rc2:
+---------------------------------------------
+
+Dale R. Worley (1):
+      git-submodule.txt: Clarify 'init' and 'add' subcommands.
+
+Dale Worley (1):
+      CodingGuidelines: Documentation/*.txt are the sources
+
+Felipe Contreras (13):
+      remote-bzr: update old organization
+      remote-hg: trivial cleanups
+      remote-hg: get rid of unused exception checks
+      remote-hg: enable track-branches in hg-git mode
+      remote-hg: add new get_config_bool() helper
+      remote-hg: fix new branch creation
+      remote-hg: disable forced push by default
+      remote-hg: don't push fake 'master' bookmark
+      remote-hg: update bookmarks when pulling
+      remote-bzr: fix cloning of non-listable repos
+      Revert "remote-hg: update bookmarks when pulling"
+      remote-bzr: fixes for older versions of bzr
+      documentation: trivial style cleanups
+
+John Keeping (1):
+      difftool: fix dir-diff when file does not exist in working tree
+
+Junio C Hamano (1):
+      Git 1.8.3-rc3
+
+Peter Krefting (1):
+      gitk: Update Swedish translation (304t)
+
+Sandor Bodo-Merle (1):
+      remote-bzr: fix old organization destroy
+
+
 Version v1.8.3-rc2; changes since v1.8.3-rc1:
 ---------------------------------------------
 
