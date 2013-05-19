@@ -273,7 +273,7 @@ void add_object_array_with_mode(struct object *obj, const char *name, struct obj
 		array->objects = objects;
 	}
 	objects[nr].item = obj;
-	objects[nr].name = name;
+	objects[nr].name = name ? xstrdup(name) : NULL;
 	objects[nr].mode = mode;
 	array->nr = ++nr;
 }
@@ -289,6 +289,8 @@ void object_array_filter(struct object_array *array,
 			if (src != dst)
 				objects[dst] = objects[src];
 			dst++;
+		} else {
+			free(objects[src].name);
 		}
 	}
 	array->nr = dst;
@@ -319,6 +321,8 @@ void object_array_remove_duplicates(struct object_array *array)
 			if (src != array->nr)
 				objects[array->nr] = objects[src];
 			array->nr++;
+		} else {
+			free(objects[src].name);
 		}
 	}
 }

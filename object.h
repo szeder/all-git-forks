@@ -11,7 +11,11 @@ struct object_array {
 	unsigned int alloc;
 	struct object_array_entry {
 		struct object *item;
-		const char *name;
+		/*
+		 * name or NULL.  If non-NULL, the memory pointed to
+		 * is owned by this object.
+		 */
+		char *name;
 		unsigned mode;
 	} *objects;
 };
