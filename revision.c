@@ -2437,23 +2437,19 @@ static struct commit *get_revision_1(struct rev_info *revs)
 
 static void gc_boundary(struct object_array *array)
 {
-	unsigned nr = array->nr;
-	unsigned alloc = array->alloc;
+	unsigned nr = array->nr, i, j;
 	struct object_array_entry *objects = array->objects;
 
-	if (alloc <= nr) {
-		unsigned i, j;
-		for (i = j = 0; i < nr; i++) {
-			if (objects[i].item->flags & SHOWN)
-				continue;
-			if (i != j)
-				objects[j] = objects[i];
-			j++;
-		}
-		for (i = j; i < nr; i++)
-			objects[i].item = NULL;
-		array->nr = j;
+	for (i = j = 0; i < nr; i++) {
+		if (objects[i].item->flags & SHOWN)
+			continue;
+		if (i != j)
+			objects[j] = objects[i];
+		j++;
 	}
+	for (i = j; i < nr; i++)
+		objects[i].item = NULL;
+	array->nr = j;
 }
 
 static void create_boundary_commit_list(struct rev_info *revs)
@@ -2577,7 +2573,8 @@ static struct commit *get_revision_internal(struct rev_info *revs)
 		if (p->flags & (CHILD_SHOWN | SHOWN))
 			continue;
 		p->flags |= CHILD_SHOWN;
-		gc_boundary(&revs->boundary_commits);
+		if (revs->boundary_commits.alloc <= revs->boundary_commits.nr)
+			gc_boundary(&revs->boundary_commits);
 		add_object_array(p, NULL, &revs->boundary_commits);
 	}
 
