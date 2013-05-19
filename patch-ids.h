@@ -1,6 +1,8 @@
 #ifndef PATCH_IDS_H
 #define PATCH_IDS_H
 
+#include "string-list.h"
+
 struct patch_id {
 	unsigned char patch_id[20];
 	char seen;
@@ -8,6 +10,7 @@ struct patch_id {
 
 struct patch_ids {
 	struct diff_options diffopts;
+	struct string_list touched_paths;
 	int nr, alloc;
 	struct patch_id **table;
 	struct patch_id_bucket *patches;
