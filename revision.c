@@ -2435,23 +2435,6 @@ static struct commit *get_revision_1(struct rev_info *revs)
 	return NULL;
 }
 
-static void gc_boundary(struct object_array *array)
-{
-	unsigned nr = array->nr, i, j;
-	struct object_array_entry *objects = array->objects;
-
-	for (i = j = 0; i < nr; i++) {
-		if (objects[i].item->flags & SHOWN)
-			continue;
-		if (i != j)
-			objects[j] = objects[i];
-		j++;
-	}
-	for (i = j; i < nr; i++)
-		objects[i].item = NULL;
-	array->nr = j;
-}
-
 static void create_boundary_commit_list(struct rev_info *revs)
 {
 	unsigned i;
@@ -2491,6 +2474,15 @@ static void create_boundary_commit_list(struct rev_info *revs)
 	 * in topological order
 	 */
 	sort_in_topological_order(&revs->commits, revs->lifo);
+}
+
+/*
+ * Return true for entries that have not yet been shown.  (This is an
+ * object_array_each_func_t.)
+ */
+static int entry_unshown(struct object_array_entry *entry, void *cb_data_unused)
+{
+	return !(entry->item->flags & SHOWN);
 }
 
 static struct commit *get_revision_internal(struct rev_info *revs)
@@ -2575,7 +2567,7 @@ static struct commit *get_revision_internal(struct rev_info *revs)
 		p->flags |= CHILD_SHOWN;
 		if (revs->boundary_commits.nr == revs->boundary_commits.alloc) {
 			/* Try to make space and thereby avoid a realloc(): */
-			gc_boundary(&revs->boundary_commits);
+			object_array_filter(&revs->boundary_commits, entry_unshown, NULL);
 		}
 		add_object_array(p, NULL, &revs->boundary_commits);
 	}
