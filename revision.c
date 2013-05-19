@@ -2573,8 +2573,10 @@ static struct commit *get_revision_internal(struct rev_info *revs)
 		if (p->flags & (CHILD_SHOWN | SHOWN))
 			continue;
 		p->flags |= CHILD_SHOWN;
-		if (revs->boundary_commits.alloc <= revs->boundary_commits.nr)
+		if (revs->boundary_commits.nr == revs->boundary_commits.alloc) {
+			/* Try to make space and thereby avoid a realloc(): */
 			gc_boundary(&revs->boundary_commits);
+		}
 		add_object_array(p, NULL, &revs->boundary_commits);
 	}
 
