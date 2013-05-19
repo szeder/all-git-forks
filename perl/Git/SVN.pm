@@ -103,8 +103,16 @@ sub resolve_local_globs {
 				    " globbed: $refname\n";
 			}
 			my $u = (::cmt_metadata("$refname"))[0];
-			$u =~ s!^\Q$url\E(/|$)!! or die
-			  "$refname: '$url' not found in '$u'\n";
+
+			# $u can end up uninitialized which causes the regex below to fail and the 
+			# conversion to halt.  This if/then protects against that.
+			if(!$u) { 
+        		$u = $pathname; 
+			}else { 
+        		$u =~ s!^\Q$url\E(/|$)!! or die 
+				  "$refname: '$url' not found in '$u'\n"; 
+			} 
+
 			if ($pathname ne $u) {
 				warn "W: Refspec glob conflict ",
 				     "(ref: $refname):\n",
