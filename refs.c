@@ -631,6 +631,8 @@ static int do_one_ref(struct ref_entry *entry, void *cb_data)
 {
 	struct ref_entry_cb *data = cb_data;
 	int retval;
+	char *refname_copy;
+
 	if (prefixcmp(entry->name, data->base))
 		return 0;
 
@@ -639,8 +641,10 @@ static int do_one_ref(struct ref_entry *entry, void *cb_data)
 		return 0;
 
 	current_ref = entry;
-	retval = data->fn(entry->name + data->trim, entry->u.value.sha1,
+	refname_copy = xstrdup(entry->name + data->trim);
+	retval = data->fn(refname_copy, entry->u.value.sha1,
 			  entry->flag, data->cb_data);
+	free(refname_copy);
 	current_ref = NULL;
 	return retval;
 }
