@@ -79,6 +79,12 @@ static inline int traverse_path_len(const struct traverse_info *info, const stru
 	return info->pathlen + tree_entry_len(n);
 }
 
+static inline char *alloc_traverse_path(const struct traverse_info *info, const struct name_entry *n)
+{
+	char *path = xmalloc(traverse_path_len(info, n) + 1);
+	return make_traverse_path(path, info, n);
+}
+
 /* in general, positive means "kind of interesting" */
 enum interesting {
 	all_entries_not_interesting = -1, /* no, and no subsequent entries will be either */

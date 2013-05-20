@@ -172,12 +172,6 @@ static struct merge_list *create_entry(unsigned stage, unsigned mode, const unsi
 	return res;
 }
 
-static char *traverse_path(const struct traverse_info *info, const struct name_entry *n)
-{
-	char *path = xmalloc(traverse_path_len(info, n) + 1);
-	return make_traverse_path(path, info, n);
-}
-
 static void resolve(const struct traverse_info *info, struct name_entry *ours, struct name_entry *result)
 {
 	struct merge_list *orig, *final;
@@ -187,7 +181,7 @@ static void resolve(const struct traverse_info *info, struct name_entry *ours, s
 	if (!ours)
 		return;
 
-	path = traverse_path(info, result);
+	path = alloc_traverse_path(info, result);
 	orig = create_entry(2, ours->mode, ours->sha1, path);
 	final = create_entry(0, result->mode, result->sha1, path);
 
@@ -211,7 +205,7 @@ static void unresolved_directory(const struct traverse_info *info,
 	if (n + 3 <= p)
 		return; /* there is no tree here */
 
-	newbase = traverse_path(info, p);
+	newbase = alloc_traverse_path(info, p);
 
 #define ENTRY_SHA1(e) (((e)->mode && S_ISDIR((e)->mode)) ? (e)->sha1 : NULL)
 	buf0 = fill_tree_descriptor(t+0, ENTRY_SHA1(n + 0));
@@ -238,7 +232,7 @@ static struct merge_list *link_entry(unsigned stage, const struct traverse_info 
 	if (entry)
 		path = entry->path;
 	else
-		path = traverse_path(info, n);
+		path = alloc_traverse_path(info, n);
 	link = create_entry(stage, n->mode, n->sha1, path);
 	link->link = entry;
 	return link;
