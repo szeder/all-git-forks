@@ -125,6 +125,7 @@ append_todo_help () {
 #  s, squash = use commit, but meld into previous commit
 #  f, fixup = like "squash", but discard this commit's log message
 #  x, exec = run command (the rest of the line) using shell
+#  b, branch = use given (possibly rebased) commit as new parent
 #
 # These lines can be re-ordered; they are executed from top to bottom.
 #
@@ -229,6 +230,19 @@ pick_one () {
 	output git cherry-pick $empty_args $ff "$@"
 }
 
+save_rewrites () {
+
+	if test -f "$state_dir"/current-commit
+	then
+		while read current_commit
+		do
+			git rev-parse HEAD > "$rewritten"/$current_commit
+		done <"$state_dir"/current-commit
+		rm "$state_dir"/current-commit ||
+		die "Cannot write current commit's replacement sha1"
+	fi
+}
+
 pick_one_preserving_merges () {
 	fast_forward=t
 	case "$1" in
@@ -242,19 +256,7 @@ pick_one_preserving_merges () {
 	esac
 	sha1=$(git rev-parse $sha1)
 
-	if test -f "$state_dir"/current-commit
-	then
-		if test "$fast_forward" = t
-		then
-			while read current_commit
-			do
-				git rev-parse HEAD > "$rewritten"/$current_commit
-			done <"$state_dir"/current-commit
-			rm "$state_dir"/current-commit ||
-			die "Cannot write current commit's replacement sha1"
-		fi
-	fi
-
+	test "$fast_forward" = t && save_rewrites
 	echo $sha1 >> "$state_dir"/current-commit
 
 	# rewrite parents; if none were rewritten, we can fast-forward.
@@ -264,43 +266,87 @@ pick_one_preserving_merges () {
 	then
 		pend=" root"
 	fi
+
+	# Rewritten parent corresponding to HEAD - used for replaying
+	# merge conflict resolutions later
+	head_parent=
+	head_id=
+
+	parent_id=0
 	while [ "$pend" != "" ]
 	do
 		p=$(expr "$pend" : ' \([^ ]*\)')
 		pend="${pend# $p}"
+		parent_id=$(($parent_id+1))
 
-		if test -f "$rewritten"/$p
-		then
-			new_p=$(cat "$rewritten"/$p)
-
-			# If the todo reordered commits, and our parent is marked for
-			# rewriting, but hasn't been gotten to yet, assume the user meant to
-			# drop it on top of the current HEAD
-			if test -z "$new_p"
+		# Find rewritten equivalent of this parent
+		new_p=
+		while [ "$new_p" == "" ]
+		do
+			# Parent rewritten?
+			if test -f "$rewritten"/$p
 			then
-				new_p=$(git rev-parse HEAD)
-			fi
+				new_p=$(cat "$rewritten"/$p)
 
-			test $p != $new_p && fast_forward=f
-			case "$new_parents" in
-			*$new_p*)
-				;; # do nothing; that parent is already there
-			*)
-				new_parents="$new_parents $new_p"
-				;;
-			esac
-		else
-			if test -f "$dropped"/$p
+				# If our parent is marked for rewriting, but hasn't
+				# been gotten to yet, this means that the user
+				# reordered commits and probably intended to remove
+				# the parent from the history at this point. We
+				# therefore fall back to older parents.
+				if [ "$new_p" == "" ]
+				then
+					fast_forward=f
+					p=$(git rev-list --parents -1 $p | cut -d' ' -s -f2)
+					continue
+				fi
+
+				# A truly rewritten parent means we can't fast-forward anymore
+				test $p != $new_p && fast_forward=f
+
+			# Parent dropped?
+			elif test -f "$dropped"/$p
 			then
+				# Fall back to ancestors
 				fast_forward=f
-				replacement="$(cat "$dropped"/$p)"
-				test -z "$replacement" && replacement=root
-				pend=" $replacement$pend"
+				p="$(cat "$dropped"/$p)"
+				test -z "$p" && p=root
+
+			# Parent not touched by rebase: easy
 			else
-				new_parents="$new_parents $p"
+				new_p=$p
 			fi
+
+		done
+
+		# Is HEAD a descendant of the rewritten parent? Then use
+		# it instead of the original parent, so the user can add
+		# extra commits between the parent and the merge.
+		if [ "$head_parent" == "" ] && [ "$(git rev-list -n 1 $new_p ^HEAD)" == "" ]
+		then
+			head_parent=$new_p
+			head_id=$parent_id
+			test "$head_parent" != "$(git rev-parse HEAD)" && fast_forward=f
 		fi
+
+		case "$new_parents" in
+			*$new_p*)
+			;; # do nothing; that parent is already there
+			*)
+			new_parents="$new_parents $new_p"
+			;;
+		esac
 	done
+
+	# Did we not find a HEAD parent?
+	if [ "$head_parent" == "" ]
+	then
+		# Then arbitrarily choose the first one
+		head_parent=$(expr "$new_parents" : ' \([^ ]*\)')
+		head_id=1 # We know this
+		test "$head_parent" != "$(git rev-parse HEAD)" && fast_forward=f
+		output warn "No parent seems related to HEAD: Arbitrarily picking $head_parent!"
+	fi
+
 	case $fast_forward in
 	t)
 		output warn "Fast-forward to $sha1"
@@ -308,32 +354,43 @@ pick_one_preserving_merges () {
 			die "Cannot fast-forward to $sha1"
 		;;
 	f)
-		first_parent=$(expr "$new_parents" : ' \([^ ]*\)')
 
-		if [ "$1" != "-n" ]
-		then
-			# detach HEAD to current parent
-			output git checkout $first_parent 2> /dev/null ||
-				die "Cannot move HEAD to $first_parent"
-		fi
-
+		# Merge commit?
 		case "$new_parents" in
 		' '*' '*)
 			test "a$1" = a-n && die "Refusing to squash a merge: $sha1"
+
+			# Remove HEAD from parents list
+			echo All parents are: $new_parents
+			new_parents=${new_parents// $head_parent/}
 
 			# redo merge
 			author_script_content=$(get_author_ident_from_commit $sha1)
 			eval "$author_script_content"
 			msg_content="$(commit_message $sha1)"
-			# No point in merging the first parent, that's HEAD
-			new_parents=${new_parents# $first_parent}
+
+			# Merge in all parents using strategy "ours", which means
+			# we aren't actually changing anything apart from our
+			# parent list.
 			if ! do_with_author output \
-				git merge --no-ff ${strategy:+-s $strategy} -m \
-					"$msg_content" $new_parents
+				git merge --no-ff --no-commit -s ours $new_parents
 			then
 				printf "%s\n" "$msg_content" > "$GIT_DIR"/MERGE_MSG
 				die_with_patch $sha1 "Error redoing merge $sha1"
 			fi
+
+			# Add the merge
+			output git cherry-pick -n -m $head_id $sha1 ||
+				die_with_patch $sha1 "Error cherry-picking merge $sha1"
+
+			# TODO: Now merge in the changes from all rewritten
+			# parents that are not HEAD? I'm quite unsure actually
+			# whether this can even happen...
+
+			# Finally commit
+			do_with_author output git commit -m "$msg_content" ||
+				die_with_patch $sha1 "Error commiting merge $sha1"
+
 			echo "$sha1 $(git rev-parse HEAD^0)" >> "$rewritten_list"
 			;;
 		*)
@@ -576,6 +633,35 @@ do_next () {
 			warn
 			exit 1
 		fi
+		;;
+	branch|b)
+		mark_action_done
+		if ! test -d "$rewritten"
+		then
+			warn "Command goto not supported in this mode"
+			die "Re-run with --preserve-merges"
+		fi
+		save_rewrites
+
+		# Find rebased commit
+		test -z $sha1 && sha1="$orig_head"
+		if test -f "$rewritten"/$sha1
+		then
+			new_sha1 = $(cat "$rewritten"/$sha1)
+			if test -z "$new_sha1"
+			then
+				warn "Cannot go to revision $sha1, as it is being rewritten"
+				warn "but has not been rebased yet. Please correct the order"
+				warn "in which commands appear."
+
+				die "Cannot create branch"
+			fi
+		else
+			new_sha1=$sha1
+		fi
+
+		output git checkout "$new_sha1" 2> /dev/null ||
+			die "Cannot go to revision $new_sha1"
 		;;
 	*)
 		warn "Unknown command: $command $sha1 $rest"
@@ -867,9 +953,10 @@ else
 	revisions=$onto...$orig_head
 	shortrevisions=$shorthead
 fi
-git rev-list $merges_option --pretty=oneline --abbrev-commit \
-	--abbrev=7 --reverse --left-right --topo-order \
-	$revisions | \
+last=$onto
+pretty="--pretty=oneline --abbrev-commit --abbrev=7"
+git rev-list $merges_option --reverse --left-right --topo-order \
+	$pretty $revisions | \
 	sed -n "s/^>//p" |
 while read -r shortsha1 rest
 do
@@ -886,24 +973,41 @@ do
 		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 	else
 		sha1=$(git rev-parse $shortsha1)
+		first_parent=
 		if test -z "$rebase_root"
 		then
 			preserve=t
+			branch=f
 			for p in $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)
 			do
+				if test -z "$first_parent"
+				then
+					first_parent="$p"
+				fi
 				if test -f "$rewritten"/$p
 				then
 					preserve=f
 				fi
+				if test "$p" == "$last"
+				then
+					branch=t
+				fi
 			done
 		else
 			preserve=f
+			branch=f
 		fi
 		if test f = "$preserve"
 		then
+			if test f = "$branch"
+			then
+				descr=$(git rev-list $pretty -n1 $first_parent)
+				printf '%s\n' "branch $descr" >>"$todo"
+			fi
 			touch "$rewritten"/$sha1
 			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 		fi
+		last="$sha1"
 	fi
 done
 
