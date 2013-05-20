@@ -114,7 +114,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	rm -rf '$(GIT)'
 	install -d -m0755 '$(GIT)'/usr/bin
 	DESTDIR='$(GIT)' $(MAKE) install $(OPTS)
-	install -d -m0755 '$(GIT)'/var/cache/git
+	install -d -m0755 '$(GIT)'/var/lib/git
 	rm -f '$(GIT)'/usr/share/perl5/Error.pm
 	rm -rf '$(GIT)'/usr/share/man
 	chmod 644 '$(GIT)'/usr/share/perl5/Git.pm

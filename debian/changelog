@@ -1,3 +1,21 @@
+git (1:1.8.3.2-1.1) experimental; urgency=low
+
+  * use /var/lib/git instead of /var/cache/git as default git
+    project root to comply with the Filesystem Hierarchy Standard
+    (thx Julian Gilbey; closes: #483788):
+    * git-daemon.default, git-daemon.in, git-daemon/run: use
+      base path of /var/lib and projectroot of /var/lib/git.
+    * gitweb.conf: $projectroot = "/var/lib/git".
+    * rules: package git: install empty /var/lib/git directory
+      instead of /var/cache/git.
+    * git.README.Debian, git-daemon-run.README.Debian,
+      git-daemon-sysvinit.README.Debian, gitweb.README.Debian:
+      update for the new project root.
+    * git.NEWS.Debian: advertise the change and explain how to
+      adapt to it.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 06 Jul 2013 15:15:15 -0700
+
 git (1:1.8.3.2-1) unstable; urgency=low
 
   * new upstream point release (see RelNotes/1.8.3.2.txt).

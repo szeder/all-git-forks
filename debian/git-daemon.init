@@ -26,8 +26,8 @@ SCRIPTNAME=/etc/init.d/$NAME
 [ -r /etc/default/$NAME ] && . /etc/default/$NAME
 
 GIT_DAEMON_USER=${GIT_DAEMON_USER:-gitdaemon}
-GIT_DAEMON_BASE_PATH=${GIT_DAEMON_BASE_PATH:-/var/cache}
-GIT_DAEMON_DIRECTORY=${GIT_DAEMON_DIRECTORY:-/var/cache/git}
+GIT_DAEMON_BASE_PATH=${GIT_DAEMON_BASE_PATH:-/var/lib}
+GIT_DAEMON_DIRECTORY=${GIT_DAEMON_DIRECTORY:-/var/lib/git}
 
 DAEMON_ARGS="--user=$GIT_DAEMON_USER --pid-file=$PIDFILE --detach"
 DAEMON_ARGS="$DAEMON_ARGS --reuseaddr --verbose $GIT_DAEMON_OPTIONS"

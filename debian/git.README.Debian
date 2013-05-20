@@ -9,8 +9,8 @@ repositories.  This package provides the git-daemon program, to enable a
 git-daemon service, configure inetd(8) to launch it on demand, or install the
 git-daemon-run package to run it permanently:
  cat >> /etc/inetd.conf <<EOF
-git stream tcp4 nowait nobody /usr/bin/git git daemon --inetd --base-path=/var/cache /var/cache/git
-git stream tcp6 nowait nobody /usr/bin/git git daemon --inetd --base-path=/var/cache /var/cache/git
+git stream tcp4 nowait nobody /usr/bin/git git daemon --inetd --base-path=/var/lib /var/lib/git
+git stream tcp6 nowait nobody /usr/bin/git git daemon --inetd --base-path=/var/lib /var/lib/git
 EOF
 
 Or:
@@ -22,12 +22,12 @@ logs:
  sv stat git-daemon
  cat /var/log/git-daemon/current
 
-The git daemon by default looks into the directory /var/cache/git/ for
+The git daemon by default looks into the directory /var/lib/git/ for
 repositories (this is configured in /etc/sv/git-daemon/run).  It expects
-the repositories' .git subdirectories in /var/cache/git/, symlinks pointing
+the repositories' .git subdirectories in /var/lib/git/, symlinks pointing
 to the corresponding subdirectories in the repositories are just fine, e.g.:
 
- ln -s ~pape/git/foo/.git /var/cache/git/foo.git
+ ln -s ~pape/git/foo/.git /var/lib/git/foo.git
 
 Now git-clone git://git.example.org/git/repo will work.
 
@@ -36,7 +36,7 @@ repositories.  You then need to add a stanza to /etc/rsyncd.conf that looks
 like this:
 
 [git]
-    path = /var/cache/git
+    path = /var/lib/git
     readonly = yes
 
 Now git-clone rsync://git.example.org/git/repo will work.
@@ -52,12 +52,12 @@ configuration that looks like this:
     ServerAdmin webmaster@example.org
     HeaderName HEADER
     # bogus but safe DocumentRoot
-    DocumentRoot /var/cache/git
+    DocumentRoot /var/lib/git
     ErrorLog /var/log/apache2/git.example.org-error.log
     CustomLog /var/log/apache2/git.example.org-access.log combined
     Alias /robots.txt /var/www/cvs.robots.txt
     Alias /static /usr/share/gitweb/static
-    Alias /git /var/cache/git
+    Alias /git /var/lib/git
     ScriptAlias / /usr/share/gitweb/gitweb.cgi
     RedirectMatch permanent "^/~(.*)$" "http://example.org/~$1" 
 </VirtualHost>
