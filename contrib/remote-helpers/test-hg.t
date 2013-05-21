@@ -497,66 +497,10 @@ test_expect_success 'remote big push' '
 test_expect_success 'remote big push dry-run' '
 	test_when_finished "rm -rf hgrepo gitrepo*" &&
 
-	(
-	hg init hgrepo &&
-	cd hgrepo &&
-	echo zero > content &&
-	hg add content &&
-	hg commit -m zero &&
-	hg bookmark bad_bmark1 &&
-	echo one > content &&
-	hg commit -m one &&
-	hg bookmark bad_bmark2 &&
-	hg bookmark good_bmark &&
-	hg bookmark -i good_bmark &&
-	hg -q branch good_branch &&
-	echo "good branch" > content &&
-	hg commit -m "good branch" &&
-	hg -q branch bad_branch &&
-	echo "bad branch" > content &&
-	hg commit -m "bad branch"
-	) &&
-
-	git clone "hg::hgrepo" gitrepo &&
+	setup_big_push
 
 	(
 	cd gitrepo &&
-	echo two > content &&
-	git commit -q -a -m two &&
-
-	git checkout -q good_bmark &&
-	echo three > content &&
-	git commit -q -a -m three &&
-
-	git checkout -q bad_bmark1 &&
-	git reset --hard HEAD^ &&
-	echo four > content &&
-	git commit -q -a -m four &&
-
-	git checkout -q bad_bmark2 &&
-	git reset --hard HEAD^ &&
-	echo five > content &&
-	git commit -q -a -m five &&
-
-	git checkout -q -b new_bmark master &&
-	echo six > content &&
-	git commit -q -a -m six &&
-
-	git checkout -q branches/good_branch &&
-	echo seven > content &&
-	git commit -q -a -m seven &&
-	echo eight > content &&
-	git commit -q -a -m eight &&
-
-	git checkout -q branches/bad_branch &&
-	git reset --hard HEAD^ &&
-	echo nine > content &&
-	git commit -q -a -m nine &&
-
-	git checkout -q -b branches/new_branch master &&
-	echo ten > content &&
-	git commit -q -a -m ten &&
-
 	test_expect_code 1 git push --dry-run origin master \
 		good_bmark bad_bmark1 bad_bmark2 new_bmark \
 		branches/good_branch branches/bad_branch \
