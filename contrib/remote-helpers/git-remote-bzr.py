@@ -874,6 +874,8 @@ def get_repo(url, alias):
                 bdir.destroy_repository()
             except bzrlib.errors.NotBranchError:
                 pass
+            except bzrlib.errors.NoRepositoryPresent:
+                pass
 
     info('Updating bzr branches')
 
