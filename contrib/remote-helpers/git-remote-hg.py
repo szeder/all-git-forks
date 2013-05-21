@@ -560,6 +560,7 @@ def do_capabilities(parser):
     if os.path.exists(path):
         print "*import-marks %s" % path
     print "*export-marks %s" % path
+    print "option"
 
     print
 
@@ -727,6 +728,11 @@ def parse_commit(parser):
             die('Unknown file command: %s' % line)
         files[path] = f
 
+    # only export the commits if we are on an internal proxy repo
+    if dry_run and not peer:
+        parsed_refs[ref] = None
+        return
+
     def getfilectx(repo, memctx, f):
         of = files[f]
         if 'deleted' in of:
@@ -812,7 +818,10 @@ def parse_reset(parser):
     from_mark = parser.get_mark()
     parser.next()
 
-    rev = mark_to_rev(from_mark)
+    try:
+        rev = mark_to_rev(from_mark)
+    except KeyError:
+        rev = None
     parsed_refs[ref] = rev
 
 def parse_tag(parser):
@@ -999,7 +1008,7 @@ def do_export(parser):
             die('unhandled export command: %s' % line)
 
     for ref, node in parsed_refs.iteritems():
-        bnode = hgbin(node)
+        bnode = hgbin(node) if node else None
         if ref.startswith('refs/heads/branches'):
             branch = ref[len('refs/heads/branches/'):]
             if branch in branches and bnode in branches[branch]:
@@ -1022,6 +1031,9 @@ def do_export(parser):
 
             p_revs[bnode] = ref
         elif ref.startswith('refs/tags/'):
+            if dry_run:
+                print "ok %s" % ref
+                continue
             tag = ref[len('refs/tags/'):]
             tag = hgref(tag)
             author, msg = parsed_tags.get(tag, (None, None))
@@ -1039,6 +1051,12 @@ def do_export(parser):
         else:
             # transport-helper/fast-export bugs
             continue
+
+    if dry_run:
+        if not force_push:
+            checkheads(parser.repo, peer, p_revs)
+        print
+        return
 
     if peer:
         if not push(parser.repo, peer, parsed_refs, p_revs):
@@ -1061,6 +1079,15 @@ def do_export(parser):
 
     print
 
+def do_option(parser):
+    global dry_run
+    _, key, value = parser.line.split(' ')
+    if key == 'dry-run':
+        dry_run = (value == 'true')
+        print 'ok'
+    else:
+        print 'unsupported'
+
 def fix_path(alias, repo, orig_url):
     url = urlparse.urlparse(orig_url, 'file')
     if url.scheme != 'file' or os.path.isabs(url.path):
@@ -1077,6 +1104,7 @@ def main(args):
     global parsed_tags
     global filenodes
     global fake_bmark, hg_version
+    global dry_run
 
     alias = args[1]
     url = args[2]
@@ -1115,6 +1143,7 @@ def main(args):
         hg_version = tuple(int(e) for e in util.version().split('.'))
     except:
         hg_version = None
+    dry_run = False
 
     repo = get_repo(url, alias)
     prefix = 'refs/hg/%s' % alias
@@ -1139,6 +1168,8 @@ def main(args):
             do_import(parser)
         elif parser.check('export'):
             do_export(parser)
+        elif parser.check('option'):
+            do_option(parser)
         else:
             die('unhandled command: %s' % line)
         sys.stdout.flush()
