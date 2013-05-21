@@ -814,6 +814,9 @@ static int push_refs_with_export(struct transport *transport,
 			die("helper %s does not support dry-run", data->name);
 	}
 
+	if (flags & TRANSPORT_PUSH_FORCE)
+		set_helper_option(transport, "force", "true");
+
 	helper = get_helper(transport);
 
 	write_constant(helper->in, "export\n");
