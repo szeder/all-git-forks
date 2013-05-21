@@ -546,6 +546,14 @@ test_expect_success 'remote big push dry-run' '
 	grep "^ ! \[rejected\] *bad_bmark1 -> bad_bmark1 (non-fast-forward)$" error &&
 	grep "^   [a-f0-9]*\.\.[a-f0-9]* *branches/good_branch -> branches/good_branch$" error &&
 	grep "^ ! \[rejected\] *branches/bad_branch -> branches/bad_branch (non-fast-forward)$" error &&
+	grep "^ \* \[new branch\] *branches/new_branch -> branches/new_branch$" error &&
+
+	check_push --dry-run master good_bmark new_bmark branches/good_branch branches/new_branch &&
+
+	grep "^   [a-f0-9]*\.\.[a-f0-9]* *master -> master$" error &&
+	grep "^   [a-f0-9]*\.\.[a-f0-9]* *good_bmark -> good_bmark$" error &&
+	grep "^ \* \[new branch\] *new_bmark -> new_bmark$" error &&
+	grep "^   [a-f0-9]*\.\.[a-f0-9]* *branches/good_branch -> branches/good_branch$" error &&
 	grep "^ \* \[new branch\] *branches/new_branch -> branches/new_branch$" error
 	) &&
 
