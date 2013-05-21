@@ -15,143 +15,439 @@ if ! test_have_prereq PYTHON; then
 	test_done
 fi
 
-if ! "$PYTHON_PATH" -c 'import mercurial'; then
+if ! python -c 'import mercurial'; then
 	skip_all='skipping remote-hg tests; mercurial not available'
 	test_done
 fi
 
 check () {
-	(cd $1 &&
-	git log --format='%s' -1 &&
-	git symbolic-ref HEAD) > actual &&
-	(echo $2 &&
-	echo "refs/heads/$3") > expected &&
+	echo $3 > expected &&
+	git --git-dir=$1/.git log --format='%s' -1 $2 > actual
 	test_cmp expected actual
+}
+
+check_bookmark () {
+	if [ -n "$3" ]; then
+		echo $3 > expected &&
+		hg -R $1 log -r "bookmark('$2')" --template '{desc}\n' > actual &&
+		test_cmp expected actual
+	else
+		hg -R $1 bookmarks > out &&
+		! grep $2 out
+	fi
+}
+
+check_branch () {
+	if [ -n "$3" ]; then
+		echo $3 > expected &&
+		hg -R $1 log -r $2 --template '{desc}\n' > actual &&
+		test_cmp expected actual
+	else
+		hg -R $1 branches > out &&
+		! grep $2 out
+	fi
 }
 
 setup () {
 	(
 	echo "[ui]"
 	echo "username = H G Wells <wells@example.com>"
+	echo "[extensions]"
+	echo "mq ="
 	) >> "$HOME"/.hgrc
 }
 
 setup
 
 test_expect_success 'cloning' '
-  test_when_finished "rm -rf gitrepo*" &&
+	test_when_finished "rm -rf gitrepo*" &&
 
-  (
-  hg init hgrepo &&
-  cd hgrepo &&
-  echo zero > content &&
-  hg add content &&
-  hg commit -m zero
-  ) &&
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+	echo zero > content &&
+	hg add content &&
+	hg commit -m zero
+	) &&
 
-  git clone "hg::$PWD/hgrepo" gitrepo &&
-  check gitrepo zero master
+	git clone "hg::hgrepo" gitrepo &&
+	check gitrepo HEAD zero
 '
 
 test_expect_success 'cloning with branches' '
-  test_when_finished "rm -rf gitrepo*" &&
+	test_when_finished "rm -rf gitrepo*" &&
 
-  (
-  cd hgrepo &&
-  hg branch next &&
-  echo next > content &&
-  hg commit -m next
-  ) &&
+	(
+	cd hgrepo &&
+	hg branch next &&
+	echo next > content &&
+	hg commit -m next
+	) &&
 
-  git clone "hg::$PWD/hgrepo" gitrepo &&
-  check gitrepo next next &&
-
-  (cd hgrepo && hg checkout default) &&
-
-  git clone "hg::$PWD/hgrepo" gitrepo2 &&
-  check gitrepo2 zero master
+	git clone "hg::hgrepo" gitrepo &&
+	check gitrepo origin/branches/next next
 '
 
 test_expect_success 'cloning with bookmarks' '
-  test_when_finished "rm -rf gitrepo*" &&
+	test_when_finished "rm -rf gitrepo*" &&
 
-  (
-  cd hgrepo &&
-  hg bookmark feature-a &&
-  echo feature-a > content &&
-  hg commit -m feature-a
-  ) &&
+	(
+	cd hgrepo &&
+	hg checkout default &&
+	hg bookmark feature-a &&
+	echo feature-a > content &&
+	hg commit -m feature-a
+	) &&
 
-  git clone "hg::$PWD/hgrepo" gitrepo &&
-  check gitrepo feature-a feature-a
-'
-
-test_expect_success 'cloning with detached head' '
-  test_when_finished "rm -rf gitrepo*" &&
-
-  (
-  cd hgrepo &&
-  hg update -r 0
-  ) &&
-
-  git clone "hg::$PWD/hgrepo" gitrepo &&
-  check gitrepo zero master
+	git clone "hg::hgrepo" gitrepo &&
+	check gitrepo origin/feature-a feature-a
 '
 
 test_expect_success 'update bookmark' '
-  test_when_finished "rm -rf gitrepo*" &&
+	test_when_finished "rm -rf gitrepo*" &&
 
-  (
-  cd hgrepo &&
-  hg bookmark devel
-  ) &&
+	(
+	cd hgrepo &&
+	hg bookmark devel
+	) &&
 
-  (
-  git clone "hg::$PWD/hgrepo" gitrepo &&
-  cd gitrepo &&
-  git checkout devel &&
-  echo devel > content &&
-  git commit -a -m devel &&
-  git push
-  ) &&
+	(
+	git clone "hg::hgrepo" gitrepo &&
+	cd gitrepo &&
+	git checkout --quiet devel &&
+	echo devel > content &&
+	git commit -a -m devel &&
+	git push --quiet
+	) &&
 
-  hg -R hgrepo bookmarks | egrep "devel[	 ]+3:"
+	check_bookmark hgrepo devel devel
 '
 
+test_expect_success 'new bookmark' '
+	test_when_finished "rm -rf gitrepo*" &&
+
+	(
+	git clone "hg::hgrepo" gitrepo &&
+	cd gitrepo &&
+	git checkout --quiet -b feature-b &&
+	echo feature-b > content &&
+	git commit -a -m feature-b &&
+	git push --quiet origin feature-b
+	) &&
+
+	check_bookmark hgrepo feature-b feature-b
+'
+
+# cleanup previous stuff
+rm -rf hgrepo
+
 author_test () {
-  echo $1 >> content &&
-  hg commit -u "$2" -m "add $1" &&
-  echo "$3" >> ../expected
+	echo $1 >> content &&
+	hg commit -u "$2" -m "add $1" &&
+	echo "$3" >> ../expected
 }
 
 test_expect_success 'authors' '
-  mkdir -p tmp && cd tmp &&
-  test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf hgrepo gitrepo" &&
 
-  (
-  hg init hgrepo &&
-  cd hgrepo &&
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
 
-  touch content &&
-  hg add content &&
+	touch content &&
+	hg add content &&
 
-  author_test alpha "" "H G Wells <wells@example.com>" &&
-  author_test beta "test" "test <unknown>" &&
-  author_test beta "test <test@example.com> (comment)" "test <test@example.com>" &&
-  author_test gamma "<test@example.com>" "Unknown <test@example.com>" &&
-  author_test delta "name<test@example.com>" "name <test@example.com>" &&
-  author_test epsilon "name <test@example.com" "name <test@example.com>" &&
-  author_test zeta " test " "test <unknown>" &&
-  author_test eta "test < test@example.com >" "test <test@example.com>" &&
-  author_test theta "test >test@example.com>" "test <test@example.com>" &&
-  author_test iota "test < test <at> example <dot> com>" "test <unknown>" &&
-  author_test kappa "test@example.com" "Unknown <test@example.com>"
-  ) &&
+	> ../expected &&
+	author_test alpha "" "H G Wells <wells@example.com>" &&
+	author_test beta "test" "test <unknown>" &&
+	author_test beta "test <test@example.com> (comment)" "test <test@example.com>" &&
+	author_test gamma "<test@example.com>" "Unknown <test@example.com>" &&
+	author_test delta "name<test@example.com>" "name <test@example.com>" &&
+	author_test epsilon "name <test@example.com" "name <test@example.com>" &&
+	author_test zeta " test " "test <unknown>" &&
+	author_test eta "test < test@example.com >" "test <test@example.com>" &&
+	author_test theta "test >test@example.com>" "test <test@example.com>" &&
+	author_test iota "test < test <at> example <dot> com>" "test <unknown>" &&
+	author_test kappa "test@example.com" "Unknown <test@example.com>"
+	) &&
 
-  git clone "hg::$PWD/hgrepo" gitrepo &&
-  git --git-dir=gitrepo/.git log --reverse --format="%an <%ae>" > actual &&
+	git clone "hg::hgrepo" gitrepo &&
+	git --git-dir=gitrepo/.git log --reverse --format="%an <%ae>" > actual &&
 
-  test_cmp expected actual
+	test_cmp expected actual
+'
+
+test_expect_success 'strip' '
+	test_when_finished "rm -rf hgrepo gitrepo" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+
+	echo one >> content &&
+	hg add content &&
+	hg commit -m one &&
+
+	echo two >> content &&
+	hg commit -m two
+	) &&
+
+	git clone "hg::hgrepo" gitrepo &&
+
+	(
+	cd hgrepo &&
+	hg strip -r 1 &&
+
+	echo three >> content &&
+	hg commit -m three &&
+
+	echo four >> content &&
+	hg commit -m four
+	) &&
+
+	(
+	cd gitrepo &&
+	git fetch &&
+	git log --format="%s" origin/master > ../actual
+	) &&
+
+	hg -R hgrepo log --template "{desc}\n" > expected &&
+	test_cmp actual expected
+'
+
+GIT_REMOTE_HG_TEST_REMOTE=1
+export GIT_REMOTE_HG_TEST_REMOTE
+
+test_expect_success 'remote cloning' '
+	test_when_finished "rm -rf gitrepo*" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+	echo zero > content &&
+	hg add content &&
+	hg commit -m zero
+	) &&
+
+	git clone "hg::hgrepo" gitrepo &&
+	check gitrepo HEAD zero
+'
+
+test_expect_success 'remote update bookmark' '
+	test_when_finished "rm -rf gitrepo*" &&
+
+	(
+	cd hgrepo &&
+	hg bookmark devel
+	) &&
+
+	(
+	git clone "hg::hgrepo" gitrepo &&
+	cd gitrepo &&
+	git checkout --quiet devel &&
+	echo devel > content &&
+	git commit -a -m devel &&
+	git push --quiet
+	) &&
+
+	check_bookmark hgrepo devel devel
+'
+
+test_expect_success 'remote new bookmark' '
+	test_when_finished "rm -rf gitrepo*" &&
+
+	(
+	git clone "hg::hgrepo" gitrepo &&
+	cd gitrepo &&
+	git checkout --quiet -b feature-b &&
+	echo feature-b > content &&
+	git commit -a -m feature-b &&
+	git push --quiet origin feature-b
+	) &&
+
+	check_bookmark hgrepo feature-b feature-b
+'
+
+test_expect_success 'remote push diverged' '
+	test_when_finished "rm -rf gitrepo*" &&
+
+	git clone "hg::hgrepo" gitrepo &&
+
+	(
+	cd hgrepo &&
+	hg checkout default &&
+	echo bump > content &&
+	hg commit -m bump
+	) &&
+
+	(
+	cd gitrepo &&
+	echo diverge > content &&
+	git commit -a -m diverged &&
+	test_expect_code 1 git push 2> error &&
+	grep "^ ! \[rejected\] *master -> master (non-fast-forward)$" error
+	) &&
+
+	check_branch hgrepo default bump
+'
+
+test_expect_success 'remote update bookmark diverge' '
+	test_when_finished "rm -rf gitrepo*" &&
+
+	(
+	cd hgrepo &&
+	hg bookmark diverge -r tip^
+	hg checkout diverge
+	) &&
+
+	git clone "hg::hgrepo" gitrepo &&
+
+	(
+	cd hgrepo &&
+	echo "bump bookmark" > content &&
+	hg commit -m "bump bookmark"
+	) &&
+
+	(
+	cd gitrepo &&
+	git checkout --quiet diverge &&
+	echo diverge > content &&
+	git commit -a -m diverge &&
+	test_expect_code 1 git push 2> error &&
+	grep "^ ! \[rejected\] *diverge -> diverge (non-fast-forward)$" error
+	) &&
+
+	check_bookmark hgrepo diverge "bump bookmark"
+'
+
+test_expect_success 'remote new bookmark multiple branch head' '
+	test_when_finished "rm -rf gitrepo*" &&
+
+	(
+	git clone "hg::hgrepo" gitrepo &&
+	cd gitrepo &&
+	git checkout --quiet -b feature-c HEAD^ &&
+	echo feature-c > content &&
+	git commit -a -m feature-c &&
+	git push --quiet origin feature-c
+	) &&
+
+	check_bookmark hgrepo feature-c feature-c
+'
+
+# cleanup previous stuff
+rm -rf hgrepo
+
+test_expect_success 'remote big push' '
+	test_when_finished "rm -rf hgrepo gitrepo*" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+	echo zero > content &&
+	hg add content &&
+	hg commit -m zero &&
+	hg bookmark bad_bmark1 &&
+	echo one > content &&
+	hg commit -m one &&
+	hg bookmark bad_bmark2 &&
+	hg bookmark good_bmark &&
+	hg bookmark -i &&
+	hg -q branch good_branch &&
+	echo "good branch" > content &&
+	hg commit -m "good branch" &&
+	hg -q branch bad_branch &&
+	echo "bad branch" > content &&
+	hg commit -m "bad branch"
+	) &&
+
+	git clone "hg::hgrepo" gitrepo &&
+
+	(
+	cd gitrepo &&
+	echo two > content &&
+	git commit -q -a -m two &&
+
+	git checkout -q good_bmark &&
+	echo three > content &&
+	git commit -q -a -m three &&
+
+	git checkout -q bad_bmark1 &&
+	git reset --hard HEAD^ &&
+	echo four > content &&
+	git commit -q -a -m four &&
+
+	git checkout -q bad_bmark2 &&
+	git reset --hard HEAD^ &&
+	echo five > content &&
+	git commit -q -a -m five &&
+
+	git checkout -q -b new_bmark master &&
+	echo six > content &&
+	git commit -q -a -m six &&
+
+	git checkout -q branches/good_branch &&
+	echo seven > content &&
+	git commit -q -a -m seven &&
+	echo eight > content &&
+	git commit -q -a -m eight &&
+
+	git checkout -q branches/bad_branch &&
+	git reset --hard HEAD^ &&
+	echo nine > content &&
+	git commit -q -a -m nine &&
+
+	git checkout -q -b branches/new_branch master &&
+	echo ten > content &&
+	git commit -q -a -m ten &&
+
+	test_expect_code 1 git push origin master \
+		good_bmark bad_bmark1 bad_bmark2 new_bmark \
+		branches/good_branch branches/bad_branch \
+		branches/new_branch 2> error &&
+
+	grep "^   [a-f0-9]*\.\.[a-f0-9]* *master -> master$" error &&
+	grep "^   [a-f0-9]*\.\.[a-f0-9]* *good_bmark -> good_bmark$" error &&
+	grep "^ \* \[new branch\] *new_bmark -> new_bmark$" error &&
+	grep "^ ! \[rejected\] *bad_bmark2 -> bad_bmark2 (non-fast-forward)$" error &&
+	grep "^ ! \[rejected\] *bad_bmark1 -> bad_bmark1 (non-fast-forward)$" error &&
+	grep "^   [a-f0-9]*\.\.[a-f0-9]* *branches/good_branch -> branches/good_branch$" error &&
+	grep "^ ! \[rejected\] *branches/bad_branch -> branches/bad_branch (non-fast-forward)$" error &&
+	grep "^ \* \[new branch\] *branches/new_branch -> branches/new_branch$" error
+	) &&
+
+	check_branch hgrepo default one &&
+	check_branch hgrepo good_branch "good branch" &&
+	check_branch hgrepo bad_branch "bad branch" &&
+	check_branch hgrepo new_branch '' &&
+	check_bookmark hgrepo good_bmark one &&
+	check_bookmark hgrepo bad_bmark1 one &&
+	check_bookmark hgrepo bad_bmark2 one &&
+	check_bookmark hgrepo new_bmark ''
+'
+
+test_expect_success 'remote double failed push' '
+	test_when_finished "rm -rf hgrepo gitrepo*" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+	echo zero > content &&
+	hg add content &&
+	hg commit -m zero &&
+	echo one > content &&
+	hg commit -m one
+	) &&
+
+	(
+	git clone "hg::hgrepo" gitrepo &&
+	cd gitrepo &&
+	git reset --hard HEAD^ &&
+	echo two > content &&
+	git commit -a -m two &&
+	test_expect_code 1 git push &&
+	test_expect_code 1 git push
+	)
 '
 
 test_done
