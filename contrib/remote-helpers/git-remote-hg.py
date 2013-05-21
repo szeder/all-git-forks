@@ -1053,7 +1053,7 @@ def do_export(parser):
             continue
 
     if dry_run:
-        if not force_push:
+        if peer and not force_push:
             checkheads(parser.repo, peer, p_revs)
         print
         return
