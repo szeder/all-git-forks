@@ -591,7 +591,7 @@ test_expect_success 'remote big push fetch first' '
 
 	(
 	cd hgrepo &&
-	hg bookmark bad_bmark &&
+	hg bookmark -f bad_bmark &&
 	echo update_bmark > content &&
 	hg commit -m "update bmark"
 	) &&
