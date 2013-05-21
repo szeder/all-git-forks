@@ -517,6 +517,16 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 		}
 		if (read_ref_at(real_ref, at_time, nth, sha1, NULL,
 				&co_time, &co_tz, &co_cnt)) {
+			if (!len) {
+				if (!prefixcmp(real_ref, "refs/heads/")) {
+					str = real_ref + 11;
+					len = strlen(real_ref + 11);
+				} else {
+					/* detached HEAD */
+					str = "HEAD";
+					len = 4;
+				}
+			}
 			if (at_time)
 				warning("Log for '%.*s' only goes "
 					"back to %s.", len, str,
