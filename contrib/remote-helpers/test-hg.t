@@ -382,7 +382,7 @@ test_expect_success 'remote update bookmark diverge' '
 	echo diverge > content &&
 	git commit -a -m diverge &&
 	test_expect_code 1 check_push &&
-	grep "^ ! \[rejected\] *diverge -> diverge (non-fast-forward)$" error
+	grep "^ ! \[rejected\] *diverge -> diverge (fetch first)$" error
 	) &&
 
 	check_bookmark hgrepo diverge "bump bookmark"
@@ -557,6 +557,70 @@ test_expect_success 'remote big push dry-run' '
 	check_bookmark hgrepo bad_bmark1 one &&
 	check_bookmark hgrepo bad_bmark2 one &&
 	check_bookmark hgrepo new_bmark ''
+'
+
+test_expect_success 'remote big push fetch first' '
+	test_when_finished "rm -rf hgrepo gitrepo*" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+	echo zero > content &&
+	hg add content &&
+	hg commit -m zero &&
+	hg bookmark bad_bmark &&
+	hg bookmark good_bmark &&
+	hg bookmark -i good_bmark &&
+	hg -q branch good_branch &&
+	echo "good branch" > content &&
+	hg commit -m "good branch" &&
+	hg -q branch bad_branch &&
+	echo "bad branch" > content &&
+	hg commit -m "bad branch"
+	) &&
+
+	git clone "hg::hgrepo" gitrepo &&
+
+	(
+	cd hgrepo &&
+	hg bookmark bad_bmark &&
+	echo update_bmark > content &&
+	hg commit -m "update bmark"
+	) &&
+
+	(
+	cd gitrepo &&
+	echo two > content &&
+	git commit -q -a -m two &&
+
+	git checkout -q good_bmark &&
+	echo three > content &&
+	git commit -q -a -m three &&
+
+	git checkout -q bad_bmark &&
+	echo four > content &&
+	git commit -q -a -m four &&
+
+	git checkout -q branches/bad_branch &&
+	echo five > content &&
+	git commit -q -a -m five &&
+
+	test_expect_code 1 check_push --all &&
+
+	grep "^   [a-f0-9]*\.\.[a-f0-9]* *master -> master$" error &&
+	grep "^   [a-f0-9]*\.\.[a-f0-9]* *good_bmark -> good_bmark$" error &&
+	grep "^ ! \[rejected\] *bad_bmark -> bad_bmark (fetch first)$" error &&
+	grep "^ ! \[rejected\] *branches/bad_branch -> branches/bad_branch (fetch first)$" error &&
+
+	git fetch &&
+
+	test_expect_code 1 check_push --all &&
+
+	grep "^   [a-f0-9]*\.\.[a-f0-9]* *master -> master$" error &&
+	grep "^   [a-f0-9]*\.\.[a-f0-9]* *good_bmark -> good_bmark$" error &&
+	grep "^ ! \[rejected\] *bad_bmark -> bad_bmark (non-fast-forward)$" error &&
+	grep "^ ! \[rejected\] *branches/bad_branch -> branches/bad_branch (non-fast-forward)$" error
+	)
 '
 
 test_expect_success 'remote double failed push' '

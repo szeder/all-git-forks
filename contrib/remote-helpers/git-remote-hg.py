@@ -983,6 +983,15 @@ def push(repo, remote, parsed_refs, p_revs):
 
     return ret
 
+def check_tip(ref, kind, name, heads):
+    try:
+        ename = '%s/%s' % (kind, name)
+        tip = marks.get_tip(ename)
+    except KeyError:
+        return True
+    else:
+        return tip in heads
+
 def do_export(parser):
     global parsed_refs, bmarks, peer
 
@@ -1005,6 +1014,8 @@ def do_export(parser):
         else:
             die('unhandled export command: %s' % line)
 
+    need_fetch = False
+
     for ref, node in parsed_refs.iteritems():
         bnode = hgbin(node) if node else None
         if ref.startswith('refs/heads/branches'):
@@ -1012,6 +1023,16 @@ def do_export(parser):
             if branch in branches and bnode in branches[branch]:
                 # up to date
                 continue
+
+            if peer:
+                remotemap = peer.branchmap()
+                if remotemap and branch in remotemap:
+                    heads = [hghex(e) for e in remotemap[branch]]
+                    if not check_tip(ref, 'branches', branch, heads):
+                        print "error %s fetch first" % ref
+                        need_fetch = True
+                        continue
+
             p_revs[bnode] = ref
             print "ok %s" % ref
         elif ref.startswith('refs/heads/'):
@@ -1026,6 +1047,14 @@ def do_export(parser):
             if bmark != fake_bmark and \
                     not (bmark == 'master' and bmark not in parser.repo._bookmarks):
                 p_bmarks.append((ref, bmark, old, new))
+
+            if peer:
+                remote_old = peer.listkeys('bookmarks').get(bmark)
+                if remote_old:
+                    if not check_tip(ref, 'bookmarks', bmark, remote_old):
+                        print "error %s fetch first" % ref
+                        need_fetch = True
+                        continue
 
             p_revs[bnode] = ref
         elif ref.startswith('refs/tags/'):
@@ -1049,6 +1078,10 @@ def do_export(parser):
         else:
             # transport-helper/fast-export bugs
             continue
+
+    if need_fetch:
+        print
+        return
 
     if dry_run:
         if peer and not force_push:
