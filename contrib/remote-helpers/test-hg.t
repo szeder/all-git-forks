@@ -499,6 +499,36 @@ test_expect_success 'remote big push' '
 	check_bookmark hgrepo new_bmark ''
 '
 
+test_expect_success 'remote big push force' '
+	test_when_finished "rm -rf hgrepo gitrepo*" &&
+
+	setup_big_push
+
+	(
+	cd gitrepo &&
+
+	check_push --force --all &&
+
+	grep "^   [a-f0-9]*\.\.[a-f0-9]* *master -> master$" error &&
+	grep "^   [a-f0-9]*\.\.[a-f0-9]* *good_bmark -> good_bmark$" error &&
+	grep "^ \* \[new branch\] *new_bmark -> new_bmark$" error &&
+	grep "^ + [a-f0-9]*\.\.\.[a-f0-9]* *bad_bmark2 -> bad_bmark2 (forced update)$" error &&
+	grep "^ + [a-f0-9]*\.\.\.[a-f0-9]* *bad_bmark1 -> bad_bmark1 (forced update)$" error &&
+	grep "^   [a-f0-9]*\.\.[a-f0-9]* *branches/good_branch -> branches/good_branch$" error &&
+	grep "^ + [a-f0-9]*\.\.\.[a-f0-9]* *branches/bad_branch -> branches/bad_branch (forced update)$" error &&
+	grep "^ \* \[new branch\] *branches/new_branch -> branches/new_branch$" error
+	) &&
+
+	check_branch hgrepo default six &&
+	check_branch hgrepo good_branch eight &&
+	check_branch hgrepo bad_branch nine &&
+	check_branch hgrepo new_branch ten &&
+	check_bookmark hgrepo good_bmark three &&
+	check_bookmark hgrepo bad_bmark1 four &&
+	check_bookmark hgrepo bad_bmark2 five &&
+	check_bookmark hgrepo new_bmark six
+'
+
 test_expect_success 'remote big push dry-run' '
 	test_when_finished "rm -rf hgrepo gitrepo*" &&
 
