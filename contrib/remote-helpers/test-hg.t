@@ -49,6 +49,13 @@ check_bookmark () {
 	fi
 }
 
+check_push () {
+	local ret=0
+	git push origin "$@" 2> error || ret=1
+	cat error
+	return $ret
+}
+
 setup () {
 	(
 	echo "[ui]"
@@ -345,7 +352,7 @@ test_expect_success 'remote push diverged' '
 	cd gitrepo &&
 	echo diverge > content &&
 	git commit -a -m diverged &&
-	test_expect_code 1 git push 2> error &&
+	test_expect_code 1 check_push &&
 	grep "^ ! \[rejected\] *master -> master (non-fast-forward)$" error
 	) &&
 
@@ -374,7 +381,7 @@ test_expect_success 'remote update bookmark diverge' '
 	git checkout --quiet diverge &&
 	echo diverge > content &&
 	git commit -a -m diverge &&
-	test_expect_code 1 git push 2> error &&
+	test_expect_code 1 check_push &&
 	grep "^ ! \[rejected\] *diverge -> diverge (non-fast-forward)$" error
 	) &&
 
@@ -469,10 +476,8 @@ test_expect_success 'remote big push' '
 
 	(
 	cd gitrepo &&
-	test_expect_code 1 git push origin master \
-		good_bmark bad_bmark1 bad_bmark2 new_bmark \
-		branches/good_branch branches/bad_branch \
-		branches/new_branch 2> error &&
+
+	test_expect_code 1 check_push --all &&
 
 	grep "^   [a-f0-9]*\.\.[a-f0-9]* *master -> master$" error &&
 	grep "^   [a-f0-9]*\.\.[a-f0-9]* *good_bmark -> good_bmark$" error &&
@@ -501,10 +506,8 @@ test_expect_success 'remote big push dry-run' '
 
 	(
 	cd gitrepo &&
-	test_expect_code 1 git push --dry-run origin master \
-		good_bmark bad_bmark1 bad_bmark2 new_bmark \
-		branches/good_branch branches/bad_branch \
-		branches/new_branch 2> error &&
+
+	test_expect_code 1 check_push --dry-run --all &&
 
 	grep "^   [a-f0-9]*\.\.[a-f0-9]* *master -> master$" error &&
 	grep "^   [a-f0-9]*\.\.[a-f0-9]* *good_bmark -> good_bmark$" error &&
