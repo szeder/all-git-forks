@@ -532,6 +532,72 @@ test_expect_success 'remote big push' '
 	check_bookmark hgrepo new_bmark ''
 '
 
+test_expect_success 'remote big push fetch first' '
+	test_when_finished "rm -rf hgrepo gitrepo*" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+	echo zero > content &&
+	hg add content &&
+	hg commit -m zero &&
+	hg bookmark bad_bmark &&
+	hg bookmark good_bmark &&
+	hg bookmark -i good_bmark &&
+	hg -q branch good_branch &&
+	echo "good branch" > content &&
+	hg commit -m "good branch" &&
+	hg -q branch bad_branch &&
+	echo "bad branch" > content &&
+	hg commit -m "bad branch"
+	) &&
+
+	git clone "hg::hgrepo" gitrepo &&
+
+	(
+	cd hgrepo &&
+	hg bookmark -f bad_bmark &&
+	echo update_bmark > content &&
+	hg commit -m "update bmark"
+	) &&
+
+	(
+	cd gitrepo &&
+	echo two > content &&
+	git commit -q -a -m two &&
+
+	git checkout -q good_bmark &&
+	echo three > content &&
+	git commit -q -a -m three &&
+
+	git checkout -q bad_bmark &&
+	echo four > content &&
+	git commit -q -a -m four &&
+
+	git checkout -q branches/bad_branch &&
+	echo five > content &&
+	git commit -q -a -m five &&
+
+	check_push 1 --all <<-EOF
+	master
+	good_bmark
+	new_bmark:new
+	new_branch:new
+	bad_bmark:fetch-first
+	branches/bad_branch:festch-first
+	EOF
+
+	git fetch &&
+
+	check_push 1 --all <<-EOF
+	master
+	good_bmark
+	bad_bmark:non-fast-forward
+	branches/bad_branch:non-fast-forward
+	EOF
+	)
+'
+
 test_expect_success 'remote big push force' '
 	test_when_finished "rm -rf hgrepo gitrepo*" &&
 
@@ -598,72 +664,6 @@ test_expect_success 'remote big push dry-run' '
 	check_bookmark hgrepo bad_bmark1 one &&
 	check_bookmark hgrepo bad_bmark2 one &&
 	check_bookmark hgrepo new_bmark ''
-'
-
-test_expect_success 'remote big push fetch first' '
-	test_when_finished "rm -rf hgrepo gitrepo*" &&
-
-	(
-	hg init hgrepo &&
-	cd hgrepo &&
-	echo zero > content &&
-	hg add content &&
-	hg commit -m zero &&
-	hg bookmark bad_bmark &&
-	hg bookmark good_bmark &&
-	hg bookmark -i good_bmark &&
-	hg -q branch good_branch &&
-	echo "good branch" > content &&
-	hg commit -m "good branch" &&
-	hg -q branch bad_branch &&
-	echo "bad branch" > content &&
-	hg commit -m "bad branch"
-	) &&
-
-	git clone "hg::hgrepo" gitrepo &&
-
-	(
-	cd hgrepo &&
-	hg bookmark -f bad_bmark &&
-	echo update_bmark > content &&
-	hg commit -m "update bmark"
-	) &&
-
-	(
-	cd gitrepo &&
-	echo two > content &&
-	git commit -q -a -m two &&
-
-	git checkout -q good_bmark &&
-	echo three > content &&
-	git commit -q -a -m three &&
-
-	git checkout -q bad_bmark &&
-	echo four > content &&
-	git commit -q -a -m four &&
-
-	git checkout -q branches/bad_branch &&
-	echo five > content &&
-	git commit -q -a -m five &&
-
-	check_push 1 --all <<-EOF
-	master
-	good_bmark
-	new_bmark:new
-	new_branch:new
-	bad_bmark:fetch-first
-	branches/bad_branch:festch-first
-	EOF
-
-	git fetch &&
-
-	check_push 1 --all <<-EOF
-	master
-	good_bmark
-	bad_bmark:non-fast-forward
-	branches/bad_branch:non-fast-forward
-	EOF
-	)
 '
 
 test_expect_success 'remote double failed push' '
