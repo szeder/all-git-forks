@@ -50,10 +50,41 @@ check_bookmark () {
 }
 
 check_push () {
-	local ret=0
-	git push origin "$@" 2> error || ret=1
+	local expected_ret=$1 ret=0 ref_ret=0 IFS=':'
+
+	shift
+	git push origin "$@" 2> error
+	ret=$?
 	cat error
-	return $ret
+
+	while read branch kind
+	do
+		case "$kind" in
+		'new')
+			grep "^ \* \[new branch\] *${branch} -> ${branch}$" error || ref_ret=1
+			;;
+		'non-fast-forward')
+			grep "^ ! \[rejected\] *${branch} -> ${branch} (non-fast-forward)$" error || ref_ret=1
+			;;
+		'fetch-first')
+			grep "^ ! \[rejected\] *${branch} -> ${branch} (fetch first)$" error || ref_ret=1
+			;;
+		'forced-update')
+			grep "^ + [a-f0-9]*\.\.\.[a-f0-9]* *${branch} -> ${branch} (forced update)$" error || ref_ret=1
+			;;
+		'')
+			grep "^   [a-f0-9]*\.\.[a-f0-9]* *${branch} -> ${branch}$" error || ref_ret=1
+			;;
+		esac
+		let 'ref_ret' && echo "match for '$branch' failed" && break
+	done
+
+	if let 'expected_ret != ret || ref_ret'
+	then
+		return 1
+	fi
+
+	return 0
 }
 
 setup () {
@@ -352,8 +383,9 @@ test_expect_success 'remote push diverged' '
 	cd gitrepo &&
 	echo diverge > content &&
 	git commit -a -m diverged &&
-	test_expect_code 1 check_push &&
-	grep "^ ! \[rejected\] *master -> master (non-fast-forward)$" error
+	check_push 1 <<-EOF
+	master:non-fast-forward
+	EOF
 	) &&
 
 	check_branch hgrepo default bump
@@ -381,8 +413,9 @@ test_expect_success 'remote update bookmark diverge' '
 	git checkout --quiet diverge &&
 	echo diverge > content &&
 	git commit -a -m diverge &&
-	test_expect_code 1 check_push &&
-	grep "^ ! \[rejected\] *diverge -> diverge (fetch first)$" error
+	check_push 1 <<-EOF
+	diverge:fetch-first
+	EOF
 	) &&
 
 	check_bookmark hgrepo diverge "bump bookmark"
@@ -477,16 +510,16 @@ test_expect_success 'remote big push' '
 	(
 	cd gitrepo &&
 
-	test_expect_code 1 check_push --all &&
-
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *master -> master$" error &&
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *good_bmark -> good_bmark$" error &&
-	grep "^ \* \[new branch\] *new_bmark -> new_bmark$" error &&
-	grep "^ ! \[rejected\] *bad_bmark2 -> bad_bmark2 (non-fast-forward)$" error &&
-	grep "^ ! \[rejected\] *bad_bmark1 -> bad_bmark1 (non-fast-forward)$" error &&
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *branches/good_branch -> branches/good_branch$" error &&
-	grep "^ ! \[rejected\] *branches/bad_branch -> branches/bad_branch (non-fast-forward)$" error &&
-	grep "^ \* \[new branch\] *branches/new_branch -> branches/new_branch$" error
+	check_push 1 --all <<-EOF
+	master
+	good_bmark
+	branches/good_branch
+	new_bmark:new
+	branches/new_branch:new
+	bad_bmark1:non-fast-forward
+	bad_bmark2:non-fast-forward
+	branches/bad_branch:non-fast-forward
+	EOF
 	) &&
 
 	check_branch hgrepo default one &&
@@ -507,16 +540,16 @@ test_expect_success 'remote big push force' '
 	(
 	cd gitrepo &&
 
-	check_push --force --all &&
-
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *master -> master$" error &&
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *good_bmark -> good_bmark$" error &&
-	grep "^ \* \[new branch\] *new_bmark -> new_bmark$" error &&
-	grep "^ + [a-f0-9]*\.\.\.[a-f0-9]* *bad_bmark2 -> bad_bmark2 (forced update)$" error &&
-	grep "^ + [a-f0-9]*\.\.\.[a-f0-9]* *bad_bmark1 -> bad_bmark1 (forced update)$" error &&
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *branches/good_branch -> branches/good_branch$" error &&
-	grep "^ + [a-f0-9]*\.\.\.[a-f0-9]* *branches/bad_branch -> branches/bad_branch (forced update)$" error &&
-	grep "^ \* \[new branch\] *branches/new_branch -> branches/new_branch$" error
+	check_push 0 --force --all <<-EOF
+	master
+	good_bmark
+	branches/good_branch
+	new_bmark:new
+	branches/new_branch:new
+	bad_bmark1:forced-update
+	bad_bmark2:forced-update
+	branches/bad_branch:forced-update
+	EOF
 	) &&
 
 	check_branch hgrepo default six &&
@@ -537,24 +570,24 @@ test_expect_success 'remote big push dry-run' '
 	(
 	cd gitrepo &&
 
-	test_expect_code 1 check_push --dry-run --all &&
+	check_push 0 --dry-run --all <<-EOF
+	master
+	good_bmark
+	branches/good_branch
+	new_bmark:new
+	branches/new_branch:new
+	bad_bmark1:non-fast-forward
+	bad_bmark2:non-fast-forward
+	branches/bad_branch:non-fast-forward
+	EOF
 
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *master -> master$" error &&
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *good_bmark -> good_bmark$" error &&
-	grep "^ \* \[new branch\] *new_bmark -> new_bmark$" error &&
-	grep "^ ! \[rejected\] *bad_bmark2 -> bad_bmark2 (non-fast-forward)$" error &&
-	grep "^ ! \[rejected\] *bad_bmark1 -> bad_bmark1 (non-fast-forward)$" error &&
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *branches/good_branch -> branches/good_branch$" error &&
-	grep "^ ! \[rejected\] *branches/bad_branch -> branches/bad_branch (non-fast-forward)$" error &&
-	grep "^ \* \[new branch\] *branches/new_branch -> branches/new_branch$" error &&
-
-	check_push --dry-run master good_bmark new_bmark branches/good_branch branches/new_branch &&
-
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *master -> master$" error &&
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *good_bmark -> good_bmark$" error &&
-	grep "^ \* \[new branch\] *new_bmark -> new_bmark$" error &&
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *branches/good_branch -> branches/good_branch$" error &&
-	grep "^ \* \[new branch\] *branches/new_branch -> branches/new_branch$" error
+	check_push 0 --dry-run master good_bmark new_bmark branches/good_branch branches/new_branch <<-EOF
+	master
+	good_bmark
+	branches/good_branch
+	new_bmark:new
+	branches/new_branch:new
+	EOF
 	) &&
 
 	check_branch hgrepo default one &&
@@ -613,21 +646,23 @@ test_expect_success 'remote big push fetch first' '
 	echo five > content &&
 	git commit -q -a -m five &&
 
-	test_expect_code 1 check_push --all &&
-
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *master -> master$" error &&
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *good_bmark -> good_bmark$" error &&
-	grep "^ ! \[rejected\] *bad_bmark -> bad_bmark (fetch first)$" error &&
-	grep "^ ! \[rejected\] *branches/bad_branch -> branches/bad_branch (fetch first)$" error &&
+	check_push 1 --all <<-EOF
+	master
+	good_bmark
+	new_bmark:new
+	new_branch:new
+	bad_bmark:fetch-first
+	branches/bad_branch:festch-first
+	EOF
 
 	git fetch &&
 
-	test_expect_code 1 check_push --all &&
-
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *master -> master$" error &&
-	grep "^   [a-f0-9]*\.\.[a-f0-9]* *good_bmark -> good_bmark$" error &&
-	grep "^ ! \[rejected\] *bad_bmark -> bad_bmark (non-fast-forward)$" error &&
-	grep "^ ! \[rejected\] *branches/bad_branch -> branches/bad_branch (non-fast-forward)$" error
+	check_push 1 --all <<-EOF
+	master
+	good_bmark
+	bad_bmark:non-fast-forward
+	branches/bad_branch:non-fast-forward
+	EOF
 	)
 '
 
