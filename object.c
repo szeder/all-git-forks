@@ -278,7 +278,7 @@ static void add_object_array_with_mode_context(struct object *obj, const char *n
 		array->objects = objects;
 	}
 	objects[nr].item = obj;
-	objects[nr].name = name;
+	objects[nr].name = name ? xstrdup(name) : NULL;
 	objects[nr].mode = mode;
 	objects[nr].context = context;
 	array->nr = ++nr;
@@ -302,22 +302,52 @@ void add_object_array_with_context(struct object *obj, const char *name, struct 
 		add_object_array_with_mode_context(obj, name, array, S_IFINVALID, context);
 }
 
-void object_array_remove_duplicates(struct object_array *array)
+void object_array_filter(struct object_array *array,
+			 object_array_each_func_t want, void *cb_data)
 {
-	unsigned int ref, src, dst;
+	unsigned nr = array->nr, src, dst;
 	struct object_array_entry *objects = array->objects;
 
-	for (ref = 0; ref + 1 < array->nr; ref++) {
-		for (src = ref + 1, dst = src;
-		     src < array->nr;
-		     src++) {
-			if (!strcmp(objects[ref].name, objects[src].name))
-				continue;
+	for (src = dst = 0; src < nr; src++) {
+		if (want(&objects[src], cb_data)) {
 			if (src != dst)
 				objects[dst] = objects[src];
 			dst++;
+		} else {
+			free(objects[src].name);
 		}
-		array->nr = dst;
+	}
+	array->nr = dst;
+}
+
+/*
+ * Return true iff array already contains an entry with name.
+ */
+static int contains_name(struct object_array *array, const char *name)
+{
+	unsigned nr = array->nr, i;
+	struct object_array_entry *object = array->objects;
+
+	for (i = 0; i < nr; i++, object++)
+		if (!strcmp(object->name, name))
+			return 1;
+	return 0;
+}
+
+void object_array_remove_duplicates(struct object_array *array)
+{
+	unsigned nr = array->nr, src;
+	struct object_array_entry *objects = array->objects;
+
+	array->nr = 0;
+	for (src = 0; src < nr; src++) {
+		if (!contains_name(array, objects[src].name)) {
+			if (src != array->nr)
+				objects[array->nr] = objects[src];
+			array->nr++;
+		} else {
+			free(objects[src].name);
+		}
 	}
 }
 
