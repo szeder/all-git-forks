@@ -2066,8 +2066,14 @@ status.relativePaths::
 	relative to the repository root (this was the default for Git
 	prior to v1.5.4).
 
+status.short::
+	//COMPLETER
+
+status.branch::
+	//COMPLETER
+
 status.showUntrackedFiles::
-	By default, linkgit:git-status[1] and linkgit:git-commit[1] show
+	By default, linkgit:git-statu[1] and linkgit:git-commit[1] show
 	files which are not currently tracked by Git. Directories which
 	contain only untracked files, are shown with the directory name
 	only. Showing untracked files means that Git needs to lstat() all
