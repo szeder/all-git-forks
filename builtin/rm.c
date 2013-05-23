@@ -82,6 +82,10 @@ static int check_local_mod(unsigned char *head, int index_only)
 	int i, no_head;
 	int errs = 0;
 
+    int is_error = 0;
+    int nb_error = 0;
+    char names_error[300] = ""; //ATTENTION CEST TRES MOCHE
+
 	no_head = is_null_sha1(head);
 	for (i = 0; i < list.nr; i++) {
 		struct stat st;
@@ -92,7 +96,7 @@ static int check_local_mod(unsigned char *head, int index_only)
 		unsigned mode;
 		int local_changes = 0;
 		int staged_changes = 0;
-
+        
 		pos = cache_name_pos(name, strlen(name));
 		if (pos < 0) {
 			/*
@@ -170,10 +174,15 @@ static int check_local_mod(unsigned char *head, int index_only)
 		 * "intent to add" entry.
 		 */
 		if (local_changes && staged_changes) {
-			if (!index_only || !(ce->ce_flags & CE_INTENT_TO_ADD))
-				errs = error(_("'%s' has staged content different "
+			if (!index_only || !(ce->ce_flags & CE_INTENT_TO_ADD)) {
+                is_error = 1;
+                strcat(names_error, "\n    ");
+                strcat(names_error, name);
+/*                errs = error(_("'%s' has staged content different "
 					     "from both the file and the HEAD\n"
-					     "(use -f to force removal)"), name);
+					     "(use -f to force removal)"), name);*/
+                nb_error++;
+            }
 		}
 		else if (!index_only) {
 			if (staged_changes)
@@ -194,6 +203,11 @@ static int check_local_mod(unsigned char *head, int index_only)
 			}
 		}
 	}
+    if (is_error==1)
+        errs = error(_("the following files have staged content different " 
+                "from both the file and the HEAD:%s\n"
+                "(use -f to force removal)"), names_error);
+
 	return errs;
 }
 
