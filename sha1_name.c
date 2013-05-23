@@ -443,15 +443,6 @@ static inline int at_mark(const char *string, int len, int *kind)
 	return 0;
 }
 
-static inline int upstream_mark(const char *string, int len)
-{
-	int suffix_len, kind;
-	suffix_len = at_mark(string, len, &kind);
-	if (suffix_len && kind == AT_KIND_UPSTREAM)
-		return suffix_len;
-	return 0;
-}
-
 static int get_sha1_1(const char *name, int len, unsigned char *sha1, unsigned lookup_flags);
 
 static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
@@ -469,7 +460,7 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 	if (len && str[len-1] == '}') {
 		for (at = len-2; at >= 0; at--) {
 			if (str[at] == '@' && str[at+1] == '{') {
-				if (!upstream_mark(str + at, len - at)) {
+				if (!at_mark(str + at, len - at, NULL)) {
 					reflog_len = (len-1) - (at+2);
 					len = at;
 				}
@@ -1044,6 +1035,7 @@ int interpret_branch_name(const char *name, struct strbuf *buf)
 	int namelen = strlen(name);
 	int len = interpret_nth_prior_checkout(name, buf);
 	int tmp_len;
+	int at_kind;
 
 	if (!len)
 		return len; /* syntax Ok, not enough switches */
@@ -1072,15 +1064,21 @@ int interpret_branch_name(const char *name, struct strbuf *buf)
 	cp = strchr(name, '@');
 	if (!cp)
 		return -1;
-	tmp_len = upstream_mark(cp, namelen - (cp - name));
+	tmp_len = at_mark(cp, namelen - (cp - name), &at_kind);
 	if (!tmp_len)
 		return -1;
 	len = cp + tmp_len - name;
 	cp = xstrndup(name, cp - name);
 	branch = branch_get(*cp ? cp : NULL);
-	die_no_upstream(branch, cp);
-	free(cp);
-	cp = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
+
+	switch (at_kind) {
+	case AT_KIND_UPSTREAM:
+		die_no_upstream(branch, cp);
+		free(cp);
+		cp = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
+		break;
+	}
+
 	strbuf_reset(buf);
 	strbuf_addstr(buf, cp);
 	free(cp);
