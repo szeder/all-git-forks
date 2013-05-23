@@ -1008,6 +1008,24 @@ static void die_no_upstream(struct branch *upstream, char *name) {
 	}
 }
 
+static void find_push_ref(struct branch *branch) {
+	struct remote *remote = pushremote_get(NULL);
+	const struct refspec *pat = NULL;
+	char raw_ref[PATH_MAX];
+	struct ref *this_ref;
+	char *dst_name;
+	int len;
+
+	sprintf(raw_ref, "refs/heads/%s", branch->name);
+	len = strlen(raw_ref) + 1;
+	this_ref = xcalloc(1, sizeof(*this_ref) + len);
+	memcpy(this_ref->name, raw_ref, len);
+
+	dst_name = get_ref_match(remote->push, remote->push_refspec_nr,
+				this_ref, MATCH_REFS_ALL, 0, &pat);
+	printf("dst_name = %s\n", dst_name);
+}
+
 /*
  * This reads short-hand syntax that not only evaluates to a commit
  * object name, but also can act as if the end user spelled the name
@@ -1085,6 +1103,8 @@ int interpret_branch_name(const char *name, struct strbuf *buf)
 		cp = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
 		break;
 	case AT_KIND_PUSH:
+		find_push_ref(branch);
+		die("Done!");
 		break;
 	}
 
