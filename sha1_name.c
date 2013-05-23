@@ -23,7 +23,7 @@ struct disambiguate_state {
 	unsigned always_call_fn:1;
 };
 
-#define AT_KIND_UPSTREAM 0
+enum at_kind { AT_KIND_UPSTREAM, AT_KIND_PUSH };
 
 static void update_candidates(struct disambiguate_state *ds, const unsigned char *current)
 {
@@ -426,7 +426,8 @@ static inline int at_mark(const char *string, int len, int *kind)
 		int kind;
 		const char *suffix[2];
 	} at_form[] = {
-		{ AT_KIND_UPSTREAM, { "@{upstream}", "@{u}" } }
+		{ AT_KIND_UPSTREAM, { "@{upstream}", "@{u}" } },
+		{ AT_KIND_PUSH, { "@{push}", "@{p}" } }
 	};
 
 	for (j = 0; j < ARRAY_SIZE(at_form); j++) {
@@ -1022,6 +1023,12 @@ static void die_no_upstream(struct branch *upstream, char *name) {
  *   given buf and returns the number of characters parsed if
  *   successful.
  *
+ * - "<branch>@{push}" finds the name of the ref that
+ *   <branch> is configured to push to (missing <branch> defaults
+ *   to the current branch), and places the name of the branch in the
+ *   given buf and returns the number of characters parsed if
+ *   successful.
+ *
  * If the input is not of the accepted format, it returns a negative
  * number to signal an error.
  *
@@ -1076,6 +1083,8 @@ int interpret_branch_name(const char *name, struct strbuf *buf)
 		die_no_upstream(branch, cp);
 		free(cp);
 		cp = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
+		break;
+	case AT_KIND_PUSH:
 		break;
 	}
 
