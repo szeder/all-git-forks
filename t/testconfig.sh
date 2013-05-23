@@ -1,9 +1,9 @@
 #!/bin/sh
 #
-# Copyright (c) 2013 Mathieu Lienard--Mayor
+# Copyright (c) 2013 Mathieu Lienard--Mayor et Jorge Garcia
 #
 
-test_description='Test [status]short and [status]branch'
+test_description='Test status.short and status.branch'
 
 . ./test-lib.sh
 

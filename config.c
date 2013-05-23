@@ -860,6 +860,17 @@ static int git_default_mailmap_config(const char *var, const char *value)
 	return 0;
 }
 
+static int git_default_status_config(const char *var, const char *value)
+{
+	if (!strcmp(var, "status.short"))
+		;; //COMPLETER
+	if (!strcmp(var, "status.branch"))
+		;; //COMPLETER
+
+	/* Add other config variables here and to Documentation/config.txt. */
+	return 0;
+}
+
 int git_default_config(const char *var, const char *value, void *dummy)
 {
 	if (!prefixcmp(var, "core."))
@@ -892,6 +903,11 @@ int git_default_config(const char *var, const char *value, void *dummy)
 		pack_size_limit_cfg = git_config_ulong(var, value);
 		return 0;
 	}
+    
+	if (!strcmp(var, "status."))
+        return git_default_status_config(var, value);
+    //COMPLETER
+
 	/* Add other config variables here and to Documentation/config.txt. */
 	return 0;
 }
