@@ -23,6 +23,8 @@ struct disambiguate_state {
 	unsigned always_call_fn:1;
 };
 
+#define AT_KIND_UPSTREAM 0
+
 static void update_candidates(struct disambiguate_state *ds, const unsigned char *current)
 {
 	if (ds->always_call_fn) {
@@ -416,17 +418,37 @@ static int ambiguous_path(const char *path, int len)
 	return slash;
 }
 
+static inline int at_mark(const char *string, int len, int *kind)
+{
+	int i, j;
+
+	static struct {
+		int kind;
+		const char *suffix[2];
+	} at_form[] = {
+		{ AT_KIND_UPSTREAM, { "@{upstream}", "@{u}" } }
+	};
+
+	for (j = 0; j < ARRAY_SIZE(at_form); j++) {
+		for (i = 0; i < ARRAY_SIZE(at_form[j].suffix); i++) {
+			int suffix_len = strlen(at_form[j].suffix[i]);
+			if (suffix_len <= len
+				&& !memcmp(string, at_form[j].suffix[i], suffix_len)) {
+				if (kind)
+					*kind = at_form[j].kind;
+				return suffix_len;
+			}
+		}
+	}
+	return 0;
+}
+
 static inline int upstream_mark(const char *string, int len)
 {
-	const char *suffix[] = { "@{upstream}", "@{u}" };
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(suffix); i++) {
-		int suffix_len = strlen(suffix[i]);
-		if (suffix_len <= len
-		    && !memcmp(string, suffix[i], suffix_len))
-			return suffix_len;
-	}
+	int suffix_len, kind;
+	suffix_len = at_mark(string, len, &kind);
+	if (suffix_len && kind == AT_KIND_UPSTREAM)
+		return suffix_len;
 	return 0;
 }
 
