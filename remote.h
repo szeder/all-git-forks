@@ -173,4 +173,7 @@ struct ref *guess_remote_head(const struct ref *head,
 /* Return refs which no longer exist on remote */
 struct ref *get_stale_heads(struct refspec *refs, int ref_count, struct ref *fetch_map);
 
+char *get_ref_match(const struct refspec *rs, int rs_nr, const struct ref *ref,
+		int send_mirror, int direction, const struct refspec **ret_pat);
+
 #endif

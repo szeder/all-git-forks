@@ -1168,7 +1168,7 @@ static int match_explicit_refs(struct ref *src, struct ref *dst,
 	return errs;
 }
 
-static char *get_ref_match(const struct refspec *rs, int rs_nr, const struct ref *ref,
+char *get_ref_match(const struct refspec *rs, int rs_nr, const struct ref *ref,
 		int send_mirror, int direction, const struct refspec **ret_pat)
 {
 	const struct refspec *pat;
