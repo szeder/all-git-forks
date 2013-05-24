@@ -1,11 +1,11 @@
 Basic repository objects:
 
     blob           = Blob
-    tree           = Baum, Baum-Objekt (bevorzugt), "Tree"-Objekt
+    tree           = Baum-Objekt (bevorzugt), "Tree"-Objekt
     submodule      = Submodul
     pack(noun)     = Pack-Datei
-    pack(verb)     = packen (ggf. Pack-Datei erstellen)
-    ancestor       = Vorfahre, Vorgänger, Vorgänger-Commit (bevorzugt)
+    pack(verb)     = Pack-Datei erstellen
+    ancestor       = Vorgänger-Commit
 
 Content in a repository:
 
@@ -53,10 +53,11 @@ Commits, tags and other references:
     commit message    = Commit-Beschreibung
 
     stash(noun)       = der Stash
-    stash(verb)       = "stashen", "stash" benutzen (bevorzugt)
-    unstash(verb)     = "unstashen", "zurückladen", "aus 'stash' zurückladen" (bevorzugt)	
+    stash(verb)       = "stash" benutzen
+    unstash(verb)     = aus Stash zurückladen
 
     reference      = Referenz
+    refspec        = (die) Refspec
     revision       = Commit
     branch         = Branch
     tag(noun)      = Tag
@@ -70,9 +71,9 @@ Commits, tags and other references:
     boundary commit = Grenz-Commit
     root commit     = Ursprungs-Commit, Wurzel-Commit
 
-    stage/index (noun) = Staging-Area, Index
-    stage/index (verb) = (für einen | zum) Commit vormerken (bevorzugt), zur Staging Area hinzufügen, dem Index hinzufügen
-    unstage (verb)     = aus Staging Area entfernen, aus Index entfernen
+    stage/index (noun) = Staging-Area
+    stage/index (verb) = (für einen | zum) Commit vormerken
+    unstage (verb)     = aus Staging Area entfernen
 
 The DAG:
 
@@ -97,6 +98,16 @@ Moving data around:
 
 Commands:
 
+When a message is referering to the command, e.g. in
+error messages, we do not translate the term.
+For example: "revert" ist fehlgeschlagen
+When a message is referering to the thing the command
+is doing, e.g. in help messages, we translate the term.
+For example: "fordert von allen externen Projektarchiven an"
+For some commands we currently don't have a sane translation
+(e.g. "cherry-pick") so we don't translate it in any case.
+
+    add(verb)           = hinzufügen
     log                = Log
     interactive commit = interaktiver Commit
     cherry-pick        = "cherry-pick" benutzen
@@ -106,7 +117,12 @@ Commands:
     revert             = zurücknehmen
     clean(verb)        = säubern/aufräumen 
     clean(noun)        = Säuberung
-    merge              = zusammenführen
+    merge(verb)        = zusammenführen
+    merge(noun)        = Zusammenführung
+    reset(verb)        = umsetzen
+    reset(noun)        = der "reset"
+			("Umsetzung" would be too confusing.)
+    apply              = anwenden
 
     bundle(noun)       = Paket
     bundle(verb)       = Paket erstellen
@@ -120,9 +136,8 @@ Diff/patch related:
     diff               = Differenz
     delta              = Differenz (or Delta)
     patch              = Patch
-    apply              = anwenden
-    diffstat           = (leave it as it is)
-    hunk               = Bereich
+    diffstat           = Diffstat
+    hunk               = Block (maybe "Patch-Block")
     whitespace         = Whitespace
 
 Still being worked out:
@@ -130,21 +145,19 @@ Still being worked out:
     prune              = veraltete(n) Branch(es) entfernen
     checkout(verb)     = auschecken
 
-    git add      = hinzufügen
+    git add            = hinzufügen
 
     merge conflict = Merge-Konflikt
     3-way merge    = 3-Wege-Merge
     paths          = Pfade
 
-    symbolic link = symbolische Verknüfung
+    symbolic link = symbolischer Verweis
     path = Pfad
-    link = Verknüpfung
+    link = Verweis
 
     reflog = Referenzprotokoll
-    partial commit (verb) = teilweise committen, partiell committen
+    partial commit (verb) = teilweise committen
     partial commit (noun) = Teil-Commit
-
-    reset = neu setzen (maybe "umsetzen"?)
 
     register   = in die Konfiguration eintragen
     unregister = aus der Konfiguration austragen
