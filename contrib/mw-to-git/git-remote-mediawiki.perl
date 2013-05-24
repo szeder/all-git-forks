@@ -292,7 +292,13 @@ sub get_mw_all_pages {
 	if (!defined($mw_pages)) {
 		print STDERR "fatal: could not get the list of wiki pages.\n";
 		print STDERR "fatal: '$url' does not appear to be a mediawiki\n";
-		print STDERR "fatal: make sure '$url/api.php' is a valid page.\n";
+		if ($url =~ /^https/) {
+		    print STDERR "fatal: make sure '$url/api.php' is a valid page\n";
+		    print STDERR "fatal: and the SSL certificate is correct.\n";
+		} else {
+		    print STDERR "fatal: make sure '$url/api.php' is a valid page.\n";
+		}
+		print STDERR "error: " . $mediawiki->{error}->{details} . "\n";
 		exit 1;
 	}
 	foreach my $page (@{$mw_pages}) {
