@@ -1079,8 +1079,8 @@ static struct packed_ref_cache *get_packed_ref_cache(struct ref_cache *refs)
 	else
 		packed_refs_file = git_path("packed-refs");
 
-	if (refs->packed &&
-	    !stat_validity_check(&refs->packed->validity, packed_refs_file))
+	if (refs->packed && !refs->packed->lock
+	    /*!stat_validity_check(&refs->packed->validity, packed_refs_file)*/)
 		clear_packed_ref_cache(refs);
 
 	if (!refs->packed) {
