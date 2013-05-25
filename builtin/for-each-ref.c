@@ -962,6 +962,63 @@ static void show_refs(struct refinfo **refs, int maxcount,
 	strbuf_release(&sb);
 }
 
+struct format_one_atom_context {
+	struct refinfo *info;
+	int quote_style;
+};
+
+static size_t format_one_atom(struct strbuf *sb, const char *placeholder,
+			      void *format_context, void *user_data,
+			      struct strbuf *subst)
+{
+	struct format_one_atom_context *ctx = user_data;
+	const char *ep;
+
+	if (*placeholder == '%') {
+		strbuf_addch(sb, '%');
+		return 1;
+	}
+
+	if (*placeholder != '(')
+		return 0;
+
+	ep = strchr(placeholder + 1, ')');
+	if (!ep)
+		return 0;
+	print_value(sb, ctx->info, parse_atom(placeholder + 1, ep),
+		    ctx->quote_style);
+	return ep + 1 - placeholder;
+}
+
+static void show_pretty_refs(struct refinfo **refs, int maxcount,
+			     const char *format, int quote_style)
+{
+	struct pretty_print_context ctx = {0};
+	struct format_one_atom_context fctx;
+	struct strbuf sb = STRBUF_INIT;
+	int i;
+
+	/*
+	 * FIXME: add --date= for %ad, --decorate for %d and --color
+	 * for %C
+	 */
+	ctx.abbrev = DEFAULT_ABBREV;
+	ctx.format = format_one_atom;
+	ctx.user_data = &fctx;
+	fctx.quote_style = quote_style;
+	for (i = 0; i < maxcount; i++) {
+		struct commit *commit = NULL;
+		fctx.info = refs[i];
+		if (sha1_object_info(refs[i]->objectname, NULL) == OBJ_COMMIT)
+			commit = lookup_commit(refs[i]->objectname);
+		strbuf_reset(&sb);
+		format_commit_message(commit, format, &sb, &ctx);
+		strbuf_addch(&sb, '\n');
+		fputs(sb.buf, stdout);
+	}
+	strbuf_release(&sb);
+}
+
 static struct ref_sort *default_sort(void)
 {
 	static const char cstr_name[] = "refname";
@@ -1003,7 +1060,9 @@ static char const * const for_each_ref_usage[] = {
 int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 {
 	int num_refs;
-	const char *format = "%(objectname) %(objecttype)\t%(refname)";
+	const char *default_format = "%(objectname) %(objecttype)\t%(refname)";
+	const char *format = default_format;
+	const char *pretty = NULL;
 	struct ref_sort *sort = NULL, **sort_tail = &sort;
 	int maxcount = 0, quote_style = 0;
 	struct refinfo **refs;
@@ -1022,6 +1081,7 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 		OPT_GROUP(""),
 		OPT_INTEGER( 0 , "count", &maxcount, N_("show only <n> matched refs")),
 		OPT_STRING(  0 , "format", &format, N_("format"), N_("format to use for the output")),
+		OPT_STRING(  0 , "pretty", &pretty, N_("format"), N_("alternative format to use for the output")),
 		OPT_CALLBACK(0 , "sort", sort_tail, N_("key"),
 			    N_("field name to sort on"), &opt_parse_sort),
 		OPT_END(),
@@ -1036,7 +1096,10 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 		error("more than one quoting style?");
 		usage_with_options(for_each_ref_usage, opts);
 	}
-	if (verify_format(format))
+	if (format != default_format && pretty)
+		die("--format and --pretty cannot be used together");
+	if ((pretty && verify_format(pretty)) ||
+	    (!pretty && verify_format(format)))
 		usage_with_options(for_each_ref_usage, opts);
 
 	if (!sort)
@@ -1057,6 +1120,9 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 	if (!maxcount || num_refs < maxcount)
 		maxcount = num_refs;
 
-	show_refs(refs, maxcount, format, quote_style);
+	if (pretty)
+		show_pretty_refs(refs, maxcount, pretty, quote_style);
+	else
+		show_refs(refs, maxcount, format, quote_style);
 	return 0;
 }

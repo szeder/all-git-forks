@@ -48,6 +48,20 @@ test_atom() {
 	"
 }
 
+test_pretty() {
+	case "$1" in
+		head) ref=refs/heads/master ;;
+		 tag) ref=refs/tags/testtag ;;
+		   *) ref=$1 ;;
+	esac
+	printf '%s\n' "$3" >expected
+	test_expect_${4:-success} $PREREQ "basic pretty: $1 $2" "
+		git for-each-ref --pretty='$2' $ref >actual &&
+		sanitize_pgp <actual >actual.clean &&
+		test_cmp expected actual.clean
+	"
+}
+
 test_atom head refname refs/heads/master
 test_atom head upstream refs/remotes/origin/master
 test_atom head objecttype commit
@@ -113,6 +127,115 @@ test_atom tag contents:body ''
 test_atom tag contents:signature ''
 test_atom tag contents 'Tagging at 1151939927
 '
+
+echo "Mailmap'd <map@example.com> <author@example.com>" > $HOME/.mailmap
+
+test_pretty head '%(refname)' refs/heads/master
+test_pretty head '%(upstream)' refs/remotes/origin/master
+test_pretty head '%(objecttype)' commit
+test_pretty head '%(objectsize)' 171
+test_pretty head '%(objectname)' 67a36f10722846e891fbada1ba48ed035de75581
+test_pretty head '%H' 67a36f10722846e891fbada1ba48ed035de75581
+test_pretty head '%h' 67a36f1
+test_pretty head '%(tree)' 0e51c00fcb93dffc755546f27593d511e1bdb46f
+test_pretty head '%T' 0e51c00fcb93dffc755546f27593d511e1bdb46f
+test_pretty head '%t' 0e51c00
+test_pretty head '%(parent)' ''
+test_pretty head '%P' ''
+test_pretty head '%(numparent)' 0
+test_pretty head '%(object)' ''
+test_pretty head '%(type)' ''
+test_pretty head '%(author)' 'A U Thor <author@example.com> 1151939924 +0200'
+test_pretty head '%(authorname)' 'A U Thor'
+test_pretty head '%an' 'A U Thor'
+test_pretty head '%aN' "Mailmap'd"
+test_pretty head '%(authoremail)' '<author@example.com>'
+test_pretty head '%ae' 'author@example.com'
+test_pretty head '%aE' 'map@example.com'
+test_pretty head '%(authordate)' 'Mon Jul 3 17:18:44 2006 +0200'
+test_pretty head '%aD' 'Mon, 3 Jul 2006 17:18:44 +0200'
+test_pretty head '%(committer)' 'C O Mitter <committer@example.com> 1151939923 +0200'
+test_pretty head '%(committername)' 'C O Mitter'
+test_pretty head '%cn' 'C O Mitter'
+test_pretty head '%(committeremail)' '<committer@example.com>'
+test_pretty head '%ce' 'committer@example.com'
+test_pretty head '%(committerdate)' 'Mon Jul 3 17:18:43 2006 +0200'
+test_pretty head '%cD' 'Mon, 3 Jul 2006 17:18:43 +0200'
+test_pretty head '%(tag)' ''
+test_pretty head '%(tagger)' ''
+test_pretty head '%(taggername)' ''
+test_pretty head '%(taggeremail)' ''
+test_pretty head '%(taggerdate)' ''
+test_pretty head '%(creator)' 'C O Mitter <committer@example.com> 1151939923 +0200'
+test_pretty head '%(creatordate)' 'Mon Jul 3 17:18:43 2006 +0200'
+test_pretty head '%(subject)' 'Initial'
+test_pretty head '%(contents:subject)' 'Initial'
+test_pretty head '%(body)' ''
+test_pretty head '%(contents:body)' ''
+test_pretty head '%(contents:signature)' ''
+test_pretty head '%(contents)' 'Initial
+'
+
+test_pretty head '%d' ' (HEAD, tag: testtag, origin/master, master)'
+test_pretty head '%x20' ' '
+test_pretty head '%g' '%g'
+test_pretty head '%unknown' '%unknown'
+test_pretty head '% (parent)' ''
+test_pretty head '% P' ''
+test_pretty head '% (tree)' ' 0e51c00fcb93dffc755546f27593d511e1bdb46f'
+test_pretty head '% T' ' 0e51c00fcb93dffc755546f27593d511e1bdb46f'
+
+test_expect_success '% (unknown)' '
+	test_must_fail git for-each-ref --pretty="% (unknown)" refs/heads/master
+'
+
+test_pretty head '%<(20)%cn end' 'C O Mitter           end'
+test_pretty head '%>(20)%cn end' '          C O Mitter end'
+test_pretty head '%><(20)%cn end' '     C O Mitter      end'
+test_pretty head '%<(20)%(committername) end' 'C O Mitter           end'
+test_pretty head '%>(20)%(committername) end' '          C O Mitter end'
+test_pretty head '%><(20)%(committername) end' '     C O Mitter      end'
+
+test_pretty tag '%(refname)' refs/tags/testtag
+test_pretty tag '%(upstream)' ''
+test_pretty tag '%(objecttype)' tag
+test_pretty tag '%(objectsize)' 154
+test_pretty tag '%(objectname)' 98b46b1d36e5b07909de1b3886224e3e81e87322
+test_pretty tag '%(tree)' ''
+test_pretty tag '%(parent)' ''
+test_pretty tag '%(numparent)' ''
+test_pretty tag '%(object)' '67a36f10722846e891fbada1ba48ed035de75581'
+test_pretty tag '%(type)' 'commit'
+test_pretty tag '%(author)' ''
+test_pretty tag '%(authorname)' ''
+test_pretty tag '%(authoremail)' ''
+test_pretty tag '%(authordate)' ''
+test_pretty tag '%(committer)' ''
+test_pretty tag '%(committername)' ''
+test_pretty tag '%(committeremail)' ''
+test_pretty tag '%(committerdate)' ''
+test_pretty tag '%(tag)' 'testtag'
+test_pretty tag '%(tagger)' 'C O Mitter <committer@example.com> 1151939925 +0200'
+test_pretty tag '%(taggername)' 'C O Mitter'
+test_pretty tag '%(taggeremail)' '<committer@example.com>'
+test_pretty tag '%(taggerdate)' 'Mon Jul 3 17:18:45 2006 +0200'
+test_pretty tag '%(creator)' 'C O Mitter <committer@example.com> 1151939925 +0200'
+test_pretty tag '%(creatordate)' 'Mon Jul 3 17:18:45 2006 +0200'
+test_pretty tag '%(subject)' 'Tagging at 1151939927'
+test_pretty tag '%(contents:subject)' 'Tagging at 1151939927'
+test_pretty tag '%(body)' ''
+test_pretty tag '%(contents:body)' ''
+test_pretty tag '%(contents:signature)' ''
+test_pretty tag '%(contents)' 'Tagging at 1151939927
+'
+
+# make sure we don't segfault when non-commits are passed in
+# format_commit_message. Should be fixed so that some of these
+# placeholders produce something useful for non-commits.
+test_pretty tag '%H' '%H'
+test_pretty tag '%h' '%h'
+test_pretty tag '%T' '%T'
+test_pretty tag '%t' '%t'
 
 test_expect_success 'Check invalid atoms names are errors' '
 	test_must_fail git for-each-ref --format="%(INVALID)" refs/heads

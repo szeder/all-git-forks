@@ -9,7 +9,8 @@ SYNOPSIS
 --------
 [verse]
 'git for-each-ref' [--count=<count>] [--shell|--perl|--python|--tcl]
-		   [(--sort=<key>)...] [--format=<format>] [<pattern>...]
+		   [(--sort=<key>)...] [--format=<format>|--pretty=<pretty>]
+		   [<pattern>...]
 
 DESCRIPTION
 -----------
@@ -46,6 +47,26 @@ OPTIONS
 	are hex digits interpolates to character with hex code
 	`xx`; for example `%00` interpolates to `\0` (NUL),
 	`%09` to `\t` (TAB) and `%0a` to `\n` (LF).
+
+<pretty>::
+	A format string with supporting placeholders described in the
+	"PRETTY FORMATS" section in linkgit:git-log[1].  Additionally
+	supports placeholders from `<format>`
+	(i.e. `%[*](fieldname)`).
++
+Caveats:
+
+1. Many of the placeholders in "PRETTY FORMATS" are designed to work
+   specifically on commit objects: when non-commit objects are
+   supplied, those placeholders won't work (i.e. they will be emitted
+   literally).
+
+2. Does not interpolate `%ab` (where `ab` are hex digits) with the
+   corresponding hex code.  To print a byte from a hex code, use
+   `%xab` (from pretty-formats) instead.
+
+3. Only the placeholders inherited from `<format>` will respect
+   quoting settings.
 
 <pattern>...::
 	If one or more patterns are given, only refs are shown that
