@@ -55,6 +55,10 @@ OPTIONS
 	limitations, placeholders except `%(fieldname)` may not follow
 	quoting settings. Some placeholders from "PRETTY FORMATS"
 	section may not work with non-commits.
++
+Placeholders `%<(*)` and `%>(*)` work like `%<(<N>)` and `%>(<N>)`
+respectively, except that the width of the next placeholder is
+calculated.
 
 <pattern>...::
 	If one or more patterns are given, only refs are shown that
