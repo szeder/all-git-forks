@@ -927,6 +927,9 @@ static int string_list_add_one_ref(const char *refname, const unsigned char *sha
 	return 0;
 }
 
+/*
+ * The list argument must have strdup_strings set on it.
+ */
 void string_list_add_refs_by_glob(struct string_list *list, const char *glob)
 {
 	if (has_glob_specials(glob)) {
