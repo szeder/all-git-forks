@@ -196,6 +196,26 @@ test_pretty head '%<(20)%(committername) end' 'C O Mitter           end'
 test_pretty head '%>(20)%(committername) end' '          C O Mitter end'
 test_pretty head '%><(20)%(committername) end' '     C O Mitter      end'
 
+test_expect_success '%<(*)%(refname) A' '
+	git for-each-ref --pretty="%<(*)%(refname) A" >actual &&
+	cat >expected <<EOF &&
+refs/heads/master          A
+refs/remotes/origin/master A
+refs/tags/testtag          A
+EOF
+	test_cmp expected actual
+'
+
+test_expect_success '%>(*)%(refname) A' '
+	git for-each-ref --pretty="%>(*)%(refname) A" >actual &&
+	qz_to_tab_space >expected <<EOF &&
+Z        refs/heads/master A
+refs/remotes/origin/master A
+Z        refs/tags/testtag A
+EOF
+	test_cmp expected actual
+'
+
 test_pretty tag '%(refname)' refs/tags/testtag
 test_pretty tag '%(upstream)' ''
 test_pretty tag '%(objecttype)' tag

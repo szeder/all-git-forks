@@ -9,6 +9,7 @@
 #include "quote.h"
 #include "parse-options.h"
 #include "remote.h"
+#include "utf8.h"
 
 /* Quoting styles */
 #define QUOTE_NONE 0
@@ -966,9 +967,29 @@ static void show_refs(struct refinfo **refs, int maxcount,
 }
 
 struct format_one_atom_context {
+	struct refinfo **refs;
+	int maxcount;
+
 	struct refinfo *info;
 	int quote_style;
 };
+
+static unsigned int get_atom_width(struct format_one_atom_context *ctx,
+				   const char *start, const char *end)
+{
+	struct strbuf sb = STRBUF_INIT;
+	int i, atom = parse_atom(start, end);
+	unsigned int len = 0, sb_len;
+	for (i = 0; i < ctx->maxcount; i++) {
+		print_value(&sb, ctx->refs[i], atom, ctx->quote_style);
+		sb_len = utf8_strnwidth(sb.buf, sb.len, 1);
+		if (sb_len > len)
+			len = sb_len;
+		strbuf_reset(&sb);
+	}
+	strbuf_release(&sb);
+	return len;
+}
 
 static size_t format_one_atom(struct strbuf *sb, const char *placeholder,
 			      void *format_context, void *user_data,
@@ -980,6 +1001,21 @@ static size_t format_one_atom(struct strbuf *sb, const char *placeholder,
 	if (*placeholder == '%') {
 		strbuf_addch(sb, '%');
 		return 1;
+	}
+
+	/*
+	 * Substitute %>(*)%(atom) and friends with real width.
+	 */
+	if (*placeholder == '>' || *placeholder == '<') {
+		const char *star = placeholder + 1;
+		if (!prefixcmp(star, "(*)%(") &&
+		    ((ep = strchr(star + strlen("(*)%("), ')')) != NULL)) {
+			star++;
+			strbuf_addf(subst, "%c(%u)",
+				    *placeholder,
+				    get_atom_width(ctx, star + strlen("*)%("), ep));
+			return 1 + strlen("(*)");
+		}
 	}
 
 	if (*placeholder != '(')
@@ -1008,6 +1044,8 @@ static void show_pretty_refs(struct refinfo **refs, int maxcount,
 	ctx.abbrev = DEFAULT_ABBREV;
 	ctx.format = format_one_atom;
 	ctx.user_data = &fctx;
+	fctx.refs = refs;
+	fctx.maxcount = maxcount;
 	fctx.quote_style = quote_style;
 	for (i = 0; i < maxcount; i++) {
 		struct commit *commit = NULL;

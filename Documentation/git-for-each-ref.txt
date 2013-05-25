@@ -47,6 +47,10 @@ OPTIONS
 	are hex digits interpolates to character with hex code
 	`xx`; for example `%00` interpolates to `\0` (NUL),
 	`%09` to `\t` (TAB) and `%0a` to `\n` (LF).
++
+Placeholders `%<(*)` and `%>(*)` work like `%<(<N>)` and `%>(<N>)`
+respectively, except that the width of the next placeholder is
+calculated.
 
 <pretty>::
 	A format string with supporting placeholders described in the
@@ -67,6 +71,9 @@ Caveats:
 
 3. Only the placeholders inherited from `<format>` will respect
    quoting settings.
+
+3. Only the placeholders inherited from `<format>` will work with the
+   alignment placeholders `%<(*)` and '%>(*)`.
 
 <pattern>...::
 	If one or more patterns are given, only refs are shown that
