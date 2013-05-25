@@ -1156,6 +1156,9 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 	}
 
 	/* these depend on the commit */
+	if (!commit)
+		return 0;
+
 	if (!commit->object.parsed)
 		parse_object(commit->object.sha1);
 
@@ -1275,6 +1278,9 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 		return 2;
 	}
 
+
+	if (!c->message)
+		return 0;
 
 	/* For the rest we have to parse the commit header. */
 	if (!c->commit_header_parsed)
@@ -1510,9 +1516,10 @@ void format_commit_message(const struct commit *commit,
 	context.commit = commit;
 	context.pretty_ctx = pretty_ctx;
 	context.wrap_start = sb->len;
-	context.message = logmsg_reencode(commit,
-					  &context.commit_encoding,
-					  output_enc);
+	if (commit)
+		context.message = logmsg_reencode(commit,
+						  &context.commit_encoding,
+						  output_enc);
 
 	strbuf_expand(sb, format, format_commit_item, &context);
 	rewrap_message_tail(sb, &context, 0, 0, 0);
@@ -1535,7 +1542,8 @@ void format_commit_message(const struct commit *commit,
 	}
 
 	free(context.commit_encoding);
-	logmsg_free(context.message, commit);
+	if (commit)
+		logmsg_free(context.message, commit);
 	free(context.signature_check.gpg_output);
 	free(context.signature_check.signer);
 }
