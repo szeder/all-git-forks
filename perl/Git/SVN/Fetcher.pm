@@ -167,9 +167,7 @@ sub _strip_path {
 
 sub _begin_reimport {
 	( $_reimportpath ) = @_;
-	print STDERR "******************************************\n";
 	print STDERR "aaa _begin_reimport $_reimportpath\n";
-	print STDERR "******************************************\n";
 	undef
 }
 
@@ -179,9 +177,7 @@ sub _end_reimport {
 	  $branch_from = $_reimportpath;
 		$_reimportpath = undef;
 	}
-	print STDERR "******************************************\n";
 	print STDERR "aaa _end_reimport $branch_from, $branch_to\n";
-	print STDERR "******************************************\n";
 	{
 		my %to_add;
 		my $re_toremove = (length $branch_to) ? (qr/^\Q$branch_to\E(\/|$)/) : (qr//);
@@ -189,9 +185,7 @@ sub _end_reimport {
 		for (keys %{ $ph_db->{paths} }) {
 			my $path = $_;
 			if ( (!length $branch_to) || $path =~ m!$re_toremove! ) {
-	print STDERR "******************************************\n";
 	print STDERR "aaa _end_reimport removing $path\n";
-	print STDERR "******************************************\n";
 				$ph_db->remove($path);
 			}
 			if ( $path =~ s!$re_strip!! ) {
@@ -200,9 +194,7 @@ sub _end_reimport {
 			}
 		}
 		for (keys %{to_add}) {
-	print STDERR "******************************************\n";
 	print STDERR "aaa _end_reimport adding $_\n";
-	print STDERR "******************************************\n";
 			$ph_db->add($_);
 		}
 	}

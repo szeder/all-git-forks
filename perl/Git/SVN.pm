@@ -1372,9 +1372,20 @@ sub parse_svn_date {
 sub other_gs {
 	my ($self, $new_url, $url,
 	    $branch_from, $r, $old_ref_id) = @_;
+
+	print STDERR "******************************************\n";
+	print STDERR "aaa other_gs\n" . "new_url = $new_url\nbranch_from = $branch_from\nr = $r\nold_ref_id = $old_ref_id\n";
+	print STDERR "******************************************\n";
+
 	my $gs = Git::SVN->find_by_url($new_url, $url, $branch_from);
 	unless ($gs) {
 		my $ref_id = $old_ref_id;
+
+  #refs/remotes/
+	print STDERR "******************************************\n";
+	print STDERR "aaa other_gs ref_id = $ref_id\n";
+	print STDERR "******************************************\n";
+
 		$ref_id =~ s/\@\d+-*$//;
 		$ref_id .= "\@$r";
 		# just grow a tail if we're not unique enough :x
