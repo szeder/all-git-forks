@@ -1069,6 +1069,31 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 	struct commit_list *p;
 	int h1, h2;
 
+	if (c->pretty_ctx->format) {
+		struct strbuf subst = STRBUF_INIT;
+		int ret = c->pretty_ctx->format(sb, placeholder, context,
+						c->pretty_ctx->user_data,
+						&subst);
+		if (ret && subst.len) {
+			/*
+			 * Something was parsed by format(), and a
+			 * placeholder-substitution was set.
+			 * Recursion is required to override the
+			 * return value of format_commit_one() with
+			 * ret: the length of the original string
+			 * before substitution.
+			 */
+			ret = format_commit_one(sb, subst.buf, context) ? ret : 0;
+			strbuf_release(&subst);
+			return ret;
+		} else if (ret)
+			/*
+			 * Something was parsed by format(), but
+			 * no placeholder-substitution was set.
+			 */
+			return ret;
+	}
+
 	/* these are independent of the commit */
 	switch (placeholder[0]) {
 	case 'C':
