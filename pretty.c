@@ -1061,7 +1061,8 @@ static size_t parse_padding_placeholder(struct strbuf *sb,
 
 static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 				const char *placeholder,
-				void *context)
+				void *context,
+				int no_recurse)
 {
 	struct format_commit_context *c = context;
 	const struct commit *commit = c->commit;
@@ -1069,7 +1070,7 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 	struct commit_list *p;
 	int h1, h2;
 
-	if (c->pretty_ctx->format) {
+	if (!no_recurse && c->pretty_ctx->format) {
 		struct strbuf subst = STRBUF_INIT;
 		int ret = c->pretty_ctx->format(sb, placeholder, context,
 						c->pretty_ctx->user_data,
@@ -1083,7 +1084,7 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 			 * ret: the length of the original string
 			 * before substitution.
 			 */
-			ret = format_commit_one(sb, subst.buf, context) ? ret : 0;
+			ret = format_commit_one(sb, subst.buf, context, 1) ? ret : 0;
 			strbuf_release(&subst);
 			return ret;
 		} else if (ret)
@@ -1332,7 +1333,7 @@ static size_t format_and_pad_commit(struct strbuf *sb, /* in UTF-8 */
 	}
 	while (1) {
 		int modifier = *placeholder == 'C';
-		int consumed = format_commit_one(&local_sb, placeholder, c);
+		int consumed = format_commit_one(&local_sb, placeholder, c, 0);
 		total_consumed += consumed;
 
 		if (!modifier)
@@ -1452,7 +1453,7 @@ static size_t format_commit_item(struct strbuf *sb, /* in UTF-8 */
 	if (((struct format_commit_context *)context)->flush_type != no_flush)
 		consumed = format_and_pad_commit(sb, placeholder, context);
 	else
-		consumed = format_commit_one(sb, placeholder, context);
+		consumed = format_commit_one(sb, placeholder, context, 0);
 	if (magic == NO_MAGIC)
 		return consumed;
 
