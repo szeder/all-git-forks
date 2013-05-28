@@ -163,7 +163,6 @@
 typedef long intptr_t;
 typedef unsigned long uintptr_t;
 #endif
-int get_st_mode_bits(const char *path, int *mode);
 #if defined(__CYGWIN__)
 #undef _XOPEN_SOURCE
 #include <grp.h>
@@ -175,6 +174,8 @@ int get_st_mode_bits(const char *path, int *mode);
 #define _ALL_SOURCE 1
 #endif
 #endif
+
+extern int get_st_mode_bits(const char *path, int *mode);
 
 /* used on Mac OS X */
 #ifdef PRECOMPOSE_UNICODE
