@@ -9,6 +9,6 @@ make CC="$CC" all
 
 #ln -s git-svn.perl git-svn
 for pm in Git/SVN.pm Git/SVN/Fetcher.pm Git/SVN/Ra.pm; do
-  rm -f "perl/blib/lib/$pm" && ln -s --relative "`pwd`/perl/$pm" "perl/blib/lib/$pm"
+  rm -f "perl/blib/lib/$pm" && ln -s "`pwd`/perl/$pm" "perl/blib/lib/$pm"
 done
 
