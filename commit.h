@@ -78,6 +78,12 @@ enum cmit_fmt {
 	CMIT_FMT_UNSPECIFIED
 };
 
+typedef size_t (*format_message_fn)(struct strbuf *sb,
+				const char *placeholder,
+				void *format_context,
+				void *user_data,
+				struct strbuf *placeholder_subst);
+
 struct pretty_print_context {
 	enum cmit_fmt fmt;
 	int abbrev;
@@ -92,6 +98,8 @@ struct pretty_print_context {
 	const char *output_encoding;
 	struct string_list *mailmap;
 	int color;
+	format_message_fn format;
+	void *user_data;
 };
 
 struct userformat_want {
