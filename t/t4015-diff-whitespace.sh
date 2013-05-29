@@ -142,6 +142,71 @@ EOF
 git diff --ignore-space-at-eol > out
 test_expect_success 'another test, with --ignore-space-at-eol' 'test_cmp expect out'
 
+test_expect_success 'ignore-blank-lines: only new lines' '
+	seq 5 >x &&
+	git update-index x &&
+	seq 5 | sed "/3/i \\\\" >x &&
+	git diff --ignore-blank-lines >out &&
+	printf "" >expect &&
+	test_cmp out expect
+'
+
+test_expect_success 'ignore-blank-lines: only new lines with space' '
+	seq 5 >x &&
+	git update-index x &&
+	seq 5 | sed "/3/i \ " >x &&
+	git diff -w --ignore-blank-lines >out &&
+	printf "" >expect &&
+	test_cmp out expect
+'
+
+
+test_expect_success 'ignore-blank-lines: with changes' '
+	seq 11 >x &&
+	git update-index x &&
+	cat <<-\EOF >x &&
+
+	1
+	2
+	3
+	change
+	4
+	5
+	6
+	7
+
+	8
+	change
+	9
+	10
+	11
+
+	EOF
+	git diff --ignore-blank-lines >out.tmp &&
+	sed -e "1,/^+++ b\/x/d" <out.tmp >out &&
+	cat <<-\EOF >expect &&
+	@@ -1,6 +2,7 @@
+	 1
+	 2
+	 3
+	+change
+	 4
+	 5
+	 6
+	@@ -5,7 +7,9 @@
+	 5
+	 6
+	 7
+	+
+	 8
+	+change
+	 9
+	 10
+	 11
+	EOF
+	test_cmp out expect
+'
+
 test_expect_success 'check mixed spaces and tabs in indent' '
 
 	# This is indented with SP HT SP.
