@@ -1,3 +1,27 @@
+Version v1.8.3; changes since v1.8.3-rc3:
+-----------------------------------------
+
+Amit Bakshi (1):
+      remote-hg: set stdout to binary mode on win32
+
+Felipe Contreras (3):
+      completion: regression fix for zsh
+      remote-hg: trivial configuration note cleanup
+      remote-hg: fix order of configuration comments
+
+Jonathan Nieder (1):
+      git-svn: clarify explanation of --destination argument
+
+Junio C Hamano (1):
+      Git 1.8.3
+
+Nathan Gray (1):
+      git-svn: multiple fetch/branches/tags keys are supported
+
+Tobias Schulte (1):
+      git-svn: introduce --parents parameter for commands branch and tag
+
+
 Version v1.8.3-rc3; changes since v1.8.3-rc2:
 ---------------------------------------------
 
