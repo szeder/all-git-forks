@@ -211,8 +211,28 @@ test_suppress_self_unquoted () {
 	EOF
 }
 
+test_suppress_self_quoted () {
+	test_suppress_self "$1" "$2" "quoted-$3" <<-EOF
+		test suppress-cc.self quoted-$3 with name $1 email $2
+
+		quoted-$3
+
+		cccmd--"$1" <$2>
+
+		Cc: $1 <$2>
+		Cc: "$1" <$2>
+		Signed-off-by: $1 <$2>
+		Signed-off-by: "$1" <$2>
+	EOF
+}
+
 test_expect_success $PREREQ 'self name is suppressed' "
 	test_suppress_self_unquoted 'A U Thor' 'author@redhat.com' \
+		'self_name_suppressed'
+"
+
+test_expect_success $PREREQ 'quoted self name is suppressed' "
+	test_suppress_self_quoted 'A U. Thor' 'author@redhat.com' \
 		'self_name_suppressed'
 "
 
