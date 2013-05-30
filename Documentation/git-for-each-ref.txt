@@ -10,6 +10,7 @@ SYNOPSIS
 [verse]
 'git for-each-ref' [--count=<count>] [--shell|--perl|--python|--tcl]
 		   [(--sort=<key>)...] [--format=<format>|--pretty=<pretty>]
+		   [--column[=<options>] | --no-column]
 		   [<pattern>...]
 
 DESCRIPTION
@@ -74,6 +75,12 @@ calculated.
 	placeholders are quoted as string literals suitable for
 	the specified host language.  This is meant to produce
 	a scriptlet that can directly be `eval`ed.
+
+--column[=<options>]::
+--no-column::
+	Display in columns.`--column` and `--no-column` without
+	options are equivalent to 'always' and 'never'
+	respectively. By default, column layout is off.
 
 
 FIELD NAMES

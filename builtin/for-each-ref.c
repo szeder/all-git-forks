@@ -10,6 +10,8 @@
 #include "parse-options.h"
 #include "remote.h"
 #include "utf8.h"
+#include "column.h"
+#include "string-list.h"
 
 /* Quoting styles */
 #define QUOTE_NONE 0
@@ -92,6 +94,8 @@ static struct {
 static const char **used_atom;
 static cmp_type *used_atom_type;
 static int used_atom_cnt, sort_atom_limit, need_tagged, need_symref;
+static unsigned int colopts;
+static struct string_list output = STRING_LIST_INIT_DUP;
 
 /*
  * Used to parse format string and sort specifiers
@@ -997,7 +1001,6 @@ static void show_ref(struct strbuf *sb, struct refinfo *info,
 		sp = cp + strlen(cp);
 		emit(sb, cp, sp);
 	}
-	strbuf_addch(sb, '\n');
 }
 
 static void show_refs(struct refinfo **refs, int maxcount,
@@ -1009,7 +1012,12 @@ static void show_refs(struct refinfo **refs, int maxcount,
 	for (i = 0; i < maxcount; i++) {
 		strbuf_reset(&sb);
 		show_ref(&sb, refs[i], format, quote_style);
-		fputs(sb.buf, stdout);
+		if (column_active(colopts))
+			string_list_append(&output, sb.buf);
+		else {
+			strbuf_addch(&sb, '\n');
+			fputs(sb.buf, stdout);
+		}
 	}
 	strbuf_release(&sb);
 }
@@ -1097,8 +1105,12 @@ static void show_pretty_refs(struct refinfo **refs, int maxcount,
 			commit = lookup_commit(refs[i]->objectname);
 		strbuf_reset(&sb);
 		format_commit_message(commit, format, &sb, &ctx);
-		strbuf_addch(&sb, '\n');
-		fputs(sb.buf, stdout);
+		if (column_active(colopts))
+			string_list_append(&output, sb.buf);
+		else {
+			strbuf_addch(&sb, '\n');
+			fputs(sb.buf, stdout);
+		}
 	}
 	strbuf_release(&sb);
 }
@@ -1168,6 +1180,9 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 		OPT_STRING(  0 , "pretty", &pretty, N_("format"), N_("alternative format to use for the output")),
 		OPT_CALLBACK(0 , "sort", sort_tail, N_("key"),
 			    N_("field name to sort on"), &opt_parse_sort),
+		OPT_COLUMN(0, "column", &colopts, N_("list branches in columns")),
+		{ OPTION_INTEGER, 0, "raw-column-mode", &colopts, NULL,
+		  N_("column layout mode"), PARSE_OPT_NOARG | PARSE_OPT_HIDDEN },
 		OPT_END(),
 	};
 
@@ -1182,6 +1197,7 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 	}
 	if (format != default_format && pretty)
 		die("--format and --pretty cannot be used together");
+	finalize_colopts(&colopts, 0);
 	if ((pretty && verify_format(pretty, 1)) ||
 	    (!pretty && verify_format(format, 0)))
 		usage_with_options(for_each_ref_usage, opts);
@@ -1208,5 +1224,9 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 		show_pretty_refs(refs, maxcount, pretty, quote_style);
 	else
 		show_refs(refs, maxcount, format, quote_style);
+	if (column_active(colopts)) {
+		print_columns(&output, colopts, NULL);
+		string_list_clear(&output, 0);
+	}
 	return 0;
 }
