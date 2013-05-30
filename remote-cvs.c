@@ -321,13 +321,56 @@ static int fast_export_revision_cb(void *ptr, void *data)
 	return 0;
 }
 
+static int run_import_hook(struct strbuf *author_sb, struct strbuf *committer_sb, struct strbuf *commit_msg_sb)
+{
+	struct strbuf commit = STRBUF_INIT;
+	FILE *fp;
+	int rc;
+
+	strbuf_addf(&commit, "%s\n%s\n%s", author_sb->buf, committer_sb->buf, commit_msg_sb->buf);
+
+	fp = fopen(git_path(import_commit_edit), "w");
+	if (fp == NULL)
+		die_errno(_("could not open '%s'"), git_path(import_commit_edit));
+
+	if (fwrite(commit.buf, 1, commit.len, fp) < commit.len)
+		die_errno("could not write %s", import_commit_edit);
+	fclose(fp);
+
+	rc = run_hook(NULL, "cvs-import-commit", git_path(import_commit_edit), NULL);
+	if (rc)
+		die("cvs-import-commit hook rc %d, abording import", rc);
+
+	fp = fopen(git_path(import_commit_edit), "r");
+	if (fp == NULL)
+		die_errno(_("could not open '%s'"), git_path(import_commit_edit));
+
+	if (strbuf_getline(author_sb, fp, '\n'))
+		die("could not read %s", git_path(import_commit_edit));
+
+	if (strbuf_getline(committer_sb, fp, '\n'))
+		die("could not read %s", git_path(import_commit_edit));
+
+	/*
+	 * TODO: verify author/committer lines?
+	 */
+
+	strbuf_reset(commit_msg_sb);
+	if (strbuf_fread_full(commit_msg_sb, fp, 0) == -1)
+		die("could not read %s", git_path(import_commit_edit));
+	fclose(fp);
+
+	strbuf_release(&commit);
+	return 0;
+}
+
 static int markid = 0;
 static int fast_export_cvs_commit(struct cvs_commit *ps, const char *branch_name, struct strbuf *parent_mark)
 {
-	/*
-	 * TODO: clean extra lines in commit messages
-	 */
 	const char *author_ident;
+	struct strbuf author_sb = STRBUF_INIT;
+	struct strbuf committer_sb = STRBUF_INIT;
+	struct strbuf commit_msg_sb = STRBUF_INIT;
 	markid++;
 
 	/*
@@ -346,70 +389,29 @@ static int fast_export_cvs_commit(struct cvs_commit *ps, const char *branch_name
 	if (require_author_convert && !author_ident)
 		die("failed to resolve cvs userid %s", ps->author);
 
-	if (have_import_hook) {
-		struct strbuf line = STRBUF_INIT;
-		struct strbuf commit = STRBUF_INIT;
-		FILE *fp;
-		int rc;
+	strbuf_addf(&author_sb, "author %s %ld +0000", author_ident, ps->timestamp);
+	strbuf_addf(&committer_sb, "committer %s %ld +0000", author_ident, ps->timestamp_last);
+	strbuf_addstr(&commit_msg_sb, ps->msg);
 
-		strbuf_addf(&commit, "author %s %ld +0000\n", author_ident, ps->timestamp);
-		strbuf_addf(&commit, "committer %s %ld +0000\n", author_ident, ps->timestamp_last);
-		strbuf_addf(&commit, "%s\n", ps->msg);
+	if (have_import_hook)
+		run_import_hook(&author_sb, &committer_sb, &commit_msg_sb);
 
-		fp = fopen(git_path(import_commit_edit), "w");
-		if (fp == NULL)
-			die_errno(_("could not open '%s'"), git_path(import_commit_edit));
-		if (fwrite(commit.buf, 1, commit.len, fp) < commit.len)
-			die("could not write %s", import_commit_edit);
-		fclose(fp);
+	helper_printf("commit %s%s\n", get_private_ref_prefix(), branch_name);
+	helper_printf("mark :%d\n", markid);
+	helper_printf("%s\n", author_sb.buf);
+	helper_printf("%s\n", committer_sb.buf);
+	helper_printf("data %zu\n", commit_msg_sb.len);
+	helper_printf("%s\n", commit_msg_sb.buf);
 
-		rc = run_hook(NULL, "cvs-import-commit", git_path(import_commit_edit), NULL);
-		if (rc)
-			die("cvs-import-commit hook rc %d, abording import", rc);
-
-		fp = fopen(git_path(import_commit_edit), "r");
-		if (fp == NULL)
-			die_errno(_("could not open '%s'"), git_path(import_commit_edit));
-
-		helper_printf("commit %s%s\n", get_private_ref_prefix(), branch_name);
-		helper_printf("mark :%d\n", markid);
-		rc = strbuf_getline(&line, fp, '\n');
-		if (rc)
-			die("could not read %s", git_path(import_commit_edit));
-		helper_printf("%s\n", line.buf); // author
-		rc = strbuf_getline(&line, fp, '\n');
-		if (rc)
-			die("could not read %s", git_path(import_commit_edit));
-		helper_printf("%s\n", line.buf); // committer
-
-		strbuf_reset(&commit);
-		while (!strbuf_getline(&line, fp, '\n')) {
-			strbuf_addf(&commit, "%s\n", line.buf);
-		}
-		fclose(fp);
-
-		helper_printf("data %zu\n", commit.len);
-		helper_printf("%s\n", commit.buf);
-		strbuf_release(&line);
-		strbuf_release(&commit);
-	}
-	else {
-		helper_printf("commit %s%s\n", get_private_ref_prefix(), branch_name);
-		helper_printf("mark :%d\n", markid);
-		//helper_printf("author %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp);
-		//helper_printf("committer %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp_last);
-		helper_printf("author %s %ld +0000\n", author_ident, ps->timestamp);
-		helper_printf("committer %s %ld +0000\n", author_ident, ps->timestamp_last);
-		helper_printf("data %zu\n", strlen(ps->msg));
-		helper_printf("%s\n", ps->msg);
-
-	}
 	if (parent_mark->len)
 		helper_printf("from %s\n", parent_mark->buf);
 	for_each_hash(ps->revision_hash, fast_export_revision_cb, NULL);
 	//helper_printf("\n");
 	helper_flush();
 
+	strbuf_release(&author_sb);
+	strbuf_release(&committer_sb);
+	strbuf_release(&commit_msg_sb);
 	return markid;
 }
 
