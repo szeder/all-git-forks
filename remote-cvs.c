@@ -46,6 +46,7 @@
  *	verifyImport - bool
  *	cvsProtoTrace - path
  *	remoteHelperTrace - path
+ *	requireAuthorConvert - bool
  */
 
 static const char trace_key[] = "GIT_TRACE_CVS_HELPER";
@@ -66,6 +67,7 @@ static int initial_import = 0;
 static int no_refs_update_on_push = 0;
 static int ignore_mode_change = 0;
 static int verify_import = 0;
+static int require_author_convert = 0;
 //static struct progress *progress_state;
 //static struct progress *progress_rlog;
 
@@ -341,7 +343,7 @@ static int fast_export_cvs_commit(struct cvs_commit *ps, const char *branch_name
 	*/
 
 	author_ident = author_convert(ps->author);
-	if (!author_ident)
+	if (require_author_convert && !author_ident)
 		die("failed to resolve cvs userid %s", ps->author);
 
 	if (have_import_hook) {
@@ -1936,6 +1938,10 @@ int git_cvshelper_config(const char *var, const char *value, void *dummy)
 	}
 	else if (!strcmp(var, "cvshelper.filememorylimit")) {
 		fileMemoryLimit = git_config_ulong(var, value);
+		return 0;
+	}
+	else if (!strcmp(var, "cvshelper.requireauthorconvert")) {
+		require_author_convert = git_config_bool(var, value);
 		return 0;
 	}
 
