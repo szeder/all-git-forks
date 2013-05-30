@@ -204,6 +204,8 @@ test_suppress_self_unquoted () {
 
 		unquoted-$3
 
+		cccmd--$1 <$2>
+
 		Cc: $1 <$2>
 		Signed-off-by: $1 <$2>
 	EOF
