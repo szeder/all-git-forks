@@ -236,6 +236,11 @@ test_expect_success $PREREQ 'quoted self name is suppressed' "
 		'self_name_suppressed'
 "
 
+test_expect_success $PREREQ 'non-ascii self name is suppressed' "
+	test_suppress_self_quoted 'Füñný Nâmé' 'odd_?=mail@example.com' \
+		'non_ascii_self_suppressed'
+"
+
 test_expect_success $PREREQ 'Show all headers' '
 	git send-email \
 		--dry-run \
