@@ -15,6 +15,7 @@
 #include "commit.h"
 #include "progress.h"
 #include "diff.h"
+#include "dir.h"
 #include "string-list.h"
 
 /*
@@ -83,6 +84,8 @@ static struct cvs_transport *cvs = NULL;
 static struct strbuf push_error_sb = STRBUF_INIT;
 static struct string_list cvs_branch_list = STRING_LIST_INIT_DUP;
 static struct string_list *import_branch_list = NULL;
+struct path_exclude_check *exclude_check = NULL;
+struct dir_struct *exclude_dir = NULL;
 
 static const char import_commit_edit[] = "IMPORT_COMMIT_EDIT";
 static const char export_commit_edit[] = "EXPORT_COMMIT_EDIT";
@@ -234,6 +237,51 @@ static int cmd_option(const char *line)
 	helper_printf("ok\n");
 	helper_flush();
 	return 0;
+}
+
+static void init_cvs_import_exclude()
+{
+	const char *cvs_exclude_path;
+
+	if (exclude_check)
+		return;
+
+	exclude_check = xcalloc(1, sizeof(*exclude_check));
+	exclude_dir = xcalloc(1, sizeof(*exclude_dir));
+	path_exclude_check_init(exclude_check, exclude_dir);
+
+	//exclude_dir->exclude_per_dir = ".gitignore";
+	cvs_exclude_path = git_path("info/cvs-exclude");
+	if (!access_or_warn(cvs_exclude_path, R_OK))
+		add_excludes_from_file(exclude_dir, cvs_exclude_path);
+
+	cvs_exclude_path = getenv("GIT_CVS_IMPORT_EXCLUDE");
+	if (cvs_exclude_path) {
+		if (access(cvs_exclude_path, R_OK))
+			die("cannot access %s specified as GIT_CVS_IMPORT_EXCLUDE",
+			    cvs_exclude_path);
+		add_excludes_from_file(exclude_dir, cvs_exclude_path);
+	}
+}
+
+static void free_cvs_import_exclude()
+{
+	if (exclude_check)
+		return;
+
+	path_exclude_check_clear(exclude_check);
+	free(exclude_check);
+	free(exclude_dir);
+}
+
+static int is_cvs_import_excluded_path(const char *path)
+{
+	int dtype = DT_UNKNOWN;
+
+	if (!exclude_check)
+		init_cvs_import_exclude();
+
+	return is_path_excluded(exclude_check, path, -1, &dtype);
 }
 
 static const char *get_import_time_estimation()
@@ -516,6 +564,11 @@ static void on_file_checkout_cb(struct cvsfile *file, void *data)
 {
 	struct hash_table *meta_revision_hash = data;
 	int mark;
+
+	if (is_cvs_import_excluded_path(file->path.buf)) {
+		fprintf(stderr, "%s ignored during import according to cvs-exclude\n", file->path.buf);
+		return;
+	}
 
 	/*
 	 * FIXME: support files on disk
@@ -1535,6 +1588,11 @@ static void add_cvs_revision_cb(const char *branch_name,
 	struct string_list_item *li;
 	struct cvs_branch *cvs_branch;
 
+	if (is_cvs_import_excluded_path(path)) {
+		fprintf(stderr, "%s ignored during import according to cvs-exclude\n", path);
+		return;
+	}
+
 	li = unsorted_string_list_lookup(cvs_branch_list, branch_name);
 	if (!li) {
 		cvs_branch = new_cvs_branch(branch_name);
@@ -1773,6 +1831,11 @@ static void on_every_file_revision(const char *path, const char *revision, void 
 	struct hash_table *revision_meta_hash = meta;
 
 	fprintf(stderr, "rls: validating: %s\n", path);
+	if (is_cvs_import_excluded_path(path)) {
+		fprintf(stderr, "%s ignored during meta validation according to cvs-exclude\n", path);
+		return;
+	}
+
 	file_meta = lookup_hash(hash_path(path), revision_meta_hash);
 	if (!file_meta)
 		die("no meta for file %s\n", path);
@@ -2031,7 +2094,7 @@ int main(int argc, const char **argv)
 	}
 
 	cvs_authors_store();
-
+	free_cvs_import_exclude();
 	strbuf_release(&buf);
 	return 0;
 }
