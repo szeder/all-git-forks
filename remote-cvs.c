@@ -389,8 +389,14 @@ static int fast_export_cvs_commit(struct cvs_commit *ps, const char *branch_name
 	if (require_author_convert && !author_ident)
 		die("failed to resolve cvs userid %s", ps->author);
 
-	strbuf_addf(&author_sb, "author %s %ld +0000", author_ident, ps->timestamp);
-	strbuf_addf(&committer_sb, "committer %s %ld +0000", author_ident, ps->timestamp_last);
+	if (!author_ident) {
+		strbuf_addf(&author_sb, "author %s <unknown> %ld +0000", ps->author, ps->timestamp);
+		strbuf_addf(&committer_sb, "committer %s <unknown> %ld +0000", ps->author, ps->timestamp_last);
+	}
+	else {
+		strbuf_addf(&author_sb, "author %s %ld +0000", author_ident, ps->timestamp);
+		strbuf_addf(&committer_sb, "committer %s %ld +0000", author_ident, ps->timestamp_last);
+	}
 	strbuf_addstr(&commit_msg_sb, ps->msg);
 
 	if (have_import_hook)

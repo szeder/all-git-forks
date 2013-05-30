@@ -66,8 +66,8 @@ static char *author_convert_via_hook(const char *userid)
 		return NULL;
 
 	if (!author_ident.len) {
-		strbuf_addf(&author_ident, "%s <unknown>", userid);
-		return strbuf_detach(&author_ident, NULL);
+		strbuf_release(&author_ident);
+		return NULL;
 	}
 
 	/*
