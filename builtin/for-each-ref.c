@@ -12,6 +12,8 @@
 #include "utf8.h"
 #include "column.h"
 #include "string-list.h"
+#include "diff.h"
+#include "revision.h"
 
 /* Quoting styles */
 #define QUOTE_NONE 0
@@ -21,6 +23,13 @@
 #define QUOTE_TCL 8
 
 typedef enum { FIELD_STR, FIELD_ULONG, FIELD_TIME } cmp_type;
+
+static enum merge_filter {
+	NO_FILTER = 0,
+	SHOW_NOT_MERGED,
+	SHOW_MERGED
+} merge_filter;
+static unsigned char merge_filter_ref[20];
 
 struct atom_value {
 	const char *s;
@@ -825,6 +834,7 @@ struct grab_ref_cbdata {
 	struct refinfo **grab_array;
 	const char **grab_pattern;
 	struct commit_list *with_commit;
+	struct rev_info revs;
 	int grab_cnt;
 };
 
@@ -858,7 +868,7 @@ static int grab_single_ref(const char *refname, const unsigned char *sha1, int f
 			return 0;
 	}
 
-	if (cb->with_commit) {
+	if (cb->with_commit || merge_filter != NO_FILTER) {
 		struct commit *commit = lookup_commit_reference_gently(sha1, 1);
 		/* Filter with with_commit if specified */
 		if (!commit)
@@ -866,6 +876,9 @@ static int grab_single_ref(const char *refname, const unsigned char *sha1, int f
 
 		if (!is_descendant_of(commit, cb->with_commit))
 			return 0;
+
+		if (merge_filter != NO_FILTER)
+			add_pending_object(&cb->revs, &commit->object, refname);
 	}
 
 	/*
@@ -1126,6 +1139,26 @@ static void show_pretty_refs(struct refinfo **refs, int maxcount,
 	strbuf_release(&sb);
 }
 
+static void filter_merge(struct grab_ref_cbdata *cb)
+{
+	int src, dst, n = cb->grab_cnt;
+
+	for (src = dst = 0; src < n; src++) {
+		struct commit *commit;
+		int is_merged;
+		commit = lookup_commit_reference_gently(cb->grab_array[src]->objectname, 1);
+		is_merged = commit && !!(commit->object.flags & UNINTERESTING);
+		if (is_merged == (merge_filter == SHOW_MERGED)) {
+			if (src != dst)
+				cb->grab_array[dst] = cb->grab_array[src];
+			dst++;
+		} else {
+			free(cb->grab_array[src]);
+			cb->grab_cnt--;
+		}
+	}
+}
+
 static struct ref_sort *default_sort(void)
 {
 	static const char cstr_name[] = "refname";
@@ -1156,6 +1189,20 @@ static int opt_parse_sort(const struct option *opt, const char *arg, int unset)
 	}
 	len = strlen(arg);
 	s->atom = parse_atom(arg, arg+len);
+	return 0;
+}
+
+static int opt_parse_merge_filter(const struct option *opt, const char *arg, int unset)
+{
+	merge_filter = ((opt->long_name[0] == 'n')
+			? SHOW_NOT_MERGED
+			: SHOW_MERGED);
+	if (unset)
+		merge_filter = SHOW_NOT_MERGED; /* b/c for --no-merged */
+	if (!arg)
+		arg = "HEAD";
+	if (get_sha1(arg, merge_filter_ref))
+		die(_("malformed object name %s"), arg);
 	return 0;
 }
 
@@ -1197,6 +1244,18 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 			PARSE_OPT_LASTARG_DEFAULT,
 			parse_opt_with_commit, (intptr_t)"HEAD",
 		},
+		{
+			OPTION_CALLBACK, 0, "no-merged", &merge_filter_ref,
+			N_("commit"), N_("print only not merged branches"),
+			PARSE_OPT_LASTARG_DEFAULT | PARSE_OPT_NONEG,
+			opt_parse_merge_filter, (intptr_t) "HEAD",
+		},
+		{
+			OPTION_CALLBACK, 0, "merged", &merge_filter_ref,
+			N_("commit"), N_("print only merged branches"),
+			PARSE_OPT_LASTARG_DEFAULT | PARSE_OPT_NONEG,
+			opt_parse_merge_filter, (intptr_t) "HEAD",
+		},
 		OPT_COLUMN(0, "column", &colopts, N_("list branches in columns")),
 		{ OPTION_INTEGER, 0, "raw-column-mode", &colopts, NULL,
 		  N_("column layout mode"), PARSE_OPT_NOARG | PARSE_OPT_HIDDEN },
@@ -1227,8 +1286,32 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 	/* for warn_ambiguous_refs */
 	git_config(git_default_config, NULL);
 
+	if (merge_filter != NO_FILTER) {
+		unsigned char head_sha1[20];
+		char *head = resolve_refdup("HEAD", head_sha1, 0, NULL);
+		if (!head)
+			die(_("Failed to resolve HEAD as a valid ref."));
+		hashcpy(merge_filter_ref, head_sha1);
+	}
+
 	cbdata.grab_pattern = argv;
-	for_each_rawref(grab_single_ref, &cbdata);
+	if (merge_filter != NO_FILTER) {
+		struct commit *filter;
+		init_revisions(&cbdata.revs, NULL);
+		for_each_rawref(grab_single_ref, &cbdata);
+		filter = lookup_commit_reference_gently(merge_filter_ref, 0);
+		if (!filter)
+			die(_("object '%s' does not point to a commit"),
+			    sha1_to_hex(merge_filter_ref));
+
+		filter->object.flags |= UNINTERESTING;
+		add_pending_object(&cbdata.revs,
+				   (struct object *) filter, "");
+		cbdata.revs.limited = 1;
+		prepare_revision_walk(&cbdata.revs);
+		filter_merge(&cbdata);
+	} else
+		for_each_rawref(grab_single_ref, &cbdata);
 	refs = cbdata.grab_array;
 	num_refs = cbdata.grab_cnt;
 
