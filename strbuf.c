@@ -341,6 +341,36 @@ size_t strbuf_fread(struct strbuf *sb, size_t size, FILE *f)
 	return res;
 }
 
+ssize_t strbuf_fread_full(struct strbuf *sb, FILE *f, size_t hint)
+{
+	size_t oldlen = sb->len;
+	size_t oldalloc = sb->alloc;
+
+	strbuf_grow(sb, hint ? hint : 8192);
+	for (;;) {
+		size_t cnt;
+		size_t toread;
+
+		toread = sb->alloc - sb->len - 1;
+		cnt = fread(sb->buf + sb->len, 1, toread, f);
+		sb->len += cnt;
+		if (cnt < toread) {
+			if (!ferror(f))
+				break;
+
+			if (oldalloc == 0)
+				strbuf_release(sb);
+			else
+				strbuf_setlen(sb, oldlen);
+			return -1;
+		}
+		strbuf_grow(sb, 8192);
+	}
+
+	sb->buf[sb->len] = '\0';
+	return sb->len - oldlen;
+}
+
 ssize_t strbuf_read(struct strbuf *sb, int fd, size_t hint)
 {
 	size_t oldlen = sb->len;
