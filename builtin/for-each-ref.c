@@ -824,6 +824,7 @@ static void get_value(struct refinfo *ref, int atom, struct atom_value **v)
 struct grab_ref_cbdata {
 	struct refinfo **grab_array;
 	const char **grab_pattern;
+	struct commit_list *with_commit;
 	int grab_cnt;
 };
 
@@ -854,6 +855,16 @@ static int grab_single_ref(const char *refname, const unsigned char *sha1, int f
 				break;
 		}
 		if (!*pattern)
+			return 0;
+	}
+
+	if (cb->with_commit) {
+		struct commit *commit = lookup_commit_reference_gently(sha1, 1);
+		/* Filter with with_commit if specified */
+		if (!commit)
+			return 0;
+
+		if (!is_descendant_of(commit, cb->with_commit))
 			return 0;
 	}
 
@@ -1180,12 +1191,19 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 		OPT_STRING(  0 , "pretty", &pretty, N_("format"), N_("alternative format to use for the output")),
 		OPT_CALLBACK(0 , "sort", sort_tail, N_("key"),
 			    N_("field name to sort on"), &opt_parse_sort),
+		{
+			OPTION_CALLBACK, 0, "contains", &cbdata.with_commit, N_("commit"),
+			N_("print only refs that contain the commit"),
+			PARSE_OPT_LASTARG_DEFAULT,
+			parse_opt_with_commit, (intptr_t)"HEAD",
+		},
 		OPT_COLUMN(0, "column", &colopts, N_("list branches in columns")),
 		{ OPTION_INTEGER, 0, "raw-column-mode", &colopts, NULL,
 		  N_("column layout mode"), PARSE_OPT_NOARG | PARSE_OPT_HIDDEN },
 		OPT_END(),
 	};
 
+	memset(&cbdata, 0, sizeof(cbdata));
 	parse_options(argc, argv, prefix, opts, for_each_ref_usage, 0);
 	if (maxcount < 0) {
 		error("invalid --count argument: `%d'", maxcount);
@@ -1209,7 +1227,6 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 	/* for warn_ambiguous_refs */
 	git_config(git_default_config, NULL);
 
-	memset(&cbdata, 0, sizeof(cbdata));
 	cbdata.grab_pattern = argv;
 	for_each_rawref(grab_single_ref, &cbdata);
 	refs = cbdata.grab_array;
