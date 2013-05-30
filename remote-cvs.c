@@ -195,7 +195,6 @@ static int cmd_capabilities(const char *line)
 	helper_printf("option\n");
 	helper_printf("refspec refs/heads/*:%s*\n", get_private_ref_prefix());
 	helper_printf("\n");
-	//helper_printf("refspec %s:%s\n\n", remote_ref, private_ref);
 	helper_flush();
 	return 0;
 }
@@ -327,7 +326,7 @@ static int run_import_hook(struct strbuf *author_sb, struct strbuf *committer_sb
 	FILE *fp;
 	int rc;
 
-	strbuf_addf(&commit, "%s\n%s\n%s", author_sb->buf, committer_sb->buf, commit_msg_sb->buf);
+	strbuf_addf(&commit, "%s\n%s\n\n%s", author_sb->buf, committer_sb->buf, commit_msg_sb->buf);
 
 	fp = fopen(git_path(import_commit_edit), "w");
 	if (fp == NULL)
