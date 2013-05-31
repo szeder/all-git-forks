@@ -104,6 +104,7 @@ static int parse_cvsroot(struct cvs_transport *cvs, const char *cvsroot)
 	}
 
 	cvs->host = xstrndup(next_tok, idx - next_tok);
+	next_tok = idx;
 
 	if (*idx == '\0')
 		return -1;
