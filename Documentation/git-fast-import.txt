@@ -340,6 +340,12 @@ and control the current import process.  More detailed discussion
 	This command is optional and is not needed to perform
 	an import.
 
+`sync`::
+	Causes fast-import to reply `sync` to the file descriptor
+	set with --cat-blob-fd` or `stdout` if unspecified.
+	This command is useful to synchronize after checkpoint
+	command is issued, to make sure all refs are flushed.
+
 `progress`::
 	Causes fast-import to echo the entire line to its own
 	standard output.  This command is optional and is not needed
@@ -905,6 +911,20 @@ repository can be loaded into Git through fast-import in about 3 hours,
 explicit checkpointing may not be necessary.
 
 The `LF` after the command is optional (it used to be required).
+
+`sync`
+~~~~~~
+Echoes 'sync' to a file descriptor previously arranged with the
+`--cat-blob-fd` argument. This command is useful to synchronize
+after checkpoint command is issued, to make sure all refs are flushed.
+
++
+....
+	'sync' LF
+....
+
+See ``Responses To Commands'' below for details about how to read
+this output safely.
 
 `progress`
 ~~~~~~~~~~

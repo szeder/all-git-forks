@@ -60,6 +60,8 @@ Format of STDIN stream:
   checkpoint ::= 'checkpoint' lf
     lf?;
 
+  sync lf;
+
   progress ::= 'progress' sp not_lf* lf
     lf?;
 
@@ -3097,6 +3099,11 @@ static void parse_checkpoint(void)
 	skip_optional_lf();
 }
 
+static void parse_sync(void)
+{
+	cat_blob_write("sync\n", 5);
+}
+
 static void parse_progress(void)
 {
 	fwrite(command_buf.buf, 1, command_buf.len, stdout);
@@ -3396,6 +3403,8 @@ int main(int argc, char **argv)
 			parse_reset_branch();
 		else if (!strcmp("checkpoint", command_buf.buf))
 			parse_checkpoint();
+		else if (!strcmp("sync", command_buf.buf))
+			parse_sync();
 		else if (!strcmp("done", command_buf.buf))
 			break;
 		else if (!prefixcmp(command_buf.buf, "progress "))
