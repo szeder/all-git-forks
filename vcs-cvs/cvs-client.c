@@ -164,7 +164,7 @@ struct child_process *cvs_init_transport(struct cvs_transport *cvs,
 	struct child_process *conn = &no_fork;
 	const char **arg;
 	struct strbuf sport = STRBUF_INIT;
-	struct strbuf userathost = STRBUF_INIT;
+	struct strbuf host = STRBUF_INIT;
 
 	/* Without this we cannot rely on waitpid() to tell
 	 * what happened to our children.
@@ -172,34 +172,10 @@ struct child_process *cvs_init_transport(struct cvs_transport *cvs,
 	signal(SIGCHLD, SIG_DFL);
 
 	if (cvs->protocol == cvs_proto_pserver) {
-		die("cvs_proto_pserver unsupported");
-		/*
-		 * FIXME:
-		 */
-//		/* These underlying connection commands die() if they
-//		 * cannot connect.
-//		 */
-//		char *target_host = xstrdup(host);
-//		if (git_use_proxy(host))
-//			conn = git_proxy_connect(fd, host);
-//		else
-//			git_tcp_connect(fd, host, flags);
-//		/*
-//		 * Separate original protocol components prog and path
-//		 * from extended host header with a NUL byte.
-//		 *
-//		 * Note: Do not add any other headers here!  Doing so
-//		 * will cause older git-daemon servers to crash.
-//		 */
-//		packet_write(fd[1],
-//			     "%s %s%chost=%s%c",
-//			     prog, path, 0,
-//			     target_host, 0);
-//		free(target_host);
-//		free(url);
-//		if (free_path)
-//			free(path);
-//		return conn;
+		strbuf_addf(&host, "%s:%hu", cvs->host, cvs->port);
+		git_tcp_connect(cvs->fd, host.buf, flags);
+		strbuf_release(&host);
+		return conn;
 	}
 
 	conn = xcalloc(1, sizeof(*conn));
@@ -220,8 +196,8 @@ struct child_process *cvs_init_transport(struct cvs_transport *cvs,
 			*arg++ = putty ? "-P" : "-p";
 			*arg++ = sport.buf;
 		}
-		strbuf_addf(&userathost, "%s@%s", cvs->username, cvs->host);
-		*arg++ = userathost.buf;
+		strbuf_addf(&host, "%s@%s", cvs->username, cvs->host);
+		*arg++ = host.buf;
 	}
 	else {
 		/* remove repo-local variables from the environment */
@@ -238,7 +214,7 @@ struct child_process *cvs_init_transport(struct cvs_transport *cvs,
 	cvs->fd[1] = conn->in;  /* write to child's stdin */
 
 	strbuf_release(&sport);
-	strbuf_release(&userathost);
+	strbuf_release(&host);
 	return conn;
 }
 
@@ -665,6 +641,86 @@ static int cvs_negotiate(struct cvs_transport *cvs)
 	return 0;
 }
 
+static unsigned char cvs_scramble_shifts[] = {
+    0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
+   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+  114,120, 53, 79, 96,109, 72,108, 70, 64, 76, 67,116, 74, 68, 87,
+  111, 52, 75,119, 49, 34, 82, 81, 95, 65,112, 86,118,110,122,105,
+   41, 57, 83, 43, 46,102, 40, 89, 38,103, 45, 50, 42,123, 91, 35,
+  125, 55, 54, 66,124,126, 59, 47, 92, 71,115, 78, 88,107,106, 56,
+   36,121,117,104,101,100, 69, 73, 99, 63, 94, 93, 39, 37, 61, 48,
+   58,113, 32, 90, 44, 98, 60, 51, 33, 97, 62, 77, 84, 80, 85,223,
+  225,216,187,166,229,189,222,188,141,249,148,200,184,136,248,190,
+  199,170,181,204,138,232,218,183,255,234,220,247,213,203,226,193,
+  174,172,228,252,217,201,131,230,197,211,145,238,161,179,160,212,
+  207,221,254,173,202,146,224,151,140,196,205,130,135,133,143,246,
+  192,159,244,239,185,168,215,144,139,165,180,157,147,186,214,176,
+  227,231,219,169,175,156,206,198,129,164,150,210,154,177,134,127,
+  182,128,158,208,162,132,167,209,149,241,153,251,237,236,171,195,
+  243,233,253,240,194,250,191,155,142,137,245,235,163,242,178,152
+};
+
+char *cvs_scramble(const char *password)
+{
+	char *scrambled;
+	unsigned char *p;
+
+	scrambled = xcalloc(1, strlen(password) + 2);
+	scrambled[0] = 'A';
+	strcpy(scrambled + 1, password);
+	p = (unsigned char *)scrambled + 1;
+
+	while (*p) {
+		*p = cvs_scramble_shifts[*p];
+		p++;
+	}
+
+	return scrambled;
+}
+
+static int cvs_pserver_login(struct cvs_transport *cvs)
+{
+	struct strbuf reply = STRBUF_INIT;
+	static char *empty_pass = "A";
+	char *scrambled_pass = empty_pass;
+	ssize_t ret;
+
+	if (!cvs->username)
+		die("not cvs user set for pserver connection");
+
+	if (cvs->password)
+		scrambled_pass = cvs_scramble(cvs->password);
+
+	ret = cvs_write(cvs,
+			WR_FLUSH,
+			"BEGIN AUTH REQUEST\n"
+			"%s\n"
+			"%s\n"
+			"%s\n"
+			"END AUTH REQUEST\n",
+			cvs->repo_path,
+			cvs->username,
+			scrambled_pass);
+
+	if (scrambled_pass != empty_pass)
+		free(scrambled_pass);
+
+	if (ret == -1)
+		die("Cannot send cvs auth request");
+
+	ret = cvs_readline(cvs, &reply);
+	if (ret <= 0)
+		return -1;
+
+	if (!strcmp(reply.buf, "I LOVE YOU"))
+		return 0;
+
+	if (!strcmp(reply.buf, "I HATE YOU"))
+		die("cvs server authorization failed for user: %s", cvs->username);
+
+	die("cvs server authorization failed: %s", reply.buf);
+}
+
 static void strbuf_complete_line_ch(struct strbuf *sb, char ch)
 {
 	if (sb->len && sb->buf[sb->len - 1] != ch)
@@ -708,6 +764,7 @@ struct cvs_transport *cvs_connect(const char *cvsroot, const char *module)
 	cvs->full_module_path = strbuf_detach(&sb, NULL);
 
 	switch (cvs->protocol) {
+	case cvs_proto_pserver:
 	case cvs_proto_ext:
 	case cvs_proto_local:
 		cvs->conn = cvs_init_transport(cvs, "cvs server", CONNECT_VERBOSE);
@@ -718,6 +775,12 @@ struct cvs_transport *cvs_connect(const char *cvsroot, const char *module)
 		break;
 	default:
 		die(_("Unsupported cvs connection type."));
+	}
+
+	if (cvs->protocol == cvs_proto_pserver &&
+	    cvs_pserver_login(cvs)) {
+		cvs_terminate(cvs);
+		return NULL;
 	}
 
 	if (cvs_negotiate(cvs)) {
@@ -732,6 +795,7 @@ struct cvs_transport *cvs_connect(const char *cvsroot, const char *module)
 
 int cvs_terminate(struct cvs_transport *cvs)
 {
+	int rc = 0;
 	struct child_process *conn = cvs->conn;
 
 	if (cvs->compress) {
@@ -760,7 +824,9 @@ int cvs_terminate(struct cvs_transport *cvs)
 		free(cvs->full_module_path);
 	free(cvs);
 
-	return finish_connect(conn);
+	if (conn != &no_fork)
+		rc = finish_connect(conn);
+	return rc;
 }
 
 char **cvs_gettags(struct cvs_transport *cvs)
