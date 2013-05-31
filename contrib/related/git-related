@@ -48,12 +48,13 @@ class SimpleParser
   attr_writer :usage
 
   class Option
-    attr_reader :short, :long, :help
+    attr_reader :short, :long, :values, :help
 
-    def initialize(short, long, help, &block)
+    def initialize(short, long, values, help, &block)
       @block = block
       @short = short
       @long = long
+      @values = values
       @help = help
     end
 
@@ -66,8 +67,12 @@ class SimpleParser
     @list = {}
   end
 
-  def on(short=nil, long=nil, help=nil, &block)
-    opt = Option.new(short, long, help, &block)
+  def on(*args, &block)
+    short = args.shift if args.first.is_a?(String)
+    long = args.shift if args.first.is_a?(String)
+    values = args.shift if args.first.is_a?(Array)
+    help = args.shift if args.first.is_a?(String)
+    opt = Option.new(short, long, values, help, &block)
     @list[short] = opt if short
     @list[long] = opt if long
   end
@@ -82,7 +87,15 @@ class SimpleParser
       if cur =~ /^(-.+?)(?:=(.*))?$/
         opt = @list[$1]
         if opt
-          v = $2 || ARGV.delete_at(i + 1)
+          v = $2
+          if not v
+            if not opt.values
+              extra = true
+            else
+              extra = !!opt.values.map(&:to_s).member?(ARGV[i + 1])
+            end
+            v = extra ? ARGV.delete_at(i + 1) : true
+          end
           opt.call(v)
           ARGV.delete_at(i)
           next
