@@ -119,6 +119,7 @@ struct rev_info {
 			show_notes_given:1,
 			show_signature:1,
 			pretty_given:1,
+			verbose:3,
 			abbrev_commit:1,
 			abbrev_commit_given:1,
 			use_terminator:1,

@@ -615,6 +615,21 @@ int cmd_log_reflog(int argc, const char **argv, const char *prefix)
 	rev.use_terminator = 1;
 	rev.always_show_header = 1;
 	cmd_log_init_finish(argc, argv, prefix, &rev, &opt);
+	if (rev.verbose && !rev.pretty_given) {
+		struct strbuf formatter = STRBUF_INIT;
+		rev.verbose_header = 1;
+		rev.pretty_given = 1;
+		strbuf_addf(&formatter, "%s%%h%s %%gd: %%gs%%n",
+			    diff_get_color_opt(&rev.diffopt, DIFF_COMMIT),
+			    diff_get_color_opt(&rev.diffopt, DIFF_RESET));
+		strbuf_addf(&formatter, "    %s%%cd%s (by %%cn, at %%cr)",
+			    diff_get_color_opt(&rev.diffopt, DIFF_METAINFO),
+			    diff_get_color_opt(&rev.diffopt, DIFF_RESET));
+		if (rev.verbose > 1)
+			strbuf_addstr(&formatter, "%n    %s");
+		get_commit_format(formatter.buf, &rev);
+		strbuf_release(&formatter);
+	}
 
 	return cmd_log_walk(&rev);
 }

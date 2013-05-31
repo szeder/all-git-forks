@@ -1514,6 +1514,7 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->combine_merges = 1;
 	} else if (!strcmp(arg, "-v")) {
 		revs->verbose_header = 1;
+		revs->verbose++;
 	} else if (!strcmp(arg, "--pretty")) {
 		revs->verbose_header = 1;
 		revs->pretty_given = 1;
