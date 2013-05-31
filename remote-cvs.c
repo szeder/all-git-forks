@@ -19,10 +19,6 @@
 #include "string-list.h"
 
 /*
- * FIXME:
- * - import of new branch may fail, if parent branch ref is not created yet
- *   (fast-import haven't created it yet)
- *
  * TODO:
  * -/+ skip dead file addition to HEAD branch
  * - depth
@@ -167,14 +163,18 @@ static void helper_flush()
 	}
 }
 
-static int helper_strbuf_getline(struct strbuf *sb, FILE *fp, int term)
+static int helper_strbuf_getline(struct strbuf *sb)
 {
-	if (strbuf_getwholeline(sb, fp, term))
-		return EOF;
+	if (strbuf_getwholeline(sb, stdin, '\n')) {
+		if (ferror(stdin))
+			die("Error reading command stream");
+		else
+			die("Unexpected end of command stream");
+	}
 
 	proto_trace(sb->buf, sb->len, IN);
 
-	if (sb->buf[sb->len-1] == term)
+	if (sb->buf[sb->len-1] == '\n')
 		strbuf_setlen(sb, sb->len-1);
 
 	return 0;
@@ -857,6 +857,7 @@ static int import_branch_by_name(const char *branch_name)
 	struct strbuf branch_ref = STRBUF_INIT;
 	struct strbuf branch_private_ref = STRBUF_INIT;
 	struct strbuf meta_branch_ref = STRBUF_INIT;
+	struct strbuf buf_sb = STRBUF_INIT;
 	struct hash_table meta_revision_hash;
 	struct string_list_item *li;
 
@@ -929,10 +930,11 @@ static int import_branch_by_name(const char *branch_name)
 		}
 
 		helper_printf("checkpoint\n");
+		helper_printf("sync\n");
 		helper_flush();
-		/*
-		 * FIXME: sync with fast-export
-		 */
+		helper_strbuf_getline(&buf_sb);
+		if (strcmp(buf_sb.buf, "sync"))
+			die("fast-import sync failed: %s", buf_sb.buf);
 		invalidate_ref_cache(NULL);
 	}
 	else {
@@ -944,6 +946,7 @@ static int import_branch_by_name(const char *branch_name)
 	strbuf_release(&branch_ref);
 	strbuf_release(&branch_private_ref);
 	strbuf_release(&meta_branch_ref);
+	strbuf_release(&buf_sb);
 	free_hash(&meta_revision_hash);
 	return 0;
 }
@@ -2075,12 +2078,7 @@ int main(int argc, const char **argv)
 	}
 
 	while (1) {
-		if (helper_strbuf_getline(&buf, stdin, '\n') == EOF) {
-			if (ferror(stdin))
-				die("Error reading command stream");
-			else
-				die("Unexpected end of command stream");
-		}
+		helper_strbuf_getline(&buf);
 		if (do_command(&buf))
 			break;
 		strbuf_reset(&buf);
