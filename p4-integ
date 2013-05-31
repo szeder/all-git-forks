@@ -1,0 +1,58 @@
+#!/bin/bash -e
+################ Install Guide ############################
+## Please copy this script into /usr/bin and Chmod to +X ##
+###########################################################
+set -e
+source ~/.profile
+
+args=`getopt yo: $*`
+if [ $? != 0 ]; then
+    echo "Usage: p4-integ [-y][<BranchMap>]"
+    exit 2
+fi
+set -- $args
+for i
+do
+    case "$i"
+    in
+        -y)
+            echo flag $i set; YN="${i#-}";
+            shift;;
+        --)
+            shift; break;;
+    esac
+done
+
+## Check P4 if login
+IS_LOGIN=$(p4 -u $P4USER -p $P4PORT login -s) || true
+if [ -z "$IS_LOGIN" ]; then
+    p4 -u $P4USER -p $P4PORT login
+else
+    echo "$IS_LOGIN"
+fi
+
+if [ $1 ]; then
+    BRANCH=$(p4 branches | grep $1 | head -n1 | cut -d " " -f2)
+else
+    BRANCH=$(p4 branches | grep `basename $(pwd)` | head -n1 | cut -d " " -f2)
+fi
+
+if [ -z "$BRANCH" ]; then
+    echo "Usage: p4-integ [<BranchMap>]"
+    echo "Can't find your branch map"
+    echo "You can search the branch map by \"p4 branches\""
+    exit 1
+fi
+
+echo "Suggest using \"$BRANCH\""
+if [ -z "$YN" ]; then
+    read -p "Are you sure?[Y]" YN
+fi
+if [ "$YN" == "n" ] || [ "$YN" == "N" ]; then
+    echo "Abort."
+    exit 0
+fi
+
+p4 integ -b $BRANCH -d
+p4 resolve -at
+p4 submit
