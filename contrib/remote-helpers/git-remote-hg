@@ -1153,7 +1153,7 @@ def fix_path(alias, repo, orig_url):
     if url.scheme != 'file' or os.path.isabs(os.path.expanduser(url.path)):
         return
     abs_url = urlparse.urljoin("%s/" % os.getcwd(), orig_url)
-    cmd = ['git', 'config', 'remote.%s.url' % alias, "hg::%s" % abs_url]
+    cmd = ['git', 'config', 'remote.%s.url' % alias, "gitifyhg::%s" % abs_url]
     subprocess.call(cmd)
 
 def main(args):
