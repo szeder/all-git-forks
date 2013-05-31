@@ -88,7 +88,6 @@ static int parse_cvsroot(struct cvs_transport *cvs, const char *cvsroot)
 
 	/*
 	 * parse host/port
-	 * FIXME: ipv6 support i.e. [fe80::c685:123:1234:1234%eth0]
 	 */
 	idx = strchr(next_tok, ']');
 	if (!idx) {
@@ -105,6 +104,11 @@ static int parse_cvsroot(struct cvs_transport *cvs, const char *cvsroot)
 
 	cvs->host = xstrndup(next_tok, idx - next_tok);
 	next_tok = idx;
+
+	if (cvs->host[0] == '[') {
+		memmove(cvs->host, cvs->host + 1, strlen(cvs->host) - 2);
+		cvs->host[strlen(cvs->host) - 2] = '\0';
+	}
 
 	if (*idx == '\0')
 		return -1;
@@ -173,7 +177,10 @@ struct child_process *cvs_init_transport(struct cvs_transport *cvs,
 	signal(SIGCHLD, SIG_DFL);
 
 	if (cvs->protocol == cvs_proto_pserver) {
-		strbuf_addf(&host, "%s:%hu", cvs->host, cvs->port);
+		if (index(cvs->host, ':'))
+			strbuf_addf(&host, "[%s]:%hu", cvs->host, cvs->port);
+		else
+			strbuf_addf(&host, "%s:%hu", cvs->host, cvs->port);
 		git_tcp_connect(cvs->fd, host.buf, flags);
 		strbuf_release(&host);
 		return conn;
