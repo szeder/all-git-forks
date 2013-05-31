@@ -266,7 +266,7 @@ static void init_cvs_import_exclude()
 
 static void free_cvs_import_exclude()
 {
-	if (exclude_check)
+	if (!exclude_check)
 		return;
 
 	path_exclude_check_clear(exclude_check);
