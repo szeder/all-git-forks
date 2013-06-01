@@ -565,20 +565,6 @@ static void grab_sub_body_contents(struct atom_value *val, int deref, struct obj
 }
 
 /*
- * We want to have empty print-string for field requests
- * that do not apply (e.g. "authordate" for a tag object)
- */
-static void fill_missing_values(struct atom_value *val)
-{
-	int i;
-	for (i = 0; i < used_atom_cnt; i++) {
-		struct atom_value *v = &val[i];
-		if (v->s == NULL)
-			v->s = "";
-	}
-}
-
-/*
  * val is a list of atom_value to hold returned values.  Extract
  * the values for atoms in used_atom array out of (obj, buf, sz).
  * when deref is false, (obj, buf, sz) is the object that is
@@ -621,7 +607,7 @@ static inline char *copy_advance(char *dst, const char *src)
 /*
  * Parse the object referred by ref, and grab needed value.
  */
-static void populate_value(struct refinfo *ref)
+static void populate_value(struct refinfo *ref, int only_this_atom)
 {
 	void *buf;
 	struct object *obj;
@@ -630,13 +616,15 @@ static void populate_value(struct refinfo *ref)
 	const unsigned char *tagged;
 	int upstream_present = 0;
 
-	ref->value = xcalloc(sizeof(struct atom_value), used_atom_cnt);
+	if (!ref->value) {
+		ref->value = xcalloc(sizeof(struct atom_value), used_atom_cnt);
 
-	if (need_symref && (ref->flag & REF_ISSYMREF) && !ref->symref) {
-		unsigned char unused1[20];
-		ref->symref = resolve_refdup(ref->refname, unused1, 1, NULL);
-		if (!ref->symref)
-			ref->symref = "";
+		if (need_symref && (ref->flag & REF_ISSYMREF) && !ref->symref) {
+			unsigned char unused1[20];
+			ref->symref = resolve_refdup(ref->refname, unused1, 1, NULL);
+			if (!ref->symref)
+				ref->symref = "";
+		}
 	}
 
 	/* Fill in specials first */
@@ -647,6 +635,9 @@ static void populate_value(struct refinfo *ref)
 		const char *refname;
 		const char *formatp;
 		struct branch *branch;
+
+		if (only_this_atom != -1 && only_this_atom != i)
+			continue;
 
 		if (*name == '*') {
 			deref = 1;
@@ -754,6 +745,10 @@ static void populate_value(struct refinfo *ref)
 
 	for (i = 0; i < used_atom_cnt; i++) {
 		struct atom_value *v = &ref->value[i];
+
+		if (only_this_atom != -1 && only_this_atom != i)
+			continue;
+
 		if (v->s == NULL)
 			goto need_obj;
 	}
@@ -809,9 +804,15 @@ static void populate_value(struct refinfo *ref)
  */
 static void get_value(struct refinfo *ref, int atom, struct atom_value **v)
 {
-	if (!ref->value) {
-		populate_value(ref);
-		fill_missing_values(ref->value);
+	if (!ref->value || !ref->value[atom].s) {
+		populate_value(ref, atom);
+		/*
+		 * We want to have empty print-string for field
+		 * requests that do not apply (e.g. "authordate" for a
+		 * tag object)
+		 */
+		if (!ref->value[atom].s)
+			ref->value[atom].s = "";
 	}
 	*v = &ref->value[atom];
 }
