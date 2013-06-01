@@ -17,6 +17,7 @@ struct commit {
 	void *util;
 	unsigned int indegree;
 	unsigned long date;
+	unsigned long author_date;
 	struct commit_list *parents;
 	struct tree *tree;
 	char *buffer;
