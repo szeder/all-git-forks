@@ -408,6 +408,19 @@ void free_commit_list(struct commit_list *list)
 	}
 }
 
+struct commit_list * commit_list_insert_by_author_date(struct commit *item, struct commit_list **list)
+{
+	struct commit_list **pp = list;
+	struct commit_list *p;
+	while ((p = *pp) != NULL) {
+		if (p->item->author_date < item->author_date) {
+			break;
+		}
+		pp = &p->next;
+	}
+	return commit_list_insert(item, pp);
+}
+
 struct commit_list * commit_list_insert_by_date(struct commit *item, struct commit_list **list)
 {
 	struct commit_list **pp = list;
@@ -451,6 +464,12 @@ static void *commit_list_get_next(const void *a)
 static void commit_list_set_next(void *a, void *next)
 {
 	((struct commit_list *)a)->next = next;
+}
+
+void commit_list_sort_by_author_date(struct commit_list **list)
+{
+	*list = llist_mergesort(*list, commit_list_get_next, commit_list_set_next,
+				commit_list_compare_by_author_date);
 }
 
 void commit_list_sort_by_date(struct commit_list **list)
