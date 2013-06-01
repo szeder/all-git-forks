@@ -19,12 +19,7 @@ filesystem.
 
 test_expect_success 'setup ' '
 	date >path0 &&
-	if test_have_prereq SYMLINKS
-	then
-		ln -s xyzzy path1
-	else
-		date >path1
-	fi &&
+	test_ln_s xyzzy path1 &&
 	mkdir path2 path3 path4 &&
 	date >path2/file2 &&
 	date >path2-junk &&
