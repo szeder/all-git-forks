@@ -78,7 +78,7 @@ struct commit *lookup_commit_reference_by_name(const char *name)
 	return commit;
 }
 
-static unsigned long parse_commit_date(const char *buf, const char *tail)
+static unsigned long parse_commit_committer_date(const char *buf, const char *tail)
 {
 	const char *dateptr;
 
@@ -301,7 +301,7 @@ int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long s
 			pptr = &commit_list_insert(new_parent, pptr)->next;
 		}
 	}
-	item->date = parse_commit_date(bufptr, tail);
+	item->date = parse_commit_committer_date(bufptr, tail);
 
 	return 0;
 }
