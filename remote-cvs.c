@@ -65,6 +65,7 @@ static int no_refs_update_on_push = 0;
 static int ignore_mode_change = 0;
 static int verify_import = 0;
 static int require_author_convert = 0;
+static int update_tags = 0;
 //static struct progress *progress_state;
 //static struct progress *progress_rlog;
 
@@ -78,7 +79,12 @@ static const char *cvsmodule = NULL;
 static const char *cvsroot = NULL;
 static struct cvs_transport *cvs = NULL;
 static struct strbuf push_error_sb = STRBUF_INIT;
+
+#define BRANCH_NOT_IMPORTED ((void*)0)
+#define BRANCH_IMPORTED     ((void*)1)
+#define BRANCH_IS_TAG       ((void*)2)
 static struct string_list cvs_branch_list = STRING_LIST_INIT_DUP;
+static struct string_list cvs_tag_list = STRING_LIST_INIT_DUP;
 static struct string_list *import_branch_list = NULL;
 struct path_exclude_check *exclude_check = NULL;
 struct dir_struct *exclude_dir = NULL;
@@ -197,6 +203,7 @@ static int cmd_capabilities(const char *line)
 	helper_printf("push\n");
 	helper_printf("option\n");
 	helper_printf("refspec refs/heads/*:%s*\n", get_private_ref_prefix());
+	helper_printf("refspec refs/tags/*:%s*\n", get_private_tags_ref_prefix());
 	helper_printf("\n");
 	helper_flush();
 	return 0;
@@ -412,7 +419,7 @@ static int run_import_hook(struct strbuf *author_sb, struct strbuf *committer_sb
 }
 
 static int markid = 0;
-static int fast_export_cvs_commit(struct cvs_commit *ps, const char *branch_name, struct strbuf *parent_mark)
+static int fast_export_cvs_commit(const char *branch_name, struct cvs_commit *ps, const char *parent_mark)
 {
 	const char *author_ident;
 	struct strbuf author_sb = STRBUF_INIT;
@@ -456,8 +463,8 @@ static int fast_export_cvs_commit(struct cvs_commit *ps, const char *branch_name
 	helper_printf("data %zu\n", commit_msg_sb.len);
 	helper_printf("%s\n", commit_msg_sb.buf);
 
-	if (parent_mark->len)
-		helper_printf("from %s\n", parent_mark->buf);
+	if (parent_mark)
+		helper_printf("from %s\n", parent_mark);
 	for_each_hash(ps->revision_hash, fast_export_revision_cb, NULL);
 	//helper_printf("\n");
 	helper_flush();
@@ -489,25 +496,33 @@ static int print_revision_changes_cb(void *ptr, void *data)
 	return 0;
 }
 
-static int fast_export_commit_meta(struct hash_table *meta, struct cvs_commit *ps, const char *branch_name, struct strbuf *commit_mark, struct strbuf *parent_mark)
+static int fast_export_commit_meta(const char *branch_name,
+				int istag,
+				struct hash_table *meta,
+				struct hash_table *changes_hash,
+				time_t timestamp,
+				const char *commit_mark,
+				const char *parent_mark)
 {
 	struct strbuf sb = STRBUF_INIT;
 
 	markid++;
-	helper_printf("commit %s%s\n", get_meta_ref_prefix(), branch_name);
+	helper_printf("commit %s%s\n",
+			istag ? get_meta_tags_ref_prefix() : get_meta_ref_prefix(),
+			branch_name);
 	helper_printf("mark :%d\n", markid);
-	//helper_printf("author %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp);
-	helper_printf("committer %s <%s> %ld +0000\n", ps->author, "unknown", ps->timestamp_last);
+	helper_printf("committer remote-cvs <unknown> %ld +0000\n", timestamp);
 	helper_printf("data <<EOM\n");
 	helper_printf("cvs meta update\n");
-	for_each_hash(ps->revision_hash, print_revision_changes_cb, NULL);
+	if (changes_hash)
+		for_each_hash(changes_hash, print_revision_changes_cb, NULL);
 	helper_printf("EOM\n");
-	if (parent_mark->len)
-		helper_printf("from %s\n", parent_mark->buf);
-	helper_printf("N inline %s\n", commit_mark->buf);
+	if (parent_mark)
+		helper_printf("from %s\n", parent_mark);
+	helper_printf("N inline %s\n", commit_mark);
 	helper_printf("data <<EON\n");
-	if (ps->cancellation_point)
-		helper_printf("UPDATE:%ld\n", ps->cancellation_point);
+	if (timestamp)
+		helper_printf("UPDATE:%ld\n", timestamp);
 	helper_printf("--\n");
 	for_each_hash(meta, fast_export_revision_meta_cb, &sb);
 	helper_printf("%s", sb.buf);
@@ -709,6 +724,8 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 	int rev_mismatches;
 
 	save_commit_buffer = 0;
+	if (!time)
+		time = -1;
 
 	strbuf_addf(&branch_ref, "%s%s", get_private_ref_prefix(), parent_branch_name);
 	strbuf_addf(&cvs_branch_ref, "%s%s", get_meta_ref_prefix(), parent_branch_name);
@@ -772,13 +789,18 @@ static int fast_export_revision_by_mark(void *ptr, void *data)
 	return 0;
 }
 
-static int fast_export_branch_initial(struct hash_table *meta_revision_hash,
-		const char *branch_name, time_t date, const char *parent_commit_ref,
-		const char *parent_branch_name)
+static int fast_export_branch_initial(const char *branch_name,
+					int istag,
+					struct hash_table *meta_revision_hash,
+					time_t date,
+					const char *parent_commit_ref,
+					const char *parent_branch_name)
 {
 	markid++;
 
-	helper_printf("commit %s%s\n", get_private_ref_prefix(), branch_name);
+	helper_printf("commit %s%s\n",
+			istag ? get_private_tags_ref_prefix() : get_private_ref_prefix(),
+			branch_name);
 	helper_printf("mark :%d\n", markid);
 	helper_printf("author git-remote-cvs <none> %ld +0000\n", date);
 	helper_printf("committer git-remote-cvs <none> %ld +0000\n", date);
@@ -822,10 +844,10 @@ static int make_initial_branch_import(const char *branch_name, struct cvs_branch
 	 * if parent is not updated yet, import parent first
 	 */
 	item = unsorted_string_list_lookup(import_branch_list, parent_branch_name);
-	if (item && !item->util) {
+	if (item && item->util == BRANCH_NOT_IMPORTED) {
 		fprintf(stderr, "fetching parent first\n");
 		import_branch_by_name(item->string);
-		item->util = (void*)1;
+		item->util = BRANCH_IMPORTED;
 	}
 
 	parent_commit = find_branch_fork_point(parent_branch_name,
@@ -833,8 +855,9 @@ static int make_initial_branch_import(const char *branch_name, struct cvs_branch
 						cvs_branch->last_commit_revision_hash);
 	fprintf(stderr, "PARENT COMMIT: %s\n", parent_commit);
 
-	mark = fast_export_branch_initial(cvs_branch->last_commit_revision_hash,
-					branch_name,
+	mark = fast_export_branch_initial(branch_name,
+					0,
+					cvs_branch->last_commit_revision_hash,
 					import_time,
 					parent_commit,
 					parent_branch_name);
@@ -850,7 +873,7 @@ static void merge_revision_hash(struct hash_table *meta, struct hash_table *upda
 
 static int import_branch_by_name(const char *branch_name)
 {
-	static int mark;
+	int mark;
 	unsigned char sha1[20];
 	struct strbuf commit_mark_sb = STRBUF_INIT;
 	struct strbuf meta_mark_sb = STRBUF_INIT;
@@ -910,12 +933,18 @@ static int import_branch_by_name(const char *branch_name)
 		fprintf(stderr, "Branch: %s Commit: %d/%d\n", branch_name, psnum, pstotal);
 		print_cvs_commit(ps);
 		fprintf(stderr, "--<<------------------\n\n");
-		mark = fast_export_cvs_commit(ps, branch_name, &commit_mark_sb);
+		mark = fast_export_cvs_commit(branch_name, ps, commit_mark_sb.len ? commit_mark_sb.buf : NULL);
 		strbuf_reset(&commit_mark_sb);
 		strbuf_addf(&commit_mark_sb, ":%d", mark);
 
 		merge_revision_hash(&meta_revision_hash, ps->revision_hash);
-		mark = fast_export_commit_meta(&meta_revision_hash, ps, branch_name, &commit_mark_sb, &meta_mark_sb);
+		mark = fast_export_commit_meta(branch_name,
+						0,
+						&meta_revision_hash,
+						ps->revision_hash,
+						ps->cancellation_point,
+						commit_mark_sb.buf,
+						meta_mark_sb.len ? meta_mark_sb.buf : NULL);
 		strbuf_reset(&meta_mark_sb);
 		strbuf_addf(&meta_mark_sb, ":%d", mark);
 
@@ -951,14 +980,74 @@ static int import_branch_by_name(const char *branch_name)
 	return 0;
 }
 
+static int import_tag_by_name(const char *branch_name)
+{
+	int rc;
+	int mark;
+	char *parent_branch_name;
+	const char *parent_commit;
+	struct strbuf commit_mark_sb = STRBUF_INIT;
+	struct hash_table tag_revision_hash = HASH_TABLE_INIT;
+
+	fprintf(stderr, "importing CVS tag %s\n", branch_name);
+
+	rc = checkout_branch(branch_name, 0, &tag_revision_hash);
+	if (rc == -1)
+		die("tag checkout failed %s", branch_name);
+
+	if (is_empty_hash(&tag_revision_hash))
+		return 0;
+
+	parent_branch_name = find_parent_branch(branch_name, &tag_revision_hash);
+	if (!parent_branch_name)
+		die("Cannot find parent branch for: %s", branch_name);
+	fprintf(stderr, "PARENT BRANCH FOR: %s is %s\n", branch_name, parent_branch_name);
+
+	parent_commit = find_branch_fork_point(parent_branch_name,
+						0,
+						&tag_revision_hash);
+	fprintf(stderr, "PARENT COMMIT: %s\n", parent_commit);
+
+	mark = fast_export_branch_initial(branch_name,
+					1,
+					&tag_revision_hash,
+					0,
+					parent_commit,
+					parent_branch_name);
+
+	strbuf_addf(&commit_mark_sb, ":%d", mark);
+	fast_export_commit_meta(branch_name,
+				1,
+				&tag_revision_hash,
+				NULL,
+				0,
+				commit_mark_sb.buf,
+				NULL);
+
+	/*
+	 * create tag
+	 */
+	helper_printf("reset %s%s\n", get_private_tags_ref_prefix(), branch_name);
+	helper_printf("from %s\n", commit_mark_sb.buf);
+
+	free(parent_branch_name);
+	free_hash(&tag_revision_hash);
+	strbuf_release(&commit_mark_sb);
+	return 0;
+}
+
 static int cmd_batch_import(struct string_list *list)
 {
 	struct string_list_item *item;
 	const char *branch_name;
 
 	for_each_string_list_item(item, list) {
-		if (!(branch_name = gettext_after(item->string, "import refs/heads/")))
-			die("Malformed import command (wrong ref prefix) %s", item->string);
+		if (!(branch_name = gettext_after(item->string, "import refs/heads/"))) {
+			if ((branch_name = gettext_after(item->string, "import refs/tags/")))
+				item->util = BRANCH_IS_TAG;
+			else
+				die("Malformed import command (wrong ref prefix) %s", item->string);
+		}
 
 		memmove(item->string, branch_name, strlen(branch_name) + 1); // move including \0
 	}
@@ -971,16 +1060,21 @@ static int cmd_batch_import(struct string_list *list)
 	item = unsorted_string_list_lookup(list, "HEAD");
 	if (item) {
 		import_branch_by_name(item->string);
-		item->util = (void*)1;
+		item->util = BRANCH_IMPORTED;
 	}
 
 	for_each_string_list_item(item, list) {
-		if (!item->util) {
+		if (item->util == BRANCH_NOT_IMPORTED) {
 			import_branch_by_name(item->string);
-			item->util = (void*)1;
+			item->util = BRANCH_IMPORTED;
 		}
 	}
 
+	for_each_string_list_item(item, list) {
+		if (item->util == BRANCH_IS_TAG) {
+			import_tag_by_name(item->string);
+		}
+	}
 	helper_printf("done\n");
 	helper_flush();
 	//stop_progress(&progress_state);
@@ -1580,16 +1674,24 @@ static int cmd_batch_push(struct string_list *list)
 }
 
 static void add_cvs_revision_cb(const char *branch_name,
-			  const char *path,
-			  const char *revision,
-			  const char *author,
-			  const char *msg,
-			  time_t timestamp,
-			  int isdead,
-			  void *data) {
+				int istag,
+				const char *path,
+				const char *revision,
+				const char *author,
+				const char *msg,
+				time_t timestamp,
+				int isdead,
+				void *data) {
 	struct string_list *cvs_branch_list = data;
 	struct string_list_item *li;
 	struct cvs_branch *cvs_branch;
+
+	if (istag) {
+		li = unsorted_string_list_lookup(&cvs_tag_list, branch_name);
+		if (!li)
+			string_list_append(&cvs_tag_list, branch_name);
+		return;
+	}
 
 	if (is_cvs_import_excluded_path(path)) {
 		fprintf(stderr, "%s ignored during import according to cvs-exclude\n", path);
@@ -1646,6 +1748,7 @@ static int cmd_list(const char *line)
 
 	struct string_list_item *li;
 	struct cvs_branch *cvs_branch;
+	struct strbuf ref_sb = STRBUF_INIT;
 
 	//progress_rlog = start_progress("revisions info", 0);
 	if (initial_import) {
@@ -1660,6 +1763,10 @@ static int cmd_list(const char *line)
 			finalize_revision_list(cvs_branch);
 			if (cvs_branch->rev_list->nr)
 				helper_printf("? refs/heads/%s\n", li->string);
+		}
+
+		for_each_string_list_item(li, &cvs_tag_list) {
+			helper_printf("? refs/tags/%s\n", li->string);
 		}
 		helper_printf("\n");
 	}
@@ -1695,11 +1802,19 @@ static int cmd_list(const char *line)
 				fprintf(stderr, "Branch: %s is up to date\n", li->string);
 		}
 
+		for_each_string_list_item(li, &cvs_tag_list) {
+			strbuf_reset(&ref_sb);
+			strbuf_addf(&ref_sb, "%s%s", get_meta_tags_ref_prefix(), li->string);
+			if (update_tags || !ref_exists(ref_sb.buf))
+				helper_printf("? refs/tags/%s\n", li->string);
+		}
+
 		helper_printf("\n");
 	}
 	//stop_progress(&progress_rlog);
 	helper_flush();
 	revisions_all_branches_total -= skipped;
+	strbuf_release(&ref_sb);
 	return 0;
 }
 
@@ -2085,6 +2200,7 @@ int main(int argc, const char **argv)
 	}
 
 	string_list_clear_func(&cvs_branch_list, cvs_branch_list_item_free);
+	string_list_clear(&cvs_tag_list, 0);
 	if (cvs) {
 		int ret = cvs_terminate(cvs);
 

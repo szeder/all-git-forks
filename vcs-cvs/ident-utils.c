@@ -7,7 +7,6 @@
 #include "run-command.h"
 #include "cache.h"
 
-#define HASH_TABLE_INIT { 0, 0, NULL }
 static struct hash_table cvs_authors_hash = HASH_TABLE_INIT;
 static int cvs_authors_hash_modified = 0;
 

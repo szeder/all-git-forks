@@ -7,28 +7,38 @@
 
 static const char *ref_prefix = NULL;
 static const char *private_ref_prefix = NULL;
+static const char *private_tags_ref_prefix = NULL;
 
 void set_ref_prefix_remote(const char *remote_name)
 {
 	struct strbuf ref_prefix_sb = STRBUF_INIT;
 	struct strbuf private_ref_prefix_sb = STRBUF_INIT;
+	struct strbuf private_tags_ref_prefix_sb = STRBUF_INIT;
 
 	if (is_bare_repository()) {
 		strbuf_addstr(&ref_prefix_sb, "refs/heads/");
 		strbuf_addstr(&private_ref_prefix_sb, "refs/cvsimport/heads/");
+		strbuf_addstr(&private_tags_ref_prefix_sb, "refs/cvsimport/tags/");
 	}
 	else {
 		strbuf_addf(&ref_prefix_sb, "refs/remotes/%s/", remote_name);
-		strbuf_addf(&private_ref_prefix_sb, "refs/cvsimport/remotes/%s/", remote_name);
+		strbuf_addf(&private_ref_prefix_sb, "refs/cvsimport/remotes/%s/heads/", remote_name);
+		strbuf_addf(&private_tags_ref_prefix_sb, "refs/cvsimport/remotes/%s/tags/", remote_name);
 	}
 
 	ref_prefix = strbuf_detach(&ref_prefix_sb, NULL);
 	private_ref_prefix = strbuf_detach(&private_ref_prefix_sb, NULL);
+	private_tags_ref_prefix = strbuf_detach(&private_tags_ref_prefix_sb, NULL);
 }
 
 const char *get_meta_ref_prefix()
 {
-	return "refs/cvsmeta/";
+	return "refs/cvsmeta/heads/";
+}
+
+const char *get_meta_tags_ref_prefix()
+{
+	return "refs/cvsmeta/tags/";
 }
 
 const char *get_ref_prefix()
@@ -39,6 +49,11 @@ const char *get_ref_prefix()
 const char *get_private_ref_prefix()
 {
 	return private_ref_prefix;
+}
+
+const char *get_private_tags_ref_prefix()
+{
+	return private_tags_ref_prefix;
 }
 
 /*

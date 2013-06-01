@@ -59,6 +59,7 @@ int cvs_terminate(struct cvs_transport *cvs);
  * generate metadata
  */
 typedef void (*add_rev_fn_t)(const char *branch,
+				  int istag,
 				  const char *path,
 				  const char *revision,
 				  const char *author,
@@ -89,11 +90,12 @@ struct cvsfile {
 	unsigned int iscached:1;
 	unsigned int handled:1;
 	unsigned int mode;
+	time_t timestamp;
 	struct strbuf file; /* FIXME: file or path depends on ismem */
 	void *util;         /* used to store sha1 during check in (used in prepare file content callback) */
 };
 
-#define CVSFILE_INIT { STRBUF_INIT, STRBUF_INIT, 0, 0, 0, 0, 0, 0, 0, 0, STRBUF_INIT, NULL };
+#define CVSFILE_INIT { STRBUF_INIT, STRBUF_INIT, 0, 0, 0, 0, 0, 0, 0, 0, 0, STRBUF_INIT, NULL };
 void cvsfile_init(struct cvsfile *file);
 void cvsfile_release(struct cvsfile *file);
 

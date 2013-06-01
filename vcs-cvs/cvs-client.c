@@ -1095,19 +1095,35 @@ int is_revision_metadata(struct strbuf *reply)
 	return 1;
 }
 
-time_t date_to_unixtime(struct strbuf *date)
+time_t date_to_unixtime(const char *date)
 {
 	struct tm date_tm;
 	char *p;
 
 	memset(&date_tm, 0, sizeof(date_tm));
-	p = strptime(date->buf, "%Y/%m/%d %T", &date_tm);
+	p = strptime(date, "%Y/%m/%d %T", &date_tm);
 	if (!p) {
 		// try: 2013-01-18 13:28:28 +0000
-		p = strptime(date->buf, "%Y-%m-%d %T", &date_tm);
+		p = strptime(date, "%Y-%m-%d %T", &date_tm);
 		if (!p)
 			return 0;
 	}
+
+	setenv("TZ", "UTC", 1);
+	tzset();
+
+	return mktime(&date_tm);
+}
+
+time_t rfc2822_date_to_unixtime(const char *date)
+{
+	struct tm date_tm;
+	char *p;
+
+	memset(&date_tm, 0, sizeof(date_tm));
+	p = strptime(date, "%d %b %Y %T %z", &date_tm);
+	if (!p)
+		return 0;
 
 	setenv("TZ", "UTC", 1);
 	tzset();
@@ -1269,6 +1285,7 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 					break;
 				case sym_tag:
 					tags++;
+					cb(branch_name.buf, 1, file.buf, branch_rev.buf, NULL, NULL, 0, 0, 0);
 					break;
 				}
 			}
@@ -1331,7 +1348,7 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 					die("Cannot parse CVS rlog: date");
 				strbuf_rtrim_ch(&reply, ';');
 
-				timestamp = date_to_unixtime(&reply);
+				timestamp = date_to_unixtime(reply.buf);
 				if (!timestamp)
 					die("Cannot parse CVS rlog date: %s", reply.buf);
 
@@ -1384,7 +1401,7 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 					//fprintf(stderr, "skipping initial add to another branch file: %s rev: %s\n", file.buf, revision.buf);
 				}
 				else if (!skip_unknown)
-					cb(branch.buf, file.buf, revision.buf, author.buf, message.buf, timestamp, is_dead, data);
+					cb(branch.buf, 0, file.buf, revision.buf, author.buf, message.buf, timestamp, is_dead, data);
 				skip_unknown = 0;
 			}
 			break;
@@ -1668,6 +1685,7 @@ static void cvsfile_reset(struct cvsfile *file)
 	file->ismem = 0;
 	file->iscached = 0;
 	file->mode = 0;
+	file->timestamp = 0;
 	strbuf_reset(&file->file);
 	file->util = NULL;
 }
@@ -1840,18 +1858,10 @@ static int parse_entry(const char *entry, struct strbuf *revision)
 
 void cvsfile_init(struct cvsfile *file)
 {
+	memset(file, 0, sizeof(*file));
 	strbuf_init(&file->path, 0);
 	strbuf_init(&file->revision, 0);
-	file->isexec = 0;
-	file->isdead = 0;
-	file->isbin = 0;
-	file->ismem = 0;
-	file->isnew = 0;
-	file->iscached = 0;
-	file->handled = 0;
-	file->mode = 0;
 	strbuf_init(&file->file, 0);
-	file->util = NULL;
 }
 
 void cvsfile_release(struct cvsfile *file)
@@ -1914,6 +1924,8 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 		return ret;
 
 	struct strbuf mod_path = STRBUF_INIT;
+	struct strbuf mod_time = STRBUF_INIT;
+	time_t mod_time_unix;
 	struct cvsfile file = CVSFILE_INIT;
 	int mode;
 	size_t size;
@@ -1932,9 +1944,17 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 		if (strbuf_startswith(&cvs->rd_line_buf, "E "))
 			fprintf(stderr, "CVS E: %s\n", cvs->rd_line_buf.buf + 2);
 
+		if (strbuf_gettext_after(&cvs->rd_line_buf, "Mod-time ", &mod_time)) {
+			mod_time_unix = rfc2822_date_to_unixtime(mod_time.buf);
+		}
+
 		if (strbuf_startswith(&cvs->rd_line_buf, "Created") ||
 		    strbuf_startswith(&cvs->rd_line_buf, "Updated")) {
 			cvsfile_reset(&file);
+			if (mod_time_unix) {
+				file.timestamp = mod_time_unix;
+				mod_time_unix = 0;
+			}
 
 			if (cvs_readline(cvs, &cvs->rd_line_buf) <= 0)
 				break;
@@ -2022,6 +2042,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 
 	cvsfile_release(&file);
 	strbuf_release(&mod_path);
+	strbuf_release(&mod_time);
 #ifdef DB_CACHE
 	db_cache_release_branch(db);
 #endif
@@ -2582,6 +2603,9 @@ CVS   19 <- /DCE.cpp/1.6//-kk/\0a
 						die("checkin path doesn't match expected pattern: '%s'", line.buf);
 
 					strbuf_setlen(&path, p - path.buf);
+					p = strstr(path.buf, "Attic/");
+					if (p)
+						strbuf_remove(&path, p - path.buf, strlen("Attic/"));
 					state = NEED_NEW_REVISION;
 				}
 				break;

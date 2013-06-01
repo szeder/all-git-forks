@@ -13,8 +13,10 @@ unsigned int hash_path(const char *path);
 
 void set_ref_prefix_remote(const char *remote_name);
 const char *get_meta_ref_prefix();
+const char *get_meta_tags_ref_prefix();
 const char *get_ref_prefix();
 const char *get_private_ref_prefix();
+const char *get_private_tags_ref_prefix();
 
 /*
  * return -1 on error
