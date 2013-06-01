@@ -631,6 +631,7 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 	int all_heads = 0, all_remotes = 0;
 	int all_mask, all_revs;
 	int lifo = 1;
+	int use_author = 0;
 	char head[128];
 	const char *head_p;
 	int head_len;
@@ -900,7 +901,7 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 		exit(0);
 
 	/* Sort topologically */
-	sort_in_topological_order(&seen, lifo);
+	sort_in_topological_order(&seen, lifo, use_author);
 
 	/* Give names to commits */
 	if (!sha1_name && !no_name)

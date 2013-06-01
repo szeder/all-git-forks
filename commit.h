@@ -151,7 +151,7 @@ void clear_commit_marks_for_object_array(struct object_array *a, unsigned mark);
  *   in addition, when lifo == 0, commits on parallel tracks are
  *   sorted in the dates order.
  */
-void sort_in_topological_order(struct commit_list ** list, int lifo);
+void sort_in_topological_order(struct commit_list ** list, int lifo, int use_author);
 
 struct commit_graft {
 	unsigned char sha1[20];

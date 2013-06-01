@@ -567,7 +567,7 @@ struct commit *pop_commit(struct commit_list **stack)
 /*
  * Performs an in-place topological sort on the list supplied.
  */
-void sort_in_topological_order(struct commit_list ** list, int lifo)
+void sort_in_topological_order(struct commit_list ** list, int lifo, int use_author)
 {
 	struct commit_list *next, *orig = *list;
 	struct commit_list *work, **insert;
@@ -612,8 +612,12 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 	}
 
 	/* process the list in topological order */
-	if (!lifo)
-		commit_list_sort_by_date(&work);
+	if (!lifo) {
+		if (use_author)
+			commit_list_sort_by_author_date(&work);
+		else
+			commit_list_sort_by_date(&work);
+	}
 
 	pptr = list;
 	*list = NULL;
@@ -638,10 +642,13 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 			 * guaranteeing topological order.
 			 */
 			if (--parent->indegree == 1) {
-				if (!lifo)
-					commit_list_insert_by_date(parent, &work);
-				else
-					commit_list_insert(parent, &work);
+				if (!lifo) {
+					if (use_author)
+						commit_list_insert_by_author_date(parent, &work);
+					else
+						commit_list_insert_by_date(parent, &work);
+				} else {
+					commit_list_insert(parent, &work); }
 			}
 		}
 		/*
