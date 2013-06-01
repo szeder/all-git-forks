@@ -423,8 +423,8 @@ struct commit_list * commit_list_insert_by_date(struct commit *item, struct comm
 
 static int commit_list_compare_by_author_date(const void *a, const void *b)
 {
-	unsigned long a_date = ((const struct commit_list *)a)->item->date;
-	unsigned long b_date = ((const struct commit_list *)b)->item->date;
+	unsigned long a_date = ((const struct commit_list *)a)->item->author_date;
+	unsigned long b_date = ((const struct commit_list *)b)->item->author_date;
 	if (a_date < b_date)
 		return 1;
 	if (a_date > b_date)
