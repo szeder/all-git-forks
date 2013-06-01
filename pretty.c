@@ -1439,6 +1439,10 @@ static size_t format_commit_item(struct strbuf *sb, /* in UTF-8 */
 		ADD_SP_BEFORE_NON_EMPTY
 	} magic = NO_MAGIC;
 
+	/*
+	 * Note: any modification in what placeholder[0] contains
+	 * should be redone in builtin/for-each-ref.c:find_next().
+	 */
 	switch (placeholder[0]) {
 	case '-':
 		magic = DEL_LF_BEFORE_EMPTY;

@@ -150,7 +150,7 @@ static int parse_atom(const char *atom, const char *ep)
 /*
  * In a format string, find the next occurrence of %(atom).
  */
-static const char *find_next(const char *cp)
+static const char *find_next(const char *cp, int pretty)
 {
 	while (*cp) {
 		if (*cp == '%') {
@@ -160,6 +160,9 @@ static const char *find_next(const char *cp)
 			 */
 			if (cp[1] == '(')
 				return cp;
+			else if (pretty && cp[1] && cp[2] == '(' &&
+				 strchr(" +-", cp[1])) /* see format_commit_item() */
+				return cp + 1;
 			else if (cp[1] == '%')
 				cp++; /* skip over two % */
 			/* otherwise this is a singleton, literal % */
@@ -173,10 +176,10 @@ static const char *find_next(const char *cp)
  * Make sure the format string is well formed, and parse out
  * the used atoms.
  */
-static int verify_format(const char *format)
+static int verify_format(const char *format, int pretty)
 {
 	const char *cp, *sp;
-	for (cp = format; *cp && (sp = find_next(cp)); ) {
+	for (cp = format; *cp && (sp = find_next(cp, pretty)); ) {
 		const char *ep = strchr(sp, ')');
 		if (!ep)
 			return error("malformed format string %s", sp);
@@ -935,7 +938,7 @@ static void show_ref(struct strbuf *sb, struct refinfo *info,
 {
 	const char *cp, *sp, *ep;
 
-	for (cp = format; *cp && (sp = find_next(cp)); cp = ep + 1) {
+	for (cp = format; *cp && (sp = find_next(cp, 0)); cp = ep + 1) {
 		ep = strchr(sp, ')');
 		if (cp < sp)
 			emit(sb, cp, sp);
@@ -1098,8 +1101,8 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 	}
 	if (format != default_format && pretty)
 		die("--format and --pretty cannot be used together");
-	if ((pretty && verify_format(pretty)) ||
-	    (!pretty && verify_format(format)))
+	if ((pretty && verify_format(pretty, 1)) ||
+	    (!pretty && verify_format(format, 0)))
 		usage_with_options(for_each_ref_usage, opts);
 
 	if (!sort)
