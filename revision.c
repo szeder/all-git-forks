@@ -1415,6 +1415,10 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->lifo = 0;
 		revs->topo_order = 1;
 		revs->use_author = 0;
+	} else if (!strcmp(arg, "--authorship-order")) {
+		revs->lifo = 0;
+		revs->topo_order = 1;
+		revs->use_author = 1;
 	} else if (!prefixcmp(arg, "--early-output")) {
 		int count = 100;
 		switch (arg[14]) {
