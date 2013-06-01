@@ -393,7 +393,18 @@ struct commit_list * commit_list_insert_by_date(struct commit *item, struct comm
 	return commit_list_insert(item, pp);
 }
 
-static int commit_list_compare_by_date(const void *a, const void *b)
+static int commit_list_compare_by_author_date(const void *a, const void *b)
+{
+	unsigned long a_date = ((const struct commit_list *)a)->item->date;
+	unsigned long b_date = ((const struct commit_list *)b)->item->date;
+	if (a_date < b_date)
+		return 1;
+	if (a_date > b_date)
+		return -1;
+	return 0;
+}
+
+static int commit_list_compare_by_committer_date(const void *a, const void *b)
 {
 	unsigned long a_date = ((const struct commit_list *)a)->item->date;
 	unsigned long b_date = ((const struct commit_list *)b)->item->date;
