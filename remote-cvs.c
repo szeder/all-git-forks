@@ -595,7 +595,8 @@ static void on_file_checkout_cb(struct cvsfile *file, void *data)
 
 	mark = fast_export_blob(file->file.buf, file->file.len);
 
-	add_cvs_revision_hash(meta_revision_hash, file->path.buf, file->revision.buf, file->isdead, file->isexec, mark);
+	add_cvs_revision_hash(meta_revision_hash, file->path.buf, file->revision.buf,
+			      file->timestamp, file->isdead, file->isexec, mark);
 }
 
 static int checkout_branch(const char *branch_name, time_t import_time, struct hash_table *meta_revision_hash)
@@ -615,6 +616,44 @@ static int checkout_branch(const char *branch_name, time_t import_time, struct h
 		die("cvs checkout of %s date %ld failed", branch_name, import_time);
 
 	return cvs_terminate(cvs_co);
+}
+
+static void on_rlist_file_cb(const char *path, const char *revision, time_t timestamp, void *data)
+{
+	struct hash_table *meta_revision_hash = data;
+
+	if (is_cvs_import_excluded_path(path)) {
+		fprintf(stderr, "%s ignored during import according to cvs-exclude\n", path);
+		return;
+	}
+
+	add_cvs_revision_hash(meta_revision_hash, path, revision, timestamp, 0, 0, 0);
+}
+
+static int rlist_branch(const char *branch_name, time_t import_time, struct hash_table *meta_revision_hash)
+{
+	int rc;
+	rc = cvs_rls(cvs, branch_name, 0, import_time, on_rlist_file_cb, meta_revision_hash);
+	if (rc)
+		die("cvs rls of %s date %ld failed", branch_name, import_time);
+
+	/*
+	 * FIXME: rls somehow breaks all server connections (even in separate
+	 * processes), in a way single module checkouts starting to fail
+	 */
+	cvs_terminate(cvs);
+	cvs = cvs_connect(cvsroot, cvsmodule);
+	if (!cvs)
+		return -1;
+	return rc;
+}
+
+static int fetch_branch_meta(const char *branch_name, time_t import_time, struct hash_table *meta_revision_hash)
+{
+	if (cvs->has_rls_support)
+		return rlist_branch(branch_name, import_time, meta_revision_hash);
+	else
+		return checkout_branch(branch_name, import_time, meta_revision_hash);
 }
 
 static int count_dots(const char *rev)
@@ -781,7 +820,7 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 	return commit_ref;
 }
 
-static int fast_export_revision_by_mark(void *ptr, void *data)
+static int fast_export_revision_by_mark_cb(void *ptr, void *data)
 {
 	struct cvs_revision *rev = ptr;
 
@@ -789,6 +828,17 @@ static int fast_export_revision_by_mark(void *ptr, void *data)
 	//helper_printf("\n");
 
 	return 0;
+}
+
+static int fast_export_revision_initial_cb(void *ptr, void *data)
+{
+	struct cvs_revision *rev = ptr;
+
+	if (rev->mark)
+		return fast_export_revision_by_mark_cb(ptr, data);
+
+	revisions_all_branches_total++;
+	return fast_export_revision_cb(ptr, data);
 }
 
 static int fast_export_branch_initial(const char *branch_name,
@@ -812,7 +862,7 @@ static int fast_export_branch_initial(const char *branch_name,
 	//helper_printf("merge %s\n", parent_commit_ref);
 	helper_printf("from %s\n", parent_commit_ref);
 	helper_printf("deleteall\n");
-	for_each_hash(meta_revision_hash, fast_export_revision_by_mark, NULL);
+	for_each_hash(meta_revision_hash, fast_export_revision_initial_cb, NULL);
 	helper_flush();
 
 	return markid;
@@ -831,7 +881,7 @@ static int make_initial_branch_import(const char *branch_name, struct cvs_branch
 	import_time--;
 	fprintf(stderr, "import time is %s\n", show_date(import_time, 0, DATE_RFC2822));
 
-	rc = checkout_branch(branch_name, import_time, cvs_branch->last_commit_revision_hash);
+	rc = fetch_branch_meta(branch_name, import_time, cvs_branch->last_commit_revision_hash);
 	if (rc == -1)
 		die("initial branch checkout failed %s", branch_name);
 
@@ -982,18 +1032,30 @@ static int import_branch_by_name(const char *branch_name)
 	return 0;
 }
 
+static int find_last_change_time_cb(void *ptr, void *data)
+{
+	struct cvs_revision *rev = ptr;
+	time_t *time_max = data;
+
+	if (rev->timestamp > *time_max)
+		*time_max = rev->timestamp;
+
+	return 0;
+}
+
 static int import_tag_by_name(const char *branch_name)
 {
 	int rc;
 	int mark;
 	char *parent_branch_name;
 	const char *parent_commit;
+	time_t last_change_timestamp = 0;
 	struct strbuf commit_mark_sb = STRBUF_INIT;
 	struct hash_table tag_revision_hash = HASH_TABLE_INIT;
 
 	fprintf(stderr, "importing CVS tag %s\n", branch_name);
 
-	rc = checkout_branch(branch_name, 0, &tag_revision_hash);
+	rc = fetch_branch_meta(branch_name, 0, &tag_revision_hash);
 	if (rc == -1)
 		die("tag checkout failed %s", branch_name);
 
@@ -1005,15 +1067,18 @@ static int import_tag_by_name(const char *branch_name)
 		die("Cannot find parent branch for: %s", branch_name);
 	fprintf(stderr, "PARENT BRANCH FOR: %s is %s\n", branch_name, parent_branch_name);
 
+	for_each_hash(&tag_revision_hash, find_last_change_time_cb, &last_change_timestamp);
+	fprintf(stderr, "last change: %ld\n", last_change_timestamp);
+
 	parent_commit = find_branch_fork_point(parent_branch_name,
-						0,
+						last_change_timestamp,
 						&tag_revision_hash);
 	fprintf(stderr, "PARENT COMMIT: %s\n", parent_commit);
 
 	mark = fast_export_branch_initial(branch_name,
 					1,
 					&tag_revision_hash,
-					0,
+					last_change_timestamp,
 					parent_commit,
 					parent_branch_name);
 
@@ -1022,7 +1087,7 @@ static int import_tag_by_name(const char *branch_name)
 				1,
 				&tag_revision_hash,
 				NULL,
-				0,
+				last_change_timestamp,
 				commit_mark_sb.buf,
 				NULL);
 
@@ -1405,7 +1470,7 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 		}
 		else {
 			if (files[i].isnew)
-				add_cvs_revision_hash(revision_meta_hash, files[i].path.buf, "0", 0, 1, 0);
+				add_cvs_revision_hash(revision_meta_hash, files[i].path.buf, "0", 0, 0, 1, 0);
 			else
 				die("file: %s has not revision metadata, and not new", files[i].path.buf);
 		}
@@ -1945,7 +2010,7 @@ static int validate_commit_meta_by_tree(const char *ref, struct hash_table *revi
 	return rc;
 }*/
 
-static void on_every_file_revision(const char *path, const char *revision, void *meta)
+static void on_every_file_revision(const char *path, const char *revision, time_t timestamp, void *meta)
 {
 	struct cvs_revision *file_meta;
 	struct hash_table *revision_meta_hash = meta;

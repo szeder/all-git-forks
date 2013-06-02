@@ -86,6 +86,7 @@ char *read_note_of(unsigned char sha1[20], const char *notes_ref, unsigned long 
 void add_cvs_revision_hash(struct hash_table *meta_hash,
 		       const char *path,
 		       const char *revision,
+		       time_t timestamp,
 		       int isdead,
 		       int isexec,
 		       int mark)
@@ -97,6 +98,7 @@ void add_cvs_revision_hash(struct hash_table *meta_hash,
 	rev_meta = xcalloc(1, sizeof(*rev_meta));
 	rev_meta->path = xstrdup(path);
 	rev_meta->revision = xstrdup(revision);
+	rev_meta->timestamp = timestamp;
 	rev_meta->ismeta = 1;
 	rev_meta->isdead = isdead;
 	rev_meta->isexec = isexec;
@@ -250,7 +252,7 @@ int load_revision_meta(unsigned char *sha1, const char *notes_ref, time_t *times
 		if (!second || !attr)
 			die("malformed metadata: %s:%s:%s", first, attr, second);
 		isdead = !!strstr(attr, "dead");
-		add_cvs_revision_hash(*revision_meta_hash, second, first, isdead, 0, 0);
+		add_cvs_revision_hash(*revision_meta_hash, second, first, 0, isdead, 0, 0);
 	}
 
 	free(buf);

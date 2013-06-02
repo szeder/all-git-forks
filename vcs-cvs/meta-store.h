@@ -29,6 +29,7 @@ int has_revision_meta(unsigned char *sha1, const char *notes_ref);
 void add_cvs_revision_hash(struct hash_table *meta_hash,
 		       const char *path,
 		       const char *revision,
+		       time_t timestamp,
 		       int isdead,
 		       int isexec,
 		       int mark);

@@ -76,6 +76,7 @@ int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until, add_rev_fn_t
 
 typedef void (*on_rev_fn_t)(const char *path,
 			    const char *revision,
+			    time_t timestamp,
 			    void *data);
 int cvs_rls(struct cvs_transport *cvs, const char *branch, int show_dead, time_t date, on_rev_fn_t cb, void *data);
 

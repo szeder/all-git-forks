@@ -640,7 +640,7 @@ static int cvs_negotiate(struct cvs_transport *cvs)
 	if (ret)
 		return -1;
 
-	fprintf(stderr, "CVS Valid-requests: %s\n", reply.buf);
+	//fprintf(stderr, "CVS Valid-requests: %s\n", reply.buf);
 
 	string_list_split_in_place(&cvs_capabilities, reply.buf, ' ', -1);
 	sort_string_list(&cvs_capabilities);
@@ -661,10 +661,10 @@ static int cvs_negotiate(struct cvs_transport *cvs)
 		warning("CVS server does not support gzip compression");
 
 	cvs->has_rls_support = string_list_has_string(&cvs_capabilities, "rlist");
-	if (cvs->has_rls_support)
-		fprintf(stderr, "CVS server support rls request\n");
-	else
+	if (!cvs->has_rls_support)
 		warning("CVS server does not support rls request (checkout will be used instead)");
+	//else
+	//	fprintf(stderr, "CVS server support rls request\n");
 	string_list_clear(&cvs_capabilities, 0);
 
 	cvs->has_rlog_S_option = !dumb_rlog;
@@ -690,7 +690,7 @@ static int cvs_negotiate(struct cvs_transport *cvs)
 		if (ret)
 			return -1;
 
-		fprintf(stderr, "CVS Server version: %s\n", reply.buf);
+		//fprintf(stderr, "CVS Server version: %s\n", reply.buf);
 		if (!dumb_rlog && strstr(reply.buf, "1.11.1p1")) {
 			cvs->has_rlog_S_option = 0;
 			warning("CVS server does not support rlog -S option");
@@ -1188,6 +1188,23 @@ time_t rfc2822_date_to_unixtime(const char *date)
 	return mktime(&date_tm);
 }
 
+time_t entry_date_to_unixtime(const char *date)
+{
+	struct tm date_tm;
+	char *p;
+
+	memset(&date_tm, 0, sizeof(date_tm));
+	// Sun Mar 17 15:57:38 2013
+	p = strptime(date, "%a %b %d %T %Y", &date_tm);
+	if (!p)
+		return 0;
+
+	setenv("TZ", "UTC", 1);
+	tzset();
+
+	return mktime(&date_tm);
+}
+
 #define CVS_LOG_BOUNDARY "----------------------------"
 #define CVS_FILE_BOUNDARY "============================================================================="
 
@@ -1537,10 +1554,13 @@ int parse_cvs_rls(struct cvs_transport *cvs, on_rev_fn_t cb, void *data)
 
 	struct strbuf file = STRBUF_INIT;
 	struct strbuf revision = STRBUF_INIT;
+	struct strbuf date = STRBUF_INIT;
 	struct strbuf dir = STRBUF_INIT;
+	time_t unix_timestamp;
 
 	char *rev_start;
 	char *rev_end;
+	char *date_end;
 	int state = NEED_DIR;
 
 	strbuf_grow(&reply, CVS_MAX_LINE);
@@ -1577,6 +1597,8 @@ int parse_cvs_rls(struct cvs_transport *cvs, on_rev_fn_t cb, void *data)
 			if (reply.buf[0] != '/')
 				continue;
 
+			unix_timestamp = 0;
+
 			rev_start = strchr(reply.buf + 1, '/');
 			if (!rev_start)
 				die("malformed file entry: %s", reply.buf);
@@ -1584,14 +1606,22 @@ int parse_cvs_rls(struct cvs_transport *cvs, on_rev_fn_t cb, void *data)
 
 			rev_end = strchr(rev_start, '/');
 			if (!rev_end)
-				die("malformed file entry: %s", reply.buf);
+				die("malformed rev entry: %s", rev_start);
 			*rev_end = '\0';
+			rev_end++;
+
+			date_end = strchr(rev_end, '/');
+			if (!date_end)
+				die("malformed date entry: %s", rev_end);
+			*date_end = '\0';
 
 			strbuf_reset(&file);
 			strbuf_addf(&file, "%s%s", dir.buf, reply.buf + 1);
 			strbuf_copystr(&revision, rev_start);
+			strbuf_copystr(&date, rev_end);
+			unix_timestamp = entry_date_to_unixtime(date.buf);
 
-			cb(file.buf, revision.buf, data);
+			cb(file.buf, revision.buf, unix_timestamp, data);
 		}
 	}
 
