@@ -1558,7 +1558,7 @@ enum {
 	NEED_FILES = 2
 };
 
-int parse_cvs_rls(struct cvs_transport *cvs, on_rev_fn_t cb, void *data)
+int parse_cvs_rls(struct cvs_transport *cvs, const char *rls_path, on_rev_fn_t cb, void *data)
 {
 	struct strbuf reply = STRBUF_INIT;
 	ssize_t ret;
@@ -1576,12 +1576,45 @@ int parse_cvs_rls(struct cvs_transport *cvs, on_rev_fn_t cb, void *data)
 
 	strbuf_grow(&reply, CVS_MAX_LINE);
 
+	int read_rls = 0;
+	int write_rls = 0;
+	FILE *rls = NULL;
+	if (rls_path) {
+		if (!access(rls_path, R_OK)) {
+			read_rls = 1;
+			rls = fopen(rls_path, "r");
+			if (!rls)
+				die("cannot open %s for reading", rls_path);
+		}
+		else {
+			write_rls = 1;
+			rls = fopen(rls_path, "w");
+			if (!rls)
+				die("cannot open %s for writing", rls_path);
+		}
+	}
+	strbuf_grow(&reply, CVS_MAX_LINE);
+
 	while (1) {
-		ret = cvs_getreply_firstmatch(cvs, &reply, "M ");
-		if (ret == -1)
-			return -1;
-		else if (ret == 1) /* ok from server */
-			break;
+		if (read_rls) {
+			if (!fgets(reply.buf, reply.alloc, rls))
+				break;
+
+			size_t len = strlen(reply.buf);
+			strbuf_setlen(&reply, len);
+			if (len && reply.buf[len - 1] == '\n')
+				strbuf_setlen(&reply, len - 1);
+		}
+		else {
+			ret = cvs_getreply_firstmatch(cvs, &reply, "M ");
+			if (ret == -1)
+				return -1;
+			else if (ret == 1) /* ok from server */
+				break;
+
+			if (write_rls)
+				fprintf(rls, "%s\n", reply.buf);
+		}
 
 		if (state == NEED_DIR) {
 			if (!reply.len)
@@ -1636,6 +1669,8 @@ int parse_cvs_rls(struct cvs_transport *cvs, on_rev_fn_t cb, void *data)
 		}
 	}
 
+	if (rls)
+		fclose(rls);
 	strbuf_release(&reply);
 	strbuf_release(&file);
 	strbuf_release(&revision);
@@ -1647,6 +1682,17 @@ int parse_cvs_rls(struct cvs_transport *cvs, on_rev_fn_t cb, void *data)
 int cvs_rls(struct cvs_transport *cvs, const char *branch, int show_dead, time_t date, on_rev_fn_t cb, void *data)
 {
 	ssize_t ret;
+	int rc;
+	struct strbuf rls_path = STRBUF_INIT;
+	const char *cache_dir = getenv("GIT_CACHE_CVS_DIR");
+	if (cache_dir) {
+		strbuf_addf(&rls_path, "%s/cvsrls.%s.%d.%ld", cache_dir, branch, show_dead, date);
+		if (!access(rls_path.buf, R_OK)) {
+			rc = parse_cvs_rls(cvs, rls_path.buf, cb, data);
+			strbuf_release(&rls_path);
+			return rc;
+		}
+	}
 
 	cvs_write(cvs,
 			WR_NOFLUSH,
@@ -1683,7 +1729,9 @@ int cvs_rls(struct cvs_transport *cvs, const char *branch, int show_dead, time_t
 	if (ret == -1)
 		die("Cannot send rls command");
 
-	return parse_cvs_rls(cvs, cb, data);
+	rc = parse_cvs_rls(cvs, rls_path.len ? rls_path.buf : NULL, cb, data);
+	strbuf_release(&rls_path);
+	return rc;
 }
 
 static int verify_revision(const char *revision, const char *entry)

@@ -634,6 +634,7 @@ static void on_rlist_file_cb(const char *path, const char *revision, time_t time
 static int rlist_branch(const char *branch_name, time_t import_time, struct hash_table *meta_revision_hash)
 {
 	int rc;
+	size_t written = cvs->written;
 	rc = cvs_rls(cvs, branch_name, 0, import_time, on_rlist_file_cb, meta_revision_hash);
 	if (rc)
 		die("cvs rls of %s date %ld failed", branch_name, import_time);
@@ -642,10 +643,12 @@ static int rlist_branch(const char *branch_name, time_t import_time, struct hash
 	 * FIXME: rls somehow breaks all server connections (even in separate
 	 * processes), in a way single module checkouts starting to fail
 	 */
-	cvs_terminate(cvs);
-	cvs = cvs_connect(cvsroot, cvsmodule);
-	if (!cvs)
-		return -1;
+	if (written != cvs->written) { // a hack to avoid cvs reconnection if rls was read from cache
+		cvs_terminate(cvs);
+		cvs = cvs_connect(cvsroot, cvsmodule);
+		if (!cvs)
+			return -1;
+	}
 	return rc;
 }
 
