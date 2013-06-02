@@ -16,19 +16,20 @@ if ! test_have_prereq PYTHON; then
 	test_done
 fi
 
-if ! "$PYTHON_PATH" -c 'import mercurial'; then
+if ! python -c 'import mercurial'; then
 	skip_all='skipping remote-hg tests; mercurial not available'
 	test_done
 fi
 
-if ! "$PYTHON_PATH" -c 'import hggit'; then
+if ! python -c 'import hggit'; then
 	skip_all='skipping remote-hg tests; hg-git not available'
 	test_done
 fi
 
 # clone to a git repo with git
 git_clone_git () {
-	git clone -q "hg::$PWD/$1" $2
+	git clone -q "hg::$1" $2 &&
+	(cd $2 && git checkout master && git branch -D default)
 }
 
 # clone to an hg repo with git
@@ -37,7 +38,7 @@ hg_clone_git () {
 	hg init $2 &&
 	hg -R $2 bookmark -i master &&
 	cd $1 &&
-	git push -q "hg::$PWD/../$2" 'refs/tags/*:refs/tags/*' 'refs/heads/*:refs/heads/*'
+	git push -q "hg::../$2" 'refs/tags/*:refs/tags/*' 'refs/heads/*:refs/heads/*'
 	) &&
 
 	(cd $2 && hg -q update)
@@ -62,10 +63,10 @@ hg_clone_hg () {
 hg_push_git () {
 	(
 	cd $2
-	old=$(git symbolic-ref --short HEAD)
 	git checkout -q -b tmp &&
-	git fetch -q "hg::$PWD/../$1" 'refs/tags/*:refs/tags/*' 'refs/heads/*:refs/heads/*' &&
-	git checkout -q $old &&
+	git fetch -q "hg::../$1" 'refs/tags/*:refs/tags/*' 'refs/heads/*:refs/heads/*' &&
+	git branch -D default &&
+	git checkout -q @{-1} &&
 	git branch -q -D tmp 2> /dev/null || true
 	)
 }
@@ -105,18 +106,18 @@ setup () {
 	git config --global remote-hg.hg-git-compat true
 	git config --global remote-hg.track-branches false
 
-	HGEDITOR=/usr/bin/true
+	HGEDITOR=true
+	HGMERGE=true
 
 	GIT_AUTHOR_DATE="2007-01-01 00:00:00 +0230"
 	GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"
-	export HGEDITOR GIT_AUTHOR_DATE GIT_COMMITTER_DATE
+	export HGEDITOR HGMERGE GIT_AUTHOR_DATE GIT_COMMITTER_DATE
 }
 
 setup
 
 test_expect_success 'executable bit' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	git init -q gitrepo &&
@@ -151,8 +152,7 @@ test_expect_success 'executable bit' '
 '
 
 test_expect_success 'symlink' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	git init -q gitrepo &&
@@ -182,8 +182,7 @@ test_expect_success 'symlink' '
 '
 
 test_expect_success 'merge conflict 1' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	hg init hgrepo1 &&
@@ -199,7 +198,7 @@ test_expect_success 'merge conflict 1' '
 	echo C > afile &&
 	hg ci -m "A->C" &&
 
-	hg merge -r1 || true &&
+	hg merge -r1 &&
 	echo C > afile &&
 	hg resolve -m afile &&
 	hg ci -m "merge to C"
@@ -217,8 +216,7 @@ test_expect_success 'merge conflict 1' '
 '
 
 test_expect_success 'merge conflict 2' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	hg init hgrepo1 &&
@@ -252,8 +250,7 @@ test_expect_success 'merge conflict 2' '
 '
 
 test_expect_success 'converged merge' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	hg init hgrepo1 &&
@@ -288,8 +285,7 @@ test_expect_success 'converged merge' '
 '
 
 test_expect_success 'encoding' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	git init -q gitrepo &&
@@ -328,8 +324,7 @@ test_expect_success 'encoding' '
 '
 
 test_expect_success 'file removal' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	git init -q gitrepo &&
@@ -368,8 +363,7 @@ test_expect_success 'file removal' '
 '
 
 test_expect_success 'git tags' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	(
 	git init -q gitrepo &&
@@ -395,8 +389,7 @@ test_expect_success 'git tags' '
 '
 
 test_expect_success 'hg author' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	for x in hg git; do
 		(
@@ -462,8 +455,7 @@ test_expect_success 'hg author' '
 '
 
 test_expect_success 'hg branch' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	for x in hg git; do
 		(
@@ -499,8 +491,7 @@ test_expect_success 'hg branch' '
 '
 
 test_expect_success 'hg tags' '
-	mkdir -p tmp && cd tmp &&
-	test_when_finished "cd .. && rm -rf tmp" &&
+	test_when_finished "rm -rf gitrepo* hgrepo*" &&
 
 	for x in hg git; do
 		(
