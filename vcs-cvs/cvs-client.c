@@ -16,6 +16,7 @@
 static const char trace_key[] = "GIT_TRACE_CVS_PROTO";
 static const char trace_proto[] = "CVS";
 extern unsigned long fileMemoryLimit;
+extern int dumb_rlog;
 
 /*
  * [:method:][[user][:password]@]hostname[:[port]]/path/to/repository
@@ -664,8 +665,11 @@ static int cvs_negotiate(struct cvs_transport *cvs)
 		fprintf(stderr, "CVS server support rls request\n");
 	else
 		warning("CVS server does not support rls request (checkout will be used instead)");
-	cvs->has_rlog_S_option = 1;
 	string_list_clear(&cvs_capabilities, 0);
+
+	cvs->has_rlog_S_option = !dumb_rlog;
+	if (getenv("GIT_CVS_DUMB_RLOG"))
+		cvs->has_rlog_S_option = 0;
 
 	cvs_write(cvs, WR_NOFLUSH, "UseUnchanged\n");
 
@@ -687,11 +691,14 @@ static int cvs_negotiate(struct cvs_transport *cvs)
 			return -1;
 
 		fprintf(stderr, "CVS Server version: %s\n", reply.buf);
-		if (strstr(reply.buf, "1.11.1p1")) {
+		if (!dumb_rlog && strstr(reply.buf, "1.11.1p1")) {
 			cvs->has_rlog_S_option = 0;
 			warning("CVS server does not support rlog -S option");
 		}
 	}
+
+	if (!cvs->has_rlog_S_option)
+		warning("using dumb rlog with no -S option support (delta updates will take longer)");
 
 	strbuf_release(&reply);
 	if (no_used_caps)

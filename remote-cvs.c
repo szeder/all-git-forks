@@ -44,6 +44,7 @@
  *	cvsProtoTrace - path
  *	remoteHelperTrace - path
  *	requireAuthorConvert - bool
+ *	dumbRlog - bool
  */
 
 static const char trace_key[] = "GIT_TRACE_CVS_HELPER";
@@ -53,6 +54,7 @@ static const char dump_cvs_commit[] = "GIT_DUMP_PATCHSETS";
  * FIXME:
  */
 unsigned long fileMemoryLimit = 2 * 1024 * 1024 * 1024L; //50*1024*1024; /* 50m */
+int dumb_rlog = 0;
 
 static int depth = 0;
 static int verbosity = 0;
@@ -2130,6 +2132,10 @@ int git_cvshelper_config(const char *var, const char *value, void *dummy)
 	}
 	else if (!strcmp(var, "cvshelper.requireauthorconvert")) {
 		require_author_convert = git_config_bool(var, value);
+		return 0;
+	}
+	else if (!strcmp(var, "cvshelper.dumbrlog")) {
+		dumb_rlog = git_config_bool(var, value);
 		return 0;
 	}
 
