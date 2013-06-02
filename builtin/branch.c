@@ -379,8 +379,8 @@ static int edit_branch_description(const char *branch_name)
 	return status;
 }
 
-static int list_branches(int verbose, int kinds, int detached,
-			 const char **argv)
+static int list_branches(int verbose, int maxcount, int kinds, int detached,
+			 const char *sort_arg, const char **argv)
 {
 	const char *av[] = { "branch",
 			     "--raw-column-mode", NULL,
@@ -410,6 +410,15 @@ static int list_branches(int verbose, int kinds, int detached,
 	}
 	if (detached && !argv[0])
 		av[ac++] = "--show-detached";
+	if (maxcount) {
+		struct strbuf maxcount_str = STRBUF_INIT;
+		strbuf_addf(&maxcount_str, "--count=%u", maxcount);
+		av[ac++] = maxcount_str.buf;
+	}
+	if (sort_arg) {
+		av[ac++] = "--sort";
+		av[ac++] = sort_arg;
+	}
 	if (kinds & REF_LOCAL_BRANCH)
 		av[ac++] = "refs/heads/";
 	if (kinds & REF_REMOTE_BRANCH)
@@ -423,6 +432,8 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 	int verbose = 0, abbrev = -1, detached = 0;
 	int reflog = 0, edit_description = 0;
 	int quiet = 0, unset_upstream = 0;
+	int maxcount = 0;
+	const char *sort_arg = NULL;
 	const char *new_upstream = NULL;
 	enum branch_track track;
 	int kinds = REF_LOCAL_BRANCH;
@@ -455,6 +466,8 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 			parse_opt_with_commit, (intptr_t) "HEAD",
 		},
 		OPT__ABBREV(&abbrev),
+		OPT_INTEGER( 0 , "count", &maxcount, N_("show only <n> matched refs")),
+		OPT_STRING(0 , "sort", &sort_arg, N_("key"), N_("field name to sort on")),
 
 		OPT_GROUP(N_("Specific git-branch actions:")),
 		OPT_SET_INT('a', "all", &kinds, N_("list both remote-tracking and local branches"),
@@ -530,7 +543,8 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 			die(_("branch name required"));
 		return delete_branches(argc, argv, delete > 1, kinds, quiet);
 	} else if (list)
-		return list_branches(verbose, kinds, detached, argv);
+		return list_branches(verbose, maxcount, kinds, detached,
+				     sort_arg, argv);
 	else if (edit_description) {
 		const char *branch_name;
 		struct strbuf branch_ref = STRBUF_INIT;
