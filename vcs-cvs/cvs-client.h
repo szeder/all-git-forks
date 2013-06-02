@@ -22,6 +22,9 @@ enum cvs_protocol {
 	cvs_proto_ext
 };
 
+extern size_t written_total;
+extern size_t read_total;
+
 struct cvs_transport {
 	int fd[2];
 	struct child_process *conn;

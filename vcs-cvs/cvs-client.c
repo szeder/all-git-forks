@@ -18,6 +18,9 @@ static const char trace_proto[] = "CVS";
 extern unsigned long fileMemoryLimit;
 extern int dumb_rlog;
 
+size_t written_total = 0;
+size_t read_total = 0;
+
 /*
  * [:method:][[user][:password]@]hostname[:[port]]/path/to/repository
  */
@@ -297,6 +300,7 @@ static ssize_t cvs_write(struct cvs_transport *cvs, int flush, const char *fmt, 
 	strbuf_reset(&cvs->wr_buf);
 
 	cvs->written += written;
+	written_total += written;
 	return 0;
 }
 
@@ -320,6 +324,7 @@ static ssize_t cvs_write_full(struct cvs_transport *cvs, const char *buf, size_t
 	strbuf_reset(&cvs->wr_buf);
 
 	cvs->written += written;
+	written_total += written;
 	return 0;
 }
 
@@ -400,6 +405,7 @@ static ssize_t cvs_readline(struct cvs_transport *cvs, struct strbuf *sb)
 				sb->buf[sb->len] = '\0';
 			}
 			cvs->read += sb->len + 1;
+			read_total += sb->len + 1;
 
 			cvs->rd_buf.buf += linelen + 1;
 			cvs->rd_buf.len -= linelen + 1;
@@ -477,6 +483,7 @@ static ssize_t cvs_read_full(struct cvs_transport *cvs, char *buf, ssize_t size)
 	readn += ret;
 	proto_trace(buf, readn, IN_BLOB);
 	cvs->read += readn;
+	read_total += readn;
 	return readn;
 }
 
