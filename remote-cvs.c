@@ -395,7 +395,7 @@ static int run_import_hook(struct strbuf *author_sb, struct strbuf *committer_sb
 
 	rc = run_hook(NULL, "cvs-import-commit", git_path(import_commit_edit), NULL);
 	if (rc)
-		die("cvs-import-commit hook rc %d, abording import", rc);
+		die("cvs-import-commit hook rc %d, aborting import", rc);
 
 	fp = fopen(git_path(import_commit_edit), "r");
 	if (fp == NULL)
@@ -845,7 +845,7 @@ static int fast_export_branch_initial(const char *branch_name,
 					int istag,
 					struct hash_table *meta_revision_hash,
 					time_t date,
-					const char *parent_commit_ref,
+					const char *parent_commit_mark,
 					const char *parent_branch_name)
 {
 	markid++;
@@ -859,9 +859,10 @@ static int fast_export_branch_initial(const char *branch_name,
 	helper_printf("data <<EON\n");
 	helper_printf("initial import of branch: %s\nparent branch: %s\n", branch_name, parent_branch_name);
 	helper_printf("EON\n");
-	//helper_printf("merge %s\n", parent_commit_ref);
-	helper_printf("from %s\n", parent_commit_ref);
-	helper_printf("deleteall\n");
+	if (parent_commit_mark) {
+		helper_printf("from %s\n", parent_commit_mark);
+		helper_printf("deleteall\n");
+	}
 	for_each_hash(meta_revision_hash, fast_export_revision_initial_cb, NULL);
 	helper_flush();
 
@@ -1096,6 +1097,7 @@ static int import_tag_by_name(const char *branch_name)
 	 */
 	helper_printf("reset %s%s\n", get_private_tags_ref_prefix(), branch_name);
 	helper_printf("from %s\n", commit_mark_sb.buf);
+	helper_printf("checkpoint\n");
 
 	free(parent_branch_name);
 	free_hash(&tag_revision_hash);
