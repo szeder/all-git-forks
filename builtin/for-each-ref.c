@@ -14,6 +14,7 @@
 #include "string-list.h"
 #include "diff.h"
 #include "revision.h"
+#include "wt-status.h"
 
 /* Quoting styles */
 #define QUOTE_NONE 0
@@ -619,6 +620,30 @@ static inline char *copy_advance(char *dst, const char *src)
 	return dst;
 }
 
+static char *get_head_description(void)
+{
+	struct strbuf desc = STRBUF_INIT;
+	struct wt_status_state state;
+	memset(&state, 0, sizeof(state));
+	wt_status_get_state(&state, 1);
+	if (state.rebase_in_progress ||
+	    state.rebase_interactive_in_progress)
+		strbuf_addf(&desc, _("(no branch, rebasing %s)"),
+			    state.branch);
+	else if (state.bisect_in_progress)
+		strbuf_addf(&desc, _("(no branch, bisect started on %s)"),
+			    state.branch);
+	else if (state.detached_from)
+		strbuf_addf(&desc, _("(detached from %s)"),
+			    state.detached_from);
+	else
+		strbuf_addstr(&desc, _("(no branch)"));
+	free(state.branch);
+	free(state.onto);
+	free(state.detached_from);
+	return strbuf_detach(&desc, NULL);
+}
+
 /*
  * Parse the object referred by ref, and grab needed value.
  */
@@ -659,9 +684,12 @@ static void populate_value(struct refinfo *ref, int only_this_atom)
 			name++;
 		}
 
-		if (!prefixcmp(name, "refname"))
-			refname = ref->refname;
-		else if (!prefixcmp(name, "symref"))
+		if (!prefixcmp(name, "refname")) {
+			if (!strcmp(ref->refname, "HEAD"))
+				refname = get_head_description();
+			else
+				refname = ref->refname;
+		} else if (!prefixcmp(name, "symref"))
 			refname = ref->symref ? ref->symref : "";
 		else if (!prefixcmp(name, "upstream")) {
 			/* only local branches may have an upstream */
@@ -689,7 +717,8 @@ static void populate_value(struct refinfo *ref, int only_this_atom)
 			}
 			continue;
 		} else if (!strcmp(name, "HEAD")) {
-			if (!strcmp(ref->refname, head))
+			if (!strcmp(ref->refname, head) ||
+			    !strcmp(ref->refname, "HEAD"))
 				v->s = "*";
 			else
 				v->s = " ";
@@ -1216,7 +1245,7 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 	const char *format = default_format;
 	const char *pretty = NULL;
 	struct ref_sort *sort = NULL, **sort_tail = &sort;
-	int maxcount = 0, quote_style = 0;
+	int maxcount = 0, quote_style = 0, show_detached = 0;
 	struct refinfo **refs;
 	struct grab_ref_cbdata cbdata;
 
@@ -1254,6 +1283,7 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 			PARSE_OPT_LASTARG_DEFAULT | PARSE_OPT_NONEG,
 			opt_parse_merge_filter, (intptr_t) "HEAD",
 		},
+		OPT_BOOL(0, "show-detached", &show_detached, N_("show detached HEAD")),
 		OPT_COLUMN(0, "column", &colopts, N_("list branches in columns")),
 		{ OPTION_INTEGER, 0, "raw-column-mode", &colopts, NULL,
 		  N_("column layout mode"), PARSE_OPT_NOARG | PARSE_OPT_HIDDEN },
@@ -1314,6 +1344,20 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 	num_refs = cbdata.grab_cnt;
 
 	sort_refs(sort, refs, num_refs);
+
+	if (show_detached && head && !strcmp(head, "HEAD")) {
+		struct refinfo **new_refs;
+		new_refs = xmalloc(sizeof(*new_refs) * (num_refs + 1));
+		memcpy(new_refs + 1, refs, sizeof(*refs) * num_refs);
+		free(refs);
+		refs = new_refs;
+		num_refs++;
+
+		refs[0] = xmalloc(sizeof(struct refinfo));
+		memset(refs[0], 0, sizeof(struct refinfo));
+		refs[0]->refname = "HEAD";
+		hashcpy(refs[0]->objectname, head_sha1);
+	}
 
 	if (!maxcount || num_refs < maxcount)
 		maxcount = num_refs;
