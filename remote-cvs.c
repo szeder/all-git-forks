@@ -279,6 +279,7 @@ static void free_cvs_import_exclude()
 		return;
 
 	path_exclude_check_clear(exclude_check);
+	clear_directory(exclude_dir);
 	free(exclude_check);
 	free(exclude_dir);
 }
@@ -1100,7 +1101,7 @@ static int import_tag_by_name(const char *branch_name)
 	helper_printf("checkpoint\n");
 
 	free(parent_branch_name);
-	free_hash(&tag_revision_hash);
+	free_revision_meta(&tag_revision_hash);
 	strbuf_release(&commit_mark_sb);
 	return 0;
 }

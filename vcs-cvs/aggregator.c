@@ -919,15 +919,6 @@ struct cvs_branch *new_cvs_branch(const char *branch_name)
 	return new;
 }
 
-int free_hash_entry(void *ptr, void *data)
-{
-	struct cvs_revision *rev_meta = ptr;
-	free(rev_meta->path);
-	free(rev_meta->revision);
-	free(rev_meta);
-	return 0;
-}
-
 void free_cvs_branch(struct cvs_branch *meta)
 {
 	int i;
@@ -969,8 +960,7 @@ void free_cvs_branch(struct cvs_branch *meta)
 
 	free(meta->cvs_commit_list);
 
-	for_each_hash(meta->last_commit_revision_hash, free_hash_entry, NULL);
-	free_hash(meta->last_commit_revision_hash);
+	free_revision_meta(meta->last_commit_revision_hash);
 	free(meta->last_commit_revision_hash);
 
 	free(meta);

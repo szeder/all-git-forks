@@ -333,3 +333,18 @@ int save_revision_meta(unsigned char *sha1, const char *notes_ref, const char *m
 	strbuf_release(&sb);
 	return 0;
 }
+
+int free_hash_entry(void *ptr, void *data)
+{
+	struct cvs_revision *rev_meta = ptr;
+	free(rev_meta->path);
+	free(rev_meta->revision);
+	free(rev_meta);
+	return 0;
+}
+
+void free_revision_meta(struct hash_table *revision_meta_hash)
+{
+	for_each_hash(revision_meta_hash, free_hash_entry, NULL);
+	free_hash(revision_meta_hash);
+}

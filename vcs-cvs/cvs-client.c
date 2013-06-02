@@ -1625,8 +1625,10 @@ int parse_cvs_rls(struct cvs_transport *cvs, on_rev_fn_t cb, void *data)
 		}
 	}
 
+	strbuf_release(&reply);
 	strbuf_release(&file);
 	strbuf_release(&revision);
+	strbuf_release(&date);
 	strbuf_release(&dir);
 	return 0;
 }

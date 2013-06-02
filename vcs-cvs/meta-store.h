@@ -25,6 +25,7 @@ const char *get_private_tags_ref_prefix();
 int load_revision_meta(unsigned char *sha1, const char *notes_ref, time_t *timestamp, struct hash_table **revision_meta_hash);
 int save_revision_meta(unsigned char *sha1, const char *notes_ref, const char *msg, struct hash_table *revision_meta_hash);
 int has_revision_meta(unsigned char *sha1, const char *notes_ref);
+void free_revision_meta(struct hash_table *revision_meta_hash);
 
 void add_cvs_revision_hash(struct hash_table *meta_hash,
 		       const char *path,
