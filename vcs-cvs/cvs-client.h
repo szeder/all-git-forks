@@ -38,6 +38,9 @@ struct cvs_transport {
 	int has_rlog_S_option:1;
 	int has_rls_support:1;
 
+	size_t written;
+	size_t read;
+
 	struct strbuf  wr_buf;
 	struct {
 		size_t len;

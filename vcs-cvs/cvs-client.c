@@ -296,6 +296,7 @@ static ssize_t cvs_write(struct cvs_transport *cvs, int flush, const char *fmt, 
 	proto_trace(cvs->wr_buf.buf, cvs->compress ? cvs->wr_buf.len : written, OUT);
 	strbuf_reset(&cvs->wr_buf);
 
+	cvs->written += written;
 	return 0;
 }
 
@@ -318,6 +319,7 @@ static ssize_t cvs_write_full(struct cvs_transport *cvs, const char *buf, size_t
 	proto_trace(cvs->wr_buf.buf, cvs->compress ? len : written, OUT_BLOB);
 	strbuf_reset(&cvs->wr_buf);
 
+	cvs->written += written;
 	return 0;
 }
 
@@ -397,6 +399,7 @@ static ssize_t cvs_readline(struct cvs_transport *cvs, struct strbuf *sb)
 				proto_trace(sb->buf, sb->len + 1, IN);
 				sb->buf[sb->len] = '\0';
 			}
+			cvs->read += sb->len + 1;
 
 			cvs->rd_buf.buf += linelen + 1;
 			cvs->rd_buf.len -= linelen + 1;
@@ -473,6 +476,7 @@ static ssize_t cvs_read_full(struct cvs_transport *cvs, char *buf, ssize_t size)
 
 	readn += ret;
 	proto_trace(buf, readn, IN_BLOB);
+	cvs->read += readn;
 	return readn;
 }
 
