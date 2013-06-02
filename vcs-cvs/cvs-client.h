@@ -35,6 +35,9 @@ struct cvs_transport {
 	char *full_module_path;
 	uint16_t port;
 
+	int has_rlog_S_option:1;
+	int has_rls_support:1;
+
 	struct strbuf  wr_buf;
 	struct {
 		size_t len;

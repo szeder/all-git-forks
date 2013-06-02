@@ -608,13 +608,26 @@ static int cvs_init_compress(struct cvs_transport *cvs, int compress)
 
 static int cvs_negotiate(struct cvs_transport *cvs)
 {
+	static const char *used_capabilities[] = {
+		"add",
+		"ci",
+		"co",
+		"rlog",
+		"status",
+		"UseUnchanged",
+		NULL
+	};
+	const char **caps = used_capabilities;
+	int no_used_caps = 0;
+	int has_version_support;
+	int has_gzip_support;
 	struct strbuf reply = STRBUF_INIT;
+	struct string_list cvs_capabilities = STRING_LIST_INIT_NODUP;
 	ssize_t ret;
 
 	ret = cvs_write(cvs,
 			WR_FLUSH,
 			"Root %s\n"
-			//"Valid-responses ok error Valid-requests Checked-in New-entry Checksum Copy-file Updated Created Update-existing Merged Patched Rcs-diff Mode Mod-time Removed Remove-entry Set-static-directory Clear-static-directory Set-sticky Clear-sticky Template Notified Module-expansion Wrapper-rcsOption M Mbinary E F MT\n"
 			"Valid-responses ok error Valid-requests Checked-in New-entry Checksum Copy-file Updated Created Merged Patched Rcs-diff Mode Mod-time Removed Remove-entry Set-static-directory Clear-static-directory Set-sticky Clear-sticky Template Notified Module-expansion Wrapper-rcsOption M E\n"
 			"valid-requests\n",
 			cvs->repo_path);
@@ -626,26 +639,63 @@ static int cvs_negotiate(struct cvs_transport *cvs)
 	if (ret)
 		return -1;
 
-	fprintf(stderr, "CVS Valid-responses: %s\n", reply.buf);
+	fprintf(stderr, "CVS Valid-requests: %s\n", reply.buf);
+
+	string_list_split_in_place(&cvs_capabilities, reply.buf, ' ', -1);
+	sort_string_list(&cvs_capabilities);
+	while (*caps) {
+		if (!string_list_has_string(&cvs_capabilities, *caps)) {
+			error("required request: %s is not support by CVS server", *caps);
+			no_used_caps = 1;
+		}
+		caps++;
+	}
+
+	has_version_support = string_list_has_string(&cvs_capabilities, "version");
+	if (!has_version_support)
+		warning("CVS server does not support version request");
+
+	has_gzip_support = string_list_has_string(&cvs_capabilities, "Gzip-stream");
+	if (!has_gzip_support)
+		warning("CVS server does not support gzip compression");
+
+	cvs->has_rls_support = string_list_has_string(&cvs_capabilities, "rlist");
+	if (cvs->has_rls_support)
+		fprintf(stderr, "CVS server support rls request\n");
+	else
+		warning("CVS server does not support rls request (checkout will be used instead)");
+	cvs->has_rlog_S_option = 1;
+	string_list_clear(&cvs_capabilities, 0);
 
 	cvs_write(cvs, WR_NOFLUSH, "UseUnchanged\n");
 
-	const char *gzip = getenv("GZIP");
-	if (gzip)
-		cvs_init_compress(cvs, atoi(gzip));
-	else
-		cvs_init_compress(cvs, 1);
+	if (has_gzip_support) {
+		const char *gzip = getenv("GZIP");
+		if (gzip)
+			cvs_init_compress(cvs, atoi(gzip));
+		else
+			cvs_init_compress(cvs, 1);
+	}
 
-	ret = cvs_write(cvs, WR_FLUSH, "version\n");
-	if (ret)
-		die("cvs_write failed");
+	if (has_version_support) {
+		ret = cvs_write(cvs, WR_FLUSH, "version\n");
+		if (ret)
+			die("cvs_write failed");
 
-	ret = cvs_getreply(cvs, &reply, "M ");
-	if (ret)
-		return -1;
+		ret = cvs_getreply(cvs, &reply, "M ");
+		if (ret)
+			return -1;
 
-	fprintf(stderr, "CVS Server version: %s\n", reply.buf);
+		fprintf(stderr, "CVS Server version: %s\n", reply.buf);
+		if (strstr(reply.buf, "1.11.1p1")) {
+			cvs->has_rlog_S_option = 0;
+			warning("CVS server does not support rlog -S option");
+		}
+	}
+
 	strbuf_release(&reply);
+	if (no_used_caps)
+		return -1;
 	return 0;
 }
 
@@ -1443,9 +1493,13 @@ int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until, add_rev_fn_t
 			show_date(since, 0, DATE_RFC2822));
 	}
 
+	if (cvs->has_rlog_S_option)
+		cvs_write(cvs,
+			WR_NOFLUSH,
+			"Argument -S\n");
+
 	ret = cvs_write(cvs,
 			WR_FLUSH,
-			"Argument -S\n"
 			"Argument --\n"
 			"Argument %s\n"
 			"rlog\n",
@@ -1577,7 +1631,7 @@ int cvs_rls(struct cvs_transport *cvs, const char *branch, int show_dead, time_t
 			cvs->module);
 
 	if (ret == -1)
-		die("Cannot send rlog command");
+		die("Cannot send rls command");
 
 	return parse_cvs_rls(cvs, cb, data);
 }
@@ -1728,7 +1782,7 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 			cvs->repo_path);
 
 	if (ret == -1)
-		die("rlog to connect");
+		die("checkout request failed");
 
 	struct strbuf file_full_path = STRBUF_INIT;
 	struct strbuf file_mod_path = STRBUF_INIT;
