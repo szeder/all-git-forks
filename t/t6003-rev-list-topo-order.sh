@@ -13,6 +13,18 @@ list_duplicates()
     "$@" | sort | uniq -d
 }
 
+# I did my best to graph the commits used below, for the benefit of future readers. - elliottcable
+#                           c1---c2---c3----.--.
+#                           /    /      \    \  \
+#                          /    /        \   m1 m2
+#                        b1---b2---b3---b4\  /__/
+#                        /              / \\//
+# root--l0---l1---l2---a0---a1---a2---a3---a4---l3---l4---l5--l5r1
+#                                                           \ /
+#                                                            .
+#                                                           / \
+#                                               alt--r0---r1--r1l5
+
 date >path0
 git update-index --add path0
 save_tag tree git write-tree
