@@ -105,6 +105,8 @@ static cmp_type *used_atom_type;
 static int used_atom_cnt, sort_atom_limit, need_tagged, need_symref;
 static unsigned int colopts;
 static struct string_list output = STRING_LIST_INIT_DUP;
+static unsigned char head_sha1[20];
+static char *head;
 
 /*
  * Used to parse format string and sort specifiers
@@ -687,10 +689,6 @@ static void populate_value(struct refinfo *ref, int only_this_atom)
 			}
 			continue;
 		} else if (!strcmp(name, "HEAD")) {
-			const char *head;
-			unsigned char sha1[20];
-
-			head = resolve_ref_unsafe("HEAD", sha1, 1, NULL);
 			if (!strcmp(ref->refname, head))
 				v->s = "*";
 			else
@@ -1286,9 +1284,9 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 	/* for warn_ambiguous_refs */
 	git_config(git_default_config, NULL);
 
+	head = resolve_refdup("HEAD", head_sha1, 0, NULL);
+
 	if (merge_filter != NO_FILTER) {
-		unsigned char head_sha1[20];
-		char *head = resolve_refdup("HEAD", head_sha1, 0, NULL);
 		if (!head)
 			die(_("Failed to resolve HEAD as a valid ref."));
 		hashcpy(merge_filter_ref, head_sha1);
