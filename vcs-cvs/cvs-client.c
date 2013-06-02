@@ -1242,18 +1242,18 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 	struct strbuf branch = STRBUF_INIT;
 	struct strbuf author = STRBUF_INIT;
 	struct strbuf message = STRBUF_INIT;
-	time_t timestamp;
-	int is_dead;
+	time_t timestamp = 0;
+	int is_dead = 0;
 
 	int branches_max = 0;
-	int branches;
+	int branches = 0;
 	int tags_max = 0;
-	int tags;
+	int tags = 0;
 	int files = 0;
 	int revs = 0;
 
 	int state = NEED_RCS_FILE;
-	int have_log;
+	int have_log = 0;
 	int skip_unknown = 0;
 
 	/*
@@ -2077,7 +2077,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 
 	struct strbuf mod_path = STRBUF_INIT;
 	struct strbuf mod_time = STRBUF_INIT;
-	time_t mod_time_unix;
+	time_t mod_time_unix = 0;
 	struct cvsfile file = CVSFILE_INIT;
 	int mode;
 	size_t size;
