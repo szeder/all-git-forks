@@ -861,7 +861,9 @@ static int fast_export_branch_initial(const char *branch_name,
 	helper_printf("author git-remote-cvs <none> %ld +0000\n", date);
 	helper_printf("committer git-remote-cvs <none> %ld +0000\n", date);
 	helper_printf("data <<EON\n");
-	helper_printf("initial import of branch: %s\nparent branch: %s\n", branch_name, parent_branch_name);
+	if (istag)
+		helper_printf("initial import of %s: %s\nparent branch: %s\n",
+				istag ? "tag" : "branch", branch_name, parent_branch_name);
 	helper_printf("EON\n");
 	if (parent_commit_mark) {
 		helper_printf("from %s\n", parent_commit_mark);
