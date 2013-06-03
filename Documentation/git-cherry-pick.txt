@@ -130,7 +130,8 @@ effect to your index in a row.
 	creates an empty commit object.  Implies `--allow-empty`.
 
 --skip-empty::
-	Instead of failing, skip commits that are or become empty.
+	Skip commits that are or become empty, instead of recording
+	them as empty commis.
 
 --strategy=<strategy>::
 	Use the given merge strategy.  Should only be used once.
