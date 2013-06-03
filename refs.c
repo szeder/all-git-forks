@@ -750,6 +750,21 @@ static int do_for_each_entry_in_dirs(struct ref_dir *dir1,
 }
 
 /*
+ * Load all of the refs from the dir into our in-memory cache. The hard work
+ * of loading loose refs is done by get_ref_dir(), so we just need to recurse
+ * through all of the sub-directories. We do not even need to care about
+ * sorting, as traversal order does not matter to us.
+ */
+static void prime_ref_dir(struct ref_dir *dir)
+{
+	int i;
+	for (i = 0; i < dir->nr; i++) {
+		struct ref_entry *entry = dir->entries[i];
+		if (entry->flag & REF_DIR)
+			prime_ref_dir(get_ref_dir(entry));
+	}
+}
+/*
  * Return true iff refname1 and refname2 conflict with each other.
  * Two reference names conflict if one of them exactly matches the
  * leading components of the other; e.g., "foo/bar" conflicts with
@@ -814,6 +829,7 @@ static struct ref_cache {
 	struct ref_cache *next;
 	struct ref_entry *loose;
 	struct ref_entry *packed;
+	struct stat_validity packed_validity;
 	/*
 	 * The submodule name, or "" for the main repo.  We allocate
 	 * length 1 rather than FLEX_ARRAY so that the main ref_cache
@@ -827,6 +843,7 @@ static void clear_packed_ref_cache(struct ref_cache *refs)
 	if (refs->packed) {
 		free_ref_entry(refs->packed);
 		refs->packed = NULL;
+		stat_validity_clear(&refs->packed_validity);
 	}
 }
 
@@ -998,17 +1015,25 @@ static void read_packed_refs(FILE *f, struct ref_dir *dir)
 
 static struct ref_dir *get_packed_refs(struct ref_cache *refs)
 {
+	const char *packed_refs_file;
+
+	if (*refs->name)
+		packed_refs_file = git_path_submodule(refs->name, "packed-refs");
+	else
+		packed_refs_file = git_path("packed-refs");
+
+	if (refs->packed &&
+	    !stat_validity_check(&refs->packed_validity, packed_refs_file))
+		clear_packed_ref_cache(refs);
+
 	if (!refs->packed) {
-		const char *packed_refs_file;
 		FILE *f;
 
 		refs->packed = create_dir_entry(refs, "", 0, 0);
-		if (*refs->name)
-			packed_refs_file = git_path_submodule(refs->name, "packed-refs");
-		else
-			packed_refs_file = git_path("packed-refs");
+
 		f = fopen(packed_refs_file, "r");
 		if (f) {
+			stat_validity_update(&refs->packed_validity, fileno(f));
 			read_packed_refs(f, get_ref_dir(refs->packed));
 			fclose(f);
 		}
@@ -1197,6 +1222,47 @@ static struct ref_entry *get_packed_ref(const char *refname)
 	return find_ref(get_packed_refs(&ref_cache), refname);
 }
 
+/*
+ * This should be called from resolve_ref_unsafe when a loose ref cannot be
+ * accessed; err must represent the errno from the last attempt to access the
+ * loose ref, and the other options are forwarded from resolve_safe_unsaefe.
+ */
+static const char *handle_loose_ref_failure(int err,
+					    const char *refname,
+					    unsigned char *sha1,
+					    int reading,
+					    int *flag)
+{
+	struct ref_entry *entry;
+
+	/*
+	 * If we didn't get ENOENT, something is broken
+	 * with the loose ref, and we should not fallback,
+	 * but instead pretend it doesn't exist.
+	 */
+	if (err != ENOENT)
+		return NULL;
+
+	/*
+	 * The loose reference file does not exist;
+	 * check for a packed reference.
+	 */
+	entry = get_packed_ref(refname);
+	if (entry) {
+		hashcpy(sha1, entry->u.value.sha1);
+		if (flag)
+			*flag |= REF_ISPACKED;
+		return refname;
+	}
+
+	/* The reference is not a packed reference, either. */
+	if (reading)
+		return NULL;
+
+	hashclr(sha1);
+	return refname;
+}
+
 const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int reading, int *flag)
 {
 	int depth = MAXDEPTH;
@@ -1221,30 +1287,9 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int rea
 
 		git_snpath(path, sizeof(path), "%s", refname);
 
-		if (lstat(path, &st) < 0) {
-			struct ref_entry *entry;
-
-			if (errno != ENOENT)
-				return NULL;
-			/*
-			 * The loose reference file does not exist;
-			 * check for a packed reference.
-			 */
-			entry = get_packed_ref(refname);
-			if (entry) {
-				hashcpy(sha1, entry->u.value.sha1);
-				if (flag)
-					*flag |= REF_ISPACKED;
-				return refname;
-			}
-			/* The reference is not a packed reference, either. */
-			if (reading) {
-				return NULL;
-			} else {
-				hashclr(sha1);
-				return refname;
-			}
-		}
+		if (lstat(path, &st) < 0)
+			return handle_loose_ref_failure(errno, refname, sha1,
+							reading, flag);
 
 		/* Follow "normalized" - ie "refs/.." symlinks by hand */
 		if (S_ISLNK(st.st_mode)) {
@@ -1274,7 +1319,8 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int rea
 		 */
 		fd = open(path, O_RDONLY);
 		if (fd < 0)
-			return NULL;
+			return handle_loose_ref_failure(errno, refname, sha1,
+							reading, flag);
 		len = read_in_full(fd, buffer, sizeof(buffer)-1);
 		close(fd);
 		if (len < 0)
@@ -1520,14 +1566,27 @@ void warn_dangling_symref(FILE *fp, const char *msg_fmt, const char *refname)
 static int do_for_each_entry(struct ref_cache *refs, const char *base,
 			     each_ref_entry_fn fn, void *cb_data)
 {
-	struct ref_dir *packed_dir = get_packed_refs(refs);
-	struct ref_dir *loose_dir = get_loose_refs(refs);
+	struct ref_dir *packed_dir;
+	struct ref_dir *loose_dir;
 	int retval = 0;
 
-	if (base && *base) {
-		packed_dir = find_containing_dir(packed_dir, base, 0);
+	/*
+	 * We must make sure that all loose refs are read before accessing the
+	 * packed-refs file; this avoids a race condition in which loose refs
+	 * are migrated to the packed-refs file by a simultaneous process, but
+	 * our in-memory view is from before the migration. get_packed_refs()
+	 * takes care of making sure our view is up to date with what is on
+	 * disk.
+	 */
+	loose_dir = get_loose_refs(refs);
+	if (base && *base)
 		loose_dir = find_containing_dir(loose_dir, base, 0);
-	}
+	if (loose_dir)
+		prime_ref_dir(loose_dir);
+
+	packed_dir = get_packed_refs(refs);
+	if (base && *base)
+		packed_dir = find_containing_dir(packed_dir, base, 0);
 
 	if (packed_dir && loose_dir) {
 		sort_ref_dir(packed_dir);
