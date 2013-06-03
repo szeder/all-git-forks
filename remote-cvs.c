@@ -351,8 +351,15 @@ static int fast_export_revision_cb(void *ptr, void *data)
 	}
 
 	rc = cvs_checkout_rev(cvs, rev->path, rev->revision, &file);
-	if (rc == -1)
-		die("Cannot checkout file %s rev %s", rev->path, rev->revision);
+	if (rc == -1) {
+		cvs_terminate(cvs);
+		cvs = cvs_connect(cvsroot, cvsmodule);
+		if (!cvs)
+			die("Cannot checkout file %s rev %s. Cannot reconnect to cvs server.", rev->path, rev->revision);
+		rc = cvs_checkout_rev(cvs, rev->path, rev->revision, &file);
+		if (rc == -1)
+			die("Cannot checkout file %s rev %s", rev->path, rev->revision);
+	}
 
 	//fetched_total_size += file.file.len;
 	//display_progress(progress_state, revisions_all_branches_fetched);
