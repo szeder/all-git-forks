@@ -7,6 +7,7 @@
 #include "cache.h"
 #include "refs.h"
 
+extern time_t fuzz_time;
 long ps = 0;
 
 static inline unsigned char icase_hash(unsigned char c)
@@ -836,7 +837,7 @@ void aggregate_cvs_commits(struct cvs_branch *meta)
 		}
 
 		if (split ||
-		    (cvs_commit->timestamp && cvs_commit->timestamp + meta->fuzz_time < rev->timestamp)) {
+		    (cvs_commit->timestamp && cvs_commit->timestamp + fuzz_time < rev->timestamp)) {
 			cvs_commit = split_cvs_commit(cvs_commit, meta->cvs_commit_hash);
 		}
 		rev->cvs_commit = cvs_commit;
@@ -895,8 +896,6 @@ struct cvs_branch *new_cvs_branch(const char *branch_name)
 	new->cvs_commit_hash = xcalloc(1, sizeof(struct hash_table));
 	new->revision_hash = xcalloc(1, sizeof(struct hash_table));
 	new->cvs_commit_list = xcalloc(1, sizeof(struct cvs_commit_list));
-
-	new->fuzz_time = 2*60*60; // 2 hours
 
 	strbuf_addf(&meta_ref, "%s%s", get_meta_ref_prefix(), branch_name);
 

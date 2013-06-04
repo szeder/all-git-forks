@@ -39,7 +39,6 @@ struct cvs_branch {
 	struct hash_table *last_commit_revision_hash; // path -> cvs_revision hash
 	time_t last_revision_timestamp;
 
-	unsigned int fuzz_time;
 	void *util;
 };
 
