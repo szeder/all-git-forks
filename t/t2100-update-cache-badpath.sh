@@ -24,38 +24,41 @@ All of the attempts should fail.
 
 . ./test-lib.sh
 
-mkdir path2 path3
-date >path0
-if test_have_prereq SYMLINKS
-then
-	ln -s xyzzy path1
-else
-	date > path1
-fi
-date >path2/file2
-date >path3/file3
+test_expect_success 'git update-index --add to add various paths' '
 
-test_expect_success \
-    'git update-index --add to add various paths.' \
-    'git update-index --add -- path0 path1 path2/file2 path3/file3'
+	mkdir path2 path3 &&
+	date >path0 &&
+	test_ln_s_add xyzzy path1 &&
+	date >path2/file2 &&
+	date >path3/file3 &&
+	test_when_finished "rm -fr path0 path1 path2 path3" &&
+	git update-index --add -- path0 path1 path2/file2 path3/file3
+'
 
-rm -fr path?
+test_expect_success 'git update-index to add conflicting path path0/file0 should fail' '
 
-mkdir path0 path1
-date >path2
-if test_have_prereq SYMLINKS
-then
-	ln -s frotz path3
-else
-	date > path3
-fi
-date >path0/file0
-date >path1/file1
+	mkdir path0 &&
+	date >path0/file0 &&
+	test_must_fail git update-index --add -- path0/file0
+'
 
-for p in path0/file0 path1/file1 path2 path3
-do
-	test_expect_success \
-	    "git update-index to add conflicting path $p should fail." \
-	    "test_must_fail git update-index --add -- $p"
-done
+test_expect_success 'git update-index to add conflicting path path1/file1 should fail' '
+
+	mkdir path1 &&
+	date >path1/file1 &&
+	test_must_fail git update-index --add -- path1/file1
+'
+
+test_expect_success 'git update-index to add conflicting file path2 should fail' '
+
+	date >path2 &&
+	test_must_fail git update-index --add -- path2
+'
+
+test_expect_success 'git update-index to add conflicting symlink path3 should fail' '
+
+	test_ln_s xyzzy path3 &&
+	test_must_fail git update-index --add -- path3
+'
+
 test_done
