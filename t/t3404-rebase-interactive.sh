@@ -934,4 +934,17 @@ test_expect_success 'rebase --edit-todo can be used to modify todo' '
 	test L = $(git cat-file commit HEAD | sed -ne \$p)
 '
 
+test_expect_success 'rebase -i respects core.commentchar' '
+	git reset --hard &&
+	git checkout E^0 &&
+	test_config core.commentchar "\\" &&
+	write_script remove-all-but-first.sh <<-\EOF &&
+	sed -e "2,\$s/^/\\\\/" "$1" >"$1.tmp" &&
+	mv "$1.tmp" "$1"
+	EOF
+	test_set_editor "$(pwd)/remove-all-but-first.sh" &&
+	git rebase -i B &&
+	test B = $(git cat-file commit HEAD^ | sed -ne \$p)
+'
+
 test_done

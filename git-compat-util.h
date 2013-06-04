@@ -86,6 +86,9 @@
 #define _SGI_SOURCE 1
 
 #ifdef WIN32 /* Both MinGW and MSVC */
+# if defined (_MSC_VER)
+#  define _WIN32_WINNT 0x0502
+# endif
 #define WIN32_LEAN_AND_MEAN  /* stops windows.h including winsock.h */
 #include <winsock2.h>
 #include <windows.h>
@@ -160,6 +163,7 @@
 typedef long intptr_t;
 typedef unsigned long uintptr_t;
 #endif
+int get_st_mode_bits(const char *path, int *mode);
 #if defined(__CYGWIN__)
 #undef _XOPEN_SOURCE
 #include <grp.h>
@@ -211,6 +215,17 @@ extern char *gitbasename(char *);
 #ifndef NO_OPENSSL
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#endif
+
+/* On most systems <netdb.h> would have given us this, but
+ * not on some systems (e.g. z/OS).
+ */
+#ifndef NI_MAXHOST
+#define NI_MAXHOST 1025
+#endif
+
+#ifndef NI_MAXSERV
+#define NI_MAXSERV 32
 #endif
 
 /* On most systems <limits.h> would have given us this, but
@@ -305,17 +320,18 @@ extern void warning(const char *err, ...) __attribute__((format (printf, 1, 2)))
 
 /*
  * Let callers be aware of the constant return value; this can help
- * gcc with -Wuninitialized analysis. We have to restrict this trick to
- * gcc, though, because of the variadic macro and the magic ## comma pasting
- * behavior. But since we're only trying to help gcc, anyway, it's OK; other
- * compilers will fall back to using the function as usual.
+ * gcc with -Wuninitialized analysis. We restrict this trick to gcc, though,
+ * because some compilers may not support variadic macros. Since we're only
+ * trying to help gcc, anyway, it's OK; other compilers will fall back to
+ * using the function as usual.
  */
 #if defined(__GNUC__) && ! defined(__clang__)
-#define error(fmt, ...) (error((fmt), ##__VA_ARGS__), -1)
+#define error(...) (error(__VA_ARGS__), -1)
 #endif
 
 extern void set_die_routine(NORETURN_PTR void (*routine)(const char *err, va_list params));
 extern void set_error_routine(void (*routine)(const char *err, va_list params));
+extern void set_die_is_recursing_routine(int (*routine)(void));
 
 extern int prefixcmp(const char *str, const char *prefix);
 extern int suffixcmp(const char *str, const char *suffix);
@@ -419,11 +435,6 @@ extern size_t gitstrlcpy(char *, const char *, size_t);
 extern uintmax_t gitstrtoumax(const char *, char **, int);
 #define strtoimax gitstrtoimax
 extern intmax_t gitstrtoimax(const char *, char **, int);
-#endif
-
-#ifdef NO_STRTOK_R
-#define strtok_r gitstrtok_r
-extern char *gitstrtok_r(char *s, const char *delim, char **save_ptr);
 #endif
 
 #ifdef NO_HSTRERROR

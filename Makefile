@@ -43,6 +43,9 @@ all::
 # Define EXPATDIR=/foo/bar if your expat header and library files are in
 # /foo/bar/include and /foo/bar/lib directories.
 #
+# Define EXPAT_NEEDS_XMLPARSE_H if you have an old version of expat (e.g.,
+# 1.1 or 1.2) that provides xmlparse.h instead of expat.h.
+#
 # Define NO_GETTEXT if you don't want Git output to be translated.
 # A translated Git requires GNU libintl or another gettext implementation,
 # plus libintl-perl at runtime.
@@ -97,8 +100,6 @@ all::
 # Define MKDIR_WO_TRAILING_SLASH if your mkdir() can't deal with trailing slash.
 #
 # Define NO_MKSTEMPS if you don't have mkstemps in the C library.
-#
-# Define NO_STRTOK_R if you don't have strtok_r in the C library.
 #
 # Define NO_FNMATCH if you don't have fnmatch in the C library.
 #
@@ -357,32 +358,38 @@ STRIP ?= strip
 # Among the variables below, these:
 #   gitexecdir
 #   template_dir
-#   mandir
-#   infodir
-#   htmldir
 #   sysconfdir
 # can be specified as a relative path some/where/else;
 # this is interpreted as relative to $(prefix) and "git" at
 # runtime figures out where they are based on the path to the executable.
+# Additionally, the following will be treated as relative by "git" if they
+# begin with "$(prefix)/":
+#   mandir
+#   infodir
+#   htmldir
 # This can help installing the suite in a relocatable way.
 
 prefix = $(HOME)
 bindir_relative = bin
 bindir = $(prefix)/$(bindir_relative)
-mandir = share/man
-infodir = share/info
+mandir = $(prefix)/share/man
+infodir = $(prefix)/share/info
 gitexecdir = libexec/git-core
 mergetoolsdir = $(gitexecdir)/mergetools
 sharedir = $(prefix)/share
 gitwebdir = $(sharedir)/gitweb
 localedir = $(sharedir)/locale
 template_dir = share/git-core/templates
-htmldir = share/doc/git-doc
+htmldir = $(prefix)/share/doc/git-doc
 ETC_GITCONFIG = $(sysconfdir)/gitconfig
 ETC_GITATTRIBUTES = $(sysconfdir)/gitattributes
 lib = lib
 # DESTDIR =
 pathsep = :
+
+mandir_relative = $(patsubst $(prefix)/%,%,$(mandir))
+infodir_relative = $(patsubst $(prefix)/%,%,$(infodir))
+htmldir_relative = $(patsubst $(prefix)/%,%,$(htmldir))
 
 export prefix bindir sharedir sysconfdir gitwebdir localedir
 
@@ -480,9 +487,38 @@ SCRIPT_PERL += git-svn.perl
 SCRIPT_PYTHON += git-remote-testpy.py
 SCRIPT_PYTHON += git-p4.py
 
-SCRIPTS = $(patsubst %.sh,%,$(SCRIPT_SH)) \
-	  $(patsubst %.perl,%,$(SCRIPT_PERL)) \
-	  $(patsubst %.py,%,$(SCRIPT_PYTHON)) \
+# Generated files for scripts
+SCRIPT_SH_GEN = $(patsubst %.sh,%,$(SCRIPT_SH))
+SCRIPT_PERL_GEN = $(patsubst %.perl,%,$(SCRIPT_PERL))
+SCRIPT_PYTHON_GEN = $(patsubst %.py,%,$(SCRIPT_PYTHON))
+
+# Individual rules to allow e.g.
+# "make -C ../.. SCRIPT_PERL=contrib/foo/bar.perl build-perl-script"
+# from subdirectories like contrib/*/
+.PHONY: build-perl-script build-sh-script build-python-script
+build-perl-script: $(SCRIPT_PERL_GEN)
+build-sh-script: $(SCRIPT_SH_GEN)
+build-python-script: $(SCRIPT_PYTHON_GEN)
+
+.PHONY: install-perl-script install-sh-script install-python-script
+install-sh-script: $(SCRIPT_SH_GEN)
+	$(INSTALL) $(SCRIPT_SH_GEN) '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
+install-perl-script: $(SCRIPT_PERL_GEN)
+	$(INSTALL) $(SCRIPT_PERL_GEN) '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
+install-python-script: $(SCRIPT_PYTHON_GEN)
+	$(INSTALL) $(SCRIPT_PYTHON_GEN) '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
+
+.PHONY: clean-perl-script clean-sh-script clean-python-script
+clean-sh-script:
+	$(RM) $(SCRIPT_SH_GEN)
+clean-perl-script:
+	$(RM) $(SCRIPT_PERL_GEN)
+clean-python-script:
+	$(RM) $(SCRIPT_PYTHON_GEN)
+
+SCRIPTS = $(SCRIPT_SH_GEN) \
+	  $(SCRIPT_PERL_GEN) \
+	  $(SCRIPT_PYTHON_GEN) \
 	  git-instaweb
 
 ETAGS_TARGET = TAGS
@@ -587,22 +623,6 @@ LIB_FILE = libgit.a
 XDIFF_LIB = xdiff/lib.a
 VCSSVN_LIB = vcs-svn/lib.a
 
-LIB_H += xdiff/xinclude.h
-LIB_H += xdiff/xmacros.h
-LIB_H += xdiff/xdiff.h
-LIB_H += xdiff/xtypes.h
-LIB_H += xdiff/xutils.h
-LIB_H += xdiff/xprepare.h
-LIB_H += xdiff/xdiffi.h
-LIB_H += xdiff/xemit.h
-
-LIB_H += vcs-svn/line_buffer.h
-LIB_H += vcs-svn/sliding_window.h
-LIB_H += vcs-svn/repo_tree.h
-LIB_H += vcs-svn/fast_export.h
-LIB_H += vcs-svn/svndiff.h
-LIB_H += vcs-svn/svndump.h
-
 GENERATED_H += common-cmds.h
 
 LIB_H += advice.h
@@ -704,11 +724,24 @@ LIB_H += url.h
 LIB_H += userdiff.h
 LIB_H += utf8.h
 LIB_H += varint.h
+LIB_H += vcs-svn/fast_export.h
+LIB_H += vcs-svn/line_buffer.h
+LIB_H += vcs-svn/repo_tree.h
+LIB_H += vcs-svn/sliding_window.h
+LIB_H += vcs-svn/svndiff.h
+LIB_H += vcs-svn/svndump.h
 LIB_H += walker.h
 LIB_H += wildmatch.h
 LIB_H += wt-status.h
 LIB_H += xdiff-interface.h
 LIB_H += xdiff/xdiff.h
+LIB_H += xdiff/xdiffi.h
+LIB_H += xdiff/xemit.h
+LIB_H += xdiff/xinclude.h
+LIB_H += xdiff/xmacros.h
+LIB_H += xdiff/xprepare.h
+LIB_H += xdiff/xtypes.h
+LIB_H += xdiff/xutils.h
 
 LIB_OBJS += abspath.o
 LIB_OBJS += advice.o
@@ -1089,6 +1122,9 @@ else
 		else
 			EXPAT_LIBEXPAT = -lexpat
 		endif
+		ifdef EXPAT_NEEDS_XMLPARSE_H
+			BASIC_CFLAGS += -DEXPAT_NEEDS_XMLPARSE_H
+		endif
 	endif
 endif
 
@@ -1213,10 +1249,6 @@ ifdef NO_STRTOUMAX
 endif
 ifdef NO_STRTOULL
 	COMPAT_CFLAGS += -DNO_STRTOULL
-endif
-ifdef NO_STRTOK_R
-	COMPAT_CFLAGS += -DNO_STRTOK_R
-	COMPAT_OBJS += compat/strtok_r.o
 endif
 ifdef NO_FNMATCH
 	COMPAT_CFLAGS += -Icompat/fnmatch
@@ -1513,12 +1545,12 @@ ETC_GITATTRIBUTES_SQ = $(subst ','\'',$(ETC_GITATTRIBUTES))
 DESTDIR_SQ = $(subst ','\'',$(DESTDIR))
 bindir_SQ = $(subst ','\'',$(bindir))
 bindir_relative_SQ = $(subst ','\'',$(bindir_relative))
-mandir_SQ = $(subst ','\'',$(mandir))
-infodir_SQ = $(subst ','\'',$(infodir))
+mandir_relative_SQ = $(subst ','\'',$(mandir_relative))
+infodir_relative_SQ = $(subst ','\'',$(infodir_relative))
 localedir_SQ = $(subst ','\'',$(localedir))
 gitexecdir_SQ = $(subst ','\'',$(gitexecdir))
 template_dir_SQ = $(subst ','\'',$(template_dir))
-htmldir_SQ = $(subst ','\'',$(htmldir))
+htmldir_relative_SQ = $(subst ','\'',$(htmldir_relative))
 prefix_SQ = $(subst ','\'',$(prefix))
 gitwebdir_SQ = $(subst ','\'',$(gitwebdir))
 
@@ -1650,9 +1682,9 @@ strip: $(PROGRAMS) git$X
 
 git.sp git.s git.o: GIT-PREFIX
 git.sp git.s git.o: EXTRA_CPPFLAGS = \
-	'-DGIT_HTML_PATH="$(htmldir_SQ)"' \
-	'-DGIT_MAN_PATH="$(mandir_SQ)"' \
-	'-DGIT_INFO_PATH="$(infodir_SQ)"'
+	'-DGIT_HTML_PATH="$(htmldir_relative_SQ)"' \
+	'-DGIT_MAN_PATH="$(mandir_relative_SQ)"' \
+	'-DGIT_INFO_PATH="$(infodir_relative_SQ)"'
 
 git$X: git.o GIT-LDFLAGS $(BUILTIN_OBJS) $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ git.o \
@@ -1662,9 +1694,9 @@ help.sp help.s help.o: common-cmds.h
 
 builtin/help.sp builtin/help.s builtin/help.o: common-cmds.h GIT-PREFIX
 builtin/help.sp builtin/help.s builtin/help.o: EXTRA_CPPFLAGS = \
-	'-DGIT_HTML_PATH="$(htmldir_SQ)"' \
-	'-DGIT_MAN_PATH="$(mandir_SQ)"' \
-	'-DGIT_INFO_PATH="$(infodir_SQ)"'
+	'-DGIT_HTML_PATH="$(htmldir_relative_SQ)"' \
+	'-DGIT_MAN_PATH="$(mandir_relative_SQ)"' \
+	'-DGIT_INFO_PATH="$(infodir_relative_SQ)"'
 
 version.sp version.s version.o: GIT-VERSION-FILE GIT-USER-AGENT
 version.sp version.s version.o: EXTRA_CPPFLAGS = \
@@ -1786,12 +1818,14 @@ $(patsubst %.py,%,$(SCRIPT_PYTHON)): % : unimplemented.sh
 	mv $@+ $@
 endif # NO_PYTHON
 
+CONFIGURE_RECIPE = $(RM) configure configure.ac+ && \
+		   sed -e 's/@@GIT_VERSION@@/$(GIT_VERSION)/g' \
+			configure.ac >configure.ac+ && \
+		   autoconf -o configure configure.ac+ && \
+		   $(RM) configure.ac+
+
 configure: configure.ac GIT-VERSION-FILE
-	$(QUIET_GEN)$(RM) $@ $<+ && \
-	sed -e 's/@@GIT_VERSION@@/$(GIT_VERSION)/g' \
-	    $< > $<+ && \
-	autoconf -o $@ $<+ && \
-	$(RM) $<+
+	$(QUIET_GEN)$(CONFIGURE_RECIPE)
 
 ifdef AUTOCONFIGURED
 # We avoid depending on 'configure' here, because it gets rebuilt
@@ -1800,7 +1834,7 @@ ifdef AUTOCONFIGURED
 # do want to recheck when the platform/environment detection logic
 # changes, hence this depends on configure.ac.
 config.status: configure.ac
-	$(QUIET_GEN)$(MAKE) configure && \
+	$(QUIET_GEN)$(CONFIGURE_RECIPE) && \
 	if test -f config.status; then \
 	  ./config.status --recheck; \
 	else \
@@ -2414,8 +2448,7 @@ clean: profile-clean
 		builtin/*.o $(LIB_FILE) $(XDIFF_LIB) $(VCSSVN_LIB)
 	$(RM) $(ALL_PROGRAMS) $(SCRIPT_LIB) $(BUILT_INS) git$X
 	$(RM) $(TEST_PROGRAMS)
-	$(RM) -r bin-wrappers
-	$(RM) -r $(dep_dirs)
+	$(RM) -r bin-wrappers $(dep_dirs)
 	$(RM) -r po/build/
 	$(RM) *.spec *.pyc *.pyo */*.pyc */*.pyo common-cmds.h $(ETAGS_TARGET) tags cscope*
 	$(RM) -r $(GIT_TARNAME) .doc-tmp-dir

@@ -11,7 +11,6 @@ use Carp qw/croak/;
 use File::Path qw/mkpath/;
 use File::Copy qw/copy/;
 use IPC::Open3;
-use Time::Local;
 use Memoize;  # core since 5.8.0, Jul 2002
 use Memoize::Storable;
 use POSIX qw(:signal_h);
@@ -22,6 +21,7 @@ use Git qw(
     command_noisy
     command_output_pipe
     command_close_pipe
+    get_tz_offset
 );
 use Git::SVN::Utils qw(
 	fatal
@@ -1311,14 +1311,6 @@ sub get_untracked {
 	\@out;
 }
 
-sub get_tz {
-	# some systmes don't handle or mishandle %z, so be creative.
-	my $t = shift || time;
-	my $gm = timelocal(gmtime($t));
-	my $sign = qw( + + - )[ $t <=> $gm ];
-	return sprintf("%s%02d%02d", $sign, (gmtime(abs($t - $gm)))[2,1]);
-}
-
 # parse_svn_date(DATE)
 # --------------------
 # Given a date (in UTC) from Subversion, return a string in the format
@@ -1351,7 +1343,7 @@ sub parse_svn_date {
 			delete $ENV{TZ};
 		}
 
-		my $our_TZ = get_tz();
+		my $our_TZ = get_tz_offset();
 
 		# This converts $epoch_in_UTC into our local timezone.
 		my ($sec, $min, $hour, $mday, $mon, $year,
@@ -1501,13 +1493,18 @@ sub lookup_svn_merge {
 	my @merged_commit_ranges;
 	# find the tip
 	for my $range ( @ranges ) {
+		if ($range =~ /[*]$/) {
+			warn "W: Ignoring partial merge in svn:mergeinfo "
+				."dirprop: $source:$range\n";
+			next;
+		}
 		my ($bottom, $top) = split "-", $range;
 		$top ||= $bottom;
 		my $bottom_commit = $gs->find_rev_after( $bottom, 1, $top );
 		my $top_commit = $gs->find_rev_before( $top, 1, $bottom );
 
 		unless ($top_commit and $bottom_commit) {
-			warn "W:unknown path/rev in svn:mergeinfo "
+			warn "W: unknown path/rev in svn:mergeinfo "
 				."dirprop: $source:$range\n";
 			next;
 		}
