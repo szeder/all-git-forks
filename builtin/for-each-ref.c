@@ -1151,7 +1151,7 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 	int num_refs;
 	const char *default_format = "%(objectname) %(objecttype)\t%(refname)";
 	const char *format = default_format;
-	const char *pretty = NULL;
+	const char *pretty_raw = NULL, *pretty_userformat = NULL;
 	struct ref_sort *sort = NULL, **sort_tail = &sort;
 	int maxcount = 0, quote_style = 0;
 	struct refinfo **refs;
@@ -1170,13 +1170,15 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 		OPT_GROUP(""),
 		OPT_INTEGER( 0 , "count", &maxcount, N_("show only <n> matched refs")),
 		OPT_STRING(  0 , "format", &format, N_("format"), N_("format to use for the output")),
-		OPT_STRING(  0 , "pretty", &pretty, N_("format"), N_("alternative format to use for the output")),
+		OPT_STRING(  0 , "pretty", &pretty_raw, N_("format"), N_("alternative format to use for the output")),
 		OPT_CALLBACK(0 , "sort", sort_tail, N_("key"),
 			    N_("field name to sort on"), &opt_parse_sort),
 		OPT_END(),
 	};
 
 	parse_options(argc, argv, prefix, opts, for_each_ref_usage, 0);
+	if (pretty_raw)
+		pretty_userformat = get_pretty_userformat(pretty_raw);
 	if (maxcount < 0) {
 		error("invalid --count argument: `%d'", maxcount);
 		usage_with_options(for_each_ref_usage, opts);
@@ -1185,10 +1187,10 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 		error("more than one quoting style?");
 		usage_with_options(for_each_ref_usage, opts);
 	}
-	if (format != default_format && pretty)
+	if (format != default_format && pretty_userformat)
 		die("--format and --pretty cannot be used together");
-	if ((pretty && verify_format(pretty, 1)) ||
-	    (!pretty && verify_format(format, 0)))
+	if ((pretty_userformat && verify_format(pretty_userformat, 1)) ||
+	    (!pretty_userformat && verify_format(format, 0)))
 		usage_with_options(for_each_ref_usage, opts);
 
 	if (!sort)
@@ -1209,8 +1211,8 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 	if (!maxcount || num_refs < maxcount)
 		maxcount = num_refs;
 
-	if (pretty)
-		show_pretty_refs(refs, maxcount, pretty, quote_style);
+	if (pretty_userformat)
+		show_pretty_refs(refs, maxcount, pretty_userformat, quote_style);
 	else
 		show_refs(refs, maxcount, format, quote_style);
 	return 0;

@@ -60,6 +60,9 @@ calculated.
 +
 Caveats:
 
+0. No built-in formats from PRETTY FORMATS (like oneline, short) are
+   available.
+
 1. Many of the placeholders in "PRETTY FORMATS" are designed to work
    specifically on commit objects: when non-commit objects are
    supplied, those placeholders won't work (i.e. they will be emitted
