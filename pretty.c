@@ -174,6 +174,31 @@ void get_commit_format(const char *arg, struct rev_info *rev)
 }
 
 /*
+ * Function to parse --pretty string, lookup pretty.* configuration
+ * variables and return the format string, assuming no builtin
+ * formats.  Not limited to commits, unlike get_commit_format().
+ */
+const char *get_pretty_userformat(const char *arg)
+{
+	struct cmt_fmt_map *commit_format;
+
+	if (!arg || !*arg)
+		return NULL;
+
+	if (!prefixcmp(arg, "format:") || !prefixcmp(arg, "tformat:"))
+		return xstrdup(strchr(arg, ':' + 1));
+
+	if (strchr(arg, '%'))
+		return xstrdup(arg);
+
+	commit_format = find_commit_format(arg);
+	if (!commit_format || commit_format->format != CMIT_FMT_USERFORMAT)
+		die("invalid --pretty format: %s", arg);
+
+	return xstrdup(commit_format->user_format);
+}
+
+/*
  * Generic support for pretty-printing the header
  */
 static int get_one_line(const char *msg)
