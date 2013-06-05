@@ -7,6 +7,9 @@
 #include "parse-options.h"
 #include "unpack-trees.h"
 #include "dir.h"
+#include "diff.h"
+#include "revision.h"
+#include "list-objects.h"
 
 static char const * const archive_usage[] = {
 	N_("git archive [<options>] <tree-ish> [<path>...]"),
@@ -347,6 +350,58 @@ static void parse_pathspec_arg(const char **pathspec,
 	}
 }
 
+struct reachable_object_data {
+	struct rev_info revs;
+	struct object *obj;
+};
+
+static void check_object(struct object *obj, const char *name, void *vdata)
+{
+	struct reachable_object_data *data = vdata;
+	/*
+	 * We found it; the caller will take care of marking it SEEN,
+	 * but we can end the traversal early.
+	 */
+	if (obj == data->obj) {
+		free_commit_list(data->revs.commits);
+		data->revs.commits = NULL;
+
+		free(data->revs.pending.objects);
+		data->revs.pending.nr = 0;
+		data->revs.pending.alloc = 0;
+		data->revs.pending.objects = NULL;
+	}
+}
+
+static void check_commit(struct commit *commit, void *vdata)
+{
+	check_object(&commit->object, NULL, vdata);
+}
+
+static int object_is_reachable(const unsigned char *sha1)
+{
+	static const char *argv[] = {
+		"rev-list",
+		"--objects",
+		"--all",
+		NULL
+	};
+	struct reachable_object_data data;
+
+	data.obj = parse_object(sha1);
+	if (!data.obj)
+		return 0;
+
+	save_commit_buffer = 0;
+	init_revisions(&data.revs, NULL);
+	setup_revisions(ARRAY_SIZE(argv) - 1, argv, &data.revs, NULL);
+	if (prepare_revision_walk(&data.revs))
+		return 0;
+
+	traverse_commit_list(&data.revs, check_commit, check_object, &data);
+	return data.obj->flags & SEEN;
+}
+
 static void parse_treeish_arg(const char **argv,
 		struct archiver_args *ar_args, const char *prefix,
 		int remote)
@@ -358,18 +413,10 @@ static void parse_treeish_arg(const char **argv,
 	const struct commit *commit;
 	struct object_id oid;
 
-	/* Remotes are only allowed to fetch actual refs */
-	if (remote && !remote_allow_unreachable) {
-		char *ref = NULL;
-		const char *colon = strchrnul(name, ':');
-		int refnamelen = colon - name;
-
-		if (!dwim_ref(name, refnamelen, oid.hash, &ref))
-			die("no such ref: %.*s", refnamelen, name);
-		free(ref);
-	}
-
 	if (get_sha1(name, oid.hash))
+		die("Not a valid object name");
+
+	if (remote && !object_is_reachable(oid.hash))
 		die("Not a valid object name");
 
 	commit = lookup_commit_reference_gently(oid.hash, 1);
