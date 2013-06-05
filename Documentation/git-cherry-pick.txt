@@ -8,8 +8,9 @@ git-cherry-pick - Apply the changes introduced by some existing commits
 SYNOPSIS
 --------
 [verse]
-'git cherry-pick' [--edit] [-n] [-m parent-number] [-s] [-x] [--ff] <commit>...
+'git cherry-pick' [-q] [--edit] [-n] [-m parent-number] [-s] [-x] [--ff] <commit>...
 'git cherry-pick' --continue
+'git cherry-pick' --skip
 'git cherry-pick' --quit
 'git cherry-pick' --abort
 
@@ -50,6 +51,10 @@ OPTIONS
 	linkgit:git-rev-list[1]. Note that specifying a range will
 	feed all <commit>... arguments to a single revision walk
 	(see a later example that uses 'maint master..next').
+
+-q::
+--quiet::
+	Quiet, suppress feedback messages.
 
 -e::
 --edit::
@@ -128,6 +133,10 @@ effect to your index in a row.
 	current history, it will become empty.  By default these
 	redundant commits are ignored.  This option overrides that behavior and
 	creates an empty commit object.  Implies `--allow-empty`.
+
+--skip-empty::
+	Skip commits that are or become empty, instead of recording
+	them as empty commis.
 
 --strategy=<strategy>::
 	Use the given merge strategy.  Should only be used once.
