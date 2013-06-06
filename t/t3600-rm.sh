@@ -687,4 +687,83 @@ test_expect_failure SYMLINKS 'rm across a symlinked leading path (w/ index)' '
 	test_path_is_file e/f
 '
 
+cat > expect << EOF
+error: the following files have staged content different from both the file and the HEAD:
+    bar.txt
+    foo.txt
+(use -f to force removal)
+EOF
+test_expect_success 'rm files with different staged content' '
+    >foo.txt &&
+    >bar.txt &&
+    git add foo.txt bar.txt &&
+    echo content >foo.txt &&
+    echo content >bar.txt &&
+    test_must_fail git rm foo.txt bar.txt 2>actual &&
+    test_cmp expect actual
+'
+
+cat > expect << EOF
+error: the following files have staged content different from both the file and the HEAD:
+    bar.txt
+    foo.txt
+EOF
+test_expect_success 'rm files with different staged content without hints' '
+    >foo.txt &&
+    >bar.txt &&
+    git add foo.txt bar.txt &&
+    echo content >foo.txt &&
+    echo content >bar.txt &&
+    test_must_fail git -c advice.rmhints=false rm foo.txt bar.txt 2>actual &&
+    test_cmp expect actual
+'
+
+test_expect_success 'rm file with local modification' '
+	cat > expect << EOF &&
+error: the following files have local modifications:
+    foo.txt
+(use --cached to keep the file, or -f to force removal)
+EOF
+    >foo.txt &&
+    git add foo.txt &&
+    git commit -m "." &&
+    echo content >foo.txt &&
+    test_must_fail git rm foo.txt 2>actual &&
+    test_cmp expect actual
+'
+
+test_expect_success 'rm file with local modification without hints' '
+	cat > expect << EOF &&
+error: the following files have local modifications:
+    bar.txt
+EOF
+	git reset --hard &&
+	echo new-content >bar.txt &&
+	test_must_fail git -c advice.rmhints=false rm bar.txt 2>actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'rm file with changes in the index' '
+	cat > expect << EOF
+error: the following files have changes staged in the index:
+    foo.txt
+(use --cached to keep the file, or -f to force removal)
+EOF &&
+	>foo.txt &&
+	git add foo.txt &&
+	test_must_fail git rm foo.txt 2>actual &&
+	test_cmp expect actual
+'
+
+cat > expect << EOF
+error: the following files have changes staged in the index:
+    foo.txt
+EOF
+test_expect_success 'rm file with changes in the index without hints' '
+    >foo.txt &&
+    git add foo.txt &&
+    test_must_fail git -c advice.rmhints=false rm foo.txt 2>actual &&
+    test_cmp expect actual
+'
+
 test_done

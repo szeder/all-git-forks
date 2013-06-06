@@ -85,6 +85,11 @@ static int check_local_mod(unsigned char *head, int index_only)
 	int i, no_head;
 	int errs = 0;
 
+	struct strbuf files_staged = STRBUF_INIT;
+	struct strbuf files_cached = STRBUF_INIT;
+	struct strbuf files_submodule = STRBUF_INIT;
+	struct strbuf files_local = STRBUF_INIT;
+
 	no_head = is_null_sha1(head);
 	for (i = 0; i < list.nr; i++) {
 		struct stat st;
@@ -173,33 +178,77 @@ static int check_local_mod(unsigned char *head, int index_only)
 		 * "intent to add" entry.
 		 */
 		if (local_changes && staged_changes) {
-			if (!index_only || !(ce->ce_flags & CE_INTENT_TO_ADD))
-				errs = error(_("'%s' has staged content different "
-					     "from both the file and the HEAD\n"
-					     "%s"), name,
-					     advice_rm_hints
-					     	? _("(use -f to force removal)")
-					     	: "");
+			if (!index_only || !(ce->ce_flags & CE_INTENT_TO_ADD)) {
+				strbuf_addstr(&files_staged, "\n    ");
+				strbuf_addstr(&files_staged, name);
+			}
 		}
 		else if (!index_only) {
-			if (staged_changes)
-				errs = error(_("'%s' has changes staged in the index\n"
-					     "(use --cached to keep the file, "
-					     "or -f to force removal)"), name);
+			if (staged_changes) {
+				strbuf_addstr(&files_cached, "\n    ");
+				strbuf_addstr(&files_cached, name);
+				/*
+				  errs = error(_("'%s' has changes staged in the index\n"
+				  "(use --cached to keep the file, "
+				  "or -f to force removal)"), name);*/
+			}
 			if (local_changes) {
 				if (S_ISGITLINK(ce->ce_mode) &&
 				    !submodule_uses_gitfile(name)) {
+					strbuf_addstr(&files_submodule, "\n    ");
+					strbuf_addstr(&files_submodule, name);
+
 					errs = error(_("submodule '%s' (or one of its nested "
-						     "submodules) uses a .git directory\n"
-						     "(use 'rm -rf' if you really want to remove "
-						     "it including all of its history)"), name);
-				} else
-					errs = error(_("'%s' has local modifications\n"
-						     "(use --cached to keep the file, "
-						     "or -f to force removal)"), name);
+						       "submodules) uses a .git directory\n"
+						       "(use 'rm -rf' if you really want to remove "
+						       "it including all of its history)"), name);
+				} else {
+					strbuf_addstr(&files_local, "\n    ");
+					strbuf_addstr(&files_local, name);
+					/*
+					  errs = error(_("'%s' has local modifications\n"
+					  "(use --cached to keep the file, "
+					  "or -f to force removal)"), name);*/
+				}
 			}
 		}
 	}
+
+	if (advice_rm_hints) {
+		if (files_staged.len) 
+			errs = error(_("the following files have staged content "
+				       "different from both the file and the HEAD:%s\n"
+				       "(use -f to force removal)"), files_staged.buf);
+		if (files_cached.len) 
+			errs = error(_("the following files have changes staged "
+				       "in the index:%s\n(use --cached to keep the file, "
+				       "or -f to force removal)"), files_cached.buf);
+		/*if (files_submodule.len)
+		  errs = error(_("the following submodules (or one of its nested "
+		  "submodule) use a .git directory:%s\n(use 'rm -rf' "
+		  "if you really want to remove it including all of "
+		  "its history)"), files_submodule.buf);*/
+		if (files_local.len) 
+			errs = error(_("the following files have local modifications:"
+				       "%s\n(use --cached to keep the file, or -f to "
+				       "force removal)"), files_local.buf);
+	} else { 
+		if (files_staged.len)
+			errs = error(_("the following files have staged content "
+				       "different from both the file and the HEAD:%s"), 
+				     files_staged.buf);
+		if (files_cached.len) 
+			errs = error(_("the following files have changes staged "
+				       "in the index:%s"), files_cached.buf);
+		/*if (files_submodule.len)
+		  errs = error(_("the following submodules (or one of its nested "
+		  "submodule) use a .git directory:%s"), 
+		  files_submodule.buf);*/
+		if (files_local.len) 
+			errs = error(_("the following files have local modifications:"
+				       "%s"), files_local.buf);
+	}
+
 	return errs;
 }
 
