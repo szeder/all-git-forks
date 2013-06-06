@@ -378,6 +378,7 @@ static inline enum object_type object_type(unsigned int mode)
  * The array is NULL-terminated, which makes it easy to pass in the "env"
  * parameter of a run-command invocation, or to do a simple walk.
  */
+
 extern const char * const local_repo_env[];
 
 extern int is_bare_repository_cfg;

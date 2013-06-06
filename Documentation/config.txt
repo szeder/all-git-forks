@@ -199,6 +199,9 @@ advice.*::
 	amWorkDir::
 		Advice that shows the location of the patch file when
 		linkgit:git-am[1] fails to apply it.
+    rmHints::
+		Show directions on how to proceed from the current
+		state in the output of linkgit:git-rm[1]
 --
 
 core.fileMode::
@@ -2066,8 +2069,17 @@ status.relativePaths::
 	relative to the repository root (this was the default for Git
 	prior to v1.5.4).
 
+status.short::
+	By default, linkgit:git-status[1] shows the output in the long-format. 
+	Setting this variable true, the output will be show in the short-format.
+	This variable is defined by default to false, but it can be redefined
+	in the config file,it could be true.
+
+status.branch::
+	//COMPLETER
+
 status.showUntrackedFiles::
-	By default, linkgit:git-status[1] and linkgit:git-commit[1] show
+	By default, linkgit:git-statu[1] and linkgit:git-commit[1] show
 	files which are not currently tracked by Git. Directories which
 	contain only untracked files, are shown with the directory name
 	only. Showing untracked files means that Git needs to lstat() all

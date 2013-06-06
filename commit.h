@@ -67,8 +67,8 @@ void free_commit_list(struct commit_list *list);
 enum cmit_fmt {
 	CMIT_FMT_RAW,
 	CMIT_FMT_MEDIUM,
-	CMIT_FMT_DEFAULT = CMIT_FMT_MEDIUM,
 	CMIT_FMT_SHORT,
+	CMIT_FMT_DEFAULT = CMIT_FMT_MEDIUM,	
 	CMIT_FMT_FULL,
 	CMIT_FMT_FULLER,
 	CMIT_FMT_ONELINE,
