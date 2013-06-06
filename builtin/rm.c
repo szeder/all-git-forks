@@ -63,8 +63,11 @@ static int check_submodules_use_gitfiles(void)
 		if (!submodule_uses_gitfile(name))
 			errs = error(_("submodule '%s' (or one of its nested "
 				     "submodules) uses a .git directory\n"
-				     "(use 'rm -rf' if you really want to remove "
-				     "it including all of its history)"), name);
+				     "%s"), name,
+				     advice_rm_hints 
+				     	? "(use 'rm -rf' if you really want to remove "
+				          "it including all of its history)"
+				     	: "");
 	}
 
 	return errs;
@@ -173,7 +176,10 @@ static int check_local_mod(unsigned char *head, int index_only)
 			if (!index_only || !(ce->ce_flags & CE_INTENT_TO_ADD))
 				errs = error(_("'%s' has staged content different "
 					     "from both the file and the HEAD\n"
-					     "(use -f to force removal)"), name);
+					     "%s"), name,
+					     advice_rm_hints
+					     	? _("(use -f to force removal)")
+					     	: "");
 		}
 		else if (!index_only) {
 			if (staged_changes)
