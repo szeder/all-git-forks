@@ -30,6 +30,8 @@
 #include "column.h"
 #include "sequencer.h"
 
+extern struct strbuf name; //do for us
+extern const char *head; //do for us
 
 
 static const char * const builtin_commit_usage[] = {
@@ -1129,7 +1131,8 @@ static int git_status_config(const char *k, const char *v, void *cb)
 
 		if (!strcmp(v, "false")) {}
 		else {
-			//WT_STATUS_HEADER;
+			//printf("%s", name) ; //WT_STATUS_HEADER;
+			git_branch_track = BRANCH_TRACK_ALWAYS;
 		}	
 	  return 0;
 	}
