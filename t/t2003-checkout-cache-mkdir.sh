@@ -19,10 +19,10 @@ test_expect_success 'setup' '
 	git update-index --add path0 path1/file1
 '
 
-test_expect_success SYMLINKS 'have symlink in place where dir is expected.' '
+test_expect_success 'have symlink in place where dir is expected.' '
 	rm -fr path0 path1 &&
 	mkdir path2 &&
-	ln -s path2 path1 &&
+	test_ln_s path2 path1 &&
 	git checkout-index -f -a &&
 	test ! -h path1 && test -d path1 &&
 	test -f path1/file1 && test ! -f path2/file1
@@ -79,10 +79,10 @@ test_expect_success SYMLINKS 'use --prefix=tmp/orary- where tmp is a symlink' '
 	test -h tmp
 '
 
-test_expect_success SYMLINKS 'use --prefix=tmp- where tmp-path1 is a symlink' '
+test_expect_success 'use --prefix=tmp- where tmp-path1 is a symlink' '
 	rm -fr path0 path1 path2 tmp* &&
 	mkdir tmp1 &&
-	ln -s tmp1 tmp-path1 &&
+	test_ln_s tmp1 tmp-path1 &&
 	git checkout-index --prefix=tmp- -f -a &&
 	test -f tmp-path0 &&
 	test ! -h tmp-path1 &&
