@@ -9,6 +9,8 @@
 #include "exec_cmd.h"
 #include "strbuf.h"
 #include "quote.h"
+#include "commit.h"
+
 
 typedef struct config_file {
 	struct config_file *prev;

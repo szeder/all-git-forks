@@ -30,16 +30,19 @@
 #include "column.h"
 #include "sequencer.h"
 
+extern struct strbuf name; //do for us
+extern const char *head; //do for us
+
+
 static const char * const builtin_commit_usage[] = {
 	N_("git commit [options] [--] <pathspec>..."),
 	NULL
 };
-
-static const char * const builtin_status_usage[] = {
+static const char * const  builtin_status_usage[] = {
 	N_("git status [options] [--] <pathspec>..."),
 	NULL
 };
-
+ 
 static const char implicit_ident_advice[] =
 N_("Your name and email address were configured automatically based\n"
 "on your username and hostname. Please check that they are accurate.\n"
@@ -1111,6 +1114,29 @@ static int git_status_config(const char *k, const char *v, void *cb)
 		if (is_bool && s->submodule_summary)
 			s->submodule_summary = -1;
 		return 0;
+	}
+	if (!strcmp(k, "status.short")) {
+		if (!v)
+			return config_error_nonbool(k);
+
+		if (!strcmp(v, "false")) {}		
+
+	        else {
+			status_format = STATUS_FORMAT_SHORT;
+	        	wt_shortstatus_print(s);
+		}
+	        return 0;
+	}
+	if (!strcmp(k, "status.branch")) { 
+	  	if (!v)
+			return config_error_nonbool(k);
+
+		if (!strcmp(v, "false")) {}
+		else {
+			//printf("%s", name) ; //WT_STATUS_HEADER;
+			git_branch_track = BRANCH_TRACK_ALWAYS;
+		}	
+	  return 0;
 	}
 	if (!strcmp(k, "status.color") || !strcmp(k, "color.status")) {
 		s->use_color = git_config_colorbool(k, v);
