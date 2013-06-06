@@ -378,6 +378,7 @@ static inline enum object_type object_type(unsigned int mode)
  * The array is NULL-terminated, which makes it easy to pass in the "env"
  * parameter of a run-command invocation, or to do a simple walk.
  */
+
 extern const char * const local_repo_env[];
 
 extern int is_bare_repository_cfg;
@@ -606,6 +607,8 @@ enum push_default_type {
 extern enum branch_track git_branch_track;
 extern enum rebase_setup_type autorebase;
 extern enum push_default_type push_default;
+
+//extern enum status_format_type status_format;   //do for us
 
 enum object_creation_mode {
 	OBJECT_CREATION_USES_HARDLINKS = 0,

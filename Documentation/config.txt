@@ -2067,7 +2067,10 @@ status.relativePaths::
 	prior to v1.5.4).
 
 status.short::
-	//COMPLETER
+	By default, linkgit:git-status[1] shows the output in the long-format. 
+	Setting this variable true, the output will be show in the short-format.
+	This variable is defined by default to false, but it can be redefined
+	in the config file,it could be true.
 
 status.branch::
 	//COMPLETER

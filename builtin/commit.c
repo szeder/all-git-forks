@@ -30,16 +30,17 @@
 #include "column.h"
 #include "sequencer.h"
 
+
+
 static const char * const builtin_commit_usage[] = {
 	N_("git commit [options] [--] <pathspec>..."),
 	NULL
 };
-
-static const char * const builtin_status_usage[] = {
+static const char * const  builtin_status_usage[] = {
 	N_("git status [options] [--] <pathspec>..."),
 	NULL
 };
-
+ 
 static const char implicit_ident_advice[] =
 N_("Your name and email address were configured automatically based\n"
 "on your username and hostname. Please check that they are accurate.\n"
@@ -111,11 +112,11 @@ static int show_ignored_in_status;
 static const char *only_include_assumed;
 static struct strbuf message = STRBUF_INIT;
 
-static enum {
-	STATUS_FORMAT_NONE = 0,
-	STATUS_FORMAT_LONG,
-	STATUS_FORMAT_SHORT,
-	STATUS_FORMAT_PORCELAIN
+static enum {           
+        STATUS_FORMAT_NONE = 0,
+        STATUS_FORMAT_LONG, 
+        STATUS_FORMAT_SHORT,
+        STATUS_FORMAT_PORCELAIN
 } status_format;
 
 static int opt_parse_m(const struct option *opt, const char *arg, int unset)
@@ -1110,6 +1111,28 @@ static int git_status_config(const char *k, const char *v, void *cb)
 			s->submodule_summary = -1;
 		return 0;
 	}
+	if (!strcmp(k, "status.short")) {
+		if (!v)
+			return config_error_nonbool(k);
+
+		if (!strcmp(v, "false")) {}		
+
+	        else {
+			status_format = STATUS_FORMAT_SHORT;
+	        	wt_shortstatus_print(s);
+		}
+	        return 0;
+	}
+	if (!strcmp(k, "status.branch")) { 
+	  	if (!v)
+			return config_error_nonbool(k);
+
+		if (!strcmp(v, "false")) {}
+		else {
+			//WT_STATUS_HEADER;
+		}	
+	  return 0;
+	}
 	if (!strcmp(k, "status.color") || !strcmp(k, "color.status")) {
 		s->use_color = git_config_colorbool(k, v);
 		return 0;
@@ -1174,7 +1197,6 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 		OPT_COLUMN(0, "column", &s.colopts, N_("list untracked files in columns")),
 		OPT_END(),
 	};
-
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage_with_options(builtin_status_usage, builtin_status_options);
 
@@ -1209,11 +1231,14 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 
 	s.is_initial = get_sha1(s.reference, sha1) ? 1 : 0;
 	s.ignore_submodule_arg = ignore_submodule_arg;
+	
+	
+	
 	wt_status_collect(&s);
 
 	if (s.relative_paths)
 		s.prefix = prefix;
-
+	
 	switch (status_format) {
 	case STATUS_FORMAT_SHORT:
 		wt_shortstatus_print(&s);
@@ -1223,8 +1248,8 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 		break;
 	case STATUS_FORMAT_NONE:
 	case STATUS_FORMAT_LONG:
-		s.verbose = verbose;
-		s.ignore_submodule_arg = ignore_submodule_arg;
+	  	s.verbose = verbose;
+	  	s.ignore_submodule_arg = ignore_submodule_arg;
 		wt_status_print(&s);
 		break;
 	}
