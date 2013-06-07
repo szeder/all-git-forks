@@ -2066,6 +2066,16 @@ status.relativePaths::
 	relative to the repository root (this was the default for Git
 	prior to v1.5.4).
 
+status.short::
+	By default, linkgit:git-status[1] shows paths relative to the
+	current directory. Setting this variable to 'true' shows paths 
+	in format-short.
+
+status.branch::
+	By default, linkgit:git-status -s[1] shows paths relative to the
+	current directory in short-format. Setting this variable to 'true'
+	shows also the name of the current branch.
+
 status.showUntrackedFiles::
 	By default, linkgit:git-status[1] and linkgit:git-commit[1] show
 	files which are not currently tracked by Git. Directories which
