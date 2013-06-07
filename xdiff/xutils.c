@@ -143,6 +143,19 @@ long xdl_guess_lines(mmfile_t *mf, long sample) {
 	return nl + 1;
 }
 
+int xdl_blankline(const char *line, long flags)
+{
+	long i;
+
+	if (!(flags & XDF_WHITESPACE_FLAGS))
+		return (*line == '\n');
+
+	for (i = 0; line[i] != '\n' && XDL_ISSPACE(line[i]); i++)
+		;
+
+	return (line[i] == '\n');
+}
+
 int xdl_recmatch(const char *l1, long s1, const char *l2, long s2, long flags)
 {
 	int i1, i2;

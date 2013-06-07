@@ -56,14 +56,34 @@ static int xdl_emit_record(xdfile_t *xdf, long ri, char const *pre, xdemitcb_t *
 /*
  * Starting at the passed change atom, find the latest change atom to be included
  * inside the differential hunk according to the specified configuration.
+ * Also advance xscr if the first changes must be discareded.
  */
-xdchange_t *xdl_get_hunk(xdchange_t *xscr, xdemitconf_t const *xecfg) {
+xdchange_t *xdl_get_hunk(xdchange_t **xscr, xdemitconf_t const *xecfg) {
 	xdchange_t *xch, *xchp;
 	long max_common = 2 * xecfg->ctxlen + xecfg->interhunkctxlen;
+	long ignorable_context = max_common / 2 - 1;
+	int interesting = 0;
 
-	for (xchp = xscr, xch = xscr->next; xch; xchp = xch, xch = xch->next)
-		if (xch->i1 - (xchp->i1 + xchp->chg1) > max_common)
-			break;
+	for (xchp = *xscr, xch = (*xscr)->next; xch; xchp = xch, xch = xch->next) {
+		long thresh;
+		if (xchp->ignore || xch->ignore)
+			thresh = ignorable_context;
+		else
+			thresh = max_common;
+
+		if (!xchp->ignore)
+			interesting = 1;
+
+		if (xch->i1 - (xchp->i1 + xchp->chg1) > thresh) {
+			if (interesting)
+				break;
+			else
+				*xscr = xch;
+		}
+	}
+
+	if (!interesting && xchp->ignore)
+		*xscr = NULL;
 
 	return xchp;
 }
@@ -139,7 +159,9 @@ int xdl_emit_diff(xdfenv_t *xe, xdchange_t *xscr, xdemitcb_t *ecb,
 		return xdl_emit_common(xe, xscr, ecb, xecfg);
 
 	for (xch = xscr; xch; xch = xche->next) {
-		xche = xdl_get_hunk(xch, xecfg);
+		xche = xdl_get_hunk(&xch, xecfg);
+		if (!xch)
+			break;
 
 		s1 = XDL_MAX(xch->i1 - xecfg->ctxlen, 0);
 		s2 = XDL_MAX(xch->i2 - xecfg->ctxlen, 0);
