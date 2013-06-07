@@ -9,6 +9,7 @@
 #include "gpg-interface.h"
 #include "mergesort.h"
 #include "commit-slab.h"
+#include "commit-queue.h"
 
 static struct commit_extra_header *read_commit_extra_header_lines(const char *buf, size_t len, const char **);
 
@@ -513,21 +514,41 @@ struct commit *pop_commit(struct commit_list **stack)
 
 define_commit_slab(indegree_slab, int);
 
+static int compare_commits_by_commit_date(struct commit *a, struct commit *b, void *unused)
+{
+	/* newer commits with larger date first */
+	if (a->date < b->date)
+		return 1;
+	else if (a->date > b->date)
+		return -1;
+	return 0;
+}
+
 /*
  * Performs an in-place topological sort on the list supplied.
  */
-void sort_in_topological_order(struct commit_list ** list, int lifo)
+void sort_in_topological_order(struct commit_list **list, enum rev_sort_order sort_order)
 {
 	struct commit_list *next, *orig = *list;
-	struct commit_list *work, **insert;
 	struct commit_list **pptr;
 	struct indegree_slab indegree;
+	struct commit_queue queue;
+	struct commit *commit;
 
 	if (!orig)
 		return;
 	*list = NULL;
 
 	init_indegree_slab(&indegree);
+	memset(&queue, '\0', sizeof(queue));
+	switch (sort_order) {
+	default: /* REV_SORT_IN_GRAPH_ORDER */
+		queue.compare = NULL;
+		break;
+	case REV_SORT_BY_COMMIT_DATE:
+		queue.compare = compare_commits_by_commit_date;
+		break;
+	}
 
 	/* Mark them and clear the indegree */
 	for (next = orig; next; next = next->next) {
@@ -537,7 +558,7 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 
 	/* update the indegree */
 	for (next = orig; next; next = next->next) {
-		struct commit_list * parents = next->item->parents;
+		struct commit_list *parents = next->item->parents;
 		while (parents) {
 			struct commit *parent = parents->item;
 			int *pi = indegree_slab_at(&indegree, parent);
@@ -555,30 +576,28 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 	 *
 	 * the tips serve as a starting set for the work queue.
 	 */
-	work = NULL;
-	insert = &work;
 	for (next = orig; next; next = next->next) {
 		struct commit *commit = next->item;
 
 		if (*(indegree_slab_at(&indegree, commit)) == 1)
-			insert = &commit_list_insert(commit, insert)->next;
+			commit_queue_put(&queue, commit);
 	}
 
-	/* process the list in topological order */
-	if (!lifo)
-		commit_list_sort_by_date(&work);
+	/*
+	 * This is unfortunate; the initial tips need to be shown
+	 * in the order given from the revision traversal machinery.
+	 */
+	if (sort_order == REV_SORT_IN_GRAPH_ORDER)
+		commit_queue_reverse(&queue);
+
+	/* We no longer need the commit list */
+	free_commit_list(orig);
 
 	pptr = list;
 	*list = NULL;
-	while (work) {
-		struct commit *commit;
-		struct commit_list *parents, *work_item;
+	while ((commit = commit_queue_get(&queue)) != NULL) {
+		struct commit_list *parents;
 
-		work_item = work;
-		work = work_item->next;
-		work_item->next = NULL;
-
-		commit = work_item->item;
 		for (parents = commit->parents; parents ; parents = parents->next) {
 			struct commit *parent = parents->item;
 			int *pi = indegree_slab_at(&indegree, parent);
@@ -591,23 +610,20 @@ void sort_in_topological_order(struct commit_list ** list, int lifo)
 			 * when all their children have been emitted thereby
 			 * guaranteeing topological order.
 			 */
-			if (--(*pi) == 1) {
-				if (!lifo)
-					commit_list_insert_by_date(parent, &work);
-				else
-					commit_list_insert(parent, &work);
-			}
+			if (--(*pi) == 1)
+				commit_queue_put(&queue, parent);
 		}
 		/*
-		 * work_item is a commit all of whose children
-		 * have already been emitted. we can emit it now.
+		 * all children of commit have already been
+		 * emitted. we can emit it now.
 		 */
 		*(indegree_slab_at(&indegree, commit)) = 0;
-		*pptr = work_item;
-		pptr = &work_item->next;
+
+		pptr = &commit_list_insert(commit, pptr)->next;
 	}
 
 	clear_indegree_slab(&indegree);
+	clear_commit_queue(&queue);
 }
 
 /* merge-base stuff */
