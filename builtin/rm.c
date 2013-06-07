@@ -62,12 +62,11 @@ static int check_submodules_use_gitfiles(void)
 
 		if (!submodule_uses_gitfile(name))
 			errs = error(_("submodule '%s' (or one of its nested "
-				     "submodules) uses a .git directory\n"
-				     "%s"), name,
-				     advice_rm_hints 
-				     	? "(use 'rm -rf' if you really want to remove "
-				          "it including all of its history)"
-				     	: "");
+				       "submodules) uses a .git directory%s"), name,
+				     advice_rm_hints
+				     ? "\n(use 'rm -rf' if you really want to remove "
+				     "it including all of its history)"
+				     : "");
 	}
 
 	return errs;
@@ -187,67 +186,49 @@ static int check_local_mod(unsigned char *head, int index_only)
 			if (staged_changes) {
 				strbuf_addstr(&files_cached, "\n    ");
 				strbuf_addstr(&files_cached, name);
-				/*
-				  errs = error(_("'%s' has changes staged in the index\n"
-				  "(use --cached to keep the file, "
-				  "or -f to force removal)"), name);*/
 			}
 			if (local_changes) {
 				if (S_ISGITLINK(ce->ce_mode) &&
 				    !submodule_uses_gitfile(name)) {
 					strbuf_addstr(&files_submodule, "\n    ");
 					strbuf_addstr(&files_submodule, name);
-
-					errs = error(_("submodule '%s' (or one of its nested "
-						       "submodules) uses a .git directory\n"
-						       "(use 'rm -rf' if you really want to remove "
-						       "it including all of its history)"), name);
 				} else {
 					strbuf_addstr(&files_local, "\n    ");
 					strbuf_addstr(&files_local, name);
-					/*
-					  errs = error(_("'%s' has local modifications\n"
-					  "(use --cached to keep the file, "
-					  "or -f to force removal)"), name);*/
 				}
 			}
 		}
 	}
 
-	if (advice_rm_hints) {
-		if (files_staged.len) 
-			errs = error(_("the following files have staged content "
-				       "different from both the file and the HEAD:%s\n"
-				       "(use -f to force removal)"), files_staged.buf);
-		if (files_cached.len) 
-			errs = error(_("the following files have changes staged "
-				       "in the index:%s\n(use --cached to keep the file, "
-				       "or -f to force removal)"), files_cached.buf);
-		/*if (files_submodule.len)
-		  errs = error(_("the following submodules (or one of its nested "
-		  "submodule) use a .git directory:%s\n(use 'rm -rf' "
-		  "if you really want to remove it including all of "
-		  "its history)"), files_submodule.buf);*/
-		if (files_local.len) 
-			errs = error(_("the following files have local modifications:"
-				       "%s\n(use --cached to keep the file, or -f to "
-				       "force removal)"), files_local.buf);
-	} else { 
-		if (files_staged.len)
-			errs = error(_("the following files have staged content "
-				       "different from both the file and the HEAD:%s"), 
-				     files_staged.buf);
-		if (files_cached.len) 
-			errs = error(_("the following files have changes staged "
-				       "in the index:%s"), files_cached.buf);
-		/*if (files_submodule.len)
-		  errs = error(_("the following submodules (or one of its nested "
-		  "submodule) use a .git directory:%s"), 
-		  files_submodule.buf);*/
-		if (files_local.len) 
-			errs = error(_("the following files have local modifications:"
-				       "%s"), files_local.buf);
-	}
+	if (files_staged.len)
+		errs = error(_("the following files have staged content "
+			       "different from both the file and the HEAD:%s%s"
+			       ), files_staged.buf,
+			     advice_rm_hints
+			     ? "\n(use -f to force removal)"
+			     : "");
+	if (files_cached.len)
+		errs = error(_("the following files have changes staged "
+			       "in the index:%s%s"), files_cached.buf,
+			     advice_rm_hints
+			     ? "\n(use --cached to keep the file, "
+			     "or -f to force removal)"
+			     : "");
+	if (files_submodule.len)
+		errs = error(_("the following submodules (or one of its nested "
+			       "submodule) use a .git directory:%s\n%s"),
+			     files_submodule.buf,
+			     advice_rm_hints
+			     ? "(use 'rm -rf' if you really want to remove "
+			     "it including all of its history)"
+			     : "");
+	if (files_local.len)
+		errs = error(_("the following files have local modifications:"
+			       "%s%s"), files_local.buf,
+			     advice_rm_hints
+			     ? "\n(use --cached to keep the file, or -f to "
+			     "force removal)"
+			     : "");
 
 	return errs;
 }
