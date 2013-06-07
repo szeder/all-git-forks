@@ -1688,6 +1688,7 @@ sig_handler_t mingw_signal(int sig, sig_handler_t handler)
 	case SIGINT:
 		old = sigint_fn;
 		sigint_fn = handler;
+		signal(sig, handler);
 		break;
 
 	default:
