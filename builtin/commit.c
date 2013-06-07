@@ -30,9 +30,6 @@
 #include "column.h"
 #include "sequencer.h"
 
-extern struct strbuf name; //do for us
-extern const char *head; //do for us
-
 
 static const char * const builtin_commit_usage[] = {
 	N_("git commit [options] [--] <pathspec>..."),
@@ -1119,23 +1116,21 @@ static int git_status_config(const char *k, const char *v, void *cb)
 		if (!v)
 			return config_error_nonbool(k);
 
-		if (!strcmp(v, "false")) {}
+		if (!strcmp(v, "true")) {
 
-	        else {
 			status_format = STATUS_FORMAT_SHORT;
 	        	wt_shortstatus_print(s);
 		}
 	        return 0;
 	}
-	if (!strcmp(k, "status.branch")) {
+	if (!strcmp(k, "status.branch")) { //do for us
+		
 	  	if (!v)
 			return config_error_nonbool(k);
 
-		if (!strcmp(v, "false")) {}
-		else {
-			//printf("%s", name) ; //WT_STATUS_HEADER;
-			git_branch_track = BRANCH_TRACK_ALWAYS;
-		}
+		if (!strcmp(v, "true")) 
+			s->show_branch = 1;
+		
 	  return 0;
 	}
 	if (!strcmp(k, "status.color") || !strcmp(k, "color.status")) {
