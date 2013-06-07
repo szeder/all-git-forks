@@ -9,6 +9,10 @@ Foreign interface
  * Remote transport helper has been updated to report errors and
    maintain ref hierarchy used to keep track of its own state better.
 
+ * With "export" remote-helper protocol, (1) a push that tries to
+   update a remote ref whose name is different from the pushing side
+   does not work yet, and (2) the helper may not know how to do
+   --dry-run; these problematic cases are disabled for now.
 
 UI, Workflows & Features
 
@@ -16,7 +20,7 @@ UI, Workflows & Features
    more like "check-attr" over bidi-pipes.
 
  * "git describe" learned "--first-parent" option to limit its closest
-   tagged commmit search to the first-parent chain.
+   tagged commit search to the first-parent chain.
 
  * "git merge foo" that might have meant "git merge origin/foo" is
    diagnosed with a more informative error message.
@@ -32,13 +36,23 @@ UI, Workflows & Features
 
  * Updates to completion (both bash and zsh) helpers.
 
+ * The behaviour of the "--chain-reply-to" option of "git send-email"
+   have changed at 1.7.0, and we added a warning/advice message to
+   help users adjust to the new behaviour back then, but we kept it
+   around for too long.  The message has finally been removed.
+
  * "git fetch origin master" unlike "git fetch origin" or "git fetch"
    did not update "refs/remotes/origin/master"; this was an early
    design decision to keep the update of remote tracking branches
    predictable, but in practice it turns out that people find it more
-   convenient to opportunisticly update them whenever we have a
+   convenient to opportunistically update them whenever we have a
    chance, and we have been updating them when we run "git push" which
    already breaks the original "predictability" anyway.
+
+ * The configuration variable core.checkstat was advertised in the
+   documentation but the code expected core.statinfo instead.
+   For now, we accept both core.checkstat and core.statinfo, but the
+   latter will be removed in the longer term.
 
 
 Performance, Internal Implementation, etc.
@@ -57,6 +71,9 @@ Performance, Internal Implementation, etc.
    inconsistently between the test framework and t/Makefile, and logic
    to summarize the results looked at a wrong place.
 
+ * "git clone" uses a lighter-weight implementation when making sure
+   that the history behind refs are complete.
+
  * Many warnings from sparse source checker in compat/ area has been
    squelched.
 
@@ -73,6 +90,47 @@ Fixes since v1.8.3
 Unless otherwise noted, all the fixes since v1.8.3 in the maintenance
 track are contained in this release (see release notes to them for
 details).
+
+ * "difftool --dir-diff" did not copy back changes made by the
+   end-user in the diff tool backend to the working tree in some
+   cases.
+   (merge 32eaf1d ks/difftool-dir-diff-copy-fix later to maint).
+
+ * "git push $there HEAD:branch" did not resolve HEAD early enough, so
+   it was easy to flip it around while push is still going on and push
+   out a branch that the user did not originally intended when the
+   command was started.
+   (merge 0f075b2 rr/push-head later to maint).
+
+ * The bash prompt code (in contrib/) displayed the name of the branch
+   being rebased when "rebase -i/-m/-p" modes are in use, but not the
+   plain vanilla "rebase".
+   (merge 1306321 fc/show-branch-in-rebase-am later to maint).
+
+ * Handling of negative exclude pattern for directories "!dir" was
+   broken in the update to v1.8.3.
+   (merge c3c327d kb/status-ignored-optim-2 later to maint).
+
+ * zsh prompt script that borrowed from bash prompt script did not
+   work due to slight differences in array variable notation between
+   these two shells.
+   (merge d0583da tg/maint-zsh-svn-remote-prompt later to maint).
+
+ * An entry for "file://" scheme in the enumeration of URL types Git
+   can take in the HTML documentation was made into a clickable link
+   by mistake.
+   (merge 4c32e36 nd/urls-doc-no-file-hyperlink-fix later to maint).
+
+ * "git push --[no-]verify" was not documented.
+   (merge 90d32d1 tr/push-no-verify-doc later to maint).
+
+ * Stop installing the git-remote-testpy script that is only used for
+   testing.
+   (merge 416fda6 fc/makefile later to maint).
+
+ * "git commit --allow-empty-message -m ''" should not start an
+   editor.
+   (merge 2520677 rs/commit-m-no-edit later to maint).
 
  * "git merge @{-1}~22" was rewritten to "git merge frotz@{1}~22"
    incorrectly when your previous branch was "frotz" (it should be
