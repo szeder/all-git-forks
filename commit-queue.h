@@ -28,4 +28,7 @@ extern struct commit *commit_queue_get(struct commit_queue *);
 
 extern void clear_commit_queue(struct commit_queue *);
 
+/* Reverse the LIFO elements */
+extern void commit_queue_reverse(struct commit_queue *);
+
 #endif /* COMMIT_QUEUE_H */

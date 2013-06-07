@@ -2,6 +2,19 @@
 #include "commit.h"
 #include "commit-queue.h"
 
+void commit_queue_reverse(struct commit_queue *queue)
+{
+	int i, j;
+
+	if (queue->compare != NULL)
+		die("BUG: commit_queue_reverse() on non-LIFO queue");
+	for (i = 0; i <= (j = (queue->nr - 1) - i); i++) {
+		struct commit *swap = queue->array[i];
+		queue->array[i] = queue->array[j];
+		queue->array[j] = swap;
+	}
+}
+
 void clear_commit_queue(struct commit_queue *queue)
 {
 	free(queue->array);
