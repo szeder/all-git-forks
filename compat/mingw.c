@@ -1573,7 +1573,8 @@ static HANDLE timer_event;
 static HANDLE timer_thread;
 static int timer_interval;
 static int one_shot;
-static sig_handler_t timer_fn = SIG_DFL, sigint_fn = SIG_DFL;
+static sig_handler_t timer_fn = SIG_DFL, sigint_fn = SIG_DFL,
+    sigterm_fn = SIG_DFL;
 
 /* The timer works like this:
  * The thread, ticktack(), is a trivial routine that most of the time
@@ -1691,6 +1692,11 @@ sig_handler_t mingw_signal(int sig, sig_handler_t handler)
 		signal(sig, handler);
 		break;
 
+	case SIGTERM:
+		old = sigterm_fn;
+		sigterm_fn = handler;
+		break;
+
 	default:
 		return signal(sig, handler);
 	}
@@ -1716,6 +1722,13 @@ int mingw_raise(int sig)
 			exit(128 + SIGINT);
 		else if (sigint_fn != SIG_IGN)
 			sigint_fn(SIGINT);
+		return 0;
+
+	case SIGTERM:
+		if (sigterm_fn == SIG_DFL)
+			exit(128 + SIGTERM);
+		else if (sigterm_fn != SIG_IGN)
+			sigterm_fn(SIGTERM);
 		return 0;
 
 	default:
