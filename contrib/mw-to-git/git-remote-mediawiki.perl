@@ -679,6 +679,7 @@ sub fetch_mw_revisions_for_page {
 			$page_rev_ids->{pageid} = $page->{pageid};
 			$page_rev_ids->{revid} = $revision->{revid};
 			push(@page_revs, $page_rev_ids);
+			print STDERR "\r revisions: $revnum ";
 			$revnum++;
 		}
 		last unless $result->{'query-continue'};
