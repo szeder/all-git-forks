@@ -13,19 +13,15 @@ struct cvs_revision {
 	char *revision;
 	unsigned int ismeta:1;
 	unsigned int isdead:1;
-
-	/*
-	 * multiple revisions of a file was merged together during patch aggregation
-	 */
+	// multiple revisions of a file was merged together during patch aggregation
 	unsigned int ismerged:1;
 	unsigned int isexec:1;
-
 	unsigned int util:1;
 
-	unsigned int mark:24;
 	struct cvs_revision *prev;
 	struct cvs_commit *cvs_commit;
 	time_t timestamp;
+	char *mark;
 };
 
 #endif

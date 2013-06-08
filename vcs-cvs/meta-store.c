@@ -91,7 +91,7 @@ void add_cvs_revision_hash(struct hash_table *meta_hash,
 		       time_t timestamp,
 		       int isdead,
 		       int isexec,
-		       int mark)
+		       char *mark)
 {
 	void **pos;
 	unsigned int hash;
@@ -254,7 +254,7 @@ int load_revision_meta(unsigned char *sha1, const char *notes_ref, time_t *times
 		if (!second || !attr)
 			die("malformed metadata: %s:%s:%s", first, attr, second);
 		isdead = !!strstr(attr, "dead");
-		add_cvs_revision_hash(*revision_meta_hash, second, first, 0, isdead, 0, 0);
+		add_cvs_revision_hash(*revision_meta_hash, second, first, 0, isdead, 0, NULL);
 	}
 
 	free(buf);
@@ -341,6 +341,8 @@ int free_hash_entry(void *ptr, void *data)
 	struct cvs_revision *rev_meta = ptr;
 	free(rev_meta->path);
 	free(rev_meta->revision);
+	if (rev_meta->mark)
+		free(rev_meta->mark);
 	free(rev_meta);
 	return 0;
 }

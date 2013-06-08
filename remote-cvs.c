@@ -17,6 +17,7 @@
 #include "diff.h"
 #include "dir.h"
 #include "string-list.h"
+#include "blob.h"
 
 /*
  * TODO:
@@ -73,6 +74,7 @@ static int update_tags = 0;
 //static struct progress *progress_state;
 //static struct progress *progress_rlog;
 
+static int markid = 0;
 static int revisions_all_branches_total = 0;
 static int revisions_all_branches_fetched = 0;
 static int skipped = 0;
@@ -90,8 +92,12 @@ static struct strbuf push_error_sb = STRBUF_INIT;
 static struct string_list cvs_branch_list = STRING_LIST_INIT_DUP;
 static struct string_list cvs_tag_list = STRING_LIST_INIT_DUP;
 static struct string_list *import_branch_list = NULL;
-struct path_exclude_check *exclude_check = NULL;
-struct dir_struct *exclude_dir = NULL;
+static struct path_exclude_check *exclude_check = NULL;
+static struct dir_struct *exclude_dir = NULL;
+static struct path_exclude_check *looseblob_check = NULL;
+static struct dir_struct *looseblob_dir = NULL;
+static const char *looseblob_tag_ref_prefix = "refs/loose-blobs/";
+static struct strbuf looseblob_gitattr_sb = STRBUF_INIT;
 
 static const char import_commit_edit[] = "IMPORT_COMMIT_EDIT";
 static const char export_commit_edit[] = "EXPORT_COMMIT_EDIT";
@@ -296,6 +302,68 @@ static int is_cvs_import_excluded_path(const char *path)
 	return is_path_excluded(exclude_check, path, -1, &dtype);
 }
 
+static int *make_looseblob_gitattr_filter()
+{
+	int exfile;
+	for (exfile = 0; exfile < looseblob_dir->exclude_list_group[EXC_FILE].nr; exfile++) {
+		struct exclude_list *el = &looseblob_dir->exclude_list_group[2].el[exfile];
+		int ptrn;
+		for (ptrn = 0; ptrn < el->nr; ptrn++)
+			strbuf_addf(&looseblob_gitattr_sb,
+					"%s\tfilter=looseblob\n",
+					el->excludes[ptrn]->pattern);
+	}
+
+	return 0;
+}
+
+static void init_cvs_looseblob_filter()
+{
+	const char *cvs_looseblob_path;
+
+	if (looseblob_check)
+		return;
+
+	looseblob_check = xcalloc(1, sizeof(*looseblob_check));
+	looseblob_dir = xcalloc(1, sizeof(*looseblob_dir));
+	path_exclude_check_init(looseblob_check, looseblob_dir);
+
+	cvs_looseblob_path = git_path("info/cvs-looseblob");
+	if (!access_or_warn(cvs_looseblob_path, R_OK))
+		add_excludes_from_file(looseblob_dir, cvs_looseblob_path);
+
+	cvs_looseblob_path = getenv("GIT_CVS_IMPORT_LOOSEBLOB");
+	if (cvs_looseblob_path) {
+		if (access(cvs_looseblob_path, R_OK))
+			die("cannot access %s specified as GIT_CVS_IMPORT_LOOSEBLOB",
+			    cvs_looseblob_path);
+		add_excludes_from_file(looseblob_dir, cvs_looseblob_path);
+	}
+
+	make_looseblob_gitattr_filter();
+}
+
+static void free_cvs_looseblob_filter()
+{
+	if (!looseblob_check)
+		return;
+
+	path_exclude_check_clear(looseblob_check);
+	clear_directory(looseblob_dir);
+	free(looseblob_check);
+	free(looseblob_dir);
+}
+
+static int is_cvs_looseblob_path(const char *path)
+{
+	int dtype = DT_UNKNOWN;
+
+	if (!looseblob_check)
+		init_cvs_looseblob_filter();
+
+	return is_path_excluded(looseblob_check, path, -1, &dtype);
+}
+
 static const char *get_import_time_estimation()
 {
 	static const char *now = " 00:00, ";
@@ -332,20 +400,71 @@ static const char *get_import_time_estimation()
 	return eta_sb.buf;
 }
 
-static int fast_export_revision_by_sha1(struct cvs_revision *rev, const char *sha1)
+static int fast_export_blob(void *buf, size_t size)
 {
-	helper_printf("M 100%.3o %s %s\n", rev->isexec ? 0755 : 0644, sha1, rev->path);
-	return 0;
+	/*
+	'blob' LF
+	mark?
+	'data' SP <count> LF
+	<raw> LF?
+	*/
+
+	markid++;
+	helper_printf("blob\n");
+	helper_printf("mark :%d\n", markid);
+	helper_printf("data %zu\n", size);
+	helper_write(buf, size);
+	helper_printf("\n");
+
+	return markid;
 }
 
 static int fast_export_revision_cb(void *ptr, void *data)
 {
+	struct cvs_revision *rev = ptr;
+	struct string_list *looseblob_list = data;
+
+	if (rev->isdead) {
+		helper_printf("D %s\n", rev->path);
+		return 0;
+	}
+
+	if (!rev->mark)
+		die("No mark during fast_export_revision_by_mark");
+
+	if (is_cvs_looseblob_path(rev->path)) {
+		struct strbuf looseblob_sb = STRBUF_INIT;
+
+		if (rev->mark[0] == ':')
+			die("revision mark for loose-blob is not sha1");
+
+		strbuf_addf(&looseblob_sb, "loose-blob %s\n", rev->mark);
+		helper_printf("M 100%.3o inline %s\n", rev->isexec ? 0755 : 0644, rev->path);
+		helper_printf("data %zu\n", looseblob_sb.len);
+		helper_write(looseblob_sb.buf, looseblob_sb.len);
+		helper_printf("\n");
+		strbuf_release(&looseblob_sb);
+		string_list_append(looseblob_list, rev->mark);
+	}
+	else {
+		helper_printf("M 100%.3o %s %s\n", rev->isexec ? 0755 : 0644, rev->mark, rev->path);
+	}
+	return 0;
+}
+
+static int fetch_revision_cb(void *ptr, void *data)
+{
 	static struct cvsfile file = CVSFILE_INIT;
 	struct cvs_revision *rev = ptr;
 	char *cached_sha1;
+	struct strbuf mark_sb = STRBUF_INIT;
 	int isexec;
 	int rc;
 
+	if (rev->mark || rev->isdead)
+		return 0;
+
+	revisions_all_branches_total++;
 	revisions_all_branches_fetched++;
 	fprintf(stderr, "checkout [%d/%d] (%.2lf%%) all branches,%sETA] %s %s",
 			revisions_all_branches_fetched,
@@ -354,16 +473,10 @@ static int fast_export_revision_cb(void *ptr, void *data)
 			get_import_time_estimation(),
 			rev->path, rev->revision);
 
-	if (rev->isdead) {
-		fprintf(stderr, " dead\n");
-		helper_printf("D %s\n", rev->path);
-		return 0;
-	}
-
 	cached_sha1 = revision_cache_lookup(rev->path, rev->revision, &isexec);
 	if (cached_sha1) {
 		rev->isexec = isexec;
-		fast_export_revision_by_sha1(rev, cached_sha1);
+		rev->mark = xstrdup(cached_sha1);
 		fprintf(stderr, " (fetched from revision cache) isexec %u sha1 %s\n", isexec, cached_sha1);
 		return 0;
 	}
@@ -384,8 +497,8 @@ static int fast_export_revision_cb(void *ptr, void *data)
 	//display_throughput(progress_state, fetched_total_size);
 
 	if (file.isdead) {
+		rev->isdead = 1;
 		fprintf(stderr, " (fetched) dead\n");
-		helper_printf("D %s\n", rev->path);
 		return 0;
 	}
 
@@ -395,10 +508,17 @@ static int fast_export_revision_cb(void *ptr, void *data)
 		fprintf(stderr, " mode %.3o size %zu\n", file.mode, file.file.len);
 
 	rev->isexec = file.isexec;
-	helper_printf("M 100%.3o inline %s\n", file.isexec ? 0755 : 0644, rev->path);
-	helper_printf("data %zu\n", file.file.len);
-	helper_write(file.file.buf, file.file.len);
-	helper_printf("\n");
+	if (is_cvs_looseblob_path(rev->path)) {
+		unsigned char sha1[20];
+		//fast_export_blob(file.file.buf, file.file.len);
+		//hash_sha1_file(file.file.buf, file.file.len, blob_type, sha1);
+		write_sha1_file(file.file.buf, file.file.len, blob_type, sha1);
+		strbuf_addf(&mark_sb, "%s", sha1_to_hex(sha1));
+	}
+	else {
+		strbuf_addf(&mark_sb, ":%d", fast_export_blob(file.file.buf, file.file.len));
+	}
+	rev->mark = strbuf_detach(&mark_sb, NULL);
 	return 0;
 }
 
@@ -423,6 +543,36 @@ static int cache_revision_cb(void *ptr, void *data)
 	strbuf_setlen(&lsbuf, 52);
 	add_revision_cache_entry(rev->path, rev->revision, rev->isexec, lsbuf.buf + 12);
 	strbuf_release(&lsbuf);
+	return 0;
+}
+
+static int fast_export_looseblob_tag(struct string_list_item *li, void *date)
+{
+	unsigned char sha1[20];
+	struct strbuf looseblob_tag_ref_sb = STRBUF_INIT;
+
+	strbuf_addf(&looseblob_tag_ref_sb, "%s%s", looseblob_tag_ref_prefix, li->string);
+	get_sha1_hex(li->string, sha1);
+
+	update_ref("tagging loose-blob", looseblob_tag_ref_sb.buf, sha1, NULL, 0, DIE_ON_ERR);
+	/*
+	 * fast-import does not support blobs tagging
+	 *
+	helper_printf("reset %s%s\n", looseblob_tag_ref_prefix, li->string);
+	helper_printf("from %s\n", li->string);
+	 */
+	strbuf_release(&looseblob_tag_ref_sb);
+	return 0;
+}
+
+static int fast_export_looseblob_gitattributes_filter()
+{
+	if (!looseblob_gitattr_sb.len)
+		return 0;
+
+	helper_printf("M 100644 inline .gitattributes\n");
+	helper_printf("data %zu\n", looseblob_gitattr_sb.len);
+	helper_write(looseblob_gitattr_sb.buf, looseblob_gitattr_sb.len);
 	return 0;
 }
 
@@ -469,14 +619,13 @@ static int run_import_hook(struct strbuf *author_sb, struct strbuf *committer_sb
 	return 0;
 }
 
-static int markid = 0;
 static int fast_export_cvs_commit(const char *branch_name, struct cvs_commit *ps, const char *parent_mark)
 {
 	const char *author_ident;
 	struct strbuf author_sb = STRBUF_INIT;
 	struct strbuf committer_sb = STRBUF_INIT;
 	struct strbuf commit_msg_sb = STRBUF_INIT;
-	markid++;
+	struct string_list looseblob_list = STRING_LIST_INIT_NODUP;
 
 	/*
 	'commit' SP <ref> LF
@@ -507,6 +656,9 @@ static int fast_export_cvs_commit(const char *branch_name, struct cvs_commit *ps
 	if (have_import_hook)
 		run_import_hook(&author_sb, &committer_sb, &commit_msg_sb);
 
+	for_each_hash(ps->revision_hash, fetch_revision_cb, NULL);
+
+	markid++;
 	helper_printf("commit %s%s\n", get_private_ref_prefix(), branch_name);
 	helper_printf("mark :%d\n", markid);
 	helper_printf("%s\n", author_sb.buf);
@@ -516,11 +668,14 @@ static int fast_export_cvs_commit(const char *branch_name, struct cvs_commit *ps
 
 	if (parent_mark)
 		helper_printf("from %s\n", parent_mark);
-	for_each_hash(ps->revision_hash, fast_export_revision_cb, NULL);
+	for_each_hash(ps->revision_hash, fast_export_revision_cb, &looseblob_list);
+	if (looseblob_list.nr)
+		fast_export_looseblob_gitattributes_filter();
 	for_each_hash(ps->revision_hash, cache_revision_cb, NULL);
-	//helper_printf("\n");
+	for_each_string_list(&looseblob_list, fast_export_looseblob_tag, NULL);
 	helper_flush();
 
+	string_list_clear(&looseblob_list, 0);
 	strbuf_release(&author_sb);
 	strbuf_release(&committer_sb);
 	strbuf_release(&commit_msg_sb);
@@ -586,26 +741,6 @@ static int fast_export_commit_meta(const char *branch_name,
 	return markid;
 }
 
-static int fast_export_blob(void *buf, size_t size)
-{
-	/*
-	'blob' LF
-	mark?
-	'data' SP <count> LF
-	<raw> LF?
-	*/
-
-	markid++;
-	helper_printf("blob\n");
-	helper_printf("mark :%d\n", markid);
-	helper_printf("data %zu\n", size);
-	helper_write(buf, size);
-	helper_printf("\n");
-	helper_flush();
-
-	return markid;
-}
-
 static int update_revision_hash(void *ptr, void *data)
 {
 	struct cvs_revision *rev = ptr;
@@ -630,6 +765,7 @@ static int update_revision_hash(void *ptr, void *data)
 static void on_file_checkout_cb(struct cvsfile *file, void *data)
 {
 	struct hash_table *meta_revision_hash = data;
+	struct strbuf mark_sb = STRBUF_INIT;
 	int mark;
 
 	if (is_cvs_import_excluded_path(file->path.buf)) {
@@ -644,9 +780,10 @@ static void on_file_checkout_cb(struct cvsfile *file, void *data)
 		die("no support for files on disk yet");
 
 	mark = fast_export_blob(file->file.buf, file->file.len);
+	strbuf_addf(&mark_sb, ":%d", mark);
 
 	add_cvs_revision_hash(meta_revision_hash, file->path.buf, file->revision.buf,
-			      file->timestamp, file->isdead, file->isexec, mark);
+			      file->timestamp, file->isdead, file->isexec, strbuf_detach(&mark_sb, NULL));
 }
 
 static int checkout_branch(const char *branch_name, time_t import_time, struct hash_table *meta_revision_hash)
@@ -677,7 +814,7 @@ static void on_rlist_file_cb(const char *path, const char *revision, time_t time
 		return;
 	}
 
-	add_cvs_revision_hash(meta_revision_hash, path, revision, timestamp, 0, 0, 0);
+	add_cvs_revision_hash(meta_revision_hash, path, revision, timestamp, 0, 0, NULL);
 }
 
 static int rlist_branch(const char *branch_name, time_t import_time, struct hash_table *meta_revision_hash)
@@ -873,27 +1010,6 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 	return commit_ref;
 }
 
-static int fast_export_revision_by_mark_cb(void *ptr, void *data)
-{
-	struct cvs_revision *rev = ptr;
-
-	helper_printf("M 100%.3o :%d %s\n", rev->isexec ? 0755 : 0644, rev->mark, rev->path);
-	//helper_printf("\n");
-
-	return 0;
-}
-
-static int fast_export_revision_initial_cb(void *ptr, void *data)
-{
-	struct cvs_revision *rev = ptr;
-
-	if (rev->mark)
-		return fast_export_revision_by_mark_cb(ptr, data);
-
-	revisions_all_branches_total++;
-	return fast_export_revision_cb(ptr, data);
-}
-
 static int fast_export_branch_initial(const char *branch_name,
 					int istag,
 					struct hash_table *meta_revision_hash,
@@ -901,8 +1017,10 @@ static int fast_export_branch_initial(const char *branch_name,
 					const char *parent_commit_mark,
 					const char *parent_branch_name)
 {
-	markid++;
+	struct string_list looseblob_list = STRING_LIST_INIT_NODUP;
+	for_each_hash(meta_revision_hash, fetch_revision_cb, NULL);
 
+	markid++;
 	helper_printf("commit %s%s\n",
 			istag ? get_private_tags_ref_prefix() : get_private_ref_prefix(),
 			branch_name);
@@ -918,10 +1036,14 @@ static int fast_export_branch_initial(const char *branch_name,
 		helper_printf("from %s\n", parent_commit_mark);
 		helper_printf("deleteall\n");
 	}
-	for_each_hash(meta_revision_hash, fast_export_revision_initial_cb, NULL);
+	for_each_hash(meta_revision_hash, fast_export_revision_cb, &looseblob_list);
+	if (looseblob_list.nr)
+		fast_export_looseblob_gitattributes_filter();
 	for_each_hash(meta_revision_hash, cache_revision_cb, NULL);
+	for_each_string_list(&looseblob_list, fast_export_looseblob_tag, NULL);
 	helper_flush();
 
+	string_list_clear(&looseblob_list, 0);
 	return markid;
 }
 
@@ -1528,7 +1650,7 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 		}
 		else {
 			if (files[i].isnew)
-				add_cvs_revision_hash(revision_meta_hash, files[i].path.buf, "0", 0, 0, 1, 0);
+				add_cvs_revision_hash(revision_meta_hash, files[i].path.buf, "0", 0, 0, 1, NULL);
 			else
 				die("file: %s has not revision metadata, and not new", files[i].path.buf);
 		}
@@ -2342,6 +2464,7 @@ int main(int argc, const char **argv)
 
 	cvs_authors_store();
 	free_cvs_import_exclude();
+	free_cvs_looseblob_filter();
 	strbuf_release(&buf);
 	return 0;
 }

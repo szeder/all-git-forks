@@ -33,7 +33,7 @@ void add_cvs_revision_hash(struct hash_table *meta_hash,
 		       time_t timestamp,
 		       int isdead,
 		       int isexec,
-		       int mark);
+		       char *mark);
 
 char *revision_cache_lookup(const char *path, const char *revision, int *isexec);
 int add_revision_cache_entry(const char *path, const char *revision, int isexec, const char *sha);

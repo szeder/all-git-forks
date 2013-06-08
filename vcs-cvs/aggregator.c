@@ -928,6 +928,8 @@ void free_cvs_branch(struct cvs_branch *meta)
 
 		free(rev->path);
 		free(rev->revision);
+		if (rev->mark)
+			free(rev->mark);
 		free(rev);
 	}
 
