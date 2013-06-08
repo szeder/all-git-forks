@@ -4,10 +4,12 @@
 #include "builtin.h"
 #include "blob.h"
 #include "refs.h"
+#include "sigchain.h"
 
 static const char *ref_prefix = NULL;
 static const char *private_ref_prefix = NULL;
 static const char *private_tags_ref_prefix = NULL;
+static const char *revision_cache_ref = "refs/cvsmeta/cache/revisions";
 
 void set_ref_prefix_remote(const char *remote_name)
 {
@@ -347,4 +349,182 @@ void free_revision_meta(struct hash_table *revision_meta_hash)
 {
 	for_each_hash(revision_meta_hash, free_hash_entry, NULL);
 	free_hash(revision_meta_hash);
+}
+
+struct revision_cache_entry {
+	char *path;
+	char *revision;
+	char *sha1;
+	int isexec:1;
+	int need_free:1;
+};
+
+static struct hash_table *revision_cache_hash = NULL;
+static  char *cache_buf = NULL;
+
+static unsigned int hash_path_rev(const char *path, const char *rev)
+{
+	unsigned int hash = 0x12375903;
+
+	while (*path) {
+		unsigned char c = *path++;
+		hash = hash*101 + c;
+	}
+	while (*rev) {
+		unsigned char c = *rev++;
+		hash = hash*101 + c;
+	}
+	return hash;
+}
+
+static int add_free_rev_entry(void *ptr, void *data)
+{
+	struct revision_cache_entry *rev_ent = ptr;
+	struct strbuf *rev_cache_sb = data;
+
+	strbuf_addf(rev_cache_sb, "%s:%s:%c:%s\n",
+			rev_ent->sha1,
+			rev_ent->revision,
+			rev_ent->isexec ? 'x' : 'r',
+			rev_ent->path);
+	if (rev_ent->need_free) {
+		free(rev_ent->path);
+		free(rev_ent->revision);
+		free(rev_ent->sha1);
+	}
+	free(rev_ent);
+	return 0;
+}
+
+static void save_revision_cache()
+{
+	unsigned char sha1[20];
+	struct strbuf rev_cache_sb = STRBUF_INIT;
+
+	if (!revision_cache_hash)
+		return;
+
+	for_each_hash(revision_cache_hash, add_free_rev_entry, &rev_cache_sb);
+
+	free_hash(revision_cache_hash);
+	free(revision_cache_hash);
+	revision_cache_hash = NULL;
+
+	if (!write_sha1_file(rev_cache_sb.buf, rev_cache_sb.len, blob_type, sha1))
+		update_ref("cvs revision cache update", revision_cache_ref, sha1, NULL, 0, MSG_ON_ERR);
+
+	strbuf_release(&rev_cache_sb);
+	free(cache_buf);
+}
+
+static void save_revision_cache_on_signal(int signo)
+{
+	save_revision_cache();
+	sigchain_pop(signo);
+	raise(signo);
+}
+
+#define SHA1_STR_LEN 40
+static int load_revision_cache()
+{
+	unsigned char sha1[20];
+	char *p, *tail;
+	unsigned long size;
+	unsigned int hash;
+	enum object_type type;
+	struct revision_cache_entry *rev_ent;
+
+	revision_cache_hash = xmalloc(sizeof(struct hash_table));
+	init_hash(revision_cache_hash);
+
+	atexit(save_revision_cache);
+	sigchain_push_common(save_revision_cache_on_signal);
+
+	if (get_sha1_blob(revision_cache_ref, sha1))
+		return 0;
+
+	cache_buf = read_sha1_file(sha1, &type, &size);
+	if (!cache_buf)
+		die("Cannot read sha1 %s", sha1_to_hex(sha1));
+
+	p = cache_buf;
+	tail = cache_buf + size;
+	while (p < tail) {
+		if (tail - p <= SHA1_STR_LEN)
+			break;
+		rev_ent = xcalloc(1, sizeof(*rev_ent));
+		rev_ent->sha1 = p;
+		p[SHA1_STR_LEN] = 0;
+		p += SHA1_STR_LEN + 1;
+		if (p >= tail)
+			break;
+
+		rev_ent->revision = p;
+		p = memchr(p, ':', tail - p);
+		if (!p)
+			break;
+		*p++ = '\0';
+		if (p >= tail)
+			break;
+
+		if (*p == 'x')
+			rev_ent->isexec = 1;
+		p += 2;
+		if (p >= tail)
+			break;
+
+		rev_ent->path = p;
+		p = memchr(p, '\n', tail - p);
+		if (!p)
+			break;
+		*p++ = '\0';
+
+		hash = hash_path_rev(rev_ent->path, rev_ent->revision);
+		if (insert_hash(hash, rev_ent, revision_cache_hash))
+			free(rev_ent);
+		rev_ent = NULL;
+	}
+
+	if (rev_ent)
+		die("Malformed revision cache");
+
+	return 0;
+}
+
+char *revision_cache_lookup(const char *path, const char *revision, int *isexec)
+{
+	struct revision_cache_entry *rev_ent;
+	if (!revision_cache_hash)
+		load_revision_cache();
+
+	rev_ent = lookup_hash(hash_path_rev(path, revision), revision_cache_hash);
+	if (!rev_ent)
+		return NULL;
+
+	*isexec = rev_ent->isexec;
+	return rev_ent->sha1;
+}
+
+int add_revision_cache_entry(const char *path, const char *revision, int isexec, const char *sha1)
+{
+	unsigned int hash;
+	struct revision_cache_entry *rev_ent;
+
+	if (!revision_cache_hash)
+		load_revision_cache();
+
+	rev_ent = xcalloc(1, sizeof(*rev_ent));
+
+	hash = hash_path_rev(path, revision);
+	if (insert_hash(hash, rev_ent, revision_cache_hash)) {
+		free(rev_ent);
+		return -1;
+	}
+
+	rev_ent->path = strdup(path);
+	rev_ent->revision = strdup(revision);
+	rev_ent->sha1 = strdup(sha1);
+	rev_ent->isexec = isexec;
+	rev_ent->need_free = 1;
+	return 0;
 }

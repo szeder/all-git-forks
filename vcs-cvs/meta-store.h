@@ -35,6 +35,9 @@ void add_cvs_revision_hash(struct hash_table *meta_hash,
 		       int isexec,
 		       int mark);
 
+char *revision_cache_lookup(const char *path, const char *revision, int *isexec);
+int add_revision_cache_entry(const char *path, const char *revision, int isexec, const char *sha);
+
 char *read_note_of(unsigned char sha1[20], const char *notes_ref, unsigned long *size);
 
 char *parse_meta_line(char *buf, unsigned long len, char **first, char **second, char **attr, char *p);

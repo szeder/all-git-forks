@@ -332,10 +332,18 @@ static const char *get_import_time_estimation()
 	return eta_sb.buf;
 }
 
+static int fast_export_revision_by_sha1(struct cvs_revision *rev, const char *sha1)
+{
+	helper_printf("M 100%.3o %s %s\n", rev->isexec ? 0755 : 0644, sha1, rev->path);
+	return 0;
+}
+
 static int fast_export_revision_cb(void *ptr, void *data)
 {
 	static struct cvsfile file = CVSFILE_INIT;
 	struct cvs_revision *rev = ptr;
+	char *cached_sha1;
+	int isexec;
 	int rc;
 
 	revisions_all_branches_fetched++;
@@ -349,6 +357,14 @@ static int fast_export_revision_cb(void *ptr, void *data)
 	if (rev->isdead) {
 		fprintf(stderr, " dead\n");
 		helper_printf("D %s\n", rev->path);
+		return 0;
+	}
+
+	cached_sha1 = revision_cache_lookup(rev->path, rev->revision, &isexec);
+	if (cached_sha1) {
+		rev->isexec = isexec;
+		fast_export_revision_by_sha1(rev, cached_sha1);
+		fprintf(stderr, " (fetched from revision cache) isexec %u sha1 %s\n", isexec, cached_sha1);
 		return 0;
 	}
 
@@ -378,12 +394,35 @@ static int fast_export_revision_cb(void *ptr, void *data)
 	else
 		fprintf(stderr, " mode %.3o size %zu\n", file.mode, file.file.len);
 
-	//helper_printf("M 100%.3o %s %s\n", hash, rev->path);
+	rev->isexec = file.isexec;
 	helper_printf("M 100%.3o inline %s\n", file.isexec ? 0755 : 0644, rev->path);
 	helper_printf("data %zu\n", file.file.len);
 	helper_write(file.file.buf, file.file.len);
 	helper_printf("\n");
+	return 0;
+}
 
+static int cache_revision_cb(void *ptr, void *data)
+{
+	struct cvs_revision *rev = ptr;
+	struct strbuf lsbuf = STRBUF_INIT;
+
+	if (rev->isdead)
+		return 0;
+
+	helper_printf("ls \"%s\"\n", rev->path);
+	helper_flush();
+	helper_strbuf_getline(&lsbuf);
+
+	/*
+	 * 40 sha + 6 file mode + 6 ' blob '
+	 */
+	if (lsbuf.len < 52 || strncmp(lsbuf.buf + 6 /*mode*/, " blob ", 6))
+		die("unexpected fast-import ls reply: %s", lsbuf.buf);
+
+	strbuf_setlen(&lsbuf, 52);
+	add_revision_cache_entry(rev->path, rev->revision, rev->isexec, lsbuf.buf + 12);
+	strbuf_release(&lsbuf);
 	return 0;
 }
 
@@ -478,6 +517,7 @@ static int fast_export_cvs_commit(const char *branch_name, struct cvs_commit *ps
 	if (parent_mark)
 		helper_printf("from %s\n", parent_mark);
 	for_each_hash(ps->revision_hash, fast_export_revision_cb, NULL);
+	for_each_hash(ps->revision_hash, cache_revision_cb, NULL);
 	//helper_printf("\n");
 	helper_flush();
 
@@ -879,6 +919,7 @@ static int fast_export_branch_initial(const char *branch_name,
 		helper_printf("deleteall\n");
 	}
 	for_each_hash(meta_revision_hash, fast_export_revision_initial_cb, NULL);
+	for_each_hash(meta_revision_hash, cache_revision_cb, NULL);
 	helper_flush();
 
 	return markid;
