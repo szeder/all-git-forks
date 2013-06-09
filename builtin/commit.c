@@ -1643,16 +1643,10 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	rerere(0);
 	run_hook(get_index_file(), "post-commit", NULL);
 	if (amend && !no_post_rewrite) {
-		struct notes_rewrite_cfg *cfg;
 		struct rewritten rewrite;
 		memset(&rewrite, 0, sizeof(rewrite));
-		cfg = init_copy_notes_for_rewrite("amend");
-		if (cfg) {
-			/* we are amending, so current_head is not NULL */
-			copy_note_for_rewrite(cfg, current_head->object.sha1, sha1);
-			finish_copy_notes_for_rewrite(cfg, "Notes added by 'git commit --amend'");
-		}
 		add_rewritten(&rewrite, current_head->object.sha1, sha1);
+		copy_rewrite_notes(&rewrite, "amend", "Notes added by 'git commit --amend'");
 		run_rewrite_hook(&rewrite, "amend");
 	}
 	if (!quiet)
