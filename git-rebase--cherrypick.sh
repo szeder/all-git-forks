@@ -45,6 +45,15 @@ else
 fi
 test -n "$GIT_QUIET" && extra="$extra -q"
 test -z "$force_rebase" && extra="$extra --ff"
+test -n "$strategy" && extra="$extra --strategy=$strategy"
+for x in "$strategy_opts"
+do
+	test -z "$x" && continue
+	x=$(eval "echo $x")
+	extra="$extra -X${x#--}"
+done
+test -n "$allow_rerere_autoupdate" && extra="$extra $allow_rerere_autoupdate"
+
 git cherry-pick --no-merges --right-only --topo-order --do-walk --action-name rebase $extra "$revisions"
 ret=$?
 
