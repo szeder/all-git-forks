@@ -51,6 +51,7 @@ ret=0
 		return $?
 	fi
 
+	test -n "$GIT_QUIET" && git_am_opt="$git_am_opt -q"
 	git am $git_am_opt --rebasing --resolvemsg="$resolvemsg" <"$GIT_DIR/rebased-patches"
 	ret=$?
 
