@@ -213,6 +213,9 @@ then
 	then
 		type=interactive
 		interactive_rebase=explicit
+	elif test -f "$merge_dir"/cherrypick
+	then
+		type=cherrypick
 	else
 		type=merge
 	fi
@@ -424,7 +427,7 @@ then
 elif test -n "$keep_empty"
 then
 	type=cherrypick
-	state_dir="$apply_dir"
+	state_dir="$merge_dir"
 else
 	type=am
 	state_dir="$apply_dir"
