@@ -3,6 +3,9 @@
 # Copyright (c) 2010 Junio C Hamano.
 #
 
+GIT_CHERRY_PICK_HELP="$resolvemsg"
+export GIT_CHERRY_PICK_HELP
+
 case "$action" in
 continue)
 	git cherry-pick --continue &&
