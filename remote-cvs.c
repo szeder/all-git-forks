@@ -310,7 +310,7 @@ static int *make_looseblob_gitattr_filter()
 		int ptrn;
 		for (ptrn = 0; ptrn < el->nr; ptrn++)
 			strbuf_addf(&looseblob_gitattr_sb,
-					"%s\tfilter=looseblob\n",
+					"%s\tfilter=loose-blob\n",
 					el->excludes[ptrn]->pattern);
 	}
 
