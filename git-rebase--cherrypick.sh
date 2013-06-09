@@ -18,12 +18,15 @@ esac
 
 test -n "$rebase_root" && root_flag=--root
 
+mkdir -p "$state_dir" || die "Could not create temporary $state_dir"
+: > "$state_dir"/cherrypick || die "Could not mark as cherrypick"
+
 git cherry-pick --allow-empty "$revisions"
 ret=$?
 
 if test 0 != $ret
 then
-	test -d "$state_dir" && write_basic_state
+	write_basic_state
 	return $ret
 fi
 
