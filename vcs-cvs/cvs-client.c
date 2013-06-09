@@ -2747,6 +2747,7 @@ CVS   19 <- /DCE.cpp/1.6//-kk/\0a
 		}
 
 		if (strbuf_gettext_after(&cvs->rd_line_buf, "M ", &line)) {
+			fprintf(stderr, "CVS M: %s\n", cvs->rd_line_buf.buf + 2);
 			switch (state) {
 			case NEED_CHECK_IN:
 				if (strbuf_gettext_after(&line, repo_mod_path.buf, &path)) {
@@ -3128,4 +3129,123 @@ char *cvs_get_rev_branch(struct cvs_transport *cvs, const char *file, const char
 
 	strbuf_release(&branch_name);
 	return NULL;
+}
+
+int cvs_tag(struct cvs_transport *cvs, const char *cvs_tag, struct cvsfile *files, int count)
+{
+/* tag
+Argument --\n
+Argument head_tag\n
+Directory .\n
+/extdrive/home/devel/SVC/cvs3/sources/smod\n
+Entry /Makefile/1.5///\n
+Unchanged Makefile\n
+Entry /TODO/1.3///\n
+Unchanged TODO\n
+Entry /date2/1.1//-kk/\n
+Directory dii\n
+/extdrive/home/devel/SVC/cvs3/sources/smod/dii\n
+Entry /moo/1.1///\n
+Unchanged moo\n
+Directory impl\n
+/extdrive/home/devel/SVC/cvs3/sources/smod/impl\n
+Directory include\n
+/extdrive/home/devel/SVC/cvs3/sources/smod/include\n
+Entry /util.h/1.1///\n
+Unchanged util.h\n
+Directory include/export\n
+/extdrive/home/devel/SVC/cvs3/sources/smod/include/export\n
+Directory include/import\n
+/extdrive/home/devel/SVC/cvs3/sources/smod/include/import\n
+Directory lib\n
+/extdrive/home/devel/SVC/cvs3/sources/smod/lib\n
+Entry /Makefile/1.1///\n
+Unchanged Makefile\n
+Directory src\n
+/extdrive/home/devel/SVC/cvs3/sources/smod/src\n
+Entry /daemon.c/1.2///\n
+Unchanged daemon.c\n
+Entry /util.c/1.2///\n
+Unchanged util.c\n
+Directory src/test\n
+/extdrive/home/devel/SVC/cvs3/sources/smod/src/test\n
+Directory src/test/auto\n
+/extdrive/home/devel/SVC/cvs3/sources/smod/src/test/auto\n
+Directory .\n
+/extdrive/home/devel/SVC/cvs3/sources/smod\n
+tag\n*/
+
+	struct strbuf reply = STRBUF_INIT;
+	struct strbuf file_basename_sb = STRBUF_INIT;
+	struct strbuf dir_repo_relative_sb = STRBUF_INIT;
+	struct strbuf dir_sb = STRBUF_INIT;
+	const char *dir;
+	ssize_t ret;
+	int rc = -1;
+
+	cvs_write(cvs, WR_NOFLUSH, "Argument --\n"
+				   "Argument %s\n",
+				   cvs_tag);
+
+	struct cvsfile *file_it = files;
+	while (file_it < files + count) {
+		strbuf_copystr(&file_basename_sb, basename(file_it->path.buf));
+		strbuf_copy(&dir_sb, &file_it->path);
+		dir = dirname(dir_sb.buf); // "." (dot) is what we want here if no directory in path
+		if (strcmp(dir, dir_repo_relative_sb.buf)) {
+			strbuf_copystr(&dir_repo_relative_sb, dir);
+			cvs_write(cvs, WR_NOFLUSH,
+					"Directory %s\n",
+					dir_repo_relative_sb.buf);
+
+			if (!strcmp(dir_repo_relative_sb.buf, ".")) {
+				cvs_write(cvs, WR_NOFLUSH,
+					"%s/%s\n",
+					cvs->repo_path, cvs->module);
+			}
+			else {
+				cvs_write(cvs, WR_NOFLUSH,
+					"%s/%s/%s\n",
+					cvs->repo_path, cvs->module, dir_repo_relative_sb.buf);
+			}
+		}
+
+		cvs_write(cvs, WR_NOFLUSH,
+					"Entry /%s/%s///\n"
+					"Unchanged %s\n",
+					file_basename_sb.buf,
+					file_it->revision.buf,
+					file_basename_sb.buf);
+		file_it++;
+	}
+
+	cvs_write(cvs, WR_NOFLUSH,	"Directory .\n"
+					"%s/%s\n",
+					cvs->repo_path, cvs->module);
+
+	ret = cvs_write(cvs, WR_FLUSH, "tag\n");
+
+	if (ret == -1)
+		die("cvs tag failed");
+
+	strbuf_grow(&reply, CVS_MAX_LINE);
+
+	while (1) {
+		ret = cvs_getreply_firstmatch(cvs, &reply, "M ");
+		if (ret == -1) {
+			break;
+		}
+		else if (ret == 1) { /* ok from server */
+			rc = 0;
+			break;
+		}
+
+		fprintf(stderr, "M %s", reply.buf);
+	}
+
+	strbuf_release(&file_basename_sb);
+	strbuf_release(&dir_repo_relative_sb);
+	strbuf_release(&dir_sb);
+	strbuf_release(&reply);
+	return rc;
 }

@@ -1826,7 +1826,6 @@ static int push_commit_list_to_cvs(struct commit_list *push_list, const char *cv
 /*
  * TODO:
  *  - do new branch creation on force push
- *  - tag support
  */
 static int push_branch(const char *src, const char *dst, int force)
 {
@@ -1877,6 +1876,107 @@ static int push_branch(const char *src, const char *dst, int force)
 	return rc;
 }
 
+struct sha1_hash_pair {
+	unsigned char *sha1;
+	struct hash_table **revision_meta_hash;
+};
+
+static int find_commit_meta_on_ref(const char *branch_name, const unsigned char *sha1, int flags, void *data)
+{
+	struct strbuf meta_ref_sb = STRBUF_INIT;
+	struct sha1_hash_pair *args = data;
+
+	strbuf_addf(&meta_ref_sb, "%s%s", get_meta_ref_prefix(), branch_name);
+	load_revision_meta(args->sha1, meta_ref_sb.buf, NULL, args->revision_meta_hash);
+
+	strbuf_release(&meta_ref_sb);
+	if (*args->revision_meta_hash)
+		return 1;
+	return 0;
+}
+
+static int find_commit_meta(const char *tag_name, unsigned char *sha1, struct hash_table **revision_meta_hash)
+{
+	struct sha1_hash_pair args = { sha1, revision_meta_hash };
+	*revision_meta_hash = NULL;
+
+	for_each_ref_in(get_meta_ref_prefix(), find_commit_meta_on_ref, &args);
+	if (!*revision_meta_hash) {
+		strbuf_reset(&push_error_sb);
+		strbuf_addf(&push_error_sb, "%s tag has no CVS metadata. Only commits fetched "
+			      "from or pushed to CVS can be tagged.", tag_name);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int prepare_cvsfile(void *ptr, void *data)
+{
+	struct cvs_revision *rev = ptr;
+	struct cvsfile **fileit = data;
+
+	cvsfile_init(*fileit);
+	strbuf_addstr(&(*fileit)->path, rev->path);
+	strbuf_addstr(&(*fileit)->revision, rev->revision);
+	(*fileit)++;
+	return 0;
+}
+
+static int push_tag_to_cvs(const char *tag_name, struct hash_table *revision_meta_hash)
+{
+	struct cvsfile *files, *it;
+	unsigned int count = revision_meta_hash->nr;
+	int rc;
+	int i;
+
+	files = xcalloc(count, sizeof(*files));
+	it = files;
+
+	for_each_hash(revision_meta_hash, prepare_cvsfile, &it);
+
+	rc = cvs_tag(cvs, tag_name, files, count);
+
+	for (i = 0; i < count; i++)
+		cvsfile_release(&files[i]);
+	free(files);
+	return rc;
+}
+
+static int push_tag(const char *src, const char *dst, int force)
+{
+	int rc = -1;
+	const char *cvs_tag;
+	struct strbuf meta_ref_sb = STRBUF_INIT;
+	struct hash_table *revision_meta_hash;
+
+	cvs_tag = strrchr(dst, '/');
+	if (!cvs_tag)
+		die("Malformed destination branch name");
+	cvs_tag++;
+
+	fprintf(stderr, "pushing %s to %s (CVS tag: %s) force: %d\n", src, dst, cvs_tag, force);
+
+	unsigned char sha1[20];
+	if (get_sha1(src, sha1))
+		die(_("Failed to resolve '%s' as a valid ref."), src);
+
+	strbuf_addf(&meta_ref_sb, "%s%s", get_meta_tags_ref_prefix(), cvs_tag);
+	if (ref_exists(meta_ref_sb.buf) && !force)
+		die("CVS tag %s already exist and no force was specified", cvs_tag);
+
+	if (!find_commit_meta(cvs_tag, sha1, &revision_meta_hash) &&
+	    !push_tag_to_cvs(cvs_tag, revision_meta_hash))
+		rc = 0;
+
+	if (revision_meta_hash) {
+		free_revision_meta(revision_meta_hash);
+		free(revision_meta_hash);
+	}
+	strbuf_release(&meta_ref_sb);
+	return rc;
+}
+
 static int cmd_batch_push(struct string_list *list)
 {
 	struct string_list_item *item;
@@ -1885,6 +1985,8 @@ static int cmd_batch_push(struct string_list *list)
 	const char *dst;
 	char *p;
 	int force;
+	int istag;
+	int rc;
 
 	for_each_string_list_item(item, list) {
 		if (!(srcdst = gettext_after(item->string, "push ")) ||
@@ -1913,9 +2015,15 @@ static int cmd_batch_push(struct string_list *list)
 
 		src = srcdst;
 		dst = p;
+		istag = !prefixcmp(src, "refs/tags/");
 
 		strbuf_reset(&push_error_sb);
-		if (!push_branch(src, dst, force)) {
+		if (istag)
+			rc = push_tag(src, dst, force);
+		else
+			rc = push_branch(src, dst, force);
+
+		if (!rc) {
 			helper_printf("ok %s\n", dst);
 		}
 		else {
