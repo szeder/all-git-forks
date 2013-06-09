@@ -162,7 +162,7 @@ test_expect_success "rebase: noop rebase" '
 	)
 '
 
-testrebase "" .git/rebase-apply
+testrebase "" .git/rebase-merge
 testrebase " --merge" .git/rebase-merge
 testrebase " --interactive" .git/rebase-merge
 

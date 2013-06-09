@@ -71,7 +71,7 @@ test_run_rebase () {
 	"
 }
 #TODO: make order consistent across all flavors of rebase
-test_run_rebase success 'e n o' ''
+test_run_rebase success 'n o e' ''
 test_run_rebase success 'e n o' -m
 test_run_rebase success 'n o e' -i
 
@@ -88,7 +88,7 @@ test_run_rebase () {
 	"
 }
 #TODO: make order consistent across all flavors of rebase
-test_run_rebase success 'd e n o' ''
+test_run_rebase success 'd n o e' ''
 test_run_rebase success 'd e n o' -m
 test_run_rebase success 'd n o e' -i
 
@@ -105,7 +105,7 @@ test_run_rebase () {
 	"
 }
 #TODO: make order consistent across all flavors of rebase
-test_run_rebase success 'd e n o' ''
+test_run_rebase success 'd n o e' ''
 test_run_rebase success 'd e n o' -m
 test_run_rebase success 'd n o e' -i
 
