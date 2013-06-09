@@ -37,8 +37,29 @@ int mingw_fstat(int fd, struct stat *buf);
 #define _stat64(x,y) mingw_lstat(x,y)
 #define ALREADY_DECLARED_STAT_FUNCS
 
-#include "compat/mingw.h"
+#include "mingw.h"
 
 #undef ALREADY_DECLARED_STAT_FUNCS
 
+/* Git runtime infomation */
+#define RUNTIME_PREFIX
+#define PREFIX "."
+#define BINDIR "bin"
+
+#define SHA1_HEADER "block-sha1\\sha1.h"
+
+#define ETC_GITCONFIG "etc\\gitconfig"
+#define ETC_GITATTRIBUTES "etc\\gitattributes"
+#define GIT_EXEC_PATH "bin"
+#define GIT_MAN_PATH "man"
+#define GIT_INFO_PATH "info"
+#define GIT_HTML_PATH "doc\\git\\html"
+#define DEFAULT_GIT_TEMPLATE_DIR "share\\git-core\\templates"
+#endif
+
+/* Git version infomation */
+#ifndef __MSVC__VERSION
+#define __MSVC__VERSION
+#define GIT_VERSION "1.8.2.2"
+#define GIT_USER_AGENT "git/" GIT_VERSION
 #endif
