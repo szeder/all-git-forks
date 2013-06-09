@@ -397,6 +397,8 @@ static int run_git_commit(const char *defmsg, struct replay_opts *opts,
 	argv_array_init(&array);
 	argv_array_push(&array, "commit");
 	argv_array_push(&array, "-n");
+	if (opts->quiet)
+		argv_array_push(&array, "-q");
 
 	if (opts->gpg_sign) {
 		gpg_sign = xmalloc(3 + strlen(opts->gpg_sign));
@@ -642,9 +644,10 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 	}
 
 	if (opts->skip_empty && is_index_unchanged() == 1) {
-		warning(_("skipping %s... %s"),
-			find_unique_abbrev(commit->object.sha1, DEFAULT_ABBREV),
-			msg.subject);
+		if (!opts->quiet)
+			warning(_("skipping %s... %s"),
+				find_unique_abbrev(commit->object.sha1, DEFAULT_ABBREV),
+				msg.subject);
 		goto leave;
 	}
 	allow = allow_empty(opts, commit);
@@ -674,7 +677,7 @@ static void prepare_revs(struct replay_opts *opts)
 	if (prepare_revision_walk(opts->revs))
 		die(_("revision walk setup failed"));
 
-	if (!opts->revs->commits)
+	if (!opts->revs->commits && !opts->quiet)
 		error(_("empty commit set passed"));
 }
 
