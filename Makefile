@@ -997,6 +997,7 @@ BUILTIN_OBJS += builtin/verify-tag.o
 BUILTIN_OBJS += builtin/write-tree.o
 
 BUILTIN_LIB_OBJS += builtin/sequencer.o
+BUILTIN_LIB_OBJS += builtin/rewrite.o
 BUILTIN_LIB_OBJS += $(BUILTIN_OBJS)
 
 GITLIBS = $(LIB_FILE) $(XDIFF_LIB)
