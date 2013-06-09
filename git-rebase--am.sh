@@ -19,15 +19,7 @@ esac
 test -n "$rebase_root" && root_flag=--root
 
 ret=0
-if test -n "$keep_empty"
-then
-	# we have to do this the hard way.  git format-patch completely squashes
-	# empty commits and even if it didn't the format doesn't really lend
-	# itself well to recording empty patches.  fortunately, cherry-pick
-	# makes this easy
-	git cherry-pick --allow-empty "$revisions"
-	ret=$?
-else
+
 	rm -f "$GIT_DIR/rebased-patches"
 
 	git format-patch -k --stdout --full-index --ignore-if-in-upstream \
@@ -63,7 +55,6 @@ else
 	ret=$?
 
 	rm -f "$GIT_DIR/rebased-patches"
-fi
 
 if test 0 != $ret
 then
