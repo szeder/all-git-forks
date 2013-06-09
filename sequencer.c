@@ -1048,7 +1048,7 @@ static int continue_single_pick(void)
 	return run_command_v_opt(argv, RUN_GIT_CMD);
 }
 
-static int sequencer_continue(struct replay_opts *opts)
+static int sequencer_continue(struct replay_opts *opts, int skip)
 {
 	struct commit_list *todo_list = NULL;
 
@@ -1068,7 +1068,7 @@ static int sequencer_continue(struct replay_opts *opts)
 	}
 	if (index_differs_from("HEAD", 0))
 		return error_dirty_index(opts);
-	if (opts->action == REPLAY_PICK) {
+	if (opts->action == REPLAY_PICK && !skip) {
 		unsigned char to[20];
 		if (!read_ref("HEAD", to))
 			add_rewritten(&rewritten, todo_list->item->object.sha1, to);
@@ -1096,7 +1096,7 @@ static int sequencer_skip(struct replay_opts *opts)
 	if (ret)
 		return ret;
 
-	return sequencer_continue(opts);
+	return sequencer_continue(opts, 1);
 }
 
 static int single_pick(struct commit *cmit, struct replay_opts *opts)
@@ -1128,7 +1128,7 @@ int sequencer_pick_revisions(struct replay_opts *opts)
 	if (opts->subcommand == REPLAY_ROLLBACK)
 		return sequencer_rollback(opts);
 	if (opts->subcommand == REPLAY_CONTINUE)
-		return sequencer_continue(opts);
+		return sequencer_continue(opts, 0);
 	if (opts->subcommand == REPLAY_SKIP)
 		return sequencer_skip(opts);
 
