@@ -377,6 +377,7 @@ skip)
 	run_specific_rebase
 	;;
 abort)
+	test "$type" == "cherrypick" && git cherry-pick --abort
 	git rerere clear
 	read_basic_state
 	case "$head_name" in
