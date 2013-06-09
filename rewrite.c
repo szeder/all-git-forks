@@ -2,6 +2,7 @@
 #include "rewrite.h"
 #include "run-command.h"
 #include "notes-utils.h"
+#include "builtin.h"
 
 void add_rewritten(struct rewritten *list, unsigned char *from, unsigned char *to)
 {
