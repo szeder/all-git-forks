@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2010 Junio C Hamano.
+# Copyright (c) 2014 Felipe Contreras
 #
 
 GIT_CHERRY_PICK_HELP="$resolvemsg"
