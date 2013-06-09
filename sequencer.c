@@ -799,6 +799,8 @@ static int populate_opts_cb(const char *key, const char *value, void *data)
 		opts->xopts[opts->xopts_nr++] = xstrdup(value);
 	} else if (!strcmp(key, "options.allow-rerere-auto"))
 		opts->allow_rerere_auto = git_config_int(key, value);
+	else if (!strcmp(key, "options.action-name"))
+		git_config_string(&opts->action_name, key, value);
 	else
 		return error(_("Invalid key: %s"), key);
 
@@ -983,6 +985,8 @@ static void save_opts(struct replay_opts *opts)
 		git_config_set_in_file(opts_file, "options.allow-rerere-auto", buf.buf);
 		strbuf_release(&buf);
 	}
+	if (opts->action_name)
+		git_config_set_in_file(opts_file, "options.action-name", opts->action_name);
 }
 
 static int pick_commits(struct commit_list *todo_list, struct replay_opts *opts)
