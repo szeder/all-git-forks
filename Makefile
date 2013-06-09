@@ -719,7 +719,6 @@ LIB_H += resolve-undo.h
 LIB_H += revision.h
 LIB_H += run-command.h
 LIB_H += send-pack.h
-LIB_H += sequencer.h
 LIB_H += sha1-array.h
 LIB_H += sha1-lookup.h
 LIB_H += shortlog.h
@@ -863,7 +862,6 @@ LIB_OBJS += resolve-undo.o
 LIB_OBJS += revision.o
 LIB_OBJS += run-command.o
 LIB_OBJS += send-pack.o
-LIB_OBJS += sequencer.o
 LIB_OBJS += server-info.o
 LIB_OBJS += setup.o
 LIB_OBJS += sha1-array.o
@@ -997,6 +995,9 @@ BUILTIN_OBJS += builtin/var.o
 BUILTIN_OBJS += builtin/verify-pack.o
 BUILTIN_OBJS += builtin/verify-tag.o
 BUILTIN_OBJS += builtin/write-tree.o
+
+BUILTIN_LIB_OBJS += builtin/sequencer.o
+BUILTIN_LIB_OBJS += $(BUILTIN_OBJS)
 
 GITLIBS = $(LIB_FILE) $(XDIFF_LIB)
 EXTLIBS =
@@ -1900,7 +1901,8 @@ VCSSVN_OBJS += vcs-svn/svndiff.o
 VCSSVN_OBJS += vcs-svn/svndump.o
 
 TEST_OBJS := $(patsubst test-%$X,test-%.o,$(TEST_PROGRAMS))
-OBJECTS := $(LIB_OBJS) $(BUILTIN_OBJS) $(PROGRAM_OBJS) $(TEST_OBJS) \
+OBJECTS := $(LIB_OBJS) $(PROGRAM_OBJS) $(TEST_OBJS) \
+	$(BUILTIN_LIB_OBJS) \
 	$(XDIFF_OBJS) \
 	$(VCSSVN_OBJS) \
 	git.o
@@ -2077,7 +2079,7 @@ $(REMOTE_CURL_PRIMARY): remote-curl.o http.o http-walker.o GIT-LDFLAGS $(GITLIBS
 $(LIB_FILE): $(LIB_OBJS)
 	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
 
-$(BUILTIN_LIB): $(BUILTIN_OBJS)
+$(BUILTIN_LIB): $(BUILTIN_LIB_OBJS)
 	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
 
 $(XDIFF_LIB): $(XDIFF_OBJS)
