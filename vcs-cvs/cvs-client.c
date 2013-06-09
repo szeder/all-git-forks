@@ -2379,8 +2379,11 @@ M    Sticky Options:\09(none)\0a
 						path.buf, status.buf, local_rev.buf, remote_rev.buf);
 
 					file = cvsfile_find(files, count, path.buf);
-					if (!file)
-						die("File status, found status for not requested file: %s", path.buf);
+					if (!file) {
+						error("File status, found status for not requested file: %s", path.buf);
+						state = NEED_START_STATUS;
+						continue;
+					}
 
 					status_state = parse_status_state(status.buf);
 					switch (status_state) {
@@ -3131,50 +3134,8 @@ char *cvs_get_rev_branch(struct cvs_transport *cvs, const char *file, const char
 	return NULL;
 }
 
-int cvs_tag(struct cvs_transport *cvs, const char *cvs_tag, struct cvsfile *files, int count)
+int cvs_tag(struct cvs_transport *cvs, const char *cvs_branch, int istag, struct cvsfile *files, int count)
 {
-/* tag
-Argument --\n
-Argument head_tag\n
-Directory .\n
-/extdrive/home/devel/SVC/cvs3/sources/smod\n
-Entry /Makefile/1.5///\n
-Unchanged Makefile\n
-Entry /TODO/1.3///\n
-Unchanged TODO\n
-Entry /date2/1.1//-kk/\n
-Directory dii\n
-/extdrive/home/devel/SVC/cvs3/sources/smod/dii\n
-Entry /moo/1.1///\n
-Unchanged moo\n
-Directory impl\n
-/extdrive/home/devel/SVC/cvs3/sources/smod/impl\n
-Directory include\n
-/extdrive/home/devel/SVC/cvs3/sources/smod/include\n
-Entry /util.h/1.1///\n
-Unchanged util.h\n
-Directory include/export\n
-/extdrive/home/devel/SVC/cvs3/sources/smod/include/export\n
-Directory include/import\n
-/extdrive/home/devel/SVC/cvs3/sources/smod/include/import\n
-Directory lib\n
-/extdrive/home/devel/SVC/cvs3/sources/smod/lib\n
-Entry /Makefile/1.1///\n
-Unchanged Makefile\n
-Directory src\n
-/extdrive/home/devel/SVC/cvs3/sources/smod/src\n
-Entry /daemon.c/1.2///\n
-Unchanged daemon.c\n
-Entry /util.c/1.2///\n
-Unchanged util.c\n
-Directory src/test\n
-/extdrive/home/devel/SVC/cvs3/sources/smod/src/test\n
-Directory src/test/auto\n
-/extdrive/home/devel/SVC/cvs3/sources/smod/src/test/auto\n
-Directory .\n
-/extdrive/home/devel/SVC/cvs3/sources/smod\n
-tag\n*/
-
 	struct strbuf reply = STRBUF_INIT;
 	struct strbuf file_basename_sb = STRBUF_INIT;
 	struct strbuf dir_repo_relative_sb = STRBUF_INIT;
@@ -3183,9 +3144,12 @@ tag\n*/
 	ssize_t ret;
 	int rc = -1;
 
+	if (!istag)
+		cvs_write(cvs, WR_NOFLUSH, "Argument -b\n");
+
 	cvs_write(cvs, WR_NOFLUSH, "Argument --\n"
 				   "Argument %s\n",
-				   cvs_tag);
+				   cvs_branch);
 
 	struct cvsfile *file_it = files;
 	while (file_it < files + count) {
@@ -3240,7 +3204,7 @@ tag\n*/
 			break;
 		}
 
-		fprintf(stderr, "M %s", reply.buf);
+		fprintf(stderr, "CVS M: %s\n", reply.buf);
 	}
 
 	strbuf_release(&file_basename_sb);

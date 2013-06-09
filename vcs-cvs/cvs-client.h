@@ -132,7 +132,7 @@ int cvs_checkin(struct cvs_transport *cvs, const char *cvs_branch, const char *m
 		release_file_content_fn_t release_cb,
 		void *data);
 
-int cvs_tag(struct cvs_transport *cvs, const char *cvs_tag, struct cvsfile *files, int count);
+int cvs_tag(struct cvs_transport *cvs, const char *cvs_branch, int istag, struct cvsfile *files, int count);
 
 char *cvs_get_rev_branch(struct cvs_transport *cvs, const char *file, const char *revision);
 
