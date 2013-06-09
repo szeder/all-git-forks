@@ -81,7 +81,7 @@ rewritten_list="$state_dir"/rewritten-list
 rewritten_pending="$state_dir"/rewritten-pending
 
 strategy_args=
-if test -n "$do_merge"
+if test -n "$strategy"
 then
 	strategy_args=${strategy:+--strategy=$strategy}
 	eval '

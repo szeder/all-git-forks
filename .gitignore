@@ -116,7 +116,6 @@
 /git-rebase--am
 /git-rebase--cherrypick
 /git-rebase--interactive
-/git-rebase--merge
 /git-receive-pack
 /git-reflog
 /git-relink

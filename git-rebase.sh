@@ -59,7 +59,6 @@ unset onto
 cmd=
 strategy=
 strategy_opts=
-do_merge=
 merge_dir="$GIT_DIR"/rebase-merge
 apply_dir="$GIT_DIR"/rebase-apply
 verbose=
@@ -213,11 +212,8 @@ then
 	then
 		type=interactive
 		interactive_rebase=explicit
-	elif test -f "$merge_dir"/cherrypick
-	then
-		type=cherrypick
 	else
-		type=merge
+		type=cherrypick
 	fi
 	state_dir="$merge_dir"
 fi
@@ -264,18 +260,15 @@ do
 		autosquash=
 		;;
 	-M|-m)
-		do_merge=t
 		;;
 	-X)
 		shift
 		strategy_opts="$strategy_opts $(git rev-parse --sq-quote "--$1")"
-		do_merge=t
 		test -z "$strategy" && strategy=recursive
 		;;
 	-s)
 		shift
 		strategy="$1"
-		do_merge=t
 		;;
 	-n)
 		diffstat=
@@ -419,10 +412,6 @@ fi
 if test -n "$interactive_rebase"
 then
 	type=interactive
-	state_dir="$merge_dir"
-elif test -n "$do_merge"
-then
-	type=merge
 	state_dir="$merge_dir"
 elif test -n "$git_am_opt"
 then
