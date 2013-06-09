@@ -1,6 +1,8 @@
 #include "cache.h"
 #include "rewrite.h"
 #include "lockfile.h"
+#include "run-command.h"
+#include "sigchain.h"
 
 void add_rewritten(struct rewritten *list, unsigned char *from, unsigned char *to)
 {
@@ -69,4 +71,36 @@ void load_rewritten(struct rewritten *list, const char *file)
 		p = *eol ? eol + 1 : eol;
 	}
 	strbuf_release(&buf);
+}
+
+int run_rewrite_hook(struct rewritten *list, const char *name)
+{
+	struct strbuf buf = STRBUF_INIT;
+	struct child_process proc = CHILD_PROCESS_INIT;
+	const char *argv[3];
+	int code, i;
+
+	argv[0] = find_hook("post-rewrite");
+	if (!argv[0])
+		return 0;
+
+	argv[1] = name;
+	argv[2] = NULL;
+
+	proc.argv = argv;
+	proc.in = -1;
+	proc.stdout_to_stderr = 1;
+
+	code = start_command(&proc);
+	if (code)
+		return code;
+	for (i = 0; i < list->nr; i++) {
+		struct rewritten_item *item = &list->items[i];
+		strbuf_addf(&buf, "%s %s\n", sha1_to_hex(item->from), sha1_to_hex(item->to));
+	}
+	sigchain_push(SIGPIPE, SIG_IGN);
+	write_in_full(proc.in, buf.buf, buf.len);
+	close(proc.in);
+	sigchain_pop(SIGPIPE);
+	return finish_command(&proc);
 }
