@@ -436,7 +436,7 @@ static int fast_export_revision_cb(void *ptr, void *data)
 		struct strbuf looseblob_sb = STRBUF_INIT;
 
 		if (rev->mark[0] == ':')
-			die("revision mark for loose-blob is not sha1");
+			die("fast_export_revision: mark for loose-blob is not sha1");
 
 		strbuf_addf(&looseblob_sb, "loose-blob %s\n", rev->mark);
 		helper_printf("M 100%.3o inline %s\n", rev->isexec ? 0755 : 0644, rev->path);
@@ -529,6 +529,13 @@ static int cache_revision_cb(void *ptr, void *data)
 
 	if (rev->isdead)
 		return 0;
+
+	if (is_cvs_looseblob_path(rev->path)) {
+		if (rev->mark[0] == ':')
+			die("cache_revision: mark for loose-blob is not sha1");
+		add_revision_cache_entry(rev->path, rev->revision, rev->isexec, rev->mark);
+		return 0;
+	}
 
 	helper_printf("ls \"%s\"\n", rev->path);
 	helper_flush();
