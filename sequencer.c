@@ -15,11 +15,13 @@
 #include "merge-recursive.h"
 #include "refs.h"
 #include "argv-array.h"
+#include "rewrite.h"
 
 #define GIT_REFLOG_ACTION "GIT_REFLOG_ACTION"
 
 const char sign_off_header[] = "Signed-off-by: ";
 static const char cherry_picked_prefix[] = "(cherry picked from commit ";
+static struct rewritten rewritten;
 
 static GIT_PATH_FUNC(git_path_todo_file, SEQ_TODO_FILE)
 static GIT_PATH_FUNC(git_path_opts_file, SEQ_OPTS_FILE)
@@ -626,6 +628,14 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 	if (!opts->no_commit)
 		res = run_git_commit(git_path_merge_msg(), opts, allow);
 
+	if (!res && opts->action == REPLAY_PICK) {
+		unsigned char to[20];
+
+		if (read_ref("HEAD", to))
+			goto leave;
+
+		add_rewritten(&rewritten, commit->object.sha1, to);
+	}
 leave:
 	free_message(commit, &msg);
 
@@ -998,8 +1008,11 @@ static int pick_commits(struct commit_list *todo_list, struct replay_opts *opts)
 	for (cur = todo_list; cur; cur = cur->next) {
 		save_todo(cur, opts);
 		res = do_pick_commit(cur->item, opts);
-		if (res)
+		if (res) {
+			if (opts->action == REPLAY_PICK)
+				store_rewritten(&rewritten, git_path(SEQ_REWR_FILE));
 			return res;
+		}
 	}
 
 	/*
@@ -1028,6 +1041,8 @@ static int sequencer_continue(struct replay_opts *opts)
 		return continue_single_pick();
 	read_populate_opts(&opts);
 	read_populate_todo(&todo_list, opts);
+	if (opts->action == REPLAY_PICK)
+		load_rewritten(&rewritten, git_path(SEQ_REWR_FILE));
 
 	/* Verify that the conflict has been resolved */
 	if (file_exists(git_path_cherry_pick_head()) ||
@@ -1038,6 +1053,11 @@ static int sequencer_continue(struct replay_opts *opts)
 	}
 	if (index_differs_from("HEAD", 0))
 		return error_dirty_index(opts);
+	if (opts->action == REPLAY_PICK) {
+		unsigned char to[20];
+		if (!read_ref("HEAD", to))
+			add_rewritten(&rewritten, todo_list->item->object.sha1, to);
+	}
 	todo_list = todo_list->next;
 	return pick_commits(todo_list, opts);
 }
