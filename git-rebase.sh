@@ -421,6 +421,10 @@ elif test -n "$do_merge"
 then
 	type=merge
 	state_dir="$merge_dir"
+elif test -n "$keep_empty"
+then
+	type=cherrypick
+	state_dir="$apply_dir"
 else
 	type=am
 	state_dir="$apply_dir"
