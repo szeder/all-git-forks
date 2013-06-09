@@ -14,5 +14,6 @@ struct rewritten {
 void add_rewritten(struct rewritten *list, unsigned char *from, unsigned char *to);
 int store_rewritten(struct rewritten *list, const char *file);
 void load_rewritten(struct rewritten *list, const char *file);
+int run_rewrite_hook(struct rewritten *list, const char *name);
 
 #endif
