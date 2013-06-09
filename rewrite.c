@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "rewrite.h"
 #include "run-command.h"
+#include "notes-utils.h"
 
 void add_rewritten(struct rewritten *list, unsigned char *from, unsigned char *to)
 {
@@ -100,4 +101,21 @@ int run_rewrite_hook(struct rewritten *list, const char *name)
 	write_in_full(proc.in, buf.buf, buf.len);
 	close(proc.in);
 	return finish_command(&proc);
+}
+
+void copy_rewrite_notes(struct rewritten *list, const char *name, const char *msg)
+{
+	struct notes_rewrite_cfg *cfg;
+	int i;
+
+	cfg = init_copy_notes_for_rewrite(name);
+	if (!cfg)
+		return;
+
+	for (i = 0; i < list->nr; i++) {
+		struct rewritten_item *item = &list->items[i];
+		copy_note_for_rewrite(cfg, item->from, item->to);
+	}
+
+	finish_copy_notes_for_rewrite(cfg, msg);
 }
