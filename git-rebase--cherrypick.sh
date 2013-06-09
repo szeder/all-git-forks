@@ -5,12 +5,12 @@
 
 case "$action" in
 continue)
-	git am --resolved --resolvemsg="$resolvemsg" &&
+	git cherry-pick --continue &&
 	move_to_original_branch
 	return
 	;;
 skip)
-	git am --skip --resolvemsg="$resolvemsg" &&
+	git cherry-pick --skip &&
 	move_to_original_branch
 	return
 	;;
