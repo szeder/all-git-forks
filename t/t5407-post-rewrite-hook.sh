@@ -53,6 +53,22 @@ test_expect_success 'git commit --amend --no-post-rewrite' '
 	test ! -f post-rewrite.data
 '
 
+test_expect_success 'git cherry-pick' '
+	git reset --hard D &&
+	clear_hook_input &&
+	git checkout A &&
+	test_must_fail git cherry-pick B..D &&
+	echo C > foo &&
+	git add foo &&
+	git cherry-pick --continue &&
+	echo cherry-pick >expected.args &&
+	cat >expected.data <<EOF &&
+$(git rev-parse C) $(git rev-parse HEAD^)
+$(git rev-parse D) $(git rev-parse HEAD)
+EOF
+	verify_hook_input
+'
+
 test_expect_success 'git rebase' '
 	git reset --hard D &&
 	clear_hook_input &&
