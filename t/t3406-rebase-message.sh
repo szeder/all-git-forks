@@ -17,20 +17,8 @@ test_expect_success 'setup' '
 	git tag start
 '
 
-cat >expect <<\EOF
-Already applied: 0001 A
-Already applied: 0002 B
-Committed: 0003 Z
-EOF
-
-test_expect_success 'rebase -m' '
-	git rebase -m master >report &&
-	sed -n -e "/^Already applied: /p" \
-		-e "/^Committed: /p" report >actual &&
-	test_cmp expect actual
-'
-
 test_expect_success 'rebase against master twice' '
+	git rebase master &&
 	git rebase master >out &&
 	test_i18ngrep "Current branch topic is up to date" out
 '
