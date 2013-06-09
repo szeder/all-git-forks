@@ -452,6 +452,18 @@ static int fast_export_revision_cb(void *ptr, void *data)
 	return 0;
 }
 
+static int cvs_checkout_rev_retry(struct cvs_transport *cvs, const char *path, const char *revision, struct cvsfile *file)
+{
+	if (!cvs_checkout_rev(cvs, path, revision, file))
+		return 0;
+
+	cvs_terminate(cvs);
+	cvs = cvs_connect(cvsroot, cvsmodule);
+	if (!cvs)
+		die("Cannot checkout file %s rev %s. Cannot reconnect to cvs server.", path, revision);
+	return cvs_checkout_rev(cvs, path, revision, file);
+}
+
 static int fetch_revision_cb(void *ptr, void *data)
 {
 	static struct cvsfile file = CVSFILE_INIT;
@@ -481,16 +493,9 @@ static int fetch_revision_cb(void *ptr, void *data)
 		return 0;
 	}
 
-	rc = cvs_checkout_rev(cvs, rev->path, rev->revision, &file);
-	if (rc == -1) {
-		cvs_terminate(cvs);
-		cvs = cvs_connect(cvsroot, cvsmodule);
-		if (!cvs)
-			die("Cannot checkout file %s rev %s. Cannot reconnect to cvs server.", rev->path, rev->revision);
-		rc = cvs_checkout_rev(cvs, rev->path, rev->revision, &file);
-		if (rc == -1)
-			die("Cannot checkout file %s rev %s", rev->path, rev->revision);
-	}
+	rc = cvs_checkout_rev_retry(cvs, rev->path, rev->revision, &file);
+	if (rc == -1)
+		die("Cannot checkout file %s rev %s", rev->path, rev->revision);
 
 	//fetched_total_size += file.file.len;
 	//display_progress(progress_state, revisions_all_branches_fetched);
