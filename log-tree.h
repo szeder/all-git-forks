@@ -25,4 +25,7 @@ void load_ref_decorations(int flags);
 void fmt_output_commit(struct strbuf *, struct commit *, struct rev_info *);
 void fmt_output_subject(struct strbuf *, const char *subject, struct rev_info *);
 
+void append_cherrypick(struct strbuf *msgbuf, struct object *obj);
+void append_signoff(struct strbuf *msgbuf, int ignore_footer, unsigned flag);
+
 #endif
