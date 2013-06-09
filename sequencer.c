@@ -811,7 +811,9 @@ static int populate_opts_cb(const char *key, const char *value, void *data)
 	else if (!strcmp(key, "options.strategy-option")) {
 		ALLOC_GROW(opts->xopts, opts->xopts_nr + 1, opts->xopts_alloc);
 		opts->xopts[opts->xopts_nr++] = xstrdup(value);
-	} else
+	} else if (!strcmp(key, "options.allow-rerere-auto"))
+		opts->allow_rerere_auto = git_config_int(key, value);
+	else
 		return error(_("Invalid key: %s"), key);
 
 	if (!error_flag)
@@ -995,6 +997,12 @@ static void save_opts(struct replay_opts *opts)
 			git_config_set_multivar_in_file(opts_file,
 							"options.strategy-option",
 							opts->xopts[i], "^$", 0);
+	}
+	if (opts->allow_rerere_auto) {
+		struct strbuf buf = STRBUF_INIT;
+		strbuf_addf(&buf, "%d", opts->allow_rerere_auto);
+		git_config_set_in_file(opts_file, "options.allow-rerere-auto", buf.buf);
+		strbuf_release(&buf);
 	}
 }
 
