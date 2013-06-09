@@ -235,15 +235,15 @@ static int cmd_option(const char *line)
 		verbosity = atoi(val);
 	}
 	else if ((val = gettext_after(opt, "progress "))) {
-		if (strcmp(val, "true"))
+		if (!strcmp(val, "true"))
 			progress = 1;
 	}
 	else if ((val = gettext_after(opt, "dry-run "))) {
-		if (strcmp(val, "true"))
+		if (!strcmp(val, "true"))
 			dry_run = 1;
 	}
 	else if ((val = gettext_after(opt, "followtags "))) {
-		if (strcmp(val, "true"))
+		if (!strcmp(val, "true"))
 			followtags = 1;
 	}
 	else {
