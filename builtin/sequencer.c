@@ -21,6 +21,15 @@
 
 static struct rewritten rewritten;
 
+static void finish(struct replay_opts *opts)
+{
+	if (opts->action != REPLAY_PICK)
+		return;
+
+	copy_rewrite_notes(&rewritten, "cherry-pick", "Notes added by 'git cherry-pick'");
+	run_rewrite_hook(&rewritten, "cherry-pick");
+}
+
 static void remove_sequencer_state(void)
 {
 	struct strbuf seq_dir = STRBUF_INIT;
@@ -941,6 +950,8 @@ static int pick_commits(struct commit_list *todo_list, struct replay_opts *opts)
 		}
 	}
 
+	finish(opts);
+
 	/*
 	 * Sequence of picks finished successfully; cleanup by
 	 * removing the .git/sequencer directory
@@ -1012,8 +1023,13 @@ static int sequencer_skip(struct replay_opts *opts)
 
 static int single_pick(struct commit *cmit, struct replay_opts *opts)
 {
+	int ret;
 	setenv(GIT_REFLOG_ACTION, action_name(opts), 0);
-	return do_pick_commit(cmit, opts);
+	ret = do_pick_commit(cmit, opts);
+	if (ret)
+		return ret;
+	finish(opts);
+	return 0;
 }
 
 int sequencer_pick_revisions(struct replay_opts *opts)
