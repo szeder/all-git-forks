@@ -8,6 +8,12 @@ export GIT_CHERRY_PICK_HELP
 
 case "$action" in
 continue)
+	# do we have anything to commit?
+	if ! git diff-index --cached --quiet HEAD --
+	then
+		git commit --no-verify -e ||
+			die "Could not commit staged changes."
+	fi
 	git cherry-pick --continue &&
 	move_to_original_branch
 	return
