@@ -9,6 +9,7 @@
 #include "string-list.h"
 #include "mergesort.h"
 #include "argv-array.h"
+#include <sal.h>
 
 enum map_direction { FROM_SRC, FROM_DST };
 
@@ -267,7 +268,7 @@ static void read_remotes_file(struct remote *remote)
 			add_push_refspec(remote, xstrdup(skip_spaces(v)));
 		else if (skip_prefix(buf.buf, "Pull:", &v))
 			add_fetch_refspec(remote, xstrdup(skip_spaces(v)));
-	}
+		}
 	strbuf_release(&buf);
 	fclose(f);
 }
@@ -1659,8 +1660,7 @@ int branch_merge_matches(struct branch *branch,
 	return refname_match(branch->merge[i]->src, refname);
 }
 
-__attribute((format (printf,2,3)))
-static const char *error_buf(struct strbuf *err, const char *fmt, ...)
+static const char *error_buf(struct strbuf *err, _Printf_format_string_ const char *fmt, ...)
 {
 	if (err) {
 		va_list ap;
