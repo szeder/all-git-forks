@@ -1748,11 +1748,10 @@ GIT_NOTES_REF) is also implicitly added to the list of refs to be
 displayed.
 
 notes.rewrite.<command>::
-	When rewriting commits with <command> (currently `amend` or
-	`rebase`) and this variable is set to `true`, Git
-	automatically copies your notes from the original to the
-	rewritten commit.  Defaults to `true`, but see
-	"notes.rewriteRef" below.
+	When rewriting commits with <command> (currently `amend`, `rebase`, or
+	`cherry-pick`) and this variable is set to `true`, Git automatically
+	copies your notes from the original to the rewritten commit.  Defaults
+	to `true`, but see "notes.rewriteRef" below.
 
 notes.rewriteMode::
 	When copying notes during a rewrite (see the

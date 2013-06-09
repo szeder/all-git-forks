@@ -352,10 +352,10 @@ post-rewrite
 ~~~~~~~~~~~~
 
 This hook is invoked by commands that rewrite commits (`git commit
---amend`, 'git-rebase'; currently 'git-filter-branch' does 'not' call
-it!).  Its first argument denotes the command it was invoked by:
-currently one of `amend` or `rebase`.  Further command-dependent
-arguments may be passed in the future.
+--amend`, `git rebase`, `git cherry-pick`; currently `git filter-branch` does
+'not' call it!).  Its first argument denotes the command it was invoked by
+(e.g. `rebase`).  Further command-dependent arguments may be passed in the
+future.
 
 The hook receives a list of the rewritten commits on stdin, in the
 format
