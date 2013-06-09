@@ -284,7 +284,6 @@ do
 		;;
 	-q)
 		GIT_QUIET=t
-		git_am_opt="$git_am_opt -q"
 		verbose=
 		diffstat=
 		;;
