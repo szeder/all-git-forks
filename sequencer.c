@@ -662,7 +662,7 @@ static void prepare_revs(struct replay_opts *opts)
 		die(_("revision walk setup failed"));
 
 	if (!opts->revs->commits)
-		die(_("empty commit set passed"));
+		error(_("empty commit set passed"));
 }
 
 static void read_and_refresh_cache(struct replay_opts *opts)
