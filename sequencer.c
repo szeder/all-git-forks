@@ -28,6 +28,25 @@ static GIT_PATH_FUNC(git_path_opts_file, SEQ_OPTS_FILE)
 static GIT_PATH_FUNC(git_path_seq_dir, SEQ_DIR)
 static GIT_PATH_FUNC(git_path_head_file, SEQ_HEAD_FILE)
 
+static void finish(struct replay_opts *opts)
+{
+	const char *name;
+	struct strbuf msg = STRBUF_INIT;
+
+	if (opts->action != REPLAY_PICK)
+		return;
+
+	name = opts->action_name ? opts->action_name : "cherry-pick";
+
+	if (!*name)
+		return;
+
+	strbuf_addf(&msg, "Notes added by 'git %s'", name);
+	copy_rewrite_notes(&rewritten, name, msg.buf);
+	run_rewrite_hook(&rewritten, name);
+	strbuf_release(&msg);
+}
+
 static int is_rfc2822_line(const char *buf, int len)
 {
 	int i;
@@ -1010,6 +1029,8 @@ static int pick_commits(struct commit_list *todo_list, struct replay_opts *opts)
 		}
 	}
 
+	finish(opts);
+
 	/*
 	 * Sequence of picks finished successfully; cleanup by
 	 * removing the .git/sequencer directory
@@ -1083,8 +1104,13 @@ static int sequencer_skip(struct replay_opts *opts)
 
 static int single_pick(struct commit *cmit, struct replay_opts *opts)
 {
+	int ret;
 	setenv(GIT_REFLOG_ACTION, action_name(opts), 0);
-	return do_pick_commit(cmit, opts);
+	ret = do_pick_commit(cmit, opts);
+	if (ret)
+		return ret;
+	finish(opts);
+	return 0;
 }
 
 int sequencer_pick_revisions(struct replay_opts *opts)
