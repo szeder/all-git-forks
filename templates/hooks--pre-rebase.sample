@@ -132,14 +132,14 @@ With this workflow, you would want to know:
 
 Let's look at this example:
 
-		   o---o---o---o---o---o---o---o---o---o "next"
-		  /       /           /           /
-		 /   a---a---b A     /           /
-		/   /               /           /
-	       /   /   c---c---c---c B         /
-	      /   /   /             \         /
-	     /   /   /   b---b C     \       /
-	    /   /   /   /             \     /
+                   o---o---o---o---o---o---o---o---o---o "next"
+                  /       /           /           /
+                 /   a---a---b A     /           /
+                /   /               /           /
+               /   /   c---c---c---c B         /
+              /   /   /             \         /
+             /   /   /   b---b C     \       /
+            /   /   /   /             \     /
     ---o---o---o---o---o---o---o---o---o---o---o "master"
 
 
