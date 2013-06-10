@@ -157,13 +157,13 @@ B to be deleted.
 
 To compute (1):
 
-	git rev-list ^master ^topic next
-	git rev-list ^master        next
+  git rev-list ^master ^topic next
+  git rev-list ^master        next
 
-	if these match, topic has not merged in next at all.
+  if these match, topic has not merged in next at all.
 
 To compute (2):
 
-	git rev-list master..topic
+  git rev-list master..topic
 
-	if this is empty, it is fully merged to "master".
+  if this is empty, it is fully merged to "master".
