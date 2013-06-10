@@ -1936,3 +1936,34 @@ void *read_blob_data_from_index(struct index_state *istate, const char *path, un
 		*size = sz;
 	return data;
 }
+
+void stat_validity_clear(struct stat_validity *sv)
+{
+	free(sv->ce);
+	sv->ce = NULL;
+}
+
+int stat_validity_check(struct stat_validity *sv, const char *path)
+{
+	struct stat st;
+
+	if (stat(path, &st) < 0)
+		return sv->ce == NULL;
+	if (!sv->ce)
+		return 0;
+	return !ce_match_stat_basic(sv->ce, &st);
+}
+
+void stat_validity_update(struct stat_validity *sv, int fd)
+{
+	struct stat st;
+
+	if (fstat(fd, &st) < 0)
+		stat_validity_clear(sv);
+	else {
+		if (!sv->ce)
+			sv->ce = xcalloc(1, cache_entry_size(0));
+		fill_stat_cache_info(sv->ce, &st);
+		sv->ce->ce_mode = create_ce_mode(st.st_mode);
+	}
+}
