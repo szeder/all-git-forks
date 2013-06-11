@@ -804,6 +804,16 @@ static int is_refname_available(const char *refname, const char *oldrefname,
 
 struct packed_ref_cache {
 	struct ref_entry *root;
+
+	/*
+	 * Iff the packed-refs file associated with this instance is
+	 * currently locked for writing, this points at the associated
+	 * lock (which is owned by somebody else).
+	 */
+	struct lock_file *lock;
+
+	/* If locked, the file descriptor of the lock file. */
+	int fd;
 };
 
 /*
@@ -825,6 +835,8 @@ static struct ref_cache {
 static void clear_packed_ref_cache(struct ref_cache *refs)
 {
 	if (refs->packed) {
+		if (refs->packed->lock)
+			die("internal error: packed-ref cache cleared while locked");
 		free_ref_entry(refs->packed->root);
 		free(refs->packed);
 		refs->packed = NULL;
@@ -1009,6 +1021,7 @@ static struct packed_ref_cache *get_packed_ref_cache(struct ref_cache *refs)
 
 		refs->packed = xcalloc(1, sizeof(*refs->packed));
 		refs->packed->root = create_dir_entry(refs, "", 0, 0);
+		refs->packed->fd = -1;
 		if (*refs->name)
 			packed_refs_file = git_path_submodule(refs->name, "packed-refs");
 		else
@@ -1034,7 +1047,12 @@ static struct ref_dir *get_packed_refs(struct ref_cache *refs)
 
 void add_packed_ref(const char *refname, const unsigned char *sha1)
 {
-	add_ref(get_packed_refs(&ref_cache),
+	struct packed_ref_cache *packed_ref_cache =
+		get_packed_ref_cache(&ref_cache);
+
+	if (!packed_ref_cache->lock)
+		die("internal error: packed refs not locked");
+	add_ref(get_packed_ref_dir(packed_ref_cache),
 		create_ref_entry(refname, sha1, REF_ISPACKED, 1));
 }
 
@@ -2031,6 +2049,56 @@ static int write_packed_entry_fn(struct ref_entry *entry, void *cb_data)
 	return 0;
 }
 
+int lock_packed_refs(struct lock_file *lock, int flags)
+{
+	int fd;
+	struct packed_ref_cache *packed_ref_cache;
+
+	/* Discard the old cache because it might be invalid: */
+	clear_packed_ref_cache(&ref_cache);
+	fd = hold_lock_file_for_update(lock, git_path("packed-refs"), flags);
+	if (fd < 0)
+		return -1;
+	/* Read the current packed-refs while holding the lock: */
+	packed_ref_cache = get_packed_ref_cache(&ref_cache);
+	packed_ref_cache->lock = lock;
+	packed_ref_cache->fd = fd;
+	return 0;
+}
+
+int commit_packed_refs(void)
+{
+	struct packed_ref_cache *packed_ref_cache =
+		get_packed_ref_cache(&ref_cache);
+	int fd = packed_ref_cache->fd;
+	int error = 0;
+
+	if (!packed_ref_cache->lock)
+		die("internal error: packed-refs not locked");
+	write_or_die(fd, PACKED_REFS_HEADER, strlen(PACKED_REFS_HEADER));
+
+	do_for_each_entry_in_dir(get_packed_ref_dir(packed_ref_cache),
+				 0, write_packed_entry_fn, &fd);
+	if (commit_lock_file(packed_ref_cache->lock))
+		error = -1;
+	packed_ref_cache->lock = NULL;
+	packed_ref_cache->fd = -1;
+	return error;
+}
+
+void rollback_packed_refs(void)
+{
+	struct packed_ref_cache *packed_ref_cache =
+		get_packed_ref_cache(&ref_cache);
+
+	if (!packed_ref_cache->lock)
+		die("internal error: packed-refs not locked");
+	rollback_lock_file(packed_ref_cache->lock);
+	packed_ref_cache->lock = NULL;
+	packed_ref_cache->fd = -1;
+	clear_packed_ref_cache(&ref_cache);
+}
+
 struct ref_to_prune {
 	struct ref_to_prune *next;
 	unsigned char sha1[20];
@@ -2149,23 +2217,19 @@ static struct lock_file packlock;
 int pack_refs(unsigned int flags)
 {
 	struct pack_refs_cb_data cbdata;
-	int fd;
 
 	memset(&cbdata, 0, sizeof(cbdata));
 	cbdata.flags = flags;
 
-	fd = hold_lock_file_for_update(&packlock, git_path("packed-refs"),
-				       LOCK_DIE_ON_ERROR);
+	lock_packed_refs(&packlock, LOCK_DIE_ON_ERROR);
 	cbdata.packed_refs = get_packed_refs(&ref_cache);
 
 	do_for_each_entry_in_dir(get_loose_refs(&ref_cache), 0,
 				 pack_if_possible_fn, &cbdata);
 
-	write_or_die(fd, PACKED_REFS_HEADER, strlen(PACKED_REFS_HEADER));
-	do_for_each_entry_in_dir(cbdata.packed_refs, 0, write_packed_entry_fn, &fd);
-
-	if (commit_lock_file(&packlock) < 0)
+	if (commit_packed_refs())
 		die_errno("unable to overwrite old ref-pack file");
+
 	prune_refs(cbdata.ref_to_prune);
 	return 0;
 }
@@ -2222,7 +2286,6 @@ static int curate_packed_ref_fn(struct ref_entry *entry, void *cb_data)
 
 static int repack_without_ref(const char *refname)
 {
-	int fd;
 	struct ref_dir *packed;
 	struct string_list refs_to_delete = STRING_LIST_INIT_DUP;
 	struct string_list_item *ref_to_delete;
@@ -2230,12 +2293,10 @@ static int repack_without_ref(const char *refname)
 	if (!get_packed_ref(refname))
 		return 0; /* refname does not exist in packed refs */
 
-	fd = hold_lock_file_for_update(&packlock, git_path("packed-refs"), 0);
-	if (fd < 0) {
+	if (lock_packed_refs(&packlock, 0)) {
 		unable_to_lock_error(git_path("packed-refs"), errno);
 		return error("cannot delete '%s' from packed refs", refname);
 	}
-	clear_packed_ref_cache(&ref_cache);
 	packed = get_packed_refs(&ref_cache);
 	/* Remove refname from the cache. */
 	if (remove_entry(packed, refname) == -1) {
@@ -2243,7 +2304,7 @@ static int repack_without_ref(const char *refname)
 		 * The packed entry disappeared while we were
 		 * acquiring the lock.
 		 */
-		rollback_lock_file(&packlock);
+		rollback_packed_refs();
 		return 0;
 	}
 	do_for_each_entry_in_dir(packed, 0, curate_packed_ref_fn, &refs_to_delete);
@@ -2251,9 +2312,7 @@ static int repack_without_ref(const char *refname)
 		if (remove_entry(packed, ref_to_delete->string) == -1)
 			die("internal error");
 	}
-	write_or_die(fd, PACKED_REFS_HEADER, strlen(PACKED_REFS_HEADER));
-	do_for_each_entry_in_dir(packed, 0, write_packed_entry_fn, &fd);
-	return commit_lock_file(&packlock);
+	return commit_packed_refs();
 }
 
 int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
