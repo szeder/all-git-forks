@@ -806,6 +806,14 @@ struct packed_ref_cache {
 	struct ref_entry *root;
 
 	/*
+	 * Count of references to the data structure in this instance,
+	 * including the pointer from ref_cache::packed if any.  The
+	 * data will not be freed as long as the reference count is
+	 * nonzero.
+	 */
+	unsigned int referrers;
+
+	/*
 	 * Iff the packed-refs file associated with this instance is
 	 * currently locked for writing, this points at the associated
 	 * lock (which is owned by somebody else).
@@ -832,14 +840,38 @@ static struct ref_cache {
 	char name[1];
 } ref_cache, *submodule_ref_caches;
 
+/*
+ * Increment the reference count of *packed_refs.
+ */
+static void acquire_packed_ref_cache(struct packed_ref_cache *packed_refs)
+{
+	packed_refs->referrers++;
+}
+
+/*
+ * Decrease the reference count of *packed_refs.  If it goes to zero,
+ * free *packed_refs and return true; otherwise return false.
+ */
+static int release_packed_ref_cache(struct packed_ref_cache *packed_refs)
+{
+	if (!--packed_refs->referrers) {
+		free_ref_entry(packed_refs->root);
+		free(packed_refs);
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
 static void clear_packed_ref_cache(struct ref_cache *refs)
 {
 	if (refs->packed) {
-		if (refs->packed->lock)
+		struct packed_ref_cache *packed_refs = refs->packed;
+
+		if (packed_refs->lock)
 			die("internal error: packed-ref cache cleared while locked");
-		free_ref_entry(refs->packed->root);
-		free(refs->packed);
 		refs->packed = NULL;
+		release_packed_ref_cache(packed_refs);
 	}
 }
 
@@ -1020,6 +1052,7 @@ static struct packed_ref_cache *get_packed_ref_cache(struct ref_cache *refs)
 		FILE *f;
 
 		refs->packed = xcalloc(1, sizeof(*refs->packed));
+		acquire_packed_ref_cache(refs->packed);
 		refs->packed->root = create_dir_entry(refs, "", 0, 0);
 		refs->packed->fd = -1;
 		if (*refs->name)
