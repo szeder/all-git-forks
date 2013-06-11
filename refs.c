@@ -816,7 +816,9 @@ struct packed_ref_cache {
 	/*
 	 * Iff the packed-refs file associated with this instance is
 	 * currently locked for writing, this points at the associated
-	 * lock (which is owned by somebody else).
+	 * lock (which is owned by somebody else).  The referrer count
+	 * is also incremented when the file is locked and decremented
+	 * when it is unlocked.
 	 */
 	struct lock_file *lock;
 
@@ -2099,6 +2101,8 @@ int lock_packed_refs(struct lock_file *lock, int flags)
 	packed_ref_cache = get_packed_ref_cache(&ref_cache);
 	packed_ref_cache->lock = lock;
 	packed_ref_cache->fd = fd;
+	/* Increment the reference count to prevent it from being freed: */
+	acquire_packed_ref_cache(packed_ref_cache);
 	return 0;
 }
 
@@ -2119,6 +2123,7 @@ int commit_packed_refs(void)
 		error = -1;
 	packed_ref_cache->lock = NULL;
 	packed_ref_cache->fd = -1;
+	release_packed_ref_cache(packed_ref_cache);
 	return error;
 }
 
@@ -2132,6 +2137,7 @@ void rollback_packed_refs(void)
 	rollback_lock_file(packed_ref_cache->lock);
 	packed_ref_cache->lock = NULL;
 	packed_ref_cache->fd = -1;
+	release_packed_ref_cache(packed_ref_cache);
 	clear_packed_ref_cache(&ref_cache);
 }
 
