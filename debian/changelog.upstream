@@ -1,3 +1,33 @@
+Version v1.8.3.1; changes since v1.8.3:
+---------------------------------------
+
+Erik Faye-Lund (1):
+      mingw: make mingw_signal return the correct handler
+
+Felipe Contreras (1):
+      sha1_file: trivial style cleanup
+
+Fredrik Gustafsson (1):
+      Document .git/modules
+
+Jonathan Nieder (1):
+      config: allow inaccessible configuration under $HOME
+
+Junio C Hamano (3):
+      Start 1.8.3.1 maintenance track
+      t/README: test_must_fail is for testing Git
+      Git 1.8.3.1
+
+Karsten Blees (1):
+      dir.c: fix ignore processing within not-ignored directories
+
+Phil Hord (1):
+      trivial: Add missing period in documentation
+
+René Scharfe (1):
+      submodule: remove redundant check for the_index.initialized
+
+
 Version v1.8.3; changes since v1.8.3-rc3:
 -----------------------------------------
 
