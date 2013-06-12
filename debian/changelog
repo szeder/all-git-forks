@@ -1,9 +1,10 @@
-git (1:1.8.3.1-0.1) unstable; urgency=low
+git (1:1.8.3.1-1) unstable; urgency=low
 
   * merge branch debian-experimental
   * new upstream point release (see RelNotes/1.8.3.1.txt).
+  * debian/watch: use xz-compressed tarballs from kernel.org.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 12 Jun 2013 07:48:33 -0700
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 12 Jun 2013 07:50:53 -0700
 
 git (1:1.8.3-1) experimental; urgency=low
 
