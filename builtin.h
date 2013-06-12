@@ -135,4 +135,6 @@ extern int cmd_show_ref(int argc, const char **argv, const char *prefix);
 extern int cmd_pack_refs(int argc, const char **argv, const char *prefix);
 extern int cmd_replace(int argc, const char **argv, const char *prefix);
 
+void handle_ruby_command(int argc, const char **argv);
+
 #endif

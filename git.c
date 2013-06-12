@@ -499,6 +499,9 @@ static int run_argv(int *argcp, const char ***argv)
 		/* See if it's an internal command */
 		handle_internal_command(*argcp, *argv);
 
+		/* See if it's a ruby command */
+		handle_ruby_command(*argcp, *argv);
+
 		/* .. then try the external ones */
 		execv_dashed_external(*argv);
 

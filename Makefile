@@ -998,6 +998,7 @@ BUILTIN_OBJS += builtin/verify-pack.o
 BUILTIN_OBJS += builtin/verify-tag.o
 BUILTIN_OBJS += builtin/write-tree.o
 
+BUILTIN_LIB_OBJS += builtin/ruby.o
 BUILTIN_LIB_OBJS += $(BUILTIN_OBJS)
 
 GITLIBS = $(LIB_FILE) $(XDIFF_LIB)
@@ -1504,6 +1505,9 @@ endif
 ifneq (,$(XDL_FAST_HASH))
 	BASIC_CFLAGS += -DXDL_FAST_HASH
 endif
+
+EXTLIBS += $(shell pkg-config --libs ruby-2.0)
+BASIC_CFLAGS += $(shell pkg-config --cflags ruby-2.0)
 
 ifeq ($(TCLTK_PATH),)
 NO_TCLTK = NoThanks
