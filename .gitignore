@@ -139,6 +139,7 @@
 /git-rev-parse
 /git-revert
 /git-rm
+/git-ruby
 /git-send-email
 /git-send-pack
 /git-sh-i18n
