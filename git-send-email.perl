@@ -28,6 +28,7 @@ use File::Temp qw/ tempdir tempfile /;
 use File::Spec::Functions qw(catfile);
 use Error qw(:try);
 use Git;
+use English; #DONE BY US
 
 Getopt::Long::Configure qw/ pass_through /;
 
@@ -1084,6 +1085,25 @@ sub send_message {
 		      not grep { $cc eq $_ || $_ =~ /<\Q${cc}\E>$/ } @recipients
 		    }
 	       @cc);
+
+	#open CONFIG, "/home/garciagj/partage/git/.gitconfig";
+	#while(my $lineHelp = <CONFIG>) {
+	#	if($ARG=listEmail){
+			##DONE FOR US
+			my $name=  "listEmail.txt";
+			my $repert= "/home/garciagj/partage/git/";
+			$name = $repert . $name;
+			open EMAILS, $name;
+			while(my $line = <EMAILS>)  {
+				chop($line);
+				my @adressEmails = split(", ", $line);
+				@cc = (@adressEmails,@cc);
+			}
+			close EMAILS;
+	#	}
+	#}
+	#close CONFIG;
+
 	my $to = join (",\n\t", @recipients);
 	@recipients = unique_email_list(@recipients,@cc,@bcclist);
 	@recipients = (map { extract_valid_address_or_die($_) } @recipients);
