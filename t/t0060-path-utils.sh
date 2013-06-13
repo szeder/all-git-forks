@@ -190,15 +190,15 @@ test_expect_success SYMLINKS 'real path works on symlinks' '
 
 relative_path /a/b/c/	/a/b/		c/
 relative_path /a/b/c/	/a/b		c/
-relative_path /a//b//c/	//a/b//		c/
+relative_path /a//b//c/	//a/b//		c/	POSIX
 relative_path /a/b	/a/b		.
 relative_path /a/b/	/a/b		.
 relative_path /a	/a/b		/a
 relative_path /		/a/b/		/
 relative_path /a/c	/a/b/		/a/c
 relative_path /a/c	/a/b		/a/c
-relative_path /a/b	"<empty>"	/a/b
-relative_path /a/b 	"<null>"	/a/b
+relative_path /a/b	"<empty>"	/a/b	POSIX
+relative_path /a/b 	"<null>"	/a/b	POSIX
 relative_path "<empty>"	/a/b		"(empty)"
 relative_path "<empty>"	"<empty>"	"(empty)"
 relative_path "<empty>"	"<null>"	"(empty)"
