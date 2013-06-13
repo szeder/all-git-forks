@@ -506,6 +506,11 @@ then
 	esac
 	rm -f "$dotest/dirtyindex"
 else
+	# Possible stray $dotest directory
+	if test -d "$dotest" && test t = "$abort"; then
+		clean_abort
+	fi
+
 	# Make sure we are not given --skip, --resolved, nor --abort
 	test "$skip$resolved$abort" = "" ||
 		die "$(gettext "Resolve operation not in progress, we are not resuming.")"
