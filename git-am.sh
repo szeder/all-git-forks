@@ -506,6 +506,20 @@ then
 	esac
 	rm -f "$dotest/dirtyindex"
 else
+	# Possible stray $dotest directory
+	if test -d "$dotest"; then
+	case "$skip,$resolved,$abort" in
+	,,t)
+		rm -fr "$dotest"
+		exit 0
+		;;
+	*)
+		die "$(eval_gettext "Stray \$dotest directory found.
+Use \"git am --abort\" to remove it.")"
+		;;
+	esac
+	fi
+
 	# Make sure we are not given --skip, --resolved, nor --abort
 	test "$skip$resolved$abort" = "" ||
 		die "$(gettext "Resolve operation not in progress, we are not resuming.")"
