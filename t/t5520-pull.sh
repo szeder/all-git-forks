@@ -102,6 +102,17 @@ test_expect_success 'pull.rebase' '
 	test new = $(git show HEAD:file2)
 '
 
+test_expect_success 'pull --rebase respects rebase.autostash' '
+	git reset --hard before-rebase &&
+	test_config pull.rebase true &&
+	test_config rebase.autostash true &&
+	echo dirty >>file2
+	git pull . copy &&
+	test $(git rev-parse HEAD^) = $(git rev-parse copy) &&
+	test new = $(git show HEAD:file2) &&
+	grep dirty file2
+'
+
 test_expect_success 'branch.to-rebase.rebase' '
 	git reset --hard before-rebase &&
 	test_config branch.to-rebase.rebase true &&

@@ -44,6 +44,7 @@ merge_args= edit=
 curr_branch=$(git symbolic-ref -q HEAD)
 curr_branch_short="${curr_branch#refs/heads/}"
 rebase=$(git config --bool branch.$curr_branch_short.rebase)
+autostash=$(git config --bool rebase.autostash)
 if test -z "$rebase"
 then
 	rebase=$(git config --bool pull.rebase)
@@ -203,7 +204,8 @@ test true = "$rebase" && {
 			die "$(gettext "updating an unborn branch with changes added to the index")"
 		fi
 	else
-		require_clean_work_tree "pull with rebase" "Please commit or stash them."
+		test true = "$autostash" ||
+		require_clean_work_tree "pull with rebase" "Please commit or stash them.  See also: rebase.autostash in git-config(1)."
 	fi
 	oldremoteref= &&
 	test -n "$curr_branch" &&
