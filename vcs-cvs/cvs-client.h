@@ -68,7 +68,6 @@ int cvs_terminate(struct cvs_transport *cvs);
  * generate metadata
  */
 typedef void (*add_rev_fn_t)(const char *branch,
-				  int istag,
 				  const char *path,
 				  const char *revision,
 				  const char *author,
@@ -77,7 +76,9 @@ typedef void (*add_rev_fn_t)(const char *branch,
 				  int isdead,
 				  void *data);
 
-int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until, add_rev_fn_t cb, void *data);
+int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until,
+		struct string_list *branch_lst, struct string_list *tag_lst,
+		add_rev_fn_t cb, void *data);
 
 
 typedef void (*on_rev_fn_t)(const char *path,

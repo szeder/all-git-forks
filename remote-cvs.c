@@ -1040,9 +1040,8 @@ static int fast_export_branch_initial(const char *branch_name,
 	helper_printf("author git-remote-cvs <none> %ld +0000\n", date);
 	helper_printf("committer git-remote-cvs <none> %ld +0000\n", date);
 	helper_printf("data <<EON\n");
-	if (istag)
-		helper_printf("initial import of %s: %s\nparent branch: %s\n",
-				istag ? "tag" : "branch", branch_name, parent_branch_name);
+	helper_printf("initial import of %s: %s\nparent branch: %s\n",
+			istag ? "tag" : "branch", branch_name, parent_branch_name);
 	helper_printf("EON\n");
 	if (parent_commit_mark) {
 		helper_printf("from %s\n", parent_commit_mark);
@@ -1059,30 +1058,40 @@ static int fast_export_branch_initial(const char *branch_name,
 	return markid;
 }
 
-static int make_initial_branch_import(const char *branch_name, struct cvs_branch *cvs_branch)
+static int find_last_change_time_cb(void *ptr, void *data)
 {
-	int rc;
+	struct cvs_revision *rev = ptr;
+	time_t *time_max = data;
+
+	if (rev->timestamp > *time_max)
+		*time_max = rev->timestamp;
+
+	return 0;
+}
+
+static int do_initial_import(const char *branch_name, int istag, time_t import_time, struct hash_table *revision_hash)
+{
 	int mark;
 	char *parent_branch_name;
-	struct string_list_item *item;
 	const char *parent_commit;
-	time_t import_time = find_first_commit_time(cvs_branch);
-	if (!import_time)
-		die("import time is 0");
-	import_time--;
-	fprintf(stderr, "import time is %s\n", show_date(import_time, 0, DATE_RFC2822));
+	struct string_list_item *item;
+	struct strbuf commit_mark_sb = STRBUF_INIT;
 
-	rc = fetch_branch_meta(branch_name, import_time, cvs_branch->last_commit_revision_hash);
-	if (rc == -1)
-		die("initial branch checkout failed %s", branch_name);
+	if (fetch_branch_meta(branch_name, import_time, revision_hash))
+		die("%s checkout failed", branch_name);
 
-	if (is_empty_hash(cvs_branch->last_commit_revision_hash))
+	if (is_empty_hash(revision_hash))
 		return 0;
 
-	parent_branch_name = find_parent_branch(branch_name, cvs_branch->last_commit_revision_hash);
+	parent_branch_name = find_parent_branch(branch_name, revision_hash);
 	if (!parent_branch_name)
 		die("Cannot find parent branch for: %s", branch_name);
-	fprintf(stderr, "PARENT BRANCH FOR: %s is %s\n", branch_name, parent_branch_name);
+	fprintf(stderr, "parent branch for: %s is %s\n", branch_name, parent_branch_name);
+
+	if (!import_time)
+		for_each_hash(revision_hash, find_last_change_time_cb, &import_time);
+	fprintf(stderr, "import timestamp: %ld\n", import_time);
+
 	/*
 	 * if parent is not updated yet, import parent first
 	 */
@@ -1095,18 +1104,49 @@ static int make_initial_branch_import(const char *branch_name, struct cvs_branch
 
 	parent_commit = find_branch_fork_point(parent_branch_name,
 						import_time,
-						cvs_branch->last_commit_revision_hash);
-	fprintf(stderr, "PARENT COMMIT: %s\n", parent_commit);
+						revision_hash);
+	fprintf(stderr, "parent commit: %s\n", parent_commit);
 
 	mark = fast_export_branch_initial(branch_name,
-					0,
-					cvs_branch->last_commit_revision_hash,
+					istag,
+					revision_hash,
 					import_time,
 					parent_commit,
 					parent_branch_name);
-	// commit_meta
+
+	strbuf_addf(&commit_mark_sb, ":%d", mark);
+	fast_export_commit_meta(branch_name,
+				istag,
+				revision_hash,
+				NULL,
+				import_time,
+				commit_mark_sb.buf,
+				NULL);
+
 	free(parent_branch_name);
+	strbuf_release(&commit_mark_sb);
 	return mark;
+}
+
+static int initial_branch_import(const char *branch_name, struct cvs_branch *cvs_branch)
+{
+	time_t import_time = find_first_commit_time(cvs_branch);
+	if (!import_time)
+		die("import time is 0");
+	import_time--;
+	fprintf(stderr, "import time is %s\n", show_date(import_time, 0, DATE_RFC2822));
+
+	return do_initial_import(branch_name, 0, import_time, cvs_branch->last_commit_revision_hash);
+}
+
+static int initial_empty_branch_import(const char *branch_name)
+{
+	int mark;
+	struct hash_table revision_hash = HASH_TABLE_INIT;
+
+	mark = do_initial_import(branch_name, 0, 0, &revision_hash);
+	free_revision_meta(&revision_hash);
+	return !mark;
 }
 
 static void merge_revision_hash(struct hash_table *meta, struct hash_table *update)
@@ -1117,6 +1157,7 @@ static void merge_revision_hash(struct hash_table *meta, struct hash_table *upda
 static int import_branch_by_name(const char *branch_name)
 {
 	int mark;
+	int rc;
 	unsigned char sha1[20];
 	struct strbuf commit_mark_sb = STRBUF_INIT;
 	struct strbuf meta_mark_sb = STRBUF_INIT;
@@ -1133,13 +1174,21 @@ static int import_branch_by_name(const char *branch_name)
 	int psnum = 0;
 	int pstotal = 0;
 
-	strbuf_addf(&branch_ref, "%s%s", get_ref_prefix(), branch_name);
-	strbuf_addf(&meta_branch_ref, "%s%s", get_meta_ref_prefix(), branch_name);
-
 	li = unsorted_string_list_lookup(&cvs_branch_list, branch_name);
-	if (!li && !ref_exists(meta_branch_ref.buf))
+	if (!li) // && !ref_exists(meta_branch_ref.buf))
 		die("Cannot find meta for branch %s\n", branch_name);
 	cvs_branch = li->util;
+
+	strbuf_addf(&meta_branch_ref, "%s%s", get_meta_ref_prefix(), branch_name);
+	if (!cvs_branch) {
+		if (ref_exists(meta_branch_ref.buf))
+			die("initial_empty_branch_import of already imported branch %s", branch_name);
+		rc = initial_empty_branch_import(branch_name);
+		strbuf_release(&meta_branch_ref);
+		return rc;
+	}
+
+	strbuf_addf(&branch_ref, "%s%s", get_ref_prefix(), branch_name);
 
 	/*
 	 * FIXME: support of repositories with no files
@@ -1149,9 +1198,9 @@ static int import_branch_by_name(const char *branch_name)
 		/*
 		 * no meta, do cvs checkout
 		 */
-		mark = make_initial_branch_import(branch_name, cvs_branch);
+		mark = initial_branch_import(branch_name, cvs_branch);
 		if (mark == -1)
-			die("make_initial_branch_import failed %s", branch_name);
+			die("initial_branch_import failed %s", branch_name);
 		if (mark > 0)
 			strbuf_addf(&commit_mark_sb, ":%d", mark);
 	}
@@ -1223,76 +1272,17 @@ static int import_branch_by_name(const char *branch_name)
 	return 0;
 }
 
-static int find_last_change_time_cb(void *ptr, void *data)
-{
-	struct cvs_revision *rev = ptr;
-	time_t *time_max = data;
-
-	if (rev->timestamp > *time_max)
-		*time_max = rev->timestamp;
-
-	return 0;
-}
-
 static int import_tag_by_name(const char *branch_name)
 {
-	int rc;
 	int mark;
-	char *parent_branch_name;
-	const char *parent_commit;
-	time_t last_change_timestamp = 0;
-	struct strbuf commit_mark_sb = STRBUF_INIT;
 	struct hash_table tag_revision_hash = HASH_TABLE_INIT;
 
 	fprintf(stderr, "importing CVS tag %s\n", branch_name);
 
-	rc = fetch_branch_meta(branch_name, 0, &tag_revision_hash);
-	if (rc == -1)
-		die("tag checkout failed %s", branch_name);
-
-	if (is_empty_hash(&tag_revision_hash))
-		return 0;
-
-	parent_branch_name = find_parent_branch(branch_name, &tag_revision_hash);
-	if (!parent_branch_name)
-		die("Cannot find parent branch for: %s", branch_name);
-	fprintf(stderr, "PARENT BRANCH FOR: %s is %s\n", branch_name, parent_branch_name);
-
-	for_each_hash(&tag_revision_hash, find_last_change_time_cb, &last_change_timestamp);
-	fprintf(stderr, "last change: %ld\n", last_change_timestamp);
-
-	parent_commit = find_branch_fork_point(parent_branch_name,
-						last_change_timestamp,
-						&tag_revision_hash);
-	fprintf(stderr, "PARENT COMMIT: %s\n", parent_commit);
-
-	mark = fast_export_branch_initial(branch_name,
-					1,
-					&tag_revision_hash,
-					last_change_timestamp,
-					parent_commit,
-					parent_branch_name);
-
-	strbuf_addf(&commit_mark_sb, ":%d", mark);
-	fast_export_commit_meta(branch_name,
-				1,
-				&tag_revision_hash,
-				NULL,
-				last_change_timestamp,
-				commit_mark_sb.buf,
-				NULL);
-
-	/*
-	 * create tag
-	 */
-	helper_printf("reset %s%s\n", get_private_tags_ref_prefix(), branch_name);
-	helper_printf("from %s\n", commit_mark_sb.buf);
-	helper_printf("checkpoint\n");
-
-	free(parent_branch_name);
+	mark = do_initial_import(branch_name, 1, 0, &tag_revision_hash);
 	free_revision_meta(&tag_revision_hash);
-	strbuf_release(&commit_mark_sb);
-	return 0;
+
+	return !mark;
 }
 
 static int cmd_batch_import(struct string_list *list)
@@ -2060,7 +2050,6 @@ static int cmd_batch_push(struct string_list *list)
 }
 
 static void add_cvs_revision_cb(const char *branch_name,
-				int istag,
 				const char *path,
 				const char *revision,
 				const char *author,
@@ -2071,13 +2060,6 @@ static void add_cvs_revision_cb(const char *branch_name,
 	struct string_list *cvs_branch_list = data;
 	struct string_list_item *li;
 	struct cvs_branch *cvs_branch;
-
-	if (istag) {
-		li = unsorted_string_list_lookup(&cvs_tag_list, branch_name);
-		if (!li)
-			string_list_append(&cvs_tag_list, branch_name);
-		return;
-	}
 
 	if (is_cvs_import_excluded_path(path)) {
 		fprintf(stderr, "%s ignored during import according to cvs-exclude\n", path);
@@ -2138,7 +2120,7 @@ static int cmd_list(const char *line)
 
 	//progress_rlog = start_progress("revisions info", 0);
 	if (initial_import) {
-		rc = cvs_rlog(cvs, 0, 0, add_cvs_revision_cb, &cvs_branch_list);
+		rc = cvs_rlog(cvs, 0, 0, &cvs_branch_list, &cvs_tag_list, add_cvs_revision_cb, &cvs_branch_list);
 		if (rc == -1)
 			die("rlog failed");
 		fprintf(stderr, "Total revisions: %d\n", revisions_all_branches_total);
@@ -2146,9 +2128,9 @@ static int cmd_list(const char *line)
 
 		for_each_string_list_item(li, &cvs_branch_list) {
 			cvs_branch = li->util;
-			finalize_revision_list(cvs_branch);
-			if (cvs_branch->rev_list->nr)
-				helper_printf("? refs/heads/%s\n", li->string);
+			if (cvs_branch)
+				finalize_revision_list(cvs_branch);
+			helper_printf("? refs/heads/%s\n", li->string);
 		}
 
 		for_each_string_list_item(li, &cvs_tag_list) {
@@ -2173,7 +2155,7 @@ static int cmd_list(const char *line)
 		 * truncated. Have to detect this case and do full rlog for
 		 * importing such branches.
 		 */
-		rc = cvs_rlog(cvs, update_since, 0, add_cvs_revision_cb, &cvs_branch_list);
+		rc = cvs_rlog(cvs, update_since, 0, &cvs_branch_list, &cvs_tag_list, add_cvs_revision_cb, &cvs_branch_list);
 		if (rc == -1)
 			die("rlog failed");
 		fprintf(stderr, "Total revisions: %d\n", revisions_all_branches_total);
@@ -2181,8 +2163,10 @@ static int cmd_list(const char *line)
 
 		for_each_string_list_item(li, &cvs_branch_list) {
 			cvs_branch = li->util;
-			finalize_revision_list(cvs_branch);
-			if (cvs_branch->rev_list->nr)
+			if (cvs_branch)
+				finalize_revision_list(cvs_branch);
+
+			if (!cvs_branch || cvs_branch->rev_list->nr)
 				helper_printf("? refs/heads/%s\n", li->string);
 			else
 				fprintf(stderr, "Branch: %s is up to date\n", li->string);
@@ -2532,7 +2516,8 @@ int git_cvshelper_config(const char *var, const char *value, void *dummy)
 
 static void cvs_branch_list_item_free(void *p, const char *str)
 {
-	free_cvs_branch(p);
+	if (p)
+		free_cvs_branch(p);
 }
 
 int main(int argc, const char **argv)

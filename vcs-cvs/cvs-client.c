@@ -718,22 +718,22 @@ static int cvs_negotiate(struct cvs_transport *cvs)
 }
 
 static unsigned char cvs_scramble_shifts[] = {
-    0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
-   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-  114,120, 53, 79, 96,109, 72,108, 70, 64, 76, 67,116, 74, 68, 87,
-  111, 52, 75,119, 49, 34, 82, 81, 95, 65,112, 86,118,110,122,105,
-   41, 57, 83, 43, 46,102, 40, 89, 38,103, 45, 50, 42,123, 91, 35,
-  125, 55, 54, 66,124,126, 59, 47, 92, 71,115, 78, 88,107,106, 56,
-   36,121,117,104,101,100, 69, 73, 99, 63, 94, 93, 39, 37, 61, 48,
-   58,113, 32, 90, 44, 98, 60, 51, 33, 97, 62, 77, 84, 80, 85,223,
-  225,216,187,166,229,189,222,188,141,249,148,200,184,136,248,190,
-  199,170,181,204,138,232,218,183,255,234,220,247,213,203,226,193,
-  174,172,228,252,217,201,131,230,197,211,145,238,161,179,160,212,
-  207,221,254,173,202,146,224,151,140,196,205,130,135,133,143,246,
-  192,159,244,239,185,168,215,144,139,165,180,157,147,186,214,176,
-  227,231,219,169,175,156,206,198,129,164,150,210,154,177,134,127,
-  182,128,158,208,162,132,167,209,149,241,153,251,237,236,171,195,
-  243,233,253,240,194,250,191,155,142,137,245,235,163,242,178,152
+	  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
+	 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+	114,120, 53, 79, 96,109, 72,108, 70, 64, 76, 67,116, 74, 68, 87,
+	111, 52, 75,119, 49, 34, 82, 81, 95, 65,112, 86,118,110,122,105,
+	 41, 57, 83, 43, 46,102, 40, 89, 38,103, 45, 50, 42,123, 91, 35,
+	125, 55, 54, 66,124,126, 59, 47, 92, 71,115, 78, 88,107,106, 56,
+	 36,121,117,104,101,100, 69, 73, 99, 63, 94, 93, 39, 37, 61, 48,
+	 58,113, 32, 90, 44, 98, 60, 51, 33, 97, 62, 77, 84, 80, 85,223,
+	225,216,187,166,229,189,222,188,141,249,148,200,184,136,248,190,
+	199,170,181,204,138,232,218,183,255,234,220,247,213,203,226,193,
+	174,172,228,252,217,201,131,230,197,211,145,238,161,179,160,212,
+	207,221,254,173,202,146,224,151,140,196,205,130,135,133,143,246,
+	192,159,244,239,185,168,215,144,139,165,180,157,147,186,214,176,
+	227,231,219,169,175,156,206,198,129,164,150,210,154,177,134,127,
+	182,128,158,208,162,132,167,209,149,241,153,251,237,236,171,195,
+	243,233,253,240,194,250,191,155,142,137,245,235,163,242,178,152
 };
 
 char *cvs_scramble(const char *password)
@@ -1216,6 +1216,45 @@ time_t entry_date_to_unixtime(const char *date)
 	return mktime(&date_tm);
 }
 
+static unsigned int hash_str(const char *branch)
+{
+	unsigned int hash = 0x12375903;
+
+	while (*branch) {
+		unsigned char c = *branch++;
+		hash = hash*101 + c;
+	}
+	return hash;
+}
+
+static void add_branch_hash(struct hash_table *branch_hash, const char *branch_name)
+{
+	const char *old;
+	unsigned int hash;
+
+	hash = hash_str(branch_name);
+	old = lookup_hash(hash, branch_hash);
+	if (old) {
+		if (strcmp(old, branch_name))
+			die("branch name hash collision %s %s", old, branch_name);
+	}
+	else {
+		insert_hash(hash, xstrdup(branch_name), branch_hash);
+	}
+}
+
+static int add_to_string_list(void *ptr, void *data)
+{
+	char *branch_name = ptr;
+	struct string_list *list = data;
+
+	if (!unsorted_string_list_lookup(list, branch_name))
+		string_list_append_nodup(list, branch_name);
+	else
+		free(branch_name);
+	return 0;
+}
+
 #define CVS_LOG_BOUNDARY "----------------------------"
 #define CVS_FILE_BOUNDARY "============================================================================="
 
@@ -1232,7 +1271,8 @@ enum
 	SKIP_LINES		= 8
 };
 
-int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
+static int parse_cvs_rlog(struct cvs_transport *cvs, struct string_list *branch_lst,
+		  struct string_list *tag_lst, add_rev_fn_t cb, void *data)
 {
 	struct strbuf reply = STRBUF_INIT;
 	ssize_t ret;
@@ -1259,8 +1299,8 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 	/*
 	 * branch revision -> branch name, hash created per file
 	 */
-	//struct hash_table branch_rev_hash;
-	//init_hash(&branch_rev_hash);
+	struct hash_table branch_hash = HASH_TABLE_INIT;
+	struct hash_table tag_hash = HASH_TABLE_INIT;
 	struct strbuf branch_name = STRBUF_INIT;
 	struct strbuf branch_rev = STRBUF_INIT;
 
@@ -1366,11 +1406,14 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 				switch (parse_sym(&reply, &branch_name, &branch_rev)) {
 				case sym_branch:
 					branches++;
+					if (branch_lst)
+						add_branch_hash(&branch_hash, branch_name.buf);
 					branch_rev_list_push(&branch_list, &branch_name, &branch_rev);
 					break;
 				case sym_tag:
 					tags++;
-					cb(branch_name.buf, 1, file.buf, branch_rev.buf, NULL, NULL, 0, 0, 0);
+					if (tag_lst)
+						add_branch_hash(&tag_hash, branch_name.buf);
 					break;
 				}
 			}
@@ -1486,7 +1529,7 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 					//fprintf(stderr, "skipping initial add to another branch file: %s rev: %s\n", file.buf, revision.buf);
 				}
 				else if (!skip_unknown)
-					cb(branch.buf, 0, file.buf, revision.buf, author.buf, message.buf, timestamp, is_dead, data);
+					cb(branch.buf, file.buf, revision.buf, author.buf, message.buf, timestamp, is_dead, data);
 				skip_unknown = 0;
 			}
 			break;
@@ -1499,6 +1542,11 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 	if (state != NEED_RCS_FILE)
 		die("Cannot parse rlog, parser state %d", state);
 
+	if (branch_lst)
+		for_each_hash(&branch_hash, add_to_string_list, branch_lst);
+	if (tag_lst)
+		for_each_hash(&tag_hash, add_to_string_list, tag_lst);
+
 	fprintf(stderr, "REVS: %d FILES: %d BRANCHES: %d TAGS: %d\n", revs, files, branches_max, tags_max);
 
 	strbuf_release(&branch_name);
@@ -1510,15 +1558,19 @@ int parse_cvs_rlog(struct cvs_transport *cvs, add_rev_fn_t cb, void *data)
 	strbuf_release(&branch);
 	strbuf_release(&author);
 	strbuf_release(&message);
+	free_hash(&branch_hash);
+	free_hash(&tag_hash);
 	return 0;
 }
 
-int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until, add_rev_fn_t cb, void *data)
+int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until,
+		struct string_list *branch_lst, struct string_list *tag_lst,
+		add_rev_fn_t cb, void *data)
 {
 	ssize_t ret;
 	const char *rlog_path = getenv("GIT_CACHE_CVS_RLOG");
 	if (rlog_path && !access(rlog_path, R_OK))
-		return parse_cvs_rlog(cvs, cb, data);
+		return parse_cvs_rlog(cvs, branch_lst, tag_lst, cb, data);
 
 	if (since) {
 		cvs_write(cvs,
@@ -1543,7 +1595,7 @@ int cvs_rlog(struct cvs_transport *cvs, time_t since, time_t until, add_rev_fn_t
 	if (ret == -1)
 		die("Cannot send rlog command");
 
-	return parse_cvs_rlog(cvs, cb, data);
+	return parse_cvs_rlog(cvs, branch_lst, tag_lst, cb, data);
 }
 
 /*
