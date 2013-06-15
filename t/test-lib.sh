@@ -188,6 +188,8 @@ do
 		# Ignore --quiet under a TAP::Harness. Saying how many tests
 		# passed without the ok/not ok details is always an error.
 		test -z "$HARNESS_ACTIVE" && quiet=t; shift ;;
+	--tr|--tra|--trac|--trace)
+		trace=t; shift ;;
 	--with-dashes)
 		with_dashes=t; shift ;;
 	--no-color)
@@ -337,8 +339,19 @@ test_eval_ () {
 test_run_ () {
 	test_cleanup=:
 	expecting_failure=$2
+	# Only enable/disable tracing here if it's not already enabled.
+	# We don't want to stop tracing if someone is tracing the test
+	# framework.
+	if test "$trace" = "t" && ! expr "$-" : x >/dev/null
+	then
+		test_tracing=t
+		set -- "set -x; $1"
+	fi
 	test_eval_ "$1"
 	eval_ret=$?
+
+	test "$test_tracing" = "t" && set +x
+	unset test_tracing
 
 	if test -z "$immediate" || test $eval_ret = 0 || test -n "$expecting_failure"
 	then
