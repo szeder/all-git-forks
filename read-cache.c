@@ -1296,8 +1296,8 @@ int read_index(struct index_state *istate)
 /* remember to discard_cache() before reading a different cache! */
 int read_index_from(struct index_state *istate, const char *path)
 {
-	int fd;
-	struct stat st;
+	int fd, err, i;
+	struct stat_validity sv;
 	struct cache_header *hdr;
 	void *mmap;
 	size_t mmap_size;
@@ -1309,43 +1309,46 @@ int read_index_from(struct index_state *istate, const char *path)
 	errno = ENOENT;
 	istate->timestamp.sec = 0;
 	istate->timestamp.nsec = 0;
-
-	fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		if (errno == ENOENT) {
-			initialize_index(istate, 0);
-			return 0;
+	sv.sd = NULL;
+	for (i = 0; i < 50; i++) {
+		err = 0;
+		fd = open(path, O_RDONLY);
+		if (fd < 0) {
+			if (errno == ENOENT) {
+				initialize_index(istate, 0);
+				return 0;
+			}
+			die_errno("index file open failed");
 		}
-		die_errno("index file open failed");
+
+		stat_validity_update(&sv, fd);
+		if (!sv.sd)
+			die_errno("cannot stat the open index");
+
+		errno = EINVAL;
+		mmap_size = xsize_t(sv.sd->sd_size);
+		mmap = xmmap(NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+		close(fd);
+		if (mmap == MAP_FAILED)
+			die_errno("unable to map index file");
+
+		hdr = mmap;
+		if (verify_hdr_version(istate, hdr, mmap_size) < 0)
+			err = 1;
+
+		if (istate->ops->verify_hdr(mmap, mmap_size) < 0)
+			err = 1;
+
+		if (istate->ops->read_index(istate, mmap, mmap_size) < 0)
+			err = 1;
+		istate->timestamp.sec = sv.sd->sd_mtime.sec;
+		istate->timestamp.nsec = sv.sd->sd_mtime.nsec;
+
+		munmap(mmap, mmap_size);
+		if (stat_validity_check(&sv, path) && !err)
+			return istate->cache_nr;
 	}
 
-	if (fstat(fd, &st))
-		die_errno("cannot stat the open index");
-
-	errno = EINVAL;
-	mmap_size = xsize_t(st.st_size);
-	mmap = xmmap(NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-	close(fd);
-	if (mmap == MAP_FAILED)
-		die_errno("unable to map index file");
-
-	hdr = mmap;
-	if (verify_hdr_version(istate, hdr, mmap_size) < 0)
-		goto unmap;
-
-	if (istate->ops->verify_hdr(mmap, mmap_size) < 0)
-		goto unmap;
-
-	if (istate->ops->read_index(istate, mmap, mmap_size) < 0)
-		goto unmap;
-	istate->timestamp.sec = st.st_mtime;
-	istate->timestamp.nsec = ST_MTIME_NSEC(st);
-
-	munmap(mmap, mmap_size);
-	return istate->cache_nr;
-
-unmap:
-	munmap(mmap, mmap_size);
 	die("index file corrupt");
 }
 
