@@ -5462,11 +5462,6 @@ msgstr "Die allgemein verwendeten Git-Anleitungen sind:\n"
 msgid "usage: %s%s"
 msgstr "Verwendung: %s%s"
 
-#: builtin/help.c:494
-#, c-format
-msgid "`git %s' is aliased to `%s'"
-msgstr "für `git %s' wurde der Alias `%s' angelegt"
-
 #: builtin/index-pack.c:182
 #, c-format
 msgid "object type mismatch at %s"

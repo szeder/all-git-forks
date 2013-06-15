@@ -2822,11 +2822,6 @@ msgstr "'%s': non è una directory della documentazione."
 msgid "usage: %s%s"
 msgstr "uso: %s%s"
 
-#: builtin/help.c:453
-#, c-format
-msgid "`git %s' is aliased to `%s'"
-msgstr "'git %s è un alias di '%s'"
-
 #: builtin/index-pack.c:169
 #, c-format
 msgid "object type mismatch at %s"

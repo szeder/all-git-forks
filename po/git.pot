@@ -5101,11 +5101,6 @@ msgstr ""
 msgid "usage: %s%s"
 msgstr ""
 
-#: builtin/help.c:494
-#, c-format
-msgid "`git %s' is aliased to `%s'"
-msgstr ""
-
 #: builtin/index-pack.c:182
 #, c-format
 msgid "object type mismatch at %s"

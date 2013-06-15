@@ -5418,11 +5418,6 @@ msgstr "Các chỉ dẫn chung về cách dùng Git là:\n"
 msgid "usage: %s%s"
 msgstr "cách sử dụng: %s%s"
 
-#: builtin/help.c:494
-#, c-format
-msgid "`git %s' is aliased to `%s'"
-msgstr "“git %s” được đặt bí danh thành “%s”"
-
 #: builtin/index-pack.c:182
 #, c-format
 msgid "object type mismatch at %s"

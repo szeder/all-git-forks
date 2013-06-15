@@ -5315,11 +5315,6 @@ msgstr "最常用的 Git 向导有：\n"
 msgid "usage: %s%s"
 msgstr "用法：%s%s"
 
-#: builtin/help.c:494
-#, c-format
-msgid "`git %s' is aliased to `%s'"
-msgstr "`git %s' 是 `%s' 的别名"
-
 #: builtin/index-pack.c:182
 #, c-format
 msgid "object type mismatch at %s"

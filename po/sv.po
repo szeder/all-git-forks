@@ -5311,11 +5311,6 @@ msgstr "De vanliga Git-vägledningarna är:\n"
 msgid "usage: %s%s"
 msgstr "användning: %s%s"
 
-#: builtin/help.c:494
-#, c-format
-msgid "`git %s' is aliased to `%s'"
-msgstr "\"git %s\" är ett alias för \"%s\""
-
 #: builtin/index-pack.c:182
 #, c-format
 msgid "object type mismatch at %s"
