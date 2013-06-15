@@ -1382,6 +1382,16 @@ static int prepare_cvsfile(void *ptr, void *data)
 	return 0;
 }
 
+static int save_new_tag_meta(unsigned char *sha1, const char *tag_name, int istag, struct hash_table *revision_meta_hash)
+{
+	struct strbuf meta_ref_sb = STRBUF_INIT;
+
+	strbuf_addf(&meta_ref_sb, "%s%s", istag ? get_meta_tags_ref_prefix() : get_meta_ref_prefix(), tag_name);
+	save_revision_meta(sha1, meta_ref_sb.buf, "new tag pushed", revision_meta_hash);
+	strbuf_release(&meta_ref_sb);
+	return 0;
+}
+
 static int push_tag_to_cvs(const char *tag_name, int istag, struct hash_table *revision_meta_hash)
 {
 	struct cvsfile *files, *it;
@@ -1399,14 +1409,9 @@ static int push_tag_to_cvs(const char *tag_name, int istag, struct hash_table *r
 	for (i = 0; i < count; i++)
 		cvsfile_release(&files[i]);
 	free(files);
+
 	return rc;
 }
-
-	/*base = push_list->item;
-	revision_meta_hash = base->util;
-	if (!revision_meta_hash)
-		die("push failed: base commit does not have CVS metadata");*/
-
 
 /*
  * iterates over commits until it finds the one with cvs metadata (point where
@@ -1922,12 +1927,12 @@ static int push_branch(const char *src, const char *dst, int force)
 		die("prepare_push_commit_list failed");
 
 	if (is_new_branch &&
-	    push_list->item &&
-	    push_tag_to_cvs(cvs_branch, 0, push_list->item->util))
-	    /*
-	     * TODO: create meta for new branch
-	     */
-		die("Cannot create CVS branch %s", cvs_branch);
+	    push_list->item) {
+		if (push_tag_to_cvs(cvs_branch, 0, push_list->item->util))
+			die("Cannot create CVS branch %s", cvs_branch);
+		else
+			save_new_tag_meta(sha1, cvs_branch, 0, push_list->item->util);
+	}
 
 	/*
 	 * prepare_push_commit_list always put commit with cvs metadata first,
@@ -1980,7 +1985,7 @@ static int push_tag(const char *src, const char *dst, int force)
 			      "from or pushed to CVS can be tagged.", cvs_tag);
 	}
 	else if (!push_tag_to_cvs(cvs_tag, 1, revision_meta_hash)) {
-		rc = 0;
+		rc = save_new_tag_meta(sha1, cvs_tag, 1, revision_meta_hash);
 	}
 
 	if (revision_meta_hash) {
