@@ -505,6 +505,19 @@ then
 		exit ;;
 	esac
 	rm -f "$dotest/dirtyindex"
+elif test -d "$dotest" && ! test -f "$dotest/autostash"
+then
+	# stray $dotest directory
+	case "$skip,$resolved,$abort" in
+	,,t)
+		rm -fr "$dotest"
+		exit 0
+		;;
+	*)
+		die "$(eval_gettext "Stray \$dotest directory found.
+Use \"git am --abort\" to remove it.")"
+		;;
+	esac
 else
 	# Make sure we are not given --skip, --resolved, nor --abort
 	test "$skip$resolved$abort" = "" ||
