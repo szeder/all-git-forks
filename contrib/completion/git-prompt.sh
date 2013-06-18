@@ -359,19 +359,18 @@ __git_ps1 ()
 			b="${head#ref: }"
 			if [ "$head" = "$b" ]; then
 				detached=yes
-				b="$(
 				case "${GIT_PS1_DESCRIBE_STYLE-}" in
 				(contains)
-					git describe --contains HEAD ;;
+					b=$(git describe --always --contains HEAD) ;;
 				(branch)
-					git describe --contains --all HEAD ;;
+					b=$(git describe --always --contains --all HEAD) ;;
 				(describe)
-					git describe HEAD ;;
+					b=$(git describe --always HEAD) ;;
 				(* | default)
-					git describe --tags --exact-match HEAD ;;
-				esac 2>/dev/null)" ||
-
-				b="$short_sha..."
+					b=$(git describe --tags --exact-match HEAD 2>/dev/null)
+					test -z $b && b="$short_sha"
+					;;
+				esac
 				b="($b)"
 			fi
 		fi
