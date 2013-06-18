@@ -371,7 +371,10 @@ __git_ps1 ()
 					test -z $b && b="$short_sha"
 					;;
 				esac
-				b="($b)"
+				# if there is no color, use
+				# parenthesis to indicate that the
+				# HEAD is detached
+				test -n "${GIT_PS1_SHOWCOLORHINTS-}" || b="($b)"
 			fi
 		fi
 	fi
