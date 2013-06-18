@@ -302,7 +302,7 @@ cat > expect <<\EOF
 | |
 | |     side-2
 | |
-| * commit tags/side-1
+| * commit side-1
 | | Author: A U Thor <author@example.com>
 | |
 | |     side-1
@@ -327,17 +327,17 @@ cat > expect <<\EOF
 |
 |       fourth
 |
-* commit tags/side-1~1
+* commit side-1~1
 | Author: A U Thor <author@example.com>
 |
 |     third
 |
-* commit tags/side-1~2
+* commit side-1~2
 | Author: A U Thor <author@example.com>
 |
 |     second
 |
-* commit tags/side-1~3
+* commit side-1~3
   Author: A U Thor <author@example.com>
 
       initial

@@ -49,8 +49,8 @@ test_expect_success setup '
 '
 
 cat >expect <<EOF
-<tags/B
->tags/C
+<B
+>C
 EOF
 
 test_expect_success '--left-right' '
@@ -70,7 +70,7 @@ test_expect_success '--cherry-pick foo comes up empty' '
 '
 
 cat >expect <<EOF
->tags/C
+>C
 EOF
 
 test_expect_success '--cherry-pick bar does not come up empty' '
@@ -88,8 +88,8 @@ test_expect_success 'bar does not come up empty' '
 '
 
 cat >expect <<EOF
-<tags/F
->tags/E
+<F
+>E
 EOF
 
 test_expect_success '--cherry-pick bar does not come up empty (II)' '
@@ -100,10 +100,10 @@ test_expect_success '--cherry-pick bar does not come up empty (II)' '
 '
 
 cat >expect <<EOF
-+tags/F
-=tags/D
-+tags/E
-=tags/C
++F
+=D
++E
+=C
 EOF
 
 test_expect_success '--cherry-mark' '
@@ -114,10 +114,10 @@ test_expect_success '--cherry-mark' '
 '
 
 cat >expect <<EOF
-<tags/F
-=tags/D
->tags/E
-=tags/C
+<F
+=D
+>E
+=C
 EOF
 
 test_expect_success '--cherry-mark --left-right' '
@@ -128,7 +128,7 @@ test_expect_success '--cherry-mark --left-right' '
 '
 
 cat >expect <<EOF
-tags/E
+E
 EOF
 
 test_expect_success '--cherry-pick --right-only' '
@@ -146,8 +146,8 @@ test_expect_success '--cherry-pick --left-only' '
 '
 
 cat >expect <<EOF
-+tags/E
-=tags/C
++E
+=C
 EOF
 
 test_expect_success '--cherry' '

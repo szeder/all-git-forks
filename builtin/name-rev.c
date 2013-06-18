@@ -138,6 +138,9 @@ static int name_ref(const char *path, const unsigned char *sha1, int flags, void
 			path = shorten_unambiguous_ref(path, 0);
 		else if (!prefixcmp(path, "refs/heads/"))
 			path = path + 11;
+		else if (data->name_only
+		    && !prefixcmp(path, "refs/tags/"))
+			path = path + 10;
 		else if (!prefixcmp(path, "refs/"))
 			path = path + 5;
 
