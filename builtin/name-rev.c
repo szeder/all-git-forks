@@ -186,7 +186,15 @@ static void show_name(const struct object *obj,
 	if (!name_only)
 		printf("%s ", caller_name ? caller_name : sha1_to_hex(sha1));
 	name = get_rev_name(obj);
-	if (name)
+
+	if (name && name_only) {
+		/* strip possible trailing ^0 from name */
+		int len = strlen(name);
+		if (len > 2 && !strcmp(name + len - 2, "^0"))
+			len -= 2;
+		printf("%.*s\n", len, name);
+	}
+	else if (name)
 		printf("%s\n", name);
 	else if (allow_undefined)
 		printf("undefined\n");
