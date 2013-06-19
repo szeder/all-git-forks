@@ -48,6 +48,7 @@ MRC=$(git rev-parse --verify -q $head)
 MRT=$(git write-tree)
 NON_FF_MERGE=0
 OCTOPUS_FAILURE=0
+EMPTY_TREE=$(git hash-object -t tree /dev/null)
 for SHA1 in $remotes
 do
 	case "$OCTOPUS_FAILURE" in
@@ -67,7 +68,9 @@ do
 		eval pretty_name=\${GITHEAD_$SHA1_UP:-$pretty_name}
 	fi
 	common=$(git merge-base --all $SHA1 $MRC) ||
-		die "Unable to find common commit with $pretty_name"
+		# Try with an empty tree if no common ancestor was
+		# found, since it is common to all trees.
+		common=$EMPTY_TREE
 
 	case "$LF$common$LF" in
 	*"$LF$SHA1$LF"*)
