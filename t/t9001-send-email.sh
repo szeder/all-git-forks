@@ -956,6 +956,19 @@ test_expect_success $PREREQ 'utf8 author is correctly passed on' '
 	grep "^From: Füñný Nâmé <odd_?=mail@example.com>" msgtxt1
 '
 
+test_expect_success $PREREQ 'utf8 sender is not duplicated' '
+	clean_fake_sendmail &&
+	test_commit weird_sender &&
+	test_when_finished "git reset --hard HEAD^" &&
+	git commit --amend --author "Füñný Nâmé <odd_?=mail@example.com>" &&
+	git format-patch --stdout -1 >funny_name.patch &&
+	git send-email --from="Füñný Nâmé <odd_?=mail@example.com>" \
+	  --to=nobody@example.com \
+	  --smtp-server="$(pwd)/fake.sendmail" \
+	  funny_name.patch &&
+	test `grep "^From:" msgtxt1|wc -l` -eq 1
+'
+
 test_expect_success $PREREQ 'sendemail.composeencoding works' '
 	clean_fake_sendmail &&
 	git config sendemail.composeencoding iso-8859-1 &&
