@@ -139,7 +139,7 @@ end:
 	add_refspec(branch->name);
 }
 
-static void setup_push_upstream(struct remote *remote, int simple)
+static void setup_push_upstream(struct remote *remote)
 {
 	struct strbuf refspec = STRBUF_INIT;
 	struct branch *branch = branch_get(NULL);
@@ -161,8 +161,6 @@ static void setup_push_upstream(struct remote *remote, int simple)
 		      "your current branch '%s', without telling me what to push\n"
 		      "to update which remote branch."),
 		    remote->name, branch->name);
-	if (simple && strcmp(branch->refname, branch->merge[0]->src))
-		die_push_simple(branch, remote);
 
 	strbuf_addf(&refspec, "%s:%s", branch->name, branch->merge[0]->src);
 	add_refspec(refspec.buf);
@@ -211,7 +209,7 @@ static void setup_default_push_refspecs(struct remote *remote)
 		break;
 
 	case PUSH_DEFAULT_UPSTREAM:
-		setup_push_upstream(remote, 0);
+		setup_push_upstream(remote);
 		break;
 
 	case PUSH_DEFAULT_CURRENT:
