@@ -1850,10 +1850,12 @@ push.default::
   symmetrical to `pull` in central workflows, and cannot be used in
   non-central workflows.
 
-* `simple` - like `upstream`, but refuses to push if the upstream
-  branch's name is different from the local one. This is the safest
-  option and is well-suited for beginners. It will become the default
-  in Git 2.0.
+* `simple` - a safer version of `current`; push the current branch to
+  update a branch with the same name on the receiving end, with a
+  safety feature: in central workflows, error out if
+  branch.$branch.merge is set and not equal to $branch, to make sure
+  that a `push` and `push` are never asymmetrical.  It will become the
+  default in Git 2.0.
 
 * `matching` - push all branches having the same name on both ends
   (essentially ignoring all newly created local branches).

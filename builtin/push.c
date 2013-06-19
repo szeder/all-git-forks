@@ -120,6 +120,25 @@ static const char message_detached_head_die[] =
 	   "\n"
 	   "    git push %s HEAD:<name-of-remote-branch>\n");
 
+static void setup_push_simple(struct remote *remote)
+{
+	struct branch *branch = branch_get(NULL);
+	if (!branch)
+		die(_(message_detached_head_die), remote->name);
+	if (!branch->merge_nr || !branch->merge || !branch->remote_name)
+		/* No upstream configured */
+		goto end;
+	if (branch->merge_nr != 1)
+		die(_("The current branch %s has multiple upstream branches, "
+		    "refusing to push."), branch->name);
+	if (!strcmp(branch->remote_name, remote->name) &&
+		strcmp(branch->refname, branch->merge[0]->src))
+		/* Central workflow safety feature */
+		die_push_simple(branch, remote);
+end:
+	add_refspec(branch->name);
+}
+
 static void setup_push_upstream(struct remote *remote, int simple)
 {
 	struct strbuf refspec = STRBUF_INIT;
@@ -188,7 +207,7 @@ static void setup_default_push_refspecs(struct remote *remote)
 		break;
 
 	case PUSH_DEFAULT_SIMPLE:
-		setup_push_upstream(remote, 1);
+		setup_push_simple(remote);
 		break;
 
 	case PUSH_DEFAULT_UPSTREAM:
