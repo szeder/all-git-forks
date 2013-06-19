@@ -39,6 +39,26 @@ test_push_failure () {
 	test_cmp expect actual
 }
 
+# $1 = success or failure
+# $2 = push.default value
+# $3 = branch to check for actual output (master or foo)
+# $4 = [optional] switch to triangular workflow
+test_pushdefault_workflow () {
+	workflow=central
+	pushdefault=parent1
+	if test -n "${4-}"; then
+		workflow=triangular
+		pushdefault=parent2
+	fi
+test_expect_success "push.default = $2 $1 in $workflow workflows" "
+	test_config branch.master.remote parent1 &&
+	test_config branch.master.merge refs/heads/foo &&
+	test_config remote.pushdefault $pushdefault &&
+	test_commit commit-for-$2${4+-triangular} &&
+	test_push_$1 $2 $3 ${4+repo2}
+"
+}
+
 test_expect_success '"upstream" pushes to configured upstream' '
 	git checkout master &&
 	test_config branch.master.remote parent1 &&
@@ -114,5 +134,21 @@ test_expect_success 'push to existing branch, upstream configured with different
 	git --git-dir=repo1 log -1 --format="%h %s" "other-name" >actual-other-name &&
 	test_cmp expect-other-name actual-other-name
 '
+
+## test_pushdefault_workflow() arguments:
+# $1 = success or failure
+# $2 = push.default value
+# $3 = branch to check for actual output (master or foo)
+# $4 = [optional] switch to triangular workflow
+
+test_pushdefault_workflow success current master  # breaks push/pull symmetry
+test_pushdefault_workflow success upstream foo    # preserves push/pull symmetry
+test_pushdefault_workflow failure simple master   # errors out on asymmetry
+test_pushdefault_workflow success matching master # always works
+
+test_pushdefault_workflow success current master triangular  # always works
+test_pushdefault_workflow failure upstream foo triangular    # always errors out
+test_pushdefault_workflow success simple master triangular   # works like current
+test_pushdefault_workflow success matching master triangular # always works
 
 test_done
