@@ -107,7 +107,7 @@ test_expect_success 'push from/to new branch with current creates remote branch'
 test_expect_success 'push to existing branch, with no upstream configured' '
 	test_config branch.master.remote repo1 &&
 	git checkout master &&
-	test_push_success simple master &&
+	test_push_failure simple &&
 	test_push_failure upstream
 '
 
