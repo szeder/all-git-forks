@@ -1833,37 +1833,49 @@ push.default::
 	`upstream` is probably what you want.  Possible values are:
 +
 --
+
 * `nothing` - do not push anything (error out) unless a refspec is
-  explicitly given.  Very safe, but not very convenient.
+  explicitly given. This is primarily meant for people who want to
+  avoid mistakes by always being explicit.
 
 * `current` - push the current branch to update a branch with the same
   name on the receiving end.  Works in both central and non-central
-  workflows.  Equivalent to pushing the refspec "$branch" ($branch is
-  the name of the current branch).
+  workflows.
 
-* `upstream` - push the current branch to a branch with the name
-  branch.$branch.merge on the receiving end, and error out if the push
-  destination is not the same as branch.$branch.remote.  The name
-  "upstream" refers to "@{u[pstream]}" in linkgit:gitrevisions[7],
-  which makes sense only if both branch.$branch.remote and
-  branch.$branch.merge are set.  It makes sure that a `push` is
-  symmetrical to `pull` in central workflows, and cannot be used in
-  non-central workflows.
+* `upstream` - push the current branch back to the branch whose
+  changes are usually integrated into the current branch (which is
+  called `@{upstream}`).  This mode only makes sense if you are
+  pushing to the same repository you would normally pull from
+  (i.e. central workflow).
 
-* `simple` - a safer version of `current`; push the current branch to
-  update a branch with the same name on the receiving end, with a
-  safety feature: in central workflows, error out if
-  branch.$branch.merge is set and not equal to $branch, to make sure
-  that a `push` and `push` are never asymmetrical.  It will become the
-  default in Git 2.0.
+* `simple` - a safer version of `current`; push the current branch
+  to update a branch with the same name on the receiving end, with a
+  safety feature: in central workflows, error out if your current
+  branch is not set to integrate with the branch with the same name,
+  to ensure that a `push` and a `push` are symmetrical.
++
+This mode will become the default in Git 2.0.
 
-* `matching` - push all branches having the same name on both ends
-  (essentially ignoring all newly created local branches).
-  Well-suited for those who want to batch-update a specific set of
-  branches they consistently work on.  Use with caution, especially
-  when pushing with '--force'.  Equivalent to pushing the refspec ":".
-  This is currently the default, but Git 2.0 will change the default
-  to `simple`.
+* `matching` - push all branches having the same name on both ends.
+  This makes the repository you are pushing to remember the set of
+  branches that will be pushed out (e.g. if you always push 'maint'
+  and 'master' there and no other branches, the repository you push
+  to will have these two branches, and your local 'maint' and
+  'master' will be pushed there).
++
+To use this mode effectively, you have to make sure _all_ the
+branches you would push out are ready to be pushed out before
+running 'git push', as the whole point of this mode is to allow you
+to push all of the branches in one go.  If you usually finish work
+on only one branch and push out the result, while other branches are
+unfinished, this mode is not for you.  Also this mode is not
+suitable for pushing into a shared central repository, as other
+people may add new branches there, or update the tip of existing
+branches outside your control.
++
+This is currently the default, but Git 2.0 will change the default
+to `simple`.
+
 --
 
 rebase.stat::
