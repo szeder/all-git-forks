@@ -185,6 +185,15 @@ static void warn_unspecified_push_default_configuration(void)
 	warning("%s\n", _(warn_unspecified_push_default_msg));
 }
 
+static void setup_per_branch_push(struct branch *branch)
+{
+	struct strbuf refspec = STRBUF_INIT;
+
+	strbuf_addf(&refspec, "%s:%s",
+		    branch->name, branch->push_name);
+	add_refspec(refspec.buf);
+}
+
 static int is_workflow_triagular(struct remote *remote)
 {
 	struct remote *fetch_remote = remote_get(NULL);
@@ -194,7 +203,14 @@ static int is_workflow_triagular(struct remote *remote)
 static void setup_default_push_refspecs(struct remote *remote)
 {
 	struct branch *branch = branch_get(NULL);
-	int triangular = is_workflow_triagular(remote);
+	int triangular;
+
+	if (branch->push_name) {
+		setup_per_branch_push(branch);
+		return;
+	}
+
+	triangular = is_workflow_triagular(remote);
 
 	switch (push_default) {
 	default:
