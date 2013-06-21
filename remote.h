@@ -138,6 +138,8 @@ struct branch {
 	struct refspec **merge;
 	int merge_nr;
 	int merge_alloc;
+
+	char *push_name;
 };
 
 struct branch *branch_get(const char *name);

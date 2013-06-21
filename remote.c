@@ -372,6 +372,11 @@ static int handle_config(const char *key, const char *value, void *cb)
 			if (!value)
 				return config_error_nonbool(key);
 			add_merge(branch, xstrdup(value));
+		} else if (!strcmp(subkey, ".push")) {
+			if (!value)
+				return config_error_nonbool(key);
+			free(branch->push_name);
+			branch->push_name = xstrdup(value);
 		}
 		return 0;
 	}
