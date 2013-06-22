@@ -1332,8 +1332,11 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		strbuf_addch(&buf, '\n');
 	}
 
-	if (extra_cc.nr)
+	if (extra_cc.nr) {
+		string_list_sort(&extra_cc);
+		string_list_remove_duplicates(&extra_cc, 0);
 		strbuf_addstr(&buf, "Cc: ");
+	}
 	for (i = 0; i < extra_cc.nr; i++) {
 		if (i)
 			strbuf_addstr(&buf, "    ");
