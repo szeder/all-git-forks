@@ -120,7 +120,7 @@ static int check_emacsclient_version(void)
 	return 0;
 }
 
-static void exec_woman_emacs(const char *path, const char *page)
+static void exec_woman_emacs(const char *path, const char *page, int eman)
 {
 	if (!check_emacsclient_version()) {
 		/* This works only with emacsclient version >= 22. */
@@ -128,7 +128,10 @@ static void exec_woman_emacs(const char *path, const char *page)
 
 		if (!path)
 			path = "emacsclient";
-		strbuf_addf(&man_page, "(woman \"%s\")", page);
+		if (eman)
+			strbuf_addf(&man_page, "(man \"%s\")", page);
+		else
+			strbuf_addf(&man_page, "(woman \"%s\")", page);
 		execlp(path, "emacsclient", "-e", man_page.buf, (char *)NULL);
 		warning(_("failed to exec '%s': %s"), path, strerror(errno));
 	}
@@ -341,8 +344,10 @@ static void exec_viewer(const char *name, const char *page)
 
 	if (!strcasecmp(name, "man"))
 		exec_man_man(info, page);
+	else if (!strcasecmp(name, "eman"))
+		exec_woman_emacs(info, page, 1);
 	else if (!strcasecmp(name, "woman"))
-		exec_woman_emacs(info, page);
+		exec_woman_emacs(info, page, 0);
 	else if (!strcasecmp(name, "konqueror"))
 		exec_man_konqueror(info, page);
 	else if (info)

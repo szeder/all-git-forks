@@ -104,6 +104,9 @@ The 'man.viewer' config variable will be checked if the 'man' format
 is chosen. The following values are currently supported:
 
 * "man": use the 'man' program as usual,
+* "eman": use 'emacsclient' to launch the "man" mode in emacs
+(this only works starting with emacsclient versions 22), on systems
+with man,
 * "woman": use 'emacsclient' to launch the "woman" mode in emacs
 (this only works starting with emacsclient versions 22),
 * "konqueror": use 'kfmclient' to open the man page in a new konqueror
