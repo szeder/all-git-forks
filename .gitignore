@@ -97,6 +97,7 @@
 /git-mergetool--lib
 /git-mktag
 /git-mktree
+/git-msgstore-gmane
 /git-msgstore-test
 /git-name-rev
 /git-mv
