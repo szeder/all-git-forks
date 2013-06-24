@@ -1699,6 +1699,33 @@ _git_stage ()
 	_git_add
 }
 
+_git_status ()
+{
+	case "$cur" in
+	--untracked-files=*)
+		__gitcomp "no normal all" "" "${cur##--untracked-files=}"
+		return
+		;;
+	--ignore-submodules=*)
+		__gitcomp "none untracked dirty all" "" "${cur##--ignore-submodules=}"
+		return
+		;;
+	--column=*)
+		__gitcomp "always never auto column row plain dense nodense" "" "${cur##--column=}"
+		return
+		;;
+	--*)
+		__gitcomp "
+			--short --branch --long --porcelain --ignored
+			--untracked-files --ignore-submodules --column
+			--untracked-files= --ignore-submodules= --column=
+			"
+		return
+		;;
+	esac
+	__git_complete_index_file "--with-tree=HEAD --cached --others"
+}
+
 __git_config_get_set_variables ()
 {
 	local prevword word config_file= c=$cword
