@@ -211,10 +211,16 @@ module_clone()
 	name=$2
 	url=$3
 	reference="$4"
+	depth=$5
 	quiet=
 	if test -n "$GIT_QUIET"
 	then
 		quiet=-q
+	fi
+
+	if test -n "$depth"
+	then
+		depth="--depth=$depth"
 	fi
 
 	gitdir=
@@ -233,7 +239,7 @@ module_clone()
 		mkdir -p "$gitdir_base"
 		(
 			clear_local_git_env
-			git clone $quiet -n ${reference:+"$reference"} \
+			git clone $quiet $depth -n ${reference:+"$reference"} \
 				--separate-git-dir "$gitdir" "$url" "$sm_path"
 		) ||
 		die "$(eval_gettext "Clone of '\$url' into submodule path '\$sm_path' failed")"
@@ -676,6 +682,9 @@ cmd_update()
 		--checkout)
 			update="checkout"
 			;;
+		--depth)
+			depth=$2
+			;;
 		--)
 			shift
 			break
@@ -735,7 +744,7 @@ Maybe you want to use 'update --init'?")"
 
 		if ! test -d "$sm_path"/.git -o -f "$sm_path"/.git
 		then
-			module_clone "$sm_path" "$name" "$url" "$reference" || exit
+			module_clone "$sm_path" "$name" "$url" "$reference" "$depth" || exit
 			cloned_modules="$cloned_modules;$name"
 			subsha1=
 		else
