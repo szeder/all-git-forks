@@ -33,54 +33,56 @@ test_expect_success setup '
 	git commit -m "related commit"
 '
 
+setup_tmp () {
+	git clone . tmp &&
+	cd tmp &&
+	git fetch -u origin "refs/heads/*:refs/heads/*" &&
+	test_config rebase.autostash true &&
+	git checkout -b rebased-feature-branch feature-branch
+}
+
 testrebase() {
 	type=$1
 	dotest=$2
 
 	test_expect_success "rebase$type: dirty worktree, non-conflicting rebase" '
-		test_config rebase.autostash true &&
-		git reset --hard &&
-		git checkout -b rebased-feature-branch feature-branch &&
-		test_when_finished git branch -D rebased-feature-branch &&
+		test_when_finished "rm -rf tmp" &&
+		(
+		setup_tmp &&
 		echo dirty >>file3 &&
 		git rebase$type unrelated-onto-branch &&
 		grep unrelated file4 &&
-		grep dirty file3 &&
-		git checkout feature-branch
+		grep dirty file3
+		)
 	'
 
 	test_expect_success "rebase$type: dirty index, non-conflicting rebase" '
-		test_config rebase.autostash true &&
-		git reset --hard &&
-		git checkout -b rebased-feature-branch feature-branch &&
-		test_when_finished git branch -D rebased-feature-branch &&
+		test_when_finished "rm -rf tmp" &&
+		(
+		setup_tmp &&
 		echo dirty >>file3 &&
 		git add file3 &&
 		git rebase$type unrelated-onto-branch &&
 		grep unrelated file4 &&
-		grep dirty file3 &&
-		git checkout feature-branch
+		grep dirty file3
+		)
 	'
 
 	test_expect_success "rebase$type: conflicting rebase" '
-		test_config rebase.autostash true &&
-		git reset --hard &&
-		git checkout -b rebased-feature-branch feature-branch &&
-		test_when_finished git branch -D rebased-feature-branch &&
+		test_when_finished "rm -rf tmp" &&
+		(
+		setup_tmp &&
 		echo dirty >>file3 &&
 		test_must_fail git rebase$type related-onto-branch &&
 		test_path_is_file $dotest/autostash &&
-		! grep dirty file3 &&
-		rm -rf $dotest &&
-		git reset --hard &&
-		git checkout feature-branch
+		! grep dirty file3
+		)
 	'
 
 	test_expect_success "rebase$type: --continue" '
-		test_config rebase.autostash true &&
-		git reset --hard &&
-		git checkout -b rebased-feature-branch feature-branch &&
-		test_when_finished git branch -D rebased-feature-branch &&
+		test_when_finished "rm -rf tmp" &&
+		(
+		setup_tmp &&
 		echo dirty >>file3 &&
 		test_must_fail git rebase$type related-onto-branch &&
 		test_path_is_file $dotest/autostash &&
@@ -89,45 +91,43 @@ testrebase() {
 		git add file2 &&
 		git rebase --continue &&
 		test_path_is_missing $dotest/autostash &&
-		grep dirty file3 &&
-		git checkout feature-branch
+		grep dirty file3
+		)
 	'
 
 	test_expect_success "rebase$type: --skip" '
-		test_config rebase.autostash true &&
+		test_when_finished "rm -rf tmp" &&
+		(
+		setup_tmp &&
 		git reset --hard &&
-		git checkout -b rebased-feature-branch feature-branch &&
-		test_when_finished git branch -D rebased-feature-branch &&
 		echo dirty >>file3 &&
 		test_must_fail git rebase$type related-onto-branch &&
 		test_path_is_file $dotest/autostash &&
 		! grep dirty file3 &&
 		git rebase --skip &&
 		test_path_is_missing $dotest/autostash &&
-		grep dirty file3 &&
-		git checkout feature-branch
+		grep dirty file3
+		)
 	'
 
 	test_expect_success "rebase$type: --abort" '
-		test_config rebase.autostash true &&
-		git reset --hard &&
-		git checkout -b rebased-feature-branch feature-branch &&
-		test_when_finished git branch -D rebased-feature-branch &&
+		test_when_finished "rm -rf tmp" &&
+		(
+		setup_tmp &&
 		echo dirty >>file3 &&
 		test_must_fail git rebase$type related-onto-branch &&
 		test_path_is_file $dotest/autostash &&
 		! grep dirty file3 &&
 		git rebase --abort &&
 		test_path_is_missing $dotest/autostash &&
-		grep dirty file3 &&
-		git checkout feature-branch
+		grep dirty file3
+		)
 	'
 
 	test_expect_success "rebase$type: non-conflicting rebase, conflicting stash" '
-		test_config rebase.autostash true &&
-		git reset --hard &&
-		git checkout -b rebased-feature-branch feature-branch &&
-		test_when_finished git branch -D rebased-feature-branch &&
+		test_when_finished "rm -rf tmp" &&
+		(
+		setup_tmp &&
 		echo dirty >file4 &&
 		git add file4 &&
 		git rebase$type unrelated-onto-branch &&
@@ -138,29 +138,28 @@ testrebase() {
 		git checkout feature-branch &&
 		git stash pop &&
 		grep dirty file4
+		)
 	'
 }
 
 test_expect_success "rebase: fast-forward rebase" '
-	test_config rebase.autostash true &&
-	git reset --hard &&
-	git checkout -b behind-feature-branch feature-branch~1 &&
-	test_when_finished git branch -D behind-feature-branch &&
+	test_when_finished "rm -rf tmp" &&
+	(
+	setup_tmp &&
 	echo dirty >>file1 &&
 	git rebase feature-branch &&
-	grep dirty file1 &&
-	git checkout feature-branch
+	grep dirty file1
+	)
 '
 
 test_expect_success "rebase: noop rebase" '
-	test_config rebase.autostash true &&
-	git reset --hard &&
-	git checkout -b same-feature-branch feature-branch &&
-	test_when_finished git branch -D same-feature-branch &&
+	test_when_finished "rm -rf tmp" &&
+	(
+	setup_tmp &&
 	echo dirty >>file1 &&
 	git rebase feature-branch &&
-	grep dirty file1 &&
-	git checkout feature-branch
+	grep dirty file1
+	)
 '
 
 testrebase "" .git/rebase-apply
