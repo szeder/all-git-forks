@@ -128,7 +128,7 @@ commit $head1
 iso8859-1
 EOF
 
-test_format subject %s failure <<EOF
+test_format subject %s <<EOF
 commit $head2
 $changed
 commit $head1
@@ -140,7 +140,7 @@ commit $head2
 commit $head1
 EOF
 
-test_format raw-body %B failure <<EOF
+test_format raw-body %B <<EOF
 commit $head2
 $changed
 
@@ -252,7 +252,7 @@ EOF
 # so unset i18n.commitEncoding to test encoding conversion
 git config --unset i18n.commitEncoding
 
-test_format complex-subject-commitencoding-unset %s failure <<EOF
+test_format complex-subject-commitencoding-unset %s <<EOF
 commit $head3
 Test printing of complex bodies
 commit $head2
@@ -261,7 +261,7 @@ commit $head1
 $added
 EOF
 
-test_format complex-body-commitencoding-unset %b failure <<EOF
+test_format complex-body-commitencoding-unset %b <<EOF
 commit $head3
 This commit message is much longer than the others,
 and it will be encoded in iso8859-1. We should therefore
