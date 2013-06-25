@@ -70,7 +70,7 @@ test_expect_success 'alias user-defined tformat with %s (iso8859-1 encoding)' '
 	test_cmp expected-s actual-s
 '
 
-test_expect_failure 'alias user-defined tformat with %s (utf-8 encoding)' '
+test_expect_success 'alias user-defined tformat with %s (utf-8 encoding)' '
 	git log --oneline >expected-s &&
 	git log --pretty="tformat:%h %s" >actual-s &&
 	test_cmp expected-s actual-s
@@ -109,19 +109,19 @@ test_expect_success 'alias loop' '
 	test_must_fail git log --pretty=test-foo
 '
 
-test_expect_failure 'NUL separation' '
+test_expect_success 'NUL separation' '
 	printf "add bar\0$(commit_msg)" >expected &&
 	git log -z --pretty="format:%s" >actual &&
 	test_cmp expected actual
 '
 
-test_expect_failure 'NUL termination' '
+test_expect_success 'NUL termination' '
 	printf "add bar\0$(commit_msg)\0" >expected &&
 	git log -z --pretty="tformat:%s" >actual &&
 	test_cmp expected actual
 '
 
-test_expect_failure 'NUL separation with --stat' '
+test_expect_success 'NUL separation with --stat' '
 	stat0_part=$(git diff --stat HEAD^ HEAD) &&
 	stat1_part=$(git diff-tree --no-commit-id --stat --root HEAD^) &&
 	printf "add bar\n$stat0_part\n\0$(commit_msg)\n$stat1_part\n" >expected &&
@@ -146,7 +146,7 @@ test_expect_success 'setup more commits' '
 	head4=$(git rev-parse --verify --short HEAD~3)
 '
 
-test_expect_failure 'left alignment formatting' '
+test_expect_success 'left alignment formatting' '
 	git log --pretty="format:%<(40)%s" >actual &&
 	# complete the incomplete line at the end
 	echo >>actual &&
@@ -159,7 +159,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'left alignment formatting at the nth column' '
+test_expect_success 'left alignment formatting at the nth column' '
 	git log --pretty="format:%h %<|(40)%s" >actual &&
 	# complete the incomplete line at the end
 	echo >>actual &&
@@ -172,7 +172,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'left alignment formatting with no padding' '
+test_expect_success 'left alignment formatting with no padding' '
 	git log --pretty="format:%<(1)%s" >actual &&
 	# complete the incomplete line at the end
 	echo >>actual &&
@@ -185,7 +185,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'left alignment formatting with trunc' '
+test_expect_success 'left alignment formatting with trunc' '
 	git log --pretty="format:%<(10,trunc)%s" >actual &&
 	# complete the incomplete line at the end
 	echo >>actual &&
@@ -198,7 +198,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'left alignment formatting with ltrunc' '
+test_expect_success 'left alignment formatting with ltrunc' '
 	git log --pretty="format:%<(10,ltrunc)%s" >actual &&
 	# complete the incomplete line at the end
 	echo >>actual &&
@@ -211,7 +211,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'left alignment formatting with mtrunc' '
+test_expect_success 'left alignment formatting with mtrunc' '
 	git log --pretty="format:%<(10,mtrunc)%s" >actual &&
 	# complete the incomplete line at the end
 	echo >>actual &&
@@ -224,7 +224,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'right alignment formatting' '
+test_expect_success 'right alignment formatting' '
 	git log --pretty="format:%>(40)%s" >actual &&
 	# complete the incomplete line at the end
 	echo >>actual &&
@@ -237,7 +237,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'right alignment formatting at the nth column' '
+test_expect_success 'right alignment formatting at the nth column' '
 	git log --pretty="format:%h %>|(40)%s" >actual &&
 	# complete the incomplete line at the end
 	echo >>actual &&
@@ -250,7 +250,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'right alignment formatting with no padding' '
+test_expect_success 'right alignment formatting with no padding' '
 	git log --pretty="format:%>(1)%s" >actual &&
 	# complete the incomplete line at the end
 	echo >>actual &&
@@ -263,7 +263,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'center alignment formatting' '
+test_expect_success 'center alignment formatting' '
 	git log --pretty="format:%><(40)%s" >actual &&
 	# complete the incomplete line at the end
 	echo >>actual &&
@@ -276,7 +276,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'center alignment formatting at the nth column' '
+test_expect_success 'center alignment formatting at the nth column' '
 	git log --pretty="format:%h %><|(40)%s" >actual &&
 	# complete the incomplete line at the end
 	echo >>actual &&
@@ -289,7 +289,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'center alignment formatting with no padding' '
+test_expect_success 'center alignment formatting with no padding' '
 	git log --pretty="format:%><(1)%s" >actual &&
 	# complete the incomplete line at the end
 	echo >>actual &&
@@ -302,7 +302,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'left/right alignment formatting with stealing' '
+test_expect_success 'left/right alignment formatting with stealing' '
 	git commit --amend -m short --author "long long long <long@me.com>" &&
 	git log --pretty="format:%<(10,trunc)%s%>>(10,ltrunc)% an" >actual &&
 	# complete the incomplete line at the end
