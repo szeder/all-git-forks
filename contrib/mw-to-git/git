@@ -1,0 +1,25 @@
+#!/bin/sh
+
+# git executable wrapper script for Git-Mediawiki to run tests without
+# installing all the scripts and perl packages.
+
+# based on $GIT_ROOT_DIR/wrap-for-bin.sh
+
+
+GIT_ROOT_DIR=../..
+GIT_EXEC_PATH=$(cd "$(dirname "$0")" && cd ${GIT_ROOT_DIR} && pwd)
+
+if test -n "$NO_SET_GIT_TEMPLATE_DIR"
+then
+	unset GIT_TEMPLATE_DIR
+else
+	GIT_TEMPLATE_DIR="$GIT_EXEC_PATH"'/templates/blt'
+	export GIT_TEMPLATE_DIR
+fi
+# Hack to make the `use lib` call works with multiple paths
+GITPERLLIB="$GIT_EXEC_PATH"'/contrib/mw-to-git:'"$GIT_EXEC_PATH"'/perl/blib/lib'
+GIT_TEXTDOMAINDIR="$GIT_EXEC_PATH"'/po/build/locale'
+PATH="$GIT_EXEC_PATH"'/contrib/mw-to-git:'"$GIT_EXEC_PATH"'/bin-wrappers:'"$PATH"
+export GIT_EXEC_PATH GITPERLLIB PATH GIT_TEXTDOMAINDIR
+
+exec "${GIT_EXEC_PATH}/git" "$@"
