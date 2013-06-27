@@ -481,6 +481,7 @@ sub find_empty_directories {
 
 		# Use `git ls-tree` to get the filenames of this directory
 		# that existed prior to this particular commit.
+		next if not defined $self->{c};
 		my $ls = command('ls-tree', '-z', '--name-only',
 				 $self->{c}, "$dir/");
 		my %files = map { $_ => 1 } split(/\0/, $ls);
