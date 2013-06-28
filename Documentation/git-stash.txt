@@ -77,8 +77,8 @@ In some cases, saving a stash could mean irretrievably removing some
 data - if a directory with untracked files replaces a tracked file of
 the same name, the new untracked files are not saved (except in case
 of `--include-untracked`) but the original tracked file shall be restored.
-Normally, stash save will abort; `--force` will make it remove the
-untracked files.
+By default, `stash save` will abort in such a case; `--force` will allow
+it to remove the untracked files.
 
 list [<options>]::
 

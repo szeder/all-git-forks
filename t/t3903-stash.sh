@@ -677,15 +677,18 @@ test_expect_success SYMLINKS 'stash symlink to non-empty directory' '
 	git reset --hard &&
 	ln -s file2 linkdir &&
 	git add linkdir &&
-	git commit -m"+linkdir as symlink" &&
-	rm linkdir && mkdir linkdir && touch linkdir/file &&
-	! git stash save "symlink to non-empty directory" &&
-	[ -e linkdir/file ]
+	git commit -m "add linkdir as symlink" &&
+	rm linkdir &&
+	mkdir linkdir &&
+	>linkdir/file &&
+	test_must_fail git stash save "symlink to non-empty directory" &&
+	test -f linkdir/file
 '
 
 test_expect_success SYMLINKS 'stash symlink to non-empty directory (forced)' '
 	git stash save --force "symlink to non-empty directory (forced)" &&
-	[ ! -e linkdir/file ] && [ -L linkdir ]
+	! test -f linkdir/file &&
+	test -h linkdir
 '
 
 test_done

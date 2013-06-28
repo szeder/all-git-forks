@@ -262,10 +262,12 @@ save_stash () {
 		say "$(gettext "No local changes to save")"
 		exit 0
 	fi
-	if test -z "$untracked$force" -a -n "$(git ls-files --killed | head -n 1)"; then
+	if test -z "$untracked$force" &&
+	   test -n "$(git ls-files --killed | head -n 1)"
+	then
 		say "$(gettext "The following untracked files would NOT be saved but need to be removed by stash save:")"
 		test -n "$GIT_QUIET" || git ls-files --killed | sed 's/^/\t/'
-		say "$(gettext "Abording. Consider using either the --force or --include-untracked switches.")" >&2
+		say "$(gettext "Aborting. Consider using either the --force or --include-untracked option.")" >&2
 		exit 1
 	fi
 	test -f "$GIT_DIR/logs/$ref_stash" ||
