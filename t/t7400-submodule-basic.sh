@@ -868,4 +868,22 @@ test_expect_success 'submodule deinit fails when submodule has a .git directory 
 	test -n "$(git config --get-regexp "submodule\.example\.")"
 '
 
+test_expect_success 'submodule add clone shallow submodule' '
+	mkdir super &&
+	pwd=$(pwd)
+	(
+		cd super &&
+		git init &&
+		git submodule add --depth=1 file://"$pwd"/example2 submodule &&
+		(
+			cd submodule &&
+			if test $(git log --oneline | wc -l) != 1
+			then
+				exit 1
+			fi
+		)
+	)
+'
+
+
 test_done
