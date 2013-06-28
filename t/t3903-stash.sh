@@ -673,22 +673,22 @@ test_expect_success 'store updates stash ref and reflog' '
 	grep quux bazzy
 '
 
-test_expect_success SYMLINKS 'stash symlink to non-empty directory' '
+test_expect_success 'stash a change to turn a non-directory to a directory' '
 	git reset --hard &&
-	ln -s file2 linkdir &&
-	git add linkdir &&
-	git commit -m "add linkdir as symlink" &&
-	rm linkdir &&
-	mkdir linkdir &&
-	>linkdir/file &&
-	test_must_fail git stash save "symlink to non-empty directory" &&
-	test -f linkdir/file
+	>testfile &&
+	git add testfile &&
+	git commit -m "add testfile as a regular file" &&
+	rm testfile &&
+	mkdir testfile &&
+	>testfile/file &&
+	test_must_fail git stash save "recover regular file" &&
+	test -f testfile/file
 '
 
-test_expect_success SYMLINKS 'stash symlink to non-empty directory (forced)' '
-	git stash save --force "symlink to non-empty directory (forced)" &&
-	! test -f linkdir/file &&
-	test -h linkdir
+test_expect_success 'stash a change to turn a non-directory to a directory (forced)' '
+	git stash save --force "recover regular file (forced)" &&
+	! test -f testfile/file &&
+	test -f testfile
 '
 
 test_done
