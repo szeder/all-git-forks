@@ -207,7 +207,7 @@ test_expect_success 'conflicted stash sets up rerere'  '
     git config rerere.enabled true &&
     git checkout stash1 &&
     echo "Conflicting stash content" >file11 &&
-    git stash &&
+    git stash save --force &&
 
     git checkout --detach stash2 &&
     test_must_fail git stash apply &&

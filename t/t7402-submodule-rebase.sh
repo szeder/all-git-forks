@@ -80,7 +80,7 @@ test_expect_success 'stash with a dirty submodule' '
 
 	echo new > file &&
 	CURRENT=$(cd submodule && git rev-parse HEAD) &&
-	git stash &&
+	git stash save --force &&
 	test new != $(cat file) &&
 	test submodule = $(git diff --name-only) &&
 	test $CURRENT = $(cd submodule && git rev-parse HEAD) &&
