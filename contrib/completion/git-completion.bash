@@ -2247,6 +2247,20 @@ _git_reset ()
 	__gitcomp_nl "$(__git_refs)"
 }
 
+_git_rev_parse ()
+{
+	case "$cur" in
+	--*)
+		__gitcomp "
+			--short --show-toplevel --is-inside-work-tree
+			--symbolic-full-name --verify
+			"
+               return
+               ;;
+	esac
+	__gitcomp_nl "$(__git_refs)"
+}
+
 _git_revert ()
 {
 	case "$cur" in
