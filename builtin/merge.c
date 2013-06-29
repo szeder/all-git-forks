@@ -1162,9 +1162,6 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		option_commit = 0;
 	}
 
-	if (!allow_fast_forward && fast_forward_only)
-		die(_("You cannot combine --no-ff with --ff-only."));
-
 	if (!abort_current_merge) {
 		if (!argc) {
 			if (default_to_upstream)
@@ -1433,7 +1430,14 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		}
 	}
 
-	if (fast_forward_only)
+	/*
+	 * If --ff-only was used without --no-ff, or: --ff-only and --no-ff was
+	 * used at the same time, and this is not a fast-forward.
+	 */
+	if (fast_forward_only && (allow_fast_forward || remoteheads->next ||
+				common->next ||
+				hashcmp(common->item->object.sha1,
+					head_commit->object.sha1)))
 		die(_("Not possible to fast-forward, aborting."));
 
 	/* We are going to make a new commit. */
