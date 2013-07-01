@@ -31,8 +31,9 @@ test_expect_success 'setup a submodule tree' '
 	git clone super rebasing &&
 	git clone super merging &&
 	git clone super none &&
+	pwd=$(pwd)
 	(cd super &&
-	 git submodule add ../submodule submodule &&
+	 git submodule add file:///"$pwd"/submodule submodule &&
 	 test_tick &&
 	 git commit -m "submodule" &&
 	 git submodule init submodule
@@ -700,14 +701,25 @@ test_expect_success 'submodule update properly revives a moved submodule' '
 test_expect_success SYMLINKS 'submodule update can handle symbolic links in pwd' '
 	mkdir -p linked/dir &&
 	ln -s linked/dir linkto &&
-	(
-		cd linkto &&
-		git clone "$TRASH_DIRECTORY"/super_update_r2 super &&
-		(
-			cd super &&
-			git submodule update --init --recursive
-		)
+	(cd linkto &&
+	 git clone "$TRASH_DIRECTORY"/super_update_r2 super &&
+	 (cd super &&
+	  git submodule update --init --recursive
+	 )
 	)
 '
 
+test_expect_success 'submodule update clone shallow submodule' '
+	git clone cloned super3 &&
+	(cd super3 &&
+	 git submodule init &&
+	 git submodule update --depth=3 &&
+	 (cd submodule &&
+	  if test $(git log --oneline | wc -l) != 1
+	  then
+	   exit 1
+	  fi
+	 )
+	)
+'
 test_done
