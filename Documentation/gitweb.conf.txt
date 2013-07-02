@@ -339,6 +339,14 @@ $home_link_str::
 	as this link leads to the list of projects.  Other popular choice it to
 	set it to the name of site.
 
+@extra_breadcrumbs::
+	Additional links to be added to the start of the breadcrumb trail,
+	that are logically "above" the gitweb projects list. For example,
+	links to the organization and department which host the gitweb
+	server. Each element of the list is a reference to an array,
+	in which element 0 is the link text and element 1 is the
+	target URL.
+
 $logo_url::
 $logo_label::
 	URI and label (title) for the Git logo link (or your site logo,
