@@ -122,17 +122,7 @@ static void free_cvs_revision_list(struct cvs_revision_list *list)
 
 static struct cvs_revision *revision_list_add(struct cvs_revision *rev, struct cvs_revision_list *list)
 {
-	/*
-	 * TODO: replace with ALLOC_GROW
-	 */
-	if (list->size == list->nr) {
-		if (list->size == 0)
-			list->size = 64;
-		else
-			list->size *= 2;
-		list->item = xrealloc(list->item,
-				      list->size * sizeof(void *));
-	}
+	ALLOC_GROW(list->item, list->nr + 1, list->size);
 	list->item[list->nr++] = rev;
 	return rev;
 }
@@ -168,11 +158,14 @@ static void merge_sort(struct cvs_revision_list *first,
 		struct cvs_revision_list *result)
 {
 	struct cvs_revision **first_it = &first->item[0];
+	struct cvs_revision **first_tail = rev_list_tail(first);
 	struct cvs_revision **second_it = &second->item[0];
+	struct cvs_revision **second_tail =  rev_list_tail(second);
 	struct cvs_revision *last = NULL;
 
-	while (first_it < rev_list_tail(first) &&
-	       second_it < rev_list_tail(second)) {
+
+	while (first_it < first_tail &&
+	       second_it < second_tail) {
 
 		if ((*first_it)->timestamp > (*second_it)->timestamp) {
 			last = revision_list_add(*first_it++, result);
@@ -188,10 +181,10 @@ static void merge_sort(struct cvs_revision_list *first,
 		}
 	}
 
-	while (first_it < rev_list_tail(first))
+	while (first_it < first_tail)
 		revision_list_add(*first_it++, result);
 
-	while (second_it < rev_list_tail(second))
+	while (second_it < second_tail)
 		revision_list_add(*second_it++, result);
 
 	first->nr = 0;
