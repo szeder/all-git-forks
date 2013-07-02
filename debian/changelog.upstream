@@ -1,3 +1,71 @@
+Version v1.8.3.2; changes since v1.8.3.1:
+-----------------------------------------
+
+Felipe Contreras (1):
+      prompt: fix for simple rebase
+
+Johan Herland (8):
+      t2024: Add tests verifying current DWIM behavior of 'git checkout <branch>'
+      t2024: Show failure to use refspec when DWIMming remote branch names
+      checkout: Use remote refspecs when DWIMming tracking branches
+      t3200.39: tracking setup should fail if there is no matching refspec.
+      t7201.24: Add refspec to keep --track working
+      t9114.2: Don't use --track option against "svn-remote"-tracking branches
+      branch.c: Validate tracking branches with refspecs instead of refs/remotes/*
+      glossary: Update and rephrase the definition of a remote-tracking branch
+
+John Keeping (1):
+      contrib/subtree: don't delete remote branches if split fails
+
+Junio C Hamano (3):
+      strbuf_branchname(): do not double-expand @{-1}~22
+      Start preparing for 1.8.3.2
+      Git 1.8.3.2
+
+Kenichi Saita (1):
+      difftool --dir-diff: allow changing any clean working tree file
+
+Kevin Bracey (2):
+      t6019: demonstrate --ancestry-path A...B breakage
+      revision.c: treat A...B merge bases as if manually specified
+
+Matthijs Kooijman (1):
+      combine-diff.c: Fix output when changes are exactly 3 lines apart
+
+Michael Heemskerk (2):
+      upload-pack: ignore 'shallow' lines with unknown obj-ids
+      t5500: add test for fetching with an unknown 'shallow'
+
+Nguyễn Thái Ngọc Duy (3):
+      clone: let the user know when check_everything_connected is run
+      urls.txt: avoid auto converting to hyperlink
+      fetch-pack: prepare updated shallow file before fetching the pack
+
+Ramkumar Ramachandra (4):
+      push: factor out the detached HEAD error message
+      push: fail early with detached HEAD and current
+      push: make push.default = current use resolved HEAD
+      completion: complete diff --word-diff
+
+René Scharfe (1):
+      commit: don't start editor if empty message is given with -m
+
+Stefano Lattarini (1):
+      configure: fix option help message for --disable-pthreads
+
+Thomas Gummerer (1):
+      prompt: fix show upstream with svn and zsh
+
+Thomas Rast (1):
+      Document push --no-verify
+
+Torsten Bögershausen (1):
+      t0070 "mktemp to unwritable directory" needs SANITY
+
+Wieland Hoffmann (1):
+      pre-push.sample: Make the script executable
+
+
 Version v1.8.3.1; changes since v1.8.3:
 ---------------------------------------
 
