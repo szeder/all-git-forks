@@ -72,7 +72,7 @@ static int verify_import = 0;
 static int require_author_convert = 0;
 static int update_tags = 0;
 //static struct progress *progress_state;
-//static struct progress *progress_rlog;
+static struct progress *progress_rlog;
 
 static int markid = 0;
 static int revisions_all_branches_total = 0;
@@ -2077,7 +2077,8 @@ static void add_cvs_revision_cb(const char *branch_name,
 
 	skipped += add_cvs_revision(cvs_branch, path, revision, author, msg, timestamp, isdead);
 	revisions_all_branches_total++;
-	//display_progress(progress_rlog, revisions_all_branches_total);
+	display_progress(progress_rlog, revisions_all_branches_total);
+	display_throughput(progress_rlog, cvs_read_total);
 }
 
 static time_t update_since = 0;
@@ -2118,7 +2119,7 @@ static int cmd_list(const char *line)
 	struct cvs_branch *cvs_branch;
 	struct strbuf ref_sb = STRBUF_INIT;
 
-	//progress_rlog = start_progress("revisions info", 0);
+	progress_rlog = start_progress("fetching revisions info", 0);
 	if (initial_import) {
 		rc = cvs_rlog(cvs, 0, 0, &cvs_branch_list, &cvs_tag_list, add_cvs_revision_cb, &cvs_branch_list);
 		if (rc == -1)
@@ -2181,7 +2182,7 @@ static int cmd_list(const char *line)
 
 		helper_printf("\n");
 	}
-	//stop_progress(&progress_rlog);
+	stop_progress(&progress_rlog);
 	helper_flush();
 	revisions_all_branches_total -= skipped;
 	strbuf_release(&ref_sb);

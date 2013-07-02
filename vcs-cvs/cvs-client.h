@@ -22,8 +22,8 @@ enum cvs_protocol {
 	cvs_proto_ext
 };
 
-extern size_t written_total;
-extern size_t read_total;
+extern size_t cvs_written_total;
+extern size_t cvs_read_total;
 
 struct cvs_transport {
 	int fd[2];
