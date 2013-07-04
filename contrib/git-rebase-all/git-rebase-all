@@ -1,0 +1,135 @@
+#!/bin/sh
+
+USAGE="[-t] [-x <excluded_branch>]"
+LONG_USAGE="git-rebase-all rebases all branches on top of theirs upstreams."
+
+OPTIONS_KEEPDASHDASH=
+OPTIONS_SPEC="\
+git rebase-all $USAGE
+--
+n,dry-run            don't do rebase
+x,exclude=           don't rebase excluded branches"
+
+. git-sh-setup
+
+while test $# != 0
+do
+	arg="$1"
+	shift
+	case "$arg" in
+		-n|--dry-run)
+			test=1
+			;;
+		-x|--exclude)
+			excluded[${#excluded[*]}]="$1"
+			shift
+			;;
+        -h|--help)
+            usage
+            ;;
+		--)
+            dashes
+            break
+			;;
+		*)
+			branches[${#branches[*]}]="$arg"
+			;;
+	esac
+done
+
+test "$#" = 1 || usage
+
+branches=()
+excluded=()
+test=0
+
+git status --porcelain --untracked-files=no --ignore-submodule=all | grep . && { echo dirty tree, exiting...; exit 1; }
+
+REBASE_ALL_REF="refs/rebase-all/start"
+branch=$(git symbolic-ref HEAD 2>/dev/null)
+if test -z $branch; then
+	echo You\'re not on any branch!
+	echo Exiting
+	exit 3
+fi
+lastbranch=$(git symbolic-ref $REBASE_ALL_REF 2>/dev/null)
+# if there is no last branch remembered
+if test -z "$lastbranch"; then
+	# remember the current branch
+	git symbolic-ref $REBASE_ALL_REF "$branch"
+	lastbranch="$branch"
+fi
+lastbranch=${lastbranch##refs/heads/}
+
+# if no branches defined manually
+if [ ${#branches[*]} -eq 0 ]; then
+	# read all branches
+	branches=$(git for-each-ref '--format=%(refname:short)' refs/heads)
+fi
+
+function array_contains() {
+	local a
+	for a in "${@:2}"; do [[ "$a" == "$1" ]] && return 0; done
+	return 1
+}
+
+function rebase_branch {
+	local br="$1"
+	if array_contains "$br" "${excluded[@]}"; then
+		echo Skipping excluded branch $br
+		return
+	fi
+	shift
+	local upstream=$(git config branch.$br.remote)
+	if [ "$upstream" != "." ]; then
+		echo "Skipping remote tracking branch ($br tracks $upstream)" 1>&2
+		return
+	fi
+
+	upstream=$(git config branch.$br.merge)
+	if test -z "$upstream"; then
+		echo Skipping branch \"$br\" having no upstream 1>&2
+		return
+	fi
+
+	local ups=${upstream/refs\/heads\/}
+	# recursively rebase upstream, at first
+	rebase_branch "$ups" $*
+
+	upstream_id=$(git rev-parse "$upstream")
+	b_id=$(git rev-parse "$br")
+	merge_base=$(git merge-base $br $upstream_id)
+
+	if test "$merge_base" = "$b_id" -o "$merge_base" = "$upstream_id"; then
+		echo Skipping branch \"$br\" not diverged with its upstream \"$ups\" 1>&2
+		return
+	fi
+
+	echo checking out $br...
+	git checkout "$br"
+	if [ $? -ne 0 ]; then
+		echo FAILED!
+		exit 1
+	fi
+
+	if [ $test -eq 0 ]; then
+		echo rebasing $br...
+		git rebase $* @{u}
+	else
+		echo Test mode. No actual rebasing
+	fi
+	if [ $? -ne 0 ]; then
+		echo rebasing seems to fail
+		echo stopped to finish rebasing
+		echo finish rebasing manually and run this script again
+		exit 2
+	fi
+}
+
+for b in ${branches[@]}
+do
+	rebase_branch "$b" $*
+done
+git checkout "$lastbranch"
+git symbolic-ref $REBASE_ALL_REF ""
+echo "done!"
