@@ -1332,6 +1332,8 @@ int read_index_filtered_from(struct index_state *istate, const char *path,
 	void *mmap;
 	size_t mmap_size;
 
+	if (istate->filter_opts)
+		die("BUG: Can't re-read partially read index");
 	errno = EBUSY;
 	if (istate->initialized)
 		return istate->cache_nr;
@@ -1455,6 +1457,8 @@ void update_index_if_able(struct index_state *istate, struct lock_file *lockfile
 
 int write_index(struct index_state *istate, int newfd)
 {
+	if (istate->filter_opts)
+		die("BUG: index: cannot write a partially read index");
 	return istate->ops->write_index(istate, newfd);
 }
 
