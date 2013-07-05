@@ -30,6 +30,8 @@ static void replace_index_entry(struct index_state *istate, int nr, struct cache
 {
 	struct cache_entry *old = istate->cache[nr];
 
+	if (istate->partially_read)
+		index_change_filter_opts(istate, NULL);
 	remove_name_hash(istate, old);
 	set_index_entry(istate, nr, ce);
 	istate->cache_changed = 1;
@@ -467,6 +469,8 @@ int remove_index_entry_at(struct index_state *istate, int pos)
 {
 	struct cache_entry *ce = istate->cache[pos];
 
+	if (istate->partially_read)
+		index_change_filter_opts(istate, NULL);
 	record_resolve_undo(istate, ce);
 	remove_name_hash(istate, ce);
 	istate->cache_changed = 1;
@@ -978,6 +982,8 @@ int add_index_entry(struct index_state *istate, struct cache_entry *ce, int opti
 {
 	int pos;
 
+	if (istate->partially_read)
+		index_change_filter_opts(istate, NULL);
 	if (option & ADD_CACHE_JUST_APPEND)
 		pos = istate->cache_nr;
 	else {
@@ -1184,6 +1190,8 @@ int refresh_index(struct index_state *istate, unsigned int flags, const char **p
 				/* If we are doing --really-refresh that
 				 * means the index is not valid anymore.
 				 */
+				if (istate->partially_read)
+					index_change_filter_opts(istate, NULL);
 				ce->ce_flags &= ~CE_VALID;
 				istate->cache_changed = 1;
 			}

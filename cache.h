@@ -293,7 +293,8 @@ struct index_state {
 	struct cache_tree *cache_tree;
 	struct cache_time timestamp;
 	unsigned name_hash_initialized : 1,
-		 initialized : 1;
+		 initialized : 1,
+		 partially_read : 1;
 	struct hash_table name_hash;
 	struct hash_table dir_hash;
 	struct index_ops *ops;
@@ -315,6 +316,7 @@ extern void free_name_hash(struct index_state *istate);
 #define active_alloc (the_index.cache_alloc)
 #define active_cache_changed (the_index.cache_changed)
 #define active_cache_tree (the_index.cache_tree)
+#define active_cache_partially_read (the_index.partially_read)
 
 #define read_cache() read_index(&the_index)
 #define read_cache_from(path) read_index_from(&the_index, (path))

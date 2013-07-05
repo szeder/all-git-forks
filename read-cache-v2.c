@@ -273,6 +273,7 @@ static int read_index_v2(struct index_state *istate, void *mmap,
 		src_offset += 8;
 		src_offset += extsize;
 	}
+	istate->partially_read = 0;
 	return 0;
 unmap:
 	munmap(mmap, mmap_size);
@@ -495,6 +496,8 @@ static int write_index_v2(struct index_state *istate, int newfd)
 	struct stat st;
 	struct strbuf previous_name_buf = STRBUF_INIT, *previous_name;
 
+	if (istate->partially_read)
+		die("BUG: index: cannot write a partially read index");
 	for (i = removed = extended = 0; i < entries; i++) {
 		if (cache[i]->ce_flags & CE_REMOVE)
 			removed++;

@@ -49,6 +49,8 @@ static int mark_ce_flags(const char *path, int flag, int mark)
 	int namelen = strlen(path);
 	int pos = cache_name_pos(path, namelen);
 	if (0 <= pos) {
+		if (active_cache_partially_read)
+			cache_change_filter_opts(NULL);
 		if (mark)
 			active_cache[pos]->ce_flags |= flag;
 		else
@@ -253,6 +255,8 @@ static void chmod_path(int flip, const char *path)
 	pos = cache_name_pos(path, strlen(path));
 	if (pos < 0)
 		goto fail;
+	if (active_cache_partially_read)
+		cache_change_filter_opts(NULL);
 	ce = active_cache[pos];
 	mode = ce->ce_mode;
 	if (!S_ISREG(mode))
