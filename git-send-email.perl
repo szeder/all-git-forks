@@ -1213,7 +1213,7 @@ X-Mailer: git-send-email $gitversion
 				$smtp->response();
 				if ($smtp->code == 220) {
 					# Attempt to use a ca-certificate by default
-					$smtp_ssl_cert_path |= "/etc/ssl/certs";
+					$smtp_ssl_cert_path ||= "/etc/ssl/certs";
 					if (-d $smtp_ssl_cert_path) {
 						$smtp = Net::SMTP::SSL->start_SSL($smtp,
 										  SSL_verify_mode => SSL_VERIFY_PEER,
