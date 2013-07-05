@@ -1195,10 +1195,12 @@ X-Mailer: git-send-email $gitversion
 		if ($smtp_encryption eq 'ssl') {
 			$smtp_server_port ||= 465; # ssmtp
 			require Net::SMTP::SSL;
+			use IO::Socket::SSL qw(SSL_VERIFY_NONE);
 			$smtp_domain ||= maildomain();
 			$smtp ||= Net::SMTP::SSL->new($smtp_server,
 						      Hello => $smtp_domain,
-						      Port => $smtp_server_port);
+						      Port => $smtp_server_port,
+						      SSL_verify_mode => SSL_VERIFY_NONE);
 		}
 		else {
 			require Net::SMTP;
