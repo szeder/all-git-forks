@@ -14,8 +14,9 @@ git (1:1.8.3.2-1.1) experimental; urgency=low
   configuration depend on /var/cache/git then it is safe to remove
   that directory after replacing these symlinks with their targets:
 
-    mv -f /var/cache/git/* /var/lib/git/
+    mv --backup /var/cache/git/* /var/lib/git/
     rmdir /var/cache/git
+    rm /var/lib/git/*~
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 06 Jul 2013 16:17:48 -0700
 
