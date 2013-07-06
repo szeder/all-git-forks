@@ -4,22 +4,20 @@ git (1:1.8.3.2-1.1) experimental; urgency=low
   configured to look for repositories under /var/lib/git by default
   instead of /var/cache/git.
 
-  To ensure your existing repositories remain accessible:
-
-    rmdir /var/lib/git
-    mv /var/cache/git /var/lib/git
-
-  Or:
-
-    cd /var/lib/git
-    mv ../../cache/git/* .
-
   You may also want to adjust your inetd, rsyncd, and web server
   configuration to use the new base path.
 
   See /usr/share/doc/git/README.Debian for details.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 06 Jul 2013 15:22:18 -0700
+  Symlinks are installed during the upgrade to ensure existing
+  repositories remain accessible.  If no local scripts or
+  configuration depend on /var/cache/git then it is safe to remove
+  that directory after replacing these symlinks with their targets:
+
+    mv -f /var/cache/git/* /var/lib/git/
+    rmdir /var/cache/git
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 06 Jul 2013 16:17:48 -0700
 
 git (1:1.8.2~rc0-1) experimental; urgency=low
 

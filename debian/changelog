@@ -11,6 +11,8 @@ git (1:1.8.3.2-1.1) experimental; urgency=low
     * git.README.Debian, git-daemon-run.README.Debian,
       git-daemon-sysvinit.README.Debian, gitweb.README.Debian:
       update for the new project root.
+    * git.preinst: install symlinks /var/lib/git/* ->
+      ../../cache/git/*.
     * git.NEWS.Debian: advertise the change and explain how to
       adapt to it.
 

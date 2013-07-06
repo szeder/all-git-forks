@@ -1,6 +1,21 @@
 #!/bin/sh
 set -e
 
+# /var/cache/git/ -> /var/lib/git/ transition
+if test "$1" = upgrade &&
+   dpkg --compare-versions "$2" lt-nl '1:1.8.3.2-1.1'; then
+	mkdir -m 755 -p /var/lib/git
+	(
+		cd /var/lib/git
+		for target in ../../cache/git/*; do
+			link=${target#../../cache/git/}
+			if ! test -L "$link" && ! test -e "$link"; then
+				ln -s "$target" "$link"
+			fi
+		done
+	)
+fi
+
 # Snippet based on dpkg-maintscript-helper from dpkg 1.15.8.
 # Postinst explains why.
 rm_conffile () {
