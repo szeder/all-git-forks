@@ -447,6 +447,7 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 
 		argv_array_init(&args);
 		argv_array_push(&args, "name-rev");
+		argv_array_push(&args, "--peel-to-commit");
 		argv_array_push(&args, "--name-only");
 		argv_array_push(&args, "--no-undefined");
 		if (always)

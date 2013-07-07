@@ -15,6 +15,7 @@ typedef struct rev_name {
 } rev_name;
 
 static long cutoff = LONG_MAX;
+static int peel_to_commit;
 
 /* How many generations are maximally preferred over _one_ merge traversal? */
 #define MERGE_TRAVERSAL_WEIGHT 65535
@@ -33,7 +34,7 @@ static void name_rev(struct commit *commit,
 	if (commit->date < cutoff)
 		return;
 
-	if (deref) {
+	if (deref && !peel_to_commit) {
 		char *new_name = xmalloc(strlen(tip_name)+3);
 		strcpy(new_name, tip_name);
 		strcat(new_name, "^0");
@@ -320,6 +321,8 @@ int cmd_name_rev(int argc, const char **argv, const char *prefix)
 		OPT_BOOLEAN(0, "undefined", &allow_undefined, N_("allow to print `undefined` names")),
 		OPT_BOOLEAN(0, "always",     &always,
 			   N_("show abbreviated commit object as fallback")),
+		OPT_BOOLEAN(0, "peel-to-commit", &peel_to_commit,
+			    N_("peel tag object names in the input to a commmit")),
 		OPT_END(),
 	};
 
@@ -334,7 +337,7 @@ int cmd_name_rev(int argc, const char **argv, const char *prefix)
 
 	for (; argc; argc--, argv++) {
 		unsigned char sha1[20];
-		struct object *o;
+		struct object *object;
 		struct commit *commit;
 
 		if (get_sha1(*argv, sha1)) {
@@ -343,17 +346,29 @@ int cmd_name_rev(int argc, const char **argv, const char *prefix)
 			continue;
 		}
 
-		o = deref_tag(parse_object(sha1), *argv, 0);
-		if (!o || o->type != OBJ_COMMIT) {
-			fprintf(stderr, "Could not get commit for %s. Skipping.\n",
-					*argv);
-			continue;
+		commit = NULL;
+		object = parse_object(sha1);
+		if (object) {
+			struct object *peeled = deref_tag(object, *argv, 0);
+			if (peeled && peeled->type == OBJ_COMMIT)
+				commit = (struct commit *) peeled;
 		}
 
-		commit = (struct commit *)o;
-		if (cutoff > commit->date)
-			cutoff = commit->date;
-		add_object_array((struct object *)commit, *argv, &revs);
+		if (!object) {
+			fprintf(stderr, "Could not get object for %s. Skipping.\n",
+				*argv);
+			continue;
+		}
+		if (peel_to_commit && !commit) {
+			fprintf(stderr, "Could not get commit for %s. Skipping.\n",
+				*argv);
+			continue;
+		}
+		if (commit) {
+			if (cutoff > commit->date)
+				cutoff = commit->date;
+		}
+		add_object_array(object, *argv, &revs);
 	}
 
 	if (cutoff)
