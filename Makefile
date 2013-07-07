@@ -506,7 +506,7 @@ NO_INSTALL += git-remote-testpy
 
 # Generated files for scripts
 SCRIPT_SH_GEN = $(patsubst %.sh,%,$(SCRIPT_SH))
-SCRIPT_PERL_GEN = $(patsubst %.perl,%,$(SCRIPT_PERL))
+SCRIPT_PERL_GEN = $(patsubst %.perl,$(GIT_OUTDIR)/%,$(SCRIPT_PERL))
 SCRIPT_PYTHON_GEN = $(patsubst %.py,$(GIT_OUTDIR)/%,$(SCRIPT_PYTHON))
 
 SCRIPT_SH_INS = $(filter-out $(NO_INSTALL),$(SCRIPT_SH_GEN))
@@ -540,7 +540,7 @@ clean-python-script:
 SCRIPTS = $(SCRIPT_SH_INS) \
 	  $(SCRIPT_PERL_INS) \
 	  $(SCRIPT_PYTHON_INS) \
-	  git-instaweb
+	  $(GIT_OUTDIR)/git-instaweb
 
 ETAGS_TARGET = TAGS
 
@@ -1664,7 +1664,7 @@ all:: profile-clean
 endif
 endif
 
-all:: $(ALL_PROGRAMS) $(SCRIPT_LIB) $(BUILT_INS) $(OTHER_PROGRAMS) GIT-BUILD-OPTIONS
+all:: $(ALL_PROGRAMS) $(addprefix $(GIT_OUTDIR)/,$(SCRIPT_LIB) $(BUILT_INS) $(OTHER_PROGRAMS) GIT-BUILD-OPTIONS)
 ifneq (,$X)
 	$(QUIET_BUILT_IN)$(foreach p,$(patsubst %$X,%,$(filter %$X,$(ALL_PROGRAMS) $(BUILT_INS) git$X)), test -d '$p' -o '$p' -ef '$p$X' || $(RM) '$p';)
 endif
@@ -1729,7 +1729,7 @@ $(addprefix $(GIT_OUTDIR)/,git.sp git.s git.o): EXTRA_CPPFLAGS = \
 	'-DGIT_MAN_PATH="$(mandir_relative_SQ)"' \
 	'-DGIT_INFO_PATH="$(infodir_relative_SQ)"'
 
-git$X: $(addprefix $(GIT_OUTDIR)/,git.o GIT-LDFLAGS $(BUILTIN_OBJS)) $(GITLIBS)
+$(GIT_OUTDIR)/git$X: $(addprefix $(GIT_OUTDIR)/,git.o GIT-LDFLAGS $(BUILTIN_OBJS)) $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(addprefix $(GIT_OUTDIR)/,git.o \
 		$(BUILTIN_OBJS)) $(ALL_LDFLAGS) $(LIBS)
 
@@ -1746,7 +1746,7 @@ $(addprefix $(GIT_OUTDIR)/,version.sp version.s version.o): EXTRA_CPPFLAGS = \
 	'-DGIT_VERSION="$(GIT_VERSION)"' \
 	'-DGIT_USER_AGENT=$(GIT_USER_AGENT_CQ_SQ)'
 
-$(BUILT_INS): git$X
+$(addprefix $(GIT_OUTDIR)/,$(BUILT_INS)): $(GIT_OUTDIR)/git$X
 	$(QUIET_BUILT_IN)$(RM) $@ && \
 	ln $< $@ 2>/dev/null || \
 	ln -s $< $@ 2>/dev/null || \
@@ -1787,7 +1787,7 @@ $(patsubst %.sh,%,$(SCRIPT_SH)) : $(GIT_OUTDIR)/% : %.sh $(GIT_OUTDIR)/GIT-SCRIP
 	chmod +x $@+ && \
 	mv $@+ $@
 
-$(SCRIPT_LIB) : % : %.sh $(GIT_OUTDIR)/GIT-SCRIPT-DEFINES
+$(addprefix $(GIT_OUTDIR)/,$(SCRIPT_LIB)) : $(GIT_OUTDIR)/% : %.sh $(GIT_OUTDIR)/GIT-SCRIPT-DEFINES
 	$(QUIET_GEN)$(cmd_munge_script) && \
 	mv $@+ $@
 
@@ -1797,7 +1797,7 @@ git.res: git.rc $(GIT_OUTDIR)/GIT-VERSION-FILE
 	  -DGIT_VERSION="\\\"$(GIT_VERSION)\\\"" $< -o $@
 
 ifndef NO_PERL
-$(patsubst %.perl,%,$(SCRIPT_PERL)): perl/perl.mak
+$(patsubst %.perl,$(GIT_OUTDIR)/%,$(SCRIPT_PERL)): perl/perl.mak
 
 perl/perl.mak: perl/PM.stamp
 
@@ -1809,7 +1809,7 @@ perl/PM.stamp: FORCE
 perl/perl.mak: $(GIT_OUTDIR)/GIT-CFLAGS $(GIT_OUTDIR)/GIT-PREFIX perl/Makefile perl/Makefile.PL
 	$(QUIET_SUBDIR0)perl $(QUIET_SUBDIR1) PERL_PATH='$(PERL_PATH_SQ)' prefix='$(prefix_SQ)' $(@F)
 
-$(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl $(GIT_OUTDIR)/GIT-VERSION-FILE
+$(patsubst %.perl,$(GIT_OUTDIR)/%,$(SCRIPT_PERL)): $(GIT_OUTDIR)/% : %.perl $(GIT_OUTDIR)/GIT-VERSION-FILE
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C perl -s --no-print-directory instlibdir` && \
 	sed -e '1{' \
@@ -1829,12 +1829,12 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl $(GIT_OUTDIR)/GIT-VERSION-FILE
 gitweb:
 	$(QUIET_SUBDIR0)gitweb $(QUIET_SUBDIR1) all
 
-git-instaweb: git-instaweb.sh gitweb $(GIT_OUTDIR)/GIT-SCRIPT-DEFINES
+$(GIT_OUTDIR)/git-instaweb: git-instaweb.sh gitweb $(GIT_OUTDIR)/GIT-SCRIPT-DEFINES
 	$(QUIET_GEN)$(cmd_munge_script) && \
 	chmod +x $@+ && \
 	mv $@+ $@
 else # NO_PERL
-$(patsubst %.perl,%,$(SCRIPT_PERL)) git-instaweb: % : unimplemented.sh
+$(patsubst %.perl,$(GIT_OUTDIR)/%,$(SCRIPT_PERL)) $(GIT_OUTDIR)/git-instaweb: $(GIT_OUTDIR)/% : unimplemented.sh
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
 	    -e 's|@@REASON@@|NO_PERL=$(NO_PERL)|g' \
@@ -1844,7 +1844,7 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)) git-instaweb: % : unimplemented.sh
 endif # NO_PERL
 
 ifndef NO_PYTHON
-$(SCRIPT_PYTHON_GEN): $(GIT_OUTDIR)/GIT-CFLAGS $(GIT_OUTDIR)/GIT-PREFIX GIT-PYTHON-VARS
+$(SCRIPT_PYTHON_GEN): $(GIT_OUTDIR)/GIT-CFLAGS $(GIT_OUTDIR)/GIT-PREFIX $(GIT_OUTDIR)/GIT-PYTHON-VARS
 $(SCRIPT_PYTHON_GEN): $(GIT_OUTDIR)/% : %.py
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C git_remote_helpers -s \
@@ -2197,7 +2197,7 @@ $(GIT_OUTDIR)/GIT-LDFLAGS: FORCE
 # We need to apply sq twice, once to protect from the shell
 # that runs GIT-BUILD-OPTIONS, and then again to protect it
 # and the first level quoting from the shell that runs "echo".
-GIT-BUILD-OPTIONS: FORCE
+$(GIT_OUTDIR)/GIT-BUILD-OPTIONS: FORCE
 	@echo SHELL_PATH=\''$(subst ','\'',$(SHELL_PATH_SQ))'\' >$@
 	@echo PERL_PATH=\''$(subst ','\'',$(PERL_PATH_SQ))'\' >>$@
 	@echo DIFF=\''$(subst ','\'',$(subst ','\'',$(DIFF)))'\' >>$@
@@ -2239,7 +2239,7 @@ endif
 ifndef NO_PYTHON
 TRACK_PYTHON = $(subst ','\'',-DPYTHON_PATH='$(PYTHON_PATH_SQ)')
 
-GIT-PYTHON-VARS: FORCE
+$(GIT_OUTDIR)/GIT-PYTHON-VARS: FORCE
 	@VARS='$(TRACK_PYTHON)'; \
 	    if test x"$$VARS" != x"`cat $@ 2>/dev/null`" ; then \
 		echo >&2 "    * new Python interpreter location"; \
@@ -2249,7 +2249,7 @@ endif
 
 test_bindir_programs := $(patsubst %,bin-wrappers/%,$(BINDIR_PROGRAMS_NEED_X) $(BINDIR_PROGRAMS_NO_X) $(TEST_PROGRAMS_NEED_X))
 
-all:: $(TEST_PROGRAMS) $(test_bindir_programs)
+all:: $(addprefix $(GIT_OUTDIR)/,$(TEST_PROGRAMS)) $(test_bindir_programs)
 all:: $(addprefix $(GIT_OUTDIR)/,$(NO_INSTALL))
 
 bin-wrappers/%: wrap-for-bin.sh
@@ -2276,21 +2276,21 @@ perf: all
 
 .PHONY: test perf
 
-test-ctype$X: $(GIT_OUTDIR)/ctype.o
+$(GIT_OUTDIR)/test-ctype$X: $(GIT_OUTDIR)/ctype.o
 
-test-date$X: $(addprefix $(GIT_OUTDIR)/,date.o ctype.o)
+$(GIT_OUTDIR)/test-date$X: $(addprefix $(GIT_OUTDIR)/,date.o ctype.o)
 
-test-delta$X: $(addprefix $(GIT_OUTDIR)/,diff-delta.o patch-delta.o)
+$(GIT_OUTDIR)/test-delta$X: $(addprefix $(GIT_OUTDIR)/,diff-delta.o patch-delta.o)
 
-test-line-buffer$X: $(VCSSVN_LIB)
+$(GIT_OUTDIR)/test-line-buffer$X: $(VCSSVN_LIB)
 
-test-parse-options$X: $(addprefix $(GIT_OUTDIR)/,parse-options.o parse-options-cb.o)
+$(GIT_OUTDIR)/test-parse-options$X: $(addprefix $(GIT_OUTDIR)/,parse-options.o parse-options-cb.o)
 
-test-svn-fe$X: $(VCSSVN_LIB)
+$(GIT_OUTDIR)/test-svn-fe$X: $(VCSSVN_LIB)
 
 .PRECIOUS: $(TEST_OBJS)
 
-test-%$X: $(GIT_OUTDIR)/test-%.o $(GIT_OUTDIR)/GIT-LDFLAGS $(GITLIBS)
+$(GIT_OUTDIR)/test-%$X: $(GIT_OUTDIR)/test-%.o $(GIT_OUTDIR)/GIT-LDFLAGS $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(filter %.a,$^) $(LIBS)
 
 check-sha1:: test-sha1$X
@@ -2518,8 +2518,8 @@ ifndef NO_TCLTK
 	$(MAKE) -C gitk-git clean
 	$(MAKE) -C git-gui clean
 endif
-	$(RM) $(GIT_OUTDIR)/GIT-VERSION-FILE $(GIT_OUTDIR)/GIT-CFLAGS $(GIT_OUTDIR)/GIT-LDFLAGS GIT-BUILD-OPTIONS
-	$(RM) $(GIT_OUTDIR)/GIT-USER-AGENT $(GIT_OUTDIR)/GIT-PREFIX $(GIT_OUTDIR)/GIT-SCRIPT-DEFINES GIT-PYTHON-VARS
+	$(RM) $(addprefix $(GIT_OUTDIR)/,GIT-VERSION-FILE GIT-CFLAGS GIT-LDFLAGS GIT-BUILD-OPTIONS)
+	$(RM) $(addprefix $(GIT_OUTDIR)/,GIT-USER-AGENT GIT-PREFIX GIT-SCRIPT-DEFINES GIT-PYTHON-VARS
 
 .PHONY: all install profile-clean clean strip
 .PHONY: shell_compatibility_test please_set_SHELL_PATH_to_a_more_modern_shell

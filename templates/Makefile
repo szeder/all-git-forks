@@ -25,14 +25,14 @@ PERL_PATH_SQ = $(subst ','\'',$(PERL_PATH))
 DESTDIR_SQ = $(subst ','\'',$(DESTDIR))
 template_instdir_SQ = $(subst ','\'',$(template_instdir))
 
-all: boilerplates.made custom
+all: $(GIT_OUTDIR)/boilerplates.made custom
 
 # Put templates that can be copied straight from the source
 # in a file direc--tory--file in the source.  They will be
 # just copied to the destination.
 
 bpsrc = $(filter-out %~,$(wildcard *--*))
-boilerplates.made : $(bpsrc)
+$(GIT_OUTDIR)/boilerplates.made : $(bpsrc)
 	$(QUIET)umask 022 && ls *--* 2>/dev/null | \
 	while read boilerplate; \
 	do \
@@ -58,7 +58,7 @@ custom:
 	$(QUIET): no custom templates yet
 
 clean:
-	$(RM) -r blt boilerplates.made
+	$(RM) -r blt $(GIT_OUTDIR)/boilerplates.made
 
 install: all
 	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(template_instdir_SQ)'
