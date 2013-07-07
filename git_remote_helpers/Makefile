@@ -29,10 +29,11 @@ py_version=$(shell $(PYTHON_PATH) -c \
 	'import sys; print("%i.%i" % sys.version_info[:2])')
 
 all: $(pysetupfile)
-	$(QUIET)test "$$(cat GIT-PYTHON-VERSION 2>/dev/null)" = "$(py_version)" || \
+	$(QUIET)test "$$(cat $(GIT_OUTDIR)/git_remote_helpers/GIT-PYTHON-VERSION 2>/dev/null)" = "$(py_version)" || \
 	flags=--force; \
 	$(PYTHON_PATH) $(pysetupfile) $(QUIETSETUP) build $$flags
-	$(QUIET)echo "$(py_version)" >GIT-PYTHON-VERSION
+	$(QUIET)mkdir -p $(GIT_OUTDIR)/git_remote_helpers
+	$(QUIET)echo "$(py_version)" >$(GIT_OUTDIR)/git_remote_helpers/GIT-PYTHON-VERSION
 
 install: $(pysetupfile)
 	$(PYTHON_PATH) $(pysetupfile) install --prefix $(DESTDIR_SQ)$(prefix)
@@ -42,4 +43,4 @@ instlibdir: $(pysetupfile)
 
 clean:
 	$(QUIET)$(PYTHON_PATH) $(pysetupfile) $(QUIETSETUP) clean -a
-	$(RM) *.pyo *.pyc GIT-PYTHON-VERSION
+	$(RM) *.pyo *.pyc $(GIT_OUTDIR)/git_remote_helpers/GIT-PYTHON-VERSION

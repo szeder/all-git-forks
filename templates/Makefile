@@ -25,30 +25,30 @@ PERL_PATH_SQ = $(subst ','\'',$(PERL_PATH))
 DESTDIR_SQ = $(subst ','\'',$(DESTDIR))
 template_instdir_SQ = $(subst ','\'',$(template_instdir))
 
-all: $(GIT_OUTDIR)/boilerplates.made custom
+all: $(GIT_OUTDIR)/templates/boilerplates.made custom
 
 # Put templates that can be copied straight from the source
 # in a file direc--tory--file in the source.  They will be
 # just copied to the destination.
 
 bpsrc = $(filter-out %~,$(wildcard *--*))
-$(GIT_OUTDIR)/boilerplates.made : $(bpsrc)
+$(GIT_OUTDIR)/templates/boilerplates.made : $(bpsrc)
 	$(QUIET)umask 022 && ls *--* 2>/dev/null | \
 	while read boilerplate; \
 	do \
 		case "$$boilerplate" in *~) continue ;; esac && \
 		dst=`echo "$$boilerplate" | sed -e 's|^this|.|;s|--|/|g'` && \
 		dir=`expr "$$dst" : '\(.*\)/'` && \
-		mkdir -p blt/$$dir && \
+		mkdir -p $(GIT_OUTDIR)/templates/blt/$$dir && \
 		case "$$boilerplate" in \
 		*--) continue;; \
 		esac && \
 		sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
 		    -e 's|@SHELL_PATH@|$(SHELL_PATH_SQ)|' \
 		    -e 's|@PERL_PATH@|$(PERL_PATH_SQ)|g' $$boilerplate > \
-			blt/$$dst && \
+			$(GIT_OUTDIR)/templates/blt/$$dst && \
 		if test -x "$$boilerplate"; then rx=rx; else rx=r; fi && \
-		chmod a+$$rx "blt/$$dst" || exit; \
+		chmod a+$$rx "$(GIT_OUTDIR)/templates/blt/$$dst" || exit; \
 	done && \
 	date >$@
 
@@ -58,9 +58,9 @@ custom:
 	$(QUIET): no custom templates yet
 
 clean:
-	$(RM) -r blt $(GIT_OUTDIR)/boilerplates.made
+	$(RM) -r $(addprefix $(GIT_OUTDIR)/templates/, blt boilerplates.made)
 
 install: all
 	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(template_instdir_SQ)'
-	(cd blt && $(TAR) cf - .) | \
+	(cd $(GIT_OUTDIR)/templates/blt && $(TAR) cf - .) | \
 	(cd '$(DESTDIR_SQ)$(template_instdir_SQ)' && umask 022 && $(TAR) xof -)

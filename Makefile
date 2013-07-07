@@ -2140,13 +2140,13 @@ po/git.pot: $(LOCALIZED_C)
 pot: po/git.pot
 
 POFILES := $(wildcard po/*.po)
-MOFILES := $(patsubst po/%.po,po/build/locale/%/LC_MESSAGES/git.mo,$(POFILES))
+MOFILES := $(patsubst po/%.po,$(GIT_OUTDIR)/po/build/locale/%/LC_MESSAGES/git.mo,$(POFILES))
 
 ifndef NO_GETTEXT
 all:: $(MOFILES)
 endif
 
-po/build/locale/%/LC_MESSAGES/git.mo: po/%.po
+$(GIT_OUTDIR)/po/build/locale/%/LC_MESSAGES/git.mo: po/%.po
 	$(QUIET_MSGFMT)mkdir -p $(dir $@) && $(MSGFMT) -o $@ $<
 
 FIND_SOURCE_FILES = ( git ls-files '*.[hcS]' 2>/dev/null || \
@@ -2249,11 +2249,11 @@ endif
 
 test_bindir_programs := $(patsubst %,bin-wrappers/%,$(BINDIR_PROGRAMS_NEED_X) $(BINDIR_PROGRAMS_NO_X) $(TEST_PROGRAMS_NEED_X))
 
-all:: $(addprefix $(GIT_OUTDIR)/,$(TEST_PROGRAMS)) $(test_bindir_programs)
+all:: $(addprefix $(GIT_OUTDIR)/,$(TEST_PROGRAMS) $(test_bindir_programs))
 all:: $(addprefix $(GIT_OUTDIR)/,$(NO_INSTALL))
 
-bin-wrappers/%: wrap-for-bin.sh
-	@mkdir -p bin-wrappers
+$(GIT_OUTDIR)/bin-wrappers/%: wrap-for-bin.sh
+	@mkdir -p $(GIT_OUTDIR)/bin-wrappers
 	$(QUIET_GEN)sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
 	     -e 's|@@BUILD_DIR@@|$(shell pwd)|' \
 	     -e 's|@@PROG@@|$(@F)|' < $< > $@ && \
