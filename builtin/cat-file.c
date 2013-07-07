@@ -15,6 +15,7 @@
 
 #define BATCH 1
 #define BATCH_CHECK 2
+#define BATCH_DISK_SIZES 3
 
 static int cat_one_file(int opt, const char *exp_type, const char *obj_name)
 {
@@ -135,6 +136,11 @@ static int batch_one_object(const char *obj_name, int print_contents)
 
 	if (print_contents == BATCH)
 		contents = read_sha1_file(sha1, &type, &size);
+	else if (print_contents == BATCH_DISK_SIZES) {
+		struct object_info oi = {0};
+		oi.disk_sizep = &size;
+		type = sha1_object_info_extended(sha1, &oi);
+	}
 	else
 		type = sha1_object_info(sha1, &size);
 
@@ -206,6 +212,9 @@ int cmd_cat_file(int argc, const char **argv, const char *prefix)
 		OPT_SET_INT(0, "batch-check", &batch,
 			    N_("show info about objects fed from the standard input"),
 			    BATCH_CHECK),
+		OPT_SET_INT(0, "batch-disk-sizes", &batch,
+			    N_("show on-disk size of objects fed from standard input"),
+			    BATCH_DISK_SIZES),
 		OPT_END()
 	};
 

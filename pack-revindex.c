@@ -59,11 +59,78 @@ static void init_pack_revindex(void)
 	/* revindex elements are lazily initialized */
 }
 
-static int cmp_offset(const void *a_, const void *b_)
+/*
+ * This is a least-significant-digit radix sort using a 16-bit "digit".
+ */
+static void sort_revindex(struct revindex_entry *entries, int n, off_t max)
 {
-	const struct revindex_entry *a = a_;
-	const struct revindex_entry *b = b_;
-	return (a->offset < b->offset) ? -1 : (a->offset > b->offset) ? 1 : 0;
+	/*
+	 * We need O(n) temporary storage, so we sort back and forth between
+	 * the real array and our tmp storage. To keep them straight, we always
+	 * sort from "a" into buckets in "b".
+	 */
+	struct revindex_entry *tmp = xcalloc(n, sizeof(*tmp));
+	struct revindex_entry *a = entries, *b = tmp;
+	int digits = 0;
+
+	/*
+	 * We want to know the bucket that a[i] will go into when we are using
+	 * the digit that is N bits from the (least significant) end.
+	 */
+#define BUCKET_FOR(a, i, digits) ((a[i].offset >> digits) & 0xffff)
+
+	while (max / (((off_t)1) << digits)) {
+		struct revindex_entry *swap;
+		int i;
+		int pos[65536] = {0};
+
+		/*
+		 * We want pos[i] to store the index of the last element that
+		 * will go in bucket "i" (actually one past the last element).
+		 * To do this, we first count the items that will go in each
+		 * bucket, which gives us a relative offset from the last
+		 * bucket. We can then cumulatively add the index from the
+		 * previous bucket to get the true index.
+		 */
+		for (i = 0; i < n; i++)
+			pos[BUCKET_FOR(a, i, digits)]++;
+		for (i = 1; i < ARRAY_SIZE(pos); i++)
+			pos[i] += pos[i-1];
+
+		/*
+		 * Now we can drop the elements into their correct buckets (in
+		 * our temporary array).  We iterate the pos counter backwards
+		 * to avoid using an extra index to count up. And since we are
+		 * going backwards there, we must also go backwards through the
+		 * array itself, to keep the sort stable.
+		 */
+		for (i = n - 1; i >= 0; i--)
+			b[--pos[BUCKET_FOR(a, i, digits)]] = a[i];
+
+		/*
+		 * Now "b" contains the most sorted list, so we swap "a" and
+		 * "b" for the next iteration.
+		 */
+		swap = a;
+		a = b;
+		b = swap;
+
+		/* And bump our digits for the next round. */
+		digits += 16;
+	}
+
+	/*
+	 * If we ended with our data in the original array, great. If not,
+	 * we have to move it back from the temporary storage.
+	 */
+	if (a != entries) {
+		int i;
+		for (i = 0; i < n; i++)
+			entries[i] = tmp[i];
+	}
+	free(tmp);
+
+#undef BUCKET_FOR
 }
 
 /*
@@ -108,7 +175,7 @@ static void create_pack_revindex(struct pack_revindex *rix)
 	 */
 	rix->revindex[num_ent].offset = p->pack_size - 20;
 	rix->revindex[num_ent].nr = -1;
-	qsort(rix->revindex, num_ent, sizeof(*rix->revindex), cmp_offset);
+	sort_revindex(rix->revindex, num_ent, p->pack_size);
 }
 
 struct revindex_entry *find_pack_revindex(struct packed_git *p, off_t ofs)
