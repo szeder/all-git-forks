@@ -45,10 +45,10 @@ HIGHLIGHT_BIN = highlight
 -include config.mak
 
 # determine version
-../GIT-VERSION-FILE: .FORCE-GIT-VERSION-FILE
-	$(QUIET_SUBDIR0)../ $(QUIET_SUBDIR1) GIT-VERSION-FILE
+$(GIT_OUTDIR)/GIT-VERSION-FILE: .FORCE-GIT-VERSION-FILE
+	$(QUIET_SUBDIR0)../ $(QUIET_SUBDIR1) $(GIT_OUTDIR)/GIT-VERSION-FILE
 
--include ../GIT-VERSION-FILE
+-include $(GIT_OUTDIR)/GIT-VERSION-FILE
 
 ### Build rules
 
@@ -88,15 +88,15 @@ ifndef V
 endif
 endif
 
-all:: gitweb.cgi static/gitweb.js
+all:: $(addprefix $(GIT_OUTDIR)/gitweb/,gitweb.cgi static/gitweb.js)
 
 GITWEB_PROGRAMS = gitweb.cgi
 
 ifdef JSMIN
 GITWEB_FILES += static/gitweb.min.js
 GITWEB_JS = static/gitweb.min.js
-all:: static/gitweb.min.js
-static/gitweb.min.js: static/gitweb.js GITWEB-BUILD-OPTIONS
+all:: $(GIT_OUTDIR)/gitweb/static/gitweb.min.js
+$(GIT_OUTDIR)/gitweb/static/gitweb.min.js: $(addprefix $(GIT_OUTDIR)/gitweb/,static/gitweb.js GITWEB-BUILD-OPTIONS)
 	$(QUIET_GEN)$(JSMIN) <$< >$@
 else
 GITWEB_FILES += static/gitweb.js
@@ -106,7 +106,7 @@ ifdef CSSMIN
 GITWEB_FILES += static/gitweb.min.css
 GITWEB_CSS = static/gitweb.min.css
 all:: static/gitweb.min.css
-static/gitweb.min.css: static/gitweb.css GITWEB-BUILD-OPTIONS
+static/gitweb.min.css: static/gitweb.css $(GIT_OUTDIR)/gitweb/GITWEB-BUILD-OPTIONS
 	$(QUIET_GEN)$(CSSMIN) <$< >$@
 else
 GITWEB_FILES += static/gitweb.css
@@ -150,20 +150,22 @@ GITWEB_REPLACE = \
 	-e 's|++GITWEB_SITE_FOOTER++|$(GITWEB_SITE_FOOTER)|g' \
 	-e 's|++HIGHLIGHT_BIN++|$(HIGHLIGHT_BIN)|g'
 
-GITWEB-BUILD-OPTIONS: FORCE
+$(GIT_OUTDIR)/gitweb/GITWEB-BUILD-OPTIONS: FORCE
 	@rm -f $@+
+	@mkdir -p $(GIT_OUTDIR)/gitweb
 	@echo "x" '$(PERL_PATH_SQ)' $(GITWEB_REPLACE) "$(JSMIN)|$(CSSMIN)" >$@+
 	@cmp -s $@+ $@ && rm -f $@+ || mv -f $@+ $@
 
-gitweb.cgi: gitweb.perl GITWEB-BUILD-OPTIONS
+$(GIT_OUTDIR)/gitweb/gitweb.cgi: gitweb.perl $(GIT_OUTDIR)/gitweb/GITWEB-BUILD-OPTIONS
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	sed -e '1s|#!.*perl|#!$(PERL_PATH_SQ)|' \
 		$(GITWEB_REPLACE) $< >$@+ && \
 	chmod +x $@+ && \
 	mv $@+ $@
 
-static/gitweb.js: $(GITWEB_JSLIB_FILES)
+$(GIT_OUTDIR)/gitweb/static/gitweb.js: $(GITWEB_JSLIB_FILES)
 	$(QUIET_GEN)$(RM) $@ $@+ && \
+	mkdir -p $(GIT_OUTDIR)/gitweb/static && \
 	cat $^ >$@+ && \
 	mv $@+ $@
 
@@ -187,9 +189,9 @@ install: all
 ### Cleaning rules
 
 clean:
-	$(RM) gitweb.cgi static/gitweb.js \
+	$(RM) $(addprefix $(GIT_OUTDIR)/gitweb/,gitweb.cgi static/gitweb.js \
 		static/gitweb.min.js static/gitweb.min.css \
-		GITWEB-BUILD-OPTIONS
+		GITWEB-BUILD-OPTIONS)
 
 .PHONY: all clean install test test-installed .FORCE-GIT-VERSION-FILE FORCE
 
