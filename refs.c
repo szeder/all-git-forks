@@ -2458,14 +2458,8 @@ int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
 	if (!lock)
 		return 1;
 	if (!(flag & REF_ISPACKED) || flag & REF_ISSYMREF) {
-		/*
-		 * loose.  The loose file name is the same as the
-		 * lockfile name, minus ".lock":
-		 */
-		char *loose_filename = xmemdupz(lock->lk->lock_filename.buf,
-						lock->lk->lock_filename.len - 5);
-		err = unlink_or_warn(loose_filename);
-		free(loose_filename);
+		/* loose */
+		err = unlink_or_warn(lock->lk->filename.buf);
 		if (err && errno != ENOENT)
 			ret = 1;
 	}
