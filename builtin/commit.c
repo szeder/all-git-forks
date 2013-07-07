@@ -321,7 +321,7 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 			die(_("unable to create temporary index"));
 
 		old_index_env = getenv(INDEX_ENVIRONMENT);
-		setenv(INDEX_ENVIRONMENT, index_lock.filename, 1);
+		setenv(INDEX_ENVIRONMENT, index_lock.lock_filename.buf, 1);
 
 		if (interactive_add(argc, argv, prefix, patch_interactive) != 0)
 			die(_("interactive add failed"));
@@ -332,10 +332,10 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 			unsetenv(INDEX_ENVIRONMENT);
 
 		discard_cache();
-		read_cache_from(index_lock.filename);
+		read_cache_from(index_lock.lock_filename.buf);
 
 		commit_style = COMMIT_NORMAL;
-		return index_lock.filename;
+		return index_lock.lock_filename.buf;
 	}
 
 	/*
@@ -359,7 +359,7 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 		    close_lock_file(&index_lock))
 			die(_("unable to write new_index file"));
 		commit_style = COMMIT_NORMAL;
-		return index_lock.filename;
+		return index_lock.lock_filename.buf;
 	}
 
 	/*
@@ -444,9 +444,9 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 		die(_("unable to write temporary index file"));
 
 	discard_cache();
-	read_cache_from(false_lock.filename);
+	read_cache_from(false_lock.lock_filename.buf);
 
-	return false_lock.filename;
+	return false_lock.lock_filename.buf;
 }
 
 static int run_status(FILE *fp, const char *index_file, const char *prefix, int nowarn,
