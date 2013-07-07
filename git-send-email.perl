@@ -28,6 +28,7 @@ use File::Temp qw/ tempdir tempfile /;
 use File::Spec::Functions qw(catfile);
 use Error qw(:try);
 use Git;
+use IO::Socket::SSL qw(SSL_VERIFY_PEER SSL_VERIFY_NONE);
 
 Getopt::Long::Configure qw/ pass_through /;
 
@@ -69,8 +70,10 @@ git send-email [options] <file | directory | rev-list options >
     --smtp-pass             <str>  * Password for SMTP-AUTH; not necessary.
     --smtp-encryption       <str>  * tls or ssl; anything else disables.
     --smtp-ssl                     * Deprecated. Use '--smtp-encryption ssl'.
+    --[no-]smtp-ssl-verify         * Enable SSL certificate verification.
+                                     Default on.
     --smtp-ssl-cert-path    <str>  * Path to ca-certificates.  Defaults to
-                                     /etc/ssl/certs.
+                                     a platform-specific value.
     --smtp-domain           <str>  * The domain name sent to HELO/EHLO handshake
     --smtp-debug            <0|1>  * Disable, enable Net::SMTP debug.
 
@@ -197,7 +200,7 @@ my ($thread, $chain_reply_to, $suppress_from, $signed_off_by_cc);
 my ($to_cmd, $cc_cmd);
 my ($smtp_server, $smtp_server_port, @smtp_server_options);
 my ($smtp_authuser, $smtp_encryption);
-my ($smtp_ssl_cert_path);
+my ($smtp_ssl_verify, $smtp_ssl_cert_path);
 my ($identity, $aliasfiletype, @alias_files, $smtp_domain);
 my ($validate, $confirm);
 my (@suppress_cc);
@@ -214,6 +217,7 @@ my %config_bool_settings = (
     "suppressfrom" => [\$suppress_from, undef],
     "signedoffbycc" => [\$signed_off_by_cc, undef],
     "signedoffcc" => [\$signed_off_by_cc, undef],      # Deprecated
+    "smtpsslverify" => [\$smtp_ssl_verify, 1],
     "validate" => [\$validate, 1],
     "multiedit" => [\$multiedit, undef],
     "annotate" => [\$annotate, undef]
@@ -306,6 +310,8 @@ my $rc = GetOptions("h" => \$help,
 		    "smtp-pass:s" => \$smtp_authpass,
 		    "smtp-ssl" => sub { $smtp_encryption = 'ssl' },
 		    "smtp-encryption=s" => \$smtp_encryption,
+		    "smtp-ssl-cert-path=s" => \$smtp_ssl_cert_path,
+		    "smtp-ssl-verify!" => \$smtp_ssl_verify,
 		    "smtp-debug:i" => \$debug_net_smtp,
 		    "smtp-domain:s" => \$smtp_domain,
 		    "identity=s" => \$identity,
@@ -1096,19 +1102,18 @@ sub smtp_auth_maybe {
 # Helper to come up with SSL/TLS certification validation params
 # and warn when doing no verification
 sub ssl_verify_params {
-	use IO::Socket::SSL qw(SSL_VERIFY_PEER SSL_VERIFY_NONE);
-
-	if (!defined $smtp_ssl_cert_path) {
-		$smtp_ssl_cert_path = "/etc/ssl/certs";
+	if ($smtp_ssl_verify == 0) {
+		return (SSL_verify_mode => IO::Socket::SSL->SSL_VERIFY_NONE);
 	}
 
-	if (-d $smtp_ssl_cert_path) {
-		return (SSL_verify_mode => SSL_VERIFY_PEER,
-			SSL_ca_path => $smtp_ssl_cert_path);
+	if (! defined $smtp_ssl_cert_path) {
+		return (SSL_verify_mode => IO::Socket::SSL->SSL_VERIFY_PEER);
+	} elsif (-f $smtp_ssl_cert_path) {
+		return (SSL_verify_mode => IO::Socket::SSL->SSL_VERIFY_PEER,
+			SSL_ca_file => $smtp_ssl_cert_path);
 	} else {
-		print STDERR "warning: Using SSL_VERIFY_NONE.  " .
-		    "See sendemail.smtpsslcertpath.\n";
-		return (SSL_verify_mode => SSL_VERIFY_NONE);
+		return (SSL_verify_mode => IO::Socket::SSL->SSL_VERIFY_PEER,
+			SSL_ca_path => $smtp_ssl_cert_path);
 	}
 }
 

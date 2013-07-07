@@ -198,6 +198,10 @@ must be used for each option.
 --smtp-ssl::
 	Legacy alias for '--smtp-encryption ssl'.
 
+--smtp-ssl-verify::
+--no-smtp-ssl-verify::
+	Enable SSL certificate verification.  Defaults to on.
+
 --smtp-ssl-cert-path::
 	Path to ca-certificates.  Defaults to `/etc/ssl/certs`, or
 	'sendemail.smtpsslcertpath'.
