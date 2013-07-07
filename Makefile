@@ -1799,10 +1799,11 @@ git.res: git.rc $(GIT_OUTDIR)/GIT-VERSION-FILE
 ifndef NO_PERL
 $(patsubst %.perl,$(GIT_OUTDIR)/%,$(SCRIPT_PERL)): perl/perl.mak
 
-perl/perl.mak: perl/PM.stamp
+perl/perl.mak: $(GIT_OUTDIR)/perl/PM.stamp
 
-perl/PM.stamp: FORCE
-	$(QUIET_GEN)$(FIND) perl -type f -name '*.pm' | sort >$@+ && \
+$(GIT_OUTDIR)/perl/PM.stamp: FORCE
+	$(QUIET_GEN) mkdir -p $(GIT_OUTDIR)/perl && \
+	$(FIND) perl -type f -name '*.pm' | sort >$@+ && \
 	{ cmp $@+ $@ >/dev/null 2>/dev/null || mv $@+ $@; } && \
 	$(RM) $@+
 
