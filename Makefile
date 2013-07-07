@@ -346,9 +346,17 @@ all::
 # (defaults to "man") if you want to have a different default when
 # "git help" is called without a parameter specifying the format.
 
-GIT-VERSION-FILE: FORCE
+ifeq ("$(origin O)","command line")
+export GIT_OUTDIR := $(shell cd $(O) && pwd)
+$(if $(GIT_OUTDIR),,$(error Output Directory "$(O)" does not exist))
+else
+export GIT_OUTDIR := .
+endif
+
+
+$(GIT_OUTDIR)/GIT-VERSION-FILE: FORCE
 	@$(SHELL_PATH) ./GIT-VERSION-GEN
--include GIT-VERSION-FILE
+-include $(GIT_OUTDIR)/GIT-VERSION-FILE
 
 # CFLAGS and LDFLAGS are for the users to override from the command line.
 
@@ -423,7 +431,7 @@ SPARSE_FLAGS =
 # Those must not be GNU-specific; they are shared with perl/ which may
 # be built by a different compiler. (Note that this is an artifact now
 # but it still might be nice to keep that distinction.)
-BASIC_CFLAGS = -I.
+BASIC_CFLAGS = -I. -I$(GIT_OUTDIR)
 BASIC_LDFLAGS =
 
 # Guard against environment variables
@@ -470,6 +478,8 @@ SCRIPT_SH += git-stash.sh
 SCRIPT_SH += git-submodule.sh
 SCRIPT_SH += git-web--browse.sh
 
+SCRIPT_SH := $(addprefix $(GIT_OUTDIR)/,$(SCRIPT_SH))
+
 SCRIPT_LIB += git-mergetool--lib
 SCRIPT_LIB += git-parse-remote
 SCRIPT_LIB += git-rebase--am
@@ -497,7 +507,7 @@ NO_INSTALL += git-remote-testpy
 # Generated files for scripts
 SCRIPT_SH_GEN = $(patsubst %.sh,%,$(SCRIPT_SH))
 SCRIPT_PERL_GEN = $(patsubst %.perl,%,$(SCRIPT_PERL))
-SCRIPT_PYTHON_GEN = $(patsubst %.py,%,$(SCRIPT_PYTHON))
+SCRIPT_PYTHON_GEN = $(patsubst %.py,$(GIT_OUTDIR)/%,$(SCRIPT_PYTHON))
 
 SCRIPT_SH_INS = $(filter-out $(NO_INSTALL),$(SCRIPT_SH_GEN))
 SCRIPT_PERL_INS = $(filter-out $(NO_INSTALL),$(SCRIPT_PERL_GEN))
@@ -554,7 +564,7 @@ PROGRAM_OBJS += remote-testsvn.o
 # Binary suffix, set to .exe for Windows builds
 X =
 
-PROGRAMS += $(patsubst %.o,git-%$X,$(PROGRAM_OBJS))
+PROGRAMS += $(patsubst %.o,$(GIT_OUTDIR)/git-%$X,$(PROGRAM_OBJS))
 
 TEST_PROGRAMS_NEED_X += test-chmtime
 TEST_PROGRAMS_NEED_X += test-ctype
@@ -632,11 +642,11 @@ endif
 export PERL_PATH
 export PYTHON_PATH
 
-LIB_FILE = libgit.a
-XDIFF_LIB = xdiff/lib.a
-VCSSVN_LIB = vcs-svn/lib.a
+LIB_FILE = $(GIT_OUTDIR)/libgit.a
+XDIFF_LIB = $(GIT_OUTDIR)/xdiff/lib.a
+VCSSVN_LIB = $(GIT_OUTDIR)/vcs-svn/lib.a
 
-GENERATED_H += common-cmds.h
+GENERATED_H += $(GIT_OUTDIR)/common-cmds.h
 
 LIB_H += advice.h
 LIB_H += archive.h
@@ -1128,8 +1138,8 @@ else
 		CURL_LIBCURL += -lidn
 	endif
 
-	REMOTE_CURL_PRIMARY = git-remote-http$X
-	REMOTE_CURL_ALIASES = git-remote-https$X git-remote-ftp$X git-remote-ftps$X
+	REMOTE_CURL_PRIMARY = $(GIT_OUTDIR)/git-remote-http$X
+	REMOTE_CURL_ALIASES = $(addprefix $(GIT_OUTDIR)/,git-remote-https$X git-remote-ftp$X git-remote-ftps$X)
 	REMOTE_CURL_NAMES = $(REMOTE_CURL_PRIMARY) $(REMOTE_CURL_ALIASES)
 	PROGRAM_OBJS += http-fetch.o
 	PROGRAMS += $(REMOTE_CURL_NAMES)
@@ -1625,9 +1635,9 @@ endif
 GIT_USER_AGENT_SQ = $(subst ','\'',$(GIT_USER_AGENT))
 GIT_USER_AGENT_CQ = "$(subst ",\",$(subst \,\\,$(GIT_USER_AGENT)))"
 GIT_USER_AGENT_CQ_SQ = $(subst ','\'',$(GIT_USER_AGENT_CQ))
-GIT-USER-AGENT: FORCE
-	@if test x'$(GIT_USER_AGENT_SQ)' != x"`cat GIT-USER-AGENT 2>/dev/null`"; then \
-		echo '$(GIT_USER_AGENT_SQ)' >GIT-USER-AGENT; \
+$(GIT_OUTDIR)/GIT-USER-AGENT: FORCE
+	@if test x'$(GIT_USER_AGENT_SQ)' != x"`cat $(GIT_OUTDIR)/GIT-USER-AGENT 2>/dev/null`"; then \
+		echo '$(GIT_USER_AGENT_SQ)' >$(GIT_OUTDIR)/GIT-USER-AGENT; \
 	fi
 
 ifdef DEFAULT_HELP_FORMAT
@@ -1713,26 +1723,26 @@ strip: $(PROGRAMS) git$X
 #   dependencies here will not need to change if the force-build
 #   details change some day.
 
-git.sp git.s git.o: GIT-PREFIX
-git.sp git.s git.o: EXTRA_CPPFLAGS = \
+$(addprefix $(GIT_OUTDIR)/,git.sp git.s git.o): $(GIT_OUTDIR)/GIT-PREFIX
+$(addprefix $(GIT_OUTDIR)/,git.sp git.s git.o): EXTRA_CPPFLAGS = \
 	'-DGIT_HTML_PATH="$(htmldir_relative_SQ)"' \
 	'-DGIT_MAN_PATH="$(mandir_relative_SQ)"' \
 	'-DGIT_INFO_PATH="$(infodir_relative_SQ)"'
 
-git$X: git.o GIT-LDFLAGS $(BUILTIN_OBJS) $(GITLIBS)
-	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ git.o \
-		$(BUILTIN_OBJS) $(ALL_LDFLAGS) $(LIBS)
+git$X: $(addprefix $(GIT_OUTDIR)/,git.o GIT-LDFLAGS $(BUILTIN_OBJS)) $(GITLIBS)
+	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(addprefix $(GIT_OUTDIR)/,git.o \
+		$(BUILTIN_OBJS)) $(ALL_LDFLAGS) $(LIBS)
 
-help.sp help.s help.o: common-cmds.h
+$(addprefix $(GIT_OUTDIR)/,help.sp help.s help.o): $(GIT_OUTDIR)/common-cmds.h
 
-builtin/help.sp builtin/help.s builtin/help.o: common-cmds.h GIT-PREFIX
-builtin/help.sp builtin/help.s builtin/help.o: EXTRA_CPPFLAGS = \
+$(addprefix $(GIT_OUTDIR)/,builtin/help.sp builtin/help.s builtin/help.o): $(GIT_OUTDIR)/common-cmds.h $(GIT_OUTDIR)/GIT-PREFIX
+$(addprefix $(GIT_OUTDIR)/,builtin/help.sp builtin/help.s builtin/help.o): EXTRA_CPPFLAGS = \
 	'-DGIT_HTML_PATH="$(htmldir_relative_SQ)"' \
 	'-DGIT_MAN_PATH="$(mandir_relative_SQ)"' \
 	'-DGIT_INFO_PATH="$(infodir_relative_SQ)"'
 
-version.sp version.s version.o: GIT-VERSION-FILE GIT-USER-AGENT
-version.sp version.s version.o: EXTRA_CPPFLAGS = \
+$(addprefix $(GIT_OUTDIR)/,version.sp version.s version.o): $(GIT_OUTDIR)/GIT-VERSION-FILE $(GIT_OUTDIR)/GIT-USER-AGENT
+$(addprefix $(GIT_OUTDIR)/,version.sp version.s version.o): EXTRA_CPPFLAGS = \
 	'-DGIT_VERSION="$(GIT_VERSION)"' \
 	'-DGIT_USER_AGENT=$(GIT_USER_AGENT_CQ_SQ)'
 
@@ -1742,9 +1752,9 @@ $(BUILT_INS): git$X
 	ln -s $< $@ 2>/dev/null || \
 	cp $< $@
 
-common-cmds.h: ./generate-cmdlist.sh command-list.txt
+$(GIT_OUTDIR)/common-cmds.h: ./generate-cmdlist.sh command-list.txt
 
-common-cmds.h: $(wildcard Documentation/git-*.txt)
+$(GIT_OUTDIR)/common-cmds.h: $(wildcard Documentation/git-*.txt)
 	$(QUIET_GEN)./generate-cmdlist.sh > $@+ && mv $@+ $@
 
 SCRIPT_DEFINES = $(SHELL_PATH_SQ):$(DIFF_SQ):$(GIT_VERSION):\
@@ -1761,10 +1771,10 @@ sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
     -e $(BROKEN_PATH_FIX) \
     -e 's|@@GITWEBDIR@@|$(gitwebdir_SQ)|g' \
     -e 's|@@PERL@@|$(PERL_PATH_SQ)|g' \
-    $@.sh >$@+
+    $(notdir $@).sh >$@+
 endef
 
-GIT-SCRIPT-DEFINES: FORCE
+$(GIT_OUTDIR)/GIT-SCRIPT-DEFINES: FORCE
 	@FLAGS='$(SCRIPT_DEFINES)'; \
 	    if test x"$$FLAGS" != x"`cat $@ 2>/dev/null`" ; then \
 		echo >&2 "    * new script parameters"; \
@@ -1772,16 +1782,16 @@ GIT-SCRIPT-DEFINES: FORCE
             fi
 
 
-$(patsubst %.sh,%,$(SCRIPT_SH)) : % : %.sh GIT-SCRIPT-DEFINES
+$(patsubst %.sh,%,$(SCRIPT_SH)) : $(GIT_OUTDIR)/% : %.sh $(GIT_OUTDIR)/GIT-SCRIPT-DEFINES
 	$(QUIET_GEN)$(cmd_munge_script) && \
 	chmod +x $@+ && \
 	mv $@+ $@
 
-$(SCRIPT_LIB) : % : %.sh GIT-SCRIPT-DEFINES
+$(SCRIPT_LIB) : % : %.sh $(GIT_OUTDIR)/GIT-SCRIPT-DEFINES
 	$(QUIET_GEN)$(cmd_munge_script) && \
 	mv $@+ $@
 
-git.res: git.rc GIT-VERSION-FILE
+git.res: git.rc $(GIT_OUTDIR)/GIT-VERSION-FILE
 	$(QUIET_RC)$(RC) \
 	  $(join -DMAJOR= -DMINOR= -DPATCH=, $(wordlist 1,3,$(subst -, ,$(subst ., ,$(GIT_VERSION))))) \
 	  -DGIT_VERSION="\\\"$(GIT_VERSION)\\\"" $< -o $@
@@ -1796,10 +1806,10 @@ perl/PM.stamp: FORCE
 	{ cmp $@+ $@ >/dev/null 2>/dev/null || mv $@+ $@; } && \
 	$(RM) $@+
 
-perl/perl.mak: GIT-CFLAGS GIT-PREFIX perl/Makefile perl/Makefile.PL
+perl/perl.mak: $(GIT_OUTDIR)/GIT-CFLAGS $(GIT_OUTDIR)/GIT-PREFIX perl/Makefile perl/Makefile.PL
 	$(QUIET_SUBDIR0)perl $(QUIET_SUBDIR1) PERL_PATH='$(PERL_PATH_SQ)' prefix='$(prefix_SQ)' $(@F)
 
-$(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl GIT-VERSION-FILE
+$(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl $(GIT_OUTDIR)/GIT-VERSION-FILE
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C perl -s --no-print-directory instlibdir` && \
 	sed -e '1{' \
@@ -1819,7 +1829,7 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl GIT-VERSION-FILE
 gitweb:
 	$(QUIET_SUBDIR0)gitweb $(QUIET_SUBDIR1) all
 
-git-instaweb: git-instaweb.sh gitweb GIT-SCRIPT-DEFINES
+git-instaweb: git-instaweb.sh gitweb $(GIT_OUTDIR)/GIT-SCRIPT-DEFINES
 	$(QUIET_GEN)$(cmd_munge_script) && \
 	chmod +x $@+ && \
 	mv $@+ $@
@@ -1834,8 +1844,8 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)) git-instaweb: % : unimplemented.sh
 endif # NO_PERL
 
 ifndef NO_PYTHON
-$(SCRIPT_PYTHON_GEN): GIT-CFLAGS GIT-PREFIX GIT-PYTHON-VARS
-$(SCRIPT_PYTHON_GEN): % : %.py
+$(SCRIPT_PYTHON_GEN): $(GIT_OUTDIR)/GIT-CFLAGS $(GIT_OUTDIR)/GIT-PREFIX GIT-PYTHON-VARS
+$(SCRIPT_PYTHON_GEN): $(GIT_OUTDIR)/% : %.py
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C git_remote_helpers -s \
 		--no-print-directory prefix='$(prefix_SQ)' DESTDIR='$(DESTDIR_SQ)' \
@@ -1847,7 +1857,7 @@ $(SCRIPT_PYTHON_GEN): % : %.py
 	chmod +x $@+ && \
 	mv $@+ $@
 else # NO_PYTHON
-$(SCRIPT_PYTHON_GEN): % : unimplemented.sh
+$(SCRIPT_PYTHON_GEN): $(GIT_OUTDIR)/% : unimplemented.sh
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
 	    -e 's|@@REASON@@|NO_PYTHON=$(NO_PYTHON)|g' \
@@ -1862,7 +1872,7 @@ CONFIGURE_RECIPE = $(RM) configure configure.ac+ && \
 		   autoconf -o configure configure.ac+ && \
 		   $(RM) configure.ac+
 
-configure: configure.ac GIT-VERSION-FILE
+configure: configure.ac $(GIT_OUTDIR)/GIT-VERSION-FILE
 	$(QUIET_GEN)$(CONFIGURE_RECIPE)
 
 ifdef AUTOCONFIGURED
@@ -1899,15 +1909,15 @@ VCSSVN_OBJS += vcs-svn/svndiff.o
 VCSSVN_OBJS += vcs-svn/svndump.o
 
 TEST_OBJS := $(patsubst test-%$X,test-%.o,$(TEST_PROGRAMS))
-OBJECTS := $(LIB_OBJS) $(BUILTIN_OBJS) $(PROGRAM_OBJS) $(TEST_OBJS) \
+OBJECTS := $(addprefix $(GIT_OUTDIR)/,$(LIB_OBJS) $(BUILTIN_OBJS) $(PROGRAM_OBJS) $(TEST_OBJS) \
 	$(XDIFF_OBJS) \
 	$(VCSSVN_OBJS) \
-	git.o
+	git.o)
 ifndef NO_CURL
-	OBJECTS += http.o http-walker.o remote-curl.o
+	OBJECTS += $(GIT_OUTDIR)/http.o $(GIT_OUTDIR)/http-walker.o $(GIT_OUTDIR)/remote-curl.o
 endif
 
-dep_files := $(foreach f,$(OBJECTS),$(dir $f).depend/$(notdir $f).d)
+dep_files := $(foreach f,$(OBJECTS),$(dir $f)/.depend/$(notdir $f).d)
 dep_dirs := $(addsuffix .depend,$(sort $(dir $(OBJECTS))))
 
 ifeq ($(COMPUTE_HEADER_DEPENDENCIES),yes)
@@ -1981,13 +1991,13 @@ endif
 endif
 
 ifndef CHECK_HEADER_DEPENDENCIES
-$(C_OBJ): %.o: %.c GIT-CFLAGS $(missing_dep_dirs)
-	$(QUIET_CC)$(CC) -o $*.o -c $(dep_args) $(ALL_CFLAGS) $(EXTRA_CPPFLAGS) $<
-$(ASM_OBJ): %.o: %.S GIT-CFLAGS $(missing_dep_dirs)
+$(C_OBJ): $(GIT_OUTDIR)/%.o: %.c $(GIT_OUTDIR)/GIT-CFLAGS $(missing_dep_dirs)
+	$(QUIET_CC)$(CC) -o $(GIT_OUTDIR)/$*.o -c $(dep_args) $(ALL_CFLAGS) $(EXTRA_CPPFLAGS) $<
+$(ASM_OBJ): %.o: %.S $(GIT_OUTDIR)/GIT-CFLAGS $(missing_dep_dirs)
 	$(QUIET_CC)$(CC) -o $*.o -c $(dep_args) $(ALL_CFLAGS) $(EXTRA_CPPFLAGS) $<
 endif
 
-%.s: %.c GIT-CFLAGS FORCE
+%.s: %.c $(GIT_OUTDIR)/GIT-CFLAGS FORCE
 	$(QUIET_CC)$(CC) -o $@ -S $(ALL_CFLAGS) $(EXTRA_CPPFLAGS) $<
 
 ifdef USE_COMPUTED_HEADER_DEPENDENCIES
@@ -2008,58 +2018,58 @@ else
 $(OBJECTS): $(LIB_H)
 endif
 
-exec_cmd.sp exec_cmd.s exec_cmd.o: GIT-PREFIX
-exec_cmd.sp exec_cmd.s exec_cmd.o: EXTRA_CPPFLAGS = \
+$(addprefix $(GIT_OUTDIR)/,exec_cmd.sp exec_cmd.s exec_cmd.o): $(GIT_OUTDIR)/GIT-PREFIX
+$(addprefix $(GIT_OUTDIR)/,exec_cmd.sp exec_cmd.s exec_cmd.o): EXTRA_CPPFLAGS = \
 	'-DGIT_EXEC_PATH="$(gitexecdir_SQ)"' \
 	'-DBINDIR="$(bindir_relative_SQ)"' \
 	'-DPREFIX="$(prefix_SQ)"'
 
-builtin/init-db.sp builtin/init-db.s builtin/init-db.o: GIT-PREFIX
-builtin/init-db.sp builtin/init-db.s builtin/init-db.o: EXTRA_CPPFLAGS = \
+$(addprefix $(GIT_OUTDIR)/,builtin/init-db.sp builtin/init-db.s builtin/init-db.o): $(GIT_OUTDIR)/GIT-PREFIX
+$(addprefix $(GIT_OUTDIR)/,builtin/init-db.sp builtin/init-db.s builtin/init-db.o): EXTRA_CPPFLAGS = \
 	-DDEFAULT_GIT_TEMPLATE_DIR='"$(template_dir_SQ)"'
 
-config.sp config.s config.o: GIT-PREFIX
-config.sp config.s config.o: EXTRA_CPPFLAGS = \
+$(addprefix $(GIT_OUTDIR)/,config.sp config.s config.o): $(GIT_OUTDIR)/GIT-PREFIX
+$(addprefix $(GIT_OUTDIR)/,config.sp config.s config.o): EXTRA_CPPFLAGS = \
 	-DETC_GITCONFIG='"$(ETC_GITCONFIG_SQ)"'
 
-attr.sp attr.s attr.o: GIT-PREFIX
-attr.sp attr.s attr.o: EXTRA_CPPFLAGS = \
+$(addprefix $(GIT_OUTDIR)/,attr.sp attr.s attr.o): $(GIT_OUTDIR)/GIT-PREFIX
+$(addprefix $(GIT_OUTDIR)/,attr.sp attr.s attr.o): EXTRA_CPPFLAGS = \
 	-DETC_GITATTRIBUTES='"$(ETC_GITATTRIBUTES_SQ)"'
 
-gettext.sp gettext.s gettext.o: GIT-PREFIX
-gettext.sp gettext.s gettext.o: EXTRA_CPPFLAGS = \
+$(addprefix $(GIT_OUTDIR)/,gettext.sp gettext.s gettext.o): $(GIT_OUTDIR)/GIT-PREFIX
+$(addprefix $(GIT_OUTDIR)/,gettext.sp gettext.s gettext.o): EXTRA_CPPFLAGS = \
 	-DGIT_LOCALE_PATH='"$(localedir_SQ)"'
 
 ifdef NO_EXPAT
-http-walker.sp http-walker.s http-walker.o: EXTRA_CPPFLAGS = -DNO_EXPAT
+$(addprefix $(GIT_OUTDIR)/,http-walker.sp http-walker.s http-walker.o): EXTRA_CPPFLAGS = -DNO_EXPAT
 endif
 
 ifdef NO_REGEX
-compat/regex/regex.sp compat/regex/regex.o: EXTRA_CPPFLAGS = \
+$(addprefix $(GIT_OUTDIR)/,compat/regex/regex.sp compat/regex/regex.o): EXTRA_CPPFLAGS = \
 	-DGAWK -DNO_MBSUPPORT
 endif
 
 ifdef USE_NED_ALLOCATOR
-compat/nedmalloc/nedmalloc.sp compat/nedmalloc/nedmalloc.o: EXTRA_CPPFLAGS = \
+$(addprefix $(GIT_OUTDIR)/,compat/nedmalloc/nedmalloc.sp compat/nedmalloc/nedmalloc.o): EXTRA_CPPFLAGS = \
 	-DNDEBUG -DOVERRIDE_STRDUP -DREPLACE_SYSTEM_ALLOCATOR
-compat/nedmalloc/nedmalloc.sp: SPARSE_FLAGS += -Wno-non-pointer-null
+$(addprefix $(GIT_OUTDIR)/,compat/nedmalloc/nedmalloc.sp): SPARSE_FLAGS += -Wno-non-pointer-null
 endif
 
-git-%$X: %.o GIT-LDFLAGS $(GITLIBS)
+git-%$X: %.o $(GIT_OUTDIR)/GIT-LDFLAGS $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS)
 
-git-imap-send$X: imap-send.o GIT-LDFLAGS $(GITLIBS)
+$(GIT_OUTDIR)/git-imap-send$X: $(GIT_OUTDIR)/imap-send.o $(GIT_OUTDIR)/GIT-LDFLAGS $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
 		$(LIBS) $(OPENSSL_LINK) $(OPENSSL_LIBSSL) $(LIB_4_CRYPTO)
 
-git-http-fetch$X: revision.o http.o http-walker.o http-fetch.o GIT-LDFLAGS $(GITLIBS)
+$(GIT_OUTDIR)/git-http-fetch$X: $(addprefix $(GIT_OUTDIR)/,revision.o http.o http-walker.o http-fetch.o GIT-LDFLAGS) $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
 		$(LIBS) $(CURL_LIBCURL)
-git-http-push$X: revision.o http.o http-push.o GIT-LDFLAGS $(GITLIBS)
+$(GIT_OUTDIR)/git-http-push$X: $(addprefix $(GIT_OUTDIR)/,revision.o http.o http-push.o GIT-LDFLAGS) $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
 		$(LIBS) $(CURL_LIBCURL) $(EXPAT_LIBEXPAT)
 
-git-remote-testsvn$X: remote-testsvn.o GIT-LDFLAGS $(GITLIBS) $(VCSSVN_LIB)
+$(GIT_OUTDIR)/git-remote-testsvn$X: $(GIT_OUTDIR)/remote-testsvn.o $(GIT_OUTDIR)/GIT-LDFLAGS $(GITLIBS) $(VCSSVN_LIB)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS) \
 	$(VCSSVN_LIB)
 
@@ -2069,17 +2079,17 @@ $(REMOTE_CURL_ALIASES): $(REMOTE_CURL_PRIMARY)
 	ln -s $< $@ 2>/dev/null || \
 	cp $< $@
 
-$(REMOTE_CURL_PRIMARY): remote-curl.o http.o http-walker.o GIT-LDFLAGS $(GITLIBS)
+$(REMOTE_CURL_PRIMARY): $(addprefix $(GIT_OUTDIR)/,remote-curl.o http.o http-walker.o GIT-LDFLAGS) $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
 		$(LIBS) $(CURL_LIBCURL) $(EXPAT_LIBEXPAT)
 
-$(LIB_FILE): $(LIB_OBJS)
+$(LIB_FILE): $(addprefix $(GIT_OUTDIR)/,$(LIB_OBJS))
 	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
 
-$(XDIFF_LIB): $(XDIFF_OBJS)
+$(XDIFF_LIB): $(addprefix $(GIT_OUTDIR)/,$(XDIFF_OBJS))
 	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
 
-$(VCSSVN_LIB): $(VCSSVN_OBJS)
+$(VCSSVN_LIB): $(addprefix $(GIT_OUTDIR)/,$(VCSSVN_OBJS))
 	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
 
 export DEFAULT_EDITOR DEFAULT_PAGER
@@ -2159,29 +2169,29 @@ cscope:
 TRACK_PREFIX = $(bindir_SQ):$(gitexecdir_SQ):$(template_dir_SQ):$(prefix_SQ):\
 		$(localedir_SQ)
 
-GIT-PREFIX: FORCE
+$(GIT_OUTDIR)/GIT-PREFIX: FORCE
 	@FLAGS='$(TRACK_PREFIX)'; \
-	if test x"$$FLAGS" != x"`cat GIT-PREFIX 2>/dev/null`" ; then \
+	if test x"$$FLAGS" != x"`cat $(GIT_OUTDIR)/GIT-PREFIX 2>/dev/null`" ; then \
 		echo >&2 "    * new prefix flags"; \
-		echo "$$FLAGS" >GIT-PREFIX; \
+		echo "$$FLAGS" >$(GIT_OUTDIR)/GIT-PREFIX; \
 	fi
 
 TRACK_CFLAGS = $(CC):$(subst ','\'',$(ALL_CFLAGS)):$(USE_GETTEXT_SCHEME)
 
-GIT-CFLAGS: FORCE
+$(GIT_OUTDIR)/GIT-CFLAGS: FORCE
 	@FLAGS='$(TRACK_CFLAGS)'; \
-	    if test x"$$FLAGS" != x"`cat GIT-CFLAGS 2>/dev/null`" ; then \
+	    if test x"$$FLAGS" != x"`cat $(GIT_OUTDIR)/GIT-CFLAGS 2>/dev/null`" ; then \
 		echo >&2 "    * new build flags"; \
-		echo "$$FLAGS" >GIT-CFLAGS; \
+		echo "$$FLAGS" >$(GIT_OUTDIR)/GIT-CFLAGS; \
             fi
 
 TRACK_LDFLAGS = $(subst ','\'',$(ALL_LDFLAGS))
 
-GIT-LDFLAGS: FORCE
+$(GIT_OUTDIR)/GIT-LDFLAGS: FORCE
 	@FLAGS='$(TRACK_LDFLAGS)'; \
-	    if test x"$$FLAGS" != x"`cat GIT-LDFLAGS 2>/dev/null`" ; then \
+	    if test x"$$FLAGS" != x"`cat $(GIT_OUTDIR)/GIT-LDFLAGS 2>/dev/null`" ; then \
 		echo >&2 "    * new link flags"; \
-		echo "$$FLAGS" >GIT-LDFLAGS; \
+		echo "$$FLAGS" >$(GIT_OUTDIR)/GIT-LDFLAGS; \
             fi
 
 # We need to apply sq twice, once to protect from the shell
@@ -2240,7 +2250,7 @@ endif
 test_bindir_programs := $(patsubst %,bin-wrappers/%,$(BINDIR_PROGRAMS_NEED_X) $(BINDIR_PROGRAMS_NO_X) $(TEST_PROGRAMS_NEED_X))
 
 all:: $(TEST_PROGRAMS) $(test_bindir_programs)
-all:: $(NO_INSTALL)
+all:: $(addprefix $(GIT_OUTDIR)/,$(NO_INSTALL))
 
 bin-wrappers/%: wrap-for-bin.sh
 	@mkdir -p bin-wrappers
@@ -2266,21 +2276,21 @@ perf: all
 
 .PHONY: test perf
 
-test-ctype$X: ctype.o
+test-ctype$X: $(GIT_OUTDIR)/ctype.o
 
-test-date$X: date.o ctype.o
+test-date$X: $(addprefix $(GIT_OUTDIR)/,date.o ctype.o)
 
-test-delta$X: diff-delta.o patch-delta.o
+test-delta$X: $(addprefix $(GIT_OUTDIR)/,diff-delta.o patch-delta.o)
 
-test-line-buffer$X: vcs-svn/lib.a
+test-line-buffer$X: $(VCSSVN_LIB)
 
-test-parse-options$X: parse-options.o parse-options-cb.o
+test-parse-options$X: $(addprefix $(GIT_OUTDIR)/,parse-options.o parse-options-cb.o)
 
-test-svn-fe$X: vcs-svn/lib.a
+test-svn-fe$X: $(VCSSVN_LIB)
 
 .PRECIOUS: $(TEST_OBJS)
 
-test-%$X: test-%.o GIT-LDFLAGS $(GITLIBS)
+test-%$X: $(GIT_OUTDIR)/test-%.o $(GIT_OUTDIR)/GIT-LDFLAGS $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(filter %.a,$^) $(LIBS)
 
 check-sha1:: test-sha1$X
@@ -2288,14 +2298,14 @@ check-sha1:: test-sha1$X
 
 SP_OBJ = $(patsubst %.o,%.sp,$(C_OBJ))
 
-$(SP_OBJ): %.sp: %.c GIT-CFLAGS FORCE
+$(SP_OBJ): %.sp: %.c $(GIT_OUTDIR)/GIT-CFLAGS FORCE
 	$(QUIET_SP)cgcc -no-compile $(ALL_CFLAGS) $(EXTRA_CPPFLAGS) \
 		$(SPARSE_FLAGS) $<
 
 .PHONY: sparse $(SP_OBJ)
 sparse: $(SP_OBJ)
 
-check: common-cmds.h
+check: $(GIT_OUTDIR)/common-cmds.h
 	@if sparse; \
 	then \
 		echo 2>&1 "Use 'make sparse' instead"; \
@@ -2425,7 +2435,7 @@ quick-install-html:
 
 ### Maintainer's dist rules
 
-git.spec: git.spec.in GIT-VERSION-FILE
+git.spec: git.spec.in $(GIT_OUTDIR)/GIT-VERSION-FILE
 	sed -e 's/@@VERSION@@/$(GIT_VERSION)/g' < $< > $@+
 	mv $@+ $@
 
@@ -2490,7 +2500,7 @@ clean: profile-clean coverage-clean
 	$(RM) $(TEST_PROGRAMS) $(NO_INSTALL)
 	$(RM) -r bin-wrappers $(dep_dirs)
 	$(RM) -r po/build/
-	$(RM) *.spec *.pyc *.pyo */*.pyc */*.pyo common-cmds.h $(ETAGS_TARGET) tags cscope*
+	$(RM) *.spec *.pyc *.pyo */*.pyc */*.pyo $(GIT_OUTDIR)/common-cmds.h $(ETAGS_TARGET) tags cscope*
 	$(RM) -r $(GIT_TARNAME) .doc-tmp-dir
 	$(RM) $(GIT_TARNAME).tar.gz git-core_$(GIT_VERSION)-*.tar.gz
 	$(RM) $(htmldocs).tar.gz $(manpages).tar.gz
@@ -2508,8 +2518,8 @@ ifndef NO_TCLTK
 	$(MAKE) -C gitk-git clean
 	$(MAKE) -C git-gui clean
 endif
-	$(RM) GIT-VERSION-FILE GIT-CFLAGS GIT-LDFLAGS GIT-BUILD-OPTIONS
-	$(RM) GIT-USER-AGENT GIT-PREFIX GIT-SCRIPT-DEFINES GIT-PYTHON-VARS
+	$(RM) $(GIT_OUTDIR)/GIT-VERSION-FILE $(GIT_OUTDIR)/GIT-CFLAGS $(GIT_OUTDIR)/GIT-LDFLAGS GIT-BUILD-OPTIONS
+	$(RM) $(GIT_OUTDIR)/GIT-USER-AGENT $(GIT_OUTDIR)/GIT-PREFIX $(GIT_OUTDIR)/GIT-SCRIPT-DEFINES GIT-PYTHON-VARS
 
 .PHONY: all install profile-clean clean strip
 .PHONY: shell_compatibility_test please_set_SHELL_PATH_to_a_more_modern_shell
