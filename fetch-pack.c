@@ -806,8 +806,8 @@ static void setup_alternate_shallow(void)
 	if (write_shallow_commits(&sb, 0)) {
 		if (write_in_full(fd, sb.buf, sb.len) != sb.len)
 			die_errno("failed to write to %s",
-				  shallow_lock.lock_filename.buf);
-		alternate_shallow_file = shallow_lock.lock_filename.buf;
+				  shallow_lock.staging_filename.buf);
+		alternate_shallow_file = shallow_lock.staging_filename.buf;
 	} else
 		/*
 		 * is_repository_shallow() sees empty string as "no
