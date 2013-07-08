@@ -75,10 +75,13 @@ struct ref {
 	struct ref *next;
 	unsigned char old_sha1[20];
 	unsigned char new_sha1[20];
+	unsigned char old_sha1_expect[20]; /* used by expect-old */
 	char *symref;
 	unsigned int
 		force:1,
 		forced_update:1,
+		expect_old_sha1:1,
+		expect_old_no_trackback:1,
 		deletion:1,
 		matched:1;
 
@@ -102,6 +105,7 @@ struct ref {
 		REF_STATUS_REJECT_NODELETE,
 		REF_STATUS_REJECT_FETCH_FIRST,
 		REF_STATUS_REJECT_NEEDS_FORCE,
+		REF_STATUS_REJECT_STALE,
 		REF_STATUS_UPTODATE,
 		REF_STATUS_REMOTE_REJECT,
 		REF_STATUS_EXPECTING_REPORT
