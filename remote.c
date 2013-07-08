@@ -1302,6 +1302,14 @@ static void add_missing_tags(struct ref *src, struct ref **dst, struct ref ***ds
 	free(sent_tips.tip);
 }
 
+struct ref *find_ref_by_name(const struct ref *list, const char *name)
+{
+	for ( ; list; list = list->next)
+		if (!strcmp(list->name, name))
+			return (struct ref *)list;
+	return NULL;
+}
+
 static void prepare_ref_index(struct string_list *ref_index, struct ref *ref)
 {
 	for ( ; ref; ref = ref->next)
@@ -1431,13 +1439,24 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 		}
 
 		/*
+		 * If we know what the old value of the remote ref
+		 * should be, reject any push, even forced ones,
+		 * if they do not match.
+		 */
+		if (ref->expect_old_sha1 &&
+		    hashcmp(ref->old_sha1, ref->old_sha1_expect)) {
+			ref->status = REF_STATUS_REJECT_STALE;
+			continue;
+		}
+
+		/*
 		 * Decide whether an individual refspec A:B can be
 		 * pushed.  The push will succeed if any of the
 		 * following are true:
 		 *
-		 * (1) the remote reference B does not exist
+		 * (1) the remote reference B does not exist (i.e. create)
 		 *
-		 * (2) the remote reference B is being removed (i.e.,
+		 * (2) the remote reference B is being removed (i.e. delete;
 		 *     pushing :B where no source is specified)
 		 *
 		 * (3) the destination is not under refs/tags/, and
@@ -1935,4 +1954,56 @@ struct ref *get_stale_heads(struct refspec *refs, int ref_count, struct ref *fet
 	for_each_ref(get_stale_heads_cb, &info);
 	string_list_clear(&ref_names, 0);
 	return stale_refs;
+}
+
+/*
+ * Lockref aka CAS
+ */
+void clear_cas_option(struct push_cas_option *cas)
+{
+	int i;
+
+	for (i = 0; i < cas->nr; i++)
+		free(cas->entry->refname);
+	free(cas->entry);
+	memset(cas, 0, sizeof(*cas));
+}
+
+static struct push_cas *add_cas_entry(struct push_cas_option *cas,
+				      const char *refname,
+				      size_t refnamelen)
+{
+	struct push_cas *entry;
+	ALLOC_GROW(cas->entry, cas->nr + 1, cas->alloc);
+	entry = &cas->entry[cas->nr++];
+	memset(entry, 0, sizeof(*entry));
+	entry->refname = xmemdupz(refname, refnamelen);
+	return entry;
+}
+
+int parse_push_cas_option(const struct option *opt, const char *arg, int unset)
+{
+	struct push_cas_option *cas = opt->value;
+	const char *colon;
+	struct push_cas *entry;
+
+	if (unset) {
+		/* --no-lockref */
+		clear_cas_option(cas);
+		return 0;
+	}
+
+	if (!arg) {
+		/* just --lockref */
+		cas->use_tracking_for_rest = 1;
+		return 0;
+	}
+
+	colon = strchrnul(arg, ':');
+	entry = add_cas_entry(cas, arg, colon - arg);
+	if (!*colon)
+		entry->use_tracking = 1;
+	else if (get_sha1(colon + 1, entry->expect))
+		return error("cannot parse expected object name '%s'", colon + 1);
+	return 0;
 }

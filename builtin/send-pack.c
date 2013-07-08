@@ -5,6 +5,7 @@
 #include "sideband.h"
 #include "run-command.h"
 #include "remote.h"
+#include "connect.h"
 #include "send-pack.h"
 #include "quote.h"
 #include "transport.h"
@@ -52,6 +53,11 @@ static void print_helper_status(struct ref *ref)
 		case REF_STATUS_REJECT_NEEDS_FORCE:
 			res = "error";
 			msg = "needs force";
+			break;
+
+		case REF_STATUS_REJECT_STALE:
+			res = "error";
+			msg = "stale info";
 			break;
 
 		case REF_STATUS_REJECT_ALREADY_EXISTS:
