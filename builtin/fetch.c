@@ -30,7 +30,14 @@ enum {
 	TAGS_SET = 2
 };
 
-static int all, append, dry_run, force, keep, multiple, prune, update_head_ok, verbosity;
+enum {
+	PRUNE_UNSET = 0,
+	PRUNE_DEFAULT = 1,
+	PRUNE_FORCE = 2
+};
+
+static int prune = PRUNE_DEFAULT;
+static int all, append, dry_run, force, keep, multiple, update_head_ok, verbosity;
 static int progress = -1, recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
 static int tags = TAGS_DEFAULT, unshallow;
 static const char *depth;
@@ -52,6 +59,17 @@ static int option_parse_recurse_submodules(const struct option *opt,
 			recurse_submodules = RECURSE_SUBMODULES_ON;
 	}
 	return 0;
+}
+
+static int git_fetch_config(const char *k, const char *v, void *cb)
+{
+	if (!strcmp(k, "fetch.prune")) {
+		int boolval = git_config_bool(k, v);
+		if (boolval)
+			prune = PRUNE_FORCE;
+		return 0;
+	}
+	return git_default_config(k, v, cb);
 }
 
 static struct option builtin_fetch_options[] = {
@@ -738,7 +756,7 @@ static int do_fetch(struct transport *transport,
 		free_refs(ref_map);
 		return 1;
 	}
-	if (prune) {
+	if (prune == PRUNE_FORCE || (transport->remote->prune && prune)) {
 		/* If --tags was specified, pretend the user gave us the canonical tags refspec */
 		if (tags == TAGS_SET) {
 			const char *tags_str = "refs/tags/*:refs/tags/*";
@@ -848,8 +866,10 @@ static void add_options_to_argv(struct argv_array *argv)
 {
 	if (dry_run)
 		argv_array_push(argv, "--dry-run");
-	if (prune)
+	if (prune == PRUNE_FORCE)
 		argv_array_push(argv, "--prune");
+	else if (prune == PRUNE_UNSET)
+		argv_array_push(argv, "--no-prune");
 	if (update_head_ok)
 		argv_array_push(argv, "--update-head-ok");
 	if (force)
@@ -972,6 +992,8 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 	strbuf_addstr(&default_rla, "fetch");
 	for (i = 1; i < argc; i++)
 		strbuf_addf(&default_rla, " %s", argv[i]);
+
+	git_config(git_fetch_config, NULL);
 
 	argc = parse_options(argc, argv, prefix,
 			     builtin_fetch_options, builtin_fetch_usage, 0);

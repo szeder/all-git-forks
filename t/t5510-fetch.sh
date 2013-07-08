@@ -471,6 +471,44 @@ test_expect_success "should be able to fetch with duplicate refspecs" '
 	)
 '
 
+test_expect_success 'fetch should prune when fetch.prune is true' '
+  cd "$D" &&
+  git branch somebranch &&
+  (
+    cd one &&
+    git fetch &&
+    test -f .git/refs/remotes/origin/somebranch
+  ) &&
+  git branch -d somebranch &&
+  (
+    cd one &&
+    git config fetch.prune true &&
+    git fetch --no-prune &&
+    test -f .git/refs/remotes/origin/somebranch &&
+    git fetch &&
+    ! test -f .git/refs/remotes/origin/somebranch
+  )
+'
+
+test_expect_success 'fetch should prune when remote.<name>.prune is true' '
+  cd "$D" &&
+  git branch somebranch &&
+  (
+    cd one &&
+    git fetch &&
+    test -f .git/refs/remotes/origin/somebranch
+  ) &&
+  git branch -d somebranch &&
+  (
+    cd one &&
+    git config remote.origin.prune true &&
+    git fetch --no-prune &&
+    test -f .git/refs/remotes/origin/somebranch &&
+    git fetch &&
+    ! test -f .git/refs/remotes/origin/somebranch
+  )
+'
+
 test_expect_success 'all boundary commits are excluded' '
 	test_commit base &&
 	test_commit oneside &&

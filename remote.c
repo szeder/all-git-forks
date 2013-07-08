@@ -419,6 +419,8 @@ static int handle_config(const char *key, const char *value, void *cb)
 		remote->skip_default_update = git_config_bool(key, value);
 	else if (!strcmp(subkey, ".skipfetchall"))
 		remote->skip_default_update = git_config_bool(key, value);
+	else if (!strcmp(subkey, ".prune"))
+		remote->prune = git_config_bool(key, value);
 	else if (!strcmp(subkey, ".url")) {
 		const char *v;
 		if (git_config_string(&v, key, value))
