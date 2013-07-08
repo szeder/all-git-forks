@@ -1,14 +1,60 @@
 in-core index API
 =================
 
+Reading API
+-----------
+
+`cache`::
+
+	An array of cache entries.  This is used to access the cache
+	entries directly.  Use `index_name_pos` to search for the
+	index of a specific cache entry.
+
+`read_index_filtered`::
+
+	Read a part of the index, filtered by the pathspec given in
+	the opts.  The function may load more than necessary, so the
+	caller still responsible to apply filters appropriately.  The
+	filtering is only done for performance reasons, as it's
+	possible to only read part of the index when the on-disk
+	format is index-v5.
+
+	To iterate only over the entries that match the pathspec, use
+	the for_each_index_entry function.
+
+`read_index`::
+
+	Read the whole index file from disk.
+
+`index_name_pos`::
+
+	Find a cache_entry with name in the index.  Returns pos if an
+	entry is matched exactly and -1-pos if an entry is matched
+	partially.
+	e.g.
+	index:
+	file1
+	file2
+	path/file1
+	zzz
+
+	index_name_pos("path/file1", 10) returns 2, while
+	index_name_pos("path", 4) returns -3
+
+`for_each_index_entry`::
+
+	Iterates over all cache_entries in the index filtered by
+	filter_opts in the index_state.  For each cache entry fn is
+	executed with cb_data as callback data.  From within the loop
+	do `return 0` to continue, or `return 1` to break the loop.
+
+TODO
+----
 Talk about <read-cache.c> and <cache-tree.c>, things like:
 
-* cache -> the_index macros
-* read_index()
 * write_index()
 * ie_match_stat() and ie_modified(); how they are different and when to
   use which.
-* index_name_pos()
 * remove_index_entry_at()
 * remove_file_from_index()
 * add_file_to_index()
@@ -18,4 +64,4 @@ Talk about <read-cache.c> and <cache-tree.c>, things like:
 * cache_tree_invalidate_path()
 * cache_tree_update()
 
-(JC, Linus)
+(JC, Linus, Thomas Gummerer)
