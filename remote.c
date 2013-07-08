@@ -1416,13 +1416,24 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 		}
 
 		/*
+		 * If we know what the old value of the remote ref
+		 * should be, reject any push, even forced ones,
+		 * if they do not match.
+		 */
+		if (ref->expect_old_sha1 &&
+		    hashcmp(ref->old_sha1, ref->old_sha1_expect)) {
+			ref->status = REF_STATUS_REJECT_STALE;
+			continue;
+		}
+
+		/*
 		 * Decide whether an individual refspec A:B can be
 		 * pushed.  The push will succeed if any of the
 		 * following are true:
 		 *
-		 * (1) the remote reference B does not exist
+		 * (1) the remote reference B does not exist (i.e. create)
 		 *
-		 * (2) the remote reference B is being removed (i.e.,
+		 * (2) the remote reference B is being removed (i.e. delete;
 		 *     pushing :B where no source is specified)
 		 *
 		 * (3) the destination is not under refs/tags/, and
