@@ -34,7 +34,7 @@ static struct remote *remote;
 static struct credential defcred;
 static struct progress *progress;
 static struct refspec *refmap;
-static const char **refmap_str;
+static char **refmap_str;
 static int refmap_nr, refmap_alloc;
 static struct string_list refs = STRING_LIST_INIT_DUP;
 static struct string_list path_for_ref = STRING_LIST_INIT_NODUP;
@@ -174,17 +174,17 @@ static const char *refszname(struct svnref *r) {
 	return b->buf;
 }
 
-static const char *refpath(const char *s) {
-	static struct strbuf ref = STRBUF_INIT;
-	strbuf_reset(&ref);
-	s += strlen(relpath);
-	if (*s == '/')
-		s++;
-	while (*s) {
-		int ch = *(s++);
-		strbuf_addch(&ref, bad_ref_char(ch) ? '_' : ch);
+static char *refpath(const char *path) {
+	char *gitref, *s;
+	path += strlen(relpath);
+	if (*path == '/')
+		path++;
+	gitref = apply_refspecs(refmap, refmap_nr, path);
+	for (s = gitref; *s; s++) {
+		if (bad_ref_char(*s))
+			*s = '_';
 	}
-	return ref.buf;
+	return gitref;
 }
 
 /* By default assume this is a request for the newest ref that fits. If
@@ -548,7 +548,7 @@ static void do_connect(int ispush) {
 }
 
 static void add_list_dir(const char *path) {
-	char *gitref = apply_refspecs(refmap, refmap_nr, refpath(path));
+	char *gitref = refpath(path);
 	struct string_list_item *item = string_list_insert(&path_for_ref, gitref);
 	struct svnref *ref = get_ref(path, listrev);
 	ref->exists_at_head = 1;
@@ -1954,7 +1954,34 @@ int main(int argc, const char **argv) {
 	credential_from_url(&defcred, url);
 
 	if (refmap_nr) {
-		refmap = parse_fetch_refspec(refmap_nr, refmap_str);
+		/* parse_fetch_refspec doesn't like svn paths as they
+		 * can contain spaces etc, so we create a cleaned
+		 * version of the source, pass that to
+		 * parse_fetch_refspec and then swap that out for the
+		 * svn path afterwards */
+		int i;
+		struct strbuf buf = STRBUF_INIT;
+		char **gitrefs = malloc(refmap_nr * sizeof(*gitrefs));
+		for (i = 0; i < refmap_nr; i++) {
+			char *path = refmap_str[i];
+			while (*path && *path != ':') {
+				int ch = *(path++);
+				strbuf_addch(&buf, (ch != '*' && bad_ref_char(ch)) ? '_' : ch);
+			}
+			strbuf_addstr(&buf, path);
+			*path = '\0'; /* update refmap_str to only have the left side */
+			gitrefs[i] = strbuf_detach(&buf, NULL);
+		}
+
+		refmap = parse_fetch_refspec(refmap_nr, (const char**) gitrefs);
+
+		strbuf_release(&buf);
+		for (i = 0; i < refmap_nr; i++) {
+			free(refmap[i].src);
+			free(gitrefs[i]);
+			refmap[i].src = refmap_str[i];
+		}
+		free(gitrefs);
 	} else {
 		refmap = xcalloc(1, sizeof(*refmap));
 		refmap->src = (char*) "";
