@@ -299,6 +299,12 @@ static int push_with_options(struct transport *transport, int flags)
 	if (thin)
 		transport_set_option(transport, TRANS_OPT_THIN, "yes");
 
+	if (!is_empty_cas(&cas)) {
+		if (!transport->smart_options)
+			die("underlying transport does not support --lockref option");
+		transport->smart_options->cas = &cas;
+	}
+
 	if (verbosity > 0)
 		fprintf(stderr, _("Pushing to %s\n"), transport->url);
 	err = transport_push(transport, refspec_nr, refspec, flags,

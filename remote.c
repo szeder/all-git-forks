@@ -1989,3 +1989,13 @@ int parse_push_cas_option(struct push_cas_option *cas, const char *arg, int unse
 		return error("cannot parse expected object name '%s'", colon + 1);
 	return 0;
 }
+
+int is_empty_cas(const struct push_cas_option *cas)
+{
+	return !cas->use_tracking_for_rest && !cas->nr;
+}
+
+void apply_push_cas(const struct push_cas_option *cas, struct ref *remote_refs)
+{
+	; /* NEEDSWORK */
+}
