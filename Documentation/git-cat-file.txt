@@ -65,6 +65,22 @@ OPTIONS
 	Print the SHA-1, type, and size of each object provided on stdin. May not
 	be combined with any other options or arguments.
 
+--batch-disk-sizes::
+	Like `--batch-check`, but print the on-disk size of each object
+	(including zlib and delta compression) rather than the object's
+	true size. May not be combined with any other options or
+	arguments.
++
+NOTE: The on-disk size reported is accurate, but care should be taken in
+drawing conclusions about which refs or objects are responsible for disk
+usage. The size of a packed non-delta object be much larger than the
+size of objects which delta against it, but the choice of which object
+is the base and which is the delta is arbitrary and is subject to change
+during a repack. Note also that multiple copies of an object may be
+present in the object database; in this case, it is undefined which
+copy's size will be reported.
+
+
 OUTPUT
 ------
 If '-t' is specified, one of the <type>.
