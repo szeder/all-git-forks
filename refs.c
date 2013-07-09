@@ -3196,14 +3196,6 @@ int update_ref(const char *action, const char *refname,
 	return 0;
 }
 
-struct ref *find_ref_by_name(const struct ref *list, const char *name)
-{
-	for ( ; list; list = list->next)
-		if (!strcmp(list->name, name))
-			return (struct ref *)list;
-	return NULL;
-}
-
 static int shorten_ref(const char *refname, const char *pattern, char *short_name)
 {
 	/*
