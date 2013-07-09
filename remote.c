@@ -1302,6 +1302,14 @@ static void add_missing_tags(struct ref *src, struct ref **dst, struct ref ***ds
 	free(sent_tips.tip);
 }
 
+struct ref *find_ref_by_name(const struct ref *list, const char *name)
+{
+	for ( ; list; list = list->next)
+		if (!strcmp(list->name, name))
+			return (struct ref *)list;
+	return NULL;
+}
+
 static void prepare_ref_index(struct string_list *ref_index, struct ref *ref)
 {
 	for ( ; ref; ref = ref->next)
@@ -1431,13 +1439,30 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 		}
 
 		/*
+		 * If we know what the old value of the remote ref
+		 * should be, reject any push, even forced ones,
+		 * if they do not match.
+		 *
+		 * It also is an error if the user told us to check
+		 * with the remote-tracking branch to find the value
+		 * to expect, but we did not have such a tracking
+		 * branch.
+		 */
+		if (ref->expect_old_sha1 &&
+		    (ref->expect_old_no_trackback ||
+		     hashcmp(ref->old_sha1, ref->old_sha1_expect))) {
+			ref->status = REF_STATUS_REJECT_STALE;
+			continue;
+		}
+
+		/*
 		 * Decide whether an individual refspec A:B can be
 		 * pushed.  The push will succeed if any of the
 		 * following are true:
 		 *
-		 * (1) the remote reference B does not exist
+		 * (1) the remote reference B does not exist (i.e. create)
 		 *
-		 * (2) the remote reference B is being removed (i.e.,
+		 * (2) the remote reference B is being removed (i.e. delete;
 		 *     pushing :B where no source is specified)
 		 *
 		 * (3) the destination is not under refs/tags/, and
@@ -1935,4 +1960,124 @@ struct ref *get_stale_heads(struct refspec *refs, int ref_count, struct ref *fet
 	for_each_ref(get_stale_heads_cb, &info);
 	string_list_clear(&ref_names, 0);
 	return stale_refs;
+}
+
+/*
+ * Lockref aka CAS
+ */
+void clear_cas_option(struct push_cas_option *cas)
+{
+	int i;
+
+	for (i = 0; i < cas->nr; i++)
+		free(cas->entry->refname);
+	free(cas->entry);
+	memset(cas, 0, sizeof(*cas));
+}
+
+static struct push_cas *add_cas_entry(struct push_cas_option *cas,
+				      const char *refname,
+				      size_t refnamelen)
+{
+	struct push_cas *entry;
+	ALLOC_GROW(cas->entry, cas->nr + 1, cas->alloc);
+	entry = &cas->entry[cas->nr++];
+	memset(entry, 0, sizeof(*entry));
+	entry->refname = xmemdupz(refname, refnamelen);
+	return entry;
+}
+
+int parseopt_push_cas_option(const struct option *opt, const char *arg, int unset)
+{
+	return parse_push_cas_option(opt->value, arg, unset);
+}
+
+int parse_push_cas_option(struct push_cas_option *cas, const char *arg, int unset)
+{
+	const char *colon;
+	struct push_cas *entry;
+
+	if (unset) {
+		/* "--no-lockref" */
+		clear_cas_option(cas);
+		return 0;
+	}
+
+	if (!arg) {
+		/* just "--lockref" */
+		cas->use_tracking_for_rest = 1;
+		return 0;
+	}
+
+	/* "--lockref=refname" or "--lockref=refname:value" */
+	colon = strchrnul(arg, ':');
+	entry = add_cas_entry(cas, arg, colon - arg);
+	if (!*colon)
+		entry->use_tracking = 1;
+	else if (!colon[1])
+		hashclr(entry->expect);
+	else if (get_sha1(colon + 1, entry->expect))
+		return error("cannot parse expected object name '%s'", colon + 1);
+	return 0;
+}
+
+int is_empty_cas(const struct push_cas_option *cas)
+{
+	return !cas->use_tracking_for_rest && !cas->nr;
+}
+
+/*
+ * Look at remote.fetch refspec and see if we have a remote
+ * tracking branch for the refname there.  Fill its current
+ * value in sha1[].
+ * If we cannot do so, return negative to signal an error.
+ */
+static int remote_tracking(struct remote *remote, const char *refname,
+			   unsigned char sha1[20])
+{
+	char *dst;
+
+	dst = apply_refspecs(remote->fetch, remote->fetch_refspec_nr, refname);
+	if (!dst)
+		return -1; /* no tracking ref for refname at remote */
+	if (read_ref(dst, sha1))
+		return -1; /* we know what the tracking ref is but we cannot read it */
+	return 0;
+}
+
+static void apply_cas(struct push_cas_option *cas,
+		      struct remote *remote,
+		      struct ref *ref)
+{
+	int i;
+
+	/* Find an explicit --lockref=<name>[:<value>] entry */
+	for (i = 0; i < cas->nr; i++) {
+		struct push_cas *entry = &cas->entry[i];
+		if (!refname_match(entry->refname, ref->name, ref_rev_parse_rules))
+			continue;
+		ref->expect_old_sha1 = 1;
+		if (!entry->use_tracking)
+			hashcpy(ref->old_sha1_expect, cas->entry[i].expect);
+		else if (remote_tracking(remote, ref->name, ref->old_sha1_expect))
+			ref->expect_old_no_trackback = 1;
+		return;
+	}
+
+	/* Are we using "--lockref" to cover all? */
+	if (!cas->use_tracking_for_rest)
+		return;
+
+	ref->expect_old_sha1 = 1;
+	if (remote_tracking(remote, ref->name, ref->old_sha1_expect))
+		ref->expect_old_no_trackback = 1;
+}
+
+void apply_push_cas(struct push_cas_option *cas,
+		    struct remote *remote,
+		    struct ref *remote_refs)
+{
+	struct ref *ref;
+	for (ref = remote_refs; ref; ref = ref->next)
+		apply_cas(cas, remote, ref);
 }
