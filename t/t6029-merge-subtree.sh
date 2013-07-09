@@ -41,6 +41,7 @@ test_expect_success 'setup' '
 	mkdir git &&
 	cd git &&
 	git init &&
+	git config pull.rebase false &&
 	echo git >git.c &&
 	o2=$(git hash-object git.c) &&
 	git add git.c &&
