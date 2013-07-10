@@ -25,6 +25,8 @@ test_description='git rerere
 . ./test-lib.sh
 
 test_expect_success 'setup' '
+	git config pull.rebase false &&
+
 	cat >a1 <<-\EOF &&
 	Some title
 	==========
