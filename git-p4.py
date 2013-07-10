@@ -2330,7 +2330,11 @@ class P4Sync(Command, P4UserMap):
 
     def make_email(self, userid):
         if userid in self.users:
-            return self.users[userid]
+            email = self.users[userid]
+            # HACK: Clean up junk from Perforce.
+            #       Offending users: Joe McKenney <REDACTED@splunk.com>>
+            email = email.replace('>>', '>')
+            return email
         else:
             return "%s <a@b>" % userid
 
