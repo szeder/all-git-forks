@@ -11,7 +11,7 @@ int main(int ac, char **av)
 		struct cache_entry *ce = active_cache[i];
 		struct stat st;
 
-		if (lstat(ce->name, &st)) {
+		if (fast_lstat(ce->name, &st)) {
 			error("lstat(%s): %s", ce->name, strerror(errno));
 			continue;
 		}

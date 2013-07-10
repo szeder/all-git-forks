@@ -674,7 +674,7 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 int add_file_to_index(struct index_state *istate, const char *path, int flags)
 {
 	struct stat st;
-	if (lstat(path, &st))
+	if (fast_lstat(path, &st))
 		die_errno("unable to stat '%s'", path);
 	return add_to_index(istate, path, &st, flags);
 }
@@ -1034,7 +1034,7 @@ static struct cache_entry *refresh_cache_ent(struct index_state *istate,
 		return ce;
 	}
 
-	if (lstat(ce->name, &st) < 0) {
+	if (fast_lstat(ce->name, &st) < 0) {
 		if (err)
 			*err = errno;
 		return NULL;
@@ -1620,7 +1620,7 @@ static void ce_smudge_racily_clean_entry(struct cache_entry *ce)
 	 */
 	struct stat st;
 
-	if (lstat(ce->name, &st) < 0)
+	if (fast_lstat(ce->name, &st) < 0)
 		return;
 	if (ce_match_stat_basic(ce, &st))
 		return;
