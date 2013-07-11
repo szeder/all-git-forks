@@ -30,6 +30,34 @@ static CURL *curl_default;
 
 char curl_errorstr[CURL_ERROR_SIZE];
 
+enum http_option_type {
+	opt_post_buffer = 0,
+	opt_min_sessions,
+#ifdef USE_CURL_MULTI
+	opt_max_requests,
+#endif
+	opt_ssl_verify,
+	opt_ssl_try,
+	opt_ssl_cert,
+#if LIBCURL_VERSION_NUM >= 0x070903
+	opt_ssl_key,
+#endif
+#if LIBCURL_VERSION_NUM >= 0x070908
+	opt_ssl_capath,
+#endif
+	opt_ssl_cainfo,
+	opt_low_speed,
+	opt_low_time,
+	opt_no_epsv,
+	opt_http_proxy,
+	opt_cookie_file,
+	opt_user_agent,
+	opt_passwd_req,
+	opt_max
+};
+
+static size_t http_option_max_matched_len[opt_max];
+
 static int curl_ssl_verify = -1;
 static int curl_ssl_try;
 static const char *ssl_cert;
@@ -141,34 +169,122 @@ static void process_curl_messages(void)
 }
 #endif
 
+static size_t http_options_url_match_prefix(const char *url,
+					    const char *url_prefix,
+					    size_t url_prefix_len)
+{
+	/*
+	 * url_prefix matches url if url_prefix is an exact match for url or it
+	 * is a prefix of url and the match ends on a path component boundary.
+	 * Both url and url_prefix are considered to have an implicit '/' on the
+	 * end for matching purposes if they do not already.
+	 *
+	 * url must be NUL terminated.  url_prefix_len is the length of
+	 * url_prefix which need not be NUL terminated.
+	 *
+	 * The return value is the length of the match in characters (excluding
+	 * any final '/') or 0 for no match.  Passing "/" as url_prefix will
+	 * always cause 0 to be returned.
+	 */
+	size_t url_len;
+	if (url_prefix_len && url_prefix[url_prefix_len - 1] == '/')
+		url_prefix_len--;
+	if (!url_prefix_len || strncmp(url, url_prefix, url_prefix_len))
+		return 0;
+	url_len = strlen(url);
+	if ( (url_len == url_prefix_len)      ||
+	     (url[url_prefix_len - 1] == '/') ||
+	     (url[url_prefix_len] == '/')     )
+		return url[url_prefix_len - 1] == '/'
+		       ? url_prefix_len - 1 : url_prefix_len;
+	return 0;
+}
+
+static int check_matched_len(enum http_option_type opt, size_t matchlen)
+{
+	/*
+	 * Check the last matched length of option opt against matchlen
+	 * and return true if the last matched length is larger (meaning
+	 * the config setting should be ignored).  Otherwise return false
+	 * and record matchlen as the last matched length of option opt.
+	 */
+	if (http_option_max_matched_len[opt] > matchlen)
+		return 1;
+	http_option_max_matched_len[opt] = matchlen;
+	return 0;
+}
+
 static int http_options(const char *var, const char *value, void *cb)
 {
-	if (!strcmp("http.sslverify", var)) {
+	const char *url = (const char *)cb;
+	const char *key, *dot;
+	size_t matchlen = 0;
+
+	key = skip_prefix(var, "http.");
+	if (!key)
+		return git_default_config(var, value, cb);
+
+	/*
+	 * If the part following the leading "http." contains a '.' then check
+	 * to see if the part between "http." and the last '.' is a match to
+	 * url.  If it's not then ignore the setting.  Otherwise set key to
+	 * point to the option which is the part after the final '.' and
+	 * use key in subsequent comparisons to determine the option type.
+	 */
+	dot = strrchr(key, '.');
+	if (dot) {
+		matchlen = http_options_url_match_prefix(url, key, dot - key);
+		if (!matchlen)
+			return 0;
+		key = dot + 1;
+	}
+
+	if (!strcmp("sslverify", key)) {
+		if (check_matched_len(opt_ssl_verify, matchlen))
+			return 0;
 		curl_ssl_verify = git_config_bool(var, value);
 		return 0;
 	}
-	if (!strcmp("http.sslcert", var))
+	if (!strcmp("sslcert", key)) {
+		if (check_matched_len(opt_ssl_cert, matchlen))
+			return 0;
 		return git_config_string(&ssl_cert, var, value);
+	}
 #if LIBCURL_VERSION_NUM >= 0x070903
-	if (!strcmp("http.sslkey", var))
+	if (!strcmp("sslkey", key)) {
+		if (check_matched_len(opt_ssl_key, matchlen))
+			return 0;
 		return git_config_string(&ssl_key, var, value);
+	}
 #endif
 #if LIBCURL_VERSION_NUM >= 0x070908
-	if (!strcmp("http.sslcapath", var))
+	if (!strcmp("sslcapath", key)) {
+		if (check_matched_len(opt_ssl_capath, matchlen))
+			return 0;
 		return git_config_string(&ssl_capath, var, value);
+	}
 #endif
-	if (!strcmp("http.sslcainfo", var))
+	if (!strcmp("sslcainfo", key)) {
+		if (check_matched_len(opt_ssl_cainfo, matchlen))
+			return 0;
 		return git_config_string(&ssl_cainfo, var, value);
-	if (!strcmp("http.sslcertpasswordprotected", var)) {
+	}
+	if (!strcmp("sslcertpasswordprotected", key)) {
+		if (check_matched_len(opt_passwd_req, matchlen))
+			return 0;
 		if (git_config_bool(var, value))
 			ssl_cert_password_required = 1;
 		return 0;
 	}
-	if (!strcmp("http.ssltry", var)) {
+	if (!strcmp("ssltry", key)) {
+		if (check_matched_len(opt_ssl_try, matchlen))
+			return 0;
 		curl_ssl_try = git_config_bool(var, value);
 		return 0;
 	}
-	if (!strcmp("http.minsessions", var)) {
+	if (!strcmp("minsessions", key)) {
+		if (check_matched_len(opt_min_sessions, matchlen))
+			return 0;
 		min_curl_sessions = git_config_int(var, value);
 #ifndef USE_CURL_MULTI
 		if (min_curl_sessions > 1)
@@ -177,39 +293,58 @@ static int http_options(const char *var, const char *value, void *cb)
 		return 0;
 	}
 #ifdef USE_CURL_MULTI
-	if (!strcmp("http.maxrequests", var)) {
+	if (!strcmp("maxrequests", key)) {
+		if (check_matched_len(opt_max_requests, matchlen))
+			return 0;
 		max_requests = git_config_int(var, value);
 		return 0;
 	}
 #endif
-	if (!strcmp("http.lowspeedlimit", var)) {
+	if (!strcmp("lowspeedlimit", key)) {
+		if (check_matched_len(opt_low_speed, matchlen))
+			return 0;
 		curl_low_speed_limit = (long)git_config_int(var, value);
 		return 0;
 	}
-	if (!strcmp("http.lowspeedtime", var)) {
+	if (!strcmp("lowspeedtime", key)) {
+		if (check_matched_len(opt_low_time, matchlen))
+			return 0;
 		curl_low_speed_time = (long)git_config_int(var, value);
 		return 0;
 	}
 
-	if (!strcmp("http.noepsv", var)) {
+	if (!strcmp("noepsv", key)) {
+		if (check_matched_len(opt_no_epsv, matchlen))
+			return 0;
 		curl_ftp_no_epsv = git_config_bool(var, value);
 		return 0;
 	}
-	if (!strcmp("http.proxy", var))
+	if (!strcmp("proxy", key)) {
+		if (check_matched_len(opt_http_proxy, matchlen))
+			return 0;
 		return git_config_string(&curl_http_proxy, var, value);
+	}
 
-	if (!strcmp("http.cookiefile", var))
+	if (!strcmp("cookiefile", key)) {
+		if (check_matched_len(opt_cookie_file, matchlen))
+			return 0;
 		return git_config_string(&curl_cookie_file, var, value);
+	}
 
-	if (!strcmp("http.postbuffer", var)) {
+	if (!strcmp("postbuffer", key)) {
+		if (check_matched_len(opt_post_buffer, matchlen))
+			return 0;
 		http_post_buffer = git_config_int(var, value);
 		if (http_post_buffer < LARGE_PACKET_MAX)
 			http_post_buffer = LARGE_PACKET_MAX;
 		return 0;
 	}
 
-	if (!strcmp("http.useragent", var))
+	if (!strcmp("useragent", key)) {
+		if (check_matched_len(opt_user_agent, matchlen))
+			return 0;
 		return git_config_string(&user_agent, var, value);
+	}
 
 	/* Fall back on the default ones */
 	return git_default_config(var, value, cb);
@@ -338,7 +473,7 @@ void http_init(struct remote *remote, const char *url, int proactive_auth)
 
 	http_is_verbose = 0;
 
-	git_config(http_options, NULL);
+	git_config(http_options, (void *)url);
 
 	curl_global_init(CURL_GLOBAL_ALL);
 
