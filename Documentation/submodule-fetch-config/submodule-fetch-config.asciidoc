@@ -9,26 +9,93 @@ User Stories
 $ git clone --recurse-submodules your-cool-project
 ----
 
-Let's say +submodule.recursesubmodules = on+
+Whether git will fetch or clone a submodule depends on the value of
+'submodule.recursesubmodules' or 'submodule.autoinit' configuration
+and their submodule specific configuration. If fetch or clone are given
+the --recurse-submodules option the autoinit configuration is assumed to
+be true.
+
+
+Submodule Recursion Checked Out
+-------------------------------
+
+I expect all initialized submodules to behave after the local or checked
+out configuration (.git/config and .gitmodules).
+
+Let's say we have configured 'submodule.recursesubmodules = on' or given
+the '--recurse-submodules[=on]' commandline option to fetch.
 
 Superproject has a linear history:
 
-. I would expect "git fetch --recurse-submodules" to run fetch
-  in all submodules checked out in the worktree
+. I would expect "git fetch" to run fetch in all submodules checked out
+  in the worktree
 
 . I wouldn't expect it to run fetch in old submodules not
   checked out in the worktree, but I wouldn't mind if it did
   either.
 
-. I would expect "git fetch --recurse-submodules" to clone
-  any new submodules that I would need to
-  "git merge --recurse-submodules FETCH_HEAD", and any submodules
-  needed for intermediate states.
+. I would expect "git fetch" to clone any new submodules that I would
+  need to "git merge --recurse-submodules FETCH_HEAD", and any
+  submodules needed for intermediate states.
 
 Superproject has multiple branches:
 
 . Same as before, but I'd expect it to clone or fetch new and
-  existing submodules for existing tip..new tip of all branches.
+  existing submodules for <existing tip>..<new tip> of all branches.
+
+
+Submodule Recursion On-Demand (local config)
+--------------------------------------------
+Let's say 'submodule.recursesubmodules = on-demand' or given the
+'--recurse-submodules=on-demand' commandline option to fetch.
+
+Superproject has a linear history:
+
+. Same as with '--recurse-submodules=on' but I would only expect fetch
+  to fetch or clone submodules that have changed/are new in the commits
+  fetched
+
+Superproject hast multiple branches:
+
+. Similar to before but also fetch changed/new submodules between
+  <existing tip>..<new tip> of all branches.
+
+
+Submodule Recursion Off (local config)
+--------------------------------------
+Let's say 'submodule.recursesubmodules = off' or commandline option
+'--recurse-submodules=off' or no config or option.
+
+No submodules will be fetched
+
+
+Submodule Recursion Not Checked Out
+------------------------------------
+Let's say the submodule is not in the current index (checked out) and
+the .gitmodules in all fetched commits agree on submodule <name>'s config
+'submodule.<name>.recursesubmodules = on'
+
+. I would the submodule to be fetched/cloned when the recorded
+  submodule-commit was changed in any commit between <existing
+  tip>..<new tip>.
+
+. I would not expect the submodule to be fetched/cloned if there was no
+  change of the recorded submodule-commit in the fetched commits but I
+  would not mind if it was either.
+
+The same applies to 'submodule.<name>.recursesubmodules = on-demand'
+except that I would mind if a submodule was fetched which had no change
+in the recorded submodule-commit.
+
+Let's assume the same situation as before but the configurations of
+'submodule.<name>.recursesubmodules' in .gitmodules of the fetched
+commits disagree.
+
+. I would expect git to warn me that the configuration of submodule
+  <name> was not the same across all fetched commits.
+
+- I would expect git to skip the recursive fetch of those submodules and
+  tell me what I can do to solve this.
 
 
 Plan
