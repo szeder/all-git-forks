@@ -233,7 +233,7 @@ static void add_remove_files(struct string_list *list)
 		if (p->util)
 			continue;
 
-		if (!lstat(p->string, &st)) {
+		if (!fast_lstat(p->string, &st)) {
 			if (add_to_cache(p->string, &st, 0))
 				die(_("updating files failed"));
 		} else

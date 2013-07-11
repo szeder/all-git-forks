@@ -2642,7 +2642,7 @@ static int reuse_worktree_file(const char *name, const unsigned char *sha1, int 
 	 * If ce matches the file in the work tree, we can reuse it.
 	 */
 	if (ce_uptodate(ce) ||
-	    (!lstat(name, &st) && !ce_match_stat(ce, &st, 0)))
+	    (!fast_lstat(name, &st) && !ce_match_stat(ce, &st, 0)))
 		return 1;
 
 	return 0;

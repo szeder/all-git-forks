@@ -3091,7 +3091,7 @@ static int checkout_target(struct cache_entry *ce, struct stat *st)
 	memset(&costate, 0, sizeof(costate));
 	costate.base_dir = "";
 	costate.refresh_cache = 1;
-	if (checkout_entry(ce, &costate, NULL) || lstat(ce->name, st))
+	if (checkout_entry(ce, &costate, NULL) || fast_lstat(ce->name, st))
 		return error(_("cannot checkout %s"), ce->name);
 	return 0;
 }
@@ -3254,7 +3254,7 @@ static int load_current(struct image *image, struct patch *patch)
 	if (pos < 0)
 		return error(_("%s: does not exist in index"), name);
 	ce = active_cache[pos];
-	if (lstat(name, &st)) {
+	if (fast_lstat(name, &st)) {
 		if (errno != ENOENT)
 			return error(_("%s: %s"), name, strerror(errno));
 		if (checkout_target(ce, &st))
@@ -3397,7 +3397,7 @@ static int check_preimage(struct patch *patch, struct cache_entry **ce, struct s
 	if (previous) {
 		st_mode = previous->new_mode;
 	} else if (!cached) {
-		stat_ret = lstat(old_name, st);
+		stat_ret = fast_lstat(old_name, st);
 		if (stat_ret && errno != ENOENT)
 			return error(_("%s: %s"), old_name, strerror(errno));
 	}
@@ -3851,7 +3851,7 @@ static void add_index_file(const char *path, unsigned mode, void *buf, unsigned 
 			die(_("corrupt patch for subproject %s"), path);
 	} else {
 		if (!cached) {
-			if (lstat(path, &st) < 0)
+			if (fast_lstat(path, &st) < 0)
 				die_errno(_("unable to stat newly created file '%s'"),
 					  path);
 			fill_stat_cache_info(ce, &st);

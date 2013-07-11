@@ -109,7 +109,7 @@ static int fstat_output(int fd, const struct checkout *state, struct stat *st)
 	/* use fstat() only when path == ce->name */
 	if (fstat_is_reliable() &&
 	    state->refresh_cache && !state->base_dir_len) {
-		fstat(fd, st);
+		fast_fstat(fd, st);
 		return 1;
 	}
 	return 0;
@@ -211,7 +211,7 @@ static int write_entry(struct cache_entry *ce,
 finish:
 	if (state->refresh_cache) {
 		if (!fstat_done)
-			lstat(ce->name, &st);
+			fast_lstat(ce->name, &st);
 		fill_stat_cache_info(ce, &st);
 	}
 	return 0;
@@ -231,7 +231,7 @@ static int check_path(const char *path, int len, struct stat *st, int skiplen)
 		errno = ENOENT;
 		return -1;
 	}
-	return lstat(path, st);
+	return fast_lstat(path, st);
 }
 
 int checkout_entry(struct cache_entry *ce,

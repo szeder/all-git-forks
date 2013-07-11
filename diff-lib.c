@@ -27,7 +27,7 @@
  */
 static int check_removed(const struct cache_entry *ce, struct stat *st)
 {
-	if (lstat(ce->name, st) < 0) {
+	if (fast_lstat(ce->name, st) < 0) {
 		if (errno != ENOENT && errno != ENOTDIR)
 			return -1;
 		return 1;
