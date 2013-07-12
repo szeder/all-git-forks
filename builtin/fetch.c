@@ -30,13 +30,10 @@ enum {
 	TAGS_SET = 2
 };
 
-enum {
-	PRUNE_UNSET = 0,
-	PRUNE_DEFAULT = 1,
-	PRUNE_FORCE = 2
-};
+static int fetch_prune_config = -1; /* unspecified */
+static int prune = -1; /* unspecified */
+#define PRUNE_BY_DEFAULT 0 /* do we prune by default? */
 
-static int prune = PRUNE_DEFAULT;
 static int all, append, dry_run, force, keep, multiple, update_head_ok, verbosity;
 static int progress = -1, recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
 static int tags = TAGS_DEFAULT, unshallow;
@@ -64,12 +61,10 @@ static int option_parse_recurse_submodules(const struct option *opt,
 static int git_fetch_config(const char *k, const char *v, void *cb)
 {
 	if (!strcmp(k, "fetch.prune")) {
-		int boolval = git_config_bool(k, v);
-		if (boolval)
-			prune = PRUNE_FORCE;
+		fetch_prune_config = git_config_bool(k, v);
 		return 0;
 	}
-	return git_default_config(k, v, cb);
+	return 0;
 }
 
 static struct option builtin_fetch_options[] = {
@@ -87,8 +82,8 @@ static struct option builtin_fetch_options[] = {
 		    N_("fetch all tags and associated objects"), TAGS_SET),
 	OPT_SET_INT('n', NULL, &tags,
 		    N_("do not fetch all tags (--no-tags)"), TAGS_UNSET),
-	OPT_BOOLEAN('p', "prune", &prune,
-		    N_("prune remote-tracking branches no longer on remote")),
+	OPT_BOOL('p', "prune", &prune,
+		 N_("prune remote-tracking branches no longer on remote")),
 	{ OPTION_CALLBACK, 0, "recurse-submodules", NULL, N_("on-demand"),
 		    N_("control recursive fetching of submodules"),
 		    PARSE_OPT_OPTARG, option_parse_recurse_submodules },
@@ -756,8 +751,11 @@ static int do_fetch(struct transport *transport,
 		free_refs(ref_map);
 		return 1;
 	}
-	if (prune == PRUNE_FORCE || (transport->remote->prune && prune)) {
-		/* If --tags was specified, pretend the user gave us the canonical tags refspec */
+	if (prune) {
+		/*
+		 * If --tags was specified, pretend that the user gave us
+		 * the canonical tags refspec
+		 */
 		if (tags == TAGS_SET) {
 			const char *tags_str = "refs/tags/*:refs/tags/*";
 			struct refspec *tags_refspec, *refspec;
@@ -866,10 +864,8 @@ static void add_options_to_argv(struct argv_array *argv)
 {
 	if (dry_run)
 		argv_array_push(argv, "--dry-run");
-	if (prune == PRUNE_FORCE)
+	if (prune > 0)
 		argv_array_push(argv, "--prune");
-	else if (prune == PRUNE_UNSET)
-		argv_array_push(argv, "--no-prune");
 	if (update_head_ok)
 		argv_array_push(argv, "--update-head-ok");
 	if (force)
@@ -936,6 +932,17 @@ static int fetch_one(struct remote *remote, int argc, const char **argv)
 		    "remote name from which new revisions should be fetched."));
 
 	transport = transport_get(remote, NULL);
+
+	if (prune < 0) {
+		/* no command line request */
+		if (0 <= transport->remote->prune)
+			prune = transport->remote->prune;
+		else if (0 <= fetch_prune_config)
+			prune = fetch_prune_config;
+		else
+			prune = PRUNE_BY_DEFAULT;
+	}
+
 	transport_set_verbosity(transport, verbosity, progress);
 	if (upload_pack)
 		set_option(TRANS_OPT_UPLOADPACK, upload_pack);

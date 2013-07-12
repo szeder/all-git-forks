@@ -148,6 +148,7 @@ static struct remote *make_remote(const char *name, int len)
 	}
 
 	ret = xcalloc(1, sizeof(struct remote));
+	ret->prune = -1;  /* unspecified */
 	ALLOC_GROW(remotes, remotes_nr + 1, remotes_alloc);
 	remotes[remotes_nr++] = ret;
 	if (len)
