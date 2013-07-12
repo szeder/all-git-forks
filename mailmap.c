@@ -37,7 +37,8 @@ static void free_mailmap_info(void *p, const char *s)
 static void free_mailmap_entry(void *p, const char *s)
 {
 	struct mailmap_entry *me = (struct mailmap_entry *)p;
-	debug_mm("mailmap: removing entries for <%s>, with %d sub-entries\n", s, me->namemap.nr);
+	debug_mm("mailmap: removing entries for <%s>, with %d sub-entries\n",
+		 s, me->namemap.nr);
 	debug_mm("mailmap: - simple: '%s' <%s>\n", me->name, me->email);
 	free(me->name);
 	free(me->email);
@@ -51,14 +52,6 @@ static void add_mapping(struct string_list *map,
 {
 	struct mailmap_entry *me;
 	int index;
-	char *p;
-
-	if (old_email)
-		for (p = old_email; *p; p++)
-			*p = tolower(*p);
-	if (new_email)
-		for (p = new_email; *p; p++)
-			*p = tolower(*p);
 
 	if (old_email == NULL) {
 		old_email = new_email;
@@ -68,16 +61,21 @@ static void add_mapping(struct string_list *map,
 	if ((index = string_list_find_insert_index(map, old_email, 1)) < 0) {
 		/* mailmap entry exists, invert index value */
 		index = -1 - index;
+		me = (struct mailmap_entry *)map->items[index].util;
 	} else {
 		/* create mailmap entry */
-		struct string_list_item *item = string_list_insert_at_index(map, index, old_email);
-		item->util = xcalloc(1, sizeof(struct mailmap_entry));
-		((struct mailmap_entry *)item->util)->namemap.strdup_strings = 1;
+		struct string_list_item *item;
+
+		item = string_list_insert_at_index(map, index, old_email);
+		me = xcalloc(1, sizeof(struct mailmap_entry));
+		me->namemap.strdup_strings = 1;
+		me->namemap.cmp = strcasecmp;
+		item->util = me;
 	}
-	me = (struct mailmap_entry *)map->items[index].util;
 
 	if (old_name == NULL) {
-		debug_mm("mailmap: adding (simple) entry for %s at index %d\n", old_email, index);
+		debug_mm("mailmap: adding (simple) entry for %s at index %d\n",
+			 old_email, index);
 		/* Replace current name and new email for simple entry */
 		if (new_name) {
 			free(me->name);
@@ -89,7 +87,8 @@ static void add_mapping(struct string_list *map,
 		}
 	} else {
 		struct mailmap_info *mi = xcalloc(1, sizeof(struct mailmap_info));
-		debug_mm("mailmap: adding (complex) entry for %s at index %d\n", old_email, index);
+		debug_mm("mailmap: adding (complex) entry for %s at index %d\n",
+			 old_email, index);
 		if (new_name)
 			mi->name = xstrdup(new_name);
 		if (new_email)
@@ -122,7 +121,7 @@ static char *parse_name_and_email(char *buffer, char **name,
 	while (nend > nstart && isspace(*nend))
 		--nend;
 
-	*name = (nstart < nend ? nstart : NULL);
+	*name = (nstart <= nend ? nstart : NULL);
 	*email = left+1;
 	*(nend+1) = '\0';
 	*right++ = '\0';
@@ -319,8 +318,10 @@ int map_user(struct string_list *map,
 	if (item != NULL) {
 		me = (struct mailmap_entry *)item->util;
 		if (me->namemap.nr) {
-			/* The item has multiple items, so we'll look up on name too */
-			/* If the name is not found, we choose the simple entry      */
+			/*
+			 * The item has multiple items, so we'll look up on name too.
+			 * If the name is not found, we choose the simple entry.
+			 */
 			struct string_list_item *subitem;
 			subitem = lookup_prefix(&me->namemap, *name, *namelen);
 			if (subitem)
