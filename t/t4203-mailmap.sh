@@ -409,4 +409,37 @@ test_expect_success 'Blame output (complex mapping)' '
 	test_cmp expect actual.fuzz
 '
 
+test_expect_success 'cleanup after mailmap.blob tests' '
+	rm -f .mailmap
+'
+
+cat >expect <<\EOF
+     2	A <A@example.org>
+     2	Other Author <other@author.xx>
+     2	Santa Claus <santa.claus@northpole.xx>
+     1	A U Thor <author@example.com>
+     1	CTO <cto@company.xx>
+     1	Some Dude <some@dude.xx>
+EOF
+
+test_expect_success 'Test case sensitivity of Names' '
+	# do a commit:
+	echo "asdf" > test1
+	git add test1
+	git commit -a --author="A <A@example.org>" -m "add test1"
+
+	# commit with same name, but different email
+	# (different capitalization does the trick already,
+	# but here I am going to use a different mail)
+	echo "asdf" > test2
+	git add test2
+	git commit -a --author="A <changed_email@example.org>" -m "add test2"
+
+	# Adding the line to the mailmap should make life easy, so we know
+	# it is the same person
+	echo "A <A@example.org> <changed_email@example.org>" > .mailmap
+
+	git shortlog -sne HEAD >actual && test_cmp expect actual
+'
+
 test_done
