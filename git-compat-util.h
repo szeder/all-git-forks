@@ -129,8 +129,6 @@
 #include <poll.h>
 #endif
 
-extern int get_st_mode_bits(const char *path, int *mode);
-
 #if defined(__MINGW32__)
 /* pull in Windows compatibility stuff */
 #include "compat/mingw.h"
@@ -177,6 +175,31 @@ typedef unsigned long uintptr_t;
 #include <grp.h>
 #define _ALL_SOURCE 1
 #endif
+#endif
+
+#ifndef GIT_FAST_STAT
+/*
+ * The "fast" stat() variants are used to read the stat data from the
+ * filesystem that is stored into the index and/or that is compared
+ * with the cached stat data. In order to provide a fast implementation,
+ * these functions may not provide meaningful data in all fields of the
+ * stat structure and should not, therefore, be used for any other purpose.
+ *
+ * Platforms which have slow stat functions, which can also provide
+ * such fast variants (e.g. cygwin), should include the external
+ * declarations above and define the GIT_FAST_STAT macro.
+ *
+ * The static inline definitions below are for platforms which have
+ * no need of such fast variants.
+ */
+static inline int fast_lstat(const char *path, struct stat *st)
+{
+	return lstat(path, st);
+}
+static inline int fast_fstat(int fd, struct stat *st)
+{
+	return fstat(fd, st);
+}
 #endif
 
 /* used on Mac OS X */
