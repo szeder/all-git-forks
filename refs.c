@@ -173,6 +173,8 @@ struct ref_dir {
 	struct ref_cache *ref_cache;
 
 	struct ref_entry **entries;
+
+	struct ref_entry *as_ref;
 };
 
 /*
@@ -323,8 +325,10 @@ static void clear_ref_dir(struct ref_dir *dir)
 	for (i = 0; i < dir->nr; i++)
 		free_ref_entry(dir->entries[i]);
 	free(dir->entries);
+	free(dir->as_ref);
 	dir->sorted = dir->nr = dir->alloc = 0;
 	dir->entries = NULL;
+	dir->as_ref = NULL;
 }
 
 /*
@@ -665,6 +669,8 @@ static int do_for_each_entry_in_dir(struct ref_dir *dir, int offset,
 {
 	int i;
 	assert(dir->sorted == dir->nr);
+	if(dir->as_ref)
+		fn(dir->as_ref, cb_data);
 	for (i = offset; i < dir->nr; i++) {
 		struct ref_entry *entry = dir->entries[i];
 		int retval;
@@ -1174,19 +1180,34 @@ static void read_loose_refs(const char *dirname, struct ref_dir *dir)
 					 create_dir_entry(refs, refname.buf,
 							  refname.len, 1));
 		} else {
-			if (*refs->name) {
-				hashclr(sha1);
-				flag = 0;
-				if (resolve_gitlink_ref(refs->name, refname.buf, sha1) < 0) {
+			if (!strcmp(de->d_name, "~0")) {
+				if (*refs->name) {
+					die("%d: NOT IMPLEMENTED!!!", __LINE__);
+				} else if (!do_resolve_ref_unsafe(refname.buf, sha1, 1, 0, &flag)) {
 					hashclr(sha1);
 					flag |= REF_ISBROKEN;
 				}
-			} else if (read_ref_full(refname.buf, sha1, 1, &flag)) {
-				hashclr(sha1);
-				flag |= REF_ISBROKEN;
+
+				/* The dirname without the ending '/' */
+				strbuf_setlen(&refname, dirnamelen - 1);
+
+				dir->as_ref = create_ref_entry(refname.buf, sha1, flag, 0);
+				strbuf_addch(&refname, '/');
+			} else {
+				if (*refs->name) {
+					hashclr(sha1);
+					flag = 0;
+					if (resolve_gitlink_ref(refs->name, refname.buf, sha1) < 0) {
+						hashclr(sha1);
+						flag |= REF_ISBROKEN;
+					}
+				} else if (read_ref_full(refname.buf, sha1, 1, &flag)) {
+					hashclr(sha1);
+					flag |= REF_ISBROKEN;
+				}
+				add_entry_to_dir(dir,
+						 create_ref_entry(refname.buf, sha1, flag, 1));
 			}
-			add_entry_to_dir(dir,
-					 create_ref_entry(refname.buf, sha1, flag, 1));
 		}
 		strbuf_setlen(&refname, dirnamelen);
 	}
