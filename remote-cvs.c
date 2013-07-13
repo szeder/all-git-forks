@@ -61,7 +61,7 @@ time_t fuzz_time = 2*60*60; // 2 hours
 
 static int depth = 0;
 static int verbosity = 0;
-static int progress = 0;
+static int show_progress = 0;
 static int followtags = 0;
 static int dry_run = 0;
 static int initial_import = 0;
@@ -236,7 +236,7 @@ static int cmd_option(const char *line)
 	}
 	else if ((val = gettext_after(opt, "progress "))) {
 		if (!strcmp(val, "true"))
-			progress = 1;
+			show_progress = 1;
 	}
 	else if ((val = gettext_after(opt, "dry-run "))) {
 		if (!strcmp(val, "true"))
@@ -2077,8 +2077,10 @@ static void add_cvs_revision_cb(const char *branch_name,
 
 	skipped += add_cvs_revision(cvs_branch, path, revision, author, msg, timestamp, isdead);
 	revisions_all_branches_total++;
-	display_progress(progress_rlog, revisions_all_branches_total);
-	display_throughput(progress_rlog, cvs_read_total);
+	if (show_progress) {
+		display_progress(progress_rlog, revisions_all_branches_total);
+		display_throughput(progress_rlog, cvs_read_total);
+	}
 }
 
 static time_t update_since = 0;
@@ -2119,7 +2121,9 @@ static int cmd_list(const char *line)
 	struct cvs_branch *cvs_branch;
 	struct strbuf ref_sb = STRBUF_INIT;
 
-	progress_rlog = start_progress("fetching revisions info", 0);
+	if (show_progress)
+		progress_rlog = start_progress("fetching revisions info", 0);
+
 	if (initial_import) {
 		rc = cvs_rlog(cvs, 0, 0, &cvs_branch_list, &cvs_tag_list, add_cvs_revision_cb, &cvs_branch_list);
 		if (rc == -1)
@@ -2182,7 +2186,8 @@ static int cmd_list(const char *line)
 
 		helper_printf("\n");
 	}
-	stop_progress(&progress_rlog);
+	if (show_progress)
+		stop_progress(&progress_rlog);
 	helper_flush();
 	revisions_all_branches_total -= skipped;
 	strbuf_release(&ref_sb);
@@ -2203,11 +2208,9 @@ static int cmd_list_for_push(const char *line)
 
 	fprintf(stderr, "connected to cvs server\n");
 
-	//progress_rlog = start_progress("revisions info", 0);
 	for_each_ref_in(get_meta_ref_prefix(), print_meta_branch_name, NULL);
 	helper_printf("\n");
 
-	//stop_progress(&progress_rlog);
 	helper_flush();
 	return 0;
 }
