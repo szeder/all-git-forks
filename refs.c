@@ -1124,6 +1124,8 @@ void add_packed_ref(const char *refname, const unsigned char *sha1)
 		create_ref_entry(refname, sha1, REF_ISPACKED, 1));
 }
 
+static const char *do_resolve_ref_unsafe(const char *refname, unsigned char *sha1, int reading, int check_name, int *flag);
+
 /*
  * Read the loose references from the namespace dirname into dir
  * (without recursing).  dirname must end with '/'.  dir must be the
@@ -1330,7 +1332,7 @@ static const char *handle_missing_loose_ref(const char *refname,
 	}
 }
 
-const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int reading, int *flag)
+static const char *do_resolve_ref_unsafe(const char *refname, unsigned char *sha1, int reading, int check_name, int *flag) // NAME!!!
 {
 	int depth = MAXDEPTH;
 	ssize_t len;
@@ -1340,7 +1342,7 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int rea
 	if (flag)
 		*flag = 0;
 
-	if (check_refname_format(refname, REFNAME_ALLOW_ONELEVEL))
+	if (check_name && check_refname_format(refname, REFNAME_ALLOW_ONELEVEL))
 		return NULL;
 
 	for (;;) {
@@ -1447,6 +1449,10 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int rea
 		}
 		refname = strcpy(refname_buffer, buf);
 	}
+}
+
+const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int reading, int *flag) {
+	return do_resolve_ref_unsafe(refname, sha1, reading, 1, flag); // NAME!!!
 }
 
 char *resolve_refdup(const char *ref, unsigned char *sha1, int reading, int *flag)
