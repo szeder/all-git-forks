@@ -859,7 +859,7 @@ extern int read_ref_full(const char *refname, unsigned char *sha1,
 extern int read_ref(const char *refname, unsigned char *sha1);
 
 /*
- * Resolve a reference, recursively following symbolic refererences.
+ * Resolve a reference, recursively following symbolic references.
  *
  * Store the referred-to object's name in sha1 and return the name of
  * the non-symbolic reference that ultimately pointed at it.  The

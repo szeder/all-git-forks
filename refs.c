@@ -1301,7 +1301,7 @@ static struct ref_entry *get_packed_ref(const char *refname)
 
 /*
  * A loose ref file doesn't exist; check for a packed ref.  The
- * options are forwarded from resolve_safe_unsafe().
+ * options are forwarded from resolve_ref_unsafe().
  */
 static const char *handle_missing_loose_ref(const char *refname,
 					    unsigned char *sha1,
