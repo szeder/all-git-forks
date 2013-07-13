@@ -7,16 +7,17 @@ all::
 # TCL_PATH must be vaild for this to work.
 #
 
-GIT-VERSION-FILE: FORCE
+$(GIT_OUTDIR)/git-gui/GIT-VERSION-FILE: FORCE
+	@mkdir -p $(GIT_OUTDIR)/git-gui
 	@$(SHELL_PATH) ./GIT-VERSION-GEN
--include GIT-VERSION-FILE
+-include $(GIT_OUTDIR)/git-gui/GIT-VERSION-FILE
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_O := $(shell sh -c 'uname -o 2>/dev/null || echo not')
 uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
 
 SCRIPT_SH = git-gui.sh
-GITGUI_MAIN := git-gui
+GITGUI_MAIN := $(GIT_OUTDIR)/git-gui/git-gui
 GITGUI_BUILT_INS = git-citool
 ALL_LIBFILES = $(wildcard lib/*.tcl)
 PRELOAD_FILES = lib/class.tcl
@@ -169,7 +170,7 @@ endif
 ifdef GITGUI_MACOSXAPP
 GITGUI_MAIN := git-gui.tcl
 
-git-gui: GIT-VERSION-FILE GIT-GUI-VARS
+git-gui: $(GIT_OUTDIR)/git-gui/GIT-VERSION-FILE $(GIT_OUTDIR)/git-gui/GIT-GUI-VARS
 	$(QUIET_GEN)rm -f $@ $@+ && \
 	echo '#!$(SHELL_PATH_SQ)' >$@+ && \
 	echo 'if test "z$$*" = zversion ||' >>$@+ && \
@@ -183,7 +184,7 @@ git-gui: GIT-VERSION-FILE GIT-GUI-VARS
 	chmod +x $@+ && \
 	mv $@+ $@
 
-Git\ Gui.app: GIT-VERSION-FILE GIT-GUI-VARS \
+Git\ Gui.app: $(GIT_OUTDIR)/git-gui/GIT-VERSION-FILE $(GIT_OUTDIR)/git-gui/GIT-GUI-VARS \
 		macosx/Info.plist \
 		macosx/git-gui.icns \
 		macosx/AppMain.tcl \
@@ -212,7 +213,7 @@ git-gui: windows/git-gui.sh
 	cp $< $@
 endif
 
-$(GITGUI_MAIN): git-gui.sh GIT-VERSION-FILE GIT-GUI-VARS
+$(GITGUI_MAIN): git-gui.sh $(GIT_OUTDIR)/git-gui/GIT-VERSION-FILE $(GIT_OUTDIR)/git-gui/GIT-GUI-VARS
 	$(QUIET_GEN)rm -f $@ $@+ && \
 	sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
 		-e 's|@@SHELL_PATH@@|$(SHELL_PATH_SQ)|' \
@@ -239,20 +240,22 @@ msgsdir     = $(gg_libdir)/msgs
 msgsdir_SQ  = $(subst ','\'',$(msgsdir))
 PO_TEMPLATE = po/git-gui.pot
 ALL_POFILES = $(wildcard po/*.po)
-ALL_MSGFILES = $(subst .po,.msg,$(ALL_POFILES))
+ALL_MSGFILES = $(addprefix $(GIT_OUTDIR)/git-gui/,$(subst .po,.msg,$(ALL_POFILES)))
 
 $(PO_TEMPLATE): $(SCRIPT_SH) $(ALL_LIBFILES)
 	$(XGETTEXT) -kmc -LTcl -o $@ $(SCRIPT_SH) $(ALL_LIBFILES)
 update-po:: $(PO_TEMPLATE)
 	$(foreach p, $(ALL_POFILES), echo Updating $p ; msgmerge -U $p $(PO_TEMPLATE) ; )
-$(ALL_MSGFILES): %.msg : %.po
+$(ALL_MSGFILES): $(GIT_OUTDIR)/git-gui/%.msg : %.po
+	@mkdir -p $(GIT_OUTDIR)/git-gui/po
 	$(QUIET_MSGFMT0)$(MSGFMT) --statistics --tcl -l $(basename $(notdir $<)) -d $(dir $@) $< $(QUIET_MSGFMT1)
 
-lib/tclIndex: $(ALL_LIBFILES) GIT-GUI-VARS
+$(GIT_OUTDIR)/git-gui/lib/tclIndex: $(ALL_LIBFILES) $(GIT_OUTDIR)/git-gui/GIT-GUI-VARS
+	@mkdir -p $(GIT_OUTDIR)/git-gui/lib
 	$(QUIET_INDEX)if echo \
 	  $(foreach p,$(PRELOAD_FILES),source $p\;) \
 	  auto_mkindex lib '*.tcl' \
-	| $(TCL_PATH) $(QUIET_2DEVNULL); then : ok; \
+	| $(TCL_PATH) $(QUIET_2DEVNULL); then mv lib/tclIndex $(GIT_OUTDIR)/git-gui/lib/; \
 	else \
 	 echo >&2 "    * $(TCL_PATH) failed; using unoptimized loading"; \
 	 rm -f $@ ; \
@@ -271,7 +274,7 @@ TRACK_VARS = \
 	GITGUI_MACOSXAPP=$(GITGUI_MACOSXAPP) \
 #end TRACK_VARS
 
-GIT-GUI-VARS: FORCE
+$(GIT_OUTDIR)/git-gui/GIT-GUI-VARS: FORCE
 	@VARS='$(TRACK_VARS)'; \
 	if test x"$$VARS" != x"`cat $@ 2>/dev/null`" ; then \
 		echo >&2 "    * new locations or Tcl/Tk interpreter"; \
@@ -284,7 +287,7 @@ endif
 ifdef GITGUI_WINDOWS_WRAPPER
 all:: git-gui
 endif
-all:: $(GITGUI_MAIN) lib/tclIndex $(ALL_MSGFILES)
+all:: $(GITGUI_MAIN) $(GIT_OUTDIR)/git-gui/lib/tclIndex $(ALL_MSGFILES)
 
 install: all
 	$(QUIET)$(INSTALL_D0)'$(DESTDIR_SQ)$(gitexecdir_SQ)' $(INSTALL_D1)
@@ -295,7 +298,7 @@ ifdef GITGUI_WINDOWS_WRAPPER
 	$(QUIET)$(INSTALL_R0)git-gui.tcl $(INSTALL_R1) '$(DESTDIR_SQ)$(gitexecdir_SQ)'
 endif
 	$(QUIET)$(INSTALL_D0)'$(DESTDIR_SQ)$(libdir_SQ)' $(INSTALL_D1)
-	$(QUIET)$(INSTALL_R0)lib/tclIndex $(INSTALL_R1) '$(DESTDIR_SQ)$(libdir_SQ)'
+	$(QUIET)$(INSTALL_R0)$(GIT_OUTDIR)/git-gui/lib/tclIndex $(INSTALL_R1) '$(DESTDIR_SQ)$(libdir_SQ)'
 ifdef GITGUI_MACOSXAPP
 	$(QUIET)$(INSTALL_A0)'Git Gui.app' $(INSTALL_A1) '$(DESTDIR_SQ)$(libdir_SQ)'
 	$(QUIET)$(INSTALL_X0)git-gui.tcl $(INSTALL_X1) '$(DESTDIR_SQ)$(libdir_SQ)'
@@ -331,8 +334,8 @@ dist-version:
 	@echo $(GITGUI_VERSION) > $(TARDIR)/version
 
 clean::
-	$(RM_RF) $(GITGUI_MAIN) lib/tclIndex po/*.msg
-	$(RM_RF) GIT-VERSION-FILE GIT-GUI-VARS
+	$(RM_RF) $(GITGUI_MAIN) $(GIT_OUTDIR)/git-gui/lib/tclIndex po/*.msg
+	$(RM_RF) $(GIT_OUTDIR)/git-gui/GIT-VERSION-FILE $(GIT_OUTDIR)/git-gui/GIT-GUI-VARS
 ifdef GITGUI_MACOSXAPP
 	$(RM_RF) 'Git Gui.app'* git-gui
 endif
