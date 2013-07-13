@@ -1,0 +1,18 @@
+Tests:
+	Having a reference named FOO, create a reference named FOO/BAR.
+	Having a reference named FOO/BAR, create a reference named FOO.
+	References must be sorted:
+		refs/DIR         # ~0
+		refs/DIR/FILE
+	Creating a reference named ~0 (or refs/FOO/~0) is still forbidden.
+
+Review:
+	struct ref_entry comments in refs.c
+	Remove is_refname_available() if not used anymore
+
+Should allow?
+	refs/~0
+	refs/heads/~0
+	refs/remotes/~0
+	refs/tags/~0
+	

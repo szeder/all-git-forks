@@ -2609,3 +2609,14 @@ cover_db: coverage-report
 cover_db_html: cover_db
 	cover -report html -outputdir cover_db_html cover_db
 
+
+refs-tests.o: refs-tests.cpp
+	g++ -Wall -std=c++11 -c $+ -o $@
+
+dummies.o: dummies.c
+	gcc -Wall -c $+ -o $@
+
+refs-tests: refs.o ctype.o path.o environment.o setup.o wrapper.o strbuf.o     \
+            hex.o dummies.o refs-tests.o sha1_file.o string-list.o read-cache.o\
+            lockfile.o sigchain.o usage.o
+	g++ -Wall $+ -o $@ -lcrypto
