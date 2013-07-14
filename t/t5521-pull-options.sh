@@ -91,8 +91,6 @@ test_expect_success 'git pull --force' '
 	[branch "master"]
 		remote = two
 		merge = refs/heads/master
-	[pull]
-		rebase = false
 	EOF
 	git pull two &&
 	test_commit A &&

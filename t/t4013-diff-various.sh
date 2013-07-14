@@ -12,8 +12,6 @@ LF='
 
 test_expect_success setup '
 
-	git config pull.rebase false &&
-
 	GIT_AUTHOR_DATE="2006-06-26 00:00:00 +0000" &&
 	GIT_COMMITTER_DATE="2006-06-26 00:00:00 +0000" &&
 	export GIT_AUTHOR_DATE GIT_COMMITTER_DATE &&

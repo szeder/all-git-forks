@@ -79,7 +79,7 @@ test_expect_success \
 
 test_expect_success \
     'merge-setup part 3' \
-    'git pull --merge . branch1'
+    'git pull . branch1'
 
 test_expect_success \
     'Two lines blamed on A, one on B, two on B1, one on B2' \

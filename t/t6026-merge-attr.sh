@@ -172,7 +172,7 @@ test_expect_success 'up-to-date merge without common ancestor' '
 	test_tick &&
 	(
 		cd repo1 &&
-		git pull --merge ../repo2 master
+		git pull ../repo2 master
 	)
 '
 

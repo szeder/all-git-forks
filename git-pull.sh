@@ -279,6 +279,7 @@ case "$merge_head" in
 	merge_head=${merge_head% }
 	if test -z "$rebase$no_ff$ff_only${squash#--no-squash}" &&
 		test -n "$orig_head" &&
+		test $# = 0 &&
 		! $(git merge-base --is-ancestor "$orig_head" "$merge_head")
 	then
 echo >&2 "orig-head was $orig_head"

@@ -10,8 +10,6 @@ modify () {
 
 test_expect_success setup \
 '
-git config pull.rebase false &&
-
 cat >A <<\EOF &&
 a aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 b bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
