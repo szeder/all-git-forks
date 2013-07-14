@@ -20,7 +20,8 @@ TCLTK_PATH_SQ = $(subst ','\'',$(TCLTK_PATH))
 ### Detect Tck/Tk interpreter path changes
 TRACK_TCLTK = $(subst ','\'',-DTCLTK_PATH='$(TCLTK_PATH_SQ)')
 
-GIT-TCLTK-VARS: FORCE
+$(GIT_OUTDIR)/gitk-git/GIT-TCLTK-VARS: FORCE
+	@mkdir -p $(GIT_OUTDIR)/gitk-git
 	@VARS='$(TRACK_TCLTK)'; \
 		if test x"$$VARS" != x"`cat $@ 2>/dev/null`" ; then \
 			echo 1>&2 "    * new Tcl/Tk interpreter location"; \
@@ -40,17 +41,17 @@ endif
 
 PO_TEMPLATE = po/gitk.pot
 ALL_POFILES = $(wildcard po/*.po)
-ALL_MSGFILES = $(subst .po,.msg,$(ALL_POFILES))
+ALL_MSGFILES = $(addprefix $(GIT_OUTDIR)/gitk-git/,$(subst .po,.msg,$(ALL_POFILES)))
 
 ifndef V
 	QUIET          = @
 	QUIET_GEN      = $(QUIET)echo '   ' GEN $@ &&
 endif
 
-all:: gitk-wish $(ALL_MSGFILES)
+all:: $(GIT_OUTDIR)/gitk-git/gitk-wish $(ALL_MSGFILES)
 
 install:: all
-	$(INSTALL) -m 755 gitk-wish '$(DESTDIR_SQ)$(bindir_SQ)'/gitk
+	$(INSTALL) -m 755 $(GIT_OUTDIR)/gitk-git/gitk-wish '$(DESTDIR_SQ)$(bindir_SQ)'/gitk
 	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(msgsdir_SQ)'
 	$(foreach p,$(ALL_MSGFILES), $(INSTALL) -m 644 $p '$(DESTDIR_SQ)$(msgsdir_SQ)' &&) true
 
@@ -59,9 +60,9 @@ uninstall::
 	$(RM) '$(DESTDIR_SQ)$(bindir_SQ)'/gitk
 
 clean::
-	$(RM) gitk-wish po/*.msg GIT-TCLTK-VARS
+	$(RM) $(GIT_OUTDIR)/gitk-git/gitk-wish po/*.msg $(GIT_OUTDIR)/gitk-git/GIT-TCLTK-VARS
 
-gitk-wish: gitk GIT-TCLTK-VARS
+$(GIT_OUTDIR)/gitk-git/gitk-wish: gitk $(GIT_OUTDIR)/gitk-git/GIT-TCLTK-VARS
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	sed -e '1,3s|^exec .* "$$0"|exec $(subst |,'\|',$(TCLTK_PATH_SQ)) "$$0"|' <gitk >$@+ && \
 	chmod +x $@+ && \
@@ -71,8 +72,9 @@ $(PO_TEMPLATE): gitk
 	$(XGETTEXT) -kmc -LTcl -o $@ gitk
 update-po:: $(PO_TEMPLATE)
 	$(foreach p, $(ALL_POFILES), echo Updating $p ; msgmerge -U $p $(PO_TEMPLATE) ; )
-$(ALL_MSGFILES): %.msg : %.po
+$(ALL_MSGFILES): $(GIT_OUTDIR)/gitk-git/%.msg : %.po
 	@echo Generating catalog $@
+	@mkdir -p $(GIT_OUTDIR)/gitk-git/po
 	$(MSGFMT) --statistics --tcl $< -l $(basename $(notdir $<)) -d $(dir $@)
 
 .PHONY: all install uninstall clean update-po
