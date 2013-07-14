@@ -1371,11 +1371,13 @@ static const char *do_resolve_ref_unsafe(const char *refname, unsigned char *sha
 		struct stat st;
 		char *buf;
 		int fd;
+		int pathlen = 0;
 
 		if (--depth < 0)
 			return NULL;
 
 		git_snpath(path, sizeof(path), "%s", refname);
+		pathlen = strlen(path);
 
 		/*
 		 * We might have to loop back here to avoid a race
@@ -1418,8 +1420,11 @@ static const char *do_resolve_ref_unsafe(const char *refname, unsigned char *sha
 
 		/* Is it a directory? */
 		if (S_ISDIR(st.st_mode)) {
-			errno = EISDIR;
-			return NULL;
+			strcat(path, "/~0");
+			if(lstat(path, &st) != 0 || !S_ISREG(st.st_mode)) {
+				errno = EISDIR;
+				return NULL;
+			}
 		}
 
 		/*
@@ -1428,10 +1433,12 @@ static const char *do_resolve_ref_unsafe(const char *refname, unsigned char *sha
 		 */
 		fd = open(path, O_RDONLY);
 		if (fd < 0) {
-			if (errno == ENOENT)
+			if (errno == ENOENT) {
+				/* remove "/~0" at the end, if added */
+				path[pathlen] = '\0';
 				/* inconsistent with lstat; retry */
 				goto stat_ref;
-			else
+			} else
 				return NULL;
 		}
 		len = read_in_full(fd, buffer, sizeof(buffer)-1);
