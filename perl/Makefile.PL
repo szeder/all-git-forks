@@ -57,6 +57,13 @@ WriteMakefile(
 	VERSION_FROM    => 'Git.pm',
 	PM		=> \%pm,
 	PM_FILTER	=> qq[\$(PERL) -pe "s<\\Q++LOCALEDIR++\\E><$localedir>"],
-	MAKEFILE	=> 'perl.mak',
-	INSTALLSITEMAN3DIR => '$(SITEPREFIX)/share/man/man3'
+	MAKEFILE	=> "$ENV{'GIT_OUTDIR'}/perl/perl.mak",
+	INSTALLSITEMAN3DIR => '$(SITEPREFIX)/share/man/man3',
+	NO_MYMETA	=> 'true',
+	INST_LIB	=> "$ENV{'GIT_OUTDIR'}/perl/blib/lib",
+	INST_BIN	=> "$ENV{'GIT_OUTDIR'}/perl/blib/bin",
+	INST_SCRIPT	=> "$ENV{'GIT_OUTDIR'}/perl/blib/script",
+	INST_ARCHLIB	=> "$ENV{'GIT_OUTDIR'}/perl/blib/arch",
+	INST_MAN1DIR	=> "$ENV{'GIT_OUTDIR'}/perl/blib/man1",
+	INST_MAN3DIR	=> "$ENV{'GIT_OUTDIR'}/perl/blib/man3"
 );

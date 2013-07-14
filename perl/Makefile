@@ -1,7 +1,7 @@
 #
 # Makefile for perl support modules and routine
 #
-makfile:=perl.mak
+makfile:=$(GIT_OUTDIR)/perl/perl.mak
 modules =
 
 PERL_PATH_SQ = $(subst ','\'',$(PERL_PATH))
@@ -52,13 +52,13 @@ $(makfile): $(GIT_OUTDIR)/GIT-CFLAGS Makefile
 		else \
 			subdir=/$${i%/*}; \
 		fi; \
-		echo '	$(RM) blib/lib/'$$i'.pm' >> $@; \
-		echo '	mkdir -p blib/lib'$$subdir >> $@; \
-		echo '	cp '$$i'.pm blib/lib/'$$i'.pm' >> $@; \
+		echo '	@$(RM) $(GIT_OUTDIR)/perl/blib/lib/'$$i'.pm' >> $@; \
+		echo '	@mkdir -p $(GIT_OUTDIR)/perl/blib/lib'$$subdir >> $@; \
+		echo '	@cp '$$i'.pm $(GIT_OUTDIR)/perl/blib/lib/'$$i'.pm' >> $@; \
 	done
-	echo '	$(RM) blib/lib/Error.pm' >> $@
+	echo '	$(RM) $(GIT_OUTDIR)/perl/blib/lib/Error.pm' >> $@
 	'$(PERL_PATH_SQ)' -MError -e 'exit($$Error::VERSION < 0.15009)' || \
-	echo '	cp private-Error.pm blib/lib/Error.pm' >> $@
+	echo '	cp private-Error.pm $(GIT_OUTDIR)/perl/blib/lib/Error.pm' >> $@
 	echo install: >> $@
 	set -e; \
 	for i in $(modules); \
@@ -81,6 +81,7 @@ $(makfile): $(GIT_OUTDIR)/GIT-CFLAGS Makefile
 else
 $(makfile): Makefile.PL $(GIT_OUTDIR)/GIT-CFLAGS
 	$(PERL_PATH) $< PREFIX='$(prefix_SQ)' INSTALL_BASE='' --localedir='$(localedir_SQ)'
+	sed -i "/ExtUtils/!s#pm_to_blib#$(GIT_OUTDIR)/perl/pm_to_blib#g" $@
 endif
 
 # this is just added comfort for calling make directly in perl dir

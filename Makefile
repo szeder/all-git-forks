@@ -1797,9 +1797,9 @@ git.res: git.rc $(GIT_OUTDIR)/GIT-VERSION-FILE
 	  -DGIT_VERSION="\\\"$(GIT_VERSION)\\\"" $< -o $@
 
 ifndef NO_PERL
-$(patsubst %.perl,$(GIT_OUTDIR)/%,$(SCRIPT_PERL)): perl/perl.mak
+$(patsubst %.perl,$(GIT_OUTDIR)/%,$(SCRIPT_PERL)): $(GIT_OUTDIR)/perl/perl.mak
 
-perl/perl.mak: $(GIT_OUTDIR)/perl/PM.stamp
+$(GIT_OUTDIR)/perl/perl.mak: $(GIT_OUTDIR)/perl/PM.stamp
 
 $(GIT_OUTDIR)/perl/PM.stamp: FORCE
 	$(QUIET_GEN) mkdir -p $(GIT_OUTDIR)/perl && \
@@ -1807,8 +1807,8 @@ $(GIT_OUTDIR)/perl/PM.stamp: FORCE
 	{ cmp $@+ $@ >/dev/null 2>/dev/null || mv $@+ $@; } && \
 	$(RM) $@+
 
-perl/perl.mak: $(GIT_OUTDIR)/GIT-CFLAGS $(GIT_OUTDIR)/GIT-PREFIX perl/Makefile perl/Makefile.PL
-	$(QUIET_SUBDIR0)perl $(QUIET_SUBDIR1) PERL_PATH='$(PERL_PATH_SQ)' prefix='$(prefix_SQ)' $(@F)
+$(GIT_OUTDIR)/perl/perl.mak: $(GIT_OUTDIR)/GIT-CFLAGS $(GIT_OUTDIR)/GIT-PREFIX perl/Makefile perl/Makefile.PL
+	$(QUIET_SUBDIR0)perl $(QUIET_SUBDIR1) PERL_PATH='$(PERL_PATH_SQ)' prefix='$(prefix_SQ)' $@
 
 $(patsubst %.perl,$(GIT_OUTDIR)/%,$(SCRIPT_PERL)): $(GIT_OUTDIR)/% : %.perl $(GIT_OUTDIR)/GIT-VERSION-FILE
 	$(QUIET_GEN)$(RM) $@ $@+ && \
