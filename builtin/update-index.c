@@ -206,7 +206,7 @@ static int process_path(const char *path)
 	 * First things first: get the stat information, to decide
 	 * what to do about the pathname!
 	 */
-	if (lstat(path, &st) < 0)
+	if (fast_lstat(path, &st) < 0)
 		return process_lstat_error(path, errno);
 
 	if (S_ISDIR(st.st_mode))
