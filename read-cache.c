@@ -1558,6 +1558,7 @@ int discard_index(struct index_state *istate)
 	for (i = 0; i < istate->cache_nr; i++)
 		free(istate->cache[i]);
 	resolve_undo_clear_index(istate);
+	istate->version = 0;
 	istate->cache_nr = 0;
 	istate->cache_changed = 0;
 	istate->timestamp.sec = 0;
