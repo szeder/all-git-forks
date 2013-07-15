@@ -28,6 +28,7 @@ use File::Temp qw/ tempdir tempfile /;
 use File::Spec::Functions qw(catfile);
 use Error qw(:try);
 use Git;
+use IO::Socket::SSL qw(SSL_VERIFY_PEER SSL_VERIFY_NONE);
 
 Getopt::Long::Configure qw/ pass_through /;
 
@@ -69,6 +70,10 @@ git send-email [options] <file | directory | rev-list options >
     --smtp-pass             <str>  * Password for SMTP-AUTH; not necessary.
     --smtp-encryption       <str>  * tls or ssl; anything else disables.
     --smtp-ssl                     * Deprecated. Use '--smtp-encryption ssl'.
+    --[no-]smtp-ssl-verify         * Enable SSL certificate verification.
+                                     Default on.
+    --smtp-ssl-cert-path    <str>  * Path to ca-certificates.  Defaults to
+                                     a platform-specific value.
     --smtp-domain           <str>  * The domain name sent to HELO/EHLO handshake
     --smtp-debug            <0|1>  * Disable, enable Net::SMTP debug.
 
@@ -195,6 +200,7 @@ my ($thread, $chain_reply_to, $suppress_from, $signed_off_by_cc);
 my ($to_cmd, $cc_cmd);
 my ($smtp_server, $smtp_server_port, @smtp_server_options);
 my ($smtp_authuser, $smtp_encryption);
+my ($smtp_ssl_verify, $smtp_ssl_cert_path);
 my ($identity, $aliasfiletype, @alias_files, $smtp_domain);
 my ($validate, $confirm);
 my (@suppress_cc);
@@ -209,6 +215,7 @@ my %config_bool_settings = (
     "suppressfrom" => [\$suppress_from, undef],
     "signedoffbycc" => [\$signed_off_by_cc, undef],
     "signedoffcc" => [\$signed_off_by_cc, undef],      # Deprecated
+    "smtpsslverify" => [\$smtp_ssl_verify, 1],
     "validate" => [\$validate, 1],
     "multiedit" => [\$multiedit, undef],
     "annotate" => [\$annotate, undef]
@@ -220,6 +227,7 @@ my %config_settings = (
     "smtpserveroption" => \@smtp_server_options,
     "smtpuser" => \$smtp_authuser,
     "smtppass" => \$smtp_authpass,
+    "smtpsslcertpath" => \$smtp_ssl_cert_path,
     "smtpdomain" => \$smtp_domain,
     "to" => \@initial_to,
     "tocmd" => \$to_cmd,
@@ -287,6 +295,8 @@ my $rc = GetOptions("h" => \$help,
 		    "smtp-pass:s" => \$smtp_authpass,
 		    "smtp-ssl" => sub { $smtp_encryption = 'ssl' },
 		    "smtp-encryption=s" => \$smtp_encryption,
+		    "smtp-ssl-cert-path=s" => \$smtp_ssl_cert_path,
+		    "smtp-ssl-verify!" => \$smtp_ssl_verify,
 		    "smtp-debug:i" => \$debug_net_smtp,
 		    "smtp-domain:s" => \$smtp_domain,
 		    "identity=s" => \$identity,
@@ -1079,6 +1089,24 @@ sub smtp_auth_maybe {
 	return $auth;
 }
 
+# Helper to come up with SSL/TLS certification validation params
+# and warn when doing no verification
+sub ssl_verify_params {
+	if ($smtp_ssl_verify == 0) {
+		return (SSL_verify_mode => IO::Socket::SSL->SSL_VERIFY_NONE);
+	}
+
+	if (! defined $smtp_ssl_cert_path) {
+		return (SSL_verify_mode => IO::Socket::SSL->SSL_VERIFY_PEER);
+	} elsif (-f $smtp_ssl_cert_path) {
+		return (SSL_verify_mode => IO::Socket::SSL->SSL_VERIFY_PEER,
+			SSL_ca_file => $smtp_ssl_cert_path);
+	} else {
+		return (SSL_verify_mode => IO::Socket::SSL->SSL_VERIFY_PEER,
+			SSL_ca_path => $smtp_ssl_cert_path);
+	}
+}
+
 # Returns 1 if the message was sent, and 0 otherwise.
 # In actuality, the whole program dies when there
 # is an error sending a message.
@@ -1183,7 +1211,8 @@ X-Mailer: git-send-email $gitversion
 			$smtp_domain ||= maildomain();
 			$smtp ||= Net::SMTP::SSL->new($smtp_server,
 						      Hello => $smtp_domain,
-						      Port => $smtp_server_port);
+						      Port => $smtp_server_port,
+						      ssl_verify_params());
 		}
 		else {
 			require Net::SMTP;
@@ -1198,8 +1227,9 @@ X-Mailer: git-send-email $gitversion
 				$smtp->command('STARTTLS');
 				$smtp->response();
 				if ($smtp->code == 220) {
-					$smtp = Net::SMTP::SSL->start_SSL($smtp)
-						or die "STARTTLS failed! ".$smtp->message;
+					$smtp = Net::SMTP::SSL->start_SSL($smtp,
+									  ssl_verify_params())
+					    or die "STARTTLS failed! ".$smtp->message;
 					$smtp_encryption = '';
 					# Send EHLO again to receive fresh
 					# supported commands

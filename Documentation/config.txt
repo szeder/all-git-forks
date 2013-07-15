@@ -2067,6 +2067,9 @@ sendemail.smtpencryption::
 sendemail.smtpssl::
 	Deprecated alias for 'sendemail.smtpencryption = ssl'.
 
+sendemail.smtpsslcertpath::
+	Path to ca-certificates.  Defaults to `/etc/ssl/certs`.
+
 sendemail.<identity>.*::
 	Identity-specific versions of the 'sendemail.*' parameters
 	found below, taking precedence over those when the this
