@@ -2,12 +2,12 @@
 
 usage () {
 	echo "usage:" $@
-	exit 127
+	exit 2
 }
 
 die () {
 	echo $@
-	exit 128
+	exit 1
 }
 
 if test $# -lt 2 || test $# -gt 3
