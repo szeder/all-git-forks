@@ -31,7 +31,7 @@ static int show_ref(const char *refname, const unsigned char *sha1, int flag, vo
 	const char *hex;
 	unsigned char peeled[20];
 
-	if (show_head && !strncmp(refname, "HEAD\0", 5))
+	if (show_head && !strcmp(refname, "HEAD"))
 		goto match;
 
 	if (tags_only || heads_only) {
