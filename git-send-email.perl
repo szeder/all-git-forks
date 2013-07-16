@@ -1083,6 +1083,37 @@ sub smtp_auth_maybe {
 	return $auth;
 }
 
+sub ssl_verify_params {
+	require IO::Socket::SSL;
+	eval {
+		IO::Socket::SSL->import(qw/SSL_VERIFY_PEER SSL_VERIFY_NONE/);
+	};
+	if ($@) {
+		print STDERR "Not using SSL_VERIFY_PEER due to out-of-date IO::Socket::SSL.\n";
+		return;
+	}
+
+	if (!defined $smtp_ssl_cert_path) {
+		$smtp_ssl_cert_path ||= "/etc/ssl/certs";
+	}
+
+	if (!$smtp_ssl_cert_path) {
+		return (SSL_verify_mode => SSL_VERIFY_NONE());
+	}
+	elsif (-d $smtp_ssl_cert_path) {
+		return (SSL_verify_mode => SSL_VERIFY_PEER(),
+			SSL_ca_path => $smtp_ssl_cert_path);
+	}
+	elsif (-f $smtp_ssl_cert_path) {
+		return (SSL_verify_mode => SSL_VERIFY_PEER(),
+			SSL_ca_file => $smtp_ssl_cert_path);
+	}
+	else {
+		print STDERR "Not using SSL_VERIFY_PEER because the CA path does not exist.\n";
+		return (SSL_verify_mode => SSL_VERIFY_NONE());
+	}
+}
+
 # Returns 1 if the message was sent, and 0 otherwise.
 # In actuality, the whole program dies when there
 # is an error sending a message.
@@ -1187,7 +1218,8 @@ X-Mailer: git-send-email $gitversion
 			$smtp_domain ||= maildomain();
 			$smtp ||= Net::SMTP::SSL->new($smtp_server,
 						      Hello => $smtp_domain,
-						      Port => $smtp_server_port);
+						      Port => $smtp_server_port,
+							  ssl_verify_params());
 		}
 		else {
 			require Net::SMTP;
@@ -1203,19 +1235,9 @@ X-Mailer: git-send-email $gitversion
 				$smtp->command('STARTTLS');
 				$smtp->response();
 				if ($smtp->code == 220) {
-					# Attempt to use a ca-certificate by default
-					$smtp_ssl_cert_path |= "/etc/ssl/certs";
-					if (-d $smtp_ssl_cert_path) {
-						$smtp = Net::SMTP::SSL->start_SSL($smtp,
-										  SSL_verify_mode => SSL_VERIFY_PEER,
-										  SSL_ca_path => $smtp_ssl_cert_path)
-							or die "STARTTLS failed! ".$smtp->message;
-					} else {
-						print STDERR "warning: Using SSL_VERIFY_NONE.  See sendemail.smtpsslcertpath.\n";
-						$smtp = Net::SMTP::SSL->start_SSL($smtp,
-										  SSL_verify_mode => SSL_VERIFY_NONE)
-							or die "STARTTLS failed! ".$smtp->message;
-					}
+					$smtp = Net::SMTP::SSL->start_SSL($smtp,
+									  ssl_verify_params())
+						or die "STARTTLS failed! ".$smtp->message;
 					$smtp_encryption = '';
 					# Send EHLO again to receive fresh
 					# supported commands
