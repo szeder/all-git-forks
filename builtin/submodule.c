@@ -1,40 +1,34 @@
 /*
- * "git submodule" builtin command
+ * git
  *
- * Copyright (C) 2012 Fredrik Gustafsson
+ * Copyright Fredrik Gustafsson <iveqy@iveqy.com>
  */
+
+/* Includes */
+/*{*/
 #include "builtin.h"
+#include "submodule.h"
+/*}*/
 
-static const char * const submodule_usage[] = {
-	N_("git submodule [<options>...] [--] [<pathspec>...]"),
-	NULL
-};
+/* Private functions */
+/*{*/
+/*}*/
 
-static int cmd_submodule_status()
-{
-	printf("Doing submodule status\n");
-	//struct rev_info rev;
-	//init_revisions(&rev, NULL);
-	return 0;
-}
+/* Public functions */
+/*{*/
 
+/*
+ * \function
+ * Take action depending on the arguments the user supplied to git submodule
+ *
+ * @param Number of command line arguments
+ * @param List of arguments
+ * @param
+ * @return 0 on success, otherwise <0
+ */
 int cmd_submodule(int argc, const char **argv, const char *prefix)
-{
-	int exit_status = 0;
-	/*
-	int opt_short = 0, opt_branch = 0, opt_porcelain = 0,
-	    opt_untracked_files = 0, opt_ignore_submodule = 0,
-	    opt_z = 0;
+{ /*{*/
+	return 0;
+} /*}*/
 
-	struct option options[] = {
-		OPT_END()
-	};
-	*/
-
-	printf("Submodule!!!\n");
-	//argc = parse_options(argc, argv, prefix, options, submodule_usage, 0);
-
-	exit_status = cmd_submodule_status();
-
-	return exit_status;
-}
+/*}*/
