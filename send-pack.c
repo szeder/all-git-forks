@@ -27,14 +27,19 @@ static int feed_object(const unsigned char *sha1, int fd, int negative)
 /*
  * Make a pack stream and spit it out into file descriptor fd
  */
-static int pack_objects(int fd, struct ref *refs, struct extra_have_objects *extra, struct send_pack_args *args)
+static int pack_objects(int fd, struct ref *refs,
+			struct extra_have_objects *extra,
+			struct extra_have_objects *extra_shallow,
+			struct send_pack_args *args)
 {
 	/*
 	 * The child becomes pack-objects --revs; we feed
 	 * the revision parameters to it via its stdin and
 	 * let its stdout go back to the other end.
 	 */
-	const char *argv[] = {
+	const char *av[] = {
+		"--shallow-file",
+		NULL,
 		"pack-objects",
 		"--all-progress-implied",
 		"--revs",
@@ -45,10 +50,27 @@ static int pack_objects(int fd, struct ref *refs, struct extra_have_objects *ext
 		NULL,
 		NULL,
 	};
+	const char **argv;
 	struct child_process po;
+	static struct lock_file shallow_lock;
+	const char *alternate_shallow_file = NULL;
 	int i;
 
-	i = 4;
+	if (extra_shallow->nr) {
+		memset(&shallow_lock, 0, sizeof(shallow_lock));
+		/* just to load up .git/shallow if exists */
+		is_repository_shallow();
+		setup_alternate_shallow(&shallow_lock,
+					&alternate_shallow_file,
+					extra_shallow,
+					0);
+		av[1] = alternate_shallow_file;
+		argv = av;
+		i = 6;
+	} else {
+		argv = &av[2];
+		i = 4;
+	}
 	if (args->use_thin_pack)
 		argv[i++] = "--thin";
 	if (args->use_ofs_delta)
@@ -100,6 +122,10 @@ static int pack_objects(int fd, struct ref *refs, struct extra_have_objects *ext
 
 	if (finish_command(&po))
 		return -1;
+
+	if (extra_shallow->nr)
+		rollback_lock_file(&shallow_lock);
+
 	return 0;
 }
 
@@ -176,7 +202,8 @@ static int sideband_demux(int in, int out, void *data)
 int send_pack(struct send_pack_args *args,
 	      int fd[], struct child_process *conn,
 	      struct ref *remote_refs,
-	      struct extra_have_objects *extra_have)
+	      struct extra_have_objects *extra_have,
+	      struct extra_have_objects *extra_shallow)
 {
 	int in = fd[0];
 	int out = fd[1];
@@ -294,7 +321,8 @@ int send_pack(struct send_pack_args *args,
 	}
 
 	if (new_refs && cmds_sent) {
-		if (pack_objects(out, remote_refs, extra_have, args) < 0) {
+		if (pack_objects(out, remote_refs, extra_have, extra_shallow,
+				 args) < 0) {
 			for (ref = remote_refs; ref; ref = ref->next)
 				ref->status = REF_STATUS_NONE;
 			if (args->stateless_rpc)

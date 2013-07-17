@@ -64,4 +64,22 @@ EOF
 	test_cmp expect actual
 '
 
+test_expect_success 'push from shallow to shallow' '
+	(
+	cd shallow &&
+	git push ../shallow2/.git +master:refs/remotes/shallow/master
+	) &&
+	(
+	cd shallow2 &&
+	git log --format=%s shallow/master >actual &&
+	git fsck &&
+	cat <<EOF >expect &&
+5
+4
+3
+EOF
+	test_cmp expect actual
+	)
+'
+
 test_done

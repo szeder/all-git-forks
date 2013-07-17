@@ -16,6 +16,8 @@ struct send_pack_args {
 
 int send_pack(struct send_pack_args *args,
 	      int fd[], struct child_process *conn,
-	      struct ref *remote_refs, struct extra_have_objects *extra_have);
+	      struct ref *remote_refs,
+	      struct extra_have_objects *extra_have,
+	      struct extra_have_objects *extra_shallow);
 
 #endif

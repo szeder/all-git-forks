@@ -94,6 +94,7 @@ int cmd_send_pack(int argc, const char **argv, const char *prefix)
 	int fd[2];
 	struct child_process *conn;
 	struct extra_have_objects extra_have;
+	struct extra_have_objects shallow;
 	struct ref *remote_refs, *local_refs;
 	int ret;
 	int helper_status = 0;
@@ -206,8 +207,10 @@ int cmd_send_pack(int argc, const char **argv, const char *prefix)
 	}
 
 	memset(&extra_have, 0, sizeof(extra_have));
+	memset(&shallow, 0, sizeof(shallow));
 
-	get_remote_heads(fd[0], NULL, 0, &remote_refs, REF_NORMAL, &extra_have, NULL);
+	get_remote_heads(fd[0], NULL, 0, &remote_refs, REF_NORMAL,
+			 &extra_have, &shallow);
 
 	transport_verify_remote_names(nr_refspecs, refspecs);
 
@@ -227,7 +230,7 @@ int cmd_send_pack(int argc, const char **argv, const char *prefix)
 	set_ref_status_for_push(remote_refs, args.send_mirror,
 		args.force_update);
 
-	ret = send_pack(&args, fd, conn, remote_refs, &extra_have);
+	ret = send_pack(&args, fd, conn, remote_refs, &extra_have, &shallow);
 
 	if (helper_status)
 		print_helper_status(remote_refs);

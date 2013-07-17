@@ -802,7 +802,8 @@ static int git_transport_push(struct transport *transport, struct ref *remote_re
 		struct ref *tmp_refs;
 		connect_setup(transport, 1, 0);
 
-		get_remote_heads(data->fd[0], NULL, 0, &tmp_refs, REF_NORMAL, NULL, NULL);
+		get_remote_heads(data->fd[0], NULL, 0, &tmp_refs, REF_NORMAL,
+				 NULL, &data->shallow);
 		data->got_remote_heads = 1;
 	}
 
@@ -817,7 +818,7 @@ static int git_transport_push(struct transport *transport, struct ref *remote_re
 	args.porcelain = !!(flags & TRANSPORT_PUSH_PORCELAIN);
 
 	ret = send_pack(&args, data->fd, data->conn, remote_refs,
-			&data->extra_have);
+			&data->extra_have, &data->shallow);
 
 	close(data->fd[1]);
 	close(data->fd[0]);
