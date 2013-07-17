@@ -37,6 +37,7 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	char **pack_lockfile_ptr = NULL;
 	struct child_process *conn;
 	struct fetch_pack_args args;
+	struct extra_have_objects shallow;
 
 	packet_trace_identity("fetch-pack");
 
@@ -144,10 +145,11 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 				   args.verbose ? CONNECT_VERBOSE : 0);
 	}
 
-	get_remote_heads(fd[0], NULL, 0, &ref, 0, NULL, NULL);
+	memset(&shallow, 0, sizeof(shallow));
+	get_remote_heads(fd[0], NULL, 0, &ref, 0, NULL, &shallow);
 
 	ref = fetch_pack(&args, fd, conn, ref, dest,
-			 sought, nr_sought, pack_lockfile_ptr);
+			 sought, nr_sought, &shallow, pack_lockfile_ptr);
 	if (pack_lockfile) {
 		printf("lock %s\n", pack_lockfile);
 		fflush(stdout);

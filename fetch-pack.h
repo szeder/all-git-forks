@@ -32,6 +32,7 @@ struct ref *fetch_pack(struct fetch_pack_args *args,
 		       const char *dest,
 		       struct ref **sought,
 		       int nr_sought,
+		       struct extra_have_objects *shallow,
 		       char **pack_lockfile);
 
 #endif

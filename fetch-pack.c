@@ -310,7 +310,7 @@ static int find_common(struct fetch_pack_args *args,
 	}
 
 	if (is_repository_shallow())
-		write_shallow_commits(&req_buf, 1);
+		write_shallow_commits(&req_buf, 1, NULL, 0);
 	if (args->depth > 0)
 		packet_buf_write(&req_buf, "deepen %d", args->depth);
 	packet_buf_flush(&req_buf);
@@ -769,6 +769,7 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 				 int fd[2],
 				 const struct ref *orig_ref,
 				 struct ref **sought, int nr_sought,
+				 struct extra_have_objects *shallow,
 				 char **pack_lockfile)
 {
 	struct ref *ref = copy_ref_list(orig_ref);
@@ -844,8 +845,9 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 
 	if (args->stateless_rpc)
 		packet_flush(fd[1]);
-	if (args->depth > 0)
-		setup_alternate_shallow(&shallow_lock, &alternate_shallow_file);
+	if (args->depth > 0 || shallow->nr)
+		setup_alternate_shallow(&shallow_lock, &alternate_shallow_file,
+					shallow, 0);
 	if (get_pack(args, fd, pack_lockfile))
 		die("git fetch-pack: fetch failed.");
 
@@ -922,6 +924,7 @@ struct ref *fetch_pack(struct fetch_pack_args *args,
 		       const struct ref *ref,
 		       const char *dest,
 		       struct ref **sought, int nr_sought,
+		       struct extra_have_objects *shallow,
 		       char **pack_lockfile)
 {
 	struct ref *ref_cpy;
@@ -934,14 +937,28 @@ struct ref *fetch_pack(struct fetch_pack_args *args,
 		packet_flush(fd[1]);
 		die("no matching remote head");
 	}
-	ref_cpy = do_fetch_pack(args, fd, ref, sought, nr_sought, pack_lockfile);
+	ref_cpy = do_fetch_pack(args, fd, ref, sought, nr_sought,
+				shallow, pack_lockfile);
 
 	if (alternate_shallow_file) {
 		if (*alternate_shallow_file == '\0') { /* --unshallow */
 			unlink_or_warn(git_path("shallow"));
 			rollback_lock_file(&shallow_lock);
-		} else
+		} else {
+			/*
+			 *  The server is a shallow clone and it sends
+			 *  us all of its shallow grafts. Some may be
+			 *  needed if the server sends objects down to
+			 *  the bottom. Remove all unused grafts.
+			 */
+			if (shallow->nr) {
+				reprepare_packed_git();
+				setup_alternate_shallow(&shallow_lock,
+							&alternate_shallow_file,
+							shallow, 1);
+			}
 			commit_lock_file(&shallow_lock);
+		}
 	}
 
 	reprepare_packed_git();

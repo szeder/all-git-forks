@@ -453,6 +453,7 @@ struct git_transport_data {
 	int fd[2];
 	unsigned got_remote_heads : 1;
 	struct extra_have_objects extra_have;
+	struct extra_have_objects shallow;
 };
 
 static int set_git_option(struct git_transport_options *opts,
@@ -509,7 +510,8 @@ static struct ref *get_refs_via_connect(struct transport *transport, int for_pus
 
 	connect_setup(transport, for_push, 0);
 	get_remote_heads(data->fd[0], NULL, 0, &refs,
-			 for_push ? REF_NORMAL : 0, &data->extra_have, NULL);
+			 for_push ? REF_NORMAL : 0,
+			 &data->extra_have, &data->shallow);
 	data->got_remote_heads = 1;
 
 	return refs;
@@ -540,13 +542,13 @@ static int fetch_refs_via_pack(struct transport *transport,
 	if (!data->got_remote_heads) {
 		connect_setup(transport, 0, 0);
 		get_remote_heads(data->fd[0], NULL, 0, &refs_tmp, 0,
-				 NULL, NULL);
+				 NULL, &data->shallow);
 		data->got_remote_heads = 1;
 	}
 
 	refs = fetch_pack(&args, data->fd, data->conn,
 			  refs_tmp ? refs_tmp : transport->remote_refs,
-			  dest, to_fetch, nr_heads,
+			  dest, to_fetch, nr_heads, &data->shallow,
 			  &transport->pack_lockfile);
 	close(data->fd[0]);
 	close(data->fd[1]);

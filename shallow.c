@@ -183,26 +183,60 @@ static int write_one_shallow(const struct commit_graft *graft, void *cb_data)
 	return 0;
 }
 
-int write_shallow_commits(struct strbuf *out, int use_pack_protocol)
+int write_shallow_commits(struct strbuf *out, int use_pack_protocol,
+			  struct extra_have_objects *extra,
+			  int remove_unused_grafts)
 {
 	struct write_shallow_data data;
+	int i;
 	data.out = out;
 	data.use_pack_protocol = use_pack_protocol;
 	data.count = 0;
 	for_each_commit_graft(write_one_shallow, &data);
+	if (!extra)
+		return data.count;
+
+	for (i = 0; i < extra->nr; i++) {
+		if (!remove_unused_grafts && has_sha1_file(extra->array[i]))
+			/*
+			 * The server may have even shorter history
+			 * than the client (e.g. the client has
+			 * A-B-C-D but the server only has C-D). We do
+			 * NOT want to cut client's history down to
+			 * C-D simply because the server is set up
+			 * so. If we don't have "C" and the server
+			 * sends C-D to us, then we set up a graft at
+			 * "C".
+			 */
+			continue;
+		if (remove_unused_grafts && !has_sha1_file(extra->array[i]))
+			continue;
+		strbuf_addstr(out, sha1_to_hex(extra->array[i]));
+		strbuf_addch(out, '\n');
+		data.count++;
+	}
 	return data.count;
 }
 
 void setup_alternate_shallow(struct lock_file *shallow_lock,
-			     const char **alternate_shallow_file)
+			     const char **alternate_shallow_file,
+			     struct extra_have_objects *extra,
+			     int rewrite)
 {
 	struct strbuf sb = STRBUF_INIT;
 	int fd;
 
-	check_shallow_file_for_update();
-	fd = hold_lock_file_for_update(shallow_lock, git_path("shallow"),
-				       LOCK_DIE_ON_ERROR);
-	if (write_shallow_commits(&sb, 0)) {
+	if (!rewrite)
+		fd = hold_lock_file_for_update(shallow_lock,
+					       git_path("shallow"),
+					       LOCK_DIE_ON_ERROR);
+	else
+		fd = shallow_lock->fd;
+	if (write_shallow_commits(&sb, 0, extra, rewrite)) {
+		if (rewrite && (lseek(fd, 0, SEEK_SET) == -1 ||
+				ftruncate(fd, 0) == -1))
+			die_errno("unable to truncate the new shallow file %s",
+				  shallow_lock->filename);
 		if (write_in_full(fd, sb.buf, sb.len) != sb.len)
 			die_errno("failed to write to %s",
 				  shallow_lock->filename);
