@@ -1091,6 +1091,7 @@ struct extra_have_objects {
 };
 extern struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 				     struct ref **list, unsigned int flags,
+				     struct extra_have_objects *,
 				     struct extra_have_objects *);
 extern int server_supports(const char *feature);
 extern int parse_feature_request(const char *features, const char *feature);

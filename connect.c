@@ -64,7 +64,8 @@ static void die_initial_contact(int got_at_least_one_head)
  */
 struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 			      struct ref **list, unsigned int flags,
-			      struct extra_have_objects *extra_have)
+			      struct extra_have_objects *extra_have,
+			      struct extra_have_objects *shallow_points)
 {
 	int got_at_least_one_head = 0;
 
@@ -88,6 +89,15 @@ struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 
 		if (len > 4 && !prefixcmp(buffer, "ERR "))
 			die("remote error: %s", buffer + 4);
+
+		if (len == 48 && !prefixcmp(buffer, "shallow ")) {
+			if (get_sha1_hex(buffer + 8, old_sha1))
+				die("protocol error: expected shallow sha, got '%s'", buffer + 8);
+			if (!shallow_points)
+				die("repository on the other end cannot be shallow");
+			add_extra_have(shallow_points, old_sha1);
+			continue;
+		}
 
 		if (len < 42 || get_sha1_hex(buffer, old_sha1) || buffer[40] != ' ')
 			die("protocol error: expected sha/ref, got '%s'", buffer);
