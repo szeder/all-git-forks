@@ -212,6 +212,9 @@ int send_pack(struct send_pack_args *args,
 		return 0;
 	}
 
+	if (!args->dry_run && !args->stateless_rpc)
+		advertise_shallow_grafts(out);
+
 	/*
 	 * Finally, tell the other end!
 	 */

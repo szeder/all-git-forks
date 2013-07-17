@@ -41,6 +41,10 @@ static int auto_gc = 1;
 static const char *head_name;
 static void *head_name_to_free;
 static int sent_capabilities;
+static int shallow_changed;
+static const char* alternate_shallow_file;
+static struct lock_file shallow_lock;
+static struct extra_have_objects shallow;
 
 static enum deny_action parse_deny_action(const char *var, const char *value)
 {
@@ -751,6 +755,13 @@ static void execute_commands(struct command *commands, const char *unpacker_erro
 	}
 }
 
+static void add_extra_have(struct extra_have_objects *extra, unsigned char *sha1)
+{
+	ALLOC_GROW(extra->array, extra->nr + 1, extra->alloc);
+	hashcpy(&(extra->array[extra->nr][0]), sha1);
+	extra->nr++;
+}
+
 static struct command *read_head_info(void)
 {
 	struct command *commands = NULL;
@@ -765,6 +776,17 @@ static struct command *read_head_info(void)
 		line = packet_read_line(0, &len);
 		if (!line)
 			break;
+
+		if (len == 48 && !prefixcmp(line, "shallow ")) {
+			if (get_sha1_hex(line + 8, old_sha1))
+				die("protocol error: expected shallow sha, got '%s'", line + 8);
+			if (!has_sha1_file(old_sha1)) {
+				add_extra_have(&shallow, old_sha1);
+				shallow_changed = 1;
+			}
+			continue;
+		}
+
 		if (len < 83 ||
 		    line[40] != ' ' ||
 		    line[81] != ' ' ||
@@ -827,6 +849,12 @@ static const char *unpack(int err_fd)
 			    ? transfer_fsck_objects
 			    : 0);
 
+	if (shallow_changed)
+		setup_alternate_shallow(&shallow_lock,
+					&alternate_shallow_file,
+					&shallow, 0);
+
+
 	hdr_err = parse_pack_header(&hdr);
 	if (hdr_err) {
 		if (err_fd > 0)
@@ -854,9 +882,8 @@ static const char *unpack(int err_fd)
 		child.err = err_fd;
 		child.git_cmd = 1;
 		code = run_command(&child);
-		if (!code)
-			return NULL;
-		return "unpack-objects abnormal exit";
+		if (code)
+			return "unpack-objects abnormal exit";
 	} else {
 		const char *keeper[7];
 		int s, status, i = 0;
@@ -887,12 +914,18 @@ static const char *unpack(int err_fd)
 		pack_lockfile = index_pack_lockfile(ip.out);
 		close(ip.out);
 		status = finish_command(&ip);
-		if (!status) {
-			reprepare_packed_git();
-			return NULL;
-		}
-		return "index-pack abnormal exit";
+		if (status)
+			return "index-pack abnormal exit";
+		reprepare_packed_git();
 	}
+
+	if (shallow_changed) {
+		setup_alternate_shallow(&shallow_lock,
+					&alternate_shallow_file,
+					&shallow, 1);
+		commit_lock_file(&shallow_lock);
+	}
+	return NULL;
 }
 
 static const char *unpack_with_sideband(void)
