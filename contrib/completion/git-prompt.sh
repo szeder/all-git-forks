@@ -322,12 +322,18 @@ __git_ps1 ()
 	local total=""
 	if [ -d "$g/rebase-merge" ]; then
 		read b 2>/dev/null <"$g/rebase-merge/head-name"
-		read step 2>/dev/null <"$g/rebase-merge/msgnum"
-		read total 2>/dev/null <"$g/rebase-merge/end"
-		if [ -f "$g/rebase-merge/interactive" ]; then
-			r="|REBASE-i"
+		if [ -f "$g/rebase-merge/cherrypick" ]; then
+			read total 2>/dev/null <"$g/sequencer/total"
+			read step 2>/dev/null <"$g/sequencer/step"
+			r="|REBASE"
 		else
-			r="|REBASE-m"
+			read step 2>/dev/null <"$g/rebase-merge/msgnum"
+			read total 2>/dev/null <"$g/rebase-merge/end"
+			if [ -f "$g/rebase-merge/interactive" ]; then
+				r="|REBASE-i"
+			else
+				r="|REBASE-m"
+			fi
 		fi
 	else
 		if [ -d "$g/rebase-apply" ]; then
