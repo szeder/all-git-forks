@@ -1215,7 +1215,7 @@ static int verify_uptodate_1(const struct cache_entry *ce,
 	else if (o->reset || ce_uptodate(ce))
 		return 0;
 
-	if (!lstat(ce->name, &st)) {
+	if (!fast_lstat(ce->name, &st)) {
 		int flags = CE_MATCH_IGNORE_VALID|CE_MATCH_IGNORE_SKIP_WORKTREE;
 		unsigned changed = ie_match_stat(o->src_index, ce, &st, flags);
 		if (!changed)
@@ -1432,13 +1432,13 @@ static int verify_absent_1(const struct cache_entry *ce,
 		char path[PATH_MAX + 1];
 		memcpy(path, ce->name, len);
 		path[len] = 0;
-		if (lstat(path, &st))
+		if (fast_lstat(path, &st))
 			return error("cannot stat '%s': %s", path,
 					strerror(errno));
 
 		return check_ok_to_remove(path, len, DT_UNKNOWN, NULL, &st,
 				error_type, o);
-	} else if (lstat(ce->name, &st)) {
+	} else if (fast_lstat(ce->name, &st)) {
 		if (errno != ENOENT)
 			return error("cannot stat '%s': %s", ce->name,
 				     strerror(errno));
@@ -1852,7 +1852,7 @@ int oneway_merge(const struct cache_entry * const *src,
 		int update = 0;
 		if (o->reset && o->update && !ce_uptodate(old) && !ce_skip_worktree(old)) {
 			struct stat st;
-			if (lstat(old->name, &st) ||
+			if (fast_lstat(old->name, &st) ||
 			    ie_match_stat(o->src_index, old, &st, CE_MATCH_IGNORE_VALID|CE_MATCH_IGNORE_SKIP_WORKTREE))
 				update |= CE_UPDATE;
 		}

@@ -1,22 +1,9 @@
-#define CYGWIN_C
 #define WIN32_LEAN_AND_MEAN
 #include <sys/stat.h>
 #include <sys/errno.h>
 #include "win32.h"
 #include "../git-compat-util.h"
 #include "../cache.h" /* to read configuration */
-
-/*
- * Return POSIX permission bits, regardless of core.ignorecygwinfstricks
- */
-int cygwin_get_st_mode_bits(const char *path, int *mode)
-{
-	struct stat st;
-	if (lstat(path, &st) < 0)
-		return -1;
-	*mode = st.st_mode;
-	return 0;
-}
 
 static inline void filetime_to_timespec(const FILETIME *ft, struct timespec *ts)
 {
@@ -85,29 +72,23 @@ static int do_stat(const char *file_name, struct stat *buf, stat_fn_t cygstat)
 	return -1;
 }
 
-/* We provide our own lstat/stat functions, since the provided Cygwin versions
- * of these functions are too slow. These stat functions are tailored for Git's
- * usage, and therefore they are not meant to be complete and correct emulation
- * of lstat/stat functionality.
+/* We provide our own lstat function, since the provided Cygwin versions of
+ * the stat functions are too slow. This lstat function is tailored for Git's
+ * usage, and therefore it is not meant to be complete and correct emulation
+ * of lstat functionality.
  */
 static int cygwin_lstat(const char *path, struct stat *buf)
 {
 	return do_stat(path, buf, lstat);
 }
 
-static int cygwin_stat(const char *path, struct stat *buf)
-{
-	return do_stat(path, buf, stat);
-}
-
-
 /*
- * At start up, we are trying to determine whether Win32 API or cygwin stat
- * functions should be used. The choice is determined by core.ignorecygwinfstricks.
+ * At start up, we are trying to determine whether Win32 API or cygwin lstat
+ * function should be used. The choice is determined by core.ignorecygwinfstricks.
  * Reading this option is not always possible immediately as git_dir may
- * not be set yet. So until it is set, use cygwin lstat/stat functions.
+ * not be set yet. So until it is set, use the cygwin lstat function.
  * However, if core.filemode is set, we must use the Cygwin posix
- * stat/lstat as the Windows stat functions do not determine posix filemode.
+ * lstat as the Windows lstat function does not determine posix filemode.
  *
  * Note that git_cygwin_config() does NOT call git_default_config() and this
  * is deliberate.  Many commands read from config to establish initial
@@ -130,21 +111,13 @@ static int git_cygwin_config(const char *var, const char *value, void *cb)
 static int init_stat(void)
 {
 	if (have_git_dir() && git_config(git_cygwin_config,NULL)) {
-		if (!core_filemode && native_stat) {
-			cygwin_stat_fn = cygwin_stat;
+		if (!core_filemode && native_stat)
 			cygwin_lstat_fn = cygwin_lstat;
-		} else {
-			cygwin_stat_fn = stat;
+		else
 			cygwin_lstat_fn = lstat;
-		}
 		return 0;
 	}
 	return 1;
-}
-
-static int cygwin_stat_stub(const char *file_name, struct stat *buf)
-{
-	return (init_stat() ? stat : *cygwin_stat_fn)(file_name, buf);
 }
 
 static int cygwin_lstat_stub(const char *file_name, struct stat *buf)
@@ -152,6 +125,5 @@ static int cygwin_lstat_stub(const char *file_name, struct stat *buf)
 	return (init_stat() ? lstat : *cygwin_lstat_fn)(file_name, buf);
 }
 
-stat_fn_t cygwin_stat_fn = cygwin_stat_stub;
 stat_fn_t cygwin_lstat_fn = cygwin_lstat_stub;
 

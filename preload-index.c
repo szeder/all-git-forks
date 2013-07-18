@@ -57,7 +57,7 @@ static void *preload_thread(void *_data)
 			continue;
 		if (threaded_has_symlink_leading_path(&cache, ce->name, ce_namelen(ce)))
 			continue;
-		if (lstat(ce->name, &st))
+		if (fast_lstat(ce->name, &st))
 			continue;
 		if (ie_match_stat(index, ce, &st, CE_MATCH_RACY_IS_DIRTY))
 			continue;
