@@ -87,6 +87,10 @@ q_to_cr () {
 	tr Q '\015'
 }
 
+cr_to_q () {
+	tr '\015' Q
+}
+
 q_to_tab () {
 	tr Q '\011'
 }
