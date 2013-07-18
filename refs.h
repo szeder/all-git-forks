@@ -27,6 +27,9 @@ struct ref_lock {
  */
 #define REF_ISBROKEN 0x04
 
+/* Reference name is given by a directory containing a file named "~0" */
+#define REF_ISDIR 0x08
+
 /*
  * The signature for the callback function for the for_each_*()
  * functions below.  The memory pointed to by the refname and sha1

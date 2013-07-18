@@ -1421,7 +1421,10 @@ static const char *do_resolve_ref_unsafe(const char *refname, unsigned char *sha
 		/* Is it a directory? */
 		if (S_ISDIR(st.st_mode)) {
 			strcat(path, "/~0");
-			if(lstat(path, &st) != 0 || !S_ISREG(st.st_mode)) {
+			if(lstat(path, &st) == 0 && S_ISREG(st.st_mode)) {
+				if (flag)
+					*flag |= REF_ISDIR;
+			} else {
 				errno = EISDIR;
 				return NULL;
 			}
@@ -1436,6 +1439,8 @@ static const char *do_resolve_ref_unsafe(const char *refname, unsigned char *sha
 			if (errno == ENOENT) {
 				/* remove "/~0" at the end, if added */
 				path[pathlen] = '\0';
+				if (flag)
+					*flag &= ~REF_ISDIR;
 				/* inconsistent with lstat; retry */
 				goto stat_ref;
 			} else
@@ -2128,7 +2133,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 	}
 	lock->ref_name = xstrdup(refname);
 	lock->orig_ref_name = xstrdup(orig_refname);
-	ref_file = git_path("%s", refname);
+	ref_file = git_path((type & REF_ISDIR) ? "%s/~0" : "%s", refname);
 	if (missing)
 		lock->force_write = 1;
 	if ((flags & REF_NODEREF) && (type & REF_ISSYMREF))
@@ -2511,7 +2516,7 @@ int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
 	 */
 	ret |= repack_without_ref(lock->ref_name);
 
-	unlink_or_warn(git_path("logs/%s", lock->ref_name));
+	unlink_or_warn(git_path((flag & REF_ISDIR) ? "logs/%s/~0" : "logs/%s", lock->ref_name));
 	clear_loose_ref_cache(&ref_cache);
 	unlock_ref(lock);
 	return ret;
