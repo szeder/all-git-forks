@@ -82,6 +82,7 @@ int match_stat_data(const struct stat_data *sd, struct stat *st)
 		changed |= CTIME_CHANGED;
 #endif
 
+#if !defined (__CYGWIN__)
 	if (check_stat) {
 		if (sd->sd_uid != (unsigned int) st->st_uid ||
 			sd->sd_gid != (unsigned int) st->st_gid)
@@ -89,6 +90,7 @@ int match_stat_data(const struct stat_data *sd, struct stat *st)
 		if (sd->sd_ino != (unsigned int) st->st_ino)
 			changed |= INODE_CHANGED;
 	}
+#endif
 
 #ifdef USE_STDEV
 	/*
