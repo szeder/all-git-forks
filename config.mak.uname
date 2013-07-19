@@ -160,10 +160,10 @@ ifeq ($(uname_O),Cygwin)
 		NO_IPV6 = YesPlease
 		NO_TRUSTABLE_FILEMODE = UnfortunatelyYes
 		OLD_ICONV = UnfortunatelyYes
+		NO_THREAD_SAFE_PREAD = YesPlease
 	else
 		NO_REGEX = UnfortunatelyYes
 	endif
-	NO_THREAD_SAFE_PREAD = YesPlease
 	NEEDS_LIBICONV = YesPlease
 	NO_FAST_WORKING_DIRECTORY = UnfortunatelyYes
 	NO_ST_BLOCKS_IN_STRUCT_STAT = YesPlease
