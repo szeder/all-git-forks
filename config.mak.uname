@@ -164,7 +164,6 @@ ifeq ($(uname_O),Cygwin)
 	NO_THREAD_SAFE_PREAD = YesPlease
 	NEEDS_LIBICONV = YesPlease
 	NO_FAST_WORKING_DIRECTORY = UnfortunatelyYes
-	NO_TRUSTABLE_FILEMODE = UnfortunatelyYes
 	NO_ST_BLOCKS_IN_STRUCT_STAT = YesPlease
 	NO_REGEX = UnfortunatelyYes
 	# There are conflicting reports about this.
