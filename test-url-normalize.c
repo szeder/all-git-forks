@@ -9,7 +9,7 @@ int main()
 
 #include "http.c"
 
-#define url_normalize(u) http_options_url_normalize(u)
+#define url_normalize(u,i) http_options_url_normalize(u,i)
 
 int main(int argc, char **argv)
 {
@@ -40,21 +40,22 @@ int main(int argc, char **argv)
 		die(usage);
 
 	if (argc == 2) {
-		url1 = url_normalize(argv[1]);
+		struct url_info info;
+		url1 = url_normalize(argv[1], &info);
 		if (!url1)
 			return 1;
 		if (opt_p)
 			printf("%s\n", url1);
 		if (opt_l)
-			printf("%u\n", (unsigned)strlen(url1));
+			printf("%u\n", (unsigned)info.url_len);
 		return 0;
 	}
 
 	if (opt_p || opt_l)
 		die(usage);
 
-	url1 = url_normalize(argv[1]);
-	url2 = url_normalize(argv[2]);
+	url1 = url_normalize(argv[1], NULL);
+	url2 = url_normalize(argv[2], NULL);
 	return (url1 && url2 && !strcmp(url1, url2)) ? 0 : 1;
 }
 
