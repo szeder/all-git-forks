@@ -23,7 +23,7 @@ struct conn {
 };
 
 static const char *user_agent;
-static struct strbuf url;
+static struct strbuf url = STRBUF_INIT;
 static struct credential *svn_auth;
 struct conn main_connection;
 

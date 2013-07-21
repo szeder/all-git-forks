@@ -371,6 +371,7 @@ static void parse_authors(void) {
 
 		user_begin = p;
 		p += strcspn(p, "#\n=");
+		user_end = p;
 
 		if (*p == '#') {
 			/* full line comment */
