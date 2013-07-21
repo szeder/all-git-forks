@@ -20,6 +20,7 @@
 
 int svn_max_requests = 3;
 int svndbg = 1;
+static struct strbuf gitroot = STRBUF_INIT;
 static const char *url, *relpath, *authors_file, *empty_log_message = "";
 static struct strbuf refdir = STRBUF_INIT;
 static struct strbuf uuid = STRBUF_INIT;
@@ -94,6 +95,14 @@ static int config(const char *key, const char *value, void *dummy) {
 			} else if (!strcmp(sub, ".exclude")) {
 				if (!value) return -1;
 				string_list_insert(&relexcludes, value);
+				return 0;
+
+			} else if (!strcmp(sub, ".gitpath")) {
+				strbuf_reset(&gitroot);
+				if (value) {
+					strbuf_addstr(&gitroot, value);
+					clean_svn_path(&gitroot);
+				}
 				return 0;
 			}
 		}
@@ -842,6 +851,8 @@ static void start_helper() {
 
 	if (svndbg >= 2)
 		fprintf(helper_file, "verbose\n");
+	if (gitroot.len)
+		fprintf(helper_file, "chroot %d:%s\n", (int) gitroot.len, gitroot.buf);
 }
 
 static void stop_helper() {
@@ -1087,11 +1098,22 @@ static void fetch_updates(void) {
 
 
 
+static struct svnref *push_ref;
 
+static void push_paths(const char **path, const char **svn) {
+	static struct strbuf sbuf = STRBUF_INIT, gbuf = STRBUF_INIT;
+	strbuf_reset(&gbuf);
+	strbuf_addstr(&gbuf, *path);
+	clean_svn_path(&gbuf);
+	*path = gbuf.buf;
 
-static int pushoff;
+	strbuf_reset(&sbuf);
+	strbuf_addstr(&sbuf, push_ref->path);
+	strbuf_addstr(&sbuf, gbuf.buf + gitroot.len);
+	*svn = sbuf.buf;
+}
 
-static void send_file(const char *path, const unsigned char *sha1, int create) {
+static void send_file(const char *path, const char *svnpath, const unsigned char *sha1) {
 	struct strbuf diff = STRBUF_INIT;
 	struct strbuf buf = STRBUF_INIT;
 	char *data;
@@ -1099,12 +1121,13 @@ static void send_file(const char *path, const unsigned char *sha1, int create) {
 	enum object_type type;
 	struct cache_entry* ce;
 	unsigned char nsha1[20];
+	int create;
 
 	data = read_sha1_file(sha1, &type, &sz);
 	if (type != OBJ_BLOB)
 		die("unexpected object type for %s", sha1_to_hex(sha1));
 
-	if (svn_eol != EOL_UNSET && convert_to_working_tree(path + pushoff + 1, data, sz, &buf)) {
+	if (svn_eol != EOL_UNSET && convert_to_working_tree(path+1, data, sz, &buf)) {
 		free(data);
 		data = strbuf_detach(&buf, &sz);
 
@@ -1115,11 +1138,14 @@ static void send_file(const char *path, const unsigned char *sha1, int create) {
 		sha1 = nsha1;
 	}
 
-	ce = make_cache_entry(create_ce_mode(0644), sha1, path + pushoff + 1, 0, 0);
-	add_index_entry(&svn_index, ce, ADD_CACHE_OK_TO_ADD);
+	create = index_name_exists(&svn_index, path+gitroot.len+1, strlen(path+gitroot.len+1), 0) == NULL;
+
+	ce = make_cache_entry(create_ce_mode(0644), sha1, path+gitroot.len+1, 0, 0);
+	if (!ce) die("make_cache_entry failed for '%s'", path+gitroot.len+1);
+	add_index_entry(&svn_index, ce, ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
 
 	create_svndiff(&diff, data, sz);
-	proto->send_file(path, &diff, create);
+	proto->send_file(svnpath, &diff, create);
 
 	free(data);
 	strbuf_release(&diff);
@@ -1136,22 +1162,22 @@ static void change(struct diff_options* op,
 		unsigned odsubmodule,
 		unsigned ndsubmodule)
 {
-	struct cache_entry *ce;
+	const char *svnpath;
+
+	push_paths(&path, &svnpath);
 
 	if (svndbg) fprintf(stderr, "change mode %x/%x sha1 %.10s/%.10s path %s\n",
 			omode, nmode, sha1_to_hex(osha1), sha1_to_hex(nsha1), path);
 
-	/* dont care about changed directories */
-	if (!S_ISREG(nmode)) return;
+	if (prefixcmp(path, gitroot.buf))
+		die("change called for '%s' outside gitroot '%s'", path, gitroot.buf);
 
-	/* does the file exist in svn and not just git */
-	ce = index_name_exists(&svn_index, path + pushoff + 1, strlen(path+pushoff+1), 0);
-	if (!ce) return;
-
-	send_file(path, nsha1, 0);
+	if (S_ISREG(nmode) && prefixcmp(strrchr(path, '/'), "/.git")) {
+		send_file(path, svnpath, nsha1);
+	}
 
 	/* TODO make this actually use diffcore */
-	diff_change(op, omode, nmode, osha1, nsha1, osha1_valid, nsha1_valid, path, odsubmodule, ndsubmodule);
+	diff_change(op, omode, nmode, osha1, nsha1, osha1_valid, nsha1_valid, path+1, odsubmodule, ndsubmodule);
 }
 
 static void addremove(struct diff_options *op,
@@ -1162,28 +1188,37 @@ static void addremove(struct diff_options *op,
 		const char *path,
 		unsigned dsubmodule)
 {
+	const char *svnpath;
+	push_paths(&path, &svnpath);
+
 	if (svndbg) fprintf(stderr, "addrm %c mode %x sha1 %.10s path %s\n",
 			addrm, mode, sha1_to_hex(sha1), path);
 
-	if (addrm == '-') {
+	if (prefixcmp(path, gitroot.buf))
+		die("addremove called for '%s' outside gitroot '%s'", path, gitroot.buf);
+
+	if (addrm == '-' && !remove_path_from_index(&svn_index, path+gitroot.len+1)) {
 		/* only push the delete if we have something to remove
 		 * in svn */
-		if (!remove_path_from_index(&svn_index, path + pushoff + 1)) {
-			proto->delete(path);
-		}
+		proto->delete(svnpath);
 
-	} else if (S_ISDIR(mode)) {
-		proto->mkdir(path);
+	} else if (addrm == '+' && S_ISDIR(mode) && strcmp(path, gitroot.buf)) {
+		/* the creation of the root of the branch in svn is
+		 * handled when starting the push */
+		proto->mkdir(svnpath);
 
-	} else if (prefixcmp(strrchr(path, '/'), "/.git")) {
+	} else if (addrm == '+' && S_ISREG(mode) && prefixcmp(strrchr(path, '/'), "/.git")) {
 		/* files beginning with .git eg .gitempty,
 		 * .gitattributes, etc are filtered from svn
+		 *
+		 * gitpath can change where a file already exists in svn
+		 * from a different gitpath, but git sees it as an add
 		 */
-		send_file(path, sha1, 1);
+		send_file(path, svnpath, sha1);
 	}
 
 	/* TODO use diffcore to track renames */
-	diff_addremove(op, addrm, mode, sha1, sha1_valid, path, dsubmodule);
+	diff_addremove(op, addrm, mode, sha1, sha1_valid, path+1, dsubmodule);
 }
 
 static const char *push_message(struct object *obj, int use_cmt_msg) {
@@ -1341,6 +1376,8 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
 	struct mergeinfo *mergeinfo;
 	struct commit *svnbase, *cmt;
 	struct diff_options op;
+	struct pathspec_item ps_item = {gitroot.buf+1, gitroot.len-1, 0};
+	struct pathspec gitpathspec = {NULL, 1, 0, 0, 0, &ps_item};
 
 	cmt = (struct commit*) deref_tag(obj, NULL, 0);
 	if (parse_commit(cmt) || cmt->object.type != OBJ_COMMIT)
@@ -1401,17 +1438,16 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
 	DIFF_OPT_SET(&op, IGNORE_SUBMODULES);
 	DIFF_OPT_SET(&op, TREE_IN_RECURSIVE);
 
-	strbuf_reset(&buf);
-	strbuf_addstr(&buf, r->path);
-	strbuf_addch(&buf, '/');
+	if (gitroot.len)
+		op.pathspec = gitpathspec;
 
-	pushoff = buf.len - 1;
+	push_ref = r;
 
 	if (svnbase) {
-		if (diff_tree_sha1(svn_commit(svnbase)->object.sha1, obj->sha1, buf.buf, &op))
+		if (diff_tree_sha1(svn_commit(svnbase)->object.sha1, obj->sha1, "", &op))
 			die("diff tree failed");
 	} else {
-		if (diff_root_tree_sha1(obj->sha1, buf.buf, &op))
+		if (diff_root_tree_sha1(obj->sha1, "", &op))
 			die("diff tree failed");
 	}
 

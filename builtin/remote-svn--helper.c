@@ -9,6 +9,7 @@
 static struct index_state svn_index;
 static int svn_eol = EOL_UNSET;
 static int verbose;
+static struct strbuf gitroot = STRBUF_INIT;
 
 static void trypause(void) {
 	static int env = -1;
@@ -133,32 +134,35 @@ static void read_command(void) {
 }
 
 static void add_dir(const char *name) {
-	struct strbuf buf = STRBUF_INIT;
+	static struct strbuf path = STRBUF_INIT;
 	struct cache_entry* ce;
 	unsigned char sha1[20];
 	char *p;
 
-	if (*name == '/')
-		name++;
-
-	p = strrchr(name, '/');
 	/* add ./.gitempty */
 	if (write_sha1_file(NULL, 0, "blob", sha1))
 		die("failed to write .gitempty object");
-	strbuf_addstr(&buf, name);
-	strbuf_addstr(&buf, "/.gitempty");
-	ce = make_cache_entry(create_ce_mode(0644), sha1, buf.buf, 0, 0);
-	add_index_entry(&the_index, ce, ADD_CACHE_OK_TO_ADD);
 
-	/* remove ../.gitempty */
-	if (p) {
-		strbuf_reset(&buf);
-		strbuf_add(&buf, name, p - name);
-		strbuf_addstr(&buf, "/.gitempty");
-		remove_file_from_index(&the_index, buf.buf);
+	strbuf_reset(&path);
+	strbuf_add(&path, gitroot.buf, gitroot.len);
+	strbuf_addstr(&path, name);
+
+	/* no need to add a .gitempty if in the root of the git repo */
+	if (path.len) {
+		strbuf_addstr(&path, "/.gitempty");
+		ce = make_cache_entry(create_ce_mode(0644), sha1, path.buf+1, 0, 0);
+		if (!ce) die("make_cache_entry failed for path '%s'", path.buf);
+		add_index_entry(&the_index, ce, ADD_CACHE_OK_TO_ADD);
 	}
 
-	strbuf_release(&buf);
+	/* remove ../.gitempty */
+	if ((p = strrchr(name, '/')) != NULL) {
+		strbuf_reset(&path);
+		strbuf_add(&path, gitroot.buf, gitroot.len);
+		strbuf_add(&path, name, p - name);
+		strbuf_addstr(&path, "/.gitempty");
+		remove_file_from_index(&the_index, path.buf+1);
+	}
 }
 
 static void checkmd5(const char *hash, const void *data, size_t sz) {
@@ -177,32 +181,27 @@ static void checkmd5(const char *hash, const void *data, size_t sz) {
 }
 
 static void change_file(
-		int add, const char *name,
+		int isadd, const char *name,
 		struct strbuf *diff,
 		const char *before, const char *after)
 {
+	static struct strbuf path = STRBUF_INIT;
 	struct strbuf buf = STRBUF_INIT;
 	struct cache_entry* ce;
 	void *src = NULL;
 	unsigned long srcn = 0;
 	unsigned char sha1[20];
-	char* p;
 
-	if (*name == '/')
-		name++;
+	/* remove ./.gitempty */
+	strbuf_reset(&path);
+	strbuf_add(&path, gitroot.buf, gitroot.len);
+	strbuf_add(&path, name, strrchr(name, '/') - name);
+	strbuf_addstr(&path, "/.gitempty");
+	remove_file_from_index(&the_index, path.buf+1);
 
-	p = strrchr(name, '/');
-	if (p) {
-		/* remove ./.gitempty */
-		strbuf_reset(&buf);
-		strbuf_add(&buf, name, p - name);
-		strbuf_addstr(&buf, "/.gitempty");
-		remove_file_from_index(&the_index, buf.buf);
-	}
-
-	if (!add) {
+	if (!isadd) {
 		enum object_type type;
-		ce = index_name_exists(&svn_index, name, strlen(name), 0);
+		ce = index_name_exists(&svn_index, name+1, strlen(name)-1, 0);
 		if (!ce) goto err;
 
 		src = read_sha1_file(ce->sha1, &type, &srcn);
@@ -220,18 +219,22 @@ static void change_file(
 	if (write_sha1_file(buf.buf, buf.len, "blob", sha1))
 		die_errno("write blob");
 
-	ce = make_cache_entry(create_ce_mode(0644), sha1, name, 0, 0);
+	ce = make_cache_entry(create_ce_mode(0644), sha1, name+1, 0, 0);
 	if (!ce) die("make_cache_entry failed for path '%s'", name);
 	add_index_entry(&svn_index, ce, ADD_CACHE_OK_TO_ADD);
 
-	if (convert_to_git(name, buf.buf, buf.len, &buf, SAFE_CRLF_FALSE)) {
+	strbuf_reset(&path);
+	strbuf_add(&path, gitroot.buf, gitroot.len);
+	strbuf_addstr(&path, name);
+
+	if (convert_to_git(path.buf+1, buf.buf, buf.len, &buf, SAFE_CRLF_FALSE)) {
 		if (write_sha1_file(buf.buf, buf.len, "blob", sha1)) {
 			die_errno("write blob");
 		}
 	}
 
-	ce = make_cache_entry(create_ce_mode(0644), sha1, name, 0, 0);
-	if (!ce) die("make_cache_entry failed for path '%s'", name);
+	ce = make_cache_entry(create_ce_mode(0644), sha1, path.buf+1, 0, 0);
+	if (!ce) die("make_cache_entry failed for path '%s'", path.buf);
 	add_index_entry(&the_index, ce, ADD_CACHE_OK_TO_ADD);
 
 	strbuf_release(&buf);
@@ -257,6 +260,7 @@ static void checkout(const char *ref, int rev) {
 }
 
 static void reset(void) {
+	static struct strbuf path = STRBUF_INIT;
 	unsigned char sha1[20];
 
 	git_checkout = NULL;
@@ -271,11 +275,14 @@ static void reset(void) {
 		static const char text[] = "* text=auto\n";
 
 		if (write_sha1_file(text, strlen(text), "blob", sha1))
-			return;
+			die("write_sha1_file failed to for initial .gitattributes");
 
-		ce = make_cache_entry(create_ce_mode(0644), sha1, ".gitattributes", 0, 0);
-		if (!ce) return;
+		strbuf_reset(&path);
+		strbuf_add(&path, gitroot.buf, gitroot.len);
+		strbuf_addstr(&path, "/.gitattributes");
 
+		ce = make_cache_entry(create_ce_mode(0644), sha1, path.buf+1, 0, 0);
+		if (!ce) die("make_cache_entry failed for path '%s'", path.buf);
 		add_index_entry(&the_index, ce, ADD_CACHE_OK_TO_ADD);
 	}
 }
@@ -500,6 +507,11 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 			read_command();
 			verbose = 1;
 
+		} else if (!strcmp(cmd.buf, "chroot")) {
+			read_string(&gitroot);
+			clean_svn_path(&gitroot);
+			read_command();
+
 		} else if (!strcmp(cmd.buf, "checkout")) {
 			int rev;
 			read_string(&ref);
@@ -560,21 +572,25 @@ int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 
 		} else if (!strcmp(cmd.buf, "add-dir")) {
 			read_string(&path);
+			clean_svn_path(&path);
 			read_command();
 
 			add_dir(path.buf);
 
 		} else if (!strcmp(cmd.buf, "delete-entry")) {
 			read_string(&path);
+			clean_svn_path(&path);
 			read_command();
 
 			if (path.len) {
 				remove_path_from_index(&svn_index, path.buf+1);
+				strbuf_insert(&path, 0, gitroot.buf, gitroot.len);
 				remove_path_from_index(&the_index, path.buf+1);
 			}
 
 		} else if (!strcmp(cmd.buf, "add-file") || !strcmp(cmd.buf, "open-file")) {
 			read_string(&path);
+			clean_svn_path(&path);
 			read_string(&before);
 			read_string(&after);
 			read_string(&diff);

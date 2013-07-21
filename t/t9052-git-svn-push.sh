@@ -149,5 +149,18 @@ test_expect_success 'big file' '
 	cd ..
 '
 
+test_expect_success 'gitpath' '
+	git config remote.svn.gitpath svn &&
+	mkdir svn &&
+	echo foo > svn/file.txt &&
+	git add svn/file.txt &&
+	git commit -a -m "add svn/file.txt" &&
+	git push -v svn master &&
+	cd svnco &&
+	svn_cmd up &&
+	test_file file.txt "foo" &&
+	cd ..
+'
+
 test_done
 

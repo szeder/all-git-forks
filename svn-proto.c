@@ -854,13 +854,7 @@ static void *update_worker(void *p) {
 				/* path, parent-token, child-token, [copy-path, copy-rev] */
 				if (read_string(c, &name)) malformed_die(c);
 				relative_svn_path(&name, skip);
-
-				if (name.len) {
-					helperf(cmt, "add-dir %d:%s\n",
-							(int) name.len,
-							name.buf);
-				}
-
+				helperf(cmt, "add-dir %d:%s\n", (int) name.len, name.buf);
 				if (read_command_end(c)) malformed_die(c);
 
 			} else if (!strcmp(s, "open-file")) {

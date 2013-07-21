@@ -31,5 +31,5 @@ test_expect_success 'fetch merge' '
 	svn_cmd merge $svnurl/Branches/feature &&
 	svn_cmd ci -m "pull feature into trunk" &&
 	cd .. &&
-	GIT_REMOTE_SVN_HELPER_PAUSE=1 git fetch -v svn
+	git fetch -v svn
 '
