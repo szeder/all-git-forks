@@ -15,7 +15,7 @@ test_expect_success 'init push' '
 	git push -v svn master &&
 	cd svnco &&
 	svn_cmd up &&
-	test_svn_subject "initial commit" &&
+	test_svn_subject 1 "initial commit" &&
 	test_svn_author committer &&
 	test_file file.txt "foo" &&
 	cd .. &&
@@ -38,12 +38,12 @@ test_expect_success 'multiple commits' '
 	cmp file.txt file_test.txt &&
 	cd svnco &&
 	svn_cmd up -r 2 &&
-	test_svn_subject "second commit" &&
+	test_svn_subject 1 "second commit" &&
 	test_svn_author committer &&
 	cmp file.txt ../file_test.txt &&
 	test ! -e a &&
 	svn_cmd up -r 3 &&
-	test_svn_subject "third commit" &&
+	test_svn_subject 1 "third commit" &&
 	test_svn_author committer &&
 	test_file a/test "fefifofum" &&
 	cd ..
@@ -123,7 +123,7 @@ test_expect_success 'modify file' '
 	git push -v svn master &&
 	cd svnco &&
 	svn_cmd up &&
-	test_svn_subject "edit1" &&
+	test_svn_subject 1 "edit1" &&
 	test_file file.txt "foo" &&
 	cd .. &&
 	echo "bar" > file.txt &&
@@ -131,7 +131,7 @@ test_expect_success 'modify file' '
 	git push -v svn master &&
 	cd svnco &&
 	svn_cmd up &&
-	test_svn_subject "edit2" &&
+	test_svn_subject 1 "edit2" &&
 	test_file file.txt "bar" &&
 	cd ..
 '

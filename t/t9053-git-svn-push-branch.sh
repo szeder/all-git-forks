@@ -40,7 +40,7 @@ test_expect_success 'init trunk' '
 	cd svnco &&
 	svn_cmd up &&
 	test -d Trunk &&
-	test_svn_subject "init trunk" &&
+	test_svn_subject 1 "init trunk" &&
 	test_svn_author committer &&
 	test_file Trunk/file.txt "foo" &&
 	git show-ref | grep Trunk.2 &&
@@ -61,8 +61,8 @@ test_expect_success 'modify file' '
 	cd svnco &&
 	svn_cmd up &&
 	cd Trunk &&
-	test_svn_subject "git edit" &&
-	test_svn_subject "svn edit" -r PREV &&
+	test_svn_subject 1 "git edit" &&
+	test_svn_subject 2 "svn edit" &&
 	test_file file.txt "foo" &&
 	cd ../..
 '
@@ -82,8 +82,8 @@ test_expect_success 'modify file2' '
 	cd svnco &&
 	svn_cmd up &&
 	cd Trunk &&
-	test_svn_subject "git edit" &&
-	test_svn_subject "svn edit" -r PREV &&
+	test_svn_subject 1 "git edit" &&
+	test_svn_subject 2 "svn edit" &&
 	test_file svn.txt "foo" &&
 	cd ../..
 '
@@ -103,7 +103,7 @@ test_expect_success 'create standalone branch' '
 	svn_cmd up &&
 	cd Branches/standalone &&
 	test_file file.txt "bar" &&
-	test_svn_subject "init standalone" &&
+	test_svn_subject 1 "init standalone" &&
 	test_must_fail svn_cmd log -r PREV &&
 	cd ../../..
 '
@@ -115,7 +115,7 @@ test_expect_success 'create branch' '
 	svn_cmd up &&
 	cd Branches/CreateBranch &&
 	test_file file.txt "foo" &&
-	test_svn_subject "emptymsg" &&
+	test_svn_subject 1 "emptymsg" &&
 	check_branched $init_trunk_path $init_trunk_rev &&
 	cd ../../..
 '
@@ -134,7 +134,7 @@ test_expect_success 'create and edit branch' '
 	cd Branches/CreateEditBranch &&
 	test_file file.txt "foo" &&
 	test_file file2.txt "foo2" &&
-	test_svn_subject "create/edit branch" &&
+	test_svn_subject 1 "create/edit branch" &&
 	check_branched $init_trunk_path $init_trunk_rev &&
 	cd ../../..
 '
@@ -147,7 +147,7 @@ test_expect_success 'create tag' '
 	svn_cmd up &&
 	cd Tags/SimpleTag &&
 	test_file file.txt "foo" &&
-	test_svn_subject "emptymsg" &&
+	test_svn_subject 1 "emptymsg" &&
 	check_branched $init_trunk_path $init_trunk_rev &&
 	cd ../../..
 '
@@ -163,7 +163,7 @@ test_expect_success 'create annotated tag' '
 	svn_cmd up &&
 	cd Tags/AnnotatedTag &&
 	test_file file.txt "foo" &&
-	test_svn_subject "annotate tag" &&
+	test_svn_subject 1 "annotate tag" &&
 	check_branched $init_trunk_path $init_trunk_rev &&
 	cd ../../..
 '
@@ -178,7 +178,7 @@ test_expect_success 'replace branch' '
 	svn_cmd up &&
 	cd Branches/ReplaceBranch &&
 	test_file file2.txt "before replace" &&
-	test_svn_subject "before replace" &&
+	test_svn_subject 1 "before replace" &&
 	check_branched $init_trunk_path $init_trunk_rev &&
 	cd ../../.. &&
 	git checkout trunk &&
@@ -193,7 +193,7 @@ test_expect_success 'replace branch' '
 	svn_cmd up &&
 	test ! -e file2.txt &&
 	test_file file3.txt "after replace" &&
-	test_svn_subject "after replace" &&
+	test_svn_subject 1 "after replace" &&
 	check_branched $init_trunk_path $init_trunk_rev &&
 	cd ../../..
 '
@@ -209,7 +209,7 @@ test_expect_success 'replace tag' '
 	cd svnco &&
 	svn_cmd up &&
 	cd Tags/ReplaceTag &&
-	test_svn_subject "before replace tag" &&
+	test_svn_subject 1 "before replace tag" &&
 	check_branched $init_trunk_path $init_trunk_rev &&
 	cd ../../.. &&
 	git reset --hard trunk &&
@@ -222,7 +222,7 @@ test_expect_success 'replace tag' '
 	cd svnco &&
 	svn_cmd up &&
 	cd Tags/ReplaceTag &&
-	test_svn_subject "after replace tag" &&
+	test_svn_subject 1 "after replace tag" &&
 	check_branched $init_trunk_path $init_trunk_rev &&
 	cd ../../.. &&
 	echo "bar2" > file2.txt &&
@@ -237,10 +237,10 @@ test_expect_success 'replace tag' '
 	cd svnco &&
 	svn_cmd up &&
 	cd Tags/ReplaceTag &&
-	test_svn_subject "create replace tag" &&
-	test_svn_subject "dummy commit 2" -r $((`latest_revision`-1)) &&
-	test_svn_subject "dummy commit 1" -r $((`latest_revision`-2)) &&
-	test_svn_subject "after replace tag" -r $((`latest_revision`-3)) &&
+	test_svn_subject 1 "create replace tag" &&
+	test_svn_subject 1 "dummy commit 2" -r $((`latest_revision`-1)) &&
+	test_svn_subject 1 "dummy commit 1" -r $((`latest_revision`-2)) &&
+	test_svn_subject 1 "after replace tag" -r $((`latest_revision`-3)) &&
 	test_file file2.txt "bar2" &&
 	test_file file3.txt "bar3" &&
 	cd ../../.. &&
@@ -254,7 +254,7 @@ test_expect_success 'delete branch' '
 	cd svnco &&
 	svn_cmd up &&
 	cd Branches/DeleteBranch &&
-	test_svn_subject "emptymsg" &&
+	test_svn_subject 1 "emptymsg" &&
 	cd ../../.. &&
 	git checkout trunk &&
 	git push -v svn :DeleteBranch &&
@@ -272,7 +272,7 @@ test_expect_success 'delete tag' '
 	cd svnco &&
 	svn_cmd up &&
 	cd Tags/DeleteTag &&
-	test_svn_subject "emptymsg" &&
+	test_svn_subject 1 "emptymsg" &&
 	cd ../../.. &&
 	git push -v svn :DeleteTag &&
 	git tag -d DeleteTag &&
@@ -309,9 +309,9 @@ test_expect_success 'modify and create branch' '
 	cd svnco &&
 	svn_cmd up &&
 	cd Branches/MCBranch1 &&
-	test_svn_subject "some modification on MCBranch1" &&
+	test_svn_subject 1 "some modification on MCBranch1" &&
 	cd ../MCBranch2 &&
-	test_svn_subject "emptymsg" &&
+	test_svn_subject 1 "emptymsg" &&
 	check_branched Branches/MCBranch1 $latest_mcbranch1 &&
 	cd ../../..
 '
@@ -343,9 +343,9 @@ test_expect_success 'modify and replace branch' '
 	cd svnco &&
 	svn_cmd up &&
 	cd Branches/MRBranch1 &&
-	test_svn_subject "B" &&
+	test_svn_subject 1 "B" &&
 	cd ../MRBranch2 &&
-	test_svn_subject "emptymsg" &&
+	test_svn_subject 1 "emptymsg" &&
 	cd ../../.. &&
 	before_rev=`latest_revision` &&
 	git checkout MRBranch2 &&
@@ -359,11 +359,11 @@ test_expect_success 'modify and replace branch' '
 	cd svnco &&
 	svn_cmd up &&
 	cd Branches/MRBranch1 &&
-	test_svn_subject "emptymsg" &&
+	test_svn_subject 1 "emptymsg" &&
 	check_branched Branches/MRBranch2 $(($before_rev+1)) &&
 	cd ../MRBranch2 &&
-	test_svn_subject "C" &&
-	test_svn_subject "emptymsg" -r PREV &&
+	test_svn_subject 1 "C" &&
+	test_svn_subject 2 "emptymsg" &&
 	check_branched $init_trunk_path $init_trunk_rev &&
 	cd ../../..
 '
@@ -382,7 +382,7 @@ test_expect_success 'tag deleted branch' '
 	svn_cmd up &&
 	test ! -e Branches/DeleteBranch &&
 	cd Tags/TagOnDeleteBranch &&
-	test_svn_subject "emptymsg" &&
+	test_svn_subject 1 "emptymsg" &&
 	test_must_fail svn_cmd log -r PREV --stop-on-copy &&
 	cd ../../.. &&
 	git branch -D DeleteBranch
@@ -390,13 +390,17 @@ test_expect_success 'tag deleted branch' '
 
 # trunk
 # |     \
-# left   right
+# |      right1
+# left   |
+# |      right2
 # |
 # LeftMerged
 #
 # trunk
 # |    \
-# left  right
+# |     right1
+# left  |
+# |     right2
 # |    /
 # merge
 # |
@@ -405,11 +409,23 @@ test_expect_success 'tag deleted branch' '
 # Check that LeftMerged ends up as trunk, left, merge.
 
 test_expect_success 'push left merge' '
+	git checkout -b LeftRight trunk &&
+	echo "right1" > right1.txt &&
+	git add right1.txt &&
+	git commit -m "right1" &&
+	git push -v svn HEAD:LeftRight &&
+	rightbegin=`latest_revision Branches/LeftRight` &&
 	git checkout -b LeftLeft trunk &&
 	echo "left" > left.txt &&
 	git add left.txt &&
 	git commit -m "left" &&
 	git push -v svn HEAD:LeftMerged &&
+	git checkout LeftRight &&
+	echo "right2" > right2.txt &&
+	git add right2.txt &&
+	git commit -m "right2" &&
+	git push -v svn HEAD:LeftRight &&
+	rightend=`latest_revision Branches/LeftRight` &&
 	cd svnco &&
 	svn_cmd up &&
 	cd Branches/LeftMerged &&
@@ -418,10 +434,6 @@ test_expect_success 'push left merge' '
 	echo prev_path $prev_path &&
 	echo prev_rev $prev_rev &&
 	cd ../../.. &&
-	git checkout -b LeftRight trunk &&
-	echo "right" > right.txt &&
-	git add right.txt &&
-	git commit -m "right" &&
 	git checkout LeftLeft &&
 	git merge --no-ff "merge commit" HEAD LeftRight &&
 	git push -v svn HEAD:LeftMerged &&
@@ -429,29 +441,37 @@ test_expect_success 'push left merge' '
 	svn_cmd up &&
 	cd Branches/LeftMerged &&
 	test_file left.txt "left" &&
-	test_file right.txt "right" &&
-	test_svn_subject "merge commit" &&
-	test_svn_subject "left" -r PREV &&
-	test_must_fail test_svn_subject "right" --use-merge-history -r PREV &&
+	test_file right1.txt "right1" &&
+	test_file right2.txt "right2" &&
+	test_svn_subject 1 "merge commit" &&
+	test_svn_subject 2 "left" &&
+	test_svn_subject_merged 2 "right2" &&
+	test_svn_subject_merged 3 "right1" &&
 	svn_cmd log --stop-on-copy -v --xml | grep $prev_path &&
 	svn_cmd log --stop-on-copy -v --xml | grep $prev_rev &&
+	test "`svn pget --strict svn:mergeinfo`" = "/Branches/LeftRight:$rightbegin-$rightend" &&
 	cd ../../..
 '
 
 test_expect_success 'push left merge - twig' '
-	git reset --hard HEAD~ &&
-	git merge --no-ff "merge commit twig" HEAD LeftRight &&
+	git checkout -b TwigRight trunk &&
+	echo "twig" > twig.txt &&
+	git add twig.txt &&
+	git commit -m "twig" &&
+	git checkout -b TwigMerged trunk &&
+	git merge --no-ff "merge commit twig" HEAD TwigRight &&
 	git config svn.twigpath Branches/Twig &&
-	GIT_REMOTE_SVN_PAUSE=1 git push -f -v svn HEAD:LeftMerged &&
+	git push -f -v svn HEAD:TwigMerged &&
 	cd svnco &&
 	svn_cmd up &&
-	cd Branches/LeftMerged &&
+	cd Branches/TwigMerged &&
 	test "`svn pget --strict svn:mergeinfo`" = "/Branches/Twig:`latest_revision Branches/Twig`" &&
-	test_file left.txt "left" &&
-	test_file right.txt "right" &&
-	test_svn_subject "merge commit 2" &&
-	test_svn_subject "left" -r PREV &&
-	test_svn_subject "right" --use-merge-history -r PREV &&
+	test_file twig.txt "twig" &&
+	test_svn_subject 1 "merge commit twig" &&
+	test_svn_subject 2 "emptymsg" &&
+	# svn is broken: svn log -g doesnt pick up the merged commit
+	# when the mergeinfo is updated at branch creation
+	# test_svn_subject_merged 2 "twig" &&
 	cd ../../..
 '
 
@@ -495,8 +515,8 @@ test_expect_success 'push right merge' '
 	cd svnco &&
 	svn_cmd up &&
 	cd Branches/RightMerged &&
-	test_svn_subject "merge commit" &&
-	test_svn_subject "left" -r PREV &&
+	test_svn_subject 1 "merge commit" &&
+	test_svn_subject 2 "left" &&
 	svn_cmd log --stop-on-copy -v --xml | grep $prev_path &&
 	svn_cmd log --stop-on-copy -v --xml | grep $prev_rev &&
 	cd ../../..
@@ -561,9 +581,9 @@ test_expect_success 'intermingled commits' '
 	cd .. &&
 	rev=`latest_revision` &&
 	cd svnco/Branches/intermingled &&
-	test_svn_subject "commit 2" -r $rev &&
-	test_svn_subject "svn commit" -r $(($rev-1)) &&
-	test_svn_subject "commit 1" -r $(($rev-2)) &&
+	test_svn_subject 1 "commit 2" -r $rev &&
+	test_svn_subject 1 "svn commit" -r $(($rev-1)) &&
+	test_svn_subject 1 "commit 1" -r $(($rev-2)) &&
 	cd ../../..
 '
 

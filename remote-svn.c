@@ -1268,7 +1268,7 @@ static const char *push_message(struct object *obj, int use_cmt_msg) {
 #define PUSH_SVN_CMT 32
 #define PUSH_MASK 63
 #define MI_FIRST_PARENT 0x40
-#define MI_MERGED_PARENT 0x80
+#define MI_MERGED_PARENT 0x80 /* 2nd or later parent */
 #define MI_IN_SVN 0x100
 #define MI_SVN_CMT 0x200
 #define MI_MASK 0x3C0
@@ -1280,13 +1280,14 @@ static void insert_by_date(struct commit *c, struct commit_list **cmts, int mask
 		commit_list_insert_by_date(c, cmts);
 }
 
-static void insert_svn_commit(struct commit *svn, struct commit_list **cmts, int mask, int svncmt, int insvn) {
+static void insert_svn_commit(struct commit *svn, struct commit_list **cmts, struct svnref *ref, int mask, int svncmt, int insvn) {
 	if (svn) {
 		struct commit *cmt = svn_commit(svn);
 
 		insert_by_date(svn, cmts, mask);
 		insert_by_date(cmt, cmts, mask);
 
+		svn->util = ref;
 		svn->object.flags |= svncmt;
 
 		if (!(cmt->object.flags & insvn)) {
@@ -1321,7 +1322,7 @@ static void compute_mergeinfo(struct commit *c, struct mergeinfo* mi) {
 		struct svnref *r;
 		for (r = refs.items[i].util; r != NULL; r = r->next) {
 			if (!r->is_tag) {
-				insert_svn_commit(r->svn, &cmts, MI_MASK, MI_SVN_CMT, MI_IN_SVN);
+				insert_svn_commit(r->svn, &cmts, r, MI_MASK, MI_SVN_CMT, MI_IN_SVN);
 			}
 		}
 	}
@@ -1330,7 +1331,7 @@ static void compute_mergeinfo(struct commit *c, struct mergeinfo* mi) {
 		c = pop_commit(&cmts);
 
 		if (c->object.flags & MI_SVN_CMT) {
-			insert_svn_commit(svn_parent(c), &cmts, MI_MASK, MI_SVN_CMT, MI_IN_SVN);
+			insert_svn_commit(svn_parent(c), &cmts, (struct svnref*) c->util, MI_MASK, MI_SVN_CMT, MI_IN_SVN);
 
 		} else if (c->object.flags & MI_FIRST_PARENT) {
 			pp = c->parents;
@@ -1347,9 +1348,9 @@ static void compute_mergeinfo(struct commit *c, struct mergeinfo* mi) {
 		} else if (c->object.flags & MI_MERGED_PARENT) {
 			if (c->object.flags & MI_IN_SVN) {
 				struct commit *svn = c->util;
-				const char *path = get_svn_path(svn);
+				struct svnref *r = svn->util;
 				int rev = get_svn_revision(svn);
-				add_svn_mergeinfo(mi, path, rev, rev);
+				add_svn_mergeinfo(mi, r->path, r->start, rev);
 			}
 
 			cmts_to_find--;
@@ -1552,7 +1553,7 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
  * In order to do this we trace from the new heads back and categorize
  * each commit with one of the following priorities.
  *
- * cmt->util holds a svn_push for PUSH_FIRST_PARENT*, and the svn commit for
+ * cmt->util holds a svn_push for PUSH_FIRST_PARENT, and the svn commit for
  * IN_SVN
  */
 
@@ -1598,14 +1599,15 @@ static int push_cmts_to_find;
 static void insert_commit(struct commit *c, int flag, void *util) {
 	int flags = c->object.flags;
 
-	if ((flags & PUSH_MASK) < flag)
+	if ((flags & PUSH_MASK) < flag) {
 		c->util = util;
 
-	if ((flags & PUSH_NEW_COMMIT_MASK) == 0)
-		push_cmts_to_find++;
+		if ((flags & PUSH_NEW_COMMIT_MASK) == 0)
+			push_cmts_to_find++;
 
-	insert_by_date(c, &push_all, PUSH_MASK);
-	c->object.flags |= flag;
+		insert_by_date(c, &push_all, PUSH_MASK);
+		c->object.flags |= flag;
+	}
 }
 
 static struct refspec **pushv;
@@ -1640,7 +1642,7 @@ static void push(void) {
 		struct svnref *r;
 		for (r = refs.items[i].util; r != NULL; r = r->next) {
 			if (!r->is_tag) {
-				insert_svn_commit(r->svn, &push_all, PUSH_MASK, PUSH_SVN_CMT, PUSH_IN_SVN);
+				insert_svn_commit(r->svn, &push_all, r, PUSH_MASK, PUSH_SVN_CMT, PUSH_IN_SVN);
 			}
 		}
 	}
@@ -1713,7 +1715,7 @@ static void push(void) {
 		int flags = c->object.flags;
 
 		if (flags & PUSH_SVN_CMT) {
-			insert_svn_commit(svn_parent(c), &push_all, PUSH_MASK, PUSH_SVN_CMT, PUSH_IN_SVN);
+			insert_svn_commit(svn_parent(c), &push_all, (struct svnref*) c->util, PUSH_MASK, PUSH_SVN_CMT, PUSH_IN_SVN);
 
 		} else if (flags & PUSH_NEW_COMMIT_MASK) {
 			if ((flags & PUSH_IN_SVN) == 0) {
@@ -1808,6 +1810,7 @@ static void push(void) {
 
 		c->object.flags |= PUSH_IN_SVN;
 		c->util = r->svn;
+		r->svn->util = r;
 		p->replace = 0;
 	}
 

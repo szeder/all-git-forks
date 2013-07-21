@@ -81,10 +81,22 @@ test_git_date () {
 }
 
 test_svn_subject () {
-	subject="$1"
+	index="$1"
+	subject="$2"
 	shift
-	commit_subject="`svn_cmd log -l 1 --xml "$@" | grep '<msg>' | sed -re 's#<msg>(.*)#\1#g' | sed -re 's#(.*)</msg>#\1#g'`"
+	shift
+	commit_subject="`svn_cmd log -l $index --xml "$@" | grep '<msg>' | sed -re 's#<msg>(.*)#\1#g' | sed -re 's#(.*)</msg>#\1#g' | tail -n 1`"
 	echo test_svn_subject "$commit_subject" "$subject"
+	test "$commit_subject" = "$subject"
+}
+
+test_svn_subject_merged () {
+	index="$1"
+	subject="$2"
+	shift
+	shift
+	commit_subject="`svn_cmd log -l 1 --use-merge-history --xml "$@" | grep '<msg>' | sed -re 's#<msg>(.*)#\1#g' | sed -re 's#(.*)</msg>#\1#g' | head -n $index | tail -n 1`"
+	echo test_svn_subject_merged "$commit_subject" "$subject"
 	test "$commit_subject" = "$subject"
 }
 
