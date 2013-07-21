@@ -220,7 +220,7 @@ static void change_file(
 	if (write_sha1_file(buf.buf, buf.len, "blob", sha1))
 		die_errno("write blob");
 
-	ce = make_cache_entry(0644, sha1, name, 0, 0);
+	ce = make_cache_entry(create_ce_mode(0644), sha1, name, 0, 0);
 	if (!ce) die("make_cache_entry failed for path '%s'", name);
 	add_index_entry(&svn_index, ce, ADD_CACHE_OK_TO_ADD);
 
@@ -230,7 +230,7 @@ static void change_file(
 		}
 	}
 
-	ce = make_cache_entry(0644, sha1, name, 0, 0);
+	ce = make_cache_entry(create_ce_mode(0644), sha1, name, 0, 0);
 	if (!ce) die("make_cache_entry failed for path '%s'", name);
 	add_index_entry(&the_index, ce, ADD_CACHE_OK_TO_ADD);
 
@@ -273,7 +273,7 @@ static void reset(void) {
 		if (write_sha1_file(text, strlen(text), "blob", sha1))
 			return;
 
-		ce = make_cache_entry(0644, sha1, ".gitattributes", 0, 0);
+		ce = make_cache_entry(create_ce_mode(0644), sha1, ".gitattributes", 0, 0);
 		if (!ce) return;
 
 		add_index_entry(&the_index, ce, ADD_CACHE_OK_TO_ADD);

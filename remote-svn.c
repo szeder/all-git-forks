@@ -1115,7 +1115,7 @@ static void send_file(const char *path, const unsigned char *sha1, int create) {
 		sha1 = nsha1;
 	}
 
-	ce = make_cache_entry(0644, sha1, path + pushoff + 1, 0, 0);
+	ce = make_cache_entry(create_ce_mode(0644), sha1, path + pushoff + 1, 0, 0);
 	add_index_entry(&svn_index, ce, ADD_CACHE_OK_TO_ADD);
 
 	create_svndiff(&diff, data, sz);
