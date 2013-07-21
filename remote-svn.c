@@ -519,6 +519,9 @@ static void do_connect(int ispush) {
 	const char *p = defcred.protocol;
 	strbuf_addstr(&buf, url);
 
+	if (ispush)
+		credential_fill(&defcred);
+
 	if (!strcmp(p, "http") || !strcmp(p, "https")) {
 		proto = svn_http_connect(remote, &buf, &defcred, &uuid, ispush);
 	} else if (!strcmp(p, "svn")) {
