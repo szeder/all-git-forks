@@ -69,7 +69,7 @@ run_completion ()
 	local -a COMPREPLY _words
 	local _cword
 	_words=( $1 )
-	test "${1: -1}" == ' ' && _words+=('')
+	test "${1: -1}" = ' ' && _words+=('')
 	(( _cword = ${#_words[@]} - 1 ))
 	__git_wrap__git_main && print_comp
 }
@@ -365,6 +365,7 @@ test_expect_success 'double dash "git" itself' '
 	--exec-path Z
 	--exec-path=
 	--html-path Z
+	--man-path Z
 	--info-path Z
 	--work-tree=
 	--namespace=
