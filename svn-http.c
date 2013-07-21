@@ -142,7 +142,7 @@ static size_t write_xml(char *ptr, size_t eltsize, size_t sz, void *report_) {
 	struct request *h = report_;
 	sz *= eltsize;
 	if (h && !XML_Parse(h->parser, ptr, sz, 0)) {
-		die("xml parse error");
+		die("xml parse error %.*s", (int) sz, ptr);
 	}
 	return sz;
 }

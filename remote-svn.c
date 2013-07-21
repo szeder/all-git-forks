@@ -1542,6 +1542,12 @@ static int push_commit(struct svnref *r, int type, struct object *obj, const cha
  *	- commits are prioritised away from branches that will require a
  *	replace
  * e) avoid creating a branch from a tag
+ * f) use the twig path if nowhere else can be found
+ *	- A replace is used to reset the path if it's not at the right
+ *	base
+ *	- If no twigpath is setup, then we skip pushing the commit
+ *	entirely. This case is only used for 2nd+ parents to get a clean
+ *	mergeinfo so it can be skipped if need be.
  *
  * In order to do this we trace from the new heads back and categorize
  * each commit with one of the following priorities.
