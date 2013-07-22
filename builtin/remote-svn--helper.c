@@ -311,6 +311,13 @@ static void report(const char *ref, const char *gitref) {
 	}
 
 	printf("fetched %s %s\n", hex, gitref);
+
+	if (!strcmp(gitref, "refs/heads/master")) {
+		if (verbose) {
+			fprintf(stderr, "r+ fetched HEAD %s\n", hex);
+		}
+		printf("fetched %s HEAD\n", hex);
+	}
 }
 
 static void havelog(const char *ref, int rev, const char *logrev) {
