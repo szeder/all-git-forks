@@ -20,13 +20,14 @@
 /******** Private functions ********/
 /*{*/
 
-/*
+/**
  * \function
  * Find submodules that is in the current commit.
  *
+ * @param limit_path to limit submodule list.
  * @return string_list of submodule paths.
  */
-string_list collect_submodules()
+static string_list collect_submodules(const char *limit_path)
 { /*{*/
 } /*}*/
 
@@ -35,7 +36,7 @@ string_list collect_submodules()
 /******** Public functions ********/
 /*{*/
 
-/*
+/**
  * \function
  * Take action depending on the arguments the user supplied to git submodule
  *
