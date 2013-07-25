@@ -396,6 +396,13 @@ def get_repo(url, alias):
                 hg.clone(myui, {}, url, shared_path, update=False, pull=True)
             except:
                 die('Repository error')
+        else:
+            # check and upgrade old organization
+            hg_path = os.path.join(shared_path, '.hg')
+            if not os.path.exists(hg_path):
+                repos = os.listdir(shared_path)
+                local_hg = os.path.join(shared_path, repos[0], 'clone', '.hg')
+                shutil.copytree(local_hg, hg_path)
 
         if not os.path.exists(dirname):
             os.makedirs(dirname)
