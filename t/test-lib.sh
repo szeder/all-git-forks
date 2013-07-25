@@ -832,6 +832,7 @@ case $(uname -s) in
 	test_set_prereq MINGW
 	test_set_prereq NOT_CYGWIN
 	test_set_prereq SED_STRIPS_CR
+	test_set_prereq GREP_STRIPS_CR
 	;;
 *CYGWIN*)
 	test_set_prereq POSIXPERM
@@ -839,6 +840,7 @@ case $(uname -s) in
 	test_set_prereq NOT_MINGW
 	test_set_prereq CYGWIN
 	test_set_prereq SED_STRIPS_CR
+	test_set_prereq GREP_STRIPS_CR
 	;;
 *)
 	test_set_prereq POSIXPERM
