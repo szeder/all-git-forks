@@ -71,6 +71,11 @@ test_expect_success 'push -u HEAD' '
 	check_config headbranch upstream refs/heads/headbranch
 '
 
+test_expect_success 'push -u <url>' '
+        git push -u parent HEAD 2>err &&
+        grep "no upstream configuration will be set" err
+'
+
 test_expect_success TTY 'progress messages go to tty' '
 	ensure_fresh_upstream &&
 

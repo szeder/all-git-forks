@@ -53,12 +53,23 @@ void install_branch_config(int flag, const char *local, const char *origin, cons
 	int remote_is_branch = !prefixcmp(remote, "refs/heads/");
 	struct strbuf key = STRBUF_INIT;
 	int rebasing = should_setup_rebase(origin);
+	struct remote *r = remote_get(origin);
 
 	if (remote_is_branch
 	    && !strcmp(local, shortname)
 	    && !origin) {
 		warning(_("Not setting branch %s as its own upstream."),
 			local);
+		return;
+	}
+
+	/*
+	 * Make sure that the remote passed is a configured remote, or
+	 * we end up setting 'branch.foo.remote = /tmp/t' which is
+	 * nonsensical.
+	 */
+	if (origin && strcmp(origin, ".") && r && r->origin == REMOTE_NONE) {
+		warning(_("there is no remote named '%s', no upstream configuration will be set."), origin);
 		return;
 	}
 
