@@ -2,6 +2,7 @@
 #include "cache.h"
 #include "color.h"
 #include "parse-options.h"
+#include "url-match.h"
 
 static const char *const builtin_config_usage[] = {
 	N_("git config [options]"),
@@ -41,6 +42,7 @@ static int respect_includes = -1;
 #define ACTION_SET_ALL (1<<12)
 #define ACTION_GET_COLOR (1<<13)
 #define ACTION_GET_COLORBOOL (1<<14)
+#define ACTION_GET_URLMATCH (1<<15)
 
 #define TYPE_BOOL (1<<0)
 #define TYPE_INT (1<<1)
@@ -57,6 +59,7 @@ static struct option builtin_config_options[] = {
 	OPT_BIT(0, "get", &actions, N_("get value: name [value-regex]"), ACTION_GET),
 	OPT_BIT(0, "get-all", &actions, N_("get all values: key [value-regex]"), ACTION_GET_ALL),
 	OPT_BIT(0, "get-regexp", &actions, N_("get values for regexp: name-regex [value-regex]"), ACTION_GET_REGEXP),
+	OPT_BIT(0, "get-urlmatch", &actions, N_("get value specific for the URL: section[.var] URL"), ACTION_GET_URLMATCH),
 	OPT_BIT(0, "replace-all", &actions, N_("replace all matching variables: name value [value_regex]"), ACTION_REPLACE_ALL),
 	OPT_BIT(0, "add", &actions, N_("add a new variable: name value"), ACTION_ADD),
 	OPT_BIT(0, "unset", &actions, N_("remove a variable: name [value-regex]"), ACTION_UNSET),
@@ -348,6 +351,141 @@ static int get_colorbool(int print)
 		return get_colorbool_found ? 0 : 1;
 }
 
+struct urlmatch_collect {
+	struct string_list vars;
+	struct url_info url;
+	const char *section;
+	const char *key;
+};
+
+struct urlmatch_item {
+	size_t max_matched_len;
+	char user_matched;
+	char value_is_null;
+	struct strbuf value;
+};
+
+static int urlmatch_collect(const char *var, const char *value, void *cb)
+{
+	struct string_list_item *item;
+	struct urlmatch_collect *collect = cb;
+	struct urlmatch_item *matched;
+	struct url_info *url = &collect->url;
+	const char *key, *dot;
+	size_t matchlen = 0;
+	int usermatch = 0;
+
+	key = skip_prefix(var, collect->section);
+	if (!key || *(key++) != '.')
+		return 0; /* not interested */
+	dot = strrchr(key, '.');
+	if (dot) {
+		char *config_url, *norm_url;
+		struct url_info norm_info;
+		int matchlen;
+
+		config_url = xmemdupz(key, dot - key);
+		norm_url = url_normalize(config_url, &norm_info);
+		free(config_url);
+		if (!norm_url)
+			return 0;
+		matchlen = match_urls(url, &norm_info, &usermatch);
+		free(norm_url);
+		if (!matchlen)
+			return 0;
+		key = dot + 1;
+	}
+
+	if (collect->key && strcmp(key, collect->key))
+		return 0;
+
+	item = string_list_insert(&collect->vars, key);
+	if (!item->util) {
+		matched = xcalloc(1, sizeof(*matched));
+		item->util = matched;
+		strbuf_init(&matched->value, 0);
+	} else {
+		matched = item->util;
+		/*
+		 * Is our match shorter?  Is our match the same
+		 * length, and without user while the current
+		 * candidate is with user?  Then we cannot use it.
+		 */
+		if (matchlen < matched->max_matched_len ||
+		    ((matchlen == matched->max_matched_len) &&
+		     (!usermatch && matched->user_matched)))
+			return 0;
+		/*
+		 * Otherwise, release the old one and replace
+		 * with ours.
+		 */
+		strbuf_release(&matched->value);
+	}
+
+	matched->max_matched_len = matchlen;
+	matched->user_matched = usermatch;
+	if (value) {
+		strbuf_addstr(&matched->value, value);
+		matched->value_is_null = 0;
+	} else {
+		matched->value_is_null = 1;
+	}
+	return 0;
+}
+
+static int get_urlmatch(const char *var, const char *url)
+{
+	const char *section_tail;
+	struct string_list_item *item;
+	struct urlmatch_collect collect = { STRING_LIST_INIT_DUP };
+
+	if (!url_normalize(url, &collect.url))
+		die(collect.url.err);
+
+	section_tail = strchr(var, '.');
+	if (section_tail) {
+		collect.section = xmemdupz(var, section_tail - var);
+		collect.key = strrchr(var, '.') + 1;
+		show_keys = 0;
+	} else {
+		collect.section = var;
+		collect.key = NULL;
+		show_keys = 1;
+	}
+
+	git_config_with_options(urlmatch_collect, &collect,
+				given_config_file, respect_includes);
+
+	for_each_string_list_item(item, &collect.vars) {
+		struct urlmatch_item *matched = item->util;
+		struct strbuf key = STRBUF_INIT;
+		struct strbuf buf = STRBUF_INIT;
+
+		strbuf_addstr(&key, collect.section);
+		strbuf_addch(&key, '.');
+		strbuf_addstr(&key, item->string);
+		format_config(&buf, key.buf,
+			      matched->value_is_null ? NULL : matched->value.buf);
+		fwrite(buf.buf, 1, buf.len, stdout);
+		strbuf_release(&key);
+		strbuf_release(&buf);
+
+		strbuf_release(&matched->value);
+	}
+	string_list_clear(&collect.vars, 1);
+	free(collect.url.url);
+
+	/*
+	 * section name may have been copied to replace the dot, in which
+	 * case it needs to be freed.  key name is either NULL (e.g. 'http'
+	 * alone) or points into var (e.g. 'http.savecookies'), and we do
+	 * not own the storage.
+	 */
+	if (collect.section != var)
+		free((void *)collect.section);
+	return 0;
+}
+
 int cmd_config(int argc, const char **argv, const char *prefix)
 {
 	int nongit = !startup_info->have_repository;
@@ -498,6 +636,10 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 		do_all = 1;
 		check_argc(argc, 1, 2);
 		return get_value(argv[0], argv[1]);
+	}
+	else if (actions == ACTION_GET_URLMATCH) {
+		check_argc(argc, 2, 2);
+		return get_urlmatch(argv[0], argv[1]);
 	}
 	else if (actions == ACTION_UNSET) {
 		check_argc(argc, 1, 2);
