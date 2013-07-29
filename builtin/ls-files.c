@@ -288,6 +288,22 @@ static void prune_cache(const char *prefix)
 	active_nr = last;
 }
 
+static int needs_trailing_slash_stripped(void)
+{
+	int i;
+
+	if (!pathspec.nr)
+		return 0;
+
+	for (i = 0; i < pathspec.nr; i++) {
+		int len = strlen(pathspec.items[i].original);
+
+		if (len > 1 && (pathspec.items[i].original)[len - 1] == '/')
+			return 1;
+	}
+	return 0;
+}
+
 /*
  * Read the tree specified with --with-tree option
  * (typically, HEAD) into stage #1 and then
@@ -445,6 +461,7 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 	struct dir_struct dir;
 	struct exclude_list *el;
 	struct string_list exclude_list = STRING_LIST_INIT_NODUP;
+	struct filter_opts *opts = xmalloc(sizeof(*opts));
 	struct option builtin_ls_files_options[] = {
 		{ OPTION_CALLBACK, 'z', NULL, NULL, NULL,
 			N_("paths are separated with NUL character"),
@@ -510,9 +527,6 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 		prefix_len = strlen(prefix);
 	git_config(git_default_config, NULL);
 
-	if (read_cache() < 0)
-		die("index file corrupt");
-
 	argc = parse_options(argc, argv, prefix, builtin_ls_files_options,
 			ls_files_usage, 0);
 	el = add_exclude_list(&dir, EXC_CMDL, "--exclude option");
@@ -547,6 +561,22 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 		       PATHSPEC_PREFER_CWD |
 		       PATHSPEC_STRIP_SUBMODULE_SLASH_CHEAP,
 		       prefix, argv);
+
+	if (!with_tree && !needs_trailing_slash_stripped()) {
+		memset(opts, 0, sizeof(*opts));
+		opts->pathspec = &pathspec;
+		opts->read_staged = 1;
+		if (show_resolve_undo)
+			opts->read_resolve_undo = 1;
+		read_cache_filtered(opts);
+	} else {
+		read_cache();
+		parse_pathspec(&pathspec, 0,
+			       PATHSPEC_PREFER_CWD |
+			       PATHSPEC_STRIP_SUBMODULE_SLASH_CHEAP,
+			       prefix, argv);
+
+	}
 
 	/* Find common prefix for all pathspec's */
 	max_prefix = common_prefix(&pathspec);
