@@ -157,7 +157,7 @@ Copyright: © 2007, Stelian Pop <stelian@popies.net>
 Name: hg-to-git.py - A Mercurial to GIT converter
 License: GPL-2+
 
-Files: contrib/mw-to-git/git-remote-mediawiki.perl contrib/mw-to-git/t/t*
+Files: contrib/mw-to-git/git-*.perl contrib/mw-to-git/t/t*
 Copyright: © 2011
 		Jérémie Nikaes <jeremie.nikaes@ensimag.imag.fr>
 		Arnaud Lacurie <arnaud.lacurie@ensimag.imag.fr>
@@ -170,6 +170,9 @@ Copyright: © 2011
 		Julien Khayat <julien.khayat@ensimag.imag.fr>
 		Guillaume Sasdy <guillaume.sasdy@ensimag.imag.fr>
 		Simon Perrat <simon.perrat@ensimag.imag.fr>
+	   © 2013
+		Benoit Person <benoit.person@ensimag.imag.fr>
+		Celestin Matte <celestin.matte@ensimag.imag.fr>
 License: GPL-2+
 
 Files: debian/*

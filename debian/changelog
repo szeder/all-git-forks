@@ -16,6 +16,7 @@ git (1:1.8.4~rc0-0.1) unstable; urgency=low
       ../../cache/git/*.
     * git.NEWS.Debian: advertise the change and explain how to
       adapt to it.
+  * update debian/copyright.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 06 Jul 2013 15:15:15 -0700
 
