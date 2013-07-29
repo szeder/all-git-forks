@@ -65,8 +65,6 @@ static int run_http_options(const char *file,
 	return 0;
 }
 
-#define url_normalize(u,i) http_options_url_normalize(u,i)
-
 int main(int argc, char **argv)
 {
 	const char *usage = "test-url-normalize [-p | -l] <url1> | <url1> <url2>"
