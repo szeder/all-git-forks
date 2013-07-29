@@ -13,10 +13,12 @@ SYNOPSIS
 'git stash' drop [-q|--quiet] [<stash>]
 'git stash' ( pop | apply ) [--index] [-q|--quiet] [<stash>]
 'git stash' branch <branchname> [<stash>]
-'git stash' [save [--patch] [-k|--[no-]keep-index] [-q|--quiet]
-	     [-u|--include-untracked] [-a|--all] [<message>]]
+'git stash' [save [-p|--patch] [-k|--[no-]keep-index] [-q|--quiet]
+	     [-u|--include-untracked] [-a|--all] [-f|--force]
+	     [<message>]]
 'git stash' clear
-'git stash' create
+'git stash' create [<message>]
+'git stash' store [-m|--message <message>] [-q|--quiet] <commit>
 
 DESCRIPTION
 -----------
@@ -43,7 +45,7 @@ is also possible).
 OPTIONS
 -------
 
-save [-p|--patch] [--[no-]keep-index] [-u|--include-untracked] [-a|--all] [-q|--quiet] [<message>]::
+save [-p|--patch] [--[no-]keep-index] [-u|--include-untracked] [-a|--all] [-q|--quiet] [-f|--force] [<message>]::
 
 	Save your local modifications to a new 'stash', and run `git reset
 	--hard` to revert them.  The <message> part is optional and gives
@@ -70,6 +72,13 @@ linkgit:git-add[1] to learn how to operate the `--patch` mode.
 +
 The `--patch` option implies `--keep-index`.  You can use
 `--no-keep-index` to override this.
++
+In some cases, saving a stash could mean irretrievably removing some
+data - if a directory with untracked files replaces a tracked file of
+the same name, the new untracked files are not saved (except in case
+of `--include-untracked`) but the original tracked file shall be restored.
+By default, `stash save` will abort in such a case; `--force` will allow
+it to remove the untracked files.
 
 list [<options>]::
 
@@ -151,7 +160,15 @@ create::
 
 	Create a stash (which is a regular commit object) and return its
 	object name, without storing it anywhere in the ref namespace.
+	This is intended to be useful for scripts.  It is probably not
+	the command you want to use; see "save" above.
 
+store::
+
+	Store a given stash created via 'git stash create' (which is a
+	dangling merge commit) in the stash ref, updating the stash
+	reflog.  This is intended to be useful for scripts.  It is
+	probably not the command you want to use; see "save" above.
 
 DISCUSSION
 ----------
