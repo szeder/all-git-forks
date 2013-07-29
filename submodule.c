@@ -382,6 +382,7 @@ int option_parse_update_submodules(const struct option *opt,
 
 int submodule_needs_update(const char *path)
 {
+  return 1;
 	struct string_list_item *path_option;
 	path_option = unsorted_string_list_lookup(&config_name_for_path, path);
 	if (!path_option)
