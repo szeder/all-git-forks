@@ -351,79 +351,17 @@ static int get_colorbool(int print)
 		return get_colorbool_found ? 0 : 1;
 }
 
-struct urlmatch_collect {
-	struct string_list vars;
-	struct url_info url;
-	const char *section;
-	const char *key;
-};
-
-struct urlmatch_item {
-	size_t max_matched_len;
-	char user_matched;
+struct urlmatch_config_item {
+	struct urlmatch_item match;
 	char value_is_null;
 	struct strbuf value;
 };
 
-static int urlmatch_collect(const char *var, const char *value, void *cb)
+static int urlmatch_collect_fn(const char *var, const char *value,
+			       void *cb, void *matched_cb)
 {
-	struct string_list_item *item;
-	struct urlmatch_collect *collect = cb;
-	struct urlmatch_item *matched;
-	struct url_info *url = &collect->url;
-	const char *key, *dot;
-	size_t matchlen = 0;
-	int usermatch = 0;
+	struct urlmatch_config_item *matched = matched_cb;
 
-	key = skip_prefix(var, collect->section);
-	if (!key || *(key++) != '.')
-		return 0; /* not interested */
-	dot = strrchr(key, '.');
-	if (dot) {
-		char *config_url, *norm_url;
-		struct url_info norm_info;
-		int matchlen;
-
-		config_url = xmemdupz(key, dot - key);
-		norm_url = url_normalize(config_url, &norm_info);
-		free(config_url);
-		if (!norm_url)
-			return 0;
-		matchlen = match_urls(url, &norm_info, &usermatch);
-		free(norm_url);
-		if (!matchlen)
-			return 0;
-		key = dot + 1;
-	}
-
-	if (collect->key && strcmp(key, collect->key))
-		return 0;
-
-	item = string_list_insert(&collect->vars, key);
-	if (!item->util) {
-		matched = xcalloc(1, sizeof(*matched));
-		item->util = matched;
-		strbuf_init(&matched->value, 0);
-	} else {
-		matched = item->util;
-		/*
-		 * Is our match shorter?  Is our match the same
-		 * length, and without user while the current
-		 * candidate is with user?  Then we cannot use it.
-		 */
-		if (matchlen < matched->max_matched_len ||
-		    ((matchlen == matched->max_matched_len) &&
-		     (!usermatch && matched->user_matched)))
-			return 0;
-		/*
-		 * Otherwise, release the old one and replace
-		 * with ours.
-		 */
-		strbuf_release(&matched->value);
-	}
-
-	matched->max_matched_len = matchlen;
-	matched->user_matched = usermatch;
 	if (value) {
 		strbuf_addstr(&matched->value, value);
 		matched->value_is_null = 0;
@@ -433,35 +371,52 @@ static int urlmatch_collect(const char *var, const char *value, void *cb)
 	return 0;
 }
 
+static void *urlmatch_alloc_fn(const char *var, const char *value, void *cb)
+{
+	return xcalloc(1, sizeof(struct urlmatch_config_item));
+}
+
+static void urlmatch_clear_fn(void *matched_cb)
+{
+	struct urlmatch_config_item *matched = matched_cb;
+	strbuf_init(&matched->value, 0);
+}
+
 static int get_urlmatch(const char *var, const char *url)
 {
 	const char *section_tail;
 	struct string_list_item *item;
-	struct urlmatch_collect collect = { STRING_LIST_INIT_DUP };
+	struct urlmatch_config config = { STRING_LIST_INIT_DUP };
 
-	if (!url_normalize(url, &collect.url))
-		die(collect.url.err);
+	config.fn = urlmatch_collect_fn;
+	config.cascade_fn = NULL;
+	config.item_alloc = urlmatch_alloc_fn;
+	config.item_clear = urlmatch_clear_fn;
+	config.cb = NULL;
+
+	if (!url_normalize(url, &config.url))
+		die(config.url.err);
 
 	section_tail = strchr(var, '.');
 	if (section_tail) {
-		collect.section = xmemdupz(var, section_tail - var);
-		collect.key = strrchr(var, '.') + 1;
+		config.section = xmemdupz(var, section_tail - var);
+		config.key = strrchr(var, '.') + 1;
 		show_keys = 0;
 	} else {
-		collect.section = var;
-		collect.key = NULL;
+		config.section = var;
+		config.key = NULL;
 		show_keys = 1;
 	}
 
-	git_config_with_options(urlmatch_collect, &collect,
+	git_config_with_options(urlmatch_config_entry, &config,
 				given_config_file, respect_includes);
 
-	for_each_string_list_item(item, &collect.vars) {
-		struct urlmatch_item *matched = item->util;
+	for_each_string_list_item(item, &config.vars) {
+		struct urlmatch_config_item *matched = item->util;
 		struct strbuf key = STRBUF_INIT;
 		struct strbuf buf = STRBUF_INIT;
 
-		strbuf_addstr(&key, collect.section);
+		strbuf_addstr(&key, config.section);
 		strbuf_addch(&key, '.');
 		strbuf_addstr(&key, item->string);
 		format_config(&buf, key.buf,
@@ -472,8 +427,8 @@ static int get_urlmatch(const char *var, const char *url)
 
 		strbuf_release(&matched->value);
 	}
-	string_list_clear(&collect.vars, 1);
-	free(collect.url.url);
+	string_list_clear(&config.vars, 1);
+	free(config.url.url);
 
 	/*
 	 * section name may have been copied to replace the dot, in which
@@ -481,8 +436,8 @@ static int get_urlmatch(const char *var, const char *url)
 	 * alone) or points into var (e.g. 'http.savecookies'), and we do
 	 * not own the storage.
 	 */
-	if (collect.section != var)
-		free((void *)collect.section);
+	if (config.section != var)
+		free((void *)config.section);
 	return 0;
 }
 
