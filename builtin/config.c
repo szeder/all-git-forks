@@ -2,7 +2,7 @@
 #include "cache.h"
 #include "color.h"
 #include "parse-options.h"
-#include "url-match.h"
+#include "urlmatch.h"
 
 static const char *const builtin_config_usage[] = {
 	N_("git config [options]"),
@@ -351,16 +351,24 @@ static int get_colorbool(int print)
 		return get_colorbool_found ? 0 : 1;
 }
 
-struct urlmatch_config_item {
-	struct urlmatch_item match;
+struct urlmatch_current_candidate_value {
 	char value_is_null;
 	struct strbuf value;
 };
 
-static int urlmatch_collect_fn(const char *var, const char *value,
-			       void *cb, void *matched_cb)
+static int urlmatch_collect_fn(const char *var, const char *value, void *cb)
 {
-	struct urlmatch_config_item *matched = matched_cb;
+	struct string_list *values = cb;
+	struct string_list_item *item = string_list_insert(values, var);
+	struct urlmatch_current_candidate_value *matched = item->util;
+
+	if (!matched) {
+		matched = xmalloc(sizeof(*matched));
+		strbuf_init(&matched->value, 0);
+		item->util = matched;
+	} else {
+		strbuf_reset(&matched->value);
+	}
 
 	if (value) {
 		strbuf_addstr(&matched->value, value);
@@ -371,28 +379,16 @@ static int urlmatch_collect_fn(const char *var, const char *value,
 	return 0;
 }
 
-static void *urlmatch_alloc_fn(const char *var, const char *value, void *cb)
-{
-	return xcalloc(1, sizeof(struct urlmatch_config_item));
-}
-
-static void urlmatch_clear_fn(void *matched_cb)
-{
-	struct urlmatch_config_item *matched = matched_cb;
-	strbuf_init(&matched->value, 0);
-}
-
 static int get_urlmatch(const char *var, const char *url)
 {
 	const char *section_tail;
 	struct string_list_item *item;
 	struct urlmatch_config config = { STRING_LIST_INIT_DUP };
+	struct string_list values = STRING_LIST_INIT_DUP;
 
-	config.fn = urlmatch_collect_fn;
+	config.collect_fn = urlmatch_collect_fn;
 	config.cascade_fn = NULL;
-	config.item_alloc = urlmatch_alloc_fn;
-	config.item_clear = urlmatch_clear_fn;
-	config.cb = NULL;
+	config.cb = &values;
 
 	if (!url_normalize(url, &config.url))
 		die(config.url.err);
@@ -411,8 +407,8 @@ static int get_urlmatch(const char *var, const char *url)
 	git_config_with_options(urlmatch_config_entry, &config,
 				given_config_file, respect_includes);
 
-	for_each_string_list_item(item, &config.vars) {
-		struct urlmatch_config_item *matched = item->util;
+	for_each_string_list_item(item, &values) {
+		struct urlmatch_current_candidate_value *matched = item->util;
 		struct strbuf key = STRBUF_INIT;
 		struct strbuf buf = STRBUF_INIT;
 
@@ -428,6 +424,7 @@ static int get_urlmatch(const char *var, const char *url)
 		strbuf_release(&matched->value);
 	}
 	string_list_clear(&config.vars, 1);
+	string_list_clear(&values, 1);
 	free(config.url.url);
 
 	/*

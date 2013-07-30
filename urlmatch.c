@@ -1,5 +1,5 @@
 #include "cache.h"
-#include "url-match.h"
+#include "urlmatch.h"
 
 #define URL_ALPHA "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 #define URL_DIGIT "0123456789"
@@ -507,10 +507,7 @@ int urlmatch_config_entry(const char *var, const char *value, void *cb)
 
 	item = string_list_insert(&collect->vars, key);
 	if (!item->util) {
-		if (collect->item_alloc)
-			matched = collect->item_alloc(var, value, cb);
-		else
-			matched = xcalloc(1, sizeof(*matched));
+		matched = xcalloc(1, sizeof(*matched));
 		item->util = matched;
 	} else {
 		matched = item->util;
@@ -523,12 +520,7 @@ int urlmatch_config_entry(const char *var, const char *value, void *cb)
 		    ((matched_len == matched->matched_len) &&
 		     (!user_matched && matched->user_matched)))
 			return 0;
-		/*
-		 * Otherwise, clear the old one and replace it
-		 * with this one.
-		 */
-		if (collect->item_clear)
-			collect->item_clear(matched);
+		/* Otherwise, replace it with this one. */
 	}
 
 	matched->matched_len = matched_len;
@@ -536,7 +528,7 @@ int urlmatch_config_entry(const char *var, const char *value, void *cb)
 	strbuf_addstr(&synthkey, collect->section);
 	strbuf_addch(&synthkey, '.');
 	strbuf_addstr(&synthkey, key);
-	retval = collect->fn(synthkey.buf, value, collect->cb, matched);
+	retval = collect->collect_fn(synthkey.buf, value, collect->cb);
 
 	strbuf_release(&synthkey);
 	return retval;

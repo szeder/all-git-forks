@@ -19,10 +19,8 @@ static int run_http_options(const char *file,
 
 	memcpy(&config.url, info, sizeof(*info));
 	config.section = "http";
-	config.fn = http_options;
+	config.collect_fn = http_options;
 	config.cascade_fn = git_default_config;
-	config.item_alloc = NULL;
-	config.item_clear = NULL;
 	config.cb = NULL;
 
 	if (git_config_with_options(urlmatch_config_entry, &config, file, 0))

@@ -36,7 +36,6 @@ extern int match_urls(const struct url_info *url, const struct url_info *url_pre
 struct urlmatch_item {
 	size_t matched_len;
 	char user_matched;
-	/* possibly more */
 };
 
 struct urlmatch_config {
@@ -46,10 +45,8 @@ struct urlmatch_config {
 	const char *key;
 
 	void *cb;
-	int (*fn)(const char *var, const char *value, void *cb, void *matched);
+	int (*collect_fn)(const char *var, const char *value, void *cb);
 	int (*cascade_fn)(const char *var, const char *value, void *cb);
-	void *(*item_alloc)(const char *var, const char *value, void *cb);
-	void (*item_clear)(void *);
 };
 
 extern int urlmatch_config_entry(const char *var, const char *value, void *cb);

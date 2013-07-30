@@ -3,7 +3,7 @@
 #include "sideband.h"
 #include "run-command.h"
 #include "url.h"
-#include "url-match.h"
+#include "urlmatch.h"
 #include "credential.h"
 #include "version.h"
 #include "pkt-line.h"
@@ -142,7 +142,7 @@ static void process_curl_messages(void)
 }
 #endif
 
-static int http_options(const char *var, const char *value, void *cb, void *matched)
+static int http_options(const char *var, const char *value, void *cb)
 {
 	if (!strcmp("http.sslverify", var)) {
 		curl_ssl_verify = git_config_bool(var, value);
@@ -339,17 +339,13 @@ void http_init(struct remote *remote, const char *url, int proactive_auth)
 	struct urlmatch_config config = { STRING_LIST_INIT_DUP };
 
 	config.section = "http";
-	config.fn = http_options;
+	config.key = NULL;
+	config.collect_fn = http_options;
 	config.cascade_fn = git_default_config;
-	config.item_alloc = NULL;
-	config.item_clear = NULL;
 	config.cb = NULL;
 
 	http_is_verbose = 0;
 	normalized_url = url_normalize(url, &config.url);
-
-	config.section = "http";
-	config.key = NULL;
 
 	git_config(urlmatch_config_entry, &config);
 	free(normalized_url);
