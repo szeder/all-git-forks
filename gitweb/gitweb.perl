@@ -5448,10 +5448,7 @@ sub git_project_search_form {
 	                     -checked => $search_use_regexp) .
 	      "</span>\n" .
 	      $cgi->submit(-name => 'btnS', -value => 'Search') .
-	      $cgi->end_form() . "\n" .
-	      $cgi->a({-href => href(project => undef, searchtext => undef,
-	                             project_filter => $project_filter)},
-	              esc_html("List all projects$limit")) . "<br />\n";
+	      $cgi->end_form() . "<br/>\n";
 	print "</div>\n";
 }
 
