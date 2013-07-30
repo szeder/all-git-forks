@@ -15,8 +15,15 @@ static int run_http_options(const char *file,
 {
 	struct strbuf opt_lc;
 	size_t i, len;
+	struct urlmatch_config config = { STRING_LIST_INIT_DUP };
 
-	if (git_config_with_options(http_options, (void *)info, file, NULL, 0))
+	memcpy(&config.url, info, sizeof(*info));
+	config.section = "http";
+	config.collect_fn = http_options;
+	config.cascade_fn = git_default_config;
+	config.cb = NULL;
+
+	if (git_config_with_options(urlmatch_config_entry, &config, file, NULL, 0))
 		return 1;
 
 	len = strlen(opt);
@@ -64,8 +71,6 @@ static int run_http_options(const char *file,
 
 	return 0;
 }
-
-#define url_normalize(u,i) http_options_url_normalize(u,i)
 
 int main(int argc, char **argv)
 {
