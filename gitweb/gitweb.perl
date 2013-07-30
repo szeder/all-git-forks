@@ -3891,17 +3891,7 @@ sub get_page_title {
 }
 
 sub get_content_type_html {
-	# require explicit support from the UA if we are to send the page as
-	# 'application/xhtml+xml', otherwise send it as plain old 'text/html'.
-	# we have to do this because MSIE sometimes globs '*/*', pretending to
-	# support xhtml+xml but choking when it gets what it asked for.
-	if (defined $cgi->http('HTTP_ACCEPT') &&
-	    $cgi->http('HTTP_ACCEPT') =~ m/(,|;|\s|^)application\/xhtml\+xml(,|;|\s|$)/ &&
-	    $cgi->Accept('application/xhtml+xml') != 0) {
-		return 'application/xhtml+xml';
-	} else {
-		return 'text/html';
-	}
+    return 'text/html';
 }
 
 sub print_feed_meta {
