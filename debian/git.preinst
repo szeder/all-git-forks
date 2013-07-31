@@ -3,7 +3,7 @@ set -e
 
 # /var/cache/git/ -> /var/lib/git/ transition
 if test "$1" = upgrade &&
-   dpkg --compare-versions "$2" lt-nl '1:1.8.3.2-1.1'; then
+   dpkg --compare-versions "$2" lt-nl '1:1.8.4~rc0-0.1'; then
 	mkdir -m 755 -p /var/lib/git
 	(
 		cd /var/lib/git

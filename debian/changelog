@@ -1,5 +1,6 @@
-git (1:1.8.3.2-1.1) experimental; urgency=low
+git (1:1.8.4~rc0-0.1) unstable; urgency=low
 
+  * new upstream release candidate.
   * use /var/lib/git instead of /var/cache/git as default git
     project root to comply with the Filesystem Hierarchy Standard
     (thx Julian Gilbey; closes: #483788):

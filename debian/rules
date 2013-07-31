@@ -158,8 +158,11 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	ln -s gitweb.cgi '$(GIT)'/usr/share/gitweb/index.cgi
 	# contrib hooks
 	install -d -m0755 '$(GIT)'/usr/share/git-core/contrib/hooks
-	install -m0755 contrib/hooks/* \
-	  '$(GIT)'/usr/share/git-core/contrib/hooks/
+	set -e; for i in contrib/hooks/*; do \
+	  test "$$i" != contrib/hooks/multimail || continue; \
+	  install -m0755 "$$i" \
+	    '$(GIT)'/usr/share/git-core/contrib/hooks/; \
+	done
 	# contrib
 	install -d -m0755 '$(GIT)'/usr/share/doc/git
 	cp -R contrib '$(GIT)'/usr/share/doc/git/

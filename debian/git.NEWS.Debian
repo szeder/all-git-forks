@@ -1,4 +1,4 @@
-git (1:1.8.3.2-1.1) experimental; urgency=low
+git (1:1.8.4~rc0-0.1) experimental; urgency=low
 
   Starting with this version, gitweb and "git daemon" on Debian are
   configured to look for repositories under /var/lib/git by default

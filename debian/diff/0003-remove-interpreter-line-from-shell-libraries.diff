@@ -1,4 +1,4 @@
-From cd8d315574582b6e44b5170f81b6e3e9ac2faa45 Mon Sep 17 00:00:00 2001
+From 03572656e6a6c7aac5770206036509d2adddb9d1 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Tue, 13 Mar 2012 20:01:17 -0500
 Subject: remove #!interpreter line from shell libraries
@@ -49,7 +49,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  8 files changed, 19 insertions(+), 23 deletions(-)
 
 diff --git a/git-mergetool--lib.sh b/git-mergetool--lib.sh
-index e338be5..94b554d 100644
+index 6a72106..cbcd67d 100644
 --- a/git-mergetool--lib.sh
 +++ b/git-mergetool--lib.sh
 @@ -1,5 +1,4 @@
@@ -72,7 +72,7 @@ index 0e87e09..55fe8d5 100644
  # git-ls-remote could be called from outside a git managed repository;
  # this would fail in that case and would issue an error message.
 diff --git a/git-rebase--am.sh b/git-rebase--am.sh
-index f84854f..9e22c74 100644
+index 34e3102..a4f683a 100644
 --- a/git-rebase--am.sh
 +++ b/git-rebase--am.sh
 @@ -1,4 +1,5 @@
@@ -83,7 +83,7 @@ index f84854f..9e22c74 100644
  # Copyright (c) 2010 Junio C Hamano.
  #
 diff --git a/git-rebase--interactive.sh b/git-rebase--interactive.sh
-index 048a140..7b4ac99 100644
+index 83d6d46..7deacfa 100644
 --- a/git-rebase--interactive.sh
 +++ b/git-rebase--interactive.sh
 @@ -1,11 +1,9 @@
@@ -102,7 +102,7 @@ index 048a140..7b4ac99 100644
  # The original idea comes from Eric W. Biederman, in
  # http://article.gmane.org/gmane.comp.version-control.git/22407
 diff --git a/git-rebase--merge.sh b/git-rebase--merge.sh
-index b10f2cf..5e79426 100644
+index 16d1817..e7d96de 100644
 --- a/git-rebase--merge.sh
 +++ b/git-rebase--merge.sh
 @@ -1,4 +1,6 @@
@@ -130,7 +130,7 @@ index 6a27f68..e6c3116 100644
  # Export the TEXTDOMAIN* data that we need for Git
  TEXTDOMAIN=git
 diff --git a/git-sh-setup.sh b/git-sh-setup.sh
-index 2f78359..2b4fef0 100644
+index 7a964ad..5887630 100644
 --- a/git-sh-setup.sh
 +++ b/git-sh-setup.sh
 @@ -1,9 +1,6 @@
@@ -147,10 +147,10 @@ index 2f78359..2b4fef0 100644
  # Having this variable in your environment would break scripts because
  # you would cause "cd" to be taken to unexpected places.  If you
 diff --git a/t/test-lib.sh b/t/test-lib.sh
-index ca6bdef..4bef913 100644
+index 1aa27bd..8d1e277 100644
 --- a/t/test-lib.sh
 +++ b/t/test-lib.sh
-@@ -489,11 +489,9 @@ then
+@@ -594,11 +594,9 @@ then
  
  	make_valgrind_symlink () {
  		# handle only executables, unless they are shell libraries that
@@ -165,5 +165,5 @@ index ca6bdef..4bef913 100644
  
  		base=$(basename "$1")
 -- 
-1.8.2.1
+1.8.3.2
 

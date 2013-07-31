@@ -1,4 +1,4 @@
-From 587c3ee17a8fbd7bd695e5aa5f9a0cb4ca599d46 Mon Sep 17 00:00:00 2001
+From 8751f95383a2eaa1bd3fe8afa43362f3ddffa9ab Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 7 Oct 2011 04:06:02 -0500
 Subject: post-receive-email: defend against non-utf8 i18n.logoutputencoding
@@ -25,10 +25,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 file changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/contrib/hooks/post-receive-email b/contrib/hooks/post-receive-email
-index bd45702..26dd0e6 100755
+index 7d3a542..6aa6e08 100755
 --- a/contrib/hooks/post-receive-email
 +++ b/contrib/hooks/post-receive-email
-@@ -465,7 +465,7 @@ generate_delete_branch_email()
+@@ -474,7 +474,7 @@ generate_delete_branch_email()
  	echo "       was  $oldrev"
  	echo ""
  	echo $LOGBEGIN
@@ -37,7 +37,7 @@ index bd45702..26dd0e6 100755
  	echo $LOGEND
  }
  
-@@ -541,11 +541,11 @@ generate_atag_email()
+@@ -550,11 +550,11 @@ generate_atag_email()
  		# performed on them
  		if [ -n "$prevtag" ]; then
  			# Show changes since the previous release
@@ -51,7 +51,7 @@ index bd45702..26dd0e6 100755
  		fi
  		;;
  	*)
-@@ -565,7 +565,7 @@ generate_delete_atag_email()
+@@ -574,7 +574,7 @@ generate_delete_atag_email()
  	echo "       was  $oldrev"
  	echo ""
  	echo $LOGBEGIN
@@ -60,7 +60,7 @@ index bd45702..26dd0e6 100755
  	echo $LOGEND
  }
  
-@@ -611,7 +611,7 @@ generate_general_email()
+@@ -620,7 +620,7 @@ generate_general_email()
  	echo ""
  	if [ "$newrev_type" = "commit" ]; then
  		echo $LOGBEGIN
@@ -69,7 +69,7 @@ index bd45702..26dd0e6 100755
  		echo $LOGEND
  	else
  		# What can we do here?  The tag marks an object that is not
-@@ -630,7 +630,7 @@ generate_delete_general_email()
+@@ -639,7 +639,7 @@ generate_delete_general_email()
  	echo "       was  $oldrev"
  	echo ""
  	echo $LOGBEGIN
@@ -79,5 +79,5 @@ index bd45702..26dd0e6 100755
  }
  
 -- 
-1.8.1.3
+1.8.3.2
 
