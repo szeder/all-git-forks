@@ -1,24 +1,23 @@
-git (1:1.8.4~rc0-0.1) experimental; urgency=low
+git (1:1.8.4~rc0-1) experimental; urgency=low
 
   Starting with this version, gitweb and "git daemon" on Debian are
   configured to look for repositories under /var/lib/git by default
-  instead of /var/cache/git.
-
-  You may also want to adjust your inetd, rsyncd, and web server
-  configuration to use the new base path.
+  instead of /var/cache/git.  You may want to adjust your inetd,
+  rsyncd, and web server configuration to use the new base path.
 
   See /usr/share/doc/git/README.Debian for details.
 
   Symlinks are installed during the upgrade to ensure existing
   repositories remain accessible.  If no local scripts or
   configuration depend on /var/cache/git then it is safe to remove
-  that directory after replacing these symlinks with their targets:
+  the old directory after replacing these symlinks with their
+  targets:
 
     mv --backup /var/cache/git/* /var/lib/git/
     rmdir /var/cache/git
     rm /var/lib/git/*~
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 06 Jul 2013 16:17:48 -0700
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 28 Jul 2013 17:46:05 -0700
 
 git (1:1.8.2~rc0-1) experimental; urgency=low
 

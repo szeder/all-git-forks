@@ -1,4 +1,4 @@
-git (1:1.8.4~rc0-0.1) unstable; urgency=low
+git (1:1.8.4~rc0-1) unstable; urgency=low
 
   * new upstream release candidate.
   * use /var/lib/git instead of /var/cache/git as default git
@@ -18,7 +18,7 @@ git (1:1.8.4~rc0-0.1) unstable; urgency=low
       adapt to it.
   * update debian/copyright.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 06 Jul 2013 15:15:15 -0700
+ -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 30 Jul 2013 19:11:14 -0700
 
 git (1:1.8.3.2-1) unstable; urgency=low
 
