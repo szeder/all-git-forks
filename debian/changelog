@@ -1,4 +1,4 @@
-git (1:1.8.4~rc1-0.1) unstable; urgency=low
+git (1:1.8.4~rc1-1) unstable; urgency=low
 
   * new upstream release candidate.
   * debian/watch: point to code.google.com again.
@@ -9,7 +9,7 @@ git (1:1.8.4~rc1-0.1) unstable; urgency=low
     * remove spurious '/var/lib/git/*' symlink from the upgrade
       to 1:1.8.4~rc0-1.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 31 Jul 2013 11:57:34 -0700
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 01 Aug 2013 23:14:58 -0700
 
 git (1:1.8.4~rc0-1) unstable; urgency=low
 
