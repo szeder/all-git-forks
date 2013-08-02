@@ -361,7 +361,6 @@ pick_one_preserving_merges () {
 			test "a$1" = a-n && die "Refusing to squash a merge: $sha1"
 
 			# Remove HEAD from parents list
-			echo All parents are: $new_parents
 			new_parents=${new_parents// $head_parent/}
 
 			# redo merge
