@@ -8,6 +8,10 @@ if test "$1" = upgrade &&
 	(
 		cd /var/lib/git
 		for target in ../../cache/git/*; do
+			if ! test -L "$target" && ! test -e "$target"; then
+				continue
+			fi
+
 			link=${target#../../cache/git/}
 			if ! test -L "$link" && ! test -e "$link"; then
 				ln -s "$target" "$link"
