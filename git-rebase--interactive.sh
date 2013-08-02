@@ -643,8 +643,12 @@ do_next () {
 		fi
 		save_rewrites
 
-		# Find rebased commit
+		# Verify commit
 		test -z $sha1 && sha1="$orig_head"
+		output git rev-parse --verify $sha1 || die "Invalid branch name: $sha1"
+		sha1=$(git rev-parse $sha1)
+
+		# Find rebased commit
 		if test -f "$rewritten"/$sha1
 		then
 			new_sha1 = $(cat "$rewritten"/$sha1)
