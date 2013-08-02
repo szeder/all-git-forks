@@ -1,6 +1,7 @@
 git (1:1.8.4~rc1-0.1) unstable; urgency=low
 
   * new upstream release candidate.
+  * debian/watch: point to code.google.com again.
   * debian/git.preinst:
     * check that targets in /var/cache/git/* exist when
       creating symlinks from /var/lib/git/ (thx Steve Cotton and
