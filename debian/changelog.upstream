@@ -1,3 +1,62 @@
+Version v1.8.4-rc1; changes since v1.8.4-rc0:
+---------------------------------------------
+
+Brandon Casey (1):
+      git-completion.bash: replace zsh notation that breaks bash 3.X
+
+Daniele Segato (1):
+      docs/git-tag: explain lightweight versus annotated tags
+
+Jeff King (6):
+      docs: fix 'report-status' protocol capability thinko
+      docs: note that receive-pack knows side-band-64k capability
+      document 'agent' protocol capability
+      document 'quiet' receive-pack capability
+      commit.h: drop redundant comment
+      commit: tweak empty cherry pick advice for sequencer
+
+Jiang Xin (2):
+      Documentation/git-clean: fix description for range
+      git-clean: implement partial matching for selection
+
+Junio C Hamano (2):
+      builtin/rm.c: consolidate error reporting for removing submodules
+      Git 1.8.4-rc1
+
+Lukas Fleischer (1):
+      Avoid using `echo -n` anywhere
+
+Maurício C Antunes (1):
+      hg-to-git: --allow-empty-message in git commit
+
+Michael Haggerty (1):
+      do_one_ref(): save and restore value of current_ref
+
+Michal Sojka (1):
+      contrib/subtree: Fix make install target
+
+Nguyễn Thái Ngọc Duy (1):
+      document 'allow-tip-sha1-in-want' capability
+
+Ondřej Bílka (1):
+      many small typofixes
+
+Ralf Thielow (1):
+      git-rebase: fix typo
+
+Ramkumar Ramachandra (1):
+      config doc: quote paths, fixing tilde-interpretation
+
+Ramsay Allan Jones (1):
+      commit-slab.h: Fix memory allocation and addressing
+
+Stefan Beller (1):
+      .mailmap: combine more (email, name) to individual persons
+
+Thomas Rast (1):
+      Rename advice.object_name_warning to objectNameWarning
+
+
 Version v1.8.4-rc0; changes since v1.8.3.4:
 -------------------------------------------
 
