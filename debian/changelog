@@ -4,6 +4,8 @@ git (1:1.8.4~rc0-1.1) unstable; urgency=low
     * check that targets in /var/cache/git/* exist when
       creating symlinks from /var/lib/git/ (thx Steve Cotton and
       Christoph Anton Mitterer; closes: #718411).
+    * remove spurious '/var/lib/git/*' symlink from the upgrade
+      to 1:1.8.4~rc0-1.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 31 Jul 2013 11:57:34 -0700
 
