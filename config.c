@@ -20,14 +20,6 @@ static int zlib_compression_seen;
 
 const char *config_exclusive_filename = NULL;
 
-struct config_item {
-	struct config_item *next;
-	char *name;
-	char *value;
-};
-static struct config_item *config_parameters;
-static struct config_item **config_parameters_tail = &config_parameters;
-
 static void lowercase(char *p)
 {
 	for (; *p; p++)
@@ -47,9 +39,9 @@ void git_config_push_parameter(const char *text)
 	strbuf_release(&env);
 }
 
-int git_config_parse_parameter(const char *text)
+static int git_config_parse_parameter(const char *text,
+				      config_fn_t fn, void *data)
 {
-	struct config_item *ct;
 	struct strbuf tmp = STRBUF_INIT;
 	struct strbuf **pair;
 	strbuf_addstr(&tmp, text);
@@ -59,22 +51,19 @@ int git_config_parse_parameter(const char *text)
 	strbuf_trim(pair[0]);
 	if (!pair[0]->len) {
 		strbuf_list_free(pair);
+		return error("bogus config parameter: %s", text);
+	}
+	lowercase(pair[0]->buf);
+	if (fn(pair[0]->buf, pair[1] ? pair[1]->buf : NULL, data) < 0) {
+		strbuf_list_free(pair);
 		return -1;
 	}
-	ct = xcalloc(1, sizeof(struct config_item));
-	ct->name = strbuf_detach(pair[0], NULL);
-	if (pair[1]) {
-		strbuf_trim(pair[1]);
-		ct->value = strbuf_detach(pair[1], NULL);
-	}
 	strbuf_list_free(pair);
-	lowercase(ct->name);
-	*config_parameters_tail = ct;
-	config_parameters_tail = &ct->next;
 	return 0;
 }
 
-int git_config_parse_environment(void) {
+int git_config_from_parameters(config_fn_t fn, void *data)
+{
 	const char *env = getenv(CONFIG_DATA_ENVIRONMENT);
 	char *envw;
 	const char **argv = NULL;
@@ -92,8 +81,7 @@ int git_config_parse_environment(void) {
 	}
 
 	for (i = 0; i < nr; i++) {
-		if (git_config_parse_parameter(argv[i]) < 0) {
-			error("bogus config parameter: %s", argv[i]);
+		if (git_config_parse_parameter(argv[i], fn, data) < 0) {
 			free(argv);
 			free(envw);
 			return -1;
@@ -102,7 +90,7 @@ int git_config_parse_environment(void) {
 
 	free(argv);
 	free(envw);
-	return 0;
+	return nr > 0;
 }
 
 static int get_next_char(void)
@@ -133,23 +121,21 @@ static int get_next_char(void)
 
 static char *parse_value(void)
 {
-	static char value[1024];
-	int quote = 0, comment = 0, len = 0, space = 0;
+	static struct strbuf value = STRBUF_INIT;
+	int quote = 0, comment = 0, space = 0;
 
+	strbuf_reset(&value);
 	for (;;) {
 		int c = get_next_char();
-		if (len >= sizeof(value) - 1)
-			return NULL;
 		if (c == '\n') {
 			if (quote)
 				return NULL;
-			value[len] = 0;
-			return value;
+			return value.buf;
 		}
 		if (comment)
 			continue;
 		if (isspace(c) && !quote) {
-			if (len)
+			if (value.len)
 				space++;
 			continue;
 		}
@@ -160,7 +146,7 @@ static char *parse_value(void)
 			}
 		}
 		for (; space; space--)
-			value[len++] = ' ';
+			strbuf_addch(&value, ' ');
 		if (c == '\\') {
 			c = get_next_char();
 			switch (c) {
@@ -182,14 +168,14 @@ static char *parse_value(void)
 			default:
 				return NULL;
 			}
-			value[len++] = c;
+			strbuf_addch(&value, c);
 			continue;
 		}
 		if (c == '"') {
 			quote = 1-quote;
 			continue;
 		}
-		value[len++] = c;
+		strbuf_addch(&value, c);
 	}
 }
 
@@ -567,6 +553,12 @@ static int git_default_core_config(const char *var, const char *value)
 		return 0;
 	}
 
+	if (!strcmp(var, "core.bigfilethreshold")) {
+		long n = git_config_int(var, value);
+		big_file_threshold = 0 < n ? n : 0;
+		return 0;
+	}
+
 	if (!strcmp(var, "core.packedgitlimit")) {
 		packed_git_limit = git_config_int(var, value);
 		return 0;
@@ -579,7 +571,7 @@ static int git_default_core_config(const char *var, const char *value)
 
 	if (!strcmp(var, "core.autocrlf")) {
 		if (value && !strcasecmp(value, "input")) {
-			if (eol == EOL_CRLF)
+			if (core_eol == EOL_CRLF)
 				return error("core.autocrlf=input conflicts with core.eol=crlf");
 			auto_crlf = AUTO_CRLF_INPUT;
 			return 0;
@@ -599,14 +591,14 @@ static int git_default_core_config(const char *var, const char *value)
 
 	if (!strcmp(var, "core.eol")) {
 		if (value && !strcasecmp(value, "lf"))
-			eol = EOL_LF;
+			core_eol = EOL_LF;
 		else if (value && !strcasecmp(value, "crlf"))
-			eol = EOL_CRLF;
+			core_eol = EOL_CRLF;
 		else if (value && !strcasecmp(value, "native"))
-			eol = EOL_NATIVE;
+			core_eol = EOL_NATIVE;
 		else
-			eol = EOL_UNSET;
-		if (eol == EOL_CRLF && auto_crlf == AUTO_CRLF_INPUT)
+			core_eol = EOL_UNSET;
+		if (core_eol == EOL_CRLF && auto_crlf == AUTO_CRLF_INPUT)
 			return error("core.autocrlf=input conflicts with core.eol=crlf");
 		return 0;
 	}
@@ -833,22 +825,6 @@ int git_config_system(void)
 	return !git_env_bool("GIT_CONFIG_NOSYSTEM", 0);
 }
 
-int git_config_from_parameters(config_fn_t fn, void *data)
-{
-	static int loaded_environment;
-	const struct config_item *ct;
-
-	if (!loaded_environment) {
-		if (git_config_parse_environment() < 0)
-			return -1;
-		loaded_environment = 1;
-	}
-	for (ct = config_parameters; ct; ct = ct->next)
-		if (fn(ct->name, ct->value, data) < 0)
-			return -1;
-	return 0;
-}
-
 int git_config_early(config_fn_t fn, void *data, const char *repo_config)
 {
 	int ret = 0, found = 0;
@@ -878,9 +854,16 @@ int git_config_early(config_fn_t fn, void *data, const char *repo_config)
 		found += 1;
 	}
 
-	ret += git_config_from_parameters(fn, data);
-	if (config_parameters)
-		found += 1;
+	switch (git_config_from_parameters(fn, data)) {
+	case -1: /* error */
+		ret--;
+		break;
+	case 0: /* found nothing */
+		break;
+	default: /* found at least one item */
+		found++;
+		break;
+	}
 
 	return ret == 0 ? found : ret;
 }
@@ -1119,12 +1102,12 @@ int git_config_parse_key(const char *key, char **store_key, int *baselen_)
 
 	if (last_dot == NULL || last_dot == key) {
 		error("key does not contain a section: %s", key);
-		return -2;
+		return -CONFIG_NO_SECTION_OR_NAME;
 	}
 
 	if (!last_dot[1]) {
 		error("key does not contain variable name: %s", key);
-		return -2;
+		return -CONFIG_NO_SECTION_OR_NAME;
 	}
 
 	baselen = last_dot - key;
@@ -1161,7 +1144,7 @@ int git_config_parse_key(const char *key, char **store_key, int *baselen_)
 
 out_free_ret_1:
 	free(*store_key);
-	return -1;
+	return -CONFIG_INVALID_KEY;
 }
 
 /*
@@ -1217,7 +1200,7 @@ int git_config_set_multivar(const char *key, const char *value,
 	if (fd < 0) {
 		error("could not lock config file %s: %s", config_filename, strerror(errno));
 		free(store.key);
-		ret = -1;
+		ret = CONFIG_NO_LOCK;
 		goto out_free;
 	}
 
@@ -1231,12 +1214,12 @@ int git_config_set_multivar(const char *key, const char *value,
 		if ( ENOENT != errno ) {
 			error("opening %s: %s", config_filename,
 			      strerror(errno));
-			ret = 3; /* same as "invalid config file" */
+			ret = CONFIG_INVALID_FILE; /* same as "invalid config file" */
 			goto out_free;
 		}
 		/* if nothing to unset, error out */
 		if (value == NULL) {
-			ret = 5;
+			ret = CONFIG_NOTHING_SET;
 			goto out_free;
 		}
 
@@ -1264,7 +1247,7 @@ int git_config_set_multivar(const char *key, const char *value,
 					REG_EXTENDED)) {
 				error("invalid pattern: %s", value_regex);
 				free(store.value_regex);
-				ret = 6;
+				ret = CONFIG_INVALID_PATTERN;
 				goto out_free;
 			}
 		}
@@ -1286,7 +1269,7 @@ int git_config_set_multivar(const char *key, const char *value,
 				regfree(store.value_regex);
 				free(store.value_regex);
 			}
-			ret = 3;
+			ret = CONFIG_INVALID_FILE;
 			goto out_free;
 		}
 
@@ -1299,7 +1282,7 @@ int git_config_set_multivar(const char *key, const char *value,
 		/* if nothing to unset, or too many matches, error out */
 		if ((store.seen == 0 && value == NULL) ||
 				(store.seen > 1 && multi_replace == 0)) {
-			ret = 5;
+			ret = CONFIG_NOTHING_SET;
 			goto out_free;
 		}
 
@@ -1360,7 +1343,7 @@ int git_config_set_multivar(const char *key, const char *value,
 
 	if (commit_lock_file(lock) < 0) {
 		error("could not commit config file %s", config_filename);
-		ret = 4;
+		ret = CONFIG_NO_WRITE;
 		goto out_free;
 	}
 

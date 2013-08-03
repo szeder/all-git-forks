@@ -22,11 +22,6 @@
 #include "dir.h"
 #include "submodule.h"
 
-static const char rename_limit_advice[] =
-"inexact rename detection was skipped because there were too many\n"
-"  files. You may want to set your merge.renamelimit variable to at least\n"
-"  %d and retry this merge.";
-
 static struct tree *shift_tree_object(struct tree *one, struct tree *two,
 				      const char *subtree_shift)
 {
@@ -278,7 +273,9 @@ static int save_files_dirs(const unsigned char *sha1,
 static int get_files_dirs(struct merge_options *o, struct tree *tree)
 {
 	int n;
-	if (read_tree_recursive(tree, "", 0, 0, NULL, save_files_dirs, o))
+	struct pathspec match_all;
+	init_pathspec(&match_all, NULL);
+	if (read_tree_recursive(tree, "", 0, 0, &match_all, save_files_dirs, o))
 		return 0;
 	n = o->current_file_set.nr + o->current_directory_set.nr;
 	return n;
@@ -1652,8 +1649,9 @@ int merge_recursive(struct merge_options *o,
 		commit_list_insert(h2, &(*result)->parents->next);
 	}
 	flush_output(o);
-	if (o->needed_rename_limit)
-		warning(rename_limit_advice, o->needed_rename_limit);
+	if (show(o, 2))
+		diff_warn_rename_limit("merge.renamelimit",
+				       o->needed_rename_limit, 0);
 	return clean;
 }
 
@@ -1711,15 +1709,15 @@ int merge_recursive_generic(struct merge_options *o,
 static int merge_recursive_config(const char *var, const char *value, void *cb)
 {
 	struct merge_options *o = cb;
-	if (!strcasecmp(var, "merge.verbosity")) {
+	if (!strcmp(var, "merge.verbosity")) {
 		o->verbosity = git_config_int(var, value);
 		return 0;
 	}
-	if (!strcasecmp(var, "diff.renamelimit")) {
+	if (!strcmp(var, "diff.renamelimit")) {
 		o->diff_rename_limit = git_config_int(var, value);
 		return 0;
 	}
-	if (!strcasecmp(var, "merge.renamelimit")) {
+	if (!strcmp(var, "merge.renamelimit")) {
 		o->merge_rename_limit = git_config_int(var, value);
 		return 0;
 	}

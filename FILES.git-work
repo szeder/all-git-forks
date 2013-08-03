@@ -1,0 +1,17 @@
+.
+./libexec
+./libexec/git-core
+./libexec/git-core/git-atomic-lib
+./libexec/git-core/git-conditions-lib
+./libexec/git-core/git-test-lib
+./libexec/git-core/git-work
+./libexec/git-core/git-atomic
+./libexec/git-core/git-base
+./libexec/git-core/git-test
+./share
+./share/man
+./share/man/man1
+./share/man/man1/git-test.1
+./share/man/man1/git-atomic.1
+./share/man/man1/git-work.1
+./share/man/man1/git-base.1

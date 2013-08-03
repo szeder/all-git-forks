@@ -274,7 +274,6 @@ struct recent_command {
 /* Configured limits on output */
 static unsigned long max_depth = 10;
 static off_t max_packsize;
-static uintmax_t big_file_threshold = 512 * 1024 * 1024;
 static int force_update;
 static int pack_compression_level = Z_DEFAULT_COMPRESSION;
 static int pack_compression_seen;
@@ -3136,11 +3135,11 @@ static int parse_one_feature(const char *feature, int from_stream)
 		option_export_marks(feature + 13);
 	} else if (!strcmp(feature, "cat-blob")) {
 		; /* Don't die - this feature is supported */
-	} else if (!prefixcmp(feature, "relative-marks")) {
+	} else if (!strcmp(feature, "relative-marks")) {
 		relative_marks_paths = 1;
-	} else if (!prefixcmp(feature, "no-relative-marks")) {
+	} else if (!strcmp(feature, "no-relative-marks")) {
 		relative_marks_paths = 0;
-	} else if (!prefixcmp(feature, "force")) {
+	} else if (!strcmp(feature, "force")) {
 		force_update = 1;
 	} else if (!strcmp(feature, "notes") || !strcmp(feature, "ls")) {
 		; /* do nothing; we have the feature */
@@ -3205,10 +3204,6 @@ static int git_pack_config(const char *k, const char *v, void *cb)
 	if (!strcmp(k, "pack.packsizelimit")) {
 		max_packsize = git_config_ulong(k, v);
 		return 0;
-	}
-	if (!strcmp(k, "core.bigfilethreshold")) {
-		long n = git_config_int(k, v);
-		big_file_threshold = 0 < n ? n : 0;
 	}
 	return git_default_config(k, v, cb);
 }

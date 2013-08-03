@@ -31,7 +31,7 @@ as-refs print the range as references
 X pass-thru options to merge or rebase
 i,interactive perform an interactive rebase
 "
-. git-sh-setup
+. "$(git --exec-path)/git-sh-setup"
 . git-atomic-lib
 
 warn()
@@ -56,29 +56,30 @@ work_default()
 
 work_list_dependency()
 {
-    limits=''
+    limits=""
     while true
     do
-         top=$(git rev-list $BASE $limits --no-merges --max-count=1)
+	 top=$(git rev-list $BASE $limits --no-merges --max-count=1 "$@")
 	 if test -z "$top"
-         then
-             break;
-         else
+	 then
+	     break;
+	 else
 	     echo $top
-             limits="$limits ^$top"
-         fi
+	     limits="$limits ^$top"
+	 fi
     done
 }
 
 work_list()
 {
     type=$1
+    test $# -gt 0 && shift
     case "$type" in
        ""|commit)
 	    git rev-list $(work_default)
        ;;
        dependency)
-            work_list_dependency "$@"
+	    work_list_dependency "$@"
        ;;
        *)
 	    die "$type is not a supported type for this command"
@@ -103,10 +104,34 @@ work_merge()
 	BRANCH=${BRANCH} &&
 	MERGE_OPTIONS='${MERGE_OPTIONS}'
 	git checkout -q \${BASE} &&
-	git merge -q \${DEPENDENCY} \${MERGE_OPTIONS} &&
+	git merge --no-ff -q \${DEPENDENCY} \${MERGE_OPTIONS} &&
 	MERGE=\$(git rev-parse HEAD) &&
 	git rebase --onto HEAD \${BASE} \${BRANCH} &&
 	git update-ref \${BASEREF} \${MERGE}
+"
+}
+
+work_unmerge()
+{
+    assert --not-unstaged --not-staged --not-detached
+
+    saved=$(work_list dependency --not "$@" | tr \\012 ' ') || exit $?
+
+    test -n "$saved" || die "You must preserve at least one dependency."
+
+    atomic eval "
+	set -- $saved;
+	git checkout \$1 || die 'Failed to checkout a merge commit.';
+	shift;
+
+	while test \$# -gt 0
+	do
+		git merge \$1 || die \"Failed to merge '\$1'\";
+		shift;
+	done &&
+	NEWBASE=\$(git rev-parse HEAD) &&
+	git rebase --onto HEAD $BASE $BRANCH &&
+	git base -q set \$NEWBASE
 "
 }
 
@@ -115,9 +140,9 @@ work_rebase()
    git base -q check || die "use 'git base' to establish a base for this branch"
    if test -n "${INTERACTIVE}"
    then
-        PIVOT=${1:-$(git base)}
+	PIVOT=${1:-$(git base)}
 	git base -q check ${PIVOT} || die "${PIVOT} is not a valid pivot commit"
-	git rebase -i ${PIVOT} HEAD "$@"
+	git rebase -i ${PIVOT} ${BRANCH} "$@"
    else
 
       DEPENDENCY=$1
@@ -307,7 +332,7 @@ case "$#" in
     case "$cmd" in
     help)
 	    git work -h "$@" ;;
-    list|merge|rebase|pivot|create|update)
+    list|merge|rebase|pivot|create|update|unmerge)
 	    work_$cmd "$@" ;;
     *)
 	    usage "$@" ;;
