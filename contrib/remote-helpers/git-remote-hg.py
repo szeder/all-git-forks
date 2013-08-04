@@ -406,6 +406,9 @@ def get_repo(url, alias):
                     if not os.path.exists(local_hg):
                         continue
                     shutil.copytree(local_hg, hg_path)
+            # no clone found, just init
+            if not os.path.exists(hg_path):
+                hg.peer(myui, {}, shared_path, create=True)
 
         if not os.path.exists(dirname):
             os.makedirs(dirname)
