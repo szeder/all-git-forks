@@ -401,8 +401,11 @@ def get_repo(url, alias):
             hg_path = os.path.join(shared_path, '.hg')
             if not os.path.exists(hg_path):
                 repos = os.listdir(shared_path)
-                local_hg = os.path.join(shared_path, repos[0], 'clone', '.hg')
-                shutil.copytree(local_hg, hg_path)
+                for x in repos:
+                    local_hg = os.path.join(shared_path, x, 'clone', '.hg')
+                    if not os.path.exists(local_hg):
+                        continue
+                    shutil.copytree(local_hg, hg_path)
 
         if not os.path.exists(dirname):
             os.makedirs(dirname)
