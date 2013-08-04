@@ -396,8 +396,8 @@ htmldir_relative = $(patsubst $(prefix)/%,%,$(htmldir))
 
 export prefix bindir sharedir sysconfdir gitwebdir localedir
 
-CC = cc
-AR = ar
+#CC = cc
+#AR = ar
 RM = rm -f
 DIFF = diff
 TAR = tar
