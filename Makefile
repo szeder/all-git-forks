@@ -486,6 +486,8 @@ SCRIPT_PERL += git-svn.perl
 
 SCRIPT_PYTHON += git-remote-testpy.py
 SCRIPT_PYTHON += git-p4.py
+SCRIPT_PYTHON += git-remote-hg.py
+SCRIPT_PYTHON += git-remote-bzr.py
 
 # Generated files for scripts
 SCRIPT_SH_GEN = $(patsubst %.sh,%,$(SCRIPT_SH))

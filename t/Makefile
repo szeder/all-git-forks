@@ -14,6 +14,7 @@ RM ?= rm -f
 PROVE ?= prove
 DEFAULT_TEST_TARGET ?= test
 TEST_LINT ?= test-lint-duplicates test-lint-executable
+export TEST_DIRECTORY = $(CURDIR)
 
 # Shell quote;
 SHELL_PATH_SQ = $(subst ','\'',$(SHELL_PATH))
@@ -22,6 +23,9 @@ PERL_PATH_SQ = $(subst ','\'',$(PERL_PATH))
 T = $(sort $(wildcard t[0-9][0-9][0-9][0-9]-*.sh))
 TSVN = $(sort $(wildcard t91[0-9][0-9]-*.sh))
 TGITWEB = $(sort $(wildcard t95[0-9][0-9]-*.sh))
+TREMOTE = $(wildcard remote-helpers/*.t)
+
+T += $(TREMOTE)
 
 all: $(DEFAULT_TEST_TARGET)
 
@@ -76,6 +80,8 @@ full-svn-test:
 
 gitweb-test:
 	$(MAKE) $(TGITWEB)
+
+remote-helpers-test: $(TREMOTE)
 
 valgrind:
 	$(MAKE) GIT_TEST_OPTS="$(GIT_TEST_OPTS) --valgrind"
