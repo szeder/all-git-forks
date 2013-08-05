@@ -487,6 +487,8 @@ SCRIPT_PERL += git-svn.perl
 
 SCRIPT_PYTHON += git-remote-testpy.py
 SCRIPT_PYTHON += git-p4.py
+SCRIPT_PYTHON += git-remote-hg.py
+SCRIPT_PYTHON += git-remote-bzr.py
 
 NO_INSTALL += git-remote-testgit
 NO_INSTALL += git-remote-testpy

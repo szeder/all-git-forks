@@ -8,7 +8,7 @@
 
 test_description='Test remote-hg'
 
-test -z "$TEST_DIRECTORY" && TEST_DIRECTORY="$PWD/../../t"
+test -z "$TEST_DIRECTORY" && TEST_DIRECTORY="$PWD/.."
 . "$TEST_DIRECTORY"/test-lib.sh
 
 if ! test_have_prereq PYTHON; then
