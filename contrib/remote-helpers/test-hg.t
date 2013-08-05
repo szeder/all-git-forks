@@ -76,10 +76,10 @@ check_push () {
 			grep "^   [a-f0-9]*\.\.[a-f0-9]* *${branch} -> ${branch}$" error || ref_ret=1
 			;;
 		esac
-		(( $ref_ret )) && echo "match for '$branch' failed" && break
+		test $ref_ret -ne 0 && echo "match for '$branch' failed" && break
 	done
 
-	if (( $expected_ret != $ret || $ref_ret ))
+	if test $expected_ret -ne $ret -o $ref_ret -ne 0
 	then
 		return 1
 	fi
