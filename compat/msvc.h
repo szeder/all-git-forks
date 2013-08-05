@@ -56,6 +56,6 @@ int mingw_fstat(int fd, struct stat *buf);
 /* Git version infomation */
 #ifndef __MSVC__VERSION
 #define __MSVC__VERSION
-#define GIT_VERSION "1.8.2.2"
+#define GIT_VERSION "1.8.3"
 #define GIT_USER_AGENT "git/" GIT_VERSION
 #endif
