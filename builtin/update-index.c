@@ -799,6 +799,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		usage_with_options(update_index_usage, options);
 
 	git_config(git_default_config, NULL);
+	log_index_changes(prefix, argv);
 
 	/* We can't free this memory, it becomes part of a linked list parsed atexit() */
 	lock_file = xcalloc(1, sizeof(struct lock_file));

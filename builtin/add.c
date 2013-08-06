@@ -456,6 +456,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	struct update_callback_data update_data;
 
 	git_config(add_config, NULL);
+	log_index_changes(prefix, argv);
 
 	argc = parse_options(argc, argv, prefix, builtin_add_options,
 			  builtin_add_usage, PARSE_OPT_KEEP_ARGV0);

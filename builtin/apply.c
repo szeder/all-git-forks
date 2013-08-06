@@ -4423,6 +4423,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	prefix = prefix_;
 	prefix_length = prefix ? strlen(prefix) : 0;
 	git_config(git_apply_config, NULL);
+	log_index_changes(prefix, argv);
 	if (apply_default_whitespace)
 		parse_whitespace_option(apply_default_whitespace);
 	if (apply_default_ignorewhitespace)

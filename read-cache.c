@@ -14,6 +14,7 @@
 #include "resolve-undo.h"
 #include "strbuf.h"
 #include "varint.h"
+#include "quote.h"
 
 static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int really);
 
@@ -33,8 +34,10 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int reall
 #define CACHE_EXT(s) ( (s[0]<<24)|(s[1]<<16)|(s[2]<<8)|(s[3]) )
 #define CACHE_EXT_TREE 0x54524545	/* "TREE" */
 #define CACHE_EXT_RESOLVE_UNDO 0x52455543 /* "REUC" */
+#define CACHE_EXT_INDEX_LOG 0x494C4F47 /* "ILOG" */
 
 struct index_state the_index;
+static struct strbuf log_message = STRBUF_INIT;
 
 static void set_index_entry(struct index_state *istate, int nr, struct cache_entry *ce)
 {
@@ -1297,6 +1300,14 @@ static int read_index_extension(struct index_state *istate,
 	case CACHE_EXT_RESOLVE_UNDO:
 		istate->resolve_undo = resolve_undo_read(data, sz);
 		break;
+	case CACHE_EXT_INDEX_LOG:
+		if (!istate->index_log) {
+			istate->index_log = xmalloc(sizeof(*istate->index_log));
+			strbuf_init(istate->index_log, sz);
+		}
+		strbuf_reset(istate->index_log);
+		strbuf_add(istate->index_log, data, sz);
+		break;
 	default:
 		if (*ext < 'A' || 'Z' < *ext)
 			return error("index uses %.4s extension, which we do not understand",
@@ -1509,6 +1520,14 @@ int read_index_from(struct index_state *istate, const char *path)
 		src_offset += extsize;
 	}
 	munmap(mmap, mmap_size);
+	if (istate == &the_index) {
+		for (i = 0; i < istate->cache_nr; i++) {
+			struct cache_entry *ce = istate->cache[i];
+			if (ce_stage(ce))
+				continue;
+			ce->ce_flags |= CE_BASE;
+		}
+	}
 	return istate->cache_nr;
 
 unmap:
@@ -1538,6 +1557,11 @@ int discard_index(struct index_state *istate)
 	free(istate->cache);
 	istate->cache = NULL;
 	istate->cache_alloc = 0;
+	if (istate->index_log) {
+		strbuf_release(istate->index_log);
+		free(istate->index_log);
+		istate->index_log = NULL;
+	}
 	return 0;
 }
 
@@ -1771,6 +1795,81 @@ void update_index_if_able(struct index_state *istate, struct lock_file *lockfile
 		rollback_lock_file(lockfile);
 }
 
+void log_index_changes(const char *prefix, const char **argv)
+{
+	if (prefix || argv) {
+		if (prefix)
+			strbuf_addf(&log_message, "[%s]", prefix);
+		sq_quote_argv(&log_message, argv, 0);
+	} else
+		strbuf_setlen(&log_message, 0);
+}
+
+static void get_updated_entries(struct index_state *istate,
+				struct cache_entry ***cache_out,
+				unsigned int *cache_nr_out)
+{
+	struct cache_entry **cache;
+	unsigned int i, nr, cache_nr = 0;
+
+	*cache_nr_out = 0;
+	*cache_out = NULL;
+	for (i = 0; i < istate->cache_nr; i++) {
+		if (istate->cache[i]->ce_flags & CE_BASE)
+			continue;
+		cache_nr++;
+	}
+	if (!cache_nr)
+		return;
+
+	cache = xmalloc(cache_nr * sizeof(*istate->cache));
+	for (i = nr = 0; i < istate->cache_nr; i++) {
+		struct cache_entry *ce = istate->cache[i];
+		if (ce->ce_flags & CE_BASE)
+			continue;
+		cache[nr++] = ce;
+	}
+	*cache_out = cache;
+	*cache_nr_out = cache_nr;
+}
+
+static void write_index_log(struct strbuf *sb,
+			    const struct strbuf *old_log,
+			    const struct strbuf *msg,
+			    struct cache_entry **cache,
+			    unsigned int cache_nr)
+{
+	struct strbuf body = STRBUF_INIT;
+	unsigned int i, size, nr, body_len, hdr_len;
+	const char *end, *p;
+	strbuf_addf(&body, "%s%c", msg->buf, '\0');
+	for (i = 0; i < cache_nr; i++)
+		strbuf_addf(&body, "%s %s%c", sha1_to_hex(cache[i]->sha1),
+			    cache[i]->name, '\0');
+	strbuf_addf(sb, "%u %u%c", (unsigned int)cache_nr, (unsigned int)body.len, '\0');
+	strbuf_addbuf(sb, &body);
+	strbuf_release(&body);
+
+	if (!old_log)
+		return;
+
+	size = sb->len;
+	nr = cache_nr;
+	end = old_log->buf + old_log->len;
+	p = old_log->buf;
+	while (p < end && (size < 1024 * 1024 || nr < 10)) {
+		if (sscanf(p, "%u %u", &cache_nr, &body_len) != 2) {
+			error("fail to parse old index log at %u", (unsigned int)(p - old_log->buf));
+			break;
+		}
+		hdr_len = strlen(p) + 1;
+		strbuf_add(sb, p, hdr_len + body_len);
+		size += body_len;
+		nr += cache_nr;
+		p += hdr_len + body_len;
+	}
+}
+
 int write_index(struct index_state *istate, int newfd)
 {
 	git_SHA_CTX c;
@@ -1780,6 +1879,11 @@ int write_index(struct index_state *istate, int newfd)
 	int entries = istate->cache_nr;
 	struct stat st;
 	struct strbuf previous_name_buf = STRBUF_INIT, *previous_name;
+	unsigned int index_log_nr = 0;
+	struct cache_entry **index_log_entries = NULL;
+
+	if (istate == &the_index && log_message.len)
+		get_updated_entries(istate, &index_log_entries, &index_log_nr);
 
 	for (i = removed = extended = 0; i < entries; i++) {
 		if (cache[i]->ce_flags & CE_REMOVE)
@@ -1846,6 +1950,23 @@ int write_index(struct index_state *istate, int newfd)
 		if (err)
 			return -1;
 	}
+	if (index_log_entries && log_message.len) {
+		struct strbuf sb = STRBUF_INIT;
+		write_index_log(&sb, istate->index_log, &log_message,
+				index_log_entries, index_log_nr);
+		err = write_index_ext_header(&c, newfd, CACHE_EXT_INDEX_LOG,
+					     sb.len) < 0
+			|| ce_write(&c, newfd, sb.buf,
+				    sb.len) < 0;
+		if (istate->index_log)
+			strbuf_release(istate->index_log);
+		else
+			istate->index_log = xmalloc(sizeof(*istate->index_log));
+		*istate->index_log = sb;
+		if (err)
+			return -1;
+	}
+	free(index_log_entries);
 
 	if (ce_flush(&c, newfd) || fstat(newfd, &st))
 		return -1;
