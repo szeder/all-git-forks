@@ -106,7 +106,7 @@ void db_cache_add(DB *db, const char *path, const char *revision, int isexec, st
 	dbt_set(&key, key_sb.buf, key_sb.len);
 	dbt_set(&value, file->buf, file->len+1); // +1 for isexec bit
 	rc = db->put(db, NULL, &key, &value, DB_NOOVERWRITE);
-	if (rc)
+	if (rc && rc != DB_KEYEXIST)
 		error("db_cache put failed with rc: %d", rc);
 
 	file->buf[file->len] = 0;
