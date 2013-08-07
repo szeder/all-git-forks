@@ -1380,15 +1380,24 @@ static void wt_shortstatus_print_tracking(struct wt_status *s)
 	branch = branch_get(s->branch + 11);
 	if (s->is_initial)
 		color_fprintf(s->fp, header_color, _("Initial commit on "));
+
+	color_fprintf(s->fp, branch_color_local, "%s", branch_name);
+
+	/*
+	 * Not report tracking info if no tracking branch found
+	 * or no difference found.
+	 */
 	if (!stat_tracking_info(branch, &num_ours, &num_theirs)) {
-		color_fprintf(s->fp, branch_color_local, "%s", branch_name);
+		fputc(s->null_termination ? '\0' : '\n', s->fp);
+		return;
+	}
+	if (!num_ours && !num_theirs) {
 		fputc(s->null_termination ? '\0' : '\n', s->fp);
 		return;
 	}
 
 	base = branch->merge[0]->dst;
 	base = shorten_unambiguous_ref(base, 0);
-	color_fprintf(s->fp, branch_color_local, "%s", branch_name);
 	color_fprintf(s->fp, header_color, "...");
 	color_fprintf(s->fp, branch_color_remote, "%s", base);
 
