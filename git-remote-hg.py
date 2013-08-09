@@ -401,6 +401,7 @@ def get_repo(url, alias):
                 if not os.path.exists(local_hg):
                     continue
                 shutil.copytree(local_hg, hg_path)
+                break
 
         # setup shared repo (if not there)
         try:
