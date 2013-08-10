@@ -1,3 +1,41 @@
+Version v1.8.4-rc2; changes since v1.8.4-rc1:
+---------------------------------------------
+
+Brian M. Carlson (1):
+      Add missing test file for UTF-16.
+
+Felix Gruber (1):
+      fix typo in documentation of git-svn
+
+Jiang Xin (2):
+      l10n: git.pot: v1.8.4 round 1 (99 new, 46 removed)
+      l10n: zh_CN.po: translate 99 messages (2133t0f0u)
+
+Jonathan Nieder (1):
+      log doc: the argument to --encoding is not optional
+
+Junio C Hamano (4):
+      Revert "cat-file: split --batch input lines on whitespace"
+      t3900: test rejecting log message with NULs correctly
+      commit: typofix for xxFFF[EF] check
+      Git 1.8.4-rc2
+
+Ramsay Allan Jones (1):
+      cygwin: Remove the Win32 l/stat() implementation
+
+René Scharfe (1):
+      t8001, t8002: fix "blame -L :literal" test on NetBSD
+
+Stefan Beller (1):
+      .mailmap: Multiple addresses of Michael S. Tsirkin
+
+Torstein Hegge (1):
+      Documentation/rev-list-options: add missing word in --*-parents
+
+Tran Ngoc Quan (1):
+      l10n: vi.po (2133t)
+
+
 Version v1.8.4-rc1; changes since v1.8.4-rc0:
 ---------------------------------------------
 
