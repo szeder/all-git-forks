@@ -43,6 +43,13 @@ LOCK_DIE_ON_ERROR::
 	If a lock is already taken for the file, `die()` with an error
 	message.  If this option is not specified, return a negative
 	integer to the caller on failure.
+
+LOCK_SEPARATE_STAGING_FILE::
+
+	Use a separate file (not the lockfile) for staging the new
+	file contents.  This option makes it possible to call
+	activate_staging_file() to overwrite the old file while
+	retaining the file lock.
 --
 
 hold_lock_file_for_append::
@@ -64,23 +71,39 @@ unable_to_lock_index_die::
 
 commit_lock_file::
 
-	Take a pointer to the `struct lock_file` initialized
-	with an earlier call to `hold_lock_file_for_update()`,
-	close the file descriptor and rename the lockfile to its
-	final destination.  Returns 0 upon success, a negative
-	value on failure to close(2) or rename(2).
+	Take a pointer to the `struct lock_file` initialized with an
+	earlier call to `hold_lock_file_for_update()` or
+	`hold_lock_file_for_append()`.  Close the file descriptor.
+	Then, if the lock was created with the
+	LOCK_SEPARATE_STAGING_FILE flag, rename the staging file on
+	top of the locked file (if `activate_staging_file()` hasn't
+	already been called) and delete the lockfile; otherwise,
+	rename the lockfile to its final destination.  Returns 0 upon
+	success, a negative value on failure to close(2) or rename(2).
+
+activate_staging_file::
+
+	Write the contents of the separate staging file over those of
+	the locked file while retaining the lock.  This function may
+	only be called if the lock was created with the
+	LOCK_SEPARATE_STAGING_FILE flag.
 
 rollback_lock_file::
 
-	Take a pointer to the `struct lock_file` initialized
-	with an earlier call to `hold_lock_file_for_update()`,
-	close the file descriptor and remove the lockfile.
+	Take a pointer to the `struct lock_file` initialized with an
+	earlier call to `hold_lock_file_for_update()`, close the file
+	descriptor, remove the separate staging file (if any), and
+	remove the lockfile.  Please note that if
+	`activate_staging_file()` has already been called, then the
+	contents committed at that time will remain active.
 
 close_lock_file::
 	Take a pointer to the `struct lock_file` initialized
 	with an earlier call to `hold_lock_file_for_update()`,
 	and close the file descriptor.  Returns 0 upon success,
-	a negative value on failure to close(2).
+	a negative value on failure to close(2).  This function must
+	only be called if the lock was created without the
+	LOCK_SEPARATE_STAGING_FILE flag.
 
 Because the structure is used in an `atexit(3)` handler, its
 storage has to stay throughout the life of the program.  It
@@ -94,11 +117,10 @@ will close and remove the lockfile.
 If you need to close the file descriptor you obtained from
 `hold_lock_file_for_update` function yourself, do so by calling
 `close_lock_file()`.  You should never call `close(2)` yourself!
-Otherwise the `struct
-lock_file` structure still remembers that the file descriptor
-needs to be closed, and a later call to `commit_lock_file()` or
-`rollback_lock_file()` will result in duplicate calls to
-`close(2)`.  Worse yet, if you `close(2)`, open another file
-descriptor for completely different purpose, and then call
-`commit_lock_file()` or `rollback_lock_file()`, they may close
+Otherwise the `struct lock_file` structure still remembers that the
+file descriptor needs to be closed, and a later call to
+`commit_lock_file()` or `rollback_lock_file()` will result in
+duplicate calls to `close(2)`.  Worse yet, if you `close(2)`, open
+another file descriptor for completely different purpose, and then
+call `commit_lock_file()` or `rollback_lock_file()`, they may close
 that unrelated file descriptor.
