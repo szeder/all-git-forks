@@ -56,7 +56,7 @@ static int recvline_fh(FILE *helper, struct strbuf *buffer, const char *name)
 	if (strbuf_getline(buffer, helper, '\n') == EOF) {
 		if (debug)
 			fprintf(stderr, "Debug: Remote helper quit.\n");
-		die("Reading from helper 'git-remote-%s' failed", name);
+		exit(128);
 	}
 
 	if (debug)
@@ -809,6 +809,11 @@ static int push_refs_with_export(struct transport *transport,
 	if (!data->refspecs)
 		die("remote-helper doesn't support push; refspec needed");
 
+	if (flags & TRANSPORT_PUSH_DRY_RUN) {
+		if (set_helper_option(transport, "dry-run", "true") != 0)
+			die("helper %s does not support dry-run", data->name);
+	}
+
 	helper = get_helper(transport);
 
 	write_constant(helper->in, "export\n");
@@ -830,8 +835,14 @@ static int push_refs_with_export(struct transport *transport,
 		}
 		free(private);
 
-		if (ref->peer_ref)
+		if (ref->deletion)
+			die("remote-helpers do not support ref deletion");
+
+		if (ref->peer_ref) {
+			if (strcmp(ref->peer_ref->name, ref->name))
+				die("remote-helpers do not support old:new syntax");
 			string_list_append(&revlist_args, ref->peer_ref->name);
+		}
 	}
 
 	if (get_exporter(transport, &exporter, &revlist_args))
@@ -971,6 +982,7 @@ int transport_helper_init(struct transport *transport, const char *name)
 #define PBUFFERSIZE 8192
 
 /* Print bidirectional transfer loop debug message. */
+__attribute__((format (printf, 1, 2)))
 static void transfer_debug(const char *fmt, ...)
 {
 	va_list args;
@@ -1056,7 +1068,7 @@ static int udt_do_read(struct unidirectional_transfer *t)
 		return -1;
 	} else if (bytes == 0) {
 		transfer_debug("%s EOF (with %i bytes in buffer)",
-			t->src_name, t->bufuse);
+			t->src_name, (int)t->bufuse);
 		t->state = SSTATE_FLUSHING;
 	} else if (bytes > 0) {
 		t->bufuse += bytes;
@@ -1120,7 +1132,7 @@ static void *udt_copy_task_routine(void *udt)
 #ifndef NO_PTHREADS
 
 /*
- * Join thread, with apporiate errors on failure. Name is name for the
+ * Join thread, with appropriate errors on failure. Name is name for the
  * thread (for error messages). Returns 0 on success, 1 on failure.
  */
 static int tloop_join(pthread_t thread, const char *name)
@@ -1186,7 +1198,7 @@ static void udt_kill_transfer(struct unidirectional_transfer *t)
 }
 
 /*
- * Join process, with apporiate errors on failure. Name is name for the
+ * Join process, with appropriate errors on failure. Name is name for the
  * process (for error messages). Returns 0 on success, 1 on failure.
  */
 static int tloop_join(pid_t pid, const char *name)

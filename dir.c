@@ -821,6 +821,9 @@ static void prep_exclude(struct dir_struct *dir, const char *base, int baselen)
 				dir->basebuf, stk->baselen - 1,
 				dir->basebuf + current, &dt);
 			dir->basebuf[stk->baselen - 1] = '/';
+			if (dir->exclude &&
+			    dir->exclude->flags & EXC_FLAG_NEGATIVE)
+				dir->exclude = NULL;
 			if (dir->exclude) {
 				dir->basebuf[stk->baselen] = 0;
 				dir->exclude_stack = stk;
@@ -930,7 +933,7 @@ enum exist_status {
  */
 static enum exist_status directory_exists_in_index_icase(const char *dirname, int len)
 {
-	struct cache_entry *ce = index_name_exists(&the_index, dirname, len + 1, ignore_case);
+	const struct cache_entry *ce = index_name_exists(&the_index, dirname, len + 1, ignore_case);
 	unsigned char endchar;
 
 	if (!ce)
@@ -974,7 +977,7 @@ static enum exist_status directory_exists_in_index(const char *dirname, int len)
 	if (pos < 0)
 		pos = -pos-1;
 	while (pos < active_nr) {
-		struct cache_entry *ce = active_cache[pos++];
+		const struct cache_entry *ce = active_cache[pos++];
 		unsigned char endchar;
 
 		if (strncmp(ce->name, dirname, len))
@@ -1033,9 +1036,7 @@ static enum path_treatment treat_directory(struct dir_struct *dir,
 		return path_recurse;
 
 	case index_gitdir:
-		if (dir->flags & DIR_SHOW_OTHER_DIRECTORIES)
-			return path_none;
-		return path_untracked;
+		return path_none;
 
 	case index_nonexistent:
 		if (dir->flags & DIR_SHOW_OTHER_DIRECTORIES)
@@ -1112,7 +1113,7 @@ static int exclude_matches_pathspec(const char *path, int len,
 static int get_index_dtype(const char *path, int len)
 {
 	int pos;
-	struct cache_entry *ce;
+	const struct cache_entry *ce;
 
 	ce = cache_name_exists(path, len, 0);
 	if (ce) {

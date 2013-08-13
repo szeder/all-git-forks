@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # git-subtree.sh: split/join git repositories in subdirectories of this one
 #
@@ -311,7 +311,7 @@ copy_commit()
 			GIT_COMMITTER_NAME \
 			GIT_COMMITTER_EMAIL \
 			GIT_COMMITTER_DATE
-		(echo -n "$annotate"; cat ) |
+		(printf "%s" "$annotate"; cat ) |
 		git commit-tree "$2" $3  # reads the rest of stdin
 	) || die "Can't copy commit $1"
 }

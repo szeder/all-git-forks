@@ -1790,7 +1790,7 @@ class P4Submit(Command, P4UserMap):
             missingGitTags = gitTags - p4Labels
             self.exportGitTags(missingGitTags)
 
-        # exit with error unless everything applied perfecly
+        # exit with error unless everything applied perfectly
         if len(commits) != len(applied):
                 sys.exit(1)
 
@@ -3172,7 +3172,7 @@ class P4Rebase(Command):
         if os.system("git update-index --refresh") != 0:
             die("Some files in your working directory are modified and different than what is in your index. You can use git update-index <filename> to bring the index up-to-date or stash away all your changes with git stash.");
         if len(read_pipe("git diff-index HEAD --")) > 0:
-            die("You have uncommited changes. Please commit them before rebasing or stash them away with git stash.");
+            die("You have uncommitted changes. Please commit them before rebasing or stash them away with git stash.");
 
         [upstream, settings] = findUpstreamBranchPoint()
         if len(upstream) == 0:

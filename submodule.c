@@ -226,6 +226,7 @@ static void print_submodule_summary(struct rev_info *rev, FILE *f,
 	while ((commit = get_revision(rev))) {
 		struct pretty_print_context ctx = {0};
 		ctx.date_mode = rev->date_mode;
+		ctx.output_encoding = get_log_output_encoding();
 		strbuf_setlen(&sb, 0);
 		strbuf_addstr(&sb, line_prefix);
 		if (commit->object.flags & SYMMETRIC_LEFT) {
@@ -603,9 +604,8 @@ int fetch_populated_submodules(const struct argv_array *options,
 	if (!work_tree)
 		goto out;
 
-	if (!the_index.initialized)
-		if (read_cache() < 0)
-			die("index file corrupt");
+	if (read_cache() < 0)
+		die("index file corrupt");
 
 	argv_array_push(&argv, "fetch");
 	for (i = 0; i < options->argc; i++)
@@ -624,7 +624,7 @@ int fetch_populated_submodules(const struct argv_array *options,
 		struct strbuf submodule_path = STRBUF_INIT;
 		struct strbuf submodule_git_dir = STRBUF_INIT;
 		struct strbuf submodule_prefix = STRBUF_INIT;
-		struct cache_entry *ce = active_cache[i];
+		const struct cache_entry *ce = active_cache[i];
 		const char *git_dir, *name, *default_argv;
 
 		if (!S_ISGITLINK(ce->ce_mode))
@@ -846,7 +846,7 @@ static int find_first_merges(struct object_array *result, const char *path,
 		struct commit *a, struct commit *b)
 {
 	int i, j;
-	struct object_array merges;
+	struct object_array merges = OBJECT_ARRAY_INIT;
 	struct commit *commit;
 	int contains_another;
 
@@ -856,7 +856,6 @@ static int find_first_merges(struct object_array *result, const char *path,
 	struct rev_info revs;
 	struct setup_revision_opt rev_opts;
 
-	memset(&merges, 0, sizeof(merges));
 	memset(result, 0, sizeof(struct object_array));
 	memset(&rev_opts, 0, sizeof(rev_opts));
 
@@ -894,8 +893,7 @@ static int find_first_merges(struct object_array *result, const char *path,
 		}
 
 		if (!contains_another)
-			add_object_array(merges.objects[i].item,
-					 merges.objects[i].name, result);
+			add_object_array(merges.objects[i].item, NULL, result);
 	}
 
 	free(merges.objects);

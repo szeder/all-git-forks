@@ -69,6 +69,9 @@ all::
 # Define NO_MSGFMT_EXTENDED_OPTIONS if your implementation of msgfmt
 # doesn't support GNU extensions like --check and --statistics
 #
+# Define NEEDS_CLIPPED_WRITE if your write(2) cannot write more than
+# INT_MAX bytes at once (e.g. MacOS X).
+#
 # Define HAVE_PATHS_H if you have paths.h and want to use the default PATH
 # it specifies.
 #
@@ -106,7 +109,7 @@ all::
 # Define NO_FNMATCH_CASEFOLD if your fnmatch function doesn't have the
 # FNM_CASEFOLD GNU extension.
 #
-# Define USE_WILDMATCH if you want to use Git's wildmatch
+# Define NO_WILDMATCH if you do not want to use Git's wildmatch
 # implementation as fnmatch
 #
 # Define NO_GECOS_IN_PWENT if you don't have pw_gecos in struct passwd
@@ -136,6 +139,10 @@ all::
 # link against any libraries installed there.  If defined you may
 # specify your own (or DarwinPort's) include directories and
 # library directories by defining CFLAGS and LDFLAGS appropriately.
+#
+# Define NO_APPLE_COMMON_CRYPTO if you are building on Darwin/Mac OS X
+# and do not want to use Apple's CommonCrypto library.  This allows you
+# to provide your own OpenSSL library, for example from MacPorts.
 #
 # Define BLK_SHA1 environment variable to make use of the bundled
 # optimized C SHA1 routine.
@@ -289,10 +296,6 @@ all::
 # memory allocators with the nedmalloc allocator written by Niall Douglas.
 #
 # Define NO_REGEX if you have no or inferior regex support in your C library.
-#
-# Define CYGWIN_V15_WIN32API if you are using Cygwin v1.7.x but are not
-# using the current w32api packages. The recommended approach, however,
-# is to update your installation if compilation errors occur.
 #
 # Define HAVE_DEV_TTY if your system can open /dev/tty to interact with the
 # user.
@@ -488,10 +491,17 @@ SCRIPT_PERL += git-svn.perl
 SCRIPT_PYTHON += git-remote-testpy.py
 SCRIPT_PYTHON += git-p4.py
 
+NO_INSTALL += git-remote-testgit
+NO_INSTALL += git-remote-testpy
+
 # Generated files for scripts
 SCRIPT_SH_GEN = $(patsubst %.sh,%,$(SCRIPT_SH))
 SCRIPT_PERL_GEN = $(patsubst %.perl,%,$(SCRIPT_PERL))
 SCRIPT_PYTHON_GEN = $(patsubst %.py,%,$(SCRIPT_PYTHON))
+
+SCRIPT_SH_INS = $(filter-out $(NO_INSTALL),$(SCRIPT_SH_GEN))
+SCRIPT_PERL_INS = $(filter-out $(NO_INSTALL),$(SCRIPT_PERL_GEN))
+SCRIPT_PYTHON_INS = $(filter-out $(NO_INSTALL),$(SCRIPT_PYTHON_GEN))
 
 # Individual rules to allow e.g.
 # "make -C ../.. SCRIPT_PERL=contrib/foo/bar.perl build-perl-script"
@@ -502,12 +512,12 @@ build-sh-script: $(SCRIPT_SH_GEN)
 build-python-script: $(SCRIPT_PYTHON_GEN)
 
 .PHONY: install-perl-script install-sh-script install-python-script
-install-sh-script: $(SCRIPT_SH_GEN)
-	$(INSTALL) $(SCRIPT_SH_GEN) '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
-install-perl-script: $(SCRIPT_PERL_GEN)
-	$(INSTALL) $(SCRIPT_PERL_GEN) '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
-install-python-script: $(SCRIPT_PYTHON_GEN)
-	$(INSTALL) $(SCRIPT_PYTHON_GEN) '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
+install-sh-script: $(SCRIPT_SH_INS)
+	$(INSTALL) $^ '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
+install-perl-script: $(SCRIPT_PERL_INS)
+	$(INSTALL) $^ '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
+install-python-script: $(SCRIPT_PYTHON_INS)
+	$(INSTALL) $^ '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
 
 .PHONY: clean-perl-script clean-sh-script clean-python-script
 clean-sh-script:
@@ -517,9 +527,9 @@ clean-perl-script:
 clean-python-script:
 	$(RM) $(SCRIPT_PYTHON_GEN)
 
-SCRIPTS = $(SCRIPT_SH_GEN) \
-	  $(SCRIPT_PERL_GEN) \
-	  $(SCRIPT_PYTHON_GEN) \
+SCRIPTS = $(SCRIPT_SH_INS) \
+	  $(SCRIPT_PERL_INS) \
+	  $(SCRIPT_PYTHON_INS) \
 	  git-instaweb
 
 ETAGS_TARGET = TAGS
@@ -559,6 +569,8 @@ TEST_PROGRAMS_NEED_X += test-mergesort
 TEST_PROGRAMS_NEED_X += test-mktemp
 TEST_PROGRAMS_NEED_X += test-parse-options
 TEST_PROGRAMS_NEED_X += test-path-utils
+TEST_PROGRAMS_NEED_X += test-prio-queue
+TEST_PROGRAMS_NEED_X += test-read-cache
 TEST_PROGRAMS_NEED_X += test-regex
 TEST_PROGRAMS_NEED_X += test-revision-walking
 TEST_PROGRAMS_NEED_X += test-run-command
@@ -642,7 +654,6 @@ LIB_H += color.h
 LIB_H += column.h
 LIB_H += commit.h
 LIB_H += compat/bswap.h
-LIB_H += compat/cygwin.h
 LIB_H += compat/mingw.h
 LIB_H += compat/obstack.h
 LIB_H += compat/poll/poll.h
@@ -674,6 +685,8 @@ LIB_H += help.h
 LIB_H += http.h
 LIB_H += kwset.h
 LIB_H += levenshtein.h
+LIB_H += line-log.h
+LIB_H += line-range.h
 LIB_H += list-objects.h
 LIB_H += ll-merge.h
 LIB_H += log-tree.h
@@ -683,6 +696,7 @@ LIB_H += merge-recursive.h
 LIB_H += mergesort.h
 LIB_H += notes-cache.h
 LIB_H += notes-merge.h
+LIB_H += notes-utils.h
 LIB_H += notes.h
 LIB_H += object.h
 LIB_H += pack-revindex.h
@@ -691,6 +705,7 @@ LIB_H += parse-options.h
 LIB_H += patch-ids.h
 LIB_H += pathspec.h
 LIB_H += pkt-line.h
+LIB_H += prio-queue.h
 LIB_H += progress.h
 LIB_H += prompt.h
 LIB_H += quote.h
@@ -801,6 +816,8 @@ LIB_OBJS += hex.o
 LIB_OBJS += ident.o
 LIB_OBJS += kwset.o
 LIB_OBJS += levenshtein.o
+LIB_OBJS += line-log.o
+LIB_OBJS += line-range.o
 LIB_OBJS += list-objects.o
 LIB_OBJS += ll-merge.o
 LIB_OBJS += lockfile.o
@@ -815,6 +832,7 @@ LIB_OBJS += name-hash.o
 LIB_OBJS += notes.o
 LIB_OBJS += notes-cache.o
 LIB_OBJS += notes-merge.o
+LIB_OBJS += notes-utils.o
 LIB_OBJS += object.o
 LIB_OBJS += pack-check.o
 LIB_OBJS += pack-revindex.o
@@ -829,6 +847,7 @@ LIB_OBJS += pathspec.o
 LIB_OBJS += pkt-line.o
 LIB_OBJS += preload-index.o
 LIB_OBJS += pretty.o
+LIB_OBJS += prio-queue.o
 LIB_OBJS += progress.o
 LIB_OBJS += prompt.o
 LIB_OBJS += quote.o
@@ -892,6 +911,7 @@ BUILTIN_OBJS += builtin/bundle.o
 BUILTIN_OBJS += builtin/cat-file.o
 BUILTIN_OBJS += builtin/check-attr.o
 BUILTIN_OBJS += builtin/check-ignore.o
+BUILTIN_OBJS += builtin/check-mailmap.o
 BUILTIN_OBJS += builtin/check-ref-format.o
 BUILTIN_OBJS += builtin/checkout-index.o
 BUILTIN_OBJS += builtin/checkout.o
@@ -1053,6 +1073,11 @@ ifeq ($(uname_S),Darwin)
 			BASIC_LDFLAGS += -L/opt/local/lib
 		endif
 	endif
+	ifndef NO_APPLE_COMMON_CRYPTO
+		APPLE_COMMON_CRYPTO = YesPlease
+		COMPAT_CFLAGS += -DAPPLE_COMMON_CRYPTO
+	endif
+	NO_REGEX = YesPlease
 	PTHREAD_LIBS =
 endif
 
@@ -1260,7 +1285,7 @@ ifdef NO_FNMATCH_CASEFOLD
 	COMPAT_OBJS += compat/fnmatch/fnmatch.o
 endif
 endif
-ifdef USE_WILDMATCH
+ifndef NO_WILDMATCH
 	COMPAT_CFLAGS += -DUSE_WILDMATCH
 endif
 ifdef NO_SETENV
@@ -1387,10 +1412,16 @@ ifdef PPC_SHA1
 	LIB_OBJS += ppc/sha1.o ppc/sha1ppc.o
 	LIB_H += ppc/sha1.h
 else
+ifdef APPLE_COMMON_CRYPTO
+	COMPAT_CFLAGS += -DCOMMON_DIGEST_FOR_OPENSSL
+	SHA1_HEADER = <CommonCrypto/CommonDigest.h>
+else
 	SHA1_HEADER = <openssl/sha.h>
 	EXTLIBS += $(LIB_4_CRYPTO)
 endif
 endif
+endif
+
 ifdef NO_PERL_MAKEMAKER
 	export NO_PERL_MAKEMAKER
 endif
@@ -1448,9 +1479,6 @@ ifdef NO_REGEX
 	COMPAT_CFLAGS += -Icompat/regex
 	COMPAT_OBJS += compat/regex/regex.o
 endif
-ifdef CYGWIN_V15_WIN32API
-	COMPAT_CFLAGS += -DCYGWIN_V15_WIN32API
-endif
 
 ifdef USE_NED_ALLOCATOR
        COMPAT_CFLAGS += -Icompat/nedmalloc
@@ -1463,6 +1491,11 @@ endif
 
 ifndef NO_MSGFMT_EXTENDED_OPTIONS
 	MSGFMT += --check --statistics
+endif
+
+ifdef NEEDS_CLIPPED_WRITE
+	BASIC_CFLAGS += -DNEEDS_CLIPPED_WRITE
+	COMPAT_OBJS += compat/clipped-write.o
 endif
 
 ifneq (,$(XDL_FAST_HASH))
@@ -1502,6 +1535,7 @@ ifndef V
 	QUIET_MSGFMT   = @echo '   ' MSGFMT $@;
 	QUIET_GCOV     = @echo '   ' GCOV $@;
 	QUIET_SP       = @echo '   ' SP $<;
+	QUIET_RC       = @echo '   ' RC $@;
 	QUIET_SUBDIR0  = +@subdir=
 	QUIET_SUBDIR1  = ;$(NO_SUBDIR) echo '   ' SUBDIR $$subdir; \
 			 $(MAKE) $(PRINT_DIR) -C $$subdir
@@ -1644,7 +1678,7 @@ please_set_SHELL_PATH_to_a_more_modern_shell:
 shell_compatibility_test: please_set_SHELL_PATH_to_a_more_modern_shell
 
 strip: $(PROGRAMS) git$X
-	$(STRIP) $(STRIP_OPTS) $(PROGRAMS) git$X
+	$(STRIP) $(STRIP_OPTS) $^
 
 ### Target-specific flags and dependencies
 
@@ -1704,9 +1738,9 @@ version.sp version.s version.o: EXTRA_CPPFLAGS = \
 
 $(BUILT_INS): git$X
 	$(QUIET_BUILT_IN)$(RM) $@ && \
-	ln git$X $@ 2>/dev/null || \
-	ln -s git$X $@ 2>/dev/null || \
-	cp git$X $@
+	ln $< $@ 2>/dev/null || \
+	ln -s $< $@ 2>/dev/null || \
+	cp $< $@
 
 common-cmds.h: ./generate-cmdlist.sh command-list.txt
 
@@ -1747,6 +1781,11 @@ $(SCRIPT_LIB) : % : %.sh GIT-SCRIPT-DEFINES
 	$(QUIET_GEN)$(cmd_munge_script) && \
 	mv $@+ $@
 
+git.res: git.rc GIT-VERSION-FILE
+	$(QUIET_RC)$(RC) \
+	  $(join -DMAJOR= -DMINOR= -DPATCH=, $(wordlist 1,3,$(subst -, ,$(subst ., ,$(GIT_VERSION))))) \
+	  -DGIT_VERSION="\\\"$(GIT_VERSION)\\\"" $< -o $@
+
 ifndef NO_PERL
 $(patsubst %.perl,%,$(SCRIPT_PERL)): perl/perl.mak
 
@@ -1771,7 +1810,7 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl GIT-VERSION-FILE
 	    -e '	x' \
 	    -e '}' \
 	    -e 's/@@GIT_VERSION@@/$(GIT_VERSION)/g' \
-	    $@.perl >$@+ && \
+	    $< >$@+ && \
 	chmod +x $@+ && \
 	mv $@+ $@
 
@@ -1795,8 +1834,8 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)) git-instaweb: % : unimplemented.sh
 endif # NO_PERL
 
 ifndef NO_PYTHON
-$(patsubst %.py,%,$(SCRIPT_PYTHON)): GIT-CFLAGS GIT-PREFIX GIT-PYTHON-VARS
-$(patsubst %.py,%,$(SCRIPT_PYTHON)): % : %.py
+$(SCRIPT_PYTHON_GEN): GIT-CFLAGS GIT-PREFIX GIT-PYTHON-VARS
+$(SCRIPT_PYTHON_GEN): % : %.py
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C git_remote_helpers -s \
 		--no-print-directory prefix='$(prefix_SQ)' DESTDIR='$(DESTDIR_SQ)' \
@@ -1804,11 +1843,11 @@ $(patsubst %.py,%,$(SCRIPT_PYTHON)): % : %.py
 	sed -e '1s|#!.*python|#!$(PYTHON_PATH_SQ)|' \
 	    -e 's|\(os\.getenv("GITPYTHONLIB"\)[^)]*)|\1,"@@INSTLIBDIR@@")|' \
 	    -e 's|@@INSTLIBDIR@@|'"$$INSTLIBDIR"'|g' \
-	    $@.py >$@+ && \
+	    $< >$@+ && \
 	chmod +x $@+ && \
 	mv $@+ $@
 else # NO_PYTHON
-$(patsubst %.py,%,$(SCRIPT_PYTHON)): % : unimplemented.sh
+$(SCRIPT_PYTHON_GEN): % : unimplemented.sh
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
 	    -e 's|@@REASON@@|NO_PYTHON=$(NO_PYTHON)|g' \
@@ -2035,13 +2074,13 @@ $(REMOTE_CURL_PRIMARY): remote-curl.o http.o http-walker.o GIT-LDFLAGS $(GITLIBS
 		$(LIBS) $(CURL_LIBCURL) $(EXPAT_LIBEXPAT)
 
 $(LIB_FILE): $(LIB_OBJS)
-	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $(LIB_OBJS)
+	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
 
 $(XDIFF_LIB): $(XDIFF_OBJS)
-	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $(XDIFF_OBJS)
+	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
 
 $(VCSSVN_LIB): $(VCSSVN_OBJS)
-	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $(VCSSVN_OBJS)
+	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
 
 export DEFAULT_EDITOR DEFAULT_PAGER
 
@@ -2201,6 +2240,7 @@ endif
 test_bindir_programs := $(patsubst %,bin-wrappers/%,$(BINDIR_PROGRAMS_NEED_X) $(BINDIR_PROGRAMS_NO_X) $(TEST_PROGRAMS_NEED_X))
 
 all:: $(TEST_PROGRAMS) $(test_bindir_programs)
+all:: $(NO_INSTALL)
 
 bin-wrappers/%: wrap-for-bin.sh
 	@mkdir -p bin-wrappers
@@ -2264,9 +2304,6 @@ check: common-cmds.h
 		echo 2>&1 "Did you mean 'make test'?"; \
 		exit 1; \
 	fi
-
-remove-dashes:
-	./fixup-builtins $(BUILT_INS) $(PROGRAMS) $(SCRIPTS)
 
 ### Installation rules
 
@@ -2446,11 +2483,11 @@ profile-clean:
 	$(RM) $(addsuffix *.gcda,$(addprefix $(PROFILE_DIR)/, $(object_dirs)))
 	$(RM) $(addsuffix *.gcno,$(addprefix $(PROFILE_DIR)/, $(object_dirs)))
 
-clean: profile-clean
-	$(RM) *.o block-sha1/*.o ppc/*.o compat/*.o compat/*/*.o xdiff/*.o vcs-svn/*.o \
+clean: profile-clean coverage-clean
+	$(RM) *.o *.res block-sha1/*.o ppc/*.o compat/*.o compat/*/*.o xdiff/*.o vcs-svn/*.o \
 		builtin/*.o $(LIB_FILE) $(XDIFF_LIB) $(VCSSVN_LIB)
 	$(RM) $(ALL_PROGRAMS) $(SCRIPT_LIB) $(BUILT_INS) git$X
-	$(RM) $(TEST_PROGRAMS)
+	$(RM) $(TEST_PROGRAMS) $(NO_INSTALL)
 	$(RM) -r bin-wrappers $(dep_dirs)
 	$(RM) -r po/build/
 	$(RM) *.spec *.pyc *.pyo */*.pyc */*.pyo common-cmds.h $(ETAGS_TARGET) tags cscope*
@@ -2527,29 +2564,34 @@ check-builtins::
 
 ### Test suite coverage testing
 #
-.PHONY: coverage coverage-clean coverage-build coverage-report
+.PHONY: coverage coverage-clean coverage-compile coverage-test coverage-report
+.PHONY: coverage-clean-results
 
 coverage:
-	$(MAKE) coverage-build
-	$(MAKE) coverage-report
+	$(MAKE) coverage-test
+	$(MAKE) coverage-untested-functions
 
 object_dirs := $(sort $(dir $(OBJECTS)))
-coverage-clean:
+coverage-clean-results:
 	$(RM) $(addsuffix *.gcov,$(object_dirs))
 	$(RM) $(addsuffix *.gcda,$(object_dirs))
-	$(RM) $(addsuffix *.gcno,$(object_dirs))
 	$(RM) coverage-untested-functions
 	$(RM) -r cover_db/
 	$(RM) -r cover_db_html/
+
+coverage-clean: coverage-clean-results
+	$(RM) $(addsuffix *.gcno,$(object_dirs))
 
 COVERAGE_CFLAGS = $(CFLAGS) -O0 -ftest-coverage -fprofile-arcs
 COVERAGE_LDFLAGS = $(CFLAGS)  -O0 -lgcov
 GCOVFLAGS = --preserve-paths --branch-probabilities --all-blocks
 
-coverage-build: coverage-clean
+coverage-compile:
 	$(MAKE) CFLAGS="$(COVERAGE_CFLAGS)" LDFLAGS="$(COVERAGE_LDFLAGS)" all
+
+coverage-test: coverage-clean-results coverage-compile
 	$(MAKE) CFLAGS="$(COVERAGE_CFLAGS)" LDFLAGS="$(COVERAGE_LDFLAGS)" \
-		-j1 test
+		DEFAULT_TEST_TARGET=test -j1 test
 
 coverage-report:
 	$(QUIET_GCOV)for dir in $(object_dirs); do \
