@@ -75,31 +75,6 @@ test_expect_success 'init depot' '
 	)
 '
 
-# double % for printf
-test_expect_success 'unsupported view wildcard %%n' '
-	client_view "//depot/%%%%1/sub/... //client/sub/%%%%1/..." &&
-	test_when_finished cleanup_git &&
-	test_must_fail git p4 clone --use-client-spec --dest="$git" //depot
-'
-
-test_expect_success 'unsupported view wildcard *' '
-	client_view "//depot/*/bar/... //client/*/bar/..." &&
-	test_when_finished cleanup_git &&
-	test_must_fail git p4 clone --use-client-spec --dest="$git" //depot
-'
-
-test_expect_success 'wildcard ... only supported at end of spec 1' '
-	client_view "//depot/.../file11 //client/.../file11" &&
-	test_when_finished cleanup_git &&
-	test_must_fail git p4 clone --use-client-spec --dest="$git" //depot
-'
-
-test_expect_success 'wildcard ... only supported at end of spec 2' '
-	client_view "//depot/.../a/... //client/.../a/..." &&
-	test_when_finished cleanup_git &&
-	test_must_fail git p4 clone --use-client-spec --dest="$git" //depot
-'
-
 test_expect_success 'basic map' '
 	client_view "//depot/dir1/... //client/cli1/..." &&
 	files="cli1/file11 cli1/file12" &&
@@ -792,6 +767,69 @@ test_expect_success 'overlay sync swap: cleanup' '
 		p4 submit -d "remove overlay sync files"
 	)
 '
+
+# add a .junk file, make sure it isn't mapped
+test_expect_success 'wildcard * setup' '
+	client_view "//depot/... //client/..." &&
+	(
+		cd "$cli" &&
+		p4 sync &&
+		echo dir1/file13.junk >dir1/file13.junk &&
+		p4 add dir1/file13.junk &&
+		p4 submit -d dir1/file13.junk
+	)
+'
+
+test_expect_success 'wildcard * base case' '
+	client_view "//depot/... //client/..." &&
+	files="dir1/file11 dir1/file12 dir1/file13.junk
+	       dir2/file21 dir2/file22" &&
+	client_verify $files &&
+	test_when_finished cleanup_git &&
+	git p4 clone --use-client-spec --dest="$git" //depot &&
+	git_verify $files
+'
+
+test_expect_success 'wildcard * excludes junk file' '
+	client_view "//depot/... //client/..." \
+		    "-//depot/dir1/*.junk //client/dir1/*.junk" &&
+	files="dir1/file11 dir1/file12
+	       dir2/file21 dir2/file22" &&
+	client_verify $files &&
+	test_when_finished cleanup_git &&
+	git p4 clone --use-client-spec --dest="$git" //depot &&
+	git_verify $files
+'
+
+test_expect_success 'wildcard * cleanup' '
+	client_view "//depot/... //client/..." &&
+	(
+		cd "$cli" &&
+		p4 sync &&
+		p4 delete dir1/file13.junk &&
+		p4 submit -d "remove dir1/file13.junk"
+	)
+'
+
+test_expect_success 'wildcard ... in middle' '
+	client_view "//depot/.../file11 //client/.../file11" &&
+	files="dir1/file11" &&
+	client_verify $files &&
+	test_when_finished cleanup_git &&
+	git p4 clone --use-client-spec --dest="$git" //depot &&
+	git_verify $files
+'
+
+test_expect_success 'wildcard %% mapping' '
+	client_view "//depot/%%1/... //client/map-%%1/..." &&
+	files="map-dir1/file11 map-dir1/file12
+	       map-dir2/file21 map-dir2/file22" &&
+	client_verify $files &&
+	test_when_finished cleanup_git &&
+	git p4 clone --use-client-spec --dest="$git" //depot &&
+	git_verify $files
+'
+
 
 #
 # Rename directories to test quoting in depot-side mappings
