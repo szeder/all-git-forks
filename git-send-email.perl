@@ -57,6 +57,10 @@ git send-email [options] <file | directory | rev-list options >
     --[no-]annotate                * Review each patch that will be sent in an editor.
     --compose                      * Open an editor for introduction.
     --compose-encoding      <str>  * Encoding to assume for introduction.
+    --subject-prefix        <str>  * Instead of the standard [PATCH] prefix in the subject line,
+                                     instead use [<Subject-Prefix>].
+                                     This allows for useful naming of a patch series,
+                                     and can be combined with the --numbered option.
     --8bit-encoding         <str>  * Encoding to assume 8bit mails if undeclared
 
   Sending:
@@ -203,6 +207,7 @@ my ($validate, $confirm);
 my (@suppress_cc);
 my ($auto_8bit_encoding);
 my ($compose_encoding);
+my ($subject_prefix);
 
 my ($debug_net_smtp) = 0;		# Net::SMTP, see send_message()
 
@@ -237,6 +242,7 @@ my %config_settings = (
     "from" => \$sender,
     "assume8bitencoding" => \$auto_8bit_encoding,
     "composeencoding" => \$compose_encoding,
+    "subject_prefix" => \$subject_prefix,
 );
 
 my %config_path_settings = (
@@ -310,6 +316,7 @@ my $rc = GetOptions("h" => \$help,
 		    "format-patch!" => \$format_patch,
 		    "8bit-encoding=s" => \$auto_8bit_encoding,
 		    "compose-encoding=s" => \$compose_encoding,
+		    "subject-prefix=s" => \$subject_prefix,
 		    "force" => \$force,
 	 );
 
@@ -577,7 +584,7 @@ sub get_patch_subject {
 	while (my $line = <$fh>) {
 		next unless ($line =~ /^Subject: (.*)$/);
 		close $fh;
-		return "GIT: $1\n";
+		return "GIT: $subject_prefix$1\n";
 	}
 	close $fh;
 	die "No subject line in $fn ?";
@@ -1289,7 +1296,7 @@ X-Mailer: git-send-email $gitversion
 
 $reply_to = $initial_reply_to;
 $references = $initial_reply_to || '';
-$subject = $initial_subject;
+$subject = "$subject_prefix$initial_subject";
 $message_num = 0;
 
 foreach my $t (@files) {
