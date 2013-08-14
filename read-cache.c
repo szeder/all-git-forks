@@ -1235,8 +1235,13 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int reall
 void initialize_index(struct index_state *istate, int version)
 {
 	istate->initialized = 1;
-	if (!version)
-		version = INDEX_FORMAT_DEFAULT;
+	if (!version) {
+		char *envversion = getenv("GIT_INDEX_VERSION");
+		if (!envversion)
+			version = INDEX_FORMAT_DEFAULT;
+		else
+			version = atoi(envversion);
+	}
 	istate->version = version;
 	set_istate_ops(istate);
 }
