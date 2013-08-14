@@ -1,6 +1,6 @@
 #!/bin/sh
 
-USAGE='[help|start|bad|good|skip|next|reset|visualize|replay|log|run]'
+USAGE='[help|start|bad|good|skip|next|reset|visualize|replay|log|run|state]'
 LONG_USAGE='git bisect help
 	print this long help message.
 git bisect start [--no-checkout] [<bad> [<good>...]] [--] [<pathspec>...]
@@ -23,6 +23,8 @@ git bisect log
 	show bisect log.
 git bisect run <cmd>...
 	use <cmd>... to automatically bisect.
+git bisect state
+	check if the bisection is complete.
 
 Please use "git help bisect" to get the full man page.'
 
@@ -491,6 +493,11 @@ bisect_log () {
 	cat "$GIT_DIR/BISECT_LOG"
 }
 
+bisect_complete_state () {
+	cat "$GIT_DIR/BISECT_LOG" | tail -n 1 | grep -E '^# (possible |)first bad commit:' > /dev/null
+	exit $?
+}
+
 case "$#" in
 0)
 	usage ;;
@@ -519,6 +526,8 @@ case "$#" in
 		bisect_log ;;
 	run)
 		bisect_run "$@" ;;
+	state)
+		bisect_complete_state ;;
 	*)
 		usage ;;
 	esac

@@ -25,6 +25,7 @@ on the subcommand:
  git bisect visualize
  git bisect replay <logfile>
  git bisect log
+ git bisect state
  git bisect run <cmd>...
 
 This command uses 'git rev-list --bisect' to help drive the
@@ -103,6 +104,18 @@ $ git bisect reset <commit>
 For example, `git bisect reset HEAD` will leave you on the current
 bisection commit and avoid switching commits at all, while `git bisect
 reset bisect/bad` will check out the first bad revision.
+
+Bisect state
+~~~~~~~~~~~~~~~~
+
+To see the bisection process has finnished, issue the following command:
+
+------------
+$ git bisect state
+------------
+
+Exit successfully (i.e., with return code 0), if and only if the current
+bisection has reached the first bad or possible first bad commit.
 
 Bisect visualize
 ~~~~~~~~~~~~~~~~
