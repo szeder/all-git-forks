@@ -28,10 +28,14 @@ test_expect_success setup '
 		git reset --hard HEAD^ &&
 		git checkout -b b4 origin &&
 		advance e &&
-		advance f
+		advance f &&
+		git checkout -b brokenbase origin &&
+		git checkout -b b5 --track brokenbase &&
+		advance g &&
+		git branch -d brokenbase
 	) &&
 	git checkout -b follower --track master &&
-	advance g
+	advance h
 '
 
 script='s/^..\(b.\)[	 0-9a-f]*\[\([^]]*\)\].*/\1 \2/p'
