@@ -1396,10 +1396,6 @@ static void wt_shortstatus_print_tracking(struct wt_status *s)
 		broken_upstream = 1;
 		break;
 	default:
-		if (!num_ours && !num_theirs) {
-			fputc(s->null_termination ? '\0' : '\n', s->fp);
-			return;
-		}
 		break;
 	}
 
@@ -1407,6 +1403,11 @@ static void wt_shortstatus_print_tracking(struct wt_status *s)
 	base = shorten_unambiguous_ref(base, 0);
 	color_fprintf(s->fp, header_color, "...");
 	color_fprintf(s->fp, branch_color_remote, "%s", base);
+
+	if (!broken_upstream && !num_ours && !num_theirs) {
+		fputc(s->null_termination ? '\0' : '\n', s->fp);
+		return;
+	}
 
 	color_fprintf(s->fp, header_color, " [");
 	if (broken_upstream) {

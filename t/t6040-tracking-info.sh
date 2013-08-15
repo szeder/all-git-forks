@@ -32,7 +32,8 @@ test_expect_success setup '
 		git checkout -b brokenbase origin &&
 		git checkout -b b5 --track brokenbase &&
 		advance g &&
-		git branch -d brokenbase
+		git branch -d brokenbase &&
+		git checkout -b b6 origin
 	) &&
 	git checkout -b follower --track master &&
 	advance h
@@ -61,6 +62,7 @@ b2 origin/master: ahead 1, behind 1
 b3 origin/master: behind 1
 b4 origin/master: ahead 2
 b5 brokenbase: broken
+b6 origin/master
 EOF
 
 test_expect_success 'branch -vv' '
@@ -93,6 +95,13 @@ test_expect_success 'checkout (broken upstream)' '
 	test_i18ngrep "is based on a broken ref" actual
 '
 
+test_expect_success 'checkout (identical to upstream)' '
+	(
+		cd test && git checkout b6
+	) >actual &&
+	test_i18ngrep "Your branch is identical to .origin/master" actual
+'
+
 test_expect_success 'status (diverged from upstream)' '
 	(
 		cd test &&
@@ -111,6 +120,16 @@ test_expect_success 'status (broken upstream)' '
 		test_must_fail git commit --dry-run
 	) >actual &&
 	test_i18ngrep "is based on a broken ref" actual
+'
+
+test_expect_success 'status (identical to upstream)' '
+	(
+		cd test &&
+		git checkout b6 >/dev/null &&
+		# reports nothing to commit
+		test_must_fail git commit --dry-run
+	) >actual &&
+	test_i18ngrep "Your branch is identical to .origin/master" actual
 '
 
 cat >expect <<\EOF
@@ -134,6 +153,19 @@ test_expect_success 'status -s -b (broken upstream)' '
 	(
 		cd test &&
 		git checkout b5 >/dev/null &&
+		git status -s -b | head -1
+	) >actual &&
+	test_i18ncmp expect actual
+'
+
+cat >expect <<\EOF
+## b6...origin/master
+EOF
+
+test_expect_success 'status -s -b (identical to upstream)' '
+	(
+		cd test &&
+		git checkout b6 >/dev/null &&
 		git status -s -b | head -1
 	) >actual &&
 	test_i18ncmp expect actual

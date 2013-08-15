@@ -1788,9 +1788,6 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 		broken_upstream = 1;
 		break;
 	default:
-		/* Nothing to report if neither side has changes. */
-		if (!ours && !theirs)
-			return 0;
 		break;
 	}
 
@@ -1803,6 +1800,10 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 		if (advice_status_hints)
 			strbuf_addf(sb,
 				_("  (use \"git branch --unset-upstream\" to fixup)\n"));
+	} else if (!ours && !theirs) {
+		strbuf_addf(sb,
+			_("Your branch is identical to '%s'.\n"),
+			base);
 	} else if (!theirs) {
 		strbuf_addf(sb,
 			Q_("Your branch is ahead of '%s' by %d commit.\n",
