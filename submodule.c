@@ -130,7 +130,7 @@ int parse_submodule_config_option(const char *var, const char *value)
 	const char *name, *key;
 	int namelen;
 
-	if (parse_config_key(var, "submodule", &name, &namelen, &key) < 0 || !name)
+	if (parse_config_key(var, "submodule", &name, &namelen, &key) < 0 || !name || !value)
 		return 0;
 
 	if (!strcmp(key, "path")) {
