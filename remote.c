@@ -1729,8 +1729,11 @@ int ref_newer(const unsigned char *new_sha1, const unsigned char *old_sha1)
 }
 
 /*
- * Return false if cannot stat a tracking branch (not exist or invalid),
- * otherwise true.
+ * Compare a branch with its upstream, and save their differences (number
+ * of commits) in *num_ours and *num_theirs.
+ *
+ * Return 0 if branch has no upstream (no base), -1 if upstream is missing
+ * (with "gone" base), otherwise 1 (with base).
  */
 int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs)
 {
@@ -1749,16 +1752,16 @@ int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs)
 	/* Cannot stat if what we used to build on no longer exists */
 	base = branch->merge[0]->dst;
 	if (read_ref(base, sha1))
-		return 0;
+		return -1;
 	theirs = lookup_commit_reference(sha1);
 	if (!theirs)
-		return 0;
+		return -1;
 
 	if (read_ref(branch->refname, sha1))
-		return 0;
+		return -1;
 	ours = lookup_commit_reference(sha1);
 	if (!ours)
-		return 0;
+		return -1;
 
 	/* are we the same? */
 	if (theirs == ours) {
@@ -1808,17 +1811,34 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 {
 	int ours, theirs;
 	const char *base;
+	int upstream_is_gone = 0;
 
-	if (!stat_tracking_info(branch, &ours, &theirs))
+	switch (stat_tracking_info(branch, &ours, &theirs)) {
+	case 0:
+		/* no base */
 		return 0;
-
-	/* Nothing to report if neither side has changes. */
-	if (!ours && !theirs)
-		return 0;
+	case -1:
+		/* with "gone" base */
+		upstream_is_gone = 1;
+		break;
+	default:
+		/* Nothing to report if neither side has changes. */
+		if (!ours && !theirs)
+			return 0;
+		/* with base */
+		break;
+	}
 
 	base = branch->merge[0]->dst;
 	base = shorten_unambiguous_ref(base, 0);
-	if (!theirs) {
+	if (upstream_is_gone) {
+		strbuf_addf(sb,
+			_("Your branch is based on '%s', but the upstream is gone.\n"),
+			base);
+		if (advice_status_hints)
+			strbuf_addf(sb,
+				_("  (use \"git branch --unset-upstream\" to fixup)\n"));
+	} else if (!theirs) {
 		strbuf_addf(sb,
 			Q_("Your branch is ahead of '%s' by %d commit.\n",
 			   "Your branch is ahead of '%s' by %d commits.\n",
