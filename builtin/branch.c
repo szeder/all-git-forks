@@ -423,9 +423,19 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 	char *ref = NULL;
 	struct branch *branch = branch_get(branch_name);
 	struct strbuf fancy = STRBUF_INIT;
+	int broken_upstream = 0;
 
-	if (!stat_tracking_info(branch, &ours, &theirs))
+	switch (stat_tracking_info(branch, &ours, &theirs)) {
+	case 0:
+		/* Not set upstream. */
 		return;
+	case -1:
+		/* Upstream is missing or invalid. */
+		broken_upstream = 1;
+		break;
+	default:
+		break;
+	}
 
 	if (show_upstream_ref) {
 		ref = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
@@ -437,7 +447,10 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 			strbuf_addstr(&fancy, ref);
 	}
 
-	if (!ours && !theirs) {
+	if (broken_upstream) {
+		if (show_upstream_ref)
+			strbuf_addf(stat, _("[%s: broken]"), fancy.buf);
+	} else if (!ours && !theirs) {
 		if (show_upstream_ref)
 			strbuf_addf(stat, _("[%s]"), fancy.buf);
 	} else if (!ours) {
