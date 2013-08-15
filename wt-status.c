@@ -1383,15 +1383,8 @@ static void wt_shortstatus_print_tracking(struct wt_status *s)
 
 	color_fprintf(s->fp, branch_color_local, "%s", branch_name);
 
-	/*
-	 * Not report tracking info if no tracking branch found
-	 * or no difference found.
-	 */
 	if (!stat_tracking_info(branch, &num_ours, &num_theirs)) {
-		fputc(s->null_termination ? '\0' : '\n', s->fp);
-		return;
-	}
-	if (!num_ours && !num_theirs) {
+		/* no base */
 		fputc(s->null_termination ? '\0' : '\n', s->fp);
 		return;
 	}
@@ -1402,7 +1395,14 @@ static void wt_shortstatus_print_tracking(struct wt_status *s)
 	color_fprintf(s->fp, branch_color_remote, "%s", base);
 
 	color_fprintf(s->fp, header_color, " [");
-	if (!num_ours) {
+
+	if (!num_ours && !num_theirs) {
+		/* with base */
+		fputc(s->null_termination ? '\0' : '\n', s->fp);
+		return;
+	} else if (num_theirs < 0) {
+		color_fprintf(s->fp, header_color, _("gone"));
+	} else if (!num_ours) {
 		color_fprintf(s->fp, header_color, _("behind "));
 		color_fprintf(s->fp, branch_color_remote, "%d", num_theirs);
 	} else if (!num_theirs) {

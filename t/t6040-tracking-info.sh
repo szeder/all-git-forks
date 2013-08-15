@@ -60,6 +60,7 @@ b1 origin/master: ahead 1, behind 1
 b2 origin/master: ahead 1, behind 1
 b3 origin/master: behind 1
 b4 origin/master: ahead 2
+b5 brokenbase: gone
 EOF
 
 test_expect_success 'branch -vv' '
@@ -71,7 +72,7 @@ test_expect_success 'branch -vv' '
 	test_i18ncmp expect actual
 '
 
-test_expect_success 'checkout' '
+test_expect_success 'checkout (diverged from upstream)' '
 	(
 		cd test && git checkout b1
 	) >actual &&
@@ -84,7 +85,15 @@ test_expect_success 'checkout with local tracked branch' '
 	test_i18ngrep "is ahead of" actual
 '
 
-test_expect_success 'status' '
+test_expect_success 'checkout (upstream is gone)' '
+	(
+		cd test &&
+		git checkout b5
+	) >actual &&
+	test_i18ngrep "is based on .*, but the upstream is gone." actual
+'
+
+test_expect_success 'status (diverged from upstream)' '
 	(
 		cd test &&
 		git checkout b1 >/dev/null &&
@@ -92,6 +101,42 @@ test_expect_success 'status' '
 		test_must_fail git commit --dry-run
 	) >actual &&
 	test_i18ngrep "have 1 and 1 different" actual
+'
+
+test_expect_success 'status (upstream is gone)' '
+	(
+		cd test &&
+		git checkout b5 >/dev/null &&
+		# reports nothing to commit
+		test_must_fail git commit --dry-run
+	) >actual &&
+	test_i18ngrep "is based on .*, but the upstream is gone." actual
+'
+
+cat >expect <<\EOF
+## b1...origin/master [ahead 1, behind 1]
+EOF
+
+test_expect_success 'status -s -b (diverged from upstream)' '
+	(
+		cd test &&
+		git checkout b1 >/dev/null &&
+		git status -s -b | head -1
+	) >actual &&
+	test_i18ncmp expect actual
+'
+
+cat >expect <<\EOF
+## b5...brokenbase [gone]
+EOF
+
+test_expect_success 'status -s -b (upstream is gone)' '
+	(
+		cd test &&
+		git checkout b5 >/dev/null &&
+		git status -s -b | head -1
+	) >actual &&
+	test_i18ncmp expect actual
 '
 
 test_expect_success 'fail to track lightweight tags' '

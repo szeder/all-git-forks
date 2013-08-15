@@ -437,7 +437,10 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 			strbuf_addstr(&fancy, ref);
 	}
 
-	if (!ours && !theirs) {
+	if (theirs < 0) {
+		if (show_upstream_ref)
+			strbuf_addf(stat, _("[%s: gone]"), fancy.buf);
+	} else if (!ours && !theirs) {
 		if (show_upstream_ref)
 			strbuf_addf(stat, _("[%s]"), fancy.buf);
 	} else if (!ours) {

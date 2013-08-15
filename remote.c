@@ -1729,8 +1729,10 @@ int ref_newer(const unsigned char *new_sha1, const unsigned char *old_sha1)
 }
 
 /*
- * Return false if cannot stat a tracking branch (not exist or invalid),
- * otherwise true.
+ * Compare a branch with its upstream, and save their differences (number
+ * of commits) in *num_ours and *num_theirs.
+ *
+ * Return 0 if cannot track branch, otherwise 1.
  */
 int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs)
 {
@@ -1748,11 +1750,17 @@ int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs)
 
 	/* Cannot stat if what we used to build on no longer exists */
 	base = branch->merge[0]->dst;
-	if (read_ref(base, sha1))
-		return 0;
+	if (read_ref(base, sha1)) {
+		*num_theirs = -1;
+		*num_ours = 0;
+		return 1;
+	}
 	theirs = lookup_commit_reference(sha1);
-	if (!theirs)
-		return 0;
+	if (!theirs) {
+		*num_theirs = -1;
+		*num_ours = 0;
+		return 1;
+	}
 
 	if (read_ref(branch->refname, sha1))
 		return 0;
@@ -1812,13 +1820,19 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 	if (!stat_tracking_info(branch, &ours, &theirs))
 		return 0;
 
-	/* Nothing to report if neither side has changes. */
-	if (!ours && !theirs)
-		return 0;
-
 	base = branch->merge[0]->dst;
 	base = shorten_unambiguous_ref(base, 0);
-	if (!theirs) {
+	if (theirs < 0) {
+		strbuf_addf(sb,
+			_("Your branch is based on '%s', but the upstream is gone.\n"),
+			base);
+		if (advice_status_hints)
+			strbuf_addf(sb,
+				_("  (use \"git branch --unset-upstream\" to fixup)\n"));
+	} else if (!ours && !theirs) {
+		/* Nothing to report if neither side has changes. */
+		return 0;
+	} else if (!theirs) {
 		strbuf_addf(sb,
 			Q_("Your branch is ahead of '%s' by %d commit.\n",
 			   "Your branch is ahead of '%s' by %d commits.\n",
