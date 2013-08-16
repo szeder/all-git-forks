@@ -11,11 +11,11 @@ Git internal format::
 	It is `<unix timestamp> <timezone offset>`, where `<unix
 	timestamp>` is the number of seconds since the UNIX epoch.
 	`<timezone offset>` is a positive or negative offset from UTC.
-	For example CET (which is 2 hours ahead UTC) is `+0200`.
+	For example CET (which is 1 hour ahead UTC) is `+0100`.
 
 RFC 2822::
 	The standard email format as described by RFC 2822, for example
-	`Thu, 07 Apr 2005 22:13:13 +0200`.
+	`Thu, 07 Apr 2005 22:13:13 +0100`.
 
 ISO 8601::
 	Time and date specified by the ISO 8601 standard, for example
