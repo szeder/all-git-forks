@@ -1,8 +1,48 @@
-Version v1.8.4-rc2; changes since v1.8.4-rc1:
+Version v1.8.4-rc3; changes since v1.8.4-rc2:
 ---------------------------------------------
 
-Brian M. Carlson (1):
-      Add missing test file for UTF-16.
+Eric Sunshine (1):
+      parse-options: fix clang opterror() -Wunused-value warning
+
+Jean-Noel Avila (2):
+      l10n: fr.po: 821/2112 messages translated
+      l10n: Add reference for french translation team
+
+Jiang Xin (2):
+      l10n: git.pot: v1.8.4 round 2 (5 new, 3 removed)
+      l10n: zh_CN.po: translate 5 messages (2135t0f0u)
+
+Junio C Hamano (2):
+      .mailmap: update long-lost friends with multiple defunct addresses
+      Git 1.8.4-rc3
+
+Matthieu Moy (1):
+      git-remote-mediawiki: ignore generated git-mw
+
+Peter Krefting (1):
+      l10n: Update Swedish translation (2135t0f0u)
+
+Phil Hord (1):
+      t/t7407: fix two typos in submodule tests
+
+Ralf Thielow (3):
+      l10n: de.po: switch from pure German to German+English
+      l10n: de.po: translate 99 new messages
+      l10n: de.po: translate 5 messages
+
+Stefan Beller (2):
+      .mailmap: fixup entries
+      .mailmap: Combine more (name, email) to individual persons
+
+Tran Ngoc Quan (1):
+      l10n: vi.po(2135t): v1.8.4 round 2
+
+Wieland Hoffmann (1):
+      l10n: de.po: Fix a typo
+
+
+Version v1.8.4-rc2; changes since v1.8.4-rc1:
+---------------------------------------------
 
 Felix Gruber (1):
       fix typo in documentation of git-svn
@@ -34,6 +74,9 @@ Torstein Hegge (1):
 
 Tran Ngoc Quan (1):
       l10n: vi.po (2133t)
+
+brian m. carlson (1):
+      Add missing test file for UTF-16.
 
 
 Version v1.8.4-rc1; changes since v1.8.4-rc0:
@@ -27601,9 +27644,6 @@ Brian Gernhardt (3):
       format-patch: Test --[no-]numbered and format.numbered
       t3502: Disambiguate between file and rev by adding --
 
-Brian M. Carlson (1):
-      git-gui: Reorder msgfmt command-line arguments
-
 Carlos Rica (5):
       Function for updating refs.
       Add tests for documented features of "git reset".
@@ -28665,7 +28705,8 @@ Steffen Prohaska (16):
       Use is_absolute_path() in diff-lib.c, lockfile.c, setup.c, trace.c
       sha1_file.c: Fix size_t related printf format warnings
 
-Steven Grimm (2):
+Steven Grimm (3):
+      Add a message explaining that automatic GC is about to start
       builtin-fetch: Add "-q" as a synonym for "--quiet"
       git-svn: Don't create a "master" branch every time rebase is run
 
@@ -28715,8 +28756,8 @@ Xudong Guan (2):
       Initial Chinese translation for git-gui
       git-gui: Added initial version of po/glossary/zh_cn.po
 
-koreth@midwinter.com (1):
-      Add a message explaining that automatic GC is about to start
+brian m. carlson (1):
+      git-gui: Reorder msgfmt command-line arguments
 
 İsmail Dönmez (1):
       gitweb: use Perl built-in utf8 function for UTF-8 decoding.
@@ -30377,17 +30418,15 @@ Carlos Rica (3):
 Dan McGee (1):
       git-mergetool: Allow gvimdiff to be used as a mergetool
 
-Dana How (3):
+Dana L. How (8):
       Custom compression levels for objects and packs
-      pack-objects: clarification & option checks for --max-pack-size
-      Ensure git-repack -a -d --max-pack-size=N deletes correct packs
-
-Dana L. How (5):
       Alter sha1close() 3rd argument to request flush only
       git-repack --max-pack-size: new file statics and code restructuring
       git-repack --max-pack-size: write_{object,one}() respect pack limit
       git-repack --max-pack-size: split packs as asked by write_{object,one}()
       git-repack --max-pack-size: add option parsing to enable feature
+      pack-objects: clarification & option checks for --max-pack-size
+      Ensure git-repack -a -d --max-pack-size=N deletes correct packs
 
 Daniel Barkalow (6):
       Move remote parsing into a library file out of builtin-push.
@@ -33096,7 +33135,8 @@ Paolo Bonzini (5):
 Pavel Roskin (1):
       git-remote: support remotes with a dot in the name
 
-Sam Vilain (2):
+Sam Vilain (3):
+      git-svn: make test for SVK mirror path import
       git-svn: don't consider SVN URL usernames significant when comparing
       git-svn: document --username
 
@@ -33164,9 +33204,6 @@ Theodore Ts'o (5):
 
 Xavier Maillard (1):
       contrib/emacs: Use non-interactive function to byte-compile files
-
-sam@vilain.net (1):
-      git-svn: make test for SVK mirror path import
 
 
 Version v1.5.0.7; changes since v1.5.0.6:
@@ -38977,7 +39014,7 @@ Junio C Hamano (137):
       add clean and ignore rules for xdiff/
       GIT 1.3.0 rc1
 
-Karl  Hasselström (7):
+Karl Wiberg (7):
       git-svnimport: -r adds svn revision number to commit messages
       svnimport: Mention -r in usage summary
       svnimport: Convert executable flag

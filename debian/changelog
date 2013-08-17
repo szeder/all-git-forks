@@ -1,3 +1,10 @@
+git (1:1.8.4~rc3-0.1) unstable; urgency=low
+
+  * new upstream release candidate.
+    * switch de translation from pure German to German+English.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 17 Aug 2013 14:39:55 -0700
+
 git (1:1.8.4~rc2-1) unstable; urgency=low
 
   * new upstream release candidate.
