@@ -7,7 +7,7 @@ should be preferred:
 
  # apt-get install git  # if not yet done
 
- $ git clone http://smarden.org/git/git.git/
+ $ git clone https://repo.or.cz/r/git/debian.git/ git
  $ cd git
 
 After cloning the repository, you have checked out the debian-sid

@@ -15,7 +15,7 @@ Build-Depends: libz-dev, libpcre3-dev, gettext,
 Build-Depends-Indep: asciidoc, xmlto, docbook-xsl
 Standards-Version: 3.9.4.0
 Homepage: http://git-scm.com/
-Vcs-Git: http://smarden.org/git/git.git/
+Vcs-Git: https://repo.or.cz/r/git/debian.git/
 Vcs-Browser: http://repo.or.cz/w/git/debian.git/
 
 Package: git

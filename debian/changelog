@@ -9,6 +9,10 @@ git (1:1.8.4~rc3-0.1) unstable; urgency=low
     * 0013-Revert-Add-new-shortcut-for-HEAD.diff: new from
       upstream: treat "@" and names like "refs/heads/@/foo" as
       ordinary refnames again.
+  * debian/control: Vcs-Git: https://repo.or.cz/r/git/debian.git/
+    (thx brian m. carlson; closes: #719932).
+  * debian/git.README.source: suggest developing against
+    https://repo.or.cz/r/git/debian.git/.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 17 Aug 2013 14:39:55 -0700
 
