@@ -1,0 +1,127 @@
+From 8a82d864044c207cd8e8cc9ccf373de487fb797b Mon Sep 17 00:00:00 2001
+From: Junio C Hamano <gitster@pobox.com>
+Date: Wed, 14 Aug 2013 09:53:43 -0700
+Subject: Revert "git stash: avoid data loss when "git stash save" kills a
+ directory"
+
+commit c1ebd90c832e28ff27654c21f9985aebe986352d upstream.
+
+This reverts commit a73653130edd6a8977106d45a8092c09040f9132, as it
+has been reported that "ls-files --killed" is too time-consuming in
+a deep directory with too many untracked crufts (e.g. $HOME/.git
+tracking only a few files).
+
+We'd need to revisit it later but "ls-files --killed" needs to be
+optimized before it happens.
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ Documentation/git-stash.txt | 12 ++----------
+ git-stash.sh                | 12 ------------
+ t/t3903-stash.sh            | 18 ------------------
+ 3 files changed, 2 insertions(+), 40 deletions(-)
+
+diff --git a/Documentation/git-stash.txt b/Documentation/git-stash.txt
+index 7c8b648..db7e803 100644
+--- a/Documentation/git-stash.txt
++++ b/Documentation/git-stash.txt
+@@ -14,8 +14,7 @@ SYNOPSIS
+ 'git stash' ( pop | apply ) [--index] [-q|--quiet] [<stash>]
+ 'git stash' branch <branchname> [<stash>]
+ 'git stash' [save [-p|--patch] [-k|--[no-]keep-index] [-q|--quiet]
+-	     [-u|--include-untracked] [-a|--all] [-f|--force]
+-	     [<message>]]
++	     [-u|--include-untracked] [-a|--all] [<message>]]
+ 'git stash' clear
+ 'git stash' create [<message>]
+ 'git stash' store [-m|--message <message>] [-q|--quiet] <commit>
+@@ -45,7 +44,7 @@ is also possible).
+ OPTIONS
+ -------
+ 
+-save [-p|--patch] [--[no-]keep-index] [-u|--include-untracked] [-a|--all] [-q|--quiet] [-f|--force] [<message>]::
++save [-p|--patch] [--[no-]keep-index] [-u|--include-untracked] [-a|--all] [-q|--quiet] [<message>]::
+ 
+ 	Save your local modifications to a new 'stash', and run `git reset
+ 	--hard` to revert them.  The <message> part is optional and gives
+@@ -72,13 +71,6 @@ linkgit:git-add[1] to learn how to operate the `--patch` mode.
+ +
+ The `--patch` option implies `--keep-index`.  You can use
+ `--no-keep-index` to override this.
+-+
+-In some cases, saving a stash could mean irretrievably removing some
+-data - if a directory with untracked files replaces a tracked file of
+-the same name, the new untracked files are not saved (except in case
+-of `--include-untracked`) but the original tracked file shall be restored.
+-By default, `stash save` will abort in such a case; `--force` will allow
+-it to remove the untracked files.
+ 
+ list [<options>]::
+ 
+diff --git a/git-stash.sh b/git-stash.sh
+index 85c9e2c..1e541a2 100755
+--- a/git-stash.sh
++++ b/git-stash.sh
+@@ -195,7 +195,6 @@ save_stash () {
+ 	keep_index=
+ 	patch_mode=
+ 	untracked=
+-	force=
+ 	while test $# != 0
+ 	do
+ 		case "$1" in
+@@ -216,9 +215,6 @@ save_stash () {
+ 		-u|--include-untracked)
+ 			untracked=untracked
+ 			;;
+-		-f|--force)
+-			force=t
+-			;;
+ 		-a|--all)
+ 			untracked=all
+ 			;;
+@@ -262,14 +258,6 @@ save_stash () {
+ 		say "$(gettext "No local changes to save")"
+ 		exit 0
+ 	fi
+-	if test -z "$untracked$force" &&
+-	   test -n "$(git ls-files --killed | head -n 1)"
+-	then
+-		say "$(gettext "The following untracked files would NOT be saved but need to be removed by stash save:")"
+-		test -n "$GIT_QUIET" || git ls-files --killed | sed 's/^/\t/'
+-		say "$(gettext "Aborting. Consider using either the --force or --include-untracked option.")" >&2
+-		exit 1
+-	fi
+ 	test -f "$GIT_DIR/logs/$ref_stash" ||
+ 		clear_stash || die "$(gettext "Cannot initialize stash")"
+ 
+diff --git a/t/t3903-stash.sh b/t/t3903-stash.sh
+index 5d22f17..debda7a 100755
+--- a/t/t3903-stash.sh
++++ b/t/t3903-stash.sh
+@@ -673,22 +673,4 @@ test_expect_success 'store updates stash ref and reflog' '
+ 	grep quux bazzy
+ '
+ 
+-test_expect_success 'stash a change to turn a non-directory to a directory' '
+-	git reset --hard &&
+-	>testfile &&
+-	git add testfile &&
+-	git commit -m "add testfile as a regular file" &&
+-	rm testfile &&
+-	mkdir testfile &&
+-	>testfile/file &&
+-	test_must_fail git stash save "recover regular file" &&
+-	test -f testfile/file
+-'
+-
+-test_expect_success 'stash a change to turn a non-directory to a directory (forced)' '
+-	git stash save --force "recover regular file (forced)" &&
+-	! test -f testfile/file &&
+-	test -f testfile
+-'
+-
+ test_done
+-- 
+1.8.4.rc2
+

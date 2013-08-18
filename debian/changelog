@@ -2,6 +2,13 @@ git (1:1.8.4~rc3-0.1) unstable; urgency=low
 
   * new upstream release candidate.
     * switch de translation from pure German to German+English.
+  * debian/diff/:
+    * 0012-Revert-git-stash-avoid-data-loss-when-....diff: new
+      from upstream: stash: omit too-slow check for files
+      replaced by directories before stashing.
+    * 0013-Revert-Add-new-shortcut-for-HEAD.diff: new from
+      upstream: treat "@" and names like "refs/heads/@/foo" as
+      ordinary refnames again.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 17 Aug 2013 14:39:55 -0700
 
