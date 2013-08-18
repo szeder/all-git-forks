@@ -13,6 +13,7 @@ git (1:1.8.4~rc3-0.1) unstable; urgency=low
     (thx brian m. carlson; closes: #719932).
   * debian/git.README.source: suggest developing against
     https://repo.or.cz/r/git/debian.git/.
+  * debian/watch: use xz-compressed tars from kernel.org again.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 17 Aug 2013 14:39:55 -0700
 

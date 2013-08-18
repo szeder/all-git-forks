@@ -1,4 +1,4 @@
 version=3
+https://www.kernel.org/pub/software/scm/git/git-([\d.]+)\.tar\.xz
 opts="uversionmangle=s/\.rc/~rc/" \
-http://code.google.com/p/git-core/downloads/list \
-//git-core.googlecode.com/files/git-([\d.]+(?:rc\d+)?)\.tar\.gz
+https://www.kernel.org/pub/software/scm/git/testing/git-([\d.]+rc\d+)\.tar\.xz
