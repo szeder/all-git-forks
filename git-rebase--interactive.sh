@@ -693,7 +693,7 @@ transform_todo_ids () {
 	while read -r command rest
 	do
 		case "$command" in
-		'#'* | exec)
+		"$comment_char"* | exec)
 			# Be careful for oddball commands like 'exec'
 			# that do not have a SHA-1 at the beginning of $rest.
 			;;
