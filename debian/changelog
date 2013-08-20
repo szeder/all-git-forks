@@ -1,11 +1,11 @@
-git (1:1.8.4~rc4-0.1) experimental; urgency=low
+git (1:1.8.4~rc4-1) experimental; urgency=low
 
   * new upstream release candidate.
   * debian/diff/0012-*, 0013-*: remove; applied upstream.
   * debian/rules: define .NOTPARALLEL to avoid races between
     "make" child processes (thx Anders Kaseorg; closes: #720274).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 19 Aug 2013 22:20:27 -0700
+ -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 19 Aug 2013 22:41:08 -0700
 
 git (1:1.8.4~rc3-1) unstable; urgency=low
 
