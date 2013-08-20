@@ -359,4 +359,8 @@ binary-indep: install-indep $(patsubst %,%.deb,$(PKG_INDEP)) git-core.deb-DEBIAN
 .PHONY: install install-arch install-indep
 .PHONY: binary binary-arch binary-indep
 
+# Git's build system supports parallelism (-j) but does not handle
+# multiple concurrent "make" invocations.
+.NOTPARALLEL:
+
 include debian/implicit
