@@ -433,11 +433,7 @@ __git_ps1 ()
 	local gitstring="$c${b##refs/heads/}${f:+$z$f}$r$p"
 
 	if [ $pcmode = yes ]; then
-		if [[ -n ${ZSH_VERSION-} ]]; then
-			gitstring=$(printf -- "$printf_format" "$gitstring")
-		else
-			printf -v gitstring -- "$printf_format" "$gitstring"
-		fi
+		gitstring=$(printf -- "$printf_format" "$gitstring")
 		PS1="$ps1pc_start$gitstring$ps1pc_end"
 	else
 		printf -- "$printf_format" "$gitstring"
