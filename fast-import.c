@@ -3378,6 +3378,7 @@ int main(int argc, char **argv)
 
 	setup_git_directory();
 	reset_pack_idx_option(&pack_idx_opts);
+	pack_idx_opts.duplicates = WRITE_IDX_DUPLICATES_REJECT;
 	git_config(git_pack_config, NULL);
 	if (!pack_compression_seen && core_compression_seen)
 		pack_compression_level = core_compression_level;
