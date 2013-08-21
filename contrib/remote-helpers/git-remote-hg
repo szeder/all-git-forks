@@ -591,6 +591,17 @@ def list_head(repo, cur):
     print "@refs/heads/%s HEAD" % head
     g_head = (head, node)
 
+def print_list_entry_if_valid(ref):
+    # same chacks as in check_refname_format() in refs.c
+    if ref.startswith('.') or ref.find('/.') != -1 or \
+            ref.find('..') != -1 or \
+            any([(c <= ' ' or c in '~^:\\\177') for c in ref]) or \
+            ref.endswith('/') or \
+            ref.endswith('.lock'):
+        warn("Ill-named reference '%s' skipped" % ref)
+    else:
+        print "? %s" % ref
+
 def do_list(parser):
     global branches, bmarks, track_branches
 
@@ -611,15 +622,15 @@ def do_list(parser):
 
     if track_branches:
         for branch in branches:
-            print "? refs/heads/branches/%s" % gitref(branch)
+            print_list_entry_if_valid("refs/heads/branches/%s" % gitref(branch))
 
     for bmark in bmarks:
-        print "? refs/heads/%s" % gitref(bmark)
+        print_list_entry_if_valid("refs/heads/%s" % gitref(bmark))
 
     for tag, node in repo.tagslist():
         if tag == 'tip':
             continue
-        print "? refs/tags/%s" % gitref(tag)
+        print_list_entry_if_valid("refs/tags/%s" % gitref(tag))
 
     print
 
