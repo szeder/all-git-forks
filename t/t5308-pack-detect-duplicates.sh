@@ -94,4 +94,12 @@ test_expect_success 'lookup in duplicated pack (GIT_USE_LOOKUP)' '
 	test_cmp expect actual
 '
 
+test_expect_success 'index-pack can reject packs with duplicates' '
+	clear_packs &&
+	create_pack 2 >dups.pack &&
+	test_must_fail \
+		git -c pack.indexDuplicates=0 index-pack --stdin <dups.pack &&
+	test_expect_code 1 git cat-file -e $LO_SHA1
+'
+
 test_done

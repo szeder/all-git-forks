@@ -1364,6 +1364,16 @@ static int git_index_pack_config(const char *k, const char *v, void *cb)
 #endif
 		return 0;
 	}
+	if (!strcmp(k, "pack.indexduplicates")) {
+		int boolval = git_config_maybe_bool(k, v);
+		if (boolval > 0 || !strcmp(v, "ignore"))
+			opts->duplicates = WRITE_IDX_DUPLICATES_IGNORE;
+		else if (boolval == 0 || !strcmp(v, "reject"))
+			opts->duplicates = WRITE_IDX_DUPLICATES_REJECT;
+		else
+			die("unknown value for pack.indexduplicates: %s", v);
+		return 0;
+	}
 	return git_default_config(k, v, cb);
 }
 
