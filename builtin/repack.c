@@ -231,7 +231,7 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 
 	ret = start_command(&cmd);
 	if (ret)
-		return 1;
+		return ret;
 
 	count_packs = 0;
 	out = xfdopen(cmd.out, "r");
@@ -245,7 +245,7 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 	fclose(out);
 	ret = finish_command(&cmd);
 	if (ret)
-		return 1;
+		return ret;
 	argv_array_clear(&cmd_args);
 
 	if (!count_packs && !quiet)
