@@ -1045,7 +1045,7 @@ test_expect_success 'short SHA-1 setup' '
 	unset test_tick &&
 	test_commit collide1 collide &&
 	test_commit --notick collide2 collide &&
-	test_commit --notick "collide3 115158b5" collide collide3 collide3
+	test_commit --notick collide3 collide
 	)
 '
 
@@ -1056,7 +1056,7 @@ test_expect_success 'short SHA-1 collide' '
 	unset test_tick &&
 	test_tick &&
 	set_fake_editor &&
-	FAKE_COMMIT_MESSAGE="collide2 815200e" \
+	FAKE_COMMIT_MESSAGE="collide2 ac4f2ee" \
 	FAKE_LINES="reword 1 2" git rebase -i HEAD~2
 	)
 '
