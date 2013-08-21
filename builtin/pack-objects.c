@@ -2511,6 +2511,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	read_replace_refs = 0;
 
 	reset_pack_idx_option(&pack_idx_opts);
+	pack_idx_opts.duplicates = WRITE_IDX_DUPLICATES_REJECT;
 	git_config(git_pack_config, NULL);
 	if (!pack_compression_seen && core_compression_seen)
 		pack_compression_level = core_compression_level;

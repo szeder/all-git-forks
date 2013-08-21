@@ -174,6 +174,7 @@ static void prepare_to_stream(struct bulk_checkin_state *state,
 
 	state->f = create_tmp_packfile(&state->pack_tmp_name);
 	reset_pack_idx_option(&state->pack_idx_opts);
+	state->pack_idx_opts.duplicates = WRITE_IDX_DUPLICATES_REJECT;
 
 	/* Pretend we are going to write only one object */
 	state->offset = write_pack_header(state->f, 1);
