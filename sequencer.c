@@ -21,6 +21,7 @@
 const char sign_off_header[] = "Signed-off-by: ";
 static const char cherry_picked_prefix[] = "(cherry picked from commit ";
 static struct rewritten rewritten;
+static int total;
 
 static void finish(struct replay_opts *opts)
 {
@@ -878,8 +879,10 @@ static void walk_revs_populate_todo(struct commit_list **todo_list,
 	prepare_revs(opts);
 
 	next = todo_list;
-	while ((commit = get_revision(opts->revs)))
+	while ((commit = get_revision(opts->revs))) {
 		next = commit_list_append(commit, next);
+		total++;
+	}
 }
 
 static int create_seq_dir(void)
@@ -1037,6 +1040,21 @@ static void save_opts(struct replay_opts *opts)
 	}
 }
 
+static void save_info(int total, int step)
+{
+	FILE *f;
+	f = fopen(git_path("sequencer/total"), "w");
+	if (f) {
+		fprintf(f, "%i\n", total);
+		fclose(f);
+	}
+	f = fopen(git_path("sequencer/step"), "w");
+	if (f) {
+		fprintf(f, "%i\n", step);
+		fclose(f);
+	}
+}
+
 static int pick_commits(struct commit_list *todo_list, struct replay_opts *opts)
 {
 	struct commit_list *cur;
@@ -1052,8 +1070,10 @@ static int pick_commits(struct commit_list *todo_list, struct replay_opts *opts)
 		save_todo(cur, opts);
 		res = do_pick_commit(cur->item, opts);
 		if (res) {
-			if (opts->action == REPLAY_PICK)
+			if (opts->action == REPLAY_PICK) {
 				store_rewritten(&rewritten, git_path(SEQ_REWR_FILE));
+				save_info(total, rewritten.nr + 1);
+			}
 			return res;
 		}
 	}
