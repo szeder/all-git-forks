@@ -479,6 +479,7 @@ static void git_init(void)
 }
 
 static const char *commands[] = {
+	"reset",
 };
 
 void handle_ruby_command(int argc, const char **argv)
