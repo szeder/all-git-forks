@@ -319,7 +319,7 @@ done
 test $# -gt 2 && usage
 
 if test -n "$cmd" &&
-   test "$interactive_rebase" != explicit
+	test "$interactive_rebase" != explicit
 then
 	die "$(gettext "The --exec option must be used with the --interactive option")"
 fi
