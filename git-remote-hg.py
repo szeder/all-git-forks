@@ -400,8 +400,9 @@ def get_repo(url, alias):
                 local_hg = os.path.join(shared_path, x, 'clone', '.hg')
                 if not os.path.exists(local_hg):
                     continue
-                shutil.copytree(local_hg, hg_path)
-                break
+                if not os.path.exists(hg_path):
+                    shutil.move(local_hg, hg_path)
+                shutil.rmtree(os.path.join(shared_path, x, 'clone'))
 
         # setup shared repo (if not there)
         try:
