@@ -44,6 +44,11 @@ struct pack_idx_option {
 	uint32_t version;
 	uint32_t off32_limit;
 
+	enum {
+		WRITE_IDX_DUPLICATES_IGNORE = 0,
+		WRITE_IDX_DUPLICATES_REJECT
+	} duplicates;
+
 	/*
 	 * List of offsets that would fit within off32_limit but
 	 * need to be written out as 64-bit entity for byte-for-byte
