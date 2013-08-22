@@ -55,9 +55,6 @@ def die(msg, *args):
 def warn(msg, *args):
     sys.stderr.write('WARNING: %s\n' % (msg % args))
 
-def info(msg, *args):
-    sys.stderr.write('%s\n' % (msg % args))
-
 def gittz(tz):
     return '%+03d%02d' % (tz / 3600, tz % 3600 / 60)
 
@@ -797,7 +794,6 @@ def get_remote_branch(name):
         branch = bzrlib.branch.Branch.open(branch_path)
     except bzrlib.errors.NotBranchError:
         # clone
-        info("Cloning branch '%s'", name)
 
         branch = clone(branch_path, remote_branch)
     else:
@@ -859,8 +855,6 @@ def get_repo(url, alias):
                 pass
             except bzrlib.errors.NoRepositoryPresent:
                 pass
-
-    info('Updating bzr branches')
 
     wanted = get_config('remote.%s.bzr-branches' % alias).rstrip().split(', ')
     # stupid python
