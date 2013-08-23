@@ -592,7 +592,7 @@ def list_head(repo, cur):
     g_head = (head, node)
 
 def print_list_entry_if_valid(ref):
-    # same chacks as in check_refname_format() in refs.c
+    # same checks as in check_refname_format() in refs.c
     if ref.startswith('.') or ref.find('/.') != -1 or \
             ref.find('..') != -1 or \
             any([(c <= ' ' or c in '~^:\\\177') for c in ref]) or \
