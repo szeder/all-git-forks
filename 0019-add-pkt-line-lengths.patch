@@ -1,4 +1,4 @@
-From 0e27bb30fb90a105293de5f6b424a026fd704991 Mon Sep 17 00:00:00 2001
+From 5b8abc3707e5671d34a1230396ebd6b914e5a210 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:40:24 +0800
 Subject: [PATCH 19/22] add pkt-line lengths
@@ -8,7 +8,7 @@ Subject: [PATCH 19/22] add pkt-line lengths
  1 file changed, 7 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index a1205f5..250468d 100644
+index 4e0e5b3..b181ad7 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -211,11 +211,11 @@ The request MUST NOT contain additional query parameters.

@@ -1,7 +1,13 @@
-From 71577165a5d735847a5f82f74320507fa4b696ac Mon Sep 17 00:00:00 2001
+From ebd9456325ff1674263c2e8e990de332a975f95f Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 17/22] reword dumb client info/refs para
+
+Notes:
+ - said "request to" instead of Junio's "request against", for
+   consistency with the rest of the document.
+ - said "E.g." instead of "I.e." since it's an example request and
+   response
 
 --
 
@@ -36,7 +42,7 @@ to also exclude methods other than GET.
  1 file changed, 2 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 8770b44..f3c0891 100644
+index 8770b44..615b41a 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -147,9 +147,8 @@ HTTP clients that only support the "dumb" protocol MUST discover
@@ -47,7 +53,7 @@ index 8770b44..f3c0891 100644
 -fetching the info/refs file.  (That is, '?' MUST NOT appear in the
 -requested URL.)
 +Dumb HTTP clients MUST make a GET request to $GIT_URL/info/refs,
-+without any search/query parameters.
++without any search/query parameters.  E.g.
  
     C: GET $GIT_URL/info/refs HTTP/1.0
  

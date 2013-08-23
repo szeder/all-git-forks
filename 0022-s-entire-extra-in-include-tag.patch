@@ -1,4 +1,4 @@
-From 5bb362d84103c88eca9064eb024d64590c99a105 Mon Sep 17 00:00:00 2001
+From b676aff45f9687b04b922af8f4009cf3beb26466 Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 22/22] s/entire/extra/ in include-tag
@@ -24,7 +24,7 @@ to upload-pack anyway for the primary transfer.
  1 file changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 3fc8f1f..0b1c96c 100644
+index 6dbbfb1..1461aa0 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -226,12 +226,12 @@ description of the dumb server response.
