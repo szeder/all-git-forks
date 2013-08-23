@@ -429,6 +429,20 @@ static inline int upstream_mark(const char *string, int len)
 	return 0;
 }
 
+static inline int tail_mark(const char *string, int len)
+{
+	const char *suffix[] = { "@{tail}", "@{t}" };
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(suffix); i++) {
+		int suffix_len = strlen(suffix[i]);
+		if (suffix_len <= len
+		    && !memcmp(string, suffix[i], suffix_len))
+			return suffix_len;
+	}
+	return 0;
+}
+
 static int get_sha1_1(const char *name, int len, unsigned char *sha1, unsigned lookup_flags);
 static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf);
 
@@ -475,7 +489,7 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 					nth_prior = 1;
 					continue;
 				}
-				if (!upstream_mark(str + at, len - at)) {
+				if (!upstream_mark(str + at, len - at) && !tail_mark(str + at, len - at)) {
 					reflog_len = (len-1) - (at+2);
 					len = at;
 				}
@@ -1096,6 +1110,12 @@ int interpret_branch_name(const char *name, int namelen, struct strbuf *buf)
 	if (len > 0)
 		return reinterpret(name, namelen, len, buf);
 
+	tmp_len = tail_mark(cp, namelen - (cp - name));
+	if (tmp_len) {
+		strbuf_reset(buf);
+		strbuf_addf(buf, "refs/tails/%.*s", (int)(cp - name), name);
+		return cp + tmp_len - name;
+	}
 	tmp_len = upstream_mark(cp, namelen - (cp - name));
 	if (!tmp_len)
 		return -1;
