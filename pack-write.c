@@ -37,6 +37,19 @@ static int need_large_offset(off_t offset, const struct pack_idx_option *opts)
 			 sizeof(ofsval), cmp_uint32);
 }
 
+static void *find_duplicate(void *vbase, size_t n, size_t size,
+			    int (*cmp)(const void *, const void *))
+{
+	unsigned char *base = vbase;
+	while (n > 1) {
+		if (!cmp(base, base + size))
+			return base;
+		base += size;
+		n--;
+	}
+	return NULL;
+}
+
 /*
  * On entry *sha1 contains the pack content SHA1 hash, on exit it is
  * the SHA1 hash of sorted object names. The objects array passed in
@@ -67,6 +80,16 @@ const char *write_idx_file(const char *index_name, struct pack_idx_entry **objec
 	}
 	else
 		sorted_by_sha = list = last = NULL;
+
+	if (!opts->allow_duplicates) {
+		struct pack_idx_entry **dup;
+
+		dup = find_duplicate(sorted_by_sha, nr_objects,
+				     sizeof(*sorted_by_sha), sha1_compare);
+		if (dup)
+			die("pack has duplicate entries for %s",
+			    sha1_to_hex((*dup)->sha1));
+	}
 
 	if (opts->flags & WRITE_IDX_VERIFY) {
 		assert(index_name);

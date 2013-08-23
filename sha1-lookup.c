@@ -204,7 +204,30 @@ int sha1_entry_pos(const void *table,
 			 * byte 0 thru (ofs-1) are the same between
 			 * lo and hi; ofs is the first byte that is
 			 * different.
+			 *
+			 * If ofs==20, then no bytes are different,
+			 * meaning we have entries with duplicate
+			 * keys. We know that we are in a solid run
+			 * of this entry (because the entries are
+			 * sorted, and our lo and hi are the same,
+			 * there can be nothing but this single key
+			 * in between). So we can stop the search.
+			 * Either one of these entries is it (and
+			 * we do not care which), or we do not have
+			 * it.
 			 */
+			if (ofs == 20) {
+				mi = lo;
+				mi_key = base + elem_size * mi + key_offset;
+				cmp = memcmp(mi_key, key, 20);
+				if (!cmp)
+					return mi;
+				if (cmp < 0)
+					return -1 - hi;
+				else
+					return -1 - lo;
+			}
+
 			hiv = hi_key[ofs_0];
 			if (ofs_0 < 19)
 				hiv = (hiv << 8) | hi_key[ofs_0+1];
