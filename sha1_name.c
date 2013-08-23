@@ -430,6 +430,20 @@ static inline int upstream_mark(const char *string, int len)
 	return 0;
 }
 
+static inline int tail_mark(const char *string, int len)
+{
+	const char *suffix[] = { "@{tail}", "@{t}" };
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(suffix); i++) {
+		int suffix_len = strlen(suffix[i]);
+		if (suffix_len <= len
+		    && !memcmp(string, suffix[i], suffix_len))
+			return suffix_len;
+	}
+	return 0;
+}
+
 static int get_sha1_1(const char *name, int len, unsigned char *sha1, unsigned lookup_flags);
 static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf);
 
@@ -476,13 +490,30 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 					nth_prior = 1;
 					continue;
 				}
-				if (!upstream_mark(str + at, len - at)) {
+				if (!upstream_mark(str + at, len - at) && !tail_mark(str + at, len - at)) {
 					reflog_len = (len-1) - (at+2);
 					len = at;
 				}
 				break;
 			}
 		}
+	}
+
+	if (tail_mark(str + at, len - at)) {
+		struct branch *branch;
+		char *tmp;
+		tmp = xstrndup(str, at);
+		branch = branch_get(tmp);
+		if (!branch)
+			die(_("HEAD does not point to a branch"));
+		if (!branch->tail)
+			die(_("Branch '%s' does not have a configured base-point tail"),
+					branch->name);
+		if (get_sha1_hex(branch->tail, sha1))
+			die(_("Branch '%s' has a badly configured base-point tail"),
+					branch->name);
+		free(tmp);
+		return 0;
 	}
 
 	/* Accept only unambiguous ref paths. */
