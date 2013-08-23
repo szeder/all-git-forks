@@ -1,8 +1,11 @@
-From 9afbc1e0f4843dd999ce85d8f18edcfa098aeea9 Mon Sep 17 00:00:00 2001
-From: Tay Ray Chuan <rctay89@gmail.com>
-Date: Thu, 8 Apr 2010 02:14:19 +0800
+From 935249f31a63fa5d321fe248b7637ed6056866fb Mon Sep 17 00:00:00 2001
+From: Junio C Hamano <gitster@pobox.com>
+Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 22/22] s/entire/extra/ in include-tag
 
+--
+
+Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
 ---
  Documentation/technical/http-protocol.txt | 12 ++++++------
  1 file changed, 6 insertions(+), 6 deletions(-)
