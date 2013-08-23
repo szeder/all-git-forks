@@ -357,6 +357,9 @@ static int handle_config(const char *key, const char *value, void *cb)
 			if (!value)
 				return config_error_nonbool(key);
 			add_merge(branch, xstrdup(value));
+		} else if (!strcmp(subkey, ".tail")) {
+			if (git_config_string(&branch->tail, key, value))
+				return -1;
 		}
 		return 0;
 	}

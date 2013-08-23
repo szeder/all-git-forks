@@ -132,6 +132,7 @@ struct branch {
 	const char *refname;
 
 	const char *remote_name;
+	const char *tail;
 	struct remote *remote;
 
 	const char **merge_name;
