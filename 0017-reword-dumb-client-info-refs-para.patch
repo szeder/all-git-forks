@@ -1,9 +1,36 @@
-From 69242b6ae13d44df195c77887fe7d3b604cb5ac7 Mon Sep 17 00:00:00 2001
-From: Tay Ray Chuan <rctay89@gmail.com>
-Date: Thu, 8 Apr 2010 00:17:57 +0800
+From 71577165a5d735847a5f82f74320507fa4b696ac Mon Sep 17 00:00:00 2001
+From: Junio C Hamano <gitster@pobox.com>
+Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 17/22] reword dumb client info/refs para
 
-From <7vskdss3ei.fsf@alter.siamese.dyndns.org>.
+--
+
+Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
+
+> +Dumb Clients
+> +~~~~~~~~~~~~
+> +
+> +HTTP clients that only support the "dumb" protocol MUST discover
+> +references by making a request for the special info/refs file of
+> +the repository.
+> +
+> +Dumb HTTP clients MUST NOT include search/query parameters when
+> +fetching the info/refs file.  (That is, '?' must not appear in the
+> +requested URL.)
+
+It is unclear if '?' can be part of $GIT_URL. E.g.
+
+    $ wget http://example.xz/serve.cgi?path=git.git/info/refs
+    $ git clone http://example.xz/serve.cgi?path=git.git
+
+It might be clearer to just say
+
+    Dumb HTTP clients MUST make a GET request against $GIT_URL/info/refs,
+    without any search/query parameters.  I.e.
+
+        C: GET $GIT_URL/info/refs HTTP/1.0
+
+to also exclude methods other than GET.
 ---
  Documentation/technical/http-protocol.txt | 5 ++---
  1 file changed, 2 insertions(+), 3 deletions(-)
