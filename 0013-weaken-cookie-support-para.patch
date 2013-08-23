@@ -1,9 +1,27 @@
-From 51e4982730f263c21db54923d03c97d85af5be58 Mon Sep 17 00:00:00 2001
-From: Tay Ray Chuan <rctay89@gmail.com>
-Date: Wed, 7 Apr 2010 20:55:09 +0800
+From 27587af60ff8089536b2b3d19610eac443eb40c0 Mon Sep 17 00:00:00 2001
+From: "Shawn O. Pearce" <spearce@spearce.org>
+Date: Thu, 15 Oct 2009 09:52:28 -0700
 Subject: [PATCH 13/22] weaken cookie support para
 
-From <20091015165228.GO10505@spearce.org>.
+Based on the discussion in
+  <20091009195035.GA15153@coredump.intra.peff.net>,
+  <20091015165228.GO10505@spearce.org> (patch),
+  <20091015173902.GA22262@sigill.intra.peff.net> (agreement)
+
+--
+
+Message-ID: <20091015165228.GO10505@spearce.org>
+
+I weakend the sections on cookies:
+
++ Authentication
++ --------------
+....
++ Servers SHOULD NOT require HTTP cookies for the purposes of
++ authentication or access control.
+
+and that's all we say on the matter.  I took out the Servers MUST
+NOT line under session state.
 ---
  Documentation/technical/http-protocol.txt | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
