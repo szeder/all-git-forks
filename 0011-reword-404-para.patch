@@ -1,0 +1,32 @@
+From af5ec5a9a66f5741faa9ef4739f69fb716b6c442 Mon Sep 17 00:00:00 2001
+From: Tay Ray Chuan <rctay89@gmail.com>
+Date: Wed, 7 Apr 2010 20:17:38 +0800
+Subject: [PATCH 11/22] reword 404 para
+
+From <20091016142135.GR10505@spearce.org>.
+
+Reflowed to 72 chars.
+---
+ Documentation/technical/http-protocol.txt | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
+index 7fe21a4..28eeef1 100644
+--- a/Documentation/technical/http-protocol.txt
++++ b/Documentation/technical/http-protocol.txt
+@@ -115,8 +115,10 @@ Except where noted, all standard HTTP behavior SHOULD be assumed
+ by both client and server.  This includes (but is not necessarily
+ limited to):
+ 
+-If there is no repository at $GIT_URL, the server MUST respond with
+-the '404 Not Found' HTTP status code.
++If there is no repository at $GIT_URL, the server MUST NOT respond with
++'200 OK' and a valid info/refs response.  A server SHOULD respond with
++'404 Not Found', '410 Gone', or any other suitable HTTP status code
++which does not imply the resource exists as requested.
+ 
+ If there is a repository at $GIT_URL, but access is not currently
+ permitted, the server MUST respond with the '403 Forbidden' HTTP
+-- 
+1.8.4.rc4.527.g303b16c
+

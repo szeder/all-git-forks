@@ -1,0 +1,54 @@
+From e5393a7a933bc21f7c8fdb9d09f0e31f7f84c603 Mon Sep 17 00:00:00 2001
+From: Tay Ray Chuan <rctay89@gmail.com>
+Date: Wed, 7 Apr 2010 21:08:46 +0800
+Subject: [PATCH 14/22] remove pkt-line format section
+
+This is already available in protocol-common.txt.
+
+In response to <7vskdss3ei.fsf@alter.siamese.dyndns.org>.
+---
+ Documentation/technical/http-protocol.txt | 28 ----------------------------
+ 1 file changed, 28 deletions(-)
+
+diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
+index 640b1bf..83347e7 100644
+--- a/Documentation/technical/http-protocol.txt
++++ b/Documentation/technical/http-protocol.txt
+@@ -80,34 +80,6 @@ as described by RFC 2616 (HTTP/1.1).  Servers SHOULD ignore any
+ cookies sent by a client.
+ 
+ 
+-pkt-line Format
+----------------
+-
+-Much (but not all) of the payload is described around pkt-lines.
+-
+-A pkt-line is a variable length binary string.  The first four bytes
+-of the line indicates the total length of the line, in hexadecimal.
+-The total length includes the 4 bytes used to denote the length.
+-A line SHOULD BE terminated by an LF, which if present MUST be
+-included in the total length.
+-
+-A pkt-line MAY contain binary data, so implementors MUST ensure all
+-pkt-line parsing/formatting routines are 8-bit clean.  The maximum
+-length of a pkt-line's data is 65532 bytes (65536 - 4).
+-
+-Examples (as C-style strings):
+-
+-  pkt-line          actual value
+-  ---------------------------------
+-  "0006a\n"         "a\n"
+-  "0005a"           "a"
+-  "000bfoobar\n"    "foobar\n"
+-  "0004"            ""
+-
+-A pkt-line with a length of 0 ("0000") is a special case and MUST
+-be treated as a message break or terminator in the payload.
+-
+-
+ General Request Processing
+ --------------------------
+ 
+-- 
+1.8.4.rc4.527.g303b16c
+

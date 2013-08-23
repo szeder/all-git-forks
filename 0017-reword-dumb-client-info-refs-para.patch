@@ -1,0 +1,29 @@
+From 3e79327c58db41d33b4013f123668c69fc01af03 Mon Sep 17 00:00:00 2001
+From: Tay Ray Chuan <rctay89@gmail.com>
+Date: Thu, 8 Apr 2010 00:17:57 +0800
+Subject: [PATCH 17/22] reword dumb client info/refs para
+
+From <7vskdss3ei.fsf@alter.siamese.dyndns.org>.
+---
+ Documentation/technical/http-protocol.txt | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
+index 8770b44..f3c0891 100644
+--- a/Documentation/technical/http-protocol.txt
++++ b/Documentation/technical/http-protocol.txt
+@@ -147,9 +147,8 @@ HTTP clients that only support the "dumb" protocol MUST discover
+ references by making a request for the special info/refs file of
+ the repository.
+ 
+-Dumb HTTP clients MUST NOT include search/query parameters when
+-fetching the info/refs file.  (That is, '?' MUST NOT appear in the
+-requested URL.)
++Dumb HTTP clients MUST make a GET request to $GIT_URL/info/refs,
++without any search/query parameters.
+ 
+    C: GET $GIT_URL/info/refs HTTP/1.0
+ 
+-- 
+1.8.4.rc4.527.g303b16c
+

@@ -1,0 +1,28 @@
+From 32035bbf1b9163170dd2d8c00031f29a6c8beb4e Mon Sep 17 00:00:00 2001
+From: Tay Ray Chuan <rctay89@gmail.com>
+Date: Thu, 8 Apr 2010 01:17:09 +0800
+Subject: [PATCH 18/22] also mention locations matched by $GIT_URL for 404s
+
+---
+ Documentation/technical/http-protocol.txt | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
+index f3c0891..a1205f5 100644
+--- a/Documentation/technical/http-protocol.txt
++++ b/Documentation/technical/http-protocol.txt
+@@ -103,8 +103,9 @@ Except where noted, all standard HTTP behavior SHOULD be assumed
+ by both client and server.  This includes (but is not necessarily
+ limited to):
+ 
+-If there is no repository at $GIT_URL, the server MUST NOT respond with
+-'200 OK' and a valid info/refs response.  A server SHOULD respond with
++If there is no repository at $GIT_URL, or the resource pointed to by a
++location matching $GIT_URL does not exist, the server MUST NOT respond
++with '200 OK' response.  A server SHOULD respond with
+ '404 Not Found', '410 Gone', or any other suitable HTTP status code
+ which does not imply the resource exists as requested.
+ 
+-- 
+1.8.4.rc4.527.g303b16c
+

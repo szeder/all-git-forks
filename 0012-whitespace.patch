@@ -1,0 +1,25 @@
+From d319f6a3ebaba71e46a1a1708099e714aee577e1 Mon Sep 17 00:00:00 2001
+From: Tay Ray Chuan <rctay89@gmail.com>
+Date: Wed, 7 Apr 2010 20:46:28 +0800
+Subject: [PATCH 12/22] whitespace
+
+---
+ Documentation/technical/http-protocol.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
+index 28eeef1..0c32090 100644
+--- a/Documentation/technical/http-protocol.txt
++++ b/Documentation/technical/http-protocol.txt
+@@ -286,7 +286,7 @@ declarations behind a NUL on the first ref.
+   empty_list      =  PKT-LINE(zero-id SP "capabilities^{}" NUL cap-list LF)
+ 
+   non_empty_list  =  PKT-LINE(obj-id SP name NUL cap_list LF)
+-                    *ref_record
++                     *ref_record
+ 
+   cap-list        =  capability *(SP capability)
+   capability      =  1*(LC_ALPHA / DIGIT / "-" / "_")
+-- 
+1.8.4.rc4.527.g303b16c
+

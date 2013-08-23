@@ -1,0 +1,26 @@
+From 8e2bef039043ead4c8f9a443c829bb998bb608e1 Mon Sep 17 00:00:00 2001
+From: Tay Ray Chuan <rctay89@gmail.com>
+Date: Wed, 7 Apr 2010 19:26:34 +0800
+Subject: [PATCH 03/22] s/paramterized/parameterized/
+
+From <be6fef0d0910100517h1a8b9551jc890251665bbcd69@mail.gmail.com>.
+---
+ Documentation/technical/http-protocol.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
+index 60dba7e..8f28628 100644
+--- a/Documentation/technical/http-protocol.txt
++++ b/Documentation/technical/http-protocol.txt
+@@ -204,7 +204,7 @@ Smart Clients
+ 
+ HTTP clients that support the "smart" protocol (or both the
+ "smart" and "dumb" protocols) MUST discover references by making
+-a paramterized request for the info/refs file of the repository.
++a parameterized request for the info/refs file of the repository.
+ 
+ The request MUST contain exactly one query parameter,
+ 'service=$servicename', where $servicename MUST be the service
+-- 
+1.8.4.rc4.527.g303b16c
+

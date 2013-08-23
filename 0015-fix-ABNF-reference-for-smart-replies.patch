@@ -1,0 +1,25 @@
+From 5312447170f827ba5d01f2c9acc4c308c15ca412 Mon Sep 17 00:00:00 2001
+From: Tay Ray Chuan <rctay89@gmail.com>
+Date: Wed, 7 Apr 2010 22:40:51 +0800
+Subject: [PATCH 15/22] fix ABNF reference for smart replies
+
+---
+ Documentation/technical/http-protocol.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
+index 83347e7..a001057 100644
+--- a/Documentation/technical/http-protocol.txt
++++ b/Documentation/technical/http-protocol.txt
+@@ -253,7 +253,7 @@ declarations behind a NUL on the first ref.
+   smart_reply     =  PKT-LINE("# service=$servicename" LF)
+                      ref_list
+                      "0000"
+-  ref_list        =  empty_list / populated_list
++  ref_list        =  empty_list / non_empty_list
+ 
+   empty_list      =  PKT-LINE(zero-id SP "capabilities^{}" NUL cap-list LF)
+ 
+-- 
+1.8.4.rc4.527.g303b16c
+

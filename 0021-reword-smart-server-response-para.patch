@@ -1,0 +1,33 @@
+From cca107565c7cdc5e503b261f29838efcfd05a62d Mon Sep 17 00:00:00 2001
+From: Tay Ray Chuan <rctay89@gmail.com>
+Date: Thu, 8 Apr 2010 01:57:33 +0800
+Subject: [PATCH 21/22] reword smart server response para
+
+From <7vskdss3ei.fsf@alter.siamese.dyndns.org>.
+---
+ Documentation/technical/http-protocol.txt | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
+index b546686..3fc8f1f 100644
+--- a/Documentation/technical/http-protocol.txt
++++ b/Documentation/technical/http-protocol.txt
+@@ -226,12 +226,13 @@ description of the dumb server response.
+ 
+ Smart Server Response
+ ^^^^^^^^^^^^^^^^^^^^^
+-Smart servers MUST respond with the smart server reply format.
+-
+ If the server does not recognize the requested service name, or the
+ requested service name has been disabled by the server administrator,
+ the server MUST respond with the '403 Forbidden' HTTP status code.
+ 
++Otherwise, smart servers MUST respond with the smart server reply
++format for the requested service name.
++
+ Cache-Control headers SHOULD be used to disable caching of the
+ returned entity.
+ 
+-- 
+1.8.4.rc4.527.g303b16c
+

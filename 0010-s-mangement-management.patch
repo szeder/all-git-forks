@@ -1,0 +1,25 @@
+From 1f8122200afbe90d67acdcfda15ff8541ca965c2 Mon Sep 17 00:00:00 2001
+From: Tay Ray Chuan <rctay89@gmail.com>
+Date: Wed, 7 Apr 2010 20:13:42 +0800
+Subject: [PATCH 10/22] s/mangement/management/
+
+---
+ Documentation/technical/http-protocol.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
+index e7c05d2..7fe21a4 100644
+--- a/Documentation/technical/http-protocol.txt
++++ b/Documentation/technical/http-protocol.txt
+@@ -69,7 +69,7 @@ The Git over HTTP protocol (much like HTTP itself) is stateless
+ from the perspective of the HTTP server side.  All state MUST be
+ retained and managed by the client process.  This permits simple
+ round-robin load-balancing on the server side, without needing to
+-worry about state mangement.
++worry about state management.
+ 
+ Clients MUST NOT require state management on the server side in
+ order to function correctly.
+-- 
+1.8.4.rc4.527.g303b16c
+
