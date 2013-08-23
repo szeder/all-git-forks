@@ -1,4 +1,4 @@
-From 935249f31a63fa5d321fe248b7637ed6056866fb Mon Sep 17 00:00:00 2001
+From 6f7890970e0659dc66551737f6e8d1838062fd8a Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 22/22] s/entire/extra/ in include-tag
@@ -6,6 +6,19 @@ Subject: [PATCH 22/22] s/entire/extra/ in include-tag
 --
 
 Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
+
+> +Capability include-tag
+> +~~~~~~~~~~~~~~~~~~~~~~
+> +
+> +When packing an object that an annotated tag points at, include the
+> +tag object too.  Clients can request this if they want to fetch
+> +tags, but don't know which tags they will need until after they
+> +receive the branch data.  By enabling include-tag an entire call
+> +to upload-pack can be avoided.
+> +
+
+I think you are avoiding an "extra" call; you would need one entire call
+to upload-pack anyway for the primary transfer.
 ---
  Documentation/technical/http-protocol.txt | 12 ++++++------
  1 file changed, 6 insertions(+), 6 deletions(-)
