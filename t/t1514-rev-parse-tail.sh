@@ -20,4 +20,10 @@ test_expect_success 'test tail creation' '
 	test_cmp expect actual
 '
 
+test_expect_success 'test @{tail}' '
+	git rev-parse test@{tail} > actual &&
+	git rev-parse master > expect &&
+	test_cmp expect actual
+'
+
 test_done
