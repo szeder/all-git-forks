@@ -1,4 +1,4 @@
-From d3a59bd437686c28392b1d7fe0ec3605b75a7de1 Mon Sep 17 00:00:00 2001
+From d0f4814b8dce9e805010b4fad73f4e6eb22ed258 Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 10/22] s/mangement/management/
@@ -6,6 +6,15 @@ Subject: [PATCH 10/22] s/mangement/management/
 --
 
 Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
+
+> +Session State
+> +-------------
+> ...
+> +retained and managed by the client process.  This permits simple
+> +round-robin load-balancing on the server side, without needing to
+> +worry about state mangement.
+
+s/mangement/management/;
 ---
  Documentation/technical/http-protocol.txt | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

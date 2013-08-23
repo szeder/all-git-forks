@@ -1,4 +1,4 @@
-From 2186ddfa446006ac08ecabc95826b58b4a87d609 Mon Sep 17 00:00:00 2001
+From 51e4982730f263c21db54923d03c97d85af5be58 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 20:55:09 +0800
 Subject: [PATCH 13/22] weaken cookie support para
