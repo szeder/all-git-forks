@@ -623,7 +623,8 @@ do_next () {
 		git update-ref -m "$message" $head_name $newhead $orig_head &&
 		git symbolic-ref \
 		  -m "$GIT_REFLOG_ACTION: returning to $head_name" \
-		  HEAD $head_name
+		  HEAD $head_name &&
+		git config branch.${branch_name}.tail $(git rev-parse $onto)
 		;;
 	esac && {
 		test ! -f "$state_dir"/verbose ||
