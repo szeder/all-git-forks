@@ -26,4 +26,14 @@ test_expect_success 'test @{tail}' '
 	test_cmp expect actual
 '
 
+test_expect_success 'test rebase tail update' '
+	git checkout -b next master &&
+	echo three > content &&
+	git commit -a -m three &&
+	git rebase --onto next test@{tail} test &&
+	git rev-parse test@{tail} > actual &&
+	git rev-parse next > expect &&
+	test_cmp expect actual
+'
+
 test_done
