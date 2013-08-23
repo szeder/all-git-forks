@@ -141,7 +141,8 @@ move_to_original_branch () {
 			$head_name $(git rev-parse HEAD) $orig_head &&
 		git symbolic-ref \
 			-m "rebase finished: returning to $head_name" \
-			HEAD $head_name ||
+			HEAD $head_name &&
+		git update-ref refs/tails/${branch_name} $(git rev-parse $onto) ||
 		die "$(gettext "Could not move back to $head_name")"
 		;;
 	esac
