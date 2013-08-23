@@ -767,7 +767,6 @@ def get_remote_branch(name):
         branch = bzrlib.branch.Branch.open(branch_path)
     except bzrlib.errors.NotBranchError:
         # clone
-
         branch = clone(branch_path, remote_branch)
     else:
         # pull

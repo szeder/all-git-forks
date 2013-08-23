@@ -8,11 +8,6 @@ test_description='Test remote-helper import and export commands'
 . ./test-lib.sh
 . "$TEST_DIRECTORY"/lib-gpg.sh
 
-if ! type "${BASH-bash}" >/dev/null 2>&1; then
-	skip_all='skipping remote-testgit tests, bash not available'
-	test_done
-fi
-
 compare_refs() {
 	git --git-dir="$1/.git" rev-parse --verify $2 >expect &&
 	git --git-dir="$3/.git" rev-parse --verify $4 >actual &&
@@ -127,7 +122,9 @@ test_expect_success 'pushing without refspecs' '
 	(cd local2 &&
 	echo content >>file &&
 	git commit -a -m ten &&
-	GIT_REMOTE_TESTGIT_REFSPEC="" test_must_fail git push 2>../error) &&
+	GIT_REMOTE_TESTGIT_REFSPEC="" &&
+	export GIT_REMOTE_TESTGIT_REFSPEC &&
+	test_must_fail git push 2>../error) &&
 	grep "remote-helper doesn.t support push; refspec needed" error
 '
 
@@ -179,6 +176,50 @@ test_expect_success GPG 'push signed tag with signed-tags capability' '
 	GIT_REMOTE_TESTGIT_SIGNED_TAGS=1 git push origin signed-tag-2
 	) &&
 	compare_refs local signed-tag-2 server signed-tag-2
+'
+
+test_expect_success 'push update refs' '
+	(cd local &&
+	git checkout -b update master &&
+	echo update >>file &&
+	git commit -a -m update &&
+	git push origin update &&
+	git rev-parse --verify remotes/origin/update >expect &&
+	git rev-parse --verify testgit/origin/heads/update >actual &&
+	test_cmp expect actual
+	)
+'
+
+test_expect_success 'push update refs failure' '
+	(cd local &&
+	git checkout update &&
+	echo "update fail" >>file &&
+	git commit -a -m "update fail" &&
+	git rev-parse --verify testgit/origin/heads/update >expect &&
+	GIT_REMOTE_TESTGIT_PUSH_ERROR="non-fast forward" &&
+	export GIT_REMOTE_TESTGIT_PUSH_ERROR &&
+	test_expect_code 1 git push origin update &&
+	git rev-parse --verify testgit/origin/heads/update >actual &&
+	test_cmp expect actual
+	)
+'
+
+test_expect_success 'proper failure checks for fetching' '
+	(GIT_REMOTE_TESTGIT_FAILURE=1 &&
+	export GIT_REMOTE_TESTGIT_FAILURE &&
+	cd local &&
+	test_must_fail git fetch 2> error &&
+	cat error &&
+	grep -q "Error while running fast-import" error
+	)
+'
+
+test_expect_success 'proper failure checks for pushing' '
+	(GIT_REMOTE_TESTGIT_FAILURE=1 &&
+	export GIT_REMOTE_TESTGIT_FAILURE &&
+	cd local &&
+	test_must_fail git push --all
+	)
 '
 
 test_expect_success 'push messages' '

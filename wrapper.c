@@ -322,7 +322,7 @@ int git_mkstemps_mode(char *pattern, int suffix_len, int mode)
 		template[5] = letters[v % num_letters]; v /= num_letters;
 
 		fd = open(pattern, O_CREAT | O_EXCL | O_RDWR, mode);
-		if (fd > 0)
+		if (fd >= 0)
 			return fd;
 		/*
 		 * Fatal error (EPERM, ENOSPC etc).
@@ -408,18 +408,24 @@ void warn_on_inaccessible(const char *path)
 	warning(_("unable to access '%s': %s"), path, strerror(errno));
 }
 
-int access_or_warn(const char *path, int mode)
+static int access_error_is_ok(int err, unsigned flag)
+{
+	return err == ENOENT || err == ENOTDIR ||
+		((flag & ACCESS_EACCES_OK) && err == EACCES);
+}
+
+int access_or_warn(const char *path, int mode, unsigned flag)
 {
 	int ret = access(path, mode);
-	if (ret && errno != ENOENT && errno != ENOTDIR)
+	if (ret && !access_error_is_ok(errno, flag))
 		warn_on_inaccessible(path);
 	return ret;
 }
 
-int access_or_die(const char *path, int mode)
+int access_or_die(const char *path, int mode, unsigned flag)
 {
 	int ret = access(path, mode);
-	if (ret && errno != ENOENT && errno != ENOTDIR)
+	if (ret && !access_error_is_ok(errno, flag))
 		die_errno(_("unable to access '%s'"), path);
 	return ret;
 }
