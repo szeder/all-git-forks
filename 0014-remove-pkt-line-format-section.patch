@@ -1,4 +1,4 @@
-From e5393a7a933bc21f7c8fdb9d09f0e31f7f84c603 Mon Sep 17 00:00:00 2001
+From af7b0e11e0eb8a4297bb2251abf28984b7386df0 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 21:08:46 +0800
 Subject: [PATCH 14/22] remove pkt-line format section

@@ -1,9 +1,11 @@
-From 8e2bef039043ead4c8f9a443c829bb998bb608e1 Mon Sep 17 00:00:00 2001
+From 1ecb27d03a03665eeae8ba9fa3267bc1cb4082e7 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
-Date: Wed, 7 Apr 2010 19:26:34 +0800
-Subject: [PATCH 03/22] s/paramterized/parameterized/
+Date: Sat, 10 Oct 2009 20:17:10 +0800
+Subject: [PATCH 03/22] s/paramterized//parameterized/
 
-From <be6fef0d0910100517h1a8b9551jc890251665bbcd69@mail.gmail.com>.
+--
+
+Message-ID: <be6fef0d0910100517h1a8b9551jc890251665bbcd69@mail.gmail.com>
 ---
  Documentation/technical/http-protocol.txt | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
