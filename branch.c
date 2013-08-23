@@ -103,6 +103,16 @@ void install_branch_config(int flag, const char *local, const char *origin, cons
 	}
 }
 
+void install_branch_base(const char *local, const unsigned char *tail)
+{
+	struct strbuf ref = STRBUF_INIT;
+
+	strbuf_addf(&ref, "refs/tails/%s", local);
+	update_ref(NULL, ref.buf, tail, NULL, 0, MSG_ON_ERR);
+
+	strbuf_release(&ref);
+}
+
 /*
  * This is called when new_ref is branched off of orig_ref, and tries
  * to infer the settings for branch.<new_ref>.{remote,merge} from the
@@ -307,6 +317,8 @@ void create_branch(const char *head,
 
 	if (real_ref && track)
 		setup_tracking(ref.buf + 11, real_ref, track, quiet);
+
+	install_branch_base(ref.buf + 11, sha1);
 
 	if (!dont_change_ref)
 		if (write_ref_sha1(lock, sha1, msg) < 0)

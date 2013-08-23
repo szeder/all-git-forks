@@ -46,6 +46,7 @@ void remove_branch_state(void);
  */
 #define BRANCH_CONFIG_VERBOSE 01
 extern void install_branch_config(int flag, const char *local, const char *origin, const char *remote);
+extern void install_branch_base(const char *local, const unsigned char *tail);
 
 /*
  * Read branch description
