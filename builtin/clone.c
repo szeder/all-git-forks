@@ -585,6 +585,7 @@ static void update_head(const struct ref *our, const struct ref *remote,
 			const char *head = skip_prefix(our->name, "refs/heads/");
 			update_ref(msg, "HEAD", our->old_sha1, NULL, 0, DIE_ON_ERR);
 			install_branch_config(0, head, option_origin, our->name);
+			install_branch_base(head, our->old_sha1);
 		}
 	} else if (our) {
 		struct commit *c = lookup_commit_reference(our->old_sha1);
