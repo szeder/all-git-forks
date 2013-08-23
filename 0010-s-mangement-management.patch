@@ -1,8 +1,11 @@
-From 9fcdca68ff22fc44b9f8401fb9f56dcf77f0033e Mon Sep 17 00:00:00 2001
-From: Tay Ray Chuan <rctay89@gmail.com>
-Date: Wed, 7 Apr 2010 20:13:42 +0800
+From d3a59bd437686c28392b1d7fe0ec3605b75a7de1 Mon Sep 17 00:00:00 2001
+From: Junio C Hamano <gitster@pobox.com>
+Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 10/22] s/mangement/management/
 
+--
+
+Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
 ---
  Documentation/technical/http-protocol.txt | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
