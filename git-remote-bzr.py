@@ -48,12 +48,18 @@ AUTHOR_RE = re.compile('^([^<>]+?)? ?<([^<>]*)>$')
 EMAIL_RE = re.compile('^([^<>]+[^ \\\t<>])?\\b(?:[ \\t<>]*?)\\b([^ \\t<>]+@[^ \\t<>]+)')
 RAW_AUTHOR_RE = re.compile('^(\w+) (.+)? <(.*)> (\d+) ([+-]\d+)')
 
+DEBUG = os.environ.get('DEBUG_GIT_REMOTE_BZR') != None
+
 def die(msg, *args):
     sys.stderr.write('ERROR: %s\n' % (msg % args))
     sys.exit(1)
 
 def warn(msg, *args):
     sys.stderr.write('WARNING: %s\n' % (msg % args))
+
+def debug(msg, *args):
+    if DEBUG:
+        sys.stderr.write('DEBUG: %s\n' % (msg % args))
 
 def gittz(tz):
     return '%+03d%02d' % (tz / 3600, tz % 3600 / 60)
@@ -134,7 +140,9 @@ class Parser:
         self.line = self.get_line()
 
     def get_line(self):
-        return sys.stdin.readline().strip()
+        line = sys.stdin.readline().strip()
+        debug('<- %s' % line)
+        return line
 
     def __getitem__(self, i):
         return self.line.split()[i]
