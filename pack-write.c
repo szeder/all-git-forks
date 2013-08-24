@@ -7,6 +7,7 @@ void reset_pack_idx_option(struct pack_idx_option *opts)
 	memset(opts, 0, sizeof(*opts));
 	opts->version = 2;
 	opts->off32_limit = 0x7fffffff;
+	opts->allow_duplicates = 1;
 }
 
 static int sha1_compare(const void *_a, const void *_b)
@@ -35,6 +36,19 @@ static int need_large_offset(off_t offset, const struct pack_idx_option *opts)
 	ofsval = offset;
 	return !!bsearch(&ofsval, opts->anomaly, opts->anomaly_nr,
 			 sizeof(ofsval), cmp_uint32);
+}
+
+static void *find_duplicate(void *vbase, size_t n, size_t size,
+			    int (*cmp)(const void *, const void *))
+{
+	unsigned char *base = vbase;
+	while (n > 1) {
+		if (!cmp(base, base + size))
+			return base;
+		base += size;
+		n--;
+	}
+	return NULL;
 }
 
 /*
@@ -67,6 +81,16 @@ const char *write_idx_file(const char *index_name, struct pack_idx_entry **objec
 	}
 	else
 		sorted_by_sha = list = last = NULL;
+
+	if (!opts->allow_duplicates) {
+		struct pack_idx_entry **dup;
+
+		dup = find_duplicate(sorted_by_sha, nr_objects,
+				     sizeof(*sorted_by_sha), sha1_compare);
+		if (dup)
+			die("pack has duplicate entries for %s",
+			    sha1_to_hex((*dup)->sha1));
+	}
 
 	if (opts->flags & WRITE_IDX_VERIFY) {
 		assert(index_name);
