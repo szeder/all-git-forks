@@ -6,7 +6,7 @@ Uploaders: Jonathan Nieder <jrnieder@gmail.com>
 Build-Depends: libz-dev, libpcre3-dev, gettext,
  libcurl4-gnutls-dev, libexpat1-dev,
  subversion, libsvn-perl, libyaml-perl,
- tcl8.5,
+ tcl,
  libhttp-date-perl | libtime-modules-perl,
  bzr, python, python-bzrlib,
  cvs, cvsps, libdbd-sqlite3-perl,
