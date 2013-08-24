@@ -37,10 +37,10 @@ test_expect_success 'pack with no duplicates' '
 	git index-pack --stdin <no-dups.pack
 '
 
-test_expect_success 'index-pack will allow duplicate objects by default' '
+test_expect_success 'index-pack will allow duplicate objects if asked' '
 	clear_packs &&
 	create_pack dups.pack 100 &&
-	git index-pack --stdin <dups.pack
+	git -c pack.indexDuplicates=true index-pack --stdin <dups.pack
 '
 
 test_expect_success 'create batch-check test vectors' '
@@ -70,11 +70,10 @@ test_expect_success 'lookup in duplicated pack (GIT_USE_LOOKUP)' '
 	test_cmp expect actual
 '
 
-test_expect_success 'index-pack can reject packs with duplicates' '
+test_expect_success 'index-pack rejects packs with duplicates by default' '
 	clear_packs &&
 	create_pack dups.pack 2 &&
-	test_must_fail \
-		git -c pack.indexDuplicates=0 index-pack --stdin <dups.pack &&
+	test_must_fail git index-pack --stdin <dups.pack &&
 	test_expect_code 1 git cat-file -e $LO_SHA1
 '
 
