@@ -1,3 +1,11 @@
+Version v1.8.4; changes since v1.8.4-rc4:
+-----------------------------------------
+
+Junio C Hamano (2):
+      Typofix draft release notes to 1.8.4
+      Git 1.8.4
+
+
 Version v1.8.4-rc4; changes since v1.8.4-rc3:
 ---------------------------------------------
 
