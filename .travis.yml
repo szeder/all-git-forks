@@ -13,6 +13,7 @@ script:
   - bzr --version || true
   - export GIT_TEST_OPTS='-v'
   - export PYTHON_PATH="$(which python)"
+  - export DEBUG_GIT_REMOTE_BZR=y
   - make
   - make -C t remote-helpers-test
 
