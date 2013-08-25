@@ -15,18 +15,11 @@ test_expect_success $PREREQ \
 
 test_expect_success $PREREQ \
     'Setup helper tool' \
-    '(echo "#!$SHELL_PATH"
-      echo shift
-      echo output=1
-      echo "while test -f commandline\$output; do output=\$((\$output+1)); done"
-      echo for a
-      echo do
-      echo "  echo \"!\$a!\""
-      echo "done >commandline\$output"
-      echo "cat > msgtxt\$output"
-      ) >fake.sendmail &&
-     chmod +x ./fake.sendmail &&
-     git add fake.sendmail &&
+    'if test_have_prereq MINGW; then
+	EXE_SUFFIX=.exe
+     fi
+     gcc ../t9001/fake.sendmail.c -o fake.sendmail$EXE_SUFFIX &&
+     git add fake.sendmail$EXE_SUFFIX &&
      GIT_AUTHOR_NAME="A" git commit -a -m "Second."'
 
 clean_fake_sendmail() {
