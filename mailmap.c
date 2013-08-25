@@ -192,10 +192,16 @@ static void read_mailmap_buf(struct string_list *map,
 			     char **repo_abbrev)
 {
 	while (len) {
-		const char *end = strchrnul(buf, '\n');
-		unsigned long linelen = end - buf + 1;
-		char *line = xmemdupz(buf, linelen);
+		const char *end = memchr(buf, '\n', len);
+		unsigned long linelen;
+		char *line;
 
+		if (end)
+			linelen = end - buf + 1;
+		else
+			linelen = len;
+
+		line = xmemdupz(buf, linelen);
 		read_mailmap_line(map, line, repo_abbrev);
 
 		free(line);
