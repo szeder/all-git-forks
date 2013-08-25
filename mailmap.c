@@ -187,26 +187,17 @@ static int read_mailmap_file(struct string_list *map, const char *filename,
 	return 0;
 }
 
-static void read_mailmap_buf(struct string_list *map,
-			     const char *buf, unsigned long len,
-			     char **repo_abbrev)
+static void read_mailmap_string(struct string_list *map, char *buf,
+				char **repo_abbrev)
 {
-	while (len) {
-		const char *end = memchr(buf, '\n', len);
-		unsigned long linelen;
-		char *line;
+	while (*buf) {
+		char *end = strchrnul(buf, '\n');
 
-		if (end)
-			linelen = end - buf + 1;
-		else
-			linelen = len;
+		if (*end)
+			*end++ = '\0';
 
-		line = xmemdupz(buf, linelen);
-		read_mailmap_line(map, line, repo_abbrev);
-
-		free(line);
-		buf += linelen;
-		len -= linelen;
+		read_mailmap_line(map, buf, repo_abbrev);
+		buf = end;
 	}
 }
 
@@ -230,7 +221,7 @@ static int read_mailmap_blob(struct string_list *map,
 	if (type != OBJ_BLOB)
 		return error("mailmap is not a blob: %s", name);
 
-	read_mailmap_buf(map, buf, size, repo_abbrev);
+	read_mailmap_string(map, buf, repo_abbrev);
 
 	free(buf);
 	return 0;
