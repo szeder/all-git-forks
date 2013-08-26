@@ -1,4 +1,4 @@
-From 8460abed9064aa47266466e79757c06dce8824f5 Mon Sep 17 00:00:00 2001
+From cf6501ccf3e86d593f3397994662989a24c49f4d Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 22:40:51 +0800
 Subject: [PATCH 15/22] fix ABNF reference for smart replies

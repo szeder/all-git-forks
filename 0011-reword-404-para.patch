@@ -1,11 +1,37 @@
-From 68df46307707c2b6e34404b40ef0f1a51549a3f8 Mon Sep 17 00:00:00 2001
-From: Tay Ray Chuan <rctay89@gmail.com>
-Date: Wed, 7 Apr 2010 20:17:38 +0800
+From 5e2eeb6c1bbea6f96333d0f65e7c99e2a7c21bba Mon Sep 17 00:00:00 2001
+From: "Shawn O. Pearce" <spearce@spearce.org>
+Date: Fri, 16 Oct 2009 07:21:35 -0700
 Subject: [PATCH 11/22] reword 404 para
 
-From <20091016142135.GR10505@spearce.org>.
-
 Reflowed to 72 chars.
+
+---
+
+Message-ID: <20091016142135.GR10505@spearce.org>
+Mike Hommey <mh@glandium.org> wrote:
+> On Thu, Oct 15, 2009 at 10:59:25PM -0700, H. Peter Anvin wrote:
+> > On 10/10/2009 03:12 AM, Antti-Juhani Kaijanaho wrote:
+> > > On 2009-10-09, Junio C Hamano <gitster@pobox.com> wrote:
+> > >>> +If there is no repository at $GIT_URL, the server MUST respond with
+> > >>> +the '404 Not Found' HTTP status code.
+> > >>
+> > >> We may also want to add
+> > >>
+> > >>     If there is no object at $GIT_URL/some/path, the server MUST respond
+> > >>     with the '404 Not Found' HTTP status code.
+> > >>
+> > >> to help dumb clients.
+> > >
+> > > In both cases - is it really necessary to forbid the use of 410 (Gone)?
+
+My original text got taken a bit out of context here.  I guess MUST
+was too strong of a word.  I more ment something like:
+
+  If there is no repository at $GIT_URL, the server MUST NOT respond
+  with '200 OK' and a valid info/refs response.  A server SHOULD
+  respond with '404 Not Found', '410 Gone', or any other suitable
+  HTTP status code which does not imply the resource exists as
+  requested.
 ---
  Documentation/technical/http-protocol.txt | 6 ++++--
  1 file changed, 4 insertions(+), 2 deletions(-)
