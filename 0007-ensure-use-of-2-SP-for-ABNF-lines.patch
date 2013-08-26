@@ -1,4 +1,4 @@
-From 328e876d687b252648fef6ede989114d18c30609 Mon Sep 17 00:00:00 2001
+From 02ab7e87bdb1677292bc2b54bf298eee72802acd Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:50:58 +0800
 Subject: [PATCH 07/22] ensure use of 2 SP for ABNF lines
