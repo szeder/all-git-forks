@@ -1,7 +1,9 @@
-From ce872002e6157e95042dafe7ae060f5c1c447a27 Mon Sep 17 00:00:00 2001
+From 9cc0ff98a4bffa6d6919478e860e7536ac46dfb0 Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 17/22] reword dumb client info/refs para
+
+---
 
 Notes:
  - said "request to" instead of Junio's "request against", for
@@ -9,34 +11,34 @@ Notes:
  - said "E.g." instead of "I.e." since it's an example request and
    response
 
----
+Based on:
 
-Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
+  Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
 
-> +Dumb Clients
-> +~~~~~~~~~~~~
-> +
-> +HTTP clients that only support the "dumb" protocol MUST discover
-> +references by making a request for the special info/refs file of
-> +the repository.
-> +
-> +Dumb HTTP clients MUST NOT include search/query parameters when
-> +fetching the info/refs file.  (That is, '?' must not appear in the
-> +requested URL.)
+  > +Dumb Clients
+  > +~~~~~~~~~~~~
+  > +
+  > +HTTP clients that only support the "dumb" protocol MUST discover
+  > +references by making a request for the special info/refs file of
+  > +the repository.
+  > +
+  > +Dumb HTTP clients MUST NOT include search/query parameters when
+  > +fetching the info/refs file.  (That is, '?' must not appear in the
+  > +requested URL.)
 
-It is unclear if '?' can be part of $GIT_URL. E.g.
+  It is unclear if '?' can be part of $GIT_URL. E.g.
 
-    $ wget http://example.xz/serve.cgi?path=git.git/info/refs
-    $ git clone http://example.xz/serve.cgi?path=git.git
+      $ wget http://example.xz/serve.cgi?path=git.git/info/refs
+      $ git clone http://example.xz/serve.cgi?path=git.git
 
-It might be clearer to just say
+  It might be clearer to just say
 
-    Dumb HTTP clients MUST make a GET request against $GIT_URL/info/refs,
-    without any search/query parameters.  I.e.
+      Dumb HTTP clients MUST make a GET request against $GIT_URL/info/refs,
+      without any search/query parameters.  I.e.
 
-        C: GET $GIT_URL/info/refs HTTP/1.0
+          C: GET $GIT_URL/info/refs HTTP/1.0
 
-to also exclude methods other than GET.
+  to also exclude methods other than GET.
 ---
  Documentation/technical/http-protocol.txt | 5 ++---
  1 file changed, 2 insertions(+), 3 deletions(-)
