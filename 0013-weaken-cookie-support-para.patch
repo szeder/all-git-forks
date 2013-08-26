@@ -1,4 +1,4 @@
-From 27587af60ff8089536b2b3d19610eac443eb40c0 Mon Sep 17 00:00:00 2001
+From 52b65d1ab18ad4b2fcac438ffb7068ea7533fcfe Mon Sep 17 00:00:00 2001
 From: "Shawn O. Pearce" <spearce@spearce.org>
 Date: Thu, 15 Oct 2009 09:52:28 -0700
 Subject: [PATCH 13/22] weaken cookie support para
@@ -8,7 +8,7 @@ Based on the discussion in
   <20091015165228.GO10505@spearce.org> (patch),
   <20091015173902.GA22262@sigill.intra.peff.net> (agreement)
 
---
+---
 
 Message-ID: <20091015165228.GO10505@spearce.org>
 

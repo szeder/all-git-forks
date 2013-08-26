@@ -1,9 +1,9 @@
-From d0f4814b8dce9e805010b4fad73f4e6eb22ed258 Mon Sep 17 00:00:00 2001
+From 08f278967830a4f4b43540fc180721108fc63eaa Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 10/22] s/mangement/management/
 
---
+---
 
 Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
 

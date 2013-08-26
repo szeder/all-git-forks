@@ -1,4 +1,4 @@
-From 05ef3a618c32b087d378ef9542df9200400d5c60 Mon Sep 17 00:00:00 2001
+From df4fd48d8a509d3fb4402c4493725933fa1ac482 Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 17/22] reword dumb client info/refs para
@@ -9,7 +9,7 @@ Notes:
  - said "E.g." instead of "I.e." since it's an example request and
    response
 
---
+---
 
 Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
 

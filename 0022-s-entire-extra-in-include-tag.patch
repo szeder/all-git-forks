@@ -1,9 +1,9 @@
-From 0b03317a5227d473cfdbfdb69cbcabc1a90c9c83 Mon Sep 17 00:00:00 2001
+From 16987ecbb13979f05f40565e5eca4a84f1ea38e4 Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 22/22] s/entire/extra/ in include-tag
 
---
+---
 
 Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
 
