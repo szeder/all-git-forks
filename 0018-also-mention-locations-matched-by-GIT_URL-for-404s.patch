@@ -1,4 +1,4 @@
-From 425eb6cd3c5c745599d1a7c5059ee724a7883796 Mon Sep 17 00:00:00 2001
+From 3355ad8633585342d1716e7e99ea70d636fac1ef Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:17:09 +0800
 Subject: [PATCH 18/22] also mention locations matched by $GIT_URL for 404s
@@ -29,22 +29,21 @@ Based on:
 
   to help dumb clients.
 ---
- Documentation/technical/http-protocol.txt | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ Documentation/technical/http-protocol.txt | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 615b41a..3d6b30d 100644
+index 615b41a..47e8685 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -103,8 +103,9 @@ Except where noted, all standard HTTP behavior SHOULD be assumed
- by both client and server.  This includes (but is not necessarily
+@@ -104,7 +104,9 @@ by both client and server.  This includes (but is not necessarily
  limited to):
  
--If there is no repository at $GIT_URL, the server MUST NOT respond with
+ If there is no repository at $GIT_URL, the server MUST NOT respond with
 -'200 OK' and a valid info/refs response.  A server SHOULD respond with
-+If there is no repository at $GIT_URL, or the resource pointed to by a
-+location matching $GIT_URL does not exist, the server MUST NOT respond
-+with '200 OK'.  A server SHOULD respond with
++'200 OK' and a valid info/refs response. Also, if the resource pointed
++to by a location matching $GIT_URL does not exist, the server MUST NOT
++respond with '200 OK'.  A server SHOULD respond with
  '404 Not Found', '410 Gone', or any other suitable HTTP status code
  which does not imply the resource exists as requested.
  
