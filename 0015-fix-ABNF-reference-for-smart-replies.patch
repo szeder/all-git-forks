@@ -1,8 +1,9 @@
-From 78b6d8cf33d99a2c9863633f31aeec91ac12e768 Mon Sep 17 00:00:00 2001
+From 33821799c031fe20831af468b31999e977d01483 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 22:40:51 +0800
 Subject: [PATCH 15/22] fix ABNF reference for smart replies
 
+This was spotted by Sverre and Junio.
 ---
  Documentation/technical/http-protocol.txt | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
