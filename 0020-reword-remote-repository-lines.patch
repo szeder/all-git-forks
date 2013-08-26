@@ -1,9 +1,23 @@
-From 162a35aa294ca55fcb8e88662da624884a512a26 Mon Sep 17 00:00:00 2001
+From c4e12af2fcbf51b36384932c90e7715dcfd1bfa9 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:51:15 +0800
 Subject: [PATCH 20/22] reword 'remote repository' lines
 
-From <7vskdss3ei.fsf@alter.siamese.dyndns.org>.
+---
+
+Based on:
+
+  Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
+
+  > +Smart Service git-upload-pack
+  > +------------------------------
+  > +This service reads from the remote repository.
+
+  The wording "remote repository" felt confusing.  I know it is "from the
+  repository served by the server", but if it were named without
+  "upload-pack", I might have mistaken that you are allowing to proxy a
+  request to access a third-party repository by this server.  The same
+  comment applies to the git-receive-pack service.
 ---
  Documentation/technical/http-protocol.txt | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
