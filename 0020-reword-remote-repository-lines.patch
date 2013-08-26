@@ -1,4 +1,4 @@
-From c4e12af2fcbf51b36384932c90e7715dcfd1bfa9 Mon Sep 17 00:00:00 2001
+From a8914bce0114fc74006009faa4feb506ae3f1959 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:51:15 +0800
 Subject: [PATCH 20/22] reword 'remote repository' lines
@@ -23,7 +23,7 @@ Based on:
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index b181ad7..979b8f4 100644
+index b181ad7..1c1f04b 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -287,7 +287,7 @@ declarations behind a NUL on the first ref.
@@ -40,7 +40,7 @@ index b181ad7..979b8f4 100644
  Smart Service git-receive-pack
  ------------------------------
 -This service modifies the remote repository.
-+This service reads from the repository pointed to by $GIT_URL.
++This service modifies the repository pointed to by $GIT_URL.
  
  Clients MUST first perform ref discovery with
  '$GIT_URL/info/refs?service=git-receive-pack'.
