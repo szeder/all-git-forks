@@ -1,8 +1,33 @@
-From 616bd622305c28bc1da3a8ce34fe790305fba87c Mon Sep 17 00:00:00 2001
+From ba04c0f68d7bafc21ddffb7a6540577ce7bcab3a Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:17:09 +0800
 Subject: [PATCH 18/22] also mention locations matched by $GIT_URL for 404s
 
+---
+
+Junio's suggested text was not used, but the issue (no object found) was
+addressed.
+
+Based on:
+
+  Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
+
+  > +General Request Processing
+  > +--------------------------
+  > +
+  > +Except where noted, all standard HTTP behavior SHOULD be assumed
+  > +by both client and server.  This includes (but is not necessarily
+  > +limited to):
+  > +
+  > +If there is no repository at $GIT_URL, the server MUST respond with
+  > +the '404 Not Found' HTTP status code.
+
+  We may also want to add
+
+      If there is no object at $GIT_URL/some/path, the server MUST respond
+      with the '404 Not Found' HTTP status code.
+
+  to help dumb clients.
 ---
  Documentation/technical/http-protocol.txt | 5 +++--
  1 file changed, 3 insertions(+), 2 deletions(-)
