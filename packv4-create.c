@@ -832,18 +832,62 @@ static unsigned long copy_object_data(struct sha1file *f, struct packed_git *p,
 	return written;
 }
 
+static unsigned char *get_delta_base(struct packed_git *p, off_t offset,
+				     unsigned char *sha1_buf)
+{
+	struct pack_window *w_curs = NULL;
+	enum object_type type;
+	unsigned long avail, size;
+	int hdrlen;
+	unsigned char *src;
+	const unsigned char *base_sha1 = NULL; ;
+
+	src = use_pack(p, &w_curs, offset, &avail);
+	hdrlen = unpack_object_header_buffer(src, avail, &type, &size);
+
+	if (type == OBJ_OFS_DELTA) {
+		struct revindex_entry *revidx;
+		unsigned char c = src[hdrlen++];
+		off_t base_offset = c & 127;
+		while (c & 128) {
+			base_offset += 1;
+			if (!base_offset || MSB(base_offset, 7))
+				error("delta offset overflow");
+			c = src[hdrlen++];
+			base_offset = (base_offset << 7) + (c & 127);
+		}
+		base_offset = offset - base_offset;
+		if (base_offset <= 0 || base_offset >= offset)
+			error("delta offset out of bound");
+		revidx = find_pack_revindex(p, base_offset);
+		base_sha1 = nth_packed_object_sha1(p, revidx->nr);
+	} else if (type == OBJ_REF_DELTA) {
+		base_sha1 = src + hdrlen;
+	} else {
+		error("expected to get a delta but got a %s", typename(type));
+	}
+
+	unuse_pack(&w_curs);
+
+	if (!base_sha1)
+		return NULL;
+	hashcpy(sha1_buf, base_sha1);
+	return sha1_buf;
+}
+
 static off_t packv4_write_object(struct sha1file *f, struct packed_git *p,
 				 struct pack_idx_entry *obj)
 {
 	void *src, *result;
 	struct object_info oi = {};
-	enum object_type type;
+	enum object_type type, packed_type;
 	unsigned long size;
 	unsigned int hdrlen;
 
 	oi.typep = &type;
 	oi.sizep = &size;
-	if (packed_object_info(p, obj->offset, &oi) < 0)
+	packed_type = packed_object_info(p, obj->offset, &oi);
+	if (packed_type < 0)
 		die("cannot get type of %s from %s",
 		    sha1_to_hex(obj->sha1), p->pack_name);
 
@@ -870,7 +914,26 @@ static off_t packv4_write_object(struct sha1file *f, struct packed_git *p,
 		result = conv_to_dict_commit(src, &size);
 		break;
 	case OBJ_TREE:
-		result = conv_to_dict_tree(src, &size, NULL, 0, NULL);
+		if (packed_type != OBJ_TREE) {
+			unsigned char sha1_buf[20], *ref_sha1;
+			void *ref;
+			enum object_type ref_type;
+			unsigned long ref_size;
+
+			ref_sha1 = get_delta_base(p, obj->offset, sha1_buf);
+			if (!ref_sha1)
+				die("unable to get delta base sha1 for %s",
+						sha1_to_hex(obj->sha1));
+			ref = read_sha1_file(ref_sha1, &ref_type, &ref_size);
+			if (!ref || ref_type != OBJ_TREE)
+				die("cannot obtain delta base for %s",
+						sha1_to_hex(obj->sha1));
+			result = conv_to_dict_tree(src, &size,
+					ref, ref_size, ref_sha1);
+			free(ref);
+		} else {
+			result = conv_to_dict_tree(src, &size, NULL, 0, NULL);
+		}
 		break;
 	default:
 		die("unexpected object type %d", type);
