@@ -1,4 +1,4 @@
-From ea5f42e6e5dbcd790da9004e662059615b754b05 Mon Sep 17 00:00:00 2001
+From c4305ab90218ffb57e1e7010ea8c4c5ba578865d Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 20:09:34 +0800
 Subject: [PATCH 09/22] fix capabilities definition

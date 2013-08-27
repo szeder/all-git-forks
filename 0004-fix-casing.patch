@@ -1,4 +1,4 @@
-From 0e761565bdf23c27b3466687c348c969d9766e66 Mon Sep 17 00:00:00 2001
+From ef1f2012e96e0b1b555bf0c661a79d27e6b76b6b Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:28:01 +0800
 Subject: [PATCH 04/22] fix casing
@@ -9,7 +9,7 @@ use MUST, MUST NOT, MAY, SHOULD.
  1 file changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 8f28628..b83dc32 100644
+index 961a4c0..3b16e1f 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -29,7 +29,7 @@ supplied $GIT_URL string.

@@ -1,16 +1,18 @@
-From 6e1761ce41f098dfaf5c265ce36e2dd81cfb6f21 Mon Sep 17 00:00:00 2001
+From 3c23cb91af6af0f4147ec678f878a2828a6586e2 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:25:46 +0800
-Subject: [PATCH 02/22] whitespace changes
+Subject: [PATCH 02/22] use spaces instead of tabs
 
- - use spaces instead of tabs
- - indent ABNF rules in the style of pack-protocol.txt
+Client/server queries are indented with 3 spaces, like
+pack-protocol.txt.
+
+ABNF rules are indented with 2 spaces, again like pack-protocol.txt.
 ---
  Documentation/technical/http-protocol.txt | 226 +++++++++++++++---------------
  1 file changed, 113 insertions(+), 113 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 316d9b6..60dba7e 100644
+index 316d9b6..c3e0004 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -161,14 +161,14 @@ Dumb HTTP clients MUST NOT include search/query parameters when
@@ -117,41 +119,41 @@ index 316d9b6..60dba7e 100644
 -	                 ref_list
 -	                 "0000"
 -	ref_list       = empty_list | populated_list
-+   smart_reply    =  PKT-LINE("# service=$servicename" LF)
-+                     ref_list
-+                     "0000"
-+   ref_list       =  empty_list | populated_list
++  smart_reply    =  PKT-LINE("# service=$servicename" LF)
++                    ref_list
++                    "0000"
++  ref_list       =  empty_list | populated_list
  
 -	empty_list     = PKT-LINE(id SP "capabilities^{}" NUL cap_list LF)
-+   empty_list     =  PKT-LINE(id SP "capabilities^{}" NUL cap_list LF)
++  empty_list     =  PKT-LINE(id SP "capabilities^{}" NUL cap_list LF)
  
 -	non_empty_list = PKT-LINE(id SP name NUL cap_list LF)
 -	                 *ref_record
-+   non_empty_list =  PKT-LINE(id SP name NUL cap_list LF)
-+                     *ref_record
++  non_empty_list =  PKT-LINE(id SP name NUL cap_list LF)
++                    *ref_record
  
 -	cap_list      = *(SP capability) SP
 -	ref_record    = any_ref | peeled_ref
-+   cap_list       =  *(SP capability) SP
-+   ref_record     =  any_ref | peeled_ref
++  cap_list       =  *(SP capability) SP
++  ref_record     =  any_ref | peeled_ref
  
 -	any_ref       = PKT-LINE(id SP name LF)
 -	peeled_ref    = PKT-LINE(id SP name LF)
 -	                PKT-LINE(id SP name "^{}" LF
 -	id            = 40*HEX
-+   any_ref        =  PKT-LINE(id SP name LF)
-+   peeled_ref     =  PKT-LINE(id SP name LF)
-+                     PKT-LINE(id SP name "^{}" LF
-+   id             =  40*HEX
++  any_ref        =  PKT-LINE(id SP name LF)
++  peeled_ref     =  PKT-LINE(id SP name LF)
++                    PKT-LINE(id SP name "^{}" LF
++  id             =  40*HEX
  
 -	HEX           = "0".."9" | "a".."f"
 -	NL            = <US-ASCII NUL, null (0)>
 -	LF            = <US-ASCII LF,  linefeed (10)>
 -	SP            = <US-ASCII SP,  horizontal-tab (9)>
-+   HEX            =  "0".."9" | "a".."f"
-+   NL             =  <US-ASCII NUL, null (0)>
-+   LF             =  <US-ASCII LF,  linefeed (10)>
-+   SP             =  <US-ASCII SP,  horizontal-tab (9)>
++  HEX            =  "0".."9" | "a".."f"
++  NL             =  <US-ASCII NUL, null (0)>
++  LF             =  <US-ASCII LF,  linefeed (10)>
++  SP             =  <US-ASCII SP,  horizontal-tab (9)>
  
  
  Smart Service git-upload-pack
@@ -195,33 +197,33 @@ index 316d9b6..60dba7e 100644
 -	                    have_list
 -	                    request_end
 -	request_end       = "0000" | "done"
-+   compute_request   =  want_list
-+                        have_list
-+                        request_end
-+   request_end       =  "0000" | "done"
++  compute_request   =  want_list
++                       have_list
++                       request_end
++  request_end       =  "0000" | "done"
  
 -	want_list         = PKT-LINE(want NUL cap_list LF)
 -	                    *(want_pkt)
 -	want_pkt          = PKT-LINE(want LF)
 -	want              = "want" SP id
 -	cap_list          = *(SP capability) SP
-+   want_list         =  PKT-LINE(want NUL cap_list LF)
-+                        *(want_pkt)
-+   want_pkt          =  PKT-LINE(want LF)
-+   want              =  "want" SP id
-+   cap_list          =  *(SP capability) SP
++  want_list         =  PKT-LINE(want NUL cap_list LF)
++                       *(want_pkt)
++  want_pkt          =  PKT-LINE(want LF)
++  want              =  "want" SP id
++  cap_list          =  *(SP capability) SP
  
 -	have_list         = *PKT-LINE("have" SP id LF)
-+   have_list         =  *PKT-LINE("have" SP id LF)
++  have_list         =  *PKT-LINE("have" SP id LF)
  
 -	command           = create | delete | update
 -	create            = 40*"0" SP new_id SP name
 -	delete            = old_id SP 40*"0" SP name
 -	update            = old_id SP new_id SP name
-+   command           =  create | delete | update
-+   create            =  40*"0" SP new_id SP name
-+   delete            =  old_id SP 40*"0" SP name
-+   update            =  old_id SP new_id SP name
++  command           =  create | delete | update
++  create            =  40*"0" SP new_id SP name
++  delete            =  old_id SP 40*"0" SP name
++  update            =  old_id SP new_id SP name
  
  TODO: Document this further.
  TODO: Don't use uppercase for variable names below.

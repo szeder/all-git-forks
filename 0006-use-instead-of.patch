@@ -1,4 +1,4 @@
-From b43a6ef223b8dd207a1a9a72f1421563cb2e5bbe Mon Sep 17 00:00:00 2001
+From 2b8665f7fb300cf888ff5ca2c8723fec099f97a5 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:47:54 +0800
 Subject: [PATCH 06/22] use '/' instead of '|'
@@ -8,7 +8,7 @@ Subject: [PATCH 06/22] use '/' instead of '|'
  1 file changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 30a1d91..5310115 100644
+index 5a2d801..672fa14 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -188,7 +188,7 @@ according to the C locale ordering.  The file SHOULD NOT include
@@ -21,41 +21,41 @@ index 30a1d91..5310115 100644
    any_ref     =  obj-id HTAB refname LF
    peeled_ref  =  obj-id HTAB refname LF
 @@ -279,7 +279,7 @@ declarations behind a NUL on the first ref.
-    smart_reply    =  PKT-LINE("# service=$servicename" LF)
-                      ref_list
-                      "0000"
--   ref_list       =  empty_list | populated_list
-+   ref_list       =  empty_list / populated_list
+   smart_reply    =  PKT-LINE("# service=$servicename" LF)
+                     ref_list
+                     "0000"
+-  ref_list       =  empty_list | populated_list
++  ref_list       =  empty_list / populated_list
  
-    empty_list     =  PKT-LINE(obj-id SP "capabilities^{}" NUL cap_list LF)
+   empty_list     =  PKT-LINE(obj-id SP "capabilities^{}" NUL cap_list LF)
  
 @@ -287,7 +287,7 @@ declarations behind a NUL on the first ref.
-                      *ref_record
+                     *ref_record
  
-    cap_list       =  *(SP capability) SP
--   ref_record     =  any_ref | peeled_ref
-+   ref_record     =  any_ref / peeled_ref
+   cap_list       =  *(SP capability) SP
+-  ref_record     =  any_ref | peeled_ref
++  ref_record     =  any_ref / peeled_ref
  
-    any_ref        =  PKT-LINE(obj-id SP name LF)
-    peeled_ref     =  PKT-LINE(obj-id SP name LF)
+   any_ref        =  PKT-LINE(obj-id SP name LF)
+   peeled_ref     =  PKT-LINE(obj-id SP name LF)
 @@ -327,7 +327,7 @@ appear in the response obtained through ref discovery.
-    compute_request   =  want_list
-                         have_list
-                         request_end
--   request_end       =  "0000" | "done"
-+   request_end       =  "0000" / "done"
+   compute_request   =  want_list
+                        have_list
+                        request_end
+-  request_end       =  "0000" | "done"
++  request_end       =  "0000" / "done"
  
-    want_list         =  PKT-LINE(want NUL cap_list LF)
-                         *(want_pkt)
+   want_list         =  PKT-LINE(want NUL cap_list LF)
+                        *(want_pkt)
 @@ -337,7 +337,7 @@ appear in the response obtained through ref discovery.
  
-    have_list         =  *PKT-LINE("have" SP id LF)
+   have_list         =  *PKT-LINE("have" SP id LF)
  
--   command           =  create | delete | update
-+   command           =  create / delete / update
-    create            =  zero-id SP new_id SP name
-    delete            =  old_id SP zero-id SP name
-    update            =  old_id SP new_id SP name
+-  command           =  create | delete | update
++  command           =  create / delete / update
+   create            =  zero-id SP new_id SP name
+   delete            =  old_id SP zero-id SP name
+   update            =  old_id SP new_id SP name
 @@ -514,7 +514,7 @@ the id obtained through ref discovery as old_id.
    command_pkt     =  PKT-LINE(command LF)
    cap_list        =  *(SP capability) SP
