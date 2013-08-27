@@ -245,6 +245,50 @@ static void dict_dump(void)
 	dump_dict_table(tree_path_table);
 }
 
+/*
+ * Encode a numerical value with variable length into the destination buffer
+ */
+static unsigned char *add_number(unsigned char *dst, uint64_t value)
+{
+	unsigned char buf[20];
+	unsigned pos = sizeof(buf) - 1;
+	buf[pos] = value & 127;
+	while (value >>= 7)
+		buf[--pos] = 128 | (--value & 127);
+	do {
+		*dst++ = buf[pos++];
+	} while (pos < sizeof(buf));
+	return dst;
+}
+
+/*
+ * Encode an object SHA1 reference with either an object index into the
+ * pack SHA1 table incremented by 1, or the literal SHA1 value prefixed
+ * with a zero byte if the needed SHA1 is not available in the table.
+ */
+static struct pack_idx_entry *all_objs;
+static unsigned all_objs_nr;
+static unsigned char *add_sha1_ref(unsigned char *dst, const unsigned char *sha1)
+{
+	unsigned lo = 0, hi = all_objs_nr;
+
+	do {
+		unsigned mi = (lo + hi) / 2;
+		int cmp = hashcmp(all_objs[mi].sha1, sha1);
+
+		if (cmp == 0)
+			return add_number(dst, mi + 1);
+		if (cmp > 0)
+			hi = mi;
+		else
+			lo = mi+1;
+	} while (lo < hi);
+
+	*dst++ = 0;
+	hashcpy(dst, sha1);
+	return dst + 20;
+}
+
 static struct pack_idx_entry *get_packed_object_list(struct packed_git *p)
 {
 	unsigned i, nr_objects = p->num_objects;
