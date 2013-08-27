@@ -276,4 +276,10 @@ test_expect_success 'replaced and replacement objects must be of the same type' 
 	grep "$BLOB. points to a replacement object of type .blob" err
 '
 
+test_expect_success 'replace ref cleanup' '
+	test -n "$(git replace)" &&
+	git replace -d $(git replace) &&
+	test -z "$(git replace)"
+'
+
 test_done
