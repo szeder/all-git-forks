@@ -13,6 +13,9 @@
 #include "tree-walk.h"
 #include "pack.h"
 
+
+static int pack_compression_level = Z_DEFAULT_COMPRESSION;
+
 struct data_entry {
 	unsigned offset;
 	unsigned size;
@@ -287,6 +290,122 @@ static unsigned char *add_sha1_ref(unsigned char *dst, const unsigned char *sha1
 	*dst++ = 0;
 	hashcpy(dst, sha1);
 	return dst + 20;
+}
+
+/*
+ * This converts a canonical commit object buffer into its
+ * tightly packed representation using the already populated
+ * and sorted commit_name_table dictionary.  The parsing is
+ * strict so to ensure the canonical version may always be
+ * regenerated and produce the same hash.
+ */
+void * conv_to_dict_commit(void *buffer, unsigned long *psize)
+{
+	unsigned long size = *psize;
+	char *in, *tail, *end;
+	unsigned char *out;
+	unsigned char sha1[20];
+	int nb_parents, index, tz_val;
+	unsigned long time;
+	z_stream stream;
+	int status;
+
+	/*
+	 * It is guaranteed that the output is always going to be smaller
+	 * than the input.  We could even do this conversion in place.
+	 */
+	in = buffer;
+	tail = in + size;
+	buffer = xmalloc(size);
+	out = buffer;
+
+	/* parse the "tree" line */
+	if (in + 46 >= tail || memcmp(in, "tree ", 5) || in[45] != '\n')
+		goto bad_data;
+	if (get_sha1_hex(in + 5, sha1) < 0)
+		goto bad_data;
+	in += 46;
+	out = add_sha1_ref(out, sha1);
+
+	/* count how many "parent" lines */
+	nb_parents = 0;
+	while (in + 48 < tail && !memcmp(in, "parent ", 7) && in[47] == '\n') {
+		nb_parents++;
+		in += 48;
+	}
+	out = add_number(out, nb_parents);
+
+	/* rewind and parse the "parent" lines */
+	in -= 48 * nb_parents;
+	while (nb_parents--) {
+		if (get_sha1_hex(in + 7, sha1))
+			goto bad_data;
+		out = add_sha1_ref(out, sha1);
+		in += 48;
+	}
+
+	/* parse the "author" line */
+	/* it must be at least "author x <x> 0 +0000\n" i.e. 21 chars */
+	if (in + 21 >= tail || memcmp(in, "author ", 7))
+		goto bad_data;
+	in += 7;
+	end = get_nameend_and_tz(in, &tz_val);
+	if (!end)
+		goto bad_data;
+	index = dict_add_entry(commit_name_table, tz_val, in, end - in);
+	if (index < 0)
+		goto bad_dict;
+	out = add_number(out, index);
+	time = strtoul(end, &end, 10);
+	if (!end || end[0] != ' ' || end[6] != '\n')
+		goto bad_data;
+	out = add_number(out, time);
+	in = end + 7;
+
+	/* parse the "committer" line */
+	/* it must be at least "committer x <x> 0 +0000\n" i.e. 24 chars */
+	if (in + 24 >= tail || memcmp(in, "committer ", 7))
+		goto bad_data;
+	in += 10;
+	end = get_nameend_and_tz(in, &tz_val);
+	if (!end)
+		goto bad_data;
+	index = dict_add_entry(commit_name_table, tz_val, in, end - in);
+	if (index < 0)
+		goto bad_dict;
+	out = add_number(out, index);
+	time = strtoul(end, &end, 10);
+	if (!end || end[0] != ' ' || end[6] != '\n')
+		goto bad_data;
+	out = add_number(out, time);
+	in = end + 7;
+
+	/* finally, deflate the remaining data */
+	memset(&stream, 0, sizeof(stream));
+	deflateInit(&stream, pack_compression_level);
+	stream.next_in = (unsigned char *)in;
+	stream.avail_in = tail - in;
+	stream.next_out = (unsigned char *)out;
+	stream.avail_out = size - (out - (unsigned char *)buffer);
+	status = deflate(&stream, Z_FINISH);
+	end = (char *)stream.next_out;
+	deflateEnd(&stream);
+	if (status != Z_STREAM_END) {
+		error("deflate error status %d", status);
+		goto bad;
+	}
+
+	*psize = end - (char *)buffer;
+	return buffer;
+
+bad_data:
+	error("bad commit data");
+	goto bad;
+bad_dict:
+	error("bad dict entry");
+bad:
+	free(buffer);
+	return NULL;
 }
 
 static struct pack_idx_entry *get_packed_object_list(struct packed_git *p)
