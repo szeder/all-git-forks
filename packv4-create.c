@@ -408,6 +408,69 @@ bad:
 	return NULL;
 }
 
+/*
+ * This converts a canonical tree object buffer into its
+ * tightly packed representation using the already populated
+ * and sorted tree_path_table dictionary.  The parsing is
+ * strict so to ensure the canonical version may always be
+ * regenerated and produce the same hash.
+ */
+void * conv_to_dict_tree(void *buffer, unsigned long *psize)
+{
+	unsigned long size = *psize;
+	unsigned char *in, *out, *end;
+	struct tree_desc desc;
+	struct name_entry name_entry;
+	int nb_entries;
+
+	if (!size)
+		return NULL;
+
+	/*
+	 * We can't make sure the result will always be smaller.
+	 * The smallest possible entry is "0 x\0<40 byte SHA1>"
+	 * or 44 bytes.  The output entry may have a realistic path index
+	 * encoding using up to 3 bytes, and a non indexable SHA1 meaning
+	 * 41 bytes.  And the output data already has the and nb_entries
+	 * headers.  In practice the output size will be significantly
+	 * smaller but for now let's make it simple.
+	 */
+	in = buffer;
+	out = xmalloc(size);
+	end = out + size;
+	buffer = out;
+
+	/* let's count how many entries there are */
+	init_tree_desc(&desc, in, size);
+	nb_entries = 0;
+	while (tree_entry(&desc, &name_entry))
+		nb_entries++;
+	out = add_number(out, nb_entries);
+
+	init_tree_desc(&desc, in, size);
+	while (tree_entry(&desc, &name_entry)) {
+		int pathlen = tree_entry_len(&name_entry);
+		int index = dict_add_entry(tree_path_table, name_entry.mode,
+					   name_entry.path, pathlen);
+		if (index < 0) {
+			error("missing tree dict entry");
+			free(buffer);
+			return NULL;
+		}
+		if (end - out < 45) {
+			unsigned long sofar = out - (unsigned char *)buffer;
+			buffer = xrealloc(buffer, sofar + 45);
+			out = (unsigned char *)buffer + sofar;
+			end = out + 45;
+		}
+		out = add_number(out, index);
+		out = add_sha1_ref(out, name_entry.sha1);
+	}
+
+	*psize = out - (unsigned char *)buffer;
+	return buffer;
+}
+
 static struct pack_idx_entry *get_packed_object_list(struct packed_git *p)
 {
 	unsigned i, nr_objects = p->num_objects;
