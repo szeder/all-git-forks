@@ -739,6 +739,59 @@ static unsigned long copy_object_data(struct sha1file *f, struct packed_git *p,
 	return written;
 }
 
+static off_t packv4_write_object(struct sha1file *f, struct packed_git *p,
+				 struct pack_idx_entry *obj)
+{
+	void *src, *result;
+	struct object_info oi = {};
+	enum object_type type;
+	unsigned long size;
+	unsigned int hdrlen;
+
+	oi.typep = &type;
+	oi.sizep = &size;
+	if (packed_object_info(p, obj->offset, &oi) < 0)
+		die("cannot get type of %s from %s",
+		    sha1_to_hex(obj->sha1), p->pack_name);
+
+	/* Some objects are copied without decompression */
+	switch (type) {
+	case OBJ_COMMIT:
+	case OBJ_TREE:
+		break;
+	default:
+		return copy_object_data(f, p, obj->offset);
+	}
+
+	/* The rest is converted into their new format */
+	src = unpack_entry(p, obj->offset, &type, &size);
+	if (!src)
+		die("cannot unpack %s from %s",
+		    sha1_to_hex(obj->sha1), p->pack_name);
+	if (check_sha1_signature(obj->sha1, src, size, typename(type)))
+		die("packed %s from %s is corrupt",
+		    sha1_to_hex(obj->sha1), p->pack_name);
+
+	switch (type) {
+	case OBJ_COMMIT:
+		result = conv_to_dict_commit(src, &size);
+		break;
+	case OBJ_TREE:
+		result = conv_to_dict_tree(src, &size);
+		break;
+	default:
+		die("unexpected object type %d", type);
+	}
+	free(src);
+	if (!result && size)
+		die("can't convert %s object %s",
+		    typename(type), sha1_to_hex(obj->sha1));
+	hdrlen = write_object_header(f, type, size);
+	sha1write(f, result, size);
+	free(result);
+	return hdrlen + size;
+}
+
 static struct packed_git *open_pack(const char *path)
 {
 	char arg[PATH_MAX];
@@ -797,7 +850,8 @@ static void process_one_pack(char *src_pack, char *dst_pack)
 	struct packed_git *p;
 	struct sha1file *f;
 	struct pack_idx_entry *objs, **p_objs;
-	unsigned nr_objects;
+	unsigned i, nr_objects;
+	off_t written = 0;
 
 	p = open_pack(src_pack);
 	if (!p)
@@ -808,12 +862,26 @@ static void process_one_pack(char *src_pack, char *dst_pack)
 	p_objs = sort_objs_by_offset(objs, nr_objects);
 
 	create_pack_dictionaries(p, p_objs);
+	sort_dict_entries_by_hits(commit_name_table);
+	sort_dict_entries_by_hits(tree_path_table);
 
 	f = packv4_open(dst_pack);
 	if (!f)
 		die("unable to open destination pack");
-	packv4_write_header(f, nr_objects);
-	packv4_write_tables(f, nr_objects, objs);
+	written += packv4_write_header(f, nr_objects);
+	written += packv4_write_tables(f, nr_objects, objs);
+
+	/* Let's write objects out, updating the object index list in place */
+	all_objs = objs;
+	all_objs_nr = nr_objects;
+	for (i = 0; i < nr_objects; i++) {
+		off_t obj_pos = written;
+		struct pack_idx_entry *obj = p_objs[i];
+		written += packv4_write_object(f, p, obj);
+		obj->offset = obj_pos;
+	}
+
+	sha1close(f, NULL, CSUM_CLOSE | CSUM_FSYNC);
 }
 
 int main(int argc, char *argv[])
