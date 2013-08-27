@@ -1,4 +1,4 @@
-From f1a67812985e66ac1ce40187953eabee9150535e Mon Sep 17 00:00:00 2001
+From ea5f42e6e5dbcd790da9004e662059615b754b05 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 20:09:34 +0800
 Subject: [PATCH 09/22] fix capabilities definition
@@ -15,7 +15,7 @@ cap-list.
  1 file changed, 6 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index e52e604..e7c05d2 100644
+index c982f17..5eb7cbf 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -222,7 +222,7 @@ The request MUST NOT contain additional query parameters.
@@ -35,7 +35,7 @@ index e52e604..e7c05d2 100644
 +  empty_list      =  PKT-LINE(zero-id SP "capabilities^{}" NUL cap-list LF)
  
    non_empty_list  =  PKT-LINE(obj-id SP name NUL cap_list LF)
-                     *ref_record
+                      *ref_record
  
 -  cap_list        =  *(SP capability) SP
 -  ref_record      =  any_ref / peeled_ref

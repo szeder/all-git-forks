@@ -1,14 +1,14 @@
-From d24153527a96f8ac2c35b81dd26bce399aacec4a Mon Sep 17 00:00:00 2001
+From e96bd597933a6900a9184fb1c51a23d1869c8099 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 20:04:16 +0800
 Subject: [PATCH 08/22] whitespace change
 
 ---
- Documentation/technical/http-protocol.txt | 22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
+ Documentation/technical/http-protocol.txt | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 672fa14..e52e604 100644
+index 672fa14..c982f17 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -276,22 +276,22 @@ the C locale ordering.  The stream SHOULD include the default ref
@@ -28,8 +28,9 @@ index 672fa14..e52e604 100644
 +  empty_list      =  PKT-LINE(obj-id SP "capabilities^{}" NUL cap_list LF)
  
 -  non_empty_list =  PKT-LINE(obj-id SP name NUL cap_list LF)
+-                    *ref_record
 +  non_empty_list  =  PKT-LINE(obj-id SP name NUL cap_list LF)
-                     *ref_record
++                     *ref_record
  
 -  cap_list       =  *(SP capability) SP
 -  ref_record     =  any_ref / peeled_ref

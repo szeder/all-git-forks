@@ -1,4 +1,4 @@
-From 60799186ae9c25453ede4c2e7c4a93110426f8b3 Mon Sep 17 00:00:00 2001
+From aa5c8cc8abbb812665a2f0dcfa66860661cc518a Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 23:09:46 +0800
 Subject: [PATCH 16/22] mention different variations around $GIT_URL
