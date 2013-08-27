@@ -141,6 +141,9 @@ static struct remote *make_remote(const char *name, int len)
 	int i;
 
 	for (i = 0; i < remotes_nr; i++) {
+		if (!remotes[i])
+			continue;
+
 		if (len ? (!strncmp(name, remotes[i]->name, len) &&
 			   !remotes[i]->name[len]) :
 		    !strcmp(name, remotes[i]->name))
@@ -469,6 +472,19 @@ static int handle_config(const char *key, const char *value, void *cb)
 	return 0;
 }
 
+static void filter_valid_remotes(void)
+{
+	int i;
+	for (i = 0; i < remotes_nr; i++) {
+		if (!remotes[i])
+			continue;
+
+		/* It's not a remote unless it has at least one url */
+		if (remotes[i]->url_nr == 0 && remotes[i]->pushurl_nr == 0)
+			remotes[i] = NULL;
+	}
+}
+
 static void alias_all_urls(void)
 {
 	int i, j;
@@ -504,6 +520,7 @@ static void read_config(void)
 			make_branch(head_ref + strlen("refs/heads/"), 0);
 	}
 	git_config(handle_config, NULL);
+	filter_valid_remotes();
 	alias_all_urls();
 }
 

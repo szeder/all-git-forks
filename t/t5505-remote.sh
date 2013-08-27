@@ -130,9 +130,11 @@ to delete them, use:
 EOF
 	} &&
 	git tag footag &&
+	git remote add oops .
 	git config --add remote.oops.fetch "+refs/*:refs/*" &&
 	git remote remove oops 2>actual1 &&
 	git branch foobranch &&
+	git remote add oops .
 	git config --add remote.oops.fetch "+refs/*:refs/*" &&
 	git remote rm oops 2>actual2 &&
 	git branch -d foobranch &&
