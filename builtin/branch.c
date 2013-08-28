@@ -425,16 +425,15 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 	struct strbuf fancy = STRBUF_INIT;
 
 	if (!stat_tracking_info(branch, &ours, &theirs)) {
-		if (branch && branch->merge && branch->merge[0]->dst &&
-		    show_upstream_ref) {
-			ref = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
-			if (want_color(branch_use_color))
-				strbuf_addf(stat, "[%s%s%s] ",
-						branch_get_color(BRANCH_COLOR_UPSTREAM),
-						ref, branch_get_color(BRANCH_COLOR_RESET));
-			else
-				strbuf_addf(stat, "[%s] ", ref);
-		}
+		if (!branch || !branch->merge || !branch->merge[0]->dst || !show_upstream_ref)
+			return;
+		ref = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
+		if (want_color(branch_use_color))
+			strbuf_addf(stat, "[%s%s%s] ",
+					branch_get_color(BRANCH_COLOR_UPSTREAM),
+					ref, branch_get_color(BRANCH_COLOR_RESET));
+		else
+			strbuf_addf(stat, "[%s] ", ref);
 		return;
 	}
 
