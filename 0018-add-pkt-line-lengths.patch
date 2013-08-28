@@ -1,7 +1,7 @@
-From d11120a2e5c2fc7e535c107b2f4211eed593ba65 Mon Sep 17 00:00:00 2001
+From fb6fd87b78a3e0f92a5ab14bd395a87e463c6545 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:40:24 +0800
-Subject: [PATCH 19/22] add pkt-line lengths
+Subject: [PATCH 18/22] add pkt-line lengths
 
 ---
  Documentation/technical/http-protocol.txt | 14 +++++++-------

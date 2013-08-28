@@ -1,7 +1,7 @@
-From 4da7145648e4fa5b1f9caa5a9a392c8e28be508e Mon Sep 17 00:00:00 2001
+From 4f5bdc9369545a4cb849e8703f4d46d619bf6482 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 21:08:46 +0800
-Subject: [PATCH 14/22] remove pkt-line format section
+Subject: [PATCH 13/22] remove pkt-line format section
 
 This is already available in protocol-common.txt.
 
