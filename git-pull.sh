@@ -62,6 +62,7 @@ then
 		echo "Please use pull.mode and branch.<name>.pullmode instead."
 	fi
 fi
+test -z "$mode" && mode=merge
 dry_run=
 while :
 do
@@ -280,6 +281,18 @@ case "$merge_head" in
 	if test "$mode" = rebase
 	then
 		die "$(gettext "Cannot rebase onto multiple branches")"
+	fi
+	;;
+*)
+	# check if a non-fast-foward merge would be needed
+	merge_head=${merge_head% }
+	if test "$mode" = merge-ff-only -a -z "$no_ff$ff_only${squash#--no-squash}" &&
+		test -n "$orig_head" &&
+		! git merge-base --is-ancestor "$orig_head" "$merge_head" &&
+		! git merge-base --is-ancestor "$merge_head" "$orig_head"
+	then
+		die "$(gettext "The pull was not fast-forward, please either merge or rebase.
+If unsure, run 'git pull --merge'.")"
 	fi
 	;;
 esac
