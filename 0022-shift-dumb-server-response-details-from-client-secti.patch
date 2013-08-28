@@ -1,4 +1,4 @@
-From fc5d52be8492e9719759c11b464ea560f90c95d2 Mon Sep 17 00:00:00 2001
+From 5ad2a7186fd1486dd246151b6935cca1d8c9bb97 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 28 Aug 2013 13:21:14 +0800
 Subject: [PATCH 22/22] shift dumb server response details from client section
@@ -11,7 +11,7 @@ equivalent.
  1 file changed, 23 insertions(+), 26 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 2427726..96e15da 100644
+index 1f436db..c514ab1 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -165,30 +165,6 @@ without any search/query parameters.  E.g.
@@ -45,7 +45,7 @@ index 2427726..96e15da 100644
  Smart Clients
  ~~~~~~~~~~~~~
  
-@@ -226,8 +202,29 @@ Dumb Server Response
+@@ -227,8 +203,29 @@ Dumb Server Response
  ^^^^^^^^^^^^^^^^^^^^
  Dumb servers MUST respond with the dumb server reply format.
  
