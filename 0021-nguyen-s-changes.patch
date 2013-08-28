@@ -1,4 +1,4 @@
-From e8ac5d3c42dc154b17c41986a35e16984cb657b5 Mon Sep 17 00:00:00 2001
+From a1c1d1d4ff0123d5d0e6ce7f17bdd4a7242b61f0 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Nguy=E1=BB=85n=20Th=C3=A1i=20Ng=E1=BB=8Dc=20Duy?=
  <pclouds@gmail.com>
 Date: Wed, 21 Aug 2013 20:45:13 +0700
@@ -9,10 +9,10 @@ Subject: [PATCH 21/21] nguyen's changes
  1 file changed, 4 insertions(+), 23 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index c514ab1..f6e1a0c 100644
+index 72fe4bc..cde0d77 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -318,7 +318,8 @@ Servers SHOULD support all capabilities defined here.
+@@ -313,7 +313,8 @@ Servers SHOULD support all capabilities defined here.
  
  Clients MUST send at least one 'want' command in the request body.
  Clients MUST NOT reference an id in a 'want' command which did not
@@ -22,7 +22,7 @@ index c514ab1..f6e1a0c 100644
  
    compute_request  =  want_list
                        have_list
-@@ -333,31 +334,9 @@ appear in the response obtained through ref discovery.
+@@ -328,31 +329,9 @@ appear in the response obtained through ref discovery.
  
    have_list        =  *PKT-LINE("have" SP id LF)
  
@@ -54,7 +54,7 @@ index c514ab1..f6e1a0c 100644
  The Negotiation Algorithm
  ~~~~~~~~~~~~~~~~~~~~~~~~~
  The computation to select the minimal pack proceeds as follows
-@@ -524,4 +503,6 @@ References
+@@ -519,4 +498,6 @@ References
  link:http://www.ietf.org/rfc/rfc1738.txt[RFC 1738: Uniform Resource Locators (URL)]
  link:http://www.ietf.org/rfc/rfc2119.txt[RFC 2119: Key words for use in RFCs to Indicate Requirement Levels]
  link:http://www.ietf.org/rfc/rfc2616.txt[RFC 2616: Hypertext Transfer Protocol -- HTTP/1.1]

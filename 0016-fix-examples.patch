@@ -1,4 +1,4 @@
-From 9e7d5871190dd3064d870c09e338f1430fa55703 Mon Sep 17 00:00:00 2001
+From ade16ef9970e2faa84c863f607a3cfbcecd9e9c3 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:40:24 +0800
 Subject: [PATCH 16/21] fix examples
@@ -12,10 +12,10 @@ Subject: [PATCH 16/21] fix examples
  1 file changed, 13 insertions(+), 12 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 6e7a44e..a0be0fe 100644
+index 4afdb9e..6e0c6bb 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -206,21 +206,22 @@ The request MUST NOT contain additional query parameters.
+@@ -201,21 +201,22 @@ The request MUST NOT contain additional query parameters.
     dumb server reply:
     S: 200 OK
     S:
@@ -47,7 +47,7 @@ index 6e7a44e..a0be0fe 100644
  
  Dumb Server Response
  ^^^^^^^^^^^^^^^^^^^^
-@@ -300,8 +301,8 @@ Clients MUST first perform ref discovery with
+@@ -295,8 +296,8 @@ Clients MUST first perform ref discovery with
     C: POST $GIT_URL/git-upload-pack HTTP/1.0
     C: Content-Type: application/x-git-upload-pack-request
     C:
@@ -58,7 +58,7 @@ index 6e7a44e..a0be0fe 100644
     C: 0000
  
     S: 200 OK
-@@ -483,7 +484,7 @@ Clients MUST first perform ref discovery with
+@@ -478,7 +479,7 @@ Clients MUST first perform ref discovery with
     C: POST $GIT_URL/git-receive-pack HTTP/1.0
     C: Content-Type: application/x-git-receive-pack-request
     C:

@@ -1,4 +1,4 @@
-From 8e644444dd0f67f3f4fc8191277833aafcd2f795 Mon Sep 17 00:00:00 2001
+From cdb413243fe5849809428c67fb2856fd26276e71 Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 19/21] s/entire/extra/ in include-tag
@@ -26,10 +26,10 @@ Based on:
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 5fbec83..1f436db 100644
+index 672684d..6f5b8a7 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -350,7 +350,7 @@ Capability include-tag
+@@ -345,7 +345,7 @@ Capability include-tag
  When packing an object that an annotated tag points at, include the
  tag object too.  Clients can request this if they want to fetch
  tags, but don't know which tags they will need until after they
