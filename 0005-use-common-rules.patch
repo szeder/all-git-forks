@@ -1,7 +1,7 @@
 From 61416ff1bc2843ac21d65f0a29f3d38eae614859 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 28 Aug 2013 12:09:54 +0800
-Subject: [PATCH 05/21] use common rules
+Subject: [PATCH 05/22] use common rules
 
  - LF, SP are all defined in RFC 5234 - don't define them again.
  - use HTAB instead of HT - HTAB is another common rule.

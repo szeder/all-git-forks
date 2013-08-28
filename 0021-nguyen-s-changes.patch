@@ -2,7 +2,7 @@ From dc1ceba8815dee097352070d753852899e833d54 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Nguy=E1=BB=85n=20Th=C3=A1i=20Ng=E1=BB=8Dc=20Duy?=
  <pclouds@gmail.com>
 Date: Wed, 21 Aug 2013 20:45:13 +0700
-Subject: [PATCH 21/21] nguyen's changes
+Subject: [PATCH 21/22] nguyen's changes
 
 ---
  Documentation/technical/http-protocol.txt | 27 ++++-----------------------
