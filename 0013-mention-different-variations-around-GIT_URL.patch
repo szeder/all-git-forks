@@ -1,4 +1,4 @@
-From 998fcde3d795477f161a8100a8ebd3a66e3b0445 Mon Sep 17 00:00:00 2001
+From a606f90257954319da683c7117f2793b5dd84057 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 23:09:46 +0800
 Subject: [PATCH 13/21] mention different variations around $GIT_URL
@@ -38,14 +38,14 @@ repo (child.git) with a parent path containing another git repo
 (master.git). It is excluded lest we be seen as encouraging such
 mind-boggling setups.
 ---
- Documentation/technical/http-protocol.txt | 15 +++++++++++++--
- 1 file changed, 13 insertions(+), 2 deletions(-)
+ Documentation/technical/http-protocol.txt | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 4d7ade7..72ae12d 100644
+index 4d7ade7..491fca0 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -22,15 +22,26 @@ URL Format
+@@ -22,15 +22,28 @@ URL Format
  URLs for Git repositories accessed by HTTP use the standard HTTP
  URL syntax documented by RFC 1738, so they are of the form:
  
@@ -66,7 +66,9 @@ index 4d7ade7..72ae12d 100644
 +  $GIT_URL:     http://example.com:8080/git/repo.git
 +  URL request:  http://example.com:8080/git/repo.git/objects/d0/49f6c27a2244e12041955e262a404c7faba355
 +
-+An example of a smart request to a catch-all gateway:
++An example of a smart request to a catch-all gateway (notice how the
++'service' parameter is passed with '&', since a '?' was detected in
++$GIT_URL):
 +
 +  $GIT_URL:     http://example.com/daemon.cgi?svc=git&q=
 +  URL request:  http://example.com/daemon.cgi?svc=git&q=/info/refs&service=git-receive-pack
