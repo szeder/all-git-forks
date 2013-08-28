@@ -1,9 +1,36 @@
-From c30f60c215d60d68416786b05df2c9f6b528d12e Mon Sep 17 00:00:00 2001
+From e89b64cdea7d83824f1495168dd2ede898b2f08f Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 23:09:46 +0800
 Subject: [PATCH 13/21] mention different variations around $GIT_URL
 
-From <loom.20091009T104530-586@post.gmane.org>.
+Based on
+
+  Message-ID: <loom.20091009T104530-586@post.gmane.org>
+
+  Shawn O. Pearce <spearce <at> spearce.org> writes:
+
+  > +URL Format
+  > +----------
+  > +
+  > +URLs for Git repositories accessed by HTTP use the standard HTTP
+  > +URL syntax documented by RFC 1738, so they are of the form:
+  > +
+  > +  http://<host>:<port>/<path>
+  > +
+  > +Within this documentation the placeholder $GIT_URL will stand for
+  > +the http:// repository URL entered by the end-user.
+
+  It's worth making clear here that $GIT_URL will be the path to the repository,
+  rather than necessarily just the host upon which the server sits. Perhaps
+  including an example, like http://example:8080/repos/example.git
+  would make it clearer that there can be a path (and so leading to
+  a request like http://example:8080/repos/example.git/info/refs?service=...
+
+  It's also worth clarifying, therefore, that multiple repositories can be served
+  by the same process (as with the git server today) by using different path(s).
+  And for those that are interested in submodules, it's worth confirming that
+  http://example/repos/master.git/child.git/info/refs?service= will ensure
+  that the repository is the 'child' git rather than anything else.
 ---
  Documentation/technical/http-protocol.txt | 20 ++++++++++++++++++--
  1 file changed, 18 insertions(+), 2 deletions(-)
