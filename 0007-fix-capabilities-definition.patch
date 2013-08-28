@@ -1,7 +1,7 @@
 From 5a7ed27a61bcb70ebda279f8b6831a89eb0d25eb Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 20:09:34 +0800
-Subject: [PATCH 07/20] fix capabilities definition
+Subject: [PATCH 07/21] fix capabilities definition
 
 For "capabilties^{}" lines, replace obj-id with zero-id.
 

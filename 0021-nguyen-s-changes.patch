@@ -1,0 +1,66 @@
+From f25d4efba2fe426c31fac8cd3296a7e07b37f10e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Nguy=E1=BB=85n=20Th=C3=A1i=20Ng=E1=BB=8Dc=20Duy?=
+ <pclouds@gmail.com>
+Date: Wed, 21 Aug 2013 20:45:13 +0700
+Subject: [PATCH 21/21] nguyen's changes
+
+---
+ Documentation/technical/http-protocol.txt | 27 ++++-----------------------
+ 1 file changed, 4 insertions(+), 23 deletions(-)
+
+diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
+index c514ab1..f6e1a0c 100644
+--- a/Documentation/technical/http-protocol.txt
++++ b/Documentation/technical/http-protocol.txt
+@@ -318,7 +318,8 @@ Servers SHOULD support all capabilities defined here.
+ 
+ Clients MUST send at least one 'want' command in the request body.
+ Clients MUST NOT reference an id in a 'want' command which did not
+-appear in the response obtained through ref discovery.
++appear in the response obtained through ref discovery unless the
++server advertises capability "allow-tip-sha1-in-want".
+ 
+   compute_request  =  want_list
+                       have_list
+@@ -333,31 +334,9 @@ appear in the response obtained through ref discovery.
+ 
+   have_list        =  *PKT-LINE("have" SP id LF)
+ 
+-  command          =  create / delete / update
+-  create           =  zero-id SP new_id SP name
+-  delete           =  old_id SP zero-id SP name
+-  update           =  old_id SP new_id SP name
+-
+ TODO: Document this further.
+ TODO: Don't use uppercase for variable names below.
+ 
+-Capability include-tag
+-~~~~~~~~~~~~~~~~~~~~~~
+-
+-When packing an object that an annotated tag points at, include the
+-tag object too.  Clients can request this if they want to fetch
+-tags, but don't know which tags they will need until after they
+-receive the branch data.  By enabling include-tag an extra call
+-to upload-pack can be avoided.
+-
+-Capability thin-pack
+-~~~~~~~~~~~~~~~~~~~~
+-
+-When packing a deltified object the base is not included if the base
+-is reachable from an object listed in the COMMON set by the client.
+-This reduces the bandwidth required to transfer, but it does slightly
+-increase processing time for the client to save the pack to disk.
+-
+ The Negotiation Algorithm
+ ~~~~~~~~~~~~~~~~~~~~~~~~~
+ The computation to select the minimal pack proceeds as follows
+@@ -524,4 +503,6 @@ References
+ link:http://www.ietf.org/rfc/rfc1738.txt[RFC 1738: Uniform Resource Locators (URL)]
+ link:http://www.ietf.org/rfc/rfc2119.txt[RFC 2119: Key words for use in RFCs to Indicate Requirement Levels]
+ link:http://www.ietf.org/rfc/rfc2616.txt[RFC 2616: Hypertext Transfer Protocol -- HTTP/1.1]
++link:technical/pack-protocol.txt
++link:technical/protocol-capabilities.txt
+ 
+-- 
+1.8.4.rc4.527.g303b16c
+
