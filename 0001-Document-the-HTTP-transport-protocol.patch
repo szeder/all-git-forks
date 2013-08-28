@@ -1,7 +1,7 @@
 From 18665670e904513606483aad22d54e3538b13760 Mon Sep 17 00:00:00 2001
 From: "Shawn O. Pearce" <spearce@spearce.org>
 Date: Thu, 8 Oct 2009 22:22:45 -0700
-Subject: [PATCH 01/22] Document the HTTP transport protocol
+Subject: [PATCH 01/20] Document the HTTP transport protocol
 
 Signed-off-by: Shawn O. Pearce <spearce@spearce.org>
 ---

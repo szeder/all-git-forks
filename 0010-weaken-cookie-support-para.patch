@@ -1,7 +1,7 @@
-From 0c2ee0133e05d0434efc532e9448aef594d94b1b Mon Sep 17 00:00:00 2001
+From f4dbcffb33b936fd3b1772169d9a48dbbfc1d46a Mon Sep 17 00:00:00 2001
 From: "Shawn O. Pearce" <spearce@spearce.org>
 Date: Thu, 15 Oct 2009 09:52:28 -0700
-Subject: [PATCH 12/22] weaken cookie support para
+Subject: [PATCH 10/20] weaken cookie support para
 
 ---
 

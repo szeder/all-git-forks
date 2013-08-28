@@ -1,7 +1,7 @@
 From 6da13d8ec65a4ca973fa56b1fc07f37cf0c02239 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:47:54 +0800
-Subject: [PATCH 06/22] use '/' instead of '|'
+Subject: [PATCH 06/20] use '/' instead of '|'
 
 ---
  Documentation/technical/http-protocol.txt | 20 ++++++++++----------

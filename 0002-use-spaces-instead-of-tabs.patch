@@ -1,7 +1,7 @@
 From 3d0de8fe9934a31c64f32fe0ce378816664c88cd Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:25:46 +0800
-Subject: [PATCH 02/22] use spaces instead of tabs
+Subject: [PATCH 02/20] use spaces instead of tabs
 
 Client/server queries are indented with 3 spaces, like
 pack-protocol.txt.
