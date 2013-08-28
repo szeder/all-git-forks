@@ -1880,8 +1880,11 @@ pretty.<name>::
 pull.mode::
 	When "git pull" is run, this determines if it would either merge or
 	rebase the fetched branch. The possible values are 'merge',
-	'rebase', and 'rebase-preserve'. See "branch.<name>.pullmode" for doing
-	this in a non branch-specific manner.
+	'rebase', 'merge-ff-only,' and 'rebase-preserve'.
+	If 'merge-ff-only' is specified, the merge will only succeed if it's
+	fast-forward.
+	See "branch.<name>.pullmode" for doing this in a non branch-specific
+	manner.
 +
 	When 'rebase-preserve', also pass `--preserve-merges` along to
 	'git rebase' so that locally committed merge commits will not be
