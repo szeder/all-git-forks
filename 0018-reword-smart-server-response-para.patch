@@ -1,4 +1,4 @@
-From 6e125edf85eec2773f4c21aaf0789b706229b88e Mon Sep 17 00:00:00 2001
+From 14f67f9cf557266fbfa8141b62aa876ed754154c Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:57:33 +0800
 Subject: [PATCH 18/22] reword smart server response para
@@ -37,7 +37,7 @@ Based on:
  1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 527db94..d87e92d 100644
+index e2fc5a4..f684611 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -229,12 +229,13 @@ description of the dumb server response.

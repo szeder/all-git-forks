@@ -1,4 +1,4 @@
-From 19fc3fcd0c47b24d491d80be5673115f5807d171 Mon Sep 17 00:00:00 2001
+From ff26488ebf6383ca55520d1f923a9642380d32bf Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:40:24 +0800
 Subject: [PATCH 16/22] fix examples
@@ -8,13 +8,28 @@ Subject: [PATCH 16/22] fix examples
  - add flush-pkt (0000) for smart
  - drop SP that followed NUL before capability list
 ---
- Documentation/technical/http-protocol.txt | 25 +++++++++++++------------
- 1 file changed, 13 insertions(+), 12 deletions(-)
+ Documentation/technical/http-protocol.txt | 33 ++++++++++++++++---------------
+ 1 file changed, 17 insertions(+), 16 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 0eef139..d601a56 100644
+index 0eef139..19cc52d 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
+@@ -157,10 +157,10 @@ without any search/query parameters.  E.g.
+ 
+    S: 200 OK
+    S:
+-   S: 95dcfa3633004da0049d3d0fa03f80589cbcaf31	refs/heads/maint
+-   S: d049f6c27a2244e12041955e262a404c7faba355	refs/heads/master
+-   S: 2cb58b79488a98d2721cea644875a8dd0026b115	refs/tags/v1.0
+-   S: a3c2e2402b99163d1d59756e5f207ae21cccba4c	refs/tags/v1.0^{}
++   S: 95dcfa3633004da0049d3d0fa03f80589cbcaf31	refs/heads/maint\n
++   S: d049f6c27a2244e12041955e262a404c7faba355	refs/heads/master\n
++   S: 2cb58b79488a98d2721cea644875a8dd0026b115	refs/tags/v1.0\n
++   S: a3c2e2402b99163d1d59756e5f207ae21cccba4c	refs/tags/v1.0^{}\n
+ 
+ The Content-Type of the returned info/refs entity SHOULD be
+ "text/plain; charset=utf-8", but MAY be any content type.
 @@ -203,21 +203,22 @@ The request MUST NOT contain additional query parameters.
     dumb server reply:
     S: 200 OK
