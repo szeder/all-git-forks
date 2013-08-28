@@ -153,7 +153,7 @@ test_expect_success 'branch --merged with --verbose' '
 	git branch --verbose --merged topic >actual &&
 	cat >expect <<-\EOF &&
 	  master c77a0a9 second on master
-	* topic  2c939f4 [ahead 1] foo
+	* topic  2c939f4 [master] foo
 	  zzz    c77a0a9 second on master
 	EOF
 	test_cmp expect actual
