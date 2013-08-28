@@ -53,6 +53,7 @@ if (@ARGV != 2) {
 
 my $remotename = $ARGV[0];
 my $url = $ARGV[1];
+my $reset_private_ref_to = undef;
 
 # Accept both space-separated and multiple keys in config file.
 # Spaces should be written as _ anyway because we'll use chomp.
@@ -161,6 +162,9 @@ sub parse_command {
 	my ($line) = @_;
 	my @cmd = split(/ /, $line);
 	if (!defined $cmd[0]) {
+		if ($reset_private_ref_to) {
+			run_git("update-ref -m \"Git-MediaWiki non-dumb push\" refs/mediawiki/$remotename/master $reset_private_ref_to");
+		}
 		return 0;
 	}
 	if ($cmd[0] eq 'capabilities') {
@@ -1209,9 +1213,10 @@ sub mw_push_revision {
 				die("Unknown error from mw_push_file()\n");
 			}
 		}
-		if (!$dumb_push) {
+		if ($dumb_push) {
+			$reset_private_ref_to = $remoteorigin_sha1;
+		} else {
 			run_git(qq(notes --ref=${remotename}/mediawiki add -f -m "mediawiki_revision: ${mw_revision}" ${sha1_commit}));
-			run_git(qq(update-ref -m "Git-MediaWiki push" refs/mediawiki/${remotename}/master ${sha1_commit} ${sha1_child}));
 		}
 	}
 
