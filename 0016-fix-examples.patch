@@ -1,4 +1,4 @@
-From 47a80fdcb642165483f63e51c5e22563cbaa1431 Mon Sep 17 00:00:00 2001
+From 19fc3fcd0c47b24d491d80be5673115f5807d171 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:40:24 +0800
 Subject: [PATCH 16/22] fix examples
@@ -12,7 +12,7 @@ Subject: [PATCH 16/22] fix examples
  1 file changed, 13 insertions(+), 12 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 15a08e2..af54cf1 100644
+index 0eef139..d601a56 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -203,21 +203,22 @@ The request MUST NOT contain additional query parameters.

@@ -1,4 +1,4 @@
-From 5e680b1f79ddb05404b82717475e68accbabdfde Mon Sep 17 00:00:00 2001
+From 22a773c0fcabd6ccc4fb88d23e4dc662a2d01f8f Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:17:09 +0800
 Subject: [PATCH 15/22] also mention missing objects
@@ -31,7 +31,7 @@ Based on:
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 07b433f..15a08e2 100644
+index 31f45c4..0eef139 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -105,7 +105,9 @@ by both client and server.  This includes (but is not necessarily

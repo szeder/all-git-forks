@@ -1,4 +1,4 @@
-From 67fe452aa14f2fd249d015fd00495bf86c9e0284 Mon Sep 17 00:00:00 2001
+From 72fa736a8e343555703fa1ffd8694a31f03b4f2f Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 08/22] s/mangement/management/
@@ -22,7 +22,7 @@ Based on:
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 7e044f8..7ed5663 100644
+index cba77e4..f3d4e7d 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -73,7 +73,7 @@ The Git over HTTP protocol (much like HTTP itself) is stateless

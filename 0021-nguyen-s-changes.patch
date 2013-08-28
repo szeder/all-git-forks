@@ -1,4 +1,4 @@
-From 25c46325c7cb6ad5bc468b5fec3466988b267386 Mon Sep 17 00:00:00 2001
+From 48ad16397d1414f0af85255cd27fae5f066937d0 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Nguy=E1=BB=85n=20Th=C3=A1i=20Ng=E1=BB=8Dc=20Duy?=
  <pclouds@gmail.com>
 Date: Wed, 21 Aug 2013 20:45:13 +0700
@@ -9,7 +9,7 @@ Subject: [PATCH 21/22] nguyen's changes
  1 file changed, 4 insertions(+), 23 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 4227e15..4c90f73 100644
+index 40811cf..e3c7a72 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -315,7 +315,8 @@ Servers SHOULD support all capabilities defined here.
