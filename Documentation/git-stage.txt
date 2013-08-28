@@ -15,6 +15,7 @@ SYNOPSIS
 'git stage diff' [options] [<commit>] [--] [<paths>...]
 'git stage rm' [options] [--] [<paths>...]
 'git stage apply' [options] [--] [<paths>...]
+'git stage edit'
 
 DESCRIPTION
 -----------
@@ -44,6 +45,10 @@ Remove files from the staging area only. See linkgit:git-rm[1] --staged.
 'apply'::
 
 Apply a patch to the staging area. See linkgit:git-rm[1] --staged.
+
+'edit'::
+
+Manually edit the staging area (as a diff).
 
 SEE ALSO
 --------
