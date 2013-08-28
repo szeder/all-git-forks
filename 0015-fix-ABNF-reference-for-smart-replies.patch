@@ -1,4 +1,4 @@
-From c7d59944aaedccf979ce122573fed73e69188e92 Mon Sep 17 00:00:00 2001
+From 650e80417f6f22e97fa665a8aadb595de061bafc Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 22:40:51 +0800
 Subject: [PATCH 15/22] fix ABNF reference for smart replies
@@ -9,7 +9,7 @@ This was spotted by Sverre and Junio.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 83347e7..a001057 100644
+index 75a4578..6998eca 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -253,7 +253,7 @@ declarations behind a NUL on the first ref.

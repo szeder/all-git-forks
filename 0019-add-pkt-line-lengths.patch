@@ -1,4 +1,4 @@
-From 93810c1e010e249d7ca5d84537572d1315bdd3fd Mon Sep 17 00:00:00 2001
+From 9554b73e4e9fad4b8d1080e6229886ee7c4815b5 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:40:24 +0800
 Subject: [PATCH 19/22] add pkt-line lengths
@@ -8,7 +8,7 @@ Subject: [PATCH 19/22] add pkt-line lengths
  1 file changed, 7 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 258fe8c..4458f1e 100644
+index 26857b0..1442f4d 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -212,11 +212,11 @@ The request MUST NOT contain additional query parameters.
@@ -16,12 +16,12 @@ index 258fe8c..4458f1e 100644
     S: Cache-Control: no-cache
     S:
 -   S: ....# service=git-upload-pack
--   S: ....95dcfa3633004da0049d3d0fa03f80589cbcaf31 refs/heads/maint\0multi_ack
+-   S: ....95dcfa3633004da0049d3d0fa03f80589cbcaf31 refs/heads/maint\0 multi_ack
 -   S: ....d049f6c27a2244e12041955e262a404c7faba355 refs/heads/master
 -   S: ....2cb58b79488a98d2721cea644875a8dd0026b115 refs/tags/v1.0
 -   S: ....a3c2e2402b99163d1d59756e5f207ae21cccba4c refs/tags/v1.0^{}
 +   S: 001e# service=git-upload-pack\n
-+   S: 004895dcfa3633004da0049d3d0fa03f80589cbcaf31 refs/heads/maint\0multi_ack\n
++   S: 004895dcfa3633004da0049d3d0fa03f80589cbcaf31 refs/heads/maint\0 multi_ack\n
 +   S: 0042d049f6c27a2244e12041955e262a404c7faba355 refs/heads/master\n
 +   S: 003c2cb58b79488a98d2721cea644875a8dd0026b115 refs/tags/v1.0\n
 +   S: 003fa3c2e2402b99163d1d59756e5f207ae21cccba4c refs/tags/v1.0^{}\n

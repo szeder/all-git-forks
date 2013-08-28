@@ -1,4 +1,4 @@
-From c4305ab90218ffb57e1e7010ea8c4c5ba578865d Mon Sep 17 00:00:00 2001
+From 9b202c5ef0d782c9f17a722e99af156aa91667f1 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 20:09:34 +0800
 Subject: [PATCH 09/22] fix capabilities definition
@@ -7,26 +7,14 @@ For "capabilties^{}" lines, replace obj-id with zero-id.
 
 Define capabilities using rules from pack-protocol.txt - ideally, this
 should be shifted to protocol-common.txt.
-
-Also, update the sample conversation by removing the SP between NUL and
-cap-list.
 ---
- Documentation/technical/http-protocol.txt | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ Documentation/technical/http-protocol.txt | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index c982f17..5eb7cbf 100644
+index c982f17..bc20ba5 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -222,7 +222,7 @@ The request MUST NOT contain additional query parameters.
-    S: Cache-Control: no-cache
-    S:
-    S: ....# service=git-upload-pack
--   S: ....95dcfa3633004da0049d3d0fa03f80589cbcaf31 refs/heads/maint\0 multi_ack
-+   S: ....95dcfa3633004da0049d3d0fa03f80589cbcaf31 refs/heads/maint\0multi_ack
-    S: ....d049f6c27a2244e12041955e262a404c7faba355 refs/heads/master
-    S: ....2cb58b79488a98d2721cea644875a8dd0026b115 refs/tags/v1.0
-    S: ....a3c2e2402b99163d1d59756e5f207ae21cccba4c refs/tags/v1.0^{}
 @@ -281,14 +281,16 @@ declarations behind a NUL on the first ref.
                       "0000"
    ref_list        =  empty_list / populated_list
