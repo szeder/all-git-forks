@@ -1,4 +1,4 @@
-From 4d4091aa43347beaa77655c8c6ebef777028659a Mon Sep 17 00:00:00 2001
+From 5871aec03f2219c2610e6d991ea09b4f96b8bcb6 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 20:09:34 +0800
 Subject: [PATCH 09/22] fix capabilities definition
@@ -8,33 +8,37 @@ For "capabilties^{}" lines, replace obj-id with zero-id.
 Define capabilities using rules from pack-protocol.txt - ideally, this
 should be shifted to protocol-common.txt.
 ---
- Documentation/technical/http-protocol.txt | 8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+ Documentation/technical/http-protocol.txt | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 8f4573d..4508456 100644
+index 5fb7ed1..7e044f8 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -285,14 +285,16 @@ declarations behind a NUL on the first ref.
-                      "0000"
-   ref_list        =  empty_list / populated_list
+@@ -285,17 +285,19 @@ declarations behind a NUL on the first ref.
+                       "0000"
+   ref_list         =  empty_list / populated_list
  
--  empty_list      =  PKT-LINE(obj-id SP "capabilities^{}" NUL cap_list LF)
-+  empty_list      =  PKT-LINE(zero-id SP "capabilities^{}" NUL cap-list LF)
+-  empty_list       =  PKT-LINE(obj-id SP "capabilities^{}" NUL cap_list LF)
++  empty_list       =  PKT-LINE(zero-id SP "capabilities^{}" NUL cap-list LF)
  
-   non_empty_list  =  PKT-LINE(obj-id SP name NUL cap_list LF)
-                      *ref_record
+   non_empty_list   =  PKT-LINE(obj-id SP name NUL cap_list LF)
+ 		      *ref_record
  
--  cap_list        =  *(SP capability) SP
--  ref_record      =  any_ref / peeled_ref
-+  cap-list        =  capability *(SP capability)
-+  capability      =  1*(LC_ALPHA / DIGIT / "-" / "_")
-+  LC_ALPHA        =  %x61-7A
+-  cap_list         =  *(SP capability) SP
+-  ref_record       =  any_ref / peeled_ref
++  cap-list         =  capability *(SP capability)
++  capability       =  1*(LC_ALPHA / DIGIT / "-" / "_")
++  LC_ALPHA         =  %x61-7A
  
-+  ref_record      =  any_ref / peeled_ref
-   any_ref         =  PKT-LINE(obj-id SP name LF)
-   peeled_ref      =  PKT-LINE(obj-id SP name LF)
-                      PKT-LINE(obj-id SP name "^{}" LF
++  ref_record       =  any_ref / peeled_ref
+   any_ref          =  PKT-LINE(obj-id SP name LF)
+   peeled_ref       =  PKT-LINE(obj-id SP name LF)
+-		      PKT-LINE(obj-id SP name "^{}" LF
++                      PKT-LINE(obj-id SP name "^{}" LF
+ 
+ Smart Service git-upload-pack
+ ------------------------------
 -- 
 1.8.4.rc4.527.g303b16c
 

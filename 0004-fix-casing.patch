@@ -1,4 +1,4 @@
-From 64f66eca765bd807363e4f8d582614fa53233e7b Mon Sep 17 00:00:00 2001
+From 6b067624c702059f64bbe12bf6312487ef6712b4 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:28:01 +0800
 Subject: [PATCH 04/22] fix casing
@@ -9,7 +9,7 @@ use MUST, MUST NOT, MAY, SHOULD.
  1 file changed, 11 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 961a4c0..b2ba39a 100644
+index b047370..22d215e 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -11,6 +11,10 @@ protocol URLs to smart URLs.  This permits all users to have the

@@ -1,4 +1,4 @@
-From be1d556e338650845df2a205825cc09e4ece4886 Mon Sep 17 00:00:00 2001
+From 48a66d386c70acb8c594345ede1bc755fa8437ec Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Sat, 10 Oct 2009 20:17:10 +0800
 Subject: [PATCH 03/22] s/paramterized/parameterized/
@@ -13,7 +13,7 @@ Based on:
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index c3e0004..961a4c0 100644
+index 081ece4..b047370 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -204,7 +204,7 @@ Smart Clients
