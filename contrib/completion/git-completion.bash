@@ -1756,7 +1756,7 @@ _git_stage ()
 {
 	__git_has_doubledash && return
 
-	local subcommands="add reset diff rm apply"
+	local subcommands="add reset diff rm apply edit"
 	local subcommand="$(__git_find_on_cmdline "$subcommands")"
 	if [ -z "$subcommand" ]; then
 		__gitcomp "$subcommands"
@@ -1774,6 +1774,8 @@ _git_stage ()
 		_git_rm;;
 	apply)
 		_git_apply;;
+	edit)
+		;;
 	*)
 		_git_add;
 	esac
