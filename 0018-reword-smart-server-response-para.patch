@@ -1,9 +1,7 @@
-From 441bc31f8897d6d03553e7510055467165bbb0a6 Mon Sep 17 00:00:00 2001
+From ee5f394f9264423aa4e6812f17a96698fde289da Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:57:33 +0800
 Subject: [PATCH 18/22] reword smart server response para
-
----
 
 Based on:
 

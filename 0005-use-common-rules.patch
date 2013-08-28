@@ -1,4 +1,4 @@
-From 61416ff1bc2843ac21d65f0a29f3d38eae614859 Mon Sep 17 00:00:00 2001
+From a6b89a1d818015793c6e16cf4daf2b5e9001a36d Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 28 Aug 2013 12:09:54 +0800
 Subject: [PATCH 05/22] use common rules

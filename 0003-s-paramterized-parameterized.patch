@@ -1,9 +1,7 @@
-From 48a66d386c70acb8c594345ede1bc755fa8437ec Mon Sep 17 00:00:00 2001
+From 89b1dbe49c595d6caff9f4360e1651ffced86332 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Sat, 10 Oct 2009 20:17:10 +0800
 Subject: [PATCH 03/22] s/paramterized/parameterized/
-
----
 
 Based on:
 

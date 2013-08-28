@@ -1,4 +1,4 @@
-From 400fe99391fe83cba2048c09cd195328617b2f01 Mon Sep 17 00:00:00 2001
+From 67fe452aa14f2fd249d015fd00495bf86c9e0284 Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 08/22] s/mangement/management/
