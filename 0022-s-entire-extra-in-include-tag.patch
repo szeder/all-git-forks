@@ -1,4 +1,4 @@
-From 80e121f4c2e87f67bab61c3a10094246a9308433 Mon Sep 17 00:00:00 2001
+From 0af5519d8940377da4a41583ee29aedb4147b229 Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 22/22] s/entire/extra/ in include-tag
@@ -22,31 +22,13 @@ Based on:
   I think you are avoiding an "extra" call; you would need one entire call
   to upload-pack anyway for the primary transfer.
 ---
- Documentation/technical/http-protocol.txt | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ Documentation/technical/http-protocol.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index b41ce44..af8fd29 100644
+index b41ce44..2427726 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -231,12 +231,12 @@ description of the dumb server response.
- 
- Smart Server Response
- ^^^^^^^^^^^^^^^^^^^^^
--If the server does not recognize the requested service name, or the
--requested service name has been disabled by the server administrator,
--the server MUST respond with the '403 Forbidden' HTTP status code.
-+  If the server does not recognize the requested service name, or the
-+  requested service name has been disabled by the server administrator,
-+  the server MUST respond with the '403 Forbidden' HTTP status code.
- 
--Otherwise, smart servers MUST respond with the smart server reply
--format for the requested service name.
-+  Otherwise, smart servers MUST respond with the smart server reply
-+  format for the requested service name.
- 
- Cache-Control headers SHOULD be used to disable caching of the
- returned entity.
 @@ -349,7 +349,7 @@ Capability include-tag
  When packing an object that an annotated tag points at, include the
  tag object too.  Clients can request this if they want to fetch
