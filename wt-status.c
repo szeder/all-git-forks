@@ -770,6 +770,8 @@ static void wt_status_print_tracking(struct wt_status *s)
 	struct strbuf sb = STRBUF_INIT;
 	const char *cp, *ep;
 	struct branch *branch;
+	char comment_line_string[3];
+	int i;
 
 	assert(s->branch && !s->is_initial);
 	if (prefixcmp(s->branch, "refs/heads/"))
@@ -778,8 +780,7 @@ static void wt_status_print_tracking(struct wt_status *s)
 	if (!format_tracking_info(branch, &sb))
 		return;
 
-	char comment_line_string[3];
-	int i = 0;
+	i = 0;
 	if (s->display_comment_char) {
 		comment_line_string[i++] = comment_line_char;
 		comment_line_string[i++] = ' ';
