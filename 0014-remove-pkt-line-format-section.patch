@@ -1,4 +1,4 @@
-From 4eab1312994f912962e560b220c4b87597d070c4 Mon Sep 17 00:00:00 2001
+From acdabeff70a9368cf9cbe685bce742111427bba6 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 21:08:46 +0800
 Subject: [PATCH 14/22] remove pkt-line format section
@@ -11,10 +11,10 @@ In response to <7vskdss3ei.fsf@alter.siamese.dyndns.org>.
  1 file changed, 28 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 0097f10..75a4578 100644
+index 4d2067a..b34db49 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -80,34 +80,6 @@ as described by RFC 2616 (HTTP/1.1).  Servers SHOULD ignore any
+@@ -84,34 +84,6 @@ as described by RFC 2616 (HTTP/1.1).  Servers SHOULD ignore any
  cookies sent by a client.
  
  

@@ -1,18 +1,29 @@
-From ef1f2012e96e0b1b555bf0c661a79d27e6b76b6b Mon Sep 17 00:00:00 2001
+From 64f66eca765bd807363e4f8d582614fa53233e7b Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:28:01 +0800
 Subject: [PATCH 04/22] fix casing
 
 use MUST, MUST NOT, MAY, SHOULD.
 ---
- Documentation/technical/http-protocol.txt | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ Documentation/technical/http-protocol.txt | 17 +++++++++++------
+ 1 file changed, 11 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 961a4c0..3b16e1f 100644
+index 961a4c0..b2ba39a 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -29,7 +29,7 @@ supplied $GIT_URL string.
+@@ -11,6 +11,10 @@ protocol URLs to smart URLs.  This permits all users to have the
+ same published URL, and the peers automatically select the most
+ efficient transport available to them.
+ 
++The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
++NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED",  "MAY", and
++"OPTIONAL" in this document are to be interpreted as described in
++RFC 2119.
+ 
+ URL Format
+ ----------
+@@ -29,7 +33,7 @@ supplied $GIT_URL string.
  
  Clients MUST strip a trailing '/', if present, from the user supplied
  $GIT_URL string to prevent empty path tokens ('//') from appearing
@@ -21,7 +32,7 @@ index 961a4c0..3b16e1f 100644
  '$GIT_URL/info/refs' as 'foo/info/refs' and not 'foo//info/refs'.
  
  
-@@ -66,7 +66,7 @@ Session State
+@@ -66,7 +70,7 @@ Session State
  -------------
  
  The Git over HTTP protocol (much like HTTP itself) is stateless
@@ -30,7 +41,7 @@ index 961a4c0..3b16e1f 100644
  retained and managed by the client process.  This permits simple
  round-robin load-balancing on the server side, without needing to
  worry about state mangement.
-@@ -158,7 +158,7 @@ references by making a request for the special info/refs file of
+@@ -158,7 +162,7 @@ references by making a request for the special info/refs file of
  the repository.
  
  Dumb HTTP clients MUST NOT include search/query parameters when
@@ -39,7 +50,7 @@ index 961a4c0..3b16e1f 100644
  requested URL.)
  
     C: GET $GIT_URL/info/refs HTTP/1.0
-@@ -390,7 +390,7 @@ The computation to select the minimal pack proceeds as follows
+@@ -390,7 +394,7 @@ The computation to select the minimal pack proceeds as follows
  
   (c) Start a queue, C_PENDING, ordered by commit time (popping newest
       first).  Add all client refs.  When a commit is popped from
@@ -48,7 +59,7 @@ index 961a4c0..3b16e1f 100644
       Commits MUST only enter the queue once.
  
   one compute step:
-@@ -431,7 +431,7 @@ The computation to select the minimal pack proceeds as follows
+@@ -431,7 +435,7 @@ The computation to select the minimal pack proceeds as follows
  
       If the client has sent 256 HAVE commits and has not yet
       received one of those back from S_COMMON, or the client has
@@ -57,7 +68,7 @@ index 961a4c0..3b16e1f 100644
       the server know it won't proceed:
  
     C: 0009done
-@@ -470,7 +470,7 @@ TODO: Document the pack based response
+@@ -470,7 +474,7 @@ TODO: Document the pack based response
  
       The returned stream is the side-band-64k protocol supported
       by the git-upload-pack service, and the pack is embedded into
@@ -66,6 +77,13 @@ index 961a4c0..3b16e1f 100644
       in stream 2.
  
       Here a "closed set of objects" is defined to have at least
+@@ -538,5 +542,6 @@ References
+ ----------
+ 
+ link:http://www.ietf.org/rfc/rfc1738.txt[RFC 1738: Uniform Resource Locators (URL)]
++link:http://www.ietf.org/rfc/rfc2119.txt[RFC 2119: Key words for use in RFCs to Indicate Requirement Levels]
+ link:http://www.ietf.org/rfc/rfc2616.txt[RFC 2616: Hypertext Transfer Protocol -- HTTP/1.1]
+ 
 -- 
 1.8.4.rc4.527.g303b16c
 

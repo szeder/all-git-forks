@@ -1,4 +1,4 @@
-From a1c999b3c9d3b216960cc8d9997ecabf70519e46 Mon Sep 17 00:00:00 2001
+From 5e89fe4b2d229a05811d4a3da3aebddd77acbcc9 Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 22/22] s/entire/extra/ in include-tag
@@ -26,10 +26,10 @@ Based on:
  1 file changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index ed01a57..e137011 100644
+index badcb12..4af8957 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -227,12 +227,12 @@ description of the dumb server response.
+@@ -231,12 +231,12 @@ description of the dumb server response.
  
  Smart Server Response
  ^^^^^^^^^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ index ed01a57..e137011 100644
  
  Cache-Control headers SHOULD be used to disable caching of the
  returned entity.
-@@ -345,7 +345,7 @@ Capability include-tag
+@@ -349,7 +349,7 @@ Capability include-tag
  When packing an object that an annotated tag points at, include the
  tag object too.  Clients can request this if they want to fetch
  tags, but don't know which tags they will need until after they

@@ -1,4 +1,4 @@
-From 72d69f1a94ddd64ee4152218d373c05f63fd3114 Mon Sep 17 00:00:00 2001
+From 24e3e4ec6420f4f2f77af8e7fb168a278c99ae69 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:46:27 +0800
 Subject: [PATCH 05/22] use common rules
@@ -11,10 +11,10 @@ Subject: [PATCH 05/22] use common rules
  1 file changed, 12 insertions(+), 24 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 3b16e1f..5a2d801 100644
+index b2ba39a..e6851f0 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -190,14 +190,9 @@ the default ref named 'HEAD'.
+@@ -194,14 +194,9 @@ the default ref named 'HEAD'.
    info_refs   =  *( ref_record )
    ref_record  =  any_ref | peeled_ref
  
@@ -32,7 +32,7 @@ index 3b16e1f..5a2d801 100644
  
  Smart Clients
  ~~~~~~~~~~~~~
-@@ -286,24 +281,17 @@ declarations behind a NUL on the first ref.
+@@ -290,24 +285,17 @@ declarations behind a NUL on the first ref.
                      "0000"
    ref_list       =  empty_list | populated_list
  
@@ -62,7 +62,7 @@ index 3b16e1f..5a2d801 100644
  
  Smart Service git-upload-pack
  ------------------------------
-@@ -350,8 +338,8 @@ appear in the response obtained through ref discovery.
+@@ -354,8 +342,8 @@ appear in the response obtained through ref discovery.
    have_list         =  *PKT-LINE("have" SP id LF)
  
    command           =  create | delete | update
@@ -73,7 +73,7 @@ index 3b16e1f..5a2d801 100644
    update            =  old_id SP new_id SP name
  
  TODO: Document this further.
-@@ -527,8 +515,8 @@ the id obtained through ref discovery as old_id.
+@@ -531,8 +519,8 @@ the id obtained through ref discovery as old_id.
    cap_list        =  *(SP capability) SP
  
    command         =  create | delete | update

@@ -1,4 +1,4 @@
-From 71a6761509a0b9a97145dbc6d7744177d598b7ee Mon Sep 17 00:00:00 2001
+From 0bcea4a285427ebfc3e8720c4bdc6d77130f8e5a Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 20:04:16 +0800
 Subject: [PATCH 08/22] whitespace change
@@ -8,10 +8,10 @@ Subject: [PATCH 08/22] whitespace change
  1 file changed, 12 insertions(+), 12 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 672fa14..c982f17 100644
+index 7ce1022..8f4573d 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -276,22 +276,22 @@ the C locale ordering.  The stream SHOULD include the default ref
+@@ -280,22 +280,22 @@ the C locale ordering.  The stream SHOULD include the default ref
  named 'HEAD' as the first ref.  The stream MUST include capability
  declarations behind a NUL on the first ref.
  

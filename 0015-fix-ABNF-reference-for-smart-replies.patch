@@ -1,4 +1,4 @@
-From 650e80417f6f22e97fa665a8aadb595de061bafc Mon Sep 17 00:00:00 2001
+From 32f0d3cd5be10e6dddf0bbde607db640ab8ad88f Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 22:40:51 +0800
 Subject: [PATCH 15/22] fix ABNF reference for smart replies
@@ -9,10 +9,10 @@ This was spotted by Sverre and Junio.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 75a4578..6998eca 100644
+index b34db49..cca0d2a 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -253,7 +253,7 @@ declarations behind a NUL on the first ref.
+@@ -257,7 +257,7 @@ declarations behind a NUL on the first ref.
    smart_reply     =  PKT-LINE("# service=$servicename" LF)
                       ref_list
                       "0000"

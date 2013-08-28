@@ -1,4 +1,4 @@
-From 6adcc090ff64375673f4d2d87c6baeae0d24845e Mon Sep 17 00:00:00 2001
+From 815ad82afca4c803d5cb818996e5ec222b01a688 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 23:09:46 +0800
 Subject: [PATCH 16/22] mention different variations around $GIT_URL
@@ -9,10 +9,10 @@ From <loom.20091009T104530-586@post.gmane.org>.
  1 file changed, 18 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 6998eca..04a6365 100644
+index cca0d2a..f33050b 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -18,15 +18,31 @@ URL Format
+@@ -22,15 +22,31 @@ URL Format
  URLs for Git repositories accessed by HTTP use the standard HTTP
  URL syntax documented by RFC 1738, so they are of the form:
  

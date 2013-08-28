@@ -1,4 +1,4 @@
-From 9554b73e4e9fad4b8d1080e6229886ee7c4815b5 Mon Sep 17 00:00:00 2001
+From 6656aedcfff4852a1d02ae7262614be177903c10 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:40:24 +0800
 Subject: [PATCH 19/22] add pkt-line lengths
@@ -8,10 +8,10 @@ Subject: [PATCH 19/22] add pkt-line lengths
  1 file changed, 7 insertions(+), 7 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 26857b0..1442f4d 100644
+index 1948237..102c89c 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -212,11 +212,11 @@ The request MUST NOT contain additional query parameters.
+@@ -216,11 +216,11 @@ The request MUST NOT contain additional query parameters.
     S: Content-Type: application/x-git-upload-pack-advertisement
     S: Cache-Control: no-cache
     S:
@@ -28,7 +28,7 @@ index 26857b0..1442f4d 100644
  
  Dumb Server Response
  ^^^^^^^^^^^^^^^^^^^^
-@@ -296,8 +296,8 @@ Clients MUST first perform ref discovery with
+@@ -300,8 +300,8 @@ Clients MUST first perform ref discovery with
     C: POST $GIT_URL/git-upload-pack HTTP/1.0
     C: Content-Type: application/x-git-upload-pack-request
     C:

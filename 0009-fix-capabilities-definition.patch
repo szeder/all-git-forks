@@ -1,4 +1,4 @@
-From 9b202c5ef0d782c9f17a722e99af156aa91667f1 Mon Sep 17 00:00:00 2001
+From 4d4091aa43347beaa77655c8c6ebef777028659a Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 20:09:34 +0800
 Subject: [PATCH 09/22] fix capabilities definition
@@ -12,10 +12,10 @@ should be shifted to protocol-common.txt.
  1 file changed, 5 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index c982f17..bc20ba5 100644
+index 8f4573d..4508456 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -281,14 +281,16 @@ declarations behind a NUL on the first ref.
+@@ -285,14 +285,16 @@ declarations behind a NUL on the first ref.
                       "0000"
    ref_list        =  empty_list / populated_list
  
