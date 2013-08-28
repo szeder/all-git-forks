@@ -1822,9 +1822,11 @@ pretty.<name>::
 
 pull.mode::
 	When "git pull" is run, this determines if it would either merge or
-	rebase the fetched branch. The possible values are 'merge' and
-	'rebase'. See "branch.<name>.pullmode" for doing this in a non
-	branch-specific manner.
+	rebase the fetched branch. The possible values are 'merge',
+	'rebase', and 'merge-ff-only'. If 'merge-ff-only' is specified, the
+	merge will only succeed if it's fast-forward. See
+	"branch.<name>.pullmode" for doing this in a non branch-specific
+	manner.
 +
 *NOTE*: this is a possibly dangerous operation; do *not* use
 it unless you understand the implications (see linkgit:git-rebase[1]
