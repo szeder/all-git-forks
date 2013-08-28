@@ -62,6 +62,7 @@ then
 		echo "Please use pull.mode and branch.<name>.pullmode instead."
 	fi
 fi
+test -z "$mode" && mode=merge
 dry_run=
 while :
 do
@@ -305,6 +306,12 @@ then
 	then
 		unset oldremoteref
 	fi
+fi
+
+if test "$mode" = merge-ff-only -a -z "$no_ff$ff_only${squash#--no-squash}"
+then
+	ff_only=--ff-only
+	export GIT_MERGE_FF_ONLY_HELP="The pull was not fast-forward, please either merge or rebase."
 fi
 
 merge_name=$(git fmt-merge-msg $log_arg <"$GIT_DIR/FETCH_HEAD") || exit

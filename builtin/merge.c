@@ -1437,8 +1437,15 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		}
 	}
 
-	if (fast_forward == FF_ONLY)
+	if (fast_forward == FF_ONLY) {
+		const char *msg = getenv("GIT_MERGE_FF_ONLY_HELP");
+		if (msg) {
+			fprintf(stderr, "%s\n", msg);
+			ret = 1;
+			goto done;
+		}
 		die(_("Not possible to fast-forward, aborting."));
+	}
 
 	/* We are going to make a new commit. */
 	git_committer_info(IDENT_STRICT);
