@@ -417,15 +417,15 @@ static int ref_cmp(const void *r1, const void *r2)
 }
 
 static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
-		int show_upstream_ref)
+		int show_tracking)
 {
 	int ours, theirs;
 	char *ref = NULL;
 	struct branch *branch = branch_get(branch_name);
 	struct strbuf fancy = STRBUF_INIT;
 
-	if (!stat_tracking_info(branch, &ours, &theirs)) {
-		if (!branch || !branch->merge || !branch->merge[0]->dst || !show_upstream_ref)
+	if (!show_tracking || !stat_tracking_info(branch, &ours, &theirs)) {
+		if (!branch || !branch->merge || !branch->merge[0]->dst)
 			return;
 		ref = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
 		if (want_color(branch_use_color))
@@ -437,15 +437,13 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 		return;
 	}
 
-	if (show_upstream_ref) {
-		ref = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
-		if (want_color(branch_use_color))
-			strbuf_addf(&fancy, "%s%s%s",
-					branch_get_color(BRANCH_COLOR_UPSTREAM),
-					ref, branch_get_color(BRANCH_COLOR_RESET));
-		else
-			strbuf_addstr(&fancy, ref);
-	}
+	ref = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
+	if (want_color(branch_use_color))
+		strbuf_addf(&fancy, "%s%s%s",
+				branch_get_color(BRANCH_COLOR_UPSTREAM),
+				ref, branch_get_color(BRANCH_COLOR_RESET));
+	else
+		strbuf_addstr(&fancy, ref);
 
 	if (!ours) {
 		if (ref)

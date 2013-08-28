@@ -36,10 +36,10 @@ test_expect_success setup '
 
 script='s/^..\(b.\)[	 0-9a-f]*\[\([^]]*\)\].*/\1 \2/p'
 cat >expect <<\EOF
-b1 ahead 1, behind 1
-b2 ahead 1, behind 1
-b3 behind 1
-b4 ahead 2
+b1 origin/master
+b2 origin/master
+b3 origin/master
+b4 origin/master
 EOF
 
 test_expect_success 'branch -v' '
