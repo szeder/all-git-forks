@@ -5038,8 +5038,11 @@ proc layoutmore {} {
     }
     if {[info exists pending_select] &&
 	[commitinview $pending_select $curview]} {
+	set save_pending_select $pending_select
 	update
-	selectline [rowofcommit $pending_select] 1
+	if {[info exists pending_select] && $pending_select == $save_pending_select} {
+	    selectline [rowofcommit $save_pending_select] 1
+	}
     }
     drawvisible
 }
