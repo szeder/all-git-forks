@@ -417,29 +417,35 @@ static int ref_cmp(const void *r1, const void *r2)
 }
 
 static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
-		int show_upstream_ref)
+		int show_tracking)
 {
 	int ours, theirs;
 	char *ref = NULL;
 	struct branch *branch = branch_get(branch_name);
 	struct strbuf fancy = STRBUF_INIT;
 	int upstream_is_gone = 0;
-	int added_decoration = 1;
 
-	switch (stat_tracking_info(branch, &ours, &theirs)) {
-	case 0:
-		/* no base */
+	if (!branch)
 		return;
-	case -1:
-		/* with "gone" base */
-		upstream_is_gone = 1;
-		break;
-	default:
-		/* with base */
-		break;
+
+	if (show_tracking) {
+		switch (stat_tracking_info(branch, &ours, &theirs)) {
+		case 0:
+			/* no base */
+			return;
+		case -1:
+			/* with "gone" base */
+			upstream_is_gone = 1;
+			break;
+		default:
+			/* with base */
+			break;
+		}
+	} else {
+		ours = theirs = 0;
 	}
 
-	if (show_upstream_ref) {
+	if (branch->merge && branch->merge[0] && branch->merge[0]->dst) {
 		ref = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
 		if (want_color(branch_use_color))
 			strbuf_addf(&fancy, "%s%s%s",
@@ -448,39 +454,23 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 		else
 			strbuf_addstr(&fancy, ref);
 	}
+	if (!fancy.len)
+		return;
 
-	if (upstream_is_gone) {
-		if (show_upstream_ref)
-			strbuf_addf(stat, _("[%s: gone]"), fancy.buf);
-		else
-			added_decoration = 0;
-	} else if (!ours && !theirs) {
-		if (show_upstream_ref)
-			strbuf_addf(stat, _("[%s]"), fancy.buf);
-		else
-			added_decoration = 0;
-	} else if (!ours) {
-		if (show_upstream_ref)
-			strbuf_addf(stat, _("[%s: behind %d]"), fancy.buf, theirs);
-		else
-			strbuf_addf(stat, _("[behind %d]"), theirs);
+	if (upstream_is_gone)
+		strbuf_addf(stat, _("[%s: gone]"), fancy.buf);
+	else if (!ours && !theirs)
+		strbuf_addf(stat, _("[%s]"), fancy.buf);
+	else if (!ours)
+		strbuf_addf(stat, _("[%s: behind %d]"), fancy.buf, theirs);
+	else if (!theirs)
+		strbuf_addf(stat, _("[%s: ahead %d]"), fancy.buf, ours);
+	else
+		strbuf_addf(stat, _("[%s: ahead %d, behind %d]"),
+			    fancy.buf, ours, theirs);
 
-	} else if (!theirs) {
-		if (show_upstream_ref)
-			strbuf_addf(stat, _("[%s: ahead %d]"), fancy.buf, ours);
-		else
-			strbuf_addf(stat, _("[ahead %d]"), ours);
-	} else {
-		if (show_upstream_ref)
-			strbuf_addf(stat, _("[%s: ahead %d, behind %d]"),
-				    fancy.buf, ours, theirs);
-		else
-			strbuf_addf(stat, _("[ahead %d, behind %d]"),
-				    ours, theirs);
-	}
 	strbuf_release(&fancy);
-	if (added_decoration)
-		strbuf_addch(stat, ' ');
+	strbuf_addch(stat, ' ');
 	free(ref);
 }
 
