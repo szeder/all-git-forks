@@ -1,4 +1,4 @@
-From 9256efdfd7407207798ed7b3b3e49914d5ed7a09 Mon Sep 17 00:00:00 2001
+From 5b04a79e6be18738ead10cb98b5577435d58662d Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 17/20] s/entire/extra/ in include-tag

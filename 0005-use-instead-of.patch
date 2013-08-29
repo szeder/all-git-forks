@@ -1,4 +1,4 @@
-From 306fca5cc4fabc94baf21f090885afc44e561c02 Mon Sep 17 00:00:00 2001
+From 45c3fb6a4848ca9a75b8cfa0b47a5be59cf9cd75 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:47:54 +0800
 Subject: [PATCH 05/20] use '/' instead of '|'

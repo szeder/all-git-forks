@@ -1,12 +1,11 @@
-From deb4b0f65b36c460cff9bebb05c61f1843b755db Mon Sep 17 00:00:00 2001
+From f454c01b226eb6d0eae5782ba29b71ec2121aa23 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:25:46 +0800
-Subject: [PATCH 02/20] use spaces instead of tabs
+Subject: [PATCH 02/20] normalize indentation with protcol-common.txt
 
-Client/server queries are indented with 3 spaces, like
-pack-protocol.txt.
+Indent client/server query examples with 3 spaces.
 
-ABNF rules are indented with 2 spaces, again like pack-protocol.txt.
+Indent ABNF rules with 2 spaces.
 ---
  Documentation/technical/http-protocol.txt | 226 +++++++++++++++---------------
  1 file changed, 113 insertions(+), 113 deletions(-)
