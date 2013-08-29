@@ -1186,6 +1186,10 @@ static int git_status_config(const char *k, const char *v, void *cb)
 		s->use_color = git_config_colorbool(k, v);
 		return 0;
 	}
+	if (!strcmp(k, "status.displaycommentchar")) {
+		s->display_comment_char = git_config_bool(k, v);
+		return 0;
+	}
 	if (!prefixcmp(k, "status.color.") || !prefixcmp(k, "color.status.")) {
 		int slot = parse_status_slot(k, 13);
 		if (slot < 0)
@@ -1499,6 +1503,11 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	gitmodules_config();
 	git_config(git_commit_config, &s);
 	status_format = STATUS_FORMAT_NONE; /* Ignore status.short */
+	/*
+	 * Ignore status.displayCommentChar: we do need comments in
+	 * COMMIT_EDITMSG.
+	 */
+	s.display_comment_char = 1;
 	determine_whence(&s);
 	s.colopts = 0;
 
