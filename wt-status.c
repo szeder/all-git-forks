@@ -710,9 +710,8 @@ static void wt_status_print_submodule_summary(struct wt_status *s, int uncommitt
 	strbuf_add_commented_lines(&summary, summary_content, len);
 	free(summary_content);
 
-	summary_content = strbuf_detach(&summary, &len);
-	fprintf(s->fp, summary_content);
-	free(summary_content);
+	fputs(summary.buf, s->fp);
+	strbuf_release(&summary);
 }
 
 static void wt_status_print_other(struct wt_status *s,
