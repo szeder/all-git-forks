@@ -1,4 +1,4 @@
-From 048b20807ff8fd894dda7cddda89632014ac2690 Mon Sep 17 00:00:00 2001
+From 451a821e4e534ff5eee0bb32c23484fe60737959 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Nguy=E1=BB=85n=20Th=C3=A1i=20Ng=E1=BB=8Dc=20Duy?=
  <pclouds@gmail.com>
 Date: Wed, 21 Aug 2013 20:45:13 +0700
@@ -9,7 +9,7 @@ Subject: [PATCH 18/19] nguyen's changes
  1 file changed, 4 insertions(+), 23 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index de99f46..4e8d2a8 100644
+index 419ef9c..531b189 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -315,7 +315,8 @@ Servers SHOULD support all capabilities defined here.
@@ -21,7 +21,7 @@ index de99f46..4e8d2a8 100644
 +server advertises capability "allow-tip-sha1-in-want".
  
    compute_request  =  want_list
-                       have_list
+ 		      have_list
 @@ -330,31 +331,9 @@ appear in the response obtained through ref discovery.
  
    have_list        =  *PKT-LINE("have" SP id LF)

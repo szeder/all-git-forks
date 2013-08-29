@@ -1,40 +1,34 @@
-From 1b3bce1259e1d00802de1665f1e4712e2a23f7ae Mon Sep 17 00:00:00 2001
+From fb74be9f07f0d0f6a34ab14140cc70b5ee58af36 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
-Date: Wed, 28 Aug 2013 12:09:54 +0800
-Subject: [PATCH 04/19] use common rules
+Date: Thu, 29 Aug 2013 17:41:56 +0800
+Subject: [PATCH 05/19] reference rules from protocol-common.txt
 
- - LF, SP are all defined in RFC 5234 - don't define them again.
- - use HTAB instead of HT - HTAB is another common rule.
- - use obj-id, zero-id, refname - they are defined in protocol-common.txt.
 ---
- Documentation/technical/http-protocol.txt | 36 +++++++++++--------------------
- 1 file changed, 12 insertions(+), 24 deletions(-)
+ Documentation/technical/http-protocol.txt | 28 ++++++++++++----------------
+ 1 file changed, 12 insertions(+), 16 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 55753bb..5aa4fd9 100644
+index ff91bb0..2499dda 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -194,14 +194,9 @@ the default ref named 'HEAD'.
+@@ -194,11 +194,9 @@ the default ref named 'HEAD'.
    info_refs        =  *( ref_record )
-   ref_record       =  any_ref | peeled_ref
+   ref_record       =  any_ref / peeled_ref
  
--  any_ref          =  id HT name LF
--  peeled_ref       =  id HT name LF
--		      id HT name "^{}" LF
+-  any_ref          =  id HTAB name LF
+-  peeled_ref       =  id HTAB name LF
+-		      id HTAB name "^{}" LF
 -  id               =  40*HEX
 -
--  HEX              =  "0".."9" | "a".."f"
--  LF               =  <US-ASCII LF, linefeed (10)>
--  HT               =  <US-ASCII HT, horizontal-tab (9)>
 +  any_ref          =  obj-id HTAB refname LF
 +  peeled_ref       =  obj-id HTAB refname LF
 +		      obj-id HTAB refname "^{}" LF
  
  Smart Clients
  ~~~~~~~~~~~~~
-@@ -290,24 +285,17 @@ declarations behind a NUL on the first ref.
+@@ -287,19 +285,17 @@ declarations behind a NUL on the first ref.
  		      "0000"
-   ref_list         =  empty_list | non_empty_list
+   ref_list         =  empty_list / non_empty_list
  
 -  empty_list       =  PKT-LINE(id SP "capabilities^{}" NUL cap_list LF)
 +  empty_list       =  PKT-LINE(obj-id SP "capabilities^{}" NUL cap_list LF)
@@ -44,17 +38,12 @@ index 55753bb..5aa4fd9 100644
  		      *ref_record
  
    cap_list         =  *(SP capability) SP
-   ref_record       =  any_ref | peeled_ref
+   ref_record       =  any_ref / peeled_ref
  
 -  any_ref          =  PKT-LINE(id SP name LF)
 -  peeled_ref       =  PKT-LINE(id SP name LF)
 -		      PKT-LINE(id SP name "^{}" LF
 -  id               =  40*HEX
--
--  HEX              =  "0".."9" | "a".."f"
--  NL               =  <US-ASCII NUL, null (0)>
--  LF               =  <US-ASCII LF,  linefeed (10)>
--  SP               =  <US-ASCII SP,  horizontal-tab (9)>
 -
 +  any_ref          =  PKT-LINE(obj-id SP name LF)
 +  peeled_ref       =  PKT-LINE(obj-id SP name LF)
@@ -62,10 +51,10 @@ index 55753bb..5aa4fd9 100644
  
  Smart Service git-upload-pack
  ------------------------------
-@@ -354,8 +342,8 @@ appear in the response obtained through ref discovery.
+@@ -346,8 +342,8 @@ appear in the response obtained through ref discovery.
    have_list        =  *PKT-LINE("have" SP id LF)
  
-   command          =  create | delete | update
+   command          =  create / delete / update
 -  create           =  40*"0" SP new_id SP name
 -  delete           =  old_id SP 40*"0" SP name
 +  create           =  zero-id SP new_id SP name
@@ -73,10 +62,10 @@ index 55753bb..5aa4fd9 100644
    update           =  old_id SP new_id SP name
  
  TODO: Document this further.
-@@ -531,8 +519,8 @@ the id obtained through ref discovery as old_id.
+@@ -523,8 +519,8 @@ the id obtained through ref discovery as old_id.
    cap_list         =  *(SP capability) SP
  
-   command          =  create | delete | update
+   command          =  create / delete / update
 -  create           =  40*"0" SP new_id SP name
 -  delete           =  old_id SP 40*"0" SP name
 +  create           =  zero-id SP new_id SP name

@@ -1,4 +1,4 @@
-From 20e0f71baf02d100f181447ae96b36b8e46555e6 Mon Sep 17 00:00:00 2001
+From 2b280aa7797d64f066850f25cfceb5419aa8b203 Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 11/19] reword dumb client info/refs para
@@ -44,7 +44,7 @@ Based on:
  1 file changed, 2 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 7eea26a..31f45c4 100644
+index 97de717..958a98b 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -148,9 +148,8 @@ HTTP clients that only support the "dumb" protocol MUST discover

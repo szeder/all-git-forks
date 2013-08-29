@@ -1,4 +1,4 @@
-From d1c18faccaa8c31a54cd15238d28ea7838dd1593 Mon Sep 17 00:00:00 2001
+From d4583a4a64b6743f1660bb97e83d17d6c449a32d Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 28 Aug 2013 16:55:22 +0800
 Subject: [PATCH 19/19] mention possible contradicton in exactly-one-param
@@ -9,7 +9,7 @@ Subject: [PATCH 19/19] mention possible contradicton in exactly-one-param
  1 file changed, 5 insertions(+)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 4e8d2a8..815f17f 100644
+index 531b189..b3a836b 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -174,6 +174,11 @@ The request MUST contain exactly one query parameter,

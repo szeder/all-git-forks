@@ -1,4 +1,4 @@
-From 5a94f4b77cd471e65715bb5dfbc66c5ec01ce5c4 Mon Sep 17 00:00:00 2001
+From e6f48618475d6abb175f028bad1bcb3711498eb9 Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 16/19] s/entire/extra/ in include-tag
@@ -26,7 +26,7 @@ Based on:
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index f684611..3ae1c65 100644
+index 630462a..2c332e0 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -347,7 +347,7 @@ Capability include-tag
