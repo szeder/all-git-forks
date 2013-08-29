@@ -1,9 +1,8 @@
-From 1d6c1394040e26ceaf99fa880e5d6f81ae5eb56e Mon Sep 17 00:00:00 2001
+From ed01e82736f538f91863315038b6831f0dca1b56 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:28:01 +0800
-Subject: [PATCH 03/20] fix casing
+Subject: [PATCH 03/20] capitalize key words according to RFC 2119
 
-use MUST, MUST NOT, MAY, SHOULD.
 ---
  Documentation/technical/http-protocol.txt | 17 +++++++++++------
  1 file changed, 11 insertions(+), 6 deletions(-)
