@@ -1,7 +1,7 @@
-From f454c01b226eb6d0eae5782ba29b71ec2121aa23 Mon Sep 17 00:00:00 2001
+From 731724cd16b4ec86861f53db76c7f0f22c5d0661 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:25:46 +0800
-Subject: [PATCH 02/20] normalize indentation with protcol-common.txt
+Subject: [PATCH 02/19] normalize indentation with protcol-common.txt
 
 Indent client/server query examples with 3 spaces.
 
@@ -11,7 +11,7 @@ Indent ABNF rules with 2 spaces.
  1 file changed, 113 insertions(+), 113 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index fa1c18f..ae6aa75 100644
+index 0a2a53d..70a1648 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -161,14 +161,14 @@ Dumb HTTP clients MUST NOT include search/query parameters when
@@ -117,11 +117,11 @@ index fa1c18f..ae6aa75 100644
 -	smart_reply    = PKT-LINE("# service=$servicename" LF)
 -	                 ref_list
 -	                 "0000"
--	ref_list       = empty_list | populated_list
+-	ref_list       = empty_list | non_empty_list
 +  smart_reply      =  PKT-LINE("# service=$servicename" LF)
 +		      ref_list
 +		      "0000"
-+  ref_list         =  empty_list | populated_list
++  ref_list         =  empty_list | non_empty_list
  
 -	empty_list     = PKT-LINE(id SP "capabilities^{}" NUL cap_list LF)
 +  empty_list       =  PKT-LINE(id SP "capabilities^{}" NUL cap_list LF)

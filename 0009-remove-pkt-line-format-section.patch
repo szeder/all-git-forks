@@ -1,7 +1,7 @@
-From 906061a92315193c6b424a72d610a6c603ead332 Mon Sep 17 00:00:00 2001
+From 05f61f5db6fd20efa2d3d9d10888502bef0d6272 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 21:08:46 +0800
-Subject: [PATCH 09/20] remove pkt-line format section
+Subject: [PATCH 09/19] remove pkt-line format section
 
 This is already available in protocol-common.txt.
 
@@ -11,7 +11,7 @@ In response to <7vskdss3ei.fsf@alter.siamese.dyndns.org>.
  1 file changed, 28 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index c02dcdc..9e43a58 100644
+index a89e030..7eed6b2 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -84,34 +84,6 @@ as described by RFC 2616 (HTTP/1.1).  Servers SHOULD ignore any

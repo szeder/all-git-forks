@@ -1,7 +1,7 @@
-From 222531ae6543ec6660cd7364638569beb4fda783 Mon Sep 17 00:00:00 2001
+From 1b3bce1259e1d00802de1665f1e4712e2a23f7ae Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 28 Aug 2013 12:09:54 +0800
-Subject: [PATCH 04/20] use common rules
+Subject: [PATCH 04/19] use common rules
 
  - LF, SP are all defined in RFC 5234 - don't define them again.
  - use HTAB instead of HT - HTAB is another common rule.
@@ -11,7 +11,7 @@ Subject: [PATCH 04/20] use common rules
  1 file changed, 12 insertions(+), 24 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index ffc46a3..4c3e32a 100644
+index 55753bb..5aa4fd9 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -194,14 +194,9 @@ the default ref named 'HEAD'.
@@ -34,7 +34,7 @@ index ffc46a3..4c3e32a 100644
  ~~~~~~~~~~~~~
 @@ -290,24 +285,17 @@ declarations behind a NUL on the first ref.
  		      "0000"
-   ref_list         =  empty_list | populated_list
+   ref_list         =  empty_list | non_empty_list
  
 -  empty_list       =  PKT-LINE(id SP "capabilities^{}" NUL cap_list LF)
 +  empty_list       =  PKT-LINE(obj-id SP "capabilities^{}" NUL cap_list LF)

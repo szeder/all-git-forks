@@ -1,28 +1,16 @@
-From 76869da2a59c5ae5cef83246378e5c0229fcead2 Mon Sep 17 00:00:00 2001
+From b7cec62401dff0768b53dcca707cdedec51d7958 Mon Sep 17 00:00:00 2001
 From: "Shawn O. Pearce" <spearce@spearce.org>
 Date: Thu, 8 Oct 2009 22:22:45 -0700
-Subject: [PATCH 01/20] Document the HTTP transport protocol
+Subject: [PATCH 01/19] Document the HTTP transport protocol
 
 Signed-off-by: Shawn O. Pearce <spearce@spearce.org>
 
 ---
 
-Changed by Tay Ray Chuan:
+Changes:
  - fix mis-spelling 'paramterized'
-
-Changed by Junio C Hamano:
- - fix mis-spelling 'mangement'; according to
-
-   Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
-
-   > +Session State
-   > +-------------
-   > ...
-   > +retained and managed by the client process.  This permits simple
-   > +round-robin load-balancing on the server side, without needing to
-   > +worry about state mangement.
-
-   s/mangement/management/;
+ - fix mis-spelling 'mangement' (spotted by Junio)
+ - fix missing ABNF reference for smart replies (spotted by Sverre, Junio)
 ---
  Documentation/technical/http-protocol.txt | 542 ++++++++++++++++++++++++++++++
  1 file changed, 542 insertions(+)
@@ -30,7 +18,7 @@ Changed by Junio C Hamano:
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
 new file mode 100644
-index 0000000..fa1c18f
+index 0000000..0a2a53d
 --- /dev/null
 +++ b/Documentation/technical/http-protocol.txt
 @@ -0,0 +1,542 @@
@@ -320,7 +308,7 @@ index 0000000..fa1c18f
 +	smart_reply    = PKT-LINE("# service=$servicename" LF)
 +	                 ref_list
 +	                 "0000"
-+	ref_list       = empty_list | populated_list
++	ref_list       = empty_list | non_empty_list
 +
 +	empty_list     = PKT-LINE(id SP "capabilities^{}" NUL cap_list LF)
 +
