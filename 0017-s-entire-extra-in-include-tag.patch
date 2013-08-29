@@ -1,7 +1,7 @@
-From adad99adc1017667a7f99af99dbe7c4462c57481 Mon Sep 17 00:00:00 2001
+From 9256efdfd7407207798ed7b3b3e49914d5ed7a09 Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
-Subject: [PATCH 19/22] s/entire/extra/ in include-tag
+Subject: [PATCH 17/20] s/entire/extra/ in include-tag
 
 ---
 

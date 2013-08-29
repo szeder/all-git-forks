@@ -1,9 +1,28 @@
-From 18665670e904513606483aad22d54e3538b13760 Mon Sep 17 00:00:00 2001
+From 76869da2a59c5ae5cef83246378e5c0229fcead2 Mon Sep 17 00:00:00 2001
 From: "Shawn O. Pearce" <spearce@spearce.org>
 Date: Thu, 8 Oct 2009 22:22:45 -0700
-Subject: [PATCH 01/22] Document the HTTP transport protocol
+Subject: [PATCH 01/20] Document the HTTP transport protocol
 
 Signed-off-by: Shawn O. Pearce <spearce@spearce.org>
+
+---
+
+Changed by Tay Ray Chuan:
+ - fix mis-spelling 'paramterized'
+
+Changed by Junio C Hamano:
+ - fix mis-spelling 'mangement'; according to
+
+   Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
+
+   > +Session State
+   > +-------------
+   > ...
+   > +retained and managed by the client process.  This permits simple
+   > +round-robin load-balancing on the server side, without needing to
+   > +worry about state mangement.
+
+   s/mangement/management/;
 ---
  Documentation/technical/http-protocol.txt | 542 ++++++++++++++++++++++++++++++
  1 file changed, 542 insertions(+)
@@ -11,7 +30,7 @@ Signed-off-by: Shawn O. Pearce <spearce@spearce.org>
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
 new file mode 100644
-index 0000000..316d9b6
+index 0000000..fa1c18f
 --- /dev/null
 +++ b/Documentation/technical/http-protocol.txt
 @@ -0,0 +1,542 @@
@@ -86,7 +105,7 @@ index 0000000..316d9b6
 +from the perspective of the HTTP server side.  All state must be
 +retained and managed by the client process.  This permits simple
 +round-robin load-balancing on the server side, without needing to
-+worry about state mangement.
++worry about state management.
 +
 +Clients MUST NOT require state management on the server side in
 +order to function correctly.
@@ -221,7 +240,7 @@ index 0000000..316d9b6
 +
 +HTTP clients that support the "smart" protocol (or both the
 +"smart" and "dumb" protocols) MUST discover references by making
-+a paramterized request for the info/refs file of the repository.
++a parameterized request for the info/refs file of the repository.
 +
 +The request MUST contain exactly one query parameter,
 +'service=$servicename', where $servicename MUST be the service

@@ -1,7 +1,7 @@
-From 22a773c0fcabd6ccc4fb88d23e4dc662a2d01f8f Mon Sep 17 00:00:00 2001
+From 17c1b0027d38a81aa471403246883483a32733d9 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:17:09 +0800
-Subject: [PATCH 15/22] also mention missing objects
+Subject: [PATCH 13/20] also mention missing objects
 
 Junio's suggested text was not used, but the issue (no object found) was
 addressed.

@@ -1,7 +1,7 @@
-From 33b4e3be42e2fbff251e69dc5e3e4c7cb68baf7e Mon Sep 17 00:00:00 2001
+From 7736a19b5fa53f58398fc0ed92bf0470a7f95167 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 28 Aug 2013 16:55:22 +0800
-Subject: [PATCH 22/22] mention possible contradicton in exactly-one-param
+Subject: [PATCH 20/20] mention possible contradicton in exactly-one-param
  requirement
 
 ---

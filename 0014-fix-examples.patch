@@ -1,7 +1,7 @@
-From ff26488ebf6383ca55520d1f923a9642380d32bf Mon Sep 17 00:00:00 2001
+From 0e7d64d142446bb777eed76590a8b9e09e074463 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:40:24 +0800
-Subject: [PATCH 16/22] fix examples
+Subject: [PATCH 14/20] fix examples
 
  - add LF for responses
  - add pkt-line lengths for smart

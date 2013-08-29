@@ -1,7 +1,7 @@
-From 3ed73b618c9f90b224180903c9c5809a7a66c694 Mon Sep 17 00:00:00 2001
+From 2a1507442af5a40bf7a2628a0665edaae0b84bac Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:28:01 +0800
-Subject: [PATCH 04/22] fix casing
+Subject: [PATCH 03/20] fix casing
 
 use MUST, MUST NOT, MAY, SHOULD.
 ---
@@ -9,7 +9,7 @@ use MUST, MUST NOT, MAY, SHOULD.
  1 file changed, 11 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index b047370..22d215e 100644
+index ae6aa75..ffc46a3 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -11,6 +11,10 @@ protocol URLs to smart URLs.  This permits all users to have the
@@ -40,7 +40,7 @@ index b047370..22d215e 100644
 +from the perspective of the HTTP server side.  All state MUST be
  retained and managed by the client process.  This permits simple
  round-robin load-balancing on the server side, without needing to
- worry about state mangement.
+ worry about state management.
 @@ -158,7 +162,7 @@ references by making a request for the special info/refs file of
  the repository.
  

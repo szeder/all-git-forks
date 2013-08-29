@@ -1,8 +1,8 @@
-From d929408ec4874af250635c212011efc28d44bab6 Mon Sep 17 00:00:00 2001
+From f02206f80545947db11d405007edb805addb61ee Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Nguy=E1=BB=85n=20Th=C3=A1i=20Ng=E1=BB=8Dc=20Duy?=
  <pclouds@gmail.com>
 Date: Wed, 21 Aug 2013 20:45:13 +0700
-Subject: [PATCH 21/22] nguyen's changes
+Subject: [PATCH 19/20] nguyen's changes
 
 ---
  Documentation/technical/http-protocol.txt | 27 ++++-----------------------
