@@ -263,4 +263,23 @@ test_expect_success 'not just commits' '
 	test_cmp file.replaced file
 '
 
+test_expect_success 'replaced and replacement objects must be of the same type' '
+	test_must_fail git replace mytag $HASH1 2>err &&
+	grep "mytag. points to a replaced object of type .tag" err &&
+	grep "$HASH1. points to a replacement object of type .commit" err &&
+	test_must_fail git replace HEAD^{tree} HEAD~1 2>err &&
+	grep "HEAD^{tree}. points to a replaced object of type .tree" err &&
+	grep "HEAD~1. points to a replacement object of type .commit" err &&
+	BLOB=$(git rev-parse :file) &&
+	test_must_fail git replace HEAD^ $BLOB 2>err &&
+	grep "HEAD^. points to a replaced object of type .commit" err &&
+	grep "$BLOB. points to a replacement object of type .blob" err
+'
+
+test_expect_success 'replace ref cleanup' '
+	test -n "$(git replace)" &&
+	git replace -d $(git replace) &&
+	test -z "$(git replace)"
+'
+
 test_done
