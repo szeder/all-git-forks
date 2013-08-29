@@ -110,7 +110,7 @@ static void remove_redundant_pack(const char *path_prefix, const char *hex)
 }
 
 #define ALL_INTO_ONE 1
-#define LOOSE_UNREACHABLE 2
+#define LOOSEN_UNREACHABLE 2
 
 int cmd_repack(int argc, const char **argv, const char *prefix)
 {
@@ -141,7 +141,8 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 		OPT_BIT('a', NULL, &pack_everything,
 				N_("pack everything in a single pack"), ALL_INTO_ONE),
 		OPT_BIT('A', NULL, &pack_everything,
-				N_("same as -a, and turn unreachable objects loose"), LOOSE_UNREACHABLE),
+				N_("same as -a, and turn unreachable objects loose"),
+				   LOOSEN_UNREACHABLE),
 		OPT_BOOL('d', NULL, &delete_redundant,
 				N_("remove redundant packs, and run git-prune-packed")),
 		OPT_BOOL('f', NULL, &no_reuse_delta,
@@ -206,7 +207,7 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 				argv_array_pushf(&cmd_args,
 						"--unpack-unreachable=%s",
 						unpack_unreachable);
-			else if (pack_everything & LOOSE_UNREACHABLE)
+			else if (pack_everything & LOOSEN_UNREACHABLE)
 				argv_array_push(&cmd_args,
 						"--unpack-unreachable");
 		}
