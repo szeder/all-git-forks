@@ -214,6 +214,20 @@ int update_ref(const char *action, const char *refname,
 		const unsigned char *sha1, const unsigned char *oldval,
 		int flags, enum action_on_err onerr);
 
+struct ref_update {
+	const char *ref_name;
+	unsigned char new_sha1[20];
+	unsigned char old_sha1[20];
+	int flags;
+	int have_old;
+};
+
+/**
+ * Lock all refs and then perform all modifications.
+ */
+int update_refs(const char *action, const struct ref_update *updates,
+		int n, enum action_on_err onerr);
+
 extern int parse_hide_refs_config(const char *var, const char *value, const char *);
 extern int ref_is_hidden(const char *);
 

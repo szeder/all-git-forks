@@ -3238,6 +3238,129 @@ int update_ref(const char *action, const char *refname,
 	return update_ref_write(action, refname, sha1, lock, onerr);
 }
 
+static int ref_update_compare(const void *r1, const void *r2)
+{
+	struct ref_update *u1 = (struct ref_update *)(r1);
+	struct ref_update *u2 = (struct ref_update *)(r2);
+	int ret;
+
+	ret = strcmp(u1->ref_name, u2->ref_name);
+	if (ret)
+		return ret;
+	ret = hashcmp(u1->new_sha1, u2->new_sha1);
+	if (ret)
+		return ret;
+	ret = hashcmp(u1->old_sha1, u2->old_sha1);
+	if (ret)
+		return ret;
+	ret = u1->flags - u2->flags;
+	if (ret)
+		return ret;
+	return u1->have_old - u2->have_old;
+}
+
+static int ref_update_reject_duplicates(struct ref_update *updates, int n,
+					enum action_on_err onerr)
+{
+	int i;
+
+	for (i = 1; i < n; i++)
+		if (!strcmp(updates[i - 1].ref_name, updates[i].ref_name))
+			break;
+	if (i < n) {
+		const char *str = "Multiple updates for ref '%s' not allowed.";
+		switch (onerr) {
+		case MSG_ON_ERR: error(str, updates[i].ref_name); break;
+		case DIE_ON_ERR: die(str, updates[i].ref_name); break;
+		case QUIET_ON_ERR: break;
+		}
+		return 1;
+	}
+	return 0;
+}
+
+int update_refs(const char *action, const struct ref_update *updates_orig,
+		int n, enum action_on_err onerr)
+{
+	int ret = 0, delnum = 0, i;
+	struct ref_update *updates;
+	int *types;
+	struct ref_lock **locks;
+	const char **delnames;
+
+	if (!updates_orig || !n)
+		return 0;
+
+	/* Allocate work space */
+	updates = xmalloc(sizeof(struct ref_update) * n);
+	types = xmalloc(sizeof(int) * n);
+	locks = xmalloc(sizeof(struct ref_lock *) * n);
+	delnames = xmalloc(sizeof(const char *) * n);
+
+	/* Copy, sort, and reject duplicate refs */
+	memcpy(updates, updates_orig, sizeof(struct ref_update) * n);
+	qsort(updates, n, sizeof(struct ref_update), ref_update_compare);
+	if (ref_update_reject_duplicates(updates, n, onerr)) {
+		free(updates);
+		free(types);
+		free(locks);
+		free(delnames);
+		return 1;
+	}
+
+	/* Acquire all locks while verifying old values */
+	for (i = 0; i < n; i++) {
+		locks[i] = update_ref_lock(updates[i].ref_name,
+					   (updates[i].have_old ?
+					    updates[i].old_sha1 : NULL),
+					   updates[i].flags,
+					   &types[i], onerr);
+		if (!locks[i])
+			break;
+	}
+
+	/* Abort if we did not get all locks */
+	if (i < n) {
+		while (--i >= 0)
+			unlock_ref(locks[i]);
+		free(updates);
+		free(types);
+		free(locks);
+		free(delnames);
+		return 1;
+	}
+
+	/* Perform updates first so live commits remain referenced */
+	for (i = 0; i < n; i++)
+		if (!is_null_sha1(updates[i].new_sha1)) {
+			ret |= update_ref_write(action,
+						updates[i].ref_name,
+						updates[i].new_sha1,
+						locks[i], onerr);
+			locks[i] = NULL; /* freed by update_ref_write */
+		}
+
+	/* Perform deletes now that updates are safely completed */
+	for (i = 0; i < n; i++)
+		if (locks[i]) {
+			delnames[delnum++] = locks[i]->ref_name;
+			ret |= delete_ref_loose(locks[i], types[i]);
+		}
+	ret |= repack_without_refs(delnames, delnum);
+	for (i = 0; i < delnum; i++)
+		unlink_or_warn(git_path("logs/%s", delnames[i]));
+	clear_loose_ref_cache(&ref_cache);
+	for (i = 0; i < n; i++)
+		if (locks[i])
+			unlock_ref(locks[i]);
+
+	free(updates);
+	free(types);
+	free(locks);
+	free(delnames);
+	return ret;
+}
+
 struct ref *find_ref_by_name(const struct ref *list, const char *name)
 {
 	for ( ; list; list = list->next)
