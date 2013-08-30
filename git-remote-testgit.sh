@@ -38,6 +38,7 @@ do
 			echo "*export-marks $gitmarks"
 		fi
 		test -n "$GIT_REMOTE_TESTGIT_SIGNED_TAGS" && echo "signed-tags"
+		test -n "$GIT_REMOTE_TESTGIT_DONT_UPDATE_PRIVATE" && echo "dont-update-private"
 		echo
 		;;
 	list)
