@@ -1369,6 +1369,10 @@ static int git_index_pack_config(const char *k, const char *v, void *cb)
 #endif
 		return 0;
 	}
+	if (!strcmp(k, "pack.indexduplicates")) {
+		opts->allow_duplicates = git_config_bool(k, v);
+		return 0;
+	}
 	return git_default_config(k, v, cb);
 }
 
