@@ -2450,14 +2450,9 @@ static int repack_without_ref(const char *refname)
 	return commit_packed_refs();
 }
 
-int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
+static int delete_ref_loose(struct ref_lock *lock, int flag)
 {
-	struct ref_lock *lock;
-	int err, i = 0, ret = 0, flag = 0;
-
-	lock = lock_ref_sha1_basic(refname, sha1, delopt, &flag);
-	if (!lock)
-		return 1;
+	int err, i, ret = 0;
 	if (!(flag & REF_ISPACKED) || flag & REF_ISSYMREF) {
 		/* loose */
 		i = strlen(lock->lk->filename) - 5; /* .lock */
@@ -2468,6 +2463,19 @@ int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
 
 		lock->lk->filename[i] = '.';
 	}
+	return ret;
+}
+
+int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
+{
+	struct ref_lock *lock;
+	int ret = 0, flag = 0;
+
+	lock = lock_ref_sha1_basic(refname, sha1, delopt, &flag);
+	if (!lock)
+		return 1;
+	ret |= delete_ref_loose(lock, flag);
+
 	/* removing the loose one could have resurrected an earlier
 	 * packed one.  Also, if it was not loose we need to repack
 	 * without it.
