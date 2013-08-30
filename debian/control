@@ -26,7 +26,7 @@ Depends: ${shlibs:Depends}, perl-modules, liberror-perl,
 Recommends: patch, less, rsync, ssh-client
 Suggests: gettext-base, git-daemon-run | git-daemon-sysvinit,
  git-doc, git-el, git-email, git-gui, gitk, gitweb,
- git-arch, git-bzr, git-cvs, git-svn
+ git-arch, git-bzr, git-cvs, git-mediawiki, git-svn
 Replaces: gitweb (<< 1:1.7.4~rc1),
  git-core (<< 1:1.7.0.4-1.)
 Breaks: bash-completion (<< 1:1.90-1), gitweb (<< 1:1.7.4~rc1),
@@ -191,6 +191,27 @@ Description: fast, scalable, distributed revision control system (svn interopera
  .
  This package provides tools for interoperating with Subversion repositories,
  and importing SVN development history.
+
+Package: git-mediawiki
+Architecture: all
+Multi-Arch: foreign
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.),
+ libmediawiki-api-perl (>= 0.39), liblwp-protocol-https-perl, libdatetime-format-iso8601-perl
+Suggests: mediawiki
+Description: fast, scalable, distributed revision control system (MediaWiki interoperability)
+ Git is popular version control system designed to handle very large
+ projects with speed and efficiency; it is used for many high profile
+ open source projects, most notably the Linux kernel.
+ .
+ Git falls in the category of distributed source code management tools.
+ Every Git working directory is a full-fledged repository with full
+ revision tracking capabilities, not dependent on network access or a
+ central server.
+ .
+ This package provides the mediawiki remote helper, which allows Git to
+ read from and write to a wiki such as Wikipedia as though it were a
+ remote Git repository, and a 'git mw' command that can show a preview
+ of how wiki markup will be rendered before pushing.
 
 Package: git-email
 Architecture: all
@@ -357,7 +378,8 @@ Package: git-all
 Architecture: all
 Multi-Arch: foreign
 Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.),
- git-doc, git-el, git-arch, git-cvs, git-svn, git-email, git-gui, gitk, gitweb
+ git-doc, git-el, git-arch, git-cvs, git-mediawiki, git-svn,
+ git-email, git-gui, gitk, gitweb
 Recommends: git-bzr, git-daemon-run | git-daemon-sysvinit
 Description: fast, scalable, distributed revision control system (all subpackages)
  Git is popular version control system designed to handle very large

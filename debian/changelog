@@ -2,6 +2,20 @@ git (1:1.8.5~rc1-0.1) experimental; urgency=low
 
   * new upstream release candidate.
 
+  [ Thorsten Glaser ]
+  * package mw-to-git (closes: #718395).
+    * debian/control: new package git-mediawiki; Depends:
+      libmediawiki-api-perl (>= 0.39), liblwp-protocol-https-perl,
+      libdatetime-format-iso8601-perl; package git now Suggests
+      and git-all Depends: git-mediawiki.
+    * debian/rules: build and install Git::Mediawiki perl module,
+      mediawiki remote helper, and 'git mw' command in
+      git-mediawiki package.
+    * debian/diff/0010-git-remote-mediawiki-do-not-remove-...diff:
+      new from upstream: mw-to-git: do not remove installed files
+      in "clean" target.
+    * debian/git-mediawiki.docs: install git-remote-mediawiki.txt.
+
   [ Anders Kaseorg ]
   * debian/diff/0003-transport-expose-git_tcp_connect-...diff:
     include tcp.h before using tcp functions (closes: #728508).
