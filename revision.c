@@ -1984,6 +1984,9 @@ static int handle_revision_pseudo_opt(const char *submodule,
 		handle_reflog(revs, *flags);
 	} else if (!strcmp(arg, "--not")) {
 		*flags ^= UNINTERESTING | BOTTOM;
+		*flags &= ~SKIP;
+	} else if (!strcmp(arg, "--except")) {
+		*flags |= SKIP;
 	} else if (!strcmp(arg, "--no-walk")) {
 		revs->no_walk = REVISION_WALK_NO_WALK_SORTED;
 	} else if (!prefixcmp(arg, "--no-walk=")) {
@@ -2573,24 +2576,73 @@ void reset_revision_walk(void)
 	clear_object_flags(SEEN | ADDED | SHOWN);
 }
 
+static int refcmp(const char *a, const char *b)
+{
+	a = prettify_refname(a);
+	if (*a == '^')
+		a++;
+	b = prettify_refname(b);
+	if (*b == '^')
+		b++;
+	return strcmp(a, b);
+}
+
+static int recalculate_flag(struct rev_info *revs, unsigned char *sha1, const char *name)
+{
+	int flags = 0;
+	int i;
+	for (i = 0; i < revs->cmdline.nr; i++) {
+		struct object *object;
+		struct rev_cmdline_entry *ce;
+		ce = &revs->cmdline.rev[i];
+		object = ce->item;
+		while (object->type == OBJ_TAG) {
+			struct tag *tag = (struct tag *) object;
+			if (!tag->tagged)
+				continue;
+			object = parse_object(tag->tagged->sha1);
+			if (!object)
+				continue;
+		}
+		if (hashcmp(object->sha1, sha1))
+			continue;
+		if (!strcmp(ce->name, name))
+			continue;
+		flags |= ce->flags;
+	}
+	return flags;
+}
+
 int prepare_revision_walk(struct rev_info *revs)
 {
 	int nr = revs->pending.nr;
 	struct object_array_entry *e, *list;
 	struct commit_list **next = &revs->commits;
+	int i;
 
 	e = list = revs->pending.objects;
 	revs->pending.nr = 0;
 	revs->pending.alloc = 0;
 	revs->pending.objects = NULL;
 	while (--nr >= 0) {
-		struct commit *commit = handle_commit(revs, e->item, e->name);
+		struct commit *commit;
+		for (i = 0; i < revs->cmdline.nr; i++) {
+			struct rev_cmdline_entry *ce;
+			ce = &revs->cmdline.rev[i];
+			if ((ce->flags & SKIP) && !refcmp(ce->name, e->name) &&
+					((ce->flags & UNINTERESTING) == (e->item->flags & UNINTERESTING))) {
+				e->item->flags = recalculate_flag(revs, e->item->sha1, ce->name);
+				goto next;
+			}
+		}
+		commit = handle_commit(revs, e->item, e->name);
 		if (commit) {
 			if (!(commit->object.flags & SEEN)) {
 				commit->object.flags |= SEEN;
 				next = commit_list_append(commit, next);
 			}
 		}
+next:
 		e++;
 	}
 	if (!revs->leak_pending)
