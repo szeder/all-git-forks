@@ -1386,7 +1386,7 @@ _git_ls_tree ()
 
 # Options that go well for log, shortlog and gitk
 __git_log_common_options="
-	--not --all
+	--not --except --all
 	--branches --tags --remotes
 	--first-parent --merges --no-merges
 	--max-count=

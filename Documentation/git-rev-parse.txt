@@ -136,6 +136,12 @@ can be used.
 	abbreviate them to a shorter unique name. When no length is specified
 	7 is used. The minimum length is 4.
 
+--except::
+	Skip the following object names. For example:
+	'--branches --except master' will show all the branches, except master.
+	This differs from --not in that --except will still show the object, if
+	they are referenced by another object name.
+
 --symbolic::
 	Usually the object names are output in SHA-1 form (with
 	possible '{caret}' prefix); this option makes them output in a
