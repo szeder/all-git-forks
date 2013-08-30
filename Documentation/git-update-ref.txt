@@ -8,7 +8,7 @@ git-update-ref - Update the object name stored in a ref safely
 SYNOPSIS
 --------
 [verse]
-'git update-ref' [-m <reason>] (-d <ref> [<oldvalue>] | [--no-deref] <ref> <newvalue> [<oldvalue>])
+'git update-ref' [-m <reason>] (-d <ref> [<oldvalue>] | [--no-deref] <ref> <newvalue> [<oldvalue>] | --stdin)
 
 DESCRIPTION
 -----------
@@ -58,6 +58,25 @@ archive by creating a symlink tree).
 With `-d` flag, it deletes the named <ref> after verifying it
 still contains <oldvalue>.
 
+With `--stdin`, update-ref reads instructions from standard input and
+performs all modifications together.  Empty lines are ignored.
+Each non-empty line is parsed as whitespace-separated arguments.
+Use single-quotes to enclose whitespace and backslashes and an
+unquoted backslash to escape a single quote.  Specify updates with
+lines of the form:
+
+	[--no-deref] [--] <ref> <newvalue> [<oldvalue>]
+
+Lines of any other format or a repeated <ref> produce an error.
+Specify a zero <newvalue> to delete a ref and/or a zero <oldvalue>
+to make sure that a ref not exist.  Use either 40 "0" or the
+empty string (written as '') to specify a zero value.
+
+If all <ref>s can be locked with matching <oldvalue>s
+simultaneously all modifications are performed.  Otherwise, no
+modifications are performed.  Note that while each individual
+<ref> is updated or deleted atomically, a concurrent reader may
+still see a subset of the modifications.
 
 Logging Updates
 ---------------
