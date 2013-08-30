@@ -2121,11 +2121,12 @@ struct ref_lock *lock_ref_sha1(const char *refname, const unsigned char *old_sha
 }
 
 struct ref_lock *lock_any_ref_for_update(const char *refname,
-					 const unsigned char *old_sha1, int flags)
+					 const unsigned char *old_sha1,
+					 int flags, int *type_p)
 {
 	if (check_refname_format(refname, REFNAME_ALLOW_ONELEVEL))
 		return NULL;
-	return lock_ref_sha1_basic(refname, old_sha1, flags, NULL);
+	return lock_ref_sha1_basic(refname, old_sha1, flags, type_p);
 }
 
 /*
@@ -2413,50 +2414,60 @@ static int curate_packed_ref_fn(struct ref_entry *entry, void *cb_data)
 	return 0;
 }
 
-static int repack_without_ref(const char *refname)
+static int repack_without_refs(const char **refnames, int n)
 {
 	struct ref_dir *packed;
 	struct string_list refs_to_delete = STRING_LIST_INIT_DUP;
 	struct string_list_item *ref_to_delete;
+	int i, removed = 0;
 
-	if (!get_packed_ref(refname))
-		return 0; /* refname does not exist in packed refs */
+	/* Look for a packed ref */
+	for (i = 0; i < n; i++)
+		if (get_packed_ref(refnames[i]))
+			break;
+
+	/* Avoid locking if we have nothing to do */
+	if (i == n)
+		return 0; /* no refname exists in packed refs */
 
 	if (lock_packed_refs(0)) {
 		unable_to_lock_error(git_path("packed-refs"), errno);
-		return error("cannot delete '%s' from packed refs", refname);
+		return error("cannot delete '%s' from packed refs", refnames[i]);
 	}
 	packed = get_packed_refs(&ref_cache);
 
-	/* Remove refname from the cache: */
-	if (remove_entry(packed, refname) == -1) {
+	/* Remove refnames from the cache */
+	for (i = 0; i < n; i++)
+		if (remove_entry(packed, refnames[i]) != -1)
+			removed = 1;
+	if (!removed) {
 		/*
-		 * The packed entry disappeared while we were
+		 * All packed entries disappeared while we were
 		 * acquiring the lock.
 		 */
 		rollback_packed_refs();
 		return 0;
 	}
 
-	/* Remove any other accumulated cruft: */
+	/* Remove any other accumulated cruft */
 	do_for_each_entry_in_dir(packed, 0, curate_packed_ref_fn, &refs_to_delete);
 	for_each_string_list_item(ref_to_delete, &refs_to_delete) {
 		if (remove_entry(packed, ref_to_delete->string) == -1)
 			die("internal error");
 	}
 
-	/* Write what remains: */
+	/* Write what remains */
 	return commit_packed_refs();
 }
 
-int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
+static int repack_without_ref(const char *refname)
 {
-	struct ref_lock *lock;
-	int err, i = 0, ret = 0, flag = 0;
+	return repack_without_refs(&refname, 1);
+}
 
-	lock = lock_ref_sha1_basic(refname, sha1, delopt, &flag);
-	if (!lock)
-		return 1;
+static int delete_ref_loose(struct ref_lock *lock, int flag)
+{
+	int err, i, ret = 0;
 	if (!(flag & REF_ISPACKED) || flag & REF_ISSYMREF) {
 		/* loose */
 		i = strlen(lock->lk->filename) - 5; /* .lock */
@@ -2467,6 +2478,19 @@ int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
 
 		lock->lk->filename[i] = '.';
 	}
+	return ret;
+}
+
+int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
+{
+	struct ref_lock *lock;
+	int ret = 0, flag = 0;
+
+	lock = lock_ref_sha1_basic(refname, sha1, delopt, &flag);
+	if (!lock)
+		return 1;
+	ret |= delete_ref_loose(lock, flag);
+
 	/* removing the loose one could have resurrected an earlier
 	 * packed one.  Also, if it was not loose we need to repack
 	 * without it.
@@ -3169,12 +3193,13 @@ int for_each_reflog(each_ref_fn fn, void *cb_data)
 	return retval;
 }
 
-int update_ref(const char *action, const char *refname,
-		const unsigned char *sha1, const unsigned char *oldval,
-		int flags, enum action_on_err onerr)
+static struct ref_lock *update_ref_lock(const char *refname,
+					const unsigned char *oldval,
+					int flags, int *type_p,
+					enum action_on_err onerr)
 {
-	static struct ref_lock *lock;
-	lock = lock_any_ref_for_update(refname, oldval, flags);
+	struct ref_lock *lock;
+	lock = lock_any_ref_for_update(refname, oldval, flags, type_p);
 	if (!lock) {
 		const char *str = "Cannot lock the ref '%s'.";
 		switch (onerr) {
@@ -3182,8 +3207,14 @@ int update_ref(const char *action, const char *refname,
 		case DIE_ON_ERR: die(str, refname); break;
 		case QUIET_ON_ERR: break;
 		}
-		return 1;
 	}
+	return lock;
+}
+
+static int update_ref_write(const char *action, const char *refname,
+			    const unsigned char *sha1, struct ref_lock *lock,
+			    enum action_on_err onerr)
+{
 	if (write_ref_sha1(lock, sha1, action) < 0) {
 		const char *str = "Cannot update the ref '%s'.";
 		switch (onerr) {
@@ -3194,6 +3225,140 @@ int update_ref(const char *action, const char *refname,
 		return 1;
 	}
 	return 0;
+}
+
+int update_ref(const char *action, const char *refname,
+	       const unsigned char *sha1, const unsigned char *oldval,
+	       int flags, enum action_on_err onerr)
+{
+	struct ref_lock *lock;
+	lock = update_ref_lock(refname, oldval, flags, 0, onerr);
+	if (!lock)
+		return 1;
+	return update_ref_write(action, refname, sha1, lock, onerr);
+}
+
+static int ref_update_compare(const void *r1, const void *r2)
+{
+	struct ref_update *u1 = (struct ref_update *)(r1);
+	struct ref_update *u2 = (struct ref_update *)(r2);
+	int ret;
+
+	ret = strcmp(u1->ref_name, u2->ref_name);
+	if (ret)
+		return ret;
+	ret = hashcmp(u1->new_sha1, u2->new_sha1);
+	if (ret)
+		return ret;
+	ret = hashcmp(u1->old_sha1, u2->old_sha1);
+	if (ret)
+		return ret;
+	ret = u1->flags - u2->flags;
+	if (ret)
+		return ret;
+	return u1->have_old - u2->have_old;
+}
+
+static int ref_update_reject_duplicates(struct ref_update *updates, int n,
+					enum action_on_err onerr)
+{
+	int i;
+
+	for (i = 1; i < n; i++)
+		if (!strcmp(updates[i - 1].ref_name, updates[i].ref_name))
+			break;
+	if (i < n) {
+		const char *str = "Multiple updates for ref '%s' not allowed.";
+		switch (onerr) {
+		case MSG_ON_ERR: error(str, updates[i].ref_name); break;
+		case DIE_ON_ERR: die(str, updates[i].ref_name); break;
+		case QUIET_ON_ERR: break;
+		}
+		return 1;
+	}
+	return 0;
+}
+
+int update_refs(const char *action, const struct ref_update *updates_orig,
+		int n, enum action_on_err onerr)
+{
+	int ret = 0, delnum = 0, i;
+	struct ref_update *updates;
+	int *types;
+	struct ref_lock **locks;
+	const char **delnames;
+
+	if (!updates_orig || !n)
+		return 0;
+
+	/* Allocate work space */
+	updates = xmalloc(sizeof(struct ref_update) * n);
+	types = xmalloc(sizeof(int) * n);
+	locks = xmalloc(sizeof(struct ref_lock *) * n);
+	delnames = xmalloc(sizeof(const char *) * n);
+
+	/* Copy, sort, and reject duplicate refs */
+	memcpy(updates, updates_orig, sizeof(struct ref_update) * n);
+	qsort(updates, n, sizeof(struct ref_update), ref_update_compare);
+	if (ref_update_reject_duplicates(updates, n, onerr)) {
+		free(updates);
+		free(types);
+		free(locks);
+		free(delnames);
+		return 1;
+	}
+
+	/* Acquire all locks while verifying old values */
+	for (i = 0; i < n; i++) {
+		locks[i] = update_ref_lock(updates[i].ref_name,
+					   (updates[i].have_old ?
+					    updates[i].old_sha1 : NULL),
+					   updates[i].flags,
+					   &types[i], onerr);
+		if (!locks[i])
+			break;
+	}
+
+	/* Abort if we did not get all locks */
+	if (i < n) {
+		while (--i >= 0)
+			unlock_ref(locks[i]);
+		free(updates);
+		free(types);
+		free(locks);
+		free(delnames);
+		return 1;
+	}
+
+	/* Perform updates first so live commits remain referenced */
+	for (i = 0; i < n; i++)
+		if (!is_null_sha1(updates[i].new_sha1)) {
+			ret |= update_ref_write(action,
+						updates[i].ref_name,
+						updates[i].new_sha1,
+						locks[i], onerr);
+			locks[i] = NULL; /* freed by update_ref_write */
+		}
+
+	/* Perform deletes now that updates are safely completed */
+	for (i = 0; i < n; i++)
+		if (locks[i]) {
+			delnames[delnum++] = locks[i]->ref_name;
+			ret |= delete_ref_loose(locks[i], types[i]);
+		}
+	ret |= repack_without_refs(delnames, delnum);
+	for (i = 0; i < delnum; i++)
+		unlink_or_warn(git_path("logs/%s", delnames[i]));
+	clear_loose_ref_cache(&ref_cache);
+	for (i = 0; i < n; i++)
+		if (locks[i])
+			unlock_ref(locks[i]);
+
+	free(updates);
+	free(types);
+	free(locks);
+	free(delnames);
+	return ret;
 }
 
 static int shorten_ref(const char *refname, const char *pattern, char *short_name)

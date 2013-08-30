@@ -137,7 +137,7 @@ extern struct ref_lock *lock_ref_sha1(const char *refname, const unsigned char *
 #define REF_NODEREF	0x01
 extern struct ref_lock *lock_any_ref_for_update(const char *refname,
 						const unsigned char *old_sha1,
-						int flags);
+						int flags, int *type_p);
 
 /** Close the file descriptor owned by a lock and return the status */
 extern int close_ref(struct ref_lock *lock);
@@ -213,6 +213,20 @@ enum action_on_err { MSG_ON_ERR, DIE_ON_ERR, QUIET_ON_ERR };
 int update_ref(const char *action, const char *refname,
 		const unsigned char *sha1, const unsigned char *oldval,
 		int flags, enum action_on_err onerr);
+
+struct ref_update {
+	const char *ref_name;
+	unsigned char new_sha1[20];
+	unsigned char old_sha1[20];
+	int flags;
+	int have_old;
+};
+
+/**
+ * Lock all refs and then perform all modifications.
+ */
+int update_refs(const char *action, const struct ref_update *updates,
+		int n, enum action_on_err onerr);
 
 extern int parse_hide_refs_config(const char *var, const char *value, const char *);
 extern int ref_is_hidden(const char *);
