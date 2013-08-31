@@ -371,7 +371,8 @@ static int handle_config(const char *key, const char *value, void *cb)
 			if (!value)
 				return config_error_nonbool(key);
 			add_merge(branch, xstrdup(value));
-		}
+		} else if (!strcmp(subkey, ".push"))
+			return git_config_string(&branch->push_name, key, value);
 		return 0;
 	}
 	if (starts_with(key, "url.")) {
@@ -1688,6 +1689,14 @@ struct branch *branch_get(const char *name)
 	else
 		ret = make_branch(name, 0);
 	set_merge(ret);
+	if (ret && ret->pushremote_name && ret->push_name) {
+		struct remote *pushremote;
+		pushremote = pushremote_get(ret->pushremote_name);
+		ret->push.src = xstrdup(ret->push_name);
+		if (remote_find_tracking(pushremote, &ret->push)
+		    && !strcmp(ret->pushremote_name, "."))
+			ret->push.dst = xstrdup(ret->push_name);
+	}
 	return ret;
 }
 
