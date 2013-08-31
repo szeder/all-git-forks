@@ -150,6 +150,20 @@ static void setup_push_current(struct remote *remote, struct branch *branch)
 	add_refspec(branch->name);
 }
 
+static void setup_push_simple(struct remote *remote, struct branch *branch,
+				int triangular)
+{
+	if (branch->push_name) {
+		struct strbuf refspec = STRBUF_INIT;
+		strbuf_addf(&refspec, "%s:%s", branch->name, branch->push_name);
+		add_refspec(refspec.buf);
+	} else if (triangular) {
+		setup_push_current(remote, branch);
+	} else {
+		setup_push_upstream(remote, branch, triangular);
+	}
+}
+
 static char warn_unspecified_push_default_msg[] =
 N_("push.default is unset; its implicit value is changing in\n"
    "Git 2.0 from 'matching' to 'simple'. To squelch this message\n"
@@ -210,10 +224,7 @@ static void setup_default_push_refspecs(struct remote *remote)
 		break;
 
 	case PUSH_DEFAULT_SIMPLE:
-		if (triangular)
-			setup_push_current(remote, get_current_branch(remote));
-		else
-			setup_push_upstream(remote, get_current_branch(remote), triangular);
+		setup_push_simple(remote, get_current_branch(remote), triangular);
 		break;
 
 	case PUSH_DEFAULT_UPSTREAM:
