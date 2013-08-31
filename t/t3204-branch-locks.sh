@@ -21,7 +21,7 @@ test_expect_success 'delete a ref while loose ref file is locked' '
 	test_cmp expected1 actual1
 '
 
-test_expect_failure 'delete a ref while packed-refs file is locked' '
+test_expect_success 'delete a ref while packed-refs file is locked' '
 	git branch b2 master &&
 	# Pack current value of b2:
 	git pack-refs --all &&

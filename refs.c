@@ -2189,12 +2189,12 @@ int lock_packed_refs(int flags)
 	return 0;
 }
 
-int commit_packed_refs(void)
+/*
+ * Write packed_ref_cache to the lock's staging file.
+ * packed_ref_cache must already be locked.
+ */
+static void stage_packed_refs(struct packed_ref_cache *packed_ref_cache)
 {
-	struct packed_ref_cache *packed_ref_cache =
-		get_packed_ref_cache(&ref_cache);
-	int error = 0;
-
 	if (!packed_ref_cache->lock)
 		die("internal error: packed-refs not locked");
 	write_or_die(packed_ref_cache->lock->fd,
@@ -2203,6 +2203,41 @@ int commit_packed_refs(void)
 	do_for_each_entry_in_dir(get_packed_ref_dir(packed_ref_cache),
 				 0, write_packed_entry_fn,
 				 &packed_ref_cache->lock->fd);
+}
+
+int activate_packed_refs(void)
+{
+	struct packed_ref_cache *packed_ref_cache =
+		get_packed_ref_cache(&ref_cache);
+
+	stage_packed_refs(packed_ref_cache);
+	if (commit_staging_file(packed_ref_cache->lock))
+		return -1;
+	return 0;
+}
+
+int unlock_packed_refs(void)
+{
+	struct packed_ref_cache *packed_ref_cache =
+		get_packed_ref_cache(&ref_cache);
+	int error = 0;
+
+	if (!packed_ref_cache->lock)
+		die("internal error: packed-refs not locked");
+	if (commit_lock_file(packed_ref_cache->lock))
+		error = -1;
+	packed_ref_cache->lock = NULL;
+	release_packed_ref_cache(packed_ref_cache);
+	return error;
+}
+
+int commit_packed_refs(void)
+{
+	struct packed_ref_cache *packed_ref_cache =
+		get_packed_ref_cache(&ref_cache);
+	int error = 0;
+
+	stage_packed_refs(packed_ref_cache);
 	if (commit_lock_file(packed_ref_cache->lock))
 		error = -1;
 	packed_ref_cache->lock = NULL;
@@ -2413,63 +2448,86 @@ static int curate_packed_ref_fn(struct ref_entry *entry, void *cb_data)
 	return 0;
 }
 
-static int repack_without_ref(const char *refname)
+/*
+ * Remove any cruft from the packed-refs cache.
+ */
+void curate_packed_refs(void)
 {
-	struct ref_dir *packed;
+	struct ref_dir *packed = get_packed_refs(&ref_cache);
 	struct string_list refs_to_delete = STRING_LIST_INIT_DUP;
 	struct string_list_item *ref_to_delete;
 
-	if (!get_packed_ref(refname))
-		return 0; /* refname does not exist in packed refs */
-
-	if (lock_packed_refs(0)) {
-		unable_to_lock_error(git_path("packed-refs"), errno);
-		return error("cannot delete '%s' from packed refs", refname);
-	}
-	packed = get_packed_refs(&ref_cache);
-
-	/* Remove refname from the cache: */
-	if (remove_entry(packed, refname) == -1) {
-		/*
-		 * The packed entry disappeared while we were
-		 * acquiring the lock.
-		 */
-		rollback_packed_refs();
-		return 0;
-	}
-
-	/* Remove any other accumulated cruft: */
 	do_for_each_entry_in_dir(packed, 0, curate_packed_ref_fn, &refs_to_delete);
 	for_each_string_list_item(ref_to_delete, &refs_to_delete) {
 		if (remove_entry(packed, ref_to_delete->string) == -1)
 			die("internal error");
 	}
-
-	/* Write what remains: */
-	return commit_packed_refs();
 }
 
 int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
 {
-	struct ref_lock *lock;
-	int err, ret = 0, flag = 0;
+	struct ref_lock *lock = 0;
+	int err, ret = 0, flag = 0, packed_refs_changed;
+	struct ref_dir *packed;
+
+	/*
+	 * We need to delete both packed and loose versions of the
+	 * reference (whichever exist), because the presence of either
+	 * one would leave the reference in existence.  But we have to
+	 * be careful:
+	 *
+	 * 1. We need to delete the packed version first; otherwise,
+	 *    after we delete the loose version, another process might
+	 *    see the packed version, which has nothing to do with
+	 *    current reality.
+	 *
+	 * 2. We need to hold the lock on the packed-refs file until
+	 *    the loose reference is deleted to prevent another
+	 *    process from packing the (old) version of the loose
+	 *    reference and thereby keeping it alive.
+	 */
+	if (lock_packed_refs(LOCK_SEPARATE_STAGING_FILE)) {
+		unable_to_lock_error(git_path("packed-refs"), errno);
+		error("cannot delete '%s'", refname);
+		return 1;
+	}
 
 	lock = lock_ref_sha1_basic(refname, sha1, delopt, &flag);
-	if (!lock)
+	if (!lock) {
+		error("cannot delete '%s'", refname);
+		rollback_packed_refs();
 		return 1;
+	}
+
+	packed = get_packed_refs(&ref_cache);
+
+	/* Remove refname from the packed-refs cache: */
+	if (remove_entry(packed, refname) == -1) {
+		/* Not found; no need to rewrite packed-refs. */
+		packed_refs_changed = 0;
+	} else {
+		/* Since we are rewriting packed-refs anyway, tidy it up: */
+		curate_packed_refs();
+		ret |= activate_packed_refs();
+		packed_refs_changed = 1;
+	}
+
 	if (!(flag & REF_ISPACKED) || flag & REF_ISSYMREF) {
 		/* loose */
 		err = unlink_or_warn(lock->lk->filename.buf);
 		if (err && errno != ENOENT)
 			ret = 1;
 	}
-	/* removing the loose one could have resurrected an earlier
-	 * packed one.  Also, if it was not loose we need to repack
-	 * without it.
-	 */
-	ret |= repack_without_ref(lock->ref_name);
 
 	unlink_or_warn(git_path("logs/%s", lock->ref_name));
+
+	/* Now unlock packed-refs */
+	if (packed_refs_changed)
+		/* Reference was deleted; activate new packed-refs: */
+		ret |= unlock_packed_refs();
+	else
+		rollback_packed_refs();
+
 	clear_loose_ref_cache(&ref_cache);
 	unlock_ref(lock);
 	return ret;
