@@ -1,4 +1,4 @@
-From bbce3dd765f656b34951897a6469b488dde3e445 Mon Sep 17 00:00:00 2001
+From 5dd4ef6b4498f69776ea2e1bfc0f28ac9627f8a6 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Nguy=E1=BB=85n=20Th=C3=A1i=20Ng=E1=BB=8Dc=20Duy?=
  <pclouds@gmail.com>
 Date: Wed, 21 Aug 2013 20:45:13 +0700
@@ -9,7 +9,7 @@ Subject: [PATCH 17/18] nguyen's changes
  1 file changed, 4 insertions(+), 23 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 419ef9c..531b189 100644
+index b4e7d79..9e17bcc 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -315,7 +315,8 @@ Servers SHOULD support all capabilities defined here.
@@ -54,11 +54,12 @@ index 419ef9c..531b189 100644
  The Negotiation Algorithm
  ~~~~~~~~~~~~~~~~~~~~~~~~~
  The computation to select the minimal pack proceeds as follows
-@@ -521,4 +500,6 @@ References
+@@ -521,5 +500,7 @@ References
  link:http://www.ietf.org/rfc/rfc1738.txt[RFC 1738: Uniform Resource Locators (URL)]
  link:http://www.ietf.org/rfc/rfc2119.txt[RFC 2119: Key words for use in RFCs to Indicate Requirement Levels]
  link:http://www.ietf.org/rfc/rfc2616.txt[RFC 2616: Hypertext Transfer Protocol -- HTTP/1.1]
 +link:technical/pack-protocol.txt
+ link:technical/protocol-common.txt
 +link:technical/protocol-capabilities.txt
  
 -- 

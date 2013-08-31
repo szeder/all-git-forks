@@ -1,4 +1,4 @@
-From cda0914d77be257c76471f076d8ab0941edfa62a Mon Sep 17 00:00:00 2001
+From 54b6e5a9f9a1164bcaa3c1416371d564cae2f905 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 29 Aug 2013 17:41:56 +0800
 Subject: [PATCH 05/18] drop rules, etc. already available in
@@ -38,11 +38,11 @@ pkt-line format section was dropped in response to
   specification, Shawn, MUST treat a flush packet as a message break or
   terminator in the payload, when designing this protocol."
 ---
- Documentation/technical/http-protocol.txt | 56 +++++++------------------------
- 1 file changed, 12 insertions(+), 44 deletions(-)
+ Documentation/technical/http-protocol.txt | 57 +++++++------------------------
+ 1 file changed, 13 insertions(+), 44 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index ff91bb0..3891842 100644
+index ff91bb0..f1f2c32 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -84,34 +84,6 @@ as described by RFC 2616 (HTTP/1.1).  Servers SHOULD ignore any
@@ -142,6 +142,12 @@ index ff91bb0..3891842 100644
    update           =  old_id SP new_id SP name
  
  TODO: Document this further.
+@@ -536,4 +504,5 @@ References
+ link:http://www.ietf.org/rfc/rfc1738.txt[RFC 1738: Uniform Resource Locators (URL)]
+ link:http://www.ietf.org/rfc/rfc2119.txt[RFC 2119: Key words for use in RFCs to Indicate Requirement Levels]
+ link:http://www.ietf.org/rfc/rfc2616.txt[RFC 2616: Hypertext Transfer Protocol -- HTTP/1.1]
++link:technical/protocol-common.txt
+ 
 -- 
 1.8.4.rc4.527.g303b16c
 

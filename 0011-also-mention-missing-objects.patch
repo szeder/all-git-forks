@@ -1,4 +1,4 @@
-From 00b74d947db620db1afd0c6193dcbfe14344909e Mon Sep 17 00:00:00 2001
+From e46ea09763913b0aa1c9c35dc692bbda2ca82ff6 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:17:09 +0800
 Subject: [PATCH 11/18] also mention missing objects
@@ -31,7 +31,7 @@ Based on:
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 958a98b..24090b0 100644
+index 3286a73..b4b2584 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -105,7 +105,9 @@ by both client and server.  This includes (but is not necessarily

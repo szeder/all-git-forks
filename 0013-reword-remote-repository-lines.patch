@@ -1,4 +1,4 @@
-From d635cf4df20bb347356e0e13a38a172bb218c5c2 Mon Sep 17 00:00:00 2001
+From 44754f55a883a35cf0c9dcf673a67500ff9c80f8 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:51:15 +0800
 Subject: [PATCH 13/18] reword 'remote repository' lines
@@ -21,7 +21,7 @@ Based on:
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 4752bb5..e5b9911 100644
+index 0503e74..fe18218 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -290,7 +290,7 @@ declarations behind a NUL on the first ref.

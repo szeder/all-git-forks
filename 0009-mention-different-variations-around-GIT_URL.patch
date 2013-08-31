@@ -1,4 +1,4 @@
-From 2a06929c34fbe351b5b9b316a55195eb0373a7f2 Mon Sep 17 00:00:00 2001
+From 01d823ba57041278000d32cca94946cfa54bc379 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 23:09:46 +0800
 Subject: [PATCH 09/18] mention different variations around $GIT_URL
@@ -42,7 +42,7 @@ mind-boggling setups.
  1 file changed, 15 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 250c5e2..97de717 100644
+index bf3d7a7..a137dc6 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -22,15 +22,28 @@ URL Format
