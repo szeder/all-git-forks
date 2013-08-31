@@ -1,7 +1,7 @@
 From 731724cd16b4ec86861f53db76c7f0f22c5d0661 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:25:46 +0800
-Subject: [PATCH 02/17] normalize indentation with protcol-common.txt
+Subject: [PATCH 02/16] normalize indentation with protcol-common.txt
 
 Indent client/server query examples with 3 spaces.
 

@@ -1,7 +1,7 @@
-From ad8dd976972556a72d4a6435c687b04c56862766 Mon Sep 17 00:00:00 2001
+From 2d7fe298a33bfa59f601ce6b3d7edb911da03a0c Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 28 Aug 2013 13:21:14 +0800
-Subject: [PATCH 15/17] shift dumb server response details from client section
+Subject: [PATCH 15/16] shift dumb server response details from client section
  to server
 
 Stuff like abnf, caching. This is in line with smart client-server
@@ -11,7 +11,7 @@ equivalent.
  1 file changed, 23 insertions(+), 26 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index bcc04f9..c8bb54b 100644
+index 7f9acc3..babaec1 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -162,30 +162,6 @@ without any search/query parameters.  E.g.
@@ -45,7 +45,7 @@ index bcc04f9..c8bb54b 100644
  Smart Clients
  ~~~~~~~~~~~~~
  
-@@ -224,8 +200,29 @@ Dumb Server Response
+@@ -229,8 +205,29 @@ Dumb Server Response
  ^^^^^^^^^^^^^^^^^^^^
  Dumb servers MUST respond with the dumb server reply format.
  

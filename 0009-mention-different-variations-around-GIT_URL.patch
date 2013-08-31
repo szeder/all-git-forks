@@ -1,7 +1,7 @@
-From f9deedf188aa562173ac257b14ed220e012e1686 Mon Sep 17 00:00:00 2001
+From 8065fc6a161b36d09e26200f42068f4dcd2be843 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 23:09:46 +0800
-Subject: [PATCH 09/17] mention different variations around $GIT_URL
+Subject: [PATCH 09/16] mention different variations around $GIT_URL
 
 Based on
 
@@ -37,12 +37,16 @@ confusing - it suggests a setup where the server has a route to a git
 repo (child.git) with a parent path containing another git repo
 (master.git). It is excluded lest we be seen as encouraging such
 mind-boggling setups.
+
+While providing an example $GIT_URL containing a '?' (the catch-all
+gateway one), also mention a possible contradiction between the
+exactly-one-param requirement and the http client implementation in Git.
 ---
- Documentation/technical/http-protocol.txt | 17 +++++++++++++++--
- 1 file changed, 15 insertions(+), 2 deletions(-)
+ Documentation/technical/http-protocol.txt | 22 ++++++++++++++++++++--
+ 1 file changed, 20 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index f24c4e8..2eba82a 100644
+index f24c4e8..beff759 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -22,15 +22,28 @@ URL Format
@@ -76,6 +80,18 @@ index f24c4e8..2eba82a 100644
  Clients MUST strip a trailing '/', if present, from the user supplied
  $GIT_URL string to prevent empty path tokens ('//') from appearing
  in any URL sent to a server.  Compatible clients MUST expand
+@@ -184,6 +197,11 @@ The request MUST contain exactly one query parameter,
+ name the client wishes to contact to complete the operation.
+ The request MUST NOT contain additional query parameters.
+ 
++TODO: "exactly" one query parameter may be too strict; see the catch-all
++gateway $GIT_URL for an example where more than one parameter is passed.
++In fact, the http client implementation in Git can handle similar
++$GIT_URLs, and thus may pass more than parameter to the server.
++
+    C: GET $GIT_URL/info/refs?service=git-upload-pack HTTP/1.0
+ 
+    dumb server reply:
 -- 
 1.8.4.rc4.527.g303b16c
 

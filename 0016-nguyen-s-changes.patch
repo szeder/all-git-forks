@@ -1,18 +1,18 @@
-From 33fcfe2f0275f8564dba9ba1a73cfe014a4cd132 Mon Sep 17 00:00:00 2001
+From c1cb805a64d16df53d31116a5d96f273baf51e49 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Nguy=E1=BB=85n=20Th=C3=A1i=20Ng=E1=BB=8Dc=20Duy?=
  <pclouds@gmail.com>
 Date: Wed, 21 Aug 2013 20:45:13 +0700
-Subject: [PATCH 16/17] nguyen's changes
+Subject: [PATCH 16/16] nguyen's changes
 
 ---
  Documentation/technical/http-protocol.txt | 9 +++------
  1 file changed, 3 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index c8bb54b..9e17bcc 100644
+index babaec1..7bb7651 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -315,7 +315,8 @@ Servers SHOULD support all capabilities defined here.
+@@ -320,7 +320,8 @@ Servers SHOULD support all capabilities defined here.
  
  Clients MUST send at least one 'want' command in the request body.
  Clients MUST NOT reference an id in a 'want' command which did not
@@ -22,7 +22,7 @@ index c8bb54b..9e17bcc 100644
  
    compute_request  =  want_list
  		      have_list
-@@ -330,11 +331,6 @@ appear in the response obtained through ref discovery.
+@@ -335,11 +336,6 @@ appear in the response obtained through ref discovery.
  
    have_list        =  *PKT-LINE("have" SP id LF)
  
@@ -34,7 +34,7 @@ index c8bb54b..9e17bcc 100644
  TODO: Document this further.
  TODO: Don't use uppercase for variable names below.
  
-@@ -504,6 +500,7 @@ References
+@@ -509,6 +505,7 @@ References
  link:http://www.ietf.org/rfc/rfc1738.txt[RFC 1738: Uniform Resource Locators (URL)]
  link:http://www.ietf.org/rfc/rfc2119.txt[RFC 2119: Key words for use in RFCs to Indicate Requirement Levels]
  link:http://www.ietf.org/rfc/rfc2616.txt[RFC 2616: Hypertext Transfer Protocol -- HTTP/1.1]
