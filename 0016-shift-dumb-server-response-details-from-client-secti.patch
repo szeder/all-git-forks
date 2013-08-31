@@ -1,7 +1,7 @@
-From aa04860b105a8cd1111e18f80420f45d954d2141 Mon Sep 17 00:00:00 2001
+From 1af625dfcc4c7991bb01720d6fb992e0fd614095 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 28 Aug 2013 13:21:14 +0800
-Subject: [PATCH 17/19] shift dumb server response details from client section
+Subject: [PATCH 16/18] shift dumb server response details from client section
  to server
 
 Stuff like abnf, caching. This is in line with smart client-server

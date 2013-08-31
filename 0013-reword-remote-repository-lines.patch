@@ -1,7 +1,7 @@
-From 193de833dd32a8e58d3377dd91b7ef68454098eb Mon Sep 17 00:00:00 2001
+From d635cf4df20bb347356e0e13a38a172bb218c5c2 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:51:15 +0800
-Subject: [PATCH 14/19] reword 'remote repository' lines
+Subject: [PATCH 13/18] reword 'remote repository' lines
 
 Based on:
 

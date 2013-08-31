@@ -1,7 +1,7 @@
-From 2146e47ef633b0133ead8fa33bf76baccb6ee4cc Mon Sep 17 00:00:00 2001
+From 0f7ca03b2c57f45508313be4c01ba72340287de0 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 20:09:34 +0800
-Subject: [PATCH 06/19] fix capabilities definition
+Subject: [PATCH 06/18] fix capabilities definition
 
 For "capabilties^{}" lines, replace obj-id with zero-id.
 
@@ -12,10 +12,10 @@ should be shifted to protocol-common.txt.
  1 file changed, 5 insertions(+), 3 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 2499dda..775a88c 100644
+index 3891842..e995462 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -285,14 +285,16 @@ declarations behind a NUL on the first ref.
+@@ -257,14 +257,16 @@ declarations behind a NUL on the first ref.
  		      "0000"
    ref_list         =  empty_list / non_empty_list
  

@@ -1,0 +1,147 @@
+From cda0914d77be257c76471f076d8ab0941edfa62a Mon Sep 17 00:00:00 2001
+From: Tay Ray Chuan <rctay89@gmail.com>
+Date: Thu, 29 Aug 2013 17:41:56 +0800
+Subject: [PATCH 05/18] drop rules, etc. already available in
+ protocol-common.txt
+
+Use obj-id in lieu of id (defined as 40*HEX).
+
+Use zero-id in lieu of 40*"0".
+
+Use refname in lieu of name (not defined).
+
+---
+
+pkt-line format section was dropped in response to
+
+  Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
+
+  > +pkt-line Format
+  > +---------------
+  > ...
+  > +Examples (as C-style strings):
+  > +
+  > +  pkt-line          actual value
+  > +  ---------------------------------
+  > +  "0006a\n"         "a\n"
+  > +  "0005a"           "a"
+  > +  "000bfoobar\n"    "foobar\n"
+  > +  "0004"            ""
+  > +
+  > +A pkt-line with a length of 0 ("0000") is a special case and MUST
+  > +be treated as a message break or terminator in the payload.
+
+  Isn't this "MUST be" wrong?
+
+  It is not an advice to the implementors, but the protocol specification
+  itself defines what the flush packet means.  IOW, "The author of this
+  specification, Shawn, MUST treat a flush packet as a message break or
+  terminator in the payload, when designing this protocol."
+---
+ Documentation/technical/http-protocol.txt | 56 +++++++------------------------
+ 1 file changed, 12 insertions(+), 44 deletions(-)
+
+diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
+index ff91bb0..3891842 100644
+--- a/Documentation/technical/http-protocol.txt
++++ b/Documentation/technical/http-protocol.txt
+@@ -84,34 +84,6 @@ as described by RFC 2616 (HTTP/1.1).  Servers SHOULD ignore any
+ cookies sent by a client.
+ 
+ 
+-pkt-line Format
+----------------
+-
+-Much (but not all) of the payload is described around pkt-lines.
+-
+-A pkt-line is a variable length binary string.  The first four bytes
+-of the line indicates the total length of the line, in hexadecimal.
+-The total length includes the 4 bytes used to denote the length.
+-A line SHOULD BE terminated by an LF, which if present MUST be
+-included in the total length.
+-
+-A pkt-line MAY contain binary data, so implementors MUST ensure all
+-pkt-line parsing/formatting routines are 8-bit clean.  The maximum
+-length of a pkt-line's data is 65532 bytes (65536 - 4).
+-
+-Examples (as C-style strings):
+-
+-  pkt-line          actual value
+-  ---------------------------------
+-  "0006a\n"         "a\n"
+-  "0005a"           "a"
+-  "000bfoobar\n"    "foobar\n"
+-  "0004"            ""
+-
+-A pkt-line with a length of 0 ("0000") is a special case and MUST
+-be treated as a message break or terminator in the payload.
+-
+-
+ General Request Processing
+ --------------------------
+ 
+@@ -194,11 +166,9 @@ the default ref named 'HEAD'.
+   info_refs        =  *( ref_record )
+   ref_record       =  any_ref / peeled_ref
+ 
+-  any_ref          =  id HTAB name LF
+-  peeled_ref       =  id HTAB name LF
+-		      id HTAB name "^{}" LF
+-  id               =  40*HEX
+-
++  any_ref          =  obj-id HTAB refname LF
++  peeled_ref       =  obj-id HTAB refname LF
++		      obj-id HTAB refname "^{}" LF
+ 
+ Smart Clients
+ ~~~~~~~~~~~~~
+@@ -287,19 +257,17 @@ declarations behind a NUL on the first ref.
+ 		      "0000"
+   ref_list         =  empty_list / non_empty_list
+ 
+-  empty_list       =  PKT-LINE(id SP "capabilities^{}" NUL cap_list LF)
++  empty_list       =  PKT-LINE(obj-id SP "capabilities^{}" NUL cap_list LF)
+ 
+-  non_empty_list   =  PKT-LINE(id SP name NUL cap_list LF)
++  non_empty_list   =  PKT-LINE(obj-id SP name NUL cap_list LF)
+ 		      *ref_record
+ 
+   cap_list         =  *(SP capability) SP
+   ref_record       =  any_ref / peeled_ref
+ 
+-  any_ref          =  PKT-LINE(id SP name LF)
+-  peeled_ref       =  PKT-LINE(id SP name LF)
+-		      PKT-LINE(id SP name "^{}" LF
+-  id               =  40*HEX
+-
++  any_ref          =  PKT-LINE(obj-id SP name LF)
++  peeled_ref       =  PKT-LINE(obj-id SP name LF)
++		      PKT-LINE(obj-id SP name "^{}" LF
+ 
+ Smart Service git-upload-pack
+ ------------------------------
+@@ -346,8 +314,8 @@ appear in the response obtained through ref discovery.
+   have_list        =  *PKT-LINE("have" SP id LF)
+ 
+   command          =  create / delete / update
+-  create           =  40*"0" SP new_id SP name
+-  delete           =  old_id SP 40*"0" SP name
++  create           =  zero-id SP new_id SP name
++  delete           =  old_id SP zero-id SP name
+   update           =  old_id SP new_id SP name
+ 
+ TODO: Document this further.
+@@ -523,8 +491,8 @@ the id obtained through ref discovery as old_id.
+   cap_list         =  *(SP capability) SP
+ 
+   command          =  create / delete / update
+-  create           =  40*"0" SP new_id SP name
+-  delete           =  old_id SP 40*"0" SP name
++  create           =  zero-id SP new_id SP name
++  delete           =  old_id SP zero-id SP name
+   update           =  old_id SP new_id SP name
+ 
+ TODO: Document this further.
+-- 
+1.8.4.rc4.527.g303b16c
+
