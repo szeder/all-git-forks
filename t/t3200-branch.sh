@@ -907,4 +907,80 @@ test_expect_success 'tracking with unexpected .fetch refspec' '
 	)
 '
 
+test_expect_success '--set-publish-to fails on multiple branches' '
+	test_must_fail git branch --set-publish-to master a b c
+'
+
+test_expect_success '--set-publish-to fails on detached HEAD' '
+	test_when_finished "git checkout master" &&
+	git checkout master^{} &&
+	test_must_fail git branch --set-publish-to master
+'
+
+test_expect_success '--set-publish-to fails on a missing dst branch' '
+	test_must_fail git branch --set-publish-to master does-not-exist
+'
+
+test_expect_success '--set-publish-to fails on a missing src branch' '
+	test_must_fail git branch --set-publish-to does-not-exist master
+'
+
+test_expect_success '--set-publish-to fails on a non-ref' '
+	test_must_fail git branch --set-publish-to HEAD^{}
+'
+
+test_expect_success 'use --set-publish-to modify HEAD' '
+	git checkout master &&
+	test_config branch.master.pushremote foo &&
+	test_config branch.master.push foo &&
+	git branch -f test &&
+	git branch --set-publish-to test &&
+	test "$(git config branch.master.pushremote)" = "." &&
+	test "$(git config branch.master.push)" = "refs/heads/test"
+'
+
+test_expect_success 'use --set-publish-to modify a particular branch' '
+	git branch -f test &&
+	git branch -f test2 &&
+	git branch --set-publish-to test2 test &&
+	test "$(git config branch.test.pushremote)" = "." &&
+	test "$(git config branch.test.push)" = "refs/heads/test2"
+'
+
+test_expect_success '--unset-publish should fail if given a non-existent branch' '
+	test_must_fail git branch --unset-publish i-dont-exist
+'
+
+test_expect_success 'test --unset-publish on HEAD' '
+	git checkout master &&
+	git branch -f test &&
+	test_config branch.master.pushremote foo &&
+	test_config branch.master.push foo &&
+	git branch --set-publish-to test &&
+	git branch --unset-publish &&
+	test_must_fail git config branch.master.pushremote &&
+	test_must_fail git config branch.master.push &&
+	# fail for a branch without publish set
+	test_must_fail git branch --unset-publish
+'
+
+test_expect_success '--unset-publish should fail on multiple branches' '
+	test_must_fail git branch --unset-publish a b c
+'
+
+test_expect_success '--unset-publish should fail on detached HEAD' '
+	test_when_finished "git checkout -" &&
+	git checkout HEAD^{} &&
+	test_must_fail git branch --unset-publish
+'
+
+test_expect_success 'test --unset-publish on a particular branch' '
+	git branch -f test &&
+	git branch -f test2 &&
+	git branch --set-publish-to test2 test &&
+	git branch --unset-publish test &&
+	test_must_fail git config branch.test2.pushremote &&
+	test_must_fail git config branch.test2.push
+'
+
 test_done
