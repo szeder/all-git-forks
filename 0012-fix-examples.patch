@@ -1,4 +1,4 @@
-From e65e0370e949f49fca0068a6675f1455bcab75d0 Mon Sep 17 00:00:00 2001
+From bbc992583f0c457156dff3bfec149cc0f80dfe35 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:40:24 +0800
 Subject: [PATCH 12/16] fix examples
@@ -12,7 +12,7 @@ Subject: [PATCH 12/16] fix examples
  1 file changed, 17 insertions(+), 16 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index b687215..1b82494 100644
+index 1fd28a5..d65b1d0 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -157,10 +157,10 @@ without any search/query parameters.  E.g.

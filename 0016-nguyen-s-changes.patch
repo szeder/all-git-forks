@@ -1,4 +1,4 @@
-From c1cb805a64d16df53d31116a5d96f273baf51e49 Mon Sep 17 00:00:00 2001
+From 5dbb09ebdc39a22cfd35ec8d56e0f3421ce44e16 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Nguy=E1=BB=85n=20Th=C3=A1i=20Ng=E1=BB=8Dc=20Duy?=
  <pclouds@gmail.com>
 Date: Wed, 21 Aug 2013 20:45:13 +0700
@@ -9,7 +9,7 @@ Subject: [PATCH 16/16] nguyen's changes
  1 file changed, 3 insertions(+), 6 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index babaec1..7bb7651 100644
+index b611c24..adc8e95 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -320,7 +320,8 @@ Servers SHOULD support all capabilities defined here.
@@ -27,9 +27,9 @@ index babaec1..7bb7651 100644
    have_list        =  *PKT-LINE("have" SP id LF)
  
 -  command          =  create / delete / update
--  create           =  zero-id SP new_id SP name
--  delete           =  old_id SP zero-id SP name
--  update           =  old_id SP new_id SP name
+-  create           =  zero-id SP new_id SP refname
+-  delete           =  old_id SP zero-id SP refname
+-  update           =  old_id SP new_id SP refname
 -
  TODO: Document this further.
  TODO: Don't use uppercase for variable names below.

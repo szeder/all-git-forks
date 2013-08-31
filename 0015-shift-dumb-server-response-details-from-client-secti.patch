@@ -1,4 +1,4 @@
-From 2d7fe298a33bfa59f601ce6b3d7edb911da03a0c Mon Sep 17 00:00:00 2001
+From 3c4beb07d16b8789f0492d4afe5ad7ae010ba974 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 28 Aug 2013 13:21:14 +0800
 Subject: [PATCH 15/16] shift dumb server response details from client section
@@ -11,7 +11,7 @@ equivalent.
  1 file changed, 23 insertions(+), 26 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 7f9acc3..babaec1 100644
+index 2606491..b611c24 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -162,30 +162,6 @@ without any search/query parameters.  E.g.

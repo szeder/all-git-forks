@@ -1,4 +1,4 @@
-From b1eb9c169c4529959d3d158ff5d58961f298d416 Mon Sep 17 00:00:00 2001
+From d90b8a925927acce2688e3f8c3e3229f686b77ff Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 29 Aug 2013 17:41:56 +0800
 Subject: [PATCH 05/16] drop rules, etc. common to the pack protocol
@@ -47,11 +47,11 @@ Capabilities was dropped by Nguyễn:
 
   Message-ID: <1377092713-25434-1-git-send-email-pclouds@gmail.com>
 ---
- Documentation/technical/http-protocol.txt | 75 ++++++-------------------------
- 1 file changed, 14 insertions(+), 61 deletions(-)
+ Documentation/technical/http-protocol.txt | 79 +++++++------------------------
+ 1 file changed, 16 insertions(+), 63 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index ff91bb0..483162f 100644
+index ff91bb0..a763ed7 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -84,34 +84,6 @@ as described by RFC 2616 (HTTP/1.1).  Servers SHOULD ignore any
@@ -112,7 +112,7 @@ index ff91bb0..483162f 100644
 +  empty_list       =  PKT-LINE(obj-id SP "capabilities^{}" NUL cap_list LF)
  
 -  non_empty_list   =  PKT-LINE(id SP name NUL cap_list LF)
-+  non_empty_list   =  PKT-LINE(obj-id SP name NUL cap_list LF)
++  non_empty_list   =  PKT-LINE(obj-id SP refname NUL cap_list LF)
  		      *ref_record
  
    cap_list         =  *(SP capability) SP
@@ -123,9 +123,9 @@ index ff91bb0..483162f 100644
 -		      PKT-LINE(id SP name "^{}" LF
 -  id               =  40*HEX
 -
-+  any_ref          =  PKT-LINE(obj-id SP name LF)
-+  peeled_ref       =  PKT-LINE(obj-id SP name LF)
-+		      PKT-LINE(obj-id SP name "^{}" LF
++  any_ref          =  PKT-LINE(obj-id SP refname LF)
++  peeled_ref       =  PKT-LINE(obj-id SP refname LF)
++		      PKT-LINE(obj-id SP refname "^{}" LF
  
  Smart Service git-upload-pack
  ------------------------------
@@ -135,9 +135,10 @@ index ff91bb0..483162f 100644
    command          =  create / delete / update
 -  create           =  40*"0" SP new_id SP name
 -  delete           =  old_id SP 40*"0" SP name
-+  create           =  zero-id SP new_id SP name
-+  delete           =  old_id SP zero-id SP name
-   update           =  old_id SP new_id SP name
+-  update           =  old_id SP new_id SP name
++  create           =  zero-id SP new_id SP refname
++  delete           =  old_id SP zero-id SP refname
++  update           =  old_id SP new_id SP refname
  
  TODO: Document this further.
  TODO: Don't use uppercase for variable names below.
@@ -162,17 +163,19 @@ index ff91bb0..483162f 100644
  The Negotiation Algorithm
  ~~~~~~~~~~~~~~~~~~~~~~~~~
  The computation to select the minimal pack proceeds as follows
-@@ -523,8 +474,8 @@ the id obtained through ref discovery as old_id.
+@@ -523,9 +474,9 @@ the id obtained through ref discovery as old_id.
    cap_list         =  *(SP capability) SP
  
    command          =  create / delete / update
 -  create           =  40*"0" SP new_id SP name
 -  delete           =  old_id SP 40*"0" SP name
-+  create           =  zero-id SP new_id SP name
-+  delete           =  old_id SP zero-id SP name
-   update           =  old_id SP new_id SP name
+-  update           =  old_id SP new_id SP name
++  create           =  zero-id SP new_id SP refname
++  delete           =  old_id SP zero-id SP refname
++  update           =  old_id SP new_id SP refname
  
  TODO: Document this further.
+ 
 @@ -536,4 +487,6 @@ References
  link:http://www.ietf.org/rfc/rfc1738.txt[RFC 1738: Uniform Resource Locators (URL)]
  link:http://www.ietf.org/rfc/rfc2119.txt[RFC 2119: Key words for use in RFCs to Indicate Requirement Levels]

@@ -1,4 +1,4 @@
-From 8065fc6a161b36d09e26200f42068f4dcd2be843 Mon Sep 17 00:00:00 2001
+From a7f8a563f505b0c147c08177fb057e117c8be2f7 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 23:09:46 +0800
 Subject: [PATCH 09/16] mention different variations around $GIT_URL
@@ -46,7 +46,7 @@ exactly-one-param requirement and the http client implementation in Git.
  1 file changed, 20 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index f24c4e8..beff759 100644
+index ac0c033..34f1d62 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -22,15 +22,28 @@ URL Format
