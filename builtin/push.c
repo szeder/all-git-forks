@@ -424,7 +424,14 @@ static int do_push(const char *repo, int flags)
 	}
 
 	if (!refspec && !(flags & TRANSPORT_PUSH_ALL)) {
-		if (remote->push_refspec_nr) {
+		struct branch *branch = branch_get(NULL);
+		/* Is there a publish branch */
+		if (branch && branch->pushremote_name && !strcmp(remote->name, branch->pushremote_name) &&
+				branch->push_name) {
+			struct strbuf refspec = STRBUF_INIT;
+			strbuf_addf(&refspec, "%s:%s", branch->name, branch->push_name);
+			add_refspec(refspec.buf);
+		} else if (remote->push_refspec_nr) {
 			refspec = remote->push_refspec;
 			refspec_nr = remote->push_refspec_nr;
 		} else if (!(flags & TRANSPORT_PUSH_MIRROR))
