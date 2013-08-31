@@ -144,6 +144,49 @@ static int setup_tracking(const char *new_ref, const char *orig_ref,
 	return 0;
 }
 
+void install_branch_publish(const char *name, const char *remote, const char *remote_ref)
+{
+	struct strbuf key = STRBUF_INIT;
+
+	if (!remote && !strcmp(name, remote_ref + 11) && !prefixcmp(remote_ref, "refs/heads")) {
+		warning(_("Not setting branch %s as its own publish branch."), name);
+		return;
+	}
+
+	strbuf_addf(&key, "branch.%s.pushremote", name);
+	git_config_set(key.buf, remote ? remote : ".");
+
+	strbuf_reset(&key);
+	strbuf_addf(&key, "branch.%s.push", name);
+	git_config_set(key.buf, remote_ref);
+
+	strbuf_release(&key);
+}
+
+int setup_publish(const char *name, const char *ref)
+{
+	struct tracking tracking;
+	const char *remote, *remote_ref;
+
+	memset(&tracking, 0, sizeof(tracking));
+	tracking.spec.dst = (char*)ref;
+	if (for_each_remote(find_tracked_branch, &tracking))
+		return 1;
+
+	if (tracking.matches > 1)
+		return error(_("Not tracking: ambiguous information for ref %s"),
+				ref);
+
+	remote = tracking.remote;
+	remote_ref = tracking.src ? tracking.src : ref;
+
+	install_branch_publish(name, remote, remote_ref);
+
+	free(tracking.src);
+
+	return 0;
+}
+
 struct branch_desc_cb {
 	const char *config_name;
 	const char *value;
