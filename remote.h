@@ -211,6 +211,8 @@ struct branch {
 	int merge_alloc;
 
 	const char *push_tracking_ref;
+	const char *push_name;
+	struct refspec push;
 };
 
 struct branch *branch_get(const char *name);
