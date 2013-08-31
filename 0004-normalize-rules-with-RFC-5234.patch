@@ -1,7 +1,7 @@
 From b68ff1f53dc2ccb9849b6ea01b3b53ad16bd621a Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 28 Aug 2013 12:09:54 +0800
-Subject: [PATCH 04/18] normalize rules with RFC 5234
+Subject: [PATCH 04/17] normalize rules with RFC 5234
 
 Drop LF, SP which are defined in RFC 5234.
 

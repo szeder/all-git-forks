@@ -1,8 +1,10 @@
-From 54b6e5a9f9a1164bcaa3c1416371d564cae2f905 Mon Sep 17 00:00:00 2001
+From b1eb9c169c4529959d3d158ff5d58961f298d416 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 29 Aug 2013 17:41:56 +0800
-Subject: [PATCH 05/18] drop rules, etc. already available in
- protocol-common.txt
+Subject: [PATCH 05/17] drop rules, etc. common to the pack protocol
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 
 Use obj-id in lieu of id (defined as 40*HEX).
 
@@ -10,9 +12,12 @@ Use zero-id in lieu of 40*"0".
 
 Use refname in lieu of name (not defined).
 
+Drop section on capabilities, since they are already available in
+protocol-capabilities.txt.
+
 ---
 
-pkt-line format section was dropped in response to
+pkt-line format section was dropped in response to Junio's comments:
 
   Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
 
@@ -37,12 +42,16 @@ pkt-line format section was dropped in response to
   itself defines what the flush packet means.  IOW, "The author of this
   specification, Shawn, MUST treat a flush packet as a message break or
   terminator in the payload, when designing this protocol."
+
+Capabilities was dropped by Nguyễn:
+
+  Message-ID: <1377092713-25434-1-git-send-email-pclouds@gmail.com>
 ---
- Documentation/technical/http-protocol.txt | 57 +++++++------------------------
- 1 file changed, 13 insertions(+), 44 deletions(-)
+ Documentation/technical/http-protocol.txt | 75 ++++++-------------------------
+ 1 file changed, 14 insertions(+), 61 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index ff91bb0..f1f2c32 100644
+index ff91bb0..483162f 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -84,34 +84,6 @@ as described by RFC 2616 (HTTP/1.1).  Servers SHOULD ignore any
@@ -120,7 +129,7 @@ index ff91bb0..f1f2c32 100644
  
  Smart Service git-upload-pack
  ------------------------------
-@@ -346,8 +314,8 @@ appear in the response obtained through ref discovery.
+@@ -346,30 +314,13 @@ appear in the response obtained through ref discovery.
    have_list        =  *PKT-LINE("have" SP id LF)
  
    command          =  create / delete / update
@@ -131,7 +140,29 @@ index ff91bb0..f1f2c32 100644
    update           =  old_id SP new_id SP name
  
  TODO: Document this further.
-@@ -523,8 +491,8 @@ the id obtained through ref discovery as old_id.
+ TODO: Don't use uppercase for variable names below.
+ 
+-Capability include-tag
+-~~~~~~~~~~~~~~~~~~~~~~
+-
+-When packing an object that an annotated tag points at, include the
+-tag object too.  Clients can request this if they want to fetch
+-tags, but don't know which tags they will need until after they
+-receive the branch data.  By enabling include-tag an entire call
+-to upload-pack can be avoided.
+-
+-Capability thin-pack
+-~~~~~~~~~~~~~~~~~~~~
+-
+-When packing a deltified object the base is not included if the base
+-is reachable from an object listed in the COMMON set by the client.
+-This reduces the bandwidth required to transfer, but it does slightly
+-increase processing time for the client to save the pack to disk.
+-
+ The Negotiation Algorithm
+ ~~~~~~~~~~~~~~~~~~~~~~~~~
+ The computation to select the minimal pack proceeds as follows
+@@ -523,8 +474,8 @@ the id obtained through ref discovery as old_id.
    cap_list         =  *(SP capability) SP
  
    command          =  create / delete / update
@@ -142,11 +173,12 @@ index ff91bb0..f1f2c32 100644
    update           =  old_id SP new_id SP name
  
  TODO: Document this further.
-@@ -536,4 +504,5 @@ References
+@@ -536,4 +487,6 @@ References
  link:http://www.ietf.org/rfc/rfc1738.txt[RFC 1738: Uniform Resource Locators (URL)]
  link:http://www.ietf.org/rfc/rfc2119.txt[RFC 2119: Key words for use in RFCs to Indicate Requirement Levels]
  link:http://www.ietf.org/rfc/rfc2616.txt[RFC 2616: Hypertext Transfer Protocol -- HTTP/1.1]
 +link:technical/protocol-common.txt
++link:technical/protocol-capabilities.txt
  
 -- 
 1.8.4.rc4.527.g303b16c

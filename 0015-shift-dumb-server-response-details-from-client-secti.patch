@@ -1,7 +1,7 @@
-From 54b7178b3ba12167b6ae6712fedffdcbfc4fc49e Mon Sep 17 00:00:00 2001
+From ad8dd976972556a72d4a6435c687b04c56862766 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 28 Aug 2013 13:21:14 +0800
-Subject: [PATCH 16/18] shift dumb server response details from client section
+Subject: [PATCH 15/17] shift dumb server response details from client section
  to server
 
 Stuff like abnf, caching. This is in line with smart client-server
@@ -11,7 +11,7 @@ equivalent.
  1 file changed, 23 insertions(+), 26 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 9573faf..b4e7d79 100644
+index bcc04f9..c8bb54b 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -162,30 +162,6 @@ without any search/query parameters.  E.g.
