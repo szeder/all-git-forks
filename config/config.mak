@@ -6,8 +6,9 @@ else
 prefix := $(HOME)/local/git/$(prefix_base)
 endif
 
-CC = ccache gcc
+COMPILER ?= gcc
 O = 0
+CC = ccache $(COMPILER)
 CFLAGS = -g -O$(O)
 CFLAGS += -Wall -Werror
 CFLAGS += -Wno-format-zero-length
