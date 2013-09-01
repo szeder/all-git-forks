@@ -10,6 +10,7 @@ CC = ccache gcc
 O = 0
 CFLAGS = -g -O$(O)
 CFLAGS += -Wall -Werror
+CFLAGS += -Wno-format-zero-length
 LDFLAGS = -g
 
 # Relax compilation on a detached HEAD (which is probably
