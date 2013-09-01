@@ -1,4 +1,4 @@
-From af444fdd214df111c23a3031e9c885f12e6694d4 Mon Sep 17 00:00:00 2001
+From ae215ffe62756d46dedea655d58df65497cdf4bc Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:40:24 +0800
 Subject: [PATCH 11/15] fix examples
@@ -8,11 +8,11 @@ Subject: [PATCH 11/15] fix examples
  - add flush-pkt (0000) for smart
  - drop SP that followed NUL before capability list
 ---
- Documentation/technical/http-protocol.txt | 33 ++++++++++++++++---------------
- 1 file changed, 17 insertions(+), 16 deletions(-)
+ Documentation/technical/http-protocol.txt | 35 ++++++++++++++++---------------
+ 1 file changed, 18 insertions(+), 17 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 5141c6a..91a52e5 100644
+index 5141c6a..dbfff36 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -157,10 +157,10 @@ without any search/query parameters.  E.g.
@@ -73,6 +73,15 @@ index 5141c6a..91a52e5 100644
     C: 0000
  
     S: 200 OK
+@@ -383,7 +384,7 @@ The computation to select the minimal pack proceeds as follows
+      emptied C_PENDING it SHOULD include a "done" command to let
+      the server know it won't proceed:
+ 
+-   C: 0009done
++   C: 0009done\n
+ 
+   (s) Parse the git-upload-pack request:
+ 
 @@ -447,7 +448,7 @@ Clients MUST first perform ref discovery with
     C: POST $GIT_URL/git-receive-pack HTTP/1.0
     C: Content-Type: application/x-git-receive-pack-request
