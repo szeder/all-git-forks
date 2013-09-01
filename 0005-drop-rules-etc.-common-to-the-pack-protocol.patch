@@ -1,7 +1,7 @@
-From d90b8a925927acce2688e3f8c3e3229f686b77ff Mon Sep 17 00:00:00 2001
+From 24387f83aab7fddb2a9c19129e83e29865ec5ec9 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 29 Aug 2013 17:41:56 +0800
-Subject: [PATCH 05/16] drop rules, etc. common to the pack protocol
+Subject: [PATCH 05/15] drop rules, etc. common to the pack protocol
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
@@ -43,15 +43,16 @@ pkt-line format section was dropped in response to Junio's comments:
   specification, Shawn, MUST treat a flush packet as a message break or
   terminator in the payload, when designing this protocol."
 
-Capabilities was dropped by Nguyễn:
+Capabilities and 'command' ABNF rules under git-upload-pack were
+dropped by Nguyễn:
 
   Message-ID: <1377092713-25434-1-git-send-email-pclouds@gmail.com>
 ---
- Documentation/technical/http-protocol.txt | 79 +++++++------------------------
- 1 file changed, 16 insertions(+), 63 deletions(-)
+ Documentation/technical/http-protocol.txt | 85 ++++---------------------------
+ 1 file changed, 10 insertions(+), 75 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index ff91bb0..a763ed7 100644
+index ff91bb0..a8d28ba 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -84,34 +84,6 @@ as described by RFC 2616 (HTTP/1.1).  Servers SHOULD ignore any
@@ -104,42 +105,40 @@ index ff91bb0..a763ed7 100644
  
  Smart Clients
  ~~~~~~~~~~~~~
-@@ -287,19 +257,17 @@ declarations behind a NUL on the first ref.
- 		      "0000"
-   ref_list         =  empty_list / non_empty_list
+@@ -283,23 +253,7 @@ named 'HEAD' as the first ref.  The stream MUST include capability
+ declarations behind a NUL on the first ref.
  
+   smart_reply      =  PKT-LINE("# service=$servicename" LF)
+-		      ref_list
+-		      "0000"
+-  ref_list         =  empty_list / non_empty_list
+-
 -  empty_list       =  PKT-LINE(id SP "capabilities^{}" NUL cap_list LF)
-+  empty_list       =  PKT-LINE(obj-id SP "capabilities^{}" NUL cap_list LF)
- 
+-
 -  non_empty_list   =  PKT-LINE(id SP name NUL cap_list LF)
-+  non_empty_list   =  PKT-LINE(obj-id SP refname NUL cap_list LF)
- 		      *ref_record
- 
-   cap_list         =  *(SP capability) SP
-   ref_record       =  any_ref / peeled_ref
- 
+-		      *ref_record
+-
+-  cap_list         =  *(SP capability) SP
+-  ref_record       =  any_ref / peeled_ref
+-
 -  any_ref          =  PKT-LINE(id SP name LF)
 -  peeled_ref       =  PKT-LINE(id SP name LF)
 -		      PKT-LINE(id SP name "^{}" LF
 -  id               =  40*HEX
 -
-+  any_ref          =  PKT-LINE(obj-id SP refname LF)
-+  peeled_ref       =  PKT-LINE(obj-id SP refname LF)
-+		      PKT-LINE(obj-id SP refname "^{}" LF
++		      advertised-refs
  
  Smart Service git-upload-pack
  ------------------------------
-@@ -346,30 +314,13 @@ appear in the response obtained through ref discovery.
+@@ -345,31 +299,9 @@ appear in the response obtained through ref discovery.
+ 
    have_list        =  *PKT-LINE("have" SP id LF)
  
-   command          =  create / delete / update
+-  command          =  create / delete / update
 -  create           =  40*"0" SP new_id SP name
 -  delete           =  old_id SP 40*"0" SP name
 -  update           =  old_id SP new_id SP name
-+  create           =  zero-id SP new_id SP refname
-+  delete           =  old_id SP zero-id SP refname
-+  update           =  old_id SP new_id SP refname
- 
+-
  TODO: Document this further.
  TODO: Don't use uppercase for variable names below.
  
@@ -163,7 +162,7 @@ index ff91bb0..a763ed7 100644
  The Negotiation Algorithm
  ~~~~~~~~~~~~~~~~~~~~~~~~~
  The computation to select the minimal pack proceeds as follows
-@@ -523,9 +474,9 @@ the id obtained through ref discovery as old_id.
+@@ -523,9 +455,9 @@ the id obtained through ref discovery as old_id.
    cap_list         =  *(SP capability) SP
  
    command          =  create / delete / update
@@ -176,10 +175,11 @@ index ff91bb0..a763ed7 100644
  
  TODO: Document this further.
  
-@@ -536,4 +487,6 @@ References
+@@ -536,4 +468,7 @@ References
  link:http://www.ietf.org/rfc/rfc1738.txt[RFC 1738: Uniform Resource Locators (URL)]
  link:http://www.ietf.org/rfc/rfc2119.txt[RFC 2119: Key words for use in RFCs to Indicate Requirement Levels]
  link:http://www.ietf.org/rfc/rfc2616.txt[RFC 2616: Hypertext Transfer Protocol -- HTTP/1.1]
++link:technical/pack-protocol.txt
 +link:technical/protocol-common.txt
 +link:technical/protocol-capabilities.txt
  

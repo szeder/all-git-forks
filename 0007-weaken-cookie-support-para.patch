@@ -1,7 +1,7 @@
-From 7b8338023f8f22adb2edba4e5f9d1fc5ab38767a Mon Sep 17 00:00:00 2001
+From 98d6f64208db28ed6d1151221cda8fc8af55d536 Mon Sep 17 00:00:00 2001
 From: "Shawn O. Pearce" <spearce@spearce.org>
 Date: Thu, 15 Oct 2009 09:52:28 -0700
-Subject: [PATCH 08/16] weaken cookie support para
+Subject: [PATCH 07/15] weaken cookie support para
 
 ---
 
@@ -27,7 +27,7 @@ Based on the discussion in
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 1b9d140..ac0c033 100644
+index 9662dce..31704da 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -52,7 +52,7 @@ Clients SHOULD support Basic authentication as described by RFC 2616.

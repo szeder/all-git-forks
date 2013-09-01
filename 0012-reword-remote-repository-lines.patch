@@ -1,7 +1,7 @@
-From 48c68f5309c9566e6d970eaba23499edc127cfe0 Mon Sep 17 00:00:00 2001
+From ed0d3e45f6c28882bb83292d7b350f03d531c7e9 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:51:15 +0800
-Subject: [PATCH 13/16] reword 'remote repository' lines
+Subject: [PATCH 12/15] reword 'remote repository' lines
 
 Based on:
 
@@ -21,10 +21,10 @@ Based on:
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index d65b1d0..9ff5826 100644
+index 91a52e5..5436bd6 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
-@@ -295,7 +295,7 @@ declarations behind a NUL on the first ref.
+@@ -279,7 +279,7 @@ declarations behind a NUL on the first ref.
  
  Smart Service git-upload-pack
  ------------------------------
@@ -33,7 +33,7 @@ index d65b1d0..9ff5826 100644
  
  Clients MUST first perform ref discovery with
  '$GIT_URL/info/refs?service=git-upload-pack'.
-@@ -461,7 +461,7 @@ TODO: Document parsing response
+@@ -440,7 +440,7 @@ TODO: Document parsing response
  
  Smart Service git-receive-pack
  ------------------------------

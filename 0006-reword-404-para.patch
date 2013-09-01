@@ -1,7 +1,7 @@
-From 36c78682dd0ab231e7abcffe512e068ccb3ab646 Mon Sep 17 00:00:00 2001
+From f2b921bfd527032c20b3a36bfbdb176412d46953 Mon Sep 17 00:00:00 2001
 From: "Shawn O. Pearce" <spearce@spearce.org>
 Date: Fri, 16 Oct 2009 07:21:35 -0700
-Subject: [PATCH 07/16] reword 404 para
+Subject: [PATCH 06/15] reword 404 para
 
 ---
 
@@ -40,7 +40,7 @@ Based on:
  1 file changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index e52fc5d..1b9d140 100644
+index a8d28ba..9662dce 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -91,8 +91,10 @@ Except where noted, all standard HTTP behavior SHOULD be assumed

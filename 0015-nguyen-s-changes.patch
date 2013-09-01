@@ -1,0 +1,27 @@
+From 37ab1c5ff05c70e971ba5e595dc19353dffb55d0 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Nguy=E1=BB=85n=20Th=C3=A1i=20Ng=E1=BB=8Dc=20Duy?=
+ <pclouds@gmail.com>
+Date: Wed, 21 Aug 2013 20:45:13 +0700
+Subject: [PATCH 15/15] nguyen's changes
+
+---
+ Documentation/technical/http-protocol.txt | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
+index 5132277..68cb734 100644
+--- a/Documentation/technical/http-protocol.txt
++++ b/Documentation/technical/http-protocol.txt
+@@ -304,7 +304,8 @@ Servers SHOULD support all capabilities defined here.
+ 
+ Clients MUST send at least one 'want' command in the request body.
+ Clients MUST NOT reference an id in a 'want' command which did not
+-appear in the response obtained through ref discovery.
++appear in the response obtained through ref discovery unless the
++server advertises capability "allow-tip-sha1-in-want".
+ 
+   compute_request  =  want_list
+ 		      have_list
+-- 
+1.8.4.rc4.527.g303b16c
+

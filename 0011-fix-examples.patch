@@ -1,7 +1,7 @@
-From bbc992583f0c457156dff3bfec149cc0f80dfe35 Mon Sep 17 00:00:00 2001
+From af444fdd214df111c23a3031e9c885f12e6694d4 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:40:24 +0800
-Subject: [PATCH 12/16] fix examples
+Subject: [PATCH 11/15] fix examples
 
  - add LF for responses
  - add pkt-line lengths for smart
@@ -12,7 +12,7 @@ Subject: [PATCH 12/16] fix examples
  1 file changed, 17 insertions(+), 16 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 1fd28a5..d65b1d0 100644
+index 5141c6a..91a52e5 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -157,10 +157,10 @@ without any search/query parameters.  E.g.
@@ -62,7 +62,7 @@ index 1fd28a5..d65b1d0 100644
  
  Dumb Server Response
  ^^^^^^^^^^^^^^^^^^^^
-@@ -302,8 +303,8 @@ Clients MUST first perform ref discovery with
+@@ -286,8 +287,8 @@ Clients MUST first perform ref discovery with
     C: POST $GIT_URL/git-upload-pack HTTP/1.0
     C: Content-Type: application/x-git-upload-pack-request
     C:
@@ -73,7 +73,7 @@ index 1fd28a5..d65b1d0 100644
     C: 0000
  
     S: 200 OK
-@@ -468,7 +469,7 @@ Clients MUST first perform ref discovery with
+@@ -447,7 +448,7 @@ Clients MUST first perform ref discovery with
     C: POST $GIT_URL/git-receive-pack HTTP/1.0
     C: Content-Type: application/x-git-receive-pack-request
     C:
