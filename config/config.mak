@@ -8,7 +8,8 @@ endif
 
 CC = ccache gcc
 O = 0
-CFLAGS = -g -O$(O) -Wall -Werror
+CFLAGS = -g -O$(O)
+CFLAGS += -Wall -Werror
 LDFLAGS = -g
 
 # Relax compilation on a detached HEAD (which is probably
