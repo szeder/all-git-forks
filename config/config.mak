@@ -12,6 +12,10 @@ CC = ccache $(COMPILER)
 CFLAGS = -g -O$(O)
 CFLAGS += -Wall -Werror
 CFLAGS += -Wno-format-zero-length
+ifeq ($(COMPILER), clang)
+CFLAGS += -Qunused-arguments
+CFLAGS += -Wno-parentheses-equality
+endif
 LDFLAGS = -g
 
 # Relax compilation on a detached HEAD (which is probably
