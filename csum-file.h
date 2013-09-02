@@ -9,6 +9,7 @@ struct sha1file {
 	int check_fd;
 	unsigned int offset;
 	git_SHA_CTX ctx;
+	off_t skip;
 	off_t total;
 	struct progress *tp;
 	const char *name;

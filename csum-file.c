@@ -25,6 +25,19 @@ static void flush(struct sha1file *f, void *buf, unsigned int count)
 			die("sha1 file '%s' validation error", f->name);
 	}
 
+	if (f->skip && f->total < f->skip) {
+		unsigned int skip;
+		if (count > f->skip - f->total)
+			skip = f->skip - f->total;
+		else
+			skip = count;
+		buf = (char *) buf + skip;
+		f->total += skip;
+		count -= skip;
+		if (!count)
+			return;
+	}
+
 	for (;;) {
 		int ret = xwrite(f->fd, buf, count);
 		if (ret > 0) {
@@ -154,6 +167,7 @@ struct sha1file *sha1fd_throughput(int fd, const char *name, struct progress *tp
 	f->tp = tp;
 	f->name = name;
 	f->do_crc = 0;
+	f->skip = 0;
 	git_SHA1_Init(&f->ctx);
 	return f;
 }
