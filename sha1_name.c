@@ -429,7 +429,6 @@ static inline int upstream_mark(const char *string, int len)
 	return 0;
 }
 
-static int get_sha1_1(const char *name, int len, unsigned char *sha1, unsigned lookup_flags);
 static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf);
 
 static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
@@ -570,29 +569,24 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 	return 0;
 }
 
-static int get_parent(const char *name, int len,
-		      unsigned char *result, int idx)
+static int get_parent(unsigned char *sha1, int idx)
 {
-	unsigned char sha1[20];
-	int ret = get_sha1_1(name, len, sha1, GET_SHA1_COMMITTISH);
 	struct commit *commit;
 	struct commit_list *p;
 
-	if (ret)
-		return ret;
 	commit = lookup_commit_reference(sha1);
 	if (!commit)
 		return -1;
 	if (parse_commit(commit))
 		return -1;
 	if (!idx) {
-		hashcpy(result, commit->object.sha1);
+		hashcpy(sha1, commit->object.sha1);
 		return 0;
 	}
 	p = commit->parents;
 	while (p) {
 		if (!--idx) {
-			hashcpy(result, p->item->object.sha1);
+			hashcpy(sha1, p->item->object.sha1);
 			return 0;
 		}
 		p = p->next;
@@ -600,16 +594,10 @@ static int get_parent(const char *name, int len,
 	return -1;
 }
 
-static int get_nth_ancestor(const char *name, int len,
-			    unsigned char *result, int generation)
+static int get_nth_ancestor(unsigned char *sha1, int generation)
 {
-	unsigned char sha1[20];
 	struct commit *commit;
-	int ret;
 
-	ret = get_sha1_1(name, len, sha1, GET_SHA1_COMMITTISH);
-	if (ret)
-		return ret;
 	commit = lookup_commit_reference(sha1);
 	if (!commit)
 		return -1;
@@ -619,7 +607,7 @@ static int get_nth_ancestor(const char *name, int len,
 			return -1;
 		commit = commit->parents->item;
 	}
-	hashcpy(result, commit->object.sha1);
+	hashcpy(sha1, commit->object.sha1);
 	return 0;
 }
 
@@ -648,12 +636,10 @@ struct object *peel_to_type(const char *name, int namelen,
 	}
 }
 
-static int peel_onion(const char *name, int len, unsigned char *sha1)
+static int peel_onion(const char *name, const char *str, int len, unsigned char *sha1)
 {
-	unsigned char outer[20];
-	const char *sp;
+	const char *sp, *end = NULL;
 	unsigned int expected_type = 0;
-	unsigned lookup_flags = 0;
 	struct object *o;
 
 	/*
@@ -664,18 +650,24 @@ static int peel_onion(const char *name, int len, unsigned char *sha1)
 	 * "ref^{commit}".  "commit^{tree}" could be used to find the
 	 * top-level tree of the given commit.
 	 */
-	if (len < 4 || name[len-1] != '}')
-		return -1;
 
-	for (sp = name + len - 1; name <= sp; sp--) {
-		int ch = *sp;
-		if (ch == '{' && name < sp && sp[-1] == '^')
+	if (len < 3)
+		return 0;
+
+	sp = str;
+	if (sp[0] != '^' || sp[1] != '{')
+		return 0;
+
+	for (end = sp; *end; end++)
+		if (*end == '}')
 			break;
-	}
-	if (sp <= name)
-		return -1;
+	if (!end)
+		return 0;
 
-	sp++; /* beginning of type name, or closing brace for empty */
+	end++;
+	len = end - str;
+
+	sp += 2;
 	if (!prefixcmp(sp, "commit}"))
 		expected_type = OBJ_COMMIT;
 	else if (!prefixcmp(sp, "tag}"))
@@ -693,35 +685,28 @@ static int peel_onion(const char *name, int len, unsigned char *sha1)
 	else
 		return -1;
 
-	if (expected_type == OBJ_COMMIT)
-		lookup_flags = GET_SHA1_COMMITTISH;
-	else if (expected_type == OBJ_TREE)
-		lookup_flags = GET_SHA1_TREEISH;
-
-	if (get_sha1_1(name, sp - name - 2, outer, lookup_flags))
-		return -1;
-
-	o = parse_object(outer);
+	o = parse_object(sha1);
 	if (!o)
 		return -1;
 	if (!expected_type) {
-		o = deref_tag(o, name, sp - name - 2);
+		o = deref_tag(o, name, end - name);
 		if (!o || (!o->parsed && !parse_object(o->sha1)))
 			return -1;
 		hashcpy(sha1, o->sha1);
-		return 0;
+		return len;
 	}
 
 	/*
-	 * At this point, the syntax look correct, so
+	 * At this point, the syntax looks correct, so
 	 * if we do not get the needed object, we should
 	 * barf.
 	 */
-	o = peel_to_type(name, len, o, expected_type);
+	o = peel_to_type(name, end - name, o, expected_type);
 	if (!o)
 		return -1;
 
 	hashcpy(sha1, o->sha1);
+
 	if (sp[0] == '/') {
 		/* "$commit^{/foo}" */
 		char *prefix;
@@ -733,15 +718,16 @@ static int peel_onion(const char *name, int len, unsigned char *sha1)
 		 * We don't need regex anyway. '' pattern always matches.
 		 */
 		if (sp[1] == '}')
-			return 0;
+			return len;
 
-		prefix = xstrndup(sp + 1, name + len - 1 - (sp + 1));
+		prefix = xstrndup(sp + 1, end - sp - 2);
 		commit_list_insert((struct commit *)o, &list);
 		ret = get_sha1_oneline(prefix, sha1, list);
 		free(prefix);
-		return ret;
+		if (ret)
+			return -1;
 	}
-	return 0;
+	return len;
 }
 
 static int get_describe_name(const char *name, int len, unsigned char *sha1)
@@ -763,54 +749,6 @@ static int get_describe_name(const char *name, int len, unsigned char *sha1)
 		}
 	}
 	return -1;
-}
-
-static int get_sha1_1(const char *name, int len, unsigned char *sha1, unsigned lookup_flags)
-{
-	int ret, has_suffix;
-	const char *cp;
-
-	/*
-	 * "name~3" is "name^^^", "name~" is "name~1", and "name^" is "name^1".
-	 */
-	has_suffix = 0;
-	for (cp = name + len - 1; name <= cp; cp--) {
-		int ch = *cp;
-		if ('0' <= ch && ch <= '9')
-			continue;
-		if (ch == '~' || ch == '^')
-			has_suffix = ch;
-		break;
-	}
-
-	if (has_suffix) {
-		int num = 0;
-		int len1 = cp - name;
-		cp++;
-		while (cp < name + len)
-			num = num * 10 + *cp++ - '0';
-		if (!num && len1 == len - 1)
-			num = 1;
-		if (has_suffix == '^')
-			return get_parent(name, len1, sha1, num);
-		/* else if (has_suffix == '~') -- goes without saying */
-		return get_nth_ancestor(name, len1, sha1, num);
-	}
-
-	ret = peel_onion(name, len, sha1);
-	if (!ret)
-		return 0;
-
-	ret = get_sha1_basic(name, len, sha1);
-	if (!ret)
-		return 0;
-
-	/* It could be describe output that is "SOMETHING-gXXXX" */
-	ret = get_describe_name(name, len, sha1);
-	if (!ret)
-		return 0;
-
-	return get_short_sha1(name, len, sha1, lookup_flags);
 }
 
 /*
@@ -1319,22 +1257,168 @@ static char *resolve_relative_path(const char *rel)
 			   rel);
 }
 
+static int resolve_ancestry(const char *str, int len, unsigned char *sha1)
+{
+	int has_suffix;
+	const char *cp, *end;
+	int num = 0, ret;
+
+	/*
+	 * "name~3" is "name^^^", "name~" is "name~1", and "name^" is "name^1".
+	 */
+	has_suffix = 0;
+	for (cp = str; *cp; cp++) {
+		int ch = *cp;
+		if ('0' <= ch && ch <= '9')
+			continue;
+		if (ch == '~' || ch == '^') {
+			if (has_suffix)
+				break;
+			has_suffix = ch;
+			continue;
+		}
+		break;
+	}
+
+	if (!has_suffix)
+		return 0;
+
+	end = cp;
+	cp = str + 1;
+	if (cp == end)
+		num = 1;
+	else
+		while (cp < end)
+			num = num * 10 + *cp++ - '0';
+	len = end - str;
+	if (has_suffix == '^')
+		ret = get_parent(sha1, num);
+	else
+		ret = get_nth_ancestor(sha1, num);
+	if (ret)
+		return ret;
+	return len;
+}
+
+static int resolve_tree(struct object_context *oc, const char *str, int len,
+		unsigned char *sha1, unsigned char *tree_sha1)
+{
+	int ret;
+	const char *filename = str + 1;
+	char *new_filename = NULL;
+
+	new_filename = resolve_relative_path(filename);
+	if (new_filename)
+		filename = new_filename;
+	hashcpy(tree_sha1, sha1);
+	ret = get_tree_entry(tree_sha1, filename, sha1, &oc->mode);
+	hashcpy(oc->tree, tree_sha1);
+	strncpy(oc->path, filename, sizeof(oc->path));
+	oc->path[sizeof(oc->path) - 1] = '\0';
+
+	free(new_filename);
+	return ret;
+}
+
+static int resolve(const char *name, int len, unsigned char *sha1,
+		struct object_context *oc, const char *prefix, unsigned flags)
+{
+	const char *cp;
+	int ret;
+	int tmp_len;
+	int bracket_depth;
+	unsigned char tree_sha1[20];
+	unsigned lookup_flags = flags;
+
+	for (cp = name, bracket_depth = 0; *cp; cp++) {
+		if (*cp == '{')
+			bracket_depth++;
+		else if (bracket_depth && *cp == '}')
+			bracket_depth--;
+		else if (!bracket_depth) {
+			if (*cp == '^') {
+				if (cp[1] == '{') {
+					const char *sp = cp + 2;
+					if (!strncmp(commit_type, sp, 6) && sp[6] == '}')
+						lookup_flags = GET_SHA1_COMMITTISH;
+					else if (!strncmp(tree_type, sp, 4) && sp[4] == '}')
+						lookup_flags = GET_SHA1_TREEISH;
+					else if (sp[0] == '/')
+						lookup_flags = GET_SHA1_COMMITTISH;
+					else
+						lookup_flags = 0;
+				} else {
+					lookup_flags = GET_SHA1_COMMITTISH;
+				}
+				break;
+			}
+			if (*cp == '~') {
+				lookup_flags = GET_SHA1_COMMITTISH;
+				break;
+			}
+			if (*cp == ':') {
+				lookup_flags = GET_SHA1_TREEISH;
+				break;
+			}
+		}
+	}
+
+	tmp_len = cp - name;
+	ret = get_sha1_basic(name, tmp_len, sha1);
+	if (!ret)
+		goto next;
+	ret = get_short_sha1(name, tmp_len, sha1, lookup_flags);
+	if (!ret)
+		goto next;
+	ret = get_describe_name(name, tmp_len, sha1);
+	if (!ret)
+		goto next;
+
+	return -1;
+
+next:
+	if (!*cp)
+		return 0;
+	while (*cp == '^' || *cp == '~') {
+		ret = peel_onion(name, cp, len - (cp - name), sha1);
+		if (ret < 0)
+			return ret;
+		cp += ret;
+		ret = resolve_ancestry(cp, len - (cp - name), sha1);
+		if (ret < 0)
+			return ret;
+		cp += ret;
+	}
+	if (!*cp)
+		return 0;
+	if (*cp != ':')
+		/* malformed */
+		return -1;
+	ret = resolve_tree(oc, cp, len - (cp - name), sha1, tree_sha1);
+	if (ret < 0) {
+		if (flags & GET_SHA1_ONLY_TO_DIE) {
+			diagnose_invalid_sha1_path(prefix, oc->path,
+						   tree_sha1,
+						   name, cp - name);
+		}
+		return ret;
+	}
+	return 0;
+}
+
 static int get_sha1_with_context_1(const char *name,
 				   unsigned flags,
 				   const char *prefix,
 				   unsigned char *sha1,
 				   struct object_context *oc)
 {
-	int ret, bracket_depth;
 	int namelen = strlen(name);
 	const char *cp;
 	int only_to_die = flags & GET_SHA1_ONLY_TO_DIE;
 
 	memset(oc, 0, sizeof(*oc));
 	oc->mode = S_IFINVALID;
-	ret = get_sha1_1(name, namelen, sha1, flags);
-	if (!ret)
-		return ret;
+
 	/*
 	 * sha1:path --> object name of path in ent sha1
 	 * :path -> object name of absolute path in index
@@ -1395,43 +1479,8 @@ static int get_sha1_with_context_1(const char *name,
 		free(new_path);
 		return -1;
 	}
-	for (cp = name, bracket_depth = 0; *cp; cp++) {
-		if (*cp == '{')
-			bracket_depth++;
-		else if (bracket_depth && *cp == '}')
-			bracket_depth--;
-		else if (!bracket_depth && *cp == ':')
-			break;
-	}
-	if (*cp == ':') {
-		unsigned char tree_sha1[20];
-		int len = cp - name;
-		if (!get_sha1_1(name, len, tree_sha1, GET_SHA1_TREEISH)) {
-			const char *filename = cp+1;
-			char *new_filename = NULL;
 
-			new_filename = resolve_relative_path(filename);
-			if (new_filename)
-				filename = new_filename;
-			ret = get_tree_entry(tree_sha1, filename, sha1, &oc->mode);
-			if (ret && only_to_die) {
-				diagnose_invalid_sha1_path(prefix, filename,
-							   tree_sha1,
-							   name, len);
-			}
-			hashcpy(oc->tree, tree_sha1);
-			strncpy(oc->path, filename,
-				sizeof(oc->path));
-			oc->path[sizeof(oc->path)-1] = '\0';
-
-			free(new_filename);
-			return ret;
-		} else {
-			if (only_to_die)
-				die("Invalid object name '%.*s'.", len, name);
-		}
-	}
-	return ret;
+	return resolve(name, namelen, sha1, oc, prefix, flags);
 }
 
 /*
