@@ -557,7 +557,7 @@ test_expect_success 'autosetuprebase local on a tracked local branch' '
 	git branch --track myr1 mybase &&
 	test "$(git config branch.myr1.remote)" = . &&
 	test "$(git config branch.myr1.merge)" = refs/heads/mybase &&
-	test "$(git config branch.myr1.rebase)" = true
+	test "$(git config branch.myr1.pullmode)" = rebase
 '
 
 test_expect_success 'autosetuprebase always on a tracked local branch' '
@@ -569,7 +569,7 @@ test_expect_success 'autosetuprebase always on a tracked local branch' '
 	git branch --track myr2 mybase &&
 	test "$(git config branch.myr2.remote)" = . &&
 	test "$(git config branch.myr2.merge)" = refs/heads/mybase &&
-	test "$(git config branch.myr2.rebase)" = true
+	test "$(git config branch.myr2.pullmode)" = rebase
 '
 
 test_expect_success 'autosetuprebase remote on a tracked local branch' '
@@ -581,7 +581,7 @@ test_expect_success 'autosetuprebase remote on a tracked local branch' '
 	git branch --track myr3 mybase2 &&
 	test "$(git config branch.myr3.remote)" = . &&
 	test "$(git config branch.myr3.merge)" = refs/heads/mybase2 &&
-	! test "$(git config branch.myr3.rebase)" = true
+	! test "$(git config branch.myr3.pullmode)" = rebase
 '
 
 test_expect_success 'autosetuprebase never on a tracked local branch' '
@@ -593,7 +593,7 @@ test_expect_success 'autosetuprebase never on a tracked local branch' '
 	git branch --track myr4 mybase2 &&
 	test "$(git config branch.myr4.remote)" = . &&
 	test "$(git config branch.myr4.merge)" = refs/heads/mybase2 &&
-	! test "$(git config branch.myr4.rebase)" = true
+	! test "$(git config branch.myr4.pullmode)" = rebase
 '
 
 test_expect_success 'autosetuprebase local on a tracked remote branch' '
@@ -604,7 +604,7 @@ test_expect_success 'autosetuprebase local on a tracked remote branch' '
 	git branch --track myr5 local/master &&
 	test "$(git config branch.myr5.remote)" = local &&
 	test "$(git config branch.myr5.merge)" = refs/heads/master &&
-	! test "$(git config branch.myr5.rebase)" = true
+	! test "$(git config branch.myr5.pullmode)" = rebase
 '
 
 test_expect_success 'autosetuprebase never on a tracked remote branch' '
@@ -615,7 +615,7 @@ test_expect_success 'autosetuprebase never on a tracked remote branch' '
 	git branch --track myr6 local/master &&
 	test "$(git config branch.myr6.remote)" = local &&
 	test "$(git config branch.myr6.merge)" = refs/heads/master &&
-	! test "$(git config branch.myr6.rebase)" = true
+	! test "$(git config branch.myr6.pullmode)" = rebase
 '
 
 test_expect_success 'autosetuprebase remote on a tracked remote branch' '
@@ -626,7 +626,7 @@ test_expect_success 'autosetuprebase remote on a tracked remote branch' '
 	git branch --track myr7 local/master &&
 	test "$(git config branch.myr7.remote)" = local &&
 	test "$(git config branch.myr7.merge)" = refs/heads/master &&
-	test "$(git config branch.myr7.rebase)" = true
+	test "$(git config branch.myr7.pullmode)" = rebase
 '
 
 test_expect_success 'autosetuprebase always on a tracked remote branch' '
@@ -637,7 +637,7 @@ test_expect_success 'autosetuprebase always on a tracked remote branch' '
 	git branch --track myr8 local/master &&
 	test "$(git config branch.myr8.remote)" = local &&
 	test "$(git config branch.myr8.merge)" = refs/heads/master &&
-	test "$(git config branch.myr8.rebase)" = true
+	test "$(git config branch.myr8.pullmode)" = rebase
 '
 
 test_expect_success 'autosetuprebase unconfigured on a tracked remote branch' '
@@ -648,7 +648,7 @@ test_expect_success 'autosetuprebase unconfigured on a tracked remote branch' '
 	git branch --track myr9 local/master &&
 	test "$(git config branch.myr9.remote)" = local &&
 	test "$(git config branch.myr9.merge)" = refs/heads/master &&
-	test "z$(git config branch.myr9.rebase)" = z
+	test "z$(git config branch.myr9.pullmode)" = z
 '
 
 test_expect_success 'autosetuprebase unconfigured on a tracked local branch' '
@@ -659,7 +659,7 @@ test_expect_success 'autosetuprebase unconfigured on a tracked local branch' '
 	git branch --track myr10 mybase2 &&
 	test "$(git config branch.myr10.remote)" = . &&
 	test "$(git config branch.myr10.merge)" = refs/heads/mybase2 &&
-	test "z$(git config branch.myr10.rebase)" = z
+	test "z$(git config branch.myr10.pullmode)" = z
 '
 
 test_expect_success 'autosetuprebase unconfigured on untracked local branch' '
@@ -669,7 +669,7 @@ test_expect_success 'autosetuprebase unconfigured on untracked local branch' '
 	git branch --no-track myr11 mybase2 &&
 	test "z$(git config branch.myr11.remote)" = z &&
 	test "z$(git config branch.myr11.merge)" = z &&
-	test "z$(git config branch.myr11.rebase)" = z
+	test "z$(git config branch.myr11.pullmode)" = z
 '
 
 test_expect_success 'autosetuprebase unconfigured on untracked remote branch' '
@@ -679,7 +679,7 @@ test_expect_success 'autosetuprebase unconfigured on untracked remote branch' '
 	git branch --no-track myr12 local/master &&
 	test "z$(git config branch.myr12.remote)" = z &&
 	test "z$(git config branch.myr12.merge)" = z &&
-	test "z$(git config branch.myr12.rebase)" = z
+	test "z$(git config branch.myr12.pullmode)" = z
 '
 
 test_expect_success 'autosetuprebase never on an untracked local branch' '
@@ -690,7 +690,7 @@ test_expect_success 'autosetuprebase never on an untracked local branch' '
 	git branch --no-track myr13 mybase2 &&
 	test "z$(git config branch.myr13.remote)" = z &&
 	test "z$(git config branch.myr13.merge)" = z &&
-	test "z$(git config branch.myr13.rebase)" = z
+	test "z$(git config branch.myr13.pullmode)" = z
 '
 
 test_expect_success 'autosetuprebase local on an untracked local branch' '
@@ -701,7 +701,7 @@ test_expect_success 'autosetuprebase local on an untracked local branch' '
 	git branch --no-track myr14 mybase2 &&
 	test "z$(git config branch.myr14.remote)" = z &&
 	test "z$(git config branch.myr14.merge)" = z &&
-	test "z$(git config branch.myr14.rebase)" = z
+	test "z$(git config branch.myr14.pullmode)" = z
 '
 
 test_expect_success 'autosetuprebase remote on an untracked local branch' '
@@ -712,7 +712,7 @@ test_expect_success 'autosetuprebase remote on an untracked local branch' '
 	git branch --no-track myr15 mybase2 &&
 	test "z$(git config branch.myr15.remote)" = z &&
 	test "z$(git config branch.myr15.merge)" = z &&
-	test "z$(git config branch.myr15.rebase)" = z
+	test "z$(git config branch.myr15.pullmode)" = z
 '
 
 test_expect_success 'autosetuprebase always on an untracked local branch' '
@@ -723,7 +723,7 @@ test_expect_success 'autosetuprebase always on an untracked local branch' '
 	git branch --no-track myr16 mybase2 &&
 	test "z$(git config branch.myr16.remote)" = z &&
 	test "z$(git config branch.myr16.merge)" = z &&
-	test "z$(git config branch.myr16.rebase)" = z
+	test "z$(git config branch.myr16.pullmode)" = z
 '
 
 test_expect_success 'autosetuprebase never on an untracked remote branch' '
@@ -734,7 +734,7 @@ test_expect_success 'autosetuprebase never on an untracked remote branch' '
 	git branch --no-track myr17 local/master &&
 	test "z$(git config branch.myr17.remote)" = z &&
 	test "z$(git config branch.myr17.merge)" = z &&
-	test "z$(git config branch.myr17.rebase)" = z
+	test "z$(git config branch.myr17.pullmode)" = z
 '
 
 test_expect_success 'autosetuprebase local on an untracked remote branch' '
@@ -745,7 +745,7 @@ test_expect_success 'autosetuprebase local on an untracked remote branch' '
 	git branch --no-track myr18 local/master &&
 	test "z$(git config branch.myr18.remote)" = z &&
 	test "z$(git config branch.myr18.merge)" = z &&
-	test "z$(git config branch.myr18.rebase)" = z
+	test "z$(git config branch.myr18.pullmode)" = z
 '
 
 test_expect_success 'autosetuprebase remote on an untracked remote branch' '
@@ -756,7 +756,7 @@ test_expect_success 'autosetuprebase remote on an untracked remote branch' '
 	git branch --no-track myr19 local/master &&
 	test "z$(git config branch.myr19.remote)" = z &&
 	test "z$(git config branch.myr19.merge)" = z &&
-	test "z$(git config branch.myr19.rebase)" = z
+	test "z$(git config branch.myr19.pullmode)" = z
 '
 
 test_expect_success 'autosetuprebase always on an untracked remote branch' '
@@ -767,7 +767,7 @@ test_expect_success 'autosetuprebase always on an untracked remote branch' '
 	git branch --no-track myr20 local/master &&
 	test "z$(git config branch.myr20.remote)" = z &&
 	test "z$(git config branch.myr20.merge)" = z &&
-	test "z$(git config branch.myr20.rebase)" = z
+	test "z$(git config branch.myr20.pullmode)" = z
 '
 
 test_expect_success 'autosetuprebase always on detached HEAD' '
