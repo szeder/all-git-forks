@@ -53,16 +53,11 @@ then
 	mode=$(git config pull.mode)
 fi
 case "$mode" in
-merge)
-	rebase="false"
-	;;
-rebase)
-	rebase="true"
+merge|rebase|'')
 	;;
 rebase-preserve)
-	rebase="preserve"
-	;;
-'')
+	mode="rebase"
+	rebase_args="--preserve-merges"
 	;;
 *)
 	echo "Invalid value for 'mode'"
@@ -70,7 +65,8 @@ rebase-preserve)
 	exit 1
 	;;
 esac
-if test -z "$rebase"
+
+if test -z "$mode"
 then
 	rebase=$(bool_or_string_config branch.$curr_branch_short.rebase)
 	if test -z "$rebase"
@@ -149,10 +145,10 @@ do
 		rebase="${1#*=}"
 		;;
 	-r|--r|--re|--reb|--reba|--rebas|--rebase)
-		rebase=true
+		mode=rebase
 		;;
 	--no-r|--no-re|--no-reb|--no-reba|--no-rebas|--no-rebase)
-		rebase=false
+		mode=
 		;;
 	--recurse-submodules)
 		recurse_submodules=--recurse-submodules
@@ -183,19 +179,26 @@ do
 	shift
 done
 
-case "$rebase" in
-preserve)
-	rebase=true
-	rebase_args=--preserve-merges
-	;;
-true|false|'')
-	;;
-*)
-	echo "Invalid value for --rebase, should be true, false, or preserve"
-	usage
-	exit 1
-	;;
-esac
+if test -n "$rebase"
+then
+	case "$rebase" in
+	true)
+		mode="rebase"
+		;;
+	false)
+		mode="merge"
+		;;
+	preserve)
+		mode="rebase"
+		rebase_args=--preserve-merges
+		;;
+	*)
+		echo "Invalid value for --rebase, should be true, false, or preserve"
+		usage
+		exit 1
+		;;
+	esac
+fi
 
 error_on_no_merge_candidates () {
 	exec >&2
@@ -209,7 +212,7 @@ error_on_no_merge_candidates () {
 		esac
 	done
 
-	if test true = "$rebase"
+	if test "$mode" = rebase
 	then
 		op_type=rebase
 		op_prep=against
@@ -222,7 +225,7 @@ error_on_no_merge_candidates () {
 	remote=$(git config "branch.$curr_branch_short.remote")
 
 	if [ $# -gt 1 ]; then
-		if [ "$rebase" = true ]; then
+		if [ "$mode" = rebase ]; then
 			printf "There is no candidate for rebasing against "
 		else
 			printf "There are no candidates for merging "
@@ -245,7 +248,7 @@ error_on_no_merge_candidates () {
 	exit 1
 }
 
-test true = "$rebase" && {
+test "$mode" = rebase && {
 	if ! git rev-parse -q --verify HEAD >/dev/null
 	then
 		# On an unborn branch
@@ -310,7 +313,7 @@ case "$merge_head" in
 	then
 		die "$(gettext "Cannot merge multiple branches into empty head")"
 	fi
-	if test true = "$rebase"
+	if test "$mode" = rebase
 	then
 		die "$(gettext "Cannot rebase onto multiple branches")"
 	fi
@@ -331,7 +334,7 @@ then
 	exit
 fi
 
-if test true = "$rebase"
+if test "$mode" = rebase
 then
 	o=$(git show-branch --merge-base $curr_branch $merge_head $oldremoteref)
 	if test "$oldremoteref" = "$o"
@@ -341,8 +344,8 @@ then
 fi
 
 merge_name=$(git fmt-merge-msg $log_arg <"$GIT_DIR/FETCH_HEAD") || exit
-case "$rebase" in
-true)
+case "$mode" in
+rebase)
 	eval="git-rebase $diffstat $strategy_args $merge_args $rebase_args $verbosity"
 	eval="$eval --onto $merge_head ${oldremoteref:-$merge_head}"
 	;;
