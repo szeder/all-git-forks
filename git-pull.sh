@@ -15,6 +15,10 @@ require_work_tree_exists
 cd_to_toplevel
 
 
+warn () {
+	printf >&2 'warning: %s\n' "$*"
+}
+
 die_conflict () {
     git diff-index --cached --name-status -r --ignore-submodules HEAD --
     if [ $(git config --bool --get advice.resolveConflict || echo true) = "true" ]; then
@@ -142,8 +146,12 @@ do
 	-r|--r|--re|--reb|--reba|--rebas|--rebase)
 		mode=rebase
 		;;
+	-m|--m|--me|--mer|--merg|--merge)
+		mode=merge
+		;;
 	--no-r|--no-re|--no-reb|--no-reba|--no-rebas|--no-rebase)
-		mode=
+		mode=merge
+		warn "$(gettext "--no-rebase is deprecated, please use --merge instead")"
 		;;
 	--recurse-submodules)
 		recurse_submodules=--recurse-submodules
