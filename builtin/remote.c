@@ -274,7 +274,7 @@ static int config_read_branches(const char *key, const char *value, void *cb)
 		char *name;
 		struct string_list_item *item;
 		struct branch_info *info;
-		enum { REMOTE, MERGE, REBASE } type;
+		enum { REMOTE, MERGE, REBASE, PULLMODE } type;
 
 		key += 7;
 		if (!postfixcmp(key, ".remote")) {
@@ -286,6 +286,9 @@ static int config_read_branches(const char *key, const char *value, void *cb)
 		} else if (!postfixcmp(key, ".rebase")) {
 			name = xstrndup(key, strlen(key) - 7);
 			type = REBASE;
+		} else if (!postfixcmp(key, ".pullmode")) {
+			name = xstrndup(key, strlen(key) - 9);
+			type = PULLMODE;
 		} else
 			return 0;
 
@@ -309,11 +312,18 @@ static int config_read_branches(const char *key, const char *value, void *cb)
 				space = strchr(value, ' ');
 			}
 			string_list_append(&info->merge, xstrdup(value));
-		} else {
+		} else if (type == REBASE) {
 			int v = git_config_maybe_bool(orig_key, value);
 			if (v >= 0)
 				info->rebase = v;
 			else if (!strcmp(value, "preserve"))
+				info->rebase = 1;
+		} else {
+			if (!strcmp(value, "rebase"))
+				info->rebase = 1;
+			else if (!strcmp(value, "merge"))
+				info->rebase = 0;
+			else if (!strcmp(value, "rebase-preserve"))
 				info->rebase = 1;
 		}
 	}

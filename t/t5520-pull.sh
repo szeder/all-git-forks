@@ -123,26 +123,26 @@ test_expect_success '--rebase' '
 	test $(git rev-parse HEAD^) = $(git rev-parse copy) &&
 	test new = $(git show HEAD:file2)
 '
-test_expect_success 'pull.rebase' '
+test_expect_success 'pull.mode=rebase' '
 	git reset --hard before-rebase &&
-	test_config pull.rebase true &&
+	test_config pull.mode rebase &&
 	git pull . copy &&
 	test $(git rev-parse HEAD^) = $(git rev-parse copy) &&
 	test new = $(git show HEAD:file2)
 '
 
-test_expect_success 'branch.to-rebase.rebase' '
+test_expect_success 'branch.to-rebase.pullmode=rebase' '
 	git reset --hard before-rebase &&
-	test_config branch.to-rebase.rebase true &&
+	test_config branch.to-rebase.pullmode rebase &&
 	git pull . copy &&
 	test $(git rev-parse HEAD^) = $(git rev-parse copy) &&
 	test new = $(git show HEAD:file2)
 '
 
-test_expect_success 'branch.to-rebase.rebase should override pull.rebase' '
+test_expect_success 'branch.to-rebase.pullmode should override pull.mode' '
 	git reset --hard before-rebase &&
-	test_config pull.rebase true &&
-	test_config branch.to-rebase.rebase false &&
+	test_config pull.mode merge &&
+	test_config branch.to-rebase.pullmode merge &&
 	git pull . copy &&
 	test $(git rev-parse HEAD^) != $(git rev-parse copy) &&
 	test new = $(git show HEAD:file2)
@@ -150,7 +150,7 @@ test_expect_success 'branch.to-rebase.rebase should override pull.rebase' '
 
 # add a feature branch, keep-merge, that is merged into master, so the
 # test can try preserving the merge commit (or not) with various
-# --rebase flags/pull.rebase settings.
+# --rebase flags/pull.mode settings.
 test_expect_success 'preserve merge setup' '
 	git reset --hard before-rebase &&
 	git checkout -b keep-merge second^ &&
@@ -160,48 +160,40 @@ test_expect_success 'preserve merge setup' '
 	git tag before-preserve-rebase
 '
 
-test_expect_success 'pull.rebase=false create a new merge commit' '
+test_expect_success 'pull.mode=merge create a new merge commit' '
 	git reset --hard before-preserve-rebase &&
-	test_config pull.rebase false &&
+	test_config pull.mode merge &&
 	git pull . copy &&
 	test $(git rev-parse HEAD^1) = $(git rev-parse before-preserve-rebase) &&
 	test $(git rev-parse HEAD^2) = $(git rev-parse copy) &&
 	test file3 = $(git show HEAD:file3.t)
 '
 
-test_expect_success 'pull.rebase=true flattens keep-merge' '
+test_expect_success 'pull.mode=rebase flattens keep-merge' '
 	git reset --hard before-preserve-rebase &&
-	test_config pull.rebase true &&
+	test_config pull.mode rebase &&
 	git pull . copy &&
 	test $(git rev-parse HEAD^^) = $(git rev-parse copy) &&
 	test file3 = $(git show HEAD:file3.t)
 '
 
-test_expect_success 'pull.rebase=1 is treated as true and flattens keep-merge' '
+test_expect_success 'pull.mode=rebase-preserve rebases and merges keep-merge' '
 	git reset --hard before-preserve-rebase &&
-	test_config pull.rebase 1 &&
-	git pull . copy &&
-	test $(git rev-parse HEAD^^) = $(git rev-parse copy) &&
-	test file3 = $(git show HEAD:file3.t)
-'
-
-test_expect_success 'pull.rebase=preserve rebases and merges keep-merge' '
-	git reset --hard before-preserve-rebase &&
-	test_config pull.rebase preserve &&
+	test_config pull.mode rebase-preserve &&
 	git pull . copy &&
 	test $(git rev-parse HEAD^^) = $(git rev-parse copy) &&
 	test $(git rev-parse HEAD^2) = $(git rev-parse keep-merge)
 '
 
-test_expect_success 'pull.rebase=invalid fails' '
+test_expect_success 'pull.mode=invalid fails' '
 	git reset --hard before-preserve-rebase &&
-	test_config pull.rebase invalid &&
+	test_config pull.mode invalid &&
 	! git pull . copy
 '
 
 test_expect_success '--rebase=false create a new merge commit' '
 	git reset --hard before-preserve-rebase &&
-	test_config pull.rebase true &&
+	test_config pull.mode rebase &&
 	git pull --rebase=false . copy &&
 	test $(git rev-parse HEAD^1) = $(git rev-parse before-preserve-rebase) &&
 	test $(git rev-parse HEAD^2) = $(git rev-parse copy) &&
@@ -210,7 +202,7 @@ test_expect_success '--rebase=false create a new merge commit' '
 
 test_expect_success '--rebase=true rebases and flattens keep-merge' '
 	git reset --hard before-preserve-rebase &&
-	test_config pull.rebase preserve &&
+	test_config pull.mode rebase-preserve &&
 	git pull --rebase=true . copy &&
 	test $(git rev-parse HEAD^^) = $(git rev-parse copy) &&
 	test file3 = $(git show HEAD:file3.t)
@@ -218,7 +210,7 @@ test_expect_success '--rebase=true rebases and flattens keep-merge' '
 
 test_expect_success '--rebase=preserve rebases and merges keep-merge' '
 	git reset --hard before-preserve-rebase &&
-	test_config pull.rebase true &&
+	test_config pull.mode rebase &&
 	git pull --rebase=preserve . copy &&
 	test $(git rev-parse HEAD^^) = $(git rev-parse copy) &&
 	test $(git rev-parse HEAD^2) = $(git rev-parse keep-merge)
@@ -229,9 +221,9 @@ test_expect_success '--rebase=invalid fails' '
 	! git pull --rebase=invalid . copy
 '
 
-test_expect_success '--rebase overrides pull.rebase=preserve and flattens keep-merge' '
+test_expect_success '--rebase overrides pull.mode=rebase-preserve and flattens keep-merge' '
 	git reset --hard before-preserve-rebase &&
-	test_config pull.rebase preserve &&
+	test_config pull.mode rebase-preserve &&
 	git pull --rebase . copy &&
 	test $(git rev-parse HEAD^^) = $(git rev-parse copy) &&
 	test file3 = $(git show HEAD:file3.t)
@@ -371,6 +363,32 @@ test_expect_success 'git pull --rebase against local branch' '
 	git pull --rebase . to-rebase &&
 	test "conflicting modification" = "$(cat file)" &&
 	test file = "$(cat file2)"
+'
+
+test_expect_success 'pull.mode' '
+	git checkout to-rebase &&
+	git reset --hard before-rebase &&
+	test_config pull.mode rebase &&
+	git pull . copy &&
+	test $(git rev-parse HEAD^) = $(git rev-parse copy) &&
+	test new = $(git show HEAD:file2)
+'
+
+test_expect_success 'branch.to-rebase.pullmode' '
+	git reset --hard before-rebase &&
+	test_config branch.to-rebase.pullmode rebase &&
+	git pull . copy &&
+	test $(git rev-parse HEAD^) = $(git rev-parse copy) &&
+	test new = $(git show HEAD:file2)
+'
+
+test_expect_success 'branch.to-rebase.pullmode should override pull.mode' '
+	git reset --hard before-rebase &&
+	test_config pull.mode rebase &&
+	test_config branch.to-rebase.pullmode merge &&
+	git pull . copy &&
+	test $(git rev-parse HEAD^) != $(git rev-parse copy) &&
+	test new = $(git show HEAD:file2)
 '
 
 test_done
