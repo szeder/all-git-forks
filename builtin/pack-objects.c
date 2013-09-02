@@ -18,6 +18,8 @@
 #include "refs.h"
 #include "streaming.h"
 #include "thread-utils.h"
+#include "version.h"
+#include "pkt-line.h"
 
 static const char *pack_usage[] = {
 	N_("git pack-objects --stdout [options...] [< ref-list | < object-list]"),
@@ -712,7 +714,52 @@ static struct object_entry **compute_write_order(void)
 	return wo;
 }
 
-static void write_pack_file(void)
+static int write_pack_signature(const unsigned char *resume_sha1,
+				int window, int depth)
+{
+	unsigned char sig[20];
+	git_SHA_CTX ctx;
+	uint32_t i;
+	const char *agent = git_user_agent();
+	git_SHA1_Init(&ctx);
+
+	/* algorithm signature */
+	git_SHA1_Update(&ctx, agent, strlen(agent));
+
+	/* configuration signature */
+#define SAVE(x) \
+	git_SHA1_Update(&ctx, &x, sizeof(x))
+	SAVE(allow_ofs_delta);
+	SAVE(big_file_threshold); /* entry->no_try_delta = 1 */
+	SAVE(cache_max_small_delta_size);
+	SAVE(depth);
+	SAVE(grafts_replace_parents);
+	SAVE(include_tag);
+	SAVE(max_delta_cache_size);
+	SAVE(pack_compression_level);
+	SAVE(pack_idx_opts.version);
+	SAVE(reuse_delta);
+	SAVE(reuse_object);
+	SAVE(window);
+	SAVE(window_memory_limit);
+#undef SAVE
+
+	/* TODO: .git/shallow and refs/replace/.., sorted */
+
+	for (i = 0; i < nr_objects; i++) {
+		struct object_entry *e = objects + i;
+		git_SHA1_Update(&ctx, e->idx.sha1, sizeof(e->idx.sha1));
+		git_SHA1_Update(&ctx, &e->type, sizeof(e->type));
+		if (e->delta)
+			git_SHA1_Update(&ctx, e->delta->idx.sha1,
+					sizeof(e->delta->idx.sha1));
+	}
+	git_SHA1_Final(sig, &ctx);
+	packet_write(1, "packsig %s", sha1_to_hex(sig));
+	return hashcmp(sig, resume_sha1);
+}
+
+static void write_pack_file(off_t skip_offset)
 {
 	uint32_t i = 0, j;
 	struct sha1file *f;
@@ -734,6 +781,9 @@ static void write_pack_file(void)
 			f = sha1fd_throughput(1, "<stdout>", progress_state);
 		else
 			f = create_tmp_packfile(&pack_tmp_name);
+
+		if (skip_offset)
+			f->skip = skip_offset;
 
 		offset = write_pack_header(f, nr_remaining);
 		if (!offset)
@@ -2442,6 +2492,9 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	const char *rp_av[6];
 	int rp_ac = 0;
 	int rev_list_unpacked = 0, rev_list_all = 0, rev_list_reflog = 0;
+	const char *resumable_string = NULL;
+	unsigned char resumable_sha1[20];
+	uintmax_t skip_offset = 0;
 	struct option pack_objects_options[] = {
 		OPT_SET_INT('q', "quiet", &progress,
 			    N_("do not show progress meter"), 0),
@@ -2505,6 +2558,8 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 			    N_("pack compression level")),
 		OPT_SET_INT(0, "keep-true-parents", &grafts_replace_parents,
 			    N_("do not hide commits by grafts"), 0),
+		OPT_STRING(0, "resume", &resumable_string, "SHA-1",
+			   N_("generate pack resume signature")),
 		OPT_END(),
 	};
 
@@ -2525,6 +2580,17 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	}
 	if (pack_to_stdout != !base_name || argc)
 		usage_with_options(pack_usage, pack_objects_options);
+	if (resumable_string) {
+		char *end;
+		if (get_sha1_hex(resumable_string, resumable_sha1))
+			die("%s is not SHA-1", resumable_string);
+		if (resumable_string[40] != ',')
+			die("invalid --resume format %s", resumable_string);
+		skip_offset = strtoimax(resumable_string + 41, &end, 0);
+		if (end != resumable_string + strlen(resumable_string))
+			die("invalid number in --resume %s", resumable_string);
+		delta_search_threads = 1;
+	}
 
 	rp_av[rp_ac++] = "pack-objects";
 	if (thin) {
@@ -2593,7 +2659,10 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		return 0;
 	if (nr_result)
 		prepare_pack(window, depth);
-	write_pack_file();
+	if (resumable_string &&
+	    write_pack_signature(resumable_sha1, window, depth))
+		skip_offset = 0;
+	write_pack_file(skip_offset);
 	if (progress)
 		fprintf(stderr, "Total %"PRIu32" (delta %"PRIu32"),"
 			" reused %"PRIu32" (delta %"PRIu32")\n",
