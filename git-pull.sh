@@ -43,10 +43,24 @@ log_arg= verbosity= progress= recurse_submodules= verify_signatures=
 merge_args= edit=
 curr_branch=$(git symbolic-ref -q HEAD)
 curr_branch_short="${curr_branch#refs/heads/}"
-rebase=$(git config --bool branch.$curr_branch_short.rebase)
+mode=$(git config branch.${curr_branch_short}.pullmode)
+if test -z "$mode"
+then
+	mode=$(git config pull.mode)
+fi
+test "$mode" = 'rebase' && rebase="true"
 if test -z "$rebase"
 then
-	rebase=$(git config --bool pull.rebase)
+	rebase=$(git config --bool branch.$curr_branch_short.rebase)
+	if test -z "$rebase"
+	then
+		rebase=$(git config --bool pull.rebase)
+	fi
+	if test "$rebase" = 'true'
+	then
+		echo "The configurations pull.rebase and branch.<name>.rebase are deprecated."
+		echo "Please use pull.mode and branch.<name>.pullmode instead."
+	fi
 fi
 dry_run=
 while :
