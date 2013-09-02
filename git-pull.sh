@@ -47,10 +47,37 @@ log_arg= verbosity= progress= recurse_submodules= verify_signatures=
 merge_args= edit= rebase_args=
 curr_branch=$(git symbolic-ref -q HEAD)
 curr_branch_short="${curr_branch#refs/heads/}"
-rebase=$(bool_or_string_config branch.$curr_branch_short.rebase)
+mode=$(git config branch.${curr_branch_short}.pullmode)
+if test -z "$mode"
+then
+	mode=$(git config pull.mode)
+fi
+case "$mode" in
+merge)
+	rebase="false"
+	;;
+rebase)
+	rebase="true"
+	;;
+rebase-preserve)
+	rebase="preserve"
+	;;
+'')
+	;;
+*)
+	echo "Invalid value for 'mode'"
+	usage
+	exit 1
+	;;
+esac
+# backwards compatibility
 if test -z "$rebase"
 then
-	rebase=$(bool_or_string_config pull.rebase)
+	rebase=$(bool_or_string_config branch.$curr_branch_short.rebase)
+	if test -z "$rebase"
+	then
+		rebase=$(bool_or_string_config pull.rebase)
+	fi
 fi
 dry_run=
 while :

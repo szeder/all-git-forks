@@ -191,8 +191,8 @@ test_expect_success 'clone respects global branch.autosetuprebase' '
 		rm -fr dst &&
 		git clone src dst &&
 		cd dst &&
-		actual="z$(git config branch.master.rebase)" &&
-		test ztrue = $actual
+		actual="$(git config branch.master.pullmode)" &&
+		test "$actual" = rebase
 	)
 '
 
