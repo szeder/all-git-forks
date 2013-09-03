@@ -2177,6 +2177,11 @@ status.branch::
 	Set to true to enable --branch by default in linkgit:git-status[1].
 	The option --no-branch takes precedence over this variable.
 
+status.displayCommentChar::
+	If set to false, linkgit:git-status[1] will not prefix each
+	line with the comment char (`core.commentChar`, i.e. `#` by
+	default). Defaults to true.
+
 status.showUntrackedFiles::
 	By default, linkgit:git-status[1] and linkgit:git-commit[1] show
 	files which are not currently tracked by Git. Directories which
