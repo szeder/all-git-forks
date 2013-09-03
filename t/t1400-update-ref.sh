@@ -302,4 +302,210 @@ test_expect_success \
 	'git cat-file blob master@{2005-05-26 23:42}:F (expect OTHER)' \
 	'test OTHER = $(git cat-file blob "master@{2005-05-26 23:42}:F")'
 
+a=refs/heads/a
+b=refs/heads/b
+c=refs/heads/c
+z=0000000000000000000000000000000000000000
+e="''"
+
+test_expect_success 'stdin works with no input' '
+	rm -f stdin &&
+	touch stdin &&
+	git update-ref --stdin < stdin &&
+	git rev-parse --verify -q $m
+'
+
+test_expect_success 'stdin fails with bad line lines' '
+	echo " " > stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: no ref on line:  " err &&
+	echo "--" > stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: no ref on line: --" err &&
+	echo "--bad-option" > stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: unknown option --bad-option" err &&
+	echo "-\'"'"' $a $m" > stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: unknown option -'"'"'" err &&
+	echo "~a $m" > stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: invalid ref format on line: ~a $m" err &&
+	echo "$a '"'"'master" > stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: unterminated single-quote: '"'"'master" err &&
+	echo "$a \master" > stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: unquoted backslash not escaping single-quote: \\\\master" err &&
+	echo "$a $m $m $m" > stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: too many arguments on line: $a $m $m $m" err &&
+	echo "$a" > stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: missing new value on line: $a" err
+'
+
+test_expect_success 'stdin fails with duplicate refs' '
+	echo "$a $m" > stdin &&
+	echo "$b $m" >> stdin &&
+	echo "$a $m" >> stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: Multiple updates for ref '"'"'$a'"'"' not allowed." err
+'
+
+test_expect_success 'stdin create ref works with no old value' '
+	echo "$a $m" > stdin &&
+	git update-ref --stdin < stdin &&
+	git rev-parse $m > expect &&
+	git rev-parse $a > actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin create ref works with zero old value' '
+	echo "$b $m $z" > stdin &&
+	git update-ref --stdin < stdin &&
+	git rev-parse $m > expect &&
+	git rev-parse $b > actual &&
+	test_cmp expect actual &&
+	git update-ref -d $b &&
+	echo "$b $m $e" > stdin &&
+	git update-ref --stdin < stdin &&
+	git rev-parse $m > expect &&
+	git rev-parse $b > actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin create ref fails with wrong old value' '
+	echo "$c $m $m~1" > stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: Cannot lock the ref '"'"'$c'"'"'" err &&
+	test_must_fail git rev-parse --verify -q $c
+'
+
+test_expect_success 'stdin create ref fails with bad old value' '
+	echo "$c $m does-not-exist" > stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: invalid old value on line: $c $m does-not-exist" err &&
+	test_must_fail git rev-parse --verify -q $c
+'
+
+test_expect_success 'stdin create ref fails with bad new value' '
+	echo "$c does-not-exist" > stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: invalid new value on line: $c does-not-exist" err &&
+	test_must_fail git rev-parse --verify -q $c
+'
+
+test_expect_success 'stdin update ref works with right old value' '
+	echo "$b $m~1 $m" > stdin &&
+	git update-ref --stdin < stdin &&
+	git rev-parse $m~1 > expect &&
+	git rev-parse $b > actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin update ref fails with wrong old value' '
+	echo "$b $m~1 $m" > stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: Cannot lock the ref '"'"'$b'"'"'" err &&
+	git rev-parse $m~1 > expect &&
+	git rev-parse $b > actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin delete ref fails with wrong old value' '
+	echo "$a $e $m~1" > stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: Cannot lock the ref '"'"'$a'"'"'" err &&
+	git rev-parse $m > expect &&
+	git rev-parse $a > actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin update symref works with --no-deref' '
+	git symbolic-ref TESTSYMREF $b &&
+	echo "--no-deref TESTSYMREF $a $b" > stdin &&
+	git update-ref --stdin < stdin &&
+	git rev-parse TESTSYMREF > expect &&
+	git rev-parse $a > actual &&
+	test_cmp expect actual &&
+	git rev-parse $m~1 > expect &&
+	git rev-parse $b > actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin delete symref works with --no-deref' '
+	git symbolic-ref TESTSYMREF $b &&
+	echo "--no-deref TESTSYMREF $e $b" > stdin &&
+	git update-ref --stdin < stdin &&
+	test_must_fail git rev-parse --verify -q TESTSYMREF &&
+	git rev-parse $m~1 > expect &&
+	git rev-parse $b > actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin delete ref works with right old value' '
+	echo "$b $e $m~1" > stdin &&
+	git update-ref --stdin < stdin &&
+	test_must_fail git rev-parse --verify -q $b
+'
+
+test_expect_success 'stdin create refs works with some old values' '
+	echo "$a $m" > stdin &&
+	echo "$b $m $z" >> stdin &&
+	echo "$c $z $z" >> stdin &&
+	git update-ref --stdin < stdin &&
+	git rev-parse $m > expect &&
+	git rev-parse $a > actual &&
+	test_cmp expect actual &&
+	git rev-parse $b > actual &&
+	test_cmp expect actual &&
+	test_must_fail git rev-parse --verify -q $c
+'
+
+test_expect_success 'stdin update refs works with identity updates' '
+	echo "" > stdin && # also test blank lines
+	echo "$a $m $m" >> stdin &&
+	echo "" >> stdin &&
+	echo " '"'"'$b'"'"'  $m $m " >> stdin &&
+	echo "" >> stdin &&
+	echo "-- $c  $z  $e  " >> stdin &&
+	echo "" >> stdin &&
+	git update-ref --stdin < stdin &&
+	git rev-parse $m > expect &&
+	git rev-parse $a > actual &&
+	test_cmp expect actual &&
+	git rev-parse $b > actual &&
+	test_cmp expect actual &&
+	test_must_fail git rev-parse --verify -q $c
+'
+
+test_expect_success 'stdin update refs fails with wrong old value' '
+	git update-ref $c $m &&
+	echo "$a $m $m" > stdin &&
+	echo "$b $m $m" >> stdin &&
+	echo "$c $e $e" >> stdin &&
+	test_must_fail git update-ref --stdin < stdin 2> err &&
+	grep "fatal: Cannot lock the ref '"'"'$c'"'"'" err &&
+	git rev-parse $m > expect &&
+	git rev-parse $a > actual &&
+	test_cmp expect actual &&
+	git rev-parse $b > actual &&
+	test_cmp expect actual &&
+	git rev-parse $c > actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin delete refs works with packed and loose refs' '
+	git pack-refs --all &&
+	git update-ref $c $m~1 &&
+	echo "$a $z $m" > stdin &&
+	echo "$b $z $m" >> stdin &&
+	echo "$c $e $m~1" >> stdin &&
+	git update-ref --stdin < stdin &&
+	test_must_fail git rev-parse --verify -q $a &&
+	test_must_fail git rev-parse --verify -q $b &&
+	test_must_fail git rev-parse --verify -q $c
+'
+
 test_done
