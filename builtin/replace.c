@@ -103,7 +103,7 @@ static int replace_object(const char *object_ref, const char *replace_ref,
 
 	obj_type = sha1_object_info(object, NULL);
 	repl_type = sha1_object_info(repl, NULL);
-	if (obj_type != repl_type)
+	if (!force && obj_type != repl_type)
 		die("Objects must be of the same type.\n"
 		    "'%s' points to a replaced object of type '%s'\n"
 		    "while '%s' points to a replacement object of type '%s'.",
