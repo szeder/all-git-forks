@@ -276,6 +276,12 @@ test_expect_success 'replaced and replacement objects must be of the same type' 
 	grep "$BLOB. points to a replacement object of type .blob" err
 '
 
+test_expect_success '-f option bypasses the type check' '
+	git replace -f mytag $HASH1 &&
+	git replace -f HEAD^{tree} HEAD~1 &&
+	git replace -f HEAD^ $BLOB
+'
+
 test_expect_success 'replace ref cleanup' '
 	test -n "$(git replace)" &&
 	git replace -d $(git replace) &&
