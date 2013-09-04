@@ -1,7 +1,7 @@
 Git pack format
 ===============
 
-== pack-*.pack files have the following format:
+== pack-*.pack files version 2 and 3 have the following format:
 
    - A header appears at the beginning and consists of the following:
 
@@ -35,6 +35,127 @@ Git pack format
      length format and is not constrained to 32-bit or anything.
 
   - The trailer records 20-byte SHA-1 checksum of all of the above.
+
+== pack-*.pack files version 4 have the following format:
+
+   - A header appears at the beginning and consists of the following:
+
+     4-byte signature:
+	The signature is: {'P', 'A', 'C', 'K'}
+
+     4-byte version number (network byte order): must be 4
+
+     4-byte number of objects contained in the pack (network byte order)
+
+   - A series of tables, described separately.
+
+   - The tables are followed by number of object entries, each of
+     which looks like below:
+
+     (undeltified representation)
+     n-byte type and length (4-bit type, (n-1)*7+4-bit length)
+     data
+
+     (deltified representation)
+     n-byte type and length (4-bit type, (n-1)*7+4-bit length)
+     base object name in SHA-1 reference encoding
+     compressed delta data
+
+     In undeltified format, blobs and tags ares compressed. Trees are
+     not compressed at all. Some headers in commits are stored
+     uncompressed, the rest is compressed. Tree and commit
+     representations are described in detail separately.
+
+     Blobs and tags are deltified and compressed the same way in
+     v3. Commits are not delitifed. Trees are deltified using
+     undeltified representation.
+
+  - The trailer records 20-byte SHA-1 checksum of all of the above.
+
+=== Pack v4 tables
+
+ - A table of sorted SHA-1 object names for all objects contained in
+   the pack.
+
+   This table can be referred to using "SHA-1 reference encoding":
+   It's an index number in variable length encoding. If it's
+   non-zero, its value minus one is the index in this table. If it's
+   zero, 20 bytes of SHA-1 is followed.
+
+ - Ident table: the uncompressed length in variable encoding,
+   followed by zlib-compressed dictionary. Each entry consists of
+   two prefix bytes storing timezone followed by a NUL-terminated
+   string.
+
+   Entries should be sorted by frequency so that the most frequent
+   entry has the smallest index, thus most efficient variable
+   encoding.
+
+   The table can be referred to using "ident reference encoding":
+   It's an index number in variable length encoding. If it's
+   non-zero, its value minus one is the index in this table. If it's
+   zero, a new entry in the same format is followed: two prefix
+   bytes and a NUL-terminated string.
+
+ - Tree path table: the same format to ident table. Each entry
+   consists of two prefix bytes storing tree entry mode, then a
+   NUL-terminated path name. Same sort order recommendation applies.
+
+=== Commit representation
+
+  - n-byte type and length (4-bit type, (n-1)*7+4-bit length)
+
+  - Tree SHA-1 in SHA-1 reference encoding
+
+  - Parent count in variable length encoding
+
+  - Parent SHA-1s in SHA-1 reference encoding
+
+  - Author reference in ident reference encoding
+
+  - Author timestamp in variable length encoding
+
+  - Committer reference in ident reference encoding
+
+  - Committer timestamp in variable length encoding
+
+  - Compressed data of remaining header and the body
+
+=== Tree representation
+
+  - n-byte type and length (4-bit type, (n-1)*7+4-bit length)
+
+  - Number of tree entries in variable length encoding
+
+  - A number of entries, each starting with path component reference:
+    an number, in variable length encoding.
+
+    If the path component reference is greater than 1, its value minus
+    two is the index in tree path table. The path component reference
+    is followed by the tree entry SHA-1 in SHA-1 reference encoding.
+
+    If the path component reference is 1, it's followed by
+
+    - two prefix bytes representing tree entry mode
+
+    - NUL-terminated path name
+
+    - tree entry SHA-1 in SHA-1 reference encoding
+
+    If the path component reference is zero, tree entries will be
+    copied from another tree. It's followed by:
+
+    - the starting index number, in variable length encoding, in the
+      base tree object to copy from. Bit zero in this number is base
+      tree flag, so the actual index is this number shifted right by
+      one bit.
+
+    - number of tree entries to copy from, in variable length encoding
+
+    - base tree in SHA-1 reference encoding if base tree flag is
+      set. If the flag is cleared, the previous base tree encountered
+      is used. This avoids repeating the same base tree SHA-1 in the
+      common case.
 
 == Original (version 1) pack-*.idx files have the following format:
 
@@ -160,3 +281,8 @@ Pack file entry: <+
     corresponding packfile.
 
     20-byte SHA-1-checksum of all of the above.
+
+== Version 3 pack-*.idx files support only *.pack files version 4. The
+   format is the same as version 2 except that the table of sorted
+   20-byte SHA-1 object names is missing in the .idx files. The same
+   table exists in .pack files and will be used instead.
