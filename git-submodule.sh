@@ -965,7 +965,6 @@ set_name_rev () {
 #
 cmd_summary() {
 	summary_limit=-1
-	for_status=
 	diff_cmd=diff-index
 
 	# parse $args after "submodule ... summary".
@@ -977,9 +976,6 @@ cmd_summary() {
 			;;
 		--files)
 			files="$1"
-			;;
-		--for-status)
-			for_status="$1"
 			;;
 		-n|--summary-limit)
 			summary_limit="$2"
@@ -1156,18 +1152,7 @@ cmd_summary() {
 			echo
 		fi
 		echo
-	done |
-	if test -n "$for_status"; then
-		if [ -n "$files" ]; then
-			gettextln "Submodules changed but not updated:" | git stripspace -c
-		else
-			gettextln "Submodule changes to be committed:" | git stripspace -c
-		fi
-		printf "\n" | git stripspace -c
-		git stripspace -c
-	else
-		cat
-	fi
+	done
 }
 #
 # List all submodules, prefixed with:

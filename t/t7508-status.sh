@@ -113,6 +113,39 @@ test_expect_success 'status (2)' '
 	test_i18ncmp expect output
 '
 
+strip_comments () {
+	sed "s/^\# //; s/^\#$//; s/^#\t/\t/" <"$1" >"$1".tmp &&
+	rm "$1" && mv "$1".tmp "$1"
+}
+
+test_expect_success 'status with status.displayCommentChar=false' '
+	strip_comments expect &&
+	git -c status.displayCommentChar=false status >output &&
+	test_i18ncmp expect output
+'
+
+test_expect_success 'setup fake editor' '
+	cat >.git/editor <<-\EOF &&
+	#! /bin/sh
+	cp "$1" output
+EOF
+	chmod 755 .git/editor
+'
+
+commit_template_commented () {
+	(
+		EDITOR=.git/editor &&
+		export EDITOR &&
+		# Fails due to empty message
+		test_must_fail git commit
+	) &&
+	! grep '^[^#]' output
+}
+
+test_expect_success 'commit ignores status.displayCommentChar=false in COMMIT_EDITMSG' '
+	commit_template_commented
+'
+
 cat >expect <<\EOF
 # On branch master
 # Changes to be committed:
@@ -870,6 +903,16 @@ test_expect_success 'status submodule summary' '
 	git config status.submodulesummary 10 &&
 	git status >output &&
 	test_i18ncmp expect output
+'
+
+test_expect_success 'status submodule summary with status.displayCommentChar=false' '
+	strip_comments expect &&
+	git -c status.displayCommentChar=false status >output &&
+	test_i18ncmp expect output
+'
+
+test_expect_success 'commit with submodule summary ignores displayCommentChar' '
+	commit_template_commented
 '
 
 cat >expect <<EOF
