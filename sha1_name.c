@@ -1014,6 +1014,8 @@ static int interpret_empty_at(const char *name, int namelen, int len, struct str
 
 	/* make sure it's a single @, or @@{.*}, not @foo */
 	next = strchr(name + len + 1, '@');
+	if (next && next[1] != '{')
+		return -1;
 	if (!next)
 		next = name + namelen;
 	if (next != name + 1)
