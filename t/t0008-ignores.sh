@@ -88,7 +88,7 @@ test_check_ignore () {
 # for the extra first column.
 #
 # A parameter is used to determine if the tests are run with the
-# normal case (using the index), or with the -i or --no-index option.
+# normal case (using the index), or with the --no-index option.
 #
 # Arguments:
 #   - (optional) prereqs for this test, e.g. 'SYMLINKS'
@@ -97,7 +97,7 @@ test_check_ignore () {
 #     from the other verbosity modes is automatically inferred
 #     from this value)
 #   - code to run (should invoke test_check_ignore)
-#   - index option: --index, -i or --no-index
+#   - index option: --index or --no-index
 test_expect_success_multiple () {
 	prereq=
 	if test $# -eq 5
@@ -164,10 +164,7 @@ test_expect_success_multi () {
 }
 
 test_expect_success_no_index_multi () {
-	for ni in '-i' '--no-index'
-	do
-		test_expect_success_multiple "$@" "$ni"
-	done
+	test_expect_success_multiple "$@" "--no-index"
 }
 
 test_expect_success 'setup' '
