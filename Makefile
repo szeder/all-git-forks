@@ -1183,6 +1183,9 @@ ifdef NEEDS_SSL_WITH_CRYPTO
 else
 	LIB_4_CRYPTO = $(OPENSSL_LINK) -lcrypto
 endif
+ifdef APPLE_COMMON_CRYPTO
+	LIB_4_CRYPTO += -framework Security -framework CoreFoundation
+endif
 endif
 ifdef NEEDS_LIBICONV
 	ifdef ICONVDIR

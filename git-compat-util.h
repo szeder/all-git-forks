@@ -330,6 +330,16 @@ extern NORETURN void die_errno(const char *err, ...) __attribute__((format (prin
 extern int error(const char *err, ...) __attribute__((format (printf, 1, 2)));
 extern void warning(const char *err, ...) __attribute__((format (printf, 1, 2)));
 
+#ifndef NO_OPENSSL
+#ifdef APPLE_COMMON_CRYPTO
+#include "compat/apple-common-crypto.h"
+#else
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
+#endif /* APPLE_COMMON_CRYPTO */
+#include <openssl/x509v3.h>
+#endif /* NO_OPENSSL */
+
 /*
  * Let callers be aware of the constant return value; this can help
  * gcc with -Wuninitialized analysis. We restrict this trick to gcc, though,
@@ -514,7 +524,7 @@ int inet_pton(int af, const char *src, void *dst);
 const char *inet_ntop(int af, const void *src, char *dst, size_t size);
 #endif
 
-extern void release_pack_memory(size_t, int);
+extern void release_pack_memory(size_t);
 
 typedef void (*try_to_free_t)(size_t);
 extern try_to_free_t set_try_to_free_routine(try_to_free_t);
