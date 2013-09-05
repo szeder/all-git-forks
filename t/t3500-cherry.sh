@@ -55,19 +55,4 @@ test_expect_success \
      expr "$(echo $(git cherry master my-topic-branch) )" : "+ [^ ]* - .*"
 '
 
-test_expect_success \
-    '"cherry-pick -" does not work initially' \
-    'test_must_fail git cherry-pick -
-'
-
-test_expect_success \
-    'cherry-pick the commit in the previous branch' \
-    'git branch other &&
-     test_commit commit-to-pick newfile content &&
-     echo content >expected &&
-     git checkout other &&
-     git cherry-pick - &&
-     test_cmp expected newfile
-'
-
 test_done
