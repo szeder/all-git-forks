@@ -32,6 +32,11 @@ BEGIN {
 	}
 }
 
+END {
+	$RA = undef;
+	$ra_invalid = 1;
+}
+
 sub _auth_providers () {
 	my @rv = (
 	  SVN::Client::get_simple_provider(),
