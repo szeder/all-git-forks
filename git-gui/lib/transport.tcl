@@ -61,6 +61,7 @@ proc push_to {remote} {
 
 proc start_push_anywhere_action {w} {
 	global push_urltype push_remote push_url push_thin push_tags
+	global gerrit_review gerrit_branch
 	global push_force
 	global repo_config
 
@@ -95,7 +96,15 @@ proc start_push_anywhere_action {w} {
 		set cnt 0
 		foreach i [$w.source.l curselection] {
 			set b [$w.source.l get $i]
-			lappend cmd "refs/heads/$b:refs/heads/$b"
+			if {$gerrit_review && $gerrit_branch ne {}} {
+				if {$gerrit_branch eq $b} {
+					lappend cmd "refs/heads/$b:refs/for/$b"
+				} else {
+					lappend cmd "refs/heads/$b:refs/for/$gerrit_branch/$b"
+				}
+			} else {
+				lappend cmd "refs/heads/$b:refs/heads/$b"
+			}
 			incr cnt
 		}
 		if {$cnt == 0} {
@@ -120,6 +129,7 @@ trace add variable push_remote write \
 proc do_push_anywhere {} {
 	global all_remotes current_branch
 	global push_urltype push_remote push_url push_thin push_tags
+	global gerrit_review gerrit_branch
 	global push_force use_ttk NS
 
 	set w .push_setup
@@ -215,6 +225,24 @@ proc do_push_anywhere {} {
 		-text [mc "Include tags"] \
 		-variable push_tags
 	grid $w.options.tags -columnspan 2 -sticky w
+	${NS}::checkbutton $w.options.gerrit \
+		-text [mc "Gerrit review.  Branch: "] \
+		-variable gerrit_review
+	${NS}::entry $w.options.gerrit_br \
+		-width 50 \
+		-textvariable gerrit_branch \
+		-validate key \
+		-validatecommand {
+			if {%d == 1 && [regexp {\s} %S]} {return 0}
+			if {%d == 1 && [string length %S] > 0} {
+				set gerrit_review 1
+			}
+			if {[string length %P] == 0} {
+				set gerrit_review 0
+			}
+			return 1
+		}
+	grid $w.options.gerrit $w.options.gerrit_br -sticky we -padx {0 5}
 	grid columnconfigure $w.options 1 -weight 1
 	pack $w.options -anchor nw -fill x -pady 5 -padx 5
 
