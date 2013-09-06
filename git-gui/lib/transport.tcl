@@ -246,10 +246,12 @@ proc do_push_anywhere {} {
 	grid columnconfigure $w.options 1 -weight 1
 	pack $w.options -anchor nw -fill x -pady 5 -padx 5
 
+	if ![info exists gerrit_branch] {set gerrit_branch {}}
 	set push_url {}
 	set push_force 0
 	set push_thin 0
 	set push_tags 0
+	set gerrit_review [expr {$gerrit_branch ne {}}]
 
 	bind $w <Visibility> "grab $w; focus $w.buttons.create"
 	bind $w <Key-Escape> "destroy $w"
