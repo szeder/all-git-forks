@@ -113,9 +113,9 @@ test_expect_success 'setup more remotes with unconventional refspecs' '
 		cd repo_d &&
 		test_commit d_master &&
 		git checkout -b baz &&
-		test_commit f_baz
+		test_commit d_baz
 		git checkout -b eggs &&
-		test_commit c_eggs
+		test_commit d_eggs
 	) &&
 	git remote add repo_c repo_c &&
 	git config remote.repo_c.fetch \
