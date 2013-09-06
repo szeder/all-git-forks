@@ -97,7 +97,11 @@ proc start_push_anywhere_action {w} {
 		foreach i [$w.source.l curselection] {
 			set b [$w.source.l get $i]
 			if {$gerrit_review && $gerrit_branch ne {}} {
-				lappend cmd "refs/heads/$b:refs/for/$gerrit_branch/$b"
+				if {$gerrit_branch eq $b} {
+					lappend cmd "refs/heads/$b:refs/for/$b"
+				} else {
+					lappend cmd "refs/heads/$b:refs/for/$gerrit_branch/$b"
+				}
 			} else {
 				lappend cmd "refs/heads/$b:refs/heads/$b"
 			}
