@@ -2189,20 +2189,29 @@ int lock_packed_refs(int flags)
 	return 0;
 }
 
+/*
+ * Write packed_ref_cache to the lock's staging file.
+ * packed_ref_cache must already be locked.
+ */
+static void stage_packed_refs(void)
+{
+	if (!ref_cache.packed || !ref_cache.packed->lock)
+		die("internal error: packed-refs not locked");
+	write_or_die(ref_cache.packed->lock->fd,
+		     PACKED_REFS_HEADER, strlen(PACKED_REFS_HEADER));
+
+	do_for_each_entry_in_dir(get_packed_ref_dir(ref_cache.packed),
+				 0, write_packed_entry_fn,
+				 &ref_cache.packed->lock->fd);
+}
+
 int commit_packed_refs(void)
 {
 	struct packed_ref_cache *packed_ref_cache =
 		get_packed_ref_cache(&ref_cache);
 	int error = 0;
 
-	if (!packed_ref_cache->lock)
-		die("internal error: packed-refs not locked");
-	write_or_die(packed_ref_cache->lock->fd,
-		     PACKED_REFS_HEADER, strlen(PACKED_REFS_HEADER));
-
-	do_for_each_entry_in_dir(get_packed_ref_dir(packed_ref_cache),
-				 0, write_packed_entry_fn,
-				 &packed_ref_cache->lock->fd);
+	stage_packed_refs();
 	if (commit_lock_file(packed_ref_cache->lock))
 		error = -1;
 	packed_ref_cache->lock = NULL;
