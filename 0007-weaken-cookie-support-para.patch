@@ -1,7 +1,9 @@
-From 2c5067d3ec9cd7ff1bddb2bc011e5b1db5cea579 Mon Sep 17 00:00:00 2001
+From 5f1b083680d253f53c3d41ff112116e4683b7f45 Mon Sep 17 00:00:00 2001
 From: "Shawn O. Pearce" <spearce@spearce.org>
 Date: Thu, 15 Oct 2009 09:52:28 -0700
 Subject: [PATCH 07/14] weaken cookie support para
+
+Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 
 ---
 

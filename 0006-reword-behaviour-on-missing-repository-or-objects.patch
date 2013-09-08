@@ -1,7 +1,9 @@
-From 7f0de3327ba578fef1dfdeffc41f7f3e1b110ef8 Mon Sep 17 00:00:00 2001
+From d533878ba8b1a2db2b00ee6b458bd60b2ea11a0d Mon Sep 17 00:00:00 2001
 From: "Shawn O. Pearce" <spearce@spearce.org>
 Date: Fri, 16 Oct 2009 07:21:35 -0700
 Subject: [PATCH 06/14] reword behaviour on missing repository or objects
+
+Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 
 ---
 

@@ -1,4 +1,4 @@
-From 4a5e5f6e205b7cace9d715cdf1771ab2dfa589c8 Mon Sep 17 00:00:00 2001
+From 8482343742ae31fd398c72fcb3434db76ee4b852 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:40:24 +0800
 Subject: [PATCH 10/14] fix examples
@@ -7,6 +7,8 @@ Subject: [PATCH 10/14] fix examples
  - add pkt-line lengths for smart
  - add flush-pkt (0000) for smart
  - drop SP that followed NUL before capability list
+
+Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 ---
  Documentation/technical/http-protocol.txt | 35 ++++++++++++++++---------------
  1 file changed, 18 insertions(+), 17 deletions(-)

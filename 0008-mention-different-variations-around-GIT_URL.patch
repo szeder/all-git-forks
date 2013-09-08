@@ -1,4 +1,4 @@
-From 59d5c9505edc3495871fbfcd7a06700c02f44ef0 Mon Sep 17 00:00:00 2001
+From 5d150c0c9a3e319e439eb4ad56011d063185bbfa Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 23:09:46 +0800
 Subject: [PATCH 08/14] mention different variations around $GIT_URL
@@ -41,6 +41,8 @@ mind-boggling setups.
 While providing an example $GIT_URL containing a '?' (the catch-all
 gateway one), also mention a possible contradiction between the
 exactly-one-param requirement and the http client implementation in Git.
+
+Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 ---
  Documentation/technical/http-protocol.txt | 22 ++++++++++++++++++++--
  1 file changed, 20 insertions(+), 2 deletions(-)

@@ -1,4 +1,4 @@
-From d3f05a5d61ba03ee05fcf48892d073931512db36 Mon Sep 17 00:00:00 2001
+From fcbbab6e791b62735fd6fb5aecb9bd51be6bc80b Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:51:15 +0800
 Subject: [PATCH 11/14] be clearer in place of 'remote repository' phrase
@@ -16,6 +16,8 @@ Based on:
   "upload-pack", I might have mistaken that you are allowing to proxy a
   request to access a third-party repository by this server.  The same
   comment applies to the git-receive-pack service.
+
+Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 ---
  Documentation/technical/http-protocol.txt | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)

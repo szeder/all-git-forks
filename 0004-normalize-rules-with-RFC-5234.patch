@@ -1,4 +1,4 @@
-From 6619c24e0dd874ca7bde1ef2efcb00be6178fe29 Mon Sep 17 00:00:00 2001
+From 532eb5c7c30454d0284650ed4b0a3c570fd1c818 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 28 Aug 2013 12:09:54 +0800
 Subject: [PATCH 04/14] normalize rules with RFC 5234
@@ -8,6 +8,8 @@ Drop LF, SP which are defined in RFC 5234.
 Replace HT with HTAB (also defined in the RFC).
 
 Use '/' instead of '|', as the RFC does.
+
+Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 ---
  Documentation/technical/http-protocol.txt | 26 +++++++++-----------------
  1 file changed, 9 insertions(+), 17 deletions(-)

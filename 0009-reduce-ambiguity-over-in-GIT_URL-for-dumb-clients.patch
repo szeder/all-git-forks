@@ -1,4 +1,4 @@
-From c4eafe3f65b6b3b1773bcd3fd4b4a183b765c969 Mon Sep 17 00:00:00 2001
+From 7fe03fd4242e379604043319e1d049f0dfee7b9e Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 09/14] reduce ambiguity over '?' in $GIT_URL for dumb clients
@@ -7,6 +7,8 @@ It is unclear if '?' can be part of $GIT_URL. E.g.
 
     $ wget http://example.xz/serve.cgi?path=git.git/info/refs
     $ git clone http://example.xz/serve.cgi?path=git.git
+
+Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 
 ---
 

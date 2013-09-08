@@ -1,4 +1,4 @@
-From c447bd58d4fce013640723049ac3c2cc9961ddc3 Mon Sep 17 00:00:00 2001
+From 470f22d9e5377709050bc987efd98ddea881d84d Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:57:33 +0800
 Subject: [PATCH 12/14] reduce confusion over smart server response behaviour
@@ -38,6 +38,8 @@ Based on:
   server for the smart request.  That unfortunately means that the first
   sentence is misleading, and the second sentence is also an inappropriate
   advice.
+
+Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 ---
  Documentation/technical/http-protocol.txt | 5 +++--
  1 file changed, 3 insertions(+), 2 deletions(-)

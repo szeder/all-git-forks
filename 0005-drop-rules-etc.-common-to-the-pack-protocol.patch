@@ -1,4 +1,4 @@
-From b2b374a2076599e5b171cf18927835167d1e0bf6 Mon Sep 17 00:00:00 2001
+From 5868eac3691b6e70d43915e745767871f675d550 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 29 Aug 2013 17:41:56 +0800
 Subject: [PATCH 05/14] drop rules, etc. common to the pack protocol
@@ -14,6 +14,8 @@ Use refname in lieu of name (not defined).
 
 Drop section on capabilities, since they are already available in
 protocol-capabilities.txt.
+
+Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 
 ---
 

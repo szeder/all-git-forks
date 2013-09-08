@@ -1,4 +1,4 @@
-From 060bf96936e60639b7b1ddac8129f2b3ec22cc29 Mon Sep 17 00:00:00 2001
+From a5887cdaadde60bc843b82a9fc8ddd7f2aca0e47 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:25:46 +0800
 Subject: [PATCH 02/14] normalize indentation with protcol-common.txt
@@ -6,6 +6,8 @@ Subject: [PATCH 02/14] normalize indentation with protcol-common.txt
 Indent client/server query examples with 3 spaces.
 
 Indent ABNF rules with 2 spaces.
+
+Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 
 ---
 
