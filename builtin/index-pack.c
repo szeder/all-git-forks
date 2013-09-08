@@ -19,8 +19,8 @@ struct object_entry {
 	struct pack_idx_entry idx;
 	unsigned long size;
 	unsigned int hdr_size;
-	enum object_type type;
-	enum object_type real_type;
+	enum object_type type;	/* type as written in pack */
+	enum object_type real_type; /* type after delta resolving */
 	unsigned delta_depth;
 	int base_object_no;
 };
@@ -203,8 +203,10 @@ static int mark_link(struct object *obj, int type, void *data)
 	return 0;
 }
 
-/* The content of each linked object must have been checked
-   or it must be already present in the object database */
+/*
+ * The content of each linked object must have been checked or it must
+ * be already present in the object database
+ */
 static unsigned check_object(struct object *obj)
 {
 	if (!obj)
@@ -427,6 +429,11 @@ static int is_delta_type(enum object_type type)
 	return (type == OBJ_REF_DELTA || type == OBJ_OFS_DELTA);
 }
 
+/*
+ * Unpack an entry data in the streamed pack, calculate the object
+ * SHA-1 if it's not a large blob. Otherwise just try to inflate the
+ * object to /dev/null to determine the end of the entry in the pack.
+ */
 static void *unpack_entry_data(unsigned long offset, unsigned long size,
 			       enum object_type type, unsigned char *sha1)
 {
@@ -542,6 +549,11 @@ static void *unpack_raw_entry(struct object_entry *obj,
 	return data;
 }
 
+/*
+ * Unpack entry data in the second pass when the pack is already
+ * stored on disk. consume call back is used for large-blob case. Must
+ * be thread safe.
+ */
 static void *unpack_data(struct object_entry *obj,
 			 int (*consume)(const unsigned char *, unsigned long, void *),
 			 void *cb_data)
@@ -917,6 +929,11 @@ static int compare_and_swap_type(enum object_type *type,
 	return old == want;
 }
 
+/*
+ * Given a base object, search for all objects depending on the base,
+ * try to unpack one of those object. The function will be called
+ * repeatedly until all objects are unpacked.
+ */
 static struct base_data *find_unresolved_deltas_1(struct base_data *base,
 						  struct base_data *prev_base)
 {
@@ -1004,6 +1021,10 @@ static int compare_delta_entry(const void *a, const void *b)
 				   objects[delta_b->obj_no].type);
 }
 
+/*
+ * Unpack all objects depending directly or indirectly on the given
+ * object
+ */
 static void resolve_base(struct object_entry *obj)
 {
 	struct base_data *base_obj = alloc_base_data();
@@ -1013,6 +1034,7 @@ static void resolve_base(struct object_entry *obj)
 }
 
 #ifndef NO_PTHREADS
+/* Call resolve_base() in multiple threads */
 static void *threaded_second_pass(void *data)
 {
 	set_thread_data(data);
