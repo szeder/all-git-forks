@@ -1,7 +1,7 @@
 From b2b374a2076599e5b171cf18927835167d1e0bf6 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 29 Aug 2013 17:41:56 +0800
-Subject: [PATCH 05/15] drop rules, etc. common to the pack protocol
+Subject: [PATCH 05/14] drop rules, etc. common to the pack protocol
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit

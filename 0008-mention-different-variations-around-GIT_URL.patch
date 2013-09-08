@@ -1,7 +1,7 @@
-From 0f6c6e59fba121b0f4d375022e6cca0e7b24d113 Mon Sep 17 00:00:00 2001
+From 59d5c9505edc3495871fbfcd7a06700c02f44ef0 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 23:09:46 +0800
-Subject: [PATCH 08/15] mention different variations around $GIT_URL
+Subject: [PATCH 08/14] mention different variations around $GIT_URL
 
 Based on
 
@@ -46,7 +46,7 @@ exactly-one-param requirement and the http client implementation in Git.
  1 file changed, 20 insertions(+), 2 deletions(-)
 
 diff --git a/Documentation/technical/http-protocol.txt b/Documentation/technical/http-protocol.txt
-index 31704da..6f93403 100644
+index 2382384..d0955c2 100644
 --- a/Documentation/technical/http-protocol.txt
 +++ b/Documentation/technical/http-protocol.txt
 @@ -22,15 +22,28 @@ URL Format
@@ -80,7 +80,7 @@ index 31704da..6f93403 100644
  Clients MUST strip a trailing '/', if present, from the user supplied
  $GIT_URL string to prevent empty path tokens ('//') from appearing
  in any URL sent to a server.  Compatible clients MUST expand
-@@ -184,6 +197,11 @@ The request MUST contain exactly one query parameter,
+@@ -186,6 +199,11 @@ The request MUST contain exactly one query parameter,
  name the client wishes to contact to complete the operation.
  The request MUST NOT contain additional query parameters.
  

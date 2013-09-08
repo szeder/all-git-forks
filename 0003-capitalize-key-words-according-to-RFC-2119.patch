@@ -1,7 +1,7 @@
 From 0bdb01aed25dcc495023160d059c9a6e8dc85fe0 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:28:01 +0800
-Subject: [PATCH 03/15] capitalize key words according to RFC 2119
+Subject: [PATCH 03/14] capitalize key words according to RFC 2119
 
 ---
  Documentation/technical/http-protocol.txt | 17 +++++++++++------
