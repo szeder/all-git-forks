@@ -1,9 +1,13 @@
-From b60f80f7d9d1ca80842c65ced5b8554a0aa50df9 Mon Sep 17 00:00:00 2001
+From dc3f567ec7462f37727fb898722c5ec898c978cf Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Nguy=E1=BB=85n=20Th=C3=A1i=20Ng=E1=BB=8Dc=20Duy?=
  <pclouds@gmail.com>
 Date: Wed, 21 Aug 2013 20:45:13 +0700
-Subject: [PATCH 14/14] nguyen's changes
+Subject: [PATCH 14/14] mention effect of "allow-tip-sha1-in-want" capability
+ on git-upload-pack
 
+---
+
+Subject crafted by Ray Chuan.
 ---
  Documentation/technical/http-protocol.txt | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
