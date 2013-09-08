@@ -1,4 +1,4 @@
-From 98d6f64208db28ed6d1151221cda8fc8af55d536 Mon Sep 17 00:00:00 2001
+From aea72dcdb6d0881a80f89ac05a1e70aca14715b5 Mon Sep 17 00:00:00 2001
 From: "Shawn O. Pearce" <spearce@spearce.org>
 Date: Thu, 15 Oct 2009 09:52:28 -0700
 Subject: [PATCH 07/15] weaken cookie support para

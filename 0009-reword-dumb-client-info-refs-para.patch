@@ -1,4 +1,4 @@
-From 2acab59df166d82c070d864ba7fae3ec7743a7e3 Mon Sep 17 00:00:00 2001
+From 78606739467fad98adfca5709ac074037913faff Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 09/15] reword dumb client info/refs para
