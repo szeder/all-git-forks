@@ -564,8 +564,11 @@ int main(int argc, char **argv)
 
 			if (strcmp(method, c->method)) {
 				const char *proto = getenv("SERVER_PROTOCOL");
-				if (proto && !strcmp(proto, "HTTP/1.1"))
+				if (proto && !strcmp(proto, "HTTP/1.1")) {
 					http_status(405, "Method Not Allowed");
+					hdr_str("Allow", !strcmp("GET", c->method) ?
+						"GET, HEAD" : c->method);
+				}
 				else
 					http_status(400, "Bad Request");
 				hdr_nocache();
