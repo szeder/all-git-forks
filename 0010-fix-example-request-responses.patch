@@ -1,4 +1,4 @@
-From 9d6a652b1fd6d39b9dd0deef8b3f299156e1a1df Mon Sep 17 00:00:00 2001
+From 68284ce30b9941e6a55234cac785947beda990e0 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:40:24 +0800
 Subject: [PATCH 10/14] fix example request/responses
