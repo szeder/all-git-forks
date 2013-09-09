@@ -1,4 +1,4 @@
-From 855c0177d4f2ea316f0f73b92ae9264da36c13bc Mon Sep 17 00:00:00 2001
+From 93c70f094170d369754655e6470dfb283beebf7c Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 28 Aug 2013 13:21:14 +0800
 Subject: [PATCH 13/14] shift dumb server response details from client section
