@@ -60,6 +60,7 @@ static int num_preferred_base;
 static struct progress *progress_state;
 static int pack_compression_level = Z_DEFAULT_COMPRESSION;
 static int pack_compression_seen;
+static int pack_version = 2;
 
 static struct packed_git *reuse_packfile;
 static uint32_t reuse_packfile_objects;
@@ -783,7 +784,7 @@ static void write_pack_file(void)
 		else
 			f = create_tmp_packfile(&pack_tmp_name);
 
-		offset = write_pack_header(f, 2, nr_remaining);
+		offset = write_pack_header(f, pack_version, nr_remaining);
 
 		if (reuse_packfile) {
 			off_t packfile_size;
@@ -2631,6 +2632,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		{ OPTION_CALLBACK, 0, "index-version", NULL, N_("version[,offset]"),
 		  N_("write the pack index file in the specified idx format version"),
 		  0, option_parse_index_version },
+		OPT_INTEGER(0, "version", &pack_version, N_("pack version")),
 		OPT_ULONG(0, "max-pack-size", &pack_size_limit,
 			  N_("maximum size of each output pack file")),
 		OPT_BOOL(0, "local", &local,
@@ -2710,6 +2712,8 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	}
 	if (pack_to_stdout != !base_name || argc)
 		usage_with_options(pack_usage, pack_objects_options);
+	if (pack_version != 2)
+		die(_("pack version %d is not supported"), pack_version);
 
 	argv_array_push(&rp, "pack-objects");
 	if (thin) {
