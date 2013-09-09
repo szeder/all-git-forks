@@ -1,4 +1,4 @@
-From ce69d7cfab803b1f62ed4faf0ca26da34f3254f4 Mon Sep 17 00:00:00 2001
+From 6c31dfbe262a75ca2f30e455d5b3bbe959524a0e Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:51:15 +0800
 Subject: [PATCH 11/14] be clearer in place of 'remote repository' phrase

@@ -1,4 +1,4 @@
-From fe1cfc8cd247db94950b06d0421868adbd9e28f1 Mon Sep 17 00:00:00 2001
+From b36afdd41586a25721fc70def0a22df961d1366b Mon Sep 17 00:00:00 2001
 From: "Shawn O. Pearce" <spearce@spearce.org>
 Date: Thu, 8 Oct 2009 22:22:45 -0700
 Subject: [PATCH 01/14] Document the HTTP transport protocol
@@ -11,7 +11,7 @@ This is the original
 
   <1255065768-10428-2-git-send-email-spearce@spearce.org>
 
-with some minor changes:
+with some minor changes, as follows:
  - fix mis-spelling 'paramterized'
  - fix mis-spelling 'mangement' (spotted by Junio)
  - fix missing ABNF reference for smart replies (spotted by Sverre, Junio)

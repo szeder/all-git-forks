@@ -1,4 +1,4 @@
-From e98e8cfd5577054a53f6a93c6343683c7153d6f7 Mon Sep 17 00:00:00 2001
+From 34629eb87237c9d6a82e544b321cebaaae9e6592 Mon Sep 17 00:00:00 2001
 From: "Shawn O. Pearce" <spearce@spearce.org>
 Date: Fri, 16 Oct 2009 07:21:35 -0700
 Subject: [PATCH 06/14] reword behaviour on missing repository or objects

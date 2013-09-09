@@ -1,4 +1,4 @@
-From 0e5b4c2ea007a58163e9655186aaf81f0a0f6fa5 Mon Sep 17 00:00:00 2001
+From b30b5eee235c928af5139b4348cef3c412835e1d Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 28 Aug 2013 13:21:14 +0800
 Subject: [PATCH 13/14] shift dumb server response details

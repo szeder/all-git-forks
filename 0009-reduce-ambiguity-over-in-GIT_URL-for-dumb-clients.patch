@@ -1,4 +1,4 @@
-From d46d399b1d6acde61664b8d55b67efc8102bd516 Mon Sep 17 00:00:00 2001
+From 497a1d08d29bf3858fbc00a61714d12d04947423 Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 09/14] reduce ambiguity over '?' in $GIT_URL for dumb clients

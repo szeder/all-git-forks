@@ -1,4 +1,4 @@
-From 5e3066afd2a65ff7c1975344955b5c5296d6e3d2 Mon Sep 17 00:00:00 2001
+From 1af86be10b4a2672265b793faf9aa6509db144ac Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:25:46 +0800
 Subject: [PATCH 02/14] normalize indentation with protcol-common.txt

@@ -1,4 +1,4 @@
-From 7c53839b29c7568d7493ed4928f59886e0dc7003 Mon Sep 17 00:00:00 2001
+From 3f337645feceb55f70692a6be289f7b4f815a6c5 Mon Sep 17 00:00:00 2001
 From: "Shawn O. Pearce" <spearce@spearce.org>
 Date: Thu, 15 Oct 2009 09:52:28 -0700
 Subject: [PATCH 07/14] weaken specification over cookies for authentication
