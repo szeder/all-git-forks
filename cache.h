@@ -1004,6 +1004,7 @@ extern struct packed_git {
 	off_t pack_size;
 	const void *index_data;
 	size_t index_size;
+	const unsigned char *sha1_table;
 	uint32_t num_objects;
 	uint32_t num_bad_objects;
 	unsigned char *bad_object_sha1;
@@ -1084,6 +1085,7 @@ struct object_info {
 	} u;
 };
 extern int sha1_object_info_extended(const unsigned char *, struct object_info *);
+extern int packed_object_info(struct packed_git *, off_t, struct object_info *);
 
 /* Dumb servers support */
 extern int update_server_info(int);
