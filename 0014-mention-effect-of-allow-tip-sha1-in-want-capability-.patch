@@ -6,6 +6,7 @@ Subject: [PATCH 14/14] mention effect of "allow-tip-sha1-in-want" capability
  on git-upload-pack
 
 Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
+Signed-off-by: Nguyễn Thái Ngọc Duy <pclouds@gmail.com>
 --
 
 Subject crafted by Ray Chuan.
