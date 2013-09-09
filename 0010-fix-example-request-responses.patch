@@ -1,9 +1,9 @@
-From 88ab6d4c94d375cd6aeba596f1da5343e73b429c Mon Sep 17 00:00:00 2001
+From 22fddb5f96fcf088c05aa63c115db7f10e5cb158 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:40:24 +0800
 Subject: [PATCH 10/14] fix example request/responses
 
- Add LF for responses.
+Add LF for responses.
 
 For smart interactions, add pkt-line lengths and the flush-pkt (0000) line.
 
