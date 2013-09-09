@@ -190,6 +190,7 @@
 /test-match-trees
 /test-mergesort
 /test-mktemp
+/test-packv4
 /test-parse-options
 /test-path-utils
 /test-prio-queue
