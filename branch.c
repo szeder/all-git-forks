@@ -71,8 +71,8 @@ void install_branch_config(int flag, const char *local, const char *origin, cons
 
 	if (rebasing) {
 		strbuf_reset(&key);
-		strbuf_addf(&key, "branch.%s.rebase", local);
-		git_config_set(key.buf, "true");
+		strbuf_addf(&key, "branch.%s.pullmode", local);
+		git_config_set(key.buf, "rebase");
 	}
 	strbuf_release(&key);
 
