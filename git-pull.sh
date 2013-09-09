@@ -127,8 +127,12 @@ do
 	-r|--r|--re|--reb|--reba|--rebas|--rebase)
 		mode=rebase
 		;;
+	-m|--m|--me|--mer|--merg|--merge)
+		mode=merge
+		;;
 	--no-r|--no-re|--no-reb|--no-reba|--no-rebas|--no-rebase)
-		mode=
+		mode=merge
+		echo "--no-rebase is deprecated, please use --merge instead"
 		;;
 	--recurse-submodules)
 		recurse_submodules=--recurse-submodules
