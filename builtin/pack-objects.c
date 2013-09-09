@@ -783,7 +783,7 @@ static void write_pack_file(void)
 		else
 			f = create_tmp_packfile(&pack_tmp_name);
 
-		offset = write_pack_header(f, nr_remaining);
+		offset = write_pack_header(f, 2, nr_remaining);
 
 		if (reuse_packfile) {
 			off_t packfile_size;
