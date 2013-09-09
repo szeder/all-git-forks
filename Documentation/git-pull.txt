@@ -23,6 +23,7 @@ More precisely, 'git pull' runs 'git fetch' with the given
 parameters and calls 'git merge' to merge the retrieved branch
 heads into the current branch.
 With `--rebase`, it runs 'git rebase' instead of 'git merge'.
+With `--merge`, it forces the merge, even if it's non-fast forward.
 
 <repository> should be the name of a remote repository as
 passed to linkgit:git-fetch[1].  <refspec> can name an
@@ -41,8 +42,25 @@ Assume the following history exists and the current branch is
 ------------
 	  A---B---C origin/master
 	 /
+    D---E master
+------------
+
+Then `git pull` will merge in a fast-foward way up to the new master.
+
+------------
+    D---E---A---B---C master, origin/master
+------------
+
+However, a non-fast-foward case looks very different.
+
+------------
+	  A---B---C origin/master
+	 /
     D---E---F---G master
 ------------
+
+In the future, `git pull` will fail on these situations, however, most likely
+you would want to force a merge, which you can do with `git pull --merge`.
 
 Then "`git pull`" will fetch and replay the changes from the remote
 `master` branch since it diverged from the local `master` (i.e., `E`)
