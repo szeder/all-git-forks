@@ -184,7 +184,7 @@ void mark_reachable_objects(struct rev_info *revs, int mark_reflog,
 	 */
 	if (prepare_revision_walk(revs))
 		die("revision walk setup failed");
-	traverse_commit_list(revs, mark_commit, mark_object, &cp);
+	traverse_commit_list(revs, mark_commit, NULL, mark_object, &cp);
 
 	if (mark_recent) {
 		revs->ignore_missing_links = 1;
@@ -192,7 +192,7 @@ void mark_reachable_objects(struct rev_info *revs, int mark_reflog,
 			die("unable to mark recent objects");
 		if (prepare_revision_walk(revs))
 			die("revision walk setup failed");
-		traverse_commit_list(revs, mark_commit, mark_object, &cp);
+		traverse_commit_list(revs, mark_commit, NULL, mark_object, &cp);
 	}
 
 	display_progress(cp.progress, cp.count);

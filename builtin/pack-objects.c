@@ -2542,7 +2542,7 @@ static void get_object_list(int ac, const char **av)
 	if (prepare_revision_walk(&revs))
 		die("revision walk setup failed");
 	mark_edges_uninteresting(&revs, show_edge);
-	traverse_commit_list(&revs, show_commit, show_object, NULL);
+	traverse_commit_list(&revs, show_commit, NULL, show_object, NULL);
 
 	if (unpack_unreachable_expiration) {
 		revs.ignore_missing_links = 1;
@@ -2551,7 +2551,7 @@ static void get_object_list(int ac, const char **av)
 			die("unable to add recent objects");
 		if (prepare_revision_walk(&revs))
 			die("revision walk setup failed");
-		traverse_commit_list(&revs, record_recent_commit,
+		traverse_commit_list(&revs, record_recent_commit, NULL,
 				     record_recent_object, NULL);
 	}
 

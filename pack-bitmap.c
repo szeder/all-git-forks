@@ -581,7 +581,7 @@ static struct bitmap *find_objects(struct rev_info *revs,
 		if (prepare_revision_walk(revs))
 			die("revision walk setup failed");
 
-		traverse_commit_list(revs, show_commit, show_object, base);
+		traverse_commit_list(revs, show_commit, NULL, show_object, base);
 	}
 
 	return base;
@@ -978,7 +978,7 @@ void test_bitmap_walk(struct rev_info *revs)
 	tdata.prg = start_progress("Verifying bitmap entries", result_popcnt);
 	tdata.seen = 0;
 
-	traverse_commit_list(revs, &test_show_commit, &test_show_object, &tdata);
+	traverse_commit_list(revs, &test_show_commit, NULL, &test_show_object, &tdata);
 
 	stop_progress(&tdata.prg);
 

@@ -294,7 +294,7 @@ void bitmap_writer_build(struct packing_data *to_pack)
 			if (prepare_revision_walk(&revs))
 				die("revision walk setup failed");
 
-			traverse_commit_list(&revs, show_commit, show_object, base);
+			traverse_commit_list(&revs, show_commit, NULL, show_object, base);
 
 			revs.pending.nr = 0;
 			revs.pending.alloc = 0;
