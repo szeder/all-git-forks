@@ -11,6 +11,7 @@ service, for clarity's sake.
 
 Based on:
 
+  From:   Junio C Hamano <gitster@pobox.com>
   Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
 
   > +Smart Server Response

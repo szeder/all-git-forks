@@ -5,6 +5,7 @@ Subject: [PATCH 11/14] be clearer in place of 'remote repository' phrase
 
 Based on:
 
+  From:   Junio C Hamano <gitster@pobox.com>
   Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
 
   > +Smart Service git-upload-pack

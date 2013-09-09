@@ -1,5 +1,7 @@
 From 30b299263ee8a6ef0919b4e877bf3f4c967afdb7 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
+Cc: =?UTF-8?q?Nguy=E1=BB=85n=20Th=C3=A1i=20Ng=E1=BB=8Dc=20Duy?=
+ <pclouds@gmail.com>
 Date: Thu, 29 Aug 2013 17:41:56 +0800
 Subject: [PATCH 05/14] drop rules, etc. common to the pack protocol
 MIME-Version: 1.0
@@ -20,6 +22,7 @@ Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 
 pkt-line format section was dropped in response to Junio's comments:
 
+  From:   Junio C Hamano <gitster@pobox.com>
   Message-ID: <7vskdss3ei.fsf@alter.siamese.dyndns.org>
 
   > +pkt-line Format
