@@ -1,4 +1,4 @@
-From 66364c72443080e7559d60696d09cec4d15bc3f0 Mon Sep 17 00:00:00 2001
+From d46d399b1d6acde61664b8d55b67efc8102bd516 Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Fri, 9 Oct 2009 13:44:53 -0700
 Subject: [PATCH 09/14] reduce ambiguity over '?' in $GIT_URL for dumb clients
@@ -9,8 +9,7 @@ It is unclear if '?' can be part of $GIT_URL. E.g.
     $ git clone http://example.xz/serve.cgi?path=git.git
 
 Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
-
----
+--
 
 Notes:
  - said "request to" instead of Junio's "request against", for

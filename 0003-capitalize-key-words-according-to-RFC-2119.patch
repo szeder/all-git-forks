@@ -1,4 +1,4 @@
-From baed57b95be7d740d70c6715c9ae24b38fb4029d Mon Sep 17 00:00:00 2001
+From 5ed7f30254aeca4c41cc3f458216af05eb7d5433 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 7 Apr 2010 19:28:01 +0800
 Subject: [PATCH 03/14] capitalize key words according to RFC 2119

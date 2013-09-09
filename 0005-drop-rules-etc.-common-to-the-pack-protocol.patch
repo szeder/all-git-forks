@@ -1,4 +1,4 @@
-From 4fcb3e9a1d7c40cb04eda3be52dcd4ff7fd1c87a Mon Sep 17 00:00:00 2001
+From 1ab1c49bfaf4ac30882931a841698474bb7e0a65 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 29 Aug 2013 17:41:56 +0800
 Subject: [PATCH 05/14] drop rules, etc. common to the pack protocol
@@ -16,8 +16,7 @@ Drop section on capabilities, since they are already available in
 protocol-capabilities.txt.
 
 Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
-
----
+--
 
 pkt-line format section was dropped in response to Junio's comments:
 

@@ -1,4 +1,4 @@
-From a5bec5bb169e4bccaa1a9bb11b2c8ba40c8f0184 Mon Sep 17 00:00:00 2001
+From bd63dbf94f281f1fb0adc3fb4c1c7b6a20eb4f40 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Wed, 28 Aug 2013 12:09:54 +0800
 Subject: [PATCH 04/14] normalize rules with RFC 5234

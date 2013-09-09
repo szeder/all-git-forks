@@ -1,12 +1,11 @@
-From 202bc4874e616e2d975358e80167dce16c515887 Mon Sep 17 00:00:00 2001
+From fe1cfc8cd247db94950b06d0421868adbd9e28f1 Mon Sep 17 00:00:00 2001
 From: "Shawn O. Pearce" <spearce@spearce.org>
 Date: Thu, 8 Oct 2009 22:22:45 -0700
 Subject: [PATCH 01/14] Document the HTTP transport protocol
 
 Signed-off-by: Shawn O. Pearce <spearce@spearce.org>
 Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
-
----
+--
 
 This is the original
 

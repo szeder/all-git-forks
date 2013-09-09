@@ -1,4 +1,4 @@
-From 921c7df8104b4cb36f134c1d65509a8b6bf9825b Mon Sep 17 00:00:00 2001
+From ce3a342631b7d67fa801b262ed29ee32dac92715 Mon Sep 17 00:00:00 2001
 From: Tay Ray Chuan <rctay89@gmail.com>
 Date: Thu, 8 Apr 2010 01:57:33 +0800
 Subject: [PATCH 12/14] reduce confusion over smart server response behaviour
