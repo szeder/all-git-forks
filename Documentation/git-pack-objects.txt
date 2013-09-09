@@ -220,6 +220,10 @@ So does `git bundle` (see linkgit:git-bundle[1]) when it creates a bundle.
 	to force the version for the generated pack index, and to force
 	64-bit index entries on objects located above the given offset.
 
+--version=<version>::
+	Force the version for the generated pack, Valid values are 2,
+	3 and 4. Default is 2.
+
 --keep-true-parents::
 	With this option, parents that are hidden by grafts are packed
 	nevertheless.
