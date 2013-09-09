@@ -6,6 +6,7 @@ Subject: [PATCH 07/14] weaken specification over cookies for authentication
 
 Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 --
+To Shawn: sign-off-by needed.
 
 Based on the discussion in
   <20091009195035.GA15153@coredump.intra.peff.net>,
