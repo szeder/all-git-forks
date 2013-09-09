@@ -62,7 +62,7 @@ then
 		echo "Please use pull.mode and branch.<name>.pullmode instead."
 	fi
 fi
-test -z "$mode" && mode=merge
+test -z "$mode" && mode=default
 dry_run=
 while :
 do
@@ -286,13 +286,22 @@ case "$merge_head" in
 *)
 	# check if a non-fast-foward merge would be needed
 	merge_head=${merge_head% }
-	if test "$mode" = merge-ff-only -a -z "$no_ff$ff_only${squash#--no-squash}" &&
+	if test -z "$no_ff$ff_only${squash#--no-squash}" &&
 		test -n "$orig_head" &&
 		! git merge-base --is-ancestor "$orig_head" "$merge_head" &&
 		! git merge-base --is-ancestor "$merge_head" "$orig_head"
 	then
-		die "$(gettext "The pull was not fast-forward, please either merge or rebase.
+		case "$mode" in
+		merge-ff-only)
+			die "$(gettext "The pull was not fast-forward, please either merge or rebase.
 If unsure, run 'git pull --merge'.")"
+			;;
+		default)
+			say "$(gettext "The pull was not fast-forward, in the future you would have to choose
+a merge or a rebase, falling back to old style for now (git pull --merge).
+Read 'git pull --help' for more information.")"
+			;;
+		esac
 	fi
 	;;
 esac
