@@ -401,4 +401,18 @@ test_expect_success 'git pull non-fast-forward with merge (ff-only)' '
 	git pull --merge
 '
 
+test_expect_success 'git pull non-fast-forward (default)' '
+	test_when_finished "git checkout master && git branch -D other test" &&
+	git checkout -b other master^ &&
+	>new &&
+	git add new &&
+	git commit -m new &&
+	git checkout -b test -t other &&
+	git reset --hard master &&
+	git pull 2> error &&
+	cat error &&
+	grep -q "the pull was not fast-forward" error &&
+	grep -q "in the future you would have to choose" error
+'
+
 test_done
