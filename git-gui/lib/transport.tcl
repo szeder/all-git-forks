@@ -97,13 +97,17 @@ proc start_push_anywhere_action {w} {
 		foreach i [$w.source.l curselection] {
 			set b [$w.source.l get $i]
 			if {$gerrit_review && $gerrit_branch ne {}} {
-				if {$gerrit_branch eq $b} {
-					lappend cmd "refs/heads/$b:refs/for/$b"
-				} else {
-					lappend cmd "refs/heads/$b:refs/for/$gerrit_branch/$b"
+				switch $b {
+				$gerrit_branch	{ lappend cmd "refs/heads/$b:refs/for/$gerrit_branch" }
+				HEAD		{ lappend cmd "HEAD:refs/for/$gerrit_branch" }
+				default		{ lappend cmd "refs/heads/$b:refs/for/$gerrit_branch/$b" }
 				}
 			} else {
-				lappend cmd "refs/heads/$b:refs/heads/$b"
+				if {$b eq HEAD} {
+					lappend cmd "HEAD:HEAD"
+				} else {
+					lappend cmd "refs/heads/$b:refs/heads/$b"
+				}
 			}
 			incr cnt
 		}
@@ -127,7 +131,7 @@ trace add variable push_remote write \
 	[list radio_selector push_urltype remote]
 
 proc do_push_anywhere {} {
-	global all_remotes current_branch
+	global all_remotes current_branch is_detached
 	global push_urltype push_remote push_url push_thin push_tags
 	global gerrit_review gerrit_branch
 	global push_force use_ttk NS
@@ -159,6 +163,11 @@ proc do_push_anywhere {} {
 		-height 10 \
 		-width 70 \
 		-selectmode extended
+	if {$is_detached} {
+		$w.source.l insert end HEAD
+		$w.source.l select set end
+		$w.source.l yview end
+	}
 	foreach h [load_all_heads] {
 		$w.source.l insert end $h
 		if {$h eq $current_branch} {
