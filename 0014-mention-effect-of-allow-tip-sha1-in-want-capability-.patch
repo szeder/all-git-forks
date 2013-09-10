@@ -9,7 +9,9 @@ Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 Signed-off-by: Nguyễn Thái Ngọc Duy <pclouds@gmail.com>
 --
 
-Subject crafted by Ray Chuan.
+Subject crafted by Ray Chuan, Nguyễn's s-o-b lifted from
+<1377092713-25434-1-git-send-email-pclouds@gmail.com>.
+
 ---
  Documentation/technical/http-protocol.txt | 3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
