@@ -365,13 +365,14 @@ static int copy_canonical_tree_entries(struct packed_git *p, off_t offset,
 		update_tree_entry(&desc);
 	end = desc.buffer;
 
-	if (end - from > *sizep) {
+	size = (const char *)end - (const char *)from;
+	if (size > *sizep) {
 		free(data);
 		return -1;
 	}
-	memcpy(*dstp, from, end - from);
-	*dstp += end - from;
-	*sizep -= end - from;
+	memcpy(*dstp, from, size);
+	*dstp += size;
+	*sizep -= size;
 	free(data);
 	return 0;
 }
