@@ -290,7 +290,8 @@ static unsigned long write_no_reuse_object(struct sha1file *f, struct object_ent
 		datalen = size;
 	else if (pack_version == 4 && entry->type == OBJ_COMMIT) {
 		datalen = size;
-		result = pv4_encode_commit(&v4, buf, &datalen);
+		result = pv4_encode_commit(&v4, buf, &datalen,
+					   pack_compression_level);
 		if (result) {
 			free(buf);
 			buf = result;
@@ -913,7 +914,7 @@ static void write_pack_file(void)
 		}
 
 		if (pack_version == 4)
-			offset += packv4_write_tables(f, &v4);
+			offset += packv4_write_tables(f, &v4, pack_compression_level);
 		nr_written = 0;
 		for (; i < to_pack.nr_objects; i++) {
 			struct object_entry *e = write_order[i];
