@@ -1967,6 +1967,20 @@ static int in_delta_base_cache(struct packed_git *p, off_t base_offset)
 	return eq_delta_base_cache_entry(ent, p, base_offset);
 }
 
+const void *get_cached_v4_tree(struct packed_git *p, off_t base_offset,
+			 unsigned long *size, unsigned long *v4_size)
+{
+	struct delta_base_cache_entry *ent;
+	ent = get_delta_base_cache_entry(p, base_offset);
+
+	if (!eq_delta_base_cache_entry(ent, p, base_offset) ||
+	    ent->type != OBJ_PV4_TREE)
+		return NULL;
+	*size = ent->size;
+	*v4_size = ent->v4_size;
+	return ent->data;
+}
+
 static void clear_delta_base_cache_entry(struct delta_base_cache_entry *ent)
 {
 	ent->data = NULL;

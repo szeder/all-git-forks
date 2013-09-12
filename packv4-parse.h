@@ -16,6 +16,8 @@ unsigned long pv4_unpack_object_header_buffer(const unsigned char *base,
 					      unsigned long *sizep);
 const unsigned char *get_sha1ref(struct packed_git *p,
 				 const unsigned char **bufp);
+const void *get_cached_v4_tree(struct packed_git *p, off_t base_offset,
+			 unsigned long *size, unsigned long *v4_size);
 
 void *pv4_get_commit(struct packed_git *p, struct pack_window **w_curs,
 		     off_t offset, unsigned long size);

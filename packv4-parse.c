@@ -415,8 +415,20 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 	unsigned int nb_entries;
 	const unsigned char *src, *scp;
 	off_t copy_objoffset = 0;
+	const void *cached = NULL;
+	unsigned long cached_size, cached_v4_size;
 
-	src = use_pack(p, w_curs, offset, &avail);
+	if (hdr)	      /* we need offset point at obj header */
+		cached = get_cached_v4_tree(p, offset,
+					    &cached_size, &cached_v4_size);
+
+	if (cached) {
+		src = cached;
+		avail = cached_v4_size;
+		hdr = 0;
+	} else
+		src = use_pack(p, w_curs, offset, &avail);
+
 	scp = src;
 
 	if (hdr) {
@@ -452,7 +464,8 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 	while (count) {
 		unsigned int what;
 
-		if (avail < 20) {
+		/* fixme: need to put bach the out-of-bound check when cached == 1 */
+		if (!cached && avail < 20) {
 			src = use_pack(p, w_curs, offset, &avail);
 			if (avail < 20)
 				return -1;
