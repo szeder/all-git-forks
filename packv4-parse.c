@@ -97,15 +97,17 @@ static struct packv4_dict *load_dict(struct packed_git *p, off_t *offset)
 		return NULL;
 	}
 
-	dict = xmalloc(sizeof(*dict) + nb_entries * sizeof(dict->offsets[0]));
+	dict = xmalloc(sizeof(*dict) +
+		       (nb_entries + 1) * sizeof(dict->offsets[0]));
 	dict->data = data;
 	dict->nb_entries = nb_entries;
 
+	dict->offsets[0] = 0;
 	cp = data;
 	for (i = 0; i < nb_entries; i++) {
-		dict->offsets[i] = cp - data;
 		cp += 2;
 		cp += strlen((const char *)cp) + 1;
+		dict->offsets[i + 1] = cp - data;
 	}
 
 	*offset = curpos;
@@ -156,7 +158,8 @@ static void load_path_dict(struct packed_git *p)
 	p->path_dict = paths;
 }
 
-const unsigned char *get_pathref(struct packed_git *p, unsigned int index)
+const unsigned char *get_pathref(struct packed_git *p, unsigned int index,
+				 int *len)
 {
 	if (!p->path_dict)
 		load_path_dict(p);
@@ -165,6 +168,9 @@ const unsigned char *get_pathref(struct packed_git *p, unsigned int index)
 		error("%s: index overflow", __func__);
 		return NULL;
 	}
+	if (len)
+		*len = p->path_dict->offsets[index + 1] -
+			p->path_dict->offsets[index];
 	return p->path_dict->data + p->path_dict->offsets[index];
 }
 
@@ -327,9 +333,9 @@ void *pv4_get_commit(struct packed_git *p, struct pack_window **w_curs,
 }
 
 static int tree_entry_prefix(unsigned char *buf, unsigned long size,
-			     const unsigned char *path, unsigned mode)
+			     const unsigned char *path, int path_len,
+			     unsigned mode)
 {
-	int path_len = strlen((const char *)path) + 1;
 	int mode_len = 0;
 	int len;
 	unsigned char mode_buf[8];
@@ -413,14 +419,15 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 			 */
 			const unsigned char *path, *sha1;
 			unsigned mode;
-			int len;
+			int len, pathlen;
 
-			path = get_pathref(p, what >> 1);
+			path = get_pathref(p, what >> 1, &pathlen);
 			sha1 = get_sha1ref(p, &scp);
 			if (!path || !sha1)
 				return -1;
 			mode = (path[0] << 8) | path[1];
-			len = tree_entry_prefix(*dstp, *sizep, path + 2, mode);
+			len = tree_entry_prefix(*dstp, *sizep,
+						path + 2, pathlen - 2, mode);
 			if (!len || len + 20 > *sizep)
 				return -1;
 			hashcpy(*dstp + len, sha1);
