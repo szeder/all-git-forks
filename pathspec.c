@@ -251,12 +251,16 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 	item->len = strlen(item->match);
 	item->prefix = prefixlen;
 
-	if ((flags & PATHSPEC_STRIP_SUBMODULE_SLASH_CHEAP) &&
-	    (item->len >= 1 && item->match[item->len - 1] == '/') &&
-	    (i = cache_name_pos(item->match, item->len - 1)) >= 0 &&
-	    S_ISGITLINK(active_cache[i]->ce_mode)) {
-		item->len--;
-		match[item->len] = '\0';
+	if (flags & PATHSPEC_STRIP_SUBMODULE_SLASH_CHEAP) {
+		size_t pathlen = item->len;
+		while (pathlen > 0 && is_dir_sep(item->match[pathlen - 1]))
+			pathlen--;
+
+		if ((i = cache_name_pos(item->match, pathlen)) >= 0 &&
+		    S_ISGITLINK(active_cache[i]->ce_mode)) {
+			item->len = pathlen;
+			match[item->len] = '\0';
+		}
 	}
 
 	if (flags & PATHSPEC_STRIP_SUBMODULE_SLASH_EXPENSIVE)
@@ -267,14 +271,18 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 			if (!S_ISGITLINK(ce->ce_mode))
 				continue;
 
-			if (item->len <= ce_len || match[ce_len] != '/' ||
+			if (item->len <= ce_len ||
+			    !is_dir_sep(match[ce_len]) ||
 			    memcmp(ce->name, match, ce_len))
 				continue;
-			if (item->len == ce_len + 1) {
-				/* strip trailing slash */
+
+			while (item->len > 0 && is_dir_sep(match[item->len - 1]))
 				item->len--;
-				match[item->len] = '\0';
-			} else
+
+			/* strip trailing slash */
+			match[item->len] = '\0';
+
+			if (item->len != ce_len)
 				die (_("Pathspec '%s' is in submodule '%.*s'"),
 				     elt, ce_len, ce->name);
 		}
