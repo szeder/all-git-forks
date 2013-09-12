@@ -252,7 +252,7 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 	item->prefix = prefixlen;
 
 	if ((flags & PATHSPEC_STRIP_SUBMODULE_SLASH_CHEAP) &&
-	    (item->len >= 1 && item->match[item->len - 1] == '/') &&
+	    (item->len >= 1 && is_dir_sep(item->match[item->len - 1])) &&
 	    (i = cache_name_pos(item->match, item->len - 1)) >= 0 &&
 	    S_ISGITLINK(active_cache[i]->ce_mode)) {
 		item->len--;
@@ -267,7 +267,8 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 			if (!S_ISGITLINK(ce->ce_mode))
 				continue;
 
-			if (item->len <= ce_len || match[ce_len] != '/' ||
+			if (item->len <= ce_len ||
+			    !is_dir_sep(match[ce_len]) ||
 			    memcmp(ce->name, match, ce_len))
 				continue;
 			if (item->len == ce_len + 1) {
