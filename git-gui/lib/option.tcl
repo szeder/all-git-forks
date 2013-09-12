@@ -156,6 +156,7 @@ proc do_options {} {
 		{t gui.diffopts {mc "Additional Diff Parameters"}}
 		{i-0..99 gui.commitmsgwidth {mc "Commit Message Text Width"}}
 		{t gui.newbranchtemplate {mc "New Branch Name Template"}}
+		{t gerrit.reviewbranch {mc "Gerrit Review Branch"}}
 		{c gui.encoding {mc "Default File Contents Encoding"}}
 		{b gui.warndetachedcommit {mc "Warn before committing to a detached head"}}
 		{s gui.stageuntracked {mc "Staging of untracked files"} {list "yes" "no" "ask"}}

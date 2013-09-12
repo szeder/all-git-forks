@@ -900,6 +900,7 @@ set default_config(gui.diffcontext) 5
 set default_config(gui.diffopts) {}
 set default_config(gui.commitmsgwidth) 75
 set default_config(gui.newbranchtemplate) {}
+set default_config(gerrit.reviewbranch) {}
 set default_config(gui.spellingdictionary) {}
 set default_config(gui.fontui) [font configure font_ui]
 set default_config(gui.fontdiff) [font configure font_diff]

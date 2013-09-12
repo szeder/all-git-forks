@@ -134,7 +134,7 @@ proc do_push_anywhere {} {
 	global all_remotes current_branch is_detached
 	global push_urltype push_remote push_url push_thin push_tags
 	global gerrit_review gerrit_branch
-	global push_force use_ttk NS
+	global push_force use_ttk NS repo_config
 
 	set w .push_setup
 	toplevel $w
@@ -255,7 +255,10 @@ proc do_push_anywhere {} {
 	grid columnconfigure $w.options 1 -weight 1
 	pack $w.options -anchor nw -fill x -pady 5 -padx 5
 
-	if ![info exists gerrit_branch] {set gerrit_branch {}}
+	if ![info exists gerrit_branch] { 
+		set gerrit_branch {}
+		catch {set gerrit_branch $repo_config(gerrit.reviewbranch)}
+	}
 	set push_url {}
 	set push_force 0
 	set push_thin 0
