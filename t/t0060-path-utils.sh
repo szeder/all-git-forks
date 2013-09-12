@@ -210,6 +210,10 @@ relative_path a/b/	a/b		./
 relative_path a		a/b		../
 relative_path x/y	a/b		../../x/y
 relative_path a/c	a/b		../c
+relative_path a/b	/x/y		a/b
+relative_path /a/b	x/y		/a/b	POSIX
+relative_path d:/a/b	D:/a/c		../b	MINGW
+relative_path C:/a/b	D:/a/c		C:/a/b	MINGW
 relative_path a/b	"<empty>"	a/b
 relative_path a/b 	"<null>"	a/b
 relative_path "<empty>"	/a/b		./
