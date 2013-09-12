@@ -388,7 +388,7 @@ squash_msg()
 toptree_for_commit()
 {
 	commit="$1"
-	git log -1 --pretty=format:'%T' "$commit" -- || exit $?
+	git log -1 --ignore-missing --pretty=format:'%T' "$commit" -- || exit $?
 }
 
 subtree_for_commit()
@@ -592,7 +592,8 @@ cmd_split()
 	eval "$grl" |
 	while read rev parents; do
 		revcount=$(($revcount + 1))
-		say -n "$revcount/$revmax ($createcount)"
+		say -n "$revcount/$revmax ($createcount)
+"
 		debug "Processing commit: $rev"
 		exists=$(cache_get $rev)
 		if [ -n "$exists" ]; then
