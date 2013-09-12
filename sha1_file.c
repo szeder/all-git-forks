@@ -2103,6 +2103,8 @@ void *unpack_entry(struct packed_git *p, off_t obj_offset,
 	struct unpack_entry_stack_ent *delta_stack = small_delta_stack;
 	int delta_stack_nr = 0, delta_stack_alloc = UNPACK_ENTRY_STACK_PREALLOC;
 	int base_from_cache = 0;
+	void *v4_data;
+	unsigned long v4_size;
 
 	if (log_pack_access != no_log_pack_access)
 		write_pack_access_log(p, obj_offset);
@@ -2181,7 +2183,11 @@ void *unpack_entry(struct packed_git *p, off_t obj_offset,
 		type -= 8;
 		break;
 	case OBJ_PV4_TREE:
-		data = pv4_get_tree(p, &w_curs, curpos, size);
+		v4_data = NULL;
+		data = pv4_get_tree(p, &w_curs, curpos, size, &v4_data, &v4_size);
+		if (v4_data)
+			add_delta_base_cache(p, obj_offset, v4_data,
+					     size, v4_size, type);
 		type -= 8;
 		break;
 	case OBJ_COMMIT:

@@ -406,7 +406,10 @@ static int tree_entry_prefix(unsigned char *buf, unsigned long size,
 
 static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 			  off_t offset, unsigned int start, unsigned int count,
-			  unsigned char **dstp, unsigned long *sizep, int hdr)
+			  unsigned char **dstp, unsigned long *sizep,
+			  unsigned char **v4_dstp, unsigned long *v4_sizep,
+			  unsigned int *v4_entries,
+			  int hdr)
 {
 	unsigned long avail;
 	unsigned int nb_entries;
@@ -422,10 +425,18 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 			if (++scp - src >= avail - 20)
 				return -1;
 		/* is this a canonical tree object? */
-		if ((*scp & 0xf) == OBJ_TREE)
+		if ((*scp & 0xf) == OBJ_TREE) {
+			/*
+			 * we could try to convert to v4 tree before
+			 * giving up, provided that the number of
+			 * inconvertible trees is small. But that's
+			 * for later.
+			 */
+			*v4_dstp = NULL;
 			return copy_canonical_tree_entries(p, offset,
 							   start, count,
 							   dstp, sizep);
+		}
 		/* let's still make sure this is actually a pv4 tree */
 		if ((*scp++ & 0xf) != OBJ_PV4_TREE)
 			return -1;
@@ -484,6 +495,16 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 			*dstp += len + 20;
 			*sizep -= len + 20;
 			count--;
+			if (*v4_dstp) {
+				if (scp - src > *v4_sizep)
+					*v4_dstp = NULL;
+				else {
+					memcpy(*v4_dstp, src, scp - src);
+					*v4_dstp += scp - src;
+					*v4_sizep -= scp - src;
+					(*v4_entries)++;
+				}
+			}
 		} else if (what & 1) {
 			/*
 			 * Copy from another tree object.
@@ -537,7 +558,8 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 				count -= copy_count;
 				ret = decode_entries(p, w_curs,
 					copy_objoffset, copy_start, copy_count,
-					dstp, sizep, 1);
+					dstp, sizep, v4_dstp, v4_sizep,
+					v4_entries, 1);
 				if (ret)
 					return ret;
 				/* force pack window readjustment */
@@ -554,11 +576,13 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 }
 
 void *pv4_get_tree(struct packed_git *p, struct pack_window **w_curs,
-		   off_t offset, unsigned long size)
+		   off_t offset, unsigned long size,
+		   void **v4_data, unsigned long *v4_size)
 {
-	unsigned long avail;
-	unsigned int nb_entries;
+	unsigned long avail, v4_max_size;
+	unsigned int nb_entries, v4_entries;
 	unsigned char *dst, *dcp;
+	unsigned char *v4_dst, *v4_dcp;
 	const unsigned char *src, *scp;
 	int ret;
 
@@ -570,11 +594,33 @@ void *pv4_get_tree(struct packed_git *p, struct pack_window **w_curs,
 
 	dst = xmallocz(size);
 	dcp = dst;
-	ret = decode_entries(p, w_curs, offset, 0, nb_entries, &dcp, &size, 0);
+	if (v4_data) {
+		/*
+		 * v4 can't be larger than canonical, so "size" should
+		 * be enough
+		 */
+		v4_max_size = size;
+		v4_dst = v4_dcp = xmallocz(v4_max_size);
+		v4_entries = 0;
+	}
+	ret = decode_entries(p, w_curs, offset, 0, nb_entries,
+			     &dcp, &size,
+			     v4_data ? &v4_dcp : NULL, &v4_max_size,
+			     &v4_entries, 0);
 	if (ret < 0 || size != 0) {
 		free(dst);
+		free(v4_dst);
 		return NULL;
 	}
+	if (v4_data && v4_dcp) {
+		unsigned char hdr[10];
+		int len = encode_varint(v4_entries, hdr);
+		memmove(v4_dst + len, v4_dst, v4_dcp - v4_dst);
+		memcpy(v4_dst, hdr, len);
+		*v4_data = v4_dst;
+		*v4_size = len + v4_dcp - v4_dst;
+	} else
+		free(v4_dst);
 	return dst;
 }
 

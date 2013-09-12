@@ -20,6 +20,7 @@ const unsigned char *get_sha1ref(struct packed_git *p,
 void *pv4_get_commit(struct packed_git *p, struct pack_window **w_curs,
 		     off_t offset, unsigned long size);
 void *pv4_get_tree(struct packed_git *p, struct pack_window **w_curs,
-		   off_t offset, unsigned long size);
+		   off_t offset, unsigned long size,
+		   void **v4_data, unsigned long *v4_size);
 
 #endif
