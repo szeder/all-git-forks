@@ -461,6 +461,10 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 	avail -= scp - src;
 	src = scp;
 
+	/* special case for pv4_cached_tree_to_canonical() */
+	if (!count && cached)
+		count = nb_entries;
+
 	while (count) {
 		unsigned int what;
 
@@ -647,4 +651,22 @@ unsigned long pv4_unpack_object_header_buffer(const unsigned char *base,
 	*type = val & 0xf;
 	*sizep = val >> 4;
 	return cp - base;
+}
+
+/* offset must already be cached! */
+void *pv4_cached_tree_to_canonical(struct packed_git *p, off_t offset,
+				   unsigned long size)
+{
+	int ret;
+	unsigned char *dst, *dcp;
+	unsigned char *v4_dstp = NULL;
+	dst = xmallocz(size);
+	dcp = dst;
+	ret = decode_entries(p, NULL, offset, 0, 0,
+			     &dcp, &size, &v4_dstp, NULL, NULL, 1);
+	if (ret < 0 || size != 0) {
+		free(dst);
+		return NULL;
+	}
+	return dst;
 }

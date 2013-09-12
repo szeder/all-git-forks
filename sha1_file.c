@@ -2000,6 +2000,17 @@ static void *cache_or_unpack_entry(struct packed_git *p, off_t base_offset,
 	if (!eq_delta_base_cache_entry(ent, p, base_offset))
 		return unpack_entry(p, base_offset, type, base_size);
 
+	if (ent->type == OBJ_PV4_TREE) {
+		ret = pv4_cached_tree_to_canonical(p, base_offset, ent->size);
+		if (!ret)
+			return NULL;
+		if (!keep_cache)
+			clear_delta_base_cache_entry(ent);
+		*type = OBJ_TREE;
+		*base_size = ent->size;
+		return ret;
+	}
+
 	ret = ent->data;
 
 	if (!keep_cache)

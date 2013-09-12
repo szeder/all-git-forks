@@ -24,5 +24,7 @@ void *pv4_get_commit(struct packed_git *p, struct pack_window **w_curs,
 void *pv4_get_tree(struct packed_git *p, struct pack_window **w_curs,
 		   off_t offset, unsigned long size,
 		   void **v4_data, unsigned long *v4_size);
+void *pv4_cached_tree_to_canonical(struct packed_git *p, off_t offset,
+				   unsigned long size);
 
 #endif
