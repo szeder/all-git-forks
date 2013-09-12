@@ -1934,6 +1934,7 @@ static struct delta_base_cache_entry {
 	struct packed_git *p;
 	off_t base_offset;
 	unsigned long size;
+	unsigned long v4_size;
 	enum object_type type;
 } delta_base_cache[MAX_DELTA_CACHE];
 
@@ -2015,7 +2016,8 @@ void clear_delta_base_cache(void)
 }
 
 static void add_delta_base_cache(struct packed_git *p, off_t base_offset,
-	void *base, unsigned long base_size, enum object_type type)
+	void *base, unsigned long base_size, unsigned long v4_size,
+	enum object_type type)
 {
 	unsigned long hash = pack_entry_hash(p, base_offset);
 	struct delta_base_cache_entry *ent = delta_base_cache + hash;
@@ -2045,6 +2047,7 @@ static void add_delta_base_cache(struct packed_git *p, off_t base_offset,
 	ent->type = type;
 	ent->data = base;
 	ent->size = base_size;
+	ent->v4_size = v4_size;
 	ent->lru.next = &delta_base_cache_lru;
 	ent->lru.prev = delta_base_cache_lru.prev;
 	delta_base_cache_lru.prev->next = &ent->lru;
@@ -2208,7 +2211,7 @@ void *unpack_entry(struct packed_git *p, off_t obj_offset,
 		data = NULL;
 
 		if (base)
-			add_delta_base_cache(p, obj_offset, base, base_size, type);
+			add_delta_base_cache(p, obj_offset, base, base_size, 0, type);
 
 		if (!base) {
 			/*
