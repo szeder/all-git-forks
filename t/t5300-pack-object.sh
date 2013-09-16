@@ -128,7 +128,7 @@ test_expect_success \
      done'
 cd "$TRASH"
 
-test_expect_success 'compare delta flavors' '
+test_expect_success !PACKV4 'compare delta flavors' '
 	"$PERL_PATH" -e '\''
 		defined($_ = -s $_) or die for @ARGV;
 		exit 1 if $ARGV[0] <= $ARGV[1];
