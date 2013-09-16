@@ -2732,6 +2732,10 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		pack_compression_level = core_compression_level;
 	pack_version = pack_format_version;
 
+	/* GIT_TEST_PACKV4 does not override --version */
+	if (getenv("GIT_TEST_PACKV4"))
+		pack_version = 4;
+
 	progress = isatty(2);
 	argc = parse_options(argc, argv, prefix, pack_objects_options,
 			     pack_usage, 0);

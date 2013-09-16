@@ -222,6 +222,9 @@ do
 	--statusprefix=*)
 		statusprefix=$(expr "z$1" : 'z[^=]*=\(.*\)')
 		shift ;;
+	--packv4)
+		packv4=t
+		shift ;;
 	*)
 		echo "error: unknown test option '$1'" >&2; exit 1 ;;
 	esac
@@ -738,6 +741,13 @@ then
 	test_create_repo "$TRASH_DIRECTORY"
 else
 	mkdir -p "$TRASH_DIRECTORY"
+fi
+
+if test -n "$packv4"
+then
+	GIT_TEST_PACKV4=t
+	export GIT_TEST_PACKV4
+	test_set_prereq PACKV4
 fi
 
 # Gross hack to spawn N sub-instances of the tests in parallel, and
