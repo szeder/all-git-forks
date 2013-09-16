@@ -644,6 +644,10 @@ core.abbrev::
 	for abbreviated object names to stay unique for sufficiently long
 	time.
 
+core.packFormat::
+	Default pack format version when not explicitly
+	specified. Valid values are 2, 3 and 4. Default value is 2.
+
 add.ignore-errors::
 add.ignoreErrors::
 	Tells 'git add' to continue adding files when some files cannot be

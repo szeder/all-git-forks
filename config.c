@@ -831,6 +831,16 @@ static int git_default_core_config(const char *var, const char *value)
 		return 0;
 	}
 
+	if (!strcmp(var, "core.packformat")) {
+		pack_format_version = git_config_int(var, value);
+		if (pack_format_version < 2 || pack_format_version > 4) {
+			error("core.packformat %d is invalid, assuming 2",
+			      pack_format_version);
+			pack_format_version = 2;
+		}
+		return 0;
+	}
+
 	/* Add other config variables here and to Documentation/config.txt. */
 	return 0;
 }
