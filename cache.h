@@ -627,9 +627,15 @@ enum push_default_type {
 	PUSH_DEFAULT_UNSPECIFIED
 };
 
+enum git_mode {
+	MODE_CURRENT = 0,
+	MODE_NEXT
+};
+
 extern enum branch_track git_branch_track;
 extern enum rebase_setup_type autorebase;
 extern enum push_default_type push_default;
+extern enum git_mode git_mode;
 
 enum object_creation_mode {
 	OBJECT_CREATION_USES_HARDLINKS = 0,
