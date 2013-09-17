@@ -919,6 +919,8 @@ static int git_default_core_config(const char *var, const char *value)
 			git_mode = MODE_CURRENT;
 		else if (!strcmp(value, "next")) {
 			git_mode = MODE_NEXT;
+		} else if (!strcmp(value, "progress")) {
+			git_mode = MODE_PROGRESS;
 		} else
 			die("wrong mode '%s'", value);
 		return 0;
