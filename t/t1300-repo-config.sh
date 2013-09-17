@@ -334,6 +334,10 @@ test_expect_success 'hierarchical section value' '
 '
 
 cat > expect << EOF
+alias.ci=commit
+alias.co=checkout
+alias.rb=rebase
+alias.st=status
 beta.noindent=sillyValue
 nextsection.nonewline=wow2 for me
 123456.a123=987
@@ -345,6 +349,10 @@ test_expect_success 'working --list' '
 	test_cmp expect output
 '
 cat > expect << EOF
+alias.ci=commit
+alias.co=checkout
+alias.rb=rebase
+alias.st=status
 EOF
 
 test_expect_success '--list without repo produces empty output' '
@@ -353,6 +361,10 @@ test_expect_success '--list without repo produces empty output' '
 '
 
 cat > expect << EOF
+alias.ci
+alias.co
+alias.rb
+alias.st
 beta.noindent
 nextsection.nonewline
 123456.a123
@@ -929,6 +941,10 @@ inued"
 EOF
 
 cat > expect <<\EOF
+alias.ci=commit
+alias.co=checkout
+alias.rb=rebase
+alias.st=status
 section.continued=continued
 section.noncont=not continued
 section.quotecont=cont;inued
@@ -949,7 +965,11 @@ cat > .git/config <<\EOF
 EOF
 
 cat > expect <<\EOF
-section.sub=section.val1
+alias.ci
+commitQalias.co
+checkoutQalias.rb
+rebaseQalias.st
+statusQsection.sub=section.val1
 foo=barQsection.sub=section.val2
 foo
 barQsection.sub=section.val3
@@ -965,6 +985,16 @@ test_expect_success '--null --list' '
 	test_cmp expect result
 '
 
+cat > expect <<\EOF
+section.sub=section.val1
+foo=barQsection.sub=section.val2
+foo
+barQsection.sub=section.val3
+
+
+Qsection.sub=section.val4
+Qsection.sub=section.val5Q
+EOF
 test_expect_success '--null --get-regexp' '
 	git config --null --get-regexp "val[0-9]" >result.raw &&
 	nul_to_q <result.raw >result &&
@@ -1237,6 +1267,10 @@ test_expect_success 'set up --show-origin tests' '
 
 test_expect_success '--show-origin with --list' '
 	cat >expect <<-EOF &&
+		command line:	alias.ci=commit
+		command line:	alias.co=checkout
+		command line:	alias.rb=rebase
+		command line:	alias.st=status
 		file:$HOME/.gitconfig	user.global=true
 		file:$HOME/.gitconfig	user.override=global
 		file:$HOME/.gitconfig	include.path=$INCLUDE_DIR/absolute.include
@@ -1253,7 +1287,11 @@ test_expect_success '--show-origin with --list' '
 
 test_expect_success '--show-origin with --list --null' '
 	cat >expect <<-EOF &&
-		file:$HOME/.gitconfigQuser.global
+		command line:Qalias.ci
+		commitQcommand line:Qalias.co
+		checkoutQcommand line:Qalias.rb
+		rebaseQcommand line:Qalias.st
+		statusQfile:$HOME/.gitconfigQuser.global
 		trueQfile:$HOME/.gitconfigQuser.override
 		globalQfile:$HOME/.gitconfigQinclude.path
 		$INCLUDE_DIR/absolute.includeQfile:$INCLUDE_DIR/absolute.includeQuser.absolute
