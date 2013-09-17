@@ -14,6 +14,11 @@ SYNOPSIS
 'git checkout' [-f|--ours|--theirs|-m|--conflict=<style>] [<tree-ish>] [--] <paths>...
 'git checkout' [-p|--patch] [<tree-ish>] [--] [<paths>...]
 
+ALIAS
+-----
+
+git co
+
 DESCRIPTION
 -----------
 Updates files in the working tree to match the version in the index
