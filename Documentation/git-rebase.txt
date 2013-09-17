@@ -14,6 +14,10 @@ SYNOPSIS
 	--root [<branch>]
 'git rebase' --continue | --skip | --abort | --edit-todo
 
+Alias
+~~~~~
+'git rb'
+
 DESCRIPTION
 -----------
 If <branch> is specified, 'git rebase' will perform an automatic

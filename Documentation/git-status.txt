@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git status' [<options>...] [--] [<pathspec>...]
 
+Alias
+~~~~~
+'git st'
+
 DESCRIPTION
 -----------
 Displays paths that have differences between the index file and the
