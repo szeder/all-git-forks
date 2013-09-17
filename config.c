@@ -831,6 +831,19 @@ static int git_default_core_config(const char *var, const char *value)
 		return 0;
 	}
 
+	if (!strcmp(var, "core.mode")) {
+		if (!value)
+			return config_error_nonbool(var);
+		else if (!strcmp(value, "current"))
+			git_mode = MODE_CURRENT;
+		else if (!strcmp(value, "next")) {
+			git_mode = MODE_NEXT;
+			push_default = PUSH_DEFAULT_SIMPLE;
+		} else
+			die("wrong mode '%s'", value);
+		return 0;
+	}
+
 	/* Add other config variables here and to Documentation/config.txt. */
 	return 0;
 }
