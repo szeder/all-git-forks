@@ -618,7 +618,8 @@ enum push_default_type {
 
 enum git_mode {
 	MODE_CURRENT = 0,
-	MODE_NEXT
+	MODE_NEXT,
+	MODE_PROGRESS
 };
 
 extern enum branch_track git_branch_track;

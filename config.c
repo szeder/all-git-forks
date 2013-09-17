@@ -119,6 +119,21 @@ static int handle_path_include(const char *path, struct config_include_data *inc
 	return ret;
 }
 
+static int callback(config_fn_t fn, const char *var, const char *value, void *data)
+{
+	int ret = 0;
+
+	if (!strcmp(var, "core.mode")) {
+		if (!strcmp(value, "progress")) {
+			ret |= fn("merge.defaulttoupstream", "true", data);
+			ret |= fn("mergetool.prompt", "false", data);
+		}
+	}
+
+	ret |= fn(var, value, data);
+	return ret;
+}
+
 int git_config_include(const char *var, const char *value, void *data)
 {
 	struct config_include_data *inc = data;
@@ -129,7 +144,7 @@ int git_config_include(const char *var, const char *value, void *data)
 	 * Pass along all values, including "include" directives; this makes it
 	 * possible to query information on the includes themselves.
 	 */
-	ret = inc->fn(var, value, inc->data);
+	ret = callback(inc->fn, var, value, inc->data);
 	if (ret < 0)
 		return ret;
 
@@ -176,7 +191,7 @@ int git_config_parse_parameter(const char *text,
 		return error("bogus config parameter: %s", text);
 	}
 	lowercase(pair[0]->buf);
-	if (fn(pair[0]->buf, pair[1] ? pair[1]->buf : NULL, data) < 0) {
+	if (callback(fn, pair[0]->buf, pair[1] ? pair[1]->buf : NULL, data) < 0) {
 		strbuf_list_free(pair);
 		return -1;
 	}
@@ -328,7 +343,7 @@ static int get_value(config_fn_t fn, void *data, struct strbuf *name)
 		if (!value)
 			return -1;
 	}
-	return fn(name->buf, value, data);
+	return callback(fn, name->buf, value, data);
 }
 
 static int get_extended_base_var(struct strbuf *name, int c)
@@ -889,6 +904,10 @@ static int git_default_core_config(const char *var, const char *value)
 		else if (!strcmp(value, "next")) {
 			git_mode = MODE_NEXT;
 			push_default = PUSH_DEFAULT_SIMPLE;
+		} else if (!strcmp(value, "progress")) {
+			git_mode = MODE_PROGRESS;
+			push_default = PUSH_DEFAULT_SIMPLE;
+			git_branch_track = BRANCH_TRACK_ALWAYS;
 		} else
 			die("wrong mode '%s'", value);
 		return 0;
