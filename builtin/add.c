@@ -443,14 +443,16 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	 */
 	memset(&update_data, 0, sizeof(update_data));
 	if (!take_worktree_changes && addremove_explicit < 0)
-		update_data.warn_add_would_remove = 1;
+		if (git_mode == MODE_CURRENT)
+			update_data.warn_add_would_remove = 1;
 
 	if (!take_worktree_changes && addremove_explicit < 0 && argc)
 		/*
 		 * Turn "git add pathspec..." to "git add -A pathspec..."
 		 * in Git 2.0 but not yet
 		 */
-		; /* addremove = 1; */
+		if (git_mode != MODE_CURRENT)
+			addremove = 1;
 
 	if (!show_only && ignore_missing)
 		die(_("Option --ignore-missing can only be used together with --dry-run"));
@@ -463,10 +465,13 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 		short_option_with_implicit_dot = "-u";
 	}
 	if (option_with_implicit_dot && !argc) {
-		static const char *here[2] = { ".", NULL };
+		static const char *here[2] = { ":/", NULL };
 		argc = 1;
 		argv = here;
-		implicit_dot = 1;
+		if (git_mode == MODE_CURRENT) {
+			here[0] = ".";
+			implicit_dot = 1;
+		}
 	}
 
 	add_new_files = !take_worktree_changes && !refresh_only;
