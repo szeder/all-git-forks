@@ -1511,6 +1511,20 @@ static void on_file_change(struct diff_options *options,
 		die("CVS does not support file permission changes. "
 		    "Set cvshelper.ignoreModeChange to true if you want to ignore and push anyway.");
 
+	if (old_mode != new_mode && !memcmp(old_sha1, new_sha1, 20)) {
+		fprintf(stderr, "------\nignoring file because only permissions were"
+				" changed (CVS does not support file permission changes): %s "
+				"mode: %o -> %o "
+				"sha: %d %s -> %d %s\n",
+				concatpath,
+				old_mode, new_mode,
+				old_sha1_valid,
+				sha1_to_hex(old_sha1),
+				new_sha1_valid,
+				sha1_to_hex(new_sha1));
+		return;
+	}
+
 	fprintf(stderr, "------\nfile changed: %s "
 			"mode: %o -> %o "
 			"sha: %d %s -> %d %s\n",
