@@ -462,7 +462,6 @@ SCRIPT_SH += git-pull.sh
 SCRIPT_SH += git-quiltimport.sh
 SCRIPT_SH += git-rebase.sh
 SCRIPT_SH += git-remote-testgit.sh
-SCRIPT_SH += git-request-pull.sh
 SCRIPT_SH += git-stash.sh
 SCRIPT_SH += git-submodule.sh
 SCRIPT_SH += git-web--browse.sh
@@ -488,7 +487,9 @@ SCRIPT_PERL += git-svn.perl
 SCRIPT_PYTHON += git-p4.py
 
 SCRIPT_RUBY += git-rb-setup.rb
+SCRIPT_RUBY += git-request-pull.rb
 
+RUBY_PROGRAMS += git-request-pull$X
 PROGRAMS += $(RUBY_PROGRAMS)
 
 NO_INSTALL += git-remote-testgit
