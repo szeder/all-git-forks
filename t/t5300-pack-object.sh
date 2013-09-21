@@ -380,9 +380,9 @@ test_expect_success 'index-pack with --strict' '
 	)
 '
 
-test_expect_success 'honor pack.packSizeLimit' '
+test_expect_success 'honor pack.packSizeLimit (pack v2)' '
 	git config pack.packSizeLimit 3m &&
-	packname_10=$(git pack-objects test-10 <obj-list) &&
+	packname_10=$(git pack-objects --version=2 test-10 <obj-list) &&
 	test 2 = $(ls test-10-*.pack | wc -l)
 '
 
@@ -390,9 +390,9 @@ test_expect_success 'verify resulting packs' '
 	git verify-pack test-10-*.pack
 '
 
-test_expect_success 'tolerate packsizelimit smaller than biggest object' '
+test_expect_success 'tolerate packsizelimit smaller than biggest object (pack v2)' '
 	git config pack.packSizeLimit 1 &&
-	packname_11=$(git pack-objects test-11 <obj-list) &&
+	packname_11=$(git pack-objects --version=2 test-11 <obj-list) &&
 	test 5 = $(ls test-11-*.pack | wc -l)
 '
 

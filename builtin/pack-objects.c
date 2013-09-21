@@ -2749,6 +2749,8 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		warning("minimum pack size limit is 1 MiB");
 		pack_size_limit = 1024*1024;
 	}
+	if (pack_size_limit && pack_version >= 4)
+		die("pack size limiting is not supported with pack version 4");
 
 	if (!pack_to_stdout && thin)
 		die("--thin cannot be used to build an indexable pack.");
