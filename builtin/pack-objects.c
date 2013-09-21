@@ -1496,6 +1496,7 @@ static void check_object(struct object_entry *entry)
 			 */
 			if (pack_version < 4 || entry->type != OBJ_TREE)
 				entry->type = entry->in_pack_type;
+			assert(entry->type != OBJ_NONE);
 			entry->delta = base_entry;
 			entry->delta_size = entry->size;
 			entry->delta_sibling = base_entry->delta_child;
@@ -2361,7 +2362,6 @@ static void read_object_list_from_stdin(void)
 			die("expected sha1, got garbage:\n %s", line);
 
 		add_preferred_base_object(line+41);
-		add_object_entry(sha1, 0, line+41, 0);
 
 		if (pack_version == 4) {
 			void *data;
@@ -2370,7 +2370,17 @@ static void read_object_list_from_stdin(void)
 			int (*add_dict_entries)(struct dict_table *, void *, unsigned long);
 			struct dict_table *dict;
 
-			switch (sha1_object_info(sha1, &size)) {
+			type = sha1_object_info(sha1, &size);
+			/*
+			 * In v2, we can afford to keep entry->type ==
+			 * OBJ_NONE and check_object() will fill it
+			 * later. In v4, we need to know the type
+			 * right now, don't waste time looking for
+			 * type again later in check_object() when the
+			 * in-pack type is ref-delta.
+			 */
+			add_object_entry(sha1, type, line+41, 0);
+			switch (type) {
 			case OBJ_COMMIT:
 				add_dict_entries = add_commit_dict_entries;
 				dict = v4.commit_ident_table;
@@ -2389,7 +2399,8 @@ static void read_object_list_from_stdin(void)
 				die("can't process %s object %s",
 				    typename(type), sha1_to_hex(sha1));
 			free(data);
-		}
+		} else
+			add_object_entry(sha1, 0, line+41, 0);
 	}
 }
 
