@@ -36,7 +36,7 @@ create_new_pack() {
     blob_2=`git hash-object -t blob -w file_2` &&
     blob_3=`git hash-object -t blob -w file_3` &&
     pack=`printf "$blob_1\n$blob_2\n$blob_3\n" |
-          git pack-objects $@ .git/objects/pack/pack` &&
+	  git pack-objects --index-version=2 $@ .git/objects/pack/pack` &&
     pack=".git/objects/pack/pack-${pack}" &&
     git verify-pack -v ${pack}.pack
 }
@@ -205,7 +205,7 @@ test_expect_success \
      git cat-file blob $blob_2 > /dev/null &&
      git cat-file blob $blob_3 > /dev/null'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     'corruption #0 in delta base reference of first delta (OBJ_OFS_DELTA)' \
     'create_new_pack --delta-base-offset &&
      git prune-packed &&
@@ -214,7 +214,7 @@ test_expect_success \
      test_must_fail git cat-file blob $blob_2 > /dev/null &&
      test_must_fail git cat-file blob $blob_3 > /dev/null'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '... but having a loose copy allows for full recovery' \
     'mv ${pack}.idx tmp &&
      git hash-object -t blob -w file_2 &&
@@ -223,7 +223,7 @@ test_expect_success \
      git cat-file blob $blob_2 > /dev/null &&
      git cat-file blob $blob_3 > /dev/null'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '... and then a repack "clears" the corruption' \
     'do_repack --delta-base-offset &&
      git prune-packed &&
@@ -232,7 +232,7 @@ test_expect_success \
      git cat-file blob $blob_2 > /dev/null &&
      git cat-file blob $blob_3 > /dev/null'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     'corruption #1 in delta base reference of first delta (OBJ_OFS_DELTA)' \
     'create_new_pack --delta-base-offset &&
      git prune-packed &&
@@ -241,7 +241,7 @@ test_expect_success \
      test_must_fail git cat-file blob $blob_2 > /dev/null &&
      test_must_fail git cat-file blob $blob_3 > /dev/null'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '... but having a loose copy allows for full recovery' \
     'mv ${pack}.idx tmp &&
      git hash-object -t blob -w file_2 &&
@@ -250,7 +250,7 @@ test_expect_success \
      git cat-file blob $blob_2 > /dev/null &&
      git cat-file blob $blob_3 > /dev/null'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '... and then a repack "clears" the corruption' \
     'do_repack --delta-base-offset &&
      git prune-packed &&
@@ -259,7 +259,7 @@ test_expect_success \
      git cat-file blob $blob_2 > /dev/null &&
      git cat-file blob $blob_3 > /dev/null'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '... and a redundant pack allows for full recovery too' \
     'do_corrupt_object $blob_2 2 < zero &&
      git cat-file blob $blob_1 > /dev/null &&
