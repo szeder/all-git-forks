@@ -12,6 +12,7 @@
 #include "streaming.h"
 #include "thread-utils.h"
 #include "packv4-parse.h"
+#include "packv4-create.h"
 #include "varint.h"
 #include "tree-walk.h"
 
@@ -76,6 +77,7 @@ static struct delta_entry *deltas;
 static struct thread_local nothread_data;
 static unsigned char *sha1_table;
 static struct packv4_dict *name_dict, *path_dict;
+static struct packv4_tables pv4_tables;
 static int nr_objects;
 static int nr_deltas;
 static int nr_resolved_deltas;
@@ -1717,18 +1719,48 @@ static int write_compressed(struct sha1file *f, void *in, unsigned int size)
 	return size;
 }
 
+static void initialize_packv4_tables(void)
+{
+	static int initialized;
+	int i, nr = nr_objects_final;
+	if (initialized)
+		return;
+	pv4_tables.commit_ident_table = pv4_dict_to_dict_table(name_dict);
+	pv4_tables.tree_path_table = pv4_dict_to_dict_table(path_dict);
+	pv4_tables.all_objs_nr = nr;
+	pv4_tables.all_objs = xmalloc(nr * sizeof(struct pack_idx_entry));
+	/* for pv4_encode_tree() pv4_tables[].offset is not needed */
+	for (i = 0; i < nr; i++)
+		hashcpy(pv4_tables.all_objs[i].sha1, sha1_table + i * 20);
+	initialized = 1;
+}
+
 static struct object_entry *append_obj_to_pack(struct sha1file *f,
 			       const unsigned char *sha1, void *buf,
 			       unsigned long size, enum object_type type)
 {
 	struct object_entry *obj = &objects[nr_objects++];
+	void *v4_data = NULL;
 	unsigned char header[10];
+	unsigned long v4_size;
+	enum object_type real_type = type;
 	int n;
 
 	if (packv4) {
 		if (nr_objects > nr_objects_final)
 			die(_("too many objects"));
-		/* TODO: convert OBJ_TREE to OBJ_PV4_TREE using pv4_encode_tree */
+
+		if (type == OBJ_TREE) {
+			initialize_packv4_tables();
+			v4_size = size;
+			v4_data = pv4_encode_tree(&pv4_tables, buf, &v4_size,
+						  NULL, 0, NULL);
+			if (v4_data)
+				type = OBJ_PV4_TREE;
+		}
+
+		/* TODO: convert OBJ_COMMIT to OBJ_PV4_COMMIT using pv4_encode_commit */
+
 		n = pv4_encode_object_header(type, size, header);
 	} else
 		n = encode_in_pack_object_header(type, size, header);
@@ -1737,12 +1769,17 @@ static struct object_entry *append_obj_to_pack(struct sha1file *f,
 	obj[0].size = size;
 	obj[0].hdr_size = n;
 	obj[0].type = type;
-	obj[0].real_type = type;
+	obj[0].real_type = real_type;
 	obj[1].idx.offset = obj[0].idx.offset + n;
-	obj[1].idx.offset += write_compressed(f, buf, size);
+	if (type != real_type) { /* must be v4 representation */
+		sha1write(f, v4_data, v4_size);
+		obj[1].idx.offset += v4_size;
+	} else
+		obj[1].idx.offset += write_compressed(f, buf, size);
 	obj[0].idx.crc32 = crc32_end(f);
 	sha1flush(f);
 	hashcpy(obj->idx.sha1, sha1);
+	free(v4_data);
 	return obj;
 }
 
