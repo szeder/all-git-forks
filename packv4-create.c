@@ -15,6 +15,7 @@
 #include "pack-revindex.h"
 #include "progress.h"
 #include "varint.h"
+#include "packv4-parse.h"
 #include "packv4-create.h"
 
 
@@ -144,6 +145,25 @@ void sort_dict_entries_by_hits(struct dict_table *t)
 	rehash_entries(t);
 }
 
+struct dict_table *pv4_dict_to_dict_table(struct packv4_dict *pv4dict)
+{
+	struct dict_table *dict;
+	int i;
+
+	dict = create_dict_table();
+	for (i = 0; i < pv4dict->nb_entries; i++) {
+		const unsigned char *mode_bytes;
+		const char *str;
+		int mode, str_len;
+		mode_bytes = pv4dict->data + pv4dict->offsets[i];
+		mode = (mode_bytes[0] << 8) | mode_bytes[1];
+		str = (const char *)mode_bytes + 2;
+		str_len = pv4dict->offsets[i+1] - pv4dict->offsets[i] - 2;
+		str_len--;  /* for NUL, dict_add_entry will add one back */
+		dict_add_entry(dict, mode, str, str_len);
+	}
+	return dict;
+}
 /*
  * Parse the author/committer line from a canonical commit object.
  * The 'from' argument points right after the "author " or "committer "

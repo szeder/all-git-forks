@@ -8,11 +8,13 @@ struct packv4_tables {
 	struct dict_table *tree_path_table;
 };
 
+struct packv4_dict;
 struct dict_table;
 struct sha1file;
 
 struct dict_table *create_dict_table(void);
 int dict_add_entry(struct dict_table *t, int val, const char *str, int str_len);
+struct dict_table *pv4_dict_to_dict_table(struct packv4_dict *dict);
 void destroy_dict_table(struct dict_table *t);
 void dict_dump(struct packv4_tables *v4);
 
