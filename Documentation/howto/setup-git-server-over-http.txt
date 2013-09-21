@@ -3,6 +3,11 @@ Subject: Setting up a Git repository which can be pushed into and pulled from ov
 Date: Thu, 10 Aug 2006 22:00:26 +0200
 Content-type: text/asciidoc
 
+NOTE: This document is from 2006.  A lot has happened since then, and this
+document is now relevant mainly if your web host is not CGI capable.
+
+Almost everyone else should instead look at linkgit:git-http-backend[1].
+
 How to setup Git server over http
 =================================
 
