@@ -98,7 +98,7 @@ test_expect_success \
      done'
 cd "$TRASH"
 
-test_expect_success \
+test_expect_success !PACKV4 \
     'pack with OFS_DELTA' \
     'pwd &&
      packname_3=$(git pack-objects --delta-base-offset test-3 <obj-list)'
@@ -106,7 +106,7 @@ test_expect_success \
 rm -fr .git2
 mkdir .git2
 
-test_expect_success \
+test_expect_success !PACKV4 \
     'unpack with OFS_DELTA' \
     'GIT_OBJECT_DIRECTORY=.git2/objects &&
      export GIT_OBJECT_DIRECTORY &&
@@ -116,7 +116,7 @@ test_expect_success \
 
 unset GIT_OBJECT_DIRECTORY
 cd "$TRASH/.git2"
-test_expect_success \
+test_expect_success !PACKV4 \
     'check unpack with OFS_DELTA' \
     '(cd ../.git && find objects -type f -print) |
      while read path
@@ -128,7 +128,7 @@ test_expect_success \
      done'
 cd "$TRASH"
 
-test_expect_success 'compare delta flavors' '
+test_expect_success !PACKV4 'compare delta flavors' '
 	"$PERL_PATH" -e '\''
 		defined($_ = -s $_) or die for @ARGV;
 		exit 1 if $ARGV[0] <= $ARGV[1];
@@ -168,7 +168,7 @@ test_expect_success \
     } >current &&
     test_cmp expect current'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     'use packed deltified (OFS_DELTA) objects' \
     'GIT_OBJECT_DIRECTORY=.git2/objects &&
      export GIT_OBJECT_DIRECTORY &&
@@ -185,7 +185,7 @@ test_expect_success \
 
 unset GIT_OBJECT_DIRECTORY
 
-test_expect_success 'survive missing objects/pack directory' '
+test_expect_success !PACKV4 'survive missing objects/pack directory' '
 	(
 		rm -fr missing-pack &&
 		mkdir missing-pack &&
@@ -205,14 +205,17 @@ test_expect_success 'survive missing objects/pack directory' '
 test_expect_success \
     'verify pack' \
     'git verify-pack	test-1-${packname_1}.idx \
-			test-2-${packname_2}.idx \
-			test-3-${packname_3}.idx'
+			test-2-${packname_2}.idx'
 
 test_expect_success \
     'verify pack -v' \
     'git verify-pack -v	test-1-${packname_1}.idx \
-			test-2-${packname_2}.idx \
-			test-3-${packname_3}.idx'
+			test-2-${packname_2}.idx'
+
+test_expect_success !PACKV4 \
+    'verify ofs pack' \
+    'git verify-pack	test-3-${packname_3}.idx
+     git verify-pack -v test-3-${packname_3}.idx'
 
 test_expect_success \
     'verify-pack catches mismatched .idx and .pack files' \
@@ -277,14 +280,16 @@ test_expect_success \
      git index-pack test-3.pack &&
      cmp test-3.idx test-2-${packname_2}.idx &&
 
-     cat test-3-${packname_3}.pack >test-3.pack &&
-     git index-pack -o tmp.idx test-3-${packname_3}.pack &&
-     cmp tmp.idx test-3-${packname_3}.idx &&
+     if ! test_have_prereq PACKV4
+     then
+	cat test-3-${packname_3}.pack >test-3.pack &&
+	git index-pack -o tmp.idx test-3-${packname_3}.pack &&
+	cmp tmp.idx test-3-${packname_3}.idx &&
 
-     git index-pack test-3.pack &&
-     cmp test-3.idx test-3-${packname_3}.idx &&
-
-     :'
+	git index-pack test-3.pack &&
+	cmp test-3.idx test-3-${packname_3}.idx
+     fi
+     '
 
 test_expect_success 'unpacking with --strict' '
 
