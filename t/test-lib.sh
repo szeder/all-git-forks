@@ -236,6 +236,9 @@ do
 		trace=t
 		verbose=t
 		shift ;;
+	--packv4)
+		packv4=t
+		shift ;;
 	*)
 		echo "error: unknown test option '$1'" >&2; exit 1 ;;
 	esac
@@ -859,6 +862,13 @@ else
 		shift
 		printf "%s\n" "$*"
 	}
+fi
+
+if test -n "$packv4"
+then
+	GIT_TEST_PACKV4=t
+	export GIT_TEST_PACKV4
+	test_set_prereq PACKV4
 fi
 
 if test -z "$TEST_NO_CREATE_REPO"
