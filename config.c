@@ -858,6 +858,7 @@ static int git_default_core_config(const char *var, const char *value)
 			git_mode = MODE_PROGRESS;
 			push_default = PUSH_DEFAULT_SIMPLE;
 			git_branch_track = BRANCH_TRACK_ALWAYS;
+			fetch_default = FETCH_DEFAULT_SIMPLE;
 		} else
 			die("wrong mode '%s'", value);
 		return 0;
