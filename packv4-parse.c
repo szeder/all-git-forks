@@ -462,16 +462,19 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 			if (++scp - src >= avail - 20)
 				return -1;
 
+		switch (*scp++ & 0xf) {
 		/* is this a canonical tree object? */
-		if ((*scp & 0xf) == OBJ_TREE) {
+		case OBJ_TREE:
+		case OBJ_REF_DELTA:
 			return copy_canonical_tree_entries(p, obj_offset,
 							   start, count,
 							   dstp, sizep);
-		}
-
 		/* let's still make sure this is actually a pv4 tree */
-		if ((*scp++ & 0xf) != OBJ_PV4_TREE)
+		case OBJ_PV4_TREE:
+			break;
+		default:
 			return -1;
+		}
 
 		nb_entries = decode_varint(&scp);
 		if (!count)
