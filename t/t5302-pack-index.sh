@@ -140,7 +140,7 @@ index_obj_offset()
     ( read offs extra && echo "$offs" )
 }
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '[index v1] 1) stream pack to repository' \
     'git index-pack --index-version=1 --stdin < "test-1-${pack1}.pack" &&
      git prune-packed &&
@@ -148,7 +148,7 @@ test_expect_success \
      cmp "test-1-${pack1}.pack" ".git/objects/pack/pack-${pack1}.pack" &&
      cmp "test-1-${pack1}.idx"  ".git/objects/pack/pack-${pack1}.idx"'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '[index v1] 2) create a stealth corruption in a delta base reference' \
     '# This test assumes file_101 is a delta smaller than 16 bytes.
      # It should be against file_100 but we substitute its base for file_099
@@ -163,24 +163,24 @@ test_expect_success \
         bs=1 count=20 conv=notrunc &&
      git cat-file blob $sha1_101 > file_101_foo1'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '[index v1] 3) corrupted delta happily returned wrong data' \
     'test -f file_101_foo1 && ! cmp file_101 file_101_foo1'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '[index v1] 4) confirm that the pack is actually corrupted' \
     'test_must_fail git fsck --full $commit'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '[index v1] 5) pack-objects happily reuses corrupted data' \
     'pack4=$(git pack-objects test-4 <obj-list) &&
      test -f "test-4-${pack1}.pack"'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '[index v1] 6) newly created pack is BAD !' \
     'test_must_fail git verify-pack -v "test-4-${pack1}.pack"'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '[index v2] 1) stream pack to repository' \
     'rm -f .git/objects/pack/* &&
      git index-pack --index-version=2 --stdin < "test-1-${pack1}.pack" &&
@@ -189,7 +189,7 @@ test_expect_success \
      cmp "test-1-${pack1}.pack" ".git/objects/pack/pack-${pack1}.pack" &&
      cmp "test-2-${pack1}.idx"  ".git/objects/pack/pack-${pack1}.idx"'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '[index v2] 2) create a stealth corruption in a delta base reference' \
     '# This test assumes file_101 is a delta smaller than 16 bytes.
      # It should be against file_100 but we substitute its base for file_099
@@ -204,20 +204,20 @@ test_expect_success \
         bs=1 count=20 conv=notrunc &&
      git cat-file blob $sha1_101 > file_101_foo2'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '[index v2] 3) corrupted delta happily returned wrong data' \
     'test -f file_101_foo2 && ! cmp file_101 file_101_foo2'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '[index v2] 4) confirm that the pack is actually corrupted' \
     'test_must_fail git fsck --full $commit'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '[index v2] 5) pack-objects refuses to reuse corrupted data' \
     'test_must_fail git pack-objects test-5 <obj-list &&
      test_must_fail git pack-objects --no-reuse-object test-6 <obj-list'
 
-test_expect_success \
+test_expect_success !PACKV4 \
     '[index v2] 6) verify-pack detects CRC mismatch' \
     'rm -f .git/objects/pack/* &&
      git index-pack --index-version=2 --stdin < "test-1-${pack1}.pack" &&
