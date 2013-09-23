@@ -178,6 +178,21 @@ test_perf () {
 				test_failure_ "$@"
 				break
 			fi
+			if ! test -z "$cleanup_action"; then
+				say >&3 "cleaning up: $cleanup_action"
+				if test_run_ "$cleanup_action"
+				then
+					if test -z "$verbose"; then
+						printf " c%s" "$i"
+					else
+						echo "* cleaning up run $i/$GIT_PERF_REPEAT_COUNT:"
+					fi
+				else
+					test -z $verbose && echo
+					test_failure_ "$@"
+					break
+				fi
+			fi
 		done
 		if test -z "$verbose"; then
 			echo " ok"

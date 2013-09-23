@@ -123,7 +123,7 @@ tests, use
 		command2
 	'
 
-	test_perf [--prereq <prereq>] [--] 'descriptive string' '
+	test_perf [--prereq <prereq>] [--cleanup <cleanup>] [--] 'descriptive string' '
 		command1 &&
 		command2
 	'
@@ -132,6 +132,15 @@ prereq is an optional parameter to test_perf, and the performance
 tests are only executed if the prerequisite is fulfilled.  The modern
 version also allows to distinguish the message from the description
 and test script with --, in case the message starts with --.
+
+cleanup is another optional parameter to test_perf, which is executed
+after every run of the performance test.  It can specify actions to
+bring the repository to the original state, in order to be able to
+execute the exact same test multiple times, e.g:
+
+	test_perf --cleanup 'git reset' 'test performance of git add' '
+		  git add $somefile
+	'
 
 test_perf spawns a subshell, for lack of better options.  This means
 that
