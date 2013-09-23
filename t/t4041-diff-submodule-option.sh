@@ -65,7 +65,7 @@ test_expect_success 'added submodule, set diff.submodule' '
 	test_cmp expected actual
 '
 
-test_expect_success '--submodule=short overrides diff.submodule' '
+test_expect_success -- '--submodule=short overrides diff.submodule' '
 	test_config diff.submodule log &&
 	git add sm1 &&
 	git diff --submodule=short --cached >actual &&

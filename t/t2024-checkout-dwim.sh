@@ -88,7 +88,7 @@ test_expect_success 'checkout of branch from a single remote succeeds #2' '
 	test_branch_upstream baz repo_b baz
 '
 
-test_expect_success '--no-guess suppresses branch auto-vivification' '
+test_expect_success -- '--no-guess suppresses branch auto-vivification' '
 	git checkout -B master &&
 	test_might_fail git branch -D bar &&
 

@@ -100,7 +100,7 @@ test_expect_success "using fetchRecurseSubmodules=true in .gitmodules recurses i
 	test_i18ncmp expect.err actual.err
 '
 
-test_expect_success "--no-recurse-submodules overrides .gitmodules config" '
+test_expect_success -- "--no-recurse-submodules overrides .gitmodules config" '
 	add_upstream_commit &&
 	(
 		cd downstream &&
@@ -120,7 +120,7 @@ test_expect_success "using fetchRecurseSubmodules=false in .git/config overrides
 	! test -s actual.err
 '
 
-test_expect_success "--recurse-submodules overrides fetchRecurseSubmodules setting from .git/config" '
+test_expect_success -- "--recurse-submodules overrides fetchRecurseSubmodules setting from .git/config" '
 	(
 		cd downstream &&
 		git fetch --recurse-submodules >../actual.out 2>../actual.err &&
@@ -131,7 +131,7 @@ test_expect_success "--recurse-submodules overrides fetchRecurseSubmodules setti
 	test_i18ncmp expect.err actual.err
 '
 
-test_expect_success "--quiet propagates to submodules" '
+test_expect_success -- "--quiet propagates to submodules" '
 	(
 		cd downstream &&
 		git fetch --recurse-submodules --quiet >../actual.out 2>../actual.err
@@ -140,7 +140,7 @@ test_expect_success "--quiet propagates to submodules" '
 	! test -s actual.err
 '
 
-test_expect_success "--dry-run propagates to submodules" '
+test_expect_success -- "--dry-run propagates to submodules" '
 	add_upstream_commit &&
 	(
 		cd downstream &&
@@ -170,7 +170,7 @@ test_expect_success "recurseSubmodules=true propagates into submodules" '
 	test_i18ncmp expect.err actual.err
 '
 
-test_expect_success "--recurse-submodules overrides config in submodule" '
+test_expect_success -- "--recurse-submodules overrides config in submodule" '
 	add_upstream_commit &&
 	(
 		cd downstream &&
@@ -184,7 +184,7 @@ test_expect_success "--recurse-submodules overrides config in submodule" '
 	test_i18ncmp expect.err actual.err
 '
 
-test_expect_success "--no-recurse-submodules overrides config setting" '
+test_expect_success -- "--no-recurse-submodules overrides config setting" '
 	add_upstream_commit &&
 	(
 		cd downstream &&

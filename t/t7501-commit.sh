@@ -61,19 +61,19 @@ test_expect_success 'nothing to commit' '
 	test_must_fail git commit -m initial
 '
 
-test_expect_success '--dry-run fails with nothing to commit' '
+test_expect_success -- '--dry-run fails with nothing to commit' '
 	test_must_fail git commit -m initial --dry-run
 '
 
-test_expect_success '--short fails with nothing to commit' '
+test_expect_success -- '--short fails with nothing to commit' '
 	test_must_fail git commit -m initial --short
 '
 
-test_expect_success '--porcelain fails with nothing to commit' '
+test_expect_success -- '--porcelain fails with nothing to commit' '
 	test_must_fail git commit -m initial --porcelain
 '
 
-test_expect_success '--long fails with nothing to commit' '
+test_expect_success -- '--long fails with nothing to commit' '
 	test_must_fail git commit -m initial --long
 '
 
@@ -82,22 +82,22 @@ test_expect_success 'setup: non-initial commit' '
 	git commit -m next -a
 '
 
-test_expect_success '--dry-run with stuff to commit returns ok' '
+test_expect_success -- '--dry-run with stuff to commit returns ok' '
 	echo bongo bongo bongo >>file &&
 	git commit -m next -a --dry-run
 '
 
-test_expect_failure '--short with stuff to commit returns ok' '
+test_expect_failure -- '--short with stuff to commit returns ok' '
 	echo bongo bongo bongo >>file &&
 	git commit -m next -a --short
 '
 
-test_expect_failure '--porcelain with stuff to commit returns ok' '
+test_expect_failure -- '--porcelain with stuff to commit returns ok' '
 	echo bongo bongo bongo >>file &&
 	git commit -m next -a --porcelain
 '
 
-test_expect_success '--long with stuff to commit returns ok' '
+test_expect_success -- '--long with stuff to commit returns ok' '
 	echo bongo bongo bongo >>file &&
 	git commit -m next -a --long
 '
@@ -175,7 +175,7 @@ test_expect_success 'amend without launching editor' '
 	test_cmp expect msg
 '
 
-test_expect_success '--amend --edit' '
+test_expect_success -- '--amend --edit' '
 	echo amended >expect &&
 	git commit --allow-empty -m "unamended" &&
 	echo bongo again >file &&
@@ -185,7 +185,7 @@ test_expect_success '--amend --edit' '
 	test_cmp expect msg
 '
 
-test_expect_success '--amend --edit of empty message' '
+test_expect_success -- '--amend --edit of empty message' '
 	cat >replace <<-\EOF &&
 	#!/bin/sh
 	echo "amended" >"$1"
@@ -574,7 +574,7 @@ test_expect_success 'commit a file whose name is a dash' '
 	test_i18ngrep " changed, 5 insertions" output
 '
 
-test_expect_success '--only works on to-be-born branch' '
+test_expect_success -- '--only works on to-be-born branch' '
 	# This test relies on having something in the index, as it
 	# would not otherwise actually prove much.  So check this.
 	test -n "$(git ls-files)" &&

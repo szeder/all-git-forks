@@ -59,7 +59,7 @@ test_expect_success 'set up rev-list --graph test' '
 	C4=$(git rev-parse --verify C4)
 	'
 
-test_expect_success '--graph --all' '
+test_expect_success -- '--graph --all' '
 	rm -f expected &&
 	echo "* $A7" >> expected &&
 	echo "*   $A6" >> expected &&
@@ -88,7 +88,7 @@ test_expect_success '--graph --all' '
 
 # Make sure the graph_is_interesting() code still realizes
 # that undecorated merges are interesting, even with --simplify-by-decoration
-test_expect_success '--graph --simplify-by-decoration' '
+test_expect_success -- '--graph --simplify-by-decoration' '
 	rm -f expected &&
 	git tag -d A4 &&
 	echo "* $A7" >> expected &&
@@ -123,7 +123,7 @@ test_expect_success 'setup: get rid of decorations on B' '
 '
 
 # Graph with branch B simplified away
-test_expect_success '--graph --simplify-by-decoration prune branch B' '
+test_expect_success -- '--graph --simplify-by-decoration prune branch B' '
 	rm -f expected &&
 	echo "* $A7" >> expected &&
 	echo "*   $A6" >> expected &&
@@ -144,7 +144,7 @@ test_expect_success '--graph --simplify-by-decoration prune branch B' '
 	test_cmp expected actual
 	'
 
-test_expect_success '--graph --full-history -- bar.txt' '
+test_expect_success -- '--graph --full-history -- bar.txt' '
 	rm -f expected &&
 	echo "* $A7" >> expected &&
 	echo "*   $A6" >> expected &&
@@ -161,7 +161,7 @@ test_expect_success '--graph --full-history -- bar.txt' '
 	test_cmp expected actual
 	'
 
-test_expect_success '--graph --full-history --simplify-merges -- bar.txt' '
+test_expect_success -- '--graph --full-history --simplify-merges -- bar.txt' '
 	rm -f expected &&
 	echo "* $A7" >> expected &&
 	echo "*   $A6" >> expected &&
@@ -176,7 +176,7 @@ test_expect_success '--graph --full-history --simplify-merges -- bar.txt' '
 	test_cmp expected actual
 	'
 
-test_expect_success '--graph -- bar.txt' '
+test_expect_success -- '--graph -- bar.txt' '
 	rm -f expected &&
 	echo "* $A7" >> expected &&
 	echo "* $A5" >> expected &&
@@ -188,7 +188,7 @@ test_expect_success '--graph -- bar.txt' '
 	test_cmp expected actual
 	'
 
-test_expect_success '--graph --sparse -- bar.txt' '
+test_expect_success -- '--graph --sparse -- bar.txt' '
 	rm -f expected &&
 	echo "* $A7" >> expected &&
 	echo "* $A6" >> expected &&
@@ -206,7 +206,7 @@ test_expect_success '--graph --sparse -- bar.txt' '
 	test_cmp expected actual
 	'
 
-test_expect_success '--graph ^C4' '
+test_expect_success -- '--graph ^C4' '
 	rm -f expected &&
 	echo "* $A7" >> expected &&
 	echo "* $A6" >> expected &&
@@ -220,7 +220,7 @@ test_expect_success '--graph ^C4' '
 	test_cmp expected actual
 	'
 
-test_expect_success '--graph ^C3' '
+test_expect_success -- '--graph ^C3' '
 	rm -f expected &&
 	echo "* $A7" >> expected &&
 	echo "*   $A6" >> expected &&
@@ -239,7 +239,7 @@ test_expect_success '--graph ^C3' '
 # I don't think the ordering of the boundary commits is really
 # that important, but this test depends on it.  If the ordering ever changes
 # in the code, we'll need to update this test.
-test_expect_success '--graph --boundary ^C3' '
+test_expect_success -- '--graph --boundary ^C3' '
 	rm -f expected &&
 	echo "* $A7" >> expected &&
 	echo "*   $A6" >> expected &&

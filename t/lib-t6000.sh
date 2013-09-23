@@ -133,5 +133,5 @@ test_output_expect_success()
 
 	_name=$(echo $_description | name_from_description)
 	cat >"$_name.expected"
-	test_expect_success "$_description" "check_output $_name \"$_test\""
+	test_expect_success -- "$_description" "check_output $_name \"$_test\""
 }

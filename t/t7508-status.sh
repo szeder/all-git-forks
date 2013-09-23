@@ -1035,7 +1035,7 @@ test_expect_success POSIXPERM,SANITY 'status succeeds in a read-only repository'
 new_head=$(cd sm && git rev-parse --short=7 --verify HEAD)
 touch .gitmodules
 
-test_expect_success '--ignore-submodules=untracked suppresses submodules with untracked content' '
+test_expect_success -- '--ignore-submodules=untracked suppresses submodules with untracked content' '
 	cat > expect << EOF &&
 On branch master
 Changes to be committed:
@@ -1091,7 +1091,7 @@ test_expect_success '.git/config ignore=untracked suppresses submodules with unt
 	git config --remove-section -f .gitmodules submodule.subname
 '
 
-test_expect_success '--ignore-submodules=dirty suppresses submodules with untracked content' '
+test_expect_success -- '--ignore-submodules=dirty suppresses submodules with untracked content' '
 	git status --ignore-submodules=dirty >output &&
 	test_i18ncmp expect output
 '
@@ -1118,7 +1118,7 @@ test_expect_success '.git/config ignore=dirty suppresses submodules with untrack
 	git config -f .gitmodules  --remove-section submodule.subname
 '
 
-test_expect_success '--ignore-submodules=dirty suppresses submodules with modified content' '
+test_expect_success -- '--ignore-submodules=dirty suppresses submodules with modified content' '
 	echo modified >sm/foo &&
 	git status --ignore-submodules=dirty >output &&
 	test_i18ncmp expect output
@@ -1143,7 +1143,7 @@ test_expect_success '.git/config ignore=dirty suppresses submodules with modifie
 	git config -f .gitmodules  --remove-section submodule.subname
 '
 
-test_expect_success "--ignore-submodules=untracked doesn't suppress submodules with modified content" '
+test_expect_success -- "--ignore-submodules=untracked doesn't suppress submodules with modified content" '
 	cat > expect << EOF &&
 On branch master
 Changes to be committed:
@@ -1199,7 +1199,7 @@ test_expect_success ".git/config ignore=untracked doesn't suppress submodules wi
 
 head2=$(cd sm && git commit -q -m "2nd commit" foo && git rev-parse --short=7 --verify HEAD)
 
-test_expect_success "--ignore-submodules=untracked doesn't suppress submodule summary" '
+test_expect_success -- "--ignore-submodules=untracked doesn't suppress submodule summary" '
 	cat > expect << EOF &&
 On branch master
 Changes to be committed:
@@ -1257,7 +1257,7 @@ test_expect_success ".git/config ignore=untracked doesn't suppress submodule sum
 	git config -f .gitmodules  --remove-section submodule.subname
 '
 
-test_expect_success "--ignore-submodules=dirty doesn't suppress submodule summary" '
+test_expect_success -- "--ignore-submodules=dirty doesn't suppress submodule summary" '
 	git status --ignore-submodules=dirty > output &&
 	test_i18ncmp expect output
 '
@@ -1326,7 +1326,7 @@ test_expect_success "status (core.commentchar with two chars with submodule summ
 	test_must_fail git -c status.displayCommentPrefix=true status
 '
 
-test_expect_success "--ignore-submodules=all suppresses submodule summary" '
+test_expect_success -- "--ignore-submodules=all suppresses submodule summary" '
 	cat > expect << EOF &&
 On branch master
 Changes not staged for commit:

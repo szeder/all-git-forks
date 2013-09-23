@@ -70,7 +70,7 @@ test_expect_success '-c option copies only the message with --reset-author' '
 	test_cmp expect actual
 '
 
-test_expect_success '--amend option copies authorship' '
+test_expect_success -- '--amend option copies authorship' '
 	git checkout Initial &&
 	echo "Test 5" >>foo &&
 	test_tick &&
@@ -102,7 +102,7 @@ no_reflog() {
 	fi
 }
 
-test_expect_success '--amend option with empty author' '
+test_expect_success -- '--amend option with empty author' '
 	git cat-file commit Initial >tmp &&
 	sed "s/author [^<]* </author  </" tmp >empty-author &&
 	no_reflog &&
@@ -116,7 +116,7 @@ test_expect_success '--amend option with empty author' '
 	grep "empty ident" err
 '
 
-test_expect_success '--amend option with missing author' '
+test_expect_success -- '--amend option with missing author' '
 	git cat-file commit Initial >tmp &&
 	sed "s/author [^<]* </author </" tmp >malformed &&
 	no_reflog &&
@@ -130,7 +130,7 @@ test_expect_success '--amend option with missing author' '
 	grep "empty ident" err
 '
 
-test_expect_success '--reset-author makes the commit ours even with --amend option' '
+test_expect_success -- '--reset-author makes the commit ours even with --amend option' '
 	git checkout Initial &&
 	echo "Test 6" >>foo &&
 	test_tick &&
@@ -144,14 +144,14 @@ test_expect_success '--reset-author makes the commit ours even with --amend opti
 	test_cmp expect actual
 '
 
-test_expect_success '--reset-author and --author are mutually exclusive' '
+test_expect_success -- '--reset-author and --author are mutually exclusive' '
 	git checkout Initial &&
 	echo "Test 7" >>foo &&
 	test_tick &&
 	test_must_fail git commit -a --reset-author --author="Xyzzy <frotz@nitfol.xz>"
 '
 
-test_expect_success '--reset-author should be rejected without -c/-C/--amend' '
+test_expect_success -- '--reset-author should be rejected without -c/-C/--amend' '
 	git checkout Initial &&
 	echo "Test 7" >>foo &&
 	test_tick &&
@@ -177,7 +177,7 @@ test_expect_success 'commit respects CHERRY_PICK_HEAD and MERGE_MSG' '
 	test_cmp expect actual
 '
 
-test_expect_success '--reset-author with CHERRY_PICK_HEAD' '
+test_expect_success -- '--reset-author with CHERRY_PICK_HEAD' '
 	git rev-parse cherry-pick-head >.git/CHERRY_PICK_HEAD &&
 	echo "cherry-pick 2" >>foo &&
 	test_tick &&

@@ -266,7 +266,7 @@ test_expect_success '"reset --keep HEAD" fails with pending merge' '
     test_i18ngrep "middle of a merge" err.log
 '
 
-test_expect_success '--merge is ok with added/deleted merge' '
+test_expect_success -- '--merge is ok with added/deleted merge' '
     git reset --hard third &&
     rm -f file2 &&
     test_must_fail git merge branch3 &&
@@ -280,7 +280,7 @@ test_expect_success '--merge is ok with added/deleted merge' '
     git diff --exit-code --cached
 '
 
-test_expect_success '--keep fails with added/deleted merge' '
+test_expect_success -- '--keep fails with added/deleted merge' '
     git reset --hard third &&
     rm -f file2 &&
     test_must_fail git merge branch3 &&

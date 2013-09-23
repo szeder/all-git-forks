@@ -393,7 +393,7 @@ test_expect_success 'add SP before non-empty (2)' '
 	test $(wc -w <actual) = 6
 '
 
-test_expect_success '--abbrev' '
+test_expect_success -- '--abbrev' '
 	echo SHORT SHORT SHORT >expect2 &&
 	echo LONG LONG LONG >expect3 &&
 	git log -1 --format="%h %h %h" HEAD >actual1 &&

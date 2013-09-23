@@ -424,25 +424,25 @@ test_expect_success 'branch from tag w/--track causes failure' '
 	test_must_fail git branch --track my11 foobar
 '
 
-test_expect_success '--set-upstream-to fails on multiple branches' '
+test_expect_success -- '--set-upstream-to fails on multiple branches' '
 	test_must_fail git branch --set-upstream-to master a b c
 '
 
-test_expect_success '--set-upstream-to fails on detached HEAD' '
+test_expect_success -- '--set-upstream-to fails on detached HEAD' '
 	git checkout HEAD^{} &&
 	test_must_fail git branch --set-upstream-to master &&
 	git checkout -
 '
 
-test_expect_success '--set-upstream-to fails on a missing dst branch' '
+test_expect_success -- '--set-upstream-to fails on a missing dst branch' '
 	test_must_fail git branch --set-upstream-to master does-not-exist
 '
 
-test_expect_success '--set-upstream-to fails on a missing src branch' '
+test_expect_success -- '--set-upstream-to fails on a missing src branch' '
 	test_must_fail git branch --set-upstream-to does-not-exist master
 '
 
-test_expect_success '--set-upstream-to fails on a non-ref' '
+test_expect_success -- '--set-upstream-to fails on a non-ref' '
 	test_must_fail git branch --set-upstream-to HEAD^{}
 '
 
@@ -462,7 +462,7 @@ test_expect_success 'use --set-upstream-to modify a particular branch' '
 	test "$(git config branch.my13.merge)" = "refs/heads/master"
 '
 
-test_expect_success '--unset-upstream should fail if given a non-existent branch' '
+test_expect_success -- '--unset-upstream should fail if given a non-existent branch' '
 	test_must_fail git branch --unset-upstream i-dont-exist
 '
 
@@ -478,11 +478,11 @@ test_expect_success 'test --unset-upstream on HEAD' '
 	test_must_fail git branch --unset-upstream
 '
 
-test_expect_success '--unset-upstream should fail on multiple branches' '
+test_expect_success -- '--unset-upstream should fail on multiple branches' '
 	test_must_fail git branch --unset-upstream a b c
 '
 
-test_expect_success '--unset-upstream should fail on detached HEAD' '
+test_expect_success -- '--unset-upstream should fail on detached HEAD' '
 	git checkout HEAD^{} &&
 	test_must_fail git branch --unset-upstream &&
 	git checkout -
@@ -496,7 +496,7 @@ test_expect_success 'test --unset-upstream on a particular branch' '
 	test_must_fail git config branch.my14.merge
 '
 
-test_expect_success '--set-upstream shows message when creating a new branch that exists as remote-tracking' '
+test_expect_success -- '--set-upstream shows message when creating a new branch that exists as remote-tracking' '
 	git update-ref refs/remotes/origin/master HEAD &&
 	git branch --set-upstream origin/master 2>actual &&
 	test_when_finished git update-ref -d refs/remotes/origin/master &&
@@ -512,7 +512,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_success '--set-upstream with two args only shows the deprecation message' '
+test_expect_success -- '--set-upstream with two args only shows the deprecation message' '
 	git branch --set-upstream master my13 2>actual &&
 	test_when_finished git branch --unset-upstream master &&
 	cat >expected <<EOF &&
@@ -521,7 +521,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_success '--set-upstream with one arg only shows the deprecation message if the branch existed' '
+test_expect_success -- '--set-upstream with one arg only shows the deprecation message if the branch existed' '
 	git branch --set-upstream my13 2>actual &&
 	test_when_finished git branch --unset-upstream my13 &&
 	cat >expected <<EOF &&
@@ -530,7 +530,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_success '--set-upstream-to notices an error to set branch as own upstream' '
+test_expect_success -- '--set-upstream-to notices an error to set branch as own upstream' '
 	git branch --set-upstream-to refs/heads/my13 my13 2>actual &&
 	cat >expected <<-\EOF &&
 	warning: Not setting branch my13 as its own upstream.
@@ -893,7 +893,7 @@ test_expect_success 'refuse --edit-description on unborn branch for now' '
 	test_must_fail env EDITOR=./editor git branch --edit-description
 '
 
-test_expect_success '--merged catches invalid object names' '
+test_expect_success -- '--merged catches invalid object names' '
 	test_must_fail git branch --merged 0000000000000000000000000000000000000000
 '
 

@@ -53,19 +53,19 @@ cat >expect <<EOF
 >tags/C
 EOF
 
-test_expect_success '--left-right' '
+test_expect_success -- '--left-right' '
 	git rev-list --left-right B...C > actual &&
 	git name-rev --stdin --name-only --refs="*tags/*" \
 		< actual > actual.named &&
 	test_cmp actual.named expect
 '
 
-test_expect_success '--count' '
+test_expect_success -- '--count' '
 	git rev-list --count B...C > actual &&
 	test "$(cat actual)" = 2
 '
 
-test_expect_success '--cherry-pick foo comes up empty' '
+test_expect_success -- '--cherry-pick foo comes up empty' '
 	test -z "$(git rev-list --left-right --cherry-pick B...C -- foo)"
 '
 
@@ -73,7 +73,7 @@ cat >expect <<EOF
 >tags/C
 EOF
 
-test_expect_success '--cherry-pick bar does not come up empty' '
+test_expect_success -- '--cherry-pick bar does not come up empty' '
 	git rev-list --left-right --cherry-pick B...C -- bar > actual &&
 	git name-rev --stdin --name-only --refs="*tags/*" \
 		< actual > actual.named &&
@@ -92,7 +92,7 @@ cat >expect <<EOF
 >tags/E
 EOF
 
-test_expect_success '--cherry-pick bar does not come up empty (II)' '
+test_expect_success -- '--cherry-pick bar does not come up empty (II)' '
 	git rev-list --left-right --cherry-pick F...E -- bar > actual &&
 	git name-rev --stdin --name-only --refs="*tags/*" \
 		< actual > actual.named &&
@@ -106,7 +106,7 @@ cat >expect <<EOF
 =tags/C
 EOF
 
-test_expect_success '--cherry-mark' '
+test_expect_success -- '--cherry-mark' '
 	git rev-list --cherry-mark F...E -- bar > actual &&
 	git name-rev --stdin --name-only --refs="*tags/*" \
 		< actual > actual.named &&
@@ -120,7 +120,7 @@ cat >expect <<EOF
 =tags/C
 EOF
 
-test_expect_success '--cherry-mark --left-right' '
+test_expect_success -- '--cherry-mark --left-right' '
 	git rev-list --cherry-mark --left-right F...E -- bar > actual &&
 	git name-rev --stdin --name-only --refs="*tags/*" \
 		< actual > actual.named &&
@@ -131,14 +131,14 @@ cat >expect <<EOF
 tags/E
 EOF
 
-test_expect_success '--cherry-pick --right-only' '
+test_expect_success -- '--cherry-pick --right-only' '
 	git rev-list --cherry-pick --right-only F...E -- bar > actual &&
 	git name-rev --stdin --name-only --refs="*tags/*" \
 		< actual > actual.named &&
 	test_cmp actual.named expect
 '
 
-test_expect_success '--cherry-pick --left-only' '
+test_expect_success -- '--cherry-pick --left-only' '
 	git rev-list --cherry-pick --left-only E...F -- bar > actual &&
 	git name-rev --stdin --name-only --refs="*tags/*" \
 		< actual > actual.named &&
@@ -150,7 +150,7 @@ cat >expect <<EOF
 =tags/C
 EOF
 
-test_expect_success '--cherry' '
+test_expect_success -- '--cherry' '
 	git rev-list --cherry F...E -- bar > actual &&
 	git name-rev --stdin --name-only --refs="*tags/*" \
 		< actual > actual.named &&
@@ -161,7 +161,7 @@ cat >expect <<EOF
 1	1
 EOF
 
-test_expect_success '--cherry --count' '
+test_expect_success -- '--cherry --count' '
 	git rev-list --cherry --count F...E -- bar > actual &&
 	test_cmp actual expect
 '
@@ -170,7 +170,7 @@ cat >expect <<EOF
 2	2
 EOF
 
-test_expect_success '--cherry-mark --count' '
+test_expect_success -- '--cherry-mark --count' '
 	git rev-list --cherry-mark --count F...E -- bar > actual &&
 	test_cmp actual expect
 '
@@ -179,12 +179,12 @@ cat >expect <<EOF
 1	1	2
 EOF
 
-test_expect_success '--cherry-mark --left-right --count' '
+test_expect_success -- '--cherry-mark --left-right --count' '
 	git rev-list --cherry-mark --left-right --count F...E -- bar > actual &&
 	test_cmp actual expect
 '
 
-test_expect_success '--cherry-pick with independent, but identical branches' '
+test_expect_success -- '--cherry-pick with independent, but identical branches' '
 	git symbolic-ref HEAD refs/heads/independent &&
 	rm .git/index &&
 	echo Hallo > foo &&
@@ -202,7 +202,7 @@ cat >expect <<EOF
 1	2
 EOF
 
-test_expect_success '--count --left-right' '
+test_expect_success -- '--count --left-right' '
 	git rev-list --count --left-right C...D > actual &&
 	test_cmp expect actual
 '

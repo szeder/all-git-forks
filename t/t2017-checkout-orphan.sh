@@ -22,7 +22,7 @@ test_expect_success 'Setup' '
 	git commit -m "Second Commit"
 '
 
-test_expect_success '--orphan creates a new orphan branch from HEAD' '
+test_expect_success -- '--orphan creates a new orphan branch from HEAD' '
 	git checkout --orphan alpha &&
 	test_must_fail git rev-parse --verify HEAD &&
 	test "refs/heads/alpha" = "$(git symbolic-ref HEAD)" &&
@@ -32,7 +32,7 @@ test_expect_success '--orphan creates a new orphan branch from HEAD' '
 	git diff-tree --quiet master alpha
 '
 
-test_expect_success '--orphan creates a new orphan branch from <start_point>' '
+test_expect_success -- '--orphan creates a new orphan branch from <start_point>' '
 	git checkout master &&
 	git checkout --orphan beta master^ &&
 	test_must_fail git rev-parse --verify HEAD &&
@@ -43,19 +43,19 @@ test_expect_success '--orphan creates a new orphan branch from <start_point>' '
 	git diff-tree --quiet master^ beta
 '
 
-test_expect_success '--orphan must be rejected with -b' '
+test_expect_success -- '--orphan must be rejected with -b' '
 	git checkout master &&
 	test_must_fail git checkout --orphan new -b newer &&
 	test refs/heads/master = "$(git symbolic-ref HEAD)"
 '
 
-test_expect_success '--orphan must be rejected with -t' '
+test_expect_success -- '--orphan must be rejected with -t' '
 	git checkout master &&
 	test_must_fail git checkout --orphan new -t master &&
 	test refs/heads/master = "$(git symbolic-ref HEAD)"
 '
 
-test_expect_success '--orphan ignores branch.autosetupmerge' '
+test_expect_success -- '--orphan ignores branch.autosetupmerge' '
 	git checkout master &&
 	git config branch.autosetupmerge always &&
 	git checkout --orphan gamma &&
@@ -64,7 +64,7 @@ test_expect_success '--orphan ignores branch.autosetupmerge' '
 	test_must_fail git rev-parse --verify HEAD^
 '
 
-test_expect_success '--orphan makes reflog by default' '
+test_expect_success -- '--orphan makes reflog by default' '
 	git checkout master &&
 	git config --unset core.logAllRefUpdates &&
 	git checkout --orphan delta &&
@@ -73,7 +73,7 @@ test_expect_success '--orphan makes reflog by default' '
 	git rev-parse --verify delta@{0}
 '
 
-test_expect_success '--orphan does not make reflog when core.logAllRefUpdates = false' '
+test_expect_success -- '--orphan does not make reflog when core.logAllRefUpdates = false' '
 	git checkout master &&
 	git config core.logAllRefUpdates false &&
 	git checkout --orphan epsilon &&
@@ -82,7 +82,7 @@ test_expect_success '--orphan does not make reflog when core.logAllRefUpdates = 
 	test_must_fail git rev-parse --verify epsilon@{0}
 '
 
-test_expect_success '--orphan with -l makes reflog when core.logAllRefUpdates = false' '
+test_expect_success -- '--orphan with -l makes reflog when core.logAllRefUpdates = false' '
 	git checkout master &&
 	git checkout -l --orphan zeta &&
 	test_must_fail git rev-parse --verify zeta@{0} &&
@@ -98,13 +98,13 @@ test_expect_success 'giving up --orphan not committed when -l and core.logAllRef
 	test_must_fail git rev-parse --verify eta@{0}
 '
 
-test_expect_success '--orphan is rejected with an existing name' '
+test_expect_success -- '--orphan is rejected with an existing name' '
 	git checkout master &&
 	test_must_fail git checkout --orphan master &&
 	test refs/heads/master = "$(git symbolic-ref HEAD)"
 '
 
-test_expect_success '--orphan refuses to switch if a merge is needed' '
+test_expect_success -- '--orphan refuses to switch if a merge is needed' '
 	git checkout master &&
 	git reset --hard &&
 	echo local >>"$TEST_FILE" &&

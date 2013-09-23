@@ -319,7 +319,7 @@ test_expect_success 'prune empty collapsed merges' '
 	test_cmp expect actual
 '
 
-test_expect_success '--remap-to-ancestor with filename filters' '
+test_expect_success -- '--remap-to-ancestor with filename filters' '
 	git checkout master &&
 	git reset --hard A &&
 	test_commit add-foo foo 1 &&

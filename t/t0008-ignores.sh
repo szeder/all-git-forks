@@ -242,7 +242,7 @@ test_expect_success_multi 'empty command line' '' '
 	stderr_contains "fatal: no path specified"
 '
 
-test_expect_success_multi '--stdin with empty STDIN' '' '
+test_expect_success_multi -- '--stdin with empty STDIN' '' '
 	test_check_ignore "--stdin" 1 </dev/null &&
 	test_stderr ""
 '
@@ -253,7 +253,7 @@ test_expect_success '-q with multiple args' '
 	stderr_contains "fatal: --quiet is only valid with a single pathname"
 '
 
-test_expect_success '--quiet with multiple args' '
+test_expect_success -- '--quiet with multiple args' '
 	expect "" &&
 	test_check_ignore "--quiet one two" 128 &&
 	stderr_contains "fatal: --quiet is only valid with a single pathname"
@@ -263,7 +263,7 @@ for verbose_opt in '-v' '--verbose'
 do
 	for quiet_opt in '-q' '--quiet'
 	do
-		test_expect_success "$quiet_opt $verbose_opt" "
+		test_expect_success -- "$quiet_opt $verbose_opt" "
 			expect '' &&
 			test_check_ignore '$quiet_opt $verbose_opt foo' 128 &&
 			stderr_contains 'fatal: cannot have both --quiet and --verbose'
@@ -271,7 +271,7 @@ do
 	done
 done
 
-test_expect_success '--quiet with multiple args' '
+test_expect_success -- '--quiet with multiple args' '
 	expect "" &&
 	test_check_ignore "--quiet one two" 128 &&
 	stderr_contains "fatal: --quiet is only valid with a single pathname"
@@ -282,12 +282,12 @@ test_expect_success_multi 'erroneous use of --' '' '
 	stderr_contains "fatal: no path specified"
 '
 
-test_expect_success_multi '--stdin with superfluous arg' '' '
+test_expect_success_multi -- '--stdin with superfluous arg' '' '
 	test_check_ignore "--stdin foo" 128 &&
 	stderr_contains "fatal: cannot specify pathnames with --stdin"
 '
 
-test_expect_success_multi '--stdin -z with superfluous arg' '' '
+test_expect_success_multi -- '--stdin -z with superfluous arg' '' '
 	test_check_ignore "--stdin -z foo" 128 &&
 	stderr_contains "fatal: cannot specify pathnames with --stdin"
 '
@@ -620,34 +620,34 @@ broken_c_unquote expected-default >expected-default0
 
 broken_c_unquote_verbose expected-verbose >expected-verbose0
 
-test_expect_success '--stdin' '
+test_expect_success -- '--stdin' '
 	expect_from_stdin <expected-default &&
 	test_check_ignore "--stdin" <stdin
 '
 
-test_expect_success '--stdin -q' '
+test_expect_success -- '--stdin -q' '
 	expect "" &&
 	test_check_ignore "-q --stdin" <stdin
 '
 
-test_expect_success '--stdin -v' '
+test_expect_success -- '--stdin -v' '
 	expect_from_stdin <expected-verbose &&
 	test_check_ignore "-v --stdin" <stdin
 '
 
 for opts in '--stdin -z' '-z --stdin'
 do
-	test_expect_success "$opts" "
+	test_expect_success -- "$opts" "
 		expect_from_stdin <expected-default0 &&
 		test_check_ignore '$opts' <stdin0
 	"
 
-	test_expect_success "$opts -q" "
+	test_expect_success -- "$opts -q" "
 		expect "" &&
 		test_check_ignore '-q $opts' <stdin0
 	"
 
-	test_expect_success "$opts -v" "
+	test_expect_success -- "$opts -v" "
 		expect_from_stdin <expected-verbose0 &&
 		test_check_ignore '-v $opts' <stdin0
 	"
@@ -705,7 +705,7 @@ broken_c_unquote expected-default >expected-default0
 
 broken_c_unquote_verbose expected-verbose >expected-verbose0
 
-test_expect_success '--stdin from subdirectory' '
+test_expect_success -- '--stdin from subdirectory' '
 	expect_from_stdin <expected-default &&
 	(
 		cd a &&
@@ -713,7 +713,7 @@ test_expect_success '--stdin from subdirectory' '
 	)
 '
 
-test_expect_success '--stdin from subdirectory with -v' '
+test_expect_success -- '--stdin from subdirectory with -v' '
 	expect_from_stdin <expected-verbose &&
 	(
 		cd a &&
@@ -721,7 +721,7 @@ test_expect_success '--stdin from subdirectory with -v' '
 	)
 '
 
-test_expect_success '--stdin from subdirectory with -v -n' '
+test_expect_success -- '--stdin from subdirectory with -v -n' '
 	expect_from_stdin <expected-all &&
 	(
 		cd a &&
@@ -731,7 +731,7 @@ test_expect_success '--stdin from subdirectory with -v -n' '
 
 for opts in '--stdin -z' '-z --stdin'
 do
-	test_expect_success "$opts from subdirectory" '
+	test_expect_success -- "$opts from subdirectory" '
 		expect_from_stdin <expected-default0 &&
 		(
 			cd a &&
@@ -739,7 +739,7 @@ do
 		)
 	'
 
-	test_expect_success "$opts from subdirectory with -v" '
+	test_expect_success -- "$opts from subdirectory with -v" '
 		expect_from_stdin <expected-verbose0 &&
 		(
 			cd a &&

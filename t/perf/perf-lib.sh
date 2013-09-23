@@ -153,23 +153,20 @@ exit $ret' >&3 2>&4
 
 test_perf () {
 	test_start_
-	test "$#" = 3 && { test_prereq=$1; shift; } || test_prereq=
-	test "$#" = 2 ||
-	error "bug in the test script: not 2 or 3 parameters to test-expect-success"
-	export test_prereq
+	test_expect_parse test_perf "$@"
 	if ! test_skip "$@"
 	then
 		base=$(basename "$0" .sh)
 		echo "$test_count" >>"$perf_results_dir"/$base.subtests
-		echo "$1" >"$perf_results_dir"/$base.$test_count.descr
+		echo "$test_label" >"$perf_results_dir"/$base.$test_count.descr
 		if test -z "$verbose"; then
-			printf "%s" "perf $test_count - $1:"
+			printf "%s" "perf $test_count - $test_label:"
 		else
-			echo "perf $test_count - $1:"
+			echo "perf $test_count - $test_label:"
 		fi
 		for i in $(test_seq 1 $GIT_PERF_REPEAT_COUNT); do
-			say >&3 "running: $2"
-			if test_run_perf_ "$2"
+			say >&3 "running: $test_body"
+			if test_run_perf_ "$test_body"
 			then
 				if test -z "$verbose"; then
 					printf " %s" "$i"
@@ -185,7 +182,7 @@ test_perf () {
 		if test -z "$verbose"; then
 			echo " ok"
 		else
-			test_ok_ "$1"
+			test_ok_ "$test_label"
 		fi
 		base="$perf_results_dir"/"$perf_results_prefix$(basename "$0" .sh)"."$test_count"
 		"$TEST_DIRECTORY"/perf/min_time.perl test_time.* >"$base".times

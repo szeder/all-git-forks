@@ -118,7 +118,7 @@ test_expect_success '-s suppresses diff' '
 	test_cmp expect actual
 '
 
-test_expect_success '--quiet suppresses diff' '
+test_expect_success -- '--quiet suppresses diff' '
 	echo main3 >expect &&
 	git show --quiet --format=%s main3 >actual &&
 	test_cmp expect actual

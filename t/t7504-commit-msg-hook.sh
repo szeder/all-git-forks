@@ -34,7 +34,7 @@ test_expect_success 'with no hook (editor)' '
 
 '
 
-test_expect_success '--no-verify with no hook' '
+test_expect_success -- '--no-verify with no hook' '
 
 	echo "bar" > file &&
 	git add file &&
@@ -42,7 +42,7 @@ test_expect_success '--no-verify with no hook' '
 
 '
 
-test_expect_success '--no-verify with no hook (editor)' '
+test_expect_success -- '--no-verify with no hook (editor)' '
 
 	echo "more bar" > file &&
 	git add file &&
@@ -78,7 +78,7 @@ test_expect_success 'with succeeding hook (editor)' '
 
 '
 
-test_expect_success '--no-verify with succeeding hook' '
+test_expect_success -- '--no-verify with succeeding hook' '
 
 	echo "even more" >> file &&
 	git add file &&
@@ -86,7 +86,7 @@ test_expect_success '--no-verify with succeeding hook' '
 
 '
 
-test_expect_success '--no-verify with succeeding hook (editor)' '
+test_expect_success -- '--no-verify with succeeding hook (editor)' '
 
 	echo "even more more" >> file &&
 	git add file &&
@@ -118,7 +118,7 @@ test_expect_success 'with failing hook (editor)' '
 
 '
 
-test_expect_success '--no-verify with failing hook' '
+test_expect_success -- '--no-verify with failing hook' '
 
 	echo "stuff" >> file &&
 	git add file &&
@@ -126,7 +126,7 @@ test_expect_success '--no-verify with failing hook' '
 
 '
 
-test_expect_success '--no-verify with failing hook (editor)' '
+test_expect_success -- '--no-verify with failing hook (editor)' '
 
 	echo "more stuff" >> file &&
 	git add file &&

@@ -127,11 +127,11 @@ test_expect_success 'checkout all stages/all files to temporary files' '
 	test_line_count = 5 actual
 '
 
-test_expect_success '-- path0: no entry' '
+test_expect_success -- '-- path0: no entry' '
 	test x$(grep path0 actual | cut "-d	" -f2) = x
 '
 
-test_expect_success '-- path1: all 3 stages' '
+test_expect_success -- '-- path1: all 3 stages' '
 	test $(grep path1 actual | cut "-d	" -f2) = path1 &&
 	grep path1 actual | cut "-d	" -f1 | (read s1 s2 s3 &&
 	test -f $s1 &&
@@ -142,7 +142,7 @@ test_expect_success '-- path1: all 3 stages' '
 	test $(cat $s3) = tree3path1)
 '
 
-test_expect_success '-- path2: no stage 1, have stage 2 and 3' '
+test_expect_success -- '-- path2: no stage 1, have stage 2 and 3' '
 	test $(grep path2 actual | cut "-d	" -f2) = path2 &&
 	grep path2 actual | cut "-d	" -f1 | (read s1 s2 s3 &&
 	test $s1 = . &&
@@ -152,7 +152,7 @@ test_expect_success '-- path2: no stage 1, have stage 2 and 3' '
 	test $(cat $s3) = tree3path2)
 '
 
-test_expect_success '-- path3: no stage 2, have stage 1 and 3' '
+test_expect_success -- '-- path3: no stage 2, have stage 1 and 3' '
 	test $(grep path3 actual | cut "-d	" -f2) = path3 &&
 	grep path3 actual | cut "-d	" -f1 | (read s1 s2 s3 &&
 	test -f $s1 &&
@@ -162,7 +162,7 @@ test_expect_success '-- path3: no stage 2, have stage 1 and 3' '
 	test $(cat $s3) = tree3path3)
 '
 
-test_expect_success '-- path4: no stage 3, have stage 1 and 3' '
+test_expect_success -- '-- path4: no stage 3, have stage 1 and 3' '
 	test $(grep path4 actual | cut "-d	" -f2) = path4 &&
 	grep path4 actual | cut "-d	" -f1 | (read s1 s2 s3 &&
 	test -f $s1 &&
@@ -172,7 +172,7 @@ test_expect_success '-- path4: no stage 3, have stage 1 and 3' '
 	test $(cat $s2) = tree2path4)
 '
 
-test_expect_success '-- asubdir/path5: no stage 2 and 3 have stage 1' '
+test_expect_success -- '-- asubdir/path5: no stage 2 and 3 have stage 1' '
 	test $(grep asubdir/path5 actual | cut "-d	" -f2) = asubdir/path5 &&
 	grep asubdir/path5 actual | cut "-d	" -f1 | (read s1 s2 s3 &&
 	test -f $s1 &&

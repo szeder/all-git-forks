@@ -89,24 +89,24 @@ test_expect_success 'cherry-pick cleans up sequencer state upon success' '
 	test_path_is_missing .git/sequencer
 '
 
-test_expect_success '--quit does not complain when no cherry-pick is in progress' '
+test_expect_success -- '--quit does not complain when no cherry-pick is in progress' '
 	pristine_detach initial &&
 	git cherry-pick --quit
 '
 
-test_expect_success '--abort requires cherry-pick in progress' '
+test_expect_success -- '--abort requires cherry-pick in progress' '
 	pristine_detach initial &&
 	test_must_fail git cherry-pick --abort
 '
 
-test_expect_success '--quit cleans up sequencer state' '
+test_expect_success -- '--quit cleans up sequencer state' '
 	pristine_detach initial &&
 	test_expect_code 1 git cherry-pick base..picked &&
 	git cherry-pick --quit &&
 	test_path_is_missing .git/sequencer
 '
 
-test_expect_success '--quit keeps HEAD and conflicted index intact' '
+test_expect_success -- '--quit keeps HEAD and conflicted index intact' '
 	pristine_detach initial &&
 	cat >expect <<-\EOF &&
 	OBJID
@@ -127,7 +127,7 @@ test_expect_success '--quit keeps HEAD and conflicted index intact' '
 	test_cmp expect actual
 '
 
-test_expect_success '--abort to cancel multiple cherry-pick' '
+test_expect_success -- '--abort to cancel multiple cherry-pick' '
 	pristine_detach initial &&
 	test_expect_code 1 git cherry-pick base..anotherpick &&
 	git cherry-pick --abort &&
@@ -137,7 +137,7 @@ test_expect_success '--abort to cancel multiple cherry-pick' '
 	git diff-index --exit-code HEAD
 '
 
-test_expect_success '--abort to cancel single cherry-pick' '
+test_expect_success -- '--abort to cancel single cherry-pick' '
 	pristine_detach initial &&
 	test_expect_code 1 git cherry-pick picked &&
 	git cherry-pick --abort &&
@@ -165,7 +165,7 @@ test_expect_success 'revert --abort works, too' '
 	test_cmp_rev anotherpick HEAD
 '
 
-test_expect_success '--abort to cancel single revert' '
+test_expect_success -- '--abort to cancel single revert' '
 	pristine_detach anotherpick &&
 	test_expect_code 1 git revert picked &&
 	git revert --abort &&
@@ -175,7 +175,7 @@ test_expect_success '--abort to cancel single revert' '
 	git diff-index --exit-code HEAD
 '
 
-test_expect_success '--abort keeps unrelated change, easy case' '
+test_expect_success -- '--abort keeps unrelated change, easy case' '
 	pristine_detach unrelatedpick &&
 	echo changed >expect &&
 	test_expect_code 1 git cherry-pick picked..yetanotherpick &&
@@ -184,7 +184,7 @@ test_expect_success '--abort keeps unrelated change, easy case' '
 	test_cmp expect unrelated
 '
 
-test_expect_success '--abort refuses to clobber unrelated change, harder case' '
+test_expect_success -- '--abort refuses to clobber unrelated change, harder case' '
 	pristine_detach initial &&
 	echo changed >expect &&
 	test_expect_code 1 git cherry-pick base..anotherpick &&
@@ -224,7 +224,7 @@ test_expect_success 'cherry-pick still writes sequencer state when one commit is
 	test_cmp expect actual
 '
 
-test_expect_success '--abort after last commit in sequence' '
+test_expect_success -- '--abort after last commit in sequence' '
 	pristine_detach initial &&
 	test_expect_code 1 git cherry-pick base..picked &&
 	git cherry-pick --abort &&
@@ -243,18 +243,18 @@ test_expect_success 'cherry-pick does not implicitly stomp an existing operation
 	test_cmp expect actual
 '
 
-test_expect_success '--continue complains when no cherry-pick is in progress' '
+test_expect_success -- '--continue complains when no cherry-pick is in progress' '
 	pristine_detach initial &&
 	test_expect_code 128 git cherry-pick --continue
 '
 
-test_expect_success '--continue complains when there are unresolved conflicts' '
+test_expect_success -- '--continue complains when there are unresolved conflicts' '
 	pristine_detach initial &&
 	test_expect_code 1 git cherry-pick base..anotherpick &&
 	test_expect_code 128 git cherry-pick --continue
 '
 
-test_expect_success '--continue of single cherry-pick' '
+test_expect_success -- '--continue of single cherry-pick' '
 	pristine_detach initial &&
 	echo c >expect &&
 	test_must_fail git cherry-pick picked &&
@@ -268,7 +268,7 @@ test_expect_success '--continue of single cherry-pick' '
 	test_must_fail git rev-parse --verify CHERRY_PICK_HEAD
 '
 
-test_expect_success '--continue of single revert' '
+test_expect_success -- '--continue of single revert' '
 	pristine_detach initial &&
 	echo resolved >expect &&
 	echo "Revert \"picked\"" >expect.msg &&
@@ -286,7 +286,7 @@ test_expect_success '--continue of single revert' '
 	test_must_fail git rev-parse --verify REVERT_HEAD
 '
 
-test_expect_success '--continue after resolving conflicts' '
+test_expect_success -- '--continue after resolving conflicts' '
 	pristine_detach initial &&
 	echo d >expect &&
 	cat >expect.log <<-\EOF &&
@@ -313,7 +313,7 @@ test_expect_success '--continue after resolving conflicts' '
 	test_cmp expect.log actual.log
 '
 
-test_expect_success '--continue after resolving conflicts and committing' '
+test_expect_success -- '--continue after resolving conflicts and committing' '
 	pristine_detach initial &&
 	test_expect_code 1 git cherry-pick base..anotherpick &&
 	echo "c" >foo &&
@@ -340,7 +340,7 @@ test_expect_success '--continue after resolving conflicts and committing' '
 	test_cmp expect actual
 '
 
-test_expect_success '--continue asks for help after resolving patch to nil' '
+test_expect_success -- '--continue asks for help after resolving patch to nil' '
 	pristine_detach conflicting &&
 	test_must_fail git cherry-pick initial..picked &&
 
@@ -363,7 +363,7 @@ test_expect_success 'follow advice and skip nil patch' '
 	test_line_count = 3 commits
 '
 
-test_expect_success '--continue respects opts' '
+test_expect_success -- '--continue respects opts' '
 	pristine_detach initial &&
 	test_expect_code 1 git cherry-pick -x base..anotherpick &&
 	echo "c" >foo &&
@@ -381,7 +381,7 @@ test_expect_success '--continue respects opts' '
 	grep "cherry picked from" anotherpick_msg
 '
 
-test_expect_success '--continue of single-pick respects -x' '
+test_expect_success -- '--continue of single-pick respects -x' '
 	pristine_detach initial &&
 	test_must_fail git cherry-pick -x picked &&
 	echo c >foo &&
@@ -392,7 +392,7 @@ test_expect_success '--continue of single-pick respects -x' '
 	grep "cherry picked from" msg
 '
 
-test_expect_success '--continue respects -x in first commit in multi-pick' '
+test_expect_success -- '--continue respects -x in first commit in multi-pick' '
 	pristine_detach initial &&
 	test_must_fail git cherry-pick -x picked anotherpick &&
 	echo c >foo &&
@@ -404,7 +404,7 @@ test_expect_success '--continue respects -x in first commit in multi-pick' '
 	grep "cherry picked from.*$picked" msg
 '
 
-test_expect_failure '--signoff is automatically propagated to resolved conflict' '
+test_expect_failure -- '--signoff is automatically propagated to resolved conflict' '
 	pristine_detach initial &&
 	test_expect_code 1 git cherry-pick --signoff base..anotherpick &&
 	echo "c" >foo &&
@@ -422,7 +422,7 @@ test_expect_failure '--signoff is automatically propagated to resolved conflict'
 	grep "Signed-off-by:" anotherpick_msg
 '
 
-test_expect_failure '--signoff dropped for implicit commit of resolution, multi-pick case' '
+test_expect_failure -- '--signoff dropped for implicit commit of resolution, multi-pick case' '
 	pristine_detach initial &&
 	test_must_fail git cherry-pick -s picked anotherpick &&
 	echo c >foo &&

@@ -175,7 +175,7 @@ test_expect_success 'merge.log=5 shows all 5 commits' '
 	test_cmp expected actual
 '
 
-test_expect_success '--log=5 with custom comment character' '
+test_expect_success -- '--log=5 with custom comment character' '
 	cat >expected <<-EOF &&
 	Merge branch ${apos}left${apos}
 
@@ -199,7 +199,7 @@ test_expect_success 'merge.log=0 disables shortlog' '
 	test_cmp expected actual
 '
 
-test_expect_success '--log=3 limits shortlog length' '
+test_expect_success -- '--log=3 limits shortlog length' '
 	cat >expected <<-EOF &&
 	Merge branch ${apos}left${apos}
 
@@ -216,7 +216,7 @@ test_expect_success '--log=3 limits shortlog length' '
 	test_cmp expected actual
 '
 
-test_expect_success '--log=5 shows all 5 commits' '
+test_expect_success -- '--log=5 shows all 5 commits' '
 	cat >expected <<-EOF &&
 	Merge branch ${apos}left${apos}
 
@@ -234,13 +234,13 @@ test_expect_success '--log=5 shows all 5 commits' '
 	test_cmp expected actual
 '
 
-test_expect_success '--no-log disables shortlog' '
+test_expect_success -- '--no-log disables shortlog' '
 	echo "Merge branch ${apos}left${apos}" >expected &&
 	git fmt-merge-msg --no-log <.git/FETCH_HEAD >actual &&
 	test_cmp expected actual
 '
 
-test_expect_success '--log=0 disables shortlog' '
+test_expect_success -- '--log=0 disables shortlog' '
 	echo "Merge branch ${apos}left${apos}" >expected &&
 	git fmt-merge-msg --no-log <.git/FETCH_HEAD >actual &&
 	test_cmp expected actual

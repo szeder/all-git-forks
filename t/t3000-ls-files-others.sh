@@ -60,7 +60,7 @@ test_expect_success 'ls-files --others --directory' '
 	test_cmp expected2 output
 '
 
-test_expect_success '--no-empty-directory hides empty directory' '
+test_expect_success -- '--no-empty-directory hides empty directory' '
 	git ls-files --others --directory --no-empty-directory >output &&
 	test_cmp expected3 output
 '

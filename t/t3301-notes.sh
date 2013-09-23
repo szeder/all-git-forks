@@ -652,12 +652,12 @@ test_expect_success 'GIT_NOTES_DISPLAY_REF overrides config' '
 	test_cmp expect-none actual
 '
 
-test_expect_success '--show-notes=* adds to GIT_NOTES_DISPLAY_REF' '
+test_expect_success -- '--show-notes=* adds to GIT_NOTES_DISPLAY_REF' '
 	GIT_NOTES_REF= GIT_NOTES_DISPLAY_REF= git log --show-notes=* -2 >actual &&
 	test_cmp expect-both actual
 '
 
-test_expect_success '--no-standard-notes' '
+test_expect_success -- '--no-standard-notes' '
 	cat >expect-commits <<-EOF &&
 		commit 2c125331118caba0ff8238b7f4958ac6e93fe39c
 		Author: A U Thor <author@example.com>
@@ -672,14 +672,14 @@ test_expect_success '--no-standard-notes' '
 	test_cmp expect-commits actual
 '
 
-test_expect_success '--standard-notes' '
+test_expect_success -- '--standard-notes' '
 	test_config notes.displayRef "refs/notes/*" &&
 	git log --no-standard-notes --show-notes=commits \
 		--standard-notes -2 >actual &&
 	test_cmp expect-both actual
 '
 
-test_expect_success '--show-notes=ref accumulates' '
+test_expect_success -- '--show-notes=ref accumulates' '
 	git log --show-notes=other --show-notes=commits \
 		 --no-standard-notes -1 >actual &&
 	test_cmp expect-both-reversed actual

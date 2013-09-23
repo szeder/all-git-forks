@@ -34,7 +34,7 @@ expect=$1; shift
 cat >expected <<EOF
 1	0	$expect
 EOF
-test_expect_success "--numstat $*" "
+test_expect_success -- "--numstat $*" "
 	echo '1	0	$expect' >expected &&
 	git diff --numstat $* HEAD^ >actual &&
 	test_cmp expected actual
@@ -47,7 +47,7 @@ cat >expected <<EOF
  $expect | 1 +
  1 file changed, 1 insertion(+)
 EOF
-test_expect_success "--stat $*" "
+test_expect_success -- "--stat $*" "
 	git diff --stat $* HEAD^ >actual &&
 	test_i18ncmp expected actual
 "
@@ -58,7 +58,7 @@ expect=$1; shift
 cat >expected <<EOF
 :000000 100644 0000000000000000000000000000000000000000 25c05ef3639d2d270e7fe765a67668f098092bc5 A	$expect
 EOF
-test_expect_success "--raw $*" "
+test_expect_success -- "--raw $*" "
 	git diff --no-abbrev --raw $* HEAD^ >actual &&
 	test_cmp expected actual
 "

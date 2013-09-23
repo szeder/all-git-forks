@@ -12,7 +12,7 @@ test_expect_success 'with no hook' '
 
 '
 
-test_expect_success '--no-verify with no hook' '
+test_expect_success -- '--no-verify with no hook' '
 
 	echo "bar" > file &&
 	git add file &&
@@ -38,7 +38,7 @@ test_expect_success 'with succeeding hook' '
 
 '
 
-test_expect_success '--no-verify with succeeding hook' '
+test_expect_success -- '--no-verify with succeeding hook' '
 
 	echo "even more" >> file &&
 	git add file &&
@@ -60,7 +60,7 @@ test_expect_success 'with failing hook' '
 
 '
 
-test_expect_success '--no-verify with failing hook' '
+test_expect_success -- '--no-verify with failing hook' '
 
 	echo "stuff" >> file &&
 	git add file &&
@@ -69,7 +69,7 @@ test_expect_success '--no-verify with failing hook' '
 '
 
 chmod -x "$HOOK"
-test_expect_success POSIXPERM 'with non-executable hook' '
+test_expect_success --prereq POSIXPERM 'with non-executable hook' '
 
 	echo "content" >> file &&
 	git add file &&
@@ -77,7 +77,7 @@ test_expect_success POSIXPERM 'with non-executable hook' '
 
 '
 
-test_expect_success POSIXPERM '--no-verify with non-executable hook' '
+test_expect_success --prereq POSIXPERM -- '--no-verify with non-executable hook' '
 
 	echo "more content" >> file &&
 	git add file &&

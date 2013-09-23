@@ -527,14 +527,14 @@ test_expect_success 'check with space before tab in indent' '
 
 '
 
-test_expect_success '--check and --exit-code are not exclusive' '
+test_expect_success -- '--check and --exit-code are not exclusive' '
 
 	git checkout x &&
 	git diff --check --exit-code
 
 '
 
-test_expect_success '--check and --quiet are not exclusive' '
+test_expect_success -- '--check and --quiet are not exclusive' '
 
 	git diff --check --quiet
 

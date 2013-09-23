@@ -221,7 +221,7 @@ check_patch () {
 	grep -e "^Subject:" "$1"
 }
 
-test_expect_success '--no-to overrides config.to' '
+test_expect_success -- '--no-to overrides config.to' '
 
 	git config --replace-all format.to \
 		"R E Cipient <rcipient@example.com>" &&
@@ -231,7 +231,7 @@ test_expect_success '--no-to overrides config.to' '
 	! grep "^To: R E Cipient <rcipient@example.com>\$" patch10
 '
 
-test_expect_success '--no-to and --to replaces config.to' '
+test_expect_success -- '--no-to and --to replaces config.to' '
 
 	git config --replace-all format.to \
 		"Someone <someone@out.there>" &&
@@ -243,7 +243,7 @@ test_expect_success '--no-to and --to replaces config.to' '
 	grep "^To: Someone Else <else@out.there>\$" patch11
 '
 
-test_expect_success '--no-cc overrides config.cc' '
+test_expect_success -- '--no-cc overrides config.cc' '
 
 	git config --replace-all format.cc \
 		"C E Cipient <rcipient@example.com>" &&
@@ -253,7 +253,7 @@ test_expect_success '--no-cc overrides config.cc' '
 	! grep "^Cc: C E Cipient <rcipient@example.com>\$" patch12
 '
 
-test_expect_success '--no-add-header overrides config.headers' '
+test_expect_success -- '--no-add-header overrides config.headers' '
 
 	git config --replace-all format.headers \
 		"Header1: B E Cipient <rcipient@example.com>" &&
@@ -773,7 +773,7 @@ test_expect_success 'prepare mail-signature input' '
 	EOF
 '
 
-test_expect_success '--signature-file=file works' '
+test_expect_success -- '--signature-file=file works' '
 	git format-patch --stdout --signature-file=mail-signature -1 >output &&
 	check_patch output &&
 	sed -e "1,/^-- \$/d" <output >actual &&
@@ -794,14 +794,14 @@ test_expect_success 'format.signaturefile works' '
 	test_cmp expect actual
 '
 
-test_expect_success '--no-signature suppresses format.signaturefile ' '
+test_expect_success -- '--no-signature suppresses format.signaturefile ' '
 	test_config format.signaturefile mail-signature &&
 	git format-patch --stdout --no-signature -1 >output &&
 	check_patch output &&
 	! grep "^-- \$" output
 '
 
-test_expect_success '--signature-file overrides format.signaturefile' '
+test_expect_success -- '--signature-file overrides format.signaturefile' '
 	cat >other-mail-signature <<-\EOF &&
 	Use this other signature instead of mail-signature.
 	EOF
@@ -816,7 +816,7 @@ test_expect_success '--signature-file overrides format.signaturefile' '
 	test_cmp expect actual
 '
 
-test_expect_success '--signature overrides format.signaturefile' '
+test_expect_success -- '--signature overrides format.signaturefile' '
 	test_config format.signaturefile mail-signature &&
 	git format-patch --stdout --signature="my sig" -1 >output &&
 	check_patch output &&
@@ -1025,11 +1025,11 @@ test_expect_success 'empty subject prefix does not have extra space' '
 	test_cmp expect actual
 '
 
-test_expect_success '--from=ident notices bogus ident' '
+test_expect_success -- '--from=ident notices bogus ident' '
 	test_must_fail git format-patch -1 --stdout --from=foo >patch
 '
 
-test_expect_success '--from=ident replaces author' '
+test_expect_success -- '--from=ident replaces author' '
 	git format-patch -1 --stdout --from="Me <me@example.com>" >patch &&
 	cat >expect <<-\EOF &&
 	From: Me <me@example.com>
@@ -1041,7 +1041,7 @@ test_expect_success '--from=ident replaces author' '
 	test_cmp expect patch.head
 '
 
-test_expect_success '--from uses committer ident' '
+test_expect_success -- '--from uses committer ident' '
 	git format-patch -1 --stdout --from >patch &&
 	cat >expect <<-\EOF &&
 	From: C O Mitter <committer@example.com>
@@ -1053,7 +1053,7 @@ test_expect_success '--from uses committer ident' '
 	test_cmp expect patch.head
 '
 
-test_expect_success '--from omits redundant in-body header' '
+test_expect_success -- '--from omits redundant in-body header' '
 	git format-patch -1 --stdout --from="A U Thor <author@example.com>" >patch &&
 	cat >expect <<-\EOF &&
 	From: A U Thor <author@example.com>

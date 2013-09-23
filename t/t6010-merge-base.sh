@@ -145,7 +145,7 @@ test_expect_success 'unsynchronized clocks' '
 	test_cmp expected actual.all
 '
 
-test_expect_success '--independent with unsynchronized clocks' '
+test_expect_success -- '--independent with unsynchronized clocks' '
 	IB=$(doit 0 IB) &&
 	I1=$(doit -10 I1 $IB) &&
 	I2=$(doit  -9 I2 $I1) &&

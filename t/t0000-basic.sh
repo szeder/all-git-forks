@@ -364,7 +364,7 @@ test_expect_success 'GIT_SKIP_TESTS sh pattern' "
 	)
 "
 
-test_expect_success '--run basic' "
+test_expect_success -- '--run basic' "
 	run_sub_test_lib_test run-basic \
 		'--run basic' --run='1 3 5' <<-\\EOF &&
 	for i in 1 2 3 4 5 6
@@ -385,7 +385,7 @@ test_expect_success '--run basic' "
 	EOF
 "
 
-test_expect_success '--run with a range' "
+test_expect_success -- '--run with a range' "
 	run_sub_test_lib_test run-range \
 		'--run with a range' --run='1-3' <<-\\EOF &&
 	for i in 1 2 3 4 5 6
@@ -406,7 +406,7 @@ test_expect_success '--run with a range' "
 	EOF
 "
 
-test_expect_success '--run with two ranges' "
+test_expect_success -- '--run with two ranges' "
 	run_sub_test_lib_test run-two-ranges \
 		'--run with two ranges' --run='1-2 5-6' <<-\\EOF &&
 	for i in 1 2 3 4 5 6
@@ -427,7 +427,7 @@ test_expect_success '--run with two ranges' "
 	EOF
 "
 
-test_expect_success '--run with a left open range' "
+test_expect_success -- '--run with a left open range' "
 	run_sub_test_lib_test run-left-open-range \
 		'--run with a left open range' --run='-3' <<-\\EOF &&
 	for i in 1 2 3 4 5 6
@@ -448,7 +448,7 @@ test_expect_success '--run with a left open range' "
 	EOF
 "
 
-test_expect_success '--run with a right open range' "
+test_expect_success -- '--run with a right open range' "
 	run_sub_test_lib_test run-right-open-range \
 		'--run with a right open range' --run='4-' <<-\\EOF &&
 	for i in 1 2 3 4 5 6
@@ -469,7 +469,7 @@ test_expect_success '--run with a right open range' "
 	EOF
 "
 
-test_expect_success '--run with basic negation' "
+test_expect_success -- '--run with basic negation' "
 	run_sub_test_lib_test run-basic-neg \
 		'--run with basic negation' --run='"'!3'"' <<-\\EOF &&
 	for i in 1 2 3 4 5 6
@@ -490,7 +490,7 @@ test_expect_success '--run with basic negation' "
 	EOF
 "
 
-test_expect_success '--run with two negations' "
+test_expect_success -- '--run with two negations' "
 	run_sub_test_lib_test run-two-neg \
 		'--run with two negations' --run='"'!3 !6'"' <<-\\EOF &&
 	for i in 1 2 3 4 5 6
@@ -511,7 +511,7 @@ test_expect_success '--run with two negations' "
 	EOF
 "
 
-test_expect_success '--run a range and negation' "
+test_expect_success -- '--run a range and negation' "
 	run_sub_test_lib_test run-range-and-neg \
 		'--run a range and negation' --run='"'-4 !2'"' <<-\\EOF &&
 	for i in 1 2 3 4 5 6
@@ -532,7 +532,7 @@ test_expect_success '--run a range and negation' "
 	EOF
 "
 
-test_expect_success '--run range negation' "
+test_expect_success -- '--run range negation' "
 	run_sub_test_lib_test run-range-neg \
 		'--run range negation' --run='"'!1-3'"' <<-\\EOF &&
 	for i in 1 2 3 4 5 6
@@ -553,7 +553,7 @@ test_expect_success '--run range negation' "
 	EOF
 "
 
-test_expect_success '--run include, exclude and include' "
+test_expect_success -- '--run include, exclude and include' "
 	run_sub_test_lib_test run-inc-neg-inc \
 		'--run include, exclude and include' \
 		--run='"'1-5 !1-3 2'"' <<-\\EOF &&
@@ -575,7 +575,7 @@ test_expect_success '--run include, exclude and include' "
 	EOF
 "
 
-test_expect_success '--run include, exclude and include, comma separated' "
+test_expect_success -- '--run include, exclude and include, comma separated' "
 	run_sub_test_lib_test run-inc-neg-inc-comma \
 		'--run include, exclude and include, comma separated' \
 		--run=1-5,\!1-3,2 <<-\\EOF &&
@@ -597,7 +597,7 @@ test_expect_success '--run include, exclude and include, comma separated' "
 	EOF
 "
 
-test_expect_success '--run exclude and include' "
+test_expect_success -- '--run exclude and include' "
 	run_sub_test_lib_test run-neg-inc \
 		'--run exclude and include' \
 		--run='"'!3- 5'"' <<-\\EOF &&
@@ -619,7 +619,7 @@ test_expect_success '--run exclude and include' "
 	EOF
 "
 
-test_expect_success '--run empty selectors' "
+test_expect_success -- '--run empty selectors' "
 	run_sub_test_lib_test run-empty-sel \
 		'--run empty selectors' \
 		--run='1,,3,,,5' <<-\\EOF &&
@@ -641,7 +641,7 @@ test_expect_success '--run empty selectors' "
 	EOF
 "
 
-test_expect_success '--run invalid range start' "
+test_expect_success -- '--run invalid range start' "
 	run_sub_test_lib_test_err run-inv-range-start \
 		'--run invalid range start' \
 		--run='a-5' <<-\\EOF &&
@@ -656,7 +656,7 @@ test_expect_success '--run invalid range start' "
 	EOF_ERR
 "
 
-test_expect_success '--run invalid range end' "
+test_expect_success -- '--run invalid range end' "
 	run_sub_test_lib_test_err run-inv-range-end \
 		'--run invalid range end' \
 		--run='1-z' <<-\\EOF &&
@@ -671,7 +671,7 @@ test_expect_success '--run invalid range end' "
 	EOF_ERR
 "
 
-test_expect_success '--run invalid selector' "
+test_expect_success -- '--run invalid selector' "
 	run_sub_test_lib_test_err run-inv-selector \
 		'--run invalid selector' \
 		--run='1?' <<-\\EOF &&

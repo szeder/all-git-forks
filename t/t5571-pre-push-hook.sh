@@ -32,7 +32,7 @@ test_expect_success 'push with failing hook' '
 	test_must_fail git push parent1 HEAD
 '
 
-test_expect_success '--no-verify bypasses hook' '
+test_expect_success -- '--no-verify bypasses hook' '
 	git push --no-verify parent1 HEAD
 '
 

@@ -348,20 +348,66 @@ test_declared_prereq () {
 	return 1
 }
 
+test_expect_parse () {
+	whoami=$1
+	shift
+	test_expect_new_style=
+	test_prereq=
+	while case $# in 0) false ;; esac
+	do
+		case "$1" in
+		--prereq)
+			test $# -gt 1 ||
+			error "bug in the test script: --prereq needs a parameter"
+			test_prereq=$2
+			shift
+			;;
+		--)
+			shift
+			break
+			;;
+		--*)
+			error "bug in the test script: unknown option '$1'"
+			;;
+		*)
+			break
+			;;
+		esac
+		test_expect_new_style=yes
+		shift
+	done
+
+	# Traditional "test_expect_what [PREREQ] BODY"
+	if test -z "$test_expect_new_style"
+	then
+		test "$#" = 3 && { test_prereq=$1; shift; } || test_prereq=
+	fi
+
+	if test $# != 2
+	then
+		if test -z "$test_expect_new_style"
+		then
+			error "bug in the test script: not 2 or 3 parameters to $whoami"
+		else
+			error "bug in the test script: not 2 parameters to $whoami"
+		fi
+	fi
+	test_label=$1 test_body=$2
+
+	export test_prereq
+}
+
 test_expect_failure () {
 	test_start_
-	test "$#" = 3 && { test_prereq=$1; shift; } || test_prereq=
-	test "$#" = 2 ||
-	error "bug in the test script: not 2 or 3 parameters to test-expect-failure"
-	export test_prereq
+	test_expect_parse test_expect_failure "$@"
 	if ! test_skip "$@"
 	then
-		say >&3 "checking known breakage: $2"
-		if test_run_ "$2" expecting_failure
+		say >&3 "checking known breakage: $test_body"
+		if test_run_ "$test_body" expecting_failure
 		then
-			test_known_broken_ok_ "$1"
+			test_known_broken_ok_ "$test_label"
 		else
-			test_known_broken_failure_ "$1"
+			test_known_broken_failure_ "$test_label"
 		fi
 	fi
 	test_finish_
@@ -369,16 +415,13 @@ test_expect_failure () {
 
 test_expect_success () {
 	test_start_
-	test "$#" = 3 && { test_prereq=$1; shift; } || test_prereq=
-	test "$#" = 2 ||
-	error "bug in the test script: not 2 or 3 parameters to test-expect-success"
-	export test_prereq
+	test_expect_parse test_expect_success "$@"
 	if ! test_skip "$@"
 	then
-		say >&3 "expecting success: $2"
-		if test_run_ "$2"
+		say >&3 "expecting success: $test_body"
+		if test_run_ "$test_body"
 		then
-			test_ok_ "$1"
+			test_ok_ "$test_label"
 		else
 			test_failure_ "$@"
 		fi

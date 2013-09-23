@@ -72,7 +72,7 @@ test_expect_success 'cmdline refs written in order' '
 	verify_push A foo
 '
 
-test_expect_success '--stdin refs come after cmdline' '
+test_expect_success -- '--stdin refs come after cmdline' '
 	clear_remote &&
 	echo A:foo >input &&
 	test_must_fail git send-pack remote.git --stdin B:foo <input &&

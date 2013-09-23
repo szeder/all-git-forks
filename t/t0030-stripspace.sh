@@ -420,7 +420,7 @@ test_expect_success '-c with newline only' '
 	test_cmp expect actual
 '
 
-test_expect_success '--comment-lines with single line' '
+test_expect_success -- '--comment-lines with single line' '
 	printf "# foo\n" >expect &&
 	printf "foo" | git stripspace -c >actual &&
 	test_cmp expect actual

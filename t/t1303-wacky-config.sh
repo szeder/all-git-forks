@@ -111,7 +111,7 @@ test_expect_success 'unset many entries' '
 	test_must_fail git config section.key
 '
 
-test_expect_success '--add appends new value after existing empty value' '
+test_expect_success -- '--add appends new value after existing empty value' '
 	cat >expect <<-\EOF &&
 
 

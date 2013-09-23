@@ -358,7 +358,7 @@ test_expect_success 'setup a fake editor' '
 	EOF
 '
 
-test_expect_success '--edit with and without already replaced object' '
+test_expect_success -- '--edit with and without already replaced object' '
 	test_must_fail env GIT_EDITOR=./fakeeditor git replace --edit "$PARA3" &&
 	GIT_EDITOR=./fakeeditor git replace --force --edit "$PARA3" &&
 	git replace -l | grep "$PARA3" &&
@@ -369,7 +369,7 @@ test_expect_success '--edit with and without already replaced object' '
 	git cat-file commit "$PARA3" | grep "A fake Thor"
 '
 
-test_expect_success '--edit and change nothing or command failed' '
+test_expect_success -- '--edit and change nothing or command failed' '
 	git replace -d "$PARA3" &&
 	test_must_fail env GIT_EDITOR=true git replace --edit "$PARA3" &&
 	test_must_fail env GIT_EDITOR="./fakeeditor;false" git replace --edit "$PARA3" &&
@@ -384,7 +384,7 @@ test_expect_success 'replace ref cleanup' '
 	test -z "$(git replace)"
 '
 
-test_expect_success '--graft with and without already replaced object' '
+test_expect_success -- '--graft with and without already replaced object' '
 	test $(git log --oneline | wc -l) = 7 &&
 	git replace --graft $HASH5 &&
 	test $(git log --oneline | wc -l) = 3 &&

@@ -96,7 +96,7 @@ test_expect_success 'word diff with runs of whitespace' '
 	word_diff --color --word-diff=color
 '
 
-test_expect_success '--word-diff=porcelain' '
+test_expect_success -- '--word-diff=porcelain' '
 	sed 's/#.*$//' >expect <<-\EOF &&
 		diff --git a/pre b/post
 		index 330b04f..5ed8eff 100644
@@ -120,7 +120,7 @@ test_expect_success '--word-diff=porcelain' '
 	word_diff --word-diff=porcelain
 '
 
-test_expect_success '--word-diff=plain' '
+test_expect_success -- '--word-diff=plain' '
 	cat >expect <<-\EOF &&
 		diff --git a/pre b/post
 		index 330b04f..5ed8eff 100644
@@ -139,7 +139,7 @@ test_expect_success '--word-diff=plain' '
 	word_diff --word-diff=plain --no-color
 '
 
-test_expect_success '--word-diff=plain --color' '
+test_expect_success -- '--word-diff=plain --color' '
 	cat >expect <<-\EOF &&
 		<BOLD>diff --git a/pre b/post<RESET>
 		<BOLD>index 330b04f..5ed8eff 100644<RESET>
@@ -279,7 +279,7 @@ test_expect_success 'test when words are only removed at the end' '
 	word_diff --color-words=.
 '
 
-test_expect_success '--word-diff=none' '
+test_expect_success -- '--word-diff=none' '
 	echo "(:" >pre &&
 	echo "(" >post &&
 	cat >expect <<-\EOF &&

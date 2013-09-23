@@ -328,7 +328,7 @@ test_expect_success 'edit ancestor with -p' '
 	test $(git show HEAD:unrelated-file) = 2
 '
 
-test_expect_success '--continue tries to commit' '
+test_expect_success -- '--continue tries to commit' '
 	test_tick &&
 	set_fake_editor &&
 	test_must_fail git rebase -i --onto new-branch1 HEAD^ &&
@@ -489,7 +489,7 @@ test_expect_success 'interrupted squash works as expected (case 2)' '
 	test $one = $(git rev-parse HEAD~2)
 '
 
-test_expect_success '--continue tries to commit, even for "edit"' '
+test_expect_success -- '--continue tries to commit, even for "edit"' '
 	echo unrelated > file7 &&
 	git add file7 &&
 	test_tick &&

@@ -74,27 +74,27 @@ test_expect_success 'git diff-index --cached HEAD' '
 	test_expect_code 1 git diff-index --exit-code --cached HEAD
 '
 
-test_expect_success '--check --exit-code returns 0 for no difference' '
+test_expect_success -- '--check --exit-code returns 0 for no difference' '
 
 	git diff --check --exit-code
 
 '
 
-test_expect_success '--check --exit-code returns 1 for a clean difference' '
+test_expect_success -- '--check --exit-code returns 1 for a clean difference' '
 
 	echo "good" > a &&
 	test_expect_code 1 git diff --check --exit-code
 
 '
 
-test_expect_success '--check --exit-code returns 3 for a dirty difference' '
+test_expect_success -- '--check --exit-code returns 3 for a dirty difference' '
 
 	echo "bad   " >> a &&
 	test_expect_code 3 git diff --check --exit-code
 
 '
 
-test_expect_success '--check with --no-pager returns 2 for dirty difference' '
+test_expect_success -- '--check with --no-pager returns 2 for dirty difference' '
 
 	test_expect_code 2 git --no-pager diff --check
 

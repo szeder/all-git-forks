@@ -81,7 +81,7 @@ test_expect_success 'setup for merge-preserving rebase' \
 	git commit -a -m "Modify B2"
 '
 
-test_expect_success '--continue works after a conflict' '
+test_expect_success -- '--continue works after a conflict' '
 	(
 	cd clone2 &&
 	git fetch &&

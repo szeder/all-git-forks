@@ -61,13 +61,13 @@ $content"
     '
 
     test -z "$content" ||
-    test_expect_success "--batch output of $type is correct" '
+    test_expect_success -- "--batch output of $type is correct" '
 	maybe_remove_timestamp "$batch_output" $no_ts >expect &&
 	maybe_remove_timestamp "$(echo $sha1 | git cat-file --batch)" $no_ts >actual &&
 	test_cmp expect actual
     '
 
-    test_expect_success "--batch-check output of $type is correct" '
+    test_expect_success -- "--batch-check output of $type is correct" '
 	echo "$sha1 $type $size" >expect &&
 	echo_without_newline $sha1 | git cat-file --batch-check >actual &&
 	test_cmp expect actual
@@ -79,7 +79,7 @@ $content"
 	test_cmp expect actual
     '
 
-    test_expect_success '--batch-check with %(rest)' '
+    test_expect_success -- '--batch-check with %(rest)' '
 	echo "$type this is some extra content" >expect &&
 	echo "$sha1    this is some extra content" |
 		git cat-file --batch-check="%(objecttype) %(rest)" >actual &&
@@ -87,7 +87,7 @@ $content"
     '
 
     test -z "$content" ||
-    test_expect_success "--batch without type ($type)" '
+    test_expect_success -- "--batch without type ($type)" '
 	{
 		echo "$size" &&
 		maybe_remove_timestamp "$content" $no_ts
@@ -98,7 +98,7 @@ $content"
     '
 
     test -z "$content" ||
-    test_expect_success "--batch without size ($type)" '
+    test_expect_success -- "--batch without size ($type)" '
 	{
 		echo "$type" &&
 		maybe_remove_timestamp "$content" $no_ts
@@ -120,7 +120,7 @@ test_expect_success "setup" '
 
 run_tests 'blob' $hello_sha1 $hello_size "$hello_content" "$hello_content"
 
-test_expect_success '--batch-check without %(rest) considers whole line' '
+test_expect_success -- '--batch-check without %(rest) considers whole line' '
 	echo "$hello_sha1 blob $hello_size" >expect &&
 	git update-index --add --cacheinfo 100644 $hello_sha1 "white space" &&
 	test_when_finished "git update-index --remove \"white space\"" &&
@@ -189,13 +189,13 @@ do
     '
 done
 
-test_expect_success "--batch-check for a non-existent named object" '
+test_expect_success -- "--batch-check for a non-existent named object" '
     test "foobar42 missing
 foobar84 missing" = \
     "$( ( echo foobar42; echo_without_newline foobar84; ) | git cat-file --batch-check)"
 '
 
-test_expect_success "--batch-check for a non-existent hash" '
+test_expect_success -- "--batch-check for a non-existent hash" '
     test "0000000000000000000000000000000000000042 missing
 0000000000000000000000000000000000000084 missing" = \
     "$( ( echo 0000000000000000000000000000000000000042;
@@ -203,7 +203,7 @@ test_expect_success "--batch-check for a non-existent hash" '
        | git cat-file --batch-check)"
 '
 
-test_expect_success "--batch for an existent and a non-existent hash" '
+test_expect_success -- "--batch for an existent and a non-existent hash" '
     test "$tag_sha1 tag $tag_size
 $tag_content
 0000000000000000000000000000000000000000 missing" = \
@@ -212,7 +212,7 @@ $tag_content
        | git cat-file --batch)"
 '
 
-test_expect_success "--batch-check for an emtpy line" '
+test_expect_success -- "--batch-check for an emtpy line" '
     test " missing" = "$(echo | git cat-file --batch-check)"
 '
 
@@ -238,7 +238,7 @@ $tag_content
 deadbeef missing
  missing"
 
-test_expect_success '--batch with multiple sha1s gives correct format' '
+test_expect_success -- '--batch with multiple sha1s gives correct format' '
 	test "$(maybe_remove_timestamp "$batch_output" 1)" = "$(maybe_remove_timestamp "$(echo_without_newline "$batch_input" | git cat-file --batch)" 1)"
 '
 
@@ -257,7 +257,7 @@ $tag_sha1 tag $tag_size
 deadbeef missing
  missing"
 
-test_expect_success "--batch-check with multiple sha1s gives correct format" '
+test_expect_success -- "--batch-check with multiple sha1s gives correct format" '
     test "$batch_check_output" = \
     "$(echo_without_newline "$batch_check_input" | git cat-file --batch-check)"
 '

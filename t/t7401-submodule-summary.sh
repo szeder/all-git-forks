@@ -155,7 +155,7 @@ EOF
 	test_cmp expected actual
 "
 
-test_expect_success '--summary-limit' "
+test_expect_success -- '--summary-limit' "
 	git submodule summary -n 3 >actual &&
 	cat >expected <<-EOF &&
 * sm1 $head2...$head4 (4):
@@ -280,7 +280,7 @@ EOF
 	test_cmp expected actual
 "
 
-test_expect_success '--for-status' "
+test_expect_success -- '--for-status' "
 	git submodule summary --for-status HEAD^ >actual &&
 	test_i18ncmp actual - <<EOF
 * sm1 $head6...0000000:

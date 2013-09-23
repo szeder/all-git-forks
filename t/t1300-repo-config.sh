@@ -155,14 +155,14 @@ test_expect_success 'multiple unset is correct' '
 
 cp .git/config2 .git/config
 
-test_expect_success '--replace-all missing value' '
+test_expect_success -- '--replace-all missing value' '
 	test_must_fail git config --replace-all beta.haha &&
 	test_cmp .git/config2 .git/config
 '
 
 rm .git/config2
 
-test_expect_success '--replace-all' '
+test_expect_success -- '--replace-all' '
 	git config --replace-all beta.haha gamma
 '
 
@@ -347,7 +347,7 @@ test_expect_success 'working --list' '
 cat > expect << EOF
 EOF
 
-test_expect_success '--list without repo produces empty output' '
+test_expect_success -- '--list without repo produces empty output' '
 	git --git-dir=nonexistent config --list >output &&
 	test_cmp expect output
 '
@@ -357,7 +357,7 @@ beta.noindent sillyValue
 nextsection.nonewline wow2 for me
 EOF
 
-test_expect_success '--get-regexp' '
+test_expect_success -- '--get-regexp' '
 	git config --get-regexp in >output &&
 	test_cmp expect output
 '
@@ -367,7 +367,7 @@ wow2 for me
 wow4 for you
 EOF
 
-test_expect_success '--add' '
+test_expect_success -- '--add' '
 	git config --add nextsection.nonewline "wow4 for you" &&
 	git config --get-all nextsection.nonewline > output &&
 	test_cmp expect output
@@ -523,7 +523,7 @@ cat > expect << EOF
 	park = ausweis
 EOF
 
-test_expect_success '--set in alternative file' '
+test_expect_success -- '--set in alternative file' '
 	git config --file=other-config anwohner.park ausweis &&
 	test_cmp expect other-config
 '
@@ -665,7 +665,7 @@ test_expect_success numbers '
 	test_cmp expect actual
 '
 
-test_expect_success '--int is at least 64 bits' '
+test_expect_success -- '--int is at least 64 bits' '
 	git config giga.watts 121g &&
 	echo 129922760704 >expect &&
 	git config --int --get giga.watts >actual &&
@@ -934,13 +934,13 @@ barQsection.sub=section.val3
 Qsection.sub=section.val4
 Qsection.sub=section.val5Q
 EOF
-test_expect_success '--null --list' '
+test_expect_success -- '--null --list' '
 	git config --null --list | nul_to_q >result &&
 	echo >>result &&
 	test_cmp expect result
 '
 
-test_expect_success '--null --get-regexp' '
+test_expect_success -- '--null --get-regexp' '
 	git config --null --get-regexp "val[0-9]" | nul_to_q >result &&
 	echo >>result &&
 	test_cmp expect result

@@ -42,7 +42,7 @@ test_expect_success basics '
 	git tag initial
 '
 
-test_expect_success '--ignore-missing --refresh' '
+test_expect_success -- '--ignore-missing --refresh' '
 	git reset --hard initial &&
 	echo 2 >one &&
 	test_must_fail git update-index --refresh &&
@@ -54,7 +54,7 @@ test_expect_success '--ignore-missing --refresh' '
 
 '
 
-test_expect_success '--unmerged --refresh' '
+test_expect_success -- '--unmerged --refresh' '
 	git reset --hard initial &&
 	info=$(git ls-files -s one | sed -e "s/ 0	/ 1	/") &&
 	git rm --cached one &&
@@ -68,13 +68,13 @@ test_expect_success '--unmerged --refresh' '
 	! grep three actual
 '
 
-test_expect_success '--ignore-submodules --refresh (1)' '
+test_expect_success -- '--ignore-submodules --refresh (1)' '
 	git reset --hard initial &&
 	rm -f two &&
 	test_must_fail git update-index --ignore-submodules --refresh
 '
 
-test_expect_success '--ignore-submodules --refresh (2)' '
+test_expect_success -- '--ignore-submodules --refresh (2)' '
 	git reset --hard initial &&
 	test_tick &&
 	(

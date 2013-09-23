@@ -205,7 +205,7 @@ secondfile:
 1st line 2nd file
 2nd line 2nd file
 EOF
-test_expect_success '--soft reset only should show changes in diff --cached' '
+test_expect_success -- '--soft reset only should show changes in diff --cached' '
 	git reset --soft HEAD^ &&
 	check_changes d1a4bc3abce4829628ae2dcb0d60ef3d1a78b1c4 &&
 	test "$(git rev-parse ORIG_HEAD)" = \
@@ -239,7 +239,7 @@ first:
 second:
 2nd file
 EOF
-test_expect_success \
+test_expect_success -- \
 	'--hard reset should change the files and undo commits permanently' '
 	git reset --hard HEAD~2 &&
 	check_changes ddaefe00f1da16864591c61fdc7adb5d7cd6b74e &&
@@ -312,7 +312,7 @@ secondfile:
 1st line 2nd file
 2nd line 2nd file
 EOF
-test_expect_success '--mixed reset to HEAD should unadd the files' '
+test_expect_success -- '--mixed reset to HEAD should unadd the files' '
 	git reset &&
 	check_changes ddaefe00f1da16864591c61fdc7adb5d7cd6b74e &&
 	test "$(git rev-parse ORIG_HEAD)" = \
@@ -350,7 +350,7 @@ secondfile:
 2nd line 2nd file
 3rd line in branch2
 EOF
-test_expect_success '--hard reset to HEAD should clear a failed merge' '
+test_expect_success -- '--hard reset to HEAD should clear a failed merge' '
 	git branch branch1 &&
 	git branch branch2 &&
 
@@ -375,7 +375,7 @@ secondfile:
 1st line 2nd file
 2nd line 2nd file
 EOF
-test_expect_success \
+test_expect_success -- \
 	'--hard reset to ORIG_HEAD should clear a fast-forward merge' '
 	git reset --hard HEAD^ &&
 	check_changes $head5 &&
@@ -462,7 +462,7 @@ Unstaged changes after reset:
 M	file2
 EOF
 
-test_expect_success '--mixed refreshes the index' '
+test_expect_success -- '--mixed refreshes the index' '
 	echo 123 >> file2 &&
 	git reset --mixed HEAD > output &&
 	test_i18ncmp expect output

@@ -78,7 +78,7 @@ test_expect_success 'by default no tags will be kept updated' '
 	test_must_fail test_cmp expect actual
 '
 
-test_expect_success '--single-branch while HEAD pointing at master' '
+test_expect_success -- '--single-branch while HEAD pointing at master' '
 	(
 		cd dir_master && git fetch &&
 		git for-each-ref refs/remotes/origin |
@@ -90,7 +90,7 @@ test_expect_success '--single-branch while HEAD pointing at master' '
 	test_cmp expect actual
 '
 
-test_expect_success '--single-branch while HEAD pointing at side' '
+test_expect_success -- '--single-branch while HEAD pointing at side' '
 	(
 		cd dir_side && git fetch &&
 		git for-each-ref refs/remotes/origin |
@@ -102,7 +102,7 @@ test_expect_success '--single-branch while HEAD pointing at side' '
 	test_cmp expect actual
 '
 
-test_expect_success '--single-branch with explicit --branch side' '
+test_expect_success -- '--single-branch with explicit --branch side' '
 	(
 		cd dir_side2 && git fetch &&
 		git for-each-ref refs/remotes/origin |
@@ -114,7 +114,7 @@ test_expect_success '--single-branch with explicit --branch side' '
 	test_cmp expect actual
 '
 
-test_expect_success '--single-branch with explicit --branch with tag fetches updated tag' '
+test_expect_success -- '--single-branch with explicit --branch with tag fetches updated tag' '
 	(
 		cd dir_tag && git fetch &&
 		git for-each-ref refs/tags >../actual
@@ -123,7 +123,7 @@ test_expect_success '--single-branch with explicit --branch with tag fetches upd
 	test_cmp expect actual
 '
 
-test_expect_success '--single-branch with --mirror' '
+test_expect_success -- '--single-branch with --mirror' '
 	(
 		cd dir_mirror && git fetch &&
 		git for-each-ref refs > ../actual
@@ -132,7 +132,7 @@ test_expect_success '--single-branch with --mirror' '
 	test_cmp expect actual
 '
 
-test_expect_success '--single-branch with explicit --branch and --mirror' '
+test_expect_success -- '--single-branch with explicit --branch and --mirror' '
 	(
 		cd dir_mirror_side && git fetch &&
 		git for-each-ref refs > ../actual
@@ -141,7 +141,7 @@ test_expect_success '--single-branch with explicit --branch and --mirror' '
 	test_cmp expect actual
 '
 
-test_expect_success '--single-branch with detached' '
+test_expect_success -- '--single-branch with detached' '
 	(
 		cd dir_detached && git fetch &&
 		git for-each-ref refs/remotes/origin |

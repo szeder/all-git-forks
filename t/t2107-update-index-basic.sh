@@ -29,11 +29,11 @@ test_expect_success 'update-index -h with corrupt index' '
 	test_i18ngrep "[Uu]sage: git update-index" broken/usage
 '
 
-test_expect_success '--cacheinfo complains of missing arguments' '
+test_expect_success -- '--cacheinfo complains of missing arguments' '
 	test_must_fail git update-index --cacheinfo
 '
 
-test_expect_success '--cacheinfo does not accept blob null sha1' '
+test_expect_success -- '--cacheinfo does not accept blob null sha1' '
 	echo content >file &&
 	git add file &&
 	git rev-parse :file >expect &&
@@ -42,7 +42,7 @@ test_expect_success '--cacheinfo does not accept blob null sha1' '
 	test_cmp expect actual
 '
 
-test_expect_success '--cacheinfo does not accept gitlink null sha1' '
+test_expect_success -- '--cacheinfo does not accept gitlink null sha1' '
 	git init submodule &&
 	(cd submodule && test_commit foo) &&
 	git add submodule &&
@@ -52,7 +52,7 @@ test_expect_success '--cacheinfo does not accept gitlink null sha1' '
 	test_cmp expect actual
 '
 
-test_expect_success '--cacheinfo mode,sha1,path (new syntax)' '
+test_expect_success -- '--cacheinfo mode,sha1,path (new syntax)' '
 	echo content >file &&
 	git hash-object -w --stdin <file >expect &&
 

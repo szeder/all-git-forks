@@ -126,12 +126,12 @@ test_expect_success 'patchid.stable = false is unstable' '
 	test_patch_id relevant patchid.stable=false
 '
 
-test_expect_success '--unstable overrides patchid.stable = true' '
+test_expect_success -- '--unstable overrides patchid.stable = true' '
 	test_config patchid.stable true &&
 	test_patch_id relevant patchid.stable=true--unstable --unstable
 '
 
-test_expect_success '--stable overrides patchid.stable = false' '
+test_expect_success -- '--stable overrides patchid.stable = false' '
 	test_config patchid.stable false &&
 	test_patch_id irrelevant patchid.stable=false--stable --stable
 '

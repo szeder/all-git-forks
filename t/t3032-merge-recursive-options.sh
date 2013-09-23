@@ -109,7 +109,7 @@ test_expect_success 'naive merge fails' '
 	grep "<<<<<<" text.txt
 '
 
-test_expect_success '--ignore-space-change makes merge succeed' '
+test_expect_success -- '--ignore-space-change makes merge succeed' '
 	git read-tree --reset -u HEAD &&
 	git merge-recursive --ignore-space-change HEAD^ -- HEAD remote
 '
@@ -128,7 +128,7 @@ test_expect_success '-Xignore-space-change makes cherry-pick succeed' '
 	git cherry-pick --no-commit -Xignore-space-change remote
 '
 
-test_expect_success '--ignore-space-change: our w/s-only change wins' '
+test_expect_success -- '--ignore-space-change: our w/s-only change wins' '
 	q_to_cr <<-\EOF >expected &&
 	    justice and holiness and is the nurse of his age and theQ
 	EOF
@@ -139,7 +139,7 @@ test_expect_success '--ignore-space-change: our w/s-only change wins' '
 	test_cmp expected actual
 '
 
-test_expect_success '--ignore-space-change: their real change wins over w/s' '
+test_expect_success -- '--ignore-space-change: their real change wins over w/s' '
 	cat <<-\EOF >expected &&
 	it?---to speak the truth and to pay your debts---no more than this? And
 	EOF
@@ -150,7 +150,7 @@ test_expect_success '--ignore-space-change: their real change wins over w/s' '
 	test_cmp expected actual
 '
 
-test_expect_success '--ignore-space-change: does not ignore new spaces' '
+test_expect_success -- '--ignore-space-change: does not ignore new spaces' '
 	cat <<-\EOF >expected1 &&
 	Well said, Cephalus, I replied; but as con cerning justice, what is
 	EOF
@@ -166,7 +166,7 @@ test_expect_success '--ignore-space-change: does not ignore new spaces' '
 	test_cmp expected2 actual2
 '
 
-test_expect_success '--ignore-all-space drops their new spaces' '
+test_expect_success -- '--ignore-all-space drops their new spaces' '
 	cat <<-\EOF >expected &&
 	Well said, Cephalus, I replied; but as concerning justice, what is
 	EOF
@@ -177,7 +177,7 @@ test_expect_success '--ignore-all-space drops their new spaces' '
 	test_cmp expected actual
 '
 
-test_expect_success '--ignore-all-space keeps our new spaces' '
+test_expect_success -- '--ignore-all-space keeps our new spaces' '
 	q_to_cr <<-\EOF >expected &&
 	un intentionally; and when he departs to the world below he is not inQ
 	EOF
@@ -188,7 +188,7 @@ test_expect_success '--ignore-all-space keeps our new spaces' '
 	test_cmp expected actual
 '
 
-test_expect_success '--ignore-space-at-eol' '
+test_expect_success -- '--ignore-space-at-eol' '
 	q_to_cr <<-\EOF >expected &&
 	<<<<<<< HEAD
 	is not in his right mind; ought I to give them back to him?  No oneQ

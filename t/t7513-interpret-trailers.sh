@@ -75,7 +75,7 @@ test_expect_success 'without config in another order' '
 	test_cmp expected actual
 '
 
-test_expect_success '--trim-empty without config' '
+test_expect_success -- '--trim-empty without config' '
 	cat >expected <<-\EOF &&
 
 		ack: Peff

@@ -110,7 +110,7 @@ test_expect_success 'the default remote . should not break explicit pull' '
 	test `cat file` = modified
 '
 
-test_expect_success '--rebase' '
+test_expect_success -- '--rebase' '
 	git branch to-rebase &&
 	echo modified again > file &&
 	git commit -m file file &&
@@ -199,7 +199,7 @@ test_expect_success 'pull.rebase=invalid fails' '
 	! git pull . copy
 '
 
-test_expect_success '--rebase=false create a new merge commit' '
+test_expect_success -- '--rebase=false create a new merge commit' '
 	git reset --hard before-preserve-rebase &&
 	test_config pull.rebase true &&
 	git pull --rebase=false . copy &&
@@ -208,7 +208,7 @@ test_expect_success '--rebase=false create a new merge commit' '
 	test file3 = $(git show HEAD:file3.t)
 '
 
-test_expect_success '--rebase=true rebases and flattens keep-merge' '
+test_expect_success -- '--rebase=true rebases and flattens keep-merge' '
 	git reset --hard before-preserve-rebase &&
 	test_config pull.rebase preserve &&
 	git pull --rebase=true . copy &&
@@ -216,7 +216,7 @@ test_expect_success '--rebase=true rebases and flattens keep-merge' '
 	test file3 = $(git show HEAD:file3.t)
 '
 
-test_expect_success '--rebase=preserve rebases and merges keep-merge' '
+test_expect_success -- '--rebase=preserve rebases and merges keep-merge' '
 	git reset --hard before-preserve-rebase &&
 	test_config pull.rebase true &&
 	git pull --rebase=preserve . copy &&
@@ -224,12 +224,12 @@ test_expect_success '--rebase=preserve rebases and merges keep-merge' '
 	test $(git rev-parse HEAD^2) = $(git rev-parse keep-merge)
 '
 
-test_expect_success '--rebase=invalid fails' '
+test_expect_success -- '--rebase=invalid fails' '
 	git reset --hard before-preserve-rebase &&
 	! git pull --rebase=invalid . copy
 '
 
-test_expect_success '--rebase overrides pull.rebase=preserve and flattens keep-merge' '
+test_expect_success -- '--rebase overrides pull.rebase=preserve and flattens keep-merge' '
 	git reset --hard before-preserve-rebase &&
 	test_config pull.rebase preserve &&
 	git pull --rebase . copy &&
@@ -237,7 +237,7 @@ test_expect_success '--rebase overrides pull.rebase=preserve and flattens keep-m
 	test file3 = $(git show HEAD:file3.t)
 '
 
-test_expect_success '--rebase with rebased upstream' '
+test_expect_success -- '--rebase with rebased upstream' '
 
 	git remote add -f me . &&
 	git checkout copy &&
@@ -255,7 +255,7 @@ test_expect_success '--rebase with rebased upstream' '
 
 '
 
-test_expect_success '--rebase with rebased default upstream' '
+test_expect_success -- '--rebase with rebased default upstream' '
 
 	git update-ref refs/remotes/me/copy copy-orig &&
 	git checkout --track -b to-rebase2 me/copy &&

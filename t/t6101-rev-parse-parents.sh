@@ -69,11 +69,11 @@ test_expect_success 'final^1^3 not valid' '
 	test_must_fail git rev-parse --verify final^1^3
 '
 
-test_expect_success '--verify start2^1' '
+test_expect_success -- '--verify start2^1' '
 	test_must_fail git rev-parse --verify start2^1
 '
 
-test_expect_success '--verify start2^0' '
+test_expect_success -- '--verify start2^0' '
 	git rev-parse --verify start2^0
 '
 

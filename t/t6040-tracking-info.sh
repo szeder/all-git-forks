@@ -196,7 +196,7 @@ test_expect_success 'setup tracking with branch --set-upstream on existing branc
 	grep -q "^refs/heads/master$" actual
 '
 
-test_expect_success '--set-upstream does not change branch' '
+test_expect_success -- '--set-upstream does not change branch' '
 	git branch from-master2 master &&
 	test_must_fail git config branch.from-master2.merge > actual &&
 	git rev-list from-master2 &&
@@ -209,7 +209,7 @@ test_expect_success '--set-upstream does not change branch' '
 	cmp expect2 actual2
 '
 
-test_expect_success '--set-upstream @{-1}' '
+test_expect_success -- '--set-upstream @{-1}' '
 	git checkout from-master &&
 	git checkout from-master2 &&
 	git config branch.from-master2.merge > expect2 &&

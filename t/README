@@ -488,6 +488,12 @@ below), e.g.:
         perl -e "hlagh() if unf_unf()"
     '
 
+or in the "modern" form, specifying the prerequisite as a parameter, e.g.:
+
+    test_expect_success --prereq PERL 'I need Perl' '
+        "$PERL_PATH" -e "hlagh() if unf_unf()"
+    '
+
 The advantage of skipping tests like this is that platforms that don't
 have the PERL and other optional dependencies get an indication of how
 many tests they're missing.
@@ -520,6 +526,7 @@ There are a handful helper functions defined in the test harness
 library for your script to use.
 
  - test_expect_success [<prereq>] <message> <script>
+ - test_expect_success [--prereq <prereq>] [--] <message> <script>
 
    Usually takes two strings as parameters, and evaluates the
    <script>.  If it yields success, test is considered
@@ -532,10 +539,14 @@ library for your script to use.
 	    'tree=$(git-write-tree)'
 
    If you supply three parameters the first will be taken to be a
-   prerequisite; see the test_set_prereq and test_have_prereq
+   prerequisite; if you ues the "modern" test style, you can specify
+   the prerequisites with --prereq; see the test_set_prereq and test_have_prereq
    documentation below:
 
 	test_expect_success TTY 'git --paginate rev-list uses a pager' \
+	    ' ... '
+
+	test_expect_success --prereq TTY 'git --paginate rev-list uses a pager' \
 	    ' ... '
 
    You can also supply a comma-separated list of prerequisites, in the
@@ -544,7 +555,15 @@ library for your script to use.
 	test_expect_success PERL,PYTHON 'yo dawg' \
 	    ' test $(perl -E 'print eval "1 +" . qx[python -c "print 2"]') == "4" '
 
+	test_expect_success --prereq PERL,PYTHON 'yo dawg' \
+	    ' test $(perl -E 'print eval "1 +" . qx[python -c "print 2"]') == "4" '
+
+    The modern version also allows to distinguish the message from the
+    description and test script with --, in case the message starts
+    with --.
+
  - test_expect_failure [<prereq>] <message> <script>
+ - test_expect_failure [--prereq <prereq>] [--] <message> <script>
 
    This is NOT the opposite of test_expect_success, but is used
    to mark a test that demonstrates a known breakage.  Unlike
@@ -554,7 +573,8 @@ library for your script to use.
    tests won't cause -i (immediate) to stop.
 
    Like test_expect_success this function can optionally use a three
-   argument invocation with a prerequisite as the first argument.
+   argument invocation with a prerequisite as the first argument, or
+   the modern invocation with the prerequisite as an extra parameter.
 
  - test_debug <script>
 
