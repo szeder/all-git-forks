@@ -52,5 +52,22 @@ static int run_ruby_command(const char *cmd, int argc, const char **argv)
 
 int main(int argc, const char **argv)
 {
-	return run_ruby_command(argv[1], argc, argv);
+	if (!strcmp(argv[0], "git-ruby")) {
+		return run_ruby_command(argv[1], argc, argv);
+	} else {
+		const char *cmd = argv[0];
+		static char buf[PATH_MAX + 1];
+		const char *args[argc + 1];
+		int i;
+
+		snprintf(buf, PATH_MAX, "%s/%s.rb",
+				git_exec_path(), basename((char *)cmd));
+
+		args[0] = "git";
+		args[1] = buf;
+		for (i = 0; i < argc - 1; i++)
+			args[i + 2] = (char *)argv[i + 1];
+
+		return run_ruby_command(cmd, argc + 1, args);
+	}
 }
