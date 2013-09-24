@@ -470,6 +470,7 @@ BASIC_LDFLAGS =
 # Guard against environment variables
 BUILTIN_OBJS =
 BUILT_INS =
+RUBY_PROGRAMS =
 COMPAT_CFLAGS =
 COMPAT_OBJS =
 XDIFF_OBJS =
@@ -527,6 +528,8 @@ SCRIPT_PERL += git-svn.perl
 SCRIPT_PYTHON += git-p4.py
 
 SCRIPT_RUBY += git-rb-setup.rb
+
+PROGRAMS += $(RUBY_PROGRAMS)
 
 NO_INSTALL += git-remote-testgit
 
@@ -1747,6 +1750,12 @@ version.sp version.s version.o: EXTRA_CPPFLAGS = \
 	'-DGIT_USER_AGENT=$(GIT_USER_AGENT_CQ_SQ)'
 
 $(BUILT_INS): git$X
+	$(QUIET_BUILT_IN)$(RM) $@ && \
+	ln $< $@ 2>/dev/null || \
+	ln -s $< $@ 2>/dev/null || \
+	cp $< $@
+
+$(RUBY_PROGRAMS): git-ruby$X
 	$(QUIET_BUILT_IN)$(RM) $@ && \
 	ln $< $@ 2>/dev/null || \
 	ln -s $< $@ 2>/dev/null || \
