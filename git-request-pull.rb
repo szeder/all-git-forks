@@ -1,5 +1,7 @@
 #!git ruby
 
+require 'date'
+
 ENV['GIT_PAGER'] =
 
 patch = ''
@@ -58,6 +60,25 @@ def get_ref(transport, head_ref, head_id, tag_name)
   return found
 end
 
+def parse_buffer(buffer)
+  summary = []
+  date = msg = nil
+  header, body = buffer.split("\n\n", 2)
+  header.each_line do |line|
+    case line
+    when /^committer ([^<>]+) <(\S+)> (.+)$/
+      date = DateTime.strptime($3, '%s %z')
+    end
+  end
+  body.each_line do |l|
+    break if (l.strip.empty?)
+    summary << l.chomp
+  end
+  summary = summary.join(' ')
+  date = date.strftime('%F %T %z')
+  return [summary, date]
+end
+
 until ARGV.empty?
   case ARGV.first
   when '-p'
@@ -103,7 +124,8 @@ head_commit = Git::Commit.get(head_id)
 merge_bases = get_merge_bases([base_commit, head_commit], 0);
 die "No commits in common between #{base} and #{head}" unless merge_bases
 
-merge_base = sha1_to_hex(merge_bases.first.sha1)
+merge_base_id = merge_bases.first.sha1
+merge_base_commit = Git::Commit.get(merge_base_id)
 
 remote = remote_get(url)
 transport = transport_get(remote, nil)
@@ -111,20 +133,25 @@ transport = transport_get(remote, nil)
 ref = get_ref(transport, head_ref != "HEAD" ? head_ref : nil, head_id, tag_name)
 url = remote.url.first
 
-begin
-  run(%[git show -s --format='The following changes since commit %H:
+merge_base_summary, merge_base_date = parse_buffer(merge_base_commit.buffer)
+head_summary, head_date = parse_buffer(head_commit.buffer)
 
-  %s (%ci)
+begin
+  puts "The following changes since commit %s:
+
+  %s (%s)
 
 are available in the git repository at:
-' #{merge_base}])
+
+" % [merge_base_commit, merge_base_summary, merge_base_date]
   puts "  #{url}" + (ref ? " #{ref}" : "")
-  run(%[git show -s --format='
-for you to fetch changes up to %H:
+  puts "
+for you to fetch changes up to %s:
 
-  %s (%ci)
+  %s (%s)
 
-----------------------------------------------------------------' #{head_commit}])
+----------------------------------------------------------------
+" % [head_commit, head_summary, head_date]
 
   if branch_name
     puts "(from the branch description for #{branch_name} local branch)"
@@ -147,11 +174,11 @@ for you to fetch changes up to %H:
   end
 
   run(%[git shortlog ^#{base} #{head}])
-  run(%[git diff -M --stat --summary #{patch} ^#{merge_base} #{head}])
+  run(%[git diff -M --stat --summary #{patch} ^#{merge_base_commit} #{head}])
 
   if ! ref
     $stderr.puts "warn: No branch of #{url} is at:"
-    run("git show -s --format='warn:   %h: %s' #{head} >&2")
+    $stderr.puts "warn:   %s: %s'" % [find_unique_abbrev(head_id, DEFAULT_ABBREV), head_summary]
     $stderr.puts "warn: Are you sure you pushed '#{abbr(head_ref)}' there?"
     status = 1
   end
