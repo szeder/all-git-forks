@@ -164,5 +164,40 @@ test_expect_success 'objects made unreachable by grafts only are kept' '
 	git cat-file -t $H1
 	'
 
+test_expect_success 'repack respects core.preferredPackVersion' '
+	git init pv4 &&
+	(
+		unset GIT_TEST_PACKV4 &&
+		cd pv4 &&
+		test_commit one &&
+		test_commit two &&
+		test_commit three &&
+		git config core.preferredPackVersion 4 &&
+		git repack -ad &&
+		P=`ls .git/objects/pack/pack-*.pack` &&
+		# Offset 4 is pack version
+		test-dump ntohl "$P" 4 >ver.actual &&
+		echo 4 >ver.expected &&
+		test_cmp ver.expected ver.actual
+	)
+'
+
+test_expect_success 'repack --pack-version=4' '
+	git init pv4.2 &&
+	(
+		unset GIT_TEST_PACKV4 &&
+		cd pv4.2 &&
+		test_commit one &&
+		test_commit two &&
+		test_commit three &&
+		git repack -ad --pack-version=4 &&
+		P=`ls .git/objects/pack/pack-*.pack` &&
+		# Offset 4 is pack version
+		test-dump ntohl "$P" 4 >ver.actual &&
+		echo 4 >ver.expected &&
+		test_cmp ver.expected ver.actual
+	)
+'
+
 test_done
 

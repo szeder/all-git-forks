@@ -21,12 +21,13 @@ window=         size of the window used for delta compression
 window-memory=  same as the above, but limit memory size instead of entries count
 depth=          limits the maximum delta depth
 max-pack-size=  maximum size of each packfile
+pack-version=   format version of the output pack
 "
 SUBDIRECTORY_OK='Yes'
 . git-sh-setup
 
 no_update_info= all_into_one= remove_redundant= unpack_unreachable=
-local= no_reuse= extra=
+local= no_reuse= extra= packver=
 while test $# != 0
 do
 	case "$1" in
@@ -43,6 +44,8 @@ do
 	-l)	local=--local ;;
 	--max-pack-size|--window|--window-memory|--depth)
 		extra="$extra $1=$2"; shift ;;
+	--pack-version)
+		packver="$2"; shift ;;
 	--) shift; break;;
 	*)	usage ;;
 	esac
@@ -91,6 +94,9 @@ case ",$all_into_one," in
 esac
 
 mkdir -p "$PACKDIR" || exit
+
+[ -n "$packver" ] || packver="`git config --int core.preferredPackVersion`"
+[ -n "$packver" ] && args="$args --version=$packver"
 
 args="$args $local ${GIT_QUIET:+-q} $no_reuse$extra"
 names=$(git pack-objects --keep-true-parents --honor-pack-keep --non-empty --all --reflog $args </dev/null "$PACKTMP") ||
