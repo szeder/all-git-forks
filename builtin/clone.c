@@ -47,6 +47,7 @@ static const char *real_git_dir;
 static char *option_upload_pack = "git-upload-pack";
 static int option_verbosity;
 static int option_progress = -1;
+static int pack_version;
 static struct string_list option_config;
 static struct string_list option_reference;
 static int option_dissociate;
@@ -101,6 +102,8 @@ static struct option builtin_clone_options[] = {
 		   N_("separate git dir from working tree")),
 	OPT_STRING_LIST('c', "config", &option_config, N_("key=value"),
 			N_("set config inside the new repository")),
+	OPT_INTEGER(0, "pack-version", &pack_version,
+		    N_("preferred pack version for transfer")),
 	OPT_END()
 };
 
@@ -782,6 +785,11 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		usage_msg_opt(_("You must specify a repository to clone."),
 			builtin_clone_usage, builtin_clone_options);
 
+	if (!pack_version)
+		pack_version = core_default_pack_version;
+	if (pack_version != 2 && pack_version != 4)
+		die(_("invalid pack version %d"), pack_version);
+
 	if (option_single_branch == -1)
 		option_single_branch = option_depth ? 1 : 0;
 
@@ -885,6 +893,12 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	} else {
 		strbuf_addf(&branch_top, "refs/remotes/%s/", option_origin);
 	}
+	if (pack_version != core_default_pack_version) {
+		struct strbuf sb = STRBUF_INIT;
+		strbuf_addf(&sb, "%d", pack_version);
+		git_config_set("core.preferredPackVersion", sb.buf);
+		strbuf_release(&sb);
+	}
 
 	strbuf_addf(&value, "+%s*:%s*", src_ref_prefix, branch_top.buf);
 	strbuf_addf(&key, "remote.%s.url", option_origin);
@@ -910,6 +924,11 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (is_local) {
 		if (option_depth)
 			warning(_("--depth is ignored in local clones; use file:// instead."));
+
+		if (is_local && pack_version == 4)
+			warning(_("--pack-version is ignored in local clones; use file:// instead."));
+
+
 		if (!access(mkpath("%s/shallow", path), F_OK)) {
 			if (option_local > 0)
 				warning(_("source repository is shallow, ignoring --local"));
@@ -936,6 +955,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (option_upload_pack)
 		transport_set_option(transport, TRANS_OPT_UPLOADPACK,
 				     option_upload_pack);
+
+	if (pack_version == 4)
+		transport_set_option(transport, TRANS_OPT_PACKV4, "yes");
 
 	if (transport->smart_options && !option_depth)
 		transport->smart_options->check_self_contained_and_connected = 1;
