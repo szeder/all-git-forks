@@ -87,6 +87,10 @@ be in a separate packet, and the list must end with a flush packet.
 	'git-upload-pack' treats the special depth 2147483647 as
 	infinite even if there is an ancestor-chain that long.
 
+--pack-version=<n>::
+	Define the preferred pack format version for data transfer.
+	Valid values are 2 and 4. Default is 2.
+
 --no-progress::
 	Do not show the progress.
 

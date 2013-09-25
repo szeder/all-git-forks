@@ -127,6 +127,13 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 			args.update_shallow = 1;
 			continue;
 		}
+		if (starts_with(arg, "--pack-version=")) {
+			int ver = strtol(arg + 15, NULL, 0);
+			if (ver != 2 && ver != 4)
+				die(_("invalid pack version %d"), ver);
+			args.packv4 = ver == 4;
+			continue;
+		}
 		usage(fetch_pack_usage);
 	}
 
