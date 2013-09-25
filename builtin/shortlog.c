@@ -1,11 +1,8 @@
 #include "builtin.h"
 #include "cache.h"
 #include "commit.h"
-#include "diff.h"
 #include "string-list.h"
 #include "revision.h"
-#include "utf8.h"
-#include "mailmap.h"
 #include "shortlog.h"
 #include "parse-options.h"
 
@@ -13,81 +10,6 @@ static char const * const shortlog_usage[] = {
 	N_("git shortlog [<options>] [<revision range>] [[--] [<path>...]]"),
 	NULL
 };
-
-static int compare_by_number(const void *a1, const void *a2)
-{
-	const struct string_list_item *i1 = a1, *i2 = a2;
-	const struct string_list *l1 = i1->util, *l2 = i2->util;
-
-	if (l1->nr < l2->nr)
-		return 1;
-	else if (l1->nr == l2->nr)
-		return 0;
-	else
-		return -1;
-}
-
-static void insert_one_record(struct shortlog *log,
-			      const char *author,
-			      const char *oneline)
-{
-	const char *dot3 = log->common_repo_prefix;
-	char *buffer, *p;
-	struct string_list_item *item;
-	const char *mailbuf, *namebuf;
-	size_t namelen, maillen;
-	const char *eol;
-	struct strbuf subject = STRBUF_INIT;
-	struct strbuf namemailbuf = STRBUF_INIT;
-	struct ident_split ident;
-
-	if (split_ident_line(&ident, author, strlen(author)))
-		return;
-
-	namebuf = ident.name_begin;
-	mailbuf = ident.mail_begin;
-	namelen = ident.name_end - ident.name_begin;
-	maillen = ident.mail_end - ident.mail_begin;
-
-	map_user(&log->mailmap, &mailbuf, &maillen, &namebuf, &namelen);
-	strbuf_add(&namemailbuf, namebuf, namelen);
-
-	if (log->email)
-		strbuf_addf(&namemailbuf, " <%.*s>", (int)maillen, mailbuf);
-
-	item = string_list_insert(&log->list, namemailbuf.buf);
-	if (item->util == NULL)
-		item->util = xcalloc(1, sizeof(struct string_list));
-
-	/* Skip any leading whitespace, including any blank lines. */
-	while (*oneline && isspace(*oneline))
-		oneline++;
-	eol = strchr(oneline, '\n');
-	if (!eol)
-		eol = oneline + strlen(oneline);
-	if (!prefixcmp(oneline, "[PATCH")) {
-		char *eob = strchr(oneline, ']');
-		if (eob && (!eol || eob < eol))
-			oneline = eob + 1;
-	}
-	while (*oneline && isspace(*oneline) && *oneline != '\n')
-		oneline++;
-	format_subject(&subject, oneline, " ");
-	buffer = strbuf_detach(&subject, NULL);
-
-	if (dot3) {
-		int dot3len = strlen(dot3);
-		if (dot3len > 5) {
-			while ((p = strstr(buffer, dot3)) != NULL) {
-				int taillen = strlen(p) - dot3len;
-				memcpy(p, "/.../", 5);
-				memmove(p + 5, p + dot3len, taillen + 1);
-			}
-		}
-	}
-
-	string_list_append(item->util, buffer);
-}
 
 static void read_from_stdin(struct shortlog *log)
 {
@@ -103,7 +25,7 @@ static void read_from_stdin(struct shortlog *log)
 		while (fgets(oneline, sizeof(oneline), stdin) &&
 		       oneline[0] == '\n')
 			; /* discard blanks */
-		insert_one_record(log, author + 8, oneline);
+		shortlog_insert_one_record(log, author + 8, oneline);
 	}
 }
 
@@ -177,9 +99,6 @@ static int parse_uint(char const **arg, int comma, int defval)
 }
 
 static const char wrap_arg_usage[] = "-w[<width>[,<indent1>[,<indent2>]]]";
-#define DEFAULT_WRAPLEN 76
-#define DEFAULT_INDENT1 6
-#define DEFAULT_INDENT2 9
 
 static int parse_wrap_args(const struct option *opt, const char *arg, int unset)
 {
@@ -205,18 +124,6 @@ static int parse_wrap_args(const struct option *opt, const char *arg, int unset)
 	     (log->in2 && log->wrap <= log->in2)))
 		return error(wrap_arg_usage);
 	return 0;
-}
-
-void shortlog_init(struct shortlog *log)
-{
-	memset(log, 0, sizeof(*log));
-
-	read_mailmap(&log->mailmap, &log->common_repo_prefix);
-
-	log->list.strdup_strings = 1;
-	log->wrap = DEFAULT_WRAPLEN;
-	log->in1 = DEFAULT_INDENT1;
-	log->in2 = DEFAULT_INDENT2;
 }
 
 int cmd_shortlog(int argc, const char **argv, const char *prefix)
@@ -278,52 +185,4 @@ parse_done:
 
 	shortlog_output(&log);
 	return 0;
-}
-
-static void add_wrapped_shortlog_msg(struct strbuf *sb, const char *s,
-				     const struct shortlog *log)
-{
-	strbuf_add_wrapped_text(sb, s, log->in1, log->in2, log->wrap);
-	strbuf_addch(sb, '\n');
-}
-
-void shortlog_output(struct shortlog *log)
-{
-	int i, j;
-	struct strbuf sb = STRBUF_INIT;
-
-	if (log->sort_by_number)
-		qsort(log->list.items, log->list.nr, sizeof(struct string_list_item),
-			compare_by_number);
-	for (i = 0; i < log->list.nr; i++) {
-		struct string_list *onelines = log->list.items[i].util;
-
-		if (log->summary) {
-			printf("%6d\t%s\n", onelines->nr, log->list.items[i].string);
-		} else {
-			printf("%s (%d):\n", log->list.items[i].string, onelines->nr);
-			for (j = onelines->nr - 1; j >= 0; j--) {
-				const char *msg = onelines->items[j].string;
-
-				if (log->wrap_lines) {
-					strbuf_reset(&sb);
-					add_wrapped_shortlog_msg(&sb, msg, log);
-					fwrite(sb.buf, sb.len, 1, stdout);
-				}
-				else
-					printf("      %s\n", msg);
-			}
-			putchar('\n');
-		}
-
-		onelines->strdup_strings = 1;
-		string_list_clear(onelines, 0);
-		free(onelines);
-		log->list.items[i].util = NULL;
-	}
-
-	strbuf_release(&sb);
-	log->list.strdup_strings = 1;
-	string_list_clear(&log->list, 1);
-	clear_mailmap(&log->mailmap);
 }
