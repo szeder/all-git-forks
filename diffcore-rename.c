@@ -330,7 +330,7 @@ static void insert_file_table(struct hashmap *table, int index, struct diff_file
  */
 static int find_exact_renames(struct diff_options *options)
 {
-	int i, renames;
+	int i, renames = 0;
 	struct hashmap file_table;
 
 	/* Add all sources to the hash table */
