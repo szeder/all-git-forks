@@ -32,7 +32,7 @@ static unsigned long oldest_have;
 
 static int multi_ack;
 static int no_done;
-static int use_thin_pack, use_ofs_delta, use_include_tag;
+static int use_thin_pack, use_ofs_delta, use_include_tag, packv4_ok;
 static int no_progress, daemon_mode;
 static int allow_tip_sha1_in_want;
 static int shallow_nr;
@@ -140,7 +140,7 @@ static void create_pack_file(void)
 		"corruption on the remote side.";
 	int buffered = -1;
 	ssize_t sz;
-	const char *argv[10];
+	const char *argv[11];
 	int arg = 0;
 
 	argv[arg++] = "pack-objects";
@@ -157,6 +157,14 @@ static void create_pack_file(void)
 		argv[arg++] = "--delta-base-offset";
 	if (use_include_tag)
 		argv[arg++] = "--include-tag";
+	/*
+	 * The client may have requested pack v4. But if this is a v2
+	 * repo on a busy machine, we may want to send v2 and let the
+	 * client do the v2->v4 conversion to reduce the cost on the
+	 * server side.
+	 */
+	if (packv4_ok)
+		argv[arg++] = "--version=4";
 	argv[arg++] = NULL;
 
 	memset(&pack_objects, 0, sizeof(pack_objects));
@@ -633,6 +641,8 @@ static void receive_needs(void)
 			no_progress = 1;
 		if (parse_feature_request(features, "include-tag"))
 			use_include_tag = 1;
+		if (parse_feature_request(features, "packv4"))
+			packv4_ok = 1;
 
 		o = parse_object(sha1_buf);
 		if (!o)
@@ -738,7 +748,7 @@ static int send_ref(const char *refname, const unsigned char *sha1, int flag, vo
 {
 	static const char *capabilities = "multi_ack thin-pack side-band"
 		" side-band-64k ofs-delta shallow no-progress"
-		" include-tag multi_ack_detailed";
+		" include-tag multi_ack_detailed packv4";
 	const char *refname_nons = strip_namespace(refname);
 	unsigned char peeled[20];
 

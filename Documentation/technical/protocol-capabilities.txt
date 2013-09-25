@@ -217,3 +217,13 @@ allow-tip-sha1-in-want
 If the upload-pack server advertises this capability, fetch-pack may
 send "want" lines with SHA-1s that exist at the server but are not
 advertised by upload-pack.
+
+packv4
+------
+
+The upload-server can generate .pack version 4. If the client accepts
+this capability, the server may send a pack version 4. The server can
+choose to send pack version 2 even if the client accepts this
+capability.
+
+This capability does not include multi-base tree support.
