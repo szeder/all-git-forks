@@ -63,6 +63,8 @@ static int pack_objects(int fd, struct ref *refs, struct sha1_array *extra, stru
 		argv[i++] = "--progress";
 	if (is_repository_shallow())
 		argv[i++] = "--shallow";
+	if (args->packv4)
+		argv[i++] = "--version=4";
 	po.argv = argv;
 	po.in = -1;
 	po.out = args->stateless_rpc ? -1 : fd;
@@ -317,6 +319,8 @@ int send_pack(struct send_pack_args *args,
 		agent_supported = 1;
 	if (server_supports("no-thin"))
 		args->use_thin_pack = 0;
+	if (server_supports("packv4"))
+		args->packv4 = 1;
 	if (args->push_cert) {
 		int len;
 

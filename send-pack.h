@@ -13,6 +13,7 @@ struct send_pack_args {
 		use_ofs_delta:1,
 		dry_run:1,
 		push_cert:1,
+		packv4:1,
 		stateless_rpc:1;
 };
 

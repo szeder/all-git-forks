@@ -1431,7 +1431,18 @@ test_expect_success 'receive.denyCurrentBranch = updateInstead' '
 		git diff --quiet &&
 		test fifth = "$(cat path3)"
 	)
+'
 
+test_expect_success 'push pack v4' '
+	git init pv4 &&
+	git --git-dir pv4/.git config core.preferredPackVersion 4 &&
+	git --git-dir pv4/.git config transfer.unpackLimit 1 &&
+	git push pv4 HEAD:refs/heads/head &&
+	P=`ls pv4/.git/objects/pack/pack-*.pack` &&
+	# Offset 4 is pack version
+	test-dump ntohl "$P" 4 >ver.actual &&
+	echo 4 >ver.expected &&
+	test_cmp ver.expected ver.actual
 '
 
 test_done
