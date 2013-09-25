@@ -644,6 +644,11 @@ core.abbrev::
 	for abbreviated object names to stay unique for sufficiently long
 	time.
 
+core.preferredPackVersion::
+	This is the preferred pack format version for various operations
+	that may produce pack files such as clone, fetch, push or repack.
+	Valid values are 2 and 4. The default value is 2.
+
 add.ignore-errors::
 add.ignoreErrors::
 	Tells 'git add' to continue adding files when some files cannot be

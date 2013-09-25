@@ -597,6 +597,7 @@ extern int fsync_object_files;
 extern int core_preload_index;
 extern int core_apply_sparse_checkout;
 extern int precomposed_unicode;
+extern int core_default_pack_version;
 
 /*
  * The character that begins a commented line in user-editable file

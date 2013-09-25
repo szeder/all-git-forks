@@ -62,6 +62,7 @@ int merge_log_config = -1;
 int precomposed_unicode = -1; /* see probe_utf8_pathname_composition() */
 struct startup_info *startup_info;
 unsigned long pack_size_limit_cfg;
+int core_default_pack_version = 2;
 
 /*
  * The character that begins a commented line in user-editable file
