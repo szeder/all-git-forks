@@ -226,4 +226,8 @@ this capability, the server may send a pack version 4. The server can
 choose to send pack version 2 even if the client accepts this
 capability.
 
+The receive-pack server advertises this capability if it wants to
+receive the pack in format version 4 and the client should send in
+this format.
+
 This capability does not include multi-base tree support.
