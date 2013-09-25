@@ -12,7 +12,7 @@
 static unsigned long garbage;
 static off_t size_garbage;
 static int verbose;
-static unsigned long loose, packed, packed_loose;
+static unsigned long loose, packed_loose;
 static off_t loose_size;
 
 static void real_report_garbage(const char *desc, const char *path)
@@ -78,10 +78,12 @@ int cmd_count_objects(int argc, const char **argv, const char *prefix)
 
 	if (verbose) {
 		struct packed_git *p;
-		unsigned long num_pack = 0;
-		off_t size_pack = 0;
+		unsigned long num_pack = 0, num_pack_v4 = 0;
+		unsigned long packed = 0, packed_v4 = 0;
+		off_t size_pack = 0, size_pack_v4 = 0;
 		struct strbuf loose_buf = STRBUF_INIT;
 		struct strbuf pack_buf = STRBUF_INIT;
+		struct strbuf pack_buf_v4 = STRBUF_INIT;
 		struct strbuf garbage_buf = STRBUF_INIT;
 		if (!packed_git)
 			prepare_packed_git();
@@ -93,17 +95,25 @@ int cmd_count_objects(int argc, const char **argv, const char *prefix)
 			packed += p->num_objects;
 			size_pack += p->pack_size + p->index_size;
 			num_pack++;
+			if (p->version == 4) {
+				packed_v4 += p->num_objects;
+				size_pack_v4 += p->pack_size + p->index_size;
+				num_pack_v4++;
+			}
 		}
 
 		if (human_readable) {
 			strbuf_humanise_bytes(&loose_buf, loose_size);
 			strbuf_humanise_bytes(&pack_buf, size_pack);
+			strbuf_humanise_bytes(&pack_buf_v4, size_pack_v4);
 			strbuf_humanise_bytes(&garbage_buf, size_garbage);
 		} else {
 			strbuf_addf(&loose_buf, "%lu",
 				    (unsigned long)(loose_size / 1024));
 			strbuf_addf(&pack_buf, "%lu",
 				    (unsigned long)(size_pack / 1024));
+			strbuf_addf(&pack_buf_v4, "%lu",
+				    (unsigned long)(size_pack_v4 / 1024));
 			strbuf_addf(&garbage_buf, "%lu",
 				    (unsigned long)(size_garbage / 1024));
 		}
@@ -111,13 +121,20 @@ int cmd_count_objects(int argc, const char **argv, const char *prefix)
 		printf("count: %lu\n", loose);
 		printf("size: %s\n", loose_buf.buf);
 		printf("in-pack: %lu\n", packed);
+		if (num_pack_v4)
+			printf("in-packv4: %lu\n", packed_v4);
 		printf("packs: %lu\n", num_pack);
+		if (num_pack_v4)
+			printf("v4-packs: %lu\n", num_pack_v4);
 		printf("size-pack: %s\n", pack_buf.buf);
+		if (num_pack_v4)
+			printf("size-packv4: %s\n", pack_buf_v4.buf);
 		printf("prune-packable: %lu\n", packed_loose);
 		printf("garbage: %lu\n", garbage);
 		printf("size-garbage: %s\n", garbage_buf.buf);
 		strbuf_release(&loose_buf);
 		strbuf_release(&pack_buf);
+		strbuf_release(&pack_buf_v4);
 		strbuf_release(&garbage_buf);
 	} else {
 		struct strbuf buf = STRBUF_INIT;

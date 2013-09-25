@@ -28,7 +28,11 @@ size: disk space consumed by loose objects, in KiB (unless -H is specified)
 +
 in-pack: the number of in-pack objects
 +
+in-packv4: the number of objects in packs version 4
++
 size-pack: disk space consumed by the packs, in KiB (unless -H is specified)
++
+size-packv4: disk space consumed by the packs version 4
 +
 prune-packable: the number of loose objects that are also present in
 the packs. These objects could be pruned using `git prune-packed`.
