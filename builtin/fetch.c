@@ -35,6 +35,7 @@ static int prune = -1; /* unspecified */
 #define PRUNE_BY_DEFAULT 0 /* do we prune by default? */
 
 static int all, append, dry_run, force, keep, multiple, update_head_ok, verbosity;
+static int pack_version;
 static int progress = -1, recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
 static int tags = TAGS_DEFAULT, unshallow, update_shallow;
 static const char *depth;
@@ -124,6 +125,8 @@ static struct option builtin_fetch_options[] = {
 		 N_("accept refs that update .git/shallow")),
 	{ OPTION_CALLBACK, 0, "refmap", NULL, N_("refmap"),
 	  N_("specify fetch refmap"), PARSE_OPT_NONEG, parse_refmap_arg },
+	OPT_INTEGER(0, "pack-version", &pack_version,
+		    N_("preferred pack version for transfer")),
 	OPT_END()
 };
 
@@ -854,6 +857,8 @@ static struct transport *prepare_transport(struct remote *remote)
 		set_option(transport, TRANS_OPT_DEPTH, depth);
 	if (update_shallow)
 		set_option(transport, TRANS_OPT_UPDATE_SHALLOW, "yes");
+	if (pack_version == 4)
+		set_option(transport, TRANS_OPT_PACKV4, "yes");
 	return transport;
 }
 
@@ -1137,6 +1142,11 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 
 	argc = parse_options(argc, argv, prefix,
 			     builtin_fetch_options, builtin_fetch_usage, 0);
+
+	if (!pack_version)
+		pack_version = core_default_pack_version;
+	if (pack_version != 2 && pack_version != 4)
+		die(_("invalid pack version %d"), pack_version);
 
 	if (unshallow) {
 		if (depth)

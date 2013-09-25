@@ -21,6 +21,7 @@ struct fetch_pack_args {
 	unsigned no_progress:1;
 	unsigned include_tag:1;
 	unsigned stateless_rpc:1;
+	unsigned packv4:1;
 	unsigned check_self_contained_and_connected:1;
 	unsigned self_contained_and_connected:1;
 	unsigned cloning:1;

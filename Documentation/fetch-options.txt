@@ -27,6 +27,11 @@ the current repository has the same history as the source repository.
 	.git/shallow. This option updates .git/shallow and accept such
 	refs.
 
+--pack-version=<n>::
+	Define the preferred pack format version for data transfer.
+	Valid values are 2 and 4. Default value is specified by
+	core.preferredPackVersion setting. See linkgit:git-config[1].
+
 ifndef::git-pull[]
 --dry-run::
 	Show what would be done, without making any changes.

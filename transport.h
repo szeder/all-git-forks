@@ -9,6 +9,7 @@ struct git_transport_options {
 	unsigned thin : 1;
 	unsigned keep : 1;
 	unsigned followtags : 1;
+	unsigned packv4 : 1;
 	unsigned check_self_contained_and_connected : 1;
 	unsigned self_contained_and_connected : 1;
 	unsigned update_shallow : 1;
@@ -160,6 +161,9 @@ struct transport *transport_get(struct remote *, const char *);
 
 /* Send push certificates */
 #define TRANS_OPT_PUSH_CERT "pushcert"
+
+/* Prefer pack version 4 as the transport format */
+#define TRANS_OPT_PACKV4 "packv4"
 
 /**
  * Returns 0 if the option was used, non-zero otherwise. Prints a
