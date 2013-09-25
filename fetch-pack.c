@@ -324,6 +324,7 @@ static int find_common(struct fetch_pack_args *args,
 			if (args->no_progress)   strbuf_addstr(&c, " no-progress");
 			if (args->include_tag)   strbuf_addstr(&c, " include-tag");
 			if (prefer_ofs_delta)   strbuf_addstr(&c, " ofs-delta");
+			if (args->packv4)       strbuf_addstr(&c, " packv4");
 			if (agent_supported)    strbuf_addf(&c, " agent=%s",
 							    git_user_agent_sanitized());
 			packet_buf_write(&req_buf, "want %s%s\n", remote_hex, c.buf);
@@ -869,6 +870,8 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 		args->no_progress = 0;
 	if (!server_supports("include-tag"))
 		args->include_tag = 0;
+	if (!server_supports("packv4"))
+		args->packv4 = 0;
 	if (server_supports("ofs-delta")) {
 		if (args->verbose)
 			fprintf(stderr, "Server supports ofs-delta\n");

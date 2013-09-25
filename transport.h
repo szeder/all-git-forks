@@ -8,6 +8,7 @@ struct git_transport_options {
 	unsigned thin : 1;
 	unsigned keep : 1;
 	unsigned followtags : 1;
+	unsigned packv4 : 1;
 	unsigned check_self_contained_and_connected : 1;
 	unsigned self_contained_and_connected : 1;
 	int depth;
@@ -134,6 +135,10 @@ struct transport *transport_get(struct remote *, const char *);
 
 /* Aggressively fetch annotated tags if possible */
 #define TRANS_OPT_FOLLOWTAGS "followtags"
+
+/* Prefer pack version 4 as the transport format */
+#define TRANS_OPT_PACKV4 "packv4"
+
 
 /**
  * Returns 0 if the option was used, non-zero otherwise. Prints a

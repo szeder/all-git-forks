@@ -17,6 +17,7 @@ struct fetch_pack_args {
 		no_progress:1,
 		include_tag:1,
 		stateless_rpc:1,
+		packv4:1,
 		check_self_contained_and_connected:1,
 		self_contained_and_connected:1;
 };

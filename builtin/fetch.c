@@ -31,6 +31,7 @@ enum {
 };
 
 static int all, append, dry_run, force, keep, multiple, prune, update_head_ok, verbosity;
+static int pack_version;
 static int progress = -1, recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
 static int tags = TAGS_DEFAULT, unshallow;
 static const char *depth;
@@ -90,6 +91,8 @@ static struct option builtin_fetch_options[] = {
 	{ OPTION_STRING, 0, "recurse-submodules-default",
 		   &recurse_submodules_default, NULL,
 		   N_("default mode for recursion"), PARSE_OPT_HIDDEN },
+	OPT_INTEGER(0, "pack-version", &pack_version,
+		    N_("preferred pack version for transfer")),
 	OPT_END()
 };
 
@@ -957,6 +960,8 @@ static int fetch_one(struct remote *remote, int argc, const char **argv)
 		set_option(TRANS_OPT_KEEP, "yes");
 	if (depth)
 		set_option(TRANS_OPT_DEPTH, depth);
+	if (pack_version == 4)
+		set_option(TRANS_OPT_PACKV4, "yes");
 
 	if (argc > 0) {
 		int j = 0;
@@ -1009,6 +1014,11 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 
 	argc = parse_options(argc, argv, prefix,
 			     builtin_fetch_options, builtin_fetch_usage, 0);
+
+	if (!pack_version)
+		pack_version = core_default_pack_version;
+	if (pack_version != 2 && pack_version != 4)
+		die(_("invalid pack version %d"), pack_version);
 
 	if (unshallow) {
 		if (depth)

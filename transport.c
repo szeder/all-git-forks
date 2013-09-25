@@ -473,6 +473,9 @@ static int set_git_option(struct git_transport_options *opts,
 	} else if (!strcmp(name, TRANS_OPT_KEEP)) {
 		opts->keep = !!value;
 		return 0;
+	} else if (!strcmp(name, TRANS_OPT_PACKV4)) {
+		opts->packv4 = !!value;
+		return 0;
 	} else if (!strcmp(name, TRANS_OPT_DEPTH)) {
 		if (!value)
 			opts->depth = 0;
@@ -534,6 +537,7 @@ static int fetch_refs_via_pack(struct transport *transport,
 	args.quiet = (transport->verbose < 0);
 	args.no_progress = !transport->progress;
 	args.depth = data->options.depth;
+	args.packv4 = data->options.packv4;
 	args.check_self_contained_and_connected =
 		data->options.check_self_contained_and_connected;
 

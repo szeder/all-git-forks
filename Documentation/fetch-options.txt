@@ -17,6 +17,11 @@
 	Convert a shallow repository to a complete one, removing all
 	the limitations imposed by shallow repositories.
 
+--pack-version=<n>::
+	Define the preferred pack format version for data transfer.
+	Valid values are 2 and 4. Default value is specified by
+	core.preferredPackVersion setting. See linkgit:git-config[1].
+
 ifndef::git-pull[]
 --dry-run::
 	Show what would be done, without making any changes.

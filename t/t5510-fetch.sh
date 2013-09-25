@@ -512,4 +512,17 @@ test_expect_success 'all boundary commits are excluded' '
 	test_bundle_object_count .git/objects/pack/pack-${pack##pack	}.pack 3
 '
 
+test_expect_success 'fetch --pack-version=4' '
+	git init pv4 &&
+	(
+		cd pv4 &&
+		git fetch --pack-version=4 --keep file://"$D"/.git &&
+		P=`ls .git/objects/pack/pack-*.pack` &&
+		# Offset 4 is pack version
+		test-dump ntohl "$P" 4 >ver.actual &&
+		echo 4 >ver.expected &&
+		test_cmp ver.expected ver.actual
+	)
+'
+
 test_done
