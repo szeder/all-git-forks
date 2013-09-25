@@ -90,6 +90,8 @@
 #define WIN32_LEAN_AND_MEAN  /* stops windows.h including winsock.h */
 #include <winsock2.h>
 #include <windows.h>
+/* reduce gcc optimization level to 1 */
+#pragma GCC optimize ("O1")
 #define GIT_WINDOWS_NATIVE
 #endif
 
