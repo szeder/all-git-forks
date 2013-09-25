@@ -19,6 +19,8 @@ struct shortlog {
 	struct string_list mailmap;
 };
 
+struct commit;
+
 void shortlog_init(struct shortlog *log);
 
 void shortlog_add_commit(struct shortlog *log, struct commit *commit);
