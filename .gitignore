@@ -182,6 +182,7 @@
 /test-config
 /test-date
 /test-delta
+/test-dump
 /test-dump-cache-tree
 /test-dump-split-index
 /test-scrap-cache-tree
