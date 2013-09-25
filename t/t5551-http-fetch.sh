@@ -222,5 +222,14 @@ test_expect_success EXPENSIVE 'clone the 50,000 tag repo to check OS command lin
 	)
 '
 
+test_expect_success 'clone http repository with pack v4' '
+	git -c transfer.unpackLimit=1 clone --pack-version=4 $HTTPD_URL/smart/repo.git pv4 &&
+	P=`ls pv4/.git/objects/pack/pack-*.pack` &&
+	# Offset 4 is pack version
+	test-dump ntohl "$P" 4 >ver.actual &&
+	echo 4 >ver.expected &&
+	test_cmp ver.expected ver.actual
+'
+
 stop_httpd
 test_done

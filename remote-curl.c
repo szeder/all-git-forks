@@ -18,6 +18,7 @@ struct options {
 	unsigned progress : 1,
 		followtags : 1,
 		dry_run : 1,
+		packv4 : 1,
 		thin : 1;
 };
 static struct options options;
@@ -63,6 +64,15 @@ static int set_option(const char *name, const char *value)
 			options.dry_run = 1;
 		else if (!strcmp(value, "false"))
 			options.dry_run = 0;
+		else
+			return -1;
+		return 0;
+	}
+	else if (!strcmp(name, "packv4")) {
+		if (!strcmp(value, "true"))
+			options.packv4 = 1;
+		else if (!strcmp(value, "false"))
+			options.packv4 = 0;
 		else
 			return -1;
 		return 0;
@@ -654,7 +664,7 @@ static int fetch_git(struct discovery *heads,
 	struct strbuf preamble = STRBUF_INIT;
 	char *depth_arg = NULL;
 	int argc = 0, i, err;
-	const char *argv[15];
+	const char *argv[16];
 
 	argv[argc++] = "fetch-pack";
 	argv[argc++] = "--stateless-rpc";
@@ -676,6 +686,8 @@ static int fetch_git(struct discovery *heads,
 		depth_arg = strbuf_detach(&buf, NULL);
 		argv[argc++] = depth_arg;
 	}
+	if (options.packv4)
+		argv[argc++] = "--pack-version=4";
 	argv[argc++] = url;
 	argv[argc++] = NULL;
 

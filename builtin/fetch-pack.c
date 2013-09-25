@@ -100,6 +100,13 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 			pack_lockfile_ptr = &pack_lockfile;
 			continue;
 		}
+		if (!prefixcmp(arg, "--pack-version=")) {
+			int ver = strtol(arg + 15, NULL, 0);
+			if (ver != 2 && ver != 4)
+				die(_("invalid pack version %d"), ver);
+			args.packv4 = ver == 4;
+			continue;
+		}
 		usage(fetch_pack_usage);
 	}
 

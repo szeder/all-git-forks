@@ -416,6 +416,9 @@ set by Git if the remote helper has the 'option' capability.
 	must not rely on this option being set before
 	connect request occurs.
 
+'option packv4 \{'true'|'false'\}::
+	Prefer pack version 4 (true) or 2 (false) for data transfer.
+
 SEE ALSO
 --------
 linkgit:git-remote[1]

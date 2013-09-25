@@ -350,6 +350,9 @@ static int fetch_with_fetch(struct transport *transport,
 
 	standard_options(transport);
 
+	set_helper_option(transport, "packv4",
+			  data->transport_options.packv4 ? "true" : "false");
+
 	for (i = 0; i < nr_heads; i++) {
 		const struct ref *posn = to_fetch[i];
 		if (posn->status & REF_STATUS_UPTODATE)
