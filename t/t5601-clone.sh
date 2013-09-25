@@ -284,5 +284,16 @@ test_expect_success NOT_MINGW,NOT_CYGWIN 'clone local path foo:bar' '
 	cp -R src "foo:bar" &&
 	git clone "./foo:bar" foobar
 '
+test_expect_success 'clone --pack-version=4' '
+	git clone --pack-version=4 --no-local src pv4 &&
+	P=`ls pv4/.git/objects/pack/pack-*.pack` &&
+	# Offset 4 is pack version
+	test-dump ntohl "$P" 4 >ver.actual &&
+	echo 4 >ver.expected &&
+	test_cmp ver.expected ver.actual &&
+	git --git-dir=pv4/.git config --int core.preferredPackVersion >cfgver.actual &&
+	echo 4 >cfgver.expected &&
+	test_cmp cfgver.expected cfgver.actual
+'
 
 test_done

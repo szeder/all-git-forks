@@ -217,6 +217,10 @@ objects from the source repository into a pack in the cloned repository.
 	The result is Git repository can be separated from working
 	tree.
 
+--pack-version=<n>::
+	Define the preferred pack format version for data transfer.
+	Valid values are 2 and 4. Default value is specified by
+	core.preferredPackVersion setting. See linkgit:git-config[1].
 
 <repository>::
 	The (possibly remote) repository to clone from.  See the
