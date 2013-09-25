@@ -177,6 +177,8 @@ static void show_ref(const char *path, const unsigned char *sha1)
 			      "report-status delete-refs side-band-64k quiet");
 		if (prefer_ofs_delta)
 			strbuf_addstr(&cap, " ofs-delta");
+		if (core_default_pack_version == 4)
+			strbuf_addstr(&cap, " packv4");
 		if (push_cert_nonce)
 			strbuf_addf(&cap, " push-cert=%s", push_cert_nonce);
 		strbuf_addf(&cap, " agent=%s", git_user_agent_sanitized());
