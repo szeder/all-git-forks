@@ -249,4 +249,36 @@ test_expect_success 'pull request when pushed tag' '
 	! grep "You locally have .* but it does not (yet)" err
 '
 
+test_expect_success 'pull request with branch description' '
+	test_when_finished "(cd local && git checkout - && git branch -D for-upstream)" &&
+	rm -fr downstream.git &&
+	git init --bare downstream.git &&
+	(
+		cd local &&
+		git checkout -b for-upstream master &&
+		git config branch.for-upstream.description "Branch for upstream$LF" &&
+		git push origin for-upstream &&
+		git request-pull initial origin >../request
+	) &&
+	cat request &&
+	grep "(from the branch description for for-upstream local branch)" request &&
+	grep "Branch for upstream" request
+'
+
+test_expect_success 'pull request with branch description from rev' '
+	test_when_finished "(cd local && git checkout - && git branch -D for-upstream)" &&
+	rm -fr downstream.git &&
+	git init --bare downstream.git &&
+	(
+		cd local &&
+		git checkout -b for-upstream master &&
+		git config branch.for-upstream.description "Branch for upstream$LF" &&
+		git push origin for-upstream &&
+		git request-pull initial origin for-upstream >../request
+	) &&
+	cat request &&
+	grep "(from the branch description for for-upstream local branch)" request &&
+	grep "Branch for upstream" request
+'
+
 test_done

@@ -37,15 +37,12 @@ done
 
 base=$1 url=$2 head=${3-HEAD} status=0 branch_name=
 
-headref=$(git symbolic-ref -q "$head")
-if git show-ref -q --verify "$headref"
+headref=$(git rev-parse -q --verify --symbolic-full-name "$head")
+branch_name=${headref#refs/heads/}
+if test "z$branch_name" = "z$headref" ||
+	! git config "branch.$branch_name.description" >/dev/null
 then
-	branch_name=${headref#refs/heads/}
-	if test "z$branch_name" = "z$headref" ||
-		! git config "branch.$branch_name.description" >/dev/null
-	then
-		branch_name=
-	fi
+	branch_name=
 fi
 
 tag_name=$(git describe --exact "$head^0" 2>/dev/null)
