@@ -5,7 +5,6 @@ test_description='Test workflows involving pull request.'
 . ./test-lib.sh
 
 test_expect_success 'setup' '
-
 	git init --bare upstream.git &&
 	git init --bare downstream.git &&
 	git clone upstream.git upstream-private &&
@@ -55,11 +54,9 @@ test_expect_success 'setup' '
 But keep the old version, too, in case some people prefer it." &&
 		git checkout master
 	)
-
 '
 
 test_expect_success 'setup: two scripts for reading pull requests' '
-
 	downstream_url_for_sed=$(
 		printf "%s\n" "$downstream_url" |
 		sed -e '\''s/\\/\\\\/g'\'' -e '\''s/[[/.*^$]/\\&/g'\''
@@ -113,11 +110,9 @@ test_expect_success 'setup: two scripts for reading pull requests' '
 	n
 	b shortlog
 	EOT
-
 '
 
 test_expect_success 'pull request when forgot to push' '
-
 	rm -fr downstream.git &&
 	git init --bare downstream.git &&
 	(
@@ -129,11 +124,9 @@ test_expect_success 'pull request when forgot to push' '
 	) &&
 	grep "No branch of.*is at:\$" err &&
 	grep "Are you sure you pushed" err
-
 '
 
 test_expect_success 'pull request after push' '
-
 	rm -fr downstream.git &&
 	git init --bare downstream.git &&
 	(
@@ -157,11 +150,9 @@ test_expect_success 'pull request after push' '
 	) &&
 	test "$branch" = for-upstream &&
 	test_cmp local/mnemonic.txt upstream-private/mnemonic.txt
-
 '
 
 test_expect_success 'request names an appropriate branch' '
-
 	rm -fr downstream.git &&
 	git init --bare downstream.git &&
 	(
@@ -180,11 +171,9 @@ test_expect_success 'request names an appropriate branch' '
 		read branch
 	} <digest &&
 	test "$branch" = tags/full
-
 '
 
 test_expect_success 'pull request format' '
-
 	rm -fr downstream.git &&
 	git init --bare downstream.git &&
 	cat <<-\EOT >expect &&
@@ -217,11 +206,9 @@ test_expect_success 'pull request format' '
 	) &&
 	<request sed -nf fuzz.sed >request.fuzzy &&
 	test_i18ncmp expect request.fuzzy
-
 '
 
 test_expect_success 'request-pull ignores OPTIONS_KEEPDASHDASH poison' '
-
 	(
 		cd local &&
 		OPTIONS_KEEPDASHDASH=Yes &&
@@ -231,7 +218,6 @@ test_expect_success 'request-pull ignores OPTIONS_KEEPDASHDASH poison' '
 		git push origin master:for-upstream &&
 		git request-pull -- initial "$downstream_url" >../request
 	)
-
 '
 
 test_expect_success 'pull request when pushed tag' '
