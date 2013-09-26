@@ -487,9 +487,7 @@ SCRIPT_PERL += git-svn.perl
 SCRIPT_PYTHON += git-p4.py
 
 SCRIPT_RUBY += git-rb-setup.rb
-SCRIPT_RUBY += git-request-pull.rb
 
-RUBY_PROGRAMS += git-request-pull$X
 PROGRAMS += $(RUBY_PROGRAMS)
 
 NO_INSTALL += git-remote-testgit
@@ -981,6 +979,7 @@ BUILTIN_OBJS += builtin/remote-ext.o
 BUILTIN_OBJS += builtin/remote-fd.o
 BUILTIN_OBJS += builtin/repack.o
 BUILTIN_OBJS += builtin/replace.o
+BUILTIN_OBJS += builtin/request-pull.o
 BUILTIN_OBJS += builtin/rerere.o
 BUILTIN_OBJS += builtin/reset.o
 BUILTIN_OBJS += builtin/rev-list.o
