@@ -234,4 +234,19 @@ test_expect_success 'request-pull ignores OPTIONS_KEEPDASHDASH poison' '
 
 '
 
+test_expect_success 'pull request when pushed tag' '
+	rm -fr downstream.git &&
+	git init --bare downstream.git &&
+	(
+		cd local &&
+		git checkout initial &&
+		git merge --ff-only master &&
+		git tag zeebra &&
+		git push origin master:for-upstream full zeebra &&
+		git request-pull initial origin 2>../err
+	) &&
+	cat err &&
+	! grep "You locally have .* but it does not (yet)" err
+'
+
 test_done
