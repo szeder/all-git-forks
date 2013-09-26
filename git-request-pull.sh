@@ -89,7 +89,7 @@ find_matching_ref='
 		my ($sha1, $ref, $deref) = /^(\S+)\s+(\S+?)(\^\{\})?$/;
 		next unless ($sha1 eq $ARGV[1]);
 		$found = abbr($ref);
-		if ($deref && $ref eq "tags/$ARGV[2]") {
+		if ($deref && $ref eq "refs/tags/$ARGV[2]") {
 			$tagged = $found;
 			last;
 		}
