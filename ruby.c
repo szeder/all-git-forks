@@ -11,6 +11,7 @@
 
 static VALUE git_rb_object;
 static VALUE git_rb_commit;
+static VALUE git_rb_commit_list;
 
 static inline VALUE sha1_to_str(const unsigned char *sha1)
 {
@@ -152,6 +153,36 @@ static VALUE git_rb_commit_buffer(VALUE self)
 	return cstr_to_str(commit->buffer);
 }
 
+static VALUE git_rb_commit_list_each(VALUE self)
+{
+	struct commit_list *e, *list;
+	Data_Get_Struct(self, struct commit_list, list);
+
+	for (e = list; e; e = e->next) {
+		VALUE c;
+		c = Data_Wrap_Struct(git_rb_commit, NULL, NULL, e->item);
+		rb_yield(c);
+	}
+
+	return self;
+}
+
+static VALUE git_rb_get_merge_bases(VALUE self, VALUE commits, VALUE cleanup)
+{
+	struct commit *g_commits[RARRAY_LEN(commits)];
+	struct commit_list *result;
+	int i;
+
+	for (i = 0; i < RARRAY_LEN(commits); i++) {
+		VALUE commit = RARRAY_PTR(commits)[i];
+		Data_Get_Struct(commit, struct commit, g_commits[i]);
+	}
+	result = get_merge_bases_many(g_commits[0], RARRAY_LEN(commits) - 1, g_commits + 1, NUM2INT(cleanup));
+	if (!result)
+		return Qnil;
+	return Data_Wrap_Struct(git_rb_commit_list, NULL, NULL, result);
+}
+
 static void git_ruby_init(void)
 {
 	VALUE mod;
@@ -176,6 +207,7 @@ static void git_ruby_init(void)
 	rb_define_global_function("read_ref", git_rb_read_ref, 1);
 	rb_define_global_function("peel_ref", git_rb_peel_ref, 1);
 	rb_define_global_function("get_sha1", git_rb_get_sha1, 1);
+	rb_define_global_function("get_merge_bases", git_rb_get_merge_bases, 2);
 
 	git_rb_object = rb_define_class_under(mod, "Object", rb_cData);
 	rb_define_singleton_method(git_rb_object, "get", git_rb_object_get, 1);
@@ -186,6 +218,10 @@ static void git_ruby_init(void)
 	git_rb_commit = rb_define_class_under(mod, "Commit", git_rb_object);
 	rb_define_singleton_method(git_rb_commit, "get", git_rb_commit_get, 1);
 	rb_define_method(git_rb_commit, "buffer", git_rb_commit_buffer, 0);
+
+	git_rb_commit_list = rb_define_class_under(mod, "CommitList", rb_cData);
+	rb_include_module(git_rb_commit_list, rb_mEnumerable);
+	rb_define_method(git_rb_commit_list, "each", git_rb_commit_list_each, 0);
 }
 
 static int run_ruby_command(const char *cmd, int argc, const char **argv)
