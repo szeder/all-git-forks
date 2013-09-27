@@ -81,6 +81,16 @@ static VALUE git_rb_peel_ref(VALUE self, VALUE refname)
 	return sha1_to_str(sha1);
 }
 
+static VALUE git_rb_get_sha1(VALUE self, VALUE name)
+{
+	unsigned char buf[20];
+	int r;
+	r = get_sha1(RSTRING_PTR(name), buf);
+	if (r)
+		return Qnil;
+	return sha1_to_str(buf);
+}
+
 static void git_ruby_init(void)
 {
 	rb_define_global_function("setup_git_directory", git_rb_setup_git_directory, 0);
@@ -89,6 +99,7 @@ static void git_ruby_init(void)
 	rb_define_global_function("git_config", git_rb_git_config, 0);
 	rb_define_global_function("read_ref", git_rb_read_ref, 1);
 	rb_define_global_function("peel_ref", git_rb_peel_ref, 1);
+	rb_define_global_function("get_sha1", git_rb_get_sha1, 1);
 }
 
 static int run_ruby_command(const char *cmd, int argc, const char **argv)
