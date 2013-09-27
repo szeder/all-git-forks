@@ -1,11 +1,16 @@
 #include "cache.h"
 #include "exec_cmd.h"
 #include "refs.h"
+#include "object.h"
+#include "commit.h"
 
 #undef NORETURN
 #undef PATH_SEP
 
 #include <ruby.h>
+
+static VALUE git_rb_object;
+static VALUE git_rb_commit;
 
 static inline VALUE sha1_to_str(const unsigned char *sha1)
 {
@@ -17,6 +22,18 @@ static inline VALUE cstr_to_str(const char *str)
 	if (str == NULL)
 		return Qnil;
 	return rb_str_new2(str);
+}
+
+static inline char *str_to_cstr(VALUE str)
+{
+	if (str == Qnil)
+		return NULL;
+	return RSTRING_PTR(str);
+}
+
+static inline unsigned char *str_to_sha1(VALUE str)
+{
+	return (unsigned char *)str_to_cstr(str);
 }
 
 static VALUE git_rb_setup_git_directory(VALUE self)
@@ -91,8 +108,67 @@ static VALUE git_rb_get_sha1(VALUE self, VALUE name)
 	return sha1_to_str(buf);
 }
 
+static VALUE git_rb_object_get(VALUE class, VALUE id)
+{
+	struct object *object;
+	object = parse_object(str_to_sha1(id));
+	return Data_Wrap_Struct(git_rb_object, NULL, NULL, object);
+}
+
+static VALUE git_rb_commit_get(VALUE class, VALUE id)
+{
+	struct object *object;
+	object = parse_object(str_to_sha1(id));
+	if (!object || object->type != OBJ_COMMIT)
+		return Qnil;
+	return Data_Wrap_Struct(git_rb_commit, NULL, NULL, object);
+}
+
+static VALUE git_rb_object_sha1(VALUE self)
+{
+	struct object *object;
+	Data_Get_Struct(self, struct object, object);
+	return sha1_to_str(object->sha1);
+}
+
+static VALUE git_rb_object_type(VALUE self)
+{
+	struct object *object;
+	Data_Get_Struct(self, struct object, object);
+	return INT2FIX(object->type);
+}
+
+static VALUE git_rb_object_to_s(VALUE self)
+{
+	struct object *object;
+	Data_Get_Struct(self, struct object, object);
+	return rb_str_new2(sha1_to_hex(object->sha1));
+}
+
+static VALUE git_rb_commit_buffer(VALUE self)
+{
+	struct commit *commit;
+	Data_Get_Struct(self, struct commit, commit);
+	return cstr_to_str(commit->buffer);
+}
+
 static void git_ruby_init(void)
 {
+	VALUE mod;
+
+	mod = rb_define_module("Git");
+
+	rb_define_global_const("OBJ_BAD", INT2FIX(OBJ_BAD));
+	rb_define_global_const("OBJ_NONE", INT2FIX(OBJ_NONE));
+	rb_define_global_const("OBJ_COMMIT", INT2FIX(OBJ_COMMIT));
+	rb_define_global_const("OBJ_TREE", INT2FIX(OBJ_TREE));
+	rb_define_global_const("OBJ_BLOB", INT2FIX(OBJ_BLOB));
+	rb_define_global_const("OBJ_TAG", INT2FIX(OBJ_TAG));
+	rb_define_global_const("OBJ_OFS_DELTA", INT2FIX(OBJ_OFS_DELTA));
+	rb_define_global_const("OBJ_REF_DELTA", INT2FIX(OBJ_REF_DELTA));
+	rb_define_global_const("OBJ_ANY", INT2FIX(OBJ_ANY));
+	rb_define_global_const("OBJ_MAX", INT2FIX(OBJ_MAX));
+
 	rb_define_global_function("setup_git_directory", git_rb_setup_git_directory, 0);
 	rb_define_global_function("for_each_ref", git_rb_for_each_ref, 0);
 	rb_define_global_function("dwim_ref", git_rb_dwim_ref, 1);
@@ -100,6 +176,16 @@ static void git_ruby_init(void)
 	rb_define_global_function("read_ref", git_rb_read_ref, 1);
 	rb_define_global_function("peel_ref", git_rb_peel_ref, 1);
 	rb_define_global_function("get_sha1", git_rb_get_sha1, 1);
+
+	git_rb_object = rb_define_class_under(mod, "Object", rb_cData);
+	rb_define_singleton_method(git_rb_object, "get", git_rb_object_get, 1);
+	rb_define_method(git_rb_object, "sha1", git_rb_object_sha1, 0);
+	rb_define_method(git_rb_object, "type", git_rb_object_type, 0);
+	rb_define_method(git_rb_object, "to_s", git_rb_object_to_s, 0);
+
+	git_rb_commit = rb_define_class_under(mod, "Commit", git_rb_object);
+	rb_define_singleton_method(git_rb_commit, "get", git_rb_commit_get, 1);
+	rb_define_method(git_rb_commit, "buffer", git_rb_commit_buffer, 0);
 }
 
 static int run_ruby_command(const char *cmd, int argc, const char **argv)
