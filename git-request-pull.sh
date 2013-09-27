@@ -151,9 +151,10 @@ git diff -M --stat --summary $patch $merge_base..$headrev || status=1
 
 if test -z "$ref"
 then
+	short_headref=$(git rev-parse -q --verify --symbolic-full-name --abbrev-ref "$head")
 	echo "warn: No branch of $url is at:" >&2
 	git show -s --format='warn:   %h: %s' $headrev >&2
-	echo "warn: Are you sure you pushed '$head' there?" >&2
+	echo "warn: Are you sure you pushed '$short_headref' there?" >&2
 	status=1
 fi
 exit $status
