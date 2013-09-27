@@ -21,6 +21,15 @@ def read_branch_desc(name)
   return nil
 end
 
+def describe(rev)
+  for_each_ref() do |name, sha1, flags|
+    next unless name.start_with?('refs/tags/')
+    next unless peel_ref(name) == get_sha1(rev)
+    return name[10..-1]
+  end
+  return nil
+end
+
 def abbr(ref)
   if (ref =~ %r{^refs/heads/(.*)} || ref =~ %r{^refs/(tags/.*)})
     return $1
@@ -81,7 +90,7 @@ if headref.start_with?('refs/heads')
   branch_name = nil if not branch_desc
 end
 
-tag_name = `git describe --exact "#{head}^0" 2>/dev/null`.chomp
+tag_name = describe(head)
 
 baserev = `git rev-parse --verify --quiet "#{base}"^0`.chomp
 die "Not a valid revision: #{base}" if baserev.empty?
@@ -116,7 +125,7 @@ for you to fetch changes up to %H:
     puts branch_desc
   end
 
-  if not tag_name.empty?
+  if tag_name
     if ref != "tags/#{tag_name}"
       $stderr.puts "warn: You locally have #{tag_name} but it does not (yet)"
       $stderr.puts "warn: appear to be at #{url}"
@@ -126,7 +135,7 @@ for you to fetch changes up to %H:
     puts
   end
 
-  if branch_name || ! tag_name.empty?
+  if branch_name || tag_name
     puts "----------------------------------------------------------------"
   end
 
