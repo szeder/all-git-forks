@@ -38,6 +38,11 @@ done
 base=$1 url=$2 head=${3-HEAD} status=0 branch_name=
 
 headref=$(git rev-parse -q --verify --symbolic-full-name "$head")
+if test "$headref" = "HEAD"
+then
+	headref=
+fi
+
 branch_name=${headref#refs/heads/}
 if test "z$branch_name" = "z$headref" ||
 	! git config "branch.$branch_name.description" >/dev/null
@@ -90,8 +95,9 @@ find_matching_ref='
 			$tagged = $found;
 			last;
 		}
-		if ($ref =~ m|/\Q$ARGV[0]\E$|) {
+		if ($ref eq $ARGV[0]) {
 			$exact = $found;
+			last;
 		}
 	}
 	if ($tagged) {
@@ -103,7 +109,7 @@ find_matching_ref='
 	}
 '
 
-ref=$(git ls-remote "$url" | perl -e "$find_matching_ref" "$head" "$headrev" "$tag_name")
+ref=$(git ls-remote "$url" | perl -e "$find_matching_ref" "$headref" "$headrev" "$tag_name")
 
 url=$(git ls-remote --get-url "$url")
 
