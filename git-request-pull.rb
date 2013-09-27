@@ -14,6 +14,13 @@ EOF
   exit 1
 end
 
+def read_branch_desc(name)
+  git_config() do |key, value|
+    return value if key == "branch.#{name}.description"
+  end
+  return nil
+end
+
 def abbr(ref)
   if (ref =~ %r{^refs/heads/(.*)} || ref =~ %r{^refs/(tags/.*)})
     return $1
@@ -70,8 +77,8 @@ _, _, headref = dwim_ref(head)
 
 if headref.start_with?('refs/heads')
   branch_name = headref[11..-1]
-  branch_desc = `git config "branch.#{branch_name}.description"`.chomp
-  branch_name = nil if branch_desc.empty?
+  branch_desc = read_branch_desc(branch_name)
+  branch_name = nil if not branch_desc
 end
 
 tag_name = `git describe --exact "#{head}^0" 2>/dev/null`.chomp
