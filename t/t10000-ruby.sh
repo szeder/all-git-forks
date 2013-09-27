@@ -63,4 +63,14 @@ test_expect_success 'test dwim_ref()' '
 	test_cmp expected actual
 '
 
+test_expect_success 'test git_config()' '
+	git ruby > actual <<-EOF &&
+	git_config() do |key, value|
+	  puts "%s=%s" % [key, value]
+	end
+	EOF
+	git config --list > expected &&
+	test_cmp expected actual
+'
+
 test_done
