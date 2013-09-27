@@ -41,10 +41,21 @@ static VALUE git_rb_for_each_ref(void)
 	return INT2FIX(r);
 }
 
+static VALUE git_rb_dwim_ref(VALUE self, VALUE name)
+{
+	unsigned char buf[20];
+	char *ref;
+	int r;
+
+	r = dwim_ref(RSTRING_PTR(name), RSTRING_LEN(name), buf, &ref);
+	return rb_ary_new3(3, sha1_to_str(buf), INT2NUM(r), cstr_to_str(ref));
+}
+
 static void git_ruby_init(void)
 {
 	rb_define_global_function("setup_git_directory", git_rb_setup_git_directory, 0);
 	rb_define_global_function("for_each_ref", git_rb_for_each_ref, 0);
+	rb_define_global_function("dwim_ref", git_rb_dwim_ref, 1);
 }
 
 static int run_ruby_command(const char *cmd, int argc, const char **argv)
