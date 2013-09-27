@@ -65,12 +65,30 @@ static VALUE git_rb_git_config(VALUE self)
 	return INT2FIX(r);
 }
 
+static VALUE git_rb_read_ref(VALUE self, VALUE refname)
+{
+	unsigned char sha1[20];
+	if (read_ref(RSTRING_PTR(refname), sha1))
+		return Qnil;
+	return sha1_to_str(sha1);
+}
+
+static VALUE git_rb_peel_ref(VALUE self, VALUE refname)
+{
+	unsigned char sha1[20];
+	if (peel_ref(RSTRING_PTR(refname), sha1))
+		return Qnil;
+	return sha1_to_str(sha1);
+}
+
 static void git_ruby_init(void)
 {
 	rb_define_global_function("setup_git_directory", git_rb_setup_git_directory, 0);
 	rb_define_global_function("for_each_ref", git_rb_for_each_ref, 0);
 	rb_define_global_function("dwim_ref", git_rb_dwim_ref, 1);
 	rb_define_global_function("git_config", git_rb_git_config, 0);
+	rb_define_global_function("read_ref", git_rb_read_ref, 1);
+	rb_define_global_function("peel_ref", git_rb_peel_ref, 1);
 }
 
 static int run_ruby_command(const char *cmd, int argc, const char **argv)
