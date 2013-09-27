@@ -2,8 +2,6 @@
 
 require 'date'
 
-ENV['GIT_PAGER'] =
-
 patch = nil
 
 def usage
