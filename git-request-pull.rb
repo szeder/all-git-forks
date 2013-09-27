@@ -92,11 +92,14 @@ end
 
 tag_name = describe(head)
 
-baserev = `git rev-parse --verify --quiet "#{base}"^0`.chomp
-die "Not a valid revision: #{base}" if baserev.empty?
+baserev = get_sha1("#{base}^0")
+die "Not a valid revision: #{base}" unless baserev
 
-headrev = `git rev-parse --verify --quiet "#{head}"^0`.chomp
-die "Not a valid revision: #{head}" if headrev.empty?
+headrev = get_sha1("#{head}^0")
+die "Not a valid revision: #{head}" unless headrev
+
+baserev = sha1_to_hex(baserev)
+headrev = sha1_to_hex(headrev)
 
 merge_base = `git merge-base #{baserev} #{headrev}`.chomp
 die "No commits in common between #{base} and #{head}" unless $?.success?
