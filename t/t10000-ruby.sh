@@ -73,4 +73,12 @@ test_expect_success 'test git_config()' '
 	test_cmp expected actual
 '
 
+test_expect_success 'test get_sha1()' '
+	git ruby > actual <<-EOF &&
+	puts sha1_to_hex(get_sha1("HEAD"))
+	EOF
+	git rev-parse -q --verify HEAD > expected &&
+	test_cmp expected actual
+'
+
 test_done
