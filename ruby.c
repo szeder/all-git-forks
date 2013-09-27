@@ -3,6 +3,8 @@
 #include "refs.h"
 #include "object.h"
 #include "commit.h"
+#include "remote.h"
+#include "transport.h"
 
 #undef NORETURN
 #undef PATH_SEP
@@ -12,6 +14,9 @@
 static VALUE git_rb_object;
 static VALUE git_rb_commit;
 static VALUE git_rb_commit_list;
+static VALUE git_rb_remote;
+static VALUE git_rb_transport;
+static VALUE git_rb_ref;
 
 static inline VALUE sha1_to_str(const unsigned char *sha1)
 {
@@ -183,6 +188,76 @@ static VALUE git_rb_get_merge_bases(VALUE self, VALUE commits, VALUE cleanup)
 	return Data_Wrap_Struct(git_rb_commit_list, NULL, NULL, result);
 }
 
+static VALUE git_rb_remote_get(VALUE self, VALUE name)
+{
+	struct remote *remote;
+	remote = remote_get(RSTRING_PTR(name));
+	if (!remote)
+		return Qnil;
+	return Data_Wrap_Struct(git_rb_remote, NULL, NULL, remote);
+}
+
+static VALUE git_rb_remote_url(VALUE self)
+{
+	struct remote *remote;
+	VALUE url;
+	int i;
+
+	Data_Get_Struct(self, struct remote, remote);
+	url = rb_ary_new2(remote->url_nr);
+	for (i = 0; i < remote->url_nr; i++)
+		rb_ary_store(url, i, rb_str_new2(remote->url[i]));
+	return url;
+}
+
+static VALUE git_rb_transport_get(VALUE self, VALUE remote, VALUE url)
+{
+	struct transport *transport;
+	struct remote *g_remote;
+	Data_Get_Struct(remote, struct remote, g_remote);
+	transport = transport_get(g_remote, str_to_cstr(url));
+	if (!transport)
+		return Qnil;
+	return Data_Wrap_Struct(git_rb_transport, NULL, transport_disconnect, transport);
+}
+
+static VALUE git_rb_transport_get_remote_refs(VALUE self)
+{
+	struct transport *transport;
+	const struct ref *ref;
+	Data_Get_Struct(self, struct transport, transport);
+	ref = transport_get_remote_refs(transport);
+	return Data_Wrap_Struct(git_rb_ref, NULL, NULL, (void *)ref);
+}
+
+static VALUE git_rb_ref_each(VALUE self)
+{
+	struct ref *e, *ref;
+	Data_Get_Struct(self, struct ref, ref);
+
+	for (e = ref; e; e = e->next) {
+		VALUE c;
+		c = Data_Wrap_Struct(git_rb_ref, NULL, NULL, e);
+		rb_yield(c);
+	}
+
+	return self;
+}
+
+static VALUE git_rb_ref_name(VALUE self)
+{
+	struct ref *ref;
+	Data_Get_Struct(self, struct ref, ref);
+	return rb_str_new2(ref->name);
+}
+
+static VALUE git_rb_ref_old_sha1(VALUE self)
+{
+	struct ref *ref;
+	Data_Get_Struct(self, struct ref, ref);
+	return sha1_to_str(ref->old_sha1);
+}
+
 static void git_ruby_init(void)
 {
 	VALUE mod;
@@ -208,6 +283,8 @@ static void git_ruby_init(void)
 	rb_define_global_function("peel_ref", git_rb_peel_ref, 1);
 	rb_define_global_function("get_sha1", git_rb_get_sha1, 1);
 	rb_define_global_function("get_merge_bases", git_rb_get_merge_bases, 2);
+	rb_define_global_function("remote_get", git_rb_remote_get, 1);
+	rb_define_global_function("transport_get", git_rb_transport_get, 2);
 
 	git_rb_object = rb_define_class_under(mod, "Object", rb_cData);
 	rb_define_singleton_method(git_rb_object, "get", git_rb_object_get, 1);
@@ -222,6 +299,18 @@ static void git_ruby_init(void)
 	git_rb_commit_list = rb_define_class_under(mod, "CommitList", rb_cData);
 	rb_include_module(git_rb_commit_list, rb_mEnumerable);
 	rb_define_method(git_rb_commit_list, "each", git_rb_commit_list_each, 0);
+
+	git_rb_remote = rb_define_class_under(mod, "Remote", rb_cData);
+	rb_define_method(git_rb_remote, "url", git_rb_remote_url, 0);
+
+	git_rb_transport = rb_define_class_under(mod, "Transport", rb_cData);
+	rb_define_method(git_rb_transport, "get_remote_refs", git_rb_transport_get_remote_refs, 0);
+
+	git_rb_ref = rb_define_class_under(mod, "Ref", rb_cData);
+	rb_include_module(git_rb_ref, rb_mEnumerable);
+	rb_define_method(git_rb_ref, "each", git_rb_ref_each, 0);
+	rb_define_method(git_rb_ref, "name", git_rb_ref_name, 0);
+	rb_define_method(git_rb_ref, "old_sha1", git_rb_ref_old_sha1, 0);
 }
 
 static int run_ruby_command(const char *cmd, int argc, const char **argv)
