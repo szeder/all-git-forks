@@ -81,4 +81,25 @@ test_expect_success 'test get_sha1()' '
 	test_cmp expected actual
 '
 
+test_expect_success 'test Object' '
+	git ruby > actual <<-EOF &&
+	object = Git::Object.get(get_sha1("HEAD"))
+	puts object, object.type == OBJ_COMMIT, sha1_to_hex(object.sha1)
+	EOF
+	git rev-parse -q --verify HEAD > expected &&
+	echo "true" >> expected &&
+	git rev-parse -q --verify HEAD >> expected &&
+	test_cmp expected actual
+'
+
+test_expect_success 'test Commit' '
+	git ruby > actual <<-EOF &&
+	commit = Git::Commit.get(get_sha1("HEAD"))
+	puts commit, commit.buffer
+	EOF
+	git rev-parse -q --verify HEAD > expected &&
+	git cat-file commit HEAD >> expected &&
+	test_cmp expected actual
+'
+
 test_done
