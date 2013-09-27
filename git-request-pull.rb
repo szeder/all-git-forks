@@ -45,16 +45,15 @@ end
 #
 # Otherwise find a random ref that matches $head_id.
 
-def get_ref(url, head_ref, head_id, tag_name)
+def get_ref(transport, head_ref, head_id, tag_name)
   found = nil
-  IO.popen(%[git ls-remote "#{url}"]) do |out|
-    out.each do |l|
-      sha1, ref, deref = l.scan(/^(\S+)\s+(\S+?)(\^\{\})?$/).first
-      next unless sha1 == head_id
-      found = abbr(ref)
-      break if (deref && ref == "refs/tags/#{tag_name}")
-      break if ref == head_ref
-    end
+  transport.get_remote_refs().each do |e|
+    sha1 = e.old_sha1
+    next unless sha1 == head_id
+    ref, deref = e.name.scan(/^(\S+?)(\^\{\})?$/).first
+    found = abbr(ref)
+    break if (deref && ref == "refs/tags/#{tag_name}")
+    break if ref == head_ref
   end
   return found
 end
@@ -106,8 +105,11 @@ die "No commits in common between #{base} and #{head}" unless merge_bases
 
 merge_base = sha1_to_hex(merge_bases.first.sha1)
 
-ref = get_ref(url, head_ref != "HEAD" ? head_ref : nil, head_commit.to_s, tag_name)
-url = `git ls-remote --get-url "#{url}"`.chomp
+remote = remote_get(url)
+transport = transport_get(remote, nil)
+
+ref = get_ref(transport, head_ref != "HEAD" ? head_ref : nil, head_id, tag_name)
+url = remote.url.first
 
 begin
   run(%[git show -s --format='The following changes since commit %H:
