@@ -86,25 +86,19 @@ find_matching_ref='
 		}
 	}
 
-	my ($tagged, $branch, $found);
+	my ($found);
 	while (<STDIN>) {
 		my ($sha1, $ref, $deref) = /^(\S+)\s+(\S+?)(\^\{\})?$/;
 		next unless ($sha1 eq $ARGV[1]);
 		$found = abbr($ref);
 		if ($deref && $ref eq "refs/tags/$ARGV[2]") {
-			$tagged = $found;
 			last;
 		}
 		if ($ref eq $ARGV[0]) {
-			$exact = $found;
 			last;
 		}
 	}
-	if ($tagged) {
-		print "$tagged\n";
-	} elsif ($exact) {
-		print "$exact\n";
-	} elsif ($found) {
+	if ($found) {
 		print "$found\n";
 	}
 '
