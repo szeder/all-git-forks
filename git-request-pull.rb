@@ -66,7 +66,7 @@ branch_name = branch_desc = nil
 
 usage unless base or url
 
-headref = `git rev-parse -q --verify --symbolic-full-name "#{head}"`.chomp
+_, _, headref = dwim_ref(head)
 
 if headref.start_with?('refs/heads')
   branch_name = headref[11..-1]
