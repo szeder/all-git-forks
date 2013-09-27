@@ -51,11 +51,26 @@ static VALUE git_rb_dwim_ref(VALUE self, VALUE name)
 	return rb_ary_new3(3, sha1_to_str(buf), INT2NUM(r), cstr_to_str(ref));
 }
 
+static int git_config_fn(const char *var, const char *value, void *cb_data)
+{
+	VALUE r;
+	r = rb_yield_values(2, rb_str_new2(var), rb_str_new2(value));
+	return r == Qfalse;
+}
+
+static VALUE git_rb_git_config(VALUE self)
+{
+	int r;
+	r = git_config(git_config_fn, NULL);
+	return INT2FIX(r);
+}
+
 static void git_ruby_init(void)
 {
 	rb_define_global_function("setup_git_directory", git_rb_setup_git_directory, 0);
 	rb_define_global_function("for_each_ref", git_rb_for_each_ref, 0);
 	rb_define_global_function("dwim_ref", git_rb_dwim_ref, 1);
+	rb_define_global_function("git_config", git_rb_git_config, 0);
 }
 
 static int run_ruby_command(const char *cmd, int argc, const char **argv)
