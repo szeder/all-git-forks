@@ -52,4 +52,15 @@ test_expect_success 'test setup_git_directory()' '
 	test_cmp expected actual
 '
 
+test_expect_success 'test dwim_ref()' '
+	git ruby > actual <<-EOF &&
+	sha1, num, ref = dwim_ref("HEAD")
+	puts sha1_to_hex(sha1), num, ref
+	EOF
+	git rev-parse -q --verify HEAD > expected &&
+	echo 1 >> expected &&
+	git rev-parse -q --verify --symbolic-full-name HEAD >> expected &&
+	test_cmp expected actual
+'
+
 test_done
