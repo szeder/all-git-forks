@@ -281,4 +281,25 @@ test_expect_success 'pull request with branch description from rev' '
 	grep "Branch for upstream" request
 '
 
+test_expect_success 'pull request with exact match' '
+	test_when_finished "(cd local && git checkout - && git branch -D for-upstream)" &&
+	rm -fr downstream.git &&
+	git init --bare downstream.git &&
+	(
+		cd local &&
+		git checkout -b for-upstream master &&
+		git push origin master:for-upstream master:zeebra &&
+		git request-pull initial origin for-upstream >../request
+	) &&
+	cat request &&
+	sed -nf read-request.sed <request >digest &&
+	cat digest &&
+	{
+		read task &&
+		read repository &&
+		read branch
+	} <digest &&
+	test "$branch" = for-upstream
+'
+
 test_done
