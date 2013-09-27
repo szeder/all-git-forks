@@ -98,13 +98,15 @@ die "Not a valid revision: #{base}" unless baserev
 headrev = get_sha1("#{head}^0")
 die "Not a valid revision: #{head}" unless headrev
 
-baserev = sha1_to_hex(baserev)
-headrev = sha1_to_hex(headrev)
+baserev = Git::Commit.get(baserev)
+headrev = Git::Commit.get(headrev)
 
-merge_base = `git merge-base #{baserev} #{headrev}`.chomp
-die "No commits in common between #{base} and #{head}" unless $?.success?
+merge_bases = get_merge_bases([baserev, headrev], 0);
+die "No commits in common between #{base} and #{head}" unless merge_bases
 
-ref = get_ref(url, headref != "HEAD" ? headref : nil, headrev, tag_name)
+merge_base = sha1_to_hex(merge_bases.first.sha1)
+
+ref = get_ref(url, headref != "HEAD" ? headref : nil, headrev.to_s, tag_name)
 url = `git ls-remote --get-url "#{url}"`.chomp
 
 begin
