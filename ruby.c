@@ -8,6 +8,7 @@
 #include "revision.h"
 #include "diff.h"
 #include "shortlog.h"
+#include "log-tree.h"
 
 #undef NORETURN
 #undef PATH_SEP
@@ -371,6 +372,16 @@ static VALUE git_rb_diff_tree_sha1(VALUE self, VALUE old, VALUE new, VALUE base,
 	return INT2FIX(r);
 }
 
+static VALUE git_rb_log_tree_diff_flush(VALUE self, VALUE revs)
+{
+	struct rev_info *g_revs;
+	int r;
+
+	Data_Get_Struct(revs, struct rev_info, g_revs);
+	r = log_tree_diff_flush(g_revs);
+	return INT2FIX(r);
+}
+
 static VALUE git_rb_diff_opt_new(VALUE class)
 {
 	struct diff_options *opt;
@@ -489,6 +500,7 @@ static void git_ruby_init(void)
 	rb_define_global_function("read_sha1_file", git_rb_read_sha1_file, 1);
 	rb_define_global_function("shortlog", git_rb_shortlog, 1);
 	rb_define_global_function("diff_tree_sha1", git_rb_diff_tree_sha1, 4);
+	rb_define_global_function("log_tree_diff_flush", git_rb_log_tree_diff_flush, 1);
 
 	git_rb_object = rb_define_class_under(mod, "Object", rb_cData);
 	rb_define_singleton_method(git_rb_object, "get", git_rb_object_get, 1);
