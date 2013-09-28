@@ -26,3 +26,9 @@ def run(cmd, *args)
   system(*cmd, *args)
   raise CommandError.new(cmd) unless $?.success?
 end
+
+class String
+  def skip_prefix(prefix)
+    return self[prefix.length..-1]
+  end
+end
