@@ -265,6 +265,18 @@ static VALUE git_rb_find_unique_abbrev(VALUE self, VALUE sha1, VALUE len)
 	return rb_str_new2(abbrev);
 }
 
+static VALUE git_rb_read_sha1_file(VALUE self, VALUE sha1, VALUE type)
+{
+	enum object_type g_type;
+	void *buffer;
+	unsigned long size;
+
+	buffer = read_sha1_file(str_to_sha1(sha1), &g_type, &size);
+	if (!buffer)
+		return Qnil;
+	return rb_ary_new3(2, rb_str_new(buffer, size), INT2FIX(g_type));
+}
+
 static void git_ruby_init(void)
 {
 	VALUE mod;
@@ -295,6 +307,7 @@ static void git_ruby_init(void)
 	rb_define_global_function("remote_get", git_rb_remote_get, 1);
 	rb_define_global_function("transport_get", git_rb_transport_get, 2);
 	rb_define_global_function("find_unique_abbrev", git_rb_find_unique_abbrev, 2);
+	rb_define_global_function("read_sha1_file", git_rb_read_sha1_file, 1);
 
 	git_rb_object = rb_define_class_under(mod, "Object", rb_cData);
 	rb_define_singleton_method(git_rb_object, "get", git_rb_object_get, 1);
