@@ -12,6 +12,21 @@ static inline VALUE sha1_to_str(const unsigned char *sha1)
 	return rb_str_new((const char *)sha1, 20);
 }
 
+static inline VALUE cstr_to_str(const char *str)
+{
+	if (str == NULL)
+		return Qnil;
+	return rb_str_new2(str);
+}
+
+static VALUE git_rb_setup_git_directory(VALUE self)
+{
+	int nongit_ok;
+	const char *prefix;
+	prefix = setup_git_directory_gently(&nongit_ok);
+	return rb_ary_new3(2, cstr_to_str(prefix), INT2FIX(nongit_ok));
+}
+
 static int for_each_ref_fn(const char *refname, const unsigned char *sha1, int flags, void *cb_data)
 {
 	VALUE r;
@@ -28,6 +43,7 @@ static VALUE git_rb_for_each_ref(void)
 
 static void git_ruby_init(void)
 {
+	rb_define_global_function("setup_git_directory", git_rb_setup_git_directory, 0);
 	rb_define_global_function("for_each_ref", git_rb_for_each_ref, 0);
 }
 
