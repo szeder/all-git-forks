@@ -258,6 +258,13 @@ static VALUE git_rb_ref_old_sha1(VALUE self)
 	return sha1_to_str(ref->old_sha1);
 }
 
+static VALUE git_rb_find_unique_abbrev(VALUE self, VALUE sha1, VALUE len)
+{
+	const char *abbrev;
+	abbrev = find_unique_abbrev(str_to_sha1(sha1), NUM2INT(len));
+	return rb_str_new2(abbrev);
+}
+
 static void git_ruby_init(void)
 {
 	VALUE mod;
@@ -275,6 +282,8 @@ static void git_ruby_init(void)
 	rb_define_global_const("OBJ_ANY", INT2FIX(OBJ_ANY));
 	rb_define_global_const("OBJ_MAX", INT2FIX(OBJ_MAX));
 
+	rb_define_global_const("DEFAULT_ABBREV", INT2FIX(DEFAULT_ABBREV));
+
 	rb_define_global_function("setup_git_directory", git_rb_setup_git_directory, 0);
 	rb_define_global_function("for_each_ref", git_rb_for_each_ref, 0);
 	rb_define_global_function("dwim_ref", git_rb_dwim_ref, 1);
@@ -285,6 +294,7 @@ static void git_ruby_init(void)
 	rb_define_global_function("get_merge_bases", git_rb_get_merge_bases, 2);
 	rb_define_global_function("remote_get", git_rb_remote_get, 1);
 	rb_define_global_function("transport_get", git_rb_transport_get, 2);
+	rb_define_global_function("find_unique_abbrev", git_rb_find_unique_abbrev, 2);
 
 	git_rb_object = rb_define_class_under(mod, "Object", rb_cData);
 	rb_define_singleton_method(git_rb_object, "get", git_rb_object_get, 1);
