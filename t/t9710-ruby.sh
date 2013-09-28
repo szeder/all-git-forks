@@ -45,4 +45,17 @@ test_expect_success 'test for_each_ref()' '
 	test_cmp expected actual
 '
 
+test_expect_success 'test setup_git_directory()' '
+	mkdir t &&
+	(
+	cd t &&
+	git ruby > ../actual <<-EOF
+	prefix, nongit_ok = setup_git_directory()
+	puts prefix
+	EOF
+	) &&
+	echo "t/" > expected &&
+	test_cmp expected actual
+'
+
 test_done
