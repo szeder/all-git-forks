@@ -7,6 +7,7 @@
 #include "transport.h"
 #include "revision.h"
 #include "diff.h"
+#include "shortlog.h"
 
 #undef NORETURN
 #undef PATH_SEP
@@ -344,6 +345,21 @@ static VALUE git_rb_rev_info_diffopt(VALUE self)
 	return Data_Wrap_Struct(git_rb_diff_opt, NULL, NULL, &revs->diffopt);
 }
 
+static VALUE git_rb_shortlog(VALUE self, VALUE commits)
+{
+	struct shortlog log;
+	int i;
+
+	shortlog_init(&log);
+	for (i = 0; i < RARRAY_LEN(commits); i++) {
+		struct commit *commit;
+		Data_Get_Struct(rb_ary_entry(commits, i), struct commit, commit);
+		shortlog_add_commit(&log, commit);
+	}
+	shortlog_output(&log);
+	return Qnil;
+}
+
 static VALUE git_rb_diff_opt_new(VALUE class)
 {
 	struct diff_options *opt;
@@ -460,6 +476,7 @@ static void git_ruby_init(void)
 	rb_define_global_function("transport_get", git_rb_transport_get, 2);
 	rb_define_global_function("find_unique_abbrev", git_rb_find_unique_abbrev, 2);
 	rb_define_global_function("read_sha1_file", git_rb_read_sha1_file, 1);
+	rb_define_global_function("shortlog", git_rb_shortlog, 1);
 
 	git_rb_object = rb_define_class_under(mod, "Object", rb_cData);
 	rb_define_singleton_method(git_rb_object, "get", git_rb_object_get, 1);
