@@ -79,6 +79,11 @@ def parse_buffer(buffer)
   return [summary, date]
 end
 
+def show_shortlog(base, head)
+  rev = Git::RevInfo.setup(nil, ['^' + base, head], nil)
+  shortlog(rev.to_a)
+end
+
 until ARGV.empty?
   case ARGV.first
   when '-p'
@@ -174,7 +179,7 @@ for you to fetch changes up to %s:
     puts "----------------------------------------------------------------"
   end
 
-  run(%[git shortlog ^#{base} #{head}])
+  show_shortlog(base, head)
   run(%[git diff -M --stat --summary #{patch} ^#{merge_base_commit} #{head}])
 
   if ! ref
