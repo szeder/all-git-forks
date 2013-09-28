@@ -115,7 +115,6 @@ end
 base = ARGV[0]
 url = ARGV[1]
 head = ARGV[2] || 'HEAD'
-status = 0
 branch_name = branch_desc = nil
 
 usage unless base or url
@@ -154,16 +153,15 @@ url = remote.url.first
 merge_base_summary, merge_base_date = parse_buffer(merge_base_commit.buffer)
 head_summary, head_date = parse_buffer(head_commit.buffer)
 
-begin
-  puts "The following changes since commit %s:
+puts "The following changes since commit %s:
 
   %s (%s)
 
 are available in the git repository at:
 
 " % [merge_base_commit, merge_base_summary, merge_base_date]
-  puts "  #{url}" + (ref ? " #{ref}" : "")
-  puts "
+puts "  #{url}" + (ref ? " #{ref}" : "")
+puts "
 for you to fetch changes up to %s:
 
   %s (%s)
@@ -171,38 +169,33 @@ for you to fetch changes up to %s:
 ----------------------------------------------------------------
 " % [head_commit, head_summary, head_date]
 
-  if branch_name
-    puts "(from the branch description for #{branch_name} local branch)"
-    puts
-    puts branch_desc
-  end
-
-  if tag_name
-    if ref != "tags/#{tag_name}"
-      $stderr.puts "warn: You locally have #{tag_name} but it does not (yet)"
-      $stderr.puts "warn: appear to be at #{url}"
-      $stderr.puts "warn: Do you want to push it there, perhaps?"
-    end
-    buffer, _ = read_sha1_file(get_sha1(tag_name))
-    puts buffer.scan(/(?:\n\n)(.+)(?:-----BEGIN PGP )?/m).first
-    puts
-  end
-
-  if branch_name || tag_name
-    puts "----------------------------------------------------------------"
-  end
-
-  show_shortlog(base, head)
-  show_diff(patch, merge_base_id, head_id)
-
-  if ! ref
-    $stderr.puts "warn: No branch of #{url} is at:"
-    $stderr.puts "warn:   %s: %s'" % [find_unique_abbrev(head_id, DEFAULT_ABBREV), head_summary]
-    $stderr.puts "warn: Are you sure you pushed '#{abbr(head_ref)}' there?"
-    status = 1
-  end
-rescue CommandError
-  status = 1
+if branch_name
+  puts "(from the branch description for #{branch_name} local branch)"
+  puts
+  puts branch_desc
 end
 
-exit status
+if tag_name
+  if ref != "tags/#{tag_name}"
+    $stderr.puts "warn: You locally have #{tag_name} but it does not (yet)"
+    $stderr.puts "warn: appear to be at #{url}"
+    $stderr.puts "warn: Do you want to push it there, perhaps?"
+  end
+  buffer, _ = read_sha1_file(get_sha1(tag_name))
+  puts buffer.scan(/(?:\n\n)(.+)(?:-----BEGIN PGP )?/m).first
+  puts
+end
+
+if branch_name || tag_name
+  puts "----------------------------------------------------------------"
+end
+
+show_shortlog(base, head)
+show_diff(patch, merge_base_id, head_id)
+
+if ! ref
+  $stderr.puts "warn: No branch of #{url} is at:"
+  $stderr.puts "warn:   %s: %s'" % [find_unique_abbrev(head_id, DEFAULT_ABBREV), head_summary]
+  $stderr.puts "warn: Are you sure you pushed '#{abbr(head_ref)}' there?"
+  exit 1
+end
