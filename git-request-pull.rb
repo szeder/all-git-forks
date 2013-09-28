@@ -4,7 +4,7 @@ require 'date'
 
 ENV['GIT_PAGER'] =
 
-patch = ''
+patch = nil
 
 def usage
   puts <<EOF
@@ -82,6 +82,19 @@ end
 def show_shortlog(base, head)
   rev = Git::RevInfo.setup(nil, ['^' + base, head], nil)
   shortlog(rev.to_a)
+end
+
+def show_diff(patch, base, head)
+  rev = Git::RevInfo.setup(nil, ['^' + sha1_to_hex(base), sha1_to_hex(head)], nil)
+  rev.diffopt.stat_width = -1
+  rev.diffopt.stat_graph_width = -1
+  rev.diffopt.output_format = patch ? DIFF_FORMAT_PATCH : DIFF_FORMAT_DIFFSTAT
+  rev.diffopt.output_format |= DIFF_FORMAT_SUMMARY
+  rev.diffopt.detect_rename = DIFF_DETECT_RENAME
+  rev.diffopt.flags |= DIFF_OPT_RECURSIVE
+
+  diff_tree_sha1(base, head, "", rev.diffopt)
+  log_tree_diff_flush(rev)
 end
 
 until ARGV.empty?
@@ -180,7 +193,7 @@ for you to fetch changes up to %s:
   end
 
   show_shortlog(base, head)
-  run(%[git diff -M --stat --summary #{patch} ^#{merge_base_commit} #{head}])
+  show_diff(patch, merge_base_id, head_id)
 
   if ! ref
     $stderr.puts "warn: No branch of #{url} is at:"
