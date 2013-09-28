@@ -25,7 +25,7 @@ def describe(rev)
   for_each_ref() do |name, sha1, flags|
     next unless name.start_with?('refs/tags/')
     next unless peel_ref(name) == get_sha1(rev)
-    return name[10..-1]
+    return name.skip_prefix('refs/tags/')
   end
   return nil
 end
@@ -43,17 +43,17 @@ end
 # Otherwise, if a branch with the same name as $head exists at the remote
 # and their values match, use that instead.
 #
-# Otherwise find a random ref that matches $headrev.
+# Otherwise find a random ref that matches $head_id.
 
-def get_ref(url, headref, headrev, tag_name)
+def get_ref(url, head_ref, head_id, tag_name)
   found = nil
   IO.popen(%[git ls-remote "#{url}"]) do |out|
     out.each do |l|
       sha1, ref, deref = l.scan(/^(\S+)\s+(\S+?)(\^\{\})?$/).first
-      next unless sha1 == headrev
+      next unless sha1 == head_id
       found = abbr(ref)
       break if (deref && ref == "refs/tags/#{tag_name}")
-      break if ref == headref
+      break if ref == head_ref
     end
   end
   return found
@@ -82,31 +82,31 @@ branch_name = branch_desc = nil
 
 usage unless base or url
 
-_, _, headref = dwim_ref(head)
+_, _, head_ref = dwim_ref(head)
 
-if headref.start_with?('refs/heads')
-  branch_name = headref[11..-1]
+if head_ref.start_with?('refs/heads')
+  branch_name = head_ref[11..-1]
   branch_desc = read_branch_desc(branch_name)
   branch_name = nil if not branch_desc
 end
 
 tag_name = describe(head)
 
-baserev = get_sha1("#{base}^0")
-die "Not a valid revision: #{base}" unless baserev
+base_id = get_sha1("#{base}^0")
+die "Not a valid revision: #{base}" unless base_id
 
-headrev = get_sha1("#{head}^0")
-die "Not a valid revision: #{head}" unless headrev
+head_id = get_sha1("#{head}^0")
+die "Not a valid revision: #{head}" unless head_id
 
-baserev = Git::Commit.get(baserev)
-headrev = Git::Commit.get(headrev)
+base_commit = Git::Commit.get(base_id)
+head_commit = Git::Commit.get(head_id)
 
-merge_bases = get_merge_bases([baserev, headrev], 0);
+merge_bases = get_merge_bases([base_commit, head_commit], 0);
 die "No commits in common between #{base} and #{head}" unless merge_bases
 
 merge_base = sha1_to_hex(merge_bases.first.sha1)
 
-ref = get_ref(url, headref != "HEAD" ? headref : nil, headrev.to_s, tag_name)
+ref = get_ref(url, head_ref != "HEAD" ? head_ref : nil, head_commit.to_s, tag_name)
 url = `git ls-remote --get-url "#{url}"`.chomp
 
 begin
@@ -122,7 +122,7 @@ for you to fetch changes up to %H:
 
   %s (%ci)
 
-----------------------------------------------------------------' #{headrev}])
+----------------------------------------------------------------' #{head_commit}])
 
   if branch_name
     puts "(from the branch description for #{branch_name} local branch)"
@@ -150,7 +150,7 @@ for you to fetch changes up to %H:
   if ! ref
     $stderr.puts "warn: No branch of #{url} is at:"
     run("git show -s --format='warn:   %h: %s' #{head} >&2")
-    $stderr.puts "warn: Are you sure you pushed '#{abbr(headref)}' there?"
+    $stderr.puts "warn: Are you sure you pushed '#{abbr(head_ref)}' there?"
     status = 1
   end
 rescue CommandError
