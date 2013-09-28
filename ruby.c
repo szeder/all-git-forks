@@ -360,6 +360,17 @@ static VALUE git_rb_shortlog(VALUE self, VALUE commits)
 	return Qnil;
 }
 
+static VALUE git_rb_diff_tree_sha1(VALUE self, VALUE old, VALUE new, VALUE base, VALUE opt)
+{
+	struct diff_options *g_opt;
+	int r;
+
+	Data_Get_Struct(opt, struct diff_options, g_opt);
+
+	r = diff_tree_sha1(str_to_sha1(old), str_to_sha1(new), str_to_cstr(base), g_opt);
+	return INT2FIX(r);
+}
+
 static VALUE git_rb_diff_opt_new(VALUE class)
 {
 	struct diff_options *opt;
@@ -477,6 +488,7 @@ static void git_ruby_init(void)
 	rb_define_global_function("find_unique_abbrev", git_rb_find_unique_abbrev, 2);
 	rb_define_global_function("read_sha1_file", git_rb_read_sha1_file, 1);
 	rb_define_global_function("shortlog", git_rb_shortlog, 1);
+	rb_define_global_function("diff_tree_sha1", git_rb_diff_tree_sha1, 4);
 
 	git_rb_object = rb_define_class_under(mod, "Object", rb_cData);
 	rb_define_singleton_method(git_rb_object, "get", git_rb_object_get, 1);
