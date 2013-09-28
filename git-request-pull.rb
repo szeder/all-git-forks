@@ -165,7 +165,8 @@ for you to fetch changes up to %s:
       $stderr.puts "warn: appear to be at #{url}"
       $stderr.puts "warn: Do you want to push it there, perhaps?"
     end
-    run(%[git cat-file tag "#{tag_name}" | sed -n -e '1,/^$/d' -e '/^-----BEGIN PGP /q' -e p])
+    buffer, _ = read_sha1_file(get_sha1(tag_name))
+    puts buffer.scan(/(?:\n\n)(.+)(?:-----BEGIN PGP )?/m).first
     puts
   end
 
