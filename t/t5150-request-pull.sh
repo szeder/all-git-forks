@@ -122,6 +122,7 @@ test_expect_success 'pull request when forgot to push' '
 		test_must_fail git request-pull initial "$downstream_url" \
 			2>../err
 	) &&
+	cat err &&
 	grep "No branch of.*is at:\$" err &&
 	grep "Are you sure you pushed" err
 '
