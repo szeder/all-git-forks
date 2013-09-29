@@ -6,7 +6,7 @@ python:
 install:
   - pip install -q --use-mirrors Mercurial${HG_VERSION+==$HG_VERSION} || true
   - pip install -q --use-mirrors bzr${BZR_VERSION+==$BZR_VERSION} || true
-  - pip install -q --use-mirrors hg-git || true
+  - pip install -q --use-mirrors 'dulwich<=0.9.0' hg-git || true
 
 script:
   - hg --version || true
