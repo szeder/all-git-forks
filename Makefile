@@ -508,12 +508,14 @@ build-perl-script: $(SCRIPT_PERL_GEN)
 build-sh-script: $(SCRIPT_SH_GEN)
 build-python-script: $(SCRIPT_PYTHON_GEN)
 
-.PHONY: install-perl-script install-sh-script install-python-script
-install-sh-script: $(SCRIPT_SH_INS)
+.PHONY: install-gitexecdir install-perl-script install-sh-script install-python-script
+install-gitexecdir:
+	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
+install-sh-script: $(SCRIPT_SH_INS) | install-gitexecdir
 	$(INSTALL) $^ '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
-install-perl-script: $(SCRIPT_PERL_INS)
+install-perl-script: $(SCRIPT_PERL_INS) | install-gitexecdir
 	$(INSTALL) $^ '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
-install-python-script: $(SCRIPT_PYTHON_INS)
+install-python-script: $(SCRIPT_PYTHON_INS) | install-gitexecdir
 	$(INSTALL) $^ '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
 
 .PHONY: clean-perl-script clean-sh-script clean-python-script
