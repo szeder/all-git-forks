@@ -443,6 +443,31 @@ static int tree_entry_prefix(unsigned char *buf, unsigned long size,
 	return len;
 }
 
+static int generate_tree_entry(struct packed_git *p,
+			       const unsigned char **bufp,
+			       unsigned char **dstp, unsigned long *sizep,
+			       int what)
+{
+	const unsigned char *path, *sha1;
+	unsigned mode;
+	int len, pathlen;
+
+	path = get_pathref(p, what >> 1, &pathlen);
+	sha1 = get_sha1ref(p, bufp);
+	if (!path || !sha1)
+		return -1;
+	mode = (path[0] << 8) | path[1];
+	len = tree_entry_prefix(*dstp, *sizep,
+				path + 2, pathlen - 2, mode);
+	if (!len || len + 20 > *sizep)
+		return -1;
+	hashcpy(*dstp + len, sha1);
+	len += 20;
+	*dstp += len;
+	*sizep -= len;
+	return 0;
+}
+
 static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 			  off_t obj_offset, unsigned int start, unsigned int count,
 			  unsigned char **dstp, unsigned long *sizep)
@@ -543,22 +568,8 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 			/*
 			 * This is an actual tree entry to recreate.
 			 */
-			const unsigned char *path, *sha1;
-			unsigned mode;
-			int len, pathlen;
-
-			path = get_pathref(p, what >> 1, &pathlen);
-			sha1 = get_sha1ref(p, &scp);
-			if (!path || !sha1)
+			if (generate_tree_entry(p, &scp, dstp, sizep, what))
 				return -1;
-			mode = (path[0] << 8) | path[1];
-			len = tree_entry_prefix(*dstp, *sizep,
-						path + 2, pathlen - 2, mode);
-			if (!len || len + 20 > *sizep)
-				return -1;
-			hashcpy(*dstp + len, sha1);
-			*dstp += len + 20;
-			*sizep -= len + 20;
 			count--;
 			curpos++;
 		} else if (what & 1) {
