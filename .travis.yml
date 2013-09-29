@@ -11,6 +11,7 @@ install:
 script:
   - hg --version || true
   - bzr --version || true
+  - pip show hg-git dulwich
   - export GIT_TEST_OPTS='-v'
   - export PYTHON_PATH="$(which python)"
   - make
