@@ -725,10 +725,10 @@ static void convert_attrs(struct conv_attrs *ca, const char *path)
 	int i;
 	static struct git_attr_check ccheck[NUM_CONV_ATTRS];
 	
-	if (NUM_CONV_ATTRS != 0) {
-		ccheck[0].attr = NULL;
-		ccheck[0].value = NULL;
-	}
+//	if (NUM_CONV_ATTRS != 0) {
+//		ccheck[0].attr = NULL;
+//		ccheck[0].value = NULL;
+//	}
 
 	if (!ccheck[0].attr) {
 		for (i = 0; i < NUM_CONV_ATTRS; i++)

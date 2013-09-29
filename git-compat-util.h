@@ -237,16 +237,16 @@ extern char *gitbasename(char *);
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
-#ifdef GIT_WINDOWS_NATIVE
-/* Git for Windows checkout PATH_MAX is reduce to 260.
- * but if checkout relative long path name, its length too short.
- * thus, expand length.
- */
-#ifdef PATH_MAX
-#undef PATH_MAX
-#endif
-#define PATH_MAX 4096
-#endif
+//#ifdef GIT_WINDOWS_NATIVE
+///* Git for Windows checkout PATH_MAX is reduce to 260.
+// * but if checkout relative long path name, its length too short.
+// * thus, expand length.
+// */
+//#ifdef PATH_MAX
+//#undef PATH_MAX
+//#endif
+//#define PATH_MAX 4096
+//#endif
 
 #ifndef PRIuMAX
 #define PRIuMAX "llu"
