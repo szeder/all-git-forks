@@ -28,7 +28,7 @@ then
 	VN=$(cat version) || VN="$DEF_VER"
 elif test -d ${GIT_DIR:-.git} -o -f .git && describe
 then
-	VN=$(echo "$VN" | sed -e 's/-/./g')
+	VN=$(echo "$VN" | sed -e 's/-/~/g')
 else
 	VN="$DEF_VER"
 fi
