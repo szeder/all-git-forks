@@ -375,7 +375,7 @@ test_expect_success 'export utf-8 authors' '
 	cd gitrepo &&
 	echo greg >> content &&
 	git add content &&
-	git commit -m one
+	git commit -m one &&
 	git remote add bzr "bzr::../bzrrepo" &&
 	git push bzr
 	) &&

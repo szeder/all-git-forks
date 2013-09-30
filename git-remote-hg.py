@@ -26,6 +26,9 @@ import urlparse, hashlib
 import time as ptime
 
 #
+# If you want to see Mercurial revisions as Git commit notes:
+# git config core.notesRef refs/notes/hg
+#
 # If you are not in hg-git-compat mode and want to disable the tracking of
 # named branches:
 # git config --global remote-hg.track-branches false
@@ -657,7 +660,6 @@ def do_import(parser):
         print "feature import-marks=%s" % path
     print "feature export-marks=%s" % path
     print "feature force"
-    print "feature notes"
     sys.stdout.flush()
 
     tmp = encoding.encoding
