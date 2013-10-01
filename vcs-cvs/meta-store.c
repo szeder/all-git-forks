@@ -362,7 +362,7 @@ struct revision_cache_entry {
 };
 
 static struct hash_table *revision_cache_hash = NULL;
-static  char *cache_buf = NULL;
+static char *cache_buf = NULL;
 
 static unsigned int hash_path_rev(const char *path, const char *rev)
 {

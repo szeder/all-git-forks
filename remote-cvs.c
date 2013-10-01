@@ -2547,6 +2547,7 @@ int main(int argc, const char **argv)
 	if (getenv("WAIT_GDB"))
 		sleep(5);
 
+	set_proto_trace_tz(local_tzoffset(time(NULL)));
 	setenv("TZ", "UTC", 1);
 	tzset();
 

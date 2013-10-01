@@ -3,6 +3,13 @@
 #include "strbuf.h"
 #include "cache.h"
 
+#define DATE_FORMAT DATE_ISO8601
+int tz = 0;
+void set_proto_trace_tz(int trace_tz)
+{
+	tz = trace_tz;
+}
+
 static inline const char *strbuf_hex_unprintable(struct strbuf *sb)
 {
 	static const char hex[] = "0123456789abcdef";
@@ -42,7 +49,9 @@ static void proto_trace_blob_kp(const char *trace_key, const char *proto, size_t
 {
 	struct strbuf out = STRBUF_INIT;
 
-	strbuf_addf(&out, "%s %4zu %s ...BLOB...\n", proto, len, dir_arrow(direction));
+	strbuf_addf(&out, "%s %s %4zu %s ...BLOB...\n",
+			  show_date(time(NULL), tz, DATE_FORMAT),
+			  proto, len, dir_arrow(direction));
 
 	trace_strbuf(trace_key, &out);
 	strbuf_release(&out);
@@ -69,13 +78,15 @@ void proto_trace_kp(const char *trace_key, const char *proto, const char *buf, s
 	lines = strbuf_split_buf(buf, len, '\n', 0);
 	for (it = lines; *it; it++) {
 		if (it == lines)
-			strbuf_addf(&out, "%s %4zu %s %s\n",
+			strbuf_addf(&out, "%s %s %4zu %s %s\n",
+				    show_date(time(NULL), tz, DATE_FORMAT),
 				    proto,
 				    len,
 				    dir_arrow(direction),
 				    strbuf_hex_unprintable(*it));
 		else
-			strbuf_addf(&out, "%s      %s %s\n",
+			strbuf_addf(&out, "%s %s      %s %s\n",
+				    show_date(time(NULL), tz, DATE_FORMAT),
 				    proto,
 				    dir_arrow(direction),
 				    strbuf_hex_unprintable(*it));
@@ -93,7 +104,8 @@ void proto_ztrace_kp(const char *trace_key, const char *proto, size_t len, size_
 	if (!trace_want(trace_key))
 		return;
 
-	strbuf_addf(&out, "%s ZLIB %s %zu z%zu\n",
+	strbuf_addf(&out, "%s %s ZLIB %s %zu z%zu\n",
+				    show_date(time(NULL), tz, DATE_FORMAT),
 				    proto,
 				    dir_arrow(direction),
 				    len, zlen);

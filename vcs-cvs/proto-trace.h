@@ -10,6 +10,7 @@ enum direction {
 	IN_BLOB
 };
 
+void set_proto_trace_tz(int tz);
 void proto_trace_kp(const char *trace_key, const char *proto, const char *buf, size_t len, int direction);
 void proto_ztrace_kp(const char *trace_key, const char *proto, size_t len, size_t zlen, int direction);
 

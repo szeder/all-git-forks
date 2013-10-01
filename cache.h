@@ -926,6 +926,7 @@ enum date_mode {
 	DATE_RAW
 };
 
+int local_tzoffset(unsigned long time);
 const char *show_date(unsigned long time, int timezone, enum date_mode mode);
 void show_date_relative(unsigned long time, int tz, const struct timeval *now,
 			struct strbuf *timebuf);
