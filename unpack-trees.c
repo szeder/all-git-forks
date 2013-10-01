@@ -961,7 +961,7 @@ static int clear_ce_flags(struct cache_entry **cache, int nr,
 			    int select_mask, int clear_mask,
 			    struct exclude_list *el)
 {
-	char prefix[PATH_MAX];
+	char prefix[4096];
 	return clear_ce_flags_1(cache, nr,
 				prefix, 0,
 				select_mask, clear_mask,
