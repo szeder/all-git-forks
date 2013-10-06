@@ -24,10 +24,20 @@ void *pv4_get_commit(struct packed_git *p, struct pack_window **w_curs,
 void *pv4_get_tree(struct packed_git *p, struct pack_window **w_curs,
 		   off_t obj_offset, unsigned long size);
 
+/*
+ * These are private flags, never pass them directly to
+ * pv4_tree_desc_*
+ */
+#define PV4_TREE_CANONICAL   0x800
+
 struct pv4_tree_desc {
+	unsigned flags;
+
 	/* v4 entry */
 	struct packed_git *p;
 	struct pack_window *w_curs;
+	unsigned int sha1_index;
+	int pathlen;
 
 	/* v2 entry */
 	struct tree_desc v2;
