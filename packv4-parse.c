@@ -10,7 +10,6 @@
 
 #include "cache.h"
 #include "packv4-parse.h"
-#include "tree-walk.h"
 #include "varint.h"
 
 const unsigned char *get_sha1ref(struct packed_git *p,
@@ -351,7 +350,7 @@ static int copy_canonical_tree_entries(struct pv4_tree_desc *v4, off_t offset,
 	const unsigned char *from, *end;
 	enum object_type type;
 	unsigned long size;
-	struct tree_desc desc;
+	struct tree_desc *desc = &v4->v2;
 
 	data = unpack_entry(v4->p, offset, &type, &size);
 	if (!data)
@@ -361,15 +360,15 @@ static int copy_canonical_tree_entries(struct pv4_tree_desc *v4, off_t offset,
 		return -1;
 	}
 
-	init_tree_desc(&desc, data, size);
+	init_tree_desc(desc, data, size);
 
 	while (start--)
-		update_tree_entry(&desc);
+		update_tree_entry(desc);
 
-	from = desc.buffer;
+	from = desc->buffer;
 	while (count--)
-		update_tree_entry(&desc);
-	end = desc.buffer;
+		update_tree_entry(desc);
+	end = desc->buffer;
 
 	if (end - from > strbuf_avail(&v4->buf)) {
 		free(data);

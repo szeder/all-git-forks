@@ -1,6 +1,8 @@
 #ifndef PACKV4_PARSE_H
 #define PACKV4_PARSE_H
 
+#include "tree-walk.h"
+
 struct packv4_dict {
 	const unsigned char *data;
 	unsigned int nb_entries;
@@ -26,6 +28,9 @@ struct pv4_tree_desc {
 	/* v4 entry */
 	struct packed_git *p;
 	struct pack_window *w_curs;
+
+	/* v2 entry */
+	struct tree_desc v2;
 
 	/* full canonical tree */
 	struct strbuf buf;
