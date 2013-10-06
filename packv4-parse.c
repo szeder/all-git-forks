@@ -344,9 +344,8 @@ void *pv4_get_commit(struct packed_git *p, struct pack_window **w_curs,
 	return dst;
 }
 
-static int copy_canonical_tree_entries(struct packed_git *p, off_t offset,
-				       unsigned int start, unsigned int count,
-				       unsigned char **dstp, unsigned long *sizep)
+static int copy_canonical_tree_entries(struct pv4_tree_desc *v4, off_t offset,
+				       unsigned int start, unsigned int count)
 {
 	void *data;
 	const unsigned char *from, *end;
@@ -354,7 +353,7 @@ static int copy_canonical_tree_entries(struct packed_git *p, off_t offset,
 	unsigned long size;
 	struct tree_desc desc;
 
-	data = unpack_entry(p, offset, &type, &size);
+	data = unpack_entry(v4->p, offset, &type, &size);
 	if (!data)
 		return -1;
 	if (type != OBJ_TREE) {
@@ -372,13 +371,11 @@ static int copy_canonical_tree_entries(struct packed_git *p, off_t offset,
 		update_tree_entry(&desc);
 	end = desc.buffer;
 
-	if (end - from > *sizep) {
+	if (end - from > strbuf_avail(&v4->buf)) {
 		free(data);
 		return -1;
 	}
-	memcpy(*dstp, from, end - from);
-	*dstp += end - from;
-	*sizep -= end - from;
+	strbuf_add(&v4->buf, from, end - from);
 	free(data);
 	return 0;
 }
@@ -417,7 +414,7 @@ static struct pv4_tree_cache *get_tree_offset_cache(struct packed_git *p, off_t 
 	return c;
 }
 
-static int tree_entry_prefix(unsigned char *buf, unsigned long size,
+static int tree_entry_prefix(char *buf, unsigned long size,
 			     const unsigned char *path, int path_len,
 			     unsigned mode)
 {
@@ -443,35 +440,33 @@ static int tree_entry_prefix(unsigned char *buf, unsigned long size,
 	return len;
 }
 
-static int generate_tree_entry(struct packed_git *p,
+static int generate_tree_entry(struct pv4_tree_desc *desc,
 			       const unsigned char **bufp,
-			       unsigned char **dstp, unsigned long *sizep,
 			       int what)
 {
 	const unsigned char *path, *sha1;
+	char *buf = desc->buf.buf + desc->buf.len;
 	unsigned mode;
 	int len, pathlen;
 
-	path = get_pathref(p, what >> 1, &pathlen);
-	sha1 = get_sha1ref(p, bufp);
+	path = get_pathref(desc->p, what >> 1, &pathlen);
+	sha1 = get_sha1ref(desc->p, bufp);
 	if (!path || !sha1)
 		return -1;
 	mode = (path[0] << 8) | path[1];
-	len = tree_entry_prefix(*dstp, *sizep,
+	len = tree_entry_prefix(buf, strbuf_avail(&desc->buf),
 				path + 2, pathlen - 2, mode);
-	if (!len || len + 20 > *sizep)
+	if (!len || len + 20 > strbuf_avail(&desc->buf))
 		return -1;
-	hashcpy(*dstp + len, sha1);
-	len += 20;
-	*dstp += len;
-	*sizep -= len;
+	memcpy(buf + len, sha1, 20);
+	desc->buf.len += len + 20;
 	return 0;
 }
 
-static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
-			  off_t obj_offset, unsigned int start, unsigned int count,
-			  unsigned char **dstp, unsigned long *sizep)
+static int decode_entries(struct pv4_tree_desc *desc, off_t obj_offset,
+			  unsigned int start, unsigned int count)
 {
+	struct packed_git *p = desc->p;
 	unsigned long avail;
 	const unsigned char *src, *scp;
 	unsigned int curpos;
@@ -490,7 +485,7 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 	} else {
 		unsigned int nb_entries;
 
-		src = use_pack(p, w_curs, obj_offset, &avail);
+		src = use_pack(p, &desc->w_curs, obj_offset, &avail);
 		scp = src;
 
 		/* we need to skip over the object header */
@@ -502,9 +497,8 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 		/* is this a canonical tree object? */
 		case OBJ_TREE:
 		case OBJ_REF_DELTA:
-			return copy_canonical_tree_entries(p, obj_offset,
-							   start, count,
-							   dstp, sizep);
+			return copy_canonical_tree_entries(desc, obj_offset,
+							   start, count);
 		/* let's still make sure this is actually a pv4 tree */
 		case OBJ_PV4_TREE:
 			break;
@@ -542,7 +536,7 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 		unsigned int what;
 
 		if (avail < 20) {
-			src = use_pack(p, w_curs, offset, &avail);
+			src = use_pack(p, &desc->w_curs, offset, &avail);
 			if (avail < 20)
 				return -1;
 		}
@@ -568,7 +562,7 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 			/*
 			 * This is an actual tree entry to recreate.
 			 */
-			if (generate_tree_entry(p, &scp, dstp, sizep, what))
+			if (generate_tree_entry(desc, &scp, what))
 				return -1;
 			count--;
 			curpos++;
@@ -638,9 +632,8 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 					start = 0;
 				}
 
-				ret = decode_entries(p, w_curs, copy_objoffset,
-						     copy_start, copy_count,
-						     dstp, sizep);
+				ret = decode_entries(desc, copy_objoffset,
+						     copy_start, copy_count);
 				if (ret)
 					return ret;
 
@@ -672,17 +665,21 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 void *pv4_get_tree(struct packed_git *p, struct pack_window **w_curs,
 		   off_t obj_offset, unsigned long size)
 {
-	unsigned char *dst, *dcp;
+	struct pv4_tree_desc desc;
 	int ret;
 
-	dst = xmallocz(size);
-	dcp = dst;
-	ret = decode_entries(p, w_curs, obj_offset, 0, 0, &dcp, &size);
-	if (ret < 0 || size != 0) {
-		free(dst);
+	memset(&desc, 0, sizeof(desc));
+	desc.p = p;
+	desc.w_curs = *w_curs;
+	strbuf_init(&desc.buf, size);
+
+	ret = decode_entries(&desc, obj_offset, 0, 0);
+	*w_curs = desc.w_curs;
+	if (ret < 0 || desc.buf.len != size) {
+		strbuf_release(&desc.buf);
 		return NULL;
 	}
-	return dst;
+	return strbuf_detach(&desc.buf, NULL);
 }
 
 unsigned long pv4_unpack_object_header_buffer(const unsigned char *base,
