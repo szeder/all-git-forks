@@ -365,6 +365,12 @@ static int copy_canonical_tree_entries(struct pv4_tree_desc *v4, off_t offset,
 	while (start--)
 		update_tree_entry(desc);
 
+	if (!(v4->flags & PV4_TREE_CANONICAL)) {
+		v4->sha1_index = 0;
+		v4->pathlen = tree_entry_len(&desc->entry);
+		return 0;
+	}
+
 	from = desc->buffer;
 	while (count--)
 		update_tree_entry(desc);
@@ -459,6 +465,33 @@ static int generate_tree_entry(struct pv4_tree_desc *desc,
 		return -1;
 	memcpy(buf + len, sha1, 20);
 	desc->buf.len += len + 20;
+	return 0;
+}
+
+static int get_tree_entry_v4(struct pv4_tree_desc *desc,
+			     const unsigned char **bufp,
+			     int what)
+{
+	const unsigned char *path;
+
+	path = get_pathref(desc->p, what >> 1, &desc->pathlen);
+	if (!path)
+		return -1;
+	desc->v2.entry.mode = (path[0] << 8) | path[1];
+	desc->v2.entry.path = (const char *)path + 2;
+
+	if (**bufp) {
+		desc->sha1_index = decode_varint(bufp);
+		if (desc->sha1_index < 1 ||
+		    desc->sha1_index - 1 > desc->p->num_objects)
+			return error("bad index in get_sha1ref");
+		desc->v2.entry.sha1 = desc->p->sha1_table + (desc->sha1_index - 1) * 20;
+	} else {
+		desc->sha1_index = 0;
+		desc->v2.entry.sha1 = *bufp + 1;
+		*bufp += 21;
+	}
+
 	return 0;
 }
 
@@ -561,8 +594,14 @@ static int decode_entries(struct pv4_tree_desc *desc, off_t obj_offset,
 			/*
 			 * This is an actual tree entry to recreate.
 			 */
-			if (generate_tree_entry(desc, &scp, what))
-				return -1;
+			if (desc->flags & PV4_TREE_CANONICAL) {
+				if (generate_tree_entry(desc, &scp, what))
+					return -1;
+			} else if (count == 1) {
+				if (get_tree_entry_v4(desc, &scp, what))
+					return -1;
+			} else
+				die("generating multiple v4 entries is not supported");
 			count--;
 			curpos++;
 		} else if (what & 1) {
@@ -668,6 +707,7 @@ void *pv4_get_tree(struct packed_git *p, struct pack_window **w_curs,
 	int ret;
 
 	memset(&desc, 0, sizeof(desc));
+	desc.flags = PV4_TREE_CANONICAL;
 	desc.p = p;
 	desc.w_curs = *w_curs;
 	strbuf_init(&desc.buf, size);
