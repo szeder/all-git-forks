@@ -64,9 +64,16 @@ int prune_option_parse(const struct option *opt,
 	struct prune_option *target = opt->value;
 
 	if (unset) {
+		if (arg) {
+			error("--no-prune must not be used with an argument");
+			return 1;
+		}
 		target->prune = 0;
+		string_list_clear(&target->prune_patterns, 0);
 	} else {
 		target->prune = 1;
+		if (arg)
+			string_list_append(&target->prune_patterns, arg);
 	}
 	return 0;
 }
@@ -104,16 +111,36 @@ void prune_option_fill(struct remote *remote,
 				prune_option->prune = default_prune;
 		}
 	}
+
+	if (prune_option->prune) {
+		if (!prune_option->prune_patterns.nr) {
+			/*
+			 * We want to prune, but no pruning patterns were
+			 * specified on the command line.  Default to "*"
+			 */
+			string_list_append(&prune_option->prune_patterns, "*");
+		}
+	} else {
+		string_list_clear(&prune_option->prune_patterns, 0);
+	}
 }
 
 void argv_push_prune_option(struct argv_array *argv,
 			    struct prune_option *prune_option)
 {
-	if (prune_option->prune != -1)
-		argv_array_pushf(argv,
-				 prune_option->prune
-				 ? "--prune"
-				 : "--no-prune");
+	if (prune_option->prune != -1) {
+		if (prune_option->prune && prune_option->prune_patterns.nr) {
+			struct string_list_item *item;
+
+			for_each_string_list_item(item, &prune_option->prune_patterns)
+				argv_array_pushf(argv, "--prune=%s", item->string);
+		} else {
+			argv_array_pushf(argv,
+					 prune_option->prune
+					 ? "--prune"
+					 : "--no-prune");
+		}
+	}
 }
 
 static int valid_remote(const struct remote *remote)

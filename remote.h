@@ -55,15 +55,18 @@ struct remote {
 	char *http_proxy;
 };
 
-/* Structure to hold parsed --prune/--no-prune options */
+/* Structure to hold parsed --prune/--prune=<pattern>/--no-prune options */
 struct prune_option {
 	/* Should we prune at all?  -1 is indeterminate. */
 	int prune;
+
+	/* Arguments passed to --prune=<pattern> */
+	struct string_list prune_patterns;
 };
 
-#define PRUNE_OPTION_INIT { -1 }
+#define PRUNE_OPTION_INIT { -1, STRING_LIST_INIT_DUP }
 
-/* parse_opts() callback for --prune/--no-prune options */
+/* parse_opts() callback for --prune/--prune=<pattern>/--no-prune options */
 int prune_option_parse(const struct option *opt, const char *arg, int unset);
 
 /*
