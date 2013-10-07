@@ -347,7 +347,8 @@ static int get_ref_states(const struct ref *remote_refs, struct ref_states *stat
 			string_list_append(&states->tracked, abbrev_branch(ref->name));
 	}
 	stale_refs = get_stale_heads(states->remote->fetch,
-				     states->remote->fetch_refspec_nr, fetch_map);
+				     states->remote->fetch_refspec_nr,
+				     fetch_map, NULL);
 	for (ref = stale_refs; ref; ref = ref->next) {
 		struct string_list_item *item =
 			string_list_append(&states->stale, abbrev_branch(ref->name));

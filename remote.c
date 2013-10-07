@@ -1948,13 +1948,31 @@ struct stale_heads_info {
 	struct ref **stale_refs_tail;
 	struct refspec *refs;
 	int ref_count;
+	struct string_list *patterns;
 };
 
 static int get_stale_heads_cb(const char *refname,
-	const unsigned char *sha1, int flags, void *cb_data)
+			      const unsigned char *sha1, int flags,
+			      void *cb_data)
 {
 	struct stale_heads_info *info = cb_data;
 	struct refspec query;
+	struct string_list *patterns = info->patterns;
+
+	if (patterns) {
+		int refname_matches = 0;
+		struct string_list_item *item;
+
+		for_each_string_list_item(item, patterns) {
+			if (!fnmatch(item->string, refname, 0)) {
+				refname_matches = 1;
+				break;
+			}
+		}
+		if (!refname_matches)
+			return 0;
+	}
+
 	memset(&query, 0, sizeof(struct refspec));
 	query.dst = (char *)refname;
 
@@ -1976,15 +1994,19 @@ static int get_stale_heads_cb(const char *refname,
 	return 0;
 }
 
-struct ref *get_stale_heads(struct refspec *refs, int ref_count, struct ref *fetch_map)
+struct ref *get_stale_heads(struct refspec *refs, int ref_count,
+			    struct ref *fetch_map,
+			    struct string_list *patterns)
 {
 	struct ref *ref, *stale_refs = NULL;
 	struct string_list ref_names = STRING_LIST_INIT_NODUP;
 	struct stale_heads_info info;
+
 	info.ref_names = &ref_names;
 	info.stale_refs_tail = &stale_refs;
 	info.refs = refs;
 	info.ref_count = ref_count;
+	info.patterns = patterns;
 	for (ref = fetch_map; ref; ref = ref->next)
 		string_list_append(&ref_names, ref->name);
 	sort_string_list(&ref_names);

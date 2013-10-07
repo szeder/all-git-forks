@@ -230,8 +230,13 @@ struct ref *guess_remote_head(const struct ref *head,
 			      const struct ref *refs,
 			      int all);
 
-/* Return refs which no longer exist on remote */
-struct ref *get_stale_heads(struct refspec *refs, int ref_count, struct ref *fetch_map);
+/*
+ * Return refs that no longer exist on remote and that match one of
+ * the patterns.
+ */
+struct ref *get_stale_heads(struct refspec *refs, int ref_count,
+			    struct ref *fetch_map,
+			    struct string_list *patterns);
 
 /*
  * Compare-and-swap
