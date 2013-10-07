@@ -75,7 +75,7 @@ static struct option builtin_fetch_options[] = {
 		    N_("do not fetch all tags (--no-tags)"), TAGS_UNSET),
 	{ OPTION_CALLBACK, 'p', "prune", &prune_option, N_("pattern"),
 		    N_("prune remote-tracking branches no longer on remote"),
-		    PARSE_OPT_NOARG, prune_option_parse },
+		    PARSE_OPT_OPTARG, prune_option_parse },
 	{ OPTION_CALLBACK, 0, "recurse-submodules", NULL, N_("on-demand"),
 		    N_("control recursive fetching of submodules"),
 		    PARSE_OPT_OPTARG, option_parse_recurse_submodules },
@@ -584,7 +584,8 @@ static int fetch_refs(struct transport *transport, struct ref *ref_map)
 static int prune_refs(struct refspec *refs, int ref_count, struct ref *ref_map)
 {
 	int result = 0;
-	struct ref *stale_refs = get_stale_heads(refs, ref_count, ref_map, NULL);
+	struct ref *stale_refs = get_stale_heads(refs, ref_count, ref_map,
+						 &prune_option.prune_patterns);
 	struct ref *ref;
 	const char *dangling_msg = dry_run
 		? _("   (%s will become dangling)")

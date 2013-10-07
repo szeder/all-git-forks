@@ -39,10 +39,13 @@ ifndef::git-pull[]
 	Allow several <repository> and <group> arguments to be
 	specified. No <refspec>s may be specified.
 
--p::
---prune::
-	After fetching, remove any remote-tracking branches which
-	no longer exist	on the remote.
+-p[<pattern>]::
+--prune[=<pattern>]::
+	After fetching, remove any remote-tracking branches that would
+	have been fetched but no longer exist on the remote.  If
+	pattern is specified, then it should be a glob pattern, and
+	only references whose names match the pattern are subject to
+	pruning.  This option can be specified multiple times.
 endif::git-pull[]
 
 ifdef::git-pull[]
