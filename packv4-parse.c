@@ -732,3 +732,83 @@ unsigned long pv4_unpack_object_header_buffer(const unsigned char *base,
 	*sizep = val >> 4;
 	return cp - base;
 }
+
+int pv4_tree_desc_from_sha1(struct pv4_tree_desc *desc,
+			    const unsigned char *sha1,
+			    unsigned flags)
+{
+	unsigned long size;
+	enum object_type type;
+	void *data;
+	struct object_info oi;
+
+	assert(!(flags & ~0xff) &&
+	       "you are not supposed to set these from outside!");
+
+	memset(desc, 0, sizeof(*desc));
+	strbuf_init(&desc->buf, 0);
+
+	memset(&oi, 0, sizeof(oi));
+	if (!sha1_object_info_extended(sha1, &oi) &&
+	    oi.whence == OI_PACKED &&
+	    oi.u.packed.real_type == OBJ_PV4_TREE &&
+	    oi.u.packed.pack->version >= 4) {
+		desc->p = oi.u.packed.pack;
+		desc->obj_offset = oi.u.packed.offset;
+		desc->flags = flags;
+		return 0;
+	}
+
+	data = read_sha1_file(sha1, &type, &size);
+	if (!data || type != OBJ_TREE) {
+		free(data);
+		return -1;
+	}
+	desc->flags = flags;
+	desc->flags |= PV4_TREE_CANONICAL;
+	init_tree_desc(&desc->v2, data, size);
+	/*
+	 * we can attach to strbuf because read_sha1_file always
+	 * appends NUL at the end
+	 */
+	strbuf_attach(&desc->buf, data, size, size + 1);
+	return 0;
+}
+
+int pv4_tree_desc_from_entry(struct pv4_tree_desc *desc,
+			     const struct pv4_tree_desc *src,
+			     unsigned flags)
+{
+	if (!src->sha1_index)
+		return pv4_tree_desc_from_sha1(desc,
+					       src->v2.entry.sha1,
+					       flags);
+	assert(!(flags & ~0xff) &&
+	       "you are not supposed to set these from outside!");
+	memset(desc, 0, sizeof(*desc));
+	strbuf_init(&desc->buf, 0);
+	desc->p = src->p;
+	desc->obj_offset =
+		nth_packed_object_offset(desc->p, src->sha1_index - 1);
+	desc->flags = flags;
+	return 0;
+}
+
+void pv4_release_tree_desc(struct pv4_tree_desc *desc)
+{
+	strbuf_release(&desc->buf);
+	unuse_pack(&desc->w_curs);
+}
+
+int pv4_tree_entry(struct pv4_tree_desc *desc)
+{
+	if (desc->flags & PV4_TREE_CANONICAL) {
+		if (!desc->v2.size)
+			return 0;
+		if (desc->start)
+			update_tree_entry(&desc->v2);
+		desc->start++;
+		return 1;
+	}
+	return !decode_entries(desc, desc->obj_offset, desc->start++, 1);
+}

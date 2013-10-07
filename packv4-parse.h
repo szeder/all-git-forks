@@ -36,6 +36,8 @@ struct pv4_tree_desc {
 	/* v4 entry */
 	struct packed_git *p;
 	struct pack_window *w_curs;
+	off_t obj_offset;
+	unsigned start;
 	unsigned int sha1_index;
 	int pathlen;
 
@@ -45,5 +47,15 @@ struct pv4_tree_desc {
 	/* full canonical tree */
 	struct strbuf buf;
 };
+
+int pv4_tree_desc_from_sha1(struct pv4_tree_desc *desc,
+			    const unsigned char *sha1,
+			    unsigned flags);
+int pv4_tree_desc_from_entry(struct pv4_tree_desc *desc,
+			     const struct pv4_tree_desc *src,
+			     unsigned flags);
+void pv4_release_tree_desc(struct pv4_tree_desc *desc);
+
+int pv4_tree_entry(struct pv4_tree_desc *desc);
 
 #endif
