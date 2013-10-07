@@ -2,6 +2,8 @@
 #define REMOTE_H
 
 #include "parse-options.h"
+#include "string-list.h"
+#include "argv-array.h"
 
 enum {
 	REMOTE_CONFIG,
@@ -52,6 +54,33 @@ struct remote {
 	 */
 	char *http_proxy;
 };
+
+/* Structure to hold parsed --prune/--no-prune options */
+struct prune_option {
+	/* Should we prune at all?  -1 is indeterminate. */
+	int prune;
+};
+
+#define PRUNE_OPTION_INIT { -1 }
+
+/* parse_opts() callback for --prune/--no-prune options */
+int prune_option_parse(const struct option *opt, const char *arg, int unset);
+
+/*
+ * Fill in prune_option for the specified remote, given the
+ * prune_option values parsed from the command-line.  default_prune
+ * specifies whether pruning should default to true or false if it has
+ * not been configured explicitly.
+ */
+void prune_option_fill(struct remote *remote,
+		       struct prune_option *prune_option, int default_prune);
+
+/*
+ * Add --prune/--prune=<pattern>/--no-prune options to the argv_array
+ * to represent the options in prune_options.
+ */
+void argv_push_prune_option(struct argv_array *argv,
+			    struct prune_option *prune_option);
 
 struct remote *remote_get(const char *name);
 struct remote *pushremote_get(const char *name);

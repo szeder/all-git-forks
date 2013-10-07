@@ -58,6 +58,63 @@ static struct rewrites rewrites_push;
 #define BUF_SIZE (2048)
 static char buffer[BUF_SIZE];
 
+int prune_option_parse(const struct option *opt, const char *arg, int unset)
+{
+	struct prune_option *target = opt->value;
+
+	if (unset) {
+		target->prune = 0;
+	} else {
+		target->prune = 1;
+	}
+	return 0;
+}
+
+static int git_fetch_config(const char *k, const char *v, void *cb)
+{
+	int *fetch_prune_config = cb;
+
+	if (!strcmp(k, "fetch.prune")) {
+		*fetch_prune_config = git_config_bool(k, v);
+		return 0;
+	}
+	return 0;
+}
+
+void prune_option_fill(struct remote *remote,
+		       struct prune_option *prune_option, int default_prune)
+{
+	if (prune_option->prune < 0) {
+		/*
+		 * The user specified neither --prune nor --no-prune;
+		 * use the configured value of remote.<name>.prune or
+		 * fetch.prune:
+		 */
+		if (remote->prune >= 0) {
+			prune_option->prune = remote->prune;
+		} else {
+			int fetch_prune_config = -1;
+
+			git_config(git_fetch_config, &fetch_prune_config);
+
+			if (fetch_prune_config >= 0)
+				prune_option->prune = fetch_prune_config;
+			else
+				prune_option->prune = default_prune;
+		}
+	}
+}
+
+void argv_push_prune_option(struct argv_array *argv,
+			    struct prune_option *prune_option)
+{
+	if (prune_option->prune != -1)
+		argv_array_pushf(argv,
+				 prune_option->prune
+				 ? "--prune"
+				 : "--no-prune");
+}
+
 static int valid_remote(const struct remote *remote)
 {
 	return (!!remote->url) || (!!remote->foreign_vcs);
