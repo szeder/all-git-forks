@@ -614,6 +614,19 @@ test_expect_success 'update --prune' '
 	)
 '
 
+test_expect_success 'update --prune with argument' '
+	git clone one update-prune-arg &&
+	(
+		cd update-prune-arg &&
+		git update-ref refs/remotes/origin/branch1 master &&
+		git update-ref refs/remotes/origin/branch2 master &&
+
+		git remote update --prune="refs/remotes/*1" origin &&
+		test_must_fail git rev-parse origin/branch1 &&
+		git rev-parse origin/branch2
+	)
+'
+
 cat >one/expect <<-\EOF
   apis/master
   apis/side

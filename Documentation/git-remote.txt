@@ -20,7 +20,8 @@ SYNOPSIS
 'git remote set-url --delete' [--push] <name> <url>
 'git remote' [-v | --verbose] 'show' [-n] <name>...
 'git remote prune' [-n | --dry-run] <name>...
-'git remote' [-v | --verbose] 'update' [-p | --prune] [(<group> | <remote>)...]
+'git remote' [-v | --verbose] 'update' [-p[<patter>] | --prune[=<patter>] | --no-prune]
+                                       [(<group> | <remote>)...]
 
 DESCRIPTION
 -----------
@@ -168,7 +169,9 @@ remotes.default is not defined, all remotes which do not have the
 configuration parameter remote.<name>.skipDefaultUpdate set to true will
 be updated.  (See linkgit:git-config[1]).
 +
-With `--prune` option, prune all the remotes that are updated.
+The options `--prune`, `--no-prune`, and `--prune=<pattern>` affect
+whether remote-tracking branches associated with the remotes are
+pruned.  See linkgit:git-fetch[1] for more information.
 
 
 DISCUSSION

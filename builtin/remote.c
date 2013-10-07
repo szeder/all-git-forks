@@ -16,7 +16,7 @@ static const char * const builtin_remote_usage[] = {
 	N_("git remote set-head <name> (-a | -d | <branch>)"),
 	N_("git remote [-v | --verbose] show [-n] <name>"),
 	N_("git remote prune [-n | --dry-run] <name>"),
-	N_("git remote [-v | --verbose] update [-p | --prune] [(<group> | <remote>)...]"),
+	N_("git remote [-v | --verbose] update [-p[<pattern>] | --prune[=<pattern>] | --no-prune] [(<group> | <remote>)...]"),
 	N_("git remote set-branches [--add] <name> <branch>..."),
 	N_("git remote set-url [--push] <name> <newurl> [<oldurl>]"),
 	N_("git remote set-url --add <name> <newurl>"),
@@ -1377,7 +1377,7 @@ static int update(int argc, const char **argv)
 	struct option options[] = {
 		{ OPTION_CALLBACK, 'p', "prune", &prune_option, N_("pattern"),
 			N_("prune remotes after fetching"),
-			PARSE_OPT_NOARG, prune_option_parse },
+			PARSE_OPT_OPTARG, prune_option_parse },
 		OPT_END()
 	};
 	struct argv_array fetch_argv = ARGV_ARRAY_INIT;
