@@ -104,6 +104,12 @@ ssize_t read_istream(struct git_istream *st, void *buf, size_t sz)
 	return st->vtbl->read(st, buf, sz);
 }
 
+static int is_canonical(int type)
+{
+	return type != OBJ_COMMIT && type != OBJ_TREE &&
+		type != OBJ_BLOB && type != OBJ_TAG;
+}
+
 static enum input_source istream_source(const unsigned char *sha1,
 					enum object_type *type,
 					struct object_info *oi)
@@ -121,7 +127,8 @@ static enum input_source istream_source(const unsigned char *sha1,
 	case OI_LOOSE:
 		return loose;
 	case OI_PACKED:
-		if (!oi->u.packed.is_delta && big_file_threshold < size)
+		if (is_canonical(oi->u.packed.real_type) &&
+		    big_file_threshold < size)
 			return pack_non_delta;
 		/* fallthru */
 	default:
