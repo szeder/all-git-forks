@@ -3,6 +3,12 @@
 
 #include "tree-walk.h"
 
+struct object;
+struct commit;
+struct tree;
+struct blob;
+struct tag;
+
 struct packv4_dict {
 	const unsigned char *data;
 	unsigned int nb_entries;
@@ -57,5 +63,11 @@ int pv4_tree_desc_from_entry(struct pv4_tree_desc *desc,
 void pv4_release_tree_desc(struct pv4_tree_desc *desc);
 
 int pv4_tree_entry(struct pv4_tree_desc *desc);
+
+struct object *pv4_lookup_object(struct pv4_tree_desc *desc);
+struct commit *pv4_lookup_commit(struct pv4_tree_desc *desc);
+struct tree   *pv4_lookup_tree(struct pv4_tree_desc *desc);
+struct blob   *pv4_lookup_blob(struct pv4_tree_desc *desc);
+struct tag    *pv4_lookup_tag(struct pv4_tree_desc *desc);
 
 #endif

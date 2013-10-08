@@ -773,6 +773,7 @@ void free_pack_by_name(const char *pack_name)
 			*pp = p->next;
 			if (last_found_pack == p)
 				last_found_pack = NULL;
+			free(p->objs);
 			free(p);
 			return;
 		}
