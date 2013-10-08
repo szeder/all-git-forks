@@ -11,6 +11,10 @@
 #include "cache.h"
 #include "packv4-parse.h"
 #include "varint.h"
+#include "commit.h"
+#include "tree.h"
+#include "blob.h"
+#include "tag.h"
 
 int packv4_available;
 
@@ -815,3 +819,32 @@ int pv4_tree_entry(struct pv4_tree_desc *desc)
 	}
 	return !decode_entries(desc, desc->obj_offset, desc->start++, 1);
 }
+
+static struct object **get_packed_objs(struct pv4_tree_desc *desc)
+{
+	if (!desc->p || !desc->sha1_index)
+		return NULL;
+	if (desc->p->version >= 4 && !desc->p->objs)
+		desc->p->objs =
+			xmalloc(sizeof(struct object *) * desc->p->num_objects);
+	return desc->p->objs;
+}
+
+#define DEFINE_LOOKUP(TYPE)					\
+struct TYPE *pv4_lookup_##TYPE(struct pv4_tree_desc *desc)	\
+{								\
+	struct object **objs = get_packed_objs(desc);		\
+	if (!objs)						\
+		return lookup_##TYPE(desc->v2.entry.sha1);	\
+	objs += desc->sha1_index - 1;				\
+	if (!*objs)						\
+		*objs = (struct object *)			\
+			lookup_##TYPE(desc->v2.entry.sha1);	\
+	return (struct TYPE *)objs[0];				\
+}
+
+DEFINE_LOOKUP(object)
+DEFINE_LOOKUP(commit)
+DEFINE_LOOKUP(tree)
+DEFINE_LOOKUP(blob)
+DEFINE_LOOKUP(tag)
