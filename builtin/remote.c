@@ -1372,10 +1372,12 @@ static int get_remote_default(const char *key, const char *value, void *priv)
 
 static int update(int argc, const char **argv)
 {
-	int i, prune = -1;
+	int i;
+	struct prune_option prune_option = PRUNE_OPTION_INIT;
 	struct option options[] = {
-		OPT_BOOL('p', "prune", &prune,
-			 N_("prune remotes after fetching")),
+		{ OPTION_CALLBACK, 'p', "prune", &prune_option, N_("pattern"),
+			N_("prune remotes after fetching"),
+			PARSE_OPT_NOARG, prune_option_parse },
 		OPT_END()
 	};
 	struct argv_array fetch_argv = ARGV_ARRAY_INIT;
@@ -1387,8 +1389,7 @@ static int update(int argc, const char **argv)
 
 	argv_array_push(&fetch_argv, "fetch");
 
-	if (prune != -1)
-		argv_array_push(&fetch_argv, prune ? "--prune" : "--no-prune");
+	argv_push_prune_option(&fetch_argv, &prune_option);
 	if (verbose)
 		argv_array_push(&fetch_argv, "-v");
 	argv_array_push(&fetch_argv, "--multiple");
