@@ -40,6 +40,7 @@ const unsigned char null_sha1[20];
 
 static const char *no_log_pack_access = "no_log_pack_access";
 static const char *log_pack_access;
+extern int packv4_available;
 
 /*
  * This is meant to hold a *small* number of objects that you would
@@ -763,6 +764,8 @@ void free_pack_by_name(const char *pack_name)
 				close(p->pack_fd);
 				pack_open_fds--;
 			}
+			if (p->version >= 4)
+				packv4_available--;
 			close_pack_index(p);
 			free(p->bad_object_sha1);
 			pv4_free_dict(p->ident_dict);
@@ -856,6 +859,8 @@ static int open_packed_git_1(struct packed_git *p)
 			" supported (try upgrading GIT to a newer version)",
 			p->pack_name, ntohl(hdr.hdr_version));
 	p->version = ntohl(hdr.hdr_version);
+	if (p->version >= 4)
+		packv4_available++;
 
 	/* Verify the pack matches its index. */
 	if (p->num_objects != ntohl(hdr.hdr_entries))

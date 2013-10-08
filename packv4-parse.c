@@ -12,6 +12,8 @@
 #include "packv4-parse.h"
 #include "varint.h"
 
+int packv4_available;
+
 const unsigned char *get_sha1ref(struct packed_git *p,
 				 const unsigned char **bufp)
 {
@@ -749,7 +751,8 @@ int pv4_tree_desc_from_sha1(struct pv4_tree_desc *desc,
 	strbuf_init(&desc->buf, 0);
 
 	memset(&oi, 0, sizeof(oi));
-	if (!sha1_object_info_extended(sha1, &oi) &&
+	if (packv4_available &&
+	    !sha1_object_info_extended(sha1, &oi) &&
 	    oi.whence == OI_PACKED &&
 	    oi.u.packed.real_type == OBJ_PV4_TREE &&
 	    oi.u.packed.pack->version >= 4) {
