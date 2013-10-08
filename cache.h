@@ -1168,7 +1168,7 @@ struct object_info {
 		struct {
 			struct packed_git *pack;
 			off_t offset;
-			unsigned int is_delta;
+			unsigned int real_type;
 		} packed;
 	} u;
 };
