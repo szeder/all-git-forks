@@ -80,6 +80,7 @@ static int revisions_all_branches_fetched = 0;
 static int skipped = 0;
 static time_t import_start_time = 0;
 //static off_t fetched_total_size = 0;
+static const char *single_commit_push = NULL;
 
 static const char *cvsmodule = NULL;
 static const char *cvsroot = NULL;
@@ -1908,6 +1909,7 @@ static int push_branch(const char *src, const char *dst, int force)
 	int rc = -1;
 	int is_new_branch = 0;
 	const char *cvs_branch;
+	unsigned commits_count;
 	unsigned char sha1[20];
 	struct strbuf meta_ref_sb = STRBUF_INIT;
 	struct commit_list *push_list = NULL;
@@ -1923,6 +1925,9 @@ static int push_branch(const char *src, const char *dst, int force)
 	strbuf_addf(&meta_ref_sb, "%s%s", get_meta_ref_prefix(), cvs_branch);
 	if (!ref_exists(meta_ref_sb.buf))
 		is_new_branch = 1;
+
+	if (is_new_branch && single_commit_push)
+		die("single commit push cannot be used with new branch creation");
 
 	fprintf(stderr, "pushing %s to %s (CVS branch: %s) force: %d new branch: %d\n",
 			src, dst, cvs_branch, force, is_new_branch);
@@ -1942,7 +1947,26 @@ static int push_branch(const char *src, const char *dst, int force)
 	 * prepare_push_commit_list always put commit with cvs metadata first,
 	 * that should not be pushed
 	 */
-	if (commit_list_count(push_list) > 1) {
+	commits_count = commit_list_count(push_list);
+	if (single_commit_push) {
+		unsigned char single_commit_sha1[20];
+		struct commit *commit;
+
+		if (commits_count != 2)
+			die("single commit push failed: %u commits pending", commits_count - 1);
+
+		if (get_sha1_commit(single_commit_push, single_commit_sha1))
+			die("cannot resolve single commit name: '%s'", single_commit_push);
+
+		commit = push_list->next->item;
+		if (memcmp(single_commit_sha1, commit->object.sha1, 20))
+			die("single commit push failed: commit sha mismatch '%s' vs '%s'",
+			    sha1_to_hex(single_commit_sha1), sha1_to_hex(commit->object.sha1));
+
+		fprintf(stderr, "pushing single commit '%s'\n", sha1_to_hex(single_commit_sha1));
+	}
+
+	if (commits_count > 1) {
 		if (!push_commit_list_to_cvs(push_list, cvs_branch)) {
 			if (no_refs_update_on_push)
 				strbuf_addstr(&push_error_sb, "NO_REFS_UPDATE_ON_PUSH "
@@ -1952,7 +1976,7 @@ static int push_branch(const char *src, const char *dst, int force)
 		}
 	}
 	else {
-		fprintf(stderr, "Nothing to push");
+		fprintf(stderr, "Nothing to push\n");
 		rc = 0;
 	}
 
@@ -2010,6 +2034,10 @@ static int cmd_batch_push(struct string_list *list)
 	int force;
 	int istag;
 	int rc;
+
+	single_commit_push = getenv("GIT_SINGLE_COMMIT_PUSH");
+	if (single_commit_push && list->nr > 1)
+		die("single commit push specified but multiple push refspecs passed");
 
 	for_each_string_list_item(item, list) {
 		if (!(srcdst = gettext_after(item->string, "push ")) ||

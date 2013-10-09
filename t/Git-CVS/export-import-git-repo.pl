@@ -124,7 +124,11 @@ while ((my $line = <$gi>)) {
 		`git commit -m "initial file remove"`;
 		die "git commit failed" if $?;
 	}
-
+	else {
+		$commit_sha = `git rev-parse HEAD`;
+		chomp($commit_sha);
+		$ENV{GIT_SINGLE_COMMIT_PUSH} = "$commit_sha";
+	}
 	`git push cvs HEAD:HEAD 2>&1 | tee --append $testdir/cvspushfetch.log`;
 	print "=> commits pushed: $commits\n";
 	#sleep(2);
