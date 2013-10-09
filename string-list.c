@@ -212,6 +212,15 @@ struct string_list_item *string_list_append(struct string_list *list,
 			list->strdup_strings ? xstrdup(string) : (char *)string);
 }
 
+void string_list_append_list(struct string_list *dst, struct string_list *src)
+{
+	struct string_list_item *item;
+
+	ALLOC_GROW(dst->items, dst->nr + src->nr, dst->alloc);
+	for_each_string_list_item(item, src)
+		string_list_append(dst, item->string);
+}
+
 /* Yuck */
 static compare_strings_fn compare_for_qsort;
 

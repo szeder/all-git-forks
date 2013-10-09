@@ -22,8 +22,9 @@ member (you need this if you add things later) and you should set the
 `nr` and `alloc` members in that case, too.
 
 . Adds new items to the list, using `string_list_append`,
-  `string_list_append_nodup`, `string_list_insert`,
-  `string_list_split`, and/or `string_list_split_in_place`.
+  `string_list_append_nodup`, `string_list_append_list`,
+  `string_list_insert`, `string_list_split`, and/or
+  `string_list_split_in_place`.
 
 . Can check if a string is in the list using `string_list_has_string` or
   `unsorted_string_list_has_string` and get it from the list using
@@ -140,6 +141,11 @@ write `string_list_insert(...)->util = ...;`.
 	`strdup_string` is set.  This function can be used to hand
 	ownership of a malloc()ed string to a `string_list` that has
 	`strdup_string` set.
+
+`string_list_append_list`::
+
+	Append the strings from one string_list to the end of another
+	one.
 
 `sort_string_list`::
 

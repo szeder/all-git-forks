@@ -76,6 +76,13 @@ void string_list_remove_duplicates(struct string_list *sorted_list, int free_uti
 struct string_list_item *string_list_append(struct string_list *list, const char *string);
 
 /*
+ * Add all strings from src to the end of dst.  If dst->strdup_string
+ * is set, then the strings are copied; otherwise the new
+ * string_list_entries refer to the input strings.
+ */
+void string_list_append_list(struct string_list *dst, struct string_list *src);
+
+/*
  * Like string_list_append(), except string is never copied.  When
  * list->strdup_strings is set, this function can be used to hand
  * ownership of a malloc()ed string to list without making an extra
