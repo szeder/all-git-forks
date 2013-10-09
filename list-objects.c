@@ -7,6 +7,7 @@
 #include "tree-walk.h"
 #include "revision.h"
 #include "list-objects.h"
+#include "packv4-parse.h"
 
 static void process_blob(struct rev_info *revs,
 			 struct blob *blob,
@@ -60,6 +61,7 @@ static void process_gitlink(struct rev_info *revs,
 }
 
 static void process_tree(struct rev_info *revs,
+			 struct pv4_tree_desc *desc,
 			 struct tree *tree,
 			 show_tree_entry_fn show_tree_entry,
 			 show_object_fn show,
@@ -69,8 +71,6 @@ static void process_tree(struct rev_info *revs,
 			 void *cb_data)
 {
 	struct object *obj = &tree->object;
-	struct tree_desc desc;
-	struct name_entry entry;
 	struct name_path me;
 	enum interesting match = revs->diffopt.pathspec.nr == 0 ?
 		all_entries_interesting: entry_not_interesting;
@@ -96,11 +96,10 @@ static void process_tree(struct rev_info *revs,
 			strbuf_addch(base, '/');
 	}
 
-	init_tree_desc(&desc, tree->buffer, tree->size);
-
-	while (tree_entry(&desc, &entry)) {
+	while (pv4_tree_entry(desc)) {
+		struct name_entry *entry = &desc->v2.entry;
 		if (match != all_entries_interesting) {
-			match = tree_entry_interesting(&entry, base, 0,
+			match = tree_entry_interesting(entry, base, 0,
 						       &revs->diffopt.pathspec);
 			if (match == all_entries_not_interesting)
 				break;
@@ -109,22 +108,26 @@ static void process_tree(struct rev_info *revs,
 		}
 
 		if (show_tree_entry)
-			show_tree_entry(&entry, cb_data);
+			show_tree_entry(entry, cb_data);
 
-		if (S_ISDIR(entry.mode))
+		if (S_ISDIR(entry->mode)) {
+			struct pv4_tree_desc sub_desc;
+			pv4_tree_desc_from_entry(&sub_desc, desc, 0);
 			process_tree(revs,
-				     lookup_tree(entry.sha1),
+				     &sub_desc,
+				     pv4_lookup_tree(desc),
 				     show_tree_entry,
-				     show, &me, base, entry.path,
+				     show, &me, base, entry->path,
 				     cb_data);
-		else if (S_ISGITLINK(entry.mode))
-			process_gitlink(revs, entry.sha1,
-					show, &me, entry.path,
+			pv4_release_tree_desc(&sub_desc);
+		} else if (S_ISGITLINK(entry->mode))
+			process_gitlink(revs, entry->sha1,
+					show, &me, entry->path,
 					cb_data);
 		else
 			process_blob(revs,
-				     lookup_blob(entry.sha1),
-				     show, &me, entry.path,
+				     pv4_lookup_blob(desc),
+				     show, &me, entry->path,
 				     cb_data);
 	}
 	strbuf_setlen(base, baselen);
@@ -202,9 +205,12 @@ void traverse_commit_list(struct rev_info *revs,
 			continue;
 		}
 		if (obj->type == OBJ_TREE) {
-			process_tree(revs, (struct tree *)obj,
+			struct pv4_tree_desc desc;
+			pv4_tree_desc_from_sha1(&desc, obj->sha1, 0);
+			process_tree(revs, &desc, (struct tree *)obj,
 				     show_tree_entry, show_object,
 				     NULL, &base, name, data);
+			pv4_release_tree_desc(&desc);
 			continue;
 		}
 		if (obj->type == OBJ_BLOB) {
