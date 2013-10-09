@@ -825,8 +825,8 @@ static struct object **get_packed_objs(struct pv4_tree_desc *desc)
 	if (!desc->p || !desc->sha1_index)
 		return NULL;
 	if (desc->p->version >= 4 && !desc->p->objs)
-		desc->p->objs =
-			xmalloc(sizeof(struct object *) * desc->p->num_objects);
+		desc->p->objs = xcalloc(desc->p->num_objects,
+					sizeof(struct object *));
 	return desc->p->objs;
 }
 
