@@ -19,7 +19,7 @@ SYNOPSIS
 'git remote set-url --add' [--push] <name> <newurl>
 'git remote set-url --delete' [--push] <name> <url>
 'git remote' [-v | --verbose] 'show' [-n] <name>...
-'git remote prune' [-n | --dry-run] <name>...
+'git remote prune' [-n | --dry-run] [--prune=<pattern>] <name>...
 'git remote' [-v | --verbose] 'update' [-p[<patter>] | --prune[=<patter>] | --no-prune]
                                        [(<group> | <remote>)...]
 
@@ -156,6 +156,9 @@ Deletes all stale remote-tracking branches under <name>.
 These stale branches have already been removed from the remote repository
 referenced by <name>, but are still locally available in
 "remotes/<name>".
++
+With `--prune=<pattern>`, only prune references whose names match
+pattern.  This option can be used multiple times.
 +
 With `--dry-run` option, report what branches will be pruned, but do not
 actually prune them.

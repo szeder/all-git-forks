@@ -15,7 +15,7 @@ static const char * const builtin_remote_usage[] = {
 	N_("git remote remove <name>"),
 	N_("git remote set-head <name> (-a | -d | <branch>)"),
 	N_("git remote [-v | --verbose] show [-n] <name>"),
-	N_("git remote prune [-n | --dry-run] <name>"),
+	N_("git remote prune [-n | --dry-run] [--prune=<pattern>] <name>"),
 	N_("git remote [-v | --verbose] update [-p[<pattern>] | --prune[=<pattern>] | --no-prune] [(<group> | <remote>)...]"),
 	N_("git remote set-branches [--add] <name> <branch>..."),
 	N_("git remote set-url [--push] <name> <newurl> [<oldurl>]"),
@@ -326,7 +326,9 @@ struct ref_states {
 	int queried;
 };
 
-static int get_ref_states(const struct ref *remote_refs, struct ref_states *states)
+static int get_ref_states(const struct ref *remote_refs,
+			  struct ref_states *states,
+			  struct prune_option *prune_option)
 {
 	struct ref *fetch_map = NULL, **tail = &fetch_map;
 	struct ref *ref, *stale_refs;
@@ -346,15 +348,17 @@ static int get_ref_states(const struct ref *remote_refs, struct ref_states *stat
 		else
 			string_list_append(&states->tracked, abbrev_branch(ref->name));
 	}
-	stale_refs = get_stale_heads(states->remote->fetch,
-				     states->remote->fetch_refspec_nr,
-				     fetch_map, NULL);
-	for (ref = stale_refs; ref; ref = ref->next) {
-		struct string_list_item *item =
-			string_list_append(&states->stale, abbrev_branch(ref->name));
-		item->util = xstrdup(ref->name);
+	if (prune_option->prune) {
+		stale_refs = get_stale_heads(states->remote->fetch,
+					     states->remote->fetch_refspec_nr,
+					     fetch_map, &prune_option->prune_patterns);
+		for (ref = stale_refs; ref; ref = ref->next) {
+			struct string_list_item *item =
+				string_list_append(&states->stale, abbrev_branch(ref->name));
+			item->util = xstrdup(ref->name);
+		}
+		free_refs(stale_refs);
 	}
-	free_refs(stale_refs);
 	free_refs(fetch_map);
 
 	sort_string_list(&states->new);
@@ -878,8 +882,9 @@ static int append_ref_to_tracked_list(const char *refname,
 }
 
 static int get_remote_ref_states(const char *name,
-				 struct ref_states *states,
-				 int query)
+				 struct ref_states *states, int query,
+				 struct prune_option *prune_option,
+				 int default_prune)
 {
 	struct transport *transport;
 	const struct ref *remote_refs;
@@ -897,8 +902,18 @@ static int get_remote_ref_states(const char *name,
 		transport_disconnect(transport);
 
 		states->queried = 1;
-		if (query & GET_REF_STATES)
-			get_ref_states(remote_refs, states);
+		if (query & GET_REF_STATES) {
+			struct prune_option remote_prune_option =
+				PRUNE_OPTION_INIT;
+			remote_prune_option.prune = prune_option->prune;
+			string_list_append_list(&remote_prune_option.prune_patterns,
+						&prune_option->prune_patterns);
+			prune_option_fill(states->remote,
+					  &remote_prune_option,
+					  default_prune);
+			get_ref_states(remote_refs, states, &remote_prune_option);
+			string_list_clear(&remote_prune_option.prune_patterns, 0);
+		}
 		if (query & GET_HEAD_NAMES)
 			get_head_names(remote_refs, states);
 		if (query & GET_PUSH_REF_STATES)
@@ -1151,7 +1166,9 @@ static int show(int argc, const char **argv)
 	struct ref_states states;
 	struct string_list info_list = STRING_LIST_INIT_NODUP;
 	struct show_info info;
+	struct prune_option prune_option = PRUNE_OPTION_INIT;
 
+	prune_option.prune = 1;
 	argc = parse_options(argc, argv, NULL, options, builtin_remote_show_usage,
 			     0);
 
@@ -1170,7 +1187,7 @@ static int show(int argc, const char **argv)
 		const char **url;
 		int url_nr;
 
-		get_remote_ref_states(*argv, &states, query_flag);
+		get_remote_ref_states(*argv, &states, query_flag, &prune_option, 1);
 
 		printf_ln(_("* remote %s"), *argv);
 		printf_ln(_("  Fetch URL: %s"), states.remote->url_nr > 0 ?
@@ -1268,7 +1285,7 @@ static int set_head(int argc, const char **argv)
 	} else if (opt_a && !opt_d && argc == 1) {
 		struct ref_states states;
 		memset(&states, 0, sizeof(states));
-		get_remote_ref_states(argv[0], &states, GET_HEAD_NAMES);
+		get_remote_ref_states(argv[0], &states, GET_HEAD_NAMES, NULL, 0);
 		if (!states.heads.nr)
 			result |= error(_("Cannot determine remote HEAD"));
 		else if (states.heads.nr > 1) {
@@ -1303,7 +1320,8 @@ static int set_head(int argc, const char **argv)
 	return result;
 }
 
-static int prune_remote(const char *remote, int dry_run)
+static int prune_remote(const char *remote, int dry_run,
+			struct prune_option *prune_option)
 {
 	int result = 0, i;
 	struct ref_states states;
@@ -1312,7 +1330,7 @@ static int prune_remote(const char *remote, int dry_run)
 		: _(" %s has become dangling!");
 
 	memset(&states, 0, sizeof(states));
-	get_remote_ref_states(remote, &states, GET_REF_STATES);
+	get_remote_ref_states(remote, &states, GET_REF_STATES, prune_option, 1);
 
 	if (states.stale.nr) {
 		printf_ln(_("Pruning %s"), remote);
@@ -1344,11 +1362,16 @@ static int prune_remote(const char *remote, int dry_run)
 static int prune(int argc, const char **argv)
 {
 	int dry_run = 0, result = 0;
+	struct prune_option prune_option = PRUNE_OPTION_INIT;
 	struct option options[] = {
+		{ OPTION_CALLBACK, 'p', "prune", &prune_option, N_("pattern"),
+		  N_("prune only references whose names match pattern"),
+		  PARSE_OPT_NONEG, prune_option_parse },
 		OPT__DRY_RUN(&dry_run, N_("dry run")),
 		OPT_END()
 	};
 
+	prune_option.prune = 1;
 	argc = parse_options(argc, argv, NULL, options, builtin_remote_prune_usage,
 			     0);
 
@@ -1356,7 +1379,7 @@ static int prune(int argc, const char **argv)
 		usage_with_options(builtin_remote_prune_usage, options);
 
 	for (; argc; argc--, argv++)
-		result |= prune_remote(*argv, dry_run);
+		result |= prune_remote(*argv, dry_run, &prune_option);
 
 	return result;
 }

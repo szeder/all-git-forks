@@ -243,6 +243,21 @@ test_expect_success 'prune' '
 	)
 '
 
+test_expect_success 'prune with --prune' '
+	git clone one prune-prune &&
+	(
+		cd prune-prune &&
+		git update-ref refs/remotes/origin/branch1 master &&
+		git update-ref refs/remotes/origin/branch2 master &&
+
+		test_must_fail git remote prune --prune origin &&
+		test_must_fail git remote prune --no-prune origin &&
+		git remote prune --prune="refs/remotes/*1" origin &&
+		test_must_fail git rev-parse origin/branch1 &&
+		git rev-parse origin/branch2
+	)
+'
+
 test_expect_success 'set-head --delete' '
 	(
 		cd test &&
