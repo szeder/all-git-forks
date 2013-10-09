@@ -173,7 +173,7 @@ int diffcore_count_changes(struct diff_filespec *src,
 {
 	struct spanhash *s, *d;
 	struct spanhash_top *src_count, *dst_count;
-	unsigned long sc, la;
+	unsigned long sc, not_sc, la;
 
 	src_count = dst_count = NULL;
 	if (src_count_p)
@@ -190,7 +190,7 @@ int diffcore_count_changes(struct diff_filespec *src,
 		if (dst_count_p)
 			*dst_count_p = dst_count;
 	}
-	sc = la = 0;
+	sc = not_sc = la = 0;
 
 	s = src_count->data;
 	d = dst_count->data;
@@ -214,8 +214,13 @@ int diffcore_count_changes(struct diff_filespec *src,
 			la += dst_cnt - src_cnt;
 			sc += src_cnt;
 		}
-		else
+		else{
 			sc += dst_cnt;
+			not_sc += (src_cnt - dst_cnt);
+			if(delta_limit != 0 && not_sc > delta_limit){
+				return -1;
+			}
+		}
 		s++;
 	}
 	while (d->cnt) {
