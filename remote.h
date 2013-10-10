@@ -45,6 +45,7 @@ struct remote {
 	int skip_default_update;
 	int mirror;
 	int prune;
+	struct string_list prune_patterns;
 
 	const char *receivepack;
 	const char *uploadpack;

@@ -41,11 +41,18 @@ ifndef::git-pull[]
 
 -p[<pattern>]::
 --prune[=<pattern>]::
+--no-prune::
 	After fetching, remove any remote-tracking branches that would
 	have been fetched but no longer exist on the remote.  If
 	pattern is specified, then it should be a glob pattern, and
 	only references whose names match the pattern are subject to
 	pruning.  This option can be specified multiple times.
++
+The default for `--prune`/`--no-prune` is taken from the configuration
+settings remote.<name>.prune or fetch.prune, or false if neither of
+these is set.  The default pattern is taken from
+remote.<name>.pruneRef or fetch.pruneRef, or "*" if neither of these
+is set.
 endif::git-pull[]
 
 ifdef::git-pull[]

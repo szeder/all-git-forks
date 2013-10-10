@@ -258,6 +258,36 @@ test_expect_success 'prune with --prune' '
 	)
 '
 
+test_expect_success 'prune with remote pruneRef config' '
+	git clone one prune-remote-config &&
+	(
+		cd prune-remote-config &&
+		# This first setting should not matter:
+		git config fetch.pruneRef "*" &&
+		git config remote.origin.pruneRef "refs/remotes/*1" &&
+		git update-ref refs/remotes/origin/branch1 master &&
+		git update-ref refs/remotes/origin/branch2 master &&
+
+		git remote prune origin &&
+		test_must_fail git rev-parse origin/branch1 &&
+		git rev-parse origin/branch2
+	)
+'
+
+test_expect_success 'prune with global pruneRef config' '
+	git clone one prune-global-config &&
+	(
+		cd prune-global-config &&
+		git config fetch.pruneRef "refs/remotes/*1" &&
+		git update-ref refs/remotes/origin/branch1 master &&
+		git update-ref refs/remotes/origin/branch2 master &&
+
+		git remote prune origin &&
+		test_must_fail git rev-parse origin/branch1 &&
+		git rev-parse origin/branch2
+	)
+'
+
 test_expect_success 'set-head --delete' '
 	(
 		cd test &&
@@ -637,6 +667,36 @@ test_expect_success 'update --prune with argument' '
 		git update-ref refs/remotes/origin/branch2 master &&
 
 		git remote update --prune="refs/remotes/*1" origin &&
+		test_must_fail git rev-parse origin/branch1 &&
+		git rev-parse origin/branch2
+	)
+'
+
+test_expect_success 'update --prune with remote pruneRef config' '
+	git clone one update-prune-remote-config &&
+	(
+		cd update-prune-remote-config &&
+		# This first setting should not matter:
+		git config fetch.pruneRef "*" &&
+		git config remote.origin.pruneRef "refs/remotes/*1" &&
+		git update-ref refs/remotes/origin/branch1 master &&
+		git update-ref refs/remotes/origin/branch2 master &&
+
+		git remote update --prune origin &&
+		test_must_fail git rev-parse origin/branch1 &&
+		git rev-parse origin/branch2
+	)
+'
+
+test_expect_success 'update --prune with global pruneRef config' '
+	git clone one update-prune-global-config &&
+	(
+		cd update-prune-global-config &&
+		git config fetch.pruneRef "refs/remotes/*1" &&
+		git update-ref refs/remotes/origin/branch1 master &&
+		git update-ref refs/remotes/origin/branch2 master &&
+
+		git remote update --prune origin &&
 		test_must_fail git rev-parse origin/branch1 &&
 		git rev-parse origin/branch2
 	)

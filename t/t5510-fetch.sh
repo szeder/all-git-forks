@@ -94,6 +94,19 @@ test_expect_success 'fetch --prune on its own works as expected' '
 	test_must_fail git rev-parse origin/extrabranch
 '
 
+test_expect_success 'fetch with pruneRef config' '
+	cd "$D" &&
+	git clone . prune-config &&
+	cd prune-config &&
+	git config remote.origin.pruneRef "refs/remotes/*1" &&
+	git update-ref refs/remotes/origin/branch1 master &&
+	git update-ref refs/remotes/origin/branch2 master &&
+
+	git fetch --prune origin &&
+	test_must_fail git rev-parse origin/branch1 &&
+	git rev-parse origin/branch2
+'
+
 test_expect_success 'fetch --prune with arguments' '
 	cd "$D" &&
 	git clone . prune-args &&

@@ -152,10 +152,12 @@ With `-n` option, the remote heads are not queried first with
 
 'prune'::
 
-Deletes all stale remote-tracking branches under <name>.
-These stale branches have already been removed from the remote repository
-referenced by <name>, but are still locally available in
-"remotes/<name>".
+Delete all stale remote-tracking branches for the specified remote(s).
+Stale remote-tracking branches are those that have already been
+deleted from the remote repository referenced by <name>, but are still
+present in the local repository (typically under
+"refs/remotes/<name>").  See linkgit:git-fetch[1] for more information
+about pruning and how it can be configured.
 +
 With `--prune=<pattern>`, only prune references whose names match
 pattern.  This option can be used multiple times.

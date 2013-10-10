@@ -80,45 +80,60 @@ int prune_option_parse(const struct option *opt,
 
 static int git_fetch_config(const char *k, const char *v, void *cb)
 {
-	int *fetch_prune_config = cb;
+	struct prune_option *prune_option = cb;
 
 	if (!strcmp(k, "fetch.prune")) {
-		*fetch_prune_config = git_config_bool(k, v);
+		prune_option->prune = git_config_bool(k, v);
+		return 0;
+	} else if (!strcmp(k, "fetch.pruneref")) {
+		string_list_append(&prune_option->prune_patterns, v);
 		return 0;
 	}
 	return 0;
 }
 
+static struct prune_option global_prune_option = PRUNE_OPTION_INIT;
+static int global_prune_option_read = 0;
+
 void prune_option_fill(struct remote *remote,
 		       struct prune_option *prune_option, int default_prune)
 {
+	if (!global_prune_option_read) {
+		git_config(git_fetch_config, &global_prune_option);
+		global_prune_option_read = 1;
+	}
+
 	if (prune_option->prune < 0) {
 		/*
 		 * The user specified neither --prune nor --no-prune;
 		 * use the configured value of remote.<name>.prune or
 		 * fetch.prune:
 		 */
-		if (remote->prune >= 0) {
+		if (remote->prune >= 0)
 			prune_option->prune = remote->prune;
-		} else {
-			int fetch_prune_config = -1;
-
-			git_config(git_fetch_config, &fetch_prune_config);
-
-			if (fetch_prune_config >= 0)
-				prune_option->prune = fetch_prune_config;
-			else
-				prune_option->prune = default_prune;
-		}
+		else if (global_prune_option.prune >= 0)
+			prune_option->prune = global_prune_option.prune;
+		else
+			prune_option->prune = default_prune;
 	}
 
 	if (prune_option->prune) {
 		if (!prune_option->prune_patterns.nr) {
 			/*
-			 * We want to prune, but no pruning patterns were
-			 * specified on the command line.  Default to "*"
+			 * We want to prune, but no pruning patterns
+			 * were specified on the command line.  Use
+			 * the value from remote.<name>.pruneRef or
+			 * fetch.pruneRef if available; otherwise,
+			 * default to "*".
 			 */
-			string_list_append(&prune_option->prune_patterns, "*");
+			if (remote->prune_patterns.nr)
+				string_list_append_list(&prune_option->prune_patterns,
+							&remote->prune_patterns);
+			else if (global_prune_option.prune_patterns.nr)
+				string_list_append_list(&prune_option->prune_patterns,
+							&global_prune_option.prune_patterns);
+			else
+				string_list_append(&prune_option->prune_patterns, "*");
 		}
 	} else {
 		string_list_clear(&prune_option->prune_patterns, 0);
@@ -234,6 +249,7 @@ static struct remote *make_remote(const char *name, int len)
 
 	ret = xcalloc(1, sizeof(struct remote));
 	ret->prune = -1;  /* unspecified */
+	ret->prune_patterns.strdup_strings = 1;
 	ALLOC_GROW(remotes, remotes_nr + 1, remotes_alloc);
 	remotes[remotes_nr++] = ret;
 	if (len)
@@ -492,6 +508,8 @@ static int handle_config(const char *key, const char *value, void *cb)
 		remote->skip_default_update = git_config_bool(key, value);
 	else if (!strcmp(subkey, ".prune"))
 		remote->prune = git_config_bool(key, value);
+	else if (!strcmp(subkey, ".pruneref"))
+		string_list_append(&remote->prune_patterns, value);
 	else if (!strcmp(subkey, ".url")) {
 		const char *v;
 		if (git_config_string(&v, key, value))
