@@ -120,7 +120,7 @@ static int spanhash_cmp(const void *a_, const void *b_)
 		a->hashval > b->hashval ? 1 : 0;
 }
 
-static struct spanhash_top *hash_chars(struct diff_filespec *one)
+/* static */struct spanhash_top *hash_chars(struct diff_filespec *one)
 {
 	int i, n;
 	unsigned int accum1, accum2, hashval;

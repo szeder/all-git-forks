@@ -491,6 +491,248 @@ static int find_renames(struct diff_score *mx, int dst_cnt, int minimum_score, i
 	return count;
 }
 
+struct spanhash {
+	unsigned int hashval;
+	unsigned int cnt;
+};
+struct spanhash_top {
+	int alloc_log2;
+	int free;
+	struct spanhash data[FLEX_ARRAY];
+};
+extern struct spanhash_top *hash_chars(struct diff_filespec *one);
+
+struct found_info{
+    int id;
+    int cnt;
+    struct found_info *next;
+};
+#define MIN(X, Y) ( (X<Y) ? (X) : (Y) )
+#define MAX(X, Y) ( (X>Y) ? (X) : (Y) )
+
+struct src_score{
+    int *r_dst_orders; /* index: index of dsts, value: order of dsts, array size:rename_dst_nr */
+    int *r_dst_scores;
+    int pair;
+    int pair_score;
+};
+struct dst_score{
+    int *src_orders;
+    int src_orders_len;
+    int propose_order;
+};
+
+static int find_stable_matching(struct src_score srcs[], struct dst_score dsts[])
+{
+    for(int i=0; i<rename_dst_nr; i++){
+        int pos = i;
+        while(true){
+            struct dst_score * dst = &(dsts[pos]);
+            if(dst->propose_order >= dst->src_orders_len){
+                break;
+            }
+            int src_id = dst->src_orders[dst->propose_order];
+            dst->propose_order++;
+            struct src_score *src = &(srcs[src_id]);
+            if(src->pair != -1 && src->r_dst_orders[pos] > src->r_dst_orders[src->pair]){
+                continue;
+            }
+            
+            int next_pos = src->pair;
+            src->pair = pos;
+            src->pair_score = src->r_dst_scores[pos];
+            if(next_pos == -1){
+                break;
+            }
+            pos = next_pos;
+            
+        }
+    }
+    int rename_count = 0;
+    for(int s=0; s<rename_src_nr; s++){
+        int d = srcs[s].pair;
+        int score = srcs[s].pair_score;
+        if(d != -1){
+            printf("record_rename_pair(d=%d, s=%d, score=%d)\n", d, s, score);
+            record_rename_pair(d, s, score);
+            rename_count ++;
+        }
+    }
+    
+    return rename_count;
+}
+
+struct index_sore{
+    int index;
+    int score;
+};
+static int index_count_compare(const void *left_, const void *right_)
+{
+    const struct index_sore *left = (const struct index_sore*)left_;
+    const struct index_sore *right = (const struct index_sore*)right_;
+    if(left->score > right->score){
+        return -1;
+    }else if(left->score < right->score){
+        return 1;
+    }else{
+        return 0;
+    }
+}
+static int remove_found_info(void *ptr, void *dummy)
+{
+    free(ptr);
+    return 0;
+}
+static int find_similar_renames(int minimum_score)
+{
+    struct hash_table dst_table;
+    // int result[rename_src_nr * rename_dst_nr];
+    int *result = calloc(sizeof(result[0]), rename_src_nr * rename_dst_nr);
+    // int result[rename_src_nr][rename_dst_nr];
+    // memset(result, 0, sizeof(result));
+    
+    init_hash(&dst_table);
+    unsigned long dst_sizes[rename_dst_nr];
+    memset(dst_sizes, 0, sizeof(dst_sizes));
+    for(int d=0; d<rename_dst_nr; d++){
+        struct diff_filespec *dst = rename_dst[d].two;
+        printf("dst-%d: %s\n", d, dst->path);
+        
+        // printf("prepare populating %d...\n", i);
+        if (!dst->cnt_data){
+            // printf("populating %d...\n", i);
+            if(diff_populate_filespec(dst, 0)){
+                continue;
+            }
+        }
+        if(!S_ISREG(dst->mode)){
+            continue;
+        }
+        if(rename_dst[d].pair){
+            continue;
+        }
+        dst_sizes[d] = dst->size;
+        
+        struct spanhash_top *dst_count = hash_chars(dst);
+        struct spanhash *dh = dst_count->data;
+        while(dh->cnt){
+            struct found_info *found_info_p = lookup_hash(dh->hashval, &dst_table);
+            
+            struct found_info *info = calloc(1, sizeof(struct found_info));
+            info->id = d;
+            info->cnt = dh->cnt;
+            info->next = found_info_p;
+            
+            void **found_info_pp = insert_hash(dh->hashval, info, &dst_table);
+            if(found_info_pp){
+                *found_info_pp = info;
+            }
+            dh++;
+        }
+        diff_free_filespec_blob(dst);
+    }
+    unsigned long src_sizes[rename_src_nr];
+    memset(src_sizes, 0, sizeof(src_sizes));
+    for(int s=0; s<rename_src_nr; s++){
+        struct diff_filespec *src = rename_src[s].p->one;
+        printf("src-%d: %s\n", s, src->path);
+        if (!src->cnt_data && diff_populate_filespec(src, 0)){
+            continue;
+        }
+        if(!S_ISREG(src->mode)){
+            continue;
+        }
+        src_sizes[s] = src->size;
+        if(!src->cnt_data){
+            src->cnt_data = hash_chars(src);
+        }
+        struct spanhash_top *src_count = src->cnt_data;
+        struct spanhash *sh = src_count->data;
+        while(sh->cnt){
+            struct found_info *found_info_p = lookup_hash(sh->hashval, &dst_table);
+            while(found_info_p){
+                int dst_cnt = found_info_p->cnt;
+                result[s * rename_dst_nr + found_info_p->id] += MIN(sh->cnt, dst_cnt);
+                found_info_p = found_info_p -> next;
+            }
+            sh++;
+        }
+        diff_free_filespec_blob(src);
+    }
+    // printf("go through src\n");
+    
+    struct src_score srcs[rename_src_nr];
+    memset(srcs,0,sizeof(srcs));
+    for(int s=0; s<rename_src_nr; s++){
+        int cnt = 0;
+        struct src_score *src = &(srcs[s]);
+        src->pair = -1;
+        struct index_sore index_scores[rename_dst_nr];
+        for(int d=0; d<rename_dst_nr; d++){
+            unsigned long maxsize = MAX(src_sizes[s], dst_sizes[d]);
+            int score = MAX_SCORE * result[s*rename_dst_nr + d] / maxsize ;
+            if(score > minimum_score){
+                printf("srcs: s=%d, d=%d, score=%d, minimum_score=%d\n", s, d, score, minimum_score);
+                index_scores[cnt].index = d;
+                index_scores[cnt].score = score;
+                cnt++;
+            }
+        }
+        
+        qsort(index_scores, cnt, sizeof(index_scores[0]), index_count_compare);
+        src->r_dst_orders = calloc(rename_dst_nr, sizeof(src->r_dst_orders[0]));
+        src->r_dst_scores = calloc(rename_dst_nr, sizeof(src->r_dst_scores[0]));
+        for(int d=0; d<rename_dst_nr; d++){
+            src->r_dst_orders[d] = -1;
+        }
+        for(int i=0; i<cnt; i++){
+            src->r_dst_orders[index_scores[i].index] = i;
+            src->r_dst_scores[index_scores[i].index] = index_scores[i].score;
+        }
+    }
+    
+    struct dst_score dsts[rename_dst_nr];
+    memset(dsts,0,sizeof(dsts));
+    for(int d=0; d<rename_dst_nr; d++){
+        int cnt = 0;
+        struct dst_score *dst = &(dsts[d]);
+        struct index_sore index_scores[rename_src_nr];
+        for(int s=0; s<rename_src_nr; s++){
+            unsigned long maxsize = MAX(src_sizes[s], dst_sizes[d]);
+            int score = MAX_SCORE * result[s*rename_dst_nr + d] / maxsize ;
+            if(score > minimum_score){
+                printf("dsts: s=%d, d=%d\n", s, d);
+                index_scores[cnt].index = s;
+                index_scores[cnt].score = result[s*rename_dst_nr + d];
+                cnt++;
+            }
+        }
+        qsort(index_scores, cnt, sizeof(index_scores[0]), index_count_compare);
+        dst->src_orders = calloc(cnt, sizeof(dst->src_orders[0]));
+        dst->src_orders_len = cnt;
+        for(int i=0; i<cnt; i++){
+            dst->src_orders[i] = index_scores[i].index;
+        }
+    }
+    
+    int rename_count = find_stable_matching(srcs, dsts);
+    
+    for(int s=0; s<sizeof(srcs)/sizeof(srcs[0]); s++){
+        free(srcs[s].r_dst_orders);
+        srcs[s].r_dst_orders = NULL;
+    }
+    for(int d=0; d<sizeof(dsts)/sizeof(dsts[0]); d++){
+        free(dsts[d].src_orders);
+        dsts[d].src_orders = NULL;
+    }
+    
+    for_each_hash(&dst_table, remove_found_info, NULL);
+    free_hash(&dst_table);
+    free(result);
+    result = NULL;
+    
+    return rename_count;
+}
 void diffcore_rename(struct diff_options *options)
 {
 	int detect_rename = options->detect_rename;
@@ -582,7 +824,7 @@ void diffcore_rename(struct diff_options *options)
 				"Performing inexact rename detection",
 				rename_dst_nr * rename_src_nr, 50, 1);
 	}
-
+#if 0
 	mx = xcalloc(num_create * NUM_CANDIDATE_PER_DST, sizeof(*mx));
 	for (dst_cnt = i = 0; i < rename_dst_nr; i++) {
 		struct diff_filespec *two = rename_dst[i].two;
@@ -628,7 +870,10 @@ void diffcore_rename(struct diff_options *options)
 	if (detect_rename == DIFF_DETECT_COPY)
 		rename_count += find_renames(mx, dst_cnt, minimum_score, 1);
 	free(mx);
-
+#endif
+    
+    rename_count = find_similar_renames(minimum_score);
+    
  cleanup:
 	/* At this point, we have found some renames and copies and they
 	 * are recorded in rename_dst.  The original list is still in *q.
