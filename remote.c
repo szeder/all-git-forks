@@ -58,7 +58,8 @@ static struct rewrites rewrites_push;
 #define BUF_SIZE (2048)
 static char buffer[BUF_SIZE];
 
-int prune_option_parse(const struct option *opt, const char *arg, int unset)
+int prune_option_parse(const struct option *opt,
+		       const char *arg, int unset)
 {
 	struct prune_option *target = opt->value;
 

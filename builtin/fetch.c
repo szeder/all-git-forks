@@ -30,8 +30,7 @@ enum {
 	TAGS_SET = 2
 };
 
-static int fetch_prune_config = -1; /* unspecified */
-static int prune = -1; /* unspecified */
+static struct prune_option prune_option = PRUNE_OPTION_INIT;
 #define PRUNE_BY_DEFAULT 0 /* do we prune by default? */
 
 static int all, append, dry_run, force, keep, multiple, update_head_ok, verbosity;
@@ -59,15 +58,6 @@ static int option_parse_recurse_submodules(const struct option *opt,
 	return 0;
 }
 
-static int git_fetch_config(const char *k, const char *v, void *cb)
-{
-	if (!strcmp(k, "fetch.prune")) {
-		fetch_prune_config = git_config_bool(k, v);
-		return 0;
-	}
-	return 0;
-}
-
 static struct option builtin_fetch_options[] = {
 	OPT__VERBOSITY(&verbosity),
 	OPT_BOOL(0, "all", &all,
@@ -83,8 +73,9 @@ static struct option builtin_fetch_options[] = {
 		    N_("fetch all tags and associated objects"), TAGS_SET),
 	OPT_SET_INT('n', NULL, &tags,
 		    N_("do not fetch all tags (--no-tags)"), TAGS_UNSET),
-	OPT_BOOL('p', "prune", &prune,
-		 N_("prune remote-tracking branches no longer on remote")),
+	{ OPTION_CALLBACK, 'p', "prune", &prune_option, N_("pattern"),
+		    N_("prune remote-tracking branches no longer on remote"),
+		    PARSE_OPT_NOARG, prune_option_parse },
 	{ OPTION_CALLBACK, 0, "recurse-submodules", NULL, N_("on-demand"),
 		    N_("control recursive fetching of submodules"),
 		    PARSE_OPT_OPTARG, option_parse_recurse_submodules },
@@ -830,7 +821,7 @@ static int do_fetch(struct transport *transport,
 		retcode = 1;
 		goto cleanup;
 	}
-	if (prune) {
+	if (prune_option.prune) {
 		/*
 		 * If --tags was specified, pretend that the user gave us
 		 * the canonical tags refspec
@@ -931,8 +922,7 @@ static void add_options_to_argv(struct argv_array *argv)
 {
 	if (dry_run)
 		argv_array_push(argv, "--dry-run");
-	if (prune != -1)
-		argv_array_push(argv, prune ? "--prune" : "--no-prune");
+	argv_push_prune_option(argv, &prune_option);
 	if (update_head_ok)
 		argv_array_push(argv, "--update-head-ok");
 	if (force)
@@ -998,17 +988,9 @@ static int fetch_one(struct remote *remote, int argc, const char **argv)
 		die(_("No remote repository specified.  Please, specify either a URL or a\n"
 		    "remote name from which new revisions should be fetched."));
 
-	gtransport = prepare_transport(remote);
+	prune_option_fill(remote, &prune_option, PRUNE_BY_DEFAULT);
 
-	if (prune < 0) {
-		/* no command line request */
-		if (0 <= gtransport->remote->prune)
-			prune = gtransport->remote->prune;
-		else if (0 <= fetch_prune_config)
-			prune = fetch_prune_config;
-		else
-			prune = PRUNE_BY_DEFAULT;
-	}
+	gtransport = prepare_transport(remote);
 
 	if (argc > 0) {
 		int j = 0;
@@ -1058,8 +1040,6 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 	strbuf_addstr(&default_rla, "fetch");
 	for (i = 1; i < argc; i++)
 		strbuf_addf(&default_rla, " %s", argv[i]);
-
-	git_config(git_fetch_config, NULL);
 
 	argc = parse_options(argc, argv, prefix,
 			     builtin_fetch_options, builtin_fetch_usage, 0);
