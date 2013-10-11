@@ -877,6 +877,16 @@ def main(args):
     global is_tmp
     global branches, peers
 
+    marks = None
+    is_tmp = False
+    gitdir = os.environ.get('GIT_DIR', None)
+
+    if len(args) < 3:
+        die('Not enough arguments.')
+
+    if not gitdir:
+        die('GIT_DIR not set')
+
     alias = args[1]
     url = args[2]
 
@@ -885,18 +895,14 @@ def main(args):
     blob_marks = {}
     parsed_refs = {}
     files_cache = {}
-    marks = None
     branches = {}
     peers = {}
 
     if alias[5:] == url:
         is_tmp = True
         alias = hashlib.sha1(alias).hexdigest()
-    else:
-        is_tmp = False
 
     prefix = 'refs/bzr/%s' % alias
-    gitdir = os.environ['GIT_DIR']
     dirname = os.path.join(gitdir, 'bzr', alias)
 
     if not is_tmp:
