@@ -1258,11 +1258,10 @@ static void fn_out_consume(void *priv, char *line, unsigned long len)
 	}
 }
 
-static char *pprint_rename(const char *a, const char *b)
+static void pprint_rename_find_common_prefix_suffix(const char *a, const char *b, struct strbuf *pfx, struct strbuf *a_mid, struct strbuf *b_mid, struct strbuf *sfx)
 {
 	const char *old = a;
 	const char *new = b;
-	struct strbuf name = STRBUF_INIT;
 	int pfx_length, sfx_length;
 	int pfx_adjust_for_slash;
 	int len_a = strlen(a);
@@ -1272,10 +1271,9 @@ static char *pprint_rename(const char *a, const char *b)
 	int qlen_b = quote_c_style(b, NULL, NULL, 0);
 
 	if (qlen_a || qlen_b) {
-		quote_c_style(a, &name, NULL, 0);
-		strbuf_addstr(&name, " => ");
-		quote_c_style(b, &name, NULL, 0);
-		return strbuf_detach(&name, NULL);
+		quote_c_style(a, a_mid, NULL, 0);
+		quote_c_style(b, b_mid, NULL, 0);
+		return;
 	}
 
 	/* Find common prefix */
@@ -1321,18 +1319,149 @@ static char *pprint_rename(const char *a, const char *b)
 		a_midlen = 0;
 	if (b_midlen < 0)
 		b_midlen = 0;
+	
+	strbuf_add(pfx, a, pfx_length);
+	strbuf_add(a_mid, a + pfx_length, a_midlen);
+	strbuf_add(b_mid, b + pfx_length, b_midlen);
+	strbuf_add(sfx, a + len_a - sfx_length, sfx_length);
+}
 
-	strbuf_grow(&name, pfx_length + a_midlen + b_midlen + sfx_length + 7);
-	if (pfx_length + sfx_length) {
-		strbuf_add(&name, a, pfx_length);
+/*
+ * Omit each parts to fix in name_width.
+ * Formatted string is "<pfx>{<a_mid> => <b_mid>}<sfx>".
+ * At first, omit <pfx> as long as possible.
+ * If it is not enough, omit <a_mid>, <b_mid>, <sfx> by tring to set the length of
+ * those 3 parts(including "...") to the same.
+ * Ex:
+ * "foofoofoo => barbarbar"
+ *   will be like
+ * "...foo => ...bar".
+ * "long_parent{foofoofoo => barbarbar}longfilename"
+ *   will be like
+ * "...parent{...foofoo => ...barbar}...lename"
+ */
+static void pprint_rename_omit(struct strbuf *pfx, struct strbuf *a_mid, struct strbuf *b_mid, struct strbuf *sfx, int name_width)
+{
+
+#define ARROW " => "
+#define ELLIPSIS "..."
+#define swap(a,b) myswap((a),(b),sizeof(a))
+	
+#define myswap(a, b, size) do {		\
+unsigned char mytmp[size];	\
+memcpy(mytmp, &a, size);		\
+memcpy(&a, &b, size);		\
+memcpy(&b, mytmp, size);		\
+} while (0)
+
+	int use_curly_braces = (pfx->len > 0) || (sfx->len > 0);
+	size_t name_len;
+	size_t len;
+	size_t part_lengths[4];
+	size_t max_part_len = 0;
+	size_t remainder_part_len = 0;
+	int i, j;
+
+	name_len = pfx->len + a_mid->len + b_mid->len + sfx->len + strlen(ARROW) + (use_curly_braces?2:0);
+	
+	if (name_len <= name_width){
+		/* Everthing fits in name_width */
+		return;
+	}
+	
+	if(use_curly_braces){
+		if(strlen(ELLIPSIS) + (name_len - pfx->len) <= name_width){
+			/*
+			 Just omitting left of '{' is enough
+			 Ex: ...aaa{foofoofoo => bar}file
+			 */
+			strbuf_splice(pfx, name_len - pfx->len, name_width - (name_len - pfx->len), ELLIPSIS, strlen(ELLIPSIS));
+			return;
+		}else{
+			if (pfx->len > strlen(ELLIPSIS)) {
+				/*
+				 Just omitting left of '{' is not enough
+				 name will be "...{SOMETHING}SOMETHING"
+				 */
+				strbuf_reset(pfx);
+				strbuf_addstr(pfx, ELLIPSIS);
+			}
+		}
+	}
+
+	/* available length for a_mid, b_mid and sfx */
+	len = name_width - strlen(ARROW) - (use_curly_braces?2:0);
+	
+	/* a_mid, b_mid, sfx will be have the same max, including ellipsis("..."). */
+	part_lengths[0] = (int)a_mid->len;
+	part_lengths[1] = (int)b_mid->len;
+	part_lengths[2] = (int)sfx->len;
+	
+	/* bubble sort of part_lengths, descending order */
+	for(i=0;i<3;i++){
+		for(j= i+1; j<3; j++){
+			if(part_lengths[j] > part_lengths[i]){
+				swap(part_lengths[i], part_lengths[j]);
+			}
+		}
+	}
+	
+	if (part_lengths[1] + part_lengths[1] + part_lengths[2] <= len) {
+		/*
+		 * "{...foofoo => barbar}file"
+		 * There is only one omitting part.
+		 */
+		max_part_len = len - part_lengths[1] - part_lengths[2];
+	} else if (part_lengths[2] + part_lengths[2] + part_lengths[2] <= len){
+		/*
+		 * "{...foofoo => ...barbar}file"
+		 * There are 2 omitting part.
+		 */
+		max_part_len = (len - part_lengths[2])/2;
+		remainder_part_len = (len - part_lengths[2]) - max_part_len * 2;
+	} else {
+		/*
+		 * "{...ofoo => ...rbar}...file"
+		 * There are 3 omitting part.
+		 */
+		max_part_len = len / 3;
+		remainder_part_len = len - (max_part_len) * 3;
+	}
+	
+	if (max_part_len < strlen(ELLIPSIS))
+		max_part_len = strlen(ELLIPSIS);
+	
+	if (sfx->len > max_part_len)
+		strbuf_splice(sfx, 0, sfx->len - max_part_len + strlen(ELLIPSIS), ELLIPSIS, strlen(ELLIPSIS));
+	if (remainder_part_len==2)
+		max_part_len++;
+	if (a_mid->len > max_part_len)
+		strbuf_splice(a_mid, 0, a_mid->len - max_part_len + strlen(ELLIPSIS), ELLIPSIS, strlen(ELLIPSIS));
+	if (remainder_part_len==1)
+		max_part_len++;
+	if (b_mid->len > max_part_len)
+		strbuf_splice(b_mid, 0, b_mid->len - max_part_len + strlen(ELLIPSIS), ELLIPSIS, strlen(ELLIPSIS));
+}
+
+static char *pprint_rename(const char *a, const char *b, int name_width)
+{
+	struct strbuf pfx = STRBUF_INIT, a_mid = STRBUF_INIT, b_mid = STRBUF_INIT, sfx = STRBUF_INIT;
+	struct strbuf name = STRBUF_INIT;
+	
+	pprint_rename_find_common_prefix_suffix(a, b, &pfx, &a_mid, &b_mid, &sfx);
+	pprint_rename_omit(&pfx, &a_mid, &b_mid, &sfx, name_width);
+	
+	strbuf_grow(&name, pfx.len + a_mid.len + b_mid.len + sfx.len + 7);
+	if (pfx.len + sfx.len) {
+		strbuf_addbuf(&name, &pfx);
 		strbuf_addch(&name, '{');
 	}
-	strbuf_add(&name, a + pfx_length, a_midlen);
+	strbuf_addbuf(&name, &a_mid);
 	strbuf_addstr(&name, " => ");
-	strbuf_add(&name, b + pfx_length, b_midlen);
-	if (pfx_length + sfx_length) {
+	strbuf_addbuf(&name, &b_mid);
+	if (pfx.len + sfx.len) {
 		strbuf_addch(&name, '}');
-		strbuf_add(&name, a + len_a - sfx_length, sfx_length);
+		strbuf_addbuf(&name, &sfx);
 	}
 	return strbuf_detach(&name, NULL);
 }
@@ -1418,23 +1547,31 @@ static void show_graph(FILE *file, char ch, int cnt, const char *set, const char
 	fprintf(file, "%s", reset);
 }
 
-static void fill_print_name(struct diffstat_file *file)
+static void fill_print_name(struct diffstat_file *file, int name_width)
 {
 	char *pname;
 
-	if (file->print_name)
-		return;
-
 	if (!file->is_renamed) {
 		struct strbuf buf = STRBUF_INIT;
+		if (file->print_name)
+			return;
 		if (quote_c_style(file->name, &buf, NULL, 0)) {
 			pname = strbuf_detach(&buf, NULL);
 		} else {
 			pname = file->name;
 			strbuf_release(&buf);
 		}
+		if(strlen(pname) > name_width){
+			struct strbuf buf2 = STRBUF_INIT;
+			strbuf_addstr(&buf2, "...");
+			strbuf_addstr(&buf2, pname + strlen(pname) - name_width - 3);
+		}
 	} else {
-		pname = pprint_rename(file->from_name, file->name);
+		if (file->print_name){
+			free(file->print_name);
+			file->print_name = NULL;
+		}
+		pname = pprint_rename(file->from_name, file->name, name_width);
 	}
 	file->print_name = pname;
 }
@@ -1517,7 +1654,7 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 			count++; /* not shown == room for one more */
 			continue;
 		}
-		fill_print_name(file);
+		fill_print_name(file, INT_MAX);
 		len = strlen(file->print_name);
 		if (max_len < len)
 			max_len = len;
@@ -1629,7 +1766,7 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 	for (i = 0; i < count; i++) {
 		const char *prefix = "";
 		struct diffstat_file *file = data->files[i];
-		char *name = file->print_name;
+		char *name;
 		uintmax_t added = file->added;
 		uintmax_t deleted = file->deleted;
 		int name_len;
@@ -1637,6 +1774,8 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 		if (!file->is_interesting && (added + deleted == 0))
 			continue;
 
+		fill_print_name(file, name_width);
+		name = file->print_name;
 		/*
 		 * "scale" the filename
 		 */
@@ -1772,7 +1911,7 @@ static void show_numstat(struct diffstat_t *data, struct diff_options *options)
 				"%"PRIuMAX"\t%"PRIuMAX"\t",
 				file->added, file->deleted);
 		if (options->line_termination) {
-			fill_print_name(file);
+			fill_print_name(file, INT_MAX);
 			if (!file->is_renamed)
 				write_name_quoted(file->name, options->file,
 						  options->line_termination);
@@ -4258,7 +4397,7 @@ static void show_mode_change(FILE *file, struct diff_filepair *p, int show_name,
 static void show_rename_copy(FILE *file, const char *renamecopy, struct diff_filepair *p,
 			const char *line_prefix)
 {
-	char *names = pprint_rename(p->one->path, p->two->path);
+	char *names = pprint_rename(p->one->path, p->two->path, INT_MAX);
 
 	fprintf(file, " %s %s (%d%%)\n", renamecopy, names, similarity_index(p));
 	free(names);
