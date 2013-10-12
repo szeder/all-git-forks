@@ -392,29 +392,23 @@ static int copy_canonical_tree_entries(struct pv4_tree_desc *v4, off_t offset,
 }
 
 /* ordering is so that member alignment takes the least amount of space */
-struct pv4_tree_cache {
-	off_t base_offset;
-	off_t offset;
-	off_t last_copy_base;
-	struct packed_git *p;
-	unsigned int pos;
-	unsigned int nb_entries;
-};
-
 #define CACHE_SIZE 1024
 static struct pv4_tree_cache pv4_tree_cache[CACHE_SIZE];
+unsigned long Z, X, Y;
 
 static struct pv4_tree_cache *get_tree_offset_cache(struct packed_git *p, off_t base_offset)
 {
 	struct pv4_tree_cache *c;
 	unsigned long hash;
 
-	hash = (unsigned long)p + (unsigned long)base_offset;
+	Z++;
+	hash = /*(unsigned long)p + */(unsigned long)base_offset;
 	hash += (hash >> 8) + (hash >> 16);
 	hash %= CACHE_SIZE;
 
 	c = &pv4_tree_cache[hash];
 	if (c->p != p || c->base_offset != base_offset) {
+		//fprintf(stderr, "%lu %lu\n",hash, base_offset);
 		c->p = p;
 		c->base_offset = base_offset;
 		c->offset = 0;
@@ -422,6 +416,7 @@ static struct pv4_tree_cache *get_tree_offset_cache(struct packed_git *p, off_t 
 		c->pos = 0;
 		c->nb_entries = 0;
 	}
+	//else		fprintf(stderr, "%lu\n",hash);
 	return c;
 }
 
@@ -502,7 +497,8 @@ static int get_tree_entry_v4(struct pv4_tree_desc *desc,
 }
 
 static int decode_entries(struct pv4_tree_desc *desc, off_t obj_offset,
-			  unsigned int start, unsigned int count)
+			  unsigned int start, unsigned int count,
+			  struct pv4_tree_cache *c_)
 {
 	struct packed_git *p = desc->p;
 	unsigned long avail;
@@ -511,7 +507,8 @@ static int decode_entries(struct pv4_tree_desc *desc, off_t obj_offset,
 	off_t offset, copy_objoffset;
 	struct pv4_tree_cache *c;
 
-	c = get_tree_offset_cache(p, obj_offset);
+	fprintf(stderr, "%lu %u %u %p\n", obj_offset, start, count, c_);
+	c = c_ ? c_ : get_tree_offset_cache(p, obj_offset);
 	if (count && start < c->nb_entries && start >= c->pos &&
 	    count <= c->nb_entries - start) {
 		offset = c->offset;
@@ -677,7 +674,7 @@ static int decode_entries(struct pv4_tree_desc *desc, off_t obj_offset,
 				}
 
 				ret = decode_entries(desc, copy_objoffset,
-						     copy_start, copy_count);
+						     copy_start, copy_count, NULL);
 				if (ret)
 					return ret;
 
@@ -696,7 +693,7 @@ static int decode_entries(struct pv4_tree_desc *desc, off_t obj_offset,
 	 * We have to "get" it again as a recursion into decode_entries()
 	 * could have invalidated what we obtained initially.
 	 */
-	c = get_tree_offset_cache(p, obj_offset);
+	c = c_ ? c_ : get_tree_offset_cache(p, obj_offset);
 	if (curpos < c->nb_entries) {
 		c->pos = curpos;
 		c->offset = offset;
@@ -718,7 +715,7 @@ void *pv4_get_tree(struct packed_git *p, struct pack_window **w_curs,
 	desc.w_curs = *w_curs;
 	strbuf_init(&desc.buf, size);
 
-	ret = decode_entries(&desc, obj_offset, 0, 0);
+	ret = decode_entries(&desc, obj_offset, 0, 0, NULL);
 	*w_curs = desc.w_curs;
 	if (ret < 0 || desc.buf.len != size) {
 		strbuf_release(&desc.buf);
@@ -754,6 +751,7 @@ int pv4_tree_desc_from_sha1(struct pv4_tree_desc *desc,
 	memset(desc, 0, sizeof(*desc));
 	strbuf_init(&desc->buf, 0);
 
+	X++;
 	memset(&oi, 0, sizeof(oi));
 	if (packv4_available &&
 	    !sha1_object_info_extended(sha1, &oi) &&
@@ -763,6 +761,8 @@ int pv4_tree_desc_from_sha1(struct pv4_tree_desc *desc,
 		desc->p = oi.u.packed.pack;
 		desc->obj_offset = oi.u.packed.offset;
 		desc->flags = flags;
+		desc->cache.p = desc->p;
+		desc->cache.base_offset = desc->obj_offset;
 		return 0;
 	}
 
@@ -790,6 +790,7 @@ int pv4_tree_desc_from_entry(struct pv4_tree_desc *desc,
 		return pv4_tree_desc_from_sha1(desc,
 					       src->v2.entry.sha1,
 					       flags);
+	X++;
 	assert(!(flags & ~0xff) &&
 	       "you are not supposed to set these from outside!");
 	memset(desc, 0, sizeof(*desc));
@@ -798,6 +799,8 @@ int pv4_tree_desc_from_entry(struct pv4_tree_desc *desc,
 	desc->obj_offset =
 		nth_packed_object_offset(desc->p, src->sha1_index - 1);
 	desc->flags = flags;
+	desc->cache.p = desc->p;
+	desc->cache.base_offset = desc->obj_offset;
 	return 0;
 }
 
@@ -817,7 +820,8 @@ int pv4_tree_entry(struct pv4_tree_desc *desc)
 		desc->start++;
 		return 1;
 	}
-	return !decode_entries(desc, desc->obj_offset, desc->start++, 1);
+	Y++;
+	return !decode_entries(desc, desc->obj_offset, desc->start++, 1, &desc->cache);
 }
 
 static struct object **get_packed_objs(struct pv4_tree_desc *desc)

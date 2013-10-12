@@ -452,6 +452,7 @@ static void handle_internal_command(int argc, const char **argv)
 		if (strcmp(p->cmd, cmd))
 			continue;
 		exit(run_builtin(p, argc, argv));
+		exit(0);
 	}
 }
 

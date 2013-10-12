@@ -82,8 +82,10 @@ static void process_tree(struct rev_info *revs,
 		die("bad tree object");
 	if (obj->flags & (UNINTERESTING | SEEN))
 		return;
+#if 0
 	if (parse_tree(tree) < 0)
 		die("bad tree object %s", sha1_to_hex(obj->sha1));
+#endif
 	obj->flags |= SEEN;
 	show(obj, path, name, cb_data);
 	me.up = path;
@@ -173,6 +175,7 @@ static void add_pending_tree(struct rev_info *revs, struct tree *tree)
 	add_pending_object(revs, &tree->object, "");
 }
 
+extern unsigned long Z, X, Y;
 void traverse_commit_list(struct rev_info *revs,
 			  show_commit_fn show_commit,
 			  show_tree_entry_fn show_tree_entry,
@@ -228,4 +231,6 @@ void traverse_commit_list(struct rev_info *revs,
 		revs->pending.objects = NULL;
 	}
 	strbuf_release(&base);
+
+	printf("%lu %lu %lu\n", Z, X, Y);
 }
