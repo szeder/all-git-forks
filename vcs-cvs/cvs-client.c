@@ -208,7 +208,10 @@ struct child_process *cvs_init_transport(struct cvs_transport *cvs,
 			*arg++ = putty ? "-P" : "-p";
 			*arg++ = sport.buf;
 		}
-		strbuf_addf(&host, "%s@%s", cvs->username, cvs->host);
+
+		if (cvs->username)
+			strbuf_addf(&host, "%s@", cvs->username);
+		strbuf_addstr(&host, cvs->host);
 		*arg++ = host.buf;
 	}
 	else {
