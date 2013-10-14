@@ -504,11 +504,29 @@ test_expect_success 'git clean -e' '
 	)
 '
 
+
 test_expect_success SANITY 'git clean -d with an unreadable empty directory' '
 	mkdir foo &&
 	chmod a= foo &&
 	git clean -dfx foo &&
 	! test -d foo
+'
+
+
+test_expect_success 'git clean -- sub/path1 path2' '
+	rm -fr repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+		mkdir sub &&
+                mkdir sub/path1 &&
+                mkdir path2 &&
+		git clean -df sub/path1 path2 &&
+		test -e sub &&
+		! (test -e sub/path1) &&
+		! (test -e path2) 
+	)
 '
 
 test_done
