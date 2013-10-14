@@ -259,9 +259,10 @@ Each line of options has this format:
 
 `<flags>`::
 	`<flags>` are of `*`, `=`, `?` or `!`.
-	* Use `=` if the option takes an argument.
+	* Use `=` if the option requires an argument.
 
-	* Use `?` to mean that the option is optional (though its use is discouraged).
+	* Use `?` if the option takes an optional argument (though its use is
+	  discouraged).
 
 	* Use `*` to mean that this option should not be listed in the usage
 	  generated for the `-h` argument. It's shown for `--help-all` as
