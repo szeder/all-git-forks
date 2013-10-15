@@ -1602,16 +1602,16 @@ static int check_file_list_remote_status(const char *cvs_branch, struct string_l
 		strbuf_addstr(&files[i].path, file_list->items[i].string);
 
 		rev = lookup_hash(hash_path(files[i].path.buf), base_revision_meta_hash);
-		if (rev)
+		if (rev) {
 			strbuf_addstr(&files[i].revision, rev->revision);
-		else
+			files[i].isdead = rev->isdead;
+		}
+		else {
 			files[i].isnew = 1;
-		/*
-		 * FIXME:
-		 * What to do with new/remove files?
-		 */
+		}
 
-		fprintf(stderr, "status: %s rev: %s\n", files[i].path.buf, files[i].revision.buf);
+		fprintf(stderr, "status: %s rev: %s isdead: %u\n",
+			files[i].path.buf, files[i].revision.buf, files[i].isdead);
 	}
 
 	rc = cvs_status(cvs, cvs_branch, files, count);
@@ -1737,9 +1737,17 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 		rev = lookup_hash(hash_path(files[i].path.buf), revision_meta_hash);
 		if (rev) {
 			strbuf_addstr(&files[i].revision, rev->revision);
-			if (files[i].isnew)
-				warning("file: %s meta rev: %s is supposed to be new, but revision metadata was found",
-					files[i].path.buf, files[i].revision.buf);
+			/*
+			 * warn if file is new (file new and isdead when it was
+			 * removed and now is to be added again)
+			 */
+			if (files[i].isnew) {
+				if (!rev->isdead)
+					warning("file: %s meta rev: %s is supposed to be new, but revision metadata was found",
+						files[i].path.buf, files[i].revision.buf);
+				else
+					strbuf_reset(&files[i].revision);
+			}
 		}
 		else {
 			if (files[i].isnew)

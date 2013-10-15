@@ -2370,6 +2370,17 @@ M    Repository revision:\09No revision control file\0a
 M    Sticky Tag:\09\09mybranch - MISSING from RCS file!\0a
 M    Sticky Date:\09\09(none)\0a
 M    Sticky Options:\09(none)\0a
+
+adding file that was removed (status done with version '0', reply should contain actual deleve revision)
+M ===================================================================
+M File: file             \tStatus: Locally Added
+M 
+M    Working revision:\tNew file!
+M    Repository revision:\t1.2\t/home/dummy/tmp/moo/cvs_repo/mod/src/somedir/Attic/file,v
+M    Sticky Tag:\t\t(none)
+M    Sticky Date:\t\t(none)
+M    Sticky Options:\t(none)
+M 
 */
 			switch (state) {
 			case NEED_START_STATUS:
@@ -2446,8 +2457,17 @@ M    Sticky Options:\09(none)\0a
 					case STAT_UP_TO_DATE:
 						break;
 					case STAT_LOCALLY_ADDED:
-						if (!file->isnew)
+						if (file->isdead) {
+							if (strcmp(file->revision.buf, remote_rev.buf)) {
+								fprintf(stderr, "File status: %s was removed in cvs, adding again now. "
+										"Repository revision: %s Expected %s. Metadata corrupt?\n",
+										file->path.buf, remote_rev.buf, file->revision.buf);
+								rc = 1;
+							}
+						}
+						else if (!file->isnew) {
 							rc = 1;
+						}
 						break;
 					default:
 						rc = 1;
@@ -2572,7 +2592,7 @@ status\n
 					"Entry /%s/%s//-kk/%s%s\n"
 					"Unchanged %s\n",
 					file_basename_sb.buf,
-					file_it->revision.len ? file_it->revision.buf : "0",
+					!file_it->isdead && file_it->revision.len ? file_it->revision.buf : "0",
 					sticky ? "T" : "", sticky ? cvs_branch : "",
 					file_basename_sb.buf);
 		file_it++;
