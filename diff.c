@@ -1643,13 +1643,57 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 		len = name_width;
 		name_len = strlen(name);
 		if (name_width < name_len) {
-			char *slash;
-			prefix = "...";
-			len -= 3;
-			name += name_len - len;
-			slash = strchr(name, '/');
-			if (slash)
-				name = slash;
+			char *arrow = strstr(name, " => ");
+			if (arrow) {
+				int prefix_len = (name_width - 4) / 2;
+				int f_omit;
+				int f_brace = 0;
+				char *pre_arrow = alloca(name_width + 10);
+				char *post_arrow = arrow + 4;
+				char *prefix_buf = alloca(name_width + 10);
+				char *pre_arrow_slash = NULL;
+
+				if (arrow - name < prefix_len) {
+					prefix_len = (int)(arrow - name);
+					f_omit = 0;
+				} else {
+					prefix_len -= 3;
+					f_omit = 1;
+					if (name[0] == '{') {
+						prefix_len -= 1;
+						f_brace = 1;
+					}
+				}
+				prefix_len = ((prefix_len >= 0) ? prefix_len : 0);
+				strncpy(pre_arrow, arrow - prefix_len, prefix_len);
+				pre_arrow[prefix_len] = '\0';
+				pre_arrow_slash = strchr(pre_arrow, '/');
+				if (f_omit && pre_arrow_slash)
+					pre_arrow = pre_arrow_slash;
+				sprintf(prefix_buf, "%s%s%s => ", (f_brace ? "{" : ""), (f_omit ? "..." : ""), pre_arrow);
+				prefix = prefix_buf;
+
+				if (strlen(post_arrow) > name_width - strlen(prefix)) {
+					char *post_arrow_slash = NULL;
+
+					post_arrow += strlen(post_arrow) - (name_width - strlen(prefix) - 3);
+					strcat(prefix_buf, "...");
+					post_arrow_slash = strchr(post_arrow, '/');
+					if (post_arrow_slash)
+						post_arrow = post_arrow_slash;
+					name = post_arrow;
+					name_len = (int) (name_width - strlen(prefix));
+				}
+				len -= strlen(prefix);
+			} else {
+				char *slash = NULL;
+				prefix = "...";
+				len -= 3;
+				name += name_len - len;
+				slash = strchr(name, '/');
+				if (slash)
+					name = slash;
+			}
 		}
 
 		if (file->is_binary) {
