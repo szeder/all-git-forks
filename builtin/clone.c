@@ -556,7 +556,7 @@ static void update_remote_refs(const struct ref *refs,
 							      0, &rm, transport))
 			die(_("remote did not send all necessary objects"));
 		if (0 <= option_verbosity)
-			printf(_("done\n"));
+			printf(_("done.\n"));
 	}
 
 	if (refs) {
@@ -945,6 +945,10 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			our_head_points_at = remote_head_points_at;
 	}
 	else {
+		if (option_branch)
+			die(_("Remote branch %s not found in upstream %s"),
+					option_branch, option_origin);
+
 		warning(_("You appear to have cloned an empty repository."));
 		mapped_refs = NULL;
 		our_head_points_at = NULL;
