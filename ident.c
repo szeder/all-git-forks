@@ -200,7 +200,7 @@ static void strbuf_addstr_without_crud(struct strbuf *sb, const char *src)
  */
 int split_ident_line(struct ident_split *split, const char *line, int len)
 {
-	const char *cp;
+	const char *cp, *last_ket;
 	size_t span;
 	int status = -1;
 
@@ -225,15 +225,22 @@ int split_ident_line(struct ident_split *split, const char *line, int len)
 		split->name_end = split->name_begin;
 	}
 
-	for (cp = split->mail_begin; cp < line + len; cp++)
-		if (*cp == '>') {
+	for (cp = split->mail_begin, last_ket = NULL; cp < line + len; cp++) {
+		if (*cp != '>')
+			continue;
+		if (!last_ket)
 			split->mail_end = cp;
-			break;
-		}
+		last_ket = cp;
+	}
 	if (!split->mail_end)
 		return status;
 
-	for (cp = split->mail_end + 1; cp < line + len && isspace(*cp); cp++)
+	/*
+	 * Typically, last_ket is the same as split_mail_end, but with
+	 * a broken identity line, there may be multiple closing ket '>';
+	 * read the timestamp after the last one.
+	 */
+	for (cp = last_ket + 1; cp < line + len && isspace(*cp); cp++)
 		;
 	if (line + len <= cp)
 		goto person_only;
