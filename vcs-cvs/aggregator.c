@@ -4,6 +4,7 @@
 
 #include "vcs-cvs/aggregator.h"
 #include "vcs-cvs/meta-store.h"
+#include "vcs-cvs/trace-utils.h"
 #include "cache.h"
 #include "refs.h"
 
@@ -105,7 +106,7 @@ static unsigned int strcmp_whitesp_ignore(const char *str1, const char *str2)
 	int rc;
 	rc = strbuf_cmp(&buf1, &buf2);
 	if (rc != 0)
-		fprintf(stderr, "cmp: %d\n'%s'\n'%s'\n'%s'\n'%s'\n", rc, hex_unprintable(buf1.buf), hex_unprintable(buf2.buf), hex_unprintable(o1), hex_unprintable(o2));
+		tracef("cmp: %d\n'%s'\n'%s'\n'%s'\n'%s'\n", rc, hex_unprintable(buf1.buf), hex_unprintable(buf2.buf), hex_unprintable(o1), hex_unprintable(o2));
 
 	return rc;
 }
@@ -220,7 +221,7 @@ static void add_sort_cvs_revision(struct cvs_branch *meta, struct cvs_revision *
 			if (su->sorted_files > su->sorted->nr)
 				die("su->sorted_files > su->sorted");
 			su->sorted_files = su->sorted->nr;
-			//fprintf(stderr, "%p sorted items %u adding %u file %s\n", meta, su->sorted->nr, su->cur_file->nr, su->cur_file->item[0]->path);
+			//tracef("%p sorted items %u adding %u file %s\n", meta, su->sorted->nr, su->cur_file->nr, su->cur_file->item[0]->path);
 			merge_sort(su->sorted, su->cur_file, result);
 			su->sorted = result;
 			if (su->sorted_files > su->sorted->nr)
@@ -343,7 +344,7 @@ time_t find_first_commit_time(struct cvs_branch *meta)
 
 	min = meta->rev_list->item[0]->timestamp;
 	for (i = 1; i < meta->rev_list->nr; i++) {
-		//fprintf(stderr, "min search %s %s %s\n", meta->rev_list->item[i]->path,
+		//tracef("min search %s %s %s\n", meta->rev_list->item[i]->path,
 		//	meta->rev_list->item[i]->revision, show_date(meta->rev_list->item[i]->timestamp, 0, DATE_RFC2822));
 		if (min > meta->rev_list->item[i]->timestamp)
 			min = meta->rev_list->item[i]->timestamp;
@@ -409,34 +410,34 @@ static int print_cvs_revision(void *ptr, void *data)
 		while (prev && prev->ismerged && prev->prev)
 			prev = prev->prev;
 		if (prev->ismerged)
-			fprintf(stderr, "\tunknown->%s-", rev->prev->revision);
+			tracef("\tunknown->%s-", rev->prev->revision);
 		else
-		fprintf(stderr, "\t%s->", rev->prev->revision);
+		tracef("\t%s->", rev->prev->revision);
 	}
 	else {
-		fprintf(stderr, "\tunknown->");
+		tracef("\tunknown->");
 	}
-	fprintf(stderr, "%s\t%s", rev->revision, rev->path);
+	tracef("%s\t%s", rev->revision, rev->path);
 
 	if (rev->isdead)
-		fprintf(stderr, " (dead)\n");
+		tracef(" (dead)\n");
 	else
-		fprintf(stderr, "\n");
+		tracef("\n");
 	return 0;
 }
 
 void print_cvs_commit(struct cvs_commit *commit)
 {
 
-	fprintf(stderr,
+	tracef(
 		"Author: %s\n"
 		"AuthorDate: %s\n",
 		commit->author,
 		show_date(commit->timestamp, 0, DATE_NORMAL));
-	fprintf(stderr,
+	tracef(
 		"CommitDate: %s\n",
 		show_date(commit->timestamp_last, 0, DATE_NORMAL));
-	fprintf(stderr,
+	tracef(
 		"UpdateDate: %s\n"
 		"\n"
 		"%s\n",
@@ -468,9 +469,9 @@ static int validate_cvs_commit_order(void *ptr, void *data)
 				cvs_commit = cvs_commit->next;
 			}
 			if (!valid) {
-				fprintf(stderr, "commit1\n");
+				tracef("commit1\n");
 				print_cvs_commit(rev->cvs_commit);
-				fprintf(stderr, "commit2\n");
+				tracef("commit2\n");
 				print_cvs_commit(rev->prev->cvs_commit);
 				error("same date cvs_commits order is wrong file %s", rev->path);
 			}
@@ -724,7 +725,7 @@ void reverse_rev_list(struct cvs_revision_list *rev_list)
 
 	/*for (i = 0; i < rev_list->nr; i++) {
 		tmp = rev_list->item[i];
-		fprintf(stderr, "%p %s %s\n", tmp->cvs_commit, tmp->path, tmp->revision);
+		tracef("%p %s %s\n", tmp->cvs_commit, tmp->path, tmp->revision);
 	}*/
 }
 
@@ -766,7 +767,7 @@ void aggregate_cvs_commits(struct cvs_branch *meta)
 	//qsort(meta->rev_list->item, meta->rev_list->nr, sizeof(void *), compare_fix_rev);
 	reverse_rev_list(meta->rev_list);
 
-	fprintf(stderr, "SORT DONE\n");
+	tracef("SORT DONE\n");
 	for (i = 0; i < meta->rev_list->nr; i++) {
 		struct cvs_revision *rev;
 		struct cvs_commit *cvs_commit;
@@ -841,11 +842,11 @@ void aggregate_cvs_commits(struct cvs_branch *meta)
 		cvs_commit_add_revision(rev, cvs_commit);
 	}
 
-	fprintf(stderr, "GONNA VALIDATE\n");
+	tracef("GONNA VALIDATE\n");
 	/*struct cvs_commit *cvs_commit = meta->cvs_commit_list->head;
 	i = 0;
 	while (cvs_commit) {
-		fprintf(stderr, "-> cvs_commit %d\n", ++i);
+		tracef("-> cvs_commit %d\n", ++i);
 		print_cvs_commit(cvs_commit);
 		cvs_commit = cvs_commit->next;
 	}*/
@@ -853,7 +854,7 @@ void aggregate_cvs_commits(struct cvs_branch *meta)
 	validate_cvs_commits(meta);
 	find_safe_cancellation_points(meta);
 	//arrange_commit_time(meta);
-	fprintf(stderr, "SLEEP ps=%ld\n", ps);
+	tracef("SLEEP ps=%ld\n", ps);
 	//sleep(100);
 }
 

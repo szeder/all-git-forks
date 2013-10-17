@@ -8,7 +8,7 @@
 #include "vcs-cvs/cvs-client.h"
 #include "vcs-cvs/meta-store.h"
 #include "vcs-cvs/aggregator.h"
-#include "vcs-cvs/proto-trace.h"
+#include "vcs-cvs/trace-utils.h"
 #include "vcs-cvs/ident-utils.h"
 #include "notes.h"
 #include "argv-array.h"
@@ -42,6 +42,7 @@
  *	fileMemoryLimit - long
  *	pushNoRefsUpdate - bool
  *	verifyImport - bool
+ *	trace - path
  *	cvsProtoTrace - path
  *	remoteHelperTrace - path
  *	requireAuthorConvert - bool
@@ -172,12 +173,7 @@ static ssize_t helper_write(const char *buf, size_t len)
 static void helper_flush()
 {
 	fflush(stdout);
-	if (trace_want(trace_key)) {
-		struct strbuf out = STRBUF_INIT;
-		strbuf_addf(&out, "RHELPER      -- FLUSH -->\n");
-		trace_strbuf(trace_key, &out);
-		strbuf_release(&out);
-	}
+	proto_trace_flush();
 }
 
 static int helper_strbuf_getline(struct strbuf *sb)
@@ -479,7 +475,7 @@ static int fetch_revision_cb(void *ptr, void *data)
 
 	revisions_all_branches_total++;
 	revisions_all_branches_fetched++;
-	fprintf(stderr, "checkout [%d/%d] (%.2lf%%) all branches,%sETA] %s %s",
+	tracef("checkout [%d/%d] (%.2lf%%) all branches,%sETA] %s %s",
 			revisions_all_branches_fetched,
 			revisions_all_branches_total,
 			(double)revisions_all_branches_fetched/(double)revisions_all_branches_total*100.,
@@ -490,7 +486,7 @@ static int fetch_revision_cb(void *ptr, void *data)
 	if (cached_sha1) {
 		rev->isexec = isexec;
 		rev->mark = xstrdup(cached_sha1);
-		fprintf(stderr, " (fetched from revision cache) isexec %u sha1 %s\n", isexec, cached_sha1);
+		tracef(" (fetched from revision cache) isexec %u sha1 %s\n", isexec, cached_sha1);
 		return 0;
 	}
 
@@ -504,14 +500,14 @@ static int fetch_revision_cb(void *ptr, void *data)
 
 	if (file.isdead) {
 		rev->isdead = 1;
-		fprintf(stderr, " (fetched) dead\n");
+		tracef(" (fetched) dead\n");
 		return 0;
 	}
 
 	if (file.iscached)
-		fprintf(stderr, " (fetched from cache) isexec %u size %zu\n", file.isexec, file.file.len);
+		tracef(" (fetched from cache) isexec %u size %zu\n", file.isexec, file.file.len);
 	else
-		fprintf(stderr, " mode %.3o size %zu\n", file.mode, file.file.len);
+		tracef(" mode %.3o size %zu\n", file.mode, file.file.len);
 
 	rev->isexec = file.isexec;
 	if (is_cvs_looseblob_path(rev->path)) {
@@ -782,7 +778,7 @@ static void on_file_checkout_cb(struct cvsfile *file, void *data)
 	int mark;
 
 	if (is_cvs_import_excluded_path(file->path.buf)) {
-		fprintf(stderr, "%s ignored during import according to cvs-exclude\n", file->path.buf);
+		tracef("%s ignored during import according to cvs-exclude\n", file->path.buf);
 		return;
 	}
 
@@ -823,7 +819,7 @@ static void on_rlist_file_cb(const char *path, const char *revision, time_t time
 	struct hash_table *meta_revision_hash = data;
 
 	if (is_cvs_import_excluded_path(path)) {
-		fprintf(stderr, "%s ignored during import according to cvs-exclude\n", path);
+		tracef("%s ignored during import according to cvs-exclude\n", path);
 		return;
 	}
 
@@ -982,12 +978,12 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 	for (;;) {
 		if (parse_commit(commit))
 			die("cannot parse commit %s", sha1_to_hex(commit->object.sha1));
-		fprintf(stderr, "find_branch_fork_point: commit: %s date: %s commit: %p\n",
+		tracef("find_branch_fork_point: commit: %s date: %s commit: %p\n",
 			sha1_to_hex(commit->object.sha1), show_date(commit->date, 0, DATE_NORMAL), commit);
 
 		if (commit->date <= time) {
 			rev_mismatches = compare_commit_meta(commit->object.sha1, cvs_branch_ref.buf, meta_revision_hash);
-			fprintf(stderr, "rev_mismatches: %d\n", rev_mismatches);
+			tracef("rev_mismatches: %d\n", rev_mismatches);
 			if (rev_mismatches == -1) {
 				/*
 				 * TODO: compare_commit_meta return -1 if no
@@ -999,7 +995,7 @@ static const char *find_branch_fork_point(const char *parent_branch_name, time_t
 			}
 
 			if (!rev_mismatches) {
-				fprintf(stderr, "find_branch_fork_point - perfect match\n");
+				tracef("find_branch_fork_point - perfect match\n");
 				commit_ref = sha1_to_hex(commit->object.sha1);
 				break;
 			}
@@ -1087,18 +1083,18 @@ static int do_initial_import(const char *branch_name, int istag, time_t import_t
 	parent_branch_name = find_parent_branch(branch_name, revision_hash);
 	if (!parent_branch_name)
 		die("Cannot find parent branch for: %s", branch_name);
-	fprintf(stderr, "parent branch for: %s is %s\n", branch_name, parent_branch_name);
+	tracef("parent branch for: %s is %s\n", branch_name, parent_branch_name);
 
 	if (!import_time)
 		for_each_hash(revision_hash, find_last_change_time_cb, &import_time);
-	fprintf(stderr, "import timestamp: %ld\n", import_time);
+	tracef("import timestamp: %ld\n", import_time);
 
 	/*
 	 * if parent is not updated yet, import parent first
 	 */
 	item = unsorted_string_list_lookup(import_branch_list, parent_branch_name);
 	if (item && item->util == BRANCH_NOT_IMPORTED) {
-		fprintf(stderr, "fetching parent first\n");
+		tracef("fetching parent first\n");
 		import_branch_by_name(item->string);
 		item->util = BRANCH_IMPORTED;
 	}
@@ -1106,7 +1102,7 @@ static int do_initial_import(const char *branch_name, int istag, time_t import_t
 	parent_commit = find_branch_fork_point(parent_branch_name,
 						import_time,
 						revision_hash);
-	fprintf(stderr, "parent commit: %s\n", parent_commit);
+	tracef("parent commit: %s\n", parent_commit);
 
 	mark = fast_export_branch_initial(branch_name,
 					istag,
@@ -1135,7 +1131,7 @@ static int initial_branch_import(const char *branch_name, struct cvs_branch *cvs
 	if (!import_time)
 		die("import time is 0");
 	import_time--;
-	fprintf(stderr, "import time is %s\n", show_date(import_time, 0, DATE_RFC2822));
+	tracef("import time is %s\n", show_date(import_time, 0, DATE_RFC2822));
 
 	return do_initial_import(branch_name, 0, import_time, cvs_branch->last_commit_revision_hash);
 }
@@ -1169,7 +1165,7 @@ static int import_branch_by_name(const char *branch_name)
 	struct hash_table meta_revision_hash;
 	struct string_list_item *li;
 
-	fprintf(stderr, "importing CVS branch %s\n", branch_name);
+	tracef("importing CVS branch %s\n", branch_name);
 
 	struct cvs_branch *cvs_branch;
 	int psnum = 0;
@@ -1222,10 +1218,10 @@ static int import_branch_by_name(const char *branch_name)
 	struct cvs_commit *ps = cvs_branch->cvs_commit_list->head;
 	while (ps) {
 		psnum++;
-		fprintf(stderr, "-->>------------------\n");
-		fprintf(stderr, "Branch: %s Commit: %d/%d\n", branch_name, psnum, pstotal);
+		tracef("-->>------------------\n");
+		tracef("Branch: %s Commit: %d/%d\n", branch_name, psnum, pstotal);
 		print_cvs_commit(ps);
-		fprintf(stderr, "--<<------------------\n\n");
+		tracef("--<<------------------\n");
 		mark = fast_export_cvs_commit(branch_name, ps, commit_mark_sb.len ? commit_mark_sb.buf : NULL);
 		strbuf_reset(&commit_mark_sb);
 		strbuf_addf(&commit_mark_sb, ":%d", mark);
@@ -1244,7 +1240,7 @@ static int import_branch_by_name(const char *branch_name)
 		ps = ps->next;
 	}
 	if (psnum) {
-		fprintf(stderr, "Branch: %s Commits number: %d\n", branch_name, psnum);
+		tracef("Branch: %s Commits number: %d\n", branch_name, psnum);
 
 		if (initial_import && !strcmp(branch_name, "HEAD")) {
 			helper_printf("reset HEAD\n");
@@ -1260,7 +1256,7 @@ static int import_branch_by_name(const char *branch_name)
 		invalidate_ref_cache(NULL);
 	}
 	else {
-		fprintf(stderr, "Branch: %s is up to date\n", branch_name);
+		tracef("Branch: %s is up to date\n", branch_name);
 	}
 
 	strbuf_release(&commit_mark_sb);
@@ -1278,7 +1274,7 @@ static int import_tag_by_name(const char *branch_name)
 	int mark;
 	struct hash_table tag_revision_hash = HASH_TABLE_INIT;
 
-	fprintf(stderr, "importing CVS tag %s\n", branch_name);
+	tracef("importing CVS tag %s\n", branch_name);
 
 	mark = do_initial_import(branch_name, 1, 0, &tag_revision_hash);
 	free_revision_meta(&tag_revision_hash);
@@ -1420,7 +1416,7 @@ static int prepare_push_commit_list(unsigned char *sha1, const char *meta_ref, s
 		if (parse_commit(commit))
 			die("cannot parse commit %s", sha1_to_hex(commit->object.sha1));
 
-		fprintf(stderr, "adding push list commit: %s date: %s commit: %p\n",
+		tracef("adding push list commit: %s date: %s commit: %p\n",
 			sha1_to_hex(commit->object.sha1), show_date(commit->date, 0, DATE_NORMAL), commit);
 		commit_list_insert(commit, push_list);
 		if (meta_ref)
@@ -1429,7 +1425,7 @@ static int prepare_push_commit_list(unsigned char *sha1, const char *meta_ref, s
 			find_commit_meta(commit->object.sha1, &revision_meta_hash);
 		if (revision_meta_hash) {
 			commit->util = revision_meta_hash;
-			fprintf(stderr, "adding push list commit meta: %p\n", commit);
+			tracef("adding push list commit meta: %p\n", commit);
 			break;
 		}
 
@@ -1513,7 +1509,7 @@ static void on_file_change(struct diff_options *options,
 		    "Set cvshelper.ignoreModeChange to true if you want to ignore and push anyway.");
 
 	if (old_mode != new_mode && !memcmp(old_sha1, new_sha1, 20)) {
-		fprintf(stderr, "------\nignoring file because only permissions were"
+		tracef("ignoring file because only permissions were"
 				" changed (CVS does not support file permission changes): %s "
 				"mode: %o -> %o "
 				"sha: %d %s -> %d %s\n",
@@ -1526,7 +1522,7 @@ static void on_file_change(struct diff_options *options,
 		return;
 	}
 
-	fprintf(stderr, "------\nfile changed: %s "
+	tracef("file changed: %s "
 			"mode: %o -> %o "
 			"sha: %d %s -> %d %s\n",
 			concatpath,
@@ -1559,7 +1555,7 @@ static void on_file_addremove(struct diff_options *options,
 	if (S_ISLNK(mode))
 		die("CVS does not support symlinks: %s", concatpath);
 
-	fprintf(stderr, "------\n%s %s: %s "
+	tracef("%s %s: %s "
 			"mode: %o "
 			"sha: %d %s\n",
 			S_ISDIR(mode) ? "dir" : "file",
@@ -1610,7 +1606,7 @@ static int check_file_list_remote_status(const char *cvs_branch, struct string_l
 			files[i].isnew = 1;
 		}
 
-		fprintf(stderr, "status: %s rev: %s isdead: %u\n",
+		tracef("status: %s rev: %s isdead: %u\n",
 			files[i].path.buf, files[i].revision.buf, files[i].isdead);
 	}
 
@@ -1625,7 +1621,7 @@ static int create_remote_directories(const char *cvs_branch, struct string_list 
 {
 	struct string_list_item *item;
 	for_each_string_list_item(item, new_directory_list) {
-		fprintf(stderr, "directory add %s\n", item->string);
+		tracef("directory add %s\n", item->string);
 	}
 	return cvs_create_directories(cvs, cvs_branch, new_directory_list);
 }
@@ -1705,7 +1701,7 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 	if (!commit->util)
 		return -1;
 
-	fprintf(stderr, "pushing commit %s to CVS branch %s\n", sha1_to_hex(commit->object.sha1), cvs_branch);
+	tracef("pushing commit %s to CVS branch %s\n", sha1_to_hex(commit->object.sha1), cvs_branch);
 	strbuf_addstr(&meta_commit_msg_sb, "cvs meta update\n");
 
 	file_list = commit->util;
@@ -1723,7 +1719,7 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 		files[i].util = sm;
 		files[i].isexec = !!(sm->mode & 0111);
 		files[i].mode = sm->mode;
-		fprintf(stderr, "check in %c file: %s sha1: %s mod: %.4o\n",
+		tracef("check in %c file: %s sha1: %s mod: %.4o\n",
 				sm->addremove ? sm->addremove : '*', item->string, sha1_to_hex(sm->sha1), sm->mode);
 		strbuf_addstr(&files[i].path, item->string);
 		if (sm->addremove == '+') {
@@ -1758,7 +1754,7 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 	}
 
 	find_commit_subject(commit->buffer, &commit_message);
-	fprintf(stderr, "export hook '%s'\n", commit->buffer);
+	tracef("export hook '%s'\n", commit->buffer);
 	if (have_export_hook) {
 		hook_message = strstr(commit->buffer, "author ");
 		if (!hook_message)
@@ -1772,7 +1768,7 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 	 * minimize new cvs sessions.
 	 */
 	if (need_new_cvs_session) {
-		fprintf(stderr, "extra cvs session\n");
+		tracef("extra cvs session\n");
 		rc = cvs_terminate(cvs);
 		if (rc)
 			die("ungraceful cvs session termination");
@@ -1791,7 +1787,7 @@ static int push_commit_to_cvs(struct commit *commit, const char *cvs_branch, str
 			free(rev->revision);
 			rev->revision = strbuf_detach(&files[i].revision, NULL);
 			rev->isdead = files[i].isdead;
-			//fprintf(stderr, "new rev: %s %s\n", rev->revision, rev->path);
+			//tracef("new rev: %s %s\n", rev->revision, rev->path);
 			/*if (!files[i].isdead)
 				rev->revision = strbuf_detach(&files[i].revision, NULL);
 			else
@@ -1839,7 +1835,7 @@ static int push_commit_list_to_cvs(struct commit_list *push_list, const char *cv
 	if (!revision_meta_hash)
 		die("push failed: base commit does not have CVS metadata");
 
-	fprintf(stderr, "base commit: %s date: %s on CVS branch: %s\n",
+	tracef("base commit: %s date: %s on CVS branch: %s\n",
 			sha1_to_hex(base->object.sha1), show_date(base->date, 0, DATE_NORMAL), cvs_branch);
 
 	base_revision_meta_hash = revision_meta_hash;
@@ -1851,7 +1847,8 @@ static int push_commit_list_to_cvs(struct commit_list *push_list, const char *cv
 		commit = push_list_it->item;
 		parent = commit->parents->item;
 
-		fprintf(stderr, "\n-----------------------------\npushing: %s date: %s to CVS branch: %s\n",
+		tracef("-----------------------------\n");
+		tracef("pushing: %s date: %s to CVS branch: %s\n",
 			sha1_to_hex(commit->object.sha1), show_date(commit->date, 0, DATE_NORMAL), cvs_branch);
 
 		current_commit = commit;
@@ -1937,7 +1934,7 @@ static int push_branch(const char *src, const char *dst, int force)
 	if (is_new_branch && single_commit_push)
 		die("single commit push cannot be used with new branch creation");
 
-	fprintf(stderr, "pushing %s to %s (CVS branch: %s) force: %d new branch: %d\n",
+	tracef("pushing %s to %s (CVS branch: %s) force: %d new branch: %d\n",
 			src, dst, cvs_branch, force, is_new_branch);
 
 	if (prepare_push_commit_list(sha1, is_new_branch ? NULL :  meta_ref_sb.buf, &push_list))
@@ -1971,7 +1968,7 @@ static int push_branch(const char *src, const char *dst, int force)
 			die("single commit push failed: commit sha mismatch '%s' vs '%s'",
 			    sha1_to_hex(single_commit_sha1), sha1_to_hex(commit->object.sha1));
 
-		fprintf(stderr, "pushing single commit '%s'\n", sha1_to_hex(single_commit_sha1));
+		tracef("pushing single commit '%s'\n", sha1_to_hex(single_commit_sha1));
 	}
 
 	if (commits_count > 1) {
@@ -1984,7 +1981,7 @@ static int push_branch(const char *src, const char *dst, int force)
 		}
 	}
 	else {
-		fprintf(stderr, "Nothing to push\n");
+		tracef("Nothing to push\n");
 		rc = 0;
 	}
 
@@ -2005,7 +2002,7 @@ static int push_tag(const char *src, const char *dst, int force)
 		die("Malformed destination branch name");
 	cvs_tag++;
 
-	fprintf(stderr, "pushing %s to %s (CVS tag: %s) force: %d\n", src, dst, cvs_tag, force);
+	tracef("pushing %s to %s (CVS tag: %s) force: %d\n", src, dst, cvs_tag, force);
 
 	unsigned char sha1[20];
 	if (get_sha1(src, sha1))
@@ -2112,7 +2109,7 @@ static void add_cvs_revision_cb(const char *branch_name,
 	struct cvs_branch *cvs_branch;
 
 	if (is_cvs_import_excluded_path(path)) {
-		fprintf(stderr, "%s ignored during import according to cvs-exclude\n", path);
+		tracef("%s ignored during import according to cvs-exclude\n", path);
 		return;
 	}
 
@@ -2165,7 +2162,7 @@ static int cmd_list(const char *line)
 	if (!cvs)
 		return -1;
 
-	fprintf(stderr, "connected to cvs server\n");
+	tracef("connected to cvs server\n");
 
 	struct string_list_item *li;
 	struct cvs_branch *cvs_branch;
@@ -2178,8 +2175,8 @@ static int cmd_list(const char *line)
 		rc = cvs_rlog(cvs, 0, 0, &cvs_branch_list, &cvs_tag_list, add_cvs_revision_cb, &cvs_branch_list);
 		if (rc == -1)
 			die("rlog failed");
-		fprintf(stderr, "Total revisions: %d\n", revisions_all_branches_total);
-		fprintf(stderr, "Skipped revisions: %d\n", skipped);
+		tracef("Total revisions: %d\n", revisions_all_branches_total);
+		tracef("Skipped revisions: %d\n", skipped);
 
 		for_each_string_list_item(li, &cvs_branch_list) {
 			cvs_branch = li->util;
@@ -2201,7 +2198,7 @@ static int cmd_list(const char *line)
 		 */
 		if (update_since > 0)
 			update_since--;
-		fprintf(stderr, "update since: %ld\n", update_since);
+		tracef("update since: %ld\n", update_since);
 
 		/*
 		 * FIXME: we'll skip branches which were not imported during
@@ -2213,8 +2210,8 @@ static int cmd_list(const char *line)
 		rc = cvs_rlog(cvs, update_since, 0, &cvs_branch_list, &cvs_tag_list, add_cvs_revision_cb, &cvs_branch_list);
 		if (rc == -1)
 			die("rlog failed");
-		fprintf(stderr, "Total revisions: %d\n", revisions_all_branches_total);
-		fprintf(stderr, "Skipped revisions: %d\n", skipped);
+		tracef("Total revisions: %d\n", revisions_all_branches_total);
+		tracef("Skipped revisions: %d\n", skipped);
 
 		for_each_string_list_item(li, &cvs_branch_list) {
 			cvs_branch = li->util;
@@ -2224,7 +2221,7 @@ static int cmd_list(const char *line)
 			if (!cvs_branch || cvs_branch->rev_list->nr)
 				helper_printf("? refs/heads/%s\n", li->string);
 			else
-				fprintf(stderr, "Branch: %s is up to date\n", li->string);
+				tracef("Branch: %s is up to date\n", li->string);
 		}
 
 		for_each_string_list_item(li, &cvs_tag_list) {
@@ -2256,7 +2253,7 @@ static int cmd_list_for_push(const char *line)
 	if (!cvs)
 		return -1;
 
-	fprintf(stderr, "connected to cvs server\n");
+	tracef("connected to cvs server\n");
 
 	for_each_ref_in(get_meta_ref_prefix(), print_meta_branch_name, NULL);
 	helper_printf("\n");
@@ -2277,7 +2274,7 @@ static int validate_tree_entry(const unsigned char *sha1, const char *base,
 		return READ_TREE_RECURSIVE;
 
 	snprintf(path, sizeof(path), "%s%s", base, filename);
-	//fprintf(stderr, "validating: %s\n", path);
+	//tracef("validating: %s\n", path);
 	file_meta = lookup_hash(hash_path(path), revision_meta_hash);
 	if (!file_meta)
 		die("no meta for file %s\n", path);
@@ -2314,7 +2311,7 @@ static int validate_commit_meta_by_tree(const char *ref, struct hash_table *revi
 	unsigned char sha1[20];
 	int err;
 
-	fprintf(stderr, "validating commit meta by tree\n");
+	tracef("validating commit meta by tree\n");
 
 	if (!ref_exists(ref))
 		die("ref does not exist %s", ref);
@@ -2372,9 +2369,9 @@ static void on_every_file_revision(const char *path, const char *revision, time_
 	struct cvs_revision *file_meta;
 	struct hash_table *revision_meta_hash = meta;
 
-	fprintf(stderr, "rls: validating: %s\n", path);
+	tracef("rls: validating: %s\n", path);
 	if (is_cvs_import_excluded_path(path)) {
-		fprintf(stderr, "%s ignored during meta validation according to cvs-exclude\n", path);
+		tracef("%s ignored during meta validation according to cvs-exclude\n", path);
 		return;
 	}
 
@@ -2408,7 +2405,7 @@ static int validate_commit_meta_by_rls(const char *branch_name, time_t timestamp
 
 	for_each_hash(revision_meta_hash, zero_cvs_revision_util, NULL);
 
-	fprintf(stderr, "validating commit meta by rls\n");
+	tracef("validating commit meta by rls\n");
 
 	rc = cvs_rls(cvs, branch_name, 0, timestamp, on_every_file_revision, revision_meta_hash);
 
@@ -2441,7 +2438,7 @@ static int validate_cvs_branch_meta(const char *branch_name)
 	rc = validate_commit_meta_by_tree(ref_sb.buf, revision_meta_hash);
 	if (!rc) {
 		if (!timestamp)
-			fprintf(stderr, "skipping meta check by rls, no commit timestamp\n");
+			tracef("skipping meta check by rls, no commit timestamp\n");
 		else
 			rc = validate_commit_meta_by_rls(branch_name, timestamp, revision_meta_hash);
 	}
@@ -2510,8 +2507,8 @@ static int parse_cvs_spec(const char *spec)
 	cvsroot = xstrndup(spec, idx - spec);
 	cvsmodule = xstrdup(idx + 1);
 
-	fprintf(stderr, "CVSROOT: %s\n", cvsroot);
-	fprintf(stderr, "CVSMODULE: %s\n", cvsmodule);
+	tracef("CVSROOT: %s\n", cvsroot);
+	tracef("CVSMODULE: %s\n", cvsmodule);
 
 	return 0;
 }
@@ -2545,6 +2542,14 @@ int git_cvshelper_config(const char *var, const char *value, void *dummy)
 			return 1;
 
 		setenv("GIT_TRACE_CVS_HELPER", str, 0);
+		free(str);
+		return 0;
+	}
+	else if (!strcmp(var, "cvshelper.trace")) {
+		if (git_config_pathname((const char **)&str, var, value) || !str)
+			return 1;
+
+		setenv("GIT_TRACE_CVS", str, 0);
 		free(str);
 		return 0;
 	}
@@ -2598,20 +2603,22 @@ int main(int argc, const char **argv)
 	remote = remote_get(argv[1]);
 	cvs_root_module = (argc == 3) ? argv[2] : remote->url[0];
 
+	tracef("**************************************\n");
+
 	if (parse_cvs_spec(cvs_root_module))
 		die("Malformed repository specification. "
 		    "Should be [:method:][[user][:password]@]hostname[:[port]]/path/to/repository:module/path");
 
-	fprintf(stderr, "git_dir: %s\n", get_git_dir());
+	tracef("git_dir: %s\n", get_git_dir());
 
 	if (!ref_exists("HEAD")) {
-		fprintf(stderr, "Initial import!\n");
+		tracef("Initial import!\n");
 		initial_import = 1;
 	}
 
 	set_ref_prefix_remote(remote->name);
-	fprintf(stderr, "ref_prefix %s\n", get_ref_prefix());
-	fprintf(stderr, "private_ref_prefix %s\n", get_private_ref_prefix());
+	tracef("ref_prefix %s\n", get_ref_prefix());
+	tracef("private_ref_prefix %s\n", get_private_ref_prefix());
 
 	if (find_hook("cvs-import-commit"))
 		have_import_hook = 1;
@@ -2638,7 +2645,7 @@ int main(int argc, const char **argv)
 	if (cvs) {
 		int ret = cvs_terminate(cvs);
 
-		fprintf(stderr, "done, rc=%d\n", ret);
+		tracef("done, rc=%d\n", ret);
 	}
 
 	cvs_authors_store();

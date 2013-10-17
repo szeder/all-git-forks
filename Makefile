@@ -642,7 +642,7 @@ LIB_H += vcs-cvs/cvs-client.h
 LIB_H += vcs-cvs/cvs-types.h
 LIB_H += vcs-cvs/ident-utils.h
 LIB_H += vcs-cvs/meta-store.h
-LIB_H += vcs-cvs/proto-trace.h
+LIB_H += vcs-cvs/trace-utils.h
 
 GENERATED_H += common-cmds.h
 
@@ -1906,7 +1906,7 @@ VCSCVS_OBJS += vcs-cvs/cvs-cache.o
 VCSCVS_OBJS += vcs-cvs/cvs-client.o
 VCSCVS_OBJS += vcs-cvs/ident-utils.o
 VCSCVS_OBJS += vcs-cvs/meta-store.o
-VCSCVS_OBJS += vcs-cvs/proto-trace.o
+VCSCVS_OBJS += vcs-cvs/trace-utils.o
 
 TEST_OBJS := $(patsubst test-%$X,test-%.o,$(TEST_PROGRAMS))
 OBJECTS := $(LIB_OBJS) $(BUILTIN_OBJS) $(PROGRAM_OBJS) $(TEST_OBJS) \

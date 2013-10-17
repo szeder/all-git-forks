@@ -3,7 +3,7 @@
 #include "pkt-line.h"
 #include "string-list.h"
 #include "vcs-cvs/cvs-client.h"
-#include "vcs-cvs/proto-trace.h"
+#include "vcs-cvs/trace-utils.h"
 #include "vcs-cvs/cvs-cache.h"
 
 #include <string.h>
@@ -562,7 +562,7 @@ static int cvs_getreply(struct cvs_transport *cvs, struct strbuf *sb, const char
 			return -1;
 
 		if (strbuf_startswith(sb, "E "))
-			fprintf(stderr, "CVS E: %s\n", sb->buf + 2);
+			tracef("CVS E: %s\n", sb->buf + 2);
 
 		if (strbuf_gettext_after(&cvs->rd_line_buf, reply, sb))
 			found = 1;
@@ -571,7 +571,7 @@ static int cvs_getreply(struct cvs_transport *cvs, struct strbuf *sb, const char
 			break;
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "error")) {
-			fprintf(stderr, "CVS Error: %s", cvs->rd_line_buf.buf);
+			tracef("CVS Error: %s", cvs->rd_line_buf.buf);
 			return -1;
 		}
 	}
@@ -589,7 +589,7 @@ static int cvs_getreply_firstmatch(struct cvs_transport *cvs, struct strbuf *sb,
 			return -1;
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "E "))
-			fprintf(stderr, "CVS E: %s\n", cvs->rd_line_buf.buf + 2);
+			tracef("CVS E: %s\n", cvs->rd_line_buf.buf + 2);
 
 		if (strbuf_gettext_after(&cvs->rd_line_buf, reply, sb))
 			return 0;
@@ -598,7 +598,7 @@ static int cvs_getreply_firstmatch(struct cvs_transport *cvs, struct strbuf *sb,
 			return 1;
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "error")) {
-			fprintf(stderr, "CVS Error: %s", cvs->rd_line_buf.buf);
+			tracef("CVS Error: %s", cvs->rd_line_buf.buf);
 			return -1;
 		}
 	}
@@ -654,7 +654,7 @@ static int cvs_negotiate(struct cvs_transport *cvs)
 	if (ret)
 		return -1;
 
-	//fprintf(stderr, "CVS Valid-requests: %s\n", reply.buf);
+	//tracef("CVS Valid-requests: %s\n", reply.buf);
 
 	string_list_split_in_place(&cvs_capabilities, reply.buf, ' ', -1);
 	sort_string_list(&cvs_capabilities);
@@ -676,9 +676,9 @@ static int cvs_negotiate(struct cvs_transport *cvs)
 
 	cvs->has_rls_support = string_list_has_string(&cvs_capabilities, "rlist");
 	if (!cvs->has_rls_support)
-		warning("CVS server does not support rls request (checkout will be used instead)");
+		tracef("CVS server does not support rls request (checkout will be used instead)");
 	//else
-	//	fprintf(stderr, "CVS server support rls request\n");
+	//	tracef("CVS server support rls request\n");
 	string_list_clear(&cvs_capabilities, 0);
 
 	cvs->has_rlog_S_option = !dumb_rlog;
@@ -704,7 +704,7 @@ static int cvs_negotiate(struct cvs_transport *cvs)
 		if (ret)
 			return -1;
 
-		//fprintf(stderr, "CVS Server version: %s\n", reply.buf);
+		//tracef("CVS Server version: %s\n", reply.buf);
 		if (!dumb_rlog && strstr(reply.buf, "1.11.1p1")) {
 			cvs->has_rlog_S_option = 0;
 			warning("CVS server does not support rlog -S option");
@@ -1520,7 +1520,7 @@ static int parse_cvs_rlog(struct cvs_transport *cvs, struct string_list *branch_
 			}
 
 			if (state != NEED_EOM) {
-				//fprintf(stderr, "BRANCH: %s\nREV: %s %s %s %d %lu\nMSG: %s--\n", branch.buf,
+				//tracef("BRANCH: %s\nREV: %s %s %s %d %lu\nMSG: %s--\n", branch.buf,
 				//	file.buf, revision.buf, author.buf, is_dead, timestamp, message.buf);
 				if (branches_max < branches)
 					branches_max = branches;
@@ -1530,7 +1530,7 @@ static int parse_cvs_rlog(struct cvs_transport *cvs, struct string_list *branch_
 				    !prefixcmp(message.buf, "file ") &&
 				    (strstr(message.buf, "was initially added on branch") ||
 				     strstr(message.buf, "was added on branch"))) {
-					//fprintf(stderr, "skipping initial add to another branch file: %s rev: %s\n", file.buf, revision.buf);
+					//tracef("skipping initial add to another branch file: %s rev: %s\n", file.buf, revision.buf);
 				}
 				else if (!skip_unknown)
 					cb(branch.buf, file.buf, revision.buf, author.buf, message.buf, timestamp, is_dead, data);
@@ -1551,7 +1551,7 @@ static int parse_cvs_rlog(struct cvs_transport *cvs, struct string_list *branch_
 	if (tag_lst)
 		for_each_hash(&tag_hash, add_to_string_list, tag_lst);
 
-	fprintf(stderr, "REVS: %d FILES: %d BRANCHES: %d TAGS: %d\n", revs, files, branches_max, tags_max);
+	tracef("REVS: %d FILES: %d BRANCHES: %d TAGS: %d\n", revs, files, branches_max, tags_max);
 
 	strbuf_release(&branch_name);
 	strbuf_release(&branch_rev);
@@ -1913,7 +1913,7 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 		content->isexec = isexec;
 		content->ismem = 1;
 		content->iscached = 1;
-		//fprintf(stderr, "db_cache get file: %s rev: %s size: %zu isexec: %u hash: %u\n",
+		//tracef("db_cache get file: %s rev: %s size: %zu isexec: %u hash: %u\n",
 		//	file, revision, content->file.len, content->isexec, hash_buf(content->file.buf, content->file.len));
 		return 0;
 	}
@@ -1957,7 +1957,7 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 			return -1;
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "E "))
-			fprintf(stderr, "CVS E: %s\n", cvs->rd_line_buf.buf + 2);
+			tracef("CVS E: %s\n", cvs->rd_line_buf.buf + 2);
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "Created") ||
 		    strbuf_startswith(&cvs->rd_line_buf, "Updated")) {
@@ -1986,7 +1986,7 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 			if (!size && strcmp(cvs->rd_line_buf.buf, "0"))
 				die("Cannot parse file size %s", cvs->rd_line_buf.buf);
 
-			//fprintf(stderr, "checkout %s rev %s mode %o size %zu\n", file, revision, mode, size);
+			//tracef("checkout %s rev %s mode %o size %zu\n", file, revision, mode, size);
 
 			if (size) {
 				// FIXME:
@@ -2005,7 +2005,7 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 #ifdef DB_CACHE
 					db_cache_add(NULL, file, revision, content->isexec, &content->file);
 					//content->iscached = 1;
-					//fprintf(stderr, "db_cache add file: %s rev: %s size: %zu isexec: %u hash: %u\n",
+					//tracef("db_cache add file: %s rev: %s size: %zu isexec: %u hash: %u\n",
 					//	file, revision, content->file.len, content->isexec, hash_buf(content->file.buf, content->file.len));
 #endif
 				}
@@ -2034,7 +2034,7 @@ int cvs_checkout_rev(struct cvs_transport *cvs, const char *file, const char *re
 			break;
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "error")) {
-			fprintf(stderr, "CVS Error: %s", cvs->rd_line_buf.buf);
+			tracef("CVS Error: %s", cvs->rd_line_buf.buf);
 			break;
 		}
 	}
@@ -2150,7 +2150,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 			continue;
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "E "))
-			fprintf(stderr, "CVS E: %s\n", cvs->rd_line_buf.buf + 2);
+			tracef("CVS E: %s\n", cvs->rd_line_buf.buf + 2);
 
 		if (strbuf_gettext_after(&cvs->rd_line_buf, "Mod-time ", &mod_time)) {
 			mod_time_unix = rfc2822_date_to_unixtime(mod_time.buf);
@@ -2189,7 +2189,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 			if (!size && strcmp(cvs->rd_line_buf.buf, "0"))
 				die("Cannot parse file size %s", cvs->rd_line_buf.buf);
 
-			fprintf(stderr, "checkout %s rev %s mode %o size %zu\n", file.path.buf, file.revision.buf, mode, size);
+			tracef("checkout %s rev %s mode %o size %zu\n", file.path.buf, file.revision.buf, mode, size);
 
 			if (size) {
 				// FIXME:
@@ -2208,7 +2208,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 #ifdef DB_CACHE
 					db_cache_add(db, file.path.buf, file.revision.buf, file.isexec, &file.file);
 					file.iscached = 1;
-					//fprintf(stderr, "db_cache branch add file: %s rev: %s size: %zu isexec: %u hash: %u\n",
+					//tracef("db_cache branch add file: %s rev: %s size: %zu isexec: %u hash: %u\n",
 					//	file.path.buf, file.revision.buf, file.file.len, file.isexec, hash_buf(file.file.buf, file.file.len));
 #endif
 				}
@@ -2243,7 +2243,7 @@ int cvs_checkout_branch(struct cvs_transport *cvs, const char *branch, time_t da
 		}
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "error")) {
-			fprintf(stderr, "CVS Error: %s", cvs->rd_line_buf.buf);
+			tracef("CVS Error: %s", cvs->rd_line_buf.buf);
 			break;
 		}
 	}
@@ -2346,7 +2346,7 @@ static int parse_update_cvs_status(struct cvs_transport *cvs, struct cvsfile *fi
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "E ")) {
 			if (!strbuf_gettext_after(&cvs->rd_line_buf, "E cvs status: Examining ", &current_dir))
-				fprintf(stderr, "CVS E: %s\n", cvs->rd_line_buf.buf + 2);
+				tracef("CVS E: %s\n", cvs->rd_line_buf.buf + 2);
 		}
 
 		if (strbuf_gettext_after(&cvs->rd_line_buf, "M ", &line)) {
@@ -2442,7 +2442,7 @@ M
 							strbuf_addf(&path, "%s/%s", current_dir.buf, file_basename.buf);
 					}
 
-					fprintf(stderr, "file: %s status: %s rev local: %s rev remote: %s\n",
+					tracef("file: %s status: %s rev local: %s rev remote: %s\n",
 						path.buf, status.buf, local_rev.buf, remote_rev.buf);
 
 					file = cvsfile_find(files, count, path.buf);
@@ -2459,7 +2459,7 @@ M
 					case STAT_LOCALLY_ADDED:
 						if (file->isdead) {
 							if (strcmp(file->revision.buf, remote_rev.buf)) {
-								fprintf(stderr, "File status: %s was removed in cvs, adding again now. "
+								tracef("File status: %s was removed in cvs, adding again now. "
 										"Repository revision: %s Expected %s. Metadata corrupt?\n",
 										file->path.buf, remote_rev.buf, file->revision.buf);
 								rc = 1;
@@ -2483,7 +2483,7 @@ M
 			break;
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "error")) {
-			fprintf(stderr, "CVS Error: %s", cvs->rd_line_buf.buf);
+			tracef("CVS Error: %s", cvs->rd_line_buf.buf);
 			rc = -1;
 			break;
 		}
@@ -2815,6 +2815,7 @@ CVS   19 <- /DCE.cpp/1.6//-kk/\0a
 		}
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "E ")) {
+			tracef("CVS E: %s\n", cvs->rd_line_buf.buf + 2);
 			fprintf(stderr, "CVS E: %s\n", cvs->rd_line_buf.buf + 2);
 		}
 
@@ -2826,6 +2827,7 @@ CVS   19 <- /DCE.cpp/1.6//-kk/\0a
 		}
 
 		if (strbuf_gettext_after(&cvs->rd_line_buf, "M ", &line)) {
+			tracef("CVS M: %s\n", cvs->rd_line_buf.buf + 2);
 			fprintf(stderr, "CVS M: %s\n", cvs->rd_line_buf.buf + 2);
 			switch (state) {
 			case NEED_CHECK_IN:
@@ -2938,7 +2940,7 @@ CVS   19 <- /DCE.cpp/1.6//-kk/\0a
 			break;
 
 		if (strbuf_startswith(&cvs->rd_line_buf, "error")) {
-			fprintf(stderr, "CVS Error: %s", cvs->rd_line_buf.buf);
+			tracef("CVS Error: %s", cvs->rd_line_buf.buf);
 			rc = -1;
 			break;
 		}
@@ -3280,7 +3282,7 @@ int cvs_tag(struct cvs_transport *cvs, const char *cvs_branch, int istag, struct
 			break;
 		}
 
-		fprintf(stderr, "CVS M: %s\n", reply.buf);
+		tracef("CVS M: %s\n", reply.buf);
 	}
 
 	strbuf_release(&file_basename_sb);

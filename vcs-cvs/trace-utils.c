@@ -1,4 +1,4 @@
-#include "vcs-cvs/proto-trace.h"
+#include "vcs-cvs/trace-utils.h"
 #include "git-compat-util.h"
 #include "strbuf.h"
 #include "cache.h"
@@ -113,3 +113,35 @@ void proto_ztrace_kp(const char *trace_key, const char *proto, size_t len, size_
 	strbuf_release(&out);
 }
 
+void proto_trace_flush_kp(const char *trace_key, const char *proto)
+{
+	struct strbuf out = STRBUF_INIT;
+
+	if (!trace_want(trace_key))
+		return;
+
+	strbuf_addf(&out, "%s %s      -- FLUSH -->\n",
+				    show_date(time(NULL), tz, DATE_FORMAT),
+				    proto);
+	trace_strbuf(trace_key, &out);
+	strbuf_release(&out);
+}
+
+void tracef(const char *fmt, ...)
+{
+	va_list ap;
+	struct strbuf out = STRBUF_INIT;
+	static const char trace_key_general[] = "GIT_TRACE_CVS";
+
+	if (!trace_want(trace_key_general))
+		return;
+
+	strbuf_addf(&out, "%s ", show_date(time(NULL), tz, DATE_FORMAT));
+
+	va_start(ap, fmt);
+	strbuf_vaddf(&out, fmt, ap);
+	va_end(ap);
+
+	trace_strbuf(trace_key_general, &out);
+	strbuf_release(&out);
+}
