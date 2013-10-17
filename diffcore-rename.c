@@ -96,26 +96,51 @@ static struct diff_rename_src *register_rename_src(struct diff_filepair *p)
 	return &(rename_src[first]);
 }
 
-static int basename_same(struct diff_filespec *src, struct diff_filespec *dst)
+static int estimate_filename_similarity(struct diff_filespec *src, struct diff_filespec *dst)
 {
-	int src_len = strlen(src->path), dst_len = strlen(dst->path);
-	while (src_len && dst_len) {
-		char c1 = src->path[--src_len];
-		char c2 = dst->path[--dst_len];
-		if (c1 != c2)
-			return 0;
-		if (c1 == '/')
-			return 1;
+	/*
+	 * Calculate similarity between src path and dst path using
+	 * Sorensen-Dice coefficient of bigrams in strings
+	 */
+	const char *src_path = src->path;
+	const char *dst_path = dst->path;
+	size_t src_len = strlen(src_path);
+	size_t dst_len = strlen(dst_path);
+	static uint16_t src_bigram[256][256];
+	int i;
+	int bigrams_number = 0;
+	int similarity;
+
+	for (i=0; i<src_len; i++) {
+		int c1 = ((unsigned char*)src_path)[i];
+		int c2 = ((unsigned char*)src_path)[i + 1];
+		src_bigram[c1][c2] ++;
 	}
-	return (!src_len || src->path[src_len - 1] == '/') &&
-		(!dst_len || dst->path[dst_len - 1] == '/');
+	for (i=0; i<dst_len; i++) {
+		int c1 = ((unsigned char*)dst_path)[i];
+		int c2 = ((unsigned char*)dst_path)[i + 1];
+		if (src_bigram[c1][c2] > 0) {
+			src_bigram[c1][c2] --;
+			bigrams_number ++;
+		}
+	}
+	similarity = MAX_SCORE * 2 * bigrams_number / (src_len + dst_len);
+
+    /* Clean up src_bigram */
+	for (i=0; i<src_len; i++) {
+		int c1 = ((unsigned char*)src_path)[i];
+		int c2 = ((unsigned char*)src_path)[i + 1];
+		src_bigram[c1][c2] = 0;
+	}
+
+	return similarity;
 }
 
 struct diff_score {
 	int src; /* index in rename_src */
 	int dst; /* index in rename_dst */
 	unsigned short score;
-	short name_score;
+	unsigned short name_score;
 };
 
 static int estimate_similarity(struct diff_filespec *src,
@@ -228,7 +253,7 @@ static void record_rename_pair(int dst_index, int src_index, int score)
  */
 static int score_compare(const void *a_, const void *b_)
 {
-	const struct diff_score *a = a_, *b = b_;
+	struct diff_score *a = (struct diff_score *)a_, *b = (struct diff_score *)b_;
 
 	/* sink the unused ones to the bottom */
 	if (a->dst < 0)
@@ -236,8 +261,23 @@ static int score_compare(const void *a_, const void *b_)
 	else if (b->dst < 0)
 		return -1;
 
-	if (a->score == b->score)
+	if (a->score == b->score){
+		if(a->score == 0)
+			return 0;
+		/* Calculate name_score only when both score is the same */
+		if(a->name_score == USHRT_MAX){
+			struct diff_filespec *two = rename_dst[a->dst].two;
+			struct diff_filespec *one = rename_src[a->src].p->one;
+			a->name_score =  estimate_filename_similarity(one, two);
+		}
+		if(b->name_score == USHRT_MAX){
+			struct diff_filespec *two = rename_dst[b->dst].two;
+			struct diff_filespec *one = rename_src[b->src].p->one;
+			b->name_score = estimate_filename_similarity(one, two);
+		}
+
 		return b->name_score - a->name_score;
+	}
 
 	return b->score - a->score;
 }
@@ -282,7 +322,7 @@ static int find_identical_files(struct file_similarity *src,
 			score = !source->rename_used;
 			if (source->rename_used && options->detect_rename != DIFF_DETECT_COPY)
 				continue;
-			score += basename_same(source, target);
+			score += estimate_filename_similarity(source, target);
 			if (score > best_score) {
 				best = p;
 				best_score = score;
@@ -605,10 +645,17 @@ void diffcore_rename(struct diff_options *options)
 
 			this_src.score = estimate_similarity(one, two,
 							     minimum_score);
-			this_src.name_score = basename_same(one, two);
+			/*
+			 * name_score is needed only when "score"s are the same.
+			 * So, name_score will be calculated on score_compare
+			 * only when needed.
+			 */
+			this_src.name_score = USHRT_MAX;
 			this_src.dst = i;
 			this_src.src = j;
-			record_if_better(m, &this_src);
+			if(this_src.score >= minimum_score){
+				record_if_better(m, &this_src);
+			}
 			/*
 			 * Once we run estimate_similarity,
 			 * We do not need the text anymore.
