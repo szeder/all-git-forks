@@ -40,8 +40,6 @@
 /git-credential-cache
 /git-credential-cache--daemon
 /git-credential-store
-/git-cvsfetch
-/git-cvsclone
 /git-cvsexportcommit
 /git-cvsimport
 /git-cvsserver
