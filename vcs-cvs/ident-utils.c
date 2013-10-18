@@ -1,11 +1,12 @@
 #include <stdio.h>
 
 #include "vcs-cvs/ident-utils.h"
+#include "cache.h"
 #include "hash.h"
 #include "git-compat-util.h"
 #include "strbuf.h"
-#include "run-command.h"
 #include "cache.h"
+#include "run-command.h"
 
 static struct hash_table cvs_authors_hash = HASH_TABLE_INIT;
 static int cvs_authors_hash_modified = 0;

@@ -2,11 +2,12 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "git-compat-util.h"
+#include "cache.h"
+#include "refs.h"
 #include "vcs-cvs/aggregator.h"
 #include "vcs-cvs/meta-store.h"
 #include "vcs-cvs/trace-utils.h"
-#include "cache.h"
-#include "refs.h"
 
 extern time_t fuzz_time;
 long ps = 0;

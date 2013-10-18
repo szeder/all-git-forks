@@ -94,9 +94,7 @@ static struct strbuf push_error_sb = STRBUF_INIT;
 static struct string_list cvs_branch_list = STRING_LIST_INIT_DUP;
 static struct string_list cvs_tag_list = STRING_LIST_INIT_DUP;
 static struct string_list *import_branch_list = NULL;
-static struct path_exclude_check *exclude_check = NULL;
 static struct dir_struct *exclude_dir = NULL;
-static struct path_exclude_check *looseblob_check = NULL;
 static struct dir_struct *looseblob_dir = NULL;
 static const char *looseblob_tag_ref_prefix = "refs/loose-blobs/";
 static struct strbuf looseblob_gitattr_sb = STRBUF_INIT;
@@ -257,16 +255,14 @@ static void init_cvs_import_exclude()
 {
 	const char *cvs_exclude_path;
 
-	if (exclude_check)
+	if (exclude_dir)
 		return;
 
-	exclude_check = xcalloc(1, sizeof(*exclude_check));
 	exclude_dir = xcalloc(1, sizeof(*exclude_dir));
-	path_exclude_check_init(exclude_check, exclude_dir);
 
 	//exclude_dir->exclude_per_dir = ".gitignore";
 	cvs_exclude_path = git_path("info/cvs-exclude");
-	if (!access_or_warn(cvs_exclude_path, R_OK))
+	if (!access_or_warn(cvs_exclude_path, R_OK, 0))
 		add_excludes_from_file(exclude_dir, cvs_exclude_path);
 
 	cvs_exclude_path = getenv("GIT_CVS_IMPORT_EXCLUDE");
@@ -280,12 +276,10 @@ static void init_cvs_import_exclude()
 
 static void free_cvs_import_exclude()
 {
-	if (!exclude_check)
+	if (!exclude_dir)
 		return;
 
-	path_exclude_check_clear(exclude_check);
 	clear_directory(exclude_dir);
-	free(exclude_check);
 	free(exclude_dir);
 }
 
@@ -293,10 +287,10 @@ static int is_cvs_import_excluded_path(const char *path)
 {
 	int dtype = DT_UNKNOWN;
 
-	if (!exclude_check)
+	if (!exclude_dir)
 		init_cvs_import_exclude();
 
-	return is_path_excluded(exclude_check, path, -1, &dtype);
+	return is_excluded(exclude_dir, path, &dtype);
 }
 
 static int *make_looseblob_gitattr_filter()
@@ -318,15 +312,13 @@ static void init_cvs_looseblob_filter()
 {
 	const char *cvs_looseblob_path;
 
-	if (looseblob_check)
+	if (looseblob_dir)
 		return;
 
-	looseblob_check = xcalloc(1, sizeof(*looseblob_check));
 	looseblob_dir = xcalloc(1, sizeof(*looseblob_dir));
-	path_exclude_check_init(looseblob_check, looseblob_dir);
 
 	cvs_looseblob_path = git_path("info/cvs-looseblob");
-	if (!access_or_warn(cvs_looseblob_path, R_OK))
+	if (!access_or_warn(cvs_looseblob_path, R_OK, 0))
 		add_excludes_from_file(looseblob_dir, cvs_looseblob_path);
 
 	cvs_looseblob_path = getenv("GIT_CVS_IMPORT_LOOSEBLOB");
@@ -342,12 +334,10 @@ static void init_cvs_looseblob_filter()
 
 static void free_cvs_looseblob_filter()
 {
-	if (!looseblob_check)
+	if (!looseblob_dir)
 		return;
 
-	path_exclude_check_clear(looseblob_check);
 	clear_directory(looseblob_dir);
-	free(looseblob_check);
 	free(looseblob_dir);
 }
 
@@ -355,10 +345,10 @@ static int is_cvs_looseblob_path(const char *path)
 {
 	int dtype = DT_UNKNOWN;
 
-	if (!looseblob_check)
+	if (!looseblob_dir)
 		init_cvs_looseblob_filter();
 
-	return is_path_excluded(looseblob_check, path, -1, &dtype);
+	return is_excluded(looseblob_dir, path, &dtype);
 }
 
 static const char *get_import_time_estimation()

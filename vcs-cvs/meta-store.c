@@ -1,11 +1,12 @@
-#include "vcs-cvs/meta-store.h"
-#include "vcs-cvs/trace-utils.h"
+#include "git-compat-util.h"
 #include "cache.h"
 #include "notes.h"
 #include "builtin.h"
 #include "blob.h"
 #include "refs.h"
 #include "sigchain.h"
+#include "vcs-cvs/meta-store.h"
+#include "vcs-cvs/trace-utils.h"
 
 static const char *ref_prefix = NULL;
 static const char *private_ref_prefix = NULL;
