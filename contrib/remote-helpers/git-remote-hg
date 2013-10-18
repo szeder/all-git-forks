@@ -14,6 +14,7 @@
 
 from mercurial import hg, ui, bookmarks, context, encoding, node, error, extensions, discovery, util
 
+import ast
 import re
 import sys
 import os
@@ -720,6 +721,8 @@ def parse_commit(parser):
             f = { 'deleted' : True }
         else:
             die('Unknown file command: %s' % line)
+        if path.startswith('"'):
+            path = ast.literal_eval(path)
         files[path] = f
 
     # only export the commits if we are on an internal proxy repo
