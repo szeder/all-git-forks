@@ -47,9 +47,9 @@ static const char * const builtin_merge_usage[] = {
 };
 
 static int show_diffstat = 1, shortlog_len = -1, squash;
-static int option_commit = 1, allow_fast_forward = 1;
-static int fast_forward_only, option_edit = -1;
-static int allow_trivial = 1, have_message;
+static int option_commit = 1;
+static int option_edit = -1;
+static int allow_trivial = 1, have_message, verify_signatures;
 static int overwrite_ignore = 1;
 static struct strbuf merge_msg = STRBUF_INIT;
 static struct strategy **use_strategies;
@@ -75,6 +75,14 @@ static struct strategy all_strategy[] = {
 };
 
 static const char *pull_twohead, *pull_octopus;
+
+enum ff_type {
+	FF_NO,
+	FF_ALLOW,
+	FF_ONLY
+};
+
+static enum ff_type fast_forward = FF_ALLOW;
 
 static int option_parse_message(const struct option *opt,
 				const char *arg, int unset)
@@ -178,27 +186,36 @@ static int option_parse_n(const struct option *opt,
 	return 0;
 }
 
+static int option_parse_ff_only(const struct option *opt,
+			  const char *arg, int unset)
+{
+	fast_forward = FF_ONLY;
+	return 0;
+}
+
 static struct option builtin_merge_options[] = {
 	{ OPTION_CALLBACK, 'n', NULL, NULL, NULL,
 		N_("do not show a diffstat at the end of the merge"),
 		PARSE_OPT_NOARG, option_parse_n },
-	OPT_BOOLEAN(0, "stat", &show_diffstat,
+	OPT_BOOL(0, "stat", &show_diffstat,
 		N_("show a diffstat at the end of the merge")),
-	OPT_BOOLEAN(0, "summary", &show_diffstat, N_("(synonym to --stat)")),
+	OPT_BOOL(0, "summary", &show_diffstat, N_("(synonym to --stat)")),
 	{ OPTION_INTEGER, 0, "log", &shortlog_len, N_("n"),
 	  N_("add (at most <n>) entries from shortlog to merge commit message"),
 	  PARSE_OPT_OPTARG, NULL, DEFAULT_MERGE_LOG_LEN },
-	OPT_BOOLEAN(0, "squash", &squash,
+	OPT_BOOL(0, "squash", &squash,
 		N_("create a single commit instead of doing a merge")),
-	OPT_BOOLEAN(0, "commit", &option_commit,
+	OPT_BOOL(0, "commit", &option_commit,
 		N_("perform a commit if the merge succeeds (default)")),
 	OPT_BOOL('e', "edit", &option_edit,
 		N_("edit message before committing")),
-	OPT_BOOLEAN(0, "ff", &allow_fast_forward,
-		N_("allow fast-forward (default)")),
-	OPT_BOOLEAN(0, "ff-only", &fast_forward_only,
-		N_("abort if fast-forward is not possible")),
+	OPT_SET_INT(0, "ff", &fast_forward, N_("allow fast-forward (default)"), FF_ALLOW),
+	{ OPTION_CALLBACK, 0, "ff-only", NULL, NULL,
+		N_("abort if fast-forward is not possible"),
+		PARSE_OPT_NOARG | PARSE_OPT_NONEG, option_parse_ff_only },
 	OPT_RERERE_AUTOUPDATE(&allow_rerere_auto),
+	OPT_BOOL(0, "verify-signatures", &verify_signatures,
+		N_("Verify that the named commit has a valid GPG signature")),
 	OPT_CALLBACK('s', "strategy", &use_strategies, N_("strategy"),
 		N_("merge strategy to use"), option_parse_strategy),
 	OPT_CALLBACK('X', "strategy-option", &xopts, N_("option=value"),
@@ -207,12 +224,12 @@ static struct option builtin_merge_options[] = {
 		N_("merge commit message (for a non-fast-forward merge)"),
 		option_parse_message),
 	OPT__VERBOSITY(&verbosity),
-	OPT_BOOLEAN(0, "abort", &abort_current_merge,
+	OPT_BOOL(0, "abort", &abort_current_merge,
 		N_("abort the current in-progress merge")),
 	OPT_SET_INT(0, "progress", &show_progress, N_("force progress reporting"), 1),
 	{ OPTION_STRING, 'S', "gpg-sign", &sign_commit, N_("key id"),
 	  N_("GPG sign commit"), PARSE_OPT_OPTARG, NULL, (intptr_t) "" },
-	OPT_BOOLEAN(0, "overwrite-ignore", &overwrite_ignore, N_("update ignored files (default)")),
+	OPT_BOOL(0, "overwrite-ignore", &overwrite_ignore, N_("update ignored files (default)")),
 	OPT_END()
 };
 
@@ -516,6 +533,19 @@ static void merge_name(const char *remote, struct strbuf *msg)
 		strbuf_release(&line);
 		goto cleanup;
 	}
+
+	if (remote_head->util) {
+		struct merge_remote_desc *desc;
+		desc = merge_remote_util(remote_head);
+		if (desc && desc->obj && desc->obj->type == OBJ_TAG) {
+			strbuf_addf(msg, "%s\t\t%s '%s'\n",
+				    sha1_to_hex(desc->obj->sha1),
+				    typename(desc->obj->type),
+				    remote);
+			goto cleanup;
+		}
+	}
+
 	strbuf_addf(msg, "%s\t\tcommit '%s'\n",
 		sha1_to_hex(remote_head->object.sha1), remote);
 cleanup:
@@ -566,10 +596,9 @@ static int git_merge_config(const char *k, const char *v, void *cb)
 	else if (!strcmp(k, "merge.ff")) {
 		int boolval = git_config_maybe_bool(k, v);
 		if (0 <= boolval) {
-			allow_fast_forward = boolval;
+			fast_forward = boolval ? FF_ALLOW : FF_NO;
 		} else if (v && !strcmp(v, "only")) {
-			allow_fast_forward = 1;
-			fast_forward_only = 1;
+			fast_forward = FF_ONLY;
 		} /* do not barf on values from future versions of git */
 		return 0;
 	} else if (!strcmp(k, "merge.defaulttoupstream")) {
@@ -788,20 +817,20 @@ static const char merge_editor_comment[] =
 N_("Please enter a commit message to explain why this merge is necessary,\n"
    "especially if it merges an updated upstream into a topic branch.\n"
    "\n"
-   "Lines starting with '#' will be ignored, and an empty message aborts\n"
+   "Lines starting with '%c' will be ignored, and an empty message aborts\n"
    "the commit.\n");
 
 static void prepare_to_commit(struct commit_list *remoteheads)
 {
 	struct strbuf msg = STRBUF_INIT;
-	const char *comment = _(merge_editor_comment);
 	strbuf_addbuf(&msg, &merge_msg);
 	strbuf_addch(&msg, '\n');
 	if (0 < option_edit)
-		strbuf_add_lines(&msg, "# ", comment, strlen(comment));
+		strbuf_commented_addf(&msg, _(merge_editor_comment), comment_line_char);
 	write_merge_msg(&msg);
-	run_hook(get_index_file(), "prepare-commit-msg",
-		 git_path("MERGE_MSG"), "merge", NULL, NULL);
+	if (run_hook(get_index_file(), "prepare-commit-msg",
+		     git_path("MERGE_MSG"), "merge", NULL, NULL))
+		abort_commit(remoteheads, NULL);
 	if (0 < option_edit) {
 		if (launch_editor(git_path("MERGE_MSG"), NULL, NULL))
 			abort_commit(remoteheads, NULL);
@@ -848,7 +877,7 @@ static int finish_automerge(struct commit *head,
 
 	free_commit_list(common);
 	parents = remoteheads;
-	if (!head_subsumed || !allow_fast_forward)
+	if (!head_subsumed || fast_forward == FF_NO)
 		commit_list_insert(head, &parents);
 	strbuf_addch(&merge_msg, '\n');
 	prepare_to_commit(remoteheads);
@@ -874,7 +903,7 @@ static int suggest_conflicts(int renormalizing)
 		die_errno(_("Could not open '%s' for writing"), filename);
 	fprintf(fp, "\nConflicts:\n");
 	for (pos = 0; pos < active_nr; pos++) {
-		struct cache_entry *ce = active_cache[pos];
+		const struct cache_entry *ce = active_cache[pos];
 
 		if (ce_stage(ce)) {
 			fprintf(fp, "\t%s\n", ce->name);
@@ -933,7 +962,7 @@ static int evaluate_result(void)
 }
 
 /*
- * Pretend as if the user told us to merge with the tracking
+ * Pretend as if the user told us to merge with the remote-tracking
  * branch we have for the upstream of the current branch
  */
 static int setup_with_upstream(const char ***argv)
@@ -952,7 +981,7 @@ static int setup_with_upstream(const char ***argv)
 	args = xcalloc(branch->merge_nr + 1, sizeof(char *));
 	for (i = 0; i < branch->merge_nr; i++) {
 		if (!branch->merge[i]->dst)
-			die(_("No remote tracking branch for %s from %s"),
+			die(_("No remote-tracking branch for %s from %s"),
 			    branch->merge[i]->src, branch->remote_name);
 		args[i] = branch->merge[i]->dst;
 	}
@@ -993,7 +1022,7 @@ static void write_merge_state(struct commit_list *remoteheads)
 	if (fd < 0)
 		die_errno(_("Could not open '%s' for writing"), filename);
 	strbuf_reset(&buf);
-	if (!allow_fast_forward)
+	if (fast_forward == FF_NO)
 		strbuf_addf(&buf, "no-ff");
 	if (write_in_full(fd, buf.buf, buf.len) != buf.len)
 		die_errno(_("Could not write to '%s'"), filename);
@@ -1039,7 +1068,8 @@ static struct commit_list *collect_parents(struct commit *head_commit,
 	for (i = 0; i < argc; i++) {
 		struct commit *commit = get_merge_parent(argv[i]);
 		if (!commit)
-			die(_("%s - not something we can merge"), argv[i]);
+			help_unknown_ref(argv[i], "merge",
+					 "not something we can merge");
 		remotes = &commit_list_insert(commit, remotes)->next;
 	}
 	*remotes = NULL;
@@ -1141,13 +1171,10 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		show_diffstat = 0;
 
 	if (squash) {
-		if (!allow_fast_forward)
+		if (fast_forward == FF_NO)
 			die(_("You cannot combine --squash with --no-ff."));
 		option_commit = 0;
 	}
-
-	if (!allow_fast_forward && fast_forward_only)
-		die(_("You cannot combine --no-ff with --ff-only."));
 
 	if (!abort_current_merge) {
 		if (!argc) {
@@ -1166,7 +1193,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	 * This could be traditional "merge <msg> HEAD <commit>..."  and
 	 * the way we can tell it is to see if the second token is HEAD,
 	 * but some people might have misused the interface and used a
-	 * committish that is the same as HEAD there instead.
+	 * commit-ish that is the same as HEAD there instead.
 	 * Traditional format never would have "-m" so it is an
 	 * additional safety measure to check for it.
 	 */
@@ -1190,7 +1217,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 				"empty head"));
 		if (squash)
 			die(_("Squash commit into empty head not supported yet"));
-		if (!allow_fast_forward)
+		if (fast_forward == FF_NO)
 			die(_("Non-fast-forward commit does not make sense into "
 			    "an empty head"));
 		remoteheads = collect_parents(head_commit, &head_subsumed, argc, argv);
@@ -1221,6 +1248,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 			memset(&opts, 0, sizeof(opts));
 			opts.add_title = !have_message;
 			opts.shortlog_len = shortlog_len;
+			opts.credit_people = (0 < option_edit);
 
 			fmt_merge_msg(&merge_names, &merge_msg, &opts);
 			if (merge_msg.len)
@@ -1231,6 +1259,39 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	if (!head_commit || !argc)
 		usage_with_options(builtin_merge_usage,
 			builtin_merge_options);
+
+	if (verify_signatures) {
+		for (p = remoteheads; p; p = p->next) {
+			struct commit *commit = p->item;
+			char hex[41];
+			struct signature_check signature_check;
+			memset(&signature_check, 0, sizeof(signature_check));
+
+			check_commit_signature(commit, &signature_check);
+
+			strcpy(hex, find_unique_abbrev(commit->object.sha1, DEFAULT_ABBREV));
+			switch (signature_check.result) {
+			case 'G':
+				break;
+			case 'U':
+				die(_("Commit %s has an untrusted GPG signature, "
+				      "allegedly by %s."), hex, signature_check.signer);
+			case 'B':
+				die(_("Commit %s has a bad GPG signature "
+				      "allegedly by %s."), hex, signature_check.signer);
+			default: /* 'N' */
+				die(_("Commit %s does not have a GPG signature."), hex);
+			}
+			if (verbosity >= 0 && signature_check.result == 'G')
+				printf(_("Commit %s has a good GPG signature by %s\n"),
+				       hex, signature_check.signer);
+
+			free(signature_check.gpg_output);
+			free(signature_check.gpg_status);
+			free(signature_check.signer);
+			free(signature_check.key);
+		}
+	}
 
 	strbuf_addstr(&buf, "merge");
 	for (p = remoteheads; p; p = p->next)
@@ -1244,11 +1305,11 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 			    sha1_to_hex(commit->object.sha1));
 		setenv(buf.buf, merge_remote_util(commit)->name, 1);
 		strbuf_reset(&buf);
-		if (!fast_forward_only &&
+		if (fast_forward != FF_ONLY &&
 		    merge_remote_util(commit) &&
 		    merge_remote_util(commit)->obj &&
 		    merge_remote_util(commit)->obj->type == OBJ_TAG)
-			allow_fast_forward = 0;
+			fast_forward = FF_NO;
 	}
 
 	if (option_edit < 0)
@@ -1265,7 +1326,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 
 	for (i = 0; i < use_strategies_nr; i++) {
 		if (use_strategies[i]->attr & NO_FAST_FORWARD)
-			allow_fast_forward = 0;
+			fast_forward = FF_NO;
 		if (use_strategies[i]->attr & NO_TRIVIAL)
 			allow_trivial = 0;
 	}
@@ -1295,7 +1356,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		 */
 		finish_up_to_date("Already up-to-date.");
 		goto done;
-	} else if (allow_fast_forward && !remoteheads->next &&
+	} else if (fast_forward != FF_NO && !remoteheads->next &&
 			!common->next &&
 			!hashcmp(common->item->object.sha1, head_commit->object.sha1)) {
 		/* Again the most common case of merging one remote. */
@@ -1342,7 +1403,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		 * only one common.
 		 */
 		refresh_cache(REFRESH_QUIET);
-		if (allow_trivial && !fast_forward_only) {
+		if (allow_trivial && fast_forward != FF_ONLY) {
 			/* See if it is really trivial. */
 			git_committer_info(IDENT_STRICT);
 			printf(_("Trying really trivial in-index merge...\n"));
@@ -1383,7 +1444,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		}
 	}
 
-	if (fast_forward_only)
+	if (fast_forward == FF_ONLY)
 		die(_("Not possible to fast-forward, aborting."));
 
 	/* We are going to make a new commit. */

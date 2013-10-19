@@ -32,6 +32,14 @@ BEGIN {
 	}
 }
 
+# serf has a bug that leads to a coredump upon termination if the
+# remote access object is left around (not fixed yet in serf 1.3.1).
+# Explicitly free it to work around the issue.
+END {
+	$RA = undef;
+	$ra_invalid = 1;
+}
+
 sub _auth_providers () {
 	my @rv = (
 	  SVN::Client::get_simple_provider(),
@@ -295,7 +303,7 @@ sub gs_do_switch {
 	my $full_url = add_path_to_url( $self->url, $path );
 	my ($ra, $reparented);
 
-	if ($old_url =~ m#^svn(\+ssh)?://# ||
+	if ($old_url =~ m#^svn(\+\w+)?://# ||
 	    ($full_url =~ m#^https?://# &&
 	     canonicalize_url($full_url) ne $full_url)) {
 		$_[0] = undef;
@@ -626,6 +634,8 @@ sub skip_unknown_revs {
 
 1;
 __END__
+
+=head1 NAME
 
 Git::SVN::Ra - Subversion remote access functions for git-svn
 

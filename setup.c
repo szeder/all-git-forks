@@ -1,10 +1,23 @@
 #include "cache.h"
 #include "dir.h"
+#include "string-list.h"
 
 static int inside_git_dir = -1;
 static int inside_work_tree = -1;
 
-static char *prefix_path_gently(const char *prefix, int len, const char *path)
+/*
+ * Normalize "path", prepending the "prefix" for relative paths. If
+ * remaining_prefix is not NULL, return the actual prefix still
+ * remains in the path. For example, prefix = sub1/sub2/ and path is
+ *
+ *  foo          -> sub1/sub2/foo  (full prefix)
+ *  ../foo       -> sub1/foo       (remaining prefix is sub1/)
+ *  ../../bar    -> bar            (no remaining prefix)
+ *  ../../sub1/sub2/foo -> sub1/sub2/foo (but no remaining prefix)
+ *  `pwd`/../bar -> sub1/bar       (no remaining prefix)
+ */
+char *prefix_path_gently(const char *prefix, int len,
+			 int *remaining_prefix, const char *path)
 {
 	const char *orig = path;
 	char *sanitized;
@@ -12,13 +25,17 @@ static char *prefix_path_gently(const char *prefix, int len, const char *path)
 		const char *temp = real_path(path);
 		sanitized = xmalloc(len + strlen(temp) + 1);
 		strcpy(sanitized, temp);
+		if (remaining_prefix)
+			*remaining_prefix = 0;
 	} else {
 		sanitized = xmalloc(len + strlen(path) + 1);
 		if (len)
 			memcpy(sanitized, prefix, len);
 		strcpy(sanitized + len, path);
+		if (remaining_prefix)
+			*remaining_prefix = len;
 	}
-	if (normalize_path_copy(sanitized, sanitized))
+	if (normalize_path_copy_len(sanitized, sanitized, remaining_prefix))
 		goto error_out;
 	if (is_absolute_path(orig)) {
 		size_t root_len, len, total;
@@ -43,7 +60,7 @@ static char *prefix_path_gently(const char *prefix, int len, const char *path)
 
 char *prefix_path(const char *prefix, int len, const char *path)
 {
-	char *r = prefix_path_gently(prefix, len, path);
+	char *r = prefix_path_gently(prefix, len, NULL, path);
 	if (!r)
 		die("'%s' is outside repository", path);
 	return r;
@@ -52,7 +69,7 @@ char *prefix_path(const char *prefix, int len, const char *path)
 int path_inside_repo(const char *prefix, const char *path)
 {
 	int len = prefix ? strlen(prefix) : 0;
-	char *r = prefix_path_gently(prefix, len, path);
+	char *r = prefix_path_gently(prefix, len, NULL, path);
 	if (r) {
 		free(r);
 		return 1;
@@ -65,7 +82,14 @@ int check_filename(const char *prefix, const char *arg)
 	const char *name;
 	struct stat st;
 
-	name = prefix ? prefix_filename(prefix, strlen(prefix), arg) : arg;
+	if (!prefixcmp(arg, ":/")) {
+		if (arg[2] == '\0') /* ":/" is root dir, always exists */
+			return 1;
+		name = arg + 2;
+	} else if (prefix)
+		name = prefix_filename(prefix, strlen(prefix), arg);
+	else
+		name = arg;
 	if (!lstat(name, &st))
 		return 1; /* file exists */
 	if (errno == ENOENT || errno == ENOTDIR)
@@ -146,134 +170,6 @@ void verify_non_filename(const char *prefix, const char *arg)
 	    "'git <command> [<revision>...] -- [<file>...]'", arg);
 }
 
-/*
- * Magic pathspec
- *
- * NEEDSWORK: These need to be moved to dir.h or even to a new
- * pathspec.h when we restructure get_pathspec() users to use the
- * "struct pathspec" interface.
- *
- * Possible future magic semantics include stuff like:
- *
- *	{ PATHSPEC_NOGLOB, '!', "noglob" },
- *	{ PATHSPEC_ICASE, '\0', "icase" },
- *	{ PATHSPEC_RECURSIVE, '*', "recursive" },
- *	{ PATHSPEC_REGEXP, '\0', "regexp" },
- *
- */
-#define PATHSPEC_FROMTOP    (1<<0)
-
-static struct pathspec_magic {
-	unsigned bit;
-	char mnemonic; /* this cannot be ':'! */
-	const char *name;
-} pathspec_magic[] = {
-	{ PATHSPEC_FROMTOP, '/', "top" },
-};
-
-/*
- * Take an element of a pathspec and check for magic signatures.
- * Append the result to the prefix.
- *
- * For now, we only parse the syntax and throw out anything other than
- * "top" magic.
- *
- * NEEDSWORK: This needs to be rewritten when we start migrating
- * get_pathspec() users to use the "struct pathspec" interface.  For
- * example, a pathspec element may be marked as case-insensitive, but
- * the prefix part must always match literally, and a single stupid
- * string cannot express such a case.
- */
-static const char *prefix_pathspec(const char *prefix, int prefixlen, const char *elt)
-{
-	unsigned magic = 0;
-	const char *copyfrom = elt;
-	int i;
-
-	if (elt[0] != ':') {
-		; /* nothing to do */
-	} else if (elt[1] == '(') {
-		/* longhand */
-		const char *nextat;
-		for (copyfrom = elt + 2;
-		     *copyfrom && *copyfrom != ')';
-		     copyfrom = nextat) {
-			size_t len = strcspn(copyfrom, ",)");
-			if (copyfrom[len] == ')')
-				nextat = copyfrom + len;
-			else
-				nextat = copyfrom + len + 1;
-			if (!len)
-				continue;
-			for (i = 0; i < ARRAY_SIZE(pathspec_magic); i++)
-				if (strlen(pathspec_magic[i].name) == len &&
-				    !strncmp(pathspec_magic[i].name, copyfrom, len)) {
-					magic |= pathspec_magic[i].bit;
-					break;
-				}
-			if (ARRAY_SIZE(pathspec_magic) <= i)
-				die("Invalid pathspec magic '%.*s' in '%s'",
-				    (int) len, copyfrom, elt);
-		}
-		if (*copyfrom == ')')
-			copyfrom++;
-	} else {
-		/* shorthand */
-		for (copyfrom = elt + 1;
-		     *copyfrom && *copyfrom != ':';
-		     copyfrom++) {
-			char ch = *copyfrom;
-
-			if (!is_pathspec_magic(ch))
-				break;
-			for (i = 0; i < ARRAY_SIZE(pathspec_magic); i++)
-				if (pathspec_magic[i].mnemonic == ch) {
-					magic |= pathspec_magic[i].bit;
-					break;
-				}
-			if (ARRAY_SIZE(pathspec_magic) <= i)
-				die("Unimplemented pathspec magic '%c' in '%s'",
-				    ch, elt);
-		}
-		if (*copyfrom == ':')
-			copyfrom++;
-	}
-
-	if (magic & PATHSPEC_FROMTOP)
-		return xstrdup(copyfrom);
-	else
-		return prefix_path(prefix, prefixlen, copyfrom);
-}
-
-const char **get_pathspec(const char *prefix, const char **pathspec)
-{
-	const char *entry = *pathspec;
-	const char **src, **dst;
-	int prefixlen;
-
-	if (!prefix && !entry)
-		return NULL;
-
-	if (!entry) {
-		static const char *spec[2];
-		spec[0] = prefix;
-		spec[1] = NULL;
-		return spec;
-	}
-
-	/* Otherwise we have to re-write the entries.. */
-	src = pathspec;
-	dst = pathspec;
-	prefixlen = prefix ? strlen(prefix) : 0;
-	while (*src) {
-		*(dst++) = prefix_pathspec(prefix, prefixlen, *src);
-		src++;
-	}
-	*dst = NULL;
-	if (!*pathspec)
-		return NULL;
-	return pathspec;
-}
 
 /*
  * Test if it looks like we're at a git directory.
@@ -331,6 +227,7 @@ int is_inside_work_tree(void)
 
 void setup_work_tree(void)
 {
+	struct strbuf sb = STRBUF_INIT;
 	const char *work_tree, *git_dir;
 	static int initialized = 0;
 
@@ -350,8 +247,10 @@ void setup_work_tree(void)
 	if (getenv(GIT_WORK_TREE_ENVIRONMENT))
 		setenv(GIT_WORK_TREE_ENVIRONMENT, ".", 1);
 
-	set_git_dir(relative_path(git_dir, work_tree));
+	set_git_dir(relative_path(git_dir, work_tree, &sb));
 	initialized = 1;
+
+	strbuf_release(&sb);
 }
 
 static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
@@ -496,6 +395,12 @@ static const char *setup_explicit_git_dir(const char *gitdirenv,
 			set_git_work_tree(core_worktree);
 		}
 	}
+	else if (!git_env_bool(GIT_IMPLICIT_WORK_TREE_ENVIRONMENT, 1)) {
+		/* #16d */
+		set_git_dir(gitdirenv);
+		free(gitfile);
+		return NULL;
+	}
 	else /* #2, #10 */
 		set_git_work_tree(".");
 
@@ -574,6 +479,8 @@ static const char *setup_bare_git_dir(char *cwd, int offset, int len, int *nongi
 	if (check_repository_format_gently(".", nongit_ok))
 		return NULL;
 
+	setenv(GIT_IMPLICIT_WORK_TREE_ENVIRONMENT, "0", 1);
+
 	/* --work-tree is set without --git-dir; use discovered one */
 	if (getenv(GIT_WORK_TREE_ENVIRONMENT) || git_work_tree_cfg) {
 		const char *gitdir;
@@ -621,16 +528,48 @@ static dev_t get_device_or_die(const char *path, const char *prefix, int prefix_
 }
 
 /*
+ * A "string_list_each_func_t" function that canonicalizes an entry
+ * from GIT_CEILING_DIRECTORIES using real_path_if_valid(), or
+ * discards it if unusable.  The presence of an empty entry in
+ * GIT_CEILING_DIRECTORIES turns off canonicalization for all
+ * subsequent entries.
+ */
+static int canonicalize_ceiling_entry(struct string_list_item *item,
+				      void *cb_data)
+{
+	int *empty_entry_found = cb_data;
+	char *ceil = item->string;
+
+	if (!*ceil) {
+		*empty_entry_found = 1;
+		return 0;
+	} else if (!is_absolute_path(ceil)) {
+		return 0;
+	} else if (*empty_entry_found) {
+		/* Keep entry but do not canonicalize it */
+		return 1;
+	} else {
+		const char *real_path = real_path_if_valid(ceil);
+		if (!real_path)
+			return 0;
+		free(item->string);
+		item->string = xstrdup(real_path);
+		return 1;
+	}
+}
+
+/*
  * We cannot decide in this function whether we are in the work tree or
  * not, since the config can only be read _after_ this function was called.
  */
 static const char *setup_git_directory_gently_1(int *nongit_ok)
 {
 	const char *env_ceiling_dirs = getenv(CEILING_DIRECTORIES_ENVIRONMENT);
+	struct string_list ceiling_dirs = STRING_LIST_INIT_DUP;
 	static char cwd[PATH_MAX+1];
 	const char *gitdirenv, *ret;
 	char *gitfile;
-	int len, offset, offset_parent, ceil_offset;
+	int len, offset, offset_parent, ceil_offset = -1;
 	dev_t current_device = 0;
 	int one_filesystem = 1;
 
@@ -655,7 +594,16 @@ static const char *setup_git_directory_gently_1(int *nongit_ok)
 	if (gitdirenv)
 		return setup_explicit_git_dir(gitdirenv, cwd, len, nongit_ok);
 
-	ceil_offset = longest_ancestor_length(cwd, env_ceiling_dirs);
+	if (env_ceiling_dirs) {
+		int empty_entry_found = 0;
+
+		string_list_split(&ceiling_dirs, env_ceiling_dirs, PATH_SEP, -1);
+		filter_string_list(&ceiling_dirs, 0,
+				   canonicalize_ceiling_entry, &empty_entry_found);
+		ceil_offset = longest_ancestor_length(cwd, &ceiling_dirs);
+		string_list_clear(&ceiling_dirs, 0);
+	}
+
 	if (ceil_offset < 0 && has_dos_drive_prefix(cwd))
 		ceil_offset = 1;
 
@@ -726,9 +674,9 @@ const char *setup_git_directory_gently(int *nongit_ok)
 
 	prefix = setup_git_directory_gently_1(nongit_ok);
 	if (prefix)
-		setenv("GIT_PREFIX", prefix, 1);
+		setenv(GIT_PREFIX_ENVIRONMENT, prefix, 1);
 	else
-		setenv("GIT_PREFIX", "", 1);
+		setenv(GIT_PREFIX_ENVIRONMENT, "", 1);
 
 	if (startup_info) {
 		startup_info->have_repository = !nongit_ok || !*nongit_ok;
@@ -829,4 +777,16 @@ const char *resolve_gitdir(const char *suspect)
 	if (is_git_directory(suspect))
 		return suspect;
 	return read_gitfile(suspect);
+}
+
+/* if any standard file descriptor is missing open it to /dev/null */
+void sanitize_stdfds(void)
+{
+	int fd = open("/dev/null", O_RDWR, 0);
+	while (fd != -1 && fd < 2)
+		fd = dup(fd);
+	if (fd == -1)
+		die_errno("open /dev/null or dup failed");
+	if (fd > 2)
+		close(fd);
 }

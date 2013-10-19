@@ -5,6 +5,7 @@
 #include "refs.h"
 #include "run-command.h"
 #include "remote.h"
+#include "connect.h"
 #include "url.h"
 
 static char *server_capabilities;
@@ -62,8 +63,8 @@ static void die_initial_contact(int got_at_least_one_head)
 /*
  * Read all the refs from the other end
  */
-struct ref **get_remote_heads(int in, struct ref **list,
-			      unsigned int flags,
+struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
+			      struct ref **list, unsigned int flags,
 			      struct extra_have_objects *extra_have)
 {
 	int got_at_least_one_head = 0;
@@ -72,18 +73,19 @@ struct ref **get_remote_heads(int in, struct ref **list,
 	for (;;) {
 		struct ref *ref;
 		unsigned char old_sha1[20];
-		static char buffer[1000];
 		char *name;
 		int len, name_len;
+		char *buffer = packet_buffer;
 
-		len = packet_read(in, buffer, sizeof(buffer));
+		len = packet_read(in, &src_buf, &src_len,
+				  packet_buffer, sizeof(packet_buffer),
+				  PACKET_READ_GENTLE_ON_EOF |
+				  PACKET_READ_CHOMP_NEWLINE);
 		if (len < 0)
 			die_initial_contact(got_at_least_one_head);
 
 		if (!len)
 			break;
-		if (buffer[len-1] == '\n')
-			buffer[--len] = 0;
 
 		if (len > 4 && !prefixcmp(buffer, "ERR "))
 			die("remote error: %s", buffer + 4);
@@ -550,8 +552,11 @@ struct child_process *git_connect(int fd[2], const char *url_orig,
 	path = strchr(end, c);
 	if (path && !has_dos_drive_prefix(end)) {
 		if (c == ':') {
-			protocol = PROTO_SSH;
-			*path++ = '\0';
+			if (host != url || path < strchrnul(host, '/')) {
+				protocol = PROTO_SSH;
+				*path++ = '\0';
+			} else /* '/' in the host part, assume local path */
+				path = end;
 		}
 	} else
 		path = end;

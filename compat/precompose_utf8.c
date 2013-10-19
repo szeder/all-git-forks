@@ -48,11 +48,8 @@ void probe_utf8_pathname_composition(char *path, int len)
 	if (output_fd >= 0) {
 		close(output_fd);
 		strcpy(path + len, auml_nfd);
-		/* Indicate to the user, that we can configure it to true */
-		if (!access(path, R_OK))
-			git_config_set("core.precomposeunicode", "false");
-		/* To be backward compatible, set precomposed_unicode to 0 */
-		precomposed_unicode = 0;
+		precomposed_unicode = access(path, R_OK) ? 0 : 1;
+		git_config_set("core.precomposeunicode", precomposed_unicode ? "true" : "false");
 		strcpy(path + len, auml_nfc);
 		if (unlink(path))
 			die_errno(_("failed to unlink '%s'"), path);
@@ -78,7 +75,7 @@ void precompose_argv(int argc, const char **argv)
 		size_t namelen;
 		oldarg = argv[i];
 		if (has_non_ascii(oldarg, (size_t)-1, &namelen)) {
-			newarg = reencode_string_iconv(oldarg, namelen, ic_precompose);
+			newarg = reencode_string_iconv(oldarg, namelen, ic_precompose, NULL);
 			if (newarg)
 				argv[i] = newarg;
 		}
@@ -134,7 +131,7 @@ struct dirent_prec_psx *precompose_utf8_readdir(PREC_DIR *prec_dir)
 			if (prec_dir->ic_precompose == (iconv_t)-1) {
 				die("iconv_open(%s,%s) failed, but needed:\n"
 						"    precomposed unicode is not supported.\n"
-						"    If you wnat to use decomposed unicode, run\n"
+						"    If you want to use decomposed unicode, run\n"
 						"    \"git config core.precomposeunicode false\"\n",
 						repo_encoding, path_encoding);
 			} else {

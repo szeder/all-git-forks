@@ -251,7 +251,7 @@ struct tree *write_tree_from_memory(struct merge_options *o)
 		int i;
 		fprintf(stderr, "BUG: There are unmerged index entries:\n");
 		for (i = 0; i < active_nr; i++) {
-			struct cache_entry *ce = active_cache[i];
+			const struct cache_entry *ce = active_cache[i];
 			if (ce_stage(ce))
 				fprintf(stderr, "BUG: %d %.*s\n", ce_stage(ce),
 					(int)ce_namelen(ce), ce->name);
@@ -264,7 +264,8 @@ struct tree *write_tree_from_memory(struct merge_options *o)
 
 	if (!cache_tree_fully_valid(active_cache_tree) &&
 	    cache_tree_update(active_cache_tree,
-			      active_cache, active_nr, 0) < 0)
+			      (const struct cache_entry * const *)active_cache,
+			      active_nr, 0) < 0)
 		die(_("error building trees"));
 
 	result = lookup_tree(active_cache_tree->sha1);
@@ -297,7 +298,7 @@ static int get_files_dirs(struct merge_options *o, struct tree *tree)
 {
 	int n;
 	struct pathspec match_all;
-	init_pathspec(&match_all, NULL);
+	memset(&match_all, 0, sizeof(match_all));
 	if (read_tree_recursive(tree, "", 0, 0, &match_all, save_files_dirs, o))
 		return 0;
 	n = o->current_file_set.nr + o->current_directory_set.nr;
@@ -339,7 +340,7 @@ static struct string_list *get_unmerged(void)
 	for (i = 0; i < active_nr; i++) {
 		struct string_list_item *item;
 		struct stage_data *e;
-		struct cache_entry *ce = active_cache[i];
+		const struct cache_entry *ce = active_cache[i];
 		if (!ce_stage(ce))
 			continue;
 
@@ -976,7 +977,7 @@ merge_file_special_markers(struct merge_options *o,
 	return mfi;
 }
 
-static struct merge_file_info merge_file(struct merge_options *o,
+static struct merge_file_info merge_file_one(struct merge_options *o,
 					 const char *path,
 					 const unsigned char *o_sha, int o_mode,
 					 const unsigned char *a_sha, int a_mode,
@@ -1166,7 +1167,7 @@ static void conflict_rename_rename_1to2(struct merge_options *o,
 		struct merge_file_info mfi;
 		struct diff_filespec other;
 		struct diff_filespec *add;
-		mfi = merge_file(o, one->path,
+		mfi = merge_file_one(o, one->path,
 				 one->sha1, one->mode,
 				 a->sha1, a->mode,
 				 b->sha1, b->mode,
@@ -1450,7 +1451,7 @@ static int process_renames(struct merge_options *o,
 				       ren1_dst, branch2);
 				if (o->call_depth) {
 					struct merge_file_info mfi;
-					mfi = merge_file(o, ren1_dst, null_sha1, 0,
+					mfi = merge_file_one(o, ren1_dst, null_sha1, 0,
 							 ren1->pair->two->sha1, ren1->pair->two->mode,
 							 dst_other.sha1, dst_other.mode,
 							 branch1, branch2);
@@ -2068,6 +2069,15 @@ int parse_merge_opt(struct merge_options *o, const char *s)
 		o->xdl_opts = DIFF_WITH_ALG(o, PATIENCE_DIFF);
 	else if (!strcmp(s, "histogram"))
 		o->xdl_opts = DIFF_WITH_ALG(o, HISTOGRAM_DIFF);
+	else if (!prefixcmp(s, "diff-algorithm=")) {
+		long value = parse_algorithm_value(s + strlen("diff-algorithm="));
+		if (value < 0)
+			return -1;
+		/* clear out previous settings */
+		DIFF_XDL_CLR(o, NEED_MINIMAL);
+		o->xdl_opts &= ~XDF_DIFF_ALGORITHM_MASK;
+		o->xdl_opts |= value;
+	}
 	else if (!strcmp(s, "ignore-space-change"))
 		o->xdl_opts |= XDF_IGNORE_WHITESPACE_CHANGE;
 	else if (!strcmp(s, "ignore-all-space"))

@@ -52,7 +52,7 @@ static void update_candidates(struct disambiguate_state *ds, const unsigned char
 	}
 
 	if (!ds->candidate_ok) {
-		/* discard the candidate; we know it does not satisify fn */
+		/* discard the candidate; we know it does not satisfy fn */
 		hashcpy(ds->candidate, current);
 		ds->candidate_checked = 0;
 		return;
@@ -241,7 +241,7 @@ static int disambiguate_committish_only(const unsigned char *sha1, void *cb_data
 		return 0;
 
 	/* We need to do this the hard way... */
-	obj = deref_tag(lookup_object(sha1), NULL, 0);
+	obj = deref_tag(parse_object(sha1), NULL, 0);
 	if (obj && obj->type == OBJ_COMMIT)
 		return 1;
 	return 0;
@@ -431,22 +431,51 @@ static inline int upstream_mark(const char *string, int len)
 }
 
 static int get_sha1_1(const char *name, int len, unsigned char *sha1, unsigned lookup_flags);
+static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf);
 
 static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 {
 	static const char *warn_msg = "refname '%.*s' is ambiguous.";
+	static const char *object_name_msg = N_(
+	"Git normally never creates a ref that ends with 40 hex characters\n"
+	"because it will be ignored when you just specify 40-hex. These refs\n"
+	"may be created by mistake. For example,\n"
+	"\n"
+	"  git checkout -b $br $(git rev-parse ...)\n"
+	"\n"
+	"where \"$br\" is somehow empty and a 40-hex ref is created. Please\n"
+	"examine these refs and maybe delete them. Turn this message off by\n"
+	"running \"git config advice.objectNameWarning false\"");
+	unsigned char tmp_sha1[20];
 	char *real_ref = NULL;
 	int refs_found = 0;
-	int at, reflog_len;
+	int at, reflog_len, nth_prior = 0;
 
-	if (len == 40 && !get_sha1_hex(str, sha1))
+	if (len == 40 && !get_sha1_hex(str, sha1)) {
+		if (warn_on_object_refname_ambiguity) {
+			refs_found = dwim_ref(str, len, tmp_sha1, &real_ref);
+			if (refs_found > 0 && warn_ambiguous_refs) {
+				warning(warn_msg, len, str);
+				if (advice_object_name_warning)
+					fprintf(stderr, "%s\n", _(object_name_msg));
+			}
+			free(real_ref);
+		}
 		return 0;
+	}
 
 	/* basic@{time or number or -number} format to query ref-log */
 	reflog_len = at = 0;
 	if (len && str[len-1] == '}') {
-		for (at = len-2; at >= 0; at--) {
+		for (at = len-4; at >= 0; at--) {
 			if (str[at] == '@' && str[at+1] == '{') {
+				if (str[at+2] == '-') {
+					if (at != 0)
+						/* @{-N} not at start */
+						return -1;
+					nth_prior = 1;
+					continue;
+				}
 				if (!upstream_mark(str + at, len - at)) {
 					reflog_len = (len-1) - (at+2);
 					len = at;
@@ -460,20 +489,22 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 	if (len && ambiguous_path(str, len))
 		return -1;
 
-	if (!len && reflog_len) {
+	if (nth_prior) {
 		struct strbuf buf = STRBUF_INIT;
-		int ret;
-		/* try the @{-N} syntax for n-th checkout */
-		ret = interpret_branch_name(str+at, &buf);
-		if (ret > 0) {
-			/* substitute this branch name and restart */
-			return get_sha1_1(buf.buf, buf.len, sha1, 0);
-		} else if (ret == 0) {
-			return -1;
+		int detached;
+
+		if (interpret_nth_prior_checkout(str, &buf) > 0) {
+			detached = (buf.len == 40 && !get_sha1_hex(buf.buf, sha1));
+			strbuf_release(&buf);
+			if (detached)
+				return 0;
 		}
+	}
+
+	if (!len && reflog_len)
 		/* allow "@{...}" to mean the current branch reflog */
 		refs_found = dwim_ref("HEAD", 4, sha1, &real_ref);
-	} else if (reflog_len)
+	else if (reflog_len)
 		refs_found = dwim_log(str, len, sha1, &real_ref);
 	else
 		refs_found = dwim_ref(str, len, sha1, &real_ref);
@@ -481,7 +512,9 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 	if (!refs_found)
 		return -1;
 
-	if (warn_ambiguous_refs && refs_found > 1)
+	if (warn_ambiguous_refs &&
+	    (refs_found > 1 ||
+	     !get_short_sha1(str, len, tmp_sha1, GET_SHA1_QUIETLY)))
 		warning(warn_msg, len, str);
 
 	if (reflog_len) {
@@ -489,10 +522,6 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 		unsigned long at_time;
 		unsigned long co_time;
 		int co_tz, co_cnt;
-
-		/* a @{-N} placed anywhere except the start is an error */
-		if (str[at+2] == '-')
-			return -1;
 
 		/* Is it asking for N-th entry, or approxidate? */
 		for (i = nth = 0; 0 <= nth && i < reflog_len; i++) {
@@ -517,12 +546,21 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 		}
 		if (read_ref_at(real_ref, at_time, nth, sha1, NULL,
 				&co_time, &co_tz, &co_cnt)) {
+			if (!len) {
+				if (!prefixcmp(real_ref, "refs/heads/")) {
+					str = real_ref + 11;
+					len = strlen(real_ref + 11);
+				} else {
+					/* detached HEAD */
+					str = "HEAD";
+					len = 4;
+				}
+			}
 			if (at_time)
 				warning("Log for '%.*s' only goes "
 					"back to %s.", len, str,
 					show_date(co_time, co_tz, DATE_RFC2822));
 			else {
-				free(real_ref);
 				die("Log for '%.*s' only has %d entries.",
 				    len, str, co_cnt);
 			}
@@ -594,7 +632,7 @@ struct object *peel_to_type(const char *name, int namelen,
 	while (1) {
 		if (!o || (!o->parsed && !parse_object(o->sha1)))
 			return NULL;
-		if (o->type == expected_type)
+		if (expected_type == OBJ_ANY || o->type == expected_type)
 			return o;
 		if (o->type == OBJ_TAG)
 			o = ((struct tag*) o)->tagged;
@@ -639,12 +677,16 @@ static int peel_onion(const char *name, int len, unsigned char *sha1)
 		return -1;
 
 	sp++; /* beginning of type name, or closing brace for empty */
-	if (!strncmp(commit_type, sp, 6) && sp[6] == '}')
+	if (!prefixcmp(sp, "commit}"))
 		expected_type = OBJ_COMMIT;
-	else if (!strncmp(tree_type, sp, 4) && sp[4] == '}')
+	else if (!prefixcmp(sp, "tag}"))
+		expected_type = OBJ_TAG;
+	else if (!prefixcmp(sp, "tree}"))
 		expected_type = OBJ_TREE;
-	else if (!strncmp(blob_type, sp, 4) && sp[4] == '}')
+	else if (!prefixcmp(sp, "blob}"))
 		expected_type = OBJ_BLOB;
+	else if (!prefixcmp(sp, "object}"))
+		expected_type = OBJ_ANY;
 	else if (sp[0] == '}')
 		expected_type = OBJ_NONE;
 	else if (sp[0] == '/')
@@ -654,6 +696,8 @@ static int peel_onion(const char *name, int len, unsigned char *sha1)
 
 	if (expected_type == OBJ_COMMIT)
 		lookup_flags = GET_SHA1_COMMITTISH;
+	else if (expected_type == OBJ_TREE)
+		lookup_flags = GET_SHA1_TREEISH;
 
 	if (get_sha1_1(name, sp - name - 2, outer, lookup_flags))
 		return -1;
@@ -856,8 +900,8 @@ static int get_sha1_oneline(const char *prefix, unsigned char *sha1,
 }
 
 struct grab_nth_branch_switch_cbdata {
-	long cnt, alloc;
-	struct strbuf *buf;
+	int remaining;
+	struct strbuf buf;
 };
 
 static int grab_nth_branch_switch(unsigned char *osha1, unsigned char *nsha1,
@@ -867,7 +911,6 @@ static int grab_nth_branch_switch(unsigned char *osha1, unsigned char *nsha1,
 	struct grab_nth_branch_switch_cbdata *cb = cb_data;
 	const char *match = NULL, *target = NULL;
 	size_t len;
-	int nth;
 
 	if (!prefixcmp(message, "checkout: moving from ")) {
 		match = message + strlen("checkout: moving from ");
@@ -876,11 +919,12 @@ static int grab_nth_branch_switch(unsigned char *osha1, unsigned char *nsha1,
 
 	if (!match || !target)
 		return 0;
-
-	len = target - match;
-	nth = cb->cnt++ % cb->alloc;
-	strbuf_reset(&cb->buf[nth]);
-	strbuf_add(&cb->buf[nth], match, len);
+	if (--(cb->remaining) == 0) {
+		len = target - match;
+		strbuf_reset(&cb->buf);
+		strbuf_add(&cb->buf, match, len);
+		return 1; /* we are done */
+	}
 	return 0;
 }
 
@@ -891,7 +935,7 @@ static int grab_nth_branch_switch(unsigned char *osha1, unsigned char *nsha1,
 static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf)
 {
 	long nth;
-	int i, retval;
+	int retval;
 	struct grab_nth_branch_switch_cbdata cb;
 	const char *brace;
 	char *num_end;
@@ -901,34 +945,22 @@ static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf)
 	brace = strchr(name, '}');
 	if (!brace)
 		return -1;
-	nth = strtol(name+3, &num_end, 10);
+	nth = strtol(name + 3, &num_end, 10);
 	if (num_end != brace)
 		return -1;
 	if (nth <= 0)
 		return -1;
-	cb.alloc = nth;
-	cb.buf = xmalloc(nth * sizeof(struct strbuf));
-	for (i = 0; i < nth; i++)
-		strbuf_init(&cb.buf[i], 20);
-	cb.cnt = 0;
+	cb.remaining = nth;
+	strbuf_init(&cb.buf, 20);
+
 	retval = 0;
-	for_each_recent_reflog_ent("HEAD", grab_nth_branch_switch, 40960, &cb);
-	if (cb.cnt < nth) {
-		cb.cnt = 0;
-		for_each_reflog_ent("HEAD", grab_nth_branch_switch, &cb);
+	if (0 < for_each_reflog_ent_reverse("HEAD", grab_nth_branch_switch, &cb)) {
+		strbuf_reset(buf);
+		strbuf_add(buf, cb.buf.buf, cb.buf.len);
+		retval = brace - name + 1;
 	}
-	if (cb.cnt < nth)
-		goto release_return;
-	i = cb.cnt % nth;
-	strbuf_reset(buf);
-	strbuf_add(buf, cb.buf[i].buf, cb.buf[i].len);
-	retval = brace-name+1;
 
-release_return:
-	for (i = 0; i < nth; i++)
-		strbuf_release(&cb.buf[i]);
-	free(cb.buf);
-
+	strbuf_release(&cb.buf);
 	return retval;
 }
 
@@ -974,6 +1006,49 @@ int get_sha1_mb(const char *name, unsigned char *sha1)
 	return st;
 }
 
+/* parse @something syntax, when 'something' is not {.*} */
+static int interpret_empty_at(const char *name, int namelen, int len, struct strbuf *buf)
+{
+	const char *next;
+
+	if (len || name[1] == '{')
+		return -1;
+
+	/* make sure it's a single @, or @@{.*}, not @foo */
+	next = strchr(name + len + 1, '@');
+	if (next && next[1] != '{')
+		return -1;
+	if (!next)
+		next = name + namelen;
+	if (next != name + 1)
+		return -1;
+
+	strbuf_reset(buf);
+	strbuf_add(buf, "HEAD", 4);
+	return 1;
+}
+
+static int reinterpret(const char *name, int namelen, int len, struct strbuf *buf)
+{
+	/* we have extra data, which might need further processing */
+	struct strbuf tmp = STRBUF_INIT;
+	int used = buf->len;
+	int ret;
+
+	strbuf_add(buf, name + len, namelen - len);
+	ret = interpret_branch_name(buf->buf, buf->len, &tmp);
+	/* that data was not interpreted, remove our cruft */
+	if (ret < 0) {
+		strbuf_setlen(buf, used);
+		return len;
+	}
+	strbuf_reset(buf);
+	strbuf_addbuf(buf, &tmp);
+	strbuf_release(&tmp);
+	/* tweak for size of {-N} versus expanded ref name */
+	return ret - used + len;
+}
+
 /*
  * This reads short-hand syntax that not only evaluates to a commit
  * object name, but also can act as if the end user spelled the name
@@ -995,44 +1070,37 @@ int get_sha1_mb(const char *name, unsigned char *sha1)
  * If the input was ok but there are not N branch switches in the
  * reflog, it returns 0.
  */
-int interpret_branch_name(const char *name, struct strbuf *buf)
+int interpret_branch_name(const char *name, int namelen, struct strbuf *buf)
 {
 	char *cp;
 	struct branch *upstream;
-	int namelen = strlen(name);
 	int len = interpret_nth_prior_checkout(name, buf);
 	int tmp_len;
 
-	if (!len)
-		return len; /* syntax Ok, not enough switches */
-	if (0 < len && len == namelen)
-		return len; /* consumed all */
-	else if (0 < len) {
-		/* we have extra data, which might need further processing */
-		struct strbuf tmp = STRBUF_INIT;
-		int used = buf->len;
-		int ret;
+	if (!namelen)
+		namelen = strlen(name);
 
-		strbuf_add(buf, name + len, namelen - len);
-		ret = interpret_branch_name(buf->buf, &tmp);
-		/* that data was not interpreted, remove our cruft */
-		if (ret < 0) {
-			strbuf_setlen(buf, used);
-			return len;
-		}
-		strbuf_reset(buf);
-		strbuf_addbuf(buf, &tmp);
-		strbuf_release(&tmp);
-		/* tweak for size of {-N} versus expanded ref name */
-		return ret - used + len;
+	if (!len) {
+		return len; /* syntax Ok, not enough switches */
+	} else if (len > 0) {
+		if (len == namelen)
+			return len; /* consumed all */
+		else
+			return reinterpret(name, namelen, len, buf);
 	}
 
 	cp = strchr(name, '@');
 	if (!cp)
 		return -1;
+
+	len = interpret_empty_at(name, namelen, cp - name, buf);
+	if (len > 0)
+		return reinterpret(name, namelen, len, buf);
+
 	tmp_len = upstream_mark(cp, namelen - (cp - name));
 	if (!tmp_len)
 		return -1;
+
 	len = cp + tmp_len - name;
 	cp = xstrndup(name, cp - name);
 	upstream = branch_get(*cp ? cp : NULL);
@@ -1041,14 +1109,15 @@ int interpret_branch_name(const char *name, struct strbuf *buf)
 	 * points to something different than a branch.
 	 */
 	if (!upstream)
-		return error(_("HEAD does not point to a branch"));
+		die(_("HEAD does not point to a branch"));
 	if (!upstream->merge || !upstream->merge[0]->dst) {
 		if (!ref_exists(upstream->refname))
-			return error(_("No such branch: '%s'"), cp);
-		if (!upstream->merge)
-			return error(_("No upstream configured for branch '%s'"),
-				     upstream->name);
-		return error(
+			die(_("No such branch: '%s'"), cp);
+		if (!upstream->merge) {
+			die(_("No upstream configured for branch '%s'"),
+				upstream->name);
+		}
+		die(
 			_("Upstream branch '%s' not stored as a remote-tracking branch"),
 			upstream->merge[0]->src);
 	}
@@ -1063,9 +1132,13 @@ int interpret_branch_name(const char *name, struct strbuf *buf)
 int strbuf_branchname(struct strbuf *sb, const char *name)
 {
 	int len = strlen(name);
-	if (interpret_branch_name(name, sb) == len)
+	int used = interpret_branch_name(name, len, sb);
+
+	if (used == len)
 		return 0;
-	strbuf_add(sb, name, len);
+	if (used < 0)
+		used = 0;
+	strbuf_add(sb, name + used, len - used);
 	return len;
 }
 
@@ -1089,13 +1162,13 @@ int get_sha1(const char *name, unsigned char *sha1)
 }
 
 /*
- * Many callers know that the user meant to name a committish by
+ * Many callers know that the user meant to name a commit-ish by
  * syntactical positions where the object name appears.  Calling this
  * function allows the machinery to disambiguate shorter-than-unique
- * abbreviated object names between committish and others.
+ * abbreviated object names between commit-ish and others.
  *
  * Note that this does NOT error out when the named object is not a
- * committish. It is merely to give a hint to the disambiguation
+ * commit-ish. It is merely to give a hint to the disambiguation
  * machinery.
  */
 int get_sha1_committish(const char *name, unsigned char *sha1)
@@ -1137,7 +1210,8 @@ int get_sha1_blob(const char *name, unsigned char *sha1)
 static void diagnose_invalid_sha1_path(const char *prefix,
 				       const char *filename,
 				       const unsigned char *tree_sha1,
-				       const char *object_name)
+				       const char *object_name,
+				       int object_name_len)
 {
 	struct stat st;
 	unsigned char sha1[20];
@@ -1147,8 +1221,8 @@ static void diagnose_invalid_sha1_path(const char *prefix,
 		prefix = "";
 
 	if (!lstat(filename, &st))
-		die("Path '%s' exists on disk, but not in '%s'.",
-		    filename, object_name);
+		die("Path '%s' exists on disk, but not in '%.*s'.",
+		    filename, object_name_len, object_name);
 	if (errno == ENOENT || errno == ENOTDIR) {
 		char *fullname = xmalloc(strlen(filename)
 					     + strlen(prefix) + 1);
@@ -1158,16 +1232,16 @@ static void diagnose_invalid_sha1_path(const char *prefix,
 		if (!get_tree_entry(tree_sha1, fullname,
 				    sha1, &mode)) {
 			die("Path '%s' exists, but not '%s'.\n"
-			    "Did you mean '%s:%s' aka '%s:./%s'?",
+			    "Did you mean '%.*s:%s' aka '%.*s:./%s'?",
 			    fullname,
 			    filename,
-			    object_name,
+			    object_name_len, object_name,
 			    fullname,
-			    object_name,
+			    object_name_len, object_name,
 			    filename);
 		}
-		die("Path '%s' does not exist in '%s'",
-		    filename, object_name);
+		die("Path '%s' does not exist in '%.*s'",
+		    filename, object_name_len, object_name);
 	}
 }
 
@@ -1177,7 +1251,7 @@ static void diagnose_invalid_index_path(int stage,
 					const char *filename)
 {
 	struct stat st;
-	struct cache_entry *ce;
+	const struct cache_entry *ce;
 	int pos;
 	unsigned namelen = strlen(filename);
 	unsigned fullnamelen;
@@ -1271,7 +1345,7 @@ static int get_sha1_with_context_1(const char *name,
 	 */
 	if (name[0] == ':') {
 		int stage = 0;
-		struct cache_entry *ce;
+		const struct cache_entry *ce;
 		char *new_path = NULL;
 		int pos;
 		if (!only_to_die && namelen > 2 && name[1] == '/') {
@@ -1332,13 +1406,8 @@ static int get_sha1_with_context_1(const char *name,
 	}
 	if (*cp == ':') {
 		unsigned char tree_sha1[20];
-		char *object_name = NULL;
-		if (only_to_die) {
-			object_name = xmalloc(cp-name+1);
-			strncpy(object_name, name, cp-name);
-			object_name[cp-name] = '\0';
-		}
-		if (!get_sha1_1(name, cp-name, tree_sha1, GET_SHA1_TREEISH)) {
+		int len = cp - name;
+		if (!get_sha1_1(name, len, tree_sha1, GET_SHA1_TREEISH)) {
 			const char *filename = cp+1;
 			char *new_filename = NULL;
 
@@ -1348,8 +1417,8 @@ static int get_sha1_with_context_1(const char *name,
 			ret = get_tree_entry(tree_sha1, filename, sha1, &oc->mode);
 			if (ret && only_to_die) {
 				diagnose_invalid_sha1_path(prefix, filename,
-							   tree_sha1, object_name);
-				free(object_name);
+							   tree_sha1,
+							   name, len);
 			}
 			hashcpy(oc->tree, tree_sha1);
 			strncpy(oc->path, filename,
@@ -1360,7 +1429,7 @@ static int get_sha1_with_context_1(const char *name,
 			return ret;
 		} else {
 			if (only_to_die)
-				die("Invalid object name '%s'.", object_name);
+				die("Invalid object name '%.*s'.", len, name);
 		}
 	}
 	return ret;

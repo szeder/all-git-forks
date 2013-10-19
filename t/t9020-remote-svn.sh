@@ -12,15 +12,19 @@ then
 	test_done
 fi
 
-# We override svnrdump by placing a symlink to the svnrdump-emulator in .
-export PATH="$HOME:$PATH"
-ln -sf $GIT_BUILD_DIR/contrib/svn-fe/svnrdump_sim.py "$HOME/svnrdump"
+# Override svnrdump with our simulator
+PATH="$HOME:$PATH"
+export PATH PYTHON_PATH GIT_BUILD_DIR
+
+write_script "$HOME/svnrdump" <<\EOF
+exec "$PYTHON_PATH" "$GIT_BUILD_DIR/contrib/svn-fe/svnrdump_sim.py" "$@"
+EOF
 
 init_git () {
 	rm -fr .git &&
 	git init &&
 	#git remote add svnsim testsvn::sim:///$TEST_DIRECTORY/t9020/example.svnrdump
-	# let's reuse an exisiting dump file!?
+	# let's reuse an existing dump file!?
 	git remote add svnsim testsvn::sim://$TEST_DIRECTORY/t9154/svn.dump
 	git remote add svnfile testsvn::file://$TEST_DIRECTORY/t9154/svn.dump
 }
@@ -32,8 +36,8 @@ fi
 
 test_debug '
 	git --version
-	which git
-	which svnrdump
+	type git
+	type svnrdump
 '
 
 test_expect_success REMOTE_SVN 'simple fetch' '
@@ -70,7 +74,8 @@ test_expect_success REMOTE_SVN 'mark-file regeneration' '
 '
 
 test_expect_success REMOTE_SVN 'incremental imports must lead to the same head' '
-	export SVNRMAX=3 &&
+	SVNRMAX=3 &&
+	export SVNRMAX &&
 	init_git &&
 	git fetch svnsim &&
 	test_cmp .git/refs/svn/svnsim/master .git/refs/remotes/svnsim/master  &&

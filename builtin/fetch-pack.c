@@ -1,18 +1,39 @@
 #include "builtin.h"
 #include "pkt-line.h"
 #include "fetch-pack.h"
+#include "remote.h"
+#include "connect.h"
 
 static const char fetch_pack_usage[] =
 "git fetch-pack [--all] [--stdin] [--quiet|-q] [--keep|-k] [--thin] "
 "[--include-tag] [--upload-pack=<git-upload-pack>] [--depth=<n>] "
 "[--no-progress] [-v] [<host>:]<directory> [<refs>...]";
 
+static void add_sought_entry_mem(struct ref ***sought, int *nr, int *alloc,
+				 const char *name, int namelen)
+{
+	struct ref *ref = xcalloc(1, sizeof(*ref) + namelen + 1);
+
+	memcpy(ref->name, name, namelen);
+	ref->name[namelen] = '\0';
+	(*nr)++;
+	ALLOC_GROW(*sought, *nr, *alloc);
+	(*sought)[*nr - 1] = ref;
+}
+
+static void add_sought_entry(struct ref ***sought, int *nr, int *alloc,
+			     const char *string)
+{
+	add_sought_entry_mem(sought, nr, alloc, string, strlen(string));
+}
+
 int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 {
 	int i, ret;
 	struct ref *ref = NULL;
 	const char *dest = NULL;
-	struct string_list sought = STRING_LIST_INIT_DUP;
+	struct ref **sought = NULL;
+	int nr_sought = 0, alloc_sought = 0;
 	int fd[2];
 	char *pack_lockfile = NULL;
 	char **pack_lockfile_ptr = NULL;
@@ -81,6 +102,10 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 			pack_lockfile_ptr = &pack_lockfile;
 			continue;
 		}
+		if (!strcmp("--check-self-contained-and-connected", arg)) {
+			args.check_self_contained_and_connected = 1;
+			continue;
+		}
 		usage(fetch_pack_usage);
 	}
 
@@ -94,27 +119,24 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	 * refs from the standard input:
 	 */
 	for (; i < argc; i++)
-		string_list_append(&sought, xstrdup(argv[i]));
+		add_sought_entry(&sought, &nr_sought, &alloc_sought, argv[i]);
 	if (args.stdin_refs) {
 		if (args.stateless_rpc) {
 			/* in stateless RPC mode we use pkt-line to read
 			 * from stdin, until we get a flush packet
 			 */
-			static char line[1000];
 			for (;;) {
-				int n = packet_read_line(0, line, sizeof(line));
-				if (!n)
+				char *line = packet_read_line(0, NULL);
+				if (!line)
 					break;
-				if (line[n-1] == '\n')
-					n--;
-				string_list_append(&sought, xmemdupz(line, n));
+				add_sought_entry(&sought, &nr_sought,  &alloc_sought, line);
 			}
 		}
 		else {
 			/* read from stdin one ref per line, until EOF */
 			struct strbuf line = STRBUF_INIT;
 			while (strbuf_getline(&line, stdin, '\n') != EOF)
-				string_list_append(&sought, strbuf_detach(&line, NULL));
+				add_sought_entry(&sought, &nr_sought, &alloc_sought, line.buf);
 			strbuf_release(&line);
 		}
 	}
@@ -128,12 +150,17 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 				   args.verbose ? CONNECT_VERBOSE : 0);
 	}
 
-	get_remote_heads(fd[0], &ref, 0, NULL);
+	get_remote_heads(fd[0], NULL, 0, &ref, 0, NULL);
 
 	ref = fetch_pack(&args, fd, conn, ref, dest,
-			 &sought, pack_lockfile_ptr);
+			 sought, nr_sought, pack_lockfile_ptr);
 	if (pack_lockfile) {
 		printf("lock %s\n", pack_lockfile);
+		fflush(stdout);
+	}
+	if (args.check_self_contained_and_connected &&
+	    args.self_contained_and_connected) {
+		printf("connectivity-ok\n");
 		fflush(stdout);
 	}
 	close(fd[0]);
@@ -141,7 +168,7 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	if (finish_connect(conn))
 		return 1;
 
-	ret = !ref || sought.nr;
+	ret = !ref;
 
 	/*
 	 * If the heads to pull were given, we should have consumed
@@ -149,8 +176,13 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	 * remote no-such-ref' would silently succeed without issuing
 	 * an error.
 	 */
-	for (i = 0; i < sought.nr; i++)
-		error("no such remote ref %s", sought.items[i].string);
+	for (i = 0; i < nr_sought; i++) {
+		if (!sought[i] || sought[i]->matched)
+			continue;
+		error("no such remote ref %s", sought[i]->name);
+		ret = 1;
+	}
+
 	while (ref) {
 		printf("%s %s\n",
 		       sha1_to_hex(ref->old_sha1), ref->name);

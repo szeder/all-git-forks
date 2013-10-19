@@ -54,8 +54,8 @@ done,*)
 	# do not redirect again
 	;;
 *' --tee '*|*' --va'*)
-	mkdir -p test-results
-	BASE=test-results/$(basename "$0" .sh)
+	mkdir -p "$TEST_OUTPUT_DIRECTORY/test-results"
+	BASE="$TEST_OUTPUT_DIRECTORY/test-results/$(basename "$0" .sh)"
 	(GIT_TEST_TEE_STARTED=done ${SHELL_PATH} "$0" "$@" 2>&1;
 	 echo $? > $BASE.exit) | tee $BASE.out
 	test "$(cat $BASE.exit)" = 0
@@ -85,12 +85,14 @@ unset VISUAL EMAIL LANGUAGE COLUMNS $("$PERL_PATH" -e '
 		.*_TEST
 		PROVE
 		VALGRIND
-		PERF_AGGREGATING_LATER
+		UNZIP
+		PERF_
 	));
 	my @vars = grep(/^GIT_/ && !/^GIT_($ok)/o, @env);
 	print join("\n", @vars);
 ')
 unset XDG_CONFIG_HOME
+unset GITPERLLIB
 GIT_AUTHOR_EMAIL=author@example.com
 GIT_AUTHOR_NAME='A U Thor'
 GIT_COMMITTER_EMAIL=committer@example.com
@@ -128,6 +130,7 @@ fi
 unset CDPATH
 
 unset GREP_OPTIONS
+unset UNZIP
 
 case $(echo $GIT_TRACE |tr "[A-Z]" "[a-z]") in
 1|2|true)
@@ -182,6 +185,9 @@ do
 		help=t; shift ;;
 	-v|--v|--ve|--ver|--verb|--verbo|--verbos|--verbose)
 		verbose=t; shift ;;
+	--verbose-only=*)
+		verbose_only=$(expr "z$1" : 'z[^=]*=\(.*\)')
+		shift ;;
 	-q|--q|--qu|--qui|--quie|--quiet)
 		# Ignore --quiet under a TAP::Harness. Saying how many tests
 		# passed without the ok/not ok details is always an error.
@@ -191,16 +197,44 @@ do
 	--no-color)
 		color=; shift ;;
 	--va|--val|--valg|--valgr|--valgri|--valgrin|--valgrind)
-		valgrind=t; verbose=t; shift ;;
+		valgrind=memcheck
+		shift ;;
+	--valgrind=*)
+		valgrind=$(expr "z$1" : 'z[^=]*=\(.*\)')
+		shift ;;
+	--valgrind-only=*)
+		valgrind_only=$(expr "z$1" : 'z[^=]*=\(.*\)')
+		shift ;;
+	--valgrind-parallel=*)
+		valgrind_parallel=$(expr "z$1" : 'z[^=]*=\(.*\)')
+		shift ;;
+	--valgrind-only-stride=*)
+		valgrind_only_stride=$(expr "z$1" : 'z[^=]*=\(.*\)')
+		shift ;;
+	--valgrind-only-offset=*)
+		valgrind_only_offset=$(expr "z$1" : 'z[^=]*=\(.*\)')
+		shift ;;
 	--tee)
 		shift ;; # was handled already
 	--root=*)
 		root=$(expr "z$1" : 'z[^=]*=\(.*\)')
 		shift ;;
+	--statusprefix=*)
+		statusprefix=$(expr "z$1" : 'z[^=]*=\(.*\)')
+		shift ;;
 	*)
 		echo "error: unknown test option '$1'" >&2; exit 1 ;;
 	esac
 done
+
+if test -n "$valgrind_only" || test -n "$valgrind_only_stride"
+then
+	test -z "$valgrind" && valgrind=memcheck
+	test -z "$verbose" && verbose_only="$valgrind_only"
+elif test -n "$valgrind"
+then
+	verbose=t
+fi
 
 if test -n "$color"
 then
@@ -212,11 +246,13 @@ then
 		error)
 			tput bold; tput setaf 1;; # bold red
 		skip)
-			tput bold; tput setaf 2;; # bold green
+			tput setaf 4;; # blue
+		warn)
+			tput setaf 3;; # brown/yellow
 		pass)
-			tput setaf 2;;            # green
+			tput setaf 2;; # green
 		info)
-			tput setaf 3;;            # brown
+			tput setaf 6;; # cyan
 		*)
 			test -n "$quiet" && return;;
 		esac
@@ -293,12 +329,12 @@ trap 'die' EXIT
 
 test_ok_ () {
 	test_success=$(($test_success + 1))
-	say_color "" "ok $test_count - $@"
+	say_color "" "${statusprefix}ok $test_count - $@"
 }
 
 test_failure_ () {
 	test_failure=$(($test_failure + 1))
-	say_color error "not ok - $test_count $1"
+	say_color error "${statusprefix}not ok $test_count - $1"
 	shift
 	echo "$@" | sed -e 's/^/#	/'
 	test "$immediate" = "" || { GIT_EXIT_OK=t; exit 1; }
@@ -306,16 +342,81 @@ test_failure_ () {
 
 test_known_broken_ok_ () {
 	test_fixed=$(($test_fixed+1))
-	say_color "" "ok $test_count - $@ # TODO known breakage"
+	say_color error "${statusprefix}ok $test_count - $@ # TODO known breakage vanished"
 }
 
 test_known_broken_failure_ () {
 	test_broken=$(($test_broken+1))
-	say_color skip "not ok $test_count - $@ # TODO known breakage"
+	say_color warn "${statusprefix}not ok $test_count - $@ # TODO known breakage"
 }
 
 test_debug () {
 	test "$debug" = "" || eval "$1"
+}
+
+match_pattern_list () {
+	arg="$1"
+	shift
+	test -z "$*" && return 1
+	for pattern_
+	do
+		case "$arg" in
+		$pattern_)
+			return 0
+		esac
+	done
+	return 1
+}
+
+maybe_teardown_verbose () {
+	test -z "$verbose_only" && return
+	exec 4>/dev/null 3>/dev/null
+	verbose=
+}
+
+last_verbose=t
+maybe_setup_verbose () {
+	test -z "$verbose_only" && return
+	if match_pattern_list $test_count $verbose_only ||
+		{ test -n "$valgrind_only_stride" &&
+		expr $test_count "%" $valgrind_only_stride - $valgrind_only_offset = 0 >/dev/null; }
+	then
+		exec 4>&2 3>&1
+		# Emit a delimiting blank line when going from
+		# non-verbose to verbose.  Within verbose mode the
+		# delimiter is printed by test_expect_*.  The choice
+		# of the initial $last_verbose is such that before
+		# test 1, we do not print it.
+		test -z "$last_verbose" && echo >&3 ""
+		verbose=t
+	else
+		exec 4>/dev/null 3>/dev/null
+		verbose=
+	fi
+	last_verbose=$verbose
+}
+
+maybe_teardown_valgrind () {
+	test -z "$GIT_VALGRIND" && return
+	GIT_VALGRIND_ENABLED=
+}
+
+maybe_setup_valgrind () {
+	test -z "$GIT_VALGRIND" && return
+	if test -z "$valgrind_only" && test -z "$valgrind_only_stride"
+	then
+		GIT_VALGRIND_ENABLED=t
+		return
+	fi
+	GIT_VALGRIND_ENABLED=
+	if match_pattern_list $test_count $valgrind_only
+	then
+		GIT_VALGRIND_ENABLED=t
+	elif test -n "$valgrind_only_stride" &&
+		expr $test_count "%" $valgrind_only_stride - $valgrind_only_offset = 0 >/dev/null
+	then
+		GIT_VALGRIND_ENABLED=t
+	fi
 }
 
 test_eval_ () {
@@ -327,8 +428,10 @@ test_eval_ () {
 test_run_ () {
 	test_cleanup=:
 	expecting_failure=$2
+	setup_malloc_check
 	test_eval_ "$1"
 	eval_ret=$?
+	teardown_malloc_check
 
 	if test -z "$immediate" || test $eval_ret = 0 || test -n "$expecting_failure"
 	then
@@ -343,17 +446,24 @@ test_run_ () {
 	return "$eval_ret"
 }
 
-test_skip () {
+test_start_ () {
 	test_count=$(($test_count+1))
+	maybe_setup_verbose
+	maybe_setup_valgrind
+}
+
+test_finish_ () {
+	echo >&3 ""
+	maybe_teardown_valgrind
+	maybe_teardown_verbose
+}
+
+test_skip () {
 	to_skip=
-	for skp in $GIT_SKIP_TESTS
-	do
-		case $this_test.$test_count in
-		$skp)
-			to_skip=t
-			break
-		esac
-	done
+	if match_pattern_list $this_test.$test_count $GIT_SKIP_TESTS
+	then
+		to_skip=t
+	fi
 	if test -z "$to_skip" && test -n "$test_prereq" &&
 	   ! test_have_prereq "$test_prereq"
 	then
@@ -367,8 +477,8 @@ test_skip () {
 			of_prereq=" of $test_prereq"
 		fi
 
-		say_color skip >&3 "skipping test: $@"
-		say_color skip "ok $test_count # skip $1 (missing $missing_prereq${of_prereq})"
+		say_color skip >&3 "${statusprefix}skipping test: $@"
+		say_color skip "${statusprefix}ok $test_count # skip $1 (missing $missing_prereq${of_prereq})"
 		: true
 		;;
 	*)
@@ -385,11 +495,14 @@ test_at_end_hook_ () {
 test_done () {
 	GIT_EXIT_OK=t
 
+	# Note: t0000 relies on $HARNESS_ACTIVE disabling the .counts
+	# output file
 	if test -z "$HARNESS_ACTIVE"
 	then
 		test_results_dir="$TEST_OUTPUT_DIRECTORY/test-results"
 		mkdir -p "$test_results_dir"
-		test_results_path="$test_results_dir/${0%.sh}-$$.counts"
+		base=${0##*/}
+		test_results_path="$test_results_dir/${base%.sh}-$$.counts"
 
 		cat >>"$test_results_path" <<-EOF
 		total $test_count
@@ -403,13 +516,18 @@ test_done () {
 
 	if test "$test_fixed" != 0
 	then
-		say_color pass "# fixed $test_fixed known breakage(s)"
+		say_color error "${statusprefix}# $test_fixed known breakage(s) vanished; please update test(s)"
 	fi
 	if test "$test_broken" != 0
 	then
-		say_color error "# still have $test_broken known breakage(s)"
-		msg="remaining $(($test_count-$test_broken)) test(s)"
+		say_color warn "${statusprefix}# still have $test_broken known breakage(s)"
+	fi
+	if test "$test_broken" != 0 || test "$test_fixed" != 0
+	then
+		test_remaining=$(( $test_count - $test_broken - $test_fixed ))
+		msg="remaining $test_remaining test(s)"
 	else
+		test_remaining=$test_count
 		msg="$test_count test(s)"
 	fi
 	case "$test_failure" in
@@ -423,11 +541,11 @@ test_done () {
 
 		if test $test_external_has_tap -eq 0
 		then
-			if test $test_count -gt 0
+			if test $test_remaining -gt 0
 			then
-				say_color pass "# passed all $msg"
+				say_color pass "${statusprefix}# passed all $msg"
 			fi
-			say "1..$test_count$skip_all"
+			say "${statusprefix}1..$test_count$skip_all"
 		fi
 
 		test -d "$remove_trash" &&
@@ -441,8 +559,8 @@ test_done () {
 	*)
 		if test $test_external_has_tap -eq 0
 		then
-			say_color error "# failed $test_failure among $msg"
-			say "1..$test_count"
+			say_color error "${statusprefix}# failed $test_failure among $msg"
+			say "${statusprefix}1..$test_count"
 		fi
 
 		exit 1 ;;
@@ -450,6 +568,9 @@ test_done () {
 	esac
 }
 
+
+# Set up a directory that we can put in PATH which redirects all git
+# calls to 'valgrind git ...'.
 if test -n "$valgrind"
 then
 	make_symlink () {
@@ -497,29 +618,43 @@ then
 		make_symlink "$symlink_target" "$GIT_VALGRIND/bin/$base" || exit
 	}
 
-	# override all git executables in TEST_DIRECTORY/..
-	GIT_VALGRIND=$TEST_DIRECTORY/valgrind
-	mkdir -p "$GIT_VALGRIND"/bin
-	for file in $GIT_BUILD_DIR/git* $GIT_BUILD_DIR/test-*
-	do
-		make_valgrind_symlink $file
-	done
-	# special-case the mergetools loadables
-	make_symlink "$GIT_BUILD_DIR"/mergetools "$GIT_VALGRIND/bin/mergetools"
-	OLDIFS=$IFS
-	IFS=:
-	for path in $PATH
-	do
-		ls "$path"/git-* 2> /dev/null |
-		while read file
+	# In the case of --valgrind-parallel, we only need to do the
+	# wrapping once, in the main script.  The worker children all
+	# have $valgrind_only_stride set, so we can skip based on that.
+	if test -z "$valgrind_only_stride"
+	then
+		# override all git executables in TEST_DIRECTORY/..
+		GIT_VALGRIND=$TEST_DIRECTORY/valgrind
+		mkdir -p "$GIT_VALGRIND"/bin
+		for file in $GIT_BUILD_DIR/git* $GIT_BUILD_DIR/test-*
 		do
-			make_valgrind_symlink "$file"
+			make_valgrind_symlink $file
 		done
-	done
-	IFS=$OLDIFS
+		# special-case the mergetools loadables
+		make_symlink "$GIT_BUILD_DIR"/mergetools "$GIT_VALGRIND/bin/mergetools"
+		OLDIFS=$IFS
+		IFS=:
+		for path in $PATH
+		do
+			ls "$path"/git-* 2> /dev/null |
+			while read file
+			do
+				make_valgrind_symlink "$file"
+			done
+		done
+		IFS=$OLDIFS
+	fi
 	PATH=$GIT_VALGRIND/bin:$PATH
 	GIT_EXEC_PATH=$GIT_VALGRIND/bin
 	export GIT_VALGRIND
+	GIT_VALGRIND_MODE="$valgrind"
+	export GIT_VALGRIND_MODE
+	GIT_VALGRIND_ENABLED=t
+	if test -n "$valgrind_only" || test -n "$valgrind_only_stride"
+	then
+		GIT_VALGRIND_ENABLED=
+	fi
+	export GIT_VALGRIND_ENABLED
 elif test -n "$GIT_TEST_INSTALLED"
 then
 	GIT_EXEC_PATH=$($GIT_TEST_INSTALLED/git --exec-path)  ||
@@ -565,15 +700,6 @@ test -d "$GIT_BUILD_DIR"/templates/blt || {
 	error "You haven't built things yet, have you?"
 }
 
-if test -z "$GIT_TEST_INSTALLED" && test -z "$NO_PYTHON"
-then
-	GITPYTHONLIB="$GIT_BUILD_DIR/git_remote_helpers/build/lib"
-	export GITPYTHONLIB
-	test -d "$GIT_BUILD_DIR"/git_remote_helpers/build || {
-		error "You haven't built git_remote_helpers yet, have you?"
-	}
-fi
-
 if ! test -x "$GIT_BUILD_DIR"/test-chmtime
 then
 	echo >&2 'You need to build test-chmtime:'
@@ -582,14 +708,14 @@ then
 fi
 
 # Test repository
-test="trash directory.$(basename "$0" .sh)"
-test -n "$root" && test="$root/$test"
-case "$test" in
-/*) TRASH_DIRECTORY="$test" ;;
- *) TRASH_DIRECTORY="$TEST_OUTPUT_DIRECTORY/$test" ;;
+TRASH_DIRECTORY="trash directory.$(basename "$0" .sh)"
+test -n "$root" && TRASH_DIRECTORY="$root/$TRASH_DIRECTORY"
+case "$TRASH_DIRECTORY" in
+/*) ;; # absolute path is good
+ *) TRASH_DIRECTORY="$TEST_OUTPUT_DIRECTORY/$TRASH_DIRECTORY" ;;
 esac
 test ! -z "$debug" || remove_trash=$TRASH_DIRECTORY
-rm -fr "$test" || {
+rm -fr "$TRASH_DIRECTORY" || {
 	GIT_EXIT_OK=t
 	echo >&5 "FATAL: Cannot prepare test area"
 	exit 1
@@ -600,25 +726,57 @@ export HOME
 
 if test -z "$TEST_NO_CREATE_REPO"
 then
-	test_create_repo "$test"
+	test_create_repo "$TRASH_DIRECTORY"
 else
-	mkdir -p "$test"
+	mkdir -p "$TRASH_DIRECTORY"
 fi
+
+# Gross hack to spawn N sub-instances of the tests in parallel, and
+# summarize the results.  Note that if this is enabled, the script
+# terminates at the end of this 'if' block.
+if test -n "$valgrind_parallel"
+then
+	for i in $(test_seq 1 $valgrind_parallel)
+	do
+		root="$TRASH_DIRECTORY/vgparallel-$i"
+		mkdir "$root"
+		TEST_OUTPUT_DIRECTORY="$root" \
+			${SHELL_PATH} "$0" \
+			--root="$root" --statusprefix="[$i] " \
+			--valgrind="$valgrind" \
+			--valgrind-only-stride="$valgrind_parallel" \
+			--valgrind-only-offset="$i" &
+		pids="$pids $!"
+	done
+	trap "kill $pids" INT TERM HUP
+	wait $pids
+	trap - INT TERM HUP
+	for i in $(test_seq 1 $valgrind_parallel)
+	do
+		root="$TRASH_DIRECTORY/vgparallel-$i"
+		eval "$(cat "$root/test-results/$(basename "$0" .sh)"-*.counts |
+			sed 's/^\([a-z][a-z]*\) \([0-9][0-9]*\)/inner_\1=\2/')"
+		test_count=$(expr $test_count + $inner_total)
+		test_success=$(expr $test_success + $inner_success)
+		test_fixed=$(expr $test_fixed + $inner_fixed)
+		test_broken=$(expr $test_broken + $inner_broken)
+		test_failure=$(expr $test_failure + $inner_failed)
+	done
+	test_done
+fi
+
 # Use -P to resolve symlinks in our working directory so that the cwd
 # in subprocesses like git equals our $PWD (for pathname comparisons).
-cd -P "$test" || exit 1
+cd -P "$TRASH_DIRECTORY" || exit 1
 
 this_test=${0##*/}
 this_test=${this_test%%-*}
-for skp in $GIT_SKIP_TESTS
-do
-	case "$this_test" in
-	$skp)
-		say_color skip >&3 "skipping test $this_test altogether"
-		skip_all="skip all tests in $this_test"
-		test_done
-	esac
-done
+if match_pattern_list "$this_test" $GIT_SKIP_TESTS
+then
+	say_color info >&3 "skipping test $this_test altogether"
+	skip_all="skip all tests in $this_test"
+	test_done
+fi
 
 # Provide an implementation of the 'yes' utility
 yes () {
@@ -656,19 +814,24 @@ case $(uname -s) in
 	# backslashes in pathspec are converted to '/'
 	# exec does not inherit the PID
 	test_set_prereq MINGW
+	test_set_prereq NOT_CYGWIN
 	test_set_prereq SED_STRIPS_CR
+	test_set_prereq GREP_STRIPS_CR
 	;;
 *CYGWIN*)
 	test_set_prereq POSIXPERM
 	test_set_prereq EXECKEEPSPID
 	test_set_prereq NOT_MINGW
+	test_set_prereq CYGWIN
 	test_set_prereq SED_STRIPS_CR
+	test_set_prereq GREP_STRIPS_CR
 	;;
 *)
 	test_set_prereq POSIXPERM
 	test_set_prereq BSLASHPSPEC
 	test_set_prereq EXECKEEPSPID
 	test_set_prereq NOT_MINGW
+	test_set_prereq NOT_CYGWIN
 	;;
 esac
 
@@ -714,6 +877,18 @@ test_i18ngrep () {
 	fi
 }
 
+test_lazy_prereq PIPE '
+	# test whether the filesystem supports FIFOs
+	case $(uname -s) in
+	CYGWIN*)
+		false
+		;;
+	*)
+		rm -f testfifo && mkfifo testfifo
+		;;
+	esac
+'
+
 test_lazy_prereq SYMLINKS '
 	# test whether the filesystem supports symbolic links
 	ln -s x y && test -h y
@@ -738,6 +913,18 @@ test_lazy_prereq UTF8_NFD_TO_NFC '
 	esac
 '
 
+test_lazy_prereq AUTOIDENT '
+	sane_unset GIT_AUTHOR_NAME &&
+	sane_unset GIT_AUTHOR_EMAIL &&
+	git var GIT_AUTHOR_IDENT
+'
+
 # When the tests are run as root, permission tests will report that
 # things are writable when they shouldn't be.
 test -w / || test_set_prereq SANITY
+
+GIT_UNZIP=${GIT_UNZIP:-unzip}
+test_lazy_prereq UNZIP '
+	"$GIT_UNZIP" -v
+	test $? -ne 127
+'
