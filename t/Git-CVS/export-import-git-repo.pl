@@ -70,6 +70,7 @@ my $cvsmodule = mk_cvs_module_commit($cvsroot);
 chdir($testdir) or die "$!";
 $ENV{GIT_TRACE_CVS_HELPER} = "$testdir/cvshelper.log";
 $ENV{GIT_TRACE_CVS_PROTO} = "$testdir/cvsproto.log";
+$ENV{GIT_TRACE_CVS} = "$testdir/cvstrace.log";
 $ENV{NO_REFS_UPDATE_ON_PUSH} = "1";
 
 $cvsroot = ":fork:$cvsroot" unless $cvsroot =~ /^:/;
