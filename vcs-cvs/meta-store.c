@@ -75,7 +75,7 @@ char *read_note_of(unsigned char sha1[20], const char *notes_ref, unsigned long 
 	init_notes(t, notes_ref, combine_notes_overwrite, 0);
 	note = get_note(t, sha1);
 	if (note) {
-		//tracef("note %s:\n", sha1_to_hex(note));
+		//tracef("note %s:", sha1_to_hex(note));
 		buf = read_sha1_file(note, &type, size);
 		if (!buf)
 			die("Cannot read sha1 %s", sha1_to_hex(note));
@@ -243,7 +243,7 @@ int load_revision_meta(unsigned char *sha1, const char *notes_ref, time_t *times
 	while ((p = parse_meta_line(buf, size, &first, &second, &attr, p))) {
 		if (strcmp(first, "--") == 0)
 			break;
-		tracef("option: %s=>%s\n", first, second);
+		tracef("option: %s=>%s", first, second);
 		if (!strcmp(first, "UPDATE") && timestamp) {
 			*timestamp = atol(second);
 			if (*timestamp == 0)

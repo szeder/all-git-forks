@@ -15,12 +15,12 @@ static void db_cache_release(DB *db)
 static void db_cache_release_default()
 {
 	db_cache_release(db_cache);
-	tracef("db_cache released\n");
+	tracef("db_cache released");
 	if (db_cache_branch) {
 		db_cache_release(db_cache_branch);
 		db_cache_branch = NULL;
 		unlink(db_cache_branch_path);
-		tracef("db_cache %s removed\n", db_cache_branch_path);
+		tracef("db_cache %s removed", db_cache_branch_path);
 		free(db_cache_branch_path);
 	}
 }
@@ -225,7 +225,7 @@ int db_cache_for_each(DB *db, handle_file_fn_t cb, void *data)
 		file.isexec = file.file.buf[file.file.len];
 		file.file.buf[file.file.len] = 0;
 
-		tracef("db_cache foreach file: %s rev: %s size: %zu isexec: %u hash: %u\n",
+		tracef("db_cache foreach file: %s rev: %s size: %zu isexec: %u hash: %u",
 			file.path.buf, file.revision.buf, file.file.len, file.isexec, hash_buf(file.file.buf, file.file.len));
 		cb(&file, data);
 	}

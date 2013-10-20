@@ -142,6 +142,7 @@ void tracef(const char *fmt, ...)
 	strbuf_vaddf(&out, fmt, ap);
 	va_end(ap);
 
+	strbuf_addch(&out, '\n');
 	trace_strbuf(trace_key_general, &out);
 	strbuf_release(&out);
 }
