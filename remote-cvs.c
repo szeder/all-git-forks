@@ -72,8 +72,7 @@ static int ignore_mode_change = 0;
 static int verify_import = 0;
 static int require_author_convert = 0;
 static int update_tags = 0;
-//static struct progress *progress_state;
-static struct progress *progress_rlog;
+static struct progress *progress_state;
 
 static int markid = 0;
 static int revisions_all_branches_total = 0;
@@ -460,10 +459,9 @@ static int fetch_revision_cb(void *ptr, void *data)
 	int isexec;
 	int rc;
 
-	if (rev->mark || rev->isdead)
+	if (rev->mark)
 		return 0;
 
-	revisions_all_branches_total++;
 	revisions_all_branches_fetched++;
 	tracef("checkout [%d/%d] (%.2lf%%) all branches,%sETA] %s %s",
 			revisions_all_branches_fetched,
@@ -472,11 +470,16 @@ static int fetch_revision_cb(void *ptr, void *data)
 			get_import_time_estimation(),
 			rev->path, rev->revision);
 
+	if (rev->isdead) {
+		tracef(" (not fetched) dead");
+		return 0;
+	}
+
 	cached_sha1 = revision_cache_lookup(rev->path, rev->revision, &isexec);
 	if (cached_sha1) {
 		rev->isexec = isexec;
 		rev->mark = xstrdup(cached_sha1);
-		tracef("(fetched from revision cache) isexec %u sha1 %s", isexec, cached_sha1);
+		tracef(" (fetched from revision cache) isexec %u sha1 %s", isexec, cached_sha1);
 		return 0;
 	}
 
@@ -484,13 +487,14 @@ static int fetch_revision_cb(void *ptr, void *data)
 	if (rc == -1)
 		die("Cannot checkout file %s rev %s", rev->path, rev->revision);
 
-	//fetched_total_size += file.file.len;
-	//display_progress(progress_state, revisions_all_branches_fetched);
-	//display_throughput(progress_state, fetched_total_size);
+	if (show_progress) {
+		display_progress(progress_state, revisions_all_branches_fetched);
+		display_throughput(progress_state, cvs_read_total + cvs_written_total);
+	}
 
 	if (file.isdead) {
 		rev->isdead = 1;
-		tracef("(fetched) dead");
+		tracef(" (fetched) dead");
 		return 0;
 	}
 
@@ -767,6 +771,20 @@ static void on_file_checkout_cb(struct cvsfile *file, void *data)
 	struct strbuf mark_sb = STRBUF_INIT;
 	int mark;
 
+	revisions_all_branches_total++;
+	revisions_all_branches_fetched++;
+	tracef("on checkout [%d/%d] (%.2lf%%) all branches,%sETA] %s %s",
+			revisions_all_branches_fetched,
+			revisions_all_branches_total,
+			(double)revisions_all_branches_fetched/(double)revisions_all_branches_total*100.,
+			get_import_time_estimation(),
+			file->path.buf, file->revision.buf);
+
+	if (show_progress) {
+		display_progress(progress_state, revisions_all_branches_fetched);
+		display_throughput(progress_state, cvs_read_total + cvs_written_total);
+	}
+
 	if (is_cvs_import_excluded_path(file->path.buf)) {
 		tracef("%s ignored during import according to cvs-exclude", file->path.buf);
 		return;
@@ -823,6 +841,8 @@ static int rlist_branch(const char *branch_name, time_t import_time, struct hash
 	rc = cvs_rls(cvs, branch_name, 0, import_time, on_rlist_file_cb, meta_revision_hash);
 	if (rc)
 		die("cvs rls of %s date %ld failed", branch_name, import_time);
+
+	revisions_all_branches_total += meta_revision_hash->nr;
 
 	/*
 	 * FIXME: rls somehow breaks all server connections (even in separate
@@ -1291,7 +1311,8 @@ static int cmd_batch_import(struct string_list *list)
 	import_branch_list = list;
 	import_start_time = time(NULL);
 
-	//progress_state = start_progress("Receiving revisions", revisions_all_branches_total);
+	if (show_progress)
+		progress_state = start_progress("receiving revisions", 0);
 
 	item = unsorted_string_list_lookup(list, "HEAD");
 	if (item) {
@@ -1311,9 +1332,11 @@ static int cmd_batch_import(struct string_list *list)
 			import_tag_by_name(item->string);
 		}
 	}
+
+	if (show_progress)
+		stop_progress(&progress_state);
 	helper_printf("done\n");
 	helper_flush();
-	//stop_progress(&progress_state);
 	return 0;
 }
 
@@ -2115,8 +2138,8 @@ static void add_cvs_revision_cb(const char *branch_name,
 	skipped += add_cvs_revision(cvs_branch, path, revision, author, msg, timestamp, isdead);
 	revisions_all_branches_total++;
 	if (show_progress) {
-		display_progress(progress_rlog, revisions_all_branches_total);
-		display_throughput(progress_rlog, cvs_read_total);
+		display_progress(progress_state, revisions_all_branches_total);
+		display_throughput(progress_state, cvs_read_total + cvs_written_total);
 	}
 }
 
@@ -2159,7 +2182,7 @@ static int cmd_list(const char *line)
 	struct strbuf ref_sb = STRBUF_INIT;
 
 	if (show_progress)
-		progress_rlog = start_progress("fetching revisions info", 0);
+		progress_state = start_progress("fetching revisions info", 0);
 
 	if (initial_import) {
 		rc = cvs_rlog(cvs, 0, 0, &cvs_branch_list, &cvs_tag_list, add_cvs_revision_cb, &cvs_branch_list);
@@ -2224,7 +2247,7 @@ static int cmd_list(const char *line)
 		helper_printf("\n");
 	}
 	if (show_progress)
-		stop_progress(&progress_rlog);
+		stop_progress(&progress_state);
 	helper_flush();
 	revisions_all_branches_total -= skipped;
 	strbuf_release(&ref_sb);
