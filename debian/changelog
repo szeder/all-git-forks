@@ -1,5 +1,7 @@
-git (1:1.8.4-1.1) experimental; urgency=low
+git (1:1.8.4.1-0.1) unstable; urgency=low
 
+  * merge branch debian-experimental.
+  * new upstream point release.
   * debian/control: Build-Depends tcl instead of tcl8.5.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 24 Aug 2013 14:57:46 -0700

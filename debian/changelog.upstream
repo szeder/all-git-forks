@@ -1,3 +1,77 @@
+Version v1.8.4.1; changes since v1.8.4:
+---------------------------------------
+
+Andreas Schwab (1):
+      Documentation/git-merge.txt: fix formatting of example block
+
+Benoit Person (1):
+      git-remote-mediawiki: bugfix for pages w/ >500 revisions
+
+Brandon Casey (3):
+      git-completion.bash: use correct Bash/Zsh array length syntax
+      t9902-completion.sh: old Bash still does not support array+=('') notation
+      contrib/git-prompt.sh: handle missing 'printf -v' more gracefully
+
+Jeff King (2):
+      config: do not use C function names as struct members
+      mailmap: handle mailmap blobs without trailing newlines
+
+Jharrod LaFon (1):
+      avoid segfault on submodule.*.path set to an empty "true"
+
+Johannes Sixt (1):
+      stream_to_pack: xread does not guarantee to read all requested bytes
+
+Jonathan Nieder (1):
+      Git 1.8.4.1
+
+Junio C Hamano (6):
+      t5802: add test for connect helper
+      fetch: rename file-scope global "transport" to "gtransport"
+      fetch: refactor code that prepares a transport
+      fetch: refactor code that fetches leftover tags
+      fetch: work around "transport-take-over" hack
+      Start preparing for 1.8.4.1
+
+Kyle J. McKay (3):
+      Git.pm: add new temp_is_locked function
+      git-svn: allow git-svn fetching to work using serf
+      Git.pm: revert _temp_cache use of temp_is_locked
+
+Matthieu Moy (2):
+      die_with_status: use "printf '%s\n'", not "echo"
+      rebase: fix run_specific_rebase's use of "return" on FreeBSD
+
+Nguyễn Thái Ngọc Duy (1):
+      fetch-pack: do not remove .git/shallow file when --depth is not specified
+
+Ralf Thielow (1):
+      l10n: de.po: use "das Tag" instead of "der Tag"
+
+Ramsay Allan Jones (1):
+      builtin/fetch.c: Fix a sparse warning
+
+Sebastien Helleu (1):
+      l10n: fr.po: hotfix for commit 6b388fc
+
+Steffen Prohaska (2):
+      xread, xwrite: limit size of IO to 8MB
+      Revert "compat/clipped-write.c: large write(2) fails on Mac OS X/XNU"
+
+Tay Ray Chuan (1):
+      t7406-submodule-update: add missing &&
+
+Thomas Rast (2):
+      log: use true parents for diff even when rewriting
+      log: use true parents for diff when walking reflogs
+
+Thorsten Glaser (1):
+      fix shell syntax error in template
+
+brian m. carlson (1):
+      send-email: don't call methods on undefined values
+
+
 Version v1.8.4; changes since v1.8.4-rc4:
 -----------------------------------------
 
