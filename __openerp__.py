@@ -19,23 +19,45 @@
 ##############################################################################
 
 {
-    'name' : 'Enapps Import Data tool',
-    'version' : 'a',
-    'depends' : [
+    'name': 'Enapps Import Data tool',
+    'version': '18',
+    'depends': [
         'base',
     ],
-    'author' : 'ENAPPS LTD',
-    'description': '''Import cvs files''',
-    'website' : 'http://ennaps.co.uk/',
-    'category' : 'Tool',
-    'init_xml' : [],
-    'demo_xml' : [],
-    'update_xml' :  [
+    'author': 'ENAPPS LTD',
+    'description': '''Import and export csv files''',
+    'website': 'http://www.enapps.co.uk/',
+    'category': 'Tool',
+    'init_xml': [],
+    'demo_xml': [
+    ],
+
+    'update_xml':  [
+                    'security/security_groups.xml',
+                    'security/ir.model.access.csv',
                     'ea_import_template_view.xml',
                     'ea_import_template_line_view.xml',
+                    'ea_import_template_line_calc_field_view.xml',
+                    'ea_import_template_line_boolean_field_view.xml',
+                    'ea_import_template_line_regexp_field_view.xml',
+                    'ea_import_chain_view.xml',
+                    'ea_import_chain_link_view.xml',
+                    'ea_import_chain_result_view.xml',
+                    'ea_import_log_view.xml',
+                    'ea_import_scheduler.xml',
+                    'ea_import_scheduler_data.xml',
+                    'ea_export_config_view.xml',
+                    'wizard/import_wizard_view.xml',
+                    'configs/mysql_config_view.xml',
+                    'configs/ftp_config_view.xml',
                     ],
     'active': False,
     'installable': True,
+    'images': ['images/chain_form.png', 'images/template_list.png'],
+    'external_dependencies': {
+                            'python': ['MySQLdb']  # On Linux can be installed using 'apt-get install python-mysqldb'
+                            }
 
 }
+
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:

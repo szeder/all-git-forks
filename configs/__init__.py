@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
 #
-#    OpenERP, Open Source Management Solution
-#    Copyright (C) 2004-2010 Tiny SPRL (<http://tiny.be>).
+#    Copyright (C) 2011 Enapps LTD (<http://www.enapps.co.uk>).
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as
@@ -19,27 +18,7 @@
 #
 ##############################################################################
 
-from osv import osv
-from osv import fields
-import datetime
-import math
-from dateutil import parser
-import report
-from tools.translate import _
-import time
-import netsvc
-import crm
-import copy
-
-#class preview_in_memory_builder(osv.osv_memory):
-
-    #def __init__(self, pool, cr, module_name):
-        #osv.osv_memory.__init__(self, pool, cr)
-        #self.doinit = True
-        #self.unlink_mark = {}
-
-        #if getattr(pool, 'model_data_reference_ids', None) is None:
-            #self.pool.model_data_reference_ids = {}
-        #self.loads = self.pool.model_data_reference_ids
+import mysql_config
+import ftp_config
 
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
