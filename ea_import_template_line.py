@@ -21,34 +21,55 @@
 from osv import osv
 from osv import fields
 import datetime
-import math
-from dateutil import parser
-import report
 from tools.translate import _
-import time
-import netsvc
-import crm
+import base64
+from inspect import isfunction
+
 
 class ea_import_template_line(osv.osv):
-    _name='ea_import.template.line'
+
+    _name = 'ea_import.template.line'
+    _rec_name = "target_field"
+
+    def _get_related_field_model(self, cr, uid, ids, name, args, context=None):
+        if not ids:
+            return {}
+        result = {}
+        for template_line in self.browse(cr, uid, ids, context=context):
+            result[template_line.id] = template_line.target_field.relation
+        return result
+
+    def _get_next_sequence(self, cr, uid, context={}):
+        template_id = context.get('template_id')
+        if template_id:
+            cr.execute("""
+                SELECT MAX(sequence) + 1
+                FROM ea_import_template_line
+                WHERE template_id = %s
+                      """, (template_id, ))
+            for (next_sequence, ) in cr.fetchall():
+                return next_sequence or 1
+        return 1
+
     _columns = {
-        'name' : fields.char('name',size=256),
-        'template_id': fields.many2one('ea_import.template', 'Template',),
-        'sequence': fields.integer('Sequence', required=True),
-        'field_expression': fields.char('Target field expression', size=512, required=True),
-        'field_type': fields.selection([
-                                        ('text', 'text'),
-                                        ('integer', 'integer'),
-                                        ('float', 'float'),
-                                        ('date', 'date'),
-                                        ('datetime', 'datetime'),
-                                        ('boolean', 'boolean'),
-                                        ('many2one', 'many2one'),
-                                       ], 'Field Type', required=True),
+        'target_field': fields.many2one('ir.model.fields', string="Field Name", select=True),
+        'template_id': fields.many2one('ea_import.template', 'Template', select=True, ondelete="cascade", ),
+        'target_model_id': fields.related('template_id', 'target_model_id', type='many2one', relation='ir.model', string='Target Object', readonly=True, store=False,),
+        'related_field': fields.many2one('ir.model.fields', string="Related Field", select=True),
+        'related_field_model': fields.char('related_field_model', size=512,),
+        'sequence': fields.integer('Sequence', required=True, select=True),
+        'real_field_type': fields.related('target_field', 'ttype', type='char', relation='ir.model.fields', string='Field type', readonly=True, store=False,),
         'test_result_field': fields.char('Test Result', size=512,),
+        'default_value': fields.char('Default Value', size=512,),
+        'use_only_defaults': fields.boolean('Use only defaults',),
         'test_result_record_number': fields.integer('Record Number'),
-        'create_new': fields.boolean('Create new?', ),
-        'required': fields.boolean('Required', ),
+        'key_field': fields.boolean('Key field for updating', select=True),
+        'required': fields.boolean('Required for creating new', select=True),
+        'calculated': fields.boolean('Calculated', select=True),
+        'calc_field_ids': fields.one2many('ea_import.template.line.calc_field', 'template_line_id', 'Calculated Field',),
+        'boolean_field_ids': fields.one2many('ea_import.template.line.boolean_field', 'template_line_id', 'Boolean Fields',),
+        'replace': fields.boolean('Replace field before processing', select=True),
+        'regexp_field_ids': fields.one2many('ea_import.template.line.regexp_field', 'template_line_id', 'Regexp Fields',),
         'header_column_name': fields.char('Header Column Name', size=64,),
         'time_format': fields.char('Time Format', size=128, help="""DIRECTIVE       MEANING
 %a	Locale’s abbreviated weekday name.
@@ -73,50 +94,168 @@ class ea_import_template_line(osv.osv):
 %Y	Year with century as a decimal number.
 %Z	Time zone name (no characters if no time zone exists).
 %%	A literal '%' character.),"""),
+        'field_type': fields.selection([('char', 'char'),
+                                  ('text', 'text'),
+                                  ('boolean', 'boolean'),
+                                  ('integer', 'integer'),
+                                  ('date', 'date'),
+                                  ('datetime', 'datetime'),
+                                  ('float', 'float'),
+                                  ('selection', 'selection'),
+                                  ('binary', 'binary'),
+                                  ('many2one', 'many2one'),
+                                 ], 'Field Type'),
+        'many2one_rel_type': fields.selection([
+            ('dbid', 'Database ID'),
+            ('subfield', 'Subfield'),
+            ('template', 'Template')
+        ], 'Relation type',),
+        'match_limit': fields.selection([('match_first', 'Match first result'),
+                                        ('match_last', 'Match last result')],
+                                        'Match Limit',
+                                        help="If defined, will select one record with given order from several found for template line"),
+        'related_template_id': fields.many2one('ea_import.template', 'Related Template', select=True),
         }
 
     _defaults = {
         'time_format': '%d/%m/%Y',
-        'field_type': 'text',
+        'sequence': lambda self, cr, uid, context: self._get_next_sequence(cr, uid, context=context),
+        'many2one_rel_type': 'subfield',
+        'default_value': None,
     }
 
-    def get_field(self, cr, uid, ids, input_string, context={}):
+    def name_get(self, cr, uid, ids, context={}):
+        result = []
         for template_line in self.browse(cr, uid, ids, context=context):
-            target_string = input_string.split(',')[template_line.sequence]
-            template_line_type = template_line.field_type
-            if template_line_type == 'text':
-                return target_string
-            elif template_line_type == 'integer':
-                return int(target_string)
-            elif template_line_type == 'float':
-                return float(target_string)
-            elif template_line_type == 'boolean':
-                return bool(target_string)
-            elif template_line_type == 'date':
-                target_time = datetime.datetime.strptime(target_string, template_line.time_format)
-                return target_time.strftime("%Y-%m-%d")
-            elif template_line_type == 'datetime':
-                target_time = datetime.datetime.strptime(target_string, template_line.time_format)
-                return target_time.strftime("%Y-%m-%d %H:%M:%S")
-            elif template_line_type == 'many2one':
-                object_name, field_name = template_line.field_expression.split('/')
-                target_obj_pool = self.pool.get(object_name)
-                result = target_obj_pool.search(cr, uid, [(field_name, 'ilike', target_string)], context=context)
-                if len(result) > 1:
-                    raise osv.except_osv(_('Error !'), _("For %s relation and field (%s) there are more than 1 records (%d)" % (template_line.field_expression, target_string, len(result))))
-                elif not result:
-                    raise osv.except_osv(_('Error !'), _("There no field '%s' in %s relation" % (target_string, template_line.field_expression,)))
+            template_line_name = "%s/%s" % (template_line.target_model_id.name, template_line.related_field.name)
+            result.append((template_line.id, template_line_name))
+        return result
+
+    def default_get(self, cr, uid, fields, context={}):
+        result = super(ea_import_template_line, self).default_get(cr, uid, fields, context=context)
+        template_id = context.get('template_id')
+        target_model_id = context.get('target_model_id')
+        result.update({'template_id': template_id, 'target_model_id': target_model_id})
+        return result
+
+    def onchange_target_field(self, cr, uid, ids, field_id, context={}):
+        if field_id:
+            model_fields_pool = self.pool.get('ir.model.fields')
+            field_obj = model_fields_pool.browse(cr, uid, field_id, context=context)
+            return {'value': {'field_type': field_obj.ttype, 'related_field_model': field_obj.relation}}
+        else:
+            return {'value': {}}
+
+    def match_limit(self, template_line, result):
+        if not result or not isinstance(result, list):
+            return result
+        if template_line.match_limit == 'match_first':
+            result = [result[0]]
+        elif template_line.match_limit == 'match_last':
+            result = [result[-1]]
+        return result
+
+    def get_field(self, cr, uid, ids, input_list, row_number, context={}, testing=False):
+        template_line_boolean_field_pool = self.pool.get('ea_import.template.line.boolean_field')
+        template_line_regxp_field_pool = self.pool.get('ea_import.template.line.regexp_field')
+
+        def test_many2one_result(result_list, template_line, target_string):
+            if len(result_list) > 1 and not template_line.match_limit:
+                raise osv.except_osv(_('Error !'), _("For %s/%s relation there more then 1 record. CSV row number %i." % (template_line.target_field.field_description, template_line.related_field.field_description,row_number+1)))
+            if not result_list and template_line.required:
+                raise osv.except_osv(_('Error !'), _("""Model - %s\nField - %s\nThere no related field '%s' in %s/%s relation (field is required) \nField name: %s \nColumn: %s\nRow number: %i\nRow Data: %s""" % (template_line.template_id.name, template_line.target_field.model, target_string, template_line.target_field.model, template_line.related_field.model, template_line.target_field.name, str(template_line.sequence),row_number+1, input_list)))
+
+        for template_line in self.browse(cr, uid, ids, context=context):
+            if not all([bool(field_str) == False for field_str in input_list]):
+                if template_line.use_only_defaults or not input_list[template_line.sequence - 1]:
+                    target_string = template_line.default_value
                 else:
-                    return result[0]
+                    target_string = input_list[template_line.sequence - 1]
+                    if not target_string.strip() and template_line.default_value:
+                        target_string = template_line.default_value
+                if template_line.replace:
+                    target_string = template_line_regxp_field_pool.replace_string(cr, uid,
+                                                                                  [regexp_field.id for regexp_field in template_line.regexp_field_ids],
+                                                                                  target_string, context=context)
+                template_line_type = template_line.field_type
+                if template_line.calculated and template_line_type in ['integer', 'float']:
+                    calc_fields = sorted(template_line.calc_field_ids, key=lambda k: k.sequence)
+                    result = float(input_list[calc_fields.pop(0).column_number - 1].strip() or "0")
+                    for calc_field in calc_fields:
+                        result = calc_field.calculate(result, input_list)
+                    return result
+                elif template_line_type in ['text', 'char']:
+                    if target_string == False:
+                        target_string = ''
+                    return target_string.encode('utf-8')
+                if template_line_type == 'selection':
+                    return template_line.get_selection_from_name(target_string)
+                if template_line_type == 'binary':
+                    return base64.b32encode(target_string)
+                elif template_line_type == 'integer':
+                    return int(target_string)
+                elif template_line_type == 'float':
+                    if not target_string:
+                        raise osv.except_osv(('Error !'), ("Field %s has no value and cannot be converted.  Enter a default value in the template for this field or fix the CSV file so it contains data for this field row. \nField: %s\nColumn: %s\nRow number: %i \nRow Data: %s") % (template_line.target_field.name, template_line.target_field.name, str(template_line.sequence), row_number+1, input_list))
+                    return float(target_string)
+                elif template_line_type == 'boolean':
+                    if template_line.boolean_field_ids:
+                        return template_line_boolean_field_pool.get_value(cr, uid,
+                                                                          [boolean_field.id for boolean_field in template_line.boolean_field_ids],
+                                                                          target_string, context=context)
+                    else:
+                        return bool(target_string)
+                elif template_line_type == 'date':
+                    try:
+                        target_time = datetime.datetime.strptime(target_string, template_line.time_format)
+                        return target_time.strftime("%Y-%m-%d")
+                    except ValueError:
+                        return None
+                elif template_line_type == 'datetime':
+                    try:
+                        target_time = datetime.datetime.strptime(target_string, template_line.time_format)
+                        return target_time.strftime("%Y-%m-%d %H:%M:%S")
+                    except ValueError:
+                        return None
+                elif template_line_type == 'time':
+                    try:
+                        target_time = datetime.datetime.strptime(target_string, template_line.time_format)
+                        return target_time.strftime("%H:%M:%S")
+                    except ValueError:
+                        return None
+                elif template_line_type == 'many2one':
+                    target_obj_pool = self.pool.get(template_line.target_field.relation)
+                    if template_line.many2one_rel_type == 'dbid':
+                        return int(target_string)
+                    elif template_line.many2one_rel_type == 'subfield':
+                        result = target_obj_pool.search(cr, uid, [(template_line.related_field.name, '=', target_string)], context=context)
+                        result = self.match_limit(template_line, result)
+                        if testing:
+                            test_many2one_result(result, template_line, target_string)
+                            return result and result[0] or False
+                        elif not result:
+                            return None
+                        else:
+                            return result[0]
+                    elif template_line.many2one_rel_type == 'template':
+                        result = template_line.related_template_id.get_related_id(input_list, row_number, context=context)
+                        result = self.match_limit(template_line, result)
+                        if testing:
+                            test_many2one_result(result, template_line, target_string)
+                        return result and result[0]
+            else:
+                continue
 
-    def set_test_result_field(self, cr, uid, ids, context={}):
+    def get_selection_from_name(self, cr, uid, ids, target_string, context={}):
         for template_line in self.browse(cr, uid, ids, context=context):
-            template_line.write({'test_result_field': template_line.get_field(template_line.template_id.get_string_by_number(template_line.test_result_record_number))})
-        return True
-
-
-
-
+            target_model_pool = self.pool.get(template_line.target_model_id.model)
+            selection_dict = target_model_pool._columns[template_line.target_field.name].selection
+            if isfunction(selection_dict):
+                selection_dict = dict(getattr(target_model_pool, selection_dict.__name__)(cr, uid, context=context))
+            else:
+                selection_dict = dict(selection_dict)
+            revrese_selection_dict = dict((v, k) for k, v in selection_dict.iteritems())
+            return revrese_selection_dict.get(target_string)
 
 ea_import_template_line()
 

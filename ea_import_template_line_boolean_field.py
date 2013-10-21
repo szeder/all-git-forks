@@ -18,18 +18,28 @@
 #
 ##############################################################################
 
-import ea_import_template
-import ea_import_template_line
-import ea_import_template_line_calc_field
-import ea_import_template_line_boolean_field
-import ea_import_template_line_regexp_field
-import configs
-import ea_import_chain
-import ea_import_log
-import ea_import_scheduler
-import ea_import_chain_link
-import ea_import_chain_result
-import wizard
-import ea_export_config
-import ir_actions_report
+from osv import osv
+from osv import fields
+import re
+
+
+class ea_import_template_line_boolean_field(osv.osv):
+    _name = 'ea_import.template.line.boolean_field'
+
+    _columns = {
+        'regexp': fields.char('Regexp', size=512, help='Python Search Regular Expresiion', required="1"),
+        'template_line_id': fields.many2one('ea_import.template.line', 'Template Line',),
+        'boolean_value': fields.boolean('Boolean Value', ),
+        }
+
+    def get_value(self, cr, uid, ids, target_string, context={}):
+        for boolean_field in self.browse(cr, uid, ids, context=context):
+            search_result = re.search(boolean_field.regexp, target_string)
+            if search_result:
+                return boolean_field.boolean_value
+        return False
+
+
+ea_import_template_line_boolean_field()
+
 # vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:

@@ -18,18 +18,26 @@
 #
 ##############################################################################
 
-import ea_import_template
-import ea_import_template_line
-import ea_import_template_line_calc_field
-import ea_import_template_line_boolean_field
-import ea_import_template_line_regexp_field
-import configs
-import ea_import_chain
-import ea_import_log
-import ea_import_scheduler
-import ea_import_chain_link
-import ea_import_chain_result
-import wizard
-import ea_export_config
-import ir_actions_report
-# vim:expandtab:smartindent:tabstop=4:softtabstop=4:shiftwidth=4:
+from osv import osv
+from osv import fields
+
+
+class ea_import_log(osv.osv):
+    _name = 'ea_import.log'
+    _order = 'import_time desc'
+    _columns = {
+        'log_line': fields.one2many('ea_import.log.line', 'log_id', 'Log Line'),
+        'import_time': fields.datetime('Import Time',),
+        'chain_id': fields.many2one('ea_import.chain', 'Import Chain'),
+        'result_ids': fields.one2many('ea_import.chain.result', 'log_id', 'Import Results', ),
+    }
+ea_import_log()
+
+
+class ea_import_log_line(osv.osv):
+    _name = 'ea_import.log.line'
+    _columns = {
+        'name': fields.char('Log', size=516,),
+        'log_id': fields.many2one('ea_import.log', 'Log ID', readonly=True),
+    }
+ea_import_log_line()
