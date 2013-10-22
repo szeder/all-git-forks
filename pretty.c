@@ -1161,6 +1161,9 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 		strbuf_addstr(sb, sha1_to_hex(commit->object.sha1));
 		strbuf_addstr(sb, diff_get_color(c->auto_color, DIFF_RESET));
 		return 1;
+	case 'I':
+		strbuf_addstr(sb, "hello");
+		return 1;
 	case 'h':		/* abbreviated commit hash */
 		strbuf_addstr(sb, diff_get_color(c->auto_color, DIFF_COMMIT));
 		if (add_again(sb, &c->abbrev_commit_hash)) {
