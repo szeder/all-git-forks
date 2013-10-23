@@ -230,4 +230,31 @@ test_expect_success 'criss-cross merge-base for octopus-step' '
 	test_cmp expected.sorted actual.sorted
 '
 
+test_expect_success 'using reflog to find the fork point' '
+	git reset --hard &&
+	git checkout -b base $E &&
+
+	(
+		for count in 1 2 3 4 5
+		do
+			git commit --allow-empty -m "Base commit #$count" &&
+			git rev-parse HEAD >expect$count &&
+			git checkout -B derived &&
+			git commit --allow-empty -m "Derived #$count" &&
+			git rev-parse HEAD >derived$count &&
+			git checkout base || exit 1
+		done
+
+		for count in 1 2 3 4 5
+		do
+			git merge-base --fork-point base $(cat derived$count) >actual &&
+			test_cmp expect$count actual || exit 1
+		done
+
+	) &&
+	# check that we correctly default to HEAD
+	git merge-base --fork-point base >actual &&
+	test_cmp expect5 actual
+'
+
 test_done
