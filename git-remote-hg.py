@@ -706,6 +706,11 @@ def get_merge_files(repo, p1, p2, files):
             f = { 'ctx' : repo[p1][e] }
             files[e] = f
 
+def c_style_unescape(string):
+    if string[0] == string[-1] == '"':
+        return string.decode('string-escape')[1:-1]
+    return string
+
 def parse_commit(parser):
     from_mark = merge_mark = None
 
@@ -745,6 +750,7 @@ def parse_commit(parser):
             f = { 'deleted' : True }
         else:
             die('Unknown file command: %s' % line)
+        path = c_style_unescape(path)
         files[path] = f
 
     # only export the commits if we are on an internal proxy repo
