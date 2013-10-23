@@ -23,6 +23,10 @@
 #        source ~/.git-completion.sh
 #    3) Consider changing your PS1 to also show the current branch,
 #       see git-prompt.sh for details.
+#
+# In addition, if you set GIT_COMP_PLUMBING to a nonempty value, then
+# all available git commands will be autocompleted (the default is to
+# autocomplete "porcelain" commands only).
 
 case "$COMP_WORDBREAKS" in
 *:*) : great ;;
@@ -2519,8 +2523,18 @@ __git_main ()
 			--help
 			"
 			;;
-		*)     __git_compute_porcelain_commands
-		       __gitcomp "$__git_porcelain_commands $(__git_aliases)" ;;
+		*)
+			local commands
+			if test -n "${GIT_COMP_PLUMBING:-}"
+			then
+				__git_compute_all_commands
+				commands="$__git_all_commands"
+			else
+				__git_compute_porcelain_commands
+				commands="$__git_porcelain_commands"
+			fi
+			__gitcomp "$commands $(__git_aliases)"
+			;;
 		esac
 		return
 	fi
