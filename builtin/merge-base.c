@@ -1,6 +1,7 @@
 #include "builtin.h"
 #include "cache.h"
 #include "commit.h"
+#include "refs.h"
 #include "parse-options.h"
 
 static int show_merge_base(struct commit **rev, int rev_nr, int show_all)
@@ -27,6 +28,7 @@ static const char * const merge_base_usage[] = {
 	N_("git merge-base [-a|--all] --octopus <commit>..."),
 	N_("git merge-base --independent <commit>..."),
 	N_("git merge-base --is-ancestor <commit> <commit>"),
+	N_("git merge-base --reflog <ref> [<commit>]"),
 	NULL
 };
 
@@ -85,6 +87,73 @@ static int handle_is_ancestor(int argc, const char **argv)
 		return 1;
 }
 
+struct rev_collect {
+	struct commit **commit;
+	int nr;
+	int alloc;
+};
+
+static int collect_one_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
+				  const char *ident, unsigned long timestamp,
+				  int tz, const char *message, void *cbdata_)
+{
+	struct rev_collect *revs = cbdata_;
+	struct commit *commit = lookup_commit(nsha1);
+	if (commit) {
+		ALLOC_GROW(revs->commit, revs->nr + 1, revs->alloc);
+		revs->commit[revs->nr++] = commit;
+	}
+	return 0;
+}
+
+static int handle_reflog(int argc, const char **argv)
+{
+	unsigned char sha1[20];
+	char *refname;
+	const char *commitname;
+	struct rev_collect revs;
+	struct commit *derived;
+	struct commit_list *bases;
+	int i;
+
+	switch (dwim_ref(argv[0], strlen(argv[0]), sha1, &refname)) {
+	case 0:
+		die("No such ref: '%s'", argv[0]);
+	case 1:
+		break; /* good */
+	default:
+		die("Ambiguous refname: '%s'", argv[0]);
+	}
+
+	commitname = (argc == 2) ? argv[1] : "HEAD";
+	if (get_sha1(commitname, sha1))
+		die("Not a valid object name: '%s'", commitname);
+
+	derived = lookup_commit_reference(sha1);
+	memset(&revs, 0, sizeof(revs));
+	for_each_reflog_ent(refname, collect_one_reflog_ent, &revs);
+
+	bases = get_merge_bases_many(derived, revs.nr, revs.commit, 0);
+
+	/*
+	 * There should be one and only one merge base, when we found
+	 * a common ancestor among reflog entries.
+	 */
+	if (!bases || bases->next)
+		return 1;
+
+	/* And the found one must be one of the reflog entries */
+	for (i = 0; i < revs.nr; i++)
+		if (&bases->item->object == &revs.commit[i]->object)
+			break; /* found */
+	if (revs.nr <= i)
+		return 1; /* not found */
+
+	printf("%s\n", sha1_to_hex(bases->item->object.sha1));
+	free_commit_list(bases);
+	return 0;
+}
+
 int cmd_merge_base(int argc, const char **argv, const char *prefix)
 {
 	struct commit **rev;
@@ -100,6 +169,8 @@ int cmd_merge_base(int argc, const char **argv, const char *prefix)
 			    N_("list revs not reachable from others"), 'r'),
 		OPT_CMDMODE(0, "is-ancestor", &cmdmode,
 			    N_("is the first one ancestor of the other?"), 'a'),
+		OPT_CMDMODE(0, "reflog", &cmdmode,
+			    N_("find where <commit> forked from reflog of <ref>"), 'g'),
 		OPT_END()
 	};
 
@@ -119,6 +190,12 @@ int cmd_merge_base(int argc, const char **argv, const char *prefix)
 
 	if (cmdmode == 'r' || cmdmode == 'o')
 		return handle_octopus(argc, argv, cmdmode == 'r', show_all);
+
+	if (cmdmode == 'g') {
+		if (argc < 1 || 2 < argc)
+			usage_with_options(merge_base_usage, options);
+		return handle_reflog(argc, argv);
+	}
 
 	if (argc < 2)
 		usage_with_options(merge_base_usage, options);
