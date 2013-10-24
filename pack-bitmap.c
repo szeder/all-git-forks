@@ -68,6 +68,9 @@ static struct bitmap_index {
 	/* Number of bitmapped commits */
 	uint32_t entry_count;
 
+	/* Name-hash cache (or NULL if not present). */
+	uint32_t *hashes;
+
 	/*
 	 * Extended index.
 	 *
@@ -154,6 +157,11 @@ static int load_bitmap_header(struct bitmap_index *index)
 		if ((flags & BITMAP_OPT_FULL_DAG) == 0)
 			return error("Unsupported options for bitmap index file "
 				"(Git requires BITMAP_OPT_FULL_DAG)");
+
+		if (flags & BITMAP_OPT_HASH_CACHE) {
+			index->hashes = index->map + index->map_size - 20 -
+				(sizeof(uint32_t) * index->pack->num_objects);
+		}
 	}
 
 	index->entry_count = ntohl(header->entry_count);
@@ -620,6 +628,9 @@ static void show_objects_for_type(
 
 			entry = &bitmap_git.reverse_index->revindex[pos + offset];
 			sha1 = nth_packed_object_sha1(bitmap_git.pack, entry->nr);
+
+			if (bitmap_git.hashes)
+				hash = ntohl(bitmap_git.hashes[entry->nr]);
 
 			show_reach(sha1, object_type, 0, hash, bitmap_git.pack, entry->offset);
 		}
