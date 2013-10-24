@@ -19,6 +19,7 @@
 #include "refs.h"
 #include "streaming.h"
 #include "thread-utils.h"
+#include "pack-bitmap.h"
 
 static const char *pack_usage[] = {
 	N_("git pack-objects --stdout [options...] [< ref-list | < object-list]"),
@@ -57,11 +58,22 @@ static struct progress *progress_state;
 static int pack_compression_level = Z_DEFAULT_COMPRESSION;
 static int pack_compression_seen;
 
+static struct packed_git *reuse_packfile;
+static uint32_t reuse_packfile_objects;
+static off_t reuse_packfile_offset;
+
+static int use_bitmap_index = 1;
+
 static unsigned long delta_cache_size = 0;
 static unsigned long max_delta_cache_size = 256 * 1024 * 1024;
 static unsigned long cache_max_small_delta_size = 1000;
 
 static unsigned long window_memory_limit = 0;
+
+enum {
+	OBJECT_ENTRY_EXCLUDE = (1 << 0),
+	OBJECT_ENTRY_NO_TRY_DELTA = (1 << 1)
+};
 
 /*
  * stats
@@ -678,6 +690,49 @@ static struct object_entry **compute_write_order(void)
 	return wo;
 }
 
+static off_t write_reused_pack(struct sha1file *f)
+{
+	uint8_t buffer[8192];
+	off_t to_write;
+	int fd;
+
+	if (!is_pack_valid(reuse_packfile))
+		return 0;
+
+	fd = git_open_noatime(reuse_packfile->pack_name);
+	if (fd < 0)
+		return 0;
+
+	if (lseek(fd, sizeof(struct pack_header), SEEK_SET) == -1) {
+		close(fd);
+		return 0;
+	}
+
+	if (reuse_packfile_offset < 0)
+		reuse_packfile_offset = reuse_packfile->pack_size - 20;
+
+	to_write = reuse_packfile_offset - sizeof(struct pack_header);
+
+	while (to_write) {
+		int read_pack = xread(fd, buffer, sizeof(buffer));
+
+		if (read_pack <= 0) {
+			close(fd);
+			return 0;
+		}
+
+		if (read_pack > to_write)
+			read_pack = to_write;
+
+		sha1write(f, buffer, read_pack);
+		to_write -= read_pack;
+	}
+
+	close(fd);
+	written += reuse_packfile_objects;
+	return reuse_packfile_offset - sizeof(struct pack_header);
+}
+
 static void write_pack_file(void)
 {
 	uint32_t i = 0, j;
@@ -704,6 +759,18 @@ static void write_pack_file(void)
 		offset = write_pack_header(f, nr_remaining);
 		if (!offset)
 			die_errno("unable to write pack header");
+
+		if (reuse_packfile) {
+			off_t packfile_size;
+			assert(pack_to_stdout);
+
+			packfile_size = write_reused_pack(f);
+			if (!packfile_size)
+				die_errno("failed to re-use existing pack");
+
+			offset += packfile_size;
+		}
+
 		nr_written = 0;
 		for (; i < to_pack.nr_objects; i++) {
 			struct object_entry *e = write_order[i];
@@ -800,14 +867,14 @@ static int no_try_delta(const char *path)
 	return 0;
 }
 
-static int add_object_entry(const unsigned char *sha1, enum object_type type,
-			    const char *name, int exclude)
+static int add_object_entry_1(const unsigned char *sha1, enum object_type type,
+			      int flags, uint32_t name_hash,
+			      struct packed_git *found_pack, off_t found_offset)
 {
 	struct object_entry *entry;
-	struct packed_git *p, *found_pack = NULL;
-	off_t found_offset = 0;
-	uint32_t hash = pack_name_hash(name);
+	struct packed_git *p;
 	uint32_t index_pos;
+	int exclude = (flags & OBJECT_ENTRY_EXCLUDE);
 
 	entry = packlist_find(&to_pack, sha1, &index_pos);
 	if (entry) {
@@ -822,36 +889,42 @@ static int add_object_entry(const unsigned char *sha1, enum object_type type,
 	if (!exclude && local && has_loose_object_nonlocal(sha1))
 		return 0;
 
-	for (p = packed_git; p; p = p->next) {
-		off_t offset = find_pack_entry_one(sha1, p);
-		if (offset) {
-			if (!found_pack) {
-				if (!is_pack_valid(p)) {
-					warning("packfile %s cannot be accessed", p->pack_name);
-					continue;
+	if (!found_pack) {
+		for (p = packed_git; p; p = p->next) {
+			off_t offset = find_pack_entry_one(sha1, p);
+			if (offset) {
+				if (!found_pack) {
+					if (!is_pack_valid(p)) {
+						warning("packfile %s cannot be accessed", p->pack_name);
+						continue;
+					}
+					found_offset = offset;
+					found_pack = p;
 				}
-				found_offset = offset;
-				found_pack = p;
+				if (exclude)
+					break;
+				if (incremental)
+					return 0;
+				if (local && !p->pack_local)
+					return 0;
+				if (ignore_packed_keep && p->pack_local && p->pack_keep)
+					return 0;
 			}
-			if (exclude)
-				break;
-			if (incremental)
-				return 0;
-			if (local && !p->pack_local)
-				return 0;
-			if (ignore_packed_keep && p->pack_local && p->pack_keep)
-				return 0;
 		}
 	}
 
 	entry = packlist_alloc(&to_pack, sha1, index_pos);
-	entry->hash = hash;
+	entry->hash = name_hash;
 	if (type)
 		entry->type = type;
 	if (exclude)
 		entry->preferred_base = 1;
 	else
 		nr_result++;
+
+	if (flags & OBJECT_ENTRY_NO_TRY_DELTA)
+		entry->no_try_delta = 1;
+
 	if (found_pack) {
 		entry->in_pack = found_pack;
 		entry->in_pack_offset = found_offset;
@@ -859,10 +932,21 @@ static int add_object_entry(const unsigned char *sha1, enum object_type type,
 
 	display_progress(progress_state, to_pack.nr_objects);
 
-	if (name && no_try_delta(name))
-		entry->no_try_delta = 1;
-
 	return 1;
+}
+
+static int add_object_entry(const unsigned char *sha1, enum object_type type,
+			    const char *name, int exclude)
+{
+	int flags = 0;
+
+	if (exclude)
+		flags |= OBJECT_ENTRY_EXCLUDE;
+
+	if (name && no_try_delta(name))
+		flags |= OBJECT_ENTRY_NO_TRY_DELTA;
+
+	return add_object_entry_1(sha1, type, flags, pack_name_hash(name), NULL, 0);
 }
 
 struct pbase_tree_cache {
@@ -2027,6 +2111,10 @@ static int git_pack_config(const char *k, const char *v, void *cb)
 		cache_max_small_delta_size = git_config_int(k, v);
 		return 0;
 	}
+	if (!strcmp(k, "pack.usebitmaps")) {
+		use_bitmap_index = git_config_bool(k, v);
+		return 0;
+	}
 	if (!strcmp(k, "pack.threads")) {
 		delta_search_threads = git_config_int(k, v);
 		if (delta_search_threads < 0)
@@ -2235,6 +2323,29 @@ static void loosen_unused_packed_objects(struct rev_info *revs)
 	}
 }
 
+static int get_object_list_from_bitmap(struct rev_info *revs)
+{
+	if (prepare_bitmap_walk(revs) < 0)
+		return -1;
+
+	if (!reuse_partial_packfile_from_bitmap(
+			&reuse_packfile,
+			&reuse_packfile_objects,
+			&reuse_packfile_offset)) {
+		assert(reuse_packfile_objects);
+		nr_result += reuse_packfile_objects;
+
+		if (progress) {
+			fprintf(stderr, "Reusing existing pack: %d, done.\n",
+				reuse_packfile_objects);
+			fflush(stderr);
+		}
+	}
+
+	traverse_bitmap_commit_list(&add_object_entry_1);
+	return 0;
+}
+
 static void get_object_list(int ac, const char **av)
 {
 	struct rev_info revs;
@@ -2261,6 +2372,9 @@ static void get_object_list(int ac, const char **av)
 		if (handle_revision_arg(line, &revs, flags, REVARG_CANNOT_BE_FILENAME))
 			die("bad revision '%s'", line);
 	}
+
+	if (use_bitmap_index && !get_object_list_from_bitmap(&revs))
+		return;
 
 	if (prepare_revision_walk(&revs))
 		die("revision walk setup failed");
@@ -2391,6 +2505,8 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 			    N_("pack compression level")),
 		OPT_SET_INT(0, "keep-true-parents", &grafts_replace_parents,
 			    N_("do not hide commits by grafts"), 0),
+		OPT_BOOL(0, "use-bitmap-index", &use_bitmap_index,
+			 N_("use a bitmap index if available to speed up counting objects")),
 		OPT_END(),
 	};
 
@@ -2456,6 +2572,9 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 
 	if (keep_unreachable && unpack_unreachable)
 		die("--keep-unreachable and --unpack-unreachable are incompatible.");
+
+	if (!use_internal_rev_list || !pack_to_stdout)
+		use_bitmap_index = 0;
 
 	if (progress && all_progress_implied)
 		progress = 2;
