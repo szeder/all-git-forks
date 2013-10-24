@@ -103,6 +103,7 @@ extern int active_requests;
 extern int http_is_verbose;
 extern size_t http_post_buffer;
 extern struct credential http_auth;
+extern int http_use_100_continue;
 
 extern char curl_errorstr[CURL_ERROR_SIZE];
 
