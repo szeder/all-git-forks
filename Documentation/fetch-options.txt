@@ -61,9 +61,11 @@ endif::git-pull[]
 ifndef::git-pull[]
 -t::
 --tags::
-	This is a short-hand requesting that all tags be fetched from
-	the remote in addition to whatever else is being fetched.  It
-	is similar to using the refspec `refs/tags/*:refs/tags/*`.
+	Request that all tags be fetched from the remote under the
+	same name (i.e. `refs/tags/X` is created in our repository
+	by copying their `refs/tags/X`), in addition to whatever is
+	fetched by the same `git fetch` command without this option
+	on the command line.
 
 --recurse-submodules[=yes|on-demand|no]::
 	This option controls if and under what conditions new commits of
