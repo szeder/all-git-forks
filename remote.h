@@ -149,7 +149,14 @@ int resolve_remote_symref(struct ref *ref, struct ref *list);
 int ref_newer(const unsigned char *new_sha1, const unsigned char *old_sha1);
 
 /*
- * Removes and frees any duplicate refs in the map.
+ * Remove and free all but the first of any entries in the input list
+ * that map the same remote reference to the same local reference.  If
+ * there are two entries that map different remote references to the
+ * same local reference, die.
+ *
+ * Note that the first entry is never removed; therefore, the pointer
+ * passed in as argument still points to the head of the list after
+ * the function returns.
  */
 void ref_remove_duplicates(struct ref *ref_map);
 
