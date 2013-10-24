@@ -920,7 +920,7 @@ void test_bitmap_walk(struct rev_info *revs)
 		die("failed to load bitmap indexes");
 
 	if (revs->pending.nr != 1)
-		die("only one bitmap can be tested at a time");
+		die("you must specify exactly one commit to test");
 
 	fprintf(stderr, "Bitmap v%d test (%d entries loaded)\n",
 		bitmap_git.version, bitmap_git.entry_count);
