@@ -748,30 +748,34 @@ int for_each_remote(each_remote_fn fn, void *priv)
 void ref_remove_duplicates(struct ref *ref_map)
 {
 	struct string_list refs = STRING_LIST_INIT_NODUP;
-	struct string_list_item *item = NULL;
-	struct ref *prev = NULL, *next = NULL;
-	for (; ref_map; prev = ref_map, ref_map = next) {
-		next = ref_map->next;
-		if (!ref_map->peer_ref)
-			continue;
+	struct ref **p;
 
-		item = string_list_lookup(&refs, ref_map->peer_ref->name);
-		if (item) {
-			if (strcmp(((struct ref *)item->util)->name,
-				   ref_map->name))
-				die("%s tracks both %s and %s",
-				    ref_map->peer_ref->name,
-				    ((struct ref *)item->util)->name,
-				    ref_map->name);
-			prev->next = ref_map->next;
-			free(ref_map->peer_ref);
-			free(ref_map);
-			ref_map = prev; /* skip this; we freed it */
+	for (p = &ref_map; *p; ) {
+		struct ref *ref = *p;
+		struct string_list_item *item;
+
+		if (!ref->peer_ref) {
+			p = &ref->next;
 			continue;
 		}
 
-		item = string_list_insert(&refs, ref_map->peer_ref->name);
-		item->util = ref_map;
+		item = string_list_insert(&refs, ref->peer_ref->name);
+		if (item->util) {
+			/* Entry already existed */
+			if (strcmp(((struct ref *)item->util)->name,
+				   ref->name))
+				die("%s tracks both %s and %s",
+				    ref->peer_ref->name,
+				    ((struct ref *)item->util)->name,
+				    ref->name);
+			/* item is a duplicate; remove and free it */
+			*p = ref->next;
+			free(ref->peer_ref);
+			free(ref);
+		} else {
+			item->util = ref;
+			p = &ref->next;
+		}
 	}
 	string_list_clear(&refs, 0);
 }
@@ -825,6 +829,8 @@ static int query_refspecs(struct refspec *refs, int ref_count, struct refspec *q
 {
 	int i;
 	int find_src = !query->src;
+	const char *needle = find_src ? query->dst : query->src;
+	char **result = find_src ? &query->src : &query->dst;
 
 	if (find_src && !query->dst)
 		return error("query_refspecs: need either src or dst");
@@ -833,8 +839,6 @@ static int query_refspecs(struct refspec *refs, int ref_count, struct refspec *q
 		struct refspec *refspec = &refs[i];
 		const char *key = find_src ? refspec->dst : refspec->src;
 		const char *value = find_src ? refspec->src : refspec->dst;
-		const char *needle = find_src ? query->dst : query->src;
-		char **result = find_src ? &query->src : &query->dst;
 
 		if (!refspec->dst)
 			continue;

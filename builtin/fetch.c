@@ -160,13 +160,109 @@ static void add_merge_config(struct ref **head,
 	}
 }
 
+static int add_existing(const char *refname, const unsigned char *sha1,
+			int flag, void *cbdata)
+{
+	struct string_list *list = (struct string_list *)cbdata;
+	struct string_list_item *item = string_list_insert(list, refname);
+	item->util = xmalloc(20);
+	hashcpy(item->util, sha1);
+	return 0;
+}
+
+static int will_fetch(struct ref **head, const unsigned char *sha1)
+{
+	struct ref *rm = *head;
+	while (rm) {
+		if (!hashcmp(rm->old_sha1, sha1))
+			return 1;
+		rm = rm->next;
+	}
+	return 0;
+}
+
 static void find_non_local_tags(struct transport *transport,
 			struct ref **head,
-			struct ref ***tail);
+			struct ref ***tail)
+{
+	struct string_list existing_refs = STRING_LIST_INIT_DUP;
+	struct string_list remote_refs = STRING_LIST_INIT_NODUP;
+	const struct ref *ref;
+	struct string_list_item *item = NULL;
+
+	for_each_ref(add_existing, &existing_refs);
+	for (ref = transport_get_remote_refs(transport); ref; ref = ref->next) {
+		if (prefixcmp(ref->name, "refs/tags/"))
+			continue;
+
+		/*
+		 * The peeled ref always follows the matching base
+		 * ref, so if we see a peeled ref that we don't want
+		 * to fetch then we can mark the ref entry in the list
+		 * as one to ignore by setting util to NULL.
+		 */
+		if (!suffixcmp(ref->name, "^{}")) {
+			if (item && !has_sha1_file(ref->old_sha1) &&
+			    !will_fetch(head, ref->old_sha1) &&
+			    !has_sha1_file(item->util) &&
+			    !will_fetch(head, item->util))
+				item->util = NULL;
+			item = NULL;
+			continue;
+		}
+
+		/*
+		 * If item is non-NULL here, then we previously saw a
+		 * ref not followed by a peeled reference, so we need
+		 * to check if it is a lightweight tag that we want to
+		 * fetch.
+		 */
+		if (item && !has_sha1_file(item->util) &&
+		    !will_fetch(head, item->util))
+			item->util = NULL;
+
+		item = NULL;
+
+		/* skip duplicates and refs that we already have */
+		if (string_list_has_string(&remote_refs, ref->name) ||
+		    string_list_has_string(&existing_refs, ref->name))
+			continue;
+
+		item = string_list_insert(&remote_refs, ref->name);
+		item->util = (void *)ref->old_sha1;
+	}
+	string_list_clear(&existing_refs, 1);
+
+	/*
+	 * We may have a final lightweight tag that needs to be
+	 * checked to see if it needs fetching.
+	 */
+	if (item && !has_sha1_file(item->util) &&
+	    !will_fetch(head, item->util))
+		item->util = NULL;
+
+	/*
+	 * For all the tags in the remote_refs string list,
+	 * add them to the list of refs to be fetched
+	 */
+	for_each_string_list_item(item, &remote_refs) {
+		/* Unless we have already decided to ignore this item... */
+		if (item->util)
+		{
+			struct ref *rm = alloc_ref(item->string);
+			rm->peer_ref = alloc_ref(item->string);
+			hashcpy(rm->old_sha1, item->util);
+			**tail = rm;
+			*tail = &rm->next;
+		}
+	}
+
+	string_list_clear(&remote_refs, 0);
+}
 
 static struct ref *get_ref_map(struct transport *transport,
-			       struct refspec *refs, int ref_count, int tags,
-			       int *autotags)
+			       struct refspec *refspecs, int refspec_count,
+			       int tags, int *autotags)
 {
 	int i;
 	struct ref *rm;
@@ -175,19 +271,17 @@ static struct ref *get_ref_map(struct transport *transport,
 
 	const struct ref *remote_refs = transport_get_remote_refs(transport);
 
-	if (ref_count || tags == TAGS_SET) {
+	if (refspec_count) {
 		struct ref **old_tail;
 
-		for (i = 0; i < ref_count; i++) {
-			get_fetch_map(remote_refs, &refs[i], &tail, 0);
-			if (refs[i].dst && refs[i].dst[0])
+		for (i = 0; i < refspec_count; i++) {
+			get_fetch_map(remote_refs, &refspecs[i], &tail, 0);
+			if (refspecs[i].dst && refspecs[i].dst[0])
 				*autotags = 1;
 		}
-		/* Merge everything on the command line, but not --tags */
+		/* Merge everything on the command line (but not --tags) */
 		for (rm = ref_map; rm; rm = rm->next)
 			rm->fetch_head_status = FETCH_HEAD_MERGE;
-		if (tags == TAGS_SET)
-			get_fetch_map(remote_refs, tag_refspec, &tail, 0);
 
 		/*
 		 * For any refs that we happen to be fetching via command-line
@@ -238,8 +332,13 @@ static struct ref *get_ref_map(struct transport *transport,
 			tail = &ref_map->next;
 		}
 	}
-	if (tags == TAGS_DEFAULT && *autotags)
+
+	if (tags == TAGS_SET)
+		/* also fetch all tags */
+		get_fetch_map(remote_refs, tag_refspec, &tail, 0);
+	else if (tags == TAGS_DEFAULT && *autotags)
 		find_non_local_tags(transport, &ref_map, &tail);
+
 	ref_remove_duplicates(ref_map);
 
 	return ref_map;
@@ -612,106 +711,6 @@ static int prune_refs(struct refspec *refs, int ref_count, struct ref *ref_map)
 	return result;
 }
 
-static int add_existing(const char *refname, const unsigned char *sha1,
-			int flag, void *cbdata)
-{
-	struct string_list *list = (struct string_list *)cbdata;
-	struct string_list_item *item = string_list_insert(list, refname);
-	item->util = xmalloc(20);
-	hashcpy(item->util, sha1);
-	return 0;
-}
-
-static int will_fetch(struct ref **head, const unsigned char *sha1)
-{
-	struct ref *rm = *head;
-	while (rm) {
-		if (!hashcmp(rm->old_sha1, sha1))
-			return 1;
-		rm = rm->next;
-	}
-	return 0;
-}
-
-static void find_non_local_tags(struct transport *transport,
-			struct ref **head,
-			struct ref ***tail)
-{
-	struct string_list existing_refs = STRING_LIST_INIT_DUP;
-	struct string_list remote_refs = STRING_LIST_INIT_NODUP;
-	const struct ref *ref;
-	struct string_list_item *item = NULL;
-
-	for_each_ref(add_existing, &existing_refs);
-	for (ref = transport_get_remote_refs(transport); ref; ref = ref->next) {
-		if (prefixcmp(ref->name, "refs/tags/"))
-			continue;
-
-		/*
-		 * The peeled ref always follows the matching base
-		 * ref, so if we see a peeled ref that we don't want
-		 * to fetch then we can mark the ref entry in the list
-		 * as one to ignore by setting util to NULL.
-		 */
-		if (!suffixcmp(ref->name, "^{}")) {
-			if (item && !has_sha1_file(ref->old_sha1) &&
-			    !will_fetch(head, ref->old_sha1) &&
-			    !has_sha1_file(item->util) &&
-			    !will_fetch(head, item->util))
-				item->util = NULL;
-			item = NULL;
-			continue;
-		}
-
-		/*
-		 * If item is non-NULL here, then we previously saw a
-		 * ref not followed by a peeled reference, so we need
-		 * to check if it is a lightweight tag that we want to
-		 * fetch.
-		 */
-		if (item && !has_sha1_file(item->util) &&
-		    !will_fetch(head, item->util))
-			item->util = NULL;
-
-		item = NULL;
-
-		/* skip duplicates and refs that we already have */
-		if (string_list_has_string(&remote_refs, ref->name) ||
-		    string_list_has_string(&existing_refs, ref->name))
-			continue;
-
-		item = string_list_insert(&remote_refs, ref->name);
-		item->util = (void *)ref->old_sha1;
-	}
-	string_list_clear(&existing_refs, 1);
-
-	/*
-	 * We may have a final lightweight tag that needs to be
-	 * checked to see if it needs fetching.
-	 */
-	if (item && !has_sha1_file(item->util) &&
-	    !will_fetch(head, item->util))
-		item->util = NULL;
-
-	/*
-	 * For all the tags in the remote_refs string list,
-	 * add them to the list of refs to be fetched
-	 */
-	for_each_string_list_item(item, &remote_refs) {
-		/* Unless we have already decided to ignore this item... */
-		if (item->util)
-		{
-			struct ref *rm = alloc_ref(item->string);
-			rm->peer_ref = alloc_ref(item->string);
-			hashcpy(rm->old_sha1, item->util);
-			**tail = rm;
-			*tail = &rm->next;
-		}
-	}
-
-	string_list_clear(&remote_refs, 0);
-}
-
 static void check_not_current_branch(struct ref *ref_map)
 {
 	struct branch *current_branch = branch_get(NULL);
@@ -831,30 +830,16 @@ static int do_fetch(struct transport *transport,
 	}
 	if (prune) {
 		/*
-		 * If --tags was specified, pretend that the user gave us
-		 * the canonical tags refspec
+		 * We only prune based on refspecs specified
+		 * explicitly (via command line or configuration); we
+		 * don't care whether --tags was specified.
 		 */
-		if (tags == TAGS_SET) {
-			const char *tags_str = "refs/tags/*:refs/tags/*";
-			struct refspec *tags_refspec, *refspec;
-
-			/* Copy the refspec and add the tags to it */
-			refspec = xcalloc(ref_count + 1, sizeof(struct refspec));
-			tags_refspec = parse_fetch_refspec(1, &tags_str);
-			memcpy(refspec, refs, ref_count * sizeof(struct refspec));
-			memcpy(&refspec[ref_count], tags_refspec, sizeof(struct refspec));
-			ref_count++;
-
-			prune_refs(refspec, ref_count, ref_map);
-
-			ref_count--;
-			/* The rest of the strings belong to fetch_one */
-			free_refspec(1, tags_refspec);
-			free(refspec);
-		} else if (ref_count) {
+		if (ref_count) {
 			prune_refs(refs, ref_count, ref_map);
 		} else {
-			prune_refs(transport->remote->fetch, transport->remote->fetch_refspec_nr, ref_map);
+			prune_refs(transport->remote->fetch,
+				   transport->remote->fetch_refspec_nr,
+				   ref_map);
 		}
 	}
 	free_refs(ref_map);
@@ -930,8 +915,8 @@ static void add_options_to_argv(struct argv_array *argv)
 {
 	if (dry_run)
 		argv_array_push(argv, "--dry-run");
-	if (prune > 0)
-		argv_array_push(argv, "--prune");
+	if (prune != -1)
+		argv_array_push(argv, prune ? "--prune" : "--no-prune");
 	if (update_head_ok)
 		argv_array_push(argv, "--update-head-ok");
 	if (force)
