@@ -65,6 +65,8 @@ static void buffer_push_rlw(struct ewah_bitmap *self, eword_t value)
 
 static size_t add_empty_words(struct ewah_bitmap *self, int v, size_t number)
 {
+	eword_t runlen;
+	eword_t can_add;
 	size_t added = 0;
 
 	if (rlw_get_run_bit(self->rlw) != v && rlw_size(self->rlw) == 0) {
@@ -76,8 +78,8 @@ static size_t add_empty_words(struct ewah_bitmap *self, int v, size_t number)
 		added++;
 	}
 
-	eword_t runlen = rlw_get_running_len(self->rlw);
-	eword_t can_add = min_size(number, RLW_LARGEST_RUNNING_COUNT - runlen);
+	runlen = rlw_get_running_len(self->rlw);
+	can_add = min_size(number, RLW_LARGEST_RUNNING_COUNT - runlen);
 
 	rlw_set_running_len(self->rlw, runlen + can_add);
 	number -= can_add;
@@ -426,6 +428,8 @@ void ewah_xor(
 	rlwit_init(&rlw_j, ewah_j);
 
 	while (rlwit_word_size(&rlw_i) > 0 && rlwit_word_size(&rlw_j) > 0) {
+		size_t literals;
+
 		while (rlw_i.rlw.running_len > 0 || rlw_j.rlw.running_len > 0) {
 			struct rlw_iterator *prey, *predator;
 			size_t index;
@@ -446,7 +450,7 @@ void ewah_xor(
 			rlwit_discard_first_words(predator, predator->rlw.running_len);
 		}
 
-		size_t literals = min_size(rlw_i.rlw.literal_words, rlw_j.rlw.literal_words);
+		literals = min_size(rlw_i.rlw.literal_words, rlw_j.rlw.literal_words);
 
 		if (literals) {
 			size_t k;
@@ -484,6 +488,8 @@ void ewah_and(
 	rlwit_init(&rlw_j, ewah_j);
 
 	while (rlwit_word_size(&rlw_i) > 0 && rlwit_word_size(&rlw_j) > 0) {
+		size_t literals;
+
 		while (rlw_i.rlw.running_len > 0 || rlw_j.rlw.running_len > 0) {
 			struct rlw_iterator *prey, *predator;
 
@@ -507,7 +513,7 @@ void ewah_and(
 			}
 		}
 
-		size_t literals = min_size(rlw_i.rlw.literal_words, rlw_j.rlw.literal_words);
+		literals = min_size(rlw_i.rlw.literal_words, rlw_j.rlw.literal_words);
 
 		if (literals) {
 			size_t k;
@@ -545,6 +551,8 @@ void ewah_and_not(
 	rlwit_init(&rlw_j, ewah_j);
 
 	while (rlwit_word_size(&rlw_i) > 0 && rlwit_word_size(&rlw_j) > 0) {
+		size_t literals;
+
 		while (rlw_i.rlw.running_len > 0 || rlw_j.rlw.running_len > 0) {
 			struct rlw_iterator *prey, *predator;
 
@@ -572,7 +580,7 @@ void ewah_and_not(
 			}
 		}
 
-		size_t literals = min_size(rlw_i.rlw.literal_words, rlw_j.rlw.literal_words);
+		literals = min_size(rlw_i.rlw.literal_words, rlw_j.rlw.literal_words);
 
 		if (literals) {
 			size_t k;
@@ -610,6 +618,8 @@ void ewah_or(
 	rlwit_init(&rlw_j, ewah_j);
 
 	while (rlwit_word_size(&rlw_i) > 0 && rlwit_word_size(&rlw_j) > 0) {
+		size_t literals;
+
 		while (rlw_i.rlw.running_len > 0 || rlw_j.rlw.running_len > 0) {
 			struct rlw_iterator *prey, *predator;
 
@@ -634,7 +644,7 @@ void ewah_or(
 			}
 		}
 
-		size_t literals = min_size(rlw_i.rlw.literal_words, rlw_j.rlw.literal_words);
+		literals = min_size(rlw_i.rlw.literal_words, rlw_j.rlw.literal_words);
 
 		if (literals) {
 			size_t k;

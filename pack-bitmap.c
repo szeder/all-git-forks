@@ -1,5 +1,3 @@
-#include <stdlib.h>
-
 #include "cache.h"
 #include "commit.h"
 #include "tag.h"
@@ -123,8 +121,8 @@ static struct ewah_bitmap *read_bitmap_1(struct bitmap_index *index)
 	struct ewah_bitmap *b = ewah_pool_new();
 
 	int bitmap_size = ewah_read_mmap(b,
-		index->map + index->map_pos,
-		index->map_size - index->map_pos);
+					 (unsigned char *)index->map + index->map_pos,
+					 index->map_size - index->map_pos);
 
 	if (bitmap_size < 0) {
 		error("Failed to load bitmap index (corrupted?)");
@@ -159,8 +157,9 @@ static int load_bitmap_header(struct bitmap_index *index)
 				"(Git requires BITMAP_OPT_FULL_DAG)");
 
 		if (flags & BITMAP_OPT_HASH_CACHE) {
-			index->hashes = index->map + index->map_size - 20 -
-				(sizeof(uint32_t) * index->pack->num_objects);
+			index->hashes = (uint32_t *)((unsigned char *)index->map +
+						     index->map_size - 20 -
+						     (sizeof(uint32_t) * index->pack->num_objects));
 		}
 	}
 
@@ -216,7 +215,7 @@ static int load_bitmap_entries_v1(struct bitmap_index *index)
 		uint32_t commit_idx_pos;
 		const unsigned char *sha1;
 
-		entry = index->map + index->map_pos;
+		entry = (struct bitmap_disk_entry *)((unsigned char *)index->map + index->map_pos);
 		index->map_pos += sizeof(struct bitmap_disk_entry);
 
 		commit_idx_pos = ntohl(entry->object_pos);

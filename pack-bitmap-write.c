@@ -1,5 +1,3 @@
-#include <stdlib.h>
-
 #include "cache.h"
 #include "commit.h"
 #include "tag.h"
