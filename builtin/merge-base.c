@@ -2,6 +2,8 @@
 #include "cache.h"
 #include "commit.h"
 #include "refs.h"
+#include "diff.h"
+#include "revision.h"
 #include "parse-options.h"
 
 static int show_merge_base(struct commit **rev, int rev_nr, int show_all)
@@ -91,18 +93,32 @@ struct rev_collect {
 	struct commit **commit;
 	int nr;
 	int alloc;
+	unsigned int initial : 1;
 };
+
+static void add_one_commit(unsigned char *sha1, struct rev_collect *revs)
+{
+	struct commit *commit = lookup_commit(sha1);
+
+	if (!commit || (commit->object.flags & TMP_MARK))
+		return;
+
+	ALLOC_GROW(revs->commit, revs->nr + 1, revs->alloc);
+	revs->commit[revs->nr++] = commit;
+	commit->object.flags |= TMP_MARK;
+}
 
 static int collect_one_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
 				  const char *ident, unsigned long timestamp,
 				  int tz, const char *message, void *cbdata_)
 {
 	struct rev_collect *revs = cbdata_;
-	struct commit *commit = lookup_commit(nsha1);
-	if (commit) {
-		ALLOC_GROW(revs->commit, revs->nr + 1, revs->alloc);
-		revs->commit[revs->nr++] = commit;
+
+	if (revs->initial) {
+		add_one_commit(osha1, revs);
+		revs->initial = 0;
 	}
+	add_one_commit(nsha1, revs);
 	return 0;
 }
 
@@ -131,7 +147,11 @@ static int handle_reflog(int argc, const char **argv)
 
 	derived = lookup_commit_reference(sha1);
 	memset(&revs, 0, sizeof(revs));
+	revs.initial = 1;
 	for_each_reflog_ent(refname, collect_one_reflog_ent, &revs);
+
+	for (i = 0; i < revs.nr; i++)
+		revs.commit[i]->object.flags &= ~TMP_MARK;
 
 	bases = get_merge_bases_many(derived, revs.nr, revs.commit, 0);
 
