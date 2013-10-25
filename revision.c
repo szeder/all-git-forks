@@ -3066,9 +3066,12 @@ char *get_revision_mark(const struct rev_info *revs, const struct commit *commit
 			return "<";
 		else
 			return ">";
-	} else if (revs->graph)
-		return "*";
-	else if (revs->cherry_mark)
+	} else if (revs->graph) {
+		if (commit->parents == NULL)
+			return "x"; /* diverges root-commits in subsequent series */
+		else
+			return "*";
+	} else if (revs->cherry_mark)
 		return "+";
 	return "";
 }
