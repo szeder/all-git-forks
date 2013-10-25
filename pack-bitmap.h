@@ -28,6 +28,7 @@ static const char BITMAP_IDX_SIGNATURE[] = {'B', 'I', 'T', 'M'};;
 
 enum pack_bitmap_opts {
 	BITMAP_OPT_FULL_DAG = 1,
+	BITMAP_OPT_HASH_CACHE = 4,
 };
 
 enum pack_bitmap_flags {
