@@ -6,6 +6,7 @@ url=$2
 
 dir="$GIT_DIR/testgit/$alias"
 prefix="refs/testgit/$alias"
+forcearg=
 
 default_refspec="refs/heads/*:${prefix}/heads/*"
 
@@ -39,6 +40,7 @@ do
 		fi
 		test -n "$GIT_REMOTE_TESTGIT_SIGNED_TAGS" && echo "signed-tags"
 		test -n "$GIT_REMOTE_TESTGIT_NO_PRIVATE_UPDATE" && echo "no-private-update"
+		echo 'option'
 		echo
 		;;
 	list)
@@ -93,6 +95,7 @@ do
 		before=$(git for-each-ref --format=' %(refname) %(objectname) ')
 
 		git fast-import \
+			${forcearg} \
 			${testgitmarks:+"--import-marks=$testgitmarks"} \
 			${testgitmarks:+"--export-marks=$testgitmarks"} \
 			--quiet
@@ -114,6 +117,21 @@ do
 		done
 
 		echo
+		;;
+	option\ *)
+		read cmd opt val <<EOF
+${line}
+EOF
+		case ${opt} in
+		    force)
+			case ${val} in
+			    true) forcearg=--force; echo 'ok';;
+			    false) forcearg=; echo 'ok';;
+			    *) printf %s\\n "error '${val}'\
+ is not a valid value for option ${opt}";;
+			esac;;
+		    *) echo "unsupported";;
+		esac
 		;;
 	'')
 		exit
