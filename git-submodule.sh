@@ -253,6 +253,8 @@ module_clone()
 	url=$3
 	reference="$4"
 	depth="$5"
+	progress="$6"
+
 	quiet=
 	if test -n "$GIT_QUIET"
 	then
@@ -275,7 +277,7 @@ module_clone()
 		mkdir -p "$gitdir_base"
 		(
 			clear_local_git_env
-			git clone $quiet ${depth:+"$depth"} -n ${reference:+"$reference"} \
+			git clone $quiet $progress ${depth:+"$depth"} -n ${reference:+"$reference"} \
 				--separate-git-dir "$gitdir" "$url" "$sm_path"
 		) ||
 		die "$(eval_gettext "Clone of '\$url' into submodule path '\$sm_path' failed")"
@@ -325,6 +327,7 @@ cmd_add()
 {
 	# parse $args after "submodule ... add".
 	reference_path=
+	progress=
 	while test $# -ne 0
 	do
 		case "$1" in
@@ -359,6 +362,8 @@ cmd_add()
 			;;
 		--depth=*)
 			depth=$1
+		--progress)
+			progress=--progress
 			;;
 		--)
 			shift
@@ -469,7 +474,7 @@ Use -f if you really want to add it." >&2
 				echo "$(eval_gettext "Reactivating local git directory for submodule '\$sm_name'.")"
 			fi
 		fi
-		module_clone "$sm_path" "$sm_name" "$realrepo" "$reference" "$depth" || exit
+		module_clone "$sm_path" "$sm_name" "$realrepo" "$reference" "$depth" "$progress" || exit
 		(
 			clear_local_git_env
 			cd "$sm_path" &&
@@ -707,6 +712,7 @@ cmd_update()
 {
 	# parse $args after "submodule ... update".
 	orig_flags=
+	progress=
 	while test $# -ne 0
 	do
 		case "$1" in
@@ -753,6 +759,8 @@ cmd_update()
 			;;
 		--depth=*)
 			depth=$1
+		--progress)
+			progress=--progress
 			;;
 		--)
 			shift
@@ -815,7 +823,7 @@ Maybe you want to use 'update --init'?")"
 
 		if ! test -d "$sm_path"/.git -o -f "$sm_path"/.git
 		then
-			module_clone "$sm_path" "$name" "$url" "$reference" "$depth" || exit
+			module_clone "$sm_path" "$name" "$url" "$reference" "$depth" "$progress" || exit
 			cloned_modules="$cloned_modules;$name"
 			subsha1=
 		else
@@ -829,7 +837,7 @@ Maybe you want to use 'update --init'?")"
 			if test -z "$nofetch"
 			then
 				# Fetch remote before determining tracking $sha1
-				(clear_local_git_env; cd "$sm_path" && git-fetch) ||
+				(clear_local_git_env; cd "$sm_path" && git-fetch $progress) ||
 				die "$(eval_gettext "Unable to fetch in submodule path '\$sm_path'")"
 			fi
 			remote_name=$(clear_local_git_env; cd "$sm_path" && get_default_remote)
@@ -853,7 +861,7 @@ Maybe you want to use 'update --init'?")"
 				# is not reachable from a ref.
 				(clear_local_git_env; cd "$sm_path" &&
 					( (rev=$(git rev-list -n 1 $sha1 --not --all 2>/dev/null) &&
-					 test -z "$rev") || git-fetch)) ||
+					 test -z "$rev") || git-fetch $progress)) ||
 				die "$(eval_gettext "Unable to fetch in submodule path '\$displaypath'")"
 			fi
 
