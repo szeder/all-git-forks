@@ -11,6 +11,7 @@ SYNOPSIS
 'git reset' [-q] [<tree-ish>] [--] <paths>...
 'git reset' (--patch | -p) [<tree-ish>] [--] [<paths>...]
 'git reset' [--soft | --mixed | --hard | --merge | --keep] [-q] [<commit>]
+'git reset' [--stage | --work | --keep] [-q] [<commit>]
 
 DESCRIPTION
 -----------
@@ -81,6 +82,13 @@ but carries forward unmerged index entries.
 	different between <commit> and HEAD.
 	If a file that is different between <commit> and HEAD has local changes,
 	reset is aborted.
+
+--stage::
+	Reset the index, basically `--mixed`. `--no-stage` is the equivalent of
+	`--soft`.
+
+--work::
+	Resets the working tree, basically `--hard`.
 --
 
 If you want to undo a commit other than the latest on a branch,
