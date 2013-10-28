@@ -362,6 +362,7 @@ cmd_add()
 			;;
 		--depth=*)
 			depth=$1
+			;;
 		--progress)
 			progress=--progress
 			;;
@@ -759,6 +760,7 @@ cmd_update()
 			;;
 		--depth=*)
 			depth=$1
+			;;
 		--progress)
 			progress=--progress
 			;;
