@@ -1082,6 +1082,11 @@ int git_config_early(config_fn_t fn, void *data, const char *repo_config)
 
 	home_config_paths(&user_config, &xdg_config, "config");
 
+	ret += fn("alias.ci", "commit", data);
+	ret += fn("alias.co", "checkout", data);
+	ret += fn("alias.rb", "rebase", data);
+	ret += fn("alias.st", "status", data);
+
 	if (git_config_system() && !access_or_die(git_etc_gitconfig(), R_OK, 0)) {
 		ret += git_config_from_file(fn, git_etc_gitconfig(),
 					    data);
