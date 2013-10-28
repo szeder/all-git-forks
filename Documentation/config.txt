@@ -706,7 +706,7 @@ branch.autosetupmerge::
 branch.autosetuprebase::
 	When a new branch is created with 'git branch' or 'git checkout'
 	that tracks another branch, this variable tells Git to set
-	up pull to rebase instead of merge (see "branch.<name>.rebase").
+	up pull to rebase instead of merge (see "branch.<name>.pullmode").
 	When `never`, rebase is never automatically set to true.
 	When `local`, rebase is set to true for tracked branches of
 	other local branches.
@@ -760,11 +760,11 @@ branch.<name>.mergeoptions::
 	option values containing whitespace characters are currently not
 	supported.
 
-branch.<name>.rebase::
-	When true, rebase the branch <name> on top of the fetched branch,
-	instead of merging the default branch from the default remote when
-	"git pull" is run. See "pull.rebase" for doing this in a non
-	branch-specific manner.
+branch.<name>.pullmode::
+	When "git pull" is run, this determines if it would either merge or
+	rebase the fetched branch. The possible values are 'merge' and
+	'rebase'. See "pull.mode" for doing this in a non branch-specific
+	manner.
 +
 *NOTE*: this is a possibly dangerous operation; do *not* use
 it unless you understand the implications (see linkgit:git-rebase[1]
@@ -1820,11 +1820,13 @@ pretty.<name>::
 	Note that an alias with the same name as a built-in format
 	will be silently ignored.
 
-pull.rebase::
-	When true, rebase branches on top of the fetched branch, instead
-	of merging the default branch from the default remote when "git
-	pull" is run. See "branch.<name>.rebase" for setting this on a
-	per-branch basis.
+pull.mode::
+	When "git pull" is run, this determines if it would either merge or
+	rebase the fetched branch. The possible values are 'merge',
+	'rebase', and 'merge-ff-only'. If 'merge-ff-only' is specified, the
+	merge will only succeed if it's fast-forward. See
+	"branch.<name>.pullmode" for doing this in a non branch-specific
+	manner.
 +
 *NOTE*: this is a possibly dangerous operation; do *not* use
 it unless you understand the implications (see linkgit:git-rebase[1]

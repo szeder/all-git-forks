@@ -43,11 +43,26 @@ log_arg= verbosity= progress= recurse_submodules= verify_signatures=
 merge_args= edit=
 curr_branch=$(git symbolic-ref -q HEAD)
 curr_branch_short="${curr_branch#refs/heads/}"
-rebase=$(git config --bool branch.$curr_branch_short.rebase)
-if test -z "$rebase"
+mode=$(git config branch.${curr_branch_short}.pullmode)
+if test -z "$mode"
 then
-	rebase=$(git config --bool pull.rebase)
+	mode=$(git config pull.mode)
 fi
+if test -z "$mode"
+then
+	rebase=$(git config --bool branch.$curr_branch_short.rebase)
+	if test -z "$rebase"
+	then
+		rebase=$(git config --bool pull.rebase)
+	fi
+	if test "$rebase" = 'true'
+	then
+		mode="rebase"
+		echo "The configurations pull.rebase and branch.<name>.rebase are deprecated."
+		echo "Please use pull.mode and branch.<name>.pullmode instead."
+	fi
+fi
+test -z "$mode" && mode=default
 dry_run=
 while :
 do
@@ -111,10 +126,14 @@ do
 		merge_args="$merge_args$xx "
 		;;
 	-r|--r|--re|--reb|--reba|--rebas|--rebase)
-		rebase=true
+		mode=rebase
+		;;
+	-m|--m|--me|--mer|--merg|--merge)
+		mode=merge
 		;;
 	--no-r|--no-re|--no-reb|--no-reba|--no-rebas|--no-rebase)
-		rebase=false
+		mode=merge
+		echo "--no-rebase is deprecated, please use --merge instead"
 		;;
 	--recurse-submodules)
 		recurse_submodules=--recurse-submodules
@@ -157,7 +176,7 @@ error_on_no_merge_candidates () {
 		esac
 	done
 
-	if test true = "$rebase"
+	if test "$mode" = rebase
 	then
 		op_type=rebase
 		op_prep=against
@@ -171,7 +190,7 @@ error_on_no_merge_candidates () {
 	remote=$(git config "branch.$curr_branch.remote")
 
 	if [ $# -gt 1 ]; then
-		if [ "$rebase" = true ]; then
+		if [ "$mode" = rebase ]; then
 			printf "There is no candidate for rebasing against "
 		else
 			printf "There are no candidates for merging "
@@ -194,7 +213,7 @@ error_on_no_merge_candidates () {
 	exit 1
 }
 
-test true = "$rebase" && {
+test "$mode" = rebase && {
 	if ! git rev-parse -q --verify HEAD >/dev/null
 	then
 		# On an unborn branch
@@ -259,9 +278,30 @@ case "$merge_head" in
 	then
 		die "$(gettext "Cannot merge multiple branches into empty head")"
 	fi
-	if test true = "$rebase"
+	if test "$mode" = rebase
 	then
 		die "$(gettext "Cannot rebase onto multiple branches")"
+	fi
+	;;
+*)
+	# check if a non-fast-foward merge would be needed
+	merge_head=${merge_head% }
+	if test -z "$no_ff$ff_only${squash#--no-squash}" &&
+		test -n "$orig_head" &&
+		! git merge-base --is-ancestor "$orig_head" "$merge_head" &&
+		! git merge-base --is-ancestor "$merge_head" "$orig_head"
+	then
+		case "$mode" in
+		merge-ff-only)
+			die "$(gettext "The pull was not fast-forward, please either merge or rebase.
+If unsure, run 'git pull --merge'.")"
+			;;
+		default)
+			echo "$(gettext "warning: the pull was not fast-forward, in the future you would have to choose
+a merge or a rebase, falling back to old style for now (git pull --merge).
+Read 'git pull --help' for more information.")" >&2
+			;;
+		esac
 	fi
 	;;
 esac
@@ -280,7 +320,7 @@ then
 	exit
 fi
 
-if test true = "$rebase"
+if test "$mode" = rebase
 then
 	o=$(git show-branch --merge-base $curr_branch $merge_head $oldremoteref)
 	if test "$oldremoteref" = "$o"
@@ -290,8 +330,8 @@ then
 fi
 
 merge_name=$(git fmt-merge-msg $log_arg <"$GIT_DIR/FETCH_HEAD") || exit
-case "$rebase" in
-true)
+case "$mode" in
+rebase)
 	eval="git-rebase $diffstat $strategy_args $merge_args $verbosity"
 	eval="$eval --onto $merge_head ${oldremoteref:-$merge_head}"
 	;;
