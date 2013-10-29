@@ -182,8 +182,9 @@ If .gitmodules values conflict we do nothing and warn the user.
 For expensive operations we might have a different command: +submodule fetch-all+
 
 If the submodule urls disagree and I do not have a local configuration I
-stop. Configuration cache needs conflicting configuration marker.
-The fallback is to do no fetch and tell the user how to fix it.
+stop. The consolidated configuration list of gitmodules needs a
+conflicting configuration marker. The fallback is to do no fetch and
+tell the user possibilities how to proceed.
 e.g.:
 ----
 	git checkout origin/master
