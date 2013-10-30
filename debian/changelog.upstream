@@ -1,3 +1,86 @@
+Version v1.8.4.2; changes since v1.8.4.1:
+-----------------------------------------
+
+Antoine Pelisse (1):
+      commit: search author pattern against mailmap
+
+Christian Couder (1):
+      sha1_file: move comment about return value where it belongs
+
+Eric Sunshine (5):
+      rebase -i: fix cases ignoring core.commentchar
+      dir.c::test_one_path(): work around directory_exists_in_index_icase() breakage
+      t3404: make tests more self-contained
+      t3404: rebase -i: demonstrate short SHA-1 collision
+      t3200: fix failure on case-insensitive filesystems
+
+Jeff King (8):
+      has_sha1_file: re-check pack directory before giving up
+      upload-pack: send keepalive packets during pack computation
+      upload-pack: bump keepalive default to 5 seconds
+      clone: send diagnostic messages to stderr
+      clone: treat "checking connectivity" like other progress
+      clone: always set transport options
+      shortlog: ignore commits with missing authors
+      format-patch: print in-body "From" only when needed
+
+Johan Herland (4):
+      t2024: Fix &&-chaining and a couple of typos
+      t3200: Minor fix when preparing for tracking failure
+      Refer to branch.<name>.remote/merge when documenting --track
+      t3200: Add test demonstrating minor regression in 41c21f2
+
+Johannes Sixt (1):
+      add--interactive: fix external command invocation on Windows
+
+John Keeping (1):
+      merge-recursive: fix parsing of "diff-algorithm" option
+
+Junio C Hamano (8):
+      dir.c: use the cache_* macro to access the current index
+      ls-files -k: a directory only can be killed if the index has a non-directory
+      t3010: update to demonstrate "ls-files -k" optimization pitfalls
+      rebase -i: fix short SHA-1 collision
+      cvsserver: pick up the right mode bits
+      Start preparing for 1.8.4.2
+      Almost 1.8.4.2 ;-)
+      Git 1.8.4.2
+
+Matthijs Kooijman (1):
+      Add testcase for needless objects during a shallow fetch
+
+Nguyễn Thái Ngọc Duy (7):
+      move setup_alternate_shallow and write_shallow_commits to shallow.c
+      shallow: only add shallow graft points to new shallow file
+      shallow: add setup_temporary_shallow()
+      upload-pack: delegate rev walking in shallow fetch to pack-objects
+      list-objects: reduce one argument in mark_edges_uninteresting
+      list-objects: mark more commits as edges in mark_edges_uninteresting
+      Make setup_git_env() resolve .git file when $GIT_DIR is not specified
+
+Nicolas Vigier (1):
+      git-merge: document the -S option
+
+Per Cederqvist (1):
+      branch.c: Relax unnecessary requirement on upstream's remote ref name
+
+Ralf Thielow (2):
+      rebase --preserve-merges: ignore "merge.log" config
+      clone --branch: refuse to clone if upstream repo is empty
+
+SZEDER Gábor (1):
+      t4254: modernize tests
+
+Steffen Prohaska (1):
+      git-prune-packed.txt: fix reference to GIT_OBJECT_DIRECTORY
+
+Torstein Hegge (1):
+      test-lib: fix typo in comment
+
+brian m. carlson (1):
+      http-backend: provide Allow header for 405
+
+
 Version v1.8.4.1; changes since v1.8.4:
 ---------------------------------------
 
