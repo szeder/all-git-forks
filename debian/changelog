@@ -1,8 +1,11 @@
-git (1:1.8.4.2-0.1) unstable; urgency=low
+git (1:1.8.4.2-1) unstable; urgency=low
 
   * new upstream point release.
+  * debian/diff/0012-cvsserver-Determinize-output-to-...diff:
+    new from upstream: sort cvsserver output to combat Perl 5.18
+    hash randomization (thx Anders Kaseorg; closes: #727226).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 30 Oct 2013 15:34:33 -0700
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 30 Oct 2013 16:00:07 -0700
 
 git (1:1.8.4.1-1) unstable; urgency=low
 
