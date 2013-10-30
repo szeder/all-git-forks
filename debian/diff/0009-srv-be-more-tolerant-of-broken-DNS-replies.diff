@@ -1,7 +1,7 @@
-From f1af83b6febeb6770c96902faac77e7606960082 Mon Sep 17 00:00:00 2001
+From d1030df221c1a09dfab9f2fb21ad7b2d0a742dcc Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 13 Jan 2012 15:51:12 -0600
-Subject: [PATCH 11/11] srv: be more tolerant of broken DNS replies
+Subject: srv: be more tolerant of broken DNS replies
 
 At a hotel with a very broken Wi-Fi setup, Richard found his copy
 of git unable to cope:
@@ -31,7 +31,7 @@ degradation let's warn and skip those records.
 Reported-by: Richard Hartmann <richih.mailinglist@gmail.com>
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
- srv.c |   40 ++++++++++++++++++++++++++--------------
+ srv.c | 40 ++++++++++++++++++++++++++--------------
  1 file changed, 26 insertions(+), 14 deletions(-)
 
 diff --git a/srv.c b/srv.c
@@ -93,9 +93,6 @@ index 2716206..829ef76 100644
  	if (len < 0)
  		goto out;
  
--	/* If a SRV RR cannot be parsed, give up. */
--	ret = -1;
--
 +	/*
 +	 * If the reply to a SRV query is malformed, fall back to an
 +	 * A query.
@@ -105,18 +102,21 @@ index 2716206..829ef76 100644
 +	 * (think: captive portal) handle A queries sensibly and
 +	 * provide malformed replies in response to SRV queries.
 +	 */
- 	if (ns_initparse(buf, len, &msg)) {
--		error("cannot initialize DNS parser: %s", strerror(errno));
++	if (ns_initparse(buf, len, &msg)) {
 +		warning("cannot parse SRV response: %s", strerror(errno));
- 		goto out;
- 	}
++		goto out;
++	}
 +
-+	/* If a SRV RR cannot be parsed, give up. */
-+	ret = -1;
-+
+ 	/* If a SRV RR cannot be parsed, give up. */
+ 	ret = -1;
+ 
+-	if (ns_initparse(buf, len, &msg)) {
+-		error("cannot initialize DNS parser: %s", strerror(errno));
+-		goto out;
+-	}
  	n = srv_parse(&msg, &rrs);
  	if (n < 0)
  		/* srv_parse writes a message */
 -- 
-1.7.10.4
+1.8.4.1
 

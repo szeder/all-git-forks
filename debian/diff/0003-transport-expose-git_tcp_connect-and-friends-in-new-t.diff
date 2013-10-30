@@ -1,4 +1,4 @@
-From f83a1b1be57767b4276d8447ec7a749b999da524 Mon Sep 17 00:00:00 2001
+From 0164fadfbde811a3e41796d04b74913e7995d018 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:37:14 -0500
 Subject: transport: expose git_tcp_connect() and friends in new tcp.h
@@ -13,18 +13,18 @@ library easier to understand before adding to it.
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile  |   2 +
- connect.c | 277 +------------------------------------------------------------
- tcp.c     | 278 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ connect.c | 276 -------------------------------------------------------------
+ tcp.c     | 280 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tcp.h     |   8 ++
- 4 files changed, 289 insertions(+), 276 deletions(-)
+ 4 files changed, 290 insertions(+), 276 deletions(-)
  create mode 100644 tcp.c
  create mode 100644 tcp.h
 
 diff --git a/Makefile b/Makefile
-index 4026211..7225c86 100644
+index af847f8..a78f758 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -727,6 +727,7 @@ LIB_H += string-list.h
+@@ -725,6 +725,7 @@ LIB_H += string-list.h
  LIB_H += submodule.h
  LIB_H += tag.h
  LIB_H += tar.h
@@ -32,7 +32,7 @@ index 4026211..7225c86 100644
  LIB_H += thread-utils.h
  LIB_H += transport.h
  LIB_H += tree-walk.h
-@@ -875,6 +876,7 @@ LIB_OBJS += string-list.o
+@@ -874,6 +875,7 @@ LIB_OBJS += string-list.o
  LIB_OBJS += submodule.o
  LIB_OBJS += symlinks.o
  LIB_OBJS += tag.o
@@ -41,18 +41,10 @@ index 4026211..7225c86 100644
  LIB_OBJS += transport.o
  LIB_OBJS += transport-helper.o
 diff --git a/connect.c b/connect.c
-index a0783d4..d6140d5 100644
+index 06e88b0..aa7b3e6 100644
 --- a/connect.c
 +++ b/connect.c
-@@ -5,6 +5,7 @@
- #include "refs.h"
- #include "run-command.h"
- #include "remote.h"
-+#include "tcp.h"
- #include "url.h"
- 
- static char *server_capabilities;
-@@ -189,282 +190,6 @@ static enum protocol get_protocol(const char *name)
+@@ -251,282 +251,6 @@ static enum protocol get_protocol(const char *name)
  	die("I don't handle protocol '%s'", name);
  }
  
@@ -337,12 +329,14 @@ index a0783d4..d6140d5 100644
  static char *get_port(char *host)
 diff --git a/tcp.c b/tcp.c
 new file mode 100644
-index 0000000..f5e1ab3
+index 0000000..7d8566d
 --- /dev/null
 +++ b/tcp.c
-@@ -0,0 +1,278 @@
+@@ -0,0 +1,280 @@
 +#include "cache.h"
++#include "tcp.h"
 +#include "run-command.h"
++#include "connect.h"
 +
 +#define STR_(s)	# s
 +#define STR(s)	STR_(s)
@@ -634,5 +628,5 @@ index 0000000..4de5f71
 +
 +#endif
 -- 
-1.8.4
+1.8.4.1
 

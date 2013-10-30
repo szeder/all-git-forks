@@ -1,4 +1,4 @@
-From 03572656e6a6c7aac5770206036509d2adddb9d1 Mon Sep 17 00:00:00 2001
+From 62812e7b2e38809dbe93076f1be6c991968a0062 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Tue, 13 Mar 2012 20:01:17 -0500
 Subject: remove #!interpreter line from shell libraries
@@ -49,7 +49,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  8 files changed, 19 insertions(+), 23 deletions(-)
 
 diff --git a/git-mergetool--lib.sh b/git-mergetool--lib.sh
-index 6a72106..cbcd67d 100644
+index a280f49..c45a020 100644
 --- a/git-mergetool--lib.sh
 +++ b/git-mergetool--lib.sh
 @@ -1,5 +1,4 @@
@@ -83,7 +83,7 @@ index 34e3102..a4f683a 100644
  # Copyright (c) 2010 Junio C Hamano.
  #
 diff --git a/git-rebase--interactive.sh b/git-rebase--interactive.sh
-index 83d6d46..7deacfa 100644
+index 3c6bed9..ebc0dbe 100644
 --- a/git-rebase--interactive.sh
 +++ b/git-rebase--interactive.sh
 @@ -1,11 +1,9 @@
@@ -130,7 +130,7 @@ index 6a27f68..e6c3116 100644
  # Export the TEXTDOMAIN* data that we need for Git
  TEXTDOMAIN=git
 diff --git a/git-sh-setup.sh b/git-sh-setup.sh
-index 7a964ad..5887630 100644
+index ebfe8f7..190a539 100644
 --- a/git-sh-setup.sh
 +++ b/git-sh-setup.sh
 @@ -1,9 +1,6 @@
@@ -147,10 +147,10 @@ index 7a964ad..5887630 100644
  # Having this variable in your environment would break scripts because
  # you would cause "cd" to be taken to unexpected places.  If you
 diff --git a/t/test-lib.sh b/t/test-lib.sh
-index 1aa27bd..8d1e277 100644
+index 9802b0b..6b9b0ff 100644
 --- a/t/test-lib.sh
 +++ b/t/test-lib.sh
-@@ -594,11 +594,9 @@ then
+@@ -573,11 +573,9 @@ then
  
  	make_valgrind_symlink () {
  		# handle only executables, unless they are shell libraries that
@@ -165,5 +165,5 @@ index 1aa27bd..8d1e277 100644
  
  		base=$(basename "$1")
 -- 
-1.8.3.2
+1.8.4.1
 

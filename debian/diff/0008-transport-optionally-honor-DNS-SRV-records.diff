@@ -1,4 +1,4 @@
-From 92d0fe16c01f99429080c4064737da8e02619432 Mon Sep 17 00:00:00 2001
+From 9417ca33bc6556b2e97fefc9145757dc39099d58 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:46:20 -0500
 Subject: transport: optionally honor DNS SRV records
@@ -61,7 +61,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  create mode 100644 srv.h
 
 diff --git a/Makefile b/Makefile
-index 24104c6..b7b1636 100644
+index 861496b..e976b78 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -170,6 +170,10 @@ all::
@@ -75,7 +75,7 @@ index 24104c6..b7b1636 100644
  # Define NO_MMAP if you want to avoid mmap.
  #
  # Define NO_SYS_POLL_H if you don't have sys/poll.h.
-@@ -721,6 +725,7 @@ LIB_H += sha1-lookup.h
+@@ -719,6 +723,7 @@ LIB_H += sha1-lookup.h
  LIB_H += shortlog.h
  LIB_H += sideband.h
  LIB_H += sigchain.h
@@ -83,7 +83,7 @@ index 24104c6..b7b1636 100644
  LIB_H += strbuf.h
  LIB_H += streaming.h
  LIB_H += string-list.h
-@@ -1208,6 +1213,11 @@ endif
+@@ -1212,6 +1217,11 @@ endif
  ifdef NEEDS_NSL
  	EXTLIBS += -lnsl
  endif
@@ -444,17 +444,18 @@ index 0000000..7cea4f4
 +
 +#endif
 diff --git a/tcp.c b/tcp.c
-index 83f0313..c27a0d7 100644
+index 99b97e1..1935e20 100644
 --- a/tcp.c
 +++ b/tcp.c
-@@ -1,5 +1,6 @@
- #include "cache.h"
+@@ -2,6 +2,7 @@
+ #include "tcp.h"
  #include "run-command.h"
+ #include "connect.h"
 +#include "srv.h"
  
  #ifndef NO_IPV6
  #include "dns-ipv6.h"
-@@ -72,46 +73,85 @@ void git_locate_host(const char *hostname, char **ip_address,
+@@ -74,46 +75,85 @@ void git_locate_host(const char *hostname, char **ip_address,
  static int git_tcp_connect_sock(char *host, int flags)
  {
  	struct strbuf error_message = STRBUF_INIT;
@@ -567,7 +568,7 @@ index 83f0313..c27a0d7 100644
  		die("unable to connect to %s:\n%s", host, error_message.buf);
  
  	enable_keepalive(sockfd);
-@@ -119,8 +159,12 @@ static int git_tcp_connect_sock(char *host, int flags)
+@@ -121,8 +161,12 @@ static int git_tcp_connect_sock(char *host, int flags)
  	if (flags & CONNECT_VERBOSE)
  		fprintf(stderr, "done.\n");
  
@@ -582,5 +583,5 @@ index 83f0313..c27a0d7 100644
  }
  
 -- 
-1.8.4
+1.8.4.1
 

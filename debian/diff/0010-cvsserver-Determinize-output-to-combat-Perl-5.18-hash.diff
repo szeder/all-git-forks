@@ -1,4 +1,4 @@
-From 19af0f99c31d38af62365b08af2f0651054c68be Mon Sep 17 00:00:00 2001
+From 5899c02876205ff01c468ef57343e3d743104475 Mon Sep 17 00:00:00 2001
 From: Anders Kaseorg <andersk@MIT.EDU>
 Date: Wed, 30 Oct 2013 04:44:43 -0400
 Subject: cvsserver: Determinize output to combat Perl 5.18 hash randomization
@@ -26,7 +26,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 file changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/git-cvsserver.perl b/git-cvsserver.perl
-index 67b1e7b..6177f4a 100755
+index 74d1cc7..95e69b1 100755
 --- a/git-cvsserver.perl
 +++ b/git-cvsserver.perl
 @@ -430,10 +430,10 @@ sub req_validrequests

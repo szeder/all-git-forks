@@ -1,3 +1,14 @@
+git (1:1.8.5~rc0-1) experimental; urgency=low
+
+  * new upstream release candidate.
+  * debian/diff:
+    * 0001-hooks-post-receive-email-set-encoding-to-utf-8.diff,
+      0002-post-receive-email-defend-against-non-utf8-...diff:
+      remove; applied upstream.
+    * 0003...0012: rename to 0001-*, ..., 0010-*.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 30 Oct 2013 16:01:15 -0700
+
 git (1:1.8.4.2-1) unstable; urgency=low
 
   * new upstream point release.
