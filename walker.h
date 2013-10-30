@@ -16,6 +16,10 @@ struct walker {
 	int get_recover;
 
 	int corrupt_object_found;
+
+	void *sparse_checkout_list;
+	int  sparse_checkout_list_count;
+	int  sparse_checkout_list_size;
 };
 
 /* Report what we got under get_verbosely */

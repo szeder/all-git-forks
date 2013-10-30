@@ -9,6 +9,8 @@ struct tree {
 	struct object object;
 	void *buffer;
 	unsigned long size;
+	/* TODO: remove hardcoded path size */
+	char path[256];
 };
 
 struct tree *lookup_tree(const unsigned char *sha1);

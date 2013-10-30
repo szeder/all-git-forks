@@ -44,11 +44,41 @@ static int process_tree(struct walker *walker, struct tree *tree)
 		if (S_ISGITLINK(entry.mode))
 			continue;
 		if (S_ISDIR(entry.mode)) {
-			struct tree *tree = lookup_tree(entry.sha1);
-			if (tree)
-				obj = &tree->object;
+			struct tree *tree_child = lookup_tree(entry.sha1);
+			if (tree_child) {
+				tree_child->path[0] = '\0';
+				strcat(tree_child->path, tree->path);
+				strcat(tree_child->path, entry.path);
+				strcat(tree_child->path, "/");
+				obj = &tree_child->object;
+			}
 		}
 		else {
+			/* TODO: Get path from '.git/info/sparse-checkout' file */
+			if (strncmp(tree->path, "2002/05", 7) == 0) {
+
+				int add_object = 1;
+				for (int i = 0; i < walker->sparse_checkout_list_count; i++) {
+					if (memcmp(walker->sparse_checkout_list + sizeof(unsigned char[20]) * i, entry.sha1, sizeof(unsigned char[20])) == 0) {
+						add_object = 0;
+						break;
+					}
+				}
+
+				if (add_object) {
+					fprintf(stderr, _(" adding to sparse_checkout_list: %s\n"), sha1_to_hex(entry.sha1));
+
+					if (walker->sparse_checkout_list_count >= walker->sparse_checkout_list_size) {
+						walker->sparse_checkout_list_size += walker->sparse_checkout_list_size / 2; /* grow by 50% */
+						fprintf(stderr, _("Changing sparse checkout list to size %d\n"), walker->sparse_checkout_list_size);
+						walker->sparse_checkout_list = xrealloc(walker->sparse_checkout_list, walker->sparse_checkout_list_size * sizeof(unsigned char[20]));
+					}
+					/* we've reallocated above so no need to check */
+					memcpy(walker->sparse_checkout_list + sizeof(unsigned char[20]) * walker->sparse_checkout_list_count, entry.sha1, sizeof(unsigned char[20]));
+					walker->sparse_checkout_list_count++;
+				}
+			}
+
 			struct blob *blob = lookup_blob(entry.sha1);
 			if (blob)
 				obj = &blob->object;

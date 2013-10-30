@@ -518,6 +518,43 @@ static int fetch_object(struct walker *walker, struct alt_base *repo, unsigned c
 
 static int fetch(struct walker *walker, unsigned char *sha1)
 {
+	struct object *obj = lookup_object(sha1);
+	if (obj && obj->type == OBJ_BLOB) {
+
+		int skip_object = walker->sparse_checkout_list_count > 0 ? 1 : 0;
+		for (int i = 0; i < walker->sparse_checkout_list_count; i++) {
+			if (memcmp(walker->sparse_checkout_list + sizeof(unsigned char[20]) * i, sha1, sizeof(unsigned char[20])) == 0) {
+				skip_object = 0;
+				break;
+			}
+		}
+
+		if (skip_object) {
+			/* xxd -i .git/objects/6c/a8147f8b21da66ea9e90c1e88d70f1e8aa5f9d which represents: 'This is a dummy file' */
+			static unsigned char git_dummy_file[] = {
+			  0x78, 0x01, 0x4b, 0xca, 0xc9, 0x4f, 0x52, 0x30, 0x32, 0x64, 0x08, 0xc9,
+			  0xc8, 0x2c, 0x56, 0x00, 0xa2, 0x44, 0x85, 0x94, 0xd2, 0xdc, 0xdc, 0x4a,
+			  0x85, 0xb4, 0xcc, 0x9c, 0x54, 0x2e, 0x00, 0x89, 0x4a, 0x09, 0x4e
+			};
+			static unsigned int git_dummy_file_len = 35;
+
+			safe_create_leading_directories_const(sha1_file_name(sha1));
+			FILE *f = fopen(sha1_file_name(sha1), "wb");
+			if (f == NULL) {
+				fprintf(stderr, _("Unable to create file for intercepting"));
+				exit(-1);
+			}
+			else if (f != NULL) {
+				fwrite(git_dummy_file, git_dummy_file_len, 1, f);
+				fclose(f);
+			}
+
+			return 0;
+		}
+
+		fprintf(stderr, _("FETCH BLOB with sha1 = %s\n"), sha1_to_hex(sha1));
+	}
+
 	struct walker_data *data = walker->data;
 	struct alt_base *altbase = data->alt;
 
@@ -556,6 +593,8 @@ static void cleanup(struct walker *walker)
 		}
 		free(data);
 		walker->data = NULL;
+		free(walker->sparse_checkout_list);
+		walker->sparse_checkout_list = NULL;
 	}
 }
 
@@ -582,6 +621,10 @@ struct walker *get_http_walker(const char *url)
 	walker->prefetch = prefetch;
 	walker->cleanup = cleanup;
 	walker->data = data;
+
+	walker->sparse_checkout_list_count = 0;
+	walker->sparse_checkout_list_size = 256;
+	walker->sparse_checkout_list = xmalloc(walker->sparse_checkout_list_size * sizeof(unsigned char[20]));
 
 #ifdef USE_CURL_MULTI
 	add_fill_function(walker, (int (*)(void *)) fill_active_slot);
