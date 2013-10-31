@@ -20,6 +20,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
+This command is useful to manage the staging area through other subcommands.
 
 COMMANDS
 --------
