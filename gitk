@@ -2336,6 +2336,10 @@ proc makewindow {} {
 	pack .bleft.mid.worddiff -side left -padx 5
     }
 
+    ${NS}::checkbutton .bleft.mid.firstparent -text [mc "First parent"] \
+	-command changefirstparent -variable firstparent
+    pack .bleft.mid.firstparent -side left -padx 5
+
     set ctext .bleft.bottom.ctext
     text $ctext -background $bgcolor -foreground $fgcolor \
 	-state disabled -font textfont \
@@ -7122,6 +7126,7 @@ proc selectline {l isnew {desired_loc {}}} {
     global cmitmode showneartags allcommits
     global targetrow targetid lastscrollrows
     global autoselect autosellen jump_to_here
+    global firstparent
 
     catch {unset pending_select}
     $canv delete hover
@@ -7263,7 +7268,7 @@ proc selectline {l isnew {desired_loc {}}} {
     init_flist [mc "Comments"]
     if {$cmitmode eq "tree"} {
 	gettree $id
-    } elseif {[llength $olds] <= 1} {
+    } elseif {[llength $olds] <= 1 || $firstparent} {
 	startdiff $id
     } else {
 	mergediff $id
@@ -7666,7 +7671,7 @@ proc diffcmd {ids flags} {
 proc gettreediffs {ids} {
     global treediff treepending limitdiffs vfilelimit curview
 
-    set cmd [diffcmd $ids {--no-commit-id}]
+    set cmd [diffcmd $ids {--no-commit-id -m --first-parent}]
     if {$limitdiffs && $vfilelimit($curview) ne {}} {
 	    set cmd [concat $cmd -- $vfilelimit($curview)]
     }
@@ -7752,12 +7757,20 @@ proc changeworddiff {name ix op} {
     reselectline
 }
 
+proc changefirstparent {} {
+    global treediffs
+    catch {unset treediffs}
+
+    reselectline
+}
+
 proc getblobdiffs {ids} {
     global blobdifffd diffids env
     global diffinhdr treediffs
     global diffcontext
     global ignorespace
     global worddiff
+    global firstparent
     global limitdiffs vfilelimit curview
     global diffencoding targetline diffnparents
     global git_version currdiffsubmod
@@ -7770,12 +7783,17 @@ proc getblobdiffs {ids} {
     if {[package vcompare $git_version "1.6.6"] >= 0} {
 	set submodule "--submodule"
     }
-    set cmd [diffcmd $ids "-p $textconv $submodule  -C --cc --no-commit-id -U$diffcontext"]
+    set cmd [diffcmd $ids "-p $textconv $submodule  -C --no-commit-id -U$diffcontext"]
     if {$ignorespace} {
 	append cmd " -w"
     }
     if {$worddiff ne [mc "Line diff"]} {
 	append cmd " --word-diff=porcelain"
+    }
+    if {$firstparent} {
+	append cmd " -m --first-parent"
+    } else {
+	append cmd " --cc"
     }
     if {$limitdiffs && $vfilelimit($curview) ne {}} {
 	set cmd [concat $cmd -- $vfilelimit($curview)]
@@ -11935,6 +11953,7 @@ set diffcontext 3
 set mergecolors {red blue green purple brown "#009090" magenta "#808000" "#009000" "#ff0080" cyan "#b07070" "#70b0f0" "#70f0b0" "#f0b070" "#ff70b0"}
 set ignorespace 0
 set worddiff ""
+set firstparent 0
 set markbgcolor "#e0e0ff"
 
 set headbgcolor green
