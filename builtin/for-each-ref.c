@@ -641,7 +641,7 @@ static void populate_value(struct refinfo *ref)
 		int deref = 0;
 		const char *refname;
 		const char *formatp;
-		struct branch *branch;
+		struct branch *branch = NULL;
 
 		if (*name == '*') {
 			deref = 1;
@@ -719,6 +719,7 @@ static void populate_value(struct refinfo *ref)
 			} else if (!strcmp(formatp, "trackshort") &&
 				!prefixcmp(name, "upstream")) {
 
+				assert(branch != NULL);
 				stat_tracking_info(branch, &num_ours, &num_theirs);
 				if (!num_ours && !num_theirs)
 					v->s = "=";
