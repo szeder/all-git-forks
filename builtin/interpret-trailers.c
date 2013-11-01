@@ -88,9 +88,19 @@ static int git_trailer_config(const char *key, const char *value, void *cb)
 	return 0;
 }
 
+static void apply_config(struct strbuf *tok, struct strbuf *val, struct trailer_info *info)
+{
+	if (info->value) {
+		strbuf_reset(tok);
+		strbuf_addstr(tok, info->value);
+	}
+	if (info->command) {
+	}
+}
+
 int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 {
-	int i, trim_empty = 0;
+	int i, j, trim_empty = 0;
 	struct option options[] = {
 		OPT_BOOL(0, "trim-empty", &trim_empty, N_("trim empty trailers")),
 		OPT_END()
@@ -99,15 +109,33 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 	argc = parse_options(argc, argv, prefix, options,
 			     git_interpret_trailers_usage, 0);
 
+	git_config(git_trailer_config, NULL);
+
 	for (i = 0; i < argc; i++) {
 		struct strbuf tok = STRBUF_INIT;
 		struct strbuf val = STRBUF_INIT;
 		parse_arg(&tok, &val, argv[i]);
-		printf("#token: %s\n", tok.buf);
-		printf("#value: %s\n", val.buf);
-		printf("%s: %s\n", tok.buf, val.buf);
+
+		for (j = 0; j < trailer_list.nr; j++) {
+			struct string_list_item *item = trailer_list.items + j;
+			struct trailer_info *info = item->util;
+			int len = isalnum(tok.buf[tok.len - 1]) ? tok.len : tok.len - 1;
+			if (!strncasecmp(tok.buf, item->string, len) ||
+			    !strncasecmp(tok.buf, info->value, len)) {
+				apply_config(&tok, &val, info);
+			}
+		}
+
+		if (isalnum(tok.buf[tok.len - 1]))
+			printf("%s: %s\n", tok.buf, val.buf);
+		else if (isspace(tok.buf[tok.len - 1]))
+			printf("%s%s\n", tok.buf, val.buf);
+		else
+			printf("%s %s\n", tok.buf, val.buf);
+
 		strbuf_release(&tok);
 		strbuf_release(&val);
 	}
+
 	return 0;
 }
