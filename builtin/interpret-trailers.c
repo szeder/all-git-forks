@@ -31,6 +31,63 @@ static void parse_arg(struct strbuf *tok, struct strbuf *val, const char *arg)
 	}
 }
 
+static struct string_list trailer_list;
+
+enum trailer_conf { ADD, UNIQ };
+
+struct trailer_info {
+	char *value;
+	char *command;
+	enum trailer_conf conf;
+};
+
+static int git_trailer_config(const char *key, const char *value, void *cb)
+{
+	if (!prefixcmp(key, "trailer.")) {
+		const char *orig_key = key;
+		char *name;
+		struct string_list_item *item;
+		struct trailer_info *info;
+		enum { VALUE, CONF, COMMAND } type;
+
+		key += 8;
+		if (!suffixcmp(key, ".value")) {
+			name = xstrndup(key, strlen(key) - 6);
+			type = VALUE;
+		} else if (!suffixcmp(key, ".conf")) {
+			name = xstrndup(key, strlen(key) - 5);
+			type = CONF;
+		} else if (!suffixcmp(key, ".command")) {
+			name = xstrndup(key, strlen(key) - 8);
+			type = COMMAND;
+		} else
+			return 0;
+
+		item = string_list_insert(&trailer_list, name);
+
+		if (!item->util)
+			item->util = xcalloc(sizeof(struct trailer_info), 1);
+		info = item->util;
+		if (type == VALUE) {
+			if (info->value)
+				warning(_("more than one %s"), orig_key);
+			info->value = xstrdup(value);
+		} else if (type == CONF) {
+			if (!strcasecmp("add", value)) {
+				info->conf = ADD;
+			} else if (!strcasecmp("uniq", value)) {
+				info->conf = UNIQ;
+			} else
+				warning(_("unknow value '%s' for key '%s'"), value, orig_key);
+		} else {
+			if (info->command)
+				warning(_("more than one %s"), orig_key);
+			info->command = xstrdup(value);
+		}
+	}
+	return 0;
+}
+
 int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 {
 	int i, trim_empty = 0;
