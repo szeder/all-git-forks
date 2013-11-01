@@ -126,12 +126,14 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 			}
 		}
 
-		if (isalnum(tok.buf[tok.len - 1]))
-			printf("%s: %s\n", tok.buf, val.buf);
-		else if (isspace(tok.buf[tok.len - 1]))
-			printf("%s%s\n", tok.buf, val.buf);
-		else
-			printf("%s %s\n", tok.buf, val.buf);
+		if (!trim_empty || val.len > 0) {
+			if (isalnum(tok.buf[tok.len - 1]))
+				printf("%s: %s\n", tok.buf, val.buf);
+			else if (isspace(tok.buf[tok.len - 1]))
+				printf("%s%s\n", tok.buf, val.buf);
+			else
+				printf("%s %s\n", tok.buf, val.buf);
+		}
 
 		strbuf_release(&tok);
 		strbuf_release(&val);
