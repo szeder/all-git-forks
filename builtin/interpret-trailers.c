@@ -140,13 +140,53 @@ static int find_trailer_start(struct strbuf **lines)
 	return empty ? count : start + 1;
 }
 
+static size_t alnum_len(const char *buf, size_t len) {
+	while (--len >= 0 && !isalnum(buf[len]));
+	return len + 1;
+}
+
+static void print_tok_val(const char *tok_buf, size_t tok_len,
+			  const char *val_buf, size_t val_len)
+{
+	char c = tok_buf[tok_len - 1];
+	if (isalnum(c))
+		printf("%s: %s\n", tok_buf, val_buf);
+	else if (isspace(c) || c == '#')
+		printf("%s%s\n", tok_buf, val_buf);
+	else
+		printf("%s %s\n", tok_buf, val_buf);
+}
+
+static void process_input_file(const char *infile,
+			       struct string_list *tok_list,
+			       struct string_list *val_list)
+{
+	struct strbuf **lines = read_input_file(infile);
+	int start = find_trailer_start(lines);
+	int i;
+
+	/* Output non trailer lines as is */
+	for (i = 0; lines[i] && i < start; i++) {
+		printf("%s", lines[i]->buf);
+	}
+
+	/* Process trailer lines */
+	for (i = start; lines[i]; i++) {
+		struct strbuf tok = STRBUF_INIT;
+		struct strbuf val = STRBUF_INIT;
+		parse_arg(&tok, &val, lines[i]->buf);
+		string_list_append(tok_list, strbuf_detach(&tok, NULL));
+		string_list_append(val_list, strbuf_detach(&val, NULL));
+	}
+}
+
 int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 {
-	struct strbuf **lines;
 	const char *infile = NULL;
 	int trim_empty = 0;
-	int start = -1;
 	int i, j;
+	struct string_list tok_list = STRING_LIST_INIT_NODUP;
+	struct string_list val_list = STRING_LIST_INIT_NODUP;
 
 	struct option options[] = {
 		OPT_BOOL(0, "trim-empty", &trim_empty, N_("trim empty trailers")),
@@ -159,43 +199,55 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 
 	git_config(git_trailer_config, NULL);
 
-	if (infile) {
-		lines = read_input_file(infile);
-		start = find_trailer_start(lines);
-
-		/* Output non trailer lines as is */
-		for (i = 0; lines[i] && i < start; i++) {
-			printf("%s", lines[i]->buf);
-		}
-	}
+	/* This prints the non trailer part of infile */
+	if (infile)
+		process_input_file(infile, &tok_list, &val_list);
 
 	for (i = 0; i < argc; i++) {
 		struct strbuf tok = STRBUF_INIT;
 		struct strbuf val = STRBUF_INIT;
+		int len;
+		int seen = 0;
+
 		parse_arg(&tok, &val, argv[i]);
+		len = alnum_len(tok.buf, tok.len);
 
 		for (j = 0; j < trailer_list.nr; j++) {
 			struct string_list_item *item = trailer_list.items + j;
 			struct trailer_info *info = item->util;
-			int len = isalnum(tok.buf[tok.len - 1]) ? tok.len : tok.len - 1;
 			if (!strncasecmp(tok.buf, item->string, len) ||
 			    !strncasecmp(tok.buf, info->value, len)) {
 				apply_config(&tok, &val, info);
+				break;
 			}
 		}
 
-		if (!trim_empty || val.len > 0) {
-			char c = tok.buf[tok.len - 1];
-			if (isalnum(c))
-				printf("%s: %s\n", tok.buf, val.buf);
-			else if (isspace(c) || c == '#')
-				printf("%s%s\n", tok.buf, val.buf);
-			else
-				printf("%s %s\n", tok.buf, val.buf);
+		for (j = 0; j < tok_list.nr; j++) {
+			struct string_list_item *tok_item = tok_list.items + j;
+			struct string_list_item *val_item = val_list.items + j;
+			if (!strncasecmp(tok.buf, tok_item->string, len)) {
+				tok_item->string = xstrdup(tok.buf);
+				val_item->string = xstrdup(val.buf);
+				seen = 1;
+				break;
+			}
 		}
+
+		/* This prints the trailers passed as arguments that are not in infile */
+		if (!seen && (!trim_empty || val.len > 0))
+			print_tok_val(tok.buf, tok.len, val.buf, val.len);
 
 		strbuf_release(&tok);
 		strbuf_release(&val);
+	}
+
+	/* This prints the trailer part of infile */
+	for (j = 0; j < tok_list.nr; j++) {
+		struct string_list_item *tok_item = tok_list.items + j;
+		struct string_list_item *val_item = val_list.items + j;
+		if (!trim_empty || strlen(val_item->string) > 0)
+			print_tok_val(tok_item->string, strlen(tok_item->string),
+				      val_item->string, strlen(val_item->string));
 	}
 
 	return 0;

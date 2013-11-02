@@ -7,10 +7,24 @@ test_description='git interpret-trailers'
 
 . ./test-lib.sh
 
-cat >message <<'EOF'
+cat >basic_message <<'EOF'
 subject
 
 body
+EOF
+
+# Do not remove trailing spaces below!
+cat >complex_message <<'EOF'
+my subject
+
+my body which is long
+and contains some special
+chars like : = ? !
+
+Fixes: 
+Acked-by: 
+Reviewed-by: 
+Signed-off-by: 
 EOF
 
 test_expect_success 'without config' '
@@ -54,9 +68,14 @@ test_expect_success 'with config setup and # sign' '
 	test_cmp expected actual
 '
 
-test_expect_success 'with commit message' '
-	git interpret-trailers --infile message >actual &&
-	test_cmp message actual
+test_expect_success 'with commit basic message' '
+	git interpret-trailers --infile basic_message >actual &&
+	test_cmp basic_message actual
+'
+
+test_expect_success 'with commit complex message' '
+	git interpret-trailers --infile complex_message >actual &&
+	test_cmp complex_message actual
 '
 
 test_done
