@@ -7,6 +7,12 @@ test_description='git interpret-trailers'
 
 . ./test-lib.sh
 
+cat >message <<'EOF'
+subject
+
+body
+EOF
+
 test_expect_success 'without config' '
 	printf "ack: Peff\nReviewed-by: \nAcked-by: Johan\n" >expected &&
 	git interpret-trailers "ack = Peff" "Reviewed-by" "Acked-by: Johan" >actual &&
@@ -46,6 +52,11 @@ test_expect_success 'with config setup and # sign' '
 	printf "Bug #42\n" >expected &&
 	git interpret-trailers --trim-empty "bug = 42" >actual &&
 	test_cmp expected actual
+'
+
+test_expect_success 'with commit message' '
+	git interpret-trailers --infile message >actual &&
+	test_cmp message actual
 '
 
 test_done

@@ -108,6 +108,10 @@ static struct strbuf **read_input_file(const char *infile)
 	return strbuf_split(&sb, '\n');
 }
 
+/*
+ * Return the the (0 based) index of the first trailer line
+ * or the line count if there are no trailers.
+ */
 static int find_trailer_start(struct strbuf **lines)
 {
 	int count, start, empty = 1;
@@ -116,8 +120,8 @@ static int find_trailer_start(struct strbuf **lines)
 	for (count = 0; lines[count]; count++);
 
 	/*
-	 * Get the start of the trailers by looking for lines
-	 * with only spaces before lines with one ':'.
+	 * Get the start of the trailers by looking starting from the end
+	 * for a line with only spaces before lines with one ':'.
 	 */
 	for (start = count - 1; start >= 0; start--) {
 		if (strbuf_isspace(lines[start])) {
@@ -130,10 +134,10 @@ static int find_trailer_start(struct strbuf **lines)
 				empty = 0;
 			continue;
 		}
-		return -1;
+		return count;
 	}
 
-	return empty ? -1 : start + 1;
+	return empty ? count : start + 1;
 }
 
 int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
@@ -158,9 +162,12 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 	if (infile) {
 		lines = read_input_file(infile);
 		start = find_trailer_start(lines);
-	}
 
-	printf("starting line: %d\n", start);
+		/* Output non trailer lines as is */
+		for (i = 0; lines[i] && i < start; i++) {
+			printf("%s", lines[i]->buf);
+		}
+	}
 
 	for (i = 0; i < argc; i++) {
 		struct strbuf tok = STRBUF_INIT;
