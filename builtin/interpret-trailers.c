@@ -11,7 +11,7 @@
 #include "strbuf.h"
 
 static const char * const git_interpret_trailers_usage[] = {
-	N_("git interpret-trailers [--trim-empty] [<token[=value]>...]"),
+	N_("git interpret-trailers [--trim-empty] [--infile=file] [<token[=value]>...]"),
 	NULL
 };
 
@@ -105,14 +105,48 @@ static struct strbuf **read_input_file(const char *infile)
 	if (strbuf_read_file(&sb, infile, 0) < 0)
 		die_errno(_("could not read input file '%s'"), infile);
 
-	return strbuf_split(sb, '\n');
+	return strbuf_split(&sb, '\n');
+}
+
+static int find_trailer_start(struct strbuf **lines)
+{
+	int count, start, empty = 1;
+
+	/* Get the line count */
+	for (count = 0; lines[count]; count++);
+
+	/*
+	 * Get the start of the trailers by looking for lines
+	 * with only spaces before lines with one ':'.
+	 */
+	for (start = count - 1; start >= 0; start--) {
+		if (strbuf_isspace(lines[start])) {
+			if (empty)
+				continue;
+			return start + 1;
+		}
+		if (strchr(lines[start]->buf, ':')) {
+			if (empty)
+				empty = 0;
+			continue;
+		}
+		return -1;
+	}
+
+	return empty ? -1 : start + 1;
 }
 
 int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 {
-	int i, j, trim_empty = 0;
+	struct strbuf **lines;
+	const char *infile = NULL;
+	int trim_empty = 0;
+	int start = -1;
+	int i, j;
+
 	struct option options[] = {
 		OPT_BOOL(0, "trim-empty", &trim_empty, N_("trim empty trailers")),
+		OPT_FILENAME(0, "infile", &infile, N_("use message from file")),
 		OPT_END()
 	};
 
@@ -120,6 +154,13 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 			     git_interpret_trailers_usage, 0);
 
 	git_config(git_trailer_config, NULL);
+
+	if (infile) {
+		lines = read_input_file(infile);
+		start = find_trailer_start(lines);
+	}
+
+	printf("starting line: %d\n", start);
 
 	for (i = 0; i < argc; i++) {
 		struct strbuf tok = STRBUF_INIT;
