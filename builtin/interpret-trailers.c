@@ -98,6 +98,16 @@ static void apply_config(struct strbuf *tok, struct strbuf *val, struct trailer_
 	}
 }
 
+static struct strbuf **read_input_file(const char *infile)
+{
+	struct strbuf sb = STRBUF_INIT;
+
+	if (strbuf_read_file(&sb, infile, 0) < 0)
+		die_errno(_("could not read input file '%s'"), infile);
+
+	return strbuf_split(sb, '\n');
+}
+
 int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 {
 	int i, j, trim_empty = 0;
