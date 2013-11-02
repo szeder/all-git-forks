@@ -127,9 +127,10 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 		}
 
 		if (!trim_empty || val.len > 0) {
-			if (isalnum(tok.buf[tok.len - 1]))
+			char c = tok.buf[tok.len - 1];
+			if (isalnum(c))
 				printf("%s: %s\n", tok.buf, val.buf);
-			else if (isspace(tok.buf[tok.len - 1]))
+			else if (isspace(c) || c == '#')
 				printf("%s%s\n", tok.buf, val.buf);
 			else
 				printf("%s %s\n", tok.buf, val.buf);
