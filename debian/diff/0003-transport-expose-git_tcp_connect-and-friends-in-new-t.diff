@@ -13,10 +13,10 @@ library easier to understand before adding to it.
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile  |   2 +
- connect.c | 276 -------------------------------------------------------------
+ connect.c | 277 +------------------------------------------------------------
  tcp.c     | 280 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tcp.h     |   8 ++
- 4 files changed, 290 insertions(+), 276 deletions(-)
+ 4 files changed, 291 insertions(+), 276 deletions(-)
  create mode 100644 tcp.c
  create mode 100644 tcp.h
 
@@ -41,10 +41,18 @@ index af847f8..a78f758 100644
  LIB_OBJS += transport.o
  LIB_OBJS += transport-helper.o
 diff --git a/connect.c b/connect.c
-index 06e88b0..aa7b3e6 100644
+index 06e88b0..da37b2c 100644
 --- a/connect.c
 +++ b/connect.c
-@@ -251,282 +251,6 @@ static enum protocol get_protocol(const char *name)
+@@ -6,6 +6,7 @@
+ #include "run-command.h"
+ #include "remote.h"
+ #include "connect.h"
++#include "tcp.h"
+ #include "url.h"
+ #include "string-list.h"
+ 
+@@ -251,282 +252,6 @@ static enum protocol get_protocol(const char *name)
  	die("I don't handle protocol '%s'", name);
  }
  

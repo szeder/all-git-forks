@@ -1,3 +1,11 @@
+git (1:1.8.5~rc0-1.1) experimental; urgency=low
+
+  [ Anders Kaseorg ]
+  * debian/diff/0003-transport-expose-git_tcp_connect-...diff:
+    include tcp.h before using tcp functions (closes: #728508).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 04 Nov 2013 13:42:35 -0500
+
 git (1:1.8.5~rc0-1) experimental; urgency=low
 
   * new upstream release candidate.
