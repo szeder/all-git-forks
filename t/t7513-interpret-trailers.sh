@@ -13,14 +13,17 @@ subject
 body
 EOF
 
-# Do not remove trailing spaces below!
-cat >complex_message <<'EOF'
+cat >complex_message_body <<'EOF'
 my subject
 
 my body which is long
 and contains some special
 chars like : = ? !
 
+EOF
+
+# Do not remove trailing spaces below!
+cat >complex_message_trailers <<'EOF'
 Fixes: 
 Acked-by: 
 Reviewed-by: 
@@ -74,8 +77,23 @@ test_expect_success 'with commit basic message' '
 '
 
 test_expect_success 'with commit complex message' '
+	cat complex_message_body complex_message_trailers >complex_message &&
 	git interpret-trailers --infile complex_message >actual &&
 	test_cmp complex_message actual
+'
+
+test_expect_success 'with commit complex message and args' '
+	cat complex_message_body >expected &&
+	printf "Bug #42\nFixes: \nAcked-by= Peff\nReviewed-by: \nSigned-off-by: \n" >>expected &&
+	git interpret-trailers --infile complex_message "ack: Peff" "bug: 42" >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'with commit complex message, args and --trim-empty' '
+	cat complex_message_body >expected &&
+	printf "Bug #42\nAcked-by= Peff\n" >>expected &&
+	git interpret-trailers --trim-empty --infile complex_message "ack: Peff" "bug: 42" >actual &&
+	test_cmp expected actual
 '
 
 test_done
