@@ -425,7 +425,7 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 	struct strbuf fancy = STRBUF_INIT;
 	int upstream_is_gone = 0;
 
-	switch (stat_tracking_info(branch, &ours, &theirs)) {
+	switch (stat_tracking_info(branch, 0, &ours, &theirs)) {
 	case 0:
 		/* no base */
 		return;

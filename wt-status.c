@@ -1434,7 +1434,7 @@ static void wt_shortstatus_print_tracking(struct wt_status *s)
 
 	color_fprintf(s->fp, branch_color_local, "%s", branch_name);
 
-	switch (stat_tracking_info(branch, &num_ours, &num_theirs)) {
+	switch (stat_tracking_info(branch, 0, &num_ours, &num_theirs)) {
 	case 0:
 		/* no base */
 		fputc(s->null_termination ? '\0' : '\n', s->fp);

@@ -1730,12 +1730,14 @@ int ref_newer(const unsigned char *new_sha1, const unsigned char *old_sha1)
 
 /*
  * Compare a branch with its upstream, and save their differences (number
- * of commits) in *num_ours and *num_theirs.
+ * of commits) in *num_ours and *num_theirs.  If cherry_pick is set, then
+ * the cherry picked commits will not be included in the final results.
  *
  * Return 0 if branch has no upstream (no base), -1 if upstream is missing
  * (with "gone" base), otherwise 1 (with base).
  */
-int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs)
+int stat_tracking_info(struct branch *branch, int cherry_pick,
+		       int *num_ours, int *num_theirs)
 {
 	unsigned char sha1[20];
 	struct commit *ours, *theirs;
@@ -1773,6 +1775,8 @@ int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs)
 	rev_argc = 0;
 	rev_argv[rev_argc++] = NULL;
 	rev_argv[rev_argc++] = "--left-right";
+	if (cherry_pick)
+		rev_argv[rev_argc++] = "--cherry-pick";
 	rev_argv[rev_argc++] = symmetric;
 	rev_argv[rev_argc++] = "--";
 	rev_argv[rev_argc] = NULL;
@@ -1813,7 +1817,7 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 	const char *base;
 	int upstream_is_gone = 0;
 
-	switch (stat_tracking_info(branch, &ours, &theirs)) {
+	switch (stat_tracking_info(branch, 0, &ours, &theirs)) {
 	case 0:
 		/* no base */
 		return 0;
