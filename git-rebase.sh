@@ -36,6 +36,7 @@ ignore-date!       passed to 'git am'
 whitespace=!       passed to 'git apply'
 ignore-whitespace! passed to 'git apply'
 C=!                passed to 'git apply'
+S,gpg-sign?        GPG-sign commits
  Actions:
 continue!          continue
 abort!             abort and check out the original branch
@@ -83,6 +84,7 @@ preserve_merges=
 autosquash=
 keep_empty=
 test "$(git config --bool rebase.autosquash)" = "true" && autosquash=t
+gpg_sign_opt=
 
 read_basic_state () {
 	test -f "$state_dir/head-name" &&
@@ -105,6 +107,8 @@ read_basic_state () {
 		strategy_opts="$(cat "$state_dir"/strategy_opts)"
 	test -f "$state_dir"/allow_rerere_autoupdate &&
 		allow_rerere_autoupdate="$(cat "$state_dir"/allow_rerere_autoupdate)"
+	test -f "$state_dir"/gpg_sign_opt &&
+		gpg_sign_opt="$(cat "$state_dir"/gpg_sign_opt)"
 }
 
 write_basic_state () {
@@ -118,6 +122,7 @@ write_basic_state () {
 		"$state_dir"/strategy_opts
 	test -n "$allow_rerere_autoupdate" && echo "$allow_rerere_autoupdate" > \
 		"$state_dir"/allow_rerere_autoupdate
+	test -n "$gpg_sign_opt" && echo "$gpg_sign_opt" > "$state_dir"/gpg_sign_opt
 }
 
 output () {
@@ -315,6 +320,12 @@ do
 		;;
 	--rerere-autoupdate|--no-rerere-autoupdate)
 		allow_rerere_autoupdate="$1"
+		;;
+	--gpg-sign)
+		gpg_sign_opt=-S
+		;;
+	--gpg-sign=*)
+		gpg_sign_opt="-S${1#--gpg-sign=}"
 		;;
 	--)
 		shift

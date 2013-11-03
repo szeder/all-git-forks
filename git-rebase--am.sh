@@ -5,7 +5,8 @@
 
 case "$action" in
 continue)
-	git am --resolved --resolvemsg="$resolvemsg" &&
+	git am --resolved --resolvemsg="$resolvemsg" \
+		${gpg_sign_opt:+"$gpg_sign_opt"} &&
 	move_to_original_branch
 	return
 	;;
@@ -25,7 +26,7 @@ then
 	# empty commits and even if it didn't the format doesn't really lend
 	# itself well to recording empty patches.  fortunately, cherry-pick
 	# makes this easy
-	git cherry-pick --allow-empty "$revisions"
+	git cherry-pick ${gpg_sign_opt:+"$gpg_sign_opt"} --allow-empty "$revisions"
 	ret=$?
 else
 	rm -f "$GIT_DIR/rebased-patches"
@@ -59,7 +60,8 @@ else
 		return $?
 	fi
 
-	git am $git_am_opt --rebasing --resolvemsg="$resolvemsg" <"$GIT_DIR/rebased-patches"
+	git am $git_am_opt --rebasing --resolvemsg="$resolvemsg" \
+		${gpg_sign_opt:+"$gpg_sign_opt"} <"$GIT_DIR/rebased-patches"
 	ret=$?
 
 	rm -f "$GIT_DIR/rebased-patches"
