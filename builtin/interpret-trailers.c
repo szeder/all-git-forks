@@ -33,12 +33,14 @@ static void parse_arg(struct strbuf *tok, struct strbuf *val, const char *arg)
 
 static struct string_list trailer_list;
 
-enum trailer_conf { ADD, UNIQ };
+enum style_if_exist { DONT_REPEAT, OVERWRITE, REPEAT };
+enum style_if_missing { DONT_APPEND, APPEND };
 
 struct trailer_info {
 	char *value;
 	char *command;
-	enum trailer_conf conf;
+	enum style_if_exist style_exist;
+	enum style_if_missing style_missing;
 };
 
 static int git_trailer_config(const char *key, const char *value, void *cb)
@@ -48,18 +50,21 @@ static int git_trailer_config(const char *key, const char *value, void *cb)
 		char *name;
 		struct string_list_item *item;
 		struct trailer_info *info;
-		enum { VALUE, CONF, COMMAND } type;
+		enum { VALUE, COMMAND, IF_EXIST, IF_MISSING } type;
 
 		key += 8;
 		if (!suffixcmp(key, ".value")) {
 			name = xstrndup(key, strlen(key) - 6);
 			type = VALUE;
-		} else if (!suffixcmp(key, ".conf")) {
-			name = xstrndup(key, strlen(key) - 5);
-			type = CONF;
 		} else if (!suffixcmp(key, ".command")) {
 			name = xstrndup(key, strlen(key) - 8);
 			type = COMMAND;
+		} else if (!suffixcmp(key, ".if_exist")) {
+			name = xstrndup(key, strlen(key) - 9);
+			type = IF_EXIST;
+		} else if (!suffixcmp(key, ".if_missing")) {
+			name = xstrndup(key, strlen(key) - 11);
+			type = IF_MISSING;
 		} else
 			return 0;
 
@@ -72,11 +77,20 @@ static int git_trailer_config(const char *key, const char *value, void *cb)
 			if (info->value)
 				warning(_("more than one %s"), orig_key);
 			info->value = xstrdup(value);
-		} else if (type == CONF) {
-			if (!strcasecmp("add", value)) {
-				info->conf = ADD;
-			} else if (!strcasecmp("uniq", value)) {
-				info->conf = UNIQ;
+		} else if (type == IF_EXIST) {
+			if (!strcasecmp("dont_repeat", value)) {
+				info->style_exist = DONT_REPEAT;
+			} else if (!strcasecmp("overwrite", value)) {
+				info->style_exist = OVERWRITE;
+			} else if (!strcasecmp("repeat", value)) {
+				info->style_exist = REPEAT;
+			} else
+				warning(_("unknow value '%s' for key '%s'"), value, orig_key);
+		} else if (type == IF_MISSING) {
+			if (!strcasecmp("dont_append", value)) {
+				info->style_missing = DONT_APPEND;
+			} else if (!strcasecmp("append", value)) {
+				info->style_missing = APPEND;
 			} else
 				warning(_("unknow value '%s' for key '%s'"), value, orig_key);
 		} else {
