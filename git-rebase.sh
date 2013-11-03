@@ -259,7 +259,7 @@ do
 	--no-autosquash)
 		autosquash=
 		;;
-	-M|-m)
+	-m)
 		do_merge=t
 		;;
 	-X)
