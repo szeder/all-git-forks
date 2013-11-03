@@ -184,7 +184,7 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 {
 	const char *infile = NULL;
 	int trim_empty = 0;
-	int i, j;
+	int i;
 	struct string_list tok_list = STRING_LIST_INIT_NODUP;
 	struct string_list val_list = STRING_LIST_INIT_NODUP;
 
@@ -206,7 +206,7 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 	for (i = 0; i < argc; i++) {
 		struct strbuf tok = STRBUF_INIT;
 		struct strbuf val = STRBUF_INIT;
-		int len;
+		int j, len;
 		int seen = 0;
 
 		parse_arg(&tok, &val, argv[i]);
@@ -242,9 +242,9 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 	}
 
 	/* This prints the trailer part of infile */
-	for (j = 0; j < tok_list.nr; j++) {
-		struct string_list_item *tok_item = tok_list.items + j;
-		struct string_list_item *val_item = val_list.items + j;
+	for (i = 0; i < tok_list.nr; i++) {
+		struct string_list_item *tok_item = tok_list.items + i;
+		struct string_list_item *val_item = val_list.items + i;
 		if (!trim_empty || strlen(val_item->string) > 0)
 			print_tok_val(tok_item->string, strlen(tok_item->string),
 				      val_item->string, strlen(val_item->string));
