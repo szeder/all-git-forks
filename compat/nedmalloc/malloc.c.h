@@ -499,7 +499,9 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
 #endif  /* WIN32 */
 #ifdef WIN32
 #define WIN32_LEAN_AND_MEAN
+#ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x403
+#endif
 #include <windows.h>
 #define HAVE_MMAP 1
 #define HAVE_MORECORE 0
@@ -3602,8 +3604,8 @@ static void internal_malloc_stats(mstate m) {
      and choose its bk node as its replacement.
   2. If x was the last node of its size, but not a leaf node, it must
      be replaced with a leaf node (not merely one with an open left or
-     right), to make sure that lefts and rights of descendents
-     correspond properly to bit masks.  We use the rightmost descendent
+     right), to make sure that lefts and rights of descendants
+     correspond properly to bit masks.  We use the rightmost descendant
      of x.  We could use any other leaf, but this is easy to locate and
      tends to counteract removal of leftmosts elsewhere, and so keeps
      paths shorter than minimally guaranteed.  This doesn't loop much

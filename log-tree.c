@@ -618,6 +618,8 @@ void show_log(struct rev_info *opt)
 	ctx.mailmap = opt->mailmap;
 	ctx.color = opt->diffopt.use_color;
 	ctx.output_encoding = get_log_output_encoding();
+	if (opt->from_ident.mail_begin && opt->from_ident.name_begin)
+		ctx.from_ident = &opt->from_ident;
 	pretty_print_commit(&ctx, commit, &msgbuf);
 
 	if (opt->add_signoff)
@@ -736,7 +738,7 @@ static int log_tree_diff(struct rev_info *opt, struct commit *commit, struct log
 	sha1 = commit->tree->object.sha1;
 
 	/* Root commit? */
-	parents = commit->parents;
+	parents = get_saved_parents(opt, commit);
 	if (!parents) {
 		if (opt->show_root_diff) {
 			diff_root_tree_sha1(sha1, "", &opt->diffopt);

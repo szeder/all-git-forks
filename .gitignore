@@ -23,6 +23,7 @@
 /git-cat-file
 /git-check-attr
 /git-check-ignore
+/git-check-mailmap
 /git-check-ref-format
 /git-checkout
 /git-checkout-index
@@ -201,6 +202,7 @@
 /test-string-list
 /test-subprocess
 /test-svn-fe
+/test-urlmatch-normalization
 /test-wildmatch
 /common-cmds.h
 *.tar.gz

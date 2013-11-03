@@ -119,7 +119,7 @@ if it is part of the log message.
 --no-min-parents::
 --no-max-parents::
 
-	Show only commits which have at least (or at most) that many
+	Show only commits which have at least (or at most) that many parent
 	commits. In particular, `--max-parents=1` is the same as `--no-merges`,
 	`--min-parents=2` is the same as `--merges`.  `--max-parents=0`
 	gives all root commits and `--min-parents=3` all octopus merges.
@@ -369,7 +369,7 @@ each merge.  The commits are:
 * `E` changes `quux` to "xyzzy", and its merge `P` combines the
   strings to "quux xyzzy".  `P` is TREESAME to `O`, but not to `E`.
 
-* `X` is an indpendent root commit that added a new file `side`, and `Y`
+* `X` is an independent root commit that added a new file `side`, and `Y`
   modified it. `Y` is TREESAME to `X`. Its merge `Q` added `side` to `P`, and
   `Q` is TREESAME to `P`, but not to `Y`.
 
@@ -849,7 +849,4 @@ options may be given. See linkgit:git-diff-files[1] for more options.
 -t::
 
 	Show the tree objects in the diff output. This implies '-r'.
-
--s::
-	Suppress diff output.
 endif::git-rev-list[]

@@ -279,7 +279,8 @@ static int fast_forward_to(const unsigned char *to, const unsigned char *from,
 	read_cache();
 	if (checkout_fast_forward(from, to, 1))
 		exit(1); /* the callee should have complained already */
-	ref_lock = lock_any_ref_for_update("HEAD", unborn ? null_sha1 : from, 0);
+	ref_lock = lock_any_ref_for_update("HEAD", unborn ? null_sha1 : from,
+					   0, NULL);
 	strbuf_addf(&sb, "%s: fast-forward", action_name(opts));
 	ret = write_ref_sha1(ref_lock, to, sb.buf);
 	strbuf_release(&sb);
@@ -331,7 +332,7 @@ static int do_recursive_merge(struct commit *base, struct commit *next,
 		int i;
 		strbuf_addstr(msgbuf, "\nConflicts:\n");
 		for (i = 0; i < active_nr;) {
-			struct cache_entry *ce = active_cache[i++];
+			const struct cache_entry *ce = active_cache[i++];
 			if (ce_stage(ce)) {
 				strbuf_addch(msgbuf, '\t');
 				strbuf_addstr(msgbuf, ce->name);
@@ -371,8 +372,9 @@ static int is_index_unchanged(void)
 		active_cache_tree = cache_tree();
 
 	if (!cache_tree_fully_valid(active_cache_tree))
-		if (cache_tree_update(active_cache_tree, active_cache,
-				  active_nr, 0))
+		if (cache_tree_update(active_cache_tree,
+				      (const struct cache_entry * const *)active_cache,
+				      active_nr, 0))
 			return error(_("Unable to update cache tree\n"));
 
 	return !hashcmp(active_cache_tree->sha1, head_commit->tree->object.sha1);

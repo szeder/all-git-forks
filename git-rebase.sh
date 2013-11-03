@@ -159,7 +159,7 @@ finish_rebase () {
 			die "$(eval_gettext "Cannot store \$stash_sha1")"
 			gettext 'Applying autostash resulted in conflicts.
 Your changes are safe in the stash.
-You can run "git stash pop" or "git stash drop" it at any time.
+You can run "git stash pop" or "git stash drop" at any time.
 '
 		fi
 	fi
@@ -167,13 +167,22 @@ You can run "git stash pop" or "git stash drop" it at any time.
 	rm -rf "$state_dir"
 }
 
-run_specific_rebase () {
+run_specific_rebase_internal () {
 	if [ "$interactive_rebase" = implied ]; then
 		GIT_EDITOR=:
 		export GIT_EDITOR
 		autosquash=
 	fi
+	# On FreeBSD, the shell's "return" returns from the current
+	# function, not from the current file inclusion.
+	# run_specific_rebase_internal has the file inclusion as a
+	# last statement, so POSIX and FreeBSD's return will do the
+	# same thing.
 	. git-rebase--$type
+}
+
+run_specific_rebase () {
+	run_specific_rebase_internal
 	ret=$?
 	if test $ret -eq 0
 	then
@@ -542,7 +551,9 @@ then
 	if test -z "$force_rebase"
 	then
 		# Lazily switch to the target branch if needed...
-		test -z "$switch_to" || git checkout "$switch_to" --
+		test -z "$switch_to" ||
+		GIT_REFLOG_ACTION="$GIT_REFLOG_ACTION: checkout $switch_to" \
+			git checkout "$switch_to" --
 		say "$(eval_gettext "Current branch \$branch_name is up to date.")"
 		finish_rebase
 		exit 0
@@ -568,7 +579,9 @@ test "$type" = interactive && run_specific_rebase
 
 # Detach HEAD and reset the tree
 say "$(gettext "First, rewinding head to replay your work on top of it...")"
-git checkout -q "$onto^0" || die "could not detach HEAD"
+
+GIT_REFLOG_ACTION="$GIT_REFLOG_ACTION: checkout $onto_name" \
+	git checkout -q "$onto^0" || die "could not detach HEAD"
 git update-ref ORIG_HEAD $orig_head
 
 # If the $onto is a proper descendant of the tip of the branch, then
