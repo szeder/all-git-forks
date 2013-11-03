@@ -15,6 +15,7 @@
 #include "submodule.h"
 #include "connected.h"
 #include "argv-array.h"
+#include "ffwd.h"
 
 static const char * const builtin_fetch_usage[] = {
 	N_("git fetch [<options>] [<repository> [<refspec>...]]"),
@@ -35,6 +36,7 @@ static int prune = -1; /* unspecified */
 #define PRUNE_BY_DEFAULT 0 /* do we prune by default? */
 
 static int all, append, dry_run, force, keep, multiple, update_head_ok, verbosity;
+static int ffwd_local_branches;
 static int progress = -1, recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
 static int tags = TAGS_DEFAULT, unshallow;
 static const char *depth;
@@ -85,6 +87,8 @@ static struct option builtin_fetch_options[] = {
 		    N_("do not fetch all tags (--no-tags)"), TAGS_UNSET),
 	OPT_BOOL('p', "prune", &prune,
 		 N_("prune remote-tracking branches no longer on remote")),
+	OPT_BOOL(0, "ffwd", &ffwd_local_branches,
+		 N_("fast-forward local tracking branches for fetched remotes")),
 	{ OPTION_CALLBACK, 0, "recurse-submodules", NULL, N_("on-demand"),
 		    N_("control recursive fetching of submodules"),
 		    PARSE_OPT_OPTARG, option_parse_recurse_submodules },
@@ -1095,6 +1099,7 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 		/* No arguments -- use default remote */
 		remote = remote_get(NULL);
 		result = fetch_one(remote, argc, argv);
+		string_list_append(&list, remote->name);
 	} else if (multiple) {
 		/* All arguments are assumed to be remotes or groups */
 		for (i = 0; i < argc; i++)
@@ -1114,6 +1119,10 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 			remote = remote_get(argv[0]);
 			result = fetch_one(remote, argc-1, argv+1);
 		}
+	}
+
+	if (!result && ffwd_local_branches) {
+		ffwd(&list);
 	}
 
 	if (!result && (recurse_submodules != RECURSE_SUBMODULES_OFF)) {

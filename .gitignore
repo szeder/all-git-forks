@@ -55,6 +55,7 @@
 /git-fast-import
 /git-fetch
 /git-fetch-pack
+/git-ffwd
 /git-filter-branch
 /git-fmt-merge-msg
 /git-for-each-ref
