@@ -78,8 +78,10 @@ test_expect_success 'with commit basic message' '
 
 test_expect_success 'with commit complex message' '
 	cat complex_message_body complex_message_trailers >complex_message &&
+	cat complex_message_body >expected &&
+	printf "Fixes: \nAcked-by= \nReviewed-by: \nSigned-off-by: \n" >>expected &&
 	git interpret-trailers --infile complex_message >actual &&
-	test_cmp complex_message actual
+	test_cmp expected actual
 '
 
 test_expect_success 'with commit complex message and args' '
