@@ -88,6 +88,11 @@ static int git_trailer_config(const char *key, const char *value, void *cb)
 	return 0;
 }
 
+static size_t alnum_len(const char *buf, size_t len) {
+	while (--len >= 0 && !isalnum(buf[len]));
+	return len + 1;
+}
+
 static void apply_config(struct strbuf *tok, struct strbuf *val, struct trailer_info *info)
 {
 	if (info->value) {
@@ -95,6 +100,21 @@ static void apply_config(struct strbuf *tok, struct strbuf *val, struct trailer_
 		strbuf_addstr(tok, info->value);
 	}
 	if (info->command) {
+	}
+}
+
+static void apply_config_list(struct strbuf *tok, struct strbuf *val)
+{
+	int j, tok_alnum_len = alnum_len(tok->buf, tok->len);
+
+	for (j = 0; j < trailer_list.nr; j++) {
+		struct string_list_item *item = trailer_list.items + j;
+		struct trailer_info *info = item->util;
+		if (!strncasecmp(tok->buf, item->string, tok_alnum_len) ||
+		    !strncasecmp(tok->buf, info->value, tok_alnum_len)) {
+			apply_config(tok, val, info);
+			break;
+		}
 	}
 }
 
@@ -138,11 +158,6 @@ static int find_trailer_start(struct strbuf **lines)
 	}
 
 	return empty ? count : start + 1;
-}
-
-static size_t alnum_len(const char *buf, size_t len) {
-	while (--len >= 0 && !isalnum(buf[len]));
-	return len + 1;
 }
 
 static void print_tok_val(const char *tok_buf, size_t tok_len,
@@ -199,33 +214,25 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 
 	git_config(git_trailer_config, NULL);
 
-	/* This prints the non trailer part of infile */
+	/* Print the non trailer part of infile */
 	if (infile)
 		process_input_file(infile, &tok_list, &val_list);
 
 	for (i = 0; i < argc; i++) {
 		struct strbuf tok = STRBUF_INIT;
 		struct strbuf val = STRBUF_INIT;
-		int j, len;
-		int seen = 0;
+		int j, seen = 0;
 
 		parse_arg(&tok, &val, argv[i]);
-		len = alnum_len(tok.buf, tok.len);
 
-		for (j = 0; j < trailer_list.nr; j++) {
-			struct string_list_item *item = trailer_list.items + j;
-			struct trailer_info *info = item->util;
-			if (!strncasecmp(tok.buf, item->string, len) ||
-			    !strncasecmp(tok.buf, info->value, len)) {
-				apply_config(&tok, &val, info);
-				break;
-			}
-		}
+		apply_config_list(&tok, &val);
 
+		/* Apply the trailer arguments to the trailers in infile */
 		for (j = 0; j < tok_list.nr; j++) {
 			struct string_list_item *tok_item = tok_list.items + j;
 			struct string_list_item *val_item = val_list.items + j;
-			if (!strncasecmp(tok.buf, tok_item->string, len)) {
+			int tok_alnum_len = alnum_len(tok.buf, tok.len);
+			if (!strncasecmp(tok.buf, tok_item->string, tok_alnum_len)) {
 				tok_item->string = xstrdup(tok.buf);
 				val_item->string = xstrdup(val.buf);
 				seen = 1;
@@ -233,7 +240,7 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 			}
 		}
 
-		/* This prints the trailers passed as arguments that are not in infile */
+		/* Print the trailer arguments that are not in infile */
 		if (!seen && (!trim_empty || val.len > 0))
 			print_tok_val(tok.buf, tok.len, val.buf, val.len);
 
@@ -241,13 +248,17 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 		strbuf_release(&val);
 	}
 
-	/* This prints the trailer part of infile */
+	/* Print the trailer part of infile */
 	for (i = 0; i < tok_list.nr; i++) {
-		struct string_list_item *tok_item = tok_list.items + i;
-		struct string_list_item *val_item = val_list.items + i;
-		if (!trim_empty || strlen(val_item->string) > 0)
-			print_tok_val(tok_item->string, strlen(tok_item->string),
-				      val_item->string, strlen(val_item->string));
+		struct strbuf tok = STRBUF_INIT;
+		struct strbuf val = STRBUF_INIT;
+		strbuf_addstr(&tok, tok_list.items[i].string);
+		strbuf_addstr(&val, val_list.items[i].string);
+
+		apply_config_list(&tok, &val);
+
+		if (!trim_empty || val.len > 0)
+			print_tok_val(tok.buf, tok.len, val.buf, val.len);
 	}
 
 	return 0;
