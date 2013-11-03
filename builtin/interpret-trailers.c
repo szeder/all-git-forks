@@ -202,6 +202,7 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 	int i;
 	struct string_list tok_list = STRING_LIST_INIT_NODUP;
 	struct string_list val_list = STRING_LIST_INIT_NODUP;
+	char *applied_arg;
 
 	struct option options[] = {
 		OPT_BOOL(0, "trim-empty", &trim_empty, N_("trim empty trailers")),
@@ -215,8 +216,10 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 	git_config(git_trailer_config, NULL);
 
 	/* Print the non trailer part of infile */
-	if (infile)
+	if (infile) {
 		process_input_file(infile, &tok_list, &val_list);
+		applied_arg = xcalloc(tok_list.nr, 1);
+	}
 
 	for (i = 0; i < argc; i++) {
 		struct strbuf tok = STRBUF_INIT;
@@ -236,6 +239,7 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 				tok_item->string = xstrdup(tok.buf);
 				val_item->string = xstrdup(val.buf);
 				seen = 1;
+				applied_arg[j] = 1;
 				break;
 			}
 		}
@@ -255,7 +259,8 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 		strbuf_addstr(&tok, tok_list.items[i].string);
 		strbuf_addstr(&val, val_list.items[i].string);
 
-		apply_config_list(&tok, &val);
+		if (!applied_arg[i])
+			apply_config_list(&tok, &val);
 
 		if (!trim_empty || val.len > 0)
 			print_tok_val(tok.buf, tok.len, val.buf, val.len);
