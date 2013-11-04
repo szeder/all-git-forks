@@ -547,6 +547,25 @@ static char *get_port(char *host)
 
 static struct child_process no_fork;
 
+int is_local(const char *url)
+{
+	const char *colon = strchr(url, ':');
+	const char *slash = strchr(url, '/');
+	if (has_dos_drive_prefix(url))
+		return 1;
+	if (!colon)
+		return 1;
+	if (slash && slash < colon)
+		return 1;
+	if (url[0] == '[') {
+		const char *end = strchr(url + 1, ']');
+		if (!end)
+			return 1;
+		return is_local(end);
+	}
+	return 0;
+}
+
 /*
  * This returns a dummy child_process if the transport protocol does not
  * need fork(2), or a struct child_process object if it does.  Once done,
@@ -564,7 +583,7 @@ struct child_process *git_connect(int fd[2], const char *url_orig,
 	char *url;
 	char *host, *path;
 	char *end;
-	int c;
+	int separator;
 	struct child_process *conn = &no_fork;
 	enum protocol protocol = PROTO_LOCAL;
 	int free_path = 0;
@@ -587,17 +606,19 @@ struct child_process *git_connect(int fd[2], const char *url_orig,
 		*host = '\0';
 		protocol = get_protocol(url);
 		host += 3;
-		c = '/';
+		separator = '/';
 	} else {
 		host = url;
-		c = ':';
+		protocol = is_local(url) ? PROTO_LOCAL : PROTO_SSH;
+		separator = ':';
 	}
 
 	/*
 	 * Don't do destructive transforms with git:// as that
 	 * protocol code does '[]' unwrapping of its own.
+	 * Don't change local URLs
 	 */
-	if (host[0] == '[') {
+	if (protocol != PROTO_LOCAL && host[0] == '[') {
 		end = strchr(host + 1, ']');
 		if (end) {
 			if (protocol != PROTO_GIT) {
@@ -610,17 +631,14 @@ struct child_process *git_connect(int fd[2], const char *url_orig,
 	} else
 		end = host;
 
-	path = strchr(end, c);
-	if (path && !has_dos_drive_prefix(end)) {
-		if (c == ':') {
-			if (host != url || path < strchrnul(host, '/')) {
-				protocol = PROTO_SSH;
-				*path++ = '\0';
-			} else /* '/' in the host part, assume local path */
-				path = end;
+	path = strchr(end, separator);
+	if (separator == ':') {
+		if (path && protocol == PROTO_SSH) {
+			*path++ = '\0';
+		} else {/* assume local path */
+			path = end;
 		}
-	} else
-		path = end;
+	}
 
 	if (!path || !*path)
 		die("No path specified. See 'man git-pull' for valid url syntax");
@@ -629,7 +647,7 @@ struct child_process *git_connect(int fd[2], const char *url_orig,
 	 * null-terminate hostname and point path to ~ for URL's like this:
 	 *    ssh://host.xz/~user/repo
 	 */
-	if (protocol != PROTO_LOCAL && host != url) {
+	if (protocol != PROTO_LOCAL && separator == '/') {
 		char *ptr = path;
 		if (path[1] == '~')
 			path++;
@@ -644,7 +662,7 @@ struct child_process *git_connect(int fd[2], const char *url_orig,
 	/*
 	 * Add support for ssh port: ssh://host.xy:<port>/...
 	 */
-	if (protocol == PROTO_SSH && host != url)
+	if (protocol == PROTO_SSH && separator == '/')
 		port = get_port(end);
 
 	if (protocol == PROTO_GIT) {
