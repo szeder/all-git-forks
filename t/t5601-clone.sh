@@ -30,20 +30,20 @@ test_expect_success 'clone with excess parameters (1)' '
 test_expect_success 'clone with excess parameters (2)' '
 
 	rm -fr dst &&
-	test_must_fail git clone -n "file://$(pwd)/src" dst junk
+	test_must_fail git clone -n "file://$PWD/src" dst junk
 
 '
 
 test_expect_success C_LOCALE_OUTPUT 'output from clone' '
 	rm -fr dst &&
-	git clone -n "file://$(pwd)/src" dst >output 2>&1 &&
+	git clone -n "file://$PWD/src" dst >output 2>&1 &&
 	test $(grep Clon output | wc -l) = 1
 '
 
 test_expect_success 'clone does not keep pack' '
 
 	rm -fr dst &&
-	git clone -n "file://$(pwd)/src" dst &&
+	git clone -n "file://$PWD/src" dst &&
 	! test -f dst/file &&
 	! (echo dst/.git/objects/pack/pack-* | grep "\.keep")
 
@@ -172,12 +172,12 @@ test_expect_success 'clone a void' '
 	(
 		cd src-0 && git init
 	) &&
-	git clone "file://$(pwd)/src-0" target-6 2>err-6 &&
+	git clone "file://$PWD/src-0" target-6 2>err-6 &&
 	! grep "fatal:" err-6 &&
 	(
 		cd src-0 && test_commit A
 	) &&
-	git clone "file://$(pwd)/src-0" target-7 2>err-7 &&
+	git clone "file://$PWD/src-0" target-7 2>err-7 &&
 	! grep "fatal:" err-7 &&
 	# There is no reason to insist they are bit-for-bit
 	# identical, but this test should suffice for now.
@@ -291,14 +291,14 @@ test_expect_success 'setup ssh wrapper' '
 
 	GIT_SSH="$TRASH_DIRECTORY/ssh-wrapper" &&
 	export GIT_SSH &&
-	export TRASH_DIRECTORY
+	export TRASH_DIRECTORY &&
+	>"$TRASH_DIRECTORY"/ssh-output
 '
 
-clear_ssh () {
-	>"$TRASH_DIRECTORY/ssh-output"
-}
-
 expect_ssh () {
+	test_when_finished '
+	  (cd "$TRASH_DIRECTORY" && rm -f ssh-expect && >ssh-output)
+	' &&
 	{
 		case "$1" in
 		none)
@@ -310,23 +310,96 @@ expect_ssh () {
 	(cd "$TRASH_DIRECTORY" && test_cmp ssh-expect ssh-output)
 }
 
-test_expect_success 'cloning myhost:src uses ssh' '
-	clear_ssh &&
-	git clone myhost:src ssh-clone &&
-	expect_ssh myhost src
-'
-
 test_expect_success NOT_MINGW,NOT_CYGWIN 'clone local path foo:bar' '
-	clear_ssh &&
 	cp -R src "foo:bar" &&
-	git clone "./foo:bar" foobar &&
+	git clone "foo:bar" foobar &&
 	expect_ssh none
 '
 
-test_expect_success 'bracketed hostnames are still ssh' '
-	clear_ssh &&
-	git clone "[myhost:123]:src" ssh-bracket-clone &&
-	expect_ssh myhost:123 src
+test_expect_success 'clone local path foo2' '
+	cp -R src "foo2" &&
+	git clone "foo2" foobar2 &&
+	expect_ssh none
+'
+
+counter=0
+# $1 url
+# $2 none|host
+# $3 path
+test_fetch_url () {
+	counter=$(($counter + 1))
+	test_might_fail git fetch "$1" tmp$counter &&
+	expect_ssh "$2" "$3"
+}
+
+test_expect_success NOT_MINGW 'fetch c:temp is ssl' '
+	test_fetch_url c:temp c temp
+'
+
+test_expect_success MINGW 'fetch c:temp is dos drive' '
+	test_fetch_url c:temp none
+'
+
+#ip v4
+for repo in rep rep/home/project /~proj 123
+do
+	test_expect_success "fetchinghost:$repo" '
+		test_fetch_url host:$repo host $repo
+	'
+done
+
+#ipv6
+for repo in rep rep/home/project /~proj 123
+do
+	test_expect_success "fetching[::1]:$repo" '
+		test_fetch_url [::1]:$repo ::1 $repo
+	'
+done
+
+# Corner cases
+for url in [foo]bar/baz:qux [foo/bar]:baz foo/bar:baz
+do
+	test_expect_success "fetching$url is not ssh" '
+			test_fetch_url $url none
+	'
+done
+
+#with ssh:// scheme
+test_expect_success 'ssh://host.xz/home/user/repo' '
+	test_fetch_url "ssh://host.xz/home/user/repo" host.xz "/home/user/repo"
+'
+
+# from home directory
+test_expect_success 'ssh://host.xz/~repo' '
+	test_fetch_url "ssh://host.xz/~repo" host.xz "~repo"
+'
+# with port number
+test_expect_success 'ssh://host.xz:22/home/user/repo' '
+	test_fetch_url "ssh://host.xz:22/home/user/repo" "-p 22 host.xz" "/home/user/repo"
+'
+
+# from home directory with port number
+test_expect_success 'ssh://host.xz:22/~repo' '
+	test_fetch_url "ssh://host.xz:22/~repo" "-p 22 host.xz" "~repo"
+'
+
+#IPv6
+test_expect_success 'ssh://[::1]/home/user/repo' '
+	test_fetch_url "ssh://[::1]/home/user/repo" "::1" "/home/user/repo"
+'
+
+#IPv6 from home directory
+test_expect_success 'ssh://[::1]/~repo' '
+	test_fetch_url "ssh://[::1]/~repo" "::1" "~repo"
+'
+
+#IPv6 with port number
+test_expect_success 'ssh://[::1]:22/home/user/repo' '
+	test_fetch_url "ssh://[::1]:22/home/user/repo" "-p 22 ::1" "/home/user/repo"
+'
+#IPv6 from home directory with port number
+test_expect_success 'ssh://[::1]:22/~repo' '
+	test_fetch_url "ssh://[::1]:22/~repo" "-p 22 ::1" "~repo"
 '
 
 test_expect_success 'clone from a repository with two identical branches' '
