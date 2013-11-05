@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "remote.h"
 #include "strbuf.h"
+#include "dir.h"
 #include "walker.h"
 #include "http.h"
 #include "exec_cmd.h"

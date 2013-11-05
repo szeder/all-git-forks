@@ -17,6 +17,9 @@ struct walker {
 
 	int corrupt_object_found;
 
+	int  skip_sparse_checkout;
+	struct exclude_list exclude_list;
+
 	void *sparse_checkout_list;
 	int  sparse_checkout_list_count;
 	int  sparse_checkout_list_size;

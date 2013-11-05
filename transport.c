@@ -6,6 +6,7 @@
 #include "remote.h"
 #include "connect.h"
 #include "send-pack.h"
+#include "dir.h"
 #include "walker.h"
 #include "bundle.h"
 #include "dir.h"

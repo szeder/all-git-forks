@@ -1,5 +1,6 @@
 #include "cache.h"
 #include "commit.h"
+#include "dir.h"
 #include "walker.h"
 #include "http.h"
 
@@ -551,8 +552,6 @@ static int fetch(struct walker *walker, unsigned char *sha1)
 
 			return 0;
 		}
-
-		fprintf(stderr, _("FETCH BLOB with sha1 = %s\n"), sha1_to_hex(sha1));
 	}
 
 	struct walker_data *data = walker->data;
@@ -593,7 +592,8 @@ static void cleanup(struct walker *walker)
 		}
 		free(data);
 		walker->data = NULL;
-		free(walker->sparse_checkout_list);
+		if (walker->sparse_checkout_list)
+			free(walker->sparse_checkout_list);
 		walker->sparse_checkout_list = NULL;
 	}
 }
@@ -622,9 +622,16 @@ struct walker *get_http_walker(const char *url)
 	walker->cleanup = cleanup;
 	walker->data = data;
 
+	walker->skip_sparse_checkout = !core_apply_sparse_checkout;
+	memset(&walker->exclude_list, 0, sizeof(walker->exclude_list));
+	if (!walker->skip_sparse_checkout) {
+		if (add_excludes_from_file_to_list(git_path("info/sparse-checkout"), "", 0, &walker->exclude_list, 0) < 0)
+			walker->skip_sparse_checkout = 1;
+	}
+
 	walker->sparse_checkout_list_count = 0;
 	walker->sparse_checkout_list_size = 256;
-	walker->sparse_checkout_list = xmalloc(walker->sparse_checkout_list_size * sizeof(unsigned char[20]));
+	walker->sparse_checkout_list = !walker->skip_sparse_checkout ? xmalloc(walker->sparse_checkout_list_size * sizeof(unsigned char[20])) : NULL;
 
 #ifdef USE_CURL_MULTI
 	add_fill_function(walker, (int (*)(void *)) fill_active_slot);

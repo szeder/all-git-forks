@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "dir.h"
 #include "walker.h"
 #include "commit.h"
 #include "tree.h"
@@ -28,6 +29,29 @@ static void report_missing(const struct object *obj)
 
 static int process(struct walker *walker, struct object *obj);
 
+static bool is_included(const char* name, struct exclude_list *el)
+{
+	int dtype = DT_DIR;
+	int excl = 0;
+
+	/* First check directory level(s) */
+	const char *prev_separator = NULL;
+	const char *separator = NULL;
+	while ((separator = strchr(prev_separator ? prev_separator + 1 : name, '/'))) {
+
+		excl = is_excluded_from_list(name, (separator - name), prev_separator ? prev_separator + 1 : name, &dtype, el);
+
+		if (excl == 1) return true;
+		else if (excl == 0) return false;
+
+		prev_separator = separator;
+	}
+
+	/* Lastly check file level */
+	dtype = 0;
+	return (is_excluded_from_list(name, strlen(name), prev_separator ? prev_separator + 1 : name, &dtype, el) == 1);
+}
+
 static int process_tree(struct walker *walker, struct tree *tree)
 {
 	struct tree_desc desc;
@@ -54,8 +78,10 @@ static int process_tree(struct walker *walker, struct tree *tree)
 			}
 		}
 		else {
-			/* TODO: Get path from '.git/info/sparse-checkout' file */
-			if (strncmp(tree->path, "2002/05", 7) == 0) {
+
+			char name[PATH_MAX];
+			sprintf(name, "%s%s", tree->path, entry.path);
+			if (is_included(name, &walker->exclude_list)) {
 
 				int add_object = 1;
 				for (int i = 0; i < walker->sparse_checkout_list_count; i++) {

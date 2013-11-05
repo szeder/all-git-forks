@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "exec_cmd.h"
 #include "http.h"
+#include "dir.h"
 #include "walker.h"
 
 static const char http_fetch_usage[] = "git http-fetch "
