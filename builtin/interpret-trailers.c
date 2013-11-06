@@ -27,6 +27,34 @@ struct trailer_info {
 	enum style_if_missing style_missing;
 };
 
+static int set_if_exist_style(struct trailer_info *info, const char *value)
+{
+	if (!strcasecmp("dont_repeat", value)) {
+		info->style_exist = DONT_REPEAT;
+	} else if (!strcasecmp("overwrite", value)) {
+		info->style_exist = OVERWRITE;
+	} else if (!strcasecmp("repeat", value)) {
+		info->style_exist = REPEAT;
+	} else if (!strcasecmp("dont_repeat_previous", value)) {
+		info->style_exist = DONT_REPEAT_PREVIOUS;
+	} else if (!strcasecmp("dont_append", value)) {
+		info->style_exist = DONT_APPEND;
+	} else
+		return 1;
+	return 0;
+}
+
+static int set_if_missing_style(struct trailer_info *info, const char *value)
+{
+	if (!strcasecmp("dont_append", value)) {
+		info->style_missing = DONT_APPEND;
+	} else if (!strcasecmp("append", value)) {
+		info->style_missing = APPEND;
+	} else
+		return 1;
+	return 0;
+}
+
 static int git_trailer_config(const char *key, const char *value, void *cb)
 {
 	if (!prefixcmp(key, "trailer.")) {
@@ -62,24 +90,10 @@ static int git_trailer_config(const char *key, const char *value, void *cb)
 				warning(_("more than one %s"), orig_key);
 			info->value = xstrdup(value);
 		} else if (type == IF_EXIST) {
-			if (!strcasecmp("dont_repeat", value)) {
-				info->style_exist = DONT_REPEAT;
-			} else if (!strcasecmp("overwrite", value)) {
-				info->style_exist = OVERWRITE;
-			} else if (!strcasecmp("repeat", value)) {
-				info->style_exist = REPEAT;
-			} else if (!strcasecmp("dont_repeat_previous", value)) {
-				info->style_exist = DONT_REPEAT_PREVIOUS;
-			} else if (!strcasecmp("dont_append", value)) {
-				info->style_exist = DONT_APPEND;
-			} else
+			if (set_if_exist_style(info, value))
 				warning(_("unknow value '%s' for key '%s'"), value, orig_key);
 		} else if (type == IF_MISSING) {
-			if (!strcasecmp("dont_append", value)) {
-				info->style_missing = DONT_APPEND;
-			} else if (!strcasecmp("append", value)) {
-				info->style_missing = APPEND;
-			} else
+			if (set_if_missing_style(info, value))
 				warning(_("unknow value '%s' for key '%s'"), value, orig_key);
 		} else {
 			if (info->command)
