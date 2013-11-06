@@ -210,7 +210,7 @@ static void process_input_file(const char *infile,
 	int start = find_trailer_start(lines);
 	int i;
 
-	/* Output non trailer lines as is */
+	/* Print non trailer lines as is */
 	for (i = 0; lines[i] && i < start; i++) {
 		printf("%s", lines[i]->buf);
 	}
