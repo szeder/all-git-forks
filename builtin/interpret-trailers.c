@@ -125,17 +125,15 @@ static size_t alnum_len(const char *buf, size_t len) {
 	return len + 1;
 }
 
-static void apply_config(struct strbuf *tok, struct strbuf *val, struct trailer_info *info)
+static void apply_config_value(struct strbuf *tok, struct strbuf *val, struct trailer_info *info)
 {
 	if (info->value) {
 		strbuf_reset(tok);
 		strbuf_addstr(tok, info->value);
 	}
-	if (info->command) {
-	}
 }
 
-static void apply_config_list(struct strbuf *tok, struct strbuf *val)
+static void apply_config_list_values(struct strbuf *tok, struct strbuf *val)
 {
 	int j, tok_alnum_len = alnum_len(tok->buf, tok->len);
 
@@ -144,7 +142,7 @@ static void apply_config_list(struct strbuf *tok, struct strbuf *val)
 		struct trailer_info *info = item->util;
 		if (!strncasecmp(tok->buf, item->string, tok_alnum_len) ||
 		    !strncasecmp(tok->buf, info->value, tok_alnum_len)) {
-			apply_config(tok, val, info);
+			apply_config_value(tok, val, info);
 			break;
 		}
 	}
@@ -260,7 +258,7 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 
 		parse_arg(&tok, &val, argv[i]);
 
-		apply_config_list(&tok, &val);
+		apply_config_list_values(&tok, &val);
 
 		/* Apply the trailer arguments to the trailers in infile */
 		for (j = 0; j < tok_list.nr; j++) {
@@ -292,7 +290,7 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 		strbuf_addstr(&val, val_list.items[i].string);
 
 		if (!applied_arg[i])
-			apply_config_list(&tok, &val);
+			apply_config_list_values(&tok, &val);
 
 		if (!trim_empty || val.len > 0)
 			print_tok_val(tok.buf, tok.len, val.buf, val.len);
