@@ -15,22 +15,6 @@ static const char * const git_interpret_trailers_usage[] = {
 	NULL
 };
 
-static void parse_arg(struct strbuf *tok, struct strbuf *val, const char *arg)
-{
-	char *end = strchr(arg, '=');
-	if (!end)
-		end = strchr(arg, ':');
-	if (end) {
-		strbuf_add(tok, arg, end - arg);
-		strbuf_trim(tok);
-		strbuf_addstr(val, end + 1);
-		strbuf_trim(val);
-	} else {
-		strbuf_addstr(tok, arg);
-		strbuf_trim(tok);
-	}
-}
-
 static struct string_list trailer_list;
 
 enum style_if_exist { DONT_REPEAT, OVERWRITE, REPEAT };
@@ -100,6 +84,22 @@ static int git_trailer_config(const char *key, const char *value, void *cb)
 		}
 	}
 	return 0;
+}
+
+static void parse_arg(struct strbuf *tok, struct strbuf *val, const char *arg)
+{
+	char *end = strchr(arg, '=');
+	if (!end)
+		end = strchr(arg, ':');
+	if (end) {
+		strbuf_add(tok, arg, end - arg);
+		strbuf_trim(tok);
+		strbuf_addstr(val, end + 1);
+		strbuf_trim(val);
+	} else {
+		strbuf_addstr(tok, arg);
+		strbuf_trim(tok);
+	}
 }
 
 static size_t alnum_len(const char *buf, size_t len) {
