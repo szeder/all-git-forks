@@ -17,7 +17,7 @@ static const char * const git_interpret_trailers_usage[] = {
 
 static struct string_list trailer_list;
 
-enum style_if_exist { DONT_REPEAT, OVERWRITE, REPEAT };
+enum style_if_exist { DONT_REPEAT, OVERWRITE, REPEAT, DONT_REPEAT_PREVIOUS, DONT_APPEND };
 enum style_if_missing { DONT_APPEND, APPEND };
 
 struct trailer_info {
@@ -68,6 +68,10 @@ static int git_trailer_config(const char *key, const char *value, void *cb)
 				info->style_exist = OVERWRITE;
 			} else if (!strcasecmp("repeat", value)) {
 				info->style_exist = REPEAT;
+			} else if (!strcasecmp("dont_repeat_previous", value)) {
+				info->style_exist = DONT_REPEAT_PREVIOUS;
+			} else if (!strcasecmp("dont_append", value)) {
+				info->style_exist = DONT_APPEND;
 			} else
 				warning(_("unknow value '%s' for key '%s'"), value, orig_key);
 		} else if (type == IF_MISSING) {
