@@ -1,4 +1,4 @@
-From 15d37d3d493ebd214a49162be2fc2767364b5c8e Mon Sep 17 00:00:00 2001
+From 0bfec09626ba36a2ea05fdbd729494c9016561e6 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:38:45 -0500
 Subject: daemon: make host resolution into a separate function
@@ -17,7 +17,7 @@ of git that make DNS queries.
 
 No functional change intended.
 
-Signed-off-by; Jonathan Nieder <jrnieder@gmail.com>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  daemon.c | 112 +++++++++++++++++++++++++++++++++++----------------------------
  1 file changed, 63 insertions(+), 49 deletions(-)

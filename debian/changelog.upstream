@@ -1,3 +1,76 @@
+Version v1.8.5-rc1; changes since v1.8.5-rc0:
+---------------------------------------------
+
+Anders Kaseorg (1):
+      cvsserver: Determinize output to combat Perl 5.18 hash randomization
+
+Antoine Pelisse (1):
+      remote-hg: unquote C-style paths when exporting
+
+Ben Walton (2):
+      Change sed i\ usage to something Solaris' sed can handle
+      Avoid difference in tr semantics between System V and BSD
+
+Felipe Contreras (12):
+      merge: simplify ff-only option
+      t: replace pulls with merges
+      revision: add missing include
+      branch: trivial style fix
+      sha1-name: trivial style cleanup
+      transport-helper: trivial style fix
+      describe: trivial style fixes
+      pretty: trivial style fix
+      revision: trivial style fixes
+      diff: trivial style fix
+      run-command: trivial style fixes
+      setup: trivial style fixes
+
+Jeff King (7):
+      add-interactive: handle unborn branch in patch mode
+      reset: pass real rev name to add--interactive
+      howto: add article on recovering a corrupted object
+      t: provide a perl() function which uses $PERL_PATH
+      t: use perl instead of "$PERL_PATH" where applicable
+      for-each-ref: avoid loading objects to print %(objectname)
+      subtree: add makefile target for html docs
+
+Jens Lehmann (1):
+      mv: Fix spurious warning when moving a file in presence of submodules
+
+Johannes Sixt (4):
+      t5300-pack-object: do not compare binary data using test_cmp
+      Windows: a test_cmp that is agnostic to random LF <> CRLF conversions
+      tests: undo special treatment of CRLF for Windows
+      t3200: do not open a HTML manual page when DEFAULT_MAN_FORMAT is html
+
+Jonathan Nieder (1):
+      t/README: tests can use perl even with NO_PERL
+
+Junio C Hamano (5):
+      doc/pull: clarify the illustrations
+      Update draft release notes to 1.8.5
+      t4015: simplify sed command that is not even seen by sed
+      Update draft release notes to 1.8.5
+      Git 1.8.5-rc1
+
+Kacper Kornet (1):
+      Fix '\%o' for printf from coreutils
+
+Rüdiger Sonderfeld (1):
+      web--browse: Add support for xdg-open
+
+Sitaram Chamarty (1):
+      doc/howto: warn about (dumb)http server document being too old
+
+Stefan Beller (2):
+      refs: remove unused function invalidate_ref_cache
+      cache: remove unused function 'have_git_dir'
+
+Vivien Didelot (2):
+      Documentation: restore a space in unpack-objects usage
+      Documentation: "pack-file" is not literal in unpack-objects
+
+
 Version v1.8.5-rc0; changes since v1.8.4.2:
 -------------------------------------------
 
