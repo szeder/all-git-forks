@@ -838,7 +838,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			update_one(p);
 			if (set_executable_bit)
 				chmod_path(set_executable_bit, p);
-			free(p);
+			free((char *)p);
 			ctx.argc--;
 			ctx.argv++;
 			break;
@@ -880,7 +880,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			update_one(p);
 			if (set_executable_bit)
 				chmod_path(set_executable_bit, p);
-			free(p);
+			free((char *)p);
 		}
 		strbuf_release(&nbuf);
 		strbuf_release(&buf);
