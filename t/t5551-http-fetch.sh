@@ -113,6 +113,10 @@ test_expect_success 'follow redirects (302)' '
 	git clone $HTTPD_URL/smart-redir-temp/repo.git --quiet repo-t
 '
 
+test_expect_success 'redirects re-root further requests' '
+	git clone $HTTPD_URL/smart-redir-limited/repo.git repo-redir-limited
+'
+
 test_expect_success 'clone from password-protected repository' '
 	echo two >expect &&
 	set_askpass user@host &&
@@ -144,6 +148,13 @@ test_expect_success 'no-op half-auth fetch does not require a password' '
 	set_askpass wrong &&
 	git --git-dir=half-auth fetch &&
 	expect_askpass none
+'
+
+test_expect_success 'redirects send auth to new location' '
+	set_askpass user@host &&
+	git -c credential.useHttpPath=true \
+	  clone $HTTPD_URL/smart-redir-auth/repo.git repo-redir-auth &&
+	expect_askpass both user@host auth/smart/repo.git
 '
 
 test_expect_success 'disable dumb http on server' '
@@ -224,7 +235,7 @@ test_expect_success EXPENSIVE 'create 50,000 tags in the repo' '
 	done | git fast-import --export-marks=marks &&
 
 	# now assign tags to all the dangling commits we created above
-	tag=$("$PERL_PATH" -e "print \"bla\" x 30") &&
+	tag=$(perl -e "print \"bla\" x 30") &&
 	sed -e "s|^:\([^ ]*\) \(.*\)$|\2 refs/tags/$tag-\1|" <marks >>packed-refs
 	)
 '
