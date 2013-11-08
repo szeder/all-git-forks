@@ -43,14 +43,14 @@ the '--recurse-submodules[=on]' commandline option to fetch.
 
 Superproject has a linear history:
 
-. I would expect "git fetch" to run fetch in all submodules checked out
+. I expect "git fetch" to run fetch in all submodules checked out
   in the worktree
 
-. I wouldn't expect it to run fetch in old submodules not
+. I do not expect it to run fetch in old submodules not
   checked out in the worktree, but I wouldn't mind if it did
   either.
 
-. I would expect "git fetch" to clone any new submodules that I would
+. I expect "git fetch" to clone any new submodules that I would
   need to "git merge --recurse-submodules FETCH_HEAD", and any
   submodules needed for intermediate states.
 
@@ -91,11 +91,11 @@ Let's say the submodule is not in the current index (checked out) and
 the .gitmodules in all fetched commits agree on submodule <name>'s config
 'submodule.<name>.recursesubmodules = on'
 
-. I would the submodule to be fetched/cloned when the recorded
+. I expect the submodule to be fetched/cloned when the recorded
   submodule-commit was changed in any commit between <existing
   tip>..<new tip>.
 
-. I would not expect the submodule to be fetched/cloned if there was no
+. I do not expect the submodule to be fetched/cloned if there was no
   change of the recorded submodule-commit in the fetched commits but I
   would not mind if it was either.
 
@@ -107,10 +107,10 @@ Let's assume the same situation as before but the configurations of
 'submodule.<name>.recursesubmodules' in .gitmodules of the fetched
 commits disagree.
 
-. I would expect git to warn me that the configuration of submodule
+. I expect git to warn me that the configuration of submodule
   <name> was not the same across all fetched commits.
 
-- I would expect git to skip the recursive fetch of those submodules and
+- I expect git to skip the recursive fetch of those submodules and
   tell me what I can do to solve this.
 
 
@@ -118,7 +118,7 @@ commits disagree.
 Let's say +submodule.recursesubmodules = off+
  or --recurse-submodules=off commandline option.
 
-. I would expect "git fetch" to skip all submodules by default
+. I expect "git fetch" to skip all submodules by default
   except the ones configured otherwise
 
 Plan
@@ -168,16 +168,14 @@ fetch automatically clones it into .git/modules and copies
 the url from .gitmodules into .git/config
 
 If .gitmodules configuration values disagree between revisions we
-fallback on the configured global default. E.g.
+fall back on the configured global default. E.g.
 +submodule.recursesubmodules+ or the --recurseSubmodules commandline
 option. If nothing is configured the current default will be do not do
 anything.
 
 We only use .gitmodules values from commits if they are consistent
 through all parsed commits.
-
 If .gitmodules values conflict we do nothing and warn the user.
-
 
 For expensive operations we might have a different command: +submodule fetch-all+
 
