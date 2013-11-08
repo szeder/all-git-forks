@@ -5,18 +5,28 @@ About reading and applying configuration of non-checked out revisions during fet
 General
 -------
 
+Whether git will fetch or clone a submodule depends on the value of
+'submodule.recursesubmodules' or 'submodule.autoinit' configuration
+and their submodule specific configuration. If fetch or clone are given
+the --recurse-submodules option the autoinit configuration is assumed to
+be true.
+
+ . submodule.autoinit
+ . submodule."name".autoinit
+ . fetch.recurseSubmodules (config only)
+ . submodule."name".fetchRecurseSubmodules (.gitmodules / config)
+
+For expensive operations we might have a different command: +submodule fetch-all+ ?
+
 How do we solve conflicting configurations from .gitmodules in commits?
  . We do it the simple way, warn, do nothing and currently rely on the
    user to solve them.
  . Later once some more experience is gained we might solve some
    constellations automatically.
 
-What is the configuration file precedence?
- . see Configuration
+See the "Configuration precedence" section for information about what
+overrides what.
 
-Configuration possibilities for recursive submodule fetch
- . fetch.recurseSubmodules (config only)
- . submodule."name".fetchRecurseSubmodules (.gitmodules / config)
 
 User Stories
 ------------
@@ -24,12 +34,6 @@ User Stories
 ----
 $ git clone --recurse-submodules your-cool-project
 ----
-
-Whether git will fetch or clone a submodule depends on the value of
-'submodule.recursesubmodules' or 'submodule.autoinit' configuration
-and their submodule specific configuration. If fetch or clone are given
-the --recurse-submodules option the autoinit configuration is assumed to
-be true.
 
 
 Submodule Recursion Checked Out
@@ -177,8 +181,6 @@ We only use .gitmodules values from commits if they are consistent
 through all parsed commits.
 If .gitmodules values conflict we do nothing and warn the user.
 
-For expensive operations we might have a different command: +submodule fetch-all+
-
 If the submodule urls disagree and I do not have a local configuration I
 stop. The consolidated configuration list of gitmodules needs a
 conflicting configuration marker. The fallback is to do no fetch and
@@ -190,8 +192,8 @@ e.g.:
 	git submodule update --init --recursive
 ----
 
-Configuration (the latter overrides the earlier)
-------------------------------------------------
+Configuration precedence (the latter overrides the earlier)
+-----------------------------------------------------------
 
  1. General config (fetch.RecurseSubmodules)
  2. Command line default (--recurse-submodules-default)
