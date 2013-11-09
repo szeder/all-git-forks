@@ -1,43 +1,84 @@
 About reading and applying configuration of non-checked out revisions during fetch
 ==================================================================================
 
+The configuration situation to implement recursive submodule fetch is
+quite complicated. To discuss and agree on something useable I created
+this document. Thanks to Jonathan Nieder and Jens Lehmann for
+discussing/brainstorming all the different things with me.
 
 General
 -------
 
 Whether git will fetch or clone a submodule depends on the value of
 'submodule.recursesubmodules' or 'submodule.autoinit' configuration
-and their submodule specific configuration. If fetch or clone are given
-the --recurse-submodules option the autoinit configuration is assumed to
-be true.
+and their submodule specific configuration.
 
+'recurseSubmodules' configures whether fetch will do a recursive fetch
+in submodules. 'autoinit' configures whether a new submodule will be
+cloned on fetch and its url copied from the fetched revisions
+.gitmodules into .git/config so everything is prepared for checkout to
+do a checkout of the submodule.
+
+If fetch or clone are given the --recurse-submodules option the autoinit
+configuration is assumed to be true.
+
+We add/rely on the following switches:
+
+ . --recurse-submodules
  . submodule.autoinit
  . submodule."name".autoinit
  . fetch.recurseSubmodules (config only)
  . submodule."name".fetchRecurseSubmodules (.gitmodules / config)
 
-For expensive operations we might have a different command: +submodule fetch-all+ ?
+For expensive operations we might have a different command like:
++submodule fetch-all+ ?
 
 How do we solve conflicting configurations from .gitmodules in commits?
+
  . We do it the simple way, warn, do nothing and currently rely on the
    user to solve them.
  . Later once some more experience is gained we might solve some
    constellations automatically.
 
 See the "Configuration precedence" section for information about what
-overrides what.
+entries can be used to override others.
 
 
 User Stories
 ------------
 
+Here we will describe some typical use cases to support the plan we
+introduce after this section and hopefully ensure that we do not forget
+any important situation.
+
+Clone with submodule enabled
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+E.g.:
+
 ----
 $ git clone --recurse-submodules your-cool-project
 ----
 
+ . I expect that all submodules that are contained in the revision to be
+   checked out after finishing the clone will also be cloned and its
+   urls will be copied from .gitmodules to .git/config
+ . I expect that submodules not contained in the revision to be checked out
+   will *not* be fetched. Since that can be expensive and old submodules
+   are likely not existing anymore.
+ . I expect that all submodules contained in revisions that are not
+   contained in the revision to be checked out to be cloned / config
+   initialized. Since these revisions are likely to be open branches
+   with *new* submodules they should be cloned to prepare for later
+   integration. Otherwise its likely that the 'on-demand' fetch logic
+   will not pickup these new submodules when they are integrated in main
+   line causing a recursive checkout to fail.
 
-Submodule Recursion Checked Out
--------------------------------
+Submodule Recursion For Checked Out Submodules
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In this description we only care about submodules that are contained in
+the checked out working dir.
 
 I expect all initialized submodules to behave after the local or checked
 out configuration (.git/config and .gitmodules).
@@ -65,7 +106,7 @@ Superproject has multiple branches:
 
 
 Submodule Recursion On-Demand (local config)
---------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Let's say 'submodule.recursesubmodules = on-demand' or given the
 '--recurse-submodules=on-demand' commandline option to fetch.
 
@@ -82,7 +123,7 @@ Superproject hast multiple branches:
 
 
 Submodule Recursion Off (local config)
---------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Let's say 'submodule.recursesubmodules = off' or commandline option
 '--recurse-submodules=off' or no config or option.
 
@@ -90,7 +131,7 @@ No submodules will be fetched
 
 
 Submodule Recursion Not Checked Out
-------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Let's say the submodule is not in the current index (checked out) and
 the .gitmodules in all fetched commits agree on submodule <name>'s config
 'submodule.<name>.recursesubmodules = on'
@@ -118,15 +159,17 @@ commits disagree.
   tell me what I can do to solve this.
 
 
-
 Let's say +submodule.recursesubmodules = off+
  or --recurse-submodules=off commandline option.
 
 . I expect "git fetch" to skip all submodules by default
   except the ones configured otherwise
 
-Plan
-----
+
+Implementation Plan
+-------------------
+
+This is a rough description of the recursive fetch strategy.
 
 In superproject
 
@@ -161,10 +204,15 @@ In superproject
 	.. Parse all commits .gitmodules
 	.. Try to fetch or clone all found module names
 
+
 .gitmodules and local config
 ----------------------------
+
+In this section we will discuss the handling of values from .gitmodules
+that are not in the worktree but in revisions.
+
 All configuration values for submodules in .git/modules/ like
-recurseSubmodules, autoinit, ... come from local config or commandline.
+recurseSubmodules, autoinit, ... come from local config or commandline. TODO
 
 If there is a submodule described in some revisions .gitmodules
 and we come to the conclusion that it should be fetched. The
@@ -191,6 +239,7 @@ e.g.:
 	git submodule sync
 	git submodule update --init --recursive
 ----
+
 
 Configuration precedence (the latter overrides the earlier)
 -----------------------------------------------------------
