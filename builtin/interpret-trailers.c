@@ -17,39 +17,55 @@ static const char * const git_interpret_trailers_usage[] = {
 
 static struct string_list trailer_list;
 
-enum style_if_exist { DONT_REPEAT, OVERWRITE, REPEAT, DONT_REPEAT_PREVIOUS, DONT_APPEND };
-enum style_if_missing { DONT_APPEND, APPEND };
+enum action_where { AFTER, MIDDLE, BEFORE };
+enum action_if_exist { EXIST_ADD_IF_DIFFERENT, EXIST_ADD_IF_DIFFERENT_NEIGHBOR,
+		       EXIST_ADD, EXIST_OVERWRITE, EXIST_DO_NOTHING };
+enum action_if_missing { MISSING_DO_NOTHING, MISSING_ADD };
 
 struct trailer_info {
 	char *value;
 	char *command;
-	enum style_if_exist style_exist;
-	enum style_if_missing style_missing;
+	enum action_where where;
+	enum action_if_exist if_exist;
+	enum action_if_missing if_missing;
 };
 
-static int set_if_exist_style(struct trailer_info *info, const char *value)
+static int set_where(struct trailer_info *info, const char *value)
 {
-	if (!strcasecmp("dont_repeat", value)) {
-		info->style_exist = DONT_REPEAT;
-	} else if (!strcasecmp("overwrite", value)) {
-		info->style_exist = OVERWRITE;
-	} else if (!strcasecmp("repeat", value)) {
-		info->style_exist = REPEAT;
-	} else if (!strcasecmp("dont_repeat_previous", value)) {
-		info->style_exist = DONT_REPEAT_PREVIOUS;
-	} else if (!strcasecmp("dont_append", value)) {
-		info->style_exist = DONT_APPEND;
+	if (!strcasecmp("after", value)) {
+		info->where = AFTER;
+	} else if (!strcasecmp("middle", value)) {
+		info->where = MIDDLE;
+	} else if (!strcasecmp("before", value)) {
+		info->where = BEFORE;
 	} else
 		return 1;
 	return 0;
 }
 
-static int set_if_missing_style(struct trailer_info *info, const char *value)
+static int set_if_exist(struct trailer_info *info, const char *value)
 {
-	if (!strcasecmp("dont_append", value)) {
-		info->style_missing = DONT_APPEND;
-	} else if (!strcasecmp("append", value)) {
-		info->style_missing = APPEND;
+	if (!strcasecmp("add_if_different", value)) {
+		info->if_exist = EXIST_ADD_IF_DIFFERENT;
+	} else if (!strcasecmp("add_if_different_neighbor", value)) {
+		info->if_exist = EXIST_ADD_IF_DIFFERENT_NEIGHBOR;
+	} else if (!strcasecmp("add", value)) {
+		info->if_exist = EXIST_ADD;
+	} else if (!strcasecmp("overwrite", value)) {
+		info->if_exist = EXIST_OVERWRITE;
+	} else if (!strcasecmp("do_nothing", value)) {
+		info->if_exist = EXIST_DO_NOTHING;
+	} else
+		return 1;
+	return 0;
+}
+
+static int set_if_missing(struct trailer_info *info, const char *value)
+{
+	if (!strcasecmp("do_nothing", value)) {
+		info->if_missing = MISSING_DO_NOTHING;
+	} else if (!strcasecmp("add", value)) {
+		info->if_missing = MISSING_ADD;
 	} else
 		return 1;
 	return 0;
@@ -62,7 +78,7 @@ static int git_trailer_config(const char *key, const char *value, void *cb)
 		char *name;
 		struct string_list_item *item;
 		struct trailer_info *info;
-		enum { VALUE, COMMAND, IF_EXIST, IF_MISSING } type;
+		enum { VALUE, COMMAND, WHERE, IF_EXIST, IF_MISSING } type;
 
 		key += 8;
 		if (!suffixcmp(key, ".value")) {
@@ -71,6 +87,9 @@ static int git_trailer_config(const char *key, const char *value, void *cb)
 		} else if (!suffixcmp(key, ".command")) {
 			name = xstrndup(key, strlen(key) - 8);
 			type = COMMAND;
+		} else if (!suffixcmp(key, ".where")) {
+			name = xstrndup(key, strlen(key) - 9);
+			type = WHERE;
 		} else if (!suffixcmp(key, ".if_exist")) {
 			name = xstrndup(key, strlen(key) - 9);
 			type = IF_EXIST;
@@ -89,16 +108,21 @@ static int git_trailer_config(const char *key, const char *value, void *cb)
 			if (info->value)
 				warning(_("more than one %s"), orig_key);
 			info->value = xstrdup(value);
-		} else if (type == IF_EXIST) {
-			if (set_if_exist_style(info, value))
-				warning(_("unknow value '%s' for key '%s'"), value, orig_key);
-		} else if (type == IF_MISSING) {
-			if (set_if_missing_style(info, value))
-				warning(_("unknow value '%s' for key '%s'"), value, orig_key);
-		} else {
+		} else if (type == COMMAND) {
 			if (info->command)
 				warning(_("more than one %s"), orig_key);
 			info->command = xstrdup(value);
+		} else if (type == WHERE) {
+			if (set_where(info, value))
+				warning(_("unknow value '%s' for key '%s'"), value, orig_key);
+		} else if (type == IF_EXIST) {
+			if (set_if_exist(info, value))
+				warning(_("unknow value '%s' for key '%s'"), value, orig_key);
+		} else if (type == IF_MISSING) {
+			if (set_if_missing(info, value))
+				warning(_("unknow value '%s' for key '%s'"), value, orig_key);
+		} else {
+			die("internal bug in git_trailer_config");
 		}
 	}
 	return 0;
