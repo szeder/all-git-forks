@@ -144,6 +144,7 @@ static void parse_arg(struct strbuf *tok, struct strbuf *val, const char *arg)
 	}
 }
 
+/* Get the length of buf from its beginning until its last alphanumeric character */
 static size_t alnum_len(const char *buf, size_t len) {
 	while (--len >= 0 && !isalnum(buf[len]));
 	return len + 1;
