@@ -128,7 +128,7 @@ static int git_trailer_config(const char *key, const char *value, void *cb)
 	return 0;
 }
 
-static void parse_arg(struct strbuf *tok, struct strbuf *val, const char *arg)
+static void parse_trailer(struct strbuf *tok, struct strbuf *val, const char *arg)
 {
 	char *end = strchr(arg, '=');
 	if (!end)
@@ -142,6 +142,17 @@ static void parse_arg(struct strbuf *tok, struct strbuf *val, const char *arg)
 		strbuf_addstr(tok, arg);
 		strbuf_trim(tok);
 	}
+}
+
+static void parse_trailer_into_string_lists(struct string_list *tok_list,
+					    struct string_list *val_list,
+					    const char *arg)
+{
+	struct strbuf tok = STRBUF_INIT;
+	struct strbuf val = STRBUF_INIT;
+	parse_trailer(&tok, &val, lines[i]->buf);
+	string_list_append(tok_list, strbuf_detach(&tok, NULL));
+	string_list_append(val_list, strbuf_detach(&val, NULL));
 }
 
 /* Get the length of buf from its beginning until its last alphanumeric character */
@@ -240,13 +251,9 @@ static void process_input_file(const char *infile,
 		printf("%s", lines[i]->buf);
 	}
 
-	/* Process trailer lines */
+	/* Parse trailer lines */
 	for (i = start; lines[i]; i++) {
-		struct strbuf tok = STRBUF_INIT;
-		struct strbuf val = STRBUF_INIT;
-		parse_arg(&tok, &val, lines[i]->buf);
-		string_list_append(tok_list, strbuf_detach(&tok, NULL));
-		string_list_append(val_list, strbuf_detach(&val, NULL));
+		parse_trailer_into_string_lists(tok_list, val_list, lines[i]->buf);
 	}
 }
 
@@ -281,7 +288,7 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 		struct strbuf val = STRBUF_INIT;
 		int j, seen = 0;
 
-		parse_arg(&tok, &val, argv[i]);
+		parse_trailer(&tok, &val, argv[i]);
 
 		apply_config_list_values(&tok, &val);
 
