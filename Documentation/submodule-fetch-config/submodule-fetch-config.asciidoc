@@ -6,15 +6,15 @@ quite complicated. To discuss and agree on something useable I created
 this document. Thanks to Jonathan Nieder and Jens Lehmann for
 discussing/brainstorming all the different things with me.
 
-General
--------
+Introduction or What The Hell Do We Talk About
+----------------------------------------------
 
 Whether git will fetch or clone a submodule depends on the value of
-'submodule.recursesubmodules' or 'submodule.autoinit' configuration
-and their submodule specific configuration.
+'submodule.recurseSubmodules' or 'submodule.autoInit' and their
+submodule specific relatives.
 
 'recurseSubmodules' configures whether fetch will do a recursive fetch
-in submodules. 'autoinit' configures whether a new submodule will be
+in submodules. 'autoInit' configures whether a new submodule will be
 cloned on fetch and its url copied from the fetched revisions
 .gitmodules into .git/config so everything is prepared for checkout to
 do a checkout of the submodule.
@@ -24,21 +24,27 @@ configuration is assumed to be true.
 
 We add/rely on the following switches:
 
- . --recurse-submodules
- . submodule.autoinit
- . submodule."name".autoinit
- . fetch.recurseSubmodules (config only)
- . submodule."name".fetchRecurseSubmodules (.gitmodules / config)
+ . +--recurse-submodules+
+ . 'submodule.autoinit'
+ . 'submodule."name".autoinit'
+ . 'fetch.recurseSubmodules' (config only)
+ . 'submodule."name".fetchRecurseSubmodules' (.gitmodules / config)
 
-For expensive operations we might have a different command like:
-+submodule fetch-all+ ?
+For expensive operations we might have a special commandline option like:
++--recurse-submodules=all+ ?
 
 How do we solve conflicting configurations from .gitmodules in commits?
 
- . We do it the simple way, warn, do nothing and currently rely on the
-   user to solve them.
+ . We do it the simple way, warn, skip and rely on the user to solve
+   them.
  . Later once some more experience is gained we might solve some
    constellations automatically.
+ . We output a suggestion how to proceed. E.g.:
+----
+	git checkout origin/master
+	git submodule sync
+	git submodule update --init --recursive
+----
 
 See the "Configuration precedence" section for information about what
 entries can be used to override others.
@@ -160,85 +166,87 @@ commits disagree.
 
 
 Let's say +submodule.recursesubmodules = off+
- or --recurse-submodules=off commandline option.
+ or +--recurse-submodules=off+ commandline option.
 
 . I expect "git fetch" to skip all submodules by default
   except the ones configured otherwise
 
 
-Implementation Plan
--------------------
+Implementation Plan or How Can That Work
+----------------------------------------
 
-This is a rough description of the recursive fetch strategy.
+This is a rough description of the recursive fetch/clone strategy.
+
+'changed_submodule_names' is a string_list of submodules names and
+additionally stores the result of the parsed final configuration in its
+util pointer. It has a conflict marker for entries that have been parsed
+but need skipping.
+
+*TODO:* rework to first collect in 'changed_submodule_names' and
+then do the fetch in a second stage.
 
 In superproject
 
-. Lookup all changed submodule names (changed_submodules) received during fetch
-  During collection phase: For each revision that changes a submodule
-  store:
+. Lookup all changed submodule names from commits received during fetch
+  and if it is not contained yet add to 'changed_submodule_names'. During collection phase: For
+  each revision that changes a submodule store:
 	.. .gitmodules sha1 (for subsequent readings of the same config)
 	.. path
 	.. name
 
-. For each submodule in the index that is in changed_submodules
-	.. Lookup its name from repository config and .gitmodules
-	.. Fetch depending on local and checked out configuration
-	.. Add submodule to fetched_submodules
-	.. Remove submodule from changed_submodules
+. For each submodule in the index that is in 'changed_submodule_names'
+	.. Fetch depending on local and checked out configuration (and
+	   whether referenced commits are already present)
+	.. Add submodule to 'fetched_submodules'
+	.. Remove submodule from 'changed_submodule_names'
 
 . For each changed submodule left in list from 1.
-	.. Skip and warn if not all found configurations are the same
+	.. Skip and warn if not all configurations are the same
 	   and no local config for that module
 	.. Fetch or clone depending on local configuration or if that
 	   does not exist from revisions
-	.. Add submodule to fetched_submodules
+	.. Add submodule to 'fetched_submodules'
 
 . For each submodule in .git/modules
 	.. Skip if in fetched_submodules
 	.. fetch depending on local configuration (e.g. in .git/config)
 	   or commandline
 
-. If we were given the special option --recurse-submodules=all it
-  overrides all revisions, checked out or local recurseSubmodules
-  configurations
+. 'Will be left for future extension:' If we were given the special option
+  +--recurse-submodules=all+ it overrides all revisions, checked out or
+  local recurseSubmodules configurations
 	.. Parse all commits .gitmodules
-	.. Try to fetch or clone all found module names
+	.. Try to fetch or clone all found module names by their url.
+	   Warn and skip submodule names that have conflicting urls in
+	   commits. The user can configure the url locally with +git
+	   config submodule."name".url+ to solve this situation.
 
 
-.gitmodules and local config
-----------------------------
+Revisions, .gitmodules And Local Config
+---------------------------------------
 
 In this section we will discuss the handling of values from .gitmodules
 that are not in the worktree but in revisions.
 
-All configuration values for submodules in .git/modules/ like
-recurseSubmodules, autoinit, ... come from local config or commandline. TODO
+All configuration values for initialized and checked out submodules in
+.git/modules/ like 'recurseSubmodules', 'autoInit', ... come from local
+(checked out) config or commandline.
 
-If there is a submodule described in some revisions .gitmodules
-and we come to the conclusion that it should be fetched. The
-fetch automatically clones it into .git/modules and copies
+We now describe submodules that are not in the index nor in the checked
+out .gitmodules. That means they are only referenced in .gitmodules of
+commits. If there is a submodule described in some of the fetched
+revisions .gitmodules and we come to the conclusion that it should be
+fetched. The fetch automatically clones it into .git/modules and copies
 the url from .gitmodules into .git/config
 
-If .gitmodules configuration values disagree between revisions we
-fall back on the configured global default. E.g.
-+submodule.recursesubmodules+ or the --recurseSubmodules commandline
-option. If nothing is configured the current default will be do not do
-anything.
+If .gitmodules configuration values disagree between revisions and no
+overriding configuration is provided. We fall back on the configured
+global default. E.g. : +submodule.recursesubmodules+ or the
++--recurse-submodules-default+ commandline option. If nothing is
+configured the current default will be warn and skip.
 
-We only use .gitmodules values from commits if they are consistent
-through all parsed commits.
-If .gitmodules values conflict we do nothing and warn the user.
-
-If the submodule urls disagree and I do not have a local configuration I
-stop. The consolidated configuration list of gitmodules needs a
-conflicting configuration marker. The fallback is to do no fetch and
-tell the user possibilities how to proceed.
-e.g.:
-----
-	git checkout origin/master
-	git submodule sync
-	git submodule update --init --recursive
-----
+If all parsed .gitmodules values from fetched commits are consistent we behave
+like they say.
 
 
 Configuration precedence (the latter overrides the earlier)
