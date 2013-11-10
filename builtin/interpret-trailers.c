@@ -128,29 +128,29 @@ static int git_trailer_config(const char *key, const char *value, void *cb)
 	return 0;
 }
 
-static void parse_trailer(struct strbuf *tok, struct strbuf *val, const char *arg)
+static void parse_trailer(struct strbuf *tok, struct strbuf *val, const char *trailer)
 {
-	char *end = strchr(arg, '=');
+	char *end = strchr(trailer, '=');
 	if (!end)
-		end = strchr(arg, ':');
+		end = strchr(trailer, ':');
 	if (end) {
-		strbuf_add(tok, arg, end - arg);
+		strbuf_add(tok, trailer, end - trailer);
 		strbuf_trim(tok);
 		strbuf_addstr(val, end + 1);
 		strbuf_trim(val);
 	} else {
-		strbuf_addstr(tok, arg);
+		strbuf_addstr(tok, trailer);
 		strbuf_trim(tok);
 	}
 }
 
 static void parse_trailer_into_string_lists(struct string_list *tok_list,
 					    struct string_list *val_list,
-					    const char *arg)
+					    const char *trailer)
 {
 	struct strbuf tok = STRBUF_INIT;
 	struct strbuf val = STRBUF_INIT;
-	parse_trailer(&tok, &val, lines[i]->buf);
+	parse_trailer(&tok, &val, trailer);
 	string_list_append(tok_list, strbuf_detach(&tok, NULL));
 	string_list_append(val_list, strbuf_detach(&val, NULL));
 }
