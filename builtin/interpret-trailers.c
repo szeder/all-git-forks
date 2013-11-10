@@ -71,32 +71,35 @@ static int set_if_missing(struct trailer_info *info, const char *value)
 	return 0;
 }
 
-static int git_trailer_config(const char *key, const char *value, void *cb)
+enum trailer_info_type { VALUE, COMMAND, WHERE, IF_EXIST, IF_MISSING };
+
+static int set_name_and_type(const char *conf_key, const char *suffix,
+			     enum trailer_info_type type,
+			     char **pname, enum trailer_info_type *ptype)
 {
-	if (!prefixcmp(key, "trailer.")) {
-		const char *orig_key = key;
-		char *name;
+	int ret = !suffixcmp(conf_key, suffix);
+	if (ret) {
+		*pname = xstrndup(conf_key, strlen(conf_key) - strlen(suffix));
+		*ptype = type;
+	}
+	return ret;
+}
+
+static int git_trailer_config(const char *conf_key, const char *value, void *cb)
+{
+	if (!prefixcmp(conf_key, "trailer.")) {
+		const char *orig_conf_key = conf_key;
 		struct string_list_item *item;
 		struct trailer_info *info;
-		enum { VALUE, COMMAND, WHERE, IF_EXIST, IF_MISSING } type;
+		char *name;
+		enum trailer_info_type type;
 
-		key += 8;
-		if (!suffixcmp(key, ".value")) {
-			name = xstrndup(key, strlen(key) - 6);
-			type = VALUE;
-		} else if (!suffixcmp(key, ".command")) {
-			name = xstrndup(key, strlen(key) - 8);
-			type = COMMAND;
-		} else if (!suffixcmp(key, ".where")) {
-			name = xstrndup(key, strlen(key) - 9);
-			type = WHERE;
-		} else if (!suffixcmp(key, ".if_exist")) {
-			name = xstrndup(key, strlen(key) - 9);
-			type = IF_EXIST;
-		} else if (!suffixcmp(key, ".if_missing")) {
-			name = xstrndup(key, strlen(key) - 11);
-			type = IF_MISSING;
-		} else
+		conf_key += 8;
+		if (!set_name_and_type(conf_key, ".value", VALUE, &name, &type) &&
+		    !set_name_and_type(conf_key, ".command", COMMAND, &name, &type) &&
+		    !set_name_and_type(conf_key, ".where", WHERE, &name, &type) &&
+		    !set_name_and_type(conf_key, ".if_exist", IF_EXIST, &name, &type) &&
+		    !set_name_and_type(conf_key, ".if_missing", IF_MISSING, &name, &type))
 			return 0;
 
 		item = string_list_insert(&trailer_list, name);
@@ -106,21 +109,21 @@ static int git_trailer_config(const char *key, const char *value, void *cb)
 		info = item->util;
 		if (type == VALUE) {
 			if (info->value)
-				warning(_("more than one %s"), orig_key);
+				warning(_("more than one %s"), orig_conf_key);
 			info->value = xstrdup(value);
 		} else if (type == COMMAND) {
 			if (info->command)
-				warning(_("more than one %s"), orig_key);
+				warning(_("more than one %s"), orig_conf_key);
 			info->command = xstrdup(value);
 		} else if (type == WHERE) {
 			if (set_where(info, value))
-				warning(_("unknow value '%s' for key '%s'"), value, orig_key);
+				warning(_("unknow value '%s' for key '%s'"), value, orig_conf_key);
 		} else if (type == IF_EXIST) {
 			if (set_if_exist(info, value))
-				warning(_("unknow value '%s' for key '%s'"), value, orig_key);
+				warning(_("unknow value '%s' for key '%s'"), value, orig_conf_key);
 		} else if (type == IF_MISSING) {
 			if (set_if_missing(info, value))
-				warning(_("unknow value '%s' for key '%s'"), value, orig_key);
+				warning(_("unknow value '%s' for key '%s'"), value, orig_conf_key);
 		} else {
 			die("internal bug in git_trailer_config");
 		}
