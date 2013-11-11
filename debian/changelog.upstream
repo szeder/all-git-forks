@@ -1,3 +1,66 @@
+Version v1.8.4.3; changes since v1.8.4.2:
+-----------------------------------------
+
+Antoine Pelisse (1):
+      remote-hg: unquote C-style paths when exporting
+
+Brian Gernhardt (3):
+      t5570: Update for symref capability
+      t5570: Update for clone-progress-to-stderr branch
+      t5570: Update for clone-progress-to-stderr branch
+
+Hemmo Nieminen (1):
+      graph: fix coloring around octopus merges
+
+Jeff King (11):
+      http_get_file: style fixes
+      http_request: factor out curlinfo_strbuf
+      http: refactor options to http_get_*
+      http: hoist credential request out of handle_curl_result
+      http: provide effective url to callers
+      http: update base URLs when we see redirects
+      remote-curl: make refs_url a strbuf
+      remote-curl: store url as a strbuf
+      remote-curl: rewrite base url from info/refs redirects
+      split_ident: parse timestamp from end of line
+      subtree: add makefile target for html docs
+
+Jonathan Nieder (1):
+      t/README: tests can use perl even with NO_PERL
+
+Junio C Hamano (10):
+      t5505: fix "set-head --auto with ambiguous HEAD" test
+      upload-pack.c: do not pass confusing cb_data to mark_our_ref()
+      upload-pack: send symbolic ref information as capability
+      upload-pack: send non-HEAD symbolic refs
+      connect.c: make parse_feature_value() static
+      connect: annotate refs with their symref information in get_remote_head()
+      clone: test the new HEAD detection logic
+      revision: do not peel tags used in range notation
+      Start preparing for 1.8.4.3
+      Git 1.8.4.3
+
+Karsten Blees (1):
+      gitignore.txt: fix documentation of "**" patterns
+
+Matthieu Moy (2):
+      checkout: allow dwim for branch creation for "git checkout $branch --"
+      checkout: proper error message on 'git checkout foo bar --'
+
+Ramsay Allan Jones (1):
+      http.c: Spell the null pointer as NULL
+
+SZEDER Gábor (1):
+      bash prompt: don't use '+=' operator in show upstream code path
+
+Sitaram Chamarty (1):
+      doc/howto: warn about (dumb)http server document being too old
+
+Vivien Didelot (2):
+      Documentation: restore a space in unpack-objects usage
+      Documentation: "pack-file" is not literal in unpack-objects
+
+
 Version v1.8.4.2; changes since v1.8.4.1:
 -----------------------------------------
 
