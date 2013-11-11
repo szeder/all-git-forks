@@ -45,7 +45,9 @@ OPTIONS
 	It also interpolates `%%` to `%`, and `%xx` where `xx`
 	are hex digits interpolates to character with hex code
 	`xx`; for example `%00` interpolates to `\0` (NUL),
-	`%09` to `\t` (TAB) and `%0a` to `\n` (LF).
+	`%09` to `\t` (TAB) and `%0a` to `\n` (LF). Additionally,
+	colors can be specified using `%C(...)`, with names
+	described in color.branch.*.
 
 <pattern>...::
 	If one or more patterns are given, only refs are shown that
@@ -91,7 +93,15 @@ objectname::
 upstream::
 	The name of a local ref which can be considered ``upstream''
 	from the displayed ref. Respects `:short` in the same way as
-	`refname` above.
+	`refname` above.  Additionally respects `:track` to show
+	"[ahead N, behind M]" and `:trackshort` to show the terse
+	version (like the prompt) ">", "<", "<>", or "=".  Has no
+	effect if the ref does not have tracking information
+	associated with it.
+
+HEAD::
+	Used to indicate the currently checked out branch.  Is '*' if
+	HEAD points to the current ref, and ' ' otherwise.
 
 In addition to the above, for commit and tag objects, the header
 field names (`tree`, `parent`, `object`, `type`, and `tag`) can
