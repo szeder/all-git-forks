@@ -30,6 +30,8 @@ We add/rely on the following switches:
  . 'fetch.recurseSubmodules' (config only)
  . 'submodule."name".fetchRecurseSubmodules' (.gitmodules / config)
 
+*TODO:* Talk about the options values like 'on', 'off', 'on-demand' ?
+
 For expensive operations we might have a special commandline option like:
 +--recurse-submodules=all+ ?
 
@@ -175,42 +177,51 @@ Let's say +submodule.recursesubmodules = off+
 Implementation Plan or How Can That Work
 ----------------------------------------
 
-This is a rough description of the recursive fetch/clone strategy.
+This is a rough description of the recursive fetch/clone strategy. We
+concentrate on the 'on-demand' case. Since 'on' and 'off' are quite
+simple.
 
 'changed_submodule_names' is a string_list of submodules names and
 additionally stores the result of the parsed final configuration in its
 util pointer. It has a conflict marker for entries that have been parsed
 but need skipping.
 
-*TODO:* rework to first collect in 'changed_submodule_names' and
-then do the fetch in a second stage.
+For +--recurse-submodules=on+ instead of the first step (adding only
+fetched revisions), add all names from .git/modules to
+'changed_submodule_names'. And add all submodules that exist in new
+revisions.
+
+*TODO:* rename 'changed_submodule_names' variable to reflect the 'on'
+case.
 
 In superproject
 
 . Lookup all changed submodule names from commits received during fetch
-  and if it is not contained yet add to 'changed_submodule_names'. During collection phase: For
-  each revision that changes a submodule store:
+  and if it is not contained in the list yet add to
+  'changed_submodule_names'. During collection phase: For each revision
+  that changes a submodule store in a parse cache:
 	.. .gitmodules sha1 (for subsequent readings of the same config)
 	.. path
 	.. name
 
 . For each submodule in the index that is in 'changed_submodule_names'
-	.. Fetch depending on local and checked out configuration (and
-	   whether referenced commits are already present)
-	.. Add submodule to 'fetched_submodules'
-	.. Remove submodule from 'changed_submodule_names'
+	.. Read and parse local and checked out configuration and reset
+	   conflict marker
+	.. Mark entry as 'finished_parsing'.
 
-. For each changed submodule left in list from 1.
-	.. Skip and warn if not all configurations are the same
-	   and no local config for that module
-	.. Fetch or clone depending on local configuration or if that
-	   does not exist from revisions
-	.. Add submodule to 'fetched_submodules'
+. For each entry in 'changed_submodule_names' not marked 'finished_parsing'
+	.. Skip if entry has 'finished_parsing' flag set.
+	.. Skip if entry has no conflict.
+	.. Read and parse local and checked out configuration and reset
+	   conflict marker in entry if the local config solves the conflict.
+	   *TODO:* It seems we need a conflict marker for every single
+	   value so we can decide what caused the conflict and when it
+	   is resolved.
+	.. Mark entry as solved if last step was successful.
 
-. For each submodule in .git/modules
-	.. Skip if in fetched_submodules
-	.. fetch depending on local configuration (e.g. in .git/config)
-	   or commandline
+. Fetch / Clone all submodules in 'changed_submodule_names' depending on
+  stored configuration in that list, the conflict marker and whether
+  referenced commits are already present.
 
 . 'Will be left for future extension:' If we were given the special option
   +--recurse-submodules=all+ it overrides all revisions, checked out or
