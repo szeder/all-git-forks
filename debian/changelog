@@ -1,5 +1,6 @@
 git (1:1.8.5~rc1-0.1) experimental; urgency=low
 
+  * merge branch debian-sid.
   * new upstream release candidate.
 
   [ Thorsten Glaser ]
@@ -25,6 +26,12 @@ git (1:1.8.5~rc1-0.1) experimental; urgency=low
     remove; applied upstream.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 04 Nov 2013 13:42:35 -0500
+
+git (1:1.8.4.3-1) unstable; urgency=low
+
+  * new upstream point release.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 11 Nov 2013 15:51:10 -0800
 
 git (1:1.8.5~rc0-1) experimental; urgency=low
 

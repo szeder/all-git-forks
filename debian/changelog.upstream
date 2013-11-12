@@ -71,7 +71,7 @@ Vivien Didelot (2):
       Documentation: "pack-file" is not literal in unpack-objects
 
 
-Version v1.8.5-rc0; changes since v1.8.4.2:
+Version v1.8.5-rc0; changes since v1.8.4.3:
 -------------------------------------------
 
 Alexandru Juncu (1):
@@ -110,13 +110,10 @@ Brandon Casey (18):
       contrib/git-credential-gnome-keyring.c: support ancient gnome-keyring
       contrib/git-credential-gnome-keyring.c: support really ancient gnome-keyring
 
-Brian Gernhardt (6):
+Brian Gernhardt (3):
       Makefile: Fix APPLE_COMMON_CRYPTO with BLK_SHA1
       OS X: Fix redeclaration of die warning
       t5551: Remove header from curl cookie file
-      t5570: Update for symref capability
-      t5570: Update for clone-progress-to-stderr branch
-      t5570: Update for clone-progress-to-stderr branch
 
 Christian Couder (7):
       replace: forbid replacing an object with one of a different type
@@ -209,16 +206,13 @@ Felipe Contreras (26):
 Gerrit Pape (1):
       hooks/post-receive-email: set declared encoding to utf-8
 
-Hemmo Nieminen (1):
-      graph: fix coloring around octopus merges
-
 Hiroshige Umino (1):
       cherry-pick: allow "-" as abbreviation of '@{-1}'
 
 Jean-Noel Avila (1):
       l10n: fr.po: 2135/2135 messages translated
 
-Jeff King (32):
+Jeff King (22):
       grep: allow to use textconv filters
       clear parsed flag when we free tree buffers
       cat-file: only split on whitespace when %(rest) is used
@@ -236,17 +230,7 @@ Jeff King (32):
       config: make numeric parsing errors more clear
       git-config: always treat --int as 64-bit internally
       t5541: mark passing c-a-s test as success
-      http_get_file: style fixes
-      http_request: factor out curlinfo_strbuf
-      http: refactor options to http_get_*
       cherry-pick: handle "-" after parsing options
-      http: hoist credential request out of handle_curl_result
-      http: provide effective url to callers
-      http: update base URLs when we see redirects
-      remote-curl: make refs_url a strbuf
-      remote-curl: store url as a strbuf
-      remote-curl: rewrite base url from info/refs redirects
-      split_ident: parse timestamp from end of line
       remote: do not copy "origin" string literal
       http: use curl's tcp keepalive if available
       drop redundant semicolon in empty while
@@ -306,7 +290,7 @@ Jonathan Nieder (7):
 Julien Carsique (1):
       git-prompt.sh: optionally show upstream branch name
 
-Junio C Hamano (68):
+Junio C Hamano (60):
       pack-objects: shrink struct object_entry
       diff_opt: track whether flags have been set explicitly
       setup_reflog_action: document the rules for using GIT_REFLOG_ACTION
@@ -352,16 +336,8 @@ Junio C Hamano (68):
       mailmap: work around implementations with pure inline strcasecmp
       Update draft release notes to 1.8.5 for the third batch of topics
       Update draft release notes to 1.8.5 for the first half of the fourth batch
-      t5505: fix "set-head --auto with ambiguous HEAD" test
-      upload-pack.c: do not pass confusing cb_data to mark_our_ref()
-      upload-pack: send symbolic ref information as capability
-      upload-pack: send non-HEAD symbolic refs
-      connect.c: make parse_feature_value() static
-      connect: annotate refs with their symref information in get_remote_head()
-      clone: test the new HEAD detection logic
       Update draft release notes to 1.8.5 for the fourth batch of topics
       Update draft release notes to 1.8.5 for the fifth batch of topics
-      revision: do not peel tags used in range notation
       C: have space around && and || operators
       abspath.c: have SP around arithmetic operators
       alloc.c: have SP around arithmetic operators
@@ -410,7 +386,7 @@ Marc Branchaud (1):
 Mark Levedahl (1):
       t6131 - skip tests if on case-insensitive file system
 
-Matthieu Moy (18):
+Matthieu Moy (16):
       Documentation/fast-import: clarify summary for `feature` command
       Documentation/remote-helpers: document common use-case for private ref
       git-remote-mediawiki: add test and check Makefile targets
@@ -427,8 +403,6 @@ Matthieu Moy (18):
       wt-status: turn advice_status_hints into a field of wt_status
       commit: disable status hints when writing to COMMIT_EDITMSG
       RelNotes/1.8.5: direct script writers to "git status --porcelain"
-      checkout: allow dwim for branch creation for "git checkout $branch --"
-      checkout: proper error message on 'git checkout foo bar --'
 
 Michael J Gruber (5):
       t4030: demonstrate behavior of show with textconv
@@ -533,7 +507,7 @@ Ramkumar Ramachandra (3):
       tar-tree: remove dependency on sq_quote_print()
       quote: remove sq_quote_print()
 
-Ramsay Allan Jones (9):
+Ramsay Allan Jones (8):
       howto/setup-git-server-over-http: fix unescaped '^'s
       howto/revert-a-faulty-merge: fix unescaped '^'s
       config.c: mark file-local function static
@@ -542,7 +516,6 @@ Ramsay Allan Jones (9):
       gitweb test: fix highlight test hang on Linux Mint
       format-patch doc: Thunderbird wraps lines unless mailnews.wraplength=0
       sparse: suppress some "using sizeof on a function" warnings
-      http.c: Spell the null pointer as NULL
 
 René Scharfe (1):
       pull: use $curr_branch_short more
@@ -558,10 +531,9 @@ Richard Hansen (9):
       glossary: fix and clarify the definition of 'ref'
       remote-bzr: reuse bzrlib transports when possible
 
-SZEDER Gábor (4):
+SZEDER Gábor (3):
       bash prompt: test the prompt with newline in repository path
       completion: improve untracked directory filtering for filename completion
-      bash prompt: don't use '+=' operator in show upstream code path
       t3600: fix broken "choking git rm" test
 
 Sebastian Schuberth (5):
@@ -656,6 +628,69 @@ kazuki saitoh (1):
 
 Ævar Arnfjörð Bjarmason (1):
       gitweb: Fix the author initials in blame for non-ASCII names
+
+
+Version v1.8.4.3; changes since v1.8.4.2:
+-----------------------------------------
+
+Antoine Pelisse (1):
+      remote-hg: unquote C-style paths when exporting
+
+Brian Gernhardt (3):
+      t5570: Update for symref capability
+      t5570: Update for clone-progress-to-stderr branch
+      t5570: Update for clone-progress-to-stderr branch
+
+Hemmo Nieminen (1):
+      graph: fix coloring around octopus merges
+
+Jeff King (11):
+      http_get_file: style fixes
+      http_request: factor out curlinfo_strbuf
+      http: refactor options to http_get_*
+      http: hoist credential request out of handle_curl_result
+      http: provide effective url to callers
+      http: update base URLs when we see redirects
+      remote-curl: make refs_url a strbuf
+      remote-curl: store url as a strbuf
+      remote-curl: rewrite base url from info/refs redirects
+      split_ident: parse timestamp from end of line
+      subtree: add makefile target for html docs
+
+Jonathan Nieder (1):
+      t/README: tests can use perl even with NO_PERL
+
+Junio C Hamano (10):
+      t5505: fix "set-head --auto with ambiguous HEAD" test
+      upload-pack.c: do not pass confusing cb_data to mark_our_ref()
+      upload-pack: send symbolic ref information as capability
+      upload-pack: send non-HEAD symbolic refs
+      connect.c: make parse_feature_value() static
+      connect: annotate refs with their symref information in get_remote_head()
+      clone: test the new HEAD detection logic
+      revision: do not peel tags used in range notation
+      Start preparing for 1.8.4.3
+      Git 1.8.4.3
+
+Karsten Blees (1):
+      gitignore.txt: fix documentation of "**" patterns
+
+Matthieu Moy (2):
+      checkout: allow dwim for branch creation for "git checkout $branch --"
+      checkout: proper error message on 'git checkout foo bar --'
+
+Ramsay Allan Jones (1):
+      http.c: Spell the null pointer as NULL
+
+SZEDER Gábor (1):
+      bash prompt: don't use '+=' operator in show upstream code path
+
+Sitaram Chamarty (1):
+      doc/howto: warn about (dumb)http server document being too old
+
+Vivien Didelot (2):
+      Documentation: restore a space in unpack-objects usage
+      Documentation: "pack-file" is not literal in unpack-objects
 
 
 Version v1.8.4.2; changes since v1.8.4.1:
