@@ -8,6 +8,7 @@ struct credential {
 	unsigned approved:1,
 		 configured:1,
 		 quit:1,
+		 interactive:1,
 		 use_http_path:1;
 
 	char *username;
