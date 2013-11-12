@@ -599,7 +599,7 @@ def get_branch_tip(repo, branch):
 
     # verify there's only one head
     if (len(heads) > 1):
-        warn("Branch '%s' has more than one head, consider merging" % branch)
+        warn("Branch '%s' has more than one head, consider merging", branch)
         return branch_tip(hgref(branch))
 
     return heads[0]
@@ -745,7 +745,7 @@ def parse_commit(parser):
             t, path = line.split(' ', 1)
             f = { 'deleted' : True }
         else:
-            die('Unknown file command: %s' % line)
+            die('Unknown file command: %s', line)
         files[path] = f
 
     # only export the commits if we are on an internal proxy repo
@@ -1034,7 +1034,7 @@ def do_export(parser):
         elif parser.check('feature'):
             pass
         else:
-            die('unhandled export command: %s' % line)
+            die('unhandled export command: %s', line)
 
     need_fetch = False
 
@@ -1229,7 +1229,7 @@ def main(args):
         elif parser.check('option'):
             do_option(parser)
         else:
-            die('unhandled command: %s' % line)
+            die('unhandled command: %s', line)
         sys.stdout.flush()
 
 def bye():
