@@ -735,8 +735,12 @@ def parse_commit(parser):
     for line in parser:
         if parser.check('M'):
             t, m, mark_ref, path = line.split(' ', 3)
-            mark = int(mark_ref[1:])
-            f = { 'mode' : hgmode(m), 'data' : blob_marks[mark] }
+            if m == '160000':
+                f = { 'mode' : '', 'data' : 'Subproject commit %s\n' % mark_ref }
+                warn('submodule link at %r to %s pushed as a regular file', path, mark_ref)
+            else:
+                mark = int(mark_ref[1:])
+                f = { 'mode' : hgmode(m), 'data' : blob_marks[mark] }
         elif parser.check('D'):
             t, path = line.split(' ', 1)
             f = { 'deleted' : True }
