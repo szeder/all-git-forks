@@ -664,8 +664,12 @@ static void populate_value(struct refinfo *ref)
 			    !branch->merge[0]->dst)
 				continue;
 			refname = branch->merge[0]->dst;
-		} else if (!prefixcmp(name, "color")) {
-			;
+		} else if (!prefixcmp(name, "color:")) {
+			char color[COLOR_MAXLEN] = "";
+
+			color_parse(name + 6, "--format", color);
+			v->s = xstrdup(color);
+			continue;
 		} else if (!strcmp(name, "flag")) {
 			char buf[256], *cp = buf;
 			if (ref->flag & REF_ISSYMREF)
@@ -732,12 +736,6 @@ static void populate_value(struct refinfo *ref)
 					v->s = ">";
 				else
 					v->s = "<>";
-				continue;
-			} else if (!prefixcmp(name, "color")) {
-				char color[COLOR_MAXLEN] = "";
-
-				color_parse(formatp, "--format", color);
-				v->s = xstrdup(color);
 				continue;
 			} else
 				die("unknown %.*s format %s",
