@@ -25,6 +25,50 @@ static int do_generic_cmd(const char *me, char *arg)
 	return execv_git_cmd(my_argv);
 }
 
+static int do_git_with_opts_cmd(const char *me, char *arg)
+{
+	const char *allowed_cmds[] = {
+		"receive-pack",
+		"upload-pack",
+		"upload-archive",
+		NULL,
+	};
+	const char **user_argv, **p;
+	const char *cmd = NULL;
+	int count;
+
+	count = split_cmdline(arg, &user_argv);
+	if (count < 0) {
+		die ("Invalid command format '%s'\n", arg);
+	}
+
+	if (count == 3 && !strncmp("--namespace=", *user_argv, 12)) {
+		cmd = user_argv[1];
+		p = user_argv + 2;
+	} else if (count == 4 && !strcmp("--namespace", *user_argv)) {
+		cmd = user_argv[2];
+		p = user_argv + 3;
+	} else {
+		cmd = user_argv[0];
+		p = user_argv + 1;
+	}
+
+	if (cmd) {
+		/* last arg is path of repository */
+		if (!*p || *(p+1))
+			die("bad argument");
+
+		for (p = allowed_cmds; *p; p++) {
+			if (strcmp(*p, cmd))
+				continue;
+			setup_path();
+			return execv_git_cmd(user_argv);
+		}
+	}
+
+	die("bad command");
+}
+
 static int do_cvs_cmd(const char *me, char *arg)
 {
 	const char *cvsserver_argv[3] = {
@@ -138,6 +182,7 @@ static struct commands {
 	{ "git-receive-pack", do_generic_cmd },
 	{ "git-upload-pack", do_generic_cmd },
 	{ "git-upload-archive", do_generic_cmd },
+	{ "git", do_git_with_opts_cmd },
 	{ "cvs", do_cvs_cmd },
 	{ NULL },
 };
@@ -185,7 +230,7 @@ int main(int argc, char **argv)
 	}
 
 	prog = xstrdup(argv[2]);
-	if (!strncmp(prog, "git", 3) && isspace(prog[3]))
+	if (!strncmp(prog, "git", 3) && isspace(prog[3]) && isalpha(prog[4]))
 		/* Accept "git foo" as if the caller said "git-foo". */
 		prog[3] = '-';
 
