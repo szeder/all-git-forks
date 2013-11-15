@@ -1847,9 +1847,6 @@ sub make_log_entry {
 			$name_field = $1;
 		}
 		if (!defined $name_field) {
-			if (!defined $email) {
-				$email = $name;
-			}
 		} elsif ($name_field =~ /(.*?)\s+<(.*)>/) {
 			($name, $email) = ($1, $2);
 		} elsif ($name_field =~ /(.*)@/) {
