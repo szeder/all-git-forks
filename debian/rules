@@ -91,7 +91,7 @@ build-indep-stamp: patch-stamp build-arch-stamp
 	  PATH=$(CURDIR)/debian:$(PATH) GIT_TEST_OPTS=--verbose \
 	    $(MAKE) -C t $(OPTS) $(CURDIR)/debian/test-bzr.sh
 	# git-mediawiki
-	$(MAKE) -Ccontrib/mw-to-git all
+	$(MAKE) -Ccontrib/mw-to-git all $(OPTS)
 	touch build-indep-stamp
 
 clean: deb-checkdir
@@ -102,7 +102,7 @@ clean: deb-checkdir
 	! test -e patch-stamp || \
 	{ \
 	  set -e; \
-	  $(MAKE) -Ccontrib/mw-to-git clean; \
+	  $(MAKE) -Ccontrib/mw-to-git clean $(OPTS); \
 	  for i in `ls -1r debian/diff/*.diff debian/diff/*.patch \
 	      2>/dev/null || :`; do \
 	    patch -p1 -NR -r- <$$i || test $$? = 1 || exit 1; \

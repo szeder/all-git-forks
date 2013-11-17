@@ -1,3 +1,11 @@
+git (1:1.8.5~rc2-1.1) experimental; urgency=low
+
+  [ Anders Kaseorg ]
+  * debian/rules: pass $(OPTS) to contrib/mw-to-git/Makefile
+    (closes: #729763).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 18 Nov 2013 14:43:52 -0800
+
 git (1:1.8.5~rc2-1) experimental; urgency=low
 
   * merge branch debian-sid.
