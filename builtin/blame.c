@@ -2244,6 +2244,12 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 	static int show_stats = 0;
 	static const char *revs_file = NULL;
 	static const char *contents_from = NULL;
+
+        /*
+         * 这里是在定义该命令的参数：
+         *     OPT_BOOLEAN, OPT_BIT都是宏，最终生成struct option。
+         *     在parse-option.h里有详细的定义。
+         */
 	static const struct option options[] = {
 		OPT_BOOL(0, "incremental", &incremental, N_("Show blame entries as we find them, incrementally")),
 		OPT_BOOL('b', NULL, &blank_boundary, N_("Show blank SHA-1 for boundary commits (Default: off)")),
@@ -2271,12 +2277,16 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 	};
 
 	struct parse_opt_ctx_t ctx;
+
+        /* git有个annotate命令，在blame出现前充当了blame的角色。这里是为了后向兼容。 */
 	int cmd_is_annotate = !strcmp(argv[0], "annotate");
 	struct range_set ranges;
 	unsigned int range_i;
 	long anchor;
 
+        /* 读取配置 */
 	git_config(git_blame_config, NULL);
+
 	init_revisions(&revs, NULL);
 	revs.date_mode = blame_date_mode;
 	DIFF_OPT_SET(&revs.diffopt, ALLOW_TEXTCONV);

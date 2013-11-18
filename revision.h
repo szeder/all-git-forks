@@ -52,7 +52,7 @@ struct rev_cmdline_info {
 
 struct rev_info {
 	/* Starting list */
-	struct commit_list *commits;
+	struct commit_list *commits; /* 这是一个链表 */
 	struct object_array pending;
 
 	/* Parents of shown commits */

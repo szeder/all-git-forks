@@ -471,6 +471,9 @@ static void handle_internal_command(int argc, const char **argv)
 		argv[0] = cmd = "help";
 	}
 
+        /*
+         * 正常情况下，在以下的for循环中就退出了
+         */
 	for (i = 0; i < ARRAY_SIZE(commands); i++) {
 		struct cmd_struct *p = commands+i;
 		if (strcmp(p->cmd, cmd))
@@ -577,6 +580,9 @@ int main(int argc, char **av)
 	}
 
 	/* Look for flags.. */
+        /*
+         * 处理以'--'开头的flag
+         */
 	argv++;
 	argc--;
 	handle_options(&argv, &argc, NULL);
@@ -604,6 +610,9 @@ int main(int argc, char **av)
 	while (1) {
 		static int done_help = 0;
 		static int was_alias = 0;
+                /*
+                 * 正常情况下所有命令都在 run_argv 中运行完成，如果返回则表示发生错误
+                 */
 		was_alias = run_argv(&argc, &argv);
 		if (errno != ENOENT)
 			break;

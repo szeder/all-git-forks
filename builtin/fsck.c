@@ -381,9 +381,11 @@ static void fsck_sha1_list(void)
 {
 	int i, nr = sha1_list.nr;
 
+        /* 对sha1_list首先排个序（根据i-node顺序） */
 	if (SORT_DIRENT)
 		qsort(sha1_list.entry, nr,
 		      sizeof(struct sha1_entry *), ino_compare);
+
 	for (i = 0; i < nr; i++) {
 		struct sha1_entry *entry = sha1_list.entry[i];
 		unsigned char *sha1 = entry->sha1;
@@ -434,6 +436,7 @@ static void fsck_dir(int i, char *path)
 
 	sprintf(name, "%02x", i);
 	while ((de = readdir(dir)) != NULL) {
+                /* sha1本身是20个16进制数值，所以用字符来表示就是40个字符 */
 		unsigned char sha1[20];
 
 		if (is_dot_or_dotdot(de->d_name))
@@ -644,7 +647,14 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 		include_reflogs = 0;
 	}
 
+        /*
+         * 解析HEAD，将HEAD的sha1保存到全局变量head_sha1中
+         */
 	fsck_head_link();
+
+        /*
+         * get_object_directory默认返回的是.git/objects
+         */
 	fsck_object_dir(get_object_directory());
 
 	prepare_alt_odb();

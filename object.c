@@ -63,6 +63,10 @@ static void insert_obj_hash(struct object *obj, struct object **hash, unsigned i
 	hash[j] = obj;
 }
 
+/*
+ * 在obj_hash里寻找sha1的obj
+ * obj_hash相当于是一个cache，如果没有找到obj或者obj_hash本身就没有的话返回NULL
+ */
 struct object *lookup_object(const unsigned char *sha1)
 {
 	unsigned int i, first;
@@ -215,6 +219,7 @@ struct object *parse_object(const unsigned char *sha1)
 	if (obj && obj->parsed)
 		return obj;
 
+        /* 对于一个尚未parse过的blob对象，则…… */
 	if ((obj && obj->type == OBJ_BLOB) ||
 	    (!obj && has_sha1_file(sha1) &&
 	     sha1_object_info(sha1, NULL) == OBJ_BLOB)) {
@@ -222,6 +227,10 @@ struct object *parse_object(const unsigned char *sha1)
 			error("sha1 mismatch %s", sha1_to_hex(repl));
 			return NULL;
 		}
+                /*
+                 * lookup_blob会根据sha1创建一个obj，并将其插入obj_hash
+                 * parse_blog_buffer将obj.parsed标记为1
+                 */
 		parse_blob_buffer(lookup_blob(sha1), NULL, 0);
 		return lookup_object(sha1);
 	}

@@ -1,6 +1,9 @@
 #include "cache.h"
 #include "refs.h"
 
+/*
+ * 比较两个字符串，相同则返回0
+ */
 int prefixcmp(const char *str, const char *prefix)
 {
 	for (; ; str++, prefix++)
