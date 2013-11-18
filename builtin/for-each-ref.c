@@ -23,6 +23,7 @@ typedef enum { FIELD_STR, FIELD_ULONG, FIELD_TIME } cmp_type;
 struct atom_value {
 	const char *s;
 	unsigned long ul; /* used for sorting when not FIELD_STR */
+	int color : 2; /* 1 indicates color, 2 indicates color-reset */
 };
 
 struct ref_sort {
@@ -668,6 +669,10 @@ static void populate_value(struct refinfo *ref)
 			char color[COLOR_MAXLEN] = "";
 
 			color_parse(name + 6, "--format", color);
+			if (!strcmp(name + 6, "reset"))
+				v->color = 2;
+			else
+				v->color = 1;
 			v->s = xstrdup(color);
 			continue;
 		} else if (!strcmp(name, "flag")) {
@@ -914,11 +919,9 @@ static void sort_refs(struct ref_sort *sort, struct refinfo **refs, int num_refs
 	qsort(refs, num_refs, sizeof(struct refinfo *), compare_refs);
 }
 
-static void print_value(struct refinfo *ref, int atom, int quote_style)
+static void print_value(struct atom_value *v, int quote_style)
 {
-	struct atom_value *v;
 	struct strbuf sb = STRBUF_INIT;
-	get_value(ref, atom, &v);
 	switch (quote_style) {
 	case QUOTE_NONE:
 		fputs(v->s, stdout);
@@ -983,17 +986,35 @@ static void emit(const char *cp, const char *ep)
 static void show_ref(struct refinfo *info, const char *format, int quote_style)
 {
 	const char *cp, *sp, *ep;
+	struct atom_value *atomv, resetv;
+	int reset_color = 0;
+	char color[COLOR_MAXLEN] = "";
 
+	color_parse("reset", "--format", color);
+	resetv.s = color;
 	for (cp = format; *cp && (sp = find_next(cp)); cp = ep + 1) {
 		ep = strchr(sp, ')');
 		if (cp < sp)
 			emit(cp, sp);
-		print_value(info, parse_atom(sp + 2, ep), quote_style);
+		get_value(info, parse_atom(sp + 2, ep), &atomv);
+		print_value(atomv, quote_style);
+
+		/*
+		 * reset_color is used to avoid color leakage; it
+		 * should be set when the last color atom is not a
+		 * color-reset.
+		 */
+		if (atomv->color == 1)
+			reset_color = 1;
+		else if (atomv->color == 2)
+			reset_color = 0;
 	}
 	if (*cp) {
 		sp = cp + strlen(cp);
 		emit(cp, sp);
 	}
+	if (reset_color)
+		print_value(&resetv, quote_style);
 	putchar('\n');
 }
 
