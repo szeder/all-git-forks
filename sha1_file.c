@@ -2126,6 +2126,16 @@ void *unpack_entry(struct packed_git *p, off_t obj_offset,
 		int i;
 		struct delta_base_cache_entry *ent;
 
+		ent = get_delta_base_cache_entry(p, curpos);
+		if (eq_delta_base_cache_entry(ent, p, curpos)) {
+			type = ent->type;
+			data = ent->data;
+			size = ent->size;
+			clear_delta_base_cache_entry(ent);
+			base_from_cache = 1;
+			break;
+		}
+
 		if (do_check_packed_object_crc && p->index_version > 1) {
 			struct revindex_entry *revidx = find_pack_revindex(p, obj_offset);
 			unsigned long len = revidx[1].offset - obj_offset;
@@ -2138,16 +2148,6 @@ void *unpack_entry(struct packed_git *p, off_t obj_offset,
 				unuse_pack(&w_curs);
 				return NULL;
 			}
-		}
-
-		ent = get_delta_base_cache_entry(p, curpos);
-		if (eq_delta_base_cache_entry(ent, p, curpos)) {
-			type = ent->type;
-			data = ent->data;
-			size = ent->size;
-			clear_delta_base_cache_entry(ent);
-			base_from_cache = 1;
-			break;
 		}
 
 		type = unpack_object_header(p, &w_curs, &curpos, &size);
@@ -2514,7 +2514,6 @@ static int sha1_loose_object_info(const unsigned char *sha1,
 	return 0;
 }
 
-/* returns enum object_type or negative */
 int sha1_object_info_extended(const unsigned char *sha1, struct object_info *oi)
 {
 	struct cached_object *co;
@@ -2563,6 +2562,7 @@ int sha1_object_info_extended(const unsigned char *sha1, struct object_info *oi)
 	return 0;
 }
 
+/* returns enum object_type or negative */
 int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
 {
 	enum object_type type;

@@ -314,6 +314,8 @@ extern void free_name_hash(struct index_state *istate);
 #define refresh_cache(flags) refresh_index(&the_index, (flags), NULL, NULL, NULL)
 #define ce_match_stat(ce, st, options) ie_match_stat(&the_index, (ce), (st), (options))
 #define ce_modified(ce, st, options) ie_modified(&the_index, (ce), (st), (options))
+#define cache_dir_exists(name, namelen) index_dir_exists(&the_index, (name), (namelen))
+#define cache_file_exists(name, namelen, igncase) index_file_exists(&the_index, (name), (namelen), (igncase))
 #define cache_name_exists(name, namelen, igncase) index_name_exists(&the_index, (name), (namelen), (igncase))
 #define cache_name_is_other(name, namelen) index_name_is_other(&the_index, (name), (namelen))
 #define resolve_undo_clear() resolve_undo_clear_index(&the_index)
@@ -396,7 +398,6 @@ extern int is_bare_repository(void);
 extern int is_inside_git_dir(void);
 extern char *git_work_tree_cfg;
 extern int is_inside_work_tree(void);
-extern int have_git_dir(void);
 extern const char *get_git_dir(void);
 extern int is_git_directory(const char *path);
 extern char *get_object_directory(void);
@@ -463,6 +464,8 @@ extern int write_index(struct index_state *, int newfd);
 extern int discard_index(struct index_state *);
 extern int unmerged_index(const struct index_state *);
 extern int verify_path(const char *path);
+extern struct cache_entry *index_dir_exists(struct index_state *istate, const char *name, int namelen);
+extern struct cache_entry *index_file_exists(struct index_state *istate, const char *name, int namelen, int igncase);
 extern struct cache_entry *index_name_exists(struct index_state *istate, const char *name, int namelen, int igncase);
 extern int index_name_pos(const struct index_state *, const char *name, int namelen);
 #define ADD_CACHE_OK_TO_ADD 1		/* Ok to add */
@@ -747,6 +750,7 @@ int is_directory(const char *);
 const char *real_path(const char *path);
 const char *real_path_if_valid(const char *path);
 const char *absolute_path(const char *path);
+const char *remove_leading_path(const char *in, const char *prefix);
 const char *relative_path(const char *in, const char *prefix, struct strbuf *sb);
 int normalize_path_copy_len(char *dst, const char *src, int *prefix_len);
 int normalize_path_copy(char *dst, const char *src);
@@ -880,7 +884,7 @@ extern char *resolve_refdup(const char *ref, unsigned char *sha1, int reading, i
 
 extern int dwim_ref(const char *str, int len, unsigned char *sha1, char **ref);
 extern int dwim_log(const char *str, int len, unsigned char *sha1, char **ref);
-extern int interpret_branch_name(const char *str, struct strbuf *);
+extern int interpret_branch_name(const char *str, int len, struct strbuf *);
 extern int get_sha1_mb(const char *str, unsigned char *sha1);
 
 extern int refname_match(const char *abbrev_name, const char *full_name, const char **rules);
@@ -953,6 +957,15 @@ struct ident_split {
  */
 extern int split_ident_line(struct ident_split *, const char *, int);
 
+/*
+ * Compare split idents for equality or strict ordering. Note that we
+ * compare only the ident part of the line, ignoring any timestamp.
+ *
+ * Because there are two fields, we must choose one as the primary key; we
+ * currently arbitrarily pick the email.
+ */
+extern int ident_cmp(const struct ident_split *, const struct ident_split *);
+
 struct checkout {
 	const char *base_dir;
 	int base_dir_len;
@@ -962,6 +975,7 @@ struct checkout {
 		 refresh_cache:1;
 };
 
+#define TEMPORARY_FILENAME_LENGTH 25
 extern int checkout_entry(struct cache_entry *ce, const struct checkout *state, char *topath);
 
 struct cache_def {

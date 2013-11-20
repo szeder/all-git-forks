@@ -724,6 +724,8 @@ branch.<name>.remote::
 	overridden by `branch.<name>.pushremote`.  If no remote is
 	configured, or if you are not on any branch, it defaults to
 	`origin` for fetching and `remote.pushdefault` for pushing.
+	Additionally, `.` (a period) is the current local repository
+	(a dot-repository), see `branch.<name>.merge`'s final note below.
 
 branch.<name>.pushremote::
 	When on branch <name>, it overrides `branch.<name>.remote` for
@@ -749,8 +751,8 @@ branch.<name>.merge::
 	Specify multiple values to get an octopus merge.
 	If you wish to setup 'git pull' so that it merges into <name> from
 	another branch in the local repository, you can point
-	branch.<name>.merge to the desired branch, and use the special setting
-	`.` (a period) for branch.<name>.remote.
+	branch.<name>.merge to the desired branch, and use the relative path
+	setting `.` (a period) for branch.<name>.remote.
 
 branch.<name>.mergeoptions::
 	Sets default options for merging into branch <name>. The syntax and
@@ -2183,6 +2185,13 @@ status.branch::
 	Set to true to enable --branch by default in linkgit:git-status[1].
 	The option --no-branch takes precedence over this variable.
 
+status.displayCommentPrefix::
+	If set to true, linkgit:git-status[1] will insert a comment
+	prefix before each output line (starting with
+	`core.commentChar`, i.e. `#` by default). This was the
+	behavior of linkgit:git-status[1] in Git 1.8.4 and previous.
+	Defaults to false.
+
 status.showUntrackedFiles::
 	By default, linkgit:git-status[1] and linkgit:git-commit[1] show
 	files which are not currently tracked by Git. Directories which
@@ -2207,7 +2216,14 @@ status.submodulesummary::
 	If this is set to a non zero number or true (identical to -1 or an
 	unlimited number), the submodule summary will be enabled and a
 	summary of commits for modified submodules will be shown (see
-	--summary-limit option of linkgit:git-submodule[1]).
+	--summary-limit option of linkgit:git-submodule[1]). Please note
+	that the summary output command will be suppressed for all
+	submodules when `diff.ignoreSubmodules` is set to 'all' or only
+	for those submodules where `submodule.<name>.ignore=all`. To
+	also view the summary for ignored submodules you can either use
+	the --ignore-submodules=dirty command line option or the 'git
+	submodule summary' command, which shows a similar output but does
+	not honor these settings.
 
 submodule.<name>.path::
 submodule.<name>.url::
@@ -2242,7 +2258,8 @@ submodule.<name>.ignore::
 	submodules that have untracked files in their work tree as changed.
 	This setting overrides any setting made in .gitmodules for this submodule,
 	both settings can be overridden on the command line by using the
-	"--ignore-submodules" option.
+	"--ignore-submodules" option. The 'git submodule' commands are not
+	affected by this setting.
 
 tar.umask::
 	This variable can be used to restrict the permission bits of
@@ -2281,6 +2298,17 @@ uploadpack.allowtipsha1inwant::
 	of a hidden ref (by default, such a request is rejected).
 	see also `uploadpack.hiderefs`.
 
+uploadpack.keepalive::
+	When `upload-pack` has started `pack-objects`, there may be a
+	quiet period while `pack-objects` prepares the pack. Normally
+	it would output progress information, but if `--quiet` was used
+	for the fetch, `pack-objects` will output nothing at all until
+	the pack data begins. Some clients and networks may consider
+	the server to be hung and give up. Setting this option instructs
+	`upload-pack` to send an empty keepalive packet every
+	`uploadpack.keepalive` seconds. Setting this option to 0
+	disables keepalive packets entirely. The default is 5 seconds.
+
 url.<base>.insteadOf::
 	Any URL that starts with this value will be rewritten to
 	start, instead, with <base>. In cases where some site serves a
@@ -2316,11 +2344,11 @@ user.name::
 	environment variables.  See linkgit:git-commit-tree[1].
 
 user.signingkey::
-	If linkgit:git-tag[1] is not selecting the key you want it to
-	automatically when creating a signed tag, you can override the
-	default selection with this variable.  This option is passed
-	unchanged to gpg's --local-user parameter, so you may specify a key
-	using any method that gpg supports.
+	If linkgit:git-tag[1] or linkgit:git-commit[1] is not selecting the
+	key you want it to automatically when creating a signed tag or
+	commit, you can override the default selection with this variable.
+	This option is passed unchanged to gpg's --local-user parameter,
+	so you may specify a key using any method that gpg supports.
 
 web.browser::
 	Specify a web browser that may be used by some commands.

@@ -423,19 +423,20 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 	char *ref = NULL;
 	struct branch *branch = branch_get(branch_name);
 	struct strbuf fancy = STRBUF_INIT;
+	int upstream_is_gone = 0;
+	int added_decoration = 1;
 
-	if (!stat_tracking_info(branch, &ours, &theirs)) {
-		if (branch && branch->merge && branch->merge[0]->dst &&
-		    show_upstream_ref) {
-			ref = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
-			if (want_color(branch_use_color))
-				strbuf_addf(stat, "[%s%s%s] ",
-						branch_get_color(BRANCH_COLOR_UPSTREAM),
-						ref, branch_get_color(BRANCH_COLOR_RESET));
-			else
-				strbuf_addf(stat, "[%s] ", ref);
-		}
+	switch (stat_tracking_info(branch, &ours, &theirs)) {
+	case 0:
+		/* no base */
 		return;
+	case -1:
+		/* with "gone" base */
+		upstream_is_gone = 1;
+		break;
+	default:
+		/* with base */
+		break;
 	}
 
 	if (show_upstream_ref) {
@@ -448,19 +449,29 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 			strbuf_addstr(&fancy, ref);
 	}
 
-	if (!ours) {
-		if (ref)
+	if (upstream_is_gone) {
+		if (show_upstream_ref)
+			strbuf_addf(stat, _("[%s: gone]"), fancy.buf);
+		else
+			added_decoration = 0;
+	} else if (!ours && !theirs) {
+		if (show_upstream_ref)
+			strbuf_addf(stat, _("[%s]"), fancy.buf);
+		else
+			added_decoration = 0;
+	} else if (!ours) {
+		if (show_upstream_ref)
 			strbuf_addf(stat, _("[%s: behind %d]"), fancy.buf, theirs);
 		else
 			strbuf_addf(stat, _("[behind %d]"), theirs);
 
 	} else if (!theirs) {
-		if (ref)
+		if (show_upstream_ref)
 			strbuf_addf(stat, _("[%s: ahead %d]"), fancy.buf, ours);
 		else
 			strbuf_addf(stat, _("[ahead %d]"), ours);
 	} else {
-		if (ref)
+		if (show_upstream_ref)
 			strbuf_addf(stat, _("[%s: ahead %d, behind %d]"),
 				    fancy.buf, ours, theirs);
 		else
@@ -468,7 +479,8 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 				    ours, theirs);
 	}
 	strbuf_release(&fancy);
-	strbuf_addch(stat, ' ');
+	if (added_decoration)
+		strbuf_addch(stat, ' ');
 	free(ref);
 }
 
@@ -969,9 +981,8 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 			die(_("no such branch '%s'"), argv[0]);
 		}
 
-		if (!branch_has_merge_config(branch)) {
+		if (!branch_has_merge_config(branch))
 			die(_("Branch '%s' has no upstream information"), branch->name);
-		}
 
 		strbuf_addf(&buf, "branch.%s.remote", branch->name);
 		git_config_set_multivar(buf.buf, NULL, NULL, 1);

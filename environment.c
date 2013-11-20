@@ -123,14 +123,13 @@ static char *expand_namespace(const char *raw_namespace)
 
 static void setup_git_env(void)
 {
+	const char *gitfile;
+
 	git_dir = getenv(GIT_DIR_ENVIRONMENT);
-	git_dir = git_dir ? xstrdup(git_dir) : NULL;
-	if (!git_dir) {
-		git_dir = read_gitfile(DEFAULT_GIT_DIR_ENVIRONMENT);
-		git_dir = git_dir ? xstrdup(git_dir) : NULL;
-	}
 	if (!git_dir)
 		git_dir = DEFAULT_GIT_DIR_ENVIRONMENT;
+	gitfile = read_gitfile(git_dir);
+	git_dir = xstrdup(gitfile ? gitfile : git_dir);
 	git_object_dir = getenv(DB_ENVIRONMENT);
 	if (!git_object_dir) {
 		git_object_dir = xmalloc(strlen(git_dir) + 9);
@@ -154,11 +153,6 @@ int is_bare_repository(void)
 {
 	/* if core.bare is not 'false', let's see if there is a work tree */
 	return is_bare_repository_cfg && !get_git_work_tree();
-}
-
-int have_git_dir(void)
-{
-	return !!git_dir;
 }
 
 const char *get_git_dir(void)
