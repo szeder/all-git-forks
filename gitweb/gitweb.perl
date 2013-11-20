@@ -17,6 +17,7 @@ use Encode;
 use Fcntl ':mode';
 use File::Find qw();
 use File::Basename qw(basename);
+use List::Util qw(min);
 use Time::HiRes qw(gettimeofday tv_interval);
 binmode STDOUT, ':utf8';
 
@@ -113,6 +114,9 @@ our $logo_label = "git homepage";
 
 # source of projects list
 our $projects_list = "++GITWEB_LIST++";
+
+# list of "directories" under "refs/" we want to display as branches
+our @wanted_refs = qw{++GITWEB_WANTED_REFS++};
 
 # the width (in characters) of the projects list "Description" column
 our $projects_list_description_width = 25;
@@ -619,8 +623,19 @@ sub feature_avatar {
 sub check_head_link {
 	my ($dir) = @_;
 	my $headfile = "$dir/HEAD";
-	return ((-e $headfile) ||
-		(-l $headfile && readlink($headfile) =~ /^refs\/heads\//));
+
+	if (-e $headfile) {
+		return 1;
+	}
+	if (-l $headfile) {
+	    my $rl = readlink($headfile);
+
+	    for my $ref (@wanted_refs) {
+		return 1 if $rl =~ /^refs\/$ref\//;
+	    }
+	}
+
+	return 0;
 }
 
 sub check_export_ok {
@@ -2397,6 +2412,7 @@ sub format_snapshot_links {
 sub get_feed_info {
 	my $format = shift || 'Atom';
 	my %res = (action => lc($format));
+	my $matched_ref = 0;
 
 	# feed links are possible only for project views
 	return unless (defined $project);
@@ -2404,12 +2420,16 @@ sub get_feed_info {
 	# or don't have specific feed yet (so they should use generic)
 	return if (!$action || $action =~ /^(?:tags|heads|forks|tag|search)$/x);
 
-	my $branch;
+	my $branch = undef;
 	# branches refs uses 'refs/heads/' prefix (fullname) to differentiate
 	# from tag links; this also makes possible to detect branch links
-	if ((defined $hash_base && $hash_base =~ m!^refs/heads/(.*)$!) ||
-	    (defined $hash      && $hash      =~ m!^refs/heads/(.*)$!)) {
+	for my $ref (@wanted_refs) {
+	    if ((defined $hash_base && $hash_base =~ m!^refs/$ref/(.*)$!) ||
+		(defined $hash      && $hash      =~ m!^refs/$ref/(.*)$!)) {
 		$branch = $1;
+		$matched_ref = $ref;
+		last;
+	    }
 	}
 	# find log type for feed description (title)
 	my $type = 'log';
@@ -2422,7 +2442,7 @@ sub get_feed_info {
 	}
 
 	$res{-title} = $type;
-	$res{'hash'} = (defined $branch ? "refs/heads/$branch" : undef);
+	$res{'hash'} = (defined $branch ? "refs/$matched_ref/$branch" : undef);
 	$res{'file_name'} = $file_name;
 
 	return %res;
@@ -3054,24 +3074,46 @@ sub git_get_project_owner {
 	return $owner;
 }
 
-sub git_get_last_activity {
-	my ($path) = @_;
-	my $fd;
+sub git_get_last_activity_age {
+	my ($refs) = @_;
+	my $fd = -1;
 
-	$git_dir = "$projectroot/$path";
 	open($fd, "-|", git_cmd(), 'for-each-ref',
 	     '--format=%(committer)',
 	     '--sort=-committerdate',
 	     '--count=1',
-	     'refs/heads') or return;
+	     $refs) or return undef;
+
 	my $most_recent = <$fd>;
-	close $fd or return;
+	close $fd or return undef;
 	if (defined $most_recent &&
 	    $most_recent =~ / (\d+) [-+][01]\d\d\d$/) {
 		my $timestamp = $1;
-		my $age = time - $timestamp;
-		return ($age, age_string($age));
+		return time - $timestamp;
 	}
+
+	return undef;
+}
+
+sub git_get_last_activity {
+	my ($path) = @_;
+
+	$git_dir = "$projectroot/$path";
+
+	my @ages = ();
+	for my $ref (@wanted_refs) {
+	    my $age = git_get_last_activity_age('refs/' . $_);
+
+	    if (defined $age) {
+		push @ages, $age;
+	    }
+	}
+	if (@ages) {
+	    my $min_age = min(@ages);
+
+	    return ($min_age, age_string($min_age));
+	}
+
 	return (undef, undef);
 }
 
@@ -3093,7 +3135,7 @@ sub git_get_remotes_list {
 		next if $wanted and not $remote eq $wanted;
 		my ($url, $key) = ($1, $2);
 
-		$remotes{$remote} ||= { 'heads' => () };
+		$remotes{$remote} ||= { map { $_ => () } @wanted_refs };
 		$remotes{$remote}{$key} = $url;
 	}
 	close $fd or return;
@@ -3107,9 +3149,11 @@ sub fill_remote_heads {
 	my @heads = map { "remotes/$_" } keys %$remotes;
 	my @remoteheads = git_get_heads_list(undef, @heads);
 	foreach my $remote (keys %$remotes) {
-		$remotes->{$remote}{'heads'} = [ grep {
-			$_->{'name'} =~ s!^$remote/!!
-			} @remoteheads ];
+		foreach my $ref (@wanted_refs) {
+			$remotes->{$remote}{$ref} = [ grep {
+				$_->{'name'} =~ s!^$remote/!!
+				} @remoteheads ];
+		}
 	}
 }
 
@@ -3514,7 +3558,7 @@ sub parse_from_to_diffinfo {
 
 sub git_get_heads_list {
 	my ($limit, @classes) = @_;
-	@classes = ('heads') unless @classes;
+	@classes = @wanted_refs unless @classes;
 	my @patterns = map { "refs/$_" } @classes;
 	my @headslist;
 
@@ -3532,7 +3576,8 @@ sub git_get_heads_list {
 		my ($committer, $epoch, $tz) =
 			($committerinfo =~ /^(.*) ([0-9]+) (.*)$/);
 		$ref_item{'fullname'}  = $name;
-		$name =~ s!^refs/(?:head|remote)s/!!;
+		my $strip_refs = join '|', @wanted_refs;
+		$name =~ s!^refs/(?:$strip_refs|remotes)/!!;
 
 		$ref_item{'name'}  = $name;
 		$ref_item{'id'}    = $hash;
@@ -4129,7 +4174,7 @@ sub git_print_page_nav {
 # available if the feature is enabled
 sub format_ref_views {
 	my ($current) = @_;
-	my @ref_views = qw{tags heads};
+	my @ref_views = ("tags", @wanted_refs);
 	push @ref_views, 'remotes' if gitweb_check_feature('remote_heads');
 	return join " | ", map {
 		$_ eq $current ? $_ :
@@ -6796,7 +6841,8 @@ sub snapshot_name {
 		$ver = $1;
 	} else {
 		# branches and other need shortened SHA-1 hash
-		if ($hash =~ m!^refs/(?:heads|remotes)/(.*)$!) {
+		my $strip_refs = join '|', @wanted_refs;
+		if ($hash =~ m!^refs/(?:$strip_refs|remotes)/(.*)$!) {
 			$ver = $1;
 		}
 		$ver .= '-' . git_get_short_hash($project, $hash);
