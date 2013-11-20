@@ -17,6 +17,9 @@
 #include "strbuf.h"
 #include "utf8.h"
 
+static const char wt_status_cut_line[] =
+"# ------------------------ >8 ------------------------\n";
+
 static char default_wt_status_colors[][COLOR_MAXLEN] = {
 	GIT_COLOR_NORMAL, /* WT_STATUS_HEADER */
 	GIT_COLOR_GREEN,  /* WT_STATUS_UPDATED */
@@ -793,6 +796,15 @@ conclude:
 	status_printf_ln(s, GIT_COLOR_NORMAL, "");
 }
 
+void wt_status_truncate_message_at_cut_line(struct strbuf *buf)
+{
+	const char *p;
+
+	p = strstr(buf->buf, wt_status_cut_line);
+	if (p && (p == buf->buf || p[-1] == '\n'))
+		strbuf_setlen(buf, p - buf->buf);
+}
+
 static void wt_status_print_verbose(struct wt_status *s)
 {
 	struct rev_info rev;
@@ -817,6 +829,9 @@ static void wt_status_print_verbose(struct wt_status *s)
 	 */
 	if (s->fp != stdout)
 		rev.diffopt.use_color = 0;
+	fprintf(s->fp, wt_status_cut_line);
+	fprintf(s->fp, _("# Do not touch the line above.\n"));
+	fprintf(s->fp, _("# Everything below will be removed.\n"));
 	run_diff_index(&rev, 1);
 }
 
