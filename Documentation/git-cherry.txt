@@ -3,7 +3,7 @@ git-cherry(1)
 
 NAME
 ----
-git-cherry - Find commits not applied in upstream
+git-cherry - Find commits yet to be applied to upstream
 
 SYNOPSIS
 --------
@@ -56,6 +56,7 @@ $ git checkout -b topic origin/master
 $ git format-patch origin/master
 $ git send-email ... 00*
 ------------
+
 Later, you can see whether your changes have been applied by saying
 (still on `topic`):
 
@@ -84,8 +85,8 @@ $ git log --graph --oneline --decorate --boundary origin/master...topic
 o 1234567 branch point
 ------------
 
-In such cases, git-cherry shows a concise summary of what has been
-applied:
+In such cases, git-cherry shows a concise summary of what has yet to
+be applied:
 
 ------------
 $ git cherry origin/master topic
@@ -93,6 +94,12 @@ $ git cherry origin/master topic
 + bbbb000... commit B
 - aaaa000... commit A
 ------------
+
+Here, we see that the commits A and C (marked with `-`) can be
+dropped from your `topic` branch when you rebase it on top of
+`origin/master`, while the commit B (marked with `+`) still needs to
+be kept so that it will be sent to be applied to `origin/master`.
+
 
 Using a limit
 ~~~~~~~~~~~~~
