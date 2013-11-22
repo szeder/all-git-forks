@@ -1,3 +1,11 @@
+Version v1.8.4.4; changes since v1.8.4.3:
+-----------------------------------------
+
+Junio C Hamano (2):
+      Revert "upload-pack: send non-HEAD symbolic refs"
+      Git 1.8.4.4
+
+
 Version v1.8.4.3; changes since v1.8.4.2:
 -----------------------------------------
 
