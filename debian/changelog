@@ -1,10 +1,12 @@
-git (1:1.8.5~rc2-1.1) experimental; urgency=low
+git (1:1.8.5~rc3-1) experimental; urgency=low
+
+  * new upstream release candidate.
 
   [ Anders Kaseorg ]
   * debian/rules: pass $(OPTS) to contrib/mw-to-git/Makefile
     (closes: #729763).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 18 Nov 2013 14:43:52 -0800
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 21 Nov 2013 16:35:29 -0800
 
 git (1:1.8.5~rc2-1) experimental; urgency=low
 

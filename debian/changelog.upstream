@@ -1,3 +1,21 @@
+Version v1.8.5-rc3; changes since v1.8.5-rc2:
+---------------------------------------------
+
+Junio C Hamano (3):
+      Revert "upload-pack: send non-HEAD symbolic refs"
+      Git 1.8.4.4
+      Git 1.8.5-rc3
+
+Marc Branchaud (1):
+      RelNotes: spelling & grammar fixes
+
+Nguyễn Thái Ngọc Duy (1):
+      pathspec: stop --*-pathspecs impact on internal parse_pathspec() uses
+
+Torstein Hegge (1):
+      branch: fix --verbose output column alignment
+
+
 Version v1.8.5-rc2; changes since v1.8.5-rc1:
 ---------------------------------------------
 
@@ -104,7 +122,7 @@ Vivien Didelot (2):
       Documentation: "pack-file" is not literal in unpack-objects
 
 
-Version v1.8.5-rc0; changes since v1.8.4.3:
+Version v1.8.5-rc0; changes since v1.8.4.4:
 -------------------------------------------
 
 Alexandru Juncu (1):
@@ -661,6 +679,14 @@ kazuki saitoh (1):
 
 Ævar Arnfjörð Bjarmason (1):
       gitweb: Fix the author initials in blame for non-ASCII names
+
+
+Version v1.8.4.4; changes since v1.8.4.3:
+-----------------------------------------
+
+Junio C Hamano (2):
+      Revert "upload-pack: send non-HEAD symbolic refs"
+      Git 1.8.4.4
 
 
 Version v1.8.4.3; changes since v1.8.4.2:
