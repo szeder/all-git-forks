@@ -1,3 +1,23 @@
+git (1:1.8.5~rc3-1.1) experimental; urgency=low
+
+  * merge branch debian-sid.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 22 Nov 2013 12:33:33 -0800
+
+git (1:1.8.4.4-1.1) unstable; urgency=low
+
+  * git-daemon-sysvinit: advertise GIT_DAEMON_BASE_PATH in
+    /etc/default/git-daemon (thx Alexander Dahl and Antonio
+    Ospite; closes: #704985).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 22 Nov 2013 12:28:19 -0800
+
+git (1:1.8.4.4-1) unstable; urgency=low
+
+  * new upstream point release.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 21 Nov 2013 17:51:36 -0800
+
 git (1:1.8.5~rc3-1) experimental; urgency=low
 
   * new upstream release candidate.
