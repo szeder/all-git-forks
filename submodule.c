@@ -301,9 +301,11 @@ void handle_ignore_submodules_arg(struct diff_options *diffopt,
 	DIFF_OPT_CLR(diffopt, IGNORE_UNTRACKED_IN_SUBMODULES);
 	DIFF_OPT_CLR(diffopt, IGNORE_DIRTY_SUBMODULES);
 
-	if (!strcmp(arg, "all"))
+	if (!strcmp(arg, "all")) {
+		if (DIFF_OPT_TST(diffopt, NO_IGNORE_SUBMODULE))
+			return;
 		DIFF_OPT_SET(diffopt, IGNORE_SUBMODULES);
-	else if (!strcmp(arg, "untracked"))
+	} else if (!strcmp(arg, "untracked"))
 		DIFF_OPT_SET(diffopt, IGNORE_UNTRACKED_IN_SUBMODULES);
 	else if (!strcmp(arg, "dirty"))
 		DIFF_OPT_SET(diffopt, IGNORE_DIRTY_SUBMODULES);

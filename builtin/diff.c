@@ -249,6 +249,21 @@ static int builtin_diff_files(struct rev_info *revs, int argc, const char **argv
 	return run_diff_files(revs, options);
 }
 
+static int have_cached_option(int argc, const char **argv)
+{
+	int i;
+	for (i = 1; i < argc; i++) {
+		const char *arg = argv[i];
+		if (!strcmp(arg, "--"))
+			return 0;
+		else if (!strcmp(arg, "--cached") ||
+			 !strcmp(arg, "--staged")) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 int cmd_diff(int argc, const char **argv, const char *prefix)
 {
 	int i;
@@ -259,6 +274,7 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 	struct blobinfo blob[2];
 	int nongit;
 	int result = 0;
+	int have_cached;
 
 	/*
 	 * We could get N tree-ish in the rev.pending_objects list.
@@ -305,6 +321,11 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 
 	if (nongit)
 		die(_("Not a git repository"));
+
+	have_cached = have_cached_option(argc, argv);
+	if (have_cached)
+		DIFF_OPT_SET(&rev.diffopt, NO_IGNORE_SUBMODULE);
+
 	argc = setup_revisions(argc, argv, &rev, NULL);
 	if (!rev.diffopt.output_format) {
 		rev.diffopt.output_format = DIFF_FORMAT_PATCH;
@@ -319,22 +340,12 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 	 * Do we have --cached and not have a pending object, then
 	 * default to HEAD by hand.  Eek.
 	 */
-	if (!rev.pending.nr) {
-		int i;
-		for (i = 1; i < argc; i++) {
-			const char *arg = argv[i];
-			if (!strcmp(arg, "--"))
-				break;
-			else if (!strcmp(arg, "--cached") ||
-				 !strcmp(arg, "--staged")) {
-				add_head_to_pending(&rev);
-				if (!rev.pending.nr) {
-					struct tree *tree;
-					tree = lookup_tree(EMPTY_TREE_SHA1_BIN);
-					add_pending_object(&rev, &tree->object, "HEAD");
-				}
-				break;
-			}
+	if (!rev.pending.nr && have_cached) {
+		add_head_to_pending(&rev);
+		if (!rev.pending.nr) {
+			struct tree *tree;
+			tree = lookup_tree(EMPTY_TREE_SHA1_BIN);
+			add_pending_object(&rev, &tree->object, "HEAD");
 		}
 	}
 

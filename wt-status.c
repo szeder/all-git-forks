@@ -462,6 +462,9 @@ static void wt_status_collect_changes_index(struct wt_status *s)
 		handle_ignore_submodules_arg(&rev.diffopt, s->ignore_submodule_arg);
 	}
 
+	/* for the index we need to disable complete ignorance of submodules */
+	DIFF_OPT_SET(&rev.diffopt, NO_IGNORE_SUBMODULE);
+
 	rev.diffopt.output_format |= DIFF_FORMAT_CALLBACK;
 	rev.diffopt.format_callback = wt_status_collect_updated_cb;
 	rev.diffopt.format_callback_data = s;

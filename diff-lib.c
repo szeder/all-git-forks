@@ -518,6 +518,7 @@ int index_differs_from(const char *def, int diff_flags)
 	setup_revisions(0, NULL, &rev, &opt);
 	DIFF_OPT_SET(&rev.diffopt, QUICK);
 	DIFF_OPT_SET(&rev.diffopt, EXIT_WITH_STATUS);
+	DIFF_OPT_SET(&rev.diffopt, NO_IGNORE_SUBMODULE);
 	rev.diffopt.flags |= diff_flags;
 	run_diff_index(&rev, 1);
 	if (rev.pending.alloc)
