@@ -7,10 +7,12 @@ struct archiver_args {
 	const char *base;
 	size_t baselen;
 	struct tree *tree;
+	const char *treepath;
 	const unsigned char *commit_sha1;
 	const struct commit *commit;
 	time_t time;
 	struct pathspec pathspec;
+	unsigned int recurse_submodules : 1;
 	unsigned int verbose : 1;
 	unsigned int worktree_attributes : 1;
 	unsigned int convert : 1;

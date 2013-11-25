@@ -5,6 +5,7 @@
 #include "archive.h"
 #include "parse-options.h"
 #include "unpack-trees.h"
+#include "submodule.h"
 
 static char const * const archive_usage[] = {
 	N_("git archive [options] <tree-ish> [<path>...]"),
@@ -130,19 +131,35 @@ static int write_archive_entry(const unsigned char *sha1, const char *base,
 			return 0;
 		args->convert = ATTR_TRUE(check[1].value);
 	}
-
-	if (S_ISDIR(mode) || S_ISGITLINK(mode)) {
-		if (args->verbose)
-			fprintf(stderr, "%.*s\n", (int)path.len, path.buf);
-		err = write_entry(args, sha1, path.buf, path.len, mode);
-		if (err)
-			return err;
-		return (S_ISDIR(mode) ? READ_TREE_RECURSIVE : 0);
-	}
-
 	if (args->verbose)
 		fprintf(stderr, "%.*s\n", (int)path.len, path.buf);
-	return write_entry(args, sha1, path.buf, path.len, mode);
+	err = write_entry(args, sha1, path.buf, path.len, mode);
+	if (err)
+		return err;
+	if (S_ISDIR(mode))
+		return READ_TREE_RECURSIVE;
+	if (S_ISGITLINK(mode) && args->recurse_submodules) {
+		const char *work_tree = get_git_work_tree();
+		if (!work_tree)
+			die(_("Can't recurse-submodules when no work dir"));
+		struct strbuf dotgit;
+		strbuf_init(&dotgit, PATH_MAX);
+		strbuf_addstr(&dotgit, work_tree);
+		strbuf_addch(&dotgit, '/');
+		if (args->treepath) {
+			strbuf_addstr(&dotgit, args->treepath);
+			strbuf_addch(&dotgit, '/');
+		}
+		strbuf_add(&dotgit,
+			path_without_prefix,strlen(path_without_prefix)-1);
+		int found = !add_submodule_odb(dotgit.buf);
+		strbuf_release(&dotgit);
+		if (found)
+			return READ_TREE_RECURSIVE;
+		warning(_("Can't recurse into submodule at %.*s"),
+			(int)(path.len - 1), path.buf);
+	}
+	return 0;
 }
 
 int write_archive_entries(struct archiver_args *args,
@@ -249,26 +266,49 @@ static void parse_treeish_arg(const char **argv,
 		struct archiver_args *ar_args, const char *prefix,
 		int remote)
 {
-	const char *name = argv[0];
 	const unsigned char *commit_sha1;
 	time_t archive_time;
 	struct tree *tree;
 	const struct commit *commit;
 	unsigned char sha1[20];
+	const char *path = NULL;
+	const char *name = xstrdup(argv[0]);
+	char *colon = strchr(name, ':');
 
+	if (colon) {
+		*colon = '\0';
+		path = colon + 1;
+	}
+	/* Store the path on the ref for later (required for --recurse-submodules) */
+	struct strbuf treepath;
+	strbuf_init(&treepath, PATH_MAX);
+	if (prefix)
+		strbuf_addstr(&treepath, prefix);
+	if (path)
+		strbuf_addstr(&treepath, path);
+	if ((treepath.len > 0) && (treepath.buf[treepath.len - 1] != '/'))
+		strbuf_addch(&treepath, '/');
 	/* Remotes are only allowed to fetch actual refs */
 	if (remote) {
 		char *ref = NULL;
-		const char *colon = strchr(name, ':');
-		int refnamelen = colon ? colon - name : strlen(name);
 
-		if (!dwim_ref(name, refnamelen, sha1, &ref))
-			die("no such ref: %.*s", refnamelen, name);
+		if (!dwim_ref(name, strlen(name), sha1, &ref))
+			die("no such ref: %s", name);
 		free(ref);
 	}
+	struct strbuf relativename;
+	strbuf_init(&relativename, PATH_MAX);
+	strbuf_addstr(&relativename, name);
+	if (path || (!path && prefix)) {
+		strbuf_addch(&relativename, ':');
+		if (treepath.len > 0)
+			strbuf_addstr(&relativename, treepath.buf);
+	}
+	normalize_path_copy(relativename.buf, relativename.buf);
+	fprintf(stderr, "Relative name: %s\n", relativename.buf);
 
-	if (get_sha1(name, sha1))
-		die("Not a valid object name");
+	if (get_sha1(relativename.buf, sha1))
+		die("Not a valid object name: %s", relativename.buf);
 
 	commit = lookup_commit_reference_gently(sha1, 1);
 	if (commit) {
@@ -278,24 +318,11 @@ static void parse_treeish_arg(const char **argv,
 		commit_sha1 = NULL;
 		archive_time = time(NULL);
 	}
-
 	tree = parse_tree_indirect(sha1);
 	if (tree == NULL)
 		die("not a tree object");
-
-	if (prefix) {
-		unsigned char tree_sha1[20];
-		unsigned int mode;
-		int err;
-
-		err = get_tree_entry(tree->object.sha1, prefix,
-				     tree_sha1, &mode);
-		if (err || !S_ISDIR(mode))
-			die("current working directory is untracked");
-
-		tree = parse_tree_indirect(tree_sha1);
-	}
 	ar_args->tree = tree;
+	ar_args->treepath = strbuf_detach(&treepath, NULL);
 	ar_args->commit_sha1 = commit_sha1;
 	ar_args->commit = commit;
 	ar_args->time = archive_time;
@@ -318,6 +345,7 @@ static int parse_archive_args(int argc, const char **argv,
 	const char *exec = NULL;
 	const char *output = NULL;
 	int compression_level = -1;
+	int recurse_submodules = 0;
 	int verbose = 0;
 	int i;
 	int list = 0;
@@ -331,6 +359,7 @@ static int parse_archive_args(int argc, const char **argv,
 			N_("write the archive to this file")),
 		OPT_BOOL(0, "worktree-attributes", &worktree_attributes,
 			N_("read .gitattributes in working directory")),
+		OPT_BOOL(0, "recurse-submodules", &recurse_submodules, N_("include submodules in archive")),
 		OPT__VERBOSE(&verbose, N_("report archived files on stderr")),
 		OPT__COMPR('0', &compression_level, N_("store only"), 0),
 		OPT__COMPR('1', &compression_level, N_("compress faster"), 1),
@@ -355,6 +384,8 @@ static int parse_archive_args(int argc, const char **argv,
 
 	argc = parse_options(argc, argv, NULL, opts, archive_usage, 0);
 
+	if (is_remote && recurse_submodules)
+		die(_("Cannot recurse submodules with option --remote"));
 	if (remote)
 		die("Unexpected option --remote");
 	if (exec)
@@ -393,6 +424,7 @@ static int parse_archive_args(int argc, const char **argv,
 					format, compression_level);
 		}
 	}
+	args->recurse_submodules = recurse_submodules;
 	args->verbose = verbose;
 	args->base = base;
 	args->baselen = strlen(base);
