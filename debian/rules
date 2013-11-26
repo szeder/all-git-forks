@@ -38,6 +38,7 @@ PKG_INDEP += git-arch
 PKG_INDEP += git-bzr
 PKG_INDEP += git-cvs
 PKG_INDEP += git-svn
+PKG_INDEP += git-mediawiki
 PKG_INDEP += git-daemon-run
 PKG_INDEP += git-daemon-sysvinit
 PKG_INDEP += git-email
@@ -72,7 +73,9 @@ build-arch-stamp: patch-stamp
 
 build-indep: deb-checkdir build-indep-stamp
 build-indep-stamp: patch-stamp build-arch-stamp
+	# git-man, git-doc
 	$(MAKE) -CDocumentation man html $(DOC_OPTS)
+	# git-bzr
 	$(MAKE) -CDocumentation $(DOC_OPTS) \
 	  MAN_TXT=../debian/git-remote-bzr.txt \
 	  ../debian/git-remote-bzr.1 \
@@ -87,6 +90,8 @@ build-indep-stamp: patch-stamp build-arch-stamp
 	    $(MAKE) -C t $(OPTS) $(CURDIR)/debian/test-bzr.sh || \
 	  PATH=$(CURDIR)/debian:$(PATH) GIT_TEST_OPTS=--verbose \
 	    $(MAKE) -C t $(OPTS) $(CURDIR)/debian/test-bzr.sh
+	# git-mediawiki
+	$(MAKE) -Ccontrib/mw-to-git all $(OPTS)
 	touch build-indep-stamp
 
 clean: deb-checkdir
@@ -95,10 +100,14 @@ clean: deb-checkdir
 	rm -f Documentation/git-remote-bzr.1
 	$(MAKE) clean $(OPTS)
 	! test -e patch-stamp || \
+	{ \
+	  set -e; \
+	  $(MAKE) -Ccontrib/mw-to-git clean $(OPTS); \
 	  for i in `ls -1r debian/diff/*.diff debian/diff/*.patch \
 	      2>/dev/null || :`; do \
 	    patch -p1 -NR -r- <$$i || test $$? = 1 || exit 1; \
-	  done
+	  done; \
+	}
 	rm -rf '$(TMP)'
 	rm -f patch-stamp build-arch-stamp build-indep-stamp
 	set -e; \
@@ -168,6 +177,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	cp -R contrib '$(GIT)'/usr/share/doc/git/
 	rm -rf '$(GIT)'/usr/share/doc/git/contrib/completion
 	rm -rf '$(GIT)'/usr/share/doc/git/contrib/emacs
+	rm -rf '$(GIT)'/usr/share/doc/git/contrib/mw-to-git
 	find '$(GIT)'/usr/share/doc/git/contrib -type f | xargs chmod 0644
 	find '$(GIT)'/usr/share/doc/git/contrib -type d | xargs chmod 0755
 	  # remove contrib hooks, they are now installed in
@@ -182,6 +192,9 @@ install-indep: build-arch-stamp build-indep-stamp
 	rm -rf '$(TMP)'
 	install -d -m0755 '$(TMP)'
 	DESTDIR='$(TMP)' $(MAKE) install install-doc $(OPTS)
+	install -d -m0755 '$(TMP)/usr/share/perl5/Git'
+	DESTDIR='$(TMP)' $(MAKE) -Ccontrib/mw-to-git install $(OPTS) \
+	  INSTLIBDIR='$(TMP)/usr/share/perl5'
 	$(MAKE) -CDocumentation install-webdoc WEBDOC_DEST='$(TMP)'/html \
 	  2>/dev/null
 	# RelNotes are shipped in git
@@ -245,6 +258,16 @@ install-indep: build-arch-stamp build-indep-stamp
 	install -m0644 Documentation/git-remote-bzr.1 \
 	  '$(GIT)'-bzr/usr/share/man/man1/git-remote-bzr--git.1
 	gzip -9 '$(GIT)'-bzr/usr/share/man/man1/*.1
+	# git-mediawiki
+	rm -rf '$(GIT)'-mediawiki
+	install -d -m0755 '$(GIT)'-mediawiki/usr/share/perl5/Git
+	install -m0644 '$(TMP)'/usr/share/perl5/Git/Mediawiki.pm \
+	  '$(GIT)'-mediawiki/usr/share/perl5/Git/
+	install -d -m0755 '$(GIT)'-mediawiki/usr/lib/git-core
+	install -m0755 '$(TMP)'/usr/lib/git-core/git-mw \
+	  '$(GIT)'-mediawiki/usr/lib/git-core/
+	install -m0755 '$(TMP)'/usr/lib/git-core/git-remote-mediawiki \
+	  '$(GIT)'-mediawiki/usr/lib/git-core/
 	# git-email
 	rm -rf '$(GIT)'-email
 	install -d -m0755 '$(GIT)'-email/usr/lib/git-core

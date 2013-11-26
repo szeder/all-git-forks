@@ -1,0 +1,30 @@
+From a51f24fb5dc5dae51ca5c89475770c2fcd76ae52 Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Fri, 8 Nov 2013 18:22:39 -0800
+Subject: git-remote-mediawiki: do not remove installed files in "clean" target
+
+Running "make clean" after a successful "make install" should not
+result in a broken mediawiki remote helper.
+
+Reported-by: Thorsten Glaser <t.glaser@tarent.de>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+Acked-by: Matthieu Moy <Matthieu.Moy@imag.fr>
+---
+ contrib/mw-to-git/Makefile | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/contrib/mw-to-git/Makefile b/contrib/mw-to-git/Makefile
+index f206f96..c5547f9 100644
+--- a/contrib/mw-to-git/Makefile
++++ b/contrib/mw-to-git/Makefile
+@@ -43,7 +43,6 @@ install: install_pm
+ clean:
+ 	$(MAKE) -C $(GIT_ROOT_DIR) SCRIPT_PERL="$(SCRIPT_PERL_FULL)" \
+                 clean-perl-script
+-	rm $(INSTLIBDIR)/$(GIT_MEDIAWIKI_PM)
+ 
+ perlcritic:
+ 	perlcritic -5 $(SCRIPT_PERL)
+-- 
+1.8.4.1
+

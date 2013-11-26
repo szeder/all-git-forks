@@ -1,10 +1,51 @@
-git (1:1.8.4.4-1.1) unstable; urgency=low
+git (1:1.8.5~rc3-1.1) unstable; urgency=low
 
+  * merge branch debian-experimental.
   * git-daemon-sysvinit: advertise GIT_DAEMON_BASE_PATH in
     /etc/default/git-daemon (thx Alexander Dahl and Antonio
     Ospite; closes: #704985).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 22 Nov 2013 12:28:19 -0800
+
+git (1:1.8.5~rc3-1) experimental; urgency=low
+
+  * new upstream release candidate.
+
+  [ Anders Kaseorg ]
+  * debian/rules: pass $(OPTS) to contrib/mw-to-git/Makefile
+    (closes: #729763).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 21 Nov 2013 16:35:29 -0800
+
+git (1:1.8.5~rc2-1) experimental; urgency=low
+
+  * merge branch debian-sid.
+  * new upstream release candidate.
+
+  [ Thorsten Glaser ]
+  * package mw-to-git (closes: #718395).
+    * debian/control: new package git-mediawiki; Depends:
+      libmediawiki-api-perl (>= 0.39), liblwp-protocol-https-perl,
+      libdatetime-format-iso8601-perl; package git now Suggests
+      and git-all Depends: git-mediawiki.
+    * debian/rules: build and install Git::Mediawiki perl module,
+      mediawiki remote helper, and 'git mw' command in
+      git-mediawiki package.
+    * debian/diff/0010-git-remote-mediawiki-do-not-remove-...diff:
+      new from upstream: mw-to-git: do not remove installed files
+      in "clean" target.
+    * debian/git-mediawiki.docs: install git-remote-mediawiki.txt.
+
+  [ Anders Kaseorg ]
+  * debian/diff/0003-transport-expose-git_tcp_connect-...diff:
+    include tcp.h before using tcp functions (closes: #728508).
+
+  [ Jonathan Nieder ]
+  * debian/diff/0012-cvsserver-Determinize-output-to-...diff:
+    remove; applied upstream.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 13 Nov 2013 16:12:29 -0800
+
 
 git (1:1.8.4.4-1) unstable; urgency=low
 
@@ -17,6 +58,17 @@ git (1:1.8.4.3-1) unstable; urgency=low
   * new upstream point release.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 11 Nov 2013 15:51:10 -0800
+
+git (1:1.8.5~rc0-1) experimental; urgency=low
+
+  * new upstream release candidate.
+  * debian/diff:
+    * 0001-hooks-post-receive-email-set-encoding-to-utf-8.diff,
+      0002-post-receive-email-defend-against-non-utf8-...diff:
+      remove; applied upstream.
+    * 0003...0012: rename to 0001-*, ..., 0010-*.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 30 Oct 2013 16:01:15 -0700
 
 git (1:1.8.4.2-1) unstable; urgency=low
 
