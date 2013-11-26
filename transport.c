@@ -481,6 +481,8 @@ static int set_git_option(struct git_transport_options *opts,
 			opts->depth = strtol(value, &end, 0);
 			if (*end)
 				die("transport: invalid depth option '%s'", value);
+			if (opts->depth < 1)
+				die("transport: invalid depth option '%s' (must be positive)", value);
 		}
 		return 0;
 	}
