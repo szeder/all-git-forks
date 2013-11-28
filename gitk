@@ -2029,6 +2029,7 @@ proc makewindow {} {
     global headctxmenu progresscanv progressitem progresscoords statusw
     global fprogitem fprogcoord lastprogupdate progupdatepending
     global rprogitem rprogcoord rownumsel numcommits
+    global markbgcolor
     global have_tk85 use_ttk NS
     global git_version
     global worddiff
@@ -2376,6 +2377,7 @@ proc makewindow {} {
     $ctext tag conf found -back yellow
     $ctext tag conf currentsearchhit -back orange
     $ctext tag conf wwrap -wrap word
+    $ctext tag conf omark -background $markbgcolor
     $ctext tag raise sel
 
     .pwbottom add .bleft
@@ -7440,11 +7442,10 @@ proc getblobline {bf id} {
 }
 
 proc mark_ctext_line {lnum} {
-    global ctext markbgcolor
+    global ctext
 
-    $ctext tag delete omark
+    $ctext tag remove omark 1.0 end
     $ctext tag add omark $lnum.0 "$lnum.0 + 1 line"
-    $ctext tag conf omark -background $markbgcolor
     $ctext see $lnum.0
 }
 
