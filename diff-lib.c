@@ -483,6 +483,8 @@ int run_diff_index(struct rev_info *revs, int cached)
 {
 	struct object_array_entry *ent;
 
+	enforce_no_complete_ignore_submodule(&revs->diffopt);
+
 	ent = revs->pending.objects;
 	if (diff_cache(revs, ent->item->sha1, ent->name, cached))
 		exit(128);
