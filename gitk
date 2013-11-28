@@ -2376,6 +2376,7 @@ proc makewindow {} {
     $ctext tag conf found -back yellow
     $ctext tag conf currentsearchhit -back orange
     $ctext tag conf wwrap -wrap word
+    $ctext tag raise sel
 
     .pwbottom add .bleft
     if {!$use_ttk} {
