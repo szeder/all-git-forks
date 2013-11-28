@@ -1,0 +1,2 @@
+* Make sure commit also shows the submodules to be committed in its
+  commit message template.
