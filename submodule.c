@@ -297,6 +297,11 @@ int parse_submodule_config_option(const char *var, const char *value)
 void enforce_no_complete_ignore_submodule(struct diff_options *diffopt)
 {
 	DIFF_OPT_SET(diffopt, NO_IGNORE_SUBMODULE);
+	if (DIFF_OPT_TST(diffopt, OVERRIDE_SUBMODULE_CONFIG) &&
+	    DIFF_OPT_TST(diffopt, IGNORE_SUBMODULES)) {
+		DIFF_OPT_CLR(diffopt, IGNORE_SUBMODULES);
+		DIFF_OPT_SET(diffopt, IGNORE_DIRTY_SUBMODULES);
+	}
 }
 
 void handle_ignore_submodules_arg(struct diff_options *diffopt,
