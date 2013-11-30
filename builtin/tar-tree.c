@@ -34,7 +34,7 @@ int cmd_tar_tree(int argc, const char **argv, const char *prefix)
 	nargv[nargc++] = "archive";
 	nargv[nargc++] = "--format=tar";
 
-	if (2 <= argc && !prefixcmp(argv[1], "--remote=")) {
+	if (2 <= argc && starts_with(argv[1], "--remote=")) {
 		nargv[nargc++] = argv[1];
 		argv++;
 		argc--;
