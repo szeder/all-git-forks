@@ -1,3 +1,14 @@
+Version v1.8.5; changes since v1.8.5-rc3:
+-----------------------------------------
+
+Junio C Hamano (1):
+      Git 1.8.5
+
+Richard Hansen (2):
+      remote-hg: don't decode UTF-8 paths into Unicode objects
+      remote-hg: don't decode UTF-8 paths into Unicode objects
+
+
 Version v1.8.5-rc3; changes since v1.8.5-rc2:
 ---------------------------------------------
 
