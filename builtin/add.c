@@ -16,6 +16,7 @@
 #include "revision.h"
 #include "bulk-checkin.h"
 #include "submodule.h"
+#include "string-list.h"
 
 static const char * const builtin_add_usage[] = {
 	N_("git add [options] [--] <pathspec>..."),
@@ -29,6 +30,7 @@ struct update_callback_data {
 	int add_errors;
 	const char *implicit_dot;
 	size_t implicit_dot_len;
+	struct string_list ignored_submodules;
 
 	/* only needed for 2.0 transition preparation */
 	int warn_add_would_remove;
@@ -140,6 +142,9 @@ static void update_callback(struct diff_queue_struct *q,
 			warn_pathless_add();
 			continue;
 		}
+		if (is_ignored_submodule(path))
+			string_list_insert(&data->ignored_submodules, path);
+
 		switch (fix_unmerged_status(p, data)) {
 		default:
 			die(_("unexpected diff status %c"), p->status);
@@ -174,6 +179,7 @@ static void update_files_in_cache(const char *prefix,
 	struct rev_info rev;
 
 	init_revisions(&rev, prefix);
+	enforce_no_complete_ignore_submodule(&rev.diffopt);
 	setup_revisions(0, NULL, &rev, NULL);
 	if (pathspec)
 		copy_pathspec(&rev.prune_data, pathspec);
@@ -583,6 +589,8 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	update_files_in_cache(prefix, &pathspec, &update_data);
 
 	exit_status |= !!update_data.add_errors;
+	if (!ignored_too && update_data.ignored_submodules.nr)
+		die("Ignored submodules (use -f to add them)");
 	if (add_new_files)
 		exit_status |= add_files(&dir, flags);
 
