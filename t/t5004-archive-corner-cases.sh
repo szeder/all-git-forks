@@ -113,4 +113,75 @@ test_expect_success 'archive empty subtree by direct pathspec' '
 	check_dir extract sub
 '
 
+test_expect_success 'setup - repository with subdirs' '
+	mkdir -p a/b/c a/b/d &&
+	echo af >a/af &&
+	echo bf >a/b/bf &&
+	echo cf >a/b/c/cf &&
+	git add a &&
+	git commit -m "commit 1" &&
+	git tag -a -m "rev-1" rev-1
+'
+
+test_expect_success 'archive subtree from root by treeish' '
+	git archive --format=tar HEAD:a >atreeroot.tar &&
+	make_dir extract &&
+	"$TAR" xf atreeroot.tar -C extract &&
+	check_dir extract af b b/bf b/c b/c/cf
+'
+
+test_expect_success 'archive subtree from root with pathspec' '
+	git archive --format=tar HEAD a >atreepath.tar &&
+	make_dir extract &&
+	"$TAR" xf atreepath.tar -C extract &&
+	check_dir extract a a/af a/b a/b/bf a/b/c a/b/c/cf
+'
+
+test_expect_success 'archive subtree from root by 2-level treeish' '
+	git archive --format=tar HEAD:a/b >abtreeroot.tar &&
+	make_dir extract &&
+	"$TAR" xf abtreeroot.tar -C extract &&
+	check_dir extract bf c c/cf
+'
+
+test_expect_success 'archive subtree from subdir' '
+	(
+		cd a &&
+		git archive --format=tar HEAD >../asubtree.tar
+	) &&
+	make_dir extract &&
+	"$TAR" xf asubtree.tar -C extract &&
+	check_dir extract af b b/bf b/c b/c/cf
+'
+
+test_expect_success 'archive subtree from subdir with treeish' '
+	(
+		cd a &&
+		git archive --format=tar HEAD:./b >../absubtree.tar
+	) &&
+	make_dir extract &&
+	"$TAR" xf absubtree.tar -C extract &&
+	check_dir extract bf c c/cf
+'
+
+test_expect_success 'archive subtree from subdir with treeish and pathspec' '
+	(
+		cd a &&
+		git archive --format=tar HEAD:./b c >../absubtree.tar
+	) &&
+	make_dir extract &&
+	"$TAR" xf absubtree.tar -C extract &&
+	check_dir extract c c/cf
+'
+
+test_expect_success 'archive subtree from subdir with alt treeish' '
+	(
+		cd a &&
+		git archive --format=tar HEAD:b >../abxsubtree.tar
+	) &&
+	make_dir extract &&
+	"$TAR" xf abxsubtree.tar -C extract &&
+	check_dir extract bf c c/cf
+'
+
 test_done
