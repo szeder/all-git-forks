@@ -32,17 +32,56 @@ void add_arg_to_infile(struct string_list *infile_tok_list,
 	struct string_list_item *new_tok = string_list_insert_at_index(infile_tok_list,
 								       cur_index + 1,
 								       arg_item->string);
-	
+	new_tok->util = arg_item->util;
+}
+
+static int check_if_previous_different(struct string_list_item *infile_item,
+				       struct string_list_item *arg_item,
+				       struct string_list *infile_tok_list,
+				       int cur_index, int min_index, int alnum_len)
+{
+	int i;
+	if (min_index < 0)
+		min_index = 0;
+	for (i = cur_index - 1; i >= min_index; i--) {
+		if (!strncasecmp(infile_item->string, arg_item->string, alnum_len)) {
+			struct tok_info *infile_info = infile_item->util;
+			struct tok_info *arg_info = arg_item->util;
+			if (!strcasecmp(infile_info->value, arg_info->value))
+				return 0;
+		}
+	}
+	return 1;
+}
+
+static int check_if_next_different(struct string_list_item *infile_item,
+				   struct string_list_item *arg_item,
+				   struct string_list *infile_tok_list,
+				   int cur_index, int max_index, int alnum_len)
+{
+	int i;
+	if (max_index > infile_tok_list.nr)
+		max_index = infile_tok_list.nr;
+	for (i = cur_index + 1; i <= max_index; i++) {
+		if (!strncasecmp(infile_item->string, arg_item->string, alnum_len)) {
+			struct tok_info *infile_info = infile_item->util;
+			struct tok_info *arg_info = arg_item->util;
+			if (!strcasecmp(infile_info->value, arg_info->value))
+				return 0;
+		}
+	}
+	return 1;
 }
 
 void apply_arg_if_exist(struct string_list_item *infile_item,
 			struct string_list_item *arg_item,
 			enum action_where where,
 			struct string_list *infile_tok_list,
-			int cur_index)
+			int cur_index, int alnum_len)
 {
 	struct tok_info *infile_info = infile_item->util;
 	struct tok_info *arg_info = arg_item->util;
+	int add_index, different;
 
 	infile_info->conf = arg_info->conf;
 
@@ -51,24 +90,41 @@ void apply_arg_if_exist(struct string_list_item *infile_item,
 	if (arg_info->conf->where != where)
 		return;
 
+	add_index = (where == AFTER) ? cur_index + 1 : cur_index - 1;
+
 	switch(arg_info->conf->if_exist) {
 	case EXIST_DO_NOTHING:
 		break;
 	case EXIST_OVERWRITE:
 		free(infile_info->value);
 		infile_info->value = xstrdup(arg_info->value);
-		arg_info->applied = 1;
 		break;
 	case EXIST_ADD:
-		add_arg_to_infile(infile_tok_list, cur_index + 1, arg_item);
+		add_arg_to_infile(infile_tok_list, add_index, arg_item);
 		break;
 	case EXIST_ADD_IF_DIFFERENT:
-		/* TODO: Check if different */
-		add_arg_to_infile(infile_tok_list, cur_index + 1, arg_item);
+		if (where == AFTER)
+			different = check_if_previous_different(infile_item, arg_item,
+								infile_tok_list,
+								cur_index, 0, alnum_len);
+		else
+			different = check_if_next_different(infile_item, arg_item,
+							    infile_tok_list,
+							    cur_index, infile_tok_list.nr, alnum_len);
+		if (different)
+			add_arg_to_infile(infile_tok_list, add_index, arg_item);
 		break;
 	case EXIST_ADD_IF_DIFFERENT_NEIGHBOR:
-		/* TODO: Check if different neighbor */
-		add_arg_to_infile(infile_tok_list, cur_index + 1, arg_item);
+		if (where == AFTER)
+			different = check_if_previous_different(infile_item, arg_item,
+								infile_tok_list,
+								cur_index, cur_index - 1, alnum_len);
+		else
+			different = check_if_next_different(infile_item, arg_item,
+							    infile_tok_list,
+							    cur_index, cur_index + 1, alnum_len);
+		if (different)
+			add_arg_to_infile(infile_tok_list, add_index, arg_item);
 		break;
 	}
 	arg_info->applied = 1;
@@ -86,7 +142,8 @@ void process_trailers(struct string_list *infile_tok_list,
 		for (j = 0; j < arg_tok_list.nr; j++) {
 			struct string_list_item *arg_item = arg_tok_list.items + j;
 			if (!strncasecmp(infile_item->string, arg_item->string, tok_alnum_len)) {
-				apply_arg_if_exist(infile_item, arg_item, AFTER, infile_tok_list, i);
+				apply_arg_if_exist(infile_item, arg_item, AFTER,
+						   infile_tok_list, i, tok_alnum_len);
 			}
 		}
 	}
