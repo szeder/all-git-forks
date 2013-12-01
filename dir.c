@@ -12,6 +12,7 @@
 #include "refs.h"
 #include "wildmatch.h"
 #include "pathspec.h"
+#include "submodule.h"
 
 struct path_simplify {
 	int len;
@@ -1200,6 +1201,9 @@ static enum path_treatment treat_path(struct dir_struct *dir,
 	strbuf_addstr(path, de->d_name);
 	if (simplify_away(path->buf, path->len, simplify))
 		return path_none;
+
+	if (is_ignored_submodule(path->buf))
+		return path_excluded;
 
 	dtype = DTYPE(de);
 	return treat_one_path(dir, path, simplify, dtype, de);
