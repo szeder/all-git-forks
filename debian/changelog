@@ -1,3 +1,10 @@
+git (1:1.8.5.1-1) unstable; urgency=medium
+
+  * new upstream point release.
+    * submodule: do not copy unknown update mode from .gitmodules.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 03 Dec 2013 14:12:55 -0800
+
 git (1:1.8.5-1) unstable; urgency=low
 
   * new upstream release.

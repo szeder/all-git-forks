@@ -1,3 +1,15 @@
+Version v1.8.5.1; changes since v1.8.5:
+---------------------------------------
+
+Junio C Hamano (3):
+      submodule: do not copy unknown update mode from .gitmodules
+      Git 1.8.4.5
+      Git 1.8.5.1
+
+Nick Townsend (1):
+      ref-iteration doc: add_submodule_odb() returns 0 for success
+
+
 Version v1.8.5; changes since v1.8.5-rc3:
 -----------------------------------------
 
@@ -133,7 +145,7 @@ Vivien Didelot (2):
       Documentation: "pack-file" is not literal in unpack-objects
 
 
-Version v1.8.5-rc0; changes since v1.8.4.4:
+Version v1.8.5-rc0; changes since v1.8.4.5:
 -------------------------------------------
 
 Alexandru Juncu (1):
@@ -690,6 +702,17 @@ kazuki saitoh (1):
 
 Ævar Arnfjörð Bjarmason (1):
       gitweb: Fix the author initials in blame for non-ASCII names
+
+
+Version v1.8.4.5; changes since v1.8.4.4:
+-----------------------------------------
+
+Junio C Hamano (2):
+      submodule: do not copy unknown update mode from .gitmodules
+      Git 1.8.4.5
+
+Richard Hansen (1):
+      remote-hg: don't decode UTF-8 paths into Unicode objects
 
 
 Version v1.8.4.4; changes since v1.8.4.3:
