@@ -1419,63 +1419,68 @@ sub href {
 ## validation, quoting/unquoting and escaping
 
 sub validate_action {
-	my $input = shift || return undef;
-	return undef unless exists $actions{$input};
-	return $input;
+	my $input = shift;
+
+	return 0 unless defined $input;
+	return 0 unless exists $actions{$input};
+	return 1;
 }
 
 sub validate_project {
-	my $input = shift || return undef;
+	my $input = shift;
+
+	return 0 unless defined $input;
 	if (!validate_pathname($input) ||
 		!(-d "$projectroot/$input") ||
 		!check_export_ok("$projectroot/$input") ||
 		($strict_export && !project_in_list($input))) {
-		return undef;
+		return 0;
 	} else {
-		return $input;
+		return 1;
 	}
 }
 
 sub validate_pathname {
-	my $input = shift || return undef;
+	my $input = shift;
 
+	return 0 unless defined $input;
 	# no '.' or '..' as elements of path, i.e. no '.' nor '..'
 	# at the beginning, at the end, and between slashes.
 	# also this catches doubled slashes
 	if ($input =~ m!(^|/)(|\.|\.\.)(/|$)!) {
-		return undef;
+		return 0;
 	}
 	# no null characters
 	if ($input =~ m!\0!) {
-		return undef;
+		return 0;
 	}
-	return $input;
+	return 1;
 }
 
 sub check_ref_format {
-	my $input = shift || return undef;
+	my $input = shift;
 
+	return 0 unless defined $input;
 	# restrictions on ref name according to git-check-ref-format
 	if ($input =~ m!(/\.|\.\.|[\000-\040\177 ~^:?*\[]|/$)!) {
-		return undef;
+		return 0;
 	}
-	return $input;
+	return 1;
 }
 
 sub validate_refname {
-	my $input = shift || return undef;
+	my $input = shift;
 
+	return undef unless defined $input;
 	# textual hashes are O.K.
 	if ($input =~ m/^[0-9a-fA-F]{40}$/) {
-		return $input;
+		return 1;
 	}
 	# it must be correct pathname
-	$input = validate_pathname($input)
-		or return undef;
+	validate_pathname($input) or return 0;
 	# check git-check-ref-format restrictions
-	check_ref_format($input)
-		or return undef;
-	return $input;
+	check_ref_format($input) or return 0;
+	return 1;
 }
 
 # decode sequences of octets in utf8 into Perl's internal form,
