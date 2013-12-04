@@ -342,6 +342,8 @@ static struct lock_file lock_file;
 
 static const char ignore_error[] =
 N_("The following paths are ignored by one of your .gitignore files:\n");
+static const char submodule_ignore_error[] =
+N_("The following paths are ignored submodules:\n");
 
 static int verbose, show_only, ignored_too, refresh_only;
 static int ignore_add_errors, intent_to_add, ignore_missing;
@@ -413,6 +415,17 @@ static int add_files(struct dir_struct *dir, int flags)
 	return exit_status;
 }
 
+static void die_ignored_submodules(struct string_list *ignored_submodules)
+{
+	struct string_list_item *path;
+
+	fprintf(stderr, _(submodule_ignore_error));
+	for_each_string_list_item(path, ignored_submodules)
+		fprintf(stderr, "%s\n", path->string);
+	fprintf(stderr, _("Use -f if you really want to add them.\n"));
+	die(_("no files added"));
+}
+
 int cmd_add(int argc, const char **argv, const char *prefix)
 {
 	int exit_status = 0;
@@ -425,6 +438,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	char *seen = NULL;
 	int implicit_dot = 0;
 	struct update_callback_data update_data;
+	struct string_list submodules = STRING_LIST_INIT_DUP;
 
 	gitmodules_config();
 	git_config(add_config, NULL);
@@ -454,6 +468,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	 * and pathspec... covers a removed path.
 	 */
 	memset(&update_data, 0, sizeof(update_data));
+	update_data.ignored_submodules = submodules;
 	if (!take_worktree_changes && addremove_explicit < 0)
 		update_data.warn_add_would_remove = 1;
 
@@ -590,7 +605,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 
 	exit_status |= !!update_data.add_errors;
 	if (!ignored_too && update_data.ignored_submodules.nr)
-		die("Ignored submodules (use -f to add them)");
+		die_ignored_submodules(&update_data.ignored_submodules);
 	if (add_new_files)
 		exit_status |= add_files(&dir, flags);
 
