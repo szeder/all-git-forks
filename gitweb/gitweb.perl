@@ -3737,8 +3737,14 @@ sub git_get_heads_list {
 		$ref_item{'fullname'}  = $name;
 		my $strip_refs = join '|', map { quotemeta } get_branch_refs();
 		$name =~ s!^refs/($strip_refs|remotes)/!!;
+		$ref_item{'name'} = $name;
+		# for refs neither in 'heads' nor 'remotes' we want to
+		# show their different ref dir
+		my $ref_dir = (defined $1) ? $1 : '';
+		if ($ref_dir ne '' and $ref_dir ne 'heads' and $ref_dir ne 'remotes') {
+		    $ref_item{'name'} .= ' (' . $ref_dir . ')';
+		}
 
-		$ref_item{'name'}  = $name;
 		$ref_item{'id'}    = $hash;
 		$ref_item{'title'} = $title || '(no commit message)';
 		$ref_item{'epoch'} = $epoch;
@@ -7255,7 +7261,24 @@ sub snapshot_name {
 		# branches and other need shortened SHA-1 hash
 		my $strip_refs = join '|', map { quotemeta } get_branch_refs();
 		if ($hash =~ m!^refs/($strip_refs|remotes)/(.*)$!) {
-			$ver = $1;
+			my $ref_dir = $1;
+			$ver = $2;
+
+			if (defined $ref_dir) {
+				# this is going to be a part of
+				# filename, so lets stick to
+				# alphanumerics, dashes and underlines
+				# only - some filesystems do not like
+				# some punctuation symbols for
+				# example.
+				$ref_dir =~ s/[^[:alnum:]_-]//g;
+			}
+
+			# for refs not in heads nor remotes we want to
+			# add a ref dir to archive name
+			if ($ref_dir ne '' and $ref_dir ne 'heads' and $ref_dir ne 'remotes') {
+				$ver = $ref_dir . '-' . $ver;
+			}
 		}
 		$ver .= '-' . git_get_short_hash($project, $hash);
 	}
