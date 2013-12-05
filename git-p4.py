@@ -1397,38 +1397,14 @@ class P4Submit(Command, P4UserMap):
             submitTemplate += "######## Use option --preserve-user to modify authorship.\n"
             submitTemplate += "######## Variable git-p4.skipUserNameCheck hides this message.\n"
 
-        separatorLine = "######## everything below this line is just the diff #######\n"
-
-        # diff
-        if os.environ.has_key("P4DIFF"):
-            del(os.environ["P4DIFF"])
-        diff = ""
-        for editedFile in editedFiles:
-            diff += p4_read_pipe(['diff', '-du',
-                                  wildcard_encode(editedFile)])
-
-        # new file diff
-        newdiff = ""
-        for newFile in filesToAdd:
-            newdiff += "==== new file ====\n"
-            newdiff += "--- /dev/null\n"
-            newdiff += "+++ %s\n" % newFile
-            f = open(newFile, "r")
-            for line in f.readlines():
-                newdiff += "+" + line
-            f.close()
-
-        # change description file: submitTemplate, separatorLine, diff, newdiff
-        (handle, fileName) = tempfile.mkstemp()
-        tmpFile = os.fdopen(handle, "w+")
-        if self.isWindows:
-            submitTemplate = submitTemplate.replace("\n", "\r\n")
-            separatorLine = separatorLine.replace("\n", "\r\n")
-            newdiff = newdiff.replace("\n", "\r\n")
-        tmpFile.write(submitTemplate + separatorLine + diff + newdiff)
-        tmpFile.close()
-
         if self.prepare_p4_only:
+            (handle, fileName) = tempfile.mkstemp()
+            tmpFile = os.fdopen(handle, "w+")
+            if self.isWindows:
+                submitTemplate = submitTemplate.replace("\n", "\r\n")
+            tmpFile.write(submitTemplate)
+            tmpFile.close()
+
             #
             # Leave the p4 tree prepared, and the submit template around
             # and let the user decide what to do next
@@ -1462,6 +1438,38 @@ class P4Submit(Command, P4UserMap):
                     print "  " + f
             print
             return True
+
+        else:
+            separatorLine = "######## everything below this line is just the diff #######\n"
+
+            # diff
+            if os.environ.has_key("P4DIFF"):
+                del(os.environ["P4DIFF"])
+            diff = ""
+            for editedFile in editedFiles:
+                diff += p4_read_pipe(['diff', '-du',
+                                      wildcard_encode(editedFile)])
+
+            # new file diff
+            newdiff = ""
+            for newFile in filesToAdd:
+                newdiff += "==== new file ====\n"
+                newdiff += "--- /dev/null\n"
+                newdiff += "+++ %s\n" % newFile
+                f = open(newFile, "r")
+                for line in f.readlines():
+                    newdiff += "+" + line
+                f.close()
+
+            # change description file: submitTemplate, separatorLine, diff, newdiff
+            (handle, fileName) = tempfile.mkstemp()
+            tmpFile = os.fdopen(handle, "w+")
+            if self.isWindows:
+                submitTemplate = submitTemplate.replace("\n", "\r\n")
+                separatorLine = separatorLine.replace("\n", "\r\n")
+                newdiff = newdiff.replace("\n", "\r\n")
+            tmpFile.write(submitTemplate + separatorLine + diff + newdiff)
+            tmpFile.close()
 
         #
         # Let the user edit the change description, then submit it.
