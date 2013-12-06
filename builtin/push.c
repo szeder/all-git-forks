@@ -494,7 +494,20 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 
 	if (argc > 0) {
 		repo = argv[0];
-		set_refspecs(argv + 1, argc - 1);
+
+		char *refs[argc - 1];
+		int i;
+		for(i = 1; i < argc; i++) {
+			refs[i - 1] = argv[i];
+
+			struct strbuf buf = STRBUF_INIT;
+			interpret_branch_name(argv[i], strlen(argv[i]), &buf);
+
+			if(buf.buf && strlen(buf.buf) > 0)
+				refs[i - 1] = buf.buf;
+		}
+
+		set_refspecs(refs, argc - 1);
 	}
 
 	rc = do_push(repo, flags);
