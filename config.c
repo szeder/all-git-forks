@@ -639,7 +639,7 @@ int git_parse_maybe_bool(const char *value)
 int git_config_maybe_bool(const char *name, const char *value)
 {
 	int v = git_parse_maybe_bool(value);
-	if (0 <= v)
+	if (v >= 0)
 		return v;
 	if (git_parse_int(value, &v))
 		return !!v;
@@ -649,7 +649,7 @@ int git_config_maybe_bool(const char *name, const char *value)
 int git_config_bool_or_int(const char *name, const char *value, int *is_bool)
 {
 	int v = git_parse_maybe_bool(value);
-	if (0 <= v) {
+	if (v >= 0) {
 		*is_bool = 1;
 		return v;
 	}
