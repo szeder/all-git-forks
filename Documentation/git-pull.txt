@@ -57,8 +57,6 @@ However, a non-fast-foward case looks very different.
 	  A---B---C origin/master
 	 /
     D---E---F---G master
-	^
-	origin/master in your repository
 ------------
 
 In the future, `git pull` will fail on these situations, however, most likely
