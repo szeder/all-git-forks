@@ -343,7 +343,6 @@ static int get_short_sha1(const char *name, int len, unsigned char *sha1,
 	return status;
 }
 
-
 int for_each_abbrev(const char *prefix, each_abbrev_fn fn, void *cb_data)
 {
 	char hex_pfx[40];
@@ -677,11 +676,13 @@ static int peel_onion(const char *name, int len, unsigned char *sha1)
 		return -1;
 
 	sp++; /* beginning of type name, or closing brace for empty */
-	if (!strncmp(commit_type, sp, 6) && sp[6] == '}')
+	if (!prefixcmp(sp, "commit}"))
 		expected_type = OBJ_COMMIT;
-	else if (!strncmp(tree_type, sp, 4) && sp[4] == '}')
+	else if (!prefixcmp(sp, "tag}"))
+		expected_type = OBJ_TAG;
+	else if (!prefixcmp(sp, "tree}"))
 		expected_type = OBJ_TREE;
-	else if (!strncmp(blob_type, sp, 4) && sp[4] == '}')
+	else if (!prefixcmp(sp, "blob}"))
 		expected_type = OBJ_BLOB;
 	else if (!prefixcmp(sp, "object}"))
 		expected_type = OBJ_ANY;
@@ -1160,13 +1161,13 @@ int get_sha1(const char *name, unsigned char *sha1)
 }
 
 /*
- * Many callers know that the user meant to name a committish by
+ * Many callers know that the user meant to name a commit-ish by
  * syntactical positions where the object name appears.  Calling this
  * function allows the machinery to disambiguate shorter-than-unique
- * abbreviated object names between committish and others.
+ * abbreviated object names between commit-ish and others.
  *
  * Note that this does NOT error out when the named object is not a
- * committish. It is merely to give a hint to the disambiguation
+ * commit-ish. It is merely to give a hint to the disambiguation
  * machinery.
  */
 int get_sha1_committish(const char *name, unsigned char *sha1)

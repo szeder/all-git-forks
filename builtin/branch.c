@@ -427,46 +427,37 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 	char *ref = NULL;
 	struct branch *branch = branch_get(branch_name);
 	struct strbuf fancy = STRBUF_INIT;
+	int upstream_is_gone = 0;
 
 	if (!branch)
 		return;
 
-	if (!show_tracking || !stat_tracking_info(branch, &ours, &theirs)) {
-		if (branch->merge && branch->merge[0]->dst) {
-			ref = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
-			if (want_color(branch_use_color))
-				strbuf_addf(&fancy, "%s%s%s",
-						branch_get_color(BRANCH_COLOR_UPSTREAM),
-						ref, branch_get_color(BRANCH_COLOR_RESET));
-			else
-				strbuf_addstr(&fancy, ref);
-		}
-		if (branch->push.dst) {
-			ref = shorten_unambiguous_ref(branch->push.dst, 0);
-			if (fancy.len)
-				strbuf_addstr(&fancy, ", ");
-			if (want_color(branch_use_color))
-				strbuf_addf(&fancy, "%s%s%s",
-						branch_get_color(BRANCH_COLOR_PUBLISH),
-						ref, branch_get_color(BRANCH_COLOR_RESET));
-			else
-				strbuf_addstr(&fancy, ref);
-		}
-		if (!fancy.len)
+	if (show_tracking) {
+		switch (stat_tracking_info(branch, &ours, &theirs)) {
+		case 0:
+			/* no base */
 			return;
-		strbuf_addf(stat, _("[%s]"), fancy.buf);
-		strbuf_release(&fancy);
-		strbuf_addch(stat, ' ');
-		return;
+		case -1:
+			/* with "gone" base */
+			upstream_is_gone = 1;
+			break;
+		default:
+			/* with base */
+			break;
+		}
+	} else {
+		ours = theirs = 0;
 	}
 
-	ref = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
-	if (want_color(branch_use_color))
-		strbuf_addf(&fancy, "%s%s%s",
-				branch_get_color(BRANCH_COLOR_UPSTREAM),
-				ref, branch_get_color(BRANCH_COLOR_RESET));
-	else
-		strbuf_addstr(&fancy, ref);
+	if (branch->merge && branch->merge[0] && branch->merge[0]->dst) {
+		ref = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
+		if (want_color(branch_use_color))
+			strbuf_addf(&fancy, "%s%s%s",
+					branch_get_color(BRANCH_COLOR_UPSTREAM),
+					ref, branch_get_color(BRANCH_COLOR_RESET));
+		else
+			strbuf_addstr(&fancy, ref);
+	}
 	if (branch->push.dst) {
 		ref = shorten_unambiguous_ref(branch->push.dst, 0);
 		if (fancy.len)
@@ -478,26 +469,21 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 		else
 			strbuf_addstr(&fancy, ref);
 	}
+	if (!fancy.len)
+		return;
 
-	if (!ours) {
-		if (ref)
-			strbuf_addf(stat, _("[%s: behind %d]"), fancy.buf, theirs);
-		else
-			strbuf_addf(stat, _("[behind %d]"), theirs);
+	if (upstream_is_gone)
+		strbuf_addf(stat, _("[%s: gone]"), fancy.buf);
+	else if (!ours && !theirs)
+		strbuf_addf(stat, _("[%s]"), fancy.buf);
+	else if (!ours)
+		strbuf_addf(stat, _("[%s: behind %d]"), fancy.buf, theirs);
+	else if (!theirs)
+		strbuf_addf(stat, _("[%s: ahead %d]"), fancy.buf, ours);
+	else
+		strbuf_addf(stat, _("[%s: ahead %d, behind %d]"),
+			    fancy.buf, ours, theirs);
 
-	} else if (!theirs) {
-		if (ref)
-			strbuf_addf(stat, _("[%s: ahead %d]"), fancy.buf, ours);
-		else
-			strbuf_addf(stat, _("[ahead %d]"), ours);
-	} else {
-		if (ref)
-			strbuf_addf(stat, _("[%s: ahead %d, behind %d]"),
-				    fancy.buf, ours, theirs);
-		else
-			strbuf_addf(stat, _("[ahead %d, behind %d]"),
-				    ours, theirs);
-	}
 	strbuf_release(&fancy);
 	strbuf_addch(stat, ' ');
 	free(ref);
@@ -829,8 +815,8 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 			BRANCH_TRACK_OVERRIDE),
 		OPT_STRING('u', "set-upstream-to", &new_upstream, "upstream", "change the upstream info"),
 		OPT_STRING('p', "set-publish-to", &publish, "publish", "change the publish info"),
-		OPT_BOOLEAN(0, "unset-upstream", &unset_upstream, "Unset the upstream info"),
-		OPT_BOOLEAN(0, "unset-publish", &unset_publish, "Unset the publish info"),
+		OPT_BOOL(0, "unset-upstream", &unset_upstream, "Unset the upstream info"),
+		OPT_BOOL(0, "unset-publish", &unset_publish, "Unset the publish info"),
 		OPT__COLOR(&branch_use_color, N_("use colored output")),
 		OPT_SET_INT('r', "remotes",     &kinds, N_("act on remote-tracking branches"),
 			REF_REMOTE_BRANCH),
@@ -855,10 +841,10 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		OPT_BIT('D', NULL, &delete, N_("delete branch (even if not merged)"), 2),
 		OPT_BIT('m', "move", &rename, N_("move/rename a branch and its reflog"), 1),
 		OPT_BIT('M', NULL, &rename, N_("move/rename a branch, even if target exists"), 2),
-		OPT_BOOLEAN(0, "list", &list, N_("list branch names")),
-		OPT_BOOLEAN('l', "create-reflog", &reflog, N_("create the branch's reflog")),
-		OPT_BOOLEAN(0, "edit-description", &edit_description,
-			    N_("edit the description for the branch")),
+		OPT_BOOL(0, "list", &list, N_("list branch names")),
+		OPT_BOOL('l', "create-reflog", &reflog, N_("create the branch's reflog")),
+		OPT_BOOL(0, "edit-description", &edit_description,
+			 N_("edit the description for the branch")),
 		OPT__FORCE(&force_create, N_("force creation (when already exists)")),
 		{
 			OPTION_CALLBACK, 0, "no-merged", &merge_filter_ref,
@@ -906,8 +892,8 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 	if (with_commit || merge_filter != NO_FILTER)
 		list = 1;
 
-	if (!!delete + !!rename + !!force_create + !!list + !!new_upstream + !!publish +
-			!!unset_upstream + !! unset_publish > 1)
+	if (!!delete + !!rename + !!force_create + !!new_upstream + !!publish +
+	    list + unset_upstream + unset_publish > 1)
 		usage_with_options(builtin_branch_usage, options);
 
 	if (abbrev == -1)
@@ -1003,9 +989,8 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 			die(_("no such branch '%s'"), argv[0]);
 		}
 
-		if (!branch_has_merge_config(branch)) {
+		if (!branch_has_merge_config(branch))
 			die(_("Branch '%s' has no upstream information"), branch->name);
-		}
 
 		strbuf_addf(&buf, "branch.%s.remote", branch->name);
 		git_config_set_multivar(buf.buf, NULL, NULL, 1);

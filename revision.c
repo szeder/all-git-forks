@@ -139,8 +139,7 @@ void mark_tree_uninteresting(struct tree *tree)
 	 * We don't care about the tree any more
 	 * after it has been marked uninteresting.
 	 */
-	free(tree->buffer);
-	tree->buffer = NULL;
+	free_tree_buffer(tree);
 }
 
 void mark_parents_uninteresting(struct commit *commit)
@@ -1373,7 +1372,8 @@ static void prepare_show_merge(struct rev_info *revs)
 			i++;
 	}
 	free_pathspec(&revs->prune_data);
-	init_pathspec(&revs->prune_data, prune);
+	parse_pathspec(&revs->prune_data, PATHSPEC_ALL_MAGIC & ~PATHSPEC_LITERAL,
+		       PATHSPEC_PREFER_FULL | PATHSPEC_LITERAL_PATH, "", prune);
 	revs->limited = 1;
 }
 
@@ -1420,26 +1420,40 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsi
 		}
 		if (!get_sha1_committish(this, from_sha1) &&
 		    !get_sha1_committish(next, sha1)) {
-			struct commit *a, *b;
-			struct commit_list *exclude;
-
-			a = lookup_commit_reference(from_sha1);
-			b = lookup_commit_reference(sha1);
-			if (!a || !b) {
-				if (revs->ignore_missing)
-					return 0;
-				die(symmetric ?
-				    "Invalid symmetric difference expression %s...%s" :
-				    "Invalid revision range %s..%s",
-				    arg, next);
-			}
+			struct object *a_obj, *b_obj;
 
 			if (!cant_be_filename) {
 				*dotdot = '.';
 				verify_non_filename(revs->prefix, arg);
 			}
 
-			if (symmetric) {
+			a_obj = parse_object(from_sha1);
+			b_obj = parse_object(sha1);
+			if (!a_obj || !b_obj) {
+			missing:
+				if (revs->ignore_missing)
+					return 0;
+				die(symmetric
+				    ? "Invalid symmetric difference expression %s"
+				    : "Invalid revision range %s", arg);
+			}
+
+			if (!symmetric) {
+				/* just A..B */
+				a_flags = flags_exclude;
+			} else {
+				/* A...B -- find merge bases between the two */
+				struct commit *a, *b;
+				struct commit_list *exclude;
+
+				a = (a_obj->type == OBJ_COMMIT
+				     ? (struct commit *)a_obj
+				     : lookup_commit_reference(a_obj->sha1));
+				b = (b_obj->type == OBJ_COMMIT
+				     ? (struct commit *)b_obj
+				     : lookup_commit_reference(b_obj->sha1));
+				if (!a || !b)
+					goto missing;
 				exclude = get_merge_bases(a, b, 1);
 				add_rev_cmdline_list(revs, exclude,
 						     REV_CMD_MERGE_BASE,
@@ -1447,17 +1461,18 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsi
 				add_pending_commit_list(revs, exclude,
 							flags_exclude);
 				free_commit_list(exclude);
+
 				a_flags = flags | SYMMETRIC_LEFT;
-			} else
-				a_flags = flags_exclude;
-			a->object.flags |= a_flags;
-			b->object.flags |= flags;
-			add_rev_cmdline(revs, &a->object, this,
+			}
+
+			a_obj->flags |= a_flags;
+			b_obj->flags |= flags;
+			add_rev_cmdline(revs, a_obj, this,
 					REV_CMD_LEFT, a_flags);
-			add_rev_cmdline(revs, &b->object, next,
+			add_rev_cmdline(revs, b_obj, next,
 					REV_CMD_RIGHT, flags);
-			add_pending_object(revs, &a->object, this);
-			add_pending_object(revs, &b->object, next);
+			add_pending_object(revs, a_obj, this);
+			add_pending_object(revs, b_obj, next);
 			return 0;
 		}
 		*dotdot = '.';
@@ -1504,7 +1519,7 @@ struct cmdline_pathspec {
 static void append_prune_data(struct cmdline_pathspec *prune, const char **av)
 {
 	while (*av) {
-		ALLOC_GROW(prune->path, prune->nr+1, prune->alloc);
+		ALLOC_GROW(prune->path, prune->nr + 1, prune->alloc);
 		prune->path[prune->nr++] = *(av++);
 	}
 }
@@ -1516,7 +1531,7 @@ static void read_pathspec_from_stdin(struct rev_info *revs, struct strbuf *sb,
 		int len = sb->len;
 		if (len && sb->buf[len - 1] == '\n')
 			sb->buf[--len] = '\0';
-		ALLOC_GROW(prune->path, prune->nr+1, prune->alloc);
+		ALLOC_GROW(prune->path, prune->nr + 1, prune->alloc);
 		prune->path[prune->nr++] = xstrdup(sb->buf);
 	}
 }
@@ -2119,10 +2134,10 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 		 *	call init_pathspec() to set revs->prune_data here.
 		 * }
 		 */
-		ALLOC_GROW(prune_data.path, prune_data.nr+1, prune_data.alloc);
+		ALLOC_GROW(prune_data.path, prune_data.nr + 1, prune_data.alloc);
 		prune_data.path[prune_data.nr++] = NULL;
-		init_pathspec(&revs->prune_data,
-			      get_pathspec(revs->prefix, prune_data.path));
+		parse_pathspec(&revs->prune_data, 0, 0,
+			       revs->prefix, prune_data.path);
 	}
 
 	if (revs->def == NULL)
@@ -2155,12 +2170,13 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 		revs->limited = 1;
 
 	if (revs->prune_data.nr) {
-		diff_tree_setup_paths(revs->prune_data.raw, &revs->pruning);
+		copy_pathspec(&revs->pruning.pathspec, &revs->prune_data);
 		/* Can't prune commits with rename following: the paths change.. */
 		if (!DIFF_OPT_TST(&revs->diffopt, FOLLOW_RENAMES))
 			revs->prune = 1;
 		if (!revs->full_diff)
-			diff_tree_setup_paths(revs->prune_data.raw, &revs->diffopt);
+			copy_pathspec(&revs->diffopt.pathspec,
+				      &revs->prune_data);
 	}
 	if (revs->combine_merges)
 		revs->ignore_merges = 0;
@@ -2971,7 +2987,7 @@ static struct commit *get_revision_internal(struct rev_info *revs)
 	if (revs->max_count) {
 		c = get_revision_1(revs);
 		if (c) {
-			while (0 < revs->skip_count) {
+			while (revs->skip_count > 0) {
 				revs->skip_count--;
 				c = get_revision_1(revs);
 				if (!c)
@@ -2986,9 +3002,8 @@ static struct commit *get_revision_internal(struct rev_info *revs)
 	if (c)
 		c->object.flags |= SHOWN;
 
-	if (!revs->boundary) {
+	if (!revs->boundary)
 		return c;
-	}
 
 	if (!c) {
 		/*
@@ -3034,9 +3049,8 @@ struct commit *get_revision(struct rev_info *revs)
 
 	if (revs->reverse) {
 		reversed = NULL;
-		while ((c = get_revision_internal(revs))) {
+		while ((c = get_revision_internal(revs)))
 			commit_list_insert(c, &reversed);
-		}
 		revs->commits = reversed;
 		revs->reverse = 0;
 		revs->reverse_output_stage = 1;
