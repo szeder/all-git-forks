@@ -729,9 +729,10 @@ int cmd_fast_export(int argc, const char **argv, const char *prefix)
 		usage_with_options (fast_export_usage, options);
 
 	if (refspecs_list.nr) {
-		const char *refspecs_str[refspecs_list.nr];
+		const char **refspecs_str;
 		int i;
 
+		refspecs_str = xmalloc(sizeof(*refspecs_str) * refspecs_list.nr);
 		for (i = 0; i < refspecs_list.nr; i++)
 			refspecs_str[i] = refspecs_list.items[i].string;
 
@@ -739,6 +740,7 @@ int cmd_fast_export(int argc, const char **argv, const char *prefix)
 		refspecs = parse_fetch_refspec(refspecs_nr, refspecs_str);
 
 		string_list_clear(&refspecs_list, 1);
+		free(refspecs_str);
 	}
 
 	if (use_done_feature)

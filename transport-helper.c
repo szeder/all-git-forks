@@ -823,7 +823,7 @@ static int push_refs_with_export(struct transport *transport,
 
 	if (flags & TRANSPORT_PUSH_FORCE) {
 		if (set_helper_option(transport, "force", "true") != 0)
-			die("helper %s does not support 'force'", data->name);
+			warning("helper %s does not support 'force'", data->name);
 	}
 
 	helper = get_helper(transport);
