@@ -1,0 +1,39 @@
+submodule config cache API
+==========================
+
+The submodule config cache API allows to lazily read submodule
+configurations from multiple revisions into a cache that can then be
+used for subsequent lookups of submodule configurations either by its
+path or name.
+
+Data Structures
+---------------
+
+`struct submodule_config_cache`::
+
+	The configuration cache which stores everything needed for
+	lookup. All functions for lookup or insertion operate
+	on this structure.
+
+`struct submodule_config`::
+
+	This structure stores the configuration for one submodule for a
+	certain revision. It is returned by the lookup functions.
+
+Functions
+---------
+
+`void submodule_config_cache_init(struct submodule_config_cache *cache)`::
+`void submodule_config_cache_free(struct submodule_config_cache *cache)`::
+
+	Use these to initialize before and free a cache after your
+	lookups.
+
+`struct submodule_config *get_submodule_config_from_path(
+			struct submodule_config_cache *cache,
+			const unsigned char *commit_sha1,
+			const char *path)::
+
+	Lookup a submodules configuration by its commit_sha1 and path.
+
+For an example usage see test-submodule-config-cache.c.
