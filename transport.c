@@ -185,8 +185,8 @@ static void set_tracking(struct transport *transport, struct ref *refs,
 						remotename);
 			else
 				install_branch_config(BRANCH_CONFIG_VERBOSE,
-					localname + 11, transport->remote->name,
-					remotename);
+						localname + 11, transport->remote->name,
+						remotename);
 		} else
 			printf("Would set %s of '%s' to '%s' of '%s'\n",
 				publish ? "publish" : "upstream",

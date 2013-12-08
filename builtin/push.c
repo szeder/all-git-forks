@@ -153,7 +153,7 @@ static void setup_push_current(struct remote *remote, struct branch *branch)
 }
 
 static void setup_push_simple(struct remote *remote, struct branch *branch,
-				int triangular)
+		int triangular)
 {
 	if (branch->push_name) {
 		struct strbuf refspec = STRBUF_INIT;

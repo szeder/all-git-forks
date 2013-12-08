@@ -886,7 +886,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 			     0);
 
 	if (!delete && !rename && !edit_description && !new_upstream && !publish &&
-			!unset_upstream && !unset_publish && argc == 0)
+	    !unset_upstream && !unset_publish && argc == 0)
 		list = 1;
 
 	if (with_commit || merge_filter != NO_FILTER)
