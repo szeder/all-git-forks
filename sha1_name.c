@@ -417,7 +417,7 @@ static int ambiguous_path(const char *path, int len)
 
 static inline int upstream_mark(const char *string, int len)
 {
-	const char *suffix[] = { "@{upstream}", "@{u}" };
+	const char *suffix[] = { "upstream", "u" };
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(suffix); i++) {
@@ -475,7 +475,7 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 					nth_prior = 1;
 					continue;
 				}
-				if (!upstream_mark(str + at, len - at)) {
+				if (!upstream_mark(str + at + 2, len - at - 3)) {
 					reflog_len = (len-1) - (at+2);
 					len = at;
 				}
@@ -1074,7 +1074,6 @@ int interpret_branch_name(const char *name, int namelen, struct strbuf *buf)
 	char *cp;
 	struct branch *branch;
 	int len = interpret_nth_prior_checkout(name, buf);
-	int tmp_len;
 
 	if (!namelen)
 		namelen = strlen(name);
@@ -1096,11 +1095,13 @@ int interpret_branch_name(const char *name, int namelen, struct strbuf *buf)
 	if (len > 0)
 		return reinterpret(name, namelen, len, buf);
 
-	tmp_len = upstream_mark(cp, namelen - (cp - name));
-	if (!tmp_len)
+	len = namelen - (cp - name);
+	if (cp[1] != '{' && cp[len - 1] != '}')
 		return -1;
 
-	len = cp + tmp_len - name;
+	if (!upstream_mark(cp + 2, len - 3))
+		return -1;
+
 	cp = xstrndup(name, cp - name);
 	branch = branch_get(*cp ? cp : NULL);
 	/*
@@ -1125,7 +1126,7 @@ int interpret_branch_name(const char *name, int namelen, struct strbuf *buf)
 	strbuf_reset(buf);
 	strbuf_addstr(buf, cp);
 	free(cp);
-	return len;
+	return namelen;
 }
 
 int strbuf_branchname(struct strbuf *sb, const char *name)
