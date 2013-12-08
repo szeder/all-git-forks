@@ -241,6 +241,8 @@ const char *branch_get_upstream(struct branch *branch, struct strbuf *err);
  */
 const char *branch_get_push(struct branch *branch, struct strbuf *err);
 
+const char *branch_get_publish(struct branch *branch, struct strbuf *err);
+
 /* Flags to match_refs. */
 enum match_refs_flags {
 	MATCH_REFS_NONE		= 0,

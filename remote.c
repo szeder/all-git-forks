@@ -1838,6 +1838,15 @@ const char *branch_get_push(struct branch *branch, struct strbuf *err)
 	return branch->push_tracking_ref;
 }
 
+const char *branch_get_publish(struct branch *branch, struct strbuf *err)
+{
+	if (!branch)
+		return error_buf(err, _("HEAD does not point to a branch"));
+	if (!branch->push.dst)
+		return error_buf(err, _("No publish configured for branch '%s'"), branch->name);
+	return branch->push.dst;
+}
+
 static int ignore_symref_update(const char *refname)
 {
 	unsigned char sha1[20];
