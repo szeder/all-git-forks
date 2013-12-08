@@ -13,11 +13,14 @@ struct conf_info {
 	enum action_if_missing if_missing;
 };
 
-struct tok_info {
-	struct conf_info *conf;
+struct trailer_item {
+	struct trailer_item *previous;
+	struct trailer_item *next;
+	const char *token;
 	const char *value;
+	struct conf_info *conf;
 	int applied;
-}
+};
 
 /* Get the length of buf from its beginning until its last alphanumeric character */
 static size_t alnum_len(const char *buf, size_t len) {
@@ -25,125 +28,104 @@ static size_t alnum_len(const char *buf, size_t len) {
 	return len + 1;
 }
 
-void add_arg_to_infile(struct string_list *infile_tok_list,
-		       int index,
-		       struct string_list_item *arg_item)
+void add_arg_to_infile(struct trailer_item *infile_tok,
+		       struct trailer_item *arg_tok,
+		       enum action_where where)
 {
-	struct string_list_item *new_tok = string_list_insert_at_index(infile_tok_list,
-								       cur_index + 1,
-								       arg_item->string);
-	new_tok->util = arg_item->util;
+	if (where == AFTER) {
+		arg_tok->next = infile_tok->next;
+		infile_tok->next = arg_tok;
+		arg_tok->previous = infile_tok;
+		if (arg_tok->next)
+			arg_tok->next->previous = arg_tok;
+	} else {
+		arg_tok->previous = infile_tok->previous;
+		infile_tok->previous = arg_tok;
+		arg_tok->next = infile_tok;
+		if (arg_tok->previous)
+			arg_tok->previous->next = arg_tok;
+	}
 }
 
-static int check_if_previous_different(struct string_list_item *infile_item,
-				       struct string_list_item *arg_item,
-				       struct string_list *infile_tok_list,
-				       int cur_index, int min_index, int alnum_len)
+static int same_token(struct trailer_item *a, struct trailer_item *b, int alnum_len)
 {
-	int i;
-	if (min_index < 0)
-		min_index = 0;
-	for (i = cur_index - 1; i >= min_index; i--) {
-		if (!strncasecmp(infile_item->string, arg_item->string, alnum_len)) {
-			struct tok_info *infile_info = infile_item->util;
-			struct tok_info *arg_info = arg_item->util;
-			if (!strcasecmp(infile_info->value, arg_info->value))
-				return 0;
-		}
-	}
+	return !strncasecmp(a->token, b->token, alnum_len);
+}
+
+static int same_value(struct trailer_item *a, struct trailer_item *b)
+{
+	return !strcasecmp(a->value, b->value);
+}
+
+static int same_trailer(struct trailer_item *a, struct trailer_item *b, int alnum_len)
+{
+	return same_token(a, b, alnum_len) && same_value(a, b);
+}
+
+static int check_if_different(struct trailer_item *infile_tok,
+			      struct trailer_item *arg_tok,
+			      int alnum_len, int check_all,
+			      enum action_where where)
+{
+	do {
+		/*
+		 * if we want to add a trailer after another one,
+		 * we have to check those before this one
+		 */
+		infile_tok = (where == AFTER) ? infile_tok->previous : infile_tok->next;
+		if (!infile_tok)
+			return 1;
+		if (same_trailer(infile_tok, arg_tok, alnum_len))
+			return 0;
+	} while (check_all);
 	return 1;
 }
 
-static int check_if_next_different(struct string_list_item *infile_item,
-				   struct string_list_item *arg_item,
-				   struct string_list *infile_tok_list,
-				   int cur_index, int max_index, int alnum_len)
+void apply_arg_if_exist(struct trailer_item *infile_tok,
+			struct trailer_item *arg_tok,
+			int alnum_len,
+			enum action_where where)
 {
-	int i;
-	if (max_index > infile_tok_list.nr)
-		max_index = infile_tok_list.nr;
-	for (i = cur_index + 1; i <= max_index; i++) {
-		if (!strncasecmp(infile_item->string, arg_item->string, alnum_len)) {
-			struct tok_info *infile_info = infile_item->util;
-			struct tok_info *arg_info = arg_item->util;
-			if (!strcasecmp(infile_info->value, arg_info->value))
-				return 0;
-		}
-	}
-	return 1;
-}
-
-void apply_arg_if_exist(struct string_list_item *infile_item,
-			struct string_list_item *arg_item,
-			enum action_where where,
-			struct string_list *infile_tok_list,
-			int cur_index, int alnum_len)
-{
-	struct tok_info *infile_info = infile_item->util;
-	struct tok_info *arg_info = arg_item->util;
-	int add_index, different;
-
-	infile_info->conf = arg_info->conf;
-
-	if (arg_info->applied)
+	if (arg_tok->applied)
 		return;
-	if (arg_info->conf->where != where)
+	if (arg_tok->conf->where != where)
 		return;
 
-	add_index = (where == AFTER) ? cur_index + 1 : cur_index - 1;
-
-	switch(arg_info->conf->if_exist) {
+	switch(arg_tok->conf->if_exist) {
 	case EXIST_DO_NOTHING:
 		break;
 	case EXIST_OVERWRITE:
-		free(infile_info->value);
-		infile_info->value = xstrdup(arg_info->value);
+		free(infile_tok->value);
+		infile_tok->value = xstrdup(arg_tok->value);
 		break;
 	case EXIST_ADD:
-		add_arg_to_infile(infile_tok_list, add_index, arg_item);
+		add_arg_to_infile(infile_tok, arg_tok, where);
 		break;
 	case EXIST_ADD_IF_DIFFERENT:
-		if (where == AFTER)
-			different = check_if_previous_different(infile_item, arg_item,
-								infile_tok_list,
-								cur_index, 0, alnum_len);
-		else
-			different = check_if_next_different(infile_item, arg_item,
-							    infile_tok_list,
-							    cur_index, infile_tok_list.nr, alnum_len);
-		if (different)
-			add_arg_to_infile(infile_tok_list, add_index, arg_item);
+		if (check_if_different(infile_tok, arg_tok, alnum_len, 1, where))
+			add_arg_to_infile(infile_tok, arg_tok, where);
 		break;
 	case EXIST_ADD_IF_DIFFERENT_NEIGHBOR:
-		if (where == AFTER)
-			different = check_if_previous_different(infile_item, arg_item,
-								infile_tok_list,
-								cur_index, cur_index - 1, alnum_len);
-		else
-			different = check_if_next_different(infile_item, arg_item,
-							    infile_tok_list,
-							    cur_index, cur_index + 1, alnum_len);
-		if (different)
-			add_arg_to_infile(infile_tok_list, add_index, arg_item);
+		if (check_if_different(infile_tok, arg_tok, alnum_len, 0, where))
+			add_arg_to_infile(infile_tok, arg_tok, where);
 		break;
 	}
-	arg_info->applied = 1;
+	arg_tok->applied = 1;
 }
 
-void process_trailers(struct string_list *infile_tok_list,
-		      struct string_list *arg_tok_list)
+void process_trailers(struct trailer_item *infile_tok_first,
+		      struct trailer_item *infile_tok_last,
+		      struct trailer_item *arg_tok_first)
 {
-	int i, j;
+	struct trailer_item *infile_tok;
+	struct trailer_item *arg_tok;
 
 	/* Process infile from end to start */
-	for (i = infile_tok_list.nr - 1; i >= 0; i--) {
-		struct string_list_item *infile_item = infile_tok_list.items + i;
-		int tok_alnum_len = alnum_len(infile_item->string, strlen(infile_item->string));
-		for (j = 0; j < arg_tok_list.nr; j++) {
-			struct string_list_item *arg_item = arg_tok_list.items + j;
-			if (!strncasecmp(infile_item->string, arg_item->string, tok_alnum_len)) {
-				apply_arg_if_exist(infile_item, arg_item, AFTER,
-						   infile_tok_list, i, tok_alnum_len);
+	for (infile_tok = infile_tok_last; infile_tok; infile_tok = infile_tok->previous) {
+		int tok_alnum_len = alnum_len(infile_tok->token, strlen(infile_tok->token));
+		for (arg_tok = arg_tok_first; arg_tok; arg_tok = arg_tok->next) {
+			if (same_token(infile_tok, arg_tok, tok_alnum_len)) {
+				apply_arg_if_exist(infile_tok, arg_tok, tok_alnum_len, AFTER);
 			}
 		}
 	}
