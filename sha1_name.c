@@ -417,7 +417,7 @@ static int ambiguous_path(const char *path, int len)
 
 static inline int upstream_mark(const char *string, int len)
 {
-	const char *suffix[] = { "@{upstream}", "@{u}" };
+	const char *suffix[] = { "upstream", "u" };
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(suffix); i++) {
@@ -475,7 +475,7 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 					nth_prior = 1;
 					continue;
 				}
-				if (!upstream_mark(str + at, len - at)) {
+				if (!upstream_mark(str + at + 2, len - at - 3)) {
 					reflog_len = (len-1) - (at+2);
 					len = at;
 				}
@@ -1089,7 +1089,10 @@ static int interpret_upstream_mark(const char *name, int namelen,
 {
 	int len;
 
-	len = upstream_mark(name + at, namelen - at);
+	if (name[at + 1] != '{' || name[namelen - 1] != '}')
+		return -1;
+
+	len = upstream_mark(name + at + 2, namelen - at - 3);
 	if (!len)
 		return -1;
 
@@ -1097,7 +1100,7 @@ static int interpret_upstream_mark(const char *name, int namelen,
 		return -1;
 
 	set_shortened_ref(buf, get_upstream_branch(name, at));
-	return len + at;
+	return len + at + 3;
 }
 
 /*
