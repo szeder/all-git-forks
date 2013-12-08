@@ -1059,31 +1059,31 @@ static void set_shortened_ref(struct strbuf *buf, const char *ref)
 	free(s);
 }
 
-static const char *get_upstream_branch(const char *branch_buf, int len)
+static const char *get_upstream_branch(const char *name_buf, int len)
 {
-	char *branch = xstrndup(branch_buf, len);
-	struct branch *upstream = branch_get(*branch ? branch : NULL);
+	char *name = xstrndup(name_buf, len);
+	struct branch *branch = branch_get(*name ? name : NULL);
 
 	/*
 	 * Upstream can be NULL only if branch refers to HEAD and HEAD
 	 * points to something different than a branch.
 	 */
-	if (!upstream)
+	if (!branch)
 		die(_("HEAD does not point to a branch"));
-	if (!upstream->merge || !upstream->merge[0]->dst) {
-		if (!ref_exists(upstream->refname))
-			die(_("No such branch: '%s'"), branch);
-		if (!upstream->merge) {
+	if (!branch->merge || !branch->merge[0]->dst) {
+		if (!ref_exists(branch->refname))
+			die(_("No such branch: '%s'"), name);
+		if (!branch->merge) {
 			die(_("No upstream configured for branch '%s'"),
-				upstream->name);
+				branch->name);
 		}
 		die(
 			_("Upstream branch '%s' not stored as a remote-tracking branch"),
-			upstream->merge[0]->src);
+			branch->merge[0]->src);
 	}
-	free(branch);
+	free(name);
 
-	return upstream->merge[0]->dst;
+	return branch->merge[0]->dst;
 }
 
 static int interpret_upstream_mark(const char *name, int namelen,
