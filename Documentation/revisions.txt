@@ -96,6 +96,10 @@ some output processing may assume ref names in UTF-8.
   refers to the branch that the branch specified by branchname is set to build on
   top of.  A missing branchname defaults to the current one.
 
+'<branchname>@\{publish\}', e.g. 'master@\{publish\}', '@\{p\}'::
+  The suffix '@\{publish\}' to a branchname refers to the remote branch to
+  push to. A missing branchname defaults to the current one.
+
 '<rev>{caret}', e.g. 'HEAD{caret}, v1.5.1{caret}0'::
   A suffix '{caret}' to a revision parameter means the first parent of
   that commit object.  '{caret}<n>' means the <n>th parent (i.e.
