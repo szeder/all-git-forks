@@ -415,9 +415,9 @@ static int ambiguous_path(const char *path, int len)
 	return slash;
 }
 
-static inline int upstream_mark(const char *string, int len)
+static inline int tracking_mark(const char *string, int len)
 {
-	const char *suffix[] = { "upstream", "u" };
+	const char *suffix[] = { "upstream", "u", "publish", "p" };
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(suffix); i++) {
@@ -475,7 +475,7 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 					nth_prior = 1;
 					continue;
 				}
-				if (!upstream_mark(str + at + 2, len - at - 3)) {
+				if (!tracking_mark(str + at + 2, len - at - 3)) {
 					reflog_len = (len-1) - (at+2);
 					len = at;
 				}
@@ -1074,6 +1074,7 @@ int interpret_branch_name(const char *name, int namelen, struct strbuf *buf)
 	char *cp;
 	struct branch *branch;
 	int len = interpret_nth_prior_checkout(name, buf);
+	char *tracking = NULL, type;
 
 	if (!namelen)
 		namelen = strlen(name);
@@ -1099,8 +1100,10 @@ int interpret_branch_name(const char *name, int namelen, struct strbuf *buf)
 	if (cp[1] != '{' && cp[len - 1] != '}')
 		return -1;
 
-	if (!upstream_mark(cp + 2, len - 3))
+	if (!tracking_mark(cp + 2, len - 3))
 		return -1;
+
+	type = cp[2];
 
 	cp = xstrndup(name, cp - name);
 	branch = branch_get(*cp ? cp : NULL);
@@ -1110,19 +1113,31 @@ int interpret_branch_name(const char *name, int namelen, struct strbuf *buf)
 	 */
 	if (!branch)
 		die(_("HEAD does not point to a branch"));
-	if (!branch->merge || !branch->merge[0]->dst) {
-		if (!ref_exists(branch->refname))
-			die(_("No such branch: '%s'"), cp);
-		if (!branch->merge) {
-			die(_("No upstream configured for branch '%s'"),
-				branch->name);
+	switch (type) {
+	case 'u':
+		if (!branch->merge || !branch->merge[0]->dst) {
+			if (!ref_exists(branch->refname))
+				die(_("No such branch: '%s'"), cp);
+			if (!branch->merge) {
+				die(_("No upstream configured for branch '%s'"),
+					branch->name);
+			}
+			die(
+				_("Upstream branch '%s' not stored as a remote-tracking branch"),
+				branch->merge[0]->src);
 		}
-		die(
-			_("Upstream branch '%s' not stored as a remote-tracking branch"),
-			branch->merge[0]->src);
+		tracking = branch->merge[0]->dst;
+		break;
+	case 'p':
+		if (!branch->push.dst) {
+			die(_("No publish configured for branch '%s'"),
+					branch->name);
+		}
+		tracking = branch->push.dst;
+		break;
 	}
 	free(cp);
-	cp = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
+	cp = shorten_unambiguous_ref(tracking, 0);
 	strbuf_reset(buf);
 	strbuf_addstr(buf, cp);
 	free(cp);
