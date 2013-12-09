@@ -86,17 +86,14 @@ void apply_arg_if_exist(struct trailer_item *infile_tok,
 			int alnum_len,
 			enum action_where where)
 {
-	if (arg_tok->applied)
-		return;
-	if (arg_tok->conf->where != where)
-		return;
-
 	switch(arg_tok->conf->if_exist) {
 	case EXIST_DO_NOTHING:
+		free(arg_tok);
 		break;
 	case EXIST_OVERWRITE:
 		free(infile_tok->value);
 		infile_tok->value = xstrdup(arg_tok->value);
+		free(arg_tok);
 		break;
 	case EXIST_ADD:
 		add_arg_to_infile(infile_tok, arg_tok, where);
@@ -104,13 +101,16 @@ void apply_arg_if_exist(struct trailer_item *infile_tok,
 	case EXIST_ADD_IF_DIFFERENT:
 		if (check_if_different(infile_tok, arg_tok, alnum_len, 1, where))
 			add_arg_to_infile(infile_tok, arg_tok, where);
+		else
+			free(arg_tok);
 		break;
 	case EXIST_ADD_IF_DIFFERENT_NEIGHBOR:
 		if (check_if_different(infile_tok, arg_tok, alnum_len, 0, where))
 			add_arg_to_infile(infile_tok, arg_tok, where);
+		else
+			free(arg_tok);
 		break;
 	}
-	arg_tok->applied = 1;
 }
 
 void process_trailers(struct trailer_item *infile_tok_first,
@@ -119,19 +119,54 @@ void process_trailers(struct trailer_item *infile_tok_first,
 {
 	struct trailer_item *infile_tok;
 	struct trailer_item *arg_tok;
+	struct trailer_item *next_arg;
 
 	/* Process infile from end to start */
 	for (infile_tok = infile_tok_last; infile_tok; infile_tok = infile_tok->previous) {
 		int tok_alnum_len = alnum_len(infile_tok->token, strlen(infile_tok->token));
-		for (arg_tok = arg_tok_first; arg_tok; arg_tok = arg_tok->next) {
-			if (same_token(infile_tok, arg_tok, tok_alnum_len)) {
+		for (arg_tok = arg_tok_first; arg_tok; arg_tok = next_arg) {
+			next_arg = arg_tok->next;
+			if (same_token(infile_tok, arg_tok, tok_alnum_len) &&
+			    arg_tok->conf->where == AFTER) {
+				/* Remove arg_tok from list */
+				if (next_arg)
+					next_arg->previous = arg_tok->previous;
+				if (arg_tok->previous)
+					arg_tok->previous->next = next_arg;
+				/* Apply arg */
 				apply_arg_if_exist(infile_tok, arg_tok, tok_alnum_len, AFTER);
+				/*
+				 * If arg has been added to infile,
+				 * then we need to process it too
+				 */
+				if (infile_tok->next == arg_tok)
+					infile_tok = arg_tok;
 			}
 		}
 	}
 
 	/* Process infile from start to end */
-	for (i = 0; i < infile_tok_list.nr; i++) {
+	for (infile_tok = infile_tok_first; infile_tok; infile_tok = infile_tok->next) {
+		int tok_alnum_len = alnum_len(infile_tok->token, strlen(infile_tok->token));
+		for (arg_tok = arg_tok_first; arg_tok; arg_tok = next_arg) {
+			next_arg = arg_tok->next;
+			if (same_token(infile_tok, arg_tok, tok_alnum_len) &&
+			    arg_tok->conf->where == BEFORE) {
+				/* Remove arg_tok from list */
+				if (next_arg)
+					next_arg->previous = arg_tok->previous;
+				if (arg_tok->previous)
+					arg_tok->previous->next = next_arg;
+				/* Apply arg */
+				apply_arg_if_exist(infile_tok, arg_tok, tok_alnum_len, BEFORE);
+				/*
+				 * If arg has been added to infile,
+				 * then we need to process it too
+				 */
+				if (infile_tok->previous == arg_tok)
+					infile_tok = arg_tok;
+			}
+		}
 	}
 }
 		      
