@@ -587,6 +587,8 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 				string_list_insert(&ignored_submodules, path);
 		}
 		free(seen);
+		if (!ignored_too && ignored_submodules.nr)
+			die_ignored_submodules(&ignored_submodules);
 	}
 
 	plug_bulk_checkin();
@@ -606,8 +608,6 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	update_files_in_cache(prefix, &pathspec, &update_data);
 
 	exit_status |= !!update_data.add_errors;
-	if (!ignored_too && ignored_submodules.nr)
-		die_ignored_submodules(&ignored_submodules);
 	if (add_new_files)
 		exit_status |= add_files(&dir, flags);
 
