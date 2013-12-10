@@ -156,7 +156,7 @@ module_list()
 		git ls-files -z --error-unmatch --stage -- "$@" ||
 		echo "unmatched pathspec exists"
 	) |
-	perl -e '
+	@@PERL@@ -e '
 	my %unmerged = ();
 	my ($null_sha1) = ("0" x 40);
 	my @out = ();
@@ -545,7 +545,12 @@ cmd_foreach()
 				sm_path=$(relative_path "$sm_path") &&
 				# we make $path available to scripts ...
 				path=$sm_path &&
-				eval "$@" &&
+				if test $# -eq 1
+				then
+					eval "$1"
+				else
+					"$@"
+				fi &&
 				if test -n "$recursive"
 				then
 					cmd_foreach "--recursive" "$@"
@@ -716,7 +721,6 @@ cmd_deinit()
 cmd_update()
 {
 	# parse $args after "submodule ... update".
-	orig_flags=
 	while test $# -ne 0
 	do
 		case "$1" in
@@ -741,7 +745,6 @@ cmd_update()
 		--reference)
 			case "$2" in '') usage ;; esac
 			reference="--reference=$2"
-			orig_flags="$orig_flags $(git rev-parse --sq-quote "$1")"
 			shift
 			;;
 		--reference=*)
@@ -775,7 +778,6 @@ cmd_update()
 			break
 			;;
 		esac
-		orig_flags="$orig_flags $(git rev-parse --sq-quote "$1")"
 		shift
 	done
 
@@ -919,7 +921,7 @@ Maybe you want to use 'update --init'?")"
 				prefix="$prefix$sm_path/"
 				clear_local_git_env
 				cd "$sm_path" &&
-				eval cmd_update "$orig_flags"
+				eval cmd_update
 			)
 			res=$?
 			if test $res -gt 0
