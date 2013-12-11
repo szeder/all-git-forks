@@ -975,8 +975,8 @@ static void emit(struct strbuf *sb, const char *cp, const char *ep)
 	}
 }
 
-static void show_ref(struct strbuf *sb, struct refinfo *info,
-		const char *format, int quote_style)
+void show_ref(struct strbuf *sb, struct refinfo *info,
+	const char *format, int quote_style)
 {
 	const char *cp, *sp, *ep;
 

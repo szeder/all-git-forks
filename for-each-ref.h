@@ -22,6 +22,7 @@ struct refinfo {
 	struct atom_value *value;
 };
 
+void show_ref(struct strbuf *sb, struct refinfo *info, const char *format, int quote_style);
 void show_refs(struct refinfo **refs, int maxcount, const char *format, int quote_style);
 
 #endif
