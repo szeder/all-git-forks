@@ -10,33 +10,14 @@
 #include "parse-options.h"
 #include "remote.h"
 #include "color.h"
-
-/* Quoting styles */
-#define QUOTE_NONE 0
-#define QUOTE_SHELL 1
-#define QUOTE_PERL 2
-#define QUOTE_PYTHON 4
-#define QUOTE_TCL 8
+#include "for-each-ref.h"
 
 typedef enum { FIELD_STR, FIELD_ULONG, FIELD_TIME } cmp_type;
-
-struct atom_value {
-	const char *s;
-	unsigned long ul; /* used for sorting when not FIELD_STR */
-};
 
 struct ref_sort {
 	struct ref_sort *next;
 	int atom; /* index into used_atom array */
 	unsigned reverse : 1;
-};
-
-struct refinfo {
-	char *refname;
-	unsigned char objectname[20];
-	int flag;
-	const char *symref;
-	struct atom_value *value;
 };
 
 static struct {
@@ -1026,6 +1007,14 @@ static void show_ref(struct refinfo *info, const char *format, int quote_style)
 	putchar('\n');
 }
 
+void show_refs(struct refinfo **refs, int maxcount,
+	const char *format, int quote_style)
+{
+	int i;
+	for (i = 0; i < maxcount; i++)
+		show_ref(refs[i], format, quote_style);
+}
+
 static struct ref_sort *default_sort(void)
 {
 	static const char cstr_name[] = "refname";
@@ -1066,7 +1055,7 @@ static char const * const for_each_ref_usage[] = {
 
 int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 {
-	int i, num_refs;
+	int num_refs;
 	const char *format = "%(objectname) %(objecttype)\t%(refname)";
 	struct ref_sort *sort = NULL, **sort_tail = &sort;
 	int maxcount = 0, quote_style = 0;
@@ -1120,7 +1109,6 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 
 	if (!maxcount || num_refs < maxcount)
 		maxcount = num_refs;
-	for (i = 0; i < maxcount; i++)
-		show_ref(refs[i], format, quote_style);
+	show_refs(refs, maxcount, format, quote_style);
 	return 0;
 }

@@ -669,6 +669,7 @@ LIB_H += dir.h
 LIB_H += exec_cmd.h
 LIB_H += fetch-pack.h
 LIB_H += fmt-merge-msg.h
+LIB_H += for-each-ref.h
 LIB_H += fsck.h
 LIB_H += gettext.h
 LIB_H += git-compat-util.h
