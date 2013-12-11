@@ -14,12 +14,6 @@
 
 typedef enum { FIELD_STR, FIELD_ULONG, FIELD_TIME } cmp_type;
 
-struct ref_sort {
-	struct ref_sort *next;
-	int atom; /* index into used_atom array */
-	unsigned reverse : 1;
-};
-
 static struct {
 	const char *name;
 	cmp_type cmp_type;
@@ -1056,6 +1050,21 @@ static char const * const for_each_ref_usage[] = {
 	NULL
 };
 
+int fer_setup_refs(struct refinfo ***refs, const char **argv,
+		struct ref_sort *sort)
+{
+	int num_refs;
+	struct grab_ref_cbdata cbdata;
+
+	memset(&cbdata, 0, sizeof(cbdata));
+	cbdata.grab_pattern = argv;
+	for_each_rawref(grab_single_ref, &cbdata);
+	*refs = cbdata.grab_array;
+	num_refs = cbdata.grab_cnt;
+	sort_refs(sort, *refs, num_refs);
+	return num_refs;
+}
+
 int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 {
 	int num_refs;
@@ -1063,7 +1072,6 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 	struct ref_sort *sort = NULL, **sort_tail = &sort;
 	int maxcount = 0, quote_style = 0;
 	struct refinfo **refs;
-	struct grab_ref_cbdata cbdata;
 
 	struct option opts[] = {
 		OPT_BIT('s', "shell", &quote_style,
@@ -1096,19 +1104,14 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 		usage_with_options(for_each_ref_usage, opts);
 
 	if (!sort)
-		sort = default_sort();
+		sort = default_ref_sort();
 	sort_atom_limit = used_atom_cnt;
 
 	/* for warn_ambiguous_refs */
 	git_config(git_default_config, NULL);
 
-	memset(&cbdata, 0, sizeof(cbdata));
-	cbdata.grab_pattern = argv;
-	for_each_rawref(grab_single_ref, &cbdata);
-	refs = cbdata.grab_array;
-	num_refs = cbdata.grab_cnt;
-
-	sort_refs(sort, refs, num_refs);
+	/* grab refs and fill atoms */
+	num_refs = fer_setup_refs(&refs, argv, sort);
 
 	if (!maxcount || num_refs < maxcount)
 		maxcount = num_refs;

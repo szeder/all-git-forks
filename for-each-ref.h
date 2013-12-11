@@ -22,7 +22,14 @@ struct refinfo {
 	struct atom_value *value;
 };
 
+struct ref_sort {
+	struct ref_sort *next;
+	int atom; /* index into used_atom array */
+	unsigned reverse : 1;
+};
+
 void show_ref(struct strbuf *sb, struct refinfo *info, const char *format, int quote_style);
 void show_refs(struct refinfo **refs, int maxcount, const char *format, int quote_style);
+int fer_setup_refs(struct refinfo ***refs, const char **argv, struct ref_sort *sort);
 
 #endif
