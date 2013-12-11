@@ -915,29 +915,25 @@ static void sort_refs(struct ref_sort *sort, struct refinfo **refs, int num_refs
 	qsort(refs, num_refs, sizeof(struct refinfo *), compare_refs);
 }
 
-static void print_value(struct atom_value *v, int quote_style)
+static void print_value(struct strbuf *sb, struct atom_value *v,
+			int quote_style)
 {
-	struct strbuf sb = STRBUF_INIT;
 	switch (quote_style) {
 	case QUOTE_NONE:
-		fputs(v->s, stdout);
+		strbuf_addstr(sb, v->s);
 		break;
 	case QUOTE_SHELL:
-		sq_quote_buf(&sb, v->s);
+		sq_quote_buf(sb, v->s);
 		break;
 	case QUOTE_PERL:
-		perl_quote_buf(&sb, v->s);
+		perl_quote_buf(sb, v->s);
 		break;
 	case QUOTE_PYTHON:
-		python_quote_buf(&sb, v->s);
+		python_quote_buf(sb, v->s);
 		break;
 	case QUOTE_TCL:
-		tcl_quote_buf(&sb, v->s);
+		tcl_quote_buf(sb, v->s);
 		break;
-	}
-	if (quote_style != QUOTE_NONE) {
-		fputs(sb.buf, stdout);
-		strbuf_release(&sb);
 	}
 }
 
@@ -959,7 +955,7 @@ static int hex2(const char *cp)
 		return -1;
 }
 
-static void emit(const char *cp, const char *ep)
+static void emit(struct strbuf *sb, const char *cp, const char *ep)
 {
 	while (*cp && (!ep || cp < ep)) {
 		if (*cp == '%') {
@@ -968,18 +964,19 @@ static void emit(const char *cp, const char *ep)
 			else {
 				int ch = hex2(cp + 1);
 				if (0 <= ch) {
-					putchar(ch);
+					strbuf_addch(sb, ch);
 					cp += 3;
 					continue;
 				}
 			}
 		}
-		putchar(*cp);
+		strbuf_addch(sb, *cp);
 		cp++;
 	}
 }
 
-static void show_ref(struct refinfo *info, const char *format, int quote_style)
+static void show_ref(struct strbuf *sb, struct refinfo *info,
+		const char *format, int quote_style)
 {
 	const char *cp, *sp, *ep;
 
@@ -988,13 +985,13 @@ static void show_ref(struct refinfo *info, const char *format, int quote_style)
 
 		ep = strchr(sp, ')');
 		if (cp < sp)
-			emit(cp, sp);
+			emit(sb, cp, sp);
 		get_value(info, parse_atom(sp + 2, ep), &atomv);
-		print_value(atomv, quote_style);
+		print_value(sb, atomv, quote_style);
 	}
 	if (*cp) {
 		sp = cp + strlen(cp);
-		emit(cp, sp);
+		emit(sb, cp, sp);
 	}
 	if (need_color_reset_at_eol) {
 		struct atom_value resetv;
@@ -1002,17 +999,23 @@ static void show_ref(struct refinfo *info, const char *format, int quote_style)
 
 		color_parse("reset", "--format", color);
 		resetv.s = color;
-		print_value(&resetv, quote_style);
+		print_value(sb, &resetv, quote_style);
 	}
-	putchar('\n');
+	strbuf_addch(sb, '\n');
 }
 
 void show_refs(struct refinfo **refs, int maxcount,
 	const char *format, int quote_style)
 {
 	int i;
-	for (i = 0; i < maxcount; i++)
-		show_ref(refs[i], format, quote_style);
+	struct strbuf sb = STRBUF_INIT;
+
+	for (i = 0; i < maxcount; i++) {
+		strbuf_reset(&sb);
+		show_ref(&sb, refs[i], format, quote_style);
+		fputs(sb.buf, stdout);
+	}
+	strbuf_release(&sb);
 }
 
 static struct ref_sort *default_sort(void)
