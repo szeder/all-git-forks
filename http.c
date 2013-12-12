@@ -754,15 +754,18 @@ void run_active_slot(struct active_request_slot *slot)
 
 		if (slot->in_use) {
 #if LIBCURL_VERSION_NUM >= 0x070f04
-			long curl_timeout;
+			long curl_timeout = -1;
+
+			/* set a suitable timeout */
+			select_timeout.tv_sec = 1;
+			select_timeout.tv_usec = 0;
+
 			curl_multi_timeout(curlm, &curl_timeout);
-			if (curl_timeout == 0) {
-				continue;
-			} else if (curl_timeout == -1) {
-				select_timeout.tv_sec  = 0;
-				select_timeout.tv_usec = 50000;
-			} else {
-				select_timeout.tv_sec  =  curl_timeout / 1000;
+			if(curl_timeout >= 0) {
+			  select_timeout.tv_sec = curl_timeout / 1000;
+			  if(select_timeout.tv_sec > 1)
+				select_timeout.tv_sec = 1;
+			  else
 				select_timeout.tv_usec = (curl_timeout % 1000) * 1000;
 			}
 #else
