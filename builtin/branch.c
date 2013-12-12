@@ -19,6 +19,7 @@
 #include "column.h"
 #include "utf8.h"
 #include "wt-status.h"
+#include "for-each-ref.h"
 
 static const char * const builtin_branch_usage[] = {
 	N_("git branch [options] [-r | -a] [--merged | --no-merged]"),
@@ -517,60 +518,6 @@ static void add_verbose_info(struct strbuf *out, struct ref_item *item,
 	strbuf_release(&subject);
 }
 
-static void print_ref_item(struct ref_item *item, int maxwidth, int verbose,
-			   int abbrev, int current, char *prefix)
-{
-	char c;
-	int color;
-	struct commit *commit = item->commit;
-	struct strbuf out = STRBUF_INIT, name = STRBUF_INIT;
-
-	if (!matches_merge_filter(commit))
-		return;
-
-	switch (item->kind) {
-	case REF_LOCAL_BRANCH:
-		color = BRANCH_COLOR_LOCAL;
-		break;
-	case REF_REMOTE_BRANCH:
-		color = BRANCH_COLOR_REMOTE;
-		break;
-	default:
-		color = BRANCH_COLOR_PLAIN;
-		break;
-	}
-
-	c = ' ';
-	if (current) {
-		c = '*';
-		color = BRANCH_COLOR_CURRENT;
-	}
-
-	strbuf_addf(&name, "%s%s", prefix, item->name);
-	if (verbose) {
-		int utf8_compensation = strlen(name.buf) - utf8_strwidth(name.buf);
-		strbuf_addf(&out, "%c %s%-*s%s", c, branch_get_color(color),
-			    maxwidth + utf8_compensation, name.buf,
-			    branch_get_color(BRANCH_COLOR_RESET));
-	} else
-		strbuf_addf(&out, "%c %s%s%s", c, branch_get_color(color),
-			    name.buf, branch_get_color(BRANCH_COLOR_RESET));
-
-	if (item->dest)
-		strbuf_addf(&out, " -> %s", item->dest);
-	else if (verbose)
-		/* " f7c0c00 [ahead 58, behind 197] vcs-svn: drop obj_pool.h" */
-		add_verbose_info(&out, item, verbose, abbrev);
-	if (column_active(colopts)) {
-		assert(!verbose && "--column and --verbose are incompatible");
-		string_list_append(&output, out.buf);
-	} else {
-		printf("%s\n", out.buf);
-	}
-	strbuf_release(&name);
-	strbuf_release(&out);
-}
-
 static int calc_maxwidth(struct ref_list *refs)
 {
 	int i, w = 0;
@@ -607,80 +554,50 @@ static char *get_head_description(void)
 	return strbuf_detach(&desc, NULL);
 }
 
-static void show_detached(struct ref_list *ref_list)
-{
-	struct commit *head_commit = lookup_commit_reference_gently(head_sha1, 1);
-
-	if (head_commit && is_descendant_of(head_commit, ref_list->with_commit)) {
-		struct ref_item item;
-		item.name = get_head_description();
-		item.width = utf8_strwidth(item.name);
-		item.kind = REF_LOCAL_BRANCH;
-		item.dest = NULL;
-		item.commit = head_commit;
-		if (item.width > ref_list->maxwidth)
-			ref_list->maxwidth = item.width;
-		print_ref_item(&item, ref_list->maxwidth, ref_list->verbose, ref_list->abbrev, 1, "");
-		free(item.name);
-	}
-}
-
 static int print_ref_list(int kinds, int detached, int verbose, int abbrev, struct commit_list *with_commit, const char **pattern)
 {
-	int i;
-	struct append_ref_cb cb;
-	struct ref_list ref_list;
+	int i = 0, num_refs;
+	struct refinfo **refs;
+	struct ref_sort *sort;
+	const char *argv[] = { NULL, NULL, NULL };
+	struct strbuf sb = STRBUF_INIT;
+	const char *format = NULL;
 
-	memset(&ref_list, 0, sizeof(ref_list));
-	ref_list.kinds = kinds;
-	ref_list.verbose = verbose;
-	ref_list.abbrev = abbrev;
-	ref_list.with_commit = with_commit;
-	if (merge_filter != NO_FILTER)
-		init_revisions(&ref_list.revs, NULL);
-	cb.ref_list = &ref_list;
-	cb.pattern = pattern;
-	cb.ret = 0;
-	for_each_rawref(append_ref, &cb);
-	if (merge_filter != NO_FILTER) {
-		struct commit *filter;
-		filter = lookup_commit_reference_gently(merge_filter_ref, 0);
-		if (!filter)
-			die(_("object '%s' does not point to a commit"),
-			    sha1_to_hex(merge_filter_ref));
+	if (kinds & REF_REMOTE_BRANCH)
+		argv[i++] = "refs/remotes/";
+	if (kinds & REF_LOCAL_BRANCH)
+		argv[i++] = "refs/heads/";
 
-		filter->object.flags |= UNINTERESTING;
-		add_pending_object(&ref_list.revs,
-				   (struct object *) filter, "");
-		ref_list.revs.limited = 1;
-		prepare_revision_walk(&ref_list.revs);
-		if (verbose)
-			ref_list.maxwidth = calc_maxwidth(&ref_list);
+
+	switch (verbose) {
+	case 0:
+		format =  "%(color:red)%(HEAD) %(color:green)%(refname:short)";
+		break;
+	case 1:
+		format = "%(color:red)%(HEAD) %(color:green)%(refname:short)"
+			"%(color:reset) %(objectname:short) %(upstream:track) "
+			"%(contents:subject)";
+		break;
+	case 2:
+		format = "%(color:red)%(HEAD) %(color:green)%(refname:short)"
+			"%(color:reset) %(objectname:short) %(upstream:short)"
+			"%(upstream:track) %(contents:subject)";
+		break;
+	default:
+		break;
 	}
 
-	qsort(ref_list.list, ref_list.index, sizeof(struct ref_item), ref_cmp);
+	verify_fer_format(format);
+	sort = default_ref_sort();
+	num_refs = fer_setup_refs(&refs, argv, sort);
 
-	detached = (detached && (kinds & REF_LOCAL_BRANCH));
-	if (detached && match_patterns(pattern, "HEAD"))
-		show_detached(&ref_list);
-
-	for (i = 0; i < ref_list.index; i++) {
-		int current = !detached &&
-			(ref_list.list[i].kind == REF_LOCAL_BRANCH) &&
-			!strcmp(ref_list.list[i].name, head);
-		char *prefix = (kinds != REF_REMOTE_BRANCH &&
-				ref_list.list[i].kind == REF_REMOTE_BRANCH)
-				? "remotes/" : "";
-		print_ref_item(&ref_list.list[i], ref_list.maxwidth, verbose,
-			       abbrev, current, prefix);
+	for (i = 0; i < num_refs; i++) {
+		strbuf_reset(&sb);
+		show_ref(&sb, refs[i], format, QUOTE_NONE);
+		fputs(sb.buf, stdout);
 	}
-
-	free_ref_list(&ref_list);
-
-	if (cb.ret)
-		error(_("some refs could not be read"));
-
-	return cb.ret;
+	strbuf_release(&sb);
+	return 0;
 }
 
 static void rename_branch(const char *oldname, const char *newname, int force)
