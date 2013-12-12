@@ -152,7 +152,7 @@ static const char *find_next(const char *cp)
  * Make sure the format string is well formed, and parse out
  * the used atoms.
  */
-static int verify_format(const char *format)
+int verify_fer_format(const char *format)
 {
 	const char *cp, *sp;
 	static const char color_reset[] = "color:reset";
@@ -1012,7 +1012,7 @@ void show_refs(struct refinfo **refs, int maxcount,
 	strbuf_release(&sb);
 }
 
-static struct ref_sort *default_sort(void)
+struct ref_sort *default_ref_sort(void)
 {
 	static const char cstr_name[] = "refname";
 
@@ -1100,7 +1100,7 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 		error("more than one quoting style?");
 		usage_with_options(for_each_ref_usage, opts);
 	}
-	if (verify_format(format))
+	if (verify_fer_format(format))
 		usage_with_options(for_each_ref_usage, opts);
 
 	if (!sort)

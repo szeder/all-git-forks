@@ -31,5 +31,7 @@ struct ref_sort {
 void show_ref(struct strbuf *sb, struct refinfo *info, const char *format, int quote_style);
 void show_refs(struct refinfo **refs, int maxcount, const char *format, int quote_style);
 int fer_setup_refs(struct refinfo ***refs, const char **argv, struct ref_sort *sort);
+struct ref_sort *default_ref_sort(void);
+int verify_fer_format(const char *format);
 
 #endif
