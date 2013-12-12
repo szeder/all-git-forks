@@ -142,6 +142,20 @@ void process_inline_tok(struct trailer_item *infile_tok,
 	}
 }
 
+static struct trailer_item *update_last(struct trailer_item *last)
+{
+	while(last->next != NULL)
+		last = last->next;
+	return last;
+}
+
+static struct trailer_item *update_first(struct trailer_item *first)
+{
+	while(first->previous != NULL)
+		first = first->previous;
+	return first;
+}
+
 void process_trailers(struct trailer_item *infile_tok_first,
 		      struct trailer_item *infile_tok_last,
 		      struct trailer_item *arg_tok_first)
@@ -153,9 +167,13 @@ void process_trailers(struct trailer_item *infile_tok_first,
 		process_inline_tok(infile_tok, arg_tok_first, AFTER);
 	}
 
+	infile_tok_last = update_last(infile_tok_last);
+
 	/* Process infile from start to end */
 	for (infile_tok = infile_tok_first; infile_tok; infile_tok = infile_tok->next) {
 		process_inline_tok(infile_tok, arg_tok_first, BEFORE);
 	}
+
+	infile_tok_first = update_first(infile_tok_first);
 }
 		      
