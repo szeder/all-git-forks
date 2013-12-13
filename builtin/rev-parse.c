@@ -677,7 +677,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
-			if (!prefixcmp(arg, "--exclude=")) {
+			if (starts_with(arg, "--exclude=")) {
 				add_ref_exclusion(&ref_excludes, arg + 10);
 				continue;
 			}
