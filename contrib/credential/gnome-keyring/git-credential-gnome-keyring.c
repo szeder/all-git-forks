@@ -60,7 +60,7 @@
 #define gnome_keyring_memory_free gnome_keyring_free_password
 #define gnome_keyring_memory_strdup g_strdup
 
-static const char* gnome_keyring_result_to_message(GnomeKeyringResult result)
+static const char *gnome_keyring_result_to_message(GnomeKeyringResult result)
 {
 	switch (result) {
 	case GNOME_KEYRING_RESULT_OK:
@@ -95,9 +95,9 @@ static const char* gnome_keyring_result_to_message(GnomeKeyringResult result)
 
 static void gnome_keyring_done_cb(GnomeKeyringResult result, gpointer user_data)
 {
-	gpointer *data = (gpointer *) user_data;
-	int *done = (int *) data[0];
-	GnomeKeyringResult *r = (GnomeKeyringResult *) data[1];
+	gpointer *data = (gpointer *)user_data;
+	int *done = (int *)data[0];
+	GnomeKeyringResult *r = (GnomeKeyringResult *)data[1];
 
 	*r = result;
 	*done = 1;
@@ -130,8 +130,7 @@ static GnomeKeyringResult gnome_keyring_item_delete_sync(const char *keyring, gu
 /*
  * This credential struct and API is simplified from git's credential.{h,c}
  */
-struct credential
-{
+struct credential {
 	char *protocol;
 	char *host;
 	unsigned short port;
@@ -144,8 +143,7 @@ struct credential
 
 typedef int (*credential_op_cb)(struct credential *);
 
-struct credential_operation
-{
+struct credential_operation {
 	char *name;
 	credential_op_cb op;
 };
@@ -155,7 +153,7 @@ struct credential_operation
 /* ----------------- GNOME Keyring functions ----------------- */
 
 /* create a special keyring option string, if path is given */
-static char* keyring_object(struct credential *c)
+static char *keyring_object(struct credential *c)
 {
 	if (!c->path)
 		return NULL;
@@ -168,7 +166,7 @@ static char* keyring_object(struct credential *c)
 
 static int keyring_get(struct credential *c)
 {
-	char* object = NULL;
+	char *object = NULL;
 	GList *entries;
 	GnomeKeyringNetworkPasswordData *password_data;
 	GnomeKeyringResult result;
@@ -202,7 +200,7 @@ static int keyring_get(struct credential *c)
 	}
 
 	/* pick the first one from the list */
-	password_data = (GnomeKeyringNetworkPasswordData *) entries->data;
+	password_data = (GnomeKeyringNetworkPasswordData *)entries->data;
 
 	gnome_keyring_memory_free(c->password);
 	c->password = gnome_keyring_memory_strdup(password_data->password);
@@ -302,7 +300,7 @@ static int keyring_erase(struct credential *c)
 	}
 
 	/* pick the first one from the list (delete all matches?) */
-	password_data = (GnomeKeyringNetworkPasswordData *) entries->data;
+	password_data = (GnomeKeyringNetworkPasswordData *)entries->data;
 
 	result = gnome_keyring_item_delete_sync(
 		password_data->keyring, password_data->item_id);
@@ -355,12 +353,11 @@ static int credential_read(struct credential *c)
 
 	key = buf = gnome_keyring_memory_alloc(1024);
 
-	while (fgets(buf, 1024, stdin))
-	{
+	while (fgets(buf, 1024, stdin)) {
 		line_len = strlen(buf);
 
 		if (line_len && buf[line_len-1] == '\n')
-			buf[--line_len]='\0';
+			buf[--line_len] = '\0';
 
 		if (!line_len)
 			break;
@@ -393,7 +390,8 @@ static int credential_read(struct credential *c)
 		} else if (!strcmp(key, "password")) {
 			gnome_keyring_memory_free(c->password);
 			c->password = gnome_keyring_memory_strdup(value);
-			while (*value) *value++ = '\0';
+			while (*value)
+				*value++ = '\0';
 		}
 		/*
 		 * Ignore other lines; we don't know what they mean, but
