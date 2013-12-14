@@ -113,6 +113,18 @@ void apply_arg_if_exist(struct trailer_item *infile_tok,
 	}
 }
 
+struct trailer_item *remove_from_list(struct trailer_item *arg_tok, struct trailer_item *arg_tok_first)
+{
+	if (arg_tok->next)
+		arg_tok->next->previous = arg_tok->previous;
+	if (arg_tok->previous)
+		arg_tok->previous->next = arg_tok->next;
+	else
+		arg_tok_first = arg_tok->next;
+
+	return arg_tok_first;
+}
+
 struct trailer_item *process_inline_tok(struct trailer_item *infile_tok,
 					struct trailer_item *arg_tok_first,
 					enum action_where where)
@@ -126,12 +138,7 @@ struct trailer_item *process_inline_tok(struct trailer_item *infile_tok,
 		if (same_token(infile_tok, arg_tok, tok_alnum_len) &&
 		    arg_tok->conf->where == where) {
 			/* Remove arg_tok from list */
-			if (next_arg)
-				next_arg->previous = arg_tok->previous;
-			if (arg_tok->previous)
-				arg_tok->previous->next = next_arg;
-			else
-				arg_tok_first = next_arg;
+			arg_tok_first = remove_from_list(arg_tok, arg_tok_first);
 			/* Apply arg */
 			apply_arg_if_exist(infile_tok, arg_tok, tok_alnum_len, where);
 			/*
@@ -157,6 +164,19 @@ static struct trailer_item *update_first(struct trailer_item *first)
 	while(first->previous != NULL)
 		first = first->previous;
 	return first;
+}
+
+void apply_arg_if_missing(struct trailer_item *infile_tok_first,
+			  struct trailer_item *infile_tok_last,
+			  struct trailer_item *arg_tok)
+{
+	switch(arg_tok->conf->if_missing) {
+	case: MISSING_DO_NOTHING:
+		free(arg_tok);
+		break;
+	case: MISSING_ADD:
+		add_arg_to_infile(infile_tok, arg_tok, where);
+		break;
 }
 
 void process_trailers(struct trailer_item *infile_tok_first,
@@ -188,14 +208,11 @@ void process_trailers(struct trailer_item *infile_tok_first,
 	if (!arg_tok_first)
 		return;
 
-	int tok_alnum_len = alnum_len(infile_tok->token, strlen(infile_tok->token));
+	/* Process args left */
 	for (arg_tok = arg_tok_first; arg_tok; arg_tok = next_arg) {
 		next_arg = arg_tok->next;
-		if (arg_tok->conf->where == AFTER)
-		{
-
-		} else { /* arg_tok->conf->where == BEFORE */
-
-		}
+		arg_tok_first = remove_from_list(arg_tok, arg_tok_first);
+		apply_arg_if_missing(infile_tok_first, infile_tok_last, arg_tok);
+	}
 }
 		      
