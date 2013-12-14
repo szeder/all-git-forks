@@ -113,9 +113,9 @@ void apply_arg_if_exist(struct trailer_item *infile_tok,
 	}
 }
 
-void process_inline_tok(struct trailer_item *infile_tok,
-			struct trailer_item *arg_tok_first,
-			enum action_where where)
+struct trailer_item *process_inline_tok(struct trailer_item *infile_tok,
+					struct trailer_item *arg_tok_first,
+					enum action_where where)
 {
 	struct trailer_item *arg_tok;
 	struct trailer_item *next_arg;
@@ -130,6 +130,8 @@ void process_inline_tok(struct trailer_item *infile_tok,
 				next_arg->previous = arg_tok->previous;
 			if (arg_tok->previous)
 				arg_tok->previous->next = next_arg;
+			else
+				arg_tok_first = next_arg;
 			/* Apply arg */
 			apply_arg_if_exist(infile_tok, arg_tok, tok_alnum_len, where);
 			/*
@@ -140,6 +142,7 @@ void process_inline_tok(struct trailer_item *infile_tok,
 				infile_tok = arg_tok;
 		}
 	}
+	return arg_tok_first;
 }
 
 static struct trailer_item *update_last(struct trailer_item *last)
@@ -162,18 +165,37 @@ void process_trailers(struct trailer_item *infile_tok_first,
 {
 	struct trailer_item *infile_tok;
 
+	if (!arg_tok_first)
+		return;
+
 	/* Process infile from end to start */
 	for (infile_tok = infile_tok_last; infile_tok; infile_tok = infile_tok->previous) {
-		process_inline_tok(infile_tok, arg_tok_first, AFTER);
+		arg_tok_first = process_inline_tok(infile_tok, arg_tok_first, AFTER);
 	}
 
 	infile_tok_last = update_last(infile_tok_last);
 
+	if (!arg_tok_first)
+		return;
+
 	/* Process infile from start to end */
 	for (infile_tok = infile_tok_first; infile_tok; infile_tok = infile_tok->next) {
-		process_inline_tok(infile_tok, arg_tok_first, BEFORE);
+		arg_tok_first = process_inline_tok(infile_tok, arg_tok_first, BEFORE);
 	}
 
 	infile_tok_first = update_first(infile_tok_first);
+
+	if (!arg_tok_first)
+		return;
+
+	int tok_alnum_len = alnum_len(infile_tok->token, strlen(infile_tok->token));
+	for (arg_tok = arg_tok_first; arg_tok; arg_tok = next_arg) {
+		next_arg = arg_tok->next;
+		if (arg_tok->conf->where == AFTER)
+		{
+
+		} else { /* arg_tok->conf->where == BEFORE */
+
+		}
 }
 		      
