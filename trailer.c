@@ -6,6 +6,7 @@ enum action_if_exist { EXIST_ADD_IF_DIFFERENT, EXIST_ADD_IF_DIFFERENT_NEIGHBOR,
 enum action_if_missing { MISSING_ADD, MISSING_DO_NOTHING };
 
 struct conf_info {
+	char *name;
 	char *key;
 	char *command;
 	enum action_where where;
@@ -19,7 +20,6 @@ struct trailer_item {
 	const char *token;
 	const char *value;
 	struct conf_info *conf;
-	int applied;
 };
 
 static int same_token(struct trailer_item *a, struct trailer_item *b, int alnum_len)
