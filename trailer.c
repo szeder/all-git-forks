@@ -367,20 +367,12 @@ static void parse_arg_trailer(struct strbuf *tok, struct strbuf *val, const char
 	}
 }
 
-static void apply_config_value(struct strbuf *tok, struct strbuf *val, struct trailer_info *info)
-{
-	if (info->value) {
-		strbuf_reset(tok);
-		strbuf_addstr(tok, info->value);
-	}
-}
-
 static struct trailer_item *apply_config_to_arg(const char *arg)
 {
 	struct strbuf tok = STRBUF_INIT;
 	struct strbuf val = STRBUF_INIT;
 
-	parse_trailer(&tok, &val, arg);
+	parse_arg_trailer(&tok, &val, arg);
 
 	int tok_alnum_len = alnum_len(tok.buf, tok.len);
 
@@ -388,8 +380,8 @@ static struct trailer_item *apply_config_to_arg(const char *arg)
 	struct trailer_item *item;
 	for (item = first_conf_item; item; item = item->next)
 	{
-		if (!strncasecmp(tok->buf, item->conf->key, tok_alnum_len) ||
-		    !strncasecmp(tok->buf, info->conf->name, tok_alnum_len)) {
+		if (!strncasecmp(tok.buf, item->conf->key, tok_alnum_len) ||
+		    !strncasecmp(tok.buf, item->conf->name, tok_alnum_len)) {
 			struct trailer_item *arg_tok = xcalloc(sizeof(struct trailer_item), 1);
 			arg_tok->conf = item->conf;
 			arg_tok->token = xstrdup(item->conf->key);
@@ -406,7 +398,7 @@ static struct trailer_item *apply_config_to_arg(const char *arg)
 	return arg_tok;
 }
 
-void process_command_line_args(int argc, const char **argv)
+static struct trailer_item *process_command_line_args(int argc, const char **argv)
 {
 	int i;
 	struct trailer_item *arg_tok_first = NULL;
@@ -423,4 +415,7 @@ void process_command_line_args(int argc, const char **argv)
 			arg_tok_last = arg_tok_new;
 		}
 	}
+
+	return arg_tok_first;
 }
+
