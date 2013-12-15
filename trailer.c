@@ -89,7 +89,7 @@ static void apply_arg_if_exist(struct trailer_item *infile_tok,
 		free(arg_tok);
 		break;
 	case EXIST_OVERWRITE:
-		free(infile_tok->value);
+		free((char *)infile_tok->value);
 		infile_tok->value = xstrdup(arg_tok->value);
 		free(arg_tok);
 		break;
@@ -173,14 +173,15 @@ static void apply_arg_if_missing(struct trailer_item *infile_tok_first,
 	enum action_where where;
 
 	switch(arg_tok->conf->if_missing) {
-	case: MISSING_DO_NOTHING:
+	case MISSING_DO_NOTHING:
 		free(arg_tok);
 		break;
-	case: MISSING_ADD:
+	case MISSING_ADD:
 		where = arg_tok->conf->where;
 		infile_tok = (where == AFTER) ? infile_tok_last : infile_tok_first;
 		add_arg_to_infile(infile_tok, arg_tok);
 		break;
+	}
 }
 
 void process_trailers(struct trailer_item *infile_tok_first,
@@ -188,6 +189,8 @@ void process_trailers(struct trailer_item *infile_tok_first,
 		      struct trailer_item *arg_tok_first)
 {
 	struct trailer_item *infile_tok;
+	struct trailer_item *arg_tok;
+	struct trailer_item *next_arg;
 
 	if (!arg_tok_first)
 		return;
