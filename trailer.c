@@ -186,9 +186,9 @@ static void apply_arg_if_missing(struct trailer_item *infile_tok_first,
 	}
 }
 
-void process_trailers(struct trailer_item *infile_tok_first,
-		      struct trailer_item *infile_tok_last,
-		      struct trailer_item *arg_tok_first)
+static void process_trailers(struct trailer_item *infile_tok_first,
+			     struct trailer_item *infile_tok_last,
+			     struct trailer_item *arg_tok_first)
 {
 	struct trailer_item *infile_tok;
 	struct trailer_item *arg_tok;
@@ -349,4 +349,78 @@ static int git_trailer_config(const char *conf_key, const char *value, void *cb)
 		}
 	}
 	return 0;
+}
+
+static void parse_arg_trailer(struct strbuf *tok, struct strbuf *val, const char *trailer)
+{
+	char *end = strchr(trailer, '=');
+	if (!end)
+		end = strchr(trailer, ':');
+	if (end) {
+		strbuf_add(tok, trailer, end - trailer);
+		strbuf_trim(tok);
+		strbuf_addstr(val, end + 1);
+		strbuf_trim(val);
+	} else {
+		strbuf_addstr(tok, trailer);
+		strbuf_trim(tok);
+	}
+}
+
+static void apply_config_value(struct strbuf *tok, struct strbuf *val, struct trailer_info *info)
+{
+	if (info->value) {
+		strbuf_reset(tok);
+		strbuf_addstr(tok, info->value);
+	}
+}
+
+static struct trailer_item *apply_config_to_arg(const char *arg)
+{
+	struct strbuf tok = STRBUF_INIT;
+	struct strbuf val = STRBUF_INIT;
+
+	parse_trailer(&tok, &val, arg);
+
+	int tok_alnum_len = alnum_len(tok.buf, tok.len);
+
+	/* Lookup if the arg matches something in the config */
+	struct trailer_item *item;
+	for (item = first_conf_item; item; item = item->next)
+	{
+		if (!strncasecmp(tok->buf, item->conf->key, tok_alnum_len) ||
+		    !strncasecmp(tok->buf, info->conf->name, tok_alnum_len)) {
+			struct trailer_item *arg_tok = xcalloc(sizeof(struct trailer_item), 1);
+			arg_tok->conf = item->conf;
+			arg_tok->token = xstrdup(item->conf->key);
+			arg_tok->value = strbuf_detach(&val, NULL);
+			strbuf_release(&tok);
+			return arg_tok;
+		}
+	}
+
+	struct trailer_item *arg_tok = xcalloc(sizeof(struct trailer_item), 1);
+	arg_tok->token = strbuf_detach(&tok, NULL);
+	arg_tok->value = strbuf_detach(&val, NULL);
+
+	return arg_tok;
+}
+
+void process_command_line_args(int argc, const char **argv)
+{
+	int i;
+	struct trailer_item *arg_tok_first = NULL;
+	struct trailer_item *arg_tok_last = NULL;
+
+	for (i = 0; i < argc; i++) {
+		struct trailer_item *arg_tok_new = apply_config_to_arg(argv[i]);
+		if (!arg_tok_last) {
+			arg_tok_first = arg_tok_new;
+			arg_tok_last = arg_tok_new;
+		} else {
+			arg_tok_last->next = arg_tok_new;
+			arg_tok_new->previous = arg_tok_last;
+			arg_tok_last = arg_tok_new;
+		}
+	}
 }
