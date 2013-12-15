@@ -270,7 +270,7 @@ static int set_name_and_type(const char *conf_key, const char *suffix,
 			     enum trailer_info_type type,
 			     char **pname, enum trailer_info_type *ptype)
 {
-	int ret = ends_with(conf_key, suffix);
+	int ret = !suffixcmp(conf_key, suffix);
 	if (ret) {
 		*pname = xstrndup(conf_key, strlen(conf_key) - strlen(suffix));
 		*ptype = type;
@@ -309,7 +309,7 @@ static struct trailer_item *get_conf_item(char *name)
 
 static int git_trailer_config(const char *conf_key, const char *value, void *cb)
 {
-	if (starts_with(conf_key, "trailer.")) {
+	if (!prefixcmp(conf_key, "trailer.")) {
 		const char *orig_conf_key = conf_key;
 		struct trailer_item *item;
 		struct conf_info *conf;
