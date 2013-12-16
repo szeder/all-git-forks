@@ -25,12 +25,29 @@ test_expect_success GPG 'create signed commits' '
 	git tag fourth-unsigned &&
 
 	test_tick && git commit --amend -S -m "fourth signed" &&
-	git tag fourth-signed
+	git tag fourth-signed &&
+
+	git config commit.gpgsign true &&
+	echo 5 >file && test_tick && git commit -a -m "fifth signed" &&
+	git tag fifth-signed &&
+
+	git config commit.gpgsign false &&
+	echo 6 >file && test_tick && git commit -a -m "sixth" &&
+	git tag sixth-unsigned &&
+
+	git config commit.gpgsign true &&
+	echo 7 >file && test_tick && git commit -a -m "seventh" --no-gpg-sign &&
+	git tag seventh-unsigned &&
+
+	test_tick && git rebase -f HEAD^^ && git tag sixth-signed HEAD^ &&
+	git tag seventh-signed &&
+
+	git config --unset commit.gpgsign
 '
 
 test_expect_success GPG 'show signatures' '
 	(
-		for commit in initial second merge master
+		for commit in initial second merge fourth-signed fifth-signed sixth-signed master
 		do
 			git show --pretty=short --show-signature $commit >actual &&
 			grep "Good signature from" actual || exit 1
@@ -39,7 +56,7 @@ test_expect_success GPG 'show signatures' '
 		done
 	) &&
 	(
-		for commit in merge^2 fourth-unsigned
+		for commit in merge^2 fourth-unsigned sixth-unsigned seventh-unsigned
 		do
 			git show --pretty=short --show-signature $commit >actual &&
 			grep "Good signature from" actual && exit 1
@@ -52,7 +69,7 @@ test_expect_success GPG 'show signatures' '
 test_expect_success GPG 'detect fudged signature' '
 	git cat-file commit master >raw &&
 
-	sed -e "s/fourth signed/4th forged/" raw >forged1 &&
+	sed -e "s/seventh/7th forged/" raw >forged1 &&
 	git hash-object -w -t commit forged1 >forged1.commit &&
 	git show --pretty=short --show-signature $(cat forged1.commit) >actual1 &&
 	grep "BAD signature from" actual1 &&
