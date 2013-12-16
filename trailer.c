@@ -186,9 +186,9 @@ static void apply_arg_if_missing(struct trailer_item *infile_tok_first,
 	}
 }
 
-static void process_trailers(struct trailer_item *infile_tok_first,
-			     struct trailer_item *infile_tok_last,
-			     struct trailer_item *arg_tok_first)
+static void process_trailers_lists(struct trailer_item *infile_tok_first,
+				   struct trailer_item *infile_tok_last,
+				   struct trailer_item *arg_tok_first)
 {
 	struct trailer_item *infile_tok;
 	struct trailer_item *arg_tok;
@@ -517,7 +517,7 @@ void process(const char *infile, int argc, const char **argv)
 
 	arg_tok_first = process_command_line_args(argc, argv);
 
-	process_trailers(infile_tok_first, infile_tok_last, arg_tok_first);
+	process_trailers_lists(infile_tok_first, infile_tok_last, arg_tok_first);
 }
 
 
