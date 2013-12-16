@@ -351,7 +351,7 @@ static int git_trailer_config(const char *conf_key, const char *value, void *cb)
 	return 0;
 }
 
-static void parse_arg_trailer(struct strbuf *tok, struct strbuf *val, const char *trailer)
+static void parse_trailer(struct strbuf *tok, struct strbuf *val, const char *trailer)
 {
 	char *end = strchr(trailer, '=');
 	if (!end)
@@ -372,7 +372,7 @@ static struct trailer_item *apply_config_to_arg(const char *arg)
 	struct strbuf tok = STRBUF_INIT;
 	struct strbuf val = STRBUF_INIT;
 
-	parse_arg_trailer(&tok, &val, arg);
+	parse_trailer(&tok, &val, arg);
 
 	int tok_alnum_len = alnum_len(tok.buf, tok.len);
 
