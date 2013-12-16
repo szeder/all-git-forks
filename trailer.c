@@ -398,6 +398,20 @@ static struct trailer_item *apply_config_to_arg(const char *arg)
 	return arg_tok;
 }
 
+static void add_trailer_item(struct trailer_item **first,
+			     struct trailer_item **last,
+			     struct trailer_item *new)
+{
+	if (!*last) {
+		*first = new;
+		*last = new;
+	} else {
+		(*last)->next = new;
+		new->previous = *last;
+		*last = new;
+	}
+}
+
 static struct trailer_item *process_command_line_args(int argc, const char **argv)
 {
 	int i;
@@ -405,17 +419,105 @@ static struct trailer_item *process_command_line_args(int argc, const char **arg
 	struct trailer_item *arg_tok_last = NULL;
 
 	for (i = 0; i < argc; i++) {
-		struct trailer_item *arg_tok_new = apply_config_to_arg(argv[i]);
-		if (!arg_tok_last) {
-			arg_tok_first = arg_tok_new;
-			arg_tok_last = arg_tok_new;
-		} else {
-			arg_tok_last->next = arg_tok_new;
-			arg_tok_new->previous = arg_tok_last;
-			arg_tok_last = arg_tok_new;
-		}
+		struct trailer_item *new = apply_config_to_arg(argv[i]);
+		add_trailer_item(&arg_tok_first, &arg_tok_last, new);
 	}
 
 	return arg_tok_first;
 }
+
+static struct strbuf **read_input_file(const char *infile)
+{
+	struct strbuf sb = STRBUF_INIT;
+
+	if (strbuf_read_file(&sb, infile, 0) < 0)
+		die_errno(_("could not read input file '%s'"), infile);
+
+	return strbuf_split(&sb, '\n');
+}
+
+/*
+ * Return the the (0 based) index of the first trailer line
+ * or the line count if there are no trailers.
+ */
+static int find_trailer_start(struct strbuf **lines)
+{
+	int count, start, empty = 1;
+
+	/* Get the line count */
+	for (count = 0; lines[count]; count++);
+
+	/*
+	 * Get the start of the trailers by looking starting from the end
+	 * for a line with only spaces before lines with one ':'.
+	 */
+	for (start = count - 1; start >= 0; start--) {
+		if (strbuf_isspace(lines[start])) {
+			if (empty)
+				continue;
+			return start + 1;
+		}
+		if (strchr(lines[start]->buf, ':')) {
+			if (empty)
+				empty = 0;
+			continue;
+		}
+		return count;
+	}
+
+	return empty ? count : start + 1;
+}
+
+static struct trailer_item *parse_trailer_into_item(const char *trailer)
+{
+	struct strbuf tok = STRBUF_INIT;
+	struct strbuf val = STRBUF_INIT;
+
+	parse_trailer(&tok, &val, trailer);
+
+	struct trailer_item *infile_tok = xcalloc(sizeof(struct trailer_item), 1);
+	infile_tok->token = strbuf_detach(&tok, NULL);
+	infile_tok->value = strbuf_detach(&val, NULL);
+
+	return infile_tok;
+}
+
+static void process_input_file(const char *infile,
+			       struct trailer_item **infile_tok_first,
+			       struct trailer_item **infile_tok_last)
+{
+	struct strbuf **lines = read_input_file(infile);
+	int start = find_trailer_start(lines);
+	int i;
+
+	/* Print non trailer lines as is */
+	for (i = 0; lines[i] && i < start; i++) {
+		printf("%s", lines[i]->buf);
+	}
+
+	/* Parse trailer lines */
+	for (i = start; lines[i]; i++) {
+		struct trailer_item *new = parse_trailer_into_item(lines[i]->buf);
+		add_trailer_item(infile_tok_first, infile_tok_last, new);
+	}
+}
+
+void process(const char *infile, int argc, const char **argv)
+{
+	struct trailer_item *infile_tok_first = NULL;
+	struct trailer_item *infile_tok_last = NULL;
+	struct trailer_item *arg_tok_first;
+
+	git_config(git_trailer_config, NULL);
+
+	/* Print the non trailer part of infile */
+	if (infile) {
+		process_input_file(infile, &infile_tok_first, &infile_tok_last);
+	}
+
+	arg_tok_first = process_command_line_args(argc, argv);
+
+	process_trailers(infile_tok_first, infile_tok_last, arg_tok_first);
+}
+
 
