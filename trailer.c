@@ -113,33 +113,43 @@ static void apply_arg_if_exist(struct trailer_item *infile_tok,
 	}
 }
 
-static struct trailer_item *remove_from_list(struct trailer_item *arg_tok,
-					     struct trailer_item *arg_tok_first)
+static void remove_from_list(struct trailer_item *item,
+			     struct trailer_item **first)
 {
-	if (arg_tok->next)
-		arg_tok->next->previous = arg_tok->previous;
-	if (arg_tok->previous)
-		arg_tok->previous->next = arg_tok->next;
+	if (item->next)
+		item->next->previous = item->previous;
+	if (item->previous)
+		item->previous->next = item->next;
 	else
-		arg_tok_first = arg_tok->next;
-
-	return arg_tok_first;
+		*first = item->next;
 }
 
-static struct trailer_item *process_inline_tok(struct trailer_item *infile_tok,
-					       struct trailer_item *arg_tok_first,
-					       enum action_where where)
+static struct trailer_item *remove_first(struct trailer_item **first)
+{
+	struct trailer_item *item = *first;
+	*first = item->next;
+	if (item->next) {
+		item->next->previous = NULL;
+		item->next = NULL;
+	}
+
+	return item;
+}
+
+static void process_inline_tok(struct trailer_item *infile_tok,
+			       struct trailer_item **arg_tok_first,
+			       enum action_where where)
 {
 	struct trailer_item *arg_tok;
 	struct trailer_item *next_arg;
 
 	int tok_alnum_len = alnum_len(infile_tok->token, strlen(infile_tok->token));
-	for (arg_tok = arg_tok_first; arg_tok; arg_tok = next_arg) {
+	for (arg_tok = *arg_tok_first; arg_tok; arg_tok = next_arg) {
 		next_arg = arg_tok->next;
 		if (same_token(infile_tok, arg_tok, tok_alnum_len) &&
 		    arg_tok->conf->where == where) {
 			/* Remove arg_tok from list */
-			arg_tok_first = remove_from_list(arg_tok, arg_tok_first);
+			remove_from_list(arg_tok, arg_tok_first);
 			/* Apply arg */
 			apply_arg_if_exist(infile_tok, arg_tok, tok_alnum_len);
 			/*
@@ -150,25 +160,24 @@ static struct trailer_item *process_inline_tok(struct trailer_item *infile_tok,
 				infile_tok = arg_tok;
 		}
 	}
-	return arg_tok_first;
 }
 
-static struct trailer_item *update_last(struct trailer_item *last)
+static void update_last(struct trailer_item **last)
 {
-	while(last->next != NULL)
-		last = last->next;
-	return last;
+	if (*last)
+		while((*last)->next != NULL)
+			*last = (*last)->next;
 }
 
-static struct trailer_item *update_first(struct trailer_item *first)
+static void update_first(struct trailer_item **first)
 {
-	while(first->previous != NULL)
-		first = first->previous;
-	return first;
+	if (*first)
+		while((*first)->previous != NULL)
+			*first = (*first)->previous;
 }
 
-static void apply_arg_if_missing(struct trailer_item *infile_tok_first,
-				 struct trailer_item *infile_tok_last,
+static void apply_arg_if_missing(struct trailer_item **infile_tok_first,
+				 struct trailer_item **infile_tok_last,
 				 struct trailer_item *arg_tok)
 {
 	struct trailer_item *infile_tok;
@@ -180,47 +189,47 @@ static void apply_arg_if_missing(struct trailer_item *infile_tok_first,
 		break;
 	case MISSING_ADD:
 		where = arg_tok->conf->where;
-		infile_tok = (where == AFTER) ? infile_tok_last : infile_tok_first;
-		add_arg_to_infile(infile_tok, arg_tok);
+		infile_tok = (where == AFTER) ? *infile_tok_last : *infile_tok_first;
+		if (infile_tok) {
+			add_arg_to_infile(infile_tok, arg_tok);
+		} else {
+			*infile_tok_first = arg_tok;
+			*infile_tok_last = arg_tok;
+		}
 		break;
 	}
 }
 
-static void process_trailers_lists(struct trailer_item *infile_tok_first,
-				   struct trailer_item *infile_tok_last,
-				   struct trailer_item *arg_tok_first)
+static void process_trailers_lists(struct trailer_item **infile_tok_first,
+				   struct trailer_item **infile_tok_last,
+				   struct trailer_item **arg_tok_first)
 {
 	struct trailer_item *infile_tok;
 	struct trailer_item *arg_tok;
-	struct trailer_item *next_arg;
 
-	if (!arg_tok_first)
+	if (!*arg_tok_first)
 		return;
 
 	/* Process infile from end to start */
-	for (infile_tok = infile_tok_last; infile_tok; infile_tok = infile_tok->previous) {
-		arg_tok_first = process_inline_tok(infile_tok, arg_tok_first, AFTER);
+	for (infile_tok = *infile_tok_last; infile_tok; infile_tok = infile_tok->previous) {
+		process_inline_tok(infile_tok, arg_tok_first, AFTER);
 	}
 
-	infile_tok_last = update_last(infile_tok_last);
+	update_last(infile_tok_last);
 
 	if (!arg_tok_first)
 		return;
 
 	/* Process infile from start to end */
-	for (infile_tok = infile_tok_first; infile_tok; infile_tok = infile_tok->next) {
-		arg_tok_first = process_inline_tok(infile_tok, arg_tok_first, BEFORE);
+	for (infile_tok = *infile_tok_first; infile_tok; infile_tok = infile_tok->next) {
+		process_inline_tok(infile_tok, arg_tok_first, BEFORE);
 	}
 
-	infile_tok_first = update_first(infile_tok_first);
-
-	if (!arg_tok_first)
-		return;
+	update_first(infile_tok_first);
 
 	/* Process args left */
-	for (arg_tok = arg_tok_first; arg_tok; arg_tok = next_arg) {
-		next_arg = arg_tok->next;
-		arg_tok_first = remove_from_list(arg_tok, arg_tok_first);
+	while (arg_tok_first) {
+		arg_tok = remove_first(arg_tok_first);
 		apply_arg_if_missing(infile_tok_first, infile_tok_last, arg_tok);
 	}
 }
@@ -297,9 +306,9 @@ static struct trailer_item *get_conf_item(char *name)
 	item->conf = xcalloc(sizeof(struct conf_info), 1);
 	item->conf->name = xstrdup(name);
 
-	if (!previous)
+	if (!previous) {
 		first_conf_item = item;
-	else {
+	} else {
 		previous->next = item;
 		item->previous = previous;
 	}
@@ -517,7 +526,7 @@ void process(const char *infile, int argc, const char **argv)
 
 	arg_tok_first = process_command_line_args(argc, argv);
 
-	process_trailers_lists(infile_tok_first, infile_tok_last, arg_tok_first);
+	process_trailers_lists(&infile_tok_first, &infile_tok_last, &arg_tok_first);
 }
 
 
