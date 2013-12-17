@@ -435,11 +435,14 @@ warned.
   (or if your git-gc is not new enough to support arguments to
   `--prune`, use `git repack -ad; git prune` instead).
 
-SEE ALSO
---------
-link:http://rtyley.github.io/bfg-repo-cleaner/[The BFG Repo-Cleaner]
-- a tool specifically designed for removing unwanted data from Git
-repository history.
+Notes
+-----
+
+git-filter-branch allows you to make complex shell-scripted rewrites of your Git history, but you may not need this flexibility if you're simply _removing unwanted data_ like large files or passwords. For those operations you may want to consider link:http://rtyley.github.io/bfg-repo-cleaner/[The BFG Repo-Cleaner], an alternative to git-filter-branch which is typically at least 10-50x faster.
+
+* The BFG takes advantage of multi-core machines, cleaning commit file-trees in parallel, which git-filter-branch currently does not do.
+* Any particular version of a file is cleaned exactly _once_. The BFG, unlike git-filter-branch, does not give you the opportunity to alter a file based on where or when it was committed within your history.
+
 
 GIT
 ---
