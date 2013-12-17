@@ -164,6 +164,8 @@ struct diff_options {
 	diff_prefix_fn_t output_prefix;
 	int output_prefix_length;
 	void *output_prefix_data;
+
+	int diff_path_counter;
 };
 
 enum color_diff {
@@ -330,7 +332,7 @@ extern int diff_flush_patch_id(struct diff_options *, unsigned char *);
 
 extern int diff_result_code(struct diff_options *, int);
 
-extern void diff_no_index(struct rev_info *, int, const char **, int, const char *);
+extern void diff_no_index(struct rev_info *, int, const char **, const char *);
 
 extern int index_differs_from(const char *def, int diff_flags);
 
@@ -343,8 +345,6 @@ extern struct userdiff_driver *get_textconv(struct diff_filespec *one);
 extern int parse_rename_score(const char **cp_p);
 
 extern long parse_algorithm_value(const char *value);
-
-extern void handle_deprecated_show_diff_q(struct diff_options *);
 
 extern int print_stat_summary(FILE *fp, int files,
 			      int insertions, int deletions);

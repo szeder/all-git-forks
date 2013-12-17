@@ -26,7 +26,6 @@ static struct push_cas_option cas;
 static const char **refspec;
 static int refspec_nr;
 static int refspec_alloc;
-static int default_matching_used;
 
 static void add_refspec(const char *ref)
 {
@@ -35,35 +34,75 @@ static void add_refspec(const char *ref)
 	refspec[refspec_nr-1] = ref;
 }
 
-static void set_refspecs(const char **refs, int nr)
+static const char *map_refspec(const char *ref,
+			       struct remote *remote, struct ref *local_refs)
 {
+	struct ref *matched = NULL;
+
+	/* Does "ref" uniquely name our ref? */
+	if (count_refspec_match(ref, local_refs, &matched) != 1)
+		return ref;
+
+	if (remote->push) {
+		struct refspec query;
+		memset(&query, 0, sizeof(struct refspec));
+		query.src = matched->name;
+		if (!query_refspecs(remote->push, remote->push_refspec_nr, &query) &&
+		    query.dst) {
+			struct strbuf buf = STRBUF_INIT;
+			strbuf_addf(&buf, "%s%s:%s",
+				    query.force ? "+" : "",
+				    query.src, query.dst);
+			return strbuf_detach(&buf, NULL);
+		}
+	}
+
+	if (push_default == PUSH_DEFAULT_UPSTREAM &&
+	    !prefixcmp(matched->name, "refs/heads/")) {
+		struct branch *branch = branch_get(matched->name + 11);
+		if (branch->merge_nr == 1 && branch->merge[0]->src) {
+			struct strbuf buf = STRBUF_INIT;
+			strbuf_addf(&buf, "%s:%s",
+				    ref, branch->merge[0]->src);
+			return strbuf_detach(&buf, NULL);
+		}
+	}
+
+	return ref;
+}
+
+static void set_refspecs(const char **refs, int nr, const char *repo)
+{
+	struct remote *remote = NULL;
+	struct ref *local_refs = NULL;
 	int i;
+
 	for (i = 0; i < nr; i++) {
 		const char *ref = refs[i];
 		if (!strcmp("tag", ref)) {
-			char *tag;
-			int len;
+			struct strbuf tagref = STRBUF_INIT;
 			if (nr <= ++i)
 				die(_("tag shorthand without <tag>"));
-			len = strlen(refs[i]) + 11;
-			if (deleterefs) {
-				tag = xmalloc(len+1);
-				strcpy(tag, ":refs/tags/");
-			} else {
-				tag = xmalloc(len);
-				strcpy(tag, "refs/tags/");
+			ref = refs[i];
+			if (deleterefs)
+				strbuf_addf(&tagref, ":refs/tags/%s", ref);
+			else
+				strbuf_addf(&tagref, "refs/tags/%s", ref);
+			ref = strbuf_detach(&tagref, NULL);
+		} else if (deleterefs) {
+			struct strbuf delref = STRBUF_INIT;
+			if (strchr(ref, ':'))
+				die(_("--delete only accepts plain target ref names"));
+			strbuf_addf(&delref, ":%s", ref);
+			ref = strbuf_detach(&delref, NULL);
+		} else if (!strchr(ref, ':')) {
+			if (!remote) {
+				/* lazily grab remote and local_refs */
+				remote = remote_get(repo);
+				local_refs = get_local_heads();
 			}
-			strcat(tag, refs[i]);
-			ref = tag;
-		} else if (deleterefs && !strchr(ref, ':')) {
-			char *delref;
-			int len = strlen(ref)+1;
-			delref = xmalloc(len+1);
-			strcpy(delref, ":");
-			strcat(delref, ref);
-			ref = delref;
-		} else if (deleterefs)
-			die(_("--delete only accepts plain target ref names"));
+			ref = map_refspec(ref, remote, local_refs);
+		}
 		add_refspec(ref);
 	}
 }
@@ -164,9 +203,9 @@ static void setup_push_current(struct remote *remote, struct branch *branch)
 }
 
 static char warn_unspecified_push_default_msg[] =
-N_("push.default is unset; its implicit value is changing in\n"
+N_("push.default is unset; its implicit value has changed in\n"
    "Git 2.0 from 'matching' to 'simple'. To squelch this message\n"
-   "and maintain the current behavior after the default changes, use:\n"
+   "and maintain the traditional behavior, use:\n"
    "\n"
    "  git config --global push.default matching\n"
    "\n"
@@ -177,7 +216,7 @@ N_("push.default is unset; its implicit value is changing in\n"
    "When push.default is set to 'matching', git will push local branches\n"
    "to the remote branches that already exist with the same name.\n"
    "\n"
-   "In Git 2.0, Git will default to the more conservative 'simple'\n"
+   "Since Git 2.0, Git defaults to the more conservative 'simple'\n"
    "behavior, which only pushes the current branch to the corresponding\n"
    "remote branch that 'git pull' uses to update the current branch.\n"
    "\n"
@@ -207,13 +246,13 @@ static void setup_default_push_refspecs(struct remote *remote)
 
 	switch (push_default) {
 	default:
-	case PUSH_DEFAULT_UNSPECIFIED:
-		default_matching_used = 1;
-		warn_unspecified_push_default_configuration();
-		/* fallthru */
 	case PUSH_DEFAULT_MATCHING:
 		add_refspec(":");
 		break;
+
+	case PUSH_DEFAULT_UNSPECIFIED:
+		warn_unspecified_push_default_configuration();
+		/* fallthru */
 
 	case PUSH_DEFAULT_SIMPLE:
 		if (triangular)
@@ -243,12 +282,6 @@ static const char message_advice_pull_before_push[] =
 	   "'git pull ...') before pushing again.\n"
 	   "See the 'Note about fast-forwards' in 'git push --help' for details.");
 
-static const char message_advice_use_upstream[] =
-	N_("Updates were rejected because a pushed branch tip is behind its remote\n"
-	   "counterpart. If you did not intend to push that branch, you may want to\n"
-	   "specify branches to push or set the 'push.default' configuration variable\n"
-	   "to 'simple', 'current' or 'upstream' to push only the current branch.");
-
 static const char message_advice_checkout_pull_push[] =
 	N_("Updates were rejected because a pushed branch tip is behind its remote\n"
 	   "counterpart. Check out this branch and integrate the remote changes\n"
@@ -275,13 +308,6 @@ static void advise_pull_before_push(void)
 	if (!advice_push_non_ff_current || !advice_push_update_rejected)
 		return;
 	advise(_(message_advice_pull_before_push));
-}
-
-static void advise_use_upstream(void)
-{
-	if (!advice_push_non_ff_default || !advice_push_update_rejected)
-		return;
-	advise(_(message_advice_use_upstream));
 }
 
 static void advise_checkout_pull_push(void)
@@ -345,10 +371,7 @@ static int push_with_options(struct transport *transport, int flags)
 	if (reject_reasons & REJECT_NON_FF_HEAD) {
 		advise_pull_before_push();
 	} else if (reject_reasons & REJECT_NON_FF_OTHER) {
-		if (default_matching_used)
-			advise_use_upstream();
-		else
-			advise_checkout_pull_push();
+		advise_checkout_pull_push();
 	} else if (reject_reasons & REJECT_ALREADY_EXISTS) {
 		advise_ref_already_exists();
 	} else if (reject_reasons & REJECT_FETCH_FIRST) {
@@ -501,7 +524,7 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 
 	if (argc > 0) {
 		repo = argv[0];
-		set_refspecs(argv + 1, argc - 1);
+		set_refspecs(argv + 1, argc - 1, repo);
 	}
 
 	rc = do_push(repo, flags);

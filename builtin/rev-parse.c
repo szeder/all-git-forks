@@ -286,6 +286,7 @@ static int try_difference(const char *arg)
 				exclude = n;
 			}
 		}
+		*dotdot = '.';
 		return 1;
 	}
 	*dotdot = '.';
@@ -309,8 +310,10 @@ static int try_parent_shorthands(const char *arg)
 		return 0;
 
 	*dotdot = 0;
-	if (get_sha1_committish(arg, sha1))
+	if (get_sha1_committish(arg, sha1)) {
+		*dotdot = '^';
 		return 0;
+	}
 
 	if (!parents_only)
 		show_rev(NORMAL, sha1, arg);
@@ -319,6 +322,7 @@ static int try_parent_shorthands(const char *arg)
 		show_rev(parents_only ? NORMAL : REVERSED,
 				parents->item->object.sha1, arg);
 
+	*dotdot = '^';
 	return 1;
 }
 
@@ -488,6 +492,7 @@ N_("git rev-parse --parseopt [options] -- [<args>...]\n"
 int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 {
 	int i, as_is = 0, verify = 0, quiet = 0, revs_count = 0, type = 0;
+	int has_dashdash = 0;
 	int output_prefix = 0;
 	unsigned char sha1[20];
 	const char *name = NULL;
@@ -500,6 +505,13 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 
 	if (argc > 1 && !strcmp("-h", argv[1]))
 		usage(builtin_rev_parse_usage);
+
+	for (i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--")) {
+			has_dashdash = 1;
+			break;
+		}
+	}
 
 	prefix = setup_git_directory();
 	git_config(git_default_config, NULL);
@@ -520,7 +532,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 			}
 			continue;
 		}
-		if (!prefixcmp(arg, "-n")) {
+		if (starts_with(arg, "-n")) {
 			if ((filter & DO_FLAGS) && (filter & DO_REVS))
 				show(arg);
 			continue;
@@ -572,7 +584,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				continue;
 			}
 			if (!strcmp(arg, "--short") ||
-			    !prefixcmp(arg, "--short=")) {
+			    starts_with(arg, "--short=")) {
 				filter &= ~(DO_FLAGS|DO_NOREV);
 				verify = 1;
 				abbrev = DEFAULT_ABBREV;
@@ -600,7 +612,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				symbolic = SHOW_SYMBOLIC_FULL;
 				continue;
 			}
-			if (!prefixcmp(arg, "--abbrev-ref") &&
+			if (starts_with(arg, "--abbrev-ref") &&
 			    (!arg[12] || arg[12] == '=')) {
 				abbrev_ref = 1;
 				abbrev_ref_strict = warn_ambiguous_refs;
@@ -618,7 +630,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				for_each_ref(show_reference, NULL);
 				continue;
 			}
-			if (!prefixcmp(arg, "--disambiguate=")) {
+			if (starts_with(arg, "--disambiguate=")) {
 				for_each_abbrev(arg + 15, show_abbrev, NULL);
 				continue;
 			}
@@ -627,7 +639,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				for_each_ref_in("refs/bisect/good", anti_reference, NULL);
 				continue;
 			}
-			if (!prefixcmp(arg, "--branches=")) {
+			if (starts_with(arg, "--branches=")) {
 				for_each_glob_ref_in(show_reference, arg + 11,
 					"refs/heads/", NULL);
 				clear_ref_exclusion(&ref_excludes);
@@ -638,7 +650,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
-			if (!prefixcmp(arg, "--tags=")) {
+			if (starts_with(arg, "--tags=")) {
 				for_each_glob_ref_in(show_reference, arg + 7,
 					"refs/tags/", NULL);
 				clear_ref_exclusion(&ref_excludes);
@@ -649,12 +661,12 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
-			if (!prefixcmp(arg, "--glob=")) {
+			if (starts_with(arg, "--glob=")) {
 				for_each_glob_ref(show_reference, arg + 7, NULL);
 				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
-			if (!prefixcmp(arg, "--remotes=")) {
+			if (starts_with(arg, "--remotes=")) {
 				for_each_glob_ref_in(show_reference, arg + 10,
 					"refs/remotes/", NULL);
 				clear_ref_exclusion(&ref_excludes);
@@ -747,19 +759,19 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 						: "false");
 				continue;
 			}
-			if (!prefixcmp(arg, "--since=")) {
+			if (starts_with(arg, "--since=")) {
 				show_datestring("--max-age=", arg+8);
 				continue;
 			}
-			if (!prefixcmp(arg, "--after=")) {
+			if (starts_with(arg, "--after=")) {
 				show_datestring("--max-age=", arg+8);
 				continue;
 			}
-			if (!prefixcmp(arg, "--before=")) {
+			if (starts_with(arg, "--before=")) {
 				show_datestring("--min-age=", arg+9);
 				continue;
 			}
-			if (!prefixcmp(arg, "--until=")) {
+			if (starts_with(arg, "--until=")) {
 				show_datestring("--min-age=", arg+8);
 				continue;
 			}
@@ -788,6 +800,8 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 		}
 		if (verify)
 			die_no_single_rev(quiet);
+		if (has_dashdash)
+			die("bad revision '%s'", arg);
 		as_is = 1;
 		if (!show_file(arg, output_prefix))
 			continue;
