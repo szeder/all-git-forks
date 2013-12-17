@@ -18,6 +18,12 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
+
+NOTE: For simply removing unwanted data from repository history, you may
+want to use link:http://rtyley.github.io/bfg-repo-cleaner/[The BFG Repo-Cleaner]
+instead - it's generally faster and simpler for eliminating large files
+or private data.
+
 Lets you rewrite Git revision history by rewriting the branches mentioned
 in the <rev-list options>, applying custom filters on each revision.
 Those filters can modify each tree (e.g. removing a file or running
@@ -393,7 +399,7 @@ git filter-branch --index-filter \
 Checklist for Shrinking a Repository
 ------------------------------------
 
-git-filter-branch is often used to get rid of a subset of files,
+git-filter-branch can be used to get rid of a subset of files,
 usually with some combination of `--index-filter` and
 `--subdirectory-filter`.  People expect the resulting repository to
 be smaller than the original, but you need a few more steps to
@@ -428,6 +434,12 @@ warned.
 * Garbage collect all unreferenced objects with `git gc --prune=now`
   (or if your git-gc is not new enough to support arguments to
   `--prune`, use `git repack -ad; git prune` instead).
+
+SEE ALSO
+--------
+link:http://rtyley.github.io/bfg-repo-cleaner/[The BFG Repo-Cleaner]
+- a tool specifically designed for removing unwanted data from Git
+repository history.
 
 GIT
 ---
