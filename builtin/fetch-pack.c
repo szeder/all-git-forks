@@ -1,11 +1,13 @@
 #include "builtin.h"
 #include "pkt-line.h"
 #include "fetch-pack.h"
+#include "remote.h"
+#include "connect.h"
 
 static const char fetch_pack_usage[] =
 "git fetch-pack [--all] [--stdin] [--quiet|-q] [--keep|-k] [--thin] "
 "[--include-tag] [--upload-pack=<git-upload-pack>] [--depth=<n>] "
-"[--no-progress] [-v] [<host>:]<directory> [<refs>...]";
+"[--no-progress] [--diag-url] [-v] [<host>:]<directory> [<refs>...]";
 
 static void add_sought_entry_mem(struct ref ***sought, int *nr, int *alloc,
 				 const char *name, int namelen)
@@ -46,11 +48,11 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	for (i = 1; i < argc && *argv[i] == '-'; i++) {
 		const char *arg = argv[i];
 
-		if (!prefixcmp(arg, "--upload-pack=")) {
+		if (starts_with(arg, "--upload-pack=")) {
 			args.uploadpack = arg + 14;
 			continue;
 		}
-		if (!prefixcmp(arg, "--exec=")) {
+		if (starts_with(arg, "--exec=")) {
 			args.uploadpack = arg + 7;
 			continue;
 		}
@@ -79,11 +81,15 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 			args.stdin_refs = 1;
 			continue;
 		}
+		if (!strcmp("--diag-url", arg)) {
+			args.diag_url = 1;
+			continue;
+		}
 		if (!strcmp("-v", arg)) {
 			args.verbose = 1;
 			continue;
 		}
-		if (!prefixcmp(arg, "--depth=")) {
+		if (starts_with(arg, "--depth=")) {
 			args.depth = strtol(arg + 8, NULL, 0);
 			continue;
 		}
@@ -98,6 +104,10 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 		if (!strcmp("--lock-pack", arg)) {
 			args.lock_pack = 1;
 			pack_lockfile_ptr = &pack_lockfile;
+			continue;
+		}
+		if (!strcmp("--check-self-contained-and-connected", arg)) {
+			args.check_self_contained_and_connected = 1;
 			continue;
 		}
 		usage(fetch_pack_usage);
@@ -140,16 +150,25 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 		fd[0] = 0;
 		fd[1] = 1;
 	} else {
+		int flags = args.verbose ? CONNECT_VERBOSE : 0;
+		if (args.diag_url)
+			flags |= CONNECT_DIAG_URL;
 		conn = git_connect(fd, dest, args.uploadpack,
-				   args.verbose ? CONNECT_VERBOSE : 0);
+				   flags);
+		if (!conn)
+			return args.diag_url ? 0 : 1;
 	}
-
 	get_remote_heads(fd[0], NULL, 0, &ref, 0, NULL);
 
 	ref = fetch_pack(&args, fd, conn, ref, dest,
 			 sought, nr_sought, pack_lockfile_ptr);
 	if (pack_lockfile) {
 		printf("lock %s\n", pack_lockfile);
+		fflush(stdout);
+	}
+	if (args.check_self_contained_and_connected &&
+	    args.self_contained_and_connected) {
+		printf("connectivity-ok\n");
 		fflush(stdout);
 	}
 	close(fd[0]);

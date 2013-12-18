@@ -226,7 +226,7 @@ static int http_config(const char *var, const char *value, void *cb)
 		return 0;
 	}
 
-	if (!prefixcmp(var, "http.")) {
+	if (starts_with(var, "http.")) {
 		int i;
 
 		for (i = 0; i < ARRAY_SIZE(rpc_service); i++) {
@@ -247,7 +247,7 @@ static struct rpc_service *select_service(const char *name)
 	struct rpc_service *svc = NULL;
 	int i;
 
-	if (prefixcmp(name, "git-"))
+	if (!starts_with(name, "git-"))
 		forbidden("Unsupported service: '%s'", name);
 
 	for (i = 0; i < ARRAY_SIZE(rpc_service); i++) {
@@ -594,9 +594,11 @@ int main(int argc, char **argv)
 
 			if (strcmp(method, c->method)) {
 				const char *proto = getenv("SERVER_PROTOCOL");
-				if (proto && !strcmp(proto, "HTTP/1.1"))
+				if (proto && !strcmp(proto, "HTTP/1.1")) {
 					http_status(405, "Method Not Allowed");
-				else
+					hdr_str("Allow", !strcmp(c->method, "GET") ?
+						"GET, HEAD" : c->method);
+				} else
 					http_status(400, "Bad Request");
 				hdr_nocache();
 				end_headers();

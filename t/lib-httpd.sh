@@ -1,4 +1,31 @@
-#!/bin/sh
+# Shell library to run an HTTP server for use in tests.
+# Ends the test early if httpd tests should not be run,
+# for example because the user has not enabled them.
+#
+# Usage:
+#
+#	. ./test-lib.sh
+#	. "$TEST_DIRECTORY"/lib-httpd.sh
+#	start_httpd
+#
+#	test_expect_success '...' '
+#		...
+#	'
+#
+#	test_expect_success ...
+#
+#	stop_httpd
+#	test_done
+#
+# Can be configured using the following variables.
+#
+#    GIT_TEST_HTTPD              enable HTTPD tests
+#    LIB_HTTPD_PATH              web server path
+#    LIB_HTTPD_MODULE_PATH       web server modules path
+#    LIB_HTTPD_PORT              listening port
+#    LIB_HTTPD_DAV               enable DAV
+#    LIB_HTTPD_SVN               enable SVN
+#    LIB_HTTPD_SSL               enable SSL
 #
 # Copyright (c) 2008 Clemens Buchacher <drizzd@aon.at>
 #
@@ -141,10 +168,11 @@ stop_httpd() {
 		-f "$TEST_PATH/apache.conf" $HTTPD_PARA -k stop
 }
 
-test_http_push_nonff() {
+test_http_push_nonff () {
 	REMOTE_REPO=$1
 	LOCAL_REPO=$2
 	BRANCH=$3
+	EXPECT_CAS_RESULT=${4-failure}
 
 	test_expect_success 'non-fast-forward push fails' '
 		cd "$REMOTE_REPO" &&
@@ -167,6 +195,22 @@ test_http_push_nonff() {
 	test_expect_success 'non-fast-forward push shows help message' '
 		test_i18ngrep "Updates were rejected because" output
 	'
+
+	test_expect_${EXPECT_CAS_RESULT} 'force with lease aka cas' '
+		HEAD=$(	cd "$REMOTE_REPO" && git rev-parse --verify HEAD ) &&
+		test_when_finished '\''
+			(cd "$REMOTE_REPO" && git update-ref HEAD "$HEAD")
+		'\'' &&
+		(
+			cd "$LOCAL_REPO" &&
+			git push -v --force-with-lease=$BRANCH:$HEAD origin
+		) &&
+		git rev-parse --verify "$BRANCH" >expect &&
+		(
+			cd "$REMOTE_REPO" && git rev-parse --verify HEAD
+		) >actual &&
+		test_cmp expect actual
+	'
 }
 
 setup_askpass_helper() {
@@ -187,7 +231,8 @@ set_askpass() {
 }
 
 expect_askpass() {
-	dest=$HTTPD_DEST
+	dest=$HTTPD_DEST${3+/$3}
+
 	{
 		case "$1" in
 		none)

@@ -98,7 +98,7 @@ static int add_ref_decoration(const char *refname, const unsigned char *sha1, in
 	struct object *obj;
 	enum decoration_type type = DECORATION_NONE;
 
-	if (!prefixcmp(refname, "refs/replace/")) {
+	if (starts_with(refname, "refs/replace/")) {
 		unsigned char original_sha1[20];
 		if (!read_replace_refs)
 			return 0;
@@ -116,11 +116,11 @@ static int add_ref_decoration(const char *refname, const unsigned char *sha1, in
 	if (!obj)
 		return 0;
 
-	if (!prefixcmp(refname, "refs/heads/"))
+	if (starts_with(refname, "refs/heads/"))
 		type = DECORATION_REF_LOCAL;
-	else if (!prefixcmp(refname, "refs/remotes/"))
+	else if (starts_with(refname, "refs/remotes/"))
 		type = DECORATION_REF_REMOTE;
-	else if (!prefixcmp(refname, "refs/tags/"))
+	else if (starts_with(refname, "refs/tags/"))
 		type = DECORATION_REF_TAG;
 	else if (!strcmp(refname, "refs/stash"))
 		type = DECORATION_REF_STASH;
@@ -734,11 +734,11 @@ static int log_tree_diff(struct rev_info *opt, struct commit *commit, struct log
 	if (!opt->diff && !DIFF_OPT_TST(&opt->diffopt, EXIT_WITH_STATUS))
 		return 0;
 
-	parse_commit(commit);
+	parse_commit_or_die(commit);
 	sha1 = commit->tree->object.sha1;
 
 	/* Root commit? */
-	parents = commit->parents;
+	parents = get_saved_parents(opt, commit);
 	if (!parents) {
 		if (opt->show_root_diff) {
 			diff_root_tree_sha1(sha1, "", &opt->diffopt);
@@ -759,7 +759,7 @@ static int log_tree_diff(struct rev_info *opt, struct commit *commit, struct log
 			 * parent, showing summary diff of the others
 			 * we merged _in_.
 			 */
-			parse_commit(parents->item);
+			parse_commit_or_die(parents->item);
 			diff_tree_sha1(parents->item->tree->object.sha1,
 				       sha1, "", &opt->diffopt);
 			log_tree_diff_flush(opt);
@@ -774,7 +774,7 @@ static int log_tree_diff(struct rev_info *opt, struct commit *commit, struct log
 	for (;;) {
 		struct commit *parent = parents->item;
 
-		parse_commit(parent);
+		parse_commit_or_die(parent);
 		diff_tree_sha1(parent->tree->object.sha1,
 			       sha1, "", &opt->diffopt);
 		log_tree_diff_flush(opt);

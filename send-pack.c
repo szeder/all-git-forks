@@ -5,6 +5,7 @@
 #include "sideband.h"
 #include "run-command.h"
 #include "remote.h"
+#include "connect.h"
 #include "send-pack.h"
 #include "quote.h"
 #include "transport.h"
@@ -108,7 +109,7 @@ static int receive_status(int in, struct ref *refs)
 	struct ref *hint;
 	int ret = 0;
 	char *line = packet_read_line(in, NULL);
-	if (prefixcmp(line, "unpack "))
+	if (!starts_with(line, "unpack "))
 		return error("did not receive remote status");
 	if (strcmp(line, "unpack ok")) {
 		error("unpack failed: %s", line + 7);
@@ -121,7 +122,7 @@ static int receive_status(int in, struct ref *refs)
 		line = packet_read_line(in, NULL);
 		if (!line)
 			break;
-		if (prefixcmp(line, "ok ") && prefixcmp(line, "ng ")) {
+		if (!starts_with(line, "ok ") && !starts_with(line, "ng ")) {
 			error("invalid ref status from remote: %s", line);
 			ret = -1;
 			break;
@@ -205,6 +206,8 @@ int send_pack(struct send_pack_args *args,
 		quiet_supported = 1;
 	if (server_supports("agent"))
 		agent_supported = 1;
+	if (server_supports("no-thin"))
+		args->use_thin_pack = 0;
 
 	if (!remote_refs) {
 		fprintf(stderr, "No refs in common and none specified; doing nothing.\n"
@@ -226,6 +229,7 @@ int send_pack(struct send_pack_args *args,
 		case REF_STATUS_REJECT_ALREADY_EXISTS:
 		case REF_STATUS_REJECT_FETCH_FIRST:
 		case REF_STATUS_REJECT_NEEDS_FORCE:
+		case REF_STATUS_REJECT_STALE:
 		case REF_STATUS_UPTODATE:
 			continue;
 		default:
@@ -300,8 +304,12 @@ int send_pack(struct send_pack_args *args,
 				shutdown(fd[0], SHUT_WR);
 			if (use_sideband)
 				finish_async(&demux);
+			fd[1] = -1;
 			return -1;
 		}
+		if (!args->stateless_rpc)
+			/* Closed by pack_objects() via start_command() */
+			fd[1] = -1;
 	}
 	if (args->stateless_rpc && cmds_sent)
 		packet_flush(out);

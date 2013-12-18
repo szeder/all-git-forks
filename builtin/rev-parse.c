@@ -9,6 +9,8 @@
 #include "quote.h"
 #include "builtin.h"
 #include "parse-options.h"
+#include "diff.h"
+#include "revision.h"
 
 #define DO_REVS		1
 #define DO_NOREV	2
@@ -29,6 +31,9 @@ static int abbrev;
 static int abbrev_ref;
 static int abbrev_ref_strict;
 static int output_sq;
+
+static int stuck_long;
+static struct string_list *ref_excludes;
 
 /*
  * Some arguments are relevant "revision" arguments,
@@ -185,6 +190,8 @@ static int show_default(void)
 
 static int show_reference(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
 {
+	if (ref_excluded(ref_excludes, refname))
+		return 0;
 	show_rev(NORMAL, sha1, refname);
 	return 0;
 }
@@ -320,12 +327,15 @@ static int parseopt_dump(const struct option *o, const char *arg, int unset)
 	struct strbuf *parsed = o->value;
 	if (unset)
 		strbuf_addf(parsed, " --no-%s", o->long_name);
-	else if (o->short_name)
+	else if (o->short_name && (o->long_name == NULL || !stuck_long))
 		strbuf_addf(parsed, " -%c", o->short_name);
 	else
 		strbuf_addf(parsed, " --%s", o->long_name);
 	if (arg) {
-		strbuf_addch(parsed, ' ');
+		if (!stuck_long)
+			strbuf_addch(parsed, ' ');
+		else if (o->long_name)
+			strbuf_addch(parsed, '=');
 		sq_quote_buf(parsed, arg);
 	}
 	return 0;
@@ -346,11 +356,13 @@ static int cmd_parseopt(int argc, const char **argv, const char *prefix)
 		NULL
 	};
 	static struct option parseopt_opts[] = {
-		OPT_BOOLEAN(0, "keep-dashdash", &keep_dashdash,
+		OPT_BOOL(0, "keep-dashdash", &keep_dashdash,
 					N_("keep the `--` passed as an arg")),
-		OPT_BOOLEAN(0, "stop-at-non-option", &stop_at_non_option,
+		OPT_BOOL(0, "stop-at-non-option", &stop_at_non_option,
 					N_("stop parsing after the "
 					   "first non-option argument")),
+		OPT_BOOL(0, "stuck-long", &stuck_long,
+					N_("output in stuck long form")),
 		OPT_END(),
 	};
 
@@ -486,21 +498,6 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 	if (argc > 1 && !strcmp("--sq-quote", argv[1]))
 		return cmd_sq_quote(argc - 2, argv + 2);
 
-	if (argc == 2 && !strcmp("--local-env-vars", argv[1])) {
-		int i;
-		for (i = 0; local_repo_env[i]; i++)
-			printf("%s\n", local_repo_env[i]);
-		return 0;
-	}
-
-	if (argc > 2 && !strcmp(argv[1], "--resolve-git-dir")) {
-		const char *gitdir = resolve_gitdir(argv[2]);
-		if (!gitdir)
-			die("not a gitdir '%s'", argv[2]);
-		puts(gitdir);
-		return 0;
-	}
-
 	if (argc > 1 && !strcmp("-h", argv[1]))
 		usage(builtin_rev_parse_usage);
 
@@ -523,7 +520,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 			}
 			continue;
 		}
-		if (!prefixcmp(arg, "-n")) {
+		if (starts_with(arg, "-n")) {
 			if ((filter & DO_FLAGS) && (filter & DO_REVS))
 				show(arg);
 			continue;
@@ -575,7 +572,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				continue;
 			}
 			if (!strcmp(arg, "--short") ||
-			    !prefixcmp(arg, "--short=")) {
+			    starts_with(arg, "--short=")) {
 				filter &= ~(DO_FLAGS|DO_NOREV);
 				verify = 1;
 				abbrev = DEFAULT_ABBREV;
@@ -603,7 +600,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				symbolic = SHOW_SYMBOLIC_FULL;
 				continue;
 			}
-			if (!prefixcmp(arg, "--abbrev-ref") &&
+			if (starts_with(arg, "--abbrev-ref") &&
 			    (!arg[12] || arg[12] == '=')) {
 				abbrev_ref = 1;
 				abbrev_ref_strict = warn_ambiguous_refs;
@@ -621,7 +618,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				for_each_ref(show_reference, NULL);
 				continue;
 			}
-			if (!prefixcmp(arg, "--disambiguate=")) {
+			if (starts_with(arg, "--disambiguate=")) {
 				for_each_abbrev(arg + 15, show_abbrev, NULL);
 				continue;
 			}
@@ -630,35 +627,52 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				for_each_ref_in("refs/bisect/good", anti_reference, NULL);
 				continue;
 			}
-			if (!prefixcmp(arg, "--branches=")) {
+			if (starts_with(arg, "--branches=")) {
 				for_each_glob_ref_in(show_reference, arg + 11,
 					"refs/heads/", NULL);
+				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
 			if (!strcmp(arg, "--branches")) {
 				for_each_branch_ref(show_reference, NULL);
+				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
-			if (!prefixcmp(arg, "--tags=")) {
+			if (starts_with(arg, "--tags=")) {
 				for_each_glob_ref_in(show_reference, arg + 7,
 					"refs/tags/", NULL);
+				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
 			if (!strcmp(arg, "--tags")) {
 				for_each_tag_ref(show_reference, NULL);
+				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
-			if (!prefixcmp(arg, "--glob=")) {
+			if (starts_with(arg, "--glob=")) {
 				for_each_glob_ref(show_reference, arg + 7, NULL);
+				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
-			if (!prefixcmp(arg, "--remotes=")) {
+			if (starts_with(arg, "--remotes=")) {
 				for_each_glob_ref_in(show_reference, arg + 10,
 					"refs/remotes/", NULL);
+				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
 			if (!strcmp(arg, "--remotes")) {
 				for_each_remote_ref(show_reference, NULL);
+				clear_ref_exclusion(&ref_excludes);
+				continue;
+			}
+			if (starts_with(arg, "--exclude=")) {
+				add_ref_exclusion(&ref_excludes, arg + 10);
+				continue;
+			}
+			if (!strcmp(arg, "--local-env-vars")) {
+				int i;
+				for (i = 0; local_repo_env[i]; i++)
+					printf("%s\n", local_repo_env[i]);
 				continue;
 			}
 			if (!strcmp(arg, "--show-toplevel")) {
@@ -711,6 +725,13 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				printf("%s%s.git\n", cwd, len && cwd[len-1] != '/' ? "/" : "");
 				continue;
 			}
+			if (!strcmp(arg, "--resolve-git-dir")) {
+				const char *gitdir = resolve_gitdir(argv[i+1]);
+				if (!gitdir)
+					die("not a gitdir '%s'", argv[i+1]);
+				puts(gitdir);
+				continue;
+			}
 			if (!strcmp(arg, "--is-inside-git-dir")) {
 				printf("%s\n", is_inside_git_dir() ? "true"
 						: "false");
@@ -726,19 +747,19 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 						: "false");
 				continue;
 			}
-			if (!prefixcmp(arg, "--since=")) {
+			if (starts_with(arg, "--since=")) {
 				show_datestring("--max-age=", arg+8);
 				continue;
 			}
-			if (!prefixcmp(arg, "--after=")) {
+			if (starts_with(arg, "--after=")) {
 				show_datestring("--max-age=", arg+8);
 				continue;
 			}
-			if (!prefixcmp(arg, "--before=")) {
+			if (starts_with(arg, "--before=")) {
 				show_datestring("--min-age=", arg+9);
 				continue;
 			}
-			if (!prefixcmp(arg, "--until=")) {
+			if (starts_with(arg, "--until=")) {
 				show_datestring("--min-age=", arg+8);
 				continue;
 			}

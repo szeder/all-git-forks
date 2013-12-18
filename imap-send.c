@@ -28,20 +28,6 @@
 #include "prompt.h"
 #ifdef NO_OPENSSL
 typedef void *SSL;
-#else
-#ifdef APPLE_COMMON_CRYPTO
-#include <CommonCrypto/CommonHMAC.h>
-#define HMAC_CTX CCHmacContext
-#define HMAC_Init(hmac, key, len, algo) CCHmacInit(hmac, algo, key, len)
-#define HMAC_Update CCHmacUpdate
-#define HMAC_Final(hmac, hash, ptr) CCHmacFinal(hmac, hash)
-#define HMAC_CTX_cleanup(ignore)
-#define EVP_md5() kCCHmacAlgMD5
-#else
-#include <openssl/evp.h>
-#include <openssl/hmac.h>
-#endif
-#include <openssl/x509v3.h>
 #endif
 
 static const char imap_send_usage[] = "git imap-send < <mbox>";
@@ -1277,7 +1263,7 @@ static int count_messages(struct strbuf *all_msgs)
 	char *p = all_msgs->buf;
 
 	while (1) {
-		if (!prefixcmp(p, "From ")) {
+		if (starts_with(p, "From ")) {
 			p = strstr(p+5, "\nFrom: ");
 			if (!p) break;
 			p = strstr(p+7, "\nDate: ");
@@ -1311,7 +1297,7 @@ static int split_msg(struct strbuf *all_msgs, struct strbuf *msg, int *ofs)
 	data = &all_msgs->buf[*ofs];
 	len = all_msgs->len - *ofs;
 
-	if (len < 5 || prefixcmp(data, "From "))
+	if (len < 5 || !starts_with(data, "From "))
 		return 0;
 
 	p = strchr(data, '\n');
@@ -1353,13 +1339,13 @@ static int git_imap_config(const char *key, const char *val, void *cb)
 	if (!strcmp("folder", key)) {
 		imap_folder = xstrdup(val);
 	} else if (!strcmp("host", key)) {
-		if (!prefixcmp(val, "imap:"))
+		if (starts_with(val, "imap:"))
 			val += 5;
-		else if (!prefixcmp(val, "imaps:")) {
+		else if (starts_with(val, "imaps:")) {
 			val += 6;
 			server.use_ssl = 1;
 		}
-		if (!prefixcmp(val, "//"))
+		if (starts_with(val, "//"))
 			val += 2;
 		server.host = xstrdup(val);
 	} else if (!strcmp("user", key))

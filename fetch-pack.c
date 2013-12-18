@@ -9,6 +9,7 @@
 #include "fetch-pack.h"
 #include "remote.h"
 #include "run-command.h"
+#include "connect.h"
 #include "transport.h"
 #include "version.h"
 #include "prio-queue.h"
@@ -46,9 +47,8 @@ static void rev_list_push(struct commit *commit, int mark)
 	if (!(commit->object.flags & mark)) {
 		commit->object.flags |= mark;
 
-		if (!(commit->object.parsed))
-			if (parse_commit(commit))
-				return;
+		if (parse_commit(commit))
+			return;
 
 		prio_queue_put(&rev_list, commit);
 
@@ -127,8 +127,7 @@ static const unsigned char *get_rev(void)
 			return NULL;
 
 		commit = prio_queue_get(&rev_list);
-		if (!commit->object.parsed)
-			parse_commit(commit);
+		parse_commit(commit);
 		parents = commit->parents;
 
 		commit->object.flags |= POPPED;
@@ -175,43 +174,13 @@ static void consume_shallow_list(struct fetch_pack_args *args, int fd)
 		 */
 		char *line;
 		while ((line = packet_read_line(fd, NULL))) {
-			if (!prefixcmp(line, "shallow "))
+			if (starts_with(line, "shallow "))
 				continue;
-			if (!prefixcmp(line, "unshallow "))
+			if (starts_with(line, "unshallow "))
 				continue;
 			die("git fetch-pack: expected shallow list");
 		}
 	}
-}
-
-struct write_shallow_data {
-	struct strbuf *out;
-	int use_pack_protocol;
-	int count;
-};
-
-static int write_one_shallow(const struct commit_graft *graft, void *cb_data)
-{
-	struct write_shallow_data *data = cb_data;
-	const char *hex = sha1_to_hex(graft->sha1);
-	data->count++;
-	if (data->use_pack_protocol)
-		packet_buf_write(data->out, "shallow %s", hex);
-	else {
-		strbuf_addstr(data->out, hex);
-		strbuf_addch(data->out, '\n');
-	}
-	return 0;
-}
-
-static int write_shallow_commits(struct strbuf *out, int use_pack_protocol)
-{
-	struct write_shallow_data data;
-	data.out = out;
-	data.use_pack_protocol = use_pack_protocol;
-	data.count = 0;
-	for_each_commit_graft(write_one_shallow, &data);
-	return data.count;
 }
 
 static enum ack_type get_ack(int fd, unsigned char *result_sha1)
@@ -223,7 +192,7 @@ static enum ack_type get_ack(int fd, unsigned char *result_sha1)
 		die("git fetch-pack: expected ACK/NAK, got EOF");
 	if (!strcmp(line, "NAK"))
 		return NAK;
-	if (!prefixcmp(line, "ACK ")) {
+	if (starts_with(line, "ACK ")) {
 		if (!get_sha1_hex(line+4, result_sha1)) {
 			if (len < 45)
 				return ACK;
@@ -352,13 +321,13 @@ static int find_common(struct fetch_pack_args *args,
 
 		send_request(args, fd[1], &req_buf);
 		while ((line = packet_read_line(fd[0], NULL))) {
-			if (!prefixcmp(line, "shallow ")) {
+			if (starts_with(line, "shallow ")) {
 				if (get_sha1_hex(line + 8, sha1))
 					die("invalid shallow line: %s", line);
 				register_shallow(sha1);
 				continue;
 			}
-			if (!prefixcmp(line, "unshallow ")) {
+			if (starts_with(line, "unshallow ")) {
 				if (get_sha1_hex(line + 10, sha1))
 					die("invalid unshallow line: %s", line);
 				if (!lookup_object(sha1))
@@ -552,7 +521,7 @@ static void filter_refs(struct fetch_pack_args *args,
 		}
 
 		if (!keep && args->fetch_all &&
-		    (!args->depth || prefixcmp(ref->name, "refs/tags/")))
+		    (!args->depth || !starts_with(ref->name, "refs/tags/")))
 			keep = 1;
 
 		if (keep) {
@@ -688,7 +657,7 @@ static int get_pack(struct fetch_pack_args *args,
 	const char *argv[22];
 	char keep_arg[256];
 	char hdr_arg[256];
-	const char **av;
+	const char **av, *cmd_name;
 	int do_keep = args->keep_pack;
 	struct child_process cmd;
 	int ret;
@@ -735,7 +704,7 @@ static int get_pack(struct fetch_pack_args *args,
 	if (do_keep) {
 		if (pack_lockfile)
 			cmd.out = -1;
-		*av++ = "index-pack";
+		*av++ = cmd_name = "index-pack";
 		*av++ = "--stdin";
 		if (!args->quiet && !args->no_progress)
 			*av++ = "-v";
@@ -752,7 +721,7 @@ static int get_pack(struct fetch_pack_args *args,
 			*av++ = "--check-self-contained-and-connected";
 	}
 	else {
-		*av++ = "unpack-objects";
+		*av++ = cmd_name = "unpack-objects";
 		if (args->quiet || args->no_progress)
 			*av++ = "-q";
 		args->check_self_contained_and_connected = 0;
@@ -770,11 +739,15 @@ static int get_pack(struct fetch_pack_args *args,
 	cmd.in = demux.out;
 	cmd.git_cmd = 1;
 	if (start_command(&cmd))
-		die("fetch-pack: unable to fork off %s", argv[0]);
+		die("fetch-pack: unable to fork off %s", cmd_name);
 	if (do_keep && pack_lockfile) {
 		*pack_lockfile = index_pack_lockfile(cmd.out);
 		close(cmd.out);
 	}
+
+	if (!use_sideband)
+		/* Closed by start_command() */
+		xd[0] = -1;
 
 	ret = finish_command(&cmd);
 	if (!ret || (args->check_self_contained_and_connected && ret == 1))
@@ -782,7 +755,7 @@ static int get_pack(struct fetch_pack_args *args,
 			args->check_self_contained_and_connected &&
 			ret == 0;
 	else
-		die("%s failed", argv[0]);
+		die("%s failed", cmd_name);
 	if (use_sideband && finish_async(&demux))
 		die("error in sideband demultiplexer");
 	return 0;
@@ -793,27 +766,6 @@ static int cmp_ref_by_name(const void *a_, const void *b_)
 	const struct ref *a = *((const struct ref **)a_);
 	const struct ref *b = *((const struct ref **)b_);
 	return strcmp(a->name, b->name);
-}
-
-static void setup_alternate_shallow(void)
-{
-	struct strbuf sb = STRBUF_INIT;
-	int fd;
-
-	check_shallow_file_for_update();
-	fd = hold_lock_file_for_update(&shallow_lock, git_path("shallow"),
-				       LOCK_DIE_ON_ERROR);
-	if (write_shallow_commits(&sb, 0)) {
-		if (write_in_full(fd, sb.buf, sb.len) != sb.len)
-			die_errno("failed to write to %s", shallow_lock.filename);
-		alternate_shallow_file = shallow_lock.filename;
-	} else
-		/*
-		 * is_repository_shallow() sees empty string as "no
-		 * shallow file".
-		 */
-		alternate_shallow_file = "";
-	strbuf_release(&sb);
 }
 
 static struct ref *do_fetch_pack(struct fetch_pack_args *args,
@@ -896,7 +848,9 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 	if (args->stateless_rpc)
 		packet_flush(fd[1]);
 	if (args->depth > 0)
-		setup_alternate_shallow();
+		setup_alternate_shallow(&shallow_lock, &alternate_shallow_file);
+	else
+		alternate_shallow_file = NULL;
 	if (get_pack(args, fd, pack_lockfile))
 		die("git fetch-pack: fetch failed.");
 
@@ -987,7 +941,7 @@ struct ref *fetch_pack(struct fetch_pack_args *args,
 	}
 	ref_cpy = do_fetch_pack(args, fd, ref, sought, nr_sought, pack_lockfile);
 
-	if (alternate_shallow_file) {
+	if (args->depth > 0 && alternate_shallow_file) {
 		if (*alternate_shallow_file == '\0') { /* --unshallow */
 			unlink_or_warn(git_path("shallow"));
 			rollback_lock_file(&shallow_lock);

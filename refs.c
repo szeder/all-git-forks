@@ -637,7 +637,7 @@ static int do_one_ref(struct ref_entry *entry, void *cb_data)
 	struct ref_entry *old_current_ref;
 	int retval;
 
-	if (prefixcmp(entry->name, data->base))
+	if (!starts_with(entry->name, data->base))
 		return 0;
 
 	if (!(data->flags & DO_FOR_EACH_INCLUDE_BROKEN) &&
@@ -947,13 +947,6 @@ static struct ref_cache *get_ref_cache(const char *submodule)
 	return refs;
 }
 
-void invalidate_ref_cache(const char *submodule)
-{
-	struct ref_cache *refs = get_ref_cache(submodule);
-	clear_packed_ref_cache(refs);
-	clear_loose_ref_cache(refs);
-}
-
 /* The length of a peeled reference line in packed-refs, including EOL: */
 #define PEELED_LINE_LENGTH 42
 
@@ -1049,7 +1042,7 @@ static void read_packed_refs(FILE *f, struct ref_dir *dir)
 		if (refname) {
 			last = create_ref_entry(refname, sha1, REF_ISPACKED, 1);
 			if (peeled == PEELED_FULLY ||
-			    (peeled == PEELED_TAGS && !prefixcmp(refname, "refs/tags/")))
+			    (peeled == PEELED_TAGS && starts_with(refname, "refs/tags/")))
 				last->flag |= REF_KNOWS_PEELED;
 			add_ref(dir, last);
 			continue;
@@ -1383,7 +1376,7 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int rea
 					return NULL;
 			}
 			buffer[len] = 0;
-			if (!prefixcmp(buffer, "refs/") &&
+			if (starts_with(buffer, "refs/") &&
 					!check_refname_format(buffer, 0)) {
 				strcpy(refname_buffer, buffer);
 				refname = refname_buffer;
@@ -1422,7 +1415,7 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int rea
 		/*
 		 * Is it a symbolic ref?
 		 */
-		if (prefixcmp(buffer, "ref:")) {
+		if (!starts_with(buffer, "ref:")) {
 			/*
 			 * Please note that FETCH_HEAD has a second
 			 * line containing other data.
@@ -1844,7 +1837,7 @@ int for_each_glob_ref_in(each_ref_fn fn, const char *pattern,
 	struct ref_filter filter;
 	int ret;
 
-	if (!prefix && prefixcmp(pattern, "refs/"))
+	if (!prefix && !starts_with(pattern, "refs/"))
 		strbuf_addstr(&real_pattern, "refs/");
 	else if (prefix)
 		strbuf_addstr(&real_pattern, prefix);
@@ -1881,9 +1874,9 @@ int for_each_rawref(each_ref_fn fn, void *cb_data)
 const char *prettify_refname(const char *name)
 {
 	return name + (
-		!prefixcmp(name, "refs/heads/") ? 11 :
-		!prefixcmp(name, "refs/tags/") ? 10 :
-		!prefixcmp(name, "refs/remotes/") ? 13 :
+		starts_with(name, "refs/heads/") ? 11 :
+		starts_with(name, "refs/tags/") ? 10 :
+		starts_with(name, "refs/remotes/") ? 13 :
 		0);
 }
 
@@ -1955,7 +1948,7 @@ static int remove_empty_directories(const char *file)
 static char *substitute_branch_name(const char **string, int *len)
 {
 	struct strbuf buf = STRBUF_INIT;
-	int ret = interpret_branch_name(*string, &buf);
+	int ret = interpret_branch_name(*string, *len, &buf);
 
 	if (ret == *len) {
 		size_t size;
@@ -2125,11 +2118,12 @@ struct ref_lock *lock_ref_sha1(const char *refname, const unsigned char *old_sha
 }
 
 struct ref_lock *lock_any_ref_for_update(const char *refname,
-					 const unsigned char *old_sha1, int flags)
+					 const unsigned char *old_sha1,
+					 int flags, int *type_p)
 {
 	if (check_refname_format(refname, REFNAME_ALLOW_ONELEVEL))
 		return NULL;
-	return lock_ref_sha1_basic(refname, old_sha1, flags, NULL);
+	return lock_ref_sha1_basic(refname, old_sha1, flags, type_p);
 }
 
 /*
@@ -2250,7 +2244,7 @@ static int pack_if_possible_fn(struct ref_entry *entry, void *cb_data)
 	struct pack_refs_cb_data *cb = cb_data;
 	enum peel_status peel_status;
 	struct ref_entry *packed_entry;
-	int is_tag_ref = !prefixcmp(entry->name, "refs/tags/");
+	int is_tag_ref = starts_with(entry->name, "refs/tags/");
 
 	/* ALWAYS pack tags */
 	if (!(cb->flags & PACK_REFS_ALL) && !is_tag_ref)
@@ -2417,60 +2411,82 @@ static int curate_packed_ref_fn(struct ref_entry *entry, void *cb_data)
 	return 0;
 }
 
-static int repack_without_ref(const char *refname)
+static int repack_without_refs(const char **refnames, int n)
 {
 	struct ref_dir *packed;
 	struct string_list refs_to_delete = STRING_LIST_INIT_DUP;
 	struct string_list_item *ref_to_delete;
+	int i, removed = 0;
 
-	if (!get_packed_ref(refname))
-		return 0; /* refname does not exist in packed refs */
+	/* Look for a packed ref */
+	for (i = 0; i < n; i++)
+		if (get_packed_ref(refnames[i]))
+			break;
+
+	/* Avoid locking if we have nothing to do */
+	if (i == n)
+		return 0; /* no refname exists in packed refs */
 
 	if (lock_packed_refs(0)) {
 		unable_to_lock_error(git_path("packed-refs"), errno);
-		return error("cannot delete '%s' from packed refs", refname);
+		return error("cannot delete '%s' from packed refs", refnames[i]);
 	}
 	packed = get_packed_refs(&ref_cache);
 
-	/* Remove refname from the cache: */
-	if (remove_entry(packed, refname) == -1) {
+	/* Remove refnames from the cache */
+	for (i = 0; i < n; i++)
+		if (remove_entry(packed, refnames[i]) != -1)
+			removed = 1;
+	if (!removed) {
 		/*
-		 * The packed entry disappeared while we were
+		 * All packed entries disappeared while we were
 		 * acquiring the lock.
 		 */
 		rollback_packed_refs();
 		return 0;
 	}
 
-	/* Remove any other accumulated cruft: */
+	/* Remove any other accumulated cruft */
 	do_for_each_entry_in_dir(packed, 0, curate_packed_ref_fn, &refs_to_delete);
 	for_each_string_list_item(ref_to_delete, &refs_to_delete) {
 		if (remove_entry(packed, ref_to_delete->string) == -1)
 			die("internal error");
 	}
 
-	/* Write what remains: */
+	/* Write what remains */
 	return commit_packed_refs();
+}
+
+static int repack_without_ref(const char *refname)
+{
+	return repack_without_refs(&refname, 1);
+}
+
+static int delete_ref_loose(struct ref_lock *lock, int flag)
+{
+	if (!(flag & REF_ISPACKED) || flag & REF_ISSYMREF) {
+		/* loose */
+		int err, i = strlen(lock->lk->filename) - 5; /* .lock */
+
+		lock->lk->filename[i] = 0;
+		err = unlink_or_warn(lock->lk->filename);
+		lock->lk->filename[i] = '.';
+		if (err && errno != ENOENT)
+			return 1;
+	}
+	return 0;
 }
 
 int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
 {
 	struct ref_lock *lock;
-	int err, i = 0, ret = 0, flag = 0;
+	int ret = 0, flag = 0;
 
 	lock = lock_ref_sha1_basic(refname, sha1, delopt, &flag);
 	if (!lock)
 		return 1;
-	if (!(flag & REF_ISPACKED) || flag & REF_ISSYMREF) {
-		/* loose */
-		i = strlen(lock->lk->filename) - 5; /* .lock */
-		lock->lk->filename[i] = 0;
-		err = unlink_or_warn(lock->lk->filename);
-		if (err && errno != ENOENT)
-			ret = 1;
+	ret |= delete_ref_loose(lock, flag);
 
-		lock->lk->filename[i] = '.';
-	}
 	/* removing the loose one could have resurrected an earlier
 	 * packed one.  Also, if it was not loose we need to repack
 	 * without it.
@@ -2663,9 +2679,9 @@ int log_ref_setup(const char *refname, char *logfile, int bufsize)
 
 	git_snpath(logfile, bufsize, "logs/%s", refname);
 	if (log_all_ref_updates &&
-	    (!prefixcmp(refname, "refs/heads/") ||
-	     !prefixcmp(refname, "refs/remotes/") ||
-	     !prefixcmp(refname, "refs/notes/") ||
+	    (starts_with(refname, "refs/heads/") ||
+	     starts_with(refname, "refs/remotes/") ||
+	     starts_with(refname, "refs/notes/") ||
 	     !strcmp(refname, "HEAD"))) {
 		if (safe_create_leading_directories(logfile) < 0)
 			return error("unable to create directory for %s",
@@ -2735,7 +2751,7 @@ static int log_ref_write(const char *refname, const unsigned char *old_sha1,
 
 static int is_branch(const char *refname)
 {
-	return !strcmp(refname, "HEAD") || !prefixcmp(refname, "refs/heads/");
+	return !strcmp(refname, "HEAD") || starts_with(refname, "refs/heads/");
 }
 
 int write_ref_sha1(struct ref_lock *lock,
@@ -3173,12 +3189,13 @@ int for_each_reflog(each_ref_fn fn, void *cb_data)
 	return retval;
 }
 
-int update_ref(const char *action, const char *refname,
-		const unsigned char *sha1, const unsigned char *oldval,
-		int flags, enum action_on_err onerr)
+static struct ref_lock *update_ref_lock(const char *refname,
+					const unsigned char *oldval,
+					int flags, int *type_p,
+					enum action_on_err onerr)
 {
-	static struct ref_lock *lock;
-	lock = lock_any_ref_for_update(refname, oldval, flags);
+	struct ref_lock *lock;
+	lock = lock_any_ref_for_update(refname, oldval, flags, type_p);
 	if (!lock) {
 		const char *str = "Cannot lock the ref '%s'.";
 		switch (onerr) {
@@ -3186,8 +3203,14 @@ int update_ref(const char *action, const char *refname,
 		case DIE_ON_ERR: die(str, refname); break;
 		case QUIET_ON_ERR: break;
 		}
-		return 1;
 	}
+	return lock;
+}
+
+static int update_ref_write(const char *action, const char *refname,
+			    const unsigned char *sha1, struct ref_lock *lock,
+			    enum action_on_err onerr)
+{
 	if (write_ref_sha1(lock, sha1, action) < 0) {
 		const char *str = "Cannot update the ref '%s'.";
 		switch (onerr) {
@@ -3200,12 +3223,115 @@ int update_ref(const char *action, const char *refname,
 	return 0;
 }
 
-struct ref *find_ref_by_name(const struct ref *list, const char *name)
+int update_ref(const char *action, const char *refname,
+	       const unsigned char *sha1, const unsigned char *oldval,
+	       int flags, enum action_on_err onerr)
 {
-	for ( ; list; list = list->next)
-		if (!strcmp(list->name, name))
-			return (struct ref *)list;
-	return NULL;
+	struct ref_lock *lock;
+	lock = update_ref_lock(refname, oldval, flags, NULL, onerr);
+	if (!lock)
+		return 1;
+	return update_ref_write(action, refname, sha1, lock, onerr);
+}
+
+static int ref_update_compare(const void *r1, const void *r2)
+{
+	const struct ref_update * const *u1 = r1;
+	const struct ref_update * const *u2 = r2;
+	return strcmp((*u1)->ref_name, (*u2)->ref_name);
+}
+
+static int ref_update_reject_duplicates(struct ref_update **updates, int n,
+					enum action_on_err onerr)
+{
+	int i;
+	for (i = 1; i < n; i++)
+		if (!strcmp(updates[i - 1]->ref_name, updates[i]->ref_name)) {
+			const char *str =
+				"Multiple updates for ref '%s' not allowed.";
+			switch (onerr) {
+			case MSG_ON_ERR:
+				error(str, updates[i]->ref_name); break;
+			case DIE_ON_ERR:
+				die(str, updates[i]->ref_name); break;
+			case QUIET_ON_ERR:
+				break;
+			}
+			return 1;
+		}
+	return 0;
+}
+
+int update_refs(const char *action, const struct ref_update **updates_orig,
+		int n, enum action_on_err onerr)
+{
+	int ret = 0, delnum = 0, i;
+	struct ref_update **updates;
+	int *types;
+	struct ref_lock **locks;
+	const char **delnames;
+
+	if (!updates_orig || !n)
+		return 0;
+
+	/* Allocate work space */
+	updates = xmalloc(sizeof(*updates) * n);
+	types = xmalloc(sizeof(*types) * n);
+	locks = xcalloc(n, sizeof(*locks));
+	delnames = xmalloc(sizeof(*delnames) * n);
+
+	/* Copy, sort, and reject duplicate refs */
+	memcpy(updates, updates_orig, sizeof(*updates) * n);
+	qsort(updates, n, sizeof(*updates), ref_update_compare);
+	ret = ref_update_reject_duplicates(updates, n, onerr);
+	if (ret)
+		goto cleanup;
+
+	/* Acquire all locks while verifying old values */
+	for (i = 0; i < n; i++) {
+		locks[i] = update_ref_lock(updates[i]->ref_name,
+					   (updates[i]->have_old ?
+					    updates[i]->old_sha1 : NULL),
+					   updates[i]->flags,
+					   &types[i], onerr);
+		if (!locks[i]) {
+			ret = 1;
+			goto cleanup;
+		}
+	}
+
+	/* Perform updates first so live commits remain referenced */
+	for (i = 0; i < n; i++)
+		if (!is_null_sha1(updates[i]->new_sha1)) {
+			ret = update_ref_write(action,
+					       updates[i]->ref_name,
+					       updates[i]->new_sha1,
+					       locks[i], onerr);
+			locks[i] = NULL; /* freed by update_ref_write */
+			if (ret)
+				goto cleanup;
+		}
+
+	/* Perform deletes now that updates are safely completed */
+	for (i = 0; i < n; i++)
+		if (locks[i]) {
+			delnames[delnum++] = locks[i]->ref_name;
+			ret |= delete_ref_loose(locks[i], types[i]);
+		}
+	ret |= repack_without_refs(delnames, delnum);
+	for (i = 0; i < delnum; i++)
+		unlink_or_warn(git_path("logs/%s", delnames[i]));
+	clear_loose_ref_cache(&ref_cache);
+
+cleanup:
+	for (i = 0; i < n; i++)
+		if (locks[i])
+			unlock_ref(locks[i]);
+	free(updates);
+	free(types);
+	free(locks);
+	free(delnames);
+	return ret;
 }
 
 /*
@@ -3243,7 +3369,7 @@ char *shorten_unambiguous_ref(const char *refname, int strict)
 		size_t total_len = 0;
 
 		/* the rule list is NULL terminated, count them first */
-		for (; ref_rev_parse_rules[nr_rules]; nr_rules++)
+		for (nr_rules = 0; ref_rev_parse_rules[nr_rules]; nr_rules++)
 			/* no +1 because strlen("%s") < strlen("%.*s") */
 			total_len += strlen(ref_rev_parse_rules[nr_rules]);
 
@@ -3324,7 +3450,7 @@ int parse_hide_refs_config(const char *var, const char *value, const char *secti
 {
 	if (!strcmp("transfer.hiderefs", var) ||
 	    /* NEEDSWORK: use parse_config_key() once both are merged */
-	    (!prefixcmp(var, section) && var[strlen(section)] == '.' &&
+	    (starts_with(var, section) && var[strlen(section)] == '.' &&
 	     !strcmp(var + strlen(section), ".hiderefs"))) {
 		char *ref;
 		int len;
@@ -3352,7 +3478,7 @@ int ref_is_hidden(const char *refname)
 		return 0;
 	for_each_string_list_item(item, hide_refs) {
 		int len;
-		if (prefixcmp(refname, item->string))
+		if (!starts_with(refname, item->string))
 			continue;
 		len = strlen(item->string);
 		if (!refname[len] || refname[len] == '/')

@@ -18,14 +18,25 @@ SCRIPT_PERL+=git-mw.perl
 GIT_ROOT_DIR=../..
 HERE=contrib/mw-to-git/
 
+INSTALL = install
+
 SCRIPT_PERL_FULL=$(patsubst %,$(HERE)/%,$(SCRIPT_PERL))
 INSTLIBDIR=$(shell $(MAKE) -C $(GIT_ROOT_DIR)/perl \
                 -s --no-print-directory instlibdir)
+DESTDIR_SQ = $(subst ','\'',$(DESTDIR))
+INSTLIBDIR_SQ = $(subst ','\'',$(INSTLIBDIR))
 
 all: build
 
+test: all
+	$(MAKE) -C t
+
+check: perlcritic test
+
 install_pm:
-	install $(GIT_MEDIAWIKI_PM) $(INSTLIBDIR)/$(GIT_MEDIAWIKI_PM)
+	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(INSTLIBDIR_SQ)/Git'
+	$(INSTALL) -m 644 $(GIT_MEDIAWIKI_PM) \
+		'$(DESTDIR_SQ)$(INSTLIBDIR_SQ)/$(GIT_MEDIAWIKI_PM)'
 
 build:
 	$(MAKE) -C $(GIT_ROOT_DIR) SCRIPT_PERL="$(SCRIPT_PERL_FULL)" \
@@ -38,7 +49,9 @@ install: install_pm
 clean:
 	$(MAKE) -C $(GIT_ROOT_DIR) SCRIPT_PERL="$(SCRIPT_PERL_FULL)" \
                 clean-perl-script
-	rm $(INSTLIBDIR)/$(GIT_MEDIAWIKI_PM)
 
 perlcritic:
-	perlcritic -2 *.perl
+	perlcritic -5 $(SCRIPT_PERL)
+	-perlcritic -2 $(SCRIPT_PERL)
+
+.PHONY: all test check install_pm install clean perlcritic

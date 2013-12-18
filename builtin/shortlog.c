@@ -65,7 +65,7 @@ static void insert_one_record(struct shortlog *log,
 	eol = strchr(oneline, '\n');
 	if (!eol)
 		eol = oneline + strlen(oneline);
-	if (!prefixcmp(oneline, "[PATCH")) {
+	if (starts_with(oneline, "[PATCH")) {
 		char *eob = strchr(oneline, ']');
 		if (eob && (!eol || eob < eol))
 			oneline = eob + 1;
@@ -95,7 +95,7 @@ static void read_from_stdin(struct shortlog *log)
 
 	while (fgets(author, sizeof(author), stdin) != NULL) {
 		if (!(author[0] == 'A' || author[0] == 'a') ||
-		    prefixcmp(author + 1, "uthor: "))
+		    !starts_with(author + 1, "uthor: "))
 			continue;
 		while (fgets(oneline, sizeof(oneline), stdin) &&
 		       oneline[0] != '\n')
@@ -123,13 +123,15 @@ void shortlog_add_commit(struct shortlog *log, struct commit *commit)
 		else
 			eol++;
 
-		if (!prefixcmp(buffer, "author "))
+		if (starts_with(buffer, "author "))
 			author = buffer + 7;
 		buffer = eol;
 	}
-	if (!author)
-		die(_("Missing author: %s"),
+	if (!author) {
+		warning(_("Missing author: %s"),
 		    sha1_to_hex(commit->object.sha1));
+		return;
+	}
 	if (log->user_format) {
 		struct pretty_print_context ctx = {0};
 		ctx.fmt = CMIT_FMT_USERFORMAT;
@@ -224,12 +226,12 @@ int cmd_shortlog(int argc, const char **argv, const char *prefix)
 	int nongit = !startup_info->have_repository;
 
 	static const struct option options[] = {
-		OPT_BOOLEAN('n', "numbered", &log.sort_by_number,
-			    N_("sort output according to the number of commits per author")),
-		OPT_BOOLEAN('s', "summary", &log.summary,
-			    N_("Suppress commit descriptions, only provides commit count")),
-		OPT_BOOLEAN('e', "email", &log.email,
-			    N_("Show the email address of each author")),
+		OPT_BOOL('n', "numbered", &log.sort_by_number,
+			 N_("sort output according to the number of commits per author")),
+		OPT_BOOL('s', "summary", &log.summary,
+			 N_("Suppress commit descriptions, only provides commit count")),
+		OPT_BOOL('e', "email", &log.email,
+			 N_("Show the email address of each author")),
 		{ OPTION_CALLBACK, 'w', NULL, &log, N_("w[,i1[,i2]]"),
 			N_("Linewrap output"), PARSE_OPT_OPTARG, &parse_wrap_args },
 		OPT_END(),

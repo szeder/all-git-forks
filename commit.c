@@ -79,7 +79,7 @@ struct commit *lookup_commit_reference_by_name(const char *name)
 	if (get_sha1_committish(name, sha1))
 		return NULL;
 	commit = lookup_commit_reference(sha1);
-	if (!commit || parse_commit(commit))
+	if (parse_commit(commit))
 		return NULL;
 	return commit;
 }
@@ -341,6 +341,13 @@ int parse_commit(struct commit *item)
 	return ret;
 }
 
+void parse_commit_or_die(struct commit *item)
+{
+	if (parse_commit(item))
+		die("unable to parse commit %s",
+		    item ? sha1_to_hex(item->object.sha1) : "(null)");
+}
+
 int find_commit_subject(const char *commit_buffer, const char **subject)
 {
 	const char *eol;
@@ -375,6 +382,22 @@ unsigned commit_list_count(const struct commit_list *l)
 	for (; l; l = l->next )
 		c++;
 	return c;
+}
+
+struct commit_list *copy_commit_list(struct commit_list *list)
+{
+	struct commit_list *head = NULL;
+	struct commit_list **pp = &head;
+	while (list) {
+		struct commit_list *new;
+		new = xmalloc(sizeof(struct commit_list));
+		new->item = list->item;
+		new->next = NULL;
+		*pp = new;
+		pp = &new->next;
+		list = list->next;
+	}
+	return head;
 }
 
 void free_commit_list(struct commit_list *list)
@@ -543,7 +566,7 @@ static void record_author_date(struct author_date_slab *author_date,
 	     buf;
 	     buf = line_end + 1) {
 		line_end = strchrnul(buf, '\n');
-		if (prefixcmp(buf, "author ")) {
+		if (!starts_with(buf, "author ")) {
 			if (!line_end[0] || line_end[1] == '\n')
 				return; /* end of header */
 			continue;
@@ -1090,7 +1113,7 @@ int parse_signed_commit(const unsigned char *sha1,
 		next = next ? next + 1 : tail;
 		if (in_signature && line[0] == ' ')
 			sig = line + 1;
-		else if (!prefixcmp(line, gpg_sig_header) &&
+		else if (starts_with(line, gpg_sig_header) &&
 			 line[gpg_sig_header_len] == ' ')
 			sig = line + gpg_sig_header_len + 1;
 		if (sig) {
@@ -1170,7 +1193,7 @@ static void parse_gpg_output(struct signature_check *sigc)
 	for (i = 0; i < ARRAY_SIZE(sigcheck_gpg_status); i++) {
 		const char *found, *next;
 
-		if (!prefixcmp(buf, sigcheck_gpg_status[i].check + 1)) {
+		if (starts_with(buf, sigcheck_gpg_status[i].check + 1)) {
 			/* At the very beginning of the buffer */
 			found = buf + strlen(sigcheck_gpg_status[i].check + 1);
 		} else {

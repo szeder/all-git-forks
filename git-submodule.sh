@@ -156,7 +156,7 @@ module_list()
 		git ls-files -z --error-unmatch --stage -- "$@" ||
 		echo "unmatched pathspec exists"
 	) |
-	perl -e '
+	@@PERL@@ -e '
 	my %unmerged = ();
 	my ($null_sha1) = ("0" x 40);
 	my @out = ();
@@ -545,7 +545,12 @@ cmd_foreach()
 				sm_path=$(relative_path "$sm_path") &&
 				# we make $path available to scripts ...
 				path=$sm_path &&
-				eval "$@" &&
+				if test $# -eq 1
+				then
+					eval "$1"
+				else
+					"$@"
+				fi &&
 				if test -n "$recursive"
 				then
 					cmd_foreach "--recursive" "$@"
@@ -612,11 +617,21 @@ cmd_init()
 		fi
 
 		# Copy "update" setting when it is not set yet
-		upd="$(git config -f .gitmodules submodule."$name".update)"
-		test -z "$upd" ||
-		test -n "$(git config submodule."$name".update)" ||
-		git config submodule."$name".update "$upd" ||
-		die "$(eval_gettext "Failed to register update mode for submodule path '\$displaypath'")"
+		if upd="$(git config -f .gitmodules submodule."$name".update)" &&
+		   test -n "$upd" &&
+		   test -z "$(git config submodule."$name".update)"
+		then
+			case "$upd" in
+			rebase | merge | none)
+				;; # known modes of updating
+			*)
+				echo >&2 "warning: unknown update mode '$upd' suggested for submodule '$name'"
+				upd=none
+				;;
+			esac
+			git config submodule."$name".update "$upd" ||
+			die "$(eval_gettext "Failed to register update mode for submodule path '\$displaypath'")"
+		fi
 	done
 }
 
@@ -706,7 +721,6 @@ cmd_deinit()
 cmd_update()
 {
 	# parse $args after "submodule ... update".
-	orig_flags=
 	while test $# -ne 0
 	do
 		case "$1" in
@@ -731,7 +745,6 @@ cmd_update()
 		--reference)
 			case "$2" in '') usage ;; esac
 			reference="--reference=$2"
-			orig_flags="$orig_flags $(git rev-parse --sq-quote "$1")"
 			shift
 			;;
 		--reference=*)
@@ -765,7 +778,6 @@ cmd_update()
 			break
 			;;
 		esac
-		orig_flags="$orig_flags $(git rev-parse --sq-quote "$1")"
 		shift
 	done
 
@@ -909,7 +921,7 @@ Maybe you want to use 'update --init'?")"
 				prefix="$prefix$sm_path/"
 				clear_local_git_env
 				cd "$sm_path" &&
-				eval cmd_update "$orig_flags"
+				eval cmd_update
 			)
 			res=$?
 			if test $res -gt 0
@@ -1032,13 +1044,20 @@ cmd_summary() {
 	# Get modified modules cared by user
 	modules=$(git $diff_cmd $cached --ignore-submodules=dirty --raw $head -- "$@" |
 		sane_egrep '^:([0-7]* )?160000' |
-		while read mod_src mod_dst sha1_src sha1_dst status name
+		while read mod_src mod_dst sha1_src sha1_dst status sm_path
 		do
 			# Always show modules deleted or type-changed (blob<->module)
-			test $status = D -o $status = T && echo "$name" && continue
+			test $status = D -o $status = T && echo "$sm_path" && continue
+			# Respect the ignore setting for --for-status.
+			if test -n "$for_status"
+			then
+				name=$(module_name "$sm_path")
+				ignore_config=$(get_submodule_config "$name" ignore none)
+				test $status != A -a $ignore_config = all && continue
+			fi
 			# Also show added or modified modules which are checked out
-			GIT_DIR="$name/.git" git-rev-parse --git-dir >/dev/null 2>&1 &&
-			echo "$name"
+			GIT_DIR="$sm_path/.git" git-rev-parse --git-dir >/dev/null 2>&1 &&
+			echo "$sm_path"
 		done
 	)
 
@@ -1149,18 +1168,7 @@ cmd_summary() {
 			echo
 		fi
 		echo
-	done |
-	if test -n "$for_status"; then
-		if [ -n "$files" ]; then
-			gettextln "Submodules changed but not updated:" | git stripspace -c
-		else
-			gettextln "Submodule changes to be committed:" | git stripspace -c
-		fi
-		printf "\n" | git stripspace -c
-		git stripspace -c
-	else
-		cat
-	fi
+	done
 }
 #
 # List all submodules, prefixed with:

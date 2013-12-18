@@ -62,23 +62,22 @@ static struct option builtin_clone_options[] = {
 	OPT__VERBOSITY(&option_verbosity),
 	OPT_BOOL(0, "progress", &option_progress,
 		 N_("force progress reporting")),
-	OPT_BOOLEAN('n', "no-checkout", &option_no_checkout,
-		    N_("don't create a checkout")),
-	OPT_BOOLEAN(0, "bare", &option_bare, N_("create a bare repository")),
-	{ OPTION_BOOLEAN, 0, "naked", &option_bare, NULL,
-		N_("create a bare repository"),
-		PARSE_OPT_NOARG | PARSE_OPT_HIDDEN },
-	OPT_BOOLEAN(0, "mirror", &option_mirror,
-		    N_("create a mirror repository (implies bare)")),
+	OPT_BOOL('n', "no-checkout", &option_no_checkout,
+		 N_("don't create a checkout")),
+	OPT_BOOL(0, "bare", &option_bare, N_("create a bare repository")),
+	OPT_HIDDEN_BOOL(0, "naked", &option_bare,
+			N_("create a bare repository")),
+	OPT_BOOL(0, "mirror", &option_mirror,
+		 N_("create a mirror repository (implies bare)")),
 	OPT_BOOL('l', "local", &option_local,
 		N_("to clone from a local repository")),
-	OPT_BOOLEAN(0, "no-hardlinks", &option_no_hardlinks,
+	OPT_BOOL(0, "no-hardlinks", &option_no_hardlinks,
 		    N_("don't use local hardlinks, always copy")),
-	OPT_BOOLEAN('s', "shared", &option_shared,
+	OPT_BOOL('s', "shared", &option_shared,
 		    N_("setup as shared repository")),
-	OPT_BOOLEAN(0, "recursive", &option_recursive,
+	OPT_BOOL(0, "recursive", &option_recursive,
 		    N_("initialize submodules in the clone")),
-	OPT_BOOLEAN(0, "recurse-submodules", &option_recursive,
+	OPT_BOOL(0, "recurse-submodules", &option_recursive,
 		    N_("initialize submodules in the clone")),
 	OPT_STRING(0, "template", &option_template, N_("template-directory"),
 		   N_("directory from which templates will be used")),
@@ -380,7 +379,7 @@ static void clone_local(const char *src_repo, const char *dest_repo)
 	}
 
 	if (0 <= option_verbosity)
-		printf(_("done.\n"));
+		fprintf(stderr, _("done.\n"));
 }
 
 static const char *junk_work_tree;
@@ -509,9 +508,9 @@ static void write_followtags(const struct ref *refs, const char *msg)
 {
 	const struct ref *ref;
 	for (ref = refs; ref; ref = ref->next) {
-		if (prefixcmp(ref->name, "refs/tags/"))
+		if (!starts_with(ref->name, "refs/tags/"))
 			continue;
-		if (!suffixcmp(ref->name, "^{}"))
+		if (ends_with(ref->name, "^{}"))
 			continue;
 		if (!has_sha1_file(ref->old_sha1))
 			continue;
@@ -551,13 +550,13 @@ static void update_remote_refs(const struct ref *refs,
 	const struct ref *rm = mapped_refs;
 
 	if (check_connectivity) {
-		if (0 <= option_verbosity)
-			printf(_("Checking connectivity... "));
+		if (transport->progress)
+			fprintf(stderr, _("Checking connectivity... "));
 		if (check_everything_connected_with_transport(iterate_ref_map,
 							      0, &rm, transport))
 			die(_("remote did not send all necessary objects"));
-		if (0 <= option_verbosity)
-			printf(_("done\n"));
+		if (transport->progress)
+			fprintf(stderr, _("done.\n"));
 	}
 
 	if (refs) {
@@ -579,7 +578,7 @@ static void update_remote_refs(const struct ref *refs,
 static void update_head(const struct ref *our, const struct ref *remote,
 			const char *msg)
 {
-	if (our && !prefixcmp(our->name, "refs/heads/")) {
+	if (our && starts_with(our->name, "refs/heads/")) {
 		/* Local default branch link */
 		create_symref("HEAD", our->name, NULL);
 		if (!option_bare) {
@@ -626,7 +625,7 @@ static int checkout(void)
 		if (advice_detached_head)
 			detach_advice(sha1_to_hex(sha1));
 	} else {
-		if (prefixcmp(head, "refs/heads/"))
+		if (!starts_with(head, "refs/heads/"))
 			die(_("HEAD not found below refs/heads!"));
 	}
 	free(head);
@@ -797,6 +796,10 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (option_local > 0 && !is_local)
 		warning(_("--local is ignored"));
 
+	/* no need to be strict, transport_set_option() will validate it again */
+	if (option_depth && atoi(option_depth) < 1)
+		die(_("depth %s is not a positive number"), option_depth);
+
 	if (argc == 2)
 		dir = xstrdup(argv[1]);
 	else
@@ -850,9 +853,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	if (0 <= option_verbosity) {
 		if (option_bare)
-			printf(_("Cloning into bare repository '%s'...\n"), dir);
+			fprintf(stderr, _("Cloning into bare repository '%s'...\n"), dir);
 		else
-			printf(_("Cloning into '%s'...\n"), dir);
+			fprintf(stderr, _("Cloning into '%s'...\n"), dir);
 	}
 	init_db(option_template, INIT_DB_QUIET);
 	write_config(&option_config);
@@ -885,27 +888,25 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	remote = remote_get(option_origin);
 	transport = transport_get(remote, remote->url[0]);
 
-	if (!is_local) {
-		if (!transport->get_refs_list || !transport->fetch)
-			die(_("Don't know how to clone %s"), transport->url);
+	if (!transport->get_refs_list || (!is_local && !transport->fetch))
+		die(_("Don't know how to clone %s"), transport->url);
 
-		transport_set_option(transport, TRANS_OPT_KEEP, "yes");
+	transport_set_option(transport, TRANS_OPT_KEEP, "yes");
 
-		if (option_depth)
-			transport_set_option(transport, TRANS_OPT_DEPTH,
-					     option_depth);
-		if (option_single_branch)
-			transport_set_option(transport, TRANS_OPT_FOLLOWTAGS, "1");
+	if (option_depth)
+		transport_set_option(transport, TRANS_OPT_DEPTH,
+				     option_depth);
+	if (option_single_branch)
+		transport_set_option(transport, TRANS_OPT_FOLLOWTAGS, "1");
 
-		transport_set_verbosity(transport, option_verbosity, option_progress);
+	transport_set_verbosity(transport, option_verbosity, option_progress);
 
-		if (option_upload_pack)
-			transport_set_option(transport, TRANS_OPT_UPLOADPACK,
-					     option_upload_pack);
+	if (option_upload_pack)
+		transport_set_option(transport, TRANS_OPT_UPLOADPACK,
+				     option_upload_pack);
 
-		if (transport->smart_options && !option_depth)
-			transport->smart_options->check_self_contained_and_connected = 1;
-	}
+	if (transport->smart_options && !option_depth)
+		transport->smart_options->check_self_contained_and_connected = 1;
 
 	refs = transport_get_remote_refs(transport);
 
@@ -946,6 +947,10 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			our_head_points_at = remote_head_points_at;
 	}
 	else {
+		if (option_branch)
+			die(_("Remote branch %s not found in upstream %s"),
+					option_branch, option_origin);
+
 		warning(_("You appear to have cloned an empty repository."));
 		mapped_refs = NULL;
 		our_head_points_at = NULL;

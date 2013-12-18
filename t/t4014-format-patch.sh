@@ -293,7 +293,7 @@ check_threading () {
 	(git format-patch --stdout "$@"; echo $? > status.out) |
 	# Prints everything between the Message-ID and In-Reply-To,
 	# and replaces all Message-ID-lookalikes by a sequence number
-	"$PERL_PATH" -ne '
+	perl -ne '
 		if (/^(message-id|references|in-reply-to)/i) {
 			$printing = 1;
 		} elsif (/^\S/) {
@@ -993,6 +993,16 @@ test_expect_success '--from uses committer ident' '
 	cat >expect <<-\EOF &&
 	From: C O Mitter <committer@example.com>
 
+	From: A U Thor <author@example.com>
+
+	EOF
+	sed -ne "/^From:/p; /^$/p; /^---$/q" <patch >patch.head &&
+	test_cmp expect patch.head
+'
+
+test_expect_success '--from omits redundant in-body header' '
+	git format-patch -1 --stdout --from="A U Thor <author@example.com>" >patch &&
+	cat >expect <<-\EOF &&
 	From: A U Thor <author@example.com>
 
 	EOF

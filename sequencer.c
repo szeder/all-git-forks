@@ -41,7 +41,7 @@ static int is_cherry_picked_from_line(const char *buf, int len)
 	 * We only care that it looks roughly like (cherry picked from ...)
 	 */
 	return len > strlen(cherry_picked_prefix) + 1 &&
-		!prefixcmp(buf, cherry_picked_prefix) && buf[len - 1] == ')';
+		starts_with(buf, cherry_picked_prefix) && buf[len - 1] == ')';
 }
 
 /*
@@ -180,7 +180,7 @@ static char *get_encoding(const char *message)
 	while (*p && *p != '\n') {
 		for (eol = p + 1; *eol && *eol != '\n'; eol++)
 			; /* do nothing */
-		if (!prefixcmp(p, "encoding ")) {
+		if (starts_with(p, "encoding ")) {
 			char *result = xmalloc(eol - 8 - p);
 			strlcpy(result, p + 9, eol - 8 - p);
 			return result;
@@ -279,7 +279,8 @@ static int fast_forward_to(const unsigned char *to, const unsigned char *from,
 	read_cache();
 	if (checkout_fast_forward(from, to, 1))
 		exit(1); /* the callee should have complained already */
-	ref_lock = lock_any_ref_for_update("HEAD", unborn ? null_sha1 : from, 0);
+	ref_lock = lock_any_ref_for_update("HEAD", unborn ? null_sha1 : from,
+					   0, NULL);
 	strbuf_addf(&sb, "%s: fast-forward", action_name(opts));
 	ret = write_ref_sha1(ref_lock, to, sb.buf);
 	strbuf_release(&sb);
@@ -704,10 +705,10 @@ static struct commit *parse_insn_line(char *bol, char *eol, struct replay_opts *
 	char *end_of_object_name;
 	int saved, status, padding;
 
-	if (!prefixcmp(bol, "pick")) {
+	if (starts_with(bol, "pick")) {
 		action = REPLAY_PICK;
 		bol += strlen("pick");
-	} else if (!prefixcmp(bol, "revert")) {
+	} else if (starts_with(bol, "revert")) {
 		action = REPLAY_REVERT;
 		bol += strlen("revert");
 	} else

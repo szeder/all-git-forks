@@ -43,8 +43,42 @@ static void fix_filename(const char *prefix, const char **file)
 	*file = xstrdup(prefix_filename(prefix, strlen(prefix), *file));
 }
 
+static int opt_command_mode_error(const struct option *opt,
+				  const struct option *all_opts,
+				  int flags)
+{
+	const struct option *that;
+	struct strbuf message = STRBUF_INIT;
+	struct strbuf that_name = STRBUF_INIT;
+
+	/*
+	 * Find the other option that was used to set the variable
+	 * already, and report that this is not compatible with it.
+	 */
+	for (that = all_opts; that->type != OPTION_END; that++) {
+		if (that == opt ||
+		    that->type != OPTION_CMDMODE ||
+		    that->value != opt->value ||
+		    that->defval != *(int *)opt->value)
+			continue;
+
+		if (that->long_name)
+			strbuf_addf(&that_name, "--%s", that->long_name);
+		else
+			strbuf_addf(&that_name, "-%c", that->short_name);
+		strbuf_addf(&message, ": incompatible with %s", that_name.buf);
+		strbuf_release(&that_name);
+		opterror(opt, message.buf, flags);
+		strbuf_release(&message);
+		return -1;
+	}
+	return opterror(opt, ": incompatible with something else", flags);
+}
+
 static int get_value(struct parse_opt_ctx_t *p,
-		     const struct option *opt, int flags)
+		     const struct option *opt,
+		     const struct option *all_opts,
+		     int flags)
 {
 	const char *s, *arg;
 	const int unset = flags & OPT_UNSET;
@@ -81,6 +115,16 @@ static int get_value(struct parse_opt_ctx_t *p,
 
 	case OPTION_SET_INT:
 		*(int *)opt->value = unset ? 0 : opt->defval;
+		return 0;
+
+	case OPTION_CMDMODE:
+		/*
+		 * Giving the same mode option twice, although is unnecessary,
+		 * is not a grave error, so let it pass.
+		 */
+		if (*(int *)opt->value && *(int *)opt->value != opt->defval)
+			return opt_command_mode_error(opt, all_opts, flags);
+		*(int *)opt->value = opt->defval;
 		return 0;
 
 	case OPTION_SET_PTR:
@@ -143,12 +187,13 @@ static int get_value(struct parse_opt_ctx_t *p,
 
 static int parse_short_opt(struct parse_opt_ctx_t *p, const struct option *options)
 {
+	const struct option *all_opts = options;
 	const struct option *numopt = NULL;
 
 	for (; options->type != OPTION_END; options++) {
 		if (options->short_name == *p->opt) {
 			p->opt = p->opt[1] ? p->opt + 1 : NULL;
-			return get_value(p, options, OPT_SHORT);
+			return get_value(p, options, all_opts, OPT_SHORT);
 		}
 
 		/*
@@ -177,6 +222,7 @@ static int parse_short_opt(struct parse_opt_ctx_t *p, const struct option *optio
 static int parse_long_opt(struct parse_opt_ctx_t *p, const char *arg,
                           const struct option *options)
 {
+	const struct option *all_opts = options;
 	const char *arg_end = strchr(arg, '=');
 	const struct option *abbrev_option = NULL, *ambiguous_option = NULL;
 	int abbrev_flags = 0, ambiguous_flags = 0;
@@ -227,13 +273,13 @@ is_abbreviated:
 			if (options->flags & PARSE_OPT_NONEG)
 				continue;
 			/* negated and abbreviated very much? */
-			if (!prefixcmp("no-", arg)) {
+			if (starts_with("no-", arg)) {
 				flags |= OPT_UNSET;
 				goto is_abbreviated;
 			}
 			/* negated? */
-			if (prefixcmp(arg, "no-")) {
-				if (!prefixcmp(long_name, "no-")) {
+			if (!starts_with(arg, "no-")) {
+				if (starts_with(long_name, "no-")) {
 					long_name += 3;
 					opt_flags |= OPT_UNSET;
 					goto again;
@@ -243,7 +289,7 @@ is_abbreviated:
 			flags |= OPT_UNSET;
 			rest = skip_prefix(arg + 3, long_name);
 			/* abbreviated and negated? */
-			if (!rest && !prefixcmp(long_name, arg + 3))
+			if (!rest && starts_with(long_name, arg + 3))
 				goto is_abbreviated;
 			if (!rest)
 				continue;
@@ -253,7 +299,7 @@ is_abbreviated:
 				continue;
 			p->opt = rest + 1;
 		}
-		return get_value(p, options, flags ^ opt_flags);
+		return get_value(p, options, all_opts, flags ^ opt_flags);
 	}
 
 	if (ambiguous_option)
@@ -265,18 +311,20 @@ is_abbreviated:
 			(abbrev_flags & OPT_UNSET) ?  "no-" : "",
 			abbrev_option->long_name);
 	if (abbrev_option)
-		return get_value(p, abbrev_option, abbrev_flags);
+		return get_value(p, abbrev_option, all_opts, abbrev_flags);
 	return -2;
 }
 
 static int parse_nodash_opt(struct parse_opt_ctx_t *p, const char *arg,
 			    const struct option *options)
 {
+	const struct option *all_opts = options;
+
 	for (; options->type != OPTION_END; options++) {
 		if (!(options->flags & PARSE_OPT_NODASH))
 			continue;
 		if (options->short_name == arg[0] && arg[1] == '\0')
-			return get_value(p, options, OPT_SHORT);
+			return get_value(p, options, all_opts, OPT_SHORT);
 	}
 	return -2;
 }
@@ -286,7 +334,7 @@ static void check_typos(const char *arg, const struct option *options)
 	if (strlen(arg) < 3)
 		return;
 
-	if (!prefixcmp(arg, "no-")) {
+	if (starts_with(arg, "no-")) {
 		error ("did you mean `--%s` (with two dashes ?)", arg);
 		exit(129);
 	}
@@ -294,7 +342,7 @@ static void check_typos(const char *arg, const struct option *options)
 	for (; options->type != OPTION_END; options++) {
 		if (!options->long_name)
 			continue;
-		if (!prefixcmp(options->long_name, arg)) {
+		if (starts_with(options->long_name, arg)) {
 			error ("did you mean `--%s` (with two dashes ?)", arg);
 			exit(129);
 		}

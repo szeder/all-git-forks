@@ -1409,10 +1409,10 @@ static void recount_diff(const char *line, int size, struct fragment *fragment)
 		case '\\':
 			continue;
 		case '@':
-			ret = size < 3 || prefixcmp(line, "@@ ");
+			ret = size < 3 || !starts_with(line, "@@ ");
 			break;
 		case 'd':
-			ret = size < 5 || prefixcmp(line, "diff ");
+			ret = size < 5 || !starts_with(line, "diff ");
 			break;
 		default:
 			ret = -1;
@@ -1798,11 +1798,11 @@ static struct fragment *parse_binary_hunk(char **buf_p,
 
 	*status_p = 0;
 
-	if (!prefixcmp(buffer, "delta ")) {
+	if (starts_with(buffer, "delta ")) {
 		patch_method = BINARY_DELTA_DEFLATED;
 		origlen = strtoul(buffer + 6, NULL, 10);
 	}
-	else if (!prefixcmp(buffer, "literal ")) {
+	else if (starts_with(buffer, "literal ")) {
 		patch_method = BINARY_LITERAL_DEFLATED;
 		origlen = strtoul(buffer + 8, NULL, 10);
 	}
@@ -3627,12 +3627,12 @@ static int preimage_sha1_in_gitlink_patch(struct patch *p, unsigned char sha1[20
 	    hunk->oldpos == 1 && hunk->oldlines == 1 &&
 	    /* does preimage begin with the heading? */
 	    (preimage = memchr(hunk->patch, '\n', hunk->size)) != NULL &&
-	    !prefixcmp(++preimage, heading) &&
+	    starts_with(++preimage, heading) &&
 	    /* does it record full SHA-1? */
 	    !get_sha1_hex(preimage + sizeof(heading) - 1, sha1) &&
 	    preimage[sizeof(heading) + 40 - 1] == '\n' &&
 	    /* does the abbreviated name on the index line agree with it? */
-	    !prefixcmp(preimage + sizeof(heading) - 1, p->old_sha1_prefix))
+	    starts_with(preimage + sizeof(heading) - 1, p->old_sha1_prefix))
 		return 0; /* it all looks fine */
 
 	/* we may have full object name on the index line */
@@ -4363,23 +4363,23 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		{ OPTION_CALLBACK, 'p', NULL, NULL, N_("num"),
 			N_("remove <num> leading slashes from traditional diff paths"),
 			0, option_parse_p },
-		OPT_BOOLEAN(0, "no-add", &no_add,
+		OPT_BOOL(0, "no-add", &no_add,
 			N_("ignore additions made by the patch")),
-		OPT_BOOLEAN(0, "stat", &diffstat,
+		OPT_BOOL(0, "stat", &diffstat,
 			N_("instead of applying the patch, output diffstat for the input")),
 		OPT_NOOP_NOARG(0, "allow-binary-replacement"),
 		OPT_NOOP_NOARG(0, "binary"),
-		OPT_BOOLEAN(0, "numstat", &numstat,
+		OPT_BOOL(0, "numstat", &numstat,
 			N_("show number of added and deleted lines in decimal notation")),
-		OPT_BOOLEAN(0, "summary", &summary,
+		OPT_BOOL(0, "summary", &summary,
 			N_("instead of applying the patch, output a summary for the input")),
-		OPT_BOOLEAN(0, "check", &check,
+		OPT_BOOL(0, "check", &check,
 			N_("instead of applying the patch, see if the patch is applicable")),
-		OPT_BOOLEAN(0, "index", &check_index,
+		OPT_BOOL(0, "index", &check_index,
 			N_("make sure the patch is applicable to the current index")),
-		OPT_BOOLEAN(0, "cached", &cached,
+		OPT_BOOL(0, "cached", &cached,
 			N_("apply a patch without touching the working tree")),
-		OPT_BOOLEAN(0, "apply", &force_apply,
+		OPT_BOOL(0, "apply", &force_apply,
 			N_("also apply the patch (use with --stat/--summary/--check)")),
 		OPT_BOOL('3', "3way", &threeway,
 			 N_( "attempt three-way merge if a patch does not apply")),
@@ -4399,13 +4399,13 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		{ OPTION_CALLBACK, 0, "ignore-whitespace", NULL, NULL,
 			N_("ignore changes in whitespace when finding context"),
 			PARSE_OPT_NOARG, option_parse_space_change },
-		OPT_BOOLEAN('R', "reverse", &apply_in_reverse,
+		OPT_BOOL('R', "reverse", &apply_in_reverse,
 			N_("apply the patch in reverse")),
-		OPT_BOOLEAN(0, "unidiff-zero", &unidiff_zero,
+		OPT_BOOL(0, "unidiff-zero", &unidiff_zero,
 			N_("don't expect at least one line of context")),
-		OPT_BOOLEAN(0, "reject", &apply_with_reject,
+		OPT_BOOL(0, "reject", &apply_with_reject,
 			N_("leave the rejected hunks in corresponding *.rej files")),
-		OPT_BOOLEAN(0, "allow-overlap", &allow_overlap,
+		OPT_BOOL(0, "allow-overlap", &allow_overlap,
 			N_("allow overlapping hunks")),
 		OPT__VERBOSE(&apply_verbosely, N_("be verbose")),
 		OPT_BIT(0, "inaccurate-eof", &options,

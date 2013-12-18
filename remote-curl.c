@@ -6,21 +6,26 @@
 #include "exec_cmd.h"
 #include "run-command.h"
 #include "pkt-line.h"
+#include "string-list.h"
 #include "sideband.h"
 #include "argv-array.h"
+#include "credential.h"
 
 static struct remote *remote;
-static const char *url; /* always ends with a trailing slash */
+/* always ends with a trailing slash */
+static struct strbuf url = STRBUF_INIT;
 
 struct options {
 	int verbosity;
 	unsigned long depth;
 	unsigned progress : 1,
+		check_self_contained_and_connected : 1,
 		followtags : 1,
 		dry_run : 1,
 		thin : 1;
 };
 static struct options options;
+static struct string_list cas_options = STRING_LIST_INIT_DUP;
 
 static int set_option(const char *name, const char *value)
 {
@@ -67,6 +72,22 @@ static int set_option(const char *name, const char *value)
 			return -1;
 		return 0;
 	}
+	else if (!strcmp(name, "check-connectivity")) {
+		if (!strcmp(value, "true"))
+			options.check_self_contained_and_connected = 1;
+		else if (!strcmp(value, "false"))
+			options.check_self_contained_and_connected = 0;
+		else
+			return -1;
+		return 0;
+	}
+	else if (!strcmp(name, "cas")) {
+		struct strbuf val = STRBUF_INIT;
+		strbuf_addf(&val, "--" CAS_OPT_NAME "=%s", value);
+		string_list_append(&cas_options, val.buf);
+		strbuf_release(&val);
+		return 0;
+	}
 	else {
 		return 1 /* unsupported */;
 	}
@@ -111,7 +132,8 @@ static struct ref *parse_info_refs(struct discovery *heads)
 			mid = &data[i];
 		if (data[i] == '\n') {
 			if (mid - start != 40)
-				die("%sinfo/refs not valid: is this a git repository?", url);
+				die("%sinfo/refs not valid: is this a git repository?",
+				    url.buf);
 			data[i] = 0;
 			ref_name = mid + 1;
 			ref = xmalloc(sizeof(struct ref) +
@@ -130,7 +152,7 @@ static struct ref *parse_info_refs(struct discovery *heads)
 	}
 
 	ref = alloc_ref("HEAD");
-	if (!http_fetch_ref(url, ref) &&
+	if (!http_fetch_ref(url.buf, ref) &&
 	    !resolve_remote_symref(ref, refs)) {
 		ref->next = refs;
 		refs = ref;
@@ -184,40 +206,47 @@ static struct discovery* discover_refs(const char *service, int for_push)
 	struct strbuf exp = STRBUF_INIT;
 	struct strbuf type = STRBUF_INIT;
 	struct strbuf buffer = STRBUF_INIT;
+	struct strbuf refs_url = STRBUF_INIT;
+	struct strbuf effective_url = STRBUF_INIT;
 	struct discovery *last = last_discovery;
-	char *refs_url;
 	int http_ret, maybe_smart = 0;
+	struct http_get_options options;
 
 	if (last && !strcmp(service, last->service))
 		return last;
 	free_discovery(last);
 
-	strbuf_addf(&buffer, "%sinfo/refs", url);
-	if ((!prefixcmp(url, "http://") || !prefixcmp(url, "https://")) &&
+	strbuf_addf(&refs_url, "%sinfo/refs", url.buf);
+	if ((starts_with(url.buf, "http://") || starts_with(url.buf, "https://")) &&
 	     git_env_bool("GIT_SMART_HTTP", 1)) {
 		maybe_smart = 1;
-		if (!strchr(url, '?'))
-			strbuf_addch(&buffer, '?');
+		if (!strchr(url.buf, '?'))
+			strbuf_addch(&refs_url, '?');
 		else
-			strbuf_addch(&buffer, '&');
-		strbuf_addf(&buffer, "service=%s", service);
+			strbuf_addch(&refs_url, '&');
+		strbuf_addf(&refs_url, "service=%s", service);
 	}
-	refs_url = strbuf_detach(&buffer, NULL);
 
-	http_ret = http_get_strbuf(refs_url, &type, &buffer,
-				   HTTP_NO_CACHE | HTTP_KEEP_ERROR);
+	memset(&options, 0, sizeof(options));
+	options.content_type = &type;
+	options.effective_url = &effective_url;
+	options.base_url = &url;
+	options.no_cache = 1;
+	options.keep_error = 1;
+
+	http_ret = http_get_strbuf(refs_url.buf, &buffer, &options);
 	switch (http_ret) {
 	case HTTP_OK:
 		break;
 	case HTTP_MISSING_TARGET:
 		show_http_message(&type, &buffer);
-		die("repository '%s' not found", url);
+		die("repository '%s' not found", url.buf);
 	case HTTP_NOAUTH:
 		show_http_message(&type, &buffer);
-		die("Authentication failed for '%s'", url);
+		die("Authentication failed for '%s'", url.buf);
 	default:
 		show_http_message(&type, &buffer);
-		die("unable to access '%s': %s", url, curl_errorstr);
+		die("unable to access '%s': %s", url.buf, curl_errorstr);
 	}
 
 	last= xcalloc(1, sizeof(*last_discovery));
@@ -258,9 +287,10 @@ static struct discovery* discover_refs(const char *service, int for_push)
 	else
 		last->refs = parse_info_refs(last);
 
-	free(refs_url);
+	strbuf_release(&refs_url);
 	strbuf_release(&exp);
 	strbuf_release(&type);
+	strbuf_release(&effective_url);
 	strbuf_release(&buffer);
 	last_discovery = last;
 	return last;
@@ -364,25 +394,29 @@ static size_t rpc_in(char *ptr, size_t eltsize,
 	return size;
 }
 
-static int run_slot(struct active_request_slot *slot)
+static int run_slot(struct active_request_slot *slot,
+		    struct slot_results *results)
 {
 	int err;
-	struct slot_results results;
+	struct slot_results results_buf;
 
-	slot->results = &results;
+	if (!results)
+		results = &results_buf;
+
+	slot->results = results;
 	slot->curl_result = curl_easy_perform(slot->curl);
 	finish_active_slot(slot);
 
-	err = handle_curl_result(&results);
+	err = handle_curl_result(results);
 	if (err != HTTP_OK && err != HTTP_REAUTH) {
 		error("RPC failed; result=%d, HTTP code = %ld",
-		      results.curl_result, results.http_code);
+		      results->curl_result, results->http_code);
 	}
 
 	return err;
 }
 
-static int probe_rpc(struct rpc_state *rpc)
+static int probe_rpc(struct rpc_state *rpc, struct slot_results *results)
 {
 	struct active_request_slot *slot;
 	struct curl_slist *headers = NULL;
@@ -404,7 +438,7 @@ static int probe_rpc(struct rpc_state *rpc)
 	curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION, fwrite_buffer);
 	curl_easy_setopt(slot->curl, CURLOPT_FILE, &buf);
 
-	err = run_slot(slot);
+	err = run_slot(slot, results);
 
 	curl_slist_free_all(headers);
 	strbuf_release(&buf);
@@ -419,6 +453,7 @@ static int post_rpc(struct rpc_state *rpc)
 	char *gzip_body = NULL;
 	size_t gzip_size = 0;
 	int err, large_request = 0;
+	int needs_100_continue = 0;
 
 	/* Try to load the entire request, if we can fit it into the
 	 * allocated buffer space we can use HTTP/1.0 and avoid the
@@ -442,16 +477,24 @@ static int post_rpc(struct rpc_state *rpc)
 	}
 
 	if (large_request) {
+		struct slot_results results;
+
 		do {
-			err = probe_rpc(rpc);
+			err = probe_rpc(rpc, &results);
+			if (err == HTTP_REAUTH)
+				credential_fill(&http_auth);
 		} while (err == HTTP_REAUTH);
 		if (err != HTTP_OK)
 			return -1;
+
+		if (results.auth_avail & CURLAUTH_GSSNEGOTIATE)
+			needs_100_continue = 1;
 	}
 
 	headers = curl_slist_append(headers, rpc->hdr_content_type);
 	headers = curl_slist_append(headers, rpc->hdr_accept);
-	headers = curl_slist_append(headers, "Expect:");
+	headers = curl_slist_append(headers, needs_100_continue ?
+		"Expect: 100-continue" : "Expect:");
 
 retry:
 	slot = get_active_slot();
@@ -542,9 +585,11 @@ retry:
 	curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION, rpc_in);
 	curl_easy_setopt(slot->curl, CURLOPT_FILE, rpc);
 
-	err = run_slot(slot);
-	if (err == HTTP_REAUTH && !large_request)
+	err = run_slot(slot, NULL);
+	if (err == HTTP_REAUTH && !large_request) {
+		credential_fill(&http_auth);
 		goto retry;
+	}
 	if (err != HTTP_OK)
 		err = -1;
 
@@ -579,7 +624,7 @@ static int rpc_service(struct rpc_state *rpc, struct discovery *heads)
 	rpc->out = client.out;
 	strbuf_init(&rpc->result, 0);
 
-	strbuf_addf(&buf, "%s%s", url, svc);
+	strbuf_addf(&buf, "%s%s", url.buf, svc);
 	rpc->service_url = strbuf_detach(&buf, NULL);
 
 	strbuf_addf(&buf, "Content-Type: application/x-%s-request", svc);
@@ -631,7 +676,7 @@ static int fetch_dumb(int nr_heads, struct ref **to_fetch)
 	for (i = 0; i < nr_heads; i++)
 		targets[i] = xstrdup(sha1_to_hex(to_fetch[i]->old_sha1));
 
-	walker = get_http_walker(url);
+	walker = get_http_walker(url.buf);
 	walker->get_all = 1;
 	walker->get_tree = 1;
 	walker->get_history = 1;
@@ -654,7 +699,7 @@ static int fetch_git(struct discovery *heads,
 	struct strbuf preamble = STRBUF_INIT;
 	char *depth_arg = NULL;
 	int argc = 0, i, err;
-	const char *argv[15];
+	const char *argv[16];
 
 	argv[argc++] = "fetch-pack";
 	argv[argc++] = "--stateless-rpc";
@@ -668,6 +713,8 @@ static int fetch_git(struct discovery *heads,
 		argv[argc++] = "-v";
 		argv[argc++] = "-v";
 	}
+	if (options.check_self_contained_and_connected)
+		argv[argc++] = "--check-self-contained-and-connected";
 	if (!options.progress)
 		argv[argc++] = "--no-progress";
 	if (options.depth) {
@@ -676,7 +723,7 @@ static int fetch_git(struct discovery *heads,
 		depth_arg = strbuf_detach(&buf, NULL);
 		argv[argc++] = depth_arg;
 	}
-	argv[argc++] = url;
+	argv[argc++] = url.buf;
 	argv[argc++] = NULL;
 
 	for (i = 0; i < nr_heads; i++) {
@@ -719,7 +766,7 @@ static void parse_fetch(struct strbuf *buf)
 	int alloc_heads = 0, nr_heads = 0;
 
 	do {
-		if (!prefixcmp(buf->buf, "fetch ")) {
+		if (starts_with(buf->buf, "fetch ")) {
 			char *p = buf->buf + strlen("fetch ");
 			char *name;
 			struct ref *ref;
@@ -774,7 +821,7 @@ static int push_dav(int nr_spec, char **specs)
 		argv[argc++] = "--dry-run";
 	if (options.verbosity > 1)
 		argv[argc++] = "--verbose";
-	argv[argc++] = url;
+	argv[argc++] = url.buf;
 	for (i = 0; i < nr_spec; i++)
 		argv[argc++] = specs[i];
 	argv[argc++] = NULL;
@@ -790,6 +837,7 @@ static int push_git(struct discovery *heads, int nr_spec, char **specs)
 	struct rpc_state rpc;
 	int i, err;
 	struct argv_array args;
+	struct string_list_item *cas_option;
 
 	argv_array_init(&args);
 	argv_array_pushl(&args, "send-pack", "--stateless-rpc", "--helper-status",
@@ -804,7 +852,9 @@ static int push_git(struct discovery *heads, int nr_spec, char **specs)
 	else if (options.verbosity > 1)
 		argv_array_push(&args, "--verbose");
 	argv_array_push(&args, options.progress ? "--progress" : "--no-progress");
-	argv_array_push(&args, url);
+	for_each_string_list_item(cas_option, &cas_options)
+		argv_array_push(&args, cas_option->string);
+	argv_array_push(&args, url.buf);
 	for (i = 0; i < nr_spec; i++)
 		argv_array_push(&args, specs[i]);
 
@@ -839,7 +889,7 @@ static void parse_push(struct strbuf *buf)
 	int alloc_spec = 0, nr_spec = 0, i, ret;
 
 	do {
-		if (!prefixcmp(buf->buf, "push ")) {
+		if (starts_with(buf->buf, "push ")) {
 			ALLOC_GROW(specs, nr_spec + 1, alloc_spec);
 			specs[nr_spec++] = xstrdup(buf->buf + 5);
 		}
@@ -885,14 +935,12 @@ int main(int argc, const char **argv)
 	remote = remote_get(argv[1]);
 
 	if (argc > 2) {
-		end_url_with_slash(&buf, argv[2]);
+		end_url_with_slash(&url, argv[2]);
 	} else {
-		end_url_with_slash(&buf, remote->url[0]);
+		end_url_with_slash(&url, remote->url[0]);
 	}
 
-	url = strbuf_detach(&buf, NULL);
-
-	http_init(remote, url, 0);
+	http_init(remote, url.buf, 0);
 
 	do {
 		if (strbuf_getline(&buf, stdin, '\n') == EOF) {
@@ -904,19 +952,19 @@ int main(int argc, const char **argv)
 		}
 		if (buf.len == 0)
 			break;
-		if (!prefixcmp(buf.buf, "fetch ")) {
+		if (starts_with(buf.buf, "fetch ")) {
 			if (nongit)
 				die("Fetch attempted without a local repo");
 			parse_fetch(&buf);
 
-		} else if (!strcmp(buf.buf, "list") || !prefixcmp(buf.buf, "list ")) {
+		} else if (!strcmp(buf.buf, "list") || starts_with(buf.buf, "list ")) {
 			int for_push = !!strstr(buf.buf + 4, "for-push");
 			output_refs(get_refs(for_push));
 
-		} else if (!prefixcmp(buf.buf, "push ")) {
+		} else if (starts_with(buf.buf, "push ")) {
 			parse_push(&buf);
 
-		} else if (!prefixcmp(buf.buf, "option ")) {
+		} else if (starts_with(buf.buf, "option ")) {
 			char *name = buf.buf + strlen("option ");
 			char *value = strchr(name, ' ');
 			int result;
@@ -939,6 +987,7 @@ int main(int argc, const char **argv)
 			printf("fetch\n");
 			printf("option\n");
 			printf("push\n");
+			printf("check-connectivity\n");
 			printf("\n");
 			fflush(stdout);
 		} else {

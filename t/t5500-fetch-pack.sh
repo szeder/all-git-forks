@@ -393,6 +393,17 @@ test_expect_success 'fetch in shallow repo unreachable shallow objects' '
 		git fsck --no-dangling
 	)
 '
+test_expect_success 'fetch creating new shallow root' '
+	(
+		git clone "file://$(pwd)/." shallow10 &&
+		git commit --allow-empty -m empty &&
+		cd shallow10 &&
+		git fetch --depth=1 --progress 2>actual &&
+		# This should fetch only the empty commit, no tree or
+		# blob objects
+		grep "remote: Total 1" actual
+	)
+'
 
 test_expect_success 'setup tests for the --stdin parameter' '
 	for head in C D E F
@@ -503,6 +514,109 @@ test_expect_success 'test --all, --depth, and explicit tag' '
 		cd client &&
 		git fetch-pack --no-progress --all --depth=1 .. refs/tags/OLDTAG
 	) >out-adt 2>error-adt
+'
+
+test_expect_success 'shallow fetch with tags does not break the repository' '
+	mkdir repo1 &&
+	(
+		cd repo1 &&
+		git init &&
+		test_commit 1 &&
+		test_commit 2 &&
+		test_commit 3 &&
+		mkdir repo2 &&
+		cd repo2 &&
+		git init &&
+		git fetch --depth=2 ../.git master:branch &&
+		git fsck
+	)
+'
+check_prot_path () {
+	cat >expected <<-EOF &&
+	Diag: url=$1
+	Diag: protocol=$2
+	Diag: path=$3
+	EOF
+	git fetch-pack --diag-url "$1" | grep -v hostandport= >actual &&
+	test_cmp expected actual
+}
+
+check_prot_host_path () {
+	cat >expected <<-EOF &&
+	Diag: url=$1
+	Diag: protocol=$2
+	Diag: hostandport=$3
+	Diag: path=$4
+	EOF
+	git fetch-pack --diag-url "$1" >actual &&
+	test_cmp expected actual
+}
+
+for r in repo re:po re/po
+do
+	# git or ssh with scheme
+	for p in "ssh+git" "git+ssh" git ssh
+	do
+		for h in host host:12 [::1] [::1]:23
+		do
+			case "$p" in
+			*ssh*)
+				pp=ssh
+				;;
+			*)
+				pp=$p
+			;;
+			esac
+			test_expect_success "fetch-pack --diag-url $p://$h/$r" '
+				check_prot_host_path $p://$h/$r $pp "$h" "/$r"
+			'
+			# "/~" -> "~" conversion
+			test_expect_success "fetch-pack --diag-url $p://$h/~$r" '
+				check_prot_host_path $p://$h/~$r $pp "$h" "~$r"
+			'
+		done
+	done
+	# file with scheme
+	for p in file
+	do
+		test_expect_success "fetch-pack --diag-url $p://$h/$r" '
+			check_prot_path $p://$h/$r $p "/$r"
+		'
+		# No "/~" -> "~" conversion for file
+		test_expect_success "fetch-pack --diag-url $p://$h/~$r" '
+			check_prot_path $p://$h/~$r $p "/~$r"
+		'
+	done
+	# file without scheme
+	for h in nohost nohost:12 [::1] [::1]:23 [ [:aa
+	do
+		test_expect_success "fetch-pack --diag-url ./$h:$r" '
+			check_prot_path ./$h:$r $p "./$h:$r"
+		'
+		# No "/~" -> "~" conversion for file
+		test_expect_success "fetch-pack --diag-url ./$p:$h/~$r" '
+		check_prot_path ./$p:$h/~$r $p "./$p:$h/~$r"
+		'
+	done
+	#ssh without scheme
+	p=ssh
+	for h in host [::1]
+	do
+		test_expect_success "fetch-pack --diag-url $h:$r" '
+			check_prot_path $h:$r $p "$r"
+		'
+		# Do "/~" -> "~" conversion
+		test_expect_success "fetch-pack --diag-url $h:/~$r" '
+			check_prot_host_path $h:/~$r $p "$h" "~$r"
+		'
+	done
+done
+
+test_expect_success MINGW 'fetch-pack --diag-url file://c:/repo' '
+	check_prot_path file://c:/repo file c:/repo
+'
+test_expect_success MINGW 'fetch-pack --diag-url c:repo' '
+	check_prot_path c:repo file c:repo
 '
 
 test_done

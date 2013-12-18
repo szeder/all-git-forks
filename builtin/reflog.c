@@ -94,8 +94,7 @@ static int tree_is_complete(const unsigned char *sha1)
 			complete = 0;
 		}
 	}
-	free(tree->buffer);
-	tree->buffer = NULL;
+	free_tree_buffer(tree);
 
 	if (complete)
 		tree->object.flags |= SEEN;
@@ -366,7 +365,7 @@ static int expire_reflog(const char *ref, const unsigned char *sha1, int unused,
 	 * we take the lock for the ref itself to prevent it from
 	 * getting updated.
 	 */
-	lock = lock_any_ref_for_update(ref, sha1, 0);
+	lock = lock_any_ref_for_update(ref, sha1, 0, NULL);
 	if (!lock)
 		return error("cannot lock ref '%s'", ref);
 	log_file = git_pathdup("logs/%s", ref);
@@ -611,12 +610,12 @@ static int cmd_reflog_expire(int argc, const char **argv, const char *prefix)
 		const char *arg = argv[i];
 		if (!strcmp(arg, "--dry-run") || !strcmp(arg, "-n"))
 			cb.dry_run = 1;
-		else if (!prefixcmp(arg, "--expire=")) {
+		else if (starts_with(arg, "--expire=")) {
 			if (parse_expiry_date(arg + 9, &cb.expire_total))
 				die(_("'%s' is not a valid timestamp"), arg);
 			explicit_expiry |= EXPIRE_TOTAL;
 		}
-		else if (!prefixcmp(arg, "--expire-unreachable=")) {
+		else if (starts_with(arg, "--expire-unreachable=")) {
 			if (parse_expiry_date(arg + 21, &cb.expire_unreachable))
 				die(_("'%s' is not a valid timestamp"), arg);
 			explicit_expiry |= EXPIRE_UNREACH;

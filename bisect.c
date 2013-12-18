@@ -406,9 +406,9 @@ static int register_ref(const char *refname, const unsigned char *sha1,
 	if (!strcmp(refname, "bad")) {
 		current_bad_sha1 = xmalloc(20);
 		hashcpy(current_bad_sha1, sha1);
-	} else if (!prefixcmp(refname, "good-")) {
+	} else if (starts_with(refname, "good-")) {
 		sha1_array_append(&good_revs, sha1);
-	} else if (!prefixcmp(refname, "skip-")) {
+	} else if (starts_with(refname, "skip-")) {
 		sha1_array_append(&skipped_revs, sha1);
 	}
 
@@ -624,7 +624,7 @@ static void bisect_common(struct rev_info *revs)
 	if (prepare_revision_walk(revs))
 		die("revision walk setup failed");
 	if (revs->tree_objects)
-		mark_edges_uninteresting(revs->commits, revs, NULL);
+		mark_edges_uninteresting(revs, NULL);
 }
 
 static void exit_if_skipped_commits(struct commit_list *tried,

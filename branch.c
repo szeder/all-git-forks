@@ -50,7 +50,7 @@ static int should_setup_rebase(const char *origin)
 void install_branch_config(int flag, const char *local, const char *origin, const char *remote)
 {
 	const char *shortname = remote + 11;
-	int remote_is_branch = !prefixcmp(remote, "refs/heads/");
+	int remote_is_branch = starts_with(remote, "refs/heads/");
 	struct strbuf key = STRBUF_INIT;
 	int rebasing = should_setup_rebase(origin);
 
@@ -203,8 +203,7 @@ static int check_tracking_branch(struct remote *remote, void *cb_data)
 	struct refspec query;
 	memset(&query, 0, sizeof(struct refspec));
 	query.dst = tracking_branch;
-	return !(remote_find_tracking(remote, &query) ||
-		 prefixcmp(query.src, "refs/heads/"));
+	return !remote_find_tracking(remote, &query);
 }
 
 static int validate_remote_tracking_branch(char *ref)
@@ -273,7 +272,7 @@ void create_branch(const char *head,
 		break;
 	case 1:
 		/* Unique completion -- good, only if it is a real branch */
-		if (prefixcmp(real_ref, "refs/heads/") &&
+		if (!starts_with(real_ref, "refs/heads/") &&
 		    validate_remote_tracking_branch(real_ref)) {
 			if (explicit_tracking)
 				die(_(upstream_not_branch), start_name);
@@ -291,7 +290,7 @@ void create_branch(const char *head,
 	hashcpy(sha1, commit->object.sha1);
 
 	if (!dont_change_ref) {
-		lock = lock_any_ref_for_update(ref.buf, NULL, 0);
+		lock = lock_any_ref_for_update(ref.buf, NULL, 0, NULL);
 		if (!lock)
 			die_errno(_("Failed to lock ref for update"));
 	}
@@ -307,7 +306,7 @@ void create_branch(const char *head,
 			 start_name);
 
 	if (real_ref && track)
-		setup_tracking(ref.buf+11, real_ref, track, quiet);
+		setup_tracking(ref.buf + 11, real_ref, track, quiet);
 
 	if (!dont_change_ref)
 		if (write_ref_sha1(lock, sha1, msg) < 0)

@@ -47,7 +47,7 @@ int cmd_symbolic_ref(int argc, const char **argv, const char *prefix)
 	git_config(git_default_config, NULL);
 	argc = parse_options(argc, argv, prefix, options,
 			     git_symbolic_ref_usage, 0);
-	if (msg &&!*msg)
+	if (msg && !*msg)
 		die("Refusing to perform update with empty message");
 
 	if (delete) {
@@ -65,7 +65,7 @@ int cmd_symbolic_ref(int argc, const char **argv, const char *prefix)
 		break;
 	case 2:
 		if (!strcmp(argv[0], "HEAD") &&
-		    prefixcmp(argv[1], "refs/"))
+		    !starts_with(argv[1], "refs/"))
 			die("Refusing to point HEAD outside of refs/");
 		create_symref(argv[0], argv[1], msg);
 		break;
