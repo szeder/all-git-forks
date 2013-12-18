@@ -1145,9 +1145,8 @@ static int grab_1st_switch(unsigned char *osha1, unsigned char *nsha1,
 	struct grab_1st_switch_cbdata *cb = cb_data;
 	const char *target = NULL, *end;
 
-	if (!starts_with(message, "checkout: moving from "))
+	if ((message = skip_prefix(message, "checkout: moving from ")) == NULL)
 		return 0;
-	message += strlen("checkout: moving from ");
 	target = strstr(message, " to ");
 	if (!target)
 		return 0;

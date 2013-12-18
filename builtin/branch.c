@@ -868,9 +868,8 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 	if (!strcmp(head, "HEAD")) {
 		detached = 1;
 	} else {
-		if (!starts_with(head, "refs/heads/"))
+		if ((head = skip_prefix(head, "refs/heads/")) == NULL)
 			die(_("HEAD not found below refs/heads!"));
-		head += 11;
 	}
 	hashcpy(merge_filter_ref, head_sha1);
 

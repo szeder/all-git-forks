@@ -304,14 +304,13 @@ const char *read_gitfile(const char *path)
 	if (len != st.st_size)
 		die("Error reading %s", path);
 	buf[len] = '\0';
-	if (!starts_with(buf, "gitdir: "))
+	if ((dir = (char *)skip_prefix(buf, "gitdir: ")) == NULL)
 		die("Invalid gitfile format: %s", path);
 	while (buf[len - 1] == '\n' || buf[len - 1] == '\r')
 		len--;
 	if (len < 9)
 		die("No path in gitfile: %s", path);
 	buf[len] = '\0';
-	dir = buf + 8;
 
 	if (!is_absolute_path(dir) && (slash = strrchr(path, '/'))) {
 		size_t pathlen = slash+1 - path;

@@ -86,9 +86,8 @@ int parse_tag_buffer(struct tag *item, const void *data, unsigned long size)
 		return -1;
 	bufptr += 48; /* "object " + sha1 + "\n" */
 
-	if (!starts_with(bufptr, "type "))
+	if ((bufptr = skip_prefix(bufptr, "type ")) == NULL)
 		return -1;
-	bufptr += 5;
 	nl = memchr(bufptr, '\n', tail - bufptr);
 	if (!nl || sizeof(type) <= (nl - bufptr))
 		return -1;
@@ -109,11 +108,11 @@ int parse_tag_buffer(struct tag *item, const void *data, unsigned long size)
 		item->tagged = NULL;
 	}
 
-	if (bufptr + 4 < tail && starts_with(bufptr, "tag "))
+	if (bufptr + 4 < tail &&
+	    (bufptr = skip_prefix(bufptr, "tag ")) != NULL)
 		; 		/* good */
 	else
 		return -1;
-	bufptr += 4;
 	nl = memchr(bufptr, '\n', tail - bufptr);
 	if (!nl)
 		return -1;
