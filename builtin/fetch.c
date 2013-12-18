@@ -589,18 +589,12 @@ static int store_updated_refs(const char *raw_url, const char *remote_name,
 				kind = "";
 				what = "";
 			}
-			else if (starts_with(rm->name, "refs/heads/")) {
+			else if ((what = skip_prefix(rm->name, "refs/heads/")) != NULL)
 				kind = "branch";
-				what = rm->name + 11;
-			}
-			else if (starts_with(rm->name, "refs/tags/")) {
+			else if ((what = skip_prefix(rm->name, "refs/tags/")) != NULL)
 				kind = "tag";
-				what = rm->name + 10;
-			}
-			else if (starts_with(rm->name, "refs/remotes/")) {
+			else if ((what = skip_prefix(rm->name, "refs/remotes/")) != NULL)
 				kind = "remote-tracking branch";
-				what = rm->name + 13;
-			}
 			else {
 				kind = "";
 				what = rm->name;
@@ -896,8 +890,8 @@ static int get_remote_group(const char *key, const char *value, void *priv)
 {
 	struct remote_group_data *g = priv;
 
-	if (starts_with(key, "remotes.") &&
-			!strcmp(key + 8, g->name)) {
+	if ((key = skip_prefix(key, "remotes.")) != NULL &&
+	    !strcmp(key, g->name)) {
 		/* split list by white space */
 		int space = strcspn(value, " \t\n");
 		while (*value) {
