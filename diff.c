@@ -3405,6 +3405,23 @@ int parse_long_opt(const char *opt, const char **argv,
 	return 2;
 }
 
+static int parse_statopt(const char *arg, const char *next,
+			 const char *opt, int *value, char **end)
+{
+	const char *p = skip_prefix(arg, opt);
+	if (!p)
+		return 0;
+	if (*p == '=')
+		*value = strtoul(p + 1, end, 10);
+	else if (!*p && !next)
+		die("Option '--stat%s' requires a value", opt);
+	else if (!*p) {
+		*value = strtoul(next, end, 10);
+		return 2;
+	}
+	return 1;
+}
+
 static int stat_opt(struct diff_options *options, const char **av)
 {
 	const char *arg = av[0];
@@ -3417,50 +3434,16 @@ static int stat_opt(struct diff_options *options, const char **av)
 
 	arg += strlen("--stat");
 	end = (char *)arg;
-
 	switch (*arg) {
 	case '-':
-		if (starts_with(arg, "-width")) {
-			arg += strlen("-width");
-			if (*arg == '=')
-				width = strtoul(arg + 1, &end, 10);
-			else if (!*arg && !av[1])
-				die("Option '--stat-width' requires a value");
-			else if (!*arg) {
-				width = strtoul(av[1], &end, 10);
-				argcount = 2;
-			}
-		} else if (starts_with(arg, "-name-width")) {
-			arg += strlen("-name-width");
-			if (*arg == '=')
-				name_width = strtoul(arg + 1, &end, 10);
-			else if (!*arg && !av[1])
-				die("Option '--stat-name-width' requires a value");
-			else if (!*arg) {
-				name_width = strtoul(av[1], &end, 10);
-				argcount = 2;
-			}
-		} else if (starts_with(arg, "-graph-width")) {
-			arg += strlen("-graph-width");
-			if (*arg == '=')
-				graph_width = strtoul(arg + 1, &end, 10);
-			else if (!*arg && !av[1])
-				die("Option '--stat-graph-width' requires a value");
-			else if (!*arg) {
-				graph_width = strtoul(av[1], &end, 10);
-				argcount = 2;
-			}
-		} else if (starts_with(arg, "-count")) {
-			arg += strlen("-count");
-			if (*arg == '=')
-				count = strtoul(arg + 1, &end, 10);
-			else if (!*arg && !av[1])
-				die("Option '--stat-count' requires a value");
-			else if (!*arg) {
-				count = strtoul(av[1], &end, 10);
-				argcount = 2;
-			}
-		}
+		if ((argcount = parse_statopt(arg, av[1], "-width", &width, &end)) != 0 ||
+		    (argcount = parse_statopt(arg, av[1], "-name-width", &name_width, &end)) != 0 ||
+		    (argcount = parse_statopt(arg, av[1], "-graph-width", &graph_width, &end)) != 0 ||
+		    (argcount = parse_statopt(arg, av[1], "-count", &count, &end)) != 0)
+			/* nothing else, it's the OR chain that's important */
+			;
+		else
+			argcount = 1;
 		break;
 	case '=':
 		width = strtoul(arg+1, &end, 10);
