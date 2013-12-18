@@ -356,8 +356,11 @@ extern int suffixcmp(const char *str, const char *suffix);
 
 static inline const char *skip_prefix_defval(const char *str, const char *prefix, const char *defval)
 {
-	size_t len = strlen(prefix);
-	return strncmp(str, prefix, len) ? defval : str + len;
+	for ( ; ; str++, prefix++)
+		if (!*prefix)
+			return str;
+		else if (*str != *prefix)
+			return defval;
 }
 
 static inline const char *skip_prefix(const char *str, const char *prefix)
