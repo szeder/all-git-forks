@@ -1,3 +1,48 @@
+Version v1.8.5.2; changes since v1.8.5.1:
+-----------------------------------------
+
+Jason St. John (6):
+      Documentation/git-log: update "--log-size" description
+      Documentation/git-log.txt: mark-up fix and minor rephasing
+      State correct usage of literal examples in man pages in the coding standards
+      Documentation/rev-list-options.txt: fix mark-up
+      Documentation/rev-list-options.txt: fix some grammatical issues and typos
+      Documentation/gitcli.txt: fix double quotes
+
+Jeff King (1):
+      unpack-trees: fix "read-tree -u --reset A B" with conflicted index
+
+Johan Herland (1):
+      sha1_file.c:create_tmpfile(): Fix race when creating loose object dirs
+
+Junio C Hamano (4):
+      t1005: reindent
+      t1005: add test for "read-tree --reset -u A B"
+      sha1_loose_object_info(): do not return success on missing object
+      Git 1.8.5.2
+
+Masanari Iida (3):
+      typofixes: fix misspelt comments
+      Documentation/technical/http-protocol.txt: typofixes
+      contrib: typofixes
+
+Michael Haggerty (1):
+      cmd_repack(): remove redundant local variable "nr_packs"
+
+Nguyễn Thái Ngọc Duy (2):
+      diff: restrict pathspec limitations to diff b/f case only
+      glossary-content.txt: fix documentation of "**" patterns
+
+René Scharfe (1):
+      SubmittingPatches: document how to handle multiple patches
+
+Thomas Rast (1):
+      Documentation: revamp git-cherry(1)
+
+Torsten Bögershausen (1):
+      git-fetch-pack uses URLs like git-fetch
+
+
 Version v1.8.5.1; changes since v1.8.5:
 ---------------------------------------
 
