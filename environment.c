@@ -171,9 +171,7 @@ const char *get_git_namespace(void)
 
 const char *strip_namespace(const char *namespaced_ref)
 {
-	if (!starts_with(namespaced_ref, get_git_namespace()))
-		return NULL;
-	return namespaced_ref + namespace_len;
+	return skip_prefix(namespaced_ref, get_git_namespace());
 }
 
 static int git_work_tree_initialized;
