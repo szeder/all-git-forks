@@ -2318,7 +2318,8 @@ static void try_remove_empty_parents(char *name)
 /* make sure nobody touched the ref, and unlink */
 static void prune_ref(struct ref_to_prune *r)
 {
-	struct ref_lock *lock = lock_ref_sha1(r->name + 5, r->sha1);
+	const char *name = skip_prefix_defval(r->name, "refs/", r->name);
+	struct ref_lock *lock = lock_ref_sha1(name, r->sha1);
 
 	if (lock) {
 		unlink_or_warn(git_path("%s", r->name));
