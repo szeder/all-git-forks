@@ -354,10 +354,15 @@ extern int prefixcmp(const char *str, const char *prefix);
 extern int ends_with(const char *str, const char *suffix);
 extern int suffixcmp(const char *str, const char *suffix);
 
-static inline const char *skip_prefix(const char *str, const char *prefix)
+static inline const char *skip_prefix_defval(const char *str, const char *prefix, const char *defval)
 {
 	size_t len = strlen(prefix);
-	return strncmp(str, prefix, len) ? NULL : str + len;
+	return strncmp(str, prefix, len) ? defval : str + len;
+}
+
+static inline const char *skip_prefix(const char *str, const char *prefix)
+{
+	return skip_prefix_defval(str, prefix, NULL);
 }
 
 static inline int starts_with(const char *str, const char *prefix)

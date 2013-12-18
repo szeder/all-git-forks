@@ -476,8 +476,7 @@ static void handle_tag(const char *name, struct tag *tag)
 		}
 	}
 
-	if (starts_with(name, "refs/tags/"))
-		name += 10;
+	name = skip_prefix_defval(name, "refs/tags/", name);
 	printf("tag %s\nfrom :%d\n%.*s%sdata %d\n%.*s\n",
 	       name, tagged_mark,
 	       (int)(tagger_end - tagger), tagger,

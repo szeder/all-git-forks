@@ -1179,14 +1179,10 @@ static void wt_status_get_detached_from(struct wt_status_state *state)
 	     /* perhaps sha1 is a tag, try to dereference to a commit */
 	     ((commit = lookup_commit_reference_gently(sha1, 1)) != NULL &&
 	      !hashcmp(cb.nsha1, commit->object.sha1)))) {
-		int ofs;
-		if (starts_with(ref, "refs/tags/"))
-			ofs = strlen("refs/tags/");
-		else if (starts_with(ref, "refs/remotes/"))
-			ofs = strlen("refs/remotes/");
-		else
-			ofs = 0;
-		state->detached_from = xstrdup(ref + ofs);
+		const char *p;
+		if ((p = skip_prefix_defval(ref, "refs/tags/", ref)) == ref)
+			p = skip_prefix_defval(ref, "refs/remotes/", ref);
+		state->detached_from = xstrdup(p);
 	} else
 		state->detached_from =
 			xstrdup(find_unique_abbrev(cb.nsha1, DEFAULT_ABBREV));

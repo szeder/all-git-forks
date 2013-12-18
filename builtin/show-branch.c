@@ -284,8 +284,7 @@ static void show_one_commit(struct commit *commit, int no_name)
 		pp_commit_easy(CMIT_FMT_ONELINE, commit, &pretty);
 		pretty_str = pretty.buf;
 	}
-	if (starts_with(pretty_str, "[PATCH] "))
-		pretty_str += 8;
+	pretty_str = skip_prefix_defval(pretty_str, "[PATCH] ", pretty_str);
 
 	if (!no_name) {
 		if (name && name->head_name) {
@@ -473,14 +472,13 @@ static void snarf_refs(int head, int remotes)
 	}
 }
 
-static int rev_is_head(char *head, int headlen, char *name,
+static int rev_is_head(const char *head, int headlen, const char *name,
 		       unsigned char *head_sha1, unsigned char *sha1)
 {
 	if ((!head[0]) ||
 	    (head_sha1 && sha1 && hashcmp(head_sha1, sha1)))
 		return 0;
-	if (starts_with(head, "refs/heads/"))
-		head += 11;
+	head = skip_prefix_defval(head, "refs/heads/", head);
 	if (starts_with(name, "refs/heads/"))
 		name += 11;
 	else if (starts_with(name, "heads/"))
@@ -811,10 +809,8 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 					head_sha1, NULL))
 				has_head++;
 		}
-		if (!has_head) {
-			int offset = starts_with(head, "refs/heads/") ? 11 : 0;
-			append_one_rev(head + offset);
-		}
+		if (!has_head)
+			append_one_rev(skip_prefix_defval(head, "refs/heads/", head));
 	}
 
 	if (!ref_name_cnt) {

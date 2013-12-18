@@ -1243,10 +1243,8 @@ static void format_note(struct notes_tree *t, const unsigned char *object_sha1,
 		if (!ref || !strcmp(ref, GIT_NOTES_DEFAULT_REF)) {
 			strbuf_addstr(sb, "\nNotes:\n");
 		} else {
-			if (starts_with(ref, "refs/"))
-				ref += 5;
-			if (starts_with(ref, "notes/"))
-				ref += 6;
+			ref = skip_prefix_defval(ref, "refs/", ref);
+			ref = skip_prefix_defval(ref, "notes/", ref);
 			strbuf_addf(sb, "\nNotes (%s):\n", ref);
 		}
 	}

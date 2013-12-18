@@ -1106,8 +1106,8 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	 * current branch.
 	 */
 	branch = branch_to_free = resolve_refdup("HEAD", head_sha1, 0, &flag);
-	if (branch && starts_with(branch, "refs/heads/"))
-		branch += 11;
+	if (branch)
+		branch = skip_prefix_defval(branch, "refs/heads/", branch);
 	if (!branch || is_null_sha1(head_sha1))
 		head_commit = NULL;
 	else
