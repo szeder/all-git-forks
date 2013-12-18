@@ -328,13 +328,13 @@ static int check_header(const struct strbuf *line,
 	}
 
 	/* for inbody stuff */
-	if (starts_with(line->buf, ">From") && isspace(line->buf[5])) {
+	if (isspace(*skip_prefix_defval(line->buf, ">From", "NOSPACE"))) {
 		ret = 1; /* Should this return 0? */
 		goto check_header_out;
 	}
-	if (starts_with(line->buf, "[PATCH]") && isspace(line->buf[7])) {
+	if (isspace(*skip_prefix_defval(line->buf, "[PATCH]", "NOSPACE"))) {
 		for (i = 0; header[i]; i++) {
-			if (!memcmp("Subject", header[i], 7)) {
+			if (starts_with(header[i], "Subject")) {
 				handle_header(&hdr_data[i], line);
 				ret = 1;
 				goto check_header_out;

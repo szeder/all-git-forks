@@ -96,13 +96,14 @@ static void add_name_decoration(enum decoration_type type, const char *name, str
 static int add_ref_decoration(const char *refname, const unsigned char *sha1, int flags, void *cb_data)
 {
 	struct object *obj;
+	const char *name;
 	enum decoration_type type = DECORATION_NONE;
 
-	if (starts_with(refname, "refs/replace/")) {
+	if ((name = skip_prefix(refname, "refs/replace/")) != NULL) {
 		unsigned char original_sha1[20];
 		if (!read_replace_refs)
 			return 0;
-		if (get_sha1_hex(refname + 13, original_sha1)) {
+		if (get_sha1_hex(name, original_sha1)) {
 			warning("invalid replace ref %s", refname);
 			return 0;
 		}

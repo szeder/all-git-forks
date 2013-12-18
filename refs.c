@@ -1873,11 +1873,13 @@ int for_each_rawref(each_ref_fn fn, void *cb_data)
 
 const char *prettify_refname(const char *name)
 {
-	return name + (
-		starts_with(name, "refs/heads/") ? 11 :
-		starts_with(name, "refs/tags/") ? 10 :
-		starts_with(name, "refs/remotes/") ? 13 :
-		0);
+	const char *p;
+	if ((p = skip_prefix(name, "refs/heads/")) != NULL ||
+	    (p = skip_prefix(name, "refs/tags/")) != NULL ||
+	    (p = skip_prefix(name, "refs/remotes/")) != NULL)
+		return p;
+	else
+		return name;
 }
 
 const char *ref_rev_parse_rules[] = {

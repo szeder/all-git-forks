@@ -546,14 +546,10 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 		if (read_ref_at(real_ref, at_time, nth, sha1, NULL,
 				&co_time, &co_tz, &co_cnt)) {
 			if (!len) {
-				if (starts_with(real_ref, "refs/heads/")) {
-					str = real_ref + 11;
-					len = strlen(real_ref + 11);
-				} else {
+				if ((str = skip_prefix(real_ref, "refs/heads/")) == NULL)
 					/* detached HEAD */
 					str = "HEAD";
-					len = 4;
-				}
+				len = strlen(str);
 			}
 			if (at_time)
 				warning("Log for '%.*s' only goes "
@@ -909,10 +905,8 @@ static int grab_nth_branch_switch(unsigned char *osha1, unsigned char *nsha1,
 	const char *match = NULL, *target = NULL;
 	size_t len;
 
-	if (starts_with(message, "checkout: moving from ")) {
-		match = message + strlen("checkout: moving from ");
+	if ((match = skip_prefix(message, "checkout: moving from ")) != NULL)
 		target = strstr(match, " to ");
-	}
 
 	if (!match || !target)
 		return 0;

@@ -259,14 +259,13 @@ static const char *abbrev_ref(const char *name, const char *prefix)
 
 static int config_read_branches(const char *key, const char *value, void *cb)
 {
-	if (starts_with(key, "branch.")) {
+	if ((key = skip_prefix(key, "branch.")) != NULL) {
 		const char *orig_key = key;
 		char *name;
 		struct string_list_item *item;
 		struct branch_info *info;
 		enum { REMOTE, MERGE, REBASE } type;
 
-		key += 7;
 		if (ends_with(key, ".remote")) {
 			name = xstrndup(key, strlen(key) - 7);
 			type = REMOTE;

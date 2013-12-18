@@ -317,18 +317,19 @@ static int find_common(struct fetch_pack_args *args,
 
 	if (args->depth > 0) {
 		char *line;
+		const char *sha1_str;
 		unsigned char sha1[20];
 
 		send_request(args, fd[1], &req_buf);
 		while ((line = packet_read_line(fd[0], NULL))) {
-			if (starts_with(line, "shallow ")) {
-				if (get_sha1_hex(line + 8, sha1))
+			if ((sha1_str = skip_prefix(line, "shallow ")) != NULL) {
+				if (get_sha1_hex(sha1_str, sha1))
 					die("invalid shallow line: %s", line);
 				register_shallow(sha1);
 				continue;
 			}
-			if (starts_with(line, "unshallow ")) {
-				if (get_sha1_hex(line + 10, sha1))
+			if ((sha1_str = skip_prefix(line, "unshallow ")) != NULL) {
+				if (get_sha1_hex(sha1_str, sha1))
 					die("invalid unshallow line: %s", line);
 				if (!lookup_object(sha1))
 					die("object not found: %s", line);

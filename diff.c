@@ -3388,13 +3388,10 @@ static inline int short_opt(char opt, const char **argv,
 int parse_long_opt(const char *opt, const char **argv,
 		   const char **optarg)
 {
-	const char *arg = argv[0];
-	if (arg[0] != '-' || arg[1] != '-')
+	const char *arg;
+	if ((arg = skip_prefix(argv[0], "--")) == NULL ||
+	    (arg = skip_prefix(arg, opt)) == NULL)
 		return 0;
-	arg += strlen("--");
-	if (!starts_with(arg, opt))
-		return 0;
-	arg += strlen(opt);
 	if (*arg == '=') { /* stuck form: --option=value */
 		*optarg = arg + 1;
 		return 1;

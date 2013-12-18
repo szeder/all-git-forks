@@ -662,6 +662,7 @@ static void populate_value(struct refinfo *ref)
 		const char *refname;
 		const char *formatp;
 		struct branch *branch = NULL;
+		const char *next;
 
 		if (*name == '*') {
 			deref = 1;
@@ -674,18 +675,18 @@ static void populate_value(struct refinfo *ref)
 			refname = ref->symref ? ref->symref : "";
 		else if (starts_with(name, "upstream")) {
 			/* only local branches may have an upstream */
-			if (!starts_with(ref->refname, "refs/heads/"))
+			if ((next = skip_prefix(ref->refname, "refs/heads/")) == NULL)
 				continue;
-			branch = branch_get(ref->refname + 11);
+			branch = branch_get(next);
 
 			if (!branch || !branch->merge || !branch->merge[0] ||
 			    !branch->merge[0]->dst)
 				continue;
 			refname = branch->merge[0]->dst;
-		} else if (starts_with(name, "color:")) {
+		} else if ((next = skip_prefix(name, "color:")) != NULL) {
 			char color[COLOR_MAXLEN] = "";
 
-			color_parse(name + 6, "--format", color);
+			color_parse(next, "--format", color);
 			v->s = xstrdup(color);
 			continue;
 		} else if (!strcmp(name, "flag")) {

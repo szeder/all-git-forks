@@ -147,9 +147,9 @@ static void set_upstreams(struct transport *transport, struct ref *refs,
 {
 	struct ref *ref;
 	for (ref = refs; ref; ref = ref->next) {
-		const char *localname;
+		const char *localname, *short_local;
 		const char *tmp;
-		const char *remotename;
+		const char *remotename, *short_remote;
 		unsigned char sha[20];
 		int flag = 0;
 		/*
@@ -173,18 +173,20 @@ static void set_upstreams(struct transport *transport, struct ref *refs,
 			localname = tmp;
 
 		/* Both source and destination must be local branches. */
-		if (!localname || !starts_with(localname, "refs/heads/"))
+		if (!localname ||
+		    (short_local = skip_prefix(localname, "refs/heads/")) == NULL)
 			continue;
-		if (!remotename || !starts_with(remotename, "refs/heads/"))
+		if (!remotename ||
+		    (short_remote = skip_prefix(remotename, "refs/heads/")) == NULL)
 			continue;
 
 		if (!pretend)
 			install_branch_config(BRANCH_CONFIG_VERBOSE,
-				localname + 11, transport->remote->name,
+				short_local, transport->remote->name,
 				remotename);
 		else
 			printf("Would set upstream of '%s' to '%s' of '%s'\n",
-				localname + 11, remotename + 11,
+				short_local, short_remote,
 				transport->remote->name);
 	}
 }

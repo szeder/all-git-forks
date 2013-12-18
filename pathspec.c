@@ -149,14 +149,15 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 			if (!len)
 				continue;
 			for (i = 0; i < ARRAY_SIZE(pathspec_magic); i++) {
+				const char *prefix_str;
 				if (strlen(pathspec_magic[i].name) == len &&
 				    !strncmp(pathspec_magic[i].name, copyfrom, len)) {
 					magic |= pathspec_magic[i].bit;
 					break;
 				}
-				if (starts_with(copyfrom, "prefix:")) {
+				if ((prefix_str = skip_prefix(copyfrom, "prefix:")) != NULL) {
 					char *endptr;
-					pathspec_prefix = strtol(copyfrom + 7,
+					pathspec_prefix = strtol(prefix_str,
 								 &endptr, 10);
 					if (endptr - copyfrom != len)
 						die(_("invalid parameter for pathspec magic 'prefix'"));

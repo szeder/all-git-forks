@@ -373,10 +373,10 @@ static int fetch_with_fetch(struct transport *transport,
 	sendline(data, &buf);
 
 	while (1) {
+		const char *name;
 		recvline(data, &buf);
 
-		if (starts_with(buf.buf, "lock ")) {
-			const char *name = buf.buf + 5;
+		if ((name = skip_prefix(buf.buf, "lock ")) != NULL) {
 			if (transport->pack_lockfile)
 				warning("%s also locked %s", data->name, name);
 			else
@@ -643,16 +643,15 @@ static int push_update_ref_status(struct strbuf *buf,
 				   struct ref **ref,
 				   struct ref *remote_refs)
 {
-	char *refname, *msg;
+	const char *refname;
+	char *msg;
 	int status;
 
-	if (starts_with(buf->buf, "ok ")) {
+	if ((refname = skip_prefix(buf->buf, "ok ")) != NULL)
 		status = REF_STATUS_OK;
-		refname = buf->buf + 3;
-	} else if (starts_with(buf->buf, "error ")) {
+	else if ((refname = skip_prefix(buf->buf, "error ")) != NULL)
 		status = REF_STATUS_REMOTE_REJECT;
-		refname = buf->buf + 6;
-	} else
+	else
 		die("expected ok/error, helper said '%s'", buf->buf);
 
 	msg = strchr(refname, ' ');

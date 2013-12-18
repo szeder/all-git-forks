@@ -1098,6 +1098,7 @@ int http_fetch_ref(const char *base, struct ref *ref)
 	char *url;
 	struct strbuf buffer = STRBUF_INIT;
 	int ret = -1;
+	const char *p;
 
 	options.no_cache = 1;
 
@@ -1106,8 +1107,8 @@ int http_fetch_ref(const char *base, struct ref *ref)
 		strbuf_rtrim(&buffer);
 		if (buffer.len == 40)
 			ret = get_sha1_hex(buffer.buf, ref->old_sha1);
-		else if (starts_with(buffer.buf, "ref: ")) {
-			ref->symref = xstrdup(buffer.buf + 5);
+		else if ((p = skip_prefix(buffer.buf, "ref: ")) != NULL) {
+			ref->symref = xstrdup(p);
 			ret = 0;
 		}
 	}
