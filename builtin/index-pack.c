@@ -1511,6 +1511,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 
 	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i];
+		const char *optarg;
 
 		if (*arg == '-') {
 			if (!strcmp(arg, "--stdin")) {
@@ -1534,11 +1535,11 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 				stat_only = 1;
 			} else if (!strcmp(arg, "--keep")) {
 				keep_msg = "";
-			} else if (starts_with(arg, "--keep=")) {
-				keep_msg = arg + 7;
-			} else if (starts_with(arg, "--threads=")) {
+			} else if ((optarg = skip_prefix(arg, "--keep=")) != NULL) {
+				keep_msg = optarg;
+			} else if ((optarg = skip_prefix(arg, "--threads=")) != NULL) {
 				char *end;
-				nr_threads = strtoul(arg+10, &end, 0);
+				nr_threads = strtoul(optarg, &end, 0);
 				if (!arg[10] || *end || nr_threads < 0)
 					usage(index_pack_usage);
 #ifdef NO_PTHREADS
@@ -1547,13 +1548,13 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 						  "ignoring %s"), arg);
 				nr_threads = 1;
 #endif
-			} else if (starts_with(arg, "--pack_header=")) {
+			} else if ((optarg = skip_prefix(arg, "--pack_header=")) != NULL) {
 				struct pack_header *hdr;
 				char *c;
 
 				hdr = (struct pack_header *)input_buffer;
 				hdr->hdr_signature = htonl(PACK_SIGNATURE);
-				hdr->hdr_version = htonl(strtoul(arg + 14, &c, 10));
+				hdr->hdr_version = htonl(strtoul(optarg, &c, 10));
 				if (*c != ',')
 					die(_("bad %s"), arg);
 				hdr->hdr_entries = htonl(strtoul(c + 1, &c, 10));
@@ -1566,9 +1567,9 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 				if (index_name || (i+1) >= argc)
 					usage(index_pack_usage);
 				index_name = argv[++i];
-			} else if (starts_with(arg, "--index-version=")) {
+			} else if ((optarg = skip_prefix(arg, "--index-version=")) != NULL) {
 				char *c;
-				opts.version = strtoul(arg + 16, &c, 10);
+				opts.version = strtoul(optarg, &c, 10);
 				if (opts.version > 2)
 					die(_("bad %s"), arg);
 				if (*c == ',')

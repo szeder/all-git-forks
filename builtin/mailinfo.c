@@ -1002,6 +1002,7 @@ static const char mailinfo_usage[] =
 int cmd_mailinfo(int argc, const char **argv, const char *prefix)
 {
 	const char *def_charset;
+	const char *optarg;
 
 	/* NEEDSWORK: might want to do the optional .git/ directory
 	 * discovery
@@ -1020,8 +1021,8 @@ int cmd_mailinfo(int argc, const char **argv, const char *prefix)
 			metainfo_charset = def_charset;
 		else if (!strcmp(argv[1], "-n"))
 			metainfo_charset = NULL;
-		else if (starts_with(argv[1], "--encoding="))
-			metainfo_charset = argv[1] + 11;
+		else if ((optarg = skip_prefix(argv[1], "--encoding=")) != NULL)
+			metainfo_charset = optarg;
 		else if (!strcmp(argv[1], "--scissors"))
 			use_scissors = 1;
 		else if (!strcmp(argv[1], "--no-scissors"))

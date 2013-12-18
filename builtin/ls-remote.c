@@ -48,14 +48,15 @@ int cmd_ls_remote(int argc, const char **argv, const char *prefix)
 
 	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i];
+		const char *optarg;
 
 		if (*arg == '-') {
-			if (starts_with(arg, "--upload-pack=")) {
-				uploadpack = arg + 14;
+			if ((optarg = skip_prefix(arg, "--upload-pack=")) != NULL) {
+				uploadpack = optarg;
 				continue;
 			}
-			if (starts_with(arg, "--exec=")) {
-				uploadpack = arg + 7;
+			if ((optarg = skip_prefix(arg, "--exec=")) != NULL) {
+				uploadpack = optarg;
 				continue;
 			}
 			if (!strcmp("--tags", arg) || !strcmp("-t", arg)) {

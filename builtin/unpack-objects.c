@@ -505,6 +505,7 @@ int cmd_unpack_objects(int argc, const char **argv, const char *prefix)
 
 	for (i = 1 ; i < argc; i++) {
 		const char *arg = argv[i];
+		const char *optarg;
 
 		if (*arg == '-') {
 			if (!strcmp(arg, "-n")) {
@@ -523,13 +524,13 @@ int cmd_unpack_objects(int argc, const char **argv, const char *prefix)
 				strict = 1;
 				continue;
 			}
-			if (starts_with(arg, "--pack_header=")) {
+			if ((optarg = skip_prefix(arg, "--pack_header=")) != NULL) {
 				struct pack_header *hdr;
 				char *c;
 
 				hdr = (struct pack_header *)buffer;
 				hdr->hdr_signature = htonl(PACK_SIGNATURE);
-				hdr->hdr_version = htonl(strtoul(arg + 14, &c, 10));
+				hdr->hdr_version = htonl(strtoul(optarg, &c, 10));
 				if (*c != ',')
 					die("bad %s", arg);
 				hdr->hdr_entries = htonl(strtoul(c + 1, &c, 10));

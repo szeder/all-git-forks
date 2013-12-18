@@ -505,6 +505,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 	git_config(git_default_config, NULL);
 	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i];
+		const char *optarg;
 
 		if (as_is) {
 			if (show_file(arg, output_prefix) && as_is < 2)
@@ -618,8 +619,8 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				for_each_ref(show_reference, NULL);
 				continue;
 			}
-			if (starts_with(arg, "--disambiguate=")) {
-				for_each_abbrev(arg + 15, show_abbrev, NULL);
+			if ((optarg = skip_prefix(arg, "--disambiguate=")) != NULL) {
+				for_each_abbrev(optarg, show_abbrev, NULL);
 				continue;
 			}
 			if (!strcmp(arg, "--bisect")) {
@@ -627,8 +628,8 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				for_each_ref_in("refs/bisect/good", anti_reference, NULL);
 				continue;
 			}
-			if (starts_with(arg, "--branches=")) {
-				for_each_glob_ref_in(show_reference, arg + 11,
+			if ((optarg = skip_prefix(arg, "--branches=")) != NULL) {
+				for_each_glob_ref_in(show_reference, optarg,
 					"refs/heads/", NULL);
 				clear_ref_exclusion(&ref_excludes);
 				continue;
@@ -638,8 +639,8 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
-			if (starts_with(arg, "--tags=")) {
-				for_each_glob_ref_in(show_reference, arg + 7,
+			if ((optarg = skip_prefix(arg, "--tags=")) != NULL) {
+				for_each_glob_ref_in(show_reference, optarg,
 					"refs/tags/", NULL);
 				clear_ref_exclusion(&ref_excludes);
 				continue;
@@ -649,13 +650,13 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
-			if (starts_with(arg, "--glob=")) {
-				for_each_glob_ref(show_reference, arg + 7, NULL);
+			if ((optarg = skip_prefix(arg, "--glob=")) != NULL) {
+				for_each_glob_ref(show_reference, optarg, NULL);
 				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
-			if (starts_with(arg, "--remotes=")) {
-				for_each_glob_ref_in(show_reference, arg + 10,
+			if ((optarg = skip_prefix(arg, "--remotes=")) != NULL) {
+				for_each_glob_ref_in(show_reference, optarg,
 					"refs/remotes/", NULL);
 				clear_ref_exclusion(&ref_excludes);
 				continue;
@@ -665,8 +666,8 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
-			if (starts_with(arg, "--exclude=")) {
-				add_ref_exclusion(&ref_excludes, arg + 10);
+			if ((optarg = skip_prefix(arg, "--exclude=")) != NULL) {
+				add_ref_exclusion(&ref_excludes, optarg);
 				continue;
 			}
 			if (!strcmp(arg, "--local-env-vars")) {
@@ -747,20 +748,20 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 						: "false");
 				continue;
 			}
-			if (starts_with(arg, "--since=")) {
-				show_datestring("--max-age=", arg+8);
+			if ((optarg = skip_prefix(arg, "--since=")) != NULL) {
+				show_datestring("--max-age=", optarg);
 				continue;
 			}
-			if (starts_with(arg, "--after=")) {
-				show_datestring("--max-age=", arg+8);
+			if ((optarg = skip_prefix(arg, "--after=")) != NULL) {
+				show_datestring("--max-age=", optarg);
 				continue;
 			}
-			if (starts_with(arg, "--before=")) {
-				show_datestring("--min-age=", arg+9);
+			if ((optarg = skip_prefix(arg, "--before=")) != NULL) {
+				show_datestring("--min-age=", optarg);
 				continue;
 			}
-			if (starts_with(arg, "--until=")) {
-				show_datestring("--min-age=", arg+8);
+			if ((optarg = skip_prefix(arg, "--until=")) != NULL) {
+				show_datestring("--min-age=", optarg);
 				continue;
 			}
 			if (show_flag(arg) && verify)

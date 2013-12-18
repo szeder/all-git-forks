@@ -222,6 +222,7 @@ static void parse_cmd_option(const char *next)
 static void update_refs_stdin(void)
 {
 	struct strbuf cmd = STRBUF_INIT;
+	const char *optarg;
 
 	/* Read each line dispatch its command */
 	while (strbuf_getline(&cmd, stdin, line_termination) != EOF)
@@ -229,16 +230,16 @@ static void update_refs_stdin(void)
 			die("empty command in input");
 		else if (isspace(*cmd.buf))
 			die("whitespace before command: %s", cmd.buf);
-		else if (starts_with(cmd.buf, "update "))
-			parse_cmd_update(cmd.buf + 7);
-		else if (starts_with(cmd.buf, "create "))
-			parse_cmd_create(cmd.buf + 7);
-		else if (starts_with(cmd.buf, "delete "))
-			parse_cmd_delete(cmd.buf + 7);
-		else if (starts_with(cmd.buf, "verify "))
-			parse_cmd_verify(cmd.buf + 7);
-		else if (starts_with(cmd.buf, "option "))
-			parse_cmd_option(cmd.buf + 7);
+		else if ((optarg = skip_prefix(cmd.buf, "update ")) != NULL)
+			parse_cmd_update(optarg);
+		else if ((optarg = skip_prefix(cmd.buf, "create ")) != NULL)
+			parse_cmd_create(optarg);
+		else if ((optarg = skip_prefix(cmd.buf, "delete ")) != NULL)
+			parse_cmd_delete(optarg);
+		else if ((optarg = skip_prefix(cmd.buf, "verify ")) != NULL)
+			parse_cmd_verify(optarg);
+		else if ((optarg = skip_prefix(cmd.buf, "option ")) != NULL)
+			parse_cmd_option(optarg);
 		else
 			die("unknown command: %s", cmd.buf);
 

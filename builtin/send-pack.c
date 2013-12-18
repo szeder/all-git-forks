@@ -113,18 +113,19 @@ int cmd_send_pack(int argc, const char **argv, const char *prefix)
 	argv++;
 	for (i = 1; i < argc; i++, argv++) {
 		const char *arg = *argv;
+		const char *optarg;
 
 		if (*arg == '-') {
-			if (starts_with(arg, "--receive-pack=")) {
-				receivepack = arg + 15;
+			if ((optarg = skip_prefix(arg, "--receive-pack=")) != NULL) {
+				receivepack = optarg;
 				continue;
 			}
-			if (starts_with(arg, "--exec=")) {
-				receivepack = arg + 7;
+			if ((optarg = skip_prefix(arg, "--exec=")) != NULL) {
+				receivepack = optarg;
 				continue;
 			}
-			if (starts_with(arg, "--remote=")) {
-				remote_name = arg + 9;
+			if ((optarg = skip_prefix(arg, "--remote=")) != NULL) {
+				remote_name = optarg;
 				continue;
 			}
 			if (!strcmp(arg, "--all")) {
@@ -181,9 +182,8 @@ int cmd_send_pack(int argc, const char **argv, const char *prefix)
 					exit(1);
 				continue;
 			}
-			if (starts_with(arg, "--" CAS_OPT_NAME "=")) {
-				if (parse_push_cas_option(&cas,
-							  strchr(arg, '=') + 1, 0) < 0)
+			if ((optarg = skip_prefix(arg, "--" CAS_OPT_NAME "=")) != NULL) {
+				if (parse_push_cas_option(&cas, optarg, 0) < 0)
 					exit(1);
 				continue;
 			}

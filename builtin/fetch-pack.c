@@ -47,13 +47,14 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 
 	for (i = 1; i < argc && *argv[i] == '-'; i++) {
 		const char *arg = argv[i];
+		const char *optarg;
 
-		if (starts_with(arg, "--upload-pack=")) {
-			args.uploadpack = arg + 14;
+		if ((optarg = skip_prefix(arg, "--upload-pack=")) != NULL) {
+			args.uploadpack = optarg;
 			continue;
 		}
-		if (starts_with(arg, "--exec=")) {
-			args.uploadpack = arg + 7;
+		if ((optarg = skip_prefix(arg, "--exec=")) != NULL) {
+			args.uploadpack = optarg;
 			continue;
 		}
 		if (!strcmp("--quiet", arg) || !strcmp("-q", arg)) {
@@ -85,8 +86,8 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 			args.verbose = 1;
 			continue;
 		}
-		if (starts_with(arg, "--depth=")) {
-			args.depth = strtol(arg + 8, NULL, 0);
+		if ((optarg = skip_prefix(arg, "--depth=")) != NULL) {
+			args.depth = strtol(optarg, NULL, 0);
 			continue;
 		}
 		if (!strcmp("--no-progress", arg)) {

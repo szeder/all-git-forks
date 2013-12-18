@@ -608,15 +608,16 @@ static int cmd_reflog_expire(int argc, const char **argv, const char *prefix)
 
 	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i];
+		const char *optarg;
 		if (!strcmp(arg, "--dry-run") || !strcmp(arg, "-n"))
 			cb.dry_run = 1;
-		else if (starts_with(arg, "--expire=")) {
-			if (parse_expiry_date(arg + 9, &cb.expire_total))
+		else if ((optarg = skip_prefix(arg, "--expire=")) != NULL) {
+			if (parse_expiry_date(optarg, &cb.expire_total))
 				die(_("'%s' is not a valid timestamp"), arg);
 			explicit_expiry |= EXPIRE_TOTAL;
 		}
-		else if (starts_with(arg, "--expire-unreachable=")) {
-			if (parse_expiry_date(arg + 21, &cb.expire_unreachable))
+		else if ((optarg = skip_prefix(arg, "--expire-unreachable=")) != NULL) {
+			if (parse_expiry_date(optarg, &cb.expire_unreachable))
 				die(_("'%s' is not a valid timestamp"), arg);
 			explicit_expiry |= EXPIRE_UNREACH;
 		}

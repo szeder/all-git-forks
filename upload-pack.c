@@ -799,6 +799,7 @@ int main(int argc, char **argv)
 
 	for (i = 1; i < argc; i++) {
 		char *arg = argv[i];
+		const char *optarg;
 
 		if (arg[0] != '-')
 			break;
@@ -814,8 +815,8 @@ int main(int argc, char **argv)
 			strict = 1;
 			continue;
 		}
-		if (starts_with(arg, "--timeout=")) {
-			timeout = atoi(arg+10);
+		if ((optarg = skip_prefix(arg, "--timeout=")) != NULL) {
+			timeout = atoi(optarg);
 			daemon_mode = 1;
 			continue;
 		}

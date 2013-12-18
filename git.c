@@ -40,6 +40,7 @@ static int handle_options(const char ***argv, int *argc, int *envchanged)
 
 	while (*argc > 0) {
 		const char *cmd = (*argv)[0];
+		const char *optarg;
 		if (cmd[0] != '-')
 			break;
 
@@ -92,8 +93,8 @@ static int handle_options(const char ***argv, int *argc, int *envchanged)
 				*envchanged = 1;
 			(*argv)++;
 			(*argc)--;
-		} else if (starts_with(cmd, "--git-dir=")) {
-			setenv(GIT_DIR_ENVIRONMENT, cmd + 10, 1);
+		} else if ((optarg = skip_prefix(cmd, "--git-dir=")) != NULL) {
+			setenv(GIT_DIR_ENVIRONMENT, optarg, 1);
 			if (envchanged)
 				*envchanged = 1;
 		} else if (!strcmp(cmd, "--namespace")) {
@@ -106,8 +107,8 @@ static int handle_options(const char ***argv, int *argc, int *envchanged)
 				*envchanged = 1;
 			(*argv)++;
 			(*argc)--;
-		} else if (starts_with(cmd, "--namespace=")) {
-			setenv(GIT_NAMESPACE_ENVIRONMENT, cmd + 12, 1);
+		} else if ((optarg = skip_prefix(cmd, "--namespace=")) != NULL) {
+			setenv(GIT_NAMESPACE_ENVIRONMENT, optarg, 1);
 			if (envchanged)
 				*envchanged = 1;
 		} else if (!strcmp(cmd, "--work-tree")) {
@@ -120,8 +121,8 @@ static int handle_options(const char ***argv, int *argc, int *envchanged)
 				*envchanged = 1;
 			(*argv)++;
 			(*argc)--;
-		} else if (starts_with(cmd, "--work-tree=")) {
-			setenv(GIT_WORK_TREE_ENVIRONMENT, cmd + 12, 1);
+		} else if ((optarg = skip_prefix(cmd, "--work-tree=")) != NULL) {
+			setenv(GIT_WORK_TREE_ENVIRONMENT, optarg, 1);
 			if (envchanged)
 				*envchanged = 1;
 		} else if (!strcmp(cmd, "--bare")) {

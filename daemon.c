@@ -39,8 +39,8 @@ static int strict_paths;
 static int export_all_trees;
 
 /* Take all paths relative to this one if non-NULL */
-static char *base_path;
-static char *interpolated_path;
+static const char *base_path;
+static const char *interpolated_path;
 static int base_path_relaxed;
 
 /* Flag indicating client sent extra args. */
@@ -253,7 +253,7 @@ static int daemon_error(const char *dir, const char *msg)
 	return -1;
 }
 
-static char *access_hook;
+static const char *access_hook;
 
 static int run_access_hook(struct daemon_service *service, const char *dir, const char *path)
 {
@@ -1164,15 +1164,16 @@ int main(int argc, char **argv)
 
 	for (i = 1; i < argc; i++) {
 		char *arg = argv[i];
+		const char *optarg;
 
-		if (starts_with(arg, "--listen=")) {
-			string_list_append(&listen_addr, xstrdup_tolower(arg + 9));
+		if ((optarg = skip_prefix(arg, "--listen=")) != NULL) {
+			string_list_append(&listen_addr, xstrdup_tolower(optarg));
 			continue;
 		}
-		if (starts_with(arg, "--port=")) {
+		if ((optarg = skip_prefix(arg, "--port=")) != NULL) {
 			char *end;
 			unsigned long n;
-			n = strtoul(arg+7, &end, 0);
+			n = strtoul(optarg, &end, 0);
 			if (arg[7] && !*end) {
 				listen_port = n;
 				continue;
@@ -1199,20 +1200,20 @@ int main(int argc, char **argv)
 			export_all_trees = 1;
 			continue;
 		}
-		if (starts_with(arg, "--access-hook=")) {
-			access_hook = arg + 14;
+		if ((optarg = skip_prefix(arg, "--access-hook=")) != NULL) {
+			access_hook = optarg;
 			continue;
 		}
-		if (starts_with(arg, "--timeout=")) {
-			timeout = atoi(arg+10);
+		if ((optarg = skip_prefix(arg, "--timeout=")) != NULL) {
+			timeout = atoi(optarg);
 			continue;
 		}
-		if (starts_with(arg, "--init-timeout=")) {
-			init_timeout = atoi(arg+15);
+		if ((optarg = skip_prefix(arg, "--init-timeout=")) != NULL) {
+			init_timeout = atoi(optarg);
 			continue;
 		}
-		if (starts_with(arg, "--max-connections=")) {
-			max_connections = atoi(arg+18);
+		if ((optarg = skip_prefix(arg, "--max-connections=")) != NULL) {
+			max_connections = atoi(optarg);
 			if (max_connections < 0)
 				max_connections = 0;	        /* unlimited */
 			continue;
@@ -1221,16 +1222,16 @@ int main(int argc, char **argv)
 			strict_paths = 1;
 			continue;
 		}
-		if (starts_with(arg, "--base-path=")) {
-			base_path = arg+12;
+		if ((optarg = skip_prefix(arg, "--base-path=")) != NULL) {
+			base_path = optarg;
 			continue;
 		}
 		if (!strcmp(arg, "--base-path-relaxed")) {
 			base_path_relaxed = 1;
 			continue;
 		}
-		if (starts_with(arg, "--interpolated-path=")) {
-			interpolated_path = arg+20;
+		if ((optarg = skip_prefix(arg, "--interpolated-path=")) != NULL) {
+			interpolated_path = optarg;
 			continue;
 		}
 		if (!strcmp(arg, "--reuseaddr")) {
@@ -1241,12 +1242,12 @@ int main(int argc, char **argv)
 			user_path = "";
 			continue;
 		}
-		if (starts_with(arg, "--user-path=")) {
-			user_path = arg + 12;
+		if ((optarg = skip_prefix(arg, "--user-path=")) != NULL) {
+			user_path = optarg;
 			continue;
 		}
-		if (starts_with(arg, "--pid-file=")) {
-			pid_file = arg + 11;
+		if ((optarg = skip_prefix(arg, "--pid-file=")) != NULL) {
+			pid_file = optarg;
 			continue;
 		}
 		if (!strcmp(arg, "--detach")) {
@@ -1254,35 +1255,35 @@ int main(int argc, char **argv)
 			log_syslog = 1;
 			continue;
 		}
-		if (starts_with(arg, "--user=")) {
-			user_name = arg + 7;
+		if ((optarg = skip_prefix(arg, "--user=")) != NULL) {
+			user_name = optarg;
 			continue;
 		}
-		if (starts_with(arg, "--group=")) {
-			group_name = arg + 8;
+		if ((optarg = skip_prefix(arg, "--group=")) != NULL) {
+			group_name = optarg;
 			continue;
 		}
-		if (starts_with(arg, "--enable=")) {
-			enable_service(arg + 9, 1);
+		if ((optarg = skip_prefix(arg, "--enable=")) != NULL) {
+			enable_service(optarg, 1);
 			continue;
 		}
-		if (starts_with(arg, "--disable=")) {
-			enable_service(arg + 10, 0);
+		if ((optarg = skip_prefix(arg, "--disable=")) != NULL) {
+			enable_service(optarg, 0);
 			continue;
 		}
-		if (starts_with(arg, "--allow-override=")) {
-			make_service_overridable(arg + 17, 1);
+		if ((optarg = skip_prefix(arg, "--allow-override=")) != NULL) {
+			make_service_overridable(optarg, 1);
 			continue;
 		}
-		if (starts_with(arg, "--forbid-override=")) {
-			make_service_overridable(arg + 18, 0);
+		if ((optarg = skip_prefix(arg, "--forbid-override=")) != NULL) {
+			make_service_overridable(optarg, 0);
 			continue;
 		}
-		if (starts_with(arg, "--informative-errors")) {
+		if ((optarg = skip_prefix(arg, "--informative-errors")) != NULL) {
 			informative_errors = 1;
 			continue;
 		}
-		if (starts_with(arg, "--no-informative-errors")) {
+		if ((optarg = skip_prefix(arg, "--no-informative-errors")) != NULL) {
 			informative_errors = 0;
 			continue;
 		}
