@@ -3367,7 +3367,7 @@ static int opt_arg(const char *arg, int arg_short, const char *arg_long, int *va
 	return 1;
 }
 
-static int diff_scoreopt_parse(const char *opt);
+static int diff_scoreopt_parse(const char **opt);
 
 static inline int short_opt(char opt, const char **argv,
 			    const char **optarg)
@@ -3627,13 +3627,13 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 	/* renames options */
 	else if (starts_with(arg, "-B") || starts_with(arg, "--break-rewrites=") ||
 		 !strcmp(arg, "--break-rewrites")) {
-		if ((options->break_opt = diff_scoreopt_parse(arg)) == -1)
-			return error("invalid argument to -B: %s", arg+2);
+		if ((options->break_opt = diff_scoreopt_parse(&arg)) == -1)
+			return error("invalid argument to -B: %s", arg);
 	}
 	else if (starts_with(arg, "-M") || starts_with(arg, "--find-renames=") ||
 		 !strcmp(arg, "--find-renames")) {
-		if ((options->rename_score = diff_scoreopt_parse(arg)) == -1)
-			return error("invalid argument to -M: %s", arg+2);
+		if ((options->rename_score = diff_scoreopt_parse(&arg)) == -1)
+			return error("invalid argument to -M: %s", arg);
 		options->detect_rename = DIFF_DETECT_RENAME;
 	}
 	else if (!strcmp(arg, "-D") || !strcmp(arg, "--irreversible-delete")) {
@@ -3643,8 +3643,8 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		 !strcmp(arg, "--find-copies")) {
 		if (options->detect_rename == DIFF_DETECT_COPY)
 			DIFF_OPT_SET(options, FIND_COPIES_HARDER);
-		if ((options->rename_score = diff_scoreopt_parse(arg)) == -1)
-			return error("invalid argument to -C: %s", arg+2);
+		if ((options->rename_score = diff_scoreopt_parse(&arg)) == -1)
+			return error("invalid argument to -C: %s", arg);
 		options->detect_rename = DIFF_DETECT_COPY;
 	}
 	else if (!strcmp(arg, "--no-renames"))
@@ -3879,29 +3879,29 @@ int parse_rename_score(const char **cp_p)
 	return (int)((num >= scale) ? MAX_SCORE : (MAX_SCORE * num / scale));
 }
 
-static int diff_scoreopt_parse(const char *opt)
+static int diff_scoreopt_parse(const char **opt_p)
 {
+	const char *opt = *opt_p;
 	int opt1, opt2, cmd;
 
 	if (*opt++ != '-')
 		return -1;
 	cmd = *opt++;
+	*opt_p = opt;
 	if (cmd == '-') {
 		/* convert the long-form arguments into short-form versions */
-		if (starts_with(opt, "break-rewrites")) {
-			opt += strlen("break-rewrites");
+		if ((opt = skip_prefix_defval(opt, "break-rewrites", *opt_p)) != *opt_p) {
 			if (*opt == 0 || *opt++ == '=')
 				cmd = 'B';
-		} else if (starts_with(opt, "find-copies")) {
-			opt += strlen("find-copies");
+		} else if ((opt = skip_prefix_defval(opt, "find-copies", *opt_p)) != *opt_p) {
 			if (*opt == 0 || *opt++ == '=')
 				cmd = 'C';
-		} else if (starts_with(opt, "find-renames")) {
-			opt += strlen("find-renames");
+		} else if ((opt = skip_prefix_defval(opt, "find-renames", *opt_p)) != *opt_p) {
 			if (*opt == 0 || *opt++ == '=')
 				cmd = 'M';
 		}
 	}
+	*opt_p = opt;
 	if (cmd != 'M' && cmd != 'C' && cmd != 'B')
 		return -1; /* that is not a -M, -C nor -B option */
 
