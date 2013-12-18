@@ -131,7 +131,7 @@ struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 	for (;;) {
 		struct ref *ref;
 		unsigned char old_sha1[20];
-		char *name;
+		const char *name;
 		int len, name_len;
 		char *buffer = packet_buffer;
 
@@ -145,8 +145,8 @@ struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 		if (!len)
 			break;
 
-		if (len > 4 && starts_with(buffer, "ERR "))
-			die("remote error: %s", buffer + 4);
+		if ((name = skip_prefix(buffer, "ERR ")) != NULL)
+			die("remote error: %s", name);
 
 		if (len < 42 || get_sha1_hex(buffer, old_sha1) || buffer[40] != ' ')
 			die("protocol error: expected sha/ref, got '%s'", buffer);
