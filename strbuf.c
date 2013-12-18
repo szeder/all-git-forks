@@ -1,15 +1,6 @@
 #include "cache.h"
 #include "refs.h"
 
-int starts_with(const char *str, const char *prefix)
-{
-	for (; ; str++, prefix++)
-		if (!*prefix)
-			return 1;
-		else if (*str != *prefix)
-			return 0;
-}
-
 int prefixcmp(const char *str, const char *prefix)
 {
 	for (; ; str++, prefix++)

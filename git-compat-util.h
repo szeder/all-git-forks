@@ -350,7 +350,6 @@ extern void set_die_routine(NORETURN_PTR void (*routine)(const char *err, va_lis
 extern void set_error_routine(void (*routine)(const char *err, va_list params));
 extern void set_die_is_recursing_routine(int (*routine)(void));
 
-extern int starts_with(const char *str, const char *prefix);
 extern int prefixcmp(const char *str, const char *prefix);
 extern int ends_with(const char *str, const char *suffix);
 extern int suffixcmp(const char *str, const char *suffix);
@@ -359,6 +358,11 @@ static inline const char *skip_prefix(const char *str, const char *prefix)
 {
 	size_t len = strlen(prefix);
 	return strncmp(str, prefix, len) ? NULL : str + len;
+}
+
+static inline int starts_with(const char *str, const char *prefix)
+{
+	return skip_prefix(str, prefix) != NULL;
 }
 
 #if defined(NO_MMAP) || defined(USE_WIN32_MMAP)
