@@ -187,6 +187,10 @@ struct git_graph {
 	 * stored as an index into the array column_colors.
 	 */
 	unsigned short default_column_color;
+	/* The last one was a root and we haven't emitted an extra blank */
+	unsigned need_post_root_gap : 1;
+	/* Are we looking at the root? */
+	unsigned is_root : 1;
 };
 
 static struct strbuf *diff_output_prefix_callback(struct diff_options *opt, void *data)
@@ -205,7 +209,7 @@ static struct strbuf *diff_output_prefix_callback(struct diff_options *opt, void
 
 struct git_graph *graph_init(struct rev_info *opt)
 {
-	struct git_graph *graph = xmalloc(sizeof(struct git_graph));
+	struct git_graph *graph = xcalloc(1, sizeof(struct git_graph));
 
 	if (!column_colors)
 		graph_set_column_colors(column_colors_ansi,
@@ -552,11 +556,14 @@ static void graph_update_columns(struct git_graph *graph)
 void graph_update(struct git_graph *graph, struct commit *commit)
 {
 	struct commit_list *parent;
+	int was_root = graph->is_root;
 
 	/*
 	 * Set the new commit
 	 */
 	graph->commit = commit;
+	graph->is_root = !commit->parents;
+	graph->need_post_root_gap = 0;
 
 	/*
 	 * Count how many interesting parents this commit has
@@ -607,8 +614,12 @@ void graph_update(struct git_graph *graph, struct commit *commit)
 	else if (graph->num_parents >= 3 &&
 		 graph->commit_index < (graph->num_columns - 1))
 		graph->state = GRAPH_PRE_COMMIT;
-	else
+	else {
 		graph->state = GRAPH_COMMIT;
+		if (was_root &&
+		    graph->prev_commit_index == graph->commit_index)
+			graph->need_post_root_gap = 1;
+	}
 }
 
 static int graph_is_mapping_correct(struct git_graph *graph)
@@ -813,6 +824,11 @@ static void graph_output_commit_line(struct git_graph *graph, struct strbuf *sb)
 {
 	int seen_this = 0;
 	int i, chars_written;
+
+	if (graph->need_post_root_gap) {
+		graph->need_post_root_gap = 0;
+		strbuf_addch(sb, '\n');
+	}
 
 	/*
 	 * Output the row containing this commit
