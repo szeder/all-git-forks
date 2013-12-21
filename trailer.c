@@ -511,7 +511,27 @@ static void process_input_file(const char *infile,
 	}
 }
 
-void process(const char *infile, int argc, const char **argv)
+static void print_tok_val(const char *tok, const char *val)
+{
+	char c = tok[strlen(tok) - 1];
+	if (isalnum(c))
+		printf("%s: %s\n", tok, val);
+	else if (isspace(c) || c == '#')
+		printf("%s%s\n", tok, val);
+	else
+		printf("%s %s\n", tok, val);
+}
+
+static void print_all(struct trailer_item *first, int trim_empty)
+{
+	struct trailer_item *item;
+	for (item = first; item; item = item->next) {
+		if (!trim_empty || strlen(item->value) > 0)
+			print_tok_val(item->token, item->value);
+	}
+}
+
+void process_trailers(const char *infile, int trim_empty, int argc, const char **argv)
 {
 	struct trailer_item *infile_tok_first = NULL;
 	struct trailer_item *infile_tok_last = NULL;
@@ -527,6 +547,8 @@ void process(const char *infile, int argc, const char **argv)
 	arg_tok_first = process_command_line_args(argc, argv);
 
 	process_trailers_lists(&infile_tok_first, &infile_tok_last, &arg_tok_first);
+
+	print_all(infile_tok_first, trim_empty);
 }
 
 
