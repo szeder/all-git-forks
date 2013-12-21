@@ -217,7 +217,7 @@ static void process_trailers_lists(struct trailer_item **infile_tok_first,
 
 	update_last(infile_tok_last);
 
-	if (!arg_tok_first)
+	if (!*arg_tok_first)
 		return;
 
 	/* Process infile from start to end */
@@ -228,7 +228,7 @@ static void process_trailers_lists(struct trailer_item **infile_tok_first,
 	update_first(infile_tok_first);
 
 	/* Process args left */
-	while (arg_tok_first) {
+	while (*arg_tok_first) {
 		arg_tok = remove_first(arg_tok_first);
 		apply_arg_if_missing(infile_tok_first, infile_tok_last, arg_tok);
 	}
