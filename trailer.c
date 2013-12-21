@@ -401,6 +401,7 @@ static struct trailer_item *apply_config_to_arg(const char *arg)
 	}
 
 	struct trailer_item *arg_tok = xcalloc(sizeof(struct trailer_item), 1);
+	arg_tok->conf = xcalloc(sizeof(struct conf_info), 1);
 	arg_tok->token = strbuf_detach(&tok, NULL);
 	arg_tok->value = strbuf_detach(&val, NULL);
 
