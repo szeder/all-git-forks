@@ -43,7 +43,7 @@ test_expect_success '--trim-empty without config' '
 '
 
 test_expect_success 'with config setup' '
-	git config trailer.ack.value "Acked-by: " &&
+	git config trailer.ack.key "Acked-by: " &&
 	printf "Acked-by: Peff\n" >expected &&
 	git interpret-trailers --trim-empty "ack = Peff" >actual &&
 	test_cmp expected actual &&
@@ -54,7 +54,7 @@ test_expect_success 'with config setup' '
 '
 
 test_expect_success 'with config setup and = sign' '
-	git config trailer.ack.value "Acked-by= " &&
+	git config trailer.ack.key "Acked-by= " &&
 	printf "Acked-by= Peff\n" >expected &&
 	git interpret-trailers --trim-empty "ack = Peff" >actual &&
 	test_cmp expected actual &&
@@ -65,7 +65,7 @@ test_expect_success 'with config setup and = sign' '
 '
 
 test_expect_success 'with config setup and # sign' '
-	git config trailer.bug.value "Bug #" &&
+	git config trailer.bug.key "Bug #" &&
 	printf "Bug #42\n" >expected &&
 	git interpret-trailers --trim-empty "bug = 42" >actual &&
 	test_cmp expected actual
