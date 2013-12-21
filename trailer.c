@@ -376,36 +376,37 @@ static void parse_trailer(struct strbuf *tok, struct strbuf *val, const char *tr
 	}
 }
 
-static struct trailer_item *apply_config_to_arg(const char *arg)
+static struct trailer_item *create_trailer_item(const char *string)
 {
 	struct strbuf tok = STRBUF_INIT;
 	struct strbuf val = STRBUF_INIT;
+	struct trailer_item *new;
 
-	parse_trailer(&tok, &val, arg);
+	parse_trailer(&tok, &val, string);
 
 	int tok_alnum_len = alnum_len(tok.buf, tok.len);
 
-	/* Lookup if the arg matches something in the config */
+	/* Lookup if the token matches something in the config */
 	struct trailer_item *item;
 	for (item = first_conf_item; item; item = item->next)
 	{
 		if (!strncasecmp(tok.buf, item->conf->key, tok_alnum_len) ||
 		    !strncasecmp(tok.buf, item->conf->name, tok_alnum_len)) {
-			struct trailer_item *arg_tok = xcalloc(sizeof(struct trailer_item), 1);
-			arg_tok->conf = item->conf;
-			arg_tok->token = xstrdup(item->conf->key);
-			arg_tok->value = strbuf_detach(&val, NULL);
+			new = xcalloc(sizeof(struct trailer_item), 1);
+			new->conf = item->conf;
+			new->token = xstrdup(item->conf->key);
+			new->value = strbuf_detach(&val, NULL);
 			strbuf_release(&tok);
-			return arg_tok;
+			return new;
 		}
 	}
 
-	struct trailer_item *arg_tok = xcalloc(sizeof(struct trailer_item), 1);
-	arg_tok->conf = xcalloc(sizeof(struct conf_info), 1);
-	arg_tok->token = strbuf_detach(&tok, NULL);
-	arg_tok->value = strbuf_detach(&val, NULL);
+	new = xcalloc(sizeof(struct trailer_item), 1);
+	new->conf = xcalloc(sizeof(struct conf_info), 1);
+	new->token = strbuf_detach(&tok, NULL);
+	new->value = strbuf_detach(&val, NULL);
 
-	return arg_tok;
+	return new;
 }
 
 static void add_trailer_item(struct trailer_item **first,
@@ -429,7 +430,7 @@ static struct trailer_item *process_command_line_args(int argc, const char **arg
 	struct trailer_item *arg_tok_last = NULL;
 
 	for (i = 0; i < argc; i++) {
-		struct trailer_item *new = apply_config_to_arg(argv[i]);
+		struct trailer_item *new = create_trailer_item(argv[i]);
 		add_trailer_item(&arg_tok_first, &arg_tok_last, new);
 	}
 
@@ -478,20 +479,6 @@ static int find_trailer_start(struct strbuf **lines)
 	return empty ? count : start + 1;
 }
 
-static struct trailer_item *parse_trailer_into_item(const char *trailer)
-{
-	struct strbuf tok = STRBUF_INIT;
-	struct strbuf val = STRBUF_INIT;
-
-	parse_trailer(&tok, &val, trailer);
-
-	struct trailer_item *infile_tok = xcalloc(sizeof(struct trailer_item), 1);
-	infile_tok->token = strbuf_detach(&tok, NULL);
-	infile_tok->value = strbuf_detach(&val, NULL);
-
-	return infile_tok;
-}
-
 static void process_input_file(const char *infile,
 			       struct trailer_item **infile_tok_first,
 			       struct trailer_item **infile_tok_last)
@@ -507,7 +494,7 @@ static void process_input_file(const char *infile,
 
 	/* Parse trailer lines */
 	for (i = start; lines[i]; i++) {
-		struct trailer_item *new = parse_trailer_into_item(lines[i]->buf);
+		struct trailer_item *new = create_trailer_item(lines[i]->buf);
 		add_trailer_item(infile_tok_first, infile_tok_last, new);
 	}
 }
