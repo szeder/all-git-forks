@@ -180,7 +180,7 @@ static void apply_arg_if_missing(struct trailer_item **infile_tok_first,
 				 struct trailer_item **infile_tok_last,
 				 struct trailer_item *arg_tok)
 {
-	struct trailer_item *infile_tok;
+	struct trailer_item **infile_tok;
 	enum action_where where;
 
 	switch(arg_tok->conf->if_missing) {
@@ -189,9 +189,10 @@ static void apply_arg_if_missing(struct trailer_item **infile_tok_first,
 		break;
 	case MISSING_ADD:
 		where = arg_tok->conf->where;
-		infile_tok = (where == AFTER) ? *infile_tok_last : *infile_tok_first;
-		if (infile_tok) {
-			add_arg_to_infile(infile_tok, arg_tok);
+		infile_tok = (where == AFTER) ? infile_tok_last : infile_tok_first;
+		if (*infile_tok) {
+			add_arg_to_infile(*infile_tok, arg_tok);
+			*infile_tok = arg_tok;
 		} else {
 			*infile_tok_first = arg_tok;
 			*infile_tok_last = arg_tok;
