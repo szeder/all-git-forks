@@ -69,15 +69,15 @@ static int check_if_different(struct trailer_item *infile_tok,
 {
 	enum action_where where = arg_tok->conf->where;
 	do {
+		if (!infile_tok)
+			return 1;
+		if (same_trailer(infile_tok, arg_tok, alnum_len))
+			return 0;
 		/*
 		 * if we want to add a trailer after another one,
 		 * we have to check those before this one
 		 */
 		infile_tok = (where == AFTER) ? infile_tok->previous : infile_tok->next;
-		if (!infile_tok)
-			return 1;
-		if (same_trailer(infile_tok, arg_tok, alnum_len))
-			return 0;
 	} while (check_all);
 	return 1;
 }
