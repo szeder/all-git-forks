@@ -248,15 +248,15 @@ static int set_where(struct conf_info *item, const char *value)
 
 static int set_if_exist(struct conf_info *item, const char *value)
 {
-	if (!strcasecmp("add_if_different", value)) {
+	if (!strcasecmp("addIfDifferent", value)) {
 		item->if_exist = EXIST_ADD_IF_DIFFERENT;
-	} else if (!strcasecmp("add_if_different_neighbor", value)) {
+	} else if (!strcasecmp("addIfDifferentNeighbor", value)) {
 		item->if_exist = EXIST_ADD_IF_DIFFERENT_NEIGHBOR;
 	} else if (!strcasecmp("add", value)) {
 		item->if_exist = EXIST_ADD;
 	} else if (!strcasecmp("overwrite", value)) {
 		item->if_exist = EXIST_OVERWRITE;
-	} else if (!strcasecmp("do_nothing", value)) {
+	} else if (!strcasecmp("doNothing", value)) {
 		item->if_exist = EXIST_DO_NOTHING;
 	} else
 		return 1;
@@ -265,7 +265,7 @@ static int set_if_exist(struct conf_info *item, const char *value)
 
 static int set_if_missing(struct conf_info *item, const char *value)
 {
-	if (!strcasecmp("do_nothing", value)) {
+	if (!strcasecmp("doNothing", value)) {
 		item->if_missing = MISSING_DO_NOTHING;
 	} else if (!strcasecmp("add", value)) {
 		item->if_missing = MISSING_ADD;
@@ -330,8 +330,8 @@ static int git_trailer_config(const char *conf_key, const char *value, void *cb)
 		if (!set_name_and_type(conf_key, ".key", VALUE, &name, &type) &&
 		    !set_name_and_type(conf_key, ".command", COMMAND, &name, &type) &&
 		    !set_name_and_type(conf_key, ".where", WHERE, &name, &type) &&
-		    !set_name_and_type(conf_key, ".if_exist", IF_EXIST, &name, &type) &&
-		    !set_name_and_type(conf_key, ".if_missing", IF_MISSING, &name, &type))
+		    !set_name_and_type(conf_key, ".ifExist", IF_EXIST, &name, &type) &&
+		    !set_name_and_type(conf_key, ".ifMissing", IF_MISSING, &name, &type))
 			return 0;
 
 		item = get_conf_item(name);
