@@ -86,14 +86,14 @@ test_expect_success 'with commit complex message' '
 
 test_expect_success 'with commit complex message and args' '
 	cat complex_message_body >expected &&
-	printf "Bug #42\nFixes: \nAcked-by= Peff\nReviewed-by: \nSigned-off-by: \n" >>expected &&
+	printf "Fixes: \nAcked-by= \nAcked-by= Peff\nReviewed-by: \nSigned-off-by: \nBug #42\n" >>expected &&
 	git interpret-trailers --infile complex_message "ack: Peff" "bug: 42" >actual &&
 	test_cmp expected actual
 '
 
 test_expect_success 'with commit complex message, args and --trim-empty' '
 	cat complex_message_body >expected &&
-	printf "Bug #42\nAcked-by= Peff\n" >>expected &&
+	printf "Acked-by= Peff\nBug #42\n" >>expected &&
 	git interpret-trailers --trim-empty --infile complex_message "ack: Peff" "bug: 42" >actual &&
 	test_cmp expected actual
 '
