@@ -108,6 +108,7 @@ int mkdir_in_gitdir(const char *path)
 int safe_create_leading_directories(char *path)
 {
 	char *next_component = path + offset_1st_component(path);
+	int attempts = 3;
 	int retval = 0;
 
 	while (!retval && next_component) {
@@ -132,6 +133,16 @@ int safe_create_leading_directories(char *path)
 			if (errno == EEXIST &&
 			    !stat(path, &st) && S_ISDIR(st.st_mode)) {
 				; /* somebody created it since we checked */
+			} else if (errno == ENOENT && --attempts) {
+				/*
+				 * Either mkdir() failed because
+				 * somebody just pruned the containing
+				 * directory, or stat() failed because
+				 * the file that was in our way was
+				 * just removed.  Either way, try
+				 * again from the beginning:
+				 */
+				next_component = path + offset_1st_component(path);
 			} else {
 				retval = -1;
 			}
