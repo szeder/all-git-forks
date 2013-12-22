@@ -330,8 +330,8 @@ static int git_trailer_config(const char *conf_key, const char *value, void *cb)
 		if (!set_name_and_type(conf_key, ".key", VALUE, &name, &type) &&
 		    !set_name_and_type(conf_key, ".command", COMMAND, &name, &type) &&
 		    !set_name_and_type(conf_key, ".where", WHERE, &name, &type) &&
-		    !set_name_and_type(conf_key, ".ifExist", IF_EXIST, &name, &type) &&
-		    !set_name_and_type(conf_key, ".ifMissing", IF_MISSING, &name, &type))
+		    !set_name_and_type(conf_key, ".ifexist", IF_EXIST, &name, &type) &&
+		    !set_name_and_type(conf_key, ".ifmissing", IF_MISSING, &name, &type))
 			return 0;
 
 		item = get_conf_item(name);
