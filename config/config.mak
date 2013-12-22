@@ -39,6 +39,7 @@ TEST_LINT = test-lint
 GIT_PROVE_OPTS= -j16 --state=slow,save
 DEFAULT_TEST_TARGET = prove
 export GIT_TEST_HTTPD = Yes
+export GIT_TEST_GIT_DAEMON = Yes
 
 GNU_ROFF = Yes
 MAN_BOLD_LITERAL = Yes
