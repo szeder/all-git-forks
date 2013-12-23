@@ -171,7 +171,6 @@ test_expect_success 'using "ifExist = overwrite"' '
 '
 
 test_expect_success 'using "ifExist = doNothing"' '
-	git config trailer.fix.key "Fixes:" &&
 	git config trailer.fix.ifExist "doNothing" &&
 	cat complex_message_body >expected &&
 	printf "Bug #42\nFixes: \nAcked-by= \nAcked-by= Junio\nAcked-by= Peff\nReviewed-by: \nSigned-off-by: \n" >>expected &&
