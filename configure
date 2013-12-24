@@ -1322,7 +1322,7 @@ Optional Features:
   --enable-pthreads=FLAGS FLAGS is the value to pass to the compiler to enable
                           POSIX Threads. The default if FLAGS is not specified
                           is to try first -pthread and then -lpthread.
-                          --without-pthreads will disable threading.
+                          --disable-pthreads will disable threading.
   --enable-jsmin=PATH     PATH is the name of a JavaScript minifier or the
                           absolute path to one.
   --enable-cssmin=PATH    PATH is the name of a CSS minifier or the absolute
