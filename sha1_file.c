@@ -107,41 +107,51 @@ int mkdir_in_gitdir(const char *path)
 
 int safe_create_leading_directories(char *path)
 {
-	char *pos = path + offset_1st_component(path);
-	struct stat st;
+	char *next_component = path + offset_1st_component(path);
+	int attempts = 3;
+	int retval = 0;
 
-	while (pos) {
-		pos = strchr(pos, '/');
-		if (!pos)
-			break;
-		while (*++pos == '/')
-			;
-		if (!*pos)
-			break;
-		*--pos = '\0';
+	while (!retval && next_component) {
+		struct stat st;
+		char *slash = strchr(next_component, '/');
+
+		if (!slash)
+			return 0;
+		while (*(slash + 1) == '/')
+			slash++;
+		next_component = slash + 1;
+		if (!*next_component)
+			return 0;
+
+		*slash = '\0';
 		if (!stat(path, &st)) {
 			/* path exists */
 			if (!S_ISDIR(st.st_mode)) {
-				*pos = '/';
-				return -3;
+				retval = -3;
 			}
-		}
-		else if (mkdir(path, 0777)) {
+		} else if (mkdir(path, 0777)) {
 			if (errno == EEXIST &&
 			    !stat(path, &st) && S_ISDIR(st.st_mode)) {
 				; /* somebody created it since we checked */
+			} else if (errno == ENOENT && --attempts) {
+				/*
+				 * Either mkdir() failed because
+				 * somebody just pruned the containing
+				 * directory, or stat() failed because
+				 * the file that was in our way was
+				 * just removed.  Either way, try
+				 * again from the beginning:
+				 */
+				next_component = path + offset_1st_component(path);
 			} else {
-				*pos = '/';
-				return -1;
+				retval = -1;
 			}
+		} else if (adjust_shared_perm(path)) {
+			retval = -2;
 		}
-		else if (adjust_shared_perm(path)) {
-			*pos = '/';
-			return -2;
-		}
-		*pos++ = '/';
+		*slash = '/';
 	}
-	return 0;
+	return retval;
 }
 
 int safe_create_leading_directories_const(const char *path)
