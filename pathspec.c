@@ -128,7 +128,11 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 		die(_("global 'literal' pathspec setting is incompatible "
 		      "with all other global pathspec settings"));
 
-	if (elt[0] != ':' || literal_global) {
+	if (flags & PATHSPEC_LITERAL_PATH)
+		global_magic = 0;
+
+	if (elt[0] != ':' || literal_global ||
+	    (flags & PATHSPEC_LITERAL_PATH)) {
 		; /* nothing to do */
 	} else if (elt[1] == '(') {
 		/* longhand */
@@ -150,7 +154,7 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 					magic |= pathspec_magic[i].bit;
 					break;
 				}
-				if (!prefixcmp(copyfrom, "prefix:")) {
+				if (starts_with(copyfrom, "prefix:")) {
 					char *endptr;
 					pathspec_prefix = strtol(copyfrom + 7,
 								 &endptr, 10);
@@ -193,11 +197,11 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 	magic |= short_magic;
 	*p_short_magic = short_magic;
 
-	/* --noglob-pathspec adds :(literal) _unless_ :(glob) is specifed */
+	/* --noglob-pathspec adds :(literal) _unless_ :(glob) is specified */
 	if (noglob_global && !(magic & PATHSPEC_GLOB))
 		global_magic |= PATHSPEC_LITERAL;
 
-	/* --glob-pathspec is overriden by :(literal) */
+	/* --glob-pathspec is overridden by :(literal) */
 	if ((global_magic & PATHSPEC_GLOB) && (magic & PATHSPEC_LITERAL))
 		global_magic &= ~PATHSPEC_GLOB;
 
@@ -405,6 +409,9 @@ void parse_pathspec(struct pathspec *pathspec,
 		item[i].magic = prefix_pathspec(item + i, &short_magic,
 						argv + i, flags,
 						prefix, prefixlen, entry);
+		if ((flags & PATHSPEC_LITERAL_PATH) &&
+		    !(magic_mask & PATHSPEC_LITERAL))
+			item[i].magic |= PATHSPEC_LITERAL;
 		if (item[i].magic & magic_mask)
 			unsupported_magic(entry,
 					  item[i].magic & magic_mask,

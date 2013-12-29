@@ -109,7 +109,7 @@ static int receive_status(int in, struct ref *refs)
 	struct ref *hint;
 	int ret = 0;
 	char *line = packet_read_line(in, NULL);
-	if (prefixcmp(line, "unpack "))
+	if (!starts_with(line, "unpack "))
 		return error("did not receive remote status");
 	if (strcmp(line, "unpack ok")) {
 		error("unpack failed: %s", line + 7);
@@ -122,7 +122,7 @@ static int receive_status(int in, struct ref *refs)
 		line = packet_read_line(in, NULL);
 		if (!line)
 			break;
-		if (prefixcmp(line, "ok ") && prefixcmp(line, "ng ")) {
+		if (!starts_with(line, "ok ") && !starts_with(line, "ng ")) {
 			error("invalid ref status from remote: %s", line);
 			ret = -1;
 			break;
@@ -206,6 +206,8 @@ int send_pack(struct send_pack_args *args,
 		quiet_supported = 1;
 	if (server_supports("agent"))
 		agent_supported = 1;
+	if (server_supports("no-thin"))
+		args->use_thin_pack = 0;
 
 	if (!remote_refs) {
 		fprintf(stderr, "No refs in common and none specified; doing nothing.\n"

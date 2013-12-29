@@ -1,4 +1,4 @@
-#!/bin/sh
+# Test framework for git.  See t/README for usage.
 #
 # Copyright (c) 2005 Junio C Hamano
 #
@@ -26,6 +26,10 @@ then
 	# outside of t/, e.g. for running tests on the test library
 	# itself.
 	TEST_DIRECTORY=$(pwd)
+else
+	# ensure that TEST_DIRECTORY is an absolute path so that it
+	# is valid even if the current working directory is changed
+	TEST_DIRECTORY=$(cd "$TEST_DIRECTORY" && pwd) || exit 1
 fi
 if test -z "$TEST_OUTPUT_DIRECTORY"
 then
@@ -573,11 +577,9 @@ then
 
 	make_valgrind_symlink () {
 		# handle only executables, unless they are shell libraries that
-		# need to be in the exec-path.  We will just use "#!" as a
-		# guess for a shell-script, since we have no idea what the user
-		# may have configured as the shell path.
+		# need to be in the exec-path.
 		test -x "$1" ||
-		test "#!" = "$(head -c 2 <"$1")" ||
+		test "# " = "$(head -c 2 <"$1")" ||
 		return;
 
 		base=$(basename "$1")
@@ -828,6 +830,10 @@ test_lazy_prereq PIPE '
 test_lazy_prereq SYMLINKS '
 	# test whether the filesystem supports symbolic links
 	ln -s x y && test -h y
+'
+
+test_lazy_prereq FILEMODE '
+	test "$(git config --bool core.filemode)" = true
 '
 
 test_lazy_prereq CASE_INSENSITIVE_FS '

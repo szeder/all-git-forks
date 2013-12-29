@@ -47,9 +47,8 @@ static void rev_list_push(struct commit *commit, int mark)
 	if (!(commit->object.flags & mark)) {
 		commit->object.flags |= mark;
 
-		if (!(commit->object.parsed))
-			if (parse_commit(commit))
-				return;
+		if (parse_commit(commit))
+			return;
 
 		prio_queue_put(&rev_list, commit);
 
@@ -128,8 +127,7 @@ static const unsigned char *get_rev(void)
 			return NULL;
 
 		commit = prio_queue_get(&rev_list);
-		if (!commit->object.parsed)
-			parse_commit(commit);
+		parse_commit(commit);
 		parents = commit->parents;
 
 		commit->object.flags |= POPPED;
@@ -176,9 +174,9 @@ static void consume_shallow_list(struct fetch_pack_args *args, int fd)
 		 */
 		char *line;
 		while ((line = packet_read_line(fd, NULL))) {
-			if (!prefixcmp(line, "shallow "))
+			if (starts_with(line, "shallow "))
 				continue;
-			if (!prefixcmp(line, "unshallow "))
+			if (starts_with(line, "unshallow "))
 				continue;
 			die("git fetch-pack: expected shallow list");
 		}
@@ -194,7 +192,7 @@ static enum ack_type get_ack(int fd, unsigned char *result_sha1)
 		die("git fetch-pack: expected ACK/NAK, got EOF");
 	if (!strcmp(line, "NAK"))
 		return NAK;
-	if (!prefixcmp(line, "ACK ")) {
+	if (starts_with(line, "ACK ")) {
 		if (!get_sha1_hex(line+4, result_sha1)) {
 			if (len < 45)
 				return ACK;
@@ -323,13 +321,13 @@ static int find_common(struct fetch_pack_args *args,
 
 		send_request(args, fd[1], &req_buf);
 		while ((line = packet_read_line(fd[0], NULL))) {
-			if (!prefixcmp(line, "shallow ")) {
+			if (starts_with(line, "shallow ")) {
 				if (get_sha1_hex(line + 8, sha1))
 					die("invalid shallow line: %s", line);
 				register_shallow(sha1);
 				continue;
 			}
-			if (!prefixcmp(line, "unshallow ")) {
+			if (starts_with(line, "unshallow ")) {
 				if (get_sha1_hex(line + 10, sha1))
 					die("invalid unshallow line: %s", line);
 				if (!lookup_object(sha1))
@@ -523,7 +521,7 @@ static void filter_refs(struct fetch_pack_args *args,
 		}
 
 		if (!keep && args->fetch_all &&
-		    (!args->depth || prefixcmp(ref->name, "refs/tags/")))
+		    (!args->depth || !starts_with(ref->name, "refs/tags/")))
 			keep = 1;
 
 		if (keep) {

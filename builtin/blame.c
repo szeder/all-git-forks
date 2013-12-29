@@ -409,7 +409,9 @@ static struct origin *find_origin(struct scoreboard *sb,
 	paths[0] = origin->path;
 	paths[1] = NULL;
 
-	parse_pathspec(&diff_opts.pathspec, PATHSPEC_ALL_MAGIC, 0, "", paths);
+	parse_pathspec(&diff_opts.pathspec,
+		       PATHSPEC_ALL_MAGIC & ~PATHSPEC_LITERAL,
+		       PATHSPEC_LITERAL_PATH, "", paths);
 	diff_setup_done(&diff_opts);
 
 	if (is_null_sha1(origin->commit->object.sha1))
@@ -1549,8 +1551,7 @@ static void assign_blame(struct scoreboard *sb, int opt)
 		 */
 		origin_incref(suspect);
 		commit = suspect->commit;
-		if (!commit->object.parsed)
-			parse_commit(commit);
+		parse_commit(commit);
 		if (reverse ||
 		    (!(commit->object.flags & UNINTERESTING) &&
 		     !(revs->max_age != -1 && commit->date < revs->max_age)))
