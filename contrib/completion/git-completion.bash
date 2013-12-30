@@ -1896,6 +1896,9 @@ _git_config ()
 		;;
 	remote.*.*)
 		local pfx="${cur%.*}." cur_="${cur##*.}"
+		if [ "$pfx" == "remote.pushdefault." ]; then
+			return
+		fi
 		__gitcomp "
 			url proxy fetch push mirror skipDefaultUpdate
 			receivepack uploadpack tagopt pushurl
@@ -1904,7 +1907,7 @@ _git_config ()
 		;;
 	remote.*)
 		local pfx="${cur%.*}." cur_="${cur#*.}"
-		__gitcomp_nl "$(__git_remotes)" "$pfx" "$cur_" "."
+		__gitcomp_2 "$(__git_remotes)" "pushdefault" "$pfx" "$cur_" "."
 		return
 		;;
 	url.*.*)
