@@ -1851,12 +1851,18 @@ _git_config ()
 		;;
 	branch.*.*)
 		local pfx="${cur%.*}." cur_="${cur##*.}"
+		if [ "$pfx" == "branch.autosetupmerge." ] ||
+			[ "$pfx" == "branch.autosetuprebase." ]; then
+			return
+		fi
 		__gitcomp "remote pushremote merge mergeoptions rebase" "$pfx" "$cur_"
 		return
 		;;
 	branch.*)
 		local pfx="${cur%.*}." cur_="${cur#*.}"
-		__gitcomp_nl "$(__git_heads)" "$pfx" "$cur_" "."
+		__gitcomp_2 "$(__git_heads)" "
+			autosetupmerge autosetuprebase
+			" "$pfx" "$cur_" "."
 		return
 		;;
 	guitool.*.*)
