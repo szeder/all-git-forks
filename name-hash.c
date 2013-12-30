@@ -227,13 +227,6 @@ struct cache_entry *index_file_exists(struct index_state *istate, const char *na
 	return NULL;
 }
 
-struct cache_entry *index_name_exists(struct index_state *istate, const char *name, int namelen, int icase)
-{
-	if (namelen > 0 && name[namelen - 1] == '/')
-		return index_dir_exists(istate, name, namelen - 1);
-	return index_file_exists(istate, name, namelen, icase);
-}
-
 void free_name_hash(struct index_state *istate)
 {
 	if (!istate->name_hash_initialized)
