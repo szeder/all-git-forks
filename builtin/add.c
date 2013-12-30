@@ -444,7 +444,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 			char path_copy[PATH_MAX];
 			if (pathspec.items[i].magic & PATHSPEC_EXCLUDE)
 				continue;
-			if (!seen[i] &&
+			if (!seen[i] && path[0] &&
 			    ((pathspec.items[i].magic &
 			      (PATHSPEC_GLOB | PATHSPEC_ICASE)) ||
 			     !file_exists(path))) {
