@@ -76,6 +76,16 @@ __gitcomp_nl ()
 	compadd -Q -S "${4- }" -p "${2-}" -- ${=1} && _ret=0
 }
 
+__gitcomp_2 ()
+{
+	emulate -L zsh
+
+	local IFS=$' \t\n'
+	compset -P '*[=:]'
+	compadd -Q -S "${5- }" -p "${3-}" -- ${=1} && _ret=0
+	compadd -Q -S "${6- }" -p "${3-}" -- ${=2} && _ret=0
+}
+
 __gitcomp_file ()
 {
 	emulate -L zsh
