@@ -23,7 +23,7 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 
 	struct option options[] = {
 		OPT_BOOL(0, "trim-empty", &trim_empty, N_("trim empty trailers")),
-		OPT_FILENAME(0, "infile", &infile, N_("use message from file")),
+		OPT_FILENAME(0, "infile", &infile, N_("use message from file, instead of stdin")),
 		OPT_END()
 	};
 
