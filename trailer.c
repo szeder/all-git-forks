@@ -484,8 +484,13 @@ static struct strbuf **read_input_file(const char *infile)
 {
 	struct strbuf sb = STRBUF_INIT;
 
-	if (strbuf_read_file(&sb, infile, 0) < 0)
-		die_errno(_("could not read input file '%s'"), infile);
+	if (infile) {
+		if (strbuf_read_file(&sb, infile, 0) < 0)
+			die_errno(_("could not read input file '%s'"), infile);
+	} else {
+		if (strbuf_read(&sb, fileno(stdin), 0) < 0)
+			die_errno(_("could not read from stdin"));
+	}
 
 	return strbuf_split(&sb, '\n');
 }
@@ -552,10 +557,8 @@ void process_trailers(const char *infile, int trim_empty, int argc, const char *
 
 	git_config(git_trailer_config, NULL);
 
-	/* Print the non trailer part of infile */
-	if (infile) {
-		process_input_file(infile, &infile_tok_first, &infile_tok_last);
-	}
+	/* Print the non trailer part of infile (or stdin if infile is NULL) */
+	process_input_file(infile, &infile_tok_first, &infile_tok_last);
 
 	arg_tok_first = process_command_line_args(argc, argv);
 
