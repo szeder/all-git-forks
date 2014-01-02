@@ -110,12 +110,15 @@ int safe_create_leading_directories(char *path)
 	char *pos = path + offset_1st_component(path);
 	struct stat st;
 
-	while (pos) {
-		pos = strchr(pos, '/');
-		if (!pos)
-			break;
-		while (*++pos == '/')
-			;
+	while (*pos) {
+		while (!is_dir_sep(*pos)) {
+			++pos;
+			if (!*pos)
+				break;
+		}
+		/* skip consecutive directory separators */
+		while (is_dir_sep(*pos))
+			++pos;
 		if (!*pos)
 			break;
 		*--pos = '\0';
