@@ -2516,6 +2516,7 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 	struct stat loginfo;
 	int log = !lstat(git_path("logs/%s", oldrefname), &loginfo);
 	const char *symref = NULL;
+	int attempts = 3;
 
 	if (log && S_ISLNK(loginfo.st_mode))
 		return error("reflog for %s is a symlink", oldrefname);
@@ -2555,12 +2556,12 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 		}
 	}
 
+ retry:
 	if (log && safe_create_leading_directories(git_path("logs/%s", newrefname))) {
 		error("unable to create directory for %s", newrefname);
 		goto rollback;
 	}
 
- retry:
 	if (log && rename(git_path(TMP_RENAMED_LOG), git_path("logs/%s", newrefname))) {
 		if (errno==EISDIR || errno==ENOTDIR) {
 			/*
@@ -2574,6 +2575,13 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 			}
 			goto retry;
 		} else {
+			if (errno == ENOENT && --attempts)
+				/*
+				 * Perhaps somebody just pruned the empty
+				 * directory into which we wanted to move the
+				 * file.
+				 */
+				goto retry;
 			error("unable to move logfile "TMP_RENAMED_LOG" to logs/%s: %s",
 				newrefname, strerror(errno));
 			goto rollback;
