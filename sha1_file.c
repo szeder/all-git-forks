@@ -113,11 +113,12 @@ int safe_create_leading_directories(char *path)
 
 	while (!retval && next_component) {
 		struct stat st;
-		char *slash = strchr(next_component, '/');
-
-		if (!slash)
+		char *slash = next_component;
+		while (*slash && !is_dir_sep(*slash))
+			slash++;
+		if (!*slash)
 			return 0;
-		while (*(slash + 1) == '/')
+		while (is_dir_sep(*(slash + 1)))
 			slash++;
 		next_component = slash + 1;
 		if (!*next_component)
