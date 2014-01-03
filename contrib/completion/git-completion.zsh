@@ -30,10 +30,10 @@ if [ -z "$script" ]; then
 	local -a locations
 	local e
 	locations=(
+		$(dirname ${funcsourcetrace[1]%:*})/git-completion.bash
 		'/etc/bash_completion.d/git' # fedora, old debian
 		'/usr/share/bash-completion/completions/git' # arch, ubuntu, new debian
 		'/usr/share/bash-completion/git' # gentoo
-		$(dirname ${funcsourcetrace[1]%:*})/git-completion.bash
 		)
 	for e in $locations; do
 		test -f $e && script="$e" && break
@@ -74,6 +74,16 @@ __gitcomp_nl ()
 	local IFS=$'\n'
 	compset -P '*[=:]'
 	compadd -Q -S "${4- }" -p "${2-}" -- ${=1} && _ret=0
+}
+
+__gitcomp_2 ()
+{
+	emulate -L zsh
+
+	local IFS=$' \t\n'
+	compset -P '*[=:]'
+	compadd -Q -S "${5- }" -p "${3-}" -- ${=1} && _ret=0
+	compadd -Q -S "${6- }" -p "${3-}" -- ${=2} && _ret=0
 }
 
 __gitcomp_file ()

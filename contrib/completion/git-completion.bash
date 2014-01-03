@@ -233,6 +233,36 @@ __gitcomp_nl ()
 	__gitcompadd "$1" "${2-}" "${3-$cur}" "${4- }"
 }
 
+# Generates completion reply from two sets of completion words, with
+# configurable suffixes for each.
+#
+# It accepts 2 to 6 arguments:
+# 1: First set of possible completion words.
+# 2: Second set of possible completion words.
+# 3: A prefix to be added to each completion word (both $1 and $2)
+#    (optional).
+# 4: Generate possible completion matches for this word (optional).
+# 5: A suffix to be appended to each completion word in the first set
+#    ($1) instead of the default space (optional).
+# 6: A suffix to be appended to each completion word in the second set
+#    ($2) instead of the default space (optional).
+__gitcomp_2 ()
+{
+	local pfx="${3-}" cur_="${4-$cur}" sfx="${5- }" sfx2="${6- }" i=0
+	local IFS=$' \t\n'
+
+	for x in $1; do
+		if [[ "$x" == "$cur_"* ]]; then
+			COMPREPLY[i++]="$pfx$x$sfx"
+		fi
+	done
+	for x in $2; do
+		if [[ "$x" == "$cur_"* ]]; then
+			COMPREPLY[i++]="$pfx$x$sfx2"
+		fi
+	done
+}
+
 # Generates completion reply with compgen from newline-separated possible
 # completion filenames.
 # It accepts 1 to 3 arguments:
@@ -1821,12 +1851,18 @@ _git_config ()
 		;;
 	branch.*.*)
 		local pfx="${cur%.*}." cur_="${cur##*.}"
+		if [ "$pfx" == "branch.autosetupmerge." ] ||
+			[ "$pfx" == "branch.autosetuprebase." ]; then
+			return
+		fi
 		__gitcomp "remote pushremote merge mergeoptions rebase" "$pfx" "$cur_"
 		return
 		;;
 	branch.*)
 		local pfx="${cur%.*}." cur_="${cur#*.}"
-		__gitcomp_nl "$(__git_heads)" "$pfx" "$cur_" "."
+		__gitcomp_2 "$(__git_heads)" "
+			autosetupmerge autosetuprebase
+			" "$pfx" "$cur_" "."
 		return
 		;;
 	guitool.*.*)
@@ -1860,6 +1896,9 @@ _git_config ()
 		;;
 	remote.*.*)
 		local pfx="${cur%.*}." cur_="${cur##*.}"
+		if [ "$pfx" == "remote.pushdefault." ]; then
+			return
+		fi
 		__gitcomp "
 			url proxy fetch push mirror skipDefaultUpdate
 			receivepack uploadpack tagopt pushurl
@@ -1868,7 +1907,7 @@ _git_config ()
 		;;
 	remote.*)
 		local pfx="${cur%.*}." cur_="${cur#*.}"
-		__gitcomp_nl "$(__git_remotes)" "$pfx" "$cur_" "."
+		__gitcomp_2 "$(__git_remotes)" "pushdefault" "$pfx" "$cur_" "."
 		return
 		;;
 	url.*.*)
