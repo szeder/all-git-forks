@@ -1078,6 +1078,7 @@ struct object_info {
 	enum object_type *typep;
 	unsigned long *sizep;
 	unsigned long *disk_sizep;
+	unsigned char *delta_base_sha1;
 
 	/* Response */
 	enum {
