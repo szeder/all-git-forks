@@ -286,12 +286,6 @@ static int git_help_config(const char *var, const char *value, void *cb)
 
 static struct cmdnames main_cmds, other_cmds;
 
-static int is_git_command(const char *s)
-{
-	return is_in_cmdlist(&main_cmds, s) ||
-		is_in_cmdlist(&other_cmds, s);
-}
-
 static const char *prepend(const char *prefix, const char *cmd)
 {
 	size_t pre_len = strlen(prefix);

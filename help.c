@@ -166,6 +166,75 @@ static void list_commands_in_dir(struct cmdnames *cmds,
 	strbuf_release(&buf);
 }
 
+static int command_exists_in_dir(const char *path, const char *name)
+{
+	int ret;
+	struct strbuf buf = STRBUF_INIT;
+
+	strbuf_addf(&buf, "%s/%s", path, name);
+	ret = is_executable(buf.buf);
+	strbuf_release(&buf);
+	return ret;
+}
+
+static void add_name_to_path(struct strbuf *buf,
+			     const char *path,
+			     int pathlen, const char *name)
+{
+	if (pathlen < 0)
+		pathlen = strlen(path);
+
+	if (pathlen)
+		strbuf_addf(&buf, "%.*s/%s", pathlen, path, name);
+	else
+		strbuf_addstr(&buf, name);
+
+#if defined(GIT_WINDOWS_NATIVE)
+	strbuf_addstr(&buf, ".exe");
+#endif
+}
+
+int is_git_command(const char *name)
+{
+	struct strbuf buf = STRBUF_INIT;
+	const char *env_path, *exec_path;
+
+	if (is_builtin_command(name))
+		return 1;
+
+	exec_path = git_exec_path();
+	if (exec_path) {
+		add_name_to_path(&buf, exec_path, -1, name);
+		if (is_executable(buf.buf))
+			goto found;
+		strbuf_reset(&buf);
+	}
+
+	env_path = getenv("PATH");
+	if (env_path) {
+		const char *current = env_path;
+
+		while (1) {
+			const char *next = strchr(current, PATH_SEP);
+
+			add_name_to_path(&buf, current, next - current, name);
+			if (is_executable(buf.buf))
+				goto found;
+			next++;
+			if (!*next)
+				break;
+			current = next;
+		}
+	}
+
+	strbuf_release(&buf);
+	return 0;
+
+found:
+	strbuf_release(&buf);
+	return 1;
+}
+
 void load_command_list(const char *prefix,
 		struct cmdnames *main_cmds,
 		struct cmdnames *other_cmds)

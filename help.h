@@ -24,6 +24,7 @@ extern void load_command_list(const char *prefix,
 extern void add_cmdname(struct cmdnames *cmds, const char *name, int len);
 /* Here we require that excludes is a sorted list. */
 extern void exclude_cmds(struct cmdnames *cmds, struct cmdnames *excludes);
+extern int is_git_command(const char *name);
 extern int is_in_cmdlist(struct cmdnames *cmds, const char *name);
 extern void list_commands(unsigned int colopts, struct cmdnames *main_cmds, struct cmdnames *other_cmds);
 
