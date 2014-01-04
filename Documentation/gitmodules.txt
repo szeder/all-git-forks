@@ -37,8 +37,10 @@ submodule.<name>.url::
 
 submodule.<name>.update::
 	Defines what to do when the submodule is updated by the superproject.
-	If 'checkout' (the default), the new commit specified in the
-	superproject will be checked out in the submodule on a detached HEAD.
+	If 'checkout' (the default), the new commit (or the branch, when using
+	the '--attach' switch or the 'submodule.<name>.attach' property is set
+	to 'true' during an update operation) specified in the superproject will
+	be checked out in the submodule.
 	If 'rebase', the current branch of the submodule will be rebased onto
 	the commit specified in the superproject. If 'merge', the commit
 	specified in the superproject will be merged into the current branch
@@ -53,6 +55,11 @@ submodule.<name>.branch::
 	A remote branch name for tracking updates in the upstream submodule.
 	If the option is not specified, it defaults to 'master'.  See the
 	`--remote` documentation in linkgit:git-submodule[1] for details.
+
+submodule.<name>.attach::
+	Determine if the update operation will produce a detached HEAD or not.
+	Valid values are `true` or `false`. If the property is set to `true`
+	and `submodule.<name>.branch`, it will default to `master`
 
 submodule.<name>.fetchRecurseSubmodules::
 	This option can be used to control recursive fetching of this

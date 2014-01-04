@@ -5,11 +5,11 @@
 # Copyright (c) 2007 Lars Hjemli
 
 dashless=$(basename "$0" | sed -e 's/-/ /')
-USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <repository>] [--] <repository> [<path>]
+USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <repository>] [--attached-update] [--] <repository> [<path>]
    or: $dashless [--quiet] status [--cached] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] init [--] [<path>...]
    or: $dashless [--quiet] deinit [-f|--force] [--] <path>...
-   or: $dashless [--quiet] update [--init] [--remote] [-N|--no-fetch] [-f|--force] [--rebase] [--reference <repository>] [--merge] [--recursive] [--] [<path>...]
+   or: $dashless [--quiet] update [--init] [--remote] [-N|--no-fetch] [-f|--force] [--rebase] [--reference <repository>] [--attach | --detach] [--merge] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] summary [--cached|--files] [--summary-limit <n>] [commit] [--] [<path>...]
    or: $dashless [--quiet] foreach [--recursive] <command>
    or: $dashless [--quiet] sync [--recursive] [--] [<path>...]"
@@ -36,6 +36,8 @@ update=
 prefix=
 custom_name=
 depth=
+attach=
+attached_update=
 
 # The function takes at most 2 arguments. The first argument is the
 # URL that navigates to the submodule origin repo. When relative, this URL
@@ -352,6 +354,9 @@ cmd_add()
 			custom_name=$2
 			shift
 			;;
+		--attached-update)
+			attached_update=yes
+			;;
 		--depth)
 			case "$2" in '') usage ;; esac
 			depth="--depth=$2"
@@ -490,6 +495,12 @@ Use -f if you really want to add it." >&2
 	if test -n "$branch"
 	then
 		git config -f .gitmodules submodule."$sm_name".branch "$branch"
+	fi &&
+	if test -n "$attached_update"
+	then
+		# We'll stay stick to the HEAD, no need to track revision sha1
+		git config -f .gitmodules submodule."$sm_name".attach "true"
+		git config -f .gitmodules submodule."$sm_name".ignore "all"
 	fi &&
 	git add --force .gitmodules ||
 	die "$(eval_gettext "Failed to register submodule '\$sm_path'")"
@@ -632,6 +643,23 @@ cmd_init()
 			git config submodule."$name".update "$upd" ||
 			die "$(eval_gettext "Failed to register update mode for submodule path '\$displaypath'")"
 		fi
+
+		# Copy "attach" setting when it is not set yet
+		if attached="$(git config -f .gitmodules submodule."$name".attach)" &&
+		   test -n "$attached" &&
+		   test -z "$(git config submodule."$name".attach)"
+		then
+			case "$attached" in
+			true | false)
+				;; # Valid attach flag values
+			*)
+				echo >&2 "warning: invalid attach flag value for submodule '$name'"
+				upd=none
+				;;
+			esac
+			git config submodule."$name".attach "$attached" ||
+			die "$(eval_gettext "Failed to register attach option for submodule path '\$displaypath'")"
+		fi
 	done
 }
 
@@ -750,6 +778,14 @@ cmd_update()
 		--reference=*)
 			reference="$1"
 			;;
+		--attach)
+			if test "$attach" = "false" ; then usage ; fi
+			attach="true"
+			;;
+		--detach)
+			if test "$attach" = "true" ; then usage ; fi
+			attach="false"
+			;;
 		-m|--merge)
 			update="merge"
 			;;
@@ -800,6 +836,27 @@ cmd_update()
 		name=$(module_name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
 		branch=$(get_submodule_config "$name" branch master)
+		if test -n "$attach"
+		then
+			attach_module=$attach
+		else
+			attach_module=$(git config submodule."$name".attach)
+			case "$attach_module" in
+			'')
+				;; # Unset attach flag
+			true|false)
+				;; # Valid attach flag values
+			*)
+				echo >&2 "warning: invalid attach flag value for submodule '$name'"
+				attach_module=
+				;;
+			esac
+		fi
+		if test "$attach_module" = "false"
+		then
+			# Normalize attach 'false' flag value
+			attach_module=
+		fi
 		if ! test -z "$update"
 		then
 			update_module=$update
@@ -848,7 +905,7 @@ Maybe you want to use 'update --init'?")"
 			die "$(eval_gettext "Unable to find current revision in submodule path '\$displaypath'")"
 		fi
 
-		if test -n "$remote"
+		if test -n "$remote" -o -n "$attach_module"
 		then
 			if test -z "$nofetch"
 			then
@@ -862,7 +919,17 @@ Maybe you want to use 'update --init'?")"
 			die "$(eval_gettext "Unable to find current ${remote_name}/${branch} revision in submodule path '\$sm_path'")"
 		fi
 
-		if test "$subsha1" != "$sha1" -o -n "$force"
+		head_rev_ref=$(clear_local_git_env; cd "$sm_path" && git rev-parse --abbrev-ref HEAD) ||
+		die "$(eval_gettext "Unable to determine revision ref in submodule path '\$sm_path'")"
+		head_detached=
+		if test "$head_rev_ref" = "HEAD"
+		then
+			# Determine if the HEAD is detached
+			head_detached="true"
+		fi
+
+		if test "$subsha1" != "$sha1" || test -n "$attach_module" -a -n "$head_detached" ||
+			test -z "$attach_module" -a -z "$head_detached" || test -n "$force"
 		then
 			subforce=$force
 			# If we don't already have a -f flag and the submodule has never been checked out
@@ -882,40 +949,108 @@ Maybe you want to use 'update --init'?")"
 			fi
 
 			# Is this something we just cloned?
+			just_cloned=
 			case ";$cloned_modules;" in
 			*";$name;"*)
 				# then there is no local change to integrate
-				update_module= ;;
+				update_module="checkout"
+				just_cloned=yes
+				;;
 			esac
 
+			if test -z "$update_module"
+			then
+				# Fallback to checkout
+				update_module="checkout"
+			fi
+
+			command_attach=:
+			suffix_attach=
+			if test "$update_module" != "checkout"
+			then
+				if test -n "$attach_module" -a -n "$head_detached"
+				then
+					# We need to reattach to the branch
+					command_attach="git checkout $subforce -q"
+					suffix_attach=$branch
+				elif test -z "$attach_module" -a -z "$head_detached"
+				then
+					# We need to detach from the branch
+					command_attach="git checkout $subforce -q"
+					suffix_attach=$sha1
+				fi
+			fi
+
+			command_pre=:
+			suffix_pre=
+			command_post=:
+			suffix_pre=
+			suffix=
 			must_die_on_failure=
+			custom_update=
 			case "$update_module" in
 			rebase)
 				command="git rebase"
+				suffix=$sha1
 				die_msg="$(eval_gettext "Unable to rebase '\$sha1' in submodule path '\$displaypath'")"
 				say_msg="$(eval_gettext "Submodule path '\$displaypath': rebased into '\$sha1'")"
 				must_die_on_failure=yes
+				if test -n "$attach_module" -a -n "$head_detached" && test "$subsha1" != "$sha1"
+				then
+					# After the rebase, we merge orphaned commits in the branch
+					command_post="git merge"
+					suffix_post=$subsha1
+				fi
 				;;
 			merge)
+				if test -n "$attach_module" -a -n "$head_detached" && test "$subsha1" != "$sha1"
+				then
+					# Prior the rebase, we merge orphaned commits in in the branch
+					command_pre="git merge"
+					suffix_pre=$subsha1
+				fi
 				command="git merge"
+				suffix=$sha1
 				die_msg="$(eval_gettext "Unable to merge '\$sha1' in submodule path '\$displaypath'")"
 				say_msg="$(eval_gettext "Submodule path '\$displaypath': merged in '\$sha1'")"
 				must_die_on_failure=yes
 				;;
+			checkout)
+				if test -n "$attach_module"
+				then
+					command="git checkout $subforce -q"
+					suffix=$branch
+					die_msg="$(eval_gettext "Unable to checkout banch '\$branch' in submodule path '\$displaypath'")"
+					say_msg="$(eval_gettext "Submodule path '\$displaypath': checked out branch '\$branch'")"
+					if test -z "$just_cloned" -a && test "$subsha1" != "$sha1"
+					then
+						# Perform a fast-forward only merge of the origin
+						command_post="git merge $subforce --ff-only"
+						suffix_post="origin/$branch"
+					fi
+				else
+					command="git checkout $subforce -q"
+					suffix=$sha1
+					die_msg="$(eval_gettext "Unable to checkout '\$sha1' in submodule path '\$displaypath'")"
+					say_msg="$(eval_gettext "Submodule path '\$displaypath': checked out '\$sha1'")"
+				fi
+				;;
 			!*)
 				command="${update_module#!}"
+				suffix=$sha1
 				die_msg="$(eval_gettext "Execution of '\$command \$sha1' failed in submodule  path '\$prefix\$sm_path'")"
 				say_msg="$(eval_gettext "Submodule path '\$prefix\$sm_path': '\$command \$sha1'")"
 				must_die_on_failure=yes
+				custom_update=yes
 				;;
 			*)
-				command="git checkout $subforce -q"
-				die_msg="$(eval_gettext "Unable to checkout '\$sha1' in submodule path '\$displaypath'")"
-				say_msg="$(eval_gettext "Submodule path '\$displaypath': checked out '\$sha1'")"
+				# Valid user configurable update modes are already filtered above
+				die "$(eval_gettext "Unexpected update mode in the current flow")"
 				;;
 			esac
 
-			if (clear_local_git_env; cd "$sm_path" && $command "$sha1")
+			if (clear_local_git_env; cd "$sm_path" && $command_attach "$suffix_attach" &&
+				$command_pre "$suffix_pre" && $command "$suffix" && $command_post "$suffix_pro")
 			then
 				say "$say_msg"
 			elif test -n "$must_die_on_failure"
