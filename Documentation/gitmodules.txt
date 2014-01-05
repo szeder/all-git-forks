@@ -55,7 +55,7 @@ submodule.<name>.branch::
 	If the option is not specified, it defaults to 'master'.  See the
 	`--remote` documentation in linkgit:git-submodule[1] for details.
 
-submodule.<name>.attach::
+submodule.<name>.attached::
 	Determine if the update operation will produce a detached HEAD or not.
 	Valid values are `true` or `false`. If the property is set to `true`
 	and `submodule.<name>.branch` is not set, the branch `master` will

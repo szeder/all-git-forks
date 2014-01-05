@@ -37,6 +37,7 @@ prefix=
 custom_name=
 depth=
 attach=
+detach=
 attached_update=
 
 # The function takes at most 2 arguments. The first argument is the
@@ -499,7 +500,7 @@ Use -f if you really want to add it." >&2
 	if test -n "$attached_update"
 	then
 		# We'll stay stick to the HEAD, no need to track revision sha1
-		git config -f .gitmodules submodule."$sm_name".attach "true"
+		git config -f .gitmodules submodule."$sm_name".attached "true"
 		git config -f .gitmodules submodule."$sm_name".ignore "all"
 	fi &&
 	git add --force .gitmodules ||
@@ -644,20 +645,19 @@ cmd_init()
 			die "$(eval_gettext "Failed to register update mode for submodule path '\$displaypath'")"
 		fi
 
-		# Copy "attach" setting when it is not set yet
-		if attached="$(git config -f .gitmodules submodule."$name".attach)" &&
+		# Copy "attached" setting when it is not set yet
+		if attached="$(git config -f .gitmodules submodule."$name".attached)" &&
 		   test -n "$attached" &&
-		   test -z "$(git config submodule."$name".attach)"
+		   test -z "$(git config submodule."$name".attached)"
 		then
 			case "$attached" in
 			true | false)
 				;; # Valid attach flag values
 			*)
 				echo >&2 "warning: invalid attach flag value for submodule '$name'"
-				upd=none
 				;;
 			esac
-			git config submodule."$name".attach "$attached" ||
+			git config submodule."$name".attached "$attached" ||
 			die "$(eval_gettext "Failed to register attach option for submodule path '\$displaypath'")"
 		fi
 	done
@@ -779,12 +779,12 @@ cmd_update()
 			reference="$1"
 			;;
 		--attach)
-			if test "$attach" = "false" ; then usage ; fi
-			attach="true"
+			if test -n "$detach" ; then usage ; fi
+			attach=1
 			;;
 		--detach)
-			if test "$attach" = "true" ; then usage ; fi
-			attach="false"
+			if test -n "$attach" ; then usage ; fi
+			detach=1
 			;;
 		-m|--merge)
 			update="merge"
@@ -836,26 +836,27 @@ cmd_update()
 		name=$(module_name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
 		branch=$(get_submodule_config "$name" branch master)
-		if test -n "$attach"
+		attach_module=
+		detach_module=
+		if test -n "$attach" -o -n "$detach"
 		then
 			attach_module=$attach
+			detach_module=$detach
 		else
-			attach_module=$(git config submodule."$name".attach)
-			case "$attach_module" in
+			attached=$(git config submodule."$name".attached)
+			case "$attached" in
 			'')
 				;; # Unset attach flag
-			true|false)
-				;; # Valid attach flag values
+			true)
+				attach_module=1
+				;;
+			false)
+				detach_module=1
+				;;
 			*)
 				echo >&2 "warning: invalid attach flag value for submodule '$name'"
-				attach_module=
 				;;
 			esac
-		fi
-		if test "$attach_module" = "false"
-		then
-			# Normalize attach 'false' flag value
-			attach_module=
 		fi
 		if ! test -z "$update"
 		then
@@ -905,6 +906,15 @@ Maybe you want to use 'update --init'?")"
 			die "$(eval_gettext "Unable to find current revision in submodule path '\$displaypath'")"
 		fi
 
+		head_rev_ref=$(clear_local_git_env; cd "$sm_path" && git rev-parse --abbrev-ref HEAD) ||
+		die "$(eval_gettext "Unable to determine revision ref in submodule path '\$sm_path'")"
+		head_detached=
+		if test "$head_rev_ref" = "HEAD"
+		then
+			# Determine if the HEAD is detached
+			head_detached="true"
+		fi
+
 		if test -n "$remote" -o -n "$attach_module"
 		then
 			if test -z "$nofetch"
@@ -919,17 +929,8 @@ Maybe you want to use 'update --init'?")"
 			die "$(eval_gettext "Unable to find current ${remote_name}/${branch} revision in submodule path '\$sm_path'")"
 		fi
 
-		head_rev_ref=$(clear_local_git_env; cd "$sm_path" && git rev-parse --abbrev-ref HEAD) ||
-		die "$(eval_gettext "Unable to determine revision ref in submodule path '\$sm_path'")"
-		head_detached=
-		if test "$head_rev_ref" = "HEAD"
-		then
-			# Determine if the HEAD is detached
-			head_detached="true"
-		fi
-
 		if test "$subsha1" != "$sha1" || test -n "$attach_module" -a -n "$head_detached" ||
-			test -z "$attach_module" -a -z "$head_detached" || test -n "$force"
+			test -n "$detach_module" -a -z "$head_detached" || test -n "$force"
 		then
 			subforce=$force
 			# If we don't already have a -f flag and the submodule has never been checked out
@@ -973,7 +974,7 @@ Maybe you want to use 'update --init'?")"
 					# We need to reattach to the branch
 					command_attach="git checkout $subforce -q"
 					suffix_attach=$branch
-				elif test -z "$attach_module" -a -z "$head_detached"
+				elif test -n "$detach_module" -a -z "$head_detached"
 				then
 					# We need to detach from the branch
 					command_attach="git checkout $subforce -q"
