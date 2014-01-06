@@ -83,6 +83,9 @@ static struct bitmap_index {
 	/* Bitmap result of the last performed walk */
 	struct bitmap *result;
 
+	/* "have" bitmap from the last performed walk */
+	struct bitmap *haves;
+
 	/* Version of the bitmap index */
 	unsigned int version;
 
@@ -737,8 +740,8 @@ int prepare_bitmap_walk(struct rev_info *revs)
 		bitmap_and_not(wants_bitmap, haves_bitmap);
 
 	bitmap_git.result = wants_bitmap;
+	bitmap_git.haves = haves_bitmap;
 
-	bitmap_free(haves_bitmap);
 	return 0;
 }
 
@@ -1065,4 +1068,20 @@ int rebuild_existing_bitmaps(struct packing_data *mapping,
 	free(reposition);
 	bitmap_free(rebuild);
 	return 0;
+}
+
+int bitmap_have(const unsigned char *sha1)
+{
+	int pos;
+
+	if (!bitmap_git.loaded)
+		return 0; /* no bitmap loaded */
+	if (!bitmap_git.haves)
+		return 0; /* walk had no "haves" */
+
+	pos = bitmap_position_packfile(sha1);
+	if (pos < 0)
+		return 0;
+
+	return bitmap_get(bitmap_git.haves, pos);
 }
