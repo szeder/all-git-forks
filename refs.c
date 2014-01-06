@@ -2533,7 +2533,14 @@ static int rename_tmp_log(const char *newrefname)
 	int attempts = 4;
 
  retry:
-	if (safe_create_leading_directories(git_path("logs/%s", newrefname))) {
+	switch (safe_create_leading_directories(git_path("logs/%s", newrefname))) {
+	case SCLD_OK:
+		break; /* success */
+	case SCLD_VANISHED:
+		if (--attempts > 0)
+			goto retry;
+		/* fall through */
+	default:
 		error("unable to create directory for %s", newrefname);
 		return -1;
 	}
