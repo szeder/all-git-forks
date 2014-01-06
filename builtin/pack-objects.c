@@ -59,6 +59,7 @@ static unsigned long pack_size_limit;
 static int depth = 50;
 static int delta_search_threads;
 static int pack_to_stdout;
+static int thin = 0;
 static int num_preferred_base;
 static struct progress *progress_state;
 
@@ -1478,6 +1479,20 @@ static void check_object(struct object_entry *entry)
 			base_entry->delta_child = entry;
 			unuse_pack(&w_curs);
 			return;
+		} else if(thin && base_ref && bitmap_have(base_ref)) {
+			entry->type = entry->in_pack_type;
+			entry->delta_size = entry->size;
+			/*
+			 * XXX we'll leak this, but it's probably OK
+			 * since we'll exit immediately after the packing
+			 * is done
+			 */
+			entry->delta = xcalloc(1, sizeof(*entry->delta));
+			hashcpy(entry->delta->idx.sha1, base_ref);
+			entry->delta->preferred_base = 1;
+			entry->delta->filled = 1;
+			unuse_pack(&w_curs);
+			return;
 		}
 
 		if (entry->type) {
@@ -2770,7 +2785,6 @@ static int option_parse_unpack_unreachable(const struct option *opt,
 int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 {
 	int use_internal_rev_list = 0;
-	int thin = 0;
 	int shallow = 0;
 	int all_progress_implied = 0;
 	struct argv_array rp = ARGV_ARRAY_INIT;
