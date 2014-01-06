@@ -5,7 +5,7 @@
 # Copyright (c) 2007 Lars Hjemli
 
 dashless=$(basename "$0" | sed -e 's/-/ /')
-USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <repository>] [--attached-update] [--] <repository> [<path>]
+USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <repository>] [--attached] [--] <repository> [<path>]
    or: $dashless [--quiet] status [--cached] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] init [--] [<path>...]
    or: $dashless [--quiet] deinit [-f|--force] [--] <path>...
@@ -38,7 +38,7 @@ custom_name=
 depth=
 attach=
 detach=
-attached_update=
+attached=
 
 # The function takes at most 2 arguments. The first argument is the
 # URL that navigates to the submodule origin repo. When relative, this URL
@@ -355,8 +355,8 @@ cmd_add()
 			custom_name=$2
 			shift
 			;;
-		--attached-update)
-			attached_update=yes
+		--attached)
+			attached=yes
 			;;
 		--depth)
 			case "$2" in '') usage ;; esac
@@ -497,7 +497,7 @@ Use -f if you really want to add it." >&2
 	then
 		git config -f .gitmodules submodule."$sm_name".branch "$branch"
 	fi &&
-	if test -n "$attached_update"
+	if test -n "$attached"
 	then
 		# We'll stay stick to the HEAD, no need to track revision sha1
 		git config -f .gitmodules submodule."$sm_name".attached "true"
@@ -643,22 +643,6 @@ cmd_init()
 			esac
 			git config submodule."$name".update "$upd" ||
 			die "$(eval_gettext "Failed to register update mode for submodule path '\$displaypath'")"
-		fi
-
-		# Copy "attached" setting when it is not set yet
-		if attached="$(git config -f .gitmodules submodule."$name".attached)" &&
-		   test -n "$attached" &&
-		   test -z "$(git config submodule."$name".attached)"
-		then
-			case "$attached" in
-			true | false)
-				;; # Valid attach flag values
-			*)
-				echo >&2 "warning: invalid attach flag value for submodule '$name'"
-				;;
-			esac
-			git config submodule."$name".attached "$attached" ||
-			die "$(eval_gettext "Failed to register attach option for submodule path '\$displaypath'")"
 		fi
 	done
 }
@@ -836,27 +820,18 @@ cmd_update()
 		name=$(module_name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
 		branch=$(get_submodule_config "$name" branch master)
-		attach_module=
-		detach_module=
-		if test -n "$attach" -o -n "$detach"
-		then
-			attach_module=$attach
-			detach_module=$detach
-		else
-			attached=$(git config submodule."$name".attached)
-			case "$attached" in
-			'')
-				;; # Unset attach flag
-			true)
-				attach_module=1
-				;;
-			false)
-				detach_module=1
-				;;
-			*)
-				echo >&2 "warning: invalid attach flag value for submodule '$name'"
-				;;
-			esac
+		attached_config=$(get_submodule_config "$name" attached "")
+		case "$attached_config" in
+		''|true)
+			# Valid flag values
+			;;
+		false)
+			# Valid flag value but we normalize to empty string
+			attached_config=
+		*)
+			die "$(eval_gettext "error: invalid attached flag value '$attached' for submodule '$name'")"
+			;;
+		esac
 		fi
 		if ! test -z "$update"
 		then
@@ -871,8 +846,7 @@ cmd_update()
 			!*)
 				;; # Custom update command
 			*)
-				update_module=
-				echo >&2 "warning: invalid update mode for submodule '$name'"
+				die "$(eval_gettext "error: invalid update mode '$update_module' for submodule '$name'")"
 				;;
 			esac
 		fi
@@ -915,7 +889,7 @@ Maybe you want to use 'update --init'?")"
 			head_detached="true"
 		fi
 
-		if test -n "$remote" -o -n "$attach_module"
+		if test -n "$remote" || test -z "$attached_config"
 		then
 			if test -z "$nofetch"
 			then
@@ -929,8 +903,8 @@ Maybe you want to use 'update --init'?")"
 			die "$(eval_gettext "Unable to find current ${remote_name}/${branch} revision in submodule path '\$sm_path'")"
 		fi
 
-		if test "$subsha1" != "$sha1" || test -n "$attach_module" -a -n "$head_detached" ||
-			test -n "$detach_module" -a -z "$head_detached" || test -n "$force"
+		if test "$subsha1" != "$sha1" || test -n "$attach" -a -n "$head_detached" ||
+			test -n "$detach" -a -z "$head_detached" || test -n "$force"
 		then
 			subforce=$force
 			# If we don't already have a -f flag and the submodule has never been checked out
@@ -969,12 +943,12 @@ Maybe you want to use 'update --init'?")"
 			suffix_attach=
 			if test "$update_module" != "checkout"
 			then
-				if test -n "$attach_module" -a -n "$head_detached"
+				if test -n "$attach" -a -n "$head_detached"
 				then
 					# We need to reattach to the branch
 					command_attach="git checkout $subforce -q"
 					suffix_attach=$branch
-				elif test -n "$detach_module" -a -z "$head_detached"
+				elif test -n "$detach" -a -z "$head_detached"
 				then
 					# We need to detach from the branch
 					command_attach="git checkout $subforce -q"
@@ -996,7 +970,7 @@ Maybe you want to use 'update --init'?")"
 				die_msg="$(eval_gettext "Unable to rebase '\$sha1' in submodule path '\$displaypath'")"
 				say_msg="$(eval_gettext "Submodule path '\$displaypath': rebased into '\$sha1'")"
 				must_die_on_failure=yes
-				if test -n "$attach_module" -a -n "$head_detached" && test "$subsha1" != "$sha1"
+				if test -n "$attach" -a -n "$head_detached" && test "$subsha1" != "$sha1"
 				then
 					# After the rebase, we merge orphaned commits in the branch
 					command_post="git merge"
@@ -1004,7 +978,7 @@ Maybe you want to use 'update --init'?")"
 				fi
 				;;
 			merge)
-				if test -n "$attach_module" -a -n "$head_detached" && test "$subsha1" != "$sha1"
+				if test -n "$attach" -a -n "$head_detached" && test "$subsha1" != "$sha1"
 				then
 					# Prior the rebase, we merge orphaned commits in in the branch
 					command_pre="git merge"
@@ -1048,7 +1022,7 @@ Maybe you want to use 'update --init'?")"
 				# Valid user configurable update modes are already filtered above
 				die "$(eval_gettext "Unexpected update mode in the current flow")"
 				;;
-			esac
+			esac$name
 
 			if (clear_local_git_env; cd "$sm_path" && $command_attach "$suffix_attach" &&
 				$command_pre "$suffix_pre" && $command "$suffix" && $command_post "$suffix_pro")
@@ -1061,6 +1035,24 @@ Maybe you want to use 'update --init'?")"
 				err="${err};$die_msg"
 				continue
 			fi
+		fi
+
+		set_attached_error=
+		# If prompted to attach we set the local 'attached' property to 'true'
+		if test -n "$attach" -o -n "$detach"
+		then
+			git config submodule."$name".attach "true" || set_attached_error = 1
+		fi
+
+		# If prompted to dettach we unset the local 'attached' property instead
+		if test -n "$attach" -o -n "$detach"
+		then
+			git config --unset submodule."$name".attach || set_attached_error = 1
+		fi
+
+		if test -n "$set_attached_error"
+		then
+			die "$(eval_gettext "Failed to register attached flag for submodule path '\$displaypath'")"
 		fi
 
 		if test -n "$recursive"
