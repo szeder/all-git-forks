@@ -112,17 +112,25 @@ enum scld_error safe_create_leading_directories(char *path)
 
 	while (ret == SCLD_OK && next_component) {
 		struct stat st;
-		char *slash = strchr(next_component, '/');
+		char *slash;
+		int was_slash;
 
-		if (!slash)
+		for (slash = next_component;
+		     *slash && !is_dir_sep(*slash);
+		     slash++)
+			;
+
+		if (!*slash)
 			break;
 
 		next_component = slash + 1;
-		while (*next_component == '/')
+
+		while (is_dir_sep(*next_component))
 			next_component++;
 		if (!*next_component)
 			break;
 
+		was_slash = *slash;
 		*slash = '\0';
 		if (!stat(path, &st)) {
 			/* path exists */
@@ -148,7 +156,7 @@ enum scld_error safe_create_leading_directories(char *path)
 		} else if (adjust_shared_perm(path)) {
 			ret = SCLD_PERMS;
 		}
-		*slash = '/';
+		*slash = was_slash;
 	}
 	return ret;
 }
