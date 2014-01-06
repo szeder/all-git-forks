@@ -212,4 +212,56 @@ test_expect_success 'with input from stdin' '
 	test_cmp expected actual
 '
 
+test_expect_success 'with simple command' '
+	git config trailer.sign.key "Signed-off-by: " &&
+	git config trailer.sign.where "after" &&
+	git config trailer.sign.ifExist "addIfDifferentNeighbor" &&
+	git config trailer.sign.command "echo \"A U Thor <author@example.com>\"" &&
+	cat complex_message_body >expected &&
+	printf "Fixes: \nAcked-by= \nReviewed-by: \nSigned-off-by: \nSigned-off-by: A U Thor <author@example.com>\n" >>expected &&
+	git interpret-trailers "review:" "fix=22" < complex_message >actual &&
+	test_cmp expected actual
+'
+
+exit 1
+
+test_expect_success 'with command using commiter information' '
+	git config trailer.sign.key "Signed-off-by: " &&
+	git config trailer.sign.where "after" &&
+	git config trailer.sign.ifExist "addIfDifferentNeighbor" &&
+	git config trailer.sign.command "echo \"$GIT_COMMITER_NAME <$GIT_COMMITER_EMAIL>\"" &&
+	cat complex_message_body >expected &&
+	printf "Fixes: \nAcked-by= \nReviewed-by: \nSigned-off-by: \nSigned-off-by: A U Thor <author@example.com>\n" >>expected &&
+	git interpret-trailers "review:" "fix=22" < complex_message >actual &&
+	test_cmp expected actual
+'
+
+# TODO
+
+# 1)
+
+# [trailer "change-id"]
+#    style = append-only-if-missing
+#    trailer = "Change-id:"
+#    command = 'git hash-object -t commit --stdin < $GIT_PROTO_COMMIT'
+
+# [trailer "fixes"]
+#    style = overwrite
+#    trailer = "Fixes:"
+#    command = 'git log -1 --oneline --format="%h (%s)" --abbrev-commit --abbrev=14 $ARG'
+
+# git log -1 --oneline --format="%h (%s)" --abbrev-commit --abbrev=14 HEAD
+
+# 2)
+
+# Documentation!!!
+
+test_expect_success 'setup a commit' '
+	echo "Content of the first commit." > a.txt &&
+	git add a.txt &&
+	git commit -m "Add file a.txt" &&
+	echo "commiter name: $GIT_COMMITER_NAME" >name.txt &&
+	echo "commiter mail: $GIT_COMMITER_EMAIL" >mail.txt
+'
+
 test_done
