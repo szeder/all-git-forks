@@ -846,7 +846,7 @@ cmd_update()
 			!*)
 				;; # Custom update command
 			*)
-				die "$(eval_gettext "error: invalid update mode '$update_module' for submodule '$name'")"
+				die "$(eval_gettext "Invalid update mode '$update_module' for submodule '$name'")"
 				;;
 			esac
 		fi
