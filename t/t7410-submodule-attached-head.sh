@@ -53,8 +53,8 @@ test_expect_success 'setup - create repository "repo" to be added with sumodules
 	)
 '
 
-test_expect_success 'setup - clone repository "repo" in "repoclone"' '
-	git clone "$repourl" repoclone
+test_expect_success 'setup - clone repository "repo" in "clonerepo"' '
+	git clone "$repourl" clonerepo
 '
 
 test_expect_success 'setup - add "mod1" as regular submodule of "repo"' '
@@ -67,7 +67,7 @@ test_expect_success 'setup - add "mod1" as regular submodule of "repo"' '
 test_expect_success 'setup - add "mod2" as update attached HEAD submodule of "repo"' '
 	(
 		cd repo &&
-		git submodule add --attached-update "$submodurl2" submod2
+		git submodule add --attached "$submodurl2" submod2
 	)
 '
 
@@ -81,7 +81,7 @@ test_expect_success 'setup - commit submodules in repo' '
 
 test_expect_success 'init submodules in cloned repo' '
 	(
-		cd repoclone &&
+		cd clonerepo &&
 		git pull &&
 		git submodule init
 	)
@@ -89,78 +89,78 @@ test_expect_success 'init submodules in cloned repo' '
 
 test_expect_success 'update submodules in cloned repo' '
 	(
-		cd repoclone &&
+		cd clonerepo &&
 		git submodule update
 	)
 '
 
 test_expect_success 'assert submod1 HEAD is detached in cloned repo' '
 	(
-		cd repoclone/submod1 &&
+		cd clonerepo/submod1 &&
 		test "$(git rev-parse --abbrev-ref HEAD)" = "HEAD"
 	)
 '
 
 test_expect_success 'assert submod2 HEAD is attached in cloned repo' '
 	(
-		cd repoclone/submod2 &&
+		cd clonerepo/submod2 &&
 		test "$(git rev-parse --abbrev-ref HEAD)" != "HEAD"
 	)
 '
 
 test_expect_success 'update submodules with --attach in cloned repo' '
 	(
-		cd repoclone &&
+		cd clonerepo &&
 		git submodule update --attach
 	)
 '
 
 test_expect_success 'assert submod1 HEAD is attached in cloned repo' '
 	(
-		cd repoclone/submod1 &&
+		cd clonerepo/submod1 &&
 		test "$(git rev-parse --abbrev-ref HEAD)" != "HEAD"
 	)
 '
 
 test_expect_success 'update submodules with --detach in cloned repo' '
 	(
-		cd repoclone &&
+		cd clonerepo &&
 		git submodule update --detach
 	)
 '
 
 test_expect_success 'assert submod1 HEAD is detached in cloned repo' '
 	(
-		cd repoclone/submod1 &&
+		cd clonerepo/submod1 &&
 		test "$(git rev-parse --abbrev-ref HEAD)" = "HEAD"
 	)
 '
 
 test_expect_success 'assert submod2 HEAD is detached in cloned repo' '
 	(
-		cd repoclone/submod2 &&
+		cd clonerepo/submod2 &&
 		test "$(git rev-parse --abbrev-ref HEAD)" = "HEAD"
 	)
 '
 
-test_expect_success 'update submodules in cloned repo (will restore HEAD states)' '
+test_expect_success 'update submodules in cloned repo (it should do nothing)' '
 	(
-		cd repoclone &&
+		cd clonerepo &&
 		git submodule update
 	)
 '
 
 test_expect_success 'assert submod1 HEAD is detached in cloned repo' '
 	(
-		cd repoclone/submod1 &&
+		cd clonerepo/submod1 &&
 		test "$(git rev-parse --abbrev-ref HEAD)" = "HEAD"
 	)
 '
 
-test_expect_success 'assert submod2 HEAD is attached in cloned repo' '
+test_expect_success 'assert submod2 HEAD is detached in cloned repo' '
 	(
-		cd repoclone/submod2 &&
-		test "$(git rev-parse --abbrev-ref HEAD)" != "HEAD"
+		cd clonerepo/submod2 &&
+		test "$(git rev-parse --abbrev-ref HEAD)" = "HEAD"
 	)
 '
 
@@ -176,7 +176,7 @@ test_expect_success 'setup - add update operation to submodules' '
 
 test_expect_success 'setup - update cloned repo and reinitialize submodules' '
 	(
-		cd repoclone &&
+		cd clonerepo &&
 		git pull &&
 		git submodule init
 	)
@@ -193,7 +193,7 @@ test_expect_success 'add some content to repo2' '
 
 test_expect_success 'update sumodules in cloned repo and verify that submod2 matches repo2' '
 	(
-		cd repoclone &&
+		cd clonerepo &&
 		git submodule update &&
 		test -e submod2/b
 	)
@@ -208,25 +208,25 @@ test_expect_success 'prepend some content to repo1/a' '
 	)
 '
 
-test_expect_success 'append some content in repoclone/submod1 and commit' '
+test_expect_success 'append some content in clonerepo/submod1 and commit' '
 	(
-		cd repoclone/submod1 &&
+		cd clonerepo/submod1 &&
 		echo c >>a &&
 		git add a &&
 		git commit -m "submod1 commit 1"
 	)
 '
 
-test_expect_success 'update repoclone submodules with --attach' '
+test_expect_success 'update clonerepo submodules with --attach' '
 	(
-		cd repoclone &&
+		cd clonerepo &&
 		git submodule update --attach
 	)
 '
 
-test_expect_success 'verify repoclone submod1 merge with reattached orphaned commits was correct' '
+test_expect_success 'verify clonerepo submod1 merge with reattached orphaned commits was correct' '
 	(
-		cd repoclone/submod1 &&
+		cd clonerepo/submod1 &&
 		test "$(<a)" = "$'b\na\nc'"
 	)
 '
@@ -242,7 +242,7 @@ test_expect_success 'setup - set operation checkout to submodule sumod1 in repo'
 
 test_expect_success 'setup - update cloned repo and reinitialize submodules' '
 	(
-		cd repoclone &&
+		cd clonerepo &&
 		git pull &&
 		git submodule init
 	)
@@ -259,7 +259,7 @@ test_expect_success 'add some content to repo1' '
 
 test_expect_success 'update submodule submod2 (merge ff-only) and verify it matches repo2' '
 	(
-		cd repoclone &&
+		cd clonerepo &&
 		git submodule update &&
 		test -e submod2/b
 	)

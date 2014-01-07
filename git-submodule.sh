@@ -40,6 +40,9 @@ attach=
 detach=
 attached=
 
+# NOTE: attach=1|detach=1 does tell to attach|detach the HEAD
+# NOTE: attached=1 means that the sumodule is marked to have an attached HEAD 
+
 # The function takes at most 2 arguments. The first argument is the
 # URL that navigates to the submodule origin repo. When relative, this URL
 # is relative to the superproject origin URL repo. The second up_path
@@ -499,9 +502,7 @@ Use -f if you really want to add it." >&2
 	fi &&
 	if test -n "$attached"
 	then
-		# We'll stay stick to the HEAD, no need to track revision sha1
 		git config -f .gitmodules submodule."$sm_name".attached "true"
-		git config -f .gitmodules submodule."$sm_name".ignore "all"
 	fi &&
 	git add --force .gitmodules ||
 	die "$(eval_gettext "Failed to register submodule '\$sm_path'")"
@@ -820,19 +821,19 @@ cmd_update()
 		name=$(module_name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
 		branch=$(get_submodule_config "$name" branch master)
-		attached_config=$(get_submodule_config "$name" attached "")
-		case "$attached_config" in
+		attached_module=$(get_submodule_config "$name" attached "")
+		case "$attached_module" in
 		''|true)
 			# Valid flag values
 			;;
 		false)
 			# Valid flag value but we normalize to empty string
-			attached_config=
+			attached_module=
+			;;
 		*)
 			die "$(eval_gettext "error: invalid attached flag value '$attached' for submodule '$name'")"
 			;;
 		esac
-		fi
 		if ! test -z "$update"
 		then
 			update_module=$update
@@ -929,6 +930,13 @@ Maybe you want to use 'update --init'?")"
 			*";$name;"*)
 				# then there is no local change to integrate
 				update_module="checkout"
+
+				if test -n "$attached_config"
+				then
+					# checkout the branch after the first clone
+					attach=1
+				fi
+				
 				just_cloned=yes
 				;;
 			esac
@@ -991,7 +999,7 @@ Maybe you want to use 'update --init'?")"
 				must_die_on_failure=yes
 				;;
 			checkout)
-				if test -n "$attach_module"
+				if test -n "$attach" || test -n "$just_cloned" -a -n "$attached_module"
 				then
 					command="git checkout $subforce -q"
 					suffix=$branch
@@ -1001,7 +1009,7 @@ Maybe you want to use 'update --init'?")"
 					then
 						# Perform a fast-forward only merge of the origin
 						command_post="git merge $subforce --ff-only"
-						suffix_post="origin/$branch"
+						suffix_post="$remote_name/$branch"
 					fi
 				else
 					command="git checkout $subforce -q"
@@ -1022,7 +1030,7 @@ Maybe you want to use 'update --init'?")"
 				# Valid user configurable update modes are already filtered above
 				die "$(eval_gettext "Unexpected update mode in the current flow")"
 				;;
-			esac$name
+			esac
 
 			if (clear_local_git_env; cd "$sm_path" && $command_attach "$suffix_attach" &&
 				$command_pre "$suffix_pre" && $command "$suffix" && $command_post "$suffix_pro")
@@ -1035,6 +1043,10 @@ Maybe you want to use 'update --init'?")"
 				err="${err};$die_msg"
 				continue
 			fi
+
+			git diff-files --quiet "$prefix$sm_path" ||
+				git commit -m "Auto tracking submodule '$name' at commit '$sha1'" "$prefix$sm_path" ||
+				die "$(eval_gettext "Failed to commit auto tracking for submodule path '\$displaypath'")"
 		fi
 
 		set_attached_error=
