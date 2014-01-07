@@ -4,6 +4,7 @@
 #include "tag.h"
 #include "dir.h"
 #include "string-list.h"
+#include "sha1-array.h"
 
 /*
  * Make sure "ref" is something reasonable to have under ".git/refs/";
@@ -2042,6 +2043,52 @@ int dwim_log(const char *str, int len, unsigned char *sha1, char **log)
 	}
 	free(last_branch);
 	return logs_found;
+}
+
+static int check_ambiguous_sha1_ref(const char *refname,
+				    const unsigned char *sha1,
+				    int flags,
+				    void *data)
+{
+	unsigned char tmp_sha1[20];
+	if (strlen(refname) == 40 && !get_sha1_hex(refname, tmp_sha1))
+		sha1_array_append(data, tmp_sha1);
+	return 0;
+}
+
+static void build_ambiguous_sha1_ref_index(struct sha1_array *idx)
+{
+	const char **rule;
+
+	for (rule = ref_rev_parse_rules; *rule; rule++) {
+		const char *prefix = *rule;
+		const char *end = strstr(prefix, "%.*s");
+		char *buf;
+
+		if (!end)
+			continue;
+
+		buf = xmemdupz(prefix, end - prefix);
+		do_for_each_ref(&ref_cache, buf, check_ambiguous_sha1_ref,
+				end - prefix,
+				DO_FOR_EACH_INCLUDE_BROKEN |
+				DO_FOR_EACH_NO_RECURSE,
+				idx);
+		free(buf);
+	}
+}
+
+int sha1_is_ambiguous_with_ref(const unsigned char *sha1)
+{
+	struct sha1_array idx = SHA1_ARRAY_INIT;
+	static int loaded;
+
+	if (!loaded) {
+		build_ambiguous_sha1_ref_index(&idx);
+		loaded = 1;
+	}
+
+	return sha1_array_lookup(&idx, sha1) >= 0;
 }
 
 static struct ref_lock *lock_ref_sha1_basic(const char *refname,
