@@ -261,6 +261,7 @@ static int batch_objects(struct batch_options *opt)
 	struct strbuf buf = STRBUF_INIT;
 	struct expand_data data;
 	int retval = 0;
+	int save_warning = warn_on_object_refname_ambiguity;
 
 	if (!opt->format)
 		opt->format = "%(objectname) %(objecttype) %(objectsize)";
@@ -304,6 +305,7 @@ static int batch_objects(struct batch_options *opt)
 			break;
 	}
 
+	warn_on_object_refname_ambiguity = save_warning;
 	strbuf_release(&buf);
 	return retval;
 }
