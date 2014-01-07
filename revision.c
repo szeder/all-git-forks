@@ -1541,7 +1541,9 @@ static void read_revisions_from_stdin(struct rev_info *revs,
 {
 	struct strbuf sb;
 	int seen_dashdash = 0;
+	int save_warning = warn_on_object_refname_ambiguity;
 
+	warn_on_object_refname_ambiguity = 0;
 	strbuf_init(&sb, 1000);
 	while (strbuf_getwholeline(&sb, stdin, '\n') != EOF) {
 		int len = sb.len;
@@ -1560,6 +1562,7 @@ static void read_revisions_from_stdin(struct rev_info *revs,
 					REVARG_CANNOT_BE_FILENAME))
 			die("bad revision '%s'", sb.buf);
 	}
+	warn_on_object_refname_ambiguity = save_warning;
 	if (seen_dashdash)
 		read_pathspec_from_stdin(revs, &sb, prune);
 	strbuf_release(&sb);
