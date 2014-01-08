@@ -351,9 +351,10 @@ static int handle_config(const char *key, const char *value, void *cb)
 				explicit_default_remote_name = 1;
 			}
 		} else if (!strcmp(subkey, ".pushremote")) {
+			if (git_config_string(&branch->pushremote_name, key, value))
+				return -1;
 			if (branch == current_branch)
-				if (git_config_string(&pushremote_name, key, value))
-					return -1;
+				pushremote_name = branch->pushremote_name;
 		} else if (!strcmp(subkey, ".merge")) {
 			if (!value)
 				return config_error_nonbool(key);
@@ -1543,7 +1544,9 @@ struct branch *branch_get(const char *name)
 		ret = current_branch;
 	else
 		ret = make_branch(name, 0);
-	if (ret && ret->remote_name) {
+	if (!ret)
+		return ret;
+	if (ret->remote_name) {
 		ret->remote = remote_get(ret->remote_name);
 		if (ret->merge_nr) {
 			int i;
@@ -1557,6 +1560,12 @@ struct branch *branch_get(const char *name)
 			}
 		}
 	}
+	if (ret->pushremote_name)
+		ret->pushremote = remote_get(ret->pushremote_name);
+	else if (pushremote_name)
+		ret->pushremote = remote_get(pushremote_name);
+	else
+		ret->pushremote = ret->remote;
 	return ret;
 }
 
