@@ -451,7 +451,7 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 	int at, reflog_len, nth_prior = 0;
 
 	if (len == 40 && !get_sha1_hex(str, sha1)) {
-		if (warn_ambiguous_refs && warn_on_object_refname_ambiguity) {
+		if (warn_ambiguous_refs) {
 			if (sha1_is_ambiguous_with_ref(sha1)) {
 				warning(warn_msg, len, str);
 				if (advice_object_name_warning)
