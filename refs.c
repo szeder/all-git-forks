@@ -589,6 +589,8 @@ static void sort_ref_dir(struct ref_dir *dir)
 
 /* Include broken references in a do_for_each_ref*() iteration: */
 #define DO_FOR_EACH_INCLUDE_BROKEN 0x01
+/* Do not recurse into subdirs, just iterate at a single level. */
+#define DO_FOR_EACH_NO_RECURSE     0x02
 
 /*
  * Return true iff the reference described by entry can be resolved to
@@ -661,7 +663,8 @@ static int do_one_ref(struct ref_entry *entry, void *cb_data)
  * called for all references, including broken ones.
  */
 static int do_for_each_entry_in_dir(struct ref_dir *dir, int offset,
-				    each_ref_entry_fn fn, void *cb_data)
+				    each_ref_entry_fn fn, void *cb_data,
+				    int flags)
 {
 	int i;
 	assert(dir->sorted == dir->nr);
@@ -669,9 +672,14 @@ static int do_for_each_entry_in_dir(struct ref_dir *dir, int offset,
 		struct ref_entry *entry = dir->entries[i];
 		int retval;
 		if (entry->flag & REF_DIR) {
-			struct ref_dir *subdir = get_ref_dir(entry);
-			sort_ref_dir(subdir);
-			retval = do_for_each_entry_in_dir(subdir, 0, fn, cb_data);
+			if (!(flags & DO_FOR_EACH_NO_RECURSE)) {
+				struct ref_dir *subdir = get_ref_dir(entry);
+				sort_ref_dir(subdir);
+				retval = do_for_each_entry_in_dir(subdir, 0,
+								  fn, cb_data,
+								  flags);
+			} else
+				retval = 0;
 		} else {
 			retval = fn(entry, cb_data);
 		}
@@ -691,7 +699,8 @@ static int do_for_each_entry_in_dir(struct ref_dir *dir, int offset,
  */
 static int do_for_each_entry_in_dirs(struct ref_dir *dir1,
 				     struct ref_dir *dir2,
-				     each_ref_entry_fn fn, void *cb_data)
+				     each_ref_entry_fn fn, void *cb_data,
+				     int flags)
 {
 	int retval;
 	int i1 = 0, i2 = 0;
@@ -702,10 +711,12 @@ static int do_for_each_entry_in_dirs(struct ref_dir *dir1,
 		struct ref_entry *e1, *e2;
 		int cmp;
 		if (i1 == dir1->nr) {
-			return do_for_each_entry_in_dir(dir2, i2, fn, cb_data);
+			return do_for_each_entry_in_dir(dir2, i2, fn, cb_data,
+							flags);
 		}
 		if (i2 == dir2->nr) {
-			return do_for_each_entry_in_dir(dir1, i1, fn, cb_data);
+			return do_for_each_entry_in_dir(dir1, i1, fn, cb_data,
+							flags);
 		}
 		e1 = dir1->entries[i1];
 		e2 = dir2->entries[i2];
@@ -713,12 +724,16 @@ static int do_for_each_entry_in_dirs(struct ref_dir *dir1,
 		if (cmp == 0) {
 			if ((e1->flag & REF_DIR) && (e2->flag & REF_DIR)) {
 				/* Both are directories; descend them in parallel. */
-				struct ref_dir *subdir1 = get_ref_dir(e1);
-				struct ref_dir *subdir2 = get_ref_dir(e2);
-				sort_ref_dir(subdir1);
-				sort_ref_dir(subdir2);
-				retval = do_for_each_entry_in_dirs(
-						subdir1, subdir2, fn, cb_data);
+				if (!(flags & DO_FOR_EACH_NO_RECURSE)) {
+					struct ref_dir *subdir1 = get_ref_dir(e1);
+					struct ref_dir *subdir2 = get_ref_dir(e2);
+					sort_ref_dir(subdir1);
+					sort_ref_dir(subdir2);
+					retval = do_for_each_entry_in_dirs(
+							subdir1, subdir2,
+							fn, cb_data, flags);
+				} else
+					retval = 0;
 				i1++;
 				i2++;
 			} else if (!(e1->flag & REF_DIR) && !(e2->flag & REF_DIR)) {
@@ -743,7 +758,7 @@ static int do_for_each_entry_in_dirs(struct ref_dir *dir1,
 				struct ref_dir *subdir = get_ref_dir(e);
 				sort_ref_dir(subdir);
 				retval = do_for_each_entry_in_dir(
-						subdir, 0, fn, cb_data);
+						subdir, 0, fn, cb_data, flags);
 			} else {
 				retval = fn(e, cb_data);
 			}
@@ -817,7 +832,7 @@ static int is_refname_available(const char *refname, const char *oldrefname,
 	data.conflicting_refname = NULL;
 
 	sort_ref_dir(dir);
-	if (do_for_each_entry_in_dir(dir, 0, name_conflict_fn, &data)) {
+	if (do_for_each_entry_in_dir(dir, 0, name_conflict_fn, &data, 0)) {
 		error("'%s' exists; cannot create '%s'",
 		      data.conflicting_refname, refname);
 		return 0;
@@ -1651,7 +1666,8 @@ void warn_dangling_symref(FILE *fp, const char *msg_fmt, const char *refname)
  * 0.
  */
 static int do_for_each_entry(struct ref_cache *refs, const char *base,
-			     each_ref_entry_fn fn, void *cb_data)
+			     each_ref_entry_fn fn, void *cb_data,
+			     int flags)
 {
 	struct packed_ref_cache *packed_ref_cache;
 	struct ref_dir *loose_dir;
@@ -1684,15 +1700,15 @@ static int do_for_each_entry(struct ref_cache *refs, const char *base,
 		sort_ref_dir(packed_dir);
 		sort_ref_dir(loose_dir);
 		retval = do_for_each_entry_in_dirs(
-				packed_dir, loose_dir, fn, cb_data);
+				packed_dir, loose_dir, fn, cb_data, flags);
 	} else if (packed_dir) {
 		sort_ref_dir(packed_dir);
 		retval = do_for_each_entry_in_dir(
-				packed_dir, 0, fn, cb_data);
+				packed_dir, 0, fn, cb_data, flags);
 	} else if (loose_dir) {
 		sort_ref_dir(loose_dir);
 		retval = do_for_each_entry_in_dir(
-				loose_dir, 0, fn, cb_data);
+				loose_dir, 0, fn, cb_data, flags);
 	}
 
 	release_packed_ref_cache(packed_ref_cache);
@@ -1718,7 +1734,7 @@ static int do_for_each_ref(struct ref_cache *refs, const char *base,
 	data.fn = fn;
 	data.cb_data = cb_data;
 
-	return do_for_each_entry(refs, base, do_one_ref, &data);
+	return do_for_each_entry(refs, base, do_one_ref, &data, flags);
 }
 
 static int do_head_ref(const char *submodule, each_ref_fn fn, void *cb_data)
@@ -2200,7 +2216,7 @@ int commit_packed_refs(void)
 
 	do_for_each_entry_in_dir(get_packed_ref_dir(packed_ref_cache),
 				 0, write_packed_entry_fn,
-				 &packed_ref_cache->lock->fd);
+				 &packed_ref_cache->lock->fd, 0);
 	if (commit_lock_file(packed_ref_cache->lock))
 		error = -1;
 	packed_ref_cache->lock = NULL;
@@ -2345,7 +2361,7 @@ int pack_refs(unsigned int flags)
 	cbdata.packed_refs = get_packed_refs(&ref_cache);
 
 	do_for_each_entry_in_dir(get_loose_refs(&ref_cache), 0,
-				 pack_if_possible_fn, &cbdata);
+				 pack_if_possible_fn, &cbdata, 0);
 
 	if (commit_packed_refs())
 		die_errno("unable to overwrite old ref-pack file");
@@ -2447,7 +2463,8 @@ static int repack_without_refs(const char **refnames, int n)
 	}
 
 	/* Remove any other accumulated cruft */
-	do_for_each_entry_in_dir(packed, 0, curate_packed_ref_fn, &refs_to_delete);
+	do_for_each_entry_in_dir(packed, 0, curate_packed_ref_fn,
+				 &refs_to_delete, 0);
 	for_each_string_list_item(ref_to_delete, &refs_to_delete) {
 		if (remove_entry(packed, ref_to_delete->string) == -1)
 			die("internal error");
