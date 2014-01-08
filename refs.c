@@ -774,13 +774,13 @@ static int do_for_each_entry_in_dirs(struct ref_dir *dir1,
  * through all of the sub-directories. We do not even need to care about
  * sorting, as traversal order does not matter to us.
  */
-static void prime_ref_dir(struct ref_dir *dir)
+static void prime_ref_dir(struct ref_dir *dir, int flags)
 {
 	int i;
 	for (i = 0; i < dir->nr; i++) {
 		struct ref_entry *entry = dir->entries[i];
-		if (entry->flag & REF_DIR)
-			prime_ref_dir(get_ref_dir(entry));
+		if ((entry->flag & REF_DIR) && !(flags & DO_FOR_EACH_NO_RECURSE))
+			prime_ref_dir(get_ref_dir(entry), flags);
 	}
 }
 /*
@@ -1687,7 +1687,7 @@ static int do_for_each_entry(struct ref_cache *refs, const char *base,
 		loose_dir = find_containing_dir(loose_dir, base, 0);
 	}
 	if (loose_dir)
-		prime_ref_dir(loose_dir);
+		prime_ref_dir(loose_dir, flags);
 
 	packed_ref_cache = get_packed_ref_cache(refs);
 	acquire_packed_ref_cache(packed_ref_cache);
