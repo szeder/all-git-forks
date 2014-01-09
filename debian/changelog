@@ -3,6 +3,9 @@ git (1:1.8.5.2-1.1) unstable; urgency=low
   * /etc/bash_completion.d/git-prompt: check for git-sh-prompt
     and do not source it if git is removed but not purged (thx
     Craig Small; closes: #726669).
+  * debian/control: package git Breaks: git-buildpackage versions
+    that rely on output from 'git status' without the --porcelain
+    flag (closes: #734223).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 03 Jan 2014 15:44:36 -0800
 
