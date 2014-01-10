@@ -2,6 +2,10 @@
 #include "tree-walk.h"
 #include "tree-iter.h"
 
+/*
+ * This is safe to call even if the iteration has ended and has no effect in
+ * that case.
+ */
 void tree_iter_next(struct tree_iter *iter)
 {
 	iter->next(iter);
@@ -64,7 +68,7 @@ static void tree_entry_init_from_index_desc(struct tree_entry *entry,
 {
 	struct cache_entry *ce;
 
-	if (desc->pos >= desc->index->cache_nr) {
+	if (!(desc->pos < desc->index->cache_nr)) {
 		tree_entry_setnull(entry);
 		return;
 	}
@@ -78,8 +82,9 @@ static void tree_iter_next_index(struct tree_iter *iter)
 {
 	struct index_desc *desc = iter->cb_data;
 
-	desc->pos++;
-	tree_entry_init_from_index_desc(&iter->entry, desc);
+	if (desc->pos < desc->index->cache_nr)
+		desc->pos++;
+	tree_entry_init_from_index_desc(&iter->entry, iter->cb_data);
 }
 
 void tree_iter_init_index(struct tree_iter *iter, const struct index_state *index)
