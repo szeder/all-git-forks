@@ -1,3 +1,8 @@
+#ifndef TREE_ITER_H
+#define TREE_ITER_H
+
+#include "cache.h"
+
 struct tree_entry {
 	unsigned char sha1[20];
 	const char *path;
@@ -14,3 +19,5 @@ int tree_iter_eof(const struct tree_iter *iter);
 void tree_iter_release(struct tree_iter *iter);
 void tree_iter_init_tree(struct tree_iter *iter, char *buffer, int size);
 void tree_iter_init_index(struct tree_iter *iter, const struct index_state *index);
+
+#endif /* TREE_ITER_H */
