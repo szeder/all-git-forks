@@ -33,6 +33,7 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int reall
 #define CACHE_EXT(s) ( (s[0]<<24)|(s[1]<<16)|(s[2]<<8)|(s[3]) )
 #define CACHE_EXT_TREE 0x54524545	/* "TREE" */
 #define CACHE_EXT_RESOLVE_UNDO 0x52455543 /* "REUC" */
+#define CACHE_EXT_WATCH 0x57415443	  /* "WATC" */
 
 struct index_state the_index;
 
@@ -1289,6 +1290,19 @@ static int verify_hdr(struct cache_header *hdr,
 	return 0;
 }
 
+static void read_watch_extension(struct index_state *istate, uint8_t *data,
+				 unsigned long sz)
+{
+	int i;
+	if ((istate->cache_nr + 7) / 8 != sz) {
+		error("invalid 'WATC' extension");
+		return;
+	}
+	for (i = 0; i < istate->cache_nr; i++)
+		if (data[i / 8] & (1 << (i % 8)))
+			istate->cache[i]->ce_flags |= CE_WATCHED;
+}
+
 static int read_index_extension(struct index_state *istate,
 				const char *ext, void *data, unsigned long sz)
 {
@@ -1298,6 +1312,9 @@ static int read_index_extension(struct index_state *istate,
 		break;
 	case CACHE_EXT_RESOLVE_UNDO:
 		istate->resolve_undo = resolve_undo_read(data, sz);
+		break;
+	case CACHE_EXT_WATCH:
+		read_watch_extension(istate, data, sz);
 		break;
 	default:
 		if (*ext < 'A' || 'Z' < *ext)
@@ -1777,7 +1794,7 @@ int write_index(struct index_state *istate, int newfd)
 {
 	git_SHA_CTX c;
 	struct cache_header hdr;
-	int i, err, removed, extended, hdr_version;
+	int i, err, removed, extended, hdr_version, has_watches = 0;
 	struct cache_entry **cache = istate->cache;
 	int entries = istate->cache_nr;
 	struct stat st;
@@ -1786,6 +1803,8 @@ int write_index(struct index_state *istate, int newfd)
 	for (i = removed = extended = 0; i < entries; i++) {
 		if (cache[i]->ce_flags & CE_REMOVE)
 			removed++;
+		else if (cache[i]->ce_flags & CE_WATCHED)
+			has_watches++;
 
 		/* reduce extended entries if possible */
 		cache[i]->ce_flags &= ~CE_EXTENDED;
@@ -1854,6 +1873,26 @@ int write_index(struct index_state *istate, int newfd)
 					     sb.len) < 0
 			|| ce_write(&c, newfd, sb.buf, sb.len) < 0;
 		strbuf_release(&sb);
+		if (err)
+			return -1;
+	}
+	if (has_watches) {
+		int id, sz = (entries - removed + 7) / 8;
+		uint8_t *data = xmalloc(sz);
+		memset(data, 0, sz);
+		for (i = 0, id = 0; i < entries && has_watches; i++) {
+			struct cache_entry *ce = cache[i];
+			if (ce->ce_flags & CE_REMOVE)
+				continue;
+			if (ce->ce_flags & CE_WATCHED) {
+				data[id / 8] |= 1 << (id % 8);
+				has_watches--;
+			}
+			id++;
+		}
+		err = write_index_ext_header(&c, newfd, CACHE_EXT_WATCH, sz) < 0
+			|| ce_write(&c, newfd, data, sz) < 0;
+		free(data);
 		if (err)
 			return -1;
 	}

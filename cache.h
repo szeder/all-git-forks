@@ -169,6 +169,9 @@ struct cache_entry {
 /* used to temporarily mark paths matched by pathspecs */
 #define CE_MATCHED           (1 << 26)
 
+/* set CE_VALID at runtime if the entry is guaranteed not updated */
+#define CE_WATCHED           (1 << 27)
+
 /*
  * Extended on-disk flags
  */
