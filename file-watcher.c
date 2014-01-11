@@ -30,6 +30,32 @@ static struct connection **conns;
 static struct pollfd *pfd;
 static int conns_alloc, pfd_nr, pfd_alloc;
 
+static int watch_path(struct repository *repo, char *path)
+{
+	return -1;
+}
+
+static void watch_paths(int conn_id, char *buf, int maxlen)
+{
+	char *end = buf + maxlen;
+	int n, ret, len;
+	if (chdir(conns[conn_id]->repo->work_tree)) {
+		packet_write(conns[conn_id]->sock,
+			     "error chdir %s", strerror(errno));
+		return;
+	}
+	for (n = ret = 0; buf < end && !ret; buf += len) {
+		char ch;
+		len = packet_length(buf);
+		ch = buf[len];
+		buf[len] = '\0';
+		if (!(ret = watch_path(conns[conn_id]->repo, buf + 4)))
+			n++;
+		buf[len] = ch;
+	}
+	packet_write(conns[conn_id]->sock, "watched %u", n);
+}
+
 static struct repository *get_repo(const char *work_tree)
 {
 	int first, last;
@@ -168,6 +194,26 @@ static int handle_command(int conn_id)
 			return 0;
 		}
 		packet_write(fd, "ok");
+	}
+
+	/*
+	 * > "watch" SP PATH [PATH ...]
+	 * < "watched" SP NUM
+	 *
+	 * PATH is wrapped in pkt-line format and is relative to
+	 * WORK-TREE-PATH
+	 *
+	 * The client asks file watcher to watcher a number of
+	 * paths. File watcher starts to process from path by path in
+	 * received order. File watcher returns the actual number of
+	 * watched paths.
+	 */
+	else if (starts_with(msg, "watch ")) {
+		if (!conns[conn_id]->repo) {
+			packet_write(fd, "error have not received index command");
+			return shutdown_connection(conn_id);
+		}
+		watch_paths(conn_id, msg + 6, len - 6);
 	}
 	else {
 		packet_write(fd, "error unrecognized command %s", msg);

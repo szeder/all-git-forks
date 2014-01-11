@@ -129,3 +129,92 @@ void open_watcher(struct index_state *istate)
 		return;
 	}
 }
+
+static int sort_by_date(const void *a_, const void *b_)
+{
+	const struct cache_entry *a = *(const struct cache_entry **)a_;
+	const struct cache_entry *b = *(const struct cache_entry **)b_;
+	uint32_t seca = a->ce_stat_data.sd_mtime.sec;
+	uint32_t secb = b->ce_stat_data.sd_mtime.sec;
+	return seca - secb;
+}
+
+static int do_watch_entries(struct index_state *istate,
+			    struct cache_entry **cache,
+			    struct strbuf *sb, int start, int now)
+{
+	char *line, *end;
+	int i, len;
+	long n;
+
+	if (send_watcher(istate->watcher, "%s", sb->buf) <= 0 ||
+	    (line = read_watcher(istate->watcher, &len)) == NULL ||
+	    !starts_with(line, "watched "))
+		return -1;
+	n = strtoul(line + 8, &end, 10);
+	if (end != line + len || start + n > now)
+		return -1;
+	for (i = 0; i < n; i++)
+		cache[start + i]->ce_flags |= CE_WATCHED;
+	istate->cache_changed = 1;
+	if (start + n < now)
+		return i;
+	strbuf_reset(sb);
+	strbuf_addstr(sb, "watch ");
+	return 0;
+}
+
+static inline int ce_watchable(struct cache_entry *ce)
+{
+	return
+		!(ce->ce_flags & CE_WATCHED) &&
+		!(ce->ce_flags & CE_VALID) &&
+		/*
+		 * S_IFGITLINK should not be watched
+		 * obviously. S_IFLNK could be problematic because
+		 * inotify may follow symlinks without IN_DONT_FOLLOW
+		 */
+		S_ISREG(ce->ce_mode);
+}
+
+void watch_entries(struct index_state *istate)
+{
+	int i, start, nr;
+	struct cache_entry **sorted;
+	struct strbuf sb = STRBUF_INIT;
+	int val, ret;
+	socklen_t vallen = sizeof(val);
+
+	if (istate->watcher <= 0)
+		return;
+	for (i = nr = 0; i < istate->cache_nr; i++)
+		if (ce_watchable(istate->cache[i]))
+			nr++;
+	sorted = xmalloc(sizeof(*sorted) * nr);
+	for (i = nr = 0; i < istate->cache_nr; i++)
+		if (ce_watchable(istate->cache[i]))
+			sorted[nr++] = istate->cache[i];
+
+	getsockopt(istate->watcher, SOL_SOCKET, SO_SNDBUF, &val, &vallen);
+	if (val > 65520)
+		val = 65520;
+
+	strbuf_grow(&sb, val);
+	strbuf_addstr(&sb, "watch ");
+
+	qsort(sorted, nr, sizeof(*sorted), sort_by_date);
+	for (i = start = 0; i < nr; i++) {
+		if (sb.len + 4 + ce_namelen(sorted[i]) >= val &&
+		    (ret = do_watch_entries(istate, sorted, &sb, start, i))) {
+			if (ret < 0)
+				reset_watches(istate, 1);
+			break;
+		}
+		packet_buf_write_notrace(&sb, "%s", sorted[i]->name);
+	}
+	if (i == nr && start < nr &&
+	    do_watch_entries(istate, sorted, &sb, start, nr) < 0)
+		reset_watches(istate, 1);
+	strbuf_release(&sb);
+	free(sorted);
+}

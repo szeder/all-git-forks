@@ -29,6 +29,8 @@ void packet_trace(const char *buf, unsigned int len, int write)
 		strbuf_addstr(&out, "PACK ...");
 		unsetenv(trace_key);
 	}
+	else if (starts_with(buf, "watch ") && len > 70)
+		strbuf_addstr(&out, "watch ...");
 	else {
 		/* XXX we should really handle printable utf8 */
 		for (i = 0; i < len; i++) {
@@ -162,7 +164,7 @@ static int get_packet_data(int fd, char **src_buf, size_t *src_size,
 	return ret;
 }
 
-static int packet_length(const char *linelen)
+int packet_length(const char *linelen)
 {
 	int n;
 	int len = 0;
