@@ -11,26 +11,18 @@ struct tree_entry_list {
 	int len;
 };
 
-static int tree_entry_cmp(struct tree_entry *a, struct tree_entry *b)
-{
-	return hashcmp(a->sha1, b->sha1) || strcmp(a->path, b->path);
-}
-
 static void ntree_iter_verify(struct tree_iter *iter, int n_trees,
 		const struct tree_entry_list *expected)
 {
 	int pos;
-	struct tree_entry **entry = xcalloc(n_trees, sizeof(*entry));
+	struct tree_entry *entry = xcalloc(n_trees, sizeof(*entry));
 
 	for (pos = 0; pos < expected->len; pos++) {
 		int i;
 
 		assert(!ntree_iter_read_entry(iter, n_trees, entry));
-		for (i = 0; i < n_trees; i++) {
-			assert(entry[i]);
-			assert(entry[i]->path);
-			assert(!tree_entry_cmp(entry[i], &expected->entry[pos]));
-		}
+		for (i = 0; i < n_trees; i++)
+			assert(!tree_entry_cmp(&entry[i], &expected->entry[pos]));
 
 		ntree_iter_next(iter, n_trees);
 	}
@@ -161,10 +153,9 @@ struct tree_entry_spec {
 static const unsigned char *sha1_from_obj_nr(unsigned int obj_nr)
 {
 	int i;
-	static unsigned char sha1[20];
+	unsigned char *sha1 = xmalloc(20 * sizeof(*sha1));
 
-	for (i = 0; i < ARRAY_SIZE(sha1); i++)
-		sha1[i] = 0;
+	hashcpy(sha1, null_sha1);
 	for (i = 0; i < sizeof(obj_nr); i++)
 		sha1[i] = (obj_nr >> (i * CHAR_BIT)) & ~(1 << CHAR_BIT);
 
@@ -174,7 +165,7 @@ static const unsigned char *sha1_from_obj_nr(unsigned int obj_nr)
 static void tree_entry_init(struct tree_entry *entry, struct tree_entry_spec *spec)
 {
 	entry->path = spec->path;
-	hashcpy(entry->sha1, sha1_from_obj_nr(spec->obj_nr));
+	entry->sha1 = sha1_from_obj_nr(spec->obj_nr);
 }
 
 static void tree_entry_list_init(struct tree_entry_list *list, struct tree_entry_spec *spec, int len)
@@ -189,6 +180,10 @@ static void tree_entry_list_init(struct tree_entry_list *list, struct tree_entry
 
 static void tree_entry_list_release(struct tree_entry_list *list)
 {
+	int i;
+
+	for (i = 0; i < list->len; i++)
+		free((char *)list->entry[i].sha1);
 	free(list->entry);
 	list->entry = NULL;
 	list->len = 0;

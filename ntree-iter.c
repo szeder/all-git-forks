@@ -6,7 +6,7 @@
  * by ntree_iter_next.
  */
 int ntree_iter_read_entry(struct tree_iter *iter, int n_trees,
-		struct tree_entry **entry)
+		struct tree_entry *entry)
 {
 	int i;
 	const char *first;
@@ -24,9 +24,9 @@ int ntree_iter_read_entry(struct tree_iter *iter, int n_trees,
 
 	for (i = 0; i < n_trees; i++) {
 		if (!strcmp(iter[i].entry.path, first))
-			entry[i] = &iter[i].entry;
+			entry[i] = iter[i].entry;
 		else
-			entry[i] = NULL;
+			tree_entry_setnull(&entry[i]);
 	}
 
 	return 0;

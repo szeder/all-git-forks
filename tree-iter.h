@@ -4,9 +4,12 @@
 #include "cache.h"
 
 struct tree_entry {
-	unsigned char sha1[20];
+	const unsigned char *sha1;
 	const char *path;
 };
+
+void tree_entry_setnull(struct tree_entry *entry);
+int tree_entry_cmp(const struct tree_entry *a, const struct tree_entry *b);
 
 struct tree_iter {
 	struct tree_entry entry;

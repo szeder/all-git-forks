@@ -2,6 +2,30 @@
 #include "tree-walk.h"
 #include "tree-iter.h"
 
+void tree_entry_setnull(struct tree_entry *entry)
+{
+	entry->path = NULL;
+	entry->sha1 = null_sha1;
+}
+
+static int strnullcmp(const char *a, const char *b)
+{
+	if (a == b)
+		return 0;
+	else if (a == NULL)
+		return -1;
+	else if (b == NULL)
+		return 1;
+	else
+		return strcmp(a, b);
+}
+
+int tree_entry_cmp(const struct tree_entry *a, const struct tree_entry *b)
+{
+	return (a->sha1 != b->sha1 && hashcmp(a->sha1, b->sha1)) ||
+		strnullcmp(a->path, b->path);
+}
+
 /*
  * This is safe to call even if the iteration has ended and has no effect in
  * that case.
@@ -22,12 +46,6 @@ void tree_iter_release(struct tree_iter *iter)
 	iter->cb_data = NULL;
 }
 
-static void tree_entry_setnull(struct tree_entry *entry)
-{
-	entry->path = NULL;
-	hashcpy(entry->sha1, null_sha1);
-}
-
 static void tree_entry_init_from_tree_desc(struct tree_entry *entry,
 		struct tree_desc *desc)
 {
@@ -37,7 +55,7 @@ static void tree_entry_init_from_tree_desc(struct tree_entry *entry,
 	}
 
 	entry->path = desc->entry.path;
-	hashcpy(entry->sha1, desc->entry.sha1);
+	entry->sha1 = desc->entry.sha1;
 }
 
 static void tree_iter_next_tree(struct tree_iter *iter)
@@ -75,7 +93,7 @@ static void tree_entry_init_from_index_desc(struct tree_entry *entry,
 
 	ce = desc->index->cache[desc->pos];
 	entry->path = ce->name;
-	hashcpy(entry->sha1, ce->sha1);
+	entry->sha1 = ce->sha1;
 }
 
 static void tree_iter_next_index(struct tree_iter *iter)
