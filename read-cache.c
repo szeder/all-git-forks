@@ -1530,6 +1530,7 @@ int read_index_from(struct index_state *istate, const char *path)
 	}
 	munmap(mmap, mmap_size);
 	open_watcher(istate);
+	watch_entries(istate);
 	return istate->cache_nr;
 
 unmap:
@@ -1809,8 +1810,21 @@ int write_index(struct index_state *istate, int newfd)
 	for (i = removed = extended = 0; i < entries; i++) {
 		if (cache[i]->ce_flags & CE_REMOVE)
 			removed++;
-		else if (cache[i]->ce_flags & CE_WATCHED)
-			has_watches++;
+		else if (cache[i]->ce_flags & CE_WATCHED) {
+			/*
+			 * We may set CE_WATCHED (but not CE_VALID)
+			 * early when refresh has not been done
+			 * yet. At that time we had no idea if the
+			 * entry may have been updated. If it has
+			 * been, remove CE_WATCHED so CE_VALID won't
+			 * incorrectly be set next time if the file
+			 * watcher reports no changes.
+			 */
+			if (!ce_uptodate(cache[i]))
+				cache[i]->ce_flags &= ~CE_WATCHED;
+			else
+				has_watches++;
+		}
 
 		/* reduce extended entries if possible */
 		cache[i]->ce_flags &= ~CE_EXTENDED;

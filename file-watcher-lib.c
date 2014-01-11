@@ -89,3 +89,86 @@ void open_watcher(struct index_state *istate)
 		return;
 	}
 }
+
+static int sort_by_date(const void *a_, const void *b_)
+{
+	const struct cache_entry *a = *(const struct cache_entry **)a_;
+	const struct cache_entry *b = *(const struct cache_entry **)b_;
+	uint32_t seca = a->ce_stat_data.sd_mtime.sec;
+	uint32_t secb = b->ce_stat_data.sd_mtime.sec;
+	return seca - secb;
+}
+
+static inline int ce_watchable(struct cache_entry *ce)
+{
+	return
+		!(ce->ce_flags & CE_WATCHED) &&
+		!(ce->ce_flags & CE_VALID) &&
+		/*
+		 * S_IFGITLINK should not be watched
+		 * obviously. S_IFLNK could be problematic because
+		 * inotify may follow symlinks without IN_DONT_FOLLOW
+		 */
+		S_ISREG(ce->ce_mode);
+}
+
+static void send_watches(struct index_state *istate,
+			 struct cache_entry **sorted, int nr)
+{
+	struct strbuf sb = STRBUF_INIT;
+	int i, len = 0;
+
+	for (i = 0; i < nr; i++)
+		len += ce_namelen(sorted[i]) + 1;
+
+	if (packet_write_timeout(istate->watcher, WAIT_TIME, "watch %d", len) <= 0)
+		return;
+
+	strbuf_grow(&sb, len);
+	for (i = 0; i < nr; i++)
+		strbuf_add(&sb, sorted[i]->name, ce_namelen(sorted[i]) + 1);
+
+	if (write_in_full_timeout(istate->watcher, sb.buf,
+				  sb.len, WAIT_TIME) != sb.len) {
+		strbuf_release(&sb);
+		return;
+	}
+	strbuf_release(&sb);
+
+	for (;;) {
+		char *line, *end;
+		unsigned long n;
+
+		if (!(line = packet_read_line_timeout(istate->watcher,
+						      WAIT_TIME, &len)))
+			return;
+		if (starts_with(line, "watching "))
+			continue;
+		if (!starts_with(line, "watched "))
+			return;
+		n = strtoul(line + 8, &end, 10);
+		for (i = 0; i < n; i++)
+			sorted[i]->ce_flags |= CE_WATCHED;
+		istate->cache_changed = 1;
+		break;
+	}
+}
+
+void watch_entries(struct index_state *istate)
+{
+	int i, nr;
+	struct cache_entry **sorted;
+
+	if (istate->watcher <= 0)
+		return;
+	for (i = nr = 0; i < istate->cache_nr; i++)
+		if (ce_watchable(istate->cache[i]))
+			nr++;
+	sorted = xmalloc(sizeof(*sorted) * nr);
+	for (i = nr = 0; i < istate->cache_nr; i++)
+		if (ce_watchable(istate->cache[i]))
+			sorted[nr++] = istate->cache[i];
+	qsort(sorted, nr, sizeof(*sorted), sort_by_date);
+	send_watches(istate, sorted, nr);
+	free(sorted);
+}

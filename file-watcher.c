@@ -37,6 +37,70 @@ static struct connection **conns;
 static struct pollfd *pfd;
 static int conns_alloc, pfd_nr, pfd_alloc;
 
+static int watch_path(struct repository *repo, char *path)
+{
+	return -1;
+}
+
+static inline uint64_t stamp(void)
+{
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	return (uint64_t)tv.tv_sec * 1000000 + tv.tv_usec;
+}
+
+static int shutdown_connection(int id);
+static void watch_paths(int conn_id, char *buf, int maxlen)
+{
+	int ret, len, n;
+	uint64_t start, now;
+	char *end;
+
+	n = strtol(buf, &end, 10);
+	if (end != buf + maxlen) {
+		packet_write(conns[conn_id]->sock,
+			     "error invalid watch number %s", buf);
+		shutdown_connection(conn_id);
+		return;
+	}
+
+	buf = xmallocz(n);
+	end = buf + n;
+	/*
+	 * Careful if this takes longer than 50ms, it'll upset other
+	 * connections
+	 */
+	if (read_in_full(conns[conn_id]->sock, buf, n) != n) {
+		shutdown_connection(conn_id);
+		return;
+	}
+	if (chdir(conns[conn_id]->repo->work_tree)) {
+		packet_write(conns[conn_id]->sock,
+			     "error chdir %s", strerror(errno));
+		return;
+	}
+	start = stamp();
+	for (n = ret = 0; buf < end; buf += len + 1) {
+		len = strlen(buf);
+		if (watch_path(conns[conn_id]->repo, buf))
+			break;
+		n++;
+		if (n & 0x3ff)
+			continue;
+		now = stamp();
+		/*
+		 * If we process for too long, the client may timeout
+		 * and give up. Let the client know we're not dead
+		 * yet, every 30ms.
+		 */
+		if (start + 30000 < now) {
+			packet_write(conns[conn_id]->sock, "watching %d", n);
+			start = now;
+		}
+	}
+	packet_write(conns[conn_id]->sock, "watched %u", n);
+}
+
 static struct repository *get_repo(const char *work_tree)
 {
 	int first, last;
@@ -176,6 +240,33 @@ static int handle_command(int conn_id)
 			return 0;
 		}
 		packet_write(fd, "ok");
+	}
+
+	/*
+	 * > "watch" SP LENGTH
+	 * > PATH-LIST
+	 * < "watching" SP NUM
+	 * < "watched" SP NUM
+	 *
+	 * PATH-LIST is the list of paths, each terminated with
+	 * NUL. PATH-LIST is not wrapped in pkt-line format. LENGTH is
+	 * the size of PATH-LIST in bytes.
+	 *
+	 * The client asks file watcher to watcher a number of
+	 * paths. File watcher starts to process from path by path in
+	 * received order. File watcher returns the actual number of
+	 * watched paths with "watched" command.
+	 *
+	 * File watcher may send any number of "watching" messages
+	 * before "watched". This packet is to keep the connection
+	 * alive and has no other values.
+	 */
+	else if (starts_with(msg, "watch ")) {
+		if (!conns[conn_id]->repo) {
+			packet_write(fd, "error have not received index command");
+			return shutdown_connection(conn_id);
+		}
+		watch_paths(conn_id, msg + 6, len - 6);
 	}
 	else {
 		packet_write(fd, "error unrecognized command %s", msg);
