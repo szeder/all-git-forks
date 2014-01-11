@@ -1,27 +1,38 @@
+#include "cache.h"
 #include "tree-iter.h"
 #include "ntree-iter.h"
+
+void ntree_iter_init(struct ntree_iter *iter, int len)
+{
+	int i;
+
+	iter->tree = xcalloc(len, sizeof(*iter->tree));
+	iter->entry = xmalloc(len * sizeof(*iter->entry));
+	for (i = 0; i < len; i++)
+		tree_entry_setnull(&iter->entry[i]);
+	iter->len = len;
+}
 
 /*
  * Returns non-zero if iteration has ended.
  */
-void ntree_iter_next(struct tree_iter *iter, int n_trees)
+void ntree_iter_next(struct ntree_iter *iter)
 {
 	int i;
 
-	for (i = 0; i < n_trees; i++)
-		tree_iter_next(&iter[i]);
+	for (i = 0; i < iter->len; i++)
+		tree_iter_next(&iter->tree[i]);
 }
 
-int ntree_iter_read_entry(struct tree_iter *iter, int n_trees,
-		struct tree_entry *entry)
+int ntree_iter_read_entry(struct ntree_iter *iter)
 {
 	int i;
 	const char *first;
 
 	first = NULL;
-	for (i = 0; i < n_trees; i++) {
+	for (i = 0; i < iter->len; i++) {
 		if (!first) {
-			first = iter[i].entry.path;
+			first = iter->tree[i].entry.path;
 			continue;
 		}
 
@@ -29,22 +40,22 @@ int ntree_iter_read_entry(struct tree_iter *iter, int n_trees,
 	if (!first)
 		return 1;
 
-	for (i = 0; i < n_trees; i++) {
-		if (!strcmp(iter[i].entry.path, first))
-			entry[i] = iter[i].entry;
+	for (i = 0; i < iter->len; i++) {
+		if (!strcmp(iter->tree[i].entry.path, first))
+			iter->entry[i] = iter->tree[i].entry;
 		else
-			tree_entry_setnull(&entry[i]);
+			tree_entry_setnull(&iter->entry[i]);
 	}
 
-	ntree_iter_next(iter, n_trees);
+	ntree_iter_next(iter);
 
 	return 0;
 }
 
-void ntree_iter_release(struct tree_iter *iter, int n_trees)
+void ntree_iter_release(struct ntree_iter *iter)
 {
 	int i;
 
-	for (i = 0; i < n_trees; i++)
-		tree_iter_release(&iter[i]);
+	for (i = 0; i < iter->len; i++)
+		tree_iter_release(&iter->tree[i]);
 }

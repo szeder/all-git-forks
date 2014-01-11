@@ -11,22 +11,20 @@ struct tree_entry_list {
 	int len;
 };
 
-static void ntree_iter_verify(struct tree_iter *iter, int n_trees,
+static void ntree_iter_verify(struct ntree_iter *iter,
 		const struct tree_entry_list *expected)
 {
 	int pos;
-	struct tree_entry *entry = xcalloc(n_trees, sizeof(*entry));
 
 	for (pos = 0; pos < expected->len; pos++) {
 		int i;
 
-		assert(!ntree_iter_read_entry(iter, n_trees, entry));
-		for (i = 0; i < n_trees; i++)
-			assert(!tree_entry_cmp(&entry[i], &expected->entry[pos]));
+		assert(!ntree_iter_read_entry(iter));
+		for (i = 0; i < iter->len; i++)
+			assert(!tree_entry_cmp(&iter->entry[i], &expected->entry[pos]));
 	}
-	assert(ntree_iter_read_entry(iter, n_trees, entry));
 
-	free(entry);
+	assert(ntree_iter_read_entry(iter));
 }
 
 static void test_traverse_tree(struct tree_iter *iter,
@@ -123,21 +121,21 @@ static void test_tree(const struct tree_entry_list *sample)
 
 static void test_ntree(const struct tree_entry_list *sample)
 {
-	struct tree_iter iter[2];
+	struct ntree_iter iter;
 	struct strbuf treebuf = STRBUF_INIT;
 	struct index_state *index;
 
-	memset(iter, 0, sizeof(iter));
+	ntree_iter_init(&iter, 2);
 
 	create_tree(&treebuf, sample);
-	tree_iter_init_tree(&iter[0], treebuf.buf, treebuf.len);
+	tree_iter_init_tree(&iter.tree[0], treebuf.buf, treebuf.len);
 
 	index = create_index(sample);
-	tree_iter_init_index(&iter[1], index);
+	tree_iter_init_index(&iter.tree[1], index);
 
-	ntree_iter_verify(iter, ARRAY_SIZE(iter), sample);
+	ntree_iter_verify(&iter, sample);
 
-	ntree_iter_release(iter, ARRAY_SIZE(iter));
+	ntree_iter_release(&iter);
 	strbuf_release(&treebuf);
 	discard_index(index);
 	free(index);
