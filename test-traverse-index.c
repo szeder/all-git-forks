@@ -23,8 +23,6 @@ static void ntree_iter_verify(struct tree_iter *iter, int n_trees,
 		assert(!ntree_iter_read_entry(iter, n_trees, entry));
 		for (i = 0; i < n_trees; i++)
 			assert(!tree_entry_cmp(&entry[i], &expected->entry[pos]));
-
-		ntree_iter_next(iter, n_trees);
 	}
 	assert(ntree_iter_read_entry(iter, n_trees, entry));
 

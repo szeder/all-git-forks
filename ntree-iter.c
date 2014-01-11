@@ -2,9 +2,16 @@
 #include "ntree-iter.h"
 
 /*
- * Returns non-zero if iteration has ended. The returned entry is invalidated
- * by ntree_iter_next.
+ * Returns non-zero if iteration has ended.
  */
+void ntree_iter_next(struct tree_iter *iter, int n_trees)
+{
+	int i;
+
+	for (i = 0; i < n_trees; i++)
+		tree_iter_next(&iter[i]);
+}
+
 int ntree_iter_read_entry(struct tree_iter *iter, int n_trees,
 		struct tree_entry *entry)
 {
@@ -29,15 +36,9 @@ int ntree_iter_read_entry(struct tree_iter *iter, int n_trees,
 			tree_entry_setnull(&entry[i]);
 	}
 
+	ntree_iter_next(iter, n_trees);
+
 	return 0;
-}
-
-void ntree_iter_next(struct tree_iter *iter, int n_trees)
-{
-	int i;
-
-	for (i = 0; i < n_trees; i++)
-		tree_iter_next(&iter[i]);
 }
 
 void ntree_iter_release(struct tree_iter *iter, int n_trees)
