@@ -2,6 +2,7 @@
 #include "file-watcher-lib.h"
 #include "pkt-line.h"
 #include "unix-socket.h"
+#include "string-list.h"
 
 static char *watcher_path;
 static int WAIT_TIME = 50;	/* in ms */
@@ -25,6 +26,11 @@ static int connect_watcher(const char *path)
 static void reset_watches(struct index_state *istate, int disconnect)
 {
 	int i, changed = 0;
+	if (istate->updated_entries) {
+		string_list_clear(istate->updated_entries, 0);
+		free(istate->updated_entries);
+		istate->updated_entries = NULL;
+	}
 	for (i = 0; i < istate->cache_nr; i++)
 		if (istate->cache[i]->ce_flags & CE_WATCHED) {
 			istate->cache[i]->ce_flags &= ~(CE_WATCHED | CE_VALID);
@@ -39,6 +45,58 @@ static void reset_watches(struct index_state *istate, int disconnect)
 		close(istate->watcher);
 		istate->watcher = -1;
 	}
+}
+
+static void mark_ce_valid(struct index_state *istate)
+{
+	struct strbuf sb = STRBUF_INIT;
+	char *line, *end;
+	int i, len;
+	unsigned long n;
+	if (packet_write_timeout(istate->watcher, WAIT_TIME, "get-changed") <= 0 ||
+	    !(line = packet_read_line_timeout(istate->watcher, WAIT_TIME, &len)) ||
+	    !starts_with(line, "changed ")) {
+		reset_watches(istate, 1);
+		return;
+	}
+	n = strtoul(line + 8, &end, 10);
+	if (end != line + len) {
+		reset_watches(istate, 1);
+		return;
+	}
+	if (!n)
+		goto done;
+	strbuf_grow(&sb, n);
+	if (read_in_full_timeout(istate->watcher, sb.buf, n, WAIT_TIME) != n) {
+		strbuf_release(&sb);
+		reset_watches(istate, 1);
+		return;
+	}
+	line = sb.buf;
+	end = line + n;
+	for (; line < end; line += len + 1) {
+		len = strlen(line);
+		i = index_name_pos(istate, line, len);
+		if (i < 0)
+			continue;
+		if (istate->cache[i]->ce_flags & CE_WATCHED) {
+			istate->cache[i]->ce_flags &= ~CE_WATCHED;
+			istate->cache_changed = 1;
+		}
+		if (!istate->updated_entries) {
+			struct string_list *sl;
+			sl = xmalloc(sizeof(*sl));
+			memset(sl, 0, sizeof(*sl));
+			sl->strdup_strings = 1;
+			istate->updated_entries = sl;
+		}
+		string_list_append(istate->updated_entries, line);
+	}
+	strbuf_release(&sb);
+done:
+	for (i = 0; i < istate->cache_nr; i++)
+		if (istate->cache[i]->ce_flags & CE_WATCHED)
+			istate->cache[i]->ce_flags |= CE_VALID;
 }
 
 static int watcher_config(const char *var, const char *value, void *data)
@@ -110,6 +168,8 @@ void open_watcher(struct index_state *istate)
 		istate->update_watches = 1;
 		return;
 	}
+
+	mark_ce_valid(istate);
 }
 
 static int sort_by_date(const void *a_, const void *b_)
@@ -199,4 +259,43 @@ void watch_entries(struct index_state *istate)
 	qsort(sorted, nr, sizeof(*sorted), sort_by_date);
 	send_watches(istate, sorted, nr);
 	free(sorted);
+}
+
+void close_watcher(struct index_state *istate, const unsigned char *sha1)
+{
+	struct strbuf sb = STRBUF_INIT;
+	int len, i, nr;
+	if (istate->watcher <= 0)
+		return;
+	if (packet_write_timeout(istate->watcher, WAIT_TIME,
+				 "new-index %s", sha1_to_hex(sha1)) <= 0)
+		goto done;
+	nr = istate->updated_entries ? istate->updated_entries->nr : 0;
+	if (!nr) {
+		packet_write_timeout(istate->watcher, WAIT_TIME, "unchange 0");
+		goto done;
+	}
+	for (i = len = 0; i < nr; i++) {
+		const char *s = istate->updated_entries->items[i].string;
+		len += strlen(s) + 1;
+	}
+	if (packet_write_timeout(istate->watcher, WAIT_TIME,
+				 "unchange %d", len) <= 0)
+	    goto done;
+	strbuf_grow(&sb, len);
+	for (i = 0; i < nr; i++) {
+		const char *s = istate->updated_entries->items[i].string;
+		int len = strlen(s);
+		strbuf_add(&sb, s, len + 1);
+	}
+	/*
+	 * it does not matter if it fails anymore, we're closing
+	 * down. If it only gets through partially, file watcher
+	 * should ignore it.
+	 */
+	write_in_full_timeout(istate->watcher, sb.buf, sb.len, WAIT_TIME);
+	strbuf_release(&sb);
+done:
+	close(istate->watcher);
+	istate->watcher = -1;
 }
