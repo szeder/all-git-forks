@@ -2,6 +2,7 @@
 #include "file-watcher-lib.h"
 #include "pkt-line.h"
 #include "unix-socket.h"
+#include "string-list.h"
 
 static char *watcher_path;
 static int WAIT_TIME = 50;	/* in ms */
@@ -72,6 +73,11 @@ static int connect_watcher(const char *path)
 static void reset_watches(struct index_state *istate, int disconnect)
 {
 	int i, changed = 0;
+	if (istate->updated_entries) {
+		string_list_clear(istate->updated_entries, 0);
+		free(istate->updated_entries);
+		istate->updated_entries = NULL;
+	}
 	for (i = 0; i < istate->cache_nr; i++)
 		if (istate->cache[i]->ce_flags & CE_WATCHED) {
 			istate->cache[i]->ce_flags &= ~CE_WATCHED;
@@ -85,6 +91,58 @@ static void reset_watches(struct index_state *istate, int disconnect)
 		close(istate->watcher);
 		istate->watcher = -1;
 	}
+}
+
+static void mark_ce_valid(struct index_state *istate)
+{
+	int i;
+	if (send_watcher(istate->watcher, "get-changed") <= 0) {
+		reset_watches(istate, 1);
+		return;
+	}
+	for (;;) {
+		char *line, *end;
+		int len, ch;
+		line = read_watcher(istate->watcher, &len);
+		if (!line || !starts_with(line, "changed ") || len <= 8) {
+			reset_watches(istate, 1);
+			return;
+		}
+		end = line + len;
+		line += 8;
+		for (; line < end; line[len] = ch, line += len) {
+			len = packet_length(line);
+			if (!len)
+				break;
+			if (len <= 4) {
+				reset_watches(istate, 1);
+				return;
+			}
+			ch = line[len];
+			line[len] = '\0';
+			i = index_name_pos(istate, line + 4, len - 4);
+			if (i < 0)
+				continue;
+			if (istate->cache[i]->ce_flags & CE_WATCHED) {
+				istate->cache[i]->ce_flags &= ~CE_WATCHED;
+				istate->cache_changed = 1;
+			}
+			if (!istate->updated_entries) {
+				struct string_list *sl;
+				sl = xmalloc(sizeof(*sl));
+				memset(sl, 0, sizeof(*sl));
+				sl->strdup_strings = 1;
+				istate->updated_entries = sl;
+			}
+			string_list_append(istate->updated_entries, line + 4);
+		}
+		if (!len)
+			break;
+	}
+
+	for (i = 0; i < istate->cache_nr; i++)
+		if (istate->cache[i]->ce_flags & CE_WATCHED)
+			istate->cache[i]->ce_flags |= CE_VALID;
 }
 
 static int watcher_config(const char *var, const char *value, void *data)
@@ -149,6 +207,8 @@ void open_watcher(struct index_state *istate)
 		istate->update_watches = 1;
 		return;
 	}
+
+	mark_ce_valid(istate);
 }
 
 static int sort_by_date(const void *a_, const void *b_)
@@ -244,4 +304,40 @@ void watch_entries(struct index_state *istate)
 		reset_watches(istate, 1);
 	strbuf_release(&sb);
 	free(sorted);
+}
+
+void close_watcher(struct index_state *istate, const unsigned char *sha1)
+{
+	struct strbuf sb = STRBUF_INIT;
+	int val, i, nr;
+	socklen_t vallen = sizeof(val);
+	if (istate->watcher <= 0)
+		return;
+	send_watcher(istate->watcher, "new-index %s", sha1_to_hex(sha1));
+
+	getsockopt(istate->watcher, SOL_SOCKET, SO_SNDBUF, &val, &vallen);
+	if (val > 65520)
+		val = 65520;
+
+	strbuf_grow(&sb, val);
+	strbuf_addstr(&sb, "unchange ");
+	nr = istate->updated_entries ? istate->updated_entries->nr : 0;
+	for (i = 0; i < nr; i++) {
+		const char *s = istate->updated_entries->items[i].string;
+		int len = strlen(s);
+		if (sb.len + 4 + len < val) {
+			packet_buf_write_notrace(&sb, "%s", s);
+			continue;
+		}
+		if (send_watcher(istate->watcher, "%s", sb.buf) <= 0)
+			break;
+		strbuf_reset(&sb);
+		strbuf_addstr(&sb, "unchange ");
+	}
+	strbuf_addstr(&sb, "0000");
+	send_watcher(istate->watcher, "%s", sb.buf);
+	strbuf_release(&sb);
+
+	close(istate->watcher);
+	istate->watcher = -1;
 }

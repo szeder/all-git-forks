@@ -3,6 +3,7 @@
 #include "parse-options.h"
 #include "exec_cmd.h"
 #include "unix-socket.h"
+#include "string-list.h"
 #include "pkt-line.h"
 
 static const char *const file_watcher_usage[] = {
@@ -14,6 +15,9 @@ struct repository {
 	char *work_tree;
 	char index_signature[41];
 	ino_t inode;
+	struct string_list updated;
+	int updated_sorted;
+	int updating;
 };
 
 const char *invalid_signature = "0000000000000000000000000000000000000000";
@@ -24,6 +28,9 @@ static int nr_repos;
 struct connection {
 	int sock, polite;
 	struct repository *repo;
+
+	struct string_list updated;
+	char new_index[41];
 };
 
 static struct connection **conns;
@@ -33,6 +40,35 @@ static int conns_alloc, pfd_nr, pfd_alloc;
 static int watch_path(struct repository *repo, char *path)
 {
 	return -1;
+}
+
+static void get_changed_list(int conn_id)
+{
+	struct strbuf sb = STRBUF_INIT;
+	int i, size, fd = conns[conn_id]->sock;
+	struct repository *repo = conns[conn_id]->repo;
+	socklen_t vallen = sizeof(size);
+
+	if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &size, &vallen))
+		die_errno("could not get SO_SNDBUF from socket %d", fd);
+	if (size > 65520)
+		size = 65520;
+
+	strbuf_grow(&sb, size);
+	strbuf_addstr(&sb, "changed ");
+
+	for (i = 0; i < repo->updated.nr; i++) {
+		int len = strlen(repo->updated.items[i].string) + 4;
+		if (sb.len + len >= size) {
+			packet_write(fd, "%s", sb.buf);
+			strbuf_reset(&sb);
+			strbuf_addstr(&sb, "changed ");
+		}
+		packet_buf_write_notrace(&sb, "%s", repo->updated.items[i].string);
+	}
+	strbuf_addstr(&sb, "0000");
+	packet_write(fd, "%s", sb.buf);
+	strbuf_release(&sb);
 }
 
 static void watch_paths(int conn_id, char *buf, int maxlen)
@@ -54,6 +90,56 @@ static void watch_paths(int conn_id, char *buf, int maxlen)
 		buf[len] = ch;
 	}
 	packet_write(conns[conn_id]->sock, "watched %u", n);
+}
+
+static int unchange(int conn_id)
+{
+	struct connection *conn = conns[conn_id];
+	struct repository *repo = conn->repo;
+	struct string_list_item *item;
+	int i;
+	if (!repo->updated_sorted) {
+		sort_string_list(&repo->updated);
+		repo->updated_sorted = 1;
+	}
+	for (i = 0; i < conn->updated.nr; i++) {
+		item = string_list_lookup(&repo->updated,
+					  conn->updated.items[i].string);
+		if (!item)
+			continue;
+		unsorted_string_list_delete_item(&repo->updated,
+						 item - repo->updated.items, 0);
+	}
+	string_list_clear(&conn->updated, 0);
+	memcpy(repo->index_signature, conn->new_index, 40);
+	/*
+	 * If other connections on this repo are in some sort of
+	 * session that depend on the previous repository state, we
+	 * may need to disconnect them to be safe.
+	 */
+
+	/* pfd[0] is the listening socket, can't be a connection */
+	repo->updating = 0;
+	return 0;
+}
+
+static int queue_unchange(int conn_id, char *buf, int maxlen)
+{
+	char *end = buf + maxlen;
+	int len;
+	for (; buf < end; buf += len) {
+		char ch;
+		len = packet_length(buf);
+		if (!len)
+			return unchange(conn_id);
+		if (len <= 4)
+			return -1;
+		ch = buf[len];
+		buf[len] = '\0';
+		string_list_append(&conns[conn_id]->updated, buf + 4);
+		buf[len] = ch;
+	}
+	return 0;
 }
 
 static struct repository *get_repo(const char *work_tree)
@@ -84,12 +170,14 @@ static struct repository *get_repo(const char *work_tree)
 	memset(repo, 0, sizeof(*repo));
 	repo->work_tree = xstrdup(work_tree);
 	memset(repo->index_signature, '0', 40);
+	repo->updated.strdup_strings = 1;
 	repos[first] = repo;
 	return repo;
 }
 
 static void reset_repo(struct repository *repo, ino_t inode)
 {
+	string_list_clear(&repo->updated, 0);
 	memcpy(repo->index_signature, invalid_signature, 40);
 	repo->inode = inode;
 }
@@ -101,6 +189,9 @@ static int shutdown_connection(int id)
 	pfd[id].fd = -1; /* pfd_nr is shrunk in the main event loop */
 	close(conn->sock);
 	conn->sock = -1;
+	if (conn->repo && conn->repo->updating == id)
+		conn->repo->updating = 0;
+	string_list_clear(&conn->updated, 0);
 	free(conn);
 	return 0;
 }
@@ -215,6 +306,75 @@ static int handle_command(int conn_id)
 		}
 		watch_paths(conn_id, msg + 6, len - 6);
 	}
+
+	/*
+	 * > "get-changed"
+	 * < changed [PATH [PATH [...]]]
+	 * < changed [PATH [PATH [...]]]
+	 *
+	 * When watched path gets updated, the path is moved from
+	 * "watched" list to "changed" list and is no longer watched.
+	 * This command get the list of changed paths. PATH is encoded
+	 * in pkt-line format. The changed list ends with pkt-length
+	 * zero.
+	 */
+	else if (!strcmp(msg, "get-changed")) {
+		if (!conns[conn_id]->repo) {
+			packet_write(fd, "error have not received index command");
+			return shutdown_connection(conn_id);
+		}
+		get_changed_list(conn_id);
+	}
+
+	/*
+	 * > "new-index" INDEX-SIGNATURE
+	 * > "unchange" [PATH [PATH...]]
+	 * > "unchange" [PATH [PATH...]]
+	 *
+	 * "new-index" passes new index signature from the
+	 * client. "unchange" sends the list of paths to be removed
+	 * from "changed" list. PATH is encoded in pkt-line
+	 * format. The changed list ends with pkt-length zero.
+	 *
+	 * "new-index" must be sent before "unchange". File watcher
+	 * waits until the last "unchange" line, then update its index
+	 * signature as well as "changed" list.
+	 */
+	else if (starts_with(msg, "new-index ")) {
+		if (len != 50) {
+			packet_write(fd, "error invalid new-index line %s", msg);
+			return shutdown_connection(conn_id);
+		}
+		if (!conns[conn_id]->repo) {
+			packet_write(fd, "error have not received index command");
+			return shutdown_connection(conn_id);
+		}
+		if (conns[conn_id]->repo->updating == conn_id) {
+			packet_write(fd, "error received new-index command more than once");
+			return shutdown_connection(conn_id);
+		}
+		memcpy(conns[conn_id]->new_index, msg + 10, 40);
+		/*
+		 * if updating is non-zero the other client will get
+		 * disconnected at the next "unchange" command because
+		 * "updating" no longer points to its connection.
+		 */
+		conns[conn_id]->repo->updating = conn_id;
+	}
+	else if (skip_prefix(msg, "unchange ")) {
+		if (!conns[conn_id]->repo) {
+			packet_write(fd, "error have not received index command");
+			return shutdown_connection(conn_id);
+		}
+		if (conns[conn_id]->repo->updating != conn_id) {
+			packet_write(fd, "error have not received new-index command");
+			return shutdown_connection(conn_id);
+		}
+		if (queue_unchange(conn_id, msg + 9, len - 9)) {
+			packet_write(fd, "error invalid unchange line %s", msg);
+			return shutdown_connection(conn_id);
+		}
+	}
 	else {
 		packet_write(fd, "error unrecognized command %s", msg);
 		return shutdown_connection(conn_id);
@@ -240,6 +400,7 @@ static void accept_connection(int fd)
 	conn = xmalloc(sizeof(*conn));
 	memset(conn, 0, sizeof(*conn));
 	conn->sock = client;
+	conn->updated.strdup_strings = 1;
 	conns[pfd_nr] = conn;
 	pfd_nr++;
 }
@@ -249,8 +410,11 @@ static void close_connection(int id)
 	struct connection *conn = conns[id];
 	if (!conn)
 		return;
+	if (conn->repo && conn->repo->updating == id)
+		conn->repo->updating = 0;
 	conns[id] = NULL;
 	close(conn->sock);
+	string_list_clear(&conn->updated, 0);
 	free(conn);
 }
 

@@ -31,6 +31,10 @@ void packet_trace(const char *buf, unsigned int len, int write)
 	}
 	else if (starts_with(buf, "watch ") && len > 70)
 		strbuf_addstr(&out, "watch ...");
+	else if (starts_with(buf, "changed ") && len > 70)
+		strbuf_addstr(&out, "changed ...");
+	else if (starts_with(buf, "unchange ") && len > 70)
+		strbuf_addstr(&out, "unchange ...");
 	else {
 		/* XXX we should really handle printable utf8 */
 		for (i = 0; i < len; i++) {

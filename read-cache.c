@@ -1567,6 +1567,11 @@ int discard_index(struct index_state *istate)
 	free(istate->cache);
 	istate->cache = NULL;
 	istate->cache_alloc = 0;
+	if (istate->updated_entries) {
+		string_list_clear(istate->updated_entries, 0);
+		free(istate->updated_entries);
+		istate->updated_entries = NULL;
+	}
 	return 0;
 }
 
@@ -1627,7 +1632,7 @@ static int write_index_ext_header(git_SHA_CTX *context, int fd,
 		(ce_write(context, fd, &sz, 4) < 0)) ? -1 : 0;
 }
 
-static int ce_flush(git_SHA_CTX *context, int fd)
+static int ce_flush(git_SHA_CTX *context, int fd, unsigned char *sha1)
 {
 	unsigned int left = write_buffer_len;
 
@@ -1645,6 +1650,8 @@ static int ce_flush(git_SHA_CTX *context, int fd)
 
 	/* Append the SHA1 signature at the end */
 	git_SHA1_Final(write_buffer + left, context);
+	if (sha1)
+		hashcpy(sha1, write_buffer + left);
 	left += 20;
 	return (write_in_full(fd, write_buffer, left) != left) ? -1 : 0;
 }
@@ -1809,11 +1816,20 @@ int write_index(struct index_state *istate, int newfd)
 	int entries = istate->cache_nr;
 	struct stat st;
 	struct strbuf previous_name_buf = STRBUF_INIT, *previous_name;
+	unsigned char sha1[20];
 
 	for (i = removed = extended = 0; i < entries; i++) {
 		if (cache[i]->ce_flags & CE_REMOVE)
 			removed++;
 		else if (cache[i]->ce_flags & CE_WATCHED) {
+			/*
+			 * CE_VALID when used with CE_WATCHED is not
+			 * supposed to be persistent. Next time git
+			 * runs, if this entry is still watched and
+			 * nothing has changed, CE_VALID will be
+			 * reinstated.
+			 */
+			cache[i]->ce_flags &= ~CE_VALID;
 			/*
 			 * We may set CE_WATCHED (but not CE_VALID)
 			 * early when refresh has not been done
@@ -1922,8 +1938,9 @@ int write_index(struct index_state *istate, int newfd)
 			return -1;
 	}
 
-	if (ce_flush(&c, newfd) || fstat(newfd, &st))
+	if (ce_flush(&c, newfd, sha1) || fstat(newfd, &st))
 		return -1;
+	close_watcher(istate, sha1);
 	istate->timestamp.sec = (unsigned int)st.st_mtime;
 	istate->timestamp.nsec = ST_MTIME_NSEC(st);
 	return 0;
