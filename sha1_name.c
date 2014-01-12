@@ -1095,8 +1095,27 @@ static const char *get_upstream_branch(const char *branch_buf, int len)
 
 static const char *get_publish_branch(const char *branch_buf, int len)
 {
-	die(_("unimplemented"));
-	return NULL;
+	char *name = xstrndup(branch_buf, len);
+	struct branch *branch = branch_get(*name ? name : NULL);
+	struct remote *remote = branch->pushremote;
+	const char *dst, *track;
+
+	if (!remote)
+		goto out;
+	if (!ref_exists(branch->refname))
+		die(_("No such branch: '%s'"), name);
+	if (remote->push_refspec_nr)
+		dst = apply_refspecs(remote->push, remote->push_refspec_nr,
+				branch->refname);
+	else
+		dst = branch->refname;
+	track = apply_refspecs(remote->fetch, remote->fetch_refspec_nr, dst);
+	if (!track)
+		goto out;
+	free(name);
+	return track;
+out:
+	die(_("No publish-point configured for branch %s"), branch->name);
 }
 
 static int interpret_upstream_mark(const char *name, int namelen,
