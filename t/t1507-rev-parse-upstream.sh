@@ -54,7 +54,7 @@ test_expect_success 'my-side@{upstream} resolves to correct full name' '
 	test refs/remotes/origin/side = "$(full_name my-side@{u})"
 '
 
-test_expect_success 'refs/heads/my-side@{upstream} does not resolve to my-side{upstream}' '
+test_expect_success 'refs/heads/my-side@{upstream} does not resolve to my-side@{upstream}' '
 	test_must_fail full_name refs/heads/my-side@{upstream}
 '
 
