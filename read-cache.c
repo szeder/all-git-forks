@@ -1009,6 +1009,7 @@ int add_index_entry(struct index_state *istate, struct cache_entry *ce, int opti
 			(istate->cache_nr - pos - 1) * sizeof(ce));
 	set_index_entry(istate, pos, ce);
 	istate->cache_changed = 1;
+	istate->update_watches = 1;
 	return 0;
 }
 
@@ -1295,13 +1296,14 @@ static void read_watch_extension(struct index_state *istate, uint8_t *data,
 				 unsigned long sz)
 {
 	int i;
-	if ((istate->cache_nr + 7) / 8 != sz) {
+	if ((istate->cache_nr + 7) / 8 + 1 != sz) {
 		error("invalid 'WATC' extension");
 		return;
 	}
 	for (i = 0; i < istate->cache_nr; i++)
 		if (data[i / 8] & (1 << (i % 8)))
 			istate->cache[i]->ce_flags |= CE_WATCHED;
+	istate->update_watches = data[sz - 1];
 }
 
 static int read_index_extension(struct index_state *istate,
@@ -1488,6 +1490,7 @@ int read_index_from(struct index_state *istate, const char *path)
 	istate->cache_alloc = alloc_nr(istate->cache_nr);
 	istate->cache = xcalloc(istate->cache_alloc, sizeof(*istate->cache));
 	istate->initialized = 1;
+	istate->update_watches = 1;
 
 	if (istate->version == 4)
 		previous_name = &previous_name_buf;
@@ -1896,8 +1899,9 @@ int write_index(struct index_state *istate, int newfd)
 		if (err)
 			return -1;
 	}
-	if (has_watches) {
-		int id, sz = (entries - removed + 7) / 8;
+	if (has_watches ||
+	    (istate->watcher != -1 && !istate->update_watches)) {
+		int id, sz = (entries - removed + 7) / 8 + 1;
 		uint8_t *data = xmalloc(sz);
 		memset(data, 0, sz);
 		for (i = 0, id = 0; i < entries && has_watches; i++) {
@@ -1910,6 +1914,7 @@ int write_index(struct index_state *istate, int newfd)
 			}
 			id++;
 		}
+		data[sz - 1] = istate->update_watches;
 		err = write_index_ext_header(&c, newfd, CACHE_EXT_WATCH, sz) < 0
 			|| ce_write(&c, newfd, data, sz) < 0;
 		free(data);
