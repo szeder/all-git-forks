@@ -5,6 +5,8 @@
 
 static char *watcher_path;
 static int WAIT_TIME = 50;	/* in ms */
+static int watch_lowerlimit = 65536;
+static int recent_limit = 600;
 
 static int connect_watcher(const char *path)
 {
@@ -22,12 +24,17 @@ static int connect_watcher(const char *path)
 
 static void reset_watches(struct index_state *istate, int disconnect)
 {
-	int i;
+	int i, changed = 0;
 	for (i = 0; i < istate->cache_nr; i++)
 		if (istate->cache[i]->ce_flags & CE_WATCHED) {
 			istate->cache[i]->ce_flags &= ~(CE_WATCHED | CE_VALID);
-			istate->cache_changed = 1;
+			changed = 1;
 		}
+	recent_limit = 0;
+	if (changed) {
+		istate->update_watches = 1;
+		istate->cache_changed = 1;
+	}
 	if (disconnect && istate->watcher > 0) {
 		close(istate->watcher);
 		istate->watcher = -1;
@@ -49,6 +56,14 @@ static int watcher_config(const char *var, const char *value, void *data)
 		WAIT_TIME = git_config_int(var, value);
 		return 0;
 	}
+	if (!strcmp(var, "filewatcher.minfiles")) {
+		watch_lowerlimit = git_config_int(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "filewatcher.recentlimit")) {
+		recent_limit = git_config_int(var, value);
+		return 0;
+	}
 	return 0;
 }
 
@@ -63,12 +78,18 @@ void open_watcher(struct index_state *istate)
 	}
 
 	if (!read_config) {
+		int i;
 		/*
 		 * can't hook into git_default_config because
 		 * read_cache() may be called even before git_config()
 		 * call.
 		 */
 		git_config(watcher_config, NULL);
+		for (i = 0; i < istate->cache_nr; i++)
+			if (istate->cache[i]->ce_flags & CE_WATCHED)
+				break;
+		if (i == istate->cache_nr)
+			recent_limit = 0;
 		read_config = 1;
 	}
 
@@ -86,6 +107,7 @@ void open_watcher(struct index_state *istate)
 	    (msg = packet_read_line_timeout(istate->watcher, WAIT_TIME, NULL)) == NULL ||
 	    strcmp(msg, "ok")) {
 		reset_watches(istate, 0);
+		istate->update_watches = 1;
 		return;
 	}
 }
@@ -99,7 +121,7 @@ static int sort_by_date(const void *a_, const void *b_)
 	return seca - secb;
 }
 
-static inline int ce_watchable(struct cache_entry *ce)
+static inline int ce_watchable(struct cache_entry *ce, time_t now)
 {
 	return
 		!(ce->ce_flags & CE_WATCHED) &&
@@ -109,7 +131,8 @@ static inline int ce_watchable(struct cache_entry *ce)
 		 * obviously. S_IFLNK could be problematic because
 		 * inotify may follow symlinks without IN_DONT_FOLLOW
 		 */
-		S_ISREG(ce->ce_mode);
+		S_ISREG(ce->ce_mode) &&
+		(ce->ce_stat_data.sd_mtime.sec + recent_limit <= now);
 }
 
 static void send_watches(struct index_state *istate,
@@ -158,15 +181,20 @@ void watch_entries(struct index_state *istate)
 {
 	int i, nr;
 	struct cache_entry **sorted;
+	time_t now = time(NULL);
 
-	if (istate->watcher <= 0)
+	if (istate->watcher <= 0 || !istate->update_watches)
 		return;
+	istate->update_watches = 0;
+	istate->cache_changed = 1;
 	for (i = nr = 0; i < istate->cache_nr; i++)
-		if (ce_watchable(istate->cache[i]))
+		if (ce_watchable(istate->cache[i], now))
 			nr++;
+	if (nr < watch_lowerlimit)
+		return;
 	sorted = xmalloc(sizeof(*sorted) * nr);
 	for (i = nr = 0; i < istate->cache_nr; i++)
-		if (ce_watchable(istate->cache[i]))
+		if (ce_watchable(istate->cache[i], now))
 			sorted[nr++] = istate->cache[i];
 	qsort(sorted, nr, sizeof(*sorted), sort_by_date);
 	send_watches(istate, sorted, nr);

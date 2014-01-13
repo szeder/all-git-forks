@@ -279,6 +279,7 @@ struct index_state {
 	struct cache_tree *cache_tree;
 	struct cache_time timestamp;
 	unsigned name_hash_initialized : 1,
+		 update_watches : 1,
 		 initialized : 1;
 	struct hash_table name_hash;
 	struct hash_table dir_hash;

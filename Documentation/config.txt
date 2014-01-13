@@ -1052,6 +1052,15 @@ filewatcher.timeout::
 	the file watcher to respond before giving up. Default value is
 	50. Setting to -1 makes Git wait forever.
 
+filewatcher.minfiles::
+	Start watching files if the number of watchable files are
+	above this limit. Default value is 65536.
+
+filewatcher.recentlimit::
+	Files that are last updated within filewatcher.recentlimit
+	seconds from now are not considered watchable. Default value
+	is 600 (5 minutes).
+
 fetch.recurseSubmodules::
 	This option can be either set to a boolean value or to 'on-demand'.
 	Setting it to a boolean changes the behavior of fetch and pull to
