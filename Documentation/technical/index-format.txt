@@ -204,3 +204,6 @@ Git index format
 
   - A bit map of all entries in the index, n-th bit of m-th byte
     corresponds to CE_WATCHED of the <m * 8+ n>-th index entry.
+
+  - 1-byte, non-zero indicates the index should be scanned for new
+    watched entries.
