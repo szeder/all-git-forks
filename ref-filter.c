@@ -14,10 +14,10 @@
 #include "git-compat-util.h"
 #include "version.h"
 
-typedef enum { FIELD_STR, FIELD_ULONG, FIELD_TIME } cmp_type;
+enum cmp_type { FIELD_STR, FIELD_ULONG, FIELD_TIME };
 
 struct align {
-	align_type position;
+	enum align_type position;
 	unsigned int width;
 };
 
@@ -33,7 +33,7 @@ struct align {
  */
 static struct used_atom {
 	const char *name;
-	cmp_type type;
+	enum cmp_type type;
 	union {
 		char color[COLOR_MAXLEN];
 		struct align align;
@@ -113,7 +113,7 @@ static void objectname_atom_parser(struct used_atom *atom, const char *arg)
 		die(_("unrecognized %%(objectname) argument: %s"), arg);
 }
 
-static align_type parse_align_position(const char *s)
+static enum align_type parse_align_position(const char *s)
 {
 	if (!strcmp(s, "right"))
 		return ALIGN_RIGHT;
@@ -165,7 +165,7 @@ static void align_atom_parser(struct used_atom *atom, const char *arg)
 
 static struct {
 	const char *name;
-	cmp_type cmp_type;
+	enum cmp_type cmp_type;
 	void (*parser)(struct used_atom *atom, const char *arg);
 } valid_atom[] = {
 	{ "refname" },
@@ -1535,7 +1535,7 @@ static int cmp_ref_sorting(struct ref_sorting *s, struct ref_array_item *a, stru
 {
 	struct atom_value *va, *vb;
 	int cmp;
-	cmp_type cmp_type = used_atom[s->atom].type;
+	enum cmp_type cmp_type = used_atom[s->atom].type;
 
 	get_ref_atom_value(a, s->atom, &va);
 	get_ref_atom_value(b, s->atom, &vb);

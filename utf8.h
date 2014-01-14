@@ -55,11 +55,11 @@ int mbs_chrlen(const char **text, size_t *remainder_p, const char *encoding);
  */
 int is_hfs_dotgit(const char *path);
 
-typedef enum {
+enum align_type {
 	ALIGN_LEFT,
 	ALIGN_MIDDLE,
 	ALIGN_RIGHT
-} align_type;
+};
 
 /*
  * Align the string given and store it into a strbuf as per the
@@ -67,7 +67,7 @@ typedef enum {
  * 'width' than then the input string is not truncated and no
  * alignment is done.
  */
-void strbuf_utf8_align(struct strbuf *buf, align_type position, unsigned int width,
+void strbuf_utf8_align(struct strbuf *buf, enum align_type position, unsigned int width,
 		       const char *s);
 
 #endif

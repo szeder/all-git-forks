@@ -645,7 +645,7 @@ int skip_utf8_bom(char **text, size_t len)
 	return 1;
 }
 
-void strbuf_utf8_align(struct strbuf *buf, align_type position, unsigned int width,
+void strbuf_utf8_align(struct strbuf *buf, enum align_type position, unsigned int width,
 		       const char *s)
 {
 	int slen = strlen(s);

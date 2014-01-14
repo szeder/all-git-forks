@@ -267,11 +267,11 @@ struct hash_list {
 	unsigned char sha1[20];
 };
 
-typedef enum {
+enum whenspec_type {
 	WHENSPEC_RAW = 1,
 	WHENSPEC_RFC2822,
 	WHENSPEC_NOW
-} whenspec_type;
+};
 
 struct recent_command {
 	struct recent_command *prev;
@@ -356,7 +356,7 @@ static struct tag *first_tag;
 static struct tag *last_tag;
 
 /* Input stream parsing */
-static whenspec_type whenspec = WHENSPEC_RAW;
+static enum whenspec_type whenspec = WHENSPEC_RAW;
 static struct strbuf command_buf = STRBUF_INIT;
 static int unread_command_buf;
 static struct recent_command cmd_hist = {&cmd_hist, &cmd_hist, NULL};
