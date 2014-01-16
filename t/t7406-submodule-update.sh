@@ -703,7 +703,7 @@ test_expect_success 'submodule update places git-dir in superprojects git-dir re
 	git clone super_update_r super_update_r2 &&
 	(cd super_update_r2 &&
 	 git submodule update --init --recursive >actual &&
-	 test_i18ngrep "Submodule path .submodule/subsubmodule.: checked out" actual &&
+	 test_i18ngrep "Submodule path .submodule/subsubmodule.: .git reset --hard -q" actual &&
 	 (cd submodule/subsubmodule &&
 	  git log > ../../expected
 	 ) &&
