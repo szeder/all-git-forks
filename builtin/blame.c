@@ -409,7 +409,9 @@ static struct origin *find_origin(struct scoreboard *sb,
 	paths[0] = origin->path;
 	paths[1] = NULL;
 
-	parse_pathspec(&diff_opts.pathspec, PATHSPEC_ALL_MAGIC, 0, "", paths);
+	parse_pathspec(&diff_opts.pathspec,
+		       PATHSPEC_ALL_MAGIC & ~PATHSPEC_LITERAL,
+		       PATHSPEC_LITERAL_PATH, "", paths);
 	diff_setup_done(&diff_opts);
 
 	if (is_null_sha1(origin->commit->object.sha1))
@@ -1549,8 +1551,7 @@ static void assign_blame(struct scoreboard *sb, int opt)
 		 */
 		origin_incref(suspect);
 		commit = suspect->commit;
-		if (!commit->object.parsed)
-			parse_commit(commit);
+		parse_commit(commit);
 		if (reverse ||
 		    (!(commit->object.flags & UNINTERESTING) &&
 		     !(revs->max_age != -1 && commit->date < revs->max_age)))
@@ -1802,17 +1803,17 @@ static int prepare_lines(struct scoreboard *sb)
 static int read_ancestry(const char *graft_file)
 {
 	FILE *fp = fopen(graft_file, "r");
-	char buf[1024];
+	struct strbuf buf = STRBUF_INIT;
 	if (!fp)
 		return -1;
-	while (fgets(buf, sizeof(buf), fp)) {
+	while (!strbuf_getwholeline(&buf, fp, '\n')) {
 		/* The format is just "Commit Parent1 Parent2 ...\n" */
-		int len = strlen(buf);
-		struct commit_graft *graft = read_graft_line(buf, len);
+		struct commit_graft *graft = read_graft_line(buf.buf, buf.len);
 		if (graft)
 			register_commit_graft(graft, 0);
 	}
 	fclose(fp);
+	strbuf_release(&buf);
 	return 0;
 }
 

@@ -155,11 +155,6 @@ int is_bare_repository(void)
 	return is_bare_repository_cfg && !get_git_work_tree();
 }
 
-int have_git_dir(void)
-{
-	return !!git_dir;
-}
-
 const char *get_git_dir(void)
 {
 	if (!git_dir)
@@ -176,7 +171,7 @@ const char *get_git_namespace(void)
 
 const char *strip_namespace(const char *namespaced_ref)
 {
-	if (prefixcmp(namespaced_ref, get_git_namespace()) != 0)
+	if (!starts_with(namespaced_ref, get_git_namespace()))
 		return NULL;
 	return namespaced_ref + namespace_len;
 }

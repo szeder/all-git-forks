@@ -76,7 +76,7 @@ static const char *alias_url(const char *url, struct rewrites *r)
 		if (!r->rewrite[i])
 			continue;
 		for (j = 0; j < r->rewrite[i]->instead_of_nr; j++) {
-			if (!prefixcmp(url, r->rewrite[i]->instead_of[j].s) &&
+			if (starts_with(url, r->rewrite[i]->instead_of[j].s) &&
 			    (!longest ||
 			     longest->len < r->rewrite[i]->instead_of[j].len)) {
 				longest = &(r->rewrite[i]->instead_of[j]);
@@ -239,13 +239,13 @@ static void read_remotes_file(struct remote *remote)
 		int value_list;
 		char *s, *p;
 
-		if (!prefixcmp(buffer, "URL:")) {
+		if (starts_with(buffer, "URL:")) {
 			value_list = 0;
 			s = buffer + 4;
-		} else if (!prefixcmp(buffer, "Push:")) {
+		} else if (starts_with(buffer, "Push:")) {
 			value_list = 1;
 			s = buffer + 5;
-		} else if (!prefixcmp(buffer, "Pull:")) {
+		} else if (starts_with(buffer, "Pull:")) {
 			value_list = 2;
 			s = buffer + 5;
 		} else
@@ -337,7 +337,7 @@ static int handle_config(const char *key, const char *value, void *cb)
 	const char *subkey;
 	struct remote *remote;
 	struct branch *branch;
-	if (!prefixcmp(key, "branch.")) {
+	if (starts_with(key, "branch.")) {
 		name = key + 7;
 		subkey = strrchr(name, '.');
 		if (!subkey)
@@ -361,7 +361,7 @@ static int handle_config(const char *key, const char *value, void *cb)
 		}
 		return 0;
 	}
-	if (!prefixcmp(key, "url.")) {
+	if (starts_with(key, "url.")) {
 		struct rewrite *rewrite;
 		name = key + 4;
 		subkey = strrchr(name, '.');
@@ -380,7 +380,7 @@ static int handle_config(const char *key, const char *value, void *cb)
 		}
 	}
 
-	if (prefixcmp(key,  "remote."))
+	if (!starts_with(key,  "remote."))
 		return 0;
 	name = key + 7;
 
@@ -483,11 +483,11 @@ static void read_config(void)
 	int flag;
 	if (default_remote_name) /* did this already */
 		return;
-	default_remote_name = xstrdup("origin");
+	default_remote_name = "origin";
 	current_branch = NULL;
 	head_ref = resolve_ref_unsafe("HEAD", sha1, 0, &flag);
 	if (head_ref && (flag & REF_ISSYMREF) &&
-	    !prefixcmp(head_ref, "refs/heads/")) {
+	    starts_with(head_ref, "refs/heads/")) {
 		current_branch =
 			make_branch(head_ref + strlen("refs/heads/"), 0);
 	}
@@ -745,35 +745,66 @@ int for_each_remote(each_remote_fn fn, void *priv)
 	return result;
 }
 
-void ref_remove_duplicates(struct ref *ref_map)
+static void handle_duplicate(struct ref *ref1, struct ref *ref2)
+{
+	if (strcmp(ref1->name, ref2->name)) {
+		if (ref1->fetch_head_status != FETCH_HEAD_IGNORE &&
+		    ref2->fetch_head_status != FETCH_HEAD_IGNORE) {
+			die(_("Cannot fetch both %s and %s to %s"),
+			    ref1->name, ref2->name, ref2->peer_ref->name);
+		} else if (ref1->fetch_head_status != FETCH_HEAD_IGNORE &&
+			   ref2->fetch_head_status == FETCH_HEAD_IGNORE) {
+			warning(_("%s usually tracks %s, not %s"),
+				ref2->peer_ref->name, ref2->name, ref1->name);
+		} else if (ref1->fetch_head_status == FETCH_HEAD_IGNORE &&
+			   ref2->fetch_head_status == FETCH_HEAD_IGNORE) {
+			die(_("%s tracks both %s and %s"),
+			    ref2->peer_ref->name, ref1->name, ref2->name);
+		} else {
+			/*
+			 * This last possibility doesn't occur because
+			 * FETCH_HEAD_IGNORE entries always appear at
+			 * the end of the list.
+			 */
+			die(_("Internal error"));
+		}
+	}
+	free(ref2->peer_ref);
+	free(ref2);
+}
+
+struct ref *ref_remove_duplicates(struct ref *ref_map)
 {
 	struct string_list refs = STRING_LIST_INIT_NODUP;
-	struct string_list_item *item = NULL;
-	struct ref *prev = NULL, *next = NULL;
-	for (; ref_map; prev = ref_map, ref_map = next) {
-		next = ref_map->next;
-		if (!ref_map->peer_ref)
-			continue;
+	struct ref *retval = NULL;
+	struct ref **p = &retval;
 
-		item = string_list_lookup(&refs, ref_map->peer_ref->name);
-		if (item) {
-			if (strcmp(((struct ref *)item->util)->name,
-				   ref_map->name))
-				die("%s tracks both %s and %s",
-				    ref_map->peer_ref->name,
-				    ((struct ref *)item->util)->name,
-				    ref_map->name);
-			prev->next = ref_map->next;
-			free(ref_map->peer_ref);
-			free(ref_map);
-			ref_map = prev; /* skip this; we freed it */
-			continue;
+	while (ref_map) {
+		struct ref *ref = ref_map;
+
+		ref_map = ref_map->next;
+		ref->next = NULL;
+
+		if (!ref->peer_ref) {
+			*p = ref;
+			p = &ref->next;
+		} else {
+			struct string_list_item *item =
+				string_list_insert(&refs, ref->peer_ref->name);
+
+			if (item->util) {
+				/* Entry already existed */
+				handle_duplicate((struct ref *)item->util, ref);
+			} else {
+				*p = ref;
+				p = &ref->next;
+				item->util = ref;
+			}
 		}
-
-		item = string_list_insert(&refs, ref_map->peer_ref->name);
-		item->util = ref_map;
 	}
+
 	string_list_clear(&refs, 0);
+	return retval;
 }
 
 int remote_has_url(struct remote *remote, const char *url)
@@ -821,10 +852,12 @@ static int match_name_with_pattern(const char *key, const char *name,
 	return ret;
 }
 
-static int query_refspecs(struct refspec *refs, int ref_count, struct refspec *query)
+int query_refspecs(struct refspec *refs, int ref_count, struct refspec *query)
 {
 	int i;
 	int find_src = !query->src;
+	const char *needle = find_src ? query->dst : query->src;
+	char **result = find_src ? &query->src : &query->dst;
 
 	if (find_src && !query->dst)
 		return error("query_refspecs: need either src or dst");
@@ -833,8 +866,6 @@ static int query_refspecs(struct refspec *refs, int ref_count, struct refspec *q
 		struct refspec *refspec = &refs[i];
 		const char *key = find_src ? refspec->dst : refspec->src;
 		const char *value = find_src ? refspec->src : refspec->dst;
-		const char *needle = find_src ? query->dst : query->src;
-		char **result = find_src ? &query->src : &query->dst;
 
 		if (!refspec->dst)
 			continue;
@@ -955,9 +986,9 @@ void sort_ref_list(struct ref **l, int (*cmp)(const void *, const void *))
 	*l = llist_mergesort(*l, ref_list_get_next, ref_list_set_next, cmp);
 }
 
-static int count_refspec_match(const char *pattern,
-			       struct ref *refs,
-			       struct ref **matched_ref)
+int count_refspec_match(const char *pattern,
+			struct ref *refs,
+			struct ref **matched_ref)
 {
 	int patlen = strlen(pattern);
 	struct ref *matched_weak = NULL;
@@ -982,8 +1013,8 @@ static int count_refspec_match(const char *pattern,
 		 */
 		if (namelen != patlen &&
 		    patlen != namelen - 5 &&
-		    prefixcmp(name, "refs/heads/") &&
-		    prefixcmp(name, "refs/tags/")) {
+		    !starts_with(name, "refs/heads/") &&
+		    !starts_with(name, "refs/tags/")) {
 			/* We want to catch the case where only weak
 			 * matches are found and there are multiple
 			 * matches, and where more than one strong
@@ -1054,9 +1085,9 @@ static char *guess_ref(const char *name, struct ref *peer)
 	if (!r)
 		return NULL;
 
-	if (!prefixcmp(r, "refs/heads/"))
+	if (starts_with(r, "refs/heads/"))
 		strbuf_addstr(&buf, "refs/heads/");
-	else if (!prefixcmp(r, "refs/tags/"))
+	else if (starts_with(r, "refs/tags/"))
 		strbuf_addstr(&buf, "refs/tags/");
 	else
 		return NULL;
@@ -1104,7 +1135,7 @@ static int match_explicit(struct ref *src, struct ref *dst,
 		dst_value = resolve_ref_unsafe(matched_src->name, sha1, 1, &flag);
 		if (!dst_value ||
 		    ((flag & REF_ISSYMREF) &&
-		     prefixcmp(dst_value, "refs/heads/")))
+		     !starts_with(dst_value, "refs/heads/")))
 			die("%s cannot be resolved to branch.",
 			    matched_src->name);
 	}
@@ -1193,7 +1224,7 @@ static char *get_ref_match(const struct refspec *rs, int rs_nr, const struct ref
 		 * including refs outside refs/heads/ hierarchy, but
 		 * that does not make much sense these days.
 		 */
-		if (!send_mirror && prefixcmp(ref->name, "refs/heads/"))
+		if (!send_mirror && !starts_with(ref->name, "refs/heads/"))
 			return NULL;
 		name = xstrdup(ref->name);
 	}
@@ -1248,7 +1279,7 @@ static void add_missing_tags(struct ref *src, struct ref **dst, struct ref ***ds
 			add_to_tips(&sent_tips, ref->peer_ref->new_sha1);
 		else
 			add_to_tips(&sent_tips, ref->old_sha1);
-		if (!prefixcmp(ref->name, "refs/tags/"))
+		if (starts_with(ref->name, "refs/tags/"))
 			string_list_append(&dst_tag, ref->name);
 	}
 	clear_commit_marks_many(sent_tips.nr, sent_tips.tip, TMP_MARK);
@@ -1257,7 +1288,7 @@ static void add_missing_tags(struct ref *src, struct ref **dst, struct ref ***ds
 
 	/* Collect tags they do not have. */
 	for (ref = src; ref; ref = ref->next) {
-		if (prefixcmp(ref->name, "refs/tags/"))
+		if (!starts_with(ref->name, "refs/tags/"))
 			continue; /* not a tag */
 		if (string_list_has_string(&dst_tag, ref->name))
 			continue; /* they already have it */
@@ -1481,7 +1512,7 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 		 */
 
 		else if (!ref->deletion && !is_null_sha1(ref->old_sha1)) {
-			if (!prefixcmp(ref->name, "refs/tags/"))
+			if (starts_with(ref->name, "refs/tags/"))
 				reject_reason = REF_STATUS_REJECT_ALREADY_EXISTS;
 			else if (!has_sha1_file(ref->old_sha1))
 				reject_reason = REF_STATUS_REJECT_FETCH_FIRST;
@@ -1553,6 +1584,13 @@ static int ignore_symref_update(const char *refname)
 	return (flag & REF_ISSYMREF);
 }
 
+/*
+ * Create and return a list of (struct ref) consisting of copies of
+ * each remote_ref that matches refspec.  refspec must be a pattern.
+ * Fill in the copies' peer_ref to describe the local tracking refs to
+ * which they map.  Omit any references that would map to an existing
+ * local symbolic ref.
+ */
 static struct ref *get_expanded_map(const struct ref *remote_refs,
 				    const struct refspec *refspec)
 {
@@ -1560,9 +1598,9 @@ static struct ref *get_expanded_map(const struct ref *remote_refs,
 	struct ref *ret = NULL;
 	struct ref **tail = &ret;
 
-	char *expn_name;
-
 	for (ref = remote_refs; ref; ref = ref->next) {
+		char *expn_name = NULL;
+
 		if (strchr(ref->name, '^'))
 			continue; /* a dereference item */
 		if (match_name_with_pattern(refspec->src, ref->name,
@@ -1571,12 +1609,12 @@ static struct ref *get_expanded_map(const struct ref *remote_refs,
 			struct ref *cpy = copy_ref(ref);
 
 			cpy->peer_ref = alloc_ref(expn_name);
-			free(expn_name);
 			if (refspec->force)
 				cpy->peer_ref->force = 1;
 			*tail = cpy;
 			tail = &cpy->next;
 		}
+		free(expn_name);
 	}
 
 	return ret;
@@ -1607,12 +1645,12 @@ static struct ref *get_local_ref(const char *name)
 	if (!name || name[0] == '\0')
 		return NULL;
 
-	if (!prefixcmp(name, "refs/"))
+	if (starts_with(name, "refs/"))
 		return alloc_ref(name);
 
-	if (!prefixcmp(name, "heads/") ||
-	    !prefixcmp(name, "tags/") ||
-	    !prefixcmp(name, "remotes/"))
+	if (starts_with(name, "heads/") ||
+	    starts_with(name, "tags/") ||
+	    starts_with(name, "remotes/"))
 		return alloc_ref_with_prefix("refs/", 5, name);
 
 	return alloc_ref_with_prefix("refs/heads/", 11, name);
@@ -1647,7 +1685,7 @@ int get_fetch_map(const struct ref *remote_refs,
 
 	for (rmp = &ref_map; *rmp; ) {
 		if ((*rmp)->peer_ref) {
-			if (prefixcmp((*rmp)->peer_ref->name, "refs/") ||
+			if (!starts_with((*rmp)->peer_ref->name, "refs/") ||
 			    check_refname_format((*rmp)->peer_ref->name, 0)) {
 				struct ref *ignore = *rmp;
 				error("* Ignoring funny ref '%s' locally",
@@ -1931,7 +1969,7 @@ struct ref *guess_remote_head(const struct ref *head,
 	/* Look for another ref that points there */
 	for (r = refs; r; r = r->next) {
 		if (r != head &&
-		    !prefixcmp(r->name, "refs/heads/") &&
+		    starts_with(r->name, "refs/heads/") &&
 		    !hashcmp(r->old_sha1, head->old_sha1)) {
 			*tail = copy_ref(r);
 			tail = &((*tail)->next);

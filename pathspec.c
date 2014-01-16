@@ -71,7 +71,22 @@ static struct pathspec_magic {
 	{ PATHSPEC_LITERAL,   0, "literal" },
 	{ PATHSPEC_GLOB,   '\0', "glob" },
 	{ PATHSPEC_ICASE,  '\0', "icase" },
+	{ PATHSPEC_EXCLUDE, '!', "exclude" },
 };
+
+static void prefix_short_magic(struct strbuf *sb, int prefixlen,
+			       unsigned short_magic)
+{
+	int i;
+	strbuf_addstr(sb, ":(");
+	for (i = 0; i < ARRAY_SIZE(pathspec_magic); i++)
+		if (short_magic & pathspec_magic[i].bit) {
+			if (sb->buf[sb->len - 1] != '(')
+				strbuf_addch(sb, ',');
+			strbuf_addstr(sb, pathspec_magic[i].name);
+		}
+	strbuf_addf(sb, ",prefix:%d)", prefixlen);
+}
 
 /*
  * Take an element of a pathspec and check for magic signatures.
@@ -128,7 +143,11 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 		die(_("global 'literal' pathspec setting is incompatible "
 		      "with all other global pathspec settings"));
 
-	if (elt[0] != ':' || literal_global) {
+	if (flags & PATHSPEC_LITERAL_PATH)
+		global_magic = 0;
+
+	if (elt[0] != ':' || literal_global ||
+	    (flags & PATHSPEC_LITERAL_PATH)) {
 		; /* nothing to do */
 	} else if (elt[1] == '(') {
 		/* longhand */
@@ -150,7 +169,7 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 					magic |= pathspec_magic[i].bit;
 					break;
 				}
-				if (!prefixcmp(copyfrom, "prefix:")) {
+				if (starts_with(copyfrom, "prefix:")) {
 					char *endptr;
 					pathspec_prefix = strtol(copyfrom + 7,
 								 &endptr, 10);
@@ -193,11 +212,11 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 	magic |= short_magic;
 	*p_short_magic = short_magic;
 
-	/* --noglob-pathspec adds :(literal) _unless_ :(glob) is specifed */
+	/* --noglob-pathspec adds :(literal) _unless_ :(glob) is specified */
 	if (noglob_global && !(magic & PATHSPEC_GLOB))
 		global_magic |= PATHSPEC_LITERAL;
 
-	/* --glob-pathspec is overriden by :(literal) */
+	/* --glob-pathspec is overridden by :(literal) */
 	if ((global_magic & PATHSPEC_GLOB) && (magic & PATHSPEC_LITERAL))
 		global_magic &= ~PATHSPEC_GLOB;
 
@@ -228,22 +247,16 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 	 */
 	if (flags & PATHSPEC_PREFIX_ORIGIN) {
 		struct strbuf sb = STRBUF_INIT;
-		const char *start = elt;
 		if (prefixlen && !literal_global) {
 			/* Preserve the actual prefix length of each pattern */
 			if (short_magic)
-				die("BUG: prefixing on short magic is not supported");
+				prefix_short_magic(&sb, prefixlen, short_magic);
 			else if (long_magic_end) {
-				strbuf_add(&sb, start, long_magic_end - start);
-				strbuf_addf(&sb, ",prefix:%d", prefixlen);
-				start = long_magic_end;
-			} else {
-				if (*start == ':')
-					start++;
+				strbuf_add(&sb, elt, long_magic_end - elt);
+				strbuf_addf(&sb, ",prefix:%d)", prefixlen);
+			} else
 				strbuf_addf(&sb, ":(prefix:%d)", prefixlen);
-			}
 		}
-		strbuf_add(&sb, start, copyfrom - start);
 		strbuf_addstr(&sb, match);
 		item->original = strbuf_detach(&sb, NULL);
 	} else
@@ -351,7 +364,7 @@ void parse_pathspec(struct pathspec *pathspec,
 {
 	struct pathspec_item *item;
 	const char *entry = argv ? *argv : NULL;
-	int i, n, prefixlen;
+	int i, n, prefixlen, nr_exclude = 0;
 
 	memset(pathspec, 0, sizeof(*pathspec));
 
@@ -405,6 +418,11 @@ void parse_pathspec(struct pathspec *pathspec,
 		item[i].magic = prefix_pathspec(item + i, &short_magic,
 						argv + i, flags,
 						prefix, prefixlen, entry);
+		if ((flags & PATHSPEC_LITERAL_PATH) &&
+		    !(magic_mask & PATHSPEC_LITERAL))
+			item[i].magic |= PATHSPEC_LITERAL;
+		if (item[i].magic & PATHSPEC_EXCLUDE)
+			nr_exclude++;
 		if (item[i].magic & magic_mask)
 			unsupported_magic(entry,
 					  item[i].magic & magic_mask,
@@ -419,6 +437,10 @@ void parse_pathspec(struct pathspec *pathspec,
 			pathspec->has_wildcard = 1;
 		pathspec->magic |= item[i].magic;
 	}
+
+	if (nr_exclude == n)
+		die(_("There is nothing to exclude from by :(exclude) patterns.\n"
+		      "Perhaps you forgot to add either ':/' or '.' ?"));
 
 
 	if (pathspec->magic & PATHSPEC_MAXDEPTH) {

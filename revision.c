@@ -1180,11 +1180,28 @@ struct all_refs_cb {
 	const char *name_for_errormsg;
 };
 
+int ref_excluded(struct string_list *ref_excludes, const char *path)
+{
+	struct string_list_item *item;
+
+	if (!ref_excludes)
+		return 0;
+	for_each_string_list_item(item, ref_excludes) {
+		if (!fnmatch(item->string, path, 0))
+			return 1;
+	}
+	return 0;
+}
+
 static int handle_one_ref(const char *path, const unsigned char *sha1, int flag, void *cb_data)
 {
 	struct all_refs_cb *cb = cb_data;
-	struct object *object = get_reference(cb->all_revs, path, sha1,
-					      cb->all_flags);
+	struct object *object;
+
+	if (ref_excluded(cb->all_revs->ref_excludes, path))
+	    return 0;
+
+	object = get_reference(cb->all_revs, path, sha1, cb->all_flags);
 	add_rev_cmdline(cb->all_revs, object, path, REV_CMD_REF, cb->all_flags);
 	add_pending_sha1(cb->all_revs, path, sha1, cb->all_flags);
 	return 0;
@@ -1195,6 +1212,24 @@ static void init_all_refs_cb(struct all_refs_cb *cb, struct rev_info *revs,
 {
 	cb->all_revs = revs;
 	cb->all_flags = flags;
+}
+
+void clear_ref_exclusion(struct string_list **ref_excludes_p)
+{
+	if (*ref_excludes_p) {
+		string_list_clear(*ref_excludes_p, 0);
+		free(*ref_excludes_p);
+	}
+	*ref_excludes_p = NULL;
+}
+
+void add_ref_exclusion(struct string_list **ref_excludes_p, const char *exclude)
+{
+	if (!*ref_excludes_p) {
+		*ref_excludes_p = xcalloc(1, sizeof(**ref_excludes_p));
+		(*ref_excludes_p)->strdup_strings = 1;
+	}
+	string_list_append(*ref_excludes_p, exclude);
 }
 
 static void handle_refs(const char *submodule, struct rev_info *revs, unsigned flags,
@@ -1372,7 +1407,8 @@ static void prepare_show_merge(struct rev_info *revs)
 			i++;
 	}
 	free_pathspec(&revs->prune_data);
-	parse_pathspec(&revs->prune_data, PATHSPEC_ALL_MAGIC, 0, "", prune);
+	parse_pathspec(&revs->prune_data, PATHSPEC_ALL_MAGIC & ~PATHSPEC_LITERAL,
+		       PATHSPEC_PREFER_FULL | PATHSPEC_LITERAL_PATH, "", prune);
 	revs->limited = 1;
 }
 
@@ -1419,26 +1455,40 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsi
 		}
 		if (!get_sha1_committish(this, from_sha1) &&
 		    !get_sha1_committish(next, sha1)) {
-			struct commit *a, *b;
-			struct commit_list *exclude;
-
-			a = lookup_commit_reference(from_sha1);
-			b = lookup_commit_reference(sha1);
-			if (!a || !b) {
-				if (revs->ignore_missing)
-					return 0;
-				die(symmetric ?
-				    "Invalid symmetric difference expression %s...%s" :
-				    "Invalid revision range %s..%s",
-				    arg, next);
-			}
+			struct object *a_obj, *b_obj;
 
 			if (!cant_be_filename) {
 				*dotdot = '.';
 				verify_non_filename(revs->prefix, arg);
 			}
 
-			if (symmetric) {
+			a_obj = parse_object(from_sha1);
+			b_obj = parse_object(sha1);
+			if (!a_obj || !b_obj) {
+			missing:
+				if (revs->ignore_missing)
+					return 0;
+				die(symmetric
+				    ? "Invalid symmetric difference expression %s"
+				    : "Invalid revision range %s", arg);
+			}
+
+			if (!symmetric) {
+				/* just A..B */
+				a_flags = flags_exclude;
+			} else {
+				/* A...B -- find merge bases between the two */
+				struct commit *a, *b;
+				struct commit_list *exclude;
+
+				a = (a_obj->type == OBJ_COMMIT
+				     ? (struct commit *)a_obj
+				     : lookup_commit_reference(a_obj->sha1));
+				b = (b_obj->type == OBJ_COMMIT
+				     ? (struct commit *)b_obj
+				     : lookup_commit_reference(b_obj->sha1));
+				if (!a || !b)
+					goto missing;
 				exclude = get_merge_bases(a, b, 1);
 				add_rev_cmdline_list(revs, exclude,
 						     REV_CMD_MERGE_BASE,
@@ -1446,17 +1496,18 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsi
 				add_pending_commit_list(revs, exclude,
 							flags_exclude);
 				free_commit_list(exclude);
+
 				a_flags = flags | SYMMETRIC_LEFT;
-			} else
-				a_flags = flags_exclude;
-			a->object.flags |= a_flags;
-			b->object.flags |= flags;
-			add_rev_cmdline(revs, &a->object, this,
+			}
+
+			a_obj->flags |= a_flags;
+			b_obj->flags |= flags;
+			add_rev_cmdline(revs, a_obj, this,
 					REV_CMD_LEFT, a_flags);
-			add_rev_cmdline(revs, &b->object, next,
+			add_rev_cmdline(revs, b_obj, next,
 					REV_CMD_RIGHT, flags);
-			add_pending_object(revs, &a->object, this);
-			add_pending_object(revs, &b->object, next);
+			add_pending_object(revs, a_obj, this);
+			add_pending_object(revs, b_obj, next);
 			return 0;
 		}
 		*dotdot = '.';
@@ -1503,7 +1554,7 @@ struct cmdline_pathspec {
 static void append_prune_data(struct cmdline_pathspec *prune, const char **av)
 {
 	while (*av) {
-		ALLOC_GROW(prune->path, prune->nr+1, prune->alloc);
+		ALLOC_GROW(prune->path, prune->nr + 1, prune->alloc);
 		prune->path[prune->nr++] = *(av++);
 	}
 }
@@ -1515,7 +1566,7 @@ static void read_pathspec_from_stdin(struct rev_info *revs, struct strbuf *sb,
 		int len = sb->len;
 		if (len && sb->buf[len - 1] == '\n')
 			sb->buf[--len] = '\0';
-		ALLOC_GROW(prune->path, prune->nr+1, prune->alloc);
+		ALLOC_GROW(prune->path, prune->nr + 1, prune->alloc);
 		prune->path[prune->nr++] = xstrdup(sb->buf);
 	}
 }
@@ -1576,9 +1627,9 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	    !strcmp(arg, "--tags") || !strcmp(arg, "--remotes") ||
 	    !strcmp(arg, "--reflog") || !strcmp(arg, "--not") ||
 	    !strcmp(arg, "--no-walk") || !strcmp(arg, "--do-walk") ||
-	    !strcmp(arg, "--bisect") || !prefixcmp(arg, "--glob=") ||
-	    !prefixcmp(arg, "--branches=") || !prefixcmp(arg, "--tags=") ||
-	    !prefixcmp(arg, "--remotes=") || !prefixcmp(arg, "--no-walk="))
+	    !strcmp(arg, "--bisect") || starts_with(arg, "--glob=") ||
+	    starts_with(arg, "--branches=") || starts_with(arg, "--tags=") ||
+	    starts_with(arg, "--remotes=") || starts_with(arg, "--no-walk="))
 	{
 		unkv[(*unkc)++] = arg;
 		return 1;
@@ -1601,7 +1652,7 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->max_count = atoi(argv[1]);
 		revs->no_walk = 0;
 		return 2;
-	} else if (!prefixcmp(arg, "-n")) {
+	} else if (starts_with(arg, "-n")) {
 		revs->max_count = atoi(arg + 2);
 		revs->no_walk = 0;
 	} else if ((argcount = parse_long_opt("max-age", argv, &optarg))) {
@@ -1661,7 +1712,7 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	} else if (!strcmp(arg, "--author-date-order")) {
 		revs->sort_order = REV_SORT_BY_AUTHOR_DATE;
 		revs->topo_order = 1;
-	} else if (!prefixcmp(arg, "--early-output")) {
+	} else if (starts_with(arg, "--early-output")) {
 		int count = 100;
 		switch (arg[14]) {
 		case '=':
@@ -1686,13 +1737,13 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->min_parents = 2;
 	} else if (!strcmp(arg, "--no-merges")) {
 		revs->max_parents = 1;
-	} else if (!prefixcmp(arg, "--min-parents=")) {
+	} else if (starts_with(arg, "--min-parents=")) {
 		revs->min_parents = atoi(arg+14);
-	} else if (!prefixcmp(arg, "--no-min-parents")) {
+	} else if (starts_with(arg, "--no-min-parents")) {
 		revs->min_parents = 0;
-	} else if (!prefixcmp(arg, "--max-parents=")) {
+	} else if (starts_with(arg, "--max-parents=")) {
 		revs->max_parents = atoi(arg+14);
-	} else if (!prefixcmp(arg, "--no-max-parents")) {
+	} else if (starts_with(arg, "--no-max-parents")) {
 		revs->max_parents = -1;
 	} else if (!strcmp(arg, "--boundary")) {
 		revs->boundary = 1;
@@ -1742,7 +1793,7 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->verify_objects = 1;
 	} else if (!strcmp(arg, "--unpacked")) {
 		revs->unpacked = 1;
-	} else if (!prefixcmp(arg, "--unpacked=")) {
+	} else if (starts_with(arg, "--unpacked=")) {
 		die("--unpacked=<packfile> no longer supported.");
 	} else if (!strcmp(arg, "-r")) {
 		revs->diff = 1;
@@ -1767,7 +1818,7 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->verbose_header = 1;
 		revs->pretty_given = 1;
 		get_commit_format(arg+8, revs);
-	} else if (!prefixcmp(arg, "--pretty=") || !prefixcmp(arg, "--format=")) {
+	} else if (starts_with(arg, "--pretty=") || starts_with(arg, "--format=")) {
 		/*
 		 * Detached form ("--pretty X" as opposed to "--pretty=X")
 		 * not allowed, since the argument is optional.
@@ -1781,12 +1832,12 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->notes_opt.use_default_notes = 1;
 	} else if (!strcmp(arg, "--show-signature")) {
 		revs->show_signature = 1;
-	} else if (!prefixcmp(arg, "--show-notes=") ||
-		   !prefixcmp(arg, "--notes=")) {
+	} else if (starts_with(arg, "--show-notes=") ||
+		   starts_with(arg, "--notes=")) {
 		struct strbuf buf = STRBUF_INIT;
 		revs->show_notes = 1;
 		revs->show_notes_given = 1;
-		if (!prefixcmp(arg, "--show-notes")) {
+		if (starts_with(arg, "--show-notes")) {
 			if (revs->notes_opt.use_default_notes < 0)
 				revs->notes_opt.use_default_notes = 1;
 			strbuf_addstr(&buf, arg+13);
@@ -1829,7 +1880,7 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->abbrev = 0;
 	} else if (!strcmp(arg, "--abbrev")) {
 		revs->abbrev = DEFAULT_ABBREV;
-	} else if (!prefixcmp(arg, "--abbrev=")) {
+	} else if (starts_with(arg, "--abbrev=")) {
 		revs->abbrev = strtoul(arg + 9, NULL, 10);
 		if (revs->abbrev < MINIMUM_ABBREV)
 			revs->abbrev = MINIMUM_ABBREV;
@@ -1953,40 +2004,51 @@ static int handle_revision_pseudo_opt(const char *submodule,
 	if (!strcmp(arg, "--all")) {
 		handle_refs(submodule, revs, *flags, for_each_ref_submodule);
 		handle_refs(submodule, revs, *flags, head_ref_submodule);
+		clear_ref_exclusion(&revs->ref_excludes);
 	} else if (!strcmp(arg, "--branches")) {
 		handle_refs(submodule, revs, *flags, for_each_branch_ref_submodule);
+		clear_ref_exclusion(&revs->ref_excludes);
 	} else if (!strcmp(arg, "--bisect")) {
 		handle_refs(submodule, revs, *flags, for_each_bad_bisect_ref);
 		handle_refs(submodule, revs, *flags ^ (UNINTERESTING | BOTTOM), for_each_good_bisect_ref);
 		revs->bisect = 1;
 	} else if (!strcmp(arg, "--tags")) {
 		handle_refs(submodule, revs, *flags, for_each_tag_ref_submodule);
+		clear_ref_exclusion(&revs->ref_excludes);
 	} else if (!strcmp(arg, "--remotes")) {
 		handle_refs(submodule, revs, *flags, for_each_remote_ref_submodule);
+		clear_ref_exclusion(&revs->ref_excludes);
 	} else if ((argcount = parse_long_opt("glob", argv, &optarg))) {
 		struct all_refs_cb cb;
 		init_all_refs_cb(&cb, revs, *flags);
 		for_each_glob_ref(handle_one_ref, optarg, &cb);
+		clear_ref_exclusion(&revs->ref_excludes);
 		return argcount;
-	} else if (!prefixcmp(arg, "--branches=")) {
+	} else if ((argcount = parse_long_opt("exclude", argv, &optarg))) {
+		add_ref_exclusion(&revs->ref_excludes, optarg);
+		return argcount;
+	} else if (starts_with(arg, "--branches=")) {
 		struct all_refs_cb cb;
 		init_all_refs_cb(&cb, revs, *flags);
 		for_each_glob_ref_in(handle_one_ref, arg + 11, "refs/heads/", &cb);
-	} else if (!prefixcmp(arg, "--tags=")) {
+		clear_ref_exclusion(&revs->ref_excludes);
+	} else if (starts_with(arg, "--tags=")) {
 		struct all_refs_cb cb;
 		init_all_refs_cb(&cb, revs, *flags);
 		for_each_glob_ref_in(handle_one_ref, arg + 7, "refs/tags/", &cb);
-	} else if (!prefixcmp(arg, "--remotes=")) {
+		clear_ref_exclusion(&revs->ref_excludes);
+	} else if (starts_with(arg, "--remotes=")) {
 		struct all_refs_cb cb;
 		init_all_refs_cb(&cb, revs, *flags);
 		for_each_glob_ref_in(handle_one_ref, arg + 10, "refs/remotes/", &cb);
+		clear_ref_exclusion(&revs->ref_excludes);
 	} else if (!strcmp(arg, "--reflog")) {
 		handle_reflog(revs, *flags);
 	} else if (!strcmp(arg, "--not")) {
 		*flags ^= UNINTERESTING | BOTTOM;
 	} else if (!strcmp(arg, "--no-walk")) {
 		revs->no_walk = REVISION_WALK_NO_WALK_SORTED;
-	} else if (!prefixcmp(arg, "--no-walk=")) {
+	} else if (starts_with(arg, "--no-walk=")) {
 		/*
 		 * Detached form ("--no-walk X" as opposed to "--no-walk=X")
 		 * not allowed, since the argument is optional.
@@ -2118,7 +2180,7 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 		 *	call init_pathspec() to set revs->prune_data here.
 		 * }
 		 */
-		ALLOC_GROW(prune_data.path, prune_data.nr+1, prune_data.alloc);
+		ALLOC_GROW(prune_data.path, prune_data.nr + 1, prune_data.alloc);
 		prune_data.path[prune_data.nr++] = NULL;
 		parse_pathspec(&revs->prune_data, 0, 0,
 			       revs->prefix, prune_data.path);
@@ -2971,7 +3033,7 @@ static struct commit *get_revision_internal(struct rev_info *revs)
 	if (revs->max_count) {
 		c = get_revision_1(revs);
 		if (c) {
-			while (0 < revs->skip_count) {
+			while (revs->skip_count > 0) {
 				revs->skip_count--;
 				c = get_revision_1(revs);
 				if (!c)
@@ -2986,9 +3048,8 @@ static struct commit *get_revision_internal(struct rev_info *revs)
 	if (c)
 		c->object.flags |= SHOWN;
 
-	if (!revs->boundary) {
+	if (!revs->boundary)
 		return c;
-	}
 
 	if (!c) {
 		/*
@@ -3034,9 +3095,8 @@ struct commit *get_revision(struct rev_info *revs)
 
 	if (revs->reverse) {
 		reversed = NULL;
-		while ((c = get_revision_internal(revs))) {
+		while ((c = get_revision_internal(revs)))
 			commit_list_insert(c, &reversed);
-		}
 		revs->commits = reversed;
 		revs->reverse = 0;
 		revs->reverse_output_stage = 1;

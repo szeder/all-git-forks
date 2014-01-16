@@ -394,7 +394,7 @@ static int get_common_commits(void)
 			got_other = 0;
 			continue;
 		}
-		if (!prefixcmp(line, "have ")) {
+		if (starts_with(line, "have ")) {
 			switch (got_sha1(line+5, sha1)) {
 			case -1: /* they have what we do not */
 				got_other = 1;
@@ -540,7 +540,7 @@ static void receive_needs(void)
 		if (!line)
 			break;
 
-		if (!prefixcmp(line, "shallow ")) {
+		if (starts_with(line, "shallow ")) {
 			unsigned char sha1[20];
 			struct object *object;
 			if (get_sha1_hex(line + 8, sha1))
@@ -556,14 +556,14 @@ static void receive_needs(void)
 			}
 			continue;
 		}
-		if (!prefixcmp(line, "deepen ")) {
+		if (starts_with(line, "deepen ")) {
 			char *end;
 			depth = strtol(line + 7, &end, 0);
 			if (end == line + 7 || depth <= 0)
 				die("Invalid deepen: %s", line);
 			continue;
 		}
-		if (prefixcmp(line, "want ") ||
+		if (!starts_with(line, "want ") ||
 		    get_sha1_hex(line+5, sha1_buf))
 			die("git upload-pack: protocol error, "
 			    "expected to get sha, not '%s'", line);
@@ -649,8 +649,7 @@ static void receive_needs(void)
 				/* make sure the real parents are parsed */
 				unregister_shallow(object->sha1);
 				object->parsed = 0;
-				if (parse_commit((struct commit *)object))
-					die("invalid commit");
+				parse_commit_or_die((struct commit *)object);
 				parents = ((struct commit *)object)->parents;
 				while (parents) {
 					add_object_array(&parents->item->object,
@@ -689,6 +688,16 @@ static int mark_our_ref(const char *refname, const unsigned char *sha1, int flag
 	return 0;
 }
 
+static void format_symref_info(struct strbuf *buf, struct string_list *symref)
+{
+	struct string_list_item *item;
+
+	if (!symref->nr)
+		return;
+	for_each_string_list_item(item, symref)
+		strbuf_addf(buf, " symref=%s:%s", item->string, (char *)item->util);
+}
+
 static int send_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
 {
 	static const char *capabilities = "multi_ack thin-pack side-band"
@@ -697,35 +706,63 @@ static int send_ref(const char *refname, const unsigned char *sha1, int flag, vo
 	const char *refname_nons = strip_namespace(refname);
 	unsigned char peeled[20];
 
-	if (mark_our_ref(refname, sha1, flag, cb_data))
+	if (mark_our_ref(refname, sha1, flag, NULL))
 		return 0;
 
-	if (capabilities)
-		packet_write(1, "%s %s%c%s%s%s agent=%s\n",
+	if (capabilities) {
+		struct strbuf symref_info = STRBUF_INIT;
+
+		format_symref_info(&symref_info, cb_data);
+		packet_write(1, "%s %s%c%s%s%s%s agent=%s\n",
 			     sha1_to_hex(sha1), refname_nons,
 			     0, capabilities,
 			     allow_tip_sha1_in_want ? " allow-tip-sha1-in-want" : "",
 			     stateless_rpc ? " no-done" : "",
+			     symref_info.buf,
 			     git_user_agent_sanitized());
-	else
+		strbuf_release(&symref_info);
+	} else {
 		packet_write(1, "%s %s\n", sha1_to_hex(sha1), refname_nons);
+	}
 	capabilities = NULL;
 	if (!peel_ref(refname, peeled))
 		packet_write(1, "%s %s^{}\n", sha1_to_hex(peeled), refname_nons);
 	return 0;
 }
 
+static int find_symref(const char *refname, const unsigned char *sha1, int flag,
+		       void *cb_data)
+{
+	const char *symref_target;
+	struct string_list_item *item;
+	unsigned char unused[20];
+
+	if ((flag & REF_ISSYMREF) == 0)
+		return 0;
+	symref_target = resolve_ref_unsafe(refname, unused, 0, &flag);
+	if (!symref_target || (flag & REF_ISSYMREF) == 0)
+		die("'%s' is a symref but it is not?", refname);
+	item = string_list_append(cb_data, refname);
+	item->util = xstrdup(symref_target);
+	return 0;
+}
+
 static void upload_pack(void)
 {
+	struct string_list symref = STRING_LIST_INIT_DUP;
+
+	head_ref_namespaced(find_symref, &symref);
+
 	if (advertise_refs || !stateless_rpc) {
 		reset_timeout();
-		head_ref_namespaced(send_ref, NULL);
-		for_each_namespaced_ref(send_ref, NULL);
+		head_ref_namespaced(send_ref, &symref);
+		for_each_namespaced_ref(send_ref, &symref);
 		packet_flush(1);
 	} else {
 		head_ref_namespaced(mark_our_ref, NULL);
 		for_each_namespaced_ref(mark_our_ref, NULL);
 	}
+	string_list_clear(&symref, 1);
 	if (advertise_refs)
 		return;
 
@@ -777,7 +814,7 @@ int main(int argc, char **argv)
 			strict = 1;
 			continue;
 		}
-		if (!prefixcmp(arg, "--timeout=")) {
+		if (starts_with(arg, "--timeout=")) {
 			timeout = atoi(arg+10);
 			daemon_mode = 1;
 			continue;

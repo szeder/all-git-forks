@@ -81,13 +81,13 @@ static int parse_branch_color_slot(const char *var, int ofs)
 
 static int git_branch_config(const char *var, const char *value, void *cb)
 {
-	if (!prefixcmp(var, "column."))
+	if (starts_with(var, "column."))
 		return git_column_config(var, value, "branch", &colopts);
 	if (!strcmp(var, "color.branch")) {
 		branch_use_color = git_config_colorbool(var, value);
 		return 0;
 	}
-	if (!prefixcmp(var, "color.branch.")) {
+	if (starts_with(var, "color.branch.")) {
 		int slot = parse_branch_color_slot(var, 13);
 		if (slot < 0)
 			return 0;
@@ -424,6 +424,7 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 	struct branch *branch = branch_get(branch_name);
 	struct strbuf fancy = STRBUF_INIT;
 	int upstream_is_gone = 0;
+	int added_decoration = 1;
 
 	switch (stat_tracking_info(branch, &ours, &theirs)) {
 	case 0:
@@ -451,9 +452,13 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 	if (upstream_is_gone) {
 		if (show_upstream_ref)
 			strbuf_addf(stat, _("[%s: gone]"), fancy.buf);
+		else
+			added_decoration = 0;
 	} else if (!ours && !theirs) {
 		if (show_upstream_ref)
 			strbuf_addf(stat, _("[%s]"), fancy.buf);
+		else
+			added_decoration = 0;
 	} else if (!ours) {
 		if (show_upstream_ref)
 			strbuf_addf(stat, _("[%s: behind %d]"), fancy.buf, theirs);
@@ -474,7 +479,8 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 				    ours, theirs);
 	}
 	strbuf_release(&fancy);
-	strbuf_addch(stat, ' ');
+	if (added_decoration)
+		strbuf_addch(stat, ' ');
 	free(ref);
 }
 
@@ -496,7 +502,7 @@ static void add_verbose_info(struct strbuf *out, struct ref_item *item,
 	const char *sub = _(" **** invalid ref ****");
 	struct commit *commit = item->commit;
 
-	if (commit && !parse_commit(commit)) {
+	if (!parse_commit(commit)) {
 		pp_commit_easy(CMIT_FMT_ONELINE, commit, &subject);
 		sub = subject.buf;
 	}
@@ -862,7 +868,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 	if (!strcmp(head, "HEAD")) {
 		detached = 1;
 	} else {
-		if (prefixcmp(head, "refs/heads/"))
+		if (!starts_with(head, "refs/heads/"))
 			die(_("HEAD not found below refs/heads!"));
 		head += 11;
 	}
@@ -975,9 +981,8 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 			die(_("no such branch '%s'"), argv[0]);
 		}
 
-		if (!branch_has_merge_config(branch)) {
+		if (!branch_has_merge_config(branch))
 			die(_("Branch '%s' has no upstream information"), branch->name);
-		}
 
 		strbuf_addf(&buf, "branch.%s.remote", branch->name);
 		git_config_set_multivar(buf.buf, NULL, NULL, 1);

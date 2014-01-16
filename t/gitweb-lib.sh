@@ -1,4 +1,5 @@
-#!/bin/sh
+# Initialization and helpers for Gitweb tests, which source this
+# shell library instead of test-lib.sh.
 #
 # Copyright (c) 2007 Jakub Narebski
 #
@@ -69,7 +70,7 @@ gitweb_run () {
 	# written to web server logs, so we are not interested in that:
 	# we are interested only in properly formatted errors/warnings
 	rm -f gitweb.log &&
-	"$PERL_PATH" -- "$SCRIPT_NAME" \
+	perl -- "$SCRIPT_NAME" \
 		>gitweb.output 2>gitweb.log &&
 	perl -w -e '
 		open O, ">gitweb.headers";

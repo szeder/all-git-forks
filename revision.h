@@ -5,6 +5,7 @@
 #include "grep.h"
 #include "notes.h"
 #include "commit.h"
+#include "diff.h"
 
 #define SEEN		(1u<<0)
 #define UNINTERESTING   (1u<<1)
@@ -59,6 +60,9 @@ struct rev_info {
 
 	/* The end-points specified by the end user */
 	struct rev_cmdline_info cmdline;
+
+	/* excluding from --branches, --refs, etc. expansion */
+	struct string_list *ref_excludes;
 
 	/* Basic information */
 	const char *prefix;
@@ -192,6 +196,11 @@ struct rev_info {
 	/* copies of the parent lists, for --full-diff display */
 	struct saved_parents *saved_parents_slab;
 };
+
+extern int ref_excluded(struct string_list *, const char *path);
+void clear_ref_exclusion(struct string_list **);
+void add_ref_exclusion(struct string_list **, const char *exclude);
+
 
 #define REV_TREE_SAME		0
 #define REV_TREE_NEW		1	/* Only new files */

@@ -240,18 +240,15 @@ test_expect_success 'refresh index before checking if it is up-to-date' '
 
 test_expect_success 'choking "git rm" should not let it die with cruft' '
 	git reset -q --hard &&
+	test_when_finished "rm -f .git/index.lock && git reset -q --hard" &&
 	i=0 &&
 	while test $i -lt 12000
 	do
-	    echo "100644 $_z40 0	some-file-$i"
+	    echo "100644 1234567890123456789012345678901234567890 0	some-file-$i"
 	    i=$(( $i + 1 ))
 	done | git update-index --index-info &&
-	git rm -n "some-file-*" | :;
-	test -f .git/index.lock
-	status=$?
-	rm -f .git/index.lock
-	git reset -q --hard
-	test "$status" != 0
+	git rm -n "some-file-*" | : &&
+	test_path_is_missing .git/index.lock
 '
 
 test_expect_success 'rm removes subdirectories recursively' '
@@ -706,6 +703,22 @@ test_expect_success 'rm of a populated nested submodule with a nested .git direc
 	git status -s -uno --ignore-submodules=none > actual &&
 	! test -s actual &&
 	rm -rf submod
+'
+
+test_expect_success 'checking out a commit after submodule removal needs manual updates' '
+	git commit -m "submodule removal" submod &&
+	git checkout HEAD^ &&
+	git submodule update &&
+	git checkout -q HEAD^ 2>actual &&
+	git checkout -q master 2>actual &&
+	echo "warning: unable to rmdir submod: Directory not empty" >expected &&
+	test_i18ncmp expected actual &&
+	git status -s submod >actual &&
+	echo "?? submod/" >expected &&
+	test_cmp expected actual &&
+	rm -rf submod &&
+	git status -s -uno --ignore-submodules=none > actual &&
+	! test -s actual
 '
 
 test_expect_success 'rm of d/f when d has become a non-directory' '

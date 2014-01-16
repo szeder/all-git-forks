@@ -830,23 +830,24 @@ static int unpack_callback(int n, unsigned long mask, unsigned long dirmask, str
 }
 
 static int clear_ce_flags_1(struct cache_entry **cache, int nr,
-			    char *prefix, int prefix_len,
+			    struct strbuf *prefix,
 			    int select_mask, int clear_mask,
 			    struct exclude_list *el, int defval);
 
 /* Whole directory matching */
 static int clear_ce_flags_dir(struct cache_entry **cache, int nr,
-			      char *prefix, int prefix_len,
+			      struct strbuf *prefix,
 			      char *basename,
 			      int select_mask, int clear_mask,
 			      struct exclude_list *el, int defval)
 {
 	struct cache_entry **cache_end;
 	int dtype = DT_DIR;
-	int ret = is_excluded_from_list(prefix, prefix_len,
+	int ret = is_excluded_from_list(prefix->buf, prefix->len,
 					basename, &dtype, el);
+	int rc;
 
-	prefix[prefix_len++] = '/';
+	strbuf_addch(prefix, '/');
 
 	/* If undecided, use matching result of parent dir in defval */
 	if (ret < 0)
@@ -854,7 +855,7 @@ static int clear_ce_flags_dir(struct cache_entry **cache, int nr,
 
 	for (cache_end = cache; cache_end != cache + nr; cache_end++) {
 		struct cache_entry *ce = *cache_end;
-		if (strncmp(ce->name, prefix, prefix_len))
+		if (strncmp(ce->name, prefix->buf, prefix->len))
 			break;
 	}
 
@@ -865,10 +866,12 @@ static int clear_ce_flags_dir(struct cache_entry **cache, int nr,
 	 * calling clear_ce_flags_1(). That function will call
 	 * the expensive is_excluded_from_list() on every entry.
 	 */
-	return clear_ce_flags_1(cache, cache_end - cache,
-				prefix, prefix_len,
-				select_mask, clear_mask,
-				el, ret);
+	rc = clear_ce_flags_1(cache, cache_end - cache,
+			      prefix,
+			      select_mask, clear_mask,
+			      el, ret);
+	strbuf_setlen(prefix, prefix->len - 1);
+	return rc;
 }
 
 /*
@@ -887,7 +890,7 @@ static int clear_ce_flags_dir(struct cache_entry **cache, int nr,
  * Top level path has prefix_len zero.
  */
 static int clear_ce_flags_1(struct cache_entry **cache, int nr,
-			    char *prefix, int prefix_len,
+			    struct strbuf *prefix,
 			    int select_mask, int clear_mask,
 			    struct exclude_list *el, int defval)
 {
@@ -907,10 +910,10 @@ static int clear_ce_flags_1(struct cache_entry **cache, int nr,
 			continue;
 		}
 
-		if (prefix_len && strncmp(ce->name, prefix, prefix_len))
+		if (prefix->len && strncmp(ce->name, prefix->buf, prefix->len))
 			break;
 
-		name = ce->name + prefix_len;
+		name = ce->name + prefix->len;
 		slash = strchr(name, '/');
 
 		/* If it's a directory, try whole directory match first */
@@ -918,29 +921,26 @@ static int clear_ce_flags_1(struct cache_entry **cache, int nr,
 			int processed;
 
 			len = slash - name;
-			memcpy(prefix + prefix_len, name, len);
+			strbuf_add(prefix, name, len);
 
-			/*
-			 * terminate the string (no trailing slash),
-			 * clear_c_f_dir needs it
-			 */
-			prefix[prefix_len + len] = '\0';
 			processed = clear_ce_flags_dir(cache, cache_end - cache,
-						       prefix, prefix_len + len,
-						       prefix + prefix_len,
+						       prefix,
+						       prefix->buf + prefix->len - len,
 						       select_mask, clear_mask,
 						       el, defval);
 
 			/* clear_c_f_dir eats a whole dir already? */
 			if (processed) {
 				cache += processed;
+				strbuf_setlen(prefix, prefix->len - len);
 				continue;
 			}
 
-			prefix[prefix_len + len++] = '/';
+			strbuf_addch(prefix, '/');
 			cache += clear_ce_flags_1(cache, cache_end - cache,
-						  prefix, prefix_len + len,
+						  prefix,
 						  select_mask, clear_mask, el, defval);
+			strbuf_setlen(prefix, prefix->len - len - 1);
 			continue;
 		}
 
@@ -961,9 +961,12 @@ static int clear_ce_flags(struct cache_entry **cache, int nr,
 			    int select_mask, int clear_mask,
 			    struct exclude_list *el)
 {
-	char prefix[PATH_MAX];
+	static struct strbuf prefix = STRBUF_INIT;
+
+	strbuf_reset(&prefix);
+
 	return clear_ce_flags_1(cache, nr,
-				prefix, 0,
+				&prefix,
 				select_mask, clear_mask,
 				el, 0);
 }
@@ -1763,14 +1766,23 @@ int twoway_merge(const struct cache_entry * const *src,
 		newtree = NULL;
 
 	if (current) {
-		if ((!oldtree && !newtree) || /* 4 and 5 */
-		    (!oldtree && newtree &&
-		     same(current, newtree)) || /* 6 and 7 */
-		    (oldtree && newtree &&
-		     same(oldtree, newtree)) || /* 14 and 15 */
-		    (oldtree && newtree &&
-		     !same(oldtree, newtree) && /* 18 and 19 */
-		     same(current, newtree))) {
+		if (current->ce_flags & CE_CONFLICTED) {
+			if (same(oldtree, newtree) || o->reset) {
+				if (!newtree)
+					return deleted_entry(current, current, o);
+				else
+					return merged_entry(newtree, current, o);
+			}
+			return o->gently ? -1 : reject_merge(current, o);
+		}
+		else if ((!oldtree && !newtree) || /* 4 and 5 */
+			 (!oldtree && newtree &&
+			  same(current, newtree)) || /* 6 and 7 */
+			 (oldtree && newtree &&
+			  same(oldtree, newtree)) || /* 14 and 15 */
+			 (oldtree && newtree &&
+			  !same(oldtree, newtree) && /* 18 and 19 */
+			  same(current, newtree))) {
 			return keep_entry(current, o);
 		}
 		else if (oldtree && !newtree && same(current, oldtree)) {

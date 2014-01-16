@@ -254,10 +254,6 @@ test_expect_success 'ensure "status --cached --recursive" preserves the --cached
 		) &&
 		git submodule status --cached --recursive -- nested1 > ../actual
 	) &&
-	if test_have_prereq MINGW
-	then
-		dos2unix actual
-	fi &&
 	test_cmp expect actual
 '
 
@@ -325,6 +321,15 @@ test_expect_success 'command passed to foreach --recursive retains notion of std
 		cd clone2 &&
 		git submodule foreach --recursive echo success >../expected &&
 		yes | git submodule foreach --recursive "read y && test \"x\$y\" = xy && echo success" >../actual
+	) &&
+	test_cmp expected actual
+'
+
+test_expect_success 'multi-argument command passed to foreach is not shell-evaluated twice' '
+	(
+		cd super &&
+		git submodule foreach "echo \\\"quoted\\\"" > ../expected &&
+		git submodule foreach echo \"quoted\" > ../actual
 	) &&
 	test_cmp expected actual
 '

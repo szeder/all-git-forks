@@ -177,7 +177,7 @@ test_expect_success 'no diff with -diff' '
 	git diff | grep Binary
 '
 
-echo NULZbetweenZwords | "$PERL_PATH" -pe 'y/Z/\000/' > file
+echo NULZbetweenZwords | perl -pe 'y/Z/\000/' > file
 
 test_expect_success 'force diff with "diff"' '
 	echo >.gitattributes "file diff" &&
@@ -191,6 +191,19 @@ test_expect_success 'GIT_EXTERNAL_DIFF with more than one changed files' '
 	git commit -m "added 2nd file" &&
 	echo modified >file2 &&
 	GIT_EXTERNAL_DIFF=echo git diff
+'
+
+test_expect_success 'GIT_EXTERNAL_DIFF path counter/total' '
+	write_script external-diff.sh <<-\EOF &&
+	echo $GIT_DIFF_PATH_COUNTER of $GIT_DIFF_PATH_TOTAL >>counter.txt
+	EOF
+	>counter.txt &&
+	cat >expect <<-\EOF &&
+	1 of 2
+	2 of 2
+	EOF
+	GIT_EXTERNAL_DIFF=./external-diff.sh git diff &&
+	test_cmp expect counter.txt
 '
 
 test_expect_success 'GIT_EXTERNAL_DIFF generates pretty paths' '

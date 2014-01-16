@@ -15,6 +15,10 @@
 #include "submodule.h"
 #include "column.h"
 #include "strbuf.h"
+#include "utf8.h"
+
+static char cut_line[] =
+"------------------------ >8 ------------------------\n";
 
 static char default_wt_status_colors[][COLOR_MAXLEN] = {
 	GIT_COLOR_NORMAL, /* WT_STATUS_HEADER */
@@ -264,6 +268,30 @@ static void wt_status_print_unmerged_data(struct wt_status *s,
 	strbuf_release(&onebuf);
 }
 
+static const char *wt_status_diff_status_string(int status)
+{
+	switch (status) {
+	case DIFF_STATUS_ADDED:
+		return _("new file");
+	case DIFF_STATUS_COPIED:
+		return _("copied");
+	case DIFF_STATUS_DELETED:
+		return _("deleted");
+	case DIFF_STATUS_MODIFIED:
+		return _("modified");
+	case DIFF_STATUS_RENAMED:
+		return _("renamed");
+	case DIFF_STATUS_TYPE_CHANGED:
+		return _("typechange");
+	case DIFF_STATUS_UNKNOWN:
+		return _("unknown");
+	case DIFF_STATUS_UNMERGED:
+		return _("unmerged");
+	default:
+		return NULL;
+	}
+}
+
 static void wt_status_print_change_data(struct wt_status *s,
 					int change_type,
 					struct string_list_item *it)
@@ -276,6 +304,23 @@ static void wt_status_print_change_data(struct wt_status *s,
 	const char *one, *two;
 	struct strbuf onebuf = STRBUF_INIT, twobuf = STRBUF_INIT;
 	struct strbuf extra = STRBUF_INIT;
+	static char *padding;
+	const char *what;
+	int len;
+
+	if (!padding) {
+		int width = 0;
+		/* If DIFF_STATUS_* uses outside this range, we're in trouble */
+		for (status = 'A'; status <= 'Z'; status++) {
+			what = wt_status_diff_status_string(status);
+			len = what ? strlen(what) : 0;
+			if (len > width)
+				width = len;
+		}
+		width += 2;	/* colon and a space */
+		padding = xmallocz(width);
+		memset(padding, ' ', width);
+	}
 
 	one_name = two_name = it->string;
 	switch (change_type) {
@@ -307,34 +352,18 @@ static void wt_status_print_change_data(struct wt_status *s,
 	two = quote_path(two_name, s->prefix, &twobuf);
 
 	status_printf(s, color(WT_STATUS_HEADER, s), "\t");
-	switch (status) {
-	case DIFF_STATUS_ADDED:
-		status_printf_more(s, c, _("new file:   %s"), one);
-		break;
-	case DIFF_STATUS_COPIED:
-		status_printf_more(s, c, _("copied:     %s -> %s"), one, two);
-		break;
-	case DIFF_STATUS_DELETED:
-		status_printf_more(s, c, _("deleted:    %s"), one);
-		break;
-	case DIFF_STATUS_MODIFIED:
-		status_printf_more(s, c, _("modified:   %s"), one);
-		break;
-	case DIFF_STATUS_RENAMED:
-		status_printf_more(s, c, _("renamed:    %s -> %s"), one, two);
-		break;
-	case DIFF_STATUS_TYPE_CHANGED:
-		status_printf_more(s, c, _("typechange: %s"), one);
-		break;
-	case DIFF_STATUS_UNKNOWN:
-		status_printf_more(s, c, _("unknown:    %s"), one);
-		break;
-	case DIFF_STATUS_UNMERGED:
-		status_printf_more(s, c, _("unmerged:   %s"), one);
-		break;
-	default:
+	what = wt_status_diff_status_string(status);
+	if (!what)
 		die(_("bug: unhandled diff status %c"), status);
-	}
+	/* 1 for colon, which is not part of "what" */
+	len = strlen(padding) - (utf8_strwidth(what) + 1);
+	assert(len >= 0);
+	if (status == DIFF_STATUS_COPIED || status == DIFF_STATUS_RENAMED)
+		status_printf_more(s, c, "%s:%.*s%s -> %s",
+				   what, len, padding, one, two);
+	else
+		status_printf_more(s, c, "%s:%.*s%s",
+				   what, len, padding, one);
 	if (extra.len) {
 		status_printf_more(s, color(WT_STATUS_HEADER, s), "%s", extra.buf);
 		strbuf_release(&extra);
@@ -767,6 +796,18 @@ conclude:
 	status_printf_ln(s, GIT_COLOR_NORMAL, "");
 }
 
+void wt_status_truncate_message_at_cut_line(struct strbuf *buf)
+{
+	const char *p;
+	struct strbuf pattern = STRBUF_INIT;
+
+	strbuf_addf(&pattern, "%c %s", comment_line_char, cut_line);
+	p = strstr(buf->buf, pattern.buf);
+	if (p && (p == buf->buf || p[-1] == '\n'))
+		strbuf_setlen(buf, p - buf->buf);
+	strbuf_release(&pattern);
+}
+
 static void wt_status_print_verbose(struct wt_status *s)
 {
 	struct rev_info rev;
@@ -787,10 +828,20 @@ static void wt_status_print_verbose(struct wt_status *s)
 	 * If we're not going to stdout, then we definitely don't
 	 * want color, since we are going to the commit message
 	 * file (and even the "auto" setting won't work, since it
-	 * will have checked isatty on stdout).
+	 * will have checked isatty on stdout). But we then do want
+	 * to insert the scissor line here to reliably remove the
+	 * diff before committing.
 	 */
-	if (s->fp != stdout)
+	if (s->fp != stdout) {
+		const char *explanation = _("Do not touch the line above.\nEverything below will be removed.");
+		struct strbuf buf = STRBUF_INIT;
+
 		rev.diffopt.use_color = 0;
+		fprintf(s->fp, "%c %s", comment_line_char, cut_line);
+		strbuf_add_commented_lines(&buf, explanation, strlen(explanation));
+		fputs(buf.buf, s->fp);
+		strbuf_release(&buf);
+	}
 	run_diff_index(&rev, 1);
 }
 
@@ -803,7 +854,7 @@ static void wt_status_print_tracking(struct wt_status *s)
 	int i;
 
 	assert(s->branch && !s->is_initial);
-	if (prefixcmp(s->branch, "refs/heads/"))
+	if (!starts_with(s->branch, "refs/heads/"))
 		return;
 	branch = branch_get(s->branch + 11);
 	if (!format_tracking_info(branch, &sb))
@@ -1062,9 +1113,9 @@ static char *read_and_strip_branch(const char *path)
 		strbuf_setlen(&sb, sb.len - 1);
 	if (!sb.len)
 		goto got_nothing;
-	if (!prefixcmp(sb.buf, "refs/heads/"))
+	if (starts_with(sb.buf, "refs/heads/"))
 		strbuf_remove(&sb,0, strlen("refs/heads/"));
-	else if (!prefixcmp(sb.buf, "refs/"))
+	else if (starts_with(sb.buf, "refs/"))
 		;
 	else if (!get_sha1_hex(sb.buf, sha1)) {
 		const char *abbrev;
@@ -1094,7 +1145,7 @@ static int grab_1st_switch(unsigned char *osha1, unsigned char *nsha1,
 	struct grab_1st_switch_cbdata *cb = cb_data;
 	const char *target = NULL, *end;
 
-	if (prefixcmp(message, "checkout: moving from "))
+	if (!starts_with(message, "checkout: moving from "))
 		return 0;
 	message += strlen("checkout: moving from ");
 	target = strstr(message, " to ");
@@ -1129,9 +1180,9 @@ static void wt_status_get_detached_from(struct wt_status_state *state)
 	     ((commit = lookup_commit_reference_gently(sha1, 1)) != NULL &&
 	      !hashcmp(cb.nsha1, commit->object.sha1)))) {
 		int ofs;
-		if (!prefixcmp(ref, "refs/tags/"))
+		if (starts_with(ref, "refs/tags/"))
 			ofs = strlen("refs/tags/");
-		else if (!prefixcmp(ref, "refs/remotes/"))
+		else if (starts_with(ref, "refs/remotes/"))
 			ofs = strlen("refs/remotes/");
 		else
 			ofs = 0;
@@ -1220,7 +1271,7 @@ void wt_status_print(struct wt_status *s)
 	if (s->branch) {
 		const char *on_what = _("On branch ");
 		const char *branch_name = s->branch;
-		if (!prefixcmp(branch_name, "refs/heads/"))
+		if (starts_with(branch_name, "refs/heads/"))
 			branch_name += 11;
 		else if (!strcmp(branch_name, "HEAD")) {
 			branch_status_color = color(WT_STATUS_NOBRANCH, s);
@@ -1421,7 +1472,7 @@ static void wt_shortstatus_print_tracking(struct wt_status *s)
 		return;
 	branch_name = s->branch;
 
-	if (!prefixcmp(branch_name, "refs/heads/"))
+	if (starts_with(branch_name, "refs/heads/"))
 		branch_name += 11;
 	else if (!strcmp(branch_name, "HEAD")) {
 		branch_name = _("HEAD (no branch)");

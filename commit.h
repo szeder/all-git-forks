@@ -49,6 +49,7 @@ struct commit *lookup_commit_or_die(const unsigned char *sha1, const char *ref_n
 
 int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long size);
 int parse_commit(struct commit *item);
+void parse_commit_or_die(struct commit *item);
 
 /* Find beginning and length of commit subject. */
 int find_commit_subject(const char *commit_buffer, const char **subject);
@@ -231,11 +232,11 @@ struct commit_extra_header {
 extern void append_merge_tag_headers(struct commit_list *parents,
 				     struct commit_extra_header ***tail);
 
-extern int commit_tree(const struct strbuf *msg, unsigned char *tree,
+extern int commit_tree(const struct strbuf *msg, const unsigned char *tree,
 		       struct commit_list *parents, unsigned char *ret,
 		       const char *author, const char *sign_commit);
 
-extern int commit_tree_extended(const struct strbuf *msg, unsigned char *tree,
+extern int commit_tree_extended(const struct strbuf *msg, const unsigned char *tree,
 				struct commit_list *parents, unsigned char *ret,
 				const char *author, const char *sign_commit,
 				struct commit_extra_header *);

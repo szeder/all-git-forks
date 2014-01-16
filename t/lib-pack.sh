@@ -1,5 +1,3 @@
-#!/bin/sh
-#
 # Support routines for hand-crafting weird or malicious packs.
 #
 # You can make a complete pack like:
@@ -12,10 +10,10 @@
 # Print the big-endian 4-byte octal representation of $1
 uint32_octal () {
 	n=$1
-	printf '\%o' $(($n / 16777216)); n=$((n % 16777216))
-	printf '\%o' $(($n /    65536)); n=$((n %    65536))
-	printf '\%o' $(($n /      256)); n=$((n %      256))
-	printf '\%o' $(($n           ));
+	printf '\\%o' $(($n / 16777216)); n=$((n % 16777216))
+	printf '\\%o' $(($n /    65536)); n=$((n %    65536))
+	printf '\\%o' $(($n /      256)); n=$((n %      256))
+	printf '\\%o' $(($n           ));
 }
 
 # Print the big-endian 4-byte binary representation of $1
