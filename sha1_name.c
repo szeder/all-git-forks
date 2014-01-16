@@ -442,7 +442,7 @@ static inline int publish_mark(const char *string, int len)
 }
 
 static int get_sha1_1(const char *name, int len, unsigned char *sha1, unsigned lookup_flags);
-static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf);
+static int interpret_nth_prior_checkout(const char *name, int namelen, struct strbuf *buf);
 
 static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 {
@@ -503,7 +503,7 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 		struct strbuf buf = STRBUF_INIT;
 		int detached;
 
-		if (interpret_nth_prior_checkout(str, &buf) > 0) {
+		if (interpret_nth_prior_checkout(str, len, &buf) > 0) {
 			detached = (buf.len == 40 && !get_sha1_hex(buf.buf, sha1));
 			strbuf_release(&buf);
 			if (detached)
@@ -940,7 +940,8 @@ static int grab_nth_branch_switch(unsigned char *osha1, unsigned char *nsha1,
  * Parse @{-N} syntax, return the number of characters parsed
  * if successful; otherwise signal an error with negative value.
  */
-static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf)
+static int interpret_nth_prior_checkout(const char *name, int namelen,
+					struct strbuf *buf)
 {
 	long nth;
 	int retval;
@@ -948,9 +949,11 @@ static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf)
 	const char *brace;
 	char *num_end;
 
+	if (namelen < 4)
+		return -1;
 	if (name[0] != '@' || name[1] != '{' || name[2] != '-')
 		return -1;
-	brace = strchr(name, '}');
+	brace = memchr(name, '}', namelen);
 	if (!brace)
 		return -1;
 	nth = strtol(name + 3, &num_end, 10);
@@ -1023,7 +1026,7 @@ static int interpret_empty_at(const char *name, int namelen, int len, struct str
 		return -1;
 
 	/* make sure it's a single @, or @@{.*}, not @foo */
-	next = strchr(name + len + 1, '@');
+	next = memchr(name + len + 1, '@', namelen - len - 1);
 	if (next && next[1] != '{')
 		return -1;
 	if (!next)
@@ -1099,6 +1102,9 @@ static int interpret_upstream_mark(const char *name, int namelen,
 
 	len = upstream_mark(name + at, namelen - at);
 	if (!len)
+		return -1;
+
+	if (memchr(name, ':', at))
 		return -1;
 
 	set_shortened_ref(buf, get_upstream_branch(name, at));
@@ -1191,8 +1197,9 @@ static int interpret_publish_mark(const char *name, int namelen,
  */
 int interpret_branch_name(const char *name, int namelen, struct strbuf *buf)
 {
-	char *cp;
-	int len = interpret_nth_prior_checkout(name, buf);
+	char *at;
+	const char *start;
+	int len = interpret_nth_prior_checkout(name, namelen, buf);
 
 	if (!namelen)
 		namelen = strlen(name);
@@ -1206,21 +1213,22 @@ int interpret_branch_name(const char *name, int namelen, struct strbuf *buf)
 			return reinterpret(name, namelen, len, buf);
 	}
 
-	cp = strchr(name, '@');
-	if (!cp)
-		return -1;
+	for (start = name;
+	     (at = memchr(start, '@', namelen - (start - name)));
+	     start = at + 1) {
 
-	len = interpret_empty_at(name, namelen, cp - name, buf);
-	if (len > 0)
-		return reinterpret(name, namelen, len, buf);
+		len = interpret_empty_at(name, namelen, at - name, buf);
+		if (len > 0)
+			return reinterpret(name, namelen, len, buf);
 
-	len = interpret_upstream_mark(name, namelen, cp - name, buf);
-	if (len > 0)
-		return len;
+		len = interpret_upstream_mark(name, namelen, at - name, buf);
+		if (len > 0)
+			return len;
 
-	len = interpret_publish_mark(name, namelen, cp - name, buf);
-	if (len > 0)
-		return len;
+		len = interpret_publish_mark(name, namelen, at - name, buf);
+		if (len > 0)
+			return len;
+	}
 
 	return -1;
 }
