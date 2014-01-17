@@ -1,3 +1,9 @@
+git (1:1.8.5.3-1) unstable; urgency=low
+
+  * new upstream point release.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 16 Jan 2014 16:18:25 -0800
+
 git (1:1.8.5.2-2) unstable; urgency=low
 
   * /etc/bash_completion.d/git-prompt: check for git-sh-prompt

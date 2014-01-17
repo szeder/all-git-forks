@@ -1,3 +1,41 @@
+Version v1.8.5.3; changes since v1.8.5.2:
+-----------------------------------------
+
+Jeff King (5):
+      rev-parse: correctly diagnose revision errors before "--"
+      rev-parse: be more careful with munging arguments
+      cat-file: pass expand_data to print_object_or_die
+      cat-file: handle --batch format with missing type/size
+      Revert "prompt: clean up strbuf usage"
+
+Johannes Sixt (1):
+      mv: let 'git mv file no-such-dir/' error out on Windows, too
+
+Junio C Hamano (1):
+      Git 1.8.5.3
+
+Kyle J. McKay (1):
+      gc: notice gc processes run by other users
+
+Matthieu Moy (1):
+      mv: let 'git mv file no-such-dir/' error out
+
+Nguyễn Thái Ngọc Duy (1):
+      daemon: be strict at parsing parameters --[no-]informative-errors
+
+Ralf Thielow (1):
+      l10n: de.po: fix translation of 'prefix'
+
+Ramkumar Ramachandra (1):
+      for-each-ref: remove unused variable
+
+Thomas Ackermann (1):
+      pack-heuristics.txt: mark up the file header properly
+
+W. Trevor King (1):
+      Documentation/gitmodules: Only 'update' and 'url' are required
+
+
 Version v1.8.5.2; changes since v1.8.5.1:
 -----------------------------------------
 
