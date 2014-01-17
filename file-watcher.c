@@ -59,7 +59,7 @@ struct connection {
 static struct connection **conns;
 static struct pollfd *pfd;
 static int conns_alloc, pfd_nr, pfd_alloc;
-static int inotify_fd;
+static int inotify_fd, test_mode;
 
 static struct dir *create_dir(struct dir *parent, const char *path,
 			      const char *basename)
@@ -79,6 +79,14 @@ static struct dir *create_dir(struct dir *parent, const char *path,
 				   IN_DELETE_SELF | IN_MOVE_SELF |
 				   IN_ATTRIB | IN_DELETE | IN_MODIFY |
 				   IN_MOVED_FROM | IN_MOVED_TO);
+	if (test_mode) {
+		static int wd_counter = 1;
+		if (wd >= 0)
+			inotify_rm_watch(inotify_fd, wd);
+		wd = wd_counter++;
+		if (wd > 8)
+			wd = -1;
+	}
 	if (wd < 0)
 		return NULL;
 
@@ -376,6 +384,80 @@ static int handle_inotify(int fd)
 	return 0;
 }
 
+struct constant {
+	const char *name;
+	int value;
+};
+
+#define CONSTANT(x) { #x, x }
+static const struct constant inotify_masks[] = {
+	CONSTANT(IN_DELETE_SELF),
+	CONSTANT(IN_MOVE_SELF),
+	CONSTANT(IN_ATTRIB),
+	CONSTANT(IN_DELETE),
+	CONSTANT(IN_MODIFY),
+	CONSTANT(IN_MOVED_FROM),
+	CONSTANT(IN_MOVED_TO),
+	CONSTANT(IN_Q_OVERFLOW),
+	CONSTANT(IN_UNMOUNT),
+	{ NULL, 0 },
+};
+
+static void inject_inotify(const char *msg)
+{
+	char buf[sizeof(struct inotify_event) + NAME_MAX + 1];
+	struct inotify_event *event = (struct inotify_event *)buf;
+	char *end, *p;
+	int i;
+	memset(event, 0, sizeof(*event));
+	event->wd = strtol(msg, &end, 0);
+	if (*end++ != ' ')
+		die("expect a space after watch descriptor");
+	p = end;
+	end = strchrnul(p, ' ');
+	if (*end)
+		strcpy(event->name, end + 1);
+	while (p < end) {
+		char *sep = strchrnul(p, '|');
+		if (sep > end)
+			sep = end;
+		*sep = '\0';
+		for (i = 0; inotify_masks[i].name; i++)
+			if (!strcmp(inotify_masks[i].name, p))
+				break;
+		if (!inotify_masks[i].name)
+			die("unrecognize event mask %s", p);
+		event->mask |= inotify_masks[i].value;
+		p = sep + 1;
+	}
+	do_handle_inotify(event);
+}
+
+static void dump_watches(struct dir *d, struct strbuf *sb, struct strbuf *out)
+{
+	int i, len = sb->len;
+	strbuf_addstr(sb, d->name);
+	packet_buf_write_notrace(out, "%s %d", sb->buf[0] ? sb->buf : ".", d->wd);
+	if (d->name[0])
+		strbuf_addch(sb, '/');
+	for (i = 0; i < d->nr_subdirs; i++)
+		dump_watches(d->subdirs[i], sb, out);
+	for (i = 0; i < d->nr_files; i++)
+		packet_buf_write_notrace(out, "%s%s", sb->buf, d->files[i]->name);
+	strbuf_setlen(sb, len);
+}
+
+static void dump_changes(struct repository *repo, struct strbuf *sb)
+{
+	int i;
+	if (!repo->updated_sorted) {
+		sort_string_list(&repo->updated);
+		repo->updated_sorted = 1;
+	}
+	for (i = 0; i < repo->updated.nr; i++)
+		packet_buf_write_notrace(sb, "%s", repo->updated.items[i].string);
+}
+
 static void get_changed_list(int conn_id)
 {
 	struct strbuf sb = STRBUF_INIT;
@@ -537,6 +619,7 @@ static int shutdown_connection(int id)
 	return 0;
 }
 
+static void cleanup(void);
 static int handle_command(int conn_id)
 {
 	int fd = conns[conn_id]->sock;
@@ -716,6 +799,43 @@ static int handle_command(int conn_id)
 			return shutdown_connection(conn_id);
 		}
 	}
+
+	/*
+	 * Testing and debugging support
+	 */
+	else if (!strcmp(msg, "test-mode") && getenv("GIT_TEST_WATCHER")) {
+		test_mode = 1;
+	}
+	else if (!strcmp(msg, "die") && getenv("GIT_TEST_WATCHER")) {
+		/*
+		 * The client will wait for "see you" before it may
+		 * run another daemon with the same path. So there's
+		 * no racing on unlink() and listen() on the same
+		 * socket path.
+		 */
+		cleanup();
+		packet_write(fd, "see you");
+		close(fd);
+		exit(0);
+	}
+	else if (starts_with(msg, "dump-watches") && getenv("GIT_TEST_WATCHER")) {
+		struct strbuf sb = STRBUF_INIT;
+		struct strbuf out = STRBUF_INIT;
+		if (conns[conn_id]->repo->root)
+			dump_watches(conns[conn_id]->repo->root, &sb, &out);
+		packet_write(fd, "watching %s", out.buf);
+		strbuf_release(&out);
+		strbuf_release(&sb);
+	}
+	else if (starts_with(msg, "dump-changes") && getenv("GIT_TEST_WATCHER")) {
+		struct strbuf out = STRBUF_INIT;
+		dump_changes(conns[conn_id]->repo, &out);
+		packet_write(fd, "changed %s", out.buf);
+		strbuf_release(&out);
+	}
+	else if (starts_with(msg, "inotify ") && getenv("GIT_TEST_WATCHER")) {
+		inject_inotify(msg + 8);
+	}
 	else {
 		packet_write(fd, "error unrecognized command %s", msg);
 		return shutdown_connection(conn_id);
@@ -783,10 +903,12 @@ int main(int argc, const char **argv)
 {
 	struct strbuf sb = STRBUF_INIT;
 	int i, new_nr, fd, quit = 0, nr_common;
-	int daemon = 0;
+	int daemon = 0, check_support = 0;
 	struct option options[] = {
 		OPT_BOOL(0, "detach", &daemon,
 			 N_("run in background")),
+		OPT_BOOL(0, "check-support", &check_support,
+			 N_("return zero file watcher is available")),
 		OPT_END()
 	};
 
@@ -798,6 +920,9 @@ int main(int argc, const char **argv)
 	inotify_fd = inotify_init();
 	if (inotify_fd < 0)
 		die_errno("unable to initialize inotify");
+
+	if (check_support)
+		return 0;
 
 	if (argc != 1)
 		die(_("too many arguments"));

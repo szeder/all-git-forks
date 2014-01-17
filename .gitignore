@@ -181,6 +181,7 @@
 /test-date
 /test-delta
 /test-dump-cache-tree
+/test-file-watcher
 /test-scrap-cache-tree
 /test-genrandom
 /test-index-version
