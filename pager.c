@@ -87,6 +87,10 @@ void setup_pager(void)
 		argv_array_push(&env, "LESS=FRSX");
 	if (!getenv("LV"))
 		argv_array_push(&env, "LV=-c");
+#ifdef PAGER_MORE_UNDERSTANDS_R
+	if (!getenv("MORE"))
+		argv_array_push(&env, "MORE=R");
+#endif
 	pager_process.env = argv_array_detach(&env, NULL);
 
 	if (start_command(&pager_process))
