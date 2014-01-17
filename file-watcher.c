@@ -65,7 +65,8 @@ struct connection {
 static struct connection **conns;
 static struct pollfd *pfd;
 static int conns_alloc, pfd_nr, pfd_alloc;
-static int inotify_fd;
+static int inotify_fd, test_mode;
+static int wd_counter = 1;
 
 /*
  * IN_DONT_FOLLOW does not matter now as we do not monitor
@@ -78,10 +79,19 @@ static struct dir *create_dir(struct dir *parent, const char *path,
 			      const char *basename)
 {
 	struct dir *d;
-	int wd = inotify_add_watch(inotify_fd, path, INOTIFY_MASKS);
+	int wd;
+	if (!test_mode)
+		wd = inotify_add_watch(inotify_fd, path, INOTIFY_MASKS);
+	else {
+		wd = wd_counter++;
+		if (wd > 8)
+			wd = -1;
+	}
 	if (wd < 0)
 		return NULL;
 
+	trace_printf_key("GIT_TRACE_WATCHER", "inotify: watch %d %s\n",
+			 wd, path);
 	d = xmalloc(sizeof(*d));
 	memset(d, 0, sizeof(*d));
 	d->wd = wd;
@@ -124,7 +134,9 @@ static void free_dir(struct dir *d, int topdown)
 	if (d->repo)
 		d->repo->root = NULL;
 	wds[d->wd] = NULL;
-	inotify_rm_watch(inotify_fd, d->wd);
+	if (!test_mode)
+		inotify_rm_watch(inotify_fd, d->wd);
+	trace_printf_key("GIT_TRACE_WATCHER", "inotify: unwatch %d\n", d->wd);
 	if (topdown) {
 		int i;
 		for (i = 0; i < d->nr_subdirs; i++)
@@ -265,6 +277,7 @@ static inline void queue_file_changed(struct file *f, struct strbuf *sb)
 	int len = sb->len;
 	strbuf_addf(sb, "%s%s", f->parent->parent ? "/" : "", f->name);
 	string_list_append(&f->repo->updated, sb->buf);
+	trace_printf_key("GIT_TRACE_WATCHER", "watcher: changed %s\n", sb->buf);
 	f->repo->updated_sorted = 0;
 	strbuf_setlen(sb, len);
 }
@@ -323,6 +336,10 @@ static int do_handle_inotify(const struct inotify_event *event)
 {
 	struct dir *d;
 	int pos;
+
+	trace_printf_key("GIT_TRACE_WATCHER", "inotify: event %08x wd %d %s\n",
+			 event->mask, event->wd,
+			 event->len ? event->name : "N/A");
 
 	if (event->mask & (IN_Q_OVERFLOW | IN_UNMOUNT)) {
 		int i;
@@ -383,6 +400,81 @@ static int handle_inotify(int fd)
 		offset += sizeof(struct inotify_event) + event->len;
 	}
 	return ret;
+}
+
+struct constant {
+	const char *name;
+	int value;
+};
+
+#define CONSTANT(x) { #x, x }
+static const struct constant inotify_masks[] = {
+	CONSTANT(IN_DELETE_SELF),
+	CONSTANT(IN_MOVE_SELF),
+	CONSTANT(IN_ATTRIB),
+	CONSTANT(IN_DELETE),
+	CONSTANT(IN_MODIFY),
+	CONSTANT(IN_MOVED_FROM),
+	CONSTANT(IN_MOVED_TO),
+	CONSTANT(IN_Q_OVERFLOW),
+	CONSTANT(IN_UNMOUNT),
+	{ NULL, 0 },
+};
+
+static void inject_inotify(const char *msg)
+{
+	char buf[sizeof(struct inotify_event) + NAME_MAX + 1];
+	struct inotify_event *event = (struct inotify_event *)buf;
+	char *end, *p;
+	int i;
+	memset(event, 0, sizeof(*event));
+	event->wd = strtol(msg, &end, 0);
+	if (*end++ != ' ')
+		die("expect a space after watch descriptor");
+	p = end;
+	end = strchrnul(p, ' ');
+	if (*end)
+		strcpy(event->name, end + 1);
+	while (p < end) {
+		char *sep = strchrnul(p, '|');
+		if (sep > end)
+			sep = end;
+		*sep = '\0';
+		for (i = 0; inotify_masks[i].name; i++)
+			if (!strcmp(inotify_masks[i].name, p))
+				break;
+		if (!inotify_masks[i].name)
+			die("unrecognize event mask %s", p);
+		event->mask |= inotify_masks[i].value;
+		p = sep + 1;
+	}
+	do_handle_inotify(event);
+}
+
+static void dump_watches(struct dir *d, struct strbuf *sb, struct strbuf *out)
+{
+	int i, len = sb->len;
+	strbuf_addstr(sb, d->name);
+	strbuf_addf(out, "%s %d%c", sb->buf[0] ? sb->buf : ".", d->wd, '\0');
+	if (d->name[0])
+		strbuf_addch(sb, '/');
+	for (i = 0; i < d->nr_subdirs; i++)
+		dump_watches(d->subdirs[i], sb, out);
+	for (i = 0; i < d->nr_files; i++)
+		strbuf_addf(out, "%s%s%c", sb->buf, d->files[i]->name, '\0');
+	strbuf_setlen(sb, len);
+}
+
+static void dump_changes(struct repository *repo, struct strbuf *sb)
+{
+	int i;
+	if (!repo->updated_sorted) {
+		sort_string_list(&repo->updated);
+		repo->updated_sorted = 1;
+	}
+	for (i = 0; i < repo->updated.nr; i++)
+		strbuf_add(sb, repo->updated.items[i].string,
+			   strlen(repo->updated.items[i].string) + 1);
 }
 
 static void get_changed_list(int conn_id)
@@ -483,11 +575,13 @@ static void unchange(int conn_id, unsigned long size)
 			item = string_list_lookup(&repo->updated, p);
 			if (!item)
 				continue;
+			trace_printf_key("GIT_TRACE_WATCHER", "watcher: unchange %s\n", p);
 			unsorted_string_list_delete_item(&repo->updated,
 							 item - repo->updated.items, 0);
 		}
 		strbuf_release(&sb);
 	}
+	trace_printf_key("GIT_TRACE_WATCHER", "watcher: unchange complete\n");
 	memcpy(repo->index_signature, conn->new_index, 40);
 	/*
 	 * If other connections on this repo are in some sort of
@@ -540,6 +634,13 @@ static void reset_watches(struct repository *repo)
 
 static void reset_repo(struct repository *repo, ino_t inode)
 {
+	if (test_mode)
+		/*
+		 * test-mode is designed for single repo, we can
+		 * safely reset wd counter because all wd should be
+		 * deleted
+		 */
+		wd_counter = 1;
 	reset_watches(repo);
 	string_list_clear(&repo->updated, 0);
 	memcpy(repo->index_signature, invalid_signature, 40);
@@ -560,6 +661,7 @@ static int shutdown_connection(int id)
 	return 0;
 }
 
+static void cleanup(void);
 static int handle_command(int conn_id)
 {
 	int fd = conns[conn_id]->sock;
@@ -754,6 +856,71 @@ static int handle_command(int conn_id)
 		}
 		unchange(conn_id, n);
 	}
+
+	/*
+	 * Testing and debugging support
+	 */
+	else if (!strcmp(msg, "test-mode") && getenv("GIT_TEST_WATCHER")) {
+		test_mode = 1;
+		packet_write(fd, "test mode on");
+	}
+	else if (starts_with(msg, "setenv ")) {
+		/* useful for setting GIT_TRACE_WATCHER or GIT_TRACE_PACKET */
+		char *sep = strchr(msg + 7, ' ');
+		if (!sep) {
+			packet_write(fd, "error invalid setenv line %s", msg);
+			return shutdown_connection(conn_id);
+		}
+		*sep = '\0';
+		setenv(msg + 7, sep + 1, 1);
+	}
+	else if (starts_with(msg, "log ")) {
+		; /* do nothing, if GIT_TRACE_PACKET is on, it's already logged */
+	}
+	else if (!strcmp(msg, "die") && getenv("GIT_TEST_WATCHER")) {
+		/*
+		 * The client will wait for "see you" before it may
+		 * run another daemon with the same path. So there's
+		 * no racing on unlink() and listen() on the same
+		 * socket path.
+		 */
+		cleanup();
+		packet_write(fd, "see you");
+		close(fd);
+		exit(0);
+	}
+	else if (starts_with(msg, "dump ") && getenv("GIT_TEST_WATCHER")) {
+		struct strbuf sb = STRBUF_INIT;
+		struct strbuf out = STRBUF_INIT;
+		const char *reply = NULL;
+		if (!strcmp(msg + 5, "watches")) {
+			if (conns[conn_id]->repo) {
+				if (conns[conn_id]->repo->root)
+					dump_watches(conns[conn_id]->repo->root, &sb, &out);
+			} else {
+				int i;
+				for (i = 0; i < nr_repos; i++) {
+					strbuf_addf(&out, "%s%c", repos[i]->work_tree, '\0');
+					if (repos[i]->root)
+						dump_watches(repos[i]->root, &sb, &out);
+					strbuf_reset(&out);
+					strbuf_reset(&sb);
+				}
+			}
+			reply = "watching";
+		} else if (!strcmp(msg + 5, "changes")) {
+			dump_changes(conns[conn_id]->repo, &out);
+			reply = "changed";
+		}
+		packet_write(fd, "%s %d", reply, (int)out.len);
+		if (out.len)
+			write_in_full(fd, out.buf, out.len);
+		strbuf_release(&out);
+		strbuf_release(&sb);
+	}
+	else if (starts_with(msg, "inotify ") && getenv("GIT_TEST_WATCHER")) {
+		inject_inotify(msg + 8);
+	}
 	else {
 		packet_write(fd, "error unrecognized command %s", msg);
 		return shutdown_connection(conn_id);
@@ -848,11 +1015,13 @@ int main(int argc, const char **argv)
 {
 	struct strbuf sb = STRBUF_INIT;
 	int i, new_nr, fd, quit = 0, nr_common;
-	int daemon = 0;
+	int daemon = 0, check_support = 0;
 	time_t last_checked;
 	struct option options[] = {
 		OPT_BOOL(0, "detach", &daemon,
 			 N_("run in background")),
+		OPT_BOOL(0, "check-support", &check_support,
+			 N_("return zero file watcher is available")),
 		OPT_END()
 	};
 
@@ -865,6 +1034,10 @@ int main(int argc, const char **argv)
 
 	argc = parse_options(argc, argv, NULL, options,
 			     file_watcher_usage, 0);
+
+	if (check_support)
+		return 0;
+
 	if (argc < 1)
 		die(_("socket path missing"));
 	else if (argc > 1)
