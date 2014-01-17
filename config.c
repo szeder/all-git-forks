@@ -991,7 +991,7 @@ int git_default_config(const char *var, const char *value, void *dummy)
 		return git_default_advice_config(var, value);
 
 	if (!strcmp(var, "pager.color") || !strcmp(var, "color.pager")) {
-		pager_use_color = git_config_bool(var,value);
+		pager_use_color_config = git_config_bool(var,value);
 		return 0;
 	}
 

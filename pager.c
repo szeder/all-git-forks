@@ -184,3 +184,48 @@ int check_pager_config(const char *cmd)
 		pager_program = c.value;
 	return c.want;
 }
+
+static int pager_can_handle_color(void)
+{
+	const char *pager = git_pager(1);
+
+	/*
+	 * If it's less, we automatically set "R" and can handle color,
+	 * unless the user already has a "LESS" variable that does not
+	 * include "R".
+	 */
+	if (!strcmp(pager, "less")) {
+		const char *x = getenv("LESS");
+		return !x || !!strchr(x, 'R');
+	}
+
+	if (!strcmp(pager, "more")) {
+#ifdef PAGER_MORE_UNDERSTANDS_R
+		/*
+		 * An advanced "more" that knows "R" is in the same boat as
+		 * "less".
+		 */
+		const char *x = getenv("MORE");
+		return !x || !!strchr(x, 'R');
+#else
+		/*
+		 * For a more primitive "more", just assume that it will pass
+		 * through the control codes verbatim.
+		 */
+		return 1;
+#endif
+	}
+
+	/*
+	 * Otherwise, we don't recognize it. Guess that it can probably handle
+	 * color. This matches what we have done historically.
+	 */
+	return 1;
+}
+
+int pager_use_color(void)
+{
+	if (pager_use_color_config < 0)
+		pager_use_color_config = pager_can_handle_color();
+	return pager_use_color_config;
+}
