@@ -269,6 +269,7 @@ static int batch_objects(struct batch_options *opt)
 {
 	struct strbuf buf = STRBUF_INIT;
 	struct expand_data data;
+	int retval = 0;
 
 	if (!opt->format)
 		opt->format = "%(objectname) %(objecttype) %(objectsize)";
@@ -290,18 +291,7 @@ static int batch_objects(struct batch_options *opt)
 	if (opt->print_contents)
 		data.info.typep = &data.type;
 
-	/*
-	 * We are going to call get_sha1 on a potentially very large number of
-	 * objects. In most large cases, these will be actual object sha1s. The
-	 * cost to double-check that each one is not also a ref (just so we can
-	 * warn) ends up dwarfing the actual cost of the object lookups
-	 * themselves. We can work around it by just turning off the warning.
-	 */
-	warn_on_object_refname_ambiguity = 0;
-
 	while (strbuf_getline(&buf, stdin, '\n') != EOF) {
-		int error;
-
 		if (data.split_on_whitespace) {
 			/*
 			 * Split at first whitespace, tying off the beginning
@@ -316,12 +306,13 @@ static int batch_objects(struct batch_options *opt)
 			data.rest = p;
 		}
 
-		error = batch_one_object(buf.buf, opt, &data);
-		if (error)
-			return error;
+		retval = batch_one_object(buf.buf, opt, &data);
+		if (retval)
+			break;
 	}
 
-	return 0;
+	strbuf_release(&buf);
+	return retval;
 }
 
 static const char * const cat_file_usage[] = {
