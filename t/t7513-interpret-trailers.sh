@@ -223,45 +223,40 @@ test_expect_success 'with simple command' '
 	test_cmp expected actual
 '
 
-exit 1
-
-test_expect_success 'with command using commiter information' '
+test_expect_success 'with command using author information' '
 	git config trailer.sign.key "Signed-off-by: " &&
 	git config trailer.sign.where "after" &&
 	git config trailer.sign.ifExist "addIfDifferentNeighbor" &&
-	git config trailer.sign.command "echo \"$GIT_COMMITER_NAME <$GIT_COMMITER_EMAIL>\"" &&
+	git config trailer.sign.command "echo \"\$GIT_AUTHOR_NAME <\$GIT_AUTHOR_EMAIL>\"" &&
 	cat complex_message_body >expected &&
 	printf "Fixes: \nAcked-by= \nReviewed-by: \nSigned-off-by: \nSigned-off-by: A U Thor <author@example.com>\n" >>expected &&
 	git interpret-trailers "review:" "fix=22" < complex_message >actual &&
 	test_cmp expected actual
 '
 
-# TODO
-
-# 1)
-
-# [trailer "change-id"]
-#    style = append-only-if-missing
-#    trailer = "Change-id:"
-#    command = 'git hash-object -t commit --stdin < $GIT_PROTO_COMMIT'
-
-# [trailer "fixes"]
-#    style = overwrite
-#    trailer = "Fixes:"
-#    command = 'git log -1 --oneline --format="%h (%s)" --abbrev-commit --abbrev=14 $ARG'
-
-# git log -1 --oneline --format="%h (%s)" --abbrev-commit --abbrev=14 HEAD
-
-# 2)
-
-# Documentation!!!
+test_expect_success 'with command using commiter information' '
+	git config trailer.sign.ifExist "addIfDifferent" &&
+	git config trailer.sign.command "echo \"\$GIT_COMMITTER_NAME <\$GIT_COMMITTER_EMAIL>\"" &&
+	cat complex_message_body >expected &&
+	printf "Fixes: \nAcked-by= \nReviewed-by: \nSigned-off-by: \nSigned-off-by: C O Mitter <committer@example.com>\n" >>expected &&
+	git interpret-trailers "review:" "fix=22" < complex_message >actual &&
+	test_cmp expected actual
+'
 
 test_expect_success 'setup a commit' '
 	echo "Content of the first commit." > a.txt &&
 	git add a.txt &&
-	git commit -m "Add file a.txt" &&
-	echo "commiter name: $GIT_COMMITER_NAME" >name.txt &&
-	echo "commiter mail: $GIT_COMMITER_EMAIL" >mail.txt
+	git commit -m "Add file a.txt"
+'
+
+test_expect_success 'with command using $ARG' '
+	git config trailer.fix.ifExist "overwrite" &&
+	git config trailer.fix.command "git log -1 --oneline --format=\"%h (%s)\" --abbrev-commit --abbrev=14 \$ARG" &&
+	FIXED=$(git log -1 --oneline --format="%h (%s)" --abbrev-commit --abbrev=14 HEAD) &&
+	cat complex_message_body >expected &&
+	printf "Fixes: $FIXED\nAcked-by= \nReviewed-by: \nSigned-off-by: \nSigned-off-by: C O Mitter <committer@example.com>\n" >>expected &&
+	git interpret-trailers "review:" "fix=HEAD" < complex_message >actual &&
+	test_cmp expected actual
 '
 
 test_done
