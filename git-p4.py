@@ -439,6 +439,11 @@ def isModeExec(mode):
     # otherwise False.
     return mode[-3:] == "755"
 
+def isModeGitlink(mode):
+    # Returns True if the given git mode represents an gitlink (submodule)
+    # otherwise False.
+    return mode[:2] == "16"
+
 def isModeExecChanged(src_mode, dst_mode):
     return isModeExec(src_mode) != isModeExec(dst_mode)
 
@@ -1263,6 +1268,9 @@ class P4Submit(Command, P4UserMap):
                     filesToChangeExecBit[path] = diff['dst_mode']
                 editedFiles.add(path)
             elif modifier == "A":
+                # Skip gitlinks, as we can't add them
+                if isModeGitlink(diff['dst_mode']):
+                    continue
                 filesToAdd.add(path)
                 filesToChangeExecBit[path] = diff['dst_mode']
                 if path in filesToDelete:
