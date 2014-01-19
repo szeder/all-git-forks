@@ -48,6 +48,26 @@ static size_t alnum_len(const char *buf, size_t len) {
 	return len + 1;
 }
 
+static void print_tok_val(const char *tok, const char *val)
+{
+	char c = tok[strlen(tok) - 1];
+	if (isalnum(c))
+		printf("%s: %s\n", tok, val);
+	else if (isspace(c) || c == '#')
+		printf("%s%s\n", tok, val);
+	else
+		printf("%s %s\n", tok, val);
+}
+
+static void print_all(struct trailer_item *first, int trim_empty)
+{
+	struct trailer_item *item;
+	for (item = first; item; item = item->next) {
+		if (!trim_empty || strlen(item->value) > 0)
+			print_tok_val(item->token, item->value);
+	}
+}
+
 static void add_arg_to_infile(struct trailer_item *infile_tok,
 			      struct trailer_item *arg_tok)
 {
@@ -502,4 +522,24 @@ static void process_input_file(const char *infile,
 		struct trailer_item *new = create_trailer_item(lines[i]->buf);
 		add_trailer_item(infile_tok_first, infile_tok_last, new);
 	}
+}
+
+void process_trailers(const char *infile, int trim_empty, int argc, const char **argv)
+{
+	struct trailer_item *infile_tok_first = NULL;
+	struct trailer_item *infile_tok_last = NULL;
+	struct trailer_item *arg_tok_first;
+
+	git_config(git_trailer_config, NULL);
+
+	/* Print the non trailer part of infile */
+	if (infile) {
+		process_input_file(infile, &infile_tok_first, &infile_tok_last);
+	}
+
+	arg_tok_first = process_command_line_args(argc, argv);
+
+	process_trailers_lists(&infile_tok_first, &infile_tok_last, &arg_tok_first);
+
+	print_all(infile_tok_first, trim_empty);
 }
