@@ -16,6 +16,7 @@ enum parse_opt_type {
 	/* options with arguments (usually) */
 	OPTION_STRING,
 	OPTION_INTEGER,
+	OPTION_ULONG,
 	OPTION_CALLBACK,
 	OPTION_LOWLEVEL_CALLBACK,
 	OPTION_FILENAME
@@ -40,6 +41,7 @@ enum parse_opt_option_flags {
 	PARSE_OPT_LASTARG_DEFAULT = 16,
 	PARSE_OPT_NODASH = 32,
 	PARSE_OPT_LITERAL_ARGHELP = 64,
+	PARSE_OPT_HUMAN_NUMBER = 128,
 	PARSE_OPT_SHELL_EVAL = 256
 };
 
@@ -131,6 +133,9 @@ struct option {
 #define OPT_SET_PTR(s, l, v, h, p)  { OPTION_SET_PTR, (s), (l), (v), NULL, \
 				      (h), PARSE_OPT_NOARG, NULL, (p) }
 #define OPT_INTEGER(s, l, v, h)     { OPTION_INTEGER, (s), (l), (v), N_("n"), (h) }
+#define OPT_ULONG(s, l, v, h)       { OPTION_ULONG, (s), (l), (v), N_("n"), (h) }
+#define OPT_HUM_ULONG(s, l, v, h)   { OPTION_ULONG, (s), (l), (v), N_("n"), (h), \
+				      PARSE_OPT_HUMAN_NUMBER }
 #define OPT_STRING(s, l, v, a, h)   { OPTION_STRING,  (s), (l), (v), (a), (h) }
 #define OPT_STRING_LIST(s, l, v, a, h) \
 				    { OPTION_CALLBACK, (s), (l), (v), (a), \
