@@ -130,9 +130,9 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 	int pack_everything = 0;
 	int delete_redundant = 0;
 	char *unpack_unreachable = NULL;
-	int window = 0, window_memory = 0;
+	int window = 0;
 	int depth = 0;
-	int max_pack_size = 0;
+	unsigned long max_pack_size = 0, window_memory = 0;
 	int no_reuse_delta = 0, no_reuse_object = 0;
 	int no_update_server_info = 0;
 	int quiet = 0;
@@ -159,11 +159,11 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 				N_("with -A, do not loosen objects older than this")),
 		OPT_INTEGER(0, "window", &window,
 				N_("size of the window used for delta compression")),
-		OPT_INTEGER(0, "window-memory", &window_memory,
+		OPT_HUM_ULONG(0, "window-memory", &window_memory,
 				N_("same as the above, but limit memory size instead of entries count")),
 		OPT_INTEGER(0, "depth", &depth,
 				N_("limits the maximum delta depth")),
-		OPT_INTEGER(0, "max-pack-size", &max_pack_size,
+		OPT_HUM_ULONG(0, "max-pack-size", &max_pack_size,
 				N_("maximum size of each packfile")),
 		OPT_END()
 	};
@@ -187,11 +187,11 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 	if (window)
 		argv_array_pushf(&cmd_args, "--window=%u", window);
 	if (window_memory)
-		argv_array_pushf(&cmd_args, "--window-memory=%u", window_memory);
+		argv_array_pushf(&cmd_args, "--window-memory=%lu", window_memory);
 	if (depth)
 		argv_array_pushf(&cmd_args, "--depth=%u", depth);
 	if (max_pack_size)
-		argv_array_pushf(&cmd_args, "--max_pack_size=%u", max_pack_size);
+		argv_array_pushf(&cmd_args, "--max_pack_size=%lu", max_pack_size);
 	if (no_reuse_delta)
 		argv_array_pushf(&cmd_args, "--no-reuse-delta");
 	if (no_reuse_object)
