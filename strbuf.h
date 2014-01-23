@@ -42,6 +42,7 @@ static inline void strbuf_setlen(struct strbuf *sb, size_t len) {
 extern void strbuf_trim(struct strbuf *);
 extern void strbuf_rtrim(struct strbuf *);
 extern void strbuf_ltrim(struct strbuf *);
+extern int strbuf_isspace(struct strbuf *);
 extern int strbuf_cmp(const struct strbuf *, const struct strbuf *);
 
 /*
@@ -109,6 +110,9 @@ extern void strbuf_remove(struct strbuf *, size_t pos, size_t len);
 /* splice pos..pos+len with given data */
 extern void strbuf_splice(struct strbuf *, size_t pos, size_t len,
                           const void *, size_t);
+
+/* first occurence of a replaced with b */
+extern void strbuf_replace(struct strbuf *, const char *a, const char *b);
 
 extern void strbuf_add_commented_lines(struct strbuf *out, const char *buf, size_t size);
 
