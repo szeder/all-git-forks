@@ -56,6 +56,26 @@ static void accept_connection(int fd)
 	pfd_nr++;
 }
 
+static const char *socket_path;
+static int do_not_clean_up;
+
+static void cleanup(void)
+{
+	struct strbuf sb = STRBUF_INIT;
+	if (do_not_clean_up)
+		return;
+	strbuf_addf(&sb, "%s/socket", socket_path);
+	unlink(sb.buf);
+	strbuf_release(&sb);
+}
+
+static void cleanup_on_signal(int signo)
+{
+	cleanup();
+	sigchain_pop(signo);
+	raise(signo);
+}
+
 static const char permissions_advice[] =
 N_("The permissions on your socket directory are too loose; other\n"
    "processes may be able to read your file listing. Consider running:\n"
@@ -91,7 +111,6 @@ int main(int argc, const char **argv)
 {
 	struct strbuf sb = STRBUF_INIT;
 	int i, new_nr, fd, quit = 0, nr_common;
-	const char *socket_path = NULL;
 	struct option options[] = {
 		OPT_END()
 	};
@@ -112,6 +131,9 @@ int main(int argc, const char **argv)
 	if (fd == -1)
 		die_errno(_("unable to listen at %s"), sb.buf);
 	strbuf_reset(&sb);
+
+	atexit(cleanup);
+	sigchain_push_common(cleanup_on_signal);
 
 	nr_common = 1;
 	pfd_alloc = pfd_nr = nr_common;
