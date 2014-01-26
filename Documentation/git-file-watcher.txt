@@ -18,6 +18,8 @@ lstat(2) to detect that itself.
 
 OPTIONS
 -------
+--detach::
+	Run in background.
 
 SEE ALSO
 --------

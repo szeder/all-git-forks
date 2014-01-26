@@ -787,3 +787,28 @@ void sanitize_stdfds(void)
 	if (fd > 2)
 		close(fd);
 }
+
+int daemonize(int *flag)
+{
+#ifndef NO_POSIX_GOODIES
+	switch (fork()) {
+		case 0:
+			break;
+		case -1:
+			die_errno("fork failed");
+		default:
+			if (flag)
+				*flag = 1;
+			exit(0);
+	}
+	if (setsid() == -1)
+		die_errno("setsid failed");
+	close(0);
+	close(1);
+	close(2);
+	sanitize_stdfds();
+	return 0;
+#else
+	return -1;
+#endif
+}
