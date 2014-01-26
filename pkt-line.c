@@ -10,7 +10,7 @@ void packet_trace_identity(const char *prog)
 	packet_trace_prefix = xstrdup(prog);
 }
 
-static void packet_trace(const char *buf, unsigned int len, int write)
+void packet_trace(const char *buf, unsigned int len, int write)
 {
 	int i;
 	struct strbuf out;
@@ -64,8 +64,8 @@ void packet_buf_flush(struct strbuf *buf)
 }
 
 #define hex(a) (hexchar[(a) & 15])
-static unsigned format_packet(struct strbuf *sb,
-			      const char *fmt, va_list args)
+unsigned format_packet(struct strbuf *sb,
+		       const char *fmt, va_list args)
 {
 	static char hexchar[] = "0123456789abcdef";
 	unsigned n = sb->len;

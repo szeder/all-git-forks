@@ -1042,6 +1042,16 @@ difftool.<tool>.cmd::
 difftool.prompt::
 	Prompt before each invocation of the diff tool.
 
+filewatcher.path::
+	The directory that contains the socket of `git
+	file-watcher`. If it's not an absolute path, it's relative to
+	$GIT_DIR.
+
+filewatcher.timeout::
+	This is the maximum time in milliseconds that Git waits for
+	the file watcher to respond before giving up. Default value is
+	50. Setting to -1 makes Git wait forever.
+
 fetch.recurseSubmodules::
 	This option can be either set to a boolean value or to 'on-demand'.
 	Setting it to a boolean changes the behavior of fetch and pull to

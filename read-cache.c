@@ -14,6 +14,7 @@
 #include "resolve-undo.h"
 #include "strbuf.h"
 #include "varint.h"
+#include "file-watcher-lib.h"
 
 static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int really);
 
@@ -1528,6 +1529,7 @@ int read_index_from(struct index_state *istate, const char *path)
 		src_offset += extsize;
 	}
 	munmap(mmap, mmap_size);
+	open_watcher(istate);
 	return istate->cache_nr;
 
 unmap:
@@ -1553,6 +1555,10 @@ int discard_index(struct index_state *istate)
 	istate->timestamp.nsec = 0;
 	free_name_hash(istate);
 	cache_tree_free(&(istate->cache_tree));
+	if (istate->watcher > 0) {
+		close(istate->watcher);
+		istate->watcher = -1;
+	}
 	istate->initialized = 0;
 	free(istate->cache);
 	istate->cache = NULL;
