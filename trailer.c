@@ -400,11 +400,27 @@ static void parse_trailer(struct strbuf *tok, struct strbuf *val, const char *tr
 	}
 }
 
+static struct trailer_item *new_trailer_item(struct trailer_item *conf_item,
+					     const char* tok, const char* val)
+{
+	struct trailer_item *new = xcalloc(sizeof(struct trailer_item), 1);
+	new->value = val;
+
+	if (conf_item) {
+		new->conf = conf_item->conf;
+		new->token = xstrdup(conf_item->conf->key);
+	} else {
+		new->conf = xcalloc(sizeof(struct conf_info), 1);
+		new->token = tok;
+	}
+
+	return new;
+}
+
 static struct trailer_item *create_trailer_item(const char *string)
 {
 	struct strbuf tok = STRBUF_INIT;
 	struct strbuf val = STRBUF_INIT;
-	struct trailer_item *new;
 	struct trailer_item *item;
 	int tok_alnum_len;
 
@@ -416,21 +432,12 @@ static struct trailer_item *create_trailer_item(const char *string)
 	for (item = first_conf_item; item; item = item->next) {
 		if (!strncasecmp(tok.buf, item->conf->key, tok_alnum_len) ||
 		    !strncasecmp(tok.buf, item->conf->name, tok_alnum_len)) {
-			new = xcalloc(sizeof(struct trailer_item), 1);
-			new->conf = item->conf;
-			new->token = xstrdup(item->conf->key);
-			new->value = strbuf_detach(&val, NULL);
 			strbuf_release(&tok);
-			return new;
+			return new_trailer_item(item, NULL, strbuf_detach(&val, NULL));
 		}
 	}
 
-	new = xcalloc(sizeof(struct trailer_item), 1);
-	new->conf = xcalloc(sizeof(struct conf_info), 1);
-	new->token = strbuf_detach(&tok, NULL);
-	new->value = strbuf_detach(&val, NULL);
-
-	return new;
+	return new_trailer_item(NULL, strbuf_detach(&tok, NULL), strbuf_detach(&val, NULL));;
 }
 
 static void add_trailer_item(struct trailer_item **first,
