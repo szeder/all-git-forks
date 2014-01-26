@@ -1,0 +1,29 @@
+git-file-watcher(1)
+===================
+
+NAME
+----
+git-file-watcher - File update notification daemon
+
+SYNOPSIS
+--------
+[verse]
+'git file-watcher' [options] <socket directory>
+
+DESCRIPTION
+-----------
+This program watches file changes in a git working directory and let
+Git now what files have been changed so that Git does not have to call
+lstat(2) to detect that itself.
+
+OPTIONS
+-------
+
+SEE ALSO
+--------
+linkgit:git-update-index[1],
+linkgit:git-config[1]
+
+GIT
+---
+Part of the linkgit:git[1] suite

@@ -536,6 +536,7 @@ PROGRAMS += $(EXTRA_PROGRAMS)
 PROGRAM_OBJS += credential-store.o
 PROGRAM_OBJS += daemon.o
 PROGRAM_OBJS += fast-import.o
+PROGRAM_OBJS += file-watcher.o
 PROGRAM_OBJS += http-backend.o
 PROGRAM_OBJS += imap-send.o
 PROGRAM_OBJS += sh-i18n--envsubst.o
