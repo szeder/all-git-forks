@@ -111,7 +111,10 @@ int main(int argc, const char **argv)
 {
 	struct strbuf sb = STRBUF_INIT;
 	int i, new_nr, fd, quit = 0, nr_common;
+	int daemon = 0;
 	struct option options[] = {
+		OPT_BOOL(0, "detach", &daemon,
+			 N_("run in background")),
 		OPT_END()
 	};
 
@@ -134,6 +137,20 @@ int main(int argc, const char **argv)
 
 	atexit(cleanup);
 	sigchain_push_common(cleanup_on_signal);
+
+	if (daemon) {
+		int err;
+		strbuf_addf(&sb, "%s/log", socket_path);
+		err = open(sb.buf, O_CREAT | O_TRUNC | O_WRONLY, 0600);
+		adjust_shared_perm(sb.buf);
+		if (err == -1)
+			die_errno(_("unable to create %s"), sb.buf);
+		if (daemonize(&do_not_clean_up))
+			die(_("--detach not supported on this platform"));
+		dup2(err, 1);
+		dup2(err, 2);
+		close(err);
+	}
 
 	nr_common = 1;
 	pfd_alloc = pfd_nr = nr_common;
