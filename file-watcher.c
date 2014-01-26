@@ -65,11 +65,30 @@ static void close_connection(int id)
 	free(conn);
 }
 
+static const char *socket_path;
+static int do_not_clean_up;
+
+static void cleanup(void)
+{
+	struct strbuf sb = STRBUF_INIT;
+	if (do_not_clean_up)
+		return;
+	strbuf_addf(&sb, "%s/socket", socket_path);
+	unlink(sb.buf);
+	strbuf_release(&sb);
+}
+
+static void cleanup_on_signal(int signo)
+{
+	cleanup();
+	sigchain_pop(signo);
+	raise(signo);
+}
+
 int main(int argc, const char **argv)
 {
 	struct strbuf sb = STRBUF_INIT;
 	int i, new_nr, fd, quit = 0, nr_common;
-	const char *socket_path = NULL;
 	struct option options[] = {
 		OPT_END()
 	};
@@ -80,6 +99,9 @@ int main(int argc, const char **argv)
 			     file_watcher_usage, 0);
 	if (argc != 1)
 		die(_("too many arguments"));
+
+	atexit(cleanup);
+	sigchain_push_common(cleanup_on_signal);
 
 	socket_path = argv[0];
 	strbuf_addf(&sb, "%s/socket", socket_path);
