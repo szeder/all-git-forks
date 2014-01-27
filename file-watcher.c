@@ -17,6 +17,17 @@ static struct connection **conns;
 static struct pollfd *pfd;
 static int conns_alloc, pfd_nr, pfd_alloc;
 
+static int shutdown_connection(int id)
+{
+	struct connection *conn = conns[id];
+	conns[id] = NULL;
+	pfd[id].fd = -1; /* pfd_nr is shrunk in the main event loop */
+	close(conn->sock);
+	conn->sock = -1;
+	free(conn);
+	return 0;
+}
+
 static int handle_command(int conn_id)
 {
 	return 0;
@@ -107,7 +118,8 @@ int main(int argc, const char **argv)
 			else {
 				if ((pfd[i].revents & POLLIN) && conns[i])
 					handle_command(i);
-				new_nr++;
+				if (pfd[i].fd != -1)
+					new_nr++;
 			}
 		}
 		pfd_nr = new_nr;
