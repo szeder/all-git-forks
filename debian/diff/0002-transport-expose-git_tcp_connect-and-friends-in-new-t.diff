@@ -1,4 +1,4 @@
-From 0164fadfbde811a3e41796d04b74913e7995d018 Mon Sep 17 00:00:00 2001
+From 2022b8e17826de798c709552b55514f99b94e295 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:37:14 -0500
 Subject: transport: expose git_tcp_connect() and friends in new tcp.h
@@ -14,17 +14,17 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile  |   2 +
  connect.c | 277 +------------------------------------------------------------
- tcp.c     | 280 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- tcp.h     |   8 ++
- 4 files changed, 291 insertions(+), 276 deletions(-)
+ tcp.c     | 281 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tcp.h     |   9 ++
+ 4 files changed, 293 insertions(+), 276 deletions(-)
  create mode 100644 tcp.c
  create mode 100644 tcp.h
 
 diff --git a/Makefile b/Makefile
-index af847f8..a78f758 100644
+index b4af1e2..078fcf9 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -725,6 +725,7 @@ LIB_H += string-list.h
+@@ -721,6 +721,7 @@ LIB_H += string-list.h
  LIB_H += submodule.h
  LIB_H += tag.h
  LIB_H += tar.h
@@ -32,7 +32,7 @@ index af847f8..a78f758 100644
  LIB_H += thread-utils.h
  LIB_H += transport.h
  LIB_H += tree-walk.h
-@@ -874,6 +875,7 @@ LIB_OBJS += string-list.o
+@@ -870,6 +871,7 @@ LIB_OBJS += string-list.o
  LIB_OBJS += submodule.o
  LIB_OBJS += symlinks.o
  LIB_OBJS += tag.o
@@ -41,7 +41,7 @@ index af847f8..a78f758 100644
  LIB_OBJS += transport.o
  LIB_OBJS += transport-helper.o
 diff --git a/connect.c b/connect.c
-index 06e88b0..da37b2c 100644
+index 4150412..bcfbb15 100644
 --- a/connect.c
 +++ b/connect.c
 @@ -6,6 +6,7 @@
@@ -51,8 +51,8 @@ index 06e88b0..da37b2c 100644
 +#include "tcp.h"
  #include "url.h"
  #include "string-list.h"
- 
-@@ -251,282 +252,6 @@ static enum protocol get_protocol(const char *name)
+ #include "sha1-array.h"
+@@ -279,282 +280,6 @@ static enum protocol get_protocol(const char *name)
  	die("I don't handle protocol '%s'", name);
  }
  
@@ -332,15 +332,15 @@ index 06e88b0..da37b2c 100644
 -	return proxy;
 -}
 -
- #define MAX_CMD_LEN 1024
- 
- static char *get_port(char *host)
+ static const char *get_port_numeric(const char *p)
+ {
+ 	char *end;
 diff --git a/tcp.c b/tcp.c
 new file mode 100644
-index 0000000..7d8566d
+index 0000000..5063f93
 --- /dev/null
 +++ b/tcp.c
-@@ -0,0 +1,280 @@
+@@ -0,0 +1,281 @@
 +#include "cache.h"
 +#include "tcp.h"
 +#include "run-command.h"
@@ -349,7 +349,7 @@ index 0000000..7d8566d
 +#define STR_(s)	# s
 +#define STR(s)	STR_(s)
 +
-+static void get_host_and_port(char **host, const char **port)
++void get_host_and_port(char **host, const char **port)
 +{
 +	char *colon, *end;
 +
@@ -621,20 +621,22 @@ index 0000000..7d8566d
 +	fd[1] = proxy->in;  /* write to proxy stdin */
 +	return proxy;
 +}
++
 diff --git a/tcp.h b/tcp.h
 new file mode 100644
-index 0000000..4de5f71
+index 0000000..566afd4
 --- /dev/null
 +++ b/tcp.h
-@@ -0,0 +1,8 @@
+@@ -0,0 +1,9 @@
 +#ifndef TCP_H
 +#define TCP_H
 +
++extern void get_host_and_port(char **host, const char **port);
 +extern int git_use_proxy(const char *host);
 +extern void git_tcp_connect(int fd[2], char *host, int flags);
 +extern struct child_process *git_proxy_connect(int fd[2], char *host);
 +
 +#endif
 -- 
-1.8.4.1
+1.8.5.3
 

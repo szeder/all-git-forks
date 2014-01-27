@@ -1,4 +1,4 @@
-From 3bebe3e24c6bdf8a744c0142d7d9d03810816a94 Mon Sep 17 00:00:00 2001
+From 16b9ffd3e49686fa1e3a081f0bab549e21279d57 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
 Subject: daemon: move locate_host() to tcp.c
@@ -14,7 +14,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  3 files changed, 62 insertions(+), 64 deletions(-)
 
 diff --git a/daemon.c b/daemon.c
-index 04cf5d2..a857fe4 100644
+index 574a4f2..022d629 100644
 --- a/daemon.c
 +++ b/daemon.c
 @@ -1,14 +1,11 @@
@@ -109,7 +109,7 @@ index 04cf5d2..a857fe4 100644
  
  
 diff --git a/tcp.c b/tcp.c
-index 7d8566d..a287fc7 100644
+index 5063f93..b8fd3a7 100644
 --- a/tcp.c
 +++ b/tcp.c
 @@ -3,6 +3,10 @@
@@ -191,7 +191,7 @@ index 7d8566d..a287fc7 100644
   * Returns a connected socket() fd, or else die()s.
   */
 diff --git a/tcp.h b/tcp.h
-index 4de5f71..bed3cdc 100644
+index 566afd4..7c5b048 100644
 --- a/tcp.h
 +++ b/tcp.h
 @@ -1,6 +1,9 @@
@@ -201,9 +201,9 @@ index 4de5f71..bed3cdc 100644
 +extern void git_locate_host(const char *hostname,
 +			char **ip_address, char **canon_hostname);
 +
+ extern void get_host_and_port(char **host, const char **port);
  extern int git_use_proxy(const char *host);
  extern void git_tcp_connect(int fd[2], char *host, int flags);
- extern struct child_process *git_proxy_connect(int fd[2], char *host);
 -- 
-1.8.4.1
+1.8.5.3
 

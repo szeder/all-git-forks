@@ -194,7 +194,7 @@ install-indep: build-arch-stamp build-indep-stamp
 	DESTDIR='$(TMP)' $(MAKE) install install-doc $(OPTS)
 	install -d -m0755 '$(TMP)/usr/share/perl5/Git'
 	DESTDIR='$(TMP)' $(MAKE) -Ccontrib/mw-to-git install $(OPTS) \
-	  INSTLIBDIR='$(TMP)/usr/share/perl5'
+	  INSTLIBDIR=/usr/share/perl5
 	$(MAKE) -CDocumentation install-webdoc WEBDOC_DEST='$(TMP)'/html \
 	  2>/dev/null
 	# RelNotes are shipped in git

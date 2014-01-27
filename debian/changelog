@@ -1,3 +1,17 @@
+git (1:1.9~rc0-1) unstable; urgency=low
+
+  * new upstream release candidate.
+  * debian/diff:
+    * 0001-remove-interpreter-line-from-shell-libraries.diff:
+      remove; applied upstream.
+    * 0002...0009: rename to 0001-*, ..., 0008-*.
+    * 0010-git-remote-mediawiki-do-not-remove-installed-...diff:
+      remove; applied upstream.
+  * debian/rules install: no more need to include DESTDIR in
+    mw-to-git INSTLIBDIR.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 27 Jan 2014 13:05:17 -0800
+
 git (1:1.8.5.3-1) unstable; urgency=low
 
   * new upstream point release.
