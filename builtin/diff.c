@@ -150,9 +150,10 @@ static int builtin_diff_index(struct rev_info *revs,
 			perror("read_cache_preload");
 			return -1;
 		}
-	} else if (read_cache() < 0) {
-		perror("read_cache");
-		return -1;
+	} else {
+		if (read_cache() < 0)
+			return error("read_cache: %s", strerror(errno));
+		revs->diffopt.skip_stat_unmatch = 0;
 	}
 	return run_diff_index(revs, cached);
 }
