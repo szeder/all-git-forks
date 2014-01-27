@@ -64,45 +64,44 @@ void packet_buf_flush(struct strbuf *buf)
 }
 
 #define hex(a) (hexchar[(a) & 15])
-static char write_buffer[1000];
-static unsigned format_packet(const char *fmt, va_list args)
+static unsigned format_packet(struct strbuf *sb,
+			      const char *fmt, va_list args)
 {
 	static char hexchar[] = "0123456789abcdef";
-	char *buffer = write_buffer;
-	unsigned n;
-
-	n = vsnprintf(buffer + 4, sizeof(write_buffer) - 4, fmt, args);
-	if (n >= sizeof(write_buffer)-4)
+	unsigned n = sb->len;
+	strbuf_grow(sb, 4);
+	strbuf_setlen(sb, sb->len + 4);
+	strbuf_vaddf(sb, fmt, args);
+	n = sb->len - n;
+	if (n > 0xffff)
 		die("protocol error: impossibly long line");
-	n += 4;
-	buffer[0] = hex(n >> 12);
-	buffer[1] = hex(n >> 8);
-	buffer[2] = hex(n >> 4);
-	buffer[3] = hex(n);
-	packet_trace(buffer+4, n-4, 1);
+	sb->buf[sb->len - n + 0] = hex(n >> 12);
+	sb->buf[sb->len - n + 1] = hex(n >> 8);
+	sb->buf[sb->len - n + 2] = hex(n >> 4);
+	sb->buf[sb->len - n + 3] = hex(n);
+	packet_trace(sb->buf + sb->len - n + 4, n - 4, 1);
 	return n;
 }
 
 void packet_write(int fd, const char *fmt, ...)
 {
+	static struct strbuf sb = STRBUF_INIT;
 	va_list args;
 	unsigned n;
 
 	va_start(args, fmt);
-	n = format_packet(fmt, args);
+	strbuf_reset(&sb);
+	n = format_packet(&sb, fmt, args);
 	va_end(args);
-	write_or_die(fd, write_buffer, n);
+	write_or_die(fd, sb.buf, n);
 }
 
 void packet_buf_write(struct strbuf *buf, const char *fmt, ...)
 {
 	va_list args;
-	unsigned n;
-
 	va_start(args, fmt);
-	n = format_packet(fmt, args);
+	format_packet(buf, fmt, args);
 	va_end(args);
-	strbuf_add(buf, write_buffer, n);
 }
 
 static int get_packet_data(int fd, char **src_buf, size_t *src_size,
