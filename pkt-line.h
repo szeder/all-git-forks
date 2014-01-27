@@ -58,6 +58,7 @@ void packet_buf_write_notrace(struct strbuf *buf, const char *fmt, ...) __attrib
  */
 #define PACKET_READ_GENTLE_ON_EOF (1u<<0)
 #define PACKET_READ_CHOMP_NEWLINE (1u<<1)
+#define PACKET_READ_GENTLE        (1u<<2)
 int packet_read(int fd, char **src_buffer, size_t *src_len, char
 		*buffer, unsigned size, int options);
 

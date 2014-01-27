@@ -129,8 +129,12 @@ static int get_packet_data(int fd, char **src_buf, size_t *src_size,
 		*src_size -= ret;
 	} else {
 		ret = read_in_full(fd, dst, size);
-		if (ret < 0)
+		if (ret < 0) {
+			if (options & PACKET_READ_GENTLE)
+				return error("read error: %s",
+					     strerror(errno));
 			die_errno("read error");
+		}
 	}
 
 	/* And complain if we didn't get enough bytes to satisfy the read. */
@@ -138,6 +142,8 @@ static int get_packet_data(int fd, char **src_buf, size_t *src_size,
 		if (options & PACKET_READ_GENTLE_ON_EOF)
 			return -1;
 
+		if (options & PACKET_READ_GENTLE)
+			return error("The remote end hung up unexpectedly");
 		die("The remote end hung up unexpectedly");
 	}
 
@@ -179,15 +185,22 @@ int packet_read(int fd, char **src_buf, size_t *src_len,
 	if (ret < 0)
 		return ret;
 	len = packet_length(linelen);
-	if (len < 0)
+	if (len < 0) {
+		if (options & PACKET_READ_GENTLE)
+			return error("protocol error: bad line length character: %.4s",
+				     linelen);
 		die("protocol error: bad line length character: %.4s", linelen);
+	}
 	if (!len) {
 		packet_trace("0000", 4, 0);
 		return 0;
 	}
 	len -= 4;
-	if (len >= size)
+	if (len >= size) {
+		if (options & PACKET_READ_GENTLE)
+			return error("protocol error: bad line length %d", len);
 		die("protocol error: bad line length %d", len);
+	}
 	ret = get_packet_data(fd, src_buf, src_len, buffer, len, options);
 	if (ret < 0)
 		return ret;
