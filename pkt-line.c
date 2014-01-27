@@ -114,7 +114,8 @@ void packet_buf_write_notrace(struct strbuf *buf, const char *fmt, ...)
 }
 
 static int get_packet_data(int fd, char **src_buf, size_t *src_size,
-			   void *dst, unsigned size, int options)
+			   void *dst, unsigned size, int options,
+			   unsigned timeout)
 {
 	ssize_t ret;
 
@@ -128,8 +129,19 @@ static int get_packet_data(int fd, char **src_buf, size_t *src_size,
 		*src_buf += ret;
 		*src_size -= ret;
 	} else {
-		ret = read_in_full(fd, dst, size);
-		if (ret < 0) {
+		if (!timeout)
+			ret = read_in_full(fd, dst, size);
+		else {
+			struct pollfd pfd;
+			pfd.fd = fd;
+			pfd.events = POLLIN;
+			if (poll(&pfd, 1, timeout) > 0 &&
+			    (pfd.revents & POLLIN))
+				ret = xread(fd, dst, size);
+			else
+				ret = -1;
+		}
+		if (ret < size) {
 			if (options & PACKET_READ_GENTLE)
 				return error("read error: %s",
 					     strerror(errno));
@@ -175,13 +187,15 @@ static int packet_length(const char *linelen)
 	return len;
 }
 
-int packet_read(int fd, char **src_buf, size_t *src_len,
-		char *buffer, unsigned size, int options)
+int packet_read_timeout(int fd, char **src_buf, size_t *src_len,
+			char *buffer, unsigned size, int options,
+			unsigned timeout)
 {
 	int len, ret;
 	char linelen[4];
 
-	ret = get_packet_data(fd, src_buf, src_len, linelen, 4, options);
+	ret = get_packet_data(fd, src_buf, src_len, linelen, 4,
+			      options, timeout);
 	if (ret < 0)
 		return ret;
 	len = packet_length(linelen);
@@ -201,7 +215,8 @@ int packet_read(int fd, char **src_buf, size_t *src_len,
 			return error("protocol error: bad line length %d", len);
 		die("protocol error: bad line length %d", len);
 	}
-	ret = get_packet_data(fd, src_buf, src_len, buffer, len, options);
+	ret = get_packet_data(fd, src_buf, src_len, buffer, len,
+			      options, timeout);
 	if (ret < 0)
 		return ret;
 
@@ -212,6 +227,13 @@ int packet_read(int fd, char **src_buf, size_t *src_len,
 	buffer[len] = 0;
 	packet_trace(buffer, len, 0);
 	return len;
+}
+
+int packet_read(int fd, char **src_buf, size_t *src_len,
+			char *buffer, unsigned size, int options)
+{
+	return packet_read_timeout(fd, src_buf, src_len,
+				   buffer, size, options, 0);
 }
 
 static char *packet_read_line_generic(int fd,

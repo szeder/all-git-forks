@@ -61,6 +61,9 @@ void packet_buf_write_notrace(struct strbuf *buf, const char *fmt, ...) __attrib
 #define PACKET_READ_GENTLE        (1u<<2)
 int packet_read(int fd, char **src_buffer, size_t *src_len, char
 		*buffer, unsigned size, int options);
+int packet_read_timeout(int fd, char **src_buffer, size_t *src_len, char
+			*buffer, unsigned size, int options,
+			unsigned timeout);
 
 /*
  * Convenience wrapper for packet_read that is not gentle, and sets the
