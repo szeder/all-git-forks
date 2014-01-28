@@ -79,7 +79,6 @@ static unsigned format_packet(struct strbuf *sb,
 	sb->buf[sb->len - n + 1] = hex(n >> 8);
 	sb->buf[sb->len - n + 2] = hex(n >> 4);
 	sb->buf[sb->len - n + 3] = hex(n);
-	packet_trace(sb->buf + sb->len - n + 4, n - 4, 1);
 	return n;
 }
 
@@ -93,10 +92,20 @@ void packet_write(int fd, const char *fmt, ...)
 	strbuf_reset(&sb);
 	n = format_packet(&sb, fmt, args);
 	va_end(args);
+	packet_trace(sb.buf + 4, sb.len - 4, 1);
 	write_or_die(fd, sb.buf, n);
 }
 
 void packet_buf_write(struct strbuf *buf, const char *fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+	format_packet(buf, fmt, args);
+	va_end(args);
+	packet_trace(buf->buf + 4, buf->len - 4, 1);
+}
+
+void packet_buf_write_notrace(struct strbuf *buf, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
