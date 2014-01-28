@@ -11,6 +11,28 @@ static const char *const file_watcher_usage[] = {
 	NULL
 };
 
+struct dir;
+struct repository;
+
+struct file {
+	char *name;
+	struct dir *parent;
+	struct repository *repo;
+	struct file *next;
+};
+
+struct dir {
+	char *name;
+	struct dir *parent;
+	struct dir **subdirs;
+	struct file **files;
+	struct repository *repo; /* only for root note */
+	int wd, nr_subdirs, nr_files;
+};
+
+static struct dir **wds;
+static int wds_alloc;
+
 struct repository {
 	char *work_tree;
 	char index_signature[41];
@@ -18,6 +40,7 @@ struct repository {
 	struct string_list updated;
 	int updated_sorted;
 	int updating;
+	struct dir *root;
 };
 
 const char *invalid_signature = "0000000000000000000000000000000000000000";
@@ -36,10 +59,205 @@ struct connection {
 static struct connection **conns;
 static struct pollfd *pfd;
 static int conns_alloc, pfd_nr, pfd_alloc;
+static int inotify_fd;
+
+static struct dir *create_dir(struct dir *parent, const char *path,
+			      const char *basename)
+{
+	struct dir *d;
+	/*
+	 * IN_CREATE is not included because we're targetting lstat()
+	 * for index vs worktree. If a file is not tracked in index,
+	 * it's not worth watching. If the index has it, but the
+	 * worktree is already gone before watching, the file has
+	 * already been marked modified and should _not_ be watched.
+	 *
+	 * IN_DONT_FOLLOW does not matter now as we do not monitor
+	 * symlinks. See ce_watchable().
+	 */
+	int wd = inotify_add_watch(inotify_fd, path,
+				   IN_DELETE_SELF | IN_MOVE_SELF |
+				   IN_ATTRIB | IN_DELETE | IN_MODIFY |
+				   IN_MOVED_FROM | IN_MOVED_TO);
+	if (wd < 0)
+		return NULL;
+
+	d = xmalloc(sizeof(*d));
+	memset(d, 0, sizeof(*d));
+	d->wd = wd;
+	d->parent = parent;
+	d->name = xstrdup(basename);
+
+	ALLOC_GROW(wds, wd + 1, wds_alloc);
+	wds[wd] = d;
+	return d;
+}
+
+static int get_dir_pos(struct dir *d, const char *name)
+{
+	int first, last;
+
+	first = 0;
+	last = d->nr_subdirs;
+	while (last > first) {
+		int next = (last + first) >> 1;
+		int cmp = strcmp(name, d->subdirs[next]->name);
+		if (!cmp)
+			return next;
+		if (cmp < 0) {
+			last = next;
+			continue;
+		}
+		first = next+1;
+	}
+
+	return -first-1;
+}
+
+static void free_file(struct dir *d, int pos, int topdown);
+static void free_dir(struct dir *d, int topdown)
+{
+	struct dir *p = d->parent;
+	int pos;
+	if (!topdown && p && (pos = get_dir_pos(p, d->name)) < 0)
+		die("How come this directory is not registered in its parent?");
+	if (d->repo)
+		d->repo->root = NULL;
+	wds[d->wd] = NULL;
+	inotify_rm_watch(inotify_fd, d->wd);
+	if (topdown) {
+		int i;
+		for (i = 0; i < d->nr_subdirs; i++)
+			free_dir(d->subdirs[i], topdown);
+		for (i = 0; i < d->nr_files; i++)
+			free_file(d, i, topdown);
+	}
+	free(d->name);
+	free(d->subdirs);
+	free(d->files);
+	free(d);
+	if (p && !topdown) {
+		memcpy(p->subdirs + pos, p->subdirs + pos + 1,
+		       (p->nr_subdirs - (pos + 1)) * sizeof(*p->subdirs));
+		p->nr_subdirs--;
+		if (!p->nr_subdirs && !p->nr_files)
+			free_dir(p, topdown);
+	}
+}
+
+static int get_file_pos(struct dir *d, const char *name)
+{
+	int first, last;
+
+	first = 0;
+	last = d->nr_files;
+	while (last > first) {
+		int next = (last + first) >> 1;
+		int cmp = strcmp(name, d->files[next]->name);
+		if (!cmp)
+			return next;
+		if (cmp < 0) {
+			last = next;
+			continue;
+		}
+		first = next+1;
+	}
+
+	return -first-1;
+}
+
+static void free_file(struct dir *d, int pos, int topdown)
+{
+	struct file *f = d->files[pos];
+	free(f->name);
+	free(f);
+	if (!topdown) {
+		memcpy(d->files + pos, d->files + pos + 1,
+		       (d->nr_files - (pos + 1)) * sizeof(*d->files));
+		d->nr_files--;
+		if (!d->nr_subdirs && !d->nr_files)
+			free_dir(d, topdown);
+	}
+}
+
+static struct dir *add_dir(struct dir *d,
+			   const char *path, const char *basename)
+{
+	struct dir *new;
+	int pos = get_dir_pos(d, basename);
+	if (pos >= 0)
+		return d->subdirs[pos];
+	pos = -pos-1;
+
+	new = create_dir(d, path, basename);
+	if (!new)
+		return NULL;
+
+	d->nr_subdirs++;
+	d->subdirs = xrealloc(d->subdirs, sizeof(*d->subdirs) * d->nr_subdirs);
+	if (d->nr_subdirs > pos + 1)
+		memmove(d->subdirs + pos + 1, d->subdirs + pos,
+			(d->nr_subdirs - pos - 1) * sizeof(*d->subdirs));
+	d->subdirs[pos] = new;
+	return new;
+}
+
+static struct file *add_file(struct dir *d, const char *name)
+{
+	struct file *new;
+	int pos = get_file_pos(d, name);
+	if (pos >= 0)
+		return d->files[pos];
+	pos = -pos-1;
+
+	new = xmalloc(sizeof(*new));
+	memset(new, 0, sizeof(*new));
+	new->parent = d;
+	new->name = xstrdup(name);
+
+	d->nr_files++;
+	d->files = xrealloc(d->files, sizeof(*d->files) * d->nr_files);
+	if (d->nr_files > pos + 1)
+		memmove(d->files + pos + 1, d->files + pos,
+			(d->nr_files - pos - 1) * sizeof(*d->files));
+	d->files[pos] = new;
+	return new;
+}
 
 static int watch_path(struct repository *repo, char *path)
 {
-	return -1;
+	struct dir *d = repo->root;
+	char *p = path;
+
+	if (!d) {
+		d = create_dir(NULL, ".", "");
+		if (!d)
+			return -1;
+		repo->root = d;
+		d->repo = repo;
+	}
+
+	for (;;) {
+		char *next, *sep;
+		sep = strchr(p, '/');
+		if (!sep) {
+			struct file *file;
+			file = add_file(d, p);
+			if (!file->repo)
+				file->repo = repo;
+			break;
+		}
+
+		next = sep + 1;
+		*sep = '\0';
+		d = add_dir(d, path, p);
+		if (!d)
+			/* we could free oldest watches and try again */
+			return -1;
+		*sep = '/';
+		p = next;
+	}
+	return 0;
 }
 
 static void get_changed_list(int conn_id)
@@ -175,8 +393,15 @@ static struct repository *get_repo(const char *work_tree)
 	return repo;
 }
 
+static void reset_watches(struct repository *repo)
+{
+	if (repo->root)
+		free_dir(repo->root, 1);
+}
+
 static void reset_repo(struct repository *repo, ino_t inode)
 {
+	reset_watches(repo);
 	string_list_clear(&repo->updated, 0);
 	memcpy(repo->index_signature, invalid_signature, 40);
 	repo->inode = inode;
@@ -453,6 +678,11 @@ int main(int argc, const char **argv)
 	git_setup_gettext();
 	argc = parse_options(argc, argv, NULL, options,
 			     file_watcher_usage, 0);
+
+	inotify_fd = inotify_init();
+	if (inotify_fd < 0)
+		die_errno("unable to initialize inotify");
+
 	if (argc != 1)
 		die(_("too many arguments"));
 
