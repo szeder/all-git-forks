@@ -260,6 +260,131 @@ static int watch_path(struct repository *repo, char *path)
 	return 0;
 }
 
+static inline void queue_file_changed(struct file *f, struct strbuf *sb)
+{
+	int len = sb->len;
+	strbuf_addf(sb, "%s%s", f->parent->parent ? "/" : "", f->name);
+	string_list_append(&f->repo->updated, sb->buf);
+	f->repo->updated_sorted = 0;
+	strbuf_setlen(sb, len);
+}
+
+static void construct_path(struct dir *d, struct strbuf *sb)
+{
+	if (!d->parent)
+		return;
+	if (!d->parent->parent) {
+		strbuf_addstr(sb, d->name);
+		return;
+	}
+	construct_path(d->parent, sb);
+	strbuf_addf(sb, "/%s", d->name);
+}
+
+static void file_changed(const struct inotify_event *event,
+			 struct dir *d, int pos)
+{
+	struct strbuf sb = STRBUF_INIT;
+	construct_path(d, &sb);
+	queue_file_changed(d->files[pos], &sb);
+	strbuf_release(&sb);
+	free_file(d, pos, 0);
+}
+
+static void dir_changed(const struct inotify_event *event, struct dir *d,
+			const char *base)
+{
+	struct strbuf sb = STRBUF_INIT;
+	int i;
+
+	if (!base)		/* top call -> base == NULL */
+		construct_path(d, &sb);
+	else {
+		strbuf_addstr(&sb, base);
+		if (sb.len)
+			strbuf_addch(&sb, '/');
+		strbuf_addstr(&sb, d->name);
+	}
+
+	for (i = 0; i < d->nr_files; i++)
+		queue_file_changed(d->files[i], &sb);
+	for (i = 0; i < d->nr_subdirs; i++) {
+		dir_changed(event, d->subdirs[i], sb.buf);
+		if (!base)
+			free_dir(d->subdirs[i], 1);
+	}
+	strbuf_release(&sb);
+	if (!base)
+		free_dir(d, 0);
+}
+
+static void reset_repo(struct repository *repo, ino_t inode);
+static int do_handle_inotify(const struct inotify_event *event)
+{
+	struct dir *d;
+	int pos;
+
+	if (event->mask & (IN_Q_OVERFLOW | IN_UNMOUNT)) {
+		int i;
+		for (i = 0; i < nr_repos; i++)
+			reset_repo(repos[i], 0);
+		return 0;
+	}
+
+	if ((event->mask & IN_IGNORED) ||
+	    /*
+	     * Perhaps left over events that we have not consumed
+	     * before the watch descriptor is removed.
+	     */
+	    event->wd >= wds_alloc || wds[event->wd] == NULL)
+		return 0;
+
+	d = wds[event->wd];
+
+	/*
+	 * If something happened to the watched directory, consider
+	 * everything inside modified
+	 */
+	if (event->mask & (IN_DELETE_SELF | IN_MOVE_SELF)) {
+		dir_changed(event, d, NULL);
+		return 0;
+	}
+
+	if (!(event->mask & IN_ISDIR)) {
+		pos = get_file_pos(d, event->name);
+		if (pos >= 0)
+			file_changed(event, d, pos);
+	}
+
+	return 0;
+}
+
+static int handle_inotify(int fd)
+{
+	static char *buf;
+	static unsigned int buf_len = 0;
+	unsigned int avail, offset;
+	int ret, len;
+
+	/* drain the event queue */
+	if (ioctl(fd, FIONREAD, &avail))
+		die_errno("unable to FIONREAD inotify handle");
+	if (buf_len < avail) {
+		buf = xrealloc(buf, avail);
+		buf_len = avail;
+	}
+	len = read(fd, buf, avail);
+	if (len <= 0)
+		return -1;
+	ret = offset = 0;
+	while (offset < len) {
+		struct inotify_event *event = (void *)(buf + offset);
+		ret += do_handle_inotify(event);
+		offset += sizeof(struct inotify_event) + event->len;
+	}
+	return ret;
+}
+
 static void get_changed_list(int conn_id)
 {
 	struct strbuf sb = STRBUF_INIT;
@@ -466,6 +591,12 @@ static int handle_command(int conn_id)
 	 * capabilities. Capabilities in uppercase MUST be
 	 * supported. If any side does not understand any of the
 	 * advertised uppercase capabilities, it must disconnect.
+	 *
+	 * The way the main event loop is structured, we should get at
+	 * least one handle_inotify() before receiving the next
+	 * command. And handle_inotify() should process all events by
+	 * this point of time. This guarantees our reports won't miss
+	 * anything by the time get-changed is called.
 	 */
 	if ((arg = skip_prefix(msg, "hello"))) {
 		if (*arg) {	/* no capabilities supported yet */
@@ -753,11 +884,15 @@ int main(int argc, const char **argv)
 		close(err);
 	}
 
-	nr_common = 1;
+	nr_common = 1 + !!inotify_fd;
 	pfd_alloc = pfd_nr = nr_common;
 	pfd = xmalloc(sizeof(*pfd) * pfd_alloc);
 	pfd[0].fd = fd;
 	pfd[0].events = POLLIN;
+	if (inotify_fd) {
+		pfd[1].fd = inotify_fd;
+		pfd[1].events = POLLIN;
+	}
 
 	while (!quit) {
 		if (poll(pfd, pfd_nr, -1) < 0) {
@@ -767,6 +902,11 @@ int main(int argc, const char **argv)
 				sleep(1);
 			}
 			continue;
+		}
+
+		if (inotify_fd && (pfd[1].revents & POLLIN)) {
+			if (handle_inotify(inotify_fd))
+				break;
 		}
 
 		for (new_nr = i = nr_common; i < pfd_nr; i++) {
