@@ -128,6 +128,9 @@
 #else
 #include <poll.h>
 #endif
+#ifdef HAVE_INOTIFY
+#include <sys/inotify.h>
+#endif
 
 #if defined(__MINGW32__)
 /* pull in Windows compatibility stuff */
@@ -720,5 +723,45 @@ void warn_on_inaccessible(const char *path);
 
 /* Get the passwd entry for the UID of the current process. */
 struct passwd *xgetpwuid_self(void);
+
+#ifndef HAVE_INOTIFY
+/* Keep inotify-specific code build, even if it's not used */
+
+#define IN_DELETE_SELF	1
+#define IN_MOVE_SELF	2
+#define IN_ATTRIB	4
+#define IN_DELETE	8
+#define IN_MODIFY	16
+#define IN_MOVED_FROM	32
+#define IN_MOVED_TO	64
+#define IN_Q_OVERFLOW	128
+#define IN_UNMOUNT	256
+#define IN_CREATE	512
+#define IN_ISDIR	1024
+#define IN_IGNORED	2048
+
+struct inotify_event {
+	int event, mask, wd, len;
+	char name[FLEX_ARRAY];
+};
+
+static inline int inotify_init()
+{
+	errno = ENOSYS;
+	return -1;
+}
+
+static inline int inotify_add_watch(int fd, const char *path, int options)
+{
+	errno = ENOSYS;
+	return -1;
+}
+
+static inline int inotify_rm_watch(int fd, int wd)
+{
+	errno = ENOSYS;
+	return -1;
+}
+#endif
 
 #endif
