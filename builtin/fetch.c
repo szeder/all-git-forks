@@ -411,6 +411,8 @@ static struct ref *get_ref_map(struct transport *transport,
 		tail = &rm->next;
 	}
 
+	ref_map = apply_negative_refspecs(ref_map, refspecs, refspec_count);
+
 	return ref_remove_duplicates(ref_map);
 }
 

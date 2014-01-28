@@ -72,6 +72,7 @@ struct refspec {
 	unsigned pattern : 1;
 	unsigned matching : 1;
 	unsigned exact_sha1 : 1;
+	unsigned negative : 1;
 
 	char *src;
 	char *dst;
@@ -161,6 +162,10 @@ int ref_newer(const struct object_id *new_oid, const struct object_id *old_oid);
  * pointer to the head of the resulting list.
  */
 struct ref *ref_remove_duplicates(struct ref *ref_map);
+
+struct ref *apply_negative_refspecs(struct ref *ref_map,
+				    const struct refspec *refspecs,
+				    int nr_refspecs);
 
 int valid_fetch_refspec(const char *refspec);
 struct refspec *parse_fetch_refspec(int nr_refspec, const char **refspec);

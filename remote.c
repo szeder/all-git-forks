@@ -17,6 +17,7 @@ static struct refspec s_tag_refspec = {
 	1,
 	0,
 	0,
+	0,
 	"refs/tags/*",
 	"refs/tags/*"
 };
@@ -515,8 +516,14 @@ static struct refspec *parse_refspec_internal(int nr_refspec, const char **refsp
 			rs[i].force = 1;
 			lhs++;
 		}
+		else if (*lhs == '^') {
+			rs[i].negative = 1;
+			lhs++;
+		}
 
 		rhs = strrchr(lhs, ':');
+		if (rs[i].negative && rhs)
+			goto invalid;
 
 		/*
 		 * Before going on, special case ":" (or "+:") as a refspec
@@ -1880,6 +1887,9 @@ int get_fetch_map(const struct ref *remote_refs,
 {
 	struct ref *ref_map, **rmp;
 
+	if (refspec->negative)
+		return 0;
+
 	if (refspec->pattern) {
 		ref_map = get_expanded_map(remote_refs, refspec);
 	} else {
@@ -1920,6 +1930,48 @@ int get_fetch_map(const struct ref *remote_refs,
 		tail_link_ref(ref_map, tail);
 
 	return 0;
+}
+
+static int refspec_match(const struct refspec *refspec,
+			 const char *name)
+{
+	if (refspec->pattern)
+		return match_name_with_pattern(refspec->src, name, NULL, NULL);
+
+	return !strcmp(refspec->src, name);
+}
+
+static int omit_name_by_refspec(const char *name,
+				const struct refspec *refspecs,
+				int nr_refspec)
+{
+	int i;
+
+	for (i = 0; i < nr_refspec; i++) {
+		if (refspecs[i].negative && refspec_match(&refspecs[i], name))
+			return 1;
+	}
+	return 0;
+}
+
+struct ref *apply_negative_refspecs(struct ref *ref_map,
+				    const struct refspec *refspecs,
+				    int nr_refspec)
+{
+	struct ref **tail;
+
+	for (tail = &ref_map; *tail; ) {
+		struct ref *ref = *tail;
+
+		if (omit_name_by_refspec(ref->name, refspecs, nr_refspec)) {
+			*tail = ref->next;
+			free(ref->peer_ref);
+			free(ref);
+		} else
+			tail = &ref->next;
+	}
+
+	return ref_map;
 }
 
 int resolve_remote_symref(struct ref *ref, struct ref *list)
