@@ -9,6 +9,7 @@
 #include "argv-array.h"
 
 static int delta_base_offset = 1;
+static int honor_pack_keep = 1;
 static char *packdir, *packtmp;
 
 static const char *const git_repack_usage[] = {
@@ -20,6 +21,10 @@ static int repack_config(const char *var, const char *value, void *cb)
 {
 	if (!strcmp(var, "repack.usedeltabaseoffset")) {
 		delta_base_offset = git_config_bool(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "repack.honorpackkeep")) {
+		honor_pack_keep = git_config_bool(var, value);
 		return 0;
 	}
 	return git_default_config(var, value, cb);
@@ -190,10 +195,11 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 
 	argv_array_push(&cmd_args, "pack-objects");
 	argv_array_push(&cmd_args, "--keep-true-parents");
-	argv_array_push(&cmd_args, "--honor-pack-keep");
 	argv_array_push(&cmd_args, "--non-empty");
 	argv_array_push(&cmd_args, "--all");
 	argv_array_push(&cmd_args, "--reflog");
+	if (honor_pack_keep)
+		argv_array_push(&cmd_args, "--honor-pack-keep");
 	if (window)
 		argv_array_pushf(&cmd_args, "--window=%u", window);
 	if (window_memory)
