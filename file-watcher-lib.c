@@ -175,6 +175,7 @@ void open_watcher(struct index_state *istate)
 	char *msg;
 
 	if (!read_config) {
+		const char *s;
 		int i;
 		/*
 		 * can't hook into git_default_config because
@@ -188,6 +189,15 @@ void open_watcher(struct index_state *istate)
 		if (i == istate->cache_nr)
 			recent_limit = 0;
 		read_config = 1;
+
+		s = getenv("GIT_TEST_WATCHER");
+		if (s) {
+			watch_lowerlimit = 0;
+			recent_limit = 0;
+			WAIT_TIME = -1;
+			if (atoi(s) > 1)
+				istate->update_watches = 1;
+		}
 	}
 
 	istate->watcher = connect_watcher(watcher_path);
