@@ -260,6 +260,122 @@ static int watch_path(struct repository *repo, char *path)
 	return 0;
 }
 
+static inline void queue_file_changed(struct file *f, struct strbuf *sb)
+{
+	int len = sb->len;
+	strbuf_addf(sb, "%s%s", f->parent->parent ? "/" : "", f->name);
+	string_list_append(&f->repo->updated, sb->buf);
+	f->repo->updated_sorted = 0;
+	strbuf_setlen(sb, len);
+}
+
+static void construct_path(struct dir *d, struct strbuf *sb)
+{
+	if (!d->parent)
+		return;
+	if (!d->parent->parent) {
+		strbuf_addstr(sb, d->name);
+		return;
+	}
+	construct_path(d->parent, sb);
+	strbuf_addf(sb, "/%s", d->name);
+}
+
+static void file_changed(const struct inotify_event *event,
+			 struct dir *d, int pos)
+{
+	struct strbuf sb = STRBUF_INIT;
+	construct_path(d, &sb);
+	queue_file_changed(d->files[pos], &sb);
+	strbuf_release(&sb);
+	free_file(d, pos, 0);
+}
+
+static void dir_changed(const struct inotify_event *event, struct dir *d,
+			const char *base)
+{
+	struct strbuf sb = STRBUF_INIT;
+	int i;
+
+	if (!base)		/* top call -> base == NULL */
+		construct_path(d, &sb);
+	else {
+		strbuf_addstr(&sb, base);
+		if (sb.len)
+			strbuf_addch(&sb, '/');
+		strbuf_addstr(&sb, d->name);
+	}
+
+	for (i = 0; i < d->nr_files; i++)
+		queue_file_changed(d->files[i], &sb);
+	for (i = 0; i < d->nr_subdirs; i++) {
+		dir_changed(event, d->subdirs[i], sb.buf);
+		if (!base)
+			free_dir(d->subdirs[i], 1);
+	}
+	strbuf_release(&sb);
+	if (!base)
+		free_dir(d, 0);
+}
+
+static void reset_repo(struct repository *repo, ino_t inode);
+static int do_handle_inotify(const struct inotify_event *event)
+{
+	struct dir *d;
+	int pos;
+
+	if (event->mask & (IN_Q_OVERFLOW | IN_UNMOUNT)) {
+		int i;
+		for (i = 0; i < nr_repos; i++)
+			reset_repo(repos[i], 0);
+		return 0;
+	}
+
+	if ((event->mask & IN_IGNORED) ||
+	    /*
+	     * Perhaps left over events that we have not consumed
+	     * before the watch descriptor is removed.
+	     */
+	    event->wd >= wds_alloc || wds[event->wd] == NULL)
+		return 0;
+
+	d = wds[event->wd];
+
+	/*
+	 * If something happened to the watched directory, consider
+	 * everything inside modified
+	 */
+	if (event->mask & (IN_DELETE_SELF | IN_MOVE_SELF)) {
+		dir_changed(event, d, NULL);
+		return 0;
+	}
+
+	if (!(event->mask & IN_ISDIR)) {
+		pos = get_file_pos(d, event->name);
+		if (pos >= 0)
+			file_changed(event, d, pos);
+	}
+
+	return 0;
+}
+
+static int handle_inotify(int fd)
+{
+	static char buf[10 * (sizeof(struct inotify_event) + NAME_MAX + 1)];
+	struct inotify_event *event;
+	int offset = 0;
+	int len = read(fd, buf, sizeof(buf));
+	if (len <= 0)
+		return -1;
+	for (event = (struct inotify_event *)(buf + offset);
+	     offset < len;
+	     offset += sizeof(struct inotify_event) + event->len) {
+		if (do_handle_inotify(event))
+			return -1;
+	}
+	return 0;
+}
+
 static void get_changed_list(int conn_id)
 {
 	struct strbuf sb = STRBUF_INIT;
@@ -712,11 +828,15 @@ int main(int argc, const char **argv)
 		close(err);
 	}
 
-	nr_common = 1;
+	nr_common = 1 + !!inotify_fd;
 	pfd_alloc = pfd_nr = nr_common;
 	pfd = xmalloc(sizeof(*pfd) * pfd_alloc);
 	pfd[0].fd = fd;
 	pfd[0].events = POLLIN;
+	if (inotify_fd) {
+		pfd[1].fd = inotify_fd;
+		pfd[1].events = POLLIN;
+	}
 
 	while (!quit) {
 		if (poll(pfd, pfd_nr, -1) < 0) {
@@ -726,6 +846,13 @@ int main(int argc, const char **argv)
 				sleep(1);
 			}
 			continue;
+		}
+
+		if (inotify_fd && (pfd[1].revents & POLLIN)) {
+			struct timeval now;
+			if (handle_inotify(inotify_fd))
+				break;
+			gettimeofday(&now, NULL);
 		}
 
 		for (new_nr = i = nr_common; i < pfd_nr; i++) {
