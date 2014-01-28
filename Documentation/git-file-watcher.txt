@@ -18,10 +18,23 @@ lstat(2) to detect that itself. Config key filewatcher.path needs to
 be set to `<socket directory>` so Git knows how to contact to the file
 watcher.
 
+This program is only supported under Linux with inotify(7) support.
+
 OPTIONS
 -------
 --detach::
 	Run in background.
+
+BUGS
+----
+On Linux, file watcher may fail to detect changes if you move the work
+tree from outside. For example if you have work tree at
+`/tmp/foo/work`, you move `/tmp/foo` to `/tmp/bar`, make some changes
+in `/tmp/bar/work` and move `/tmp/bar` back to `/tmp/foo`, changes
+won't get noticed. Moving `/tmp/foo/work` to something else is fine.
+
+inotify may not work well with network filesystems and a few special
+others. Check inotify documents.
 
 SEE ALSO
 --------
