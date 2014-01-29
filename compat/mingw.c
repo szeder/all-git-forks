@@ -333,7 +333,43 @@ int mingw_mkdir(const char *path, int mode)
 	return ret;
 }
 
-int mingw_open (const char *filename, int oflags, ...)
+
+ssize_t mingw_pread(int fd, void *buf, size_t count, off64_t offset)
+{
+	HANDLE hand = (HANDLE)_get_osfhandle(fd);
+	if (hand == INVALID_HANDLE_VALUE) {
+		errno = EBADF;
+		return -1;
+	}
+
+	hand = ReOpenFile(hand, FILE_GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, 0);
+	if (hand == INVALID_HANDLE_VALUE) {
+		errno = EBADF;
+		return -1;
+	}
+
+	LARGE_INTEGER offset_value;
+	offset_value.QuadPart = offset;
+
+	DWORD bytes_read = 0;
+	OVERLAPPED overlapped = {0};
+	overlapped.Offset = offset_value.LowPart;
+	overlapped.OffsetHigh = offset_value.HighPart;
+	BOOL result = ReadFile(hand, buf, count, &bytes_read, &overlapped);
+
+  ssize_t ret = bytes_read;
+
+	if (!result && GetLastError() != ERROR_HANDLE_EOF)
+	{
+		errno = err_win_to_posix(GetLastError());
+    ret = -1;
+	}
+
+	CloseHandle(hand);
+	return ret;
+}
+
+int mingw_open(const char *filename, int oflags, ...)
 {
 	va_list args;
 	unsigned mode;
