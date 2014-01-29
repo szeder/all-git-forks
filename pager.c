@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "run-command.h"
 #include "sigchain.h"
+#include "argv-array.h"
 
 #ifndef DEFAULT_PAGER
 #define DEFAULT_PAGER "less"
@@ -63,6 +64,7 @@ const char *git_pager(int stdout_is_tty)
 void setup_pager(void)
 {
 	const char *pager = git_pager(isatty(1));
+	struct argv_array env = ARGV_ARRAY_INIT;
 
 	if (!pager || pager_in_use())
 		return;
@@ -80,17 +82,17 @@ void setup_pager(void)
 	pager_process.use_shell = 1;
 	pager_process.argv = pager_argv;
 	pager_process.in = -1;
-	if (!getenv("LESS") || !getenv("LV")) {
-		static const char *env[3];
-		int i = 0;
 
-		if (!getenv("LESS"))
-			env[i++] = "LESS=FRSX";
-		if (!getenv("LV"))
-			env[i++] = "LV=-c";
-		env[i] = NULL;
-		pager_process.env = env;
-	}
+	if (!getenv("LESS"))
+		argv_array_push(&env, "LESS=FRSX");
+	if (!getenv("LV"))
+		argv_array_push(&env, "LV=-c");
+#ifdef PAGER_MORE_UNDERSTANDS_R
+	if (!getenv("MORE"))
+		argv_array_push(&env, "MORE=R");
+#endif
+	pager_process.env = argv_array_detach(&env, NULL);
+
 	if (start_command(&pager_process))
 		return;
 
@@ -181,4 +183,49 @@ int check_pager_config(const char *cmd)
 	if (c.value)
 		pager_program = c.value;
 	return c.want;
+}
+
+static int pager_can_handle_color(void)
+{
+	const char *pager = git_pager(1);
+
+	/*
+	 * If it's less, we automatically set "R" and can handle color,
+	 * unless the user already has a "LESS" variable that does not
+	 * include "R".
+	 */
+	if (!strcmp(pager, "less")) {
+		const char *x = getenv("LESS");
+		return !x || !!strchr(x, 'R');
+	}
+
+	if (!strcmp(pager, "more")) {
+#ifdef PAGER_MORE_UNDERSTANDS_R
+		/*
+		 * An advanced "more" that knows "R" is in the same boat as
+		 * "less".
+		 */
+		const char *x = getenv("MORE");
+		return !x || !!strchr(x, 'R');
+#else
+		/*
+		 * For a more primitive "more", just assume that it will pass
+		 * through the control codes verbatim.
+		 */
+		return 1;
+#endif
+	}
+
+	/*
+	 * Otherwise, we don't recognize it. Guess that it can probably handle
+	 * color. This matches what we have done historically.
+	 */
+	return 1;
+}
+
+int pager_use_color(void)
+{
+	if (pager_use_color_config < 0)
+		pager_use_color_config = pager_can_handle_color();
+	return pager_use_color_config;
 }
