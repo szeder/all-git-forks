@@ -50,9 +50,13 @@ static int mark_ce_flags(const char *path, int flag, int mark)
 	int namelen = strlen(path);
 	int pos = cache_name_pos(path, namelen);
 	if (0 <= pos) {
-		if (mark)
-			active_cache[pos]->ce_flags |= flag;
-		else
+		if (mark) {
+			struct cache_entry *ce = active_cache[pos];
+			if (flag == CE_VALID)
+				ce->ce_flags = (ce->ce_flags & ~CE_WATCHED) | CE_VALID;
+			else
+				ce->ce_flags |= flag;
+		} else
 			active_cache[pos]->ce_flags &= ~flag;
 		cache_tree_invalidate_path(active_cache_tree, path);
 		active_cache_changed = 1;
@@ -235,7 +239,7 @@ static int add_cacheinfo(unsigned int mode, const unsigned char *sha1,
 	ce->ce_namelen = len;
 	ce->ce_mode = create_ce_mode(mode);
 	if (assume_unchanged)
-		ce->ce_flags |= CE_VALID;
+		ce->ce_flags = (ce->ce_flags & ~CE_WATCHED) | CE_VALID;
 	option = allow_add ? ADD_CACHE_OK_TO_ADD : 0;
 	option |= allow_replace ? ADD_CACHE_OK_TO_REPLACE : 0;
 	if (add_cache_entry(ce, option))
