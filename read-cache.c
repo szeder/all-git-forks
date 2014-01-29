@@ -37,6 +37,7 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int reall
 #define CACHE_EXT_WATCH 0x57415443	  /* "WATC" */
 
 struct index_state the_index;
+int test_watched;
 
 static void set_index_entry(struct index_state *istate, int nr, struct cache_entry *ce)
 {
@@ -1117,6 +1118,16 @@ static void show_file(const char * fmt, const char * name, int in_porcelain,
 	printf(fmt, name);
 }
 
+static void report_bad_watcher(struct index_state *istate,
+			       struct cache_entry *ce)
+{
+	if (test_watched > 1)
+		die("%s is updated but file-watcher said no",
+		    ce->name);
+	warning("%s is updated but file-watcher said no",
+		ce->name);
+}
+
 int refresh_index(struct index_state *istate, unsigned int flags,
 		  const struct pathspec *pathspec,
 		  char *seen, const char *header_msg)
@@ -1188,6 +1199,9 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 				ce->ce_flags &= ~CE_VALID;
 				istate->cache_changed = 1;
 			}
+			if (test_watched &&
+			    (ce->ce_flags & CE_WATCHED) && (ce->ce_flags & CE_VALID))
+				report_bad_watcher(istate, ce);
 			if (quiet)
 				continue;
 
@@ -1459,6 +1473,9 @@ int read_index_from(struct index_state *istate, const char *path)
 
 	if (istate->initialized)
 		return istate->cache_nr;
+
+	if (getenv("GIT_TEST_WATCHED"))
+		test_watched = atoi(getenv("GIT_TEST_WATCHED"));
 
 	istate->timestamp.sec = 0;
 	istate->timestamp.nsec = 0;
