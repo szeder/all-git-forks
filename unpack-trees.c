@@ -1215,7 +1215,7 @@ static int verify_uptodate_1(const struct cache_entry *ce,
 	 * if this entry is truly up-to-date because this file may be
 	 * overwritten.
 	 */
-	if ((ce->ce_flags & CE_VALID) || ce_skip_worktree(ce))
+	if (ce_valid(ce) || ce_skip_worktree(ce))
 		; /* keep checking */
 	else if (o->reset || ce_uptodate(ce))
 		return 0;

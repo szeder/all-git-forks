@@ -289,8 +289,8 @@ int ie_match_stat(const struct index_state *istate,
 	 */
 	if (!ignore_skip_worktree && ce_skip_worktree(ce))
 		return 0;
-	if (!ignore_valid && (ce->ce_flags & CE_VALID))
-		return 0;
+	if (!ignore_valid && ce_valid(ce))
+			return 0;
 
 	/*
 	 * Intent-to-add entries have not been added, so the index entry
@@ -1047,7 +1047,7 @@ static struct cache_entry *refresh_cache_ent(struct index_state *istate,
 		ce_mark_uptodate(ce);
 		return ce;
 	}
-	if (!ignore_valid && (ce->ce_flags & CE_VALID)) {
+	if (!ignore_valid && ce_valid(ce)) {
 		ce_mark_uptodate(ce);
 		return ce;
 	}

@@ -386,7 +386,7 @@ static int grep_cache(struct grep_opt *opt, const struct pathspec *pathspec, int
 		 * are identical, even if worktree file has been modified, so use
 		 * cache version instead
 		 */
-		if (cached || (ce->ce_flags & CE_VALID) || ce_skip_worktree(ce)) {
+		if (cached || ce_valid(ce) || ce_skip_worktree(ce)) {
 			if (ce_stage(ce))
 				continue;
 			hit |= grep_sha1(opt, ce->sha1, ce->name, 0, ce->name);
