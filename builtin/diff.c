@@ -89,6 +89,7 @@ static int builtin_diff_b_f(struct rev_info *revs,
 	if (blob[0].mode == S_IFINVALID)
 		blob[0].mode = canon_mode(st.st_mode);
 
+	revs->diffopt.skip_stat_unmatch = !!diff_auto_refresh_index;
 	stuff_change(&revs->diffopt,
 		     blob[0].mode, canon_mode(st.st_mode),
 		     blob[0].sha1, null_sha1,
@@ -150,6 +151,7 @@ static int builtin_diff_index(struct rev_info *revs,
 			perror("read_cache_preload");
 			return -1;
 		}
+		revs->diffopt.skip_stat_unmatch = !!diff_auto_refresh_index;
 	} else if (read_cache() < 0) {
 		perror("read_cache");
 		return -1;
@@ -252,6 +254,7 @@ static int builtin_diff_files(struct rev_info *revs, int argc, const char **argv
 		perror("read_cache_preload");
 		return -1;
 	}
+	revs->diffopt.skip_stat_unmatch = !!diff_auto_refresh_index;
 	return run_diff_files(revs, options);
 }
 
@@ -343,7 +346,6 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 		diff_no_index(&rev, argc, argv, prefix);
 
 	/* Otherwise, we are doing the usual "git" diff */
-	rev.diffopt.skip_stat_unmatch = !!diff_auto_refresh_index;
 
 	/* Scale to real terminal size and respect statGraphWidth config */
 	rev.diffopt.stat_width = -1;
