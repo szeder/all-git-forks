@@ -25,6 +25,14 @@ OPTIONS
 --detach::
 	Run in background.
 
+TROUBLESHOOTING
+---------------
+Setting environment variable `GIT_TEST_WATCHED` to a non-zero number
+makes Git communicate with the file watcher, but do lstat anyway to
+verify that the file watcher results. Setting to 1 prints warning when
+file watcher fails to monitor files correctly. Setting to 2 aborts Git
+when it happens.
+
 BUGS
 ----
 On Linux, file watcher may fail to detect changes if you move the work

@@ -224,7 +224,10 @@ static inline unsigned create_ce_flags(unsigned stage)
 #define ce_mark_uptodate(ce) ((ce)->ce_flags |= CE_UPTODATE)
 static inline int ce_valid(const struct cache_entry *ce)
 {
-	return ce->ce_flags & CE_VALID;
+	extern int test_watched;
+	if (!test_watched)
+		return ce->ce_flags & CE_VALID;
+	return (ce->ce_flags & CE_VALID) && !(ce->ce_flags & CE_WATCHED);
 }
 
 #define ce_permissions(mode) (((mode) & 0100) ? 0755 : 0644)
