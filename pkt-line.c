@@ -94,6 +94,21 @@ void packet_write(int fd, const char *fmt, ...)
 	write_or_die(fd, write_buffer, n);
 }
 
+int packet_write_timeout(int fd, int timeout, const char *fmt, ...)
+{
+	static struct strbuf sb = STRBUF_INIT;
+	va_list args;
+	unsigned n;
+
+	if (fd == -1)
+		return -1;
+	va_start(args, fmt);
+	strbuf_reset(&sb);
+	n = format_packet(fmt, args);
+	va_end(args);
+	return write_in_full_timeout(fd, write_buffer, n, timeout);
+}
+
 void packet_buf_write(struct strbuf *buf, const char *fmt, ...)
 {
 	va_list args;

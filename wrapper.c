@@ -214,6 +214,32 @@ ssize_t write_in_full(int fd, const void *buf, size_t count)
 	return total;
 }
 
+ssize_t write_in_full_timeout(int fd, const void *buf,
+			      size_t count, int timeout)
+{
+	struct pollfd pfd;
+	const char *p = buf;
+	ssize_t total = 0;
+
+	pfd.fd = fd;
+	pfd.events = POLLOUT;
+	while (count > 0 && poll(&pfd, 1, timeout) > 0 &&
+	       (pfd.revents & POLLOUT)) {
+		ssize_t written = xwrite(fd, p, count);
+		if (written < 0)
+			return -1;
+		if (!written) {
+			errno = ENOSPC;
+			return -1;
+		}
+		count -= written;
+		p += written;
+		total += written;
+	}
+
+	return count ? -1 : total;
+}
+
 int xdup(int fd)
 {
 	int ret = dup(fd);
