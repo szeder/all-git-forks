@@ -21,6 +21,7 @@
  */
 void packet_flush(int fd);
 void packet_write(int fd, const char *fmt, ...) __attribute__((format (printf, 2, 3)));
+int packet_write_timeout(int fd, int timeout, const char *fmt, ...) __attribute__((format (printf, 3, 4)));
 void packet_buf_flush(struct strbuf *buf);
 void packet_buf_write(struct strbuf *buf, const char *fmt, ...) __attribute__((format (printf, 2, 3)));
 
