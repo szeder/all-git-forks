@@ -229,3 +229,38 @@ char *packet_read_line_buf(char **src, size_t *src_len, int *dst_len)
 {
 	return packet_read_line_generic(-1, src, src_len, dst_len);
 }
+
+char *packet_read_line_timeout(int fd, int timeout, int *len_p)
+{
+	char *buf = packet_buffer;
+	int ret, len, buf_len = sizeof(packet_buffer);
+	char linelen[4];
+
+	if (fd == -1)
+		return NULL;
+	if ((ret = read_in_full_timeout(fd, linelen, 4, timeout)) < 0)
+		return NULL;
+	len = packet_length(linelen);
+	if (len < 0) {
+		error("protocol error: bad line length character: %.4s", linelen);
+		return NULL;
+	}
+	if (!len) {
+		packet_trace("0000", 4, 0);
+		if (len_p)
+			*len_p = 0;
+		return "";
+	}
+	len -= 4;
+	if (len >= buf_len) {
+		error("protocol error: bad line length %d", len);
+		return NULL;
+	}
+	if ((ret = read_in_full_timeout(fd, buf, len, timeout)) < 0)
+		return NULL;
+	buf[len] = '\0';
+	if (len_p)
+		*len_p = len;
+	packet_trace(buf, len, 0);
+	return buf;
+}
