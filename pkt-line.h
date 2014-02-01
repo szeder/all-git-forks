@@ -69,6 +69,7 @@ int packet_read(int fd, char **src_buffer, size_t *src_len, char
  * packet is written to it.
  */
 char *packet_read_line(int fd, int *size);
+char *packet_read_line_timeout(int fd, int timeout, int *size);
 
 /*
  * Same as packet_read_line, but read from a buf rather than a descriptor;

@@ -193,6 +193,27 @@ ssize_t read_in_full(int fd, void *buf, size_t count)
 	return total;
 }
 
+ssize_t read_in_full_timeout(int fd, void *buf, size_t count, int timeout)
+{
+	char *p = buf;
+	ssize_t total = 0;
+	struct pollfd pfd;
+
+	pfd.fd = fd;
+	pfd.events = POLLIN;
+	while (count > 0 && poll(&pfd, 1, timeout) > 0 &&
+	       (pfd.revents & POLLIN)) {
+		ssize_t loaded = xread(fd, p, count);
+		if (loaded <= 0)
+			return -1;
+		count -= loaded;
+		p += loaded;
+		total += loaded;
+	}
+
+	return count ? -1 : total;
+}
+
 ssize_t write_in_full(int fd, const void *buf, size_t count)
 {
 	const char *p = buf;
