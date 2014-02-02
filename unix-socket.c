@@ -93,7 +93,7 @@ fail:
 	return -1;
 }
 
-int unix_stream_listen(const char *path)
+int unix_stream_listen(const char *path, int replace)
 {
 	int fd, saved_errno;
 	struct sockaddr_un sa;
@@ -103,7 +103,8 @@ int unix_stream_listen(const char *path)
 		return -1;
 	fd = unix_stream_socket();
 
-	unlink(path);
+	if (replace)
+		unlink(path);
 	if (bind(fd, (struct sockaddr *)&sa, sizeof(sa)) < 0)
 		goto fail;
 
