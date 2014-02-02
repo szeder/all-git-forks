@@ -123,6 +123,7 @@ a space) at the start of each line:
 	R::	removed/deleted
 	C::	modified/changed
 	K::	to be killed
+	W::	being watched by `git file-watcher`
 	?::	other
 
 -v::

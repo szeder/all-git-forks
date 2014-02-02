@@ -46,6 +46,7 @@ static const char *tag_killed = "";
 static const char *tag_modified = "";
 static const char *tag_skip_worktree = "";
 static const char *tag_resolve_undo = "";
+static const char *tag_watched = "";
 
 static void write_name(const char *name)
 {
@@ -231,6 +232,7 @@ static void show_files(struct dir_struct *dir)
 	if (show_cached || show_stage) {
 		for (i = 0; i < active_nr; i++) {
 			const struct cache_entry *ce = active_cache[i];
+			const char *tag;
 			if ((dir->flags & DIR_SHOW_IGNORED) &&
 			    !ce_excluded(dir, ce))
 				continue;
@@ -238,8 +240,15 @@ static void show_files(struct dir_struct *dir)
 				continue;
 			if (ce->ce_flags & CE_UPDATE)
 				continue;
-			show_ce_entry(ce_stage(ce) ? tag_unmerged :
-				(ce_skip_worktree(ce) ? tag_skip_worktree : tag_cached), ce);
+			if (ce_stage(ce))
+				tag = tag_unmerged;
+			else if (ce_skip_worktree(ce))
+				tag = tag_skip_worktree;
+			else if (ce->ce_flags & CE_WATCHED)
+				tag = tag_watched;
+			else
+				tag = tag_cached;
+			show_ce_entry(tag, ce);
 		}
 	}
 	if (show_deleted || show_modified) {
@@ -530,6 +539,7 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 		tag_killed = "K ";
 		tag_skip_worktree = "S ";
 		tag_resolve_undo = "U ";
+		tag_watched = "W ";
 	}
 	if (show_modified || show_others || show_deleted || (dir.flags & DIR_SHOW_IGNORED) || show_killed)
 		require_work_tree = 1;
