@@ -23,7 +23,8 @@ static int connect_watcher(const char *path)
 	return fd;
 }
 
-static void reset_watches(struct index_state *istate, int disconnect)
+static void reset_watches(struct index_state *istate, int disconnect,
+			  const char *reason)
 {
 	int i, changed = 0;
 	if (istate->updated_entries) {
@@ -45,6 +46,8 @@ static void reset_watches(struct index_state *istate, int disconnect)
 		close(istate->watcher);
 		istate->watcher = -1;
 	}
+	trace_printf_key("GIT_TRACE_WATCHER", "reset%s: %s\n",
+			 disconnect ? "/disconnect" : "", reason);
 }
 
 static void mark_ce_valid(struct index_state *istate)
@@ -53,15 +56,16 @@ static void mark_ce_valid(struct index_state *istate)
 	char *line, *end;
 	int i, len;
 	unsigned long n;
+	trace_printf_key("GIT_TRACE_WATCHER", "mark_ce_valid\n");
 	if (packet_write_timeout(istate->watcher, WAIT_TIME, "get-changed") <= 0 ||
 	    !(line = packet_read_line_timeout(istate->watcher, WAIT_TIME, &len)) ||
 	    !starts_with(line, "changed ")) {
-		reset_watches(istate, 1);
+		reset_watches(istate, 1, "invalid get-changed response");
 		return;
 	}
 	n = strtoul(line + 8, &end, 10);
 	if (end != line + len) {
-		reset_watches(istate, 1);
+		reset_watches(istate, 1, "invalid get-changed response");
 		return;
 	}
 	if (!n)
@@ -69,7 +73,7 @@ static void mark_ce_valid(struct index_state *istate)
 	strbuf_grow(&sb, n);
 	if (read_in_full_timeout(istate->watcher, sb.buf, n, WAIT_TIME) != n) {
 		strbuf_release(&sb);
-		reset_watches(istate, 1);
+		reset_watches(istate, 1, "invalid get-changed payload");
 		return;
 	}
 	line = sb.buf;
@@ -131,7 +135,7 @@ void open_watcher(struct index_state *istate)
 	char *msg;
 
 	if (!get_git_work_tree()) {
-		reset_watches(istate, 1);
+		reset_watches(istate, 1, "no worktree");
 		return;
 	}
 
@@ -165,10 +169,11 @@ void open_watcher(struct index_state *istate)
 	}
 
 	istate->watcher = connect_watcher(watcher_path);
+	trace_printf_key("GIT_TRACE_WATCHER", "open watcher %d\n", istate->watcher);
 	if (packet_write_timeout(istate->watcher, WAIT_TIME, "hello") <= 0 ||
 	    (msg = packet_read_line_timeout(istate->watcher, WAIT_TIME, NULL)) == NULL ||
 	    strcmp(msg, "hello")) {
-		reset_watches(istate, 1);
+		reset_watches(istate, 1, "invalid hello response");
 		return;
 	}
 
@@ -177,7 +182,7 @@ void open_watcher(struct index_state *istate)
 				 get_git_work_tree()) <= 0 ||
 	    (msg = packet_read_line_timeout(istate->watcher, WAIT_TIME, NULL)) == NULL ||
 	    strcmp(msg, "ok")) {
-		reset_watches(istate, 0);
+		reset_watches(istate, 0, "inconsistent");
 		istate->update_watches = 1;
 		return;
 	}
@@ -265,6 +270,7 @@ void watch_entries(struct index_state *istate)
 			nr++;
 	if (nr < watch_lowerlimit)
 		return;
+	trace_printf_key("GIT_TRACE_WATCHER", "watch %d\n", nr);
 	sorted = xmalloc(sizeof(*sorted) * nr);
 	for (i = nr = 0; i < istate->cache_nr; i++)
 		if (ce_watchable(istate->cache[i], now))
@@ -280,6 +286,7 @@ void close_watcher(struct index_state *istate, const unsigned char *sha1)
 	int len, i, nr;
 	if (istate->watcher <= 0)
 		return;
+	trace_printf_key("GIT_TRACE_WATCHER", "close watcher\n");
 	if (packet_write_timeout(istate->watcher, WAIT_TIME,
 				 "new-index %s", sha1_to_hex(sha1)) <= 0)
 		goto done;

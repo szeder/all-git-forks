@@ -11,6 +11,21 @@ int main(int ac, char **av)
 	int last_command_is_reply = 0;
 	int fd;
 
+	if (!strcmp(av[1], "--index-signature")) {
+		struct stat st;
+		void *mmap;
+		if (lstat(av[2], &st))
+			die_errno("lstat");
+		fd = open(av[2], O_RDONLY);
+		if (fd < 0)
+			die_errno("open");
+		mmap = xmmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+		if (mmap == MAP_FAILED)
+			die_errno("mmap");
+		printf("%s\n", sha1_to_hex((unsigned char*)mmap + st.st_size - 20));
+		return 0;
+	}
+
 	strbuf_addf(&sb, "%s/socket", av[1]);
 	fd = unix_stream_connect(sb.buf);
 	if (fd < 0)
