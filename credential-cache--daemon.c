@@ -207,7 +207,7 @@ static void serve_cache(const char *socket_path)
 {
 	int fd;
 
-	fd = unix_stream_listen(socket_path);
+	fd = unix_stream_listen(socket_path, 1);
 	if (fd < 0)
 		die_errno("unable to bind to '%s'", socket_path);
 
