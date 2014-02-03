@@ -3780,7 +3780,7 @@ proc external_blame {parent_idx {line {}}} {
 }
 
 proc show_line_source {} {
-    global cmitmode currentid parents curview blamestuff blameinst
+    global cmitmode currentid parents curview
     global diff_menu_line diff_menu_filebase flist_menu_file
     global nullid nullid2 gitdir cdup
 
@@ -3836,6 +3836,12 @@ proc show_line_source {} {
 	lappend blameargs $id
     }
     lappend blameargs -- [file join $cdup $flist_menu_file]
+    startblaming $blameargs read_line_source
+}
+
+proc startblaming {blameargs blamecommand} {
+    global blamestuff blameinst
+
     if {[catch {
 	set f [open $blameargs r]
     } err]} {
@@ -3847,7 +3853,7 @@ proc show_line_source {} {
     set i [reg_instance $f]
     set blamestuff {}
     set blameinst $i
-    filerun $f [list read_line_source $f $i]
+    filerun $f [list blameiocallback $f $i $blamecommand]
 }
 
 proc stopblaming {} {
@@ -3861,8 +3867,8 @@ proc stopblaming {} {
     }
 }
 
-proc read_line_source {fd inst} {
-    global blamestuff curview commfd blameinst nullid nullid2
+proc blameiocallback {fd inst blamecommand} {
+    global blamestuff blameinst commfd
 
     while {[gets $fd line] >= 0} {
 	lappend blamestuff $line
@@ -3879,6 +3885,14 @@ proc read_line_source {fd inst} {
 	unset blamestuff
 	return 0
     }
+
+    $blamecommand
+    unset blamestuff
+    return 0
+}
+
+proc read_line_source {} {
+    global blamestuff curview nullid nullid2
 
     set fname {}
     set line [split [lindex $blamestuff 0] " "]
@@ -3910,7 +3924,6 @@ proc read_line_source {fd inst} {
     } else {
 	puts "oops couldn't parse git blame output"
     }
-    unset blamestuff
     return 0
 }
 
