@@ -7,6 +7,8 @@ test_description='skip-worktree bit test'
 
 . ./test-lib.sh
 
+unset GIT_TEST_WATCHER_PATH
+
 cat >expect.full <<EOF
 H 1
 H 2

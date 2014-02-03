@@ -14,6 +14,8 @@ test_description='sparse checkout tests
 . ./test-lib.sh
 . "$TEST_DIRECTORY"/lib-read-tree.sh
 
+unset GIT_TEST_WATCHER_PATH
+
 test_expect_success 'setup' '
 	cat >expected <<-\EOF &&
 	100644 77f0ba1734ed79d12881f81b36ee134de6a3327b 0	init.t
