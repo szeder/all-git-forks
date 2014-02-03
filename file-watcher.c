@@ -56,6 +56,37 @@ static void accept_connection(int fd)
 	pfd_nr++;
 }
 
+static const char permissions_advice[] =
+N_("The permissions on your socket directory are too loose; other\n"
+   "processes may be able to read your file listing. Consider running:\n"
+   "\n"
+   "	chmod 0700 %s");
+static void check_socket_directory(const char *path)
+{
+	struct stat st;
+	char *path_copy = xstrdup(path);
+	char *dir = dirname(path_copy);
+
+	if (!stat(dir, &st)) {
+		if (st.st_mode & 077)
+			die(_(permissions_advice), dir);
+		free(path_copy);
+		return;
+	}
+
+	/*
+	 * We must be sure to create the directory with the correct mode,
+	 * not just chmod it after the fact; otherwise, there is a race
+	 * condition in which somebody can chdir to it, sleep, then try to open
+	 * our protected socket.
+	 */
+	if (safe_create_leading_directories_const(dir) < 0)
+		die_errno(_("unable to create directories for '%s'"), dir);
+	if (mkdir(dir, 0700) < 0)
+		die_errno(_("unable to mkdir '%s'"), dir);
+	free(path_copy);
+}
+
 int main(int argc, const char **argv)
 {
 	struct strbuf sb = STRBUF_INIT;
@@ -76,6 +107,7 @@ int main(int argc, const char **argv)
 
 	socket_path = argv[0];
 	strbuf_addf(&sb, "%s/socket", socket_path);
+	check_socket_directory(sb.buf);
 	fd = unix_stream_listen(sb.buf, 0);
 	if (fd == -1)
 		die_errno(_("unable to listen at %s"), sb.buf);
