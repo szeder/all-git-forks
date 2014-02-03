@@ -7,6 +7,8 @@ test_description='test worktree writing operations when skip-worktree is used'
 
 . ./test-lib.sh
 
+unset GIT_TEST_WATCHER_PATH
+
 test_expect_success 'setup' '
 	test_commit init &&
 	echo modified >> init.t &&
