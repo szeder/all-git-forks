@@ -834,11 +834,22 @@ static void check_socket_directory(const char *path)
 	free(path_copy);
 }
 
+static void run_housekeeping(void)
+{
+	struct stat st;
+	struct strbuf sb = STRBUF_INIT;
+	strbuf_addf(&sb, "%s/socket", socket_path);
+	if (stat(sb.buf, &st) || !S_ISSOCK(st.st_mode))
+		exit(0);
+	strbuf_release(&sb);
+}
+
 int main(int argc, const char **argv)
 {
 	struct strbuf sb = STRBUF_INIT;
 	int i, new_nr, fd, quit = 0, nr_common;
 	int daemon = 0;
+	time_t last_checked;
 	struct option options[] = {
 		OPT_BOOL(0, "detach", &daemon,
 			 N_("run in background")),
@@ -894,19 +905,25 @@ int main(int argc, const char **argv)
 		pfd[1].events = POLLIN;
 	}
 
+	last_checked = time(NULL);
 	while (!quit) {
-		if (poll(pfd, pfd_nr, -1) < 0) {
+		int ret = poll(pfd, pfd_nr, 300000);
+		int time_for_housekeeping = 0;
+		if (ret < 0) {
 			if (errno != EINTR) {
 				error("Poll failed, resuming: %s",
 				      strerror(errno));
 				sleep(1);
 			}
 			continue;
-		}
+		} else if (ret == 0)
+			time_for_housekeeping = 1;
 
 		if (inotify_fd && (pfd[1].revents & POLLIN)) {
 			if (handle_inotify(inotify_fd))
 				break;
+			if (last_checked + 300 < time(NULL))
+				time_for_housekeeping = 1;
 		}
 
 		for (new_nr = i = nr_common; i < pfd_nr; i++) {
@@ -949,6 +966,11 @@ int main(int argc, const char **argv)
 			accept_connection(pfd[0].fd);
 		if (pfd[0].revents & (POLLHUP | POLLERR | POLLNVAL))
 			die(_("error on listening socket"));
+
+		if (time_for_housekeeping) {
+			run_housekeeping();
+			last_checked = time(NULL);
+		}
 	}
 	return 0;
 }
