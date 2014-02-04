@@ -1626,6 +1626,11 @@ MAKE/%-string.h: MAKE/% script/mkcstring
 		$(subst -,_,$*) <$< >$@+ && \
 		mv $@+ $@
 
+MAKE/%.sh: MAKE/% script/mksh
+	$(QUIET_GEN)$(SHELL_PATH) script/mksh \
+		$(subst -,_,$*) <$< >$@+ && \
+		mv $@+ $@
+
 # We must filter out any object files from $(GITLIBS),
 # as it is typically used like:
 #
@@ -1787,7 +1792,6 @@ common-cmds.h: $(wildcard Documentation/git-*.txt)
 
 $(eval $(call make-var,SCRIPT-DEFINES,script parameters,\
 	:$(SHELL_PATH)\
-	:$(DIFF)\
 	:$(GIT_VERSION)\
 	:$(localedir)\
 	:$(NO_CURL)\
@@ -1798,11 +1802,16 @@ $(eval $(call make-var,SCRIPT-DEFINES,script parameters,\
 	:$(SANE_TEXT_GREP)\
 	:$(PAGER_ENV)
 ))
+$(eval $(call make-var,DIFF,diff command,$(DIFF)))
 define cmd_munge_script
 $(RM) $@ $@+ && \
+{ \
+includes="$(filter MAKE/%.sh,$^)"; \
+if ! test -z "$$includes"; then \
+	cat $$includes; \
+fi && \
 sed -e '1s|#!.*/sh|#!$(call sqi,$(SHELL_PATH))|' \
     -e 's|@SHELL_PATH@|$(call sqi,$(SHELL_PATH))|' \
-    -e 's|@@DIFF@@|$(call sqi,$(DIFF))|' \
     -e 's|@@LOCALEDIR@@|$(call sqi,$(localedir))|g' \
     -e 's/@@NO_CURL@@/$(NO_CURL)/g' \
     -e 's/@@USE_GETTEXT_SCHEME@@/$(USE_GETTEXT_SCHEME)/g' \
@@ -1811,7 +1820,8 @@ sed -e '1s|#!.*/sh|#!$(call sqi,$(SHELL_PATH))|' \
     -e 's|@@PERL@@|$(call sqi,$(PERL_PATH))|g' \
     -e 's|@@SANE_TEXT_GREP@@|$(call sqi,$(SANE_TEXT_GREP))|g' \
     -e 's|@@PAGER_ENV@@|$(call sqi,$(PAGER_ENV))|g' \
-    $@.sh >$@+
+    $@.sh; \
+} >$@+
 endef
 
 $(SCRIPT_SH_GEN) : % : %.sh MAKE/SCRIPT-DEFINES
@@ -1822,6 +1832,8 @@ $(SCRIPT_SH_GEN) : % : %.sh MAKE/SCRIPT-DEFINES
 $(SCRIPT_LIB) : % : %.sh MAKE/SCRIPT-DEFINES
 	$(QUIET_GEN)$(cmd_munge_script) && \
 	mv $@+ $@
+
+git-sh-setup: MAKE/DIFF.sh
 
 git.res: git.rc GIT-VERSION-FILE
 	$(QUIET_RC)$(RC) \
