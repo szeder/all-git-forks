@@ -23,6 +23,11 @@ static int compare_tree_entry(struct tree_desc *t1, struct tree_desc *t2,
 
 	pathlen1 = tree_entry_len(&t1->entry);
 	pathlen2 = tree_entry_len(&t2->entry);
+
+	/*
+	 * NOTE files and directories *always* compare differently,
+	 * even when having the same name.
+	 */
 	cmp = base_name_compare(path1, pathlen1, mode1, path2, pathlen2, mode2);
 	if (cmp < 0) {
 		show_entry(opt, "-", t1, base);
@@ -34,16 +39,6 @@ static int compare_tree_entry(struct tree_desc *t1, struct tree_desc *t2,
 	}
 	if (!DIFF_OPT_TST(opt, FIND_COPIES_HARDER) && !hashcmp(sha1, sha2) && mode1 == mode2)
 		return 0;
-
-	/*
-	 * If the filemode has changed to/from a directory from/to a regular
-	 * file, we need to consider it a remove and an add.
-	 */
-	if (S_ISDIR(mode1) != S_ISDIR(mode2)) {
-		show_entry(opt, "-", t1, base);
-		show_entry(opt, "+", t2, base);
-		return 0;
-	}
 
 	strbuf_add(base, path1, pathlen1);
 	if (DIFF_OPT_TST(opt, RECURSIVE) && S_ISDIR(mode1)) {
@@ -114,13 +109,14 @@ static void show_entry(struct diff_options *opt, const char *prefix,
 }
 
 static void skip_uninteresting(struct tree_desc *t, struct strbuf *base,
-			       struct diff_options *opt,
-			       enum interesting *match)
+			       struct diff_options *opt)
 {
+	enum interesting match;
+
 	while (t->size) {
-		*match = tree_entry_interesting(&t->entry, base, 0, &opt->pathspec);
-		if (*match) {
-			if (*match == all_entries_not_interesting)
+		match = tree_entry_interesting(&t->entry, base, 0, &opt->pathspec);
+		if (match) {
+			if (match == all_entries_not_interesting)
 				t->size = 0;
 			break;
 		}
@@ -133,8 +129,6 @@ int diff_tree(struct tree_desc *t1, struct tree_desc *t2,
 {
 	struct strbuf base;
 	int baselen = strlen(base_str);
-	enum interesting t1_match = entry_not_interesting;
-	enum interesting t2_match = entry_not_interesting;
 
 	/* Enable recursion indefinitely */
 	opt->pathspec.recursive = DIFF_OPT_TST(opt, RECURSIVE);
@@ -146,8 +140,8 @@ int diff_tree(struct tree_desc *t1, struct tree_desc *t2,
 		if (diff_can_quit_early(opt))
 			break;
 		if (opt->pathspec.nr) {
-			skip_uninteresting(t1, &base, opt, &t1_match);
-			skip_uninteresting(t2, &base, opt, &t2_match);
+			skip_uninteresting(t1, &base, opt);
+			skip_uninteresting(t2, &base, opt);
 		}
 		if (!t1->size) {
 			if (!t2->size)
