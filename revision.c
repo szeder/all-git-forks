@@ -1729,6 +1729,8 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	} else if (!strcmp(arg, "--parents")) {
 		revs->rewrite_parents = 1;
 		revs->print_parents = 1;
+	} else if (!strcmp(arg, "--merge-bases")) {
+		revs->show_merge_bases = 1;
 	} else if (!strcmp(arg, "--dense")) {
 		revs->dense = 1;
 	} else if (!strcmp(arg, "--sparse")) {

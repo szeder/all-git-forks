@@ -19,6 +19,7 @@
 #define PATCHSAME	(1u<<9)
 #define BOTTOM		(1u<<10)
 #define ALL_REV_FLAGS	((1u<<11)-1)
+/* merge-base.c uses bits 16-19.  --merge-bases will break if they overlap! */
 
 #define DECORATE_SHORT_REFS	1
 #define DECORATE_FULL_REFS	2
@@ -137,6 +138,7 @@ struct rev_info {
 			preserve_subject:1;
 	unsigned int	disable_stdin:1;
 	unsigned int	leak_pending:1;
+	unsigned int	show_merge_bases:1;
 
 	enum date_mode date_mode;
 

@@ -622,6 +622,8 @@ void show_log(struct rev_info *opt)
 	ctx.output_encoding = get_log_output_encoding();
 	if (opt->from_ident.mail_begin && opt->from_ident.name_begin)
 		ctx.from_ident = &opt->from_ident;
+	if (opt->show_merge_bases && commit->parents && commit->parents->next)
+		ctx.merge_bases = get_octopus_merge_bases(commit->parents);
 	pretty_print_commit(&ctx, commit, &msgbuf);
 
 	if (opt->add_signoff)
@@ -662,6 +664,7 @@ void show_log(struct rev_info *opt)
 
 	strbuf_release(&msgbuf);
 	free(ctx.notes_message);
+	free(ctx.merge_bases);
 }
 
 int log_tree_diff_flush(struct rev_info *opt)

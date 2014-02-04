@@ -552,6 +552,9 @@ static void add_merge_info(const struct pretty_print_context *pp,
 		return;
 
 	pp_commit_list(pp, sb, "Merge:", parent);
+
+	if (pp->merge_bases)
+		pp_commit_list(pp, sb, "Bases:", pp->merge_bases);
 }
 
 static char *get_header(const struct commit *commit, const char *msg,

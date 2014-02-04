@@ -705,6 +705,13 @@ endif::git-rev-list[]
 	Print also the children of the commit (in the form "commit child...").
 	Also enables parent rewriting, see 'History Simplification' below.
 
+ifndef::git-rev-list[]
+--bases::
+	For merge commits, print the merge bases of the commit's
+	parents.  (These are the bases that were used in the creation
+	of the merge itself.)
+endif::git-rev-list[]
+
 ifdef::git-rev-list[]
 --timestamp::
 	Print the raw commit timestamp.
