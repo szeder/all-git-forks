@@ -11,6 +11,8 @@
 #include "gpg-interface.h"
 #include "sequencer.h"
 #include "line-log.h"
+#include "cache-tree.h"
+#include "merge-recursive.h"
 
 struct decoration name_decoration = { "object names" };
 
@@ -725,6 +727,62 @@ static int do_diff_combined(struct rev_info *opt, struct commit *commit)
 	return !opt->loginfo;
 }
 
+static int do_diff_remerge(struct rev_info *opt, struct commit *commit)
+{
+	struct commit_list *merge_bases;
+	struct commit *result, *parent1, *parent2;
+	struct merge_options o;
+	char *branch1, *branch2;
+
+	if (commit->parents->next->next) {
+		printf("--remerge-diff not supported for octopus merges.\n");
+		return 0;
+	}
+
+	parent1 = commit->parents->item;
+	parent2 = commit->parents->next->item;
+	parse_commit(parent1);
+	parse_commit(parent2);
+	branch1 = xstrdup(sha1_to_hex(parent1->object.sha1));
+	branch2 = xstrdup(sha1_to_hex(parent2->object.sha1));
+
+	merge_bases = get_octopus_merge_bases(commit->parents);
+	init_merge_options(&o);
+	o.verbosity = -1;
+	o.no_worktree = 1;
+	o.conflicts_in_index = 1;
+	o.use_ondisk_index = 0;
+	o.branch1 = branch1;
+	o.branch2 = branch2;
+	merge_recursive(&o, parent1, parent2, merge_bases, &result);
+	free(branch1);
+	free(branch2);
+
+	active_cache_tree = cache_tree();
+	if (cache_tree_update(active_cache_tree,
+			      (const struct cache_entry * const *)active_cache,
+			      active_nr, WRITE_TREE_SILENT) < 0) {
+		printf("BUG: merge conflicts not fully folded, cannot diff.\n");
+		return 0;
+	}
+
+	if (opt->loginfo && !opt->no_commit_id) {
+		show_log(opt);
+
+		if (opt->verbose_header && opt->diffopt.output_format)
+			printf("%s%c", diff_line_prefix(&opt->diffopt),
+			       opt->diffopt.line_termination);
+	}
+
+	diff_tree_sha1(active_cache_tree->sha1, commit->tree->object.sha1,
+		       "", &opt->diffopt);
+	log_tree_diff_flush(opt);
+
+	cache_tree_free(&active_cache_tree);
+
+	return !opt->loginfo;
+}
+
 /*
  * Show the diff of a commit.
  *
@@ -758,6 +816,8 @@ static int log_tree_diff(struct rev_info *opt, struct commit *commit, struct log
 			return 0;
 		else if (merge_diff_mode_is_any_combined(opt))
 			return do_diff_combined(opt, commit);
+		else if (opt->merge_diff_mode == MERGE_DIFF_REMERGE)
+			return do_diff_remerge(opt, commit);
 		else if (opt->first_parent_only) {
 			/*
 			 * Generate merge log entry only for the first

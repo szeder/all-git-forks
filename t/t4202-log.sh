@@ -872,4 +872,7 @@ test_expect_success '--merge-bases' '
 	test_cmp expect actual
 '
 
+cat >expect <<\EOF
+EOF
+
 test_done
