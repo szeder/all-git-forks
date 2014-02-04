@@ -952,7 +952,7 @@ static void show_combined_header(struct combine_diff_path *elem,
 }
 
 static void show_patch_diff(struct combine_diff_path *elem, int num_parent,
-			    int dense, int working_tree_file,
+			    int working_tree_file,
 			    struct rev_info *rev)
 {
 	struct diff_options *opt = &rev->diffopt;
@@ -967,6 +967,7 @@ static void show_patch_diff(struct combine_diff_path *elem, int num_parent,
 	struct userdiff_driver *textconv = NULL;
 	int is_binary;
 	const char *line_prefix = diff_line_prefix(opt);
+	int dense = rev->dense_combined_merges;
 
 	context = opt->context;
 	userdiff = userdiff_find_by_path(elem->path);
@@ -1214,7 +1215,6 @@ static void show_raw_diff(struct combine_diff_path *p, int num_parent, struct re
  */
 void show_combined_diff(struct combine_diff_path *p,
 		       int num_parent,
-		       int dense,
 		       struct rev_info *rev)
 {
 	struct diff_options *opt = &rev->diffopt;
@@ -1226,7 +1226,7 @@ void show_combined_diff(struct combine_diff_path *p,
 				  DIFF_FORMAT_NAME_STATUS))
 		show_raw_diff(p, num_parent, rev);
 	else if (opt->output_format & DIFF_FORMAT_PATCH)
-		show_patch_diff(p, num_parent, dense, 1, rev);
+		show_patch_diff(p, num_parent, 1, rev);
 }
 
 static void free_combined_pair(struct diff_filepair *pair)
@@ -1297,7 +1297,6 @@ static void handle_combined_callback(struct diff_options *opt,
 
 void diff_tree_combined(const unsigned char *sha1,
 			const struct sha1_array *parents,
-			int dense,
 			struct rev_info *rev)
 {
 	struct diff_options *opt = &rev->diffopt;
@@ -1365,7 +1364,7 @@ void diff_tree_combined(const unsigned char *sha1,
 				       opt->line_termination);
 			for (p = paths; p; p = p->next) {
 				if (p->len)
-					show_patch_diff(p, num_parent, dense,
+					show_patch_diff(p, num_parent,
 							0, rev);
 			}
 		}
@@ -1381,7 +1380,7 @@ void diff_tree_combined(const unsigned char *sha1,
 	free_pathspec(&diffopts.pathspec);
 }
 
-void diff_tree_combined_merge(const struct commit *commit, int dense,
+void diff_tree_combined_merge(const struct commit *commit,
 			      struct rev_info *rev)
 {
 	struct commit_list *parent = get_saved_parents(rev, commit);
@@ -1391,6 +1390,6 @@ void diff_tree_combined_merge(const struct commit *commit, int dense,
 		sha1_array_append(&parents, parent->item->object.sha1);
 		parent = parent->next;
 	}
-	diff_tree_combined(commit->object.sha1, &parents, dense, rev);
+	diff_tree_combined(commit->object.sha1, &parents, rev);
 	sha1_array_clear(&parents);
 }
