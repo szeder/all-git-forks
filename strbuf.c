@@ -106,6 +106,13 @@ void strbuf_ltrim(struct strbuf *sb)
 	sb->buf[sb->len] = '\0';
 }
 
+int strbuf_isspace(struct strbuf *sb)
+{
+	char *b;
+	for (b = sb->buf; *b && isspace(*b); b++);
+	return !*b;
+}
+
 struct strbuf **strbuf_split_buf(const char *str, size_t slen,
 				 int terminator, int max)
 {
@@ -170,6 +177,13 @@ void strbuf_splice(struct strbuf *sb, size_t pos, size_t len,
 			sb->len - pos - len);
 	memcpy(sb->buf + pos, data, dlen);
 	strbuf_setlen(sb, sb->len + dlen - len);
+}
+
+void strbuf_replace(struct strbuf *sb, const char *a, const char *b)
+{
+	char *ptr = strstr(sb->buf, a);
+	if (ptr)
+		strbuf_splice(sb, ptr - sb->buf, strlen(a), b, strlen(b));
 }
 
 void strbuf_insert(struct strbuf *sb, size_t pos, const void *data, size_t len)
