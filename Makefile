@@ -1876,6 +1876,7 @@ GIT-PERL-DEFINES: FORCE
 .PHONY: gitweb
 gitweb:
 	$(QUIET_SUBDIR0)gitweb $(QUIET_SUBDIR1) all
+all:: gitweb
 
 git-instaweb: git-instaweb.sh GIT-SCRIPT-DEFINES
 	$(QUIET_GEN)$(cmd_munge_script) && \
