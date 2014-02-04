@@ -517,6 +517,31 @@ static const char *skip_empty_lines(const char *msg)
 	return msg;
 }
 
+static const char *pp_sha1_to_hex(const struct pretty_print_context *pp,
+				  const unsigned char *sha1)
+{
+	const char *hex = NULL;
+	if (pp->abbrev)
+		hex = find_unique_abbrev(sha1, pp->abbrev);
+	if (!hex)
+		hex = sha1_to_hex(sha1);
+	return hex;
+}
+
+static void pp_commit_list(const struct pretty_print_context *pp,
+			   struct strbuf *sb,
+			   const char *prefix,
+			   const struct commit_list *list)
+{
+	strbuf_addstr(sb, prefix);
+	while (list) {
+		struct commit *commit = list->item;
+		strbuf_addf(sb, " %s", pp_sha1_to_hex(pp, commit->object.sha1));
+		list = list->next;
+	}
+	strbuf_addch(sb, '\n');
+}
+
 static void add_merge_info(const struct pretty_print_context *pp,
 			   struct strbuf *sb, const struct commit *commit)
 {
@@ -526,20 +551,7 @@ static void add_merge_info(const struct pretty_print_context *pp,
 	    !parent || !parent->next)
 		return;
 
-	strbuf_addstr(sb, "Merge:");
-
-	while (parent) {
-		struct commit *p = parent->item;
-		const char *hex = NULL;
-		if (pp->abbrev)
-			hex = find_unique_abbrev(p->object.sha1, pp->abbrev);
-		if (!hex)
-			hex = sha1_to_hex(p->object.sha1);
-		parent = parent->next;
-
-		strbuf_addf(sb, " %s", hex);
-	}
-	strbuf_addch(sb, '\n');
+	pp_commit_list(pp, sb, "Merge:", parent);
 }
 
 static char *get_header(const struct commit *commit, const char *msg,

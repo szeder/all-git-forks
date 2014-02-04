@@ -101,6 +101,7 @@ struct pretty_print_context {
 	struct string_list *mailmap;
 	int color;
 	struct ident_split *from_ident;
+	struct commit_list *merge_bases;
 
 	/*
 	 * Fields below here are manipulated internally by pp_* functions and
