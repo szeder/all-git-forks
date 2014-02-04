@@ -1013,7 +1013,6 @@ endif
 endif
 
 ifdef SANE_TOOL_PATH
-SANE_TOOL_PATH_SQ = $(subst ','\'',$(SANE_TOOL_PATH))
 BROKEN_PATH_FIX = 's|^\# @@BROKEN_PATH_FIX@@$$|git_broken_path_fix $(call sqi,$(SANE_TOOL_PATH)|'
 PATH := $(SANE_TOOL_PATH):${PATH}
 else
@@ -1621,31 +1620,6 @@ MAKE/$1: FORCE
 		mv $$@+ $$@; \
 	fi
 endef
-
-# Shell quote (do not use $(call) to accommodate ancient setups);
-
-SHA1_HEADER_SQ = $(subst ','\'',$(SHA1_HEADER))
-ETC_GITCONFIG_SQ = $(subst ','\'',$(ETC_GITCONFIG))
-ETC_GITATTRIBUTES_SQ = $(subst ','\'',$(ETC_GITATTRIBUTES))
-
-DESTDIR_SQ = $(subst ','\'',$(DESTDIR))
-bindir_SQ = $(subst ','\'',$(bindir))
-bindir_relative_SQ = $(subst ','\'',$(bindir_relative))
-mandir_relative_SQ = $(subst ','\'',$(mandir_relative))
-infodir_relative_SQ = $(subst ','\'',$(infodir_relative))
-localedir_SQ = $(subst ','\'',$(localedir))
-gitexecdir_SQ = $(subst ','\'',$(gitexecdir))
-template_dir_SQ = $(subst ','\'',$(template_dir))
-htmldir_relative_SQ = $(subst ','\'',$(htmldir_relative))
-prefix_SQ = $(subst ','\'',$(prefix))
-gitwebdir_SQ = $(subst ','\'',$(gitwebdir))
-
-SHELL_PATH_SQ = $(subst ','\'',$(SHELL_PATH))
-PERL_PATH_SQ = $(subst ','\'',$(PERL_PATH))
-PYTHON_PATH_SQ = $(subst ','\'',$(PYTHON_PATH))
-TCLTK_PATH_SQ = $(subst ','\'',$(TCLTK_PATH))
-DIFF_SQ = $(subst ','\'',$(DIFF))
-PERLLIB_EXTRA_SQ = $(subst ','\'',$(PERLLIB_EXTRA))
 
 # We must filter out any object files from $(GITLIBS),
 # as it is typically used like:
@@ -2344,7 +2318,6 @@ gitexec_instdir = $(gitexecdir)
 else
 gitexec_instdir = $(prefix)/$(gitexecdir)
 endif
-gitexec_instdir_SQ = $(subst ','\'',$(gitexec_instdir))
 export gitexec_instdir
 
 ifneq ($(filter /%,$(firstword $(mergetoolsdir))),)
@@ -2352,7 +2325,6 @@ mergetools_instdir = $(mergetoolsdir)
 else
 mergetools_instdir = $(prefix)/$(mergetoolsdir)
 endif
-mergetools_instdir_SQ = $(subst ','\'',$(mergetools_instdir))
 
 install_bindir_programs := $(patsubst %,%$X,$(BINDIR_PROGRAMS_NEED_X)) $(BINDIR_PROGRAMS_NO_X)
 
