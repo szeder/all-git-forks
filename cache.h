@@ -1240,7 +1240,8 @@ static inline ssize_t write_str_in_full(int fd, const char *str)
 extern void setup_pager(void);
 extern const char *pager_program;
 extern int pager_in_use(void);
-extern int pager_use_color;
+extern int pager_use_color_config;
+extern int pager_use_color(void);
 extern int term_columns(void);
 extern int decimal_width(int);
 extern int check_pager_config(const char *cmd);
