@@ -1,6 +1,8 @@
 #include "cache.h"
 #include "run-command.h"
 #include "sigchain.h"
+#include "argv-array.h"
+#include "MAKE/PAGER-ENV-array.h"
 
 #ifndef DEFAULT_PAGER
 #define DEFAULT_PAGER "less"
@@ -99,29 +101,18 @@ const char *git_pager(int stdout_is_tty)
 
 static void setup_pager_env(struct argv_array *env)
 {
-	const char **argv;
 	int i;
-	char *pager_env = xstrdup(PAGER_ENV);
-	int n = split_cmdline(pager_env, &argv);
 
-	if (n < 0)
-		die("malformed build-time PAGER_ENV: %s",
-			split_cmdline_strerror(n));
+	for (i = 0; MAKE_PAGER_ENV[i]; i++) {
+		struct strbuf buf = STRBUF_INIT;
+		const char *p = MAKE_PAGER_ENV[i];
+		const char *eq = strchrnul(p, '=');
 
-	for (i = 0; i < n; i++) {
-		char *cp = strchr(argv[i], '=');
-
-		if (!cp)
-			die("malformed build-time PAGER_ENV");
-
-		*cp = '\0';
-		if (!getenv(argv[i])) {
-			*cp = '=';
-			argv_array_push(env, argv[i]);
-		}
+		strbuf_add(&buf, p, eq - p);
+		if (!getenv(buf.buf))
+			argv_array_push(env, p);
+		strbuf_release(&buf);
 	}
-	free(pager_env);
-	free(argv);
 }
 
 void prepare_pager_args(struct child_process *pager_process, const char *pager)

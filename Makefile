@@ -1626,6 +1626,11 @@ MAKE/%-string.h: MAKE/% script/mkcstring
 		$(subst -,_,$*) <$< >$@+ && \
 		mv $@+ $@
 
+MAKE/%-array.h: MAKE/% script/mkcarray
+	$(QUIET_GEN)$(SHELL_PATH) script/mkcarray \
+		$(subst -,_,$*) <$< >$@+ && \
+		mv $@+ $@
+
 MAKE/%.sh: MAKE/% script/mksh
 	$(QUIET_GEN)$(SHELL_PATH) script/mksh \
 		$(subst -,_,$*) <$< >$@+ && \
@@ -1779,6 +1784,9 @@ builtin/help.sp builtin/help.s builtin/help.o: EXTRA_CPPFLAGS = \
 
 version.sp version.s version.o: MAKE/VERSION-string.h MAKE/USER-AGENT-string.h
 
+$(eval $(call make-var,PAGER-ENV,pager environment,$(PAGER_ENV)))
+pager.sp pager.s pager.o: MAKE/PAGER-ENV-array.h
+
 $(BUILT_INS): git$X
 	$(QUIET_BUILT_IN)$(RM) $@ && \
 	ln $< $@ 2>/dev/null || \
@@ -1833,7 +1841,7 @@ $(SCRIPT_LIB) : % : %.sh MAKE/SCRIPT-DEFINES
 	$(QUIET_GEN)$(cmd_munge_script) && \
 	mv $@+ $@
 
-git-sh-setup: MAKE/DIFF.sh
+git-sh-setup: MAKE/DIFF.sh MAKE/PAGER-ENV.sh
 
 git.res: git.rc GIT-VERSION-FILE
 	$(QUIET_RC)$(RC) \
