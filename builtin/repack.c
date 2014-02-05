@@ -333,37 +333,37 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 	/* Now the ones with the same name are out of the way... */
 	for_each_string_list_item(item, &names) {
 		for (ext = 0; ext < ARRAY_SIZE(exts); ext++) {
-			char *fname, *fname_old;
+			char *fname, *fname_tmp;
 			struct stat statbuffer;
 			int exists = 0;
 			fname = mkpathdup("%s/pack-%s%s",
 					packdir, item->string, exts[ext].name);
-			fname_old = mkpathdup("%s-%s%s",
+			fname_tmp = mkpathdup("%s-%s%s",
 					packtmp, item->string, exts[ext].name);
-			if (!stat(fname_old, &statbuffer)) {
+			if (!stat(fname_tmp, &statbuffer)) {
 				statbuffer.st_mode &= ~(S_IWUSR | S_IWGRP | S_IWOTH);
-				chmod(fname_old, statbuffer.st_mode);
+				chmod(fname_tmp, statbuffer.st_mode);
 				exists = 1;
 			}
 			if (exists || !exts[ext].optional) {
-				if (rename(fname_old, fname))
-					die_errno(_("renaming '%s' failed"), fname_old);
+				if (rename(fname_tmp, fname))
+					die_errno(_("renaming '%s' to '%s' failed"), fname_tmp, fname);
 			}
 			free(fname);
-			free(fname_old);
+			free(fname_tmp);
 		}
 	}
 
 	/* Remove the "old-" files */
 	for_each_string_list_item(item, &names) {
 		for (ext = 0; ext < ARRAY_SIZE(exts); ext++) {
-			char *fname;
-			fname = mkpath("%s/old-%s%s",
+			char *fname_old;
+			fname_old = mkpath("%s/old-%s%s",
 					packdir,
 					item->string,
 					exts[ext].name);
-			if (remove_path(fname))
-				warning(_("removing '%s' failed"), fname);
+			if (remove_path(fname_old))
+				warning(_("removing '%s' failed"), fname_old);
 		}
 	}
 
