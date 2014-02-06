@@ -126,7 +126,7 @@ if test -n "$NO_CURL" -o -z "$GIT_TEST_HTTPD"; then
 	test_done
 fi
 
-LIB_HTTPD_PORT=${LIB_HTTPD_PORT-'5537'}
+LIB_HTTPD_PORT=${LIB_HTTPD_PORT-'5538'}
 . "$TEST_DIRECTORY"/lib-httpd.sh
 start_httpd
 
