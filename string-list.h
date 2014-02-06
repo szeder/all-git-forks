@@ -80,6 +80,8 @@ void string_list_remove_duplicates(struct string_list *sorted_list, int free_uti
  */
 struct string_list_item *string_list_append(struct string_list *list, const char *string);
 
+void string_list_delete_item(struct string_list *list, int i, int free_util);
+
 /*
  * Like string_list_append(), except string is never copied.  When
  * list->strdup_strings is set, this function can be used to hand
