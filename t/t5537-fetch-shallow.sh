@@ -200,5 +200,33 @@ EOF
 	)
 '
 
+# This test is tricky. We need large enough "have"s that fetch-pack
+# will put pkt-flush in between. Then we need a "have" the server
+# does not have, it'll send "ACK %s ready"
+test_expect_success 'add more commits' '
+	(
+		cd shallow &&
+		for i in $(test_seq 10)
+		do
+			git checkout --orphan unrelated$i &&
+			test_commit unrelated$i &&
+			git push -q "$HTTPD_DOCUMENT_ROOT_PATH/repo.git" \
+				refs/heads/unrelated$i:refs/heads/unrelated$i &&
+			git push -q ../clone/.git \
+				refs/heads/unrelated$i:refs/heads/unrelated$i ||
+			exit 1
+		done &&
+		git checkout master &&
+		test_commit new &&
+		git push  "$HTTPD_DOCUMENT_ROOT_PATH/repo.git" master
+	) &&
+	(
+		cd clone &&
+		git checkout --orphan newnew &&
+		test_commit new-too &&
+		git fetch --depth=2
+	)
+'
+
 stop_httpd
 test_done
