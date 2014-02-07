@@ -3,7 +3,7 @@ Upstream-Contact: git@vger.kernel.org
 Source: http://code.google.com/p/git-core/downloads/list
 
 Files: *
-Copyright: © 2005-2013, Linus Torvalds and others.
+Copyright: © 2005-2014, Linus Torvalds and others.
 License: GPL-2
 
 Files: xdiff/*

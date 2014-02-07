@@ -1,3 +1,52 @@
+Version v1.9.0-rc3; changes since v1.9-rc2:
+-------------------------------------------
+
+Adrian Johnson (1):
+      userdiff: update Ada patterns
+
+Junio C Hamano (3):
+      Git 1.8.5.4
+      howto/maintain-git.txt: new version numbering scheme
+      Git 1.9.0-rc3
+
+Nguyễn Thái Ngọc Duy (1):
+      git-tag.txt: <commit> for --contains is optional
+
+Torsten Bögershausen (1):
+      repack.c: rename and unlink pack file if it exists
+
+Øystein Walle (1):
+      Documentation: fix typos in man pages
+
+
+Version v1.9-rc2; changes since v1.9-rc1:
+-----------------------------------------
+
+Alexander Shopov (2):
+      po/TEAMS: Added Bulgarian team
+      l10n: Bulgarian translation of git (222t21f1967u)
+
+Jean-Noel Avila (1):
+      [fr] update french translation 2210/2210
+
+Jiang Xin (3):
+      l10n: git.pot: v1.9 round 1 (27 new, 11 removed)
+      l10n: zh_CN.po: translate 27 messages (2210t0f0u)
+      l10n: remove 2 blank translations on Danish, Dutch
+
+Jonathan Nieder (1):
+      pager test: make fake pager consume all its input
+
+Junio C Hamano (1):
+      Git 1.9-rc2
+
+Peter Krefting (1):
+      l10n: Update Swedish translation (2210t0f0u)
+
+Tran Ngoc Quan (1):
+      l10n: vi.po (2210t): Updated git-core translation
+
+
 Version v1.9-rc1; changes since v1.9-rc0:
 -----------------------------------------
 
@@ -130,7 +179,7 @@ lin zuojian (1):
       git-svn: memoize _rev_list and rebuild
 
 
-Version v1.9-rc0; changes since v1.8.5.3:
+Version v1.9-rc0; changes since v1.8.5.4:
 -----------------------------------------
 
 Anders Kaseorg (1):
@@ -212,19 +261,13 @@ Jeff King (24):
       t0000: drop "known breakage" test
       t5531: further "matching" fixups
 
-Jens Lehmann (4):
+Jens Lehmann (3):
       submodule update: remove unnecessary orig_flags variable
-      commit -v: strip diffs and submodule shortlogs from the commit message
       mv: better document side effects when moving a submodule
       rm: better document side effects when removing a submodule
 
-Johannes Schindelin (1):
-      Remove the line length limit for graft files
-
-Johannes Sixt (3):
+Johannes Sixt (1):
       document --exclude option
-      git_connect: remove artificial limit of a remote command
-      git_connect: factor out discovery of the protocol and its parts
 
 John Keeping (8):
       repo-config: remove deprecated alias for "git config"
@@ -260,7 +303,7 @@ Jonathan Nieder (16):
       pager: set LV=-c alongside LESS=FRSX
       diff test: reading a directory as a file need not error out
 
-Junio C Hamano (20):
+Junio C Hamano (19):
       revision: introduce --exclude=<glob> to tame wildcards
       merge-base: use OPT_CMDMODE and clarify the command line parsing
       merge-base: teach "--fork-point" mode
@@ -275,7 +318,6 @@ Junio C Hamano (20):
       Update draft release notes to 1.9
       prune-packed: use strbuf to avoid having to worry about PATH_MAX
       Update draft release notes to 1.9
-      get_max_fd_limit(): fall back to OPEN_MAX upon getrlimit/sysconf failure
       merge-base: separate "--independent" codepath into its own helper
       merge-base --octopus: reduce the result from get_octopus_merge_bases()
       Update draft release notes to 1.9
@@ -329,10 +371,9 @@ Michael Haggerty (26):
       gen_scanf_fmt(): delete function and use snprintf() instead
       shorten_unambiguous_ref(): tighten up pointer arithmetic
 
-Nguyễn Thái Ngọc Duy (38):
+Nguyễn Thái Ngọc Duy (36):
       wt-status: take the alignment burden off translators
       gettext.c: detect the vsnprintf bug at runtime
-      clone,fetch: catch non positive --depth option value
       glossary-content.txt: rephrase magic signature part
       Support pathspec magic :(exclude) and its short form :!
       pathspec.c: support adding prefix magic to a pathspec with mnemonic magic
@@ -365,7 +406,6 @@ Nguyễn Thái Ngọc Duy (38):
       clone: use git protocol for cloning shallow repo locally
       prune: clean .git/shallow after pruning objects
       git-clone.txt: remove shallow clone limitations
-      add: don't complain when adding empty project root
       commit.c: make "tree" a const pointer in commit_tree*()
       t5537: fix incorrect expectation in test case 10
 
@@ -409,8 +449,7 @@ Richard Hansen (6):
 Roberto Tyley (1):
       docs: add filter-branch notes on The BFG
 
-Roman Kagan (2):
-      git-svn: workaround for a bug in svn serf backend
+Roman Kagan (1):
       git-svn: workaround for a bug in svn serf backend
 
 Samuel Bronson (3):
@@ -432,7 +471,7 @@ Thomas Gummerer (4):
       diff: add test for --no-index executed outside repo
       diff: avoid some nesting
 
-Thomas Rast (12):
+Thomas Rast (9):
       commit-slab: document clear_$slabname()
       commit-slab: declare functions "static inline"
       gitk: Support -G option from the command line
@@ -441,14 +480,56 @@ Thomas Rast (12):
       gitk: Support showing the gathered inline diffs
       gitk: Recognize -L option
       commit-slab: sizeof() the right type in xrealloc
-      send-email: pass Debug to Net::SMTP::SSL::new
-      send-email: --smtp-ssl-cert-path takes an argument
-      send-email: set SSL options through IO::Socket::SSL::set_client_defaults
       config: arbitrary number of matches for --unset and --replace-all
 
 Tom Miller (2):
       fetch --prune: always print header url
       fetch --prune: Run prune before fetching
+
+Vasily Makarov (1):
+      get_octopus_merge_bases(): cleanup redundant variable
+
+Zoltan Klinger (1):
+      difftool: display the number of files in the diff queue in the prompt
+
+brian m. carlson (2):
+      remote-curl: fix large pushes with GSSAPI
+      Documentation: document pitfalls with 3-way merge
+
+jcb91 (1):
+      remote-hg: avoid buggy strftime()
+
+
+Version v1.8.5.4; changes since v1.8.5.3:
+-----------------------------------------
+
+Jens Lehmann (1):
+      commit -v: strip diffs and submodule shortlogs from the commit message
+
+Johannes Schindelin (1):
+      Remove the line length limit for graft files
+
+Johannes Sixt (2):
+      git_connect: remove artificial limit of a remote command
+      git_connect: factor out discovery of the protocol and its parts
+
+Junio C Hamano (4):
+      get_max_fd_limit(): fall back to OPEN_MAX upon getrlimit/sysconf failure
+      Documentation: exclude irrelevant options from "git pull"
+      Documentation: "git pull" does not have the "-m" option
+      Git 1.8.5.4
+
+Nguyễn Thái Ngọc Duy (2):
+      clone,fetch: catch non positive --depth option value
+      add: don't complain when adding empty project root
+
+Roman Kagan (1):
+      git-svn: workaround for a bug in svn serf backend
+
+Thomas Rast (3):
+      send-email: pass Debug to Net::SMTP::SSL::new
+      send-email: --smtp-ssl-cert-path takes an argument
+      send-email: set SSL options through IO::Socket::SSL::set_client_defaults
 
 Torsten Bögershausen (8):
       t5601: remove clear_ssh, refactor setup_ssh_wrapper
@@ -460,19 +541,8 @@ Torsten Bögershausen (8):
       connect.c: refactor url parsing
       git_connect(): use common return point
 
-Vasily Makarov (1):
-      get_octopus_merge_bases(): cleanup redundant variable
-
-Zoltan Klinger (1):
-      difftool: display the number of files in the diff queue in the prompt
-
-brian m. carlson (3):
-      remote-curl: fix large pushes with GSSAPI
-      Documentation: document pitfalls with 3-way merge
+brian m. carlson (1):
       log: properly handle decorations with chained tags
-
-jcb91 (1):
-      remote-hg: avoid buggy strftime()
 
 Øystein Walle (1):
       stash: handle specifying stashes with $IFS
