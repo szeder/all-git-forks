@@ -73,6 +73,63 @@ struct exclude_list_group {
 	struct exclude_list *el;
 };
 
+
+/*
+ *  Untracked cache
+ *
+ *  The following inputs are sufficient to determine what files in a
+ *  directory are excluded:
+ *
+ *   - The list of files and directories of the direction in question
+ *   - The $GIT_DIR/index
+ *   - dir_struct flags
+ *   - The content of $GIT_DIR/info/exclude
+ *   - The content of core.excludesfile
+ *   - The content (or the lack) of .gitignore of all parent directories
+ *     from $GIT_WORK_TREE
+ *   - The check_only flag in read_directory_recursive (for
+ *     DIR_HIDE_EMPTY_DIRECTORIES)
+ *
+ *  The first input can be checked using directory mtime. In many
+ *  filesystems, directory mtime (stat_data field) is updated when its
+ *  files or direct subdirs are added or removed.
+ *
+ *  The second one can be hooked from cache_tree_invalidate_path().
+ *  Whenever a file (or a submodule) is added or removed from a directory,
+ *  we invalidate (i.e. setting untracked_nr to -1) that directory.
+ *
+ *  The remaining inputs are easy, their SHA-1 could be used to verify
+ *  their contents (exclude_sha1[], info_exclude_sha1[] and
+ *  excludes_file_sha1[])
+ */
+struct untracked_cache_dir {
+	struct untracked_cache_dir **dirs;
+	char **untracked;
+	/* null SHA-1 means this directory does not have .gitignore */
+	unsigned char exclude_sha1[20];
+	struct stat_data stat_data;
+	unsigned int check_only : 1;
+	unsigned int untracked_nr : 29;
+	unsigned int untracked_alloc, dirs_nr, dirs_alloc;
+	char name[1];
+};
+
+struct untracked_cache {
+	struct stat_data info_exclude_stat;
+	struct stat_data excludes_file_stat;
+	unsigned char info_exclude_sha1[20];
+	unsigned char excludes_file_sha1[20];
+	const char *exclude_per_dir;
+	/*
+	 * dir_struct#flags must match dir_flags or the untracked
+	 * cache is ignored.
+	 */
+	unsigned dir_flags;
+	struct untracked_cache_dir *root;
+	/* Statistics */
+	int dir_created;
+};
+
 struct dir_struct {
 	int nr, alloc;
 	int ignored_nr, ignored_alloc;
@@ -120,6 +177,13 @@ struct dir_struct {
 	struct exclude_stack *exclude_stack;
 	struct exclude *exclude;
 	struct strbuf basebuf;
+
+	/* Enable untracked file cache if set */
+	struct untracked_cache *untracked;
+	struct stat_data info_exclude_stat;
+	struct stat_data excludes_file_stat;
+	unsigned char info_exclude_sha1[20];
+	unsigned char excludes_file_sha1[20];
 };
 
 /*
