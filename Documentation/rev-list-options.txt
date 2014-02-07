@@ -713,6 +713,13 @@ endif::git-rev-list[]
 	Print also the children of the commit (in the form "commit child...").
 	Also enables parent rewriting, see 'History Simplification' below.
 
+ifndef::git-rev-list[]
+--bases::
+	For merge commits, print the merge bases of the commit's
+	parents.  (These are the bases that were used in the creation
+	of the merge itself.)
+endif::git-rev-list[]
+
 ifdef::git-rev-list[]
 --timestamp::
 	Print the raw commit timestamp.
@@ -797,6 +804,13 @@ options may be given. See linkgit:git-diff-files[1] for more options.
 	the first parent is shown when `--first-parent` option is given;
 	in that case, the output represents the changes the merge
 	brought _into_ the then-current branch.
+
+--remerge-diff::
+	Diff merge commits against a recursive merge of their parents,
+	with conflict hunks.  Intuitively speaking, this shows what
+	the author of the merge changed to resolve the merge.  It
+	assumes that all (or most) merges are recursive merges; other
+	strategies are not supported.
 
 -r::
 	Show recursive diffs.

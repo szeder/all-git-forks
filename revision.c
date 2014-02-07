@@ -1324,7 +1324,6 @@ void init_revisions(struct rev_info *revs, const char *prefix)
 	memset(revs, 0, sizeof(*revs));
 
 	revs->abbrev = DEFAULT_ABBREV;
-	revs->ignore_merges = 1;
 	revs->simplify_history = 1;
 	DIFF_OPT_SET(&revs->pruning, RECURSIVE);
 	DIFF_OPT_SET(&revs->pruning, QUICK);
@@ -1724,6 +1723,8 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	} else if (!strcmp(arg, "--parents")) {
 		revs->rewrite_parents = 1;
 		revs->print_parents = 1;
+	} else if (!strcmp(arg, "--merge-bases")) {
+		revs->show_merge_bases = 1;
 	} else if (!strcmp(arg, "--dense")) {
 		revs->dense = 1;
 	} else if (!strcmp(arg, "--sparse")) {
@@ -1802,15 +1803,13 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		DIFF_OPT_SET(&revs->diffopt, RECURSIVE);
 		DIFF_OPT_SET(&revs->diffopt, TREE_IN_RECURSIVE);
 	} else if (!strcmp(arg, "-m")) {
-		revs->ignore_merges = 0;
+		revs->merge_diff_mode = MERGE_DIFF_EACH;
 	} else if (!strcmp(arg, "-c")) {
-		revs->diff = 1;
-		revs->dense_combined_merges = 0;
-		revs->combine_merges = 1;
+		revs->merge_diff_mode = MERGE_DIFF_COMBINED;
 	} else if (!strcmp(arg, "--cc")) {
-		revs->diff = 1;
-		revs->dense_combined_merges = 1;
-		revs->combine_merges = 1;
+		revs->merge_diff_mode = MERGE_DIFF_COMBINED_CONDENSED;
+	} else if (!strcmp(arg, "--remerge-diff")) {
+		revs->merge_diff_mode = MERGE_DIFF_REMERGE;
 	} else if (!strcmp(arg, "-v")) {
 		revs->verbose_header = 1;
 	} else if (!strcmp(arg, "--pretty")) {
@@ -2223,8 +2222,6 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 			copy_pathspec(&revs->diffopt.pathspec,
 				      &revs->prune_data);
 	}
-	if (revs->combine_merges)
-		revs->ignore_merges = 0;
 	revs->diffopt.abbrev = revs->abbrev;
 
 	if (revs->line_level_traverse) {
