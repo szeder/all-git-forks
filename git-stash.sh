@@ -360,6 +360,8 @@ parse_flags_and_rev()
 
 	REV=$(git rev-parse --no-flags --symbolic --sq "$@") || exit 1
 
+	gettext "@@@@1 $REV @@@@"
+
 	FLAGS=
 	for opt
 	do
@@ -395,6 +397,7 @@ parse_flags_and_rev()
 		reference="$1"
 		die "$(eval_gettext "\$reference is not valid reference")"
 	}
+	gettext "@@@@2 $REV @@@@"
 
 	i_commit=$(git rev-parse --quiet --verify "$REV^2" 2>/dev/null) &&
 	set -- $(git rev-parse "$REV" "$REV^1" "$REV:" "$REV^1:" "$REV^2:" 2>/dev/null) &&
@@ -408,6 +411,7 @@ parse_flags_and_rev()
 	test "$ref_stash" = "$(git rev-parse --symbolic-full-name "${REV%@*}")" &&
 	IS_STASH_REF=t
 
+	gettext "@@@@3 $REV @@@@"
 	u_commit=$(git rev-parse --quiet --verify "$REV^3" 2>/dev/null) &&
 	u_tree=$(git rev-parse "$REV^3:" 2>/dev/null)
 }
@@ -450,6 +454,7 @@ apply_stash () {
 	if test -n "$INDEX_OPTION" && test "$b_tree" != "$i_tree" &&
 			test "$c_tree" != "$i_tree"
 	then
+		gettext "###### DEBUG $s ######"
 		git diff-tree --binary $s^2^..$s^2 | git apply --cached
 		test $? -ne 0 &&
 			die "$(gettext "Conflicts in index. Try without --index.")"
@@ -509,8 +514,18 @@ apply_stash () {
 	fi
 }
 
+changes_in_index() {
+	! ( git diff-index --quiet --cached HEAD --ignore-submodules -- ) 
+}
+
 pop_stash() {
 	assert_stash_ref "$@"
+
+	gettext "*********** DEBUG ************"
+	if changes_in_index
+	then
+		die "$(gettext "Changes only in the index, applying stash would result in data loss.")"
+	fi
 
 	apply_stash "$@" &&
 	drop_stash "$@"
