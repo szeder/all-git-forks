@@ -1,0 +1,21 @@
+-include Makefile
+
+TRANSLATION_SUFFIX=.ja
+TRANSLATION_BASE_BRANCH=ja_JP.base
+
+TRANSLATION_MAN_HTML = $(addsuffix $(TRANSLATION_SUFFIX), $(MAN_HTML))
+translation: $(TRANSLATION_MAN_HTML)
+
+all: translation
+
+# FIXME: Want to remove embedded '.ja', but '%.html.$(TRANSLATION_SUFFIX)'
+#        doesn't work.
+$(TRANSLATION_MAN_HTML): %.html.ja : %.txt asciidoc.conf
+	@( if test -n "$$(git diff --name-only $${GIT_TRANSLATION_BASE_BRANCH-$(TRANSLATION_BASE_BRANCH)} -- $<)"; then \
+		echo '   ' ASCIIDOC $@; $(RM) $@+ $@ && \
+		git diff $${GIT_TRANSLATION_BASE_BRANCH-"$(TRANSLATION_BASE_BRANCH)"} -- $< | \
+			grep '^+' | egrep -v '^\+(\+\+ .*|\.{80}$$)' | sed -e 's/^+//' | \
+			$(ASCIIDOC) -b xhtml11 -d manpage -f asciidoc.conf \
+			$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) - > $@+ && \
+		mv $@+ $@ ;\
+       fi; )
