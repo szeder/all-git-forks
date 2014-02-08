@@ -10,7 +10,7 @@ static void show_dates(char **argv, struct timeval *now)
 	struct strbuf buf = STRBUF_INIT;
 
 	for (; *argv; argv++) {
-		time_t t = atoi(*argv);
+		time_t t = atol(*argv);
 		show_date_relative(t, 0, now, &buf);
 		printf("%s -> %s\n", *argv, buf.buf);
 	}
@@ -21,12 +21,14 @@ static void parse_dates(char **argv, struct timeval *now)
 {
 	for (; *argv; argv++) {
 		char result[100];
-		unsigned long t;
+		long t;
 		int tz;
+		int rcode;
+        git_time_t timestamp;
 
 		result[0] = 0;
-		parse_date(*argv, result, sizeof(result));
-		if (sscanf(result, "%lu %d", &t, &tz) == 2)
+		rcode = parse_date(*argv, result, sizeof(result), &timestamp);
+		if (rcode == 0 && sscanf(result, "%lu %d", &t, &tz) == 2)
 			printf("%s -> %s\n",
 			       *argv, show_date(t, tz, DATE_ISO8601));
 		else

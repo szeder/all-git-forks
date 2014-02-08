@@ -296,6 +296,7 @@ const char *fmt_ident(const char *name, const char *email,
 	int strict = (flag & IDENT_STRICT);
 	int want_date = !(flag & IDENT_NO_DATE);
 	int want_name = !(flag & IDENT_NO_NAME);
+    git_time_t timestamp;
 
 	if (want_name && !name)
 		name = ident_default_name();
@@ -322,7 +323,7 @@ const char *fmt_ident(const char *name, const char *email,
 
 	if (want_date) {
 		if (date_str && date_str[0]) {
-			if (parse_date(date_str, date, sizeof(date)) < 0)
+			if(parse_date(date_str, date, sizeof(date), &timestamp))
 				die("invalid date format: %s", date_str);
 		}
 		else

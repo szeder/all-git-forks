@@ -2003,6 +2003,7 @@ static char *parse_ident(const char *buf)
 	const char *ltgt;
 	size_t name_len;
 	char *ident;
+	git_time_t timestamp;
 
 	/* ensure there is a space delimiter even if there is no name */
 	if (*buf == '<')
@@ -2030,7 +2031,7 @@ static char *parse_ident(const char *buf)
 			die("Invalid raw date \"%s\" in ident: %s", ltgt, buf);
 		break;
 	case WHENSPEC_RFC2822:
-		if (parse_date(ltgt, ident + name_len, 24) < 0)
+		if (parse_date(ltgt, ident + name_len, 24, &timestamp))
 			die("Invalid rfc2822 date \"%s\" in ident: %s", ltgt, buf);
 		break;
 	case WHENSPEC_NOW:

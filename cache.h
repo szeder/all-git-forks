@@ -948,16 +948,18 @@ enum date_mode {
 	DATE_RAW
 };
 
-const char *show_date(unsigned long time, int timezone, enum date_mode mode);
-void show_date_relative(unsigned long time, int tz, const struct timeval *now,
+typedef time_t git_time_t;
+#define GIT_TIME_T_MAX         INT64_MAX
+const char *show_date(git_time_t time, int timezone, enum date_mode mode);
+void show_date_relative(git_time_t time, int tz, const struct timeval *now,
 			struct strbuf *timebuf);
-int parse_date(const char *date, char *buf, int bufsize);
-int parse_date_basic(const char *date, unsigned long *timestamp, int *offset);
-int parse_expiry_date(const char *date, unsigned long *timestamp);
+int parse_date(const char *date, char *buf, int bufsize, git_time_t *timestamp);
+int parse_date_basic(const char *date, git_time_t *timestamp, int *offset);
+int parse_expiry_date(const char *date, git_time_t *timestamp);
 void datestamp(char *buf, int bufsize);
 #define approxidate(s) approxidate_careful((s), NULL)
-unsigned long approxidate_careful(const char *, int *);
-unsigned long approxidate_relative(const char *date, const struct timeval *now);
+git_time_t approxidate_careful(const char *, int *);
+git_time_t approxidate_relative(const char *date, const struct timeval *now);
 enum date_mode parse_date_format(const char *format);
 
 #define IDENT_STRICT	       1
