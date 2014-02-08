@@ -10,6 +10,20 @@ SYNOPSIS
 [verse]
 git *
 
+................................................................................
+gitworkflows(7)
+===============
+
+名称
+----
+gitworkflows - Gitにおける推奨されるワークフローの概要
+
+書式
+----
+[verse]
+git *
+
+................................................................................
 
 DESCRIPTION
 -----------
@@ -24,6 +38,21 @@ tries to motivate each of them.  Do not always take them literally;
 you should value good reasons for your actions higher than manpages
 such as this one.
 
+................................................................................
+解説
+----
+
+このドキュメントは `git.git` それ自身で使われているワークフローの
+要素を書きとめ、それを使いたいと思わせることを意図しています。
+多くのアイデアが一般に適用できますが、より少人数が参加する小さな
+プロジェクトで完全なワークフローを必要とするのは稀です。
+
+私たちはクイックリファレンスのためにひとまとまりの 'ルール' をとりまとめ、
+文章でそれぞれのルールへの動機を与えます。
+言葉通りにとらないようにしてください;
+重視すべきなのは、この文書のようなmanページの記述よりも
+あなたがそうすべき理由の方です。
+................................................................................
 
 SEPARATE CHANGES
 ----------------
@@ -44,6 +73,32 @@ publish them.  You can use `git stash save --keep-index` to run the
 test suite independent of other uncommitted changes; see the EXAMPLES
 section of linkgit:git-stash[1].
 
+................................................................................
+
+変更を分割する
+--------------
+
+一般的なルールとして、変更は小さな論理的ステップに
+分割するよう心がけるべきです。
+それらは一貫性があり、その後のどんなコミットからも
+独立して機能し、テストを通過していて、(以下略。
+これはレビュープロセスをより簡単にし、後から、
+例えば linkgit:git-blame[1] や linkgit:git-bisect[1] で
+調査・解析するときに歴史をより使いやすくします。
+
+これを達成するには、一番最初からあなたの作業を小さな
+ステップに分割しておくよう心がけてください。
+いくつかの小さなコミットを一緒にひとまとめにすることは、
+大きなコミットを分割するよりも、常に簡単です。
+作業を続けるにあたって、小さすぎる、または不完全なステップを
+作成することを恐れてはいけません。
+変更をpushするまえに、 `git rebase --interactive` を使って
+後からいつでもそのコミットに戻って編集しすることができます。
+他のコミットしていない変更の影響を受けずにテスト一式を走らせるのに、
+`git stash save --keep-index` を使うこともできます。 linkgit:git-stash[1]
+の EXAMPLES セクションを参照してください。
+
+................................................................................
 
 MANAGING BRANCHES
 -----------------
@@ -56,6 +111,22 @@ Merges have many advantages, so we try to solve as many problems as
 possible with merges alone.  Cherry-picking is still occasionally
 useful; see "Merging upwards" below for an example.
 
+................................................................................
+
+ブランチの管理
+--------------
+
+一つのブランチから他のブランチへと変更点を含ませるのに
+使うことのできる主要なツールが2つあります: linkgit:git-merge[1]
+とlinkgit:git-cherry-pick[1] です。
+
+merge にはたくさんのアドバンテージがあります。
+だから私たちは merge だけで可能な限り多くの問題を解決しようとします。
+それでもcherry-pickは場合によって便利です。
+例えば下記の "上流へのmerge" を参照してください。
+
+................................................................................
+
 Most importantly, merging works at the branch level, while
 cherry-picking works at the commit level.  This means that a merge can
 carry over the changes from 1, 10, or 1000 commits with equal ease,
@@ -67,6 +138,23 @@ all its parents are now included.
 There is a tradeoff of course: merges require a more careful branch
 management.  The following subsections discuss the important points.
 
+................................................................................
+
+もっとも重要な点は、mergeはブランチレベルで動作し、
+一方cherry-pickはコミットレベルで動作するということです。
+これは、merge が 1, 10, あるいは 1000 のコミットを
+同等の簡単さで引き継げることを意味します。
+これは同様にこのワークフローがより多くの貢献者
+(および彼らの貢献)に対してスケールするということです。
+merge は理解するのも、より簡単です。
+なぜならmergeコミットは、親のコミットの全ての変更は
+このコミットに全て含んでいる、という "約束" だからです。
+
+もちろんトレードオフが存在します:
+mergeはより注意深いブランチ管理を必要とします。
+続くセクションではその要点について議論します。
+
+................................................................................
 
 Graduation
 ~~~~~~~~~~
@@ -83,6 +171,25 @@ As a given feature goes from experimental to stable, it also
 * 'next' is intended as a testing branch for topics being tested for
   stability for master.
 
+................................................................................
+
+送り出し
+~~~~~~~~
+
+ある機能が実験的なものから安定したものへと移行するように、
+ソフトウェアの対応するブランチ間でも機能が "送り出され" ます (Gradute)。
+`git.git` では次のような '統合ブランチ' を使っています:
+
+* 'maint' は次の "メンテナンスリリース" に入るべきコミットをたどります。
+つまり、前回リリースされた安定バージョンのアップデートです。
+
+* 'master' は次回のリリースに入るべきコミットをたどります。
+
+* 'next' は master にむけたトピックの安定化のための
+テスト用ブランチであることを意図しています。
+
+................................................................................
+
 There is a fourth official branch that is used slightly differently:
 
 * 'pu' (proposed updates) is an integration branch for things that are
@@ -96,6 +203,27 @@ Conceptually, the feature enters at an unstable branch (usually 'next'
 or 'pu'), and "graduates" to 'master' for the next release once it is
 considered stable enough.
 
+................................................................................
+少し異なった使われ方をする4番目のブランチがあります:
+
+* 'pu' (proposed updates, 提案中の変更)は、
+含めるにはまだ時期尚早なコミット用の統合ブランチです。
+(後述の "統合ブランチ" を参照してください)
+
+4つのブランチは普通、それぞれのすぐ上に紹介したブランチの
+直系の子孫になっています。
+
+概念的には、機能は不安定なブランチ
+(たいていは 'next' または 'pu' です)に入り、
+十分安定したと思われれば時期リリースにむけて 'master'
+に"送り出さ" れます。
+
+ (訳注: 親子関係は
+   (親) maint <- master <- next <- pu (子)
+ となっていますが、開発の上流・下流でいうと
+   (下) maint <- master <- next <- pu (上)
+ となります。)
+................................................................................
 
 Merging upwards
 ~~~~~~~~~~~~~~~
@@ -118,6 +246,31 @@ you will need to cherry-pick it (using linkgit:git-cherry-pick[1])
 downwards.  This will happen a few times and is nothing to worry about
 unless you do it very frequently.
 
+................................................................................
+
+上流へのmerge
+~~~~~~~~~~~~~
+
+上で議論したような "下流への送り出し" は実際には下流への merge
+では行うことはできません。 mergeをすると不安定なブランチの
+'全ての' 変更が merge されてしまうからです。従って、以下のようにします:
+
+.上流へmergeする
+[caption="ルール: "]
+=====================
+バグフィクスはそれを必要とする最も古いサポート対象の
+ブランチにコミットします。そして、(周期的に)
+その統合ブランチを上流の複数のブランチにそれそれぞれ merge します。
+=====================
+
+これは、非常に統制のとれたバグフィックスのワークフローを提供します。
+もし、例えば 'master' に適用されたバグフィクスが 'maint'
+も必要としていることに気づいたとしたら、
+あなたは(linkgit:git-cherry-pick[1] を使って)下流に向けて cherry-pick
+する必要があります。 このような事態はほとんど発生しないはずであり、
+頻繁にやっているのでなければ心配する必要はありません。
+
+................................................................................
 
 Topic branches
 ~~~~~~~~~~~~~~
@@ -134,6 +287,28 @@ parallel mixes up the changes, creating further confusion.
 Use of "topic branches" solves these problems.  The name is pretty
 self explanatory, with a caveat that comes from the "merge upwards"
 rule above:
+
+................................................................................
+トピックブランチ
+~~~~~~~~~~~~~~~~
+
+ささいな機能でない限り、実装に複数のpatchを必要とするはずです。
+そしておそらくその生存期間においては、
+追加のバグフィックスや機能改善を受け取るかもしれません。
+
+統合ブランチになんでもかんでも直接コミットすることは、
+たくさんの問題もたらします： 間違ったコミットはやりなおせず、
+従ってそれらは一個一個リバートする必要があり、
+それらは混乱する歴史を生み、一連のコミットグループの
+一部だけリバートしたことを忘れたりすると、
+さらなる潜在的な間違いを生みます。
+並列に作業することは、さらなる混乱を生みながら変更をごちゃまぜにします。
+
+"トピックブランチ" の使用はこれらの問題を解決します。
+こ名前は非常に自己説明的なもので、
+上で述べた "上流へmergeする" のルールから得られる警告も使います。
+
+................................................................................
 
 .Topic branches
 [caption="Rule: "]
@@ -156,6 +331,23 @@ Many things can then be done very naturally:
   working on your topic, merge 'other' to 'topic'.  (However, do not
   do this "just habitually", see below.)
 
+................................................................................
+多くのことを違和感なく行えます:
+
+* その機能/バグフィックスを統合ブランチに入れるには、
+  単にそれをmergeします。もしそのトピックが
+  さらに改善され続けたのであれば、再びmergeします。
+  (最も古いブランチに最初にmergeする必要はないことに注意してください。
+  例えばバグフィックスは、最初は 'next' にmergeしてしばらくテストの期間を与え、
+  そして安定したことがわかったら 'maint' にmergeします)
+
+* もしそのトピック、例えば topic というブランチ上で作業を続けるのに
+  他のブランチ 'other' の機能が必要だとわかったら、 'other' ブランチを
+  'topic' に mergeしてください。 (ただし、 "単なる習慣として"
+  実行してはいけません。後述します)
+
+................................................................................
+
 * If you find you forked off the wrong branch and want to move it
   "back in time", use linkgit:git-rebase[1].
 
@@ -176,6 +368,30 @@ changes affect your branch; your branch no longer merges to upstream
 cleanly; etc.
 =====================================
 
+................................................................................
+* もし間違ったブランチから分岐していたことに気づいて、 "過去に戻って"
+  やり直したいのであれば、 linkgit:git-rebase[1] を使ってください。
+
+最後の要点が他の2つと競合することに注意してください:
+あるトピックがどこかにmergeされていた場合、
+rebaseされるべきではありません。 linkgit:git-rebase[1] の上流のrebaseからの回復
+(RECOVERING FROM UPSTREAM REBASE)のセクションを参照してください。
+
+ここで、統合ブランチを "習慣的に" (大した理由なく定期的に)
+トピックにmergeする(話を広げて、定期的に上流を下流にmergeする)
+ことには賛成できない、という点を指摘しておくべきでしょう。
+
+.明確な点だけを下流にmergeする
+[caption="ルール: "]
+=======================================
+理由なく、下流に対してmergeしてはいけません:
+上流の API 変更があなたのブランチに影響を与えたり;
+あなたのブランチを上流に対してキレイにmergeすることはできなくなったり;
+ほかにもいろいろです。
+=======================================
+
+................................................................................
+
 Otherwise, the topic that was merged to suddenly contains more than a
 single (well-separated) change.  The many resulting small merges will
 greatly clutter up history.  Anyone who later investigates the history
@@ -193,6 +409,34 @@ result of merging them does not even work?  But on the other hand, we
 want to avoid merging them anywhere "stable" because such merges
 cannot easily be undone.
 
+................................................................................
+そうしないと、mergeされたトピックは(うまく分割された)
+単一の変更点以上のものを突然含むようになってしまいます。
+その結果として生まれるたくさんの小さなmergeは歴史を
+大いに散らかすことになります。
+あるファイルの歴史をあとから調査する人は皆、
+開発中のトピックにそのmergeが影響したかどうかを
+探しださなければならなくなります。
+さらに、上流のブランチにおいて、不注意にも "より安定した"
+ブランチへとmergeされてしまうかもしれません。
+などなどです。
+
+
+使い捨て統合
+~~~~~~~~~~~~
+
+先のパラグラフに従っていれば、小さなトピックブランチを
+たくさん持っていることでしょう。
+そして、場合によってはどうやってそれらを
+相互作用させればよいのかと心配しているでしょう。
+もしかしてそれらをmergeした結果、
+動きさえしなくなってしまうのでは？
+そして、一方で私達はそれらを "安定"
+しているところへ mergeするのは避けたいと思っています。
+そういったmergeは簡単にはやり直せないからです。
+
+................................................................................
+
 The solution, of course, is to make a merge that we can undo: merge
 into a throw-away branch.
 
@@ -209,6 +453,27 @@ to give the testers a chance to work with it, or other developers a
 chance to see if their in-progress work will be compatible.  `git.git`
 has such an official throw-away integration branch called 'pu'.
 
+................................................................................
+その解決方法はもちろん、やり直しがきくmergeをつくることです:
+使い捨て統合ブランチへmergeしてください。
+
+.使い捨て統合ブランチ
+[caption="ルール: "]
+==========================
+いくつかのトピックの相互作用をテストするために、
+使い捨ての統合ブランチへそれらをmergeします。
+ただしそのようなブランチを作業ベースにしてはいけません!
+==========================
+
+もし、このブランチをテストの直後に確実に削除すると
+(極めて)明確にしているのであれば、pushさえ可能です。
+例えばテスターに対してそのブランチを使って作業する機会を与えるためにです。
+あるいは、他の開発者にもしそれらの開発中の作業が
+完了したらどうなるのかを見せるためにです。
+`git.git` はそういった使い捨て統合のための 'pu'
+という、公式なブランチを持っています。
+
+................................................................................
 
 Branch management for a release
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -227,6 +492,29 @@ will therefore not be included in your feature release.
 
 To verify that 'master' is indeed a superset of 'maint', use git log:
 
+................................................................................
+
+リリースにむけたブランチ管理
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+上で議論されたようなmergeアプローチをとっているとすれば、
+プロジェクトをリリースしようというときには
+いくつかのブランチ管理作業が追加で必要になります。
+
+機能リリースは 'master' ブランチから作成されます。
+なぜなら 'master' は次回の機能リリースに入るべき
+コミットをたどっているからです。
+
+'master' ブランチは 'maint' ブランチのスーパーセットであるべきです。
+この条件を満たさない場合、'maint' ブランチは 'master'
+に含まれないコミットを含むことになります。
+従って、これらのコミットが対応するバグフィックスは、
+機能リリースに含まれないということになってしまいます。
+
+'mater' が 'maint' のスーパーセットであることを確認するには git log を使います:
+
+................................................................................
+
 .Verify 'master' is a superset of 'maint'
 [caption="Recipe: "]
 =====================================
@@ -244,6 +532,27 @@ tag to the tip of 'master' indicating the release version:
 =====================================
 `git tag -s -m "Git X.Y.Z" vX.Y.Z master`
 =====================================
+
+................................................................................
+.'master' が 'maint' のスーパーセットであることを確認する
+[caption="レシピ: "]
+===================================================
+`git log master..maint`
+===================================================
+
+このコマンドではコミットはひとつも列挙されるべきではありません。
+もし列挙されたら 'master' をcheckoutし、 'maint' をそこにmergeします。
+
+これで機能リリースを作成作業を実行できるようになりました。
+'master' の先端にリリースバージョンであることを示すタグをつけます:
+
+.リリースタグの作成
+[caption="レシピ: "]
+===================================================
+`git tag -s -m "Git X.Y.Z" vX.Y.Z master`
+===================================================
+
+................................................................................
 
 You need to push the new tag to a public Git server (see
 "DISTRIBUTED WORKFLOWS" below). This makes the tag available to
@@ -265,6 +574,34 @@ First, if you wish to continue to release maintenance fixes for the
 feature release made before the recent one, then you must create
 another branch to track commits for that previous release.
 
+................................................................................
+この新しいタグを公開Gitサーバにpushする必要があります
+(後述の"分散ワークフロー"を参照してください)。
+これによりあなたのプロジェクトを追っている
+皆に対してタグを有効化できます。
+このpushはまた、post-updateフックをトリガーすることができ、
+リリース用tarボールや、事前フォーマットされた
+ドキュメントページを作成することに使えます。
+
+同じように、メンテナンスリリースに対しては、
+'maint' がリリースされるべきコミットをたどっているので、
+上記のステップのタグ付けとpushを、 単に 'master' ではなく
+'maint' に対してすればよいことになります。
+
+
+機能リリース後のメンテナンスブランチ管理
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+機能リリースの後は、そのメンテナンスブランチを管理する必要があります。
+
+最初に、最新の機能リリースの前に作られた
+機能リリース用のメンテナンスフィックスを
+リリースし続けたいのであれば、
+そのリリース用のコミットを追跡する
+別のブランチを作っておく必要があります。
+
+................................................................................
+
 To do this, the current maintenance branch is copied to another branch
 named with the previous release version number (e.g. maint-X.Y.(Z-1)
 where X.Y.Z is the current release).
@@ -285,6 +622,32 @@ code so that maintenance fixes can be tracked for the current release:
 * `git merge --ff-only master`
 =====================================
 
+................................................................................
+
+これを実行するには、現在のメンテナンスブランチを
+前のリリースバージョン番号の名前でコピーしておきます。
+(例えば最新リリースがX.Y.Z であれば、maint-X.Y.(Z-1)です)
+
+.maintをコピーする
+[caption="レシピ: "]
+=====================================
+`git branch maint-X.Y.(Z-1) maint`
+=====================================
+
+今度は 'maint' ブランチを新たにリリースされた
+コードへとfast-forwardします。
+これはメンテナンスフィックスが
+最新リリースを辿れるようにするためです。
+
+.新しいリリースへと maint を更新する
+[caption="レシピ: "]
+=====================================
+* `git checkout maint`
+* `git merge --ff-only master`
+=====================================
+
+................................................................................
+
 If the merge fails because it is not a fast-forward, then it is
 possible some fixes on 'maint' were missed in the feature release.
 This will not happen if the content of the branches was verified as
@@ -297,6 +660,25 @@ Branch management for next and pu after a feature release
 After a feature release, the integration branch 'next' may optionally be
 rewound and rebuilt from the tip of 'master' using the surviving
 topics on 'next':
+
+................................................................................
+もしmergeが失敗したとすれば、
+それはfast-forwardではないからです。
+そうであれば 'maint' 上のいくつかのバグフィックスが
+機能リリース内から欠けていることになります。
+このような事態は、先のセクションで述べたように、
+'master' と 'maint' ブランチの内容を確認しておけば、
+発生しないはずです。
+
+機能リリース後の next および pu のブランチ管理
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+機能リリース後、統合ブランチ 'next' は
+'master' の先端へと巻き戻し、
+もとの 'next' 上に生き残っていたトピックブランチを
+使って再構成して構いません。
+
+................................................................................
 
 .Rewind and rebuild next
 [caption="Recipe: "]
@@ -317,6 +699,30 @@ recreating 'next', you give another incarnation of such topics a clean
 slate to retry, and a feature release is a good point in history to do
 so.
 
+................................................................................
+.next を巻き戻して再構成する
+[caption="レシピ: "]
+=====================================
+* `git checkout next`
+* `git reset --hard master`
+* `git merge ai/topic_in_next1`
+* `git merge ai/topic_in_next2`
+* ...
+=====================================
+
+これを実行する利点は、 'next' の歴史がキレイになることです。
+例えば、いくつかの 'next' にmergeされたトピックブランチが
+最初は良く見えていたのに、後で望ましくない、あるいは
+早まったものだったとわかったとします。
+このようなケースでは、そのトピックブランチは
+'next' からリバートされるべきですが、
+歴史の中にはmergeされ、リバートされたという事実が残ってしまいます。
+'next' を作りなおすことにより、生まれ変わったトピックブランチに対して、
+やり直しのためのキレイな黒板を与えることができます。
+機能リリースは、それを実行するちょうど良い歴史上のポイントなのです。
+
+................................................................................
+
 If you do this, then you should make a public announcement indicating
 that 'next' was rewound and rebuilt.
 
@@ -332,6 +738,23 @@ After the last section, you should know how to manage topics.  In
 general, you will not be the only person working on the project, so
 you will have to share your work.
 
+................................................................................
+これを実行するのであれば、 'next' の巻き戻しと再構成に
+関する公式アナウンスをすべきです。
+
+同じ巻き戻しと再構成のプロセスが 'pu' にも適用されます。
+'pu' は上で述べたように使い捨てブランチなので、
+公式アナウンスは不要です。
+
+分散ワークフロー
+----------------
+
+先のセクションで、どうやってトピックを管理するかを学びました。
+ふつう、そのプロジェクトで作業しているのはあなただけではないでしょう。
+だから、あなたは作業結果を共有しなければならないはずです。
+
+................................................................................
+
 Roughly speaking, there are two important workflows: merge and patch.
 The important difference is that the merge workflow can propagate full
 history, including merges, while patches cannot.  Both workflows can
@@ -343,6 +766,20 @@ Note that the maintainer(s) may impose restrictions, such as
 inclusion must adhere to.  Consult your project's documentation for
 more information.
 
+................................................................................
+大雑把にいうと、ふたつの重要なワークフローがあります:
+mergeとpatchです。
+重要な違いは、mergeワークフローはmergeを含む全ての歴史を
+伝搬させることができ、一方patchではできない、ということです。
+両方のワークフローは並行して使うことができます:
+`git.git` においてはサブシステムのメンテナたちだけが
+mergeワークフローを使っており、他の人たちは皆patchを送っています。
+
+メンテナは、例えば「Signed-off-by」要求といった、
+提出されるすべてのコミット/patchがそこに含めなければ
+ならないような制限を課すことがあるという点について注意してください。
+
+................................................................................
 
 Merge workflow
 ~~~~~~~~~~~~~~
@@ -364,6 +801,31 @@ There are three main tools that can be used for this:
 Note the last point.  Do 'not' use 'git pull' unless you actually want
 to merge the remote branch.
 
+................................................................................
+mergeワークフロー
+~~~~~~~~~~~~~~~~~
+
+mergeワークフローは上流と下流の間でブランチを
+コピーすることによってなされます。
+上流は貢献内容を公式な歴史へとmergeできます。
+下流は作業を公式な歴史の上で行います。
+
+これを実行するのに3つの主要なツールがあります。
+
+* linkgit:git-push[1] はあなたのブランチをリモートのリポジトリ、
+  普通はすべての参加者にが読み込み可能なひとつのリポジトリにコピーします。
+
+* linkgit:git-fetch[1] はリモートブランチをあなたのリポジトリにコピーします:
+  そして、
+
+* linkgit:git-pull[1] は fetch と merge を一気に行います。
+
+最後の項目に注意してください。
+リモートブランチをmergeしたいのでなければ、
+'git pull' を使っては 'いけません' 。
+
+................................................................................
+
 Getting changes out is easy:
 
 .Push/pull: Publishing branches/topics
@@ -379,6 +841,25 @@ requests to upstream maintainers to simplify this task.)
 
 If you just want to get the newest copies of the integration branches,
 staying up to date is easy too:
+
+................................................................................
+変更を公開するのは簡単です:
+
+.Push/Pull: ブランチ/トピックを公開する
+[caption="レシピ: "]
+=====================================
+`git push <remote> <branch>` を実行し、皆にfetchできる場所を知らせます。
+=====================================
+
+メールのような異なる方法で他の人に知らせる必要があるでしょう。
+(Gitでは事前にフォーマットされたプルリクエストを
+ 上流のメンテナに送る作業を簡素化するため、
+ linkgit:git-request-pull[1] を提供しています)
+
+もし単に統合ブランチの最新のコピーを取得したいだけであれば、
+新しい状態に保つことも簡単です:
+
+................................................................................
 
 .Push/pull: Staying up to date
 [caption="Recipe: "]
@@ -398,6 +879,29 @@ Please pull from
     <url> <branch>
 -------------------------------------
 
+................................................................................
+.Push/Pull: 最新の状態に保つ
+[caption="レシピ: "]
+=======================================================
+最新の状態に保つには、 `git fetch <remote>`
+または `git remote update` を使います。
+=======================================================
+
+そして、先に説明したとおり、単にリモートの
+安定ブランチからあなたのトピックブランチを分岐させてください。
+
+もしあなたがメンテナで、他の人たちのトピックブランチを
+統合ブランチにmergeしたいのであれば、
+他の人たちは普通そうしてくれとメールで要求を送るでしょう。
+要求はこんなかんじになります。
+
+-------------------------------------
+以下からプルしてください
+    <url> <branch>
+-------------------------------------
+
+................................................................................
+
 In that case, 'git pull' can do the fetch and merge in one go, as
 follows.
 
@@ -413,6 +917,25 @@ do the merge and resolve the conflicts themselves (perhaps they will
 know better how to resolve them).  It is one of the rare cases where
 downstream 'should' merge from upstream.
 
+................................................................................
+このケースでは、以下のように 'git pull' で
+一気に fetch と merge を実行できます。
+
+.Push/Pull: リモートのトピックのmerge
+[caption="レシピ: "]
+=====================================
+`git pull <url> <branch>`
+=====================================
+
+場合によっては、メンテナが下流から変更をpullしようとしたときに、
+mergeコンフリクトが発生するかもしれません。
+このケースでは、下流の開発者に対してmergeと
+コンフリクトの解消をお願いすることができます
+(たぶん、彼らのほうがどうやって解消するかよくわかっているでしょうし)。
+これは下流が上流からmerge 'すべき'
+数少ないケースです。
+
+................................................................................
 
 Patch workflow
 ~~~~~~~~~~~~~~
@@ -434,6 +957,30 @@ maintainer's life easier).
 See the linkgit:git-format-patch[1] and linkgit:git-send-email[1]
 manpages for further usage notes.
 
+................................................................................
+Patch ワークフロー
+~~~~~~~~~~~~~~~~~~
+
+もしあなたが貢献者で、emailで変更点を上流へ送るのであれば、
+普段どおりトピックブランチを使うべきです(上のほうを参照)。
+そして、それに対応するemailを生成するのに、
+linkgit:git-format-patch[1] を使います。
+(これは手でフォーマットするよりも推奨されます。
+ メンテナ生活を楽にするためです。)
+
+.format-patch/am: ブランチ/トピックを公開する
+[caption="レシピ: "]
+=======================================================
+* `git format-patch -M upstream..topic` を使って、
+トピックブランチを事前フォーマットされた形式に変換します。
+* `git send-email --to=<受信者> <パッチ(複数)>`
+=======================================================
+
+さらなる利用上の注意については linkgit:git-format-patch[1]
+および linkgit:git-send-email[1]のmanページを参照してください。
+
+................................................................................
+
 If the maintainer tells you that your patch no longer applies to the
 current upstream, you will have to rebase your topic (you cannot use a
 merge because you cannot format-patch merges):
@@ -452,6 +999,33 @@ If you receive such a patch series (as maintainer, or perhaps as a
 reader of the mailing list it was sent to), save the mails to files,
 create a new topic branch and use 'git am' to import the commits:
 
+................................................................................
+
+メンテナがあなたに対して、
+「あなたのpatchは現在の上流にはもう適用できない」と伝えてきたら、
+あなたのトピックをrebaseしなければいけません
+(ここではmergeを使うことはできません。
+ なぜならmergeをformat-patchできないからです。):
+
+.format-patch/am: トピックを最新の状態に保つ
+[caption="レシピ: "]
+=======================================================
+`git pull --rebase <url> <branch>`
+=======================================================
+
+このrebaseを実行する中でコンフリクトを修正することができます。
+多分あなたはemail以外ではトピックを
+公開していないでしょうから、rebaseによって
+問題が発生することはありません。
+
+もしそのような一連のpatchを(メンテナとして、または、
+おそらくメーリングリストに送られたものを購読者として)
+受け取ったのであれば、そのメールをファイルにセーブして、
+トピックブランチを作成し、それらのコミットを
+'git am' でインポートします:
+
+................................................................................
+
 .format-patch/am: Importing patches
 [caption="Recipe: "]
 =====================================
@@ -463,6 +1037,20 @@ if you get conflicts: `git am -3` will use index information contained
 in patches to figure out the merge base.  See linkgit:git-am[1] for
 other options.
 
+................................................................................
+
+.format-patch/am: patch をインポートする
+[caption="レシピ: "]
+=====================================
+`git am < patch`
+=====================================
+
+ここで指摘するに値する機能は3way mergeです。
+これは、コンフリクトが発生した場合に便利です: `git am -3`
+は、mergeベースを検出するのに、 patchに含まれる情報を使います。
+他のオプションについては linkgit:git-am[1] を参照してください。
+
+................................................................................
 
 SEE ALSO
 --------
@@ -478,3 +1066,22 @@ linkgit:git-am[1]
 GIT
 ---
 Part of the linkgit:git[1] suite.
+
+................................................................................
+
+あわせて読みたい
+----------------
+linkgit:gittutorial[7],
+linkgit:git-push[1],
+linkgit:git-pull[1],
+linkgit:git-merge[1],
+linkgit:git-rebase[1],
+linkgit:git-format-patch[1],
+linkgit:git-send-email[1],
+linkgit:git-am[1]
+
+GIT
+---
+gitworkflows は linkgit:git[1] の一部です。
+
+................................................................................
