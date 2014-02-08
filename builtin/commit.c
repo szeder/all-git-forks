@@ -1067,8 +1067,6 @@ static int parse_and_validate_options(int argc, const char *argv[],
 		use_editor = 0;
 	if (0 <= edit_flag)
 		use_editor = edit_flag;
-	if (!use_editor)
-		setenv("GIT_EDITOR", ":", 1);
 
 	/* Sanity check options */
 	if (amend && !current_head)
@@ -1146,13 +1144,10 @@ static int parse_and_validate_options(int argc, const char *argv[],
 	return argc;
 }
 
-static int dry_run_commit(int argc, const char **argv, const char *prefix,
-			  const struct commit *current_head, struct wt_status *s)
+static int dry_run_commit(const char *index_file, const char *prefix,
+			  struct wt_status *s)
 {
 	int commitable;
-	const char *index_file;
-
-	index_file = prepare_index(argc, argv, prefix, current_head, 1);
 	commitable = run_status(stdout, index_file, prefix, 0, s);
 	rollback_index_files();
 
@@ -1531,9 +1526,13 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	argc = parse_and_validate_options(argc, argv, builtin_commit_options,
 					  builtin_commit_usage,
 					  prefix, current_head, &s);
+	index_file = prepare_index(argc, argv, prefix, current_head, dry_run ? 1 : 0);
+
+	if (!use_editor)
+		setenv("GIT_EDITOR", ":", 1);
+
 	if (dry_run)
-		return dry_run_commit(argc, argv, prefix, current_head, &s);
-	index_file = prepare_index(argc, argv, prefix, current_head, 0);
+		return dry_run_commit(index_file, prefix, &s);
 
 	/* Set up everything for writing the commit object.  This includes
 	   running hooks, writing the trees, and interacting with the user.  */
