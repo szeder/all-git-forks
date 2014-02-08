@@ -195,6 +195,7 @@ int send_pack(struct send_pack_args *args,
 	      struct ref *remote_refs,
 	      struct sha1_array *extra_have)
 {
+    printf("i am in send_pack\n");
 	int in = fd[0];
 	int out = fd[1];
 	struct strbuf req_buf = STRBUF_INIT;

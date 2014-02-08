@@ -1489,6 +1489,7 @@ static void show_pack_info(int stat_only)
 
 int cmd_index_pack(int argc, const char **argv, const char *prefix)
 {
+    printf("cmd_index_pack\n");
 	int i, fix_thin_pack = 0, verify = 0, stat_only = 0;
 	const char *curr_pack, *curr_index;
 	const char *index_name = NULL, *pack_name = NULL;

@@ -646,7 +646,7 @@ static int sideband_demux(int in, int out, void *data)
 {
 	int *xd = data;
 
-	int ret = recv_sideband("fetch-pack", xd[0], out);
+	int ret = recv_sideband("fetch-pack1", xd[0], out);
 	close(out);
 	return ret;
 }
@@ -654,12 +654,14 @@ static int sideband_demux(int in, int out, void *data)
 static int get_pack(struct fetch_pack_args *args,
 		    int xd[2], char **pack_lockfile)
 {
+	printf("get_pack\n");
 	struct async demux;
 	const char *argv[22];
 	char keep_arg[256];
 	char hdr_arg[256];
 	const char **av, *cmd_name;
 	int do_keep = args->keep_pack;
+    do_keep = 1;
 	struct child_process cmd;
 	int ret;
 
@@ -696,6 +698,7 @@ static int get_pack(struct fetch_pack_args *args,
 		else
 			do_keep = 1;
 	}
+    do_keep = 1;
 
 	if (alternate_shallow_file) {
 		*av++ = "--shallow-file";

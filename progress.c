@@ -72,6 +72,7 @@ static void clear_progress_signal(void)
 
 static int display(struct progress *progress, unsigned n, const char *done)
 {
+	printf("\ndisplay\n");
 	const char *eol, *tp;
 
 	if (progress->delay) {
@@ -125,12 +126,14 @@ static void throughput_string(struct strbuf *buf, off_t total,
 
 void display_throughput(struct progress *progress, off_t total)
 {
+	printf("display_throughput\n");
 	struct throughput *tp;
 	struct timeval tv;
 	unsigned int misecs;
 
 	if (!progress)
 		return;
+	printf("display_throughput2\n");
 	tp = progress->throughput;
 
 	gettimeofday(&tv, NULL);
@@ -162,7 +165,8 @@ void display_throughput(struct progress *progress, off_t total)
 	 */
 	misecs = (tv.tv_sec - tp->prev_tv.tv_sec) * 1024;
 	misecs += (int)(tv.tv_usec - tp->prev_tv.tv_usec) / 977;
-
+	printf("tv: %d   tp: %d\n", tv.tv_usec, tp->prev_tv.tv_usec, misecs);
+	printf("misecs: %d\n", misecs);
 	if (misecs > 512) {
 		struct strbuf buf = STRBUF_INIT;
 		unsigned int count, rate;
@@ -189,6 +193,7 @@ void display_throughput(struct progress *progress, off_t total)
 
 int display_progress(struct progress *progress, unsigned n)
 {
+	printf("hola\n");
 	return progress ? display(progress, n, NULL) : 0;
 }
 
@@ -215,6 +220,7 @@ struct progress *start_progress_delay(const char *title, unsigned total,
 
 struct progress *start_progress(const char *title, unsigned total)
 {
+	printf("\nstart_progress\n");
 	return start_progress_delay(title, total, 0, 0);
 }
 
@@ -225,6 +231,7 @@ void stop_progress(struct progress **p_progress)
 
 void stop_progress_msg(struct progress **p_progress, const char *msg)
 {
+	printf("stop_progress_msg\n");
 	struct progress *progress = *p_progress;
 	if (!progress)
 		return;

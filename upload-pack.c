@@ -788,6 +788,7 @@ static int upload_pack_config(const char *var, const char *value, void *unused)
 
 int main(int argc, char **argv)
 {
+	printf("in uploadpack\n");
 	char *dir;
 	int i;
 	int strict = 0;
