@@ -1,0 +1,1290 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
+<meta name="generator" content="AsciiDoc 8.6.8" />
+<title>gitworkflows(7)</title>
+<style type="text/css">
+/* Shared CSS for AsciiDoc xhtml11 and html5 backends */
+
+/* Default font. */
+body {
+  font-family: Georgia,serif;
+}
+
+/* Title font. */
+h1, h2, h3, h4, h5, h6,
+div.title, caption.title,
+thead, p.table.header,
+#toctitle,
+#author, #revnumber, #revdate, #revremark,
+#footer {
+  font-family: Arial,Helvetica,sans-serif;
+}
+
+body {
+  margin: 1em 5% 1em 5%;
+}
+
+a {
+  color: blue;
+  text-decoration: underline;
+}
+a:visited {
+  color: fuchsia;
+}
+
+em {
+  font-style: italic;
+  color: navy;
+}
+
+strong {
+  font-weight: bold;
+  color: #083194;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #527bbd;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+
+h1, h2, h3 {
+  border-bottom: 2px solid silver;
+}
+h2 {
+  padding-top: 0.5em;
+}
+h3 {
+  float: left;
+}
+h3 + * {
+  clear: left;
+}
+h5 {
+  font-size: 1.0em;
+}
+
+div.sectionbody {
+  margin-left: 0;
+}
+
+hr {
+  border: 1px solid silver;
+}
+
+p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+ul, ol, li > p {
+  margin-top: 0;
+}
+ul > li     { color: #aaa; }
+ul > li > * { color: black; }
+
+.monospaced, code, pre {
+  font-family: "Courier New", Courier, monospace;
+  font-size: inherit;
+  color: navy;
+  padding: 0;
+  margin: 0;
+}
+
+
+#author {
+  color: #527bbd;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+#email {
+}
+#revnumber, #revdate, #revremark {
+}
+
+#footer {
+  font-size: small;
+  border-top: 2px solid silver;
+  padding-top: 0.5em;
+  margin-top: 4.0em;
+}
+#footer-text {
+  float: left;
+  padding-bottom: 0.5em;
+}
+#footer-badges {
+  float: right;
+  padding-bottom: 0.5em;
+}
+
+#preamble {
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+div.imageblock, div.exampleblock, div.verseblock,
+div.quoteblock, div.literalblock, div.listingblock, div.sidebarblock,
+div.admonitionblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.admonitionblock {
+  margin-top: 2.0em;
+  margin-bottom: 2.0em;
+  margin-right: 10%;
+  color: #606060;
+}
+
+div.content { /* Block element content. */
+  padding: 0;
+}
+
+/* Block element titles. */
+div.title, caption.title {
+  color: #527bbd;
+  font-weight: bold;
+  text-align: left;
+  margin-top: 1.0em;
+  margin-bottom: 0.5em;
+}
+div.title + * {
+  margin-top: 0;
+}
+
+td div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content + div.title {
+  margin-top: 0.0em;
+}
+
+div.sidebarblock > div.content {
+  background: #ffffee;
+  border: 1px solid #dddddd;
+  border-left: 4px solid #f0f0f0;
+  padding: 0.5em;
+}
+
+div.listingblock > div.content {
+  border: 1px solid #dddddd;
+  border-left: 5px solid #f0f0f0;
+  background: #f8f8f8;
+  padding: 0.5em;
+}
+
+div.quoteblock, div.verseblock {
+  padding-left: 1.0em;
+  margin-left: 1.0em;
+  margin-right: 10%;
+  border-left: 5px solid #f0f0f0;
+  color: #888;
+}
+
+div.quoteblock > div.attribution {
+  padding-top: 0.5em;
+  text-align: right;
+}
+
+div.verseblock > pre.content {
+  font-family: inherit;
+  font-size: inherit;
+}
+div.verseblock > div.attribution {
+  padding-top: 0.75em;
+  text-align: left;
+}
+/* DEPRECATED: Pre version 8.2.7 verse style literal block. */
+div.verseblock + div.attribution {
+  text-align: left;
+}
+
+div.admonitionblock .icon {
+  vertical-align: top;
+  font-size: 1.1em;
+  font-weight: bold;
+  text-decoration: underline;
+  color: #527bbd;
+  padding-right: 0.5em;
+}
+div.admonitionblock td.content {
+  padding-left: 0.5em;
+  border-left: 3px solid #dddddd;
+}
+
+div.exampleblock > div.content {
+  border-left: 3px solid #dddddd;
+  padding-left: 0.5em;
+}
+
+div.imageblock div.content { padding-left: 0; }
+span.image img { border-style: none; }
+a.image:visited { color: white; }
+
+dl {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+dt {
+  margin-top: 0.5em;
+  margin-bottom: 0;
+  font-style: normal;
+  color: navy;
+}
+dd > *:first-child {
+  margin-top: 0.1em;
+}
+
+ul, ol {
+    list-style-position: outside;
+}
+ol.arabic {
+  list-style-type: decimal;
+}
+ol.loweralpha {
+  list-style-type: lower-alpha;
+}
+ol.upperalpha {
+  list-style-type: upper-alpha;
+}
+ol.lowerroman {
+  list-style-type: lower-roman;
+}
+ol.upperroman {
+  list-style-type: upper-roman;
+}
+
+div.compact ul, div.compact ol,
+div.compact p, div.compact p,
+div.compact div, div.compact div {
+  margin-top: 0.1em;
+  margin-bottom: 0.1em;
+}
+
+tfoot {
+  font-weight: bold;
+}
+td > div.verse {
+  white-space: pre;
+}
+
+div.hdlist {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+div.hdlist tr {
+  padding-bottom: 15px;
+}
+dt.hdlist1.strong, td.hdlist1.strong {
+  font-weight: bold;
+}
+td.hdlist1 {
+  vertical-align: top;
+  font-style: normal;
+  padding-right: 0.8em;
+  color: navy;
+}
+td.hdlist2 {
+  vertical-align: top;
+}
+div.hdlist.compact tr {
+  margin: 0;
+  padding-bottom: 0;
+}
+
+.comment {
+  background: yellow;
+}
+
+.footnote, .footnoteref {
+  font-size: 0.8em;
+}
+
+span.footnote, span.footnoteref {
+  vertical-align: super;
+}
+
+#footnotes {
+  margin: 20px 0 20px 0;
+  padding: 7px 0 0 0;
+}
+
+#footnotes div.footnote {
+  margin: 0 0 5px 0;
+}
+
+#footnotes hr {
+  border: none;
+  border-top: 1px solid silver;
+  height: 1px;
+  text-align: left;
+  margin-left: 0;
+  width: 20%;
+  min-width: 100px;
+}
+
+div.colist td {
+  padding-right: 0.5em;
+  padding-bottom: 0.3em;
+  vertical-align: top;
+}
+div.colist td img {
+  margin-top: 0.3em;
+}
+
+@media print {
+  #footer-badges { display: none; }
+}
+
+#toc {
+  margin-bottom: 2.5em;
+}
+
+#toctitle {
+  color: #527bbd;
+  font-size: 1.1em;
+  font-weight: bold;
+  margin-top: 1.0em;
+  margin-bottom: 0.1em;
+}
+
+div.toclevel0, div.toclevel1, div.toclevel2, div.toclevel3, div.toclevel4 {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+div.toclevel2 {
+  margin-left: 2em;
+  font-size: 0.9em;
+}
+div.toclevel3 {
+  margin-left: 4em;
+  font-size: 0.9em;
+}
+div.toclevel4 {
+  margin-left: 6em;
+  font-size: 0.9em;
+}
+
+span.aqua { color: aqua; }
+span.black { color: black; }
+span.blue { color: blue; }
+span.fuchsia { color: fuchsia; }
+span.gray { color: gray; }
+span.green { color: green; }
+span.lime { color: lime; }
+span.maroon { color: maroon; }
+span.navy { color: navy; }
+span.olive { color: olive; }
+span.purple { color: purple; }
+span.red { color: red; }
+span.silver { color: silver; }
+span.teal { color: teal; }
+span.white { color: white; }
+span.yellow { color: yellow; }
+
+span.aqua-background { background: aqua; }
+span.black-background { background: black; }
+span.blue-background { background: blue; }
+span.fuchsia-background { background: fuchsia; }
+span.gray-background { background: gray; }
+span.green-background { background: green; }
+span.lime-background { background: lime; }
+span.maroon-background { background: maroon; }
+span.navy-background { background: navy; }
+span.olive-background { background: olive; }
+span.purple-background { background: purple; }
+span.red-background { background: red; }
+span.silver-background { background: silver; }
+span.teal-background { background: teal; }
+span.white-background { background: white; }
+span.yellow-background { background: yellow; }
+
+span.big { font-size: 2em; }
+span.small { font-size: 0.6em; }
+
+span.underline { text-decoration: underline; }
+span.overline { text-decoration: overline; }
+span.line-through { text-decoration: line-through; }
+
+div.unbreakable { page-break-inside: avoid; }
+
+
+/*
+ * xhtml11 specific
+ *
+ * */
+
+div.tableblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.tableblock > table {
+  border: 3px solid #527bbd;
+}
+thead, p.table.header {
+  font-weight: bold;
+  color: #527bbd;
+}
+p.table {
+  margin-top: 0;
+}
+/* Because the table frame attribute is overriden by CSS in most browsers. */
+div.tableblock > table[frame="void"] {
+  border-style: none;
+}
+div.tableblock > table[frame="hsides"] {
+  border-left-style: none;
+  border-right-style: none;
+}
+div.tableblock > table[frame="vsides"] {
+  border-top-style: none;
+  border-bottom-style: none;
+}
+
+
+/*
+ * html5 specific
+ *
+ * */
+
+table.tableblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+thead, p.tableblock.header {
+  font-weight: bold;
+  color: #527bbd;
+}
+p.tableblock {
+  margin-top: 0;
+}
+table.tableblock {
+  border-width: 3px;
+  border-spacing: 0px;
+  border-style: solid;
+  border-color: #527bbd;
+  border-collapse: collapse;
+}
+th.tableblock, td.tableblock {
+  border-width: 1px;
+  padding: 4px;
+  border-style: solid;
+  border-color: #527bbd;
+}
+
+table.tableblock.frame-topbot {
+  border-left-style: hidden;
+  border-right-style: hidden;
+}
+table.tableblock.frame-sides {
+  border-top-style: hidden;
+  border-bottom-style: hidden;
+}
+table.tableblock.frame-none {
+  border-style: hidden;
+}
+
+th.tableblock.halign-left, td.tableblock.halign-left {
+  text-align: left;
+}
+th.tableblock.halign-center, td.tableblock.halign-center {
+  text-align: center;
+}
+th.tableblock.halign-right, td.tableblock.halign-right {
+  text-align: right;
+}
+
+th.tableblock.valign-top, td.tableblock.valign-top {
+  vertical-align: top;
+}
+th.tableblock.valign-middle, td.tableblock.valign-middle {
+  vertical-align: middle;
+}
+th.tableblock.valign-bottom, td.tableblock.valign-bottom {
+  vertical-align: bottom;
+}
+
+
+/*
+ * manpage specific
+ *
+ * */
+
+body.manpage h1 {
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  border-top: 2px solid silver;
+  border-bottom: 2px solid silver;
+}
+body.manpage h2 {
+  border-style: none;
+}
+body.manpage div.sectionbody {
+  margin-left: 3em;
+}
+
+@media print {
+  body.manpage div#toc { display: none; }
+}
+
+
+</style>
+<script type="text/javascript">
+/*<![CDATA[*/
+var asciidoc = {  // Namespace.
+
+/////////////////////////////////////////////////////////////////////
+// Table Of Contents generator
+/////////////////////////////////////////////////////////////////////
+
+/* Author: Mihai Bazon, September 2002
+ * http://students.infoiasi.ro/~mishoo
+ *
+ * Table Of Content generator
+ * Version: 0.4
+ *
+ * Feel free to use this script under the terms of the GNU General Public
+ * License, as long as you do not remove or alter this notice.
+ */
+
+ /* modified by Troy D. Hanson, September 2006. License: GPL */
+ /* modified by Stuart Rackham, 2006, 2009. License: GPL */
+
+// toclevels = 1..4.
+toc: function (toclevels) {
+
+  function getText(el) {
+    var text = "";
+    for (var i = el.firstChild; i != null; i = i.nextSibling) {
+      if (i.nodeType == 3 /* Node.TEXT_NODE */) // IE doesn't speak constants.
+        text += i.data;
+      else if (i.firstChild != null)
+        text += getText(i);
+    }
+    return text;
+  }
+
+  function TocEntry(el, text, toclevel) {
+    this.element = el;
+    this.text = text;
+    this.toclevel = toclevel;
+  }
+
+  function tocEntries(el, toclevels) {
+    var result = new Array;
+    var re = new RegExp('[hH]([1-'+(toclevels+1)+'])');
+    // Function that scans the DOM tree for header elements (the DOM2
+    // nodeIterator API would be a better technique but not supported by all
+    // browsers).
+    var iterate = function (el) {
+      for (var i = el.firstChild; i != null; i = i.nextSibling) {
+        if (i.nodeType == 1 /* Node.ELEMENT_NODE */) {
+          var mo = re.exec(i.tagName);
+          if (mo && (i.getAttribute("class") || i.getAttribute("className")) != "float") {
+            result[result.length] = new TocEntry(i, getText(i), mo[1]-1);
+          }
+          iterate(i);
+        }
+      }
+    }
+    iterate(el);
+    return result;
+  }
+
+  var toc = document.getElementById("toc");
+  if (!toc) {
+    return;
+  }
+
+  // Delete existing TOC entries in case we're reloading the TOC.
+  var tocEntriesToRemove = [];
+  var i;
+  for (i = 0; i < toc.childNodes.length; i++) {
+    var entry = toc.childNodes[i];
+    if (entry.nodeName.toLowerCase() == 'div'
+     && entry.getAttribute("class")
+     && entry.getAttribute("class").match(/^toclevel/))
+      tocEntriesToRemove.push(entry);
+  }
+  for (i = 0; i < tocEntriesToRemove.length; i++) {
+    toc.removeChild(tocEntriesToRemove[i]);
+  }
+
+  // Rebuild TOC entries.
+  var entries = tocEntries(document.getElementById("content"), toclevels);
+  for (var i = 0; i < entries.length; ++i) {
+    var entry = entries[i];
+    if (entry.element.id == "")
+      entry.element.id = "_toc_" + i;
+    var a = document.createElement("a");
+    a.href = "#" + entry.element.id;
+    a.appendChild(document.createTextNode(entry.text));
+    var div = document.createElement("div");
+    div.appendChild(a);
+    div.className = "toclevel" + entry.toclevel;
+    toc.appendChild(div);
+  }
+  if (entries.length == 0)
+    toc.parentNode.removeChild(toc);
+},
+
+
+/////////////////////////////////////////////////////////////////////
+// Footnotes generator
+/////////////////////////////////////////////////////////////////////
+
+/* Based on footnote generation code from:
+ * http://www.brandspankingnew.net/archive/2005/07/format_footnote.html
+ */
+
+footnotes: function () {
+  // Delete existing footnote entries in case we're reloading the footnodes.
+  var i;
+  var noteholder = document.getElementById("footnotes");
+  if (!noteholder) {
+    return;
+  }
+  var entriesToRemove = [];
+  for (i = 0; i < noteholder.childNodes.length; i++) {
+    var entry = noteholder.childNodes[i];
+    if (entry.nodeName.toLowerCase() == 'div' && entry.getAttribute("class") == "footnote")
+      entriesToRemove.push(entry);
+  }
+  for (i = 0; i < entriesToRemove.length; i++) {
+    noteholder.removeChild(entriesToRemove[i]);
+  }
+
+  // Rebuild footnote entries.
+  var cont = document.getElementById("content");
+  var spans = cont.getElementsByTagName("span");
+  var refs = {};
+  var n = 0;
+  for (i=0; i<spans.length; i++) {
+    if (spans[i].className == "footnote") {
+      n++;
+      var note = spans[i].getAttribute("data-note");
+      if (!note) {
+        // Use [\s\S] in place of . so multi-line matches work.
+        // Because JavaScript has no s (dotall) regex flag.
+        note = spans[i].innerHTML.match(/\s*\[([\s\S]*)]\s*/)[1];
+        spans[i].innerHTML =
+          "[<a id='_footnoteref_" + n + "' href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+        spans[i].setAttribute("data-note", note);
+      }
+      noteholder.innerHTML +=
+        "<div class='footnote' id='_footnote_" + n + "'>" +
+        "<a href='#_footnoteref_" + n + "' title='Return to text'>" +
+        n + "</a>. " + note + "</div>";
+      var id =spans[i].getAttribute("id");
+      if (id != null) refs["#"+id] = n;
+    }
+  }
+  if (n == 0)
+    noteholder.parentNode.removeChild(noteholder);
+  else {
+    // Process footnoterefs.
+    for (i=0; i<spans.length; i++) {
+      if (spans[i].className == "footnoteref") {
+        var href = spans[i].getElementsByTagName("a")[0].getAttribute("href");
+        href = href.match(/#.*/)[0];  // Because IE return full URL.
+        n = refs[href];
+        spans[i].innerHTML =
+          "[<a href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+      }
+    }
+  }
+},
+
+install: function(toclevels) {
+  var timerId;
+
+  function reinstall() {
+    asciidoc.footnotes();
+    if (toclevels) {
+      asciidoc.toc(toclevels);
+    }
+  }
+
+  function reinstallAndRemoveTimer() {
+    clearInterval(timerId);
+    reinstall();
+  }
+
+  timerId = setInterval(reinstall, 500);
+  if (document.addEventListener)
+    document.addEventListener("DOMContentLoaded", reinstallAndRemoveTimer, false);
+  else
+    window.onload = reinstallAndRemoveTimer;
+}
+
+}
+asciidoc.install();
+/*]]>*/
+</script>
+</head>
+<body class="manpage">
+<div id="header">
+<h1>
+gitworkflows(7) Manual Page
+</h1>
+<h2>NAME</h2>
+<div class="sectionbody">
+<p>gitworkflows -
+   Gitにおける推奨されるワークフローの概要
+</p>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="_書式">書式</h2>
+<div class="sectionbody">
+<div class="verseblock">
+<pre class="content">git *</pre>
+<div class="attribution">
+</div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_解説">解説</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>このドキュメントは <code>git.git</code> それ自身で使われているワークフローの
+要素を書きとめ、それを使いたいと思わせることを意図しています。
+多くのアイデアが一般に適用できますが、より少人数が参加する小さな
+プロジェクトで完全なワークフローを必要とするのは稀です。</p></div>
+<div class="paragraph"><p>私たちはクイックリファレンスのためにひとまとまりの <em>ルール</em> をとりまとめ、
+文章でそれぞれのルールへの動機を与えます。
+言葉通りにとらないようにしてください;
+重視すべきなのは、この文書のようなmanページの記述よりも
+あなたがそうすべき理由の方です。</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_変更を分割する">変更を分割する</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>一般的なルールとして、変更は小さな論理的ステップに
+分割するよう心がけるべきです。
+それらは一貫性があり、その後のどんなコミットからも
+独立して機能し、テストを通過していて、(以下略。
+これはレビュープロセスをより簡単にし、後から、
+例えば <a href="git-blame.html">git-blame(1)</a> や <a href="git-bisect.html">git-bisect(1)</a> で
+調査・解析するときに歴史をより使いやすくします。</p></div>
+<div class="paragraph"><p>これを達成するには、一番最初からあなたの作業を小さな
+ステップに分割しておくよう心がけてください。
+いくつかの小さなコミットを一緒にひとまとめにすることは、
+大きなコミットを分割するよりも、常に簡単です。
+作業を続けるにあたって、小さすぎる、または不完全なステップを
+作成することを恐れてはいけません。
+変更をpushするまえに、 <code>git rebase --interactive</code> を使って
+後からいつでもそのコミットに戻って編集しすることができます。
+他のコミットしていない変更の影響を受けずにテスト一式を走らせるのに、
+<code>git stash save --keep-index</code> を使うこともできます。 <a href="git-stash.html">git-stash(1)</a>
+の EXAMPLES セクションを参照してください。</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_ブランチの管理">ブランチの管理</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>一つのブランチから他のブランチへと変更点を含ませるのに
+使うことのできる主要なツールが2つあります: <a href="git-merge.html">git-merge(1)</a>
+と<a href="git-cherry-pick.html">git-cherry-pick(1)</a> です。</p></div>
+<div class="paragraph"><p>merge にはたくさんのアドバンテージがあります。
+だから私たちは merge だけで可能な限り多くの問題を解決しようとします。
+それでもcherry-pickは場合によって便利です。
+例えば下記の "上流へのmerge" を参照してください。</p></div>
+<div class="paragraph"><p>もっとも重要な点は、mergeはブランチレベルで動作し、
+一方cherry-pickはコミットレベルで動作するということです。
+これは、merge が 1, 10, あるいは 1000 のコミットを
+同等の簡単さで引き継げることを意味します。
+これは同様にこのワークフローがより多くの貢献者
+(および彼らの貢献)に対してスケールするということです。
+merge は理解するのも、より簡単です。
+なぜならmergeコミットは、親のコミットの全ての変更は
+このコミットに全て含んでいる、という "約束" だからです。</p></div>
+<div class="paragraph"><p>もちろんトレードオフが存在します:
+mergeはより注意深いブランチ管理を必要とします。
+続くセクションではその要点について議論します。</p></div>
+<div class="sect2">
+<h3 id="_送り出し">送り出し</h3>
+<div class="paragraph"><p>ある機能が実験的なものから安定したものへと移行するように、
+ソフトウェアの対応するブランチ間でも機能が "送り出され" ます (Gradute)。
+<code>git.git</code> では次のような <em>統合ブランチ</em> を使っています:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+<em>maint</em> は次の "メンテナンスリリース" に入るべきコミットをたどります。
+つまり、前回リリースされた安定バージョンのアップデートです。
+</p>
+</li>
+<li>
+<p>
+<em>master</em> は次回のリリースに入るべきコミットをたどります。
+</p>
+</li>
+<li>
+<p>
+<em>next</em> は master にむけたトピックの安定化のための
+テスト用ブランチであることを意図しています。
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>少し異なった使われ方をする4番目のブランチがあります:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+<em>pu</em> (proposed updates, 提案中の変更)は、
+含めるにはまだ時期尚早なコミット用の統合ブランチです。
+(後述の "統合ブランチ" を参照してください)
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>4つのブランチは普通、それぞれのすぐ上に紹介したブランチの
+直系の子孫になっています。</p></div>
+<div class="paragraph"><p>概念的には、機能は不安定なブランチ
+(たいていは <em>next</em> または <em>pu</em> です)に入り、
+十分安定したと思われれば時期リリースにむけて <em>master</em>
+に"送り出さ" れます。</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>(訳注: 親子関係は
+  (親) maint &lt;- master &lt;- next &lt;- pu (子)
+となっていますが、開発の上流・下流でいうと
+  (下) maint &lt;- master &lt;- next &lt;- pu (上)
+となります。)</code></pre>
+</div></div>
+</div>
+<div class="sect2">
+<h3 id="_上流へのmerge">上流へのmerge</h3>
+<div class="paragraph"><p>上で議論したような "下流への送り出し" は実際には下流への merge
+では行うことはできません。 mergeをすると不安定なブランチの
+<em>全ての</em> 変更が merge されてしまうからです。従って、以下のようにします:</p></div>
+<div class="exampleblock">
+<div class="title">ルール: 上流へmergeする</div>
+<div class="content">
+<div class="paragraph"><p>バグフィクスはそれを必要とする最も古いサポート対象の
+ブランチにコミットします。そして、(周期的に)
+その統合ブランチを上流の複数のブランチにそれそれぞれ merge します。</p></div>
+</div></div>
+<div class="paragraph"><p>これは、非常に統制のとれたバグフィックスのワークフローを提供します。
+もし、例えば <em>master</em> に適用されたバグフィクスが <em>maint</em>
+も必要としていることに気づいたとしたら、
+あなたは(<a href="git-cherry-pick.html">git-cherry-pick(1)</a> を使って)下流に向けて cherry-pick
+する必要があります。 このような事態はほとんど発生しないはずであり、
+頻繁にやっているのでなければ心配する必要はありません。</p></div>
+</div>
+<div class="sect2">
+<h3 id="_トピックブランチ">トピックブランチ</h3>
+<div class="paragraph"><p>ささいな機能でない限り、実装に複数のpatchを必要とするはずです。
+そしておそらくその生存期間においては、
+追加のバグフィックスや機能改善を受け取るかもしれません。</p></div>
+<div class="paragraph"><p>統合ブランチになんでもかんでも直接コミットすることは、
+たくさんの問題もたらします： 間違ったコミットはやりなおせず、
+従ってそれらは一個一個リバートする必要があり、
+それらは混乱する歴史を生み、一連のコミットグループの
+一部だけリバートしたことを忘れたりすると、
+さらなる潜在的な間違いを生みます。
+並列に作業することは、さらなる混乱を生みながら変更をごちゃまぜにします。</p></div>
+<div class="paragraph"><p>"トピックブランチ" の使用はこれらの問題を解決します。
+こ名前は非常に自己説明的なもので、
+上で述べた "上流へmergeする" のルールから得られる警告も使います。</p></div>
+<div class="paragraph"><p>多くのことを違和感なく行えます:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+その機能/バグフィックスを統合ブランチに入れるには、
+  単にそれをmergeします。もしそのトピックが
+  さらに改善され続けたのであれば、再びmergeします。
+  (最も古いブランチに最初にmergeする必要はないことに注意してください。
+  例えばバグフィックスは、最初は <em>next</em> にmergeしてしばらくテストの期間を与え、
+  そして安定したことがわかったら <em>maint</em> にmergeします)
+</p>
+</li>
+<li>
+<p>
+もしそのトピック、例えば topic というブランチ上で作業を続けるのに
+  他のブランチ <em>other</em> の機能が必要だとわかったら、 <em>other</em> ブランチを
+  <em>topic</em> に mergeしてください。 (ただし、 "単なる習慣として"
+  実行してはいけません。後述します)
+</p>
+</li>
+<li>
+<p>
+もし間違ったブランチから分岐していたことに気づいて、 "過去に戻って"
+  やり直したいのであれば、 <a href="git-rebase.html">git-rebase(1)</a> を使ってください。
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>最後の要点が他の2つと競合することに注意してください:
+あるトピックがどこかにmergeされていた場合、
+rebaseされるべきではありません。 <a href="git-rebase.html">git-rebase(1)</a> の上流のrebaseからの回復
+(RECOVERING FROM UPSTREAM REBASE)のセクションを参照してください。</p></div>
+<div class="paragraph"><p>ここで、統合ブランチを "習慣的に" (大した理由なく定期的に)
+トピックにmergeする(話を広げて、定期的に上流を下流にmergeする)
+ことには賛成できない、という点を指摘しておくべきでしょう。</p></div>
+<div class="exampleblock">
+<div class="title">ルール: 明確な点だけを下流にmergeする</div>
+<div class="content">
+<div class="paragraph"><p>理由なく、下流に対してmergeしてはいけません:
+上流の API 変更があなたのブランチに影響を与えたり;
+あなたのブランチを上流に対してキレイにmergeすることはできなくなったり;
+ほかにもいろいろです。</p></div>
+</div></div>
+<div class="paragraph"><p>そうしないと、mergeされたトピックは(うまく分割された)
+単一の変更点以上のものを突然含むようになってしまいます。
+その結果として生まれるたくさんの小さなmergeは歴史を
+大いに散らかすことになります。
+あるファイルの歴史をあとから調査する人は皆、
+開発中のトピックにそのmergeが影響したかどうかを
+探しださなければならなくなります。
+さらに、上流のブランチにおいて、不注意にも "より安定した"
+ブランチへとmergeされてしまうかもしれません。
+などなどです。</p></div>
+</div>
+<div class="sect2">
+<h3 id="_使い捨て統合">使い捨て統合</h3>
+<div class="paragraph"><p>先のパラグラフに従っていれば、小さなトピックブランチを
+たくさん持っていることでしょう。
+そして、場合によってはどうやってそれらを
+相互作用させればよいのかと心配しているでしょう。
+もしかしてそれらをmergeした結果、
+動きさえしなくなってしまうのでは？
+そして、一方で私達はそれらを "安定"
+しているところへ mergeするのは避けたいと思っています。
+そういったmergeは簡単にはやり直せないからです。</p></div>
+<div class="paragraph"><p>その解決方法はもちろん、やり直しがきくmergeをつくることです:
+使い捨て統合ブランチへmergeしてください。</p></div>
+<div class="exampleblock">
+<div class="title">ルール: 使い捨て統合ブランチ</div>
+<div class="content">
+<div class="paragraph"><p>いくつかのトピックの相互作用をテストするために、
+使い捨ての統合ブランチへそれらをmergeします。
+ただしそのようなブランチを作業ベースにしてはいけません!</p></div>
+</div></div>
+<div class="paragraph"><p>もし、このブランチをテストの直後に確実に削除すると
+(極めて)明確にしているのであれば、pushさえ可能です。
+例えばテスターに対してそのブランチを使って作業する機会を与えるためにです。
+あるいは、他の開発者にもしそれらの開発中の作業が
+完了したらどうなるのかを見せるためにです。
+<code>git.git</code> はそういった使い捨て統合のための <em>pu</em>
+という、公式なブランチを持っています。</p></div>
+</div>
+<div class="sect2">
+<h3 id="_リリースにむけたブランチ管理">リリースにむけたブランチ管理</h3>
+<div class="paragraph"><p>上で議論されたようなmergeアプローチをとっているとすれば、
+プロジェクトをリリースしようというときには
+いくつかのブランチ管理作業が追加で必要になります。</p></div>
+<div class="paragraph"><p>機能リリースは <em>master</em> ブランチから作成されます。
+なぜなら <em>master</em> は次回の機能リリースに入るべき
+コミットをたどっているからです。</p></div>
+<div class="paragraph"><p><em>master</em> ブランチは <em>maint</em> ブランチのスーパーセットであるべきです。
+この条件を満たさない場合、<em>maint</em> ブランチは <em>master</em>
+に含まれないコミットを含むことになります。
+従って、これらのコミットが対応するバグフィックスは、
+機能リリースに含まれないということになってしまいます。</p></div>
+<div class="paragraph"><p><em>mater</em> が <em>maint</em> のスーパーセットであることを確認するには git log を使います:</p></div>
+<div class="exampleblock">
+<div class="title">レシピ: <em>master</em> が <em>maint</em> のスーパーセットであることを確認する</div>
+<div class="content">
+<div class="paragraph"><p><code>git log master..maint</code></p></div>
+</div></div>
+<div class="paragraph"><p>このコマンドではコミットはひとつも列挙されるべきではありません。
+もし列挙されたら <em>master</em> をcheckoutし、 <em>maint</em> をそこにmergeします。</p></div>
+<div class="paragraph"><p>これで機能リリースを作成作業を実行できるようになりました。
+<em>master</em> の先端にリリースバージョンであることを示すタグをつけます:</p></div>
+<div class="exampleblock">
+<div class="title">レシピ: リリースタグの作成</div>
+<div class="content">
+<div class="paragraph"><p><code>git tag -s -m "Git X.Y.Z" vX.Y.Z master</code></p></div>
+</div></div>
+<div class="paragraph"><p>この新しいタグを公開Gitサーバにpushする必要があります
+(後述の"分散ワークフロー"を参照してください)。
+これによりあなたのプロジェクトを追っている
+皆に対してタグを有効化できます。
+このpushはまた、post-updateフックをトリガーすることができ、
+リリース用tarボールや、事前フォーマットされた
+ドキュメントページを作成することに使えます。</p></div>
+<div class="paragraph"><p>同じように、メンテナンスリリースに対しては、
+<em>maint</em> がリリースされるべきコミットをたどっているので、
+上記のステップのタグ付けとpushを、 単に <em>master</em> ではなく
+<em>maint</em> に対してすればよいことになります。</p></div>
+</div>
+<div class="sect2">
+<h3 id="_機能リリース後のメンテナンスブランチ管理">機能リリース後のメンテナンスブランチ管理</h3>
+<div class="paragraph"><p>機能リリースの後は、そのメンテナンスブランチを管理する必要があります。</p></div>
+<div class="paragraph"><p>最初に、最新の機能リリースの前に作られた
+機能リリース用のメンテナンスフィックスを
+リリースし続けたいのであれば、
+そのリリース用のコミットを追跡する
+別のブランチを作っておく必要があります。</p></div>
+<div class="paragraph"><p>これを実行するには、現在のメンテナンスブランチを
+前のリリースバージョン番号の名前でコピーしておきます。
+(例えば最新リリースがX.Y.Z であれば、maint-X.Y.(Z-1)です)</p></div>
+<div class="exampleblock">
+<div class="title">レシピ: maintをコピーする</div>
+<div class="content">
+<div class="paragraph"><p><code>git branch maint-X.Y.(Z-1) maint</code></p></div>
+</div></div>
+<div class="paragraph"><p>今度は <em>maint</em> ブランチを新たにリリースされた
+コードへとfast-forwardします。
+これはメンテナンスフィックスが
+最新リリースを辿れるようにするためです。</p></div>
+<div class="exampleblock">
+<div class="title">レシピ: 新しいリリースへと maint を更新する</div>
+<div class="content">
+<div class="ulist"><ul>
+<li>
+<p>
+<code>git checkout maint</code>
+</p>
+</li>
+<li>
+<p>
+<code>git merge --ff-only master</code>
+</p>
+</li>
+</ul></div>
+</div></div>
+<div class="paragraph"><p>もしmergeが失敗したとすれば、
+それはfast-forwardではないからです。
+そうであれば <em>maint</em> 上のいくつかのバグフィックスが
+機能リリース内から欠けていることになります。
+このような事態は、先のセクションで述べたように、
+<em>master</em> と <em>maint</em> ブランチの内容を確認しておけば、
+発生しないはずです。</p></div>
+</div>
+<div class="sect2">
+<h3 id="_機能リリース後の_next_および_pu_のブランチ管理">機能リリース後の next および pu のブランチ管理</h3>
+<div class="paragraph"><p>機能リリース後、統合ブランチ <em>next</em> は
+<em>master</em> の先端へと巻き戻し、
+もとの <em>next</em> 上に生き残っていたトピックブランチを
+使って再構成して構いません。</p></div>
+<div class="exampleblock">
+<div class="title">レシピ: next を巻き戻して再構成する</div>
+<div class="content">
+<div class="ulist"><ul>
+<li>
+<p>
+<code>git checkout next</code>
+</p>
+</li>
+<li>
+<p>
+<code>git reset --hard master</code>
+</p>
+</li>
+<li>
+<p>
+<code>git merge ai/topic_in_next1</code>
+</p>
+</li>
+<li>
+<p>
+<code>git merge ai/topic_in_next2</code>
+</p>
+</li>
+<li>
+<p>
+&#8230;
+</p>
+</li>
+</ul></div>
+</div></div>
+<div class="paragraph"><p>これを実行する利点は、 <em>next</em> の歴史がキレイになることです。
+例えば、いくつかの <em>next</em> にmergeされたトピックブランチが
+最初は良く見えていたのに、後で望ましくない、あるいは
+早まったものだったとわかったとします。
+このようなケースでは、そのトピックブランチは
+<em>next</em> からリバートされるべきですが、
+歴史の中にはmergeされ、リバートされたという事実が残ってしまいます。
+<em>next</em> を作りなおすことにより、生まれ変わったトピックブランチに対して、
+やり直しのためのキレイな黒板を与えることができます。
+機能リリースは、それを実行するちょうど良い歴史上のポイントなのです。</p></div>
+<div class="paragraph"><p>これを実行するのであれば、 <em>next</em> の巻き戻しと再構成に
+関する公式アナウンスをすべきです。</p></div>
+<div class="paragraph"><p>同じ巻き戻しと再構成のプロセスが <em>pu</em> にも適用されます。
+<em>pu</em> は上で述べたように使い捨てブランチなので、
+公式アナウンスは不要です。</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_分散ワークフロー">分散ワークフロー</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>先のセクションで、どうやってトピックを管理するかを学びました。
+ふつう、そのプロジェクトで作業しているのはあなただけではないでしょう。
+だから、あなたは作業結果を共有しなければならないはずです。</p></div>
+<div class="paragraph"><p>大雑把にいうと、ふたつの重要なワークフローがあります:
+mergeとpatchです。
+重要な違いは、mergeワークフローはmergeを含む全ての歴史を
+伝搬させることができ、一方patchではできない、ということです。
+両方のワークフローは並行して使うことができます:
+<code>git.git</code> においてはサブシステムのメンテナたちだけが
+mergeワークフローを使っており、他の人たちは皆patchを送っています。</p></div>
+<div class="paragraph"><p>メンテナは、例えば「Signed-off-by」要求といった、
+提出されるすべてのコミット/patchがそこに含めなければ
+ならないような制限を課すことがあるという点について注意してください。</p></div>
+<div class="sect2">
+<h3 id="_mergeワークフロー">mergeワークフロー</h3>
+<div class="paragraph"><p>mergeワークフローは上流と下流の間でブランチを
+コピーすることによってなされます。
+上流は貢献内容を公式な歴史へとmergeできます。
+下流は作業を公式な歴史の上で行います。</p></div>
+<div class="paragraph"><p>これを実行するのに3つの主要なツールがあります。</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+<a href="git-push.html">git-push(1)</a> はあなたのブランチをリモートのリポジトリ、
+  普通はすべての参加者にが読み込み可能なひとつのリポジトリにコピーします。
+</p>
+</li>
+<li>
+<p>
+<a href="git-fetch.html">git-fetch(1)</a> はリモートブランチをあなたのリポジトリにコピーします:
+  そして、
+</p>
+</li>
+<li>
+<p>
+<a href="git-pull.html">git-pull(1)</a> は fetch と merge を一気に行います。
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>最後の項目に注意してください。
+リモートブランチをmergeしたいのでなければ、
+<em>git pull</em> を使っては <em>いけません</em> 。</p></div>
+<div class="paragraph"><p>変更を公開するのは簡単です:</p></div>
+<div class="exampleblock">
+<div class="title">レシピ: Push/Pull: ブランチ/トピックを公開する</div>
+<div class="content">
+<div class="paragraph"><p><code>git push &lt;remote&gt; &lt;branch&gt;</code> を実行し、皆にfetchできる場所を知らせます。</p></div>
+</div></div>
+<div class="paragraph"><p>メールのような異なる方法で他の人に知らせる必要があるでしょう。
+(Gitでは事前にフォーマットされたプルリクエストを
+ 上流のメンテナに送る作業を簡素化するため、
+ <a href="git-request-pull.html">git-request-pull(1)</a> を提供しています)</p></div>
+<div class="paragraph"><p>もし単に統合ブランチの最新のコピーを取得したいだけであれば、
+新しい状態に保つことも簡単です:</p></div>
+<div class="exampleblock">
+<div class="title">レシピ: Push/Pull: 最新の状態に保つ</div>
+<div class="content">
+<div class="paragraph"><p>最新の状態に保つには、 <code>git fetch &lt;remote&gt;</code>
+または <code>git remote update</code> を使います。</p></div>
+</div></div>
+<div class="paragraph"><p>そして、先に説明したとおり、単にリモートの
+安定ブランチからあなたのトピックブランチを分岐させてください。</p></div>
+<div class="paragraph"><p>もしあなたがメンテナで、他の人たちのトピックブランチを
+統合ブランチにmergeしたいのであれば、
+他の人たちは普通そうしてくれとメールで要求を送るでしょう。
+要求はこんなかんじになります。</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>以下からプルしてください
+    &lt;url&gt; &lt;branch&gt;</code></pre>
+</div></div>
+<div class="paragraph"><p>このケースでは、以下のように <em>git pull</em> で
+一気に fetch と merge を実行できます。</p></div>
+<div class="exampleblock">
+<div class="title">レシピ: Push/Pull: リモートのトピックのmerge</div>
+<div class="content">
+<div class="paragraph"><p><code>git pull &lt;url&gt; &lt;branch&gt;</code></p></div>
+</div></div>
+<div class="paragraph"><p>場合によっては、メンテナが下流から変更をpullしようとしたときに、
+mergeコンフリクトが発生するかもしれません。
+このケースでは、下流の開発者に対してmergeと
+コンフリクトの解消をお願いすることができます
+(たぶん、彼らのほうがどうやって解消するかよくわかっているでしょうし)。
+これは下流が上流からmerge <em>すべき</em>
+数少ないケースです。</p></div>
+</div>
+<div class="sect2">
+<h3 id="_patch_ワークフロー">Patch ワークフロー</h3>
+<div class="paragraph"><p>もしあなたが貢献者で、emailで変更点を上流へ送るのであれば、
+普段どおりトピックブランチを使うべきです(上のほうを参照)。
+そして、それに対応するemailを生成するのに、
+<a href="git-format-patch.html">git-format-patch(1)</a> を使います。
+(これは手でフォーマットするよりも推奨されます。
+ メンテナ生活を楽にするためです。)</p></div>
+<div class="exampleblock">
+<div class="title">レシピ: format-patch/am: ブランチ/トピックを公開する</div>
+<div class="content">
+<div class="ulist"><ul>
+<li>
+<p>
+<code>git format-patch -M upstream..topic</code> を使って、
+トピックブランチを事前フォーマットされた形式に変換します。
+</p>
+</li>
+<li>
+<p>
+<code>git send-email --to=&lt;受信者&gt; &lt;パッチ(複数)&gt;</code>
+</p>
+</li>
+</ul></div>
+</div></div>
+<div class="paragraph"><p>さらなる利用上の注意については <a href="git-format-patch.html">git-format-patch(1)</a>
+および <a href="git-send-email.html">git-send-email(1)</a>のmanページを参照してください。</p></div>
+<div class="paragraph"><p>メンテナがあなたに対して、
+「あなたのpatchは現在の上流にはもう適用できない」と伝えてきたら、
+あなたのトピックをrebaseしなければいけません
+(ここではmergeを使うことはできません。
+ なぜならmergeをformat-patchできないからです。):</p></div>
+<div class="exampleblock">
+<div class="title">レシピ: format-patch/am: トピックを最新の状態に保つ</div>
+<div class="content">
+<div class="paragraph"><p><code>git pull --rebase &lt;url&gt; &lt;branch&gt;</code></p></div>
+</div></div>
+<div class="paragraph"><p>このrebaseを実行する中でコンフリクトを修正することができます。
+多分あなたはemail以外ではトピックを
+公開していないでしょうから、rebaseによって
+問題が発生することはありません。</p></div>
+<div class="paragraph"><p>もしそのような一連のpatchを(メンテナとして、または、
+おそらくメーリングリストに送られたものを購読者として)
+受け取ったのであれば、そのメールをファイルにセーブして、
+トピックブランチを作成し、それらのコミットを
+<em>git am</em> でインポートします:</p></div>
+<div class="exampleblock">
+<div class="title">レシピ: format-patch/am: patch をインポートする</div>
+<div class="content">
+<div class="paragraph"><p><code>git am &lt; patch</code></p></div>
+</div></div>
+<div class="paragraph"><p>ここで指摘するに値する機能は3way mergeです。
+これは、コンフリクトが発生した場合に便利です: <code>git am -3</code>
+は、mergeベースを検出するのに、 patchに含まれる情報を使います。
+他のオプションについては <a href="git-am.html">git-am(1)</a> を参照してください。</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_あわせて読みたい">あわせて読みたい</h2>
+<div class="sectionbody">
+<div class="paragraph"><p><a href="gittutorial.html">gittutorial(7)</a>,
+<a href="git-push.html">git-push(1)</a>,
+<a href="git-pull.html">git-pull(1)</a>,
+<a href="git-merge.html">git-merge(1)</a>,
+<a href="git-rebase.html">git-rebase(1)</a>,
+<a href="git-format-patch.html">git-format-patch(1)</a>,
+<a href="git-send-email.html">git-send-email(1)</a>,
+<a href="git-am.html">git-am(1)</a></p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_git">GIT</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>gitworkflows は <a href="git.html">git(1)</a> の一部です。</p></div>
+</div>
+</div>
+</div>
+<div id="footnotes"><hr /></div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2014-02-08 22:19:30 JST
+</div>
+</div>
+</body>
+</html>
