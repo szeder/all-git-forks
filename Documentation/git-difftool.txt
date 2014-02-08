@@ -34,6 +34,11 @@ OPTIONS
 	This is the default behaviour; the option is provided to
 	override any configuration settings.
 
+-Y::
+--no-prompt-background::
+	Do not prompt before launching a diff tool and runs all tools
+	in parallel.
+
 -t <tool>::
 --tool=<tool>::
 	Use the diff tool specified by <tool>.  Valid values include

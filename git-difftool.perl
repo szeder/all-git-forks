@@ -20,7 +20,7 @@ use File::Find;
 use File::stat;
 use File::Path qw(mkpath rmtree);
 use File::Temp qw(tempdir);
-use Getopt::Long qw(:config pass_through);
+use Getopt::Long qw(:config pass_through :config no_ignore_case);
 use Git;
 
 sub usage
@@ -30,7 +30,7 @@ sub usage
 usage: git difftool [-t|--tool=<tool>] [--tool-help]
                     [-x|--extcmd=<cmd>]
                     [-g|--gui] [--no-gui]
-                    [--prompt] [-y|--no-prompt]
+                    [--prompt] [-y|--no-prompt] [-Y|--no-prompt-background]
                     [-d|--dir-diff]
                     ['git diff' options]
 USAGE
@@ -356,6 +356,7 @@ sub main
 		extcmd => undef,
 		gui => undef,
 		help => undef,
+                background => undef,
 		prompt => undef,
 		symlinks => $^O ne 'cygwin' &&
 				$^O ne 'MSWin32' && $^O ne 'msys',
@@ -366,6 +367,8 @@ sub main
 		'h' => \$opts{help},
 		'prompt!' => \$opts{prompt},
 		'y' => sub { $opts{prompt} = 0; },
+		'Y' => sub { $opts{prompt} = 0; $opts{background} = 1;},
+		'no-prompt-background' => sub { $opts{prompt} = 0; $opts{background} = 1;},
 		'symlinks' => \$opts{symlinks},
 		'no-symlinks' => sub { $opts{symlinks} = 0; },
 		't|tool:s' => \$opts{difftool_cmd},
@@ -408,7 +411,7 @@ sub main
 	if (defined($opts{dirdiff})) {
 		dir_diff($opts{extcmd}, $opts{symlinks});
 	} else {
-		file_diff($opts{prompt});
+		file_diff($opts{prompt}, $opts{background});
 	}
 }
 
@@ -480,7 +483,7 @@ sub dir_diff
 
 sub file_diff
 {
-	my ($prompt) = @_;
+	my ($prompt, $background) = @_;
 
 	if (defined($prompt)) {
 		if ($prompt) {
@@ -488,6 +491,10 @@ sub file_diff
 		} else {
 			$ENV{GIT_DIFFTOOL_NO_PROMPT} = 'true';
 		}
+	}
+
+	if(defined($background) && $background) {
+		$ENV{GIT_BACKGROUND_DIFF} = '';
 	}
 
 	$ENV{GIT_PAGER} = '';

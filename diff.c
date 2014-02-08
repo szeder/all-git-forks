@@ -3056,8 +3056,23 @@ static void run_diff_cmd(const char *pgm,
 	}
 
 	if (pgm) {
-		run_external_diff(pgm, name, other, one, two, xfrm_msg,
-				  complete_rewrite, o);
+		const char * const run_in_background =
+			getenv("GIT_BACKGROUND_DIFF");
+
+		if (run_in_background){
+		    pid_t pid;
+		    pid = fork();
+		    if (pid < 0)
+			    die_errno("Can't fork background process.");
+		    else if (pid == 0) {
+			    run_external_diff(pgm, name, other, one, two, xfrm_msg,
+					    complete_rewrite, o);
+			    exit(0);
+		    }
+		}
+		else
+			run_external_diff(pgm, name, other, one, two, xfrm_msg,
+					complete_rewrite, o);
 		return;
 	}
 	if (one && two)
