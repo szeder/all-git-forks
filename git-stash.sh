@@ -56,6 +56,16 @@ clear_stash () {
 	fi
 }
 
+create_worktree_tree () {
+# called with a temporary GIT_INDEX_FILE
+	test -n "$GIT_INDEX_FILE" &&
+	git read-tree -m $i_tree &&
+	git diff --name-only -z HEAD -- >"$TMP-stagenames" &&
+	git update-index -z --add --remove --stdin <"$TMP-stagenames" &&
+	git write-tree &&
+	rm -f "$GIT_INDEX_FILE"
+}
+
 create_stash () {
 	stash_msg="$1"
 	untracked="$2"
@@ -111,15 +121,9 @@ create_stash () {
 	then
 
 		# state of the working tree
-		w_tree=$( (
-			git read-tree --index-output="$TMPindex" -m $i_tree &&
-			GIT_INDEX_FILE="$TMPindex" &&
-			export GIT_INDEX_FILE &&
-			git diff --name-only -z HEAD -- >"$TMP-stagenames" &&
-			git update-index -z --add --remove --stdin <"$TMP-stagenames" &&
-			git write-tree &&
-			rm -f "$TMPindex"
-		) ) ||
+		w_tree=$(
+			GIT_INDEX_FILE="$TMPindex" create_worktree_tree
+		) ||
 			die "$(gettext "Cannot save the current worktree state")"
 
 	else
