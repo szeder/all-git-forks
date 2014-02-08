@@ -498,10 +498,21 @@ test_expect_success 'fetch into the current branch with --update-head-ok' '
 '
 
 test_expect_success 'fetch --dry-run' '
-
 	rm -f .git/FETCH_HEAD &&
 	git fetch --dry-run . &&
 	! test -f .git/FETCH_HEAD
+'
+
+test_expect_success 'fetch --dry-run presents commit changes' '
+	cd one &&
+	base=$(git rev-parse HEAD | cut -c1-7) &&
+	echo >file updated by one to test dry-run &&
+	git commit -a -m "updated by one to test dry -run" && 
+	remote=$(git rev-parse HEAD | cut -c1-7)
+	str=${base}..${remote}
+	cd ../two &&
+	git fetch --dry-run 2>&1 | grep $str
+	cd ..
 '
 
 test_expect_success "should be able to fetch with duplicate refspecs" '
