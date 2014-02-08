@@ -15,6 +15,8 @@
 #include "submodule.h"
 #include "string-list.h"
 #include "sha1-array.h"
+#include "csum-file.h"
+#include "pack.h"
 
 /* rsync support */
 
@@ -1117,6 +1119,70 @@ static int run_pre_push_hook(struct transport *transport,
 
 	return ret;
 }
+
+int transport_update_ref_remote(struct transport* transport,
+				struct ref *remote_refs) {
+	// On this command, we need to reproduce small parts of other commands,
+	// but because we want to avoid the assumption that we are running from
+	// a local git repository, we'll not re-use that code.
+	struct git_transport_data *data = transport->data;
+	int ret = 0;
+	if (!data->got_remote_heads) {
+		struct ref *tmp_refs;
+		connect_setup(transport, 1, 0);
+		get_remote_heads(data->fd[0], NULL, 0, &tmp_refs, REF_NORMAL,
+				 NULL, &data->shallow);
+		data->got_remote_heads = 1;
+	}
+	
+
+	// Now we skip into the functionality from send_pack, where
+	// we send the new refs to the server. Since this is a lower-level
+	// command, we do not do all the checks from
+	// set_ref_status_for_push. We also do support all the options
+	// that send_pack does
+	//
+	// TODO: support omitting the old value for existing refs
+	struct strbuf req_buf = STRBUF_INIT;
+	struct ref *ref;
+	int out = data->fd[1];
+	for (ref = remote_refs; ref; ref = ref->next) {
+	  char *old_hex = sha1_to_hex(ref->old_sha1);
+	  char *new_hex = sha1_to_hex(ref->new_sha1);
+	  packet_buf_write(&req_buf, "%s %s %s",
+			     old_hex, new_hex, ref->name);
+	}
+	write_or_die(out, req_buf.buf, req_buf.len);
+	packet_flush(out);
+	strbuf_release(&req_buf);
+
+	// And finally, we skip all the way to write_pack_file
+	// This is actually the part that would absolutely depend on
+	// having a local git repository.
+	//
+	// The basic assumption here is that you can only use this
+	// command for objects that are already in the remote,
+	// otherwise this would be a regular push.
+	//
+	// The end result is that the pack we need to send is always
+	// empty.
+	struct sha1file *f;
+	unsigned char sha1[20];
+	f = sha1fd_throughput(out, "<stdout>", NULL);
+	write_pack_header(f, 0);
+	sha1close(f, sha1, CSUM_CLOSE);
+
+	// We now finish the connection on the same fashion that
+	// git_transport_push does
+	close(data->fd[1]);
+	close(data->fd[0]);
+	ret |= finish_connect(data->conn);
+	data->conn = NULL;
+	data->got_remote_heads = 0;
+
+	return ret;
+}				    
+
 
 int transport_push(struct transport *transport,
 		   int refspec_nr, const char **refspec, int flags,

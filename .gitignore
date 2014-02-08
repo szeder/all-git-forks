@@ -161,6 +161,7 @@
 /git-unpack-objects
 /git-update-index
 /git-update-ref
+/git-update-ref-remote
 /git-update-server-info
 /git-upload-archive
 /git-upload-pack

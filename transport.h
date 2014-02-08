@@ -171,6 +171,8 @@ void transport_set_verbosity(struct transport *transport, int verbosity,
 #define REJECT_FETCH_FIRST     0x08
 #define REJECT_NEEDS_FORCE     0x10
 
+int transport_update_ref_remote(struct transport* transport,
+				struct ref* remote_refs);
 int transport_push(struct transport *connection,
 		   int refspec_nr, const char **refspec, int flags,
 		   unsigned int * reject_reasons);
