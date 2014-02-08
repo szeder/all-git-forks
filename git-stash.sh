@@ -56,11 +56,35 @@ clear_stash () {
 	fi
 }
 
+# Filter out subpaths which are under directories which have been replaced by
+# non-directories (regular files or symlinks)
+filter_subpaths_masked_by_nondirs () {
+	while IFS= read -r -d '' path; do
+		parent=$(dirname "$path")
+		while test "$parent" != .
+		do
+			if test -L "$parent" -o ! -d "$parent"
+			then
+				git rm -rf --cached --quiet "$parent"
+				printf "$parent\0"
+				break
+			fi
+			parent=$(dirname "$parent")
+		done
+		if test "$parent" = .
+		then
+			printf "$path\0"
+		fi
+	done
+}
+
 create_worktree_tree () {
 # called with a temporary GIT_INDEX_FILE
 	test -n "$GIT_INDEX_FILE" &&
 	git read-tree -m $i_tree &&
-	git diff --name-only -z HEAD -- >"$TMP-stagenames" &&
+	git diff --name-only --diff-filter=D -z HEAD | filter_subpaths_masked_by_nondirs >"$TMP-stagenames" &&
+	# NEEDSWORK: does this cover all non-D filters that we support?
+	git diff --name-only --diff-filter=AMT -z HEAD -- >>"$TMP-stagenames" &&
 	git update-index -z --add --remove --stdin <"$TMP-stagenames" &&
 	git write-tree &&
 	rm -f "$GIT_INDEX_FILE"

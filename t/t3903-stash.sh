@@ -685,7 +685,7 @@ test_expect_success 'handle stash specification with spaces' '
 	grep pig file
 '
 
-test_expect_success 'should work when directory is replaced by a symlink to itself' '
+test_expect_failure 'should work when directory is replaced by a symlink to itself' '
 	git reset --hard &&
 	mkdir dir &&
 	echo foo > dir/foo &&
@@ -693,7 +693,9 @@ test_expect_success 'should work when directory is replaced by a symlink to itse
 	git commit -m "Add file in dir" &&
 	mv dir dir2 &&
 	ln -s dir2 dir &&
-	git stash
+	git stash &&
+	test ! -h dir -a -d dir &&
+	test "$(cat dir/foo)" = foo
 '
 
 test_done
