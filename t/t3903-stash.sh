@@ -685,4 +685,15 @@ test_expect_success 'handle stash specification with spaces' '
 	grep pig file
 '
 
+test_expect_success 'should work when directory is replaced by a symlink to itself' '
+	git reset --hard &&
+	mkdir dir &&
+	echo foo > dir/foo &&
+	git add dir/foo &&
+	git commit -m "Add file in dir" &&
+	mv dir dir2 &&
+	ln -s dir2 dir &&
+	git stash
+'
+
 test_done
