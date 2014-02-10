@@ -716,6 +716,50 @@ perl () {
 	command "$PERL_PATH" "$@"
 }
 
+# Normalize the value given in $1 to one of "true", "false", or "auto". The
+# result is written to stdout. E.g.:
+#
+#     GIT_TEST_HTTPD=$(test_tristate "$GIT_TEST_HTTPD")
+#
+test_tristate () {
+	case "$1" in
+	""|auto)
+		echo auto
+		;;
+	*)
+		# Rely on git-config to handle all the variants of
+		# true/1/on/etc that we allow.
+		if ! git -c magic.hack="$1" config --bool magic.hack 2>/dev/null
+		then
+			# If git-config failed, it was some non-bool value like
+			# YesPlease. Default this to "true" for historical
+			# compatibility.
+			echo true
+		fi
+	esac
+}
+
+# Exit the test suite, either by skipping all remaining tests or by
+# exiting with an error. If "$1" is "auto", we then we assume we were
+# opportunistically trying to set up some tests and we skip. If it is
+# "true", then we report a failure.
+#
+# The error/skip message should be given by $2.
+#
+test_skip_or_die () {
+	case "$1" in
+	auto)
+		skip_all=$2
+		test_done
+		;;
+	true)
+		error "$2"
+		;;
+	*)
+		error "BUG: test tristate is '$1' (real error: $2)"
+	esac
+}
+
 # The following mingw_* functions obey POSIX shell syntax, but are actually
 # bash scripts, and are meant to be used only with bash on Windows.
 
