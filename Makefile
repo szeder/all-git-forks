@@ -725,6 +725,7 @@ LIB_H += thread-utils.h
 LIB_H += transport.h
 LIB_H += tree-walk.h
 LIB_H += tree.h
+LIB_H += unix-socket.h
 LIB_H += unpack-trees.h
 LIB_H += url.h
 LIB_H += urlmatch.h
@@ -876,6 +877,7 @@ LIB_OBJS += transport-helper.o
 LIB_OBJS += tree-diff.o
 LIB_OBJS += tree.o
 LIB_OBJS += tree-walk.o
+LIB_OBJS += unix-socket.o
 LIB_OBJS += unpack-trees.o
 LIB_OBJS += url.o
 LIB_OBJS += urlmatch.o
@@ -1377,10 +1379,10 @@ ifdef NO_INET_PTON
 	BASIC_CFLAGS += -DNO_INET_PTON
 endif
 ifndef NO_UNIX_SOCKETS
-	LIB_OBJS += unix-socket.o
-	LIB_H += unix-socket.h
 	PROGRAM_OBJS += credential-cache.o
 	PROGRAM_OBJS += credential-cache--daemon.o
+else
+	BASIC_CFLAGS += -DNO_UNIX_SOCKETS
 endif
 
 ifdef NO_ICONV

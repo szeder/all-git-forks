@@ -1,9 +1,24 @@
 #include "cache.h"
 #include "unix-socket.h"
 
+#ifdef NO_UNIX_SOCKETS
+#ifndef AF_UNIX
+#define AF_UNIX 0
+#endif
+struct sockaddr_un {
+	int sun_family;
+	char sun_path[2];
+};
+#endif
+
 static int unix_stream_socket(void)
 {
+#ifdef NO_UNIX_SOCKETS
+	int fd = -1;
+	errno = ENOSYS;
+#else
 	int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+#endif
 	if (fd < 0)
 		die_errno("unable to create socket");
 	return fd;
@@ -102,6 +117,8 @@ int unix_stream_listen(const char *path)
 	if (unix_sockaddr_init(&sa, path, &ctx) < 0)
 		return -1;
 	fd = unix_stream_socket();
+	if (fd < 0)
+		goto fail;
 
 	unlink(path);
 	if (bind(fd, (struct sockaddr *)&sa, sizeof(sa)) < 0)
