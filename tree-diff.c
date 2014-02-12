@@ -89,7 +89,6 @@ static void show_path(struct strbuf *base, struct diff_options *opt,
 {
 	unsigned mode;
 	const char *path;
-	const unsigned char *sha1;
 	int pathlen;
 	int old_baselen = base->len;
 	int isdir, recurse = 0, emitthis = 1;
@@ -99,7 +98,7 @@ static void show_path(struct strbuf *base, struct diff_options *opt,
 
 	if (t2) {
 		/* path present in resulting tree */
-		sha1 = tree_entry_extract(t2, &path, &mode);
+		tree_entry_extract(t2, &path, &mode);
 		pathlen = tree_entry_len(&t2->entry);
 		isdir = S_ISDIR(mode);
 	}
@@ -111,7 +110,6 @@ static void show_path(struct strbuf *base, struct diff_options *opt,
 		pathlen = tree_entry_len(&t1->entry);
 
 		isdir = S_ISDIR(mode);
-		sha1 = NULL;
 		mode = 0;
 	}
 
