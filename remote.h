@@ -202,6 +202,7 @@ struct branch {
 };
 
 struct branch *branch_get(const char *name);
+struct branch **branches_get_all(int *num_branches);
 
 int branch_has_merge_config(struct branch *branch);
 int branch_merge_matches(struct branch *, int n, const char *);

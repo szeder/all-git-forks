@@ -1529,6 +1529,14 @@ struct branch *branch_get(const char *name)
 	return ret;
 }
 
+struct branch **branches_get_all(int *num_branches)
+{
+	read_config();
+	*num_branches = branches_nr;
+
+	return branches;
+}
+
 int branch_has_merge_config(struct branch *branch)
 {
 	return branch && !!branch->merge;

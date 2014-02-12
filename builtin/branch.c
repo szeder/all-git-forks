@@ -727,11 +727,45 @@ static void rename_branch(const char *oldname, const char *newname, int force)
 		die(_("Branch renamed to %s, but HEAD is not updated!"), newname);
 
 	strbuf_addf(&oldsection, "branch.%s", oldref.buf + 11);
-	strbuf_release(&oldref);
 	strbuf_addf(&newsection, "branch.%s", newref.buf + 11);
-	strbuf_release(&newref);
 	if (git_config_rename_section(oldsection.buf, newsection.buf) < 0)
 		die(_("Branch is renamed, but update of config-file failed"));
+
+	/* Determine if there is any branch for which the current branch is the 
+	 * upstream
+	 */
+	int nr_branches = 0;
+	struct branch **branches = branches_get_all(&nr_branches);
+
+	int i = 0;
+	for (i = 0; i < nr_branches; ++i) {
+		/* Check if we are tracking a local branch */
+		if (branches[i]->remote_name &&
+			!strcmp(branches[i]->remote_name,".")) {
+
+			int j = 0;
+			int found_merge_with_old_name = 0;
+			for (j = 0; j < branches[i]->merge_nr; ++j) {
+				if(branches[i]->merge_name[j] &&
+					!strcmp(branches[i]->merge_name[j], oldref.buf)) {
+					found_merge_with_old_name = 1;
+					break;
+				}
+			}
+
+			if (found_merge_with_old_name) {
+				struct strbuf key = STRBUF_INIT;
+				strbuf_addf(&key, "branch.%s.merge", branches[i]->name);
+
+				git_config_set_multivar(key.buf, newref.buf, oldref.buf, 1);
+
+				strbuf_release(&key);
+			}
+		}
+	}
+
+	strbuf_release(&oldref);
+	strbuf_release(&newref);
 	strbuf_release(&oldsection);
 	strbuf_release(&newsection);
 }
