@@ -907,4 +907,14 @@ test_expect_success 'tracking with unexpected .fetch refspec' '
 	)
 '
 
+test_expect_success 'test renaming local upstream branch' '
+	git checkout -b my16 master &&
+	git branch --track my17 my16 &&
+	test $(git config branch.my17.remote) = "." &&
+	test $(git config branch.my17.merge) = refs/heads/my16 &&
+	git branch -m my16 my18 &&
+	test $(git config branch.my17.remote) = "." &&
+	test $(git config branch.my17.merge) = refs/heads/my18
+'
+
 test_done
