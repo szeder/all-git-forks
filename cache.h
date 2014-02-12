@@ -948,7 +948,7 @@ enum date_mode {
 	DATE_RAW
 };
 
-typedef time_t git_time_t;
+typedef int64_t git_time_t;
 #define GIT_TIME_T_MAX         INT64_MAX
 const char *show_date(git_time_t time, int timezone, enum date_mode mode);
 void show_date_relative(git_time_t time, int tz, const struct timeval *now,
