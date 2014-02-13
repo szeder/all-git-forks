@@ -11,6 +11,8 @@
 #include "gpg-interface.h"
 #include "sequencer.h"
 #include "line-log.h"
+#include "cache-tree.h"
+#include "merge-recursive.h"
 
 struct decoration name_decoration = { "object names" };
 
@@ -627,6 +629,8 @@ void show_log(struct rev_info *opt)
 	if (opt->from_ident.mail_begin && opt->from_ident.name_begin)
 		ctx.from_ident = &opt->from_ident;
 	ctx.inline_single = opt->inline_single;
+	if (opt->show_merge_bases && commit->parents && commit->parents->next)
+		ctx.merge_bases = get_octopus_merge_bases(commit->parents);
 	pretty_print_commit(&ctx, commit, &msgbuf);
 
 	if (opt->add_signoff)
@@ -667,6 +671,7 @@ void show_log(struct rev_info *opt)
 
 	strbuf_release(&msgbuf);
 	free(ctx.notes_message);
+	free(ctx.merge_bases);
 }
 
 int log_tree_diff_flush(struct rev_info *opt)
@@ -723,7 +728,63 @@ int log_tree_diff_flush(struct rev_info *opt)
 
 static int do_diff_combined(struct rev_info *opt, struct commit *commit)
 {
-	diff_tree_combined_merge(commit, opt->dense_combined_merges, opt);
+	diff_tree_combined_merge(commit, opt);
+	return !opt->loginfo;
+}
+
+static int do_diff_remerge(struct rev_info *opt, struct commit *commit)
+{
+	struct commit_list *merge_bases;
+	struct commit *result, *parent1, *parent2;
+	struct merge_options o;
+	char *branch1, *branch2;
+
+	if (commit->parents->next->next) {
+		printf("--remerge-diff not supported for octopus merges.\n");
+		return 0;
+	}
+
+	parent1 = commit->parents->item;
+	parent2 = commit->parents->next->item;
+	parse_commit(parent1);
+	parse_commit(parent2);
+	branch1 = xstrdup(sha1_to_hex(parent1->object.sha1));
+	branch2 = xstrdup(sha1_to_hex(parent2->object.sha1));
+
+	merge_bases = get_octopus_merge_bases(commit->parents);
+	init_merge_options(&o);
+	o.verbosity = -1;
+	o.no_worktree = 1;
+	o.conflicts_in_index = 1;
+	o.use_ondisk_index = 0;
+	o.branch1 = branch1;
+	o.branch2 = branch2;
+	merge_recursive(&o, parent1, parent2, merge_bases, &result);
+	free(branch1);
+	free(branch2);
+
+	active_cache_tree = cache_tree();
+	if (cache_tree_update(active_cache_tree,
+			      (const struct cache_entry * const *)active_cache,
+			      active_nr, WRITE_TREE_SILENT) < 0) {
+		printf("BUG: merge conflicts not fully folded, cannot diff.\n");
+		return 0;
+	}
+
+	if (opt->loginfo && !opt->no_commit_id) {
+		show_log(opt);
+
+		if (opt->verbose_header && opt->diffopt.output_format)
+			printf("%s%c", diff_line_prefix(&opt->diffopt),
+			       opt->diffopt.line_termination);
+	}
+
+	diff_tree_sha1(active_cache_tree->sha1, commit->tree->object.sha1,
+		       "", &opt->diffopt);
+	log_tree_diff_flush(opt);
+
+	cache_tree_free(&active_cache_tree);
+
 	return !opt->loginfo;
 }
 
@@ -756,10 +817,12 @@ static int log_tree_diff(struct rev_info *opt, struct commit *commit, struct log
 
 	/* More than one parent? */
 	if (parents && parents->next) {
-		if (opt->ignore_merges)
+		if (opt->merge_diff_mode == MERGE_DIFF_IGNORE)
 			return 0;
-		else if (opt->combine_merges)
+		else if (merge_diff_mode_is_any_combined(opt))
 			return do_diff_combined(opt, commit);
+		else if (opt->merge_diff_mode == MERGE_DIFF_REMERGE)
+			return do_diff_remerge(opt, commit);
 		else if (opt->first_parent_only) {
 			/*
 			 * Generate merge log entry only for the first

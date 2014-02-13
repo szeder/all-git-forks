@@ -841,4 +841,38 @@ test_expect_success 'dotdot is a parent directory' '
 	test_cmp expect actual
 '
 
+shorten () {
+	for arg; do
+		git rev-parse --short "$arg"
+	done
+}
+
+fill_in_merge_bases () {
+	while IFS= read line; do
+		case "$line" in
+		Merge:*)
+			printf "%s\n" "$line"
+			printf "%s" "Bases:"
+			printf " %s" $(shorten \
+			    $(git merge-base --all --octopus \
+				${line##Merge:}))
+			printf "\n"
+			;;
+		*)
+			printf "%s\n" "$line"
+			;;
+		esac
+	done
+}
+
+test_expect_success '--merge-bases' '
+	git log |
+	fill_in_merge_bases >expect
+	git log --merge-bases >actual &&
+	test_cmp expect actual
+'
+
+cat >expect <<\EOF
+EOF
+
 test_done
