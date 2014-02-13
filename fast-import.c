@@ -2003,7 +2003,7 @@ static char *parse_ident(const char *buf)
 	const char *ltgt;
 	size_t name_len;
 	char *ident;
-	git_time_t timestamp;
+	git_time timestamp;
 
 	/* ensure there is a space delimiter even if there is no name */
 	if (*buf == '<')

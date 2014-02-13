@@ -948,18 +948,19 @@ enum date_mode {
 	DATE_RAW
 };
 
-typedef int64_t git_time_t;
-#define GIT_TIME_T_MAX         INT64_MAX
-const char *show_date(git_time_t time, int timezone, enum date_mode mode);
-void show_date_relative(git_time_t time, int tz, const struct timeval *now,
+typedef long git_time;
+#define GIT_TIME_MAX         LONG_MAX 
+#define GIT_TIME_PRINT       "%ld"
+const char *show_date(git_time time, int timezone, enum date_mode mode);
+void show_date_relative(git_time time, int tz, const struct timeval *now,
 			struct strbuf *timebuf);
-int parse_date(const char *date, char *buf, int bufsize, git_time_t *timestamp);
-int parse_date_basic(const char *date, git_time_t *timestamp, int *offset);
-int parse_expiry_date(const char *date, git_time_t *timestamp);
+int parse_date(const char *date, char *buf, int bufsize, git_time *timestamp);
+int parse_date_basic(const char *date, git_time *timestamp, int *offset);
+int parse_expiry_date(const char *date, git_time *timestamp);
 void datestamp(char *buf, int bufsize);
 #define approxidate(s) approxidate_careful((s), NULL)
-git_time_t approxidate_careful(const char *, int *);
-git_time_t approxidate_relative(const char *date, const struct timeval *now);
+git_time approxidate_careful(const char *, int *);
+git_time approxidate_relative(const char *date, const struct timeval *now);
 enum date_mode parse_date_format(const char *format);
 
 #define IDENT_STRICT	       1

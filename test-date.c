@@ -24,7 +24,7 @@ static void parse_dates(char **argv, struct timeval *now)
 		long t;
 		int tz;
 		int rcode;
-        git_time_t timestamp;
+        git_time timestamp;
 
 		result[0] = 0;
 		rcode = parse_date(*argv, result, sizeof(result), &timestamp);

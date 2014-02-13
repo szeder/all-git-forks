@@ -27,8 +27,8 @@ struct cmd_reflog_expire_cb {
 	int rewrite;
 	int updateref;
 	int verbose;
-	git_time_t expire_total;
-	git_time_t expire_unreachable;
+	git_time expire_total;
+	git_time expire_unreachable;
 	int recno;
 };
 
@@ -491,7 +491,7 @@ static struct reflog_expire_cfg *find_cfg_ent(const char *pattern, size_t len)
 	return ent;
 }
 
-static int parse_expire_cfg_value(const char *var, const char *value, git_time_t *expire)
+static int parse_expire_cfg_value(const char *var, const char *value, git_time *expire)
 {
 	if (!value)
 		return config_error_nonbool(var);
@@ -509,7 +509,7 @@ static int reflog_expire_config(const char *var, const char *value, void *cb)
 {
 	const char *pattern, *key;
 	int pattern_len;
-	git_time_t expire;
+	git_time expire;
 	int slot;
 	struct reflog_expire_cfg *ent;
 

@@ -9,7 +9,7 @@
 /*
  * This is like mktime, but without normalization of tm_wday and tm_yday.
  */
-static int tm_to_time_t(const struct tm *tm, git_time_t *output)
+static int tm_to_time_t(const struct tm *tm, git_time *output)
 {
 	static const int mdays[] = {
 	    0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334
@@ -34,19 +34,25 @@ static int tm_to_time_t(const struct tm *tm, git_time_t *output)
 		return -1;
 	if (month < 0 || month > 11) /* array bounds */
 		return -1;
-	if (month < 2 || year % 4)
-		day--;
 	if (tm->tm_hour < 0 || tm->tm_min < 0 || tm->tm_sec < 0)
 		return -1;
 
 	if(year >= 70)
 	{
 		year -= 70;
+
+        if (month < 2 || year % 4)
+            day--;
+
         *output = (year * 365 + (year + 1) / 4 + mdays[month] + day) * 24*60*60UL +
 			      tm->tm_hour * 60*60 + tm->tm_min * 60 + tm->tm_sec;
 	}
     else
     {
+
+        if (month < 2 || (year + 0) % 4)
+            day--;
+
         mirror_year = 69 - year;
         mirror_month = mirror_mdays[month];
         mirror_day = actual_mdays[month] - day - 1;
@@ -54,6 +60,8 @@ static int tm_to_time_t(const struct tm *tm, git_time_t *output)
         *output = -1 * ((mirror_year * 365 + (mirror_year + 1) / 4 + mirror_month + mirror_day) * 24*60*60UL) +
                   (tm->tm_hour * 60 * 60 + tm->tm_min * 60 + tm->tm_sec) - 86400;
     }
+
+    printf("output: " GIT_TIME_PRINT "\n", *output);
 
     return 0;
 }
@@ -67,7 +75,7 @@ static const char *weekday_names[] = {
 	"Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"
 };
 
-static git_time_t gm_time_t(git_time_t time, int tz)
+static time_t gm_time_t(git_time time, int tz)
 {
 	int minutes;
 
@@ -82,9 +90,9 @@ static git_time_t gm_time_t(git_time_t time, int tz)
  * thing, which means that tz -0100 is passed in as the integer -100,
  * even though it means "sixty minutes off"
  */
-static struct tm *time_to_tm(git_time_t time, int tz)
+static struct tm *time_to_tm(git_time time, int tz)
 {
-	git_time_t t = gm_time_t(time, tz);
+	time_t t = gm_time_t(time, tz);
 	return gmtime(&t);
 }
 
@@ -92,9 +100,10 @@ static struct tm *time_to_tm(git_time_t time, int tz)
  * What value of "tz" was in effect back then at "time" in the
  * local timezone?
  */
-static int local_tzoffset(git_time_t time)
+static int local_tzoffset(git_time time)
 {
-	git_time_t t, t_local;
+	time_t t;
+    git_time t_local;
 	struct tm tm;
 	int offset, eastwest;
 
@@ -114,7 +123,7 @@ static int local_tzoffset(git_time_t time)
 	return offset * eastwest;
 }
 
-void show_date_relative(git_time_t time, int tz,
+void show_date_relative(git_time time, int tz,
 			       const struct timeval *now,
 			       struct strbuf *timebuf)
 {
@@ -188,14 +197,14 @@ void show_date_relative(git_time_t time, int tz,
 		 (diff + 183) / 365);
 }
 
-const char *show_date(git_time_t time, int tz, enum date_mode mode)
+const char *show_date(git_time time, int tz, enum date_mode mode)
 {
 	struct tm *tm;
 	static struct strbuf timebuf = STRBUF_INIT;
 
 	if (mode == DATE_RAW) {
 		strbuf_reset(&timebuf);
-		strbuf_addf(&timebuf, "%lu %+05d", time, tz);
+		strbuf_addf(&timebuf, GIT_TIME_PRINT " %+05d", time, tz);
 		return timebuf.buf;
 	}
 
@@ -380,12 +389,12 @@ static int match_alpha(const char *date, struct tm *tm, int *offset)
 	return skip_alpha(date);
 }
 
-static int is_date(int year, int month, int day, struct tm *now_tm, git_time_t now, struct tm *tm)
+static int is_date(int year, int month, int day, struct tm *now_tm, git_time now, struct tm *tm)
 {
 	if (month > 0 && month < 13 && day > 0 && day < 32) {
 		struct tm check = *tm;
 		struct tm *r = (now_tm ? &check : tm);
-		git_time_t specified;
+		git_time specified;
 		int rcode = 0;
 
 		r->tm_mon = month - 1;
@@ -423,9 +432,9 @@ static int is_date(int year, int month, int day, struct tm *now_tm, git_time_t n
 	return 0;
 }
 
-static int match_multi_number(git_time_t num, char c, const char *date, char *end, struct tm *tm)
+static int match_multi_number(git_time num, char c, const char *date, char *end, struct tm *tm)
 {
-	git_time_t now;
+	time_t now;
 	struct tm now_tm;
 	struct tm *refuse_future;
 	long num2, num3;
@@ -505,7 +514,7 @@ static int match_digit(const char *date, struct tm *tm, int *offset, int *tm_gmt
 {
 	int n;
 	char *end;
-	git_time_t num;
+	git_time num;
 
 	num = strtoul(date, &end, 10);
 
@@ -515,7 +524,7 @@ static int match_digit(const char *date, struct tm *tm, int *offset, int *tm_gmt
 	 * numbers like 20070606 as a YYYYMMDD date.
 	 */
 	if (num >= 100000000 && nodate(tm)) {
-		git_time_t time = num;
+		time_t time = num;
 		if (gmtime_r(&time, tm)) {
 			*tm_gmt = 1;
 			return end - date;
@@ -632,7 +641,7 @@ static int match_tz(const char *date, int *offp)
 	return end - date;
 }
 
-static int date_string(git_time_t date, int offset, char *buf, int len)
+static int date_string(git_time date, int offset, char *buf, int len)
 {
 	int sign = '+';
 
@@ -640,23 +649,23 @@ static int date_string(git_time_t date, int offset, char *buf, int len)
 		offset = -offset;
 		sign = '-';
 	}
-	return snprintf(buf, len, "%lu %c%02d%02d", date, sign, offset / 60, offset % 60);
+	return snprintf(buf, len, GIT_TIME_PRINT " %c%02d%02d", date, sign, offset / 60, offset % 60);
 }
 
 /*
  * Parse a string like "0 +0000" as ancient timestamp near epoch, but
  * only when it appears not as part of any other string.
  */
-static int match_object_header_date(const char *date, git_time_t *timestamp, int *offset)
+static int match_object_header_date(const char *date, git_time *timestamp, int *offset)
 {
 	char *end;
-	git_time_t stamp;
+	git_time stamp;
 	int ofs;
 
 	if (*date < '0' || '9' < *date)
 		return -1;
 	stamp = strtoul(date, &end, 10);
-	if (*end != ' ' || stamp == GIT_TIME_T_MAX || (end[1] != '+' && end[1] != '-'))
+	if (*end != ' ' || stamp == GIT_TIME_MAX || (end[1] != '+' && end[1] != '-'))
 		return -1;
 	date = end + 2;
 	ofs = strtol(date, &end, 10);
@@ -672,11 +681,11 @@ static int match_object_header_date(const char *date, git_time_t *timestamp, int
 
 /* Gr. strptime is crap for this; it doesn't have a way to require RFC2822
    (i.e. English) day/month names, and it doesn't work correctly with %z. */
-int parse_date_basic(const char *date, git_time_t *timestamp, int *offset)
+int parse_date_basic(const char *date, git_time *timestamp, int *offset)
 {
 	struct tm tm;
 	int tm_gmt;
-	git_time_t dummy_timestamp;
+	git_time dummy_timestamp;
 	int dummy_offset;
 	int rcode = 0;
 
@@ -725,11 +734,11 @@ int parse_date_basic(const char *date, git_time_t *timestamp, int *offset)
 	/* mktime uses local timezone */
 	rcode = tm_to_time_t(&tm, timestamp);
 	if (*offset == -1) {
-		git_time_t temp_time = mktime(&tm);
-		if ((git_time_t)*timestamp > temp_time) {
-			*offset = ((git_time_t)*timestamp - temp_time) / 60;
+		git_time temp_time = mktime(&tm);
+		if ((git_time)*timestamp > temp_time) {
+			*offset = ((git_time)*timestamp - temp_time) / 60;
 		} else {
-			*offset = -(int)((temp_time - (git_time_t)*timestamp) / 60);
+			*offset = -(int)((temp_time - (git_time)*timestamp) / 60);
 		}
 	}
 
@@ -742,7 +751,7 @@ int parse_date_basic(const char *date, git_time_t *timestamp, int *offset)
 	return 0; /* success */
 }
 
-int parse_expiry_date(const char *date, git_time_t *timestamp)
+int parse_expiry_date(const char *date, git_time *timestamp)
 {
 	int errors = 0;
 
@@ -757,16 +766,16 @@ int parse_expiry_date(const char *date, git_time_t *timestamp)
 		 * of the past, and there is nothing from the future
 		 * to be kept.
 		 */
-		*timestamp = GIT_TIME_T_MAX;
+		*timestamp = GIT_TIME_MAX;
 	else
 		*timestamp = approxidate_careful(date, &errors);
 
 	return errors;
 }
 
-int parse_date(const char *date, char *result, int maxlen, git_time_t *timestamp)
+int parse_date(const char *date, char *result, int maxlen, git_time *timestamp)
 {
-	git_time_t dummy_timestamp;
+	git_time dummy_timestamp;
 	int offset;
 
 	if (parse_date_basic(date, &dummy_timestamp, &offset))
@@ -800,7 +809,7 @@ enum date_mode parse_date_format(const char *format)
 
 void datestamp(char *buf, int bufsize)
 {
-    git_time_t timestamp;
+    git_time timestamp;
 	time_t now;
 	int offset;
 
@@ -900,7 +909,7 @@ static void date_am(struct tm *tm, struct tm *now, int *num)
 
 static void date_never(struct tm *tm, struct tm *now, int *num)
 {
-	git_time_t n = 0;
+	time_t n = 0;
 	localtime_r(&n, tm);
 }
 
@@ -1037,7 +1046,7 @@ static const char *approxidate_alpha(const char *date, struct tm *tm, struct tm 
 static const char *approxidate_digit(const char *date, struct tm *tm, int *num)
 {
 	char *end;
-	git_time_t number = strtoul(date, &end, 10);
+	git_time number = strtoul(date, &end, 10);
 
 	switch (*end) {
 	case ':':
@@ -1084,14 +1093,14 @@ static void pending_number(struct tm *tm, int *num)
 	}
 }
 
-static git_time_t approxidate_str(const char *date,
+static git_time approxidate_str(const char *date,
 				  const struct timeval *tv,
 				  int *error_ret)
 {
 	int number = 0;
 	int touched = 0;
 	struct tm tm, now;
-	git_time_t time_sec;
+	time_t time_sec;
 
 	time_sec = tv->tv_sec;
 	localtime_r(&time_sec, &tm);
@@ -1121,9 +1130,9 @@ static git_time_t approxidate_str(const char *date,
 	return update_tm(&tm, &now, 0);
 }
 
-git_time_t approxidate_relative(const char *date, const struct timeval *tv)
+git_time approxidate_relative(const char *date, const struct timeval *tv)
 {
-	git_time_t timestamp;
+	git_time timestamp;
 	int offset;
 	int errors = 0;
 
@@ -1132,10 +1141,10 @@ git_time_t approxidate_relative(const char *date, const struct timeval *tv)
 	return approxidate_str(date, tv, &errors);
 }
 
-git_time_t approxidate_careful(const char *date, int *error_ret)
+git_time approxidate_careful(const char *date, int *error_ret)
 {
 	struct timeval tv;
-	git_time_t timestamp;
+	git_time timestamp;
 	int offset;
 	int dummy = 0;
 	if (!error_ret)

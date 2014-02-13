@@ -296,7 +296,7 @@ const char *fmt_ident(const char *name, const char *email,
 	int strict = (flag & IDENT_STRICT);
 	int want_date = !(flag & IDENT_NO_DATE);
 	int want_name = !(flag & IDENT_NO_NAME);
-    git_time_t timestamp;
+    git_time timestamp;
 
 	if (want_name && !name)
 		name = ident_default_name();
