@@ -61,7 +61,7 @@ static int tm_to_time_t(const struct tm *tm, git_time *output)
                   (tm->tm_hour * 60 * 60 + tm->tm_min * 60 + tm->tm_sec) - 86400;
     }
 
-    printf("output: " GIT_TIME_PRINT "\n", *output);
+    printf("tm_to_time_t output: " GIT_TIME_PRINT "\n", *output);
 
     return 0;
 }
@@ -201,6 +201,8 @@ const char *show_date(git_time time, int tz, enum date_mode mode)
 {
 	struct tm *tm;
 	static struct strbuf timebuf = STRBUF_INIT;
+
+    printf("time: " GIT_TIME_PRINT ", tz: %d\n", time, tz);
 
 	if (mode == DATE_RAW) {
 		strbuf_reset(&timebuf);
