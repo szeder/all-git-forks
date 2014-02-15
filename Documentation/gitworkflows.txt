@@ -540,8 +540,8 @@ tag to the tip of 'master' indicating the release version:
 `git log master..maint`
 ===================================================
 
-このコマンドではコミットはひとつも列挙されるべきではありません。
-もし列挙されたら 'master' をcheckoutし、 'maint' をそこにmergeします。
+このコマンドではコミットはひとつもリストされるべきではありません。
+もしリストされたら 'master' をcheckoutし、 'maint' をそこにmergeします。
 
 これで機能リリースを作成作業を実行できるようになりました。
 'master' の先端にリリースバージョンであることを示すタグをつけます:
