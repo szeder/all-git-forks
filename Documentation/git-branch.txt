@@ -19,6 +19,30 @@ SYNOPSIS
 'git branch' (-d | -D) [-r] <branchname>...
 'git branch' --edit-description [<branchname>]
 
+................................................................................
+git-branch(1)
+=============
+
+名称
+----
+git-branch - ブランチをリスト、作成、削除する
+
+書式
+----
+[verse]
+'git branch' [--color[=<when>] | --no-color] [-r | -a]
+	[--list] [-v [--abbrev=<length> | --no-abbrev]]
+	[--column[=<options>] | --no-column]
+	[(--merged | --no-merged | --contains) [<commit>]] [<pattern>...]
+'git branch' [--set-upstream | --track | --no-track] [-l] [-f] <branchname> [<start-point>]
+'git branch' (--set-upstream-to=<upstream> | -u <upstream>) [<branchname>]
+'git branch' --unset-upstream [<branchname>]
+'git branch' (-m | -M) [<oldbranch>] <newbranch>
+'git branch' (-d | -D) [-r] <branchname>...
+'git branch' --edit-description [<branchname>]
+
+................................................................................
+
 DESCRIPTION
 -----------
 
@@ -31,6 +55,20 @@ matching branches. If multiple patterns are given, a branch is shown if
 it matches any of the patterns.  Note that when providing a
 `<pattern>`, you must use `--list`; otherwise the command is interpreted
 as branch creation.
+
+................................................................................
+解説
+----
+
+`--list` が指定された場合、またはオプション以外の引数がなかった場合、
+存在するブランチがリストされます; カレントブランチはアスタリスクでハイライト
+されます。 オプション `-r` はリモート追跡ブランチをリストし、オプション
+`-a` はローカルとリモート両方のブランチを表示します。 複数のパターンが
+与えられた場合、あるブランチはパターンのうちどれかにマッチすれば表示されます。
+`<pattern>` を与える場合、 `--list` を使用しなければならないことに注意
+してください; でなければ、このコマンドはブランチ作成であると解釈します。
+
+................................................................................
 
 With `--contains`, shows only the branches that contain the named commit
 (in other words, the branches whose tip commits are descendants of the
@@ -47,6 +85,22 @@ Note that this will create the new branch, but it will not switch the
 working tree to it; use "git checkout <newbranch>" to switch to the
 new branch.
 
+................................................................................
+`--contains` を使用すると、指定されたコミットを含むブランチのみ表示します
+(言い換えると、ブランチの先端のコミットが、指定されたコミットの子孫である
+ようなブランチのことです)。 `--merged` を使用すると、指定されたコミットに
+マージ済みのブランチ(つまり、ブランチの先端のコミットが指定されたコミット
+から到達可能であるようなブランチ) のみリストされます。 `--no-merged` を使用
+すると、指定されたコミットにマージされていないブランチのみリストされます。
+<commit> 引数がない場合、'HEAD' がデフォルトになります(つまり、カレントブランチ
+の先端です)。
+
+コマンドの2番めの形式は現在の 'HEAD' を指し示すような <branchname> という
+名前の新しいブランチヘッドを作成します; 新しいブランチに切り替えるには
+"git checkout <newbranch>" を使用します。
+
+................................................................................
+
 When a local branch is started off a remote-tracking branch, Git sets up the
 branch (specifically the `branch.<name>.remote` and `branch.<name>.merge`
 configuration entries) so that 'git pull' will appropriately merge from
@@ -61,6 +115,22 @@ If <oldbranch> had a corresponding reflog, it is renamed to match
 renaming. If <newbranch> exists, -M must be used to force the rename
 to happen.
 
+................................................................................
+ローカルブランチがリモート追跡ブランチから分岐した場合、 Git は
+'git pull' でそのリモート追跡ブランチから適切にマージできるよう、
+ブランチを設定します(具体的には `branch.<name>.remote` と
+`branch.<name>.merge` の設定エントリを設定します)。 この挙動はグローバル設定の
+`branch.autosetupmerge` フラグで変更することもできます。 この設定は `--track`
+および `--no-track` オプションで上書きでき、 あとから
+`git branch --set-upstream-to` で変更できます。
+
+`-m` または `-M` オプションを指定すると、 <oldbranch> の名前が <newbranch> に
+変更されます。 もし <oldbranch> が対応する reflog を持っている場合、
+<newbranch> にマッチするよう、それも名前が変更され、 ブランチの名前の変更を
+記録する reflog エントリが作成されます。 もし <newbranch> が存在する場合、
+名前の変更を強制するためには -M を指定しなければなりません。
+................................................................................
+
 With a `-d` or `-D` option, `<branchname>` will be deleted.  You may
 specify more than one branch for deletion.  If the branch currently
 has a reflog then the reflog will also be deleted.
@@ -71,6 +141,18 @@ in the remote repository or if 'git fetch' was configured not to fetch
 them again. See also the 'prune' subcommand of linkgit:git-remote[1] for a
 way to clean up all obsolete remote-tracking branches.
 
+................................................................................
+`-d` または `-D` オプションを指定すると、 `<branchname>` が削除されます。
+削除するブランチはふたつ以上指定できます。 そのブランチが現在 reflog を
+持っている場合、 reflog も削除されます。
+
+リモート追跡ブランチを削除するには `-r` と `-d` を一緒に指定します。リモート
+追跡ブランチの削除は、リモートリポジトリにそれがもう存在しないか、 'git fetch'
+がそのブランチを取得しないよう設定されている場合にのみ意味があるということに
+注意してください。 使われなくなったリモート追跡ブランチを全て消す方法
+については、 linkgit:git-remote[1] の 'prune' サブコマンドも参照してください。
+
+................................................................................
 
 OPTIONS
 -------
@@ -91,6 +173,29 @@ OPTIONS
 	Note that in non-bare repositories, reflogs are usually
 	enabled by default by the `core.logallrefupdates` config option.
 
+................................................................................
+オプション
+----------
+-d::
+--delete::
+	ブランチを削除します。 対象のブランチはその上流のブランチに完全に
+	マージされていなければなりません。 `--track` または `--set-upstream`
+	によって上流が設定されていない場合、 'HEAD' にマージされていなければ
+	なりません。
+
+-D::
+	ブランチのマージ状況を考慮せずに削除します。
+
+-l::
+--create-reflog::
+	ブランチの reflog を作成します。 このオプションは
+	"<branchname>@\{yesterday}" のような日付ごとの sha1 表現の使用を
+	有効化し、ブランチに対する変更の全てを記録するようにします。
+	ノンベアリポジトリにおいては、 reflog は `core.logallrefupdates` 設定
+	オプションにより、デフォルトで常に有効であることに注意してください。
+
+................................................................................
+
 -f::
 --force::
 	Reset <branchname> to <startpoint> if <branchname> exists
@@ -102,6 +207,22 @@ OPTIONS
 
 -M::
 	Move/rename a branch even if the new branch name already exists.
+
+................................................................................
+-f::
+--force::
+	<branchname> がすでに存在していれば、 <branchname> を <startpoint> に
+	リセットします。 `-f` オプションなしでは、 'git branch' は既存の
+	ブランチに対する変更を拒否します。
+
+-m::
+--move::
+	ブランチと対応する reflog を移動/名前変更します。
+
+-M::
+	新しいブランチ名がすでに存在していても、ブランチを移動/名前変更します。
+
+................................................................................
 
 --color[=<when>]::
 	Color branches to highlight current, local, and
@@ -121,6 +242,28 @@ OPTIONS
 +
 This option is only applicable in non-verbose mode.
 
+................................................................................
+--color[=<when>]::
+	カレントブランチ、ローカルブランチ、リモート追跡ブランチに色を
+	つけてハイライトします。
+	値は always (デフォルト), never, auto のいずれかでなければなりません。
+
+--no-color::
+	設定ファイルが出力の色付けをデフォルトにしている場合でも、ブランチの
+	色付けを無効にします。
+	`--color=never` と同じです。
+
+--column[=<options>]::
+--no-column::
+	ブランチのリストをカラム表示にします。 オプションの文法については
+	column.branch の設定値を見てください。 <options> なしの `--column`
+       および `--no-column` の指定はそれぞれ 'always' と 'never' を指定した
+       場合と等価です。
++
+このオプションは冗長モードでない場合にのみ有効です。
+
+................................................................................
+
 -r::
 --remotes::
 	List or delete (if used with -d) the remote-tracking branches.
@@ -132,6 +275,22 @@ This option is only applicable in non-verbose mode.
 --list::
 	Activate the list mode. `git branch <pattern>` would try to create a branch,
 	use `git branch --list <pattern>` to list matching branches.
+
+................................................................................
+-r::
+--remotes::
+	リモート追跡ブランチをリストまたは (-dを一緒に指定した場合) 削除します。
+
+-a::
+--all::
+	ローカルブランチとリモート追跡ブランチの両方をリストします。
+
+--list::
+	リストモードで動作させます。 `git branch <pattern>` はブランチを作成
+	しようとします。 マッチするブランチをリストするには
+	`git branch --list <pattern>` を使います。
+
+................................................................................
 
 -v::
 -vv::
@@ -147,6 +306,22 @@ This option is only applicable in non-verbose mode.
 	Be more quiet when creating or deleting a branch, suppressing
 	non-error messages.
 
+................................................................................
+-v::
+-vv::
+--verbose::
+	リストモードの場合、各ブランチヘッドの sha1 とコミットサブジェクト
+	を各行に表示し、上流のブランチとコミット数の差も (あれば) 一緒に
+	表示します。 2回指定された場合、 上流のブランチ名も表示します
+	(`git remote show <remote>` も参照してください)。
+
+-q::
+--quiet::
+	エラー以外のメッセージ出力を抑制して、ブランチの作成と削除を
+	より静かに行います。
+
+................................................................................
+
 --abbrev=<length>::
 	Alter the sha1's minimum display length in the output listing.
 	The default value is 7 and can be overridden by the `core.abbrev`
@@ -154,6 +329,16 @@ This option is only applicable in non-verbose mode.
 
 --no-abbrev::
 	Display the full sha1s in the output listing rather than abbreviating them.
+
+................................................................................
+--abbrev=<length>::
+	リストされた出力中の sha1 の最小表示長を変更します。デフォルト値は
+	7 で、 `core.abbrev` 設定オプションで上書きできます。
+
+--no-abbrev::
+	リストされた出力の sha1 を省略せず、完全な値を表示します。
+
+................................................................................
 
 -t::
 --track::
@@ -170,6 +355,25 @@ Set the branch.autosetupmerge configuration variable to `false` if you
 want `git checkout` and `git branch` to always behave as if '--no-track'
 were given. Set it to `always` if you want this behavior when the
 start-point is either a local or remote-tracking branch.
+
+................................................................................
+-t::
+--track::
+	新しいブランチを作成するとき、その新しいブランチから見た
+	"上流(upstream)" として開始地点のブランチを記録するために、
+	`branch.<name>remote` と `branch.<name>.merge` の設定エントリを
+	設定します。 この設定は `git status` と `git branch -v` を実行した
+	ときに、これらのブランチ間の関係を表示するよう git に指示します。
+	加えて、 このブランチがチェックアウトされている状態で `git pull` を
+	引数なしで実行したときに、 この上流から pull するように指示します。
++
+この挙動はブランチの開始地点がリモート追跡ブランチだったときのデフォルトです。
+`git checkout` と `git branch` が常に '--no-track' が指定されたように振る舞って
+欲しいのであれば、 設定値 branch.autosetupmerge を `false` に設定します。
+開始地点がローカルブランチとリモート追跡ブランチのどちらであってもこの挙動
+になって欲しければ、 設定値を `always` に設定します。
+
+................................................................................
 
 --no-track::
 	Do not set up "upstream" configuration, even if the
@@ -191,6 +395,28 @@ start-point is either a local or remote-tracking branch.
 	Remove the upstream information for <branchname>. If no branch
 	is specified it defaults to the current branch.
 
+................................................................................
+--no-track::
+	設定値 branch.autosetupmerge が true であっても "上流" を設定しません。
+
+--set-upstream::
+	指定されたブランチが存在しないか、 `--force` が指定されている場合、
+	`--track` とまったく同一の動作をします。 それ以外の場合も `--track`
+	でブランチを作成するのと同様の設定を行いますが、ブランチ開始地点は
+	変更しません。
+
+-u <upstream>::
+--set-upstream-to=<upstream>::
+	<upstream> が <branchname> の上流ブランチであると見えるように
+	<branchname> の追跡情報を設定します。 <branchname> が指定されない
+	場合、 デフォルトでカレントブランチが対象となります。
+
+--unset-upstream::
+	<branchname> の上流に関する情報を削除します。 ブランチが指定されない
+	場合、 デフォルトでカレントブランチが対象となります。
+
+................................................................................
+
 --edit-description::
 	Open an editor and edit the text to explain what the branch is
 	for, to be used by various other commands (e.g. `request-pull`).
@@ -206,6 +432,25 @@ start-point is either a local or remote-tracking branch.
 --no-merged [<commit>]::
 	Only list branches whose tips are not reachable from the
 	specified commit (HEAD if not specified). Implies `--list`.
+
+................................................................................
+--edit-description::
+	エディタを開き、ブランチの目的を説明するテキストを編集します。
+	テキストは他のさまざまなコマンド (例えば `request-pull`) で使われます。
+
+--contains [<commit>]::
+	指定された <commit> (指定がなければ HEAD) を含むブランチのみリスト
+	します。 `--list` が暗黙的に指定されます。
+
+--merged [<commit>]::
+	指定された <commit> (指定がなければ HEAD) から到達可能なブランチのみ
+	リストします。 `--list` が暗黙的に指定されます。
+
+--no-merged [<commit>]::
+	指定された <commit> (指定がなければ HEAD) から到達可能でないブランチ
+	のみリストします。 `--list` が暗黙的に指定されます。
+
+................................................................................
 
 <branchname>::
 	The name of the branch to create or delete.
@@ -226,6 +471,27 @@ start-point is either a local or remote-tracking branch.
 	<branchname> apply.
 
 
+................................................................................
+<branchname>::
+	作成または削除するブランチの名前です。
+	新しいブランチ名は linkgit:git-check-ref-format[1] で定義される
+	チェックをすべてパスしなければなりません。これらのチェックで
+	ブランチ名に使える文字が制限されることがあります。
+
+<start-point>::
+	新しいブランチヘッドがこのコミットを指すことになります。 ここには
+	ブランチ名、コミットID, またはタグを指定できます。 もしこれが省略
+	された場合、代わりに HEAD が使われます。
+
+<oldbranch>::
+	名前変更の対象となる、現在存在しているブランチの名前です。
+
+<newbranch>::
+	存在するブランチのための新しい名前です。 <branchname> と同じ制限が
+	適用されます。
+
+................................................................................
+
 Examples
 --------
 
@@ -240,6 +506,25 @@ $ git checkout my2.6.14
 +
 <1> This step and the next one could be combined into a single step with
 "checkout -b my2.6.14 v2.6.14".
+
+................................................................................
+
+例
+--
+
+すでにあるタグから開発を開始::
++
+------------
+$ git clone git://git.kernel.org/pub/scm/.../linux-2.6 my2.6
+$ cd my2.6
+$ git branch my2.6.14 v2.6.14   <1>
+$ git checkout my2.6.14
+------------
++
+<1> このステップと次のステップは "checkout -b my2.6.14 v2.6.14" で1ステップに
+できます。
+
+................................................................................
 
 Delete an unneeded branch::
 +
@@ -257,6 +542,25 @@ See linkgit:git-fetch[1].
 is currently checked out) does not have all commits from the test branch.
 
 
+................................................................................
+不要なブランチを削除::
++
+------------
+$ git clone git://git.kernel.org/.../git.git my.git
+$ cd my.git
+$ git branch -d -r origin/todo origin/html origin/man   <1>
+$ git branch -D test                                    <2>
+------------
++
+<1> リモート追跡ブランチ "todo", "html", "man" を削除します。 次回の 'fetch'
+または 'pull' で再び作成されます (そうしないよう設定しない限り)。
+linkgit:git-fetch[1] を見てください。
+<2> "test" ブランチのすべてのコミットが "master" ブランチ (または現在
+チェックアウトされているブランチ) にマージされていない場合でも "test"
+ブランチを削除します。
+
+................................................................................
+
 Notes
 -----
 
@@ -267,6 +571,21 @@ a branch and check it out with a single command.
 The options `--contains`, `--merged` and `--no-merged` serve three related
 but different purposes:
 
+................................................................................
+
+注意
+----
+
+すぐにチェックアウトするブランチを作成するのであれば、 '-b' オプションを
+指定して git checkout コマンドを使ったほうが、ブランチの作成とチェックアウト
+を1ステップで実行できるので簡単です。
+
+
+`--contains`, `--merged` および `--no-merged` のオプションは3つの関連する、
+しかし異なる目的のために使えます。
+
+................................................................................
+
 - `--contains <commit>` is used to find all branches which will need
   special attention if <commit> were to be rebased or amended, since those
   branches contain the specified <commit>.
@@ -276,6 +595,19 @@ but different purposes:
 
 - `--no-merged` is used to find branches which are candidates for merging
   into HEAD, since those branches are not fully contained by HEAD.
+
+................................................................................
+- `--contains <commit>` は <commit> が rebase または amend されるときに
+  特に注意が必要なブランチ名を探すときに使います。 これらのブランチは
+  <commit> を含んでいる(contain)ためです。
+
+- `--merged` は安全に削除できるブランチを探すときに使います。これらの
+  ブランチは HEAD に完全に含まれているためです。
+
+- `--no-merged` は HEAD にマージする候補となるブランチを探すときに使います。
+  これらのブランチは HEAD に完全には含まれていないためです。
+
+................................................................................
 
 SEE ALSO
 --------
@@ -288,3 +620,21 @@ a branch?''] in the Git User's Manual.
 GIT
 ---
 Part of the linkgit:git[1] suite
+
+................................................................................
+
+あわせて読みたい
+----------------
+
+linkgit:git-check-ref-format[1],
+linkgit:git-fetch[1],
+linkgit:git-remote[1],
+Git ユーザーズマニュアルの
+link:user-manual.html#what-is-a-branch[``Understanding history: What is
+a branch?'']
+
+GIT
+---
+これは linkgit:git[1] の一部です。
+
+................................................................................
