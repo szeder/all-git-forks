@@ -1,0 +1,1317 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
+<meta name="generator" content="AsciiDoc 8.6.8" />
+<title>git-add(1)</title>
+<style type="text/css">
+/* Shared CSS for AsciiDoc xhtml11 and html5 backends */
+
+/* Default font. */
+body {
+  font-family: Georgia,serif;
+}
+
+/* Title font. */
+h1, h2, h3, h4, h5, h6,
+div.title, caption.title,
+thead, p.table.header,
+#toctitle,
+#author, #revnumber, #revdate, #revremark,
+#footer {
+  font-family: Arial,Helvetica,sans-serif;
+}
+
+body {
+  margin: 1em 5% 1em 5%;
+}
+
+a {
+  color: blue;
+  text-decoration: underline;
+}
+a:visited {
+  color: fuchsia;
+}
+
+em {
+  font-style: italic;
+  color: navy;
+}
+
+strong {
+  font-weight: bold;
+  color: #083194;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #527bbd;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+
+h1, h2, h3 {
+  border-bottom: 2px solid silver;
+}
+h2 {
+  padding-top: 0.5em;
+}
+h3 {
+  float: left;
+}
+h3 + * {
+  clear: left;
+}
+h5 {
+  font-size: 1.0em;
+}
+
+div.sectionbody {
+  margin-left: 0;
+}
+
+hr {
+  border: 1px solid silver;
+}
+
+p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+ul, ol, li > p {
+  margin-top: 0;
+}
+ul > li     { color: #aaa; }
+ul > li > * { color: black; }
+
+.monospaced, code, pre {
+  font-family: "Courier New", Courier, monospace;
+  font-size: inherit;
+  color: navy;
+  padding: 0;
+  margin: 0;
+}
+
+
+#author {
+  color: #527bbd;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+#email {
+}
+#revnumber, #revdate, #revremark {
+}
+
+#footer {
+  font-size: small;
+  border-top: 2px solid silver;
+  padding-top: 0.5em;
+  margin-top: 4.0em;
+}
+#footer-text {
+  float: left;
+  padding-bottom: 0.5em;
+}
+#footer-badges {
+  float: right;
+  padding-bottom: 0.5em;
+}
+
+#preamble {
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+div.imageblock, div.exampleblock, div.verseblock,
+div.quoteblock, div.literalblock, div.listingblock, div.sidebarblock,
+div.admonitionblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.admonitionblock {
+  margin-top: 2.0em;
+  margin-bottom: 2.0em;
+  margin-right: 10%;
+  color: #606060;
+}
+
+div.content { /* Block element content. */
+  padding: 0;
+}
+
+/* Block element titles. */
+div.title, caption.title {
+  color: #527bbd;
+  font-weight: bold;
+  text-align: left;
+  margin-top: 1.0em;
+  margin-bottom: 0.5em;
+}
+div.title + * {
+  margin-top: 0;
+}
+
+td div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content + div.title {
+  margin-top: 0.0em;
+}
+
+div.sidebarblock > div.content {
+  background: #ffffee;
+  border: 1px solid #dddddd;
+  border-left: 4px solid #f0f0f0;
+  padding: 0.5em;
+}
+
+div.listingblock > div.content {
+  border: 1px solid #dddddd;
+  border-left: 5px solid #f0f0f0;
+  background: #f8f8f8;
+  padding: 0.5em;
+}
+
+div.quoteblock, div.verseblock {
+  padding-left: 1.0em;
+  margin-left: 1.0em;
+  margin-right: 10%;
+  border-left: 5px solid #f0f0f0;
+  color: #888;
+}
+
+div.quoteblock > div.attribution {
+  padding-top: 0.5em;
+  text-align: right;
+}
+
+div.verseblock > pre.content {
+  font-family: inherit;
+  font-size: inherit;
+}
+div.verseblock > div.attribution {
+  padding-top: 0.75em;
+  text-align: left;
+}
+/* DEPRECATED: Pre version 8.2.7 verse style literal block. */
+div.verseblock + div.attribution {
+  text-align: left;
+}
+
+div.admonitionblock .icon {
+  vertical-align: top;
+  font-size: 1.1em;
+  font-weight: bold;
+  text-decoration: underline;
+  color: #527bbd;
+  padding-right: 0.5em;
+}
+div.admonitionblock td.content {
+  padding-left: 0.5em;
+  border-left: 3px solid #dddddd;
+}
+
+div.exampleblock > div.content {
+  border-left: 3px solid #dddddd;
+  padding-left: 0.5em;
+}
+
+div.imageblock div.content { padding-left: 0; }
+span.image img { border-style: none; }
+a.image:visited { color: white; }
+
+dl {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+dt {
+  margin-top: 0.5em;
+  margin-bottom: 0;
+  font-style: normal;
+  color: navy;
+}
+dd > *:first-child {
+  margin-top: 0.1em;
+}
+
+ul, ol {
+    list-style-position: outside;
+}
+ol.arabic {
+  list-style-type: decimal;
+}
+ol.loweralpha {
+  list-style-type: lower-alpha;
+}
+ol.upperalpha {
+  list-style-type: upper-alpha;
+}
+ol.lowerroman {
+  list-style-type: lower-roman;
+}
+ol.upperroman {
+  list-style-type: upper-roman;
+}
+
+div.compact ul, div.compact ol,
+div.compact p, div.compact p,
+div.compact div, div.compact div {
+  margin-top: 0.1em;
+  margin-bottom: 0.1em;
+}
+
+tfoot {
+  font-weight: bold;
+}
+td > div.verse {
+  white-space: pre;
+}
+
+div.hdlist {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+div.hdlist tr {
+  padding-bottom: 15px;
+}
+dt.hdlist1.strong, td.hdlist1.strong {
+  font-weight: bold;
+}
+td.hdlist1 {
+  vertical-align: top;
+  font-style: normal;
+  padding-right: 0.8em;
+  color: navy;
+}
+td.hdlist2 {
+  vertical-align: top;
+}
+div.hdlist.compact tr {
+  margin: 0;
+  padding-bottom: 0;
+}
+
+.comment {
+  background: yellow;
+}
+
+.footnote, .footnoteref {
+  font-size: 0.8em;
+}
+
+span.footnote, span.footnoteref {
+  vertical-align: super;
+}
+
+#footnotes {
+  margin: 20px 0 20px 0;
+  padding: 7px 0 0 0;
+}
+
+#footnotes div.footnote {
+  margin: 0 0 5px 0;
+}
+
+#footnotes hr {
+  border: none;
+  border-top: 1px solid silver;
+  height: 1px;
+  text-align: left;
+  margin-left: 0;
+  width: 20%;
+  min-width: 100px;
+}
+
+div.colist td {
+  padding-right: 0.5em;
+  padding-bottom: 0.3em;
+  vertical-align: top;
+}
+div.colist td img {
+  margin-top: 0.3em;
+}
+
+@media print {
+  #footer-badges { display: none; }
+}
+
+#toc {
+  margin-bottom: 2.5em;
+}
+
+#toctitle {
+  color: #527bbd;
+  font-size: 1.1em;
+  font-weight: bold;
+  margin-top: 1.0em;
+  margin-bottom: 0.1em;
+}
+
+div.toclevel0, div.toclevel1, div.toclevel2, div.toclevel3, div.toclevel4 {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+div.toclevel2 {
+  margin-left: 2em;
+  font-size: 0.9em;
+}
+div.toclevel3 {
+  margin-left: 4em;
+  font-size: 0.9em;
+}
+div.toclevel4 {
+  margin-left: 6em;
+  font-size: 0.9em;
+}
+
+span.aqua { color: aqua; }
+span.black { color: black; }
+span.blue { color: blue; }
+span.fuchsia { color: fuchsia; }
+span.gray { color: gray; }
+span.green { color: green; }
+span.lime { color: lime; }
+span.maroon { color: maroon; }
+span.navy { color: navy; }
+span.olive { color: olive; }
+span.purple { color: purple; }
+span.red { color: red; }
+span.silver { color: silver; }
+span.teal { color: teal; }
+span.white { color: white; }
+span.yellow { color: yellow; }
+
+span.aqua-background { background: aqua; }
+span.black-background { background: black; }
+span.blue-background { background: blue; }
+span.fuchsia-background { background: fuchsia; }
+span.gray-background { background: gray; }
+span.green-background { background: green; }
+span.lime-background { background: lime; }
+span.maroon-background { background: maroon; }
+span.navy-background { background: navy; }
+span.olive-background { background: olive; }
+span.purple-background { background: purple; }
+span.red-background { background: red; }
+span.silver-background { background: silver; }
+span.teal-background { background: teal; }
+span.white-background { background: white; }
+span.yellow-background { background: yellow; }
+
+span.big { font-size: 2em; }
+span.small { font-size: 0.6em; }
+
+span.underline { text-decoration: underline; }
+span.overline { text-decoration: overline; }
+span.line-through { text-decoration: line-through; }
+
+div.unbreakable { page-break-inside: avoid; }
+
+
+/*
+ * xhtml11 specific
+ *
+ * */
+
+div.tableblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.tableblock > table {
+  border: 3px solid #527bbd;
+}
+thead, p.table.header {
+  font-weight: bold;
+  color: #527bbd;
+}
+p.table {
+  margin-top: 0;
+}
+/* Because the table frame attribute is overriden by CSS in most browsers. */
+div.tableblock > table[frame="void"] {
+  border-style: none;
+}
+div.tableblock > table[frame="hsides"] {
+  border-left-style: none;
+  border-right-style: none;
+}
+div.tableblock > table[frame="vsides"] {
+  border-top-style: none;
+  border-bottom-style: none;
+}
+
+
+/*
+ * html5 specific
+ *
+ * */
+
+table.tableblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+thead, p.tableblock.header {
+  font-weight: bold;
+  color: #527bbd;
+}
+p.tableblock {
+  margin-top: 0;
+}
+table.tableblock {
+  border-width: 3px;
+  border-spacing: 0px;
+  border-style: solid;
+  border-color: #527bbd;
+  border-collapse: collapse;
+}
+th.tableblock, td.tableblock {
+  border-width: 1px;
+  padding: 4px;
+  border-style: solid;
+  border-color: #527bbd;
+}
+
+table.tableblock.frame-topbot {
+  border-left-style: hidden;
+  border-right-style: hidden;
+}
+table.tableblock.frame-sides {
+  border-top-style: hidden;
+  border-bottom-style: hidden;
+}
+table.tableblock.frame-none {
+  border-style: hidden;
+}
+
+th.tableblock.halign-left, td.tableblock.halign-left {
+  text-align: left;
+}
+th.tableblock.halign-center, td.tableblock.halign-center {
+  text-align: center;
+}
+th.tableblock.halign-right, td.tableblock.halign-right {
+  text-align: right;
+}
+
+th.tableblock.valign-top, td.tableblock.valign-top {
+  vertical-align: top;
+}
+th.tableblock.valign-middle, td.tableblock.valign-middle {
+  vertical-align: middle;
+}
+th.tableblock.valign-bottom, td.tableblock.valign-bottom {
+  vertical-align: bottom;
+}
+
+
+/*
+ * manpage specific
+ *
+ * */
+
+body.manpage h1 {
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  border-top: 2px solid silver;
+  border-bottom: 2px solid silver;
+}
+body.manpage h2 {
+  border-style: none;
+}
+body.manpage div.sectionbody {
+  margin-left: 3em;
+}
+
+@media print {
+  body.manpage div#toc { display: none; }
+}
+
+
+</style>
+<script type="text/javascript">
+/*<![CDATA[*/
+var asciidoc = {  // Namespace.
+
+/////////////////////////////////////////////////////////////////////
+// Table Of Contents generator
+/////////////////////////////////////////////////////////////////////
+
+/* Author: Mihai Bazon, September 2002
+ * http://students.infoiasi.ro/~mishoo
+ *
+ * Table Of Content generator
+ * Version: 0.4
+ *
+ * Feel free to use this script under the terms of the GNU General Public
+ * License, as long as you do not remove or alter this notice.
+ */
+
+ /* modified by Troy D. Hanson, September 2006. License: GPL */
+ /* modified by Stuart Rackham, 2006, 2009. License: GPL */
+
+// toclevels = 1..4.
+toc: function (toclevels) {
+
+  function getText(el) {
+    var text = "";
+    for (var i = el.firstChild; i != null; i = i.nextSibling) {
+      if (i.nodeType == 3 /* Node.TEXT_NODE */) // IE doesn't speak constants.
+        text += i.data;
+      else if (i.firstChild != null)
+        text += getText(i);
+    }
+    return text;
+  }
+
+  function TocEntry(el, text, toclevel) {
+    this.element = el;
+    this.text = text;
+    this.toclevel = toclevel;
+  }
+
+  function tocEntries(el, toclevels) {
+    var result = new Array;
+    var re = new RegExp('[hH]([1-'+(toclevels+1)+'])');
+    // Function that scans the DOM tree for header elements (the DOM2
+    // nodeIterator API would be a better technique but not supported by all
+    // browsers).
+    var iterate = function (el) {
+      for (var i = el.firstChild; i != null; i = i.nextSibling) {
+        if (i.nodeType == 1 /* Node.ELEMENT_NODE */) {
+          var mo = re.exec(i.tagName);
+          if (mo && (i.getAttribute("class") || i.getAttribute("className")) != "float") {
+            result[result.length] = new TocEntry(i, getText(i), mo[1]-1);
+          }
+          iterate(i);
+        }
+      }
+    }
+    iterate(el);
+    return result;
+  }
+
+  var toc = document.getElementById("toc");
+  if (!toc) {
+    return;
+  }
+
+  // Delete existing TOC entries in case we're reloading the TOC.
+  var tocEntriesToRemove = [];
+  var i;
+  for (i = 0; i < toc.childNodes.length; i++) {
+    var entry = toc.childNodes[i];
+    if (entry.nodeName.toLowerCase() == 'div'
+     && entry.getAttribute("class")
+     && entry.getAttribute("class").match(/^toclevel/))
+      tocEntriesToRemove.push(entry);
+  }
+  for (i = 0; i < tocEntriesToRemove.length; i++) {
+    toc.removeChild(tocEntriesToRemove[i]);
+  }
+
+  // Rebuild TOC entries.
+  var entries = tocEntries(document.getElementById("content"), toclevels);
+  for (var i = 0; i < entries.length; ++i) {
+    var entry = entries[i];
+    if (entry.element.id == "")
+      entry.element.id = "_toc_" + i;
+    var a = document.createElement("a");
+    a.href = "#" + entry.element.id;
+    a.appendChild(document.createTextNode(entry.text));
+    var div = document.createElement("div");
+    div.appendChild(a);
+    div.className = "toclevel" + entry.toclevel;
+    toc.appendChild(div);
+  }
+  if (entries.length == 0)
+    toc.parentNode.removeChild(toc);
+},
+
+
+/////////////////////////////////////////////////////////////////////
+// Footnotes generator
+/////////////////////////////////////////////////////////////////////
+
+/* Based on footnote generation code from:
+ * http://www.brandspankingnew.net/archive/2005/07/format_footnote.html
+ */
+
+footnotes: function () {
+  // Delete existing footnote entries in case we're reloading the footnodes.
+  var i;
+  var noteholder = document.getElementById("footnotes");
+  if (!noteholder) {
+    return;
+  }
+  var entriesToRemove = [];
+  for (i = 0; i < noteholder.childNodes.length; i++) {
+    var entry = noteholder.childNodes[i];
+    if (entry.nodeName.toLowerCase() == 'div' && entry.getAttribute("class") == "footnote")
+      entriesToRemove.push(entry);
+  }
+  for (i = 0; i < entriesToRemove.length; i++) {
+    noteholder.removeChild(entriesToRemove[i]);
+  }
+
+  // Rebuild footnote entries.
+  var cont = document.getElementById("content");
+  var spans = cont.getElementsByTagName("span");
+  var refs = {};
+  var n = 0;
+  for (i=0; i<spans.length; i++) {
+    if (spans[i].className == "footnote") {
+      n++;
+      var note = spans[i].getAttribute("data-note");
+      if (!note) {
+        // Use [\s\S] in place of . so multi-line matches work.
+        // Because JavaScript has no s (dotall) regex flag.
+        note = spans[i].innerHTML.match(/\s*\[([\s\S]*)]\s*/)[1];
+        spans[i].innerHTML =
+          "[<a id='_footnoteref_" + n + "' href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+        spans[i].setAttribute("data-note", note);
+      }
+      noteholder.innerHTML +=
+        "<div class='footnote' id='_footnote_" + n + "'>" +
+        "<a href='#_footnoteref_" + n + "' title='Return to text'>" +
+        n + "</a>. " + note + "</div>";
+      var id =spans[i].getAttribute("id");
+      if (id != null) refs["#"+id] = n;
+    }
+  }
+  if (n == 0)
+    noteholder.parentNode.removeChild(noteholder);
+  else {
+    // Process footnoterefs.
+    for (i=0; i<spans.length; i++) {
+      if (spans[i].className == "footnoteref") {
+        var href = spans[i].getElementsByTagName("a")[0].getAttribute("href");
+        href = href.match(/#.*/)[0];  // Because IE return full URL.
+        n = refs[href];
+        spans[i].innerHTML =
+          "[<a href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+      }
+    }
+  }
+},
+
+install: function(toclevels) {
+  var timerId;
+
+  function reinstall() {
+    asciidoc.footnotes();
+    if (toclevels) {
+      asciidoc.toc(toclevels);
+    }
+  }
+
+  function reinstallAndRemoveTimer() {
+    clearInterval(timerId);
+    reinstall();
+  }
+
+  timerId = setInterval(reinstall, 500);
+  if (document.addEventListener)
+    document.addEventListener("DOMContentLoaded", reinstallAndRemoveTimer, false);
+  else
+    window.onload = reinstallAndRemoveTimer;
+}
+
+}
+asciidoc.install();
+/*]]>*/
+</script>
+</head>
+<body class="manpage">
+<div id="header">
+<h1>
+git-add(1) Manual Page
+</h1>
+<h2>NAME</h2>
+<div class="sectionbody">
+<p>git-add -
+   インデックスにファイルの内容を追加する
+</p>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="_書式">書式</h2>
+<div class="sectionbody">
+<div class="verseblock">
+<pre class="content"><em>git add</em> [-n] [-v] [--force | -f] [--interactive | -i] [--patch | -p]
+          [--edit | -e] [--[no-]all | --[no-]ignore-removal | [--update | -u]]
+          [--intent-to-add | -N] [--refresh] [--ignore-errors] [--ignore-missing]
+          [--] [&lt;pathspec&gt;&#8230;]</pre>
+<div class="attribution">
+</div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_解説">解説</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>このコマンドは、 次回のコミットで記録される内容を準備する(ステージする)べく、
+ワーキングツリーの現在の内容でインデックスをアップデートします。 通常は
+存在している現在の存在するパスの内容全体を追加しますが、 いくつかの
+オプションを使って現在のワーキングツリーのファイルに適用された変更のうちの
+一部だけを追加したり、 現在のワーキングツリーにこれ以上存在しないパスを
+消したりできます。</p></div>
+<div class="paragraph"><p>"インデックス" はワーキングツリーのコンテンツのスナップショットをひとつ
+保持しています。 そしてそのスナップショットは次回のコミットのコンテンツとして
+扱われます。 従ってワーキングディレクトリに何か変更を加えた後は、 commit
+コマンドを実行する前に <code>add</code> コマンドを使って、 新しいファイルや修正した
+ファイルをインデックスに追加しなければなりません。</p></div>
+<div class="paragraph"><p>このコマンドはコミット前に複数回にわたって実行できます。 追加されるのは add
+コマンドで指定された(複数の)ファイルの、 その時点の内容のみです。 後から
+変更した内容を次のコミットに含めたければ、 その新しい内容をインデックスに
+追加するために <code>git add</code> を再度実行する必要があります。</p></div>
+<div class="paragraph"><p><code>git status</code> コマンドで、次回のコミットに向けてステージされた変更点を持つ
+ファイルの一覧を取得できます。</p></div>
+<div class="paragraph"><p><code>git add</code> コマンドはデフォルトで無視するよう設定されたファイルを追加しません。
+無視ファイルがコマンドラインで明示的に指定された場合、 <code>git add</code> は
+無視ファイルの一覧を表示して失敗します。 ディレクトリ再帰や Git による
+ファイル名のグロビング (シェルに解釈されないよう引用符で囲みます) の結果として
+無視ファイルが含まれていた場合、黙って無視します。 <em>git add</em> コマンドは <em>-f</em>
+(force) オプションと一緒に使えば無視ファイルを追加することができます。</p></div>
+<div class="paragraph"><p>あるコミットに内容を追加する別の方法については <a href="git-commit.html">git-commit(1)</a> を
+見てください。</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_オプション">オプション</h2>
+<div class="sectionbody">
+<div class="dlist"><dl>
+<dt class="hdlist1">
+&lt;pathspec&gt;&#8230;
+</dt>
+<dd>
+<p>
+        コンテンツを追加するファイルを指定します。 ファイルグロブ(例 <em>*.c</em>)で
+        マッチするファイルをすべて追加することができます。 また、
+        ディレクトリ名を指定してそのディレクトリ配下を再帰的に全て追加する
+        ことが可能です。
+        (例: <em>dir/file1</em> と <em>dir/file2</em> を追加するために <em>dir</em> を指定する)
+</p>
+</dd>
+<dt class="hdlist1">
+-n
+</dt>
+<dt class="hdlist1">
+--dry-run
+</dt>
+<dd>
+<p>
+        実際にはファイルを追加せず、それが存在しているか無視されるか
+        (あるいはその両方)の表示のみ行います。
+</p>
+</dd>
+<dt class="hdlist1">
+-v
+</dt>
+<dt class="hdlist1">
+--verbose
+</dt>
+<dd>
+<p>
+        冗長表示になります。
+</p>
+</dd>
+<dt class="hdlist1">
+-f
+</dt>
+<dt class="hdlist1">
+--force
+</dt>
+<dd>
+<p>
+        無視ファイルであっても追加します。
+</p>
+</dd>
+<dt class="hdlist1">
+-i
+</dt>
+<dt class="hdlist1">
+--interactive
+</dt>
+<dd>
+<p>
+        修正したワーキングツリーのコンテンツを対話的にインデックスに追加します。
+        操作をワーキングツリーの一部に限定するためにファイルパスを指定する
+        こともできます。 詳細は &#8220;インタラクティブモード&#8221; を見てください。
+</p>
+</dd>
+<dt class="hdlist1">
+-p
+</dt>
+<dt class="hdlist1">
+--patch
+</dt>
+<dd>
+<p>
+        対話的にワーキングツリーとインデックス間のパッチのハンク
+        (パッチ内の差分の単位)を選択し、インデックスに追加します。 この
+        オプションはインデックスに変更内容を追加する前に違いをレビューする
+        機会を提供します。
+</p>
+<div class="paragraph"><p>このオプションは <code>add --interactive</code> の内部メニューをバイパスして <code>patch</code>
+サブコマンドに直接ジャンプすることで、効果的に実行します。 詳細は
+&#8220;インタラクティブモード&#8221; を見てください。</p></div>
+</dd>
+<dt class="hdlist1">
+-e, --edit
+</dt>
+<dd>
+<p>
+        エディタを開いてインデックスに対する差分を編集できます。
+        エディタを終了後はハンクヘッダ(差分の位置情報)を調整し、
+        パッチとしてインデックスに適用します。
+</p>
+<div class="paragraph"><p>このオプションの意図するところは、適用すべきパッチの行を取捨選択、 または
+ステージする内容を変更することです。 このオプションは対話的なハンク選択よりも
+素早く、 柔軟に行える可能性があります。 しかし、間違えやすく、インデックスに
+あたらないパッチを作りやすいです。 後述のパッチの編集を参照してください。</p></div>
+</dd>
+<dt class="hdlist1">
+-u
+</dt>
+<dt class="hdlist1">
+--update
+</dt>
+<dd>
+<p>
+        &lt;pathspec&gt;にマッチするエントリがすでに存在する場合のみ、 インデックスを
+        更新します。 ワーキングツリー上にマッチするインデックスのエントリを
+        変更あるいは削除しますが、新規ファイルの追加はしません。
+</p>
+<div class="paragraph"><p>&lt;pathspec&gt;が指定されなかった場合、現在のバージョンの Git のデフォルトでは "."
+になります; 言い換えると、カレントディレクトリおよびそのサブディレクトリの
+バージョン管理中のファイル全てについて更新します。このデフォルトは将来の
+バージョンでは変更されるでしょう。 よって、 &lt;pathspec&gt; を指定しない形式は
+使うべきではありません。</p></div>
+</dd>
+<dt class="hdlist1">
+-A
+</dt>
+<dt class="hdlist1">
+--all
+</dt>
+<dt class="hdlist1">
+--no-ignore-removal
+</dt>
+<dd>
+<p>
+        ワーキングツリーの &lt;pathspec&gt; にマッチするファイルだけでなく、
+        インデックスがすでにエントリを持っているファイルについても
+        更新します。 このオプションはワーキングツリーにマッチするよう、
+        ファイルを追加、変更、削除します。
+</p>
+<div class="paragraph"><p>&lt;pathspec&gt;が指定されなかった場合、現在のバージョンの Git のデフォルトでは "."
+になります; 言い換えると、カレントディレクトリおよびそのサブディレクトリの
+ファイル全てについて更新します。 このデフォルトは将来のバージョンでは
+変更されるでしょう。 よって、 &lt;pathspec&gt; を指定しない形式は使うべきでは
+ありません。</p></div>
+</dd>
+<dt class="hdlist1">
+--no-all
+</dt>
+<dt class="hdlist1">
+--ignore-removal
+</dt>
+<dd>
+<p>
+        ワーキングツリー上のインデックスが知らないファイルおよび、
+        修正されたファイルについてインデックスを更新しますが、
+        ワーキングツリーから削除されたファイルについては無視します。
+        このオプションは &lt;pathspec&gt; が指定されない場合、何もしません。
+</p>
+<div class="paragraph"><p>このオプションは主に現在の Git ユーザが "git add &lt;pathspec&gt;&#8230;" するときに
+削除されたファイルを無視するのを助けるためのものです。 将来のバージョンの
+Git では、 "git add &lt;pathspec&gt;&#8230;" は "git add -A &lt;pathspec&gt;&#8230;" と同一になり、
+"git add --ignore-removal &lt;pathspec&gt;&#8230;" は現在の "git add &lt;pathspec&gt;&#8230;" の
+ように、削除されたファイルを無視するようになります。</p></div>
+</dd>
+<dt class="hdlist1">
+-N
+</dt>
+<dt class="hdlist1">
+--intent-to-add
+</dt>
+<dd>
+<p>
+        指定したパスのファイルが、後で add されるということだけを記録します。
+        インデックスには空のファイルが登録されます。
+        これはステージされていないファイルのうち、<code>git diff</code> で表示させたり、
+        <code>git commit -a</code> でコミットしたいファイルに対して使用すると便利です。
+</p>
+</dd>
+<dt class="hdlist1">
+--refresh
+</dt>
+<dd>
+<p>
+        ファイルは追加せず、
+        インデックスにあるファイルのstat()情報の更新のみ行います。
+</p>
+</dd>
+<dt class="hdlist1">
+--ignore-errors
+</dt>
+<dd>
+<p>
+        エラーによりファイルをインデックスに追加することに失敗しても、
+        操作を中断せず、他のファイルの追加を続けます。
+        そのときコマンドは0以外のステータスで終了します。
+        設定値 <code>add.ignoreErrors</code> を true にセットすることで
+        この挙動をデフォルトにできます。
+</p>
+</dd>
+<dt class="hdlist1">
+--ignore-missing
+</dt>
+<dd>
+<p>
+        このオプションは --dry-run と一緒にのみ使用できます。
+        このオプションを使うことでユーザは、指定したファイルが
+        ワーキングツリーにあるかどうかに関係なく、それらのファイルが
+        無視されるかどうかをチェックできます。
+</p>
+</dd>
+<dt class="hdlist1">
+--
+</dt>
+<dd>
+<p>
+        このオプションはコマンドラインオプションと、
+        コマンドラインで指定するファイルのリストとを分けるために使えます。
+        (ファイル名がコマンドラインオプションに間違えられそうなときに役立ちます)
+</p>
+</dd>
+</dl></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_設定">設定</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>設定変数 <code>core.excludesfile</code> に git-add から除外するファイルの名のパターンを
+指定できます。 これは $GIT_DIR/info/exclude に似ています。除外ファイルの
+パターンは、この info/exclude に加えて使われます。 <a href="gitignore.html">gitignore(5)</a> を
+参照してください。</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_例">例</h2>
+<div class="sectionbody">
+<div class="ulist"><ul>
+<li>
+<p>
+<code>Documentation</code> ディレクトリおよびそのサブディレクトリ以下にある、
+すべての <code>*.txt</code> ファイルの内容を追加します。
+</p>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git add Documentation/\*.txt</code></pre>
+</div></div>
+<div class="paragraph"><p>この例のアスタリスク <code>*</code> はシェルから
+エスケープしていることに注意してください。
+こうすることで <code>Documentation/</code> ディレクトリの、
+サブディレクトリのファイルも含まれます。</p></div>
+</li>
+<li>
+<p>
+git-*.sh スクリプトをすべて追加する場合を考えます：
+</p>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git add git-*.sh</code></pre>
+</div></div>
+<div class="paragraph"><p>この例ではシェルにアスタリスクを展開させるので
+(つまり、明示的にファイルリストを指定したのと同じ)、
+<code>subdir/git-foo.sh</code> は対象となりません。</p></div>
+</li>
+</ul></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_インタラクティブモード">インタラクティブモード</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>インタラクティブモードに入ると、 <em>status</em> サブコマンドの
+出力を表示します。その後、対話コマンドループに進みます。</p></div>
+<div class="paragraph"><p>コマンドループでは使用可能なサブコマンドのリストを表示し、
+"What now&gt; " というプロンプトを表示します。
+プロンプトがひとつの <em>&gt;</em> で終わっているときは、
+与えられたサブコマンドからひとつだけ選択できます。
+例えば以下のように：</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>    *** Commands ***
+      1: status       2: update       3: revert       4: add untracked
+      5: patch        6: diff         7: quit         8: help
+    What now&gt; 1</code></pre>
+</div></div>
+<div class="paragraph"><p>選択が一意に決定できるだけの長さがあれば、
+<code>s</code> や <code>sta</code> や <code>status</code> と答えることも可能です。</p></div>
+<div class="paragraph"><p>メインコマンドループは6個のサブコマンド
+(および help と quit) を持っています。</p></div>
+<div class="dlist"><dl>
+<dt class="hdlist1">
+status
+</dt>
+<dd>
+<p>
+   このコマンドは HEAD とインデックスの間の変更
+   (つまり <code>git commit</code> でコミットされる内容)および、
+   インデックスとワーキングツリーのファイルとの間の変更
+   (<code>git commit</code> の前に <code>git-add</code> でステージ可能な内容)を、
+   各パスごとに表示します。出力例はこちらのとおり：
+</p>
+<div class="listingblock">
+<div class="content">
+<pre><code>              staged     unstaged path
+     1:       binary      nothing foo.png
+     2:     +403/-35        +1/-1 git-add--interactive.perl</code></pre>
+</div></div>
+<div class="paragraph"><p>上記は foo.png が HEAD との間に違いがあることを示しており
+(ただし、バイナリファイルの行数は表示されません)、
+インデックスに追加されているコピーとワーキングツリーの版との間には、
+違いがないことを示しています
+(もしワーキングツリーと異なっていれば、 <em>nothing</em>
+とあるところに <em>binary</em> と表示されます)。
+もう一方のファイル (git-add&#45;&#45;interactive.perl) は、
+コミットすれば403行追加され、
+35行削除される内容をインデックスに持っており、
+ワーキングツリーのファイルにはさらに変更が加えられています
+(1行追加、1行削除)。</p></div>
+</dd>
+<dt class="hdlist1">
+update
+</dt>
+<dd>
+<p>
+   このコマンドはstatusの情報を表示したあと、 "Update&gt;&gt;" プロンプトを
+   表示します。 プロンプトがふたつの <em>&gt;&gt;</em> で終わっている場合、 スペースまたは
+   カンマで区切って、ひとつ以上の選択肢を選べます。 また、範囲指定も可能です。
+   つまり、リストから 2,3,4,5,7,9 を選ぶために "2-5 7,9" を指定できます。
+   範囲指定の後ろの数字が省略されると、 残りのパスすべてが選択されます。
+   つまり、7,8,9をリストから選ぶために "7-" を指定できます。 全部を選ぶために
+   <em>*</em> を指定可能です。
+</p>
+<div class="paragraph"><p>選択したパスは以下のように <em>*</em> でハイライトされます：</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>           staged     unstaged path
+  1:       binary      nothing foo.png
+* 2:     +403/-35        +1/-1 git-add--interactive.perl</code></pre>
+</div></div>
+<div class="paragraph"><p>選択を解除するには、先に <em>-</em> をつけて入力します：</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>Update&gt;&gt; -2</code></pre>
+</div></div>
+<div class="paragraph"><p>選択が終わった後は、何も入力せずに Enter だけを入力すれば、 選択したパスの
+ワーキングツリーのファイルの内容が、 インデックスに追加されます。</p></div>
+</dd>
+<dt class="hdlist1">
+revert
+</dt>
+<dd>
+<p>
+  これは <em>update</em> とよく似たインターフェースを持っています。 選択したパスの
+  ステージされた情報を HEAD の内容に戻します。 新しく追加したパスは git が
+  追跡していない状態に戻されます。
+</p>
+</dd>
+<dt class="hdlist1">
+add untracked
+</dt>
+<dd>
+<p>
+  これは <em>update</em> と <em>revert</em> によく似ていて、 git が追跡していないパスを
+  インデックスに追加できます。
+</p>
+</dd>
+<dt class="hdlist1">
+patch
+</dt>
+<dd>
+<p>
+  これは <em>status</em> 出力からパスをひとつ選択します。選択した後、 インデックスと
+  ワーキングツリーのファイルとの diff を表示し、 各ハンクごとにその変更点を
+  ステージするかどうか聞いてきます。 以下のオプションのから一つ選択可能して
+  リターンキーをタイプします：
+</p>
+<div class="literalblock">
+<div class="content">
+<pre><code>y - このハンクをステージします。
+n - このハンクをステージしません。
+q - 終了します。このハンクおよび以降のハンクはステージしません。
+a - このハンクおよびそのファイルのそれ以降のハンクを全てステージします。
+d - このハンクおよびそのファイルのそれ以降のハンクはステージしません。
+g - 処理対象となる(別の)ハンクを選択します。
+/ - 入力した正規表現にマッチするハンクを検索します。
+j - このハンクを保留にし、次の保留されているハンクを表示します。
+J - このハンクを保留にし、次のハンクを表示します。
+k - このハンクを保留にし、ひとつ前の保留されているハンクを表示します。
+K - このハンクを保留にし、ひとつ前のハンクを表示します。
+s - 現在のハンクを小さいハンクに分割します。
+e - 現在のハンクを手動で編集します。
+? - ヘルプを表示します。</code></pre>
+</div></div>
+<div class="paragraph"><p>すべてのハンクをどう処理するか決定した後、インデックスに追加するよう選ばれた
+ハンクがあればそのハンクでインデックスを更新します。</p></div>
+<div class="paragraph"><p>設定値 <code>interactive.singlekey</code> を <code>true</code> に設定することで、ここでのリターンの
+入力を省略できます。</p></div>
+</dd>
+<dt class="hdlist1">
+diff
+</dt>
+<dd>
+<p>
+  コミットされる内容(つまり HEAD とインデックスの diff)を表示します
+</p>
+</dd>
+</dl></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_パッチの編集">パッチの編集</h2>
+<div class="sectionbody">
+<div class="paragraph"><p><code>git add -e</code> を実行するか、対話的なハンク選択において <code>e</code> を選ぶと、パッチを
+エディタで開きます。エディタを終了すると、その結果のパッチがインデックスに
+適用されます。パッチに対して任意の変更をいくらでも実施できますが、変更が
+混乱させる結果になったり、適用できないようなパッチになり得ることに注意して
+ください。もしその作業を全て中断したい (つまり、インデックスに新たな
+ステージは一切したくない) 場合、単にパッチの全ての行を削除してください。
+以下のリストはパッチに共通して見られるであろう内容と、それらに対する
+有効な編集操作についての解説です。</p></div>
+<div class="openblock">
+<div class="content">
+<div class="dlist"><dl>
+<dt class="hdlist1">
+追加される内容
+</dt>
+<dd>
+<p>
+追加される内容は "&#43;" で始まる行で表現されます。これらの行を削除する
+ことによって、追加がステージされることを防げます。
+</p>
+</dd>
+<dt class="hdlist1">
+削除される内容
+</dt>
+<dd>
+<p>
+削除される内容は "-" で始まる行で表現されます。 "-" を " " (スペース1個) に
+変えることで、削除がステージされることを防げます。
+</p>
+</dd>
+<dt class="hdlist1">
+変更される内容
+</dt>
+<dd>
+<p>
+変更される内容は "-" 行(古い内容の削除)と、それに続く "&#43;" 行(置き換える
+べき内容の追加)によって表現されます。"-" を " " に変え、 "&#43;" 行を削除する
+ことによって、変更される内容がステージされることを防げます。"-" と "+" の
+ペアの片方だけ変更すると、インデックスへの変更に混乱を招くことに注意して
+ください。
+</p>
+</dd>
+</dl></div>
+</div></div>
+<div class="paragraph"><p>実行可能な、より複雑な操作がいくつかあります。しかし、パッチはインデックスに
+対してのみ適用され、ワーキングツリーに対しては適用されないので、ワーキング
+ツリーがインデックスに対する変更を "元に戻している(undo)" かのように見える
+ことに注意してください。 例えば HEAD にもワーキングツリーにもないような行を
+インデックスに追加すると、次のコミットに向けてその新しい行がステージ
+されますが、その行はワーキングツリーでリバートされているように見えます。</p></div>
+<div class="paragraph"><p>こういった構成は避けるか、くれぐれも用心して実行してください。</p></div>
+<div class="openblock">
+<div class="content">
+<div class="dlist"><dl>
+<dt class="hdlist1">
+変更されてない内容の削除
+</dt>
+<dd>
+<p>
+インデックスとワーキングツリーに違いのない内容は " " (スペース1個)から
+始まる行でコンテキスト(文脈を表す行)として示されている場合があります。
+このスペースを "-" に変えることで、コンテキスト行の削除をステージできます。
+その結果ワーキングツリーはその内容を再び追加したように見えます。
+</p>
+</dd>
+<dt class="hdlist1">
+既存内容の変更
+</dt>
+<dd>
+<p>
+コンテキスト行に対して、 (" " を "-" に変えることによる)削除と新しい内容を
+持った "&#43;" 行の追加をステージすることで、コンテキスト行を変更できます。
+同じようにパッチの既存の追加や変更箇所における "&#43;" 行に追加・修正する
+ことでさらに変更が可能です。 全てのケースにおいて、新たに変更した箇所は
+ワーキングツリーではリバートされたように見えます。
+</p>
+</dd>
+<dt class="hdlist1">
+新しい内容
+</dt>
+<dd>
+<p>
+パッチにない内容を新しく追加したい場合; 単に "&#43;" で始まる新しい行を
+追加します。 その追加はワーキングツリーではリバートされたように見えます。
+</p>
+</dd>
+</dl></div>
+</div></div>
+<div class="paragraph"><p>パッチを適用できなくしてしまうので、完全に避けるべき操作もいくつかあります:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+コンテキスト行 (" ") または削除行 ("-") を追加すること
+</p>
+</li>
+<li>
+<p>
+コンテキスト行または削除行を削除すること
+</p>
+</li>
+<li>
+<p>
+コンテキスト行または削除行の内容を変更すること
+</p>
+</li>
+</ul></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_あわせて読みたい">あわせて読みたい</h2>
+<div class="sectionbody">
+<div class="paragraph"><p><a href="git-status.html">git-status(1)</a>
+<a href="git-rm.html">git-rm(1)</a>
+<a href="git-reset.html">git-reset(1)</a>
+<a href="git-mv.html">git-mv(1)</a>
+<a href="git-commit.html">git-commit(1)</a>
+<a href="git-update-index.html">git-update-index(1)</a></p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_git">GIT</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>これは <a href="git.html">git(1)</a> の一部です。</p></div>
+</div>
+</div>
+</div>
+<div id="footnotes"><hr /></div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2014-02-15 17:05:38 JST
+</div>
+</div>
+</body>
+</html>
