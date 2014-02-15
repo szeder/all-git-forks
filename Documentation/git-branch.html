@@ -1,0 +1,1243 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
+<meta name="generator" content="AsciiDoc 8.6.8" />
+<title>git-branch(1)</title>
+<style type="text/css">
+/* Shared CSS for AsciiDoc xhtml11 and html5 backends */
+
+/* Default font. */
+body {
+  font-family: Georgia,serif;
+}
+
+/* Title font. */
+h1, h2, h3, h4, h5, h6,
+div.title, caption.title,
+thead, p.table.header,
+#toctitle,
+#author, #revnumber, #revdate, #revremark,
+#footer {
+  font-family: Arial,Helvetica,sans-serif;
+}
+
+body {
+  margin: 1em 5% 1em 5%;
+}
+
+a {
+  color: blue;
+  text-decoration: underline;
+}
+a:visited {
+  color: fuchsia;
+}
+
+em {
+  font-style: italic;
+  color: navy;
+}
+
+strong {
+  font-weight: bold;
+  color: #083194;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #527bbd;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+
+h1, h2, h3 {
+  border-bottom: 2px solid silver;
+}
+h2 {
+  padding-top: 0.5em;
+}
+h3 {
+  float: left;
+}
+h3 + * {
+  clear: left;
+}
+h5 {
+  font-size: 1.0em;
+}
+
+div.sectionbody {
+  margin-left: 0;
+}
+
+hr {
+  border: 1px solid silver;
+}
+
+p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+ul, ol, li > p {
+  margin-top: 0;
+}
+ul > li     { color: #aaa; }
+ul > li > * { color: black; }
+
+.monospaced, code, pre {
+  font-family: "Courier New", Courier, monospace;
+  font-size: inherit;
+  color: navy;
+  padding: 0;
+  margin: 0;
+}
+
+
+#author {
+  color: #527bbd;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+#email {
+}
+#revnumber, #revdate, #revremark {
+}
+
+#footer {
+  font-size: small;
+  border-top: 2px solid silver;
+  padding-top: 0.5em;
+  margin-top: 4.0em;
+}
+#footer-text {
+  float: left;
+  padding-bottom: 0.5em;
+}
+#footer-badges {
+  float: right;
+  padding-bottom: 0.5em;
+}
+
+#preamble {
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+div.imageblock, div.exampleblock, div.verseblock,
+div.quoteblock, div.literalblock, div.listingblock, div.sidebarblock,
+div.admonitionblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.admonitionblock {
+  margin-top: 2.0em;
+  margin-bottom: 2.0em;
+  margin-right: 10%;
+  color: #606060;
+}
+
+div.content { /* Block element content. */
+  padding: 0;
+}
+
+/* Block element titles. */
+div.title, caption.title {
+  color: #527bbd;
+  font-weight: bold;
+  text-align: left;
+  margin-top: 1.0em;
+  margin-bottom: 0.5em;
+}
+div.title + * {
+  margin-top: 0;
+}
+
+td div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content + div.title {
+  margin-top: 0.0em;
+}
+
+div.sidebarblock > div.content {
+  background: #ffffee;
+  border: 1px solid #dddddd;
+  border-left: 4px solid #f0f0f0;
+  padding: 0.5em;
+}
+
+div.listingblock > div.content {
+  border: 1px solid #dddddd;
+  border-left: 5px solid #f0f0f0;
+  background: #f8f8f8;
+  padding: 0.5em;
+}
+
+div.quoteblock, div.verseblock {
+  padding-left: 1.0em;
+  margin-left: 1.0em;
+  margin-right: 10%;
+  border-left: 5px solid #f0f0f0;
+  color: #888;
+}
+
+div.quoteblock > div.attribution {
+  padding-top: 0.5em;
+  text-align: right;
+}
+
+div.verseblock > pre.content {
+  font-family: inherit;
+  font-size: inherit;
+}
+div.verseblock > div.attribution {
+  padding-top: 0.75em;
+  text-align: left;
+}
+/* DEPRECATED: Pre version 8.2.7 verse style literal block. */
+div.verseblock + div.attribution {
+  text-align: left;
+}
+
+div.admonitionblock .icon {
+  vertical-align: top;
+  font-size: 1.1em;
+  font-weight: bold;
+  text-decoration: underline;
+  color: #527bbd;
+  padding-right: 0.5em;
+}
+div.admonitionblock td.content {
+  padding-left: 0.5em;
+  border-left: 3px solid #dddddd;
+}
+
+div.exampleblock > div.content {
+  border-left: 3px solid #dddddd;
+  padding-left: 0.5em;
+}
+
+div.imageblock div.content { padding-left: 0; }
+span.image img { border-style: none; }
+a.image:visited { color: white; }
+
+dl {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+dt {
+  margin-top: 0.5em;
+  margin-bottom: 0;
+  font-style: normal;
+  color: navy;
+}
+dd > *:first-child {
+  margin-top: 0.1em;
+}
+
+ul, ol {
+    list-style-position: outside;
+}
+ol.arabic {
+  list-style-type: decimal;
+}
+ol.loweralpha {
+  list-style-type: lower-alpha;
+}
+ol.upperalpha {
+  list-style-type: upper-alpha;
+}
+ol.lowerroman {
+  list-style-type: lower-roman;
+}
+ol.upperroman {
+  list-style-type: upper-roman;
+}
+
+div.compact ul, div.compact ol,
+div.compact p, div.compact p,
+div.compact div, div.compact div {
+  margin-top: 0.1em;
+  margin-bottom: 0.1em;
+}
+
+tfoot {
+  font-weight: bold;
+}
+td > div.verse {
+  white-space: pre;
+}
+
+div.hdlist {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+div.hdlist tr {
+  padding-bottom: 15px;
+}
+dt.hdlist1.strong, td.hdlist1.strong {
+  font-weight: bold;
+}
+td.hdlist1 {
+  vertical-align: top;
+  font-style: normal;
+  padding-right: 0.8em;
+  color: navy;
+}
+td.hdlist2 {
+  vertical-align: top;
+}
+div.hdlist.compact tr {
+  margin: 0;
+  padding-bottom: 0;
+}
+
+.comment {
+  background: yellow;
+}
+
+.footnote, .footnoteref {
+  font-size: 0.8em;
+}
+
+span.footnote, span.footnoteref {
+  vertical-align: super;
+}
+
+#footnotes {
+  margin: 20px 0 20px 0;
+  padding: 7px 0 0 0;
+}
+
+#footnotes div.footnote {
+  margin: 0 0 5px 0;
+}
+
+#footnotes hr {
+  border: none;
+  border-top: 1px solid silver;
+  height: 1px;
+  text-align: left;
+  margin-left: 0;
+  width: 20%;
+  min-width: 100px;
+}
+
+div.colist td {
+  padding-right: 0.5em;
+  padding-bottom: 0.3em;
+  vertical-align: top;
+}
+div.colist td img {
+  margin-top: 0.3em;
+}
+
+@media print {
+  #footer-badges { display: none; }
+}
+
+#toc {
+  margin-bottom: 2.5em;
+}
+
+#toctitle {
+  color: #527bbd;
+  font-size: 1.1em;
+  font-weight: bold;
+  margin-top: 1.0em;
+  margin-bottom: 0.1em;
+}
+
+div.toclevel0, div.toclevel1, div.toclevel2, div.toclevel3, div.toclevel4 {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+div.toclevel2 {
+  margin-left: 2em;
+  font-size: 0.9em;
+}
+div.toclevel3 {
+  margin-left: 4em;
+  font-size: 0.9em;
+}
+div.toclevel4 {
+  margin-left: 6em;
+  font-size: 0.9em;
+}
+
+span.aqua { color: aqua; }
+span.black { color: black; }
+span.blue { color: blue; }
+span.fuchsia { color: fuchsia; }
+span.gray { color: gray; }
+span.green { color: green; }
+span.lime { color: lime; }
+span.maroon { color: maroon; }
+span.navy { color: navy; }
+span.olive { color: olive; }
+span.purple { color: purple; }
+span.red { color: red; }
+span.silver { color: silver; }
+span.teal { color: teal; }
+span.white { color: white; }
+span.yellow { color: yellow; }
+
+span.aqua-background { background: aqua; }
+span.black-background { background: black; }
+span.blue-background { background: blue; }
+span.fuchsia-background { background: fuchsia; }
+span.gray-background { background: gray; }
+span.green-background { background: green; }
+span.lime-background { background: lime; }
+span.maroon-background { background: maroon; }
+span.navy-background { background: navy; }
+span.olive-background { background: olive; }
+span.purple-background { background: purple; }
+span.red-background { background: red; }
+span.silver-background { background: silver; }
+span.teal-background { background: teal; }
+span.white-background { background: white; }
+span.yellow-background { background: yellow; }
+
+span.big { font-size: 2em; }
+span.small { font-size: 0.6em; }
+
+span.underline { text-decoration: underline; }
+span.overline { text-decoration: overline; }
+span.line-through { text-decoration: line-through; }
+
+div.unbreakable { page-break-inside: avoid; }
+
+
+/*
+ * xhtml11 specific
+ *
+ * */
+
+div.tableblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.tableblock > table {
+  border: 3px solid #527bbd;
+}
+thead, p.table.header {
+  font-weight: bold;
+  color: #527bbd;
+}
+p.table {
+  margin-top: 0;
+}
+/* Because the table frame attribute is overriden by CSS in most browsers. */
+div.tableblock > table[frame="void"] {
+  border-style: none;
+}
+div.tableblock > table[frame="hsides"] {
+  border-left-style: none;
+  border-right-style: none;
+}
+div.tableblock > table[frame="vsides"] {
+  border-top-style: none;
+  border-bottom-style: none;
+}
+
+
+/*
+ * html5 specific
+ *
+ * */
+
+table.tableblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+thead, p.tableblock.header {
+  font-weight: bold;
+  color: #527bbd;
+}
+p.tableblock {
+  margin-top: 0;
+}
+table.tableblock {
+  border-width: 3px;
+  border-spacing: 0px;
+  border-style: solid;
+  border-color: #527bbd;
+  border-collapse: collapse;
+}
+th.tableblock, td.tableblock {
+  border-width: 1px;
+  padding: 4px;
+  border-style: solid;
+  border-color: #527bbd;
+}
+
+table.tableblock.frame-topbot {
+  border-left-style: hidden;
+  border-right-style: hidden;
+}
+table.tableblock.frame-sides {
+  border-top-style: hidden;
+  border-bottom-style: hidden;
+}
+table.tableblock.frame-none {
+  border-style: hidden;
+}
+
+th.tableblock.halign-left, td.tableblock.halign-left {
+  text-align: left;
+}
+th.tableblock.halign-center, td.tableblock.halign-center {
+  text-align: center;
+}
+th.tableblock.halign-right, td.tableblock.halign-right {
+  text-align: right;
+}
+
+th.tableblock.valign-top, td.tableblock.valign-top {
+  vertical-align: top;
+}
+th.tableblock.valign-middle, td.tableblock.valign-middle {
+  vertical-align: middle;
+}
+th.tableblock.valign-bottom, td.tableblock.valign-bottom {
+  vertical-align: bottom;
+}
+
+
+/*
+ * manpage specific
+ *
+ * */
+
+body.manpage h1 {
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  border-top: 2px solid silver;
+  border-bottom: 2px solid silver;
+}
+body.manpage h2 {
+  border-style: none;
+}
+body.manpage div.sectionbody {
+  margin-left: 3em;
+}
+
+@media print {
+  body.manpage div#toc { display: none; }
+}
+
+
+</style>
+<script type="text/javascript">
+/*<![CDATA[*/
+var asciidoc = {  // Namespace.
+
+/////////////////////////////////////////////////////////////////////
+// Table Of Contents generator
+/////////////////////////////////////////////////////////////////////
+
+/* Author: Mihai Bazon, September 2002
+ * http://students.infoiasi.ro/~mishoo
+ *
+ * Table Of Content generator
+ * Version: 0.4
+ *
+ * Feel free to use this script under the terms of the GNU General Public
+ * License, as long as you do not remove or alter this notice.
+ */
+
+ /* modified by Troy D. Hanson, September 2006. License: GPL */
+ /* modified by Stuart Rackham, 2006, 2009. License: GPL */
+
+// toclevels = 1..4.
+toc: function (toclevels) {
+
+  function getText(el) {
+    var text = "";
+    for (var i = el.firstChild; i != null; i = i.nextSibling) {
+      if (i.nodeType == 3 /* Node.TEXT_NODE */) // IE doesn't speak constants.
+        text += i.data;
+      else if (i.firstChild != null)
+        text += getText(i);
+    }
+    return text;
+  }
+
+  function TocEntry(el, text, toclevel) {
+    this.element = el;
+    this.text = text;
+    this.toclevel = toclevel;
+  }
+
+  function tocEntries(el, toclevels) {
+    var result = new Array;
+    var re = new RegExp('[hH]([1-'+(toclevels+1)+'])');
+    // Function that scans the DOM tree for header elements (the DOM2
+    // nodeIterator API would be a better technique but not supported by all
+    // browsers).
+    var iterate = function (el) {
+      for (var i = el.firstChild; i != null; i = i.nextSibling) {
+        if (i.nodeType == 1 /* Node.ELEMENT_NODE */) {
+          var mo = re.exec(i.tagName);
+          if (mo && (i.getAttribute("class") || i.getAttribute("className")) != "float") {
+            result[result.length] = new TocEntry(i, getText(i), mo[1]-1);
+          }
+          iterate(i);
+        }
+      }
+    }
+    iterate(el);
+    return result;
+  }
+
+  var toc = document.getElementById("toc");
+  if (!toc) {
+    return;
+  }
+
+  // Delete existing TOC entries in case we're reloading the TOC.
+  var tocEntriesToRemove = [];
+  var i;
+  for (i = 0; i < toc.childNodes.length; i++) {
+    var entry = toc.childNodes[i];
+    if (entry.nodeName.toLowerCase() == 'div'
+     && entry.getAttribute("class")
+     && entry.getAttribute("class").match(/^toclevel/))
+      tocEntriesToRemove.push(entry);
+  }
+  for (i = 0; i < tocEntriesToRemove.length; i++) {
+    toc.removeChild(tocEntriesToRemove[i]);
+  }
+
+  // Rebuild TOC entries.
+  var entries = tocEntries(document.getElementById("content"), toclevels);
+  for (var i = 0; i < entries.length; ++i) {
+    var entry = entries[i];
+    if (entry.element.id == "")
+      entry.element.id = "_toc_" + i;
+    var a = document.createElement("a");
+    a.href = "#" + entry.element.id;
+    a.appendChild(document.createTextNode(entry.text));
+    var div = document.createElement("div");
+    div.appendChild(a);
+    div.className = "toclevel" + entry.toclevel;
+    toc.appendChild(div);
+  }
+  if (entries.length == 0)
+    toc.parentNode.removeChild(toc);
+},
+
+
+/////////////////////////////////////////////////////////////////////
+// Footnotes generator
+/////////////////////////////////////////////////////////////////////
+
+/* Based on footnote generation code from:
+ * http://www.brandspankingnew.net/archive/2005/07/format_footnote.html
+ */
+
+footnotes: function () {
+  // Delete existing footnote entries in case we're reloading the footnodes.
+  var i;
+  var noteholder = document.getElementById("footnotes");
+  if (!noteholder) {
+    return;
+  }
+  var entriesToRemove = [];
+  for (i = 0; i < noteholder.childNodes.length; i++) {
+    var entry = noteholder.childNodes[i];
+    if (entry.nodeName.toLowerCase() == 'div' && entry.getAttribute("class") == "footnote")
+      entriesToRemove.push(entry);
+  }
+  for (i = 0; i < entriesToRemove.length; i++) {
+    noteholder.removeChild(entriesToRemove[i]);
+  }
+
+  // Rebuild footnote entries.
+  var cont = document.getElementById("content");
+  var spans = cont.getElementsByTagName("span");
+  var refs = {};
+  var n = 0;
+  for (i=0; i<spans.length; i++) {
+    if (spans[i].className == "footnote") {
+      n++;
+      var note = spans[i].getAttribute("data-note");
+      if (!note) {
+        // Use [\s\S] in place of . so multi-line matches work.
+        // Because JavaScript has no s (dotall) regex flag.
+        note = spans[i].innerHTML.match(/\s*\[([\s\S]*)]\s*/)[1];
+        spans[i].innerHTML =
+          "[<a id='_footnoteref_" + n + "' href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+        spans[i].setAttribute("data-note", note);
+      }
+      noteholder.innerHTML +=
+        "<div class='footnote' id='_footnote_" + n + "'>" +
+        "<a href='#_footnoteref_" + n + "' title='Return to text'>" +
+        n + "</a>. " + note + "</div>";
+      var id =spans[i].getAttribute("id");
+      if (id != null) refs["#"+id] = n;
+    }
+  }
+  if (n == 0)
+    noteholder.parentNode.removeChild(noteholder);
+  else {
+    // Process footnoterefs.
+    for (i=0; i<spans.length; i++) {
+      if (spans[i].className == "footnoteref") {
+        var href = spans[i].getElementsByTagName("a")[0].getAttribute("href");
+        href = href.match(/#.*/)[0];  // Because IE return full URL.
+        n = refs[href];
+        spans[i].innerHTML =
+          "[<a href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+      }
+    }
+  }
+},
+
+install: function(toclevels) {
+  var timerId;
+
+  function reinstall() {
+    asciidoc.footnotes();
+    if (toclevels) {
+      asciidoc.toc(toclevels);
+    }
+  }
+
+  function reinstallAndRemoveTimer() {
+    clearInterval(timerId);
+    reinstall();
+  }
+
+  timerId = setInterval(reinstall, 500);
+  if (document.addEventListener)
+    document.addEventListener("DOMContentLoaded", reinstallAndRemoveTimer, false);
+  else
+    window.onload = reinstallAndRemoveTimer;
+}
+
+}
+asciidoc.install();
+/*]]>*/
+</script>
+</head>
+<body class="manpage">
+<div id="header">
+<h1>
+git-branch(1) Manual Page
+</h1>
+<h2>NAME</h2>
+<div class="sectionbody">
+<p>git-branch -
+   ブランチをリスト、作成、削除する
+</p>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="_書式">書式</h2>
+<div class="sectionbody">
+<div class="verseblock">
+<pre class="content"><em>git branch</em> [--color[=&lt;when&gt;] | --no-color] [-r | -a]
+        [--list] [-v [--abbrev=&lt;length&gt; | --no-abbrev]]
+        [--column[=&lt;options&gt;] | --no-column]
+        [(--merged | --no-merged | --contains) [&lt;commit&gt;]] [&lt;pattern&gt;&#8230;]
+<em>git branch</em> [--set-upstream | --track | --no-track] [-l] [-f] &lt;branchname&gt; [&lt;start-point&gt;]
+<em>git branch</em> (--set-upstream-to=&lt;upstream&gt; | -u &lt;upstream&gt;) [&lt;branchname&gt;]
+<em>git branch</em> --unset-upstream [&lt;branchname&gt;]
+<em>git branch</em> (-m | -M) [&lt;oldbranch&gt;] &lt;newbranch&gt;
+<em>git branch</em> (-d | -D) [-r] &lt;branchname&gt;&#8230;
+<em>git branch</em> --edit-description [&lt;branchname&gt;]</pre>
+<div class="attribution">
+</div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_解説">解説</h2>
+<div class="sectionbody">
+<div class="paragraph"><p><code>--list</code> が指定された場合、またはオプション以外の引数がなかった場合、
+存在するブランチがリストされます; カレントブランチはアスタリスクでハイライト
+されます。 オプション <code>-r</code> はリモート追跡ブランチをリストし、オプション
+<code>-a</code> はローカルとリモート両方のブランチを表示します。 複数のパターンが
+与えられた場合、あるブランチはパターンのうちどれかにマッチすれば表示されます。
+<code>&lt;pattern&gt;</code> を与える場合、 <code>--list</code> を使用しなければならないことに注意
+してください; でなければ、このコマンドはブランチ作成であると解釈します。</p></div>
+<div class="paragraph"><p><code>--contains</code> を使用すると、指定されたコミットを含むブランチのみ表示します
+(言い換えると、ブランチの先端のコミットが、指定されたコミットの子孫である
+ようなブランチのことです)。 <code>--merged</code> を使用すると、指定されたコミットに
+マージ済みのブランチ(つまり、ブランチの先端のコミットが指定されたコミット
+から到達可能であるようなブランチ) のみリストされます。 <code>--no-merged</code> を使用
+すると、指定されたコミットにマージされていないブランチのみリストされます。
+&lt;commit&gt; 引数がない場合、<em>HEAD</em> がデフォルトになります(つまり、カレントブランチ
+の先端です)。</p></div>
+<div class="paragraph"><p>コマンドの2番めの形式は現在の <em>HEAD</em> を指し示すような &lt;branchname&gt; という
+名前の新しいブランチヘッドを作成します; 新しいブランチに切り替えるには
+"git checkout &lt;newbranch&gt;" を使用します。</p></div>
+<div class="paragraph"><p>ローカルブランチがリモート追跡ブランチから分岐した場合、 Git は
+<em>git pull</em> でそのリモート追跡ブランチから適切にマージできるよう、
+ブランチを設定します(具体的には <code>branch.&lt;name&gt;.remote</code> と
+<code>branch.&lt;name&gt;.merge</code> の設定エントリを設定します)。 この挙動はグローバル設定の
+<code>branch.autosetupmerge</code> フラグで変更することもできます。 この設定は <code>--track</code>
+および <code>--no-track</code> オプションで上書きでき、 あとから
+<code>git branch --set-upstream-to</code> で変更できます。</p></div>
+<div class="paragraph"><p><code>-m</code> または <code>-M</code> オプションを指定すると、 &lt;oldbranch&gt; の名前が &lt;newbranch&gt; に
+変更されます。 もし &lt;oldbranch&gt; が対応する reflog を持っている場合、
+&lt;newbranch&gt; にマッチするよう、それも名前が変更され、 ブランチの名前の変更を
+記録する reflog エントリが作成されます。 もし &lt;newbranch&gt; が存在する場合、
+名前の変更を強制するためには -M を指定しなければなりません。
+<code>-d</code> または <code>-D</code> オプションを指定すると、 <code>&lt;branchname&gt;</code> が削除されます。
+削除するブランチはふたつ以上指定できます。 そのブランチが現在 reflog を
+持っている場合、 reflog も削除されます。</p></div>
+<div class="paragraph"><p>リモート追跡ブランチを削除するには <code>-r</code> と <code>-d</code> を一緒に指定します。リモート
+追跡ブランチの削除は、リモートリポジトリにそれがもう存在しないか、 <em>git fetch</em>
+がそのブランチを取得しないよう設定されている場合にのみ意味があるということに
+注意してください。 使われなくなったリモート追跡ブランチを全て消す方法
+については、 <a href="git-remote.html">git-remote(1)</a> の <em>prune</em> サブコマンドも参照してください。</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_オプション">オプション</h2>
+<div class="sectionbody">
+<div class="dlist"><dl>
+<dt class="hdlist1">
+-d
+</dt>
+<dt class="hdlist1">
+--delete
+</dt>
+<dd>
+<p>
+        ブランチを削除します。 対象のブランチはその上流のブランチに完全に
+        マージされていなければなりません。 <code>--track</code> または <code>--set-upstream</code>
+        によって上流が設定されていない場合、 <em>HEAD</em> にマージされていなければ
+        なりません。
+</p>
+</dd>
+<dt class="hdlist1">
+-D
+</dt>
+<dd>
+<p>
+        ブランチのマージ状況を考慮せずに削除します。
+</p>
+</dd>
+<dt class="hdlist1">
+-l
+</dt>
+<dt class="hdlist1">
+--create-reflog
+</dt>
+<dd>
+<p>
+        ブランチの reflog を作成します。 このオプションは
+        "&lt;branchname&gt;@{yesterday}" のような日付ごとの sha1 表現の使用を
+        有効化し、ブランチに対する変更の全てを記録するようにします。
+        ノンベアリポジトリにおいては、 reflog は <code>core.logallrefupdates</code> 設定
+        オプションにより、デフォルトで常に有効であることに注意してください。
+</p>
+</dd>
+<dt class="hdlist1">
+-f
+</dt>
+<dt class="hdlist1">
+--force
+</dt>
+<dd>
+<p>
+        &lt;branchname&gt; がすでに存在していれば、 &lt;branchname&gt; を &lt;startpoint&gt; に
+        リセットします。 <code>-f</code> オプションなしでは、 <em>git branch</em> は既存の
+        ブランチに対する変更を拒否します。
+</p>
+</dd>
+<dt class="hdlist1">
+-m
+</dt>
+<dt class="hdlist1">
+--move
+</dt>
+<dd>
+<p>
+        ブランチと対応する reflog を移動/名前変更します。
+</p>
+</dd>
+<dt class="hdlist1">
+-M
+</dt>
+<dd>
+<p>
+        新しいブランチ名がすでに存在していても、ブランチを移動/名前変更します。
+</p>
+</dd>
+<dt class="hdlist1">
+--color[=&lt;when&gt;]
+</dt>
+<dd>
+<p>
+        カレントブランチ、ローカルブランチ、リモート追跡ブランチに色を
+        つけてハイライトします。
+        値は always (デフォルト), never, auto のいずれかでなければなりません。
+</p>
+</dd>
+<dt class="hdlist1">
+--no-color
+</dt>
+<dd>
+<p>
+        設定ファイルが出力の色付けをデフォルトにしている場合でも、ブランチの
+        色付けを無効にします。
+        <code>--color=never</code> と同じです。
+</p>
+</dd>
+<dt class="hdlist1">
+--column[=&lt;options&gt;]
+</dt>
+<dt class="hdlist1">
+--no-column
+</dt>
+<dd>
+<p>
+        ブランチのリストをカラム表示にします。 オプションの文法については
+        column.branch の設定値を見てください。 &lt;options&gt; なしの <code>--column</code>
+       および <code>--no-column</code> の指定はそれぞれ <em>always</em> と <em>never</em> を指定した
+       場合と等価です。
+</p>
+<div class="paragraph"><p>このオプションは冗長モードでない場合にのみ有効です。</p></div>
+</dd>
+<dt class="hdlist1">
+-r
+</dt>
+<dt class="hdlist1">
+--remotes
+</dt>
+<dd>
+<p>
+        リモート追跡ブランチをリストまたは (-dを一緒に指定した場合) 削除します。
+</p>
+</dd>
+<dt class="hdlist1">
+-a
+</dt>
+<dt class="hdlist1">
+--all
+</dt>
+<dd>
+<p>
+        ローカルブランチとリモート追跡ブランチの両方をリストします。
+</p>
+</dd>
+<dt class="hdlist1">
+--list
+</dt>
+<dd>
+<p>
+        リストモードで動作させます。 <code>git branch &lt;pattern&gt;</code> はブランチを作成
+        しようとします。 マッチするブランチをリストするには
+        <code>git branch --list &lt;pattern&gt;</code> を使います。
+</p>
+</dd>
+<dt class="hdlist1">
+-v
+</dt>
+<dt class="hdlist1">
+-vv
+</dt>
+<dt class="hdlist1">
+--verbose
+</dt>
+<dd>
+<p>
+        リストモードの場合、各ブランチヘッドの sha1 とコミットサブジェクト
+        を各行に表示し、上流のブランチとコミット数の差も (あれば) 一緒に
+        表示します。 2回指定された場合、 上流のブランチ名も表示します
+        (<code>git remote show &lt;remote&gt;</code> も参照してください)。
+</p>
+</dd>
+<dt class="hdlist1">
+-q
+</dt>
+<dt class="hdlist1">
+--quiet
+</dt>
+<dd>
+<p>
+        エラー以外のメッセージ出力を抑制して、ブランチの作成と削除を
+        より静かに行います。
+</p>
+</dd>
+<dt class="hdlist1">
+--abbrev=&lt;length&gt;
+</dt>
+<dd>
+<p>
+        リストされた出力中の sha1 の最小表示長を変更します。デフォルト値は
+        7 で、 <code>core.abbrev</code> 設定オプションで上書きできます。
+</p>
+</dd>
+<dt class="hdlist1">
+--no-abbrev
+</dt>
+<dd>
+<p>
+        リストされた出力の sha1 を省略せず、完全な値を表示します。
+</p>
+</dd>
+<dt class="hdlist1">
+-t
+</dt>
+<dt class="hdlist1">
+--track
+</dt>
+<dd>
+<p>
+        新しいブランチを作成するとき、その新しいブランチから見た
+        "上流(upstream)" として開始地点のブランチを記録するために、
+        <code>branch.&lt;name&gt;remote</code> と <code>branch.&lt;name&gt;.merge</code> の設定エントリを
+        設定します。 この設定は <code>git status</code> と <code>git branch -v</code> を実行した
+        ときに、これらのブランチ間の関係を表示するよう git に指示します。
+        加えて、 このブランチがチェックアウトされている状態で <code>git pull</code> を
+        引数なしで実行したときに、 この上流から pull するように指示します。
+</p>
+<div class="paragraph"><p>この挙動はブランチの開始地点がリモート追跡ブランチだったときのデフォルトです。
+<code>git checkout</code> と <code>git branch</code> が常に <em>--no-track</em> が指定されたように振る舞って
+欲しいのであれば、 設定値 branch.autosetupmerge を <code>false</code> に設定します。
+開始地点がローカルブランチとリモート追跡ブランチのどちらであってもこの挙動
+になって欲しければ、 設定値を <code>always</code> に設定します。</p></div>
+</dd>
+<dt class="hdlist1">
+--no-track
+</dt>
+<dd>
+<p>
+        設定値 branch.autosetupmerge が true であっても "上流" を設定しません。
+</p>
+</dd>
+<dt class="hdlist1">
+--set-upstream
+</dt>
+<dd>
+<p>
+        指定されたブランチが存在しないか、 <code>--force</code> が指定されている場合、
+        <code>--track</code> とまったく同一の動作をします。 それ以外の場合も <code>--track</code>
+        でブランチを作成するのと同様の設定を行いますが、ブランチ開始地点は
+        変更しません。
+</p>
+</dd>
+<dt class="hdlist1">
+-u &lt;upstream&gt;
+</dt>
+<dt class="hdlist1">
+--set-upstream-to=&lt;upstream&gt;
+</dt>
+<dd>
+<p>
+        &lt;upstream&gt; が &lt;branchname&gt; の上流ブランチであると見えるように
+        &lt;branchname&gt; の追跡情報を設定します。 &lt;branchname&gt; が指定されない
+        場合、 デフォルトでカレントブランチが対象となります。
+</p>
+</dd>
+<dt class="hdlist1">
+--unset-upstream
+</dt>
+<dd>
+<p>
+        &lt;branchname&gt; の上流に関する情報を削除します。 ブランチが指定されない
+        場合、 デフォルトでカレントブランチが対象となります。
+</p>
+</dd>
+<dt class="hdlist1">
+--edit-description
+</dt>
+<dd>
+<p>
+        エディタを開き、ブランチの目的を説明するテキストを編集します。
+        テキストは他のさまざまなコマンド (例えば <code>request-pull</code>) で使われます。
+</p>
+</dd>
+<dt class="hdlist1">
+--contains [&lt;commit&gt;]
+</dt>
+<dd>
+<p>
+        指定された &lt;commit&gt; (指定がなければ HEAD) を含むブランチのみリスト
+        します。 <code>--list</code> が暗黙的に指定されます。
+</p>
+</dd>
+<dt class="hdlist1">
+--merged [&lt;commit&gt;]
+</dt>
+<dd>
+<p>
+        指定された &lt;commit&gt; (指定がなければ HEAD) から到達可能なブランチのみ
+        リストします。 <code>--list</code> が暗黙的に指定されます。
+</p>
+</dd>
+<dt class="hdlist1">
+--no-merged [&lt;commit&gt;]
+</dt>
+<dd>
+<p>
+        指定された &lt;commit&gt; (指定がなければ HEAD) から到達可能でないブランチ
+        のみリストします。 <code>--list</code> が暗黙的に指定されます。
+</p>
+</dd>
+<dt class="hdlist1">
+&lt;branchname&gt;
+</dt>
+<dd>
+<p>
+        作成または削除するブランチの名前です。
+        新しいブランチ名は <a href="git-check-ref-format.html">git-check-ref-format(1)</a> で定義される
+        チェックをすべてパスしなければなりません。これらのチェックで
+        ブランチ名に使える文字が制限されることがあります。
+</p>
+</dd>
+<dt class="hdlist1">
+&lt;start-point&gt;
+</dt>
+<dd>
+<p>
+        新しいブランチヘッドがこのコミットを指すことになります。 ここには
+        ブランチ名、コミットID, またはタグを指定できます。 もしこれが省略
+        された場合、代わりに HEAD が使われます。
+</p>
+</dd>
+<dt class="hdlist1">
+&lt;oldbranch&gt;
+</dt>
+<dd>
+<p>
+        名前変更の対象となる、現在存在しているブランチの名前です。
+</p>
+</dd>
+<dt class="hdlist1">
+&lt;newbranch&gt;
+</dt>
+<dd>
+<p>
+        存在するブランチのための新しい名前です。 &lt;branchname&gt; と同じ制限が
+        適用されます。
+</p>
+</dd>
+</dl></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_例">例</h2>
+<div class="sectionbody">
+<div class="dlist"><dl>
+<dt class="hdlist1">
+すでにあるタグから開発を開始
+</dt>
+<dd>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git clone git://git.kernel.org/pub/scm/.../linux-2.6 my2.6
+$ cd my2.6
+$ git branch my2.6.14 v2.6.14   <b>&lt;1&gt;</b>
+$ git checkout my2.6.14</code></pre>
+</div></div>
+<div class="colist arabic"><ol>
+<li>
+<p>
+このステップと次のステップは "checkout -b my2.6.14 v2.6.14" で1ステップに
+できます。
+</p>
+</li>
+</ol></div>
+</dd>
+<dt class="hdlist1">
+不要なブランチを削除
+</dt>
+<dd>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git clone git://git.kernel.org/.../git.git my.git
+$ cd my.git
+$ git branch -d -r origin/todo origin/html origin/man   <b>&lt;1&gt;</b>
+$ git branch -D test                                    <b>&lt;2&gt;</b></code></pre>
+</div></div>
+<div class="colist arabic"><ol>
+<li>
+<p>
+リモート追跡ブランチ "todo", "html", "man" を削除します。 次回の <em>fetch</em>
+または <em>pull</em> で再び作成されます (そうしないよう設定しない限り)。
+<a href="git-fetch.html">git-fetch(1)</a> を見てください。
+</p>
+</li>
+<li>
+<p>
+"test" ブランチのすべてのコミットが "master" ブランチ (または現在
+チェックアウトされているブランチ) にマージされていない場合でも "test"
+ブランチを削除します。
+</p>
+</li>
+</ol></div>
+</dd>
+</dl></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_注意">注意</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>すぐにチェックアウトするブランチを作成するのであれば、 <em>-b</em> オプションを
+指定して git checkout コマンドを使ったほうが、ブランチの作成とチェックアウト
+を1ステップで実行できるので簡単です。</p></div>
+<div class="paragraph"><p><code>--contains</code>, <code>--merged</code> および <code>--no-merged</code> のオプションは3つの関連する、
+しかし異なる目的のために使えます。</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+<code>--contains &lt;commit&gt;</code> は &lt;commit&gt; が rebase または amend されるときに
+  特に注意が必要なブランチ名を探すときに使います。 これらのブランチは
+  &lt;commit&gt; を含んでいる(contain)ためです。
+</p>
+</li>
+<li>
+<p>
+<code>--merged</code> は安全に削除できるブランチを探すときに使います。これらの
+  ブランチは HEAD に完全に含まれているためです。
+</p>
+</li>
+<li>
+<p>
+<code>--no-merged</code> は HEAD にマージする候補となるブランチを探すときに使います。
+  これらのブランチは HEAD に完全には含まれていないためです。
+</p>
+</li>
+</ul></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_あわせて読みたい">あわせて読みたい</h2>
+<div class="sectionbody">
+<div class="paragraph"><p><a href="git-check-ref-format.html">git-check-ref-format(1)</a>,
+<a href="git-fetch.html">git-fetch(1)</a>,
+<a href="git-remote.html">git-remote(1)</a>,
+Git ユーザーズマニュアルの
+<a href="user-manual.html#what-is-a-branch">&#8220;Understanding history: What is
+a branch?&#8221;</a></p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_git">GIT</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>これは <a href="git.html">git(1)</a> の一部です。</p></div>
+</div>
+</div>
+</div>
+<div id="footnotes"><hr /></div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2014-02-16 06:47:37 JST
+</div>
+</div>
+</body>
+</html>
