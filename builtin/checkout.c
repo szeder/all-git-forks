@@ -854,6 +854,17 @@ static void remove_junk_on_signal(int signo)
 	raise(signo);
 }
 
+static dev_t get_device_or_die(const char *path)
+{
+	struct stat buf;
+	if (stat(path, &buf))
+		die_errno("failed to stat '%s'", path);
+	/* Ah Windows! Make different drives different "partitions" */
+	if (buf.st_dev == 0 && has_dos_drive_prefix("c:\\"))
+		buf.st_dev = toupper(real_path(path)[0]);
+	return buf.st_dev;
+}
+
 static int prepare_linked_checkout(const struct checkout_opts *opts,
 				   struct branch_info *new)
 {
@@ -863,7 +874,7 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 	struct stat st;
 	const char *name;
 	struct child_process cp;
-	int counter = 0, len, ret;
+	int counter = 0, len, keep_locked = 0, ret;
 
 	if (!new->commit)
 		die(_("no branch specified"));
@@ -898,12 +909,18 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 	junk_git_dir = sb_repo.buf;
 	is_junk = 1;
 
+	strbuf_addf(&sb, "%s/locked", sb_repo.buf);
+	write_file(sb.buf, 1, "initializing\n");
+
 	strbuf_addf(&sb_git, "%s/.git", path);
 	if (safe_create_leading_directories_const(sb_git.buf))
 		die_errno(_("could not create leading directories of '%s'"),
 			  sb_git.buf);
 	junk_work_tree = path;
 
+	strbuf_reset(&sb);
+	strbuf_addf(&sb, "%s/gitdir", sb_repo.buf);
+	write_file(sb.buf, 1, "%s\n", real_path(sb_git.buf));
 	write_file(sb_git.buf, 1, "gitdir: %s/repos/%s\n",
 		   real_path(get_git_dir()), name);
 	/*
@@ -912,11 +929,23 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 	 * value would do because this value will be ignored and
 	 * replaced at the next (real) checkout.
 	 */
+	strbuf_reset(&sb);
 	strbuf_addf(&sb, "%s/HEAD", sb_repo.buf);
 	write_file(sb.buf, 1, "%s\n", sha1_to_hex(new->commit->object.sha1));
 	strbuf_reset(&sb);
 	strbuf_addf(&sb, "%s/commondir", sb_repo.buf);
 	write_file(sb.buf, 1, "../..\n");
+
+	if (get_device_or_die(path) != get_device_or_die(get_git_dir())) {
+		strbuf_reset(&sb);
+		strbuf_addf(&sb, "%s/locked", sb_repo.buf);
+		write_file(sb.buf, 1, "located on a different file system\n");
+		keep_locked = 1;
+	} else {
+		strbuf_reset(&sb);
+		strbuf_addf(&sb, "%s/link", sb_repo.buf);
+		link(sb_git.buf, sb.buf); /* it's ok to fail */
+	}
 
 	if (!opts->quiet)
 		fprintf_ln(stderr, _("Enter %s (identifier %s)"), path, name);
@@ -930,6 +959,11 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 	ret = run_command(&cp);
 	if (!ret)
 		is_junk = 0;
+	if (!keep_locked) {
+		strbuf_reset(&sb);
+		strbuf_addf(&sb, "%s/locked", sb_repo.buf);
+		unlink_or_warn(sb.buf);
+	}
 	strbuf_release(&sb);
 	strbuf_release(&sb_repo);
 	strbuf_release(&sb_git);
