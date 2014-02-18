@@ -116,6 +116,11 @@ extern void strbuf_add(struct strbuf *, const void *, size_t);
 static inline void strbuf_addstr(struct strbuf *sb, const char *s) {
 	strbuf_add(sb, s, strlen(s));
 }
+static inline void strbuf_addstr_at(struct strbuf *sb, size_t len, const char *s)
+{
+	strbuf_setlen(sb, len);
+	strbuf_add(sb, s, strlen(s));
+}
 static inline void strbuf_addbuf(struct strbuf *sb, const struct strbuf *sb2) {
 	strbuf_grow(sb, sb2->len);
 	strbuf_add(sb, sb2->buf, sb2->len);
