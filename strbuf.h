@@ -109,6 +109,7 @@ extern void strbuf_remove(struct strbuf *, size_t pos, size_t len);
 /* splice pos..pos+len with given data */
 extern void strbuf_splice(struct strbuf *, size_t pos, size_t len,
                           const void *, size_t);
+extern void strbuf_chomp(struct strbuf *sb);
 
 extern void strbuf_add_commented_lines(struct strbuf *out, const char *buf, size_t size);
 
