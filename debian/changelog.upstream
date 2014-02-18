@@ -1,3 +1,32 @@
+Version v1.9.0; changes since v1.9.0-rc3:
+-----------------------------------------
+
+Jean-Noel Avila (1):
+      l10n: fr: 1.9rc2 2211t
+
+Jiang Xin (3):
+      l10n: git.pot: v1.9 round 2 (1 new)
+      l10n: zh_CN.po: translate 1 new message (2211t0f0u)
+      l10n: zh_CN.po: Disambiguation for rebase
+
+Junio C Hamano (2):
+      Git 1.8.5.5
+      Git 1.9.0
+
+Michael J Gruber (1):
+      release notes: typo fixes
+
+Peter Krefting (1):
+      l10n: Update Swedish translation (2211t0f0u)
+
+Ralf Thielow (2):
+      l10n: de.po: translate 28 new messages
+      l10n: de.po: correct message when hiding commits by craft
+
+Tran Ngoc Quan (1):
+      l10n: vi.po (2211t): Updated one new string
+
+
 Version v1.9.0-rc3; changes since v1.9-rc2:
 -------------------------------------------
 
@@ -179,7 +208,7 @@ lin zuojian (1):
       git-svn: memoize _rev_list and rebuild
 
 
-Version v1.9-rc0; changes since v1.8.5.4:
+Version v1.9-rc0; changes since v1.8.5.5:
 -----------------------------------------
 
 Anders Kaseorg (1):
@@ -303,7 +332,7 @@ Jonathan Nieder (16):
       pager: set LV=-c alongside LESS=FRSX
       diff test: reading a directory as a file need not error out
 
-Junio C Hamano (19):
+Junio C Hamano (17):
       revision: introduce --exclude=<glob> to tame wildcards
       merge-base: use OPT_CMDMODE and clarify the command line parsing
       merge-base: teach "--fork-point" mode
@@ -318,8 +347,6 @@ Junio C Hamano (19):
       Update draft release notes to 1.9
       prune-packed: use strbuf to avoid having to worry about PATH_MAX
       Update draft release notes to 1.9
-      merge-base: separate "--independent" codepath into its own helper
-      merge-base --octopus: reduce the result from get_octopus_merge_bases()
       Update draft release notes to 1.9
       Update draft release notes to 1.9
       Git 1.9-rc0
@@ -498,6 +525,34 @@ brian m. carlson (2):
 
 jcb91 (1):
       remote-hg: avoid buggy strftime()
+
+
+Version v1.8.5.5; changes since v1.8.5.4:
+-----------------------------------------
+
+Andy Spencer (1):
+      tree_entry_interesting: match against all pathspecs
+
+Jeff King (9):
+      fetch-pack: do not filter out one-level refs
+      interpret_branch_name: factor out upstream handling
+      interpret_branch_name: rename "cp" variable to "at"
+      interpret_branch_name: always respect "namelen" parameter
+      interpret_branch_name: avoid @{upstream} past colon
+      interpret_branch_name: find all possible @-marks
+      repack: fix typo in max-pack-size option
+      repack: make parsed string options const-correct
+      repack: propagate pack-objects options as strings
+
+Junio C Hamano (5):
+      merge-base: separate "--independent" codepath into its own helper
+      merge-base --octopus: reduce the result from get_octopus_merge_bases()
+      revision: mark contents of an uninteresting tree uninteresting
+      revision: propagate flag bits from tags to pointees
+      Git 1.8.5.5
+
+Ruben Kerkhof (1):
+      send-email: /etc/ssl/certs/ directory may not be usable as ca_path
 
 
 Version v1.8.5.4; changes since v1.8.5.3:
