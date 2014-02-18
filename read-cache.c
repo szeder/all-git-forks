@@ -1219,14 +1219,17 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int reall
 
 #define INDEX_FORMAT_DEFAULT 3
 
-static unsigned int get_index_format_default()
+static unsigned int get_index_format_default(void)
 {
 	char *envversion = getenv("GIT_INDEX_VERSION");
 	if (!envversion) {
 		return INDEX_FORMAT_DEFAULT;
 	} else {
-		unsigned int version = strtol(envversion, NULL, 10);
-		if (version < INDEX_FORMAT_LB || version > INDEX_FORMAT_UB) {
+		char *endp;
+		unsigned int version = strtoul(envversion, &endp, 10);
+
+		if (*endp ||
+		    version < INDEX_FORMAT_LB || INDEX_FORMAT_UB < version) {
 			warning(_("GIT_INDEX_VERSION set, but the value is invalid.\n"
 				  "Using version %i"), INDEX_FORMAT_DEFAULT);
 			version = INDEX_FORMAT_DEFAULT;
