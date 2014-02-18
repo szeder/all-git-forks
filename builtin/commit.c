@@ -1131,7 +1131,7 @@ static int parse_and_validate_options(int argc, const char *argv[],
 	if (argc > 0 && !also && !only)
 		only_include_assumed = _("Explicit paths specified without -i nor -o; assuming --only paths...");
 	if (!cleanup_arg || !strcmp(cleanup_arg, "default"))
-		cleanup_mode = use_editor ? CLEANUP_ALL : CLEANUP_SPACE;
+		cleanup_mode = use_editor ? CLEANUP_SCISSORS : CLEANUP_SPACE;
 	else if (!strcmp(cleanup_arg, "verbatim"))
 		cleanup_mode = CLEANUP_NONE;
 	else if (!strcmp(cleanup_arg, "whitespace"))
