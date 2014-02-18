@@ -755,7 +755,9 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 	strbuf_addstr(&committer_ident, git_committer_info(IDENT_STRICT));
 	if (use_editor && include_status) {
 		char *ai_tmp, *ci_tmp;
-		if (whence != FROM_COMMIT)
+		if (whence != FROM_COMMIT) {
+			if (cleanup_mode == CLEANUP_SCISSORS)
+				wt_status_add_cut_line(s->fp);
 			status_printf_ln(s, GIT_COLOR_NORMAL,
 			    whence == FROM_MERGE
 				? _("\n"
@@ -771,6 +773,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 				git_path(whence == FROM_MERGE
 					 ? "MERGE_HEAD"
 					 : "CHERRY_PICK_HEAD"));
+		}
 
 		fprintf(s->fp, "\n");
 		if (cleanup_mode == CLEANUP_ALL)
@@ -778,7 +781,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 				_("Please enter the commit message for your changes."
 				  " Lines starting\nwith '%c' will be ignored, and an empty"
 				  " message aborts the commit.\n"), comment_line_char);
-		else if (cleanup_mode == CLEANUP_SCISSORS)
+		else if (cleanup_mode == CLEANUP_SCISSORS && whence == FROM_COMMIT)
 			wt_status_add_cut_line(s->fp);
 		else /* CLEANUP_SPACE, that is. */
 			status_printf(s, GIT_COLOR_NORMAL,
