@@ -218,6 +218,9 @@ commondir::
 modules::
 	Contains the git-repositories of the submodules.
 
+repos::
+	Contains worktree specific information of linked checkouts.
+
 SEE ALSO
 --------
 linkgit:git-init[1],
