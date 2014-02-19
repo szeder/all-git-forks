@@ -113,6 +113,7 @@ static char *sign_commit;
 static enum {
 	CLEANUP_SPACE,
 	CLEANUP_NONE,
+	CLEANUP_SCISSORS,
 	CLEANUP_ALL
 } cleanup_mode;
 static const char *cleanup_arg;
@@ -802,6 +803,8 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 				_("Please enter the commit message for your changes."
 				  " Lines starting\nwith '%c' will be ignored, and an empty"
 				  " message aborts the commit.\n"), comment_line_char);
+		else if (cleanup_mode == CLEANUP_SCISSORS)
+			wt_status_add_cut_line(s->fp);
 		else /* CLEANUP_SPACE, that is. */
 			status_printf(s, GIT_COLOR_NORMAL,
 				_("Please enter the commit message for your changes."
@@ -1157,6 +1160,8 @@ static int parse_and_validate_options(int argc, const char *argv[],
 		cleanup_mode = CLEANUP_SPACE;
 	else if (!strcmp(cleanup_arg, "strip"))
 		cleanup_mode = CLEANUP_ALL;
+	else if (!strcmp(cleanup_arg, "scissors"))
+		cleanup_mode = use_editor ? CLEANUP_SCISSORS : CLEANUP_SPACE;
 	else
 		die(_("Invalid cleanup mode %s"), cleanup_arg);
 
@@ -1631,8 +1636,8 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		die(_("could not read commit message: %s"), strerror(saved_errno));
 	}
 
-	/* Truncate the message just before the diff, if any. */
-	if (verbose)
+	if (verbose || /* Truncate the message just before the diff, if any. */
+	    cleanup_mode == CLEANUP_SCISSORS)
 		wt_status_truncate_message_at_cut_line(&sb);
 
 	if (cleanup_mode != CLEANUP_NONE)
