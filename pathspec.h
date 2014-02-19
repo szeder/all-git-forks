@@ -18,6 +18,14 @@
 
 #define PATHSPEC_ONESTAR 1	/* the pathspec pattern satisfies GFNM_ONESTAR */
 
+struct pathspec_trie {
+	struct pathspec_trie **entries;
+	int nr, alloc;
+	unsigned terminal:1,
+		 must_be_dir:1;
+	char path[FLEX_ARRAY];
+};
+
 struct pathspec {
 	int nr;
 	unsigned int has_wildcard:1;
@@ -95,5 +103,9 @@ static inline int ps_strcmp(const struct pathspec_item *item,
 
 extern char *find_pathspecs_matching_against_index(const struct pathspec *pathspec);
 extern void add_pathspec_matches_against_index(const struct pathspec *pathspec, char *seen);
+
+struct pathspec_trie *build_pathspec_trie(const struct pathspec *);
+int pathspec_trie_lookup(const struct pathspec_trie *pst,
+			 const char *path, size_t len);
 
 #endif /* PATHSPEC_H */
