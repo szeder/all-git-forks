@@ -221,7 +221,8 @@ extern const char mime_boundary_leader[];
 extern struct combine_diff_path *diff_tree_paths(
 	struct combine_diff_path *p, const unsigned char *sha1,
 	const unsigned char **parent_sha1, int nparent,
-	struct strbuf *base, struct diff_options *opt);
+	struct strbuf *base, struct diff_options *opt,
+	struct pathspec_trie *pst);
 extern int diff_tree_sha1(const unsigned char *old, const unsigned char *new,
 			  const char *base, struct diff_options *opt);
 extern int diff_root_tree_sha1(const unsigned char *new, const char *base,
