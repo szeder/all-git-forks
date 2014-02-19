@@ -421,9 +421,11 @@ extern char *prefix_path(const char *prefix, int len, const char *path);
 extern char *prefix_path_gently(const char *prefix, int len, int *remaining, const char *path);
 extern const char *prefix_filename(const char *prefix, int len, const char *path);
 extern int check_filename(const char *prefix, const char *name);
+#define VERIFY_FILENAME_DIAGNOSE_MISSPLELT_REV_OPT 01
+#define VERIFY_FILENAME_GET_SHA1_QUIETLY_OPT       02
 extern void verify_filename(const char *prefix,
 			    const char *name,
-			    int diagnose_misspelt_rev);
+			    int verify_filename_opts);
 extern void verify_non_filename(const char *prefix, const char *name);
 extern int path_inside_repo(const char *prefix, const char *path);
 
@@ -823,13 +825,16 @@ struct object_context {
 #define GET_SHA1_BLOB	       040
 #define GET_SHA1_ONLY_TO_DIE 04000
 
+#define SHORT_NAME_NOT_FOUND (-1)
+#define SHORT_NAME_AMBIGUOUS (-2)
+
 extern int get_sha1(const char *str, unsigned char *sha1);
 extern int get_sha1_commit(const char *str, unsigned char *sha1);
 extern int get_sha1_committish(const char *str, unsigned char *sha1);
 extern int get_sha1_tree(const char *str, unsigned char *sha1);
 extern int get_sha1_treeish(const char *str, unsigned char *sha1);
 extern int get_sha1_blob(const char *str, unsigned char *sha1);
-extern void maybe_die_on_misspelt_object_name(const char *name, const char *prefix);
+extern void maybe_die_on_misspelt_object_name(const char *name, const char *prefix, int sha1_flags);
 extern int get_sha1_with_context(const char *str, unsigned flags, unsigned char *sha1, struct object_context *orc);
 
 typedef int each_abbrev_fn(const unsigned char *sha1, void *);

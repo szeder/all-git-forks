@@ -99,8 +99,10 @@ int check_filename(const char *prefix, const char *arg)
 
 static void NORETURN die_verify_filename(const char *prefix,
 					 const char *arg,
-					 int diagnose_misspelt_rev)
+					 int verify_filename_opts)
 {
+	int diagnose_misspelt_rev = verify_filename_opts & VERIFY_FILENAME_DIAGNOSE_MISSPLELT_REV_OPT;
+
 	if (!diagnose_misspelt_rev)
 		die("%s: no such path in the working tree.\n"
 		    "Use 'git <command> -- <path>...' to specify paths that do not exist locally.",
@@ -112,7 +114,14 @@ static void NORETURN die_verify_filename(const char *prefix,
 	 * let maybe_die_on_misspelt_object_name() even trigger.
 	 */
 	if (!(arg[0] == ':' && !isalnum(arg[1])))
-		maybe_die_on_misspelt_object_name(arg, prefix);
+	{
+		int sha1_flags = 0;
+
+		if (verify_filename_opts & VERIFY_FILENAME_GET_SHA1_QUIETLY_OPT)
+			sha1_flags |= GET_SHA1_QUIETLY;
+
+		maybe_die_on_misspelt_object_name(arg, prefix, sha1_flags);
+	}
 
 	/* ... or fall back the most general message. */
 	die("ambiguous argument '%s': unknown revision or path not in the working tree.\n"
@@ -128,28 +137,39 @@ static void NORETURN die_verify_filename(const char *prefix,
  * it to be preceded by the "--" marker (or we want the user to
  * use a format like "./-filename")
  *
- * The "diagnose_misspelt_rev" is used to provide a user-friendly
- * diagnosis when dying upon finding that "name" is not a pathname.
- * If set to 1, the diagnosis will try to diagnose "name" as an
- * invalid object name (e.g. HEAD:foo). If set to 0, the diagnosis
- * will only complain about an inexisting file.
+ * The "verify_filename_opts" is used to control behavior of
+ * verify_filename.  There are two options:
+ *   VERIFY_FILENAME_DIAGNOSE_MISSPELT_REV_OPT
+ *   VERIFY_FILENAME_GET_SHA1_QUIETLY_OPT
+ *
+ * The "VERIFY_FILENAME_DIAGNOSE_MISSPELT_REV_OPT" is used to provide
+ * a user-friendly diagnosis when dying upon finding that "name" is
+ * not a pathname. If set to 1, the diagnosis will try to diagnose
+ * "name" as an invalid object name (e.g. HEAD:foo). If set to 0,
+ * the diagnosis will only complain about an inexisting file.
  *
  * This function is typically called to check that a "file or rev"
  * argument is unambiguous. In this case, the caller will want
- * diagnose_misspelt_rev == 1 when verifying the first non-rev
- * argument (which could have been a revision), and
- * diagnose_misspelt_rev == 0 for the next ones (because we already
- * saw a filename, there's not ambiguity anymore).
+ * verify_filename_opts | VERIFY_FILENAME_DIAGNOSE_MISSPLELT_REV_OPT
+ * when verifying the first non-rev argument (which could have been
+ * a revision), and verify_filename_opts &
+ * ~VERIFY_FILENAME_DIAGNOSE_MISSPELT_REV_OPT for the next ones
+ * (because we already saw a filename, there's not ambiguity anymore).
+ *
+ * The "VERIFY_FILENAME_GET_SHA1_QUIETLY_OPT" is used to squash the
+ * error output of getting a SHA1 for an object.  The caller would
+ * set this option if the caller knows the SHA1 was already retrieved
+ * and errored out, to prevent the error being reported twice.
  */
 void verify_filename(const char *prefix,
 		     const char *arg,
-		     int diagnose_misspelt_rev)
+		     int verify_filename_opts)
 {
 	if (*arg == '-')
 		die("bad flag '%s' used after filename", arg);
 	if (check_filename(prefix, arg))
 		return;
-	die_verify_filename(prefix, arg, diagnose_misspelt_rev);
+	die_verify_filename(prefix, arg, verify_filename_opts);
 }
 
 /*

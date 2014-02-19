@@ -1500,8 +1500,10 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsi
 	if (revarg_opt & REVARG_COMMITTISH)
 		get_sha1_flags = GET_SHA1_COMMITTISH;
 
-	if (get_sha1_with_context(arg, get_sha1_flags, sha1, &oc))
-		return revs->ignore_missing ? 0 : -1;
+	int sha1_rcode = get_sha1_with_context(arg, get_sha1_flags, sha1, &oc);
+
+	if (sha1_rcode)
+		return revs->ignore_missing ? 0 : sha1_rcode;
 	if (!cant_be_filename)
 		verify_non_filename(revs->prefix, arg);
 	object = get_reference(revs, arg, sha1, flags ^ local_flags);
@@ -2097,8 +2099,9 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 			continue;
 		}
 
+		int handle_revision_arg_rcode = handle_revision_arg(arg, revs, flags, revarg_opt);
 
-		if (handle_revision_arg(arg, revs, flags, revarg_opt)) {
+		if (handle_revision_arg_rcode) {
 			int j;
 			if (seen_dashdash || *arg == '^')
 				die("bad revision '%s'", arg);
@@ -2110,7 +2113,19 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 			 * but the latter we have checked in the main loop.
 			 */
 			for (j = i; j < argc; j++)
-				verify_filename(revs->prefix, argv[j], j == i);
+			{
+				int verify_filename_opts = 0;
+
+				if (j == i)
+				{
+					verify_filename_opts |= VERIFY_FILENAME_DIAGNOSE_MISSPLELT_REV_OPT;
+
+					if (handle_revision_arg_rcode == SHORT_NAME_AMBIGUOUS)
+						verify_filename_opts |= VERIFY_FILENAME_GET_SHA1_QUIETLY_OPT;
+				}
+
+				verify_filename(revs->prefix, argv[j], verify_filename_opts);
+			}
 
 			append_prune_data(&prune_data, argv + i);
 			break;

@@ -186,9 +186,6 @@ static void find_short_packed_object(int len, const unsigned char *bin_pfx,
 		unique_in_pack(len, bin_pfx, p, ds);
 }
 
-#define SHORT_NAME_NOT_FOUND (-1)
-#define SHORT_NAME_AMBIGUOUS (-2)
-
 static int finish_object_disambiguation(struct disambiguate_state *ds,
 					unsigned char *sha1)
 {
@@ -339,7 +336,7 @@ static int get_short_sha1(const char *name, int len, unsigned char *sha1,
 	status = finish_object_disambiguation(&ds, sha1);
 
 	if (!quietly && (status == SHORT_NAME_AMBIGUOUS))
-		return error("short SHA1 %.*s is ambiguous.", len, hex_pfx);
+		error("short SHA1 %.*s is ambiguous.", len, hex_pfx);
 	return status;
 }
 
@@ -1441,11 +1438,11 @@ static int get_sha1_with_context_1(const char *name,
  * exist in 'HEAD'" when given "HEAD:doc", or it may return in which case
  * you have a chance to diagnose the error further.
  */
-void maybe_die_on_misspelt_object_name(const char *name, const char *prefix)
+void maybe_die_on_misspelt_object_name(const char *name, const char *prefix, int sha1_flags)
 {
 	struct object_context oc;
 	unsigned char sha1[20];
-	get_sha1_with_context_1(name, GET_SHA1_ONLY_TO_DIE, prefix, sha1, &oc);
+	get_sha1_with_context_1(name, sha1_flags | GET_SHA1_ONLY_TO_DIE, prefix, sha1, &oc);
 }
 
 int get_sha1_with_context(const char *str, unsigned flags, unsigned char *sha1, struct object_context *orc)

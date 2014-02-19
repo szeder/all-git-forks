@@ -120,4 +120,17 @@ test_expect_success '--quiet suppresses diff' '
 	test_cmp expect actual
 '
 
+test_expect_success 'ambiguous short SHA1' '
+	echo 401 >401 &&
+	echo 565 >565 &&
+	git add 401 565 &&
+	git commit -m "Ambiguous commit" &&
+	echo error: short SHA1 066c is ambiguous. > expect &&
+	git show 066c 2>&1 |grep "short SHA1" > actual &&
+	test_cmp expect actual &&
+	git show 066c -- 2>&1 |grep "short SHA1" > actual &&
+	test_cmp expect actual
+'
+
+
 test_done
