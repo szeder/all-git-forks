@@ -40,6 +40,7 @@ struct pathspec {
 		int nowildcard_len;
 		int flags;
 	} *items;
+	struct pathspec_trie *trie;
 };
 
 #define GUARD_PATHSPEC(ps, mask) \
