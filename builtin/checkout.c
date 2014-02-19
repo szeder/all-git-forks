@@ -854,17 +854,6 @@ static void remove_junk_on_signal(int signo)
 	raise(signo);
 }
 
-static dev_t get_device_or_die(const char *path)
-{
-	struct stat buf;
-	if (stat(path, &buf))
-		die_errno("failed to stat '%s'", path);
-	/* Ah Windows! Make different drives different "partitions" */
-	if (buf.st_dev == 0 && has_dos_drive_prefix("c:\\"))
-		buf.st_dev = toupper(real_path(path)[0]);
-	return buf.st_dev;
-}
-
 static int prepare_linked_checkout(const struct checkout_opts *opts,
 				   struct branch_info *new)
 {
@@ -936,15 +925,13 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 	strbuf_addf(&sb, "%s/commondir", sb_repo.buf);
 	write_file(sb.buf, 1, "../..\n");
 
-	if (get_device_or_die(path) != get_device_or_die(get_git_dir())) {
+	strbuf_reset(&sb);
+	strbuf_addf(&sb, "%s/link", sb_repo.buf);
+	if (link(sb_git.buf, sb.buf) < 0) {
 		strbuf_reset(&sb);
 		strbuf_addf(&sb, "%s/locked", sb_repo.buf);
 		write_file(sb.buf, 1, "located on a different file system\n");
 		keep_locked = 1;
-	} else {
-		strbuf_reset(&sb);
-		strbuf_addf(&sb, "%s/link", sb_repo.buf);
-		link(sb_git.buf, sb.buf); /* it's ok to fail */
 	}
 
 	if (!opts->quiet)

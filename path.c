@@ -16,7 +16,7 @@ static int get_st_mode_bits(const char *path, int *mode)
 
 static char bad_path[] = "/bad-path/";
 
-static struct strbuf *get_pathname()
+static struct strbuf *get_pathname(void)
 {
 	static struct strbuf pathname_array[4] = {
 		STRBUF_INIT, STRBUF_INIT, STRBUF_INIT, STRBUF_INIT
