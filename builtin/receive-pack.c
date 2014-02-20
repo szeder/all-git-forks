@@ -1,4 +1,5 @@
 #include "builtin.h"
+#include "color.h"
 #include "pack.h"
 #include "refs.h"
 #include "pkt-line.h"
@@ -468,22 +469,61 @@ static int update_shallow_ref(struct command *cmd, struct shallow_info *si)
 	return 0;
 }
 
+static const char *get_target_ref_name(const char *ref_name)
+{
+	struct strbuf target_name_buf = STRBUF_INIT;
+	if (starts_with(ref_name, "refs/for/")) {
+		strbuf_addf(&target_name_buf, "refs/heads/%s", ref_name + 9);
+		return strbuf_detach(&target_name_buf, NULL);
+	} else if (starts_with(ref_name, "refs/force/")) {
+		strbuf_addf(&target_name_buf, "refs/heads/%s", ref_name + 11);
+		return strbuf_detach(&target_name_buf, NULL);
+	} else {
+		return ref_name;
+	}
+}
+
+static int notify_koality(const char *ref_name, const unsigned char *old_sha1, const unsigned char *new_sha1) {
+	const char *argv_gc_auto[] = {
+		"/etc/koality/current/code/back/bin/notifyRefUpdate",
+		getenv("KOALITY_USER_ID"), ref_name, sha1_to_hex(old_sha1), sha1_to_hex(new_sha1), NULL,
+	};
+	int opt = RUN_COMMAND_NO_STDIN | RUN_COMMAND_STDOUT_TO_STDERR;
+	return run_command_v_opt(argv_gc_auto, opt);
+}
+
 static const char *update(struct command *cmd, struct shallow_info *si)
 {
 	const char *name = cmd->ref_name;
+	const char *target_name = get_target_ref_name(name);
 	struct strbuf namespaced_name_buf = STRBUF_INIT;
 	const char *namespaced_name;
+	const char *pending_ref_name;
 	unsigned char *old_sha1 = cmd->old_sha1;
+	if (read_ref(target_name, old_sha1)) {
+		hashcpy(old_sha1, null_sha1);
+	}
+	int is_force_push = starts_with(name, "refs/force/");
 	unsigned char *new_sha1 = cmd->new_sha1;
 	struct ref_lock *lock;
 
 	/* only refs/... are allowed */
-	if (!starts_with(name, "refs/") || check_refname_format(name + 5, 0)) {
-		rp_error("refusing to create funny ref '%s' remotely", name);
+	if (!starts_with(target_name, "refs/") ||
+		check_refname_format(target_name + 5, 0) ||
+		ends_with(target_name, "/HEAD") ||
+		ends_with(target_name, "/FETCH_HEAD") ||
+		ends_with(target_name, "/ORIG_HEAD")) {
+		rp_error("refusing to create funny ref '%s' remotely", target_name);
 		return "funny refname";
+	} else if (starts_with(name, "refs/heads/")) {
+		struct strbuf error_string_buf = STRBUF_INIT;
+		strbuf_addf(&error_string_buf, "%spush to refs/for/%s instead%s", GIT_COLOR_BOLD_RED, name + 11, GIT_COLOR_RESET);
+		char *error_string = strbuf_detach(&error_string_buf, NULL);
+		return error_string;
 	}
 
-	strbuf_addf(&namespaced_name_buf, "%s%s", get_git_namespace(), name);
+
+	strbuf_addf(&namespaced_name_buf, "%s%s", get_git_namespace(), target_name);
 	namespaced_name = strbuf_detach(&namespaced_name_buf, NULL);
 
 	if (is_ref_checked_out(namespaced_name)) {
@@ -495,7 +535,7 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 			break;
 		case DENY_REFUSE:
 		case DENY_UNCONFIGURED:
-			rp_error("refusing to update checked out branch: %s", name);
+			rp_error("refusing to update checked out branch: %s", target_name);
 			if (deny_current_branch == DENY_UNCONFIGURED)
 				refuse_unconfigured_deny();
 			return "branch is currently checked out";
@@ -509,8 +549,8 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 	}
 
 	if (!is_null_sha1(old_sha1) && is_null_sha1(new_sha1)) {
-		if (deny_deletes && starts_with(name, "refs/heads/")) {
-			rp_error("denying ref deletion for %s", name);
+		if (deny_deletes && !is_force_push && starts_with(target_name, "refs/heads/")) {
+			rp_error("denying ref deletion for %s", target_name);
 			return "deletion prohibited";
 		}
 
@@ -525,15 +565,16 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 			case DENY_UNCONFIGURED:
 				if (deny_delete_current == DENY_UNCONFIGURED)
 					refuse_unconfigured_deny_delete_current();
-				rp_error("refusing to delete the current branch: %s", name);
+				rp_error("refusing to delete the current branch: %s", target_name);
 				return "deletion of the current branch prohibited";
 			}
 		}
 	}
 
-	if (deny_non_fast_forwards && !is_null_sha1(new_sha1) &&
+	if (deny_non_fast_forwards && !is_force_push &&
+		!is_null_sha1(new_sha1) &&
 	    !is_null_sha1(old_sha1) &&
-	    starts_with(name, "refs/heads/")) {
+	    starts_with(target_name, "refs/heads/")) {
 		struct object *old_object, *new_object;
 		struct commit *old_commit, *new_commit;
 
@@ -543,34 +584,35 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 		if (!old_object || !new_object ||
 		    old_object->type != OBJ_COMMIT ||
 		    new_object->type != OBJ_COMMIT) {
-			error("bad sha1 objects for %s", name);
+			error("bad sha1 objects for %s", target_name);
 			return "bad ref";
 		}
 		old_commit = (struct commit *)old_object;
 		new_commit = (struct commit *)new_object;
 		if (!in_merge_bases(old_commit, new_commit)) {
 			rp_error("denying non-fast-forward %s"
-				 " (you should pull first)", name);
+				 " (you should pull first)", target_name);
 			return "non-fast-forward";
 		}
 	}
 	if (run_update_hook(cmd)) {
-		rp_error("hook declined to update %s", name);
+		rp_error("hook declined to update %s", target_name);
 		return "hook declined";
 	}
 
 	if (is_null_sha1(new_sha1)) {
 		if (!parse_object(old_sha1)) {
 			old_sha1 = NULL;
-			if (ref_exists(name)) {
+			if (ref_exists(target_name)) {
 				rp_warning("Allowing deletion of corrupt ref.");
 			} else {
 				rp_warning("Deleting a non-existent ref.");
 				cmd->did_not_exist = 1;
 			}
 		}
-		if (delete_ref(namespaced_name, old_sha1, 0)) {
-			rp_error("failed to delete %s", name);
+		if (notify_koality(target_name, old_sha1, new_sha1) ||
+			delete_ref(namespaced_name, old_sha1, 0)) {
+			rp_error("failed to delete %s", target_name);
 			return "failed to delete";
 		}
 		return NULL; /* good */
@@ -580,14 +622,24 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 		    update_shallow_ref(cmd, si))
 			return "shallow error";
 
-		lock = lock_any_ref_for_update(namespaced_name, old_sha1,
-					       0, NULL);
-		if (!lock) {
-			rp_error("failed to lock %s", name);
-			return "failed to lock";
+		struct strbuf pending_ref_name_buf = STRBUF_INIT;
+		strbuf_addf(&pending_ref_name_buf, "refs/koality/%s", sha1_to_hex(new_sha1));
+		pending_ref_name = strbuf_detach(&pending_ref_name_buf, NULL);
+
+		if (!ref_exists(pending_ref_name)) {
+			lock = lock_any_ref_for_update(pending_ref_name, null_sha1,
+						       0, NULL);
+			if (!lock) {
+				rp_error("failed to lock %s", target_name);
+				return "failed to lock";
+			}
+			if (write_ref_sha1(lock, new_sha1, "push")) {
+				return "failed to write"; /* error() already called */
+			}
 		}
-		if (write_ref_sha1(lock, new_sha1, "push")) {
-			return "failed to write"; /* error() already called */
+		if (notify_koality(target_name, old_sha1, new_sha1)) {
+			rp_error("failed to write %s", target_name);
+			return "failed to write";
 		}
 		return NULL; /* good */
 	}
