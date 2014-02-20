@@ -2721,11 +2721,17 @@ void fill_filespec(struct diff_filespec *spec, const unsigned char *sha1,
  * the work tree has that object contents, return true, so that
  * prepare_temp_file() does not have to inflate and extract.
  */
-static int reuse_worktree_file(const char *name, const unsigned char *sha1, int want_file)
+static int reuse_worktree_file(const struct diff_filespec *spec, int want_file)
 {
 	const struct cache_entry *ce;
 	struct stat st;
 	int pos, len;
+	const char *name = spec->path;
+	const unsigned char *sha1 = spec->sha1;
+
+	/* reading the directory will not give us "Submodule commit XYZ" */
+	if (S_ISGITLINK(spec->mode))
+		return 0;
 
 	/*
 	 * We do not read the cache ourselves here, because the
@@ -2837,7 +2843,7 @@ int diff_populate_filespec(struct diff_filespec *s, int size_only)
 		return diff_populate_gitlink(s, size_only);
 
 	if (!s->sha1_valid ||
-	    reuse_worktree_file(s->path, s->sha1, 0)) {
+	    reuse_worktree_file(s, 0)) {
 		struct strbuf buf = STRBUF_INIT;
 		struct stat st;
 		int fd;
@@ -2982,17 +2988,17 @@ static struct diff_tempfile *prepare_temp_file(const char *name,
 	}
 
 	if (!one->sha1_valid ||
-	    reuse_worktree_file(name, one->sha1, 1)) {
+	    reuse_worktree_file(one, 1)) {
 		struct stat st;
-		if (lstat(name, &st) < 0) {
+		if (lstat(one->path, &st) < 0) {
 			if (errno == ENOENT)
 				goto not_a_valid_file;
-			die_errno("stat(%s)", name);
+			die_errno("stat(%s)", one->path);
 		}
 		if (S_ISLNK(st.st_mode)) {
 			struct strbuf sb = STRBUF_INIT;
-			if (strbuf_readlink(&sb, name, st.st_size) < 0)
-				die_errno("readlink(%s)", name);
+			if (strbuf_readlink(&sb, one->path, st.st_size) < 0)
+				die_errno("readlink(%s)", one->path);
 			prep_temp_blob(name, temp, sb.buf, sb.len,
 				       (one->sha1_valid ?
 					one->sha1 : null_sha1),
@@ -3002,7 +3008,7 @@ static struct diff_tempfile *prepare_temp_file(const char *name,
 		}
 		else {
 			/* we can borrow from the file in the work tree */
-			temp->name = name;
+			temp->name = one->path;
 			if (!one->sha1_valid)
 				strcpy(temp->hex, sha1_to_hex(null_sha1));
 			else
