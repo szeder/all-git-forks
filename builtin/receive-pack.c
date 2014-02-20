@@ -484,9 +484,13 @@ static const char *get_target_ref_name(const char *ref_name)
 }
 
 static int notify_koality(const char *ref_name, const unsigned char *old_sha1, const unsigned char *new_sha1) {
+	struct strbuf git_dir_buf = STRBUF_INIT;
+	strbuf_addf(&git_dir_buf, "%s/%s", getcwd(NULL, 0), get_git_dir());
+	const char *git_dir = strbuf_detach(&git_dir_buf, NULL);
+
 	const char *argv_gc_auto[] = {
 		"/etc/koality/current/code/back/bin/notifyRefUpdate",
-		getenv("KOALITY_USER_ID"), ref_name, sha1_to_hex(old_sha1), sha1_to_hex(new_sha1), NULL,
+		getenv("KOALITY_USER_ID"), git_dir, ref_name, sha1_to_hex(old_sha1), sha1_to_hex(new_sha1), NULL,
 	};
 	int opt = RUN_COMMAND_NO_STDIN | RUN_COMMAND_STDOUT_TO_STDERR;
 	return run_command_v_opt(argv_gc_auto, opt);
