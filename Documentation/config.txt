@@ -2152,6 +2152,14 @@ repack.usedeltabaseoffset::
 	"false" and repack. Access from old Git versions over the
 	native protocol are unaffected by this option.
 
+repack.honorPackKeep::
+	If set to false, include objects in `.keep` files when repacking
+	via `git repack`. Note that we still do not delete `.keep` packs
+	after `pack-objects` finishes. This means that we may duplicate
+	objects, but this makes the option safe to use when there are
+	concurrent pushes or fetches. This option is generally only
+	useful if you have set `pack.writeBitmaps`. Defaults to true.
+
 rerere.autoupdate::
 	When set to true, `git-rerere` updates the index with the
 	resulting contents after it cleanly resolves conflicts using
