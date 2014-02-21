@@ -79,6 +79,17 @@ static void diffgrep_consume(void *priv, char *line, unsigned long len)
 	line[len] = hold;
 }
 
+//NOTE: this function should be removed once things work!
+static void dummy_printer(void *priv, char *line, unsigned long len)
+{
+  //struct diffgrep_cb *data = priv;
+  int hold;
+  hold = line[len];
+  line[len] = '\0';
+  printf("%s\n",line); 
+  line[len] = hold;
+}
+
 static int diff_grep(mmfile_t *one, mmfile_t *two,
 		     struct diff_options *o,
 		     regex_t *regexp, kwset_t kws)
@@ -108,22 +119,49 @@ static int diff_grep(mmfile_t *one, mmfile_t *two,
 	return ecbdata.hit;
 }
 
-static void diffcore_pickaxe_grep(struct diff_options *o)
+static int diff_blockname_filter(mmfile_t *one, mmfile_t *two,
+        struct diff_options *o,
+        regex_t *regexp, kwset_t kws)
+{
+  //regmatch_t regmatch;
+  struct diffgrep_cb ecbdata;
+  xpparam_t xpp;
+  xdemitconf_t xecfg;
+
+  // TODO Handle one-sided diff
+  
+	memset(&xpp, 0, sizeof(xpp));
+	memset(&xecfg, 0, sizeof(xecfg));
+	ecbdata.regexp = regexp;
+	ecbdata.hit = 0;
+	xecfg.ctxlen = o->context;
+	xecfg.interhunkctxlen = o->interhunkcontext;
+	xdi_diff_outf(one, two, dummy_printer, &ecbdata,
+		      &xpp, &xecfg);
+	return ecbdata.hit;
+}
+
+static void compile_regex_with_error(regex_t *r, const char *s, int cflags)
 {
 	int err;
+	err = regcomp(r, s, cflags);
+	if (err) {
+		char errbuf[1024];
+		regerror(err, r, errbuf, 1024);
+		regfree(r);
+		die("invalid regex: %s", errbuf);
+	}
+}
+
+static void diffcore_pickaxe_grep(struct diff_options *o)
+{
 	regex_t regex;
 	int cflags = REG_EXTENDED | REG_NEWLINE;
 
 	if (DIFF_OPT_TST(o, PICKAXE_IGNORE_CASE))
 		cflags |= REG_ICASE;
 
-	err = regcomp(&regex, o->pickaxe, cflags);
-	if (err) {
-		char errbuf[1024];
-		regerror(err, &regex, errbuf, 1024);
-		regfree(&regex);
-		die("invalid regex: %s", errbuf);
-	}
+  compile_regex_with_error(&regex, o->pickaxe, cflags);
 
 	pickaxe(&diff_queued_diff, o, &regex, NULL, diff_grep);
 
@@ -232,20 +270,11 @@ static void diffcore_pickaxe_count(struct diff_options *o)
 	const char *needle = o->pickaxe;
 	int opts = o->pickaxe_opts;
 	unsigned long len = strlen(needle);
-	regex_t regex, *regexp = NULL;
+	regex_t regex;
 	kwset_t kws = NULL;
 
 	if (opts & DIFF_PICKAXE_REGEX) {
-		int err;
-		err = regcomp(&regex, needle, REG_EXTENDED | REG_NEWLINE);
-		if (err) {
-			/* The POSIX.2 people are surely sick */
-			char errbuf[1024];
-			regerror(err, &regex, errbuf, 1024);
-			regfree(&regex);
-			die("invalid regex: %s", errbuf);
-		}
-		regexp = &regex;
+    compile_regex_with_error(&regex, needle, REG_EXTENDED | REG_NEWLINE);
 	} else {
 		kws = kwsalloc(DIFF_OPT_TST(o, PICKAXE_IGNORE_CASE)
 			       ? tolower_trans_tbl : NULL);
@@ -253,7 +282,7 @@ static void diffcore_pickaxe_count(struct diff_options *o)
 		kwsprep(kws);
 	}
 
-	pickaxe(&diff_queued_diff, o, regexp, kws, has_changes);
+	pickaxe(&diff_queued_diff, o, &regex, kws, has_changes);
 
 	if (opts & DIFF_PICKAXE_REGEX)
 		regfree(&regex);
@@ -262,8 +291,22 @@ static void diffcore_pickaxe_count(struct diff_options *o)
 	return;
 }
 
+static void diffcore_blockname(struct diff_options *o)
+{
+  regex_t regex;
+
+  compile_regex_with_error(&regex, o->block_name, REG_EXTENDED | REG_NEWLINE);
+  pickaxe(&diff_queued_diff, o, &regex, NULL, diff_blockname_filter);
+  regfree(&regex);
+
+  return;
+}
+
 void diffcore_pickaxe(struct diff_options *o)
 {
+  if (o->block_name) {
+    diffcore_blockname(o);
+  }
 	/* Might want to warn when both S and G are on; I don't care... */
 	if (o->pickaxe_opts & DIFF_PICKAXE_KIND_G)
 		diffcore_pickaxe_grep(o);
