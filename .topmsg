@@ -1,5 +1,12 @@
 From: Tay Ray Chuan <rctay89@gmail.com>
-Subject: [PATCH] tg/commit-v/none2default
+Cc: Jeff King <peff@peff.net>
+Subject: rename STATUS_FORMAT_NONE to STATUS_FORMAT_DEFAULT
 
-<patch description>
+In f3f47a1 (status: add --long output format option), STATUS_FORMAT_NONE
+was introduced, meaning "the user did not specify anything". Rename this
+to *_DEFAULT to better indicate its meaning.
+
+This paves the way for _NONE to really mean "no status".
+
+Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 
