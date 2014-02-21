@@ -822,7 +822,7 @@ void wt_status_truncate_message_at_cut_line(struct strbuf *buf)
 	strbuf_release(&pattern);
 }
 
-static void wt_status_print_verbose(struct wt_status *s)
+void wt_status_print_verbose(struct wt_status *s)
 {
 	struct rev_info rev;
 	struct setup_revision_opt opt;

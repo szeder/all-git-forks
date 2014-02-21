@@ -95,7 +95,10 @@ void wt_status_truncate_message_at_cut_line(struct strbuf *);
 void wt_status_prepare(struct wt_status *s);
 void wt_status_print(struct wt_status *s);
 void wt_status_collect(struct wt_status *s);
+void wt_status_mark_commitable(struct wt_status *state);
 void wt_status_get_state(struct wt_status_state *state, int get_detached_from);
+
+void wt_status_print_verbose(struct wt_status *s);
 
 void wt_shortstatus_print(struct wt_status *s);
 void wt_porcelain_print(struct wt_status *s);

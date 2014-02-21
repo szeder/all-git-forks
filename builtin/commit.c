@@ -126,6 +126,7 @@ static struct strbuf message = STRBUF_INIT;
 
 static enum status_format {
 	STATUS_FORMAT_DEFAULT = 0,
+	STATUS_FORMAT_NONE,
 	STATUS_FORMAT_LONG,
 	STATUS_FORMAT_SHORT,
 	STATUS_FORMAT_PORCELAIN,
@@ -478,6 +479,10 @@ static int run_status(FILE *fp, const char *index_file, const char *prefix, int 
 	wt_status_collect(s);
 
 	switch (status_format) {
+	case STATUS_FORMAT_NONE:
+		wt_status_mark_commitable(s);
+		wt_status_print_verbose(s);
+		break;
 	case STATUS_FORMAT_SHORT:
 		wt_shortstatus_print(s);
 		break;
@@ -1141,7 +1146,12 @@ static int parse_and_validate_options(int argc, const char *argv[],
 	if (all && argc > 0)
 		die(_("Paths with -a does not make sense."));
 
-	if (status_format != STATUS_FORMAT_DEFAULT)
+	if (verbose && !include_status) {
+		include_status = 1;
+		status_format = STATUS_FORMAT_NONE;
+	}
+
+	if (status_format != STATUS_FORMAT_DEFAULT && !verbose)
 		dry_run = 1;
 
 	return argc;
@@ -1305,6 +1315,8 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 		s.prefix = prefix;
 
 	switch (status_format) {
+	case STATUS_FORMAT_NONE:
+		break;
 	case STATUS_FORMAT_SHORT:
 		wt_shortstatus_print(&s);
 		break;

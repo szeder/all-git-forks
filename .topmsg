@@ -1,5 +1,17 @@
 From: Tay Ray Chuan <rctay89@gmail.com>
-Subject: [PATCH] tg/commit-v/verbose_nostatus
+Subject: [PATCH] make commit --verbose work with --no-status
 
-<patch description>
+One would expect 'git commit --verbose --no-status' to give a commit
+message with a diff of the commit, sans the output of git-status.
+However, this does not work currently; the commit message body is
+entirely empty (diff is absent as well). This is because internally the
+status machinery is used to provide both the diff and status output, but
+it is skipped due to --no-status.
+
+We introduce a new status_format, STATUS_FORMAT_NONE. Thus, we still
+call run_status(), but produce nothing in place of the usual git-status
+output. status_format is set only when git-commit is passed i)
+--verbose, and ii) --no-status.
+
+Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 
