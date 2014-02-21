@@ -589,6 +589,21 @@ void wt_status_collect(struct wt_status *s)
 	wt_status_collect_untracked(s);
 }
 
+void wt_status_mark_commitable(struct wt_status *s)
+{
+	int i;
+
+	for (i = 0; i < s->change.nr; i++) {
+		struct wt_status_change_data *d;
+		d = s->change.items[i].util;
+		if (!d->index_status ||
+		    d->index_status == DIFF_STATUS_UNMERGED)
+			continue;
+		s->commitable = 1;
+		break;
+	}
+}
+
 static void wt_status_print_unmerged(struct wt_status *s)
 {
 	int shown_header = 0;
@@ -627,7 +642,6 @@ static void wt_status_print_updated(struct wt_status *s)
 			continue;
 		if (!shown_header) {
 			wt_status_print_cached_header(s);
-			s->commitable = 1;
 			shown_header = 1;
 		}
 		wt_status_print_change_data(s, WT_STATUS_UPDATED, it);
@@ -1309,6 +1323,7 @@ void wt_status_print(struct wt_status *s)
 		status_printf_ln(s, color(WT_STATUS_HEADER, s), "");
 	}
 
+	wt_status_mark_commitable(s);
 	wt_status_print_updated(s);
 	wt_status_print_unmerged(s);
 	wt_status_print_changed(s);

@@ -1,5 +1,11 @@
 From: Tay Ray Chuan <rctay89@gmail.com>
-Subject: [PATCH] tg/commit-v/comm_func
+Subject: [PATCH] extract setting of wt_status.commitable flag out of wt_status_print_updated()
 
-<patch description>
+At first glance, wt_status_print_updated() appears to be doing a bunch
+of printing (as its name implies), and it may not be immediately obvious
+that it also sets the vital wt_status.commitable flag. Extract this out
+into a separate function; it is hoped that the improved clarity to
+future Git contributors would outweigh the performance penalty.
+
+Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 
