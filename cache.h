@@ -276,6 +276,7 @@ struct index_state {
 	struct cache_tree *cache_tree;
 	struct cache_time timestamp;
 	unsigned name_hash_initialized : 1,
+		 has_dir_hash : 1,
 		 initialized : 1;
 	struct hash_table name_hash;
 	struct hash_table dir_hash;
@@ -284,6 +285,7 @@ struct index_state {
 extern struct index_state the_index;
 
 /* Name hashing */
+extern void init_name_hash(struct index_state *istate, int force_dir_hash);
 extern void add_name_hash(struct index_state *istate, struct cache_entry *ce);
 extern void remove_name_hash(struct index_state *istate, struct cache_entry *ce);
 extern void free_name_hash(struct index_state *istate);

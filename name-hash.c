@@ -141,16 +141,19 @@ static void hash_index_entry(struct index_state *istate, struct cache_entry *ce)
 		*pos = ce;
 	}
 
-	if (ignore_case && !(ce->ce_flags & CE_UNHASHED))
+	if (istate->has_dir_hash && !(ce->ce_flags & CE_UNHASHED))
 		add_dir_entry(istate, ce);
 }
 
-static void lazy_init_name_hash(struct index_state *istate)
+void init_name_hash(struct index_state *istate, int force_dir_hash)
 {
 	int nr;
 
 	if (istate->name_hash_initialized)
 		return;
+
+	istate->has_dir_hash = force_dir_hash || ignore_case;
+
 	if (istate->cache_nr)
 		preallocate_hash(&istate->name_hash, istate->cache_nr);
 	for (nr = 0; nr < istate->cache_nr; nr++)
@@ -161,7 +164,7 @@ static void lazy_init_name_hash(struct index_state *istate)
 void add_name_hash(struct index_state *istate, struct cache_entry *ce)
 {
 	/* if already hashed, add reference to directory entries */
-	if (ignore_case && (ce->ce_flags & CE_STATE_MASK) == CE_STATE_MASK)
+	if (istate->has_dir_hash && (ce->ce_flags & CE_STATE_MASK) == CE_STATE_MASK)
 		add_dir_entry(istate, ce);
 
 	ce->ce_flags &= ~CE_UNHASHED;
@@ -181,7 +184,7 @@ void add_name_hash(struct index_state *istate, struct cache_entry *ce)
 void remove_name_hash(struct index_state *istate, struct cache_entry *ce)
 {
 	/* if already hashed, release reference to directory entries */
-	if (ignore_case && (ce->ce_flags & CE_STATE_MASK) == CE_HASHED)
+	if (istate->has_dir_hash && (ce->ce_flags & CE_STATE_MASK) == CE_HASHED)
 		remove_dir_entry(istate, ce);
 
 	ce->ce_flags |= CE_UNHASHED;
@@ -228,7 +231,7 @@ struct cache_entry *index_dir_exists(struct index_state *istate, const char *nam
 	struct cache_entry *ce;
 	struct dir_entry *dir;
 
-	lazy_init_name_hash(istate);
+	init_name_hash(istate, 0);
 	dir = find_dir_entry(istate, name, namelen);
 	if (dir && dir->nr)
 		return dir->ce;
@@ -250,7 +253,7 @@ struct cache_entry *index_file_exists(struct index_state *istate, const char *na
 	unsigned int hash = hash_name(name, namelen);
 	struct cache_entry *ce;
 
-	lazy_init_name_hash(istate);
+	init_name_hash(istate, 0);
 	ce = lookup_hash(hash, &istate->name_hash);
 
 	while (ce) {
@@ -286,9 +289,11 @@ void free_name_hash(struct index_state *istate)
 	if (!istate->name_hash_initialized)
 		return;
 	istate->name_hash_initialized = 0;
-	if (ignore_case)
+	if (istate->has_dir_hash) {
 		/* free directory entries */
 		for_each_hash(&istate->dir_hash, free_dir_entry, NULL);
+		istate->has_dir_hash = 0;
+	}
 
 	free_hash(&istate->name_hash);
 	free_hash(&istate->dir_hash);
