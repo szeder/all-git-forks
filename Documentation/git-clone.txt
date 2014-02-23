@@ -14,6 +14,7 @@ SYNOPSIS
 	  [-o <name>] [-b <name>] [-u <upload-pack>] [--reference <repository>]
 	  [--separate-git-dir <git dir>]
 	  [--depth <depth>] [--[no-]single-branch]
+	  [--sparse-checkout <path>]
 	  [--recursive | --recurse-submodules] [--] <repository>
 	  [<directory>]
 
@@ -212,6 +213,10 @@ objects from the source repository into a pack in the cloned repository.
 	The result is Git repository can be separated from working
 	tree.
 
+--sparse-checkout <path>::
+	Perform the initial checkout as a sparse checkout, checking out only the
+	paths specified by this option. This option may occur multiple times, with
+	one path per instance.
 
 <repository>::
 	The (possibly remote) repository to clone from.  See the

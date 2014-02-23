@@ -48,6 +48,7 @@ static int option_verbosity;
 static int option_progress = -1;
 static struct string_list option_config;
 static struct string_list option_reference;
+static struct string_list option_sparse_checkout_path;
 
 static int opt_parse_reference(const struct option *opt, const char *arg, int unset)
 {
@@ -97,6 +98,8 @@ static struct option builtin_clone_options[] = {
 		   N_("separate git dir from working tree")),
 	OPT_STRING_LIST('c', "config", &option_config, N_("key=value"),
 			N_("set config inside the new repository")),
+	OPT_STRING_LIST(0, "sparse-checkout", &option_sparse_checkout_path, N_("path"),
+			N_("set path for sparse checkout")),
 	OPT_END()
 };
 
@@ -268,6 +271,24 @@ static int add_one_reference(struct string_list_item *item, void *cb_data)
 static void setup_reference(void)
 {
 	for_each_string_list(&option_reference, add_one_reference, NULL);
+}
+
+static void setup_sparse_checkout(void)
+{
+	FILE *info_sparse_checkout_fp;
+	struct string_list_item *item;
+	char *path = git_pathdup("info/sparse-checkout");
+	git_config_set("core.sparsecheckout", "true");
+	safe_create_leading_directories(path);
+	info_sparse_checkout_fp = fopen(path, "w");
+	if (!info_sparse_checkout_fp)
+		die(_("unable to create %s"), path);
+	for_each_string_list_item(item, &option_sparse_checkout_path) {
+		fprintf(info_sparse_checkout_fp, "%s\n", item->string);
+	}
+	fclose(info_sparse_checkout_fp);
+	adjust_shared_perm(path);
+	free(path);
 }
 
 static void copy_alternates(struct strbuf *src, struct strbuf *dst,
@@ -872,6 +893,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	}
 	init_db(option_template, INIT_DB_QUIET);
 	write_config(&option_config);
+
+	if(option_sparse_checkout_path.nr)
+		setup_sparse_checkout();
 
 	git_config(git_default_config, NULL);
 
