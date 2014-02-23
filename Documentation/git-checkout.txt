@@ -15,12 +15,43 @@ SYNOPSIS
 'git checkout' [-f|--ours|--theirs|-m|--conflict=<style>] [<tree-ish>] [--] <paths>...
 'git checkout' [-p|--patch] [<tree-ish>] [--] [<paths>...]
 
+................................................................................
+git-checkout(1)
+===============
+
+名称
+----
+git-checkout - ブランチまたはファイルパスをワーキングツリーにチェックアウトする
+
+書式
+----
+[verse]
+'git checkout' [-q] [-f] [-m] [<branch>]
+'git checkout' [-q] [-f] [-m] --detach [<branch>]
+'git checkout' [-q] [-f] [-m] [--detach] <commit>
+'git checkout' [-q] [-f] [-m] [[-b|-B|--orphan] <new_branch>] [<start_point>]
+'git checkout' [-f|--ours|--theirs|-m|--conflict=<style>] [<tree-ish>] [--] <paths>...
+'git checkout' [-p|--patch] [<tree-ish>] [--] [<paths>...]
+
+................................................................................
+
 DESCRIPTION
 -----------
 Updates files in the working tree to match the version in the index
 or the specified tree.  If no paths are given, 'git checkout' will
 also update `HEAD` to set the specified branch as the current
 branch.
+
+................................................................................
+
+解説
+----
+ワーキングツリー内のファイルを、インデックスまたは指定したツリーの
+バージョンにマッチする内容に更新します。 paths が指定されない場合、
+'git checkout' は `HEAD` についても、指定されたブランチを
+カレントブランチとして指すよう、更新します。
+
+................................................................................
 
 'git checkout' <branch>::
 	To prepare for working on <branch>, switch to it by updating
@@ -42,6 +73,27 @@ You could omit <branch>, in which case the command degenerates to
 rather expensive side-effects to show only the tracking information,
 if exists, for the current branch.
 
+................................................................................
+'git checkout' <branch>::
+	<branch> での作業の準備のため、インデックスとワーキングツリーの
+	ファイルを更新し、HEAD がそのブランチを指すようにすることで、
+	対象ブランチに切り替えます。 ワーキングツリーのファイルに対する
+	ローカルな変更は <branch> にコミットできるよう、保持されます。
++
+<branch> が見つからないけれど、ただひとつのリモート( <remote> とします)
+に名前がマッチする追跡ブランチが存在する場合、下記と同様に扱われます。
++
+------------
+$ git checkout -b <branch> --track <remote>/<branch>
+------------
++
+<branch> は省略でき、 その場合 checkout コマンドは "カレントブランチを
+チェックアウト" という動作に縮退します。 これは、カレントブランチの
+リモート追跡情報が存在していればそれを表示するだけという非常に手間の
+かかる副作用により装飾されていますが、何もしません。
+
+................................................................................
+
 'git checkout' -b|-B <new_branch> [<start point>]::
 
 	Specifying `-b` causes a new branch to be created as if
@@ -62,6 +114,29 @@ $ git checkout <branch>
 that is to say, the branch is not reset/created unless "git checkout" is
 successful.
 
+................................................................................
+'git checkout' -b|-B <new_branch> [<start point>]::
+
+	`-b` が指定されると、 linkgit:git-branch[1] が呼ばれたかのように
+	新しいブランチが作成され、そのあとチェックアウトします。
+	この場合 `--track` または `--no-track` オプションを指定でき、
+	それらは 'git branch' に渡されます。 利便性のため、 `-b` なしで
+	`--track` を指定すると暗黙的にブランチが作成されます; 後述の
+	`--track` の解説を参照してください。
++
+`-B` が与えられると、 <new_branch> が存在しない場合は作成され; 存在する
+場合はリセットされます。 これはトランザクション処理的に以下と等価です
++
+------------
+$ git branch -f <branch> [<start point>]
+$ git checkout <branch>
+------------
++
+すなわち、 "git checkout" が成功しない限りブランチはリセット/作成
+されません。
+
+................................................................................
+
 'git checkout' --detach [<branch>]::
 'git checkout' [--detach] <commit>::
 
@@ -77,6 +152,26 @@ be used to detach HEAD at the tip of the branch (`git checkout
 <branch>` would check out that branch without detaching HEAD).
 +
 Omitting <branch> detaches HEAD at the tip of the current branch.
+
+................................................................................
+'git checkout' --detach [<branch>]::
+'git checkout' [--detach] <commit>::
+
+	<commit> 上で作業できるように、HEAD をそこで切り離し
+	("DETACHED HEAD" セクションを見てください)、 インデックスと
+	ワーキングツリーを更新することで、準備します。
+	ワーキングツリーのファイルに対するローカルな変更は、
+	チェックアウト後のワーキングツリーが <commit> に
+	ローカルな変更を追加した状態になるよう、保持されます。
++
+<commit> 引数がブランチ名である場合、 `--detach` オプションを
+HEAD をブランチの先端から切り離すために使用できます
+(`git checkout <branch>` は HEAD を切り離すことなくブランチを
+チェックアウトします)。
++
+<branch> を省略するとカレントブランチの先端で HEAD を切り離します。
+
+................................................................................
 
 'git checkout' [-p|--patch] [<tree-ish>] [--] <pathspec>...::
 
@@ -97,6 +192,28 @@ specific side of the merge can be checked out of the index by
 using `--ours` or `--theirs`.  With `-m`, changes made to the working tree
 file can be discarded to re-create the original conflicted merge result.
 
+................................................................................
+'git checkout' [-p|--patch] [<tree-ish>] [--] <pathspec>...::
+
+	<paths> または `--patch` が与えられた場合、 'git checkout' は
+	ブランチを変更 *しません* 。 インデックスファイルまたは指定された
+	<tree-ish> (大抵の場合はコミット) から取り出してワーキングツリーの
+	指定されたファイルパスを更新します。 この場合、 `-b` または `--track`
+	オプションは意味をなさず、 指定するとエラーになります。
+	<tree-ish> 引数で特定の tree-ish (つまりコミット、 タグ、 またはツリー)
+	を指定すると、与えられたパスについて、ワーキングツリーを更新する前に
+	インデックスを更新します。
++
+インデックスは直前の失敗したマージによるマージされていないエントリを
+含む場合があります。 デフォルトでは、 そのようなエントリについてインデックス
+からエントリをチェックアウトしようとしても、チェックアウト操作は失敗し、
+何もチェックアウトされません。マージ対象の特定のブランチの内容は `--ours`
+あるいは `--theirs` でチェックアウトできます。 `-m` を指定すると、
+ワーキングツリーのファイルに行った変更は破棄され、もともとのコンフリクトした
+マージ結果を再度作ることができます。
+
+................................................................................
+
 OPTIONS
 -------
 -q::
@@ -111,6 +228,24 @@ OPTIONS
 +
 When checking out paths from the index, do not fail upon unmerged
 entries; instead, unmerged entries are ignored.
+
+................................................................................
+オプション
+----------
+-q::
+--quiet::
+	フィードバックメッセージを抑制し、静かに動作します。
+
+-f::
+--force::
+	ブランチを変更する際、インデックスあるいはワーキングツリーが
+	HEADと異なっている場合でも処理を実行します。これはローカルな
+	変更を捨てるのに使うことができます。
++
+ファイルパスをインデックスからチェックアウトする際、マージされていない
+エントリについては失敗せず、代わりに無視します。
+
+................................................................................
 
 --ours::
 --theirs::
@@ -127,6 +262,25 @@ entries; instead, unmerged entries are ignored.
 	equivalent to running "git branch" with "-f"; see
 	linkgit:git-branch[1] for details.
 
+................................................................................
+--ours::
+--theirs::
+	インデックスからファイルパスをチェックアウトする際、マージされていない
+	ファイルパスに対してステージ #2 ('ours') または #3 ('theirs') を
+	チェックアウトします。
+
+-b <new_branch>::
+	<new_branch> という名前の新しいブランチを作成し、<start_point> から
+	開始します; 詳細は linkgit:git-branch[1] を見てください。
+
+-B <new_branch>::
+	<new_branch> という名前の新しいブランチを作成し、<start_point> から
+	開始します; もしブランチがすでに存在していた場合、 <start_point> に
+	リセットします。 これは "git branch" を "-f" 付きで実行した場合と
+	等価です; 詳細は linkgit:git-branch[1] を見てください。
+
+................................................................................
+
 -t::
 --track::
 	When creating a new branch, set up "upstream" configuration. See
@@ -142,6 +296,24 @@ off of "origin/hack" (or "remotes/origin/hack", or even
 guessing results in an empty name, the guessing is aborted.  You can
 explicitly give a name with '-b' in such a case.
 
+................................................................................
+-t::
+--track::
+	新しいブランチを作ったとき、 "上流(upstream)" を設定します。 詳細は
+	linkgit:git-branch[1] の "--track" を見てください。
++
+'-b' オプションが指定されない場合、 新しいブランチの名前はリモート追跡ブランチ
+を元にして付けられます。 これは対応するリモート設定の refspec のローカル部分を
+見て、"*" までの先頭部分を削除することで行われます。
+これは "origin/hack" (または "remotes/origin/hack" あるいは、
+"refs/remotes/origin/hack" であっても) からローカルブランチを
+分岐したのであれば、 "hack" という名前を用いるということです。
+指定された名前がスラッシュを持たない、または上記の推定の結果、空の名前に
+なる場合、推定は破棄されます。 このような場合は -b で明示的に名前を
+与えることができます。
+
+................................................................................
+
 --no-track::
 	Do not set up "upstream" configuration, even if the
 	branch.autosetupmerge configuration variable is true.
@@ -156,6 +328,24 @@ explicitly give a name with '-b' in such a case.
 	This is the default behavior of "git checkout <commit>" when
 	<commit> is not a branch name.  See the "DETACHED HEAD" section
 	below for details.
+
+................................................................................
+--no-track::
+	設定値 branch.autosetupmerge が true であっても、 "上流" を
+	設定しません。
+
+-l::
+	新しいブランチの reflog を作成します; 詳細は linkgit:git-branch[1]
+	を見てください。
+
+--detach::
+	あるブランチ上を作業するためにチェックアウトするのではなく、
+	あるコミットを調査および破棄可能な実験のためにチェックアウトします。
+	これは "git checkout <commit>" を実行したとき、 <commit> がブランチ名
+	でない場合のデフォルトの挙動です。 詳細は後述の "DETACHED HEAD" の
+	セクションを見てください。
+
+................................................................................
 
 --orphan <new_branch>::
 	Create a new 'orphan' branch, named <new_branch>, started from
@@ -182,11 +372,48 @@ branch by running "git rm -rf ." from the top level of the working tree.
 Afterwards you will be ready to prepare your new files, repopulating the
 working tree, by copying them from elsewhere, extracting a tarball, etc.
 
+................................................................................
+--orphan <new_branch>::
+	新しい '親のいない(orphan)' ブランチを <new_branch> という名前で、
+	<start_point> を開始点として作成し、そこに切り替えます。 この
+	新しいブランチ上に対して作られる最初のコミットは、親コミットが
+	なく、その他のすべてのブランチおよびコミットから切り離された、
+	新しい歴史の root コミットとなります。
++
+インデックスとワーキングツリーは、直前に "git checkout <start_point>" を
+実行したかのように調整されます。 これにより、単に "git commit -a" の
+実行で root コミットを作成することで、 <start_point> と同様のファイル
+を記録した新しい歴史を開始できます。
++
+このオプションはあるコミットのツリーを、その完全な歴史を晒さずに
+公開したい場合に便利です。  現在のツリーは "クリーン" でも、その完全な
+歴史にはプロプライエタリまたは公開するのに邪魔なコード片を含むような
+プロジェクトにおいて、オープンソースなブランチを公開したい場合が
+あるかもしれません。
++
+<start_point> とは完全に異なるファイルを記録した、切り離された歴史を
+開始したい場合、orphan ブランチを作成した直後にワーキングツリーの
+一番上のディレクトリで "git rm -rf ." を実行することで、インデックスと
+ワーキングツリーを綺麗にしてください。その後、ファイルを他の場所から
+コピーする、tarball を展開する、等によりワーキングツリーを再作成することで
+新しいファイルを準備することになります。
+
+................................................................................
+
 --ignore-skip-worktree-bits::
 	In sparse checkout mode, `git checkout -- <paths>` would
 	update only entries matched by <paths> and sparse patterns
 	in $GIT_DIR/info/sparse-checkout. This option ignores
 	the sparse patterns and adds back any files in <paths>.
+
+................................................................................
+--ignore-skip-worktree-bits::
+	XXX: スパースチェックアウトモードにおいて、 `git checkout -- <paths>` は
+	<paths> および $GIT_DIR/info/sparse-checkout 内のスパースパターン
+	にマッチしたエントリのみをアップデートします。 このオプションは
+	スパースパターンを無視し、<paths> のどのファイルであっても追加します。
+
+................................................................................
 
 -m::
 --merge::
@@ -207,6 +434,28 @@ should result in deletion of the path).
 When checking out paths from the index, this option lets you recreate
 the conflicted merge in the specified paths.
 
+................................................................................
+-m::
+--merge::
+	ブランチを切り替える際、カレントブランチと切り替え先のブランチとの
+	間で差分のあるファイルに対してローカルな変更をしていた場合、 checkout
+	コマンドはコンテキスト中のローカルな変更を保護するために
+	ブランチの切り替えを拒否します。 しかし、このオプションを使うと、
+	カレントブランチ、ワーキングツリーの内容、新しいブランチの間で
+	3way マージが実行され、新しいブランチ上に移動します。
++
+マージコンフリクトが発生するときは、コンフリクトしたファイルパスの
+インデックス内のエントリがマージされていない状態のままになるので、
+コンフリクトを解消して `git add` (あるいはマージの結果そのファイルパスを
+消すことになるのであれば `git rm`) を使って解消したという印をつける
+必要があります。
++
+インデックスからファイルパスの内容をチェックアウトするときは、この
+オプションで指定したファイルパスのコンフリクト状態を再生成することが
+できます。
+
+................................................................................
+
 --conflict=<style>::
 	The same as --merge option above, but changes the way the
 	conflicting hunks are presented, overriding the
@@ -225,6 +474,26 @@ This means that you can use `git checkout -p` to selectively discard
 edits from your current working tree. See the ``Interactive Mode''
 section of linkgit:git-add[1] to learn how to operate the `--patch` mode.
 
+................................................................................
+--conflict=<style>::
+	上記の --merge オプションと同じですが、 merge.conflictstyle を
+	無視してコンフリクトしているハンクの表現方法を変更します。
+	指定可能な値は "merge" (デフォルト) と "diff3" ("merge" スタイルで
+	現れる内容に加えて、元の内容も表示します。
+
+-p::
+--patch::
+	<tree-ish> (または、指定しない場合はインデックス) とワーキングツリー
+	との間の違いによるハンクを対話的に選択します。 選択されたハンクは
+	ワーキングツリーに逆向きに適用されます (<tree-ish> が指定された
+	場合はインデックスにも)。
++
+これは `git checkout -p` によって現在のワーキングツリーの変更を選択的に
+破棄できることを意味します。 `--patch` モードの操作方法については
+linkgit:git-add[1] の "インタラクティブモード" を見てください。
+
+................................................................................
+
 <branch>::
 	Branch to checkout; if it refers to a branch (i.e., a name that,
 	when prepended with "refs/heads/", is a valid ref), then that
@@ -240,6 +509,25 @@ As a further special case, you may use `"A...B"` as a shortcut for the
 merge base of `A` and `B` if there is exactly one merge base. You can
 leave out at most one of `A` and `B`, in which case it defaults to `HEAD`.
 
+................................................................................
+<branch>::
+	チェックアウトするブランチです; ブランチを参照している場合
+	(つまり、 "refs/heads/" を先頭につけたときに有効な ref になる
+	ような名前であれば), そのブランチがチェックアウトされます。
+	そうでない場合、 有効なコミットを参照していれば HEAD は
+	"切り離された(detached)" 状態となり、 どのブランチ上にも
+	いないことになります (詳細は後述)
++
+特殊なケースとして、 `"@{-N}"` という記法は N 回前に居たブランチ/コミットを
+チェックアウトします(切り離すのではなく). `"@{-1}"` と同じ意味として
+`-` を指定できます。
++
+さらに特殊なケースとして、 `A` と `B` の間にただひとつのマージベースが
+あれば、 `"A...B"` をそのショートカットとして使用できます。 `A` か `B`
+のどちらかだけ省略することができ、その場合は `HEAD` を指定したことになります。
+
+................................................................................
+
 <new_branch>::
 	Name for the new branch.
 
@@ -252,6 +540,21 @@ leave out at most one of `A` and `B`, in which case it defaults to `HEAD`.
 	the index will be used.
 
 
+................................................................................
+<new_branch>::
+	新しいブランチの名前です。
+
+<start_point>::
+	新しいブランチの開始点になるコミットの名前です; 詳細は
+	linkgit:git-branch[1] を見てください。
+	指定しなければ HEAD になります。
+
+<tree-ish>::
+	(<paths> が与えられた場合の) チェックアウト元のツリーです。
+	指定しなければインデックスが使用されます。
+
+
+................................................................................
 
 DETACHED HEAD
 -------------
@@ -268,6 +571,26 @@ a---b---c  branch 'master' (refers to commit 'c')
     |
   tag 'v2.0' (refers to commit 'b')
 ------------
+
+................................................................................
+DETACHED HEAD
+-------------
+通常 HEAD は名前を持ったブランチ (例えば 'master') を参照します。
+一方、各ブランチはそれぞれが特定のコミットを参照します。 ここである
+3つのコミットを持ったリポジトリを見てみます。 コミットのうちひとつは
+タグが付けられており、 'master' がチェックアウトされています:
+
+------------
+	   HEAD (ブランチ 'master' を参照)
+	    |
+	    v
+a---b---c  branch 'master' (コミット 'c' を参照)
+    ^
+    |
+  tag 'v2.0' (コミット 'b' を参照)
+------------
+
+................................................................................
 
 When a commit is created in this state, the branch is updated to refer to
 the new commit. Specifically, 'git commit' creates a new commit 'd', whose
@@ -287,6 +610,27 @@ a---b---c---d  branch 'master' (refers to commit 'd')
   tag 'v2.0' (refers to commit 'b')
 ------------
 
+................................................................................
+この状態でコミットがひとつ作られると、 ブランチは新しいコミットを参照するよう
+更新されます。 具体的には、 'git commit' がコミット 'c' を親として持つような
+新しいコミット 'd' を作成し、 ブランチ 'master' を更新して新しいコミット 'd'
+を参照するようにします。 HEAD は変わらずブランチ 'master' を参照しているので、
+現在は間接的にコミット 'd' を参照していることになります:
+
+------------
+$ edit; git add; git commit
+
+	       HEAD (ブランチ 'master' を参照)
+		|
+		v
+a---b---c---d  branch 'master' (コミット 'd' を参照)
+    ^
+    |
+  tag 'v2.0' (コミット 'b' 参照)
+------------
+
+................................................................................
+
 It is sometimes useful to be able to checkout a commit that is not at
 the tip of any named branch, or even to create a new commit that is not
 referenced by a named branch. Let's look at what happens when we
@@ -304,6 +648,28 @@ a---b---c---d  branch 'master' (refers to commit 'd')
     |
   tag 'v2.0' (refers to commit 'b')
 ------------
+
+................................................................................
+名前を持ったどのブランチの先端でもないようなコミットをチェックアウトしたり、
+名前を持ったブランチから参照されていないような新しいコミットを作成したり
+できると、便利な場合があります。 コミット 'b' をチェックアウトすると
+何が起こるのか見てみましょう(ここではこれを実行できるふたつの方法を
+示します):
+
+------------
+$ git checkout v2.0  # または
+$ git checkout master^^
+
+   HEAD (コミット 'b' を参照)
+    |
+    v
+a---b---c---d  branch 'master' (コミット 'd' を参照)
+    ^
+    |
+  tag 'v2.0' (コミット 'b' を参照)
+------------
+
+................................................................................
 
 Notice that regardless of which checkout command we use, HEAD now refers
 directly to commit 'b'. This is known as being in detached HEAD state.
@@ -324,6 +690,30 @@ a---b---c---d  branch 'master' (refers to commit 'd')
   tag 'v2.0' (refers to commit 'b')
 ------------
 
+................................................................................
+どちらの checkout コマンドを使ったかに関わらず、 HEAD が直接コミット 'b'
+を指すようになったことに注意してください。 これは HEAD が切り離された
+(DETACHED HEAD) 状態として知られています。
+これは HEAD が名前を持ったブランチを参照しているのではなく、
+単にある特定のコミットを参照している、ということを意味します。
+コミットを作成するとどうなるか見てみましょう:
+
+------------
+$ edit; git add; git commit
+
+     HEAD (コミット 'e' を参照)
+      |
+      v
+      e
+     /
+a---b---c---d  branch 'master' (コミット 'd' を参照)
+    ^
+    |
+  tag 'v2.0' (コミット 'b' を参照)
+------------
+
+................................................................................
+
 There is now a new commit 'e', but it is referenced only by HEAD. We can
 of course add yet another commit in this state:
 
@@ -341,6 +731,26 @@ a---b---c---d  branch 'master' (refers to commit 'd')
   tag 'v2.0' (refers to commit 'b')
 ------------
 
+................................................................................
+新しいコミット 'e' できましたが、 'e' は HEAD にのみ参照されています。
+もちろん、この状態にさらに別のコミットを追加することもできます。
+
+------------
+$ edit; git add; git commit
+
+	 HEAD (コミット 'f' を参照)
+	  |
+	  v
+      e---f
+     /
+a---b---c---d  branch 'master' (コミット 'd' を参照)
+    ^
+    |
+  tag 'v2.0' (コミット 'b' を参照)
+------------
+
+................................................................................
+
 In fact, we can perform all the normal Git operations. But, let's look
 at what happens when we then checkout master:
 
@@ -356,6 +766,24 @@ a---b---c---d  branch 'master' (refers to commit 'd')
   tag 'v2.0' (refers to commit 'b')
 ------------
 
+................................................................................
+実際のところ、通常の Git の操作すべてを実行できます。 しかし、
+master をチェックアウトするとどうなるか見てみましょう:
+
+------------
+$ git checkout master
+
+	       HEAD (ブランチ 'master' を参照)
+      e---f     |
+     /          v
+a---b---c---d  branch 'master' (コミット 'd' を参照)
+    ^
+    |
+  tag 'v2.0' (コミット 'b' を参照)
+------------
+
+................................................................................
+
 It is important to realize that at this point nothing refers to commit
 'f'. Eventually commit 'f' (and by extension commit 'e') will be deleted
 by the routine Git garbage collection process, unless we create a reference
@@ -368,6 +796,22 @@ $ git branch foo        <2>
 $ git tag foo           <3>
 ------------
 
+................................................................................
+この時点で何もコミット 'f' を参照していないと意識することが重要です。
+Git のガベージコレクションが実行される前にコミット 'f' に対する
+何らかの参照を作らない限り、やがて定期的なガベージコレクションによって
+コミット 'f' は (そしてコミット 'e' も) 削除されます。
+まだコミット 'f' 上から移動する前であれば、以下のいずれかで
+'f' に対する参照を作成できます:
+
+------------
+$ git checkout -b foo   <1>
+$ git branch foo        <2>
+$ git tag foo           <3>
+------------
+
+................................................................................
+
 <1> creates a new branch 'foo', which refers to commit 'f', and then
 updates HEAD to refer to branch 'foo'. In other words, we'll no longer
 be in detached HEAD state after this command.
@@ -378,6 +822,19 @@ but leaves HEAD detached.
 <3> creates a new tag 'foo', which refers to commit 'f',
 leaving HEAD detached.
 
+................................................................................
+<1> コミット 'f' を参照する新しいブランチ 'foo' を作成し、 HEAD を
+更新してブランチ 'foo' を参照するようにします。 言い換えると、
+このコマンドを実行すると DETACHED HEAD 状態ではなくなります。
+
+<2> 同様にコミット 'f' を参照する新しいブランチ 'foo' を作成しますが、
+DETACHED HEAD 状態のままにします。
+
+<3> コミット 'f' を参照する新しいタグ 'foo' を作成し、
+DETACHED HEAD 状態のままにします。
+
+................................................................................
+
 If we have moved away from commit 'f', then we must first recover its object
 name (typically by using git reflog), and then we can create a reference to
 it. For example, to see the last two commits to which HEAD referred, we
@@ -387,6 +844,21 @@ can use either of these commands:
 $ git reflog -2 HEAD # or
 $ git log -g -2 HEAD
 ------------
+
+................................................................................
+コミット 'f' から移動していた場合、 まずコミット 'f' のオブジェクト名を
+取り出さなければなりません (通常 git reflog を使います)。 その後、
+コミット 'f' に対する参照を作成できます。 例えば、 前回の2回のコミット
+のまえに HEAD が参照していたコミットを見るには、 以下のどちらかの
+コマンドを使うことができます:
+
+------------
+$ git reflog -2 HEAD # or
+$ git log -g -2 HEAD
+------------
+
+
+................................................................................
 
 EXAMPLES
 --------
@@ -426,6 +898,48 @@ You should instead write:
 $ git checkout -- hello.c
 ------------
 
+................................................................................
+例
+--
+
+. 下記の一連のコマンドは `master` ブランチをチェックアウトし、
+`Makefile` を2つ前の版に戻し、 hello.c を誤って消し、それを
+インデックスから取り戻しています。
++
+------------
+$ git checkout master             <1>
+$ git checkout master~2 Makefile  <2>
+$ rm -f hello.c
+$ git checkout hello.c            <3>
+------------
++
+<1> ブランチを切り替えます
+<2> 他のコミットからファイルを取り出します
+<3> インデックスから hello.c をリストアします
++
+もし _すべての_ C ソースファイルをインデックスから取り出したい
+場合、次のコマンドで実行できます。
++
+------------
+$ git checkout -- '*.c'
+------------
++
+`*.c` を囲む引用符に注意してください。 ファイル `hello.c` についても
+ワーキングツリーにもう存在していなくてもチェックアウトされます。
+これは、ファイルグロビングが (シェルによってワーキングツリーに対して
+マッチするのではなく) インデックスに対してマッチするためです。
++
+`hello.c` という不適切な名前のブランチを持っている場合、
+このステップはブランチを切り替える命令と混乱します。
+この場合は次のようにすべきです:
++
+------------
+$ git checkout -- hello.c
+------------
+
+
+................................................................................
+
 . After working in the wrong branch, switching to the correct
 branch would be done using:
 +
@@ -454,6 +968,36 @@ After this three-way merge, the local modifications are _not_
 registered in your index file, so `git diff` would show you what
 changes you made since the tip of the new branch.
 
+................................................................................
+. 間違ったブランチで作業したあと、正しいブランチに切り替えるには
+次のようにします:
++
+------------
+$ git checkout mytopic
+------------
++
+しかし、ローカルに修正したファイルが "wrong" (間違い)ブランチ
+と正しい "mytopic" ブランチとで異なっている場合、上記のチェックアウトは
+次のように失敗します:
++
+------------
+$ git checkout mytopic
+error: You have local changes to 'frotz'; not switching branches.
+------------
++
+コマンドに `-m` フラグを与えて、 3way マージを試みることができます:
++
+------------
+$ git checkout -m mytopic
+Auto-merging frotz
+------------
++
+この 3way マージのあと、 ローカルな修正はインデックスファイルには
+記録されて _いません_ ので、 `git diff` は新しいブランチの先端からの
+変更を示してくれます。
+
+................................................................................
+
 . When a merge conflict happens during switching branches with
 the `-m` option, you would see something like this:
 +
@@ -474,6 +1018,34 @@ $ edit frotz
 $ git add frotz
 ------------
 
+................................................................................
+. `-m` オプション付きでブランチを切り替えるときにマージコンフリクトが
+発生すると、次のようになります:
++
+------------
+$ git checkout -m mytopic
+Auto-merging frotz
+ERROR: Merge conflict in frotz
+fatal: merge program failed
+------------
++
+このときは、 `git diff` はコンフリクトしたファイルの変更と同様、
+前の例のように綺麗にマージされた変更を表示します。 通常どおり
+編集してコンフリクトを解消し、`git add` で解消した印をつけます:
++
+------------
+$ edit frotz
+$ git add frotz
+------------
+
+................................................................................
+
 GIT
 ---
 Part of the linkgit:git[1] suite
+
+................................................................................
+GIT
+---
+これは linkgit:git[1] の一部です。
+................................................................................
