@@ -1,0 +1,1374 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+    "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
+<meta name="generator" content="AsciiDoc 8.6.8" />
+<title>git-checkout(1)</title>
+<script src="../ga.js"></script>
+<style type="text/css">
+/* Shared CSS for AsciiDoc xhtml11 and html5 backends */
+
+/* Default font. */
+body {
+  font-family: Georgia,serif;
+}
+
+/* Title font. */
+h1, h2, h3, h4, h5, h6,
+div.title, caption.title,
+thead, p.table.header,
+#toctitle,
+#author, #revnumber, #revdate, #revremark,
+#footer {
+  font-family: Arial,Helvetica,sans-serif;
+}
+
+body {
+  margin: 1em 5% 1em 5%;
+}
+
+a {
+  color: blue;
+  text-decoration: underline;
+}
+a:visited {
+  color: fuchsia;
+}
+
+em {
+  font-style: italic;
+  color: navy;
+}
+
+strong {
+  font-weight: bold;
+  color: #083194;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #527bbd;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+  line-height: 1.3;
+}
+
+h1, h2, h3 {
+  border-bottom: 2px solid silver;
+}
+h2 {
+  padding-top: 0.5em;
+}
+h3 {
+  float: left;
+}
+h3 + * {
+  clear: left;
+}
+h5 {
+  font-size: 1.0em;
+}
+
+div.sectionbody {
+  margin-left: 0;
+}
+
+hr {
+  border: 1px solid silver;
+}
+
+p {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+ul, ol, li > p {
+  margin-top: 0;
+}
+ul > li     { color: #aaa; }
+ul > li > * { color: black; }
+
+.monospaced, code, pre {
+  font-family: "Courier New", Courier, monospace;
+  font-size: inherit;
+  color: navy;
+  padding: 0;
+  margin: 0;
+}
+
+
+#author {
+  color: #527bbd;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+#email {
+}
+#revnumber, #revdate, #revremark {
+}
+
+#footer {
+  font-size: small;
+  border-top: 2px solid silver;
+  padding-top: 0.5em;
+  margin-top: 4.0em;
+}
+#footer-text {
+  float: left;
+  padding-bottom: 0.5em;
+}
+#footer-badges {
+  float: right;
+  padding-bottom: 0.5em;
+}
+
+#preamble {
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+div.imageblock, div.exampleblock, div.verseblock,
+div.quoteblock, div.literalblock, div.listingblock, div.sidebarblock,
+div.admonitionblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.admonitionblock {
+  margin-top: 2.0em;
+  margin-bottom: 2.0em;
+  margin-right: 10%;
+  color: #606060;
+}
+
+div.content { /* Block element content. */
+  padding: 0;
+}
+
+/* Block element titles. */
+div.title, caption.title {
+  color: #527bbd;
+  font-weight: bold;
+  text-align: left;
+  margin-top: 1.0em;
+  margin-bottom: 0.5em;
+}
+div.title + * {
+  margin-top: 0;
+}
+
+td div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content div.title:first-child {
+  margin-top: 0.0em;
+}
+div.content + div.title {
+  margin-top: 0.0em;
+}
+
+div.sidebarblock > div.content {
+  background: #ffffee;
+  border: 1px solid #dddddd;
+  border-left: 4px solid #f0f0f0;
+  padding: 0.5em;
+}
+
+div.listingblock > div.content {
+  border: 1px solid #dddddd;
+  border-left: 5px solid #f0f0f0;
+  background: #f8f8f8;
+  padding: 0.5em;
+}
+
+div.quoteblock, div.verseblock {
+  padding-left: 1.0em;
+  margin-left: 1.0em;
+  margin-right: 10%;
+  border-left: 5px solid #f0f0f0;
+  color: #888;
+}
+
+div.quoteblock > div.attribution {
+  padding-top: 0.5em;
+  text-align: right;
+}
+
+div.verseblock > pre.content {
+  font-family: inherit;
+  font-size: inherit;
+}
+div.verseblock > div.attribution {
+  padding-top: 0.75em;
+  text-align: left;
+}
+/* DEPRECATED: Pre version 8.2.7 verse style literal block. */
+div.verseblock + div.attribution {
+  text-align: left;
+}
+
+div.admonitionblock .icon {
+  vertical-align: top;
+  font-size: 1.1em;
+  font-weight: bold;
+  text-decoration: underline;
+  color: #527bbd;
+  padding-right: 0.5em;
+}
+div.admonitionblock td.content {
+  padding-left: 0.5em;
+  border-left: 3px solid #dddddd;
+}
+
+div.exampleblock > div.content {
+  border-left: 3px solid #dddddd;
+  padding-left: 0.5em;
+}
+
+div.imageblock div.content { padding-left: 0; }
+span.image img { border-style: none; }
+a.image:visited { color: white; }
+
+dl {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+dt {
+  margin-top: 0.5em;
+  margin-bottom: 0;
+  font-style: normal;
+  color: navy;
+}
+dd > *:first-child {
+  margin-top: 0.1em;
+}
+
+ul, ol {
+    list-style-position: outside;
+}
+ol.arabic {
+  list-style-type: decimal;
+}
+ol.loweralpha {
+  list-style-type: lower-alpha;
+}
+ol.upperalpha {
+  list-style-type: upper-alpha;
+}
+ol.lowerroman {
+  list-style-type: lower-roman;
+}
+ol.upperroman {
+  list-style-type: upper-roman;
+}
+
+div.compact ul, div.compact ol,
+div.compact p, div.compact p,
+div.compact div, div.compact div {
+  margin-top: 0.1em;
+  margin-bottom: 0.1em;
+}
+
+tfoot {
+  font-weight: bold;
+}
+td > div.verse {
+  white-space: pre;
+}
+
+div.hdlist {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+}
+div.hdlist tr {
+  padding-bottom: 15px;
+}
+dt.hdlist1.strong, td.hdlist1.strong {
+  font-weight: bold;
+}
+td.hdlist1 {
+  vertical-align: top;
+  font-style: normal;
+  padding-right: 0.8em;
+  color: navy;
+}
+td.hdlist2 {
+  vertical-align: top;
+}
+div.hdlist.compact tr {
+  margin: 0;
+  padding-bottom: 0;
+}
+
+.comment {
+  background: yellow;
+}
+
+.footnote, .footnoteref {
+  font-size: 0.8em;
+}
+
+span.footnote, span.footnoteref {
+  vertical-align: super;
+}
+
+#footnotes {
+  margin: 20px 0 20px 0;
+  padding: 7px 0 0 0;
+}
+
+#footnotes div.footnote {
+  margin: 0 0 5px 0;
+}
+
+#footnotes hr {
+  border: none;
+  border-top: 1px solid silver;
+  height: 1px;
+  text-align: left;
+  margin-left: 0;
+  width: 20%;
+  min-width: 100px;
+}
+
+div.colist td {
+  padding-right: 0.5em;
+  padding-bottom: 0.3em;
+  vertical-align: top;
+}
+div.colist td img {
+  margin-top: 0.3em;
+}
+
+@media print {
+  #footer-badges { display: none; }
+}
+
+#toc {
+  margin-bottom: 2.5em;
+}
+
+#toctitle {
+  color: #527bbd;
+  font-size: 1.1em;
+  font-weight: bold;
+  margin-top: 1.0em;
+  margin-bottom: 0.1em;
+}
+
+div.toclevel0, div.toclevel1, div.toclevel2, div.toclevel3, div.toclevel4 {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+div.toclevel2 {
+  margin-left: 2em;
+  font-size: 0.9em;
+}
+div.toclevel3 {
+  margin-left: 4em;
+  font-size: 0.9em;
+}
+div.toclevel4 {
+  margin-left: 6em;
+  font-size: 0.9em;
+}
+
+span.aqua { color: aqua; }
+span.black { color: black; }
+span.blue { color: blue; }
+span.fuchsia { color: fuchsia; }
+span.gray { color: gray; }
+span.green { color: green; }
+span.lime { color: lime; }
+span.maroon { color: maroon; }
+span.navy { color: navy; }
+span.olive { color: olive; }
+span.purple { color: purple; }
+span.red { color: red; }
+span.silver { color: silver; }
+span.teal { color: teal; }
+span.white { color: white; }
+span.yellow { color: yellow; }
+
+span.aqua-background { background: aqua; }
+span.black-background { background: black; }
+span.blue-background { background: blue; }
+span.fuchsia-background { background: fuchsia; }
+span.gray-background { background: gray; }
+span.green-background { background: green; }
+span.lime-background { background: lime; }
+span.maroon-background { background: maroon; }
+span.navy-background { background: navy; }
+span.olive-background { background: olive; }
+span.purple-background { background: purple; }
+span.red-background { background: red; }
+span.silver-background { background: silver; }
+span.teal-background { background: teal; }
+span.white-background { background: white; }
+span.yellow-background { background: yellow; }
+
+span.big { font-size: 2em; }
+span.small { font-size: 0.6em; }
+
+span.underline { text-decoration: underline; }
+span.overline { text-decoration: overline; }
+span.line-through { text-decoration: line-through; }
+
+div.unbreakable { page-break-inside: avoid; }
+
+
+/*
+ * xhtml11 specific
+ *
+ * */
+
+div.tableblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+div.tableblock > table {
+  border: 3px solid #527bbd;
+}
+thead, p.table.header {
+  font-weight: bold;
+  color: #527bbd;
+}
+p.table {
+  margin-top: 0;
+}
+/* Because the table frame attribute is overriden by CSS in most browsers. */
+div.tableblock > table[frame="void"] {
+  border-style: none;
+}
+div.tableblock > table[frame="hsides"] {
+  border-left-style: none;
+  border-right-style: none;
+}
+div.tableblock > table[frame="vsides"] {
+  border-top-style: none;
+  border-bottom-style: none;
+}
+
+
+/*
+ * html5 specific
+ *
+ * */
+
+table.tableblock {
+  margin-top: 1.0em;
+  margin-bottom: 1.5em;
+}
+thead, p.tableblock.header {
+  font-weight: bold;
+  color: #527bbd;
+}
+p.tableblock {
+  margin-top: 0;
+}
+table.tableblock {
+  border-width: 3px;
+  border-spacing: 0px;
+  border-style: solid;
+  border-color: #527bbd;
+  border-collapse: collapse;
+}
+th.tableblock, td.tableblock {
+  border-width: 1px;
+  padding: 4px;
+  border-style: solid;
+  border-color: #527bbd;
+}
+
+table.tableblock.frame-topbot {
+  border-left-style: hidden;
+  border-right-style: hidden;
+}
+table.tableblock.frame-sides {
+  border-top-style: hidden;
+  border-bottom-style: hidden;
+}
+table.tableblock.frame-none {
+  border-style: hidden;
+}
+
+th.tableblock.halign-left, td.tableblock.halign-left {
+  text-align: left;
+}
+th.tableblock.halign-center, td.tableblock.halign-center {
+  text-align: center;
+}
+th.tableblock.halign-right, td.tableblock.halign-right {
+  text-align: right;
+}
+
+th.tableblock.valign-top, td.tableblock.valign-top {
+  vertical-align: top;
+}
+th.tableblock.valign-middle, td.tableblock.valign-middle {
+  vertical-align: middle;
+}
+th.tableblock.valign-bottom, td.tableblock.valign-bottom {
+  vertical-align: bottom;
+}
+
+
+/*
+ * manpage specific
+ *
+ * */
+
+body.manpage h1 {
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  border-top: 2px solid silver;
+  border-bottom: 2px solid silver;
+}
+body.manpage h2 {
+  border-style: none;
+}
+body.manpage div.sectionbody {
+  margin-left: 3em;
+}
+
+@media print {
+  body.manpage div#toc { display: none; }
+}
+
+
+</style>
+<script type="text/javascript">
+/*<![CDATA[*/
+var asciidoc = {  // Namespace.
+
+/////////////////////////////////////////////////////////////////////
+// Table Of Contents generator
+/////////////////////////////////////////////////////////////////////
+
+/* Author: Mihai Bazon, September 2002
+ * http://students.infoiasi.ro/~mishoo
+ *
+ * Table Of Content generator
+ * Version: 0.4
+ *
+ * Feel free to use this script under the terms of the GNU General Public
+ * License, as long as you do not remove or alter this notice.
+ */
+
+ /* modified by Troy D. Hanson, September 2006. License: GPL */
+ /* modified by Stuart Rackham, 2006, 2009. License: GPL */
+
+// toclevels = 1..4.
+toc: function (toclevels) {
+
+  function getText(el) {
+    var text = "";
+    for (var i = el.firstChild; i != null; i = i.nextSibling) {
+      if (i.nodeType == 3 /* Node.TEXT_NODE */) // IE doesn't speak constants.
+        text += i.data;
+      else if (i.firstChild != null)
+        text += getText(i);
+    }
+    return text;
+  }
+
+  function TocEntry(el, text, toclevel) {
+    this.element = el;
+    this.text = text;
+    this.toclevel = toclevel;
+  }
+
+  function tocEntries(el, toclevels) {
+    var result = new Array;
+    var re = new RegExp('[hH]([1-'+(toclevels+1)+'])');
+    // Function that scans the DOM tree for header elements (the DOM2
+    // nodeIterator API would be a better technique but not supported by all
+    // browsers).
+    var iterate = function (el) {
+      for (var i = el.firstChild; i != null; i = i.nextSibling) {
+        if (i.nodeType == 1 /* Node.ELEMENT_NODE */) {
+          var mo = re.exec(i.tagName);
+          if (mo && (i.getAttribute("class") || i.getAttribute("className")) != "float") {
+            result[result.length] = new TocEntry(i, getText(i), mo[1]-1);
+          }
+          iterate(i);
+        }
+      }
+    }
+    iterate(el);
+    return result;
+  }
+
+  var toc = document.getElementById("toc");
+  if (!toc) {
+    return;
+  }
+
+  // Delete existing TOC entries in case we're reloading the TOC.
+  var tocEntriesToRemove = [];
+  var i;
+  for (i = 0; i < toc.childNodes.length; i++) {
+    var entry = toc.childNodes[i];
+    if (entry.nodeName.toLowerCase() == 'div'
+     && entry.getAttribute("class")
+     && entry.getAttribute("class").match(/^toclevel/))
+      tocEntriesToRemove.push(entry);
+  }
+  for (i = 0; i < tocEntriesToRemove.length; i++) {
+    toc.removeChild(tocEntriesToRemove[i]);
+  }
+
+  // Rebuild TOC entries.
+  var entries = tocEntries(document.getElementById("content"), toclevels);
+  for (var i = 0; i < entries.length; ++i) {
+    var entry = entries[i];
+    if (entry.element.id == "")
+      entry.element.id = "_toc_" + i;
+    var a = document.createElement("a");
+    a.href = "#" + entry.element.id;
+    a.appendChild(document.createTextNode(entry.text));
+    var div = document.createElement("div");
+    div.appendChild(a);
+    div.className = "toclevel" + entry.toclevel;
+    toc.appendChild(div);
+  }
+  if (entries.length == 0)
+    toc.parentNode.removeChild(toc);
+},
+
+
+/////////////////////////////////////////////////////////////////////
+// Footnotes generator
+/////////////////////////////////////////////////////////////////////
+
+/* Based on footnote generation code from:
+ * http://www.brandspankingnew.net/archive/2005/07/format_footnote.html
+ */
+
+footnotes: function () {
+  // Delete existing footnote entries in case we're reloading the footnodes.
+  var i;
+  var noteholder = document.getElementById("footnotes");
+  if (!noteholder) {
+    return;
+  }
+  var entriesToRemove = [];
+  for (i = 0; i < noteholder.childNodes.length; i++) {
+    var entry = noteholder.childNodes[i];
+    if (entry.nodeName.toLowerCase() == 'div' && entry.getAttribute("class") == "footnote")
+      entriesToRemove.push(entry);
+  }
+  for (i = 0; i < entriesToRemove.length; i++) {
+    noteholder.removeChild(entriesToRemove[i]);
+  }
+
+  // Rebuild footnote entries.
+  var cont = document.getElementById("content");
+  var spans = cont.getElementsByTagName("span");
+  var refs = {};
+  var n = 0;
+  for (i=0; i<spans.length; i++) {
+    if (spans[i].className == "footnote") {
+      n++;
+      var note = spans[i].getAttribute("data-note");
+      if (!note) {
+        // Use [\s\S] in place of . so multi-line matches work.
+        // Because JavaScript has no s (dotall) regex flag.
+        note = spans[i].innerHTML.match(/\s*\[([\s\S]*)]\s*/)[1];
+        spans[i].innerHTML =
+          "[<a id='_footnoteref_" + n + "' href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+        spans[i].setAttribute("data-note", note);
+      }
+      noteholder.innerHTML +=
+        "<div class='footnote' id='_footnote_" + n + "'>" +
+        "<a href='#_footnoteref_" + n + "' title='Return to text'>" +
+        n + "</a>. " + note + "</div>";
+      var id =spans[i].getAttribute("id");
+      if (id != null) refs["#"+id] = n;
+    }
+  }
+  if (n == 0)
+    noteholder.parentNode.removeChild(noteholder);
+  else {
+    // Process footnoterefs.
+    for (i=0; i<spans.length; i++) {
+      if (spans[i].className == "footnoteref") {
+        var href = spans[i].getElementsByTagName("a")[0].getAttribute("href");
+        href = href.match(/#.*/)[0];  // Because IE return full URL.
+        n = refs[href];
+        spans[i].innerHTML =
+          "[<a href='#_footnote_" + n +
+          "' title='View footnote' class='footnote'>" + n + "</a>]";
+      }
+    }
+  }
+},
+
+install: function(toclevels) {
+  var timerId;
+
+  function reinstall() {
+    asciidoc.footnotes();
+    if (toclevels) {
+      asciidoc.toc(toclevels);
+    }
+  }
+
+  function reinstallAndRemoveTimer() {
+    clearInterval(timerId);
+    reinstall();
+  }
+
+  timerId = setInterval(reinstall, 500);
+  if (document.addEventListener)
+    document.addEventListener("DOMContentLoaded", reinstallAndRemoveTimer, false);
+  else
+    window.onload = reinstallAndRemoveTimer;
+}
+
+}
+asciidoc.install();
+/*]]>*/
+</script>
+</head>
+<body class="manpage">
+<div id="header">
+<h1>
+git-checkout(1) Manual Page
+</h1>
+<h2>NAME</h2>
+<div class="sectionbody">
+<p>git-checkout -
+   ブランチまたはファイルパスをワーキングツリーにチェックアウトする
+</p>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="_書式">書式</h2>
+<div class="sectionbody">
+<div class="verseblock">
+<pre class="content"><em>git checkout</em> [-q] [-f] [-m] [&lt;branch&gt;]
+<em>git checkout</em> [-q] [-f] [-m] --detach [&lt;branch&gt;]
+<em>git checkout</em> [-q] [-f] [-m] [--detach] &lt;commit&gt;
+<em>git checkout</em> [-q] [-f] [-m] [[-b|-B|--orphan] &lt;new_branch&gt;] [&lt;start_point&gt;]
+<em>git checkout</em> [-f|--ours|--theirs|-m|--conflict=&lt;style&gt;] [&lt;tree-ish&gt;] [--] &lt;paths&gt;&#8230;
+<em>git checkout</em> [-p|--patch] [&lt;tree-ish&gt;] [--] [&lt;paths&gt;&#8230;]</pre>
+<div class="attribution">
+</div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_解説">解説</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>ワーキングツリー内のファイルを、インデックスまたは指定したツリーの
+バージョンにマッチする内容に更新します。 paths が指定されない場合、
+<em>git checkout</em> は <code>HEAD</code> についても、指定されたブランチを
+カレントブランチとして指すよう、更新します。</p></div>
+<div class="dlist"><dl>
+<dt class="hdlist1">
+<em>git checkout</em> &lt;branch&gt;
+</dt>
+<dd>
+<p>
+        &lt;branch&gt; での作業の準備のため、インデックスとワーキングツリーの
+        ファイルを更新し、HEAD がそのブランチを指すようにすることで、
+        対象ブランチに切り替えます。 ワーキングツリーのファイルに対する
+        ローカルな変更は &lt;branch&gt; にコミットできるよう、保持されます。
+</p>
+<div class="paragraph"><p>&lt;branch&gt; が見つからないけれど、ただひとつのリモート( &lt;remote&gt; とします)
+に名前がマッチする追跡ブランチが存在する場合、下記と同様に扱われます。</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git checkout -b &lt;branch&gt; --track &lt;remote&gt;/&lt;branch&gt;</code></pre>
+</div></div>
+<div class="paragraph"><p>&lt;branch&gt; は省略でき、 その場合 checkout コマンドは "カレントブランチを
+チェックアウト" という動作に縮退します。 これは、カレントブランチの
+リモート追跡情報が存在していればそれを表示するだけという非常に手間の
+かかる副作用により装飾されていますが、何もしません。</p></div>
+</dd>
+<dt class="hdlist1">
+<em>git checkout</em> -b|-B &lt;new_branch&gt; [&lt;start point&gt;]
+</dt>
+<dd>
+<p>
+        <code>-b</code> が指定されると、 <a href="git-branch.html">git-branch(1)</a> が呼ばれたかのように
+        新しいブランチが作成され、そのあとチェックアウトします。
+        この場合 <code>--track</code> または <code>--no-track</code> オプションを指定でき、
+        それらは <em>git branch</em> に渡されます。 利便性のため、 <code>-b</code> なしで
+        <code>--track</code> を指定すると暗黙的にブランチが作成されます; 後述の
+        <code>--track</code> の解説を参照してください。
+</p>
+<div class="paragraph"><p><code>-B</code> が与えられると、 &lt;new_branch&gt; が存在しない場合は作成され; 存在する
+場合はリセットされます。 これはトランザクション処理的に以下と等価です</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git branch -f &lt;branch&gt; [&lt;start point&gt;]
+$ git checkout &lt;branch&gt;</code></pre>
+</div></div>
+<div class="paragraph"><p>すなわち、 "git checkout" が成功しない限りブランチはリセット/作成
+されません。</p></div>
+</dd>
+<dt class="hdlist1">
+<em>git checkout</em> --detach [&lt;branch&gt;]
+</dt>
+<dt class="hdlist1">
+<em>git checkout</em> [--detach] &lt;commit&gt;
+</dt>
+<dd>
+<p>
+        &lt;commit&gt; 上で作業できるように、HEAD をそこで切り離し
+        ("DETACHED HEAD" セクションを見てください)、 インデックスと
+        ワーキングツリーを更新することで、準備します。
+        ワーキングツリーのファイルに対するローカルな変更は、
+        チェックアウト後のワーキングツリーが &lt;commit&gt; に
+        ローカルな変更を追加した状態になるよう、保持されます。
+</p>
+<div class="paragraph"><p>&lt;commit&gt; 引数がブランチ名である場合、 <code>--detach</code> オプションを
+HEAD をブランチの先端から切り離すために使用できます
+(<code>git checkout &lt;branch&gt;</code> は HEAD を切り離すことなくブランチを
+チェックアウトします)。</p></div>
+<div class="paragraph"><p>&lt;branch&gt; を省略するとカレントブランチの先端で HEAD を切り離します。</p></div>
+</dd>
+<dt class="hdlist1">
+<em>git checkout</em> [-p|--patch] [&lt;tree-ish&gt;] [--] &lt;pathspec&gt;&#8230;
+</dt>
+<dd>
+<p>
+        &lt;paths&gt; または <code>--patch</code> が与えられた場合、 <em>git checkout</em> は
+        ブランチを変更 <strong>しません</strong> 。 インデックスファイルまたは指定された
+        &lt;tree-ish&gt; (大抵の場合はコミット) から取り出してワーキングツリーの
+        指定されたファイルパスを更新します。 この場合、 <code>-b</code> または <code>--track</code>
+        オプションは意味をなさず、 指定するとエラーになります。
+        &lt;tree-ish&gt; 引数で特定の tree-ish (つまりコミット、 タグ、 またはツリー)
+        を指定すると、与えられたパスについて、ワーキングツリーを更新する前に
+        インデックスを更新します。
+</p>
+<div class="paragraph"><p>インデックスは直前の失敗したマージによるマージされていないエントリを
+含む場合があります。 デフォルトでは、 そのようなエントリについてインデックス
+からエントリをチェックアウトしようとしても、チェックアウト操作は失敗し、
+何もチェックアウトされません。マージ対象の特定のブランチの内容は <code>--ours</code>
+あるいは <code>--theirs</code> でチェックアウトできます。 <code>-m</code> を指定すると、
+ワーキングツリーのファイルに行った変更は破棄され、もともとのコンフリクトした
+マージ結果を再度作ることができます。</p></div>
+</dd>
+</dl></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_オプション">オプション</h2>
+<div class="sectionbody">
+<div class="dlist"><dl>
+<dt class="hdlist1">
+-q
+</dt>
+<dt class="hdlist1">
+--quiet
+</dt>
+<dd>
+<p>
+        フィードバックメッセージを抑制し、静かに動作します。
+</p>
+</dd>
+<dt class="hdlist1">
+-f
+</dt>
+<dt class="hdlist1">
+--force
+</dt>
+<dd>
+<p>
+        ブランチを変更する際、インデックスあるいはワーキングツリーが
+        HEADと異なっている場合でも処理を実行します。これはローカルな
+        変更を捨てるのに使うことができます。
+</p>
+<div class="paragraph"><p>ファイルパスをインデックスからチェックアウトする際、マージされていない
+エントリについては失敗せず、代わりに無視します。</p></div>
+</dd>
+<dt class="hdlist1">
+--ours
+</dt>
+<dt class="hdlist1">
+--theirs
+</dt>
+<dd>
+<p>
+        インデックスからファイルパスをチェックアウトする際、マージされていない
+        ファイルパスに対してステージ #2 (<em>ours</em>) または #3 (<em>theirs</em>) を
+        チェックアウトします。
+</p>
+</dd>
+<dt class="hdlist1">
+-b &lt;new_branch&gt;
+</dt>
+<dd>
+<p>
+        &lt;new_branch&gt; という名前の新しいブランチを作成し、&lt;start_point&gt; から
+        開始します; 詳細は <a href="git-branch.html">git-branch(1)</a> を見てください。
+</p>
+</dd>
+<dt class="hdlist1">
+-B &lt;new_branch&gt;
+</dt>
+<dd>
+<p>
+        &lt;new_branch&gt; という名前の新しいブランチを作成し、&lt;start_point&gt; から
+        開始します; もしブランチがすでに存在していた場合、 &lt;start_point&gt; に
+        リセットします。 これは "git branch" を "-f" 付きで実行した場合と
+        等価です; 詳細は <a href="git-branch.html">git-branch(1)</a> を見てください。
+</p>
+</dd>
+<dt class="hdlist1">
+-t
+</dt>
+<dt class="hdlist1">
+--track
+</dt>
+<dd>
+<p>
+        新しいブランチを作ったとき、 "上流(upstream)" を設定します。 詳細は
+        <a href="git-branch.html">git-branch(1)</a> の "--track" を見てください。
+</p>
+<div class="paragraph"><p><em>-b</em> オプションが指定されない場合、 新しいブランチの名前はリモート追跡ブランチ
+を元にして付けられます。 これは対応するリモート設定の refspec のローカル部分を
+見て、"*" までの先頭部分を削除することで行われます。
+これは "origin/hack" (または "remotes/origin/hack" あるいは、
+"refs/remotes/origin/hack" であっても) からローカルブランチを
+分岐したのであれば、 "hack" という名前を用いるということです。
+指定された名前がスラッシュを持たない、または上記の推定の結果、空の名前に
+なる場合、推定は破棄されます。 このような場合は -b で明示的に名前を
+与えることができます。</p></div>
+</dd>
+<dt class="hdlist1">
+--no-track
+</dt>
+<dd>
+<p>
+        設定値 branch.autosetupmerge が true であっても、 "上流" を
+        設定しません。
+</p>
+</dd>
+<dt class="hdlist1">
+-l
+</dt>
+<dd>
+<p>
+        新しいブランチの reflog を作成します; 詳細は <a href="git-branch.html">git-branch(1)</a>
+        を見てください。
+</p>
+</dd>
+<dt class="hdlist1">
+--detach
+</dt>
+<dd>
+<p>
+        あるブランチ上を作業するためにチェックアウトするのではなく、
+        あるコミットを調査および破棄可能な実験のためにチェックアウトします。
+        これは "git checkout &lt;commit&gt;" を実行したとき、 &lt;commit&gt; がブランチ名
+        でない場合のデフォルトの挙動です。 詳細は後述の "DETACHED HEAD" の
+        セクションを見てください。
+</p>
+</dd>
+<dt class="hdlist1">
+--orphan &lt;new_branch&gt;
+</dt>
+<dd>
+<p>
+        新しい <em>親のいない(orphan)</em> ブランチを &lt;new_branch&gt; という名前で、
+        &lt;start_point&gt; を開始点として作成し、そこに切り替えます。 この
+        新しいブランチ上に対して作られる最初のコミットは、親コミットが
+        なく、その他のすべてのブランチおよびコミットから切り離された、
+        新しい歴史の root コミットとなります。
+</p>
+<div class="paragraph"><p>インデックスとワーキングツリーは、直前に "git checkout &lt;start_point&gt;" を
+実行したかのように調整されます。 これにより、単に "git commit -a" の
+実行で root コミットを作成することで、 &lt;start_point&gt; と同様のファイル
+を記録した新しい歴史を開始できます。</p></div>
+<div class="paragraph"><p>このオプションはあるコミットのツリーを、その完全な歴史を晒さずに
+公開したい場合に便利です。  現在のツリーは "クリーン" でも、その完全な
+歴史にはプロプライエタリまたは公開するのに邪魔なコード片を含むような
+プロジェクトにおいて、オープンソースなブランチを公開したい場合が
+あるかもしれません。</p></div>
+<div class="paragraph"><p>&lt;start_point&gt; とは完全に異なるファイルを記録した、切り離された歴史を
+開始したい場合、orphan ブランチを作成した直後にワーキングツリーの
+一番上のディレクトリで "git rm -rf ." を実行することで、インデックスと
+ワーキングツリーを綺麗にしてください。その後、ファイルを他の場所から
+コピーする、tarball を展開する、等によりワーキングツリーを再作成することで
+新しいファイルを準備することになります。</p></div>
+</dd>
+<dt class="hdlist1">
+--ignore-skip-worktree-bits
+</dt>
+<dd>
+<p>
+        XXX: スパースチェックアウトモードにおいて、 <code>git checkout -- &lt;paths&gt;</code> は
+        &lt;paths&gt; および $GIT_DIR/info/sparse-checkout 内のスパースパターン
+        にマッチしたエントリのみをアップデートします。 このオプションは
+        スパースパターンを無視し、&lt;paths&gt; のどのファイルであっても追加します。
+</p>
+</dd>
+<dt class="hdlist1">
+-m
+</dt>
+<dt class="hdlist1">
+--merge
+</dt>
+<dd>
+<p>
+        ブランチを切り替える際、カレントブランチと切り替え先のブランチとの
+        間で差分のあるファイルに対してローカルな変更をしていた場合、 checkout
+        コマンドはコンテキスト中のローカルな変更を保護するために
+        ブランチの切り替えを拒否します。 しかし、このオプションを使うと、
+        カレントブランチ、ワーキングツリーの内容、新しいブランチの間で
+        3way マージが実行され、新しいブランチ上に移動します。
+</p>
+<div class="paragraph"><p>マージコンフリクトが発生するときは、コンフリクトしたファイルパスの
+インデックス内のエントリがマージされていない状態のままになるので、
+コンフリクトを解消して <code>git add</code> (あるいはマージの結果そのファイルパスを
+消すことになるのであれば <code>git rm</code>) を使って解消したという印をつける
+必要があります。</p></div>
+<div class="paragraph"><p>インデックスからファイルパスの内容をチェックアウトするときは、この
+オプションで指定したファイルパスのコンフリクト状態を再生成することが
+できます。</p></div>
+</dd>
+<dt class="hdlist1">
+--conflict=&lt;style&gt;
+</dt>
+<dd>
+<p>
+        上記の --merge オプションと同じですが、 merge.conflictstyle を
+        無視してコンフリクトしているハンクの表現方法を変更します。
+        指定可能な値は "merge" (デフォルト) と "diff3" ("merge" スタイルで
+        現れる内容に加えて、元の内容も表示します。
+</p>
+</dd>
+<dt class="hdlist1">
+-p
+</dt>
+<dt class="hdlist1">
+--patch
+</dt>
+<dd>
+<p>
+        &lt;tree-ish&gt; (または、指定しない場合はインデックス) とワーキングツリー
+        との間の違いによるハンクを対話的に選択します。 選択されたハンクは
+        ワーキングツリーに逆向きに適用されます (&lt;tree-ish&gt; が指定された
+        場合はインデックスにも)。
+</p>
+<div class="paragraph"><p>これは <code>git checkout -p</code> によって現在のワーキングツリーの変更を選択的に
+破棄できることを意味します。 <code>--patch</code> モードの操作方法については
+<a href="git-add.html">git-add(1)</a> の "インタラクティブモード" を見てください。</p></div>
+</dd>
+<dt class="hdlist1">
+&lt;branch&gt;
+</dt>
+<dd>
+<p>
+        チェックアウトするブランチです; ブランチを参照している場合
+        (つまり、 "refs/heads/" を先頭につけたときに有効な ref になる
+        ような名前であれば), そのブランチがチェックアウトされます。
+        そうでない場合、 有効なコミットを参照していれば HEAD は
+        "切り離された(detached)" 状態となり、 どのブランチ上にも
+        いないことになります (詳細は後述)
+</p>
+<div class="paragraph"><p>特殊なケースとして、 <code>"@{-N}"</code> という記法は N 回前に居たブランチ/コミットを
+チェックアウトします(切り離すのではなく). <code>"@{-1}"</code> と同じ意味として
+<code>-</code> を指定できます。</p></div>
+<div class="paragraph"><p>さらに特殊なケースとして、 <code>A</code> と <code>B</code> の間にただひとつのマージベースが
+あれば、 <code>"A...B"</code> をそのショートカットとして使用できます。 <code>A</code> か <code>B</code>
+のどちらかだけ省略することができ、その場合は <code>HEAD</code> を指定したことになります。</p></div>
+</dd>
+<dt class="hdlist1">
+&lt;new_branch&gt;
+</dt>
+<dd>
+<p>
+        新しいブランチの名前です。
+</p>
+</dd>
+<dt class="hdlist1">
+&lt;start_point&gt;
+</dt>
+<dd>
+<p>
+        新しいブランチの開始点になるコミットの名前です; 詳細は
+        <a href="git-branch.html">git-branch(1)</a> を見てください。
+        指定しなければ HEAD になります。
+</p>
+</dd>
+<dt class="hdlist1">
+&lt;tree-ish&gt;
+</dt>
+<dd>
+<p>
+        (&lt;paths&gt; が与えられた場合の) チェックアウト元のツリーです。
+        指定しなければインデックスが使用されます。
+</p>
+</dd>
+</dl></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_detached_head">DETACHED HEAD</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>通常 HEAD は名前を持ったブランチ (例えば <em>master</em>) を参照します。
+一方、各ブランチはそれぞれが特定のコミットを参照します。 ここである
+3つのコミットを持ったリポジトリを見てみます。 コミットのうちひとつは
+タグが付けられており、 <em>master</em> がチェックアウトされています:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>           HEAD (ブランチ 'master' を参照)
+            |
+            v
+a---b---c  branch 'master' (コミット 'c' を参照)
+    ^
+    |
+  tag 'v2.0' (コミット 'b' を参照)</code></pre>
+</div></div>
+<div class="paragraph"><p>この状態でコミットがひとつ作られると、 ブランチは新しいコミットを参照するよう
+更新されます。 具体的には、 <em>git commit</em> がコミット <em>c</em> を親として持つような
+新しいコミット <em>d</em> を作成し、 ブランチ <em>master</em> を更新して新しいコミット <em>d</em>
+を参照するようにします。 HEAD は変わらずブランチ <em>master</em> を参照しているので、
+現在は間接的にコミット <em>d</em> を参照していることになります:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ edit; git add; git commit
+
+               HEAD (ブランチ 'master' を参照)
+                |
+                v
+a---b---c---d  branch 'master' (コミット 'd' を参照)
+    ^
+    |
+  tag 'v2.0' (コミット 'b' 参照)</code></pre>
+</div></div>
+<div class="paragraph"><p>名前を持ったどのブランチの先端でもないようなコミットをチェックアウトしたり、
+名前を持ったブランチから参照されていないような新しいコミットを作成したり
+できると、便利な場合があります。 コミット <em>b</em> をチェックアウトすると
+何が起こるのか見てみましょう(ここではこれを実行できるふたつの方法を
+示します):</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git checkout v2.0  # または
+$ git checkout master^^
+
+   HEAD (コミット 'b' を参照)
+    |
+    v
+a---b---c---d  branch 'master' (コミット 'd' を参照)
+    ^
+    |
+  tag 'v2.0' (コミット 'b' を参照)</code></pre>
+</div></div>
+<div class="paragraph"><p>どちらの checkout コマンドを使ったかに関わらず、 HEAD が直接コミット <em>b</em>
+を指すようになったことに注意してください。 これは HEAD が切り離された
+(DETACHED HEAD) 状態として知られています。
+これは HEAD が名前を持ったブランチを参照しているのではなく、
+単にある特定のコミットを参照している、ということを意味します。
+コミットを作成するとどうなるか見てみましょう:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ edit; git add; git commit
+
+     HEAD (コミット 'e' を参照)
+      |
+      v
+      e
+     /
+a---b---c---d  branch 'master' (コミット 'd' を参照)
+    ^
+    |
+  tag 'v2.0' (コミット 'b' を参照)</code></pre>
+</div></div>
+<div class="paragraph"><p>新しいコミット <em>e</em> できましたが、 <em>e</em> は HEAD にのみ参照されています。
+もちろん、この状態にさらに別のコミットを追加することもできます。</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ edit; git add; git commit
+
+         HEAD (コミット 'f' を参照)
+          |
+          v
+      e---f
+     /
+a---b---c---d  branch 'master' (コミット 'd' を参照)
+    ^
+    |
+  tag 'v2.0' (コミット 'b' を参照)</code></pre>
+</div></div>
+<div class="paragraph"><p>実際のところ、通常の Git の操作すべてを実行できます。 しかし、
+master をチェックアウトするとどうなるか見てみましょう:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git checkout master
+
+               HEAD (ブランチ 'master' を参照)
+      e---f     |
+     /          v
+a---b---c---d  branch 'master' (コミット 'd' を参照)
+    ^
+    |
+  tag 'v2.0' (コミット 'b' を参照)</code></pre>
+</div></div>
+<div class="paragraph"><p>この時点で何もコミット <em>f</em> を参照していないと意識することが重要です。
+Git のガベージコレクションが実行される前にコミット <em>f</em> に対する
+何らかの参照を作らない限り、やがて定期的なガベージコレクションによって
+コミット <em>f</em> は (そしてコミット <em>e</em> も) 削除されます。
+まだコミット <em>f</em> 上から移動する前であれば、以下のいずれかで
+<em>f</em> に対する参照を作成できます:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git checkout -b foo   <b>&lt;1&gt;</b>
+$ git branch foo        <b>&lt;2&gt;</b>
+$ git tag foo           <b>&lt;3&gt;</b></code></pre>
+</div></div>
+<div class="colist arabic"><ol>
+<li>
+<p>
+コミット <em>f</em> を参照する新しいブランチ <em>foo</em> を作成し、 HEAD を
+更新してブランチ <em>foo</em> を参照するようにします。 言い換えると、
+このコマンドを実行すると DETACHED HEAD 状態ではなくなります。
+</p>
+</li>
+<li>
+<p>
+同様にコミット <em>f</em> を参照する新しいブランチ <em>foo</em> を作成しますが、
+DETACHED HEAD 状態のままにします。
+</p>
+</li>
+<li>
+<p>
+コミット <em>f</em> を参照する新しいタグ <em>foo</em> を作成し、
+DETACHED HEAD 状態のままにします。
+</p>
+</li>
+</ol></div>
+<div class="paragraph"><p>コミット <em>f</em> から移動していた場合、 まずコミット <em>f</em> のオブジェクト名を
+取り出さなければなりません (通常 git reflog を使います)。 その後、
+コミット <em>f</em> に対する参照を作成できます。 例えば、 前回の2回のコミット
+のまえに HEAD が参照していたコミットを見るには、 以下のどちらかの
+コマンドを使うことができます:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git reflog -2 HEAD # or
+$ git log -g -2 HEAD</code></pre>
+</div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_例">例</h2>
+<div class="sectionbody">
+<div class="olist arabic"><ol class="arabic">
+<li>
+<p>
+下記の一連のコマンドは <code>master</code> ブランチをチェックアウトし、
+<code>Makefile</code> を2つ前の版に戻し、 hello.c を誤って消し、それを
+インデックスから取り戻しています。
+</p>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git checkout master             <b>&lt;1&gt;</b>
+$ git checkout master~2 Makefile  <b>&lt;2&gt;</b>
+$ rm -f hello.c
+$ git checkout hello.c            <b>&lt;3&gt;</b></code></pre>
+</div></div>
+<div class="colist arabic"><ol>
+<li>
+<p>
+ブランチを切り替えます
+</p>
+</li>
+<li>
+<p>
+他のコミットからファイルを取り出します
+</p>
+</li>
+<li>
+<p>
+インデックスから hello.c をリストアします
+</p>
+<div class="paragraph"><p>もし <em>すべての</em> C ソースファイルをインデックスから取り出したい
+場合、次のコマンドで実行できます。</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git checkout -- '*.c'</code></pre>
+</div></div>
+<div class="paragraph"><p><code>*.c</code> を囲む引用符に注意してください。 ファイル <code>hello.c</code> についても
+ワーキングツリーにもう存在していなくてもチェックアウトされます。
+これは、ファイルグロビングが (シェルによってワーキングツリーに対して
+マッチするのではなく) インデックスに対してマッチするためです。</p></div>
+<div class="paragraph"><p><code>hello.c</code> という不適切な名前のブランチを持っている場合、
+このステップはブランチを切り替える命令と混乱します。
+この場合は次のようにすべきです:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git checkout -- hello.c</code></pre>
+</div></div>
+</li>
+</ol></div>
+</li>
+<li>
+<p>
+間違ったブランチで作業したあと、正しいブランチに切り替えるには
+次のようにします:
+</p>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git checkout mytopic</code></pre>
+</div></div>
+<div class="paragraph"><p>しかし、ローカルに修正したファイルが "wrong" (間違い)ブランチ
+と正しい "mytopic" ブランチとで異なっている場合、上記のチェックアウトは
+次のように失敗します:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git checkout mytopic
+error: You have local changes to 'frotz'; not switching branches.</code></pre>
+</div></div>
+<div class="paragraph"><p>コマンドに <code>-m</code> フラグを与えて、 3way マージを試みることができます:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git checkout -m mytopic
+Auto-merging frotz</code></pre>
+</div></div>
+<div class="paragraph"><p>この 3way マージのあと、 ローカルな修正はインデックスファイルには
+記録されて <em>いません</em> ので、 <code>git diff</code> は新しいブランチの先端からの
+変更を示してくれます。</p></div>
+</li>
+<li>
+<p>
+<code>-m</code> オプション付きでブランチを切り替えるときにマージコンフリクトが
+発生すると、次のようになります:
+</p>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ git checkout -m mytopic
+Auto-merging frotz
+ERROR: Merge conflict in frotz
+fatal: merge program failed</code></pre>
+</div></div>
+<div class="paragraph"><p>このときは、 <code>git diff</code> はコンフリクトしたファイルの変更と同様、
+前の例のように綺麗にマージされた変更を表示します。 通常どおり
+編集してコンフリクトを解消し、<code>git add</code> で解消した印をつけます:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ edit frotz
+$ git add frotz</code></pre>
+</div></div>
+</li>
+</ol></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_git">GIT</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>これは <a href="git.html">git(1)</a> の一部です。</p></div>
+</div>
+</div>
+</div>
+<div id="footnotes"><hr /></div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2014-02-23 16:46:58 JST
+</div>
+</div>
+</body>
+</html>
