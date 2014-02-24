@@ -570,3 +570,11 @@ int fprintf_ln(FILE *fp, const char *fmt, ...)
 		return -1;
 	return ret + 1;
 }
+
+void strbuf_chomp(struct strbuf *sb)
+{
+	while (sb->len && (sb->buf[sb->len - 1] == '\n' ||
+			   sb->buf[sb->len - 1] == '\r'))
+		sb->len--;
+	sb->buf[sb->len] = '\0';
+}
