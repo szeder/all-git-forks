@@ -9,6 +9,7 @@
 #include "argv-array.h"
 
 static int delta_base_offset = 1;
+static int pack_keep_objects;
 static char *packdir, *packtmp;
 
 static const char *const git_repack_usage[] = {
@@ -20,6 +21,10 @@ static int repack_config(const char *var, const char *value, void *cb)
 {
 	if (!strcmp(var, "repack.usedeltabaseoffset")) {
 		delta_base_offset = git_config_bool(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "repack.packkeepobjects")) {
+		pack_keep_objects = git_config_bool(var, value);
 		return 0;
 	}
 	return git_default_config(var, value, cb);
@@ -175,6 +180,8 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 				N_("limits the maximum delta depth")),
 		OPT_STRING(0, "max-pack-size", &max_pack_size, N_("bytes"),
 				N_("maximum size of each packfile")),
+		OPT_BOOL(0, "pack-keep-objects", &pack_keep_objects,
+				N_("repack objects in packs marked with .keep")),
 		OPT_END()
 	};
 
@@ -190,7 +197,8 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 
 	argv_array_push(&cmd_args, "pack-objects");
 	argv_array_push(&cmd_args, "--keep-true-parents");
-	argv_array_push(&cmd_args, "--honor-pack-keep");
+	if (!pack_keep_objects)
+		argv_array_push(&cmd_args, "--honor-pack-keep");
 	argv_array_push(&cmd_args, "--non-empty");
 	argv_array_push(&cmd_args, "--all");
 	argv_array_push(&cmd_args, "--reflog");
