@@ -961,6 +961,7 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	diff_tree_sha1(origin->tree->object.sha1,
 		       head->tree->object.sha1,
 		       "", &opts);
+  exit(6);
 	diffcore_std(&opts);
 	diff_flush(&opts);
 

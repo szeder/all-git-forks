@@ -7,9 +7,10 @@
 #include "diffcore.h"
 #include "xdiff-interface.h"
 #include "kwset.h"
+#include "userdiff.h"
 
 typedef int (*pickaxe_fn)(mmfile_t *one, mmfile_t *two,
-			  struct diff_options *o,
+			  char *path_one, char *path_two, struct diff_options *o,
 			  regex_t *regexp, kwset_t kws);
 
 static int pickaxe_match(struct diff_filepair *p, struct diff_options *o,
@@ -58,6 +59,13 @@ struct diffgrep_cb {
 	int hit;
 };
 
+struct blockname_cb {
+  struct userdiff_funcname *pattern;
+  char *file_start;
+	regex_t *regexp;
+	int hit;
+};
+
 static void diffgrep_consume(void *priv, char *line, unsigned long len)
 {
 	struct diffgrep_cb *data = priv;
@@ -79,18 +87,27 @@ static void diffgrep_consume(void *priv, char *line, unsigned long len)
 	line[len] = hold;
 }
 
-//NOTE: this function should be removed once things work!
-static void dummy_printer(void *priv, char *line, unsigned long len)
+static void match_blockname(void *priv, char *line, unsigned long len)
 {
-  //struct diffgrep_cb *data = priv;
-  int hold;
-  hold = line[len];
-  line[len] = '\0';
-  printf("%s\n",line); 
-  line[len] = hold;
+  struct blockname_cb *data = priv;
+  char *bol = line;
+  char *eol = line + len;
+	while (bol > gs->buf &&
+	       cur > (funcname_needed == 2 ? opt->last_shown + 1 : from)) {
+		char *eol = --bol;
+
+		while (bol > gs->buf && bol[-1] != '\n')
+			bol--;
+		cur--;
+		if (funcname_needed && match_funcname(opt, gs, bol, eol)) {
+			funcname_lno = cur;
+			funcname_needed = 0;
+		}
+	}
 }
 
 static int diff_grep(mmfile_t *one, mmfile_t *two,
+         char *path_one, char *path_two,
 		     struct diff_options *o,
 		     regex_t *regexp, kwset_t kws)
 {
@@ -120,25 +137,36 @@ static int diff_grep(mmfile_t *one, mmfile_t *two,
 }
 
 static int diff_blockname_filter(mmfile_t *one, mmfile_t *two,
+        char *path_one, char *path_two,
         struct diff_options *o,
         regex_t *regexp, kwset_t kws)
 {
   //regmatch_t regmatch;
-  struct diffgrep_cb ecbdata;
+  struct blockname_cb ecbdata;
+  struct userdiff_driver *userdiff;
   xpparam_t xpp;
   xdemitconf_t xecfg;
 
   // TODO Handle one-sided diff
   
-	memset(&xpp, 0, sizeof(xpp));
-	memset(&xecfg, 0, sizeof(xecfg));
-	ecbdata.regexp = regexp;
-	ecbdata.hit = 0;
-	xecfg.ctxlen = o->context;
-	xecfg.interhunkctxlen = o->interhunkcontext;
-	xdi_diff_outf(one, two, dummy_printer, &ecbdata,
-		      &xpp, &xecfg);
-	return ecbdata.hit;
+  if (one && two) {
+    userdiff = userdiff_find_by_path(path_two);
+    if (userdiff->funcname.pattern) {
+      xdiff_set_find_func(xecfg, userdiff->funcname.pattern, userdiff->funcname.cflags);
+    }
+
+    memset(&xpp, 0, sizeof(xpp));
+    memset(&xecfg, 0, sizeof(xecfg));
+    ecbdata.file_start = two
+    ecbdata.pattern = &userdiff->funcname;
+    ecbdata.regexp = regexp;
+    ecbdata.hit = 0;
+    xecfg.ctxlen = o->context;
+    xecfg.interhunkctxlen = o->interhunkcontext;
+    xdi_diff_outf(one, two, match_blockname, &ecbdata,
+            &xpp, &xecfg);
+  } 
+  return ecbdata.hit;
 }
 
 static void compile_regex_with_error(regex_t *r, const char *s, int cflags)
@@ -210,6 +238,7 @@ static unsigned int contains(mmfile_t *mf, regex_t *regexp, kwset_t kws)
 }
 
 static int has_changes(mmfile_t *one, mmfile_t *two,
+           char *path_one, char *path_two,
 		       struct diff_options *o,
 		       regex_t *regexp, kwset_t kws)
 {
@@ -226,7 +255,7 @@ static int pickaxe_match(struct diff_filepair *p, struct diff_options *o,
 	mmfile_t mf1, mf2;
 	int ret;
 
-	if (!o->pickaxe[0])
+	if (o->pickaxe && !o->pickaxe[0])
 		return 0;
 
 	/* ignore unmerged */
@@ -253,6 +282,8 @@ static int pickaxe_match(struct diff_filepair *p, struct diff_options *o,
 
 	ret = fn(DIFF_FILE_VALID(p->one) ? &mf1 : NULL,
 		 DIFF_FILE_VALID(p->two) ? &mf2 : NULL,
+     DIFF_FILE_VALID(p->one) ? p->one->path : NULL,
+     DIFF_FILE_VALID(p->two) ? p->two->path : NULL,
 		 o, regexp, kws);
 
 	if (textconv_one)
@@ -308,8 +339,8 @@ void diffcore_pickaxe(struct diff_options *o)
     diffcore_blockname(o);
   }
 	/* Might want to warn when both S and G are on; I don't care... */
-	if (o->pickaxe_opts & DIFF_PICKAXE_KIND_G)
-		diffcore_pickaxe_grep(o);
-	else
-		diffcore_pickaxe_count(o);
+  if (o->pickaxe_opts & DIFF_PICKAXE_KIND_G)
+    diffcore_pickaxe_grep(o);
+  else if (o->pickaxe_opts & DIFF_PICKAXE_KIND_S)
+    diffcore_pickaxe_count(o);
 }
