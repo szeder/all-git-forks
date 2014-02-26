@@ -830,6 +830,7 @@ sub dcommit_rebase {
 
 sub cmd_dcommit {
 	my $head = shift;
+	my $svnx_cl_name = shift;
 	command_noisy(qw/update-index --refresh/);
 	git_cmd_try { command_oneline(qw/diff-index --quiet HEAD --/) }
 		'Cannot dcommit with a dirty index.  Commit your changes first, '
@@ -1003,6 +1004,13 @@ sub cmd_dcommit {
 					$err);
 			};
 
+			if (defined($svnx_cl_name)) {
+				my @svnx_cmd = (
+					"svnx",
+					"ci", $svnx_cl_name,
+					"-f");
+				system(@svnx_cmd);
+			}
 			if (!Git::SVN::Editor->new(\%ed_opts)->apply_diff) {
 				print "No changes\n$d~1 == $d\n";
 			} elsif ($parents->{$d} && @{$parents->{$d}}) {
