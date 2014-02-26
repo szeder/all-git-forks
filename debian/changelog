@@ -1,3 +1,11 @@
+git (1:1.9.0-1.1) unstable; urgency=low
+
+  * git-email: Recommends: libio-socket-ssl-perl (>= 1.951) since
+    earlier versions do not use OpenSSL's defaults when ca_path
+    and ca_file are unset.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 25 Feb 2014 21:16:56 -0800
+
 git (1:1.9.0-1) unstable; urgency=low
 
   * new upstream release.
