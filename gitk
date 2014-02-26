@@ -7676,9 +7676,11 @@ proc showinlinediff {ids} {
     add_flist $treediff
 
     $ctext conf -state normal
+    parseblobdiffline_start
     foreach line $difflines {
 	parseblobdiffline $ids $line
     }
+    parseblobdiffline_end $ids
     maybe_scroll_ctext 1
     $ctext conf -state disabled
 }
@@ -7881,6 +7883,7 @@ proc getblobdiffs {ids} {
     fconfigure $bdf -blocking 0 -encoding binary -eofchar {}
     set blobdifffd($ids) $bdf
     initblobdiffvars
+    parseblobdiffline_start
     filerun $bdf [list getblobdiffline $bdf $diffids]
 }
 
@@ -7962,6 +7965,7 @@ proc getblobdiffline {bdf ids} {
     $ctext conf -state normal
     while {[incr nr] <= 1000 && [gets $bdf line] >= 0} {
 	if {$ids != $diffids || $bdf != $blobdifffd($ids)} {
+            parseblobdiffline_end $ids
 	    catch {close $bdf}
 	    return 0
 	}
@@ -7970,13 +7974,24 @@ proc getblobdiffline {bdf ids} {
     $ctext conf -state disabled
     blobdiffmaybeseehere [eof $bdf]
     if {[eof $bdf]} {
+        parseblobdiffline_end $ids
 	catch {close $bdf}
 	return 0
     }
     return [expr {$nr >= 1000? 2: 1}]
 }
 
+proc parseblobdiffline_start {} {
+}
+
+proc parseblobdiffline_end {ids} {
+}
+
 proc parseblobdiffline {ids line} {
+    real_parseblobdiffline $ids $line
+}
+
+proc real_parseblobdiffline {ids line} {
     global ctext curdiffstart
     global diffnexthead diffnextnote difffilestart
     global ctext_file_names ctext_file_lines
@@ -9007,6 +9022,7 @@ proc diffcommits {a b} {
     set blobdifffd($diffids) $fd
     set diffinhdr 0
     set currdiffsubmod ""
+    parseblobdiffline_start
     filerun $fd [list getblobdiffline $fd $diffids]
 }
 
