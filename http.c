@@ -365,7 +365,22 @@ static CURL *get_curl_handle(void)
 
 	if (curl_http_proxy) {
 		curl_easy_setopt(result, CURLOPT_PROXY, curl_http_proxy);
-		curl_easy_setopt(result, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
+
+		long param = CURLAUTH_BASIC; /* cURL default auth method */
+		char *proxyauth = getenv("GIT_CURL_PROXYAUTH");
+
+		if (proxyauth != NULL) {
+			if (!strcmp(proxyauth, "CURLAUTH_DIGEST"))
+				param = CURLAUTH_DIGEST;
+			if (!strcmp(proxyauth, "CURLAUTH_NEGOTIATE"))
+				param = CURLAUTH_GSSNEGOTIATE;
+			if (!strcmp(proxyauth, "CURLAUTH_NTLM")
+				param = CURLAUTH_NTLM;
+			if (!strcmp(proxyauth, "CURLAUTH_ANY"))
+				param = CURLAUTH_ANY;
+		}
+
+		curl_easy_setopt(result, CURLOPT_PROXYAUTH, param);
 	}
 
 	set_curl_keepalive(result);
