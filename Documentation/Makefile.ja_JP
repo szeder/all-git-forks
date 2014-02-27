@@ -8,14 +8,18 @@ translation: $(TRANSLATION_MAN_HTML)
 
 all: translation
 
+# FIXME: Embedded '.ja'
+%.txt.ja : %.txt
+	$(QUIET_GEN)$(RM) $@+ $@ && \
+	git diff $${GIT_TRANSLATION_BASE_BRANCH-"$(TRANSLATION_BASE_BRANCH)"} -- $< | \
+		grep '^+' | egrep -v '^\+(\+\+ .*|\.{80}$$)' | sed -e 's/^+//' | \
+		sed -e 's/^include::\(.*\)\.txt\[\]/include::\1.txt.ja[]/' > $@+ && \
+	mv $@+ $@
+
 # FIXME: Want to remove embedded '.ja', but '%.html.$(TRANSLATION_SUFFIX)'
 #        doesn't work.
-$(TRANSLATION_MAN_HTML): %.html.ja : %.txt asciidoc.conf
-	@( if test -n "$$(git diff --name-only $${GIT_TRANSLATION_BASE_BRANCH-$(TRANSLATION_BASE_BRANCH)} -- $<)"; then \
-		echo '   ' ASCIIDOC $@; $(RM) $@+ $@ && \
-		git diff $${GIT_TRANSLATION_BASE_BRANCH-"$(TRANSLATION_BASE_BRANCH)"} -- $< | \
-			grep '^+' | egrep -v '^\+(\+\+ .*|\.{80}$$)' | sed -e 's/^+//' | \
-			$(ASCIIDOC) -b xhtml11 -d manpage -f asciidoc.conf \
-			$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) - > $@+ && \
-		mv $@+ $@ ;\
-       fi; )
+$(TRANSLATION_MAN_HTML): %.html.ja : %.txt.ja asciidoc.conf
+	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
+	$(ASCIIDOC) -b xhtml11 -d manpage -f asciidoc.conf \
+		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) -o $@+ $< && \
+	mv $@+ $@
