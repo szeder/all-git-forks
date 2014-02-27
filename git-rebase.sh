@@ -32,6 +32,9 @@ verify             allow pre-rebase hook to run
 rerere-autoupdate  allow rerere to update index with resolved conflicts
 root!              rebase all reachable commits up to the root(s)
 autosquash         move commits that begin with squash!/fixup! under -i
+E,edit=!           generate todo list to edit this commit
+R,reword=!         generate todo list to reword this commit's message
+D,delete=!         generate todo list to delete this commit
 committer-date-is-author-date! passed to 'git am'
 ignore-date!       passed to 'git am'
 whitespace=!       passed to 'git apply'
@@ -228,6 +231,7 @@ then
 fi
 test -n "$type" && in_progress=t
 
+one_action=
 total_argc=$#
 while test $# != 0
 do
@@ -290,6 +294,7 @@ do
 		;;
 	--autostash)
 		autostash=true
+		explicit_autosquash=t
 		;;
 	--verbose)
 		verbose=t
@@ -335,6 +340,13 @@ do
 	--gpg-sign=*)
 		gpg_sign_opt="-S${1#--gpg-sign=}"
 		;;
+	--edit=*|--reword=*|--delete=*)
+		test -n "$one_action" && die "$(gettext "--edit, --reword or --delete cannot be used multiple times")"
+		interactive_rebase=explicit
+		one_action="${1%=*}"
+		one_action="${one_action#--}"
+		one_commit="${1#--*=}"
+		;;
 	--)
 		shift
 		break
@@ -342,6 +354,7 @@ do
 	esac
 	shift
 done
+test -n "$one_action" && test $# -gt 0 && usage
 test $# -gt 2 && usage
 
 if test -n "$cmd" &&
@@ -438,7 +451,14 @@ else
 	state_dir="$apply_dir"
 fi
 
-if test -z "$rebase_root"
+if test -n "$one_action"
+then
+	upstream_name="$one_commit^"
+	upstream=$(peel_committish "${upstream_name}") ||
+	die "$(eval_gettext "invalid upstream \$upstream_name")"
+	upstream_arg="$upstream_name"
+	test -n "$explicit_autosquash" || autosquash=
+elif test -z "$rebase_root"
 then
 	case "$#" in
 	0)

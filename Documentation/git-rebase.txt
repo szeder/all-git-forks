@@ -13,6 +13,7 @@ SYNOPSIS
 'git rebase' [-i | --interactive] [options] [--exec <cmd>] [--onto <newbase>]
 	--root [<branch>]
 'git rebase' --continue | --skip | --abort | --edit-todo
+'git rebase' [--edit | -E | --reword | -R | --delete | -D ] <commit-ish>
 
 DESCRIPTION
 -----------
@@ -355,6 +356,16 @@ unless the `--fork-point` option is specified.
 	Make a list of the commits which are about to be rebased.  Let the
 	user edit that list before rebasing.  This mode can also be used to
 	split commits (see SPLITTING COMMITS below).
+
+-E=<commit>::
+--edit=<commit>::
+-R=<commit>::
+--reword=<commit>::
+-D=<commit>::
+--delete=<commit>::
+	Prepare the todo list to edit or reword or delete the
+	specified commit. Configuration variable `rebase.autostash` is
+	ignored.
 
 -p::
 --preserve-merges::

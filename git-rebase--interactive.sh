@@ -1040,9 +1040,20 @@ fi
 has_action "$todo" ||
 	die_abort "Nothing to do"
 
-cp "$todo" "$todo".backup
-git_sequence_editor "$todo" ||
-	die_abort "Could not execute editor"
+if test -n "$one_action"
+then
+	commit="`git rev-parse --short $one_commit`"
+	sed "1s/pick $commit /$one_action $commit /" "$todo" > "$todo.new" ||
+		die_abort "failed to update todo list"
+	grep "^$one_action $commit " "$todo.new" >/dev/null ||
+		die_abort "expected to find '$one_action $commit' line but did not"
+	mv "$todo.new" "$todo" ||
+		die_abort "failed to update todo list"
+else
+	cp "$todo" "$todo".backup
+	git_sequence_editor "$todo" ||
+		die_abort "Could not execute editor"
+fi
 
 has_action "$todo" ||
 	die_abort "Nothing to do"
