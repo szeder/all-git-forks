@@ -22,6 +22,23 @@ test_expect_success \
     'resetting hard to HEAD' \
     'git reset --hard HEAD'
 
+test_expect_failure \
+    'expecting the link to incorrectly remain after reset for now' \
+    'test -d dir &&
+     test ! -h dir'
+
+test_expect_success \
+    'illustrating odd behavior that results in successful reset' \
+    'rm dir &&
+     git reset --hard HEAD &&
+     test -d dir &&
+     test ! -h dir &&
+     test -f dir/file &&
+     test "$(cat dir/file)" = contents &&
+     rm -rf dir &&
+     ln -s dir-real dir &&
+     git reset --hard HEAD'
+
 test_expect_success \
     'checking initial paths at true locations after reset' \
     'test -d dir &&
