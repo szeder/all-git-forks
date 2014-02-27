@@ -109,11 +109,17 @@ extern void strbuf_remove(struct strbuf *, size_t pos, size_t len);
 /* splice pos..pos+len with given data */
 extern void strbuf_splice(struct strbuf *, size_t pos, size_t len,
                           const void *, size_t);
+extern void strbuf_chomp(struct strbuf *sb);
 
 extern void strbuf_add_commented_lines(struct strbuf *out, const char *buf, size_t size);
 
 extern void strbuf_add(struct strbuf *, const void *, size_t);
 static inline void strbuf_addstr(struct strbuf *sb, const char *s) {
+	strbuf_add(sb, s, strlen(s));
+}
+static inline void strbuf_addstr_at(struct strbuf *sb, size_t len, const char *s)
+{
+	strbuf_setlen(sb, len);
 	strbuf_add(sb, s, strlen(s));
 }
 static inline void strbuf_addbuf(struct strbuf *sb, const struct strbuf *sb2) {
