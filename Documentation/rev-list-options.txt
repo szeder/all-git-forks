@@ -15,28 +15,80 @@ ordering and formatting options, such as `--reverse`.
 
 --
 
+................................................................................
+コミットの限定
+~~~~~~~~~~~~~~
+
+詳細のなかで説明されている特別な記法を使ってリストされるコミットの
+範囲を指定することに加え、 追加のコミットの限定を適用しても構いません。
+
+さらにオプションを使うということは、とくに断りのない限り、普通は
+更に出力を限定することになります。
+(例えば `--since=<date1>` は `<date1>` よりも新しいコミットに限定し、
+`--grep=<pattern>` と一緒にすれば、さらに `<pattern>` にマッチする行を
+ログメッセージとして持っているコミットに限定します)
+
+これらのオプションは、 `--reverse` のような、 コミットの順序付け
+およびフォーマットのためのオプションの前に適用されることに注意してください。
+
+--
+
+................................................................................
 -<number>::
 -n <number>::
 --max-count=<number>::
 	Limit the number of commits to output.
 
+................................................................................
+-<number>::
+-n <number>::
+--max-count=<number>::
+	出力するコミットの数を限定します。
+
+................................................................................
 --skip=<number>::
 	Skip 'number' commits before starting to show the commit output.
 
+................................................................................
+--skip=<number>::
+	出力するコミットの表示を開始する前に 'number' 個の
+	コミットをスキップします。
+
+................................................................................
 --since=<date>::
 --after=<date>::
 	Show commits more recent than a specific date.
 
+................................................................................
+--since=<date>::
+--after=<date>::
+	指定した日付よりも最近のコミットを表示します。
+
+................................................................................
 --until=<date>::
 --before=<date>::
 	Show commits older than a specific date.
 
+................................................................................
+--until=<date>::
+--before=<date>::
+	指定した日付よりも古いコミットを表示します。
+
+................................................................................
 ifdef::git-rev-list[]
 --max-age=<timestamp>::
 --min-age=<timestamp>::
 	Limit the commits output to specified time range.
 endif::git-rev-list[]
 
+................................................................................
+ifdef::git-rev-list[]
+--max-age=<timestamp>::
+--min-age=<timestamp>::
+	出力するコミットを、指定した時間範囲に限定します。
+endif::git-rev-list[]
+
+................................................................................
 --author=<pattern>::
 --committer=<pattern>::
 	Limit the commits output to ones with author/committer
@@ -45,6 +97,16 @@ endif::git-rev-list[]
 	commits whose author matches any of the given patterns are
 	chosen (similarly for multiple `--committer=<pattern>`).
 
+................................................................................
+--author=<pattern>::
+--committer=<pattern>::
+	出力するコミットを、 著作者/コミッターのヘッダ行が指定した
+	パターン (正規表現) にマッチするものに限定します。
+	`--author=<pattern>` を複数回指定した場合は、 著作者が、与えられた
+	パターンのどれかにマッチするコミットが選ばれます
+	(複数回の `--committer=<pattern>` についても同様です)。
+
+................................................................................
 --grep-reflog=<pattern>::
 	Limit the commits output to ones with reflog entries that
 	match the specified pattern (regular expression). With
@@ -52,6 +114,16 @@ endif::git-rev-list[]
 	matches any of the given patterns are chosen.  It is an
 	error to use this option unless `--walk-reflogs` is in use.
 
+................................................................................
+--grep-reflog=<pattern>::
+	出力するコミットを、レフログエントリが指定したパターン (正規表現) に
+	マッチするものに限定します。
+	`--grep-reflog` を複数回指定した場合は、レフログメッセージが、
+	与えられたパターンのどれかにマッチするコミットが選ばれます。
+	`--walk-reflogs` を使っていないのであれば、
+	このオプションを使うのは誤りです。
+
+................................................................................
 --grep=<pattern>::
 	Limit the commits output to ones with log message that
 	matches the specified pattern (regular expression).  With
@@ -62,10 +134,28 @@ endif::git-rev-list[]
 When `--show-notes` is in effect, the message from the notes as
 if it is part of the log message.
 
+................................................................................
+--grep=<pattern>::
+	出力するコミットを、ログメッセージが指定したパターン (正規表現) に
+	マッチするものに限定します。
+	`--grep=<pattern>` を複数回指定した場合は、レフログメッセージが、
+	与えられたパターンのどれかにマッチするコミットが選ばれます。
+	(が、 `--all-match` も見てください)
++
+`--show-notes` が有効になっている場合、 ノートからのメッセージも
+ログメッセージの一部であるかのように表示されます。
+
+................................................................................
 --all-match::
 	Limit the commits output to ones that match all given `--grep`,
 	instead of ones that match at least one.
 
+................................................................................
+--all-match::
+	出力するコミットを、 与えられた `--grep` に対してひとつでも
+	マッチするものの代わりに、全てにマッチするものに限定します。
+
+................................................................................
 -i::
 --regexp-ignore-case::
 	Match the regular expression limiting patterns without regard to letter
@@ -259,6 +349,14 @@ See also linkgit:git-reflog[1].
 
 --
 
+................................................................................
+--boundary::
+	除外された境界にあるコミットを出力します。 境界のコミットには
+	`-` が前置されます。
+
+--
+
+................................................................................
 History Simplification
 ~~~~~~~~~~~~~~~~~~~~~~
 

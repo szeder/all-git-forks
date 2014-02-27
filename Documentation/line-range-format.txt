@@ -6,6 +6,17 @@ If <start> or <end> is a number, it specifies an
 absolute line number (lines count from 1).
 +
 
+................................................................................
+<start> および <end> は下記のうちのどれかの形式をとれます:
+
+- number
++
+<start> または <end> が数値であれば、 絶対的な行数を指定することになります
+(行数は1からカウントします).
++
+
+................................................................................
+
 - /regex/
 +
 This form will use the first line matching the given
@@ -16,10 +27,30 @@ If <end> is a regex, it will search
 starting at the line given by <start>.
 +
 
+................................................................................
+
+- /regex/
++
+この形式は与えられた POSIX regex にマッチする最初の行を使います。
+もし <start> が regex なら、 その前の `-L` 範囲がもしあればその終わりから、
+そうでなければファイルの先頭から検索します。
+<start> が ``^/regex/'' ならば、 ファイルの先頭から検索します。
+<end> が regex なら、 <start> によって与えられる行から検索を開始します。
++
+
+................................................................................
+
 - +offset or -offset
 +
 This is only valid for <end> and will specify a number
 of lines before or after the line given by <start>.
+................................................................................
+- +offset or -offset
++
+これは <end> においてのみ有効で、 <start> によって与えられた行の
+前あるいは後ろの行数を指定します。
+
+................................................................................
 
 +
 If ``:<regex>'' is given in place of <start> and <end>, it denotes the range
@@ -27,3 +58,14 @@ from the first funcname line that matches <regex>, up to the next
 funcname line. ``:<regex>'' searches from the end of the previous `-L` range,
 if any, otherwise from the start of file.
 ``^:<regex>'' searches from the start of file.
+
+................................................................................
++
+もし ``:<regex>'' が <start> と <end> に変わって与えられた場合、
+<regex> にマッチする関数名の最初の行から、 次の関数名の行までの範囲を
+示します。
+``:<regex>'' はその前に `-L` の範囲があればその終わりから検索し、
+なければファイルの先頭から検索します。
+``^:<regex>'' はファイルの先頭から検索します。
+
+................................................................................

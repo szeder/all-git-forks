@@ -11,6 +11,22 @@ SYNOPSIS
 [verse]
 'git log' [<options>] [<revision range>] [[\--] <path>...]
 
+................................................................................
+git-log(1)
+==========
+
+名称
+----
+git-log - コミットログを表示する
+
+
+書式
+----
+[verse]
+'git log' [<options>] [<revision range>] [[\--] <path>...]
+
+................................................................................
+
 DESCRIPTION
 -----------
 Shows the commit logs.
@@ -20,6 +36,17 @@ command to control what is shown and how, and options applicable to
 the `git diff-*` commands to control how the changes
 each commit introduces are shown.
 
+................................................................................
+解説
+----
+コミットログを表示します。
+
+このコマンドは、何をどのように表示するかを制御するために `git rev-list`
+コマンドのオプションを、各コミットがもたらした変更をどのように表示するか
+を制御するために `git diff-*` コマンドのオプションをとります。
+
+
+................................................................................
 
 OPTIONS
 -------
@@ -36,6 +63,24 @@ OPTIONS
 	full ref name (including prefix) will be printed. The default option
 	is 'short'.
 
+................................................................................
+オプション
+----------
+
+--follow::
+	ファイルのリネームをまたがって、そのファイルの歴史の表示を続けます
+	(単一のファイルに対してのみ動作します)。
+
+--no-decorate::
+--decorate[=short|full|no]::
+	表示されているコミットに対する ref 名を出力します。
+	'short' が指定された場合、  ref 名のプリフィックス 'refs/heads/',
+	'refs/tags/', 'refs/remotes/' は出力されません。 'full' が指定された
+	場合、 (プリフィックスを含む) 完全な ref 名が表示されます。
+	デフォルトのオプションは 'short' です。
+
+................................................................................
+
 --source::
 	Print out the ref name given on the command line by which each
 	commit was reached.
@@ -44,6 +89,17 @@ OPTIONS
 	Use mailmap file to map author and committer names and email
 	addresses to canonical real names and email addresses. See
 	linkgit:git-shortlog[1].
+
+................................................................................
+--source::
+	コマンドラインで指定された ref 名について各コミットに到達可能な
+	ものを表示します。
+
+--use-mailmap::
+	著作者とコミッターの名前とメールアドレスを正規の本名とメールアドレスに
+	対応付けするのに mailmap を使います。 linkgit:git-shortlog[1] を参照。
+
+................................................................................
 
 --full-diff::
 	Without this flag, `git log -p <path>...` shows commits that
@@ -55,11 +111,34 @@ OPTIONS
 Note that this affects all diff-based output types, e.g. those
 produced by `--stat`, etc.
 
+................................................................................
+--full-diff::
+	このフラグなしでは `git log -p <path>...` は指定されたファイルパスを
+	修正しているコミットと、同じく指定されたファイルパスの diff を
+	表示します。 このフラグを使うと、 指定されたファイルパスを修正した
+	コミットの完全な diff を表示します; これは "<path>..." がコミットを
+	限定し、それらのコミットの diff については限定しないことを意味します。
++
+例えば `--stat` によって表示される出力等、 diff ベースの出力タイプ
+全てに影響することに注意してください。
+
+................................................................................
+
 --log-size::
 	Include a line ``log size <number>'' in the output for each commit,
 	where <number> is the length of that commit's message in bytes.
 	Intended to speed up tools that read log messages from `git log`
 	output by allowing them to allocate space in advance.
+
+................................................................................
+--log-size::
+	各コミットの出力に ``log size <number>`` の行を含めます。
+	<number> はコミットメッセージの長さをバイトで表したものです。
+	`git log` の出力からログメッセージを読み取るようなツールについて、
+	先行して読み込みスペースを確保できるようにすることで、それらを
+	高速化することを意図しています。
+
+................................................................................
 
 -L <start>,<end>:<file>::
 -L :<regex>:<file>::
@@ -72,6 +151,20 @@ produced by `--stat`, etc.
 +
 include::line-range-format.txt[]
 
+................................................................................
+-L <start>,<end>:<file>::
+-L :<regex>:<file>::
+	"<start>, <end>" (または関数名の正規表現 <regex>) で与えられた
+	<file>内の領域の変化を追跡します。 pathspec による対象ファイルの
+	制限はつけることができません。 このオプションは現時点では
+	単一のリビジョンから開始する領域に限られます。つまり、リビジョン
+	引数は与えないか、単一のリビジョン引数のみ指定できます。
+	このオプションは複数回指定可能です。
++
+include::line-range-format.txt[]
+
+................................................................................
+
 <revision range>::
 	Show only commits in the specified revision range.  When no
 	<revision range> is specified, it defaults to `HEAD` (i.e. the
@@ -80,6 +173,19 @@ include::line-range-format.txt[]
 	(i.e. `HEAD`), but not from `origin`. For a complete list of
 	ways to spell <revision range>, see the 'Specifying Ranges'
 	section of linkgit:gitrevisions[7].
+
+................................................................................
+<revision range>::
+	指定されたリビジョン範囲にあるコミットのみ表示します。
+	<revision range> が指定されなかった場合、 デフォルトでは `HEAD`
+	(つまり、 現在のコミットに至る歴史全体) になります。
+	`origin..HEAD` は現在のコミット (つまり `HEAD`) から到達可能で、
+	`origin` からは到達可能でないコミット全てを指定することになります。
+	<revision range> を唱えるやり方の完全なリストは、
+	linkgit:gitrevisions[7] の
+	'範囲の指定' のセクションを見てください。
+
+................................................................................
 
 [\--] <path>...::
 	Show only commits that are enough to explain how the files
@@ -90,10 +196,27 @@ include::line-range-format.txt[]
 Paths may need to be prefixed with ``\-- '' to separate them from
 options or the revision range, when confusion arises.
 
+................................................................................
+[\--] <path>...::
+	指定されたパスに対応するファイルがどのように現在のかたちに
+	なったかを説明するのに十分なだけのコミットのみを表示します。
+	詳細と、その他の単純化モデルについては後述の '歴史の単純化'
+	を見てください。
++
+パスをオプションまたは revision range から分けるために混乱が生じる場合は、
+パスの前に ``\--'' を置く必要があるかもしれません。
+
+................................................................................
 include::rev-list-options.txt[]
 
 include::pretty-formats.txt[]
 
+................................................................................
+include::rev-list-options.txt[]
+
+include::pretty-formats.txt[]
+
+................................................................................
 COMMON DIFF OPTIONS
 -------------------
 
@@ -102,46 +225,110 @@ include::diff-options.txt[]
 
 include::diff-generate-patch.txt[]
 
+................................................................................
+共通 DIFF オプション
+--------------------
+
+:git-log: 1
+include::diff-options.txt[]
+
+include::diff-generate-patch.txt[]
+
+................................................................................
 EXAMPLES
 --------
 `git log --no-merges`::
 
 	Show the whole commit history, but skip any merges
 
+................................................................................
+例
+--
+`git log --no-merges`::
+
+	全てのコミットの歴史を表示しますが、マージはスキップします
+
+................................................................................
 `git log v2.6.12.. include/scsi drivers/scsi`::
 
 	Show all commits since version 'v2.6.12' that changed any file
 	in the `include/scsi` or `drivers/scsi` subdirectories
 
+................................................................................
+`git log v2.6.12.. include/scsi drivers/scsi`::
+
+	バージョン 'v2.6.12' 以降のコミットの中で `include/scsi` または
+	`drivers/scsi` サブディレクトリの中のいずれかのファイルを変更した
+	コミットについて全て表示します
+
+................................................................................
 `git log --since="2 weeks ago" -- gitk`::
 
 	Show the changes during the last two weeks to the file 'gitk'.
 	The ``--'' is necessary to avoid confusion with the *branch* named
 	'gitk'
 
+................................................................................
+`git log --since="2 weeks ago" -- gitk`::
+
+	ファイル 'gitk' に対する、この2週間の間の変更を表示します。
+	``--'' は 'gitk' と名付けられた *ブランチ* との混乱を避けるために
+	必要です
+
+................................................................................
 `git log --name-status release..test`::
 
 	Show the commits that are in the "test" branch but not yet
 	in the "release" branch, along with the list of paths
 	each commit modifies.
 
+................................................................................
+`git log --name-status release..test`::
+
+	"test" ブランチにあるけれど "release" ブランチにはまだ存在しない
+	コミットについて、 各コミットで変更されたファイルパスとともに
+	表示します
+
+................................................................................
 `git log --follow builtin/rev-list.c`::
 
 	Shows the commits that changed `builtin/rev-list.c`, including
 	those commits that occurred before the file was given its
 	present name.
 
+................................................................................
+`git log --follow builtin/rev-list.c`::
+
+	`builtin/rev-list.c` を変更したコミットについて、 このファイルが
+	現在の名前になる前に作られたコミットも含めて表示されます
+
+................................................................................
 `git log --branches --not --remotes=origin`::
 
 	Shows all commits that are in any of local branches but not in
 	any of remote-tracking branches for 'origin' (what you have that
 	origin doesn't).
 
+................................................................................
+`git log --branches --not --remotes=origin`::
+
+	ローカルブランチにあるけれど、 'origin' のどのリモート追跡ブランチ
+	にもないコミット (あなたが持っているけれど origin が
+	持っていないもの) を表示します
+
+................................................................................
 `git log master --not --remotes=*/master`::
 
 	Shows all commits that are in local master but not in any remote
 	repository master branches.
 
+................................................................................
+`git log master --not --remotes=*/master`::
+
+	ローカルの master にあるけれど、どのリモートリポジトリの master
+	ブランチにも存在しないコミットを全て表示します。
+
+................................................................................
 `git log -p -m --first-parent`::
 
 	Shows the history including change diffs, but only from the
@@ -150,49 +337,125 @@ EXAMPLES
 	This makes sense only when following a strict policy of merging all
 	topic branches when staying on a single integration branch.
 
+................................................................................
+`git log -p -m --first-parent`::
+
+	変更の diff を含めた歴史を表示しますが、``メインブランチ'' という見地
+	から見たもののみ、 つまりマージされたブランチ由来のコミットを
+	スキップし、 さらにマージによって取り入れられた変更の完全な diff を
+	合わせて表示します。
+	これは、全てのトピックブランチは単一の統合ブランチに居るときに
+	マージする、という厳密な方針に従っている場合にのみ有意義です。
+
+................................................................................
 `git log -L '/int main/',/^}/:main.c`::
 
 	Shows how the function `main()` in the file `main.c` evolved
 	over time.
 
+................................................................................
+`git log -L '/int main/',/^}/:main.c`::
+
+	ファイル `main.c` 内の関数 `main()` が時間の経過とともに
+	どのように進化してきたかを表示します。
+
+................................................................................
 `git log -3`::
 
 	Limits the number of commits to show to 3.
 
+................................................................................
+`git log -3`::
+
+	表示するコミットの数を 3 に制限します。
+
+................................................................................
 DISCUSSION
 ----------
 
 include::i18n.txt[]
 
+................................................................................
+議論
+----
+
+include::i18n.txt[]
+
+................................................................................
 CONFIGURATION
 -------------
 
 See linkgit:git-config[1] for core variables and linkgit:git-diff[1]
 for settings related to diff generation.
 
+................................................................................
+設定
+----
+
+core の変数については linkgit:git-config[1] を、 diff の生成に
+関連する設定については linkgit:git-diff[1] を見てください。
+
+................................................................................
 format.pretty::
 	Default for the `--format` option.  (See 'Pretty Formats' above.)
 	Defaults to `medium`.
 
+................................................................................
+format.pretty::
+	`--format` オプションのデフォルト値です。
+	(上の '見た目の良いフォーマット' を見てください)
+	デフォルトは `medium` です。
+
+................................................................................
 i18n.logOutputEncoding::
 	Encoding to use when displaying logs.  (See 'Discussion' above.)
 	Defaults to the value of `i18n.commitEncoding` if set, and UTF-8
 	otherwise.
 
+................................................................................
+i18n.logOutputEncoding::
+	ログ表示時に使うべきエンコーディングです。
+	(上の '議論' を見てください。)
+	デフォルトは、 `i18n.commitEncoding` がセットされていればその値に、
+	そうでなければ UTF-8 になります。
+
+................................................................................
 log.date::
 	Default format for human-readable dates.  (Compare the
 	`--date` option.)  Defaults to "default", which means to write
 	dates like `Sat May 8 19:35:34 2010 -0500`.
 
+................................................................................
+log.date::
+	人間にとって読みやすい日付フォーマットのデフォルト値です。
+	( `--date` オプションと比較してください。)
+	デフォルトは "default" です。これは
+	`Sat May 8 19:35:34 2010 -0500`
+	のような日付にするという意味です。
+
+................................................................................
 log.showroot::
 	If `false`, `git log` and related commands will not treat the
 	initial commit as a big creation event.  Any root commits in
 	`git log -p` output would be shown without a diff attached.
 	The default is `true`.
 
+................................................................................
+log.showroot::
+	`false` の場合、 `git log` と関連するコマンドは最初のコミットを
+	巨大な作成イベントではないものとして扱います。 どの root コミットに
+	ついても `git log -p` は diff が付与されていない状態で出力されます。
+	デフォルトは `true` です。
+
+................................................................................
 mailmap.*::
 	See linkgit:git-shortlog[1].
 
+................................................................................
+mailmap.*::
+	linkgit:git-shortlog[1] を見てください。
+
+................................................................................
 notes.displayRef::
 	Which refs, in addition to the default set by `core.notesRef`
 	or 'GIT_NOTES_REF', to read notes from when showing commit
@@ -207,6 +470,27 @@ This setting can be disabled by the `--no-notes` option,
 overridden by the 'GIT_NOTES_DISPLAY_REF' environment variable,
 and overridden by the `--notes=<ref>` option.
 
+................................................................................
+notes.displayRef::
+	`log` ファミリーのコマンドでコミットメッセージを表示するとき、
+	デフォルトのノートの参照 (`core.notesRef` または 'GIT_NOTES_REF' で
+	設定されます) に加えて、どの参照からノートを読むかを指定します。
+	linkgit:git-notes[1] を見てください。
++
+省略されていない参照名またはファイルグロブを複数回指定できます。
+存在しない参照に関しては警告が出されますが、どの参照にもマッチしない
+グロブについては黙って無視されます。
++
+この設定は `--no-notes` オプションによって無効化でき、
+環境変数 'GIT_NOTES_DISPLAY_REF' および `--notes=<ref>` オプション
+によって上書きできます。
+
+................................................................................
 GIT
 ---
 Part of the linkgit:git[1] suite
+................................................................................
+GIT
+---
+これは linkgit:git[1] の一部です。
+................................................................................
