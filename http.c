@@ -370,14 +370,17 @@ static CURL *get_curl_handle(void)
 		char *proxyauth = getenv("GIT_CURL_PROXYAUTH");
 
 		if (proxyauth != NULL) {
-			if (!strcmp(proxyauth, "CURLAUTH_DIGEST"))
+			if (!strcmp(proxyauth, "CURLAUTH_BASIC")) {
+				param = CURLAUTH_BASIC;
+			} else if (!strcmp(proxyauth, "CURLAUTH_DIGEST")) {
 				param = CURLAUTH_DIGEST;
-			else if (!strcmp(proxyauth, "CURLAUTH_GSSNEGOTIATE"))
+			} else if (!strcmp(proxyauth, "CURLAUTH_GSSNEGOTIATE")) {
 				param = CURLAUTH_GSSNEGOTIATE;
-			else if (!strcmp(proxyauth, "CURLAUTH_NTLM"))
+			} else if (!strcmp(proxyauth, "CURLAUTH_NTLM")) {
 				param = CURLAUTH_NTLM;
-			else if (!strcmp(proxyauth, "CURLAUTH_ANY"))
-				param = CURLAUTH_ANY;
+			} else {
+				/* use default auth method */
+			}
 		}
 
 		curl_easy_setopt(result, CURLOPT_PROXYAUTH, param);
