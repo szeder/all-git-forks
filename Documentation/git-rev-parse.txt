@@ -232,6 +232,11 @@ print a message to stderr and exit with nonzero status.
 	repository.  If <path> is a gitfile then the resolved path
 	to the real repository is printed.
 
+--git-path <path>::
+	Resolve "$GIT_DIR/<path>" and takes other path relocation
+	variables such as $GIT_OBJECT_DIRECTORY,
+	$GIT_INDEX_FILE... into account.
+
 --show-cdup::
 	When the command is invoked from a subdirectory, show the
 	path of the top-level directory relative to the current
