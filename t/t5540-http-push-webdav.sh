@@ -16,7 +16,6 @@ then
 fi
 
 LIB_HTTPD_DAV=t
-LIB_HTTPD_PORT=${LIB_HTTPD_PORT-'5540'}
 . "$TEST_DIRECTORY"/lib-httpd.sh
 ROOT_PATH="$PWD"
 start_httpd
@@ -154,7 +153,7 @@ test_http_push_nonff "$HTTPD_DOCUMENT_ROOT_PATH"/test_repo.git \
 
 test_expect_success 'push to password-protected repository (user in URL)' '
 	test_commit pw-user &&
-	set_askpass user@host &&
+	set_askpass user@host pass@host &&
 	git push "$HTTPD_URL_USER/auth/dumb/test_repo.git" HEAD &&
 	git rev-parse --verify HEAD >expect &&
 	git --git-dir="$HTTPD_DOCUMENT_ROOT_PATH/auth/dumb/test_repo.git" \
@@ -168,7 +167,7 @@ test_expect_failure 'user was prompted only once for password' '
 
 test_expect_failure 'push to password-protected repository (no user in URL)' '
 	test_commit pw-nouser &&
-	set_askpass user@host &&
+	set_askpass user@host pass@host &&
 	git push "$HTTPD_URL/auth/dumb/test_repo.git" HEAD &&
 	expect_askpass both user@host
 	git rev-parse --verify HEAD >expect &&

@@ -30,6 +30,7 @@ static int diff_use_color_default = -1;
 static int diff_context_default = 3;
 static const char *diff_word_regex_cfg;
 static const char *external_diff_cmd_cfg;
+static const char *diff_order_file_cfg;
 int diff_auto_refresh_index = 1;
 static int diff_mnemonic_prefix;
 static int diff_no_prefix;
@@ -201,6 +202,8 @@ int git_diff_ui_config(const char *var, const char *value, void *cb)
 		return git_config_string(&external_diff_cmd_cfg, var, value);
 	if (!strcmp(var, "diff.wordregex"))
 		return git_config_string(&diff_word_regex_cfg, var, value);
+	if (!strcmp(var, "diff.orderfile"))
+		return git_config_pathname(&diff_order_file_cfg, var, value);
 
 	if (!strcmp(var, "diff.ignoresubmodules"))
 		handle_ignore_submodules_arg(&default_diff_options, value);
@@ -3219,6 +3222,8 @@ void diff_setup(struct diff_options *options)
 	options->detect_rename = diff_detect_rename_default;
 	options->xdl_opts |= diff_algorithm;
 
+	options->orderfile = diff_order_file_cfg;
+
 	if (diff_no_prefix) {
 		options->a_prefix = options->b_prefix = "";
 	} else if (!diff_mnemonic_prefix) {
@@ -4134,9 +4139,9 @@ void diff_debug_filespec(struct diff_filespec *s, int x, const char *one)
 		DIFF_FILE_VALID(s) ? "valid" : "invalid",
 		s->mode,
 		s->sha1_valid ? sha1_to_hex(s->sha1) : "");
-	fprintf(stderr, "queue[%d] %s size %lu flags %d\n",
+	fprintf(stderr, "queue[%d] %s size %lu\n",
 		x, one ? one : "",
-		s->size, s->xfrm_flags);
+		s->size);
 }
 
 void diff_debug_filepair(const struct diff_filepair *p, int i)
@@ -4692,6 +4697,38 @@ static int diff_filespec_is_identical(struct diff_filespec *one,
 	return !memcmp(one->data, two->data, one->size);
 }
 
+static int diff_filespec_check_stat_unmatch(struct diff_filepair *p)
+{
+	if (p->done_skip_stat_unmatch)
+		return p->skip_stat_unmatch_result;
+
+	p->done_skip_stat_unmatch = 1;
+	p->skip_stat_unmatch_result = 0;
+	/*
+	 * 1. Entries that come from stat info dirtiness
+	 *    always have both sides (iow, not create/delete),
+	 *    one side of the object name is unknown, with
+	 *    the same mode and size.  Keep the ones that
+	 *    do not match these criteria.  They have real
+	 *    differences.
+	 *
+	 * 2. At this point, the file is known to be modified,
+	 *    with the same mode and size, and the object
+	 *    name of one side is unknown.  Need to inspect
+	 *    the identical contents.
+	 */
+	if (!DIFF_FILE_VALID(p->one) || /* (1) */
+	    !DIFF_FILE_VALID(p->two) ||
+	    (p->one->sha1_valid && p->two->sha1_valid) ||
+	    (p->one->mode != p->two->mode) ||
+	    diff_populate_filespec(p->one, 1) ||
+	    diff_populate_filespec(p->two, 1) ||
+	    (p->one->size != p->two->size) ||
+	    !diff_filespec_is_identical(p->one, p->two)) /* (2) */
+		p->skip_stat_unmatch_result = 1;
+	return p->skip_stat_unmatch_result;
+}
+
 static void diffcore_skip_stat_unmatch(struct diff_options *diffopt)
 {
 	int i;
@@ -4702,27 +4739,7 @@ static void diffcore_skip_stat_unmatch(struct diff_options *diffopt)
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *p = q->queue[i];
 
-		/*
-		 * 1. Entries that come from stat info dirtiness
-		 *    always have both sides (iow, not create/delete),
-		 *    one side of the object name is unknown, with
-		 *    the same mode and size.  Keep the ones that
-		 *    do not match these criteria.  They have real
-		 *    differences.
-		 *
-		 * 2. At this point, the file is known to be modified,
-		 *    with the same mode and size, and the object
-		 *    name of one side is unknown.  Need to inspect
-		 *    the identical contents.
-		 */
-		if (!DIFF_FILE_VALID(p->one) || /* (1) */
-		    !DIFF_FILE_VALID(p->two) ||
-		    (p->one->sha1_valid && p->two->sha1_valid) ||
-		    (p->one->mode != p->two->mode) ||
-		    diff_populate_filespec(p->one, 1) ||
-		    diff_populate_filespec(p->two, 1) ||
-		    (p->one->size != p->two->size) ||
-		    !diff_filespec_is_identical(p->one, p->two)) /* (2) */
+		if (diff_filespec_check_stat_unmatch(p))
 			diff_q(&outq, p);
 		else {
 			/*
@@ -4885,6 +4902,7 @@ void diff_change(struct diff_options *options,
 		 unsigned old_dirty_submodule, unsigned new_dirty_submodule)
 {
 	struct diff_filespec *one, *two;
+	struct diff_filepair *p;
 
 	if (S_ISGITLINK(old_mode) && S_ISGITLINK(new_mode) &&
 	    is_submodule_ignored(concatpath, options))
@@ -4911,10 +4929,16 @@ void diff_change(struct diff_options *options,
 	fill_filespec(two, new_sha1, new_sha1_valid, new_mode);
 	one->dirty_submodule = old_dirty_submodule;
 	two->dirty_submodule = new_dirty_submodule;
+	p = diff_queue(&diff_queued_diff, one, two);
 
-	diff_queue(&diff_queued_diff, one, two);
-	if (!DIFF_OPT_TST(options, DIFF_FROM_CONTENTS))
-		DIFF_OPT_SET(options, HAS_CHANGES);
+	if (DIFF_OPT_TST(options, DIFF_FROM_CONTENTS))
+		return;
+
+	if (DIFF_OPT_TST(options, QUICK) && options->skip_stat_unmatch &&
+	    !diff_filespec_check_stat_unmatch(p))
+		return;
+
+	DIFF_OPT_SET(options, HAS_CHANGES);
 }
 
 struct diff_filepair *diff_unmerge(struct diff_options *options, const char *path)

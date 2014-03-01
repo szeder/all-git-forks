@@ -1880,7 +1880,7 @@ const char *prettify_refname(const char *name)
 		0);
 }
 
-const char *ref_rev_parse_rules[] = {
+static const char *ref_rev_parse_rules[] = {
 	"%.*s",
 	"refs/%.*s",
 	"refs/tags/%.*s",
@@ -1890,12 +1890,12 @@ const char *ref_rev_parse_rules[] = {
 	NULL
 };
 
-int refname_match(const char *abbrev_name, const char *full_name, const char **rules)
+int refname_match(const char *abbrev_name, const char *full_name)
 {
 	const char **p;
 	const int abbrev_name_len = strlen(abbrev_name);
 
-	for (p = rules; *p; p++) {
+	for (p = ref_rev_parse_rules; *p; p++) {
 		if (!strcmp(full_name, mkpath(*p, abbrev_name_len, abbrev_name))) {
 			return 1;
 		}
@@ -2039,6 +2039,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 	int type, lflags;
 	int mustexist = (old_sha1 && !is_null_sha1(old_sha1));
 	int missing = 0;
+	int attempts_remaining = 3;
 
 	lock = xcalloc(1, sizeof(struct ref_lock));
 	lock->lock_fd = -1;
@@ -2080,7 +2081,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 
 	lock->lk = xcalloc(1, sizeof(struct lock_file));
 
-	lflags = LOCK_DIE_ON_ERROR;
+	lflags = 0;
 	if (flags & REF_NODEREF) {
 		refname = orig_refname;
 		lflags |= LOCK_NODEREF;
@@ -2093,13 +2094,32 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 	if ((flags & REF_NODEREF) && (type & REF_ISSYMREF))
 		lock->force_write = 1;
 
-	if (safe_create_leading_directories(ref_file)) {
+ retry:
+	switch (safe_create_leading_directories(ref_file)) {
+	case SCLD_OK:
+		break; /* success */
+	case SCLD_VANISHED:
+		if (--attempts_remaining > 0)
+			goto retry;
+		/* fall through */
+	default:
 		last_errno = errno;
 		error("unable to create directory for %s", ref_file);
 		goto error_return;
 	}
 
 	lock->lock_fd = hold_lock_file_for_update(lock->lk, ref_file, lflags);
+	if (lock->lock_fd < 0) {
+		if (errno == ENOENT && --attempts_remaining > 0)
+			/*
+			 * Maybe somebody just deleted one of the
+			 * directories leading to ref_file.  Try
+			 * again:
+			 */
+			goto retry;
+		else
+			unable_to_lock_index_die(ref_file, errno);
+	}
 	return old_sha1 ? verify_lock(lock, old_sha1, mustexist) : lock;
 
  error_return:
@@ -2508,6 +2528,51 @@ int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
  */
 #define TMP_RENAMED_LOG  "logs/refs/.tmp-renamed-log"
 
+static int rename_tmp_log(const char *newrefname)
+{
+	int attempts_remaining = 4;
+
+ retry:
+	switch (safe_create_leading_directories(git_path("logs/%s", newrefname))) {
+	case SCLD_OK:
+		break; /* success */
+	case SCLD_VANISHED:
+		if (--attempts_remaining > 0)
+			goto retry;
+		/* fall through */
+	default:
+		error("unable to create directory for %s", newrefname);
+		return -1;
+	}
+
+	if (rename(git_path(TMP_RENAMED_LOG), git_path("logs/%s", newrefname))) {
+		if ((errno==EISDIR || errno==ENOTDIR) && --attempts_remaining > 0) {
+			/*
+			 * rename(a, b) when b is an existing
+			 * directory ought to result in ISDIR, but
+			 * Solaris 5.8 gives ENOTDIR.  Sheesh.
+			 */
+			if (remove_empty_directories(git_path("logs/%s", newrefname))) {
+				error("Directory not empty: logs/%s", newrefname);
+				return -1;
+			}
+			goto retry;
+		} else if (errno == ENOENT && --attempts_remaining > 0) {
+			/*
+			 * Maybe another process just deleted one of
+			 * the directories in the path to newrefname.
+			 * Try again from the beginning.
+			 */
+			goto retry;
+		} else {
+			error("unable to move logfile "TMP_RENAMED_LOG" to logs/%s: %s",
+				newrefname, strerror(errno));
+			return -1;
+		}
+	}
+	return 0;
+}
+
 int rename_ref(const char *oldrefname, const char *newrefname, const char *logmsg)
 {
 	unsigned char sha1[20], orig_sha1[20];
@@ -2555,30 +2620,9 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 		}
 	}
 
-	if (log && safe_create_leading_directories(git_path("logs/%s", newrefname))) {
-		error("unable to create directory for %s", newrefname);
+	if (log && rename_tmp_log(newrefname))
 		goto rollback;
-	}
 
- retry:
-	if (log && rename(git_path(TMP_RENAMED_LOG), git_path("logs/%s", newrefname))) {
-		if (errno==EISDIR || errno==ENOTDIR) {
-			/*
-			 * rename(a, b) when b is an existing
-			 * directory ought to result in ISDIR, but
-			 * Solaris 5.8 gives ENOTDIR.  Sheesh.
-			 */
-			if (remove_empty_directories(git_path("logs/%s", newrefname))) {
-				error("Directory not empty: logs/%s", newrefname);
-				goto rollback;
-			}
-			goto retry;
-		} else {
-			error("unable to move logfile "TMP_RENAMED_LOG" to logs/%s: %s",
-				newrefname, strerror(errno));
-			goto rollback;
-		}
-	}
 	logmoved = log;
 
 	lock = lock_ref_sha1_basic(newrefname, NULL, 0, NULL);
@@ -3334,29 +3378,6 @@ cleanup:
 	return ret;
 }
 
-/*
- * generate a format suitable for scanf from a ref_rev_parse_rules
- * rule, that is replace the "%.*s" spec with a "%s" spec
- */
-static void gen_scanf_fmt(char *scanf_fmt, const char *rule)
-{
-	char *spec;
-
-	spec = strstr(rule, "%.*s");
-	if (!spec || strstr(spec + 4, "%.*s"))
-		die("invalid rule in ref_rev_parse_rules: %s", rule);
-
-	/* copy all until spec */
-	strncpy(scanf_fmt, rule, spec - rule);
-	scanf_fmt[spec - rule] = '\0';
-	/* copy new spec */
-	strcat(scanf_fmt, "%s");
-	/* copy remaining rule */
-	strcat(scanf_fmt, spec + 4);
-
-	return;
-}
-
 char *shorten_unambiguous_ref(const char *refname, int strict)
 {
 	int i;
@@ -3364,23 +3385,29 @@ char *shorten_unambiguous_ref(const char *refname, int strict)
 	static int nr_rules;
 	char *short_name;
 
-	/* pre generate scanf formats from ref_rev_parse_rules[] */
 	if (!nr_rules) {
+		/*
+		 * Pre-generate scanf formats from ref_rev_parse_rules[].
+		 * Generate a format suitable for scanf from a
+		 * ref_rev_parse_rules rule by interpolating "%s" at the
+		 * location of the "%.*s".
+		 */
 		size_t total_len = 0;
+		size_t offset = 0;
 
 		/* the rule list is NULL terminated, count them first */
 		for (nr_rules = 0; ref_rev_parse_rules[nr_rules]; nr_rules++)
-			/* no +1 because strlen("%s") < strlen("%.*s") */
-			total_len += strlen(ref_rev_parse_rules[nr_rules]);
+			/* -2 for strlen("%.*s") - strlen("%s"); +1 for NUL */
+			total_len += strlen(ref_rev_parse_rules[nr_rules]) - 2 + 1;
 
 		scanf_fmts = xmalloc(nr_rules * sizeof(char *) + total_len);
 
-		total_len = 0;
+		offset = 0;
 		for (i = 0; i < nr_rules; i++) {
-			scanf_fmts[i] = (char *)&scanf_fmts[nr_rules]
-					+ total_len;
-			gen_scanf_fmt(scanf_fmts[i], ref_rev_parse_rules[i]);
-			total_len += strlen(ref_rev_parse_rules[i]);
+			assert(offset < total_len);
+			scanf_fmts[i] = (char *)&scanf_fmts[nr_rules] + offset;
+			offset += snprintf(scanf_fmts[i], total_len - offset,
+					   ref_rev_parse_rules[i], 2, "%s") + 1;
 		}
 	}
 

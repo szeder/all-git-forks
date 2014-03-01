@@ -183,8 +183,7 @@ off_t write_pack_header(struct sha1file *f, uint32_t nr_entries)
 	hdr.hdr_signature = htonl(PACK_SIGNATURE);
 	hdr.hdr_version = htonl(PACK_VERSION);
 	hdr.hdr_entries = htonl(nr_entries);
-	if (sha1write(f, &hdr, sizeof(hdr)))
-		return 0;
+	sha1write(f, &hdr, sizeof(hdr));
 	return sizeof(hdr);
 }
 
@@ -364,6 +363,8 @@ void finish_tmp_packfile(char *name_buffer,
 	sprintf(end_of_name_prefix, "%s.idx", sha1_to_hex(sha1));
 	if (rename(idx_tmp_name, name_buffer))
 		die_errno("unable to rename temporary index file");
+
+	*end_of_name_prefix = '\0';
 
 	free((void *)idx_tmp_name);
 }

@@ -16,6 +16,7 @@
 #include "run-command.h"
 #include "sigchain.h"
 #include "argv-array.h"
+#include "commit.h"
 
 #define FAILED_RUN "failed to run %s"
 
@@ -187,13 +188,12 @@ static int need_to_gc(void)
 static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 {
 	static struct lock_file lock;
-	static char locking_host[128];
 	char my_host[128];
 	struct strbuf sb = STRBUF_INIT;
 	struct stat st;
 	uintmax_t pid;
 	FILE *fp;
-	int fd, should_exit;
+	int fd;
 
 	if (pidfile)
 		/* already locked */
@@ -205,6 +205,8 @@ static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 	fd = hold_lock_file_for_update(&lock, git_path("gc.pid"),
 				       LOCK_DIE_ON_ERROR);
 	if (!force) {
+		static char locking_host[128];
+		int should_exit;
 		fp = fopen(git_path("gc.pid"), "r");
 		memset(locking_host, 0, sizeof(locking_host));
 		should_exit =
@@ -222,7 +224,7 @@ static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 			time(NULL) - st.st_mtime <= 12 * 3600 &&
 			fscanf(fp, "%"PRIuMAX" %127c", &pid, locking_host) == 2 &&
 			/* be gentle to concurrent "gc" on remote hosts */
-			(strcmp(locking_host, my_host) || !kill(pid, 0));
+			(strcmp(locking_host, my_host) || !kill(pid, 0) || errno == EPERM);
 		if (fp != NULL)
 			fclose(fp);
 		if (should_exit) {

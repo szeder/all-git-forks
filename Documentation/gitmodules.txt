@@ -35,6 +35,8 @@ submodule.<name>.url::
 	linkgit:git-clone[1] or (if it begins with ./ or ../) a location
 	relative to the superproject's origin repository.
 
+In addition, there are a number of optional keys:
+
 submodule.<name>.update::
 	Defines what to do when the submodule is updated by the superproject.
 	If 'checkout' (the default), the new commit specified in the
@@ -53,6 +55,10 @@ submodule.<name>.branch::
 	A remote branch name for tracking updates in the upstream submodule.
 	If the option is not specified, it defaults to 'master'.  See the
 	`--remote` documentation in linkgit:git-submodule[1] for details.
++
+This branch name is also used for the local branch created by
+non-checkout cloning updates.  See the `update` documentation in
+linkgit:git-submodule[1] for details.
 
 submodule.<name>.fetchRecurseSubmodules::
 	This option can be used to control recursive fetching of this
