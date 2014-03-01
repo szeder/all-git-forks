@@ -1,9 +1,16 @@
 git (1:1.9.1-0.1) unstable; urgency=low
 
   * new upstream point release.
+
+  [ Jonathan Nieder ]
   * git-email: Recommends: libio-socket-ssl-perl (>= 1.951) since
     earlier versions do not use OpenSSL's defaults when ca_path
     and ca_file are unset.
+
+  [ Gilles Filippini ]
+  * install git-subtree from contrib (closes: #704652).
+  * debian/diff/0009-contrib-subtree-unset-prefix-before-proceeding.diff:
+    new; unset the 'prefix' environement variable before proceeding.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 25 Feb 2014 21:16:56 -0800
 

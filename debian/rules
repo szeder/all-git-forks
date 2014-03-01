@@ -9,6 +9,7 @@ LDFLAGS :=$(shell dpkg-buildflags --get LDFLAGS)
 STRIP =strip
 TEST =test
 OPTS =NO_OPENSSL=1 prefix=/usr gitexecdir=/usr/lib/git-core \
+  libexecdir=/usr/lib/git-core \
   mandir=/usr/share/man htmldir=/usr/share/doc/git/html \
   INSTALLDIRS=vendor \
   NO_PYTHON=1 \
@@ -66,9 +67,14 @@ build-arch: deb-checkdir build-arch-stamp
 build-arch-stamp: patch-stamp
 	-$(CC) -v
 	DESTDIR='$(GIT)' $(MAKE) all $(OPTS)
+	DESTDIR='$(GIT)' $(MAKE) -C contrib/subtree all $(OPTS)
+	ln -s contrib/subtree/git-subtree
 	test -z '$(TEST)' || \
 	  DESTDIR='$(GIT)' $(MAKE) $(TEST) $(OPTS) || \
 	  GIT_TEST_OPTS=--verbose DESTDIR='$(GIT)' $(MAKE) $(TEST) $(OPTS)
+	test -z '$(TEST)' || \
+	  DESTDIR='$(GIT)' $(MAKE) -C contrib/subtree $(TEST) $(OPTS) || \
+	  GIT_TEST_OPTS=--verbose DESTDIR='$(GIT)' $(MAKE) -C contrib/subtree $(TEST) $(OPTS)
 	touch build-arch-stamp
 
 build-indep: deb-checkdir build-indep-stamp
@@ -115,6 +121,7 @@ clean: deb-checkdir
 	    rm -rf '$(GIT)'$$i; \
 	  done
 	rm -f debian/files debian/substvars
+	rm -f git-subtree
 
 install: install-arch install-indep
 git.install: install-arch
@@ -123,6 +130,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	rm -rf '$(GIT)'
 	install -d -m0755 '$(GIT)'/usr/bin
 	DESTDIR='$(GIT)' $(MAKE) install $(OPTS)
+	DESTDIR='$(GIT)' $(MAKE) -C contrib/subtree install $(OPTS)
 	install -d -m0755 '$(GIT)'/var/lib/git
 	rm -f '$(GIT)'/usr/share/perl5/Error.pm
 	rm -rf '$(GIT)'/usr/share/man
@@ -197,12 +205,16 @@ install-indep: build-arch-stamp build-indep-stamp
 	  INSTLIBDIR=/usr/share/perl5
 	$(MAKE) -CDocumentation install-webdoc WEBDOC_DEST='$(TMP)'/html \
 	  2>/dev/null
+	$(MAKE) -C contrib/subtree doc $(OPTS)
+	install -m 0644 contrib/subtree/git-subtree.txt '$(TMP)'/html
+	install -m 0644 contrib/subtree/git-subtree.html '$(TMP)'/html
 	# RelNotes are shipped in git
 	rm -rf '$(TMP)'/html/RelNotes
 	# git-man
 	rm -rf '$(GIT)'-man
 	install -d -m0755 '$(GIT)'-man/usr/share/man/man3
 	DESTDIR='$(GIT)'-man $(MAKE) install-doc $(OPTS)
+	PATH=$$PATH:$(CURDIR) DESTDIR='$(GIT)'-man $(MAKE) -C contrib/subtree install-doc $(OPTS)
 	install -m 0644 '$(TMP)'/usr/share/man/man3/Git* \
 	  '$(GIT)'-man/usr/share/man/man3/
 	# don't include arch, cvs, svn, email, gui, and gitk man pages
