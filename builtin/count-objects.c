@@ -78,6 +78,39 @@ static void count_objects(DIR *d, char *path, int len, int verbose,
 	}
 }
 
+static void report_linked_checkout_garbage(void)
+{
+	/*
+	 * must be more or less in sync with * path.c:update_common_dir().
+	 *
+	 * "logs" is let slip because logs/HEAD is in $GIT_DIR but the
+	 * remaining in $GIT_COMMON_DIR. Probably not worth traversing
+	 * the entire "logs" directory for that.
+	 *
+	 * The same "gc.pid" for because it's a temporary file.
+	 */
+	const char *list[] = {
+		"branches", "hooks", "info", "lost-found", "modules",
+		"objects", "refs", "remotes", "rr-cache", "svn",
+		"config", "packed-refs", "shallow", NULL
+	};
+	struct strbuf sb = STRBUF_INIT;
+	const char **p;
+	int len;
+
+	if (!file_exists(git_path("commondir")))
+		return;
+	strbuf_addf(&sb, "%s/", get_git_dir());
+	len = sb.len;
+	for (p = list; *p; p++) {
+		strbuf_setlen(&sb, len);
+		strbuf_addstr(&sb, *p);
+		if (file_exists(sb.buf))
+			report_garbage("unused in linked checkout", sb.buf);
+	}
+	strbuf_release(&sb);
+}
+
 static char const * const count_objects_usage[] = {
 	N_("git count-objects [-v] [-H | --human-readable]"),
 	NULL
@@ -102,8 +135,10 @@ int cmd_count_objects(int argc, const char **argv, const char *prefix)
 	/* we do not take arguments other than flags for now */
 	if (argc)
 		usage_with_options(count_objects_usage, opts);
-	if (verbose)
+	if (verbose) {
 		report_garbage = real_report_garbage;
+		report_linked_checkout_garbage();
+	}
 	memcpy(path, objdir, len);
 	if (len && objdir[len-1] != '/')
 		path[len++] = '/';

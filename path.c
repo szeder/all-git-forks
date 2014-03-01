@@ -92,6 +92,10 @@ static void replace_dir(struct strbuf *buf, int len, const char *newdir)
 
 static void update_common_dir(struct strbuf *buf, int git_dir_len)
 {
+	/*
+	 * Remember to report_linked_checkout_garbage()
+	 * builtin/count-objects.c
+	 */
 	const char *common_dir_list[] = {
 		"branches", "hooks", "info", "logs", "lost-found", "modules",
 		"objects", "refs", "remotes", "repos", "rr-cache", "svn",
