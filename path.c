@@ -94,7 +94,7 @@ static void update_common_dir(struct strbuf *buf, int git_dir_len)
 {
 	const char *common_dir_list[] = {
 		"branches", "hooks", "info", "logs", "lost-found", "modules",
-		"objects", "refs", "remotes", "rr-cache", "svn",
+		"objects", "refs", "remotes", "repos", "rr-cache", "svn",
 		NULL
 	};
 	const char *common_top_file_list[] = {
