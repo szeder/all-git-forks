@@ -1,7 +1,7 @@
 /*
- * Copyright (C) 2005 Junio C Hamano
- * Copyright (C) 2010 Google Inc.
- */
+* Copyright (C) 2005 Junio C Hamano
+* Copyright (C) 2010 Google Inc.
+*/
 #include "cache.h"
 #include "diff.h"
 #include "diffcore.h"
@@ -10,14 +10,14 @@
 #include "userdiff.h"
 
 typedef int (*pickaxe_fn)(mmfile_t *one, mmfile_t *two,
-			  char *path_one, char *path_two, struct diff_options *o,
-			  regex_t *regexp, kwset_t kws);
+char *path_one, char *path_two, struct diff_options *o,
+regex_t *regexp, kwset_t kws);
 
 static int pickaxe_match(struct diff_filepair *p, struct diff_options *o,
-			 regex_t *regexp, kwset_t kws, pickaxe_fn fn);
+regex_t *regexp, kwset_t kws, pickaxe_fn fn);
 
 static void pickaxe(struct diff_queue_struct *q, struct diff_options *o,
-		    regex_t *regexp, kwset_t kws, pickaxe_fn fn)
+regex_t *regexp, kwset_t kws, pickaxe_fn fn)
 {
 	int i;
 	struct diff_queue_struct outq;
@@ -33,10 +33,10 @@ static void pickaxe(struct diff_queue_struct *q, struct diff_options *o,
 		}
 
 		/*
-		 * Otherwise we will clear the whole queue by copying
-		 * the empty outq at the end of this function, but
-		 * first clear the current entries in the queue.
-		 */
+		* Otherwise we will clear the whole queue by copying
+		* the empty outq at the end of this function, but
+		* first clear the current entries in the queue.
+		*/
 		for (i = 0; i < q->nr; i++)
 			diff_free_filepair(q->queue[i]);
 	} else {
@@ -60,8 +60,7 @@ struct diffgrep_cb {
 };
 
 struct blockname_cb {
-  struct userdiff_funcname *pattern;
-  char *file_start;
+	struct userdiff_funcname *pattern;
 	regex_t *regexp;
 	int hit;
 };
@@ -76,9 +75,9 @@ static void diffgrep_consume(void *priv, char *line, unsigned long len)
 		return;
 	if (data->hit)
 		/*
-		 * NEEDSWORK: we should have a way to terminate the
-		 * caller early.
-		 */
+		* NEEDSWORK: we should have a way to terminate the
+		* caller early.
+		*/
 		return;
 	/* Yuck -- line ought to be "const char *"! */
 	hold = line[len];
@@ -89,27 +88,25 @@ static void diffgrep_consume(void *priv, char *line, unsigned long len)
 
 static void match_blockname(void *priv, char *line, unsigned long len)
 {
-  struct blockname_cb *data = priv;
-  char *bol = line;
-  char *eol = line + len;
-	while (bol > gs->buf &&
-	       cur > (funcname_needed == 2 ? opt->last_shown + 1 : from)) {
-		char *eol = --bol;
-
-		while (bol > gs->buf && bol[-1] != '\n')
-			bol--;
-		cur--;
-		if (funcname_needed && match_funcname(opt, gs, bol, eol)) {
-			funcname_lno = cur;
-			funcname_needed = 0;
+	regmatch_t regmatch;
+	int hold;
+	struct blockname_cb *data = priv;
+	if (line[0] == '@' && line[1] == '@') {
+		hold = line[len];
+		line[len] = '\0';
+		if (!regexec(data->regexp, line, 1, &regmatch, 0)) {
+			data->hit = 1;
 		}
+		line[len] = hold;
 	}
+  
+	
 }
 
 static int diff_grep(mmfile_t *one, mmfile_t *two,
-         char *path_one, char *path_two,
-		     struct diff_options *o,
-		     regex_t *regexp, kwset_t kws)
+char *path_one, char *path_two,
+struct diff_options *o,
+regex_t *regexp, kwset_t kws)
 {
 	regmatch_t regmatch;
 	struct diffgrep_cb ecbdata;
@@ -122,9 +119,9 @@ static int diff_grep(mmfile_t *one, mmfile_t *two,
 		return !regexec(regexp, one->ptr, 1, &regmatch, 0);
 
 	/*
-	 * We have both sides; need to run textual diff and see if
-	 * the pattern appears on added/deleted lines.
-	 */
+	* We have both sides; need to run textual diff and see if
+	* the pattern appears on added/deleted lines.
+	*/
 	memset(&xpp, 0, sizeof(xpp));
 	memset(&xecfg, 0, sizeof(xecfg));
 	ecbdata.regexp = regexp;
@@ -132,41 +129,33 @@ static int diff_grep(mmfile_t *one, mmfile_t *two,
 	xecfg.ctxlen = o->context;
 	xecfg.interhunkctxlen = o->interhunkcontext;
 	xdi_diff_outf(one, two, diffgrep_consume, &ecbdata,
-		      &xpp, &xecfg);
+	&xpp, &xecfg);
 	return ecbdata.hit;
 }
 
 static int diff_blockname_filter(mmfile_t *one, mmfile_t *two,
-        char *path_one, char *path_two,
-        struct diff_options *o,
-        regex_t *regexp, kwset_t kws)
+char *path_one, char *path_two,
+struct diff_options *o,
+regex_t *regexp, kwset_t kws)
 {
-  //regmatch_t regmatch;
-  struct blockname_cb ecbdata;
-  struct userdiff_driver *userdiff;
-  xpparam_t xpp;
-  xdemitconf_t xecfg;
+	//regmatch_t regmatch;
+	struct blockname_cb ecbdata;
+	xpparam_t xpp;
+	xdemitconf_t xecfg;
 
-  // TODO Handle one-sided diff
+	// TODO Handle one-sided diff
   
-  if (one && two) {
-    userdiff = userdiff_find_by_path(path_two);
-    if (userdiff->funcname.pattern) {
-      xdiff_set_find_func(xecfg, userdiff->funcname.pattern, userdiff->funcname.cflags);
-    }
-
-    memset(&xpp, 0, sizeof(xpp));
-    memset(&xecfg, 0, sizeof(xecfg));
-    ecbdata.file_start = two
-    ecbdata.pattern = &userdiff->funcname;
-    ecbdata.regexp = regexp;
-    ecbdata.hit = 0;
-    xecfg.ctxlen = o->context;
-    xecfg.interhunkctxlen = o->interhunkcontext;
-    xdi_diff_outf(one, two, match_blockname, &ecbdata,
-            &xpp, &xecfg);
-  } 
-  return ecbdata.hit;
+	if (one && two) {
+		memset(&xpp, 0, sizeof(xpp));
+		memset(&xecfg, 0, sizeof(xecfg));
+		ecbdata.regexp = regexp;
+		ecbdata.hit = 0;
+		xecfg.ctxlen = o->context;
+		xecfg.interhunkctxlen = o->interhunkcontext;
+		xdi_diff_outf(one, two, match_blockname, &ecbdata,
+		&xpp, &xecfg);
+	} 
+	return ecbdata.hit;
 }
 
 static void compile_regex_with_error(regex_t *r, const char *s, int cflags)
@@ -189,7 +178,7 @@ static void diffcore_pickaxe_grep(struct diff_options *o)
 	if (DIFF_OPT_TST(o, PICKAXE_IGNORE_CASE))
 		cflags |= REG_ICASE;
 
-  compile_regex_with_error(&regex, o->pickaxe, cflags);
+	compile_regex_with_error(&regex, o->pickaxe, cflags);
 
 	pickaxe(&diff_queued_diff, o, &regex, NULL, diff_grep);
 
@@ -238,9 +227,9 @@ static unsigned int contains(mmfile_t *mf, regex_t *regexp, kwset_t kws)
 }
 
 static int has_changes(mmfile_t *one, mmfile_t *two,
-           char *path_one, char *path_two,
-		       struct diff_options *o,
-		       regex_t *regexp, kwset_t kws)
+char *path_one, char *path_two,
+struct diff_options *o,
+regex_t *regexp, kwset_t kws)
 {
 	unsigned int one_contains = one ? contains(one, regexp, kws) : 0;
 	unsigned int two_contains = two ? contains(two, regexp, kws) : 0;
@@ -248,7 +237,7 @@ static int has_changes(mmfile_t *one, mmfile_t *two,
 }
 
 static int pickaxe_match(struct diff_filepair *p, struct diff_options *o,
-			 regex_t *regexp, kwset_t kws, pickaxe_fn fn)
+regex_t *regexp, kwset_t kws, pickaxe_fn fn)
 {
 	struct userdiff_driver *textconv_one = NULL;
 	struct userdiff_driver *textconv_two = NULL;
@@ -268,12 +257,12 @@ static int pickaxe_match(struct diff_filepair *p, struct diff_options *o,
 	}
 
 	/*
-	 * If we have an unmodified pair, we know that the count will be the
-	 * same and don't even have to load the blobs. Unless textconv is in
-	 * play, _and_ we are using two different textconv filters (e.g.,
-	 * because a pair is an exact rename with different textconv attributes
-	 * for each side, which might generate different content).
-	 */
+	* If we have an unmodified pair, we know that the count will be the
+	* same and don't even have to load the blobs. Unless textconv is in
+	* play, _and_ we are using two different textconv filters (e.g.,
+	* because a pair is an exact rename with different textconv attributes
+	* for each side, which might generate different content).
+	*/
 	if (textconv_one == textconv_two && diff_unmodified_pair(p))
 		return 0;
 
@@ -281,10 +270,10 @@ static int pickaxe_match(struct diff_filepair *p, struct diff_options *o,
 	mf2.size = fill_textconv(textconv_two, p->two, &mf2.ptr);
 
 	ret = fn(DIFF_FILE_VALID(p->one) ? &mf1 : NULL,
-		 DIFF_FILE_VALID(p->two) ? &mf2 : NULL,
-     DIFF_FILE_VALID(p->one) ? p->one->path : NULL,
-     DIFF_FILE_VALID(p->two) ? p->two->path : NULL,
-		 o, regexp, kws);
+	DIFF_FILE_VALID(p->two) ? &mf2 : NULL,
+	DIFF_FILE_VALID(p->one) ? p->one->path : NULL,
+	DIFF_FILE_VALID(p->two) ? p->two->path : NULL,
+	o, regexp, kws);
 
 	if (textconv_one)
 		free(mf1.ptr);
@@ -305,10 +294,10 @@ static void diffcore_pickaxe_count(struct diff_options *o)
 	kwset_t kws = NULL;
 
 	if (opts & DIFF_PICKAXE_REGEX) {
-    compile_regex_with_error(&regex, needle, REG_EXTENDED | REG_NEWLINE);
+		compile_regex_with_error(&regex, needle, REG_EXTENDED | REG_NEWLINE);
 	} else {
 		kws = kwsalloc(DIFF_OPT_TST(o, PICKAXE_IGNORE_CASE)
-			       ? tolower_trans_tbl : NULL);
+			? tolower_trans_tbl : NULL);
 		kwsincr(kws, needle, len);
 		kwsprep(kws);
 	}
@@ -324,23 +313,23 @@ static void diffcore_pickaxe_count(struct diff_options *o)
 
 static void diffcore_blockname(struct diff_options *o)
 {
-  regex_t regex;
+	regex_t regex;
 
-  compile_regex_with_error(&regex, o->block_name, REG_EXTENDED | REG_NEWLINE);
-  pickaxe(&diff_queued_diff, o, &regex, NULL, diff_blockname_filter);
-  regfree(&regex);
+	compile_regex_with_error(&regex, o->block_name, REG_EXTENDED | REG_NEWLINE);
+	pickaxe(&diff_queued_diff, o, &regex, NULL, diff_blockname_filter);
+	regfree(&regex);
 
-  return;
+	return;
 }
 
 void diffcore_pickaxe(struct diff_options *o)
 {
-  if (o->block_name) {
-    diffcore_blockname(o);
-  }
+	if (o->block_name) {
+		diffcore_blockname(o);
+	}
 	/* Might want to warn when both S and G are on; I don't care... */
-  if (o->pickaxe_opts & DIFF_PICKAXE_KIND_G)
-    diffcore_pickaxe_grep(o);
-  else if (o->pickaxe_opts & DIFF_PICKAXE_KIND_S)
-    diffcore_pickaxe_count(o);
+	if (o->pickaxe_opts & DIFF_PICKAXE_KIND_G)
+		diffcore_pickaxe_grep(o);
+	else if (o->pickaxe_opts & DIFF_PICKAXE_KIND_S)
+		diffcore_pickaxe_count(o);
 }
