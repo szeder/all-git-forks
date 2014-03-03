@@ -91,14 +91,17 @@ static void match_blockname(void *priv, char *line, unsigned long len)
 	regmatch_t regmatch;
 	int hold;
 	struct blockname_cb *data = priv;
-	if (line[0] == '@' && line[1] == '@') {
-		hold = line[len];
-		line[len] = '\0';
-		if (!regexec(data->regexp, line, 1, &regmatch, 0)) {
-			data->hit = 1;
-		}
-		line[len] = hold;
-	}
+	hold = line[len];
+	line[len] = '\0';
+	printf("%s", line);
+	line[len] = hold;
+	// if (line[0] == '@' && line[1] == '@') {
+// 		
+// 		if (!regexec(data->regexp, line, 1, &regmatch, 0)) {
+// 			data->hit = 1;
+// 		}
+// 		
+// 	}
   
 	
 }
@@ -265,7 +268,7 @@ regex_t *regexp, kwset_t kws, pickaxe_fn fn)
 	*/
 	if (textconv_one == textconv_two && diff_unmodified_pair(p))
 		return 0;
-
+	
 	mf1.size = fill_textconv(textconv_one, p->one, &mf1.ptr);
 	mf2.size = fill_textconv(textconv_two, p->two, &mf2.ptr);
 
