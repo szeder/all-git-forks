@@ -547,25 +547,20 @@ static struct cache_tree *cache_tree_find(struct cache_tree *it, const char *pat
 	if (!it)
 		return NULL;
 	while (*path) {
-		const char *slash;
 		struct cache_tree_sub *sub;
+		const char *slash = strchrnul(path, '/');
 
-		slash = strchr(path, '/');
-		if (!slash)
-			slash = path + strlen(path);
-		/* between path and slash is the name of the
-		 * subtree to look for.
+		/*
+		 * Between path and slash is the name of the subtree
+		 * to look for.
 		 */
 		sub = find_subtree(it, path, slash - path, 0);
 		if (!sub)
 			return NULL;
 		it = sub->cache_tree;
-		if (slash)
-			while (*slash && *slash == '/')
-				slash++;
-		if (!slash || !*slash)
-			return it; /* prefix ended with slashes */
 		path = slash;
+		while (*path == '/')
+			path++;
 	}
 	return it;
 }
