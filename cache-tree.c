@@ -552,10 +552,8 @@ static struct cache_tree *cache_tree_find(struct cache_tree *it, const char *pat
 		return NULL;
 	while (*path) {
 		struct cache_tree_sub *sub;
-		const char *slash = strchr(path, '/');
+		const char *slash = strchrnul(path, '/');
 
-		if (!slash)
-			slash = path + strlen(path);
 		/*
 		 * Between path and slash is the name of the subtree
 		 * to look for.
