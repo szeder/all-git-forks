@@ -378,6 +378,35 @@ test_expect_success 'do not fire editor if -m "" was given' '
 	test "$(cat .git/result)" = "editor not started"
 '
 
+test_expect_success 'fire editor if -m and -interactive was given' '
+        echo ticktock >file &&
+        echo "editor not started" >.git/result &&
+        # 5: patch, 1:st file, e: edit hunk, that is all, 7: quit
+        (echo 5; echo 1; echo; echo e; echo 7) | \
+          GIT_EDITOR="\"$(pwd)/.git/FAKE_EDITOR\"" \
+          git commit -m ticktock --interactive &&
+        cat .git/result &&
+        test "$(cat .git/result)" = "editor started"
+'
+
+test_expect_success 'fire editor if -m and -p was given' '
+        echo ticktocktick >file &&
+        echo "editor not started" >.git/result &&
+        echo e | GIT_EDITOR="\"$(pwd)/.git/FAKE_EDITOR\"" \
+          git commit -m ticktocktick -p &&
+        cat .git/result &&
+        test "$(cat .git/result)" = "editor started"
+'
+
+test_expect_success 'fire editor if -m, -p and --dry-run was given' '
+        echo ticktockticktock >file &&
+        echo "editor not started" >.git/result &&
+        echo e | GIT_EDITOR="\"$(pwd)/.git/FAKE_EDITOR\"" \
+          git commit -m ticktockticktock -p --dry-run &&
+        cat .git/result &&
+        test "$(cat .git/result)" = "editor started"
+'
+
 test_expect_success 'do not fire editor in the presence of conflicts' '
 
 	git clean -f &&

@@ -1067,8 +1067,6 @@ static int parse_and_validate_options(int argc, const char *argv[],
 		use_editor = 0;
 	if (0 <= edit_flag)
 		use_editor = edit_flag;
-	if (!use_editor)
-		setenv("GIT_EDITOR", ":", 1);
 
 	/* Sanity check options */
 	if (amend && !current_head)
@@ -1529,6 +1527,9 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 					  builtin_commit_usage,
 					  prefix, current_head, &s);
 	index_file = prepare_index(argc, argv, prefix, current_head, dry_run ? 1 : 0);
+
+	if (!use_editor)
+		setenv("GIT_EDITOR", ":", 1);
 
 	if (dry_run)
 		return dry_run_commit(index_file, prefix, &s);
