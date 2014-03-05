@@ -328,6 +328,7 @@ int winansi_fprintf(FILE *stream, const char *format, ...) __attribute__((format
  * git specific compatibility
  */
 
+#define is_windows() 1
 #define has_dos_drive_prefix(path) (isalpha(*(path)) && (path)[1] == ':')
 #define is_dir_sep(c) ((c) == '/' || (c) == '\\')
 static inline char *mingw_find_last_dir_sep(const char *path)

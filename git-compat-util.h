@@ -263,6 +263,10 @@ extern char *gitbasename(char *);
 #define STRIP_EXTENSION ""
 #endif
 
+#ifndef is_windows
+#define is_windows() 0
+#endif
+
 #ifndef has_dos_drive_prefix
 #define has_dos_drive_prefix(path) 0
 #endif
