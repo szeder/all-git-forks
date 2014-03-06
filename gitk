@@ -7424,7 +7424,7 @@ proc locate_changed {var _idx op} {
         global treediropen treecontents treeindex treeparent
         global cflist cflist_top
 
-        if {[string index $locate_efile end] eq "/" && [catch { set _dummy $treecontents($dir) }] == 0} {
+        if {[string index $locate_efile end] eq "/" && [catch { set _dummy $treecontents($locate_efile) }] == 0} {
             treeopendir_rec $cflist $locate_efile
         } else {
             set dir [file dirname $locate_efile]
