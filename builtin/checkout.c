@@ -944,7 +944,8 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 	} else {
 		strbuf_reset(&sb);
 		strbuf_addf(&sb, "%s/link", sb_repo.buf);
-		(void)link(sb_git.buf, sb.buf);
+		if (link(sb_git.buf, sb.buf))
+			; /* ignore silently, without a clear reason */
 	}
 
 	if (!opts->quiet)
