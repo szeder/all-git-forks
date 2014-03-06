@@ -3173,6 +3173,33 @@ proc linetoelt {l} {
     }
 }
 
+proc elttoline {elt} {
+    global treeheight treecontents
+
+    set y 2
+    set prefix {}
+    set elt_len [llength [file split $elt]]
+    foreach elt_label [file split $elt] {
+        foreach e $treecontents($prefix) {
+            if {[string compare $e $elt_label] < 0} {
+                if {[string index $e end] eq "/"} {
+                    incr y $treeheight($prefix$e)
+                } else {
+                    incr y
+                }
+            } elseif {$e eq "$elt_label/" && $elt_len > 1} {
+                append prefix $e
+                incr y
+                incr elt_len -1
+                break
+            } else {
+                return $y
+            }
+        }
+    }
+    return $y
+}
+
 proc highlight_tree {y prefix} {
     global treeheight treecontents cflist
 
