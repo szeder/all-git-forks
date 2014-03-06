@@ -229,4 +229,6 @@ int update_refs(const char *action, const struct ref_update **updates,
 extern int parse_hide_refs_config(const char *var, const char *value, const char *);
 extern int ref_is_hidden(const char *);
 
+int sha1_is_ambiguous_with_ref(const unsigned char *sha1);
+
 #endif /* REFS_H */
