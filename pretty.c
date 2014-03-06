@@ -553,7 +553,7 @@ static char *get_header(const struct commit *commit, const char *msg,
 
 		if (line == eol)
 			return NULL;
-		if (*eol == '\0') {
+		if (!*eol) {
 			warning("malformed commit (header is missing newline): %s",
 				sha1_to_hex(commit->object.sha1));
 			next = NULL;

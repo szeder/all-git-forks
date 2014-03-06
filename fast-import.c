@@ -1490,7 +1490,7 @@ static int tree_content_set(
 
 	if (!n)
 		die("Empty path component found in input");
-	if (*slash1 == '\0' && !S_ISDIR(mode) && subtree)
+	if (!*slash1 && !S_ISDIR(mode) && subtree)
 		die("Non-directories cannot have subtrees");
 
 	if (!root->tree)
@@ -1499,7 +1499,7 @@ static int tree_content_set(
 	for (i = 0; i < t->entry_count; i++) {
 		e = t->entries[i];
 		if (e->name->str_len == n && !strncmp_icase(p, e->name->str_dat, n)) {
-			if (*slash1 == '\0') {
+			if (!*slash1) {
 				if (!S_ISDIR(mode)
 						&& e->versions[1].mode == mode
 						&& !hashcmp(e->versions[1].sha1, sha1))
@@ -1550,7 +1550,7 @@ static int tree_content_set(
 	e->versions[0].mode = 0;
 	hashclr(e->versions[0].sha1);
 	t->entries[t->entry_count++] = e;
-	if (*slash1 != '\0') {
+	if (*slash1) {
 		e->tree = new_tree_content(8);
 		e->versions[1].mode = S_IFDIR;
 		tree_content_set(e, slash1 + 1, sha1, mode, subtree);
@@ -1589,7 +1589,7 @@ static int tree_content_remove(
 	for (i = 0; i < t->entry_count; i++) {
 		e = t->entries[i];
 		if (e->name->str_len == n && !strncmp_icase(p, e->name->str_dat, n)) {
-			if (*slash1 != '\0' && !S_ISDIR(e->versions[1].mode))
+			if (*slash1 && !S_ISDIR(e->versions[1].mode))
 				/*
 				 * If p names a file in some subdirectory, and a
 				 * file or symlink matching the name of the
@@ -1597,7 +1597,7 @@ static int tree_content_remove(
 				 * exist and need not be deleted.
 				 */
 				return 1;
-			if (*slash1 == '\0' || !S_ISDIR(e->versions[1].mode))
+			if (!*slash1 || !S_ISDIR(e->versions[1].mode))
 				goto del_entry;
 			if (!e->tree)
 				load_tree(e);
@@ -1657,7 +1657,7 @@ static int tree_content_get(
 	for (i = 0; i < t->entry_count; i++) {
 		e = t->entries[i];
 		if (e->name->str_len == n && !strncmp_icase(p, e->name->str_dat, n)) {
-			if (*slash1 == '\0')
+			if (!*slash1)
 				goto found_entry;
 			if (!S_ISDIR(e->versions[1].mode))
 				return 0;
