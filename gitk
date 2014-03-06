@@ -7461,12 +7461,11 @@ proc locate_changed {var _idx op} {
                 if {$dir ne {}} {
                     treeopendir_rec $cflist $dir
                 }
-                set file_num [bsearch $contents $fname]
-                if {$dir eq ""} { set file_idx "[expr $file_num + 2].0" } else { set file_idx "s:$ix + [expr $file_num + 1] lines" }
-                $cflist see $file_idx
-                if {[lindex $contents $file_num] eq $fname} {
+                set file_line [elttoline $locate_efile]
+                $cflist see $file_line.0
+                if {[lsearch -exact -sorted $contents $fname] >= 0} {
                     $cflist tag remove highlight 1.0 end
-                    $cflist tag add highlight "$file_idx linestart" "$file_idx lineend"
+                    $cflist tag add highlight "$file_line.0" "$file_line.end"
                     showfile $locate_efile
                 }
             }
