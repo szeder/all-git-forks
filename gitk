@@ -7401,6 +7401,19 @@ proc reselectline {} {
     }
 }
 
+
+proc treeopendir_rec {w dir} {
+    global treediropen
+
+    if {[catch { set opened $treediropen($dir) }] != 0 || !$opened} {
+        set parent [file dirname $dir]
+        if {$parent ne "."} {
+            treeopendir_rec $w "$parent/"
+        }
+        treeopendir $w $dir
+    }
+}
+
 proc locate_changed {var _idx op} {
     if {$op ne "write"} {
         return
@@ -7411,17 +7424,15 @@ proc locate_changed {var _idx op} {
         global treediropen treecontents treeindex treeparent
         global cflist cflist_top
 
-        if {[string index $locate_efile end] eq "/"} {
-            if {[catch { set diropen $treediropen($locate_efile) }] == 0 && !$diropen} {
-                treeopendir $cflist $locate_efile
-            }
+        if {[string index $locate_efile end] eq "/" && [catch { set _dummy $treecontents($dir) }] == 0} {
+            treeopendir_rec $cflist $locate_efile
         } else {
             set dir [file dirname $locate_efile]
             set fname [file tail $locate_efile]
             if {$dir eq "."} { set dir {} } else { set dir "$dir/" }
             if {[catch { set contents $treecontents($dir); set ix $treeindex($dir) }] == 0} {
-                if {$dir ne {} && !$treediropen($dir)} {
-                    treeopendir $cflist $dir
+                if {$dir ne {}} {
+                    treeopendir_rec $cflist $dir
                 }
                 set file_num [bsearch $contents $fname]
                 if {$dir eq ""} { set file_idx "[expr $file_num + 2].0" } else { set file_idx "s:$ix + [expr $file_num + 1] lines" }
