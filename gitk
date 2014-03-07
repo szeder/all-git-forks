@@ -3180,20 +3180,35 @@ proc elttoline {elt} {
     set prefix {}
     set elt_len [llength [file split $elt]]
     foreach elt_label [file split $elt] {
+        set elt_label_len [string length $elt_label]
         foreach e $treecontents($prefix) {
+            # scan over entries which is less than filename,
+            # and also over all entries which start with filename,
+            # because they are not sorted correctly
             if {[string compare $e $elt_label] < 0} {
-                if {[string index $e end] eq "/"} {
-                    incr y $treeheight($prefix$e)
-                } else {
-                    incr y
-                }
+                # skip to next
             } elseif {$e eq "$elt_label/" && $elt_len > 1} {
-                append prefix $e
-                incr y
-                incr elt_len -1
-                break
+                if {$elt_len > 1} {
+                    # go deeper
+                    append prefix $e
+                    incr y
+                    incr elt_len -1
+                    break
+                } else {
+                    return $y
+                }
+            } elseif {$e eq $elt_label} {
+                return $y
+            } elseif {[string compare -length $elt_label_len $e $elt_label] == 0} {
+                # skip to next
             } else {
                 return $y
+            }
+            # next
+            if {[string index $e end] eq "/"} {
+                incr y $treeheight($prefix$e)
+            } else {
+                incr y
             }
         }
     }
