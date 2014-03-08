@@ -9,15 +9,18 @@
 #include "kwset.h"
 #include "userdiff.h"
 
+struct fn_options {
+  regex_t *regexp;
+  kwset_t kws;
+  const struct userdiff_funcname *blockname_pattern;
+};
+
 typedef int (*pickaxe_fn)(mmfile_t *one, mmfile_t *two,
-char *path_one, char *path_two, struct diff_options *o,
-regex_t *regexp, kwset_t kws);
+char *path_one, char *path_two, struct diff_options *o, struct fn_options *fno);
 
-static int pickaxe_match(struct diff_filepair *p, struct diff_options *o,
-regex_t *regexp, kwset_t kws, pickaxe_fn fn);
+static int pickaxe_match(struct diff_filepair *p, struct diff_options *o, pickaxe_fn fn, struct fn_options *fno);
 
-static void pickaxe(struct diff_queue_struct *q, struct diff_options *o,
-regex_t *regexp, kwset_t kws, pickaxe_fn fn)
+static void pickaxe(struct diff_queue_struct *q, struct diff_options *o, pickaxe_fn fn, struct fn_options *fno)
 {
 	int i;
 	struct diff_queue_struct outq;
@@ -28,7 +31,7 @@ regex_t *regexp, kwset_t kws, pickaxe_fn fn)
 		/* Showing the whole changeset if needle exists */
 		for (i = 0; i < q->nr; i++) {
 			struct diff_filepair *p = q->queue[i];
-			if (pickaxe_match(p, o, regexp, kws, fn))
+			if (pickaxe_match(p, o, fn, fno))
 				return; /* do not munge the queue */
 		}
 
@@ -43,7 +46,7 @@ regex_t *regexp, kwset_t kws, pickaxe_fn fn)
 		/* Showing only the filepairs that has the needle */
 		for (i = 0; i < q->nr; i++) {
 			struct diff_filepair *p = q->queue[i];
-			if (pickaxe_match(p, o, regexp, kws, fn))
+			if (pickaxe_match(p, o, fn, fno))
 				diff_q(&outq, p);
 			else
 				diff_free_filepair(p);
@@ -93,23 +96,16 @@ static void match_blockname(void *priv, char *line, unsigned long len)
 	struct blockname_cb *data = priv;
 	hold = line[len];
 	line[len] = '\0';
-	printf("%s", line);
+	 if (line[0] == '@' && line[1] == '@') 
+ 		if (!regexec(data->regexp, line, 1, &regmatch, 0)) 
+ 			data->hit = 1;
 	line[len] = hold;
-	// if (line[0] == '@' && line[1] == '@') {
-// 		
-// 		if (!regexec(data->regexp, line, 1, &regmatch, 0)) {
-// 			data->hit = 1;
-// 		}
-// 		
-// 	}
-  
 	
 }
 
 static int diff_grep(mmfile_t *one, mmfile_t *two,
 char *path_one, char *path_two,
-struct diff_options *o,
-regex_t *regexp, kwset_t kws)
+struct diff_options *o, struct fn_options *fno)
 {
 	regmatch_t regmatch;
 	struct diffgrep_cb ecbdata;
@@ -117,9 +113,9 @@ regex_t *regexp, kwset_t kws)
 	xdemitconf_t xecfg;
 
 	if (!one)
-		return !regexec(regexp, two->ptr, 1, &regmatch, 0);
+		return !regexec(fno->regexp, two->ptr, 1, &regmatch, 0);
 	if (!two)
-		return !regexec(regexp, one->ptr, 1, &regmatch, 0);
+		return !regexec(fno->regexp, one->ptr, 1, &regmatch, 0);
 
 	/*
 	* We have both sides; need to run textual diff and see if
@@ -127,7 +123,7 @@ regex_t *regexp, kwset_t kws)
 	*/
 	memset(&xpp, 0, sizeof(xpp));
 	memset(&xecfg, 0, sizeof(xecfg));
-	ecbdata.regexp = regexp;
+	ecbdata.regexp = fno->regexp;
 	ecbdata.hit = 0;
 	xecfg.ctxlen = o->context;
 	xecfg.interhunkctxlen = o->interhunkcontext;
@@ -138,27 +134,33 @@ regex_t *regexp, kwset_t kws)
 
 static int diff_blockname_filter(mmfile_t *one, mmfile_t *two,
 char *path_one, char *path_two,
-struct diff_options *o,
-regex_t *regexp, kwset_t kws)
+struct diff_options *o, struct fn_options *fno)
 {
 	//regmatch_t regmatch;
 	struct blockname_cb ecbdata;
 	xpparam_t xpp;
 	xdemitconf_t xecfg;
-
-
-	// TODO Handle one-sided diff
-  
-	if (one && two) {
-		memset(&xpp, 0, sizeof(xpp));
-		memset(&xecfg, 0, sizeof(xecfg));
-		ecbdata.regexp = regexp;
-		ecbdata.hit = 0;
-		xecfg.ctxlen = o->context;
-		xecfg.interhunkctxlen = o->interhunkcontext;
-		xdi_diff_outf(one, two, match_blockname, &ecbdata,
-		&xpp, &xecfg);
-	} 
+        
+        mmfile_t empty;
+        empty.ptr = "";
+        empty.size = 0;
+        if (!one)
+                one = &empty;
+        if (!two)
+                two = &empty;
+        memset(&xpp, 0, sizeof(xpp));
+        memset(&xecfg, 0, sizeof(xecfg));
+        ecbdata.regexp = fno->regexp;
+        ecbdata.hit = 0;
+        xecfg.ctxlen = o->context;
+        if (fno->blockname_pattern)
+                xdiff_set_find_func(&xecfg, fno->blockname_pattern->pattern, fno->blockname_pattern->cflags);
+        xecfg.interhunkctxlen = o->interhunkcontext;
+	if (!(one && two)) 
+                xecfg.flags = XDL_EMIT_FUNCCONTEXT;
+	xecfg.flags |= XDL_EMIT_FUNCNAMES;
+	xdi_diff_outf(one, two, match_blockname, &ecbdata,
+	&xpp, &xecfg);
 	return ecbdata.hit;
 }
 
@@ -176,21 +178,23 @@ static void compile_regex_with_error(regex_t *r, const char *s, int cflags)
 
 static void diffcore_pickaxe_grep(struct diff_options *o)
 {
-	regex_t regex;
+        regex_t regexp;
+        struct fn_options fno;
 	int cflags = REG_EXTENDED | REG_NEWLINE;
 
 	if (DIFF_OPT_TST(o, PICKAXE_IGNORE_CASE))
 		cflags |= REG_ICASE;
 
-	compile_regex_with_error(&regex, o->pickaxe, cflags);
+	compile_regex_with_error(&regexp, o->pickaxe, cflags);
+        fno.regexp = &regexp;
 
-	pickaxe(&diff_queued_diff, o, &regex, NULL, diff_grep);
+	pickaxe(&diff_queued_diff, o, diff_grep, &fno);
 
-	regfree(&regex);
+	regfree(&regexp);
 	return;
 }
 
-static unsigned int contains(mmfile_t *mf, regex_t *regexp, kwset_t kws)
+static unsigned int contains(mmfile_t *mf, struct fn_options *fno)
 {
 	unsigned int cnt;
 	unsigned long sz;
@@ -200,12 +204,12 @@ static unsigned int contains(mmfile_t *mf, regex_t *regexp, kwset_t kws)
 	data = mf->ptr;
 	cnt = 0;
 
-	if (regexp) {
+	if (fno->regexp) {
 		regmatch_t regmatch;
 		int flags = 0;
 
 		assert(data[sz] == '\0');
-		while (*data && !regexec(regexp, data, 1, &regmatch, flags)) {
+		while (*data && !regexec(fno->regexp, data, 1, &regmatch, flags)) {
 			flags |= REG_NOTBOL;
 			data += regmatch.rm_eo;
 			if (*data && regmatch.rm_so == regmatch.rm_eo)
@@ -216,7 +220,7 @@ static unsigned int contains(mmfile_t *mf, regex_t *regexp, kwset_t kws)
 	} else { /* Classic exact string match */
 		while (sz) {
 			struct kwsmatch kwsm;
-			size_t offset = kwsexec(kws, data, sz, &kwsm);
+			size_t offset = kwsexec(fno->kws, data, sz, &kwsm);
 			const char *found;
 			if (offset == -1)
 				break;
@@ -232,16 +236,14 @@ static unsigned int contains(mmfile_t *mf, regex_t *regexp, kwset_t kws)
 
 static int has_changes(mmfile_t *one, mmfile_t *two,
 char *path_one, char *path_two,
-struct diff_options *o,
-regex_t *regexp, kwset_t kws)
+struct diff_options *o, struct fn_options *fno)
 {
-	unsigned int one_contains = one ? contains(one, regexp, kws) : 0;
-	unsigned int two_contains = two ? contains(two, regexp, kws) : 0;
+	unsigned int one_contains = one ? contains(one, fno) : 0;
+	unsigned int two_contains = two ? contains(two, fno) : 0;
 	return one_contains != two_contains;
 }
 
-static int pickaxe_match(struct diff_filepair *p, struct diff_options *o,
-regex_t *regexp, kwset_t kws, pickaxe_fn fn)
+static int pickaxe_match(struct diff_filepair *p, struct diff_options *o, pickaxe_fn fn, struct fn_options *fno)
 {
 	struct userdiff_driver *textconv_one = NULL;
 	struct userdiff_driver *textconv_two = NULL;
@@ -270,19 +272,22 @@ regex_t *regexp, kwset_t kws, pickaxe_fn fn)
 	if (textconv_one == textconv_two && diff_unmodified_pair(p))
 		return 0;
 	
-	struct userdiff_funcname *pe;
+	const struct userdiff_funcname *blockname_pattern;
 	
-	pe = diff_funcname_pattern(p->one);
-	if (!pe)
-		pe = diff_funcname_pattern(p->two);
-	mf1.size = fill_textconv(textconv_one, p->one, &mf1.ptr);
+	blockname_pattern = diff_funcname_pattern(p->one);
+	if (!blockname_pattern)
+		blockname_pattern = diff_funcname_pattern(p->two);
+
+        fno->blockname_pattern = blockname_pattern;
+	
+        mf1.size = fill_textconv(textconv_one, p->one, &mf1.ptr);
 	mf2.size = fill_textconv(textconv_two, p->two, &mf2.ptr);
 	
 	ret = fn(DIFF_FILE_VALID(p->one) ? &mf1 : NULL,
 	DIFF_FILE_VALID(p->two) ? &mf2 : NULL,
 	DIFF_FILE_VALID(p->one) ? p->one->path : NULL,
 	DIFF_FILE_VALID(p->two) ? p->two->path : NULL,
-	o, regexp, kws);
+	o, fno);
 
 	if (textconv_one)
 		free(mf1.ptr);
@@ -296,6 +301,7 @@ regex_t *regexp, kwset_t kws, pickaxe_fn fn)
 
 static void diffcore_pickaxe_count(struct diff_options *o)
 {
+        struct fn_options fno;
 	const char *needle = o->pickaxe;
 	int opts = o->pickaxe_opts;
 	unsigned long len = strlen(needle);
@@ -311,7 +317,9 @@ static void diffcore_pickaxe_count(struct diff_options *o)
 		kwsprep(kws);
 	}
 
-	pickaxe(&diff_queued_diff, o, &regex, kws, has_changes);
+        fno.regexp = &regex;
+        fno.kws = kws;
+	pickaxe(&diff_queued_diff, o, has_changes, &fno);
 
 	if (opts & DIFF_PICKAXE_REGEX)
 		regfree(&regex);
@@ -322,10 +330,12 @@ static void diffcore_pickaxe_count(struct diff_options *o)
 
 static void diffcore_blockname(struct diff_options *o)
 {
+        struct fn_options fno;
 	regex_t regex;
-
+        
+        fno.regexp = &regex;
 	compile_regex_with_error(&regex, o->block_name, REG_EXTENDED | REG_NEWLINE);
-	pickaxe(&diff_queued_diff, o, &regex, NULL, diff_blockname_filter);
+	pickaxe(&diff_queued_diff, o, diff_blockname_filter, &fno);
 	regfree(&regex);
 
 	return;
