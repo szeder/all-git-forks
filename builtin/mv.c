@@ -179,6 +179,9 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 						modes = xrealloc(modes,
 								(argc + last - first)
 								* sizeof(enum update_mode));
+						submodule_gitfile = xrealloc(submodule_gitfile,
+								(argc + last - first)
+								* sizeof(char *));
 					}
 
 					dst = add_slash(dst);
