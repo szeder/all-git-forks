@@ -146,6 +146,7 @@ regex_t *regexp, kwset_t kws)
 	xpparam_t xpp;
 	xdemitconf_t xecfg;
 
+
 	// TODO Handle one-sided diff
   
 	if (one && two) {
@@ -269,9 +270,14 @@ regex_t *regexp, kwset_t kws, pickaxe_fn fn)
 	if (textconv_one == textconv_two && diff_unmodified_pair(p))
 		return 0;
 	
+	struct userdiff_funcname *pe;
+	
+	pe = diff_funcname_pattern(p->one);
+	if (!pe)
+		pe = diff_funcname_pattern(p->two);
 	mf1.size = fill_textconv(textconv_one, p->one, &mf1.ptr);
 	mf2.size = fill_textconv(textconv_two, p->two, &mf2.ptr);
-
+	
 	ret = fn(DIFF_FILE_VALID(p->one) ? &mf1 : NULL,
 	DIFF_FILE_VALID(p->two) ? &mf2 : NULL,
 	DIFF_FILE_VALID(p->one) ? p->one->path : NULL,
