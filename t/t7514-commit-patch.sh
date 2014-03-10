@@ -25,7 +25,7 @@ test_expect_success 'setup (initial)' '
 	EOF
 '
 
-test_expect_failure 'edit hunk "commit -p -m message"' '
+test_expect_success 'edit hunk "commit -p -m message"' '
 	echo e | env GIT_EDITOR="sed s/+line3\$/+line2/ -i" git commit -p -m commit2 file &&
 	git diff HEAD^ HEAD >actual &&
 	test_cmp expect actual
