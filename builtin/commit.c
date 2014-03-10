@@ -1146,12 +1146,12 @@ static int parse_and_validate_options(int argc, const char *argv[],
 	if (all && argc > 0)
 		die(_("Paths with -a does not make sense."));
 
-	if (verbose && !include_status) {
-		include_status = 1;
-		status_format = STATUS_FORMAT_NONE;
-	}
-
-	if (status_format != STATUS_FORMAT_DEFAULT && !verbose)
+	if (status_format == STATUS_FORMAT_DEFAULT) {
+		if (verbose && !include_status) {
+			include_status = 1;
+			status_format = STATUS_FORMAT_NONE;
+		}
+	} else
 		dry_run = 1;
 
 	return argc;
