@@ -2059,7 +2059,7 @@ proc makewindow {} {
     global have_tk85 use_ttk NS
     global git_version
     global worddiff
-    global locate_efile locate_eline
+    global locate_efile locate_eline locate_has_file
 
     # The "mc" arguments here are purely so that xgettext
     # sees the following string as needing to be translated
@@ -2469,6 +2469,7 @@ proc makewindow {} {
     ${NS}::frame .bright.locate
     set locate_efile {}
     set locate_eline 0
+    set locate_has_file 0
     ${NS}::entry .bright.locate.efile -textvariable locate_efile
     ${NS}::entry .bright.locate.eline -width 4 -textvariable locate_eline
     trace add variable locate_efile write locate_changed
@@ -7465,9 +7466,10 @@ proc locate_changed {var _idx op} {
     }
 
     if {$var eq "locate_efile"} {
-        global locate_efile
+        global locate_efile locate_has_file
         global treediropen treecontents treeindex treeparent
         global cflist cflist_top
+        global commentend ctext
 
         if {[string index $locate_efile end] eq "/" && [catch { set _dummy $treecontents($locate_efile) }] == 0} {
             treeopendir_rec $cflist $locate_efile
@@ -7485,6 +7487,14 @@ proc locate_changed {var _idx op} {
                     $cflist tag remove highlight 1.0 end
                     $cflist tag add highlight "$file_line.0" "$file_line.end"
                     showfile $locate_efile
+                    set locate_has_file 1
+                } else {
+                    if {$locate_has_file} {
+                        $ctext conf -state normal
+                        clear_ctext $commentend
+                        $ctext conf -state disabled
+                        set locate_has_file 0
+                    }
                 }
             }
         }
