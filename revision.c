@@ -2211,8 +2211,9 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 	if (revs->diffopt.output_format & ~DIFF_FORMAT_NO_OUTPUT)
 		revs->diff = 1;
 
-	/* Pickaxe, diff-filter and rename following need diffs */
+	/* Pickaxe, funcname, diff-filter and rename following need diffs */
 	if (revs->diffopt.pickaxe ||
+	    revs->diffopt.funcname ||
 	    revs->diffopt.filter ||
 	    DIFF_OPT_TST(&revs->diffopt, FOLLOW_RENAMES))
 		revs->diff = 1;

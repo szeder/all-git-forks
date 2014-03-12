@@ -67,6 +67,12 @@ struct diffgrep_cb {
 	int hit;
 };
 
+struct funcname_cb {
+	struct userdiff_funcname *pattern;
+	regex_t *regex;
+	int hit;
+};
+
 static void diffgrep_consume(void *priv, char *line, unsigned long len)
 {
 	struct diffgrep_cb *data = priv;
@@ -85,6 +91,20 @@ static void diffgrep_consume(void *priv, char *line, unsigned long len)
 	hold = line[len];
 	line[len] = '\0';
 	data->hit = !regexec(data->regexp, line + 1, 1, &regmatch, 0);
+	line[len] = hold;
+}
+
+static void match_funcname(void *priv, char *line, unsigned long len)
+{
+	regmatch_t regmatch;
+	int hold;
+	struct funcname_cb *data = priv;
+	hold = line[len];
+	line[len] = '\0';
+
+	if (line[0] == '@' && line[1] == '@')
+		if (!regexec(data->regex, line, 1, &regmatch, 0))
+			data->hit = 1;
 	line[len] = hold;
 }
 
@@ -114,6 +134,38 @@ static int diff_grep(mmfile_t *one, mmfile_t *two,
 	xecfg.interhunkctxlen = o->interhunkcontext;
 	xdi_diff_outf(one, two, diffgrep_consume, &ecbdata,
 		      &xpp, &xecfg);
+	return ecbdata.hit;
+}
+
+static int diff_funcname_filter(mmfile_t *one, mmfile_t *two,
+				struct diff_options *o,
+				struct fn_options *fno)
+{
+	struct funcname_cb ecbdata;
+	xpparam_t xpp;
+	xdemitconf_t xecfg;
+
+	mmfile_t empty;
+	empty.ptr = "";
+	empty.size = 0;
+	if (!one)
+		one = &empty;
+	if (!two)
+		two = &empty;
+	memset(&xpp, 0, sizeof(xpp));
+	memset(&xecfg, 0, sizeof(xecfg));
+	ecbdata.regex = fno->regex;
+	ecbdata.hit = 0;
+	xecfg.ctxlen = o->context;
+
+	if (fno->funcname_pattern)
+		xdiff_set_find_func(&xecfg, fno->funcname_pattern->pattern,
+					    fno->funcname_pattern->cflags);
+	xecfg.interhunkctxlen = o->interhunkcontext;
+	if (!(one && two))
+		xecfg.flags = XDL_EMIT_FUNCCONTEXT;
+	xecfg.flags |= XDL_EMIT_FUNCNAMES;
+	xdi_diff_outf(one, two, match_funcname, &ecbdata, &xpp, &xecfg);
 	return ecbdata.hit;
 }
 
@@ -204,7 +256,7 @@ static int pickaxe_match(struct diff_filepair *p, struct diff_options *o,
 	mmfile_t mf1, mf2;
 	int ret;
 
-	if (!o->pickaxe[0])
+	if (o->pickaxe && !o->pickaxe[0])
 		return 0;
 
 	/* ignore unmerged */
@@ -280,11 +332,24 @@ static void diffcore_pickaxe_count(struct diff_options *o)
 	return;
 }
 
+static void diffcore_funcname(struct diff_options *o)
+{
+	struct fn_options fno;
+	regex_t regex;
+
+	fno.regex = &regex;
+	compile_regex(&regex, o->funcname, REG_EXTENDED | REG_NEWLINE);
+	pickaxe(&diff_queued_diff, o, diff_funcname_filter, &fno);
+	regfree(&regex);
+}
+
 void diffcore_pickaxe(struct diff_options *o)
 {
+	if (o->funcname)
+		diffcore_funcname(o);
 	/* Might want to warn when both S and G are on; I don't care... */
 	if (o->pickaxe_opts & DIFF_PICKAXE_KIND_G)
 		diffcore_pickaxe_grep(o);
-	else
+	else if (o-> pickaxe_opts & DIFF_PICKAXE_KIND_S)
 		diffcore_pickaxe_count(o);
 }
