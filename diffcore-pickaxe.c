@@ -7,10 +7,12 @@
 #include "diffcore.h"
 #include "xdiff-interface.h"
 #include "kwset.h"
+#include "userdiff.h"
 
 struct fn_options {
 	regex_t *regex;
 	kwset_t kws;
+	const struct userdiff_funcname *funcname_pattern;
 };
 
 typedef int (*pickaxe_fn)(mmfile_t *one, mmfile_t *two,
@@ -223,6 +225,13 @@ static int pickaxe_match(struct diff_filepair *p, struct diff_options *o,
 	 */
 	if (textconv_one == textconv_two && diff_unmodified_pair(p))
 		return 0;
+
+	const struct userdiff_funcname *funcname_pattern;
+	funcname_pattern = diff_funcname_pattern(p->one);
+	if (!funcname_pattern)
+		funcname_pattern = diff_funcname_pattern(p->two);
+
+	fno->funcname_pattern = funcname_pattern;
 
 	mf1.size = fill_textconv(textconv_one, p->one, &mf1.ptr);
 	mf2.size = fill_textconv(textconv_two, p->two, &mf2.ptr);
