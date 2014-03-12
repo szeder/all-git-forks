@@ -12,6 +12,8 @@ typedef int (*pickaxe_fn)(mmfile_t *one, mmfile_t *two,
 			  struct diff_options *o,
 			  regex_t *regexp, kwset_t kws);
 
+static void compile_regex(regex_t *r, const char *s, int cflags);
+
 static int pickaxe_match(struct diff_filepair *p, struct diff_options *o,
 			 regex_t *regexp, kwset_t kws, pickaxe_fn fn);
 
@@ -110,20 +112,13 @@ static int diff_grep(mmfile_t *one, mmfile_t *two,
 
 static void diffcore_pickaxe_grep(struct diff_options *o)
 {
-	int err;
 	regex_t regex;
 	int cflags = REG_EXTENDED | REG_NEWLINE;
 
 	if (DIFF_OPT_TST(o, PICKAXE_IGNORE_CASE))
 		cflags |= REG_ICASE;
 
-	err = regcomp(&regex, o->pickaxe, cflags);
-	if (err) {
-		char errbuf[1024];
-		regerror(err, &regex, errbuf, 1024);
-		regfree(&regex);
-		die("invalid regex: %s", errbuf);
-	}
+	compile_regex(&regex, o->pickaxe, cflags);
 
 	pickaxe(&diff_queued_diff, o, &regex, NULL, diff_grep);
 
@@ -178,6 +173,18 @@ static int has_changes(mmfile_t *one, mmfile_t *two,
 	unsigned int one_contains = one ? contains(one, regexp, kws) : 0;
 	unsigned int two_contains = two ? contains(two, regexp, kws) : 0;
 	return one_contains != two_contains;
+}
+
+static void compile_regex(regex_t *r, const char *s, int cflags)
+{
+	int err;
+	err = regcomp(r, s, cflags);
+	if (err) {
+		char errbuf[1024];
+		regerror(err, r, errbuf, 1024);
+		regfree(r);
+		die("invalid regex: %s", errbuf);
+	}
 }
 
 static int pickaxe_match(struct diff_filepair *p, struct diff_options *o,
@@ -236,15 +243,7 @@ static void diffcore_pickaxe_count(struct diff_options *o)
 	kwset_t kws = NULL;
 
 	if (opts & DIFF_PICKAXE_REGEX) {
-		int err;
-		err = regcomp(&regex, needle, REG_EXTENDED | REG_NEWLINE);
-		if (err) {
-			/* The POSIX.2 people are surely sick */
-			char errbuf[1024];
-			regerror(err, &regex, errbuf, 1024);
-			regfree(&regex);
-			die("invalid regex: %s", errbuf);
-		}
+		compile_regex(&regex, needle, REG_EXTENDED | REG_NEWLINE);
 		regexp = &regex;
 	} else {
 		kws = kwsalloc(DIFF_OPT_TST(o, PICKAXE_IGNORE_CASE)
