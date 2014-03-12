@@ -349,4 +349,6 @@ extern int print_stat_summary(FILE *fp, int files,
 			      int insertions, int deletions);
 extern void setup_diff_pager(struct diff_options *);
 
+const struct userdiff_funcname *diff_funcname_pattern(struct diff_filespec *);
+
 #endif /* DIFF_H */
