@@ -333,6 +333,10 @@ static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
 }
 
 static struct cmd_struct commands[] = {
+	/** Task manager added commands */
+	{ "task", cmd_task },
+	{ "role", cmd_role },
+
 	{ "add", cmd_add, RUN_SETUP | NEED_WORK_TREE },
 	{ "annotate", cmd_annotate, RUN_SETUP },
 	{ "apply", cmd_apply, RUN_SETUP_GENTLY },

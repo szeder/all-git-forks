@@ -424,7 +424,7 @@ BASIC_CFLAGS = -I.
 BASIC_LDFLAGS =
 
 # Guard against environment variables
-BUILTIN_OBJS =
+BUILTIN_OBJS = builtin/task.o builtin/role.o
 BUILT_INS =
 COMPAT_CFLAGS =
 COMPAT_OBJS =

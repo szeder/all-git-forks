@@ -29,6 +29,10 @@ extern int textconv_object(const char *path, unsigned mode, const unsigned char 
 
 extern int is_builtin(const char *s);
 
+/* Task Manager Added commands */
+extern int cmd_task(int argc, const char **argv, const char *prefix);
+extern int cmd_role(int argc, const char **argv, const char *prefix);
+
 extern int cmd_add(int argc, const char **argv, const char *prefix);
 extern int cmd_annotate(int argc, const char **argv, const char *prefix);
 extern int cmd_apply(int argc, const char **argv, const char *prefix);
