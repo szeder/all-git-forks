@@ -14,10 +14,11 @@ CFLAGS += -Wall -Werror
 CFLAGS += -Wno-format-zero-length
 CFLAGS += -Wdeclaration-after-statement
 CFLAGS += -Wpointer-arith
-CFLAGS += -Wold-style-declaration
 ifeq ($(COMPILER), clang)
 CFLAGS += -Qunused-arguments
 CFLAGS += -Wno-parentheses-equality
+else
+CFLAGS += -Wold-style-declaration
 endif
 LDFLAGS = -g
 
