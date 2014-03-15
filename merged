@@ -13,6 +13,12 @@ check_merge() {
 }
 
 for i in `Meta/topics`; do
+	case "$i" in
+	*-wip)
+		continue
+		;;
+	esac
+
 	upstream=`git for-each-ref --format='%(upstream)' refs/heads/$i`
 	check_merge $i origin/master ${upstream:-origin} ||
 	check_merge $i origin/next ${upstream:-origin} ||
