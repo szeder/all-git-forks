@@ -17,6 +17,7 @@ CFLAGS += -Wpointer-arith
 ifeq ($(COMPILER), clang)
 CFLAGS += -Qunused-arguments
 CFLAGS += -Wno-parentheses-equality
+CFLAGS += -Wtautological-constant-out-of-range-compare
 else
 CFLAGS += -Wold-style-declaration
 endif
