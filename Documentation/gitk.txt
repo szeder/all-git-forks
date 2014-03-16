@@ -166,8 +166,8 @@ gitk --max-count=100 --all \-- Makefile::
 
 Files
 -----
-Gitk creates the .gitk file in your $HOME directory to store preferences
-such as display options, font, and colors.
+User configuration and preferences are stored at $XDG_CONFIG_HOME/git/gitk or
+$HOME/.config/git/gitk if $XDG_CONFIG_HOME is not set.
 
 History
 -------
