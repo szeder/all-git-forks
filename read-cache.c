@@ -1305,8 +1305,7 @@ struct ondisk_cache_entry_extended {
 
 static int verify_hdr(struct cache_header *hdr, unsigned long size)
 {
-	git_SHA_CTX c;
-	unsigned char sha1[20];
+	unsigned char hash[20];
 	int hdr_version;
 
 	if (hdr->hdr_signature != htonl(CACHE_SIGNATURE))
@@ -1314,11 +1313,19 @@ static int verify_hdr(struct cache_header *hdr, unsigned long size)
 	hdr_version = ntohl(hdr->hdr_version);
 	if (hdr_version < INDEX_FORMAT_LB || INDEX_FORMAT_UB < hdr_version)
 		return error("bad index version %d", hdr_version);
-	git_SHA1_Init(&c);
-	git_SHA1_Update(&c, hdr, size - 20);
-	git_SHA1_Final(sha1, &c);
-	if (hashcmp(sha1, (unsigned char *)hdr + size - 20))
-		return error("bad index file sha1 signature");
+	if (hdr_version >= INDEX_FORMAT_VMAC_LB) {
+		vmac_ctx_t c;
+		vmac_set_key(VMAC_KEY, &c);
+		vmac_update_unaligned(hdr, size - 20, &c);
+		vmac_final(hash, &c);
+	} else {
+		git_SHA_CTX c;
+		git_SHA1_Init(&c);
+		git_SHA1_Update(&c, hdr, size - 20);
+		git_SHA1_Final(hash, &c);
+	}
+	if (hashcmp(hash, (unsigned char *)hdr + size - 20))
+		return error("bad index file signature");
 	return 0;
 }
 
@@ -1484,7 +1491,7 @@ int read_index_from(struct index_state *istate, const char *path)
 	istate->cache = xcalloc(istate->cache_alloc, sizeof(*istate->cache));
 	istate->initialized = 1;
 
-	if (istate->version == 4)
+	if (istate->version >= 4)
 		previous_name = &previous_name_buf;
 	else
 		previous_name = NULL;
@@ -1761,12 +1768,15 @@ int write_index(struct index_state *istate, int newfd)
 	hdr.hdr_version = htonl(hdr_version);
 	hdr.hdr_entries = htonl(entries - removed);
 
-	hash_context_init(&c);
+	if (istate->version >= INDEX_FORMAT_VMAC_LB)
+		hash_context_init(&c, HASH_IO_VMAC);
+	else
+		hash_context_init(&c, HASH_IO_SHA1);
 
 	if (write_with_hash(&c, newfd, &hdr, sizeof(hdr)) < 0)
 		return -1;
 
-	previous_name = (hdr_version == 4) ? &previous_name_buf : NULL;
+	previous_name = (hdr_version >= 4) ? &previous_name_buf : NULL;
 	for (i = 0; i < entries; i++) {
 		struct cache_entry *ce = cache[i];
 		if (ce->ce_flags & CE_REMOVE)
