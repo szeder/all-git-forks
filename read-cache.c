@@ -17,6 +17,10 @@
 #include "varint.h"
 #include "hash-io.h"
 
+#ifdef USE_WATCHMAN
+#include "watchman-support.h"
+#endif
+
 static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
 					       unsigned int options);
 
@@ -1471,6 +1475,25 @@ static struct cache_entry *create_from_disk(struct ondisk_cache_entry *ondisk,
 	return ce;
 }
 
+static void do_load_fs_cache(struct index_state *istate, int force)
+{
+#ifdef USE_WATCHMAN
+	if (core_use_watchman && (istate->initialized || force)) {
+		if (istate->fs_cache) {
+			if (istate->fs_cache->invalid)
+				watchman_reload_fs_cache(istate);
+		} else {
+			if (watchman_load_fs_cache(istate)) {
+				if (istate->fs_cache) {
+					istate->fs_cache->needs_write = 0;
+					istate->fs_cache = NULL;
+				}
+			}
+		}
+	}
+#endif
+}
+
 /* remember to discard_cache() before reading a different cache! */
 int read_index_from(struct index_state *istate, const char *path)
 {
@@ -1482,6 +1505,8 @@ int read_index_from(struct index_state *istate, const char *path)
 	size_t mmap_size;
 	struct strbuf previous_name_buf = STRBUF_INIT, *previous_name;
 
+	do_load_fs_cache(istate, 0);
+
 	if (istate->initialized)
 		return istate->cache_nr;
 
@@ -1489,8 +1514,10 @@ int read_index_from(struct index_state *istate, const char *path)
 	istate->timestamp.nsec = 0;
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
-		if (errno == ENOENT)
+		if (errno == ENOENT) {
+			do_load_fs_cache(istate, 1);
 			return 0;
+		}
 		die_errno("index file open failed");
 	}
 
@@ -1555,6 +1582,9 @@ int read_index_from(struct index_state *istate, const char *path)
 		src_offset += 8;
 		src_offset += extsize;
 	}
+
+	do_load_fs_cache(istate, 0);
+
 	munmap(mmap, mmap_size);
 	return istate->cache_nr;
 
