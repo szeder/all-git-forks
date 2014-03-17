@@ -47,6 +47,7 @@ annotate=
 squash=
 message=
 edit=
+prefix=
 
 debug()
 {
