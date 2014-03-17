@@ -272,6 +272,7 @@ struct index_state {
 	struct cache_entry **cache;
 	unsigned int version;
 	unsigned int cache_nr, cache_alloc, cache_changed;
+	struct fs_cache *fs_cache;
 	struct string_list *resolve_undo;
 	struct cache_tree *cache_tree;
 	struct cache_time timestamp;
@@ -352,6 +353,7 @@ static inline enum object_type object_type(unsigned int mode)
 #define DEFAULT_GIT_DIR_ENVIRONMENT ".git"
 #define DB_ENVIRONMENT "GIT_OBJECT_DIRECTORY"
 #define INDEX_ENVIRONMENT "GIT_INDEX_FILE"
+#define FS_CACHE_ENVIRONMENT "GIT_FS_CACHE_FILE"
 #define GRAFT_ENVIRONMENT "GIT_GRAFT_FILE"
 #define GIT_SHALLOW_FILE_ENVIRONMENT "GIT_SHALLOW_FILE"
 #define TEMPLATE_DIR_ENVIRONMENT "GIT_TEMPLATE_DIR"

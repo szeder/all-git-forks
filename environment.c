@@ -81,7 +81,7 @@ static const char *namespace;
 static size_t namespace_len;
 
 static const char *git_dir;
-static char *git_object_dir, *git_index_file, *git_graft_file;
+static char *git_object_dir, *git_index_file, *git_graft_file, *git_fs_cache_file;
 
 /*
  * Repository-local GIT_* environment variables; see cache.h for details.
@@ -142,6 +142,13 @@ static void setup_git_env(void)
 	if (!git_index_file) {
 		git_index_file = xmalloc(strlen(git_dir) + 7);
 		sprintf(git_index_file, "%s/index", git_dir);
+	}
+	git_fs_cache_file = getenv(FS_CACHE_ENVIRONMENT);
+	if (!git_fs_cache_file) {
+		char *fs_cache_file = xmalloc(strlen(git_dir) + 10);
+		sprintf(fs_cache_file, "%s/fs_cache", git_dir);
+		git_fs_cache_file = xstrdup(real_path(fs_cache_file));
+		free(fs_cache_file);
 	}
 	git_graft_file = getenv(GRAFT_ENVIRONMENT);
 	if (!git_graft_file)
@@ -264,6 +271,13 @@ char *get_graft_file(void)
 	if (!git_graft_file)
 		setup_git_env();
 	return git_graft_file;
+}
+
+char *get_fs_cache_file(void)
+{
+	if (!git_fs_cache_file)
+		setup_git_env();
+	return git_fs_cache_file;
 }
 
 int set_git_dir(const char *path)

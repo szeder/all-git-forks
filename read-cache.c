@@ -5,6 +5,7 @@
  */
 #define NO_THE_INDEX_COMPATIBILITY_MACROS
 #include "cache.h"
+#include "fs_cache.h"
 #include "cache-tree.h"
 #include "refs.h"
 #include "dir.h"
@@ -1004,6 +1005,30 @@ int add_index_entry(struct index_state *istate, struct cache_entry *ce, int opti
 	return 0;
 }
 
+static int fs_cache_lstat(struct fs_cache *fs_cache,
+			const char *name, int len, struct stat *st)
+{
+
+	struct fsc_entry *fe;
+	if (!fs_cache)
+		return lstat(name, st);
+
+	fe = fs_cache_file_exists(fs_cache, name, len);
+	if (!fe) {
+		/* This is necessary because children of symlinks are not
+		 * included in the fs_cache. */
+		return lstat(name, st);
+	}
+
+	if (fe_deleted(fe)) {
+		errno = ENOENT;
+		return -1;
+	} else {
+		fe_to_stat(fe, st);
+	}
+	return 0;
+}
+
 /*
  * "refresh" does not calculate a new sha1 file or bring the
  * cache up-to-date for mode/content changes. But what it
@@ -1045,7 +1070,7 @@ static struct cache_entry *refresh_cache_ent(struct index_state *istate,
 		return ce;
 	}
 
-	if (lstat(ce->name, &st) < 0) {
+	if (fs_cache_lstat(the_index.fs_cache, ce->name, ce_namelen(ce), &st) < 0) {
 		if (ignore_missing && errno == ENOENT)
 			return ce;
 		if (err)
@@ -1560,6 +1585,8 @@ int discard_index(struct index_state *istate)
 	free(istate->cache);
 	istate->cache = NULL;
 	istate->cache_alloc = 0;
+	if (istate->fs_cache)
+		istate->fs_cache->invalid = 1;
 	return 0;
 }
 
