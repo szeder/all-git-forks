@@ -31,6 +31,7 @@ static const char upload_pack_usage[] = "git upload-pack [--strict] [--timeout=<
 
 static unsigned long oldest_have;
 
+static int uploadpack2;
 static int multi_ack;
 static int no_done;
 static int use_thin_pack, use_ofs_delta, use_include_tag;
@@ -864,17 +865,25 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (i != argc-1)
-		usage(upload_pack_usage);
+	switch (argc - i) {
+		case 2:
+			uploadpack2 = 1;
+			parse_features(argv[i + 1]);
+			/* fall through*/
+		case 1:
+			setup_path();
 
-	setup_path();
+			dir = argv[i];
 
-	dir = argv[i];
+			if (!enter_repo(dir, strict))
+				die("'%s' does not appear to be a git repository", dir);
 
-	if (!enter_repo(dir, strict))
-		die("'%s' does not appear to be a git repository", dir);
+			git_config(upload_pack_config, NULL);
+			upload_pack();
+			break;
+		default:
+			usage(upload_pack_usage);
+	}
 
-	git_config(upload_pack_config, NULL);
-	upload_pack();
 	return 0;
 }

@@ -9,7 +9,7 @@ git-upload-pack - Send objects packed back to git-fetch-pack
 SYNOPSIS
 --------
 [verse]
-'git-upload-pack' [--strict] [--timeout=<n>] <directory>
+'git-upload-pack' [--strict] [--timeout=<n>] <directory> [<capabilities>]
 
 DESCRIPTION
 -----------
@@ -33,6 +33,14 @@ OPTIONS
 
 <directory>::
 	The repository to sync from.
+
+capabilities::
+	Historically the capabilities were exchanged inside the protocol of
+	'git-upload-pack' talking to 'git-fetch-pack'. It turned out this was
+	too late as 'git-upload-pack' already did work, which may have been
+	avoided. This allows to pass in the capabilities the client wants to
+	use as one argument. The capabilites are separated by space.
+	See technical/protocol-capabilities.txt (TODO: how to make it a link?)
 
 SEE ALSO
 --------
