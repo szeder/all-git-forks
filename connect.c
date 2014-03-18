@@ -659,7 +659,9 @@ static struct child_process no_fork;
  * the connection failed).
  */
 struct child_process *git_connect(int fd[2], const char *url,
-				  const char *prog, int flags)
+				  const char *prog,
+				  const char *service_flags,
+				  int flags)
 {
 	char *hostandport, *path;
 	struct child_process *conn = &no_fork;
@@ -691,10 +693,13 @@ struct child_process *git_connect(int fd[2], const char *url,
 		 * Separate original protocol components prog and path
 		 * from extended host header with a NUL byte.
 		 */
-		packet_write(fd[1],
-			     "%s %s%chost=%s%c",
-			     prog, path, 0,
-			     target_host, 0);
+		if (!service_flags)
+			packet_write(fd[1], "%s %s%chost=%s%c",
+				     prog, path, 0, target_host, 0);
+		else
+			packet_write(fd[1], "%s %s%chost=%s%c%s%c",
+				     prog, path, 0, target_host, 0,
+				     service_flags, 0);
 		free(target_host);
 	} else {
 		struct argv_array argv = ARGV_ARRAY_INIT;
@@ -729,6 +734,8 @@ struct child_process *git_connect(int fd[2], const char *url,
 			conn->use_shell = 1;
 		}
 		argv_array_push(&argv, cmd.buf);
+		if (service_flags)
+			argv_array_push(&argv, service_flags);
 		conn->argv = argv.argv;
 		if (start_command(conn))
 			die("unable to fork");
@@ -736,6 +743,7 @@ struct child_process *git_connect(int fd[2], const char *url,
 		fd[0] = conn->out; /* read from child's stdout */
 		fd[1] = conn->in;  /* write to child's stdin */
 		strbuf_release(&cmd);
+		conn->argv = NULL;
 		argv_array_clear(&argv);
 	}
 	free(hostandport);
