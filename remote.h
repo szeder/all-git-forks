@@ -43,6 +43,12 @@ struct remote {
 	int skip_default_update;
 	int mirror;
 	int prune;
+	/*
+	 * -1 = v1 only
+	 *  0 = try v1, set to 1 if upload-pack2 is supported
+	 *  1 = v2 only
+	 */
+	int uploadpack2;
 
 	const char *receivepack;
 	const char *uploadpack;

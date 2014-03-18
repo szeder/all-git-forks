@@ -504,7 +504,7 @@ static int connect_setup(struct transport *transport, int for_push, int verbose)
 	data->conn = git_connect(data->fd, transport->url,
 				 for_push ? data->options.receivepack :
 				 data->options.uploadpack,
-				 NULL,
+				 transport->remote->uploadpack2 > 0,
 				 verbose ? CONNECT_VERBOSE : 0);
 
 	return 0;
@@ -548,6 +548,7 @@ static int fetch_refs_via_pack(struct transport *transport,
 		data->options.check_self_contained_and_connected;
 	args.cloning = transport->cloning;
 	args.update_shallow = data->options.update_shallow;
+	args.uploadpack2 = transport->remote->uploadpack2;
 
 	if (!data->got_remote_heads) {
 		connect_setup(transport, 0, 0);

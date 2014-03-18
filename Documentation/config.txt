@@ -2084,6 +2084,16 @@ remote.pushdefault::
 	`branch.<name>.remote` for all branches, and is overridden by
 	`branch.<name>.pushremote` for specific branches.
 
+remote.useUploadPack2::
+	Set to "always" to use only upload-pack version 2, "never" to
+	always use the original "upload-pack", "auto" to use the
+	original protocol, but if the remote claims it support version
+	2, then set "remote.<name>.useUploadPack2" to
+	"always". Default to "auto".
+
+remote.<name>.useUploadPack2::
+	Override remote.useUploadPack2 per remote.
+
 remote.<name>.url::
 	The URL of a remote repository.  See linkgit:git-fetch[1] or
 	linkgit:git-push[1].

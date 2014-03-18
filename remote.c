@@ -52,6 +52,7 @@ static const char *default_remote_name;
 static const char *branch_pushremote_name;
 static const char *pushremote_name;
 static int explicit_default_remote_name;
+static int uploadpack2;
 
 static struct rewrites rewrites;
 static struct rewrites rewrites_push;
@@ -400,6 +401,7 @@ static int handle_config(const char *key, const char *value, void *cb)
 		return 0;
 	remote = make_remote(name, subkey - name);
 	remote->origin = REMOTE_CONFIG;
+	remote->uploadpack2 = uploadpack2;
 	if (!strcmp(subkey, ".mirror"))
 		remote->mirror = git_config_bool(key, value);
 	else if (!strcmp(subkey, ".skipdefaultupdate"))
@@ -452,6 +454,15 @@ static int handle_config(const char *key, const char *value, void *cb)
 	} else if (!strcmp(subkey, ".proxy")) {
 		return git_config_string((const char **)&remote->http_proxy,
 					 key, value);
+	} else if (!strcmp(subkey, ".useuploadpack2")) {
+		if (!strcasecmp(value, "always"))
+			remote->uploadpack2 = 1;
+		else if (!strcasecmp(value, "never"))
+			remote->uploadpack2 = -1;
+		else if (!strcasecmp(value, "auto"))
+			remote->uploadpack2 = 0;
+		else
+			return error("invalue value '%s' for remote.*.useUploadPack2", value);
 	} else if (!strcmp(subkey, ".vcs")) {
 		return git_config_string(&remote->foreign_vcs, key, value);
 	}
