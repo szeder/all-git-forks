@@ -222,10 +222,11 @@ version prefixed with '+'.
 diffcore-pickaxe: For Detecting Addition/Deletion of Specified String
 ---------------------------------------------------------------------
 
-This transformation limits the set of filepairs to those that change
+This transformation limits the set of filepairs to those that involve
 specified strings between the preimage and the postimage in a certain
-way.  -S<block of text> and -G<regular expression> options are used to
-specify different ways these strings are sought.
+way.  -S<block of text>, -G<regular expression>, and
+--function-name<regular expression> options are used to specify
+different ways these strings are sought.
 
 "-S<block of text>" detects filepairs whose preimage and postimage
 have different number of occurrences of the specified block of text.
@@ -250,6 +251,16 @@ that match their respective criterion are kept in the output.  When
 criterion in a changeset, the entire changeset is kept.  This behavior
 is designed to make reviewing changes in the context of the whole
 changeset easier.
+
+"--function-name<regular expression>" detects filepairs whose textual
+diff contains a hunk header that matches the given regular expression.
+The hunk header is generated via the diff driver specified in
+`.gitattributes`, and is intended to reflect the "function context"
+(in the sense of `--function-context`) in which the change occurs,
+with programming-language-dependent heuristics. As of now, the
+programming language is not auto-detected in any way. Also note that
+hunks whose headers do not match the regular expression are not
+currently filtered out; this is only a filepair filter.
 
 diffcore-order: For Sorting the Output Based on Filenames
 ---------------------------------------------------------

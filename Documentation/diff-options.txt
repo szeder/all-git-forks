@@ -427,6 +427,15 @@ information.
 --pickaxe-regex::
 	Treat the <string> given to `-S` as an extended POSIX regular
 	expression to match.
+
+--function-name<regex>::
+  Look for differences whose patch text contains hunk headers that match
+  <regex>. This can be useful to locate changes to a particular function or
+  other semantic element in a program, since hunk headers are intended to
+  indicate the "function context" (in the sense of `--function-context`) in
+  which the particular change occurs. The function context is determined by the
+  diff driver corresponding to the file in question; see
+  linkgit:gitattributes[7] for details.
 endif::git-format-patch[]
 
 -O<orderfile>::
