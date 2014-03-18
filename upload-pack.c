@@ -551,6 +551,7 @@ static void receive_needs(void)
 	struct object_array shallows = OBJECT_ARRAY_INIT;
 	int depth = 0;
 	int has_non_tip = 0;
+	int first_want = 1;
 
 	shallow_nr = 0;
 	for (;;) {
@@ -589,7 +590,11 @@ static void receive_needs(void)
 			die("git upload-pack: protocol error, "
 			    "expected to get sha, not '%s'", line);
 
-		parse_features(line + 45);
+		if (first_want) {
+			parse_features(line + 45);
+			first_want = 0;
+		} else if (line[45])
+			die("garbage at the end of 'want' line %s", line + 45);
 
 		o = parse_object(sha1_buf);
 		if (!o)
