@@ -524,6 +524,28 @@ error:
 	}
 }
 
+static void parse_features(const char *features)
+{
+	if (parse_feature_request(features, "multi_ack_detailed"))
+		multi_ack = 2;
+	else if (parse_feature_request(features, "multi_ack"))
+		multi_ack = 1;
+	if (parse_feature_request(features, "no-done"))
+		no_done = 1;
+	if (parse_feature_request(features, "thin-pack"))
+		use_thin_pack = 1;
+	if (parse_feature_request(features, "ofs-delta"))
+		use_ofs_delta = 1;
+	if (parse_feature_request(features, "side-band-64k"))
+		use_sideband = LARGE_PACKET_MAX;
+	else if (parse_feature_request(features, "side-band"))
+		use_sideband = DEFAULT_PACKET_MAX;
+	if (parse_feature_request(features, "no-progress"))
+		no_progress = 1;
+	if (parse_feature_request(features, "include-tag"))
+		use_include_tag = 1;
+}
+
 static void receive_needs(void)
 {
 	struct object_array shallows = OBJECT_ARRAY_INIT;
@@ -533,7 +555,6 @@ static void receive_needs(void)
 	shallow_nr = 0;
 	for (;;) {
 		struct object *o;
-		const char *features;
 		unsigned char sha1_buf[20];
 		char *line = packet_read_line(0, NULL);
 		reset_timeout();
@@ -568,26 +589,7 @@ static void receive_needs(void)
 			die("git upload-pack: protocol error, "
 			    "expected to get sha, not '%s'", line);
 
-		features = line + 45;
-
-		if (parse_feature_request(features, "multi_ack_detailed"))
-			multi_ack = 2;
-		else if (parse_feature_request(features, "multi_ack"))
-			multi_ack = 1;
-		if (parse_feature_request(features, "no-done"))
-			no_done = 1;
-		if (parse_feature_request(features, "thin-pack"))
-			use_thin_pack = 1;
-		if (parse_feature_request(features, "ofs-delta"))
-			use_ofs_delta = 1;
-		if (parse_feature_request(features, "side-band-64k"))
-			use_sideband = LARGE_PACKET_MAX;
-		else if (parse_feature_request(features, "side-band"))
-			use_sideband = DEFAULT_PACKET_MAX;
-		if (parse_feature_request(features, "no-progress"))
-			no_progress = 1;
-		if (parse_feature_request(features, "include-tag"))
-			use_include_tag = 1;
+		parse_features(line + 45);
 
 		o = parse_object(sha1_buf);
 		if (!o)
