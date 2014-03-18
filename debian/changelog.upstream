@@ -1,3 +1,64 @@
+Version v1.9.1; changes since v1.9.0:
+-------------------------------------
+
+Brad King (4):
+      t3030-merge-recursive: test known breakage with empty work tree
+      read-cache.c: refactor --ignore-missing implementation
+      read-cache.c: extend make_cache_entry refresh flag with options
+      merge-recursive.c: tolerate missing files while refreshing index
+
+David Aguilar (1):
+      difftool: support repositories with .git-files
+
+David Sharp (1):
+      rev-parse: check i before using argv[i] against argc
+
+Jeff King (12):
+      expand_user_path: do not look at NULL path
+      handle_path_include: don't look at NULL value
+      tests: auto-set LIB_HTTPD_PORT from test name
+      t4212: test bogus timestamps with git-log
+      fsck: report integer overflow in author timestamps
+      date: check date overflow against time_t
+      log: handle integer overflow in timestamps
+      log: do not segfault on gmtime errors
+      remote: handle pushremote config in any order
+      show_ident_date: fix tz range check
+      clean: respect pathspecs with "-d"
+      clean: simplify dir/not-dir logic
+
+Junio C Hamano (4):
+      t0003: do not chdir the whole test process
+      check-attr: move to the top of working tree when in non-bare repository
+      t7800: add a difftool test for .git-files
+      Git 1.9.1
+
+Nguyễn Thái Ngọc Duy (17):
+      test: rename http fetch and push test files
+      pack-protocol.txt: clarify 'obj-id' in the last ACK after 'done'
+      protocol-capabilities.txt: refer multi_ack_detailed back to pack-protocol.txt
+      protocol-capabilities.txt: document no-done
+      fetch-pack: fix deepen shallow over smart http with no-done cap
+      t5537: move http tests out to t5539
+      reset: optionally setup worktree and refresh index on --mixed
+      pathspec: convert some match_pathspec_depth() to ce_path_match()
+      pathspec: convert some match_pathspec_depth() to dir_path_match()
+      pathspec: rename match_pathspec_depth() to match_pathspec()
+      dir.c: prepare match_pathspec_item for taking more flags
+      match_pathspec: match pathspec "foo/" against directory "foo"
+      pathspec: pass directory indicator to match_pathspec_item()
+      clean: replace match_pathspec() with dir_path_match()
+      clean: use cache_name_is_other()
+      diff.c: move diffcore_skip_stat_unmatch core logic out for reuse later
+      diff: do not quit early on stat-dirty files
+
+Sandy Carter (1):
+      i18n: proposed command missing leading dash
+
+Thomas Rast (1):
+      diff: do not reuse_worktree_file for submodules
+
+
 Version v1.9.0; changes since v1.9.0-rc3:
 -----------------------------------------
 
