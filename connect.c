@@ -9,6 +9,7 @@
 #include "url.h"
 #include "string-list.h"
 #include "sha1-array.h"
+#include "argv-array.h"
 
 static char *server_capabilities;
 static const char *parse_feature_value(const char *, const char *, int *);
@@ -663,7 +664,6 @@ struct child_process *git_connect(int fd[2], const char *url,
 	char *hostandport, *path;
 	struct child_process *conn = &no_fork;
 	enum protocol protocol;
-	const char **arg;
 	struct strbuf cmd = STRBUF_INIT;
 
 	/* Without this we cannot rely on waitpid() to tell
@@ -697,6 +697,7 @@ struct child_process *git_connect(int fd[2], const char *url,
 			     target_host, 0);
 		free(target_host);
 	} else {
+		struct argv_array argv = ARGV_ARRAY_INIT;
 		conn = xcalloc(1, sizeof(*conn));
 
 		strbuf_addstr(&cmd, prog);
@@ -704,7 +705,6 @@ struct child_process *git_connect(int fd[2], const char *url,
 		sq_quote_buf(&cmd, path);
 
 		conn->in = conn->out = -1;
-		conn->argv = arg = xcalloc(7, sizeof(*arg));
 		if (protocol == PROTO_SSH) {
 			const char *ssh = getenv("GIT_SSH");
 			int putty = ssh && strcasestr(ssh, "plink");
@@ -715,29 +715,28 @@ struct child_process *git_connect(int fd[2], const char *url,
 
 			if (!ssh) ssh = "ssh";
 
-			*arg++ = ssh;
+			argv_array_push(&argv, ssh);
 			if (putty && !strcasestr(ssh, "tortoiseplink"))
-				*arg++ = "-batch";
-			if (port) {
+				argv_array_push(&argv, "-batch");
+			if (port)
 				/* P is for PuTTY, p is for OpenSSH */
-				*arg++ = putty ? "-P" : "-p";
-				*arg++ = port;
-			}
-			*arg++ = ssh_host;
+				argv_array_pushl(&argv, putty ? "-P" : "-p",
+						 port, NULL);
+			argv_array_push(&argv, ssh_host);
 		}	else {
 			/* remove repo-local variables from the environment */
 			conn->env = local_repo_env;
 			conn->use_shell = 1;
 		}
-		*arg++ = cmd.buf;
-		*arg = NULL;
-
+		argv_array_push(&argv, cmd.buf);
+		conn->argv = argv.argv;
 		if (start_command(conn))
 			die("unable to fork");
 
 		fd[0] = conn->out; /* read from child's stdout */
 		fd[1] = conn->in;  /* write to child's stdin */
 		strbuf_release(&cmd);
+		argv_array_clear(&argv);
 	}
 	free(hostandport);
 	free(path);
