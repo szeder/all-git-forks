@@ -1,4 +1,4 @@
-git (1:1.9.1-0.1) unstable; urgency=low
+git (1:1.9.1-1) unstable; urgency=low
 
   * new upstream point release.
 
@@ -10,9 +10,9 @@ git (1:1.9.1-0.1) unstable; urgency=low
   [ Gilles Filippini ]
   * install git-subtree from contrib (closes: #704652).
   * debian/diff/0009-contrib-subtree-unset-prefix-before-proceeding.diff:
-    new; unset the 'prefix' environement variable before proceeding.
+    new; unset the 'prefix' environment variable before proceeding.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 25 Feb 2014 21:16:56 -0800
+ -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 18 Mar 2014 15:58:46 -0700
 
 git (1:1.9.0-1) unstable; urgency=low
 
