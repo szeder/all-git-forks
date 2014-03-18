@@ -221,7 +221,7 @@ static const char *path_ok(char *directory)
 	return NULL;		/* Fallthrough. Deny by default */
 }
 
-typedef int (*daemon_service_fn)(void);
+typedef int (*daemon_service_fn)(const char *);
 struct daemon_service {
 	const char *name;
 	const char *config_name;
@@ -318,7 +318,8 @@ error_return:
 	return -1;
 }
 
-static int run_service(char *dir, struct daemon_service *service)
+static int run_service(char *dir, struct daemon_service *service,
+		       const char *args)
 {
 	const char *path;
 	int enabled = service->enabled;
@@ -378,7 +379,7 @@ static int run_service(char *dir, struct daemon_service *service)
 	 */
 	signal(SIGTERM, SIG_IGN);
 
-	return service->fn();
+	return service->fn(args);
 }
 
 static void copy_to_log(int fd)
@@ -421,27 +422,31 @@ static int run_service_command(const char **argv)
 	return finish_command(&cld);
 }
 
-static int upload_pack(void)
+static int upload_pack(const char *args)
 {
 	/* Timeout as string */
 	char timeout_buf[64];
-	const char *argv[] = { "upload-pack", "--strict", NULL, ".", NULL };
+	const char *argv[] = { "upload-pack", "--strict", NULL, ".", NULL, NULL };
 
 	argv[2] = timeout_buf;
+	argv[4] = args;
 
 	snprintf(timeout_buf, sizeof timeout_buf, "--timeout=%u", timeout);
 	return run_service_command(argv);
 }
 
-static int upload_archive(void)
+static int upload_archive(const char *args)
 {
 	static const char *argv[] = { "upload-archive", ".", NULL };
+	if (args)
+		die("invalid request");
 	return run_service_command(argv);
 }
 
-static int receive_pack(void)
+static int receive_pack(const char *args)
 {
-	static const char *argv[] = { "receive-pack", ".", NULL };
+	static const char *argv[] = { "receive-pack", ".", NULL, NULL };
+	argv[2] = args;
 	return run_service_command(argv);
 }
 
@@ -513,7 +518,7 @@ static void parse_host_and_port(char *hostport, char **host,
 /*
  * Read the host as supplied by the client connection.
  */
-static void parse_host_arg(char *extra_args, int buflen)
+static void parse_host_arg(char *extra_args, char **remaining_args, int buflen)
 {
 	char *val;
 	int vallen;
@@ -540,8 +545,13 @@ static void parse_host_arg(char *extra_args, int buflen)
 			/* On to the next one */
 			extra_args = val + vallen;
 		}
-		if (extra_args < end && *extra_args)
-			die("Invalid request");
+	}
+
+	if (remaining_args) {
+		for (val = extra_args; val < end; val++)
+			if (!*val)
+				*val = ' ';
+		*remaining_args = extra_args;
 	}
 
 	/*
@@ -602,6 +612,7 @@ static int execute(void)
 {
 	char *line = packet_buffer;
 	int pktlen, len, i;
+	char *args = NULL;
 	char *addr = getenv("REMOTE_ADDR"), *port = getenv("REMOTE_PORT");
 
 	if (addr)
@@ -628,7 +639,7 @@ static int execute(void)
 	hostname = canon_hostname = ip_address = tcp_port = NULL;
 
 	if (len != pktlen)
-		parse_host_arg(line + len + 1, pktlen - len - 1);
+		parse_host_arg(line + len + 1, &args, pktlen - len - 1);
 
 	for (i = 0; i < ARRAY_SIZE(daemon_service); i++) {
 		struct daemon_service *s = &(daemon_service[i]);
@@ -640,7 +651,7 @@ static int execute(void)
 			 * Note: The directory here is probably context sensitive,
 			 * and might depend on the actual service being performed.
 			 */
-			return run_service(line + namelen + 5, s);
+			return run_service(line + namelen + 5, s, args);
 		}
 	}
 
