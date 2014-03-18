@@ -31,6 +31,7 @@ static const char upload_pack_usage[] = "git upload-pack [--strict] [--timeout=<
 
 static unsigned long oldest_have;
 
+static int uploadpack2;
 static int multi_ack;
 static int no_done;
 static int use_thin_pack, use_ofs_delta, use_include_tag;
@@ -831,6 +832,11 @@ int main(int argc, char **argv)
 			i++;
 			break;
 		}
+	}
+
+	if (i < argc) {
+		uploadpack2 = 1;
+		parse_features(argv[i++]);
 	}
 
 	if (i != argc-1)
