@@ -142,19 +142,13 @@ advice.*::
 --
 	pushUpdateRejected::
 		Set this variable to 'false' if you want to disable
-		'pushNonFFCurrent', 'pushNonFFDefault',
+		'pushNonFFCurrent',
 		'pushNonFFMatching', 'pushAlreadyExists',
 		'pushFetchFirst', and 'pushNeedsForce'
 		simultaneously.
 	pushNonFFCurrent::
 		Advice shown when linkgit:git-push[1] fails due to a
 		non-fast-forward update to the current branch.
-	pushNonFFDefault::
-		Advice to set 'push.default' to 'upstream' or 'current'
-		when you ran linkgit:git-push[1] and pushed 'matching
-		refs' by default (i.e. you did not provide an explicit
-		refspec, and no 'push.default' configuration was set)
-		and it resulted in a non-fast-forward error.
 	pushNonFFMatching::
 		Advice shown when you ran linkgit:git-push[1] and pushed
 		'matching refs' explicitly (i.e. you used ':', or
@@ -1613,6 +1607,10 @@ imap::
 	The configuration variables in the 'imap' section are described
 	in linkgit:git-imap-send[1].
 
+index.version::
+	Specify the version with which new index files should be
+	initialized.  This does not affect existing repositories.
+
 init.templatedir::
 	Specify the directory from which templates will be copied.
 	(See the "TEMPLATE DIRECTORY" section of linkgit:git-init[1].)
@@ -1645,7 +1643,7 @@ interactive.singlekey::
 	linkgit:git-add[1], linkgit:git-checkout[1], linkgit:git-commit[1],
 	linkgit:git-reset[1], and linkgit:git-stash[1]. Note that this
 	setting is silently ignored if portable keystroke input
-	is not available.
+	is not available; requires the Perl module Term::ReadKey.
 
 log.abbrevCommit::
 	If true, makes linkgit:git-log[1], linkgit:git-show[1], and
@@ -1980,7 +1978,7 @@ When pushing to a remote that is different from the remote you normally
 pull from, work as `current`.  This is the safest option and is suited
 for beginners.
 +
-This mode will become the default in Git 2.0.
+This mode has become the default in Git 2.0.
 
 * `matching` - push all branches having the same name on both ends.
   This makes the repository you are pushing to remember the set of
@@ -1999,8 +1997,8 @@ suitable for pushing into a shared central repository, as other
 people may add new branches there, or update the tip of existing
 branches outside your control.
 +
-This is currently the default, but Git 2.0 will change the default
-to `simple`.
+This used to be the default, but not since Git 2.0 (`simple` is the
+new default).
 
 --
 
@@ -2157,6 +2155,13 @@ repack.usedeltabaseoffset::
 	protocol such as http, then you need to set this option to
 	"false" and repack. Access from old Git versions over the
 	native protocol are unaffected by this option.
+
+repack.packKeptObjects::
+	If set to true, makes `git repack` act as if
+	`--pack-kept-objects` was passed. See linkgit:git-repack[1] for
+	details. Defaults to `false` normally, but `true` if a bitmap
+	index is being written (either via `--write-bitmap-index` or
+	`pack.writeBitmaps`).
 
 rerere.autoupdate::
 	When set to true, `git-rerere` updates the index with the
@@ -2337,6 +2342,13 @@ transfer.unpackLimit::
 	When `fetch.unpackLimit` or `receive.unpackLimit` are
 	not set, the value of this variable is used instead.
 	The default value is 100.
+
+uploadarchive.allowUnreachable::
+	If true, allow clients to use `git archive --remote` to request
+	any tree, whether reachable from the ref tips or not. See the
+	discussion in the `SECURITY` section of
+	linkgit:git-upload-archive[1] for more details. Defaults to
+	`false`.
 
 uploadpack.hiderefs::
 	String(s) `upload-pack` uses to decide which refs to omit
