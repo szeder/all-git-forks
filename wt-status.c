@@ -1483,23 +1483,21 @@ static void wt_shortstatus_print_tracking(struct wt_status *s)
 		return;
 	}
 
-	const char *gone   = s->no_gettext ? "gone"   : _("gone");
-	const char *behind = s->no_gettext ? "behind " : _("behind ");
-	const char *ahead  = s->no_gettext ? "ahead "  : _("ahead ");
+#define LABEL(string) (s->no_gettext ? (string) : _(string))
 
 	color_fprintf(s->fp, header_color, " [");
 	if (upstream_is_gone) {
-		color_fprintf(s->fp, header_color, gone);
+		color_fprintf(s->fp, header_color, LABEL(N_("gone")));
 	} else if (!num_ours) {
-		color_fprintf(s->fp, header_color, behind);
+		color_fprintf(s->fp, header_color, LABEL(N_("behind ")));
 		color_fprintf(s->fp, branch_color_remote, "%d", num_theirs);
 	} else if (!num_theirs) {
-		color_fprintf(s->fp, header_color, ahead);
+		color_fprintf(s->fp, header_color, LABEL(N_(("ahead "))));
 		color_fprintf(s->fp, branch_color_local, "%d", num_ours);
 	} else {
-		color_fprintf(s->fp, header_color, ahead);
+		color_fprintf(s->fp, header_color, LABEL(N_(("ahead "))));
 		color_fprintf(s->fp, branch_color_local, "%d", num_ours);
-		color_fprintf(s->fp, header_color, ", %s", behind);
+		color_fprintf(s->fp, header_color, ", %s", LABEL(N_("behind ")));
 		color_fprintf(s->fp, branch_color_remote, "%d", num_theirs);
 	}
 
