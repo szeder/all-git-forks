@@ -135,7 +135,7 @@ void hashmap_init(struct hashmap *map, hashmap_cmp_fn equals_function,
 	alloc_table(map, size);
 }
 
-void hashmap_free(struct hashmap *map, int free_entries)
+void hashmap_free(struct hashmap *map, enum hashmap_free_options free_entries)
 {
 	if (!map || !map->table)
 		return;
