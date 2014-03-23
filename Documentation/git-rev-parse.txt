@@ -316,8 +316,8 @@ Each line of options has this format:
 `<arg_hint>`::
 	`<arg_hint>`, if specified, is used as a name of the argument in the
 	help output, for options that take arguments. `<arg_hint>` is
-	terminated by the first whitespace. When you need to use space in the
-	argument hint use dash instead.
+	terminated by the first whitespace.  It is customary to use a
+	dash to separate words in a multi-word argument hint.
 
 The remainder of the line, after stripping the spaces, is used
 as the help associated to the option.
