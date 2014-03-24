@@ -358,9 +358,10 @@ void free_revision_meta(struct hash_table *revision_meta_hash)
 struct revision_cache_entry {
 	char *path;
 	char *revision;
-	char *sha1;
+	char *sha1_hex;
 	int isexec:1;
 	int need_free:1;
+	int invalid:1; // sha1 object does not exist any more (was garbage collected)
 };
 
 static struct hash_table *revision_cache_hash = NULL;
@@ -386,15 +387,16 @@ static int add_free_rev_entry(void *ptr, void *data)
 	struct revision_cache_entry *rev_ent = ptr;
 	struct strbuf *rev_cache_sb = data;
 
-	strbuf_addf(rev_cache_sb, "%s:%s:%c:%s\n",
-			rev_ent->sha1,
-			rev_ent->revision,
-			rev_ent->isexec ? 'x' : 'r',
-			rev_ent->path);
+	if (!rev_ent->invalid)
+		strbuf_addf(rev_cache_sb, "%s:%s:%c:%s\n",
+				rev_ent->sha1_hex,
+				rev_ent->revision,
+				rev_ent->isexec ? 'x' : 'r',
+				rev_ent->path);
 	if (rev_ent->need_free) {
 		free(rev_ent->path);
 		free(rev_ent->revision);
-		free(rev_ent->sha1);
+		free(rev_ent->sha1_hex);
 	}
 	free(rev_ent);
 	return 0;
@@ -457,7 +459,7 @@ static int load_revision_cache()
 		if (tail - p <= SHA1_STR_LEN)
 			break;
 		rev_ent = xcalloc(1, sizeof(*rev_ent));
-		rev_ent->sha1 = p;
+		rev_ent->sha1_hex = p;
 		p[SHA1_STR_LEN] = 0;
 		p += SHA1_STR_LEN + 1;
 		if (p >= tail)
@@ -497,6 +499,7 @@ static int load_revision_cache()
 
 char *revision_cache_lookup(const char *path, const char *revision, int *isexec)
 {
+	unsigned char sha1[20];
 	struct revision_cache_entry *rev_ent;
 	if (!revision_cache_hash)
 		load_revision_cache();
@@ -505,11 +508,20 @@ char *revision_cache_lookup(const char *path, const char *revision, int *isexec)
 	if (!rev_ent)
 		return NULL;
 
+	if (get_sha1_hex(rev_ent->sha1_hex, sha1))
+		error("invalid sha1 hex cache lookup: '%s'", rev_ent->sha1_hex);
+
+	if (!has_sha1_file(sha1)) {
+		// sha1 object was garbage collected
+		rev_ent->invalid = 1;
+		return NULL;
+	}
+
 	*isexec = rev_ent->isexec;
-	return rev_ent->sha1;
+	return rev_ent->sha1_hex;
 }
 
-int add_revision_cache_entry(const char *path, const char *revision, int isexec, const char *sha1)
+int add_revision_cache_entry(const char *path, const char *revision, int isexec, const char *sha1_hex)
 {
 	unsigned int hash;
 	struct revision_cache_entry *rev_ent;
@@ -527,7 +539,7 @@ int add_revision_cache_entry(const char *path, const char *revision, int isexec,
 
 	rev_ent->path = strdup(path);
 	rev_ent->revision = strdup(revision);
-	rev_ent->sha1 = strdup(sha1);
+	rev_ent->sha1_hex = strdup(sha1_hex);
 	rev_ent->isexec = isexec;
 	rev_ent->need_free = 1;
 	return 0;
