@@ -2390,11 +2390,11 @@ static void on_every_file_revision(const char *path, const char *revision, time_
 
 	file_meta = lookup_hash(hash_path(path), revision_meta_hash);
 	if (!file_meta)
-		die("no meta for file %s", path);
+		error("no meta for file %s", path);
 	if (file_meta->isdead)
-		die("file %s is dead in meta", path);
+		error("file %s is dead in meta", path);
 	if (strcmp(revision, file_meta->revision))
-		die("file %s revision is wrong: meta %s cvs %s",
+		error("file %s revision is wrong: meta %s cvs %s",
 		    path, file_meta->revision, revision);
 
 	file_meta->util = 1; // mark revision is visited
