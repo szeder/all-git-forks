@@ -62,7 +62,7 @@ time_t fuzz_time = 2*60*60; // 2 hours
 
 static int depth = 0;
 static int verbosity = 0;
-static int show_progress = 0;
+static int show_progress = 1;
 static int followtags = 0;
 static int dry_run = 0;
 static int initial_import = 0;
