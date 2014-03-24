@@ -1239,9 +1239,10 @@ static int store_aux(const char *key, const char *value, void *cb)
 {
 	const char *ep;
 	size_t section_len;
-
+	printf("called store\n");
 	switch (store.state) {
 	case KEY_SEEN:
+		printf("key seen\n");
 		if (matches(key, value)) {
 			if (store.seen == 1 && store.multi_replace == 0) {
 				warning("%s has multiple values", key);
@@ -1255,6 +1256,7 @@ static int store_aux(const char *key, const char *value, void *cb)
 		}
 		break;
 	case SECTION_SEEN:
+		printf("section seen\n");
 		/*
 		 * What we are looking for is in store.key (both
 		 * section and var), and its section part is baselen
@@ -1283,6 +1285,7 @@ static int store_aux(const char *key, const char *value, void *cb)
 		/* fallthru */
 	case SECTION_END_SEEN:
 	case START:
+	printf("start\n");
 		if (matches(key, value)) {
 			ALLOC_GROW(store.offset, store.seen + 1,
 				   store.offset_alloc);
@@ -1292,6 +1295,7 @@ static int store_aux(const char *key, const char *value, void *cb)
 		} else {
 			if (strrchr(key, '.') - key == store.baselen &&
 			      !strncmp(key, store.key, store.baselen)) {
+					printf("section seen\n");
 					store.state = SECTION_SEEN;
 					ALLOC_GROW(store.offset,
 						   store.seen + 1,
