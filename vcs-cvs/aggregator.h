@@ -31,11 +31,26 @@ struct cvs_commit_list {
  * and consistency validation
  */
 struct cvs_branch {
+	/*
+	 * cvs_commit_hash used to find potential commit with same author + message
+	 * which single file revision might belong to
+	 */
 	struct hash_table *cvs_commit_hash; // author_msg2ps -> cvs_commit hash
+
+	/*
+	 * revision_hash used to look up previos revision of a file
+	 * to make sure, that previos revision commit goes before commit of current revision
+	 */
 	struct hash_table *revision_hash; // path -> cvs_revision hash
 	struct cvs_revision_list *rev_list;
 	struct cvs_commit_list *cvs_commit_list;
 
+	/*
+	 * last_commit_revision_hash contains latest revisions which are already
+	 * in git repository, only newer revisions will be fetched from CVS.
+	 * This hash is used to verify that no revisions are synchronized twice
+	 * or skipped.
+	 */
 	struct hash_table *last_commit_revision_hash; // path -> cvs_revision hash
 	time_t last_revision_timestamp;
 
