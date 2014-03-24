@@ -164,7 +164,8 @@ static int diff_funcname_filter(mmfile_t *one, mmfile_t *two,
 	xecfg.interhunkctxlen = o->interhunkcontext;
 	if (!(one && two))
 		xecfg.flags = XDL_EMIT_FUNCCONTEXT;
-	xecfg.flags |= XDL_EMIT_FUNCNAMES | XDL_EMIT_MOREFUNCNAMES;
+	xecfg.flags |= XDL_EMIT_FUNCNAMES;
+  xecfg.flags |= XDL_EMIT_MOREFUNCNAMES | XDL_EMIT_MOREHUNKHEADS;
 	xdi_diff_outf(one, two, match_funcname, &ecbdata, &xpp, &xecfg);
 	return ecbdata.hit;
 }

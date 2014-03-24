@@ -23,11 +23,17 @@
 #include "xinclude.h"
 
 
+struct func_line {
+	long len;
+	char buf[80];
+};
+
+static long get_func_line(xdfile_t *xdf, xdemitconf_t const *xecfg,
+			  struct func_line *func_line, long start, long limit);
 
 
 static long xdl_get_rec(xdfile_t *xdf, long ri, char const **rec);
 static int xdl_emit_record(xdfile_t *xdf, long ri, char const *pre, xdemitcb_t *ecb);
-
 
 
 
@@ -58,12 +64,14 @@ static int xdl_emit_record(xdfile_t *xdf, long ri, char const *pre, xdemitcb_t *
  * inside the differential hunk according to the specified configuration.
  * Also advance xscr if the first changes must be discarded.
  */
-xdchange_t *xdl_get_hunk(xdchange_t **xscr, xdemitconf_t const *xecfg)
+xdchange_t *xdl_get_hunk(xdfenv_t *xe, xdchange_t **xscr,
+			 xdemitconf_t const *xecfg)
 {
 	xdchange_t *xch, *xchp, *lxch;
 	long max_common = 2 * xecfg->ctxlen + xecfg->interhunkctxlen;
 	long max_ignorable = xecfg->ctxlen;
 	unsigned long ignored = 0; /* number of ignored blank lines */
+
 
 	/* remove ignorable changes that are too far before other changes */
 	for (xchp = *xscr; xchp && xchp->ignore; xchp = xchp->next) {
@@ -79,8 +87,62 @@ xdchange_t *xdl_get_hunk(xdchange_t **xscr, xdemitconf_t const *xecfg)
 
 	lxch = *xscr;
 
+  if(xecfg->flags & XDL_EMIT_MOREHUNKHEADS)
+    for(xch = *xscr; xch; xch=xch->next) {
+		/*
+		 * If the current change contains a func_line, end this hunk
+		 * immediately before and create a new hunk starting from that
+		 * line.
+		 */
+			long fl_in_xch1 = get_func_line(&xe->xdf1, xecfg, NULL,
+						    xch->i1, xch->i1+xch->chg1);
+			long fl_in_xch2 = get_func_line(&xe->xdf2, xecfg, NULL,
+						    xch->i2, xch->i2+xch->chg2);
+      if(fl_in_xch1 >= xch->i1 && fl_in_xch2 >= xch->i2) {
+				xdchange_t *new_next =
+				   (xdchange_t *)xdl_malloc(sizeof(xdchange_t));
+				new_next->i1 = xch->i1+xch->chg1;
+				new_next->chg1 = 0;
+				new_next->i2 = xch->i2;
+				new_next->chg2 = xch->chg2;
+        new_next->ignore = xch->ignore;
+				new_next->next = xch->next;
+				xch->next = new_next;
+				xch->chg2 = 0;
+        return xch;
+      }
+			if(fl_in_xch1 > xch->i1) {
+				xdchange_t *new_next =
+				   (xdchange_t *)xdl_malloc(sizeof(xdchange_t));
+				new_next->i1 = fl_in_xch1;
+				new_next->chg1 = (xch->i1+xch->chg1)-fl_in_xch1;
+				new_next->i2 = xch->i2;
+				new_next->chg2 = xch->chg2;
+        new_next->ignore = xch->ignore;
+				new_next->next = xch->next;
+				xch->next = new_next;
+				xch->chg1 = fl_in_xch1 - xch->i1;
+				xch->chg2 = 0;
+        return xch;
+			}
+			if(fl_in_xch2 > xch->i2) {
+				xdchange_t *new_next =
+				   (xdchange_t *)xdl_malloc(sizeof(xdchange_t));
+				new_next->i2 = fl_in_xch2;
+				new_next->chg2 = (xch->i2+xch->chg2)-fl_in_xch2;
+				new_next->i1 = xch->i1 + xch->chg1;
+				new_next->chg1 = 0;
+        new_next->ignore = xch->ignore;
+				new_next->next = xch->next;
+				xch->next = new_next;
+				xch->chg2 = fl_in_xch2 - xch->i2;
+        return xch;
+			}
+		}
+
 	for (xchp = *xscr, xch = xchp->next; xch; xchp = xch, xch = xch->next) {
 		long distance = xch->i1 - (xchp->i1 + xchp->chg1);
+
 		if (distance > max_common)
 			break;
 
@@ -135,11 +197,6 @@ static int xdl_emit_common(xdfenv_t *xe, xdchange_t *xscr, xdemitcb_t *ecb,
 	return 0;
 }
 
-struct func_line {
-	long len;
-	char buf[80];
-};
-
 static long get_func_line(xdfile_t *xdf, xdemitconf_t const *xecfg,
 			  struct func_line *func_line, long start, long limit)
 {
@@ -174,7 +231,7 @@ int xdl_emit_diff(xdfenv_t *xe, xdchange_t *xscr, xdemitcb_t *ecb,
 		return xdl_emit_common(xe, xscr, ecb, xecfg);
 
 	for (xch = xscr; xch; xch = xche->next) {
-		xche = xdl_get_hunk(&xch, xecfg);
+		xche = xdl_get_hunk(xe, &xch, xecfg);
 		if (!xch)
 			break;
 
@@ -225,31 +282,21 @@ int xdl_emit_diff(xdfenv_t *xe, xdchange_t *xscr, xdemitcb_t *ecb,
 			}
 		}
 
-    if(xecfg->flags & XDL_EMIT_MOREHUNKHEADS) {
-    /*
-     * If the current hunk contains a func_line, end this hunk immediately
-     * before and create a new hunk starting from that line.
-     */
-
-      long fl_in_hunk = get_func_line(&xe->xdf2, xecfg, NULL, s2, e2);
-      if(fl_in_hunk >= 0) {
-        xdchange_t *new_next = (xdchange_t *)xdl_malloc(sizeof(xdchange_t));
-        new_next->next = xche->next;
-        //new_next->i1 = 
-      }
-    }
-
 		/*
 		 * Emit current hunk header.
 		 */
 
 		if (xecfg->flags & XDL_EMIT_FUNCNAMES) {
       if(xecfg->flags & XDL_EMIT_MOREFUNCNAMES) {
-        get_func_line(&xe->xdf2, xecfg, &func_line, s2, funclineprev2);
-        funclineprev2 = s2;
+        long fl_in_xch1 = get_func_line(&xe->xdf1, xecfg, &func_line,
+            xch->i1, xch->i1+xch->chg1);
+        if(fl_in_xch1 < 0) {
+          get_func_line(&xe->xdf2, xecfg, &func_line, xch->i2, funclineprev2);
+          funclineprev2 = xch->i2;
+        }
       } else {
-        get_func_line(&xe->xdf1, xecfg, &func_line, s1 - 1, funclineprev1);
-        funclineprev1 = s1 - 1;
+        get_func_line(&xe->xdf1, xecfg, &func_line, xch->i1 - 1, funclineprev1);
+        funclineprev1 = xch->i1 - 1;
       }
 		}
 		if (xdl_emit_hunk_hdr(s1 + 1, e1 - s1, s2 + 1, e2 - s2,
