@@ -326,7 +326,11 @@ int add_cvs_revision(struct cvs_branch *meta,
 	else {
 		if (strcmp(author, cvs_commit->author) !=0 ||
 		    strcmp_whitesp_ignore(msg, cvs_commit->msg) != 0) {
-			die("cvs_commit author/message hash collision");
+			die("cvs_commit author/message hash collision.\n"
+			    "author '%s' vs '%s'\n"
+			    "msg ''%s'' vs ''%s''",
+			    author, cvs_commit->author,
+			    msg, cvs_commit->msg);
 		}
 	}
 	rev->cvs_commit = cvs_commit;
