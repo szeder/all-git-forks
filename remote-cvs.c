@@ -22,20 +22,24 @@
 /*
  * TODO:
  * -/+ skip dead file addition to HEAD branch
- * - depth
- * - check that metadata correspond to ls-tree files (all files have rev, but no extra)
+ * - depth / import time
+ * -/+ check that metadata correspond to ls-tree files (all files have rev, but no extra)
  * - authors ref/note
- * - safe cancelation point + update time for branch OR ref cmp
+ * -/+ safe cancelation point + update time for branch OR ref cmp
  * - delay cvs connect until needed
  * - support options (progress, verbosity, dry-run)
  * - save CVS error and info messages in buffer
- * - sort rlog, avoid extra commits splits done same seconds
- * - validation code: rls -R -d -e -D 'Apr 27 12:37:19 2013'
+ * -/+ sort rlog, avoid extra commits splits done same seconds
+ * -/+ validation code: rls -R -d -e -D 'Apr 27 12:37:19 2013'
+ *
+ * - branch/tags import/ignore list
+ * - don't import changes from last N minutes
+ * - save next update dates to special ref
  *
  * KNOWN PITFALLS:
- * - CVS has not symlinks support
+ * - CVS has no symlinks support
  * - CVS file permittions history is not tracked (CVS have that feature commented)
- * - CVS file permittions cannot be changed for existing files
+ * - CVS file permittions cannot be changed for existing files (even if deleted first)
  *
  * [cvshelper]
  *	ignoreModeChange - bool
