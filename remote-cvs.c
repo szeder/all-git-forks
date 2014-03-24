@@ -52,6 +52,21 @@
  *	requireAuthorConvert - bool
  *	dumbRlog - bool
  *	aggregatorFuzzTime - long
+ * hooks:
+ *	- conversion of CVS user ids which are not in cvs-authors cache file
+ *	- input:
+ *	    <userid> as argument
+ *	- output expected:
+ *	    full user ident in form "user name <email>" on stdout
+ *	cvs-author-convert <userid>
+ *	cvs-import-commit
+ *	cvs-export-commit
+ * [filter "loose-blob"]
+ *  remote = cvs
+ *  smudge = get-loose-blob
+ *  clean = hash-loose-blob
+ *  required
+ *
  */
 
 static const char trace_key[] = "GIT_TRACE_CVS_HELPER";
