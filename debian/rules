@@ -33,6 +33,9 @@ ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
   MAKEFLAGS += -j$(NUMJOBS)
 endif
 
+PKG_ARCH =
+PKG_ARCH += git
+
 PKG_INDEP =
 PKG_INDEP += git-doc
 PKG_INDEP += git-arch
@@ -117,14 +120,14 @@ clean: deb-checkdir
 	rm -rf '$(TMP)'
 	rm -f patch-stamp build-arch-stamp build-indep-stamp
 	set -e; \
-	  for i in '' $(patsubst git%,%,$(PKG_INDEP)) -core; do \
+	  for i in $(patsubst git%,'%',$(PKG_ARCH) $(PKG_INDEP)) -core; do \
 	    rm -rf '$(GIT)'$$i; \
 	  done
 	rm -f debian/files debian/substvars
 	rm -f git-subtree
 
 install: install-arch install-indep
-git.install: install-arch
+$(patsubst %,%.install,$(PKG_ARCH)): install-arch
 install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	# git
 	rm -rf '$(GIT)'
@@ -144,12 +147,6 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	done
 	rm -f '$(GIT)'/usr/bin/git-cvsserver
 	rm -f '$(GIT)'/usr/bin/gitk
-	for i in '$(GIT)'/usr/bin/* '$(GIT)'/usr/lib/git-core/*; do \
-	  test -d $$i || \
-	  test "`head -c2 $$i`" = '#!' || \
-	  test "`head -c2 $$i`" = '# ' || \
-	  $(STRIP) -R .comment -R .note $$i; \
-	done
 	# don't include git-gui's lib
 	rm -rf '$(GIT)'/usr/share/git-gui/
 	# don't include gitk's lib
@@ -194,6 +191,15 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	ln -s ../../../git-core/contrib/hooks \
 	  '$(GIT)'/usr/share/doc/git/contrib/
 	find '$(GIT)'/usr/share/doc/git/ -name .gitignore | xargs rm -f
+	# strip all arch binaries
+	for p in $(patsubst git%,'%',$(PKG_ARCH)) ; do \
+	  for i in '$(GIT)'$$p/usr/bin/* '$(GIT)'$$p/usr/lib/git-core/*; do \
+	    test -d $$i || test ! -f $$i || \
+	    test "`head -c2 $$i`" = '#!' || \
+	    test "`head -c2 $$i`" = '# ' || \
+	    $(STRIP) -R .comment -R .note $$i; \
+	  done; \
+	done
 
 $(patsubst %,%.install,$(PKG_INDEP)) git-core.install: install-indep
 install-indep: build-arch-stamp build-indep-stamp
@@ -377,11 +383,13 @@ git-core.deb-docs:
 	: no doc dir
 
 binary: binary-arch binary-indep
-binary-arch: install-arch git.deb
+binary-arch: install-arch $(patsubst %,%.deb,$(PKG_ARCH))
 	rm -f debian/substvars
-	dpkg-shlibdeps '$(GIT)'/usr/bin/* '$(GIT)'/usr/lib/git-core/*
-	dpkg-gencontrol -isp -pgit -P'$(GIT)'
-	dpkg -b '$(GIT)' ..
+	for i in $(patsubst git%,'%',$(PKG_ARCH)); do \
+	  dpkg-shlibdeps '$(GIT)'$$i/usr/bin/* '$(GIT)'$$i/usr/lib/git-core/* ; \
+	  dpkg-gencontrol -isp -pgit$$i -P'$(GIT)'$$i && \
+	  dpkg -b '$(GIT)'$$i .. || exit 1; \
+	done
 binary-indep: install-indep $(patsubst %,%.deb,$(PKG_INDEP)) git-core.deb-DEBIAN
 	rm -f debian/substvars
 	for i in $(patsubst git%,%,$(PKG_INDEP)) -core; do \
