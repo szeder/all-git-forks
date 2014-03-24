@@ -267,7 +267,7 @@ static struct cvs_revision_list *finish_rev_sort(struct cvs_branch *meta)
 	return sorted;
 }
 
-int rev_cmp(const char *rev1, const char *rev2);
+int rev_cmp(const char *rev1, const char *rev2, const char *path);
 int add_cvs_revision(struct cvs_branch *meta,
 		       const char *path,
 		       const char *revision,
@@ -304,7 +304,7 @@ int add_cvs_revision(struct cvs_branch *meta,
 		if (strcmp(path, prev_meta->path))
 			die("file path hash collision: \"%s\" \"%s\"", path, prev_meta->path);
 
-		if (rev_cmp(prev_meta->revision, revision) >= 0)
+		if (rev_cmp(prev_meta->revision, revision, path) >= 0)
 			return 1;
 	}
 
@@ -629,7 +629,7 @@ int is_prev_rev(const char *rev1, const char *rev2)
 /*
  * TODO: make it work with revisions from diffent branches
  */
-int rev_cmp(const char *rev1, const char *rev2)
+int rev_cmp(const char *rev1, const char *rev2, const char *path)
 {
 	int rev1_br;
 	int rev1_ver;
@@ -651,11 +651,11 @@ int rev_cmp(const char *rev1, const char *rev2)
 		if (is_prev_branch(rev2, rev1))
 			return 1;
 
-		die("cannot compare revisions from different branches: \"%s\", \"%s\"", rev1, rev2);
+		die("cannot compare revisions from different branches (parent-child): \"%s\", \"%s\" file: \"%s\"", rev1, rev2, path);
 	}
 
 	if (strncmp(rev1, rev2, rev1_len))
-		die("cannot compare revisions from different branches: \"%s\", \"%s\"", rev1, rev2);
+		die("cannot compare revisions from different branches: \"%s\", \"%s\" file: \"%s\"", rev1, rev2, path);
 
 	if (rev1_br < rev2_br)
 		return -1;
@@ -678,7 +678,7 @@ int compare_fix_rev(const void *p1, const void *p2)
 	int is_same_file = !strcmp(rev1->path, rev2->path);
 
 	if (is_same_file) {
-		switch (rev_cmp(rev1->revision, rev2->revision)) {
+		switch (rev_cmp(rev1->revision, rev2->revision, NULL)) {
 		case -1:
 			if (rev1->timestamp > rev2->timestamp) {
 				error("file: %s revision: %s time: %ld is later then revision: %s time: %ld (fixing)",
