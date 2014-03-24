@@ -35,6 +35,7 @@ endif
 
 PKG_ARCH =
 PKG_ARCH += git
+PKG_ARCH += git-credential-gnome-keyring
 
 PKG_INDEP =
 PKG_INDEP += git-doc
@@ -72,6 +73,8 @@ build-arch-stamp: patch-stamp
 	DESTDIR='$(GIT)' $(MAKE) all $(OPTS)
 	DESTDIR='$(GIT)' $(MAKE) -C contrib/subtree all $(OPTS)
 	ln -s contrib/subtree/git-subtree
+	DESTDIR='$(GIT)'-credential-gnome-keyring \
+	  $(MAKE) -C contrib/credential/gnome-keyring all $(OPTS)
 	test -z '$(TEST)' || \
 	  DESTDIR='$(GIT)' $(MAKE) $(TEST) $(OPTS) || \
 	  GIT_TEST_OPTS=--verbose DESTDIR='$(GIT)' $(MAKE) $(TEST) $(OPTS)
@@ -108,6 +111,7 @@ clean: deb-checkdir
 	rm -f debian/git-remote-bzr.xml debian/git-remote-bzr.html
 	rm -f Documentation/git-remote-bzr.1
 	$(MAKE) clean $(OPTS)
+	$(MAKE) -C contrib/credential/gnome-keyring clean $(OPTS)
 	! test -e patch-stamp || \
 	{ \
 	  set -e; \
@@ -134,6 +138,8 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	install -d -m0755 '$(GIT)'/usr/bin
 	DESTDIR='$(GIT)' $(MAKE) install $(OPTS)
 	DESTDIR='$(GIT)' $(MAKE) -C contrib/subtree install $(OPTS)
+	DESTDIR='$(GIT)'-credential-gnome-keyring \
+	  $(MAKE) -C contrib/credential/gnome-keyring install $(OPTS)
 	install -d -m0755 '$(GIT)'/var/lib/git
 	rm -f '$(GIT)'/usr/share/perl5/Error.pm
 	rm -rf '$(GIT)'/usr/share/man
@@ -181,6 +187,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	install -d -m0755 '$(GIT)'/usr/share/doc/git
 	cp -R contrib '$(GIT)'/usr/share/doc/git/
 	rm -rf '$(GIT)'/usr/share/doc/git/contrib/completion
+	rm -rf '$(GIT)'/usr/share/doc/git/contrib/credential/gnome-keyring
 	rm -rf '$(GIT)'/usr/share/doc/git/contrib/emacs
 	rm -rf '$(GIT)'/usr/share/doc/git/contrib/mw-to-git
 	find '$(GIT)'/usr/share/doc/git/contrib -type f | xargs chmod 0644

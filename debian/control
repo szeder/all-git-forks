@@ -11,7 +11,8 @@ Build-Depends: libz-dev, libpcre3-dev, gettext,
  bzr, python, python-bzrlib,
  cvs, cvsps, libdbd-sqlite3-perl,
  unzip, libio-pty-perl,
- dpkg-dev (>= 1.16.2~)
+ dpkg-dev (>= 1.16.2~),
+ libgnome-keyring-dev
 Build-Depends-Indep: asciidoc, xmlto, docbook-xsl
 Standards-Version: 3.9.4.0
 Homepage: http://git-scm.com/
@@ -375,6 +376,23 @@ Description: fast, scalable, distributed revision control system (web interface)
  .
  If libcgi-fast-perl is installed, gitweb can also be run over FastCGI
  (and served by nginx, for example).
+
+Package: git-credential-gnome-keyring
+Architecture: any
+Multi-Arch: foreign
+Depends: ${shlibs:Depends}, git (>> 1:1.7.9)
+Description: fast, scalable, distributed revision control system (GNOME keyring helper)
+ Git is popular version control system designed to handle very large
+ projects with speed and efficiency; it is used for many high profile
+ open source projects, most notably the Linux kernel.
+ .
+ Git falls in the category of distributed source code management tools.
+ Every Git working directory is a full-fledged repository with full
+ revision tracking capabilities, not dependent on network access or a
+ central server.
+ .
+ This package provides a gitcredentials(7) helper to access and manage
+ usernames and passwords for Git stored in the GNOME keyring.
 
 Package: git-all
 Architecture: all

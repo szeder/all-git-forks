@@ -1,3 +1,12 @@
+git (1:1.9.1-1.1) unstable; urgency=low
+
+  * package git-credential-gnome-keyring (closes: #740739)
+  * debian/diff/0010-contrib-credential-gnome-keyring-Makefile....diff:
+    new; add install target
+  * debian/rules: add PKG_ARCH list to build arch-dependent packages
+
+ -- Philipp A. Hartmann <pah@qo.cx>  Fri, 21 Mar 2014 17:31:26 +0100
+
 git (1:1.9.1-1) unstable; urgency=low
 
   * new upstream point release.
