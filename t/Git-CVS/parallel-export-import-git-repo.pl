@@ -35,7 +35,7 @@ chdir($testdir) or die "$!";
 
 sub mk_cvs_repo() {
 	$cvsroot = $cvs_repo unless $cvsroot;
-	print "=> creating cvs repo\n";
+	print "=> creating cvs repo $cvsroot\n";
 	`cvs -d $cvsroot init`;
 	die "cvs init $?" if $?;
 	return $cvsroot;
