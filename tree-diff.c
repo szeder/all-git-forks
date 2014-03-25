@@ -6,41 +6,23 @@
 #include "diffcore.h"
 #include "tree.h"
 
-static void show_path(struct strbuf *base, struct diff_options *opt,
-		      struct tree_desc *t1, struct tree_desc *t2);
-
-static int compare_tree_entry(struct tree_desc *t1, struct tree_desc *t2,
-			      struct strbuf *base, struct diff_options *opt)
+/*
+ * Compare two tree entries, taking into account only path/S_ISDIR(mode),
+ * but not their sha1's.
+ *
+ * NOTE files and directories *always* compare differently, even when having
+ *      the same name - thanks to base_name_compare().
+ */
+static int tree_entry_pathcmp(struct tree_desc *t1, struct tree_desc *t2)
 {
-	unsigned mode1, mode2;
-	const char *path1, *path2;
-	const unsigned char *sha1, *sha2;
-	int cmp, pathlen1, pathlen2;
+	struct name_entry *e1, *e2;
+	int cmp;
 
-	sha1 = tree_entry_extract(t1, &path1, &mode1);
-	sha2 = tree_entry_extract(t2, &path2, &mode2);
-
-	pathlen1 = tree_entry_len(&t1->entry);
-	pathlen2 = tree_entry_len(&t2->entry);
-
-	/*
-	 * NOTE files and directories *always* compare differently,
-	 * even when having the same name.
-	 */
-	cmp = base_name_compare(path1, pathlen1, mode1, path2, pathlen2, mode2);
-	if (cmp < 0) {
-		show_path(base, opt, t1, /*t2=*/NULL);
-		return -1;
-	}
-	if (cmp > 0) {
-		show_path(base, opt, /*t1=*/NULL, t2);
-		return 1;
-	}
-	if (!DIFF_OPT_TST(opt, FIND_COPIES_HARDER) && !hashcmp(sha1, sha2) && mode1 == mode2)
-		return 0;
-
-	show_path(base, opt, t1, t2);
-	return 0;
+	e1 = &t1->entry;
+	e2 = &t2->entry;
+	cmp = base_name_compare(e1->path, tree_entry_len(e1), e1->mode,
+				e2->path, tree_entry_len(e2), e2->mode);
+	return cmp;
 }
 
 
@@ -160,6 +142,8 @@ int diff_tree(struct tree_desc *t1, struct tree_desc *t2,
 	strbuf_add(&base, base_str, baselen);
 
 	for (;;) {
+		int cmp;
+
 		if (diff_can_quit_early(opt))
 			break;
 		if (opt->pathspec.nr) {
@@ -178,18 +162,31 @@ int diff_tree(struct tree_desc *t1, struct tree_desc *t2,
 			update_tree_entry(t1);
 			continue;
 		}
-		switch (compare_tree_entry(t1, t2, &base, opt)) {
-		case -1:
+
+		cmp = tree_entry_pathcmp(t1, t2);
+
+		/* t1 = t2 */
+		if (cmp == 0) {
+			if (DIFF_OPT_TST(opt, FIND_COPIES_HARDER) ||
+			    hashcmp(t1->entry.sha1, t2->entry.sha1) ||
+			    (t1->entry.mode != t2->entry.mode))
+				show_path(&base, opt, t1, t2);
+
 			update_tree_entry(t1);
-			continue;
-		case 0:
-			update_tree_entry(t1);
-			/* Fallthrough */
-		case 1:
 			update_tree_entry(t2);
-			continue;
 		}
-		die("git diff-tree: internal error");
+
+		/* t1 < t2 */
+		else if (cmp < 0) {
+			show_path(&base, opt, t1, /*t2=*/NULL);
+			update_tree_entry(t1);
+		}
+
+		/* t1 > t2 */
+		else {
+			show_path(&base, opt, /*t1=*/NULL, t2);
+			update_tree_entry(t2);
+		}
 	}
 
 	strbuf_release(&base);
