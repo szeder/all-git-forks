@@ -875,9 +875,8 @@ static void query_refspecs_multiple(struct refspec *refs, int ref_count, struct 
 		if (!refspec->dst)
 			continue;
 		if (refspec->pattern) {
-			if (match_name_with_pattern(key, needle, value, result)) {
+			if (match_name_with_pattern(key, needle, value, result))
 				string_list_append_nodup(results, *result);
-			}
 		} else if (!strcmp(needle, key)) {
 			string_list_append(results, value);
 		}
@@ -2078,32 +2077,29 @@ static int get_stale_heads_cb(const char *refname,
 
 	query_refspecs_multiple(info->refs, info->ref_count, &query, &matches);
 	if (matches.nr == 0)
-		return 0; /* No matches */
+		goto clean_exit; /* No matches */
 
 	/*
 	 * If we did find a suitable refspec and it's not a symref and
 	 * it's not in the list of refs that currently exist in that
-	 * remote we consider it to be stale. In order to deal with
+	 * remote, we consider it to be stale. In order to deal with
 	 * overlapping refspecs, we need to go over all of the
 	 * matching refs.
 	 */
 	if (flags & REF_ISSYMREF)
-		return 0;
+		goto clean_exit;
 
-	for (i = 0; i < matches.nr; i++) {
-		if (string_list_has_string(info->ref_names, matches.items[i].string)) {
+	for (i = 0; stale && i < matches.nr; i++)
+		if (string_list_has_string(info->ref_names, matches.items[i].string))
 			stale = 0;
-			break;
-		}
-	}
-
-	string_list_clear(&matches, 0);
 
 	if (stale) {
 		struct ref *ref = make_linked_ref(refname, &info->stale_refs_tail);
 		hashcpy(ref->new_sha1, sha1);
 	}
 
+clean_exit:
+	string_list_clear(&matches, 0);
 	return 0;
 }
 
