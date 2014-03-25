@@ -6,121 +6,122 @@
 #include "diffcore.h"
 #include "tree.h"
 
-static void show_entry(struct diff_options *opt, const char *prefix,
-		       struct tree_desc *desc, struct strbuf *base);
-
-static int compare_tree_entry(struct tree_desc *t1, struct tree_desc *t2,
-			      struct strbuf *base, struct diff_options *opt)
+/*
+ * Compare two tree entries, taking into account only path/S_ISDIR(mode),
+ * but not their sha1's.
+ *
+ * NOTE files and directories *always* compare differently, even when having
+ *      the same name - thanks to base_name_compare().
+ */
+static int tree_entry_pathcmp(struct tree_desc *t1, struct tree_desc *t2)
 {
-	unsigned mode1, mode2;
-	const char *path1, *path2;
-	const unsigned char *sha1, *sha2;
-	int cmp, pathlen1, pathlen2;
-	int old_baselen = base->len;
+	struct name_entry *e1, *e2;
+	int cmp;
 
-	sha1 = tree_entry_extract(t1, &path1, &mode1);
-	sha2 = tree_entry_extract(t2, &path2, &mode2);
-
-	pathlen1 = tree_entry_len(&t1->entry);
-	pathlen2 = tree_entry_len(&t2->entry);
-	cmp = base_name_compare(path1, pathlen1, mode1, path2, pathlen2, mode2);
-	if (cmp < 0) {
-		show_entry(opt, "-", t1, base);
-		return -1;
-	}
-	if (cmp > 0) {
-		show_entry(opt, "+", t2, base);
-		return 1;
-	}
-	if (!DIFF_OPT_TST(opt, FIND_COPIES_HARDER) && !hashcmp(sha1, sha2) && mode1 == mode2)
-		return 0;
-
-	/*
-	 * If the filemode has changed to/from a directory from/to a regular
-	 * file, we need to consider it a remove and an add.
-	 */
-	if (S_ISDIR(mode1) != S_ISDIR(mode2)) {
-		show_entry(opt, "-", t1, base);
-		show_entry(opt, "+", t2, base);
-		return 0;
-	}
-
-	strbuf_add(base, path1, pathlen1);
-	if (DIFF_OPT_TST(opt, RECURSIVE) && S_ISDIR(mode1)) {
-		if (DIFF_OPT_TST(opt, TREE_IN_RECURSIVE)) {
-			opt->change(opt, mode1, mode2,
-				    sha1, sha2, 1, 1, base->buf, 0, 0);
-		}
-		strbuf_addch(base, '/');
-		diff_tree_sha1(sha1, sha2, base->buf, opt);
-	} else {
-		opt->change(opt, mode1, mode2, sha1, sha2, 1, 1, base->buf, 0, 0);
-	}
-	strbuf_setlen(base, old_baselen);
-	return 0;
+	e1 = &t1->entry;
+	e2 = &t2->entry;
+	cmp = base_name_compare(e1->path, tree_entry_len(e1), e1->mode,
+				e2->path, tree_entry_len(e2), e2->mode);
+	return cmp;
 }
 
-/* A whole sub-tree went away or appeared */
-static void show_tree(struct diff_options *opt, const char *prefix,
-		      struct tree_desc *desc, struct strbuf *base)
+
+/* convert path, t1/t2 -> opt->diff_*() callbacks */
+static void emit_diff(struct diff_options *opt, struct strbuf *path,
+		      struct tree_desc *t1, struct tree_desc *t2)
 {
-	enum interesting match = entry_not_interesting;
-	for (; desc->size; update_tree_entry(desc)) {
-		if (match != all_entries_interesting) {
-			match = tree_entry_interesting(&desc->entry, base, 0,
-						       &opt->pathspec);
-			if (match == all_entries_not_interesting)
-				break;
-			if (match == entry_not_interesting)
-				continue;
+	unsigned int mode1 = t1 ? t1->entry.mode : 0;
+	unsigned int mode2 = t2 ? t2->entry.mode : 0;
+
+	if (mode1 && mode2) {
+		opt->change(opt, mode1, mode2, t1->entry.sha1, t2->entry.sha1,
+			1, 1, path->buf, 0, 0);
+	}
+	else {
+		const unsigned char *sha1;
+		unsigned int mode;
+		int addremove;
+
+		if (mode2) {
+			addremove = '+';
+			sha1 = t2->entry.sha1;
+			mode = mode2;
+		} else {
+			addremove = '-';
+			sha1 = t1->entry.sha1;
+			mode = mode1;
 		}
-		show_entry(opt, prefix, desc, base);
+
+		opt->add_remove(opt, addremove, mode, sha1, 1, path->buf, 0);
 	}
 }
 
-/* A file entry went away or appeared */
-static void show_entry(struct diff_options *opt, const char *prefix,
-		       struct tree_desc *desc, struct strbuf *base)
+
+/* new path should be added to diff
+ *
+ * 3 cases on how/when it should be called and behaves:
+ *
+ *	!t1,  t2	-> path added, parent lacks it
+ *	 t1, !t2	-> path removed from parent
+ *	 t1,  t2	-> path modified
+ */
+static void show_path(struct strbuf *base, struct diff_options *opt,
+		      struct tree_desc *t1, struct tree_desc *t2)
 {
 	unsigned mode;
 	const char *path;
-	const unsigned char *sha1 = tree_entry_extract(desc, &path, &mode);
-	int pathlen = tree_entry_len(&desc->entry);
+	int pathlen;
 	int old_baselen = base->len;
+	int isdir, recurse = 0, emitthis = 1;
+
+	/* at least something has to be valid */
+	assert(t1 || t2);
+
+	if (t2) {
+		/* path present in resulting tree */
+		tree_entry_extract(t2, &path, &mode);
+		pathlen = tree_entry_len(&t2->entry);
+		isdir = S_ISDIR(mode);
+	} else {
+		/*
+		 * a path was removed - take path from parent. Also take
+		 * mode from parent, to decide on recursion.
+		 */
+		tree_entry_extract(t1, &path, &mode);
+		pathlen = tree_entry_len(&t1->entry);
+
+		isdir = S_ISDIR(mode);
+		mode = 0;
+	}
+
+	if (DIFF_OPT_TST(opt, RECURSIVE) && isdir) {
+		recurse = 1;
+		emitthis = DIFF_OPT_TST(opt, TREE_IN_RECURSIVE);
+	}
 
 	strbuf_add(base, path, pathlen);
-	if (DIFF_OPT_TST(opt, RECURSIVE) && S_ISDIR(mode)) {
-		enum object_type type;
-		struct tree_desc inner;
-		void *tree;
-		unsigned long size;
 
-		tree = read_sha1_file(sha1, &type, &size);
-		if (!tree || type != OBJ_TREE)
-			die("corrupt tree sha %s", sha1_to_hex(sha1));
+	if (emitthis)
+		emit_diff(opt, base, t1, t2);
 
-		if (DIFF_OPT_TST(opt, TREE_IN_RECURSIVE))
-			opt->add_remove(opt, *prefix, mode, sha1, 1, base->buf, 0);
-
+	if (recurse) {
 		strbuf_addch(base, '/');
-
-		init_tree_desc(&inner, tree, size);
-		show_tree(opt, prefix, &inner, base);
-		free(tree);
-	} else
-		opt->add_remove(opt, prefix[0], mode, sha1, 1, base->buf, 0);
+		diff_tree_sha1(t1 ? t1->entry.sha1 : NULL,
+			       t2 ? t2->entry.sha1 : NULL, base->buf, opt);
+	}
 
 	strbuf_setlen(base, old_baselen);
 }
 
 static void skip_uninteresting(struct tree_desc *t, struct strbuf *base,
-			       struct diff_options *opt,
-			       enum interesting *match)
+			       struct diff_options *opt)
 {
+	enum interesting match;
+
 	while (t->size) {
-		*match = tree_entry_interesting(&t->entry, base, 0, &opt->pathspec);
-		if (*match) {
-			if (*match == all_entries_not_interesting)
+		match = tree_entry_interesting(&t->entry, base, 0, &opt->pathspec);
+		if (match) {
+			if (match == all_entries_not_interesting)
 				t->size = 0;
 			break;
 		}
@@ -133,8 +134,6 @@ int diff_tree(struct tree_desc *t1, struct tree_desc *t2,
 {
 	struct strbuf base;
 	int baselen = strlen(base_str);
-	enum interesting t1_match = entry_not_interesting;
-	enum interesting t2_match = entry_not_interesting;
 
 	/* Enable recursion indefinitely */
 	opt->pathspec.recursive = DIFF_OPT_TST(opt, RECURSIVE);
@@ -143,36 +142,51 @@ int diff_tree(struct tree_desc *t1, struct tree_desc *t2,
 	strbuf_add(&base, base_str, baselen);
 
 	for (;;) {
+		int cmp;
+
 		if (diff_can_quit_early(opt))
 			break;
 		if (opt->pathspec.nr) {
-			skip_uninteresting(t1, &base, opt, &t1_match);
-			skip_uninteresting(t2, &base, opt, &t2_match);
+			skip_uninteresting(t1, &base, opt);
+			skip_uninteresting(t2, &base, opt);
 		}
 		if (!t1->size) {
 			if (!t2->size)
 				break;
-			show_entry(opt, "+", t2, &base);
+			show_path(&base, opt, /*t1=*/NULL, t2);
 			update_tree_entry(t2);
 			continue;
 		}
 		if (!t2->size) {
-			show_entry(opt, "-", t1, &base);
+			show_path(&base, opt, t1, /*t2=*/NULL);
 			update_tree_entry(t1);
 			continue;
 		}
-		switch (compare_tree_entry(t1, t2, &base, opt)) {
-		case -1:
+
+		cmp = tree_entry_pathcmp(t1, t2);
+
+		/* t1 = t2 */
+		if (cmp == 0) {
+			if (DIFF_OPT_TST(opt, FIND_COPIES_HARDER) ||
+			    hashcmp(t1->entry.sha1, t2->entry.sha1) ||
+			    (t1->entry.mode != t2->entry.mode))
+				show_path(&base, opt, t1, t2);
+
 			update_tree_entry(t1);
-			continue;
-		case 0:
-			update_tree_entry(t1);
-			/* Fallthrough */
-		case 1:
 			update_tree_entry(t2);
-			continue;
 		}
-		die("git diff-tree: internal error");
+
+		/* t1 < t2 */
+		else if (cmp < 0) {
+			show_path(&base, opt, t1, /*t2=*/NULL);
+			update_tree_entry(t1);
+		}
+
+		/* t1 > t2 */
+		else {
+			show_path(&base, opt, /*t1=*/NULL, t2);
+			update_tree_entry(t2);
+		}
 	}
 
 	strbuf_release(&base);
