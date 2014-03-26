@@ -455,3 +455,16 @@ struct passwd *xgetpwuid_self(void)
 		    errno ? strerror(errno) : _("no such user"));
 	return pw;
 }
+
+void lowercase(char *p)
+{
+	for (; *p; p++)
+		*p = tolower(*p);
+}
+
+char *xstrdup_tolower(const char *str)
+{
+	char *dup = xstrdup(str);
+	lowercase(dup);
+	return dup;
+}

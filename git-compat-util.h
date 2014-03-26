@@ -721,4 +721,8 @@ void warn_on_inaccessible(const char *path);
 /* Get the passwd entry for the UID of the current process. */
 struct passwd *xgetpwuid_self(void);
 
+/* Lowercase strings */
+extern void lowercase(char *str);
+extern char *xstrdup_tolower(const char *str);
+
 #endif
