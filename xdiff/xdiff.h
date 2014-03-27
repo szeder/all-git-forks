@@ -45,6 +45,7 @@ extern "C" {
 #define XDL_EMIT_COMMON (1 << 1)
 #define XDL_EMIT_FUNCCONTEXT (1 << 2)
 #define XDL_EMIT_MOREFUNCNAMES (1 << 3)
+#define XDL_EMIT_MOREHUNKHEADS (1 << 4)
 
 #define XDL_MMB_READONLY (1 << 0)
 
