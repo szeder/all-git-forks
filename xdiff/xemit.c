@@ -295,8 +295,8 @@ int xdl_emit_diff(xdfenv_t *xe, xdchange_t *xscr, xdemitcb_t *ecb,
           funclineprev2 = xch->i2;
         }
       } else {
-        get_func_line(&xe->xdf1, xecfg, &func_line, xch->i1 - 1, funclineprev1);
-        funclineprev1 = xch->i1 - 1;
+        get_func_line(&xe->xdf1, xecfg, &func_line, s1 - 1, funclineprev1);
+        funclineprev1 = s1 - 1;
       }
 		}
 		if (xdl_emit_hunk_hdr(s1 + 1, e1 - s1, s2 + 1, e2 - s2,
