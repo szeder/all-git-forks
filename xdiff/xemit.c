@@ -23,6 +23,10 @@
 #include "xinclude.h"
 
 
+struct func_line {
+	long len;
+	char buf[80];
+};
 
 
 static long xdl_get_rec(xdfile_t *xdf, long ri, char const **rec);
@@ -135,12 +139,7 @@ static int xdl_emit_common(xdfenv_t *xe, xdchange_t *xscr, xdemitcb_t *ecb,
 	return 0;
 }
 
-struct func_line {
-	long len;
-	char buf[80];
-};
-
-static long get_func_line(xdfenv_t *xe, xdemitconf_t const *xecfg,
+static long get_func_line(xdfile_t *xdf, xdemitconf_t const *xecfg,
 			  struct func_line *func_line, long start, long limit)
 {
 	find_func_t ff = xecfg->find_func ? xecfg->find_func : def_ff;
@@ -150,9 +149,9 @@ static long get_func_line(xdfenv_t *xe, xdemitconf_t const *xecfg,
 	buf = func_line ? func_line->buf : dummy;
 	size = func_line ? sizeof(func_line->buf) : sizeof(dummy);
 
-	for (l = start; l != limit && 0 <= l && l < xe->xdf1.nrec; l += step) {
+	for (l = start; l != limit && 0 <= l && l < xdf->nrec; l += step) {
 		const char *rec;
-		long reclen = xdl_get_rec(&xe->xdf1, l, &rec);
+		long reclen = xdl_get_rec(xdf, l, &rec);
 		long len = ff(rec, reclen, buf, size, xecfg->find_func_priv);
 		if (len >= 0) {
 			if (func_line)
@@ -167,7 +166,7 @@ int xdl_emit_diff(xdfenv_t *xe, xdchange_t *xscr, xdemitcb_t *ecb,
 		  xdemitconf_t const *xecfg) {
 	long s1, s2, e1, e2, lctx;
 	xdchange_t *xch, *xche;
-	long funclineprev = -1;
+	long funclineprev1 = -1, funclineprev2 = -1;
 	struct func_line func_line = { 0 };
 
 	if (xecfg->flags & XDL_EMIT_COMMON)
@@ -182,7 +181,7 @@ int xdl_emit_diff(xdfenv_t *xe, xdchange_t *xscr, xdemitcb_t *ecb,
 		s2 = XDL_MAX(xch->i2 - xecfg->ctxlen, 0);
 
 		if (xecfg->flags & XDL_EMIT_FUNCCONTEXT) {
-			long fs1 = get_func_line(xe, xecfg, NULL, xch->i1, -1);
+			long fs1 = get_func_line(&xe->xdf1, xecfg, NULL, xch->i1, -1);
 			if (fs1 < 0)
 				fs1 = 0;
 			if (fs1 < s1) {
@@ -200,7 +199,7 @@ int xdl_emit_diff(xdfenv_t *xe, xdchange_t *xscr, xdemitcb_t *ecb,
 		e2 = xche->i2 + xche->chg2 + lctx;
 
 		if (xecfg->flags & XDL_EMIT_FUNCCONTEXT) {
-			long fe1 = get_func_line(xe, xecfg, NULL,
+			long fe1 = get_func_line(&xe->xdf1, xecfg, NULL,
 						 xche->i1 + xche->chg1,
 						 xe->xdf1.nrec);
 			if (fe1 < 0)
@@ -218,7 +217,7 @@ int xdl_emit_diff(xdfenv_t *xe, xdchange_t *xscr, xdemitcb_t *ecb,
 			if (xche->next) {
 				long l = xche->next->i1;
 				if (l <= e1 ||
-				    get_func_line(xe, xecfg, NULL, l, e1) < 0) {
+				    get_func_line(&xe->xdf1, xecfg, NULL, l, e1) < 0) {
 					xche = xche->next;
 					goto again;
 				}
@@ -229,10 +228,18 @@ int xdl_emit_diff(xdfenv_t *xe, xdchange_t *xscr, xdemitcb_t *ecb,
 		 * Emit current hunk header.
 		 */
 
-		if (xecfg->flags & XDL_EMIT_FUNCNAMES) {
-			get_func_line(xe, xecfg, &func_line,
-				      s1 - 1, funclineprev);
-			funclineprev = s1 - 1;
+		if (xecfg->flags & XDL_EMIT_MOREFUNCNAMES) {
+			long fl_in_xch1 = get_func_line(&xe->xdf1, xecfg,
+					&func_line, xch->i1, xch->i1+xch->chg1);
+			if (fl_in_xch1 < 0) {
+				get_func_line(&xe->xdf2, xecfg, &func_line,
+					      xch->i2, funclineprev2);
+				funclineprev2 = xch->i2;
+			}
+		} else if (xecfg->flags & XDL_EMIT_FUNCNAMES) {
+			get_func_line(&xe->xdf1, xecfg, &func_line,
+				      s1 - 1, funclineprev1);
+			funclineprev1 = s1 - 1;
 		}
 		if (xdl_emit_hunk_hdr(s1 + 1, e1 - s1, s2 + 1, e2 - s2,
 				      func_line.buf, func_line.len, ecb) < 0)

@@ -2380,6 +2380,8 @@ static void builtin_diff(const char *name_a,
 		xecfg.ctxlen = o->context;
 		xecfg.interhunkctxlen = o->interhunkcontext;
 		xecfg.flags = XDL_EMIT_FUNCNAMES;
+		if (o->funcname)
+			xecfg.flags |= XDL_EMIT_MOREFUNCNAMES;
 		if (DIFF_OPT_TST(o, FUNCCONTEXT))
 			xecfg.flags |= XDL_EMIT_FUNCCONTEXT;
 		if (pe)
