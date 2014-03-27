@@ -136,6 +136,11 @@ span.signoff {
 	color: #888888;
 }
 
+span.good_sign {
+	font-weight: bold;
+	background-color: #aaffaa;
+}
+
 div.log_link {
 	padding: 0px 8px;
 	font-size: 70%;
