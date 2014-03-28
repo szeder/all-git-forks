@@ -42,7 +42,7 @@ int prepare_bitmap_walk(struct rev_info *revs);
 int reuse_partial_packfile_from_bitmap(struct packed_git **packfile, uint32_t *entries, off_t *up_to);
 int rebuild_existing_bitmaps(struct packing_data *mapping, khash_sha1 *reused_bitmaps, int show_progress);
 
-int bitmap_have(const unsigned char *sha1);
+int bitmap_have(const unsigned char *sha1, uint32_t *name_hash, off_t *offset);
 
 void bitmap_writer_show_progress(int show);
 void bitmap_writer_set_checksum(unsigned char *sha1);

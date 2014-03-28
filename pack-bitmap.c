@@ -1070,8 +1070,9 @@ int rebuild_existing_bitmaps(struct packing_data *mapping,
 	return 0;
 }
 
-int bitmap_have(const unsigned char *sha1)
+int bitmap_have(const unsigned char *sha1, uint32_t *name_hash, off_t *offset)
 {
+	struct revindex_entry *entry;
 	int pos;
 
 	if (!bitmap_git.loaded)
@@ -1082,6 +1083,14 @@ int bitmap_have(const unsigned char *sha1)
 	pos = bitmap_position_packfile(sha1);
 	if (pos < 0)
 		return 0;
+
+	entry = &bitmap_git.pack->revindex[pos];
+	*offset = entry->offset;
+	if (bitmap_git.hashes)
+		*name_hash = ntohl(bitmap_git.hashes[entry->nr]);
+	else
+		*name_hash = 0;
+
 
 	return bitmap_get(bitmap_git.haves, pos);
 }

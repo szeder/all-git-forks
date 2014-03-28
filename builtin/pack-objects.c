@@ -1461,38 +1461,38 @@ static void check_object(struct object_entry *entry)
 			break;
 		}
 
-		if (base_ref && (base_entry = packlist_find(&to_pack, base_ref, NULL))) {
-			/*
-			 * If base_ref was set above that means we wish to
-			 * reuse delta data, and we even found that base
-			 * in the list of objects we want to pack. Goodie!
-			 *
-			 * Depth value does not matter - find_deltas() will
-			 * never consider reused delta as the base object to
-			 * deltify other objects against, in order to avoid
-			 * circular deltas.
-			 */
-			entry->type = entry->in_pack_type;
-			entry->delta = base_entry;
-			entry->delta_size = entry->size;
-			entry->delta_sibling = base_entry->delta_child;
-			base_entry->delta_child = entry;
-			unuse_pack(&w_curs);
-			return;
-		} else if(thin && base_ref && bitmap_have(base_ref)) {
-			entry->type = entry->in_pack_type;
-			entry->delta_size = entry->size;
-			/*
-			 * XXX we'll leak this, but it's probably OK
-			 * since we'll exit immediately after the packing
-			 * is done
-			 */
-			entry->delta = xcalloc(1, sizeof(*entry->delta));
-			hashcpy(entry->delta->idx.sha1, base_ref);
-			entry->delta->preferred_base = 1;
-			entry->delta->filled = 1;
-			unuse_pack(&w_curs);
-			return;
+		if (base_ref) {
+			uint32_t name_hash, index_pos;
+			off_t offset;
+
+			base_entry = packlist_find(&to_pack, base_ref, &index_pos);
+			if (!base_entry && thin &&
+			    bitmap_have(base_ref, &name_hash, &offset)) {
+				create_object_entry(base_ref, OBJ_NONE,
+						    name_hash, 1, 0, index_pos,
+						    entry->in_pack, offset);
+				base_entry = packlist_find(&to_pack, base_ref, NULL);
+				check_object(base_entry);
+			}
+			if (base_entry) {
+				/*
+				 * If base_ref was set above that means we wish to
+				 * reuse delta data, and we even found that base
+				 * in the list of objects we want to pack. Goodie!
+				 *
+				 * Depth value does not matter - find_deltas() will
+				 * never consider reused delta as the base object to
+				 * deltify other objects against, in order to avoid
+				 * circular deltas.
+				 */
+				entry->type = entry->in_pack_type;
+				entry->delta = base_entry;
+				entry->delta_size = entry->size;
+				entry->delta_sibling = base_entry->delta_child;
+				base_entry->delta_child = entry;
+				unuse_pack(&w_curs);
+				return;
+			}
 		}
 
 		if (entry->type) {
@@ -1623,7 +1623,7 @@ static void break_delta_chains(struct object_entry *entry)
 
 static void get_object_details(void)
 {
-	uint32_t i;
+	uint32_t i, nr;
 	struct object_entry **sorted_by_offset;
 
 	sorted_by_offset = xcalloc(to_pack.nr_objects, sizeof(struct object_entry *));
@@ -1631,7 +1631,7 @@ static void get_object_details(void)
 		sorted_by_offset[i] = to_pack.objects + i;
 	QSORT(sorted_by_offset, to_pack.nr_objects, pack_offset_sort);
 
-	for (i = 0; i < to_pack.nr_objects; i++) {
+	for (i = 0, nr = to_pack.nr_objects; i < nr; i++) {
 		struct object_entry *entry = sorted_by_offset[i];
 		check_object(entry);
 		if (big_file_threshold < entry->size)
