@@ -3432,7 +3432,7 @@ sub parse_commit_text {
 	my %co;
 	my @signature = ();
 
-	pop @commit_lines if ($commit_lines[-1] eq "\0"); # Remove '\0'
+	pop @commit_lines if ($commit_lines[-1] =~ "\0"); # Remove '\0'
 
 	if (! @commit_lines) {
 		return;
@@ -3470,8 +3470,7 @@ sub parse_commit_text {
 				$co{'committer_name'} = $co{'committer'};
 			}
 		}
-		elsif ($line =~ /^gpg: /)
-		{
+		elsif ($line =~ /^gpg: /) {
 			push @signature, $line;
 		}
 	}
@@ -3513,9 +3512,8 @@ sub parse_commit_text {
 	foreach my $line (@commit_lines) {
 		$line =~ s/^    //;
 	}
-	push(@commit_lines, "") if(scalar(@signature) > 0);
-	foreach my $sig (@signature)
-	{
+	push(@commit_lines, "") if scalar @signature;
+	foreach my $sig (@signature) {
 		push(@commit_lines, $sig);
 	}
 	$co{'comment'} = \@commit_lines;
@@ -3539,8 +3537,6 @@ sub parse_commit {
 	my %co;
 
 	local $/ = "\0";
-
-
 
 	open my $fd, "-|", git_cmd(), "show",
 		"--quiet",
@@ -4586,6 +4582,13 @@ sub git_print_log {
 		if ($line =~ m/^gpg:(.)+Good(.)+/) {
 			if (! $opts{'-remove_signoff'}) {
 				print "<span class=\"good_sign\">" . esc_html($line) . "</span><br/>\n";
+				$skip_blank_line = 1;
+			}
+			next;
+		}
+		elsif ($line =~ m/^gpg:(.)+BAD(.)+/) {
+			if (! $opts{'-remove_signoff'}) {
+				print "<span class=\"bad_sign\">" . esc_html($line) . "</span><br/>\n";
 				$skip_blank_line = 1;
 			}
 			next;

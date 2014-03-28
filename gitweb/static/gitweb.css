@@ -141,6 +141,12 @@ span.good_sign {
 	background-color: #aaffaa;
 }
 
+span.bad_sign {
+	font-weight: bold;
+	background-color: #880000;
+	color: #ffffff
+}
+
 div.log_link {
 	padding: 0px 8px;
 	font-size: 70%;
