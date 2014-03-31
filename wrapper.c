@@ -489,3 +489,16 @@ int write_file(const char *path, int fatal, const char *fmt, ...)
 	}
 	return 0;
 }
+
+void lowercase(char *p)
+{
+	for (; *p; p++)
+		*p = tolower(*p);
+}
+
+char *xstrdup_tolower(const char *str)
+{
+	char *dup = xstrdup(str);
+	lowercase(dup);
+	return dup;
+}

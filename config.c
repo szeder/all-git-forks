@@ -147,12 +147,6 @@ int git_config_include(const char *var, const char *value, void *data)
 	return ret;
 }
 
-static void lowercase(char *p)
-{
-	for (; *p; p++)
-		*p = tolower(*p);
-}
-
 void git_config_push_parameter(const char *text)
 {
 	struct strbuf env = STRBUF_INIT;
