@@ -6,17 +6,33 @@
 #include "diffcore.h"
 #include "tree.h"
 
+
+static int ll_diff_tree_sha1(const unsigned char *old, const unsigned char *new,
+			     struct strbuf *base, struct diff_options *opt);
+
 /*
  * Compare two tree entries, taking into account only path/S_ISDIR(mode),
  * but not their sha1's.
  *
  * NOTE files and directories *always* compare differently, even when having
  *      the same name - thanks to base_name_compare().
+ *
+ * NOTE empty (=invalid) descriptor(s) take part in comparison as +infty,
+ *      so that they sort *after* valid tree entries.
+ *
+ *      Due to this convention, if trees are scanned in sorted order, all
+ *      non-empty descriptors will be processed first.
  */
 static int tree_entry_pathcmp(struct tree_desc *t1, struct tree_desc *t2)
 {
 	struct name_entry *e1, *e2;
 	int cmp;
+
+	/* empty descriptors sort after valid tree entries */
+	if (!t1->size)
+		return t2->size ? 1 : 0;
+	else if (!t2->size)
+		return -1;
 
 	e1 = &t1->entry;
 	e2 = &t2->entry;
@@ -106,8 +122,8 @@ static void show_path(struct strbuf *base, struct diff_options *opt,
 
 	if (recurse) {
 		strbuf_addch(base, '/');
-		diff_tree_sha1(t1 ? t1->entry.sha1 : NULL,
-			       t2 ? t2->entry.sha1 : NULL, base->buf, opt);
+		ll_diff_tree_sha1(t1 ? t1->entry.sha1 : NULL,
+				  t2 ? t2->entry.sha1 : NULL, base, opt);
 	}
 
 	strbuf_setlen(base, old_baselen);
@@ -129,17 +145,17 @@ static void skip_uninteresting(struct tree_desc *t, struct strbuf *base,
 	}
 }
 
-int diff_tree(struct tree_desc *t1, struct tree_desc *t2,
-	      const char *base_str, struct diff_options *opt)
+static int ll_diff_tree_sha1(const unsigned char *old, const unsigned char *new,
+			     struct strbuf *base, struct diff_options *opt)
 {
-	struct strbuf base;
-	int baselen = strlen(base_str);
+	struct tree_desc t1, t2;
+	void *t1tree, *t2tree;
+
+	t1tree = fill_tree_descriptor(&t1, old);
+	t2tree = fill_tree_descriptor(&t2, new);
 
 	/* Enable recursion indefinitely */
 	opt->pathspec.recursive = DIFF_OPT_TST(opt, RECURSIVE);
-
-	strbuf_init(&base, PATH_MAX);
-	strbuf_add(&base, base_str, baselen);
 
 	for (;;) {
 		int cmp;
@@ -147,49 +163,40 @@ int diff_tree(struct tree_desc *t1, struct tree_desc *t2,
 		if (diff_can_quit_early(opt))
 			break;
 		if (opt->pathspec.nr) {
-			skip_uninteresting(t1, &base, opt);
-			skip_uninteresting(t2, &base, opt);
+			skip_uninteresting(&t1, base, opt);
+			skip_uninteresting(&t2, base, opt);
 		}
-		if (!t1->size) {
-			if (!t2->size)
-				break;
-			show_path(&base, opt, /*t1=*/NULL, t2);
-			update_tree_entry(t2);
-			continue;
-		}
-		if (!t2->size) {
-			show_path(&base, opt, t1, /*t2=*/NULL);
-			update_tree_entry(t1);
-			continue;
-		}
+		if (!t1.size && !t2.size)
+			break;
 
-		cmp = tree_entry_pathcmp(t1, t2);
+		cmp = tree_entry_pathcmp(&t1, &t2);
 
 		/* t1 = t2 */
 		if (cmp == 0) {
 			if (DIFF_OPT_TST(opt, FIND_COPIES_HARDER) ||
-			    hashcmp(t1->entry.sha1, t2->entry.sha1) ||
-			    (t1->entry.mode != t2->entry.mode))
-				show_path(&base, opt, t1, t2);
+			    hashcmp(t1.entry.sha1, t2.entry.sha1) ||
+			    (t1.entry.mode != t2.entry.mode))
+				show_path(base, opt, &t1, &t2);
 
-			update_tree_entry(t1);
-			update_tree_entry(t2);
+			update_tree_entry(&t1);
+			update_tree_entry(&t2);
 		}
 
 		/* t1 < t2 */
 		else if (cmp < 0) {
-			show_path(&base, opt, t1, /*t2=*/NULL);
-			update_tree_entry(t1);
+			show_path(base, opt, &t1, /*t2=*/NULL);
+			update_tree_entry(&t1);
 		}
 
 		/* t1 > t2 */
 		else {
-			show_path(&base, opt, /*t1=*/NULL, t2);
-			update_tree_entry(t2);
+			show_path(base, opt, /*t1=*/NULL, &t2);
+			update_tree_entry(&t2);
 		}
 	}
 
-	strbuf_release(&base);
+	free(t2tree);
+	free(t1tree);
 	return 0;
 }
 
@@ -204,7 +211,7 @@ static inline int diff_might_be_rename(void)
 		!DIFF_FILE_VALID(diff_queued_diff.queue[0]->one);
 }
 
-static void try_to_follow_renames(struct tree_desc *t1, struct tree_desc *t2, const char *base, struct diff_options *opt)
+static void try_to_follow_renames(const unsigned char *old, const unsigned char *new, struct strbuf *base, struct diff_options *opt)
 {
 	struct diff_options diff_opts;
 	struct diff_queue_struct *q = &diff_queued_diff;
@@ -242,7 +249,7 @@ static void try_to_follow_renames(struct tree_desc *t1, struct tree_desc *t2, co
 	diff_opts.break_opt = opt->break_opt;
 	diff_opts.rename_score = opt->rename_score;
 	diff_setup_done(&diff_opts);
-	diff_tree(t1, t2, base, &diff_opts);
+	ll_diff_tree_sha1(old, new, base, &diff_opts);
 	diffcore_std(&diff_opts);
 	free_pathspec(&diff_opts.pathspec);
 
@@ -301,25 +308,20 @@ static void try_to_follow_renames(struct tree_desc *t1, struct tree_desc *t2, co
 	q->nr = 1;
 }
 
-int diff_tree_sha1(const unsigned char *old, const unsigned char *new, const char *base, struct diff_options *opt)
+int diff_tree_sha1(const unsigned char *old, const unsigned char *new, const char *base_str, struct diff_options *opt)
 {
-	void *tree1, *tree2;
-	struct tree_desc t1, t2;
-	unsigned long size1, size2;
+	struct strbuf base;
 	int retval;
 
-	tree1 = fill_tree_descriptor(&t1, old);
-	tree2 = fill_tree_descriptor(&t2, new);
-	size1 = t1.size;
-	size2 = t2.size;
-	retval = diff_tree(&t1, &t2, base, opt);
-	if (!*base && DIFF_OPT_TST(opt, FOLLOW_RENAMES) && diff_might_be_rename()) {
-		init_tree_desc(&t1, tree1, size1);
-		init_tree_desc(&t2, tree2, size2);
-		try_to_follow_renames(&t1, &t2, base, opt);
-	}
-	free(tree1);
-	free(tree2);
+	strbuf_init(&base, PATH_MAX);
+	strbuf_addstr(&base, base_str);
+
+	retval = ll_diff_tree_sha1(old, new, &base, opt);
+	if (!*base_str && DIFF_OPT_TST(opt, FOLLOW_RENAMES) && diff_might_be_rename())
+		try_to_follow_renames(old, new, &base, opt);
+
+	strbuf_release(&base);
+
 	return retval;
 }
 
