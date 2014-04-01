@@ -182,15 +182,16 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 	strbuf_addstr(&lk->lock_filename, ".lock");
 
 	lk->fd = open(lk->lock_filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
-	if (0 <= lk->fd) {
-		if (adjust_shared_perm(lk->lock_filename.buf)) {
-			error("cannot fix permission bits on %s", lk->lock_filename.buf);
-			rollback_lock_file(lk);
-			return -1;
-		}
-	}
-	else
+	if (lk->fd < 0) {
 		strbuf_setlen(&lk->lock_filename, 0);
+		return -1;
+	}
+	if (adjust_shared_perm(lk->lock_filename.buf)) {
+		error("cannot fix permission bits on %s", lk->lock_filename.buf);
+		rollback_lock_file(lk);
+		return -1;
+	}
+
 	return lk->fd;
 }
 
