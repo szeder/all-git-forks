@@ -537,7 +537,7 @@ struct lock_file {
 	struct lock_file *next;
 	int fd;
 	pid_t owner;
-	char on_list;
+	unsigned char flags;
 	char filename[PATH_MAX];
 };
 #define LOCK_DIE_ON_ERROR 1

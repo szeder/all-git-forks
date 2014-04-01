@@ -4,6 +4,11 @@
 #include "cache.h"
 #include "sigchain.h"
 
+/* Values for lock_file::flags: */
+
+/* This lock_file instance is in the lock_file_list */
+#define LOCK_FLAGS_ON_LIST 0x01
+
 static struct lock_file *lock_file_list;
 static const char *alternate_index_output;
 
@@ -137,10 +142,10 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 	}
 
 	lk->owner = getpid();
-	if (!lk->on_list) {
+	if (!(lk->flags & LOCK_FLAGS_ON_LIST)) {
 		/* Initialize *lk and add it to lock_file_list: */
 		lk->fd = -1;
-		lk->on_list = 1;
+		lk->flags |= LOCK_FLAGS_ON_LIST;
 		lk->filename[0] = 0;
 		lk->next = lock_file_list;
 		lock_file_list = lk;
