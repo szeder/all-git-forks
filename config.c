@@ -1306,7 +1306,7 @@ static int store_aux(const char *key, const char *value, void *cb)
 static int write_error(struct lock_file *lk)
 {
 	error("failed to write new configuration file %s",
-	      lk->lock_filename.buf);
+	      lk->staging_filename.buf);
 
 	/* Same error code as "failed to rename". */
 	return 4;
