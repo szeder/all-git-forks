@@ -181,11 +181,6 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 		resolve_symlink(&lk->lock_filename);
 	strbuf_addstr(&lk->lock_filename, ".lock");
 
-	if (lk->lock_filename.len >= PATH_MAX) {
-		error("%s: path too long", lk->lock_filename.buf);
-		strbuf_setlen(&lk->lock_filename, 0);
-		return -1;
-	}
 	lk->fd = open(lk->lock_filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (0 <= lk->fd) {
 		if (adjust_shared_perm(lk->lock_filename.buf)) {
@@ -273,17 +268,19 @@ int close_lock_file(struct lock_file *lk)
 
 int commit_lock_file(struct lock_file *lk)
 {
-	char result_file[PATH_MAX];
+	char *result_file;
 	size_t path_len = lk->lock_filename.len - LOCK_SUFFIX_LEN;
+	int err = 0;
 
 	if (lk->fd >= 0 && close_lock_file(lk))
 		return -1;
-	memcpy(result_file, lk->lock_filename.buf, path_len);
-	result_file[path_len] = '\0';
+	result_file = xmemdupz(lk->lock_filename.buf, path_len);
 	if (rename(lk->lock_filename.buf, result_file))
-		return -1;
-	strbuf_setlen(&lk->lock_filename, 0);
-	return 0;
+		err = -1;
+	else
+		strbuf_setlen(&lk->lock_filename, 0);
+	free(result_file);
+	return err;
 }
 
 int hold_locked_index(struct lock_file *lk, int die_on_error)
