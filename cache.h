@@ -541,12 +541,16 @@ struct lock_file {
 	struct strbuf filename;
 	struct strbuf staging_filename;
 };
+
 #define LOCK_DIE_ON_ERROR 1
 #define LOCK_NODEREF 2
+#define LOCK_SEPARATE_STAGING_FILE 4
+
 extern int unable_to_lock_error(const char *path, int err);
 extern NORETURN void unable_to_lock_index_die(const char *path, int err);
 extern int hold_lock_file_for_update(struct lock_file *, const char *path, int);
 extern int hold_lock_file_for_append(struct lock_file *, const char *path, int);
+extern int activate_staging_file(struct lock_file *);
 extern int commit_lock_file(struct lock_file *);
 extern void update_index_if_able(struct index_state *, struct lock_file *);
 

@@ -40,8 +40,16 @@
  *   used in any way, it is initialized, permanently registered in the
  *   lock_file_list, and flags & LOCK_FLAGS_ON_LIST is set.
  *
- * - Locked, lockfile open (after hold_lock_file_for_update() or
- *   hold_lock_file_for_append()).  In this state, the lockfile
+ * - Initialized but unlocked (after commit_lock_file(),
+ *   rollback_lock_file(), or a failed attempt to lock).  In this
+ *   state, filename and staging_filename are the empty string.  The
+ *   object is left registered in the lock_file_list, and flags ==
+ *   LOCK_FLAGS_ON_LIST.
+ *
+ * - Locked, lockfile open for writing (after
+ *   hold_lock_file_for_update() or hold_lock_file_for_append()
+ *   without the LOCK_SEPARATE_STAGING_FILE flag).  In this state,
+ *   flags & LOCK_FLAGS_SEPARATE_STAGING_FILE is not set, the lockfile
  *   exists, filename holds the filename of the locked file,
  *   staging_filename holds the filename of the lockfile, fd holds a
  *   file descriptor open for writing to the lockfile, and owner holds
@@ -50,11 +58,21 @@
  * - Locked, lockfile closed (after close_lock_file()).  Same as the
  *   previous state, except that the lockfile is closed and fd is -1.
  *
- * - Unlocked (after commit_lock_file(), rollback_lock_file(), or a
- *   failed attempt to lock).  In this state, filename and
- *   staging_filename are the empty string and fd is -1.  The object is left
- *   registered in the lock_file_list, and flags & LOCK_FLAGS_ON_LIST
- *   is set.
+ * - Locked, separate staging file open for writing (after
+ *   hold_lock_file_for_update() or hold_lock_file_for_append() with
+ *   the LOCK_SEPARATE_STAGING_FILE flag).  In this state, flags &
+ *   LOCK_FLAGS_SEPARATE_STAGING_FILE is set, the lockfile exists but
+ *   is closed, filename holds the filename of the locked file,
+ *   staging_filename holds the filename of the separate staging file,
+ *   fd holds a file descriptor open for writing to the separate
+ *   staging file, and owner holds the PID of the process that locked
+ *   the file.
+ *
+ * - Locked, staging file closed and activated (after
+ *   activate_staging_file()).  Same as the previous state, except
+ *   that the separate staging file has already been closed and
+ *   renamed on top of the file, staging_filename is the empty string,
+ *   and fd is -1.
  *
  * See Documentation/api-lockfile.txt for more information.
  */
@@ -63,6 +81,9 @@
 
 /* This lock_file instance is in the lock_file_list */
 #define LOCK_FLAGS_ON_LIST 0x01
+
+/* A separate staging file is being used */
+#define LOCK_FLAGS_SEPARATE_STAGING_FILE 0x02
 
 static struct lock_file *lock_file_list;
 static const char *alternate_index_output;
@@ -155,8 +176,30 @@ static void resolve_symlink(struct strbuf *path)
 	strbuf_release(&link);
 }
 
-/* We append ".lock" to the filename to derive the lockfile name: */
+/*
+ * We append ".lock" to the filename to derive the lockfile name, and
+ * ".new" to derive the staging file name.  The longer of the two:
+ */
 #define LOCK_SUFFIX_LEN 5
+
+static int open_staging_file(struct lock_file *lk)
+{
+	strbuf_setlen(&lk->staging_filename, lk->filename.len);
+	strbuf_addstr(&lk->staging_filename, ".new");
+	lk->fd = open(lk->staging_filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
+	if (lk->fd < 0) {
+		return -1;
+	}
+	if (adjust_shared_perm(lk->staging_filename.buf)) {
+		error("cannot fix permission bits on %s", lk->staging_filename.buf);
+		if (close(lk->fd))
+			error("cannot close staging file %s", lk->staging_filename.buf);
+		lk->fd = -1;
+		unlink_or_warn(lk->staging_filename.buf);
+		return -1;
+	}
+	return 0;
+}
 
 static int lock_file(struct lock_file *lk, const char *path, int flags)
 {
@@ -199,11 +242,22 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 	if (adjust_shared_perm(lk->staging_filename.buf)) {
 		error("cannot fix permission bits on %s",
 		      lk->staging_filename.buf);
-		rollback_lock_file(lk);
-		return -1;
+		goto rollback_and_fail;
+	}
+	if (flags & LOCK_SEPARATE_STAGING_FILE) {
+		if (close_lock_file(lk))
+			goto rollback_and_fail;
+
+		lk->flags |= LOCK_FLAGS_SEPARATE_STAGING_FILE;
+		if (open_staging_file(lk))
+			goto rollback_and_fail;
 	}
 
 	return lk->fd;
+
+rollback_and_fail:
+	rollback_lock_file(lk);
+	return -1;
 }
 
 static char *unable_to_lock_message(const char *path, int err)
@@ -271,19 +325,54 @@ int hold_lock_file_for_append(struct lock_file *lk, const char *path, int flags)
 	return fd;
 }
 
-int close_lock_file(struct lock_file *lk)
+static int close_staging_file(struct lock_file *lk)
 {
 	int fd = lk->fd;
+
 	lk->fd = -1;
 	return close(fd);
 }
 
+int close_lock_file(struct lock_file *lk)
+{
+	assert(!(lk->flags & LOCK_FLAGS_SEPARATE_STAGING_FILE));
+	return close_staging_file(lk);
+}
+
+int activate_staging_file(struct lock_file *lk)
+{
+	int err;
+
+	assert(lk->flags & LOCK_FLAGS_SEPARATE_STAGING_FILE);
+	assert(lk->fd >= 0);
+	assert(lk->staging_filename.len);
+
+	if (close_staging_file(lk))
+		return -1;
+
+	err = rename(lk->staging_filename.buf, lk->filename.buf);
+	strbuf_setlen(&lk->staging_filename, 0);
+
+	return err;
+}
+
 int commit_lock_file(struct lock_file *lk)
 {
-	if (lk->fd >= 0 && close_lock_file(lk))
-		return -1;
-	if (rename(lk->staging_filename.buf, lk->filename.buf))
-		return -1;
+	if (lk->flags & LOCK_FLAGS_SEPARATE_STAGING_FILE) {
+		if (lk->staging_filename.len) {
+			assert(lk->fd >= 0);
+			if (activate_staging_file(lk))
+				return -1;
+		}
+		strbuf_addbuf(&lk->staging_filename, &lk->filename);
+		strbuf_addstr(&lk->staging_filename, ".lock");
+		unlink_or_warn(lk->staging_filename.buf);
+	} else {
+		if (lk->fd >= 0 && close_lock_file(lk))
+			return -1;
+		if (rename(lk->staging_filename.buf, lk->filename.buf))
+			return -1;
+	}
 	reset_lock_file(lk);
 	return 0;
 }
@@ -318,10 +407,21 @@ int commit_locked_index(struct lock_file *lk)
 
 void rollback_lock_file(struct lock_file *lk)
 {
-	if (lk->filename.len) {
-		if (lk->fd >= 0)
-			close_lock_file(lk);
-		unlink_or_warn(lk->staging_filename.buf);
-		reset_lock_file(lk);
+	if (!lk->filename.len)
+		return;
+
+	if (lk->fd >= 0)
+		close_staging_file(lk);
+
+	if (lk->flags & LOCK_FLAGS_SEPARATE_STAGING_FILE) {
+		if (lk->staging_filename.len) {
+			unlink_or_warn(lk->staging_filename.buf);
+			strbuf_setlen(&lk->staging_filename, 0);
+		}
+		strbuf_addbuf(&lk->staging_filename, &lk->filename);
+		strbuf_addstr(&lk->staging_filename, ".lock");
 	}
+
+	unlink_or_warn(lk->staging_filename.buf);
+	reset_lock_file(lk);
 }
