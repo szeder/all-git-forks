@@ -85,6 +85,14 @@ static void remove_lock_file_on_signal(int signo)
 	raise(signo);
 }
 
+static void reset_lock_file(struct lock_file *lk)
+{
+	lk->fd = -1;
+	strbuf_setlen(&lk->filename, 0);
+	strbuf_setlen(&lk->staging_filename, 0);
+	lk->flags = LOCK_FLAGS_ON_LIST;
+}
+
 /*
  * path = absolute or relative path name
  *
@@ -185,8 +193,7 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 
 	lk->fd = open(lk->staging_filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (lk->fd < 0) {
-		strbuf_setlen(&lk->filename, 0);
-		strbuf_setlen(&lk->staging_filename, 0);
+		reset_lock_file(lk);
 		return -1;
 	}
 	if (adjust_shared_perm(lk->staging_filename.buf)) {
@@ -273,17 +280,12 @@ int close_lock_file(struct lock_file *lk)
 
 int commit_lock_file(struct lock_file *lk)
 {
-	int err = 0;
-
 	if (lk->fd >= 0 && close_lock_file(lk))
 		return -1;
-	if (rename(lk->staging_filename.buf, lk->filename.buf)) {
-		err = -1;
-	} else {
-		strbuf_setlen(&lk->filename, 0);
-		strbuf_setlen(&lk->staging_filename, 0);
-	}
-	return err;
+	if (rename(lk->staging_filename.buf, lk->filename.buf))
+		return -1;
+	reset_lock_file(lk);
+	return 0;
 }
 
 int hold_locked_index(struct lock_file *lk, int die_on_error)
@@ -306,8 +308,8 @@ int commit_locked_index(struct lock_file *lk)
 			return -1;
 		if (rename(lk->staging_filename.buf, alternate_index_output))
 			return -1;
-		strbuf_setlen(&lk->filename, 0);
-		strbuf_setlen(&lk->staging_filename, 0);
+
+		reset_lock_file(lk);
 		return 0;
 	} else {
 		return commit_lock_file(lk);
@@ -320,7 +322,6 @@ void rollback_lock_file(struct lock_file *lk)
 		if (lk->fd >= 0)
 			close_lock_file(lk);
 		unlink_or_warn(lk->staging_filename.buf);
-		strbuf_setlen(&lk->filename, 0);
-		strbuf_setlen(&lk->staging_filename, 0);
+		reset_lock_file(lk);
 	}
 }
