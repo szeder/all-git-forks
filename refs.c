@@ -2822,7 +2822,7 @@ int write_ref_sha1(struct ref_lock *lock,
 	if (write_in_full(lock->lock_fd, sha1_to_hex(sha1), 40) != 40 ||
 	    write_in_full(lock->lock_fd, &term, 1) != 1
 		|| close_ref(lock) < 0) {
-		error("Couldn't write %s", lock->lk->lock_filename.buf);
+		error("Couldn't write %s", lock->lk->staging_filename.buf);
 		unlock_ref(lock);
 		return -1;
 	}
