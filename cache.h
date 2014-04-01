@@ -538,7 +538,7 @@ struct lock_file {
 	int fd;
 	pid_t owner;
 	unsigned char flags;
-	char filename[PATH_MAX];
+	struct strbuf lock_filename;
 };
 #define LOCK_DIE_ON_ERROR 1
 #define LOCK_NODEREF 2
