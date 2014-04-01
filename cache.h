@@ -538,6 +538,7 @@ struct lock_file {
 	int fd;
 	pid_t owner;
 	unsigned char flags;
+	struct strbuf filename;
 	struct strbuf lock_filename;
 };
 #define LOCK_DIE_ON_ERROR 1

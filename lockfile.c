@@ -35,24 +35,26 @@
  *
  * - Uninitialized.  In this state the object's flags field must be
  *   zero but the rest of the contents need not be initialized.  In
- *   particular, the lock_filename strbuf should *not* be initialized
- *   externally.  The first time the object is used in any way, it is
- *   initialized, permanently registered in the lock_file_list, and
- *   flags & LOCK_FLAGS_ON_LIST is set.
+ *   particular, the filename and lock_filename strbufs should *not*
+ *   be initialized externally.  The first time the object is used in
+ *   any way, it is initialized, permanently registered in the
+ *   lock_file_list, and flags & LOCK_FLAGS_ON_LIST is set.
  *
  * - Locked, lockfile open (after hold_lock_file_for_update() or
  *   hold_lock_file_for_append()).  In this state, the lockfile
- *   exists, lock_filename holds the filename of the lockfile, fd
- *   holds a file descriptor open for writing to the lockfile, and
- *   owner holds the PID of the process that locked the file.
+ *   exists, filename holds the filename of the locked file,
+ *   lock_filename holds the filename of the lockfile, fd holds a file
+ *   descriptor open for writing to the lockfile, and owner holds the
+ *   PID of the process that locked the file.
  *
  * - Locked, lockfile closed (after close_lock_file()).  Same as the
  *   previous state, except that the lockfile is closed and fd is -1.
  *
  * - Unlocked (after commit_lock_file(), rollback_lock_file(), or a
- *   failed attempt to lock).  In this state, lock_filename is the
- *   empty string and fd is -1.  The object is left registered in the
- *   lock_file_list, and flags & LOCK_FLAGS_ON_LIST is set.
+ *   failed attempt to lock).  In this state, filename and
+ *   lock_filename are the empty string and fd is -1.  The object is
+ *   left registered in the lock_file_list, and flags &
+ *   LOCK_FLAGS_ON_LIST is set.
  *
  * See Documentation/api-lockfile.txt for more information.
  */
@@ -164,25 +166,30 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 
 	lk->owner = getpid();
 	if (lk->flags & LOCK_FLAGS_ON_LIST) {
-		assert(!lk->lock_filename.len); /* object not already in use */
-		if (strbuf_avail(&lk->lock_filename) < path_len + LOCK_SUFFIX_LEN)
-			strbuf_grow(&lk->lock_filename, path_len + LOCK_SUFFIX_LEN);
+		/* Sanity check that object is not already in use: */
+		assert(!lk->filename.len);
+		assert(!lk->lock_filename.len);
 	} else {
 		/* Initialize *lk and add it to lock_file_list: */
 		lk->fd = -1;
 		lk->flags |= LOCK_FLAGS_ON_LIST;
-		strbuf_init(&lk->lock_filename, path_len + LOCK_SUFFIX_LEN);
+		strbuf_init(&lk->filename, path_len);
+		strbuf_init(&lk->lock_filename, 0);
 		lk->next = lock_file_list;
 		lock_file_list = lk;
 	}
 
-	strbuf_add(&lk->lock_filename, path, path_len);
+	strbuf_add(&lk->filename, path, path_len);
 	if (!(flags & LOCK_NODEREF))
-		resolve_symlink(&lk->lock_filename);
+		resolve_symlink(&lk->filename);
+
+	strbuf_grow(&lk->lock_filename, lk->filename.len + LOCK_SUFFIX_LEN);
+	strbuf_addbuf(&lk->lock_filename, &lk->filename);
 	strbuf_addstr(&lk->lock_filename, ".lock");
 
 	lk->fd = open(lk->lock_filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (lk->fd < 0) {
+		strbuf_setlen(&lk->filename, 0);
 		strbuf_setlen(&lk->lock_filename, 0);
 		return -1;
 	}
@@ -269,18 +276,16 @@ int close_lock_file(struct lock_file *lk)
 
 int commit_lock_file(struct lock_file *lk)
 {
-	char *result_file;
-	size_t path_len = lk->lock_filename.len - LOCK_SUFFIX_LEN;
 	int err = 0;
 
 	if (lk->fd >= 0 && close_lock_file(lk))
 		return -1;
-	result_file = xmemdupz(lk->lock_filename.buf, path_len);
-	if (rename(lk->lock_filename.buf, result_file))
+	if (rename(lk->lock_filename.buf, lk->filename.buf)) {
 		err = -1;
-	else
+	} else {
+		strbuf_setlen(&lk->filename, 0);
 		strbuf_setlen(&lk->lock_filename, 0);
-	free(result_file);
+	}
 	return err;
 }
 
@@ -304,19 +309,21 @@ int commit_locked_index(struct lock_file *lk)
 			return -1;
 		if (rename(lk->lock_filename.buf, alternate_index_output))
 			return -1;
+		strbuf_setlen(&lk->filename, 0);
 		strbuf_setlen(&lk->lock_filename, 0);
 		return 0;
-	}
-	else
+	} else {
 		return commit_lock_file(lk);
+	}
 }
 
 void rollback_lock_file(struct lock_file *lk)
 {
-	if (lk->lock_filename.len) {
+	if (lk->filename.len) {
 		if (lk->fd >= 0)
 			close_lock_file(lk);
 		unlink_or_warn(lk->lock_filename.buf);
+		strbuf_setlen(&lk->filename, 0);
 		strbuf_setlen(&lk->lock_filename, 0);
 	}
 }
