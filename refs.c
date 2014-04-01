@@ -2485,14 +2485,8 @@ static int repack_without_ref(const char *refname)
 static int delete_ref_loose(struct ref_lock *lock, int flag)
 {
 	if (!(flag & REF_ISPACKED) || flag & REF_ISSYMREF) {
-		/*
-		 * loose.  The loose file name is the same as the
-		 * lockfile name, minus ".lock":
-		 */
-		char *loose_filename = xmemdupz(lock->lk->lock_filename.buf,
-						lock->lk->lock_filename.len - 5);
-		int err = unlink_or_warn(loose_filename);
-		free(loose_filename);
+		/* loose */
+		int err = unlink_or_warn(lock->lk->filename.buf);
 		if (err && errno != ENOENT)
 			return 1;
 	}
