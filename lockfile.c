@@ -128,30 +128,25 @@ static void trim_last_path_elm(struct strbuf *path)
 static void resolve_symlink(struct strbuf *path)
 {
 	int depth = MAXDEPTH;
+	struct strbuf link;
+
+	strbuf_init(&link, path->len);
 
 	while (depth--) {
-		char link[PATH_MAX];
-		int link_len = readlink(path->buf, link, sizeof(link));
-		if (link_len < 0) {
-			/* not a symlink anymore */
-			return;
-		}
-		if (link_len >= sizeof(link)) {
-			warning("%s: symlink too long", path->buf);
-			return;
-		}
-		/* readlink() never null-terminates */
-		link[link_len] = '\0';
+		if (strbuf_readlink(&link, path->buf, path->len) < 0)
+			break;
 
-		if (is_absolute_path(link))
+		if (is_absolute_path(link.buf))
 			/* an absolute path replaces the whole path: */
 			strbuf_setlen(path, 0);
 		else
 			/* a relative path replaces the last element of path: */
 			trim_last_path_elm(path);
 
-		strbuf_add(path, link, link_len);
+		strbuf_addbuf(path, &link);
 	}
+
+	strbuf_release(&link);
 }
 
 /* We append ".lock" to the filename to derive the lockfile name: */
