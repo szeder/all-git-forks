@@ -177,6 +177,9 @@ int mingw_unlink(const char *pathname);
 int mingw_rmdir(const char *path);
 #define rmdir mingw_rmdir
 
+ssize_t mingw_pread(int fd, void *buf, size_t count, off64_t offset);
+#define pread mingw_pread
+
 int mingw_open (const char *filename, int oflags, ...);
 #define open mingw_open
 
