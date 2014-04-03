@@ -858,7 +858,18 @@ test_expect_success 'stdin -z update ref fails with bad old value' '
 	test_must_fail git rev-parse --verify -q $c
 '
 
+test_expect_success 'stdin -z create ref fails when ref exists' '
+	git update-ref $c $m &&
+	git rev-parse "$c" >expect &&
+	printf $F "create $c" "$m~1" >stdin &&
+	test_must_fail git update-ref -z --stdin <stdin 2>err &&
+	grep "fatal: Cannot lock the ref '"'"'$c'"'"'" err &&
+	git rev-parse "$c" >actual &&
+	test_cmp expect actual
+'
+
 test_expect_success 'stdin -z create ref fails with bad new value' '
+	git update-ref -d "$c" &&
 	printf $F "create $c" "does-not-exist" >stdin &&
 	test_must_fail git update-ref -z --stdin <stdin 2>err &&
 	grep "fatal: create $c: invalid <newvalue>: does-not-exist" err &&
