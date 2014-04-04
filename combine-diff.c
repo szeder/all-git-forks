@@ -1301,6 +1301,51 @@ static const char *path_path(void *obj)
 	return path->path;
 }
 
+
+/* find set of paths that every parent touches */
+static struct combine_diff_path *find_paths(const unsigned char *sha1,
+	const struct sha1_array *parents, struct diff_options *opt)
+{
+	struct combine_diff_path *paths = NULL;
+	int i, num_parent = parents->nr;
+
+	int output_format = opt->output_format;
+	const char *orderfile = opt->orderfile;
+
+	opt->output_format = DIFF_FORMAT_NO_OUTPUT;
+	/* tell diff_tree to emit paths in sorted (=tree) order */
+	opt->orderfile = NULL;
+
+	for (i = 0; i < num_parent; i++) {
+		/*
+		 * show stat against the first parent even when doing
+		 * combined diff.
+		 */
+		int stat_opt = (output_format &
+				(DIFF_FORMAT_NUMSTAT|DIFF_FORMAT_DIFFSTAT));
+		if (i == 0 && stat_opt)
+			opt->output_format = stat_opt;
+		else
+			opt->output_format = DIFF_FORMAT_NO_OUTPUT;
+		diff_tree_sha1(parents->sha1[i], sha1, "", opt);
+		diffcore_std(opt);
+		paths = intersect_paths(paths, i, num_parent);
+
+		/* if showing diff, show it in requested order */
+		if (opt->output_format != DIFF_FORMAT_NO_OUTPUT &&
+		    orderfile) {
+			diffcore_order(orderfile);
+		}
+
+		diff_flush(opt);
+	}
+
+	opt->output_format = output_format;
+	opt->orderfile = orderfile;
+	return paths;
+}
+
+
 void diff_tree_combined(const unsigned char *sha1,
 			const struct sha1_array *parents,
 			int dense,
@@ -1308,50 +1353,35 @@ void diff_tree_combined(const unsigned char *sha1,
 {
 	struct diff_options *opt = &rev->diffopt;
 	struct diff_options diffopts;
-	struct combine_diff_path *p, *paths = NULL;
+	struct combine_diff_path *p, *paths;
 	int i, num_paths, needsep, show_log_first, num_parent = parents->nr;
 
-	diffopts = *opt;
-	copy_pathspec(&diffopts.pathspec, &opt->pathspec);
-	diffopts.output_format = DIFF_FORMAT_NO_OUTPUT;
-	DIFF_OPT_SET(&diffopts, RECURSIVE);
-	DIFF_OPT_CLR(&diffopts, ALLOW_EXTERNAL);
-	/* tell diff_tree to emit paths in sorted (=tree) order */
-	diffopts.orderfile = NULL;
+	/* nothing to do, if no parents */
+	if (!num_parent)
+		return;
 
 	show_log_first = !!rev->loginfo && !rev->no_commit_id;
 	needsep = 0;
-	/* find set of paths that everybody touches */
-	for (i = 0; i < num_parent; i++) {
-		/* show stat against the first parent even
-		 * when doing combined diff.
-		 */
-		int stat_opt = (opt->output_format &
-				(DIFF_FORMAT_NUMSTAT|DIFF_FORMAT_DIFFSTAT));
-		if (i == 0 && stat_opt)
-			diffopts.output_format = stat_opt;
-		else
-			diffopts.output_format = DIFF_FORMAT_NO_OUTPUT;
-		diff_tree_sha1(parents->sha1[i], sha1, "", &diffopts);
-		diffcore_std(&diffopts);
-		paths = intersect_paths(paths, i, num_parent);
+	if (show_log_first) {
+		show_log(rev);
 
-		if (show_log_first && i == 0) {
-			show_log(rev);
-
-			if (rev->verbose_header && opt->output_format)
-				printf("%s%c", diff_line_prefix(opt),
-				       opt->line_termination);
-		}
-
-		/* if showing diff, show it in requested order */
-		if (diffopts.output_format != DIFF_FORMAT_NO_OUTPUT &&
-		    opt->orderfile) {
-			diffcore_order(opt->orderfile);
-		}
-
-		diff_flush(&diffopts);
+		if (rev->verbose_header && opt->output_format)
+			printf("%s%c", diff_line_prefix(opt),
+			       opt->line_termination);
 	}
+
+	diffopts = *opt;
+	copy_pathspec(&diffopts.pathspec, &opt->pathspec);
+	DIFF_OPT_SET(&diffopts, RECURSIVE);
+	DIFF_OPT_CLR(&diffopts, ALLOW_EXTERNAL);
+
+	/* find set of paths that everybody touches
+	 *
+	 * NOTE find_paths() also handles --stat, as it computes
+	 * diff(sha1,parent_i) for all i to do the job, specifically
+	 * for parent0.
+	 */
+	paths = find_paths(sha1, parents, &diffopts);
 
 	/* find out number of surviving paths */
 	for (num_paths = 0, p = paths; p; p = p->next)
