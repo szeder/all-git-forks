@@ -1303,9 +1303,10 @@ static int store_aux(const char *key, const char *value, void *cb)
 	return 0;
 }
 
-static int write_error(const char *filename)
+static int write_error(struct lock_file *lk)
 {
-	error("failed to write new configuration file %s", filename);
+	error("failed to write new configuration file %s",
+	      lk->staging_filename.buf);
 
 	/* Same error code as "failed to rename". */
 	return 4;
@@ -1706,7 +1707,7 @@ out_free:
 	return ret;
 
 write_err_out:
-	ret = write_error(lock->filename);
+	ret = write_error(lock);
 	goto out_free;
 
 }
@@ -1821,7 +1822,7 @@ int git_config_rename_section_in_file(const char *config_filename,
 				}
 				store.baselen = strlen(new_name);
 				if (!store_write_section(out_fd, new_name)) {
-					ret = write_error(lock->filename);
+					ret = write_error(lock);
 					goto out;
 				}
 				/*
@@ -1847,7 +1848,7 @@ int git_config_rename_section_in_file(const char *config_filename,
 			continue;
 		length = strlen(output);
 		if (write_in_full(out_fd, output, length) != length) {
-			ret = write_error(lock->filename);
+			ret = write_error(lock);
 			goto out;
 		}
 	}
