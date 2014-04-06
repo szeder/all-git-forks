@@ -27,11 +27,14 @@
  * Instead of (3), the change can be rolled back by deleting lockfile.
  *
  * This module keeps track of all locked files in lock_file_list.
- * When the first file is locked, it registers an atexit(3) handler;
- * when the program exits, the handler rolls back any files that have
- * been locked but were never committed or rolled back.
+ * When the first file is locked, it registers an atexit(3) handler
+ * and a signal handler; when the program exits, the handler rolls
+ * back any files that have been locked but were never committed or
+ * rolled back.
  *
- * A lock_file object can be in several states:
+ * Because the signal handler can be called at any time, a lock_file
+ * object must always be in a well-defined state.  The possible states
+ * are as follows:
  *
  * - Uninitialized.  In this state the object's flags field must be
  *   zero but the rest of its contents need not be initialized.  As
@@ -40,18 +43,25 @@
  *   is set.
  *
  * - Locked, lockfile open (after hold_lock_file_for_update() or
- *   hold_lock_file_for_append()).  In this state, the lockfile
- *   exists, filename holds the filename of the lockfile, fd holds a
- *   file descriptor open for writing to the lockfile, and owner holds
- *   the PID of the process that locked the file.
+ *   hold_lock_file_for_append()).  In this state:
+ *   - the lockfile exists
+ *   - flags & LOCK_FLAGS_LOCKFILE_ACTIVE is set
+ *   - filename holds the filename of the lockfile
+ *   - fd holds a file descriptor open for writing to the lockfile
+ *   - owner holds the PID of the process that locked the file
  *
- * - Locked, lockfile closed (after close_lock_file()).  Same as the
- *   previous state, except that the lockfile is closed and fd is -1.
+ * - Locked, lockfile closed (after close_lock_file() or an
+ *   unsuccessful commit_lock_file()).  Same as the previous state,
+ *   except that the lockfile is closed and fd is -1.
  *
- * - Unlocked (after commit_lock_file(), rollback_lock_file(), or a
- *   failed attempt to lock).  In this state, filename[0] == '\0' and
- *   fd is -1.  The object is left registered in the lock_file_list,
- *   and flags & LOCK_FLAGS_ON_LIST is set.
+ * - Unlocked (after rollback_lock_file(), a successful
+ *   commit_lock_file(), or a failed attempt to lock).  In this state:
+ *   - flags & LOCK_FLAGS_LOCKFILE_ACTIVE is unset
+ *   - filename[0] == '\0' (usually, though there are transitory states
+ *     in which this condition doesn't hold)
+ *   - fd is -1
+ *   - the object is left registered in the lock_file_list,
+ *     and flags & LOCK_FLAGS_ON_LIST is set.
  *
  * See Documentation/api-lockfile.txt for more information.
  */
@@ -60,6 +70,13 @@
 
 /* This lock_file instance is in the lock_file_list */
 #define LOCK_FLAGS_ON_LIST 0x01
+
+/*
+ * The filename field points at an active lockfile (i.e., a file that
+ * needs to be deleted if the process dies)
+ */
+#define LOCK_FLAGS_LOCKFILE_ACTIVE 0x02
+
 
 static struct lock_file *lock_file_list;
 static const char *alternate_index_output;
@@ -192,6 +209,8 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 		atexit(remove_lock_file);
 	}
 
+	assert(!(lk->flags & LOCK_FLAGS_LOCKFILE_ACTIVE));
+
 	if (!(lk->flags & LOCK_FLAGS_ON_LIST)) {
 		/* Initialize *lk and add it to lock_file_list: */
 		lk->fd = -1;
@@ -214,6 +233,7 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 		return -1;
 	}
 	lk->owner = getpid();
+	lk->flags |= LOCK_FLAGS_LOCKFILE_ACTIVE;
 	if (adjust_shared_perm(lk->filename)) {
 		error("cannot fix permission bits on %s", lk->filename);
 		rollback_lock_file(lk);
@@ -301,7 +321,7 @@ int commit_lock_file(struct lock_file *lk)
 	if (lk->fd >= 0 && close_lock_file(lk))
 		return -1;
 
-	if (!lk->filename[0])
+	if (!(lk->flags & LOCK_FLAGS_LOCKFILE_ACTIVE))
 		return 0;
 
 	strcpy(result_file, lk->filename);
@@ -310,6 +330,7 @@ int commit_lock_file(struct lock_file *lk)
 
 	if (rename(lk->filename, result_file))
 		return -1;
+	lk->flags &= ~LOCK_FLAGS_LOCKFILE_ACTIVE;
 	lk->filename[0] = 0;
 	return 0;
 }
@@ -334,6 +355,7 @@ int commit_locked_index(struct lock_file *lk)
 			return -1;
 		if (rename(lk->filename, alternate_index_output))
 			return -1;
+		lk->flags &= ~LOCK_FLAGS_LOCKFILE_ACTIVE;
 		lk->filename[0] = 0;
 		return 0;
 	}
@@ -343,10 +365,11 @@ int commit_locked_index(struct lock_file *lk)
 
 void rollback_lock_file(struct lock_file *lk)
 {
-	if (lk->filename[0]) {
+	if (lk->flags & LOCK_FLAGS_LOCKFILE_ACTIVE) {
 		if (lk->fd >= 0)
 			close_lock_file(lk);
 		unlink_or_warn(lk->filename);
+		lk->flags &= ~LOCK_FLAGS_LOCKFILE_ACTIVE;
 		lk->filename[0] = 0;
 	}
 }
