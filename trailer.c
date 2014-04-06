@@ -618,12 +618,14 @@ static struct strbuf **read_stdin(void)
 }
 
 /*
- * Return the the (0 based) index of the first trailer line
+ * Return the (0 based) index of the first trailer line
  * or the line count if there are no trailers.
+ * The has_blank_line parameter tells if there is a blank
+ * line before the trailers.
  */
-static int find_trailer_start(struct strbuf **lines)
+static int find_trailer_start(struct strbuf **lines, int *has_blank_line)
 {
-	int start, empty = 1, count = 0;
+	int start, only_spaces = 1, count = 0;
 
 	/* Get the line count */
 	while (lines[count])
@@ -635,31 +637,39 @@ static int find_trailer_start(struct strbuf **lines)
 	 */
 	for (start = count - 1; start >= 0; start--) {
 		if (contains_only_spaces(lines[start]->buf)) {
-			if (empty)
+			if (only_spaces)
 				continue;
+			*has_blank_line = 1;
 			return start + 1;
 		}
 		if (strchr(lines[start]->buf, ':')) {
-			if (empty)
-				empty = 0;
+			if (only_spaces)
+				only_spaces = 0;
 			continue;
 		}
+		*has_blank_line = start == count - 1 ?
+		  0 : contains_only_spaces(lines[start + 1]->buf);
 		return count;
 	}
 
-	return empty ? count : start + 1;
+	*has_blank_line = only_spaces ? count > 0 : 0;
+	return only_spaces ? count : start + 1;
 }
 
 static void process_stdin(struct trailer_item **in_tok_first,
 			  struct trailer_item **in_tok_last)
 {
 	struct strbuf **lines = read_stdin();
-	int start = find_trailer_start(lines);
+	int has_blank_line;
+	int start = find_trailer_start(lines, &has_blank_line);
 	int i;
 
 	/* Print non trailer lines as is */
 	for (i = 0; lines[i] && i < start; i++)
 		printf("%s", lines[i]->buf);
+
+	if (!has_blank_line)
+		printf("\n");
 
 	/* Parse trailer lines */
 	for (i = start; lines[i]; i++) {

@@ -34,6 +34,7 @@ test_expect_success 'setup' '
 
 test_expect_success 'without config' '
 	sed -e "s/ Z\$/ /" >expected <<-\EOF &&
+
 		ack: Peff
 		Reviewed-by: Z
 		Acked-by: Johan
@@ -44,6 +45,7 @@ test_expect_success 'without config' '
 
 test_expect_success '--trim-empty without config' '
 	cat >expected <<-\EOF &&
+
 		ack: Peff
 		Acked-by: Johan
 	EOF
@@ -55,6 +57,7 @@ test_expect_success '--trim-empty without config' '
 test_expect_success 'with config setup' '
 	git config trailer.ack.key "Acked-by: " &&
 	cat >expected <<-\EOF &&
+
 		Acked-by: Peff
 	EOF
 	git interpret-trailers --trim-empty "ack = Peff" >actual &&
@@ -68,6 +71,7 @@ test_expect_success 'with config setup' '
 test_expect_success 'with config setup and = sign' '
 	git config trailer.ack.key "Acked-by= " &&
 	cat >expected <<-\EOF &&
+
 		Acked-by= Peff
 	EOF
 	git interpret-trailers --trim-empty "ack = Peff" >actual &&
@@ -81,6 +85,7 @@ test_expect_success 'with config setup and = sign' '
 test_expect_success 'with config setup and # sign' '
 	git config trailer.bug.key "Bug #" &&
 	cat >expected <<-\EOF &&
+
 		Bug #42
 	EOF
 	git interpret-trailers --trim-empty "bug = 42" >actual &&
@@ -88,8 +93,10 @@ test_expect_success 'with config setup and # sign' '
 '
 
 test_expect_success 'with commit basic message' '
+	cat basic_message >expected &&
+	echo >>expected &&
 	git interpret-trailers <basic_message >actual &&
-	test_cmp basic_message actual
+	test_cmp expected actual
 '
 
 test_expect_success 'with commit complex message' '
@@ -436,6 +443,7 @@ test_expect_success 'with failing command using $ARG' '
 
 test_expect_success 'with empty tokens' '
 	cat >expected <<-EOF &&
+
 		Signed-off-by: A U Thor <author@example.com>
 	EOF
 	git interpret-trailers ":" ":test" >actual <<-EOF &&
@@ -446,6 +454,7 @@ test_expect_success 'with empty tokens' '
 test_expect_success 'with command but no key' '
 	git config --unset trailer.sign.key &&
 	cat >expected <<-EOF &&
+
 		sign: A U Thor <author@example.com>
 	EOF
 	git interpret-trailers >actual <<-EOF &&
@@ -456,6 +465,7 @@ test_expect_success 'with command but no key' '
 test_expect_success 'with no command and no key' '
 	git config --unset trailer.review.key &&
 	cat >expected <<-EOF &&
+
 		review: Junio
 		sign: A U Thor <author@example.com>
 	EOF
