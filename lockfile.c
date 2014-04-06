@@ -148,9 +148,11 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 			lock_file_list = lk;
 			lk->on_list = 1;
 		}
-		if (adjust_shared_perm(lk->filename))
-			return error("cannot fix permission bits on %s",
-				     lk->filename);
+		if (adjust_shared_perm(lk->filename)) {
+			error("cannot fix permission bits on %s", lk->filename);
+			rollback_lock_file(lk);
+			return -1;
+		}
 	}
 	else
 		lk->filename[0] = 0;
