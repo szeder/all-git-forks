@@ -301,6 +301,9 @@ int commit_lock_file(struct lock_file *lk)
 	if (lk->fd >= 0 && close_lock_file(lk))
 		return -1;
 
+	if (!lk->filename[0])
+		return 0;
+
 	strcpy(result_file, lk->filename);
 	/* remove ".lock": */
 	result_file[strlen(result_file) - LOCK_SUFFIX_LEN] = 0;

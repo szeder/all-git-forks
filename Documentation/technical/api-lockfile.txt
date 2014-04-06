@@ -68,7 +68,9 @@ commit_lock_file::
 	with an earlier call to `hold_lock_file_for_update()`,
 	close the file descriptor and rename the lockfile to its
 	final destination.  Returns 0 upon success, a negative
-	value on failure to close(2) or rename(2).
+	value on failure to close(2) or rename(2).  It is a NOP to
+	call `commit_lock_file()` for a `lock_file` object that is not
+	currently locked.
 
 rollback_lock_file::
 
