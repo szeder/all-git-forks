@@ -1480,6 +1480,8 @@ int commit_tree_extended(const struct strbuf *msg, const unsigned char *tree,
 {
 	int result;
 	int encoding_is_utf8;
+	int try;
+	int tries = 4000000;
 	struct strbuf buffer;
 
 	assert_sha1_type(tree, OBJ_TREE);
@@ -1490,50 +1492,73 @@ int commit_tree_extended(const struct strbuf *msg, const unsigned char *tree,
 	/* Not having i18n.commitencoding is the same as having utf-8 */
 	encoding_is_utf8 = is_encoding_utf8(git_commit_encoding);
 
-	strbuf_init(&buffer, 8192); /* should avoid reallocs for the headers */
-	strbuf_addf(&buffer, "tree %s\n", sha1_to_hex(tree));
+	struct commit_list *parents_ptr = parents;
+	for (try = 0; try < tries; try++) {
 
-	/*
-	 * NOTE! This ordering means that the same exact tree merged with a
-	 * different order of parents will be a _different_ changeset even
-	 * if everything else stays the same.
-	 */
-	while (parents) {
-		struct commit_list *next = parents->next;
-		struct commit *parent = parents->item;
+		strbuf_init(&buffer, 8192); /* should avoid reallocs for the headers */
+		strbuf_addf(&buffer, "tree %s\n", sha1_to_hex(tree));
 
-		strbuf_addf(&buffer, "parent %s\n",
-			    sha1_to_hex(parent->object.sha1));
-		free(parents);
-		parents = next;
+		/*
+		 * NOTE! This ordering means that the same exact tree merged with a
+		 * different order of parents will be a _different_ changeset even
+		 * if everything else stays the same.
+		 */
+		while (parents) {
+			struct commit_list *next = parents->next;
+			struct commit *parent = parents->item;
+
+			strbuf_addf(&buffer, "parent %s\n",
+				    sha1_to_hex(parent->object.sha1));
+			parents = next;
+		}
+
+		parents = parents_ptr;
+
+		/* Person/date information */
+		if (!author)
+			author = git_author_info(IDENT_STRICT);
+		strbuf_addf(&buffer, "author %s\n", author);
+		strbuf_addf(&buffer, "committer %s\n", git_committer_info(IDENT_STRICT));
+		if (!encoding_is_utf8)
+			strbuf_addf(&buffer, "encoding %s\n", git_commit_encoding);
+
+		while (extra) {
+			add_extra_header(&buffer, extra);
+			extra = extra->next;
+		}
+		strbuf_addf(&buffer, "lulz %d\n", try);
+		strbuf_addch(&buffer, '\n');
+
+		/* And add the comment */
+		strbuf_addbuf(&buffer, msg);
+
+		/* And check the encoding */
+		if (encoding_is_utf8 && !verify_utf8(&buffer))
+			fprintf(stderr, commit_utf8_warn);
+
+		if (sign_commit && do_sign_commit(&buffer, sign_commit))
+			return -1;
+
+		result = write_sha1_file(buffer.buf, buffer.len, commit_type, ret);
+
+		if (result) {
+		    die("failed to write commit object");
+		} else {
+			if (strncmp(sha1_to_hex(ret), "31337", 5) == 0) {
+				printf("commit id = %s\n", sha1_to_hex(ret));
+				goto done;
+			} else {
+				if (try % 100000 == 0) {
+					fprintf(stderr, "Try %d/%d to get a 1337 commit = %s\n", try, tries, sha1_to_hex(ret));
+				}
+				unlink_or_warn(sha1_file_name(ret));
+			}
+			strbuf_release(&buffer);
+		}
 	}
-
-	/* Person/date information */
-	if (!author)
-		author = git_author_info(IDENT_STRICT);
-	strbuf_addf(&buffer, "author %s\n", author);
-	strbuf_addf(&buffer, "committer %s\n", git_committer_info(IDENT_STRICT));
-	if (!encoding_is_utf8)
-		strbuf_addf(&buffer, "encoding %s\n", git_commit_encoding);
-
-	while (extra) {
-		add_extra_header(&buffer, extra);
-		extra = extra->next;
-	}
-	strbuf_addch(&buffer, '\n');
-
-	/* And add the comment */
-	strbuf_addbuf(&buffer, msg);
-
-	/* And check the encoding */
-	if (encoding_is_utf8 && !verify_utf8(&buffer))
-		fprintf(stderr, commit_utf8_warn);
-
-	if (sign_commit && do_sign_commit(&buffer, sign_commit))
-		return -1;
-
-	result = write_sha1_file(buffer.buf, buffer.len, commit_type, ret);
+	done:
 	strbuf_release(&buffer);
+
 	return result;
 }
 
