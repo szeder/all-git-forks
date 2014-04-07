@@ -15,7 +15,8 @@
 #include "strbuf.h"
 #include "varint.h"
 
-static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int really);
+static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
+					       unsigned int options);
 
 /* Mask for the name length in ce_flags in the on-disk index */
 
@@ -47,6 +48,7 @@ static void replace_index_entry(struct index_state *istate, int nr, struct cache
 	struct cache_entry *old = istate->cache[nr];
 
 	remove_name_hash(istate, old);
+	free(old);
 	set_index_entry(istate, nr, ce);
 	istate->cache_changed = 1;
 }
@@ -58,7 +60,7 @@ void rename_index_entry_at(struct index_state *istate, int nr, const char *new_n
 
 	new = xmalloc(cache_entry_size(namelen));
 	copy_cache_entry(new, old);
-	new->ce_flags &= ~CE_STATE_MASK;
+	new->ce_flags &= ~CE_HASHED;
 	new->ce_namelen = namelen;
 	memcpy(new->name, new_name, namelen + 1);
 
@@ -478,6 +480,7 @@ int remove_index_entry_at(struct index_state *istate, int pos)
 
 	record_resolve_undo(istate, ce);
 	remove_name_hash(istate, ce);
+	free(ce);
 	istate->cache_changed = 1;
 	istate->cache_nr--;
 	if (pos >= istate->cache_nr)
@@ -499,8 +502,10 @@ void remove_marked_cache_entries(struct index_state *istate)
 	unsigned int i, j;
 
 	for (i = j = 0; i < istate->cache_nr; i++) {
-		if (ce_array[i]->ce_flags & CE_REMOVE)
+		if (ce_array[i]->ce_flags & CE_REMOVE) {
 			remove_name_hash(istate, ce_array[i]);
+			free(ce_array[i]);
+		}
 		else
 			ce_array[j++] = ce_array[i];
 	}
@@ -579,7 +584,7 @@ static struct cache_entry *create_alias_ce(struct cache_entry *ce, struct cache_
 	return new;
 }
 
-static void record_intent_to_add(struct cache_entry *ce)
+void set_object_name_for_intent_to_add_entry(struct cache_entry *ce)
 {
 	unsigned char sha1[20];
 	if (write_sha1_file("", 0, blob_type, sha1))
@@ -665,7 +670,7 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 		if (index_path(ce->sha1, path, st, HASH_WRITE_OBJECT))
 			return error("unable to index file %s", path);
 	} else
-		record_intent_to_add(ce);
+		set_object_name_for_intent_to_add_entry(ce);
 
 	if (ignore_case && alias && different_name(ce, alias))
 		ce = create_alias_ce(ce, alias);
@@ -696,7 +701,7 @@ int add_file_to_index(struct index_state *istate, const char *path, int flags)
 
 struct cache_entry *make_cache_entry(unsigned int mode,
 		const unsigned char *sha1, const char *path, int stage,
-		int refresh)
+		unsigned int refresh_options)
 {
 	int size, len;
 	struct cache_entry *ce;
@@ -716,21 +721,13 @@ struct cache_entry *make_cache_entry(unsigned int mode,
 	ce->ce_namelen = len;
 	ce->ce_mode = create_ce_mode(mode);
 
-	if (refresh)
-		return refresh_cache_entry(ce, 0);
-
-	return ce;
+	return refresh_cache_entry(ce, refresh_options);
 }
 
 int ce_same_name(const struct cache_entry *a, const struct cache_entry *b)
 {
 	int len = ce_namelen(a);
 	return ce_namelen(b) == len && !memcmp(a->name, b->name, len);
-}
-
-int ce_path_match(const struct cache_entry *ce, const struct pathspec *pathspec)
-{
-	return match_pathspec_depth(pathspec, ce->name, ce_namelen(ce), 0, NULL);
 }
 
 /*
@@ -993,11 +990,7 @@ int add_index_entry(struct index_state *istate, struct cache_entry *ce, int opti
 	}
 
 	/* Make sure the array is big enough .. */
-	if (istate->cache_nr == istate->cache_alloc) {
-		istate->cache_alloc = alloc_nr(istate->cache_alloc);
-		istate->cache = xrealloc(istate->cache,
-					istate->cache_alloc * sizeof(*istate->cache));
-	}
+	ALLOC_GROW(istate->cache, istate->cache_nr + 1, istate->cache_alloc);
 
 	/* Add it in.. */
 	istate->cache_nr++;
@@ -1029,10 +1022,12 @@ static struct cache_entry *refresh_cache_ent(struct index_state *istate,
 	struct stat st;
 	struct cache_entry *updated;
 	int changed, size;
+	int refresh = options & CE_MATCH_REFRESH;
 	int ignore_valid = options & CE_MATCH_IGNORE_VALID;
 	int ignore_skip_worktree = options & CE_MATCH_IGNORE_SKIP_WORKTREE;
+	int ignore_missing = options & CE_MATCH_IGNORE_MISSING;
 
-	if (ce_uptodate(ce))
+	if (!refresh || ce_uptodate(ce))
 		return ce;
 
 	/*
@@ -1050,6 +1045,8 @@ static struct cache_entry *refresh_cache_ent(struct index_state *istate,
 	}
 
 	if (lstat(ce->name, &st) < 0) {
+		if (ignore_missing && errno == ENOENT)
+			return ce;
 		if (err)
 			*err = errno;
 		return NULL;
@@ -1127,7 +1124,9 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 	int ignore_submodules = (flags & REFRESH_IGNORE_SUBMODULES) != 0;
 	int first = 1;
 	int in_porcelain = (flags & REFRESH_IN_PORCELAIN);
-	unsigned int options = really ? CE_MATCH_IGNORE_VALID : 0;
+	unsigned int options = (CE_MATCH_REFRESH |
+				(really ? CE_MATCH_IGNORE_VALID : 0) |
+				(not_new ? CE_MATCH_IGNORE_MISSING : 0));
 	const char *modified_fmt;
 	const char *deleted_fmt;
 	const char *typechange_fmt;
@@ -1149,8 +1148,7 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 		if (ignore_submodules && S_ISGITLINK(ce->ce_mode))
 			continue;
 
-		if (pathspec &&
-		    !match_pathspec_depth(pathspec, ce->name, ce_namelen(ce), 0, seen))
+		if (pathspec && !ce_path_match(ce, pathspec, seen))
 			filtered = 1;
 
 		if (ce_stage(ce)) {
@@ -1176,8 +1174,6 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 		if (!new) {
 			const char *fmt;
 
-			if (not_new && cache_errno == ENOENT)
-				continue;
 			if (really && cache_errno == EINVAL) {
 				/* If we are doing --really-refresh that
 				 * means the index is not valid anymore.
@@ -1207,9 +1203,10 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 	return has_errors;
 }
 
-static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int really)
+static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
+					       unsigned int options)
 {
-	return refresh_cache_ent(&the_index, ce, really, NULL, NULL);
+	return refresh_cache_ent(&the_index, ce, options, NULL, NULL);
 }
 
 
@@ -1218,6 +1215,42 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int reall
  *****************************************************************/
 
 #define INDEX_FORMAT_DEFAULT 3
+
+static int index_format_config(const char *var, const char *value, void *cb)
+{
+	unsigned int *version = cb;
+	if (!strcmp(var, "index.version")) {
+		*version = git_config_int(var, value);
+		return 0;
+	}
+	return 1;
+}
+
+static unsigned int get_index_format_default(void)
+{
+	char *envversion = getenv("GIT_INDEX_VERSION");
+	char *endp;
+	unsigned int version = INDEX_FORMAT_DEFAULT;
+
+	if (!envversion) {
+		git_config(index_format_config, &version);
+		if (version < INDEX_FORMAT_LB || INDEX_FORMAT_UB < version) {
+			warning(_("index.version set, but the value is invalid.\n"
+				  "Using version %i"), INDEX_FORMAT_DEFAULT);
+			return INDEX_FORMAT_DEFAULT;
+		}
+		return version;
+	}
+
+	version = strtoul(envversion, &endp, 10);
+	if (*endp ||
+	    version < INDEX_FORMAT_LB || INDEX_FORMAT_UB < version) {
+		warning(_("GIT_INDEX_VERSION set, but the value is invalid.\n"
+			  "Using version %i"), INDEX_FORMAT_DEFAULT);
+		version = INDEX_FORMAT_DEFAULT;
+	}
+	return version;
+}
 
 /*
  * dev/ino/uid/gid/size are also just tracked to the low 32 bits
@@ -1313,26 +1346,6 @@ int read_index(struct index_state *istate)
 	return read_index_from(istate, get_index_file());
 }
 
-#ifndef NEEDS_ALIGNED_ACCESS
-#define ntoh_s(var) ntohs(var)
-#define ntoh_l(var) ntohl(var)
-#else
-static inline uint16_t ntoh_s_force_align(void *p)
-{
-	uint16_t x;
-	memcpy(&x, p, sizeof(x));
-	return ntohs(x);
-}
-static inline uint32_t ntoh_l_force_align(void *p)
-{
-	uint32_t x;
-	memcpy(&x, p, sizeof(x));
-	return ntohl(x);
-}
-#define ntoh_s(var) ntoh_s_force_align(&(var))
-#define ntoh_l(var) ntoh_l_force_align(&(var))
-#endif
-
 static struct cache_entry *cache_entry_from_ondisk(struct ondisk_cache_entry *ondisk,
 						   unsigned int flags,
 						   const char *name,
@@ -1340,16 +1353,16 @@ static struct cache_entry *cache_entry_from_ondisk(struct ondisk_cache_entry *on
 {
 	struct cache_entry *ce = xmalloc(cache_entry_size(len));
 
-	ce->ce_stat_data.sd_ctime.sec = ntoh_l(ondisk->ctime.sec);
-	ce->ce_stat_data.sd_mtime.sec = ntoh_l(ondisk->mtime.sec);
-	ce->ce_stat_data.sd_ctime.nsec = ntoh_l(ondisk->ctime.nsec);
-	ce->ce_stat_data.sd_mtime.nsec = ntoh_l(ondisk->mtime.nsec);
-	ce->ce_stat_data.sd_dev   = ntoh_l(ondisk->dev);
-	ce->ce_stat_data.sd_ino   = ntoh_l(ondisk->ino);
-	ce->ce_mode  = ntoh_l(ondisk->mode);
-	ce->ce_stat_data.sd_uid   = ntoh_l(ondisk->uid);
-	ce->ce_stat_data.sd_gid   = ntoh_l(ondisk->gid);
-	ce->ce_stat_data.sd_size  = ntoh_l(ondisk->size);
+	ce->ce_stat_data.sd_ctime.sec = get_be32(&ondisk->ctime.sec);
+	ce->ce_stat_data.sd_mtime.sec = get_be32(&ondisk->mtime.sec);
+	ce->ce_stat_data.sd_ctime.nsec = get_be32(&ondisk->ctime.nsec);
+	ce->ce_stat_data.sd_mtime.nsec = get_be32(&ondisk->mtime.nsec);
+	ce->ce_stat_data.sd_dev   = get_be32(&ondisk->dev);
+	ce->ce_stat_data.sd_ino   = get_be32(&ondisk->ino);
+	ce->ce_mode  = get_be32(&ondisk->mode);
+	ce->ce_stat_data.sd_uid   = get_be32(&ondisk->uid);
+	ce->ce_stat_data.sd_gid   = get_be32(&ondisk->gid);
+	ce->ce_stat_data.sd_size  = get_be32(&ondisk->size);
 	ce->ce_flags = flags & ~CE_NAMEMASK;
 	ce->ce_namelen = len;
 	hashcpy(ce->sha1, ondisk->sha1);
@@ -1389,14 +1402,14 @@ static struct cache_entry *create_from_disk(struct ondisk_cache_entry *ondisk,
 	unsigned int flags;
 
 	/* On-disk flags are just 16 bits */
-	flags = ntoh_s(ondisk->flags);
+	flags = get_be16(&ondisk->flags);
 	len = flags & CE_NAMEMASK;
 
 	if (flags & CE_EXTENDED) {
 		struct ondisk_cache_entry_extended *ondisk2;
 		int extended_flags;
 		ondisk2 = (struct ondisk_cache_entry_extended *)ondisk;
-		extended_flags = ntoh_s(ondisk2->flags2) << 16;
+		extended_flags = get_be16(&ondisk2->flags2) << 16;
 		/* We do not yet understand any bit out of CE_EXTENDED_FLAGS */
 		if (extended_flags & ~CE_EXTENDED_FLAGS)
 			die("Unknown index entry format %08x", extended_flags);
@@ -1795,7 +1808,7 @@ int write_index(struct index_state *istate, int newfd)
 	}
 
 	if (!istate->version)
-		istate->version = INDEX_FORMAT_DEFAULT;
+		istate->version = get_index_format_default();
 
 	/* demote version 3 to version 2 when the latter suffices */
 	if (istate->version == 3 || istate->version == 2)
@@ -1894,7 +1907,7 @@ int read_index_unmerged(struct index_state *istate)
 		new_ce->ce_mode = ce->ce_mode;
 		if (add_index_entry(istate, new_ce, 0))
 			return error("%s: cannot drop to stage #0",
-				     ce->name);
+				     new_ce->name);
 		i = index_name_pos(istate, new_ce->name, len);
 	}
 	return unmerged;

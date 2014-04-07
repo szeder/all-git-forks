@@ -1221,14 +1221,20 @@ _git_difftool ()
 	__git_complete_revlist_file
 }
 
+__git_fetch_recurse_submodules="yes on-demand no"
+
 __git_fetch_options="
 	--quiet --verbose --append --upload-pack --force --keep --depth=
-	--tags --no-tags --all --prune --dry-run
+	--tags --no-tags --all --prune --dry-run --recurse-submodules=
 "
 
 _git_fetch ()
 {
 	case "$cur" in
+	--recurse-submodules=*)
+		__gitcomp "$__git_fetch_recurse_submodules" "" "${cur##--recurse-submodules=}"
+		return
+		;;
 	--*)
 		__gitcomp "$__git_fetch_options"
 		return
@@ -1499,6 +1505,12 @@ _git_mergetool ()
 
 _git_merge_base ()
 {
+	case "$cur" in
+	--*)
+		__gitcomp "--octopus --independent --is-ancestor --fork-point"
+		return
+		;;
+	esac
 	__gitcomp_nl "$(__git_refs)"
 }
 
@@ -1577,6 +1589,10 @@ _git_pull ()
 	__git_complete_strategy && return
 
 	case "$cur" in
+	--recurse-submodules=*)
+		__gitcomp "$__git_fetch_recurse_submodules" "" "${cur##--recurse-submodules=}"
+		return
+		;;
 	--*)
 		__gitcomp "
 			--rebase --no-rebase
@@ -1588,6 +1604,8 @@ _git_pull ()
 	esac
 	__git_complete_remote_or_refspec
 }
+
+__git_push_recurse_submodules="check on-demand"
 
 _git_push ()
 {
@@ -1601,10 +1619,15 @@ _git_push ()
 		__gitcomp_nl "$(__git_remotes)" "" "${cur##--repo=}"
 		return
 		;;
+	--recurse-submodules=*)
+		__gitcomp "$__git_push_recurse_submodules" "" "${cur##--recurse-submodules=}"
+		return
+		;;
 	--*)
 		__gitcomp "
 			--all --mirror --tags --dry-run --force --verbose
 			--receive-pack= --repo= --set-upstream
+			--recurse-submodules=
 		"
 		return
 		;;
@@ -1631,7 +1654,7 @@ _git_rebase ()
 			--preserve-merges --stat --no-stat
 			--committer-date-is-author-date --ignore-date
 			--ignore-whitespace --whitespace=
-			--autosquash
+			--autosquash --fork-point --no-fork-point
 			"
 
 		return

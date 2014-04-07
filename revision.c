@@ -16,6 +16,7 @@
 #include "line-log.h"
 #include "mailmap.h"
 #include "commit-slab.h"
+#include "dir.h"
 
 volatile show_early_output_fn_t show_early_output;
 
@@ -104,17 +105,12 @@ static void mark_blob_uninteresting(struct blob *blob)
 	blob->object.flags |= UNINTERESTING;
 }
 
-void mark_tree_uninteresting(struct tree *tree)
+static void mark_tree_contents_uninteresting(struct tree *tree)
 {
 	struct tree_desc desc;
 	struct name_entry entry;
 	struct object *obj = &tree->object;
 
-	if (!tree)
-		return;
-	if (obj->flags & UNINTERESTING)
-		return;
-	obj->flags |= UNINTERESTING;
 	if (!has_sha1_file(obj->sha1))
 		return;
 	if (parse_tree(tree) < 0)
@@ -140,6 +136,18 @@ void mark_tree_uninteresting(struct tree *tree)
 	 * after it has been marked uninteresting.
 	 */
 	free_tree_buffer(tree);
+}
+
+void mark_tree_uninteresting(struct tree *tree)
+{
+	struct object *obj = &tree->object;
+
+	if (!tree)
+		return;
+	if (obj->flags & UNINTERESTING)
+		return;
+	obj->flags |= UNINTERESTING;
+	mark_tree_contents_uninteresting(tree);
 }
 
 void mark_parents_uninteresting(struct commit *commit)
@@ -276,6 +284,7 @@ static struct commit *handle_commit(struct rev_info *revs,
 				return NULL;
 			die("bad object %s", sha1_to_hex(tag->tagged->sha1));
 		}
+		object->flags |= flags;
 	}
 
 	/*
@@ -287,7 +296,6 @@ static struct commit *handle_commit(struct rev_info *revs,
 		if (parse_commit(commit) < 0)
 			die("unable to parse commit %s", name);
 		if (flags & UNINTERESTING) {
-			commit->object.flags |= UNINTERESTING;
 			mark_parents_uninteresting(commit);
 			revs->limited = 1;
 		}
@@ -305,7 +313,7 @@ static struct commit *handle_commit(struct rev_info *revs,
 		if (!revs->tree_objects)
 			return NULL;
 		if (flags & UNINTERESTING) {
-			mark_tree_uninteresting(tree);
+			mark_tree_contents_uninteresting(tree);
 			return NULL;
 		}
 		add_pending_object(revs, object, "");
@@ -316,13 +324,10 @@ static struct commit *handle_commit(struct rev_info *revs,
 	 * Blob object? You know the drill by now..
 	 */
 	if (object->type == OBJ_BLOB) {
-		struct blob *blob = (struct blob *)object;
 		if (!revs->blob_objects)
 			return NULL;
-		if (flags & UNINTERESTING) {
-			mark_blob_uninteresting(blob);
+		if (flags & UNINTERESTING)
 			return NULL;
-		}
 		add_pending_object(revs, object, "");
 		return NULL;
 	}
@@ -492,24 +497,14 @@ static int rev_compare_tree(struct rev_info *revs,
 static int rev_same_tree_as_empty(struct rev_info *revs, struct commit *commit)
 {
 	int retval;
-	void *tree;
-	unsigned long size;
-	struct tree_desc empty, real;
 	struct tree *t1 = commit->tree;
 
 	if (!t1)
 		return 0;
 
-	tree = read_object_with_reference(t1->object.sha1, tree_type, &size, NULL);
-	if (!tree)
-		return 0;
-	init_tree_desc(&real, tree, size);
-	init_tree_desc(&empty, "", 0);
-
 	tree_difference = REV_TREE_SAME;
 	DIFF_OPT_CLR(&revs->pruning, HAS_CHANGES);
-	retval = diff_tree(&empty, &real, "", &revs->pruning);
-	free(tree);
+	retval = diff_tree_sha1(NULL, t1->object.sha1, "", &revs->pruning);
 
 	return retval >= 0 && (tree_difference == REV_TREE_SAME);
 }
@@ -778,6 +773,10 @@ static int add_parents_to_list(struct rev_info *revs, struct commit *commit,
 	if (commit->object.flags & ADDED)
 		return 0;
 	commit->object.flags |= ADDED;
+
+	if (revs->include_check &&
+	    !revs->include_check(commit, revs->include_check_data))
+		return 0;
 
 	/*
 	 * If the commit is uninteresting, don't try to
@@ -1187,7 +1186,7 @@ int ref_excluded(struct string_list *ref_excludes, const char *path)
 	if (!ref_excludes)
 		return 0;
 	for_each_string_list_item(item, ref_excludes) {
-		if (!fnmatch(item->string, path, 0))
+		if (!wildmatch(item->string, path, 0, NULL))
 			return 1;
 	}
 	return 0;
@@ -1396,7 +1395,7 @@ static void prepare_show_merge(struct rev_info *revs)
 		const struct cache_entry *ce = active_cache[i];
 		if (!ce_stage(ce))
 			continue;
-		if (ce_path_match(ce, &revs->prune_data)) {
+		if (ce_path_match(ce, &revs->prune_data, NULL)) {
 			prune_num++;
 			prune = xrealloc(prune, sizeof(*prune) * prune_num);
 			prune[prune_num-2] = ce->name;
@@ -1576,6 +1575,10 @@ static void read_revisions_from_stdin(struct rev_info *revs,
 {
 	struct strbuf sb;
 	int seen_dashdash = 0;
+	int save_warning;
+
+	save_warning = warn_on_object_refname_ambiguity;
+	warn_on_object_refname_ambiguity = 0;
 
 	strbuf_init(&sb, 1000);
 	while (strbuf_getwholeline(&sb, stdin, '\n') != EOF) {
@@ -1597,7 +1600,9 @@ static void read_revisions_from_stdin(struct rev_info *revs,
 	}
 	if (seen_dashdash)
 		read_pathspec_from_stdin(revs, &sb, prune);
+
 	strbuf_release(&sb);
+	warn_on_object_refname_ambiguity = save_warning;
 }
 
 static void add_grep(struct rev_info *revs, const char *ptn, enum grep_pat_token what)
@@ -1832,6 +1837,14 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->notes_opt.use_default_notes = 1;
 	} else if (!strcmp(arg, "--show-signature")) {
 		revs->show_signature = 1;
+	} else if (!strcmp(arg, "--show-linear-break") ||
+		   starts_with(arg, "--show-linear-break=")) {
+		if (starts_with(arg, "--show-linear-break="))
+			revs->break_bar = xstrdup(arg + 20);
+		else
+			revs->break_bar = "                    ..........";
+		revs->track_linear = 1;
+		revs->track_first_time = 1;
 	} else if (starts_with(arg, "--show-notes=") ||
 		   starts_with(arg, "--notes=")) {
 		struct strbuf buf = STRBUF_INIT;
@@ -1955,6 +1968,8 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 			unkv[(*unkc)++] = arg;
 		return opts;
 	}
+	if (revs->graph && revs->track_linear)
+		die("--show-linear-break and --graph are incompatible");
 
 	return 1;
 }
@@ -2897,6 +2912,27 @@ enum commit_action simplify_commit(struct rev_info *revs, struct commit *commit)
 	return action;
 }
 
+static void track_linear(struct rev_info *revs, struct commit *commit)
+{
+	if (revs->track_first_time) {
+		revs->linear = 1;
+		revs->track_first_time = 0;
+	} else {
+		struct commit_list *p;
+		for (p = revs->previous_parents; p; p = p->next)
+			if (p->item == NULL || /* first commit */
+			    !hashcmp(p->item->object.sha1, commit->object.sha1))
+				break;
+		revs->linear = p != NULL;
+	}
+	if (revs->reverse) {
+		if (revs->linear)
+			commit->object.flags |= TRACK_LINEAR;
+	}
+	free_commit_list(revs->previous_parents);
+	revs->previous_parents = copy_commit_list(commit->parents);
+}
+
 static struct commit *get_revision_1(struct rev_info *revs)
 {
 	if (!revs->commits)
@@ -2936,6 +2972,8 @@ static struct commit *get_revision_1(struct rev_info *revs)
 			die("Failed to simplify parents of commit %s",
 			    sha1_to_hex(commit->object.sha1));
 		default:
+			if (revs->track_linear)
+				track_linear(revs, commit);
 			return commit;
 		}
 	} while (revs->commits);
@@ -3102,14 +3140,23 @@ struct commit *get_revision(struct rev_info *revs)
 		revs->reverse_output_stage = 1;
 	}
 
-	if (revs->reverse_output_stage)
-		return pop_commit(&revs->commits);
+	if (revs->reverse_output_stage) {
+		c = pop_commit(&revs->commits);
+		if (revs->track_linear)
+			revs->linear = !!(c && c->object.flags & TRACK_LINEAR);
+		return c;
+	}
 
 	c = get_revision_internal(revs);
 	if (c && revs->graph)
 		graph_update(revs->graph, c);
-	if (!c)
+	if (!c) {
 		free_saved_parents(revs);
+		if (revs->previous_parents) {
+			free_commit_list(revs->previous_parents);
+			revs->previous_parents = NULL;
+		}
+	}
 	return c;
 }
 

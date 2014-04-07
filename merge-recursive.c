@@ -201,7 +201,9 @@ static int add_cacheinfo(unsigned int mode, const unsigned char *sha1,
 		const char *path, int stage, int refresh, int options)
 {
 	struct cache_entry *ce;
-	ce = make_cache_entry(mode, sha1 ? sha1 : null_sha1, path, stage, refresh);
+	ce = make_cache_entry(mode, sha1 ? sha1 : null_sha1, path, stage,
+			      (refresh ? (CE_MATCH_REFRESH |
+					  CE_MATCH_IGNORE_MISSING) : 0 ));
 	if (!ce)
 		return error(_("addinfo_cache failed for path '%s'"), path);
 	return add_cache_entry(ce, options);
@@ -693,7 +695,7 @@ static int make_room_for_path(struct merge_options *o, const char *path)
 	/* Make sure leading directories are created */
 	status = safe_create_leading_directories_const(path);
 	if (status) {
-		if (status == -3) {
+		if (status == SCLD_EXISTS) {
 			/* something else exists */
 			error(msg, path, _(": perhaps a D/F conflict?"));
 			return -1;

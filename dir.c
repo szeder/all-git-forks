@@ -49,16 +49,18 @@ int strncmp_icase(const char *a, const char *b, size_t count)
 
 int fnmatch_icase(const char *pattern, const char *string, int flags)
 {
-	return fnmatch(pattern, string, flags | (ignore_case ? FNM_CASEFOLD : 0));
+	return wildmatch(pattern, string,
+			 flags | (ignore_case ? WM_CASEFOLD : 0),
+			 NULL);
 }
 
-inline int git_fnmatch(const struct pathspec_item *item,
-		       const char *pattern, const char *string,
-		       int prefix)
+int git_fnmatch(const struct pathspec_item *item,
+		const char *pattern, const char *string,
+		int prefix)
 {
 	if (prefix > 0) {
 		if (ps_strncmp(item, pattern, string, prefix))
-			return FNM_NOMATCH;
+			return WM_NOMATCH;
 		pattern += prefix;
 		string += prefix;
 	}
@@ -76,8 +78,9 @@ inline int git_fnmatch(const struct pathspec_item *item,
 				 NULL);
 	else
 		/* wildmatch has not learned no FNM_PATHNAME mode yet */
-		return fnmatch(pattern, string,
-			       item->magic & PATHSPEC_ICASE ? FNM_CASEFOLD : 0);
+		return wildmatch(pattern, string,
+				 item->magic & PATHSPEC_ICASE ? WM_CASEFOLD : 0,
+				 NULL);
 }
 
 static int fnmatch_icase_mem(const char *pattern, int patternlen,
@@ -195,6 +198,9 @@ int within_depth(const char *name, int namelen,
 	return 1;
 }
 
+#define DO_MATCH_EXCLUDE   1
+#define DO_MATCH_DIRECTORY 2
+
 /*
  * Does 'match' match the given name?
  * A match is found if
@@ -208,7 +214,7 @@ int within_depth(const char *name, int namelen,
  * It returns 0 when there is no match.
  */
 static int match_pathspec_item(const struct pathspec_item *item, int prefix,
-			       const char *name, int namelen)
+			       const char *name, int namelen, unsigned flags)
 {
 	/* name/namelen has prefix cut off by caller */
 	const char *match = item->match + prefix;
@@ -218,7 +224,7 @@ static int match_pathspec_item(const struct pathspec_item *item, int prefix,
 	 * The normal call pattern is:
 	 * 1. prefix = common_prefix_len(ps);
 	 * 2. prune something, or fill_directory
-	 * 3. match_pathspec_depth()
+	 * 3. match_pathspec()
 	 *
 	 * 'prefix' at #1 may be shorter than the command's prefix and
 	 * it's ok for #2 to match extra files. Those extras will be
@@ -257,7 +263,11 @@ static int match_pathspec_item(const struct pathspec_item *item, int prefix,
 
 		if (match[matchlen-1] == '/' || name[matchlen] == '/')
 			return MATCHED_RECURSIVELY;
-	}
+	} else if ((flags & DO_MATCH_DIRECTORY) &&
+		   match[matchlen - 1] == '/' &&
+		   namelen == matchlen - 1 &&
+		   !ps_strncmp(item, match, name, namelen))
+		return MATCHED_EXACTLY;
 
 	if (item->nowildcard_len < item->len &&
 	    !git_fnmatch(item, match, name,
@@ -282,12 +292,12 @@ static int match_pathspec_item(const struct pathspec_item *item, int prefix,
  * pathspec did not match any names, which could indicate that the
  * user mistyped the nth pathspec.
  */
-static int match_pathspec_depth_1(const struct pathspec *ps,
-				  const char *name, int namelen,
-				  int prefix, char *seen,
-				  int exclude)
+static int do_match_pathspec(const struct pathspec *ps,
+			     const char *name, int namelen,
+			     int prefix, char *seen,
+			     unsigned flags)
 {
-	int i, retval = 0;
+	int i, retval = 0, exclude = flags & DO_MATCH_EXCLUDE;
 
 	GUARD_PATHSPEC(ps,
 		       PATHSPEC_FROMTOP |
@@ -327,7 +337,8 @@ static int match_pathspec_depth_1(const struct pathspec *ps,
 		 */
 		if (seen && ps->items[i].magic & PATHSPEC_EXCLUDE)
 			seen[i] = MATCHED_FNMATCH;
-		how = match_pathspec_item(ps->items+i, prefix, name, namelen);
+		how = match_pathspec_item(ps->items+i, prefix, name,
+					  namelen, flags);
 		if (ps->recursive &&
 		    (ps->magic & PATHSPEC_MAXDEPTH) &&
 		    ps->max_depth != -1 &&
@@ -350,15 +361,19 @@ static int match_pathspec_depth_1(const struct pathspec *ps,
 	return retval;
 }
 
-int match_pathspec_depth(const struct pathspec *ps,
-			 const char *name, int namelen,
-			 int prefix, char *seen)
+int match_pathspec(const struct pathspec *ps,
+		   const char *name, int namelen,
+		   int prefix, char *seen, int is_dir)
 {
 	int positive, negative;
-	positive = match_pathspec_depth_1(ps, name, namelen, prefix, seen, 0);
+	unsigned flags = is_dir ? DO_MATCH_DIRECTORY : 0;
+	positive = do_match_pathspec(ps, name, namelen,
+				     prefix, seen, flags);
 	if (!(ps->magic & PATHSPEC_EXCLUDE) || !positive)
 		return positive;
-	negative = match_pathspec_depth_1(ps, name, namelen, prefix, seen, 1);
+	negative = do_match_pathspec(ps, name, namelen,
+				     prefix, seen,
+				     flags | DO_MATCH_EXCLUDE);
 	return negative ? 0 : positive;
 }
 
@@ -491,6 +506,25 @@ void clear_exclude_list(struct exclude_list *el)
 	el->filebuf = NULL;
 }
 
+static void trim_trailing_spaces(char *buf)
+{
+	int i, last_space = -1, nr_spaces, len = strlen(buf);
+	for (i = 0; i < len; i++)
+		if (buf[i] == '\\')
+			i++;
+		else if (buf[i] == ' ') {
+			if (last_space == -1) {
+				last_space = i;
+				nr_spaces = 1;
+			} else
+				nr_spaces++;
+		} else
+			last_space = -1;
+
+	if (last_space != -1 && last_space + nr_spaces == len)
+		buf[last_space] = '\0';
+}
+
 int add_excludes_from_file_to_list(const char *fname,
 				   const char *base,
 				   int baselen,
@@ -542,6 +576,7 @@ int add_excludes_from_file_to_list(const char *fname,
 		if (buf[i] == '\n') {
 			if (entry != buf + i && entry[0] != '#') {
 				buf[i - (i && buf[i-1] == '\r')] = 0;
+				trim_trailing_spaces(entry);
 				add_exclude(entry, base, baselen, el, lineno);
 			}
 			lineno++;
@@ -1329,10 +1364,7 @@ static struct path_simplify *create_simplify(const char **pathspec)
 
 	for (nr = 0 ; ; nr++) {
 		const char *match;
-		if (nr >= alloc) {
-			alloc = alloc_nr(alloc);
-			simplify = xrealloc(simplify, alloc * sizeof(*simplify));
-		}
+		ALLOC_GROW(simplify, nr + 1, alloc);
 		match = *pathspec++;
 		if (!match)
 			break;
@@ -1511,8 +1543,13 @@ static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up)
 	flag &= ~REMOVE_DIR_KEEP_TOPLEVEL;
 	dir = opendir(path->buf);
 	if (!dir) {
-		/* an empty dir could be removed even if it is unreadble */
-		if (!keep_toplevel)
+		if (errno == ENOENT)
+			return keep_toplevel ? -1 : 0;
+		else if (errno == EACCES && !keep_toplevel)
+			/*
+			 * An empty dir could be removable even if it
+			 * is unreadable:
+			 */
 			return rmdir(path->buf);
 		else
 			return -1;
@@ -1528,13 +1565,21 @@ static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up)
 
 		strbuf_setlen(path, len);
 		strbuf_addstr(path, e->d_name);
-		if (lstat(path->buf, &st))
-			; /* fall thru */
-		else if (S_ISDIR(st.st_mode)) {
+		if (lstat(path->buf, &st)) {
+			if (errno == ENOENT)
+				/*
+				 * file disappeared, which is what we
+				 * wanted anyway
+				 */
+				continue;
+			/* fall thru */
+		} else if (S_ISDIR(st.st_mode)) {
 			if (!remove_dir_recurse(path, flag, &kept_down))
 				continue; /* happy */
-		} else if (!only_empty && !unlink(path->buf))
+		} else if (!only_empty &&
+			   (!unlink(path->buf) || errno == ENOENT)) {
 			continue; /* happy, too */
+		}
 
 		/* path too long, stat fails, or non-directory still exists */
 		ret = -1;
@@ -1544,7 +1589,7 @@ static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up)
 
 	strbuf_setlen(path, original_len);
 	if (!ret && !keep_toplevel && !kept_down)
-		ret = rmdir(path->buf);
+		ret = (!rmdir(path->buf) || errno == ENOENT) ? 0 : -1;
 	else if (kept_up)
 		/*
 		 * report the uplevel that it is not an error that we

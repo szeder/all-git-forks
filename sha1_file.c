@@ -60,6 +60,12 @@ static struct cached_object empty_tree = {
 	0
 };
 
+/*
+ * A pointer to the last packed_git in which an object was found.
+ * When an object is sought, we look in this packfile first, because
+ * objects that are looked up at similar times are often in the same
+ * packfile as one another.
+ */
 static struct packed_git *last_found_pack;
 
 static struct cached_object *find_cached_object(const unsigned char *sha1)
@@ -105,50 +111,63 @@ int mkdir_in_gitdir(const char *path)
 	return adjust_shared_perm(path);
 }
 
-int safe_create_leading_directories(char *path)
+enum scld_error safe_create_leading_directories(char *path)
 {
-	char *pos = path + offset_1st_component(path);
-	struct stat st;
+	char *next_component = path + offset_1st_component(path);
+	enum scld_error ret = SCLD_OK;
 
-	while (pos) {
-		pos = strchr(pos, '/');
-		if (!pos)
+	while (ret == SCLD_OK && next_component) {
+		struct stat st;
+		char *slash = next_component, slash_character;
+
+		while (*slash && !is_dir_sep(*slash))
+			slash++;
+
+		if (!*slash)
 			break;
-		while (*++pos == '/')
-			;
-		if (!*pos)
+
+		next_component = slash + 1;
+		while (is_dir_sep(*next_component))
+			next_component++;
+		if (!*next_component)
 			break;
-		*--pos = '\0';
+
+		slash_character = *slash;
+		*slash = '\0';
 		if (!stat(path, &st)) {
 			/* path exists */
-			if (!S_ISDIR(st.st_mode)) {
-				*pos = '/';
-				return -3;
-			}
-		}
-		else if (mkdir(path, 0777)) {
+			if (!S_ISDIR(st.st_mode))
+				ret = SCLD_EXISTS;
+		} else if (mkdir(path, 0777)) {
 			if (errno == EEXIST &&
-			    !stat(path, &st) && S_ISDIR(st.st_mode)) {
+			    !stat(path, &st) && S_ISDIR(st.st_mode))
 				; /* somebody created it since we checked */
-			} else {
-				*pos = '/';
-				return -1;
-			}
+			else if (errno == ENOENT)
+				/*
+				 * Either mkdir() failed because
+				 * somebody just pruned the containing
+				 * directory, or stat() failed because
+				 * the file that was in our way was
+				 * just removed.  Either way, inform
+				 * the caller that it might be worth
+				 * trying again:
+				 */
+				ret = SCLD_VANISHED;
+			else
+				ret = SCLD_FAILED;
+		} else if (adjust_shared_perm(path)) {
+			ret = SCLD_PERMS;
 		}
-		else if (adjust_shared_perm(path)) {
-			*pos = '/';
-			return -2;
-		}
-		*pos++ = '/';
+		*slash = slash_character;
 	}
-	return 0;
+	return ret;
 }
 
-int safe_create_leading_directories_const(const char *path)
+enum scld_error safe_create_leading_directories_const(const char *path)
 {
 	/* path points to cache entries, so xstrdup before messing with it */
 	char *buf = xstrdup(path);
-	int result = safe_create_leading_directories(buf);
+	enum scld_error result = safe_create_leading_directories(buf);
 	free(buf);
 	return result;
 }
@@ -165,17 +184,7 @@ static void fill_sha1_path(char *pathbuf, const unsigned char *sha1)
 	}
 }
 
-/*
- * NOTE! This returns a statically allocated buffer, so you have to be
- * careful about using it. Do an "xstrdup()" if you need to save the
- * filename.
- *
- * Also note that this returns the location for creating.  Reading
- * SHA1 file can happen from any alternate directory listed in the
- * DB_ENVIRONMENT environment variable if it is not found in
- * the primary object database.
- */
-char *sha1_file_name(const unsigned char *sha1)
+const char *sha1_file_name(const unsigned char *sha1)
 {
 	static char buf[PATH_MAX];
 	const char *objdir;
@@ -195,6 +204,11 @@ char *sha1_file_name(const unsigned char *sha1)
 	return buf;
 }
 
+/*
+ * Return the name of the pack or index file with the specified sha1
+ * in its filename.  *base and *name are scratch space that must be
+ * provided by the caller.  which should be "pack" or "idx".
+ */
 static char *sha1_get_pack_name(const unsigned char *sha1,
 				char **name, char **base, const char *which)
 {
@@ -238,8 +252,6 @@ char *sha1_pack_index_name(const unsigned char *sha1)
 
 struct alternate_object_database *alt_odb_list;
 static struct alternate_object_database **alt_odb_tail;
-
-static int git_open_noatime(const char *name);
 
 /*
  * Prepare alternate object database registry.
@@ -425,8 +437,7 @@ void prepare_alt_odb(void)
 
 static int has_loose_object_local(const unsigned char *sha1)
 {
-	char *name = sha1_file_name(sha1);
-	return !access(name, F_OK);
+	return !access(sha1_file_name(sha1), F_OK);
 }
 
 int has_loose_object_nonlocal(const unsigned char *sha1)
@@ -478,7 +489,12 @@ void pack_report(void)
 		sz_fmt(pack_mapped), sz_fmt(peak_pack_mapped));
 }
 
-static int check_packed_git_idx(const char *path,  struct packed_git *p)
+/*
+ * Open and mmap the index file at path, perform a couple of
+ * consistency checks, then record its information to p.  Return 0 on
+ * success.
+ */
+static int check_packed_git_idx(const char *path, struct packed_git *p)
 {
 	void *idx_map;
 	struct pack_idx_header *hdr;
@@ -1219,6 +1235,7 @@ static void prepare_packed_git_one(char *objdir, int local)
 
 		if (has_extension(de->d_name, ".idx") ||
 		    has_extension(de->d_name, ".pack") ||
+		    has_extension(de->d_name, ".bitmap") ||
 		    has_extension(de->d_name, ".keep"))
 			string_list_append(&garbage, path);
 		else
@@ -1303,7 +1320,6 @@ void prepare_packed_git(void)
 
 void reprepare_packed_git(void)
 {
-	discard_revindex();
 	prepare_packed_git_run_once = 0;
 	prepare_packed_git();
 }
@@ -1380,7 +1396,7 @@ int check_sha1_signature(const unsigned char *sha1, void *map,
 	return hashcmp(sha1, real_sha1) ? -1 : 0;
 }
 
-static int git_open_noatime(const char *name)
+int git_open_noatime(const char *name)
 {
 	static int sha1_file_open_flag = O_NOATIME;
 
@@ -1401,17 +1417,15 @@ static int git_open_noatime(const char *name)
 
 static int stat_sha1_file(const unsigned char *sha1, struct stat *st)
 {
-	char *name = sha1_file_name(sha1);
 	struct alternate_object_database *alt;
 
-	if (!lstat(name, st))
+	if (!lstat(sha1_file_name(sha1), st))
 		return 0;
 
 	prepare_alt_odb();
 	errno = ENOENT;
 	for (alt = alt_odb_list; alt; alt = alt->next) {
-		name = alt->name;
-		fill_sha1_path(name, sha1);
+		fill_sha1_path(alt->name, sha1);
 		if (!lstat(alt->base, st))
 			return 0;
 	}
@@ -1422,18 +1436,16 @@ static int stat_sha1_file(const unsigned char *sha1, struct stat *st)
 static int open_sha1_file(const unsigned char *sha1)
 {
 	int fd;
-	char *name = sha1_file_name(sha1);
 	struct alternate_object_database *alt;
 
-	fd = git_open_noatime(name);
+	fd = git_open_noatime(sha1_file_name(sha1));
 	if (fd >= 0)
 		return fd;
 
 	prepare_alt_odb();
 	errno = ENOENT;
 	for (alt = alt_odb_list; alt; alt = alt->next) {
-		name = alt->name;
-		fill_sha1_path(name, sha1);
+		fill_sha1_path(alt->name, sha1);
 		fd = git_open_noatime(alt->base);
 		if (fd >= 0)
 			return fd;
@@ -2276,6 +2288,10 @@ void *unpack_entry(struct packed_git *p, off_t obj_offset,
 	*final_size = size;
 
 	unuse_pack(&w_curs);
+
+	if (delta_stack != small_delta_stack)
+		free(delta_stack);
+
 	return data;
 }
 
@@ -2435,6 +2451,10 @@ static int fill_pack_entry(const unsigned char *sha1,
 	return 1;
 }
 
+/*
+ * Iff a pack file contains the object named by sha1, return true and
+ * store its location to e.
+ */
 static int find_pack_entry(const unsigned char *sha1, struct pack_entry *e)
 {
 	struct packed_git *p;
@@ -2447,11 +2467,13 @@ static int find_pack_entry(const unsigned char *sha1, struct pack_entry *e)
 		return 1;
 
 	for (p = packed_git; p; p = p->next) {
-		if (p == last_found_pack || !fill_pack_entry(sha1, e, p))
-			continue;
+		if (p == last_found_pack)
+			continue; /* we already checked this one */
 
-		last_found_pack = p;
-		return 1;
+		if (fill_pack_entry(sha1, e, p)) {
+			last_found_pack = p;
+			return 1;
+		}
 	}
 	return 0;
 }
@@ -2613,12 +2635,7 @@ int pretend_sha1_file(void *buf, unsigned long len, enum object_type type,
 	hash_sha1_file(buf, len, typename(type), sha1);
 	if (has_sha1_file(sha1) || find_cached_object(sha1))
 		return 0;
-	if (cached_object_alloc <= cached_object_nr) {
-		cached_object_alloc = alloc_nr(cached_object_alloc);
-		cached_objects = xrealloc(cached_objects,
-					  sizeof(*cached_objects) *
-					  cached_object_alloc);
-	}
+	ALLOC_GROW(cached_objects, cached_object_nr + 1, cached_object_alloc);
 	co = &cached_objects[cached_object_nr++];
 	co->size = len;
 	co->type = type;
@@ -2666,7 +2683,6 @@ void *read_sha1_file_extended(const unsigned char *sha1,
 			      unsigned flag)
 {
 	void *data;
-	char *path;
 	const struct packed_git *p;
 	const unsigned char *repl = lookup_replace_object_extended(sha1, flag);
 
@@ -2684,7 +2700,8 @@ void *read_sha1_file_extended(const unsigned char *sha1,
 		    sha1_to_hex(repl), sha1_to_hex(sha1));
 
 	if (has_loose_object(repl)) {
-		path = sha1_file_name(sha1);
+		const char *path = sha1_file_name(sha1);
+
 		die("loose object %s (stored in %s) is corrupt",
 		    sha1_to_hex(repl), path);
 	}
@@ -2882,10 +2899,9 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 	git_zstream stream;
 	git_SHA_CTX c;
 	unsigned char parano_sha1[20];
-	char *filename;
 	static char tmp_file[PATH_MAX];
+	const char *filename = sha1_file_name(sha1);
 
-	filename = sha1_file_name(sha1);
 	fd = create_tmpfile(tmp_file, sizeof(tmp_file), filename);
 	if (fd < 0) {
 		if (errno == EACCES)

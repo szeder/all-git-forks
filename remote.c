@@ -49,6 +49,7 @@ static int branches_nr;
 
 static struct branch *current_branch;
 static const char *default_remote_name;
+static const char *branch_pushremote_name;
 static const char *pushremote_name;
 static int explicit_default_remote_name;
 
@@ -352,7 +353,7 @@ static int handle_config(const char *key, const char *value, void *cb)
 			}
 		} else if (!strcmp(subkey, ".pushremote")) {
 			if (branch == current_branch)
-				if (git_config_string(&pushremote_name, key, value))
+				if (git_config_string(&branch_pushremote_name, key, value))
 					return -1;
 		} else if (!strcmp(subkey, ".merge")) {
 			if (!value)
@@ -492,6 +493,10 @@ static void read_config(void)
 			make_branch(head_ref + strlen("refs/heads/"), 0);
 	}
 	git_config(handle_config, NULL);
+	if (branch_pushremote_name) {
+		free((char *)pushremote_name);
+		pushremote_name = branch_pushremote_name;
+	}
 	alias_all_urls();
 }
 
@@ -852,6 +857,32 @@ static int match_name_with_pattern(const char *key, const char *name,
 	return ret;
 }
 
+static void query_refspecs_multiple(struct refspec *refs, int ref_count, struct refspec *query, struct string_list *results)
+{
+	int i;
+	int find_src = !query->src;
+
+	if (find_src && !query->dst)
+		error("query_refspecs_multiple: need either src or dst");
+
+	for (i = 0; i < ref_count; i++) {
+		struct refspec *refspec = &refs[i];
+		const char *key = find_src ? refspec->dst : refspec->src;
+		const char *value = find_src ? refspec->src : refspec->dst;
+		const char *needle = find_src ? query->dst : query->src;
+		char **result = find_src ? &query->src : &query->dst;
+
+		if (!refspec->dst)
+			continue;
+		if (refspec->pattern) {
+			if (match_name_with_pattern(key, needle, value, result))
+				string_list_append_nodup(results, *result);
+		} else if (!strcmp(needle, key)) {
+			string_list_append(results, value);
+		}
+	}
+}
+
 int query_refspecs(struct refspec *refs, int ref_count, struct refspec *query)
 {
 	int i;
@@ -1000,7 +1031,7 @@ int count_refspec_match(const char *pattern,
 		char *name = refs->name;
 		int namelen = strlen(name);
 
-		if (!refname_match(pattern, name, ref_rev_parse_rules))
+		if (!refname_match(pattern, name))
 			continue;
 
 		/* A match is "weak" if it is with refs outside
@@ -1031,11 +1062,13 @@ int count_refspec_match(const char *pattern,
 		}
 	}
 	if (!matched) {
-		*matched_ref = matched_weak;
+		if (matched_ref)
+			*matched_ref = matched_weak;
 		return weak_match;
 	}
 	else {
-		*matched_ref = matched;
+		if (matched_ref)
+			*matched_ref = matched;
 		return match;
 	}
 }
@@ -1055,18 +1088,25 @@ static struct ref *alloc_delete_ref(void)
 	return ref;
 }
 
-static struct ref *try_explicit_object_name(const char *name)
+static int try_explicit_object_name(const char *name,
+				    struct ref **match)
 {
 	unsigned char sha1[20];
-	struct ref *ref;
 
-	if (!*name)
-		return alloc_delete_ref();
+	if (!*name) {
+		if (match)
+			*match = alloc_delete_ref();
+		return 0;
+	}
+
 	if (get_sha1(name, sha1))
-		return NULL;
-	ref = alloc_ref(name);
-	hashcpy(ref->new_sha1, sha1);
-	return ref;
+		return -1;
+
+	if (match) {
+		*match = alloc_ref(name);
+		hashcpy((*match)->new_sha1, sha1);
+	}
+	return 0;
 }
 
 static struct ref *make_linked_ref(const char *name, struct ref ***tail)
@@ -1096,12 +1136,37 @@ static char *guess_ref(const char *name, struct ref *peer)
 	return strbuf_detach(&buf, NULL);
 }
 
+static int match_explicit_lhs(struct ref *src,
+			      struct refspec *rs,
+			      struct ref **match,
+			      int *allocated_match)
+{
+	switch (count_refspec_match(rs->src, src, match)) {
+	case 1:
+		if (allocated_match)
+			*allocated_match = 0;
+		return 0;
+	case 0:
+		/* The source could be in the get_sha1() format
+		 * not a reference name.  :refs/other is a
+		 * way to delete 'other' ref at the remote end.
+		 */
+		if (try_explicit_object_name(rs->src, match) < 0)
+			return error("src refspec %s does not match any.", rs->src);
+		if (allocated_match)
+			*allocated_match = 1;
+		return 0;
+	default:
+		return error("src refspec %s matches more than one.", rs->src);
+	}
+}
+
 static int match_explicit(struct ref *src, struct ref *dst,
 			  struct ref ***dst_tail,
 			  struct refspec *rs)
 {
 	struct ref *matched_src, *matched_dst;
-	int copy_src;
+	int allocated_src;
 
 	const char *dst_value = rs->dst;
 	char *dst_guess;
@@ -1110,23 +1175,8 @@ static int match_explicit(struct ref *src, struct ref *dst,
 		return 0;
 
 	matched_src = matched_dst = NULL;
-	switch (count_refspec_match(rs->src, src, &matched_src)) {
-	case 1:
-		copy_src = 1;
-		break;
-	case 0:
-		/* The source could be in the get_sha1() format
-		 * not a reference name.  :refs/other is a
-		 * way to delete 'other' ref at the remote end.
-		 */
-		matched_src = try_explicit_object_name(rs->src);
-		if (!matched_src)
-			return error("src refspec %s does not match any.", rs->src);
-		copy_src = 0;
-		break;
-	default:
-		return error("src refspec %s matches more than one.", rs->src);
-	}
+	if (match_explicit_lhs(src, rs, &matched_src, &allocated_src) < 0)
+		return -1;
 
 	if (!dst_value) {
 		unsigned char sha1[20];
@@ -1171,7 +1221,9 @@ static int match_explicit(struct ref *src, struct ref *dst,
 		return error("dst ref %s receives from more than one src.",
 		      matched_dst->name);
 	else {
-		matched_dst->peer_ref = copy_src ? copy_ref(matched_src) : matched_src;
+		matched_dst->peer_ref = allocated_src ?
+					matched_src :
+					copy_ref(matched_src);
 		matched_dst->force = rs->force;
 	}
 	return 0;
@@ -1350,6 +1402,31 @@ static void prepare_ref_index(struct string_list *ref_index, struct ref *ref)
 		string_list_append_nodup(ref_index, ref->name)->util = ref;
 
 	sort_string_list(ref_index);
+}
+
+/*
+ * Given only the set of local refs, sanity-check the set of push
+ * refspecs. We can't catch all errors that match_push_refs would,
+ * but we can catch some errors early before even talking to the
+ * remote side.
+ */
+int check_push_refs(struct ref *src, int nr_refspec, const char **refspec_names)
+{
+	struct refspec *refspec = parse_push_refspec(nr_refspec, refspec_names);
+	int ret = 0;
+	int i;
+
+	for (i = 0; i < nr_refspec; i++) {
+		struct refspec *rs = refspec + i;
+
+		if (rs->pattern || rs->matching)
+			continue;
+
+		ret |= match_explicit_lhs(src, rs, NULL, NULL);
+	}
+
+	free_refspec(nr_refspec, refspec);
+	return ret;
 }
 
 /*
@@ -1571,7 +1648,7 @@ int branch_merge_matches(struct branch *branch,
 {
 	if (!branch || i < 0 || i >= branch->merge_nr)
 		return 0;
-	return refname_match(branch->merge[i]->src, refname, ref_fetch_rules);
+	return refname_match(branch->merge[i]->src, refname);
 }
 
 static int ignore_symref_update(const char *refname)
@@ -1624,7 +1701,7 @@ static const struct ref *find_ref_by_name_abbrev(const struct ref *refs, const c
 {
 	const struct ref *ref;
 	for (ref = refs; ref; ref = ref->next) {
-		if (refname_match(name, ref->name, ref_fetch_rules))
+		if (refname_match(name, ref->name))
 			return ref;
 	}
 	return NULL;
@@ -1992,25 +2069,37 @@ static int get_stale_heads_cb(const char *refname,
 	const unsigned char *sha1, int flags, void *cb_data)
 {
 	struct stale_heads_info *info = cb_data;
+	struct string_list matches = STRING_LIST_INIT_DUP;
 	struct refspec query;
+	int i, stale = 1;
 	memset(&query, 0, sizeof(struct refspec));
 	query.dst = (char *)refname;
 
-	if (query_refspecs(info->refs, info->ref_count, &query))
-		return 0; /* No matches */
+	query_refspecs_multiple(info->refs, info->ref_count, &query, &matches);
+	if (matches.nr == 0)
+		goto clean_exit; /* No matches */
 
 	/*
 	 * If we did find a suitable refspec and it's not a symref and
 	 * it's not in the list of refs that currently exist in that
-	 * remote we consider it to be stale.
+	 * remote, we consider it to be stale. In order to deal with
+	 * overlapping refspecs, we need to go over all of the
+	 * matching refs.
 	 */
-	if (!((flags & REF_ISSYMREF) ||
-	      string_list_has_string(info->ref_names, query.src))) {
+	if (flags & REF_ISSYMREF)
+		goto clean_exit;
+
+	for (i = 0; stale && i < matches.nr; i++)
+		if (string_list_has_string(info->ref_names, matches.items[i].string))
+			stale = 0;
+
+	if (stale) {
 		struct ref *ref = make_linked_ref(refname, &info->stale_refs_tail);
 		hashcpy(ref->new_sha1, sha1);
 	}
 
-	free(query.src);
+clean_exit:
+	string_list_clear(&matches, 0);
 	return 0;
 }
 
@@ -2121,7 +2210,7 @@ static void apply_cas(struct push_cas_option *cas,
 	/* Find an explicit --<option>=<name>[:<value>] entry */
 	for (i = 0; i < cas->nr; i++) {
 		struct push_cas *entry = &cas->entry[i];
-		if (!refname_match(entry->refname, ref->name, ref_rev_parse_rules))
+		if (!refname_match(entry->refname, ref->name))
 			continue;
 		ref->expect_old_sha1 = 1;
 		if (!entry->use_tracking)

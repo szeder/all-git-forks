@@ -11,6 +11,7 @@
 #include "unpack-trees.h"
 #include "refs.h"
 #include "submodule.h"
+#include "dir.h"
 
 /*
  * diff-files
@@ -90,9 +91,6 @@ int run_diff_files(struct rev_info *revs, unsigned int option)
 	unsigned ce_option = ((option & DIFF_RACY_IS_MODIFIED)
 			      ? CE_MATCH_RACY_IS_DIRTY : 0);
 
-	if (option & DIFF_SILENT_ON_REMOVED)
-		handle_deprecated_show_diff_q(&revs->diffopt);
-
 	diff_set_mnemonic_prefix(&revs->diffopt, "i/", "w/");
 
 	if (diff_unmerged_stage < 0)
@@ -108,7 +106,7 @@ int run_diff_files(struct rev_info *revs, unsigned int option)
 		if (diff_can_quit_early(&revs->diffopt))
 			break;
 
-		if (!ce_path_match(ce, &revs->prune_data))
+		if (!ce_path_match(ce, &revs->prune_data, NULL))
 			continue;
 
 		if (ce_stage(ce)) {
@@ -124,7 +122,6 @@ int run_diff_files(struct rev_info *revs, unsigned int option)
 			dpath->path = (char *) &(dpath->parent[5]);
 
 			dpath->next = NULL;
-			dpath->len = path_len;
 			memcpy(dpath->path, ce->name, path_len);
 			dpath->path[path_len] = '\0';
 			hashclr(dpath->sha1);
@@ -326,7 +323,6 @@ static int show_modified(struct rev_info *revs,
 		p = xmalloc(combine_diff_path_size(2, pathlen));
 		p->path = (char *) &p->parent[2];
 		p->next = NULL;
-		p->len = pathlen;
 		memcpy(p->path, new->name, pathlen);
 		p->path[pathlen] = 0;
 		p->mode = mode;
@@ -438,7 +434,7 @@ static int oneway_diff(const struct cache_entry * const *src,
 	if (tree == o->df_conflict_entry)
 		tree = NULL;
 
-	if (ce_path_match(idx ? idx : tree, &revs->prune_data)) {
+	if (ce_path_match(idx ? idx : tree, &revs->prune_data, NULL)) {
 		do_oneway_diff(o, idx, tree);
 		if (diff_can_quit_early(&revs->diffopt)) {
 			o->exiting_early = 1;

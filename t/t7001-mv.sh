@@ -294,7 +294,8 @@ test_expect_success 'setup submodule' '
 	git submodule add ./. sub &&
 	echo content >file &&
 	git add file &&
-	git commit -m "added sub and file"
+	git commit -m "added sub and file" &&
+	git branch submodule
 '
 
 test_expect_success 'git mv cannot move a submodule in a file' '
@@ -446,8 +447,7 @@ test_expect_success 'checking out a commit before submodule moved needs manual u
 	git mv sub sub2 &&
 	git commit -m "moved sub to sub2" &&
 	git checkout -q HEAD^ 2>actual &&
-	echo "warning: unable to rmdir sub2: Directory not empty" >expected &&
-	test_i18ncmp expected actual &&
+	test_i18ngrep "^warning: unable to rmdir sub2:" actual &&
 	git status -s sub2 >actual &&
 	echo "?? sub2/" >expected &&
 	test_cmp expected actual &&
@@ -461,6 +461,16 @@ test_expect_success 'checking out a commit before submodule moved needs manual u
 	git diff-files --quiet -- sub .gitmodules &&
 	git status -s sub2 >actual &&
 	! test -s actual
+'
+
+test_expect_success 'mv -k does not accidentally destroy submodules' '
+	git checkout submodule &&
+	mkdir dummy dest &&
+	git mv -k dummy sub dest &&
+	git status --porcelain >actual &&
+	grep "^R  sub -> dest/sub" actual &&
+	git reset --hard &&
+	git checkout .
 '
 
 test_done

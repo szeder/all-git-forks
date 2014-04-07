@@ -26,6 +26,7 @@ static int agent_supported;
 static struct lock_file shallow_lock;
 static const char *alternate_shallow_file;
 
+/* Remember to update object flag allocation in object.h */
 #define COMPLETE	(1U << 0)
 #define COMMON		(1U << 1)
 #define COMMON_REF	(1U << 2)
@@ -439,7 +440,8 @@ done:
 	}
 	strbuf_release(&req_buf);
 
-	consume_shallow_list(args, fd[0]);
+	if (!got_ready || !no_done)
+		consume_shallow_list(args, fd[0]);
 	while (flushes || multi_ack) {
 		int ack = get_ack(fd[0], result_sha1);
 		if (ack) {
@@ -506,7 +508,7 @@ static void filter_refs(struct fetch_pack_args *args,
 		next = ref->next;
 
 		if (!memcmp(ref->name, "refs/", 5) &&
-		    check_refname_format(ref->name + 5, 0))
+		    check_refname_format(ref->name, 0))
 			; /* trash */
 		else {
 			while (i < nr_sought) {
@@ -946,17 +948,6 @@ static void update_shallow(struct fetch_pack_args *args,
 
 	if (!si->shallow || !si->shallow->nr)
 		return;
-
-	if (alternate_shallow_file) {
-		/*
-		 * The temporary shallow file is only useful for
-		 * index-pack and unpack-objects because it may
-		 * contain more roots than we want. Delete it.
-		 */
-		if (*alternate_shallow_file)
-			unlink(alternate_shallow_file);
-		free((char *)alternate_shallow_file);
-	}
 
 	if (args->cloning) {
 		/*

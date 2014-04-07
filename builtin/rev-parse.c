@@ -395,9 +395,10 @@ static int cmd_parseopt(int argc, const char **argv, const char *prefix)
 		usage[unb++] = strbuf_detach(&sb, NULL);
 	}
 
-	/* parse: (<short>|<short>,<long>|<long>)[=?]? SP+ <help> */
+	/* parse: (<short>|<short>,<long>|<long>)[*=?!]*<arghint>? SP+ <help> */
 	while (strbuf_getline(&sb, stdin, '\n') != EOF) {
 		const char *s;
+		const char *end;
 		struct option *o;
 
 		if (!sb.len)
@@ -419,6 +420,16 @@ static int cmd_parseopt(int argc, const char **argv, const char *prefix)
 		o->value = &parsed;
 		o->flags = PARSE_OPT_NOARG;
 		o->callback = &parseopt_dump;
+
+		/* Possible argument name hint */
+		end = s;
+		while (s > sb.buf && strchr("*=?!", s[-1]) == NULL)
+			--s;
+		if (s != sb.buf && s != end)
+			o->argh = xmemdupz(s, end - s);
+		if (s == sb.buf)
+			s = end;
+
 		while (s > sb.buf && strchr("*=?!", s[-1])) {
 			switch (*--s) {
 			case '=':
@@ -547,15 +558,17 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				continue;
 			}
 			if (!strcmp(arg, "--default")) {
-				def = argv[i+1];
-				i++;
+				def = argv[++i];
+				if (!def)
+					die("--default requires an argument");
 				continue;
 			}
 			if (!strcmp(arg, "--prefix")) {
-				prefix = argv[i+1];
+				prefix = argv[++i];
+				if (!prefix)
+					die("--prefix requires an argument");
 				startup_info->prefix = prefix;
 				output_prefix = 1;
-				i++;
 				continue;
 			}
 			if (!strcmp(arg, "--revs-only")) {
@@ -738,9 +751,12 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				continue;
 			}
 			if (!strcmp(arg, "--resolve-git-dir")) {
-				const char *gitdir = resolve_gitdir(argv[i+1]);
+				const char *gitdir = argv[++i];
 				if (!gitdir)
-					die("not a gitdir '%s'", argv[i+1]);
+					die("--resolve-git-dir requires an argument");
+				gitdir = resolve_gitdir(gitdir);
+				if (!gitdir)
+					die("not a gitdir '%s'", argv[i]);
 				puts(gitdir);
 				continue;
 			}

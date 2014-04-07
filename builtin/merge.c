@@ -367,7 +367,7 @@ static void squash_message(struct commit *commit, struct commit_list *remotehead
 			sha1_to_hex(commit->object.sha1));
 		pretty_print_commit(&ctx, commit, &out);
 	}
-	if (write(fd, out.buf, out.len) < 0)
+	if (write_in_full(fd, out.buf, out.len) != out.len)
 		die_errno(_("Writing SQUASH_MSG"));
 	if (close(fd))
 		die_errno(_("Finishing SQUASH_MSG"));
@@ -421,7 +421,7 @@ static void finish(struct commit *head_commit,
 	}
 
 	/* Run a post-merge hook */
-	run_hook(NULL, "post-merge", squash ? "1" : "0", NULL);
+	run_hook_le(NULL, "post-merge", squash ? "1" : "0", NULL);
 
 	strbuf_release(&reflog_message);
 }
@@ -596,6 +596,9 @@ static int git_merge_config(const char *k, const char *v, void *cb)
 		return 0;
 	} else if (!strcmp(k, "merge.defaulttoupstream")) {
 		default_to_upstream = git_config_bool(k, v);
+		return 0;
+	} else if (!strcmp(k, "commit.gpgsign")) {
+		sign_commit = git_config_bool(k, v) ? "" : NULL;
 		return 0;
 	}
 
@@ -821,8 +824,8 @@ static void prepare_to_commit(struct commit_list *remoteheads)
 	if (0 < option_edit)
 		strbuf_commented_addf(&msg, _(merge_editor_comment), comment_line_char);
 	write_merge_msg(&msg);
-	if (run_hook(get_index_file(), "prepare-commit-msg",
-		     git_path("MERGE_MSG"), "merge", NULL, NULL))
+	if (run_commit_hook(0 < option_edit, get_index_file(), "prepare-commit-msg",
+			    git_path("MERGE_MSG"), "merge", NULL))
 		abort_commit(remoteheads, NULL);
 	if (0 < option_edit) {
 		if (launch_editor(git_path("MERGE_MSG"), NULL, NULL))
