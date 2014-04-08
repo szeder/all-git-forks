@@ -54,7 +54,7 @@ void shortlog_insert_one_record(struct shortlog *log,
 	eol = strchr(oneline, '\n');
 	if (!eol)
 		eol = oneline + strlen(oneline);
-	if (!prefixcmp(oneline, "[PATCH")) {
+	if (starts_with(oneline, "[PATCH")) {
 		char *eob = strchr(oneline, ']');
 		if (eob && (!eol || eob < eol))
 			oneline = eob + 1;
@@ -94,7 +94,7 @@ void shortlog_add_commit(struct shortlog *log, struct commit *commit)
 		else
 			eol++;
 
-		if (!prefixcmp(buffer, "author "))
+		if (starts_with(buffer, "author "))
 			author = buffer + 7;
 		buffer = eol;
 	}

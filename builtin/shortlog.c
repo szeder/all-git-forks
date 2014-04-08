@@ -17,7 +17,7 @@ static void read_from_stdin(struct shortlog *log)
 
 	while (fgets(author, sizeof(author), stdin) != NULL) {
 		if (!(author[0] == 'A' || author[0] == 'a') ||
-		    prefixcmp(author + 1, "uthor: "))
+		    !starts_with(author + 1, "uthor: "))
 			continue;
 		while (fgets(oneline, sizeof(oneline), stdin) &&
 		       oneline[0] != '\n')

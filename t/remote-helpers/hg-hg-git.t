@@ -8,7 +8,7 @@
 
 test_description='Test remote-hg output compared to hg-git'
 
-test -z "$TEST_DIRECTORY" && TEST_DIRECTORY="$PWD/.."
+test -n "$TEST_DIRECTORY" || TEST_DIRECTORY=${0%/*}/..
 . "$TEST_DIRECTORY"/test-lib.sh
 
 if ! test_have_prereq PYTHON
