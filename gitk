@@ -1611,6 +1611,16 @@ proc chewcommits {} {
     global curview hlview viewcomplete
     global pending_select
 
+    global lastprogupdate progupdatepending
+    set now [clock clicks -milliseconds]
+    if {$now >= $lastprogupdate + 500} {
+        set progupdatepending 0
+        update
+    } elseif {!$progupdatepending} {
+        set progupdatepending 1
+        after [expr {$lastprogupdate + 500 - $now}] doprogupdate
+    }
+
     layoutmore
     if {$viewcomplete($curview)} {
 	global commitidx varctok
