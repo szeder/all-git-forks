@@ -430,7 +430,7 @@ static inline int tracking_mark(const char *string, int len)
 }
 
 static int get_sha1_1(const char *name, int len, unsigned char *sha1, unsigned lookup_flags);
-static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf);
+static int interpret_nth_prior_checkout(const char *name, int namelen, struct strbuf *buf);
 
 static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 {
@@ -492,7 +492,7 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 		struct strbuf buf = STRBUF_INIT;
 		int detached;
 
-		if (interpret_nth_prior_checkout(str, &buf) > 0) {
+		if (interpret_nth_prior_checkout(str, len, &buf) > 0) {
 			detached = (buf.len == 40 && !get_sha1_hex(buf.buf, sha1));
 			strbuf_release(&buf);
 			if (detached)
@@ -931,7 +931,8 @@ static int grab_nth_branch_switch(unsigned char *osha1, unsigned char *nsha1,
  * Parse @{-N} syntax, return the number of characters parsed
  * if successful; otherwise signal an error with negative value.
  */
-static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf)
+static int interpret_nth_prior_checkout(const char *name, int namelen,
+					struct strbuf *buf)
 {
 	long nth;
 	int retval;
@@ -939,9 +940,11 @@ static int interpret_nth_prior_checkout(const char *name, struct strbuf *buf)
 	const char *brace;
 	char *num_end;
 
+	if (namelen < 4)
+		return -1;
 	if (name[0] != '@' || name[1] != '{' || name[2] != '-')
 		return -1;
-	brace = strchr(name, '}');
+	brace = memchr(name, '}', namelen);
 	if (!brace)
 		return -1;
 	nth = strtol(name + 3, &num_end, 10);
@@ -1014,7 +1017,7 @@ static int interpret_empty_at(const char *name, int namelen, int len, struct str
 		return -1;
 
 	/* make sure it's a single @, or @@{.*}, not @foo */
-	next = strchr(name + len + 1, '@');
+	next = memchr(name + len + 1, '@', namelen - len - 1);
 	if (next && next[1] != '{')
 		return -1;
 	if (!next)
@@ -1048,6 +1051,73 @@ static int reinterpret(const char *name, int namelen, int len, struct strbuf *bu
 	return ret - used + len;
 }
 
+static void set_shortened_ref(struct strbuf *buf, const char *ref)
+{
+	char *s = shorten_unambiguous_ref(ref, 0);
+	strbuf_reset(buf);
+	strbuf_addstr(buf, s);
+	free(s);
+}
+
+static const char *get_tracking_branch(const char *name_buf, int len, char type)
+{
+	char *name = xstrndup(name_buf, len);
+	struct branch *branch = branch_get(*name ? name : NULL);
+	char *tracking = NULL;
+
+	/*
+	 * Upstream can be NULL only if branch refers to HEAD and HEAD
+	 * points to something different than a branch.
+	 */
+	if (!branch)
+		die(_("HEAD does not point to a branch"));
+	switch (type) {
+	case 'u':
+		if (!branch->merge || !branch->merge[0]->dst) {
+			if (!ref_exists(branch->refname))
+				die(_("No such branch: '%s'"), name);
+			if (!branch->merge) {
+				die(_("No upstream configured for branch '%s'"),
+					branch->name);
+			}
+			die(
+				_("Upstream branch '%s' not stored as a remote-tracking branch"),
+				branch->merge[0]->src);
+		}
+		tracking = branch->merge[0]->dst;
+		break;
+	case 'p':
+		if (!branch->push.dst) {
+			die(_("No publish configured for branch '%s'"),
+					branch->name);
+		}
+		tracking = branch->push.dst;
+		break;
+	}
+	free(name);
+
+	return tracking;
+}
+
+static int interpret_tracking_mark(const char *name, int namelen,
+				   int at, struct strbuf *buf)
+{
+	int len;
+
+	if (name[at + 1] != '{' || name[namelen - 1] != '}')
+		return -1;
+
+	len = tracking_mark(name + at + 2, namelen - at - 3);
+	if (!len)
+		return -1;
+
+	if (memchr(name, ':', at))
+		return -1;
+
+	set_shortened_ref(buf, get_tracking_branch(name, at, name[at + 2]));
+	return len + at + 3;
+}
+
 /*
  * This reads short-hand syntax that not only evaluates to a commit
  * object name, but also can act as if the end user spelled the name
@@ -1071,10 +1141,9 @@ static int reinterpret(const char *name, int namelen, int len, struct strbuf *bu
  */
 int interpret_branch_name(const char *name, int namelen, struct strbuf *buf)
 {
-	char *cp;
-	struct branch *branch;
-	int len = interpret_nth_prior_checkout(name, buf);
-	char *tracking = NULL, type;
+	char *at;
+	const char *start;
+	int len = interpret_nth_prior_checkout(name, namelen, buf);
 
 	if (!namelen)
 		namelen = strlen(name);
@@ -1088,60 +1157,20 @@ int interpret_branch_name(const char *name, int namelen, struct strbuf *buf)
 			return reinterpret(name, namelen, len, buf);
 	}
 
-	cp = strchr(name, '@');
-	if (!cp)
-		return -1;
+	for (start = name;
+	     (at = memchr(start, '@', namelen - (start - name)));
+	     start = at + 1) {
 
-	len = interpret_empty_at(name, namelen, cp - name, buf);
-	if (len > 0)
-		return reinterpret(name, namelen, len, buf);
+		len = interpret_empty_at(name, namelen, at - name, buf);
+		if (len > 0)
+			return reinterpret(name, namelen, len, buf);
 
-	len = namelen - (cp - name);
-	if (cp[1] != '{' && cp[len - 1] != '}')
-		return -1;
-
-	if (!tracking_mark(cp + 2, len - 3))
-		return -1;
-
-	type = cp[2];
-
-	cp = xstrndup(name, cp - name);
-	branch = branch_get(*cp ? cp : NULL);
-	/*
-	 * Upstream can be NULL only if cp refers to HEAD and HEAD
-	 * points to something different than a branch.
-	 */
-	if (!branch)
-		die(_("HEAD does not point to a branch"));
-	switch (type) {
-	case 'u':
-		if (!branch->merge || !branch->merge[0]->dst) {
-			if (!ref_exists(branch->refname))
-				die(_("No such branch: '%s'"), cp);
-			if (!branch->merge) {
-				die(_("No upstream configured for branch '%s'"),
-					branch->name);
-			}
-			die(
-				_("Upstream branch '%s' not stored as a remote-tracking branch"),
-				branch->merge[0]->src);
-		}
-		tracking = branch->merge[0]->dst;
-		break;
-	case 'p':
-		if (!branch->push.dst) {
-			die(_("No publish configured for branch '%s'"),
-					branch->name);
-		}
-		tracking = branch->push.dst;
-		break;
+		len = interpret_tracking_mark(name, namelen, at - name, buf);
+		if (len > 0)
+			return len;
 	}
-	free(cp);
-	cp = shorten_unambiguous_ref(tracking, 0);
-	strbuf_reset(buf);
-	strbuf_addstr(buf, cp);
-	free(cp);
-	return namelen;
+
+	return -1;
 }
 
 int strbuf_branchname(struct strbuf *sb, const char *name)
