@@ -1,15 +1,14 @@
 #!/bin/bash
 
 ext=$1
-git='/home/felipec/dev/git'
 
 if [ $ext == 'hg' ]; then
-	versions=(1.9 2.0 2.1 2.2 2.3 2.4 2.5 2.6)
-	tests=test-{hg,hg-bidi,hg-hg-git}.t
+	versions=(1.9 2.0 2.1 2.2 2.3 2.4 2.5 2.6 2.7 2.8 2.9)
+	tests={hg,hg-bidi,hg-hg-git}.t
 	ext_dir='/home/felipec/tmp/hg'
 else
-	versions=(bzr-2.6b1 bzr-2.5.0 bzr-2.4.0 bzr-2.3.0 bzr-2.2.0 bzr-2.1.4 bzr-2.0.6)
-	tests=test-bzr.t
+	versions=(bzr-2.6.0 bzr-2.6b2 bzr-2.6b1 bzr-2.5.0 bzr-2.4.0 bzr-2.3.0 bzr-2.2.0 bzr-2.1.4 bzr-2.0.6)
+	tests=bzr.t
 	ext_dir='/home/felipec/tmp/bzr'
 fi
 
@@ -26,12 +25,9 @@ do
 
 	echo "preparing $version checkout" &&
 	(
-		git clone -n -q --shared $ext_dir $dir &&
-		cd $dir &&
-		git checkout -q $version &&
-		test $ext == 'hg' &&
-			printf 'version = "%s"\n' $version > mercurial/__version__.py &&
-		# make local >& /dev/null
+		mkdir -p $dir && cd $dir &&
+		git --git-dir=$ext_dir/.git checkout -q $version . &&
+		{ test $ext == 'hg' && printf 'version = "%s"\n' $version > mercurial/__version__.py || true ;} &&
 		python setup.py build_py -c -d . build_ext -i build_scripts >& /dev/null
 	)
 done
@@ -45,7 +41,7 @@ check_commit() {
 	do
 		(
 			use_lib /tmp/$ext/$version &&
-			dir=$PWD/contrib/remote-helpers &&
+			dir=$PWD/t/remote-helpers &&
 			tmpdir=$(mktemp -d) &&
 			export TEST_OUTPUT_DIRECTORY=$tmpdir &&
 			export TEST_DIRECTORY=$PWD/t &&
@@ -71,9 +67,6 @@ check_revlist() {
 }
 
 ret=1 &&
-cd $git &&
-
-make -C contrib/remote-helpers links &&
 
 shift
 if test -z $1
