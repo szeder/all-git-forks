@@ -1046,6 +1046,45 @@ static size_t parse_padding_placeholder(struct strbuf *sb,
 	return 0;
 }
 
+static size_t parse_commit_attribute(struct strbuf *sb, /* in UTF-8 */
+			  const char *placeholder,
+			  struct format_commit_context *c,
+			  const struct commit *commit)
+{
+	unsigned short offset = 1;
+	unsigned short hide_if_not_found = 0;
+
+	if (placeholder[offset] == '?') {
+		offset++;
+		hide_if_not_found = 1;
+	}
+
+	if (placeholder[offset] == '(') {
+		const char *start = placeholder + offset + 1;
+		const char *end = strchr(start, ')');
+
+		if (!end || start == end)
+			return 0;
+
+		const size_t len = end - start;
+
+		char *attr_name = xmalloc(len + 1);
+		memcpy(attr_name, start, len);
+		attr_name[len] = '\0';
+
+		const char *msg = commit->buffer;
+		char *header = get_header(commit, msg, attr_name);
+
+		if (header) {
+			strbuf_addstr(sb, header);
+			return len + offset + 2;
+		} else {
+			return hide_if_not_found ? len + offset + 2 : 0;
+		}
+	} else
+		return 0;
+}
+
 static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 				const char *placeholder,
 				void *context)
@@ -1209,6 +1248,8 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 			return 1;
 		}
 		return 0;
+	case 'A':
+		return parse_commit_attribute(sb, placeholder, c, commit);
 	}
 
 	if (placeholder[0] == 'G') {

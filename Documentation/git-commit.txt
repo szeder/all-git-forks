@@ -13,7 +13,7 @@ SYNOPSIS
 	   [-F <file> | -m <msg>] [--reset-author] [--allow-empty]
 	   [--allow-empty-message] [--no-verify] [-e] [--author=<author>]
 	   [--date=<date>] [--cleanup=<mode>] [--[no-]status]
-	   [-i | -o] [-S[<key-id>]] [--] [<file>...]
+	   [(-A | --attr) <key=value>] [-i | -o] [-S[<key-id>]] [--] [<file>...]
 
 DESCRIPTION
 -----------
@@ -311,6 +311,16 @@ changes to tracked files.
 	Do not include the output of linkgit:git-status[1] in the
 	commit message template when using an editor to prepare the
 	default commit message.
+
+-A <key=value>::
+--attr=<key=value>::
+	Add an attribute (extra header) to the commit object. The attribute form
+	is a 'key=value' pair and neither the key nor the value cannot be empty (if
+	the commit is an amend commit, value can be empty). You can add as many
+	attributes as you want and these attributes can be shown either by
+	linkgit:git-log[1] or linkgit:git-show[1]. If used with --amend option,
+	duplicated attributes are replaced and if attributes have an empty value,
+	they are removed from the commit object.
 
 -S[<keyid>]::
 --gpg-sign[=<keyid>]::

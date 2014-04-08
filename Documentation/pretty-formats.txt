@@ -137,6 +137,8 @@ The placeholders are:
 - '%b': body
 - '%B': raw body (unwrapped subject and body)
 - '%N': commit notes
+- '%A[?](...)': commit attribute (specifying attribute name inside brackets).
+  If used with '?', the placeholder is not shown if attribute is not found.
 - '%GG': raw verification message from GPG for a signed commit
 - '%G?': show "G" for a Good signature, "B" for a Bad signature, "U" for a good,
   untrusted signature and "N" for no signature
@@ -200,6 +202,21 @@ placeholder expands to an empty string.
 If you add a ` ` (space) after '%' of a placeholder, a space
 is inserted immediately before the expansion if and only if the
 placeholder expands to a non-empty string.
+
+* 'Commit attributes'
++
+In order to show commit attributes (extra headers), you have to put the name
+of the attribute inside brackets of the %A placeholder. For example:
++
+---------------------
+$ git commit --attr "example_attr=The attribute value." -m "Commit message."
+$ git show --format="%h %s -- Example attribute: %A(example_attr) [%an]"
+4dabe05 Commit message. -- Example attribute: The attribute value. [John Doe]
+$ git show --format="%h %s -- Not found: %A(not_found_attr) [%an]"
+4dbbe05 Commit message. -- Not found: %A(not_found_attr). [John Doe]
+$ git show --format="%h %s -- Not found: %A?(not_found_attr). [%an]"
+4dbbe05 Commit message. -- Not found: . [John Doe]
+---------------------
 
 * 'tformat:'
 +

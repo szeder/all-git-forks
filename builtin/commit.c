@@ -117,6 +117,9 @@ static int no_post_rewrite, allow_empty_message;
 static char *untracked_files_arg, *force_date, *ignore_submodule_arg;
 static char *sign_commit;
 
+/* Commit attributes (commit extra headers) */
+static struct commit_extra_header *commit_attrs = NULL;
+
 /*
  * The default commit message cleanup mode will remove the lines
  * beginning with # (shell comments) and leading and trailing
@@ -1566,6 +1569,192 @@ int run_commit_hook(int editor_is_used, const char *index_file, const char *name
 	return ret;
 }
 
+/* Removes the given commit extra header returning its parent. */
+static struct commit_extra_header *remove_commit_extra_header(
+	struct commit_extra_header **headers, struct commit_extra_header *to_remove)
+{
+	if (!headers || !*headers)
+		return NULL;
+
+	struct commit_extra_header *r = *headers, *parent = NULL;
+	while(r != NULL) {
+		if (r == to_remove) {
+			if (parent == NULL) {
+				*headers = r->next;
+			} else {
+				parent->next = r->next;
+			}
+			free(to_remove->key);
+			free(to_remove->value);
+			free(to_remove);
+			break;
+		}
+		parent = r;
+		r = r->next;
+	}
+	return parent != NULL ? parent : *headers;
+}
+
+/* Check for duplicated/empty attributes. */
+static void process_commit_attrs(struct commit_extra_header **attrs,
+				struct commit_extra_header **new_attrs, int is_amend)
+{
+	/*
+	 * Check first if there are duplicated attributes from the attributes
+	 * to be appended (new_attrs).
+	 */
+	struct commit_extra_header *r = *new_attrs, *r2 = *new_attrs;
+	while(r != NULL) {
+		r2 = *new_attrs;
+		while(r2 != NULL) {
+			if (r != r2 && strcmp(r->key, r2->key) == 0) {
+				die(_("Cannot add duplicated attributes to a commit: %s"),
+					r->key);
+			}
+			r2 = r2->next;
+		}
+		r = r->next;
+	}
+
+	/*
+	 * Now, check if there are duplicates for amended commits. Then, replace
+	 * if they have a value or remove if they have an empty value.
+	 */
+	if (is_amend) {
+		r = *attrs, r2 = *new_attrs;
+		while(r != NULL) {
+			r2 = *new_attrs;
+			while(r2 != NULL) {
+				if (r != r2 && strcmp(r->key, r2->key) == 0) {
+					struct commit_extra_header *to_remove = r2;
+					if (r2->len == 0) {
+						/* If attribute is 'key=', remove it from main attrs. */
+						r = remove_commit_extra_header(attrs, r);
+					} else {
+						free(r->value);
+						r->value = xmalloc(r2->len);
+						memcpy(r->value, r2->value, r2->len);
+						r->len = r2->len;
+					}
+					r2 = r2->next;
+					remove_commit_extra_header(new_attrs, to_remove);
+				} else {
+					r2 = r2->next;
+				}
+			}	// while r2
+			if (!r)
+				break;
+			r = r->next;
+		}	// while r
+	}
+}
+
+/* Checks if there are any commit extra header with an empty value. */
+static void check_for_empty_attrs(struct commit_extra_header *attrs)
+{
+	struct commit_extra_header *r = attrs;
+
+	while(r != NULL) {
+		if (r->len == 0)
+			die(_("Cannot add an empty attribute to a commit: %s"), r->key);
+		r = r->next;
+	}
+}
+
+/* Append attrs to current_attrs. */
+static void append_commit_attrs(struct commit_extra_header **current_attrs,
+				struct commit_extra_header *attrs)
+{
+	if(*current_attrs == NULL) {
+		*current_attrs = attrs;
+		return;
+	}
+
+	struct commit_extra_header *r = *current_attrs;
+
+	while(r->next != NULL)
+		r = r->next;
+
+	r->next = attrs;
+}
+
+static void check_disallowed_attribute_names(const char *attr_name)
+{
+	const char *disallowed_names[] = { "author", "committer", "encoding",
+		"gpgsig", "mergetag", "parent", "tree" };
+
+	int i;
+	for (i = 0; i < ARRAY_SIZE(disallowed_names); i++) {
+		if (strcmp(attr_name, disallowed_names[i]) == 0) {
+			die(_("Invalid commit attribute name: %s"), attr_name);
+		}
+	}
+}
+
+/* Parses -A/--attr value of the form 'key=value'. */
+static int parse_attr_option_callback(const struct option *option,
+				const char *arg, int unset)
+{
+	unsigned short key_len = 0;
+	unsigned short value_len = 0;
+	short equal_found = 0;
+	short invalid_char_in_name = 0;
+	short invalid_char_in_value = 0;
+
+	int i;
+	for (i = 0; arg[i] != '\0'; i++) {
+		if (arg[i] == '=') {
+			equal_found = 1;
+			if (invalid_char_in_name) {
+				break;
+			}
+		} else if (!equal_found && (arg[i] == ' ' || arg[i] == '\n')) {
+			invalid_char_in_name = 1;
+			key_len++;
+		} else if (equal_found && (arg[i] == '\n')) {
+			invalid_char_in_value = 1;
+			value_len++;
+		} else {
+			if(equal_found) {
+				value_len++;
+			} else {
+				key_len++;
+			}
+		}
+	}
+
+	if(!equal_found || key_len == 0) {
+		die(_("Invalid commit attribute format (must be 'key=value'): %s"), arg);
+	}
+
+	struct commit_extra_header *attr = xmalloc(sizeof(*attr));
+	attr->next = NULL;
+	attr->key = xmalloc(key_len + 1);
+	memcpy(attr->key, arg, key_len);
+	attr->key[key_len] = '\0';
+	if (invalid_char_in_name) {
+		die(_("Invalid character in commit attribute name: %s"), attr->key);
+	}
+
+	check_disallowed_attribute_names(attr->key);
+
+	attr->value = xmalloc(value_len);
+	memcpy(attr->value, arg + key_len + 1, value_len);
+	attr->len = value_len;
+
+	if (invalid_char_in_value) {
+		die(_("Invalid character in commit attribute value: %s"), attr->value);
+	}
+
+	if (!amend && value_len == 0) {
+		die(_("Commit attribute value cannot be empty if not amend."));
+	}
+
+	append_commit_attrs(&commit_attrs, attr);
+
+	return 0;
+}
+
 int cmd_commit(int argc, const char **argv, const char *prefix)
 {
 	static struct wt_status s;
@@ -1613,6 +1802,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		OPT_BOOL(0, "amend", &amend, N_("amend previous commit")),
 		OPT_BOOL(0, "no-post-rewrite", &no_post_rewrite, N_("bypass post-rewrite hook")),
 		{ OPTION_STRING, 'u', "untracked-files", &untracked_files_arg, N_("mode"), N_("show untracked files, optional modes: all, normal, no. (Default: all)"), PARSE_OPT_OPTARG, NULL, (intptr_t)"all" },
+		OPT_CALLBACK('A', "attr", NULL, N_("key=value"), N_("add a commit attribute"), &parse_attr_option_callback),
 		/* end commit contents options */
 
 		OPT_HIDDEN_BOOL(0, "allow-empty", &allow_empty,
@@ -1747,6 +1937,15 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		append_merge_tag_headers(parents, &tail);
 	}
 
+	/* Check for duplicated commit attributes on extra and commit_attrs.
+	   Replace them if we are amending the commit. */
+	process_commit_attrs(&extra, &commit_attrs, amend);
+
+	/* Append extra attributes (supplied with --attr or -A). */
+	append_commit_attrs(&extra, commit_attrs);
+
+	/* Check for empty attributes again (may come from amend). */
+	check_for_empty_attrs(extra);
 	if (commit_tree_extended(sb.buf, sb.len, active_cache_tree->sha1,
 			 parents, sha1, author_ident.buf, sign_commit, extra)) {
 		rollback_index_files();
