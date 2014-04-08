@@ -331,7 +331,6 @@ ifeq ($(uname_S),Windows)
 	NO_MKSTEMPS = YesPlease
 	SNPRINTF_RETURNS_BOGUS = YesPlease
 	NO_SVN_TESTS = YesPlease
-	NO_PERL_MAKEMAKER = YesPlease
 	RUNTIME_PREFIX = YesPlease
 	NO_ST_BLOCKS_IN_STRUCT_STAT = YesPlease
 	NO_NSEC = YesPlease
@@ -340,7 +339,6 @@ ifeq ($(uname_S),Windows)
 	UNRELIABLE_FSTAT = UnfortunatelyYes
 	OBJECT_CREATION_USES_RENAMES = UnfortunatelyNeedsTo
 	NO_REGEX = YesPlease
-	NO_CURL = YesPlease
 	NO_GETTEXT = YesPlease
 	NO_PYTHON = YesPlease
 	BLK_SHA1 = YesPlease

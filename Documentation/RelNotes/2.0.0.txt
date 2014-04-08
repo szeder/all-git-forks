@@ -47,6 +47,26 @@ Updates since v1.9 series
 
 UI, Workflows & Features
 
+ * "git gc --aggressive" learned "--depth" option and
+   "gc.aggressiveDepth" configuration variable to allow use of a less
+   insane depth than the built-in default value of 250.
+
+ * "git log" learned the "--show-linear-break" option to show where a
+   single strand-of-pearls is broken in its output.
+
+ * The "rev-parse --parseopt" mechanism used by scripted Porcelains to
+   parse command line options and to give help text learned to take
+   the argv-help (the placeholder string for an option parameter,
+   e.g. "key-id" in "--gpg-sign=<key-id>").
+
+ * The pattern to find where the function begins in C/C++ used in
+   "diff" and "grep -p" have been updated to help C++ source better.
+
+ * "git rebase" learned to interpret a lone "-" as "@{-1}", the
+   branch that we were previously on.
+
+ * "git commit --cleanup=<mode>" learned a new mode, scissors.
+
  * "git tag --list" output can be sorted using "version sort" with
    "--sort=version:refname".
 
@@ -113,13 +133,10 @@ UI, Workflows & Features
    fully for paths the index knows about but the tree-ish the command
    resets to does not (these paths are kept as intend-to-add entries).
 
- * Newly cloned submodule repositories by "git submodule update",
-   when the "checkout" update mode is used, will be on a local
-   branch instead of on a detached HEAD, just like submodules added
-   with "git submodule add".
-
 
 Performance, Internal Implementation, etc.
+
+ * The compilation options to port to AIX has been updated.
 
  * We started using wildmatch() in place of fnmatch(3) a few releases
    ago; complete the process and stop using fnmatch(3).
@@ -152,6 +169,78 @@ Fixes since v1.9 series
 Unless otherwise noted, all the fixes since v1.9 in the maintenance
 track are contained in this release (see the maintenance releases'
 notes for details).
+
+ * "git diff --no-index -Mq a b" fell into an infinite loop.
+   (merge ad1c3fb jc/fix-diff-no-index-diff-opt-parse later to maint).
+
+ * "git fetch --prune", when the right-hand-side of multiple fetch
+   refspecs overlap (e.g. storing "refs/heads/*" to
+   "refs/remotes/origin/*", while storing "refs/frotz/*" to
+   "refs/remotes/origin/fr/*"), aggressively thought that lack of
+   "refs/heads/fr/otz" on the origin site meant we should remove
+   "refs/remotes/origin/fr/otz" from us, without checking their
+   "refs/frotz/otz" first.
+
+   Note that such a configuration is inherently unsafe (think what
+   should happen when "refs/heads/fr/otz" does appear on the origin
+   site), but that is not a reason not to be extra careful.
+   (merge e6f6371 cn/fetch-prune-overlapping-destination later to maint).
+
+ * "git status --porcelain --branch" showed its output with labels
+   "ahead/behind/gone" translated to the user's locale.
+   (merge 7a76c28 mm/status-porcelain-format-i18n-fix later to maint).
+
+
+ * "git repack" died when asked to (re)pack with the reachability
+   bitmap when a bitmap cannot be built; instead, just (re)pack
+   without producing a bitmap in such a case, with a warning.
+   (merge 373c67d jk/pack-bitmap later to maint).
+
+
+ * The progress output while repacking and transferring objects showed
+   an apparent large silence while writing the objects out of existing
+   packfiles, when the reachability bitmap was in use.
+   (merge 78d2214 jk/pack-bitmap-progress later to maint).
+
+
+ * A stray environment variable $prefix could have leaked into and
+   affected the behaviour of the "subtree" script (in contrib/).
+
+
+ * When it is not necessary to edit a commit log message (e.g. "git
+   commit -m" is given a message without specifying "-e"), we used to
+   disable the spawning of the editor by overriding GIT_EDITOR, but
+   this means all the uses of the editor, other than to edit the
+   commit log message, are also affected.
+   (merge b549be0 bp/commit-p-editor later to maint).
+
+
+ * "git mv" that moves a submodule forgot to adjust the array that
+   uses to keep track of which submodules were to be moved to update
+   its configuration.
+   (merge fb8a4e8 jk/mv-submodules-fix later to maint).
+
+ * Length limit for the pathname used when removing a path in a deep
+   subdirectory has been removed to avoid buffer overflows.
+   (merge 2f29e0c mh/remove-subtree-long-pathname-fix later to maint).
+
+ * The test helper lib-terminal always run an actual test_expect_*
+   when included, which screwed up with the use of skil-all that may
+   have to be done later.
+   (merge 7e27173 jk/lib-terminal-lazy later to maint).
+
+ * "git index-pack" used a wrong variable to name the keep-file in an
+   error message when the file cannot be written or closed.
+   (merge de983a0 nd/index-pack-error-message later to maint).
+
+ * "rebase -i" produced a broken insn sheet when the title of a commit
+   happened to contain '\n' (or ended with '\c') due to a careless use
+   of 'echo'.
+   (merge cb1aefd us/printf-not-echo later to maint).
+
+ * There were a few instances of 'git-foo' remaining in the
+   documentation that should have been spelled 'git foo'.
+   (merge 3c3e6f5 rr/doc-merge-strategies later to maint).
 
  * Serving objects from a shallow repository needs to write a
    new file to hold the temporary shallow boundaries but it was not

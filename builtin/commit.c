@@ -113,6 +113,7 @@ static char *sign_commit;
 static enum {
 	CLEANUP_SPACE,
 	CLEANUP_NONE,
+	CLEANUP_SCISSORS,
 	CLEANUP_ALL
 } cleanup_mode;
 static const char *cleanup_arg;
@@ -610,7 +611,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 	/* This checks and barfs if author is badly specified */
 	determine_author_info(author_ident);
 
-	if (!no_verify && run_hook(index_file, "pre-commit", NULL))
+	if (!no_verify && run_commit_hook(use_editor, index_file, "pre-commit", NULL))
 		return 0;
 
 	if (squash_message) {
@@ -755,7 +756,9 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		int ident_shown = 0;
 		int saved_color_setting;
 		char *ai_tmp, *ci_tmp;
-		if (whence != FROM_COMMIT)
+		if (whence != FROM_COMMIT) {
+			if (cleanup_mode == CLEANUP_SCISSORS)
+				wt_status_add_cut_line(s->fp);
 			status_printf_ln(s, GIT_COLOR_NORMAL,
 			    whence == FROM_MERGE
 				? _("\n"
@@ -771,6 +774,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 				git_path(whence == FROM_MERGE
 					 ? "MERGE_HEAD"
 					 : "CHERRY_PICK_HEAD"));
+		}
 
 		fprintf(s->fp, "\n");
 		if (cleanup_mode == CLEANUP_ALL)
@@ -778,6 +782,8 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 				_("Please enter the commit message for your changes."
 				  " Lines starting\nwith '%c' will be ignored, and an empty"
 				  " message aborts the commit.\n"), comment_line_char);
+		else if (cleanup_mode == CLEANUP_SCISSORS && whence == FROM_COMMIT)
+			wt_status_add_cut_line(s->fp);
 		else /* CLEANUP_SPACE, that is. */
 			status_printf(s, GIT_COLOR_NORMAL,
 				_("Please enter the commit message for your changes."
@@ -867,8 +873,8 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		return 0;
 	}
 
-	if (run_hook(index_file, "prepare-commit-msg",
-		     git_path(commit_editmsg), hook_arg1, hook_arg2, NULL))
+	if (run_commit_hook(use_editor, index_file, "prepare-commit-msg",
+			    git_path(commit_editmsg), hook_arg1, hook_arg2, NULL))
 		return 0;
 
 	if (use_editor) {
@@ -884,7 +890,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 	}
 
 	if (!no_verify &&
-	    run_hook(index_file, "commit-msg", git_path(commit_editmsg), NULL)) {
+	    run_commit_hook(use_editor, index_file, "commit-msg", git_path(commit_editmsg), NULL)) {
 		return 0;
 	}
 
@@ -1068,8 +1074,6 @@ static int parse_and_validate_options(int argc, const char *argv[],
 		use_editor = 0;
 	if (0 <= edit_flag)
 		use_editor = edit_flag;
-	if (!use_editor)
-		setenv("GIT_EDITOR", ":", 1);
 
 	/* Sanity check options */
 	if (amend && !current_head)
@@ -1133,6 +1137,8 @@ static int parse_and_validate_options(int argc, const char *argv[],
 		cleanup_mode = CLEANUP_SPACE;
 	else if (!strcmp(cleanup_arg, "strip"))
 		cleanup_mode = CLEANUP_ALL;
+	else if (!strcmp(cleanup_arg, "scissors"))
+		cleanup_mode = use_editor ? CLEANUP_SCISSORS : CLEANUP_SPACE;
 	else
 		die(_("Invalid cleanup mode %s"), cleanup_arg);
 
@@ -1450,6 +1456,29 @@ static int run_rewrite_hook(const unsigned char *oldsha1,
 	return finish_command(&proc);
 }
 
+int run_commit_hook(int editor_is_used, const char *index_file, const char *name, ...)
+{
+	const char *hook_env[3] =  { NULL };
+	char index[PATH_MAX];
+	va_list args;
+	int ret;
+
+	snprintf(index, sizeof(index), "GIT_INDEX_FILE=%s", index_file);
+	hook_env[0] = index;
+
+	/*
+	 * Let the hook know that no editor will be launched.
+	 */
+	if (!editor_is_used)
+		hook_env[1] = "GIT_EDITOR=:";
+
+	va_start(args, name);
+	ret = run_hook_ve(hook_env, name, args);
+	va_end(args);
+
+	return ret;
+}
+
 int cmd_commit(int argc, const char **argv, const char *prefix)
 {
 	static struct wt_status s;
@@ -1605,8 +1634,8 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		die(_("could not read commit message: %s"), strerror(saved_errno));
 	}
 
-	/* Truncate the message just before the diff, if any. */
-	if (verbose)
+	if (verbose || /* Truncate the message just before the diff, if any. */
+	    cleanup_mode == CLEANUP_SCISSORS)
 		wt_status_truncate_message_at_cut_line(&sb);
 
 	if (cleanup_mode != CLEANUP_NONE)
@@ -1674,7 +1703,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		     "not exceeded, and then \"git reset HEAD\" to recover."));
 
 	rerere(0);
-	run_hook(get_index_file(), "post-commit", NULL);
+	run_commit_hook(use_editor, get_index_file(), "post-commit", NULL);
 	if (amend && !no_post_rewrite) {
 		struct notes_rewrite_cfg *cfg;
 		cfg = init_copy_notes_for_rewrite("amend");
