@@ -1,9 +1,9 @@
 language: python
 
 install:
-  - pip install -q --use-mirrors Mercurial${HG_VERSION+==$HG_VERSION} || true
-  - pip install -q --use-mirrors bzr${BZR_VERSION+==$BZR_VERSION} || true
-  - pip install -q --use-mirrors 'dulwich<=0.9.0' hg-git || true
+  - pip install -q Mercurial${HG_VERSION+==$HG_VERSION} || true
+  - pip install -q --allow-external bzr --allow-unverified bzr bzr${BZR_VERSION+==$BZR_VERSION} || true
+  - pip install -q dulwich hg-git || true
 
 before_script:
   - hg --version || true
@@ -22,8 +22,9 @@ matrix:
     - env: BZR_VERSION=2.6.0
     - env: BZR_VERSION=2.5.1
     - env: BZR_VERSION=2.2.3
+    - env: HG_VERSION=2.9.1
+    - env: HG_VERSION=2.8.2
     - env: HG_VERSION=2.7.2
-    - env: HG_VERSION=2.6.3
     - python: 2.7
       env: TEST=remote-helpers-test
     - python: 2.6
