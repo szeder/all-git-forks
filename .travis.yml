@@ -19,6 +19,7 @@ script:
 
 matrix:
   include:
+    - env: TEST=all
     - env: BZR_VERSION=2.6.0
     - env: BZR_VERSION=2.5.1
     - env: BZR_VERSION=2.2.3
