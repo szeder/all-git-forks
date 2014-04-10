@@ -34,7 +34,6 @@ ifeq ($(strict_compilation),)
 endif
 
 USE_LIBPCRE = YesPlease
-USE_DUMPSTAT_ZEROMQ = YesPlease
 
 GIT_TEST_OPTS = --root=/var/ram/git-tests
 TEST_LINT = test-lint
