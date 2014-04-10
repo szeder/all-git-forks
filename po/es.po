@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-02-01 08:06+0800\n"
-"PO-Revision-Date: 2014-04-10 21:20+0200\n"
+"PO-Revision-Date: 2014-04-10 22:01+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -20,7 +20,7 @@ msgstr ""
 #: advice.c:57
 #, c-format
 msgid "hint: %.*s\n"
-msgstr ""
+msgstr "pista: %.*s\n"
 
 #.
 #. * Message used both when 'git commit' fails and when
@@ -33,6 +33,10 @@ msgid ""
 "appropriate to mark resolution and make a commit,\n"
 "or use 'git commit -a'."
 msgstr ""
+"Corríjalos en el árbol de trabajo,\n"
+"y después use 'git add/rm <fichero>' según\n"
+"corresponda para marcar la resolución y haga un commit,\n"
+"o use 'git commit -a'."
 
 #: archive.c:10
 msgid "git archive [options] <tree-ish> [<path>...]"
@@ -49,7 +53,7 @@ msgstr ""
 
 #: archive.c:13
 msgid "git archive --remote <repo> [--exec <cmd>] --list"
-msgstr ""
+msgstr "git archive --remote <repo> [--exec <orden>] --list"
 
 #: archive.c:242 builtin/add.c:240 builtin/add.c:559 builtin/rm.c:328
 #, c-format
@@ -66,11 +70,11 @@ msgstr ""
 
 #: archive.c:328 builtin/log.c:1193
 msgid "prefix"
-msgstr ""
+msgstr "prefijo"
 
 #: archive.c:329
 msgid "prepend prefix to each pathname in the archive"
-msgstr ""
+msgstr "antepone el prefijo a cada nombre de ruta en el archivo"
 
 #: archive.c:330 builtin/archive.c:88 builtin/blame.c:2265
 #: builtin/blame.c:2266 builtin/config.c:58 builtin/fast-export.c:680
@@ -78,19 +82,19 @@ msgstr ""
 #: builtin/ls-files.c:486 builtin/ls-files.c:489 builtin/notes.c:408
 #: builtin/notes.c:565 builtin/read-tree.c:108 parse-options.h:154
 msgid "file"
-msgstr ""
+msgstr "fichero"
 
 #: archive.c:331 builtin/archive.c:89
 msgid "write the archive to this file"
-msgstr ""
+msgstr "escribe el archivo a este fichero"
 
 #: archive.c:333
 msgid "read .gitattributes in working directory"
-msgstr ""
+msgstr "lee .gitattributes en el directorio de trabajo"
 
 #: archive.c:334
 msgid "report archived files on stderr"
-msgstr ""
+msgstr "informa en la salida de error [stderr] de los ficheros archivados"
 
 #: archive.c:335
 msgid "store only"
