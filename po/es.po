@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-02-01 08:06+0800\n"
-"PO-Revision-Date: 2014-04-10 22:01+0200\n"
+"PO-Revision-Date: 2014-04-11 22:28+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -44,7 +44,7 @@ msgstr ""
 
 #: archive.c:11
 msgid "git archive --list"
-msgstr ""
+msgstr "git archive --list"
 
 #: archive.c:12
 msgid ""
@@ -62,11 +62,11 @@ msgstr ""
 
 #: archive.c:327
 msgid "fmt"
-msgstr ""
+msgstr "fmt"
 
 #: archive.c:327
 msgid "archive format"
-msgstr ""
+msgstr "formato de archivo"
 
 #: archive.c:328 builtin/log.c:1193
 msgid "prefix"
@@ -98,35 +98,35 @@ msgstr "informa en la salida de error [stderr] de los ficheros archivados"
 
 #: archive.c:335
 msgid "store only"
-msgstr ""
+msgstr "almacena solamente"
 
 #: archive.c:336
 msgid "compress faster"
-msgstr ""
+msgstr "comprime más rápido"
 
 #: archive.c:344
 msgid "compress better"
-msgstr ""
+msgstr "comprime mejor"
 
 #: archive.c:347
 msgid "list supported archive formats"
-msgstr ""
+msgstr "muestra los formatos de archivo reconocidos"
 
 #: archive.c:349 builtin/archive.c:90 builtin/clone.c:84
 msgid "repo"
-msgstr ""
+msgstr "repo"
 
 #: archive.c:350 builtin/archive.c:91
 msgid "retrieve the archive from remote repository <repo>"
-msgstr ""
+msgstr "recupera el archivo desde el repositorio remoto <repo>"
 
 #: archive.c:351 builtin/archive.c:92 builtin/notes.c:487
 msgid "command"
-msgstr ""
+msgstr "orden"
 
 #: archive.c:352 builtin/archive.c:93
 msgid "path to the remote git-upload-archive command"
-msgstr ""
+msgstr "ruta a la orden remota git-upload-archive"
 
 #: attr.c:259
 msgid ""
@@ -192,12 +192,12 @@ msgstr ""
 #: branch.c:182
 #, c-format
 msgid "'%s' is not a valid branch name."
-msgstr ""
+msgstr "'%s' no es un nombre de rama válido."
 
 #: branch.c:187
 #, c-format
 msgid "A branch named '%s' already exists."
-msgstr ""
+msgstr "Ya existe una rama llamada '%s'."
 
 #: branch.c:195
 msgid "Cannot force update the current branch."
@@ -228,12 +228,12 @@ msgstr ""
 #: branch.c:264
 #, c-format
 msgid "Not a valid object name: '%s'."
-msgstr ""
+msgstr "Nombre de objeto inválido: '%s'."
 
 #: branch.c:284
 #, c-format
 msgid "Ambiguous object name: '%s'."
-msgstr ""
+msgstr "Nombre de objeto ambiguo: '%s'."
 
 #: branch.c:289
 #, c-format
