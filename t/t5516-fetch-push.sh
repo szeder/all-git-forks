@@ -1279,4 +1279,66 @@ EOF
 	git push --no-thin --receive-pack="$rcvpck" no-thin/.git refs/heads/master:refs/heads/foo
 '
 
+test_expect_success 'push with publish branch' '
+	mk_test up_repo heads/master &&
+	mk_test down_repo heads/master &&
+	test_config remote.up.url up_repo &&
+	test_config remote.down.url down_repo &&
+	test_config branch.master.pushremote down &&
+	test_config branch.master.push for-john &&
+	git push &&
+	check_push_result up_repo $the_first_commit heads/master &&
+	check_push_result down_repo $the_commit heads/for-john
+'
+
+test_expect_success 'push with publish branch for different remote' '
+	mk_test up_repo heads/master &&
+	mk_test down_repo heads/master &&
+	test_config remote.up.url up_repo &&
+	test_config remote.down.url down_repo &&
+	test_config branch.master.pushremote down &&
+	test_config branch.master.push for-john &&
+	git push up &&
+	check_push_result up_repo $the_commit heads/master &&
+	check_push_result down_repo $the_first_commit heads/master
+'
+
+test_expect_success 'push with publish branch with pushdefault' '
+	mk_test up_repo heads/master &&
+	mk_test down_repo heads/master &&
+	test_config remote.up.url up_repo &&
+	test_config remote.down.url down_repo &&
+	test_config remote.pushdefault up &&
+	test_config branch.master.pushremote down &&
+	test_config branch.master.push for-john &&
+	git push &&
+	check_push_result up_repo $the_first_commit heads/master &&
+	check_push_result down_repo $the_commit heads/for-john
+'
+
+test_expect_success 'push with publish branch with remote refspec' '
+	mk_test up_repo heads/master &&
+	mk_test down_repo heads/master &&
+	test_config remote.up.url up_repo &&
+	test_config remote.down.url down_repo &&
+	test_config remote.down.push refs/heads/master:refs/heads/bad &&
+	test_config branch.master.pushremote down &&
+	test_config branch.master.push for-john &&
+	git push &&
+	check_push_result up_repo $the_first_commit heads/master &&
+	check_push_result down_repo $the_commit heads/for-john
+'
+
+test_expect_success 'push with publish branch with manual refspec' '
+	mk_test up_repo heads/master &&
+	mk_test down_repo heads/master &&
+	test_config remote.up.url up_repo &&
+	test_config remote.down.url down_repo &&
+	test_config branch.master.pushremote down &&
+	test_config branch.master.push for-john &&
+	git push down master:good &&
+	check_push_result up_repo $the_first_commit heads/master &&
+	check_push_result down_repo $the_commit heads/good
+'
+
 test_done
