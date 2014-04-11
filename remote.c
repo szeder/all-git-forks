@@ -1566,7 +1566,7 @@ struct branch *branch_get(const char *name)
 			}
 		}
 	}
-	if (ret && ret->pushremote_name) {
+	if (ret && ret->pushremote_name && ret->push_name) {
 		struct remote *pushremote;
 		pushremote = pushremote_get(ret->pushremote_name);
 		ret->push.src = xstrdup(ret->push_name);
