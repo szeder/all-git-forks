@@ -148,7 +148,8 @@ void install_branch_publish(const char *name, const char *remote, const char *re
 {
 	struct strbuf key = STRBUF_INIT;
 
-	if (!remote && !strcmp(name, remote_ref + 11) && !prefixcmp(remote_ref, "refs/heads")) {
+	if (!remote && !strcmp(name, remote_ref + 11) &&
+			starts_with(remote_ref, "refs/heads")) {
 		warning(_("Not setting branch %s as its own publish branch."), name);
 		return;
 	}
@@ -169,7 +170,7 @@ int setup_publish(const char *name, const char *ref)
 	const char *remote, *remote_ref;
 
 	memset(&tracking, 0, sizeof(tracking));
-	tracking.spec.dst = (char*)ref;
+	tracking.spec.dst = (char *)ref;
 	if (for_each_remote(find_tracked_branch, &tracking))
 		return 1;
 
