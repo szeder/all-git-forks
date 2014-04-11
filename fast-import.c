@@ -1706,8 +1706,13 @@ static int update_branch(struct branch *b)
 			return -1;
 		}
 	}
-	if (write_ref_sha1(lock, b->sha1, msg) < 0)
+	if (write_ref_sha1(lock, b->sha1, msg) < 0) {
+		unlock_ref(lock);
 		return error("Unable to update %s", b->name);
+	}
+	if (commit_ref_lock(lock) < 0) {
+		return error("Unable to commit %s", b->name);
+	}
 	return 0;
 }
 
