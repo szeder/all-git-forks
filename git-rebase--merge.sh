@@ -101,6 +101,14 @@ finish_rb_merge () {
 	say All done.
 }
 
+
+# The whole contents of the file is run by dot-sourcing this file from
+# inside a shell function, and "return"s we see below are expected to
+# return from that function that dot-sources us.  However, FreeBSD
+# /bin/sh misbehaves on such a construct, so we will work it around by
+# enclosing the whole thing inside an extra layer of a function.
+git_rebase__merge () {
+
 case "$action" in
 continue)
 	read_state
@@ -151,3 +159,7 @@ do
 done
 
 finish_rb_merge
+
+}
+# ... and then we call the whole thing.
+git_rebase__merge

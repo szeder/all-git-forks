@@ -4,6 +4,13 @@
 # Copyright (c) 2010 Junio C Hamano.
 #
 
+# The whole contents of the file is run by dot-sourcing this file from
+# inside a shell function, and "return"s we see below are expected to
+# return from that function that dot-sources us.  However, FreeBSD
+# /bin/sh misbehaves on such a construct, so we will work it around by
+# enclosing the whole thing inside an extra layer of a function.
+git_rebase__am () {
+
 case "$action" in
 continue)
 	git am --resolved --resolvemsg="$resolvemsg" &&
@@ -73,3 +80,7 @@ then
 fi
 
 move_to_original_branch
+
+}
+# ... and then we call the whole thing.
+git_rebase__am
