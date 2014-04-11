@@ -348,9 +348,15 @@ void create_branch(const char *head,
 	if (real_ref && track)
 		setup_tracking(ref.buf + 11, real_ref, track, quiet);
 
-	if (!dont_change_ref)
-		if (write_ref_sha1(lock, sha1, msg) < 0)
+	if (!dont_change_ref) {
+		if (write_ref_sha1(lock, sha1, msg) < 0) {
+			unlock_ref(lock);
 			die_errno(_("Failed to write ref"));
+		}
+		if (commit_ref_lock(lock) < 0) {
+			die_errno(_("Failed to commit ref"));
+		}
+	}
 
 	strbuf_release(&ref);
 	free(real_ref);

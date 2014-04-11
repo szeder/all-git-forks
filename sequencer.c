@@ -283,6 +283,10 @@ static int fast_forward_to(const unsigned char *to, const unsigned char *from,
 					   0, NULL);
 	strbuf_addf(&sb, "%s: fast-forward", action_name(opts));
 	ret = write_ref_sha1(ref_lock, to, sb.buf);
+	if (ret)
+		unlock_ref(ref_lock);
+	else
+		ret |= commit_ref_lock(ref_lock);
 	strbuf_release(&sb);
 	return ret;
 }

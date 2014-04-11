@@ -1700,8 +1700,13 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		die(_("cannot lock HEAD ref"));
 	}
 	if (write_ref_sha1(ref_lock, sha1, sb.buf) < 0) {
+		unlock_ref(ref_lock);
 		rollback_index_files();
 		die(_("cannot update HEAD ref"));
+	}
+	if (commit_ref_lock(ref_lock) < 0) {
+		rollback_index_files();
+		die(_("cannot commit HEAD ref"));
 	}
 
 	unlink(git_path("CHERRY_PICK_HEAD"));

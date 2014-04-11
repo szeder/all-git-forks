@@ -8,6 +8,9 @@ struct ref_lock {
 	unsigned char old_sha1[20];
 	int lock_fd;
 	int force_write;
+	int skipped_write;
+	int delete_ref;
+	int delete_flag;
 };
 
 struct ref_transaction;
@@ -152,6 +155,9 @@ extern void unlock_ref(struct ref_lock *lock);
 
 /** Writes sha1 into the ref specified by the lock. **/
 extern int write_ref_sha1(struct ref_lock *lock, const unsigned char *sha1, const char *msg);
+
+/** Commit any changes done to the ref specified by the lock. **/
+extern int commit_ref_lock(struct ref_lock *lock);
 
 /** Setup reflog before using. **/
 int log_ref_setup(const char *refname, struct strbuf *logfile);
