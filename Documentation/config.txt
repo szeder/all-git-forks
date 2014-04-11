@@ -776,6 +776,12 @@ branch.<name>.pullmode::
 	rebase the fetched branch. The possible values are 'merge',
 	'rebase', and 'rebase-preserve'. See "pull.mode" for doing this in a
 	non branch-specific manner.
+
+branch.<name>.rebase::
+	When true, rebase the branch <name> on top of the fetched branch,
+	instead of merging the default branch from the default remote when
+	"git pull" is run. See "pull.rebase" for doing this in a non
+	branch-specific manner.
 +
 	When 'rebase-preserve', also pass `--preserve-merges` along to
 	'git rebase' so that locally committed merge commits will not be
