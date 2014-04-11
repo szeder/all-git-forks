@@ -1,0 +1,32 @@
+language: python
+
+install:
+  - pip install -q Mercurial${HG_VERSION+==$HG_VERSION} || true
+  - pip install -q --allow-external bzr --allow-unverified bzr bzr${BZR_VERSION+==$BZR_VERSION} || true
+  - pip install -q dulwich hg-git || true
+
+before_script:
+  - hg --version || true
+  - bzr --version || true
+  - pip show hg-git dulwich
+  - export PYTHON_PATH="$(which python)"
+  - test "$BZR_VERSION" && TEST='remote-helpers/bzr.t' || true
+  - test "$HG_VERSION" && TEST='remote-helpers/hg.t remote-helpers/hg-bidi.t remote-helpers/hg-hg-git.t' || true
+
+script:
+  - make
+  - make -C t ${TEST:-all}
+
+matrix:
+  include:
+    - env: TEST=all
+    - env: BZR_VERSION=2.6.0
+    - env: BZR_VERSION=2.5.1
+    - env: BZR_VERSION=2.2.3
+    - env: HG_VERSION=2.9.1
+    - env: HG_VERSION=2.8.2
+    - env: HG_VERSION=2.7.2
+    - python: 2.7
+      env: TEST=remote-helpers-test
+    - python: 2.6
+      env: TEST=remote-helpers-test
