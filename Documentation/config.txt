@@ -764,6 +764,13 @@ branch.<name>.mergeoptions::
 	option values containing whitespace characters are currently not
 	supported.
 
+branch.<name>.push::
+	Defines, together with branch.<name>.pushremote, the publish branch for
+	the given branch. It tells 'git push' which branch to push to, and
+	overrides any other configurations, such as push.default. It also tells
+	commands such as 'git status' and 'git branch' which remote branch to
+	use for tracking information (commits ahead and behind).
+
 branch.<name>.pullmode::
 	When "git pull" is run, this determines if it would either merge or
 	rebase the fetched branch. The possible values are 'merge',
