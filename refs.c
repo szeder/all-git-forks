@@ -3467,41 +3467,46 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 		}
 	}
 
-	/* Perform updates first so live commits remain referenced */
+	/* Prepare all the updates/deletes */
 	for (i = 0; i < n; i++) {
 		struct ref_update *update = updates[i];
 
-		if (!is_null_sha1(update->new_sha1)) {
+		if (!is_null_sha1(update->new_sha1))
 			ret = update_ref_write(msg,
 					       update->refname,
 					       update->new_sha1,
 					       update->lock, onerr);
-			if (ret)
-				unlock_ref(update->lock);
-			else
-				commit_ref_lock(update->lock);
-			update->lock = NULL;
-			if (ret)
-				goto cleanup;
-		}
-	}
-
-	/* Perform deletes now that updates are safely completed */
-	for (i = 0; i < n; i++) {
-		struct ref_update *update = updates[i];
-
-		if (update->lock) {
+		else {
 			delnames[delnum++] = update->refname;
-			ret |= delete_ref_loose(update->lock, update->type);
-			ret |= commit_ref_lock(update->lock);
-			update->lock = NULL;
+			ret = delete_ref_loose(update->lock, update->type);
 		}
+		if (ret)
+			goto cleanup;
 	}
 
 	ret |= repack_without_refs(delnames, delnum);
 	for (i = 0; i < delnum; i++)
 		unlink_or_warn(git_path("logs/%s", delnames[i]));
 	clear_loose_ref_cache(&ref_cache);
+
+	/* Perform updates first so live commits remain referenced */
+	for (i = 0; i < n; i++) {
+		struct ref_update *update = updates[i];
+
+		if (update->lock && !update->lock->delete_ref) {
+			ret |= commit_ref_lock(update->lock);
+			update->lock = NULL;
+		}
+	}
+	/* And finally perform all deletes */
+	for (i = 0; i < n; i++) {
+		struct ref_update *update = updates[i];
+
+		if (update->lock) {
+			ret |= commit_ref_lock(update->lock);
+			update->lock = NULL;
+		}
+	}
 
 cleanup:
 	for (i = 0; i < n; i++)
