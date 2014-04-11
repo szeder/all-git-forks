@@ -155,11 +155,20 @@ static NORETURN int die_push_simple(struct branch *branch, struct remote *remote
 	    remote->name, branch->name, advice_maybe);
 }
 
+static const char message_detached_head_die[] =
+	N_("You are not currently on a branch.\n"
+	   "To push the history leading to the current (detached HEAD)\n"
+	   "state now, use\n"
+	   "\n"
+	   "    git push %s HEAD:<name-of-remote-branch>\n");
+
 static void setup_push_upstream(struct remote *remote, struct branch *branch,
 				int triangular)
 {
 	struct strbuf refspec = STRBUF_INIT;
 
+	if (!branch)
+		die(_(message_detached_head_die), remote->name);
 	if (!branch->merge_nr || !branch->merge || !branch->remote_name)
 		die(_("The current branch %s has no upstream branch.\n"
 		    "To push the current branch and set the remote as upstream, use\n"
@@ -189,17 +198,9 @@ static void setup_push_upstream(struct remote *remote, struct branch *branch,
 
 static void setup_push_current(struct remote *remote, struct branch *branch)
 {
+	if (!branch)
+		die(_(message_detached_head_die), remote->name);
 	add_refspec(branch->name);
-}
-
-static void setup_push_simple(struct remote *remote, struct branch *branch,
-		int triangular)
-{
-	if (triangular) {
-		setup_push_current(remote, branch);
-	} else {
-		setup_push_upstream(remote, branch, triangular);
-	}
 }
 
 static char warn_unspecified_push_default_msg[] =
@@ -239,23 +240,9 @@ static int is_workflow_triangular(struct remote *remote)
 	return (fetch_remote && fetch_remote != remote);
 }
 
-static const char message_detached_head_die[] =
-	N_("You are not currently on a branch.\n"
-	   "To push the history leading to the current (detached HEAD)\n"
-	   "state now, use\n"
-	   "\n"
-	   "    git push %s HEAD:<name-of-remote-branch>\n");
-
-static struct branch *get_current_branch(struct remote *remote)
-{
-	struct branch *branch = branch_get(NULL);
-	if (!branch)
-		die(_(message_detached_head_die), remote->name);
-	return branch;
-}
-
 static void setup_default_push_refspecs(struct remote *remote)
 {
+	struct branch *branch = branch_get(NULL);
 	int triangular = is_workflow_triangular(remote);
 
 	switch (push_default) {
@@ -269,15 +256,18 @@ static void setup_default_push_refspecs(struct remote *remote)
 		break;
 
 	case PUSH_DEFAULT_SIMPLE:
-		setup_push_simple(remote, get_current_branch(remote), triangular);
+		if (triangular)
+			setup_push_current(remote, branch);
+		else
+			setup_push_upstream(remote, branch, triangular);
 		break;
 
 	case PUSH_DEFAULT_UPSTREAM:
-		setup_push_upstream(remote, get_current_branch(remote), triangular);
+		setup_push_upstream(remote, branch, triangular);
 		break;
 
 	case PUSH_DEFAULT_CURRENT:
-		setup_push_current(remote, get_current_branch(remote));
+		setup_push_current(remote, branch);
 		break;
 
 	case PUSH_DEFAULT_NOTHING:
