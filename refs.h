@@ -9,6 +9,8 @@ struct ref_lock {
 	int lock_fd;
 	int force_write;
 	int skipped_write;
+	int delete_ref;
+	int delete_flag;
 };
 
 struct ref_transaction;
