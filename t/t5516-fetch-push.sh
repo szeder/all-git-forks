@@ -1324,6 +1324,8 @@ test_expect_success 'push --follow-tag only pushes relevant tags' '
 '
 
 test_expect_success 'push --no-thin must produce non-thin pack' '
+	test_when_finished "git reset --hard v1.0" &&
+
 	cat >>path1 <<\EOF &&
 keep base version of path1 big enough, compared to the new changes
 later, in order to pass size heuristics in
@@ -1511,6 +1513,8 @@ test_expect_success 'receive.denyCurrentBranch = updateInstead' '
 '
 
 test_expect_success 'updateInstead with push-to-checkout hook' '
+	test_when_finished "git reset --hard v1.0" &&
+
 	rm -fr testrepo &&
 	git init testrepo &&
 	(
