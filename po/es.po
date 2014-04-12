@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-02-01 08:06+0800\n"
-"PO-Revision-Date: 2014-04-11 22:28+0200\n"
+"PO-Revision-Date: 2014-04-12 19:47+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -256,16 +256,16 @@ msgstr ""
 #: bundle.c:64
 #, c-format
 msgid "unrecognized header: %s%s (%d)"
-msgstr ""
+msgstr "cabecera no reconocida: %s%s (%d)"
 
 #: bundle.c:90 builtin/commit.c:706
 #, c-format
 msgid "could not open '%s'"
-msgstr ""
+msgstr "no he podido abrir '%s'"
 
 #: bundle.c:141
 msgid "Repository lacks these prerequisite commits:"
-msgstr ""
+msgstr "Al repositorio le faltan los siguientes commits requeridos:"
 
 #: bundle.c:165 sequencer.c:662 sequencer.c:1112 builtin/log.c:332
 #: builtin/log.c:821 builtin/log.c:1418 builtin/log.c:1644 builtin/merge.c:357
@@ -298,7 +298,7 @@ msgstr ""
 #: bundle.c:302 builtin/log.c:1329 builtin/shortlog.c:261
 #, c-format
 msgid "unrecognized argument: %s"
-msgstr ""
+msgstr "parámetro no reconocido: %s"
 
 #: bundle.c:337
 #, c-format
@@ -320,7 +320,7 @@ msgstr ""
 #: bundle.c:419
 #, c-format
 msgid "cannot create '%s'"
-msgstr ""
+msgstr "no puedo crear '%s'"
 
 #: bundle.c:441
 msgid "index-pack died"
@@ -334,11 +334,11 @@ msgstr ""
 #: commit.c:55
 #, c-format
 msgid "%s %s is not a commit!"
-msgstr ""
+msgstr "%s %s no es un commit!"
 
 #: compat/obstack.c:406 compat/obstack.c:408
 msgid "memory exhausted"
-msgstr ""
+msgstr "memoria agotada"
 
 #: connected.c:70
 msgid "Could not run 'git rev-list'"
@@ -356,70 +356,70 @@ msgstr ""
 
 #: date.c:95
 msgid "in the future"
-msgstr ""
+msgstr "en el futuro"
 
 #: date.c:101
 #, c-format
 msgid "%lu second ago"
 msgid_plural "%lu seconds ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "hace %lu segundo"
+msgstr[1] "hace %lu segundos"
 
 #: date.c:108
 #, c-format
 msgid "%lu minute ago"
 msgid_plural "%lu minutes ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "hace %lu minuto"
+msgstr[1] "hace %lu minutos"
 
 #: date.c:115
 #, c-format
 msgid "%lu hour ago"
 msgid_plural "%lu hours ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "hace %lu hora"
+msgstr[1] "hace %lu horas"
 
 #: date.c:122
 #, c-format
 msgid "%lu day ago"
 msgid_plural "%lu days ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "hace %lu día"
+msgstr[1] "hace %lu días"
 
 #: date.c:128
 #, c-format
 msgid "%lu week ago"
 msgid_plural "%lu weeks ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "hace %lu semana"
+msgstr[1] "hace %lu semanas"
 
 #: date.c:135
 #, c-format
 msgid "%lu month ago"
 msgid_plural "%lu months ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "hace %lu mes"
+msgstr[1] "hace %lu meses"
 
 #: date.c:146
 #, c-format
 msgid "%lu year"
 msgid_plural "%lu years"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%lu año"
+msgstr[1] "%lu años"
 
 #: date.c:149
 #, c-format
 msgid "%s, %lu month ago"
 msgid_plural "%s, %lu months ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "hace %s, %lu mes"
+msgstr[1] "hace %s, %lu meses"
 
 #: date.c:154 date.c:159
 #, c-format
 msgid "%lu year ago"
 msgid_plural "%lu years ago"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "hace %lu año"
+msgstr[1] "hace %lu años"
 
 #: diffcore-order.c:24
 #, c-format
@@ -439,7 +439,7 @@ msgstr ""
 #: diff.c:213
 #, c-format
 msgid "Unknown value for 'diff.submodule' config variable: '%s'"
-msgstr ""
+msgstr "Valor desconocido para la variable de configuración 'diff.submodule': '%s'"
 
 #: diff.c:263
 #, c-format
@@ -447,6 +447,8 @@ msgid ""
 "Found errors in 'diff.dirstat' config variable:\n"
 "%s"
 msgstr ""
+"Encontrados errores en la variable de configuración 'diff.dirstat':\n"
+"%s"
 
 #: diff.c:3509
 #, c-format
