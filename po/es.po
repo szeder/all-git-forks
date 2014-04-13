@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-02-01 08:06+0800\n"
-"PO-Revision-Date: 2014-04-12 19:47+0200\n"
+"PO-Revision-Date: 2014-04-13 17:15+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -9265,31 +9265,31 @@ msgstr ""
 
 #: common-cmds.h:8
 msgid "Add file contents to the index"
-msgstr ""
+msgstr "Añade el contenido de ficheros al índice"
 
 #: common-cmds.h:9
 msgid "Find by binary search the change that introduced a bug"
-msgstr ""
+msgstr "Búsqueda binaria del cambio que introdujo un defecto [bug]"
 
 #: common-cmds.h:10
 msgid "List, create, or delete branches"
-msgstr ""
+msgstr "Lista, crea o borra ramas"
 
 #: common-cmds.h:11
 msgid "Checkout a branch or paths to the working tree"
-msgstr ""
+msgstr "Extrae [checkout] al árbol de trabajo una rama o rutas"
 
 #: common-cmds.h:12
 msgid "Clone a repository into a new directory"
-msgstr ""
+msgstr "Clona un repositorio en un nuevo directorio"
 
 #: common-cmds.h:13
 msgid "Record changes to the repository"
-msgstr ""
+msgstr "Graba los cambios hechos al repositorio"
 
 #: common-cmds.h:14
 msgid "Show changes between commits, commit and working tree, etc"
-msgstr ""
+msgstr "Muestra cambios entre commits, commit y árbol de trabajo, etc"
 
 #: common-cmds.h:15
 msgid "Download objects and refs from another repository"
@@ -9297,23 +9297,24 @@ msgstr ""
 
 #: common-cmds.h:16
 msgid "Print lines matching a pattern"
-msgstr ""
+msgstr "Imprime las líneas que contienen un patrón"
 
 #: common-cmds.h:17
 msgid "Create an empty Git repository or reinitialize an existing one"
-msgstr ""
+msgstr "Crea un repositorio Git vacío o reinicializa uno existente"
 
 #: common-cmds.h:18
 msgid "Show commit logs"
 msgstr ""
 
 #: common-cmds.h:19
+#, fuzzy
 msgid "Join two or more development histories together"
-msgstr ""
+msgstr "Une dos o más historiales de desarrollo"
 
 #: common-cmds.h:20
 msgid "Move or rename a file, a directory, or a symlink"
-msgstr ""
+msgstr "Mueve o renombra un fichero, un directorio o un enlace simbólico"
 
 #: common-cmds.h:21
 msgid "Fetch from and integrate with another repository or a local branch"
@@ -9329,19 +9330,19 @@ msgstr ""
 
 #: common-cmds.h:24
 msgid "Reset current HEAD to the specified state"
-msgstr ""
+msgstr "Restablece la CABEZA [HEAD] actual al estado especificado"
 
 #: common-cmds.h:25
 msgid "Remove files from the working tree and from the index"
-msgstr ""
+msgstr "Elimina ficheros del árbol de trabajo y del índice"
 
 #: common-cmds.h:26
 msgid "Show various types of objects"
-msgstr ""
+msgstr "Muestra varios tipos de objetos"
 
 #: common-cmds.h:27
 msgid "Show the working tree status"
-msgstr ""
+msgstr "Muestra el estado del árbol de trabajo"
 
 #: common-cmds.h:28
 msgid "Create, list, delete or verify a tag object signed with GPG"
