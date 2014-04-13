@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-02-01 08:06+0800\n"
-"PO-Revision-Date: 2014-04-13 17:15+0200\n"
+"PO-Revision-Date: 2014-04-13 22:06+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -9277,7 +9277,7 @@ msgstr "Lista, crea o borra ramas"
 
 #: common-cmds.h:11
 msgid "Checkout a branch or paths to the working tree"
-msgstr "Extrae [checkout] al árbol de trabajo una rama o rutas"
+msgstr "Extrae al árbol de trabajo una rama o rutas"
 
 #: common-cmds.h:12
 msgid "Clone a repository into a new directory"
@@ -9305,7 +9305,7 @@ msgstr "Crea un repositorio Git vacío o reinicializa uno existente"
 
 #: common-cmds.h:18
 msgid "Show commit logs"
-msgstr ""
+msgstr "Muestra los registros de commit"
 
 #: common-cmds.h:19
 #, fuzzy
@@ -9357,6 +9357,8 @@ msgid ""
 "You seem to have moved HEAD since the last 'am' failure.\n"
 "Not rewinding to ORIG_HEAD"
 msgstr ""
+"Ud. parece haber movido la CABEZA [HEAD] desde el último fallo de 'am'.\n"
+"No rebobinamos a ORIG_HEAD"
 
 #: git-am.sh:105
 #, sh-format
@@ -9365,6 +9367,9 @@ msgid ""
 "If you prefer to skip this patch, run \"$cmdline --skip\" instead.\n"
 "To restore the original branch and stop patching, run \"$cmdline --abort\"."
 msgstr ""
+"Cuando haya resuelto este problema, ejecute \"$cmdline --continue\".\n"
+"O, si prefiere saltarse este parche, ejecute \"$cmdline --skip\".\n"
+"Para restaurar la rama original y detener la aplicación de parches, ejecute \"$cmdline --abort\"."
 
 #: git-am.sh:121
 msgid "Cannot fall back to three-way merge."
