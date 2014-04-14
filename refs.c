@@ -2498,19 +2498,9 @@ static int repack_without_ref(const char *refname)
 
 static int delete_ref_loose(struct ref_lock *lock, int flag)
 {
-	if (!(flag & REF_ISPACKED) || flag & REF_ISSYMREF) {
-		/*
-		 * loose.  The loose file name is the same as the
-		 * lockfile name, minus ".lock":
-		 */
-		char *loose_filename = xmemdupz(
-				lock->lk->filename.buf,
-				lock->lk->filename.len - LOCK_SUFFIX_LEN);
-		int err = unlink_or_warn(loose_filename);
-		free(loose_filename);
-		if (err && errno != ENOENT)
-			return 1;
-	}
+	lock->delete_ref = 1;
+	lock->delete_flag = flag;
+
 	return 0;
 }
 
@@ -2532,7 +2522,7 @@ int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
 
 	unlink_or_warn(git_path("logs/%s", lock->ref_name));
 	clear_loose_ref_cache(&ref_cache);
-	unlock_ref(lock);
+	ret |= commit_ref_lock(lock);
 	return ret;
 }
 
@@ -2650,7 +2640,12 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 	lock->force_write = 1;
 	hashcpy(lock->old_sha1, orig_sha1);
 	if (write_ref_sha1(lock, orig_sha1, logmsg)) {
+		unlock_ref(lock);
 		error("unable to write current sha1 into %s", newrefname);
+		goto rollback;
+	}
+	if (commit_ref_lock(lock)) {
+		error("unable to commit current sha1 into %s", newrefname);
 		goto rollback;
 	}
 
@@ -2666,8 +2661,12 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 	lock->force_write = 1;
 	flag = log_all_ref_updates;
 	log_all_ref_updates = 0;
-	if (write_ref_sha1(lock, orig_sha1, NULL))
+	if (write_ref_sha1(lock, orig_sha1, NULL)) {
+		unlock_ref(lock);
 		error("unable to write current sha1 into %s", oldrefname);
+	}
+	if (commit_ref_lock(lock))
+		error("unable to commit current sha1 into %s", oldrefname);
 	log_all_ref_updates = flag;
 
  rollbacklog:
@@ -2830,34 +2829,30 @@ int write_ref_sha1(struct ref_lock *lock,
 	if (!lock)
 		return -1;
 	if (!lock->force_write && !hashcmp(lock->old_sha1, sha1)) {
-		unlock_ref(lock);
+		lock->skipped_write = 1;
 		return 0;
 	}
 	o = parse_object(sha1);
 	if (!o) {
 		error("Trying to write ref %s with nonexistent object %s",
 			lock->ref_name, sha1_to_hex(sha1));
-		unlock_ref(lock);
 		return -1;
 	}
 	if (o->type != OBJ_COMMIT && is_branch(lock->ref_name)) {
 		error("Trying to write non-commit object %s to branch %s",
 			sha1_to_hex(sha1), lock->ref_name);
-		unlock_ref(lock);
 		return -1;
 	}
 	if (write_in_full(lock->lock_fd, sha1_to_hex(sha1), 40) != 40 ||
 	    write_in_full(lock->lock_fd, &term, 1) != 1
 		|| close_ref(lock) < 0) {
 		error("Couldn't write %s", lock->lk->filename.buf);
-		unlock_ref(lock);
 		return -1;
 	}
 	clear_loose_ref_cache(&ref_cache);
 	if (log_ref_write(lock->ref_name, lock->old_sha1, sha1, logmsg) < 0 ||
 	    (strcmp(lock->ref_name, lock->orig_ref_name) &&
 	     log_ref_write(lock->orig_ref_name, lock->old_sha1, sha1, logmsg) < 0)) {
-		unlock_ref(lock);
 		return -1;
 	}
 	if (strcmp(lock->orig_ref_name, "HEAD") != 0) {
@@ -2881,7 +2876,28 @@ int write_ref_sha1(struct ref_lock *lock,
 		    !strcmp(head_ref, lock->ref_name))
 			log_ref_write("HEAD", lock->old_sha1, sha1, logmsg);
 	}
-	if (commit_ref(lock)) {
+	return 0;
+}
+
+int commit_ref_lock(struct ref_lock *lock)
+{
+	if (lock->delete_ref) {
+		int flag = lock->delete_flag;
+
+		if (!(flag & REF_ISPACKED) || flag & REF_ISSYMREF) {
+			/*
+			 * loose.  The loose file name is the same as the
+			 * lockfile name, minus ".lock":
+			 */
+			char *loose_filename = xmemdupz(
+					lock->lk->filename.buf,
+					lock->lk->filename.len - LOCK_SUFFIX_LEN);
+			int err = unlink_or_warn(loose_filename);
+			free(loose_filename);
+			if (err && errno != ENOENT)
+				return 1;
+		}
+	} else if (!lock->skipped_write && commit_ref(lock)) {
 		error("Couldn't set %s", lock->ref_name);
 		unlock_ref(lock);
 		return -1;
@@ -3398,10 +3414,17 @@ int update_ref(const char *action, const char *refname,
 	       int flags, enum action_on_err onerr)
 {
 	struct ref_lock *lock;
+	int ret;
+
 	lock = update_ref_lock(refname, oldval, flags, NULL, onerr);
 	if (!lock)
 		return 1;
-	return update_ref_write(action, refname, sha1, lock, onerr);
+	ret = update_ref_write(action, refname, sha1, lock, onerr);
+	if (ret)
+		unlock_ref(lock);
+	else
+		ret = commit_ref_lock(lock);
+	return ret;
 }
 
 static int ref_update_compare(const void *r1, const void *r2)
@@ -3467,35 +3490,46 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 		}
 	}
 
-	/* Perform updates first so live commits remain referenced */
+	/* Prepare all the updates/deletes */
 	for (i = 0; i < n; i++) {
 		struct ref_update *update = updates[i];
 
-		if (!is_null_sha1(update->new_sha1)) {
+		if (!is_null_sha1(update->new_sha1))
 			ret = update_ref_write(msg,
 					       update->refname,
 					       update->new_sha1,
 					       update->lock, onerr);
-			update->lock = NULL; /* freed by update_ref_write */
-			if (ret)
-				goto cleanup;
+		else {
+			delnames[delnum++] = update->refname;
+			ret = delete_ref_loose(update->lock, update->type);
 		}
-	}
-
-	/* Perform deletes now that updates are safely completed */
-	for (i = 0; i < n; i++) {
-		struct ref_update *update = updates[i];
-
-		if (update->lock) {
-			delnames[delnum++] = update->lock->ref_name;
-			ret |= delete_ref_loose(update->lock, update->type);
-		}
+		if (ret)
+			goto cleanup;
 	}
 
 	ret |= repack_without_refs(delnames, delnum);
 	for (i = 0; i < delnum; i++)
 		unlink_or_warn(git_path("logs/%s", delnames[i]));
 	clear_loose_ref_cache(&ref_cache);
+
+	/* Perform updates first so live commits remain referenced */
+	for (i = 0; i < n; i++) {
+		struct ref_update *update = updates[i];
+
+		if (update->lock && !update->lock->delete_ref) {
+			ret |= commit_ref_lock(update->lock);
+			update->lock = NULL;
+		}
+	}
+	/* And finally perform all deletes */
+	for (i = 0; i < n; i++) {
+		struct ref_update *update = updates[i];
+
+		if (update->lock) {
+			ret |= commit_ref_lock(update->lock);
+			update->lock = NULL;
+		}
+	}
 
 cleanup:
 	for (i = 0; i < n; i++)

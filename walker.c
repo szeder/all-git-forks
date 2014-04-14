@@ -295,6 +295,10 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 		if (!write_ref || !write_ref[i])
 			continue;
 		ret = write_ref_sha1(lock[i], &sha1[20 * i], msg ? msg : "fetch (unknown)");
+		if (ret)
+			unlock_ref(lock[i]);
+		else
+			ret |= commit_ref_lock(lock[i]);
 		lock[i] = NULL;
 		if (ret)
 			goto unlock_and_fail;

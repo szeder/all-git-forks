@@ -160,8 +160,12 @@ static int replace_object(const char *object_ref, const char *replace_ref,
 	lock = lock_any_ref_for_update(ref, prev, 0, NULL);
 	if (!lock)
 		die("%s: cannot lock the ref", ref);
-	if (write_ref_sha1(lock, repl, NULL) < 0)
+	if (write_ref_sha1(lock, repl, NULL) < 0) {
+		unlock_ref(lock);
 		die("%s: cannot update the ref", ref);
+	}
+	if (commit_ref_lock(lock) < 0)
+		die("%s: cannot commit the ref", ref);
 
 	return 0;
 }
