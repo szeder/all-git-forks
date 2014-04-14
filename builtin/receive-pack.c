@@ -587,8 +587,12 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 			return "failed to lock";
 		}
 		if (write_ref_sha1(lock, new_sha1, "push")) {
+			unlock_ref(lock);
 			return "failed to write"; /* error() already called */
 		}
+		if (commit_ref_lock(lock))
+			return "failed to commit"; /* error() already called */
+
 		return NULL; /* good */
 	}
 }

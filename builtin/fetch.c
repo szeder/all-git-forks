@@ -388,7 +388,12 @@ static int s_update_ref(const char *action,
 	if (!lock)
 		return errno == ENOTDIR ? STORE_REF_ERROR_DF_CONFLICT :
 					  STORE_REF_ERROR_OTHER;
-	if (write_ref_sha1(lock, ref->new_sha1, msg) < 0)
+	if (write_ref_sha1(lock, ref->new_sha1, msg) < 0) {
+		unlock_ref(lock);
+		return errno == ENOTDIR ? STORE_REF_ERROR_DF_CONFLICT :
+					  STORE_REF_ERROR_OTHER;
+	}
+	if (commit_ref_lock(lock) < 0)
 		return errno == ENOTDIR ? STORE_REF_ERROR_DF_CONFLICT :
 					  STORE_REF_ERROR_OTHER;
 	return 0;

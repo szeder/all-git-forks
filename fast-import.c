@@ -1706,8 +1706,13 @@ static int update_branch(struct branch *b)
 			return -1;
 		}
 	}
-	if (write_ref_sha1(lock, b->sha1, msg) < 0)
+	if (write_ref_sha1(lock, b->sha1, msg) < 0) {
+		unlock_ref(lock);
 		return error("Unable to update %s", b->name);
+	}
+	if (commit_ref_lock(lock) < 0) {
+		return error("Unable to commit %s", b->name);
+	}
 	return 0;
 }
 
@@ -1732,8 +1737,17 @@ static void dump_tags(void)
 	for (t = first_tag; t; t = t->next_tag) {
 		sprintf(ref_name, "tags/%s", t->name);
 		lock = lock_ref_sha1(ref_name, NULL);
-		if (!lock || write_ref_sha1(lock, t->sha1, msg) < 0)
+		if (!lock) {
+			failure |= error("Unable to lock %s", ref_name);
+			continue;
+		}
+		if (write_ref_sha1(lock, t->sha1, msg) < 0) {
 			failure |= error("Unable to update %s", ref_name);
+			unlock_ref(lock);
+			continue;
+		}
+		if (commit_ref_lock(lock) < 0)
+			failure |= error("Unable to commit %s", ref_name);
 	}
 }
 
