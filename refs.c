@@ -2484,16 +2484,9 @@ static int repack_without_ref(const char *refname)
 
 static int delete_ref_loose(struct ref_lock *lock, int flag)
 {
-	if (!(flag & REF_ISPACKED) || flag & REF_ISSYMREF) {
-		/* loose */
-		int err, i = strlen(lock->lk->filename) - 5; /* .lock */
+	lock->delete_ref = 1;
+	lock->delete_flag = flag;
 
-		lock->lk->filename[i] = 0;
-		err = unlink_or_warn(lock->lk->filename);
-		lock->lk->filename[i] = '.';
-		if (err && errno != ENOENT)
-			return 1;
-	}
 	return 0;
 }
 
@@ -2515,7 +2508,7 @@ int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
 
 	unlink_or_warn(git_path("logs/%s", lock->ref_name));
 	clear_loose_ref_cache(&ref_cache);
-	unlock_ref(lock);
+	ret |= commit_ref_lock(lock);
 	return ret;
 }
 
@@ -2868,7 +2861,20 @@ int write_ref_sha1(struct ref_lock *lock,
 
 int commit_ref_lock(struct ref_lock *lock)
 {
-	if (!lock->skipped_write && commit_ref(lock)) {
+	if (lock->delete_ref) {
+		int flag = lock->delete_flag;
+
+		if (!(flag & REF_ISPACKED) || flag & REF_ISSYMREF) {
+			/* loose */
+			int err, i = strlen(lock->lk->filename) - 5; /* .lock */
+
+			lock->lk->filename[i] = 0;
+			err = unlink_or_warn(lock->lk->filename);
+			lock->lk->filename[i] = '.';
+			if (err && errno != ENOENT)
+				return 1;
+		}
+	} else if (!lock->skipped_write && commit_ref(lock)) {
 		error("Couldn't set %s", lock->ref_name);
 		unlock_ref(lock);
 		return -1;
@@ -3487,6 +3493,8 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 		if (update->lock) {
 			delnames[delnum++] = update->refname;
 			ret |= delete_ref_loose(update->lock, update->type);
+			ret |= commit_ref_lock(update->lock);
+			update->lock = NULL;
 		}
 	}
 
