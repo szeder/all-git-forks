@@ -184,13 +184,6 @@ static char *resolve_symlink(char *p, size_t s)
 
 static int lock_file(struct lock_file *lk, const char *path, int flags)
 {
-	/*
-	 * subtract LOCK_SUFFIX_LEN from size to make sure there's
-	 * room for adding ".lock" for the lock file name:
-	 */
-	static const size_t max_path_len = sizeof(lk->filename) -
-					   LOCK_SUFFIX_LEN;
-
 	if (!lock_file_list) {
 		/* One-time initialization */
 		sigchain_push_common(remove_lock_file_on_signal);
@@ -205,26 +198,26 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 		lk->active = 0;
 		lk->owner = 0;
 		lk->on_list = 1;
-		lk->filename[0] = 0;
+		strbuf_init(&lk->filename, PATH_MAX);
 		lk->next = lock_file_list;
 		lock_file_list = lk;
 	}
 
-	if (strlen(path) >= max_path_len)
-		return -1;
-	strcpy(lk->filename, path);
-	if (!(flags & LOCK_NODEREF))
-		resolve_symlink(lk->filename, max_path_len);
-	strcat(lk->filename, LOCK_SUFFIX);
-	lk->fd = open(lk->filename, O_RDWR | O_CREAT | O_EXCL, 0666);
+	strbuf_addstr(&lk->filename, path);
+	if (!(flags & LOCK_NODEREF)) {
+		resolve_symlink(lk->filename.buf, lk->filename.alloc);
+		strbuf_setlen(&lk->filename, strlen(lk->filename.buf));
+	}
+	strbuf_addstr(&lk->filename, LOCK_SUFFIX);
+	lk->fd = open(lk->filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (lk->fd < 0) {
-		lk->filename[0] = 0;
+		strbuf_reset(&lk->filename);
 		return -1;
 	}
 	lk->owner = getpid();
 	lk->active = 1;
-	if (adjust_shared_perm(lk->filename)) {
-		error("cannot fix permission bits on %s", lk->filename);
+	if (adjust_shared_perm(lk->filename.buf)) {
+		error("cannot fix permission bits on %s", lk->filename.buf);
 		rollback_lock_file(lk);
 		return -1;
 	}
@@ -315,14 +308,14 @@ int commit_lock_file(struct lock_file *lk)
 		die("BUG: attempt to commit unlocked object");
 
 	/* remove ".lock": */
-	strbuf_add(&result_file, lk->filename,
-		   strlen(lk->filename) - LOCK_SUFFIX_LEN);
-	err = rename(lk->filename, result_file.buf);
+	strbuf_add(&result_file, lk->filename.buf,
+		   lk->filename.len - LOCK_SUFFIX_LEN);
+	err = rename(lk->filename.buf, result_file.buf);
 	strbuf_reset(&result_file);
 	if (err)
 		return -1;
 	lk->active = 0;
-	lk->filename[0] = 0;
+	strbuf_reset(&lk->filename);
 	return 0;
 }
 
@@ -344,10 +337,10 @@ int commit_locked_index(struct lock_file *lk)
 	if (alternate_index_output) {
 		if (lk->fd >= 0 && close_lock_file(lk))
 			return -1;
-		if (rename(lk->filename, alternate_index_output))
+		if (rename(lk->filename.buf, alternate_index_output))
 			return -1;
 		lk->active = 0;
-		lk->filename[0] = 0;
+		strbuf_reset(&lk->filename);
 		return 0;
 	}
 	else
@@ -359,8 +352,8 @@ void rollback_lock_file(struct lock_file *lk)
 	if (lk->active) {
 		if (lk->fd >= 0)
 			close_lock_file(lk);
-		unlink_or_warn(lk->filename);
+		unlink_or_warn(lk->filename.buf);
 		lk->active = 0;
-		lk->filename[0] = 0;
+		strbuf_reset(&lk->filename);
 	}
 }
