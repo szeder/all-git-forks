@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-02-01 08:06+0800\n"
-"PO-Revision-Date: 2014-04-14 21:15+0200\n"
+"PO-Revision-Date: 2014-04-15 22:02+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -898,7 +898,7 @@ msgstr ""
 #: pathspec.c:241
 #, c-format
 msgid "%s: '%s' is outside repository"
-msgstr ""
+msgstr "%s: '%s' está fuera del repositorio"
 
 #: pathspec.c:291
 #, c-format
@@ -948,7 +948,7 @@ msgstr ""
 #.
 #: remote.c:769
 msgid "Internal error"
-msgstr ""
+msgstr "Error interno"
 
 #: remote.c:1871
 #, c-format
@@ -962,18 +962,18 @@ msgstr ""
 #: remote.c:1878
 #, c-format
 msgid "Your branch is up-to-date with '%s'.\n"
-msgstr ""
+msgstr "Su rama está actualizada respecto a '%s'.\n"
 
 #: remote.c:1882
 #, c-format
 msgid "Your branch is ahead of '%s' by %d commit.\n"
 msgid_plural "Your branch is ahead of '%s' by %d commits.\n"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Su rama está delante de '%s' por %d commit.\n"
+msgstr[1] "Su rama está delante de '%s' por %d commits.\n"
 
 #: remote.c:1888
 msgid "  (use \"git push\" to publish your local commits)\n"
-msgstr ""
+msgstr "  (use \"git push\" para publicar sus commits locales)\n"
 
 #: remote.c:1891
 #, c-format
@@ -985,7 +985,7 @@ msgstr[1] ""
 
 #: remote.c:1899
 msgid "  (use \"git pull\" to update your local branch)\n"
-msgstr ""
+msgstr "  (use \"git pull\" para actualizar su rama local)\n"
 
 #: remote.c:1902
 #, c-format
