@@ -820,6 +820,14 @@ add_exec_commands () {
 	mv "$1.new" "$1"
 }
 
+
+# The whole contents of the file is run by dot-sourcing this file from
+# inside a shell function, and "return"s we see below are expected to
+# return from that function that dot-sources us.  However, FreeBSD
+# /bin/sh misbehaves on such a construct, so we will work it around by
+# enclosing the whole thing inside an extra layer of a function.
+git_rebase__interactive () {
+
 case "$action" in
 continue)
 	# do we have anything to commit?
@@ -1055,3 +1063,7 @@ GIT_REFLOG_ACTION="$GIT_REFLOG_ACTION: checkout $onto_name"
 output git checkout $onto || die_abort "could not detach HEAD"
 git update-ref ORIG_HEAD $orig_head
 do_rest
+
+}
+# ... and then we call the whole thing.
+git_rebase__interactive
