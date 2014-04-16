@@ -466,7 +466,8 @@ void add_exclude(const char *string, const char *base,
 	x->el = el;
 }
 
-static void *read_skip_worktree_file_from_index(const char *path, size_t *size)
+static void *read_skip_worktree_file_from_index(const char *path, size_t *size,
+						unsigned char *sha1)
 {
 	int pos, len;
 	unsigned long sz;
@@ -485,6 +486,8 @@ static void *read_skip_worktree_file_from_index(const char *path, size_t *size)
 		return NULL;
 	}
 	*size = xsize_t(sz);
+	if (sha1)
+		hashcpy(sha1, active_cache[pos]->sha1);
 	return data;
 }
 
@@ -525,11 +528,14 @@ static void trim_trailing_spaces(char *buf)
 		buf[last_space] = '\0';
 }
 
-int add_excludes_from_file_to_list(const char *fname,
-				   const char *base,
-				   int baselen,
-				   struct exclude_list *el,
-				   int check_index)
+static int add_excludes(const char *fname,
+			const char *base,
+			int baselen,
+			struct exclude_list *el,
+			int check_index,
+			unsigned char *sha1,
+			struct stat_data *ref_stat,
+			const unsigned char *ref_sha1)
 {
 	struct stat st;
 	int fd, i, lineno = 1;
@@ -543,9 +549,13 @@ int add_excludes_from_file_to_list(const char *fname,
 		if (0 <= fd)
 			close(fd);
 		if (!check_index ||
-		    (buf = read_skip_worktree_file_from_index(fname, &size)) == NULL)
+		    (buf = read_skip_worktree_file_from_index(fname, &size, sha1)) == NULL)
 			return -1;
+		if (ref_stat)
+			memset(ref_stat, 0, sizeof(*ref_stat));
 		if (size == 0) {
+			if (sha1)
+				hashcpy(sha1, EMPTY_BLOB_SHA1_BIN);
 			free(buf);
 			return 0;
 		}
@@ -556,6 +566,10 @@ int add_excludes_from_file_to_list(const char *fname,
 	} else {
 		size = xsize_t(st.st_size);
 		if (size == 0) {
+			if (ref_stat)
+				fill_stat_data(ref_stat, &st);
+			if (sha1)
+				hashcpy(sha1, EMPTY_BLOB_SHA1_BIN);
 			close(fd);
 			return 0;
 		}
@@ -567,6 +581,21 @@ int add_excludes_from_file_to_list(const char *fname,
 		}
 		buf[size++] = '\n';
 		close(fd);
+		if (sha1) {
+			int pos;
+			if (!ref_stat &&
+			    (pos = cache_name_pos(fname, strlen(fname))) >= 0 &&
+			    !ce_stage(active_cache[pos]) &&
+			    ce_uptodate(active_cache[pos]))
+				hashcpy(sha1, active_cache[pos]->sha1);
+			else if (ref_stat && !match_stat_data(ref_stat, &st)) {
+				if (ref_sha1 != sha1) /* support ref_sha1 == sha1 */
+					hashcpy(sha1, ref_sha1);
+			} else
+				hash_sha1_file(buf, size, "blob", sha1);
+		}
+		if (ref_stat)
+			fill_stat_data(ref_stat, &st);
 	}
 
 	el->filebuf = buf;
@@ -584,6 +613,14 @@ int add_excludes_from_file_to_list(const char *fname,
 	}
 	return 0;
 }
+
+int add_excludes_from_file_to_list(const char *fname, const char *base, int baselen,
+				   struct exclude_list *el, int check_index)
+{
+	return add_excludes(fname, base, baselen, el, check_index,
+			    NULL, NULL, NULL);
+}
+
 
 struct exclude_list *add_exclude_list(struct dir_struct *dir,
 				      int group_type, const char *src)
