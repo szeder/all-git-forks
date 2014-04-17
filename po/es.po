@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-02-01 08:06+0800\n"
-"PO-Revision-Date: 2014-04-17 19:46+0200\n"
+"PO-Revision-Date: 2014-04-17 22:40+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -2561,7 +2561,7 @@ msgstr "Muestra el SHA1 de los commits largo (Por omisión: inactivo)"
 
 #: builtin/blame.c:2261
 msgid "Suppress author name and timestamp (Default: off)"
-msgstr "Suprime nombre de autor y fecha-hora (Por omisión: inactivo)"
+msgstr "Omite nombre de autor y fecha-hora (Por omisión: inactivo)"
 
 #: builtin/blame.c:2262
 msgid "Show author email instead of name (Default: off)"
@@ -2660,7 +2660,7 @@ msgstr "No he podido encontrar ningún objeto de tipo commit para CABEZA [HEAD]"
 #: builtin/branch.c:227
 #, c-format
 msgid "Cannot delete the branch '%s' which you are currently on."
-msgstr ""
+msgstr "No se puede borrar la rama en la que está usted: '%s'."
 
 #: builtin/branch.c:240
 #, c-format
@@ -2808,7 +2808,7 @@ msgstr ""
 
 #: builtin/branch.c:803
 msgid "Generic options"
-msgstr ""
+msgstr "Opciones generales"
 
 #: builtin/branch.c:805
 msgid "show hash and subject, give twice for upstream branch"
@@ -2816,7 +2816,7 @@ msgstr ""
 
 #: builtin/branch.c:806
 msgid "suppress informational messages"
-msgstr ""
+msgstr "omite mensajes informativos"
 
 #: builtin/branch.c:807
 msgid "set up tracking mode (see git-pull(1))"
@@ -2828,7 +2828,7 @@ msgstr ""
 
 #: builtin/branch.c:813
 msgid "use colored output"
-msgstr ""
+msgstr "escribe la salida coloreada"
 
 #: builtin/branch.c:814
 msgid "act on remote-tracking branches"
@@ -2838,15 +2838,15 @@ msgstr ""
 #: builtin/branch.c:850 builtin/commit.c:1460 builtin/commit.c:1461
 #: builtin/commit.c:1462 builtin/commit.c:1463 builtin/tag.c:468
 msgid "commit"
-msgstr ""
+msgstr "commit"
 
 #: builtin/branch.c:818 builtin/branch.c:824
 msgid "print only branches that contain the commit"
-msgstr ""
+msgstr "imprime solo las ramas que contienen el commit"
 
 #: builtin/branch.c:830
 msgid "Specific git-branch actions:"
-msgstr ""
+msgstr "Acciones específicas de git-branch:"
 
 #: builtin/branch.c:831
 msgid "list both remote-tracking and local branches"
@@ -2870,7 +2870,7 @@ msgstr ""
 
 #: builtin/branch.c:837
 msgid "list branch names"
-msgstr ""
+msgstr "lista los nombres de las ramas"
 
 #: builtin/branch.c:838
 msgid "create the branch's reflog"
@@ -2878,7 +2878,7 @@ msgstr ""
 
 #: builtin/branch.c:840
 msgid "edit the description for the branch"
-msgstr ""
+msgstr "edita la descripción de la rama"
 
 #: builtin/branch.c:841
 msgid "force creation (when already exists)"
@@ -2894,7 +2894,7 @@ msgstr ""
 
 #: builtin/branch.c:854
 msgid "list branches in columns"
-msgstr ""
+msgstr "lista las ramas en columnas"
 
 #: builtin/branch.c:867
 msgid "Failed to resolve HEAD as a valid ref."
