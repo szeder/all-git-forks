@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-02-01 08:06+0800\n"
-"PO-Revision-Date: 2014-04-17 16:21+0200\n"
+"PO-Revision-Date: 2014-04-17 19:46+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -2605,19 +2605,19 @@ msgstr "Procesa solo el rango de líneas n,m, contando desde 1"
 
 #: builtin/branch.c:24
 msgid "git branch [options] [-r | -a] [--merged | --no-merged]"
-msgstr ""
+msgstr "git branch [opciones] [-r | -a] [--merged | --no-merged]"
 
 #: builtin/branch.c:25
 msgid "git branch [options] [-l] [-f] <branchname> [<start-point>]"
-msgstr ""
+msgstr "git branch [opciones] [-l] [-f] <rama> [<punto-bifurcación>]"
 
 #: builtin/branch.c:26
 msgid "git branch [options] [-r] (-d | -D) <branchname>..."
-msgstr ""
+msgstr "git branch [opciones] [-r] (-d | -D) <rama>..."
 
 #: builtin/branch.c:27
 msgid "git branch [options] (-m | -M) [<oldbranch>] <newbranch>"
-msgstr ""
+msgstr "git branch [opciones] (-m | -M) [<rama-antigua>] <rama-nueva>"
 
 #: builtin/branch.c:150
 #, c-format
@@ -2636,7 +2636,7 @@ msgstr ""
 #: builtin/branch.c:168
 #, c-format
 msgid "Couldn't look up commit object for '%s'"
-msgstr ""
+msgstr "No he podido encontrar ningún objeto de tipo commit para '%s'"
 
 #: builtin/branch.c:172
 #, c-format
@@ -2647,15 +2647,15 @@ msgstr ""
 
 #: builtin/branch.c:185
 msgid "Update of config-file failed"
-msgstr ""
+msgstr "No he podido actualizar el fichero de configuración"
 
 #: builtin/branch.c:213
 msgid "cannot use -a with -d"
-msgstr ""
+msgstr "no puede usar -a con -d"
 
 #: builtin/branch.c:219
 msgid "Couldn't look up commit object for HEAD"
-msgstr ""
+msgstr "No he podido encontrar ningún objeto de tipo commit para CABEZA [HEAD]"
 
 #: builtin/branch.c:227
 #, c-format
@@ -2665,37 +2665,37 @@ msgstr ""
 #: builtin/branch.c:240
 #, c-format
 msgid "remote branch '%s' not found."
-msgstr ""
+msgstr "rama remota '%s' no encontrada."
 
 #: builtin/branch.c:241
 #, c-format
 msgid "branch '%s' not found."
-msgstr ""
+msgstr "rama '%s' no encontrada."
 
 #: builtin/branch.c:255
 #, c-format
 msgid "Error deleting remote branch '%s'"
-msgstr ""
+msgstr "Error borrando la rama remota '%s'"
 
 #: builtin/branch.c:256
 #, c-format
 msgid "Error deleting branch '%s'"
-msgstr ""
+msgstr "Error borrando la rama '%s'"
 
 #: builtin/branch.c:263
 #, c-format
 msgid "Deleted remote branch %s (was %s).\n"
-msgstr ""
+msgstr "Borrada la rama remota %s (era %s).\n"
 
 #: builtin/branch.c:264
 #, c-format
 msgid "Deleted branch %s (was %s).\n"
-msgstr ""
+msgstr "Borrada la rama %s (era %s).\n"
 
 #: builtin/branch.c:366
 #, c-format
 msgid "branch '%s' does not point at a commit"
-msgstr ""
+msgstr "la rama '%s' no apunta a un commit"
 
 #: builtin/branch.c:454
 #, c-format
@@ -2763,7 +2763,7 @@ msgstr ""
 #: builtin/branch.c:649
 #, c-format
 msgid "object '%s' does not point to a commit"
-msgstr ""
+msgstr "el objeto '%s' no apunta a un commit"
 
 #: builtin/branch.c:681
 msgid "some refs could not be read"
@@ -2771,16 +2771,16 @@ msgstr ""
 
 #: builtin/branch.c:694
 msgid "cannot rename the current branch while not on any."
-msgstr ""
+msgstr "no puede renombrar la rama actual mientras no esté en alguna."
 
 #: builtin/branch.c:704
 #, c-format
 msgid "Invalid branch name: '%s'"
-msgstr ""
+msgstr "Nombre de rama inválido: '%s'"
 
 #: builtin/branch.c:719
 msgid "Branch rename failed"
-msgstr ""
+msgstr "No he podido renombrar la rama"
 
 #: builtin/branch.c:723
 #, c-format
