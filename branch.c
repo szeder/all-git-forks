@@ -226,7 +226,7 @@ void create_branch(const char *head,
 		   int force, int reflog, int clobber_head,
 		   int quiet, enum branch_track track)
 {
-	struct ref_lock *lock = NULL;
+	struct ref_transaction *transaction;
 	struct commit *commit;
 	unsigned char sha1[20];
 	char *real_ref, msg[PATH_MAX + 20];
@@ -286,9 +286,12 @@ void create_branch(const char *head,
 	hashcpy(sha1, commit->object.sha1);
 
 	if (!dont_change_ref) {
-		lock = lock_any_ref_for_update(ref.buf, NULL, 0, NULL);
-		if (!lock)
-			die_errno(_("Failed to lock ref for update"));
+		transaction = ref_transaction_begin();
+		if (!transaction)
+			die_errno(_("Failed to begin transaction"));
+		if (ref_transaction_update(transaction, ref.buf, sha1, NULL,
+				   0, 0))
+			die_errno(_("Failed to update transaction"));
 	}
 
 	if (reflog)
@@ -305,8 +308,9 @@ void create_branch(const char *head,
 		setup_tracking(ref.buf + 11, real_ref, track, quiet);
 
 	if (!dont_change_ref)
-		if (write_ref_sha1(lock, sha1, msg) < 0)
-			die_errno(_("Failed to write ref"));
+		if (ref_transaction_commit(transaction, msg,
+				     UPDATE_REFS_DIE_ON_ERR))
+			die_errno(_("Failed to commit transaction"));
 
 	strbuf_release(&ref);
 	free(real_ref);
