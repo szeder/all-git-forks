@@ -1541,11 +1541,11 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	const char *index_file, *reflog_msg;
 	char *nl;
 	unsigned char sha1[20];
-	struct ref_lock *ref_lock;
 	struct commit_list *parents = NULL, **pptr = &parents;
 	struct stat statbuf;
 	struct commit *current_head = NULL;
 	struct commit_extra_header *extra = NULL;
+	struct ref_transaction *transaction;
 
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage_with_options(builtin_commit_usage, builtin_commit_options);
@@ -1667,12 +1667,6 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	strbuf_release(&author_ident);
 	free_commit_extra_headers(extra);
 
-	ref_lock = lock_any_ref_for_update("HEAD",
-					   !current_head
-					   ? NULL
-					   : current_head->object.sha1,
-					   0, NULL);
-
 	nl = strchr(sb.buf, '\n');
 	if (nl)
 		strbuf_setlen(&sb, nl + 1 - sb.buf);
@@ -1681,13 +1675,21 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	strbuf_insert(&sb, 0, reflog_msg, strlen(reflog_msg));
 	strbuf_insert(&sb, strlen(reflog_msg), ": ", 2);
 
-	if (!ref_lock) {
+	transaction = ref_transaction_begin();
+	if (!transaction) {
 		rollback_index_files();
-		die(_("cannot lock HEAD ref"));
+		die(_("HEAD: cannot start transaction"));
 	}
-	if (write_ref_sha1(ref_lock, sha1, sb.buf) < 0) {
+	if (ref_transaction_update(transaction, "HEAD", sha1,
+				   current_head->object.sha1,
+				   0, !!current_head)) {
 		rollback_index_files();
 		die(_("cannot update HEAD ref"));
+	}
+	if (ref_transaction_commit(transaction, sb.buf,
+				   UPDATE_REFS_QUIET_ON_ERR)) {
+		rollback_index_files();
+		die(_("cannot commit HEAD ref"));
 	}
 
 	unlink(git_path("CHERRY_PICK_HEAD"));
