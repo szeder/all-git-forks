@@ -1564,12 +1564,19 @@ static const char *format_time(unsigned long time, const char *tz_str,
 	else {
 		const char *time_str;
 		int time_len;
+		int time_col;
 		int tz;
 		tz = atoi(tz_str);
 		time_str = show_date(time, tz, blame_date_mode);
 		time_len = strlen(time_str);
 		memcpy(time_buf, time_str, time_len);
-		memset(time_buf + time_len, ' ', blame_date_width - time_len);
+		/*
+		 * Add space paddings to time_buf to display a fixed width
+		 * string, and use time_col for display width calibration.
+		 */
+		time_col = utf8_strwidth(time_str);
+		memset(time_buf + time_len, ' ', blame_date_width - time_col);
+		*(time_buf + time_len + blame_date_width - time_col) = 0;
 	}
 	return time_buf;
 }
