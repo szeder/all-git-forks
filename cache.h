@@ -268,6 +268,8 @@ static inline unsigned int canon_mode(unsigned int mode)
 
 #define cache_entry_size(len) (offsetof(struct cache_entry,name) + (len) + 1)
 
+
+struct untracked_cache;
 struct index_state {
 	struct cache_entry **cache;
 	unsigned int version;
@@ -279,6 +281,7 @@ struct index_state {
 		 initialized : 1;
 	struct hashmap name_hash;
 	struct hashmap dir_hash;
+	struct untracked_cache *untracked;
 };
 
 extern struct index_state the_index;
