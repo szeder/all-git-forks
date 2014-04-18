@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-02-01 08:06+0800\n"
-"PO-Revision-Date: 2014-04-17 22:40+0200\n"
+"PO-Revision-Date: 2014-04-18 20:40+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -307,7 +307,7 @@ msgstr ""
 
 #: bundle.c:382
 msgid "Refusing to create empty bundle."
-msgstr ""
+msgstr "Rehusando crear un lote vacío."
 
 #: bundle.c:398
 msgid "Could not spawn pack-objects"
@@ -329,12 +329,12 @@ msgstr ""
 #: commit.c:53
 #, c-format
 msgid "could not parse %s"
-msgstr ""
+msgstr "no he podido analizar %s"
 
 #: commit.c:55
 #, c-format
 msgid "%s %s is not a commit!"
-msgstr "%s %s no es un commit!"
+msgstr "¡%s %s no es un commit!"
 
 #: compat/obstack.c:406 compat/obstack.c:408
 msgid "memory exhausted"
@@ -429,12 +429,12 @@ msgstr ""
 #: diff.c:113
 #, c-format
 msgid "  Failed to parse dirstat cut-off percentage '%s'\n"
-msgstr ""
+msgstr "  No he podido analizar el porcentaje de corte de dirstat: '%s'\n"
 
 #: diff.c:118
 #, c-format
 msgid "  Unknown dirstat parameter '%s'\n"
-msgstr ""
+msgstr "  Parámetro de dirstat desconocido: '%s'\n"
 
 #: diff.c:213
 #, c-format
@@ -487,12 +487,12 @@ msgstr ""
 #: grep.c:1695
 #, c-format
 msgid "'%s': unable to read %s"
-msgstr ""
+msgstr "'%s': no se puede leer %s"
 
 #: grep.c:1712
 #, c-format
 msgid "'%s': %s"
-msgstr ""
+msgstr "'%s': %s"
 
 #: grep.c:1723
 #, c-format
@@ -502,15 +502,15 @@ msgstr ""
 #: help.c:210
 #, c-format
 msgid "available git commands in '%s'"
-msgstr ""
+msgstr "órdenes git disponibles en '%s'"
 
 #: help.c:217
 msgid "git commands available from elsewhere on your $PATH"
-msgstr ""
+msgstr "órdenes git disponibles desde otros lugares de su $PATH"
 
 #: help.c:233
 msgid "The most commonly used git commands are:"
-msgstr ""
+msgstr "Las órdenes git usadas más frecuentemente son:"
 
 #: help.c:290
 #, c-format
@@ -9719,7 +9719,7 @@ msgstr ""
 
 #: git-rebase.sh:346
 msgid "The --exec option must be used with the --interactive option"
-msgstr ""
+msgstr "La opción --exec se debe usar conjuntamente con la opción --interactive"
 
 #: git-rebase.sh:351
 msgid "No rebase in progress?"
@@ -9731,7 +9731,7 @@ msgstr ""
 
 #: git-rebase.sh:369
 msgid "Cannot read HEAD"
-msgstr ""
+msgstr "No he podido leer la CABEZA [HEAD]"
 
 #: git-rebase.sh:372
 msgid ""
@@ -9775,12 +9775,12 @@ msgstr ""
 #: git-rebase.sh:492
 #, sh-format
 msgid "Does not point to a valid commit: $onto_name"
-msgstr ""
+msgstr "No apunta a un commit válido: $onto_name"
 
 #: git-rebase.sh:515
 #, sh-format
 msgid "fatal: no such branch: $branch_name"
-msgstr ""
+msgstr "fatal: no existe la rama: $branch_name"
 
 #: git-rebase.sh:548
 msgid "Cannot autostash"
@@ -9798,7 +9798,7 @@ msgstr ""
 #: git-rebase.sh:577
 #, sh-format
 msgid "Current branch $branch_name is up to date."
-msgstr ""
+msgstr "La rama actual $branch_name está actualizada."
 
 #: git-rebase.sh:581
 #, sh-format
@@ -9822,11 +9822,11 @@ msgstr ""
 
 #: git-stash.sh:51
 msgid "git stash clear with parameters is unimplemented"
-msgstr ""
+msgstr "git stash clear con parámetros no está implementado"
 
 #: git-stash.sh:74
 msgid "You do not have the initial commit yet"
-msgstr ""
+msgstr "Ud. no tiene todavía el commit inicial"
 
 #: git-stash.sh:89
 msgid "Cannot save the current index state"
@@ -9869,6 +9869,8 @@ msgid ""
 "error: unknown option for 'stash save': $option\n"
 "       To provide a message, use git stash save -- '$option'"
 msgstr ""
+"error: opción desconocida para 'stash save': $option\n"
+"       Para proporcionar un mensaje, use git stash save -- '$option'"
 
 #: git-stash.sh:258
 msgid "No local changes to save"
@@ -9946,11 +9948,11 @@ msgstr ""
 
 #: git-stash.sh:531
 msgid "No branch name specified"
-msgstr ""
+msgstr "No ha especificado el nombre de la rama"
 
 #: git-stash.sh:603
 msgid "(To restore them type \"git stash apply\")"
-msgstr ""
+msgstr "(Para restaurarlos teclee \"git stash apply\")"
 
 #: git-submodule.sh:95
 #, sh-format
