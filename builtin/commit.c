@@ -1327,6 +1327,14 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 		wt_status_print(&s);
 		break;
 	}
+
+	if (active_cache_changed) {
+		fd = hold_locked_index(&index_lock, 0);
+		if (0 <= fd &&
+		    (write_cache(fd, active_cache, active_nr) ||
+		     commit_locked_index(&index_lock)))
+			die("Unable to write new index file");
+	}
 	return 0;
 }
 
