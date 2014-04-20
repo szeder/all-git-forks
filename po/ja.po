@@ -927,12 +927,12 @@ msgstr ""
 #: remote.c:757
 #, c-format
 msgid "%s usually tracks %s, not %s"
-msgstr ""
+msgstr "%sは通常%sを追跡します。%sではありません。"
 
 #: remote.c:761
 #, c-format
 msgid "%s tracks both %s and %s"
-msgstr ""
+msgstr "%sは%sと%s両方追跡しています"
 
 #.
 #. * This last possibility doesn't occur because
@@ -946,37 +946,37 @@ msgstr "内部エラー"
 #: remote.c:1871
 #, c-format
 msgid "Your branch is based on '%s', but the upstream is gone.\n"
-msgstr ""
+msgstr "ブランチは'%s'をベースにしていますが、上流に存在しません。\n"
 
 #: remote.c:1875
 msgid "  (use \"git branch --unset-upstream\" to fixup)\n"
-msgstr ""
+msgstr "  (\"git branch --unset-upstream\"で修正してください)"
 
 #: remote.c:1878
 #, c-format
 msgid "Your branch is up-to-date with '%s'.\n"
-msgstr ""
+msgstr "ブランチは'%s'に対して最新です。"
 
 #: remote.c:1882
 #, c-format
 msgid "Your branch is ahead of '%s' by %d commit.\n"
 msgid_plural "Your branch is ahead of '%s' by %d commits.\n"
-msgstr[0] ""
+msgstr[0] "ブランチは'%s'に対して%dコミット進んでいます。\n"
 
 #: remote.c:1888
 msgid "  (use \"git push\" to publish your local commits)\n"
-msgstr ""
+msgstr "  (ローカルのコミットを公開するには\"git push\"をしてください)\n"
 
 #: remote.c:1891
 #, c-format
 msgid "Your branch is behind '%s' by %d commit, and can be fast-forwarded.\n"
 msgid_plural ""
 "Your branch is behind '%s' by %d commits, and can be fast-forwarded.\n"
-msgstr[0] ""
+msgstr[0] "ブランチは'%s'に対して%dコミット遅れています。マージが可能です。\n"
 
 #: remote.c:1899
 msgid "  (use \"git pull\" to update your local branch)\n"
-msgstr ""
+msgstr "  (ローカルブランチを更新するには\"git pull\"をしてください)\n"
 
 #: remote.c:1902
 #, c-format
@@ -990,7 +990,7 @@ msgstr[0] ""
 
 #: remote.c:1912
 msgid "  (use \"git pull\" to merge the remote branch into yours)\n"
-msgstr ""
+msgstr "  (リモートブランチを自分のブランチにマージするには\"git pull\"をしてください)\n"
 
 #: run-command.c:80
 msgid "open /dev/null failed"
