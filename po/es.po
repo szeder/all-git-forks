@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-20 21:51+0200\n"
+"PO-Revision-Date: 2014-04-20 22:37+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -1016,30 +1016,32 @@ msgstr ""
 
 #: run-command.c:80
 msgid "open /dev/null failed"
-msgstr ""
+msgstr "no he podido abrir /dev/null"
 
 #: run-command.c:82
 #, c-format
 msgid "dup2(%d,%d) failed"
-msgstr ""
+msgstr "error en dup2(%d,%d)"
 
 #: sequencer.c:206 builtin/merge.c:786 builtin/merge.c:899
 #: builtin/merge.c:1009 builtin/merge.c:1019
 #, c-format
 msgid "Could not open '%s' for writing"
-msgstr ""
+msgstr "No he podido abrir '%s' para escritura"
 
 #: sequencer.c:208 builtin/merge.c:343 builtin/merge.c:789
 #: builtin/merge.c:1011 builtin/merge.c:1024
 #, c-format
 msgid "Could not write to '%s'"
-msgstr ""
+msgstr "No he podido escribir en '%s'"
 
 #: sequencer.c:229
 msgid ""
 "after resolving the conflicts, mark the corrected paths\n"
 "with 'git add <paths>' or 'git rm <paths>'"
 msgstr ""
+"tras resolver los conflictos, marque las rutas corregidas\n"
+"con 'git add <rutas>' o 'git rm <rutas>'"
 
 #: sequencer.c:232
 msgid ""
@@ -1047,11 +1049,14 @@ msgid ""
 "with 'git add <paths>' or 'git rm <paths>'\n"
 "and commit the result with 'git commit'"
 msgstr ""
+"tras resolver los conflictos, marque las rutas corregidas\n"
+"con 'git add <rutas>' o 'git rm <rutas>'\n"
+"y haga commit del resultado con 'git commit'"
 
 #: sequencer.c:245 sequencer.c:879 sequencer.c:962
 #, c-format
 msgid "Could not write to %s"
-msgstr ""
+msgstr "No he podido escribir en %s"
 
 #: sequencer.c:248
 #, c-format
