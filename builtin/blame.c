@@ -2338,7 +2338,15 @@ parse_done:
 		blame_date_width = sizeof("2006-10-19");
 		break;
 	case DATE_RELATIVE:
-		/* "normal" is used as the fallback for "relative" */
+		/* TRANSLATORS: what we care about is not the content itself,
+		   but the display width of this string.  We use the width of
+		   the string as the max width of the datetime in relative
+		   format.  For English and many other languages, "4 years,
+		   11 months ago" is the longest one among "89 seconds ago",
+		   "89 minites ago", "35 hours ago", "13 days ago", "10 weeks
+		   ago", "in the future" and many others. */
+		blame_date_width = utf8_strwidth(_("4 years, 11 months ago")) + 1; /* add the null */
+		break;
 	case DATE_LOCAL:
 	case DATE_NORMAL:
 		blame_date_width = sizeof("Thu Oct 19 16:00:04 2006 -0700");
