@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-20 13:43+0200\n"
+"PO-Revision-Date: 2014-04-20 21:51+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -1471,9 +1471,8 @@ msgid "bug: unhandled unmerged status %x"
 msgstr ""
 
 #: wt-status.c:274
-#, fuzzy
 msgid "new file:"
-msgstr "fichero"
+msgstr "fichero nuevo:"
 
 #: wt-status.c:276
 msgid "copied:"
@@ -1488,9 +1487,8 @@ msgid "modified:"
 msgstr ""
 
 #: wt-status.c:282
-#, fuzzy
 msgid "renamed:"
-msgstr "renombrado"
+msgstr "renombrado:"
 
 #: wt-status.c:284
 msgid "typechange:"
@@ -7235,9 +7233,8 @@ msgid "disabling bitmap writing, as some objects are not being packed"
 msgstr ""
 
 #: builtin/pack-objects.c:2174
-#, fuzzy
 msgid "Compressing objects"
-msgstr "comprime mejor"
+msgstr "Comprimiendo objetos"
 
 #: builtin/pack-objects.c:2530
 #, c-format
@@ -8468,9 +8465,8 @@ msgid "%s reset is not allowed in a bare repository"
 msgstr ""
 
 #: builtin/reset.c:344
-#, fuzzy
 msgid "-N can only be used with --mixed"
-msgstr "no puede usar -a con -d"
+msgstr "-N solo puede usarse con --mixed"
 
 #: builtin/reset.c:361
 msgid "Unstaged changes after reset:"
@@ -9428,17 +9424,19 @@ msgstr ""
 #: git-am.sh:363
 #, sh-format
 msgid "Patch format $patch_format is not supported."
-msgstr ""
+msgstr "Formato de parche no aceptado: $patch_format."
 
 #: git-am.sh:365
 msgid "Patch format detection failed."
-msgstr ""
+msgstr "No he podido determinar el formato del parche."
 
 #: git-am.sh:392
 msgid ""
 "The -b/--binary option has been a no-op for long time, and\n"
 "it will be removed. Please do not use it anymore."
 msgstr ""
+"La opción -b/--binary ha sido ignorada durante mucho tiempo, y\n"
+"será eliminada. Por favor deje de usarla."
 
 #: git-am.sh:486
 #, sh-format
@@ -9447,7 +9445,7 @@ msgstr ""
 
 #: git-am.sh:491
 msgid "Please make up your mind. --skip or --abort?"
-msgstr ""
+msgstr "Por favor, decídase. ¿--skip o --abort?"
 
 #: git-am.sh:527
 #, sh-format
@@ -9475,22 +9473,22 @@ msgstr ""
 
 #: git-am.sh:732
 msgid "Patch does not have a valid e-mail address."
-msgstr ""
+msgstr "El parche no tiene una dirección de e-mail válida."
 
 #: git-am.sh:779
 msgid "cannot be interactive without stdin connected to a terminal."
-msgstr ""
+msgstr "no puedo ser interactivo si la entrada estándar [stdin] no está conectada a un terminal."
 
 #: git-am.sh:783
 msgid "Commit Body is:"
-msgstr ""
+msgstr "El cuerpo del commit es:"
 
 #. TRANSLATORS: Make sure to include [y], [n], [e], [v] and [a]
 #. in your translation. The program will only accept English
 #. input at this point.
 #: git-am.sh:790
 msgid "Apply? [y]es/[n]o/[e]dit/[v]iew patch/[a]ccept all "
-msgstr ""
+msgstr "Aplicar? [y]sí/[n]o/[e]ditar/[v]er parche/[a]ceptar todo "
 
 #: git-am.sh:826
 #, sh-format
@@ -9512,7 +9510,7 @@ msgstr ""
 
 #: git-am.sh:871
 msgid "No changes -- Patch already applied."
-msgstr ""
+msgstr "Ningún cambio -- Parche ya aplicado."
 
 #: git-am.sh:881
 #, sh-format
@@ -9525,6 +9523,8 @@ msgid ""
 "The copy of the patch that failed is found in:\n"
 "   $dotest/patch"
 msgstr ""
+"La copia del parche que ha fallado se encuentra en:\n"
+"   $dotest/patch"
 
 #: git-am.sh:902
 msgid "applying to an empty history"
@@ -9539,12 +9539,12 @@ msgstr ""
 #. at this point.
 #: git-bisect.sh:54
 msgid "Do you want me to do it for you [Y/n]? "
-msgstr ""
+msgstr "¿Quiere que lo haga yo por Ud.? [Y]Sí/[n]o "
 
 #: git-bisect.sh:95
 #, sh-format
 msgid "unrecognised option: '$arg'"
-msgstr ""
+msgstr "opción desconocida: '$arg'"
 
 #: git-bisect.sh:99
 #, sh-format
@@ -9601,7 +9601,7 @@ msgstr ""
 #. at this point.
 #: git-bisect.sh:279
 msgid "Are you sure [Y/n]? "
-msgstr ""
+msgstr "¿Está seguro? [Y]Sí/[n]o "
 
 #: git-bisect.sh:289
 msgid ""
@@ -9623,7 +9623,7 @@ msgstr ""
 #: git-bisect.sh:370
 #, sh-format
 msgid "'$invalid' is not a valid commit"
-msgstr ""
+msgstr "'$invalid' no es un commit válido"
 
 #: git-bisect.sh:379
 #, sh-format
@@ -9643,7 +9643,7 @@ msgstr ""
 
 #: git-bisect.sh:424
 msgid "?? what are you talking about?"
-msgstr ""
+msgstr "¿¿?? ¿de qué está Ud. hablando?"
 
 #: git-bisect.sh:436
 #, sh-format
