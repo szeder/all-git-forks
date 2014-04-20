@@ -289,7 +289,7 @@ msgstr[0] "バンドルに含まれている%d件の参照:"
 
 #: bundle.c:194
 msgid "The bundle records a complete history."
-msgstr "バンドルは完璧なヒストリーを記録します。"
+msgstr "バンドルは完全なヒストリーを記録します。"
 
 #: bundle.c:196
 #, c-format
