@@ -443,8 +443,8 @@ static int do_push(const char *repo, int flags)
 	if (!refspec && !(flags & TRANSPORT_PUSH_ALL)) {
 		struct branch *branch = branch_get(NULL);
 		/* Is there a publish branch */
-		if (branch->pushremote_name && !strcmp(remote->name, branch->pushremote_name) &&
-				branch && branch->push_name) {
+		if (branch && branch->pushremote_name && !strcmp(remote->name, branch->pushremote_name) &&
+				branch->push_name) {
 			struct strbuf refspec = STRBUF_INIT;
 			strbuf_addf(&refspec, "%s:%s", branch->name, branch->push_name);
 			add_refspec(refspec.buf);
