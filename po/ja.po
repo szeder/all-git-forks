@@ -102,7 +102,7 @@ msgstr "圧縮せずに保存します"
 
 #: archive.c:336
 msgid "compress faster"
-msgstr "圧縮時間の最小化を優先して圧縮します"
+msgstr "圧縮速度を優先して圧縮します"
 
 #: archive.c:344
 msgid "compress better"
