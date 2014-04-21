@@ -129,7 +129,6 @@ static int callback(config_fn_t fn, const char *var, const char *value, void *da
 
 	if (!strcmp(var, "core.mode")) {
 		if (!strcmp(value, "progress")) {
-			ret |= fn("merge.defaulttoupstream", "true", data);
 		}
 	}
 
