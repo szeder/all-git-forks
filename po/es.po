@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-21 20:13+0200\n"
+"PO-Revision-Date: 2014-04-21 22:40+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -716,15 +716,15 @@ msgstr "el objeto %s no es un blob"
 
 #: merge-recursive.c:1567
 msgid "modify"
-msgstr ""
+msgstr "modificar"
 
 #: merge-recursive.c:1567
 msgid "modified"
-msgstr ""
+msgstr "modificado"
 
 #: merge-recursive.c:1577
 msgid "content"
-msgstr ""
+msgstr "contenido"
 
 #: merge-recursive.c:1584
 msgid "add/add"
@@ -742,64 +742,64 @@ msgstr ""
 
 #: merge-recursive.c:1636 git-submodule.sh:1149
 msgid "submodule"
-msgstr ""
+msgstr "submódulo"
 
 #: merge-recursive.c:1637
 #, c-format
 msgid "CONFLICT (%s): Merge conflict in %s"
-msgstr ""
+msgstr "CONFLICTO (%s): Conflicto en %s al fusionar"
 
 #: merge-recursive.c:1727
 #, c-format
 msgid "Removing %s"
-msgstr ""
+msgstr "Eliminando %s"
 
 #: merge-recursive.c:1752
 msgid "file/directory"
-msgstr ""
+msgstr "fichero/directorio"
 
 #: merge-recursive.c:1758
 msgid "directory/file"
-msgstr ""
+msgstr "directorio/fichero"
 
 #: merge-recursive.c:1763
 #, c-format
 msgid "CONFLICT (%s): There is a directory with name %s in %s. Adding %s as %s"
-msgstr ""
+msgstr "CONFLICTO (%s): Hay un directorio con nombre %s en %s. Añadiendo %s como %s"
 
 #: merge-recursive.c:1773
 #, c-format
 msgid "Adding %s"
-msgstr ""
+msgstr "Añadiendo %s"
 
 #: merge-recursive.c:1790
 msgid "Fatal merge failure, shouldn't happen."
-msgstr ""
+msgstr "Error fatal de fusión [merge], no debería ocurrir."
 
 #: merge-recursive.c:1809
 msgid "Already up-to-date!"
-msgstr ""
+msgstr "¡Ya actualizado!"
 
 #: merge-recursive.c:1818
 #, c-format
 msgid "merging of trees %s and %s failed"
-msgstr ""
+msgstr "no he podido fusionar los árboles %s y %s"
 
 #: merge-recursive.c:1848
 #, c-format
 msgid "Unprocessed path??? %s"
-msgstr ""
+msgstr "¿¿¿Ruta sin procesar??? %s"
 
 #: merge-recursive.c:1893
 msgid "Merging:"
-msgstr ""
+msgstr "Fusionando:"
 
 #: merge-recursive.c:1906
 #, c-format
 msgid "found %u common ancestor:"
 msgid_plural "found %u common ancestors:"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "encontrado %u antecesor común:"
+msgstr[1] "encontrados %u antecesores comunes:"
 
 #: merge-recursive.c:1943
 msgid "merge returned no commit"
@@ -812,7 +812,7 @@ msgstr ""
 
 #: merge-recursive.c:2012 builtin/merge.c:668
 msgid "Unable to write index."
-msgstr ""
+msgstr "No puedo escribir el índice."
 
 #: notes-utils.c:40
 msgid "Cannot commit uninitialized/unreferenced notes tree"
@@ -842,24 +842,24 @@ msgstr ""
 
 #: parse-options.c:532
 msgid "..."
-msgstr ""
+msgstr "..."
 
 #: parse-options.c:550
 #, c-format
 msgid "usage: %s"
-msgstr ""
+msgstr "uso: %s"
 
 #. TRANSLATORS: the colon here should align with the
 #. one in "usage: %s" translation
 #: parse-options.c:554
 #, c-format
 msgid "   or: %s"
-msgstr ""
+msgstr "  o: %s"
 
 #: parse-options.c:557
 #, c-format
 msgid "    %s"
-msgstr ""
+msgstr "    %s"
 
 #: parse-options.c:591
 msgid "-NUM"
