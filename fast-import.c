@@ -248,6 +248,7 @@ struct branch {
 	uintmax_t last_commit;
 	uintmax_t num_notes;
 	unsigned active : 1;
+	unsigned delete : 1;
 	unsigned pack_id : PACK_ID_BITS;
 	unsigned char sha1[20];
 };
@@ -1681,8 +1682,6 @@ static int update_branch(struct branch *b)
 	struct ref_transaction *transaction;
 	unsigned char old_sha1[20];
 
-	if (is_null_sha1(b->sha1))
-		return 0;
 	if (read_ref(b->name, old_sha1))
 		hashclr(old_sha1);
 	transaction = ref_transaction_begin();
@@ -1706,7 +1705,12 @@ static int update_branch(struct branch *b)
 			return -1;
 		}
 	}
-	if (ref_transaction_update(transaction, b->name, b->sha1, old_sha1,
+
+	if (is_null_sha1(old_sha1)) {
+		if (b->delete)
+			ref_transaction_delete(transaction, b->name, old_sha1,
+					       0, 1);
+	} else if (ref_transaction_update(transaction, b->name, b->sha1, old_sha1,
 				   0, 1)) {
 		ref_transaction_rollback(transaction);
 		return error("Unable to update transaction for %s", b->name);
@@ -2618,8 +2622,11 @@ static int parse_from(struct branch *b)
 			free(buf);
 		} else
 			parse_from_existing(b);
-	} else if (!get_sha1(from, b->sha1))
+	} else if (!get_sha1(from, b->sha1)) {
 		parse_from_existing(b);
+		if (is_null_sha1(b->sha1))
+			b->delete = 1;
+	}
 	else
 		die("Invalid ref name or SHA1 expression: %s", from);
 
