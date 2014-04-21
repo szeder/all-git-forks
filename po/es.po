@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-20 22:37+0200\n"
+"PO-Revision-Date: 2014-04-21 20:13+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -619,7 +619,7 @@ msgstr "no he podido abrir '%s'"
 #: merge-recursive.c:784
 #, c-format
 msgid "failed to symlink '%s'"
-msgstr ""
+msgstr "no he podido definir un enlace simbólico a '%s'"
 
 #: merge-recursive.c:787
 #, c-format
@@ -628,7 +628,7 @@ msgstr "no sé qué hacer con %06o %s '%s'"
 
 #: merge-recursive.c:925
 msgid "Failed to execute internal merge"
-msgstr ""
+msgstr "No he podido ejecutar una fusión [merge] interna"
 
 #: merge-recursive.c:929
 #, c-format
@@ -644,14 +644,14 @@ msgstr "tipo de objeto no reconocido en el árbol"
 msgid ""
 "CONFLICT (%s/delete): %s deleted in %s and %s in %s. Version %s of %s left "
 "in tree."
-msgstr ""
+msgstr "CONFLICTO (%s/borrar): %s borrado en %s y %s en %s. La versión %s de %s dejada en el árbol."
 
 #: merge-recursive.c:1030 merge-recursive.c:1043
 #, c-format
 msgid ""
 "CONFLICT (%s/delete): %s deleted in %s and %s in %s. Version %s of %s left "
 "in tree at %s."
-msgstr ""
+msgstr "CONFLICTO (%s/borrar): %s borrado en %s y %s en %s. La versión %s de %s dejada en el árbol en %s."
 
 #: merge-recursive.c:1084
 msgid "rename"
@@ -682,17 +682,17 @@ msgstr " (dejado sin resolver)"
 #: merge-recursive.c:1221
 #, c-format
 msgid "CONFLICT (rename/rename): Rename %s->%s in %s. Rename %s->%s in %s"
-msgstr ""
+msgstr "CONFLICTO (renombrar/renombrar): Renombrar %s->%s en %s. Renombrar %s->%s en %s"
 
 #: merge-recursive.c:1251
 #, c-format
 msgid "Renaming %s to %s and %s to %s instead"
-msgstr ""
+msgstr "Renombrando %s como %s y %s como %s en su lugar"
 
 #: merge-recursive.c:1450
 #, c-format
 msgid "CONFLICT (rename/add): Rename %s->%s in %s. %s added in %s"
-msgstr ""
+msgstr "CONFLICTO (renombrar/añadir): Renombrar %s->%s en %s. %s añadido en %s"
 
 #: merge-recursive.c:1460
 #, c-format
@@ -707,12 +707,12 @@ msgstr ""
 #: merge-recursive.c:1516
 #, c-format
 msgid "cannot read object %s"
-msgstr ""
+msgstr "no he podido leer el objeto %s"
 
 #: merge-recursive.c:1519
 #, c-format
 msgid "object %s is not a blob"
-msgstr ""
+msgstr "el objeto %s no es un blob"
 
 #: merge-recursive.c:1567
 msgid "modify"
