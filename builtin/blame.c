@@ -1556,22 +1556,29 @@ static void assign_blame(struct scoreboard *sb, int opt)
 static const char *format_time(unsigned long time, const char *tz_str,
 			       int show_raw_time)
 {
-	static char time_buf[128];
+	static struct strbuf time_buf = STRBUF_INIT;
 
+	strbuf_reset(&time_buf);
 	if (show_raw_time) {
-		snprintf(time_buf, sizeof(time_buf), "%lu %s", time, tz_str);
+		strbuf_addf(&time_buf, "%lu %s", time, tz_str);
 	}
 	else {
 		const char *time_str;
-		int time_len;
+		size_t time_width;
 		int tz;
 		tz = atoi(tz_str);
 		time_str = show_date(time, tz, blame_date_mode);
-		time_len = strlen(time_str);
-		memcpy(time_buf, time_str, time_len);
-		memset(time_buf + time_len, ' ', blame_date_width - time_len);
+		strbuf_addstr(&time_buf, time_str);
+		/*
+		 * Add space paddings to time_buf to display a fixed width
+		 * string, and use time_width for display width calibration.
+		 */
+		for (time_width = utf8_strwidth(time_str);
+		     time_width < blame_date_width;
+		     time_width++)
+			strbuf_addch(&time_buf, ' ');
 	}
-	return time_buf;
+	return time_buf.buf;
 }
 
 #define OUTPUT_ANNOTATE_COMPAT	001
@@ -2331,7 +2338,15 @@ parse_done:
 		blame_date_width = sizeof("2006-10-19");
 		break;
 	case DATE_RELATIVE:
-		/* "normal" is used as the fallback for "relative" */
+		/* TRANSLATORS: what we care about is not the content itself,
+		   but the display width of this string.  We use the width of
+		   the string as the max width of the datetime in relative
+		   format.  For English and many other languages, "4 years,
+		   11 months ago" is the longest one among "89 seconds ago",
+		   "89 minites ago", "35 hours ago", "13 days ago", "10 weeks
+		   ago", "in the future" and many others. */
+		blame_date_width = utf8_strwidth(_("4 years, 11 months ago")) + 1; /* add the null */
+		break;
 	case DATE_LOCAL:
 	case DATE_NORMAL:
 		blame_date_width = sizeof("Thu Oct 19 16:00:04 2006 -0700");
