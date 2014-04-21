@@ -129,7 +129,7 @@ static int replace_object(const char *object_ref, const char *replace_ref,
 	unsigned char object[20], prev[20], repl[20];
 	enum object_type obj_type, repl_type;
 	char ref[PATH_MAX];
-	struct ref_lock *lock;
+	struct ref_transaction *transaction;
 
 	if (get_sha1(object_ref, object))
 		die("Failed to resolve '%s' as a valid ref.", object_ref);
@@ -157,11 +157,14 @@ static int replace_object(const char *object_ref, const char *replace_ref,
 	else if (!force)
 		die("replace ref '%s' already exists", ref);
 
-	lock = lock_any_ref_for_update(ref, prev, 0, NULL);
-	if (!lock)
-		die("%s: cannot lock the ref", ref);
-	if (write_ref_sha1(lock, repl, NULL) < 0)
-		die("%s: cannot update the ref", ref);
+	transaction = ref_transaction_begin();
+	if (!transaction)
+		die(_("%s: cannot start transaction"), ref);
+	if (ref_transaction_update(transaction, ref, repl, prev,
+				   0, !is_null_sha1(prev)))
+		die(_("%s: cannot update transaction"), ref);
+	if (ref_transaction_commit(transaction, NULL, UPDATE_REFS_DIE_ON_ERR))
+		die(_("%s: cannot commit transaction"), ref);
 
 	return 0;
 }

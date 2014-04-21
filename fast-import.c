@@ -1678,36 +1678,43 @@ found_entry:
 static int update_branch(struct branch *b)
 {
 	static const char *msg = "fast-import";
-	struct ref_lock *lock;
+	struct ref_transaction *transaction;
 	unsigned char old_sha1[20];
 
 	if (is_null_sha1(b->sha1))
 		return 0;
 	if (read_ref(b->name, old_sha1))
 		hashclr(old_sha1);
-	lock = lock_any_ref_for_update(b->name, old_sha1, 0, NULL);
-	if (!lock)
-		return error("Unable to lock %s", b->name);
+	transaction = ref_transaction_begin();
+	if (!transaction)
+		return error("Unable to begin transaction for %s", b->name);
 	if (!force_update && !is_null_sha1(old_sha1)) {
 		struct commit *old_cmit, *new_cmit;
 
 		old_cmit = lookup_commit_reference_gently(old_sha1, 0);
 		new_cmit = lookup_commit_reference_gently(b->sha1, 0);
 		if (!old_cmit || !new_cmit) {
-			unlock_ref(lock);
+			ref_transaction_rollback(transaction);
 			return error("Branch %s is missing commits.", b->name);
 		}
 
 		if (!in_merge_bases(old_cmit, new_cmit)) {
-			unlock_ref(lock);
+			ref_transaction_rollback(transaction);
 			warning("Not updating %s"
 				" (new tip %s does not contain %s)",
 				b->name, sha1_to_hex(b->sha1), sha1_to_hex(old_sha1));
 			return -1;
 		}
 	}
-	if (write_ref_sha1(lock, b->sha1, msg) < 0)
-		return error("Unable to update %s", b->name);
+	if (ref_transaction_update(transaction, b->name, b->sha1, old_sha1,
+				   0, 1)) {
+		ref_transaction_rollback(transaction);
+		return error("Unable to update transaction for %s", b->name);
+	}
+	if (ref_transaction_commit(transaction, msg,
+				   UPDATE_REFS_QUIET_ON_ERR))
+		return error("Unable to commit transaction for %s", b->name);
+
 	return 0;
 }
 
