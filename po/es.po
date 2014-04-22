@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-21 22:40+0200\n"
+"PO-Revision-Date: 2014-04-22 21:41+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -1133,12 +1133,12 @@ msgstr ""
 #: sequencer.c:635
 #, c-format
 msgid "could not revert %s... %s"
-msgstr ""
+msgstr "no he podido revertir %s... %s"
 
 #: sequencer.c:636
 #, c-format
 msgid "could not apply %s... %s"
-msgstr ""
+msgstr "no he podido aplicar %s... %s"
 
 #: sequencer.c:672
 msgid "empty commit set passed"
@@ -1147,12 +1147,12 @@ msgstr ""
 #: sequencer.c:680
 #, c-format
 msgid "git %s: failed to read the index"
-msgstr ""
+msgstr "git %s: no he podido leer el índice"
 
 #: sequencer.c:685
 #, c-format
 msgid "git %s: failed to refresh the index"
-msgstr ""
+msgstr "git %s: no he podido actualizar el índice"
 
 #: sequencer.c:743
 #, c-format
@@ -1171,12 +1171,12 @@ msgstr ""
 #: sequencer.c:783
 #, c-format
 msgid "Could not open %s"
-msgstr ""
+msgstr "No he podido abrir %s"
 
 #: sequencer.c:787
 #, c-format
 msgid "Could not read %s."
-msgstr ""
+msgstr "No he podido leer %s."
 
 #: sequencer.c:794
 #, c-format
@@ -1191,7 +1191,7 @@ msgstr ""
 #: sequencer.c:827
 #, c-format
 msgid "Invalid value for %s: %s"
-msgstr ""
+msgstr "Valor inválido para %s: %s"
 
 #: sequencer.c:839
 #, c-format
@@ -1204,7 +1204,7 @@ msgstr ""
 
 #: sequencer.c:861
 msgid "try \"git cherry-pick (--continue | --quit | --abort)\""
-msgstr ""
+msgstr "pruebe \"git cherry-pick (--continue | --quit | --abort)\""
 
 #: sequencer.c:865
 #, c-format
@@ -1231,7 +1231,7 @@ msgstr ""
 #: sequencer.c:926 builtin/apply.c:4061
 #, c-format
 msgid "cannot open %s: %s"
-msgstr ""
+msgstr "no he podido abrir %s: %s"
 
 #: sequencer.c:929
 #, c-format
