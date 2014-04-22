@@ -16,6 +16,7 @@
 #include "submodule.h"
 #include "ll-merge.h"
 #include "string-list.h"
+#include "argv-array.h"
 
 #ifdef NO_FAST_WORKING_DIRECTORY
 #define FAST_WORKING_DIRECTORY 0
@@ -2879,6 +2880,16 @@ static struct diff_tempfile *prepare_temp_file(const char *name,
 	return temp;
 }
 
+static void add_external_diff_name(struct argv_array *argv,
+				   const char *name,
+				   struct diff_filespec *df)
+{
+	struct diff_tempfile *temp = prepare_temp_file(name, df);
+	argv_array_push(argv, temp->name);
+	argv_array_push(argv, temp->hex);
+	argv_array_push(argv, temp->mode);
+}
+
 /* An external diff command takes:
  *
  * diff-cmd name infile1 infile1-sha1 infile1-mode \
@@ -2894,50 +2905,33 @@ static void run_external_diff(const char *pgm,
 			      int complete_rewrite,
 			      struct diff_options *o)
 {
-	const char *spawn_arg[10];
-	int retval;
-	const char **arg = &spawn_arg[0];
+	struct argv_array argv = ARGV_ARRAY_INIT;
+	struct argv_array env = ARGV_ARRAY_INIT;
 	struct diff_queue_struct *q = &diff_queued_diff;
-	const char *env[3] = { NULL };
-	char env_counter[50];
-	char env_total[50];
+
+	argv_array_push(&argv, pgm);
+	argv_array_push(&argv, name);
 
 	if (one && two) {
-		struct diff_tempfile *temp_one, *temp_two;
-		const char *othername = (other ? other : name);
-		temp_one = prepare_temp_file(name, one);
-		temp_two = prepare_temp_file(othername, two);
-		*arg++ = pgm;
-		*arg++ = name;
-		*arg++ = temp_one->name;
-		*arg++ = temp_one->hex;
-		*arg++ = temp_one->mode;
-		*arg++ = temp_two->name;
-		*arg++ = temp_two->hex;
-		*arg++ = temp_two->mode;
-		if (other) {
-			*arg++ = other;
-			*arg++ = xfrm_msg;
+		add_external_diff_name(&argv, name, one);
+		if (!other)
+			add_external_diff_name(&argv, name, two);
+		else {
+			add_external_diff_name(&argv, other, two);
+			argv_array_push(&argv, other);
+			argv_array_push(&argv, xfrm_msg);
 		}
-	} else {
-		*arg++ = pgm;
-		*arg++ = name;
 	}
-	*arg = NULL;
-	fflush(NULL);
 
-	env[0] = env_counter;
-	snprintf(env_counter, sizeof(env_counter), "GIT_DIFF_PATH_COUNTER=%d",
-		 ++o->diff_path_counter);
-	env[1] = env_total;
-	snprintf(env_total, sizeof(env_total), "GIT_DIFF_PATH_TOTAL=%d", q->nr);
+	argv_array_pushf(&env, "GIT_DIFF_PATH_COUNTER=%d", ++o->diff_path_counter);
+	argv_array_pushf(&env, "GIT_DIFF_PATH_TOTAL=%d", q->nr);
 
-	retval = run_command_v_opt_cd_env(spawn_arg, RUN_USING_SHELL, NULL, env);
+	if (run_command_v_opt_cd_env(argv.argv, RUN_USING_SHELL, NULL, env.argv))
+		die(_("external diff died, stopping at %s"), name);
+
 	remove_tempfile();
-	if (retval) {
-		fprintf(stderr, "external diff died, stopping at %s.\n", name);
-		exit(1);
-	}
+	argv_array_clear(&argv);
+	argv_array_clear(&env);
 }
 
 static int similarity_index(struct diff_filepair *p)
