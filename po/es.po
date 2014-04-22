@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-22 21:41+0200\n"
+"PO-Revision-Date: 2014-04-22 23:06+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -1236,11 +1236,11 @@ msgstr "no he podido abrir %s: %s"
 #: sequencer.c:929
 #, c-format
 msgid "cannot read %s: %s"
-msgstr ""
+msgstr "no he podido leer %s: %s"
 
 #: sequencer.c:930
 msgid "unexpected end of file"
-msgstr ""
+msgstr "fin de fichero inesperado"
 
 #: sequencer.c:936
 #, c-format
@@ -1285,12 +1285,12 @@ msgstr ""
 
 #: sha1_name.c:1072
 msgid "HEAD does not point to a branch"
-msgstr ""
+msgstr "CABEZA [HEAD] no apunta a una rama"
 
 #: sha1_name.c:1075
 #, c-format
 msgid "No such branch: '%s'"
-msgstr ""
+msgstr "No existe la rama: '%s'"
 
 #: sha1_name.c:1077
 #, c-format
@@ -1362,21 +1362,21 @@ msgstr ""
 
 #: urlmatch.c:244 urlmatch.c:255
 msgid "invalid port number"
-msgstr ""
+msgstr "número de puerto inválido"
 
 #: urlmatch.c:322
 msgid "invalid '..' path segment"
-msgstr ""
+msgstr "segmento de ruta inválido '..'"
 
 #: wrapper.c:422
 #, c-format
 msgid "unable to access '%s': %s"
-msgstr ""
+msgstr "no puedo acceder a '%s': %s"
 
 #: wrapper.c:443
 #, c-format
 msgid "unable to access '%s'"
-msgstr ""
+msgstr "no puedo acceder a '%s'"
 
 #: wrapper.c:454
 #, c-format
@@ -1385,11 +1385,11 @@ msgstr ""
 
 #: wrapper.c:455
 msgid "no such user"
-msgstr ""
+msgstr "no existe el usuario"
 
 #: wt-status.c:150
 msgid "Unmerged paths:"
-msgstr ""
+msgstr "Rutas sin fusionar [merge]:"
 
 #: wt-status.c:177 wt-status.c:204
 #, c-format
@@ -1402,15 +1402,15 @@ msgstr ""
 
 #: wt-status.c:183
 msgid "  (use \"git add <file>...\" to mark resolution)"
-msgstr ""
+msgstr "  (use \"git add <fichero>...\" para marcar la resolución)"
 
 #: wt-status.c:185 wt-status.c:189
 msgid "  (use \"git add/rm <file>...\" as appropriate to mark resolution)"
-msgstr ""
+msgstr "  (use \"git add/rm <fichero>...\" según corresponda para marcar la resolución)"
 
 #: wt-status.c:187
 msgid "  (use \"git rm <file>...\" to mark resolution)"
-msgstr ""
+msgstr "  (use \"git rm <fichero>...\" para marcar la resolución)"
 
 #: wt-status.c:198
 msgid "Changes to be committed:"
