@@ -91,13 +91,13 @@ For shell scripts specifically (not exhaustive):
    E.g.: my_function () {
 
  - As to use of grep, stick to a subset of BRE (namely, no \{m,n\},
-   [::], [==], nor [..]) for portability.
+   [::], [==], or [..]) for portability.
 
    - We do not use \{m,n\};
 
    - We do not use -E;
 
-   - We do not use ? nor + (which are \{0,1\} and \{1,\}
+   - We do not use ? or + (which are \{0,1\} and \{1,\}
      respectively in BRE) but that goes without saying as these
      are ERE elements not BRE (note that \? and \+ are not even part
      of BRE -- making them accessible from BRE is a GNU extension).
@@ -163,6 +163,16 @@ For C programs:
 	 * A very long
 	 * multi-line comment.
 	 */
+
+   Note however that a comment that explains a translatable string to
+   translators uses a convention of starting with a magic token
+   "TRANSLATORS: " immediately after the opening delimiter, even when
+   it spans multiple lines.  We do not add an asterisk at the beginning
+   of each line, either.  E.g.
+
+	/* TRANSLATORS: here is a comment that explains the string
+	   to be translated, that follows immediately after it */
+	_("Here is a translatable string explained by the above.");
 
  - Double negation is often harder to understand than no negation
    at all.

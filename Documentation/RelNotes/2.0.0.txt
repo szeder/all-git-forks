@@ -41,11 +41,19 @@ with "git diff-files --diff-filter=d").
 
 "git request-pull" lost a few "heuristics" that often led to mistakes.
 
+The default prefix for "git svn" has changed in Git 2.0.  For a long
+time, "git svn" created its remote-tracking branches directly under
+refs/remotes, but it now places them under refs/remotes/origin/ unless
+it is told otherwise with its --prefix option.
+
 
 Updates since v1.9 series
 -------------------------
 
 UI, Workflows & Features
+
+ * The "multi-mail" post-receive hook (in contrib/) has been updated
+   to a more recent version from the upstream.
 
  * "git gc --aggressive" learned "--depth" option and
    "gc.aggressiveDepth" configuration variable to allow use of a less
@@ -80,9 +88,9 @@ UI, Workflows & Features
  * "git grep" learned to behave in a way similar to native grep when
    "-h" (no header) and "-c" (count) options are given.
 
- * transport-helper, fast-import and fast-export have been updated to
-   allow the ref mapping and ref deletion in a way similar to the
-   natively supported transports.
+ * "git push" via transport-helper interface (e.g. remote-hg) has
+   been updated to allow ref deletion in a way similar to the natively
+   supported transports.
 
  * The "simple" mode is the default for "git push".
 
@@ -136,7 +144,8 @@ UI, Workflows & Features
 
 Performance, Internal Implementation, etc.
 
- * The compilation options to port to AIX has been updated.
+ * The compilation options to port to AIX and to MSVC have been
+   updated.
 
  * We started using wildmatch() in place of fnmatch(3) a few releases
    ago; complete the process and stop using fnmatch(3).
@@ -170,6 +179,27 @@ Unless otherwise noted, all the fixes since v1.9 in the maintenance
 track are contained in this release (see the maintenance releases'
 notes for details).
 
+ * "git rebase" used a POSIX shell construct FreeBSD /bin/sh does not
+   work well with.
+   (merge 8cd6596 km/avoid-non-function-return-in-rebase later to maint).
+
+ * zsh prompt (in contrib/) leaked unnecessary error messages.
+
+ * bash completion (in contrib/) did not complete the refs and remotes
+   correctly given "git pu<TAB>" when "pu" is aliased to "push".
+
+ * Some more Unicode codepoints defined in Unicode 6.3 as having zero
+   width have been taught to our display column counting logic.
+   (merge d813ab9 tb/unicode-6.3-zero-width later to maint).
+
+ * Some tests used shell constructs that did not work well on FreeBSD
+   (merge ff7a1c6 km/avoid-bs-in-shell-glob later to maint).
+   (merge 00764ca km/avoid-cp-a later to maint).
+
+ * "git update-ref --stdin" did not fail a request to create a ref
+   when the ref already existed.
+   (merge b9d56b5 mh/update-ref-batch-create-fix later to maint).
+
  * "git diff --no-index -Mq a b" fell into an infinite loop.
    (merge ad1c3fb jc/fix-diff-no-index-diff-opt-parse later to maint).
 
@@ -190,22 +220,8 @@ notes for details).
    "ahead/behind/gone" translated to the user's locale.
    (merge 7a76c28 mm/status-porcelain-format-i18n-fix later to maint).
 
-
- * "git repack" died when asked to (re)pack with the reachability
-   bitmap when a bitmap cannot be built; instead, just (re)pack
-   without producing a bitmap in such a case, with a warning.
-   (merge 373c67d jk/pack-bitmap later to maint).
-
-
- * The progress output while repacking and transferring objects showed
-   an apparent large silence while writing the objects out of existing
-   packfiles, when the reachability bitmap was in use.
-   (merge 78d2214 jk/pack-bitmap-progress later to maint).
-
-
  * A stray environment variable $prefix could have leaked into and
    affected the behaviour of the "subtree" script (in contrib/).
-
 
  * When it is not necessary to edit a commit log message (e.g. "git
    commit -m" is given a message without specifying "-e"), we used to
@@ -213,7 +229,6 @@ notes for details).
    this means all the uses of the editor, other than to edit the
    commit log message, are also affected.
    (merge b549be0 bp/commit-p-editor later to maint).
-
 
  * "git mv" that moves a submodule forgot to adjust the array that
    uses to keep track of which submodules were to be moved to update
@@ -274,7 +289,7 @@ notes for details).
 
  * Codepaths that parse timestamps in commit objects have been
    tightened.
-   (merge 3f419d4 jk/commit-dates-parsing-fix later to maint).
+   (merge f80d1f9 jk/commit-dates-parsing-fix later to maint).
 
  * "git diff --external-diff" incorrectly fed the submodule directory
    in the working tree to the external diff driver when it knew it is
@@ -329,3 +344,7 @@ notes for details).
    extra and unnecessary trailing slash (such a slash is often
    given by command line completion).
    (merge 2e70c01 nd/submodule-pathspec-ending-with-slash later to maint.)
+
+ * Documentation and in-code comments had many instances of mistaken
+   use of "nor", which have been corrected.
+   (merge 235e8d5 jl/nor-or-nand-and later to maint).

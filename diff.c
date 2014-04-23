@@ -1461,20 +1461,12 @@ int print_stat_summary(FILE *fp, int files, int insertions, int deletions)
 	 * but nothing about added/removed lines? Is this a bug in Git?").
 	 */
 	if (insertions || deletions == 0) {
-		/*
-		 * TRANSLATORS: "+" in (+) is a line addition marker;
-		 * do not translate it.
-		 */
 		strbuf_addf(&sb,
 			    (insertions == 1) ? ", %d insertion(+)" : ", %d insertions(+)",
 			    insertions);
 	}
 
 	if (deletions || insertions == 0) {
-		/*
-		 * TRANSLATORS: "-" in (-) is a line removal marker;
-		 * do not translate it.
-		 */
 		strbuf_addf(&sb,
 			    (deletions == 1) ? ", %d deletion(-)" : ", %d deletions(-)",
 			    deletions);
@@ -3927,7 +3919,7 @@ static int diff_scoreopt_parse(const char *opt)
 		}
 	}
 	if (cmd != 'M' && cmd != 'C' && cmd != 'B')
-		return -1; /* that is not a -M, -C nor -B option */
+		return -1; /* that is not a -M, -C, or -B option */
 
 	opt1 = parse_rename_score(&opt);
 	if (cmd != 'B')
