@@ -75,7 +75,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-02-01 08:06+0800\n"
 "PO-Revision-Date: 2014-02-02 14:35+0100\n"
-"Last-Translator: Jean-Noël Avila <jn.avila@free.fr>\n"
+"Last-Translator: Kévin Raymond <shaiton@fedoraproject.org>\n"
 "Language-Team: Jean-Noël Avila <jn.avila@free.fr>\n"
 "Language: fr\n"
 "MIME-Version: 1.0\n"
@@ -774,7 +774,7 @@ msgid ""
 "CONFLICT (rename/rename): Rename \"%s\"->\"%s\" in branch \"%s\" rename \"%s"
 "\"->\"%s\" in \"%s\"%s"
 msgstr ""
-"CONFLIT (renommage/renommage) : Renommage de \"%s\"->\"%s\" dans la branche "
+"CONFLIT (renommage/renommage) : renommage de \"%s\"->\"%s\" dans la branche "
 "\"%s\" et renommage \"%s\"->\"%s\" dans \"%s\"%s"
 
 #: merge-recursive.c:1165
@@ -797,7 +797,7 @@ msgstr "Renommage de %s en %s et de %s en %s à la place"
 #, c-format
 msgid "CONFLICT (rename/add): Rename %s->%s in %s. %s added in %s"
 msgstr ""
-"CONFLIT (renommage/ajout) : Renommage de %s->%s dans %s. %s ajouté dans %s"
+"CONFLIT (renommage/ajout) : renommage de %s->%s dans %s. %s ajouté dans %s"
 
 #: merge-recursive.c:1458
 #, c-format
@@ -852,7 +852,7 @@ msgstr "sous-module"
 #: merge-recursive.c:1635
 #, c-format
 msgid "CONFLICT (%s): Merge conflict in %s"
-msgstr "CONFLIT (%s) : Conflit de fusion dans %s"
+msgstr "CONFLIT (%s) : conflit de fusion dans %s"
 
 #: merge-recursive.c:1725
 #, c-format
@@ -871,7 +871,7 @@ msgstr "répertoire/fichier"
 #, c-format
 msgid "CONFLICT (%s): There is a directory with name %s in %s. Adding %s as %s"
 msgstr ""
-"CONFLIT (%s) : Il y a un répertoire nommé %s dans %s. Ajout de %s comme %s"
+"CONFLIT (%s) : il y a un répertoire nommé %s dans %s. Ajout de %s comme %s"
 
 #: merge-recursive.c:1771
 #, c-format
@@ -2710,7 +2710,7 @@ msgstr "impossible de rediriger la sortie"
 
 #: builtin/archive.c:37
 msgid "git archive: Remote with no URL"
-msgstr "git archive : Dépôt distant sans URL"
+msgstr "git archive : dépôt distant sans URL"
 
 #: builtin/archive.c:58
 msgid "git archive: expected ACK/NAK, got EOF"
@@ -3592,7 +3592,7 @@ msgstr ""
 "moment\n"
 "de le faire avec :\n"
 "\n"
-"git branche nouvelle_branche %s\n"
+"git branch nouvelle_branche %s\n"
 "\n"
 
 #: builtin/checkout.c:760
@@ -3827,7 +3827,7 @@ msgstr "Entrez les motifs à ignorer>> "
 #: builtin/clean.c:696
 #, c-format
 msgid "WARNING: Cannot find items matched by: %s"
-msgstr "ATTENTION : Impossible de trouver les éléments correspondant à : %s"
+msgstr "ATTENTION : impossible de trouver les éléments correspondant à : %s"
 
 #: builtin/clean.c:717
 msgid "Select items to delete"
@@ -8613,10 +8613,10 @@ msgid_plural ""
 "Note: Some branches outside the refs/remotes/ hierarchy were not removed;\n"
 "to delete them, use:"
 msgstr[0] ""
-"Note : Une branche en dehors de refs/remotes/ n'a pas été supprimée ;\n"
+"Note : une branche en dehors de refs/remotes/ n'a pas été supprimée ;\n"
 "pour la supprimer, utilisez :"
 msgstr[1] ""
-"Note : Plusieurs branches en dehors de refs/remotes/ n'ont pas été "
+"Note : plusieurs branches en dehors de refs/remotes/ n'ont pas été "
 "supprimées ;\n"
 "pour les supprimer, utilisez :"
 
