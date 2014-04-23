@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-22 23:06+0200\n"
+"PO-Revision-Date: 2014-04-23 21:37+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -1250,7 +1250,7 @@ msgstr ""
 #: sequencer.c:959
 #, c-format
 msgid "Could not format %s."
-msgstr ""
+msgstr "No he podido formatear %s."
 
 #: sequencer.c:1104
 #, c-format
@@ -1309,21 +1309,21 @@ msgstr ""
 #: submodule.c:68 submodule.c:102
 #, c-format
 msgid "Could not find section in .gitmodules where path=%s"
-msgstr ""
+msgstr "No he podido encontrar ninguna sección en .gitmodules con path=%s"
 
 #: submodule.c:76
 #, c-format
 msgid "Could not update .gitmodules entry %s"
-msgstr ""
+msgstr "No he podido actualizar la entrada %s en .gitmodules"
 
 #: submodule.c:109
 #, c-format
 msgid "Could not remove .gitmodules entry for %s"
-msgstr ""
+msgstr "No he podido eliminar la entrada %s en .gitmodules"
 
 #: submodule.c:120
 msgid "staging updated .gitmodules failed"
-msgstr ""
+msgstr "no he podido añadir al stage el .gitmodules actualizado"
 
 #: submodule.c:1121 builtin/init-db.c:363
 #, c-format
@@ -1341,12 +1341,12 @@ msgstr ""
 
 #: urlmatch.c:120
 msgid "invalid URL scheme name or missing '://' suffix"
-msgstr ""
+msgstr "nombre de esquema de URL inválido o falta el sufijo '://'"
 
 #: urlmatch.c:144 urlmatch.c:297 urlmatch.c:356
 #, c-format
 msgid "invalid %XX escape sequence"
-msgstr ""
+msgstr "secuencia de escape %XX inválida"
 
 #: urlmatch.c:172
 msgid "missing host and scheme is not 'file:'"
@@ -1354,7 +1354,7 @@ msgstr ""
 
 #: urlmatch.c:189
 msgid "a 'file:' URL may not have a port number"
-msgstr ""
+msgstr "una URL 'file:' no puede incluir número de puerto"
 
 #: urlmatch.c:199
 msgid "invalid characters in host name"
@@ -1381,7 +1381,7 @@ msgstr "no puedo acceder a '%s'"
 #: wrapper.c:454
 #, c-format
 msgid "unable to look up current user in the passwd file: %s"
-msgstr ""
+msgstr "no puedo localizar al usuario actual en el fichero passwd: %s"
 
 #: wrapper.c:455
 msgid "no such user"
@@ -1394,11 +1394,11 @@ msgstr "Rutas sin fusionar [merge]:"
 #: wt-status.c:177 wt-status.c:204
 #, c-format
 msgid "  (use \"git reset %s <file>...\" to unstage)"
-msgstr ""
+msgstr "  (use \"git reset %s <fichero>...\" para quitarlos del stage)"
 
 #: wt-status.c:179 wt-status.c:206
 msgid "  (use \"git rm --cached <file>...\" to unstage)"
-msgstr ""
+msgstr "  (use \"git rm --cached <fichero>...\" para quitarlos del stage)"
 
 #: wt-status.c:183
 msgid "  (use \"git add <file>...\" to mark resolution)"
@@ -1414,24 +1414,24 @@ msgstr "  (use \"git rm <fichero>...\" para marcar la resolución)"
 
 #: wt-status.c:198
 msgid "Changes to be committed:"
-msgstr ""
+msgstr "Cambios a incluir en el commit:"
 
 #: wt-status.c:216
 msgid "Changes not staged for commit:"
-msgstr ""
+msgstr "Cambios no incluidos en el stage para el commit:"
 
 #: wt-status.c:220
 msgid "  (use \"git add <file>...\" to update what will be committed)"
-msgstr ""
+msgstr "  (use \"git add <fichero>...\" para actualizar qué será incluido en el commit)"
 
 #: wt-status.c:222
 msgid "  (use \"git add/rm <file>...\" to update what will be committed)"
-msgstr ""
+msgstr "  (use \"git add/rm <fichero>...\" para actualizar qué será incluido en el commit)"
 
 #: wt-status.c:223
 msgid ""
 "  (use \"git checkout -- <file>...\" to discard changes in working directory)"
-msgstr ""
+msgstr "  (use \"git checkout -- <fichero>...\" para descartar cambios en el directorio de trabajo)"
 
 #: wt-status.c:225
 msgid "  (commit or discard the untracked or modified content in submodules)"
@@ -1440,7 +1440,7 @@ msgstr ""
 #: wt-status.c:237
 #, c-format
 msgid "  (use \"git %s <file>...\" to include in what will be committed)"
-msgstr ""
+msgstr "  (use \"git %s <fichero>...\" para añadirlos a lo que será incluido en el commit)"
 
 #: wt-status.c:252
 msgid "both deleted:"
