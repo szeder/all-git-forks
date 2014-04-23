@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-23 21:37+0200\n"
+"PO-Revision-Date: 2014-04-23 23:23+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -1444,7 +1444,7 @@ msgstr "  (use \"git %s <fichero>...\" para añadirlos a lo que será incluido en 
 
 #: wt-status.c:252
 msgid "both deleted:"
-msgstr ""
+msgstr "ambos borrados:"
 
 #: wt-status.c:254
 msgid "added by us:"
@@ -1464,11 +1464,11 @@ msgstr ""
 
 #: wt-status.c:262
 msgid "both added:"
-msgstr ""
+msgstr "ambos añadidos:"
 
 #: wt-status.c:264
 msgid "both modified:"
-msgstr ""
+msgstr "ambos modificados:"
 
 #: wt-status.c:266
 #, c-format
@@ -1493,7 +1493,7 @@ msgstr ""
 
 #: wt-status.c:282
 msgid "renamed:"
-msgstr "renombrado:"
+msgstr ""
 
 #: wt-status.c:284
 msgid "typechange:"
@@ -1509,15 +1509,15 @@ msgstr ""
 
 #: wt-status.c:370
 msgid "new commits, "
-msgstr ""
+msgstr "nuevos commits, "
 
 #: wt-status.c:372
 msgid "modified content, "
-msgstr ""
+msgstr "contenido modificado, "
 
 #: wt-status.c:374
 msgid "untracked content, "
-msgstr ""
+msgstr "contenido sin monitorizar, "
 
 #: wt-status.c:391
 #, c-format
@@ -1537,18 +1537,20 @@ msgid ""
 "Do not touch the line above.\n"
 "Everything below will be removed."
 msgstr ""
+"No toque la línea de arriba.\n"
+"Todo lo que esté por debajo será eliminado."
 
 #: wt-status.c:937
 msgid "You have unmerged paths."
-msgstr ""
+msgstr "Tiene rutas sin fusionar."
 
 #: wt-status.c:940
 msgid "  (fix conflicts and run \"git commit\")"
-msgstr ""
+msgstr "  (resuelva los conflictos y ejecute \"git commit\")"
 
 #: wt-status.c:943
 msgid "All conflicts fixed but you are still merging."
-msgstr ""
+msgstr "Todos los conflictos resueltos pero aún está fusionando."
 
 #: wt-status.c:946
 msgid "  (use \"git commit\" to conclude merge)"
