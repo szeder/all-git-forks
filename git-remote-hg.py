@@ -445,7 +445,11 @@ def export_ref(repo, name, kind, head):
     except:
         tip = 0
 
-    revs = xrange(tip, head.rev() + 1)
+    if check_version(2, 1):
+        revs = repo.revs('%u::%u' % (tip, head))
+    else:
+        revs = xrange(tip, head.rev() + 1)
+
     total = len(revs)
 
     for rev in revs:
