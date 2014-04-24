@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-23 23:23+0200\n"
+"PO-Revision-Date: 2014-04-24 17:57+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -479,7 +479,7 @@ msgstr "no he podido crear el fichero temporal '%s': %s"
 #: gpg-interface.c:118
 #, c-format
 msgid "failed writing detached signature to '%s': %s"
-msgstr ""
+msgstr "no he podido escribir la firma separada en '%s': %s"
 
 #: grep.c:1698
 #, c-format
@@ -515,6 +515,8 @@ msgid ""
 "'%s' appears to be a git command, but we were not\n"
 "able to execute it. Maybe git-%s is broken?"
 msgstr ""
+"'%s' parece ser una orden git, pero no he podido\n"
+"ejecutarla. ¿Quizá git-%s esté dañado?"
 
 #: help.c:346
 msgid "Uh oh. Your system reports no Git commands at all."
@@ -560,7 +562,7 @@ msgstr "%s: %s - %s"
 
 #: merge.c:56
 msgid "failed to read the cache"
-msgstr ""
+msgstr "no he podido leer la caché"
 
 #: merge.c:110 builtin/checkout.c:357 builtin/checkout.c:558
 #: builtin/clone.c:661
@@ -599,7 +601,7 @@ msgstr ": ¿quizá un conflicto D/F?"
 #: merge-recursive.c:711
 #, c-format
 msgid "refusing to lose untracked file at '%s'"
-msgstr ""
+msgstr "rehusando perder un fichero sin monitorizar en '%s'"
 
 #: merge-recursive.c:751
 #, c-format
@@ -609,7 +611,7 @@ msgstr "no he podido leer el objeto %s '%s'"
 #: merge-recursive.c:753
 #, c-format
 msgid "blob expected for %s '%s'"
-msgstr ""
+msgstr "esperaba que %s '%s' fuera un blob"
 
 #: merge-recursive.c:776 builtin/clone.c:317
 #, c-format
@@ -664,16 +666,14 @@ msgstr "renombrado"
 #: merge-recursive.c:1140
 #, c-format
 msgid "%s is a directory in %s adding as %s instead"
-msgstr ""
+msgstr "%s es un directorio en %s, añadiéndolo como %s en su lugar"
 
 #: merge-recursive.c:1162
 #, c-format
 msgid ""
 "CONFLICT (rename/rename): Rename \"%s\"->\"%s\" in branch \"%s\" rename \"%s"
 "\"->\"%s\" in \"%s\"%s"
-msgstr ""
-"CONFLICT (renombrar/renombrar): Renombrar \"%s\"->\"%s\" en rama \"%s\" "
-"renombrar \"%s\"->\"%s\" en \"%s\"%s"
+msgstr "CONFLICTO (renombrar/renombrar): Renombrar \"%s\"->\"%s\" en rama \"%s\" renombrar \"%s\"->\"%s\" en \"%s\"%s"
 
 #: merge-recursive.c:1167
 msgid " (left unresolved)"
@@ -728,7 +728,7 @@ msgstr "contenido"
 
 #: merge-recursive.c:1584
 msgid "add/add"
-msgstr ""
+msgstr "añadir/añadir"
 
 #: merge-recursive.c:1618
 #, c-format
