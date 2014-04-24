@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-24 17:57+0200\n"
+"PO-Revision-Date: 2014-04-24 22:33+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -927,7 +927,7 @@ msgstr ""
 
 #: progress.c:224
 msgid "done"
-msgstr ""
+msgstr "hecho"
 
 #: read-cache.c:1238
 #, c-format
@@ -951,12 +951,12 @@ msgstr ""
 #: remote.c:762
 #, c-format
 msgid "%s usually tracks %s, not %s"
-msgstr ""
+msgstr "%s normalmente sigue a %s, no a %s"
 
 #: remote.c:766
 #, c-format
 msgid "%s tracks both %s and %s"
-msgstr ""
+msgstr "%s sigue tanto a %s como a %s"
 
 #: remote.c:774
 msgid "Internal error"
@@ -992,8 +992,8 @@ msgstr "  (use \"git push\" para publicar sus commits locales)\n"
 msgid "Your branch is behind '%s' by %d commit, and can be fast-forwarded.\n"
 msgid_plural ""
 "Your branch is behind '%s' by %d commits, and can be fast-forwarded.\n"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Su rama está detrás de '%s' por %d commit, y pueden fusionarse con avance-rápido.\n"
+msgstr[1] "Su rama está detrás de '%s' por %d commits, y pueden fusionarse con avance-rápido.\n"
 
 #: remote.c:1976
 msgid "  (use \"git pull\" to update your local branch)\n"
@@ -1008,11 +1008,15 @@ msgid_plural ""
 "Your branch and '%s' have diverged,\n"
 "and have %d and %d different commits each, respectively.\n"
 msgstr[0] ""
+"Su rama y '%s' han divergido,\n"
+"y tienen, respectivamente, %d y %d commits diferentes.\n"
 msgstr[1] ""
+"Su rafa y '%s' han divergido,\n"
+"y tienen, repectivamente, %d y %d commits diferentes.\n"
 
 #: remote.c:1989
 msgid "  (use \"git pull\" to merge the remote branch into yours)\n"
-msgstr ""
+msgstr "  (use \"git pull\" para fusionar la rama remota con la suya)\n"
 
 #: run-command.c:80
 msgid "open /dev/null failed"
@@ -1065,15 +1069,15 @@ msgstr ""
 
 #: sequencer.c:263
 msgid "Your local changes would be overwritten by cherry-pick."
-msgstr ""
+msgstr "Sus modificaciones locales serían sobrescritas por la entresaca."
 
 #: sequencer.c:265
 msgid "Your local changes would be overwritten by revert."
-msgstr ""
+msgstr "Sus modificaciones locales serían sobrescritas por la reversión."
 
 #: sequencer.c:268
 msgid "Commit your changes or stash them to proceed."
-msgstr ""
+msgstr "Haga commit con sus modificaciones o apártelas [stash] para continuar."
 
 #. TRANSLATORS: %s will be "revert" or "cherry-pick"
 #: sequencer.c:325
