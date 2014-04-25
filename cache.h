@@ -271,6 +271,7 @@ static inline unsigned int canon_mode(unsigned int mode)
 #define CE_ENTRY_CHANGED	(1 << 0)
 #define CE_ENTRY_REMOVED	(1 << 1)
 #define CE_ENTRY_ADDED		(1 << 2)
+#define SOMETHING_CHANGED	(1 << 3) /* unclassified changes go here */
 
 struct index_state {
 	struct cache_entry **cache;
