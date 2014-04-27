@@ -1,6 +1,13 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
+/*
+ * The length in bytes and in hex digits of an object name (SHA-1 value).
+ * These are the same names used by libgit2.
+ */
+#define GIT_OID_RAWSZ 20
+#define GIT_OID_HEXSZ 40
+
 struct object_list {
 	struct object *item;
 	struct object_list *next;
@@ -49,7 +56,7 @@ struct object {
 	unsigned used : 1;
 	unsigned type : TYPE_BITS;
 	unsigned flags : FLAG_BITS;
-	unsigned char sha1[20];
+	unsigned char sha1[GIT_OID_RAWSZ];
 };
 
 extern const char *typename(unsigned int type);
