@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-24 22:33+0200\n"
+"PO-Revision-Date: 2014-04-27 22:00+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -1710,11 +1710,11 @@ msgstr ""
 
 #: wt-status.c:1360
 msgid "Untracked files"
-msgstr ""
+msgstr "Ficheros sin monitorizar"
 
 #: wt-status.c:1362
 msgid "Ignored files"
-msgstr ""
+msgstr "Ficheros ignorados"
 
 #: wt-status.c:1366
 #, c-format
@@ -1723,65 +1723,69 @@ msgid ""
 "may speed it up, but you have to be careful not to forget to add\n"
 "new files yourself (see 'git help status')."
 msgstr ""
+"Enumerar los ficheros sin monitorizar ha llevado %.2f segundos. 'status -uno'\n"
+"puede agilizar la respuesta, pero debe tener cuidado de no olvidarse de añadir\n"
+"Ud. mismo los ficheros nuevos (vea 'git help status')."
 
 #: wt-status.c:1372
 #, c-format
 msgid "Untracked files not listed%s"
-msgstr ""
+msgstr "Omitidos los ficheros no monitorizados%s"
 
 #: wt-status.c:1374
 msgid " (use -u option to show untracked files)"
-msgstr ""
+msgstr " (use la opción -u para mostrarlos)"
 
 #: wt-status.c:1380
 msgid "No changes"
-msgstr ""
+msgstr "No hay modificaciones"
 
 #: wt-status.c:1385
 #, c-format
 msgid "no changes added to commit (use \"git add\" and/or \"git commit -a\")\n"
-msgstr ""
+msgstr "no hay cambios incluidos para el commit (use \"git add\" y/o \"git commit -a\")\n"
 
 #: wt-status.c:1388
 #, c-format
 msgid "no changes added to commit\n"
-msgstr ""
+msgstr "no hay cambios incluidos para el commit\n"
 
 #: wt-status.c:1391
 #, c-format
 msgid ""
 "nothing added to commit but untracked files present (use \"git add\" to "
 "track)\n"
-msgstr ""
+msgstr "nada incluido para el commit pero hay ficheros sin monitorizar (use \"git add\" para monitorizarlos)\n"
 
 #: wt-status.c:1394
 #, c-format
 msgid "nothing added to commit but untracked files present\n"
-msgstr ""
+msgstr "nada incluido para el commit pero hay ficheros sin monitorizar\n"
 
 #: wt-status.c:1397
 #, c-format
 msgid "nothing to commit (create/copy files and use \"git add\" to track)\n"
-msgstr ""
+msgstr "nada incluido para el commit (cree/copie ficheros y use \"git add\" para monitorizarlos)\n"
 
 #: wt-status.c:1400 wt-status.c:1405
 #, c-format
 msgid "nothing to commit\n"
-msgstr ""
+msgstr "nada incluido para el commit\n"
 
 #: wt-status.c:1403
 #, c-format
 msgid "nothing to commit (use -u to show untracked files)\n"
-msgstr ""
+msgstr "nada incluido para el commit (use -u para mostrar los ficheros no monitorizados)\n"
 
 #: wt-status.c:1407
 #, c-format
 msgid "nothing to commit, working directory clean\n"
-msgstr ""
+msgstr "nada incluido para el commit, directorio de trabajo limpio\n"
 
 #: wt-status.c:1516
+#, fuzzy
 msgid "HEAD (no branch)"
-msgstr ""
+msgstr "CABEZA [HEAD] (no rama)"
 
 #: wt-status.c:1522
 msgid "Initial commit on "
