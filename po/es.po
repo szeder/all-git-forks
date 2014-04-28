@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-27 22:00+0200\n"
+"PO-Revision-Date: 2014-04-28 20:33+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -863,7 +863,7 @@ msgstr "    %s"
 
 #: parse-options.c:591
 msgid "-NUM"
-msgstr ""
+msgstr "-NUM"
 
 #: pathspec.c:133
 msgid "global 'glob' and 'noglob' pathspec settings are incompatible"
@@ -1110,7 +1110,7 @@ msgstr ""
 #: sequencer.c:520
 #, c-format
 msgid "Commit %s is a merge but no -m option was given."
-msgstr ""
+msgstr "El commit %s es una fusión [merge] pero no ha usado la opción -m."
 
 #: sequencer.c:528
 #, c-format
@@ -1120,7 +1120,7 @@ msgstr ""
 #: sequencer.c:532
 #, c-format
 msgid "Mainline was specified but commit %s is not a merge."
-msgstr ""
+msgstr "Ha especificado línea principal [mainline] pero el commit %s no es una fusión [merge]."
 
 #. TRANSLATORS: The first %s will be "revert" or
 #. "cherry-pick", the second %s a SHA1
@@ -1132,7 +1132,7 @@ msgstr ""
 #: sequencer.c:549
 #, c-format
 msgid "Cannot get commit message for %s"
-msgstr ""
+msgstr "No he podido obtener el mensaje de commit de %s"
 
 #: sequencer.c:635
 #, c-format
@@ -1204,7 +1204,7 @@ msgstr ""
 
 #: sequencer.c:860
 msgid "a cherry-pick or revert is already in progress"
-msgstr ""
+msgstr "ya hay una entresaca o una reversión en curso"
 
 #: sequencer.c:861
 msgid "try \"git cherry-pick (--continue | --quit | --abort)\""
@@ -1222,7 +1222,7 @@ msgstr ""
 
 #: sequencer.c:900 sequencer.c:1036
 msgid "no cherry-pick or revert in progress"
-msgstr ""
+msgstr "no hay ninguna entrasaca ni reversión en curso"
 
 #: sequencer.c:902
 msgid "cannot resolve HEAD"
@@ -1257,9 +1257,9 @@ msgid "Could not format %s."
 msgstr "No he podido formatear %s."
 
 #: sequencer.c:1104
-#, c-format
+#, c-format, fuzzy
 msgid "%s: can't cherry-pick a %s"
-msgstr ""
+msgstr "%s: no puedo entresacar un objeto de tipo %s"
 
 #: sequencer.c:1107
 #, c-format
@@ -1558,27 +1558,27 @@ msgstr "Todos los conflictos resueltos pero aún está fusionando."
 
 #: wt-status.c:946
 msgid "  (use \"git commit\" to conclude merge)"
-msgstr ""
+msgstr "  (use \"git commit\" para concluir la fusión [merge])"
 
 #: wt-status.c:956
 msgid "You are in the middle of an am session."
-msgstr ""
+msgstr "Está en medio de una sesión am."
 
 #: wt-status.c:959
 msgid "The current patch is empty."
-msgstr ""
+msgstr "El parche actual está vacío."
 
 #: wt-status.c:963
 msgid "  (fix conflicts and then run \"git am --continue\")"
-msgstr ""
+msgstr "  (resuelva los conflictos y después ejecute \"git am --continue\")"
 
 #: wt-status.c:965
 msgid "  (use \"git am --skip\" to skip this patch)"
-msgstr ""
+msgstr "  (use \"git am --skip\" para saltarse este parche)"
 
 #: wt-status.c:967
 msgid "  (use \"git am --abort\" to restore the original branch)"
-msgstr ""
+msgstr "  (use \"git am --abort\" para restaurar la rama original)"
 
 #: wt-status.c:1027 wt-status.c:1044
 #, c-format
@@ -1591,11 +1591,11 @@ msgstr ""
 
 #: wt-status.c:1035
 msgid "  (fix conflicts and then run \"git rebase --continue\")"
-msgstr ""
+msgstr "  (resuelva los conflictos y después ejecute \"git rebase --continue\")"
 
 #: wt-status.c:1037
 msgid "  (use \"git rebase --skip\" to skip this patch)"
-msgstr ""
+msgstr "  (use \"git rebase --skip\" para saltarse este parche)"
 
 #: wt-status.c:1039
 msgid "  (use \"git rebase --abort\" to check out the original branch)"
@@ -1603,7 +1603,7 @@ msgstr ""
 
 #: wt-status.c:1052
 msgid "  (all conflicts fixed: run \"git rebase --continue\")"
-msgstr ""
+msgstr "  (todos los conflictos resueltos: ejecute \"git rebase --continue\")"
 
 #: wt-status.c:1056
 #, c-format
@@ -1617,7 +1617,7 @@ msgstr ""
 
 #: wt-status.c:1064
 msgid "  (Once your working directory is clean, run \"git rebase --continue\")"
-msgstr ""
+msgstr "  (Una vez que su directorio de trabajo esté limpio, ejecute \"git rebase --continue\")"
 
 #: wt-status.c:1068
 #, c-format
@@ -1630,46 +1630,46 @@ msgstr ""
 
 #: wt-status.c:1076
 msgid "  (use \"git commit --amend\" to amend the current commit)"
-msgstr ""
+msgstr "  (use \"git commit --amend\" para modificar el commit actual)"
 
 #: wt-status.c:1078
 msgid ""
 "  (use \"git rebase --continue\" once you are satisfied with your changes)"
-msgstr ""
+msgstr "  (use \"git rebase --continue\" una vez que esté satisfecho con los cambios)"
 
 #: wt-status.c:1088
 #, c-format
 msgid "You are currently cherry-picking commit %s."
-msgstr ""
+msgstr "Actualmente está entresacando el commit %s."
 
 #: wt-status.c:1093
 msgid "  (fix conflicts and run \"git cherry-pick --continue\")"
-msgstr ""
+msgstr "  (resuelva los conflictos y ejecute \"git cherry-pick --continue\")"
 
 #: wt-status.c:1096
 msgid "  (all conflicts fixed: run \"git cherry-pick --continue\")"
-msgstr ""
+msgstr "  (todos los conflictos resueltos: ejecute \"git cherry-pick --continue\")"
 
 #: wt-status.c:1098
 msgid "  (use \"git cherry-pick --abort\" to cancel the cherry-pick operation)"
-msgstr ""
+msgstr "  (use \"git cherry-pick --abort\" para cancelar la entresaca)"
 
 #: wt-status.c:1107
 #, c-format
 msgid "You are currently reverting commit %s."
-msgstr ""
+msgstr "Actualmente está revirtiendo el commit %s."
 
 #: wt-status.c:1112
 msgid "  (fix conflicts and run \"git revert --continue\")"
-msgstr ""
+msgstr "  (resuelva los conflictos y ejecute \"git revert --continue\")"
 
 #: wt-status.c:1115
 msgid "  (all conflicts fixed: run \"git revert --continue\")"
-msgstr ""
+msgstr "  (todos los conflictos resueltos: ejecute \"git revert --continue\")"
 
 #: wt-status.c:1117
 msgid "  (use \"git revert --abort\" to cancel the revert operation)"
-msgstr ""
+msgstr "  (use \"git revert --abort\" para cancelar la reversión)"
 
 #: wt-status.c:1128
 #, c-format
