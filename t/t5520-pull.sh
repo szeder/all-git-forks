@@ -409,10 +409,7 @@ test_expect_success 'git pull non-fast-forward (default)' '
 	git commit -m new &&
 	git checkout -b test -t other &&
 	git reset --hard master &&
-	git pull 2> error &&
-	cat error &&
-	grep -q "the pull was not fast-forward" error &&
-	grep -q "in the future you would have to choose" error
+	test_must_fail git pull
 '
 
 test_done

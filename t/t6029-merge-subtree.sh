@@ -69,7 +69,7 @@ test_expect_success 'merge update' '
 	git checkout -b master2 &&
 	git commit -m "update git-gui" &&
 	cd ../git &&
-	git pull -s subtree gui master2 &&
+	git pull --merge -s subtree gui master2 &&
 	git ls-files -s >actual &&
 	(
 		echo "100644 $o3 0	git-gui/git-gui.sh"
@@ -98,7 +98,7 @@ test_expect_success 'initial ambiguous subtree' '
 test_expect_success 'merge using explicit' '
 	cd ../git &&
 	git reset --hard master2 &&
-	git pull -Xsubtree=git-gui gui master2 &&
+	git pull --merge -Xsubtree=git-gui gui master2 &&
 	git ls-files -s >actual &&
 	(
 		echo "100644 $o3 0	git-gui/git-gui.sh"
@@ -111,7 +111,7 @@ test_expect_success 'merge using explicit' '
 test_expect_success 'merge2 using explicit' '
 	cd ../git &&
 	git reset --hard master2 &&
-	git pull -Xsubtree=git-gui2 gui master2 &&
+	git pull --merge -Xsubtree=git-gui2 gui master2 &&
 	git ls-files -s >actual &&
 	(
 		echo "100644 $o1 0	git-gui/git-gui.sh"

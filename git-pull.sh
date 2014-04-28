@@ -78,7 +78,7 @@ then
 		rebase=$(bool_or_string_config pull.rebase)
 	fi
 fi
-test -z "$mode" && mode=default
+test -z "$mode" && mode=ff-only
 dry_run=
 while :
 do
@@ -317,22 +317,13 @@ case "$merge_head" in
 *)
 	# check if a non-fast-foward merge would be needed
 	merge_head=${merge_head% }
-	if test -z "$no_ff$ff_only${squash#--no-squash}" &&
+	if test "$mode" = 'ff-only' && test -z "$no_ff$ff_only${squash#--no-squash}" &&
 		test -n "$orig_head" &&
 		! git merge-base --is-ancestor "$orig_head" "$merge_head" &&
 		! git merge-base --is-ancestor "$merge_head" "$orig_head"
 	then
-		case "$mode" in
-		ff-only)
-			die "$(gettext "The pull was not fast-forward, please either merge or rebase.
+		die "$(gettext "The pull was not fast-forward, please either merge or rebase.
 If unsure, run 'git pull --merge'.")"
-			;;
-		default)
-			warn "$(gettext "the pull was not fast-forward, in the future you would have to choose
-a merge or a rebase, falling back to old style for now (git pull --merge).
-Read 'git pull --help' for more information.")" >&2
-			;;
-		esac
 	fi
 	;;
 esac
