@@ -1678,19 +1678,6 @@ static void append_commit_attrs(struct commit_extra_header **current_attrs,
 	r->next = attrs;
 }
 
-static void check_disallowed_attribute_names(const char *attr_name)
-{
-	const char *disallowed_names[] = { "author", "committer", "encoding",
-		"gpgsig", "mergetag", "parent", "tree" };
-
-	int i;
-	for (i = 0; i < ARRAY_SIZE(disallowed_names); i++) {
-		if (strcmp(attr_name, disallowed_names[i]) == 0) {
-			die(_("Invalid commit attribute name: %s"), attr_name);
-		}
-	}
-}
-
 /* Parses -A/--attr value of the form 'key=value'. */
 static int parse_attr_option_callback(const struct option *option,
 				const char *arg, int unset)
@@ -1708,7 +1695,7 @@ static int parse_attr_option_callback(const struct option *option,
 			if (invalid_char_in_name) {
 				break;
 			}
-		} else if (!equal_found && (arg[i] == ' ' || arg[i] == '\n')) {
+		} else if (!equal_found && (arg[i] == ' ' || arg[i] == '\n' || arg[i] == USER_ATTR_PREFIX)) {
 			invalid_char_in_name = 1;
 			key_len++;
 		} else if (equal_found && (arg[i] == '\n')) {
@@ -1729,14 +1716,13 @@ static int parse_attr_option_callback(const struct option *option,
 
 	struct commit_extra_header *attr = xmalloc(sizeof(*attr));
 	attr->next = NULL;
-	attr->key = xmalloc(key_len + 1);
-	memcpy(attr->key, arg, key_len);
-	attr->key[key_len] = '\0';
+	attr->key = xmalloc(key_len + 1 + 1);	// Key are saved in commit prefixed with '@' (to distinguish between official attributes and user attributes).
+	memcpy(attr->key, "@", 1);	// TODO: Could be done with a direct assignment? Like: attr->key[0] = USER_ATTR_PREFIX;
+	memcpy(attr->key + 1, arg, key_len);
+	attr->key[key_len + 1] = '\0';
 	if (invalid_char_in_name) {
 		die(_("Invalid character in commit attribute name: %s"), attr->key);
 	}
-
-	check_disallowed_attribute_names(attr->key);
 
 	attr->value = xmalloc(value_len);
 	memcpy(attr->value, arg + key_len + 1, value_len);

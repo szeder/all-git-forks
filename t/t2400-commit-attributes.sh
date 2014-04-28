@@ -20,6 +20,11 @@ git add test &&
 git commit --attr key=value -m "Commit message."
 '
 
+test_expect_success 'check for user attribute name' '
+	test_must_fail test $(git cat-file commit HEAD | grep "^key") &&
+	git cat-file commit HEAD | grep "^@key"
+'
+
 test_expect_success 'git commit -A key=value' '
 echo test_$count > test &&
 count=$(($count+1)) &&

@@ -8,6 +8,8 @@
 #include "gpg-interface.h"
 #include "string-list.h"
 
+#define USER_ATTR_PREFIX	"@"
+
 struct commit_list {
 	struct commit *item;
 	struct commit_list *next;

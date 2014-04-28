@@ -1068,9 +1068,10 @@ static size_t parse_commit_attribute(struct strbuf *sb, /* in UTF-8 */
 
 		const size_t len = end - start;
 
-		char *attr_name = xmalloc(len + 1);
-		memcpy(attr_name, start, len);
-		attr_name[len] = '\0';
+		char *attr_name = xmalloc(len + 1 + 1);
+		memcpy(attr_name, USER_ATTR_PREFIX, 1);
+		memcpy(attr_name + 1, start, len);
+		attr_name[len + 1] = '\0';
 
 		const char *msg = commit->buffer;
 		char *header = get_header(commit, msg, attr_name);
