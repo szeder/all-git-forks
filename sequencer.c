@@ -283,16 +283,16 @@ static int fast_forward_to(const unsigned char *to, const unsigned char *from,
 	strbuf_addf(&sb, "%s: fast-forward", action_name(opts));
 
 	transaction = ref_transaction_begin();
-	if ((!transaction ||
+	if (!transaction ||
 	    ref_transaction_update(transaction, "HEAD", to, from,
-				   0, !unborn)) ||
-	    (ref_transaction_commit(transaction, sb.buf, &err) &&
-	     !(transaction = NULL))) {
+				   0, !unborn) ||
+	    ref_transaction_commit(transaction, sb.buf, &err)) {
 		ref_transaction_rollback(transaction);
 		strbuf_release(&sb);
 		return error(_("HEAD: Could not fast-forward: %s\n"),
 			     strbuf_detach(&err, NULL));
 	}
+	ref_transaction_free(transaction);
 
 	strbuf_release(&sb);
 	return 0;

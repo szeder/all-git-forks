@@ -165,6 +165,7 @@ static int replace_object(const char *object_ref, const char *replace_ref,
 	    ref_transaction_commit(transaction, NULL, &err))
 		die(_("%s: failed to replace ref: %s"), ref, err.buf);
 
+	ref_transaction_free(transaction);
 	return 0;
 }
 
