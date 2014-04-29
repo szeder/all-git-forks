@@ -677,7 +677,7 @@ def do_list(parser):
             print "? refs/heads/branches/%s" % gitref(branch)
 
     for bmark in bmarks:
-        if  bmarks[bmark].hex() == '0000000000000000000000000000000000000000':
+        if  bmarks[bmark].hex() == '0' * 40:
             warn("Ignoring invalid bookmark '%s'", bmark)
         else:
             print "? refs/heads/%s" % gitref(bmark)
