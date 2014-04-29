@@ -14,7 +14,6 @@ RM ?= rm -f
 PROVE ?= prove
 DEFAULT_TEST_TARGET ?= test
 TEST_LINT ?= test-lint-duplicates test-lint-executable
-export TEST_DIRECTORY = $(CURDIR)
 
 ifdef TEST_OUTPUT_DIRECTORY
 TEST_RESULTS_DIRECTORY = $(TEST_OUTPUT_DIRECTORY)/test-results
@@ -30,9 +29,6 @@ TEST_RESULTS_DIRECTORY_SQ = $(subst ','\'',$(TEST_RESULTS_DIRECTORY))
 T = $(sort $(wildcard t[0-9][0-9][0-9][0-9]-*.sh))
 TSVN = $(sort $(wildcard t91[0-9][0-9]-*.sh))
 TGITWEB = $(sort $(wildcard t95[0-9][0-9]-*.sh))
-TREMOTE = $(wildcard remote-helpers/*.t)
-
-T += $(TREMOTE)
 
 all: $(DEFAULT_TEST_TARGET)
 
@@ -59,7 +55,7 @@ clean: clean-except-prove-cache
 test-lint: test-lint-duplicates test-lint-executable test-lint-shell-syntax
 
 test-lint-duplicates:
-	@dups=`echo $(filter-out $(TREMOTE),$(T)) | tr ' ' '\n' | sed 's/-.*//' | sort | uniq -d` && \
+	@dups=`echo $(T) | tr ' ' '\n' | sed 's/-.*//' | sort | uniq -d` && \
 		test -z "$$dups" || { \
 		echo >&2 "duplicate test numbers:" $$dups; exit 1; }
 
@@ -87,8 +83,6 @@ full-svn-test:
 
 gitweb-test:
 	$(MAKE) $(TGITWEB)
-
-remote-helpers-test: $(TREMOTE)
 
 valgrind:
 	$(MAKE) GIT_TEST_OPTS="$(GIT_TEST_OPTS) --valgrind"

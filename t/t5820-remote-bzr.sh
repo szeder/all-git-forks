@@ -5,8 +5,7 @@
 
 test_description='Test remote-bzr'
 
-test -n "$TEST_DIRECTORY" || TEST_DIRECTORY=${0%/*}/..
-. "$TEST_DIRECTORY"/test-lib.sh
+. ./test-lib.sh
 
 if ! test_have_prereq PYTHON
 then
@@ -14,7 +13,7 @@ then
 	test_done
 fi
 
-if ! "$PYTHON_PATH" -c 'import bzrlib'
+if ! "$PYTHON_PATH" -c 'import bzrlib' > /dev/null 2>&1
 then
 	skip_all='skipping remote-bzr tests; bzr not available'
 	test_done
