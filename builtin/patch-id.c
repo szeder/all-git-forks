@@ -1,14 +1,17 @@
 #include "builtin.h"
 
-static void flush_current_id(int patchlen, unsigned char *id, unsigned char *result)
+static void flush_current_id(int patchlen, unsigned char *id, git_SHA_CTX *c)
 {
+	unsigned char result[20];
 	char name[50];
 
 	if (!patchlen)
 		return;
 
+	git_SHA1_Final(result, c);
 	memcpy(name, sha1_to_hex(id), 41);
 	printf("%s %s\n", sha1_to_hex(result), name);
+	git_SHA1_Init(c);
 }
 
 static int remove_space(char *line)
@@ -53,31 +56,10 @@ static int scan_hunk_header(const char *p, int *p_before, int *p_after)
 	return 1;
 }
 
-static void flush_one_hunk(unsigned char *result, git_SHA_CTX *ctx)
+static int get_one_patchid(unsigned char *next_sha1, git_SHA_CTX *ctx, struct strbuf *line_buf)
 {
-	unsigned char hash[20];
-	unsigned short carry = 0;
-	int i;
-
-	git_SHA1_Final(hash, ctx);
-	git_SHA1_Init(ctx);
-	/* 20-byte sum, with carry */
-	for (i = 0; i < 20; ++i) {
-		carry += result[i] + hash[i];
-		result[i] = carry;
-		carry >>= 8;
-	}
-}
-
-static int get_one_patchid(unsigned char *next_sha1, unsigned char *result,
-			   struct strbuf *line_buf, int stable)
-{
-	int patchlen = 0, found_next = 0, hunks = 0;
+	int patchlen = 0, found_next = 0;
 	int before = -1, after = -1;
-	git_SHA_CTX ctx, header_ctx;
-
-	git_SHA1_Init(&ctx);
-	hashclr(result);
 
 	while (strbuf_getwholeline(line_buf, stdin, '\n') != EOF) {
 		char *line = line_buf->buf;
@@ -116,19 +98,7 @@ static int get_one_patchid(unsigned char *next_sha1, unsigned char *result,
 		if (before == 0 && after == 0) {
 			if (!memcmp(line, "@@ -", 4)) {
 				/* Parse next hunk, but ignore line numbers.  */
-				if (stable) {
-					/* Hash the file-level headers together with each hunk. */
-					if (hunks) {
-						flush_one_hunk(result, &ctx);
-						/* Prepend saved header ctx for next hunk.  */
-						memcpy(&ctx, &header_ctx, sizeof(ctx));
-					} else {
-						/* Save header ctx for next hunk.  */
-						memcpy(&header_ctx, &ctx, sizeof(ctx));
-					}
-				}
 				scan_hunk_header(line, &before, &after);
-				hunks++;
 				continue;
 			}
 
@@ -137,10 +107,7 @@ static int get_one_patchid(unsigned char *next_sha1, unsigned char *result,
 				break;
 
 			/* Else we're parsing another header.  */
-			if (stable && hunks)
-				flush_one_hunk(result, &ctx);
 			before = after = -1;
-			hunks = 0;
 		}
 
 		/* If we get here, we're inside a hunk.  */
@@ -152,46 +119,39 @@ static int get_one_patchid(unsigned char *next_sha1, unsigned char *result,
 		/* Compute the sha without whitespace */
 		len = remove_space(line);
 		patchlen += len;
-		git_SHA1_Update(&ctx, line, len);
+		git_SHA1_Update(ctx, line, len);
 	}
 
 	if (!found_next)
 		hashclr(next_sha1);
 
-	flush_one_hunk(result, &ctx);
-
 	return patchlen;
 }
 
-static void generate_id_list(int stable)
+static void generate_id_list(void)
 {
-	unsigned char sha1[20], n[20], result[20];
+	unsigned char sha1[20], n[20];
+	git_SHA_CTX ctx;
 	int patchlen;
 	struct strbuf line_buf = STRBUF_INIT;
 
+	git_SHA1_Init(&ctx);
 	hashclr(sha1);
 	while (!feof(stdin)) {
-		patchlen = get_one_patchid(n, result, &line_buf, stable);
-		flush_current_id(patchlen, sha1, result);
+		patchlen = get_one_patchid(n, &ctx, &line_buf);
+		flush_current_id(patchlen, sha1, &ctx);
 		hashcpy(sha1, n);
 	}
 	strbuf_release(&line_buf);
 }
 
-static const char patch_id_usage[] = "git patch-id [--stable | --unstable] < patch";
+static const char patch_id_usage[] = "git patch-id < patch";
 
 int cmd_patch_id(int argc, const char **argv, const char *prefix)
 {
-	int stable;
-	if (argc == 2 && !strcmp(argv[1], "--stable"))
-		stable = 1;
-	else if (argc == 2 && !strcmp(argv[1], "--unstable"))
-		stable = 0;
-	else if (argc == 1)
-		stable = 1;
-	else
+	if (argc != 1)
 		usage(patch_id_usage);
 
-	generate_id_list(stable);
+	generate_id_list();
 	return 0;
 }
