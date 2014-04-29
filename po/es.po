@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-29 20:38+0200\n"
+"PO-Revision-Date: 2014-04-29 22:27+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -1955,7 +1955,7 @@ msgstr ""
 
 #: builtin/apply.c:57
 msgid "git apply [options] [<patch>...]"
-msgstr ""
+msgstr "git apply [opciones] [<parche>...]"
 
 #: builtin/apply.c:110
 #, c-format
@@ -2010,7 +2010,7 @@ msgstr ""
 #: builtin/apply.c:1479
 #, c-format
 msgid "patch fragment without header at line %d: %.*s"
-msgstr ""
+msgstr "fragmento de parche sin cabecera en línea %d: %.*s"
 
 #: builtin/apply.c:1496
 #, c-format
@@ -2034,7 +2034,7 @@ msgstr ""
 #: builtin/apply.c:1684
 #, c-format
 msgid "corrupt patch at line %d"
-msgstr ""
+msgstr "parche corrupto en línea %d"
 
 #: builtin/apply.c:1720
 #, c-format
@@ -2054,7 +2054,7 @@ msgstr ""
 #: builtin/apply.c:1871
 #, c-format
 msgid "corrupt binary patch at line %d: %.*s"
-msgstr ""
+msgstr "parche binario corrupto en línea %d: %.*s"
 
 #: builtin/apply.c:1900
 #, c-format
@@ -2074,7 +2074,7 @@ msgstr ""
 #: builtin/apply.c:2080
 #, c-format
 msgid "unable to open or read %s"
-msgstr ""
+msgstr "no puedo abrir o leer %s"
 
 #: builtin/apply.c:2688
 #, c-format
@@ -2138,12 +2138,12 @@ msgstr ""
 #: builtin/apply.c:3255 builtin/apply.c:3410
 #, c-format
 msgid "%s: does not exist in index"
-msgstr ""
+msgstr "%s: no existe en el índice"
 
 #: builtin/apply.c:3259 builtin/apply.c:3402 builtin/apply.c:3424
 #, c-format
 msgid "%s: %s"
-msgstr ""
+msgstr "%s: %s"
 
 #: builtin/apply.c:3264 builtin/apply.c:3418
 #, c-format
@@ -2192,7 +2192,7 @@ msgstr ""
 #: builtin/apply.c:3587
 #, c-format
 msgid "Checking patch %s..."
-msgstr ""
+msgstr "Comprobando parche %s..."
 
 #: builtin/apply.c:3680 builtin/checkout.c:213 builtin/reset.c:134
 #, c-format
@@ -2202,7 +2202,7 @@ msgstr ""
 #: builtin/apply.c:3823
 #, c-format
 msgid "unable to remove %s from index"
-msgstr ""
+msgstr "no puedo eliminar %s del índice"
 
 #: builtin/apply.c:3851
 #, c-format
