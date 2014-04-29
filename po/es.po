@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-28 20:33+0200\n"
+"PO-Revision-Date: 2014-04-29 20:38+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -1686,7 +1686,7 @@ msgstr ""
 
 #: wt-status.c:1310
 msgid "On branch "
-msgstr ""
+msgstr "En la rama "
 
 #: wt-status.c:1317
 msgid "rebase in progress; onto "
@@ -1702,11 +1702,11 @@ msgstr ""
 
 #: wt-status.c:1329
 msgid "Not currently on any branch."
-msgstr ""
+msgstr "En ninguna rama actualmente."
 
 #: wt-status.c:1346
 msgid "Initial commit"
-msgstr ""
+msgstr "Commit inicial"
 
 #: wt-status.c:1360
 msgid "Untracked files"
@@ -1828,12 +1828,12 @@ msgstr ""
 
 #: builtin/add.c:193
 msgid "Could not read the index"
-msgstr ""
+msgstr "No he podido leer el índice"
 
 #: builtin/add.c:204
 #, c-format
 msgid "Could not open '%s' for writing."
-msgstr ""
+msgstr "No he podido abrir '%s' en escritura."
 
 #: builtin/add.c:208
 msgid "Could not write patch"
@@ -1846,7 +1846,7 @@ msgstr ""
 
 #: builtin/add.c:215
 msgid "Empty patch. Aborted."
-msgstr ""
+msgstr "Parche vacío. Abortado."
 
 #: builtin/add.c:221
 #, c-format
@@ -1861,41 +1861,41 @@ msgstr ""
 #: builtin/prune-packed.c:77 builtin/push.c:489 builtin/remote.c:1344
 #: builtin/rm.c:269
 msgid "dry run"
-msgstr ""
+msgstr "ensayo"
 
 #: builtin/add.c:249 builtin/apply.c:4410 builtin/check-ignore.c:19
 #: builtin/commit.c:1256 builtin/count-objects.c:95 builtin/fsck.c:612
 #: builtin/log.c:1592 builtin/mv.c:69 builtin/read-tree.c:113
 msgid "be verbose"
-msgstr ""
+msgstr "sé verboso"
 
 #: builtin/add.c:251
 msgid "interactive picking"
-msgstr ""
+msgstr "selección interactiva"
 
 #: builtin/add.c:252 builtin/checkout.c:1108 builtin/reset.c:283
 msgid "select hunks interactively"
-msgstr ""
+msgstr "selecciona trozos interactivamente"
 
 #: builtin/add.c:253
 msgid "edit current diff and apply"
-msgstr ""
+msgstr "edita el diff actual y aplica"
 
 #: builtin/add.c:254
 msgid "allow adding otherwise ignored files"
-msgstr ""
+msgstr "permite añadir ficheros de otra manera ignorados"
 
 #: builtin/add.c:255
 msgid "update tracked files"
-msgstr ""
+msgstr "actualiza ficheros monitorizados"
 
 #: builtin/add.c:256
 msgid "record only the fact that the path will be added later"
-msgstr ""
+msgstr "sólo registra el hecho de que la ruta será añadida más tarde"
 
 #: builtin/add.c:257
 msgid "add changes from all tracked and untracked files"
-msgstr ""
+msgstr "añade cambios de todos los ficheros monitorizados y no monitorizados"
 
 #: builtin/add.c:260
 msgid "ignore paths removed in the working tree (same as --no-all)"
@@ -1916,33 +1916,33 @@ msgstr ""
 #: builtin/add.c:286
 #, c-format
 msgid "Use -f if you really want to add them.\n"
-msgstr ""
+msgstr "Use -f si realmente quiere añadirlos.\n"
 
 #: builtin/add.c:287
 msgid "no files added"
-msgstr ""
+msgstr "ningún fichero añadido"
 
 #: builtin/add.c:293
 msgid "adding files failed"
-msgstr ""
+msgstr "no he podido añadir ficheros"
 
 #: builtin/add.c:330
 msgid "-A and -u are mutually incompatible"
-msgstr ""
+msgstr "-A y -u son incompatibles"
 
 #: builtin/add.c:337
 msgid "Option --ignore-missing can only be used together with --dry-run"
-msgstr ""
+msgstr "La opción --ignore-missing sólo se puede usar junto con --dry-run"
 
 #: builtin/add.c:358
 #, c-format
 msgid "Nothing specified, nothing added.\n"
-msgstr ""
+msgstr "Nada especificado, nada añadido.\n"
 
 #: builtin/add.c:359
 #, c-format
 msgid "Maybe you wanted to say 'git add .'?\n"
-msgstr ""
+msgstr "¿Quizá quiso decir 'git add .'?\n"
 
 #: builtin/add.c:364 builtin/check-ignore.c:172 builtin/clean.c:920
 #: builtin/commit.c:320 builtin/mv.c:90 builtin/reset.c:234 builtin/rm.c:299
@@ -2562,7 +2562,7 @@ msgstr "n,m"
 
 #: builtin/blame.c:2262
 msgid "Process only line range n,m, counting from 1"
-msgstr "Procesa solo el rango de líneas n,m, contando desde 1"
+msgstr "Procesa sólo el rango de líneas n,m, contando desde 1"
 
 #: builtin/branch.c:24
 msgid "git branch [options] [-r | -a] [--merged | --no-merged]"
@@ -2804,7 +2804,7 @@ msgstr "commit"
 
 #: builtin/branch.c:818 builtin/branch.c:824
 msgid "print only branches that contain the commit"
-msgstr "imprime solo las ramas que contienen el commit"
+msgstr "imprime sólo las ramas que contienen el commit"
 
 #: builtin/branch.c:830
 msgid "Specific git-branch actions:"
@@ -8481,7 +8481,7 @@ msgstr ""
 
 #: builtin/reset.c:344
 msgid "-N can only be used with --mixed"
-msgstr "-N solo puede usarse con --mixed"
+msgstr "-N sólo puede usarse con --mixed"
 
 #: builtin/reset.c:361
 msgid "Unstaged changes after reset:"
