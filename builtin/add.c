@@ -441,8 +441,8 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	 * and pathspec... covers a removed path.
 	 */
 	memset(&update_data, 0, sizeof(update_data));
-	if (!take_worktree_changes && addremove_explicit < 0)
-		if (git_mode == MODE_CURRENT)
+	if (git_mode == MODE_CURRENT)
+		if (!take_worktree_changes && addremove_explicit < 0)
 			update_data.warn_add_would_remove = 1;
 
 	if (!take_worktree_changes && addremove_explicit < 0 && argc)
