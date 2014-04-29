@@ -181,7 +181,7 @@ test_expect_success 'show' '
 		git branch -d -r origin/master &&
 		git config --add remote.two.url ../two &&
 		git config --add remote.two.pushurl ../three &&
-		git config branch.rebase.rebase true &&
+		git config branch.rebase.pullmode rebase &&
 		git config branch.octopus.merge "topic-a topic-b topic-c" &&
 		(
 			cd ../one &&
