@@ -57,6 +57,19 @@ void probe_utf8_pathname_composition(char *path, int len)
 }
 
 
+char *precompose_str_len(const char *in, size_t insz, int *outsz)
+{
+	char *prec_str = NULL;
+	if (precomposed_unicode != 1)
+		return NULL;
+
+	if (has_non_ascii(in, insz, NULL))
+		prec_str = reencode_string_len(in, insz, repo_encoding, path_encoding, outsz);
+
+	return prec_str;
+}
+
+
 void precompose_argv(int argc, const char **argv)
 {
 	int i = 0;

@@ -180,7 +180,7 @@ typedef unsigned long uintptr_t;
 #ifdef PRECOMPOSE_UNICODE
 #include "compat/precompose_utf8.h"
 #else
-#define precompose_str(in,i_nfd2nfc)
+#define precompose_str_len(s,i,o) NULL
 #define precompose_argv(c,v)
 #define probe_utf8_pathname_composition(a,b)
 #endif
