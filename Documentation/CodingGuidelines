@@ -15,7 +15,7 @@ code.  For Git in general, three rough rules are:
    let's use it".
 
    Again, we live in the real world, and it is sometimes a
-   judgement call, the decision based more on real world
+   judgement call, the decision is based more on real world
    constraints people face than what the paper standard says.
 
 Make your code readable and sensible, and don't try to be clever.
