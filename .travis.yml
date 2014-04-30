@@ -10,8 +10,8 @@ before_script:
   - bzr --version || true
   - pip show hg-git dulwich
   - export PYTHON_PATH="$(which python)"
-  - test "$BZR_VERSION" && TEST='remote-helpers/bzr.t' || true
-  - test "$HG_VERSION" && TEST='remote-helpers/hg.t remote-helpers/hg-bidi.t remote-helpers/hg-hg-git.t' || true
+  - test "$BZR_VERSION" && TEST='t5820-remote-bzr.sh' || true
+  - test "$HG_VERSION" && TEST='t5810-remote-hg.sh t5811-remote-hg-bidi.sh t5812-remote-hg-hg-git.sh' || true
 
 script:
   - make
