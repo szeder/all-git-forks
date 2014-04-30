@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-29 22:27+0200\n"
+"PO-Revision-Date: 2014-04-30 22:05+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -247,7 +247,7 @@ msgstr ""
 #: bundle.c:60
 #, c-format
 msgid "unrecognized header: %s%s (%d)"
-msgstr "cabecera no reconocida: %s%s (%d)"
+msgstr "cabecera no identificada: %s%s (%d)"
 
 #: bundle.c:86 builtin/commit.c:706
 #, c-format
@@ -1903,11 +1903,11 @@ msgstr ""
 
 #: builtin/add.c:262
 msgid "don't add, only refresh the index"
-msgstr ""
+msgstr "no añade, sólo refresca el índice"
 
 #: builtin/add.c:263
 msgid "just skip files which cannot be added because of errors"
-msgstr ""
+msgstr "se salta los ficheros que no puede añadir debido a errores y continúa"
 
 #: builtin/add.c:264
 msgid "check if - even missing - files are ignored in dry run"
@@ -2128,12 +2128,12 @@ msgstr ""
 #: builtin/apply.c:3140 builtin/apply.c:3149 builtin/apply.c:3194
 #, c-format
 msgid "read of %s failed"
-msgstr ""
+msgstr "no he podido leer %s"
 
 #: builtin/apply.c:3174 builtin/apply.c:3396
 #, c-format
 msgid "path %s has been renamed/deleted"
-msgstr ""
+msgstr "la ruta %s ha sido renombrada/borrada"
 
 #: builtin/apply.c:3255 builtin/apply.c:3410
 #, c-format
@@ -2167,12 +2167,12 @@ msgstr ""
 #: builtin/apply.c:3538
 #, c-format
 msgid "%s: already exists in index"
-msgstr ""
+msgstr "%s: ya existe en el índice"
 
 #: builtin/apply.c:3541
 #, c-format
 msgid "%s: already exists in working directory"
-msgstr ""
+msgstr "%s: ya existe en el directorio de trabajo"
 
 #: builtin/apply.c:3561
 #, c-format
@@ -2227,7 +2227,7 @@ msgstr ""
 #: builtin/apply.c:3896
 #, c-format
 msgid "closing file '%s'"
-msgstr ""
+msgstr "cerrando el fichero '%s'"
 
 #: builtin/apply.c:3945
 #, c-format
@@ -2237,11 +2237,11 @@ msgstr ""
 #: builtin/apply.c:4032
 #, c-format
 msgid "Applied patch %s cleanly."
-msgstr ""
+msgstr "Parche %s aplicado limpiamente."
 
 #: builtin/apply.c:4040
 msgid "internal error"
-msgstr ""
+msgstr "error interno"
 
 #: builtin/apply.c:4043
 #, c-format
@@ -2258,16 +2258,16 @@ msgstr ""
 #: builtin/apply.c:4074
 #, c-format
 msgid "Hunk #%d applied cleanly."
-msgstr ""
+msgstr "Trozo #%d aplicado limpiamente."
 
 #: builtin/apply.c:4077
 #, c-format
 msgid "Rejected hunk #%d."
-msgstr ""
+msgstr "Trozo #%d rechazado."
 
 #: builtin/apply.c:4227
 msgid "unrecognized input"
-msgstr ""
+msgstr "entrada no identificada"
 
 #: builtin/apply.c:4238
 msgid "unable to read index file"
@@ -2276,19 +2276,19 @@ msgstr ""
 #: builtin/apply.c:4357 builtin/apply.c:4360 builtin/clone.c:90
 #: builtin/fetch.c:78
 msgid "path"
-msgstr ""
+msgstr "ruta"
 
 #: builtin/apply.c:4358
 msgid "don't apply changes matching the given path"
-msgstr ""
+msgstr "no aplica cambios que se ajusten a la ruta dada"
 
 #: builtin/apply.c:4361
 msgid "apply changes matching the given path"
-msgstr ""
+msgstr "aplica cambios que se ajusten a la ruta dada"
 
 #: builtin/apply.c:4363
 msgid "num"
-msgstr ""
+msgstr "num"
 
 #: builtin/apply.c:4364
 msgid "remove <num> leading slashes from traditional diff paths"
@@ -2296,7 +2296,7 @@ msgstr ""
 
 #: builtin/apply.c:4367
 msgid "ignore additions made by the patch"
-msgstr ""
+msgstr "ignora las adiciones hechas por el parche"
 
 #: builtin/apply.c:4369
 msgid "instead of applying the patch, output diffstat for the input"
@@ -2304,15 +2304,15 @@ msgstr ""
 
 #: builtin/apply.c:4373
 msgid "show number of added and deleted lines in decimal notation"
-msgstr ""
+msgstr "muestra el número de lineas añadidas y borradas en notación decimal"
 
 #: builtin/apply.c:4375
 msgid "instead of applying the patch, output a summary for the input"
-msgstr ""
+msgstr "en lugar de aplicar el parche, imprime un resumen de la entrada"
 
 #: builtin/apply.c:4377
 msgid "instead of applying the patch, see if the patch is applicable"
-msgstr ""
+msgstr "en lugar de aplicar el parche, comprueba si es aplicable"
 
 #: builtin/apply.c:4379
 msgid "make sure the patch is applicable to the current index"
@@ -9559,7 +9559,7 @@ msgstr "¿Quiere que lo haga yo por Ud.? [Y]Sí/[n]o "
 #: git-bisect.sh:95
 #, sh-format
 msgid "unrecognised option: '$arg'"
-msgstr "opción desconocida: '$arg'"
+msgstr "opción no identificada: '$arg'"
 
 #: git-bisect.sh:99
 #, sh-format
