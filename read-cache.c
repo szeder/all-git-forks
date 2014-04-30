@@ -1330,7 +1330,7 @@ static inline uint32_t ntoh_l_force_align(void *p)
 #define ntoh_l(var) ntoh_l_force_align(&(var))
 #endif
 
-static struct cache_entry *cache_entry_from_ondisk(struct ondisk_cache_entry *ondisk,
+static struct cache_entry *cache_entry_from_ondisk_int(struct ondisk_cache_entry *ondisk,
 						   unsigned int flags,
 						   const char *name,
 						   size_t len)
@@ -1353,6 +1353,22 @@ static struct cache_entry *cache_entry_from_ondisk(struct ondisk_cache_entry *on
 	memcpy(ce->name, name, len);
 	ce->name[len] = '\0';
 	return ce;
+}
+
+static struct cache_entry *cache_entry_from_ondisk(struct ondisk_cache_entry *ondisk,
+							 unsigned int flags,
+							 const char *name,
+							 size_t len)
+{
+	int prec_len;
+	char *prec_name = precompose_str_len(name, len, &prec_len);
+	if (prec_name) {
+		struct cache_entry *ce;
+		ce = cache_entry_from_ondisk_int(ondisk, flags, prec_name, prec_len);
+		free(prec_name);
+		return ce;
+	}
+	return cache_entry_from_ondisk_int(ondisk, flags, name, len);
 }
 
 /*
