@@ -2626,6 +2626,5 @@ __git_complete gitk __gitk_main
 # when the user has tab-completed the executable name and consequently
 # included the '.exe' suffix.
 #
-if [ Cygwin = "$(uname -o 2>/dev/null)" ]; then
+test "$(uname -o 2>/dev/null)" = "Cygwin" &&
 __git_complete git.exe __git_main
-fi
