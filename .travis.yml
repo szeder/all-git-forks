@@ -27,6 +27,6 @@ matrix:
     - env: HG_VERSION=2.8.2
     - env: HG_VERSION=2.7.2
     - python: 2.7
-      env: TEST=remote-helpers-test
+      env: TEST='t5810-remote-hg.sh t5811-remote-hg-bidi.sh t5812-remote-hg-hg-git.sh t5820-remote-bzr.sh'
     - python: 2.6
-      env: TEST=remote-helpers-test
+      env: TEST='t5810-remote-hg.sh t5811-remote-hg-bidi.sh t5812-remote-hg-hg-git.sh t5820-remote-bzr.sh'
