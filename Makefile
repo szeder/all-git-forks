@@ -34,6 +34,10 @@ all::
 # git-http-push are not built, and you cannot use http:// and https://
 # transports (neither smart nor dumb).
 #
+# Define NO_CURL_MULTI if your libcurl is sufficiently old and lacks
+# curl_multi_init ("git http-push" to run the deprecated dumb push over
+# http/webdab will not be built).
+#
 # Define CURL_CONFIG to the path to a curl-config binary other than the
 # default 'curl-config'.  If CURL_CONFIG is unset or points to a binary that
 # is not found, defaults to the CURLDIR behavior.
