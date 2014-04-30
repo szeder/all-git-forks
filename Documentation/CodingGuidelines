@@ -15,8 +15,16 @@ code.  For Git in general, three rough rules are:
    let's use it".
 
    Again, we live in the real world, and it is sometimes a
-   judgement call, the decision based more on real world
+   judgement call, the decision is based more on real world
    constraints people face than what the paper standard says.
+
+ - Fixing style violations while working on a real change as a
+   preparatory clean-up step is good, but otherwise avoid useless code
+   churn for the sake of conforming to the style.
+
+   "Once it _is_ in the tree, it's not really worth the patch noise to
+   go and fix it up."
+   Cf. http://article.gmane.org/gmane.linux.kernel/943020
 
 Make your code readable and sensible, and don't try to be clever.
 
@@ -34,7 +42,17 @@ For shell scripts specifically (not exhaustive):
 
  - We use tabs for indentation.
 
- - Case arms are indented at the same depth as case and esac lines.
+ - Case arms are indented at the same depth as case and esac lines,
+   like this:
+
+	case "$variable" in
+	pattern1)
+		do this
+		;;
+	pattern2)
+		do that
+		;;
+	esac
 
  - Redirection operators should be written with space before, but no
    space after them.  In other words, write 'echo test >"$file"'
@@ -42,6 +60,14 @@ For shell scripts specifically (not exhaustive):
    even though it is not required by POSIX to double-quote the
    redirection target in a variable (as shown above), our code does so
    because some versions of bash issue a warning without the quotes.
+
+	(incorrect)
+	cat hello > world < universe
+	echo hello >$world
+
+	(correct)
+	cat hello >world <universe
+	echo hello >"$world"
 
  - We prefer $( ... ) for command substitution; unlike ``, it
    properly nests.  It should have been the way Bourne spelled
@@ -81,14 +107,33 @@ For shell scripts specifically (not exhaustive):
    "then" should be on the next line for if statements, and "do"
    should be on the next line for "while" and "for".
 
+	(incorrect)
+	if test -f hello; then
+		do this
+	fi
+
+	(correct)
+	if test -f hello
+	then
+		do this
+	fi
+
  - We prefer "test" over "[ ... ]".
 
  - We do not write the noiseword "function" in front of shell
    functions.
 
- - We prefer a space between the function name and the parentheses. The
-   opening "{" should also be on the same line.
-   E.g.: my_function () {
+ - We prefer a space between the function name and the parentheses,
+   and no space inside the parentheses. The opening "{" should also
+   be on the same line.
+
+	(incorrect)
+	my_function(){
+		...
+
+	(correct)
+	my_function () {
+		...
 
  - As to use of grep, stick to a subset of BRE (namely, no \{m,n\},
    [::], [==], or [..]) for portability.
@@ -149,7 +194,7 @@ For C programs:
    of "else if" statements, it can make sense to add braces to
    single line blocks.
 
- - We try to avoid assignments inside if().
+ - We try to avoid assignments inside "if ()" condition.
 
  - Try to make your code understandable.  You may put comments
    in, but comments invariably tend to stale out when the code
@@ -176,6 +221,32 @@ For C programs:
 
  - Double negation is often harder to understand than no negation
    at all.
+
+ - There are two schools of thought when it comes to comparison,
+   especially inside a loop. Some people prefer to have less stable
+   value on the left hand side and more stable value on the right hand
+   side, e.g. if you have a loop that counts variable i down to the
+   lower bound,
+
+	while (i > lower_bound) {
+		do something;
+		i--;
+	}
+
+   Other people prefer to have the textual order of values match the
+   actual order of values in their comparison, so that they can
+   mentally draw a number line from left to right and place these
+   values in order, i.e.
+
+	while (lower_bound < i) {
+		do something;
+		i--;
+	}
+
+   Both are valid, and we use both, even though we tend to see the
+   former the more preferable, the more "stable" the more stable side
+   becomes (comparison with a constant, "i > 0", is an extreme
+   example).  Just do not mix styles in the same part of the code.
 
  - Some clever tricks, like using the !! operator with arithmetic
    constructs, can be extremely confusing to others.  Avoid them,
