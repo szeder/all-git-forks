@@ -109,6 +109,7 @@ struct untracked_cache_dir {
 	unsigned char exclude_sha1[20];
 	struct stat_data stat_data;
 	unsigned int check_only : 1;
+	unsigned int valid : 1;
 	unsigned int untracked_nr : 29;
 	unsigned int untracked_alloc, dirs_nr, dirs_alloc;
 	char name[1];
@@ -128,6 +129,7 @@ struct untracked_cache {
 	struct untracked_cache_dir *root;
 	/* Statistics */
 	int dir_created;
+	int gitignore_invalidated;
 };
 
 struct dir_struct {
@@ -180,6 +182,7 @@ struct dir_struct {
 
 	/* Enable untracked file cache if set */
 	struct untracked_cache *untracked;
+	unsigned unmanaged_exclude_files;
 	struct stat_data info_exclude_stat;
 	struct stat_data excludes_file_stat;
 	unsigned char info_exclude_sha1[20];
