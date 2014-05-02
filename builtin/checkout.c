@@ -230,7 +230,6 @@ static int checkout_paths(const struct checkout_opts *opts,
 	int flag;
 	struct commit *head;
 	int errs = 0;
-	int newfd;
 	struct lock_file *lock_file;
 
 	if (opts->track != BRANCH_TRACK_UNSPECIFIED)
@@ -264,7 +263,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 
 	lock_file = xcalloc(1, sizeof(struct lock_file));
 
-	newfd = hold_locked_index(lock_file, 1);
+	hold_locked_index(lock_file, 1);
 	if (read_cache_preload(&opts->pathspec) < 0)
 		return error(_("corrupt index file"));
 
@@ -345,6 +344,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 	memset(&state, 0, sizeof(state));
 	state.force = 1;
 	state.refresh_cache = 1;
+	state.istate = &the_index;
 	for (pos = 0; pos < active_nr; pos++) {
 		struct cache_entry *ce = active_cache[pos];
 		if (ce->ce_flags & CE_MATCHED) {
@@ -360,8 +360,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 		}
 	}
 
-	if (write_cache(newfd, active_cache, active_nr) ||
-	    commit_locked_index(lock_file))
+	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
 		die(_("unable to write new index file"));
 
 	read_ref_full("HEAD", rev, 0, &flag);
@@ -457,8 +456,8 @@ static int merge_working_tree(const struct checkout_opts *opts,
 {
 	int ret;
 	struct lock_file *lock_file = xcalloc(1, sizeof(struct lock_file));
-	int newfd = hold_locked_index(lock_file, 1);
 
+	hold_locked_index(lock_file, 1);
 	if (read_cache_preload(NULL) < 0)
 		return error(_("corrupt index file"));
 
@@ -566,8 +565,7 @@ static int merge_working_tree(const struct checkout_opts *opts,
 		}
 	}
 
-	if (write_cache(newfd, active_cache, active_nr) ||
-	    commit_locked_index(lock_file))
+	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
 		die(_("unable to write new index file"));
 
 	if (!opts->force && !opts->quiet)
