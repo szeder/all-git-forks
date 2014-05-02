@@ -591,6 +591,7 @@ static void do_invalidate_gitignore(struct untracked_cache_dir *dir)
 	int i;
 	dir->valid = 0;
 	dir->untracked_nr = 0;
+	/* dir->recurse = 0; ? */
 	for (i = 0; i < dir->dirs_nr; i++)
 		do_invalidate_gitignore(dir->dirs[i]);
 }
@@ -605,9 +606,12 @@ static void invalidate_gitignore(struct untracked_cache *uc,
 static void invalidate_directory(struct untracked_cache *uc,
 				 struct untracked_cache_dir *dir)
 {
+	int i;
 	uc->dir_invalidated++;
 	dir->valid = 0;
 	dir->untracked_nr = 0;
+	for (i = 0; i < dir->dirs_nr; i++)
+		dir->dirs[i]->recurse = 0;
 }
 
 static int add_excludes(const char *fname,
@@ -1581,6 +1585,10 @@ int read_cached_dir(struct cached_dir *cdir)
 	}
 	while (cdir->nr_dirs < cdir->untracked->dirs_nr) {
 		struct untracked_cache_dir *d = cdir->untracked->dirs[cdir->nr_dirs];
+		if (!d->recurse) {
+			cdir->nr_dirs++;
+			continue;
+		}
 		cdir->ucd = d;
 		cdir->nr_dirs++;
 		return 0;
@@ -1602,8 +1610,10 @@ static void close_cached_dir(struct cached_dir *cdir)
 	 * We have gone through this directory and found no untracked
 	 * entries. Set untracked_nr to zero to make it valid.
 	 */
-	if (cdir->untracked && !cdir->untracked->valid)
+	if (cdir->untracked) {
 		cdir->untracked->valid = 1;
+		cdir->untracked->recurse = 1;
+	}
 }
 
 /*
@@ -1849,6 +1859,9 @@ static struct untracked_cache_dir *validate_untracked_cache(struct dir_struct *d
 		hashcpy(dir->untracked->excludes_file_sha1,
 			dir->excludes_file_sha1);
 	}
+
+	/* Make sure this directory is not dropped out at saving phase */
+	root->recurse = 1;
 	return root;
 }
 
