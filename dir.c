@@ -2256,3 +2256,110 @@ void write_untracked_extension(struct strbuf *out, struct untracked_cache *untra
 	if (untracked->root)
 		write_one_dir(out, untracked->root);
 }
+
+static void stat_data_from_disk(struct stat_data *to, const struct stat_data *from)
+{
+	to->sd_ctime.sec  = get_be32(&from->sd_ctime.sec);
+	to->sd_ctime.nsec = get_be32(&from->sd_ctime.nsec);
+	to->sd_mtime.sec  = get_be32(&from->sd_mtime.sec);
+	to->sd_mtime.nsec = get_be32(&from->sd_mtime.nsec);
+	to->sd_dev	  = get_be32(&from->sd_dev);
+	to->sd_ino	  = get_be32(&from->sd_ino);
+	to->sd_uid	  = get_be32(&from->sd_uid);
+	to->sd_gid	  = get_be32(&from->sd_gid);
+	to->sd_size	  = get_be32(&from->sd_size);
+}
+
+static int read_one_dir(struct untracked_cache_dir **untracked_,
+			const unsigned char *data_, unsigned long sz)
+{
+#define NEXT(x) \
+	next = data + (x); \
+	if (next > data_ + sz) \
+		return -1;
+
+	struct untracked_cache_dir ud, *untracked;
+	const unsigned char *next, *data = data_;
+	unsigned int value;
+	int i, len;
+
+	memset(&ud, 0, sizeof(ud));
+	ud.recurse = 1;
+
+	NEXT(sizeof(struct stat_data));
+	stat_data_from_disk(&ud.stat_data, (struct stat_data *)data);
+	data = next;
+
+	NEXT(20);
+	hashcpy(ud.exclude_sha1, data);
+	data = next;
+
+	next = data;
+	value = decode_varint(&next);
+	if (next > data_ + sz)
+		return -1;
+	ud.untracked_alloc = ud.untracked_nr = value >> 2;
+	if (ud.untracked_nr)
+		ud.untracked = xmalloc(sizeof(*ud.untracked) * ud.untracked_nr);
+	if (value & 1)
+		ud.valid = 1;
+	if (value & 2)
+		ud.check_only = 1;
+	data = next;
+
+	next = data;
+	ud.dirs_alloc = ud.dirs_nr = decode_varint(&next);
+	if (next > data_ + sz)
+		return -1;
+	ud.dirs = xmalloc(sizeof(*ud.dirs) * ud.dirs_nr);
+	data = next;
+
+	len = strlen((const char *)data);
+	NEXT(len + 1);
+	*untracked_ = untracked = xmalloc(sizeof(*untracked) + len);
+	memcpy(untracked, &ud, sizeof(ud));
+	memcpy(untracked->name, data, len + 1);
+	data = next;
+
+	for (i = 0; i < untracked->untracked_nr; i++) {
+		len = strlen((const char *)data);
+		NEXT(len + 1);
+		untracked->untracked[i] = xstrdup((const char*)data);
+		data = next;
+	}
+
+	for (i = 0; i < untracked->dirs_nr; i++) {
+		len = read_one_dir(untracked->dirs + i, data, sz - (data - data_));
+		if (len < 0)
+			return -1;
+		data += len;
+	}
+	return data - data_;
+}
+
+struct untracked_cache *read_untracked_extension(const void *data, unsigned long sz)
+{
+	const struct ondisk_untracked_cache *ouc = data;
+	struct untracked_cache *uc;
+	int len;
+
+	if (sz < sizeof(*ouc))
+		return NULL;
+
+	uc = xcalloc(1, sizeof(*uc));
+	stat_data_from_disk(&uc->info_exclude_stat, &ouc->info_exclude_stat);
+	stat_data_from_disk(&uc->excludes_file_stat, &ouc->excludes_file_stat);
+	hashcpy(uc->info_exclude_sha1, ouc->info_exclude_sha1);
+	hashcpy(uc->excludes_file_sha1, ouc->excludes_file_sha1);
+	uc->dir_flags = get_be32(&ouc->dir_flags);
+	uc->exclude_per_dir = xstrdup(ouc->exclude_per_dir);
+	len = sizeof(*ouc) + strlen(ouc->exclude_per_dir);
+	if (sz == len)
+		return uc;
+	if (sz > len &&
+	    read_one_dir(&uc->root, (const unsigned char *)data + len,
+			 sz - len) == sz - len)
+		return uc;
+	free(uc);
+	return NULL;
+}
