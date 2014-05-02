@@ -9636,82 +9636,85 @@ msgstr ""
 
 #: git-bisect.sh:48
 msgid "You need to start by \"git bisect start\""
-msgstr ""
+msgstr "\"git bisect start\" で開始する必要があります"
 
 #. TRANSLATORS: Make sure to include [Y] and [n] in your
 #. translation. The program will only accept English input
 #. at this point.
 #: git-bisect.sh:54
 msgid "Do you want me to do it for you [Y/n]? "
-msgstr ""
+msgstr "自動的に行いますか [はい(Y)/いいえ(n)]? "
 
 #: git-bisect.sh:95
 #, sh-format
 msgid "unrecognised option: '$arg'"
-msgstr ""
+msgstr "認識できないオプション: '$arg'"
 
 #: git-bisect.sh:99
 #, sh-format
 msgid "'$arg' does not appear to be a valid revision"
-msgstr ""
+msgstr "'$arg' は有効なリビジョンではないようです"
 
 #: git-bisect.sh:117
 msgid "Bad HEAD - I need a HEAD"
-msgstr ""
+msgstr "問題のある HEAD - 有効な HEAD が必要です"
 
 #: git-bisect.sh:130
 #, sh-format
 msgid ""
 "Checking out '$start_head' failed. Try 'git bisect reset <validbranch>'."
 msgstr ""
+"'$start_head' のチェックアウトに失敗しました。'git bisect reset <有効なブランチ>' を試してください。"
 
 #: git-bisect.sh:140
 msgid "won't bisect on cg-seek'ed tree"
-msgstr ""
+msgstr "cg-seek ツリーでは bisect を行いません"
 
 #: git-bisect.sh:144
 msgid "Bad HEAD - strange symbolic ref"
-msgstr ""
+msgstr "問題のある HEAD - おかしな symbolic ref です"
 
 #: git-bisect.sh:189
 #, sh-format
 msgid "Bad bisect_write argument: $state"
-msgstr ""
+msgstr "間違っている bisect_write 引数: $state"
 
 #: git-bisect.sh:218
 #, sh-format
 msgid "Bad rev input: $arg"
-msgstr ""
+msgstr "間違っているリビジョン入力: $arg"
 
 #: git-bisect.sh:232
 msgid "Please call 'bisect_state' with at least one argument."
-msgstr ""
+msgstr "'bisect_state' は少なくとも１つの引数を渡して呼んでください。"
 
 #: git-bisect.sh:244
 #, sh-format
 msgid "Bad rev input: $rev"
-msgstr ""
+msgstr "間違っているリビジョン入力: $arg"
 
 #: git-bisect.sh:250
 msgid "'git bisect bad' can take only one argument."
-msgstr ""
+msgstr "'git bisect bad' の引数は１つだけです。"
 
 #: git-bisect.sh:273
 msgid "Warning: bisecting only with a bad commit."
-msgstr ""
+msgstr "警告: bad コミットのみで bisect を行っています。"
 
 #. TRANSLATORS: Make sure to include [Y] and [n] in your
 #. translation. The program will only accept English input
 #. at this point.
 #: git-bisect.sh:279
 msgid "Are you sure [Y/n]? "
-msgstr ""
+msgstr "よろしいですか [はい(Y)/いいえ(n)]? "
 
 #: git-bisect.sh:289
 msgid ""
 "You need to give me at least one good and one bad revisions.\n"
 "(You can use \"git bisect bad\" and \"git bisect good\" for that.)"
 msgstr ""
+"good リビジョンと bad リビジョンが少なくとも１つずつ必要です。\n"
+"(\"git bisect bad\" と \"git bisect good\" で指定できます。)"
 
 #: git-bisect.sh:292
 msgid ""
@@ -9719,15 +9722,18 @@ msgid ""
 "You then need to give me at least one good and one bad revisions.\n"
 "(You can use \"git bisect bad\" and \"git bisect good\" for that.)"
 msgstr ""
+"\"git bisect start\" で開始する必要があります。\n"
+"good リビジョンと bad リビジョンが少なくとも１つずつ必要です。\n"
+"(\"git bisect bad\" と \"git bisect good\" で指定できます。)"
 
 #: git-bisect.sh:363 git-bisect.sh:490
 msgid "We are not bisecting."
-msgstr ""
+msgstr "bisect 実行中ではありません。"
 
 #: git-bisect.sh:370
 #, sh-format
 msgid "'$invalid' is not a valid commit"
-msgstr ""
+msgstr "'$invalid' は有効なコミットではありません"
 
 #: git-bisect.sh:379
 #, sh-format
@@ -9735,24 +9741,26 @@ msgid ""
 "Could not check out original HEAD '$branch'.\n"
 "Try 'git bisect reset <commit>'."
 msgstr ""
+"元の HEAD '$branch' をチェックアウトできません。\n"
+"'git bisect reset <コミット>' を試してください。"
 
 #: git-bisect.sh:406
 msgid "No logfile given"
-msgstr ""
+msgstr "ログファイルが指定されていません"
 
 #: git-bisect.sh:407
 #, sh-format
 msgid "cannot read $file for replaying"
-msgstr ""
+msgstr "リプレイ用に $file を読むことができません"
 
 #: git-bisect.sh:424
 msgid "?? what are you talking about?"
-msgstr ""
+msgstr "?? 何の話をしているのですか？"
 
 #: git-bisect.sh:436
 #, sh-format
 msgid "running $command"
-msgstr ""
+msgstr "$command 実行中"
 
 #: git-bisect.sh:443
 #, sh-format
@@ -9760,10 +9768,12 @@ msgid ""
 "bisect run failed:\n"
 "exit code $res from '$command' is < 0 or >= 128"
 msgstr ""
+"bisect 実行に失敗しました:\n"
+"'$command' の戻り値 $res が < 0 または >= 128"
 
 #: git-bisect.sh:469
 msgid "bisect run cannot continue any more"
-msgstr ""
+msgstr "bisect 実行はこれ以上続けられません"
 
 #: git-bisect.sh:475
 #, sh-format
@@ -9771,10 +9781,12 @@ msgid ""
 "bisect run failed:\n"
 "'bisect_state $state' exited with error code $res"
 msgstr ""
+"bisect 実行に失敗しました:\n"
+"'bisect_state $state' がエラーコード $res で終了しました"
 
 #: git-bisect.sh:482
 msgid "bisect run success"
-msgstr ""
+msgstr "bisect 実行に成功しました"
 
 #: git-pull.sh:21
 msgid ""
