@@ -459,6 +459,9 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 			strbuf_addstr(&fancy, ref);
 	}
 	if (branch->push.dst) {
+		unsigned char local_sha1[20];
+		unsigned char remote_sha1[20];
+
 		ref = shorten_unambiguous_ref(branch->push.dst, 0);
 		if (fancy.len)
 			strbuf_addstr(&fancy, ", ");
@@ -468,7 +471,15 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 					ref, branch_get_color(BRANCH_COLOR_RESET));
 		else
 			strbuf_addstr(&fancy, ref);
+
+		/* Is it published? */
+		if (!read_ref(branch->refname, local_sha1) &&
+				!read_ref(branch->push.dst, remote_sha1)) {
+			if (hashcmp(local_sha1, remote_sha1))
+				strbuf_addstr(&fancy, " *");
+		}
 	}
+
 	if (!fancy.len)
 		return;
 
