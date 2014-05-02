@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-04-30 22:05+0200\n"
+"PO-Revision-Date: 2014-05-02 22:14+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -9907,7 +9907,7 @@ msgstr ""
 
 #: git-stash.sh:258
 msgid "No local changes to save"
-msgstr ""
+msgstr "No hay ninguna modificación local que guardar"
 
 #: git-stash.sh:262
 msgid "Cannot initialize stash"
@@ -9915,7 +9915,7 @@ msgstr ""
 
 #: git-stash.sh:266
 msgid "Cannot save the current status"
-msgstr ""
+msgstr "No puedo guardar el estado actual"
 
 #: git-stash.sh:284
 msgid "Cannot remove worktree changes"
@@ -9947,15 +9947,15 @@ msgstr ""
 
 #: git-stash.sh:443
 msgid "unable to refresh index"
-msgstr ""
+msgstr "no puedo refrescar el índice"
 
 #: git-stash.sh:447
 msgid "Cannot apply a stash in the middle of a merge"
-msgstr ""
+msgstr "No se pueden apartar cambios [stash] en medio de una fusión"
 
 #: git-stash.sh:455
 msgid "Conflicts in index. Try without --index."
-msgstr ""
+msgstr "Conflictos en el índice. Inténtelo sin --index."
 
 #: git-stash.sh:457
 msgid "Could not save index tree"
@@ -10009,17 +10009,17 @@ msgstr ""
 
 #: git-submodule.sh:409
 msgid "Relative path can only be used from the toplevel of the working tree"
-msgstr ""
+msgstr "Las rutas relativas sólo pueden usarse desde el nivel más alto del árbol de trabajo"
 
 #: git-submodule.sh:419
 #, sh-format
 msgid "repo URL: '$repo' must be absolute or begin with ./|../"
-msgstr ""
+msgstr "La URL del repositorio: '$repo' debe ser absoluta o empezar por ./|../"
 
 #: git-submodule.sh:436
 #, sh-format
 msgid "'$sm_path' already exists in the index"
-msgstr ""
+msgstr "'$sm_path' ya existe en el índice"
 
 #: git-submodule.sh:440
 #, sh-format
@@ -10028,45 +10028,48 @@ msgid ""
 "$sm_path\n"
 "Use -f if you really want to add it."
 msgstr ""
+"La ruta siguiente es ignorada por uno de sus ficheros .gitignore:\n"
+"$sm_path\n"
+"Use -f si realmente quiere añadirla."
 
 #: git-submodule.sh:458
 #, sh-format
 msgid "Adding existing repo at '$sm_path' to the index"
-msgstr ""
+msgstr "Añadiendo al índice el repositorio existente en '$sm_path'"
 
 #: git-submodule.sh:460
 #, sh-format
 msgid "'$sm_path' already exists and is not a valid git repo"
-msgstr ""
+msgstr "'$sm_path' ya existe y no es un repositorio git válido"
 
 #: git-submodule.sh:468
 #, sh-format
 msgid "A git directory for '$sm_name' is found locally with remote(s):"
-msgstr ""
+msgstr "Hay un directorio git local para '$sm_name' con remoto(s):"
 
 #: git-submodule.sh:470
 #, sh-format
 msgid ""
 "If you want to reuse this local git directory instead of cloning again from"
-msgstr ""
+msgstr "Si quiere reutilizar este directorio git local en lugar de clonar otra vez desde"
 
 #: git-submodule.sh:472
 #, sh-format
 msgid ""
 "use the '--force' option. If the local git directory is not the correct repo"
-msgstr ""
+msgstr "use la opción '--force'. Si el directorio git local no es el repositorio correcto,"
 
 #: git-submodule.sh:473
 #, sh-format
 msgid ""
 "or you are unsure what this means choose another name with the '--name' "
 "option."
-msgstr ""
+msgstr "o si no está seguro de lo que significa esto, elija otro nombre con la opción '--name'."
 
 #: git-submodule.sh:475
 #, sh-format
 msgid "Reactivating local git directory for submodule '$sm_name'."
-msgstr ""
+msgstr "Reactivando el directorio git local para el submódulo '$sm_name'."
 
 #: git-submodule.sh:487
 #, sh-format
@@ -10076,17 +10079,17 @@ msgstr ""
 #: git-submodule.sh:492
 #, sh-format
 msgid "Failed to add submodule '$sm_path'"
-msgstr ""
+msgstr "No he podido añadir el submódulo '$sm_path'"
 
 #: git-submodule.sh:501
 #, sh-format
 msgid "Failed to register submodule '$sm_path'"
-msgstr ""
+msgstr "No he podido registrar el submódulo '$sm_path'"
 
 #: git-submodule.sh:545
 #, sh-format
 msgid "Entering '$prefix$displaypath'"
-msgstr ""
+msgstr "Entrando en '$prefix$displaypath'"
 
 #: git-submodule.sh:565
 #, sh-format
