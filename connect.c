@@ -9,6 +9,7 @@
 #include "url.h"
 #include "string-list.h"
 #include "sha1-array.h"
+#include "object.h"
 
 static char *server_capabilities;
 static const char *parse_feature_value(const char *, const char *, int *);
@@ -125,7 +126,7 @@ struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 	*list = NULL;
 	for (;;) {
 		struct ref *ref;
-		unsigned char old_sha1[20];
+		struct object_id old_oid;
 		char *name;
 		int len, name_len;
 		char *buffer = packet_buffer;
@@ -144,15 +145,15 @@ struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 			die("remote error: %s", buffer + 4);
 
 		if (len == 48 && starts_with(buffer, "shallow ")) {
-			if (get_sha1_hex(buffer + 8, old_sha1))
+			if (get_sha1_hex(buffer + 8, old_oid.sha1))
 				die("protocol error: expected shallow sha-1, got '%s'", buffer + 8);
 			if (!shallow_points)
 				die("repository on the other end cannot be shallow");
-			sha1_array_append(shallow_points, old_sha1);
+			sha1_array_append(shallow_points, old_oid.sha1);
 			continue;
 		}
 
-		if (len < 42 || get_sha1_hex(buffer, old_sha1) || buffer[40] != ' ')
+		if (len < 42 || get_sha1_hex(buffer, old_oid.sha1) || buffer[40] != ' ')
 			die("protocol error: expected sha/ref, got '%s'", buffer);
 		name = buffer + 41;
 
@@ -164,14 +165,14 @@ struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 
 		if (extra_have &&
 		    name_len == 5 && !memcmp(".have", name, 5)) {
-			sha1_array_append(extra_have, old_sha1);
+			sha1_array_append(extra_have, old_oid.sha1);
 			continue;
 		}
 
 		if (!check_ref(name, name_len, flags))
 			continue;
 		ref = alloc_ref(buffer + 41);
-		hashcpy(ref->old_sha1, old_sha1);
+		hashcpy(ref->old_sha1, old_oid.sha1);
 		*list = ref;
 		list = &ref->next;
 		got_at_least_one_head = 1;
