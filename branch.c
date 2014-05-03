@@ -184,9 +184,9 @@ int validate_new_branchname(const char *name, struct strbuf *ref,
 
 	if (!attr_only) {
 		const char *head;
-		unsigned char sha1[20];
+		struct object_id oid;
 
-		head = resolve_ref_unsafe("HEAD", sha1, 0, NULL);
+		head = resolve_ref_unsafe("HEAD", oid.sha1, 0, NULL);
 		if (!is_bare_repository() && head && !strcmp(head, ref->buf))
 			die(_("Cannot force update the current branch."));
 	}
@@ -228,7 +228,7 @@ void create_branch(const char *head,
 {
 	struct ref_lock *lock = NULL;
 	struct commit *commit;
-	unsigned char sha1[20];
+	struct object_id oid;
 	char *real_ref, msg[PATH_MAX + 20];
 	struct strbuf ref = STRBUF_INIT;
 	int forcing = 0;
@@ -248,7 +248,7 @@ void create_branch(const char *head,
 	}
 
 	real_ref = NULL;
-	if (get_sha1(start_name, sha1)) {
+	if (get_sha1(start_name, oid.sha1)) {
 		if (explicit_tracking) {
 			if (advice_set_upstream_failure) {
 				error(_(upstream_missing), start_name);
@@ -260,7 +260,7 @@ void create_branch(const char *head,
 		die(_("Not a valid object name: '%s'."), start_name);
 	}
 
-	switch (dwim_ref(start_name, strlen(start_name), sha1, &real_ref)) {
+	switch (dwim_ref(start_name, strlen(start_name), oid.sha1, &real_ref)) {
 	case 0:
 		/* Not branching from any existing branch */
 		if (explicit_tracking)
@@ -281,9 +281,9 @@ void create_branch(const char *head,
 		break;
 	}
 
-	if ((commit = lookup_commit_reference(sha1)) == NULL)
+	if ((commit = lookup_commit_reference(oid.sha1)) == NULL)
 		die(_("Not a valid branch point: '%s'."), start_name);
-	hashcpy(sha1, commit->object.sha1);
+	hashcpy(oid.sha1, commit->object.sha1);
 
 	if (!dont_change_ref) {
 		lock = lock_any_ref_for_update(ref.buf, NULL, 0, NULL);
@@ -305,7 +305,7 @@ void create_branch(const char *head,
 		setup_tracking(ref.buf + 11, real_ref, track, quiet);
 
 	if (!dont_change_ref)
-		if (write_ref_sha1(lock, sha1, msg) < 0)
+		if (write_ref_sha1(lock, oid.sha1, msg) < 0)
 			die_errno(_("Failed to write ref"));
 
 	strbuf_release(&ref);
