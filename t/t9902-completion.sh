@@ -32,7 +32,7 @@ complete ()
 
 GIT_TESTING_COMMAND_COMPLETION='add checkout check-attr filter-branch ls-files'
 
-. "$GIT_BUILD_DIR/contrib/completion/git-completion.bash"
+. "$GIT_BUILD_DIR/shared/git-completion.bash"
 
 # We don't need this function to actually join words or do anything special.
 # Also, it's cleaner to avoid touching bash's internal completion variables.
