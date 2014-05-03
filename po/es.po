@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-02 22:14+0200\n"
+"PO-Revision-Date: 2014-05-03 22:31+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -9663,7 +9663,7 @@ msgstr "¿¿?? ¿de qué está Ud. hablando?"
 #: git-bisect.sh:436
 #, sh-format
 msgid "running $command"
-msgstr ""
+msgstr "ejecutando $command"
 
 #: git-bisect.sh:443
 #, sh-format
@@ -9674,7 +9674,7 @@ msgstr ""
 
 #: git-bisect.sh:469
 msgid "bisect run cannot continue any more"
-msgstr ""
+msgstr "la bisección no puede continuar"
 
 #: git-bisect.sh:475
 #, sh-format
@@ -9682,10 +9682,12 @@ msgid ""
 "bisect run failed:\n"
 "'bisect_state $state' exited with error code $res"
 msgstr ""
+"no he podido bisecar:\n"
+"'bisect_state $state' ha terminado con código de error $res"
 
 #: git-bisect.sh:482
 msgid "bisect run success"
-msgstr ""
+msgstr "la bisección ha tenido éxito"
 
 #: git-pull.sh:21
 msgid ""
@@ -9693,10 +9695,13 @@ msgid ""
 "Please, fix them up in the work tree, and then use 'git add/rm <file>'\n"
 "as appropriate to mark resolution, or use 'git commit -a'."
 msgstr ""
+"Tirar [pull] no es posible porque tiene ficheros sin fusionar.\n"
+"Por favor, corríjalos en el árbol de trabajo y, después, use 'git add/rm <fichero>'\n"
+"según corresponda para marcar la resolución, o use 'git commit -a'."
 
 #: git-pull.sh:25
 msgid "Pull is not possible because you have unmerged files."
-msgstr ""
+msgstr "Tirar [pull] no es posible porque tiene ficheros sin fusionar."
 
 #: git-pull.sh:247
 msgid "updating an unborn branch with changes added to the index"
@@ -9772,6 +9777,8 @@ msgid ""
 "You must edit all merge conflicts and then\n"
 "mark them as resolved using git add"
 msgstr ""
+"Debe editar todos los conflictos de fusión y, después,\n"
+"marcarlos como resueltos con git add"
 
 #: git-rebase.sh:394
 #, sh-format
@@ -9842,16 +9849,16 @@ msgstr ""
 #: git-rebase.sh:600
 #, sh-format
 msgid "Changes from $mb to $onto:"
-msgstr ""
+msgstr "Modificaciones desde $mb hasta $onto:"
 
 #: git-rebase.sh:609
 msgid "First, rewinding head to replay your work on top of it..."
-msgstr ""
+msgstr "Primero, rebobinando la cabeza para repetir su trabajo sobre ella..."
 
 #: git-rebase.sh:619
 #, sh-format
 msgid "Fast-forwarded $branch_name to $onto_name."
-msgstr ""
+msgstr "Avance-rápido de $branch_name a $onto_name."
 
 #: git-stash.sh:51
 msgid "git stash clear with parameters is unimplemented"
@@ -9871,7 +9878,7 @@ msgstr ""
 
 #: git-stash.sh:140
 msgid "No changes selected"
-msgstr ""
+msgstr "Ningún cambio seleccionado"
 
 #: git-stash.sh:143
 msgid "Cannot remove temporary index (can't happen)"
@@ -9879,12 +9886,12 @@ msgstr ""
 
 #: git-stash.sh:156
 msgid "Cannot record working tree state"
-msgstr ""
+msgstr "No puedo registrar el estado del árbol de trabajo"
 
 #: git-stash.sh:190
 #, sh-format
 msgid "Cannot update $ref_stash with $w_commit"
-msgstr ""
+msgstr "No puedo actualizar $ref_stash con $w_commit"
 
 #. TRANSLATORS: $option is an invalid option, like
 #. `--blah-blah'. The 7 spaces at the beginning of the
@@ -10099,17 +10106,17 @@ msgstr ""
 #: git-submodule.sh:611
 #, sh-format
 msgid "No url found for submodule path '$displaypath' in .gitmodules"
-msgstr ""
+msgstr "No encontrada url para la ruta de submódulo '$displaypath' en .gitmodules"
 
 #: git-submodule.sh:620
 #, sh-format
 msgid "Failed to register url for submodule path '$displaypath'"
-msgstr ""
+msgstr "No he podido registrar la url para la ruta de submódulo '$displaypath'"
 
 #: git-submodule.sh:622
 #, sh-format
 msgid "Submodule '$name' ($url) registered for path '$displaypath'"
-msgstr ""
+msgstr "Submódulo '$name' ($url) registrado para la ruta '$displaypath'"
 
 #: git-submodule.sh:639
 #, sh-format
@@ -10124,35 +10131,35 @@ msgstr ""
 #: git-submodule.sh:694
 #, sh-format
 msgid "Submodule work tree '$displaypath' contains a .git directory"
-msgstr ""
+msgstr "El árbol de trabajo de submódulo '$displaypath' contiene un directorio .git"
 
 #: git-submodule.sh:695
 #, sh-format
 msgid ""
 "(use 'rm -rf' if you really want to remove it including all of its history)"
-msgstr ""
+msgstr "(use 'rm -rf' si realmente quiere eliminarlo incluyendo toda su historia)"
 
 #: git-submodule.sh:701
 #, sh-format
 msgid ""
 "Submodule work tree '$displaypath' contains local modifications; use '-f' to "
 "discard them"
-msgstr ""
+msgstr "El árbol de trabajo de submódulo '$displaypath' contiene modificaciones locales; use '-f' para desecharlas"
 
 #: git-submodule.sh:704
 #, sh-format
 msgid "Cleared directory '$displaypath'"
-msgstr ""
+msgstr "Borrado el directorio '$displaypath'"
 
 #: git-submodule.sh:705
 #, sh-format
 msgid "Could not remove submodule work tree '$displaypath'"
-msgstr ""
+msgstr "No he podido borrar el árbol de trabajo de submódulo '$displaypath'"
 
 #: git-submodule.sh:708
 #, sh-format
 msgid "Could not create empty submodule directory '$displaypath'"
-msgstr ""
+msgstr "No he podido crear el directorio de submódulo '$displaypath' vacío"
 
 #: git-submodule.sh:717
 #, sh-format
@@ -10165,6 +10172,8 @@ msgid ""
 "Submodule path '$displaypath' not initialized\n"
 "Maybe you want to use 'update --init'?"
 msgstr ""
+"Ruta de submódulo '$displaypath' no inicializada\n"
+"Quizá quiera usar 'update --init'"
 
 #: git-submodule.sh:846
 #, sh-format
