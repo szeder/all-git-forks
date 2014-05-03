@@ -270,7 +270,7 @@ struct tree *write_tree_from_memory(struct merge_options *o)
 			      active_nr, 0) < 0)
 		die(_("error building trees"));
 
-	result = lookup_tree(active_cache_tree->sha1);
+	result = lookup_tree(active_cache_tree->oid.sha1);
 
 	return result;
 }

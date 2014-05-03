@@ -219,7 +219,7 @@ int cache_tree_fully_valid(struct cache_tree *it)
 	int i;
 	if (!it)
 		return 0;
-	if (it->entry_count < 0 || !has_sha1_file(it->sha1))
+	if (it->entry_count < 0 || !has_sha1_file(it->oid.sha1))
 		return 0;
 	for (i = 0; i < it->subtree_nr; i++) {
 		if (!cache_tree_fully_valid(it->down[i]->cache_tree))
@@ -244,7 +244,7 @@ static int update_one(struct cache_tree *it,
 
 	*skip_count = 0;
 
-	if (0 <= it->entry_count && has_sha1_file(it->sha1))
+	if (0 <= it->entry_count && has_sha1_file(it->oid.sha1))
 		return it->entry_count;
 
 	/*
@@ -311,7 +311,7 @@ static int update_one(struct cache_tree *it,
 		struct cache_tree_sub *sub;
 		const char *path, *slash;
 		int pathlen, entlen;
-		const unsigned char *sha1;
+		const struct object_id *oid;
 		unsigned mode;
 
 		path = ce->name;
@@ -327,21 +327,21 @@ static int update_one(struct cache_tree *it,
 				die("cache-tree.c: '%.*s' in '%s' not found",
 				    entlen, path + baselen, path);
 			i += sub->count;
-			sha1 = sub->cache_tree->sha1;
+			oid = &sub->cache_tree->oid;
 			mode = S_IFDIR;
 			if (sub->cache_tree->entry_count < 0)
 				to_invalidate = 1;
 		}
 		else {
-			sha1 = ce->sha1;
+			oid = (struct object_id *)ce->sha1;
 			mode = ce->ce_mode;
 			entlen = pathlen - baselen;
 			i++;
 		}
-		if (mode != S_IFGITLINK && !missing_ok && !has_sha1_file(sha1)) {
+		if (mode != S_IFGITLINK && !missing_ok && !has_sha1_file(oid->sha1)) {
 			strbuf_release(&buffer);
 			return error("invalid object %06o %s for '%.*s'",
-				mode, sha1_to_hex(sha1), entlen+baselen, path);
+				mode, sha1_to_hex(oid->sha1), entlen+baselen, path);
 		}
 
 		/*
@@ -366,7 +366,7 @@ static int update_one(struct cache_tree *it,
 
 		strbuf_grow(&buffer, entlen + 100);
 		strbuf_addf(&buffer, "%o %.*s%c", mode, entlen, path + baselen, '\0');
-		strbuf_add(&buffer, sha1, 20);
+		strbuf_add(&buffer, oid->sha1, GIT_SHA1_RAWSZ);
 
 #if DEBUG
 		fprintf(stderr, "cache-tree update-one %o %.*s\n",
@@ -375,8 +375,8 @@ static int update_one(struct cache_tree *it,
 	}
 
 	if (dryrun)
-		hash_sha1_file(buffer.buf, buffer.len, tree_type, it->sha1);
-	else if (write_sha1_file(buffer.buf, buffer.len, tree_type, it->sha1)) {
+		hash_sha1_file(buffer.buf, buffer.len, tree_type, it->oid.sha1);
+	else if (write_sha1_file(buffer.buf, buffer.len, tree_type, it->oid.sha1)) {
 		strbuf_release(&buffer);
 		return -1;
 	}
@@ -432,7 +432,7 @@ static void write_one(struct strbuf *buffer, struct cache_tree *it,
 #endif
 
 	if (0 <= it->entry_count) {
-		strbuf_add(buffer, it->sha1, 20);
+		strbuf_add(buffer, it->oid.sha1, GIT_SHA1_RAWSZ);
 	}
 	for (i = 0; i < it->subtree_nr; i++) {
 		struct cache_tree_sub *down = it->down[i];
@@ -487,11 +487,11 @@ static struct cache_tree *read_one(const char **buffer, unsigned long *size_p)
 		goto free_return;
 	buf++; size--;
 	if (0 <= it->entry_count) {
-		if (size < 20)
+		if (size < GIT_SHA1_RAWSZ)
 			goto free_return;
-		hashcpy(it->sha1, (const unsigned char*)buf);
-		buf += 20;
-		size -= 20;
+		hashcpy(it->oid.sha1, (const unsigned char*)buf);
+		buf += GIT_SHA1_RAWSZ;
+		size -= GIT_SHA1_RAWSZ;
 	}
 
 #if DEBUG
@@ -612,10 +612,10 @@ int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 			cache_tree_find(active_cache_tree, prefix);
 		if (!subtree)
 			return WRITE_TREE_PREFIX_ERROR;
-		hashcpy(sha1, subtree->sha1);
+		hashcpy(sha1, subtree->oid.sha1);
 	}
 	else
-		hashcpy(sha1, active_cache_tree->sha1);
+		hashcpy(sha1, active_cache_tree->oid.sha1);
 
 	if (0 <= newfd)
 		rollback_lock_file(lock_file);
@@ -629,7 +629,7 @@ static void prime_cache_tree_rec(struct cache_tree *it, struct tree *tree)
 	struct name_entry entry;
 	int cnt;
 
-	hashcpy(it->sha1, tree->object.sha1);
+	hashcpy(it->oid.sha1, tree->object.sha1);
 	init_tree_desc(&desc, tree->buffer, tree->size);
 	cnt = 0;
 	while (tree_entry(&desc, &entry)) {
@@ -683,7 +683,7 @@ int cache_tree_matches_traversal(struct cache_tree *root,
 
 	it = find_cache_tree_from_traversal(root, info);
 	it = cache_tree_find(it, ent->path);
-	if (it && it->entry_count > 0 && !hashcmp(ent->sha1, it->sha1))
+	if (it && it->entry_count > 0 && !hashcmp(ent->sha1, it->oid.sha1))
 		return it->entry_count;
 	return 0;
 }

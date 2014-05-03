@@ -10,7 +10,7 @@ static void dump_one(struct cache_tree *it, const char *pfx, const char *x)
 		       "invalid", x, pfx, it->subtree_nr);
 	else
 		printf("%s %s%s (%d entries, %d subtrees)\n",
-		       sha1_to_hex(it->sha1), x, pfx,
+		       sha1_to_hex(it->oid.sha1), x, pfx,
 		       it->entry_count, it->subtree_nr);
 }
 
@@ -33,7 +33,7 @@ static int dump_cache_tree(struct cache_tree *it,
 	}
 	else {
 		dump_one(it, pfx, "");
-		if (hashcmp(it->sha1, ref->sha1) ||
+		if (hashcmp(it->oid.sha1, ref->oid.sha1) ||
 		    ref->entry_count != it->entry_count ||
 		    ref->subtree_nr != it->subtree_nr) {
 			dump_one(ref, pfx, "#(ref) ");

@@ -381,7 +381,7 @@ static int is_index_unchanged(void)
 				      active_nr, 0))
 			return error(_("Unable to update cache tree\n"));
 
-	return !hashcmp(active_cache_tree->sha1, head_commit->tree->object.sha1);
+	return !hashcmp(active_cache_tree->oid.sha1, head_commit->tree->object.sha1);
 }
 
 /*
