@@ -401,6 +401,7 @@ gitwebdir = $(sharedir)/gitweb
 localedir = $(sharedir)/locale
 template_dir = share/git-core/templates
 htmldir = $(prefix)/share/doc/git-doc
+bashcompdir = $(sharedir)/bash-completion/completions
 ETC_GITCONFIG = $(sysconfdir)/gitconfig
 ETC_GITATTRIBUTES = $(sysconfdir)/gitattributes
 lib = lib
@@ -1534,6 +1535,8 @@ template_dir_SQ = $(subst ','\'',$(template_dir))
 htmldir_relative_SQ = $(subst ','\'',$(htmldir_relative))
 prefix_SQ = $(subst ','\'',$(prefix))
 gitwebdir_SQ = $(subst ','\'',$(gitwebdir))
+sharedir_SQ = $(subst ','\'',$(sharedir))
+bashcompdir_SQ = $(subst ','\'',$(bashcompdir))
 
 SHELL_PATH_SQ = $(subst ','\'',$(SHELL_PATH))
 PERL_PATH_SQ = $(subst ','\'',$(PERL_PATH))
@@ -2272,6 +2275,14 @@ install: all
 	$(MAKE) -C templates DESTDIR='$(DESTDIR_SQ)' install
 	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(mergetools_instdir_SQ)'
 	$(INSTALL) -m 644 mergetools/* '$(DESTDIR_SQ)$(mergetools_instdir_SQ)'
+	$(INSTALL) -D -m 644 shared/git-completion.bash '$(DESTDIR_SQ)$(bashcompdir_SQ)'/git
+	$(RM) '$(DESTDIR_SQ)$(bashcompdir_SQ)'/gitk && \
+	test -z "$(NO_INSTALL_HARDLINKS)" && \
+		ln '$(DESTDIR_SQ)$(bashcompdir_SQ)'/git '$(DESTDIR_SQ)$(bashcompdir_SQ)'/gitk || \
+		ln -s git '$(DESTDIR_SQ)$(bashcompdir_SQ)'/gitk || \
+		cp '$(DESTDIR_SQ)$(bashcompdir_SQ)'/git '$(DESTDIR_SQ)$(bashcompdir_SQ)'/gitk
+	$(INSTALL) -D -m 644 shared/git-prompt.sh '$(DESTDIR_SQ)$(sharedir_SQ)'/git-core/git-prompt.sh
+	$(INSTALL) -D -m 644 shared/git-completion.zsh '$(DESTDIR_SQ)$(sharedir_SQ)'/zsh/site-functions/_git
 ifndef NO_GETTEXT
 	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(localedir_SQ)'
 	(cd po/build/locale && $(TAR) cf - .) | \
