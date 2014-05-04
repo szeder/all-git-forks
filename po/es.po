@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-03 22:31+0200\n"
+"PO-Revision-Date: 2014-05-04 22:06+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -1674,15 +1674,15 @@ msgstr "  (use \"git revert --abort\" para cancelar la reversión)"
 #: wt-status.c:1128
 #, c-format
 msgid "You are currently bisecting, started from branch '%s'."
-msgstr ""
+msgstr "Actualmente está en una bisección, iniciada desde la rama '%s'."
 
 #: wt-status.c:1132
 msgid "You are currently bisecting."
-msgstr ""
+msgstr "Actualmente está en una bisección."
 
 #: wt-status.c:1135
 msgid "  (use \"git bisect reset\" to get back to the original branch)"
-msgstr ""
+msgstr "  (use \"git bisect reset\" para volver a la rama original)"
 
 #: wt-status.c:1310
 msgid "On branch "
@@ -1690,7 +1690,7 @@ msgstr "En la rama "
 
 #: wt-status.c:1317
 msgid "rebase in progress; onto "
-msgstr ""
+msgstr "reorganización en curso; sobre "
 
 #: wt-status.c:1324
 msgid "HEAD detached at "
@@ -1824,7 +1824,7 @@ msgstr ""
 
 #: builtin/add.c:133
 msgid "Unstaged changes after refreshing the index:"
-msgstr ""
+msgstr "Cambios eliminados del stage tras refrescar el índice:"
 
 #: builtin/add.c:193
 msgid "Could not read the index"
@@ -1837,12 +1837,12 @@ msgstr "No he podido abrir '%s' en escritura."
 
 #: builtin/add.c:208
 msgid "Could not write patch"
-msgstr ""
+msgstr "No he podido escribir el parche"
 
 #: builtin/add.c:213
 #, c-format
 msgid "Could not stat '%s'"
-msgstr ""
+msgstr "No he podido obtener el estado de '%s'"
 
 #: builtin/add.c:215
 msgid "Empty patch. Aborted."
@@ -1851,11 +1851,11 @@ msgstr "Parche vacío. Abortado."
 #: builtin/add.c:221
 #, c-format
 msgid "Could not apply '%s'"
-msgstr ""
+msgstr "No he podido aplicar '%s'"
 
 #: builtin/add.c:231
 msgid "The following paths are ignored by one of your .gitignore files:\n"
-msgstr ""
+msgstr "Las rutas siguientes son ignoradas por uno de sus ficheros .gitignore:\n"
 
 #: builtin/add.c:248 builtin/clean.c:876 builtin/fetch.c:93 builtin/mv.c:70
 #: builtin/prune-packed.c:77 builtin/push.c:489 builtin/remote.c:1344
@@ -1947,7 +1947,7 @@ msgstr "¿Quizá quiso decir 'git add .'?\n"
 #: builtin/add.c:364 builtin/check-ignore.c:172 builtin/clean.c:920
 #: builtin/commit.c:320 builtin/mv.c:90 builtin/reset.c:234 builtin/rm.c:299
 msgid "index file corrupt"
-msgstr ""
+msgstr "fichero índice dañado"
 
 #: builtin/add.c:448 builtin/apply.c:4506 builtin/mv.c:280 builtin/rm.c:432
 msgid "Unable to write new index file"
@@ -1960,7 +1960,7 @@ msgstr "git apply [opciones] [<parche>...]"
 #: builtin/apply.c:110
 #, c-format
 msgid "unrecognized whitespace option '%s'"
-msgstr ""
+msgstr "opción de espacio-en-blanco no identificada '%s'"
 
 #: builtin/apply.c:125
 #, c-format
@@ -1980,7 +1980,7 @@ msgstr ""
 #: builtin/apply.c:913
 #, c-format
 msgid "unable to find filename in patch at line %d"
-msgstr ""
+msgstr "no encuentro el nombre de fichero en el parche, en la línea %d"
 
 #: builtin/apply.c:945
 #, c-format
@@ -2059,7 +2059,7 @@ msgstr "parche binario corrupto en línea %d: %.*s"
 #: builtin/apply.c:1900
 #, c-format
 msgid "unrecognized binary patch at line %d"
-msgstr ""
+msgstr "parche binario no identificado en la línea %d"
 
 #: builtin/apply.c:1986
 #, c-format
@@ -2079,7 +2079,7 @@ msgstr "no puedo abrir o leer %s"
 #: builtin/apply.c:2688
 #, c-format
 msgid "invalid start of line: '%c'"
-msgstr ""
+msgstr "comienzo de línea inválido: '%c'"
 
 #: builtin/apply.c:2806
 #, c-format
@@ -2103,7 +2103,7 @@ msgstr ""
 #: builtin/apply.c:2843
 #, c-format
 msgid "missing binary patch data for '%s'"
-msgstr ""
+msgstr "faltan datos de parche binario para '%s'"
 
 #: builtin/apply.c:2946
 #, c-format
@@ -2118,7 +2118,7 @@ msgstr ""
 #: builtin/apply.c:2973
 #, c-format
 msgid "patch failed: %s:%ld"
-msgstr ""
+msgstr "ha fallado el parche: %s:%ld"
 
 #: builtin/apply.c:3095
 #, c-format
