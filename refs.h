@@ -1,6 +1,8 @@
 #ifndef REFS_H
 #define REFS_H
 
+#include "object.h"
+
 struct ref_lock {
 	char *ref_name;
 	char *orig_ref_name;
@@ -37,6 +39,8 @@ struct ref_transaction;
  */
 typedef int each_ref_fn(const char *refname,
 			const unsigned char *sha1, int flags, void *cb_data);
+typedef int each_ref_fn_oid(const char *refname,
+			const struct object_id *oid, int flags, void *cb_data);
 
 /*
  * The following functions invoke the specified callback function for
@@ -48,7 +52,7 @@ typedef int each_ref_fn(const char *refname,
  * stop the iteration.
  */
 extern int head_ref(each_ref_fn, void *);
-extern int for_each_ref(each_ref_fn, void *);
+extern int for_each_ref(each_ref_fn_oid, void *);
 extern int for_each_ref_in(const char *, each_ref_fn, void *);
 extern int for_each_tag_ref(each_ref_fn, void *);
 extern int for_each_branch_ref(each_ref_fn, void *);

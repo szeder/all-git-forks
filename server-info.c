@@ -7,13 +7,13 @@
 /* refs */
 static FILE *info_ref_fp;
 
-static int add_info_ref(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+static int add_info_ref(const char *path, const struct object_id *oid, int flag, void *cb_data)
 {
-	struct object *o = parse_object(sha1);
+	struct object *o = parse_object(oid->sha1);
 	if (!o)
 		return -1;
 
-	fprintf(info_ref_fp, "%s	%s\n", sha1_to_hex(sha1), path);
+	fprintf(info_ref_fp, "%s	%s\n", sha1_to_hex(oid->sha1), path);
 	if (o->type == OBJ_TAG) {
 		o = deref_tag(o, path, 0);
 		if (o)

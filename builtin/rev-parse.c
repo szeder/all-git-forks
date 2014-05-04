@@ -196,6 +196,12 @@ static int show_reference(const char *refname, const unsigned char *sha1, int fl
 	return 0;
 }
 
+static int show_reference_oid(const char *refname, const struct object_id *oid, int flag, void *cb_data)
+{
+	return show_reference(refname, oid->sha1, flag, cb_data);
+}
+
+
 static int anti_reference(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
 {
 	show_rev(REVERSED, sha1, refname);
@@ -640,7 +646,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				continue;
 			}
 			if (!strcmp(arg, "--all")) {
-				for_each_ref(show_reference, NULL);
+				for_each_ref(show_reference_oid, NULL);
 				continue;
 			}
 			if (starts_with(arg, "--disambiguate=")) {
