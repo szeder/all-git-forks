@@ -399,16 +399,16 @@ struct commit_list *find_bisection(struct commit_list *list,
 	return best;
 }
 
-static int register_ref(const char *refname, const unsigned char *sha1,
+static int register_ref(const char *refname, const struct object_id *oid,
 			int flags, void *cb_data)
 {
 	if (!strcmp(refname, "bad")) {
 		current_bad_oid = xmalloc(sizeof(*current_bad_oid));
-		hashcpy(current_bad_oid->sha1, sha1);
+		hashcpy(current_bad_oid->sha1, oid->sha1);
 	} else if (starts_with(refname, "good-")) {
-		sha1_array_append(&good_revs, sha1);
+		sha1_array_append(&good_revs, oid->sha1);
 	} else if (starts_with(refname, "skip-")) {
-		sha1_array_append(&skipped_revs, sha1);
+		sha1_array_append(&skipped_revs, oid->sha1);
 	}
 
 	return 0;
