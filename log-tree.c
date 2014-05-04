@@ -93,26 +93,26 @@ static void add_name_decoration(enum decoration_type type, const char *name, str
 	res->next = add_decoration(&name_decoration, obj, res);
 }
 
-static int add_ref_decoration(const char *refname, const unsigned char *sha1, int flags, void *cb_data)
+static int add_ref_decoration(const char *refname, const struct object_id *oid, int flags, void *cb_data)
 {
 	struct object *obj;
 	enum decoration_type type = DECORATION_NONE;
 
 	if (starts_with(refname, "refs/replace/")) {
-		unsigned char original_sha1[20];
+		struct object_id original_oid;
 		if (!check_replace_refs)
 			return 0;
-		if (get_sha1_hex(refname + 13, original_sha1)) {
+		if (get_sha1_hex(refname + 13, original_oid.sha1)) {
 			warning("invalid replace ref %s", refname);
 			return 0;
 		}
-		obj = parse_object(original_sha1);
+		obj = parse_object(original_oid.sha1);
 		if (obj)
 			add_name_decoration(DECORATION_GRAFTED, "replaced", obj);
 		return 0;
 	}
 
-	obj = parse_object(sha1);
+	obj = parse_object(oid->sha1);
 	if (!obj)
 		return 0;
 
@@ -141,10 +141,6 @@ static int add_ref_decoration(const char *refname, const unsigned char *sha1, in
 	return 0;
 }
 
-static int add_ref_decoration_oid(const char *refname, const struct object_id *oid, int flags, void *cb_data)
-{
-	return add_ref_decoration(refname, oid->sha1, flags, cb_data);
-}
 
 static int add_graft_decoration(const struct commit_graft *graft, void *cb_data)
 {
@@ -160,7 +156,7 @@ void load_ref_decorations(int flags)
 	static int loaded;
 	if (!loaded) {
 		loaded = 1;
-		for_each_ref(add_ref_decoration_oid, &flags);
+		for_each_ref(add_ref_decoration, &flags);
 		head_ref(add_ref_decoration, &flags);
 		for_each_commit_graft(add_graft_decoration, NULL);
 	}

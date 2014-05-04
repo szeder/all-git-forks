@@ -51,7 +51,7 @@ typedef int each_ref_fn_oid(const char *refname,
  * modifies the reference also returns a nonzero value to immediately
  * stop the iteration.
  */
-extern int head_ref(each_ref_fn, void *);
+extern int head_ref(each_ref_fn_oid, void *);
 extern int for_each_ref(each_ref_fn_oid, void *);
 extern int for_each_ref_in(const char *, each_ref_fn, void *);
 extern int for_each_tag_ref(each_ref_fn, void *);
