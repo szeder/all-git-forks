@@ -14,6 +14,7 @@
 #include "resolve-undo.h"
 #include "strbuf.h"
 #include "varint.h"
+#include "hash-io.h"
 
 static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
 					       unsigned int options);
@@ -1565,73 +1566,13 @@ int unmerged_index(const struct index_state *istate)
 	return 0;
 }
 
-#define WRITE_BUFFER_SIZE 8192
-static unsigned char write_buffer[WRITE_BUFFER_SIZE];
-static unsigned long write_buffer_len;
-
-static int ce_write_flush(git_SHA_CTX *context, int fd)
-{
-	unsigned int buffered = write_buffer_len;
-	if (buffered) {
-		git_SHA1_Update(context, write_buffer, buffered);
-		if (write_in_full(fd, write_buffer, buffered) != buffered)
-			return -1;
-		write_buffer_len = 0;
-	}
-	return 0;
-}
-
-static int ce_write(git_SHA_CTX *context, int fd, void *data, unsigned int len)
-{
-	while (len) {
-		unsigned int buffered = write_buffer_len;
-		unsigned int partial = WRITE_BUFFER_SIZE - buffered;
-		if (partial > len)
-			partial = len;
-		memcpy(write_buffer + buffered, data, partial);
-		buffered += partial;
-		if (buffered == WRITE_BUFFER_SIZE) {
-			write_buffer_len = buffered;
-			if (ce_write_flush(context, fd))
-				return -1;
-			buffered = 0;
-		}
-		write_buffer_len = buffered;
-		len -= partial;
-		data = (char *) data + partial;
-	}
-	return 0;
-}
-
-static int write_index_ext_header(git_SHA_CTX *context, int fd,
+static int write_index_ext_header(struct hash_context *context, int fd,
 				  unsigned int ext, unsigned int sz)
 {
 	ext = htonl(ext);
 	sz = htonl(sz);
-	return ((ce_write(context, fd, &ext, 4) < 0) ||
-		(ce_write(context, fd, &sz, 4) < 0)) ? -1 : 0;
-}
-
-static int ce_flush(git_SHA_CTX *context, int fd)
-{
-	unsigned int left = write_buffer_len;
-
-	if (left) {
-		write_buffer_len = 0;
-		git_SHA1_Update(context, write_buffer, left);
-	}
-
-	/* Flush first if not enough space for SHA1 signature */
-	if (left + 20 > WRITE_BUFFER_SIZE) {
-		if (write_in_full(fd, write_buffer, left) != left)
-			return -1;
-		left = 0;
-	}
-
-	/* Append the SHA1 signature at the end */
-	git_SHA1_Final(write_buffer + left, context);
-	left += 20;
-	return (write_in_full(fd, write_buffer, left) != left) ? -1 : 0;
+	return ((write_with_hash(context, fd, &ext, 4) < 0) ||
+		(write_with_hash(context, fd, &sz, 4) < 0)) ? -1 : 0;
 }
 
 static void ce_smudge_racily_clean_entry(struct cache_entry *ce)
@@ -1715,7 +1656,7 @@ static char *copy_cache_entry_to_ondisk(struct ondisk_cache_entry *ondisk,
 	}
 }
 
-static int ce_write_entry(git_SHA_CTX *c, int fd, struct cache_entry *ce,
+static int ce_write_entry(struct hash_context *c, int fd, struct cache_entry *ce,
 			  struct strbuf *previous_name)
 {
 	int size;
@@ -1755,7 +1696,7 @@ static int ce_write_entry(git_SHA_CTX *c, int fd, struct cache_entry *ce,
 			      ce->name + common, ce_namelen(ce) - common);
 	}
 
-	result = ce_write(c, fd, ondisk, size);
+	result = write_with_hash(c, fd, ondisk, size);
 	free(ondisk);
 	return result;
 }
@@ -1787,7 +1728,7 @@ void update_index_if_able(struct index_state *istate, struct lock_file *lockfile
 
 int write_index(struct index_state *istate, int newfd)
 {
-	git_SHA_CTX c;
+	struct hash_context c;
 	struct cache_header hdr;
 	int i, err, removed, extended, hdr_version;
 	struct cache_entry **cache = istate->cache;
@@ -1820,8 +1761,9 @@ int write_index(struct index_state *istate, int newfd)
 	hdr.hdr_version = htonl(hdr_version);
 	hdr.hdr_entries = htonl(entries - removed);
 
-	git_SHA1_Init(&c);
-	if (ce_write(&c, newfd, &hdr, sizeof(hdr)) < 0)
+	hash_context_init(&c);
+
+	if (write_with_hash(&c, newfd, &hdr, sizeof(hdr)) < 0)
 		return -1;
 
 	previous_name = (hdr_version == 4) ? &previous_name_buf : NULL;
@@ -1853,7 +1795,7 @@ int write_index(struct index_state *istate, int newfd)
 
 		cache_tree_write(&sb, istate->cache_tree);
 		err = write_index_ext_header(&c, newfd, CACHE_EXT_TREE, sb.len) < 0
-			|| ce_write(&c, newfd, sb.buf, sb.len) < 0;
+			|| write_with_hash(&c, newfd, sb.buf, sb.len) < 0;
 		strbuf_release(&sb);
 		if (err)
 			return -1;
@@ -1864,16 +1806,18 @@ int write_index(struct index_state *istate, int newfd)
 		resolve_undo_write(&sb, istate->resolve_undo);
 		err = write_index_ext_header(&c, newfd, CACHE_EXT_RESOLVE_UNDO,
 					     sb.len) < 0
-			|| ce_write(&c, newfd, sb.buf, sb.len) < 0;
+			|| write_with_hash(&c, newfd, sb.buf, sb.len) < 0;
 		strbuf_release(&sb);
 		if (err)
 			return -1;
 	}
 
-	if (ce_flush(&c, newfd) || fstat(newfd, &st))
+	if (write_with_hash_flush(&c, newfd) || fstat(newfd, &st))
 		return -1;
 	istate->timestamp.sec = (unsigned int)st.st_mtime;
 	istate->timestamp.nsec = ST_MTIME_NSEC(st);
+	hash_context_release(&c);
+
 	return 0;
 }
 
