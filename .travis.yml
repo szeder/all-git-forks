@@ -1,7 +1,7 @@
 language: python
 
 install:
-  - pip install -q Mercurial${HG_VERSION+==$HG_VERSION} || true
+  - if [ "$HG_VERSION" != "dev" ]; then pip install -q Mercurial${HG_VERSION+==$HG_VERSION}; else pip install -q -e hg+http://selenic.com/hg#egg=Mercurial; fi
   - pip install -q --allow-external bzr --allow-unverified bzr bzr${BZR_VERSION+==$BZR_VERSION} || true
   - pip install -q dulwich hg-git || true
 
@@ -27,6 +27,7 @@ matrix:
     - env: HG_VERSION=2.8.2
     - env: HG_VERSION=2.7.2
     - env: HG_VERSION=3.0
+    - env: HG_VERSION=dev
     - python: 2.7
       env: TEST='t5810-remote-hg.sh t5811-remote-hg-bidi.sh t5812-remote-hg-hg-git.sh t5820-remote-bzr.sh'
     - python: 2.6
