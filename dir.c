@@ -14,6 +14,8 @@
 #include "pathspec.h"
 #include "varint.h"
 
+#define TRACE_KEY "GIT_TRACE_UNTRACKED"
+
 struct path_simplify {
 	int len;
 	const char *path;
@@ -1929,6 +1931,16 @@ int read_directory(struct dir_struct *dir, const char *path, int len, const stru
 	free_simplify(simplify);
 	qsort(dir->entries, dir->nr, sizeof(struct dir_entry *), cmp_name);
 	qsort(dir->ignored, dir->ignored_nr, sizeof(struct dir_entry *), cmp_name);
+	if (dir->untracked) {
+		trace_printf_key(TRACE_KEY, "node creation: %u\n",
+				 dir->untracked->dir_created);
+		trace_printf_key(TRACE_KEY, "gitignore invalidation: %u\n",
+				 dir->untracked->gitignore_invalidated);
+		trace_printf_key(TRACE_KEY, "directory invalidation: %u\n",
+				 dir->untracked->dir_invalidated);
+		trace_printf_key(TRACE_KEY, "opendir: %u\n",
+				 dir->untracked->dir_opened);
+	}
 	return dir->nr;
 }
 
