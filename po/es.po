@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-04 22:06+0200\n"
+"PO-Revision-Date: 2014-05-05 21:52+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -1011,7 +1011,7 @@ msgstr[0] ""
 "Su rama y '%s' han divergido,\n"
 "y tienen, respectivamente, %d y %d commits diferentes.\n"
 msgstr[1] ""
-"Su rafa y '%s' han divergido,\n"
+"Su rama y '%s' han divergido,\n"
 "y tienen, repectivamente, %d y %d commits diferentes.\n"
 
 #: remote.c:1989
@@ -2486,7 +2486,7 @@ msgstr ""
 
 #: builtin/blame.c:2245
 msgid "Show work cost statistics"
-msgstr ""
+msgstr "Muestra estadísticas del coste de trabajo"
 
 #: builtin/blame.c:2246
 msgid "Show output score for blame entries"
@@ -2586,6 +2586,8 @@ msgid ""
 "deleting branch '%s' that has been merged to\n"
 "         '%s', but not yet merged to HEAD."
 msgstr ""
+"voy a borrar la rama '%s', que ha sido fusionada con\n"
+"         '%s', pero todavía no con la CABEZA [HEAD]."
 
 #: builtin/branch.c:154
 #, c-format
@@ -2593,6 +2595,8 @@ msgid ""
 "not deleting branch '%s' that is not yet merged to\n"
 "         '%s', even though it is merged to HEAD."
 msgstr ""
+"no voy a borrar la rama '%s', que aún no está fusionada con\n"
+"         '%s', aunque ya está fusionada con la CABEZA [HEAD]."
 
 #: builtin/branch.c:168
 #, c-format
@@ -2605,6 +2609,8 @@ msgid ""
 "The branch '%s' is not fully merged.\n"
 "If you are sure you want to delete it, run 'git branch -D %s'."
 msgstr ""
+"La rama '%s' no está completamente fusionada.\n"
+"Si está seguro/a de que la quiere borrar, ejecute 'git branch -D %s'."
 
 #: builtin/branch.c:185
 msgid "Update of config-file failed"
@@ -2816,11 +2822,11 @@ msgstr ""
 
 #: builtin/branch.c:833
 msgid "delete fully merged branch"
-msgstr ""
+msgstr "borra una rama completamente fusionada"
 
 #: builtin/branch.c:834
 msgid "delete branch (even if not merged)"
-msgstr ""
+msgstr "borra una rama (aunque no esté fusionada)"
 
 #: builtin/branch.c:835
 msgid "move/rename a branch and its reflog"
@@ -2828,7 +2834,7 @@ msgstr ""
 
 #: builtin/branch.c:836
 msgid "move/rename a branch, even if target exists"
-msgstr ""
+msgstr "mueve/renombra una rama, aunque exista la rama destino"
 
 #: builtin/branch.c:837
 msgid "list branch names"
@@ -2848,11 +2854,11 @@ msgstr ""
 
 #: builtin/branch.c:844
 msgid "print only not merged branches"
-msgstr ""
+msgstr "imprime sólo ramas no fusionadas"
 
 #: builtin/branch.c:850
 msgid "print only merged branches"
-msgstr ""
+msgstr "imprime sólo ramas fusionadas"
 
 #: builtin/branch.c:854
 msgid "list branches in columns"
