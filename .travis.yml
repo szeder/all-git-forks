@@ -1,7 +1,7 @@
 language: python
 
 install:
-  - if [ "$HG_VERSION" != "dev" ]; then pip install -q Mercurial${HG_VERSION+==$HG_VERSION}; else pip install -q -e hg+http://selenic.com/hg#egg=Mercurial; fi
+  - if [ "$HG_VERSION" != "dev" ]; then pip install -q Mercurial${HG_VERSION+==$HG_VERSION}; else pip install -q http://selenic.com/repo/hg/archive/tip.tar.gz; fi
   - pip install -q --allow-external bzr --allow-unverified bzr bzr${BZR_VERSION+==$BZR_VERSION} || true
   - pip install -q dulwich hg-git || true
 
