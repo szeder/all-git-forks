@@ -677,7 +677,9 @@ static int add_excludes(const char *fname,
 			    !ce_stage(active_cache[pos]) &&
 			    ce_uptodate(active_cache[pos]))
 				hashcpy(sha1, active_cache[pos]->sha1);
-			else if (ref_stat && !match_stat_data(ref_stat, &st)) {
+			else if (ref_stat &&
+				 !match_stat_data_racy(&the_index,
+						       ref_stat, &st)) {
 				if (ref_sha1 != sha1) /* support ref_sha1 == sha1 */
 					hashcpy(sha1, ref_sha1);
 			} else
@@ -1543,7 +1545,7 @@ static int valid_cached_dir(struct dir_struct *dir,
 		return 0;
 	}
 	if (!untracked->valid ||
-	    match_stat_data(&untracked->stat_data, &st)) {
+	    match_stat_data_racy(&the_index, &untracked->stat_data, &st)) {
 		if (untracked->valid)
 			invalidate_directory(dir->untracked, untracked);
 		fill_stat_data(&untracked->stat_data, &st);
