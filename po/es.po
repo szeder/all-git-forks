@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-05 21:52+0200\n"
+"PO-Revision-Date: 2014-05-06 21:54+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -2316,19 +2316,19 @@ msgstr "en lugar de aplicar el parche, comprueba si es aplicable"
 
 #: builtin/apply.c:4379
 msgid "make sure the patch is applicable to the current index"
-msgstr ""
+msgstr "se asegura de que el parche es aplicable al índice actual"
 
 #: builtin/apply.c:4381
 msgid "apply a patch without touching the working tree"
-msgstr ""
+msgstr "aplica un parche sin tocar el árbol de trabajo"
 
 #: builtin/apply.c:4383
 msgid "also apply the patch (use with --stat/--summary/--check)"
-msgstr ""
+msgstr "además, aplica el parche (úselo con --stat/--summary/--check)"
 
 #: builtin/apply.c:4385
 msgid "attempt three-way merge if a patch does not apply"
-msgstr ""
+msgstr "intenta fusionar a tres vías si un parche no es aplicable"
 
 #: builtin/apply.c:4387
 msgid "build a temporary index based on embedded index information"
@@ -2340,27 +2340,27 @@ msgstr ""
 
 #: builtin/apply.c:4392
 msgid "ensure at least <n> lines of context match"
-msgstr ""
+msgstr "se asegura de que coincidan al menos <n> líneas de contexto"
 
 #: builtin/apply.c:4393
 msgid "action"
-msgstr ""
+msgstr "acción"
 
 #: builtin/apply.c:4394
 msgid "detect new or modified lines that have whitespace errors"
-msgstr ""
+msgstr "detecta líneas nuevas o modificadas con errores de espacio-en-blanco"
 
 #: builtin/apply.c:4397 builtin/apply.c:4400
 msgid "ignore changes in whitespace when finding context"
-msgstr ""
+msgstr "ignora diferencias de espacio-en-blanco al localizar contexto"
 
 #: builtin/apply.c:4403
 msgid "apply the patch in reverse"
-msgstr ""
+msgstr "aplica el parche en orden inverso"
 
 #: builtin/apply.c:4405
 msgid "don't expect at least one line of context"
-msgstr ""
+msgstr "no espera un mínimo de una línea de contexto"
 
 #: builtin/apply.c:4407
 msgid "leave the rejected hunks in corresponding *.rej files"
