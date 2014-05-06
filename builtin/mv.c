@@ -74,7 +74,7 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 	};
 	const char **source, **destination, **dest_path, **submodule_gitfile;
 	enum update_mode { BOTH = 0, WORKING_DIRECTORY, INDEX } *modes;
-	struct stat st;
+	struct stat src_st,dst_st;
 	struct string_list src_for_dst = STRING_LIST_INIT_NODUP;
 
 	gitmodules_config();
@@ -102,8 +102,8 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 	if (dest_path[0][0] == '\0')
 		/* special case: "." was normalized to "" */
 		destination = internal_copy_pathspec(dest_path[0], argv, argc, DUP_BASENAME);
-	else if (!lstat(dest_path[0], &st) &&
-			S_ISDIR(st.st_mode)) {
+	else if (!lstat(dest_path[0], &dst_st) &&
+			S_ISDIR(dst_st.st_mode)) {
 		dest_path[0] = add_slash(dest_path[0]);
 		destination = internal_copy_pathspec(dest_path[0], argv, argc, DUP_BASENAME);
 	} else {
@@ -122,13 +122,13 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 			printf(_("Checking rename of '%s' to '%s'\n"), src, dst);
 
 		length = strlen(src);
-		if (lstat(src, &st) < 0)
+		if (lstat(src, &src_st) < 0)
 			bad = _("bad source");
 		else if (!strncmp(src, dst, length) &&
 				(dst[length] == 0 || dst[length] == '/')) {
 			bad = _("can not move directory into itself");
-		} else if ((src_is_dir = S_ISDIR(st.st_mode))
-				&& lstat(dst, &st) == 0)
+		} else if ((src_is_dir = S_ISDIR(src_st.st_mode))
+				&& lstat(dst, &dst_st) == 0)
 			bad = _("cannot move directory over file");
 		else if (src_is_dir) {
 			int first = cache_name_pos(src, length);
@@ -202,14 +202,16 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 			}
 		} else if (cache_name_pos(src, length) < 0)
 			bad = _("not under version control");
-		else if (lstat(dst, &st) == 0) {
+		else if (lstat(dst, &dst_st) == 0 &&
+			 (src_st.st_ino != dst_st.st_ino ||
+			  (src_st.st_ino == 0 && strcasecmp(src, dst)))) {
 			bad = _("destination exists");
 			if (force) {
 				/*
 				 * only files can overwrite each other:
 				 * check both source and destination
 				 */
-				if (S_ISREG(st.st_mode) || S_ISLNK(st.st_mode)) {
+				if (S_ISREG(dst_st.st_mode) || S_ISLNK(dst_st.st_mode)) {
 					if (verbose)
 						warning(_("overwriting '%s'"), dst);
 					bad = NULL;
