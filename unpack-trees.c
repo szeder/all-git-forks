@@ -8,6 +8,7 @@
 #include "progress.h"
 #include "refs.h"
 #include "attr.h"
+#include "dir.h"
 
 /*
  * Error messages expected by scripts out of plumbing commands such as
@@ -1258,8 +1259,10 @@ static int verify_uptodate_sparse(const struct cache_entry *ce,
 static void invalidate_ce_path(const struct cache_entry *ce,
 			       struct unpack_trees_options *o)
 {
-	if (ce)
-		cache_tree_invalidate_path(o->src_index->cache_tree, ce->name);
+	if (!ce)
+		return;
+	cache_tree_invalidate_path(o->src_index->cache_tree, ce->name);
+	untracked_cache_invalidate_path(o->src_index, ce->name);
 }
 
 /*
