@@ -24,7 +24,7 @@ fi
 
 check () {
 	echo $3 >expected &&
-	git --git-dir=$1/.git log --format='%s' -1 $2 >actual
+	git --git-dir=$1/.git log --format='%s' -1 $2 >actual &&
 	test_cmp expected actual
 }
 
@@ -50,6 +50,17 @@ check_bookmark () {
 		hg -R $1 bookmarks >out &&
 		! grep $2 out
 	fi
+}
+
+check_files () {
+	git --git-dir=$1/.git ls-files > actual &&
+	if test $# -gt 1
+	then
+		printf "%s\n" "$2" > expected
+	else
+		> expected
+	fi &&
+	test_cmp expected actual
 }
 
 check_push () {
@@ -91,12 +102,12 @@ check_push () {
 }
 
 setup () {
-	(
-	echo "[ui]"
-	echo "username = H G Wells <wells@example.com>"
-	echo "[extensions]"
-	echo "mq ="
-	) >>"$HOME"/.hgrc &&
+	cat >>"$HOME"/.hgrc <<-EOF &&
+	[ui]
+	username = H G Wells <wells@example.com>
+	[extensions]
+	mq =
+	EOF
 
 	GIT_AUTHOR_DATE="2007-01-01 00:00:00 +0230" &&
 	GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE" &&
@@ -795,6 +806,221 @@ test_expect_success 'clone remote with null bookmark, then push' '
 		git commit -m b &&
 		git push origin bookmark
 	)
+'
+
+test_expect_success 'notes' '
+	test_when_finished "rm -rf hgrepo gitrepo" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+	echo one > content &&
+	hg add content &&
+	hg commit -m one &&
+	echo two > content &&
+	hg commit -m two
+	) &&
+
+	git clone "hg::hgrepo" gitrepo &&
+	hg -R hgrepo log --template "{node}\n\n" > expected &&
+	git --git-dir=gitrepo/.git log --pretty="tformat:%N" --notes=hg > actual &&
+	test_cmp expected actual
+'
+
+test_expect_failure 'push updates notes' '
+	test_when_finished "rm -rf hgrepo gitrepo" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+	echo one > content &&
+	hg add content &&
+	hg commit -m one
+	) &&
+
+	git clone "hg::hgrepo" gitrepo &&
+
+	(
+	cd gitrepo &&
+	echo two > content &&
+	git commit -a -m two
+	git push
+	) &&
+
+	hg -R hgrepo log --template "{node}\n\n" > expected &&
+	git --git-dir=gitrepo/.git log --pretty="tformat:%N" --notes=hg > actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'pull tags' '
+	test_when_finished "rm -rf hgrepo gitrepo" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+	echo one > content &&
+	hg add content &&
+	hg commit -m one
+	) &&
+
+	git clone "hg::hgrepo" gitrepo &&
+
+	(cd hgrepo && hg tag v1.0) &&
+	(cd gitrepo && git pull) &&
+
+	echo "v1.0" > expected &&
+	git --git-dir=gitrepo/.git tag > actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'push merged named branch' '
+	test_when_finished "rm -rf hgrepo gitrepo" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+	echo one > content &&
+	hg add content &&
+	hg commit -m one &&
+	hg branch feature &&
+	echo two > content &&
+	hg commit -m two &&
+	hg update default &&
+	echo three > content &&
+	hg commit -m three
+	) &&
+
+	(
+	git clone "hg::hgrepo" gitrepo &&
+	cd gitrepo &&
+	git merge -m Merge -Xtheirs origin/branches/feature &&
+	git push
+	) &&
+
+	cat >expected <<-EOF &&
+	Merge
+	three
+	two
+	one
+	EOF
+	hg -R hgrepo log --template "{desc}\n" > actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'light tag sets author' '
+	test_when_finished "rm -rf hgrepo gitrepo" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+	echo one > content &&
+	hg add content &&
+	hg commit -m one
+	) &&
+
+	(
+	git clone "hg::hgrepo" gitrepo &&
+	cd gitrepo &&
+	git tag v1.0 &&
+	git push --tags
+	) &&
+
+	echo "C O Mitter <committer@example.com>" > expected &&
+	hg -R hgrepo log --template "{author}\n" -r tip > actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'push tag different branch' '
+	test_when_finished "rm -rf hgrepo gitrepo" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+	echo one > content &&
+	hg add content &&
+	hg commit -m one
+	hg branch feature &&
+	echo two > content &&
+	hg commit -m two
+	) &&
+
+	(
+	git clone "hg::hgrepo" gitrepo &&
+	cd gitrepo &&
+	git branch &&
+	git checkout branches/feature &&
+	git tag v1.0 &&
+	git push --tags
+	) &&
+
+	echo feature > expected &&
+	hg -R hgrepo log --template="{branch}\n" -r tip > actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'cloning a removed file works' '
+	test_when_finished "rm -rf hgrepo gitrepo" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+
+	echo test > test_file &&
+	hg add test_file &&
+	hg commit -m add &&
+
+	hg rm test_file &&
+	hg commit -m remove
+	) &&
+
+	git clone "hg::hgrepo" gitrepo &&
+	check_files gitrepo
+'
+
+test_expect_success 'cloning a file replaced with a directory' '
+	test_when_finished "rm -rf hgrepo gitrepo" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+
+	echo test > dir_or_file &&
+	hg add dir_or_file &&
+	hg commit -m add &&
+
+	hg rm dir_or_file &&
+	mkdir dir_or_file &&
+	echo test > dir_or_file/test_file &&
+	hg add dir_or_file/test_file &&
+	hg commit -m replase
+	) &&
+
+	git clone "hg::hgrepo" gitrepo &&
+	check_files gitrepo "dir_or_file/test_file"
+'
+
+test_expect_success 'clone replace directory with a file' '
+	test_when_finished "rm -rf hgrepo gitrepo" &&
+
+	(
+	hg init hgrepo &&
+	cd hgrepo &&
+
+	mkdir dir_or_file &&
+	echo test > dir_or_file/test_file &&
+	hg add dir_or_file/test_file &&
+	hg commit -m add &&
+
+	hg rm dir_or_file/test_file &&
+	echo test > dir_or_file &&
+	hg add dir_or_file &&
+	hg commit -m add &&
+
+	hg rm dir_or_file
+	) &&
+
+	git clone "hg::hgrepo" gitrepo &&
+	check_files gitrepo "dir_or_file"
 '
 
 test_done
