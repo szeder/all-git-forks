@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-06 21:54+0200\n"
+"PO-Revision-Date: 2014-05-07 22:44+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -1867,7 +1867,7 @@ msgstr "ensayo"
 #: builtin/commit.c:1256 builtin/count-objects.c:95 builtin/fsck.c:612
 #: builtin/log.c:1592 builtin/mv.c:69 builtin/read-tree.c:113
 msgid "be verbose"
-msgstr "sé verboso"
+msgstr "es verboso"
 
 #: builtin/add.c:251
 msgid "interactive picking"
@@ -2085,13 +2085,13 @@ msgstr "comienzo de línea inválido: '%c'"
 #, c-format
 msgid "Hunk #%d succeeded at %d (offset %d line)."
 msgid_plural "Hunk #%d succeeded at %d (offset %d lines)."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "El trozo #%d ha tenido éxito en %d (desplazamiento %d línea)."
+msgstr[1] "El trozo #%d ha tenido éxito en %d (desplazamiento %d líneas)."
 
 #: builtin/apply.c:2818
 #, c-format
 msgid "Context reduced to (%ld/%ld) to apply fragment at %d"
-msgstr ""
+msgstr "Contexto reducido a (%ld/%ld) para aplicar fragmento en %d"
 
 #: builtin/apply.c:2824
 #, c-format
@@ -2108,12 +2108,12 @@ msgstr "faltan datos de parche binario para '%s'"
 #: builtin/apply.c:2946
 #, c-format
 msgid "binary patch does not apply to '%s'"
-msgstr ""
+msgstr "el parche binario no es aplicable a '%s'"
 
 #: builtin/apply.c:2952
 #, c-format
 msgid "binary patch to '%s' creates incorrect result (expecting %s, got %s)"
-msgstr ""
+msgstr "el parche binario a '%s' da un resultado incorrecto (esperado %s, obtenido %s)"
 
 #: builtin/apply.c:2973
 #, c-format
@@ -2157,12 +2157,12 @@ msgstr ""
 #: builtin/apply.c:3435
 #, c-format
 msgid "%s: wrong type"
-msgstr ""
+msgstr "%s: tipo incorrecto"
 
 #: builtin/apply.c:3437
 #, c-format
 msgid "%s has type %o, expected %o"
-msgstr ""
+msgstr "%s tiene tipo %o, esperado %o"
 
 #: builtin/apply.c:3538
 #, c-format
@@ -2187,7 +2187,7 @@ msgstr ""
 #: builtin/apply.c:3574
 #, c-format
 msgid "%s: patch does not apply"
-msgstr ""
+msgstr "%s: el parche no es aplicable"
 
 #: builtin/apply.c:3587
 #, c-format
@@ -2197,7 +2197,7 @@ msgstr "Comprobando parche %s..."
 #: builtin/apply.c:3680 builtin/checkout.c:213 builtin/reset.c:134
 #, c-format
 msgid "make_cache_entry failed for path '%s'"
-msgstr ""
+msgstr "error de make_cache_entry para la ruta '%s'"
 
 #: builtin/apply.c:3823
 #, c-format
@@ -2207,12 +2207,12 @@ msgstr "no puedo eliminar %s del índice"
 #: builtin/apply.c:3851
 #, c-format
 msgid "corrupt patch for submodule %s"
-msgstr ""
+msgstr "parche corrupto para el submódulo %s"
 
 #: builtin/apply.c:3855
 #, c-format
 msgid "unable to stat newly created file '%s'"
-msgstr ""
+msgstr "no puedo obtener el estado del fichero recién creado '%s'"
 
 #: builtin/apply.c:3860
 #, c-format
@@ -2253,7 +2253,7 @@ msgstr[1] ""
 #: builtin/apply.c:4053
 #, c-format
 msgid "truncating .rej filename to %.*s.rej"
-msgstr ""
+msgstr "truncando el nombre del fichero .rej a %.*s.rej"
 
 #: builtin/apply.c:4074
 #, c-format
@@ -2271,7 +2271,7 @@ msgstr "entrada no identificada"
 
 #: builtin/apply.c:4238
 msgid "unable to read index file"
-msgstr ""
+msgstr "no puedo leer el fichero índice"
 
 #: builtin/apply.c:4357 builtin/apply.c:4360 builtin/clone.c:90
 #: builtin/fetch.c:78
@@ -2364,11 +2364,11 @@ msgstr "no espera un mínimo de una línea de contexto"
 
 #: builtin/apply.c:4407
 msgid "leave the rejected hunks in corresponding *.rej files"
-msgstr ""
+msgstr "deja los trozos rechazados en ficheros *.rej"
 
 #: builtin/apply.c:4409
 msgid "allow overlapping hunks"
-msgstr ""
+msgstr "permite trozos solapados"
 
 #: builtin/apply.c:4412
 msgid "tolerate incorrectly detected missing new-line at the end of file"
@@ -2376,32 +2376,32 @@ msgstr ""
 
 #: builtin/apply.c:4415
 msgid "do not trust the line counts in the hunk headers"
-msgstr ""
+msgstr "no confía en los contadores de líneas de las cabeceras de los trozos"
 
 #: builtin/apply.c:4417
 msgid "root"
-msgstr ""
+msgstr "raíz"
 
 #: builtin/apply.c:4418
 msgid "prepend <root> to all filenames"
-msgstr ""
+msgstr "antepone <raíz> a todos los nombres de ficheros"
 
 #: builtin/apply.c:4440
 msgid "--3way outside a repository"
-msgstr ""
+msgstr "--3way fuera de repositorio"
 
 #: builtin/apply.c:4448
 msgid "--index outside a repository"
-msgstr ""
+msgstr "--index fuera de repositorio"
 
 #: builtin/apply.c:4451
 msgid "--cached outside a repository"
-msgstr ""
+msgstr "--cached fuera de repositorio"
 
 #: builtin/apply.c:4467
 #, c-format
 msgid "can't open patch '%s'"
-msgstr ""
+msgstr "no puedo abrir el parche '%s'"
 
 #: builtin/apply.c:4481
 #, c-format
@@ -2414,8 +2414,8 @@ msgstr[1] ""
 #, c-format
 msgid "%d line adds whitespace errors."
 msgid_plural "%d lines add whitespace errors."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d línea añade errores de espacio-en-blanco."
+msgstr[1] "%d líneas añaden errores de espacio-en-blanco."
 
 #: builtin/archive.c:17
 #, c-format
@@ -2424,7 +2424,7 @@ msgstr ""
 
 #: builtin/archive.c:20
 msgid "could not redirect output"
-msgstr ""
+msgstr "no he podido redireccionar la salida"
 
 #: builtin/archive.c:37
 msgid "git archive: Remote with no URL"
