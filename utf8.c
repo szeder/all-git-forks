@@ -519,7 +519,7 @@ char *reencode_string_iconv(const char *in, size_t insz, iconv_t conv, int *outs
 	char *out, *outpos;
 	iconv_ibp cp;
 
-	outsz = insz;
+	outsz = 3*insz; /* for decompose */
 	outalloc = outsz + 1; /* for terminating NUL */
 	out = xmalloc(outalloc);
 	outpos = out;
