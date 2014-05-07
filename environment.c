@@ -81,6 +81,7 @@ static const char *namespace;
 static size_t namespace_len;
 
 static const char *git_dir;
+static int fs_cache_file_relative;
 static char *git_object_dir, *git_index_file, *git_graft_file, *git_fs_cache_file;
 
 /*
@@ -145,10 +146,9 @@ static void setup_git_env(void)
 	}
 	git_fs_cache_file = getenv(FS_CACHE_ENVIRONMENT);
 	if (!git_fs_cache_file) {
-		char *fs_cache_file = xmalloc(strlen(git_dir) + 10);
-		sprintf(fs_cache_file, "%s/fs_cache", git_dir);
-		git_fs_cache_file = xstrdup(real_path(fs_cache_file));
-		free(fs_cache_file);
+		git_fs_cache_file = xmalloc(strlen(git_dir) + 10);
+		sprintf(git_fs_cache_file, "%s/fs_cache", git_dir);
+		fs_cache_file_relative = 1;
 	}
 	git_graft_file = getenv(GRAFT_ENVIRONMENT);
 	if (!git_graft_file)
@@ -277,6 +277,12 @@ char *get_fs_cache_file(void)
 {
 	if (!git_fs_cache_file)
 		setup_git_env();
+	if (fs_cache_file_relative) {
+		char *abs_fs_cache_file = strdup(real_path(git_fs_cache_file));
+		free(git_fs_cache_file);
+		git_fs_cache_file = abs_fs_cache_file;
+		fs_cache_file_relative = 0;
+	}
 	return git_fs_cache_file;
 }
 
