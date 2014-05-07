@@ -882,6 +882,12 @@ static int sequencer_rollback(struct replay_opts *opts)
 	FILE *f;
 	unsigned char sha1[20];
 	struct strbuf buf = STRBUF_INIT;
+	struct string_list merge_rr = STRING_LIST_INIT_DUP;
+
+	if (setup_rerere(&merge_rr, 0) >= 0) {
+		rerere_clear(&merge_rr);
+		string_list_clear(&merge_rr, 1);
+	}
 
 	f = fopen(git_path_head_file(), "r");
 	if (!f && errno == ENOENT) {
