@@ -669,10 +669,10 @@ static void update_refs_for_switch(const struct checkout_opts *opts,
 					new->name);
 			}
 		}
-		if (old->path && old->name &&
-		    !file_exists(git_path("%s", old->path)) &&
-		     file_exists(git_path("logs/%s", old->path)))
-			remove_path(git_path("logs/%s", old->path));
+		if (old->path && old->name) {
+			if (!ref_exists(old->path) && reflog_exists(old->path))
+				delete_reflog(old->path);
+		}
 	}
 	remove_branch_state();
 	strbuf_release(&msg);
