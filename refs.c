@@ -3517,7 +3517,8 @@ int for_each_reflog(each_ref_fn fn, void *cb_data)
 }
 
 enum transaction_update_type {
-	UPDATE_SHA1 = 0
+	UPDATE_SHA1 = 0,
+	UPDATE_LOG = 1
 };
 
 /**
@@ -3530,11 +3531,18 @@ struct ref_update {
 	enum transaction_update_type update_type;
 	unsigned char new_sha1[20];
 	unsigned char old_sha1[20];
-	int flags; /* REF_NODEREF? */
+	int flags;  /* The flags to transaction_update_ref[log] are defined
+		     * in refs.h
+		     */
 	int have_old; /* 1 if old_sha1 is valid, 0 otherwise */
 	struct ref_lock *lock;
 	int type;
 	char *msg;
+
+	/* used by reflog updates */
+	char *tmp_reflog;
+	int reflog_fd;
+
 	const char refname[FLEX_ARRAY];
 };
 
@@ -3580,6 +3588,7 @@ void transaction_free(struct transaction *transaction)
 		return;
 
 	for (i = 0; i < transaction->nr; i++) {
+		free(transaction->updates[i]->tmp_reflog);
 		free(transaction->updates[i]->msg);
 		free(transaction->updates[i]);
 	}
@@ -3599,6 +3608,116 @@ static struct ref_update *add_update(struct transaction *transaction,
 	ALLOC_GROW(transaction->updates, transaction->nr + 1, transaction->alloc);
 	transaction->updates[transaction->nr++] = update;
 	return update;
+}
+
+int transaction_update_reflog(struct transaction *transaction,
+			      const char *refname,
+			      const unsigned char *new_sha1,
+			      const unsigned char *old_sha1,
+			      const char *email,
+			      unsigned long timestamp, int tz,
+			      const char *msg, int flags,
+			      struct strbuf *err)
+{
+	struct ref_update *update;
+	struct strbuf buf = STRBUF_INIT;
+	int i;
+
+	if (transaction->state != TRANSACTION_OPEN)
+		die("BUG: update_reflog called for transaction that is not open");
+
+	/* Check if there is another reflog update for this ref already. */
+	for (i = 0; transaction->nr > 0 && i < transaction->nr; i++) {
+		if (transaction->updates[i]->update_type != UPDATE_LOG)
+			continue;
+		if (!strcmp(transaction->updates[i]->refname,
+			    refname)) {
+			break;
+		}
+	}
+	/* When starting the transaction or when we did not find the ref,
+	 * we will need to create a new temporary file. */
+	if (transaction->nr == 0 || i == transaction->nr) {
+		int orig_fd;
+		update = add_update(transaction, refname, UPDATE_LOG);
+
+		orig_fd = open(git_path("logs/%s", refname), O_RDONLY);
+		if (orig_fd < 0) {
+			const char *str = "Cannot open reflog for '%s'. %s";
+
+			strbuf_addf(err, str, refname, strerror(errno));
+			transaction->state = TRANSACTION_CLOSED;
+			return 1;
+		}
+
+		update->tmp_reflog = xstrdup(git_path(".tmp_reflog_XXXXXX"));
+		update->reflog_fd = mkstemp(update->tmp_reflog);
+		if (update->reflog_fd == -1) {
+			const char *str = "Could not create temporary "
+			  "reflog for '%s'. %s";
+
+			close(orig_fd);
+			strbuf_addf(err, str, refname, strerror(errno));
+			transaction->state = TRANSACTION_CLOSED;
+			return 1;
+		}
+		if (adjust_shared_perm(update->tmp_reflog)) {
+			strbuf_addf(err, "Could not fix permission bits for "
+				    "reflog: %s. %s",
+				    update->tmp_reflog, strerror(errno));
+			close(orig_fd);
+			unlink_or_warn(update->tmp_reflog);
+			close(update->reflog_fd);
+			update->reflog_fd = -1;
+			transaction->state = TRANSACTION_CLOSED;
+			return 1;
+		}
+		if (copy_fd(orig_fd, update->reflog_fd)) {
+			strbuf_addf(err, "Could not copy reflog: %s. %s",
+				    refname, strerror(errno));
+			close(orig_fd);
+			unlink_or_warn(update->tmp_reflog);
+			close(update->reflog_fd);
+			update->reflog_fd = -1;
+			transaction->state = TRANSACTION_CLOSED;
+			return 1;
+		}
+		close(orig_fd);
+	} else {
+		update = transaction->updates[i];
+	}
+
+	if (flags & REFLOG_TRUNCATE) {
+		if (lseek(update->reflog_fd, 0, SEEK_SET) < 0 ||
+			ftruncate(update->reflog_fd, 0)) {
+			strbuf_addf(err, "Could not truncate reflog: %s. %s",
+				    refname, strerror(errno));
+			unlink_or_warn(update->tmp_reflog);
+			close(update->reflog_fd);
+			update->reflog_fd = -1;
+			transaction->state = TRANSACTION_CLOSED;
+			return 1;
+		}
+	}
+	if (email)
+		strbuf_addf(&buf, "%s %lu %+05d", email, timestamp, tz);
+
+	if (msg &&
+	    log_ref_write_fd(update->reflog_fd,
+			     old_sha1, new_sha1,
+			     buf.buf, msg)) {
+		strbuf_addf(err, "Could not write to reflog: %s. %s",
+			    refname, strerror(errno));
+		unlink_or_warn(update->tmp_reflog);
+		close(update->reflog_fd);
+		update->reflog_fd = -1;
+		transaction->state = TRANSACTION_CLOSED;
+		strbuf_release(&buf);
+		return 1;
+	}
+	strbuf_release(&buf);
+
+	return 0;
 }
 
 int transaction_update_ref(struct transaction *transaction,
@@ -3815,6 +3934,31 @@ int transaction_commit(struct transaction *transaction,
 	}
 	for (i = 0; i < delnum; i++)
 		unlink_or_warn(git_path("logs/%s", delnames[i]));
+
+	/* Commit all reflog files */
+	for (i = 0; i < n; i++) {
+		struct ref_update *update = updates[i];
+
+		if (update->update_type != UPDATE_LOG)
+			continue;
+		if (update->reflog_fd == -1)
+			continue;
+		if (close(update->reflog_fd) == -1) {
+			error("Could not commit temporary reflog: %s. %s",
+			      update->refname, strerror(errno));
+			update->reflog_fd = -1;
+			continue;
+		}
+		update->reflog_fd = -1;
+		if (rename(update->tmp_reflog,
+			   git_path("logs/%s", update->refname))) {
+			error("Could not commit reflog: %s. %s",
+			      update->refname, strerror(errno));
+			update->reflog_fd = -1;
+			continue;
+		}
+	}
+
 	clear_loose_ref_cache(&ref_cache);
 
 cleanup:
