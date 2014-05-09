@@ -210,4 +210,4 @@ tip of your 'master' again and redo the two merges:
 		 B0--B1---------B2
 ------------
 
-See http://git-blame.blogspot.com/2012/03/fun-with-first-parent.html
+See also http://git-blame.blogspot.com/2013/09/fun-with-first-parent-history.html
