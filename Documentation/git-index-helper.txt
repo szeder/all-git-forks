@@ -1,0 +1,44 @@
+git-index-helper(1)
+===================
+
+NAME
+----
+git-index-helper - A simple cache daemon for speeding up index file access
+
+SYNOPSIS
+--------
+[verse]
+'git index-helper' [options]
+
+DESCRIPTION
+-----------
+Keep the index file in memory for faster access. This daemon is per
+repository.
+
+OPTIONS
+-------
+
+--exit-after=<n>::
+	Exit if the cached index is not accessed for `<n>`
+	minutes. Specify 0 to wait forever. Default is 10.
+
+NOTES
+-----
+On UNIX-like systems, $GIT_DIR/index-helper.pid contains the process
+id of the daemon. At least on Linux, shared memory objects are
+availble via /dev/shm with the name pattern "git-<something>-<SHA1>".
+Normally the daemon will clean up shared memory objects when it exits.
+But if it crashes, some objects could remain there and they can be
+safely deleted with "rm" command. The following signals are used to
+control the daemon:
+
+SIGHUP::
+	Reread the index.
+
+SIGUSR1::
+	Let the daemon know the index is to be read. It keeps the
+	daemon alive longer, unless `--exit-after=0` is used.
+
+GIT
+---
+Part of the linkgit:git[1] suite
