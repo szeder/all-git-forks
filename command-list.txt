@@ -29,9 +29,6 @@ git-count-objects                       ancillaryinterrogators
 git-credential                          purehelpers
 git-credential-cache                    purehelpers
 git-credential-store                    purehelpers
-git-cvsexportcommit                     foreignscminterface
-git-cvsimport                           foreignscminterface
-git-cvsserver                           foreignscminterface
 git-daemon                              synchingrepositories
 git-describe                            mainporcelain
 git-diff                                mainporcelain common

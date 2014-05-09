@@ -32,8 +32,6 @@ COMMANDS
 	Call the corresponding server-side command to support
 	the client's 'git push', 'git fetch', or 'git archive --remote'
 	request.
-'cvs server'::
-	Imitate a CVS server.  See linkgit:git-cvsserver[1].
 
 If a `~/git-shell-commands` directory is present, 'git shell' will
 also handle other, custom commands by running

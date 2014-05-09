@@ -5,11 +5,6 @@ NAME
 ----
 gitcvs-migration - Git for CVS users
 
-SYNOPSIS
---------
-[verse]
-'git cvsimport' *
-
 DESCRIPTION
 -----------
 
@@ -113,42 +108,6 @@ $ chgrp -R $group /pub/my-repo.git
 Make sure committers have a umask of at most 027, so that the directories
 they create are writable and searchable by other group members.
 
-Importing a CVS archive
------------------------
-
-First, install version 2.1 or higher of cvsps from
-http://www.cobite.com/cvsps/[http://www.cobite.com/cvsps/] and make
-sure it is in your path.  Then cd to a checked out CVS working directory
-of the project you are interested in and run linkgit:git-cvsimport[1]:
-
--------------------------------------------
-$ git cvsimport -C <destination> <module>
--------------------------------------------
-
-This puts a Git archive of the named CVS module in the directory
-<destination>, which will be created if necessary.
-
-The import checks out from CVS every revision of every file.  Reportedly
-cvsimport can average some twenty revisions per second, so for a
-medium-sized project this should not take more than a couple of minutes.
-Larger projects or remote repositories may take longer.
-
-The main trunk is stored in the Git branch named `origin`, and additional
-CVS branches are stored in Git branches with the same names.  The most
-recent version of the main trunk is also left checked out on the `master`
-branch, so you can start adding your own changes right away.
-
-The import is incremental, so if you call it again next month it will
-fetch any CVS updates that have been made in the meantime.  For this to
-work, you must not modify the imported branches; instead, create new
-branches for your own changes, and merge in the imported branches as
-necessary.
-
-If you want a shared repository, you will need to make a bare clone
-of the imported directory, as described above. Then treat the imported
-directory as another development clone for purposes of merging
-incremental imports.
-
 Advanced Shared Repository Management
 -------------------------------------
 
@@ -159,13 +118,6 @@ repository to a mailing list.  See linkgit:githooks[5].
 You can enforce finer grained permissions using update hooks.  See
 link:howto/update-hook-example.html[Controlling access to branches using
 update hooks].
-
-Providing CVS Access to a Git Repository
-----------------------------------------
-
-It is also possible to provide true CVS access to a Git repository, so
-that developers can still use CVS; see linkgit:git-cvsserver[1] for
-details.
 
 Alternative Development Models
 ------------------------------

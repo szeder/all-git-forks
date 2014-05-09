@@ -175,7 +175,7 @@ as pathnames.
 
 You should be able to say something like
 
-    $ GIT_SKIP_TESTS=t9200.8 sh ./t9200-git-cvsexport-commit.sh
+    $ GIT_SKIP_TESTS=t9200.8 sh ./t9001-send-email.sh
 
 and even:
 

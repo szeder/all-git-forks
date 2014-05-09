@@ -25,19 +25,6 @@ static int do_generic_cmd(const char *me, char *arg)
 	return execv_git_cmd(my_argv);
 }
 
-static int do_cvs_cmd(const char *me, char *arg)
-{
-	const char *cvsserver_argv[3] = {
-		"cvsserver", "server", NULL
-	};
-
-	if (!arg || strcmp(arg, "server"))
-		die("git-cvsserver only handles server: %s", arg);
-
-	setup_path();
-	return execv_git_cmd(cvsserver_argv);
-}
-
 static int is_valid_cmd_name(const char *cmd)
 {
 	/* Test command contains no . or / characters */
@@ -138,7 +125,6 @@ static struct commands {
 	{ "git-receive-pack", do_generic_cmd },
 	{ "git-upload-pack", do_generic_cmd },
 	{ "git-upload-archive", do_generic_cmd },
-	{ "cvs", do_cvs_cmd },
 	{ NULL },
 };
 
@@ -160,12 +146,7 @@ int main(int argc, char **argv)
 	 */
 	sanitize_stdfds();
 
-	/*
-	 * Special hack to pretend to be a CVS server
-	 */
-	if (argc == 2 && !strcmp(argv[1], "cvs server")) {
-		argv--;
-	} else if (argc == 1) {
+	if (argc == 1) {
 		/* Allow the user to run an interactive shell */
 		cd_to_homedir();
 		if (access(COMMAND_DIR, R_OK | X_OK) == -1) {
