@@ -517,7 +517,7 @@ core.excludesfile::
 	is used instead. See linkgit:gitignore[5].
 
 core.askpass::
-	Some commands (e.g. svn and http interfaces) that interactively
+	Some commands (e.g. http interface) that interactively
 	ask for a password can be told to use an external program given
 	via the value of this variable. Can be overridden by the 'GIT_ASKPASS'
 	environment variable. If not set, fall back to the value of the

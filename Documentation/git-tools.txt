@@ -77,12 +77,6 @@ History Viewers
 Foreign SCM interface
 ---------------------
 
-   - *git-svn* (shipped with git-core)
-
-   git-svn is a simple conduit for changesets between a single Subversion
-   branch and Git.
-
-
    - *quilt2git / git2quilt* (http://home-tj.org/wiki/index.php/Misc)
 
    These utilities convert patch series in a quilt repository and commit

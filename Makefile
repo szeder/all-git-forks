@@ -475,7 +475,6 @@ SCRIPT_PERL += git-add--interactive.perl
 SCRIPT_PERL += git-difftool.perl
 SCRIPT_PERL += git-relink.perl
 SCRIPT_PERL += git-send-email.perl
-SCRIPT_PERL += git-svn.perl
 
 NO_INSTALL += git-remote-testgit
 

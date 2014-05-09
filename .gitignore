@@ -148,7 +148,6 @@
 /git-status
 /git-stripspace
 /git-submodule
-/git-svn
 /git-symbolic-ref
 /git-tag
 /git-unpack-file

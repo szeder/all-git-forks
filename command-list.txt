@@ -115,7 +115,6 @@ git-stash                               mainporcelain
 git-status                              mainporcelain common
 git-stripspace                          purehelpers
 git-submodule                           mainporcelain
-git-svn                                 foreignscminterface
 git-symbolic-ref                        plumbingmanipulators
 git-tag                                 mainporcelain common
 git-unpack-file                         plumbinginterrogators
