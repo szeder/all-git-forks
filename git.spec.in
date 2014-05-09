@@ -15,7 +15,6 @@ Requires:	perl-Git = %{version}-%{release}
 Requires:	zlib >= 1.2, rsync, less, openssh-clients, expat
 Provides:	git-core = %{version}-%{release}
 Obsoletes:	git-core <= 1.5.4.2
-Obsoletes:	git-p4
 
 %description
 Git is a fast, scalable, distributed revision control system with an
@@ -207,6 +206,9 @@ rm -rf $RPM_BUILD_ROOT
 # No files for you!
 
 %changelog
+* Thu May 08 2013 Felipe Contreras <felipe.contreras@gmai.com>
+- Remove 'git p4'.
+
 * Thu May 08 2014 Felipe Contreras <felipe.contreras@gmail.com>
 - Remove 'git archimport'.
 
