@@ -342,6 +342,8 @@ all::
 # return NULL when it receives a bogus time_t.
 #
 # Define HAVE_CLOCK_GETTIME if your platform has clock_gettime in librt.
+#
+# Define HAVE_SHM if you platform support shm_* functions in librt.
 
 GIT-VERSION-FILE: FORCE
 	@$(SHELL_PATH) ./GIT-VERSION-GEN
@@ -877,6 +879,7 @@ LIB_OBJS += sha1-lookup.o
 LIB_OBJS += sha1_file.o
 LIB_OBJS += sha1_name.o
 LIB_OBJS += shallow.o
+LIB_OBJS += shm.o
 LIB_OBJS += sideband.o
 LIB_OBJS += sigchain.o
 LIB_OBJS += split-index.o
@@ -1468,6 +1471,12 @@ endif
 
 ifdef HAVE_DEV_TTY
 	BASIC_CFLAGS += -DHAVE_DEV_TTY
+endif
+
+ifdef HAVE_SHM
+	BASIC_CFLAGS	+= -DHAVE_SHM
+	EXTLIBS	        += -lrt
+	PROGRAM_OBJS	+= index-helper.o
 endif
 
 ifdef DIR_HAS_BSD_GROUP_SEMANTICS
