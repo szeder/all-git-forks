@@ -38,12 +38,12 @@ central repository:
     ---o---o---A---X---Y---Z
 ------------
 
-Now, if you "git push" at this point, because your history that leads
+Now, if you `git push` at this point, because your history that leads
 to `C` lacks `X`, `Y` and `Z`, it will fail.  You need to somehow make
 the tip of your history a descendant of `Z`.
 
 One suggested way to solve the problem is "fetch and then merge", aka
-"git pull". When you fetch, your repository will have a history like
+`git pull`. When you fetch, your repository will have a history like
 this:
 
 ------------
@@ -190,7 +190,7 @@ and push it back to the central repository.
 
 It is very much possible that while you are merging topic-b and
 topic-c, somebody again advanced the history in the central repository
-to put `W` on top of `Z`, and make your "git push" fail.
+to put `W` on top of `Z`, and make your `git push` fail.
 
 In such a case, you would rewind to discard `M` and `N`, update the
 tip of your 'master' again and redo the two merges:
