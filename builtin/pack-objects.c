@@ -708,7 +708,7 @@ static struct object_entry **compute_write_order(void)
 static off_t write_reused_pack(struct sha1file *f)
 {
 	unsigned char buffer[8192];
-	off_t to_write;
+	off_t to_write, total;
 	int fd;
 
 	if (!is_pack_valid(reuse_packfile))
@@ -725,7 +725,7 @@ static off_t write_reused_pack(struct sha1file *f)
 	if (reuse_packfile_offset < 0)
 		reuse_packfile_offset = reuse_packfile->pack_size - 20;
 
-	to_write = reuse_packfile_offset - sizeof(struct pack_header);
+	total = to_write = reuse_packfile_offset - sizeof(struct pack_header);
 
 	while (to_write) {
 		int read_pack = xread(fd, buffer, sizeof(buffer));
@@ -738,10 +738,23 @@ static off_t write_reused_pack(struct sha1file *f)
 
 		sha1write(f, buffer, read_pack);
 		to_write -= read_pack;
+
+		/*
+		 * We don't know the actual number of objects written,
+		 * only how many bytes written, how many bytes total, and
+		 * how many objects total. So we can fake it by pretending all
+		 * objects we are writing are the same size. This gives us a
+		 * smooth progress meter, and at the end it matches the true
+		 * answer.
+		 */
+		written = reuse_packfile_objects *
+				(((double)(total - to_write)) / total);
+		display_progress(progress_state, written);
 	}
 
 	close(fd);
-	written += reuse_packfile_objects;
+	written = reuse_packfile_objects;
+	display_progress(progress_state, written);
 	return reuse_packfile_offset - sizeof(struct pack_header);
 }
 
@@ -755,7 +768,7 @@ static void write_pack_file(void)
 	struct object_entry **write_order;
 
 	if (progress > pack_to_stdout)
-		progress_state = start_progress("Writing objects", nr_result);
+		progress_state = start_progress(_("Writing objects"), nr_result);
 	written_list = xmalloc(to_pack.nr_objects * sizeof(*written_list));
 	write_order = compute_write_order();
 
@@ -803,7 +816,7 @@ static void write_pack_file(void)
 
 		if (!pack_to_stdout) {
 			struct stat st;
-			char tmpname[PATH_MAX];
+			struct strbuf tmpname = STRBUF_INIT;
 
 			/*
 			 * Packs are runtime accessed in their mtime
@@ -823,26 +836,22 @@ static void write_pack_file(void)
 				utb.modtime = --last_mtime;
 				if (utime(pack_tmp_name, &utb) < 0)
 					warning("failed utime() on %s: %s",
-						tmpname, strerror(errno));
+						pack_tmp_name, strerror(errno));
 			}
 
-			/* Enough space for "-<sha-1>.pack"? */
-			if (sizeof(tmpname) <= strlen(base_name) + 50)
-				die("pack base name '%s' too long", base_name);
-			snprintf(tmpname, sizeof(tmpname), "%s-", base_name);
+			strbuf_addf(&tmpname, "%s-", base_name);
 
 			if (write_bitmap_index) {
 				bitmap_writer_set_checksum(sha1);
 				bitmap_writer_build_type_index(written_list, nr_written);
 			}
 
-			finish_tmp_packfile(tmpname, pack_tmp_name,
+			finish_tmp_packfile(&tmpname, pack_tmp_name,
 					    written_list, nr_written,
 					    &pack_idx_opts, sha1);
 
 			if (write_bitmap_index) {
-				char *end_of_name_prefix = strrchr(tmpname, 0);
-				sprintf(end_of_name_prefix, "%s.bitmap", sha1_to_hex(sha1));
+				strbuf_addf(&tmpname, "%s.bitmap", sha1_to_hex(sha1));
 
 				stop_progress(&progress_state);
 
@@ -851,10 +860,11 @@ static void write_pack_file(void)
 				bitmap_writer_select_commits(indexed_commits, indexed_commits_nr, -1);
 				bitmap_writer_build(&to_pack);
 				bitmap_writer_finish(written_list, nr_written,
-						     tmpname, write_bitmap_options);
+						     tmpname.buf, write_bitmap_options);
 				write_bitmap_index = 0;
 			}
 
+			strbuf_release(&tmpname);
 			free(pack_tmp_name);
 			puts(sha1_to_hex(sha1));
 		}
@@ -998,6 +1008,10 @@ static void create_object_entry(const unsigned char *sha1,
 	entry->no_try_delta = no_try_delta;
 }
 
+static const char no_closure_warning[] = N_(
+"disabling bitmap writing, as some objects are not being packed"
+);
+
 static int add_object_entry(const unsigned char *sha1, enum object_type type,
 			    const char *name, int exclude)
 {
@@ -1008,14 +1022,20 @@ static int add_object_entry(const unsigned char *sha1, enum object_type type,
 	if (have_duplicate_entry(sha1, exclude, &index_pos))
 		return 0;
 
-	if (!want_object_in_pack(sha1, exclude, &found_pack, &found_offset))
+	if (!want_object_in_pack(sha1, exclude, &found_pack, &found_offset)) {
+		/* The pack is missing an object, so it will not have closure */
+		if (write_bitmap_index) {
+			warning(_(no_closure_warning));
+			write_bitmap_index = 0;
+		}
 		return 0;
+	}
 
 	create_object_entry(sha1, type, pack_name_hash(name),
 			    exclude, name && no_try_delta(name),
 			    index_pos, found_pack, found_offset);
 
-	display_progress(progress_state, to_pack.nr_objects);
+	display_progress(progress_state, nr_result);
 	return 1;
 }
 
@@ -1031,7 +1051,7 @@ static int add_object_entry_from_bitmap(const unsigned char *sha1,
 
 	create_object_entry(sha1, type, name_hash, 0, 0, index_pos, pack, offset);
 
-	display_progress(progress_state, to_pack.nr_objects);
+	display_progress(progress_state, nr_result);
 	return 1;
 }
 
@@ -1056,7 +1076,7 @@ static int pbase_tree_cache_ix_incr(int ix)
 static struct pbase_tree {
 	struct pbase_tree *next;
 	/* This is a phony "cache" entry; we are not
-	 * going to evict it nor find it through _get()
+	 * going to evict it or find it through _get()
 	 * mechanism -- this is for the toplevel node that
 	 * would almost always change with any commit.
 	 */
@@ -1213,12 +1233,9 @@ static int check_pbase_path(unsigned hash)
 	if (0 <= pos)
 		return 1;
 	pos = -pos - 1;
-	if (done_pbase_paths_alloc <= done_pbase_paths_num) {
-		done_pbase_paths_alloc = alloc_nr(done_pbase_paths_alloc);
-		done_pbase_paths = xrealloc(done_pbase_paths,
-					    done_pbase_paths_alloc *
-					    sizeof(unsigned));
-	}
+	ALLOC_GROW(done_pbase_paths,
+		   done_pbase_paths_num + 1,
+		   done_pbase_paths_alloc);
 	done_pbase_paths_num++;
 	if (pos < done_pbase_paths_num)
 		memmove(done_pbase_paths + pos + 1,
@@ -2154,7 +2171,7 @@ static void prepare_pack(int window, int depth)
 	if (nr_deltas && n > 1) {
 		unsigned nr_done = 0;
 		if (progress)
-			progress_state = start_progress("Compressing objects",
+			progress_state = start_progress(_("Compressing objects"),
 							nr_deltas);
 		qsort(delta_list, n, sizeof(*delta_list), type_size_sort);
 		ll_find_deltas(delta_list, n, window+1, depth, &nr_done);
@@ -2422,23 +2439,29 @@ static void loosen_unused_packed_objects(struct rev_info *revs)
 	}
 }
 
+/*
+ * This tracks any options which a reader of the pack might
+ * not understand, and which would therefore prevent blind reuse
+ * of what we have on disk.
+ */
+static int pack_options_allow_reuse(void)
+{
+	return allow_ofs_delta;
+}
+
 static int get_object_list_from_bitmap(struct rev_info *revs)
 {
 	if (prepare_bitmap_walk(revs) < 0)
 		return -1;
 
-	if (!reuse_partial_packfile_from_bitmap(
+	if (pack_options_allow_reuse() &&
+	    !reuse_partial_packfile_from_bitmap(
 			&reuse_packfile,
 			&reuse_packfile_objects,
 			&reuse_packfile_offset)) {
 		assert(reuse_packfile_objects);
 		nr_result += reuse_packfile_objects;
-
-		if (progress) {
-			fprintf(stderr, "Reusing existing pack: %d, done.\n",
-				reuse_packfile_objects);
-			fflush(stderr);
-		}
+		display_progress(progress_state, nr_result);
 	}
 
 	traverse_bitmap_commit_list(&add_object_entry_from_bitmap);
@@ -2455,6 +2478,9 @@ static void get_object_list(int ac, const char **av)
 	save_commit_buffer = 0;
 	setup_revisions(ac, av, &revs, NULL);
 
+	/* make sure shallows are read */
+	is_repository_shallow();
+
 	while (fgets(line, sizeof(line), stdin) != NULL) {
 		int len = strlen(line);
 		if (len && line[len - 1] == '\n')
@@ -2465,6 +2491,13 @@ static void get_object_list(int ac, const char **av)
 			if (!strcmp(line, "--not")) {
 				flags ^= UNINTERESTING;
 				write_bitmap_index = 0;
+				continue;
+			}
+			if (starts_with(line, "--shallow ")) {
+				unsigned char sha1[20];
+				if (get_sha1_hex(line + 10, sha1))
+					die("not an SHA-1 '%s'", line + 10);
+				register_shallow(sha1);
 				continue;
 			}
 			die("not a rev '%s'", line);
@@ -2612,7 +2645,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		OPT_END(),
 	};
 
-	read_replace_refs = 0;
+	check_replace_refs = 0;
 
 	reset_pack_idx_option(&pack_idx_opts);
 	git_config(git_pack_config, NULL);
@@ -2687,7 +2720,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	prepare_packed_git();
 
 	if (progress)
-		progress_state = start_progress("Counting objects", 0);
+		progress_state = start_progress(_("Counting objects"), 0);
 	if (!use_internal_rev_list)
 		read_object_list_from_stdin();
 	else {

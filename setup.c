@@ -29,7 +29,7 @@ static int abspath_part_inside_repo(char *path)
 		return -1;
 	wtlen = strlen(work_tree);
 	len = strlen(path);
-	off = 0;
+	off = offset_1st_component(path);
 
 	/* check if work tree is already the prefix */
 	if (wtlen <= len && !strncmp(path, work_tree, wtlen)) {
@@ -45,7 +45,7 @@ static int abspath_part_inside_repo(char *path)
 		off = wtlen;
 	}
 	path0 = path;
-	path += offset_1st_component(path) + off;
+	path += off;
 
 	/* check each '/'-terminated level */
 	while (*path) {
@@ -840,4 +840,28 @@ void sanitize_stdfds(void)
 		die_errno("open /dev/null or dup failed");
 	if (fd > 2)
 		close(fd);
+}
+
+int daemonize(void)
+{
+#ifdef NO_POSIX_GOODIES
+	errno = ENOSYS;
+	return -1;
+#else
+	switch (fork()) {
+		case 0:
+			break;
+		case -1:
+			die_errno("fork failed");
+		default:
+			exit(0);
+	}
+	if (setsid() == -1)
+		die_errno("setsid failed");
+	close(0);
+	close(1);
+	close(2);
+	sanitize_stdfds();
+	return 0;
+#endif
 }

@@ -162,7 +162,8 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 					if (strncmp(path, src_w_slash, len_w_slash))
 						break;
 				}
-				free((char *)src_w_slash);
+				if (src_w_slash != src)
+					free((char *)src_w_slash);
 
 				if (last - first < 1)
 					bad = _("source directory is empty");
@@ -179,6 +180,9 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 						modes = xrealloc(modes,
 								(argc + last - first)
 								* sizeof(enum update_mode));
+						submodule_gitfile = xrealloc(submodule_gitfile,
+								(argc + last - first)
+								* sizeof(char *));
 					}
 
 					dst = add_slash(dst);
@@ -192,6 +196,7 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 							prefix_path(dst, dst_len,
 								path + length + 1);
 						modes[argc + j] = INDEX;
+						submodule_gitfile[argc + j] = NULL;
 					}
 					argc += last - first;
 				}
@@ -226,6 +231,11 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 						(argc - i) * sizeof(char *));
 					memmove(destination + i,
 						destination + i + 1,
+						(argc - i) * sizeof(char *));
+					memmove(modes + i, modes + i + 1,
+						(argc - i) * sizeof(enum update_mode));
+					memmove(submodule_gitfile + i,
+						submodule_gitfile + i + 1,
 						(argc - i) * sizeof(char *));
 					i--;
 				}

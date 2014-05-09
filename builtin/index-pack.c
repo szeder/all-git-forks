@@ -1291,7 +1291,7 @@ static void final(const char *final_pack_name, const char *curr_pack_name,
 		if (keep_fd < 0) {
 			if (errno != EEXIST)
 				die_errno(_("cannot write keep file '%s'"),
-					  keep_name);
+					  keep_name ? keep_name : name);
 		} else {
 			if (keep_msg_len > 0) {
 				write_or_die(keep_fd, keep_msg, keep_msg_len);
@@ -1299,7 +1299,7 @@ static void final(const char *final_pack_name, const char *curr_pack_name,
 			}
 			if (close(keep_fd) != 0)
 				die_errno(_("cannot close written keep file '%s'"),
-				    keep_name);
+					  keep_name ? keep_name : name);
 			report = "keep";
 		}
 	}
@@ -1502,7 +1502,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage(index_pack_usage);
 
-	read_replace_refs = 0;
+	check_replace_refs = 0;
 
 	reset_pack_idx_option(&opts);
 	git_config(git_index_pack_config, &opts);

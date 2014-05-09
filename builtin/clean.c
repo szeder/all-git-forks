@@ -904,11 +904,11 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 
 	if (!interactive && !dry_run && !force) {
 		if (config_set)
-			die(_("clean.requireForce set to true and neither -i, -n nor -f given; "
+			die(_("clean.requireForce set to true and neither -i, -n, nor -f given; "
 				  "refusing to clean"));
 		else
-			die(_("clean.requireForce defaults to true and neither -i, -n nor -f given; "
-				  "refusing to clean"));
+			die(_("clean.requireForce defaults to true and neither -i, -n, nor -f given;"
+				  " refusing to clean"));
 	}
 
 	if (force > 1)
@@ -947,17 +947,15 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 		if (pathspec.nr)
 			matches = dir_path_match(ent, &pathspec, 0, NULL);
 
-		if (S_ISDIR(st.st_mode)) {
-			if (remove_directories || (matches == MATCHED_EXACTLY)) {
-				rel = relative_path(ent->name, prefix, &buf);
-				string_list_append(&del_list, rel);
-			}
-		} else {
-			if (pathspec.nr && !matches)
-				continue;
-			rel = relative_path(ent->name, prefix, &buf);
-			string_list_append(&del_list, rel);
-		}
+		if (pathspec.nr && !matches)
+			continue;
+
+		if (S_ISDIR(st.st_mode) && !remove_directories &&
+		    matches != MATCHED_EXACTLY)
+			continue;
+
+		rel = relative_path(ent->name, prefix, &buf);
+		string_list_append(&del_list, rel);
 	}
 
 	if (interactive && del_list.nr > 0)

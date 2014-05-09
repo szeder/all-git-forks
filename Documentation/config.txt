@@ -78,8 +78,8 @@ be escaped: use `\"` for `"` and `\\` for `\`.
 
 The following escape sequences (beside `\"` and `\\`) are recognized:
 `\n` for newline character (NL), `\t` for horizontal tabulation (HT, TAB)
-and `\b` for backspace (BS).  No other char escape sequence, nor octal
-char sequences are valid.
+and `\b` for backspace (BS).  Other char escape sequences (including octal
+escape sequences) are invalid.
 
 Variable values ending in a `\` are continued on the next line in the
 customary UNIX fashion.
@@ -131,8 +131,13 @@ Variables
 
 Note that this list is non-comprehensive and not necessarily complete.
 For command-specific variables, you will find a more detailed description
-in the appropriate manual page. You will find a description of non-core
-porcelain configuration variables in the respective porcelain documentation.
+in the appropriate manual page.
+
+Other git-related tools may and do use their own variables.  When
+inventing new variables for use in your own tool, make sure their
+names do not conflict with those that are used by Git itself and
+other popular tools, and describe them in your documentation.
+
 
 advice.*::
 	These variables control various optional help messages designed to
@@ -142,19 +147,13 @@ advice.*::
 --
 	pushUpdateRejected::
 		Set this variable to 'false' if you want to disable
-		'pushNonFFCurrent', 'pushNonFFDefault',
+		'pushNonFFCurrent',
 		'pushNonFFMatching', 'pushAlreadyExists',
 		'pushFetchFirst', and 'pushNeedsForce'
 		simultaneously.
 	pushNonFFCurrent::
 		Advice shown when linkgit:git-push[1] fails due to a
 		non-fast-forward update to the current branch.
-	pushNonFFDefault::
-		Advice to set 'push.default' to 'upstream' or 'current'
-		when you ran linkgit:git-push[1] and pushed 'matching
-		refs' by default (i.e. you did not provide an explicit
-		refspec, and no 'push.default' configuration was set)
-		and it resulted in a non-fast-forward error.
 	pushNonFFMatching::
 		Advice shown when you ran linkgit:git-push[1] and pushed
 		'matching refs' explicitly (i.e. you used ':', or
@@ -827,7 +826,7 @@ color.diff::
 	commands will only use color when output is to the terminal.
 	Defaults to false.
 +
-This does not affect linkgit:git-format-patch[1] nor the
+This does not affect linkgit:git-format-patch[1] or the
 'git-diff-{asterisk}' plumbing commands.  Can be overridden on the
 command line with the `--color[=<when>]` option.
 
@@ -1157,6 +1156,11 @@ filter.<driver>.smudge::
 	object to a worktree file upon checkout.  See
 	linkgit:gitattributes[5] for details.
 
+gc.aggressiveDepth::
+	The depth parameter used in the delta compression
+	algorithm used by 'git gc --aggressive'.  This defaults
+	to 250.
+
 gc.aggressiveWindow::
 	The window size parameter used in the delta compression
 	algorithm used by 'git gc --aggressive'.  This defaults
@@ -1174,6 +1178,10 @@ gc.autopacklimit::
 	marked with `*.keep` file in the repository, `git gc
 	--auto` consolidates them into one larger pack.  The
 	default	value is 50.  Setting this to 0 disables it.
+
+gc.autodetach::
+	Make `git gc --auto` return immediately andrun in background
+	if the system supports it. Default is true.
 
 gc.packrefs::
 	Running `git pack-refs` in a repository renders it
@@ -1331,6 +1339,10 @@ gui.commitmsgwidth::
 gui.diffcontext::
 	Specifies how many context lines should be used in calls to diff
 	made by the linkgit:git-gui[1]. The default is "5".
+
+gui.displayuntracked::
+	Determines if linkgit::git-gui[1] shows untracked files
+	in the file list. The default is "true".
 
 gui.encoding::
 	Specifies the default encoding to use for displaying of
@@ -1609,6 +1621,10 @@ imap::
 	The configuration variables in the 'imap' section are described
 	in linkgit:git-imap-send[1].
 
+index.version::
+	Specify the version with which new index files should be
+	initialized.  This does not affect existing repositories.
+
 init.templatedir::
 	Specify the directory from which templates will be copied.
 	(See the "TEMPLATE DIRECTORY" section of linkgit:git-init[1].)
@@ -1641,7 +1657,7 @@ interactive.singlekey::
 	linkgit:git-add[1], linkgit:git-checkout[1], linkgit:git-commit[1],
 	linkgit:git-reset[1], and linkgit:git-stash[1]. Note that this
 	setting is silently ignored if portable keystroke input
-	is not available.
+	is not available; requires the Perl module Term::ReadKey.
 
 log.abbrevCommit::
 	If true, makes linkgit:git-log[1], linkgit:git-show[1], and
@@ -1976,7 +1992,7 @@ When pushing to a remote that is different from the remote you normally
 pull from, work as `current`.  This is the safest option and is suited
 for beginners.
 +
-This mode will become the default in Git 2.0.
+This mode has become the default in Git 2.0.
 
 * `matching` - push all branches having the same name on both ends.
   This makes the repository you are pushing to remember the set of
@@ -1995,8 +2011,8 @@ suitable for pushing into a shared central repository, as other
 people may add new branches there, or update the tip of existing
 branches outside your control.
 +
-This is currently the default, but Git 2.0 will change the default
-to `simple`.
+This used to be the default, but not since Git 2.0 (`simple` is the
+new default).
 
 --
 
@@ -2153,6 +2169,13 @@ repack.usedeltabaseoffset::
 	protocol such as http, then you need to set this option to
 	"false" and repack. Access from old Git versions over the
 	native protocol are unaffected by this option.
+
+repack.packKeptObjects::
+	If set to true, makes `git repack` act as if
+	`--pack-kept-objects` was passed. See linkgit:git-repack[1] for
+	details. Defaults to `false` normally, but `true` if a bitmap
+	index is being written (either via `--write-bitmap-index` or
+	`pack.writeBitmaps`).
 
 rerere.autoupdate::
 	When set to true, `git-rerere` updates the index with the
@@ -2333,6 +2356,13 @@ transfer.unpackLimit::
 	When `fetch.unpackLimit` or `receive.unpackLimit` are
 	not set, the value of this variable is used instead.
 	The default value is 100.
+
+uploadarchive.allowUnreachable::
+	If true, allow clients to use `git archive --remote` to request
+	any tree, whether reachable from the ref tips or not. See the
+	discussion in the `SECURITY` section of
+	linkgit:git-upload-archive[1] for more details. Defaults to
+	`false`.
 
 uploadpack.hiderefs::
 	String(s) `upload-pack` uses to decide which refs to omit

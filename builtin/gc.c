@@ -26,9 +26,11 @@ static const char * const builtin_gc_usage[] = {
 };
 
 static int pack_refs = 1;
+static int aggressive_depth = 250;
 static int aggressive_window = 250;
 static int gc_auto_threshold = 6700;
 static int gc_auto_pack_limit = 50;
+static int detach_auto = 1;
 static const char *prune_expire = "2.weeks.ago";
 
 static struct argv_array pack_refs_cmd = ARGV_ARRAY_INIT;
@@ -65,12 +67,20 @@ static int gc_config(const char *var, const char *value, void *cb)
 		aggressive_window = git_config_int(var, value);
 		return 0;
 	}
+	if (!strcmp(var, "gc.aggressivedepth")) {
+		aggressive_depth = git_config_int(var, value);
+		return 0;
+	}
 	if (!strcmp(var, "gc.auto")) {
 		gc_auto_threshold = git_config_int(var, value);
 		return 0;
 	}
 	if (!strcmp(var, "gc.autopacklimit")) {
 		gc_auto_pack_limit = git_config_int(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "gc.autodetach")) {
+		detach_auto = git_config_bool(var, value);
 		return 0;
 	}
 	if (!strcmp(var, "gc.pruneexpire")) {
@@ -179,7 +189,7 @@ static int need_to_gc(void)
 	else if (!too_many_loose_objects())
 		return 0;
 
-	if (run_hook(NULL, "pre-auto-gc", NULL))
+	if (run_hook_le(NULL, "pre-auto-gc", NULL))
 		return 0;
 	return 1;
 }
@@ -289,7 +299,8 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 
 	if (aggressive) {
 		argv_array_push(&repack, "-f");
-		argv_array_push(&repack, "--depth=250");
+		if (aggressive_depth > 0)
+			argv_array_pushf(&repack, "--depth=%d", aggressive_depth);
 		if (aggressive_window > 0)
 			argv_array_pushf(&repack, "--window=%d", aggressive_window);
 	}
@@ -302,11 +313,19 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 		 */
 		if (!need_to_gc())
 			return 0;
-		if (!quiet)
-			fprintf(stderr,
-					_("Auto packing the repository for optimum performance. You may also\n"
-					"run \"git gc\" manually. See "
-					"\"git help gc\" for more information.\n"));
+		if (!quiet) {
+			if (detach_auto)
+				fprintf(stderr, _("Auto packing the repository in background for optimum performance.\n"));
+			else
+				fprintf(stderr, _("Auto packing the repository for optimum performance.\n"));
+			fprintf(stderr, _("See \"git help gc\" for manual housekeeping.\n"));
+		}
+		if (detach_auto)
+			/*
+			 * failure to daemonize is ok, we'll continue
+			 * in foreground
+			 */
+			daemonize();
 	} else
 		add_repack_all_option();
 
