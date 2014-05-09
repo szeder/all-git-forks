@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-07 22:44+0200\n"
+"PO-Revision-Date: 2014-05-09 22:29+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -2420,7 +2420,7 @@ msgstr[1] "%d líneas añaden errores de espacio-en-blanco."
 #: builtin/archive.c:17
 #, c-format
 msgid "could not create archive file '%s'"
-msgstr ""
+msgstr "no he podido crear el fichero de archivo '%s'"
 
 #: builtin/archive.c:20
 msgid "could not redirect output"
@@ -2428,25 +2428,25 @@ msgstr "no he podido redireccionar la salida"
 
 #: builtin/archive.c:37
 msgid "git archive: Remote with no URL"
-msgstr ""
+msgstr "git archive: Remoto sin URL"
 
 #: builtin/archive.c:58
 msgid "git archive: expected ACK/NAK, got EOF"
-msgstr ""
+msgstr "git archive: esperado ACK/NAK, obtenido EOF"
 
 #: builtin/archive.c:61
 #, c-format
 msgid "git archive: NACK %s"
-msgstr ""
+msgstr "git archive: NACK %s"
 
 #: builtin/archive.c:63
 #, c-format
 msgid "remote error: %s"
-msgstr ""
+msgstr "error remoto: %s"
 
 #: builtin/archive.c:64
 msgid "git archive: protocol error"
-msgstr ""
+msgstr "git archive: error de protocolo"
 
 #: builtin/archive.c:68
 msgid "git archive: expected a flush"
@@ -2454,7 +2454,7 @@ msgstr ""
 
 #: builtin/bisect--helper.c:7
 msgid "git bisect--helper --next-all [--no-checkout]"
-msgstr ""
+msgstr "git bisect--helper --next-all [--no-checkout]"
 
 #: builtin/bisect--helper.c:17
 msgid "perform 'git bisect next'"
@@ -2937,7 +2937,7 @@ msgstr ""
 
 #: builtin/branch.c:999
 msgid "it does not make sense to create 'HEAD' manually"
-msgstr ""
+msgstr "no tiene sentido crear la 'CABEZA' ['HEAD'] manualmente"
 
 #: builtin/branch.c:1005
 msgid "-a and -r options to 'git branch' do not make sense with a branch name"
@@ -2956,17 +2956,17 @@ msgid ""
 "\n"
 "If you wanted to make '%s' track '%s', do this:\n"
 "\n"
-msgstr ""
+msgstr "\nSi lo que quiere es hacer que '%s' siga a '%s', haga lo siguiente:\n\n"
 
 #: builtin/branch.c:1026
 #, c-format
 msgid "    git branch -d %s\n"
-msgstr ""
+msgstr "    git branch -d %s\n"
 
 #: builtin/branch.c:1027
 #, c-format
 msgid "    git branch --set-upstream-to %s\n"
-msgstr ""
+msgstr "    git branch --set-upstream-to %s\n"
 
 #: builtin/bundle.c:47
 #, c-format
@@ -2983,23 +2983,23 @@ msgstr ""
 
 #: builtin/cat-file.c:331
 msgid "git cat-file (-t|-s|-e|-p|<type>|--textconv) <object>"
-msgstr ""
+msgstr "git cat-file (-t|-s|-e|-p|<tipo>|--textconv) <objeto>"
 
 #: builtin/cat-file.c:332
 msgid "git cat-file (--batch|--batch-check) < <list_of_objects>"
-msgstr ""
+msgstr "git cat-file (--batch|--batch-check) < <lista_de_objetos>"
 
 #: builtin/cat-file.c:369
 msgid "<type> can be one of: blob, tree, commit, tag"
-msgstr ""
+msgstr "<tipo> puede ser: blob, tree, commit, tag"
 
 #: builtin/cat-file.c:370
 msgid "show object type"
-msgstr ""
+msgstr "muestra el tipo del objeto"
 
 #: builtin/cat-file.c:371
 msgid "show object size"
-msgstr ""
+msgstr "muestra el tamaño del objeto"
 
 #: builtin/cat-file.c:373
 msgid "exit with zero when there's no error"
