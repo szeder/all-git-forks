@@ -92,11 +92,11 @@ did `X` and then `Y` and then `Z` and merged a change that consists of
 two commits `B` and `C` that achieves a single goal.  You may have
 worked on fixing the bug #12345 with these two patches, and the merge
 `M'` with swapped parents can say in its log message "Merge
-'fix-bug-12345'". Having a way to tell "git pull" to create a merge
+fix-bug-12345". Having a way to tell `git pull` to create a merge
 but record the parents in reverse order may be a way to do so.
 
 Note that I said "achieves a single goal" above, because this is
-important.  "swapping the merge order" only covers a special case
+important.  "Swapping the merge order" only covers a special case
 where the project does not care too much about having unrelated
 things done on a single merge but cares a lot about first-parent
 chain.
