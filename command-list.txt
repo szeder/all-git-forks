@@ -4,7 +4,6 @@ git-add                                 mainporcelain common
 git-am                                  mainporcelain
 git-annotate                            ancillaryinterrogators
 git-apply                               plumbingmanipulators
-git-archimport                          foreignscminterface
 git-archive                             mainporcelain
 git-bisect                              mainporcelain common
 git-blame                               ancillaryinterrogators

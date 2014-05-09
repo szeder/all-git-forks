@@ -166,13 +166,6 @@ rm -rf $RPM_BUILD_ROOT
 %{!?_without_docs: %{_mandir}/man1/*cvs*.1*}
 %{!?_without_docs: %doc Documentation/*git-cvs*.html }
 
-%files arch
-%defattr(-,root,root)
-%doc Documentation/git-archimport.txt
-%{_libexecdir}/git-core/git-archimport
-%{!?_without_docs: %{_mandir}/man1/git-archimport.1*}
-%{!?_without_docs: %doc Documentation/git-archimport.html }
-
 %files email
 %defattr(-,root,root)
 %doc Documentation/*email*.txt
@@ -214,6 +207,9 @@ rm -rf $RPM_BUILD_ROOT
 # No files for you!
 
 %changelog
+* Thu May 08 2014 Felipe Contreras <felipe.contreras@gmail.com>
+- Remove 'git archimport'.
+
 * Sun Sep 18 2011 Jakub Narebski <jnareb@gmail.com>
 - Add gitweb manpages to 'gitweb' subpackage
 
