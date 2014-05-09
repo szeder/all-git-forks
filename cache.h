@@ -334,6 +334,8 @@ struct index_state {
 	struct cache_time timestamp;
 	unsigned name_hash_initialized : 1,
 		 keep_mmap : 1,
+		 from_shm : 1,
+		 to_shm : 1,
 		 initialized : 1;
 	struct hashmap name_hash;
 	struct hashmap dir_hash;
@@ -1830,5 +1832,13 @@ void sleep_millisec(int millisec);
  * directories.
  */
 void safe_create_dir(const char *dir, int share);
+
+/*
+ * On OS X, the maximum length of a shm name is 32 bytes.  In order to
+ * stay under that limit while retaining our uniqueness, we use the
+ * raw SHA1 with only the hacks necessary for it to be a valid path
+ * name (no / or 0).
+ */
+char *sha1_to_shm_path(const unsigned char *sha1);
 
 #endif /* CACHE_H */

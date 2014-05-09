@@ -370,6 +370,9 @@ all::
 # Define HAVE_BSD_SYSCTL if your platform has a BSD-compatible sysctl function.
 #
 # Define HAVE_GETDELIM if your system has the getdelim() function.
+#
+# Define HAVE_SHM if your platform supports shm_* functions.
+# Define SHM_NEEDS_LIBRT if those functions live in librt.
 
 GIT-VERSION-FILE: FORCE
 	@$(SHELL_PATH) ./GIT-VERSION-GEN
@@ -805,6 +808,7 @@ LIB_OBJS += sha1-lookup.o
 LIB_OBJS += sha1_file.o
 LIB_OBJS += sha1_name.o
 LIB_OBJS += shallow.o
+LIB_OBJS += shm.o
 LIB_OBJS += sideband.o
 LIB_OBJS += sigchain.o
 LIB_OBJS += split-index.o
@@ -1431,6 +1435,16 @@ endif
 
 ifdef HAVE_DEV_TTY
 	BASIC_CFLAGS += -DHAVE_DEV_TTY
+endif
+
+ifdef HAVE_SHM
+ifndef NO_MMAP
+	BASIC_CFLAGS	+= -DHAVE_SHM
+ifdef SHM_NEEDS_LIBRT
+	EXTLIBS	        += -lrt
+endif
+	PROGRAM_OBJS	+= index-helper.o
+endif
 endif
 
 ifdef DIR_HAS_BSD_GROUP_SEMANTICS
@@ -2159,6 +2173,8 @@ GIT-BUILD-OPTIONS: FORCE
 	@echo NO_PERL=\''$(subst ','\'',$(subst ','\'',$(NO_PERL)))'\' >>$@+
 	@echo NO_PYTHON=\''$(subst ','\'',$(subst ','\'',$(NO_PYTHON)))'\' >>$@+
 	@echo NO_UNIX_SOCKETS=\''$(subst ','\'',$(subst ','\'',$(NO_UNIX_SOCKETS)))'\' >>$@+
+	@echo NO_MMAP=\''$(subst ','\'',$(subst ','\'',$(NO_MMAP)))'\' >>$@+
+	@echo HAVE_SHM=\''$(subst ','\'',$(subst ','\'',$(HAVE_SHM)))'\' >>$@+
 ifdef TEST_OUTPUT_DIRECTORY
 	@echo TEST_OUTPUT_DIRECTORY=\''$(subst ','\'',$(subst ','\'',$(TEST_OUTPUT_DIRECTORY)))'\' >>$@+
 endif
