@@ -65,8 +65,9 @@ you will create a merge `M` and make the history look like this:
 repository.  Such a merge `M` does not lose any commit in both
 histories, so in that sense it may not be wrong, but when people want
 to talk about "the authoritative canonical history that is shared
-among the project participants", i.e. "the trunk", the way they often
-use is to do:
+among the project participants", i.e. "the trunk", they often view
+it as "commits you see by following the first-parent chain", and use
+this command to view it:
 
 ------------
     $ git log --first-parent
