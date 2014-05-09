@@ -90,7 +90,6 @@ git-prune                               ancillarymanipulators
 git-prune-packed                        plumbingmanipulators
 git-pull                                mainporcelain common
 git-push                                mainporcelain common
-git-quiltimport                         foreignscminterface
 git-read-tree                           plumbingmanipulators
 git-rebase                              mainporcelain common
 git-receive-pack                        synchelpers

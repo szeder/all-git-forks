@@ -108,7 +108,6 @@
 /git-prune-packed
 /git-pull
 /git-push
-/git-quiltimport
 /git-read-tree
 /git-rebase
 /git-rebase--am
