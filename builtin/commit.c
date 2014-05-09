@@ -1326,8 +1326,7 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 	if (active_cache_changed) {
 		fd = hold_locked_index(&index_lock, 0);
 		if (0 <= fd &&
-		    (write_cache(fd, active_cache, active_nr) ||
-		     commit_locked_index(&index_lock)))
+		    write_locked_index(&the_index, &index_lock, COMMIT_LOCK))
 			die("Unable to write new index file");
 	}
 	return 0;

@@ -586,7 +586,7 @@ static void wt_status_collect_untracked(struct wt_status *s)
 	    (dir.untracked->dir_opened ||
 	     dir.untracked->gitignore_invalidated ||
 	     dir.untracked->dir_invalidated))
-		active_cache_changed = 1;
+		active_cache_changed |= UNTRACKED_CACHE_CHANGED;
 
 	for (i = 0; i < dir.nr; i++) {
 		struct dir_entry *ent = dir.entries[i];

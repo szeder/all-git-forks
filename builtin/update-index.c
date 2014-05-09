@@ -1090,10 +1090,10 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		/* should be the same flags used by git-status */
 		uc->dir_flags = DIR_SHOW_OTHER_DIRECTORIES | DIR_HIDE_EMPTY_DIRECTORIES;
 		the_index.untracked = uc;
-		active_cache_changed = 1;
+		active_cache_changed |= UNTRACKED_CACHE_CHANGED;
 	} else if (!untracked_cache && the_index.untracked) {
 		the_index.untracked = NULL;
-		active_cache_changed = 1;
+		active_cache_changed |= UNTRACKED_CACHE_CHANGED;
 	}
 
 	if (active_cache_changed) {
