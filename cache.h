@@ -281,6 +281,7 @@ static inline unsigned int canon_mode(unsigned int mode)
 #define SPLIT_INDEX_ORDERED	(1 << 6)
 
 struct split_index;
+struct untracked_cache;
 struct index_state {
 	struct cache_entry **cache;
 	unsigned int version;
@@ -294,6 +295,7 @@ struct index_state {
 	struct hashmap name_hash;
 	struct hashmap dir_hash;
 	unsigned char sha1[20];
+	struct untracked_cache *untracked;
 };
 
 extern struct index_state the_index;
@@ -542,6 +544,8 @@ extern void fill_stat_data(struct stat_data *sd, struct stat *st);
  * INODE_CHANGED, and DATA_CHANGED.
  */
 extern int match_stat_data(const struct stat_data *sd, struct stat *st);
+extern int match_stat_data_racy(const struct index_state *istate,
+				const struct stat_data *sd, struct stat *st);
 
 extern void fill_stat_cache_info(struct cache_entry *ce, struct stat *st);
 

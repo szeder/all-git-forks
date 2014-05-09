@@ -578,9 +578,15 @@ static void wt_status_collect_untracked(struct wt_status *s)
 			DIR_SHOW_OTHER_DIRECTORIES | DIR_HIDE_EMPTY_DIRECTORIES;
 	if (s->show_ignored_files)
 		dir.flags |= DIR_SHOW_IGNORED_TOO;
+	dir.untracked = the_index.untracked;
 	setup_standard_excludes(&dir);
 
 	fill_directory(&dir, &s->pathspec);
+	if (dir.untracked &&
+	    (dir.untracked->dir_opened ||
+	     dir.untracked->gitignore_invalidated ||
+	     dir.untracked->dir_invalidated))
+		active_cache_changed = 1;
 
 	for (i = 0; i < dir.nr; i++) {
 		struct dir_entry *ent = dir.entries[i];

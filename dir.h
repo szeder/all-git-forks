@@ -15,6 +15,27 @@ struct dir_entry {
 #define EXC_FLAG_MUSTBEDIR 8
 #define EXC_FLAG_NEGATIVE 16
 
+struct exclude {
+	/*
+	 * This allows callers of last_exclude_matching() etc.
+	 * to determine the origin of the matching pattern.
+	 */
+	struct exclude_list *el;
+
+	const char *pattern;
+	int patternlen;
+	int nowildcardlen;
+	const char *base;
+	int baselen;
+	int flags;
+
+	/*
+	 * Counting starts from 1 for line numbers in ignore files,
+	 * and from -1 decrementing for patterns from CLI args.
+	 */
+	int srcpos;
+};
+
 /*
  * Each excludes file will be parsed into a fresh exclude_list which
  * is appended to the relevant exclude_list_group (either EXC_DIRS or
@@ -32,26 +53,7 @@ struct exclude_list {
 	/* origin of list, e.g. path to filename, or descriptive string */
 	const char *src;
 
-	struct exclude {
-		/*
-		 * This allows callers of last_exclude_matching() etc.
-		 * to determine the origin of the matching pattern.
-		 */
-		struct exclude_list *el;
-
-		const char *pattern;
-		int patternlen;
-		int nowildcardlen;
-		const char *base;
-		int baselen;
-		int flags;
-
-		/*
-		 * Counting starts from 1 for line numbers in ignore files,
-		 * and from -1 decrementing for patterns from CLI args.
-		 */
-		int srcpos;
-	} **excludes;
+	struct exclude **excludes;
 };
 
 /*
@@ -69,6 +71,68 @@ struct exclude_stack {
 struct exclude_list_group {
 	int nr, alloc;
 	struct exclude_list *el;
+};
+
+
+/*
+ *  Untracked cache
+ *
+ *  The following inputs are sufficient to determine what files in a
+ *  directory are excluded:
+ *
+ *   - The list of files and directories of the direction in question
+ *   - The $GIT_DIR/index
+ *   - dir_struct flags
+ *   - The content of $GIT_DIR/info/exclude
+ *   - The content of core.excludesfile
+ *   - The content (or the lack) of .gitignore of all parent directories
+ *     from $GIT_WORK_TREE
+ *   - The check_only flag in read_directory_recursive (for
+ *     DIR_HIDE_EMPTY_DIRECTORIES)
+ *
+ *  The first input can be checked using directory mtime. In many
+ *  filesystems, directory mtime (stat_data field) is updated when its
+ *  files or direct subdirs are added or removed.
+ *
+ *  The second one can be hooked from cache_tree_invalidate_path().
+ *  Whenever a file (or a submodule) is added or removed from a directory,
+ *  we invalidate (i.e. setting untracked_nr to -1) that directory.
+ *
+ *  The remaining inputs are easy, their SHA-1 could be used to verify
+ *  their contents (exclude_sha1[], info_exclude_sha1[] and
+ *  excludes_file_sha1[])
+ */
+struct untracked_cache_dir {
+	struct untracked_cache_dir **dirs;
+	char **untracked;
+	/* null SHA-1 means this directory does not have .gitignore */
+	unsigned char exclude_sha1[20];
+	struct stat_data stat_data;
+	unsigned int recurse : 1;
+	unsigned int check_only : 1;
+	unsigned int valid : 1;
+	unsigned int untracked_nr : 29;
+	unsigned int untracked_alloc, dirs_nr, dirs_alloc;
+	char name[1];
+};
+
+struct untracked_cache {
+	struct stat_data info_exclude_stat;
+	struct stat_data excludes_file_stat;
+	unsigned char info_exclude_sha1[20];
+	unsigned char excludes_file_sha1[20];
+	const char *exclude_per_dir;
+	/*
+	 * dir_struct#flags must match dir_flags or the untracked
+	 * cache is ignored.
+	 */
+	unsigned dir_flags;
+	struct untracked_cache_dir *root;
+	/* Statistics */
+	int dir_created;
+	int gitignore_invalidated;
+	int dir_invalidated;
+	int dir_opened;
 };
 
 struct dir_struct {
@@ -117,7 +181,15 @@ struct dir_struct {
 	 */
 	struct exclude_stack *exclude_stack;
 	struct exclude *exclude;
-	char basebuf[PATH_MAX];
+	struct strbuf basebuf;
+
+	/* Enable untracked file cache if set */
+	struct untracked_cache *untracked;
+	unsigned unmanaged_exclude_files;
+	struct stat_data info_exclude_stat;
+	struct stat_data excludes_file_stat;
+	unsigned char info_exclude_sha1[20];
+	unsigned char excludes_file_sha1[20];
 };
 
 /*
@@ -223,4 +295,10 @@ static inline int dir_path_match(const struct dir_entry *ent,
 			      has_trailing_dir);
 }
 
+void untracked_cache_invalidate_path(struct index_state *, const char *);
+void untracked_cache_remove_from_index(struct index_state *, const char *);
+void untracked_cache_add_to_index(struct index_state *, const char *);
+
+struct untracked_cache *read_untracked_extension(const void *data, unsigned long sz);
+void write_untracked_extension(struct strbuf *out, struct untracked_cache *untracked);
 #endif
