@@ -38,7 +38,7 @@ central repository:
     ---o---o---A---X---Y---Z
 ------------
 
-Now, if you "git push" at this point, beause your history that leads
+Now, if you "git push" at this point, because your history that leads
 to `C` lacks `X`, `Y` and `Z`, it will fail.  You need to somehow make
 the tip of your history a descendant of `Z`.
 
