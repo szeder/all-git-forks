@@ -203,6 +203,8 @@ tip of your 'master' again and redo the two merges:
     $ git merge topic-c
 ------------
 
+The procedure will result in a history that looks like this:
+
 ------------
 		 C0--C1--------------C2
 		/                     \
