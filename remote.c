@@ -2154,7 +2154,7 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 			   "Your branch is ahead of '%s' by %d commits.\n",
 			   ours),
 			base, ours);
-		if (advice_status_hints)
+		if (advice_status_hints && !branch->push.dst)
 			strbuf_addf(sb,
 				_("  (use \"git push\" to publish your local commits)\n"));
 	} else if (!ours) {
@@ -2181,6 +2181,23 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 		if (advice_status_hints)
 			strbuf_addf(sb,
 				_("  (use \"git pull\" to merge the remote branch into yours)\n"));
+	}
+	if (branch->push.dst) {
+		unsigned char local_sha1[20];
+		unsigned char remote_sha1[20];
+		const char *pub;
+
+		pub = shorten_unambiguous_ref(branch->push.dst, 0);
+
+		/* Is it published? */
+		if (!read_ref(branch->refname, local_sha1) &&
+				!read_ref(branch->push.dst, remote_sha1)) {
+			if (hashcmp(local_sha1, remote_sha1)) {
+				strbuf_addf(sb, _("Some commits haven't been published to '%s'.\n"), pub);
+				if (advice_status_hints)
+					strbuf_addf(sb, _("  (use \"git push\" to publish your local commits)\n"));
+			}
+		}
 	}
 	free(base);
 	return 1;
