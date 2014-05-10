@@ -47,39 +47,11 @@ log_arg= verbosity= progress= recurse_submodules= verify_signatures=
 merge_args= edit= rebase_args=
 curr_branch=$(git symbolic-ref -q HEAD)
 curr_branch_short="${curr_branch#refs/heads/}"
-mode=$(git config branch.${curr_branch_short}.pullmode)
-if test -z "$mode"
+rebase=$(bool_or_string_config branch.$curr_branch_short.rebase)
+if test -z "$rebase"
 then
-	mode=$(git config pull.mode)
+	rebase=$(bool_or_string_config pull.rebase)
 fi
-case "$mode" in
-merge|rebase|merge-ff-only|'')
-	;;
-rebase-preserve)
-	mode="rebase"
-	rebase_args="--preserve-merges"
-	;;
-*)
-	echo "Invalid value for 'mode'"
-	usage
-	exit 1
-	;;
-esac
-
-if test -z "$mode"
-then
-	rebase=$(bool_or_string_config branch.$curr_branch_short.rebase)
-	if test -z "$rebase"
-	then
-		rebase=$(bool_or_string_config pull.rebase)
-	fi
-	if test -n "$rebase"
-	then
-		echo "The configurations pull.rebase and branch.<name>.rebase are deprecated."
-		echo "Please use pull.mode and branch.<name>.pullmode instead."
-	fi
-fi
-test -z "$mode" && mode=default
 dry_run=
 while :
 do
@@ -146,14 +118,10 @@ do
 		rebase="${1#*=}"
 		;;
 	-r|--r|--re|--reb|--reba|--rebas|--rebase)
-		mode=rebase
-		;;
-	-m|--m|--me|--mer|--merg|--merge)
-		mode=merge
+		rebase=true
 		;;
 	--no-r|--no-re|--no-reb|--no-reba|--no-rebas|--no-rebase)
-		mode=merge
-		echo "--no-rebase is deprecated, please use --merge instead"
+		rebase=false
 		;;
 	--recurse-submodules)
 		recurse_submodules=--recurse-submodules
@@ -184,26 +152,19 @@ do
 	shift
 done
 
-if test -n "$rebase"
-then
-	case "$rebase" in
-	true)
-		mode="rebase"
-		;;
-	false)
-		mode="merge"
-		;;
-	preserve)
-		mode="rebase"
-		rebase_args=--preserve-merges
-		;;
-	*)
-		echo "Invalid value for --rebase, should be true, false, or preserve"
-		usage
-		exit 1
-		;;
-	esac
-fi
+case "$rebase" in
+preserve)
+	rebase=true
+	rebase_args=--preserve-merges
+	;;
+true|false|'')
+	;;
+*)
+	echo "Invalid value for --rebase, should be true, false, or preserve"
+	usage
+	exit 1
+	;;
+esac
 
 error_on_no_merge_candidates () {
 	exec >&2
@@ -217,7 +178,7 @@ error_on_no_merge_candidates () {
 		esac
 	done
 
-	if test "$mode" = rebase
+	if test true = "$rebase"
 	then
 		op_type=rebase
 		op_prep=against
@@ -230,7 +191,7 @@ error_on_no_merge_candidates () {
 	remote=$(git config "branch.$curr_branch_short.remote")
 
 	if [ $# -gt 1 ]; then
-		if [ "$mode" = rebase ]; then
+		if [ "$rebase" = true ]; then
 			printf "There is no candidate for rebasing against "
 		else
 			printf "There are no candidates for merging "
@@ -253,7 +214,7 @@ error_on_no_merge_candidates () {
 	exit 1
 }
 
-test "$mode" = rebase && {
+test true = "$rebase" && {
 	if ! git rev-parse -q --verify HEAD >/dev/null
 	then
 		# On an unborn branch
@@ -310,30 +271,9 @@ case "$merge_head" in
 	then
 		die "$(gettext "Cannot merge multiple branches into empty head")"
 	fi
-	if test "$mode" = rebase
+	if test true = "$rebase"
 	then
 		die "$(gettext "Cannot rebase onto multiple branches")"
-	fi
-	;;
-*)
-	# check if a non-fast-foward merge would be needed
-	merge_head=${merge_head% }
-	if test -z "$no_ff$ff_only${squash#--no-squash}" &&
-		test -n "$orig_head" &&
-		! git merge-base --is-ancestor "$orig_head" "$merge_head" &&
-		! git merge-base --is-ancestor "$merge_head" "$orig_head"
-	then
-		case "$mode" in
-		merge-ff-only)
-			die "$(gettext "The pull was not fast-forward, please either merge or rebase.
-If unsure, run 'git pull --merge'.")"
-			;;
-		default)
-			echo "$(gettext "warning: the pull was not fast-forward, in the future you would have to choose
-a merge or a rebase, falling back to old style for now (git pull --merge).
-Read 'git pull --help' for more information.")" >&2
-			;;
-		esac
 	fi
 	;;
 esac
@@ -352,7 +292,7 @@ then
 	exit
 fi
 
-if test "$mode" = rebase
+if test true = "$rebase"
 then
 	o=$(git show-branch --merge-base $curr_branch $merge_head $oldremoteref)
 	if test "$oldremoteref" = "$o"
@@ -362,8 +302,8 @@ then
 fi
 
 merge_name=$(git fmt-merge-msg $log_arg <"$GIT_DIR/FETCH_HEAD") || exit
-case "$mode" in
-rebase)
+case "$rebase" in
+true)
 	eval="git-rebase $diffstat $strategy_args $merge_args $rebase_args $verbosity"
 	eval="$eval --onto $merge_head ${oldremoteref:-$merge_head}"
 	;;
