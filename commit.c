@@ -1082,6 +1082,18 @@ struct commit_list *reduce_heads(struct commit_list *heads)
 	return result;
 }
 
+struct commit_list *reverse_heads(struct commit_list *heads)
+{
+	struct commit_list *p;
+	struct commit_list *result = NULL;
+
+	for (p = heads; p; p = p->next)
+		commit_list_insert(p->item, &result);
+
+	free_commit_list(heads);
+	return result;
+}
+
 static const char gpg_sig_header[] = "gpgsig";
 static const int gpg_sig_header_len = sizeof(gpg_sig_header) - 1;
 
