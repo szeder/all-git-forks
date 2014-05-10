@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-09 22:29+0200\n"
+"PO-Revision-Date: 2014-05-10 21:56+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -1899,7 +1899,7 @@ msgstr "añade cambios de todos los ficheros monitorizados y no monitorizados"
 
 #: builtin/add.c:260
 msgid "ignore paths removed in the working tree (same as --no-all)"
-msgstr ""
+msgstr "ignora las rutas que han sido eliminadas en el árbol de trabajo (como --no-all)"
 
 #: builtin/add.c:262
 msgid "don't add, only refresh the index"
@@ -2874,11 +2874,11 @@ msgstr ""
 
 #: builtin/branch.c:896
 msgid "--column and --verbose are incompatible"
-msgstr ""
+msgstr "--column y --verbose son incompatibles"
 
 #: builtin/branch.c:902 builtin/branch.c:941
 msgid "branch name required"
-msgstr ""
+msgstr "nombre de rama obligatorio"
 
 #: builtin/branch.c:917
 msgid "Cannot give description to detached HEAD"
@@ -2886,21 +2886,21 @@ msgstr ""
 
 #: builtin/branch.c:922
 msgid "cannot edit description of more than one branch"
-msgstr ""
+msgstr "no puede editar la descripción de más de una rama"
 
 #: builtin/branch.c:929
 #, c-format
 msgid "No commit on branch '%s' yet."
-msgstr ""
+msgstr "Ningún commit en la rama '%s' todavía."
 
 #: builtin/branch.c:932
 #, c-format
 msgid "No branch named '%s'."
-msgstr ""
+msgstr "No hay ninguna rama llamada '%s'."
 
 #: builtin/branch.c:947
 msgid "too many branches for a rename operation"
-msgstr ""
+msgstr "demasiadas ramas para una operación de renombrado [rename]"
 
 #: builtin/branch.c:952
 msgid "too many branches to set new upstream"
@@ -2915,12 +2915,12 @@ msgstr ""
 #: builtin/branch.c:959 builtin/branch.c:981 builtin/branch.c:1002
 #, c-format
 msgid "no such branch '%s'"
-msgstr ""
+msgstr "no existe la rama '%s'"
 
 #: builtin/branch.c:963
 #, c-format
 msgid "branch '%s' does not exist"
-msgstr ""
+msgstr "no existe la rama '%s'"
 
 #: builtin/branch.c:975
 msgid "too many branches to unset upstream"
@@ -2941,14 +2941,14 @@ msgstr "no tiene sentido crear la 'CABEZA' ['HEAD'] manualmente"
 
 #: builtin/branch.c:1005
 msgid "-a and -r options to 'git branch' do not make sense with a branch name"
-msgstr ""
+msgstr "las opciones de 'git branch' -a y -r no tienen sentido con un nombre de rama"
 
 #: builtin/branch.c:1008
 #, c-format
 msgid ""
 "The --set-upstream flag is deprecated and will be removed. Consider using --"
 "track or --set-upstream-to\n"
-msgstr ""
+msgstr "La opción --set-upstream está depreciada y será eliminada. Considere utilizar --track o --set-upstream-to\n"
 
 #: builtin/branch.c:1025
 #, c-format
@@ -3003,7 +3003,7 @@ msgstr "muestra el tamaño del objeto"
 
 #: builtin/cat-file.c:373
 msgid "exit with zero when there's no error"
-msgstr ""
+msgstr "termina con código de salida cero cuando no hay errores"
 
 #: builtin/cat-file.c:374
 msgid "pretty-print object's content"
