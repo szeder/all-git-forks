@@ -34,7 +34,10 @@ test_expect_success setup '
 		advance g &&
 		git branch -d brokenbase &&
 		git checkout -b b6 origin &&
-		git branch --set-publish origin/master b6
+		git branch -p origin/master &&
+		git checkout -b b7 origin &&
+		git branch -p origin/master &&
+		advance h
 	) &&
 	git checkout -b follower --track master &&
 	advance h
@@ -48,6 +51,7 @@ b3 [origin/master] b
 b4 [origin/master] f
 b5 [brokenbase] g
 b6 [origin/master, origin/master] c
+b7 [origin/master, origin/master *] h
 EOF
 
 test_expect_success 'branch -v' '
@@ -66,6 +70,7 @@ b3 [origin/master: behind 1] b
 b4 [origin/master: ahead 2] f
 b5 [brokenbase: gone] g
 b6 [origin/master, origin/master] c
+b7 [origin/master, origin/master *: ahead 1] h
 EOF
 
 test_expect_success 'branch -vv' '

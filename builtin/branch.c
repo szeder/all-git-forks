@@ -458,6 +458,7 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 		else
 			strbuf_addstr(&fancy, ref);
 	}
+
 	if (branch->push.dst) {
 		unsigned char local_sha1[20];
 		unsigned char remote_sha1[20];

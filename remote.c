@@ -1809,15 +1809,6 @@ int ref_newer(const unsigned char *new_sha1, const unsigned char *old_sha1)
 	return found;
 }
 
-static char *get_base(struct branch *branch)
-{
-	if (branch->push.dst)
-		return branch->push.dst;
-	if (branch->merge && branch->merge[0] && branch->merge[0]->dst)
-		return branch->merge[0]->dst;
-	return NULL;
-}
-
 /*
  * Compare a branch with its upstream, and save their differences (number
  * of commits) in *num_ours and *num_theirs.
@@ -1835,13 +1826,12 @@ int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs)
 	int rev_argc;
 
 	/* Cannot stat unless we are marked to build on top of somebody else. */
-	if (!branch)
-		return 0;
-	base = get_base(branch);
-	if (!base)
+	if (!branch ||
+	    !branch->merge || !branch->merge[0] || !branch->merge[0]->dst)
 		return 0;
 
 	/* Cannot stat if what we used to build on no longer exists */
+	base = branch->merge[0]->dst;
 	if (read_ref(base, sha1))
 		return -1;
 	theirs = lookup_commit_reference(sha1);
@@ -1917,7 +1907,7 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 		break;
 	}
 
-	base = get_base(branch);
+	base = branch->merge[0]->dst;
 	base = shorten_unambiguous_ref(base, 0);
 	if (upstream_is_gone) {
 		strbuf_addf(sb,
