@@ -211,7 +211,6 @@ test "$mode" = rebase && {
 	oldremoteref=$(git merge-base --fork-point $branch $curr_branch 2>/dev/null)
 }
 orig_head=$(git rev-parse -q --verify HEAD)
-echo git fetch $verbosity $progress $dry_run $recurse_submodules $remote $branch
 git fetch $verbosity $progress $dry_run $recurse_submodules $remote $branch || exit 1
 test -z "$dry_run" || exit 0
 
