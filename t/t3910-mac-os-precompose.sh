@@ -141,7 +141,7 @@ test_expect_success "Add long precomposed filename" '
 	git commit -m "Long filename"
 '
 
-test_expect_failure 'handle existing decomposed filenames' '
+test_expect_success 'handle existing decomposed filenames' '
 	echo content >"verbatim.$Adiarnfd" &&
 	git -c core.precomposeunicode=false add "verbatim.$Adiarnfd" &&
 	git commit -m "existing decomposed file" &&

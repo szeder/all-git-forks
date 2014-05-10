@@ -245,7 +245,7 @@ struct cache_entry *index_dir_exists(struct index_state *istate, const char *nam
 	return NULL;
 }
 
-struct cache_entry *index_file_exists(struct index_state *istate, const char *name, int namelen, int icase)
+static struct cache_entry *index_file_exists_int(struct index_state *istate, const char *name, int namelen, int icase)
 {
 	unsigned int hash = hash_name(name, namelen);
 	struct cache_entry *ce;
@@ -279,6 +279,23 @@ static int free_dir_entry(void *entry, void *unused)
 		dir = next;
 	}
 	return 0;
+}
+
+struct cache_entry *index_file_exists(struct index_state *istate, const char *name, int namelen, int icase)
+{
+	struct cache_entry *ce;
+	ce = index_file_exists_int(istate, name, namelen, icase);
+	if (ce)
+		return ce;
+	else {
+		int decomp_len;
+		char *decomp_name = decompose_str_len(name, namelen, &decomp_len);
+		if (decomp_name) {
+			ce = index_file_exists_int(istate, decomp_name, decomp_len, icase);
+			free(decomp_name);
+		}
+	}
+	return ce;
 }
 
 void free_name_hash(struct index_state *istate)
