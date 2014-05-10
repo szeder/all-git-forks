@@ -210,7 +210,7 @@ struct cache_entry *index_dir_exists(struct index_state *istate, const char *nam
 	return NULL;
 }
 
-struct cache_entry *index_file_exists(struct index_state *istate, const char *name, int namelen, int icase)
+static struct cache_entry *index_file_exists_int(struct index_state *istate, const char *name, int namelen, int icase)
 {
 	struct cache_entry *ce;
 	struct hashmap_entry key;
@@ -226,6 +226,25 @@ struct cache_entry *index_file_exists(struct index_state *istate, const char *na
 	}
 	return NULL;
 }
+
+
+struct cache_entry *index_file_exists(struct index_state *istate, const char *name, int namelen, int icase)
+{
+	struct cache_entry *ce;
+	ce = index_file_exists_int(istate, name, namelen, icase);
+	if (ce)
+		return ce;
+	else {
+		int prec_len;
+		char *prec_name = inverscompose_str_len(name, namelen, &prec_len);
+		if (prec_name) {
+			ce = index_file_exists_int(istate, prec_name, prec_len, icase);
+			free(prec_name);
+		}
+	}
+	return ce;
+}
+
 
 void free_name_hash(struct index_state *istate)
 {
