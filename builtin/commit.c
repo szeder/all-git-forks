@@ -1532,6 +1532,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	struct commit_list *parents = NULL, **pptr = &parents;
 	struct stat statbuf;
 	int allow_fast_forward = 1;
+	int reverse_parents = 0;
 	struct commit *current_head = NULL;
 	struct commit_extra_header *extra = NULL;
 
@@ -1602,9 +1603,13 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 				die_errno(_("could not read MERGE_MODE"));
 			if (strstr(sb.buf, "no-ff"))
 				allow_fast_forward = 0;
+			if (strstr(sb.buf, "reverse"))
+				reverse_parents = 1;
 		}
 		if (allow_fast_forward)
 			parents = reduce_heads(parents);
+		if (reverse_parents)
+			parents = reverse_heads(parents);
 	} else {
 		if (!reflog_msg)
 			reflog_msg = (whence == FROM_CHERRY_PICK)
