@@ -1701,7 +1701,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		if (!stat(git_path("MERGE_MODE"), &statbuf)) {
 			if (strbuf_read_file(&sb, git_path("MERGE_MODE"), 0) < 0)
 				die_errno(_("could not read MERGE_MODE"));
-			if (!strcmp(sb.buf, "no-ff"))
+			if (strstr(sb.buf, "no-ff"))
 				allow_fast_forward = 0;
 		}
 		if (allow_fast_forward)
