@@ -461,6 +461,16 @@ test_expect_success 'merge c0 with c1 (no-ff)' '
 
 test_debug 'git log --graph --decorate --oneline --all'
 
+test_expect_success 'merge c0 with c1 (--reverse)' '
+	git reset --hard c0 &&
+	test_tick &&
+	git merge --no-ff --reverse c1 &&
+	verify_merge file result.1 &&
+	verify_parents $c1 $c0
+'
+
+test_debug 'git log --graph --decorate --oneline --all'
+
 test_expect_success 'merge c0 with c1 (merge.ff=false)' '
 	git reset --hard c0 &&
 	test_config merge.ff "false" &&
@@ -667,6 +677,22 @@ test_expect_success 'merge --no-ff --edit' '
 	sed "1,/^$/d" >actual raw &&
 	test_cmp actual expected
 '
+
+test_expect_success 'merge --reverse --no-commit && commit' '
+	git reset --hard c0 &&
+	git merge --no-ff --reverse --no-commit c1 &&
+	EDITOR=: git commit &&
+	verify_parents $c1 $c0
+'
+
+test_debug 'git log --graph --decorate --oneline --all'
+
+test_expect_success 'amending reverse merge commit' '
+	EDITOR=: git commit --amend &&
+	verify_parents $c1 $c0
+'
+
+test_debug 'git log --graph --decorate --oneline --all'
 
 test_expect_success GPG 'merge --ff-only tag' '
 	git reset --hard c0 &&
