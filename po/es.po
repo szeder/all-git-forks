@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-10 21:56+0200\n"
+"PO-Revision-Date: 2014-05-11 21:58+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -3002,6 +3002,7 @@ msgid "show object size"
 msgstr "muestra el tamaño del objeto"
 
 #: builtin/cat-file.c:373
+#, fuzzy
 msgid "exit with zero when there's no error"
 msgstr "termina con código de salida cero cuando no hay errores"
 
@@ -3023,15 +3024,15 @@ msgstr ""
 
 #: builtin/check-attr.c:11
 msgid "git check-attr [-a | --all | attr...] [--] pathname..."
-msgstr ""
+msgstr "git check-attr [-a | --all | attr...] [--] ruta..."
 
 #: builtin/check-attr.c:12
 msgid "git check-attr --stdin [-z] [-a | --all | attr...] < <list-of-paths>"
-msgstr ""
+msgstr "git check-attr --stdin [-z] [-a | --all | attr...] < <lista-de-rutas>"
 
 #: builtin/check-attr.c:19
 msgid "report all attributes set on file"
-msgstr ""
+msgstr "informa sobre todos los atributos del fichero"
 
 #: builtin/check-attr.c:20
 msgid "use .gitattributes only from the index"
@@ -3039,7 +3040,7 @@ msgstr ""
 
 #: builtin/check-attr.c:21 builtin/check-ignore.c:22 builtin/hash-object.c:75
 msgid "read file names from stdin"
-msgstr ""
+msgstr "lee el nombre de los ficheros de la entrada estándar"
 
 #: builtin/check-attr.c:23 builtin/check-ignore.c:24
 msgid "terminate input and output records by a NUL character"
@@ -3047,7 +3048,7 @@ msgstr ""
 
 #: builtin/check-ignore.c:18 builtin/checkout.c:1089 builtin/gc.c:271
 msgid "suppress progress reporting"
-msgstr ""
+msgstr "suprime el informe de progreso"
 
 #: builtin/check-ignore.c:26
 msgid "show non-matching input paths"
@@ -3059,35 +3060,35 @@ msgstr ""
 
 #: builtin/check-ignore.c:154
 msgid "cannot specify pathnames with --stdin"
-msgstr ""
+msgstr "no puede especificar rutas con --stdin"
 
 #: builtin/check-ignore.c:157
 msgid "-z only makes sense with --stdin"
-msgstr ""
+msgstr "-z sólo tiene sentido con --stdin"
 
 #: builtin/check-ignore.c:159
 msgid "no path specified"
-msgstr ""
+msgstr "no ha especificado ninguna ruta"
 
 #: builtin/check-ignore.c:163
 msgid "--quiet is only valid with a single pathname"
-msgstr ""
+msgstr "--quiet sólo es válido con una única ruta"
 
 #: builtin/check-ignore.c:165
 msgid "cannot have both --quiet and --verbose"
-msgstr ""
+msgstr "no puede especificar --quiet y --verbose simultáneamente"
 
 #: builtin/check-ignore.c:168
 msgid "--non-matching is only valid with --verbose"
-msgstr ""
+msgstr "--non-matching sólo es válido con --verbose"
 
 #: builtin/check-mailmap.c:8
 msgid "git check-mailmap [options] <contact>..."
-msgstr ""
+msgstr "git check-mailmap [opciones] <contacto>..."
 
 #: builtin/check-mailmap.c:13
 msgid "also read contacts from stdin"
-msgstr ""
+msgstr "también lee contactos de la entrada estándar"
 
 #: builtin/check-mailmap.c:24
 #, c-format
@@ -3096,11 +3097,11 @@ msgstr ""
 
 #: builtin/check-mailmap.c:47
 msgid "no contacts specified"
-msgstr ""
+msgstr "no ha especificado ningún contacto"
 
 #: builtin/checkout-index.c:126
 msgid "git checkout-index [options] [--] [<file>...]"
-msgstr ""
+msgstr "git checkout-index [opciones] [--] [<fichero>...]"
 
 #: builtin/checkout-index.c:187
 msgid "check out all files in the index"
@@ -3108,11 +3109,11 @@ msgstr ""
 
 #: builtin/checkout-index.c:188
 msgid "force overwrite of existing files"
-msgstr ""
+msgstr "fuerza la sobreescritura de ficheros existentes"
 
 #: builtin/checkout-index.c:190
 msgid "no warning for existing files and files not in index"
-msgstr ""
+msgstr "no emite avisos para ficheros existentes y para ficheros que no están en el índice"
 
 #: builtin/checkout-index.c:192
 msgid "don't checkout new files"
@@ -3120,23 +3121,23 @@ msgstr ""
 
 #: builtin/checkout-index.c:194
 msgid "update stat information in the index file"
-msgstr ""
+msgstr "actualiza información de estado en el fichero índice"
 
 #: builtin/checkout-index.c:200
 msgid "read list of paths from the standard input"
-msgstr ""
+msgstr "lee la lista de rutas de la entrada estándar"
 
 #: builtin/checkout-index.c:202
 msgid "write the content to temporary files"
-msgstr ""
+msgstr "escribe el contenido a ficheros temporales"
 
 #: builtin/checkout-index.c:203 builtin/column.c:30
 msgid "string"
-msgstr ""
+msgstr "cadena"
 
 #: builtin/checkout-index.c:204
 msgid "when creating files, prepend <string>"
-msgstr ""
+msgstr "al crear ficheros, antepone <cadena>"
 
 #: builtin/checkout-index.c:207
 msgid "copy out the files from named stage"
@@ -3144,11 +3145,11 @@ msgstr ""
 
 #: builtin/checkout.c:25
 msgid "git checkout [options] <branch>"
-msgstr ""
+msgstr "git checkout [opciones] <rama>"
 
 #: builtin/checkout.c:26
 msgid "git checkout [options] [<branch>] -- <file>..."
-msgstr ""
+msgstr "git checkout [opciones] [<rama>] -- <fichero>..."
 
 #: builtin/checkout.c:114 builtin/checkout.c:147
 #, c-format
@@ -3189,21 +3190,21 @@ msgstr ""
 #: builtin/checkout.c:244 builtin/checkout.c:247
 #, c-format
 msgid "'%s' cannot be used with %s"
-msgstr ""
+msgstr "no puede usar '%s' con %s"
 
 #: builtin/checkout.c:250
 #, c-format
 msgid "Cannot update paths and switch to branch '%s' at the same time."
-msgstr ""
+msgstr "No puede actualizar rutas y cambiar a la rama '%s' al mismo tiempo."
 
 #: builtin/checkout.c:261 builtin/checkout.c:450
 msgid "corrupt index file"
-msgstr ""
+msgstr "fichero índice dañado"
 
 #: builtin/checkout.c:321 builtin/checkout.c:328
 #, c-format
 msgid "path '%s' is unmerged"
-msgstr ""
+msgstr "la ruta '%s' no está fusionada"
 
 #: builtin/checkout.c:472
 msgid "you need to resolve your current index first"
@@ -3216,7 +3217,7 @@ msgstr ""
 
 #: builtin/checkout.c:631
 msgid "HEAD is now at"
-msgstr ""
+msgstr "ahora la CABEZA [HEAD] está en"
 
 #: builtin/checkout.c:638
 #, c-format
@@ -3226,7 +3227,7 @@ msgstr ""
 #: builtin/checkout.c:641
 #, c-format
 msgid "Already on '%s'\n"
-msgstr ""
+msgstr "Ya en '%s'\n"
 
 #: builtin/checkout.c:645
 #, c-format
@@ -3236,17 +3237,17 @@ msgstr ""
 #: builtin/checkout.c:647 builtin/checkout.c:1032
 #, c-format
 msgid "Switched to a new branch '%s'\n"
-msgstr ""
+msgstr "Cambiado a una rama nueva '%s'\n"
 
 #: builtin/checkout.c:649
 #, c-format
 msgid "Switched to branch '%s'\n"
-msgstr ""
+msgstr "Cambiado a la rama '%s'\n"
 
 #: builtin/checkout.c:705
 #, c-format
 msgid " ... and %d more.\n"
-msgstr ""
+msgstr " ... y %d más.\n"
 
 #: builtin/checkout.c:711
 #, c-format
@@ -3261,7 +3262,15 @@ msgid_plural ""
 "\n"
 "%s\n"
 msgstr[0] ""
+"Aviso: va a dejar atrás %d commit, sin conectar a\n"
+"ninguna de sus ramas:\n"
+"\n"
+"%s\n"
 msgstr[1] ""
+"Aviso: va a dejar atrás %d commits, sin conectar a\n"
+"ninguna de sus ramas:\n"
+"\n"
+"%s\n"
 
 #: builtin/checkout.c:729
 #, c-format
@@ -3272,6 +3281,11 @@ msgid ""
 " git branch new_branch_name %s\n"
 "\n"
 msgstr ""
+"Si quiere conservarlos creando una rama nueva, este puede ser un buen momento\n"
+"para hacerlo con:\n"
+"\n"
+" git branch nombre_rama_nueva %s\n"
+"\n"
 
 #: builtin/checkout.c:759
 msgid "internal error in revision walk"
@@ -3279,7 +3293,7 @@ msgstr ""
 
 #: builtin/checkout.c:763
 msgid "Previous HEAD position was"
-msgstr ""
+msgstr "La posición anterior de la CABEZA [HEAD] era"
 
 #: builtin/checkout.c:790 builtin/checkout.c:1027
 msgid "You are on a branch yet to be born"
@@ -3313,7 +3327,7 @@ msgstr ""
 #: builtin/checkout.c:1063
 #, c-format
 msgid "'%s' cannot be used with '%s'"
-msgstr ""
+msgstr "no puede usar '%s' con '%s'"
 
 #: builtin/checkout.c:1068
 #, c-format
@@ -3323,7 +3337,7 @@ msgstr ""
 #: builtin/checkout.c:1090 builtin/checkout.c:1092 builtin/clone.c:88
 #: builtin/remote.c:159 builtin/remote.c:161
 msgid "branch"
-msgstr ""
+msgstr "rama"
 
 #: builtin/checkout.c:1091
 msgid "create and checkout a new branch"
@@ -3347,11 +3361,11 @@ msgstr ""
 
 #: builtin/checkout.c:1098
 msgid "new-branch"
-msgstr ""
+msgstr "rama-nueva"
 
 #: builtin/checkout.c:1098
 msgid "new unparented branch"
-msgstr ""
+msgstr "rama huérfana nueva"
 
 #: builtin/checkout.c:1099
 msgid "checkout our version for unmerged files"
@@ -3367,7 +3381,7 @@ msgstr ""
 
 #: builtin/checkout.c:1104
 msgid "perform a 3-way merge with the new branch"
-msgstr ""
+msgstr "realiza una fusión de 3-vías con la rama nueva"
 
 #: builtin/checkout.c:1105 builtin/merge.c:225
 msgid "update ignored files (default)"
@@ -3375,7 +3389,7 @@ msgstr ""
 
 #: builtin/checkout.c:1106 builtin/log.c:1228 parse-options.h:245
 msgid "style"
-msgstr ""
+msgstr "estilo"
 
 #: builtin/checkout.c:1107
 msgid "conflict style (merge or diff3)"
@@ -3391,19 +3405,19 @@ msgstr ""
 
 #: builtin/checkout.c:1135
 msgid "-b, -B and --orphan are mutually exclusive"
-msgstr ""
+msgstr "-b, -B y --orphan son mutuamente excluyentes"
 
 #: builtin/checkout.c:1152
 msgid "--track needs a branch name"
-msgstr ""
+msgstr "--track necesita el nombre de una rama"
 
 #: builtin/checkout.c:1159
 msgid "Missing branch name; try -b"
-msgstr ""
+msgstr "Falta el nombre de la rama; pruebe -b"
 
 #: builtin/checkout.c:1196
 msgid "invalid path specification"
-msgstr ""
+msgstr "especificación de ruta inválida"
 
 #: builtin/checkout.c:1203
 #, c-format
@@ -3415,7 +3429,7 @@ msgstr ""
 #: builtin/checkout.c:1208
 #, c-format
 msgid "git checkout: --detach does not take a path argument '%s'"
-msgstr ""
+msgstr "git checkout: --detach no acepta una ruta, '%s', como parámetro"
 
 #: builtin/checkout.c:1212
 msgid ""
@@ -3426,17 +3440,17 @@ msgstr ""
 #: builtin/clean.c:26
 msgid ""
 "git clean [-d] [-f] [-i] [-n] [-q] [-e <pattern>] [-x | -X] [--] <paths>..."
-msgstr ""
+msgstr "git clean [-d] [-f] [-i] [-n] [-q] [-e <patrón>] [-x | -X] [--] <rutas>..."
 
 #: builtin/clean.c:30
 #, c-format
 msgid "Removing %s\n"
-msgstr ""
+msgstr "Eliminando %s\n"
 
 #: builtin/clean.c:31
 #, c-format
 msgid "Would remove %s\n"
-msgstr ""
+msgstr "Eliminaría %s\n"
 
 #: builtin/clean.c:32
 #, c-format
@@ -3451,7 +3465,7 @@ msgstr ""
 #: builtin/clean.c:34
 #, c-format
 msgid "failed to remove %s"
-msgstr ""
+msgstr "no he podido eliminar %s"
 
 #: builtin/clean.c:295
 msgid ""
@@ -3495,11 +3509,11 @@ msgstr ""
 #: builtin/clean.c:758
 #, c-format
 msgid "remove %s? "
-msgstr ""
+msgstr "¿eliminar %s? "
 
 #: builtin/clean.c:783
 msgid "Bye."
-msgstr ""
+msgstr "Adiós."
 
 #: builtin/clean.c:791
 msgid ""
@@ -3532,7 +3546,7 @@ msgstr ""
 
 #: builtin/clean.c:875
 msgid "do not print names of files removed"
-msgstr ""
+msgstr "no imprime el nombre de los ficheros eliminados"
 
 #: builtin/clean.c:877
 msgid "force"
@@ -3540,7 +3554,7 @@ msgstr ""
 
 #: builtin/clean.c:878
 msgid "interactive cleaning"
-msgstr ""
+msgstr "limpieza interactiva"
 
 #: builtin/clean.c:880
 msgid "remove whole directories"
