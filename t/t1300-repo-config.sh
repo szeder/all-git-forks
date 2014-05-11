@@ -338,6 +338,9 @@ alias.ci=commit
 alias.co=checkout
 alias.rb=rebase
 alias.st=status
+alias.br=branch
+alias.pi=cherry-pick
+alias.mt=mergetool
 beta.noindent=sillyValue
 nextsection.nonewline=wow2 for me
 123456.a123=987
@@ -353,6 +356,9 @@ alias.ci=commit
 alias.co=checkout
 alias.rb=rebase
 alias.st=status
+alias.br=branch
+alias.pi=cherry-pick
+alias.mt=mergetool
 EOF
 
 test_expect_success '--list without repo produces empty output' '
@@ -939,6 +945,9 @@ alias.ci=commit
 alias.co=checkout
 alias.rb=rebase
 alias.st=status
+alias.br=branch
+alias.pi=cherry-pick
+alias.mt=mergetool
 section.continued=continued
 section.noncont=not continued
 section.quotecont=cont;inued
@@ -963,7 +972,10 @@ alias.ci
 commitQalias.co
 checkoutQalias.rb
 rebaseQalias.st
-statusQsection.sub=section.val1
+statusQalias.br
+branchQalias.pi
+cherry-pickQalias.mt
+mergetoolQsection.sub=section.val1
 foo=barQsection.sub=section.val2
 foo
 barQsection.sub=section.val3
