@@ -10,6 +10,10 @@ SYNOPSIS
 [verse]
 'git mergetool' [--tool=<tool>] [-y | --[no-]prompt] [<file>...]
 
+ALIAS
+~~~~~
+'git mt'
+
 DESCRIPTION
 -----------
 

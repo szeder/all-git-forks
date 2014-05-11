@@ -53,6 +53,9 @@ test_expect_success 'listing includes option and expansion' '
 	alias.co=checkout
 	alias.rb=rebase
 	alias.st=status
+	alias.br=branch
+	alias.pi=cherry-pick
+	alias.mt=mergetool
 	include.path=one
 	test.one=1
 	EOF

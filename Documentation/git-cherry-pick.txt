@@ -13,6 +13,10 @@ SYNOPSIS
 'git cherry-pick' --quit
 'git cherry-pick' --abort
 
+ALIAS
+~~~~~
+'git pi'
+
 DESCRIPTION
 -----------
 
