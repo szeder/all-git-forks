@@ -20,6 +20,10 @@ SYNOPSIS
 'git branch' (-d | -D) [-r] <branchname>...
 'git branch' --edit-description [<branchname>]
 
+ALIAS
+~~~~~
+'git br'
+
 DESCRIPTION
 -----------
 
