@@ -11,6 +11,17 @@ any feature, or do any backwards incompatible changes, so you can replace git
 with git-fc and you wouldn't notice the difference. The difference comes in the
 extra features, that is all.
 
+== Maintenance ==
+
+Each release of Git is merged directly into git-fc, so if there's a new feature
+in Git, git-fc will get it as well.
+
+Every extra feature is maintained individually in a separate branch, so if you
+are interested in a specific feature and don't trust the rest of git-fc, you
+can use that branch instead. For example the publish tracking branch feature is
+maintained in the 'fc/publish' branch which sits on top of git.git's v1.9.2.
+You can grab the specific branch and do whatever you want with it.
+
 == Extra features ==
 
 === Streamlined remote helpers ===
