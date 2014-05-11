@@ -11,10 +11,9 @@ SYNOPSIS
 [verse]
 'git status' [<options>...] [--] [<pathspec>...]
 
-ALIAS
------
-
-git st
+Alias
+~~~~~
+'git st'
 
 DESCRIPTION
 -----------

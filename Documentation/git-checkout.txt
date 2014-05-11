@@ -16,9 +16,8 @@ SYNOPSIS
 'git checkout' [-p|--patch] [<tree-ish>] [--] [<paths>...]
 
 ALIAS
------
-
-git co
+~~~~~
+'git co'
 
 DESCRIPTION
 -----------

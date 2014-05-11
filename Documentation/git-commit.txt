@@ -16,9 +16,8 @@ SYNOPSIS
 	   [-i | -o] [-S[<keyid>]] [--] [<file>...]
 
 ALIAS
------
-
-git ci
+~~~~~
+'git ci'
 
 DESCRIPTION
 -----------

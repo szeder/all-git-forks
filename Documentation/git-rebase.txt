@@ -14,10 +14,9 @@ SYNOPSIS
 	--root [<branch>]
 'git rebase' --continue | --skip | --abort | --edit-todo
 
-ALIAS
------
-
-git rb
+Alias
+~~~~~
+'git rb'
 
 DESCRIPTION
 -----------
