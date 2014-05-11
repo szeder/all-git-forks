@@ -41,7 +41,11 @@ import os
 import json
 import re
 import StringIO
-import atexit, shutil, hashlib, urlparse, subprocess
+import atexit
+import shutil
+import hashlib
+import urlparse
+import subprocess
 
 NAME_RE = re.compile('^([^<>]+)')
 AUTHOR_RE = re.compile('^([^<>]+?)? ?[<>]([^<>]*)(?:$|>)')
