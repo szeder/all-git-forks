@@ -399,6 +399,9 @@ test_expect_success '__git_aliases' '
 	co
 	rb
 	st
+	br
+	pi
+	mt
 	ci
 	co
 	EOF

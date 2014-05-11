@@ -1198,6 +1198,9 @@ int git_config_early(config_fn_t fn, void *data, const char *repo_config)
 	ret += fn("alias.co", "checkout", data);
 	ret += fn("alias.rb", "rebase", data);
 	ret += fn("alias.st", "status", data);
+	ret += fn("alias.br", "branch", data);
+	ret += fn("alias.pi", "cherry-pick", data);
+	ret += fn("alias.mt", "mergetool", data);
 
 	if (git_config_system() && !access_or_die(git_etc_gitconfig(), R_OK, 0)) {
 		ret += git_config_from_file(fn, git_etc_gitconfig(),

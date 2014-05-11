@@ -338,6 +338,9 @@ alias.ci=commit
 alias.co=checkout
 alias.rb=rebase
 alias.st=status
+alias.br=branch
+alias.pi=cherry-pick
+alias.mt=mergetool
 beta.noindent=sillyValue
 nextsection.nonewline=wow2 for me
 123456.a123=987
@@ -353,6 +356,9 @@ alias.ci=commit
 alias.co=checkout
 alias.rb=rebase
 alias.st=status
+alias.br=branch
+alias.pi=cherry-pick
+alias.mt=mergetool
 EOF
 
 test_expect_success '--list without repo produces empty output' '
@@ -365,6 +371,9 @@ alias.ci
 alias.co
 alias.rb
 alias.st
+alias.br
+alias.pi
+alias.mt
 beta.noindent
 nextsection.nonewline
 123456.a123
@@ -945,6 +954,9 @@ alias.ci=commit
 alias.co=checkout
 alias.rb=rebase
 alias.st=status
+alias.br=branch
+alias.pi=cherry-pick
+alias.mt=mergetool
 section.continued=continued
 section.noncont=not continued
 section.quotecont=cont;inued
@@ -969,7 +981,10 @@ alias.ci
 commitQalias.co
 checkoutQalias.rb
 rebaseQalias.st
-statusQsection.sub=section.val1
+statusQalias.br
+branchQalias.pi
+cherry-pickQalias.mt
+mergetoolQsection.sub=section.val1
 foo=barQsection.sub=section.val2
 foo
 barQsection.sub=section.val3
@@ -1271,6 +1286,9 @@ test_expect_success '--show-origin with --list' '
 		command line:	alias.co=checkout
 		command line:	alias.rb=rebase
 		command line:	alias.st=status
+		command line:	alias.br=branch
+		command line:	alias.pi=cherry-pick
+		command line:	alias.mt=mergetool
 		file:$HOME/.gitconfig	user.global=true
 		file:$HOME/.gitconfig	user.override=global
 		file:$HOME/.gitconfig	include.path=$INCLUDE_DIR/absolute.include
@@ -1291,7 +1309,10 @@ test_expect_success '--show-origin with --list --null' '
 		commitQcommand line:Qalias.co
 		checkoutQcommand line:Qalias.rb
 		rebaseQcommand line:Qalias.st
-		statusQfile:$HOME/.gitconfigQuser.global
+		statusQcommand line:Qalias.br
+		branchQcommand line:Qalias.pi
+		cherry-pickQcommand line:Qalias.mt
+		mergetoolQfile:$HOME/.gitconfigQuser.global
 		trueQfile:$HOME/.gitconfigQuser.override
 		globalQfile:$HOME/.gitconfigQinclude.path
 		$INCLUDE_DIR/absolute.includeQfile:$INCLUDE_DIR/absolute.includeQuser.absolute
