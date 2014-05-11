@@ -26,7 +26,7 @@ Further, with -B and -M together, these should turn into two renames.
 
 test_expect_success \
     setup \
-    'cat "$TEST_DIRECTORY"/../README.upstream >file0 &&
+    'cat "$TEST_DIRECTORY"/../README >file0 &&
      cat "$TEST_DIRECTORY"/../COPYING >file1 &&
     git update-index --add file0 file1 &&
     tree=$(git write-tree) &&
