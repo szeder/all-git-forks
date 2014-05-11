@@ -43,8 +43,10 @@ static int get_arg(struct parse_opt_ctx_t *p, const struct option *opt,
 	} else if (p->argc > 1) {
 		p->argc--;
 		*arg = *++p->argv;
-	} else
-		return opterror(opt, "requires a value", flags);
+	} else {
+		opterror(opt, "requires a value", flags);
+		return -1;
+	}
 	return 0;
 }
 
