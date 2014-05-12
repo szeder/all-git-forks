@@ -54,19 +54,19 @@ msgstr "git archive --remote <repositorio> [--exec <comando>] --list"
 #: archive.c:243 builtin/add.c:136 builtin/add.c:428 builtin/rm.c:328
 #, c-format
 msgid "pathspec '%s' did not match any files"
-msgstr ""
+msgstr "la ruta '%s' no corresponde a ningún fichero"
 
 #: archive.c:328
 msgid "fmt"
-msgstr ""
+msgstr "fmt"
 
 #: archive.c:328
 msgid "archive format"
-msgstr ""
+msgstr "formato de fichero"
 
 #: archive.c:329 builtin/log.c:1193
 msgid "prefix"
-msgstr ""
+msgstr "prefijo"
 
 #: archive.c:330
 msgid "prepend prefix to each pathname in the archive"
