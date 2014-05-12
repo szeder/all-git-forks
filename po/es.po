@@ -45,11 +45,11 @@ msgstr "git archive --list"
 #: archive.c:12
 msgid ""
 "git archive --remote <repo> [--exec <cmd>] [options] <tree-ish> [<path>...]"
-msgstr "git archive --remote <repositorio> [--exec <comando>] [opciones] <tree-ish> [<ruta>...]"
+msgstr "git archive --remote <repo> [--exec <comando>] [opciones] <tree-ish> [<ruta>...]"
 
 #: archive.c:13
 msgid "git archive --remote <repo> [--exec <cmd>] --list"
-msgstr "git archive --remote <repositorio> [--exec <comando>] --list"
+msgstr "git archive --remote <repo> [--exec <comando>] --list"
 
 #: archive.c:243 builtin/add.c:136 builtin/add.c:428 builtin/rm.c:328
 #, c-format
@@ -70,7 +70,7 @@ msgstr "prefijo"
 
 #: archive.c:330
 msgid "prepend prefix to each pathname in the archive"
-msgstr ""
+msgstr "poner un prefijo a cada ruta en el archivo"
 
 #: archive.c:331 builtin/archive.c:88 builtin/blame.c:2258
 #: builtin/blame.c:2259 builtin/config.c:57 builtin/fast-export.c:680
@@ -78,39 +78,39 @@ msgstr ""
 #: builtin/ls-files.c:489 builtin/ls-files.c:492 builtin/notes.c:412
 #: builtin/notes.c:569 builtin/read-tree.c:108 parse-options.h:151
 msgid "file"
-msgstr ""
+msgstr "fichero"
 
 #: archive.c:332 builtin/archive.c:89
 msgid "write the archive to this file"
-msgstr ""
+msgstr "escribir el archivo en este fichero"
 
 #: archive.c:334
 msgid "read .gitattributes in working directory"
-msgstr ""
+msgstr "leer .gitattributes en el directorio de trabajo"
 
 #: archive.c:335
 msgid "report archived files on stderr"
-msgstr ""
+msgstr "reportar en stderr los archivos archivados"
 
 #: archive.c:336
 msgid "store only"
-msgstr ""
+msgstr "sólo almacenar"
 
 #: archive.c:337
 msgid "compress faster"
-msgstr ""
+msgstr "compresión rápida"
 
 #: archive.c:345
 msgid "compress better"
-msgstr ""
+msgstr "compresión eficaz"
 
 #: archive.c:348
 msgid "list supported archive formats"
-msgstr ""
+msgstr "lista los formatos de archivo soportados"
 
 #: archive.c:350 builtin/archive.c:90 builtin/clone.c:84
 msgid "repo"
-msgstr ""
+msgstr "repo"
 
 #: archive.c:351 builtin/archive.c:91
 msgid "retrieve the archive from remote repository <repo>"
