@@ -20,7 +20,7 @@ msgstr ""
 #: advice.c:55
 #, c-format
 msgid "hint: %.*s\n"
-msgstr ""
+msgstr "sugerencia: %.*s\n"
 
 #: advice.c:85
 msgid ""
@@ -29,23 +29,27 @@ msgid ""
 "appropriate to mark resolution and make a commit,\n"
 "or use 'git commit -a'."
 msgstr ""
+"Corríjalos en el directorio de trabajo,\n"
+"y después use 'git add/rm <file>', como\n"
+"sea más apropiado para marcar la resolución, y hacer commit,\n"
+"o use 'git commit -a'."
 
 #: archive.c:10
 msgid "git archive [options] <tree-ish> [<path>...]"
-msgstr ""
+msgstr "git archive [opciones] <tree-ish> [<ruta>...]"
 
 #: archive.c:11
 msgid "git archive --list"
-msgstr ""
+msgstr "git archive --list"
 
 #: archive.c:12
 msgid ""
 "git archive --remote <repo> [--exec <cmd>] [options] <tree-ish> [<path>...]"
-msgstr ""
+msgstr "git archive --remote <repositorio> [--exec <comando>] [opciones] <tree-ish> [<ruta>...]"
 
 #: archive.c:13
 msgid "git archive --remote <repo> [--exec <cmd>] --list"
-msgstr ""
+msgstr "git archive --remote <repositorio> [--exec <comando>] --list"
 
 #: archive.c:243 builtin/add.c:136 builtin/add.c:428 builtin/rm.c:328
 #, c-format
