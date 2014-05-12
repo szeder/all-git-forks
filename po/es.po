@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-11 21:58+0200\n"
+"PO-Revision-Date: 2014-05-12 21:31+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -3558,12 +3558,12 @@ msgstr "limpieza interactiva"
 
 #: builtin/clean.c:880
 msgid "remove whole directories"
-msgstr ""
+msgstr "elimina directorios completos"
 
 #: builtin/clean.c:881 builtin/describe.c:415 builtin/grep.c:716
 #: builtin/ls-files.c:486 builtin/name-rev.c:314 builtin/show-ref.c:185
 msgid "pattern"
-msgstr ""
+msgstr "patrón"
 
 #: builtin/clean.c:882
 msgid "add <pattern> to ignore rules"
@@ -3571,15 +3571,15 @@ msgstr ""
 
 #: builtin/clean.c:883
 msgid "remove ignored files, too"
-msgstr ""
+msgstr "elimina también los ficheros ignorados"
 
 #: builtin/clean.c:885
 msgid "remove only ignored files"
-msgstr ""
+msgstr "elimina sólo los ficheros ignorados"
 
 #: builtin/clean.c:903
 msgid "-x and -X cannot be used together"
-msgstr ""
+msgstr "-x and -X no se pueden usar simultáneamente"
 
 #: builtin/clean.c:907
 msgid ""
@@ -3595,7 +3595,7 @@ msgstr ""
 
 #: builtin/clone.c:36
 msgid "git clone [options] [--] <repo> [<dir>]"
-msgstr ""
+msgstr "git clone [opciones] [--] <repo> [<dir>]"
 
 #: builtin/clone.c:64 builtin/fetch.c:97 builtin/merge.c:222
 #: builtin/push.c:504
@@ -3616,7 +3616,7 @@ msgstr ""
 
 #: builtin/clone.c:73
 msgid "to clone from a local repository"
-msgstr ""
+msgstr "para clonar desde un repositorio local"
 
 #: builtin/clone.c:75
 msgid "don't use local hardlinks, always copy"
@@ -3644,7 +3644,7 @@ msgstr ""
 
 #: builtin/clone.c:86 builtin/column.c:26 builtin/merge-file.c:44
 msgid "name"
-msgstr ""
+msgstr "nombre"
 
 #: builtin/clone.c:87
 msgid "use <name> instead of 'origin' to track upstream"
@@ -3656,11 +3656,11 @@ msgstr ""
 
 #: builtin/clone.c:91
 msgid "path to git-upload-pack on the remote"
-msgstr ""
+msgstr "ruta a git-upload-pack en el remoto"
 
 #: builtin/clone.c:92 builtin/fetch.c:98 builtin/grep.c:661
 msgid "depth"
-msgstr ""
+msgstr "profundidad"
 
 #: builtin/clone.c:93
 msgid "create a shallow clone of that depth"
@@ -3668,7 +3668,7 @@ msgstr ""
 
 #: builtin/clone.c:95
 msgid "clone only one branch, HEAD or --branch"
-msgstr ""
+msgstr "clona sólo una rama, CABEZA [HEAD] o --branch"
 
 #: builtin/clone.c:96 builtin/init-db.c:492
 msgid "gitdir"
@@ -3704,27 +3704,27 @@ msgstr ""
 #: builtin/clone.c:321
 #, c-format
 msgid "failed to create directory '%s'"
-msgstr ""
+msgstr "no he podido crear el directorio '%s'"
 
 #: builtin/clone.c:323 builtin/diff.c:83
 #, c-format
 msgid "failed to stat '%s'"
-msgstr ""
+msgstr "no he podido obtener el estado de '%s'"
 
 #: builtin/clone.c:325
 #, c-format
 msgid "%s exists and is not a directory"
-msgstr ""
+msgstr "%s existe y no es un directorio"
 
 #: builtin/clone.c:339
 #, c-format
 msgid "failed to stat %s\n"
-msgstr ""
+msgstr "no he podido obtener el estado de %s\n"
 
 #: builtin/clone.c:361
 #, c-format
 msgid "failed to create link '%s'"
-msgstr ""
+msgstr "no he podido crear el enlace '%s'"
 
 #: builtin/clone.c:365
 #, c-format
@@ -3734,7 +3734,7 @@ msgstr ""
 #: builtin/clone.c:388 builtin/clone.c:565
 #, c-format
 msgid "done.\n"
-msgstr ""
+msgstr "hecho.\n"
 
 #: builtin/clone.c:401
 msgid ""
@@ -3746,16 +3746,16 @@ msgstr ""
 #: builtin/clone.c:480
 #, c-format
 msgid "Could not find remote branch %s to clone."
-msgstr ""
+msgstr "No he podido localizar la rama remota a clonar %s."
 
 #: builtin/clone.c:560
 #, c-format
 msgid "Checking connectivity... "
-msgstr ""
+msgstr "Comprobando la conectividad... "
 
 #: builtin/clone.c:563
 msgid "remote did not send all necessary objects"
-msgstr ""
+msgstr "el remoto no ha enviado todos los objetos necesarios"
 
 #: builtin/clone.c:626
 msgid "remote HEAD refers to nonexistent ref, unable to checkout.\n"
@@ -3767,29 +3767,29 @@ msgstr ""
 
 #: builtin/clone.c:765
 msgid "Too many arguments."
-msgstr ""
+msgstr "Demasiados parámetros."
 
 #: builtin/clone.c:769
 msgid "You must specify a repository to clone."
-msgstr ""
+msgstr "Debe especificar el repositorio a clonar."
 
 #: builtin/clone.c:780
 #, c-format
 msgid "--bare and --origin %s options are incompatible."
-msgstr ""
+msgstr "las opciones --bare y --origin %s son incompatibles."
 
 #: builtin/clone.c:783
 msgid "--bare and --separate-git-dir are incompatible."
-msgstr ""
+msgstr "las opciones --bare y --separate-git-dir son incompatibles."
 
 #: builtin/clone.c:796
 #, c-format
 msgid "repository '%s' does not exist"
-msgstr ""
+msgstr "el repositorio '%s' no existe"
 
 #: builtin/clone.c:802
 msgid "--depth is ignored in local clones; use file:// instead."
-msgstr ""
+msgstr "la opción --depth es ignorada en clones locales; use file:// en su lugar."
 
 #: builtin/clone.c:805
 msgid "source repository is shallow, ignoring --local"
@@ -3797,22 +3797,22 @@ msgstr ""
 
 #: builtin/clone.c:810
 msgid "--local is ignored"
-msgstr ""
+msgstr "la opción --local es ignorada"
 
 #: builtin/clone.c:814 builtin/fetch.c:1119
 #, c-format
 msgid "depth %s is not a positive number"
-msgstr ""
+msgstr "la profundidad %s no es un número positivo"
 
 #: builtin/clone.c:824
 #, c-format
 msgid "destination path '%s' already exists and is not an empty directory."
-msgstr ""
+msgstr "la ruta de destino '%s' ya existe y no es un directorio vacío."
 
 #: builtin/clone.c:834
 #, c-format
 msgid "working tree '%s' already exists."
-msgstr ""
+msgstr "el árbol de trabajo '%s' ya existe."
 
 #: builtin/clone.c:847 builtin/clone.c:859
 #, c-format
@@ -3832,12 +3832,12 @@ msgstr ""
 #: builtin/clone.c:871
 #, c-format
 msgid "Cloning into '%s'...\n"
-msgstr ""
+msgstr "Clonando en '%s'...\n"
 
 #: builtin/clone.c:906
 #, c-format
 msgid "Don't know how to clone %s"
-msgstr ""
+msgstr "No sé cómo clonar %s"
 
 #: builtin/clone.c:957 builtin/clone.c:965
 #, c-format
@@ -3846,11 +3846,11 @@ msgstr ""
 
 #: builtin/clone.c:968
 msgid "You appear to have cloned an empty repository."
-msgstr ""
+msgstr "Parece haber clonado un repositorio vacío."
 
 #: builtin/column.c:9
 msgid "git column [options]"
-msgstr ""
+msgstr "git column [opciones]"
 
 #: builtin/column.c:26
 msgid "lookup config vars"
@@ -3862,7 +3862,7 @@ msgstr ""
 
 #: builtin/column.c:29
 msgid "Maximum width"
-msgstr ""
+msgstr "Anchura máxima"
 
 #: builtin/column.c:30
 msgid "Padding space on left border"
@@ -3878,7 +3878,7 @@ msgstr ""
 
 #: builtin/column.c:51
 msgid "--command must be the first argument"
-msgstr ""
+msgstr "--command debe ser el primer parámetro"
 
 #: builtin/commit.c:36
 msgid "git commit [options] [--] <pathspec>..."
@@ -3908,6 +3908,9 @@ msgid ""
 "it empty. You can repeat your command with --allow-empty, or you can\n"
 "remove the commit entirely with \"git reset HEAD^\".\n"
 msgstr ""
+"Ha pedido modificar el commit más reciente, pero esto lo dejaría\n"
+"vacío. Puede repetir la orden con --allow-empty, o puede\n"
+"eliminar completamente el commit con \"git reset HEAD^\".\n"
 
 #: builtin/commit.c:63
 msgid ""
@@ -3917,10 +3920,15 @@ msgid ""
 "    git commit --allow-empty\n"
 "\n"
 msgstr ""
+"Ahora está vacía la entresaca [cherry-pick] anterior, posiblemente debido a la\n"
+"resolución de los conflictos. Si quiere hacer commit de todos modos, use:\n"
+"\n"
+"    git commit --allow-empty\n"
+"\n"
 
 #: builtin/commit.c:70
 msgid "Otherwise, please use 'git reset'\n"
-msgstr ""
+msgstr "En caso contrario, use 'git reset'\n"
 
 #: builtin/commit.c:73
 msgid ""
@@ -3931,6 +3939,12 @@ msgid ""
 "Then \"git cherry-pick --continue\" will resume cherry-picking\n"
 "the remaining commits.\n"
 msgstr ""
+"Si quiere saltarse este commit, use:\n"
+"\n"
+"    git reset\n"
+"\n"
+"Después \"git cherry-pick --continue\" continuará con la entresaca\n"
+"de los commits restantes.\n"
 
 #: builtin/commit.c:288
 msgid "failed to unpack HEAD tree object"
@@ -3950,15 +3964,15 @@ msgstr ""
 
 #: builtin/commit.c:421
 msgid "cannot do a partial commit during a merge."
-msgstr ""
+msgstr "no puedo hacer un commit parcial durante una fusión."
 
 #: builtin/commit.c:423
 msgid "cannot do a partial commit during a cherry-pick."
-msgstr ""
+msgstr "no puedo hacer un commit parcial durante una entresaca [cherry-pick]."
 
 #: builtin/commit.c:433
 msgid "cannot read the index"
-msgstr ""
+msgstr "no puedo leer el índice"
 
 #: builtin/commit.c:453
 msgid "unable to write temporary index file"
@@ -3967,7 +3981,7 @@ msgstr ""
 #: builtin/commit.c:544 builtin/commit.c:550
 #, c-format
 msgid "invalid commit: %s"
-msgstr ""
+msgstr "commit inválido: %s"
 
 #: builtin/commit.c:572
 msgid "malformed --author parameter"
