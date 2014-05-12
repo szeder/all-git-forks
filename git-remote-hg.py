@@ -422,7 +422,7 @@ def get_repo(url, alias):
 
         repo = hg.repository(myui, local_path)
         try:
-            peer = hg.peer(myui, {}, url)
+            peer = hg.peer(repo.ui, {}, url)
         except:
             die('Repository error')
         repo.pull(peer, heads=None, force=True)
@@ -437,16 +437,45 @@ def rev_to_mark(rev):
 def mark_to_rev(mark):
     return marks.to_rev(mark)
 
+# Get a range of revisions in the form of a..b (git committish)
+def gitrange(repo, a, b):
+    positive = []
+    pending = set([int(b)])
+    negative = set([int(a)])
+    for cur in xrange(b, -1, -1):
+        if not pending:
+            break
+
+        parents = [p for p in repo.changelog.parentrevs(cur) if p >= 0]
+
+        if cur in pending:
+            positive.append(cur)
+            pending.remove(cur)
+            for p in parents:
+                if not p in negative:
+                    pending.add(p)
+        elif cur in negative:
+            negative.remove(cur)
+            for p in parents:
+                if not p in pending:
+                    negative.add(p)
+                else:
+                    pending.discard(p)
+
+    positive.reverse()
+    return positive
+
 def export_ref(repo, name, kind, head):
     ename = '%s/%s' % (kind, name)
     try:
         tip = marks.get_tip(ename)
-        tip = repo[tip].rev()
+        tip = repo[tip]
     except:
-        tip = 0
+        tip = repo[-1]
 
-    revs = xrange(tip, head.rev() + 1)
+    revs = gitrange(repo, tip, head)
     total = len(revs)
+    tip = tip.rev()
 
     for rev in revs:
 
@@ -461,8 +490,12 @@ def export_ref(repo, name, kind, head):
 
         author = "%s %d %s" % (fixup_user(user), time, gittz(tz))
         if 'committer' in extra:
-            user, time, tz = extra['committer'].rsplit(' ', 2)
-            committer = "%s %s %s" % (user, time, gittz(int(tz)))
+            try:
+                cuser, ctime, ctz = extra['committer'].rsplit(' ', 2)
+                committer = "%s %s %s" % (cuser, ctime, gittz(int(ctz)))
+            except ValueError:
+                cuser = extra['committer']
+                committer = "%s %d %s" % (fixup_user(cuser), time, gittz(tz))
         else:
             committer = author
 
@@ -644,7 +677,7 @@ def do_list(parser):
             print "? refs/heads/branches/%s" % gitref(branch)
 
     for bmark in bmarks:
-        if  bmarks[bmark].hex() == '0000000000000000000000000000000000000000':
+        if  bmarks[bmark].hex() == '0' * 40:
             warn("Ignoring invalid bookmark '%s'", bmark)
         else:
             print "? refs/heads/%s" % gitref(bmark)
@@ -913,6 +946,11 @@ def checkheads_bmark(repo, ref, ctx):
 
     ctx_old = bmarks[bmark]
     ctx_new = ctx
+
+    if not ctx.rev():
+        print "error %s unknown" % ref
+        return False
+
     if not repo.changelog.descendant(ctx_old.rev(), ctx_new.rev()):
         if force_push:
             print "ok %s forced update" % ref
@@ -991,9 +1029,17 @@ def push_unsafe(repo, remote, parsed_refs, p_revs):
     if unbundle:
         if force:
             remoteheads = ['force']
-        return remote.unbundle(cg, remoteheads, 'push')
+        ret = remote.unbundle(cg, remoteheads, 'push')
     else:
-        return remote.addchangegroup(cg, 'push', repo.url())
+        ret = remote.addchangegroup(cg, 'push', repo.url())
+
+    phases = remote.listkeys('phases')
+    if phases:
+        for head in p_revs:
+            # update to public
+            remote.pushkey('phases', hghex(head), '1', '0')
+
+    return ret
 
 def push(repo, remote, parsed_refs, p_revs):
     if hasattr(remote, 'canpush') and not remote.canpush():
@@ -1246,12 +1292,10 @@ def main(args):
             die('unhandled command: %s' % line)
         sys.stdout.flush()
 
+    marks.store()
+
 def bye():
-    if not marks:
-        return
-    if not is_tmp:
-        marks.store()
-    else:
+    if is_tmp:
         shutil.rmtree(dirname)
 
 atexit.register(bye)
