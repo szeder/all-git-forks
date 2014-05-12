@@ -36,7 +36,7 @@ msgstr ""
 
 #: archive.c:10
 msgid "git archive [options] <tree-ish> [<path>...]"
-msgstr "git archive [opciones] <tree-ish> [<ruta>...]"
+msgstr "git archive [opciones] <arbol o similar> [<ruta>...]"
 
 #: archive.c:11
 msgid "git archive --list"
