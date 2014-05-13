@@ -24,7 +24,7 @@ test_expect_success 'set up a bit of history' '
 	git tag -m "annotated tag" annotated &&
 	git checkout -b side HEAD^^ &&
 	test_commit side2 &&
-	test_commit side3
+	test_commit side3 &&
 	test_merge merge main3
 '
 
