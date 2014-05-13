@@ -341,7 +341,7 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 			 * failure to daemonize is ok, we'll continue
 			 * in foreground
 			 */
-			daemonize();
+			daemonize(NULL);
 		}
 	} else
 		add_repack_all_option();
