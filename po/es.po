@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-12 21:31+0200\n"
+"PO-Revision-Date: 2014-05-13 21:46+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -3542,7 +3542,7 @@ msgstr[1] ""
 
 #: builtin/clean.c:844
 msgid "No more files to clean, exiting."
-msgstr ""
+msgstr "No hay más ficheros que limpiar, saliendo."
 
 #: builtin/clean.c:875
 msgid "do not print names of files removed"
@@ -3585,13 +3585,13 @@ msgstr "-x and -X no se pueden usar simultáneamente"
 msgid ""
 "clean.requireForce set to true and neither -i, -n, nor -f given; refusing to "
 "clean"
-msgstr ""
+msgstr "clean.requireForce tiene el valor 'verdadero' y no ha especificado -i, -n ni -f; rehusando limpiar"
 
 #: builtin/clean.c:910
 msgid ""
 "clean.requireForce defaults to true and neither -i, -n, nor -f given; "
 "refusing to clean"
-msgstr ""
+msgstr "clean.requireForce toma el valor 'verdadero' por omisión y no ha especificado -i, -n ni -f; rehusando limpiar"
 
 #: builtin/clone.c:36
 msgid "git clone [options] [--] <repo> [<dir>]"
@@ -3600,7 +3600,7 @@ msgstr "git clone [opciones] [--] <repo> [<dir>]"
 #: builtin/clone.c:64 builtin/fetch.c:97 builtin/merge.c:222
 #: builtin/push.c:504
 msgid "force progress reporting"
-msgstr ""
+msgstr "fuerza informe de progreso"
 
 #: builtin/clone.c:66
 msgid "don't create a checkout"
@@ -3632,11 +3632,11 @@ msgstr ""
 
 #: builtin/clone.c:82 builtin/init-db.c:483
 msgid "template-directory"
-msgstr ""
+msgstr "directorio-plantillas"
 
 #: builtin/clone.c:83 builtin/init-db.c:484
 msgid "directory from which templates will be used"
-msgstr ""
+msgstr "directorio del cual se tomarán las plantillas a usar"
 
 #: builtin/clone.c:85
 msgid "reference repository"
@@ -3901,6 +3901,16 @@ msgid ""
 "\n"
 "    git commit --amend --reset-author\n"
 msgstr ""
+"Su nombre y dirección de email fueron configurados automáticamente en base a su\n"
+"nombre de usuario y al nombre de la máquina. Por favor, compruebe que son correctos.\n"
+"Puede suprimir este mensaje dándoles valor explícitamente:\n"
+"\n"
+"    git config --global user.name \"Su Nombre\"\n"
+"    git config --global user.email usted@ejemplo.com\n"
+"\n"
+"Tras hacerlo, puede corregir la identidad usada para este commit con:\n"
+"\n"
+"    git commit --amend --reset-author\n"
 
 #: builtin/commit.c:58
 msgid ""
@@ -3952,7 +3962,7 @@ msgstr ""
 
 #: builtin/commit.c:330
 msgid "unable to create temporary index"
-msgstr ""
+msgstr "no puedo crear el índice temporal"
 
 #: builtin/commit.c:336
 msgid "interactive add failed"
@@ -4013,20 +4023,20 @@ msgstr ""
 
 #: builtin/commit.c:654
 msgid "commit has empty message"
-msgstr ""
+msgstr "el commit tiene un mensaje vacío"
 
 #: builtin/commit.c:670
 msgid "could not read MERGE_MSG"
-msgstr ""
+msgstr "no he podido leer MERGE_MSG"
 
 #: builtin/commit.c:674
 msgid "could not read SQUASH_MSG"
-msgstr ""
+msgstr "no he podido leer SQUASH_MSG"
 
 #: builtin/commit.c:678
 #, c-format
 msgid "could not read '%s'"
-msgstr ""
+msgstr "no he podido leer '%s'"
 
 #: builtin/commit.c:749
 msgid "could not write commit template"
@@ -4041,6 +4051,11 @@ msgid ""
 "\t%s\n"
 "and try again.\n"
 msgstr ""
+"\n"
+"Parece que va a hacer commit de una fusión.\n"
+"Si no es así, por favor, elimine el fichero\n"
+"\t%s\n"
+"e inténtelo de nuevo.\n"
 
 #: builtin/commit.c:769
 #, c-format
@@ -4051,6 +4066,11 @@ msgid ""
 "\t%s\n"
 "and try again.\n"
 msgstr ""
+"\n"
+"Parece que va a hacer commit de una entresaca [cherry-pick].\n"
+"Si no es así, por favor, elimine el fichero\n"
+"\t%s\n"
+"e inténtelo de nuevo.\n"
 
 #: builtin/commit.c:782
 #, c-format
@@ -4058,6 +4078,8 @@ msgid ""
 "Please enter the commit message for your changes. Lines starting\n"
 "with '%c' will be ignored, and an empty message aborts the commit.\n"
 msgstr ""
+"Por favor, escriba el mensaje de commit para sus cambios. Las líneas que\n"
+"empiecen por '%c' serán ignoradas. Un mensaje vacío aborta el commit.\n"
 
 #: builtin/commit.c:789
 #, c-format
@@ -4066,6 +4088,9 @@ msgid ""
 "with '%c' will be kept; you may remove them yourself if you want to.\n"
 "An empty message aborts the commit.\n"
 msgstr ""
+"Por favor, escriba el mensaje de commit para sus cambios. Las líneas que\n"
+"empiecen por '%c' serán conservadas; puede eliminarlas si lo desea.\n"
+"Un mensaje vacío aborta el commit.\n"
 
 #: builtin/commit.c:802
 #, c-format
