@@ -173,12 +173,12 @@ test_expect_success 'do not bother completing already-full credential' '
 # getpass() tries too hard to find the real terminal. But if our
 # askpass helper is run, we know the internal getpass is working.
 test_expect_success 'empty helper list falls back to internal getpass' '
-	check fill <<-\EOF
+	check fill "verbatim foo \"\"" <<-\EOF
 	--
-	username=askpass-username
+	username=foo
 	password=askpass-password
 	--
-	askpass: Username:
+	verbatim: get
 	askpass: Password:
 	EOF
 '
@@ -226,17 +226,19 @@ test_expect_success 'match configured credential' '
 
 test_expect_success 'do not match configured credential' '
 	test_config credential.https://foo.helper "$HELPER" &&
-	check fill <<-\EOF
+	check fill "verbatim foo \"\"" <<-\EOF
 	protocol=https
 	host=bar
 	--
 	protocol=https
 	host=bar
-	username=askpass-username
+	username=foo
 	password=askpass-password
 	--
-	askpass: Username for '\''https://bar'\'':
-	askpass: Password for '\''https://askpass-username@bar'\'':
+	verbatim: get
+	verbatim: protocol=https
+	verbatim: host=bar
+	askpass: Password for '\''https://foo@bar'\'':
 	EOF
 '
 
