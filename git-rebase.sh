@@ -67,7 +67,7 @@ verbose=
 diffstat=
 test "$(git config --bool rebase.stat)" = true && diffstat=t
 autostash="$(git config --bool rebase.autostash || echo false)"
-fork_point=auto
+fork_point=
 git_am_opt=
 rebase_root=
 force_rebase=

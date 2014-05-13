@@ -134,7 +134,7 @@ test_expect_success 'fail when upstream arg is missing and not configured' '
 	test_must_fail git rebase
 '
 
-test_expect_success 'default to common base in @{upstream}s reflog if no upstream arg' '
+test_expect_success 'find common base in @{upstream}s reflog with --fork-point' '
 	git checkout -b default-base master &&
 	git checkout -b default topic &&
 	git config branch.default.remote . &&
@@ -146,7 +146,7 @@ test_expect_success 'default to common base in @{upstream}s reflog if no upstrea
 	git checkout default-base &&
 	git reset --hard HEAD^ &&
 	git checkout default &&
-	git rebase &&
+	git rebase --fork-point &&
 	git rev-parse --verify default-base >expect &&
 	git rev-parse default~1 >actual &&
 	test_cmp expect actual
@@ -213,6 +213,28 @@ test_expect_success 'rebase commit with an ancient timestamp' '
 
 	git cat-file commit HEAD >actual &&
 	grep "author .* 34567 +0600$" actual
+'
+
+test_expect_success 'rebase fork-point works as expected' '
+	(
+	git init test &&
+	cd test &&
+	echo one > one &&
+	git add one &&
+	git commit -m one &&
+	git checkout -t -b topic &&
+	echo two > two &&
+	git add two &&
+	git commit -m two &&
+	git checkout master &&
+	git merge topic &&
+	git reset --hard @^ &&
+	git checkout topic &&
+	git rebase &&
+	echo two > expected &&
+	git log -1 --format=%s > actual &&
+	test_cmp expected actual
+	)
 '
 
 test_done
