@@ -1015,7 +1015,7 @@ void sanitize_stdfds(void)
 		close(fd);
 }
 
-int daemonize(void)
+int daemonize(int *daemonized)
 {
 #ifdef NO_POSIX_GOODIES
 	errno = ENOSYS;
@@ -1027,6 +1027,8 @@ int daemonize(void)
 		case -1:
 			die_errno("fork failed");
 		default:
+			if (daemonized)
+				*daemonized = 1;
 			exit(0);
 	}
 	if (setsid() == -1)
