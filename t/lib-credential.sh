@@ -61,14 +61,14 @@ helper_test() {
 		check fill $HELPER <<-\EOF
 		protocol=https
 		host=example.com
+		username=foo
 		--
 		protocol=https
 		host=example.com
-		username=askpass-username
+		username=foo
 		password=askpass-password
 		--
-		askpass: Username for '\''https://example.com'\'':
-		askpass: Password for '\''https://askpass-username@example.com'\'':
+		askpass: Password for '\''https://foo@example.com'\'':
 		EOF
 	'
 
@@ -98,14 +98,14 @@ helper_test() {
 		check fill $HELPER <<-\EOF
 		protocol=http
 		host=example.com
+		username=foo
 		--
 		protocol=http
 		host=example.com
-		username=askpass-username
+		username=foo
 		password=askpass-password
 		--
-		askpass: Username for '\''http://example.com'\'':
-		askpass: Password for '\''http://askpass-username@example.com'\'':
+		askpass: Password for '\''http://foo@example.com'\'':
 		EOF
 	'
 
@@ -113,14 +113,14 @@ helper_test() {
 		check fill $HELPER <<-\EOF
 		protocol=https
 		host=other.tld
+		username=foo
 		--
 		protocol=https
 		host=other.tld
-		username=askpass-username
+		username=foo
 		password=askpass-password
 		--
-		askpass: Username for '\''https://other.tld'\'':
-		askpass: Password for '\''https://askpass-username@other.tld'\'':
+		askpass: Password for '\''https://foo@other.tld'\'':
 		EOF
 	'
 
@@ -152,15 +152,15 @@ helper_test() {
 		protocol=http
 		host=path.tld
 		path=bar.git
+		username=foo
 		--
 		protocol=http
 		host=path.tld
 		path=bar.git
-		username=askpass-username
+		username=foo
 		password=askpass-password
 		--
-		askpass: Username for '\''http://path.tld/bar.git'\'':
-		askpass: Password for '\''http://askpass-username@path.tld/bar.git'\'':
+		askpass: Password for '\''http://foo@path.tld/bar.git'\'':
 		EOF
 	'
 
@@ -172,14 +172,14 @@ helper_test() {
 		check fill $HELPER <<-\EOF
 		protocol=https
 		host=example.com
+		username=foo
 		--
 		protocol=https
 		host=example.com
-		username=askpass-username
+		username=foo
 		password=askpass-password
 		--
-		askpass: Username for '\''https://example.com'\'':
-		askpass: Password for '\''https://askpass-username@example.com'\'':
+		askpass: Password for '\''https://foo@example.com'\'':
 		EOF
 	'
 
@@ -266,14 +266,14 @@ helper_test_timeout() {
 		check fill "$HELPER" <<-\EOF
 		protocol=https
 		host=timeout.tld
+		username=foo
 		--
 		protocol=https
 		host=timeout.tld
-		username=askpass-username
+		username=foo
 		password=askpass-password
 		--
-		askpass: Username for '\''https://timeout.tld'\'':
-		askpass: Password for '\''https://askpass-username@timeout.tld'\'':
+		askpass: Password for '\''https://foo@timeout.tld'\'':
 		EOF
 	'
 }
