@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-13 21:46+0200\n"
+"PO-Revision-Date: 2014-05-14 21:54+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -4095,16 +4095,16 @@ msgstr ""
 #: builtin/commit.c:802
 #, c-format
 msgid "%sAuthor:    %s"
-msgstr ""
+msgstr "%sAutor:    %s"
 
 #: builtin/commit.c:809
 #, c-format
 msgid "%sCommitter: %s"
-msgstr ""
+msgstr "%sCommit hecho por: %s"
 
 #: builtin/commit.c:829
 msgid "Cannot read index"
-msgstr ""
+msgstr "No puedo leer el índice"
 
 #: builtin/commit.c:872
 msgid "Error building trees"
@@ -4113,7 +4113,7 @@ msgstr ""
 #: builtin/commit.c:887 builtin/tag.c:391
 #, c-format
 msgid "Please supply the message using either -m or -F option.\n"
-msgstr ""
+msgstr "Por favor, proporcione el mensaje utilizando las opciones -m o -F.\n"
 
 #: builtin/commit.c:989
 #, c-format
@@ -4127,31 +4127,31 @@ msgstr ""
 
 #: builtin/commit.c:1041
 msgid "--long and -z are incompatible"
-msgstr ""
+msgstr "--long y -z son incompatibles"
 
 #: builtin/commit.c:1071
 msgid "Using both --reset-author and --author does not make sense"
-msgstr ""
+msgstr "El uso simultáneo de --reset-author y --author no tiene sentido"
 
 #: builtin/commit.c:1080
 msgid "You have nothing to amend."
-msgstr ""
+msgstr "No tiene nada que corregir."
 
 #: builtin/commit.c:1083
 msgid "You are in the middle of a merge -- cannot amend."
-msgstr ""
+msgstr "Está en medio de una fussión -- no puede hacer correcciones."
 
 #: builtin/commit.c:1085
 msgid "You are in the middle of a cherry-pick -- cannot amend."
-msgstr ""
+msgstr "Está en medio de una entresaca -- no puede hacer correcciones."
 
 #: builtin/commit.c:1088
 msgid "Options --squash and --fixup cannot be used together"
-msgstr ""
+msgstr "Las opciones --squash y --fixup no se pueden usar simultáneamente"
 
 #: builtin/commit.c:1098
 msgid "Only one of -c/-C/-F/--fixup can be used."
-msgstr ""
+msgstr "Sólo puede usar una de las opciones -c/-C/-F/--fixup."
 
 #: builtin/commit.c:1100
 msgid "Option -m cannot be combined with -c/-C/-F/--fixup."
