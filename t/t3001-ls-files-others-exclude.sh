@@ -103,7 +103,7 @@ test_expect_success \
      test_cmp expect output'
 
 test_expect_success 'restore gitignore' '
-	git checkout $allignores &&
+	git checkout --ignore-skip-worktree-bits $allignores &&
 	rm .git/index
 '
 
@@ -115,7 +115,7 @@ EOF
 
 git config core.excludesFile excludes-file
 
-git status | grep "^#	" > output
+git -c status.displayCommentPrefix=true status | grep "^#	" > output
 
 cat > expect << EOF
 #	.gitignore
@@ -175,6 +175,24 @@ test_expect_success 'negated exclude matches can override previous ones' '
 	grep "^a.1" output
 '
 
+test_expect_success 'excluded directory overrides content patterns' '
+
+	git ls-files --others --exclude="one" --exclude="!one/a.1" >output &&
+	if grep "^one/a.1" output
+	then
+		false
+	fi
+'
+
+test_expect_success 'negated directory doesn'\''t affect content patterns' '
+
+	git ls-files --others --exclude="!one" --exclude="one/a.1" >output &&
+	if grep "^one/a.1" output
+	then
+		false
+	fi
+'
+
 test_expect_success 'subdirectory ignore (setup)' '
 	mkdir -p top/l1/l2 &&
 	(
@@ -209,6 +227,55 @@ test_expect_success 'subdirectory ignore (l1)' '
 	(
 		cd top/l1 &&
 		git ls-files -o --exclude-standard
+	) >actual &&
+	>expect &&
+	test_cmp expect actual
+'
+
+test_expect_success 'show/hide empty ignored directory (setup)' '
+	rm top/l1/l2/l1 &&
+	rm top/l1/.gitignore
+'
+
+test_expect_success 'show empty ignored directory with --directory' '
+	(
+		cd top &&
+		git ls-files -o -i --exclude l1 --directory
+	) >actual &&
+	echo l1/ >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success 'hide empty ignored directory with --no-empty-directory' '
+	(
+		cd top &&
+		git ls-files -o -i --exclude l1 --directory --no-empty-directory
+	) >actual &&
+	>expect &&
+	test_cmp expect actual
+'
+
+test_expect_success 'show/hide empty ignored sub-directory (setup)' '
+	> top/l1/tracked &&
+	(
+		cd top &&
+		git add -f l1/tracked
+	)
+'
+
+test_expect_success 'show empty ignored sub-directory with --directory' '
+	(
+		cd top &&
+		git ls-files -o -i --exclude l1 --directory
+	) >actual &&
+	echo l1/l2/ >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success 'hide empty ignored sub-directory with --no-empty-directory' '
+	(
+		cd top &&
+		git ls-files -o -i --exclude l1 --directory --no-empty-directory
 	) >actual &&
 	>expect &&
 	test_cmp expect actual

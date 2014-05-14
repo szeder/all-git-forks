@@ -39,24 +39,10 @@ USAGE
 
 sub find_worktree
 {
-	my ($repo) = @_;
-
 	# Git->repository->wc_path() does not honor changes to the working
 	# tree location made by $ENV{GIT_WORK_TREE} or the 'core.worktree'
 	# config variable.
-	my $worktree;
-	my $env_worktree = $ENV{GIT_WORK_TREE};
-	my $core_worktree = Git::config('core.worktree');
-
-	if (defined($env_worktree) and (length($env_worktree) > 0)) {
-		$worktree = $env_worktree;
-	} elsif (defined($core_worktree) and (length($core_worktree) > 0)) {
-		$worktree = $core_worktree;
-	} else {
-		$worktree = $repo->wc_path();
-	}
-
-	return $worktree;
+	return Git::command_oneline('rev-parse', '--show-toplevel');
 }
 
 sub print_tool_help
@@ -85,11 +71,13 @@ sub exit_cleanup
 
 sub use_wt_file
 {
-	my ($repo, $workdir, $file, $sha1, $symlinks) = @_;
+	my ($repo, $workdir, $file, $sha1) = @_;
 	my $null_sha1 = '0' x 40;
 
-	if ($sha1 ne $null_sha1 and not $symlinks) {
-		return 0;
+	if (! -e "$workdir/$file") {
+		# If the file doesn't exist in the working tree, we cannot
+		# use it.
+		return (0, $null_sha1);
 	}
 
 	my $wt_sha1 = $repo->command_oneline('hash-object', "$workdir/$file");
@@ -207,8 +195,7 @@ EOF
 
 		if ($rmode ne $null_mode) {
 			my ($use, $wt_sha1) = use_wt_file($repo, $workdir,
-							  $dst_path, $rsha1,
-							  $symlinks);
+							  $dst_path, $rsha1);
 			if ($use) {
 				push @working_tree, $dst_path;
 				$wtindex .= "$rmode $wt_sha1\t$dst_path\0";
@@ -417,7 +404,7 @@ sub dir_diff
 	my $rc;
 	my $error = 0;
 	my $repo = Git->repository();
-	my $workdir = find_worktree($repo);
+	my $workdir = find_worktree();
 	my ($a, $b, $tmpdir, @worktree) =
 		setup_dir_diff($repo, $workdir, $symlinks);
 

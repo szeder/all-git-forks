@@ -293,7 +293,7 @@ check_threading () {
 	(git format-patch --stdout "$@"; echo $? > status.out) |
 	# Prints everything between the Message-ID and In-Reply-To,
 	# and replaces all Message-ID-lookalikes by a sequence number
-	"$PERL_PATH" -ne '
+	perl -ne '
 		if (/^(message-id|references|in-reply-to)/i) {
 			$printing = 1;
 		} elsif (/^\S/) {
@@ -764,22 +764,14 @@ test_expect_success 'format-patch --signature="" suppresses signatures' '
 
 test_expect_success TTY 'format-patch --stdout paginates' '
 	rm -f pager_used &&
-	(
-		GIT_PAGER="wc >pager_used" &&
-		export GIT_PAGER &&
-		test_terminal git format-patch --stdout --all
-	) &&
+	test_terminal env GIT_PAGER="wc >pager_used" git format-patch --stdout --all &&
 	test_path_is_file pager_used
 '
 
  test_expect_success TTY 'format-patch --stdout pagination can be disabled' '
 	rm -f pager_used &&
-	(
-		GIT_PAGER="wc >pager_used" &&
-		export GIT_PAGER &&
-		test_terminal git --no-pager format-patch --stdout --all &&
-		test_terminal git -c "pager.format-patch=false" format-patch --stdout --all
-	) &&
+	test_terminal env GIT_PAGER="wc >pager_used" git --no-pager format-patch --stdout --all &&
+	test_terminal env GIT_PAGER="wc >pager_used" git -c "pager.format-patch=false" format-patch --stdout --all &&
 	test_path_is_missing pager_used &&
 	test_path_is_missing .git/pager_used
 '
@@ -970,6 +962,59 @@ test_expect_success 'empty subject prefix does not have extra space' '
 	git format-patch -n -1 --stdout --subject-prefix= >patch &&
 	grep ^Subject: patch >actual &&
 	test_cmp expect actual
+'
+
+test_expect_success '--from=ident notices bogus ident' '
+	test_must_fail git format-patch -1 --stdout --from=foo >patch
+'
+
+test_expect_success '--from=ident replaces author' '
+	git format-patch -1 --stdout --from="Me <me@example.com>" >patch &&
+	cat >expect <<-\EOF &&
+	From: Me <me@example.com>
+
+	From: A U Thor <author@example.com>
+
+	EOF
+	sed -ne "/^From:/p; /^$/p; /^---$/q" <patch >patch.head &&
+	test_cmp expect patch.head
+'
+
+test_expect_success '--from uses committer ident' '
+	git format-patch -1 --stdout --from >patch &&
+	cat >expect <<-\EOF &&
+	From: C O Mitter <committer@example.com>
+
+	From: A U Thor <author@example.com>
+
+	EOF
+	sed -ne "/^From:/p; /^$/p; /^---$/q" <patch >patch.head &&
+	test_cmp expect patch.head
+'
+
+test_expect_success '--from omits redundant in-body header' '
+	git format-patch -1 --stdout --from="A U Thor <author@example.com>" >patch &&
+	cat >expect <<-\EOF &&
+	From: A U Thor <author@example.com>
+
+	EOF
+	sed -ne "/^From:/p; /^$/p; /^---$/q" <patch >patch.head &&
+	test_cmp expect patch.head
+'
+
+test_expect_success 'in-body headers trigger content encoding' '
+	GIT_AUTHOR_NAME="éxötìc" test_commit exotic &&
+	test_when_finished "git reset --hard HEAD^" &&
+	git format-patch -1 --stdout --from >patch &&
+	cat >expect <<-\EOF &&
+	From: C O Mitter <committer@example.com>
+	Content-Type: text/plain; charset=UTF-8
+
+	From: éxötìc <author@example.com>
+
+	EOF
+	sed -ne "/^From:/p; /^$/p; /^Content-Type/p; /^---$/q" <patch >patch.head &&
+	test_cmp expect patch.head
 '
 
 append_signoff()
@@ -1282,6 +1327,39 @@ test_expect_success 'cover letter using branch description (6)' '
 	test_config branch.rebuild-1.description hello &&
 	git format-patch --stdout --cover-letter -2 >actual &&
 	grep hello actual >/dev/null
+'
+
+test_expect_success 'cover letter with nothing' '
+	git format-patch --stdout --cover-letter >actual &&
+	test_line_count = 0 actual
+'
+
+test_expect_success 'cover letter auto' '
+	mkdir -p tmp &&
+	test_when_finished "rm -rf tmp;
+		git config --unset format.coverletter" &&
+
+	git config format.coverletter auto &&
+	git format-patch -o tmp -1 >list &&
+	test_line_count = 1 list &&
+	git format-patch -o tmp -2 >list &&
+	test_line_count = 3 list
+'
+
+test_expect_success 'cover letter auto user override' '
+	mkdir -p tmp &&
+	test_when_finished "rm -rf tmp;
+		git config --unset format.coverletter" &&
+
+	git config format.coverletter auto &&
+	git format-patch -o tmp --cover-letter -1 >list &&
+	test_line_count = 2 list &&
+	git format-patch -o tmp --cover-letter -2 >list &&
+	test_line_count = 3 list &&
+	git format-patch -o tmp --no-cover-letter -1 >list &&
+	test_line_count = 1 list &&
+	git format-patch -o tmp --no-cover-letter -2 >list &&
+	test_line_count = 2 list
 '
 
 test_done

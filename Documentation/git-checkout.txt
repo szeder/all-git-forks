@@ -9,7 +9,8 @@ SYNOPSIS
 --------
 [verse]
 'git checkout' [-q] [-f] [-m] [<branch>]
-'git checkout' [-q] [-f] [-m] [--detach] [<commit>]
+'git checkout' [-q] [-f] [-m] --detach [<branch>]
+'git checkout' [-q] [-f] [-m] [--detach] <commit>
 'git checkout' [-q] [-f] [-m] [[-b|-B|--orphan] <new_branch>] [<start_point>]
 'git checkout' [-f|--ours|--theirs|-m|--conflict=<style>] [<tree-ish>] [--] <paths>...
 'git checkout' [-p|--patch] [<tree-ish>] [--] [<paths>...]
@@ -62,7 +63,7 @@ that is to say, the branch is not reset/created unless "git checkout" is
 successful.
 
 'git checkout' --detach [<branch>]::
-'git checkout' <commit>::
+'git checkout' [--detach] <commit>::
 
 	Prepare to work on top of <commit>, by detaching HEAD at it
 	(see "DETACHED HEAD" section), and updating the index and the
@@ -71,10 +72,11 @@ successful.
 	tree will be the state recorded in the commit plus the local
 	modifications.
 +
-Passing `--detach` forces this behavior in the case of a <branch> (without
-the option, giving a branch name to the command would check out the branch,
-instead of detaching HEAD at it), or the current commit,
-if no <branch> is specified.
+When the <commit> argument is a branch name, the `--detach` option can
+be used to detach HEAD at the tip of the branch (`git checkout
+<branch>` would check out that branch without detaching HEAD).
++
+Omitting <branch> detaches HEAD at the tip of the current branch.
 
 'git checkout' [-p|--patch] [<tree-ish>] [--] <pathspec>...::
 
@@ -131,9 +133,9 @@ entries; instead, unmerged entries are ignored.
 	"--track" in linkgit:git-branch[1] for details.
 +
 If no '-b' option is given, the name of the new branch will be
-derived from the remote-tracking branch.  If "remotes/" or "refs/remotes/"
-is prefixed it is stripped away, and then the part up to the
-next slash (which would be the nickname of the remote) is removed.
+derived from the remote-tracking branch, by looking at the local part of
+the refspec configured for the corresponding remote, and then stripping
+the initial part up to the "*".
 This would tell us to use "hack" as the local branch when branching
 off of "origin/hack" (or "remotes/origin/hack", or even
 "refs/remotes/origin/hack").  If the given name has no slash, or the above
@@ -180,6 +182,12 @@ branch by running "git rm -rf ." from the top level of the working tree.
 Afterwards you will be ready to prepare your new files, repopulating the
 working tree, by copying them from elsewhere, extracting a tarball, etc.
 
+--ignore-skip-worktree-bits::
+	In sparse checkout mode, `git checkout -- <paths>` would
+	update only entries matched by <paths> and sparse patterns
+	in $GIT_DIR/info/sparse-checkout. This option ignores
+	the sparse patterns and adds back any files in <paths>.
+
 -m::
 --merge::
 	When switching branches,
@@ -224,8 +232,8 @@ section of linkgit:git-add[1] to learn how to operate the `--patch` mode.
 	commit, your HEAD becomes "detached" and you are no longer on
 	any branch (see below for details).
 +
-As a special case, the `"@{-N}"` syntax for the N-th last branch
-checks out the branch (instead of detaching).  You may also specify
+As a special case, the `"@{-N}"` syntax for the N-th last branch/commit
+checks out branches (instead of detaching).  You may also specify
 `-` which is synonymous with `"@{-1}"`.
 +
 As a further special case, you may use `"A...B"` as a shortcut for the

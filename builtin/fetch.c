@@ -30,15 +30,21 @@ enum {
 	TAGS_SET = 2
 };
 
-static int all, append, dry_run, force, keep, multiple, prune, update_head_ok, verbosity;
+static int fetch_prune_config = -1; /* unspecified */
+static int prune = -1; /* unspecified */
+#define PRUNE_BY_DEFAULT 0 /* do we prune by default? */
+
+static int all, append, dry_run, force, keep, multiple, update_head_ok, verbosity;
 static int progress = -1, recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
-static int tags = TAGS_DEFAULT, unshallow;
+static int tags = TAGS_DEFAULT, unshallow, update_shallow;
 static const char *depth;
 static const char *upload_pack;
 static struct strbuf default_rla = STRBUF_INIT;
-static struct transport *transport;
+static struct transport *gtransport;
+static struct transport *gsecondary;
 static const char *submodule_prefix = "";
 static const char *recurse_submodules_default;
+static int shown_url = 0;
 
 static int option_parse_recurse_submodules(const struct option *opt,
 				   const char *arg, int unset)
@@ -54,30 +60,39 @@ static int option_parse_recurse_submodules(const struct option *opt,
 	return 0;
 }
 
+static int git_fetch_config(const char *k, const char *v, void *cb)
+{
+	if (!strcmp(k, "fetch.prune")) {
+		fetch_prune_config = git_config_bool(k, v);
+		return 0;
+	}
+	return 0;
+}
+
 static struct option builtin_fetch_options[] = {
 	OPT__VERBOSITY(&verbosity),
-	OPT_BOOLEAN(0, "all", &all,
-		    N_("fetch from all remotes")),
-	OPT_BOOLEAN('a', "append", &append,
-		    N_("append to .git/FETCH_HEAD instead of overwriting")),
+	OPT_BOOL(0, "all", &all,
+		 N_("fetch from all remotes")),
+	OPT_BOOL('a', "append", &append,
+		 N_("append to .git/FETCH_HEAD instead of overwriting")),
 	OPT_STRING(0, "upload-pack", &upload_pack, N_("path"),
 		   N_("path to upload pack on remote end")),
 	OPT__FORCE(&force, N_("force overwrite of local branch")),
-	OPT_BOOLEAN('m', "multiple", &multiple,
-		    N_("fetch from multiple remotes")),
+	OPT_BOOL('m', "multiple", &multiple,
+		 N_("fetch from multiple remotes")),
 	OPT_SET_INT('t', "tags", &tags,
 		    N_("fetch all tags and associated objects"), TAGS_SET),
 	OPT_SET_INT('n', NULL, &tags,
 		    N_("do not fetch all tags (--no-tags)"), TAGS_UNSET),
-	OPT_BOOLEAN('p', "prune", &prune,
-		    N_("prune remote-tracking branches no longer on remote")),
+	OPT_BOOL('p', "prune", &prune,
+		 N_("prune remote-tracking branches no longer on remote")),
 	{ OPTION_CALLBACK, 0, "recurse-submodules", NULL, N_("on-demand"),
 		    N_("control recursive fetching of submodules"),
 		    PARSE_OPT_OPTARG, option_parse_recurse_submodules },
-	OPT_BOOLEAN(0, "dry-run", &dry_run,
-		    N_("dry run")),
-	OPT_BOOLEAN('k', "keep", &keep, N_("keep downloaded pack")),
-	OPT_BOOLEAN('u', "update-head-ok", &update_head_ok,
+	OPT_BOOL(0, "dry-run", &dry_run,
+		 N_("dry run")),
+	OPT_BOOL('k', "keep", &keep, N_("keep downloaded pack")),
+	OPT_BOOL('u', "update-head-ok", &update_head_ok,
 		    N_("allow updating of HEAD ref")),
 	OPT_BOOL(0, "progress", &progress, N_("force progress reporting")),
 	OPT_STRING(0, "depth", &depth, N_("depth"),
@@ -90,13 +105,17 @@ static struct option builtin_fetch_options[] = {
 	{ OPTION_STRING, 0, "recurse-submodules-default",
 		   &recurse_submodules_default, NULL,
 		   N_("default mode for recursion"), PARSE_OPT_HIDDEN },
+	OPT_BOOL(0, "update-shallow", &update_shallow,
+		 N_("accept refs that update .git/shallow")),
 	OPT_END()
 };
 
 static void unlock_pack(void)
 {
-	if (transport)
-		transport_unlock_pack(transport);
+	if (gtransport)
+		transport_unlock_pack(gtransport);
+	if (gsecondary)
+		transport_unlock_pack(gsecondary);
 }
 
 static void unlock_pack_on_signal(int signo)
@@ -119,7 +138,7 @@ static void add_merge_config(struct ref **head,
 
 		for (rm = *head; rm; rm = rm->next) {
 			if (branch_merge_matches(branch, i, rm->name)) {
-				rm->merge = 1;
+				rm->fetch_head_status = FETCH_HEAD_MERGE;
 				break;
 			}
 		}
@@ -140,34 +159,158 @@ static void add_merge_config(struct ref **head,
 		refspec.src = branch->merge[i]->src;
 		get_fetch_map(remote_refs, &refspec, tail, 1);
 		for (rm = *old_tail; rm; rm = rm->next)
-			rm->merge = 1;
+			rm->fetch_head_status = FETCH_HEAD_MERGE;
 	}
+}
+
+static int add_existing(const char *refname, const unsigned char *sha1,
+			int flag, void *cbdata)
+{
+	struct string_list *list = (struct string_list *)cbdata;
+	struct string_list_item *item = string_list_insert(list, refname);
+	item->util = xmalloc(20);
+	hashcpy(item->util, sha1);
+	return 0;
+}
+
+static int will_fetch(struct ref **head, const unsigned char *sha1)
+{
+	struct ref *rm = *head;
+	while (rm) {
+		if (!hashcmp(rm->old_sha1, sha1))
+			return 1;
+		rm = rm->next;
+	}
+	return 0;
 }
 
 static void find_non_local_tags(struct transport *transport,
 			struct ref **head,
-			struct ref ***tail);
+			struct ref ***tail)
+{
+	struct string_list existing_refs = STRING_LIST_INIT_DUP;
+	struct string_list remote_refs = STRING_LIST_INIT_NODUP;
+	const struct ref *ref;
+	struct string_list_item *item = NULL;
+
+	for_each_ref(add_existing, &existing_refs);
+	for (ref = transport_get_remote_refs(transport); ref; ref = ref->next) {
+		if (!starts_with(ref->name, "refs/tags/"))
+			continue;
+
+		/*
+		 * The peeled ref always follows the matching base
+		 * ref, so if we see a peeled ref that we don't want
+		 * to fetch then we can mark the ref entry in the list
+		 * as one to ignore by setting util to NULL.
+		 */
+		if (ends_with(ref->name, "^{}")) {
+			if (item && !has_sha1_file(ref->old_sha1) &&
+			    !will_fetch(head, ref->old_sha1) &&
+			    !has_sha1_file(item->util) &&
+			    !will_fetch(head, item->util))
+				item->util = NULL;
+			item = NULL;
+			continue;
+		}
+
+		/*
+		 * If item is non-NULL here, then we previously saw a
+		 * ref not followed by a peeled reference, so we need
+		 * to check if it is a lightweight tag that we want to
+		 * fetch.
+		 */
+		if (item && !has_sha1_file(item->util) &&
+		    !will_fetch(head, item->util))
+			item->util = NULL;
+
+		item = NULL;
+
+		/* skip duplicates and refs that we already have */
+		if (string_list_has_string(&remote_refs, ref->name) ||
+		    string_list_has_string(&existing_refs, ref->name))
+			continue;
+
+		item = string_list_insert(&remote_refs, ref->name);
+		item->util = (void *)ref->old_sha1;
+	}
+	string_list_clear(&existing_refs, 1);
+
+	/*
+	 * We may have a final lightweight tag that needs to be
+	 * checked to see if it needs fetching.
+	 */
+	if (item && !has_sha1_file(item->util) &&
+	    !will_fetch(head, item->util))
+		item->util = NULL;
+
+	/*
+	 * For all the tags in the remote_refs string list,
+	 * add them to the list of refs to be fetched
+	 */
+	for_each_string_list_item(item, &remote_refs) {
+		/* Unless we have already decided to ignore this item... */
+		if (item->util)
+		{
+			struct ref *rm = alloc_ref(item->string);
+			rm->peer_ref = alloc_ref(item->string);
+			hashcpy(rm->old_sha1, item->util);
+			**tail = rm;
+			*tail = &rm->next;
+		}
+	}
+
+	string_list_clear(&remote_refs, 0);
+}
 
 static struct ref *get_ref_map(struct transport *transport,
-			       struct refspec *refs, int ref_count, int tags,
-			       int *autotags)
+			       struct refspec *refspecs, int refspec_count,
+			       int tags, int *autotags)
 {
 	int i;
 	struct ref *rm;
 	struct ref *ref_map = NULL;
 	struct ref **tail = &ref_map;
 
+	/* opportunistically-updated references: */
+	struct ref *orefs = NULL, **oref_tail = &orefs;
+
 	const struct ref *remote_refs = transport_get_remote_refs(transport);
 
-	if (ref_count || tags == TAGS_SET) {
-		for (i = 0; i < ref_count; i++) {
-			get_fetch_map(remote_refs, &refs[i], &tail, 0);
-			if (refs[i].dst && refs[i].dst[0])
+	if (refspec_count) {
+		for (i = 0; i < refspec_count; i++) {
+			get_fetch_map(remote_refs, &refspecs[i], &tail, 0);
+			if (refspecs[i].dst && refspecs[i].dst[0])
 				*autotags = 1;
 		}
-		/* Merge everything on the command line, but not --tags */
+		/* Merge everything on the command line (but not --tags) */
 		for (rm = ref_map; rm; rm = rm->next)
-			rm->merge = 1;
+			rm->fetch_head_status = FETCH_HEAD_MERGE;
+
+		/*
+		 * For any refs that we happen to be fetching via
+		 * command-line arguments, the destination ref might
+		 * have been missing or have been different than the
+		 * remote-tracking ref that would be derived from the
+		 * configured refspec.  In these cases, we want to
+		 * take the opportunity to update their configured
+		 * remote-tracking reference.  However, we do not want
+		 * to mention these entries in FETCH_HEAD at all, as
+		 * they would simply be duplicates of existing
+		 * entries, so we set them FETCH_HEAD_IGNORE below.
+		 *
+		 * We compute these entries now, based only on the
+		 * refspecs specified on the command line.  But we add
+		 * them to the list following the refspecs resulting
+		 * from the tags option so that one of the latter,
+		 * which has FETCH_HEAD_NOT_FOR_MERGE, is not removed
+		 * by ref_remove_duplicates() in favor of one of these
+		 * opportunistic entries with FETCH_HEAD_IGNORE.
+		 */
+		for (i = 0; i < transport->remote->fetch_refspec_nr; i++)
+			get_fetch_map(ref_map, &transport->remote->fetch[i],
+				      &oref_tail, 1);
+
 		if (tags == TAGS_SET)
 			get_fetch_map(remote_refs, tag_refspec, &tail, 0);
 	} else {
@@ -186,7 +329,7 @@ static struct ref *get_ref_map(struct transport *transport,
 					*autotags = 1;
 				if (!i && !has_merge && ref_map &&
 				    !remote->fetch[0].pattern)
-					ref_map->merge = 1;
+					ref_map->fetch_head_status = FETCH_HEAD_MERGE;
 			}
 			/*
 			 * if the remote we're fetching from is the same
@@ -202,15 +345,25 @@ static struct ref *get_ref_map(struct transport *transport,
 			ref_map = get_remote_ref(remote_refs, "HEAD");
 			if (!ref_map)
 				die(_("Couldn't find remote ref HEAD"));
-			ref_map->merge = 1;
+			ref_map->fetch_head_status = FETCH_HEAD_MERGE;
 			tail = &ref_map->next;
 		}
 	}
-	if (tags == TAGS_DEFAULT && *autotags)
-		find_non_local_tags(transport, &ref_map, &tail);
-	ref_remove_duplicates(ref_map);
 
-	return ref_map;
+	if (tags == TAGS_SET)
+		/* also fetch all tags */
+		get_fetch_map(remote_refs, tag_refspec, &tail, 0);
+	else if (tags == TAGS_DEFAULT && *autotags)
+		find_non_local_tags(transport, &ref_map, &tail);
+
+	/* Now append any refs to be updated opportunistically: */
+	*tail = orefs;
+	for (rm = orefs; rm; rm = rm->next) {
+		rm->fetch_head_status = FETCH_HEAD_IGNORE;
+		tail = &rm->next;
+	}
+
+	return ref_remove_duplicates(ref_map);
 }
 
 #define STORE_REF_ERROR_OTHER 1
@@ -230,7 +383,8 @@ static int s_update_ref(const char *action,
 		rla = default_rla.buf;
 	snprintf(msg, sizeof(msg), "%s: %s", rla, action);
 	lock = lock_any_ref_for_update(ref->name,
-				       check_old ? ref->old_sha1 : NULL, 0);
+				       check_old ? ref->old_sha1 : NULL,
+				       0, NULL);
 	if (!lock)
 		return errno == ENOTDIR ? STORE_REF_ERROR_DF_CONFLICT :
 					  STORE_REF_ERROR_OTHER;
@@ -280,7 +434,7 @@ static int update_local_ref(struct ref *ref,
 	}
 
 	if (!is_null_sha1(ref->old_sha1) &&
-	    !prefixcmp(ref->name, "refs/tags/")) {
+	    starts_with(ref->name, "refs/tags/")) {
 		int r;
 		r = s_update_ref("updating tag", ref, 0);
 		strbuf_addf(display, "%c %-*s %-*s -> %s%s",
@@ -303,10 +457,10 @@ static int update_local_ref(struct ref *ref,
 		 * more likely to follow a standard layout.
 		 */
 		const char *name = remote_ref ? remote_ref->name : "";
-		if (!prefixcmp(name, "refs/tags/")) {
+		if (starts_with(name, "refs/tags/")) {
 			msg = "storing tag";
 			what = _("[new tag]");
-		} else if (!prefixcmp(name, "refs/heads/")) {
+		} else if (starts_with(name, "refs/heads/")) {
 			msg = "storing head";
 			what = _("[new branch]");
 		} else {
@@ -372,6 +526,8 @@ static int iterate_ref_map(void *cb_data, unsigned char sha1[20])
 	struct ref **rm = cb_data;
 	struct ref *ref = *rm;
 
+	while (ref && ref->status == REF_STATUS_REJECT_SHALLOW)
+		ref = ref->next;
 	if (!ref)
 		return -1; /* end of the list */
 	*rm = ref->next;
@@ -384,12 +540,12 @@ static int store_updated_refs(const char *raw_url, const char *remote_name,
 {
 	FILE *fp;
 	struct commit *commit;
-	int url_len, i, shown_url = 0, rc = 0;
+	int url_len, i, rc = 0;
 	struct strbuf note = STRBUF_INIT;
 	const char *what, *kind;
 	struct ref *rm;
 	char *url, *filename = dry_run ? "/dev/null" : git_path("FETCH_HEAD");
-	int want_merge;
+	int want_status;
 
 	fp = fopen(filename, "a");
 	if (!fp)
@@ -407,19 +563,29 @@ static int store_updated_refs(const char *raw_url, const char *remote_name,
 	}
 
 	/*
-	 * The first pass writes objects to be merged and then the
-	 * second pass writes the rest, in order to allow using
-	 * FETCH_HEAD as a refname to refer to the ref to be merged.
+	 * We do a pass for each fetch_head_status type in their enum order, so
+	 * merged entries are written before not-for-merge. That lets readers
+	 * use FETCH_HEAD as a refname to refer to the ref to be merged.
 	 */
-	for (want_merge = 1; 0 <= want_merge; want_merge--) {
+	for (want_status = FETCH_HEAD_MERGE;
+	     want_status <= FETCH_HEAD_IGNORE;
+	     want_status++) {
 		for (rm = ref_map; rm; rm = rm->next) {
 			struct ref *ref = NULL;
+			const char *merge_status_marker = "";
+
+			if (rm->status == REF_STATUS_REJECT_SHALLOW) {
+				if (want_status == FETCH_HEAD_MERGE)
+					warning(_("reject %s because shallow roots are not allowed to be updated"),
+						rm->peer_ref ? rm->peer_ref->name : rm->name);
+				continue;
+			}
 
 			commit = lookup_commit_reference_gently(rm->old_sha1, 1);
 			if (!commit)
-				rm->merge = 0;
+				rm->fetch_head_status = FETCH_HEAD_NOT_FOR_MERGE;
 
-			if (rm->merge != want_merge)
+			if (rm->fetch_head_status != want_status)
 				continue;
 
 			if (rm->peer_ref) {
@@ -435,15 +601,15 @@ static int store_updated_refs(const char *raw_url, const char *remote_name,
 				kind = "";
 				what = "";
 			}
-			else if (!prefixcmp(rm->name, "refs/heads/")) {
+			else if (starts_with(rm->name, "refs/heads/")) {
 				kind = "branch";
 				what = rm->name + 11;
 			}
-			else if (!prefixcmp(rm->name, "refs/tags/")) {
+			else if (starts_with(rm->name, "refs/tags/")) {
 				kind = "tag";
 				what = rm->name + 10;
 			}
-			else if (!prefixcmp(rm->name, "refs/remotes/")) {
+			else if (starts_with(rm->name, "refs/remotes/")) {
 				kind = "remote-tracking branch";
 				what = rm->name + 13;
 			}
@@ -465,16 +631,26 @@ static int store_updated_refs(const char *raw_url, const char *remote_name,
 					strbuf_addf(&note, "%s ", kind);
 				strbuf_addf(&note, "'%s' of ", what);
 			}
-			fprintf(fp, "%s\t%s\t%s",
-				sha1_to_hex(rm->old_sha1),
-				rm->merge ? "" : "not-for-merge",
-				note.buf);
-			for (i = 0; i < url_len; ++i)
-				if ('\n' == url[i])
-					fputs("\\n", fp);
-				else
-					fputc(url[i], fp);
-			fputc('\n', fp);
+			switch (rm->fetch_head_status) {
+			case FETCH_HEAD_NOT_FOR_MERGE:
+				merge_status_marker = "not-for-merge";
+				/* fall-through */
+			case FETCH_HEAD_MERGE:
+				fprintf(fp, "%s\t%s\t%s",
+					sha1_to_hex(rm->old_sha1),
+					merge_status_marker,
+					note.buf);
+				for (i = 0; i < url_len; ++i)
+					if ('\n' == url[i])
+						fputs("\\n", fp);
+					else
+						fputc(url[i], fp);
+				fputc('\n', fp);
+				break;
+			default:
+				/* do not write anything to FETCH_HEAD */
+				break;
+			}
 
 			strbuf_reset(&note);
 			if (ref) {
@@ -544,17 +720,36 @@ static int fetch_refs(struct transport *transport, struct ref *ref_map)
 	return ret;
 }
 
-static int prune_refs(struct refspec *refs, int ref_count, struct ref *ref_map)
+static int prune_refs(struct refspec *refs, int ref_count, struct ref *ref_map,
+		const char *raw_url)
 {
-	int result = 0;
+	int url_len, i, result = 0;
 	struct ref *ref, *stale_refs = get_stale_heads(refs, ref_count, ref_map);
+	char *url;
 	const char *dangling_msg = dry_run
 		? _("   (%s will become dangling)")
 		: _("   (%s has become dangling)");
 
+	if (raw_url)
+		url = transport_anonymize_url(raw_url);
+	else
+		url = xstrdup("foreign");
+
+	url_len = strlen(url);
+	for (i = url_len - 1; url[i] == '/' && 0 <= i; i--)
+		;
+
+	url_len = i + 1;
+	if (4 < i && !strncmp(".git", url + i - 3, 4))
+		url_len = i - 3;
+
 	for (ref = stale_refs; ref; ref = ref->next) {
 		if (!dry_run)
 			result |= delete_ref(ref->name, NULL, 0);
+		if (verbosity >= 0 && !shown_url) {
+			fprintf(stderr, _("From %.*s\n"), url_len, url);
+			shown_url = 1;
+		}
 		if (verbosity >= 0) {
 			fprintf(stderr, " x %-*s %-*s -> %s\n",
 				TRANSPORT_SUMMARY(_("[deleted]")),
@@ -562,107 +757,9 @@ static int prune_refs(struct refspec *refs, int ref_count, struct ref *ref_map)
 			warn_dangling_symref(stderr, dangling_msg, ref->name);
 		}
 	}
+	free(url);
 	free_refs(stale_refs);
 	return result;
-}
-
-static int add_existing(const char *refname, const unsigned char *sha1,
-			int flag, void *cbdata)
-{
-	struct string_list *list = (struct string_list *)cbdata;
-	struct string_list_item *item = string_list_insert(list, refname);
-	item->util = (void *)sha1;
-	return 0;
-}
-
-static int will_fetch(struct ref **head, const unsigned char *sha1)
-{
-	struct ref *rm = *head;
-	while (rm) {
-		if (!hashcmp(rm->old_sha1, sha1))
-			return 1;
-		rm = rm->next;
-	}
-	return 0;
-}
-
-static void find_non_local_tags(struct transport *transport,
-			struct ref **head,
-			struct ref ***tail)
-{
-	struct string_list existing_refs = STRING_LIST_INIT_NODUP;
-	struct string_list remote_refs = STRING_LIST_INIT_NODUP;
-	const struct ref *ref;
-	struct string_list_item *item = NULL;
-
-	for_each_ref(add_existing, &existing_refs);
-	for (ref = transport_get_remote_refs(transport); ref; ref = ref->next) {
-		if (prefixcmp(ref->name, "refs/tags/"))
-			continue;
-
-		/*
-		 * The peeled ref always follows the matching base
-		 * ref, so if we see a peeled ref that we don't want
-		 * to fetch then we can mark the ref entry in the list
-		 * as one to ignore by setting util to NULL.
-		 */
-		if (!suffixcmp(ref->name, "^{}")) {
-			if (item && !has_sha1_file(ref->old_sha1) &&
-			    !will_fetch(head, ref->old_sha1) &&
-			    !has_sha1_file(item->util) &&
-			    !will_fetch(head, item->util))
-				item->util = NULL;
-			item = NULL;
-			continue;
-		}
-
-		/*
-		 * If item is non-NULL here, then we previously saw a
-		 * ref not followed by a peeled reference, so we need
-		 * to check if it is a lightweight tag that we want to
-		 * fetch.
-		 */
-		if (item && !has_sha1_file(item->util) &&
-		    !will_fetch(head, item->util))
-			item->util = NULL;
-
-		item = NULL;
-
-		/* skip duplicates and refs that we already have */
-		if (string_list_has_string(&remote_refs, ref->name) ||
-		    string_list_has_string(&existing_refs, ref->name))
-			continue;
-
-		item = string_list_insert(&remote_refs, ref->name);
-		item->util = (void *)ref->old_sha1;
-	}
-	string_list_clear(&existing_refs, 0);
-
-	/*
-	 * We may have a final lightweight tag that needs to be
-	 * checked to see if it needs fetching.
-	 */
-	if (item && !has_sha1_file(item->util) &&
-	    !will_fetch(head, item->util))
-		item->util = NULL;
-
-	/*
-	 * For all the tags in the remote_refs string list,
-	 * add them to the list of refs to be fetched
-	 */
-	for_each_string_list_item(item, &remote_refs) {
-		/* Unless we have already decided to ignore this item... */
-		if (item->util)
-		{
-			struct ref *rm = alloc_ref(item->string);
-			rm->peer_ref = alloc_ref(item->string);
-			hashcpy(rm->old_sha1, item->util);
-			**tail = rm;
-			*tail = &rm->next;
-		}
-	}
-
-	string_list_clear(&remote_refs, 0);
 }
 
 static void check_not_current_branch(struct ref *ref_map)
@@ -690,14 +787,58 @@ static int truncate_fetch_head(void)
 	return 0;
 }
 
+static void set_option(struct transport *transport, const char *name, const char *value)
+{
+	int r = transport_set_option(transport, name, value);
+	if (r < 0)
+		die(_("Option \"%s\" value \"%s\" is not valid for %s"),
+		    name, value, transport->url);
+	if (r > 0)
+		warning(_("Option \"%s\" is ignored for %s\n"),
+			name, transport->url);
+}
+
+static struct transport *prepare_transport(struct remote *remote)
+{
+	struct transport *transport;
+	transport = transport_get(remote, NULL);
+	transport_set_verbosity(transport, verbosity, progress);
+	if (upload_pack)
+		set_option(transport, TRANS_OPT_UPLOADPACK, upload_pack);
+	if (keep)
+		set_option(transport, TRANS_OPT_KEEP, "yes");
+	if (depth)
+		set_option(transport, TRANS_OPT_DEPTH, depth);
+	if (update_shallow)
+		set_option(transport, TRANS_OPT_UPDATE_SHALLOW, "yes");
+	return transport;
+}
+
+static void backfill_tags(struct transport *transport, struct ref *ref_map)
+{
+	if (transport->cannot_reuse) {
+		gsecondary = prepare_transport(transport->remote);
+		transport = gsecondary;
+	}
+
+	transport_set_option(transport, TRANS_OPT_FOLLOWTAGS, NULL);
+	transport_set_option(transport, TRANS_OPT_DEPTH, "0");
+	fetch_refs(transport, ref_map);
+
+	if (gsecondary) {
+		transport_disconnect(gsecondary);
+		gsecondary = NULL;
+	}
+}
+
 static int do_fetch(struct transport *transport,
 		    struct refspec *refs, int ref_count)
 {
-	struct string_list existing_refs = STRING_LIST_INIT_NODUP;
-	struct string_list_item *peer_item = NULL;
+	struct string_list existing_refs = STRING_LIST_INIT_DUP;
 	struct ref *ref_map;
 	struct ref *rm;
 	int autotags = (transport->remote->fetch_tags == 1);
+	int retcode = 0;
 
 	for_each_ref(add_existing, &existing_refs);
 
@@ -713,9 +854,9 @@ static int do_fetch(struct transport *transport,
 
 	/* if not appending, truncate FETCH_HEAD */
 	if (!append && !dry_run) {
-		int errcode = truncate_fetch_head();
-		if (errcode)
-			return errcode;
+		retcode = truncate_fetch_head();
+		if (retcode)
+			goto cleanup;
 	}
 
 	ref_map = get_ref_map(transport, refs, ref_count, tags, &autotags);
@@ -724,8 +865,9 @@ static int do_fetch(struct transport *transport,
 
 	for (rm = ref_map; rm; rm = rm->next) {
 		if (rm->peer_ref) {
-			peer_item = string_list_lookup(&existing_refs,
-						       rm->peer_ref->name);
+			struct string_list_item *peer_item =
+				string_list_lookup(&existing_refs,
+						   rm->peer_ref->name);
 			if (peer_item)
 				hashcpy(rm->peer_ref->old_sha1,
 					peer_item->util);
@@ -734,34 +876,25 @@ static int do_fetch(struct transport *transport,
 
 	if (tags == TAGS_DEFAULT && autotags)
 		transport_set_option(transport, TRANS_OPT_FOLLOWTAGS, "1");
+	if (prune) {
+		/*
+		 * We only prune based on refspecs specified
+		 * explicitly (via command line or configuration); we
+		 * don't care whether --tags was specified.
+		 */
+		if (ref_count) {
+			prune_refs(refs, ref_count, ref_map, transport->url);
+		} else {
+			prune_refs(transport->remote->fetch,
+				   transport->remote->fetch_refspec_nr,
+				   ref_map,
+				   transport->url);
+		}
+	}
 	if (fetch_refs(transport, ref_map)) {
 		free_refs(ref_map);
-		return 1;
-	}
-	if (prune) {
-		/* If --tags was specified, pretend the user gave us the canonical tags refspec */
-		if (tags == TAGS_SET) {
-			const char *tags_str = "refs/tags/*:refs/tags/*";
-			struct refspec *tags_refspec, *refspec;
-
-			/* Copy the refspec and add the tags to it */
-			refspec = xcalloc(ref_count + 1, sizeof(struct refspec));
-			tags_refspec = parse_fetch_refspec(1, &tags_str);
-			memcpy(refspec, refs, ref_count * sizeof(struct refspec));
-			memcpy(&refspec[ref_count], tags_refspec, sizeof(struct refspec));
-			ref_count++;
-
-			prune_refs(refspec, ref_count, ref_map);
-
-			ref_count--;
-			/* The rest of the strings belong to fetch_one */
-			free_refspec(1, tags_refspec);
-			free(refspec);
-		} else if (ref_count) {
-			prune_refs(refs, ref_count, ref_map);
-		} else {
-			prune_refs(transport->remote->fetch, transport->remote->fetch_refspec_nr, ref_map);
-		}
+		retcode = 1;
+		goto cleanup;
 	}
 	free_refs(ref_map);
 
@@ -771,26 +904,14 @@ static int do_fetch(struct transport *transport,
 		struct ref **tail = &ref_map;
 		ref_map = NULL;
 		find_non_local_tags(transport, &ref_map, &tail);
-		if (ref_map) {
-			transport_set_option(transport, TRANS_OPT_FOLLOWTAGS, NULL);
-			transport_set_option(transport, TRANS_OPT_DEPTH, "0");
-			fetch_refs(transport, ref_map);
-		}
+		if (ref_map)
+			backfill_tags(transport, ref_map);
 		free_refs(ref_map);
 	}
 
-	return 0;
-}
-
-static void set_option(const char *name, const char *value)
-{
-	int r = transport_set_option(transport, name, value);
-	if (r < 0)
-		die(_("Option \"%s\" value \"%s\" is not valid for %s"),
-			name, value, transport->url);
-	if (r > 0)
-		warning(_("Option \"%s\" is ignored for %s\n"),
-			name, transport->url);
+ cleanup:
+	string_list_clear(&existing_refs, 1);
+	return retcode;
 }
 
 static int get_one_remote_for_fetch(struct remote *remote, void *priv)
@@ -810,7 +931,7 @@ static int get_remote_group(const char *key, const char *value, void *priv)
 {
 	struct remote_group_data *g = priv;
 
-	if (!prefixcmp(key, "remotes.") &&
+	if (starts_with(key, "remotes.") &&
 			!strcmp(key + 8, g->name)) {
 		/* split list by white space */
 		int space = strcspn(value, " \t\n");
@@ -848,8 +969,8 @@ static void add_options_to_argv(struct argv_array *argv)
 {
 	if (dry_run)
 		argv_array_push(argv, "--dry-run");
-	if (prune)
-		argv_array_push(argv, "--prune");
+	if (prune != -1)
+		argv_array_push(argv, prune ? "--prune" : "--no-prune");
 	if (update_head_ok)
 		argv_array_push(argv, "--update-head-ok");
 	if (force)
@@ -905,7 +1026,6 @@ static int fetch_multiple(struct string_list *list)
 
 static int fetch_one(struct remote *remote, int argc, const char **argv)
 {
-	int i;
 	static const char **refs = NULL;
 	struct refspec *refspec;
 	int ref_nr = 0;
@@ -915,17 +1035,21 @@ static int fetch_one(struct remote *remote, int argc, const char **argv)
 		die(_("No remote repository specified.  Please, specify either a URL or a\n"
 		    "remote name from which new revisions should be fetched."));
 
-	transport = transport_get(remote, NULL);
-	transport_set_verbosity(transport, verbosity, progress);
-	if (upload_pack)
-		set_option(TRANS_OPT_UPLOADPACK, upload_pack);
-	if (keep)
-		set_option(TRANS_OPT_KEEP, "yes");
-	if (depth)
-		set_option(TRANS_OPT_DEPTH, depth);
+	gtransport = prepare_transport(remote);
+
+	if (prune < 0) {
+		/* no command line request */
+		if (0 <= gtransport->remote->prune)
+			prune = gtransport->remote->prune;
+		else if (0 <= fetch_prune_config)
+			prune = fetch_prune_config;
+		else
+			prune = PRUNE_BY_DEFAULT;
+	}
 
 	if (argc > 0) {
 		int j = 0;
+		int i;
 		refs = xcalloc(argc + 1, sizeof(const char *));
 		for (i = 0; i < argc; i++) {
 			if (!strcmp(argv[i], "tag")) {
@@ -949,10 +1073,10 @@ static int fetch_one(struct remote *remote, int argc, const char **argv)
 	sigchain_push_common(unlock_pack_on_signal);
 	atexit(unlock_pack);
 	refspec = parse_fetch_refspec(ref_nr, refs);
-	exit_code = do_fetch(transport, refspec, ref_nr);
+	exit_code = do_fetch(gtransport, refspec, ref_nr);
 	free_refspec(ref_nr, refspec);
-	transport_disconnect(transport);
-	transport = NULL;
+	transport_disconnect(gtransport);
+	gtransport = NULL;
 	return exit_code;
 }
 
@@ -973,6 +1097,8 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 	for (i = 1; i < argc; i++)
 		strbuf_addf(&default_rla, " %s", argv[i]);
 
+	git_config(git_fetch_config, NULL);
+
 	argc = parse_options(argc, argv, prefix,
 			     builtin_fetch_options, builtin_fetch_usage, 0);
 
@@ -987,6 +1113,10 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 			depth = inf_depth;
 		}
 	}
+
+	/* no need to be strict, transport_set_option() will validate it again */
+	if (depth && atoi(depth) < 1)
+		die(_("depth %s is not a positive number"), depth);
 
 	if (recurse_submodules != RECURSE_SUBMODULES_OFF) {
 		if (recurse_submodules_default) {

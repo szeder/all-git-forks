@@ -40,7 +40,7 @@ SYNOPSIS
 	     [ \--right-only ]
 	     [ \--cherry-mark ]
 	     [ \--cherry-pick ]
-	     [ \--encoding[=<encoding>] ]
+	     [ \--encoding=<encoding> ]
 	     [ \--(author|committer|grep)=<pattern> ]
 	     [ \--regexp-ignore-case | -i ]
 	     [ \--extended-regexp | -E ]
@@ -55,6 +55,7 @@ SYNOPSIS
 	     [ \--reverse ]
 	     [ \--walk-reflogs ]
 	     [ \--no-walk ] [ \--do-walk ]
+	     [ \--use-bitmap-index ]
 	     <commit>... [ \-- <paths>... ]
 
 DESCRIPTION

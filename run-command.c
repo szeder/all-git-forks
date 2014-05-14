@@ -72,11 +72,14 @@ static inline void close_pair(int fd[2])
 	close(fd[1]);
 }
 
-#ifndef WIN32
+#ifndef GIT_WINDOWS_NATIVE
 static inline void dup_devnull(int to)
 {
 	int fd = open("/dev/null", O_RDWR);
-	dup2(fd, to);
+	if (fd < 0)
+		die_errno(_("open /dev/null failed"));
+	if (dup2(fd, to) < 0)
+		die_errno(_("dup2(%d,%d) failed"), fd, to);
 	close(fd);
 }
 #endif
@@ -159,7 +162,7 @@ static const char **prepare_shell_cmd(const char **argv)
 		die("BUG: shell command is empty");
 
 	if (strcspn(argv[0], "|&;<>()$`\\\"' \t\n*?[#~=%") != strlen(argv[0])) {
-#ifndef WIN32
+#ifndef GIT_WINDOWS_NATIVE
 		nargv[nargc++] = SHELL_PATH;
 #else
 		nargv[nargc++] = "sh";
@@ -182,7 +185,7 @@ static const char **prepare_shell_cmd(const char **argv)
 	return nargv;
 }
 
-#ifndef WIN32
+#ifndef GIT_WINDOWS_NATIVE
 static int execv_shell_cmd(const char **argv)
 {
 	const char **nargv = prepare_shell_cmd(argv);
@@ -193,7 +196,7 @@ static int execv_shell_cmd(const char **argv)
 }
 #endif
 
-#ifndef WIN32
+#ifndef GIT_WINDOWS_NATIVE
 static int child_err = 2;
 static int child_notifier = -1;
 
@@ -334,7 +337,7 @@ fail_pipe:
 	trace_argv_printf(cmd->argv, "trace: run_command:");
 	fflush(NULL);
 
-#ifndef WIN32
+#ifndef GIT_WINDOWS_NATIVE
 {
 	int notify_pipe[2];
 	if (pipe(notify_pipe))
@@ -403,13 +406,12 @@ fail_pipe:
 					unsetenv(*cmd->env);
 			}
 		}
-		if (cmd->git_cmd) {
+		if (cmd->git_cmd)
 			execv_git_cmd(cmd->argv);
-		} else if (cmd->use_shell) {
+		else if (cmd->use_shell)
 			execv_shell_cmd(cmd->argv);
-		} else {
+		else
 			sane_execvp(cmd->argv[0], (char *const*) cmd->argv);
-		}
 		if (errno == ENOENT) {
 			if (!cmd->silent_exec_failure)
 				error("cannot run %s: %s", cmd->argv[0],
@@ -443,7 +445,6 @@ fail_pipe:
 		cmd->pid = -1;
 	}
 	close(notify_pipe[0]);
-
 }
 #else
 {
@@ -477,11 +478,10 @@ fail_pipe:
 	if (cmd->env)
 		env = make_augmented_environ(cmd->env);
 
-	if (cmd->git_cmd) {
+	if (cmd->git_cmd)
 		cmd->argv = prepare_git_cmd(cmd->argv);
-	} else if (cmd->use_shell) {
+	else if (cmd->use_shell)
 		cmd->argv = prepare_shell_cmd(cmd->argv);
-	}
 
 	cmd->pid = mingw_spawnvpe(cmd->argv[0], cmd->argv, env, cmd->dir,
 				  fhin, fhout, fherr);
@@ -588,6 +588,7 @@ int run_command_v_opt_cd_env(const char **argv, int opt, const char *dir, const 
 static pthread_t main_thread;
 static int main_thread_set;
 static pthread_key_t async_key;
+static pthread_key_t async_die_counter;
 
 static void *run_thread(void *data)
 {
@@ -614,6 +615,14 @@ static NORETURN void die_async(const char *err, va_list params)
 
 	exit(128);
 }
+
+static int async_die_is_recursing(void)
+{
+	void *ret = pthread_getspecific(async_die_counter);
+	pthread_setspecific(async_die_counter, (void *)1);
+	return ret != NULL;
+}
+
 #endif
 
 int start_async(struct async *async)
@@ -695,7 +704,9 @@ int start_async(struct async *async)
 		main_thread_set = 1;
 		main_thread = pthread_self();
 		pthread_key_create(&async_key, NULL);
+		pthread_key_create(&async_die_counter, NULL);
 		set_die_routine(die_async);
+		set_die_is_recursing_routine(async_die_is_recursing);
 	}
 
 	if (proc_in >= 0)
@@ -749,13 +760,11 @@ char *find_hook(const char *name)
 	return path;
 }
 
-int run_hook(const char *index_file, const char *name, ...)
+int run_hook_ve(const char *const *env, const char *name, va_list args)
 {
 	struct child_process hook;
 	struct argv_array argv = ARGV_ARRAY_INIT;
-	const char *p, *env[2];
-	char index[PATH_MAX];
-	va_list args;
+	const char *p;
 	int ret;
 
 	p = find_hook(name);
@@ -764,23 +773,45 @@ int run_hook(const char *index_file, const char *name, ...)
 
 	argv_array_push(&argv, p);
 
-	va_start(args, name);
 	while ((p = va_arg(args, const char *)))
 		argv_array_push(&argv, p);
-	va_end(args);
 
 	memset(&hook, 0, sizeof(hook));
 	hook.argv = argv.argv;
+	hook.env = env;
 	hook.no_stdin = 1;
 	hook.stdout_to_stderr = 1;
-	if (index_file) {
-		snprintf(index, sizeof(index), "GIT_INDEX_FILE=%s", index_file);
-		env[0] = index;
-		env[1] = NULL;
-		hook.env = env;
-	}
 
 	ret = run_command(&hook);
 	argv_array_clear(&argv);
+	return ret;
+}
+
+int run_hook_le(const char *const *env, const char *name, ...)
+{
+	va_list args;
+	int ret;
+
+	va_start(args, name);
+	ret = run_hook_ve(env, name, args);
+	va_end(args);
+
+	return ret;
+}
+
+int run_hook_with_custom_index(const char *index_file, const char *name, ...)
+{
+	const char *hook_env[3] =  { NULL };
+	char index[PATH_MAX];
+	va_list args;
+	int ret;
+
+	snprintf(index, sizeof(index), "GIT_INDEX_FILE=%s", index_file);
+	hook_env[0] = index;
+
+	va_start(args, name);
+	ret = run_hook_ve(hook_env, name, args);
+	va_end(args);
+
 	return ret;
 }

@@ -1,22 +1,22 @@
 #include "cache.h"
 #include "refs.h"
 
-int prefixcmp(const char *str, const char *prefix)
+int starts_with(const char *str, const char *prefix)
 {
 	for (; ; str++, prefix++)
 		if (!*prefix)
-			return 0;
+			return 1;
 		else if (*str != *prefix)
-			return (unsigned char)*prefix - (unsigned char)*str;
+			return 0;
 }
 
-int suffixcmp(const char *str, const char *suffix)
+int ends_with(const char *str, const char *suffix)
 {
 	int len = strlen(str), suflen = strlen(suffix);
 	if (len < suflen)
-		return -1;
+		return 0;
 	else
-		return strcmp(str + len - suflen, suffix);
+		return !strcmp(str + len - suflen, suffix);
 }
 
 /*
@@ -526,6 +526,25 @@ void strbuf_addstr_urlencode(struct strbuf *sb, const char *s,
 			     int reserved)
 {
 	strbuf_add_urlencode(sb, s, strlen(s), reserved);
+}
+
+void strbuf_humanise_bytes(struct strbuf *buf, off_t bytes)
+{
+	if (bytes > 1 << 30) {
+		strbuf_addf(buf, "%u.%2.2u GiB",
+			    (int)(bytes >> 30),
+			    (int)(bytes & ((1 << 30) - 1)) / 10737419);
+	} else if (bytes > 1 << 20) {
+		int x = bytes + 5243;  /* for rounding */
+		strbuf_addf(buf, "%u.%2.2u MiB",
+			    x >> 20, ((x & ((1 << 20) - 1)) * 100) >> 20);
+	} else if (bytes > 1 << 10) {
+		int x = bytes + 5;  /* for rounding */
+		strbuf_addf(buf, "%u.%2.2u KiB",
+			    x >> 10, ((x & ((1 << 10) - 1)) * 100) >> 10);
+	} else {
+		strbuf_addf(buf, "%u bytes", (int)bytes);
+	}
 }
 
 int printf_ln(const char *fmt, ...)

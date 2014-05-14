@@ -14,7 +14,9 @@
 #include "cache.h"
 #include "parse-options.h"
 #include "run-command.h"
+#include "sigchain.h"
 #include "argv-array.h"
+#include "commit.h"
 
 #define FAILED_RUN "failed to run %s"
 
@@ -24,9 +26,11 @@ static const char * const builtin_gc_usage[] = {
 };
 
 static int pack_refs = 1;
+static int aggressive_depth = 250;
 static int aggressive_window = 250;
 static int gc_auto_threshold = 6700;
 static int gc_auto_pack_limit = 50;
+static int detach_auto = 1;
 static const char *prune_expire = "2.weeks.ago";
 
 static struct argv_array pack_refs_cmd = ARGV_ARRAY_INIT;
@@ -34,6 +38,21 @@ static struct argv_array reflog = ARGV_ARRAY_INIT;
 static struct argv_array repack = ARGV_ARRAY_INIT;
 static struct argv_array prune = ARGV_ARRAY_INIT;
 static struct argv_array rerere = ARGV_ARRAY_INIT;
+
+static char *pidfile;
+
+static void remove_pidfile(void)
+{
+	if (pidfile)
+		unlink(pidfile);
+}
+
+static void remove_pidfile_on_signal(int signo)
+{
+	remove_pidfile();
+	sigchain_pop(signo);
+	raise(signo);
+}
 
 static int gc_config(const char *var, const char *value, void *cb)
 {
@@ -48,12 +67,20 @@ static int gc_config(const char *var, const char *value, void *cb)
 		aggressive_window = git_config_int(var, value);
 		return 0;
 	}
+	if (!strcmp(var, "gc.aggressivedepth")) {
+		aggressive_depth = git_config_int(var, value);
+		return 0;
+	}
 	if (!strcmp(var, "gc.auto")) {
 		gc_auto_threshold = git_config_int(var, value);
 		return 0;
 	}
 	if (!strcmp(var, "gc.autopacklimit")) {
 		gc_auto_pack_limit = git_config_int(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "gc.autodetach")) {
+		detach_auto = git_config_bool(var, value);
 		return 0;
 	}
 	if (!strcmp(var, "gc.pruneexpire")) {
@@ -162,9 +189,73 @@ static int need_to_gc(void)
 	else if (!too_many_loose_objects())
 		return 0;
 
-	if (run_hook(NULL, "pre-auto-gc", NULL))
+	if (run_hook_le(NULL, "pre-auto-gc", NULL))
 		return 0;
 	return 1;
+}
+
+/* return NULL on success, else hostname running the gc */
+static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
+{
+	static struct lock_file lock;
+	char my_host[128];
+	struct strbuf sb = STRBUF_INIT;
+	struct stat st;
+	uintmax_t pid;
+	FILE *fp;
+	int fd;
+
+	if (pidfile)
+		/* already locked */
+		return NULL;
+
+	if (gethostname(my_host, sizeof(my_host)))
+		strcpy(my_host, "unknown");
+
+	fd = hold_lock_file_for_update(&lock, git_path("gc.pid"),
+				       LOCK_DIE_ON_ERROR);
+	if (!force) {
+		static char locking_host[128];
+		int should_exit;
+		fp = fopen(git_path("gc.pid"), "r");
+		memset(locking_host, 0, sizeof(locking_host));
+		should_exit =
+			fp != NULL &&
+			!fstat(fileno(fp), &st) &&
+			/*
+			 * 12 hour limit is very generous as gc should
+			 * never take that long. On the other hand we
+			 * don't really need a strict limit here,
+			 * running gc --auto one day late is not a big
+			 * problem. --force can be used in manual gc
+			 * after the user verifies that no gc is
+			 * running.
+			 */
+			time(NULL) - st.st_mtime <= 12 * 3600 &&
+			fscanf(fp, "%"PRIuMAX" %127c", &pid, locking_host) == 2 &&
+			/* be gentle to concurrent "gc" on remote hosts */
+			(strcmp(locking_host, my_host) || !kill(pid, 0) || errno == EPERM);
+		if (fp != NULL)
+			fclose(fp);
+		if (should_exit) {
+			if (fd >= 0)
+				rollback_lock_file(&lock);
+			*ret_pid = pid;
+			return locking_host;
+		}
+	}
+
+	strbuf_addf(&sb, "%"PRIuMAX" %s",
+		    (uintmax_t) getpid(), my_host);
+	write_in_full(fd, sb.buf, sb.len);
+	strbuf_release(&sb);
+	commit_lock_file(&lock);
+
+	pidfile = git_pathdup("gc.pid");
+	sigchain_push_common(remove_pidfile_on_signal);
+	atexit(remove_pidfile);
+
+	return NULL;
 }
 
 int cmd_gc(int argc, const char **argv, const char *prefix)
@@ -172,14 +263,18 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 	int aggressive = 0;
 	int auto_gc = 0;
 	int quiet = 0;
+	int force = 0;
+	const char *name;
+	pid_t pid;
 
 	struct option builtin_gc_options[] = {
 		OPT__QUIET(&quiet, N_("suppress progress reporting")),
 		{ OPTION_STRING, 0, "prune", &prune_expire, N_("date"),
 			N_("prune unreferenced objects"),
 			PARSE_OPT_OPTARG, NULL, (intptr_t)prune_expire },
-		OPT_BOOLEAN(0, "aggressive", &aggressive, N_("be more thorough (increased runtime)")),
-		OPT_BOOLEAN(0, "auto", &auto_gc, N_("enable auto-gc mode")),
+		OPT_BOOL(0, "aggressive", &aggressive, N_("be more thorough (increased runtime)")),
+		OPT_BOOL(0, "auto", &auto_gc, N_("enable auto-gc mode")),
+		OPT_BOOL(0, "force", &force, N_("force running gc even if there may be another gc running")),
 		OPT_END()
 	};
 
@@ -204,7 +299,8 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 
 	if (aggressive) {
 		argv_array_push(&repack, "-f");
-		argv_array_push(&repack, "--depth=250");
+		if (aggressive_depth > 0)
+			argv_array_pushf(&repack, "--depth=%d", aggressive_depth);
 		if (aggressive_window > 0)
 			argv_array_pushf(&repack, "--window=%d", aggressive_window);
 	}
@@ -217,13 +313,29 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 		 */
 		if (!need_to_gc())
 			return 0;
-		if (!quiet)
-			fprintf(stderr,
-					_("Auto packing the repository for optimum performance. You may also\n"
-					"run \"git gc\" manually. See "
-					"\"git help gc\" for more information.\n"));
+		if (!quiet) {
+			if (detach_auto)
+				fprintf(stderr, _("Auto packing the repository in background for optimum performance.\n"));
+			else
+				fprintf(stderr, _("Auto packing the repository for optimum performance.\n"));
+			fprintf(stderr, _("See \"git help gc\" for manual housekeeping.\n"));
+		}
+		if (detach_auto)
+			/*
+			 * failure to daemonize is ok, we'll continue
+			 * in foreground
+			 */
+			daemonize();
 	} else
 		add_repack_all_option();
+
+	name = lock_repo_for_gc(force, &pid);
+	if (name) {
+		if (auto_gc)
+			return 0; /* be quiet on --auto */
+		die(_("gc is already running on machine '%s' pid %"PRIuMAX" (use --force if not)"),
+		    name, (uintmax_t)pid);
+	}
 
 	if (pack_refs && run_command_v_opt(pack_refs_cmd.argv, RUN_GIT_CMD))
 		return error(FAILED_RUN, pack_refs_cmd.argv[0]);

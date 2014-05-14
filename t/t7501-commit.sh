@@ -53,16 +53,53 @@ test_expect_success PERL 'can use paths with --interactive' '
 '
 
 test_expect_success 'using invalid commit with -C' '
-	test_must_fail git commit -C bogus
+	test_must_fail git commit --allow-empty -C bogus
 '
 
 test_expect_success 'nothing to commit' '
+	git reset --hard &&
 	test_must_fail git commit -m initial
+'
+
+test_expect_success '--dry-run fails with nothing to commit' '
+	test_must_fail git commit -m initial --dry-run
+'
+
+test_expect_success '--short fails with nothing to commit' '
+	test_must_fail git commit -m initial --short
+'
+
+test_expect_success '--porcelain fails with nothing to commit' '
+	test_must_fail git commit -m initial --porcelain
+'
+
+test_expect_success '--long fails with nothing to commit' '
+	test_must_fail git commit -m initial --long
 '
 
 test_expect_success 'setup: non-initial commit' '
 	echo bongo bongo bongo >file &&
 	git commit -m next -a
+'
+
+test_expect_success '--dry-run with stuff to commit returns ok' '
+	echo bongo bongo bongo >>file &&
+	git commit -m next -a --dry-run
+'
+
+test_expect_failure '--short with stuff to commit returns ok' '
+	echo bongo bongo bongo >>file &&
+	git commit -m next -a --short
+'
+
+test_expect_failure '--porcelain with stuff to commit returns ok' '
+	echo bongo bongo bongo >>file &&
+	git commit -m next -a --porcelain
+'
+
+test_expect_success '--long with stuff to commit returns ok' '
+	echo bongo bongo bongo >>file &&
+	git commit -m next -a --long
 '
 
 test_expect_success 'commit message from non-existing file' '
@@ -522,6 +559,19 @@ test_expect_success 'commit a file whose name is a dash' '
 	test_tick &&
 	git commit -m "add dash" >output </dev/null &&
 	test_i18ngrep " changed, 5 insertions" output
+'
+
+test_expect_success '--only works on to-be-born branch' '
+	# This test relies on having something in the index, as it
+	# would not otherwise actually prove much.  So check this.
+	test -n "$(git ls-files)" &&
+	git checkout --orphan orphan &&
+	echo foo >newfile &&
+	git add newfile &&
+	git commit --only newfile -m"--only on unborn branch" &&
+	echo newfile >expected &&
+	git ls-tree -r --name-only HEAD >actual &&
+	test_cmp expected actual
 '
 
 test_done

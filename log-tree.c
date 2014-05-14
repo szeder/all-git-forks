@@ -10,6 +10,7 @@
 #include "color.h"
 #include "gpg-interface.h"
 #include "sequencer.h"
+#include "line-log.h"
 
 struct decoration name_decoration = { "object names" };
 
@@ -97,9 +98,9 @@ static int add_ref_decoration(const char *refname, const unsigned char *sha1, in
 	struct object *obj;
 	enum decoration_type type = DECORATION_NONE;
 
-	if (!prefixcmp(refname, "refs/replace/")) {
+	if (starts_with(refname, "refs/replace/")) {
 		unsigned char original_sha1[20];
-		if (!read_replace_refs)
+		if (!check_replace_refs)
 			return 0;
 		if (get_sha1_hex(refname + 13, original_sha1)) {
 			warning("invalid replace ref %s", refname);
@@ -115,11 +116,11 @@ static int add_ref_decoration(const char *refname, const unsigned char *sha1, in
 	if (!obj)
 		return 0;
 
-	if (!prefixcmp(refname, "refs/heads/"))
+	if (starts_with(refname, "refs/heads/"))
 		type = DECORATION_REF_LOCAL;
-	else if (!prefixcmp(refname, "refs/remotes/"))
+	else if (starts_with(refname, "refs/remotes/"))
 		type = DECORATION_REF_REMOTE;
-	else if (!prefixcmp(refname, "refs/tags/"))
+	else if (starts_with(refname, "refs/tags/"))
 		type = DECORATION_REF_TAG;
 	else if (!strcmp(refname, "refs/stash"))
 		type = DECORATION_REF_STASH;
@@ -133,6 +134,8 @@ static int add_ref_decoration(const char *refname, const unsigned char *sha1, in
 		obj = ((struct tag *)obj)->tagged;
 		if (!obj)
 			break;
+		if (!obj->parsed)
+			parse_object(obj->sha1);
 		add_name_decoration(DECORATION_REF_TAG, refname, obj);
 	}
 	return 0;
@@ -175,36 +178,52 @@ static void show_children(struct rev_info *opt, struct commit *commit, int abbre
 	}
 }
 
-void show_decorations(struct rev_info *opt, struct commit *commit)
+/*
+ * The caller makes sure there is no funny color before
+ * calling. format_decorations makes sure the same after return.
+ */
+void format_decorations(struct strbuf *sb,
+			const struct commit *commit,
+			int use_color)
 {
 	const char *prefix;
 	struct name_decoration *decoration;
 	const char *color_commit =
-		diff_get_color_opt(&opt->diffopt, DIFF_COMMIT);
+		diff_get_color(use_color, DIFF_COMMIT);
 	const char *color_reset =
-		decorate_get_color_opt(&opt->diffopt, DECORATION_NONE);
+		decorate_get_color(use_color, DECORATION_NONE);
 
-	if (opt->show_source && commit->util)
-		printf("\t%s", (char *) commit->util);
-	if (!opt->show_decorations)
-		return;
 	decoration = lookup_decoration(&name_decoration, &commit->object);
 	if (!decoration)
 		return;
 	prefix = " (";
 	while (decoration) {
-		printf("%s", prefix);
-		fputs(decorate_get_color_opt(&opt->diffopt, decoration->type),
-		      stdout);
+		strbuf_addstr(sb, color_commit);
+		strbuf_addstr(sb, prefix);
+		strbuf_addstr(sb, decorate_get_color(use_color, decoration->type));
 		if (decoration->type == DECORATION_REF_TAG)
-			fputs("tag: ", stdout);
-		printf("%s", decoration->name);
-		fputs(color_reset, stdout);
-		fputs(color_commit, stdout);
+			strbuf_addstr(sb, "tag: ");
+		strbuf_addstr(sb, decoration->name);
+		strbuf_addstr(sb, color_reset);
 		prefix = ", ";
 		decoration = decoration->next;
 	}
-	putchar(')');
+	strbuf_addstr(sb, color_commit);
+	strbuf_addch(sb, ')');
+	strbuf_addstr(sb, color_reset);
+}
+
+void show_decorations(struct rev_info *opt, struct commit *commit)
+{
+	struct strbuf sb = STRBUF_INIT;
+
+	if (opt->show_source && commit->util)
+		printf("\t%s", (char *) commit->util);
+	if (!opt->show_decorations)
+		return;
+	format_decorations(&sb, commit, opt->diffopt.use_color);
+	fputs(sb.buf, stdout);
+	strbuf_release(&sb);
 }
 
 static unsigned int digits_in_number(unsigned int number)
@@ -540,8 +559,8 @@ void show_log(struct rev_info *opt)
 			printf(" (from %s)",
 			       find_unique_abbrev(parent->object.sha1,
 						  abbrev_commit));
+		fputs(diff_get_color_opt(&opt->diffopt, DIFF_RESET), stdout);
 		show_decorations(opt, commit);
-		printf("%s", diff_get_color_opt(&opt->diffopt, DIFF_RESET));
 		if (opt->commit_format == CMIT_FMT_ONELINE) {
 			putchar(' ');
 		} else {
@@ -600,6 +619,9 @@ void show_log(struct rev_info *opt)
 	ctx.fmt = opt->commit_format;
 	ctx.mailmap = opt->mailmap;
 	ctx.color = opt->diffopt.use_color;
+	ctx.output_encoding = get_log_output_encoding();
+	if (opt->from_ident.mail_begin && opt->from_ident.name_begin)
+		ctx.from_ident = &opt->from_ident;
 	pretty_print_commit(&ctx, commit, &msgbuf);
 
 	if (opt->add_signoff)
@@ -714,11 +736,11 @@ static int log_tree_diff(struct rev_info *opt, struct commit *commit, struct log
 	if (!opt->diff && !DIFF_OPT_TST(&opt->diffopt, EXIT_WITH_STATUS))
 		return 0;
 
-	parse_commit(commit);
+	parse_commit_or_die(commit);
 	sha1 = commit->tree->object.sha1;
 
 	/* Root commit? */
-	parents = commit->parents;
+	parents = get_saved_parents(opt, commit);
 	if (!parents) {
 		if (opt->show_root_diff) {
 			diff_root_tree_sha1(sha1, "", &opt->diffopt);
@@ -739,7 +761,7 @@ static int log_tree_diff(struct rev_info *opt, struct commit *commit, struct log
 			 * parent, showing summary diff of the others
 			 * we merged _in_.
 			 */
-			parse_commit(parents->item);
+			parse_commit_or_die(parents->item);
 			diff_tree_sha1(parents->item->tree->object.sha1,
 				       sha1, "", &opt->diffopt);
 			log_tree_diff_flush(opt);
@@ -754,7 +776,7 @@ static int log_tree_diff(struct rev_info *opt, struct commit *commit, struct log
 	for (;;) {
 		struct commit *parent = parents->item;
 
-		parse_commit(parent);
+		parse_commit_or_die(parent);
 		diff_tree_sha1(parent->tree->object.sha1,
 			       sha1, "", &opt->diffopt);
 		log_tree_diff_flush(opt);
@@ -780,12 +802,19 @@ int log_tree_commit(struct rev_info *opt, struct commit *commit)
 	log.parent = NULL;
 	opt->loginfo = &log;
 
+	if (opt->line_level_traverse)
+		return line_log_print(opt, commit);
+
+	if (opt->track_linear && !opt->linear && !opt->reverse_output_stage)
+		printf("\n%s\n", opt->break_bar);
 	shown = log_tree_diff(opt, commit, &log);
 	if (!shown && opt->loginfo && opt->always_show_header) {
 		log.parent = NULL;
 		show_log(opt);
 		shown = 1;
 	}
+	if (opt->track_linear && !opt->linear && opt->reverse_output_stage)
+		printf("\n%s\n", opt->break_bar);
 	opt->loginfo = NULL;
 	maybe_flush_or_die(stdout, "stdout");
 	return shown;

@@ -41,7 +41,7 @@ static int is_cherry_picked_from_line(const char *buf, int len)
 	 * We only care that it looks roughly like (cherry picked from ...)
 	 */
 	return len > strlen(cherry_picked_prefix) + 1 &&
-		!prefixcmp(buf, cherry_picked_prefix) && buf[len - 1] == ')';
+		starts_with(buf, cherry_picked_prefix) && buf[len - 1] == ')';
 }
 
 /*
@@ -180,7 +180,7 @@ static char *get_encoding(const char *message)
 	while (*p && *p != '\n') {
 		for (eol = p + 1; *eol && *eol != '\n'; eol++)
 			; /* do nothing */
-		if (!prefixcmp(p, "encoding ")) {
+		if (starts_with(p, "encoding ")) {
 			char *result = xmalloc(eol - 8 - p);
 			strlcpy(result, p + 9, eol - 8 - p);
 			return result;
@@ -270,15 +270,21 @@ static int error_dirty_index(struct replay_opts *opts)
 }
 
 static int fast_forward_to(const unsigned char *to, const unsigned char *from,
-			   int unborn)
+			int unborn, struct replay_opts *opts)
 {
 	struct ref_lock *ref_lock;
+	struct strbuf sb = STRBUF_INIT;
+	int ret;
 
 	read_cache();
 	if (checkout_fast_forward(from, to, 1))
 		exit(1); /* the callee should have complained already */
-	ref_lock = lock_any_ref_for_update("HEAD", unborn ? null_sha1 : from, 0);
-	return write_ref_sha1(ref_lock, to, "cherry-pick");
+	ref_lock = lock_any_ref_for_update("HEAD", unborn ? null_sha1 : from,
+					   0, NULL);
+	strbuf_addf(&sb, "%s: fast-forward", action_name(opts));
+	ret = write_ref_sha1(ref_lock, to, sb.buf);
+	strbuf_release(&sb);
+	return ret;
 }
 
 static int do_recursive_merge(struct commit *base, struct commit *next,
@@ -326,7 +332,7 @@ static int do_recursive_merge(struct commit *base, struct commit *next,
 		int i;
 		strbuf_addstr(msgbuf, "\nConflicts:\n");
 		for (i = 0; i < active_nr;) {
-			struct cache_entry *ce = active_cache[i++];
+			const struct cache_entry *ce = active_cache[i++];
 			if (ce_stage(ce)) {
 				strbuf_addch(msgbuf, '\t');
 				strbuf_addstr(msgbuf, ce->name);
@@ -366,8 +372,9 @@ static int is_index_unchanged(void)
 		active_cache_tree = cache_tree();
 
 	if (!cache_tree_fully_valid(active_cache_tree))
-		if (cache_tree_update(active_cache_tree, active_cache,
-				  active_nr, 0))
+		if (cache_tree_update(active_cache_tree,
+				      (const struct cache_entry * const *)active_cache,
+				      active_nr, 0))
 			return error(_("Unable to update cache tree\n"));
 
 	return !hashcmp(active_cache_tree->sha1, head_commit->tree->object.sha1);
@@ -385,11 +392,18 @@ static int run_git_commit(const char *defmsg, struct replay_opts *opts,
 {
 	struct argv_array array;
 	int rc;
+	char *gpg_sign;
 
 	argv_array_init(&array);
 	argv_array_push(&array, "commit");
 	argv_array_push(&array, "-n");
 
+	if (opts->gpg_sign) {
+		gpg_sign = xmalloc(3 + strlen(opts->gpg_sign));
+		sprintf(gpg_sign, "-S%s", opts->gpg_sign);
+		argv_array_push(&array, gpg_sign);
+		free(gpg_sign);
+	}
 	if (opts->signoff)
 		argv_array_push(&array, "-s");
 	if (!opts->edit) {
@@ -474,7 +488,7 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 	struct commit_message msg = { NULL, NULL, NULL, NULL, NULL };
 	char *defmsg = NULL;
 	struct strbuf msgbuf = STRBUF_INIT;
-	int res, unborn = 0;
+	int res, unborn = 0, allow;
 
 	if (opts->no_commit) {
 		/*
@@ -523,7 +537,7 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 	if (opts->allow_ff &&
 	    ((parent && !hashcmp(parent->object.sha1, head)) ||
 	     (!parent && unborn)))
-	     return fast_forward_to(commit->object.sha1, head, unborn);
+		return fast_forward_to(commit->object.sha1, head, unborn, opts);
 
 	if (parent && parse_commit(parent) < 0)
 		/* TRANSLATORS: The first %s will be "revert" or
@@ -624,14 +638,18 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 		      msg.subject);
 		print_advice(res == 1, opts);
 		rerere(opts->allow_rerere_auto);
-	} else {
-		int allow = allow_empty(opts, commit);
-		if (allow < 0)
-			return allow;
-		if (!opts->no_commit)
-			res = run_git_commit(defmsg, opts, allow);
+		goto leave;
 	}
 
+	allow = allow_empty(opts, commit);
+	if (allow < 0) {
+		res = allow;
+		goto leave;
+	}
+	if (!opts->no_commit)
+		res = run_git_commit(defmsg, opts, allow);
+
+leave:
 	free_message(&msg);
 	free(defmsg);
 
@@ -694,10 +712,10 @@ static struct commit *parse_insn_line(char *bol, char *eol, struct replay_opts *
 	char *end_of_object_name;
 	int saved, status, padding;
 
-	if (!prefixcmp(bol, "pick")) {
+	if (starts_with(bol, "pick")) {
 		action = REPLAY_PICK;
 		bol += strlen("pick");
-	} else if (!prefixcmp(bol, "revert")) {
+	} else if (starts_with(bol, "revert")) {
 		action = REPLAY_REVERT;
 		bol += strlen("revert");
 	} else
@@ -797,6 +815,8 @@ static int populate_opts_cb(const char *key, const char *value, void *data)
 		opts->mainline = git_config_int(key, value);
 	else if (!strcmp(key, "options.strategy"))
 		git_config_string(&opts->strategy, key, value);
+	else if (!strcmp(key, "options.gpg-sign"))
+		git_config_string(&opts->gpg_sign, key, value);
 	else if (!strcmp(key, "options.strategy-option")) {
 		ALLOC_GROW(opts->xopts, opts->xopts_nr + 1, opts->xopts_alloc);
 		opts->xopts[opts->xopts_nr++] = xstrdup(value);
@@ -970,6 +990,8 @@ static void save_opts(struct replay_opts *opts)
 	}
 	if (opts->strategy)
 		git_config_set_in_file(opts_file, "options.strategy", opts->strategy);
+	if (opts->gpg_sign)
+		git_config_set_in_file(opts_file, "options.gpg-sign", opts->gpg_sign);
 	if (opts->xopts) {
 		int i;
 		for (i = 0; i < opts->xopts_nr; i++)
@@ -1047,6 +1069,7 @@ int sequencer_pick_revisions(struct replay_opts *opts)
 {
 	struct commit_list *todo_list = NULL;
 	unsigned char sha1[20];
+	int i;
 
 	if (opts->subcommand == REPLAY_NONE)
 		assert(opts->revs);
@@ -1066,6 +1089,23 @@ int sequencer_pick_revisions(struct replay_opts *opts)
 		return sequencer_rollback(opts);
 	if (opts->subcommand == REPLAY_CONTINUE)
 		return sequencer_continue(opts);
+
+	for (i = 0; i < opts->revs->pending.nr; i++) {
+		unsigned char sha1[20];
+		const char *name = opts->revs->pending.objects[i].name;
+
+		/* This happens when using --stdin. */
+		if (!strlen(name))
+			continue;
+
+		if (!get_sha1(name, sha1)) {
+			if (!lookup_commit_reference_gently(sha1, 1)) {
+				enum object_type type = sha1_object_info(sha1, NULL);
+				die(_("%s: can't cherry-pick a %s"), name, typename(type));
+			}
+		} else
+			die(_("%s: bad revision"), name);
+	}
 
 	/*
 	 * If we were called as "git cherry-pick <commit>", just

@@ -29,9 +29,9 @@ that allow to change the behavior of a command.
 
 The parse-options API allows:
 
-* 'sticked' and 'separate form' of options with arguments.
-  `-oArg` is sticked, `-o Arg` is separate form.
-  `--option=Arg` is sticked, `--option Arg` is separate form.
+* 'stuck' and 'separate form' of options with arguments.
+  `-oArg` is stuck, `-o Arg` is separate form.
+  `--option=Arg` is stuck, `--option Arg` is separate form.
 
 * Long options may be 'abbreviated', as long as the abbreviation
   is unambiguous.
@@ -41,6 +41,8 @@ The parse-options API allows:
 * Boolean long options can be 'negated' (or 'unset') by prepending
   `no-`, e.g. `--no-abbrev` instead of `--abbrev`. Conversely,
   options that begin with `no-` can be 'negated' by removing it.
+  Other long options can be unset (e.g., set string to NULL, set
+  integer to 0) by prepending `no-`.
 
 * Options and non-option arguments can clearly be separated using the `--`
   option, e.g. `-a -b --option -- --this-is-a-file` indicates that
@@ -158,10 +160,6 @@ There are some macros to easily define options:
 	`int_var` is set to `integer` with `--option`, and
 	reset to zero with `--no-option`.
 
-`OPT_SET_PTR(short, long, &ptr_var, description, ptr)`::
-	Introduce a boolean option.
-	If used, set `ptr_var` to `ptr`.
-
 `OPT_STRING(short, long, &str_var, arg_str, description)`::
 	Introduce an option with string argument.
 	The string argument is put into `str_var`.
@@ -172,6 +170,10 @@ There are some macros to easily define options:
 
 `OPT_DATE(short, long, &int_var, description)`::
 	Introduce an option with date argument, see `approxidate()`.
+	The timestamp is put into `int_var`.
+
+`OPT_EXPIRY_DATE(short, long, &int_var, description)`::
+	Introduce an option with expiry date argument, see `parse_expiry_date()`.
 	The timestamp is put into `int_var`.
 
 `OPT_CALLBACK(short, long, &var, arg_str, description, func_ptr)`::
@@ -269,10 +271,10 @@ Examples
 --------
 
 See `test-parse-options.c` and
-`builtin-add.c`,
-`builtin-clone.c`,
-`builtin-commit.c`,
-`builtin-fetch.c`,
-`builtin-fsck.c`,
-`builtin-rm.c`
+`builtin/add.c`,
+`builtin/clone.c`,
+`builtin/commit.c`,
+`builtin/fetch.c`,
+`builtin/fsck.c`,
+`builtin/rm.c`
 for real-world examples.

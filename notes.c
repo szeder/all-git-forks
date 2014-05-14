@@ -918,17 +918,21 @@ out:
 	return ret;
 }
 
-static int string_list_add_one_ref(const char *path, const unsigned char *sha1,
+static int string_list_add_one_ref(const char *refname, const unsigned char *sha1,
 				   int flag, void *cb)
 {
 	struct string_list *refs = cb;
-	if (!unsorted_string_list_has_string(refs, path))
-		string_list_append(refs, path);
+	if (!unsorted_string_list_has_string(refs, refname))
+		string_list_append(refs, refname);
 	return 0;
 }
 
+/*
+ * The list argument must have strdup_strings set on it.
+ */
 void string_list_add_refs_by_glob(struct string_list *list, const char *glob)
 {
+	assert(list->strdup_strings);
 	if (has_glob_specials(glob)) {
 		for_each_glob_ref(string_list_add_one_ref, glob, list);
 	} else {
@@ -1239,9 +1243,9 @@ static void format_note(struct notes_tree *t, const unsigned char *object_sha1,
 		if (!ref || !strcmp(ref, GIT_NOTES_DEFAULT_REF)) {
 			strbuf_addstr(sb, "\nNotes:\n");
 		} else {
-			if (!prefixcmp(ref, "refs/"))
+			if (starts_with(ref, "refs/"))
 				ref += 5;
-			if (!prefixcmp(ref, "notes/"))
+			if (starts_with(ref, "notes/"))
 				ref += 6;
 			strbuf_addf(sb, "\nNotes (%s):\n", ref);
 		}
@@ -1289,9 +1293,9 @@ int copy_note(struct notes_tree *t,
 
 void expand_notes_ref(struct strbuf *sb)
 {
-	if (!prefixcmp(sb->buf, "refs/notes/"))
+	if (starts_with(sb->buf, "refs/notes/"))
 		return; /* we're happy */
-	else if (!prefixcmp(sb->buf, "notes/"))
+	else if (starts_with(sb->buf, "notes/"))
 		strbuf_insert(sb, 0, "refs/", 5);
 	else
 		strbuf_insert(sb, 0, "refs/notes/", 11);

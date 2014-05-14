@@ -266,7 +266,7 @@ static int create_default_files(const char *template_path)
 		/* allow template config file to override the default */
 		if (log_all_ref_updates == -1)
 		    git_config_set("core.logallrefupdates", "true");
-		if (prefixcmp(git_dir, work_tree) ||
+		if (!starts_with(git_dir, work_tree) ||
 		    strcmp(git_dir + strlen(work_tree), "/.git")) {
 			git_config_set("core.worktree", work_tree);
 		}
@@ -412,11 +412,9 @@ int init_db(const char *template_dir, unsigned int flags)
 	if (!(flags & INIT_DB_QUIET)) {
 		int len = strlen(git_dir);
 
-		/*
-		 * TRANSLATORS: The first '%s' is either "Reinitialized
-		 * existing" or "Initialized empty", the second " shared" or
-		 * "", and the last '%s%s' is the verbatim directory name.
-		 */
+		/* TRANSLATORS: The first '%s' is either "Reinitialized
+		   existing" or "Initialized empty", the second " shared" or
+		   "", and the last '%s%s' is the verbatim directory name. */
 		printf(_("%s%s Git repository in %s%s\n"),
 		       reinit ? _("Reinitialized existing") : _("Initialized empty"),
 		       shared_repository ? _(" shared") : "",
@@ -515,13 +513,14 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 				saved = shared_repository;
 				shared_repository = 0;
 				switch (safe_create_leading_directories_const(argv[0])) {
-				case -3:
+				case SCLD_OK:
+				case SCLD_PERMS:
+					break;
+				case SCLD_EXISTS:
 					errno = EEXIST;
 					/* fallthru */
-				case -1:
-					die_errno(_("cannot mkdir %s"), argv[0]);
-					break;
 				default:
+					die_errno(_("cannot mkdir %s"), argv[0]);
 					break;
 				}
 				shared_repository = saved;

@@ -109,7 +109,7 @@ static int handle_line(char *line, struct merge_parents *merge_parents)
 	if (len < 43 || line[40] != '\t')
 		return 1;
 
-	if (!prefixcmp(line + 41, "not-for-merge"))
+	if (starts_with(line + 41, "not-for-merge"))
 		return 0;
 
 	if (line[41] != '\t')
@@ -155,16 +155,16 @@ static int handle_line(char *line, struct merge_parents *merge_parents)
 	if (pulling_head) {
 		origin = src;
 		src_data->head_status |= 1;
-	} else if (!prefixcmp(line, "branch ")) {
+	} else if (starts_with(line, "branch ")) {
 		origin_data->is_local_branch = 1;
 		origin = line + 7;
 		string_list_append(&src_data->branch, origin);
 		src_data->head_status |= 2;
-	} else if (!prefixcmp(line, "tag ")) {
+	} else if (starts_with(line, "tag ")) {
 		origin = line;
 		string_list_append(&src_data->tag, origin + 4);
 		src_data->head_status |= 2;
-	} else if (!prefixcmp(line, "remote-tracking branch ")) {
+	} else if (starts_with(line, "remote-tracking branch ")) {
 		origin = line + strlen("remote-tracking branch ");
 		string_list_append(&src_data->r_branch, origin);
 		src_data->head_status |= 2;
@@ -287,10 +287,10 @@ static void credit_people(struct strbuf *out,
 	const char *me;
 
 	if (kind == 'a') {
-		label = "\n# By ";
+		label = "By";
 		me = git_author_info(IDENT_NO_DATE);
 	} else {
-		label = "\n# Via ";
+		label = "Via";
 		me = git_committer_info(IDENT_NO_DATE);
 	}
 
@@ -300,7 +300,7 @@ static void credit_people(struct strbuf *out,
 	     (me = skip_prefix(me, them->items->string)) != NULL &&
 	     skip_prefix(me, " <")))
 		return;
-	strbuf_addstr(out, label);
+	strbuf_addf(out, "\n%c %s ", comment_line_char, label);
 	add_people_count(out, them);
 }
 
@@ -503,14 +503,18 @@ static void fmt_merge_msg_sigs(struct strbuf *out)
 		} else {
 			if (tag_number == 2) {
 				struct strbuf tagline = STRBUF_INIT;
-				strbuf_addf(&tagline, "\n# %s\n",
-					    origins.items[first_tag].string);
+				strbuf_addch(&tagline, '\n');
+				strbuf_add_commented_lines(&tagline,
+						origins.items[first_tag].string,
+						strlen(origins.items[first_tag].string));
 				strbuf_insert(&tagbuf, 0, tagline.buf,
 					      tagline.len);
 				strbuf_release(&tagline);
 			}
-			strbuf_addf(&tagbuf, "\n# %s\n",
-				    origins.items[i].string);
+			strbuf_addch(&tagbuf, '\n');
+			strbuf_add_commented_lines(&tagbuf,
+					origins.items[i].string,
+					strlen(origins.items[i].string));
 			fmt_tag_signature(&tagbuf, &sig, buf, len);
 		}
 		strbuf_release(&sig);
@@ -601,7 +605,7 @@ int fmt_merge_msg(struct strbuf *in, struct strbuf *out,
 		resolve_refdup("HEAD", head_sha1, 1, NULL);
 	if (!current_branch)
 		die("No current branch");
-	if (!prefixcmp(current_branch, "refs/heads/"))
+	if (starts_with(current_branch, "refs/heads/"))
 		current_branch += 11;
 
 	find_merge_parents(&merge_parents, in, head_sha1);

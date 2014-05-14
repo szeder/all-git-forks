@@ -59,9 +59,9 @@ all::
 # FreeBSD can use either, but MinGW and some others need to use
 # libcharset.h's locale_charset() instead.
 #
-# Define CHARSET_LIB to you need to link with library other than -liconv to
+# Define CHARSET_LIB to the library you need to link with in order to
 # use locale_charset() function.  On some platforms this needs to set to
-# -lcharset
+# -lcharset, on others to -liconv .
 #
 # Define LIBC_CONTAINS_LIBINTL if your gettext implementation doesn't
 # need -lintl when linking.
@@ -101,14 +101,6 @@ all::
 #
 # Define NO_MKSTEMPS if you don't have mkstemps in the C library.
 #
-# Define NO_FNMATCH if you don't have fnmatch in the C library.
-#
-# Define NO_FNMATCH_CASEFOLD if your fnmatch function doesn't have the
-# FNM_CASEFOLD GNU extension.
-#
-# Define USE_WILDMATCH if you want to use Git's wildmatch
-# implementation as fnmatch
-#
 # Define NO_GECOS_IN_PWENT if you don't have pw_gecos in struct passwd
 # in the C library.
 #
@@ -137,6 +129,10 @@ all::
 # specify your own (or DarwinPort's) include directories and
 # library directories by defining CFLAGS and LDFLAGS appropriately.
 #
+# Define NO_APPLE_COMMON_CRYPTO if you are building on Darwin/Mac OS X
+# and do not want to use Apple's CommonCrypto library.  This allows you
+# to provide your own OpenSSL library, for example from MacPorts.
+#
 # Define BLK_SHA1 environment variable to make use of the bundled
 # optimized C SHA1 routine.
 #
@@ -155,7 +151,7 @@ all::
 #
 # Define NEEDS_LIBINTL_BEFORE_LIBICONV if you need libintl before libiconv.
 #
-# Define NO_INTPTR_T if you don't have intptr_t nor uintptr_t.
+# Define NO_INTPTR_T if you don't have intptr_t or uintptr_t.
 #
 # Define NO_UINTMAX_T if you don't have uintmax_t.
 #
@@ -290,10 +286,6 @@ all::
 #
 # Define NO_REGEX if you have no or inferior regex support in your C library.
 #
-# Define CYGWIN_V15_WIN32API if you are using Cygwin v1.7.x but are not
-# using the current w32api packages. The recommended approach, however,
-# is to update your installation if compilation errors occur.
-#
 # Define HAVE_DEV_TTY if your system can open /dev/tty to interact with the
 # user.
 #
@@ -342,6 +334,13 @@ all::
 # Define DEFAULT_HELP_FORMAT to "man", "info" or "html"
 # (defaults to "man") if you want to have a different default when
 # "git help" is called without a parameter specifying the format.
+#
+# Define TEST_GIT_INDEX_VERSION to 2, 3 or 4 to run the test suite
+# with a different indexfile format version.  If it isn't set the index
+# file format used is index-v[23].
+#
+# Define GMTIME_UNRELIABLE_ERRORS if your gmtime() function does not
+# return NULL when it receives a bogus time_t.
 
 GIT-VERSION-FILE: FORCE
 	@$(SHELL_PATH) ./GIT-VERSION-GEN
@@ -452,7 +451,6 @@ SCRIPT_SH += git-am.sh
 SCRIPT_SH += git-bisect.sh
 SCRIPT_SH += git-difftool--helper.sh
 SCRIPT_SH += git-filter-branch.sh
-SCRIPT_SH += git-lost-found.sh
 SCRIPT_SH += git-merge-octopus.sh
 SCRIPT_SH += git-merge-one-file.sh
 SCRIPT_SH += git-merge-resolve.sh
@@ -460,7 +458,7 @@ SCRIPT_SH += git-mergetool.sh
 SCRIPT_SH += git-pull.sh
 SCRIPT_SH += git-quiltimport.sh
 SCRIPT_SH += git-rebase.sh
-SCRIPT_SH += git-repack.sh
+SCRIPT_SH += git-remote-testgit.sh
 SCRIPT_SH += git-request-pull.sh
 SCRIPT_SH += git-stash.sh
 SCRIPT_SH += git-submodule.sh
@@ -484,13 +482,18 @@ SCRIPT_PERL += git-relink.perl
 SCRIPT_PERL += git-send-email.perl
 SCRIPT_PERL += git-svn.perl
 
-SCRIPT_PYTHON += git-remote-testpy.py
 SCRIPT_PYTHON += git-p4.py
+
+NO_INSTALL += git-remote-testgit
 
 # Generated files for scripts
 SCRIPT_SH_GEN = $(patsubst %.sh,%,$(SCRIPT_SH))
 SCRIPT_PERL_GEN = $(patsubst %.perl,%,$(SCRIPT_PERL))
 SCRIPT_PYTHON_GEN = $(patsubst %.py,%,$(SCRIPT_PYTHON))
+
+SCRIPT_SH_INS = $(filter-out $(NO_INSTALL),$(SCRIPT_SH_GEN))
+SCRIPT_PERL_INS = $(filter-out $(NO_INSTALL),$(SCRIPT_PERL_GEN))
+SCRIPT_PYTHON_INS = $(filter-out $(NO_INSTALL),$(SCRIPT_PYTHON_GEN))
 
 # Individual rules to allow e.g.
 # "make -C ../.. SCRIPT_PERL=contrib/foo/bar.perl build-perl-script"
@@ -501,12 +504,12 @@ build-sh-script: $(SCRIPT_SH_GEN)
 build-python-script: $(SCRIPT_PYTHON_GEN)
 
 .PHONY: install-perl-script install-sh-script install-python-script
-install-sh-script: $(SCRIPT_SH_GEN)
-	$(INSTALL) $(SCRIPT_SH_GEN) '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
-install-perl-script: $(SCRIPT_PERL_GEN)
-	$(INSTALL) $(SCRIPT_PERL_GEN) '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
-install-python-script: $(SCRIPT_PYTHON_GEN)
-	$(INSTALL) $(SCRIPT_PYTHON_GEN) '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
+install-sh-script: $(SCRIPT_SH_INS)
+	$(INSTALL) $^ '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
+install-perl-script: $(SCRIPT_PERL_INS)
+	$(INSTALL) $^ '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
+install-python-script: $(SCRIPT_PYTHON_INS)
+	$(INSTALL) $^ '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
 
 .PHONY: clean-perl-script clean-sh-script clean-python-script
 clean-sh-script:
@@ -516,9 +519,9 @@ clean-perl-script:
 clean-python-script:
 	$(RM) $(SCRIPT_PYTHON_GEN)
 
-SCRIPTS = $(SCRIPT_SH_GEN) \
-	  $(SCRIPT_PERL_GEN) \
-	  $(SCRIPT_PYTHON_GEN) \
+SCRIPTS = $(SCRIPT_SH_INS) \
+	  $(SCRIPT_PERL_INS) \
+	  $(SCRIPT_PYTHON_INS) \
 	  git-instaweb
 
 ETAGS_TARGET = TAGS
@@ -551,6 +554,7 @@ TEST_PROGRAMS_NEED_X += test-date
 TEST_PROGRAMS_NEED_X += test-delta
 TEST_PROGRAMS_NEED_X += test-dump-cache-tree
 TEST_PROGRAMS_NEED_X += test-genrandom
+TEST_PROGRAMS_NEED_X += test-hashmap
 TEST_PROGRAMS_NEED_X += test-index-version
 TEST_PROGRAMS_NEED_X += test-line-buffer
 TEST_PROGRAMS_NEED_X += test-match-trees
@@ -558,6 +562,8 @@ TEST_PROGRAMS_NEED_X += test-mergesort
 TEST_PROGRAMS_NEED_X += test-mktemp
 TEST_PROGRAMS_NEED_X += test-parse-options
 TEST_PROGRAMS_NEED_X += test-path-utils
+TEST_PROGRAMS_NEED_X += test-prio-queue
+TEST_PROGRAMS_NEED_X += test-read-cache
 TEST_PROGRAMS_NEED_X += test-regex
 TEST_PROGRAMS_NEED_X += test-revision-walking
 TEST_PROGRAMS_NEED_X += test-run-command
@@ -567,6 +573,7 @@ TEST_PROGRAMS_NEED_X += test-sigchain
 TEST_PROGRAMS_NEED_X += test-string-list
 TEST_PROGRAMS_NEED_X += test-subprocess
 TEST_PROGRAMS_NEED_X += test-svn-fe
+TEST_PROGRAMS_NEED_X += test-urlmatch-normalization
 TEST_PROGRAMS_NEED_X += test-wildmatch
 
 TEST_PROGRAMS = $(patsubst %,%$X,$(TEST_PROGRAMS_NEED_X))
@@ -579,11 +586,8 @@ BUILT_INS += git-cherry$X
 BUILT_INS += git-cherry-pick$X
 BUILT_INS += git-format-patch$X
 BUILT_INS += git-fsck-objects$X
-BUILT_INS += git-get-tar-commit-id$X
 BUILT_INS += git-init$X
 BUILT_INS += git-merge-subtree$X
-BUILT_INS += git-peek-remote$X
-BUILT_INS += git-repo-config$X
 BUILT_INS += git-show$X
 BUILT_INS += git-stage$X
 BUILT_INS += git-status$X
@@ -641,7 +645,6 @@ LIB_H += color.h
 LIB_H += column.h
 LIB_H += commit.h
 LIB_H += compat/bswap.h
-LIB_H += compat/cygwin.h
 LIB_H += compat/mingw.h
 LIB_H += compat/obstack.h
 LIB_H += compat/poll/poll.h
@@ -660,6 +663,8 @@ LIB_H += diff.h
 LIB_H += diffcore.h
 LIB_H += dir.h
 LIB_H += exec_cmd.h
+LIB_H += ewah/ewok.h
+LIB_H += ewah/ewok_rlw.h
 LIB_H += fetch-pack.h
 LIB_H += fmt-merge-msg.h
 LIB_H += fsck.h
@@ -668,11 +673,13 @@ LIB_H += git-compat-util.h
 LIB_H += gpg-interface.h
 LIB_H += graph.h
 LIB_H += grep.h
-LIB_H += hash.h
+LIB_H += hashmap.h
 LIB_H += help.h
 LIB_H += http.h
 LIB_H += kwset.h
 LIB_H += levenshtein.h
+LIB_H += line-log.h
+LIB_H += line-range.h
 LIB_H += list-objects.h
 LIB_H += ll-merge.h
 LIB_H += log-tree.h
@@ -682,15 +689,18 @@ LIB_H += merge-recursive.h
 LIB_H += mergesort.h
 LIB_H += notes-cache.h
 LIB_H += notes-merge.h
+LIB_H += notes-utils.h
 LIB_H += notes.h
 LIB_H += object.h
-LIB_H += pack-refs.h
+LIB_H += pack-objects.h
 LIB_H += pack-revindex.h
 LIB_H += pack.h
+LIB_H += pack-bitmap.h
 LIB_H += parse-options.h
 LIB_H += patch-ids.h
 LIB_H += pathspec.h
 LIB_H += pkt-line.h
+LIB_H += prio-queue.h
 LIB_H += progress.h
 LIB_H += prompt.h
 LIB_H += quote.h
@@ -721,6 +731,7 @@ LIB_H += tree-walk.h
 LIB_H += tree.h
 LIB_H += unpack-trees.h
 LIB_H += url.h
+LIB_H += urlmatch.h
 LIB_H += userdiff.h
 LIB_H += utf8.h
 LIB_H += varint.h
@@ -788,6 +799,10 @@ LIB_OBJS += dir.o
 LIB_OBJS += editor.o
 LIB_OBJS += entry.o
 LIB_OBJS += environment.o
+LIB_OBJS += ewah/bitmap.o
+LIB_OBJS += ewah/ewah_bitmap.o
+LIB_OBJS += ewah/ewah_io.o
+LIB_OBJS += ewah/ewah_rlw.o
 LIB_OBJS += exec_cmd.o
 LIB_OBJS += fetch-pack.o
 LIB_OBJS += fsck.o
@@ -795,12 +810,14 @@ LIB_OBJS += gettext.o
 LIB_OBJS += gpg-interface.o
 LIB_OBJS += graph.o
 LIB_OBJS += grep.o
-LIB_OBJS += hash.o
+LIB_OBJS += hashmap.o
 LIB_OBJS += help.o
 LIB_OBJS += hex.o
 LIB_OBJS += ident.o
 LIB_OBJS += kwset.o
 LIB_OBJS += levenshtein.o
+LIB_OBJS += line-log.o
+LIB_OBJS += line-range.o
 LIB_OBJS += list-objects.o
 LIB_OBJS += ll-merge.o
 LIB_OBJS += lockfile.o
@@ -815,9 +832,12 @@ LIB_OBJS += name-hash.o
 LIB_OBJS += notes.o
 LIB_OBJS += notes-cache.o
 LIB_OBJS += notes-merge.o
+LIB_OBJS += notes-utils.o
 LIB_OBJS += object.o
+LIB_OBJS += pack-bitmap.o
+LIB_OBJS += pack-bitmap-write.o
 LIB_OBJS += pack-check.o
-LIB_OBJS += pack-refs.o
+LIB_OBJS += pack-objects.o
 LIB_OBJS += pack-revindex.o
 LIB_OBJS += pack-write.o
 LIB_OBJS += pager.o
@@ -830,6 +850,7 @@ LIB_OBJS += pathspec.o
 LIB_OBJS += pkt-line.o
 LIB_OBJS += preload-index.o
 LIB_OBJS += pretty.o
+LIB_OBJS += prio-queue.o
 LIB_OBJS += progress.o
 LIB_OBJS += prompt.o
 LIB_OBJS += quote.o
@@ -868,11 +889,13 @@ LIB_OBJS += tree.o
 LIB_OBJS += tree-walk.o
 LIB_OBJS += unpack-trees.o
 LIB_OBJS += url.o
+LIB_OBJS += urlmatch.o
 LIB_OBJS += usage.o
 LIB_OBJS += userdiff.o
 LIB_OBJS += utf8.o
 LIB_OBJS += varint.o
 LIB_OBJS += version.o
+LIB_OBJS += versioncmp.o
 LIB_OBJS += walker.o
 LIB_OBJS += wildmatch.o
 LIB_OBJS += wrapper.o
@@ -893,6 +916,7 @@ BUILTIN_OBJS += builtin/bundle.o
 BUILTIN_OBJS += builtin/cat-file.o
 BUILTIN_OBJS += builtin/check-attr.o
 BUILTIN_OBJS += builtin/check-ignore.o
+BUILTIN_OBJS += builtin/check-mailmap.o
 BUILTIN_OBJS += builtin/check-ref-format.o
 BUILTIN_OBJS += builtin/checkout-index.o
 BUILTIN_OBJS += builtin/checkout.o
@@ -916,6 +940,7 @@ BUILTIN_OBJS += builtin/fmt-merge-msg.o
 BUILTIN_OBJS += builtin/for-each-ref.o
 BUILTIN_OBJS += builtin/fsck.o
 BUILTIN_OBJS += builtin/gc.o
+BUILTIN_OBJS += builtin/get-tar-commit-id.o
 BUILTIN_OBJS += builtin/grep.o
 BUILTIN_OBJS += builtin/hash-object.o
 BUILTIN_OBJS += builtin/help.o
@@ -952,6 +977,7 @@ BUILTIN_OBJS += builtin/reflog.o
 BUILTIN_OBJS += builtin/remote.o
 BUILTIN_OBJS += builtin/remote-ext.o
 BUILTIN_OBJS += builtin/remote-fd.o
+BUILTIN_OBJS += builtin/repack.o
 BUILTIN_OBJS += builtin/replace.o
 BUILTIN_OBJS += builtin/rerere.o
 BUILTIN_OBJS += builtin/reset.o
@@ -966,7 +992,6 @@ BUILTIN_OBJS += builtin/show-ref.o
 BUILTIN_OBJS += builtin/stripspace.o
 BUILTIN_OBJS += builtin/symbolic-ref.o
 BUILTIN_OBJS += builtin/tag.o
-BUILTIN_OBJS += builtin/tar-tree.o
 BUILTIN_OBJS += builtin/unpack-file.o
 BUILTIN_OBJS += builtin/unpack-objects.o
 BUILTIN_OBJS += builtin/update-index.o
@@ -1054,6 +1079,11 @@ ifeq ($(uname_S),Darwin)
 			BASIC_LDFLAGS += -L/opt/local/lib
 		endif
 	endif
+	ifndef NO_APPLE_COMMON_CRYPTO
+		APPLE_COMMON_CRYPTO = YesPlease
+		COMPAT_CFLAGS += -DAPPLE_COMMON_CRYPTO
+	endif
+	NO_REGEX = YesPlease
 	PTHREAD_LIBS =
 endif
 
@@ -1158,6 +1188,9 @@ ifdef NEEDS_SSL_WITH_CRYPTO
 else
 	LIB_4_CRYPTO = $(OPENSSL_LINK) -lcrypto
 endif
+ifdef APPLE_COMMON_CRYPTO
+	LIB_4_CRYPTO += -framework Security -framework CoreFoundation
+endif
 endif
 ifdef NEEDS_LIBICONV
 	ifdef ICONVDIR
@@ -1249,20 +1282,6 @@ ifdef NO_STRTOUMAX
 endif
 ifdef NO_STRTOULL
 	COMPAT_CFLAGS += -DNO_STRTOULL
-endif
-ifdef NO_FNMATCH
-	COMPAT_CFLAGS += -Icompat/fnmatch
-	COMPAT_CFLAGS += -DNO_FNMATCH
-	COMPAT_OBJS += compat/fnmatch/fnmatch.o
-else
-ifdef NO_FNMATCH_CASEFOLD
-	COMPAT_CFLAGS += -Icompat/fnmatch
-	COMPAT_CFLAGS += -DNO_FNMATCH_CASEFOLD
-	COMPAT_OBJS += compat/fnmatch/fnmatch.o
-endif
-endif
-ifdef USE_WILDMATCH
-	COMPAT_CFLAGS += -DUSE_WILDMATCH
 endif
 ifdef NO_SETENV
 	COMPAT_CFLAGS += -DNO_SETENV
@@ -1388,10 +1407,16 @@ ifdef PPC_SHA1
 	LIB_OBJS += ppc/sha1.o ppc/sha1ppc.o
 	LIB_H += ppc/sha1.h
 else
+ifdef APPLE_COMMON_CRYPTO
+	COMPAT_CFLAGS += -DCOMMON_DIGEST_FOR_OPENSSL
+	SHA1_HEADER = <CommonCrypto/CommonDigest.h>
+else
 	SHA1_HEADER = <openssl/sha.h>
 	EXTLIBS += $(LIB_4_CRYPTO)
 endif
 endif
+endif
+
 ifdef NO_PERL_MAKEMAKER
 	export NO_PERL_MAKEMAKER
 endif
@@ -1449,9 +1474,6 @@ ifdef NO_REGEX
 	COMPAT_CFLAGS += -Icompat/regex
 	COMPAT_OBJS += compat/regex/regex.o
 endif
-ifdef CYGWIN_V15_WIN32API
-	COMPAT_CFLAGS += -DCYGWIN_V15_WIN32API
-endif
 
 ifdef USE_NED_ALLOCATOR
        COMPAT_CFLAGS += -Icompat/nedmalloc
@@ -1468,6 +1490,11 @@ endif
 
 ifneq (,$(XDL_FAST_HASH))
 	BASIC_CFLAGS += -DXDL_FAST_HASH
+endif
+
+ifdef GMTIME_UNRELIABLE_ERRORS
+	COMPAT_OBJS += compat/gmtime.o
+	BASIC_CFLAGS += -DGMTIME_UNRELIABLE_ERRORS
 endif
 
 ifeq ($(TCLTK_PATH),)
@@ -1503,6 +1530,7 @@ ifndef V
 	QUIET_MSGFMT   = @echo '   ' MSGFMT $@;
 	QUIET_GCOV     = @echo '   ' GCOV $@;
 	QUIET_SP       = @echo '   ' SP $<;
+	QUIET_RC       = @echo '   ' RC $@;
 	QUIET_SUBDIR0  = +@subdir=
 	QUIET_SUBDIR1  = ;$(NO_SUBDIR) echo '   ' SUBDIR $$subdir; \
 			 $(MAKE) $(PRINT_DIR) -C $$subdir
@@ -1559,6 +1587,7 @@ PERL_PATH_SQ = $(subst ','\'',$(PERL_PATH))
 PYTHON_PATH_SQ = $(subst ','\'',$(PYTHON_PATH))
 TCLTK_PATH_SQ = $(subst ','\'',$(TCLTK_PATH))
 DIFF_SQ = $(subst ','\'',$(DIFF))
+PERLLIB_EXTRA_SQ = $(subst ','\'',$(PERLLIB_EXTRA))
 
 LIBS = $(GITLIBS) $(EXTLIBS)
 
@@ -1634,9 +1663,6 @@ endif
 ifndef NO_PERL
 	$(QUIET_SUBDIR0)perl $(QUIET_SUBDIR1) PERL_PATH='$(PERL_PATH_SQ)' prefix='$(prefix_SQ)' localedir='$(localedir_SQ)' all
 endif
-ifndef NO_PYTHON
-	$(QUIET_SUBDIR0)git_remote_helpers $(QUIET_SUBDIR1) PYTHON_PATH='$(PYTHON_PATH_SQ)' prefix='$(prefix_SQ)' all
-endif
 	$(QUIET_SUBDIR0)templates $(QUIET_SUBDIR1) SHELL_PATH='$(SHELL_PATH_SQ)' PERL_PATH='$(PERL_PATH_SQ)'
 
 please_set_SHELL_PATH_to_a_more_modern_shell:
@@ -1645,7 +1671,7 @@ please_set_SHELL_PATH_to_a_more_modern_shell:
 shell_compatibility_test: please_set_SHELL_PATH_to_a_more_modern_shell
 
 strip: $(PROGRAMS) git$X
-	$(STRIP) $(STRIP_OPTS) $(PROGRAMS) git$X
+	$(STRIP) $(STRIP_OPTS) $^
 
 ### Target-specific flags and dependencies
 
@@ -1705,9 +1731,9 @@ version.sp version.s version.o: EXTRA_CPPFLAGS = \
 
 $(BUILT_INS): git$X
 	$(QUIET_BUILT_IN)$(RM) $@ && \
-	ln git$X $@ 2>/dev/null || \
-	ln -s git$X $@ 2>/dev/null || \
-	cp git$X $@
+	ln $< $@ 2>/dev/null || \
+	ln -s $< $@ 2>/dev/null || \
+	cp $< $@
 
 common-cmds.h: ./generate-cmdlist.sh command-list.txt
 
@@ -1748,6 +1774,11 @@ $(SCRIPT_LIB) : % : %.sh GIT-SCRIPT-DEFINES
 	$(QUIET_GEN)$(cmd_munge_script) && \
 	mv $@+ $@
 
+git.res: git.rc GIT-VERSION-FILE
+	$(QUIET_RC)$(RC) \
+	  $(join -DMAJOR= -DMINOR=, $(wordlist 1,2,$(subst -, ,$(subst ., ,$(GIT_VERSION))))) \
+	  -DGIT_VERSION="\\\"$(GIT_VERSION)\\\"" $< -o $@
+
 ifndef NO_PERL
 $(patsubst %.perl,%,$(SCRIPT_PERL)): perl/perl.mak
 
@@ -1761,9 +1792,12 @@ perl/PM.stamp: FORCE
 perl/perl.mak: GIT-CFLAGS GIT-PREFIX perl/Makefile perl/Makefile.PL
 	$(QUIET_SUBDIR0)perl $(QUIET_SUBDIR1) PERL_PATH='$(PERL_PATH_SQ)' prefix='$(prefix_SQ)' $(@F)
 
-$(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl GIT-VERSION-FILE
+PERL_DEFINES = $(PERL_PATH_SQ):$(PERLLIB_EXTRA_SQ)
+$(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl perl/perl.mak GIT-PERL-DEFINES GIT-VERSION-FILE
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C perl -s --no-print-directory instlibdir` && \
+	INSTLIBDIR_EXTRA='$(PERLLIB_EXTRA_SQ)' && \
+	INSTLIBDIR="$$INSTLIBDIR$${INSTLIBDIR_EXTRA:+:$$INSTLIBDIR_EXTRA}" && \
 	sed -e '1{' \
 	    -e '	s|#!.*perl|#!$(PERL_PATH_SQ)|' \
 	    -e '	h' \
@@ -1772,9 +1806,16 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl GIT-VERSION-FILE
 	    -e '	x' \
 	    -e '}' \
 	    -e 's/@@GIT_VERSION@@/$(GIT_VERSION)/g' \
-	    $@.perl >$@+ && \
+	    $< >$@+ && \
 	chmod +x $@+ && \
 	mv $@+ $@
+
+GIT-PERL-DEFINES: FORCE
+	@FLAGS='$(PERL_DEFINES)'; \
+	    if test x"$$FLAGS" != x"`cat $@ 2>/dev/null`" ; then \
+		echo >&2 "    * new perl-specific parameters"; \
+		echo "$$FLAGS" >$@; \
+	    fi
 
 
 .PHONY: gitweb
@@ -1796,20 +1837,15 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)) git-instaweb: % : unimplemented.sh
 endif # NO_PERL
 
 ifndef NO_PYTHON
-$(patsubst %.py,%,$(SCRIPT_PYTHON)): GIT-CFLAGS GIT-PREFIX GIT-PYTHON-VARS
-$(patsubst %.py,%,$(SCRIPT_PYTHON)): % : %.py
+$(SCRIPT_PYTHON_GEN): GIT-CFLAGS GIT-PREFIX GIT-PYTHON-VARS
+$(SCRIPT_PYTHON_GEN): % : %.py
 	$(QUIET_GEN)$(RM) $@ $@+ && \
-	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C git_remote_helpers -s \
-		--no-print-directory prefix='$(prefix_SQ)' DESTDIR='$(DESTDIR_SQ)' \
-		instlibdir` && \
 	sed -e '1s|#!.*python|#!$(PYTHON_PATH_SQ)|' \
-	    -e 's|\(os\.getenv("GITPYTHONLIB"\)[^)]*)|\1,"@@INSTLIBDIR@@")|' \
-	    -e 's|@@INSTLIBDIR@@|'"$$INSTLIBDIR"'|g' \
-	    $@.py >$@+ && \
+	    $< >$@+ && \
 	chmod +x $@+ && \
 	mv $@+ $@
 else # NO_PYTHON
-$(patsubst %.py,%,$(SCRIPT_PYTHON)): % : unimplemented.sh
+$(SCRIPT_PYTHON_GEN): % : unimplemented.sh
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
 	    -e 's|@@REASON@@|NO_PYTHON=$(NO_PYTHON)|g' \
@@ -1992,6 +2028,9 @@ gettext.sp gettext.s gettext.o: GIT-PREFIX
 gettext.sp gettext.s gettext.o: EXTRA_CPPFLAGS = \
 	-DGIT_LOCALE_PATH='"$(localedir_SQ)"'
 
+http-push.sp http.sp http-walker.sp remote-curl.sp: SPARSE_FLAGS += \
+	-DCURL_DISABLE_TYPECHECK
+
 ifdef NO_EXPAT
 http-walker.sp http-walker.s http-walker.o: EXTRA_CPPFLAGS = -DNO_EXPAT
 endif
@@ -2004,6 +2043,7 @@ endif
 ifdef USE_NED_ALLOCATOR
 compat/nedmalloc/nedmalloc.sp compat/nedmalloc/nedmalloc.o: EXTRA_CPPFLAGS = \
 	-DNDEBUG -DOVERRIDE_STRDUP -DREPLACE_SYSTEM_ALLOCATOR
+compat/nedmalloc/nedmalloc.sp: SPARSE_FLAGS += -Wno-non-pointer-null
 endif
 
 git-%$X: %.o GIT-LDFLAGS $(GITLIBS)
@@ -2013,10 +2053,10 @@ git-imap-send$X: imap-send.o GIT-LDFLAGS $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
 		$(LIBS) $(OPENSSL_LINK) $(OPENSSL_LIBSSL) $(LIB_4_CRYPTO)
 
-git-http-fetch$X: revision.o http.o http-walker.o http-fetch.o GIT-LDFLAGS $(GITLIBS)
+git-http-fetch$X: http.o http-walker.o http-fetch.o GIT-LDFLAGS $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
 		$(LIBS) $(CURL_LIBCURL)
-git-http-push$X: revision.o http.o http-push.o GIT-LDFLAGS $(GITLIBS)
+git-http-push$X: http.o http-push.o GIT-LDFLAGS $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
 		$(LIBS) $(CURL_LIBCURL) $(EXPAT_LIBEXPAT)
 
@@ -2035,13 +2075,13 @@ $(REMOTE_CURL_PRIMARY): remote-curl.o http.o http-walker.o GIT-LDFLAGS $(GITLIBS
 		$(LIBS) $(CURL_LIBCURL) $(EXPAT_LIBEXPAT)
 
 $(LIB_FILE): $(LIB_OBJS)
-	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $(LIB_OBJS)
+	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
 
 $(XDIFF_LIB): $(XDIFF_OBJS)
-	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $(XDIFF_OBJS)
+	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
 
 $(VCSSVN_LIB): $(VCSSVN_OBJS)
-	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $(VCSSVN_OBJS)
+	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
 
 export DEFAULT_EDITOR DEFAULT_PAGER
 
@@ -2062,7 +2102,7 @@ pdf:
 
 XGETTEXT_FLAGS = \
 	--force-po \
-	--add-comments \
+	--add-comments=TRANSLATORS: \
 	--msgid-bugs-address="Git Mailing List <git@vger.kernel.org>" \
 	--from-code=UTF-8
 XGETTEXT_FLAGS_C = $(XGETTEXT_FLAGS) --language=C \
@@ -2159,6 +2199,9 @@ GIT-BUILD-OPTIONS: FORCE
 	@echo NO_PERL=\''$(subst ','\'',$(subst ','\'',$(NO_PERL)))'\' >>$@
 	@echo NO_PYTHON=\''$(subst ','\'',$(subst ','\'',$(NO_PYTHON)))'\' >>$@
 	@echo NO_UNIX_SOCKETS=\''$(subst ','\'',$(subst ','\'',$(NO_UNIX_SOCKETS)))'\' >>$@
+ifdef TEST_OUTPUT_DIRECTORY
+	@echo TEST_OUTPUT_DIRECTORY=\''$(subst ','\'',$(subst ','\'',$(TEST_OUTPUT_DIRECTORY)))'\' >>$@
+endif
 ifdef GIT_TEST_OPTS
 	@echo GIT_TEST_OPTS=\''$(subst ','\'',$(subst ','\'',$(GIT_TEST_OPTS)))'\' >>$@
 endif
@@ -2182,6 +2225,9 @@ endif
 ifdef GIT_PERF_MAKE_OPTS
 	@echo GIT_PERF_MAKE_OPTS=\''$(subst ','\'',$(subst ','\'',$(GIT_PERF_MAKE_OPTS)))'\' >>$@
 endif
+ifdef TEST_GIT_INDEX_VERSION
+	@echo TEST_GIT_INDEX_VERSION=\''$(subst ','\'',$(subst ','\'',$(TEST_GIT_INDEX_VERSION)))'\' >>$@
+endif
 
 ### Detect Python interpreter path changes
 ifndef NO_PYTHON
@@ -2198,6 +2244,7 @@ endif
 test_bindir_programs := $(patsubst %,bin-wrappers/%,$(BINDIR_PROGRAMS_NEED_X) $(BINDIR_PROGRAMS_NO_X) $(TEST_PROGRAMS_NEED_X))
 
 all:: $(TEST_PROGRAMS) $(test_bindir_programs)
+all:: $(NO_INSTALL)
 
 bin-wrappers/%: wrap-for-bin.sh
 	@mkdir -p bin-wrappers
@@ -2262,9 +2309,6 @@ check: common-cmds.h
 		exit 1; \
 	fi
 
-remove-dashes:
-	./fixup-builtins $(BUILT_INS) $(PROGRAMS) $(SCRIPTS)
-
 ### Installation rules
 
 ifneq ($(filter /%,$(firstword $(template_dir))),)
@@ -2308,9 +2352,6 @@ endif
 ifndef NO_PERL
 	$(MAKE) -C perl prefix='$(prefix_SQ)' DESTDIR='$(DESTDIR_SQ)' install
 	$(MAKE) -C gitweb install
-endif
-ifndef NO_PYTHON
-	$(MAKE) -C git_remote_helpers prefix='$(prefix_SQ)' DESTDIR='$(DESTDIR_SQ)' install
 endif
 ifndef NO_TCLTK
 	$(MAKE) -C gitk-git install
@@ -2443,11 +2484,12 @@ profile-clean:
 	$(RM) $(addsuffix *.gcda,$(addprefix $(PROFILE_DIR)/, $(object_dirs)))
 	$(RM) $(addsuffix *.gcno,$(addprefix $(PROFILE_DIR)/, $(object_dirs)))
 
-clean: profile-clean
-	$(RM) *.o block-sha1/*.o ppc/*.o compat/*.o compat/*/*.o xdiff/*.o vcs-svn/*.o \
-		builtin/*.o $(LIB_FILE) $(XDIFF_LIB) $(VCSSVN_LIB)
+clean: profile-clean coverage-clean
+	$(RM) *.o *.res block-sha1/*.o ppc/*.o compat/*.o compat/*/*.o
+	$(RM) xdiff/*.o vcs-svn/*.o ewah/*.o builtin/*.o
+	$(RM) $(LIB_FILE) $(XDIFF_LIB) $(VCSSVN_LIB)
 	$(RM) $(ALL_PROGRAMS) $(SCRIPT_LIB) $(BUILT_INS) git$X
-	$(RM) $(TEST_PROGRAMS)
+	$(RM) $(TEST_PROGRAMS) $(NO_INSTALL)
 	$(RM) -r bin-wrappers $(dep_dirs)
 	$(RM) -r po/build/
 	$(RM) *.spec *.pyc *.pyo */*.pyc */*.pyo common-cmds.h $(ETAGS_TARGET) tags cscope*
@@ -2459,9 +2501,6 @@ ifndef NO_PERL
 	$(MAKE) -C gitweb clean
 	$(MAKE) -C perl clean
 endif
-ifndef NO_PYTHON
-	$(MAKE) -C git_remote_helpers clean
-endif
 	$(MAKE) -C templates/ clean
 	$(MAKE) -C t/ clean
 ifndef NO_TCLTK
@@ -2469,7 +2508,8 @@ ifndef NO_TCLTK
 	$(MAKE) -C git-gui clean
 endif
 	$(RM) GIT-VERSION-FILE GIT-CFLAGS GIT-LDFLAGS GIT-BUILD-OPTIONS
-	$(RM) GIT-USER-AGENT GIT-PREFIX GIT-SCRIPT-DEFINES GIT-PYTHON-VARS
+	$(RM) GIT-USER-AGENT GIT-PREFIX
+	$(RM) GIT-SCRIPT-DEFINES GIT-PERL-DEFINES GIT-PYTHON-VARS
 
 .PHONY: all install profile-clean clean strip
 .PHONY: shell_compatibility_test please_set_SHELL_PATH_to_a_more_modern_shell
@@ -2524,29 +2564,34 @@ check-builtins::
 
 ### Test suite coverage testing
 #
-.PHONY: coverage coverage-clean coverage-build coverage-report
+.PHONY: coverage coverage-clean coverage-compile coverage-test coverage-report
+.PHONY: coverage-clean-results
 
 coverage:
-	$(MAKE) coverage-build
-	$(MAKE) coverage-report
+	$(MAKE) coverage-test
+	$(MAKE) coverage-untested-functions
 
 object_dirs := $(sort $(dir $(OBJECTS)))
-coverage-clean:
+coverage-clean-results:
 	$(RM) $(addsuffix *.gcov,$(object_dirs))
 	$(RM) $(addsuffix *.gcda,$(object_dirs))
-	$(RM) $(addsuffix *.gcno,$(object_dirs))
 	$(RM) coverage-untested-functions
 	$(RM) -r cover_db/
 	$(RM) -r cover_db_html/
+
+coverage-clean: coverage-clean-results
+	$(RM) $(addsuffix *.gcno,$(object_dirs))
 
 COVERAGE_CFLAGS = $(CFLAGS) -O0 -ftest-coverage -fprofile-arcs
 COVERAGE_LDFLAGS = $(CFLAGS)  -O0 -lgcov
 GCOVFLAGS = --preserve-paths --branch-probabilities --all-blocks
 
-coverage-build: coverage-clean
+coverage-compile:
 	$(MAKE) CFLAGS="$(COVERAGE_CFLAGS)" LDFLAGS="$(COVERAGE_LDFLAGS)" all
+
+coverage-test: coverage-clean-results coverage-compile
 	$(MAKE) CFLAGS="$(COVERAGE_CFLAGS)" LDFLAGS="$(COVERAGE_LDFLAGS)" \
-		-j1 test
+		DEFAULT_TEST_TARGET=test -j1 test
 
 coverage-report:
 	$(QUIET_GCOV)for dir in $(object_dirs); do \

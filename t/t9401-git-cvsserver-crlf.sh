@@ -68,7 +68,7 @@ then
     skip_all='skipping git-cvsserver tests, perl not available'
     test_done
 fi
-"$PERL_PATH" -e 'use DBI; use DBD::SQLite' >/dev/null 2>&1 || {
+perl -e 'use DBI; use DBD::SQLite' >/dev/null 2>&1 || {
     skip_all='skipping git-cvsserver tests, Perl SQLite interface unavailable'
     test_done
 }
@@ -84,6 +84,7 @@ export CVSROOT CVS_SERVER
 
 rm -rf "$CVSWORK" "$SERVERDIR"
 test_expect_success 'setup' '
+    git config push.default matching &&
     echo "Simple text file" >textfile.c &&
     echo "File with embedded NUL: Q <- there" | q_to_nul > binfile.bin &&
     mkdir subdir &&

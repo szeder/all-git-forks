@@ -30,7 +30,6 @@ String options
     --string2 <str>       get another string
     --st <st>             get another string (pervert ordering)
     -o <str>              get another string
-    --default-string      set string to default
     --list <str>          add str to list
 
 Magic arguments
@@ -50,7 +49,7 @@ EOF
 
 test_expect_success 'test help' '
 	test_must_fail test-parse-options -h > output 2> output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_i18ncmp expect output
 '
 
@@ -75,7 +74,7 @@ check() {
 	shift &&
 	sed "s/^$what .*/$what $expect/" <expect.template >expect &&
 	test-parse-options $* >output 2>output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_cmp expect output
 }
 
@@ -86,7 +85,7 @@ check_i18n() {
 	shift &&
 	sed "s/^$what .*/$what $expect/" <expect.template >expect &&
 	test-parse-options $* >output 2>output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_i18ncmp expect output
 }
 
@@ -99,7 +98,7 @@ check_unknown() {
 	esac &&
 	cat expect.err >>expect &&
 	test_must_fail test-parse-options $* >output 2>output.err &&
-	test ! -s output &&
+	test_must_be_empty output &&
 	test_cmp expect output.err
 }
 
@@ -112,7 +111,7 @@ check_unknown_i18n() {
 	esac &&
 	cat expect.err >>expect &&
 	test_must_fail test-parse-options $* >output 2>output.err &&
-	test ! -s output &&
+	test_must_be_empty output &&
 	test_i18ncmp expect output.err
 }
 
@@ -149,7 +148,7 @@ test_expect_success 'short options' '
 	test-parse-options -s123 -b -i 1729 -b -vv -n -F my.file \
 	> output 2> output.err &&
 	test_cmp expect output &&
-	test ! -s output.err
+	test_must_be_empty output.err
 '
 
 cat > expect << EOF
@@ -168,7 +167,7 @@ test_expect_success 'long options' '
 	test-parse-options --boolean --integer 1729 --boolean --string2=321 \
 		--verbose --verbose --no-dry-run --abbrev=10 --file fi.le\
 		--obsolete > output 2> output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_cmp expect output
 '
 
@@ -199,7 +198,7 @@ EOF
 test_expect_success 'intermingled arguments' '
 	test-parse-options a1 --string 123 b1 --boolean -j 13 -- --boolean \
 		> output 2> output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_cmp expect output
 '
 
@@ -217,13 +216,13 @@ EOF
 
 test_expect_success 'unambiguously abbreviated option' '
 	test-parse-options --int 2 --boolean --no-bo > output 2> output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_cmp expect output
 '
 
 test_expect_success 'unambiguously abbreviated option with "="' '
 	test-parse-options --int=2 > output 2> output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_cmp expect output
 '
 
@@ -246,7 +245,7 @@ EOF
 
 test_expect_success 'non ambiguous option (after two options it abbreviates)' '
 	test-parse-options --st 123 > output 2> output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_cmp expect output
 '
 
@@ -256,7 +255,7 @@ EOF
 
 test_expect_success 'detect possible typos' '
 	test_must_fail test-parse-options -boolean > output 2> output.err &&
-	test ! -s output &&
+	test_must_be_empty output &&
 	test_cmp typo.err output.err
 '
 
@@ -266,7 +265,7 @@ EOF
 
 test_expect_success 'detect possible typos' '
 	test_must_fail test-parse-options -ambiguous > output 2> output.err &&
-	test ! -s output &&
+	test_must_be_empty output &&
 	test_cmp typo.err output.err
 '
 
@@ -285,7 +284,7 @@ EOF
 
 test_expect_success 'keep some options as arguments' '
 	test-parse-options --quux > output 2> output.err &&
-        test ! -s output.err &&
+	test_must_be_empty output.err &&
         test_cmp expect output
 '
 
@@ -293,7 +292,7 @@ cat > expect <<EOF
 boolean: 0
 integer: 0
 timestamp: 1
-string: default
+string: (not set)
 abbrev: 7
 verbose: 0
 quiet: yes
@@ -302,10 +301,10 @@ file: (not set)
 arg 00: foo
 EOF
 
-test_expect_success 'OPT_DATE() and OPT_SET_PTR() work' '
-	test-parse-options -t "1970-01-01 00:00:01 +0000" --default-string \
+test_expect_success 'OPT_DATE() works' '
+	test-parse-options -t "1970-01-01 00:00:01 +0000" \
 		foo -q > output 2> output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_cmp expect output
 '
 
@@ -324,7 +323,7 @@ EOF
 
 test_expect_success 'OPT_CALLBACK() and OPT_BIT() work' '
 	test-parse-options --length=four -b -4 > output 2> output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_cmp expect output
 '
 
@@ -352,13 +351,13 @@ EOF
 
 test_expect_success 'OPT_BIT() and OPT_SET_INT() work' '
 	test-parse-options --set23 -bbbbb --no-or4 > output 2> output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_cmp expect output
 '
 
 test_expect_success 'OPT_NEGBIT() and OPT_SET_INT() work' '
 	test-parse-options --set23 -bbbbb --neg-or4 > output 2> output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_cmp expect output
 '
 
@@ -376,19 +375,19 @@ EOF
 
 test_expect_success 'OPT_BIT() works' '
 	test-parse-options -bb --or4 > output 2> output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_cmp expect output
 '
 
 test_expect_success 'OPT_NEGBIT() works' '
 	test-parse-options -bb --no-neg-or4 > output 2> output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_cmp expect output
 '
 
 test_expect_success 'OPT_COUNTUP() with PARSE_OPT_NODASH works' '
 	test-parse-options + + + + + + > output 2> output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_cmp expect output
 '
 
@@ -406,7 +405,7 @@ EOF
 
 test_expect_success 'OPT_NUMBER_CALLBACK() works' '
 	test-parse-options -12345 > output 2> output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_cmp expect output
 '
 
@@ -424,7 +423,7 @@ EOF
 
 test_expect_success 'negation of OPT_NONEG flags is not ambiguous' '
 	test-parse-options --no-ambig >output 2>output.err &&
-	test ! -s output.err &&
+	test_must_be_empty output.err &&
 	test_cmp expect output
 '
 

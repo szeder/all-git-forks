@@ -9,6 +9,8 @@
 #include "quote.h"
 #include "builtin.h"
 #include "parse-options.h"
+#include "diff.h"
+#include "revision.h"
 
 #define DO_REVS		1
 #define DO_NOREV	2
@@ -29,6 +31,9 @@ static int abbrev;
 static int abbrev_ref;
 static int abbrev_ref_strict;
 static int output_sq;
+
+static int stuck_long;
+static struct string_list *ref_excludes;
 
 /*
  * Some arguments are relevant "revision" arguments,
@@ -185,6 +190,8 @@ static int show_default(void)
 
 static int show_reference(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
 {
+	if (ref_excluded(ref_excludes, refname))
+		return 0;
 	show_rev(NORMAL, sha1, refname);
 	return 0;
 }
@@ -212,11 +219,17 @@ static void show_datestring(const char *flag, const char *datestr)
 	show(buffer);
 }
 
-static int show_file(const char *arg)
+static int show_file(const char *arg, int output_prefix)
 {
 	show_default();
 	if ((filter & (DO_NONFLAGS|DO_NOREV)) == (DO_NONFLAGS|DO_NOREV)) {
-		show(arg);
+		if (output_prefix) {
+			const char *prefix = startup_info->prefix;
+			show(prefix_filename(prefix,
+					     prefix ? strlen(prefix) : 0,
+					     arg));
+		} else
+			show(arg);
 		return 1;
 	}
 	return 0;
@@ -273,6 +286,7 @@ static int try_difference(const char *arg)
 				exclude = n;
 			}
 		}
+		*dotdot = '.';
 		return 1;
 	}
 	*dotdot = '.';
@@ -296,8 +310,10 @@ static int try_parent_shorthands(const char *arg)
 		return 0;
 
 	*dotdot = 0;
-	if (get_sha1_committish(arg, sha1))
+	if (get_sha1_committish(arg, sha1)) {
+		*dotdot = '^';
 		return 0;
+	}
 
 	if (!parents_only)
 		show_rev(NORMAL, sha1, arg);
@@ -306,6 +322,7 @@ static int try_parent_shorthands(const char *arg)
 		show_rev(parents_only ? NORMAL : REVERSED,
 				parents->item->object.sha1, arg);
 
+	*dotdot = '^';
 	return 1;
 }
 
@@ -314,12 +331,15 @@ static int parseopt_dump(const struct option *o, const char *arg, int unset)
 	struct strbuf *parsed = o->value;
 	if (unset)
 		strbuf_addf(parsed, " --no-%s", o->long_name);
-	else if (o->short_name)
+	else if (o->short_name && (o->long_name == NULL || !stuck_long))
 		strbuf_addf(parsed, " -%c", o->short_name);
 	else
 		strbuf_addf(parsed, " --%s", o->long_name);
 	if (arg) {
-		strbuf_addch(parsed, ' ');
+		if (!stuck_long)
+			strbuf_addch(parsed, ' ');
+		else if (o->long_name)
+			strbuf_addch(parsed, '=');
 		sq_quote_buf(parsed, arg);
 	}
 	return 0;
@@ -340,11 +360,13 @@ static int cmd_parseopt(int argc, const char **argv, const char *prefix)
 		NULL
 	};
 	static struct option parseopt_opts[] = {
-		OPT_BOOLEAN(0, "keep-dashdash", &keep_dashdash,
+		OPT_BOOL(0, "keep-dashdash", &keep_dashdash,
 					N_("keep the `--` passed as an arg")),
-		OPT_BOOLEAN(0, "stop-at-non-option", &stop_at_non_option,
+		OPT_BOOL(0, "stop-at-non-option", &stop_at_non_option,
 					N_("stop parsing after the "
 					   "first non-option argument")),
+		OPT_BOOL(0, "stuck-long", &stuck_long,
+					N_("output in stuck long form")),
 		OPT_END(),
 	};
 
@@ -373,9 +395,10 @@ static int cmd_parseopt(int argc, const char **argv, const char *prefix)
 		usage[unb++] = strbuf_detach(&sb, NULL);
 	}
 
-	/* parse: (<short>|<short>,<long>|<long>)[=?]? SP+ <help> */
+	/* parse: (<short>|<short>,<long>|<long>)[*=?!]*<arghint>? SP+ <help> */
 	while (strbuf_getline(&sb, stdin, '\n') != EOF) {
 		const char *s;
+		const char *end;
 		struct option *o;
 
 		if (!sb.len)
@@ -397,6 +420,16 @@ static int cmd_parseopt(int argc, const char **argv, const char *prefix)
 		o->value = &parsed;
 		o->flags = PARSE_OPT_NOARG;
 		o->callback = &parseopt_dump;
+
+		/* Possible argument name hint */
+		end = s;
+		while (s > sb.buf && strchr("*=?!", s[-1]) == NULL)
+			--s;
+		if (s != sb.buf && s != end)
+			o->argh = xmemdupz(s, end - s);
+		if (s == sb.buf)
+			s = end;
+
 		while (s > sb.buf && strchr("*=?!", s[-1])) {
 			switch (*--s) {
 			case '=':
@@ -470,6 +503,8 @@ N_("git rev-parse --parseopt [options] -- [<args>...]\n"
 int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 {
 	int i, as_is = 0, verify = 0, quiet = 0, revs_count = 0, type = 0;
+	int has_dashdash = 0;
+	int output_prefix = 0;
 	unsigned char sha1[20];
 	const char *name = NULL;
 
@@ -479,23 +514,15 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 	if (argc > 1 && !strcmp("--sq-quote", argv[1]))
 		return cmd_sq_quote(argc - 2, argv + 2);
 
-	if (argc == 2 && !strcmp("--local-env-vars", argv[1])) {
-		int i;
-		for (i = 0; local_repo_env[i]; i++)
-			printf("%s\n", local_repo_env[i]);
-		return 0;
-	}
-
-	if (argc > 2 && !strcmp(argv[1], "--resolve-git-dir")) {
-		const char *gitdir = resolve_gitdir(argv[2]);
-		if (!gitdir)
-			die("not a gitdir '%s'", argv[2]);
-		puts(gitdir);
-		return 0;
-	}
-
 	if (argc > 1 && !strcmp("-h", argv[1]))
 		usage(builtin_rev_parse_usage);
+
+	for (i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--")) {
+			has_dashdash = 1;
+			break;
+		}
+	}
 
 	prefix = setup_git_directory();
 	git_config(git_default_config, NULL);
@@ -503,7 +530,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 		const char *arg = argv[i];
 
 		if (as_is) {
-			if (show_file(arg) && as_is < 2)
+			if (show_file(arg, output_prefix) && as_is < 2)
 				verify_filename(prefix, arg, 0);
 			continue;
 		}
@@ -516,7 +543,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 			}
 			continue;
 		}
-		if (!prefixcmp(arg, "-n")) {
+		if (starts_with(arg, "-n")) {
 			if ((filter & DO_FLAGS) && (filter & DO_REVS))
 				show(arg);
 			continue;
@@ -527,12 +554,21 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				as_is = 2;
 				/* Pass on the "--" if we show anything but files.. */
 				if (filter & (DO_FLAGS | DO_REVS))
-					show_file(arg);
+					show_file(arg, 0);
 				continue;
 			}
 			if (!strcmp(arg, "--default")) {
-				def = argv[i+1];
-				i++;
+				def = argv[++i];
+				if (!def)
+					die("--default requires an argument");
+				continue;
+			}
+			if (!strcmp(arg, "--prefix")) {
+				prefix = argv[++i];
+				if (!prefix)
+					die("--prefix requires an argument");
+				startup_info->prefix = prefix;
+				output_prefix = 1;
 				continue;
 			}
 			if (!strcmp(arg, "--revs-only")) {
@@ -561,7 +597,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				continue;
 			}
 			if (!strcmp(arg, "--short") ||
-			    !prefixcmp(arg, "--short=")) {
+			    starts_with(arg, "--short=")) {
 				filter &= ~(DO_FLAGS|DO_NOREV);
 				verify = 1;
 				abbrev = DEFAULT_ABBREV;
@@ -589,7 +625,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				symbolic = SHOW_SYMBOLIC_FULL;
 				continue;
 			}
-			if (!prefixcmp(arg, "--abbrev-ref") &&
+			if (starts_with(arg, "--abbrev-ref") &&
 			    (!arg[12] || arg[12] == '=')) {
 				abbrev_ref = 1;
 				abbrev_ref_strict = warn_ambiguous_refs;
@@ -607,7 +643,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				for_each_ref(show_reference, NULL);
 				continue;
 			}
-			if (!prefixcmp(arg, "--disambiguate=")) {
+			if (starts_with(arg, "--disambiguate=")) {
 				for_each_abbrev(arg + 15, show_abbrev, NULL);
 				continue;
 			}
@@ -616,35 +652,52 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				for_each_ref_in("refs/bisect/good", anti_reference, NULL);
 				continue;
 			}
-			if (!prefixcmp(arg, "--branches=")) {
+			if (starts_with(arg, "--branches=")) {
 				for_each_glob_ref_in(show_reference, arg + 11,
 					"refs/heads/", NULL);
+				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
 			if (!strcmp(arg, "--branches")) {
 				for_each_branch_ref(show_reference, NULL);
+				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
-			if (!prefixcmp(arg, "--tags=")) {
+			if (starts_with(arg, "--tags=")) {
 				for_each_glob_ref_in(show_reference, arg + 7,
 					"refs/tags/", NULL);
+				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
 			if (!strcmp(arg, "--tags")) {
 				for_each_tag_ref(show_reference, NULL);
+				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
-			if (!prefixcmp(arg, "--glob=")) {
+			if (starts_with(arg, "--glob=")) {
 				for_each_glob_ref(show_reference, arg + 7, NULL);
+				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
-			if (!prefixcmp(arg, "--remotes=")) {
+			if (starts_with(arg, "--remotes=")) {
 				for_each_glob_ref_in(show_reference, arg + 10,
 					"refs/remotes/", NULL);
+				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
 			if (!strcmp(arg, "--remotes")) {
 				for_each_remote_ref(show_reference, NULL);
+				clear_ref_exclusion(&ref_excludes);
+				continue;
+			}
+			if (starts_with(arg, "--exclude=")) {
+				add_ref_exclusion(&ref_excludes, arg + 10);
+				continue;
+			}
+			if (!strcmp(arg, "--local-env-vars")) {
+				int i;
+				for (i = 0; local_repo_env[i]; i++)
+					printf("%s\n", local_repo_env[i]);
 				continue;
 			}
 			if (!strcmp(arg, "--show-toplevel")) {
@@ -697,6 +750,16 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				printf("%s%s.git\n", cwd, len && cwd[len-1] != '/' ? "/" : "");
 				continue;
 			}
+			if (!strcmp(arg, "--resolve-git-dir")) {
+				const char *gitdir = argv[++i];
+				if (!gitdir)
+					die("--resolve-git-dir requires an argument");
+				gitdir = resolve_gitdir(gitdir);
+				if (!gitdir)
+					die("not a gitdir '%s'", argv[i]);
+				puts(gitdir);
+				continue;
+			}
 			if (!strcmp(arg, "--is-inside-git-dir")) {
 				printf("%s\n", is_inside_git_dir() ? "true"
 						: "false");
@@ -712,19 +775,19 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 						: "false");
 				continue;
 			}
-			if (!prefixcmp(arg, "--since=")) {
+			if (starts_with(arg, "--since=")) {
 				show_datestring("--max-age=", arg+8);
 				continue;
 			}
-			if (!prefixcmp(arg, "--after=")) {
+			if (starts_with(arg, "--after=")) {
 				show_datestring("--max-age=", arg+8);
 				continue;
 			}
-			if (!prefixcmp(arg, "--before=")) {
+			if (starts_with(arg, "--before=")) {
 				show_datestring("--min-age=", arg+9);
 				continue;
 			}
-			if (!prefixcmp(arg, "--until=")) {
+			if (starts_with(arg, "--until=")) {
 				show_datestring("--min-age=", arg+8);
 				continue;
 			}
@@ -753,8 +816,10 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 		}
 		if (verify)
 			die_no_single_rev(quiet);
+		if (has_dashdash)
+			die("bad revision '%s'", arg);
 		as_is = 1;
-		if (!show_file(arg))
+		if (!show_file(arg, output_prefix))
 			continue;
 		verify_filename(prefix, arg, 1);
 	}

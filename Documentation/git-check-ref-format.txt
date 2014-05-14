@@ -54,6 +54,8 @@ Git imposes the following rules on how references are named:
 
 . They cannot contain a sequence `@{`.
 
+. They cannot be the single character `@`.
+
 . They cannot contain a `\`.
 
 These rules make it easy for shell script based tools to parse
@@ -83,8 +85,7 @@ typed the branch name.
 
 OPTIONS
 -------
---allow-onelevel::
---no-allow-onelevel::
+--[no-]allow-onelevel::
 	Controls whether one-level refnames are accepted (i.e.,
 	refnames that do not contain multiple `/`-separated
 	components).  The default is `--no-allow-onelevel`.

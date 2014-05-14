@@ -79,7 +79,9 @@ struct dir_struct {
 		DIR_SHOW_OTHER_DIRECTORIES = 1<<1,
 		DIR_HIDE_EMPTY_DIRECTORIES = 1<<2,
 		DIR_NO_GITLINKS = 1<<3,
-		DIR_COLLECT_IGNORED = 1<<4
+		DIR_COLLECT_IGNORED = 1<<4,
+		DIR_SHOW_IGNORED_TOO = 1<<5,
+		DIR_COLLECT_KILLED_ONLY = 1<<6
 	} flags;
 	struct dir_entry **entries;
 	struct dir_entry **ignored;
@@ -110,9 +112,11 @@ struct dir_struct {
 	 *
 	 * exclude_stack points to the top of the exclude_stack, and
 	 * basebuf contains the full path to the current
-	 * (sub)directory in the traversal.
+	 * (sub)directory in the traversal. Exclude points to the
+	 * matching exclude struct if the directory is excluded.
 	 */
 	struct exclude_stack *exclude_stack;
+	struct exclude *exclude;
 	char basebuf[PATH_MAX];
 };
 
@@ -125,15 +129,16 @@ struct dir_struct {
 #define MATCHED_RECURSIVELY 1
 #define MATCHED_FNMATCH 2
 #define MATCHED_EXACTLY 3
-extern char *common_prefix(const char **pathspec);
-extern int match_pathspec(const char **pathspec, const char *name, int namelen, int prefix, char *seen);
-extern int match_pathspec_depth(const struct pathspec *pathspec,
-				const char *name, int namelen,
-				int prefix, char *seen);
+extern int simple_length(const char *match);
+extern int no_wildcard(const char *string);
+extern char *common_prefix(const struct pathspec *pathspec);
+extern int match_pathspec(const struct pathspec *pathspec,
+			  const char *name, int namelen,
+			  int prefix, char *seen, int is_dir);
 extern int within_depth(const char *name, int namelen, int depth, int max_depth);
 
-extern int fill_directory(struct dir_struct *dir, const char **pathspec);
-extern int read_directory(struct dir_struct *, const char *path, int len, const char **pathspec);
+extern int fill_directory(struct dir_struct *dir, const struct pathspec *pathspec);
+extern int read_directory(struct dir_struct *, const char *path, int len, const struct pathspec *pathspec);
 
 extern int is_excluded_from_list(const char *pathname, int pathlen, const char *basename,
 				 int *dtype, struct exclude_list *el);
@@ -149,22 +154,10 @@ extern int match_pathname(const char *, int,
 			  const char *, int,
 			  const char *, int, int, int);
 
-/*
- * The is_excluded() API is meant for callers that check each level of leading
- * directory hierarchies with is_excluded() to avoid recursing into excluded
- * directories.  Callers that do not do so should use this API instead.
- */
-struct path_exclude_check {
-	struct dir_struct *dir;
-	struct exclude *exclude;
-	struct strbuf path;
-};
-extern void path_exclude_check_init(struct path_exclude_check *, struct dir_struct *);
-extern void path_exclude_check_clear(struct path_exclude_check *);
-extern struct exclude *last_exclude_matching_path(struct path_exclude_check *, const char *,
-						  int namelen, int *dtype);
-extern int is_path_excluded(struct path_exclude_check *, const char *, int namelen, int *dtype);
+extern struct exclude *last_exclude_matching(struct dir_struct *dir,
+					     const char *name, int *dtype);
 
+extern int is_excluded(struct dir_struct *dir, const char *name, int *dtype);
 
 extern struct exclude_list *add_exclude_list(struct dir_struct *dir,
 					     int group_type, const char *src);
@@ -207,10 +200,27 @@ extern int fnmatch_icase(const char *pattern, const char *string, int flags);
 /*
  * The prefix part of pattern must not contains wildcards.
  */
-#define GFNM_PATHNAME 1		/* similar to FNM_PATHNAME */
-#define GFNM_ONESTAR  2		/* there is only _one_ wildcard, a star */
+struct pathspec_item;
+extern int git_fnmatch(const struct pathspec_item *item,
+		       const char *pattern, const char *string,
+		       int prefix);
 
-extern int git_fnmatch(const char *pattern, const char *string,
-		       int flags, int prefix);
+static inline int ce_path_match(const struct cache_entry *ce,
+				const struct pathspec *pathspec,
+				char *seen)
+{
+	return match_pathspec(pathspec, ce->name, ce_namelen(ce), 0, seen,
+			      S_ISDIR(ce->ce_mode) || S_ISGITLINK(ce->ce_mode));
+}
+
+static inline int dir_path_match(const struct dir_entry *ent,
+				 const struct pathspec *pathspec,
+				 int prefix, char *seen)
+{
+	int has_trailing_dir = ent->len && ent->name[ent->len - 1] == '/';
+	int len = has_trailing_dir ? ent->len - 1 : ent->len;
+	return match_pathspec(pathspec, ent->name, len, prefix, seen,
+			      has_trailing_dir);
+}
 
 #endif

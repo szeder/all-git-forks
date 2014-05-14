@@ -64,8 +64,7 @@ enum XML_Status {
 #define LOCK_TIME 600
 #define LOCK_REFRESH 30
 
-/* bits #0-15 in revision.h */
-
+/* Remember to update object flag allocation in object.h */
 #define LOCAL    (1u<<16)
 #define REMOTE   (1u<<17)
 #define FETCHING (1u<<18)
@@ -663,7 +662,7 @@ static void add_fetch_request(struct object *obj)
 
 static int add_send_request(struct object *obj, struct remote_lock *lock)
 {
-	struct transfer_request *request = request_queue_head;
+	struct transfer_request *request;
 	struct packed_git *target;
 
 	/* Keep locks active */
@@ -771,7 +770,7 @@ static void handle_new_lock_ctx(struct xml_ctx *ctx, int tag_closed)
 			lock->owner = xmalloc(strlen(ctx->cdata) + 1);
 			strcpy(lock->owner, ctx->cdata);
 		} else if (!strcmp(ctx->name, DAV_ACTIVELOCK_TIMEOUT)) {
-			if (!prefixcmp(ctx->cdata, "Second-"))
+			if (starts_with(ctx->cdata, "Second-"))
 				lock->timeout =
 					strtol(ctx->cdata + 7, NULL, 10);
 		} else if (!strcmp(ctx->name, DAV_ACTIVELOCK_TOKEN)) {
@@ -1330,8 +1329,7 @@ static struct object_list **process_tree(struct tree *tree,
 			break;
 		}
 
-	free(tree->buffer);
-	tree->buffer = NULL;
+	free_tree_buffer(tree);
 	return p;
 }
 
@@ -1543,7 +1541,7 @@ static int remote_exists(const char *path)
 
 	sprintf(url, "%s%s", repo->url, path);
 
-	switch (http_get_strbuf(url, NULL, NULL, 0)) {
+	switch (http_get_strbuf(url, NULL, NULL)) {
 	case HTTP_OK:
 		ret = 1;
 		break;
@@ -1551,7 +1549,7 @@ static int remote_exists(const char *path)
 		ret = 0;
 		break;
 	case HTTP_ERROR:
-		http_error(url, HTTP_ERROR);
+		error("unable to access '%s': %s", url, curl_errorstr);
 	default:
 		ret = -1;
 	}
@@ -1567,7 +1565,7 @@ static void fetch_symref(const char *path, char **symref, unsigned char *sha1)
 	url = xmalloc(strlen(repo->url) + strlen(path) + 1);
 	sprintf(url, "%s%s", repo->url, path);
 
-	if (http_get_strbuf(url, NULL, &buffer, 0) != HTTP_OK)
+	if (http_get_strbuf(url, &buffer, NULL) != HTTP_OK)
 		die("Couldn't get %s for remote symref\n%s", url,
 		    curl_errorstr);
 	free(url);
@@ -1580,7 +1578,7 @@ static void fetch_symref(const char *path, char **symref, unsigned char *sha1)
 		return;
 
 	/* If it's a symref, set the refname; otherwise try for a sha1 */
-	if (!prefixcmp((char *)buffer.buf, "ref: ")) {
+	if (starts_with((char *)buffer.buf, "ref: ")) {
 		*symref = xmemdupz((char *)buffer.buf + 5, buffer.len - 6);
 	} else {
 		get_sha1_hex(buffer.buf, sha1);
@@ -1976,7 +1974,7 @@ int main(int argc, char **argv)
 		pushing = 0;
 		if (prepare_revision_walk(&revs))
 			die("revision walk setup failed");
-		mark_edges_uninteresting(revs.commits, &revs, NULL);
+		mark_edges_uninteresting(&revs, NULL);
 		objects_to_send = get_delta(&revs, ref_lock);
 		finish_all_active_slots();
 

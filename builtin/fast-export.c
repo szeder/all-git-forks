@@ -24,12 +24,13 @@ static const char *fast_export_usage[] = {
 };
 
 static int progress;
-static enum { ABORT, VERBATIM, WARN, STRIP } signed_tag_mode = ABORT;
+static enum { ABORT, VERBATIM, WARN, WARN_STRIP, STRIP } signed_tag_mode = ABORT;
 static enum { ERROR, DROP, REWRITE } tag_of_filtered_mode = ERROR;
 static int fake_missing_tagger;
 static int use_done_feature;
 static int no_data;
 static int full_tree;
+static struct string_list extra_refs = STRING_LIST_INIT_NODUP;
 
 static int parse_opt_signed_tag_mode(const struct option *opt,
 				     const char *arg, int unset)
@@ -40,6 +41,8 @@ static int parse_opt_signed_tag_mode(const struct option *opt,
 		signed_tag_mode = VERBATIM;
 	else if (!strcmp(arg, "warn"))
 		signed_tag_mode = WARN;
+	else if (!strcmp(arg, "warn-strip"))
+		signed_tag_mode = WARN_STRIP;
 	else if (!strcmp(arg, "strip"))
 		signed_tag_mode = STRIP;
 	else
@@ -284,7 +287,7 @@ static void handle_commit(struct commit *commit, struct rev_info *rev)
 
 	rev->diffopt.output_format = DIFF_FORMAT_CALLBACK;
 
-	parse_commit(commit);
+	parse_commit_or_die(commit);
 	author = strstr(commit->buffer, "\nauthor ");
 	if (!author)
 		die ("Could not find author in commit %s",
@@ -305,7 +308,7 @@ static void handle_commit(struct commit *commit, struct rev_info *rev)
 	if (commit->parents &&
 	    get_object_mark(&commit->parents->item->object) != 0 &&
 	    !full_tree) {
-		parse_commit(commit->parents->item);
+		parse_commit_or_die(commit->parents->item);
 		diff_tree_sha1(commit->parents->item->tree->object.sha1,
 			       commit->tree->object.sha1, "", &rev->diffopt);
 	}
@@ -377,7 +380,7 @@ static void handle_tag(const char *name, struct tag *tag)
 	int tagged_mark;
 	struct commit *p;
 
-	/* Trees have no identifer in fast-export output, thus we have no way
+	/* Trees have no identifier in fast-export output, thus we have no way
 	 * to output tags of trees, tags of tags of trees, etc.  Simply omit
 	 * such tags.
 	 */
@@ -428,6 +431,10 @@ static void handle_tag(const char *name, struct tag *tag)
 				/* fallthru */
 			case VERBATIM:
 				break;
+			case WARN_STRIP:
+				warning ("Stripping signature from tag %s",
+					 sha1_to_hex(tag->object.sha1));
+				/* fallthru */
 			case STRIP:
 				message_size = signature + 1 - message;
 				break;
@@ -469,7 +476,7 @@ static void handle_tag(const char *name, struct tag *tag)
 		}
 	}
 
-	if (!prefixcmp(name, "refs/tags/"))
+	if (starts_with(name, "refs/tags/"))
 		name += 10;
 	printf("tag %s\nfrom :%d\n%.*s%sdata %d\n%.*s\n",
 	       name, tagged_mark,
@@ -478,10 +485,32 @@ static void handle_tag(const char *name, struct tag *tag)
 	       (int)message_size, (int)message_size, message ? message : "");
 }
 
-static void get_tags_and_duplicates(struct rev_cmdline_info *info,
-				    struct string_list *extra_refs)
+static struct commit *get_commit(struct rev_cmdline_entry *e, char *full_name)
 {
-	struct tag *tag;
+	switch (e->item->type) {
+	case OBJ_COMMIT:
+		return (struct commit *)e->item;
+	case OBJ_TAG: {
+		struct tag *tag = (struct tag *)e->item;
+
+		/* handle nested tags */
+		while (tag && tag->object.type == OBJ_TAG) {
+			parse_object(tag->object.sha1);
+			string_list_append(&extra_refs, full_name)->util = tag;
+			tag = (struct tag *)tag->tagged;
+		}
+		if (!tag)
+			die("Tag %s points nowhere?", e->name);
+		return (struct commit *)tag;
+		break;
+	}
+	default:
+		return NULL;
+	}
+}
+
+static void get_tags_and_duplicates(struct rev_cmdline_info *info)
+{
 	int i;
 
 	for (i = 0; i < info->nr; i++) {
@@ -496,38 +525,23 @@ static void get_tags_and_duplicates(struct rev_cmdline_info *info,
 		if (dwim_ref(e->name, strlen(e->name), sha1, &full_name) != 1)
 			continue;
 
-		switch (e->item->type) {
-		case OBJ_COMMIT:
-			commit = (struct commit *)e->item;
-			break;
-		case OBJ_TAG:
-			tag = (struct tag *)e->item;
-
-			/* handle nested tags */
-			while (tag && tag->object.type == OBJ_TAG) {
-				parse_object(tag->object.sha1);
-				string_list_append(extra_refs, full_name)->util = tag;
-				tag = (struct tag *)tag->tagged;
-			}
-			if (!tag)
-				die ("Tag %s points nowhere?", e->name);
-			switch(tag->object.type) {
-			case OBJ_COMMIT:
-				commit = (struct commit *)tag;
-				break;
-			case OBJ_BLOB:
-				export_blob(tag->object.sha1);
-				continue;
-			default: /* OBJ_TAG (nested tags) is already handled */
-				warning("Tag points to object of unexpected type %s, skipping.",
-					typename(tag->object.type));
-				continue;
-			}
-			break;
-		default:
+		commit = get_commit(e, full_name);
+		if (!commit) {
 			warning("%s: Unexpected object of type %s, skipping.",
 				e->name,
 				typename(e->item->type));
+			continue;
+		}
+
+		switch(commit->object.type) {
+		case OBJ_COMMIT:
+			break;
+		case OBJ_BLOB:
+			export_blob(commit->object.sha1);
+			continue;
+		default: /* OBJ_TAG (nested tags) is already handled */
+			warning("Tag points to object of unexpected type %s, skipping.",
+				typename(commit->object.type));
 			continue;
 		}
 
@@ -536,20 +550,20 @@ static void get_tags_and_duplicates(struct rev_cmdline_info *info,
 		 * sure it gets properly updated eventually.
 		 */
 		if (commit->util || commit->object.flags & SHOWN)
-			string_list_append(extra_refs, full_name)->util = commit;
+			string_list_append(&extra_refs, full_name)->util = commit;
 		if (!commit->util)
 			commit->util = full_name;
 	}
 }
 
-static void handle_tags_and_duplicates(struct string_list *extra_refs)
+static void handle_tags_and_duplicates(void)
 {
 	struct commit *commit;
 	int i;
 
-	for (i = extra_refs->nr - 1; i >= 0; i--) {
-		const char *name = extra_refs->items[i].string;
-		struct object *object = extra_refs->items[i].util;
+	for (i = extra_refs.nr - 1; i >= 0; i--) {
+		const char *name = extra_refs.items[i].string;
+		struct object *object = extra_refs.items[i].util;
 		switch (object->type) {
 		case OBJ_TAG:
 			handle_tag(name, (struct tag *)object);
@@ -607,6 +621,8 @@ static void import_marks(char *input_file)
 		char *line_end, *mark_end;
 		unsigned char sha1[20];
 		struct object *object;
+		struct commit *commit;
+		enum object_type type;
 
 		line_end = strchr(line, '\n');
 		if (line[0] != ':' || !line_end)
@@ -615,22 +631,28 @@ static void import_marks(char *input_file)
 
 		mark = strtoumax(line + 1, &mark_end, 10);
 		if (!mark || mark_end == line + 1
-			|| *mark_end != ' ' || get_sha1(mark_end + 1, sha1))
+			|| *mark_end != ' ' || get_sha1_hex(mark_end + 1, sha1))
 			die("corrupt mark line: %s", line);
 
 		if (last_idnum < mark)
 			last_idnum = mark;
 
-		object = parse_object(sha1);
-		if (!object)
+		type = sha1_object_info(sha1, NULL);
+		if (type < 0)
+			die("object not found: %s", sha1_to_hex(sha1));
+
+		if (type != OBJ_COMMIT)
+			/* only commits */
 			continue;
+
+		commit = lookup_commit(sha1);
+		if (!commit)
+			die("not a commit? can't happen: %s", sha1_to_hex(sha1));
+
+		object = &commit->object;
 
 		if (object->flags & SHOWN)
 			error("Object %s already has a mark", sha1_to_hex(sha1));
-
-		if (object->type != OBJ_COMMIT)
-			/* only commits */
-			continue;
 
 		mark_object(object, mark);
 
@@ -643,7 +665,6 @@ int cmd_fast_export(int argc, const char **argv, const char *prefix)
 {
 	struct rev_info revs;
 	struct object_array commits = OBJECT_ARRAY_INIT;
-	struct string_list extra_refs = STRING_LIST_INIT_NODUP;
 	struct commit *commit;
 	char *export_filename = NULL, *import_filename = NULL;
 	uint32_t lastimportid;
@@ -660,11 +681,11 @@ int cmd_fast_export(int argc, const char **argv, const char *prefix)
 			     N_("Dump marks to this file")),
 		OPT_STRING(0, "import-marks", &import_filename, N_("file"),
 			     N_("Import marks from this file")),
-		OPT_BOOLEAN(0, "fake-missing-tagger", &fake_missing_tagger,
-			     N_("Fake a tagger when tags lack one")),
-		OPT_BOOLEAN(0, "full-tree", &full_tree,
-			     N_("Output full tree for each commit")),
-		OPT_BOOLEAN(0, "use-done-feature", &use_done_feature,
+		OPT_BOOL(0, "fake-missing-tagger", &fake_missing_tagger,
+			 N_("Fake a tagger when tags lack one")),
+		OPT_BOOL(0, "full-tree", &full_tree,
+			 N_("Output full tree for each commit")),
+		OPT_BOOL(0, "use-done-feature", &use_done_feature,
 			     N_("Use the done feature to terminate the stream")),
 		OPT_BOOL(0, "no-data", &no_data, N_("Skip output of blob data")),
 		OPT_END()
@@ -695,7 +716,7 @@ int cmd_fast_export(int argc, const char **argv, const char *prefix)
 	if (import_filename && revs.prune_data.nr)
 		full_tree = 1;
 
-	get_tags_and_duplicates(&revs.cmdline, &extra_refs);
+	get_tags_and_duplicates(&revs.cmdline);
 
 	if (prepare_revision_walk(&revs))
 		die("revision walk setup failed");
@@ -711,7 +732,7 @@ int cmd_fast_export(int argc, const char **argv, const char *prefix)
 		}
 	}
 
-	handle_tags_and_duplicates(&extra_refs);
+	handle_tags_and_duplicates();
 
 	if (export_filename && lastimportid != last_idnum)
 		export_marks(export_filename);

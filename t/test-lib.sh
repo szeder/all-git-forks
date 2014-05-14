@@ -1,4 +1,4 @@
-#!/bin/sh
+# Test framework for git.  See t/README for usage.
 #
 # Copyright (c) 2005 Junio C Hamano
 #
@@ -26,6 +26,10 @@ then
 	# outside of t/, e.g. for running tests on the test library
 	# itself.
 	TEST_DIRECTORY=$(pwd)
+else
+	# ensure that TEST_DIRECTORY is an absolute path so that it
+	# is valid even if the current working directory is changed
+	TEST_DIRECTORY=$(cd "$TEST_DIRECTORY" && pwd) || exit 1
 fi
 if test -z "$TEST_OUTPUT_DIRECTORY"
 then
@@ -54,8 +58,8 @@ done,*)
 	# do not redirect again
 	;;
 *' --tee '*|*' --va'*)
-	mkdir -p test-results
-	BASE=test-results/$(basename "$0" .sh)
+	mkdir -p "$TEST_OUTPUT_DIRECTORY/test-results"
+	BASE="$TEST_OUTPUT_DIRECTORY/test-results/$(basename "$0" .sh)"
 	(GIT_TEST_TEE_STARTED=done ${SHELL_PATH} "$0" "$@" 2>&1;
 	 echo $? > $BASE.exit) | tee $BASE.out
 	test "$(cat $BASE.exit)" = 0
@@ -92,6 +96,7 @@ unset VISUAL EMAIL LANGUAGE COLUMNS $("$PERL_PATH" -e '
 	print join("\n", @vars);
 ')
 unset XDG_CONFIG_HOME
+unset GITPERLLIB
 GIT_AUTHOR_EMAIL=author@example.com
 GIT_AUTHOR_NAME='A U Thor'
 GIT_COMMITTER_EMAIL=committer@example.com
@@ -102,6 +107,12 @@ export GIT_MERGE_VERBOSITY GIT_MERGE_AUTOEDIT
 export GIT_AUTHOR_EMAIL GIT_AUTHOR_NAME
 export GIT_COMMITTER_EMAIL GIT_COMMITTER_NAME
 export EDITOR
+
+if test -n "${TEST_GIT_INDEX_VERSION:+isset}"
+then
+	GIT_INDEX_VERSION="$TEST_GIT_INDEX_VERSION"
+	export GIT_INDEX_VERSION
+fi
 
 # Add libc MALLOC and MALLOC_PERTURB test
 # only if we are not executing the test with valgrind
@@ -184,6 +195,9 @@ do
 		help=t; shift ;;
 	-v|--v|--ve|--ver|--verb|--verbo|--verbos|--verbose)
 		verbose=t; shift ;;
+	--verbose-only=*)
+		verbose_only=$(expr "z$1" : 'z[^=]*=\(.*\)')
+		shift ;;
 	-q|--q|--qu|--qui|--quie|--quiet)
 		# Ignore --quiet under a TAP::Harness. Saying how many tests
 		# passed without the ok/not ok details is always an error.
@@ -198,6 +212,9 @@ do
 	--valgrind=*)
 		valgrind=$(expr "z$1" : 'z[^=]*=\(.*\)')
 		shift ;;
+	--valgrind-only=*)
+		valgrind_only=$(expr "z$1" : 'z[^=]*=\(.*\)')
+		shift ;;
 	--tee)
 		shift ;; # was handled already
 	--root=*)
@@ -208,7 +225,14 @@ do
 	esac
 done
 
-test -n "$valgrind" && verbose=t
+if test -n "$valgrind_only"
+then
+	test -z "$valgrind" && valgrind=memcheck
+	test -z "$verbose" && verbose_only="$valgrind_only"
+elif test -n "$valgrind"
+then
+	verbose=t
+fi
 
 if test -n "$color"
 then
@@ -259,7 +283,7 @@ error "Test script did not set test_description."
 
 if test "$help" = "t"
 then
-	echo "$test_description"
+	printf '%s\n' "$test_description"
 	exit 0
 fi
 
@@ -299,7 +323,7 @@ trap 'die' EXIT
 . "$TEST_DIRECTORY/test-lib-functions.sh"
 
 # You are not expected to call test_ok_ and test_failure_ directly, use
-# the text_expect_* functions instead.
+# the test_expect_* functions instead.
 
 test_ok_ () {
 	test_success=$(($test_success + 1))
@@ -310,7 +334,7 @@ test_failure_ () {
 	test_failure=$(($test_failure + 1))
 	say_color error "not ok $test_count - $1"
 	shift
-	echo "$@" | sed -e 's/^/#	/'
+	printf '%s\n' "$*" | sed -e 's/^/#	/'
 	test "$immediate" = "" || { GIT_EXIT_OK=t; exit 1; }
 }
 
@@ -328,6 +352,65 @@ test_debug () {
 	test "$debug" = "" || eval "$1"
 }
 
+match_pattern_list () {
+	arg="$1"
+	shift
+	test -z "$*" && return 1
+	for pattern_
+	do
+		case "$arg" in
+		$pattern_)
+			return 0
+		esac
+	done
+	return 1
+}
+
+maybe_teardown_verbose () {
+	test -z "$verbose_only" && return
+	exec 4>/dev/null 3>/dev/null
+	verbose=
+}
+
+last_verbose=t
+maybe_setup_verbose () {
+	test -z "$verbose_only" && return
+	if match_pattern_list $test_count $verbose_only
+	then
+		exec 4>&2 3>&1
+		# Emit a delimiting blank line when going from
+		# non-verbose to verbose.  Within verbose mode the
+		# delimiter is printed by test_expect_*.  The choice
+		# of the initial $last_verbose is such that before
+		# test 1, we do not print it.
+		test -z "$last_verbose" && echo >&3 ""
+		verbose=t
+	else
+		exec 4>/dev/null 3>/dev/null
+		verbose=
+	fi
+	last_verbose=$verbose
+}
+
+maybe_teardown_valgrind () {
+	test -z "$GIT_VALGRIND" && return
+	GIT_VALGRIND_ENABLED=
+}
+
+maybe_setup_valgrind () {
+	test -z "$GIT_VALGRIND" && return
+	if test -z "$valgrind_only"
+	then
+		GIT_VALGRIND_ENABLED=t
+		return
+	fi
+	GIT_VALGRIND_ENABLED=
+	if match_pattern_list $test_count $valgrind_only
+	then
+		GIT_VALGRIND_ENABLED=t
+	fi
+}
+
 test_eval_ () {
 	# This is a separate function because some tests use
 	# "return" to end a test_expect_success block early.
@@ -337,8 +420,10 @@ test_eval_ () {
 test_run_ () {
 	test_cleanup=:
 	expecting_failure=$2
+	setup_malloc_check
 	test_eval_ "$1"
 	eval_ret=$?
+	teardown_malloc_check
 
 	if test -z "$immediate" || test $eval_ret = 0 || test -n "$expecting_failure"
 	then
@@ -353,17 +438,24 @@ test_run_ () {
 	return "$eval_ret"
 }
 
-test_skip () {
+test_start_ () {
 	test_count=$(($test_count+1))
+	maybe_setup_verbose
+	maybe_setup_valgrind
+}
+
+test_finish_ () {
+	echo >&3 ""
+	maybe_teardown_valgrind
+	maybe_teardown_verbose
+}
+
+test_skip () {
 	to_skip=
-	for skp in $GIT_SKIP_TESTS
-	do
-		case $this_test.$test_count in
-		$skp)
-			to_skip=t
-			break
-		esac
-	done
+	if match_pattern_list $this_test.$test_count $GIT_SKIP_TESTS
+	then
+		to_skip=t
+	fi
 	if test -z "$to_skip" && test -n "$test_prereq" &&
 	   ! test_have_prereq "$test_prereq"
 	then
@@ -489,11 +581,9 @@ then
 
 	make_valgrind_symlink () {
 		# handle only executables, unless they are shell libraries that
-		# need to be in the exec-path.  We will just use "#!" as a
-		# guess for a shell-script, since we have no idea what the user
-		# may have configured as the shell path.
+		# need to be in the exec-path.
 		test -x "$1" ||
-		test "#!" = "$(head -c 2 <"$1")" ||
+		test "# " = "$(head -c 2 <"$1")" ||
 		return;
 
 		base=$(basename "$1")
@@ -538,6 +628,9 @@ then
 	export GIT_VALGRIND
 	GIT_VALGRIND_MODE="$valgrind"
 	export GIT_VALGRIND_MODE
+	GIT_VALGRIND_ENABLED=t
+	test -n "$valgrind_only" && GIT_VALGRIND_ENABLED=
+	export GIT_VALGRIND_ENABLED
 elif test -n "$GIT_TEST_INSTALLED"
 then
 	GIT_EXEC_PATH=$($GIT_TEST_INSTALLED/git --exec-path)  ||
@@ -562,7 +655,6 @@ else # normal case, use ../bin-wrappers only unless $with_dashes:
 	fi
 fi
 GIT_TEMPLATE_DIR="$GIT_BUILD_DIR"/templates/blt
-unset GIT_CONFIG
 GIT_CONFIG_NOSYSTEM=1
 GIT_ATTR_NOSYSTEM=1
 export PATH GIT_EXEC_PATH GIT_TEMPLATE_DIR GIT_CONFIG_NOSYSTEM GIT_ATTR_NOSYSTEM
@@ -583,15 +675,6 @@ test -d "$GIT_BUILD_DIR"/templates/blt || {
 	error "You haven't built things yet, have you?"
 }
 
-if test -z "$GIT_TEST_INSTALLED" && test -z "$NO_PYTHON"
-then
-	GITPYTHONLIB="$GIT_BUILD_DIR/git_remote_helpers/build/lib"
-	export GITPYTHONLIB
-	test -d "$GIT_BUILD_DIR"/git_remote_helpers/build || {
-		error "You haven't built git_remote_helpers yet, have you?"
-	}
-fi
-
 if ! test -x "$GIT_BUILD_DIR"/test-chmtime
 then
 	echo >&2 'You need to build test-chmtime:'
@@ -600,14 +683,14 @@ then
 fi
 
 # Test repository
-test="trash directory.$(basename "$0" .sh)"
-test -n "$root" && test="$root/$test"
-case "$test" in
-/*) TRASH_DIRECTORY="$test" ;;
- *) TRASH_DIRECTORY="$TEST_OUTPUT_DIRECTORY/$test" ;;
+TRASH_DIRECTORY="trash directory.$(basename "$0" .sh)"
+test -n "$root" && TRASH_DIRECTORY="$root/$TRASH_DIRECTORY"
+case "$TRASH_DIRECTORY" in
+/*) ;; # absolute path is good
+ *) TRASH_DIRECTORY="$TEST_OUTPUT_DIRECTORY/$TRASH_DIRECTORY" ;;
 esac
 test ! -z "$debug" || remove_trash=$TRASH_DIRECTORY
-rm -fr "$test" || {
+rm -fr "$TRASH_DIRECTORY" || {
 	GIT_EXIT_OK=t
 	echo >&5 "FATAL: Cannot prepare test area"
 	exit 1
@@ -618,25 +701,22 @@ export HOME
 
 if test -z "$TEST_NO_CREATE_REPO"
 then
-	test_create_repo "$test"
+	test_create_repo "$TRASH_DIRECTORY"
 else
-	mkdir -p "$test"
+	mkdir -p "$TRASH_DIRECTORY"
 fi
 # Use -P to resolve symlinks in our working directory so that the cwd
 # in subprocesses like git equals our $PWD (for pathname comparisons).
-cd -P "$test" || exit 1
+cd -P "$TRASH_DIRECTORY" || exit 1
 
 this_test=${0##*/}
 this_test=${this_test%%-*}
-for skp in $GIT_SKIP_TESTS
-do
-	case "$this_test" in
-	$skp)
-		say_color info >&3 "skipping test $this_test altogether"
-		skip_all="skip all tests in $this_test"
-		test_done
-	esac
-done
+if match_pattern_list "$this_test" $GIT_SKIP_TESTS
+then
+	say_color info >&3 "skipping test $this_test altogether"
+	skip_all="skip all tests in $this_test"
+	test_done
+fi
 
 # Provide an implementation of the 'yes' utility
 yes () {
@@ -676,6 +756,8 @@ case $(uname -s) in
 	test_set_prereq MINGW
 	test_set_prereq NOT_CYGWIN
 	test_set_prereq SED_STRIPS_CR
+	test_set_prereq GREP_STRIPS_CR
+	GIT_TEST_CMP=mingw_test_cmp
 	;;
 *CYGWIN*)
 	test_set_prereq POSIXPERM
@@ -683,6 +765,7 @@ case $(uname -s) in
 	test_set_prereq NOT_MINGW
 	test_set_prereq CYGWIN
 	test_set_prereq SED_STRIPS_CR
+	test_set_prereq GREP_STRIPS_CR
 	;;
 *)
 	test_set_prereq POSIXPERM
@@ -737,12 +820,23 @@ test_i18ngrep () {
 
 test_lazy_prereq PIPE '
 	# test whether the filesystem supports FIFOs
-	rm -f testfifo && mkfifo testfifo
+	case $(uname -s) in
+	CYGWIN*)
+		false
+		;;
+	*)
+		rm -f testfifo && mkfifo testfifo
+		;;
+	esac
 '
 
 test_lazy_prereq SYMLINKS '
 	# test whether the filesystem supports symbolic links
 	ln -s x y && test -h y
+'
+
+test_lazy_prereq FILEMODE '
+	test "$(git config --bool core.filemode)" = true
 '
 
 test_lazy_prereq CASE_INSENSITIVE_FS '

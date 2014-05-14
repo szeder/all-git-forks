@@ -7,6 +7,7 @@
 #include "string-list.h"
 #include "column.h"
 #include "version.h"
+#include "refs.h"
 
 void add_cmdname(struct cmdnames *cmds, const char *name, int len)
 {
@@ -77,8 +78,7 @@ void exclude_cmds(struct cmdnames *cmds, struct cmdnames *excludes)
 	cmds->cnt = cj;
 }
 
-static void pretty_print_string_list(struct cmdnames *cmds,
-				     unsigned int colopts)
+static void pretty_print_cmdnames(struct cmdnames *cmds, unsigned int colopts)
 {
 	struct string_list list = STRING_LIST_INIT_NODUP;
 	struct column_options copts;
@@ -106,10 +106,7 @@ static int is_executable(const char *name)
 	    !S_ISREG(st.st_mode))
 		return 0;
 
-#if defined(WIN32) || defined(__CYGWIN__)
-#if defined(__CYGWIN__)
-if ((st.st_mode & S_IXUSR) == 0)
-#endif
+#if defined(GIT_WINDOWS_NATIVE)
 {	/* cannot trust the executable bit, peek into the file instead */
 	char buf[3] = { 0 };
 	int n;
@@ -150,7 +147,7 @@ static void list_commands_in_dir(struct cmdnames *cmds,
 	while ((de = readdir(dir)) != NULL) {
 		int entlen;
 
-		if (prefixcmp(de->d_name, prefix))
+		if (!starts_with(de->d_name, prefix))
 			continue;
 
 		strbuf_setlen(&buf, len);
@@ -211,14 +208,14 @@ void list_commands(unsigned int colopts,
 		const char *exec_path = git_exec_path();
 		printf_ln(_("available git commands in '%s'"), exec_path);
 		putchar('\n');
-		pretty_print_string_list(main_cmds, colopts);
+		pretty_print_cmdnames(main_cmds, colopts);
 		putchar('\n');
 	}
 
 	if (other_cmds->cnt) {
 		printf_ln(_("git commands available from elsewhere on your $PATH"));
 		putchar('\n');
-		pretty_print_string_list(other_cmds, colopts);
+		pretty_print_cmdnames(other_cmds, colopts);
 		putchar('\n');
 	}
 }
@@ -257,7 +254,7 @@ static int git_unknown_cmd_config(const char *var, const char *value, void *cb)
 	if (!strcmp(var, "help.autocorrect"))
 		autocorrect = git_config_int(var,value);
 	/* Also use aliases for command lookup */
-	if (!prefixcmp(var, "alias."))
+	if (starts_with(var, "alias."))
 		add_cmdname(&aliases, var + 6, strlen(var + 6));
 
 	return git_default_config(var, value, cb);
@@ -331,7 +328,7 @@ const char *help_unknown_cmd(const char *cmd)
 		if ((n < ARRAY_SIZE(common_cmds)) && !cmp) {
 			/* Yes, this is one of the common commands */
 			n++; /* use the entry from common_cmds[] */
-			if (!prefixcmp(candidate, cmd)) {
+			if (starts_with(candidate, cmd)) {
 				/* Give prefix match a very good score */
 				main_cmds.names[i]->len = 0;
 				continue;
@@ -397,6 +394,59 @@ const char *help_unknown_cmd(const char *cmd)
 
 int cmd_version(int argc, const char **argv, const char *prefix)
 {
+	/*
+	 * The format of this string should be kept stable for compatibility
+	 * with external projects that rely on the output of "git version".
+	 */
 	printf("git version %s\n", git_version_string);
 	return 0;
+}
+
+struct similar_ref_cb {
+	const char *base_ref;
+	struct string_list *similar_refs;
+};
+
+static int append_similar_ref(const char *refname, const unsigned char *sha1,
+			      int flags, void *cb_data)
+{
+	struct similar_ref_cb *cb = (struct similar_ref_cb *)(cb_data);
+	char *branch = strrchr(refname, '/') + 1;
+	/* A remote branch of the same name is deemed similar */
+	if (starts_with(refname, "refs/remotes/") &&
+	    !strcmp(branch, cb->base_ref))
+		string_list_append(cb->similar_refs,
+				   refname + strlen("refs/remotes/"));
+	return 0;
+}
+
+static struct string_list guess_refs(const char *ref)
+{
+	struct similar_ref_cb ref_cb;
+	struct string_list similar_refs = STRING_LIST_INIT_NODUP;
+
+	ref_cb.base_ref = ref;
+	ref_cb.similar_refs = &similar_refs;
+	for_each_ref(append_similar_ref, &ref_cb);
+	return similar_refs;
+}
+
+void help_unknown_ref(const char *ref, const char *cmd, const char *error)
+{
+	int i;
+	struct string_list suggested_refs = guess_refs(ref);
+
+	fprintf_ln(stderr, _("%s: %s - %s"), cmd, ref, error);
+
+	if (suggested_refs.nr > 0) {
+		fprintf_ln(stderr,
+			   Q_("\nDid you mean this?",
+			      "\nDid you mean one of these?",
+			      suggested_refs.nr));
+		for (i = 0; i < suggested_refs.nr; i++)
+			fprintf(stderr, "\t%s\n", suggested_refs.items[i].string);
+	}
+
+	string_list_clear(&suggested_refs, 0);
+	exit(1);
 }

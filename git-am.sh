@@ -4,9 +4,10 @@
 
 SUBDIRECTORY_OK=Yes
 OPTIONS_KEEPDASHDASH=
+OPTIONS_STUCKLONG=t
 OPTIONS_SPEC="\
 git am [options] [(<mbox>|<Maildir>)...]
-git am [options] (--resolved | --skip | --abort)
+git am [options] (--continue | --skip | --abort)
 --
 i,interactive   run interactively
 b,binary*       (historical option -- no-op)
@@ -37,6 +38,7 @@ abort           restore the original branch and abort the patching operation.
 committer-date-is-author-date    lie about committer date
 ignore-date     use current timestamp for author date
 rerere-autoupdate update the index with reused conflict resolution if possible
+S,gpg-sign?     GPG-sign commits
 rebasing*       (internal use for git-rebase)"
 
 . git-sh-setup
@@ -102,7 +104,7 @@ stop_here_user_resolve () {
 	    printf '%s\n' "$resolvemsg"
 	    stop_here $1
     fi
-    eval_gettextln "When you have resolved this problem, run \"\$cmdline --resolved\".
+    eval_gettextln "When you have resolved this problem, run \"\$cmdline --continue\".
 If you prefer to skip this patch, run \"\$cmdline --skip\" instead.
 To restore the original branch and stop patching, run \"\$cmdline --abort\"."
 
@@ -123,7 +125,7 @@ cannot_fallback () {
 }
 
 fall_back_3way () {
-    O_OBJECT=`cd "$GIT_OBJECT_DIRECTORY" && pwd`
+    O_OBJECT=$(cd "$GIT_OBJECT_DIRECTORY" && pwd)
 
     rm -fr "$dotest"/patch-merge-*
     mkdir "$dotest/patch-merge-tmp-dir"
@@ -273,7 +275,7 @@ split_patches () {
 		then
 			clean_abort "$(gettext "Only one StGIT patch series can be applied at once")"
 		fi
-		series_dir=`dirname "$1"`
+		series_dir=$(dirname "$1")
 		series_file="$1"
 		shift
 		{
@@ -296,13 +298,13 @@ split_patches () {
 		this=0
 		for stgit in "$@"
 		do
-			this=`expr "$this" + 1`
-			msgnum=`printf "%0${prec}d" $this`
+			this=$(expr "$this" + 1)
+			msgnum=$(printf "%0${prec}d" $this)
 			# Perl version of StGIT parse_patch. The first nonemptyline
 			# not starting with Author, From or Date is the
 			# subject, and the body starts with the next nonempty
 			# line not starting with Author, From or Date
-			perl -ne 'BEGIN { $subject = 0 }
+			@@PERL@@ -ne 'BEGIN { $subject = 0 }
 				if ($subject > 1) { print ; }
 				elsif (/^\s+$/) { next ; }
 				elsif (/^Author:/) { s/Author/From/ ; print ;}
@@ -334,7 +336,7 @@ split_patches () {
 			# Since we cannot guarantee that the commit message is in
 			# git-friendly format, we put no Subject: line and just consume
 			# all of the message as the body
-			LANG=C LC_ALL=C perl -M'POSIX qw(strftime)' -ne 'BEGIN { $subject = 0 }
+			LANG=C LC_ALL=C @@PERL@@ -M'POSIX qw(strftime)' -ne 'BEGIN { $subject = 0 }
 				if ($subject) { print ; }
 				elsif (/^\# User /) { s/\# User/From:/ ; print ; }
 				elsif (/^\# Date /) {
@@ -374,6 +376,7 @@ git_apply_opt=
 committer_date_is_author_date=
 ignore_date=
 allow_rerere_autoupdate=
+gpg_sign_opt=
 
 if test "$(git config --bool --get am.keepcr)" = true
 then
@@ -413,14 +416,14 @@ it will be removed. Please do not use it anymore."
 		abort=t ;;
 	--rebasing)
 		rebasing=t threeway=t ;;
-	--resolvemsg)
-		shift; resolvemsg=$1 ;;
-	--whitespace|--directory|--exclude|--include)
-		git_apply_opt="$git_apply_opt $(sq "$1=$2")"; shift ;;
-	-C|-p)
-		git_apply_opt="$git_apply_opt $(sq "$1$2")"; shift ;;
-	--patch-format)
-		shift ; patch_format="$1" ;;
+	--resolvemsg=*)
+		resolvemsg="${1#--resolvemsg=}" ;;
+	--whitespace=*|--directory=*|--exclude=*|--include=*)
+		git_apply_opt="$git_apply_opt $(sq "$1")" ;;
+	-C*|-p*)
+		git_apply_opt="$git_apply_opt $(sq "$1")" ;;
+	--patch-format=*)
+		patch_format="${1#--patch-format=}" ;;
 	--reject|--ignore-whitespace|--ignore-space-change)
 		git_apply_opt="$git_apply_opt $1" ;;
 	--committer-date-is-author-date)
@@ -435,6 +438,10 @@ it will be removed. Please do not use it anymore."
 		keepcr=t ;;
 	--no-keep-cr)
 		keepcr=f ;;
+	--gpg-sign)
+		gpg_sign_opt=-S ;;
+	--gpg-sign=*)
+		gpg_sign_opt="-S${1#--gpg-sign=}" ;;
 	--)
 		shift; break ;;
 	*)
@@ -446,6 +453,8 @@ done
 # If the dotest directory exists, but we have finished applying all the
 # patches in them, clear it out.
 if test -d "$dotest" &&
+   test -f "$dotest/last" &&
+   test -f "$dotest/next" &&
    last=$(cat "$dotest/last") &&
    next=$(cat "$dotest/next") &&
    test $# != 0 &&
@@ -454,7 +463,7 @@ then
    rm -fr "$dotest"
 fi
 
-if test -d "$dotest"
+if test -d "$dotest" && test -f "$dotest/last" && test -f "$dotest/next"
 then
 	case "$#,$skip$resolved$abort" in
 	0,*t*)
@@ -504,7 +513,24 @@ then
 	esac
 	rm -f "$dotest/dirtyindex"
 else
-	# Make sure we are not given --skip, --resolved, nor --abort
+	# Possible stray $dotest directory in the independent-run
+	# case; in the --rebasing case, it is upto the caller
+	# (git-rebase--am) to take care of stray directories.
+	if test -d "$dotest" && test -z "$rebasing"
+	then
+		case "$skip,$resolved,$abort" in
+		,,t)
+			rm -fr "$dotest"
+			exit 0
+			;;
+		*)
+			die "$(eval_gettext "Stray \$dotest directory found.
+Use \"git am --abort\" to remove it.")"
+			;;
+		esac
+	fi
+
+	# Make sure we are not given --skip, --continue, or --abort
 	test "$skip$resolved$abort" = "" ||
 		die "$(gettext "Resolve operation not in progress, we are not resuming.")"
 
@@ -618,26 +644,26 @@ fi
 git_apply_opt=$(cat "$dotest/apply-opt")
 if test "$(cat "$dotest/sign")" = t
 then
-	SIGNOFF=`git var GIT_COMMITTER_IDENT | sed -e '
+	SIGNOFF=$(git var GIT_COMMITTER_IDENT | sed -e '
 			s/>.*/>/
 			s/^/Signed-off-by: /'
-		`
+		)
 else
 	SIGNOFF=
 fi
 
-last=`cat "$dotest/last"`
-this=`cat "$dotest/next"`
+last=$(cat "$dotest/last")
+this=$(cat "$dotest/next")
 if test "$skip" = t
 then
-	this=`expr "$this" + 1`
+	this=$(expr "$this" + 1)
 	resume=
 fi
 
 while test "$this" -le "$last"
 do
-	msgnum=`printf "%0${prec}d" $this`
-	next=`expr "$this" + 1`
+	msgnum=$(printf "%0${prec}d" $this)
+	next=$(expr "$this" + 1)
 	test -f "$dotest/$msgnum" || {
 		resume=
 		go_next
@@ -651,7 +677,7 @@ do
 	#  - patch is the patch body.
 	#
 	# When we are resuming, these files are either already prepared
-	# by the user, or the user can tell us to do so by --resolved flag.
+	# by the user, or the user can tell us to do so by --continue flag.
 	case "$resume" in
 	'')
 		if test -f "$dotest/rebasing"
@@ -713,16 +739,16 @@ To restore the original branch and stop patching run \"\$cmdline --abort\"."
 	'')
 	    if test '' != "$SIGNOFF"
 	    then
-		LAST_SIGNED_OFF_BY=`
+		LAST_SIGNED_OFF_BY=$(
 		    sed -ne '/^Signed-off-by: /p' \
 		    "$dotest/msg-clean" |
 		    sed -ne '$p'
-		`
-		ADD_SIGNOFF=`
+		)
+		ADD_SIGNOFF=$(
 		    test "$LAST_SIGNED_OFF_BY" = "$SIGNOFF" || {
 		    test '' = "$LAST_SIGNED_OFF_BY" && echo
 		    echo "$SIGNOFF"
-		}`
+		})
 	    else
 		ADD_SIGNOFF=
 	    fi
@@ -880,7 +906,8 @@ did you forget to use 'git add'?"
 			GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"
 			export GIT_COMMITTER_DATE
 		fi &&
-		git commit-tree $tree ${parent:+-p} $parent <"$dotest/final-commit"
+		git commit-tree ${parent:+-p} $parent ${gpg_sign_opt:+"$gpg_sign_opt"} $tree  \
+			<"$dotest/final-commit"
 	) &&
 	git update-ref -m "$GIT_REFLOG_ACTION: $FIRSTLINE" HEAD $commit $parent ||
 	stop_here $this
@@ -904,5 +931,10 @@ if test -s "$dotest"/rewritten; then
     fi
 fi
 
-rm -fr "$dotest"
-git gc --auto
+# If am was called with --rebasing (from git-rebase--am), it's up to
+# the caller to take care of housekeeping.
+if ! test -f "$dotest/rebasing"
+then
+	rm -fr "$dotest"
+	git gc --auto
+fi

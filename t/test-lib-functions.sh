@@ -1,4 +1,5 @@
-#!/bin/sh
+# Library of functions shared by all tests scripts, included by
+# test-lib.sh.
 #
 # Copyright (c) 2005 Junio C Hamano
 #
@@ -29,6 +30,11 @@ test_set_editor () {
 	export FAKE_EDITOR
 	EDITOR='"$FAKE_EDITOR"'
 	export EDITOR
+}
+
+test_set_index_version () {
+    GIT_INDEX_VERSION="$1"
+    export GIT_INDEX_VERSION
 }
 
 test_decode_color () {
@@ -76,11 +82,11 @@ test_decode_color () {
 }
 
 nul_to_q () {
-	"$PERL_PATH" -pe 'y/\000/Q/'
+	perl -pe 'y/\000/Q/'
 }
 
 q_to_nul () {
-	"$PERL_PATH" -pe 'y/Q/\000/'
+	perl -pe 'y/Q/\000/'
 }
 
 q_to_cr () {
@@ -343,6 +349,7 @@ test_declared_prereq () {
 }
 
 test_expect_failure () {
+	test_start_
 	test "$#" = 3 && { test_prereq=$1; shift; } || test_prereq=
 	test "$#" = 2 ||
 	error "bug in the test script: not 2 or 3 parameters to test-expect-failure"
@@ -357,10 +364,11 @@ test_expect_failure () {
 			test_known_broken_failure_ "$1"
 		fi
 	fi
-	echo >&3 ""
+	test_finish_
 }
 
 test_expect_success () {
+	test_start_
 	test "$#" = 3 && { test_prereq=$1; shift; } || test_prereq=
 	test "$#" = 2 ||
 	error "bug in the test script: not 2 or 3 parameters to test-expect-success"
@@ -375,7 +383,7 @@ test_expect_success () {
 			test_failure_ "$@"
 		fi
 	fi
-	echo >&3 ""
+	test_finish_
 }
 
 # test_external runs external test scripts that provide continuous
@@ -609,6 +617,18 @@ test_cmp() {
 	$GIT_TEST_CMP "$@"
 }
 
+# Check if the file expected to be empty is indeed empty, and barfs
+# otherwise.
+
+test_must_be_empty () {
+	if test -s "$1"
+	then
+		echo "'$1' is not empty, it contains:"
+		cat "$1"
+		return 1
+	fi
+}
+
 # Tests that its two parameters refer to the same revision
 test_cmp_rev () {
 	git rev-parse --verify "$1" >expect.rev &&
@@ -634,7 +654,7 @@ test_seq () {
 	2)	;;
 	*)	error "bug in the test script: not 1 or 2 parameters to test_seq" ;;
 	esac
-	"$PERL_PATH" -le 'print for $ARGV[0]..$ARGV[1]' -- "$@"
+	perl -le 'print for $ARGV[0]..$ARGV[1]' -- "$@"
 }
 
 # This function can be used to schedule some commands to be run
@@ -678,4 +698,149 @@ test_create_repo () {
 		error "cannot run git init -- have you built things yet?"
 		mv .git/hooks .git/hooks-disabled
 	) || exit
+}
+
+# This function helps on symlink challenged file systems when it is not
+# important that the file system entry is a symbolic link.
+# Use test_ln_s_add instead of "ln -s x y && git add y" to add a
+# symbolic link entry y to the index.
+
+test_ln_s_add () {
+	if test_have_prereq SYMLINKS
+	then
+		ln -s "$1" "$2" &&
+		git update-index --add "$2"
+	else
+		printf '%s' "$1" >"$2" &&
+		ln_s_obj=$(git hash-object -w "$2") &&
+		git update-index --add --cacheinfo 120000 $ln_s_obj "$2"
+	fi
+}
+
+perl () {
+	command "$PERL_PATH" "$@"
+}
+
+# Is the value one of the various ways to spell a boolean true/false?
+test_normalize_bool () {
+	git -c magic.variable="$1" config --bool magic.variable 2>/dev/null
+}
+
+# Given a variable $1, normalize the value of it to one of "true",
+# "false", or "auto" and store the result to it.
+#
+#     test_tristate GIT_TEST_HTTPD
+#
+# A variable set to an empty string is set to 'false'.
+# A variable set to 'false' or 'auto' keeps its value.
+# Anything else is set to 'true'.
+# An unset variable defaults to 'auto'.
+#
+# The last rule is to allow people to set the variable to an empty
+# string and export it to decline testing the particular feature
+# for versions both before and after this change.  We used to treat
+# both unset and empty variable as a signal for "do not test" and
+# took any non-empty string as "please test".
+
+test_tristate () {
+	if eval "test x\"\${$1+isset}\" = xisset"
+	then
+		# explicitly set
+		eval "
+			case \"\$$1\" in
+			'')	$1=false ;;
+			auto)	;;
+			*)	$1=\$(test_normalize_bool \$$1 || echo true) ;;
+			esac
+		"
+	else
+		eval "$1=auto"
+	fi
+}
+
+# Exit the test suite, either by skipping all remaining tests or by
+# exiting with an error. If "$1" is "auto", we then we assume we were
+# opportunistically trying to set up some tests and we skip. If it is
+# "true", then we report a failure.
+#
+# The error/skip message should be given by $2.
+#
+test_skip_or_die () {
+	case "$1" in
+	auto)
+		skip_all=$2
+		test_done
+		;;
+	true)
+		error "$2"
+		;;
+	*)
+		error "BUG: test tristate is '$1' (real error: $2)"
+	esac
+}
+
+# The following mingw_* functions obey POSIX shell syntax, but are actually
+# bash scripts, and are meant to be used only with bash on Windows.
+
+# A test_cmp function that treats LF and CRLF equal and avoids to fork
+# diff when possible.
+mingw_test_cmp () {
+	# Read text into shell variables and compare them. If the results
+	# are different, use regular diff to report the difference.
+	local test_cmp_a= test_cmp_b=
+
+	# When text came from stdin (one argument is '-') we must feed it
+	# to diff.
+	local stdin_for_diff=
+
+	# Since it is difficult to detect the difference between an
+	# empty input file and a failure to read the files, we go straight
+	# to diff if one of the inputs is empty.
+	if test -s "$1" && test -s "$2"
+	then
+		# regular case: both files non-empty
+		mingw_read_file_strip_cr_ test_cmp_a <"$1"
+		mingw_read_file_strip_cr_ test_cmp_b <"$2"
+	elif test -s "$1" && test "$2" = -
+	then
+		# read 2nd file from stdin
+		mingw_read_file_strip_cr_ test_cmp_a <"$1"
+		mingw_read_file_strip_cr_ test_cmp_b
+		stdin_for_diff='<<<"$test_cmp_b"'
+	elif test "$1" = - && test -s "$2"
+	then
+		# read 1st file from stdin
+		mingw_read_file_strip_cr_ test_cmp_a
+		mingw_read_file_strip_cr_ test_cmp_b <"$2"
+		stdin_for_diff='<<<"$test_cmp_a"'
+	fi
+	test -n "$test_cmp_a" &&
+	test -n "$test_cmp_b" &&
+	test "$test_cmp_a" = "$test_cmp_b" ||
+	eval "diff -u \"\$@\" $stdin_for_diff"
+}
+
+# $1 is the name of the shell variable to fill in
+mingw_read_file_strip_cr_ () {
+	# Read line-wise using LF as the line separator
+	# and use IFS to strip CR.
+	local line
+	while :
+	do
+		if IFS=$'\r' read -r -d $'\n' line
+		then
+			# good
+			line=$line$'\n'
+		else
+			# we get here at EOF, but also if the last line
+			# was not terminated by LF; in the latter case,
+			# some text was read
+			if test -z "$line"
+			then
+				# EOF, really
+				break
+			fi
+		fi
+		eval "$1=\$$1\$line"
+	done
 }

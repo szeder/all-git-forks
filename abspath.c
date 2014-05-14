@@ -110,7 +110,7 @@ static const char *real_path_internal(const char *path, int die_on_error)
 				else
 					goto error_out;
 			}
-			if (len && !is_dir_sep(buf[len-1]))
+			if (len && !is_dir_sep(buf[len - 1]))
 				buf[len++] = '/';
 			strcpy(buf + len, last_elem);
 			free(last_elem);
@@ -143,7 +143,7 @@ static const char *real_path_internal(const char *path, int die_on_error)
 error_out:
 	free(last_elem);
 	if (*cwd && chdir(cwd))
-		die_errno ("Could not change back to '%s'", cwd);
+		die_errno("Could not change back to '%s'", cwd);
 
 	return retval;
 }
@@ -201,7 +201,7 @@ const char *absolute_path(const char *path)
 		if (!cwd)
 			die_errno("Cannot determine the current working directory");
 		len = strlen(cwd);
-		fmt = (len > 0 && is_dir_sep(cwd[len-1])) ? "%s%s" : "%s/%s";
+		fmt = (len > 0 && is_dir_sep(cwd[len - 1])) ? "%s%s" : "%s/%s";
 		if (snprintf(buf, PATH_MAX, fmt, cwd, path) >= PATH_MAX)
 			die("Too long path: %.*s", 60, path);
 	}
@@ -215,23 +215,25 @@ const char *absolute_path(const char *path)
  */
 const char *prefix_filename(const char *pfx, int pfx_len, const char *arg)
 {
-	static char path[PATH_MAX];
-#ifndef WIN32
+	static struct strbuf path = STRBUF_INIT;
+#ifndef GIT_WINDOWS_NATIVE
 	if (!pfx_len || is_absolute_path(arg))
 		return arg;
-	memcpy(path, pfx, pfx_len);
-	strcpy(path + pfx_len, arg);
+	strbuf_reset(&path);
+	strbuf_add(&path, pfx, pfx_len);
+	strbuf_addstr(&path, arg);
 #else
 	char *p;
 	/* don't add prefix to absolute paths, but still replace '\' by '/' */
+	strbuf_reset(&path);
 	if (is_absolute_path(arg))
 		pfx_len = 0;
 	else if (pfx_len)
-		memcpy(path, pfx, pfx_len);
-	strcpy(path + pfx_len, arg);
-	for (p = path + pfx_len; *p; p++)
+		strbuf_add(&path, pfx, pfx_len);
+	strbuf_addstr(&path, arg);
+	for (p = path.buf + pfx_len; *p; p++)
 		if (*p == '\\')
 			*p = '/';
 #endif
-	return path;
+	return path.buf;
 }

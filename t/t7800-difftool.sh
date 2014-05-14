@@ -356,6 +356,13 @@ run_dir_diff_test 'difftool --dir-diff from subdirectory' '
 	)
 '
 
+run_dir_diff_test 'difftool --dir-diff when worktree file is missing' '
+	test_when_finished git reset --hard &&
+	rm file2 &&
+	git difftool --dir-diff $symlinks --extcmd ls branch master >output &&
+	grep file2 output
+'
+
 write_script .git/CHECK_SYMLINKS <<\EOF
 for f in file file2 sub/sub
 do
@@ -376,6 +383,25 @@ test_expect_success PERL,SYMLINKS 'difftool --dir-diff --symlink without unstage
 	git difftool --dir-diff --symlink \
 		--extcmd "./.git/CHECK_SYMLINKS" branch HEAD &&
 	test_cmp actual expect
+'
+
+write_script modify-right-file <<\EOF
+echo "new content" >"$2/file"
+EOF
+
+run_dir_diff_test 'difftool --dir-diff syncs worktree with unstaged change' '
+	test_when_finished git reset --hard &&
+	echo "orig content" >file &&
+	git difftool -d $symlinks --extcmd "$(pwd)/modify-right-file" branch &&
+	echo "new content" >expect &&
+	test_cmp expect file
+'
+
+run_dir_diff_test 'difftool --dir-diff syncs worktree without unstaged change' '
+	test_when_finished git reset --hard &&
+	git difftool -d $symlinks --extcmd "$(pwd)/modify-right-file" branch &&
+	echo "new content" >expect &&
+	test_cmp expect file
 '
 
 write_script modify-file <<\EOF
@@ -405,6 +431,20 @@ test_expect_success PERL 'difftool --no-symlinks detects conflict ' '
 		test_cmp expect file &&
 		echo "tmp content" >expect &&
 		test_cmp expect "$(cat tmpdir)/file"
+	)
+'
+
+test_expect_success PERL 'difftool properly honors gitlink and core.worktree' '
+	git submodule add ./. submod/ule &&
+	(
+		cd submod/ule &&
+		test_config diff.tool checktrees &&
+		test_config difftool.checktrees.cmd '\''
+			test -d "$LOCAL" && test -d "$REMOTE" && echo good
+		'\'' &&
+		echo good >expect &&
+		git difftool --tool=checktrees --dir-diff HEAD~ >actual &&
+		test_cmp expect actual
 	)
 '
 

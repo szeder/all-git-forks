@@ -94,8 +94,7 @@ static int tree_is_complete(const unsigned char *sha1)
 			complete = 0;
 		}
 	}
-	free(tree->buffer);
-	tree->buffer = NULL;
+	free_tree_buffer(tree);
 
 	if (complete)
 		tree->object.flags |= SEEN;
@@ -366,7 +365,7 @@ static int expire_reflog(const char *ref, const unsigned char *sha1, int unused,
 	 * we take the lock for the ref itself to prevent it from
 	 * getting updated.
 	 */
-	lock = lock_any_ref_for_update(ref, sha1, 0);
+	lock = lock_any_ref_for_update(ref, sha1, 0, NULL);
 	if (!lock)
 		return error("cannot lock ref '%s'", ref);
 	log_file = git_pathdup("logs/%s", ref);
@@ -496,11 +495,9 @@ static int parse_expire_cfg_value(const char *var, const char *value, unsigned l
 {
 	if (!value)
 		return config_error_nonbool(var);
-	if (!strcmp(value, "never") || !strcmp(value, "false")) {
-		*expire = 0;
-		return 0;
-	}
-	*expire = approxidate(value);
+	if (parse_expiry_date(value, expire))
+		return error(_("%s' for '%s' is not a valid timestamp"),
+			     value, var);
 	return 0;
 }
 
@@ -564,7 +561,7 @@ static void set_reflog_expiry_param(struct cmd_reflog_expire_cb *cb, int slot, c
 		return; /* both given explicitly -- nothing to tweak */
 
 	for (ent = reflog_expire_cfg; ent; ent = ent->next) {
-		if (!fnmatch(ent->pattern, ref, 0)) {
+		if (!wildmatch(ent->pattern, ref, 0, NULL)) {
 			if (!(slot & EXPIRE_TOTAL))
 				cb->expire_total = ent->expire_total;
 			if (!(slot & EXPIRE_UNREACH))
@@ -613,12 +610,14 @@ static int cmd_reflog_expire(int argc, const char **argv, const char *prefix)
 		const char *arg = argv[i];
 		if (!strcmp(arg, "--dry-run") || !strcmp(arg, "-n"))
 			cb.dry_run = 1;
-		else if (!prefixcmp(arg, "--expire=")) {
-			cb.expire_total = approxidate(arg + 9);
+		else if (starts_with(arg, "--expire=")) {
+			if (parse_expiry_date(arg + 9, &cb.expire_total))
+				die(_("'%s' is not a valid timestamp"), arg);
 			explicit_expiry |= EXPIRE_TOTAL;
 		}
-		else if (!prefixcmp(arg, "--expire-unreachable=")) {
-			cb.expire_unreachable = approxidate(arg + 21);
+		else if (starts_with(arg, "--expire-unreachable=")) {
+			if (parse_expiry_date(arg + 21, &cb.expire_unreachable))
+				die(_("'%s' is not a valid timestamp"), arg);
 			explicit_expiry |= EXPIRE_UNREACH;
 		}
 		else if (!strcmp(arg, "--stale-fix"))

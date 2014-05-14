@@ -146,6 +146,12 @@ test_expect_success 'signed-tags=strip' '
 
 '
 
+test_expect_success 'signed-tags=warn-strip' '
+	git fast-export --signed-tags=warn-strip sign-your-name >output 2>err &&
+	! grep PGP output &&
+	test -s err
+'
+
 test_expect_success 'setup submodule' '
 
 	git checkout -f master &&
@@ -390,7 +396,7 @@ test_expect_success 'tree_tag-obj'    'git fast-export tree_tag-obj'
 test_expect_success 'tag-obj_tag'     'git fast-export tag-obj_tag'
 test_expect_success 'tag-obj_tag-obj' 'git fast-export tag-obj_tag-obj'
 
-test_expect_success SYMLINKS 'directory becomes symlink'        '
+test_expect_success 'directory becomes symlink'        '
 	git init dirtosymlink &&
 	git init result &&
 	(
@@ -402,8 +408,7 @@ test_expect_success SYMLINKS 'directory becomes symlink'        '
 		git add foo/world bar/world &&
 		git commit -q -mone &&
 		git rm -r foo &&
-		ln -s bar foo &&
-		git add foo &&
+		test_ln_s_add bar foo &&
 		git commit -q -mtwo
 	) &&
 	(
@@ -424,7 +429,7 @@ test_expect_success 'fast-export quotes pathnames' '
 		--cacheinfo 100644 $blob "path with \\backslash" \
 		--cacheinfo 100644 $blob "path with space" &&
 	 git commit -m addition &&
-	 git ls-files -z -s | "$PERL_PATH" -0pe "s{\\t}{$&subdir/}" >index &&
+	 git ls-files -z -s | perl -0pe "s{\\t}{$&subdir/}" >index &&
 	 git read-tree --empty &&
 	 git update-index -z --index-info <index &&
 	 git commit -m rename &&

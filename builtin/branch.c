@@ -41,13 +41,15 @@ static char branch_colors[][COLOR_MAXLEN] = {
 	GIT_COLOR_RED,		/* REMOTE */
 	GIT_COLOR_NORMAL,	/* LOCAL */
 	GIT_COLOR_GREEN,	/* CURRENT */
+	GIT_COLOR_BLUE,		/* UPSTREAM */
 };
 enum color_branch {
 	BRANCH_COLOR_RESET = 0,
 	BRANCH_COLOR_PLAIN = 1,
 	BRANCH_COLOR_REMOTE = 2,
 	BRANCH_COLOR_LOCAL = 3,
-	BRANCH_COLOR_CURRENT = 4
+	BRANCH_COLOR_CURRENT = 4,
+	BRANCH_COLOR_UPSTREAM = 5
 };
 
 static enum merge_filter {
@@ -72,18 +74,20 @@ static int parse_branch_color_slot(const char *var, int ofs)
 		return BRANCH_COLOR_LOCAL;
 	if (!strcasecmp(var+ofs, "current"))
 		return BRANCH_COLOR_CURRENT;
+	if (!strcasecmp(var+ofs, "upstream"))
+		return BRANCH_COLOR_UPSTREAM;
 	return -1;
 }
 
 static int git_branch_config(const char *var, const char *value, void *cb)
 {
-	if (!prefixcmp(var, "column."))
+	if (starts_with(var, "column."))
 		return git_column_config(var, value, "branch", &colopts);
 	if (!strcmp(var, "color.branch")) {
 		branch_use_color = git_config_colorbool(var, value);
 		return 0;
 	}
-	if (!prefixcmp(var, "color.branch.")) {
+	if (starts_with(var, "color.branch.")) {
 		int slot = parse_branch_color_slot(var, 13);
 		if (slot < 0)
 			return 0;
@@ -311,7 +315,7 @@ static int match_patterns(const char **pattern, const char *refname)
 	if (!*pattern)
 		return 1; /* no pattern always matches */
 	while (*pattern) {
-		if (!fnmatch(*pattern, refname, 0))
+		if (!wildmatch(*pattern, refname, 0, NULL))
 			return 1;
 		pattern++;
 	}
@@ -418,37 +422,65 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 	int ours, theirs;
 	char *ref = NULL;
 	struct branch *branch = branch_get(branch_name);
+	struct strbuf fancy = STRBUF_INIT;
+	int upstream_is_gone = 0;
+	int added_decoration = 1;
 
-	if (!stat_tracking_info(branch, &ours, &theirs)) {
-		if (branch && branch->merge && branch->merge[0]->dst &&
-		    show_upstream_ref)
-			strbuf_addf(stat, "[%s] ",
-			    shorten_unambiguous_ref(branch->merge[0]->dst, 0));
+	switch (stat_tracking_info(branch, &ours, &theirs)) {
+	case 0:
+		/* no base */
 		return;
+	case -1:
+		/* with "gone" base */
+		upstream_is_gone = 1;
+		break;
+	default:
+		/* with base */
+		break;
 	}
 
-	if (show_upstream_ref)
+	if (show_upstream_ref) {
 		ref = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
-	if (!ours) {
-		if (ref)
-			strbuf_addf(stat, _("[%s: behind %d]"), ref, theirs);
+		if (want_color(branch_use_color))
+			strbuf_addf(&fancy, "%s%s%s",
+					branch_get_color(BRANCH_COLOR_UPSTREAM),
+					ref, branch_get_color(BRANCH_COLOR_RESET));
+		else
+			strbuf_addstr(&fancy, ref);
+	}
+
+	if (upstream_is_gone) {
+		if (show_upstream_ref)
+			strbuf_addf(stat, _("[%s: gone]"), fancy.buf);
+		else
+			added_decoration = 0;
+	} else if (!ours && !theirs) {
+		if (show_upstream_ref)
+			strbuf_addf(stat, _("[%s]"), fancy.buf);
+		else
+			added_decoration = 0;
+	} else if (!ours) {
+		if (show_upstream_ref)
+			strbuf_addf(stat, _("[%s: behind %d]"), fancy.buf, theirs);
 		else
 			strbuf_addf(stat, _("[behind %d]"), theirs);
 
 	} else if (!theirs) {
-		if (ref)
-			strbuf_addf(stat, _("[%s: ahead %d]"), ref, ours);
+		if (show_upstream_ref)
+			strbuf_addf(stat, _("[%s: ahead %d]"), fancy.buf, ours);
 		else
 			strbuf_addf(stat, _("[ahead %d]"), ours);
 	} else {
-		if (ref)
+		if (show_upstream_ref)
 			strbuf_addf(stat, _("[%s: ahead %d, behind %d]"),
-				    ref, ours, theirs);
+				    fancy.buf, ours, theirs);
 		else
 			strbuf_addf(stat, _("[ahead %d, behind %d]"),
 				    ours, theirs);
 	}
-	strbuf_addch(stat, ' ');
+	strbuf_release(&fancy);
+	if (added_decoration)
+		strbuf_addch(stat, ' ');
 	free(ref);
 }
 
@@ -470,7 +502,7 @@ static void add_verbose_info(struct strbuf *out, struct ref_item *item,
 	const char *sub = _(" **** invalid ref ****");
 	struct commit *commit = item->commit;
 
-	if (commit && !parse_commit(commit)) {
+	if (!parse_commit(commit)) {
 		pp_commit_easy(CMIT_FMT_ONELINE, commit, &subject);
 		sub = subject.buf;
 	}
@@ -777,7 +809,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		OPT_SET_INT( 0, "set-upstream",  &track, N_("change upstream info"),
 			BRANCH_TRACK_OVERRIDE),
 		OPT_STRING('u', "set-upstream-to", &new_upstream, "upstream", "change the upstream info"),
-		OPT_BOOLEAN(0, "unset-upstream", &unset_upstream, "Unset the upstream info"),
+		OPT_BOOL(0, "unset-upstream", &unset_upstream, "Unset the upstream info"),
 		OPT__COLOR(&branch_use_color, N_("use colored output")),
 		OPT_SET_INT('r', "remotes",     &kinds, N_("act on remote-tracking branches"),
 			REF_REMOTE_BRANCH),
@@ -802,10 +834,10 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		OPT_BIT('D', NULL, &delete, N_("delete branch (even if not merged)"), 2),
 		OPT_BIT('m', "move", &rename, N_("move/rename a branch and its reflog"), 1),
 		OPT_BIT('M', NULL, &rename, N_("move/rename a branch, even if target exists"), 2),
-		OPT_BOOLEAN(0, "list", &list, N_("list branch names")),
-		OPT_BOOLEAN('l', "create-reflog", &reflog, N_("create the branch's reflog")),
-		OPT_BOOLEAN(0, "edit-description", &edit_description,
-			    N_("edit the description for the branch")),
+		OPT_BOOL(0, "list", &list, N_("list branch names")),
+		OPT_BOOL('l', "create-reflog", &reflog, N_("create the branch's reflog")),
+		OPT_BOOL(0, "edit-description", &edit_description,
+			 N_("edit the description for the branch")),
 		OPT__FORCE(&force_create, N_("force creation (when already exists)")),
 		{
 			OPTION_CALLBACK, 0, "no-merged", &merge_filter_ref,
@@ -836,7 +868,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 	if (!strcmp(head, "HEAD")) {
 		detached = 1;
 	} else {
-		if (prefixcmp(head, "refs/heads/"))
+		if (!starts_with(head, "refs/heads/"))
 			die(_("HEAD not found below refs/heads!"));
 		head += 11;
 	}
@@ -852,7 +884,8 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 	if (with_commit || merge_filter != NO_FILTER)
 		list = 1;
 
-	if (!!delete + !!rename + !!force_create + !!list + !!new_upstream + !!unset_upstream > 1)
+	if (!!delete + !!rename + !!force_create + !!new_upstream +
+	    list + unset_upstream > 1)
 		usage_with_options(builtin_branch_usage, options);
 
 	if (abbrev == -1)
@@ -948,9 +981,8 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 			die(_("no such branch '%s'"), argv[0]);
 		}
 
-		if (!branch_has_merge_config(branch)) {
+		if (!branch_has_merge_config(branch))
 			die(_("Branch '%s' has no upstream information"), branch->name);
-		}
 
 		strbuf_addf(&buf, "branch.%s.remote", branch->name);
 		git_config_set_multivar(buf.buf, NULL, NULL, 1);

@@ -18,7 +18,6 @@
 #include "transport.h"
 #include "strbuf.h"
 #include "dir.h"
-#include "pack-refs.h"
 #include "sigchain.h"
 #include "branch.h"
 #include "remote.h"
@@ -63,23 +62,22 @@ static struct option builtin_clone_options[] = {
 	OPT__VERBOSITY(&option_verbosity),
 	OPT_BOOL(0, "progress", &option_progress,
 		 N_("force progress reporting")),
-	OPT_BOOLEAN('n', "no-checkout", &option_no_checkout,
-		    N_("don't create a checkout")),
-	OPT_BOOLEAN(0, "bare", &option_bare, N_("create a bare repository")),
-	{ OPTION_BOOLEAN, 0, "naked", &option_bare, NULL,
-		N_("create a bare repository"),
-		PARSE_OPT_NOARG | PARSE_OPT_HIDDEN },
-	OPT_BOOLEAN(0, "mirror", &option_mirror,
-		    N_("create a mirror repository (implies bare)")),
+	OPT_BOOL('n', "no-checkout", &option_no_checkout,
+		 N_("don't create a checkout")),
+	OPT_BOOL(0, "bare", &option_bare, N_("create a bare repository")),
+	OPT_HIDDEN_BOOL(0, "naked", &option_bare,
+			N_("create a bare repository")),
+	OPT_BOOL(0, "mirror", &option_mirror,
+		 N_("create a mirror repository (implies bare)")),
 	OPT_BOOL('l', "local", &option_local,
 		N_("to clone from a local repository")),
-	OPT_BOOLEAN(0, "no-hardlinks", &option_no_hardlinks,
+	OPT_BOOL(0, "no-hardlinks", &option_no_hardlinks,
 		    N_("don't use local hardlinks, always copy")),
-	OPT_BOOLEAN('s', "shared", &option_shared,
+	OPT_BOOL('s', "shared", &option_shared,
 		    N_("setup as shared repository")),
-	OPT_BOOLEAN(0, "recursive", &option_recursive,
+	OPT_BOOL(0, "recursive", &option_recursive,
 		    N_("initialize submodules in the clone")),
-	OPT_BOOLEAN(0, "recurse-submodules", &option_recursive,
+	OPT_BOOL(0, "recurse-submodules", &option_recursive,
 		    N_("initialize submodules in the clone")),
 	OPT_STRING(0, "template", &option_template, N_("template-directory"),
 		   N_("directory from which templates will be used")),
@@ -232,17 +230,33 @@ static void strip_trailing_slashes(char *dir)
 static int add_one_reference(struct string_list_item *item, void *cb_data)
 {
 	char *ref_git;
+	const char *repo;
 	struct strbuf alternate = STRBUF_INIT;
 
-	/* Beware: real_path() and mkpath() return static buffer */
+	/* Beware: read_gitfile(), real_path() and mkpath() return static buffer */
 	ref_git = xstrdup(real_path(item->string));
-	if (is_directory(mkpath("%s/.git/objects", ref_git))) {
+
+	repo = read_gitfile(ref_git);
+	if (!repo)
+		repo = read_gitfile(mkpath("%s/.git", ref_git));
+	if (repo) {
+		free(ref_git);
+		ref_git = xstrdup(repo);
+	}
+
+	if (!repo && is_directory(mkpath("%s/.git/objects", ref_git))) {
 		char *ref_git_git = mkpathdup("%s/.git", ref_git);
 		free(ref_git);
 		ref_git = ref_git_git;
 	} else if (!is_directory(mkpath("%s/objects", ref_git)))
-		die(_("reference repository '%s' is not a local directory."),
+		die(_("reference repository '%s' is not a local repository."),
 		    item->string);
+
+	if (!access(mkpath("%s/shallow", ref_git), F_OK))
+		die(_("reference repository '%s' is shallow"), item->string);
+
+	if (!access(mkpath("%s/info/grafts", ref_git), F_OK))
+		die(_("reference repository '%s' is grafted"), item->string);
 
 	strbuf_addf(&alternate, "%s/objects", ref_git);
 	add_to_alternates_file(alternate.buf);
@@ -371,13 +385,13 @@ static void clone_local(const char *src_repo, const char *dest_repo)
 	}
 
 	if (0 <= option_verbosity)
-		printf(_("done.\n"));
+		fprintf(stderr, _("done.\n"));
 }
 
 static const char *junk_work_tree;
 static const char *junk_git_dir;
 static pid_t junk_pid;
-enum {
+static enum {
 	JUNK_LEAVE_NONE,
 	JUNK_LEAVE_REPO,
 	JUNK_LEAVE_ALL
@@ -484,22 +498,25 @@ static void write_remote_refs(const struct ref *local_refs)
 {
 	const struct ref *r;
 
+	lock_packed_refs(LOCK_DIE_ON_ERROR);
+
 	for (r = local_refs; r; r = r->next) {
 		if (!r->peer_ref)
 			continue;
 		add_packed_ref(r->peer_ref->name, r->old_sha1);
 	}
 
-	pack_refs(PACK_REFS_ALL);
+	if (commit_packed_refs())
+		die_errno("unable to overwrite old ref-pack file");
 }
 
 static void write_followtags(const struct ref *refs, const char *msg)
 {
 	const struct ref *ref;
 	for (ref = refs; ref; ref = ref->next) {
-		if (prefixcmp(ref->name, "refs/tags/"))
+		if (!starts_with(ref->name, "refs/tags/"))
 			continue;
-		if (!suffixcmp(ref->name, "^{}"))
+		if (ends_with(ref->name, "^{}"))
 			continue;
 		if (!has_sha1_file(ref->old_sha1))
 			continue;
@@ -532,12 +549,21 @@ static void update_remote_refs(const struct ref *refs,
 			       const struct ref *mapped_refs,
 			       const struct ref *remote_head_points_at,
 			       const char *branch_top,
-			       const char *msg)
+			       const char *msg,
+			       struct transport *transport,
+			       int check_connectivity)
 {
 	const struct ref *rm = mapped_refs;
 
-	if (check_everything_connected(iterate_ref_map, 0, &rm))
-		die(_("remote did not send all necessary objects"));
+	if (check_connectivity) {
+		if (transport->progress)
+			fprintf(stderr, _("Checking connectivity... "));
+		if (check_everything_connected_with_transport(iterate_ref_map,
+							      0, &rm, transport))
+			die(_("remote did not send all necessary objects"));
+		if (transport->progress)
+			fprintf(stderr, _("done.\n"));
+	}
 
 	if (refs) {
 		write_remote_refs(mapped_refs);
@@ -558,7 +584,7 @@ static void update_remote_refs(const struct ref *refs,
 static void update_head(const struct ref *our, const struct ref *remote,
 			const char *msg)
 {
-	if (our && !prefixcmp(our->name, "refs/heads/")) {
+	if (our && starts_with(our->name, "refs/heads/")) {
 		/* Local default branch link */
 		create_symref("HEAD", our->name, NULL);
 		if (!option_bare) {
@@ -605,7 +631,7 @@ static int checkout(void)
 		if (advice_detached_head)
 			detach_advice(sha1_to_hex(sha1));
 	} else {
-		if (prefixcmp(head, "refs/heads/"))
+		if (!starts_with(head, "refs/heads/"))
 			die(_("HEAD not found below refs/heads!"));
 	}
 	free(head);
@@ -634,8 +660,8 @@ static int checkout(void)
 	    commit_locked_index(lock_file))
 		die(_("unable to write new index file"));
 
-	err |= run_hook(NULL, "post-checkout", sha1_to_hex(null_sha1),
-			sha1_to_hex(sha1), "1", NULL);
+	err |= run_hook_le(NULL, "post-checkout", sha1_to_hex(null_sha1),
+			   sha1_to_hex(sha1), "1", NULL);
 
 	if (!err && option_recursive)
 		err = run_command_v_opt(argv_submodule, RUN_GIT_CMD);
@@ -683,7 +709,7 @@ static void write_refspec_config(const char* src_ref_prefix,
 			/*
 			 * otherwise, the next "git fetch" will
 			 * simply fetch from HEAD without updating
-			 * any remote tracking branch, which is what
+			 * any remote-tracking branch, which is what
 			 * we want.
 			 */
 		} else {
@@ -771,8 +797,21 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	else
 		repo = repo_name;
 	is_local = option_local != 0 && path && !is_bundle;
-	if (is_local && option_depth)
-		warning(_("--depth is ignored in local clones; use file:// instead."));
+	if (is_local) {
+		if (option_depth)
+			warning(_("--depth is ignored in local clones; use file:// instead."));
+		if (!access(mkpath("%s/shallow", path), F_OK)) {
+			if (option_local > 0)
+				warning(_("source repository is shallow, ignoring --local"));
+			is_local = 0;
+		}
+	}
+	if (option_local > 0 && !is_local)
+		warning(_("--local is ignored"));
+
+	/* no need to be strict, transport_set_option() will validate it again */
+	if (option_depth && atoi(option_depth) < 1)
+		die(_("depth %s is not a positive number"), option_depth);
 
 	if (argc == 2)
 		dir = xstrdup(argv[1]);
@@ -827,9 +866,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	if (0 <= option_verbosity) {
 		if (option_bare)
-			printf(_("Cloning into bare repository '%s'...\n"), dir);
+			fprintf(stderr, _("Cloning into bare repository '%s'...\n"), dir);
 		else
-			printf(_("Cloning into '%s'...\n"), dir);
+			fprintf(stderr, _("Cloning into '%s'...\n"), dir);
 	}
 	init_db(option_template, INIT_DB_QUIET);
 	write_config(&option_config);
@@ -861,25 +900,27 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	remote = remote_get(option_origin);
 	transport = transport_get(remote, remote->url[0]);
+	transport->cloning = 1;
 
-	if (!is_local) {
-		if (!transport->get_refs_list || !transport->fetch)
-			die(_("Don't know how to clone %s"), transport->url);
+	if (!transport->get_refs_list || (!is_local && !transport->fetch))
+		die(_("Don't know how to clone %s"), transport->url);
 
-		transport_set_option(transport, TRANS_OPT_KEEP, "yes");
+	transport_set_option(transport, TRANS_OPT_KEEP, "yes");
 
-		if (option_depth)
-			transport_set_option(transport, TRANS_OPT_DEPTH,
-					     option_depth);
-		if (option_single_branch)
-			transport_set_option(transport, TRANS_OPT_FOLLOWTAGS, "1");
+	if (option_depth)
+		transport_set_option(transport, TRANS_OPT_DEPTH,
+				     option_depth);
+	if (option_single_branch)
+		transport_set_option(transport, TRANS_OPT_FOLLOWTAGS, "1");
 
-		transport_set_verbosity(transport, option_verbosity, option_progress);
+	transport_set_verbosity(transport, option_verbosity, option_progress);
 
-		if (option_upload_pack)
-			transport_set_option(transport, TRANS_OPT_UPLOADPACK,
-					     option_upload_pack);
-	}
+	if (option_upload_pack)
+		transport_set_option(transport, TRANS_OPT_UPLOADPACK,
+				     option_upload_pack);
+
+	if (transport->smart_options && !option_depth)
+		transport->smart_options->check_self_contained_and_connected = 1;
 
 	refs = transport_get_remote_refs(transport);
 
@@ -920,6 +961,10 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			our_head_points_at = remote_head_points_at;
 	}
 	else {
+		if (option_branch)
+			die(_("Remote branch %s not found in upstream %s"),
+					option_branch, option_origin);
+
 		warning(_("You appear to have cloned an empty repository."));
 		mapped_refs = NULL;
 		our_head_points_at = NULL;
@@ -940,7 +985,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		transport_fetch_refs(transport, mapped_refs);
 
 	update_remote_refs(refs, mapped_refs, remote_head_points_at,
-			   branch_top.buf, reflog_msg.buf);
+			   branch_top.buf, reflog_msg.buf, transport, !is_local);
 
 	update_head(our_head_points_at, remote_head, reflog_msg.buf);
 

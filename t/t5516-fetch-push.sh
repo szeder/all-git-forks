@@ -252,7 +252,7 @@ test_expect_success 'push with pushInsteadOf and explicit pushurl (pushInsteadOf
 test_expect_success 'push with matching heads' '
 
 	mk_test testrepo heads/master &&
-	git push testrepo &&
+	git push testrepo : &&
 	check_push_result testrepo $the_commit heads/master
 
 '
@@ -281,7 +281,7 @@ test_expect_success 'push --force with matching heads' '
 	mk_test testrepo heads/master &&
 	git push testrepo : &&
 	git commit --amend -massaged &&
-	git push --force testrepo &&
+	git push --force testrepo : &&
 	! check_push_result testrepo $the_commit heads/master &&
 	git reset --hard $the_commit
 
@@ -504,6 +504,7 @@ test_expect_success 'push with remote.pushdefault' '
 	test_config remote.down.url down_repo &&
 	test_config branch.master.remote up &&
 	test_config remote.pushdefault down &&
+	test_config push.default matching &&
 	git push &&
 	check_push_result up_repo $the_first_commit heads/master &&
 	check_push_result down_repo $the_commit heads/master
@@ -515,7 +516,7 @@ test_expect_success 'push with config remote.*.pushurl' '
 	git checkout master &&
 	test_config remote.there.url test2repo &&
 	test_config remote.there.pushurl testrepo &&
-	git push there &&
+	git push there : &&
 	check_push_result testrepo $the_commit heads/master
 '
 
@@ -528,10 +529,24 @@ test_expect_success 'push with config branch.*.pushremote' '
 	test_config remote.down.url down_repo &&
 	test_config branch.master.remote up &&
 	test_config branch.master.pushremote down &&
+	test_config push.default matching &&
 	git push &&
 	check_push_result up_repo $the_first_commit heads/master &&
 	check_push_result side_repo $the_first_commit heads/master &&
 	check_push_result down_repo $the_commit heads/master
+'
+
+test_expect_success 'branch.*.pushremote config order is irrelevant' '
+	mk_test one_repo heads/master &&
+	mk_test two_repo heads/master &&
+	test_config remote.one.url one_repo &&
+	test_config remote.two.url two_repo &&
+	test_config branch.master.pushremote two_repo &&
+	test_config remote.pushdefault one_repo &&
+	test_config push.default matching &&
+	git push &&
+	check_push_result one_repo $the_first_commit heads/master &&
+	check_push_result two_repo $the_commit heads/master
 '
 
 test_expect_success 'push with dry-run' '
@@ -541,7 +556,7 @@ test_expect_success 'push with dry-run' '
 		cd testrepo &&
 		old_commit=$(git show-ref -s --verify refs/heads/master)
 	) &&
-	git push --dry-run testrepo &&
+	git push --dry-run testrepo : &&
 	check_push_result testrepo $old_commit heads/master
 '
 
@@ -1022,7 +1037,7 @@ test_expect_success 'push --porcelain --dry-run rejected' '
 
 test_expect_success 'push --prune' '
 	mk_test testrepo heads/master heads/second heads/foo heads/bar &&
-	git push --prune testrepo &&
+	git push --prune testrepo : &&
 	check_push_result testrepo $the_commit heads/master &&
 	check_push_result testrepo $the_first_commit heads/second &&
 	! check_push_result testrepo $the_first_commit heads/foo heads/bar
@@ -1124,6 +1139,81 @@ test_expect_success 'fetch follows tags by default' '
 	test_cmp expect actual
 '
 
+test_expect_success 'pushing a specific ref applies remote.$name.push as refmap' '
+	mk_test testrepo heads/master &&
+	rm -fr src dst &&
+	git init src &&
+	git init --bare dst &&
+	(
+		cd src &&
+		git pull ../testrepo master &&
+		git branch next &&
+		git config remote.dst.url ../dst &&
+		git config remote.dst.push "+refs/heads/*:refs/remotes/src/*" &&
+		git push dst master &&
+		git show-ref refs/heads/master |
+		sed -e "s|refs/heads/|refs/remotes/src/|" >../dst/expect
+	) &&
+	(
+		cd dst &&
+		test_must_fail git show-ref refs/heads/next &&
+		test_must_fail git show-ref refs/heads/master &&
+		git show-ref refs/remotes/src/master >actual
+	) &&
+	test_cmp dst/expect dst/actual
+'
+
+test_expect_success 'with no remote.$name.push, it is not used as refmap' '
+	mk_test testrepo heads/master &&
+	rm -fr src dst &&
+	git init src &&
+	git init --bare dst &&
+	(
+		cd src &&
+		git pull ../testrepo master &&
+		git branch next &&
+		git config remote.dst.url ../dst &&
+		git config push.default matching &&
+		git push dst master &&
+		git show-ref refs/heads/master >../dst/expect
+	) &&
+	(
+		cd dst &&
+		test_must_fail git show-ref refs/heads/next &&
+		git show-ref refs/heads/master >actual
+	) &&
+	test_cmp dst/expect dst/actual
+'
+
+test_expect_success 'with no remote.$name.push, upstream mapping is used' '
+	mk_test testrepo heads/master &&
+	rm -fr src dst &&
+	git init src &&
+	git init --bare dst &&
+	(
+		cd src &&
+		git pull ../testrepo master &&
+		git branch next &&
+		git config remote.dst.url ../dst &&
+		git config remote.dst.fetch "+refs/heads/*:refs/remotes/dst/*" &&
+		git config push.default upstream &&
+
+		git config branch.master.merge refs/heads/trunk &&
+		git config branch.master.remote dst &&
+
+		git push dst master &&
+		git show-ref refs/heads/master |
+		sed -e "s|refs/heads/master|refs/heads/trunk|" >../dst/expect
+	) &&
+	(
+		cd dst &&
+		test_must_fail git show-ref refs/heads/master &&
+		test_must_fail git show-ref refs/heads/next &&
+		git show-ref refs/heads/trunk >actual
+	) &&
+	test_cmp dst/expect dst/actual
+'
+
 test_expect_success 'push does not follow tags by default' '
 	mk_test testrepo heads/master &&
 	rm -fr src dst &&
@@ -1168,6 +1258,23 @@ test_expect_success 'push --follow-tag only pushes relevant tags' '
 		git for-each-ref >../actual
 	) &&
 	test_cmp expect actual
+'
+
+test_expect_success 'push --no-thin must produce non-thin pack' '
+	cat >>path1 <<\EOF &&
+keep base version of path1 big enough, compared to the new changes
+later, in order to pass size heuristics in
+builtin/pack-objects.c:try_delta()
+EOF
+	git commit -am initial &&
+	git init no-thin &&
+	git --git-dir=no-thin/.git config receive.unpacklimit 0 &&
+	git push no-thin/.git refs/heads/master:refs/heads/foo &&
+	echo modified >> path1 &&
+	git commit -am modified &&
+	git repack -adf &&
+	rcvpck="git receive-pack --reject-thin-pack-for-testing" &&
+	git push --no-thin --receive-pack="$rcvpck" no-thin/.git refs/heads/master:refs/heads/foo
 '
 
 test_done

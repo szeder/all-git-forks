@@ -5,9 +5,23 @@
 /* This code is originally from http://www.cl.cam.ac.uk/~mgk25/ucs/ */
 
 struct interval {
-  int first;
-  int last;
+	ucs_char_t first;
+	ucs_char_t last;
 };
+
+size_t display_mode_esc_sequence_len(const char *s)
+{
+	const char *p = s;
+	if (*p++ != '\033')
+		return 0;
+	if (*p++ != '[')
+		return 0;
+	while (isdigit(*p) || *p == ';')
+		p++;
+	if (*p++ != 'm')
+		return 0;
+	return p - s;
+}
 
 /* auxiliary function for binary search in interval table */
 static int bisearch(ucs_char_t ucs, const struct interval *table, int max)
@@ -70,11 +84,10 @@ static int git_wcwidth(ucs_char_t ch)
 	 *   "uniset +cat=Me +cat=Mn +cat=Cf -00AD +1160-11FF +200B c".
 	 */
 	static const struct interval combining[] = {
-		{ 0x0300, 0x0357 }, { 0x035D, 0x036F }, { 0x0483, 0x0486 },
-		{ 0x0488, 0x0489 }, { 0x0591, 0x05A1 }, { 0x05A3, 0x05B9 },
-		{ 0x05BB, 0x05BD }, { 0x05BF, 0x05BF }, { 0x05C1, 0x05C2 },
-		{ 0x05C4, 0x05C4 }, { 0x0600, 0x0603 }, { 0x0610, 0x0615 },
-		{ 0x064B, 0x0658 }, { 0x0670, 0x0670 }, { 0x06D6, 0x06E4 },
+		{ 0x0300, 0x036F }, { 0x0483, 0x0489 }, { 0x0591, 0x05BD },
+		{ 0x05BF, 0x05BF }, { 0x05C1, 0x05C2 }, { 0x05C4, 0x05C5 },
+		{ 0x05C7, 0x05C7 }, { 0x0600, 0x0604 }, { 0x0610, 0x061A },
+		{ 0x064B, 0x065F }, { 0x0670, 0x0670 }, { 0x06D6, 0x06E4 },
 		{ 0x06E7, 0x06E8 }, { 0x06EA, 0x06ED }, { 0x070F, 0x070F },
 		{ 0x0711, 0x0711 }, { 0x0730, 0x074A }, { 0x07A6, 0x07B0 },
 		{ 0x0901, 0x0902 }, { 0x093C, 0x093C }, { 0x0941, 0x0948 },
@@ -252,18 +265,26 @@ int utf8_width(const char **start, size_t *remainder_p)
  * string, assuming that the string is utf8.  Returns strlen() instead
  * if the string does not look like a valid utf8 string.
  */
-int utf8_strwidth(const char *string)
+int utf8_strnwidth(const char *string, int len, int skip_ansi)
 {
 	int width = 0;
 	const char *orig = string;
 
-	while (1) {
-		if (!string)
-			return strlen(orig);
-		if (!*string)
-			return width;
+	if (len == -1)
+		len = strlen(string);
+	while (string && string < orig + len) {
+		int skip;
+		while (skip_ansi &&
+		       (skip = display_mode_esc_sequence_len(string)) != 0)
+			string += skip;
 		width += utf8_width(&string, NULL);
 	}
+	return string ? width : len;
+}
+
+int utf8_strwidth(const char *string)
+{
+	return utf8_strnwidth(string, -1, 0);
 }
 
 int is_utf8(const char *text)
@@ -301,20 +322,6 @@ static void strbuf_add_indented_text(struct strbuf *buf, const char *text,
 		text = eol;
 		indent = indent2;
 	}
-}
-
-static size_t display_mode_esc_sequence_len(const char *s)
-{
-	const char *p = s;
-	if (*p++ != '\033')
-		return 0;
-	if (*p++ != '[')
-		return 0;
-	while (isdigit(*p) || *p == ';')
-		p++;
-	if (*p++ != 'm')
-		return 0;
-	return p - s;
 }
 
 /*
@@ -413,6 +420,52 @@ void strbuf_add_wrapped_bytes(struct strbuf *buf, const char *data, int len,
 	free(tmp);
 }
 
+void strbuf_utf8_replace(struct strbuf *sb_src, int pos, int width,
+			 const char *subst)
+{
+	struct strbuf sb_dst = STRBUF_INIT;
+	char *src = sb_src->buf;
+	char *end = src + sb_src->len;
+	char *dst;
+	int w = 0, subst_len = 0;
+
+	if (subst)
+		subst_len = strlen(subst);
+	strbuf_grow(&sb_dst, sb_src->len + subst_len);
+	dst = sb_dst.buf;
+
+	while (src < end) {
+		char *old;
+		size_t n;
+
+		while ((n = display_mode_esc_sequence_len(src))) {
+			memcpy(dst, src, n);
+			src += n;
+			dst += n;
+		}
+
+		old = src;
+		n = utf8_width((const char**)&src, NULL);
+		if (!src) 	/* broken utf-8, do nothing */
+			return;
+		if (n && w >= pos && w < pos + width) {
+			if (subst) {
+				memcpy(dst, subst, subst_len);
+				dst += subst_len;
+				subst = NULL;
+			}
+			w += n;
+			continue;
+		}
+		memcpy(dst, old, src - old);
+		dst += src - old;
+		w += n;
+	}
+	strbuf_setlen(&sb_dst, dst - sb_dst.buf);
+	strbuf_swap(sb_src, &sb_dst);
+	strbuf_release(&sb_dst);
+}
+
 int is_encoding_utf8(const char *name)
 {
 	if (!name)
@@ -460,7 +513,7 @@ int utf8_fprintf(FILE *stream, const char *format, ...)
 #else
 	typedef char * iconv_ibp;
 #endif
-char *reencode_string_iconv(const char *in, size_t insz, iconv_t conv)
+char *reencode_string_iconv(const char *in, size_t insz, iconv_t conv, int *outsz_p)
 {
 	size_t outsz, outalloc;
 	char *out, *outpos;
@@ -475,7 +528,7 @@ char *reencode_string_iconv(const char *in, size_t insz, iconv_t conv)
 	while (1) {
 		size_t cnt = iconv(conv, &cp, &insz, &outpos, &outsz);
 
-		if (cnt == -1) {
+		if (cnt == (size_t) -1) {
 			size_t sofar;
 			if (errno != E2BIG) {
 				free(out);
@@ -494,13 +547,17 @@ char *reencode_string_iconv(const char *in, size_t insz, iconv_t conv)
 		}
 		else {
 			*outpos = '\0';
+			if (outsz_p)
+				*outsz_p = outpos - out;
 			break;
 		}
 	}
 	return out;
 }
 
-char *reencode_string(const char *in, const char *out_encoding, const char *in_encoding)
+char *reencode_string_len(const char *in, int insz,
+			  const char *out_encoding, const char *in_encoding,
+			  int *outsz)
 {
 	iconv_t conv;
 	char *out;
@@ -526,7 +583,7 @@ char *reencode_string(const char *in, const char *out_encoding, const char *in_e
 			return NULL;
 	}
 
-	out = reencode_string_iconv(in, strlen(in), conv);
+	out = reencode_string_iconv(in, insz, conv, outsz);
 	iconv_close(conv);
 	return out;
 }

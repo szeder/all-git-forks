@@ -15,9 +15,16 @@ PROVE ?= prove
 DEFAULT_TEST_TARGET ?= test
 TEST_LINT ?= test-lint-duplicates test-lint-executable
 
+ifdef TEST_OUTPUT_DIRECTORY
+TEST_RESULTS_DIRECTORY = $(TEST_OUTPUT_DIRECTORY)/test-results
+else
+TEST_RESULTS_DIRECTORY = test-results
+endif
+
 # Shell quote;
 SHELL_PATH_SQ = $(subst ','\'',$(SHELL_PATH))
 PERL_PATH_SQ = $(subst ','\'',$(PERL_PATH))
+TEST_RESULTS_DIRECTORY_SQ = $(subst ','\'',$(TEST_RESULTS_DIRECTORY))
 
 T = $(sort $(wildcard t[0-9][0-9][0-9][0-9]-*.sh))
 TSVN = $(sort $(wildcard t91[0-9][0-9]-*.sh))
@@ -29,17 +36,17 @@ test: pre-clean $(TEST_LINT)
 	$(MAKE) aggregate-results-and-cleanup
 
 prove: pre-clean $(TEST_LINT)
-	@echo "*** prove ***"; GIT_CONFIG=.git/config $(PROVE) --exec '$(SHELL_PATH_SQ)' $(GIT_PROVE_OPTS) $(T) :: $(GIT_TEST_OPTS)
+	@echo "*** prove ***"; $(PROVE) --exec '$(SHELL_PATH_SQ)' $(GIT_PROVE_OPTS) $(T) :: $(GIT_TEST_OPTS)
 	$(MAKE) clean-except-prove-cache
 
 $(T):
-	@echo "*** $@ ***"; GIT_CONFIG=.git/config '$(SHELL_PATH_SQ)' $@ $(GIT_TEST_OPTS)
+	@echo "*** $@ ***"; '$(SHELL_PATH_SQ)' $@ $(GIT_TEST_OPTS)
 
 pre-clean:
-	$(RM) -r test-results
+	$(RM) -r '$(TEST_RESULTS_DIRECTORY_SQ)'
 
 clean-except-prove-cache:
-	$(RM) -r 'trash directory'.* test-results
+	$(RM) -r 'trash directory'.* '$(TEST_RESULTS_DIRECTORY_SQ)'
 	$(RM) -r valgrind/bin
 
 clean: clean-except-prove-cache
@@ -65,7 +72,7 @@ aggregate-results-and-cleanup: $(T)
 	$(MAKE) clean
 
 aggregate-results:
-	for f in test-results/t*-*.counts; do \
+	for f in '$(TEST_RESULTS_DIRECTORY_SQ)'/t*-*.counts; do \
 		echo "$$f"; \
 	done | '$(SHELL_PATH_SQ)' ./aggregate-results.sh
 
@@ -82,43 +89,5 @@ valgrind:
 
 perf:
 	$(MAKE) -C perf/ all
-
-# Smoke testing targets
--include ../GIT-VERSION-FILE
-uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo unknown')
-uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo unknown')
-
-test-results:
-	mkdir -p test-results
-
-test-results/git-smoke.tar.gz: test-results
-	'$(PERL_PATH_SQ)' ./harness \
-		--archive="test-results/git-smoke.tar.gz" \
-		$(T)
-
-smoke: test-results/git-smoke.tar.gz
-
-SMOKE_UPLOAD_FLAGS =
-ifdef SMOKE_USERNAME
-	SMOKE_UPLOAD_FLAGS += -F username="$(SMOKE_USERNAME)" -F password="$(SMOKE_PASSWORD)"
-endif
-ifdef SMOKE_COMMENT
-	SMOKE_UPLOAD_FLAGS += -F comments="$(SMOKE_COMMENT)"
-endif
-ifdef SMOKE_TAGS
-	SMOKE_UPLOAD_FLAGS += -F tags="$(SMOKE_TAGS)"
-endif
-
-smoke_report: smoke
-	curl \
-		-H "Expect: " \
-		-F project=Git \
-		-F architecture="$(uname_M)" \
-		-F platform="$(uname_S)" \
-		-F revision="$(GIT_VERSION)" \
-		-F report_file=@test-results/git-smoke.tar.gz \
-		$(SMOKE_UPLOAD_FLAGS) \
-		http://smoke.git.nix.is/app/projects/process_add_report/1 \
-	| grep -v ^Redirecting
 
 .PHONY: pre-clean $(T) aggregate-results clean valgrind perf

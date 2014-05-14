@@ -22,7 +22,7 @@ static int tail_match(const char **pattern, const char *path)
 	if (snprintf(pathbuf, sizeof(pathbuf), "/%s", path) > sizeof(pathbuf))
 		return error("insanely long ref %.*s...", 20, path);
 	while ((p = *(pattern++)) != NULL) {
-		if (!fnmatch(p, pathbuf, 0))
+		if (!wildmatch(p, pathbuf, 0, NULL))
 			return 1;
 	}
 	return 0;
@@ -50,11 +50,11 @@ int cmd_ls_remote(int argc, const char **argv, const char *prefix)
 		const char *arg = argv[i];
 
 		if (*arg == '-') {
-			if (!prefixcmp(arg, "--upload-pack=")) {
+			if (starts_with(arg, "--upload-pack=")) {
 				uploadpack = arg + 14;
 				continue;
 			}
-			if (!prefixcmp(arg, "--exec=")) {
+			if (starts_with(arg, "--exec=")) {
 				uploadpack = arg + 7;
 				continue;
 			}

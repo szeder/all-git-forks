@@ -29,7 +29,7 @@ static int number_callback(const struct option *opt, const char *arg, int unset)
 	return 0;
 }
 
-int main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
 	const char *prefix = "prefix/";
 	const char *usage[] = {
@@ -59,8 +59,6 @@ int main(int argc, const char **argv)
 		OPT_STRING(0, "st", &string, "st", "get another string (pervert ordering)"),
 		OPT_STRING('o', NULL, &string, "str", "get another string"),
 		OPT_NOOP_NOARG(0, "obsolete"),
-		OPT_SET_PTR(0, "default-string", &string,
-			"set string to default", (unsigned long)"default"),
 		OPT_STRING_LIST(0, "list", &list, "str", "add str to list"),
 		OPT_GROUP("Magic arguments"),
 		OPT_ARGUMENT("quux", "means --quux"),
@@ -81,7 +79,7 @@ int main(int argc, const char **argv)
 	};
 	int i;
 
-	argc = parse_options(argc, argv, prefix, options, usage, 0);
+	argc = parse_options(argc, (const char **)argv, prefix, options, usage, 0);
 
 	printf("boolean: %d\n", boolean);
 	printf("integer: %u\n", integer);

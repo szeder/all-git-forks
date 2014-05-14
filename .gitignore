@@ -2,6 +2,7 @@
 /GIT-CFLAGS
 /GIT-LDFLAGS
 /GIT-PREFIX
+/GIT-PERL-DEFINES
 /GIT-PYTHON-VARS
 /GIT-SCRIPT-DEFINES
 /GIT-USER-AGENT
@@ -23,6 +24,7 @@
 /git-cat-file
 /git-check-attr
 /git-check-ignore
+/git-check-mailmap
 /git-check-ref-format
 /git-checkout
 /git-checkout-index
@@ -74,7 +76,6 @@
 /git-init-db
 /git-instaweb
 /git-log
-/git-lost-found
 /git-ls-files
 /git-ls-remote
 /git-ls-tree
@@ -104,7 +105,6 @@
 /git-pack-refs
 /git-parse-remote
 /git-patch-id
-/git-peek-remote
 /git-prune
 /git-prune-packed
 /git-pull
@@ -125,11 +125,11 @@
 /git-remote-ftps
 /git-remote-fd
 /git-remote-ext
+/git-remote-testgit
 /git-remote-testpy
 /git-remote-testsvn
 /git-repack
 /git-replace
-/git-repo-config
 /git-request-pull
 /git-rerere
 /git-reset
@@ -157,7 +157,6 @@
 /git-svn
 /git-symbolic-ref
 /git-tag
-/git-tar-tree
 /git-unpack-file
 /git-unpack-objects
 /git-update-index
@@ -183,6 +182,7 @@
 /test-dump-cache-tree
 /test-scrap-cache-tree
 /test-genrandom
+/test-hashmap
 /test-index-version
 /test-line-buffer
 /test-match-trees
@@ -190,6 +190,8 @@
 /test-mktemp
 /test-parse-options
 /test-path-utils
+/test-prio-queue
+/test-read-cache
 /test-regex
 /test-revision-walking
 /test-run-command
@@ -198,6 +200,7 @@
 /test-string-list
 /test-subprocess
 /test-svn-fe
+/test-urlmatch-normalization
 /test-wildmatch
 /common-cmds.h
 *.tar.gz
@@ -228,6 +231,7 @@
 /cscope*
 *.obj
 *.lib
+*.res
 *.sln
 *.suo
 *.ncb

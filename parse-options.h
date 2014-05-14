@@ -12,7 +12,7 @@ enum parse_opt_type {
 	OPTION_NEGBIT,
 	OPTION_COUNTUP,
 	OPTION_SET_INT,
-	OPTION_SET_PTR,
+	OPTION_CMDMODE,
 	/* options with arguments (usually) */
 	OPTION_STRING,
 	OPTION_INTEGER,
@@ -20,9 +20,6 @@ enum parse_opt_type {
 	OPTION_LOWLEVEL_CALLBACK,
 	OPTION_FILENAME
 };
-
-/* Deprecated synonym */
-#define OPTION_BOOLEAN OPTION_COUNTUP
 
 enum parse_opt_flags {
 	PARSE_OPT_KEEP_DASHDASH = 1,
@@ -98,7 +95,7 @@ typedef int parse_opt_ll_cb(struct parse_opt_ctx_t *ctx,
  *
  * `defval`::
  *   default value to fill (*->value) with for PARSE_OPT_OPTARG.
- *   OPTION_{BIT,SET_INT,SET_PTR} store the {mask,integer,pointer} to put in
+ *   OPTION_{BIT,SET_INT} store the {mask,integer,pointer} to put in
  *   the value when met.
  *   CALLBACKS can use it like they want.
  */
@@ -128,8 +125,10 @@ struct option {
 #define OPT_SET_INT(s, l, v, h, i)  { OPTION_SET_INT, (s), (l), (v), NULL, \
 				      (h), PARSE_OPT_NOARG, NULL, (i) }
 #define OPT_BOOL(s, l, v, h)        OPT_SET_INT(s, l, v, h, 1)
-#define OPT_SET_PTR(s, l, v, h, p)  { OPTION_SET_PTR, (s), (l), (v), NULL, \
-				      (h), PARSE_OPT_NOARG, NULL, (p) }
+#define OPT_HIDDEN_BOOL(s, l, v, h) { OPTION_SET_INT, (s), (l), (v), NULL, \
+				      (h), PARSE_OPT_NOARG | PARSE_OPT_HIDDEN, NULL, 1}
+#define OPT_CMDMODE(s, l, v, h, i) { OPTION_CMDMODE, (s), (l), (v), NULL, \
+				      (h), PARSE_OPT_NOARG|PARSE_OPT_NONEG, NULL, (i) }
 #define OPT_INTEGER(s, l, v, h)     { OPTION_INTEGER, (s), (l), (v), N_("n"), (h) }
 #define OPT_STRING(s, l, v, a, h)   { OPTION_STRING,  (s), (l), (v), (a), (h) }
 #define OPT_STRING_LIST(s, l, v, a, h) \
@@ -140,6 +139,9 @@ struct option {
 #define OPT_DATE(s, l, v, h) \
 	{ OPTION_CALLBACK, (s), (l), (v), N_("time"),(h), 0,	\
 	  parse_opt_approxidate_cb }
+#define OPT_EXPIRY_DATE(s, l, v, h) \
+	{ OPTION_CALLBACK, (s), (l), (v), N_("expiry-date"),(h), 0,	\
+	  parse_opt_expiry_date_cb }
 #define OPT_CALLBACK(s, l, v, a, h, f) \
 	{ OPTION_CALLBACK, (s), (l), (v), (a), (h), 0, (f) }
 #define OPT_NUMBER_CALLBACK(v, h, f) \
@@ -155,9 +157,6 @@ struct option {
 	{ OPTION_CALLBACK, (s), (l), NULL, NULL, \
 	  N_("no-op (backward compatibility)"),		\
 	  PARSE_OPT_HIDDEN | PARSE_OPT_NOARG, parse_opt_noop_cb }
-
-/* Deprecated synonym */
-#define OPT_BOOLEAN OPT_COUNTUP
 
 /* parse_options() will filter out the processed options and leave the
  * non-option arguments in argv[]. usagestr strings should be marked
@@ -177,7 +176,7 @@ extern NORETURN void usage_msg_opt(const char *msg,
 
 extern int optbug(const struct option *opt, const char *reason);
 extern int opterror(const struct option *opt, const char *reason, int flags);
-#if defined(__GNUC__) && ! defined(clang)
+#if defined(__GNUC__) && ! defined(__clang__)
 #define opterror(o,r,f) (opterror((o),(r),(f)), -1)
 #endif
 
@@ -219,6 +218,7 @@ extern int parse_options_concat(struct option *dst, size_t, struct option *src);
 /*----- some often used options -----*/
 extern int parse_opt_abbrev_cb(const struct option *, const char *, int);
 extern int parse_opt_approxidate_cb(const struct option *, const char *, int);
+extern int parse_opt_expiry_date_cb(const struct option *, const char *, int);
 extern int parse_opt_color_flag_cb(const struct option *, const char *, int);
 extern int parse_opt_verbosity_cb(const struct option *, const char *, int);
 extern int parse_opt_with_commit(const struct option *, const char *, int);
@@ -226,15 +226,15 @@ extern int parse_opt_tertiary(const struct option *, const char *, int);
 extern int parse_opt_string_list(const struct option *, const char *, int);
 extern int parse_opt_noop_cb(const struct option *, const char *, int);
 
-#define OPT__VERBOSE(var, h)  OPT_BOOLEAN('v', "verbose", (var), (h))
-#define OPT__QUIET(var, h)    OPT_BOOLEAN('q', "quiet",   (var), (h))
+#define OPT__VERBOSE(var, h)  OPT_COUNTUP('v', "verbose", (var), (h))
+#define OPT__QUIET(var, h)    OPT_COUNTUP('q', "quiet",   (var), (h))
 #define OPT__VERBOSITY(var) \
 	{ OPTION_CALLBACK, 'v', "verbose", (var), NULL, N_("be more verbose"), \
 	  PARSE_OPT_NOARG, &parse_opt_verbosity_cb, 0 }, \
 	{ OPTION_CALLBACK, 'q', "quiet", (var), NULL, N_("be more quiet"), \
 	  PARSE_OPT_NOARG, &parse_opt_verbosity_cb, 0 }
-#define OPT__DRY_RUN(var, h)  OPT_BOOLEAN('n', "dry-run", (var), (h))
-#define OPT__FORCE(var, h)    OPT_BOOLEAN('f', "force",   (var), (h))
+#define OPT__DRY_RUN(var, h)  OPT_BOOL('n', "dry-run", (var), (h))
+#define OPT__FORCE(var, h)    OPT_COUNTUP('f', "force",   (var), (h))
 #define OPT__ABBREV(var)  \
 	{ OPTION_CALLBACK, 0, "abbrev", (var), N_("n"),	\
 	  N_("use <n> digits to display SHA-1s"),	\

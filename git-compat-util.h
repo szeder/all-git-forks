@@ -75,7 +75,7 @@
 # endif
 #elif !defined(__APPLE__) && !defined(__FreeBSD__) && !defined(__USLC__) && \
       !defined(_M_UNIX) && !defined(__sgi) && !defined(__DragonFly__) && \
-      !defined(__TANDEM) && !defined(__QNX__)
+      !defined(__TANDEM) && !defined(__QNX__) && !defined(__MirBSD__)
 #define _XOPEN_SOURCE 600 /* glibc2 and AIX 5.3L need 500, OpenBSD needs 600 for S_ISLNK() */
 #define _XOPEN_SOURCE_EXTENDED 1 /* AIX 5.3L needs this */
 #endif
@@ -85,13 +85,14 @@
 #define _NETBSD_SOURCE 1
 #define _SGI_SOURCE 1
 
-#ifdef WIN32 /* Both MinGW and MSVC */
-# if defined (_MSC_VER)
+#if defined(WIN32) && !defined(__CYGWIN__) /* Both MinGW and MSVC */
+# if defined (_MSC_VER) && !defined(_WIN32_WINNT)
 #  define _WIN32_WINNT 0x0502
 # endif
 #define WIN32_LEAN_AND_MEAN  /* stops windows.h including winsock.h */
 #include <winsock2.h>
 #include <windows.h>
+#define GIT_WINDOWS_NATIVE
 #endif
 
 #include <unistd.h>
@@ -115,9 +116,6 @@
 #include <sys/time.h>
 #include <time.h>
 #include <signal.h>
-#ifndef USE_WILDMATCH
-#include <fnmatch.h>
-#endif
 #include <assert.h>
 #include <regex.h>
 #include <utime.h>
@@ -127,6 +125,7 @@
 #else
 #include <poll.h>
 #endif
+
 #if defined(__MINGW32__)
 /* pull in Windows compatibility stuff */
 #include "compat/mingw.h"
@@ -163,12 +162,10 @@
 typedef long intptr_t;
 typedef unsigned long uintptr_t;
 #endif
-int get_st_mode_bits(const char *path, int *mode);
 #if defined(__CYGWIN__)
 #undef _XOPEN_SOURCE
 #include <grp.h>
 #define _XOPEN_SOURCE 600
-#include "compat/cygwin.h"
 #else
 #undef _ALL_SOURCE /* AIX 5.3L defines a struct list with _ALL_SOURCE. */
 #include <grp.h>
@@ -295,18 +292,16 @@ extern char *gitbasename(char *);
 #endif
 #endif
 
+/* The sentinel attribute is valid from gcc version 4.0 */
+#if defined(__GNUC__) && (__GNUC__ >= 4)
+#define LAST_ARG_MUST_BE_NULL __attribute__((sentinel))
+#else
+#define LAST_ARG_MUST_BE_NULL
+#endif
+
 #include "compat/bswap.h"
 
-#ifdef USE_WILDMATCH
 #include "wildmatch.h"
-#define FNM_PATHNAME WM_PATHNAME
-#define FNM_CASEFOLD WM_CASEFOLD
-#define FNM_NOMATCH  WM_NOMATCH
-static inline int fnmatch(const char *pattern, const char *string, int flags)
-{
-	return wildmatch(pattern, string, flags, NULL);
-}
-#endif
 
 /* General helper functions */
 extern void vreportf(const char *prefix, const char *err, va_list params);
@@ -317,6 +312,16 @@ extern NORETURN void die(const char *err, ...) __attribute__((format (printf, 1,
 extern NORETURN void die_errno(const char *err, ...) __attribute__((format (printf, 1, 2)));
 extern int error(const char *err, ...) __attribute__((format (printf, 1, 2)));
 extern void warning(const char *err, ...) __attribute__((format (printf, 1, 2)));
+
+#ifndef NO_OPENSSL
+#ifdef APPLE_COMMON_CRYPTO
+#include "compat/apple-common-crypto.h"
+#else
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
+#endif /* APPLE_COMMON_CRYPTO */
+#include <openssl/x509v3.h>
+#endif /* NO_OPENSSL */
 
 /*
  * Let callers be aware of the constant return value; this can help
@@ -331,14 +336,18 @@ extern void warning(const char *err, ...) __attribute__((format (printf, 1, 2)))
 
 extern void set_die_routine(NORETURN_PTR void (*routine)(const char *err, va_list params));
 extern void set_error_routine(void (*routine)(const char *err, va_list params));
+extern void set_die_is_recursing_routine(int (*routine)(void));
 
-extern int prefixcmp(const char *str, const char *prefix);
-extern int suffixcmp(const char *str, const char *suffix);
+extern int starts_with(const char *str, const char *prefix);
+extern int ends_with(const char *str, const char *suffix);
 
 static inline const char *skip_prefix(const char *str, const char *prefix)
 {
-	size_t len = strlen(prefix);
-	return strncmp(str, prefix, len) ? NULL : str + len;
+	do {
+		if (!*prefix)
+			return str;
+	} while (*str++ == *prefix++);
+	return NULL;
 }
 
 #if defined(NO_MMAP) || defined(USE_WIN32_MMAP)
@@ -460,9 +469,15 @@ extern FILE *git_fopen(const char*, const char*);
 #endif
 
 #ifdef SNPRINTF_RETURNS_BOGUS
+#ifdef snprintf
+#undef snprintf
+#endif
 #define snprintf git_snprintf
 extern int git_snprintf(char *str, size_t maxsize,
 			const char *format, ...);
+#ifdef vsnprintf
+#undef vsnprintf
+#endif
 #define vsnprintf git_vsnprintf
 extern int git_vsnprintf(char *str, size_t maxsize,
 			 const char *format, va_list ap);
@@ -501,7 +516,7 @@ int inet_pton(int af, const char *src, void *dst);
 const char *inet_ntop(int af, const void *src, char *dst, size_t size);
 #endif
 
-extern void release_pack_memory(size_t, int);
+extern void release_pack_memory(size_t);
 
 typedef void (*try_to_free_t)(size_t);
 extern try_to_free_t set_try_to_free_routine(try_to_free_t);
@@ -521,7 +536,7 @@ extern FILE *xfdopen(int fd, const char *mode);
 extern int xmkstemp(char *template);
 extern int xmkstemp_mode(char *template, int mode);
 extern int odb_mkstemp(char *template, size_t limit, const char *pattern);
-extern int odb_pack_keep(char *name, size_t namesz, unsigned char *sha1);
+extern int odb_pack_keep(char *name, size_t namesz, const unsigned char *sha1);
 
 static inline size_t xsize_t(off_t len)
 {
@@ -691,13 +706,21 @@ int remove_or_warn(unsigned int mode, const char *path);
  * Call access(2), but warn for any error except "missing file"
  * (ENOENT or ENOTDIR).
  */
-int access_or_warn(const char *path, int mode);
-int access_or_die(const char *path, int mode);
+#define ACCESS_EACCES_OK (1U << 0)
+int access_or_warn(const char *path, int mode, unsigned flag);
+int access_or_die(const char *path, int mode, unsigned flag);
 
 /* Warn on an inaccessible file that ought to be accessible */
 void warn_on_inaccessible(const char *path);
 
 /* Get the passwd entry for the UID of the current process. */
 struct passwd *xgetpwuid_self(void);
+
+#ifdef GMTIME_UNRELIABLE_ERRORS
+struct tm *git_gmtime(const time_t *);
+struct tm *git_gmtime_r(const time_t *, struct tm *);
+#define gmtime git_gmtime
+#define gmtime_r git_gmtime_r
+#endif
 
 #endif

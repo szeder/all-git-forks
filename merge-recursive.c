@@ -201,7 +201,9 @@ static int add_cacheinfo(unsigned int mode, const unsigned char *sha1,
 		const char *path, int stage, int refresh, int options)
 {
 	struct cache_entry *ce;
-	ce = make_cache_entry(mode, sha1 ? sha1 : null_sha1, path, stage, refresh);
+	ce = make_cache_entry(mode, sha1 ? sha1 : null_sha1, path, stage,
+			      (refresh ? (CE_MATCH_REFRESH |
+					  CE_MATCH_IGNORE_MISSING) : 0 ));
 	if (!ce)
 		return error(_("addinfo_cache failed for path '%s'"), path);
 	return add_cache_entry(ce, options);
@@ -251,7 +253,7 @@ struct tree *write_tree_from_memory(struct merge_options *o)
 		int i;
 		fprintf(stderr, "BUG: There are unmerged index entries:\n");
 		for (i = 0; i < active_nr; i++) {
-			struct cache_entry *ce = active_cache[i];
+			const struct cache_entry *ce = active_cache[i];
 			if (ce_stage(ce))
 				fprintf(stderr, "BUG: %d %.*s\n", ce_stage(ce),
 					(int)ce_namelen(ce), ce->name);
@@ -264,7 +266,8 @@ struct tree *write_tree_from_memory(struct merge_options *o)
 
 	if (!cache_tree_fully_valid(active_cache_tree) &&
 	    cache_tree_update(active_cache_tree,
-			      active_cache, active_nr, 0) < 0)
+			      (const struct cache_entry * const *)active_cache,
+			      active_nr, 0) < 0)
 		die(_("error building trees"));
 
 	result = lookup_tree(active_cache_tree->sha1);
@@ -297,7 +300,7 @@ static int get_files_dirs(struct merge_options *o, struct tree *tree)
 {
 	int n;
 	struct pathspec match_all;
-	init_pathspec(&match_all, NULL);
+	memset(&match_all, 0, sizeof(match_all));
 	if (read_tree_recursive(tree, "", 0, 0, &match_all, save_files_dirs, o))
 		return 0;
 	n = o->current_file_set.nr + o->current_directory_set.nr;
@@ -339,7 +342,7 @@ static struct string_list *get_unmerged(void)
 	for (i = 0; i < active_nr; i++) {
 		struct string_list_item *item;
 		struct stage_data *e;
-		struct cache_entry *ce = active_cache[i];
+		const struct cache_entry *ce = active_cache[i];
 		if (!ce_stage(ce))
 			continue;
 
@@ -692,7 +695,7 @@ static int make_room_for_path(struct merge_options *o, const char *path)
 	/* Make sure leading directories are created */
 	status = safe_create_leading_directories_const(path);
 	if (status) {
-		if (status == -3) {
+		if (status == SCLD_EXISTS) {
 			/* something else exists */
 			error(msg, path, _(": perhaps a D/F conflict?"));
 			return -1;
@@ -2062,14 +2065,14 @@ int parse_merge_opt(struct merge_options *o, const char *s)
 		o->recursive_variant = MERGE_RECURSIVE_THEIRS;
 	else if (!strcmp(s, "subtree"))
 		o->subtree_shift = "";
-	else if (!prefixcmp(s, "subtree="))
+	else if (starts_with(s, "subtree="))
 		o->subtree_shift = s + strlen("subtree=");
 	else if (!strcmp(s, "patience"))
 		o->xdl_opts = DIFF_WITH_ALG(o, PATIENCE_DIFF);
 	else if (!strcmp(s, "histogram"))
 		o->xdl_opts = DIFF_WITH_ALG(o, HISTOGRAM_DIFF);
-	else if (!strcmp(s, "diff-algorithm=")) {
-		long value = parse_algorithm_value(s+15);
+	else if (starts_with(s, "diff-algorithm=")) {
+		long value = parse_algorithm_value(s + strlen("diff-algorithm="));
 		if (value < 0)
 			return -1;
 		/* clear out previous settings */
@@ -2087,7 +2090,7 @@ int parse_merge_opt(struct merge_options *o, const char *s)
 		o->renormalize = 1;
 	else if (!strcmp(s, "no-renormalize"))
 		o->renormalize = 0;
-	else if (!prefixcmp(s, "rename-threshold=")) {
+	else if (starts_with(s, "rename-threshold=")) {
 		const char *score = s + strlen("rename-threshold=");
 		if ((o->rename_score = parse_rename_score(&score)) == -1 || *score != 0)
 			return -1;

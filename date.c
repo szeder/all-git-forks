@@ -144,8 +144,8 @@ void show_date_relative(unsigned long time, int tz,
 		if (months) {
 			struct strbuf sb = STRBUF_INIT;
 			strbuf_addf(&sb, Q_("%lu year", "%lu years", years), years);
-			/* TRANSLATORS: "%s" is "<n> years" */
 			strbuf_addf(timebuf,
+				 /* TRANSLATORS: "%s" is "<n> years" */
 				 Q_("%s, %lu month ago", "%s, %lu months ago", months),
 				 sb.buf, months);
 			strbuf_release(&sb);
@@ -184,8 +184,10 @@ const char *show_date(unsigned long time, int tz, enum date_mode mode)
 		tz = local_tzoffset(time);
 
 	tm = time_to_tm(time, tz);
-	if (!tm)
-		return NULL;
+	if (!tm) {
+		tm = time_to_tm(0, 0);
+		tz = 0;
+	}
 
 	strbuf_reset(&timebuf);
 	if (mode == DATE_SHORT)
@@ -711,6 +713,28 @@ int parse_date_basic(const char *date, unsigned long *timestamp, int *offset)
 	return 0; /* success */
 }
 
+int parse_expiry_date(const char *date, unsigned long *timestamp)
+{
+	int errors = 0;
+
+	if (!strcmp(date, "never") || !strcmp(date, "false"))
+		*timestamp = 0;
+	else if (!strcmp(date, "all") || !strcmp(date, "now"))
+		/*
+		 * We take over "now" here, which usually translates
+		 * to the current timestamp.  This is because the user
+		 * really means to expire everything she has done in
+		 * the past, and by definition reflogs are the record
+		 * of the past, and there is nothing from the future
+		 * to be kept.
+		 */
+		*timestamp = ULONG_MAX;
+	else
+		*timestamp = approxidate_careful(date, &errors);
+
+	return errors;
+}
+
 int parse_date(const char *date, char *result, int maxlen)
 {
 	unsigned long timestamp;
@@ -885,7 +909,7 @@ static const char *approxidate_alpha(const char *date, struct tm *tm, struct tm 
 	const char *end = date;
 	int i;
 
-	while (isalpha(*++end));
+	while (isalpha(*++end))
 		;
 
 	for (i = 0; i < 12; i++) {
@@ -1090,4 +1114,21 @@ unsigned long approxidate_careful(const char *date, int *error_ret)
 
 	gettimeofday(&tv, NULL);
 	return approxidate_str(date, &tv, error_ret);
+}
+
+int date_overflows(unsigned long t)
+{
+	time_t sys;
+
+	/* If we overflowed our unsigned long, that's bad... */
+	if (t == ULONG_MAX)
+		return 1;
+
+	/*
+	 * ...but we also are going to feed the result to system
+	 * functions that expect time_t, which is often "signed long".
+	 * Make sure that we fit into time_t, as well.
+	 */
+	sys = t;
+	return t != sys || (t < 1) != (sys < 1);
 }

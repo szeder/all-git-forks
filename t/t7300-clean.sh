@@ -298,6 +298,23 @@ test_expect_success 'git clean -d -x' '
 
 '
 
+test_expect_success 'git clean -d -x with ignored tracked directory' '
+
+	mkdir -p build docs &&
+	touch a.out src/part3.c docs/manual.txt obj.o build/lib.so &&
+	git clean -d -x -e src &&
+	test -f Makefile &&
+	test -f README &&
+	test -f src/part1.c &&
+	test -f src/part2.c &&
+	test ! -f a.out &&
+	test -f src/part3.c &&
+	test ! -d docs &&
+	test ! -f obj.o &&
+	test ! -d build
+
+'
+
 test_expect_success 'git clean -X' '
 
 	mkdir -p build docs &&
@@ -326,6 +343,23 @@ test_expect_success 'git clean -d -X' '
 	test -f src/part2.c &&
 	test -f a.out &&
 	test -f src/part3.c &&
+	test -f docs/manual.txt &&
+	test ! -f obj.o &&
+	test ! -d build
+
+'
+
+test_expect_success 'git clean -d -X with ignored tracked directory' '
+
+	mkdir -p build docs &&
+	touch a.out src/part3.c docs/manual.txt obj.o build/lib.so &&
+	git clean -d -X -e src &&
+	test -f Makefile &&
+	test -f README &&
+	test -f src/part1.c &&
+	test -f src/part2.c &&
+	test -f a.out &&
+	test ! -f src/part3.c &&
 	test -f docs/manual.txt &&
 	test ! -f obj.o &&
 	test ! -d build
@@ -475,6 +509,22 @@ test_expect_success SANITY 'git clean -d with an unreadable empty directory' '
 	chmod a= foo &&
 	git clean -dfx foo &&
 	! test -d foo
+'
+
+test_expect_success 'git clean -d respects pathspecs (dir is prefix of pathspec)' '
+	mkdir -p foo &&
+	mkdir -p foobar &&
+	git clean -df foobar &&
+	test_path_is_dir foo &&
+	test_path_is_missing foobar
+'
+
+test_expect_success 'git clean -d respects pathspecs (pathspec is prefix of dir)' '
+	mkdir -p foo &&
+	mkdir -p foobar &&
+	git clean -df foo &&
+	test_path_is_missing foo &&
+	test_path_is_dir foobar
 '
 
 test_done

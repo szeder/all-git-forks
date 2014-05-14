@@ -304,23 +304,6 @@ int mingw_open (const char *filename, int oflags, ...)
 	return fd;
 }
 
-#undef write
-ssize_t mingw_write(int fd, const void *buf, size_t count)
-{
-	/*
-	 * While write() calls to a file on a local disk are translated
-	 * into WriteFile() calls with a maximum size of 64KB on Windows
-	 * XP and 256KB on Vista, no such cap is placed on writes to
-	 * files over the network on Windows XP.  Unfortunately, there
-	 * seems to be a limit of 32MB-28KB on X64 and 64MB-32KB on x86;
-	 * bigger writes fail on Windows XP.
-	 * So we cap to a nice 31MB here to avoid write failures over
-	 * the net without changing the number of WriteFile() calls in
-	 * the local case.
-	 */
-	return write(fd, buf, min(count, 31 * 1024 * 1024));
-}
-
 static BOOL WINAPI ctrl_ignore(DWORD type)
 {
 	return TRUE;
@@ -491,7 +474,6 @@ int mingw_stat(const char *file_name, struct stat *buf)
 	return do_stat_internal(1, file_name, buf);
 }
 
-#undef fstat
 int mingw_fstat(int fd, struct stat *buf)
 {
 	HANDLE fh = (HANDLE)_get_osfhandle(fd);
@@ -841,8 +823,8 @@ struct pinfo_t {
 	struct pinfo_t *next;
 	pid_t pid;
 	HANDLE proc;
-} pinfo_t;
-struct pinfo_t *pinfo = NULL;
+};
+static struct pinfo_t *pinfo = NULL;
 CRITICAL_SECTION pinfo_cs;
 
 static pid_t mingw_spawnve_fd(const char *cmd, const char **argv, char **env,
@@ -1086,6 +1068,12 @@ int mingw_kill(pid_t pid, int sig)
 		errno = err_win_to_posix(GetLastError());
 		CloseHandle(h);
 		return -1;
+	} else if (pid > 0 && sig == 0) {
+		HANDLE h = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
+		if (h) {
+			CloseHandle(h);
+			return 0;
+		}
 	}
 
 	errno = EINVAL;
@@ -1253,7 +1241,7 @@ static int WSAAPI getaddrinfo_stub(const char *node, const char *service,
 	else
 		sin->sin_addr.s_addr = INADDR_LOOPBACK;
 	ai->ai_addr = (struct sockaddr *)sin;
-	ai->ai_next = 0;
+	ai->ai_next = NULL;
 	return 0;
 }
 
@@ -1677,14 +1665,16 @@ int sigaction(int sig, struct sigaction *in, struct sigaction *out)
 #undef signal
 sig_handler_t mingw_signal(int sig, sig_handler_t handler)
 {
-	sig_handler_t old = timer_fn;
+	sig_handler_t old;
 
 	switch (sig) {
 	case SIGALRM:
+		old = timer_fn;
 		timer_fn = handler;
 		break;
 
 	case SIGINT:
+		old = sigint_fn;
 		sigint_fn = handler;
 		break;
 

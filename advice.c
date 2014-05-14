@@ -2,7 +2,6 @@
 
 int advice_push_update_rejected = 1;
 int advice_push_non_ff_current = 1;
-int advice_push_non_ff_default = 1;
 int advice_push_non_ff_matching = 1;
 int advice_push_already_exists = 1;
 int advice_push_fetch_first = 1;
@@ -14,6 +13,8 @@ int advice_resolve_conflict = 1;
 int advice_implicit_identity = 1;
 int advice_detached_head = 1;
 int advice_set_upstream_failure = 1;
+int advice_object_name_warning = 1;
+int advice_rm_hints = 1;
 
 static struct {
 	const char *name;
@@ -21,7 +22,6 @@ static struct {
 } advice_config[] = {
 	{ "pushupdaterejected", &advice_push_update_rejected },
 	{ "pushnonffcurrent", &advice_push_non_ff_current },
-	{ "pushnonffdefault", &advice_push_non_ff_default },
 	{ "pushnonffmatching", &advice_push_non_ff_matching },
 	{ "pushalreadyexists", &advice_push_already_exists },
 	{ "pushfetchfirst", &advice_push_fetch_first },
@@ -33,6 +33,8 @@ static struct {
 	{ "implicitidentity", &advice_implicit_identity },
 	{ "detachedhead", &advice_detached_head },
 	{ "setupstreamfailure", &advice_set_upstream_failure },
+	{ "objectnamewarning", &advice_object_name_warning },
+	{ "rmhints", &advice_rm_hints },
 
 	/* make this an alias for backward compatibility */
 	{ "pushnonfastforward", &advice_push_update_rejected }

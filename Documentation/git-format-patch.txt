@@ -20,7 +20,7 @@ SYNOPSIS
 		   [--ignore-if-in-upstream]
 		   [--subject-prefix=Subject-Prefix] [(--reroll-count|-v) <n>]
 		   [--to=<email>] [--cc=<email>]
-		   [--cover-letter] [--quiet] [--notes[=<ref>]]
+		   [--[no-]cover-letter] [--quiet] [--notes[=<ref>]]
 		   [<common diff options>]
 		   [ <since> | <revision range> ]
 
@@ -187,6 +187,21 @@ will want to ensure that threading is disabled for `git send-email`.
 	The negated form `--no-cc` discards all `Cc:` headers added so
 	far (from config or command line).
 
+--from::
+--from=<ident>::
+	Use `ident` in the `From:` header of each commit email. If the
+	author ident of the commit is not textually identical to the
+	provided `ident`, place a `From:` header in the body of the
+	message with the original author. If no `ident` is given, use
+	the committer ident.
++
+Note that this option is only useful if you are actually sending the
+emails and want to identify yourself as the sender, but retain the
+original author (and `git am` will correctly pick up the in-body
+header). Note also that `git send-email` already handles this
+transformation for you, and this option should not be used if you are
+feeding the result to `git send-email`.
+
 --add-header=<header>::
 	Add an arbitrary header to the email headers.  This is in addition
 	to any configured headers, and may be used multiple times.
@@ -195,7 +210,7 @@ will want to ensure that threading is disabled for `git send-email`.
 	`Cc:`, and custom) headers added so far from config or command
 	line.
 
---cover-letter::
+--[no-]cover-letter::
 	In addition to the patches, generate a cover letter file
 	containing the shortlog and the overall diffstat.  You can
 	fill in a description in the file before sending it out.
@@ -227,6 +242,7 @@ configuration options in linkgit:git-notes[1] to use this workflow).
 Note that the leading character does not have to be a dot; for example,
 you can use `--suffix=-patch` to get `0001-description-of-my-change-patch`.
 
+-q::
 --quiet::
 	Do not print the names of the generated files to standard output.
 
@@ -260,6 +276,7 @@ attachments, and sign off patches with configuration variables.
 	cc = <email>
 	attach [ = mime-boundary-string ]
 	signoff = true
+	coverletter = auto
 ------------
 
 
@@ -421,7 +438,8 @@ Edit..Preferences..Composition, wrap plain text messages at 0
 In Thunderbird 3:
 Edit..Preferences..Advanced..Config Editor.  Search for
 "mail.wrap_long_lines".
-Toggle it to make sure it is set to `false`.
+Toggle it to make sure it is set to `false`. Also, search for
+"mailnews.wraplength" and set the value to 0.
 
 3. Disable the use of format=flowed:
 Edit..Preferences..Advanced..Config Editor.  Search for

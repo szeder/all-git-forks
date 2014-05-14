@@ -17,6 +17,7 @@ static char const * const archive_usage[] = {
 static const struct archiver **archivers;
 static int nr_archivers;
 static int alloc_archivers;
+static int remote_allow_unreachable;
 
 void register_archiver(struct archiver *ar)
 {
@@ -151,7 +152,6 @@ int write_archive_entries(struct archiver_args *args,
 	struct archiver_context context;
 	struct unpack_trees_options opts;
 	struct tree_desc t;
-	struct pathspec pathspec;
 	int err;
 
 	if (args->baselen > 0 && args->base[args->baselen - 1] == '/') {
@@ -186,10 +186,8 @@ int write_archive_entries(struct archiver_args *args,
 		git_attr_set_direction(GIT_ATTR_INDEX, &the_index);
 	}
 
-	init_pathspec(&pathspec, args->pathspec);
-	err = read_tree_recursive(args->tree, "", 0, 0, &pathspec,
+	err = read_tree_recursive(args->tree, "", 0, 0, &args->pathspec,
 				  write_archive_entry, &context);
-	free_pathspec(&pathspec);
 	if (err == READ_TREE_RECURSIVE)
 		err = 0;
 	return err;
@@ -222,7 +220,7 @@ static int path_exists(struct tree *tree, const char *path)
 	struct pathspec pathspec;
 	int ret;
 
-	init_pathspec(&pathspec, paths);
+	parse_pathspec(&pathspec, 0, 0, "", paths);
 	ret = read_tree_recursive(tree, "", 0, 0, &pathspec, reject_entry, NULL);
 	free_pathspec(&pathspec);
 	return ret != 0;
@@ -231,11 +229,18 @@ static int path_exists(struct tree *tree, const char *path)
 static void parse_pathspec_arg(const char **pathspec,
 		struct archiver_args *ar_args)
 {
-	ar_args->pathspec = pathspec = get_pathspec("", pathspec);
+	/*
+	 * must be consistent with parse_pathspec in path_exists()
+	 * Also if pathspec patterns are dependent, we're in big
+	 * trouble as we test each one separately
+	 */
+	parse_pathspec(&ar_args->pathspec, 0,
+		       PATHSPEC_PREFER_FULL,
+		       "", pathspec);
 	if (pathspec) {
 		while (*pathspec) {
 			if (**pathspec && !path_exists(ar_args->tree, *pathspec))
-				die("path not found: %s", *pathspec);
+				die(_("pathspec '%s' did not match any files"), *pathspec);
 			pathspec++;
 		}
 	}
@@ -253,10 +258,10 @@ static void parse_treeish_arg(const char **argv,
 	unsigned char sha1[20];
 
 	/* Remotes are only allowed to fetch actual refs */
-	if (remote) {
+	if (remote && !remote_allow_unreachable) {
 		char *ref = NULL;
-		const char *colon = strchr(name, ':');
-		int refnamelen = colon ? colon - name : strlen(name);
+		const char *colon = strchrnul(name, ':');
+		int refnamelen = colon - name;
 
 		if (!dwim_ref(name, refnamelen, sha1, &ref))
 			die("no such ref: %.*s", refnamelen, name);
@@ -397,6 +402,14 @@ static int parse_archive_args(int argc, const char **argv,
 	return argc;
 }
 
+static int git_default_archive_config(const char *var, const char *value,
+				      void *cb)
+{
+	if (!strcmp(var, "uploadarchive.allowunreachable"))
+		remote_allow_unreachable = git_config_bool(var, value);
+	return git_default_config(var, value, cb);
+}
+
 int write_archive(int argc, const char **argv, const char *prefix,
 		  int setup_prefix, const char *name_hint, int remote)
 {
@@ -407,7 +420,7 @@ int write_archive(int argc, const char **argv, const char *prefix,
 	if (setup_prefix && prefix == NULL)
 		prefix = setup_git_directory_gently(&nongit);
 
-	git_config(git_default_config, NULL);
+	git_config(git_default_archive_config, NULL);
 	init_tar_archiver();
 	init_zip_archiver();
 
@@ -436,7 +449,7 @@ static int match_extension(const char *filename, const char *ext)
 	 * prefix is non-empty (k.e., we don't match .tar.gz with no actual
 	 * filename).
 	 */
-	if (prefixlen < 2 || filename[prefixlen-1] != '.')
+	if (prefixlen < 2 || filename[prefixlen - 1] != '.')
 		return 0;
 	return !strcmp(filename + prefixlen, ext);
 }

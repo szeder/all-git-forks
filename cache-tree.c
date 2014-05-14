@@ -75,11 +75,7 @@ static struct cache_tree_sub *find_subtree(struct cache_tree *it,
 		return NULL;
 
 	pos = -pos-1;
-	if (it->subtree_alloc <= it->subtree_nr) {
-		it->subtree_alloc = alloc_nr(it->subtree_alloc);
-		it->down = xrealloc(it->down, it->subtree_alloc *
-				    sizeof(*it->down));
-	}
+	ALLOC_GROW(it->down, it->subtree_nr + 1, it->subtree_alloc);
 	it->subtree_nr++;
 
 	down = xmalloc(sizeof(*down) + pathlen + 1);
@@ -121,11 +117,11 @@ void cache_tree_invalidate_path(struct cache_tree *it, const char *path)
 
 	if (!it)
 		return;
-	slash = strchr(path, '/');
+	slash = strchrnul(path, '/');
+	namelen = slash - path;
 	it->entry_count = -1;
-	if (!slash) {
+	if (!*slash) {
 		int pos;
-		namelen = strlen(path);
 		pos = subtree_pos(it, path, namelen);
 		if (0 <= pos) {
 			cache_tree_free(&it->down[pos]->cache_tree);
@@ -143,13 +139,12 @@ void cache_tree_invalidate_path(struct cache_tree *it, const char *path)
 		}
 		return;
 	}
-	namelen = slash - path;
 	down = find_subtree(it, path, namelen, 0);
 	if (down)
 		cache_tree_invalidate_path(down->cache_tree, slash + 1);
 }
 
-static int verify_cache(struct cache_entry **cache,
+static int verify_cache(const struct cache_entry * const *cache,
 			int entries, int flags)
 {
 	int i, funny;
@@ -158,7 +153,7 @@ static int verify_cache(struct cache_entry **cache,
 	/* Verify that the tree is merged */
 	funny = 0;
 	for (i = 0; i < entries; i++) {
-		struct cache_entry *ce = cache[i];
+		const struct cache_entry *ce = cache[i];
 		if (ce_stage(ce)) {
 			if (silent)
 				return -1;
@@ -234,7 +229,7 @@ int cache_tree_fully_valid(struct cache_tree *it)
 }
 
 static int update_one(struct cache_tree *it,
-		      struct cache_entry **cache,
+		      const struct cache_entry * const *cache,
 		      int entries,
 		      const char *base,
 		      int baselen,
@@ -265,7 +260,7 @@ static int update_one(struct cache_tree *it,
 	 */
 	i = 0;
 	while (i < entries) {
-		struct cache_entry *ce = cache[i];
+		const struct cache_entry *ce = cache[i];
 		struct cache_tree_sub *sub;
 		const char *path, *slash;
 		int pathlen, sublen, subcnt, subskip;
@@ -312,7 +307,7 @@ static int update_one(struct cache_tree *it,
 
 	i = 0;
 	while (i < entries) {
-		struct cache_entry *ce = cache[i];
+		const struct cache_entry *ce = cache[i];
 		struct cache_tree_sub *sub;
 		const char *path, *slash;
 		int pathlen, entlen;
@@ -397,7 +392,7 @@ static int update_one(struct cache_tree *it,
 }
 
 int cache_tree_update(struct cache_tree *it,
-		      struct cache_entry **cache,
+		      const struct cache_entry * const *cache,
 		      int entries,
 		      int flags)
 {
@@ -554,22 +549,19 @@ static struct cache_tree *cache_tree_find(struct cache_tree *it, const char *pat
 		const char *slash;
 		struct cache_tree_sub *sub;
 
-		slash = strchr(path, '/');
-		if (!slash)
-			slash = path + strlen(path);
-		/* between path and slash is the name of the
-		 * subtree to look for.
+		slash = strchrnul(path, '/');
+		/*
+		 * Between path and slash is the name of the subtree
+		 * to look for.
 		 */
 		sub = find_subtree(it, path, slash - path, 0);
 		if (!sub)
 			return NULL;
 		it = sub->cache_tree;
-		if (slash)
-			while (*slash && *slash == '/')
-				slash++;
-		if (!slash || !*slash)
-			return it; /* prefix ended with slashes */
+
 		path = slash;
+		while (*path == '/')
+			path++;
 	}
 	return it;
 }
@@ -599,8 +591,8 @@ int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 	was_valid = cache_tree_fully_valid(active_cache_tree);
 	if (!was_valid) {
 		if (cache_tree_update(active_cache_tree,
-				      active_cache, active_nr,
-				      flags) < 0)
+				      (const struct cache_entry * const *)active_cache,
+				      active_nr, flags) < 0)
 			return WRITE_TREE_UNMERGED_INDEX;
 		if (0 <= newfd) {
 			if (!write_cache(newfd, active_cache, active_nr) &&
@@ -701,5 +693,6 @@ int update_main_cache_tree(int flags)
 	if (!the_index.cache_tree)
 		the_index.cache_tree = cache_tree();
 	return cache_tree_update(the_index.cache_tree,
-				 the_index.cache, the_index.cache_nr, flags);
+				 (const struct cache_entry * const *)the_index.cache,
+				 the_index.cache_nr, flags);
 }

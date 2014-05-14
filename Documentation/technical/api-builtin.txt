@@ -14,8 +14,8 @@ Git:
 
 . Add the external declaration for the function to `builtin.h`.
 
-. Add the command to `commands[]` table in `handle_internal_command()`,
-  defined in `git.c`.  The entry should look like:
+. Add the command to the `commands[]` table defined in `git.c`.
+  The entry should look like:
 
 	{ "foo", cmd_foo, <options> },
 +
@@ -39,7 +39,7 @@ where options is the bitwise-or of:
 	on bare repositories.
 	This only makes sense when `RUN_SETUP` is also set.
 
-. Add `builtin-foo.o` to `BUILTIN_OBJS` in `Makefile`.
+. Add `builtin/foo.o` to `BUILTIN_OBJS` in `Makefile`.
 
 Additionally, if `foo` is a new command, there are 3 more things to do:
 
