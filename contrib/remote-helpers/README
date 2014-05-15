@@ -1,0 +1,11 @@
+The remote-helper bridges to access data stored in Hg and bzr will be
+maintained outside the git.git tree in the repositories of its
+primary author at:
+
+    https://github.com/felipec/git-remote-hg
+    https://github.com/felipec/git-remote-bzr
+
+As a convenience, copies of the last-bundled version of these two
+remote-helper bridges are kept here, but they may left stale.  Users
+are encouraged to visit the above authoritative repositories for the
+latest versions to get involved in its further developments.
