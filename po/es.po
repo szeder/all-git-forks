@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-14 21:54+0200\n"
+"PO-Revision-Date: 2014-05-15 22:05+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -4155,19 +4155,19 @@ msgstr "Sólo puede usar una de las opciones -c/-C/-F/--fixup."
 
 #: builtin/commit.c:1100
 msgid "Option -m cannot be combined with -c/-C/-F/--fixup."
-msgstr ""
+msgstr "La opción -m no se puede combinar con -c/-C/-F/--fixup."
 
 #: builtin/commit.c:1108
 msgid "--reset-author can be used only with -C, -c or --amend."
-msgstr ""
+msgstr "--reset-author sólo se puede usar con -C, -c o --amend."
 
 #: builtin/commit.c:1125
 msgid "Only one of --include/--only/--all/--interactive/--patch can be used."
-msgstr ""
+msgstr "Sólo puede usar una de las opciones --include/--only/--all/--interactive/--patch."
 
 #: builtin/commit.c:1127
 msgid "No paths with --include/--only does not make sense."
-msgstr ""
+msgstr "Con las opciones --include/--only debe especificar alguna ruta."
 
 #: builtin/commit.c:1129
 msgid "Clever... amending the last one with dirty index."
@@ -4175,7 +4175,7 @@ msgstr ""
 
 #: builtin/commit.c:1131
 msgid "Explicit paths specified without -i or -o; assuming --only paths..."
-msgstr ""
+msgstr "Ha especificado rutas explícitas sin las opciones -i o -o; asumo --only ..."
 
 #: builtin/commit.c:1143 builtin/tag.c:639
 #, c-format
@@ -4184,15 +4184,15 @@ msgstr ""
 
 #: builtin/commit.c:1148
 msgid "Paths with -a does not make sense."
-msgstr ""
+msgstr "No tiene sentido especificar rutas con la opción -a."
 
 #: builtin/commit.c:1258 builtin/commit.c:1516
 msgid "show status concisely"
-msgstr ""
+msgstr "muestra el estado de forma concisa"
 
 #: builtin/commit.c:1260 builtin/commit.c:1518
 msgid "show branch information"
-msgstr ""
+msgstr "muestra información de la rama"
 
 #: builtin/commit.c:1262 builtin/commit.c:1520 builtin/push.c:490
 msgid "machine-readable output"
@@ -4200,7 +4200,7 @@ msgstr ""
 
 #: builtin/commit.c:1265 builtin/commit.c:1522
 msgid "show status in long format (default)"
-msgstr ""
+msgstr "muestra el estado de forma extensa (por omisión)"
 
 #: builtin/commit.c:1268 builtin/commit.c:1525
 msgid "terminate entries with NUL"
@@ -4217,7 +4217,7 @@ msgstr ""
 
 #: builtin/commit.c:1274
 msgid "show ignored files"
-msgstr ""
+msgstr "muestra los ficheros ignorados"
 
 #: builtin/commit.c:1275 parse-options.h:153
 msgid "when"
@@ -4231,7 +4231,7 @@ msgstr ""
 
 #: builtin/commit.c:1278
 msgid "list untracked files in columns"
-msgstr ""
+msgstr "lista los ficheros no monitorizados en columnas"
 
 #: builtin/commit.c:1347
 msgid "couldn't look up newly created commit"
@@ -4251,7 +4251,7 @@ msgstr ""
 
 #: builtin/commit.c:1486
 msgid "suppress summary after successful commit"
-msgstr ""
+msgstr "omite el resumen después de un commit correcto"
 
 #: builtin/commit.c:1487
 msgid "show diff in commit message template"
@@ -4259,15 +4259,15 @@ msgstr ""
 
 #: builtin/commit.c:1489
 msgid "Commit message options"
-msgstr ""
+msgstr "Opciones del mensaje de commit"
 
 #: builtin/commit.c:1490 builtin/tag.c:512
 msgid "read message from file"
-msgstr ""
+msgstr "lee el mensaje desde un fichero"
 
 #: builtin/commit.c:1491
 msgid "author"
-msgstr ""
+msgstr "autor"
 
 #: builtin/commit.c:1491
 msgid "override author for commit"
@@ -4275,7 +4275,7 @@ msgstr ""
 
 #: builtin/commit.c:1492 builtin/gc.c:272
 msgid "date"
-msgstr ""
+msgstr "fecha"
 
 #: builtin/commit.c:1492
 msgid "override date for commit"
@@ -4284,19 +4284,19 @@ msgstr ""
 #: builtin/commit.c:1493 builtin/merge.c:216 builtin/notes.c:409
 #: builtin/notes.c:566 builtin/tag.c:510
 msgid "message"
-msgstr ""
+msgstr "mensaje"
 
 #: builtin/commit.c:1493
 msgid "commit message"
-msgstr ""
+msgstr "mensaje de commit"
 
 #: builtin/commit.c:1494
 msgid "reuse and edit message from specified commit"
-msgstr ""
+msgstr "reusa y edita el mensaje del commit especificado"
 
 #: builtin/commit.c:1495
 msgid "reuse message from specified commit"
-msgstr ""
+msgstr "reusa el mensaje del commit especificado"
 
 #: builtin/commit.c:1496
 msgid "use autosquash formatted message to fixup specified commit"
@@ -4308,7 +4308,7 @@ msgstr ""
 
 #: builtin/commit.c:1498
 msgid "the commit is authored by me now (used with -C/-c/--amend)"
-msgstr ""
+msgstr "el autor del commit paso a ser yo (usado con -C/-c/--amend)"
 
 #: builtin/commit.c:1499 builtin/log.c:1180 builtin/revert.c:86
 msgid "add Signed-off-by:"
@@ -4316,7 +4316,7 @@ msgstr ""
 
 #: builtin/commit.c:1500
 msgid "use specified template file"
-msgstr ""
+msgstr "usa el fichero-plantilla especificado"
 
 #: builtin/commit.c:1501
 msgid "force edit of commit"
