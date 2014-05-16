@@ -3584,9 +3584,10 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 
 	/* Copy, sort, and reject duplicate refs */
 	qsort(updates, n, sizeof(*updates), ref_update_compare);
-	ret = ref_update_reject_duplicates(updates, n, err);
-	if (ret)
+	if (ref_update_reject_duplicates(updates, n, err)) {
+		ret = -1;
 		goto cleanup;
+	}
 
 	/* Acquire all locks while verifying old values */
 	for (i = 0; i < n; i++) {
@@ -3600,10 +3601,12 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 						   update->flags,
 						   &update->type);
 		if (!update->lock) {
+			int df_conflict = (errno == ENOTDIR);
+
 			if (err)
 				strbuf_addf(err, "Cannot lock the ref '%s'.",
 					    update->refname);
-			ret = 1;
+			ret = df_conflict ? UPDATE_REFS_NAME_CONFLICT : -1;
 			goto cleanup;
 		}
 	}
@@ -3620,6 +3623,7 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 				if (err)
 					strbuf_addf(err, "Cannot update the ref '%s'.",
 						    update->refname);
+				ret = -1;
 				goto cleanup;
 			}
 		}
@@ -3630,14 +3634,16 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 		struct ref_update *update = updates[i];
 
 		if (update->lock) {
-			ret |= delete_ref_loose(update->lock, update->type,
-						err);
+			if (delete_ref_loose(update->lock, update->type, err))
+				ret = -1;
+
 			if (!(update->flags & REF_ISPRUNING))
 				delnames[delnum++] = update->lock->ref_name;
 		}
 	}
 
-	ret |= repack_without_refs(delnames, delnum, err);
+	if (repack_without_refs(delnames, delnum, err))
+		ret = -1;
 	for (i = 0; i < delnum; i++)
 		unlink_or_warn(git_path("logs/%s", delnames[i]));
 	clear_loose_ref_cache(&ref_cache);
