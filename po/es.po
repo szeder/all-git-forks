@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-15 22:05+0200\n"
+"PO-Revision-Date: 2014-05-16 22:19+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -4271,7 +4271,7 @@ msgstr "autor"
 
 #: builtin/commit.c:1491
 msgid "override author for commit"
-msgstr ""
+msgstr "especificación manual del autor del commit"
 
 #: builtin/commit.c:1492 builtin/gc.c:272
 msgid "date"
@@ -4279,7 +4279,7 @@ msgstr "fecha"
 
 #: builtin/commit.c:1492
 msgid "override date for commit"
-msgstr ""
+msgstr "especificación manual de la fecha del commit"
 
 #: builtin/commit.c:1493 builtin/merge.c:216 builtin/notes.c:409
 #: builtin/notes.c:566 builtin/tag.c:510
@@ -4328,7 +4328,7 @@ msgstr ""
 
 #: builtin/commit.c:1502 builtin/tag.c:515
 msgid "how to strip spaces and #comments from message"
-msgstr ""
+msgstr "cómo quitar espacios y #comentarios del mensaje"
 
 #: builtin/commit.c:1503
 msgid "include status in commit message template"
@@ -4345,27 +4345,27 @@ msgstr ""
 
 #: builtin/commit.c:1508
 msgid "Commit contents options"
-msgstr ""
+msgstr "Opciones del contenido del commit"
 
 #: builtin/commit.c:1509
 msgid "commit all changed files"
-msgstr ""
+msgstr "incluye en el commit todos los ficheros modificados"
 
 #: builtin/commit.c:1510
 msgid "add specified files to index for commit"
-msgstr ""
+msgstr "añade los ficheros especificados al índice para commit"
 
 #: builtin/commit.c:1511
 msgid "interactively add files"
-msgstr ""
+msgstr "añade ficheros interactivamente"
 
 #: builtin/commit.c:1512
 msgid "interactively add changes"
-msgstr ""
+msgstr "añade modificaciones interactivamente"
 
 #: builtin/commit.c:1513
 msgid "commit only specified files"
-msgstr ""
+msgstr "hace commit sólo de los ficheros especificados"
 
 #: builtin/commit.c:1514
 msgid "bypass pre-commit hook"
@@ -4373,11 +4373,11 @@ msgstr ""
 
 #: builtin/commit.c:1515
 msgid "show what would be committed"
-msgstr ""
+msgstr "muestra lo que se incluiría en el commit"
 
 #: builtin/commit.c:1526
 msgid "amend previous commit"
-msgstr ""
+msgstr "corrige el commit previo"
 
 #: builtin/commit.c:1527
 msgid "bypass post-rewrite hook"
@@ -4398,7 +4398,7 @@ msgstr ""
 #: builtin/commit.c:1601 builtin/merge.c:518
 #, c-format
 msgid "could not open '%s' for reading"
-msgstr ""
+msgstr "no he podido abrir '%s' en lectura"
 
 #: builtin/commit.c:1608
 #, c-format
@@ -4412,21 +4412,21 @@ msgstr ""
 #: builtin/commit.c:1634
 #, c-format
 msgid "could not read commit message: %s"
-msgstr ""
+msgstr "no he podido leer el mensaje de commit: %s"
 
 #: builtin/commit.c:1645
 #, c-format
 msgid "Aborting commit; you did not edit the message.\n"
-msgstr ""
+msgstr "Abortando el commit; no ha editado el mensaje.\n"
 
 #: builtin/commit.c:1650
 #, c-format
 msgid "Aborting commit due to empty commit message.\n"
-msgstr ""
+msgstr "Abortando el commit por mensaje de commit vacío.\n"
 
 #: builtin/commit.c:1665 builtin/merge.c:857 builtin/merge.c:882
 msgid "failed to write commit object"
-msgstr ""
+msgstr "no he podido escribir el objeto commit"
 
 #: builtin/commit.c:1686
 msgid "cannot lock HEAD ref"
@@ -4445,27 +4445,27 @@ msgstr ""
 
 #: builtin/config.c:8
 msgid "git config [options]"
-msgstr ""
+msgstr "git config [opciones]"
 
 #: builtin/config.c:53
 msgid "Config file location"
-msgstr ""
+msgstr "Ubicación del fichero de configuración"
 
 #: builtin/config.c:54
 msgid "use global config file"
-msgstr ""
+msgstr "usa el fichero de configuración global"
 
 #: builtin/config.c:55
 msgid "use system config file"
-msgstr ""
+msgstr "usar el fichero de configuración del sistema"
 
 #: builtin/config.c:56
 msgid "use repository config file"
-msgstr ""
+msgstr "usa el fichero de configuración del repositorio"
 
 #: builtin/config.c:57
 msgid "use given config file"
-msgstr ""
+msgstr "usa el fichero de configuración especificado"
 
 #: builtin/config.c:58
 msgid "blob-id"
@@ -4477,7 +4477,7 @@ msgstr ""
 
 #: builtin/config.c:59
 msgid "Action"
-msgstr ""
+msgstr "Acción"
 
 #: builtin/config.c:60
 msgid "get value: name [value-regex]"
@@ -4501,7 +4501,7 @@ msgstr ""
 
 #: builtin/config.c:65
 msgid "add a new variable: name value"
-msgstr ""
+msgstr "añade una variable nueva: nombre valor"
 
 #: builtin/config.c:66
 msgid "remove a variable: name [value-regex]"
@@ -4513,11 +4513,11 @@ msgstr ""
 
 #: builtin/config.c:68
 msgid "rename section: old-name new-name"
-msgstr ""
+msgstr "renombra sección: nombre-actual nombre-nuevo"
 
 #: builtin/config.c:69
 msgid "remove a section: name"
-msgstr ""
+msgstr "elimina una sección: nombre"
 
 #: builtin/config.c:70
 msgid "list all"
@@ -4525,7 +4525,7 @@ msgstr ""
 
 #: builtin/config.c:71
 msgid "open an editor"
-msgstr ""
+msgstr "abre un editor"
 
 #: builtin/config.c:72 builtin/config.c:73
 msgid "slot"
@@ -4541,27 +4541,27 @@ msgstr ""
 
 #: builtin/config.c:74
 msgid "Type"
-msgstr ""
+msgstr "Tipo"
 
 #: builtin/config.c:75
 msgid "value is \"true\" or \"false\""
-msgstr ""
+msgstr "el valor es \"true\" [verdadero] o \"false\" [falso]"
 
 #: builtin/config.c:76
 msgid "value is decimal number"
-msgstr ""
+msgstr "el valor es un número decimal"
 
 #: builtin/config.c:77
 msgid "value is --bool or --int"
-msgstr ""
+msgstr "el valor es --bool o --int"
 
 #: builtin/config.c:78
 msgid "value is a path (file or directory name)"
-msgstr ""
+msgstr "el valor es una ruta (nombre de fichero o directorio)"
 
 #: builtin/config.c:79
 msgid "Other"
-msgstr ""
+msgstr "Otros"
 
 #: builtin/config.c:80
 msgid "terminate values with NUL byte"
@@ -4572,8 +4572,9 @@ msgid "respect include directives on lookup"
 msgstr ""
 
 #: builtin/count-objects.c:82
+#, fuzzy
 msgid "git count-objects [-v] [-H | --human-readable]"
-msgstr ""
+msgstr "********* aqui"
 
 #: builtin/count-objects.c:97
 msgid "print sizes in human readable format"
