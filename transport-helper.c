@@ -107,7 +107,6 @@ static void do_take_over(struct transport *transport)
 static struct child_process *get_helper(struct transport *transport)
 {
 	struct helper_data *data = transport->data;
-	struct argv_array argv = ARGV_ARRAY_INIT;
 	struct strbuf buf = STRBUF_INIT;
 	struct child_process *helper;
 	const char **refspecs = NULL;
@@ -129,10 +128,9 @@ static struct child_process *get_helper(struct transport *transport)
 	helper->in = -1;
 	helper->out = -1;
 	helper->err = 0;
-	argv_array_pushf(&argv, "git-remote-%s", data->name);
-	argv_array_push(&argv, transport->remote->name);
-	argv_array_push(&argv, remove_ext_force(transport->url));
-	helper->argv = argv_array_detach(&argv, NULL);
+	argv_array_pushf(&helper->args, "git-remote-%s", data->name);
+	argv_array_push(&helper->args, transport->remote->name);
+	argv_array_push(&helper->args, remove_ext_force(transport->url));
 	helper->git_cmd = 0;
 	helper->silent_exec_failure = 1;
 
@@ -256,7 +254,6 @@ static int disconnect_helper(struct transport *transport)
 		close(data->helper->out);
 		fclose(data->out);
 		res = finish_command(data->helper);
-		argv_array_free_detached(data->helper->argv);
 		free(data->helper);
 		data->helper = NULL;
 	}
@@ -405,18 +402,16 @@ static int get_importer(struct transport *transport, struct child_process *fasti
 {
 	struct child_process *helper = get_helper(transport);
 	struct helper_data *data = transport->data;
-	struct argv_array argv = ARGV_ARRAY_INIT;
 	int cat_blob_fd, code;
 	memset(fastimport, 0, sizeof(*fastimport));
 	fastimport->in = helper->out;
-	argv_array_push(&argv, "fast-import");
-	argv_array_push(&argv, debug ? "--stats" : "--quiet");
+	argv_array_push(&fastimport->args, "fast-import");
+	argv_array_push(&fastimport->args, debug ? "--stats" : "--quiet");
 
 	if (data->bidi_import) {
 		cat_blob_fd = xdup(helper->in);
-		argv_array_pushf(&argv, "--cat-blob-fd=%d", cat_blob_fd);
+		argv_array_pushf(&fastimport->args, "--cat-blob-fd=%d", cat_blob_fd);
 	}
-	fastimport->argv = argv.argv;
 	fastimport->git_cmd = 1;
 
 	code = start_command(fastimport);
@@ -429,24 +424,24 @@ static int get_exporter(struct transport *transport,
 {
 	struct helper_data *data = transport->data;
 	struct child_process *helper = get_helper(transport);
-	int argc = 0, i;
+	int i;
+
 	memset(fastexport, 0, sizeof(*fastexport));
 
 	/* we need to duplicate helper->in because we want to use it after
 	 * fastexport is done with it. */
 	fastexport->out = dup(helper->in);
-	fastexport->argv = xcalloc(6 + revlist_args->nr, sizeof(*fastexport->argv));
-	fastexport->argv[argc++] = "fast-export";
-	fastexport->argv[argc++] = "--use-done-feature";
-	fastexport->argv[argc++] = data->signed_tags ?
-		"--signed-tags=verbatim" : "--signed-tags=warn-strip";
+	argv_array_push(&fastexport->args, "fast-export");
+	argv_array_push(&fastexport->args, "--use-done-feature");
+	argv_array_push(&fastexport->args, data->signed_tags ?
+		"--signed-tags=verbatim" : "--signed-tags=warn-strip");
 	if (data->export_marks)
-		fastexport->argv[argc++] = data->export_marks;
+		argv_array_pushf(&fastexport->args, "%s", data->export_marks);
 	if (data->import_marks)
-		fastexport->argv[argc++] = data->import_marks;
+		argv_array_pushf(&fastexport->args, "%s", data->import_marks);
 
 	for (i = 0; i < revlist_args->nr; i++)
-		fastexport->argv[argc++] = revlist_args->items[i].string;
+		argv_array_push(&fastexport->args, revlist_args->items[i].string);
 
 	fastexport->git_cmd = 1;
 	return start_command(fastexport);
@@ -487,7 +482,6 @@ static int fetch_with_import(struct transport *transport,
 
 	if (finish_command(&fastimport))
 		die("Error while running fast-import");
-	argv_array_free_detached(fastimport.argv);
 
 	/*
 	 * The fast-import stream of a remote helper that advertises
