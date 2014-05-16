@@ -253,7 +253,7 @@ commit $head1
 $added_iso88591
 EOF
 
-test_format complex-subject-trunc %<($truncate_count,trunc)%s failure <<EOF
+test_format complex-subject-trunc %<($truncate_count,trunc)%s <<EOF
 commit $head3
 Test printing of c..
 commit $head2
@@ -262,7 +262,7 @@ commit $head1
 added (hinzugef${added_utf8_part_iso88591}gt..
 EOF
 
-test_format complex-subject-mtrunc %<($truncate_count,mtrunc)%s failure <<EOF
+test_format complex-subject-mtrunc %<($truncate_count,mtrunc)%s <<EOF
 commit $head3
 Test prin..ex bodies
 commit $head2
@@ -271,7 +271,7 @@ commit $head1
 added (hi..f${added_utf8_part_iso88591}gt) foo
 EOF
 
-test_format complex-subject-ltrunc %<($truncate_count,ltrunc)%s failure <<EOF
+test_format complex-subject-ltrunc %<($truncate_count,ltrunc)%s <<EOF
 commit $head3
 .. of complex bodies
 commit $head2

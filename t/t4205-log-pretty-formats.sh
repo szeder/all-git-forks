@@ -231,7 +231,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'left alignment formatting with trunc. i18n.logOutputEncoding' '
+test_expect_success 'left alignment formatting with trunc. i18n.logOutputEncoding' '
 	git -c i18n.logOutputEncoding=iso8859-1 log --pretty="format:%<(10,trunc)%s" >actual &&
 	# complete the incomplete line at the end
 	echo >>actual &&
@@ -257,7 +257,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'left alignment formatting with ltrunc. i18n.logOutputEncoding' '
+test_expect_success 'left alignment formatting with ltrunc. i18n.logOutputEncoding' '
 	git -c i18n.logOutputEncoding=iso8859-1 log --pretty="format:%<(10,ltrunc)%s" >actual &&
 	# complete the incomplete line at the end
 	echo >>actual &&
@@ -283,7 +283,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'left alignment formatting with mtrunc. i18n.logOutputEncoding' '
+test_expect_success 'left alignment formatting with mtrunc. i18n.logOutputEncoding' '
 	git -c i18n.logOutputEncoding=iso8859-1 log --pretty="format:%<(10,mtrunc)%s" >actual &&
 	# complete the incomplete line at the end
 	echo >>actual &&
@@ -465,7 +465,7 @@ EOF
 	test_cmp expected actual
 '
 
-test_expect_failure 'left/right alignment formatting with stealing. i18n.logOutputEncoding' '
+test_expect_success 'left/right alignment formatting with stealing. i18n.logOutputEncoding' '
 	git commit --amend -m short --author "long long long <long@me.com>" &&
 	git -c i18n.logOutputEncoding=iso8859-1 log --pretty="format:%<(10,trunc)%s%>>(10,ltrunc)% an" >actual &&
 	# complete the incomplete line at the end
