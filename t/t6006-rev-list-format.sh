@@ -13,12 +13,12 @@ test_tick
 # (translated with Google Translate),
 # encoded in UTF-8, used as a commit log message below.
 added_utf8_part=$(printf "\303\274")
-added_utf8_part_iso88591=$(echo "$added_utf8_part" | iconv -f utf-8 -t iso8859-1)
+added_utf8_part_iso88591=$(echo "$added_utf8_part" | iconv -f UTF-8 -t ISO8859-1)
 added=$(printf "added (hinzugef${added_utf8_part}gt) foo")
 added_iso88591=$(echo "$added" | iconv -f utf-8 -t iso8859-1)
 # same but "changed"
 changed_utf8_part=$(printf "\303\244")
-changed_utf8_part_iso88591=$(echo "$changed_utf8_part" | iconv -f utf-8 -t iso8859-1)
+changed_utf8_part_iso88591=$(echo "$changed_utf8_part" | iconv -f UTF-8 -t ISO8859-1)
 changed=$(printf "changed (ge${changed_utf8_part}ndert) foo")
 changed_iso88591=$(echo "$changed" | iconv -f utf-8 -t iso8859-1)
 
