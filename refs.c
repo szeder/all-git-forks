@@ -1457,7 +1457,7 @@ char *resolve_refdup(const char *ref, unsigned char *sha1, int reading, int *fla
 /* The argument to filter_refs */
 struct ref_filter {
 	const char *pattern;
-	each_ref_fn *fn;
+	each_ref_fn_oid *fn;
 	void *cb_data;
 };
 
@@ -1485,7 +1485,7 @@ static int filter_refs(const char *refname, const struct object_id *oid, int fla
 	struct ref_filter *filter = (struct ref_filter *)data;
 	if (wildmatch(filter->pattern, refname, 0, NULL))
 		return 0;
-	return filter->fn(refname, oid->sha1, flags, filter->cb_data);
+	return filter->fn(refname, oid, flags, filter->cb_data);
 }
 
 enum peel_status {
@@ -1851,7 +1851,7 @@ int for_each_namespaced_ref(each_ref_fn fn, void *cb_data)
 	return ret;
 }
 
-int for_each_glob_ref_in(each_ref_fn fn, const char *pattern,
+int for_each_glob_ref_in(each_ref_fn_oid fn, const char *pattern,
 	const char *prefix, void *cb_data)
 {
 	struct strbuf real_pattern = STRBUF_INIT;
@@ -1881,7 +1881,7 @@ int for_each_glob_ref_in(each_ref_fn fn, const char *pattern,
 	return ret;
 }
 
-int for_each_glob_ref(each_ref_fn fn, const char *pattern, void *cb_data)
+int for_each_glob_ref(each_ref_fn_oid fn, const char *pattern, void *cb_data)
 {
 	return for_each_glob_ref_in(fn, pattern, NULL, cb_data);
 }

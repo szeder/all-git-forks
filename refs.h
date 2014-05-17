@@ -58,8 +58,8 @@ extern int for_each_tag_ref(each_ref_fn_oid, void *);
 extern int for_each_branch_ref(each_ref_fn_oid, void *);
 extern int for_each_remote_ref(each_ref_fn_oid, void *);
 extern int for_each_replace_ref(each_ref_fn_oid, void *);
-extern int for_each_glob_ref(each_ref_fn, const char *pattern, void *);
-extern int for_each_glob_ref_in(each_ref_fn, const char *pattern, const char* prefix, void *);
+extern int for_each_glob_ref(each_ref_fn_oid, const char *pattern, void *);
+extern int for_each_glob_ref_in(each_ref_fn_oid, const char *pattern, const char* prefix, void *);
 
 extern int head_ref_submodule(const char *submodule, each_ref_fn_oid fn, void *cb_data);
 extern int for_each_ref_submodule(const char *submodule, each_ref_fn_oid fn, void *cb_data);
