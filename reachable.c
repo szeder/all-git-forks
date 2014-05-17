@@ -133,17 +133,17 @@ static void walk_commit_list(struct rev_info *revs,
 	}
 }
 
-static int add_one_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
+static int add_one_reflog_ent(struct object_id *ooid, struct object_id *noid,
 		const char *email, unsigned long timestamp, int tz,
 		const char *message, void *cb_data)
 {
 	struct object *object;
 	struct rev_info *revs = (struct rev_info *)cb_data;
 
-	object = parse_object(osha1);
+	object = parse_object(ooid->sha1);
 	if (object)
 		add_pending_object(revs, object, "");
-	object = parse_object(nsha1);
+	object = parse_object(noid->sha1);
 	if (object)
 		add_pending_object(revs, object, "");
 	return 0;

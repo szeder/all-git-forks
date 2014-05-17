@@ -42,7 +42,7 @@ struct expire_reflog_cb {
 	struct commit_list *mark_list;
 	unsigned long mark_limit;
 	struct cmd_reflog_expire_cb *cmd;
-	unsigned char last_kept_sha1[20];
+	struct object_id last_kept_oid;
 };
 
 struct collected_reflog {
@@ -288,7 +288,7 @@ static int unreachable(struct expire_reflog_cb *cb, struct commit *commit, unsig
 	return !(commit->object.flags & REACHABLE);
 }
 
-static int expire_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
+static int expire_reflog_ent(struct object_id *ooid, struct object_id *noid,
 		const char *email, unsigned long timestamp, int tz,
 		const char *message, void *cb_data)
 {
@@ -299,17 +299,17 @@ static int expire_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
 		goto prune;
 
 	if (cb->cmd->rewrite)
-		osha1 = cb->last_kept_sha1;
+		ooid = &cb->last_kept_oid;
 
 	old = new = NULL;
 	if (cb->cmd->stalefix &&
-	    (!keep_entry(&old, osha1) || !keep_entry(&new, nsha1)))
+	    (!keep_entry(&old, ooid->sha1) || !keep_entry(&new, noid->sha1)))
 		goto prune;
 
 	if (timestamp < cb->cmd->expire_unreachable) {
 		if (cb->unreachable_expire_kind == UE_ALWAYS)
 			goto prune;
-		if (unreachable(cb, old, osha1) || unreachable(cb, new, nsha1))
+		if (unreachable(cb, old, ooid->sha1) || unreachable(cb, new, noid->sha1))
 			goto prune;
 	}
 
@@ -320,10 +320,10 @@ static int expire_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
 		char sign = (tz < 0) ? '-' : '+';
 		int zone = (tz < 0) ? (-tz) : tz;
 		fprintf(cb->newlog, "%s %s %s %lu %c%04d\t%s",
-			sha1_to_hex(osha1), sha1_to_hex(nsha1),
+			sha1_to_hex(ooid->sha1), sha1_to_hex(noid->sha1),
 			email, timestamp, sign, zone,
 			message);
-		hashcpy(cb->last_kept_sha1, nsha1);
+		hashcpy(cb->last_kept_oid.sha1, noid->sha1);
 	}
 	if (cb->cmd->verbose)
 		printf("keep %s", message);
@@ -427,7 +427,8 @@ static int expire_reflog(const char *ref, const unsigned char *sha1, int unused,
 			unlink(newlog_path);
 		} else if (cmd->updateref &&
 			(write_in_full(lock->lock_fd,
-				sha1_to_hex(cb.last_kept_sha1), 40) != 40 ||
+				sha1_to_hex(cb.last_kept_oid.sha1), GIT_SHA1_HEXSZ) !=
+					GIT_SHA1_HEXSZ ||
 			 write_str_in_full(lock->lock_fd, "\n") != 1 ||
 			 close_ref(lock) < 0)) {
 			status |= error("Couldn't write %s",
@@ -682,7 +683,7 @@ static int cmd_reflog_expire(int argc, const char **argv, const char *prefix)
 	return status;
 }
 
-static int count_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
+static int count_reflog_ent(struct object_id *ooid, struct object_id *noid,
 		const char *email, unsigned long timestamp, int tz,
 		const char *message, void *cb_data)
 {

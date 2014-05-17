@@ -3069,16 +3069,17 @@ int read_ref_at(const char *refname, unsigned long at_time, int cnt,
 
 static int show_one_reflog_ent(struct strbuf *sb, each_reflog_ent_fn fn, void *cb_data)
 {
-	unsigned char osha1[20], nsha1[20];
+	struct object_id ooid, noid;
 	char *email_end, *message;
 	unsigned long timestamp;
 	int tz;
 
 	/* old SP new SP name <email> SP time TAB msg LF */
-	if (sb->len < 83 || sb->buf[sb->len - 1] != '\n' ||
-	    get_sha1_hex(sb->buf, osha1) || sb->buf[40] != ' ' ||
-	    get_sha1_hex(sb->buf + 41, nsha1) || sb->buf[81] != ' ' ||
-	    !(email_end = strchr(sb->buf + 82, '>')) ||
+	if (sb->len < GIT_SHA1_HEXSZ * 2 + 3 || sb->buf[sb->len - 1] != '\n' ||
+	    get_sha1_hex(sb->buf, ooid.sha1) || sb->buf[GIT_SHA1_HEXSZ] != ' ' ||
+	    get_sha1_hex(sb->buf + GIT_SHA1_HEXSZ + 1, noid.sha1) ||
+		sb->buf[GIT_SHA1_HEXSZ * 2 + 1] != ' ' ||
+	    !(email_end = strchr(sb->buf + GIT_SHA1_HEXSZ * 2 + 2, '>')) ||
 	    email_end[1] != ' ' ||
 	    !(timestamp = strtoul(email_end + 2, &message, 10)) ||
 	    !message || message[0] != ' ' ||
@@ -3092,7 +3093,8 @@ static int show_one_reflog_ent(struct strbuf *sb, each_reflog_ent_fn fn, void *c
 		message += 6;
 	else
 		message += 7;
-	return fn(osha1, nsha1, sb->buf + 82, timestamp, tz, message, cb_data);
+	return fn(&ooid, &noid, sb->buf + GIT_SHA1_HEXSZ * 2 + 2, timestamp, tz,
+		message, cb_data);
 }
 
 static char *find_beginning_of_line(char *bob, char *scan)

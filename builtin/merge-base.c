@@ -113,14 +113,14 @@ struct rev_collect {
 	unsigned int initial : 1;
 };
 
-static void add_one_commit(unsigned char *sha1, struct rev_collect *revs)
+static void add_one_commit(struct object_id *oid, struct rev_collect *revs)
 {
 	struct commit *commit;
 
-	if (is_null_sha1(sha1))
+	if (is_null_sha1(oid->sha1))
 		return;
 
-	commit = lookup_commit(sha1);
+	commit = lookup_commit(oid->sha1);
 	if (!commit ||
 	    (commit->object.flags & TMP_MARK) ||
 	    parse_commit(commit))
@@ -131,17 +131,18 @@ static void add_one_commit(unsigned char *sha1, struct rev_collect *revs)
 	commit->object.flags |= TMP_MARK;
 }
 
-static int collect_one_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
-				  const char *ident, unsigned long timestamp,
-				  int tz, const char *message, void *cbdata)
+static int collect_one_reflog_ent(struct object_id *ooid,
+				  struct object_id *noid, const char *ident,
+				  unsigned long timestamp, int tz, const char *message,
+				  void *cbdata)
 {
 	struct rev_collect *revs = cbdata;
 
 	if (revs->initial) {
 		revs->initial = 0;
-		add_one_commit(osha1, revs);
+		add_one_commit(ooid, revs);
 	}
-	add_one_commit(nsha1, revs);
+	add_one_commit(noid, revs);
 	return 0;
 }
 
