@@ -358,16 +358,16 @@ static void run_service(const char **argv)
 	argv_array_clear(&env);
 }
 
-static int show_text_ref(const char *name, const unsigned char *sha1,
+static int show_text_ref(const char *name, const struct object_id *oid,
 	int flag, void *cb_data)
 {
 	const char *name_nons = strip_namespace(name);
 	struct strbuf *buf = cb_data;
-	struct object *o = parse_object(sha1);
+	struct object *o = parse_object(oid->sha1);
 	if (!o)
 		return 0;
 
-	strbuf_addf(buf, "%s\t%s\n", sha1_to_hex(sha1), name_nons);
+	strbuf_addf(buf, "%s\t%s\n", sha1_to_hex(oid->sha1), name_nons);
 	if (o->type == OBJ_TAG) {
 		o = deref_tag(o, name, 0);
 		if (!o)
@@ -410,7 +410,7 @@ static void get_info_refs(char *arg)
 	strbuf_release(&buf);
 }
 
-static int show_head_ref(const char *refname, const unsigned char *sha1,
+static int show_head_ref(const char *refname, const struct object_id *oid,
 	int flag, void *cb_data)
 {
 	struct strbuf *buf = cb_data;
@@ -422,7 +422,7 @@ static int show_head_ref(const char *refname, const unsigned char *sha1,
 
 		strbuf_addf(buf, "ref: %s\n", target_nons);
 	} else {
-		strbuf_addf(buf, "%s\n", sha1_to_hex(sha1));
+		strbuf_addf(buf, "%s\n", sha1_to_hex(oid->sha1));
 	}
 
 	return 0;
