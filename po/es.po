@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-16 22:19+0200\n"
+"PO-Revision-Date: 2014-05-17 22:02+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -4572,9 +4572,8 @@ msgid "respect include directives on lookup"
 msgstr ""
 
 #: builtin/count-objects.c:82
-#, fuzzy
 msgid "git count-objects [-v] [-H | --human-readable]"
-msgstr "********* aqui"
+msgstr ""
 
 #: builtin/count-objects.c:97
 msgid "print sizes in human readable format"
@@ -4586,7 +4585,7 @@ msgstr ""
 
 #: builtin/describe.c:17
 msgid "git describe [options] --dirty"
-msgstr ""
+msgstr "git describe [opciones] --dirty"
 
 #: builtin/describe.c:225
 #, c-format
@@ -4601,17 +4600,17 @@ msgstr ""
 #: builtin/describe.c:231
 #, c-format
 msgid "tag '%s' is really '%s' here"
-msgstr ""
+msgstr "la etiqueta '%s' aquí es, en realidad, '%s'"
 
 #: builtin/describe.c:258
 #, c-format
 msgid "Not a valid object name %s"
-msgstr ""
+msgstr "Nombre de objeto inválido %s"
 
 #: builtin/describe.c:261
 #, c-format
 msgid "%s is not a valid '%s' object"
-msgstr ""
+msgstr "%s no es un objeto '%s' válido"
 
 #: builtin/describe.c:278
 #, c-format
@@ -4653,6 +4652,8 @@ msgid ""
 "more than %i tags found; listed %i most recent\n"
 "gave up search at %s\n"
 msgstr ""
+"encontradas más de %i etiquetas; listadas las %i más recientes\n"
+"búsqueda abandonada en %s\n"
 
 #: builtin/describe.c:404
 msgid "find the tag that comes after the commit"
@@ -4672,7 +4673,7 @@ msgstr ""
 
 #: builtin/describe.c:408
 msgid "always use long format"
-msgstr ""
+msgstr "usa siempre formato largo"
 
 #: builtin/describe.c:409
 msgid "only follow first parent"
@@ -4684,7 +4685,7 @@ msgstr ""
 
 #: builtin/describe.c:414
 msgid "consider <n> most recent tags (default: 10)"
-msgstr ""
+msgstr "tiene en cuenta las <n> etiquetas más recientes (por omisión: 10)"
 
 #: builtin/describe.c:416
 msgid "only consider tags matching <pattern>"
@@ -4704,7 +4705,7 @@ msgstr ""
 
 #: builtin/describe.c:438
 msgid "--long is incompatible with --abbrev=0"
-msgstr ""
+msgstr "--long es incompatible con --abbrev=0"
 
 #: builtin/describe.c:464
 msgid "No names found, cannot describe anything."
@@ -4722,7 +4723,7 @@ msgstr ""
 #: builtin/diff.c:236
 #, c-format
 msgid "invalid option: %s"
-msgstr ""
+msgstr "opción inválida: %s"
 
 #: builtin/diff.c:357
 msgid "Not a git repository"
