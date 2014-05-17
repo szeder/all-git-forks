@@ -2403,7 +2403,8 @@ proc makewindow {} {
     text $ctext -background $bgcolor -foreground $fgcolor \
 	-state disabled -font textfont \
 	-yscrollcommand scrolltext -wrap none \
-	-xscrollcommand ".bleft.bottom.sbhorizontal set"
+	-xscrollcommand ".bleft.bottom.sbhorizontal set" \
+        -selectbackground $selectbgcolor
     if {$have_tk85} {
 	$ctext conf -tabstyle wordprocessor
     }
