@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-18 13:49+0200\n"
+"PO-Revision-Date: 2014-05-18 19:07+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -4790,15 +4790,15 @@ msgstr ""
 
 #: builtin/fetch.c:21
 msgid "git fetch [<options>] <group>"
-msgstr ""
+msgstr "git fetch [<opciones>] <grupo>"
 
 #: builtin/fetch.c:22
 msgid "git fetch --multiple [<options>] [(<repository> | <group>)...]"
-msgstr ""
+msgstr "git fetch --multiple [<opciones>] [(<repositorio> | <grupo>)...]"
 
 #: builtin/fetch.c:23
 msgid "git fetch --all [<options>]"
-msgstr ""
+msgstr "git fetch --all [<opciones>]"
 
 #: builtin/fetch.c:75
 msgid "fetch from all remotes"
@@ -4806,11 +4806,11 @@ msgstr ""
 
 #: builtin/fetch.c:77
 msgid "append to .git/FETCH_HEAD instead of overwriting"
-msgstr ""
+msgstr "añade a .git/FETCH_HEAD en lugar de sobreescribirlo"
 
 #: builtin/fetch.c:79
 msgid "path to upload pack on remote end"
-msgstr ""
+msgstr "ruta de la orden \"upload pack\" en el extremo remoto"
 
 #: builtin/fetch.c:80
 msgid "force overwrite of local branch"
@@ -4854,7 +4854,7 @@ msgstr ""
 
 #: builtin/fetch.c:101
 msgid "convert to a complete repository"
-msgstr ""
+msgstr "convierte el repositorio a un repositorio completo"
 
 #: builtin/fetch.c:103 builtin/log.c:1197
 msgid "dir"
@@ -4879,7 +4879,7 @@ msgstr ""
 #: builtin/fetch.c:411
 #, c-format
 msgid "object %s not found"
-msgstr ""
+msgstr "objeto %s no encontrado"
 
 #: builtin/fetch.c:416
 msgid "[up to date]"
@@ -4904,11 +4904,11 @@ msgstr ""
 
 #: builtin/fetch.c:462
 msgid "[new tag]"
-msgstr ""
+msgstr "[etiqueta nueva]"
 
 #: builtin/fetch.c:465
 msgid "[new branch]"
-msgstr ""
+msgstr "[rama nueva]"
 
 #: builtin/fetch.c:468
 msgid "[new ref]"
@@ -4929,12 +4929,12 @@ msgstr ""
 #: builtin/fetch.c:552 builtin/fetch.c:785
 #, c-format
 msgid "cannot open %s: %s\n"
-msgstr ""
+msgstr "no puedo abrir %s: %s\n"
 
 #: builtin/fetch.c:561
 #, c-format
 msgid "%s did not send all necessary objects\n"
-msgstr ""
+msgstr "%s no ha enviado todos los objetos necesarios\n"
 
 #: builtin/fetch.c:579
 #, c-format
