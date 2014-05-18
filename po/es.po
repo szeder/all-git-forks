@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-17 22:02+0200\n"
+"PO-Revision-Date: 2014-05-18 13:49+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -4750,15 +4750,15 @@ msgstr ""
 
 #: builtin/fast-export.c:673
 msgid "show progress after <n> objects"
-msgstr ""
+msgstr "muestra el progreso tras <n> objetos"
 
 #: builtin/fast-export.c:675
 msgid "select handling of signed tags"
-msgstr ""
+msgstr "selecciona el tratamiento de las etiquetas firmadas"
 
 #: builtin/fast-export.c:678
 msgid "select handling of tags that tag filtered objects"
-msgstr ""
+msgstr "selecciona el tratamiento de las etiquetas que etiquetan objetos excluidos mediante filtros"
 
 #: builtin/fast-export.c:681
 msgid "Dump marks to this file"
@@ -4774,7 +4774,7 @@ msgstr ""
 
 #: builtin/fast-export.c:687
 msgid "Output full tree for each commit"
-msgstr ""
+msgstr "Imprime el árbol completo para cada commit"
 
 #: builtin/fast-export.c:689
 msgid "Use the done feature to terminate the stream"
@@ -4782,7 +4782,7 @@ msgstr ""
 
 #: builtin/fast-export.c:690
 msgid "Skip output of blob data"
-msgstr ""
+msgstr "Omite la escritura de los datos de los blob's"
 
 #: builtin/fetch.c:20
 msgid "git fetch [<options>] [<repository> [<refspec>...]]"
