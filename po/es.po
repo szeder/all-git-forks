@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-18 19:07+0200\n"
+"PO-Revision-Date: 2014-05-18 21:24+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -4854,7 +4854,7 @@ msgstr ""
 
 #: builtin/fetch.c:101
 msgid "convert to a complete repository"
-msgstr "convierte el repositorio a un repositorio completo"
+msgstr "convierte el repositorio en un repositorio completo"
 
 #: builtin/fetch.c:103 builtin/log.c:1197
 msgid "dir"
@@ -5009,19 +5009,19 @@ msgstr ""
 
 #: builtin/fetch.c:1059
 msgid "You need to specify a tag name."
-msgstr ""
+msgstr "Tiene que especificar el nombre de una etiqueta."
 
 #: builtin/fetch.c:1107
 msgid "--depth and --unshallow cannot be used together"
-msgstr ""
+msgstr "--depth y --unshallow no se pueden usar a la vez"
 
 #: builtin/fetch.c:1109
 msgid "--unshallow on a complete repository does not make sense"
-msgstr ""
+msgstr "--unshallow no tiene sentido en un repositorio completo"
 
 #: builtin/fetch.c:1132
 msgid "fetch --all does not take a repository argument"
-msgstr ""
+msgstr "no especifique un repositorio con fetch --all"
 
 #: builtin/fetch.c:1134
 msgid "fetch --all does not make sense with refspecs"
@@ -5030,7 +5030,7 @@ msgstr ""
 #: builtin/fetch.c:1145
 #, c-format
 msgid "No such remote or remote group: %s"
-msgstr ""
+msgstr "No existe el remoto o el grupo remoto: %s"
 
 #: builtin/fetch.c:1153
 msgid "Fetching a group and specifying refspecs does not make sense"
@@ -5038,14 +5038,14 @@ msgstr ""
 
 #: builtin/fmt-merge-msg.c:13
 msgid "git fmt-merge-msg [-m <message>] [--log[=<n>]|--no-log] [--file <file>]"
-msgstr ""
+msgstr "git fmt-merge-msg [-m <mensaje>] [--log[=<n>]|--no-log] [--file <fichero>]"
 
 #: builtin/fmt-merge-msg.c:663 builtin/fmt-merge-msg.c:666 builtin/grep.c:700
 #: builtin/merge.c:196 builtin/repack.c:175 builtin/repack.c:179
 #: builtin/show-branch.c:654 builtin/show-ref.c:178 builtin/tag.c:501
 #: parse-options.h:132 parse-options.h:239
 msgid "n"
-msgstr ""
+msgstr "n"
 
 #: builtin/fmt-merge-msg.c:664
 msgid "populate log with at most <n> entries from shortlog"
@@ -5053,23 +5053,23 @@ msgstr ""
 
 #: builtin/fmt-merge-msg.c:667
 msgid "alias for --log (deprecated)"
-msgstr ""
+msgstr "alias de --log (depreciado)"
 
 #: builtin/fmt-merge-msg.c:670
 msgid "text"
-msgstr ""
+msgstr "texto"
 
 #: builtin/fmt-merge-msg.c:671
 msgid "use <text> as start of message"
-msgstr ""
+msgstr "usa <texto> como inicio del mensaje"
 
 #: builtin/fmt-merge-msg.c:672
 msgid "file to read from"
-msgstr ""
+msgstr "fichero del que leer"
 
 #: builtin/for-each-ref.c:1063
 msgid "git for-each-ref [options] [<pattern>]"
-msgstr ""
+msgstr "git for-each-ref [opciones] [<patrón>]"
 
 #: builtin/for-each-ref.c:1078
 msgid "quote placeholders suitably for shells"
