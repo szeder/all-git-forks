@@ -2431,7 +2431,7 @@ static int curate_packed_ref_fn(struct ref_entry *entry, void *cb_data)
 	return 0;
 }
 
-static int repack_without_refs(const char **refnames, int n)
+int repack_without_refs(const char **refnames, int n)
 {
 	struct ref_dir *packed;
 	struct string_list refs_to_delete = STRING_LIST_INIT_DUP;
@@ -2507,11 +2507,14 @@ int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
 		return 1;
 	ret |= delete_ref_loose(lock, flag);
 
-	/* removing the loose one could have resurrected an earlier
-	 * packed one.  Also, if it was not loose we need to repack
-	 * without it.
-	 */
-	ret |= repack_without_ref(lock->ref_name);
+	if (!(delopt & REF_DEFERREPACK))
+	{
+		/* removing the loose one could have resurrected an earlier
+		 * packed one.  Also, if it was not loose we need to repack
+		 * without it.
+		 */
+		ret |= repack_without_ref(lock->ref_name);
+	}
 
 	unlink_or_warn(git_path("logs/%s", lock->ref_name));
 	clear_loose_ref_cache(&ref_cache);

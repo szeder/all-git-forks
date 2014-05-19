@@ -749,15 +749,17 @@ static int mv(int argc, const char **argv)
 
 static int remove_branches(struct string_list *branches)
 {
+	const char **branch_names = xmalloc(branches->nr * sizeof(*branch_names));
 	int i, result = 0;
 	for (i = 0; i < branches->nr; i++) {
 		struct string_list_item *item = branches->items + i;
-		const char *refname = item->string;
+		const char *refname = branch_names[i] = item->string;
 		unsigned char *sha1 = item->util;
 
-		if (delete_ref(refname, sha1, 0))
+		if (delete_ref(refname, sha1, REF_DEFERREPACK))
 			result |= error(_("Could not remove branch %s"), refname);
 	}
+	result |= repack_without_refs(branch_names, branches->nr);
 	return result;
 }
 
@@ -1303,6 +1305,7 @@ static int prune_remote(const char *remote, int dry_run)
 {
 	int result = 0, i;
 	struct ref_states states;
+	const char **delete_refs;
 	const char *dangling_msg = dry_run
 		? _(" %s will become dangling!")
 		: _(" %s has become dangling!");
@@ -1316,13 +1319,16 @@ static int prune_remote(const char *remote, int dry_run)
 		       states.remote->url_nr
 		       ? states.remote->url[0]
 		       : _("(no URL)"));
+		delete_refs = xmalloc(states.stale.nr * sizeof(*delete_refs));
 	}
 
 	for (i = 0; i < states.stale.nr; i++) {
 		const char *refname = states.stale.items[i].util;
 
+		delete_refs[i] = refname;
+
 		if (!dry_run)
-			result |= delete_ref(refname, NULL, 0);
+			result |= delete_ref(refname, NULL, REF_DEFERREPACK);
 
 		if (dry_run)
 			printf_ln(_(" * [would prune] %s"),
@@ -1331,6 +1337,11 @@ static int prune_remote(const char *remote, int dry_run)
 			printf_ln(_(" * [pruned] %s"),
 			       abbrev_ref(refname, "refs/remotes/"));
 		warn_dangling_symref(stdout, dangling_msg, refname);
+	}
+
+	if (states.stale.nr) {
+		if (!dry_run)
+			result |= repack_without_refs(delete_refs, states.stale.nr);
 	}
 
 	free_remote_ref_states(&states);
