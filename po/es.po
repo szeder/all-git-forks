@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-18 21:24+0200\n"
+"PO-Revision-Date: 2014-05-19 19:24+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -5101,27 +5101,27 @@ msgstr ""
 
 #: builtin/for-each-ref.c:1089
 msgid "key"
-msgstr ""
+msgstr "campo"
 
 #: builtin/for-each-ref.c:1090
 msgid "field name to sort on"
-msgstr ""
+msgstr "nombre del campo por el que ordenar"
 
 #: builtin/fsck.c:147 builtin/prune.c:172
 msgid "Checking connectivity"
-msgstr ""
+msgstr "Comprobando la conectividad"
 
 #: builtin/fsck.c:544
 msgid "Checking object directories"
-msgstr ""
+msgstr "Comprobando directorios de objetos"
 
 #: builtin/fsck.c:607
 msgid "git fsck [options] [<object>...]"
-msgstr ""
+msgstr "git fsck [opciones] [<objeto>...]"
 
 #: builtin/fsck.c:613
 msgid "show unreachable objects"
-msgstr ""
+msgstr "muestra objetos inalcanzables"
 
 #: builtin/fsck.c:614
 msgid "show dangling objects"
@@ -5129,11 +5129,11 @@ msgstr ""
 
 #: builtin/fsck.c:615
 msgid "report tags"
-msgstr ""
+msgstr "informa sobre las etiquetas"
 
 #: builtin/fsck.c:616
 msgid "report root nodes"
-msgstr ""
+msgstr "informa sobre los nodos raíz"
 
 #: builtin/fsck.c:617
 msgid "make index objects head nodes"
@@ -5149,7 +5149,7 @@ msgstr ""
 
 #: builtin/fsck.c:620
 msgid "enable more strict checking"
-msgstr ""
+msgstr "activa comprobación más estricta"
 
 #: builtin/fsck.c:622
 msgid "write dangling objects in .git/lost-found"
@@ -5157,15 +5157,15 @@ msgstr ""
 
 #: builtin/fsck.c:623 builtin/prune.c:144
 msgid "show progress"
-msgstr ""
+msgstr "muestra el progreso"
 
 #: builtin/fsck.c:673
 msgid "Checking objects"
-msgstr ""
+msgstr "Comprobando objetos"
 
 #: builtin/gc.c:24
 msgid "git gc [options]"
-msgstr ""
+msgstr "git gc [opciones]"
 
 #: builtin/gc.c:90
 #, c-format
@@ -5187,11 +5187,11 @@ msgstr ""
 
 #: builtin/gc.c:276
 msgid "enable auto-gc mode"
-msgstr ""
+msgstr "activa modo auto-gc"
 
 #: builtin/gc.c:277
 msgid "force running gc even if there may be another gc running"
-msgstr ""
+msgstr "fuerza la ejecución de gc aunque pueda haber otro gc ejecutándose"
 
 #: builtin/gc.c:318
 #, c-format
@@ -5212,7 +5212,7 @@ msgstr ""
 #, c-format
 msgid ""
 "gc is already running on machine '%s' pid %<PRIuMAX> (use --force if not)"
-msgstr ""
+msgstr "gc ya se está ejecutando en la máquina '%s' pid %<PRIuMAX> (use --force si no es así)"
 
 #: builtin/gc.c:361
 msgid ""
@@ -5236,7 +5236,7 @@ msgstr ""
 #: builtin/grep.c:443 builtin/grep.c:478
 #, c-format
 msgid "unable to read tree (%s)"
-msgstr ""
+msgstr "no puedo leer el árbol (%s)"
 
 #: builtin/grep.c:493
 #, c-format
