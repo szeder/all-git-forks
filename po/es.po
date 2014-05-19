@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-19 19:24+0200\n"
+"PO-Revision-Date: 2014-05-19 20:51+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -5251,11 +5251,11 @@ msgstr ""
 #: builtin/grep.c:566
 #, c-format
 msgid "cannot open '%s'"
-msgstr ""
+msgstr "no puedo abrir '%s'"
 
 #: builtin/grep.c:640
 msgid "search in index instead of in the work tree"
-msgstr ""
+msgstr "busca en el índice en lugar de buscar en el árbol de trabajo"
 
 #: builtin/grep.c:642
 msgid "find in contents not managed by git"
@@ -5263,11 +5263,11 @@ msgstr ""
 
 #: builtin/grep.c:644
 msgid "search in both tracked and untracked files"
-msgstr ""
+msgstr "busca tanto en ficheros monitorizados como no monitorizados"
 
 #: builtin/grep.c:646
 msgid "search also in ignored files"
-msgstr ""
+msgstr "busca también en ficheros ignorados"
 
 #: builtin/grep.c:649
 msgid "show non-matching lines"
@@ -5283,7 +5283,7 @@ msgstr ""
 
 #: builtin/grep.c:655
 msgid "process binary files as text"
-msgstr ""
+msgstr "procesa ficheros binarios como texto"
 
 #: builtin/grep.c:657
 msgid "don't match patterns in binary files"
@@ -5295,7 +5295,7 @@ msgstr ""
 
 #: builtin/grep.c:662
 msgid "descend at most <depth> levels"
-msgstr ""
+msgstr "desciende, como máximo, <profundidad> niveles"
 
 #: builtin/grep.c:666
 msgid "use extended POSIX regular expressions"
@@ -5315,15 +5315,15 @@ msgstr ""
 
 #: builtin/grep.c:678
 msgid "show line numbers"
-msgstr ""
+msgstr "muestra los números de línea"
 
 #: builtin/grep.c:679
 msgid "don't show filenames"
-msgstr ""
+msgstr "no muestra los nombres de fichero"
 
 #: builtin/grep.c:680
 msgid "show filenames"
-msgstr ""
+msgstr "muestra los nombres de fichero"
 
 #: builtin/grep.c:682
 msgid "show filenames relative to top directory"
@@ -5335,7 +5335,7 @@ msgstr ""
 
 #: builtin/grep.c:686
 msgid "synonym for --files-with-matches"
-msgstr ""
+msgstr "sinónimo de --files-with-matches"
 
 #: builtin/grep.c:689
 msgid "show only the names of files without match"
@@ -5387,7 +5387,7 @@ msgstr ""
 
 #: builtin/grep.c:715
 msgid "read patterns from file"
-msgstr ""
+msgstr "lee patrones del fichero"
 
 #: builtin/grep.c:717
 msgid "match <pattern>"
@@ -5395,7 +5395,7 @@ msgstr ""
 
 #: builtin/grep.c:719
 msgid "combine patterns specified with -e"
-msgstr ""
+msgstr "combina patrones especificados con -e"
 
 #: builtin/grep.c:731
 msgid "indicate hit with exit status without output"
@@ -5423,19 +5423,19 @@ msgstr ""
 
 #: builtin/grep.c:743 builtin/show-ref.c:187
 msgid "show usage"
-msgstr ""
+msgstr "muestra instrucciones de uso"
 
 #: builtin/grep.c:810
 msgid "no pattern given."
-msgstr ""
+msgstr "no ha especificado ningún patrón."
 
 #: builtin/grep.c:868
 msgid "--open-files-in-pager only works on the worktree"
-msgstr ""
+msgstr "--open-files-in-pager sólo funciona en el árbol de trabajo"
 
 #: builtin/grep.c:891
 msgid "--cached or --untracked cannot be used with --no-index."
-msgstr ""
+msgstr "no se pueden usar --cached ni --untracked con --no-index."
 
 #: builtin/grep.c:896
 msgid "--no-index or --untracked cannot be used with revs."
