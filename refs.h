@@ -149,6 +149,7 @@ extern struct ref_lock *lock_ref_sha1(const char *refname, const unsigned char *
 
 /** Locks any ref (for 'HEAD' type refs). */
 #define REF_NODEREF	0x01
+#define REF_DEFERREPACK 0x02
 extern struct ref_lock *lock_any_ref_for_update(const char *refname,
 						const unsigned char *old_sha1,
 						int flags, int *type_p);
@@ -228,5 +229,7 @@ int update_refs(const char *action, const struct ref_update **updates,
 
 extern int parse_hide_refs_config(const char *var, const char *value, const char *);
 extern int ref_is_hidden(const char *);
+
+extern int repack_without_refs(const char **refnames, int n);
 
 #endif /* REFS_H */
