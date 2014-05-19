@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-19 20:51+0200\n"
+"PO-Revision-Date: 2014-05-19 21:38+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -5453,27 +5453,27 @@ msgstr ""
 msgid ""
 "git hash-object [-t <type>] [-w] [--path=<file>|--no-filters] [--stdin] [--] "
 "<file>..."
-msgstr ""
+msgstr "git hash-object [-t <tipo>] [-w] [--path=<fichero>|--no-filters] [--stdin] [--] <fichero>..."
 
 #: builtin/hash-object.c:61
 msgid "git hash-object  --stdin-paths < <list-of-paths>"
-msgstr ""
+msgstr "git hash-object  --stdin-paths < <lista-de-rutas>"
 
 #: builtin/hash-object.c:72 builtin/tag.c:521
 msgid "type"
-msgstr ""
+msgstr "tipo"
 
 #: builtin/hash-object.c:72
 msgid "object type"
-msgstr ""
+msgstr "tipo de objeto"
 
 #: builtin/hash-object.c:73
 msgid "write the object into the object database"
-msgstr ""
+msgstr "escribe el objeto en la base de datos de objetos"
 
 #: builtin/hash-object.c:74
 msgid "read the object from stdin"
-msgstr ""
+msgstr "lee el objeto de la entrada estándar"
 
 #: builtin/hash-object.c:76
 msgid "store file as is without filters"
@@ -5485,27 +5485,27 @@ msgstr ""
 
 #: builtin/help.c:41
 msgid "print all available commands"
-msgstr ""
+msgstr "imprime todas las órdenes disponibles"
 
 #: builtin/help.c:42
 msgid "print list of useful guides"
-msgstr ""
+msgstr "imprime una lista de guías útiles"
 
 #: builtin/help.c:43
 msgid "show man page"
-msgstr ""
+msgstr "muestra la página del manual"
 
 #: builtin/help.c:44
 msgid "show manual in web browser"
-msgstr ""
+msgstr "muestra el manual en el navegador web"
 
 #: builtin/help.c:46
 msgid "show info page"
-msgstr ""
+msgstr "muestra la página info"
 
 #: builtin/help.c:52
 msgid "git help [--all] [--guides] [--man|--web|--info] [command]"
-msgstr ""
+msgstr "git help [--all] [--guides] [--man|--web|--info] [orden]"
 
 #: builtin/help.c:64
 #, c-format
@@ -5528,7 +5528,7 @@ msgstr ""
 #: builtin/help.c:131 builtin/help.c:159 builtin/help.c:168 builtin/help.c:176
 #, c-format
 msgid "failed to exec '%s': %s"
-msgstr ""
+msgstr "no he podido ejecutar '%s': %s"
 
 #: builtin/help.c:216
 #, c-format
