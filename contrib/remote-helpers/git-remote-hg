@@ -28,6 +28,12 @@ import time as ptime
 sys.stderr.write('WARNING: git-remote-hg is now maintained independently.\n')
 sys.stderr.write('WARNING: For more information visit https://github.com/felipec/git-remote-hg\n')
 
+sys.stderr.write('''WARNING: You can pick a directory on your $PATH and download it, e.g.:
+WARNING:   $ wget -O $HOME/bin/git-remote-hg \\
+WARNING:     https://raw.github.com/felipec/git-remote-hg/master/git-remote-hg
+WARNING:   $ chmod +x $HOME/bin/git-remote-hg
+''')
+
 #
 # If you want to see Mercurial revisions as Git commit notes:
 # git config core.notesRef refs/notes/hg
