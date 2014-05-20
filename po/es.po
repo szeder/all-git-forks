@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-19 21:38+0200\n"
+"PO-Revision-Date: 2014-05-20 20:19+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -5563,15 +5563,15 @@ msgstr ""
 
 #: builtin/help.c:425
 msgid "A Git glossary"
-msgstr ""
+msgstr "Un glosario de Git"
 
 #: builtin/help.c:426
 msgid "Specifies intentionally untracked files to ignore"
-msgstr ""
+msgstr "Especifica ficheros deliberadamente no monitorizados a ignorar"
 
 #: builtin/help.c:427
 msgid "Defining submodule properties"
-msgstr ""
+msgstr "Definición de las propiedades de los submódulos"
 
 #: builtin/help.c:428
 msgid "Specifying revisions and ranges for Git"
@@ -5583,16 +5583,16 @@ msgstr ""
 
 #: builtin/help.c:430
 msgid "An overview of recommended workflows with Git"
-msgstr ""
+msgstr "Una visión general de flujos de trabajo recomendados con Git"
 
 #: builtin/help.c:442
 msgid "The common Git guides are:\n"
-msgstr ""
+msgstr "Las guías Git de uso común son:\n"
 
 #: builtin/help.c:463 builtin/help.c:480
 #, c-format
 msgid "usage: %s%s"
-msgstr ""
+msgstr "uso: %s%s"
 
 #: builtin/help.c:496
 #, c-format
@@ -5606,7 +5606,7 @@ msgstr ""
 
 #: builtin/index-pack.c:204
 msgid "object of unexpected type"
-msgstr ""
+msgstr "objeto de un tipo inesperado"
 
 #: builtin/index-pack.c:244
 #, c-format
@@ -5617,11 +5617,11 @@ msgstr[1] ""
 
 #: builtin/index-pack.c:254
 msgid "early EOF"
-msgstr ""
+msgstr "encontrado fin-de-fichero antes de lo esperado"
 
 #: builtin/index-pack.c:255
 msgid "read error on input"
-msgstr ""
+msgstr "error de lectura de la entrada"
 
 #: builtin/index-pack.c:267
 msgid "used more bytes than were available"
@@ -5634,7 +5634,7 @@ msgstr ""
 #: builtin/index-pack.c:290
 #, c-format
 msgid "unable to create '%s'"
-msgstr ""
+msgstr "no puedo crear '%s'"
 
 #: builtin/index-pack.c:295
 #, c-format
@@ -5671,7 +5671,7 @@ msgstr ""
 #: builtin/index-pack.c:516
 #, c-format
 msgid "unknown object type %d"
-msgstr ""
+msgstr "tipo de objeto desconocido %d"
 
 #: builtin/index-pack.c:547
 msgid "cannot pread pack file"
@@ -5692,28 +5692,28 @@ msgstr ""
 #: builtin/index-pack.c:729 builtin/index-pack.c:738
 #, c-format
 msgid "SHA1 COLLISION FOUND WITH %s !"
-msgstr ""
+msgstr "¡ ENCONTRADA COLISIÓN DE SHA1 CON %s !"
 
 #: builtin/index-pack.c:669 builtin/pack-objects.c:162
 #: builtin/pack-objects.c:254
 #, c-format
 msgid "unable to read %s"
-msgstr ""
+msgstr "no puedo leer %s"
 
 #: builtin/index-pack.c:735
 #, c-format
 msgid "cannot read existing object %s"
-msgstr ""
+msgstr "no puedo leer el objeto existente %s"
 
 #: builtin/index-pack.c:749
 #, c-format
 msgid "invalid blob object %s"
-msgstr ""
+msgstr "objeto blob inválido %s"
 
 #: builtin/index-pack.c:763
 #, c-format
 msgid "invalid %s"
-msgstr ""
+msgstr "%s inválido"
 
 #: builtin/index-pack.c:766
 msgid "Error in object"
@@ -5730,11 +5730,11 @@ msgstr ""
 
 #: builtin/index-pack.c:1010
 msgid "Receiving objects"
-msgstr ""
+msgstr "Recibiendo objetos"
 
 #: builtin/index-pack.c:1010
 msgid "Indexing objects"
-msgstr ""
+msgstr "Indexando objetos"
 
 #: builtin/index-pack.c:1036
 msgid "pack is corrupted (SHA1 mismatch)"
@@ -5790,7 +5790,7 @@ msgstr ""
 #: builtin/index-pack.c:1256
 #, c-format
 msgid "local object %s is corrupt"
-msgstr ""
+msgstr "el objeto local %s está dañado"
 
 #: builtin/index-pack.c:1280
 msgid "error while closing pack file"
@@ -5812,7 +5812,7 @@ msgstr ""
 
 #: builtin/index-pack.c:1325
 msgid "cannot store index file"
-msgstr ""
+msgstr "no puedo guardar el fichero índice"
 
 #: builtin/index-pack.c:1358
 #, c-format
