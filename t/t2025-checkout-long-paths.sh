@@ -55,4 +55,40 @@ test_expect_success cleanup '
 	test ! -z "$debug" || rm -rf longpa~1
 '
 
+# check that the template used in the test won't be too long:
+abspath="$(pwd -W)"/testdir
+test ${#abspath} -gt 240 ||
+test_set_prereq SHORTABSPATH
+
+test_expect_success SHORTABSPATH 'clean up path close to MAX_PATH' '
+	p=/123456789abcdef/123456789abcdef/123456789abcdef/123456789abcdef &&
+	p=y$p$p$p$p &&
+	subdir="x$(echo "$p" | tail -c $((256 - ${#abspath})))" &&
+	# Now, $abspath/$subdir has exactly 257 characters, and is inside CWD
+	p2="$abspath/$subdir" &&
+	test 257 = ${#p2} &&
+
+	# Be careful to overcome path limitations of the MSys tools
+	subdir2=${subdir#????????????????????????????????*/} &&
+	subdir1="$abspath"/${subdir%/$subdir2} &&
+	mkdir -p "$subdir1" &&
+	i=0 &&
+	while test $i -le 10
+	do
+		mkdir -p $subdir2 &&
+		touch $subdir2/one-file &&
+		mv ${subdir2%%/*} "$subdir1/" &&
+		subdir2=z${subdir2} &&
+		i=$(($i+1)) ||
+		exit 1
+	done &&
+
+	# now check that git is able to clear the tree:
+	(cd testdir &&
+	 git init &&
+	 git config core.longpaths yes &&
+	 git clean -fdx) &&
+	test ! -d "$subdir1"
+'
+
 test_done
