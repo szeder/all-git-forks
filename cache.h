@@ -645,6 +645,7 @@ extern int git_db_env, git_index_env, git_graft_env, git_common_dir_env;
  * that is subject to stripspace.
  */
 extern char comment_line_char;
+extern int auto_comment_line_char;
 
 enum branch_track {
 	BRANCH_TRACK_UNSPECIFIED = -1,
