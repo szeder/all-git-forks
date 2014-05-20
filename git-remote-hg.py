@@ -13,6 +13,7 @@
 # "$GIT_DIR/hg/origin/clone/.hg/".
 
 from mercurial import hg, ui, bookmarks, context, encoding, node, error, extensions, discovery, util
+from mercurial import changegroup
 
 import re
 import sys
@@ -913,7 +914,7 @@ def write_tag(repo, tag, node, msg, author):
         try:
             fctx = tip.filectx(f)
             data = fctx.data()
-        except error.ManifestLookupError:
+        except error.LookupError:
             data = ""
         content = data + "%s %s\n" % (node, tag)
         return context.memfilectx(f, content, False, False, None)
@@ -1032,7 +1033,10 @@ def push_unsafe(repo, remote, parsed_refs, p_revs):
     if not checkheads(repo, remote, p_revs):
         return None
 
-    cg = repo.getbundle('push', heads=list(p_revs), common=common)
+    if check_version(3, 0):
+        cg = changegroup.getbundle(repo, 'push', heads=list(p_revs), common=common)
+    else:
+        cg = repo.getbundle('push', heads=list(p_revs), common=common)
 
     unbundle = remote.capable('unbundle')
     if unbundle:
