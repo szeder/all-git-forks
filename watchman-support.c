@@ -381,6 +381,14 @@ static void load_fs_cache(struct index_state *istate)
 	}
 }
 
+static void die_if_watchman_error(struct watchman_error *wm_error)
+{
+	if (is_watchman_error(wm_error)) {
+		error("Watchman is missing/broken: %s", wm_error->message);
+		exit(1);
+	}
+}
+
 static struct watchman_query_result *watchman_fs_cache_query(struct watchman_connection *connection, const char *fs_path, const char *last_update)
 {
 	struct watchman_error wm_error;
@@ -405,24 +413,25 @@ static struct watchman_query_result *watchman_fs_cache_query(struct watchman_con
 		/* Watchman gets confused if we delete the .git
 		 * directory out from under it, since that's where it
 		 * stores its cookies.  So we'll need to delete the
-		 * watch and then recreate it. It's OK for this to
-		 * fail, as the watch might have already been
-		 * deleted. */
+		 * watch and then recreate it. It's OK for the
+		 * deletion to fail, as the watch might have already
+		 * been deleted. */
 		watchman_watch_del(connection, fs_path, &wm_error);
 
 		if (watchman_watch(connection, fs_path, &wm_error)) {
 			warning("Watchman watch error: %s", wm_error.message);
+			watchman_release_error(&wm_error);
 			goto out;
 		}
 	}
 	result = watchman_do_query(connection, fs_path, query, expr, &wm_error);
-	if (!result) {
-		warning("Watchman query error: %s (at %s)", wm_error.message, last_update);
-		goto out;
-	}
 	watchman_free_expression(expr);
 	watchman_free_query(query);
-
+	if (!result) {
+		warning("Watchman query error: %s (at %s)",
+			wm_error.message, last_update);
+		goto out;
+	}
 out:
 	free(git_path);
 	return result;
@@ -547,6 +556,7 @@ int watchman_reload_fs_cache(struct index_state *istate)
 	connection = watchman_connect(&wm_error);
 
 	if (!connection) {
+		die_if_watchman_error(&wm_error);
 		warning("Watchman watch error: %s", wm_error.message);
 		return -1;
 	}
@@ -582,6 +592,7 @@ int watchman_load_fs_cache(struct index_state *istate)
 	connection = watchman_connect(&wm_error);
 
 	if (!connection) {
+		die_if_watchman_error(&wm_error);
 		warning("Watchman watch error: %s", wm_error.message);
 		return -1;
 	}
@@ -637,4 +648,10 @@ done:
 	watchman_connection_close(connection);
 	return ret;
 
+}
+
+int is_watchman_error(struct watchman_error *error)
+{
+	return error->code == WATCHMAN_ERR_RUN_WATCHMAN ||
+		error->code == WATCHMAN_ERR_WATCHMAN_BROKEN;
 }
