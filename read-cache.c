@@ -1360,13 +1360,22 @@ static struct cache_entry *cache_entry_from_ondisk(struct ondisk_cache_entry *on
 							 const char *name,
 							 size_t len)
 {
-	int prec_len;
-	char *prec_name = precompose_str_len(name, len, &prec_len);
-	if (prec_name) {
-		struct cache_entry *ce;
-		ce = cache_entry_from_ondisk_int(ondisk, flags, prec_name, prec_len);
-		free(prec_name);
-		return ce;
+	fprintf(stderr, "%s/%s:%d precomposed_unicode=%d name=%.*s\n",
+					__FILE__, __FUNCTION__, __LINE__,
+					precomposed_unicode,
+					(int)len, name );
+	if (precomposed_unicode == 1) {
+		int prec_len;
+		char *prec_name = precompose_str_len(name, len, &prec_len);
+		if (prec_name) {
+			fprintf(stderr, "%s/%s:%d prec_name=%.*s\n",
+							__FILE__, __FUNCTION__, __LINE__,
+							(int)prec_len, prec_name);
+			struct cache_entry *ce;
+			ce = cache_entry_from_ondisk_int(ondisk, flags, prec_name, prec_len);
+			free(prec_name);
+			return ce;
+		}
 	}
 	return cache_entry_from_ondisk_int(ondisk, flags, name, len);
 }

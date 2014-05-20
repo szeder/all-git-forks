@@ -882,6 +882,9 @@ static int git_default_core_config(const char *var, const char *value)
 
 	if (!strcmp(var, "core.precomposeunicode")) {
 		precomposed_unicode = git_config_bool(var, value);
+		fprintf(stderr, "%s/%s:%d precomposed_unicode=%d\n",
+						__FILE__, __FUNCTION__, __LINE__,
+						precomposed_unicode);
 		return 0;
 	}
 

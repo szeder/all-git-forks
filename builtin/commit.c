@@ -1197,6 +1197,16 @@ static int git_status_config(const char *k, const char *v, void *cb)
 			status_deferred_config.status_format = STATUS_FORMAT_NONE;
 		return 0;
 	}
+	fprintf(stderr, "%s/%s:%d k=%s v=%s\n",
+					__FILE__, __FUNCTION__, __LINE__,
+					k, v);
+	if (!strcmp(k, "core.precomposeunicode")) {
+		precomposed_unicode = git_config_bool(k, v);
+		fprintf(stderr, "%s/%s:%d precomposed_unicode=%d\n",
+						__FILE__, __FUNCTION__, __LINE__,
+						precomposed_unicode);
+		return 0;
+	}
 	if (!strcmp(k, "status.branch")) {
 		status_deferred_config.show_branch = git_config_bool(k, v);
 		return 0;
@@ -1235,6 +1245,7 @@ static int git_status_config(const char *k, const char *v, void *cb)
 			return error(_("Invalid untracked files mode '%s'"), v);
 		return 0;
 	}
+	
 	return git_diff_ui_config(k, v, NULL);
 }
 
