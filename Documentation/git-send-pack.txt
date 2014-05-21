@@ -9,7 +9,7 @@ git-send-pack - Push objects over Git protocol to another repository
 SYNOPSIS
 --------
 [verse]
-'git send-pack' [--all] [--dry-run] [--force] [--receive-pack=<git-receive-pack>] [--verbose] [--thin] [<host>:]<directory> [<ref>...]
+'git send-pack' [--all] [--dry-run] [--force] [--receive-pack=<git-receive-pack>] [--verbose] [--thin] [--atomic-push] [<host>:]<directory> [<ref>...]
 
 DESCRIPTION
 -----------
@@ -51,6 +51,11 @@ OPTIONS
 --thin::
 	Send a "thin" pack, which records objects in deltified form based
 	on objects not included in the pack to reduce network traffic.
+
+--atomic-push::
+	With atomic-push all refs are updated in one single atomic transaction.
+	This means that if any of the refs fails then the entire push will
+	fail without changing any refs.
 
 <host>::
 	A remote host to house the repository.  When this

@@ -228,6 +228,11 @@ int send_pack(struct send_pack_args *args,
 	if (server_supports("atomic-push"))
 		atomic_push_supported = 1;
 
+	if (args->use_atomic_push && !atomic_push_supported) {
+		fprintf(stderr, "Server does not support atomic-push.");
+		return -1;
+	}
+
 	if (!remote_refs) {
 		fprintf(stderr, "No refs in common and none specified; doing nothing.\n"
 			"Perhaps you should specify a branch such as 'master'.\n");
@@ -272,7 +277,8 @@ int send_pack(struct send_pack_args *args,
 			char *old_hex = sha1_to_hex(ref->old_sha1);
 			char *new_hex = sha1_to_hex(ref->new_sha1);
 			int quiet = quiet_supported && (args->quiet || !args->progress);
-			int atomic_push = atomic_push_supported;
+			int atomic_push = atomic_push_supported &&
+				args->use_atomic_push;
 
 			if (!cmds_sent && (status_report || use_sideband ||
 					   quiet || agent_supported ||
