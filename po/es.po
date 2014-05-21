@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-20 20:19+0200\n"
+"PO-Revision-Date: 2014-05-21 22:47+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -5865,7 +5865,7 @@ msgstr ""
 
 #: builtin/index-pack.c:1591
 msgid "--fix-thin cannot be used without --stdin"
-msgstr ""
+msgstr "no puede usar --fix-thin sin --stdin"
 
 #: builtin/index-pack.c:1595 builtin/index-pack.c:1605
 #, c-format
@@ -5879,7 +5879,7 @@ msgstr ""
 #: builtin/init-db.c:35
 #, c-format
 msgid "Could not make %s writable by group"
-msgstr ""
+msgstr "No he podido dar al grupo permiso de escritura a %s"
 
 #: builtin/init-db.c:62
 #, c-format
@@ -5889,17 +5889,17 @@ msgstr ""
 #: builtin/init-db.c:67
 #, c-format
 msgid "cannot stat '%s'"
-msgstr ""
+msgstr "no puedo obtener el estado de '%s'"
 
 #: builtin/init-db.c:73
 #, c-format
 msgid "cannot stat template '%s'"
-msgstr ""
+msgstr "no puedo obtener el estado de la plantilla '%s'"
 
 #: builtin/init-db.c:80
 #, c-format
 msgid "cannot opendir '%s'"
-msgstr ""
+msgstr "no puedo abrir el directorio '%s'"
 
 #: builtin/init-db.c:97
 #, c-format
@@ -5919,12 +5919,12 @@ msgstr ""
 #: builtin/init-db.c:106
 #, c-format
 msgid "cannot copy '%s' to '%s'"
-msgstr ""
+msgstr "no puedo copiar '%s' a '%s'"
 
 #: builtin/init-db.c:110
 #, c-format
 msgid "ignoring template %s"
-msgstr ""
+msgstr "ignorando plantilla %s"
 
 #: builtin/init-db.c:133
 #, c-format
@@ -5934,7 +5934,7 @@ msgstr ""
 #: builtin/init-db.c:141
 #, c-format
 msgid "templates not found %s"
-msgstr ""
+msgstr "plantillas no encontradas %s"
 
 #: builtin/init-db.c:154
 #, c-format
@@ -5949,7 +5949,7 @@ msgstr ""
 #: builtin/init-db.c:323 builtin/init-db.c:326
 #, c-format
 msgid "%s already exists"
-msgstr ""
+msgstr "%s ya existe"
 
 #: builtin/init-db.c:355
 #, c-format
@@ -5959,7 +5959,7 @@ msgstr ""
 #: builtin/init-db.c:358
 #, c-format
 msgid "unable to move %s to %s"
-msgstr ""
+msgstr "no puedo mover %s a %s"
 
 #. TRANSLATORS: The first '%s' is either "Reinitialized
 #. existing" or "Initialized empty", the second " shared" or
@@ -5989,36 +5989,36 @@ msgstr ""
 msgid ""
 "git init [-q | --quiet] [--bare] [--template=<template-directory>] [--shared"
 "[=<permissions>]] [directory]"
-msgstr ""
+msgstr "git init [-q | --quiet] [--bare] [--template=<directorio-plantillas>] [--shared[=<permisos>]] [directorio]"
 
 #: builtin/init-db.c:488
 msgid "permissions"
-msgstr ""
+msgstr "permisos"
 
 #: builtin/init-db.c:489
 msgid "specify that the git repository is to be shared amongst several users"
-msgstr ""
+msgstr "especifica que el repositorio git va a ser compartido entre varios usuarios"
 
 #: builtin/init-db.c:491 builtin/prune-packed.c:79 builtin/repack.c:168
 msgid "be quiet"
-msgstr ""
+msgstr "es silencioso"
 
 #: builtin/init-db.c:523 builtin/init-db.c:528
 #, c-format
 msgid "cannot mkdir %s"
-msgstr ""
+msgstr "no puedo crear el directorio %s"
 
 #: builtin/init-db.c:532
 #, c-format
 msgid "cannot chdir to %s"
-msgstr ""
+msgstr "no puedo cambiarme al directorio %s"
 
 #: builtin/init-db.c:554
 #, c-format
 msgid ""
 "%s (or --work-tree=<directory>) not allowed without specifying %s (or --git-"
 "dir=<directory>)"
-msgstr ""
+msgstr "no está permitido %s (o --work-tree=<directorio>) sin especificar %s (o --git-dir=<directorio>)"
 
 #: builtin/init-db.c:578
 msgid "Cannot access current working directory"
