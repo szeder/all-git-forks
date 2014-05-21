@@ -205,6 +205,7 @@ int send_pack(struct send_pack_args *args,
 	int use_sideband = 0;
 	int quiet_supported = 0;
 	int agent_supported = 0;
+	int atomic_push_supported = 0;
 	unsigned cmds_sent = 0;
 	int ret;
 	struct async demux;
@@ -224,6 +225,8 @@ int send_pack(struct send_pack_args *args,
 		agent_supported = 1;
 	if (server_supports("no-thin"))
 		args->use_thin_pack = 0;
+	if (server_supports("atomic-push"))
+		atomic_push_supported = 1;
 
 	if (!remote_refs) {
 		fprintf(stderr, "No refs in common and none specified; doing nothing.\n"
@@ -269,17 +272,20 @@ int send_pack(struct send_pack_args *args,
 			char *old_hex = sha1_to_hex(ref->old_sha1);
 			char *new_hex = sha1_to_hex(ref->new_sha1);
 			int quiet = quiet_supported && (args->quiet || !args->progress);
+			int atomic_push = atomic_push_supported;
 
 			if (!cmds_sent && (status_report || use_sideband ||
-					   quiet || agent_supported)) {
+					   quiet || agent_supported ||
+					   atomic_push)) {
 				packet_buf_write(&req_buf,
-						 "%s %s %s%c%s%s%s%s%s",
+						 "%s %s %s%c%s%s%s%s%s%s",
 						 old_hex, new_hex, ref->name, 0,
 						 status_report ? " report-status" : "",
 						 use_sideband ? " side-band-64k" : "",
 						 quiet ? " quiet" : "",
 						 agent_supported ? " agent=" : "",
-						 agent_supported ? git_user_agent_sanitized() : ""
+						 agent_supported ? git_user_agent_sanitized() : "",
+						 atomic_push ? " atomic-push" : ""
 						);
 			}
 			else
