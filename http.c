@@ -906,6 +906,29 @@ static CURLcode curlinfo_strbuf(CURL *curl, CURLINFO info, struct strbuf *buf)
 	return ret;
 }
 
+/*
+ * Extract a normalized version of the content type, with any
+ * spaces suppressed, all letters lowercased, and no trailing ";"
+ * or parameters.
+ *
+ * Example:
+ *   "TEXT/PLAIN; charset=utf-8" -> "text/plain"
+ */
+static void extract_content_type(struct strbuf *raw, struct strbuf *type)
+{
+	const char *p;
+
+	strbuf_reset(type);
+	strbuf_grow(type, raw->len);
+	for (p = raw->buf; *p; p++) {
+		if (isspace(*p))
+			continue;
+		if (*p == ';')
+			break;
+		strbuf_addch(type, tolower(*p));
+	}
+}
+
 /* http_request() targets */
 #define HTTP_REQUEST_STRBUF	0
 #define HTTP_REQUEST_FILE	1
@@ -957,9 +980,12 @@ static int http_request(const char *url,
 
 	ret = run_one_slot(slot, &results);
 
-	if (options && options->content_type)
-		curlinfo_strbuf(slot->curl, CURLINFO_CONTENT_TYPE,
-				options->content_type);
+	if (options && options->content_type) {
+		struct strbuf raw = STRBUF_INIT;
+		curlinfo_strbuf(slot->curl, CURLINFO_CONTENT_TYPE, &raw);
+		extract_content_type(&raw, options->content_type);
+		strbuf_release(&raw);
+	}
 
 	if (options && options->effective_url)
 		curlinfo_strbuf(slot->curl, CURLINFO_EFFECTIVE_URL,
