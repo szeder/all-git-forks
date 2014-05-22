@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-21 22:47+0200\n"
+"PO-Revision-Date: 2014-05-22 21:58+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -4858,7 +4858,7 @@ msgstr "convierte el repositorio en un repositorio completo"
 
 #: builtin/fetch.c:103 builtin/log.c:1197
 msgid "dir"
-msgstr ""
+msgstr "dir"
 
 #: builtin/fetch.c:104
 msgid "prepend this to submodule path output"
@@ -6022,12 +6022,12 @@ msgstr "no está permitido %s (o --work-tree=<directorio>) sin especificar %s (o 
 
 #: builtin/init-db.c:578
 msgid "Cannot access current working directory"
-msgstr ""
+msgstr "No puedo acceder al directorio de trabajo actual"
 
 #: builtin/init-db.c:585
 #, c-format
 msgid "Cannot access work tree '%s'"
-msgstr ""
+msgstr "No puedo acceder al árbol de trabajo '%s'"
 
 #: builtin/log.c:41
 msgid "git log [<options>] [<revision range>] [[--] <path>...]\n"
@@ -6035,7 +6035,7 @@ msgstr ""
 
 #: builtin/log.c:42
 msgid "   or: git show [options] <object>..."
-msgstr ""
+msgstr "  o: git show [opciones] <objeto>..."
 
 #: builtin/log.c:125
 msgid "suppress diff output"
@@ -6061,12 +6061,12 @@ msgstr ""
 #: builtin/log.c:473 builtin/log.c:565
 #, c-format
 msgid "Could not read object %s"
-msgstr ""
+msgstr "No he podido leer el objeto %s"
 
 #: builtin/log.c:589
 #, c-format
 msgid "Unknown type: %d"
-msgstr ""
+msgstr "Tipo desconocido: %d"
 
 #: builtin/log.c:689
 msgid "format.headers without value"
@@ -6074,7 +6074,7 @@ msgstr ""
 
 #: builtin/log.c:771
 msgid "name of output directory is too long"
-msgstr ""
+msgstr "el nombre del directorio de salida es demasiado largo"
 
 #: builtin/log.c:787
 #, c-format
@@ -6083,7 +6083,7 @@ msgstr ""
 
 #: builtin/log.c:801
 msgid "Need exactly one range."
-msgstr ""
+msgstr "Necesito un rango y sólo uno."
 
 #: builtin/log.c:809
 msgid "Not a range."
@@ -6104,19 +6104,19 @@ msgstr ""
 
 #: builtin/log.c:1060
 msgid "Two output directories?"
-msgstr ""
+msgstr "¿Dos directorios de salida?"
 
 #: builtin/log.c:1175
 msgid "use [PATCH n/m] even with a single patch"
-msgstr ""
+msgstr "usa [PATCH n/m] incluso con un único parche"
 
 #: builtin/log.c:1178
 msgid "use [PATCH] even with multiple patches"
-msgstr ""
+msgstr "usa [PATCH] incluso con más de un parche"
 
 #: builtin/log.c:1182
 msgid "print patches to standard out"
-msgstr ""
+msgstr "escribe los parches en la salida estándar"
 
 #: builtin/log.c:1184
 msgid "generate a cover letter"
@@ -6128,15 +6128,15 @@ msgstr ""
 
 #: builtin/log.c:1187
 msgid "sfx"
-msgstr ""
+msgstr "suf"
 
 #: builtin/log.c:1188
 msgid "use <sfx> instead of '.patch'"
-msgstr ""
+msgstr "usa <suf> en lugar de '.patch'"
 
 #: builtin/log.c:1190
 msgid "start numbering patches at <n> instead of 1"
-msgstr ""
+msgstr "numera los parches empezando por <n> en lugar de empezar por 1"
 
 #: builtin/log.c:1192
 msgid "mark the series as Nth re-roll"
@@ -6144,11 +6144,11 @@ msgstr ""
 
 #: builtin/log.c:1194
 msgid "Use [<prefix>] instead of [PATCH]"
-msgstr ""
+msgstr "Usa [<prefijo>] en lugar de [PATCH]"
 
 #: builtin/log.c:1197
 msgid "store resulting files in <dir>"
-msgstr ""
+msgstr "guarda los ficheros resultantes en <dir>"
 
 #: builtin/log.c:1200
 msgid "don't strip/add [PATCH]"
