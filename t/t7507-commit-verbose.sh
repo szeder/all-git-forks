@@ -7,6 +7,10 @@ write_script check-for-diff <<-'EOF'
 	exec grep '^diff --git' "$1"
 EOF
 
+write_script check-for-no-diff <<-'EOF'
+	! check-for-diff
+EOF
+
 cat >message <<'EOF'
 subject
 
@@ -46,6 +50,38 @@ test_expect_success 'verbose diff is stripped out (mnemonicprefix)' '
 	test_config diff.mnemonicprefix true &&
 	git commit --amend -v &&
 	check_message message
+'
+
+test_expect_success 'commit shows verbose diff with commit.verbose true' '
+	echo morecontent >>file &&
+	git add file &&
+	test_config commit.verbose true &&
+	test_set_editor "$PWD/check-for-diff" &&
+	git commit --amend
+'
+
+test_expect_success 'commit --verbose overrides commit.verbose false' '
+	echo evenmorecontent >>file &&
+	git add file &&
+	test_config commit.verbose false  &&
+	test_set_editor "$PWD/check-for-diff" &&
+	git commit --amend --verbose
+'
+
+test_expect_success 'commit does not show verbose diff with commit.verbose false' '
+	echo evenmorecontent >>file &&
+	git add file &&
+	test_config commit.verbose false &&
+	test_set_editor "$PWD/check-for-no-diff" &&
+	git commit --amend
+'
+
+test_expect_success 'commit --no-verbose overrides commit.verbose true' '
+	echo evenmorecontent >>file &&
+	git add file &&
+	test_config commit.verbose true &&
+	test_set_editor "$PWD/check-for-no-diff" &&
+	git commit --amend --no-verbose
 '
 
 cat >diff <<'EOF'

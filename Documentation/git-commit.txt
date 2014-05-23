@@ -282,7 +282,13 @@ configuration variable documented in linkgit:git-config[1].
 	Show unified diff between the HEAD commit and what
 	would be committed at the bottom of the commit message
 	template.  Note that this diff output doesn't have its
-	lines prefixed with '#'.
+	lines prefixed with '#'.  The `commit.verbose` configuration
+	variable can be set to true to implicitly send this option.
+
+--no-verbose::
+	Do not show the unified diff at the bottom of the commit message
+	template.  This is the default behavior, but can be used to override
+	the `commit.verbose` configuration variable.
 
 -q::
 --quiet::

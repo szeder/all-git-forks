@@ -1980,6 +1980,7 @@ _git_config ()
 		color.ui
 		commit.status
 		commit.template
+		commit.verbose
 		core.abbrev
 		core.askpass
 		core.attributesfile
