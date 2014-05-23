@@ -13,6 +13,7 @@ n_dir=refs/heads/gu
 n=$n_dir/fixes
 outside=refs/foo
 bare=bare-repo
+d=refs/heads/dst
 
 create_test_commits ()
 {
@@ -364,8 +365,28 @@ test_expect_success \
 	 test '"$D"' = $(cat o) &&
 	 test "warning: Log for ref '"$m unexpectedly ended on $ld"'." = "$(cat e)"'
 
+test_expect_success 'rename a ref' '
+	git rev-parse --verify $m >expect &&
 
-rm -f .git/$m .git/logs/$m expect
+	# set the date to match the reflog entries we created
+	# above, which do not follow test_tick; otherwise
+	# the we write an out-of-order entry into the reflog,
+	# which confuses the reflog parser
+	GIT_COMMITTER_DATE=$ld \
+	git update-ref --rename $m $d &&
+
+	test_must_fail git rev-parse --verify $m &&
+	git rev-parse --verify $d >o &&
+	test_cmp expect o
+'
+
+test_expect_success 'renames copy reflogs' '
+	echo "$C" >expect &&
+	git rev-parse --verify "$d@{2005-05-26 23:32:00}" >o &&
+	test_cmp expect o
+'
+
+rm -f .git/$m .git/logs/$m .git/$d .git/logs/$d expect
 
 test_expect_success \
     'creating initial files' \
