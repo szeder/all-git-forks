@@ -139,6 +139,10 @@ Functions
 	Replace the contents of the strbuf with a reencoded form.  Returns -1
 	on error, 0 on success.
 
+`strbuf_tolower`::
+
+	Lowercase each character in the buffer using `tolower`.
+
 `strbuf_cmp`::
 
 	Compare two buffers. Returns an integer less than, equal to, or greater
