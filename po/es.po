@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-24 17:20+0200\n"
+"PO-Revision-Date: 2014-05-24 22:47+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -6297,7 +6297,7 @@ msgstr "identifica el estado de los ficheros mediante etiquetas"
 
 #: builtin/ls-files.c:460
 msgid "use lowercase letters for 'assume unchanged' files"
-msgstr ""
+msgstr "usa letras minúsculas para ficheros 'supuestos sin-modificar'"
 
 #: builtin/ls-files.c:462
 msgid "show cached files in the output (default)"
@@ -6305,19 +6305,19 @@ msgstr ""
 
 #: builtin/ls-files.c:464
 msgid "show deleted files in the output"
-msgstr ""
+msgstr "muestra ficheros borrados"
 
 #: builtin/ls-files.c:466
 msgid "show modified files in the output"
-msgstr ""
+msgstr "muestra ficheros modificados"
 
 #: builtin/ls-files.c:468
 msgid "show other files in the output"
-msgstr ""
+msgstr "muestra otros ficheros"
 
 #: builtin/ls-files.c:470
 msgid "show ignored files in the output"
-msgstr ""
+msgstr "muestra ficheros ignorados"
 
 #: builtin/ls-files.c:473
 msgid "show staged contents' object name in the output"
@@ -6337,7 +6337,7 @@ msgstr "omite directorios vacíos"
 
 #: builtin/ls-files.c:483
 msgid "show unmerged files in the output"
-msgstr ""
+msgstr "muestra ficheros no-fusionados"
 
 #: builtin/ls-files.c:485
 msgid "show resolve-undo information"
@@ -6353,7 +6353,7 @@ msgstr "lee los patrones de exclusión del <fichero>"
 
 #: builtin/ls-files.c:493
 msgid "read additional per-directory exclude patterns in <file>"
-msgstr ""
+msgstr "lee patrones de exclusión adicionales en el fichero <fichero> de cada directorio"
 
 #: builtin/ls-files.c:495
 msgid "add the standard git exclusions"
@@ -6361,11 +6361,11 @@ msgstr "añade las exclusiones git estándar"
 
 #: builtin/ls-files.c:498
 msgid "make the output relative to the project top directory"
-msgstr ""
+msgstr "hace la salida relativa al directorio raíz del proyecto"
 
 #: builtin/ls-files.c:501
 msgid "if any <file> is not in the index, treat this as an error"
-msgstr ""
+msgstr "trata como un error que algún <fichero> no esté en el índice"
 
 #: builtin/ls-files.c:502
 msgid "tree-ish"
@@ -6377,7 +6377,7 @@ msgstr ""
 
 #: builtin/ls-files.c:505
 msgid "show debugging data"
-msgstr ""
+msgstr "muestra datos de depuración"
 
 #: builtin/ls-tree.c:28
 msgid "git ls-tree [<options>] <tree-ish> [<path>...]"
@@ -6401,31 +6401,31 @@ msgstr ""
 
 #: builtin/ls-tree.c:134
 msgid "include object size"
-msgstr ""
+msgstr "incluye el tamaño de los objetos"
 
 #: builtin/ls-tree.c:136 builtin/ls-tree.c:138
 msgid "list only filenames"
-msgstr ""
+msgstr "lista sólo el nombre de los ficheros"
 
 #: builtin/ls-tree.c:141
 msgid "use full path names"
-msgstr ""
+msgstr "usa nombres de ruta completos"
 
 #: builtin/ls-tree.c:143
 msgid "list entire tree; not just current directory (implies --full-name)"
-msgstr ""
+msgstr "lista el árbol completo, no sólo el directorio actual (implica --full-name)"
 
 #: builtin/merge.c:43
 msgid "git merge [options] [<commit>...]"
-msgstr ""
+msgstr "git merge [opciones] [<commit>...]"
 
 #: builtin/merge.c:44
 msgid "git merge [options] <msg> HEAD <commit>"
-msgstr ""
+msgstr "git merge [opciones] <mens> HEAD <commit>"
 
 #: builtin/merge.c:45
 msgid "git merge --abort"
-msgstr ""
+msgstr "git merge --abort"
 
 #: builtin/merge.c:98
 msgid "switch `m' requires a value"
@@ -6434,12 +6434,12 @@ msgstr ""
 #: builtin/merge.c:135
 #, c-format
 msgid "Could not find merge strategy '%s'.\n"
-msgstr ""
+msgstr "No he podido encontrar la estrategia de fusión '%s'.\n"
 
 #: builtin/merge.c:136
 #, c-format
 msgid "Available strategies are:"
-msgstr ""
+msgstr "Las estrategias disponibles son:"
 
 #: builtin/merge.c:141
 #, c-format
@@ -6456,7 +6456,7 @@ msgstr ""
 
 #: builtin/merge.c:195
 msgid "(synonym to --stat)"
-msgstr ""
+msgstr "(sinónimo de --stat)"
 
 #: builtin/merge.c:197
 msgid "add (at most <n>) entries from shortlog to merge commit message"
@@ -6468,39 +6468,39 @@ msgstr ""
 
 #: builtin/merge.c:202
 msgid "perform a commit if the merge succeeds (default)"
-msgstr ""
+msgstr "realiza un commit si la fusión tiene éxito (comportamiento por omisión)"
 
 #: builtin/merge.c:204
 msgid "edit message before committing"
-msgstr ""
+msgstr "edita el mensaje antes de hacer commit"
 
 #: builtin/merge.c:205
 msgid "allow fast-forward (default)"
-msgstr ""
+msgstr "permite avance-rápido (comportamiento por omisión)"
 
 #: builtin/merge.c:207
 msgid "abort if fast-forward is not possible"
-msgstr ""
+msgstr "aborta si no es posible el avance-rápido"
 
 #: builtin/merge.c:211
 msgid "Verify that the named commit has a valid GPG signature"
-msgstr ""
+msgstr "Verifica que el commit especificado tiene una firma GPG válida"
 
 #: builtin/merge.c:212 builtin/notes.c:742 builtin/revert.c:89
 msgid "strategy"
-msgstr ""
+msgstr "estrategia"
 
 #: builtin/merge.c:213
 msgid "merge strategy to use"
-msgstr ""
+msgstr "estrategia de fusión a usar"
 
 #: builtin/merge.c:214
 msgid "option=value"
-msgstr ""
+msgstr "opción=valor"
 
 #: builtin/merge.c:215
 msgid "option for selected merge strategy"
-msgstr ""
+msgstr "opción para la estrategia de fusión seleccionada"
 
 #: builtin/merge.c:217
 msgid "merge commit message (for a non-fast-forward merge)"
