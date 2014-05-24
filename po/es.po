@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-24 13:26+0200\n"
+"PO-Revision-Date: 2014-05-24 17:20+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -4689,7 +4689,7 @@ msgstr "tiene en cuenta las <n> etiquetas más recientes (por omisión: 10)"
 
 #: builtin/describe.c:416
 msgid "only consider tags matching <pattern>"
-msgstr ""
+msgstr "sólo tiene en cuenta etiquetas que se ajustan al <patrón>"
 
 #: builtin/describe.c:418 builtin/name-rev.c:321
 msgid "show abbreviated commit object as fallback"
@@ -6184,7 +6184,7 @@ msgstr "dirección email"
 
 #: builtin/log.c:1212
 msgid "add To: header"
-msgstr "añade cabecera To:"
+msgstr "añade cabecera To: [Para:]"
 
 #: builtin/log.c:1214
 msgid "add Cc: header"
@@ -6196,7 +6196,7 @@ msgstr "identificativo"
 
 #: builtin/log.c:1217
 msgid "set From address to <ident> (or committer ident if absent)"
-msgstr ""
+msgstr "usa <identificativo> como dirección del remitente (o la del autor del commit si no especificado)"
 
 #: builtin/log.c:1219
 msgid "message-id"
@@ -6208,15 +6208,15 @@ msgstr "hace que el primer correo sea en respuesta al mensaje <id-mensaje>"
 
 #: builtin/log.c:1221 builtin/log.c:1224
 msgid "boundary"
-msgstr ""
+msgstr "frontera"
 
 #: builtin/log.c:1222
 msgid "attach the patch"
-msgstr ""
+msgstr "adjunta el parche"
 
 #: builtin/log.c:1225
 msgid "inline the patch"
-msgstr ""
+msgstr "incluye el parche en el cuerpo del mensaje"
 
 #: builtin/log.c:1229
 msgid "enable message threading, styles: shallow, deep"
@@ -6224,15 +6224,15 @@ msgstr ""
 
 #: builtin/log.c:1231
 msgid "signature"
-msgstr ""
+msgstr "firma"
 
 #: builtin/log.c:1232
 msgid "add a signature"
-msgstr ""
+msgstr "añade una firma"
 
 #: builtin/log.c:1233
 msgid "don't print the patch filenames"
-msgstr ""
+msgstr "no muestra los nombres de fichero de los parches"
 
 #: builtin/log.c:1307
 #, c-format
@@ -6241,36 +6241,36 @@ msgstr ""
 
 #: builtin/log.c:1322
 msgid "-n and -k are mutually exclusive."
-msgstr ""
+msgstr "-n y -k son mutuamente excluyentes."
 
 #: builtin/log.c:1324
 msgid "--subject-prefix and -k are mutually exclusive."
-msgstr ""
+msgstr "--subject-prefix y -k son mutuamente excluyentes."
 
 #: builtin/log.c:1332
 msgid "--name-only does not make sense"
-msgstr ""
+msgstr "--name-only no tiene sentido"
 
 #: builtin/log.c:1334
 msgid "--name-status does not make sense"
-msgstr ""
+msgstr "--name-status no tiene sentido"
 
 #: builtin/log.c:1336
 msgid "--check does not make sense"
-msgstr ""
+msgstr "--check no tiene sentido"
 
 #: builtin/log.c:1359
 msgid "standard output, or directory, which one?"
-msgstr ""
+msgstr "¿salida estándar o directorio?, ¿cuál de los dos?"
 
 #: builtin/log.c:1361
 #, c-format
 msgid "Could not create directory '%s'"
-msgstr ""
+msgstr "No he podido crear el directorio  '%s'"
 
 #: builtin/log.c:1509
 msgid "Failed to create output files"
-msgstr ""
+msgstr "No he podido crear los ficheros de salida"
 
 #: builtin/log.c:1558
 msgid "git cherry [-v] [<upstream> [<head> [<limit>]]]"
@@ -6285,15 +6285,15 @@ msgstr ""
 #: builtin/log.c:1626 builtin/log.c:1628 builtin/log.c:1640
 #, c-format
 msgid "Unknown commit %s"
-msgstr ""
+msgstr "Commit desconocido %s"
 
 #: builtin/ls-files.c:401
 msgid "git ls-files [options] [<file>...]"
-msgstr ""
+msgstr "git ls-files [opciones] [<fichero>...]"
 
 #: builtin/ls-files.c:458
 msgid "identify the file status with tags"
-msgstr ""
+msgstr "identifica el estado de los ficheros mediante etiquetas"
 
 #: builtin/ls-files.c:460
 msgid "use lowercase letters for 'assume unchanged' files"
@@ -6325,7 +6325,7 @@ msgstr ""
 
 #: builtin/ls-files.c:475
 msgid "show files on the filesystem that need to be removed"
-msgstr ""
+msgstr "muestra ficheros que necesitan ser eliminados del sistema de ficheros"
 
 #: builtin/ls-files.c:477
 msgid "show 'other' directories' name only"
@@ -6333,7 +6333,7 @@ msgstr ""
 
 #: builtin/ls-files.c:480
 msgid "don't show empty directories"
-msgstr ""
+msgstr "omite directorios vacíos"
 
 #: builtin/ls-files.c:483
 msgid "show unmerged files in the output"
@@ -6345,11 +6345,11 @@ msgstr ""
 
 #: builtin/ls-files.c:487
 msgid "skip files matching pattern"
-msgstr ""
+msgstr "se salta los ficheros que se ajustan al patrón"
 
 #: builtin/ls-files.c:490
 msgid "exclude patterns are read from <file>"
-msgstr ""
+msgstr "lee los patrones de exclusión del <fichero>"
 
 #: builtin/ls-files.c:493
 msgid "read additional per-directory exclude patterns in <file>"
@@ -6357,7 +6357,7 @@ msgstr ""
 
 #: builtin/ls-files.c:495
 msgid "add the standard git exclusions"
-msgstr ""
+msgstr "añade las exclusiones git estándar"
 
 #: builtin/ls-files.c:498
 msgid "make the output relative to the project top directory"
