@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-22 21:58+0200\n"
+"PO-Revision-Date: 2014-05-24 13:26+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -6152,7 +6152,7 @@ msgstr "guarda los ficheros resultantes en <dir>"
 
 #: builtin/log.c:1200
 msgid "don't strip/add [PATCH]"
-msgstr ""
+msgstr "no quita/añade [PATCH]"
 
 #: builtin/log.c:1203
 msgid "don't output binary diffs"
@@ -6164,35 +6164,35 @@ msgstr ""
 
 #: builtin/log.c:1207
 msgid "show patch format instead of default (patch + stat)"
-msgstr ""
+msgstr "usa formato parche en lugar del formato por omisión (parche + estadísticas)"
 
 #: builtin/log.c:1209
 msgid "Messaging"
-msgstr ""
+msgstr "Mensajería"
 
 #: builtin/log.c:1210
 msgid "header"
-msgstr ""
+msgstr "cabecera"
 
 #: builtin/log.c:1211
 msgid "add email header"
-msgstr ""
+msgstr "añade una cabecera de email"
 
 #: builtin/log.c:1212 builtin/log.c:1214
 msgid "email"
-msgstr ""
+msgstr "dirección email"
 
 #: builtin/log.c:1212
 msgid "add To: header"
-msgstr ""
+msgstr "añade cabecera To:"
 
 #: builtin/log.c:1214
 msgid "add Cc: header"
-msgstr ""
+msgstr "añade cabecera Cc:"
 
 #: builtin/log.c:1216
 msgid "ident"
-msgstr ""
+msgstr "identificativo"
 
 #: builtin/log.c:1217
 msgid "set From address to <ident> (or committer ident if absent)"
@@ -6200,11 +6200,11 @@ msgstr ""
 
 #: builtin/log.c:1219
 msgid "message-id"
-msgstr ""
+msgstr "id-mensaje"
 
 #: builtin/log.c:1220
 msgid "make first mail a reply to <message-id>"
-msgstr ""
+msgstr "hace que el primer correo sea en respuesta al mensaje <id-mensaje>"
 
 #: builtin/log.c:1221 builtin/log.c:1224
 msgid "boundary"
