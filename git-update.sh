@@ -240,7 +240,14 @@ test "$mode" = rebase && {
 	oldremoteref=$(git merge-base --fork-point $branch $curr_branch 2>/dev/null)
 }
 orig_head=$(git rev-parse -q --verify HEAD)
-git fetch $verbosity $progress $dry_run $recurse_submodules $remote $branch || exit 1
+
+if test $remote = "."
+then
+	extra=--quiet
+fi
+
+git fetch $verbosity $progress $dry_run $recurse_submodules $remote $branch $extra || exit 1
+
 test -z "$dry_run" || exit 0
 
 merge_head=$(sed -e '/	not-for-merge	/d' -e 's/	.*//' "$GIT_DIR"/FETCH_HEAD)
