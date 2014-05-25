@@ -3,6 +3,7 @@
  */
 #include "cache.h"
 #include "sigchain.h"
+#include "tempfile.h"
 
 /*
  * File write-locks as used by Git.
@@ -87,70 +88,6 @@ static void remove_lock_file_on_signal(int signo)
 	remove_lock_file();
 	sigchain_pop(signo);
 	raise(signo);
-}
-
-/*
- * path = absolute or relative path name
- *
- * Remove the last path name element from path (leaving the preceding
- * "/", if any).  If path is empty or the root directory ("/"), set
- * path to the empty string.
- */
-static void trim_last_path_elm(struct strbuf *path)
-{
-	int i = path->len;
-
-	/* back up past trailing slashes, if any */
-	while (i && path->buf[i - 1] == '/')
-		i--;
-
-	/*
-	 * then go backwards until a slash, or the beginning of the
-	 * string
-	 */
-	while (i && path->buf[i - 1] != '/')
-		i--;
-
-	strbuf_setlen(path, i);
-}
-
-
-/* We allow "recursive" symbolic links. Only within reason, though */
-#define MAXDEPTH 5
-
-/*
- * path contains a path that might be a symlink.
- *
- * If path is a symlink, attempt to overwrite it with a path to the
- * real file or directory (which may or may not exist), following a
- * chain of symlinks if necessary.  Otherwise, leave path unmodified.
- *
- * This is a best-effort routine.  If an error occurs, path will
- * either be left unmodified or will name a different symlink in a
- * symlink chain that started with the original path.
- */
-static void resolve_symlink(struct strbuf *path)
-{
-	int depth = MAXDEPTH;
-	static struct strbuf link = STRBUF_INIT;
-
-	while (depth--) {
-		if (strbuf_readlink(&link, path->buf, path->len) < 0)
-			break;
-
-		if (is_absolute_path(link.buf))
-			/* absolute path simply replaces p */
-			strbuf_reset(path);
-		else
-			/*
-			 * link is a relative path, so replace the
-			 * last element of p with it.
-			 */
-			trim_last_path_elm(path);
-
-		strbuf_addbuf(path, &link);
-	}
-	strbuf_reset(&link);
 }
 
 static int lock_file(struct lock_file *lk, const char *path, int flags)
