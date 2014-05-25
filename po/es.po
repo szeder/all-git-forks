@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-24 22:47+0200\n"
+"PO-Revision-Date: 2014-05-25 19:31+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -6504,11 +6504,11 @@ msgstr "opción para la estrategia de fusión seleccionada"
 
 #: builtin/merge.c:217
 msgid "merge commit message (for a non-fast-forward merge)"
-msgstr ""
+msgstr "mensaje de commit de fusión (para una fusión no-avance-rápido)"
 
 #: builtin/merge.c:221
 msgid "abort the current in-progress merge"
-msgstr ""
+msgstr "aborta la fusión actualmente en curso"
 
 #: builtin/merge.c:250
 msgid "could not run stash."
@@ -6521,7 +6521,7 @@ msgstr ""
 #: builtin/merge.c:260
 #, c-format
 msgid "not a valid object: %s"
-msgstr ""
+msgstr "objeto inválido: %s"
 
 #: builtin/merge.c:279 builtin/merge.c:296
 msgid "read-tree failed"
@@ -6547,12 +6547,12 @@ msgstr ""
 #: builtin/merge.c:396
 #, c-format
 msgid "No merge message -- not updating HEAD\n"
-msgstr ""
+msgstr "No hay mensaje de fusión -- no actualizo CABEZA [HEAD]\n"
 
 #: builtin/merge.c:446
 #, c-format
 msgid "'%s' does not point to a commit"
-msgstr ""
+msgstr "'%s' no apunta a un commit"
 
 #: builtin/merge.c:558
 #, c-format
@@ -6575,17 +6575,17 @@ msgstr ""
 #: builtin/merge.c:709
 #, c-format
 msgid "unable to write %s"
-msgstr ""
+msgstr "no puedo escribir %s"
 
 #: builtin/merge.c:798
 #, c-format
 msgid "Could not read from '%s'"
-msgstr ""
+msgstr "No he podido leer de '%s'"
 
 #: builtin/merge.c:807
 #, c-format
 msgid "Not committing merge; use 'git commit' to complete the merge.\n"
-msgstr ""
+msgstr "No hago commit de la fusión; use 'git commit' para completar la fusión.\n"
 
 #: builtin/merge.c:813
 #, c-format
@@ -6599,22 +6599,22 @@ msgstr ""
 
 #: builtin/merge.c:837
 msgid "Empty commit message."
-msgstr ""
+msgstr "Mensaje de commit vacío."
 
 #: builtin/merge.c:849
 #, c-format
 msgid "Wonderful.\n"
-msgstr ""
+msgstr "Maravilloso.\n"
 
 #: builtin/merge.c:914
 #, c-format
 msgid "Automatic merge failed; fix conflicts and then commit the result.\n"
-msgstr ""
+msgstr "La fusión automática ha fallado; resuelva los conflictos y después haga commit del resultado.\n"
 
 #: builtin/merge.c:930
 #, c-format
 msgid "'%s' is not a commit"
-msgstr ""
+msgstr "'%s' no es un commit"
 
 #: builtin/merge.c:971
 msgid "No current branch."
@@ -6635,7 +6635,7 @@ msgstr ""
 
 #: builtin/merge.c:1136
 msgid "There is no merge to abort (MERGE_HEAD missing)."
-msgstr ""
+msgstr "No hay ninguna fusión que abortar (no existe MERGE_HEAD)."
 
 #: builtin/merge.c:1152 git-pull.sh:31
 msgid ""
@@ -6645,7 +6645,7 @@ msgstr ""
 
 #: builtin/merge.c:1155 git-pull.sh:34
 msgid "You have not concluded your merge (MERGE_HEAD exists)."
-msgstr ""
+msgstr "No ha concluido su fusión (existe MERGE_HEAD)."
 
 #: builtin/merge.c:1159
 msgid ""
@@ -6655,15 +6655,15 @@ msgstr ""
 
 #: builtin/merge.c:1162
 msgid "You have not concluded your cherry-pick (CHERRY_PICK_HEAD exists)."
-msgstr ""
+msgstr "No ha concluido su entresaca (existe CHERRY_PICK_HEAD)."
 
 #: builtin/merge.c:1171
 msgid "You cannot combine --squash with --no-ff."
-msgstr ""
+msgstr "No puede combinar --squash con --no-ff."
 
 #: builtin/merge.c:1180
 msgid "No commit specified and merge.defaultToUpstream not set."
-msgstr ""
+msgstr "No ha especificado ningún commit y merge.defaultToUpstream no tiene valor asignado."
 
 #: builtin/merge.c:1212
 msgid "Can merge only exactly one commit into empty head"
@@ -6680,7 +6680,7 @@ msgstr ""
 #: builtin/merge.c:1222
 #, c-format
 msgid "%s - not something we can merge"
-msgstr ""
+msgstr "%s - no es algo que podamos fusionar"
 
 #: builtin/merge.c:1273
 #, c-format
@@ -6695,17 +6695,17 @@ msgstr ""
 #: builtin/merge.c:1279
 #, c-format
 msgid "Commit %s does not have a GPG signature."
-msgstr ""
+msgstr "El commit %s no tiene firma GPG."
 
 #: builtin/merge.c:1282
 #, c-format
 msgid "Commit %s has a good GPG signature by %s\n"
-msgstr ""
+msgstr "El commit %s tiene una signatura GPG válida, firmado por %s\n"
 
 #: builtin/merge.c:1366
 #, c-format
 msgid "Updating %s..%s\n"
-msgstr ""
+msgstr "Actualizando %s..%s\n"
 
 #: builtin/merge.c:1405
 #, c-format
@@ -6719,7 +6719,7 @@ msgstr ""
 
 #: builtin/merge.c:1444
 msgid "Not possible to fast-forward, aborting."
-msgstr ""
+msgstr "Avance-rápido no es posible, abortando."
 
 #: builtin/merge.c:1467 builtin/merge.c:1546
 #, c-format
@@ -6729,7 +6729,7 @@ msgstr ""
 #: builtin/merge.c:1471
 #, c-format
 msgid "Trying merge strategy %s...\n"
-msgstr ""
+msgstr "Intentando la estrategia de fusión %s...\n"
 
 #: builtin/merge.c:1537
 #, c-format
@@ -6739,7 +6739,7 @@ msgstr ""
 #: builtin/merge.c:1539
 #, c-format
 msgid "Merge with strategy %s failed.\n"
-msgstr ""
+msgstr "Ha fallado la fusión con la estrategia %s.\n"
 
 #: builtin/merge.c:1548
 #, c-format
@@ -6749,23 +6749,23 @@ msgstr ""
 #: builtin/merge.c:1560
 #, c-format
 msgid "Automatic merge went well; stopped before committing as requested\n"
-msgstr ""
+msgstr "La fusión automática ha ido bien; parada antes de hacer commit siguiendo sus instrucciones\n"
 
 #: builtin/merge-base.c:29
 msgid "git merge-base [-a|--all] <commit> <commit>..."
-msgstr ""
+msgstr "git merge-base [-a|--all] <commit> <commit>..."
 
 #: builtin/merge-base.c:30
 msgid "git merge-base [-a|--all] --octopus <commit>..."
-msgstr ""
+msgstr "git merge-base [-a|--all] --octopus <commit>..."
 
 #: builtin/merge-base.c:31
 msgid "git merge-base --independent <commit>..."
-msgstr ""
+msgstr "git merge-base --independent <commit>..."
 
 #: builtin/merge-base.c:32
 msgid "git merge-base --is-ancestor <commit> <commit>"
-msgstr ""
+msgstr "git merge-base --is-ancestor <commit> <commit>"
 
 #: builtin/merge-base.c:33
 msgid "git merge-base --fork-point <ref> [<commit>]"
