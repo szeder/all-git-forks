@@ -2389,6 +2389,7 @@ install: all
 	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(mergetools_instdir_SQ)'
 	$(INSTALL) -m 644 mergetools/* '$(DESTDIR_SQ)$(mergetools_instdir_SQ)'
 	$(INSTALL) -D -m 644 shared/git-completion.bash '$(DESTDIR_SQ)$(bashcompdir_SQ)'/git
+	$(RM) '$(DESTDIR_SQ)$(bashcompdir_SQ)'/gitk && \
 	ln git '$(DESTDIR_SQ)$(bashcompdir_SQ)'/gitk || \
 		ln -s git '$(DESTDIR_SQ)$(bashcompdir_SQ)'/gitk || \
 		cp '$(DESTDIR_SQ)$(bashcompdir_SQ)'/git '$(DESTDIR_SQ)$(bashcompdir_SQ)'/gitk
