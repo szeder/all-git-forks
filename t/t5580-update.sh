@@ -117,4 +117,28 @@ test_expect_success 'git update non-fast-forward with rebase' '
 	)
 '
 
+test_expect_success 'git update with argument' '
+	test_when_finished "rm -rf test" &&
+	(
+	git clone . test &&
+	cd test &&
+	git checkout -b test &&
+	git reset --hard @^ &&
+	git update master &&
+	check test master
+	)
+'
+
+test_expect_success 'git update with remote argument' '
+	test_when_finished "rm -rf test" &&
+	(
+	git clone . test &&
+	cd test &&
+	git checkout -b test &&
+	git reset --hard @^ &&
+	git update origin/master &&
+	check test master
+	)
+'
+
 test_done

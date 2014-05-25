@@ -189,20 +189,49 @@ then
 	esac
 fi
 
-if test $# -gt 0
-then
-	usage
-	exit 1
-fi
-
 test -z "$curr_branch" &&
 	die "$(gettext "You are not currently on a branch.")"
 
-branch=$(git config "branch.$curr_branch_short.merge")
-remote=$(git config "branch.$curr_branch_short.remote")
+get_remote_branch () {
+	local ref
 
-test -z "$branch" && branch=$curr_branch
-test -z "$remote" && remote="origin"
+	ref=$(git rev-parse --symbolic-full-name $1)
+
+	git config --get-regexp 'remote.*.fetch' | while read key value
+	do
+		remote=${key#remote.}
+		remote=${remote%.fetch}
+		right=${value#*:}
+		case $ref in
+		$right)
+			prefix=${right%\*}
+			branch=${ref#$prefix}
+			echo "remote=$remote branch=$branch"
+			break
+			;;
+		esac
+	done
+}
+
+case $# in
+0)
+	branch=$(git config "branch.$curr_branch_short.merge")
+	remote=$(git config "branch.$curr_branch_short.remote")
+
+	test -z "$branch" && branch=$curr_branch
+	test -z "$remote" && remote="origin"
+	;;
+1)
+	branch=$1
+	remote=.
+
+	eval $(get_remote_branch $1)
+	;;
+*)
+	usage
+	exit 1
+	;;
+esac
 
 branch="${branch#refs/heads/}"
 
