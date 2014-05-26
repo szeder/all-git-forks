@@ -1360,7 +1360,7 @@ static struct diffstat_file *diffstat_add(struct diffstat_t *diffstat,
 					  const char *name_b)
 {
 	struct diffstat_file *x;
-	x = xcalloc(sizeof (*x), 1);
+	x = xcalloc(1, sizeof(*x));
 	if (diffstat->nr == diffstat->alloc) {
 		diffstat->alloc = alloc_nr(diffstat->alloc);
 		diffstat->files = xrealloc(diffstat->files,
