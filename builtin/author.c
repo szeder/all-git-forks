@@ -336,14 +336,18 @@ void * my_allocate_ldiff(int num, int size){
 
 /******************************** Global Data Structure ******************************/
 
-/* The commit_hash_list is for two purposes.
- * 1. the hash table entry for each commit.
- *    Hash key is the sha1 string.
- * 2. the commit info representing this commit,
- *    with the author of the commit, and sha1 hash.
+
+/* commit_hash_entry is the structure for a hash from a commit to 
+ * its corresponding information.
  */
-struct commit_hash_list {
+struct commit_hash_entry {
+    // Internal structure used by the hashmap interface
+    struct hashmap_entry ent;
+
+    // The key of the hash entry
     unsigned char sha1[20];
+
+    // The associated data
     char *author_name;
     char *email;
     unsigned long author_time;
@@ -352,44 +356,59 @@ struct commit_hash_list {
     int total;
     int *origin;
     int *next_line;
-    struct commit_hash_list *next;
 
     int outputed;
 };
 
 
-/* string_hash_list is my_memory_ldiff_used for a string hash map
+/* string_hash_entry is my_memory_ldiff_used for a string hash map
  * Key is the string; Value is the frequency of the string
  */
-struct string_hash_list {
+struct string_hash_entry {
+    // Internal structure used by the hashmap interface;
+    struct hashmap_entry ent;
+    // The frequency of the string;
     double f;
-    char * string;
+    // The length of the string;
     int len;
-    struct string_hash_list* next;
+    // The pointer to the string, which is also the key.
+    char * string;
 };
 
-/* commit_info_list is a linked list entry to store line info.
- * The line info of a line is a linked list.
- * Each entry points to the corresponding commit, which is a commit_hash_list
+/* line_info_list is a linked list that records all the commits that touched the line
+ * and some other associated information. 
  */
-struct commit_info_list {
+struct line_info_list {
+    // This line is the 'line_number' th line 
+    // in the source file 'path' in this commit,
+    // and the line is 'code'.
     int line_number;
     char* path;
     char* code;
-    struct commit_hash_list * info;
-    struct commit_info_list * next;
+
+    // The commit information pointer of the commit.
+    struct commit_hash_entry * info;
+    struct line_info_list * next;
 };
 
-/* The code_hunk_list abstract a continous chunk of code.
+/* code_hunk_list represents a continous chunk of code.
  * The first code_hunk_list node is a head node. 
  */
 struct code_hunk_list {
-    int total; // for the head node, it is the length of the list; ow is the total number of the lines
-    int start; // the line number of the first line in the code hunk
+
+    // for the head node, it is the length of the list; otherwise is the total number of the lines in the hunk
+    int total;     
+    // the line number of the first line in the code hunk 
+    int start;     
+    // The length of each line of code in the hunk.
     int *len;
+    // The code of each line in the hunk
     char **code;
+    // token_begin[i][j] points to the beginning poisition of the jth token of the ith line.
     char ***token_begin;
+    // token_end[i][j] points to the end poisition of the jth token of the ith line.
     char ***token_end;
+    // the total number of token of each line of code
     int *token_total;
     struct code_hunk_list *next;
 };
@@ -406,9 +425,7 @@ struct change_set {
     struct change_set *next;
 };
 
-/* delta_set is ldiff intermediate and 
- * final computation result my_memory_ldiff_used in ldiff algorithms
- */
+// delta_set is ldiff intermediate and final computation result 
 struct delta_set {
     struct code_hunk_list* added;
     struct code_hunk_list* deleted;
@@ -434,7 +451,7 @@ struct change_pair {
     int is_move;
 };
 
-/* line_transfer is the final ldiff result my_memory_ldiff_used for transfering line info.
+/* line_transfer is the final ldiff result:
  * add is the array storing all line numbers added in the child commit in increasing order;
  * del is the array storing all line numbers deleted in the parent commit in increasing order;
  * chg_from is the array storing all the line numbers changed in the parent commit in increasing order;
@@ -460,11 +477,14 @@ int debug = 0;
 struct commit* queue[500000];
 int head, tail;
 double* (*line_similarity_score) (struct code_hunk_list * , struct code_hunk_list*);
-struct hash_table commit_hash_table;
+struct hashmap commit_hashmap;
 int total_line_in_start;
 /**************************  Data Structure Related Functions *****************************/
 
-void push_int_back(int **vector_ptr, int *total_ptr, int *size_ptr, int v){
+void push_int_back(int **vector_ptr,
+                   int *total_ptr, 
+		   int *size_ptr, 
+		   int v){
     if (*total_ptr == *size_ptr) {
         int new_size = (*size_ptr + 16) * 3 / 2;
         int *new_memory = (int*) xcalloc(new_size, sizeof(int));
@@ -476,7 +496,13 @@ void push_int_back(int **vector_ptr, int *total_ptr, int *size_ptr, int v){
     (*vector_ptr)[*total_ptr] = v;
     ++(*total_ptr);
 }
-void push_chg_back(struct change_pair **vector_ptr, int *total_ptr, int *size_ptr, int v1, int v2, int is_move){
+
+void push_chg_back(struct change_pair **vector_ptr, 
+                   int *total_ptr, 
+		   int *size_ptr, 
+		   int v1, 
+		   int v2, 
+		   int is_move){
     if (*total_ptr == *size_ptr) {
         int new_size = (*size_ptr + 16) * 3 / 2;
         struct change_pair *new_memory = (struct change_pair*) xcalloc(new_size, sizeof(struct change_pair));
@@ -492,9 +518,12 @@ void push_chg_back(struct change_pair **vector_ptr, int *total_ptr, int *size_pt
     ++(*total_ptr);
 }
 
-void insert_commit_info_list(struct commit_info_list** info, int origin_line, int cur_line, 
-                             struct commit_hash_list* c, char **lines){
-    struct commit_info_list * new_entry = (struct commit_info_list*) my_allocate_commit(1, sizeof(struct commit_info_list));
+void insert_line_info_list(struct line_info_list** info,
+                           int origin_line, 
+			   int cur_line,
+			   struct commit_hash_entry* c, 
+			   char **lines){
+    struct line_info_list * new_entry = (struct line_info_list*) my_allocate_commit(1, sizeof(struct line_info_list));
     new_entry->next = info[origin_line];
     new_entry->info = c;
     new_entry->line_number = cur_line;
@@ -561,19 +590,6 @@ void print_delta_set(struct delta_set* diff, char *msg) {
 
 }
 
-void print_string_hash(struct hash_table *ht, char *msg){
-    dprintf("%s\n", msg);
-    int i;
-    for (i = 0; i < ht->size; ++i){
-        struct string_hash_list * hl = (struct string_hash_list*)(ht->array[i].ptr);
-	if (hl != NULL) hl = hl->next;
-	while (hl != NULL){
-	    dprintf("%s %.0lf\n", hl->string, hl->f);
-	    hl=hl->next;
-	}
-    }
-}
-
 void print_line_transfer(struct line_transfer *l){
     int i;
     dprintf("line transfer add:\n");
@@ -615,12 +631,12 @@ void free_line_transfer(struct line_transfer* lt){
     free(lt);
 }
 
-void free_commit_info_list(struct commit_info_list *cil){
-    struct commit_info_list *next;
-    while (cil != NULL){
-        next = cil->next;
-	free(cil);
-	cil = next;
+void free_line_info_list(struct line_info_list *lil){
+    struct lommit_info_list *next;
+    while (lil != NULL){
+        next = lil->next;
+	free(lil);
+	lil = next;
     }
 }
 
@@ -647,106 +663,66 @@ int cmp_change_pair(const void *a, const void *b){
 
 /***************************** Hash Related Stuff **************************/
 
-// One-at-a-Time hash
-unsigned hash_function ( void *key, int len) {
-    unsigned char *p = key;
-    unsigned h = 0;
-    int i;
-    for ( i = 0; i < len; i++ ) {
-        h += p[i];
-	h += ( h << 10 );
-	h ^= ( h >> 6 );
-    }
-    h += ( h << 3 );
-    h ^= ( h >> 11 );
-    h += ( h << 15 );
-    return h;
-}
-static struct commit_hash_list* commit_hash_lookup(unsigned char *sha1){
-    unsigned int hash = hash_function(sha1, 20);
-    struct commit_hash_list *hl = (struct commit_hash_list*) lookup_hash(hash, &commit_hash_table);
-    if (hl == NULL) return NULL;
-    while ( (hl=hl->next) != NULL) {
-        if (!memcmp(sha1, hl->sha1,20)){
-	    return hl;
-	}
-    }
-    return NULL;
+static struct commit_hash_entry* commit_hash_lookup(unsigned char *sha1){
+    unsigned int hash = strihash(sha1, 20);
+    struct hashmap_entry key;
+    hashmap_entry_init(&key, hash);
+    
+    return (struct commit_hash_entry*) hashmap_get(&commit_hashmap, &key, sha1);
 }
 
-static struct commit_hash_list* commit_hash_insert(unsigned char *sha1){
-    unsigned int hash = hash_function(sha1, 20);
-    struct commit_hash_list *newEntry;
-    struct commit_hash_list *hl = (struct commit_hash_list*) lookup_hash(hash,&commit_hash_table);
-    if (hl == NULL){
-        hl = (struct commit_hash_list*)my_allocate_commit(1,sizeof(struct commit_hash_list));
-	hl->cur_path = NULL;
-	hl->author_name = NULL;
-	insert_hash(hash, hl, &commit_hash_table);	
-    }
-    
-    newEntry = (struct commit_hash_list*)my_allocate_commit(1,sizeof(struct commit_hash_list));
+static struct commit_hash_entry* commit_hash_insert(unsigned char *sha1){
+    unsigned int hash = strihash(sha1, 20);
+    struct commit_hash_entry *newEntry = (struct commit_hash_entry*)my_allocate_commit(1,sizeof(struct commit_hash_entry));
+    hashmap_entry_init(newEntry, hash);
     memcpy(newEntry->sha1,sha1,20);
     newEntry->cur_path = NULL;
     newEntry->origin = NULL;
     newEntry->author_name = NULL;
-    newEntry->next = hl->next;
-    hl->next = newEntry;    
+
+    hashmap_add(&commit_hashmap, newEntry);
     return newEntry;
 }
 
-static struct string_hash_list* string_hash_lookup(struct hash_table* ht, char *key, int len){
-    unsigned int hash = hash_function(key, len);
-    struct string_hash_list *hl = (struct string_hash_list*) lookup_hash(hash, ht);
-    if (hl == NULL) return NULL;
-    while ( (hl=hl->next) != NULL) {
-        if (!strncmp(key, hl->string, len)){
-	    return hl;
-	}
-    }
-    return NULL;
+static struct string_hash_entry* string_hash_lookup(struct hashmap* hm, char *str, int len){
+    unsigned int hash = strhash(str, len);
+    struct hashmap_entry key;
+    hashmap_entry_init(&key, hash);
+
+    return (struct string_hash_entry*) hashmap_get(hm, &key, str);
 }
 
-static struct string_hash_list* string_hash_insert(struct hash_table* ht, char *key, int len){
-    unsigned int hash = hash_function(key, len);
-    struct string_hash_list *newEntry;
-    struct string_hash_list *hl = (struct string_hash_list*) lookup_hash(hash,ht);
-    if (hl == NULL){
-        hl = (struct string_hash_list*) my_allocate_ldiff(1,sizeof(struct string_hash_list));
-	hl->string = NULL;
-	hl->f = 0;
-	hl->next = NULL;
-	insert_hash(hash, hl, ht);	
-    }
-    
-    newEntry = (struct string_hash_list*) my_allocate_ldiff(1,sizeof(struct string_hash_list));
+static struct string_hash_entry* string_hash_insert(struct hashmap* hm, char *str, int len){
+    unsigned int hash = strhash(str, len);
+    struct string_hash_list *newEntry = (struct string_hash_entry*) my_allocate_ldiff(1,sizeof(struct string_hash_entry));
+    hashmap_entry_init(newEntry, hash);
     newEntry->len = len;
     newEntry->string = (char*) my_allocate_ldiff(len+1, sizeof(char));
     newEntry->f = 0;
-    strncpy(newEntry->string, key, len);
+    strncpy(newEntry->string, str, len);
     newEntry->string[len] = 0;
-    newEntry->next = hl->next;
-    hl->next = newEntry;    
+
+    hashmap_add(hm, newEntry);
     return newEntry;
 }
 
-/*static void StringHashClean(struct hash_table* ht) {
-    int i;
-    for (i = 0; i < ht->size; ++i){
-        struct string_hash_list * hl = (struct string_hash_list*)(ht->array[i].ptr);
-	struct string_hash_list * next = hl->next;
-	while (next != NULL){
-	    hl = next;
-	    next = next->next;
-	    free(hl->string);
-	    free(hl);
-	}
-	free(ht->array[i].ptr);	
-    }
-    free(ht->array);
+static int string_hash_entry_cmp(const struct string_hash_entry* e1,
+                                 const struct string_hash_entry* e2,
+				 const char* keydata) {
+    return strcmp(e1->string, keydata ? keydata : e2->string);
+}				 
 
+void print_string_hash(struct hashmap *hm, char *msg){
+    dprintf("%s\n", msg);
+
+    struct string_hash_entry* ent = NULL; 
+    struct hashmap_iter iter;
+    hashmap_iter_init(hm, &iter);
+
+    while ((ent = (struct string_hash_entry*)hashmap_iter_next(hm, &iter)) != NULL) {
+        dprintf("%s %.0lf\n", hm->string, hm->f);
+    }
 }
-*/
 
 
 /********************************** Ldiff Functions ***************************************/
@@ -764,17 +740,19 @@ int is_operator(char ch){
     return 0;
 }
 
-void count_frequency(struct hash_table* tf, struct hash_table *ht, struct code_hunk_list *hunk){
-    struct string_hash_list* posi, *lookup;
+void count_frequency(struct hashmap* tf, struct hashmap *df, struct code_hunk_list *hunk){
+    struct string_hash_entry *entry_tf, *entry_df;
     char *cur, *next;
     int i,j;
-    init_hash(tf);
+
+    hashmap_init(tf, (hash_cmp_fn)string_hash_entry_cmp, 0);
     hunk->token_begin = (char ***) my_allocate_ldiff(hunk->total, sizeof(char**));
     hunk->token_end = (char ***) my_allocate_ldiff(hunk->total, sizeof(char**));
     hunk->token_total = (int *) my_allocate_ldiff(hunk->total, sizeof(int));
     for (i = 0; i < hunk->total; ++i) {
         cur = hunk->code[i];
 	hunk->token_total[i] = 0;
+	// Count term frequency for each token
 	while (*cur) {
 	    while (*cur && !(isalnum(*cur) || *cur == '_' || is_operator(*cur))) ++cur;
 	    next = cur;
@@ -784,14 +762,15 @@ void count_frequency(struct hash_table* tf, struct hash_table *ht, struct code_h
 	        while (*next && (isalnum(*next) || *next == '_')) ++next;
 	    if (next != cur) {
 	        ++hunk->token_total[i];
-		posi = (struct string_hash_list*) string_hash_lookup(tf, cur, next - cur);	    
-		if (posi == NULL) {
-		    posi = (struct string_hash_list*) string_hash_insert(tf, cur, next - cur);		
+		entry_tf = (struct string_hash_entry*) string_hash_lookup(tf, cur, next - cur);	    
+		if (entry_tf == NULL) {
+		    entry_tf = (struct string_hash_entry*) string_hash_insert(tf, cur, next - cur);		
 		}
-		++posi->f;
+		++entry_tf->f;
 	    }
 	    cur = next;
 	}
+	// Store each token
 	cur = hunk->code[i];
 	hunk->token_begin[i] = (char**) my_allocate_ldiff(hunk->token_total[i], sizeof(char*));
 	hunk->token_end[i] = (char**) my_allocate_ldiff(hunk->token_total[i], sizeof(char*));
@@ -811,76 +790,68 @@ void count_frequency(struct hash_table* tf, struct hash_table *ht, struct code_h
 	    cur = next;
 	}
     }
-
-    for (i = 0; i < tf->size; ++i){
-        posi = (struct string_hash_list*)(tf->array[i].ptr);
-	if (posi == NULL) continue;
-	while ( (posi = posi->next) != NULL ){
-	    int len = strlen(posi->string);
-	    lookup = (struct string_hash_list*) string_hash_lookup(ht, posi->string, len);
-	    if (lookup == NULL){
-	        lookup = (struct string_hash_list*) string_hash_insert(ht, posi->string,len);
-	    }
-	    ++lookup->f;
+    // Count document frequency for each token
+    struct hashmap_iter iter;
+    hashmap_iter_init(tf, &iter);
+    while ((entry_tf = hashmap_iter_next(&iter)) != NULL) {
+        entry_df = (struct string_hash_entry*) string_hash_lookup(df, entry_tf->string, len);
+	if (entry_df == NULL){
+	    entry_df = (struct string_hash_entry*) string_hash_insert(df, entry_tf->string,len);
 	}
+	++entry_df->f;
     }
-
 }
 
-void normalize(struct hash_table* ht){
-    struct string_hash_list * l;
-    int i;
+void normalize(struct hashmap* hm){
+    struct hashmap_iter iter;
+    hashmap_iter_init(hm, &iter);    
+    struct string_hash_entry * entry;
     int sum = 0;
-    for (i = 0; i < ht->size; ++i){
-        l = (struct string_hash_list*) (ht->array[i].ptr);
-	if (l == NULL) continue;
-	while ((l=l->next) != NULL) {
-	    sum += (int)(l->f);
-	}
+    while ((entry = hashmap_iter_next(&iter)) != NULL) {
+        sum += (int)(entry->f);
     }
-    for (i = 0; i < ht->size; ++i){
-        l = (struct string_hash_list*) (ht->array[i].ptr);
-	if (l == NULL) continue;
-	while ((l=l->next) != NULL) {
-	    l->f = l->f / sum;
-	}
+    hashmap_iter_init(hm, &iter);    
+    while ((entry = hashmap_iter_next(&iter)) != NULL) {
+        entry->f = entry->f / sum;
     }
 }
 
-double range_similarity_score(struct hash_table *at, struct hash_table *dt, struct hash_table *df, int total) {
+// Calculate the range similarity score, the cosine similarity
+// between the added lines (in am) and deleted lines (in dm)
+double range_similarity_score(struct hashmap *am, struct hashmap *dm, struct hashmap *df, int total) {
     int i;
     double norm1, norm2, inner, tmp;
-    struct string_hash_list *l, *lookup;
-    if (at->size == 0 && dt->size == 0) return 1;
-    if (at->size == 0 || dt->size == 0) return 0;
+    struct string_hash_entry *entry_am, *entry_dm, *entry_df;
+    if (am->size == 0 && dm->size == 0) return 1;
+    if (am->size == 0 || dm->size == 0) return 0;
 
     norm1 = norm2 = inner = 0;
 
-    for (i = 0; i < at->size; ++i) {
-        l = (struct string_hash_list*) (at->array[i].ptr);
-	if (l == NULL) continue;
-	while ( (l=l->next) != NULL ){
-	    lookup = string_hash_lookup(df, l->string, l->len);
-	    tmp = l->f * log(total/(0.5+lookup->f));
-	    norm1 += tmp * tmp;
+    struct hashmap_iter iter;
+    hashmap_iter_init(am, &iter);
+    while ((entry_am = hashmap_iter_next(&iter)) != NULL) {
+        entry_df = (struct string_hash_entry*) string_hash_lookup(df, entry_am->string, entry_am->len);
+	if (entry_df != NULL) {
+	    tmp = entry_am->f * log(total / (0.5 + entry_df->f) );
+	    norm1 += tmp *tmp;
 	}
     }
 
-    for (i = 0; i < dt->size; ++i) {
-        l = (struct string_hash_list*) (dt->array[i].ptr);
-	if (l == NULL) continue;
-	while ( (l=l->next) != NULL ){
-	    lookup = string_hash_lookup(df, l->string, l->len);
-	    tmp = l->f * log(total/(0.5+lookup->f));
+    hashmap_iter_init(dm,&iter);
+    while ((entry_dm = hashmap_iter_next(&iter)) != NULL) {
+        entry_df = (struct string_hash_entry*) string_hash_lookup(df, entry_dm->string, entry_dm->len);
+	if (entry_df != NULL) {
+	    tmp = entry_dm->f * log(total / (0.5 + entry_df->f) );
 	    norm2 += tmp * tmp;
 
-            tmp = log(total/(0.5+lookup->f));
-	    lookup = string_hash_lookup(at, l->string, l->len);
-	    if (lookup != NULL){
-	        inner += l->f * lookup->f * tmp * tmp; 
+	    tmp = log(total / (0.5 + entry_df->f));
+	    entry_am = string_hash_lookup(am, entry_dm->string, entry_dm->len);
+	    if (entry_am != NULL) {
+	        inner += entry_am->f * entry_dm->f * tmp * tmp;
 	    }
 	}
     }
+
 
     return inner / (sqrt(norm1) * sqrt(norm2));
 }
@@ -1068,7 +1039,7 @@ void match_in_one_hunk_pair(struct code_hunk_list* add, struct code_hunk_list *d
     }
 }
 
-void count_document_frequency(struct hash_table*df, struct hash_table* terms, struct code_hunk_list **vector, struct code_hunk_list* hunk_list) {
+void count_document_frequency(struct hashmap*df, struct hashmap* terms, struct code_hunk_list **vector, struct code_hunk_list* hunk_list) {
     struct code_hunk_list * hunk;
     int i;
     for (hunk = hunk_list->next, i = 0; hunk != NULL; hunk = hunk->next, ++i) {
@@ -1079,9 +1050,9 @@ void count_document_frequency(struct hash_table*df, struct hash_table* terms, st
 
 }
 
-struct hunk_pair* build_hunk_pair_list(struct delta_set *old_diff, int* total_pair, struct hash_table * df, 
-                          struct hash_table *add_terms, struct code_hunk_list **add_vector,
-			  struct hash_table *delete_terms, struct code_hunk_list **del_vector){
+struct hunk_pair* build_hunk_pair_list(struct delta_set *old_diff, int* total_pair, struct hashmap * df, 
+                          struct hashmap *add_terms, struct code_hunk_list **add_vector,
+			  struct hashmap *delete_terms, struct code_hunk_list **del_vector){
     int i, j, k = 0;
     struct code_hunk_list *add, *del;
     int total_docs = old_diff->added->total + old_diff->deleted->total;
@@ -1129,8 +1100,8 @@ void concatenate_left(struct code_hunk_list* hunk, int total_hunk, int *choosen,
 
 void line_match_in_hunk(struct hunk_pair* all_pair, int total_pair,
                         struct delta_set *old_diff, struct delta_set *new_diff,
-			struct hash_table *add_terms, struct code_hunk_list **add_vector,
-			struct hash_table *delete_terms, struct code_hunk_list **del_vector){	
+			struct hashmap *add_terms, struct code_hunk_list **add_vector,
+			struct hashmap *delete_terms, struct code_hunk_list **del_vector){	
     int i;
     int *add_choosen, *del_choosen;
     double *line_score;
@@ -1175,18 +1146,18 @@ void line_match_in_hunk(struct hunk_pair* all_pair, int total_pair,
 
 }
 void match(struct delta_set *old_diff, struct delta_set *new_diff){
-    struct hash_table df;    
-    struct hash_table *add_terms, *delete_terms;
+    struct hashmap df;    
+    struct hashmap *add_terms, *delete_terms;
     struct code_hunk_list **add_vector, **del_vector;
     int total_pair;
     init_hash(&df);
 
-    add_terms = (struct hash_table*) my_allocate_ldiff(old_diff->added->total, sizeof(struct hash_table));
+    add_terms = (struct hashmap*) my_allocate_ldiff(old_diff->added->total, sizeof(struct hashmap));
     add_vector = (struct code_hunk_list**) my_allocate_ldiff(old_diff->added->total, sizeof(struct code_hunk_list*));
     count_document_frequency(&df, add_terms, add_vector, old_diff->added);
 
 
-    delete_terms = (struct hash_table*) my_allocate_ldiff(old_diff->deleted->total, sizeof(struct hash_table));
+    delete_terms = (struct hashmap*) my_allocate_ldiff(old_diff->deleted->total, sizeof(struct hashmap));
     del_vector = (struct code_hunk_list**) my_allocate_ldiff(old_diff->deleted->total, sizeof(struct code_hunk_list*));
     count_document_frequency(&df, delete_terms, del_vector, old_diff->deleted);
 
