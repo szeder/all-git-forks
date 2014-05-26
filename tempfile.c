@@ -1,4 +1,5 @@
 #include "tempfile.h"
+#include "cache.h"
 #include "sigchain.h"
 
 static struct temp_file *volatile temp_file_list;

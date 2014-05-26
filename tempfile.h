@@ -1,7 +1,7 @@
 #ifndef TEMPFILE_H
 #define TEMPFILE_H
 
-#include "cache.h"
+#include "git-compat-util.h"
 #include "strbuf.h"
 
 struct temp_file {
