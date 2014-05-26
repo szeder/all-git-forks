@@ -248,7 +248,7 @@ int run_add_interactive(const char *revision, const char *patch_mode,
 	int status, ac, i;
 	const char **args;
 
-	args = xcalloc(sizeof(const char *), (pathspec->nr + 6));
+	args = xcalloc((pathspec->nr + 6), sizeof(const char *));
 	ac = 0;
 	args[ac++] = "add--interactive";
 	if (patch_mode)
