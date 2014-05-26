@@ -43,7 +43,7 @@ test_expect_success 'verbose diff is stripped out' '
 '
 
 test_expect_success 'verbose diff is stripped out (mnemonicprefix)' '
-	git config diff.mnemonicprefix true &&
+	test_config diff.mnemonicprefix true &&
 	git commit --amend -v &&
 	check_message message
 '
@@ -71,7 +71,7 @@ test_expect_success 'diff in message is retained with -v' '
 '
 
 test_expect_success 'submodule log is stripped out too with -v' '
-	git config diff.submodule log &&
+	test_config diff.submodule log &&
 	git submodule add ./. sub &&
 	git commit -m "sub added" &&
 	(
