@@ -70,66 +70,6 @@
  * See Documentation/api-lockfile.txt for more information.
  */
 
-static struct lock_file *volatile lock_file_list;
-
-static void remove_lock_file(void)
-{
-	pid_t me = getpid();
-
-	while (lock_file_list) {
-		if (lock_file_list->owner == me)
-			rollback_lock_file(lock_file_list);
-		lock_file_list = lock_file_list->next;
-	}
-}
-
-static void remove_lock_file_on_signal(int signo)
-{
-	remove_lock_file();
-	sigchain_pop(signo);
-	raise(signo);
-}
-
-static int lock_file(struct lock_file *lk, const char *path, int flags)
-{
-	if (!lock_file_list) {
-		/* One-time initialization */
-		sigchain_push_common(remove_lock_file_on_signal);
-		atexit(remove_lock_file);
-	}
-
-	assert(!lk->active);
-
-	if (!lk->on_list) {
-		/* Initialize *lk and add it to lock_file_list: */
-		lk->fd = -1;
-		lk->active = 0;
-		lk->owner = 0;
-		lk->on_list = 1;
-		strbuf_init(&lk->filename, 0);
-		lk->next = lock_file_list;
-		lock_file_list = lk;
-	}
-
-	strbuf_addstr(&lk->filename, path);
-	if (!(flags & LOCK_NODEREF))
-		resolve_symlink(&lk->filename);
-	strbuf_addstr(&lk->filename, LOCK_SUFFIX);
-	lk->fd = open(lk->filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
-	if (lk->fd < 0) {
-		strbuf_reset(&lk->filename);
-		return -1;
-	}
-	lk->owner = getpid();
-	lk->active = 1;
-	if (adjust_shared_perm(lk->filename.buf)) {
-		error("cannot fix permission bits on %s", lk->filename.buf);
-		rollback_lock_file(lk);
-		return -1;
-	}
-	return lk->fd;
-}
-
 static char *unable_to_lock_message(const char *path, int err)
 {
 	struct strbuf buf = STRBUF_INIT;
@@ -161,7 +101,7 @@ NORETURN void unable_to_lock_die(const char *path, int err)
 
 int hold_lock_file_for_update(struct lock_file *lk, const char *path, int flags)
 {
-	int fd = lock_file(lk, path, flags);
+	int fd = initialize_temp_file((struct temp_file *)lk, path, flags);
 	if (fd < 0 && (flags & LOCK_DIE_ON_ERROR))
 		unable_to_lock_die(path, errno);
 	return fd;
@@ -171,7 +111,7 @@ int hold_lock_file_for_append(struct lock_file *lk, const char *path, int flags)
 {
 	int fd, orig_fd;
 
-	fd = lock_file(lk, path, flags);
+	fd = initialize_temp_file((struct temp_file *)lk, path, flags);
 	if (fd < 0) {
 		if (flags & LOCK_DIE_ON_ERROR)
 			unable_to_lock_die(path, errno);
@@ -183,23 +123,16 @@ int hold_lock_file_for_append(struct lock_file *lk, const char *path, int flags)
 		if (errno != ENOENT) {
 			if (flags & LOCK_DIE_ON_ERROR)
 				die("cannot open '%s' for copying", path);
-			rollback_lock_file(lk);
+			rollback_temp_file((struct temp_file *)lk);
 			return error("cannot open '%s' for copying", path);
 		}
 	} else if (copy_fd(orig_fd, fd)) {
 		if (flags & LOCK_DIE_ON_ERROR)
 			exit(128);
-		rollback_lock_file(lk);
+		rollback_temp_file((struct temp_file *)lk);
 		return -1;
 	}
 	return fd;
-}
-
-int close_lock_file(struct lock_file *lk)
-{
-	int fd = lk->fd;
-	lk->fd = -1;
-	return close(fd);
 }
 
 int commit_lock_file(struct lock_file *lk)
@@ -207,7 +140,7 @@ int commit_lock_file(struct lock_file *lk)
 	static struct strbuf result_file = STRBUF_INIT;
 	int err;
 
-	if (lk->fd >= 0 && close_lock_file(lk))
+	if (lk->fd >= 0 && close_temp_file((struct temp_file *)lk))
 		return -1;
 
 	if (!lk->active)
@@ -233,13 +166,12 @@ int hold_locked_index(struct lock_file *lk, int die_on_error)
 					 : 0);
 }
 
+int close_lock_file(struct lock_file *lk)
+{
+	return close_temp_file((struct temp_file *)lk);
+}
+
 void rollback_lock_file(struct lock_file *lk)
 {
-	if (lk->active) {
-		if (lk->fd >= 0)
-			close_lock_file(lk);
-		unlink_or_warn(lk->filename.buf);
-		lk->active = 0;
-		strbuf_reset(&lk->filename);
-	}
+	rollback_temp_file((struct temp_file *)lk);
 }
