@@ -3,24 +3,6 @@
 
 static struct temp_file *volatile temp_file_list;
 
-static void remove_temp_file(void)
-{
-	pid_t me = getpid();
-
-	while (temp_file_list) {
-		if (temp_file_list->owner == me)
-			rollback_temp_file(temp_file_list);
-		temp_file_list = temp_file_list->next;
-	}
-}
-
-static void remove_temp_file_on_signal(int signo)
-{
-	remove_temp_file();
-	sigchain_pop(signo);
-	raise(signo);
-}
-
 /*
  * path = absolute or relative path name
  *
@@ -84,6 +66,24 @@ static void resolve_symlink(struct strbuf *path)
 	strbuf_reset(&link);
 }
 
+static void remove_temp_file(void)
+{
+	pid_t me = getpid();
+
+	while (temp_file_list) {
+		if (temp_file_list->owner == me)
+			rollback_temp_file(temp_file_list);
+		temp_file_list = temp_file_list->next;
+	}
+}
+
+static void remove_temp_file_on_signal(int signo)
+{
+	remove_temp_file();
+	sigchain_pop(signo);
+	raise(signo);
+}
+
 int initialize_temp_file(struct temp_file *tmp, const char *path, int flags)
 {
 	if (!temp_file_list) {
@@ -122,6 +122,25 @@ int initialize_temp_file(struct temp_file *tmp, const char *path, int flags)
 		return -1;
 	}
 	return tmp->fd;
+}
+
+int rename_tempfile_into_place(struct temp_file *tmp, struct strbuf dest)
+{
+	/* Try closing the file. Return if unsuccessful. */
+	if (tmp->fd >= 0 && close_temp_file(tmp))
+		return -1;
+
+	if (!tmp->active)
+		die("BUG: attempt to rename deactivated tempfile");
+
+	/* Try renaming the file. Return if unsuccessful. */
+	if (rename(tmp->filename.buf, dest.buf))
+		return -1;
+
+	/* Deactivate tempfile */
+	tmp->active = 0;
+	strbuf_reset(&tmp->filename);
+	return 0;
 }
 
 void rollback_temp_file(struct temp_file *tmp)

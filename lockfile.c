@@ -140,22 +140,13 @@ int commit_lock_file(struct lock_file *lk)
 	static struct strbuf result_file = STRBUF_INIT;
 	int err;
 
-	if (lk->fd >= 0 && close_temp_file((struct temp_file *)lk))
-		return -1;
-
-	if (!lk->active)
-		die("BUG: attempt to commit unlocked object");
-
 	/* remove ".lock": */
 	strbuf_add(&result_file, lk->filename.buf,
 		   lk->filename.len - LOCK_SUFFIX_LEN);
-	err = rename(lk->filename.buf, result_file.buf);
+
+	err = rename_tempfile_into_place((struct temp_file *)lk, result_file);
 	strbuf_reset(&result_file);
-	if (err)
-		return -1;
-	lk->active = 0;
-	strbuf_reset(&lk->filename);
-	return 0;
+	return err;
 }
 
 int hold_locked_index(struct lock_file *lk, int die_on_error)
