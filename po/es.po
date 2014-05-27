@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-25 19:31+0200\n"
+"PO-Revision-Date: 2014-05-27 21:43+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -798,8 +798,8 @@ msgstr "Fusionando:"
 #, c-format
 msgid "found %u common ancestor:"
 msgid_plural "found %u common ancestors:"
-msgstr[0] "encontrado %u antecesor común:"
-msgstr[1] "encontrados %u antecesores comunes:"
+msgstr[0] "encontrado %u antepasado común:"
+msgstr[1] "encontrados %u antepasados comunes:"
 
 #: merge-recursive.c:1943
 msgid "merge returned no commit"
@@ -6785,7 +6785,7 @@ msgstr ""
 
 #: builtin/merge-base.c:220
 msgid "is the first one ancestor of the other?"
-msgstr ""
+msgstr "¿el primero es antepasado del segundo?"
 
 #: builtin/merge-base.c:222
 msgid "find where <commit> forked from reflog of <ref>"
@@ -6795,11 +6795,11 @@ msgstr ""
 msgid ""
 "git merge-file [options] [-L name1 [-L orig [-L name2]]] file1 orig_file "
 "file2"
-msgstr ""
+msgstr "git merge-file [opciones] [-L nombre1 [-L orig [-L nombre2]]] fichero1 fichero_orig fichero2"
 
 #: builtin/merge-file.c:33
 msgid "send results to standard output"
-msgstr ""
+msgstr "envía los resultados a la salida estándar"
 
 #: builtin/merge-file.c:34
 msgid "use a diff3 based merge"
@@ -6823,15 +6823,15 @@ msgstr ""
 
 #: builtin/merge-file.c:43
 msgid "do not warn about conflicts"
-msgstr ""
+msgstr "no avisa de los conflictos"
 
 #: builtin/merge-file.c:45
 msgid "set labels for file1/orig_file/file2"
-msgstr ""
+msgstr "asigna etiquetas a fichero1/fichero_orig/fichero2"
 
 #: builtin/mktree.c:64
 msgid "git mktree [-z] [--missing] [--batch]"
-msgstr ""
+msgstr "git mktree [-z] [--missing] [--batch]"
 
 #: builtin/mktree.c:150
 msgid "input is NUL terminated"
@@ -6839,28 +6839,28 @@ msgstr ""
 
 #: builtin/mktree.c:151 builtin/write-tree.c:24
 msgid "allow missing objects"
-msgstr ""
+msgstr "permite objetos inexistentes"
 
 #: builtin/mktree.c:152
 msgid "allow creation of more than one tree"
-msgstr ""
+msgstr "permite la creación de más de un árbol"
 
 #: builtin/mv.c:15
 msgid "git mv [options] <source>... <destination>"
-msgstr ""
+msgstr "git mv [opciones] <origen>... <destino>"
 
 #: builtin/mv.c:71
 msgid "force move/rename even if target exists"
-msgstr ""
+msgstr "fuerza mover/renombrar incluso si el destino existe"
 
 #: builtin/mv.c:72
 msgid "skip move/rename errors"
-msgstr ""
+msgstr "ignora errores al mover/renombrar"
 
 #: builtin/mv.c:122
 #, c-format
 msgid "Checking rename of '%s' to '%s'\n"
-msgstr ""
+msgstr "Comprobando el cambio de nombre de '%s' a '%s'\n"
 
 #: builtin/mv.c:126
 msgid "bad source"
@@ -6868,11 +6868,11 @@ msgstr ""
 
 #: builtin/mv.c:129
 msgid "can not move directory into itself"
-msgstr ""
+msgstr "no puedo mover un directorio al interior de sí mismo"
 
 #: builtin/mv.c:132
 msgid "cannot move directory over file"
-msgstr ""
+msgstr "no puedo mover un directorio sobre un fichero"
 
 #: builtin/mv.c:138
 #, c-format
@@ -6886,51 +6886,51 @@ msgstr ""
 #: builtin/mv.c:156
 #, c-format
 msgid "Huh? %.*s is in index?"
-msgstr ""
+msgstr "¿Eh? ¿%.*s está en el índice?"
 
 #: builtin/mv.c:169
 msgid "source directory is empty"
-msgstr ""
+msgstr "el directorio origen está vacío"
 
 #: builtin/mv.c:205
 msgid "not under version control"
-msgstr ""
+msgstr "no está bajo control de versiones"
 
 #: builtin/mv.c:207
 msgid "destination exists"
-msgstr ""
+msgstr "el destino existe"
 
 #: builtin/mv.c:215
 #, c-format
 msgid "overwriting '%s'"
-msgstr ""
+msgstr "sobrescribiendo '%s'"
 
 #: builtin/mv.c:218
 msgid "Cannot overwrite"
-msgstr ""
+msgstr "No puedo sobrescribir"
 
 #: builtin/mv.c:221
 msgid "multiple sources for the same target"
-msgstr ""
+msgstr "múltiples orígenes para el mismo destino"
 
 #: builtin/mv.c:223
 msgid "destination directory does not exist"
-msgstr ""
+msgstr "el directorio destino no existe"
 
 #: builtin/mv.c:243
 #, c-format
 msgid "%s, source=%s, destination=%s"
-msgstr ""
+msgstr "%s, origen=%s, destino=%s"
 
 #: builtin/mv.c:253
 #, c-format
 msgid "Renaming %s to %s\n"
-msgstr ""
+msgstr "Renombrando %s a %s\n"
 
 #: builtin/mv.c:256 builtin/remote.c:726 builtin/repack.c:355
 #, c-format
 msgid "renaming '%s' failed"
-msgstr ""
+msgstr "no he podido renombrar '%s'"
 
 #: builtin/name-rev.c:258
 msgid "git name-rev [options] <commit>..."
