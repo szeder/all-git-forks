@@ -14,4 +14,7 @@ else
 	exit 0
 fi
 
+ps1_expansion_enable () { shopt -s promptvars; }
+ps1_expansion_disable () { shopt -u promptvars; }
+
 . ./test-lib.sh
