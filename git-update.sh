@@ -285,6 +285,11 @@ build_msg () {
 	fi
 }
 
+fix_msg () {
+	build_msg
+	sed -e '1 d'
+}
+
 case "$mode" in
 rebase)
 	eval="git-rebase $diffstat $strategy_args $merge_args $rebase_args $verbosity"
@@ -292,8 +297,7 @@ rebase)
 	eval "exec $eval"
 	;;
 *)
-	msg="$(build_msg)"
-	merge_msg="$(git fmt-merge-msg $log_arg < "$GIT_DIR"/FETCH_HEAD | sed -e "1 s/^.*$/$msg/")" || exit
+	merge_msg=$(git fmt-merge-msg $log_arg < "$GIT_DIR"/FETCH_HEAD | fix_msg) || exit
 	eval="git-merge $diffstat $no_commit $verify_signatures $edit $squash $no_ff $ff_only"
 	eval="$eval $log_arg $strategy_args $merge_args $verbosity $progress"
 	eval="$eval --reverse-parents -m \"\$merge_msg\" $merge_head"
