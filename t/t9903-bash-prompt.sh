@@ -577,15 +577,4 @@ test_expect_success 'prompt - bash color pc mode - untracked files status indica
 	test_cmp expected "$actual"
 '
 
-test_expect_success 'prompt - zsh color pc mode' '
-	printf "BEFORE: (%%F{green}master%%f):AFTER" >expected &&
-	(
-		ZSH_VERSION=5.0.0 &&
-		GIT_PS1_SHOWCOLORHINTS=y &&
-		__git_ps1 "BEFORE:" ":AFTER" &&
-		printf "%s" "$PS1" >"$actual"
-	) &&
-	test_cmp expected "$actual"
-'
-
 test_done
