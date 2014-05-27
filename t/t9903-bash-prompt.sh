@@ -10,10 +10,7 @@ test_description='test git-specific bash prompt functions'
 . "$GIT_BUILD_DIR/contrib/completion/git-prompt.sh"
 
 actual="$TRASH_DIRECTORY/actual"
-c_red='\\[\\e[31m\\]'
-c_green='\\[\\e[32m\\]'
-c_lblue='\\[\\e[1;34m\\]'
-c_clear='\\[\\e[0m\\]'
+set_ps1_format_vars
 
 test_expect_success "setup for $shellname prompt tests" '
 	git init otherrepo &&
