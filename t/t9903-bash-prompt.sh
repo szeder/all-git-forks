@@ -463,7 +463,9 @@ run_pcmode_tests () {
 		test_cmp expected "$actual"
 	'
 
-	test_expect_success 'prompt - bash color pc mode - branch name' '
+	pfx="prompt - bash color pc mode"
+
+	test_expect_success "$pfx - branch name" '
 		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear}):AFTER\\nmaster" >expected &&
 		(
 			GIT_PS1_SHOWCOLORHINTS=y &&
@@ -473,7 +475,7 @@ run_pcmode_tests () {
 		test_cmp expected "$actual"
 	'
 
-	test_expect_success 'prompt - bash color pc mode - detached head' '
+	test_expect_success "$pfx - detached head" '
 		printf "BEFORE: (${c_red}\${__git_ps1_branch_name}${c_clear}):AFTER\\n(%s...)" $(git log -1 --format="%h" b1^) >expected &&
 		git checkout b1^ &&
 		test_when_finished "git checkout master" &&
@@ -485,7 +487,7 @@ run_pcmode_tests () {
 		test_cmp expected "$actual"
 	'
 
-	test_expect_success 'prompt - bash color pc mode - dirty status indicator - dirty worktree' '
+	test_expect_success "$pfx - dirty status indicator - dirty worktree" '
 		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear} ${c_red}*${c_clear}):AFTER\\nmaster" >expected &&
 		echo "dirty" >file &&
 		test_when_finished "git reset --hard" &&
@@ -498,7 +500,7 @@ run_pcmode_tests () {
 		test_cmp expected "$actual"
 	'
 
-	test_expect_success 'prompt - bash color pc mode - dirty status indicator - dirty index' '
+	test_expect_success "$pfx - dirty status indicator - dirty index" '
 		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear} ${c_green}+${c_clear}):AFTER\\nmaster" >expected &&
 		echo "dirty" >file &&
 		test_when_finished "git reset --hard" &&
@@ -512,7 +514,7 @@ run_pcmode_tests () {
 		test_cmp expected "$actual"
 	'
 
-	test_expect_success 'prompt - bash color pc mode - dirty status indicator - dirty index and worktree' '
+	test_expect_success "$pfx - dirty status indicator - dirty index and worktree" '
 		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear} ${c_red}*${c_green}+${c_clear}):AFTER\\nmaster" >expected &&
 		echo "dirty index" >file &&
 		test_when_finished "git reset --hard" &&
@@ -527,7 +529,7 @@ run_pcmode_tests () {
 		test_cmp expected "$actual"
 	'
 
-	test_expect_success 'prompt - bash color pc mode - dirty status indicator - before root commit' '
+	test_expect_success "$pfx - dirty status indicator - before root commit" '
 		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear} ${c_green}#${c_clear}):AFTER\\nmaster" >expected &&
 		(
 			GIT_PS1_SHOWDIRTYSTATE=y &&
@@ -539,7 +541,7 @@ run_pcmode_tests () {
 		test_cmp expected "$actual"
 	'
 
-	test_expect_success 'prompt - bash color pc mode - inside .git directory' '
+	test_expect_success "$pfx - inside .git directory" '
 		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear}):AFTER\\nGIT_DIR!" >expected &&
 		echo "dirty" >file &&
 		test_when_finished "git reset --hard" &&
@@ -553,7 +555,7 @@ run_pcmode_tests () {
 		test_cmp expected "$actual"
 	'
 
-	test_expect_success 'prompt - bash color pc mode - stash status indicator' '
+	test_expect_success "$pfx - stash status indicator" '
 		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear} ${c_lblue}\$${c_clear}):AFTER\\nmaster" >expected &&
 		echo 2 >file &&
 		git stash &&
@@ -567,7 +569,7 @@ run_pcmode_tests () {
 		test_cmp expected "$actual"
 	'
 
-	test_expect_success 'prompt - bash color pc mode - untracked files status indicator' '
+	test_expect_success "$pfx - untracked files status indicator" '
 		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear} ${c_red}%%${c_clear}):AFTER\\nmaster" >expected &&
 		(
 			GIT_PS1_SHOWUNTRACKEDFILES=y &&
