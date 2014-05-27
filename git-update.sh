@@ -5,7 +5,7 @@
 #
 # Fetch upstream and update the current branch.
 
-USAGE='[-n | --no-stat] [--[no-]commit] [--[no-]squash] [--[no-]ff] [--[no-]rebase|--rebase=preserve] [-s strategy]...'
+USAGE='[-n | --no-stat] [--[no-]commit] [--[no-]ff] [--[no-]rebase|--rebase=preserve] [-s strategy]...'
 LONG_USAGE='Fetch upstram and update the current branch.'
 SUBDIRECTORY_OK=Yes
 OPTIONS_SPEC=
@@ -36,7 +36,7 @@ bool_or_string_config () {
 	git config --bool "$1" 2>/dev/null || git config "$1"
 }
 
-strategy_args= diffstat= no_commit= squash= no_ff= ff_only=
+strategy_args= diffstat= no_commit= no_ff= ff_only=
 log_arg= verbosity= progress= recurse_submodules= verify_signatures=
 merge_args= edit= rebase_args=
 curr_branch=$(git symbolic-ref -q HEAD)
@@ -91,15 +91,10 @@ do
 		edit=--edit ;;
 	--no-edit)
 		edit=--no-edit ;;
-	# TODO
 	--no-commit)
 		no_commit=--no-commit ;;
 	--commit)
 		no_commit=--commit ;;
-	--squash)
-		squash=--squash ;;
-	--no-squash)
-		squash=--no-squash ;;
 	--ff)
 		no_ff=--ff ;;
 	--no-ff)
@@ -255,7 +250,7 @@ merge_head=$(sed -e '/	not-for-merge	/d' -e 's/	.*//' "$GIT_DIR"/FETCH_HEAD)
 test -z "$merge_head" &&
 	die "$(gettext "Couldnot fetch branch '${branch#refs/heads/}'.")"
 
-if test "$mode" = 'ff-only' && test -z "$no_ff$ff_only${squash#--no-squash}"
+if test "$mode" = 'ff-only' && test -z "$no_ff$ff_only"
 then
 	# check if a non-fast-forward merge would be needed
 	if ! git merge-base --is-ancestor "$orig_head" "$merge_head" &&
@@ -298,7 +293,7 @@ rebase)
 	;;
 *)
 	merge_msg=$(git fmt-merge-msg $log_arg < "$GIT_DIR"/FETCH_HEAD | fix_msg) || exit
-	eval="git-merge $diffstat $no_commit $verify_signatures $edit $squash $no_ff $ff_only"
+	eval="git-merge $diffstat $no_commit $verify_signatures $edit $no_ff $ff_only"
 	eval="$eval $log_arg $strategy_args $merge_args $verbosity $progress"
 	eval="$eval --reverse-parents -m \"\$merge_msg\" $merge_head"
 	eval "exec $eval"
