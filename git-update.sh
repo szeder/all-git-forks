@@ -255,13 +255,16 @@ merge_head=$(sed -e '/	not-for-merge	/d' -e 's/	.*//' "$GIT_DIR"/FETCH_HEAD)
 test -z "$merge_head" &&
 	die "$(gettext "Couldnot fetch branch '${branch#refs/heads/}'.")"
 
-# check if a non-fast-forward merge would be needed
-if test "$mode" = 'ff-only' && test -z "$no_ff$ff_only${squash#--no-squash}" &&
-	! git merge-base --is-ancestor "$orig_head" "$merge_head" &&
-	! git merge-base --is-ancestor "$merge_head" "$orig_head"
+if test "$mode" = 'ff-only' && test -z "$no_ff$ff_only${squash#--no-squash}"
 then
-	die "$(gettext "The update was not fast-forward, please either merge or rebase.
+	# check if a non-fast-forward merge would be needed
+	if ! git merge-base --is-ancestor "$orig_head" "$merge_head" &&
+		! git merge-base --is-ancestor "$merge_head" "$orig_head"
+	then
+		die "$(gettext "The update was not fast-forward, please either merge or rebase.
 If unsure, run 'git update --merge'.")"
+	fi
+	ff_only=--ff-only
 fi
 
 if test "$mode" = rebase
