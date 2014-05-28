@@ -151,9 +151,11 @@ sub highlight_pair {
 			splice @a, $ca + 1, 0, $RESET;
 			splice @b, $cb + 1, 0, $RESET;
 			$ca += 2;
-			$ca += 2;
+			$cb += 2;
 			$pa++;
 			$pb++;
+			$sa++;
+			$sb++;
 		}
 		else {
 			$ca++;
