@@ -5,8 +5,11 @@ use strict;
 
 # Highlight by reversing foreground and background. You could do
 # other things like bold or underline if you prefer.
-my $HIGHLIGHT   = "\x1b[7m";
-my $UNHIGHLIGHT = "\x1b[27m";
+my $RESET = "\x1b[39m";
+my $ADD_UNHIGHLIGHT = $RESET;
+my $REM_UNHIGHLIGHT = $RESET;
+my $ADD_HIGHLIGHT = "\x1b[31m";
+my $REM_HIGHLIGHT = "\x1b[32m";
 my $COLOR = qr/\x1b\[[0-9;]*m/;
 my $BORING = qr/$COLOR|\s/;
 
@@ -128,8 +131,8 @@ sub highlight_pair {
 	}
 
 	if (is_pair_interesting(\@a, $pa, $sa, \@b, $pb, $sb)) {
-		return highlight_line(\@a, $pa, $sa),
-		       highlight_line(\@b, $pb, $sb);
+		return highlight_line(\@a, $pa, $sa, $ADD_HIGHLIGHT, $ADD_UNHIGHLIGHT),
+		       highlight_line(\@b, $pb, $sb, $REM_HIGHLIGHT, $REM_UNHIGHLIGHT);
 	}
 	else {
 		return join('', @a),
@@ -144,13 +147,13 @@ sub split_line {
 }
 
 sub highlight_line {
-	my ($line, $prefix, $suffix) = @_;
+	my ($line, $prefix, $suffix, $start, $stop) = @_;
 
 	return join('',
 		@{$line}[0..($prefix-1)],
-		$HIGHLIGHT,
+		$start,
 		@{$line}[$prefix..$suffix],
-		$UNHIGHLIGHT,
+		$stop,
 		@{$line}[($suffix+1)..$#$line]
 	);
 }
