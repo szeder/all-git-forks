@@ -111,9 +111,9 @@ int initialize_lock_file(struct temp_file *tmp, const char *path, int flags)
 	return fd;
 }
 
-int hold_lock_file_for_update(struct lock_file *lk, const char *path, int flags)
+int hold_lock_file_for_update(struct temp_file *tmp, const char *path, int flags)
 {
-	int fd = initialize_lock_file((struct temp_file *)lk, path, flags);
+	int fd = initialize_lock_file(tmp, path, flags);
 	if (fd < 0 && (flags & LOCK_DIE_ON_ERROR))
 		unable_to_lock_die(path, errno);
 	return fd;
@@ -154,7 +154,7 @@ int commit_lock_file(struct lock_file *lk)
 
 int hold_locked_index(struct temp_file *tmp, int die_on_error)
 {
-	return hold_lock_file_for_update((struct lock_file *)tmp, get_index_file(),
+	return hold_lock_file_for_update(tmp, get_index_file(),
 					 die_on_error
 					 ? LOCK_DIE_ON_ERROR
 					 : 0);

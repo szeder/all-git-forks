@@ -17,6 +17,7 @@
 #include "sigchain.h"
 #include "argv-array.h"
 #include "commit.h"
+#include "tempfile.h"
 
 #define FAILED_RUN "failed to run %s"
 
@@ -207,7 +208,7 @@ static int need_to_gc(void)
 /* return NULL on success, else hostname running the gc */
 static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 {
-	static struct lock_file lock;
+	static struct temp_file lock;
 	char my_host[128];
 	struct strbuf sb = STRBUF_INIT;
 	struct stat st;
@@ -249,7 +250,7 @@ static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 			fclose(fp);
 		if (should_exit) {
 			if (fd >= 0)
-				rollback_lock_file(&lock);
+				rollback_temp_file(&lock);
 			*ret_pid = pid;
 			return locking_host;
 		}
@@ -259,7 +260,7 @@ static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 		    (uintmax_t) getpid(), my_host);
 	write_in_full(fd, sb.buf, sb.len);
 	strbuf_release(&sb);
-	commit_lock_file(&lock);
+	commit_temp_file(&lock);
 
 	pidfile = git_pathdup("gc.pid");
 	sigchain_push_common(remove_pidfile_on_signal);

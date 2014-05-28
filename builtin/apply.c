@@ -3687,7 +3687,7 @@ static void build_fake_ancestor(struct patch *list, const char *filename)
 			die ("Could not add %s to temporary index", name);
 	}
 
-	hold_lock_file_for_update((struct lock_file *)&tmp, filename, LOCK_DIE_ON_ERROR);
+	hold_lock_file_for_update(&tmp, filename, LOCK_DIE_ON_ERROR);
 	if (write_locked_index(&result, &tmp, COMMIT_LOCK))
 		die ("Could not write temporary index to %s", filename);
 

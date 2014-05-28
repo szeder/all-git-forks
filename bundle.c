@@ -8,6 +8,7 @@
 #include "run-command.h"
 #include "refs.h"
 #include "argv-array.h"
+#include "tempfile.h"
 
 static const char bundle_signature[] = "# v2 git bundle\n";
 
@@ -234,7 +235,7 @@ static int is_tag_in_date_range(struct object *tag, struct rev_info *revs)
 int create_bundle(struct bundle_header *header, const char *path,
 		  int argc, const char **argv)
 {
-	static struct lock_file lock;
+	static struct temp_file lock;
 	int bundle_fd = -1;
 	int bundle_to_stdout;
 	struct argv_array argv_boundary = ARGV_ARRAY_INIT;
@@ -412,7 +413,7 @@ int create_bundle(struct bundle_header *header, const char *path,
 	if (finish_command(&rls))
 		return error(_("pack-objects died"));
 	if (!bundle_to_stdout) {
-		if (commit_lock_file(&lock))
+		if (commit_temp_file(&lock))
 			die_errno(_("cannot create '%s'"), path);
 	}
 	return 0;

@@ -9,6 +9,7 @@
 #include "exec_cmd.h"
 #include "strbuf.h"
 #include "quote.h"
+#include "tempfile.h"
 
 struct config_source {
 	struct config_source *prev;
@@ -1522,7 +1523,7 @@ int git_config_set_multivar_in_file(const char *config_filename,
 {
 	int fd = -1, in_fd;
 	int ret;
-	struct lock_file *lock = NULL;
+	struct temp_file *lock = NULL;
 	char *filename_buf = NULL;
 
 	/* parse-key returns negative; flip the sign to feed exit(3) */
@@ -1539,7 +1540,7 @@ int git_config_set_multivar_in_file(const char *config_filename,
 	 * The lock serves a purpose in addition to locking: the new
 	 * contents of .git/config will be written into it.
 	 */
-	lock = xcalloc(sizeof(struct lock_file), 1);
+	lock = xcalloc(1, sizeof(struct temp_file));
 	fd = hold_lock_file_for_update(lock, config_filename, 0);
 	if (fd < 0) {
 		error("could not lock config file %s: %s", config_filename, strerror(errno));
@@ -1693,7 +1694,7 @@ int git_config_set_multivar_in_file(const char *config_filename,
 		munmap(contents, contents_sz);
 	}
 
-	if (commit_lock_file(lock) < 0) {
+	if (commit_temp_file(lock) < 0) {
 		error("could not commit config file %s", config_filename);
 		ret = CONFIG_NO_WRITE;
 		goto out_free;
@@ -1710,7 +1711,7 @@ int git_config_set_multivar_in_file(const char *config_filename,
 
 out_free:
 	if (lock)
-		rollback_lock_file(lock);
+		rollback_temp_file(lock);
 	free(filename_buf);
 	return ret;
 
@@ -1788,7 +1789,7 @@ int git_config_rename_section_in_file(const char *config_filename,
 {
 	int ret = 0, remove = 0;
 	char *filename_buf = NULL;
-	struct lock_file *lock;
+	struct temp_file *lock;
 	int out_fd;
 	char buf[1024];
 	FILE *config_file;
@@ -1802,7 +1803,7 @@ int git_config_rename_section_in_file(const char *config_filename,
 	if (!config_filename)
 		config_filename = filename_buf = git_pathdup("config");
 
-	lock = xcalloc(sizeof(struct lock_file), 1);
+	lock = xcalloc(1, sizeof(struct temp_file));
 	out_fd = hold_lock_file_for_update(lock, config_filename, 0);
 	if (out_fd < 0) {
 		ret = error("could not lock config file %s", config_filename);
@@ -1871,7 +1872,7 @@ int git_config_rename_section_in_file(const char *config_filename,
 	}
 	fclose(config_file);
 unlock_and_out:
-	if (commit_lock_file(lock) < 0)
+	if (commit_temp_file(lock) < 0)
 		ret = error("could not commit config file %s", config_filename);
 out:
 	free(filename_buf);

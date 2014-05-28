@@ -164,6 +164,7 @@ Format of STDIN stream:
 #include "quote.h"
 #include "exec_cmd.h"
 #include "dir.h"
+#include "tempfile.h"
 
 #define PACK_ID_BITS 16
 #define MAX_PACK_ID ((1<<PACK_ID_BITS)-1)
@@ -1763,7 +1764,7 @@ static void dump_marks_helper(FILE *f,
 
 static void dump_marks(void)
 {
-	static struct lock_file mark_lock;
+	static struct temp_file mark_lock;
 	int mark_fd;
 	FILE *f;
 
@@ -1780,7 +1781,7 @@ static void dump_marks(void)
 	f = fdopen(mark_fd, "w");
 	if (!f) {
 		int saved_errno = errno;
-		rollback_lock_file(&mark_lock);
+		rollback_temp_file(&mark_lock);
 		failure |= error("Unable to write marks file %s: %s",
 			export_marks_file, strerror(saved_errno));
 		return;
@@ -1796,15 +1797,15 @@ static void dump_marks(void)
 	dump_marks_helper(f, 0, marks);
 	if (ferror(f) || fclose(f)) {
 		int saved_errno = errno;
-		rollback_lock_file(&mark_lock);
+		rollback_temp_file(&mark_lock);
 		failure |= error("Unable to write marks file %s: %s",
 			export_marks_file, strerror(saved_errno));
 		return;
 	}
 
-	if (commit_lock_file(&mark_lock)) {
+	if (commit_temp_file(&mark_lock)) {
 		int saved_errno = errno;
-		rollback_lock_file(&mark_lock);
+		rollback_temp_file(&mark_lock);
 		failure |= error("Unable to commit marks file %s: %s",
 			export_marks_file, strerror(saved_errno));
 		return;

@@ -80,8 +80,8 @@ N_("If you wish to skip this commit, use:\n"
 
 static const char *use_message_buffer;
 static const char commit_editmsg[] = "COMMIT_EDITMSG";
-static struct lock_file index_lock; /* real index */
-static struct lock_file false_lock; /* used only for partial commits */
+static struct temp_file index_lock; /* real index */
+static struct temp_file false_lock; /* used only for partial commits */
 static enum {
 	COMMIT_AS_IS = 1,
 	COMMIT_NORMAL,
@@ -181,11 +181,11 @@ static void rollback_index_files(void)
 	case COMMIT_AS_IS:
 		break; /* nothing to do */
 	case COMMIT_NORMAL:
-		rollback_lock_file(&index_lock);
+		rollback_temp_file(&index_lock);
 		break;
 	case COMMIT_PARTIAL:
-		rollback_lock_file(&index_lock);
-		rollback_lock_file(&false_lock);
+		rollback_temp_file(&index_lock);
+		rollback_temp_file(&false_lock);
 		break;
 	}
 }
@@ -198,11 +198,11 @@ static int commit_index_files(void)
 	case COMMIT_AS_IS:
 		break; /* nothing to do */
 	case COMMIT_NORMAL:
-		err = commit_lock_file(&index_lock);
+		err = commit_temp_file(&index_lock);
 		break;
 	case COMMIT_PARTIAL:
-		err = commit_lock_file(&index_lock);
-		rollback_lock_file(&false_lock);
+		err = commit_temp_file(&index_lock);
+		rollback_temp_file(&false_lock);
 		break;
 	}
 
@@ -321,11 +321,11 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 
 	if (interactive) {
 		char *old_index_env = NULL;
-		hold_locked_index((struct temp_file *)&index_lock, 1);
+		hold_locked_index(&index_lock, 1);
 
 		refresh_cache_or_die(refresh_flags);
 
-		if (write_locked_index(&the_index, (struct temp_file *)&index_lock, CLOSE_LOCK))
+		if (write_locked_index(&the_index, &index_lock, CLOSE_LOCK))
 			die(_("unable to create temporary index"));
 
 		old_index_env = getenv(INDEX_ENVIRONMENT);
@@ -359,11 +359,11 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	 * (B) on failure, rollback the real index.
 	 */
 	if (all || (also && pathspec.nr)) {
-		hold_locked_index((struct temp_file *)&index_lock, 1);
+		hold_locked_index(&index_lock, 1);
 		add_files_to_cache(also ? prefix : NULL, &pathspec, 0);
 		refresh_cache_or_die(refresh_flags);
 		update_main_cache_tree(WRITE_TREE_SILENT);
-		if (write_locked_index(&the_index, (struct temp_file *)&index_lock, CLOSE_LOCK))
+		if (write_locked_index(&the_index, &index_lock, CLOSE_LOCK))
 			die(_("unable to write new_index file"));
 		commit_style = COMMIT_NORMAL;
 		return index_lock.filename.buf;
@@ -379,15 +379,15 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	 * We still need to refresh the index here.
 	 */
 	if (!only && !pathspec.nr) {
-		hold_locked_index((struct temp_file *)&index_lock, 1);
+		hold_locked_index(&index_lock, 1);
 		refresh_cache_or_die(refresh_flags);
 		if (active_cache_changed) {
 			update_main_cache_tree(WRITE_TREE_SILENT);
-			if (write_locked_index(&the_index, (struct temp_file *)&index_lock,
+			if (write_locked_index(&the_index, &index_lock,
 					       COMMIT_LOCK))
 				die(_("unable to write new_index file"));
 		} else {
-			rollback_lock_file(&index_lock);
+			rollback_temp_file(&index_lock);
 		}
 		commit_style = COMMIT_AS_IS;
 		return get_index_file();
@@ -430,10 +430,10 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	if (read_cache() < 0)
 		die(_("cannot read the index"));
 
-	hold_locked_index((struct temp_file *)&index_lock, 1);
+	hold_locked_index(&index_lock, 1);
 	add_remove_files(&partial);
 	refresh_cache(REFRESH_QUIET);
-	if (write_locked_index(&the_index, (struct temp_file *)&index_lock, CLOSE_LOCK))
+	if (write_locked_index(&the_index, &index_lock, CLOSE_LOCK))
 		die(_("unable to write new_index file"));
 
 	hold_lock_file_for_update(&false_lock,
@@ -445,7 +445,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	add_remove_files(&partial);
 	refresh_cache(REFRESH_QUIET);
 
-	if (write_locked_index(&the_index, (struct temp_file *)&false_lock, CLOSE_LOCK))
+	if (write_locked_index(&the_index, &false_lock, CLOSE_LOCK))
 		die(_("unable to write temporary index file"));
 
 	discard_cache();
@@ -1374,9 +1374,9 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 	read_cache_preload(&s.pathspec);
 	refresh_index(&the_index, REFRESH_QUIET|REFRESH_UNMERGED, &s.pathspec, NULL, NULL);
 
-	fd = hold_locked_index((struct temp_file *)&index_lock, 0);
+	fd = hold_locked_index(&index_lock, 0);
 	if (0 <= fd)
-		update_index_if_able(&the_index, (struct temp_file *)&index_lock);
+		update_index_if_able(&the_index, &index_lock);
 
 	s.is_initial = get_sha1(s.reference, sha1) ? 1 : 0;
 	s.ignore_submodule_arg = ignore_submodule_arg;

@@ -9,6 +9,7 @@
 #include "revision.h"
 #include "commit-slab.h"
 #include "sigchain.h"
+#include "tempfile.h"
 
 static int is_shallow = -1;
 static struct stat_validity shallow_stat;
@@ -263,7 +264,7 @@ void setup_alternate_shallow(struct lock_file *shallow_lock,
 	struct strbuf sb = STRBUF_INIT;
 	int fd;
 
-	fd = hold_lock_file_for_update(shallow_lock, git_path("shallow"),
+	fd = hold_lock_file_for_update((struct temp_file *)shallow_lock, git_path("shallow"),
 				       LOCK_DIE_ON_ERROR);
 	check_shallow_file_for_update();
 	if (write_shallow_commits(&sb, 0, extra)) {
@@ -301,7 +302,7 @@ void advertise_shallow_grafts(int fd)
  */
 void prune_shallow(int show_only)
 {
-	static struct lock_file shallow_lock;
+	static struct temp_file shallow_lock;
 	struct strbuf sb = STRBUF_INIT;
 	int fd;
 
@@ -317,10 +318,10 @@ void prune_shallow(int show_only)
 		if (write_in_full(fd, sb.buf, sb.len) != sb.len)
 			die_errno("failed to write to %s",
 				  shallow_lock.filename.buf);
-		commit_lock_file(&shallow_lock);
+		commit_temp_file(&shallow_lock);
 	} else {
 		unlink(git_path("shallow"));
-		rollback_lock_file(&shallow_lock);
+		rollback_temp_file(&shallow_lock);
 	}
 	strbuf_release(&sb);
 }

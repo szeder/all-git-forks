@@ -2,8 +2,9 @@
 #include "credential.h"
 #include "string-list.h"
 #include "parse-options.h"
+#include "tempfile.h"
 
-static struct lock_file credential_lock;
+static struct temp_file credential_lock;
 
 static void parse_credential_file(const char *fn,
 				  struct credential *c,
@@ -59,7 +60,7 @@ static void rewrite_credential_file(const char *fn, struct credential *c,
 	if (extra)
 		print_line(extra);
 	parse_credential_file(fn, c, NULL, print_line);
-	if (commit_lock_file(&credential_lock) < 0)
+	if (commit_temp_file(&credential_lock) < 0)
 		die_errno("unable to commit credential store");
 }
 

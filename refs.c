@@ -4,6 +4,7 @@
 #include "tag.h"
 #include "dir.h"
 #include "string-list.h"
+#include "tempfile.h"
 
 /*
  * Make sure "ref" is something reasonable to have under ".git/refs/";
@@ -867,7 +868,7 @@ static struct ref_cache {
 } ref_cache, *submodule_ref_caches;
 
 /* Lock used for the main packed-refs file: */
-static struct lock_file packlock;
+static struct temp_file packlock;
 
 /*
  * Increment the reference count of *packed_refs.
@@ -2117,7 +2118,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 		goto error_return;
 	}
 
-	lock->lock_fd = hold_lock_file_for_update(lock->lk, ref_file, lflags);
+	lock->lock_fd = hold_lock_file_for_update((struct temp_file *)lock->lk, ref_file, lflags);
 	if (lock->lock_fd < 0) {
 		if (errno == ENOENT && --attempts_remaining > 0)
 			/*
@@ -2210,7 +2211,7 @@ int lock_packed_refs(int flags)
 	 * the packed-refs file.
 	 */
 	packed_ref_cache = get_packed_ref_cache(&ref_cache);
-	packed_ref_cache->lock = &packlock;
+	packed_ref_cache->lock = (struct lock_file *)&packlock;
 	/* Increment the reference count to prevent it from being freed: */
 	acquire_packed_ref_cache(packed_ref_cache);
 	return 0;
