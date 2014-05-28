@@ -130,6 +130,37 @@ sub highlight_pair {
 		}
 	}
 
+	# Remove colors.
+	my $seenpm;
+	my ($ca, $cb) = (0, 0);
+	while ($ca < @a && $cb < @b) {
+		if ($seenpm && $a[$ca] =~ /$COLOR/) {
+			$a[$ca] = "";
+			$ca++;
+		}
+		elsif ($seenpm && $b[$cb] =~ /$COLOR/) {
+			$b[$cb] = "";
+			$cb++;
+		}
+		elsif ($a[$ca] eq $b[$cb]) {
+			$ca++;
+			$cb++;
+		}
+		elsif (!$seenpm && $a[$ca] eq '-' && $b[$cb] eq '+') {
+			$seenpm = 1;
+			splice @a, $ca + 1, 0, $RESET;
+			splice @b, $cb + 1, 0, $RESET;
+			$ca += 2;
+			$ca += 2;
+			$pa++;
+			$pb++;
+		}
+		else {
+			$ca++;
+			$cb++;
+		}
+	}
+
 	if (is_pair_interesting(\@a, $pa, $sa, \@b, $pb, $sb)) {
 		return highlight_line(\@a, $pa, $sa, $ADD_HIGHLIGHT, $ADD_UNHIGHLIGHT),
 		       highlight_line(\@b, $pb, $sb, $REM_HIGHLIGHT, $REM_UNHIGHLIGHT);
