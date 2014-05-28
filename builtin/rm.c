@@ -12,6 +12,7 @@
 #include "string-list.h"
 #include "submodule.h"
 #include "pathspec.h"
+#include "tempfile.h"
 
 static const char * const builtin_rm_usage[] = {
 	N_("git rm [options] [--] <file>..."),
@@ -260,7 +261,7 @@ static int check_local_mod(unsigned char *head, int index_only)
 	return errs;
 }
 
-static struct lock_file lock_file;
+static struct temp_file temp_file;
 
 static int show_only = 0, force = 0, index_only = 0, recursive = 0, quiet = 0;
 static int ignore_unmatch = 0;
@@ -293,7 +294,7 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 	if (!index_only)
 		setup_work_tree();
 
-	hold_locked_index(&lock_file, 1);
+	hold_locked_index(&temp_file, 1);
 
 	if (read_cache() < 0)
 		die(_("index file corrupt"));
@@ -427,7 +428,7 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 	}
 
 	if (active_cache_changed) {
-		if (write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
+		if (write_locked_index(&the_index, (struct lock_file *)&temp_file, COMMIT_LOCK))
 			die(_("Unable to write new index file"));
 	}
 

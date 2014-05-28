@@ -1,8 +1,9 @@
 #include "cache.h"
 #include "tree.h"
 #include "cache-tree.h"
+#include "tempfile.h"
 
-static struct lock_file index_lock;
+static struct temp_file index_lock;
 
 int main(int ac, char **av)
 {
@@ -10,7 +11,7 @@ int main(int ac, char **av)
 	if (read_cache() < 0)
 		die("unable to read index file");
 	active_cache_tree = NULL;
-	if (write_locked_index(&the_index, &index_lock, COMMIT_LOCK))
+	if (write_locked_index(&the_index, (struct lock_file *)&index_lock, COMMIT_LOCK))
 		die("unable to write index file");
 	return 0;
 }

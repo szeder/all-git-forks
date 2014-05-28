@@ -14,6 +14,7 @@
 #include "pathspec.h"
 #include "dir.h"
 #include "split-index.h"
+#include "tempfile.h"
 
 /*
  * Default to not allowing changes to the list of files. The
@@ -744,7 +745,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	struct refresh_params refresh_args = {0, &has_errors};
 	int lock_error = 0;
 	int split_index = -1;
-	struct lock_file *lock_file;
+	struct temp_file *temp_file;
 	struct parse_opt_ctx_t ctx;
 	int parseopt_state = PARSE_OPT_UNKNOWN;
 	struct option options[] = {
@@ -837,9 +838,9 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	git_config(git_default_config, NULL);
 
 	/* We can't free this memory, it becomes part of a linked list parsed atexit() */
-	lock_file = xcalloc(1, sizeof(struct lock_file));
+	temp_file = xcalloc(1, sizeof(struct temp_file));
 
-	newfd = hold_locked_index(lock_file, 0);
+	newfd = hold_locked_index(temp_file, 0);
 	if (newfd < 0)
 		lock_error = errno;
 
@@ -941,11 +942,11 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 				exit(128);
 			unable_to_lock_die(get_index_file(), lock_error);
 		}
-		if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
+		if (write_locked_index(&the_index, (struct lock_file *)temp_file, COMMIT_LOCK))
 			die("Unable to write new index file");
 	}
 
-	rollback_lock_file(lock_file);
+	rollback_temp_file(temp_file);
 
 	return has_errors ? 1 : 0;
 }

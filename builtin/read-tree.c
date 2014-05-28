@@ -14,6 +14,7 @@
 #include "builtin.h"
 #include "parse-options.h"
 #include "resolve-undo.h"
+#include "tempfile.h"
 
 static int nr_trees;
 static int read_empty;
@@ -95,7 +96,7 @@ static int debug_merge(const struct cache_entry * const *stages,
 	return 0;
 }
 
-static struct lock_file lock_file;
+static struct temp_file temp_file;
 
 int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 {
@@ -149,7 +150,7 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 	argc = parse_options(argc, argv, unused_prefix, read_tree_options,
 			     read_tree_usage, 0);
 
-	hold_locked_index(&lock_file, 1);
+	hold_locked_index(&temp_file, 1);
 
 	prefix_set = opts.prefix ? 1 : 0;
 	if (1 < opts.merge + opts.reset + prefix_set)
@@ -242,7 +243,7 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 	if (nr_trees == 1 && !opts.prefix)
 		prime_cache_tree(&the_index, trees[0]);
 
-	if (write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
+	if (write_locked_index(&the_index, (struct lock_file *)&temp_file, COMMIT_LOCK))
 		die("unable to write new index file");
 	return 0;
 }

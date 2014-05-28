@@ -23,6 +23,7 @@
 #include "remote.h"
 #include "run-command.h"
 #include "connected.h"
+#include "tempfile.h"
 
 /*
  * Overall FIXMEs:
@@ -614,7 +615,7 @@ static int checkout(void)
 {
 	unsigned char sha1[20];
 	char *head;
-	struct lock_file *lock_file;
+	struct temp_file *temp_file;
 	struct unpack_trees_options opts;
 	struct tree *tree;
 	struct tree_desc t;
@@ -641,8 +642,8 @@ static int checkout(void)
 	/* We need to be in the new work tree for the checkout */
 	setup_work_tree();
 
-	lock_file = xcalloc(1, sizeof(struct lock_file));
-	hold_locked_index(lock_file, 1);
+	temp_file = xcalloc(1, sizeof(struct temp_file));
+	hold_locked_index(temp_file, 1);
 
 	memset(&opts, 0, sizeof opts);
 	opts.update = 1;
@@ -658,7 +659,7 @@ static int checkout(void)
 	if (unpack_trees(1, &t, &opts) < 0)
 		die(_("unable to checkout working tree"));
 
-	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
+	if (write_locked_index(&the_index, (struct lock_file *)temp_file, COMMIT_LOCK))
 		die(_("unable to write new index file"));
 
 	err |= run_hook_le(NULL, "post-checkout", sha1_to_hex(null_sha1),

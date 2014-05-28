@@ -2,6 +2,7 @@
 #include "tree.h"
 #include "tree-walk.h"
 #include "cache-tree.h"
+#include "tempfile.h"
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -577,15 +578,15 @@ static struct cache_tree *cache_tree_find(struct cache_tree *it, const char *pat
 int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 {
 	int entries, was_valid, newfd;
-	struct lock_file *lock_file;
+	struct temp_file *temp_file;
 
 	/*
 	 * We can't free this memory, it becomes part of a linked list
 	 * parsed atexit()
 	 */
-	lock_file = xcalloc(1, sizeof(struct lock_file));
+	temp_file = xcalloc(1, sizeof(struct temp_file));
 
-	newfd = hold_locked_index(lock_file, 1);
+	newfd = hold_locked_index(temp_file, 1);
 
 	entries = read_cache();
 	if (entries < 0)
@@ -601,7 +602,7 @@ int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 		if (cache_tree_update(&the_index, flags) < 0)
 			return WRITE_TREE_UNMERGED_INDEX;
 		if (0 <= newfd) {
-			if (!write_locked_index(&the_index, lock_file, COMMIT_LOCK))
+			if (!write_locked_index(&the_index, (struct lock_file *)temp_file, COMMIT_LOCK))
 				newfd = -1;
 		}
 		/* Not being able to write is fine -- we are only interested
@@ -623,7 +624,7 @@ int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 		hashcpy(sha1, active_cache_tree->sha1);
 
 	if (0 <= newfd)
-		rollback_lock_file(lock_file);
+		rollback_temp_file(temp_file);
 
 	return 0;
 }

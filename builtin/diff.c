@@ -15,6 +15,7 @@
 #include "builtin.h"
 #include "submodule.h"
 #include "sha1-array.h"
+#include "tempfile.h"
 
 #define DIFF_NO_INDEX_EXPLICIT 1
 #define DIFF_NO_INDEX_IMPLICIT 2
@@ -204,17 +205,17 @@ static int builtin_diff_combined(struct rev_info *revs,
 
 static void refresh_index_quietly(void)
 {
-	struct lock_file *lock_file;
+	struct temp_file *temp_file;
 	int fd;
 
-	lock_file = xcalloc(1, sizeof(struct lock_file));
-	fd = hold_locked_index(lock_file, 0);
+	temp_file = xcalloc(1, sizeof(struct temp_file));
+	fd = hold_locked_index(temp_file, 0);
 	if (fd < 0)
 		return;
 	discard_cache();
 	read_cache();
 	refresh_cache(REFRESH_QUIET|REFRESH_UNMERGED);
-	update_index_if_able(&the_index, lock_file);
+	update_index_if_able(&the_index, temp_file);
 }
 
 static int builtin_diff_files(struct rev_info *revs, int argc, const char **argv)

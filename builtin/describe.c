@@ -8,6 +8,7 @@
 #include "diff.h"
 #include "hashmap.h"
 #include "argv-array.h"
+#include "tempfile.h"
 
 #define SEEN		(1u << 0)
 #define MAX_TAGS	(FLAG_BITS - 1)
@@ -465,7 +466,7 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 
 	if (argc == 0) {
 		if (dirty) {
-			static struct lock_file index_lock;
+			static struct temp_file index_lock;
 			int fd;
 
 			read_cache_preload(NULL);

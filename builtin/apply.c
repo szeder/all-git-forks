@@ -19,6 +19,7 @@
 #include "xdiff-interface.h"
 #include "ll-merge.h"
 #include "rerere.h"
+#include "tempfile.h"
 
 /*
  *  --check turns on checking that the working tree matches the
@@ -4235,7 +4236,7 @@ static int apply_patch(int fd, const char *filename, int options)
 
 	update_index = check_index && apply;
 	if (update_index && newfd < 0)
-		newfd = hold_locked_index(&lock_file, 1);
+		newfd = hold_locked_index((struct temp_file *)&lock_file, 1);
 
 	if (check_index) {
 		if (read_cache() < 0)

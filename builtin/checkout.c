@@ -21,6 +21,7 @@
 #include "submodule.h"
 #include "argv-array.h"
 #include "sigchain.h"
+#include "tempfile.h"
 
 static const char *recurse_submodules_default = "off";
 static int recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
@@ -233,7 +234,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 	int flag;
 	struct commit *head;
 	int errs = 0;
-	struct lock_file *lock_file;
+	struct temp_file *temp_file;
 
 	if (opts->track != BRANCH_TRACK_UNSPECIFIED)
 		die(_("'%s' cannot be used with updating paths"), "--track");
@@ -264,9 +265,9 @@ static int checkout_paths(const struct checkout_opts *opts,
 		return run_add_interactive(revision, "--patch=checkout",
 					   &opts->pathspec);
 
-	lock_file = xcalloc(1, sizeof(struct lock_file));
+	temp_file = xcalloc(1, sizeof(struct temp_file));
 
-	hold_locked_index(lock_file, 1);
+	hold_locked_index(temp_file, 1);
 	if (read_cache_preload(&opts->pathspec) < 0)
 		return error(_("corrupt index file"));
 
@@ -363,7 +364,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 		}
 	}
 
-	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
+	if (write_locked_index(&the_index, (struct lock_file *)temp_file, COMMIT_LOCK))
 		die(_("unable to write new index file"));
 
 	read_ref_full("HEAD", rev, 0, &flag);
@@ -458,9 +459,9 @@ static int merge_working_tree(const struct checkout_opts *opts,
 			      int *writeout_error)
 {
 	int ret;
-	struct lock_file *lock_file = xcalloc(1, sizeof(struct lock_file));
+	struct temp_file *temp_file = xcalloc(1, sizeof(struct temp_file));
 
-	hold_locked_index(lock_file, 1);
+	hold_locked_index(temp_file, 1);
 	if (read_cache_preload(NULL) < 0)
 		return error(_("corrupt index file"));
 
@@ -568,7 +569,7 @@ static int merge_working_tree(const struct checkout_opts *opts,
 		}
 	}
 
-	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
+	if (write_locked_index(&the_index, (struct lock_file *)temp_file, COMMIT_LOCK))
 		die(_("unable to write new index file"));
 
 	if (!opts->force && !opts->quiet)

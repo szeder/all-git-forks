@@ -7,6 +7,7 @@
 #include "ll-merge.h"
 #include "attr.h"
 #include "pathspec.h"
+#include "tempfile.h"
 
 #define RESOLVED 0
 #define PUNTED 1
@@ -474,7 +475,7 @@ out:
 	return ret;
 }
 
-static struct lock_file index_lock;
+static struct temp_file index_lock;
 
 static int update_paths(struct string_list *update)
 {
@@ -492,10 +493,10 @@ static int update_paths(struct string_list *update)
 	}
 
 	if (!status && active_cache_changed) {
-		if (write_locked_index(&the_index, &index_lock, COMMIT_LOCK))
+		if (write_locked_index(&the_index, (struct lock_file *)&index_lock, COMMIT_LOCK))
 			die("Unable to write new index file");
 	} else if (fd >= 0)
-		rollback_lock_file(&index_lock);
+		rollback_temp_file(&index_lock);
 	return status;
 }
 

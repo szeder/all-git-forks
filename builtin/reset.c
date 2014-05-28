@@ -20,6 +20,7 @@
 #include "parse-options.h"
 #include "unpack-trees.h"
 #include "cache-tree.h"
+#include "tempfile.h"
 
 static const char * const git_reset_usage[] = {
 	N_("git reset [--mixed | --soft | --hard | --merge | --keep] [-q] [<commit>]"),
@@ -352,8 +353,8 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 		die_if_unmerged_cache(reset_type);
 
 	if (reset_type != SOFT) {
-		struct lock_file *lock = xcalloc(1, sizeof(*lock));
-		hold_locked_index(lock, 1);
+		struct temp_file *temp_file = xcalloc(1, sizeof(struct temp_file));
+		hold_locked_index(temp_file, 1);
 		if (reset_type == MIXED) {
 			int flags = quiet ? REFRESH_QUIET : REFRESH_IN_PORCELAIN;
 			if (read_from_tree(&pathspec, sha1, intent_to_add))
@@ -369,7 +370,7 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 				die(_("Could not reset index file to revision '%s'."), rev);
 		}
 
-		if (write_locked_index(&the_index, lock, COMMIT_LOCK))
+		if (write_locked_index(&the_index, (struct lock_file *)temp_file, COMMIT_LOCK))
 			die(_("Could not write new index file."));
 	}
 

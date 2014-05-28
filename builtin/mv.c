@@ -10,6 +10,7 @@
 #include "string-list.h"
 #include "parse-options.h"
 #include "submodule.h"
+#include "tempfile.h"
 
 static const char * const builtin_mv_usage[] = {
 	N_("git mv [options] <source>... <destination>"),
@@ -58,7 +59,7 @@ static const char *add_slash(const char *path)
 	return path;
 }
 
-static struct lock_file lock_file;
+static struct temp_file temp_file;
 #define SUBMODULE_WITH_GITDIR ((const char *)1)
 
 int cmd_mv(int argc, const char **argv, const char *prefix)
@@ -85,7 +86,7 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 	if (--argc < 1)
 		usage_with_options(builtin_mv_usage, builtin_mv_options);
 
-	hold_locked_index(&lock_file, 1);
+	hold_locked_index(&temp_file, 1);
 	if (read_cache() < 0)
 		die(_("index file corrupt"));
 
@@ -276,7 +277,7 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 		stage_updated_gitmodules();
 
 	if (active_cache_changed) {
-		if (write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
+		if (write_locked_index(&the_index, (struct lock_file *)&temp_file, COMMIT_LOCK))
 			die(_("Unable to write new index file"));
 	}
 

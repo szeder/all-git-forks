@@ -575,6 +575,7 @@ extern int refresh_index(struct index_state *, unsigned int flags, const struct 
 #define LOCK_SUFFIX ".lock"
 #define LOCK_SUFFIX_LEN 5
 
+struct temp_file;
 struct lock_file {
 	struct lock_file *volatile next;
 	volatile sig_atomic_t active;
@@ -589,11 +590,11 @@ struct lock_file {
 extern int unable_to_lock_error(const char *path, int err);
 extern NORETURN void unable_to_lock_die(const char *path, int err);
 extern int hold_lock_file_for_update(struct lock_file *, const char *path, int);
-extern int hold_lock_file_for_append(struct lock_file *, const char *path, int);
+extern int hold_lock_file_for_append(struct temp_file *, const char *path, int);
 extern int commit_lock_file(struct lock_file *);
-extern void update_index_if_able(struct index_state *, struct lock_file *);
+extern void update_index_if_able(struct index_state *, struct temp_file *);
 
-extern int hold_locked_index(struct lock_file *, int);
+extern int hold_locked_index(struct temp_file *, int);
 extern void set_alternate_index_output(const char *);
 extern int close_lock_file(struct lock_file *);
 extern void rollback_lock_file(struct lock_file *);

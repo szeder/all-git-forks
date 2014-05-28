@@ -9,6 +9,7 @@
 #include "quote.h"
 #include "cache-tree.h"
 #include "parse-options.h"
+#include "tempfile.h"
 
 #define CHECKOUT_ALL 4
 static int line_termination = '\n';
@@ -127,7 +128,7 @@ static const char * const builtin_checkout_index_usage[] = {
 	NULL
 };
 
-static struct lock_file lock_file;
+static struct temp_file temp_file;
 
 static int option_parse_u(const struct option *opt,
 			      const char *arg, int unset)
@@ -137,7 +138,7 @@ static int option_parse_u(const struct option *opt,
 	state.refresh_cache = 1;
 	state.istate = &the_index;
 	if (*newfd < 0)
-		*newfd = hold_locked_index(&lock_file, 1);
+		*newfd = hold_locked_index(&temp_file, 1);
 	return 0;
 }
 
@@ -232,7 +233,7 @@ int cmd_checkout_index(int argc, const char **argv, const char *prefix)
 		 * want to update cache.
 		 */
 		if (state.refresh_cache) {
-			rollback_lock_file(&lock_file);
+			rollback_temp_file(&temp_file);
 			newfd = -1;
 		}
 		state.refresh_cache = 0;
@@ -280,7 +281,7 @@ int cmd_checkout_index(int argc, const char **argv, const char *prefix)
 		checkout_all(prefix, prefix_length);
 
 	if (0 <= newfd &&
-	    write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
+	    write_locked_index(&the_index, (struct lock_file *)&temp_file, COMMIT_LOCK))
 		die("Unable to write new index file");
 	return 0;
 }

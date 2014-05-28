@@ -99,13 +99,13 @@ NORETURN void unable_to_lock_die(const char *path, int err)
 	die("%s", unable_to_lock_message(path, err));
 }
 
-int initialize_lock_file(struct lock_file *lk, const char *path, int flags)
+int initialize_lock_file(struct temp_file *tmp, const char *path, int flags)
 {
 	struct strbuf locked = STRBUF_INIT;
 	strbuf_addstr(&locked, path);
 	strbuf_addstr(&locked, LOCK_SUFFIX);
 
-	int fd = initialize_temp_file((struct temp_file *)lk, locked.buf, path, flags);
+	int fd = initialize_temp_file(tmp, locked.buf, path, flags);
 	strbuf_reset(&locked);
 
 	return fd;
@@ -113,17 +113,17 @@ int initialize_lock_file(struct lock_file *lk, const char *path, int flags)
 
 int hold_lock_file_for_update(struct lock_file *lk, const char *path, int flags)
 {
-	int fd = initialize_lock_file(lk, path, flags);
+	int fd = initialize_lock_file((struct temp_file *)lk, path, flags);
 	if (fd < 0 && (flags & LOCK_DIE_ON_ERROR))
 		unable_to_lock_die(path, errno);
 	return fd;
 }
 
-int hold_lock_file_for_append(struct lock_file *lk, const char *path, int flags)
+int hold_lock_file_for_append(struct temp_file *tmp, const char *path, int flags)
 {
 	int fd, orig_fd;
 
-	fd = initialize_lock_file(lk, path, flags);
+	fd = initialize_lock_file(tmp, path, flags);
 	if (fd < 0) {
 		if (flags & LOCK_DIE_ON_ERROR)
 			unable_to_lock_die(path, errno);
@@ -135,13 +135,13 @@ int hold_lock_file_for_append(struct lock_file *lk, const char *path, int flags)
 		if (errno != ENOENT) {
 			if (flags & LOCK_DIE_ON_ERROR)
 				die("cannot open '%s' for copying", path);
-			rollback_temp_file((struct temp_file *)lk);
+			rollback_temp_file(tmp);
 			return error("cannot open '%s' for copying", path);
 		}
 	} else if (copy_fd(orig_fd, fd)) {
 		if (flags & LOCK_DIE_ON_ERROR)
 			exit(128);
-		rollback_temp_file((struct temp_file *)lk);
+		rollback_temp_file(tmp);
 		return -1;
 	}
 	return fd;
@@ -152,9 +152,9 @@ int commit_lock_file(struct lock_file *lk)
 	return commit_temp_file((struct temp_file *)lk);
 }
 
-int hold_locked_index(struct lock_file *lk, int die_on_error)
+int hold_locked_index(struct temp_file *tmp, int die_on_error)
 {
-	return hold_lock_file_for_update(lk, get_index_file(),
+	return hold_lock_file_for_update((struct lock_file *)tmp, get_index_file(),
 					 die_on_error
 					 ? LOCK_DIE_ON_ERROR
 					 : 0);

@@ -5,6 +5,7 @@
 #include "tree-walk.h"
 #include "unpack-trees.h"
 #include "dir.h"
+#include "tempfile.h"
 
 static const char *merge_argument(struct commit *commit)
 {
@@ -68,11 +69,11 @@ int checkout_fast_forward(const unsigned char *head,
 	struct tree_desc t[MAX_UNPACK_TREES];
 	int i, nr_trees = 0;
 	struct dir_struct dir;
-	struct lock_file *lock_file = xcalloc(1, sizeof(struct lock_file));
+	struct temp_file *temp_file = xcalloc(1, sizeof(struct temp_file));
 
 	refresh_cache(REFRESH_QUIET);
 
-	hold_locked_index(lock_file, 1);
+	hold_locked_index(temp_file, 1);
 
 	memset(&trees, 0, sizeof(trees));
 	memset(&opts, 0, sizeof(opts));
@@ -105,7 +106,7 @@ int checkout_fast_forward(const unsigned char *head,
 	}
 	if (unpack_trees(nr_trees, t, &opts))
 		return -1;
-	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
+	if (write_locked_index(&the_index, (struct lock_file *)temp_file, COMMIT_LOCK))
 		die(_("unable to write new index file"));
 	return 0;
 }

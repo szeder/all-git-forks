@@ -16,6 +16,7 @@
 #include "revision.h"
 #include "bulk-checkin.h"
 #include "argv-array.h"
+#include "tempfile.h"
 
 static const char * const builtin_add_usage[] = {
 	N_("git add [options] [--] <pathspec>..."),
@@ -225,7 +226,7 @@ static int edit_patch(int argc, const char **argv, const char *prefix)
 	return 0;
 }
 
-static struct lock_file lock_file;
+static struct temp_file temp_file;
 
 static const char ignore_error[] =
 N_("The following paths are ignored by one of your .gitignore files:\n");
@@ -344,7 +345,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	add_new_files = !take_worktree_changes && !refresh_only;
 	require_pathspec = !take_worktree_changes;
 
-	hold_locked_index(&lock_file, 1);
+	hold_locked_index(&temp_file, 1);
 
 	flags = ((verbose ? ADD_CACHE_VERBOSE : 0) |
 		 (show_only ? ADD_CACHE_PRETEND : 0) |
@@ -442,7 +443,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 
 finish:
 	if (active_cache_changed) {
-		if (write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
+		if (write_locked_index(&the_index, (struct lock_file *)&temp_file, COMMIT_LOCK))
 			die(_("Unable to write new index file"));
 	}
 

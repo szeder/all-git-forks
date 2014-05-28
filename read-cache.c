@@ -16,6 +16,7 @@
 #include "varint.h"
 #include "split-index.h"
 #include "sigchain.h"
+#include "tempfile.h"
 
 static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
 					       unsigned int options);
@@ -1898,12 +1899,12 @@ static int has_racy_timestamp(struct index_state *istate)
 /*
  * Opportunistically update the index but do not complain if we can't
  */
-void update_index_if_able(struct index_state *istate, struct lock_file *lockfile)
+void update_index_if_able(struct index_state *istate, struct temp_file *tmp)
 {
 	if ((istate->cache_changed || has_racy_timestamp(istate)) &&
 	    verify_index(istate) &&
-	    write_locked_index(istate, lockfile, COMMIT_LOCK))
-		rollback_lock_file(lockfile);
+	    write_locked_index(istate, (struct lock_file *)tmp, COMMIT_LOCK))
+		rollback_temp_file(tmp);
 }
 
 static int do_write_index(struct index_state *istate, int newfd,
