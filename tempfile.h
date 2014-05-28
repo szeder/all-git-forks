@@ -5,16 +5,17 @@
 #include "strbuf.h"
 
 struct temp_file {
-    struct temp_file *volatile next;
-    volatile sig_atomic_t active;
-    volatile int fd;
-    volatile pid_t owner;
-    char on_list;
-    struct strbuf filename;
+	struct temp_file *volatile next;
+	volatile sig_atomic_t active;
+	volatile int fd;
+	volatile pid_t owner;
+	char on_list;
+	struct strbuf filename;
+	struct strbuf destination;
 };
 
 
-extern int initialize_temp_file(struct temp_file *tmp, const char *path, int flags);
+extern int initialize_temp_file(struct temp_file *tmp, const char *path, const char *dest, int flags);
 
 /*
  * "Commits" a temporary file by renaming it to dest.buf, then "deactivating"
@@ -22,7 +23,7 @@ extern int initialize_temp_file(struct temp_file *tmp, const char *path, int fla
  * pointer may not be used after this operation; its memory will be freed
  * atexit(3).
  */
-extern int rename_tempfile_into_place(struct temp_file *tmp, const char *dest);
+extern int commit_temp_file(struct temp_file *tmp);
 
 /*
  * "Rolls back" a temporary file. If the file is still open,

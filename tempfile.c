@@ -85,7 +85,7 @@ static void remove_temp_file_on_signal(int signo)
 	raise(signo);
 }
 
-int initialize_temp_file(struct temp_file *tmp, const char *path, int flags)
+int initialize_temp_file(struct temp_file *tmp, const char *path, const char *dest, int flags)
 {
 	if (!temp_file_list) {
 		/* One-time initialization */
@@ -93,25 +93,30 @@ int initialize_temp_file(struct temp_file *tmp, const char *path, int flags)
 		atexit(remove_temp_file);
 	}
 
+	/* A deactivated temp_file may not be reused */
 	assert(!tmp->active);
 
 	if (!tmp->on_list) {
-		/* Initialize *tmp and add it to temp_file_list: */
+		/* Initialize *tmp and add it to temp_file_list */
 		tmp->fd = -1;
 		tmp->active = 0;
 		tmp->owner = 0;
 		tmp->on_list = 1;
 		strbuf_init(&tmp->filename, 0);
+		strbuf_init(&tmp->destination, 0);
 		tmp->next = temp_file_list;
 		temp_file_list = tmp;
 	}
 
 	strbuf_addstr(&tmp->filename, path);
+	strbuf_addstr(&tmp->destination, dest);
 	if (!(flags & LOCK_NODEREF))
-		resolve_symlink(&tmp->filename);
+		resolve_symlink(&tmp->destination);
+
 	tmp->fd = open(tmp->filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (tmp->fd < 0) {
 		strbuf_reset(&tmp->filename);
+		strbuf_reset(&tmp->destination);
 		return -1;
 	}
 	tmp->owner = getpid();
@@ -124,7 +129,7 @@ int initialize_temp_file(struct temp_file *tmp, const char *path, int flags)
 	return tmp->fd;
 }
 
-int rename_tempfile_into_place(struct temp_file *tmp, const char *dest)
+int commit_temp_file(struct temp_file *tmp)
 {
 	/* Try closing the file. Return if unsuccessful. */
 	if (tmp->fd >= 0 && close_temp_file(tmp))
@@ -134,12 +139,13 @@ int rename_tempfile_into_place(struct temp_file *tmp, const char *dest)
 		die("BUG: attempt to rename deactivated tempfile");
 
 	/* Try renaming the file. Return if unsuccessful. */
-	if (rename(tmp->filename.buf, dest))
+	if (rename(tmp->filename.buf, tmp->destination.buf))
 		return -1;
 
 	/* Deactivate tempfile */
 	tmp->active = 0;
 	strbuf_reset(&tmp->filename);
+	strbuf_reset(&tmp->destination);
 	return 0;
 }
 
@@ -151,6 +157,7 @@ void rollback_temp_file(struct temp_file *tmp)
 		unlink_or_warn(tmp->filename.buf);
 		tmp->active = 0;
 		strbuf_reset(&tmp->filename);
+		strbuf_reset(&tmp->destination);
 	}
 }
 
