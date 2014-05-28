@@ -257,14 +257,14 @@ const char *setup_temporary_shallow(const struct sha1_array *extra)
 	return temporary_shallow.buf;
 }
 
-void setup_alternate_shallow(struct lock_file *shallow_lock,
+void setup_alternate_shallow(struct temp_file *shallow_lock,
 			     const char **alternate_shallow_file,
 			     const struct sha1_array *extra)
 {
 	struct strbuf sb = STRBUF_INIT;
 	int fd;
 
-	fd = hold_lock_file_for_update((struct temp_file *)shallow_lock, git_path("shallow"),
+	fd = hold_lock_file_for_update(shallow_lock, git_path("shallow"),
 				       LOCK_DIE_ON_ERROR);
 	check_shallow_file_for_update();
 	if (write_shallow_commits(&sb, 0, extra)) {

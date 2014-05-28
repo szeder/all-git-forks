@@ -2232,7 +2232,7 @@ int commit_packed_refs(void)
 	fd = packed_ref_cache->lock->fd;
 	do_for_each_entry_in_dir(get_packed_ref_dir(packed_ref_cache),
 				 0, write_packed_entry_fn, &fd);
-	if (commit_lock_file(packed_ref_cache->lock))
+	if (commit_temp_file((struct temp_file *)packed_ref_cache->lock))
 		error = -1;
 	packed_ref_cache->lock = NULL;
 	release_packed_ref_cache(packed_ref_cache);
@@ -2246,7 +2246,7 @@ void rollback_packed_refs(void)
 
 	if (!packed_ref_cache->lock)
 		die("internal error: packed-refs not locked");
-	rollback_lock_file(packed_ref_cache->lock);
+	rollback_temp_file((struct temp_file *)packed_ref_cache->lock);
 	packed_ref_cache->lock = NULL;
 	release_packed_ref_cache(packed_ref_cache);
 	clear_packed_ref_cache(&ref_cache);
@@ -2689,7 +2689,7 @@ int close_ref(struct ref_lock *lock)
 
 int commit_ref(struct ref_lock *lock)
 {
-	if (commit_lock_file(lock->lk))
+	if (commit_temp_file((struct temp_file *)lock->lk))
 		return -1;
 	lock->lock_fd = -1;
 	return 0;
@@ -2699,7 +2699,7 @@ void unlock_ref(struct ref_lock *lock)
 {
 	/* Do not free lock->lk -- atexit() still looks at them */
 	if (lock->lk)
-		rollback_lock_file(lock->lk);
+		rollback_temp_file((struct temp_file *)lock->lk);
 	free(lock->ref_name);
 	free(lock->orig_ref_name);
 	free(lock);

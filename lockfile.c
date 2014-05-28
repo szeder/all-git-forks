@@ -147,11 +147,6 @@ int hold_lock_file_for_append(struct temp_file *tmp, const char *path, int flags
 	return fd;
 }
 
-int commit_lock_file(struct lock_file *lk)
-{
-	return commit_temp_file((struct temp_file *)lk);
-}
-
 int hold_locked_index(struct temp_file *tmp, int die_on_error)
 {
 	return hold_lock_file_for_update(tmp, get_index_file(),
@@ -163,9 +158,4 @@ int hold_locked_index(struct temp_file *tmp, int die_on_error)
 int close_lock_file(struct lock_file *lk)
 {
 	return close_temp_file((struct temp_file *)lk);
-}
-
-void rollback_lock_file(struct lock_file *lk)
-{
-	rollback_temp_file((struct temp_file *)lk);
 }

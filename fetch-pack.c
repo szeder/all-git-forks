@@ -14,6 +14,7 @@
 #include "version.h"
 #include "prio-queue.h"
 #include "sha1-array.h"
+#include "tempfile.h"
 
 static int transfer_unpack_limit = -1;
 static int fetch_unpack_limit = -1;
@@ -23,7 +24,7 @@ static int no_done;
 static int fetch_fsck_objects = -1;
 static int transfer_fsck_objects = -1;
 static int agent_supported;
-static struct lock_file shallow_lock;
+static struct temp_file shallow_lock;
 static const char *alternate_shallow_file;
 
 /* Remember to update object flag allocation in object.h */
@@ -940,9 +941,9 @@ static void update_shallow(struct fetch_pack_args *args,
 	if (args->depth > 0 && alternate_shallow_file) {
 		if (*alternate_shallow_file == '\0') { /* --unshallow */
 			unlink_or_warn(git_path("shallow"));
-			rollback_lock_file(&shallow_lock);
+			rollback_temp_file(&shallow_lock);
 		} else
-			commit_lock_file(&shallow_lock);
+			commit_temp_file(&shallow_lock);
 		return;
 	}
 
@@ -965,7 +966,7 @@ static void update_shallow(struct fetch_pack_args *args,
 			setup_alternate_shallow(&shallow_lock,
 						&alternate_shallow_file,
 						&extra);
-			commit_lock_file(&shallow_lock);
+			commit_temp_file(&shallow_lock);
 		}
 		sha1_array_clear(&extra);
 		return;
@@ -1002,7 +1003,7 @@ static void update_shallow(struct fetch_pack_args *args,
 		setup_alternate_shallow(&shallow_lock,
 					&alternate_shallow_file,
 					&extra);
-		commit_lock_file(&shallow_lock);
+		commit_temp_file(&shallow_lock);
 		sha1_array_clear(&extra);
 		sha1_array_clear(&ref);
 		return;
