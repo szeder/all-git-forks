@@ -14,6 +14,8 @@ struct temp_file {
 	struct strbuf destination;
 };
 
+#define TEMP_DIE_ON_ERROR 1
+#define TEMP_NODEREF 2
 
 extern int initialize_temp_file(struct temp_file *tmp, const char *path, const char *dest, int flags);
 

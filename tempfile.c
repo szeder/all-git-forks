@@ -110,7 +110,7 @@ int initialize_temp_file(struct temp_file *tmp, const char *path, const char *de
 
 	strbuf_addstr(&tmp->filename, path);
 	strbuf_addstr(&tmp->destination, dest);
-	if (!(flags & LOCK_NODEREF))
+	if (!(flags & TEMP_NODEREF))
 		resolve_symlink(&tmp->destination);
 
 	tmp->fd = open(tmp->filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
