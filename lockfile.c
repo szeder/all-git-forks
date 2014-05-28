@@ -99,9 +99,21 @@ NORETURN void unable_to_lock_die(const char *path, int err)
 	die("%s", unable_to_lock_message(path, err));
 }
 
+int initialize_lock_file(struct lock_file *lk, const char *path, int flags)
+{
+	struct strbuf name = STRBUF_INIT;
+	strbuf_addstr(&name, path);
+	strbuf_addstr(&name, LOCK_SUFFIX);
+
+	int fd = initialize_temp_file((struct temp_file *)lk, name.buf, flags);
+	strbuf_reset(&name);
+
+	return fd;
+}
+
 int hold_lock_file_for_update(struct lock_file *lk, const char *path, int flags)
 {
-	int fd = initialize_temp_file((struct temp_file *)lk, path, flags);
+	int fd = initialize_lock_file(lk, path, flags);
 	if (fd < 0 && (flags & LOCK_DIE_ON_ERROR))
 		unable_to_lock_die(path, errno);
 	return fd;
@@ -111,7 +123,7 @@ int hold_lock_file_for_append(struct lock_file *lk, const char *path, int flags)
 {
 	int fd, orig_fd;
 
-	fd = initialize_temp_file((struct temp_file *)lk, path, flags);
+	fd = initialize_lock_file(lk, path, flags);
 	if (fd < 0) {
 		if (flags & LOCK_DIE_ON_ERROR)
 			unable_to_lock_die(path, errno);

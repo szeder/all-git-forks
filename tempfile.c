@@ -96,7 +96,7 @@ int initialize_temp_file(struct temp_file *tmp, const char *path, int flags)
 	assert(!tmp->active);
 
 	if (!tmp->on_list) {
-		/* Initialize *tmp and add it to lock_file_list: */
+		/* Initialize *tmp and add it to temp_file_list: */
 		tmp->fd = -1;
 		tmp->active = 0;
 		tmp->owner = 0;
@@ -109,7 +109,6 @@ int initialize_temp_file(struct temp_file *tmp, const char *path, int flags)
 	strbuf_addstr(&tmp->filename, path);
 	if (!(flags & LOCK_NODEREF))
 		resolve_symlink(&tmp->filename);
-	strbuf_addstr(&tmp->filename, LOCK_SUFFIX);
 	tmp->fd = open(tmp->filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (tmp->fd < 0) {
 		strbuf_reset(&tmp->filename);
