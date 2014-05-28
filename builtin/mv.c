@@ -277,7 +277,7 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 		stage_updated_gitmodules();
 
 	if (active_cache_changed) {
-		if (write_locked_index(&the_index, (struct lock_file *)&temp_file, COMMIT_LOCK))
+		if (write_locked_index(&the_index, &temp_file, COMMIT_LOCK))
 			die(_("Unable to write new index file"));
 	}
 

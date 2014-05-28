@@ -281,7 +281,7 @@ int cmd_checkout_index(int argc, const char **argv, const char *prefix)
 		checkout_all(prefix, prefix_length);
 
 	if (0 <= newfd &&
-	    write_locked_index(&the_index, (struct lock_file *)&temp_file, COMMIT_LOCK))
+	    write_locked_index(&the_index, &temp_file, COMMIT_LOCK))
 		die("Unable to write new index file");
 	return 0;
 }

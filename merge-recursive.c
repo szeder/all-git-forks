@@ -2015,7 +2015,7 @@ int merge_recursive_generic(struct merge_options *o,
 	clean = merge_recursive(o, head_commit, next_commit, ca,
 			result);
 	if (active_cache_changed &&
-	    write_locked_index(&the_index, (struct lock_file *)tmp, COMMIT_LOCK))
+	    write_locked_index(&the_index, tmp, COMMIT_LOCK))
 		return error(_("Unable to write index."));
 
 	return clean ? 0 : 1;

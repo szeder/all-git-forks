@@ -1903,7 +1903,7 @@ void update_index_if_able(struct index_state *istate, struct temp_file *tmp)
 {
 	if ((istate->cache_changed || has_racy_timestamp(istate)) &&
 	    verify_index(istate) &&
-	    write_locked_index(istate, (struct lock_file *)tmp, COMMIT_LOCK))
+	    write_locked_index(istate, tmp, COMMIT_LOCK))
 		rollback_temp_file(tmp);
 }
 
@@ -2114,7 +2114,7 @@ static int write_shared_index(struct index_state *istate,
 	return ret;
 }
 
-int write_locked_index(struct index_state *istate, struct lock_file *lock,
+int write_locked_index(struct index_state *istate, struct temp_file *tmp,
 		       unsigned flags)
 {
 	struct split_index *si = istate->split_index;
@@ -2123,7 +2123,7 @@ int write_locked_index(struct index_state *istate, struct lock_file *lock,
 	    (istate->cache_changed & ~EXTMASK)) {
 		if (si)
 			hashclr(si->base_sha1);
-		return do_write_locked_index(istate, lock, flags);
+		return do_write_locked_index(istate, (struct lock_file *)tmp, flags);
 	}
 
 	if (getenv("GIT_TEST_SPLIT_INDEX")) {
@@ -2132,12 +2132,12 @@ int write_locked_index(struct index_state *istate, struct lock_file *lock,
 			istate->cache_changed |= SPLIT_INDEX_ORDERED;
 	}
 	if (istate->cache_changed & SPLIT_INDEX_ORDERED) {
-		int ret = write_shared_index(istate, lock, flags);
+		int ret = write_shared_index(istate, (struct lock_file *)tmp, flags);
 		if (ret)
 			return ret;
 	}
 
-	return write_split_index(istate, lock, flags);
+	return write_split_index(istate, (struct lock_file *)tmp, flags);
 }
 
 /*

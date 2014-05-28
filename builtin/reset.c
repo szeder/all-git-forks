@@ -370,7 +370,7 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 				die(_("Could not reset index file to revision '%s'."), rev);
 		}
 
-		if (write_locked_index(&the_index, (struct lock_file *)temp_file, COMMIT_LOCK))
+		if (write_locked_index(&the_index, temp_file, COMMIT_LOCK))
 			die(_("Could not write new index file."));
 	}
 

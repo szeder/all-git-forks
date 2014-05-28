@@ -3649,7 +3649,7 @@ static void build_fake_ancestor(struct patch *list, const char *filename)
 {
 	struct patch *patch;
 	struct index_state result = { NULL };
-	static struct lock_file lock;
+	static struct temp_file tmp;
 
 	/* Once we start supporting the reverse patch, it may be
 	 * worth showing the new sha1 prefix, but until then...
@@ -3687,8 +3687,8 @@ static void build_fake_ancestor(struct patch *list, const char *filename)
 			die ("Could not add %s to temporary index", name);
 	}
 
-	hold_lock_file_for_update(&lock, filename, LOCK_DIE_ON_ERROR);
-	if (write_locked_index(&result, &lock, COMMIT_LOCK))
+	hold_lock_file_for_update((struct lock_file *)&tmp, filename, LOCK_DIE_ON_ERROR);
+	if (write_locked_index(&result, &tmp, COMMIT_LOCK))
 		die ("Could not write temporary index to %s", filename);
 
 	discard_index(&result);
@@ -4129,7 +4129,7 @@ static int write_out_results(struct patch *list)
 	return errs;
 }
 
-static struct lock_file lock_file;
+static struct temp_file temp_file;
 
 static struct string_list limit_by_name;
 static int has_include;
@@ -4236,7 +4236,7 @@ static int apply_patch(int fd, const char *filename, int options)
 
 	update_index = check_index && apply;
 	if (update_index && newfd < 0)
-		newfd = hold_locked_index((struct temp_file *)&lock_file, 1);
+		newfd = hold_locked_index(&temp_file, 1);
 
 	if (check_index) {
 		if (read_cache() < 0)
@@ -4506,7 +4506,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	}
 
 	if (update_index) {
-		if (write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
+		if (write_locked_index(&the_index, &temp_file, COMMIT_LOCK))
 			die(_("Unable to write new index file"));
 	}
 

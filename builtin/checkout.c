@@ -364,7 +364,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 		}
 	}
 
-	if (write_locked_index(&the_index, (struct lock_file *)temp_file, COMMIT_LOCK))
+	if (write_locked_index(&the_index, temp_file, COMMIT_LOCK))
 		die(_("unable to write new index file"));
 
 	read_ref_full("HEAD", rev, 0, &flag);
@@ -569,7 +569,7 @@ static int merge_working_tree(const struct checkout_opts *opts,
 		}
 	}
 
-	if (write_locked_index(&the_index, (struct lock_file *)temp_file, COMMIT_LOCK))
+	if (write_locked_index(&the_index, temp_file, COMMIT_LOCK))
 		die(_("unable to write new index file"));
 
 	if (!opts->force && !opts->quiet)

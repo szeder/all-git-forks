@@ -324,7 +324,7 @@ static int do_recursive_merge(struct commit *base, struct commit *next,
 			    next_tree, base_tree, &result);
 
 	if (active_cache_changed &&
-	    write_locked_index(&the_index, (struct lock_file *)&index_lock, COMMIT_LOCK))
+	    write_locked_index(&the_index, &index_lock, COMMIT_LOCK))
 		/* TRANSLATORS: %s will be "revert" or "cherry-pick" */
 		die(_("%s: Unable to write new index file"), action_name(opts));
 	rollback_temp_file(&index_lock);
@@ -676,7 +676,7 @@ static void prepare_revs(struct replay_opts *opts)
 
 static void read_and_refresh_cache(struct replay_opts *opts)
 {
-	static struct lock_file index_lock;
+	static struct temp_file index_lock;
 	hold_locked_index(&index_lock, 0);
 	if (read_index_preload(&the_index, NULL) < 0)
 		die(_("git %s: failed to read the index"), action_name(opts));
@@ -685,7 +685,7 @@ static void read_and_refresh_cache(struct replay_opts *opts)
 		if (write_locked_index(&the_index, &index_lock, COMMIT_LOCK))
 			die(_("git %s: failed to refresh the index"), action_name(opts));
 	}
-	rollback_lock_file(&index_lock);
+	rollback_temp_file(&index_lock);
 }
 
 static int format_todo(struct strbuf *buf, struct commit_list *todo_list,

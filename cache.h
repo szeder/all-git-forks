@@ -488,7 +488,7 @@ extern int daemonize(void);
 	} while (0)
 
 /* Initialize and use the cache information */
-struct lock_file;
+struct temp_file;
 extern int read_index(struct index_state *);
 extern int read_index_preload(struct index_state *, const struct pathspec *pathspec);
 extern int do_read_index(struct index_state *istate, const char *path,
@@ -498,7 +498,7 @@ extern int is_index_unborn(struct index_state *);
 extern int read_index_unmerged(struct index_state *);
 #define COMMIT_LOCK		(1 << 0)
 #define CLOSE_LOCK		(1 << 1)
-extern int write_locked_index(struct index_state *, struct lock_file *lock, unsigned flags);
+extern int write_locked_index(struct index_state *, struct temp_file *tmp, unsigned flags);
 extern int discard_index(struct index_state *);
 extern int unmerged_index(const struct index_state *);
 extern int verify_path(const char *path);
@@ -575,7 +575,6 @@ extern int refresh_index(struct index_state *, unsigned int flags, const struct 
 #define LOCK_SUFFIX ".lock"
 #define LOCK_SUFFIX_LEN 5
 
-struct temp_file;
 struct lock_file {
 	struct lock_file *volatile next;
 	volatile sig_atomic_t active;

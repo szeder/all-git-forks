@@ -602,7 +602,7 @@ int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 		if (cache_tree_update(&the_index, flags) < 0)
 			return WRITE_TREE_UNMERGED_INDEX;
 		if (0 <= newfd) {
-			if (!write_locked_index(&the_index, (struct lock_file *)temp_file, COMMIT_LOCK))
+			if (!write_locked_index(&the_index, temp_file, COMMIT_LOCK))
 				newfd = -1;
 		}
 		/* Not being able to write is fine -- we are only interested

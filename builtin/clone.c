@@ -659,7 +659,7 @@ static int checkout(void)
 	if (unpack_trees(1, &t, &opts) < 0)
 		die(_("unable to checkout working tree"));
 
-	if (write_locked_index(&the_index, (struct lock_file *)temp_file, COMMIT_LOCK))
+	if (write_locked_index(&the_index, temp_file, COMMIT_LOCK))
 		die(_("unable to write new index file"));
 
 	err |= run_hook_le(NULL, "post-checkout", sha1_to_hex(null_sha1),
