@@ -125,7 +125,7 @@ int initialize_temp_file(struct temp_file *tmp, const char *path, int flags)
 	return tmp->fd;
 }
 
-int rename_tempfile_into_place(struct temp_file *tmp, struct strbuf dest)
+int rename_tempfile_into_place(struct temp_file *tmp, const char *dest)
 {
 	/* Try closing the file. Return if unsuccessful. */
 	if (tmp->fd >= 0 && close_temp_file(tmp))
@@ -135,7 +135,7 @@ int rename_tempfile_into_place(struct temp_file *tmp, struct strbuf dest)
 		die("BUG: attempt to rename deactivated tempfile");
 
 	/* Try renaming the file. Return if unsuccessful. */
-	if (rename(tmp->filename.buf, dest.buf))
+	if (rename(tmp->filename.buf, dest))
 		return -1;
 
 	/* Deactivate tempfile */

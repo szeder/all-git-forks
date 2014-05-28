@@ -22,7 +22,7 @@ extern int initialize_temp_file(struct temp_file *tmp, const char *path, int fla
  * pointer may not be used after this operation; its memory will be freed
  * atexit(3).
  */
-extern int rename_tempfile_into_place(struct temp_file *tmp, struct strbuf dest);
+extern int rename_tempfile_into_place(struct temp_file *tmp, const char *dest);
 
 /*
  * "Rolls back" a temporary file. If the file is still open,

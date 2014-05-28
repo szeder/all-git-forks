@@ -144,7 +144,7 @@ int commit_lock_file(struct lock_file *lk)
 	strbuf_add(&result_file, lk->filename.buf,
 		   lk->filename.len - LOCK_SUFFIX_LEN);
 
-	err = rename_tempfile_into_place((struct temp_file *)lk, result_file);
+	err = rename_tempfile_into_place((struct temp_file *)lk, result_file.buf);
 	strbuf_reset(&result_file);
 	return err;
 }
