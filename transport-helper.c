@@ -422,8 +422,9 @@ static int get_exporter(struct transport *transport,
 	struct helper_data *data = transport->data;
 	struct child_process *helper = get_helper(transport);
 	int argc = 0, i;
-	memset(fastexport, 0, sizeof(*fastexport));
 	struct strbuf tmp = STRBUF_INIT;
+
+	memset(fastexport, 0, sizeof(*fastexport));
 
 	/* we need to duplicate helper->in because we want to use it after
 	 * fastexport is done with it. */
