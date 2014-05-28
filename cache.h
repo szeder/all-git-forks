@@ -594,7 +594,6 @@ extern void update_index_if_able(struct index_state *, struct temp_file *);
 
 extern int hold_locked_index(struct temp_file *, int);
 extern void set_alternate_index_output(const char *);
-extern int close_lock_file(struct lock_file *);
 extern int delete_ref(const char *, const unsigned char *sha1, int delopt);
 
 /* Environment bits from configuration mechanism */

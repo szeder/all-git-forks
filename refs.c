@@ -2681,7 +2681,7 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 
 int close_ref(struct ref_lock *lock)
 {
-	if (close_lock_file(lock->lk))
+	if (close_temp_file((struct temp_file *)lock->lk))
 		return -1;
 	lock->lock_fd = -1;
 	return 0;

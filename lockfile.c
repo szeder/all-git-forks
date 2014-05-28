@@ -154,8 +154,3 @@ int hold_locked_index(struct temp_file *tmp, int die_on_error)
 					 ? LOCK_DIE_ON_ERROR
 					 : 0);
 }
-
-int close_lock_file(struct lock_file *lk)
-{
-	return close_temp_file((struct temp_file *)lk);
-}
