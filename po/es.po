@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-27 21:43+0200\n"
+"PO-Revision-Date: 2014-05-28 21:28+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -6934,23 +6934,23 @@ msgstr "no he podido renombrar '%s'"
 
 #: builtin/name-rev.c:258
 msgid "git name-rev [options] <commit>..."
-msgstr ""
+msgstr "git name-rev [opciones] <commit>..."
 
 #: builtin/name-rev.c:259
 msgid "git name-rev [options] --all"
-msgstr ""
+msgstr "git name-rev [opciones] --all"
 
 #: builtin/name-rev.c:260
 msgid "git name-rev [options] --stdin"
-msgstr ""
+msgstr "git name-rev [opciones] --stdin"
 
 #: builtin/name-rev.c:312
 msgid "print only names (no SHA-1)"
-msgstr ""
+msgstr "imprime sólo nombres (no SHA-1)"
 
 #: builtin/name-rev.c:313
 msgid "only use tags to name the commits"
-msgstr ""
+msgstr "usa sólo etiquetas para nombrar los commits"
 
 #: builtin/name-rev.c:315
 msgid "only use refs matching <pattern>"
@@ -6962,7 +6962,7 @@ msgstr ""
 
 #: builtin/name-rev.c:318
 msgid "read from stdin"
-msgstr ""
+msgstr "lee de la entrada estándar"
 
 #: builtin/name-rev.c:319
 msgid "allow to print `undefined` names (default)"
@@ -7007,11 +7007,11 @@ msgstr ""
 
 #: builtin/notes.c:31
 msgid "git notes merge --commit [-v | -q]"
-msgstr ""
+msgstr "git notes merge --commit [-v | -q]"
 
 #: builtin/notes.c:32
 msgid "git notes merge --abort [-v | -q]"
-msgstr ""
+msgstr "git notes merge --abort [-v | -q]"
 
 #: builtin/notes.c:33
 msgid "git notes [--ref <notes_ref>] remove [<object>...]"
@@ -7027,31 +7027,31 @@ msgstr ""
 
 #: builtin/notes.c:40
 msgid "git notes [list [<object>]]"
-msgstr ""
+msgstr "git notes [list [<objeto>]]"
 
 #: builtin/notes.c:45
 msgid "git notes add [<options>] [<object>]"
-msgstr ""
+msgstr "git notes add [<opciones>] [<objeto>]"
 
 #: builtin/notes.c:50
 msgid "git notes copy [<options>] <from-object> <to-object>"
-msgstr ""
+msgstr "git notes copy [<opciones>] <objeto-desde> <objeto-hasta>"
 
 #: builtin/notes.c:51
 msgid "git notes copy --stdin [<from-object> <to-object>]..."
-msgstr ""
+msgstr "git notes copy --stdin [<objeto-desde> <objeto-hasta>]..."
 
 #: builtin/notes.c:56
 msgid "git notes append [<options>] [<object>]"
-msgstr ""
+msgstr "git notes append [<opciones>] [<objeto>]"
 
 #: builtin/notes.c:61
 msgid "git notes edit [<object>]"
-msgstr ""
+msgstr "git notes edit [<objeto>]"
 
 #: builtin/notes.c:66
 msgid "git notes show [<object>]"
-msgstr ""
+msgstr "git notes show [<objeto>]"
 
 #: builtin/notes.c:71
 msgid "git notes merge [<options>] <notes_ref>"
@@ -7059,42 +7059,42 @@ msgstr ""
 
 #: builtin/notes.c:72
 msgid "git notes merge --commit [<options>]"
-msgstr ""
+msgstr "git notes merge --commit [<opciones>]"
 
 #: builtin/notes.c:73
 msgid "git notes merge --abort [<options>]"
-msgstr ""
+msgstr "git notes merge --abort [<opciones>]"
 
 #: builtin/notes.c:78
 msgid "git notes remove [<object>]"
-msgstr ""
+msgstr "git notes remove [<objeto>]"
 
 #: builtin/notes.c:83
 msgid "git notes prune [<options>]"
-msgstr ""
+msgstr "git notes prune [<opciones>]"
 
 #: builtin/notes.c:88
 msgid "git notes get-ref"
-msgstr ""
+msgstr "git notes get-ref"
 
 #: builtin/notes.c:137
 #, c-format
 msgid "unable to start 'show' for object '%s'"
-msgstr ""
+msgstr "no puedo iniciar 'show' para el objeto '%s'"
 
 #: builtin/notes.c:141
 msgid "could not read 'show' output"
-msgstr ""
+msgstr "no he podido leer la salida de 'show'"
 
 #: builtin/notes.c:149
 #, c-format
 msgid "failed to finish 'show' for object '%s'"
-msgstr ""
+msgstr "no he podido finalizar 'show' para el objeto '%s'"
 
 #: builtin/notes.c:167 builtin/tag.c:373
 #, c-format
 msgid "could not create file '%s'"
-msgstr ""
+msgstr "no he podido crear el fichero '%s'"
 
 #: builtin/notes.c:186
 msgid "Please supply the note contents using either -m or -F option"
@@ -7117,12 +7117,12 @@ msgstr ""
 #: builtin/notes.c:248 builtin/tag.c:604
 #, c-format
 msgid "cannot read '%s'"
-msgstr ""
+msgstr "no puedo leer '%s'"
 
 #: builtin/notes.c:250 builtin/tag.c:607
 #, c-format
 msgid "could not open or read '%s'"
-msgstr ""
+msgstr "no he podido abrir o leer '%s'"
 
 #: builtin/notes.c:269 builtin/notes.c:320 builtin/notes.c:322
 #: builtin/notes.c:382 builtin/notes.c:436 builtin/notes.c:519
@@ -7135,7 +7135,7 @@ msgstr ""
 #: builtin/notes.c:272
 #, c-format
 msgid "Failed to read object '%s'."
-msgstr ""
+msgstr "No he podido leer el objeto '%s'."
 
 #: builtin/notes.c:276
 #, c-format
@@ -7156,7 +7156,7 @@ msgstr ""
 #: builtin/notes.c:514 builtin/notes.c:587 builtin/notes.c:634
 #: builtin/notes.c:908
 msgid "too many parameters"
-msgstr ""
+msgstr "demasiados parámetros"
 
 #: builtin/notes.c:388 builtin/notes.c:647
 #, c-format
@@ -7174,7 +7174,7 @@ msgstr ""
 #: builtin/notes.c:415 builtin/notes.c:418 builtin/notes.c:572
 #: builtin/notes.c:575 builtin/tag.c:539
 msgid "object"
-msgstr ""
+msgstr "objeto"
 
 #: builtin/notes.c:416 builtin/notes.c:573
 msgid "reuse and edit specified note object"
@@ -7210,7 +7210,7 @@ msgstr ""
 
 #: builtin/notes.c:510
 msgid "too few parameters"
-msgstr ""
+msgstr "demasiados pocos parámetros"
 
 #: builtin/notes.c:531
 #, c-format
@@ -7230,14 +7230,16 @@ msgid ""
 "The -m/-F/-c/-C options have been deprecated for the 'edit' subcommand.\n"
 "Please use 'git notes add -f -m/-F/-c/-C' instead.\n"
 msgstr ""
+"Las opciones -m/-F/-c/-C están depreciadas para la suborden 'edit'.\n"
+"Por favor, use en su lugar 'git notes add -f -m/-F/-c/-C'.\n"
 
 #: builtin/notes.c:739
 msgid "General options"
-msgstr ""
+msgstr "Opciones generales"
 
 #: builtin/notes.c:741
 msgid "Merge options"
-msgstr ""
+msgstr "Opciones de fusión"
 
 #: builtin/notes.c:743
 msgid ""
@@ -7272,7 +7274,7 @@ msgstr ""
 
 #: builtin/notes.c:861
 msgid "read object names from the standard input"
-msgstr ""
+msgstr "lee el nombre de los objetos de la entrada estándar"
 
 #: builtin/notes.c:942
 msgid "notes-ref"
@@ -7285,7 +7287,7 @@ msgstr ""
 #: builtin/notes.c:978 builtin/remote.c:1593
 #, c-format
 msgid "Unknown subcommand: %s"
-msgstr ""
+msgstr "Suborden desconocida: %s"
 
 #: builtin/pack-objects.c:25
 msgid "git pack-objects --stdout [options...] [< ref-list | < object-list]"
@@ -7302,7 +7304,7 @@ msgstr ""
 
 #: builtin/pack-objects.c:771
 msgid "Writing objects"
-msgstr ""
+msgstr "Escribiendo objetos"
 
 #: builtin/pack-objects.c:1012
 msgid "disabling bitmap writing, as some objects are not being packed"
