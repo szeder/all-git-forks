@@ -38,6 +38,7 @@ const char *system_path(const char *path)
 	return path;
 }
 
+// 查找调用时的进程所在目录
 const char *git_extract_argv0_path(const char *argv0)
 {
 	const char *slash;

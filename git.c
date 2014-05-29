@@ -33,6 +33,9 @@ static void commit_pager_choice(void) {
 	}
 }
 
+// 遍历选项，只到以非-开头为止。如果遇到一些查看相关信息的选项，比如--exec-path，直接打印信息后退出。
+// 所以这里的所有命令需要出现在真正的命令之前，比如git -a -b -c xxx -d -e -f，前三个选项都是传给xxx，
+// 而后面三个是传给xxx命令
 static int handle_options(const char ***argv, int *argc, int *envchanged)
 {
 	const char **orig_argv = *argv;
@@ -234,6 +237,7 @@ static int handle_alias(int *argcp, const char ***argv)
 	return ret;
 }
 
+// 下面这些宏的作用?
 #define RUN_SETUP		(1<<0)
 #define RUN_SETUP_GENTLY	(1<<1)
 #define USE_PAGER		(1<<2)
@@ -258,6 +262,7 @@ static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
 	prefix = NULL;
 	help = argc == 2 && !strcmp(argv[1], "-h");
 	if (!help) {
+		// 这里的RUN_SETUP这些宏有何作用?代表什么?看下两个函数的区别应该就可以知晓了
 		if (p->option & RUN_SETUP)
 			prefix = setup_git_directory();
 		if (p->option & RUN_SETUP_GENTLY) {
@@ -434,6 +439,7 @@ static void handle_internal_command(int argc, const char **argv)
 	}
 
 	/* Turn "git cmd --help" into "git help cmd" */
+	// 正是这里作了转化之后，才使得查找帮助变得有几个方式
 	if (argc > 1 && !strcmp(argv[1], "--help")) {
 		argv[1] = argv[0];
 		argv[0] = cmd = "help";
@@ -443,6 +449,7 @@ static void handle_internal_command(int argc, const char **argv)
 		struct cmd_struct *p = commands+i;
 		if (strcmp(p->cmd, cmd))
 			continue;
+		// 如果是buildin的命令，那么这里它的handler就接管了，它的返回值直接被exit返回给系统
 		exit(run_builtin(p, argc, argv));
 	}
 }
@@ -492,6 +499,7 @@ static int run_argv(int *argcp, const char ***argv)
 		handle_internal_command(*argcp, *argv);
 
 		/* .. then try the external ones */
+		// 哪些是external ones?
 		execv_dashed_external(*argv);
 
 		/* It could be an alias -- this works around the insanity
@@ -529,6 +537,10 @@ int main(int argc, const char **argv)
 	 * So we just directly call the internal command handler, and
 	 * die if that one cannot handle it.
 	 */
+	// 这是因为所有的git-xxx进程都和git进程一样，是后者的硬连接，因此都会进入这个函数中。
+	// 如果直接调用了git-add，那么就不用再去向后判断是哪个命令，在这里直接调用相应的
+	// handler即可。而如果是通过git add ...来调用的话，需要去查找git后面的参数，找出对应
+	// 的命令和参数。
 	if (!prefixcmp(cmd, "git-")) {
 		cmd += 4;
 		argv[0] = cmd;
@@ -541,6 +553,9 @@ int main(int argc, const char **argv)
 	argc--;
 	handle_options(&argv, &argc, NULL);
 	if (argc > 0) {
+		// 这里再加判断是由于前面handle_options函数里面在遇到--help和--version时会退出循环，
+		// 但是后面可能还有其它的参数，而此如果是遇到上两个选项时，接下来的argv还是指向此两
+		// 者，并未移动后一个参数
 		if (!prefixcmp(argv[0], "--"))
 			argv[0] += 2;
 	} else {

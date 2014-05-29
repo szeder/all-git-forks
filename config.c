@@ -350,11 +350,17 @@ static int git_parse_file(config_fn_t fn, void *data)
 	const unsigned char *bomptr = utf8_bom;
 
 	for (;;) {
+		// 从堆栈最顶端的文件中读取一个字符
 		int c = get_next_char();
 		if (bomptr && *bomptr) {
 			/* We are at the file beginning; skip UTF8-encoded BOM
 			 * if present. Sane editors won't put this in on their
 			 * own, but e.g. Windows Notepad will do it happily. */
+			// 这是赤果果的挖苦啊，这段主要是去除utf8前端的字符，那如果此文件不是UTF8呢?
+			// 记事本不一样会在前面加东西么?
+			// 果然，对于Unicode，notepad还会在前面加上FF FE，这也会导致无法读取文件，所以
+			// 这可以算成是一个bug吧，可以报么?查看下是否要求了必须是utf8，如果没有这要求，
+			// 那么便可以报
 			if ((unsigned char) c == *bomptr) {
 				bomptr++;
 				continue;
@@ -366,6 +372,7 @@ static int git_parse_file(config_fn_t fn, void *data)
 				bomptr = NULL;
 			}
 		}
+		// 处理文件结尾与注释
 		if (c == '\n') {
 			if (cf->eof)
 				return 0;
@@ -911,6 +918,7 @@ int git_config_from_file(config_fn_t fn, const char *filename, void *data)
 		top.name = filename;
 		top.linenr = 1;
 		top.eof = 0;
+		// 增加空间，并且将这个文件加到堆栈中去
 		strbuf_init(&top.value, 1024);
 		strbuf_init(&top.var, 1024);
 		cf = &top;
@@ -949,6 +957,7 @@ int git_config_system(void)
 int git_config_early(config_fn_t fn, void *data, const char *repo_config)
 {
 	int ret = 0, found = 0;
+	// xdg是什么意思?
 	char *xdg_config = NULL;
 	char *user_config = NULL;
 

@@ -143,6 +143,9 @@ void home_config_paths(char **global, char **xdg, char *file)
 	char *home = getenv("HOME");
 	char *to_free = NULL;
 
+	// global=$HOME/.gitconfig
+	// xdg=$XDG_HOME/git/config 或者
+	// xdg=$HOME/.config/git/config
 	if (!home) {
 		if (global)
 			*global = NULL;
@@ -202,6 +205,9 @@ char *git_path_submodule(const char *path, const char *fmt, ...)
 	return cleanup_path(pathname);
 }
 
+// 不管是symlink还是文件本身，都必须指向refs/下的实际文件:
+// - 如果是symlink，则直接指向实际文件
+// - 如果是文件，则其中的内容一定是ref: refs/xxx这种形式
 int validate_headref(const char *path)
 {
 	struct stat st;

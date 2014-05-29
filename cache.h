@@ -1310,7 +1310,7 @@ const char *split_cmdline_strerror(int cmdline_errno);
 /* git.c */
 struct startup_info {
 	int have_repository;
-	const char *prefix;
+	const char *prefix;// 这做何用?
 };
 extern struct startup_info *startup_info;
 

@@ -315,6 +315,7 @@ const char **get_pathspec(const char *prefix, const char **pathspec)
  *    a proper "ref:", or a regular file HEAD that has a properly
  *    formatted sha1 object name.
  */
+ // 以上是最简单的git目录结构
 int is_git_directory(const char *suspect)
 {
 	char path[PATH_MAX];
@@ -396,6 +397,7 @@ static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
 	 * Use a gentler version of git_config() to check if this repo
 	 * is a good one.
 	 */
+	// 这里看起来是要查看version是否正确，为何需要小于等于0?除了version是否还有其它的检测?
 	snprintf(repo_config, PATH_MAX, "%s/config", gitdir);
 	git_config_early(check_repository_format_version, NULL, repo_config);
 	if (GIT_REPO_VERSION < repository_format_version) {
@@ -415,6 +417,7 @@ static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
  * Try to read the location of the git directory from the .git file,
  * return path to git directory if found.
  */
+ // 此时的.git是一个文件而不是目录
 const char *read_gitfile(const char *path)
 {
 	char *buf;
@@ -437,6 +440,9 @@ const char *read_gitfile(const char *path)
 	if (len != st.st_size)
 		die("Error reading %s", path);
 	buf[len] = '\0';
+	// 必须用这种格式:在YouCompleteMe的第三方插件中见过这种.git文件，里面的内容是:
+	// gitdir: ../../.git/modules/third_party/waitress
+	// 完全符合这个要求
 	if (prefixcmp(buf, "gitdir: "))
 		die("Invalid gitfile format: %s", path);
 	while (buf[len - 1] == '\n' || buf[len - 1] == '\r')
@@ -477,6 +483,9 @@ static const char *setup_explicit_git_dir(const char *gitdirenv,
 	if (PATH_MAX - 40 < strlen(gitdirenv))
 		die("'$%s' too big", GIT_DIR_ENVIRONMENT);
 
+	// 因为前面没有检查过git的目录结构，因此这里还需要再查一遍
+	// 先当成是.git文件检测，如果是文件，则读出文件中的真实目录，否则直接使用该
+	// 路径，然后检测该目录是否是git目录
 	gitfile = (char*)read_gitfile(gitdirenv);
 	if (gitfile) {
 		gitfile = xstrdup(gitfile);
@@ -692,6 +701,7 @@ static int canonicalize_ceiling_entry(struct string_list_item *item,
  * We cannot decide in this function whether we are in the work tree or
  * not, since the config can only be read _after_ this function was called.
  */
+ // 什么意思，都的是调用它的函数就知道了么?但是我看也没有使用这个函数的什么结果啊
 static const char *setup_git_directory_gently_1(int *nongit_ok)
 {
 	const char *env_ceiling_dirs = getenv(CEILING_DIRECTORIES_ENVIRONMENT);
@@ -722,6 +732,7 @@ static const char *setup_git_directory_gently_1(int *nongit_ok)
 	 */
 	gitdirenv = getenv(GIT_DIR_ENVIRONMENT);
 	if (gitdirenv)
+		// 如果环境变量定义了GIT_DIR，那么走这个分支，但是这几种setup有什么区别?
 		return setup_explicit_git_dir(gitdirenv, cwd, len, nongit_ok);
 
 	if (env_ceiling_dirs) {
@@ -756,6 +767,7 @@ static const char *setup_git_directory_gently_1(int *nongit_ok)
 		if (gitfile)
 			gitdirenv = gitfile = xstrdup(gitfile);
 		else {
+			// 如果不是.git文件则接着查看有无该目录
 			if (is_git_directory(DEFAULT_GIT_DIR_ENVIRONMENT))
 				gitdirenv = DEFAULT_GIT_DIR_ENVIRONMENT;
 		}
@@ -866,7 +878,8 @@ int git_config_perm(const char *var, const char *value)
 	return -(i & 0666);
 }
 
-int check_repository_format_version(const char *var, const char *value, void *cb)
+// 查询对应的节点中的值是否有效
+int check_repository_format_version(const char *var, const char *value, void *cb/*未使用*/)
 {
 	if (strcmp(var, "core.repositoryformatversion") == 0)
 		repository_format_version = git_config_int(var, value);
