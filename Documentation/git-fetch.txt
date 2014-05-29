@@ -51,6 +51,49 @@ include::pull-fetch-param.txt[]
 include::urls-remotes.txt[]
 
 
+CONFIGURED REMOTE-TRACKING BRANCHES
+-----------------------------------
+
+You would often interact with the same remote repository by
+regularly and repeatedly fetching from it.  In order to keep track
+of the progress of such a remote repository, `git fetch` allows you
+to configure `remote.<repository>.fetch` configuration variable.
+
+Typically such a variable may look like this:
+
+------------------------------------------------
+[remote "origin"]
+	fetch = +refs/heads/*:refs/remotes/origin/*
+------------------------------------------------
+
+This configuration is used in two ways:
+
+* When `git fetch` command is run without specifying what branches
+  and/or tags to fetch on the command line, e.g. `git fetch origin`
+  or `git fetch`, the values configured to this variable are used as
+  the refspecs to be used to fetch.  The example above will fetch
+  all branches that exist on the `origin` (i.e. any ref that matches
+  the left-hand side of the value, `refs/heads/*`) and update the
+  corresponding remote-tracking branches in `refs/remotes/origin/*`
+  hierarchy.
+
+* When `git fetch` command is run with explicit branches and/or tags
+  to fetch on the command line, e.g. `git fetch origin master`, the
+  <refspec> given on the command line (e.g. `master` in the example,
+  which is a short-hand for `master:`, which in turn would mean
+  "fetch the 'master' branch but I do not explicitly say what
+  remote-tracking branch to update with it from the command line")
+  determines what are to be fetched, and the example command will
+  fetch _only_ the 'master' branch.  The values of the variable are
+  used to map the branch (i.e. `master`) to determine which
+  remote-tracking branch, if any, is updated.  When used in this
+  way, the values of the configuration variable do not have any
+  effect in deciding _what_ gets fetched (i.e. the values are not
+  used as refspecs when the command-line lists refspecs); they are
+  only used to decide _where_ the refs that are fetched are stored
+  by acting as a mapping.
+
+
 EXAMPLES
 --------
 
