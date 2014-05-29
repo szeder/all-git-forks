@@ -4,8 +4,8 @@
 #
 test_description='Basic porcelain support for subtrees
 
-This test verifies the basic operation of the merge, pull, add
-and split subcommands of git subtree.
+This test verifies the basic operation of the merge, push, pull, add,
+split, push-all, pull-all and list subcommands of git subtree.
 '
 
 export TEST_DIRECTORY=$(pwd)/../../../t
@@ -58,6 +58,11 @@ undo()
 last_commit_message()
 {
 	git log --pretty=format:%s -1
+}
+
+last_commit_id()
+{
+    git log --format="%H" -n 1
 }
 
 test_expect_success 'init subproj' '
@@ -463,6 +468,264 @@ test_expect_success 'verify one file change per commit' '
 	        done
 	        check_equal "$x" 1
         ))
+'
+# Tests for subtree add which creates .gittrees, pull, push, 
+# pull-all, push-all and list sub commands
+
+# Back to mainline and create new directory for testing
+cd ../..
+
+mkdir test_sub
+cd test_sub
+
+mkdir shared_projects
+# To shared_projects!
+cd shared_projects
+
+# Create couple of Git repos in shared_projects folder which can be
+# added as subtrees to our parent projects
+test_expect_success 'add subtree1' '
+        test_create_repo subtree1 &&
+        cd subtree1 &&
+        create sub1_file1 &&
+        git commit -m "Initial subtree1 commit"
+'
+
+# Store the latest commit value for future use
+expected_subtreeCommit=`echo $(last_commit_id)`
+expected_branch=`echo $(git rev-parse --abbrev-ref HEAD)`
+
+# Back to shared_projects
+cd ..
+
+test_expect_success 'add subtree2' '
+        test_create_repo subtree2 &&
+        cd subtree2 &&
+        create sub2_file1 &&
+        git commit -m "Initial subtree2 commit"
+'
+
+# Back to test_sub
+cd ../..
+
+# Create test parent repos that will add subtrees to itself
+test_expect_success 'add parent1' '
+        test_create_repo parent1 &&
+        cd parent1 &&
+        create parent1_file1 &&
+        git commit -m "Initial parent1 commit"
+'
+
+# Back to test_sub from parent1
+cd ..
+
+test_expect_success 'add parent2' '
+        test_create_repo parent2 &&
+        cd parent2 &&
+        create parent2_file1 &&
+        git commit -m "Initial parent2 commit"
+'
+
+
+# To parent1 now. Start the tests
+cd ../parent1
+
+# .gittrees file creation tests
+test_expect_success 'check add for subtree with master branch' '
+        git subtree add -m "Add sub1 subtree" -P sub1 ../shared_projects/subtree1 master &&
+        check_equal ''"$(last_commit_message)"'' "Add sub1 subtree"
+'
+
+# Store latest commit id for future use
+expected_subtreeMergeCommit=$(last_commit_id)
+
+test_expect_success 'check if .gittrees file was created' '
+        test -a '.gittrees'
+'
+# Now lets test if the .gittrees file has the correct information
+# Hardcoded some expected results for checking data inside .gittrees file
+expected_url='../shared_projects/subtree1'
+expected_path='sub1'
+
+echo $expected_url>>expected_gittrees
+echo $expected_path>>expected_gittrees
+echo $expected_branch>>expected_gittrees
+echo $expected_subtreeCommit>>expected_gittrees
+echo $expected_subtreeMergeCommit>>expected_gittrees
+
+grep = .gittrees | cut -f2 -d"=" | cut -f2 -d" " > actual_gittrees
+
+test_expect_success 'check .gittrees file has the necessary changes' '
+        test_cmp actual_gittrees expected_gittrees
+'
+
+test_expect_success 'check subtree does not get created with incorrect remote url' '
+        test_must_fail git subtree add -P s2 ../shared_projects/subbtree1 master
+'
+
+test_expect_success 'check that subtree does not get created with incorrect branch' '
+        test_must_fail git subtree add -P s2 ../shared_projects/subtree1 development
+'
+
+test_expect_success 'add another subtree with master branch' '
+        git subtree add -m "Add sub2 subtree" -P sub2 ../shared_projects/subtree2 master &&
+        check_equal ''"$(last_commit_message)"'' "Add sub2 subtree"
+'
+
+# Lets commit the changes we made to .gittrees file
+test_expect_success 'Commit chages to .gittrees for sub1 and sub2 in repo' '
+        git add .gittrees &&
+        git commit -m "Add .gittrees file"
+'
+# Tests for subtree list
+# Hardcode expected output to a file
+cat >expect <<-\EOF
+    sub1        (merged from ../shared_projects/subtree1 branch master) 
+    sub2        (merged from ../shared_projects/subtree2 branch master) 
+EOF
+
+test_expect_success 'check subtree list gives correct output' '
+        git subtree list>output &&
+        test_cmp expect output
+'
+# Lets commit the changes to parent1 before proceeding
+test_expect_success 'Commit changes to the repository' '
+        git add --all &&
+        git commit -m "Commit new file additions"
+'
+
+# Tests for individual subtree pull using information in .gittrees
+# Go to subtree1 and make a change
+cd ../shared_projects/subtree1
+
+subtree1_change1="Add_line_to_Sub1_File2"
+
+echo $subtree1_change1>>sub1_file2
+
+# Lets commit the changes to subtree1 before proceeding
+test_expect_success 'Commit changes to the subtree1' '
+        git add --all &&
+        git commit -m "Commit change to sub1_file2"
+'
+
+# Switch to develop branch for a future test to push changes to master
+test_expect_success 'Switch to branch develop' '
+        git checkout -b develop
+'
+
+# Back to parent1
+cd ../../parent1
+
+test_expect_success 'check  git subtree pull <prefix> works' '
+        git subtree pull -P sub1 master &&
+        test_cmp sub1/sub1_file1 ../shared_projects/subtree1/sub1_file1 &&
+        test_cmp sub1/sub1_file2 ../shared_projects/subtree1/sub1_file2
+'
+
+# Now lets make local change on subtree and push it to subtree remote
+cd sub1
+
+local_change="Local addition of line to sub1 file 2"
+echo $local_change1>>sub1_file2
+
+# Back to parent1
+cd ..
+
+# Lets commit the changes to parent1 before proceeding
+test_expect_success 'Commit changes to parent repository' '
+        git add --all &&
+        git commit -m "Commit local changes to sub1/sub1 file2"
+'
+
+test_expect_success 'check git subtree push <prefix> works' '
+        git subtree push -P sub1 &&
+        cd ../shared_projects/subtree1 &&
+        git checkout master &&
+        test_cmp ../../parent1/sub1/sub1_file1 sub1_file1 &&
+        test_cmp ../../parent1/sub1/sub1_file2 sub1_file2
+'
+
+# Tests for pull-all
+
+# Make a change in subtree1
+
+subtree1_change2="Add_line_to_Sub1_File1"
+
+echo $subtree1_change2>>sub1_file1
+
+# Lets commit the changes to subtree1 before proceeding
+test_expect_success 'Commit changes to the subtree1' '
+        git add --all &&
+        git commit -m "Commit change to sub1_file1"
+'
+
+# Go to subtree2 and make a change
+cd ../subtree2
+
+subtree2_change1="Add_line_to_Sub2_File2"
+
+echo $subtree2_change1>>sub2_file1
+
+# Lets commit the changes to subtree2 before proceeding
+test_expect_success 'Commit changes to the subtree2' '
+        git add --all &&
+        git commit -m "Commit change to sub2_file1"
+'
+
+# Now subtree pull-all from our parent should bring these changes
+cd ../../parent1
+
+test_expect_success 'check pull-all gets all changes from remote subtrees' '
+        git subtree pull-all &&
+        test_cmp sub1/sub1_file1 ../shared_projects/subtree1/sub1_file1 &&
+        test_cmp sub1/sub1_file2 ../shared_projects/subtree1/sub1_file2 &&
+        test_cmp sub2/sub2_file1 ../shared_projects/subtree2/sub2_file1
+'
+
+# Test for push-all
+# Inorder to push to remote, we need the remote's working branch to be different
+# to the one we are pushing to. Hence change to develop so that we can push to master
+cd ../shared_projects/subtree1
+test_expect_success 'Switch to branch develop' '
+        git checkout develop
+'
+
+cd ../subtree2
+test_expect_success 'Switch to branch develop' '
+        git checkout -b develop
+'
+
+cd ../../parent1
+# Now lets make local changes to subtree files and try pushing them
+local_change1="Local addition of line to sub1 file 1"
+local_change2="Sub2 file 1 has local addition to itself"
+
+cd sub1
+echo $local_change1>>sub1_file1
+
+cd ../sub2
+echo $local_change2>>sub2_file1
+
+# Back to parent1
+cd ..
+
+# Lets commit the changes to our parent repository before proceeding
+test_expect_success 'Commit local changes to subtrees of repo' '
+        git add --all &&
+        git commit -m "Commit local changes made to subtrees"
+'
+
+# Now lets do subtree push-all and check on the subtree remote 
+# if the changes pushed successfully
+test_expect_success 'check if push-all pushes local changes to remote' '
+        git subtree push-all &&
+        cd ../shared_projects/subtree1 &&
+        git checkout master &&
+        cd ../subtree2 &&
+        git checkout master &&
+        cd ../.. &&
+        test_cmp parent1/sub1/sub1_file1 shared_projects/subtree1/sub1_file1 &&
+        test_cmp parent1/sub2/sub2_file1 shared_projects/subtree2/sub2_file1
 '
 
 test_done
