@@ -536,8 +536,8 @@ cmd_add_repository()
 	git config -f .gittrees --add subtree.$dir.branch $refspec
 	git config -f .gittrees --unset subtree.$dir.subtreeCommit
 	git config -f .gittrees --add subtree.$dir.subtreeCommit $rev
-	git config -f .gittrees --unset subtree.$dir.currentCommit
-	git config -f .gittrees --add subtree.$dir.currentCommit $subtree_mainline_merge
+	git config -f .gittrees --unset subtree.$dir.subtreeMergeCommit
+	git config -f .gittrees --add subtree.$dir.subtreeMergeCommit $subtree_mainline_merge
 }
 
 cmd_add_commit()
