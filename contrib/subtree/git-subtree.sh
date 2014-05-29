@@ -15,6 +15,7 @@ git subtree pull-all
 git subtree push-all
 git subtree push  --prefix=<prefix> [<repository> [<refspec>...]]
 git subtree split --prefix=<prefix> <commit...>
+git subtree list
 --
 h,help        show the help
 q             quiet
