@@ -60,6 +60,11 @@ last_commit_message()
 	git log --pretty=format:%s -1
 }
 
+last_commit_id()
+{
+    git log --format="%H" -n 1
+}
+
 test_expect_success 'init subproj' '
         test_create_repo subproj
 '
@@ -463,6 +468,107 @@ test_expect_success 'verify one file change per commit' '
 	        done
 	        check_equal "$x" 1
         ))
+'
+# Tests for subtree add which creates .gittrees for storing metadata
+
+# Back to mainline and create new directory for testing
+cd ../..
+
+mkdir test_sub
+cd test_sub
+
+mkdir shared_projects
+# To shared_projects!
+cd shared_projects
+
+# Create couple of Git repos in shared_projects folder which can be
+# added as subtrees to our parent projects
+test_expect_success 'add subtree1' '
+        test_create_repo subtree1 &&
+        cd subtree1 &&
+        create sub1_file1 &&
+        git commit -m "Initial subtree1 commit"
+'
+
+# Store the latest commit value for future use
+expected_subtreeCommit=`echo $(last_commit_id)`
+expected_branch=`echo $(git rev-parse --abbrev-ref HEAD)`
+
+# Back to shared_projects
+cd ..
+
+test_expect_success 'add subtree2' '
+        test_create_repo subtree2 &&
+        cd subtree2 &&
+        create sub2_file1 &&
+        git commit -m "Initial subtree2 commit"
+'
+
+# Back to test_sub
+cd ../..
+
+# Create test parent repos that will add subtrees to itself
+test_expect_success 'add parent1' '
+        test_create_repo parent1 &&
+        cd parent1 &&
+        create parent1_file1 &&
+        git commit -m "Initial parent1 commit"
+'
+
+# Back to test_sub from parent1
+cd ..
+
+test_expect_success 'add parent2' '
+        test_create_repo parent2 &&
+        cd parent2 &&
+        create parent2_file1 &&
+        git commit -m "Initial parent2 commit"
+'
+
+
+# To parent1 now. Start the tests
+cd ../parent1
+
+# .gittrees file creation tests
+test_expect_success 'check add for subtree with master branch' '
+        git subtree add -m "Add sub1 subtree" -P sub1 ../shared_projects/subtree1 master &&
+        check_equal ''"$(last_commit_message)"'' "Add sub1 subtree"
+'
+
+# Store latest commit id for future use
+expected_subtreeMergeCommit=$(last_commit_id)
+
+test_expect_success 'check if .gittrees file was created' '
+        test -a '.gittrees'
+'
+# Now lets test if the .gittrees file has the correct information
+# Hardcoded some expected results for checking data inside .gittrees file
+expected_url='../shared_projects/subtree1'
+expected_path='sub1'
+
+echo $expected_url>>expected_gittrees
+echo $expected_path>>expected_gittrees
+echo $expected_branch>>expected_gittrees
+echo $expected_subtreeCommit>>expected_gittrees
+echo $expected_subtreeMergeCommit>>expected_gittrees
+
+grep = .gittrees | cut -f2 -d"=" | cut -f2 -d" " > actual_gittrees
+
+test_expect_success 'check .gittrees file has the necessary changes' '
+        test_cmp actual_gittrees expected_gittrees
+'
+
+test_expect_success 'check subtree does not get created with incorrect remote url' '
+        test_must_fail git subtree add -P s2 ../shared_projects/subbtree1 master
+'
+
+test_expect_success 'check that subtree does not get created with incorrect branch' '
+        test_must_fail git subtree add -P s2 ../shared_projects/subtree1 development
+'
+
+test_expect_success 'add another subtree with master branch' '
+        git subtree add -m "Add sub2 subtree" -P sub2 ../shared_projects/subtree2 master &&
+        check_equal ''"$(last_commit_message)"'' "Add sub2 subtree"
 '
 
 test_done

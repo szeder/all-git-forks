@@ -8,8 +8,7 @@ if [ $# -eq 0 ]; then
     set -- -h
 fi
 OPTS_SPEC="\
-git subtree add   --prefix=<prefix> <commit>
-git subtree add   --prefix=<prefix> <repository> <ref>
+git subtree add   --prefix=<prefix> <repository> <refspec>
 git subtree merge --prefix=<prefix> <commit>
 git subtree pull  --prefix=<prefix> <repository> <ref>
 git subtree push  --prefix=<prefix> <repository> <ref>
@@ -490,12 +489,6 @@ ensure_clean()
 	fi
 }
 
-ensure_valid_ref_format()
-{
-	git check-ref-format "refs/heads/$1" ||
-	    die "'$1' does not look like a ref"
-}
-
 cmd_add()
 {
 	if [ -e "$dir" ]; then
@@ -505,22 +498,12 @@ cmd_add()
 	ensure_clean
 	
 	if [ $# -eq 1 ]; then
-	    git rev-parse -q --verify "$1^{commit}" >/dev/null ||
-	    die "'$1' does not refer to a commit"
-
-	    "cmd_add_commit" "$@"
+		"cmd_add_commit" "$@"
 	elif [ $# -eq 2 ]; then
-	    # Technically we could accept a refspec here but we're
-	    # just going to turn around and add FETCH_HEAD under the
-	    # specified directory.  Allowing a refspec might be
-	    # misleading because we won't do anything with any other
-	    # branches fetched via the refspec.
-	    ensure_valid_ref_format "$2"
-
-	    "cmd_add_repository" "$@"
+		"cmd_add_repository" "$@"
 	else
-	    say "error: parameters were '$@'"
-	    die "Provide either a commit or a repository and commit."
+		say "error: parameters were '$@'"
+		die "Provide either a refspec or a repository and refspec."
 	fi
 }
 
@@ -533,6 +516,24 @@ cmd_add_repository()
 	revs=FETCH_HEAD
 	set -- $revs
 	cmd_add_commit "$@"
+	
+	revs=$(git rev-parse $default --revs-only "$@") || exit $?
+	set -- $revs
+	rev="$1"
+	
+	subtree_mainline_merge=$(git rev-parse HEAD) || exit $?
+	
+	# now add it to our list of repos 
+	git config -f .gittrees --unset subtree.$dir.url
+	git config -f .gittrees --add subtree.$dir.url $repository
+	git config -f .gittrees --unset subtree.$dir.path
+	git config -f .gittrees --add subtree.$dir.path $dir
+	git config -f .gittrees --unset subtree.$dir.branch
+	git config -f .gittrees --add subtree.$dir.branch $refspec
+	git config -f .gittrees --unset subtree.$dir.subtreeCommit
+	git config -f .gittrees --add subtree.$dir.subtreeCommit $rev
+	git config -f .gittrees --unset subtree.$dir.subtreeMergeCommit
+	git config -f .gittrees --add subtree.$dir.subtreeMergeCommit $subtree_mainline_merge
 }
 
 cmd_add_commit()
@@ -598,7 +599,7 @@ cmd_split()
 	eval "$grl" |
 	while read rev parents; do
 		revcount=$(($revcount + 1))
-		say -n "$revcount/$revmax ($createcount)"
+		say -n "$revcount/$revmax ($createcount)"
 		debug "Processing commit: $rev"
 		exists=$(cache_get $rev)
 		if [ -n "$exists" ]; then
@@ -705,31 +706,56 @@ cmd_merge()
 
 cmd_pull()
 {
-	if [ $# -ne 2 ]; then
-	    die "You must provide <repository> <ref>"
+	if [ $# -gt 2 ]; then
+		die "You should provide either <refspec> or <repository> <refspec>"
 	fi
+	if [ -e "$dir" ]; then
 	ensure_clean
-	ensure_valid_ref_format "$2"
-	git fetch "$@" || exit $?
+		if [ $# -eq 1 ]; then 
+			repository=$(git config -f .gittrees subtree.$prefix.url)
+			refspec=$1
+		elif [ $# -eq 2 ]; then 
+			repository=$1
+			refspec=$2
+		else 
+			repository=$(git config -f .gittrees subtree.$prefix.url)
+			refspec=$(git config -f .gittrees subtree.$prefix.branch)
+		fi
+		git fetch $repository $refspec || exit $?
+		echo "git fetch using: " $repository $refspec
 	revs=FETCH_HEAD
 	set -- $revs
 	cmd_merge "$@"
+	else
+		die "'$dir' must already exist. Try 'git subtree add'."
+	fi
 }
 
 cmd_push()
 {
-	if [ $# -ne 2 ]; then
-	    die "You must provide <repository> <ref>"
+	if [ $# -gt 2 ]; then
+		die "You should provide either <refspec> or <repository> <refspec>"
 	fi
-	ensure_valid_ref_format "$2"
 	if [ -e "$dir" ]; then
-	    repository=$1
-	    refspec=$2
-	    echo "git push using: " $repository $refspec
-	    localrev=$(git subtree split --prefix="$prefix") || die
-	    git push $repository $localrev:refs/heads/$refspec
+		if [ $# -eq 1 ]; then 
+			repository=$(git config -f .gittrees subtree.$prefix.url)
+			refspec=$1
+		elif [ $# -eq 2 ]; then 
+		repository=$1
+		refspec=$2
+		else
+			repository=$(git config -f .gittrees subtree.$prefix.url)
+			refspec=$(git config -f .gittrees subtree.$prefix.branch)
+		fi
+		echo "git push using: " $repository $refspec
+		rev=$(git subtree split --prefix=$prefix)
+		if [ -n "$rev" ]; then
+			git push $repository $rev:refs/heads/$refspec
+		else
+			die "Couldn't push, 'git subtree split' failed."
+		fi
 	else
-	    die "'$dir' must already exist. Try 'git subtree add'."
+		die "'$dir' must already exist. Try 'git subtree add'."
 	fi
 }
 
