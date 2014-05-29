@@ -10,6 +10,7 @@
 #include "blob.h"
 #include "diff.h"
 #include "diffcore.h"
+#include "pathspec.h"
 #include "hashmap.h"
 #include "revision.h"
 #include "xdiff/xdiff.h"
@@ -347,15 +348,20 @@ struct commit_hash_entry {
     // The key of the hash entry
     unsigned char sha1[20];
 
-    // The associated data
+    // The author information of this commit
     char *author_name;
     char *email;
     unsigned long author_time;
     char *author_tz;
+
+    // the path to the file
     char *cur_path;    
+
     int total;
     int *origin;
     int *next_line;
+
+    int indegree;
 
     int outputed;
 };
@@ -632,7 +638,7 @@ void free_line_transfer(struct line_transfer* lt){
 }
 
 void free_line_info_list(struct line_info_list *lil){
-    struct lommit_info_list *next;
+    struct line_info_list *next;
     while (lil != NULL){
         next = lil->next;
 	free(lil);
@@ -664,7 +670,7 @@ int cmp_change_pair(const void *a, const void *b){
 /***************************** Hash Related Stuff **************************/
 
 static struct commit_hash_entry* commit_hash_lookup(unsigned char *sha1){
-    unsigned int hash = strihash(sha1, 20);
+    unsigned int hash = memihash(sha1, 20);
     struct hashmap_entry key;
     hashmap_entry_init(&key, hash);
     
@@ -672,20 +678,26 @@ static struct commit_hash_entry* commit_hash_lookup(unsigned char *sha1){
 }
 
 static struct commit_hash_entry* commit_hash_insert(unsigned char *sha1){
-    unsigned int hash = strihash(sha1, 20);
+    unsigned int hash = memihash(sha1, 20);
     struct commit_hash_entry *newEntry = (struct commit_hash_entry*)my_allocate_commit(1,sizeof(struct commit_hash_entry));
     hashmap_entry_init(newEntry, hash);
     memcpy(newEntry->sha1,sha1,20);
     newEntry->cur_path = NULL;
     newEntry->origin = NULL;
     newEntry->author_name = NULL;
+    newEntry->indegree = 0;
 
     hashmap_add(&commit_hashmap, newEntry);
     return newEntry;
 }
 
+static int commit_hash_entry_cmp(const struct commit_hash_entry* e1,
+                                 const struct commit_hash_entry* e2,
+				 const unsigned char* keydata) {
+    return strcasecmp(e1->sha1, keydata ? keydata : e2->sha1);
+}
 static struct string_hash_entry* string_hash_lookup(struct hashmap* hm, char *str, int len){
-    unsigned int hash = strhash(str, len);
+    unsigned int hash = strhash(str);
     struct hashmap_entry key;
     hashmap_entry_init(&key, hash);
 
@@ -693,8 +705,8 @@ static struct string_hash_entry* string_hash_lookup(struct hashmap* hm, char *st
 }
 
 static struct string_hash_entry* string_hash_insert(struct hashmap* hm, char *str, int len){
-    unsigned int hash = strhash(str, len);
-    struct string_hash_list *newEntry = (struct string_hash_entry*) my_allocate_ldiff(1,sizeof(struct string_hash_entry));
+    unsigned int hash = strhash(str);
+    struct string_hash_entry *newEntry = (struct string_hash_entry*) my_allocate_ldiff(1,sizeof(struct string_hash_entry));
     hashmap_entry_init(newEntry, hash);
     newEntry->len = len;
     newEntry->string = (char*) my_allocate_ldiff(len+1, sizeof(char));
@@ -719,8 +731,8 @@ void print_string_hash(struct hashmap *hm, char *msg){
     struct hashmap_iter iter;
     hashmap_iter_init(hm, &iter);
 
-    while ((ent = (struct string_hash_entry*)hashmap_iter_next(hm, &iter)) != NULL) {
-        dprintf("%s %.0lf\n", hm->string, hm->f);
+    while ((ent = (struct string_hash_entry*)hashmap_iter_next(&iter)) != NULL) {
+        dprintf("%s %.0lf\n", ent->string, ent->f);
     }
 }
 
@@ -745,7 +757,7 @@ void count_frequency(struct hashmap* tf, struct hashmap *df, struct code_hunk_li
     char *cur, *next;
     int i,j;
 
-    hashmap_init(tf, (hash_cmp_fn)string_hash_entry_cmp, 0);
+    hashmap_init(tf, (hashmap_cmp_fn)string_hash_entry_cmp, 0);
     hunk->token_begin = (char ***) my_allocate_ldiff(hunk->total, sizeof(char**));
     hunk->token_end = (char ***) my_allocate_ldiff(hunk->total, sizeof(char**));
     hunk->token_total = (int *) my_allocate_ldiff(hunk->total, sizeof(int));
@@ -794,6 +806,7 @@ void count_frequency(struct hashmap* tf, struct hashmap *df, struct code_hunk_li
     struct hashmap_iter iter;
     hashmap_iter_init(tf, &iter);
     while ((entry_tf = hashmap_iter_next(&iter)) != NULL) {
+        int len = strlen(entry_tf->string);
         entry_df = (struct string_hash_entry*) string_hash_lookup(df, entry_tf->string, len);
 	if (entry_df == NULL){
 	    entry_df = (struct string_hash_entry*) string_hash_insert(df, entry_tf->string,len);
@@ -819,7 +832,6 @@ void normalize(struct hashmap* hm){
 // Calculate the range similarity score, the cosine similarity
 // between the added lines (in am) and deleted lines (in dm)
 double range_similarity_score(struct hashmap *am, struct hashmap *dm, struct hashmap *df, int total) {
-    int i;
     double norm1, norm2, inner, tmp;
     struct string_hash_entry *entry_am, *entry_dm, *entry_df;
     if (am->size == 0 && dm->size == 0) return 1;
@@ -926,6 +938,10 @@ int token_levenshtein(char **token1_begin, char **token1_end, int len1,
 
 	return i;
 }
+
+// For each line in the added code hunk and deleted code hunk, 
+// use the best edit distance to measure the similarity
+// of two lines of code
 double * line_similarity_token_score(struct code_hunk_list * add, struct code_hunk_list* del){
     int i,j;
     double * score = (double*) my_allocate_ldiff(add->total * del->total, sizeof(double));
@@ -1039,7 +1055,8 @@ void match_in_one_hunk_pair(struct code_hunk_list* add, struct code_hunk_list *d
     }
 }
 
-void count_document_frequency(struct hashmap*df, struct hashmap* terms, struct code_hunk_list **vector, struct code_hunk_list* hunk_list) {
+// Count document frequency and term frequency for each document
+void count_document_frequency(struct hashmap* df, struct hashmap* terms, struct code_hunk_list **vector, struct code_hunk_list* hunk_list) {
     struct code_hunk_list * hunk;
     int i;
     for (hunk = hunk_list->next, i = 0; hunk != NULL; hunk = hunk->next, ++i) {
@@ -1050,19 +1067,17 @@ void count_document_frequency(struct hashmap*df, struct hashmap* terms, struct c
 
 }
 
-struct hunk_pair* build_hunk_pair_list(struct delta_set *old_diff, int* total_pair, struct hashmap * df, 
-                          struct hashmap *add_terms, struct code_hunk_list **add_vector,
-			  struct hashmap *delete_terms, struct code_hunk_list **del_vector){
+struct hunk_pair* build_hunk_pair_list(struct delta_set *old_diff, 
+                                       int* total_pair, 
+				       struct hashmap * df,
+				       struct hashmap *add_terms, 
+				       struct hashmap *delete_terms){
     int i, j, k = 0;
     struct code_hunk_list *add, *del;
     int total_docs = old_diff->added->total + old_diff->deleted->total;
     struct hunk_pair* all_pair = (struct hunk_pair*) my_allocate_ldiff( old_diff->added->total * old_diff->deleted->total, sizeof(struct hunk_pair) );
     for (add = old_diff->added->next, i = 0; add != NULL; add = add->next, ++i) {
         for (del = old_diff->deleted->next, j = 0; del != NULL; del = del->next, ++j) {
-	    if (i == old_diff->added->total || j == old_diff->deleted->total) {
-//	        dprintf("%d %d %d %d\n", i, old_diff->added->total, j, old_diff->deleted->total);
-		exit(0);
-	    }
 	    all_pair[k].score = range_similarity_score(add_terms + i, delete_terms + j, df, total_docs);
 	    if (all_pair[k].score > range_score_threshold) {
 	        all_pair[k].add = i;
@@ -1150,7 +1165,7 @@ void match(struct delta_set *old_diff, struct delta_set *new_diff){
     struct hashmap *add_terms, *delete_terms;
     struct code_hunk_list **add_vector, **del_vector;
     int total_pair;
-    init_hash(&df);
+    hashmap_init(&df, (hashmap_cmp_fn)string_hash_entry_cmp, 0);
 
     add_terms = (struct hashmap*) my_allocate_ldiff(old_diff->added->total, sizeof(struct hashmap));
     add_vector = (struct code_hunk_list**) my_allocate_ldiff(old_diff->added->total, sizeof(struct code_hunk_list*));
@@ -1164,7 +1179,7 @@ void match(struct delta_set *old_diff, struct delta_set *new_diff){
     normalize(&df);
 
     struct hunk_pair* all_pair;
-    all_pair = build_hunk_pair_list(old_diff, &total_pair, &df, add_terms, add_vector, delete_terms, del_vector);
+    all_pair = build_hunk_pair_list(old_diff, &total_pair, &df, add_terms, delete_terms);
 
     qsort(all_pair, total_pair, sizeof(struct hunk_pair), hunk_pair_cmp);
 
@@ -1188,7 +1203,7 @@ struct delta_set* ldiff(struct code_hunk_list* added_hunk, struct code_hunk_list
 	old_diff.added = new_diff->added;
 	old_diff.deleted = new_diff->deleted;
 	old_diff.changed = new_diff->changed;
-//	print_delta_set(new_diff, "DIFF ITERATION");
+	//print_delta_set(new_diff, "DIFF ITERATION");
 
     }
     return new_diff;
@@ -1288,6 +1303,10 @@ struct line_transfer* parse_diff_result(char *diff_result, size_t len){
 
 	    cur_posi = next_character(cur_posi, '\n') + 1;
 	    while (*cur_posi && strncmp(cur_posi, "@@ -", 4)) {
+	        dprintf("deleted_lineno is %d, added_lineno is %d, current line:", deleted_lineno, added_lineno);
+		int i = 0;
+		for (; i < 10; ++i) dprintf("%c", cur_posi[i]);
+		dprintf("\n");
 	        next_posi = next_character(cur_posi, '\n');
 		if (*cur_posi == '+' || *cur_posi == '-') {
 
@@ -1328,7 +1347,7 @@ struct line_transfer* parse_diff_result(char *diff_result, size_t len){
 
 /********************************** Visiting Commits Related Functions ***************************************/
 
-void parse_commit_info(struct commit* cur, struct commit_hash_list* cur_info){
+void parse_commit_info(struct commit* cur, struct commit_hash_entry* cur_info){
     char buf[1024];
     char *begin = strstr(cur->buffer, "author") + 7;
     char *end = strstr(cur->buffer, "<") - 1;    
@@ -1408,12 +1427,13 @@ int get_total_line_number(struct tree* t, const char* path){
     return total; 
 }
 
-struct commit_hash_list* init_start_commit_info(unsigned char *sha1, const char *file_name){
-    struct commit_hash_list * info;
+struct commit_hash_entry* init_start_commit_info(unsigned char *sha1, const char *file_name){
+    struct commit_hash_entry * info;
 
     queue[0] = lookup_commit(sha1);
     parse_commit(queue[0]);
-    init_hash(&commit_hash_table);
+
+    hashmap_init(&commit_hashmap, (hashmap_cmp_fn)commit_hash_entry_cmp, 0);
 
     info = commit_hash_insert(sha1);
     info->cur_path = (char*) my_allocate_commit(strlen(file_name) + 1, sizeof(char));
@@ -1432,7 +1452,7 @@ struct commit_hash_list* init_start_commit_info(unsigned char *sha1, const char 
 
 
 
-void prepare_parse_range_option(struct commit_hash_list* head_info){
+void prepare_parse_range_option(struct commit_hash_entry* head_info){
 
     if (range_buf != NULL) {
         unsigned long size;
@@ -1448,7 +1468,7 @@ void prepare_parse_range_option(struct commit_hash_list* head_info){
 
 }
 
-void init_head_commit_range_info(struct commit_hash_list* head_info, struct commit_info_list ** final_info){
+void init_head_commit_range_info(struct commit_hash_entry* head_info, struct line_info_list ** final_info){
     int i;
     for (i = 1; i <= head_info->total; ++i) {
         head_info->origin[i] = 0;
@@ -1471,7 +1491,7 @@ void prepare_visit_all_commits(){
     head = 0;
     tail = 1;
 
-    struct commit_hash_list* info;
+    struct commit_hash_entry* info;
 
     while (head < tail) {
         struct commit* cur = queue[head++];	
@@ -1481,11 +1501,11 @@ void prepare_visit_all_commits(){
 	    struct commit* prev = parents->item;
 	    parse_commit(prev);
 	    info = commit_hash_lookup(prev->object.sha1);
-	    ++prev->indegree;
 	    if (info == NULL){
 		info = commit_hash_insert(prev->object.sha1);
 		queue[tail++] = prev;
 	    }
+	    ++info->indegree;
 	}
     }
     dprintf("In BFS, visit %d commits\n", tail);
@@ -1500,6 +1520,7 @@ void set_diff_option(struct diff_options* opt, char **diff_result, size_t *diff_
      * 5. run diff
      */
     diff_setup(opt);
+    opt->use_color = 0;
     opt->output_format |= DIFF_FORMAT_PATCH;
     opt->detect_rename = DIFF_DETECT_RENAME;
     DIFF_OPT_SET(opt, FOLLOW_RENAMES);
@@ -1514,11 +1535,19 @@ void set_diff_option(struct diff_options* opt, char **diff_result, size_t *diff_
      */
     opt->rename_score = 60000 * 80 / 100;
     opt->file = open_memstream(diff_result, diff_len);
+    if (opt->file == NULL) {
+        fprintf(stderr, "Cannot allocate memory stream!\n");
+	exit(0);
+    }
 }
 
 void get_diff_between_commits(struct diff_options *diffopt, const char *paths_array[2],
                               const unsigned char* prev_sha1, const unsigned char* cur_sha1) {
-    init_pathspec(&diffopt->pathspec, paths_array);
+    parse_pathspec(&diffopt->pathspec,
+                   PATHSPEC_ALL_MAGIC & ~PATHSPEC_LITERAL,
+		   PATHSPEC_LITERAL_PATH, 
+		   "", 
+		   paths_array);
     diff_setup_done(diffopt);
     diff_tree_sha1(prev_sha1, cur_sha1, "", diffopt);
     diffcore_std(diffopt);
@@ -1537,8 +1566,8 @@ void get_diff_between_given_files(struct diff_options *diffopt,
     if (memcmp(one_blob_sha1, two_blob_sha1,20)) {
         one = alloc_filespec(one_path);
 	two = alloc_filespec(two_path);
-	fill_filespec(one, one_blob_sha1, canon_mode(S_IFREG | 0644));
-	fill_filespec(two, two_blob_sha1, canon_mode(S_IFREG | 0644));
+	fill_filespec(one, one_blob_sha1, 1, canon_mode(S_IFREG | 0644));
+	fill_filespec(two, two_blob_sha1, 1, canon_mode(S_IFREG | 0644));
 	
 	diff_queue(&diff_queued_diff, one, two);
 	diff_setup_done(diffopt);
@@ -1557,7 +1586,7 @@ void sort_line_transfer(struct line_transfer* line_delta){
     qsort(line_delta->chg_from, line_delta->chg_total, sizeof(int), cmp_int);
 }
 
-void prepare_author_info_structure(struct commit_hash_list* prev_info, struct commit* prev, const char *paths_array[2]){
+void prepare_author_info_structure(struct commit_hash_entry* prev_info, struct commit* prev, const char *paths_array[2]){
     if (prev_info->cur_path == NULL) {
         prev_info->cur_path = (char*) my_allocate_commit(strlen(paths_array[0]) + 1, sizeof(char));
 	strcpy(prev_info->cur_path, paths_array[0]);	
@@ -1578,7 +1607,7 @@ void prepare_author_info_structure(struct commit_hash_list* prev_info, struct co
     } 
 }
 
-int duplicate_entry(int cur_line, struct commit_hash_list* prev, int from){
+int duplicate_entry(int cur_line, struct commit_hash_entry* prev, int from){
     from = prev->origin[from];
     while (from != 0) {
         if (cur_line == from) return 1;
@@ -1587,8 +1616,8 @@ int duplicate_entry(int cur_line, struct commit_hash_list* prev, int from){
     return 0;
 }
 
-void unchanged_line_transfer(int to, int from, struct commit_hash_list* cur, struct commit_hash_list* prev){
-	dprintf("To = %d, From = %d\n", to ,from);
+void unchanged_line_transfer(int to, int from, struct commit_hash_entry* cur, struct commit_hash_entry* prev){
+//	dprintf("To = %d, From = %d\n", to ,from);
 	if (from > prev->total) {
 	    printf("ERROR: OUT OF RANGE\n");
 	    printf("Current Commit %s, line number %d, total line %d\n", sha1_to_hex(cur->sha1), to , cur->total);
@@ -1623,15 +1652,15 @@ void move_index_in_old_commit(struct line_transfer* delta, int to, int add_index
     }
 }
 
-void insert_author_info(struct commit_info_list** info, int origin_line, int cur_line, 
-                        struct commit_hash_list* c, char **lines){
+void insert_author_info(struct line_info_list** info, int origin_line, int cur_line, 
+                        struct commit_hash_entry* c, char **lines){
     while (origin_line != 0){
-        insert_commit_info_list(info, origin_line, cur_line, c, lines);
+        insert_line_info_list(info, origin_line, cur_line, c, lines);
 	origin_line = c->next_line[origin_line];
     }
 }
 
-void apply_transfer_function(struct commit_info_list ** final_info, struct commit_hash_list* cur, struct commit_hash_list* prev, 
+void apply_transfer_function(struct line_info_list ** final_info, struct commit_hash_entry* cur, struct commit_hash_entry* prev, 
                              struct line_transfer * delta, int number_of_parents, char **lines){
     int add_index, del_index, chg_from_index, chg_to_index, from, to;
     add_index = del_index = chg_from_index = chg_to_index = 0;
@@ -1668,7 +1697,7 @@ void apply_transfer_function(struct commit_info_list ** final_info, struct commi
 }
 
 void apply_identity_function(const char *paths_array[2], struct commit* prev,
-                             struct commit_hash_list* cur_info, struct commit_hash_list* prev_info){
+                             struct commit_hash_entry* cur_info, struct commit_hash_entry* prev_info){
     
     prepare_author_info_structure(prev_info, prev, paths_array);
 
@@ -1684,14 +1713,14 @@ void apply_identity_function(const char *paths_array[2], struct commit* prev,
  * By specifying the filename in diff options, use tree-diff to get diff
  * for specified file.
  */
-void visit_all_commits(struct commit_info_list **final_info) {
+void visit_all_commits(struct line_info_list **final_info) {
     int i;
     head = 0;
     tail = 1;
     while (head < tail) {
         struct commit* cur = queue[head++];	
 	struct commit_list *parents;
-	struct commit_hash_list * cur_info = commit_hash_lookup(cur->object.sha1);
+	struct commit_hash_entry * cur_info = commit_hash_lookup(cur->object.sha1);
 
 	if (cur_info == NULL){
 	    printf("ERROR: Cannot find info in hash table for commit %s\n", sha1_to_hex(cur->object.sha1));
@@ -1725,10 +1754,10 @@ void visit_all_commits(struct commit_info_list **final_info) {
 	
 	for (parents = cur->parents; parents != NULL; parents = parents->next){
 	    struct commit* prev = parents->item;
-	    struct commit_hash_list * prev_info = commit_hash_lookup(prev->object.sha1);
+	    struct commit_hash_entry * prev_info = commit_hash_lookup(prev->object.sha1);
 
-	    --prev->indegree;
-	    if (prev->indegree == 0){
+	    --prev_info->indegree;
+	    if (prev_info->indegree == 0){
 	        queue[tail++] = prev;
 	    }
 	    if (prev_info == NULL){
@@ -1743,7 +1772,7 @@ void visit_all_commits(struct commit_info_list **final_info) {
 
 	    struct diff_options diffopt;
 	    char *diff_result = NULL;
-	    size_t diff_len;
+	    size_t diff_len = 0;
 	    set_diff_option(&diffopt, &diff_result, &diff_len);
 	    
 	    char path[1024];
@@ -1764,7 +1793,7 @@ void visit_all_commits(struct commit_info_list **final_info) {
 	    dprintf(" CUR PATH %s PATH AFTER DIFF %s", cur_info->cur_path, paths_array[0]);
 	    
 	    if (diff_len == 0 || strstr(diff_result, "\nsimilarity index 100%\n") != NULL){
-	        dprintf(" UNIFORM COPY ");
+	        dprintf(" NOTHING CHANGED ");
 		apply_identity_function(paths_array, prev, cur_info, prev_info);
 	    }
 	    else {
@@ -1804,7 +1833,7 @@ void visit_all_commits(struct commit_info_list **final_info) {
 }
 
 /****************************************** Weighted Authorship ************************************/
-int * leven_diff(int current, int *belong, int *map, int *length, struct commit_info_list** list, int *fixed){
+int * leven_diff(int current, int *belong, int *map, int *length, struct line_info_list** list, int *fixed){
     char *new_code = list[current]->code;
     char *old_code = list[current - 1]->code;
 
@@ -1817,7 +1846,8 @@ int * leven_diff(int current, int *belong, int *map, int *length, struct commit_
 
     for (i = 0; i < old_length; ++i) new_map[i] = -1;
 
-    #define CHG(x,y) (x) * new_length + (y)
+    #define MIN(x,y) (((x) < (y)) ? (x) : (y))
+    #define CHG(x,y) ((x) * new_length + (y))
     for (i = 0; i <= old_length; ++i) f[CHG(i,0)] = 0;
     for (j = 0; j <= new_length; ++j) f[CHG(0,j)] = 0;
     for (i = 1; i <= old_length; ++i)
@@ -1872,24 +1902,24 @@ int * leven_diff(int current, int *belong, int *map, int *length, struct commit_
 
     
     #undef CHG 
-
+    #undef MIN
     return new_map;
 }
 
 
-int** calculate_weighted_authorship(struct commit_info_list ** cil, int total, int ***char_authorship) {
+int** calculate_weighted_authorship(struct line_info_list ** cil, int total, int ***char_authorship) {
     int i,j;
     int ** code_share = (int**) my_allocate_commit( total, sizeof(int*));    
     *char_authorship = (int**) my_allocate_commit( total, sizeof(int*));
     for (i = up_line; i <= down_line; ++i) {
         
         int total_commit = 0;
-	struct commit_info_list *p , **list;
+	struct line_info_list *p , **list;
 	my_memory_ldiff_used = 0;
 	for (p = cil[i]; p != NULL; p = p->next) ++total_commit;
 
 
-	list = (struct commit_info_list**) my_allocate_ldiff( total_commit, sizeof(struct commit_info_list*));
+	list = (struct line_info_list**) my_allocate_ldiff( total_commit, sizeof(struct line_info_list*));
 
         int *length = (int*) my_allocate_ldiff( total_commit, sizeof(int));
 	int max_length = 0;
@@ -1933,11 +1963,11 @@ int** calculate_weighted_authorship(struct commit_info_list ** cil, int total, i
 
 /************************************** Result Output ******************************************/
 
-void print_porcelain(struct commit_info_list ** cil, int total) {
+void print_porcelain(struct line_info_list ** cil, int total) {
     int i;
     for (i = up_line; i <= down_line; ++i) {
         int total = 0;
-	struct commit_info_list *p;
+	struct line_info_list *p;
 	for (p = cil[i]; p != NULL; p = p->next) 
 	    ++total;
 
@@ -1956,7 +1986,7 @@ void print_porcelain(struct commit_info_list ** cil, int total) {
     }
 }
 
-int duplicate_output(struct commit_info_list *line, struct commit_info_list * cur){
+int duplicate_output(struct line_info_list *line, struct line_info_list * cur){
     while (line != cur) {
         if (line->info == cur->info) return 1;
 	line = line->next;
@@ -1964,7 +1994,7 @@ int duplicate_output(struct commit_info_list *line, struct commit_info_list * cu
     return 0;
 }
 
-void print_author_information(struct commit_info_list ** cil, struct commit_hash_list* head_info){
+void print_author_information(struct line_info_list ** cil, struct commit_hash_entry* head_info){
     int total = head_info->total;
     int length, i, j;
     if (output_format & OUTPUT_LONG_SHA1) 
@@ -2001,7 +2031,7 @@ void print_author_information(struct commit_info_list ** cil, struct commit_hash
     // calculate the max length needed for each entry
     for (i = up_line; i <= down_line; ++i) {
 	int cur_length = 0;
-	struct commit_info_list *p;
+	struct line_info_list *p;
 	int total_commit = 0;
 	for (p = cil[i]; p != NULL; p = p->next) ++total_commit;
 	if (output_format & OUTPUT_WEIGHTED){
@@ -2058,13 +2088,13 @@ void print_author_information(struct commit_info_list ** cil, struct commit_hash
     // real output
     for (i = up_line; i <= down_line; ++i) {
 	int total_commit = 0;
-	struct commit_info_list *p;
+	struct line_info_list *p;
 
 	for (p = cil[i]; p != NULL; p = p->next) {
 	    ++total_commit;
 	}
 
-	struct commit_info_list **list = my_allocate_commit(total_commit, sizeof(struct commit_info_list));
+	struct line_info_list **list = my_allocate_commit(total_commit, sizeof(struct line_info_list));
 
 	for (p = cil[i], j = 0; p != NULL; p = p->next, ++j)
 	    list[j] = p;	    
@@ -2205,7 +2235,7 @@ void print_author_information(struct commit_info_list ** cil, struct commit_hash
     free(code);
 }
 
-void print_author_information_one_line(struct commit_info_list ** cil, int total){
+void print_author_information_one_line(struct line_info_list ** cil, int total){
     int length, i, j;
     if (output_format & OUTPUT_LONG_SHA1) 
         length = 40;
@@ -2222,7 +2252,7 @@ void print_author_information_one_line(struct commit_info_list ** cil, int total
     for (i = up_line; i <= down_line; ++i) {
         printf("%4d:", i);
         int cur_length = 0;
-        struct commit_info_list *p;
+        struct line_info_list *p;
         if (output_format & OUTPUT_WEIGHTED){
             for (p = cil[i]; p != NULL; p = p->next) {
                 if (p->next == NULL)
@@ -2269,7 +2299,7 @@ void print_author_information_one_line(struct commit_info_list ** cil, int total
 
     }
 }
-void print_author_count(struct commit_info_list ** cil, int total){
+void print_author_count(struct line_info_list ** cil, int total){
     int i;
 
     for (i = up_line; i <= down_line; ++i) {
@@ -2277,7 +2307,7 @@ void print_author_count(struct commit_info_list ** cil, int total){
 
 	int total_commit = 0;
 	int total_author = 0;
-        struct commit_info_list *p;
+        struct line_info_list *p;
 
 
         for (p = cil[i]; p != NULL; p = p->next) {       
@@ -2287,7 +2317,7 @@ void print_author_count(struct commit_info_list ** cil, int total){
 
 	for (p = cil[i]; p != NULL; p = p->next){
 	    int found = 0;
-	    struct commit_info_list* q;
+	    struct line_info_list* q;
 	    for (q = cil[i]; q != p; q = q -> next) {
 	        if (!strcmp(p->info->author_name, q->info->author_name)) {
 		    found = 1;
@@ -2303,7 +2333,7 @@ void print_author_count(struct commit_info_list ** cil, int total){
     }
 }
 
-void print_single_author(struct commit_info_list ** cil, int total){
+void print_single_author(struct line_info_list ** cil, int total){
 
     int** code_share = NULL;    
     int** char_authorship = NULL;
@@ -2312,7 +2342,7 @@ void print_single_author(struct commit_info_list ** cil, int total){
     printf("%d\n", total);
     for (i = 1; i <= total; ++i) {
         int cur_length = 0;
-        struct commit_info_list *p;
+        struct line_info_list *p;
         if (output_format & OUTPUT_WEIGHTED){
             for (p = cil[i]; p != NULL; p = p->next) {
                 if (p->next == NULL)
@@ -2320,7 +2350,7 @@ void print_single_author(struct commit_info_list ** cil, int total){
             }       
         }
 	int max_share = 0;
-	struct commit_info_list * max_commit = cil[i];
+	struct line_info_list * max_commit = cil[i];
 
 	if (code_share[i] != NULL)
 	    for (p = cil[i],j = 0; p != NULL; p = p->next, ++j)
@@ -2361,11 +2391,11 @@ int cmd_author(int argc, const char **argv, const char *prefix){
     if (prefix != NULL) strcpy(file_name, prefix);
     parse_left_argument(argc, argv, start_commit_sha1, file_name);
 
-    struct commit_hash_list* head_info;
+    struct commit_hash_entry* head_info;
     head_info = init_start_commit_info(start_commit_sha1, file_name);
     total_line_in_start = head_info->total;
 
-    struct commit_info_list ** final_info = (struct commit_info_list**) xcalloc(head_info->total + 1, sizeof(struct commit_info_list*));
+    struct line_info_list ** final_info = (struct line_info_list**) xcalloc(head_info->total + 1, sizeof(struct line_info_list*));
 
     prepare_parse_range_option(head_info);
 
