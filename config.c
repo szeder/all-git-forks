@@ -331,6 +331,7 @@ static int get_base_var(struct strbuf *name)
 			return -1;
 		if (c == ']')
 			return 0;
+		// 空格相当于这个节点的attribute，比如[remote "origin"]
 		if (isspace(c))
 			return get_extended_base_var(name, c);
 		if (!iskeychar(c) && c != '.')
@@ -385,8 +386,10 @@ static int git_parse_file(config_fn_t fn, void *data)
 			comment = 1;
 			continue;
 		}
+		// 接下来是一个分类的起始，比如[core]
 		if (c == '[') {
 			/* Reset prior to determining a new stem */
+			// 这里仅仅将长度和起始字符设置为0，并没有释放内存，这样做比较高效
 			strbuf_reset(var);
 			if (get_base_var(var) < 0 || var->len < 1)
 				break;
