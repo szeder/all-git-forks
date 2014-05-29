@@ -10,9 +10,10 @@ fi
 OPTS_SPEC="\
 git subtree add   --prefix=<prefix> <repository> <refspec>
 git subtree merge --prefix=<prefix> <commit>
-git subtree pull  --prefix=<prefix> <repository> <ref>
-git subtree push  --prefix=<prefix> <repository> <ref>
+git subtree pull  --prefix=<prefix> [<repository> [<refspec>...]]
+git subtree push  --prefix=<prefix> [<repository> [<refspec>...]]
 git subtree split --prefix=<prefix> <commit...>
+git subtree list
 --
 h,help        show the help
 q             quiet
@@ -102,15 +103,16 @@ command="$1"
 shift
 case "$command" in
 	add|merge|pull) default= ;;
-	split|push) default="--default HEAD" ;;
+	split|push|list) default="--default HEAD" ;;
 	*) die "Unknown command '$command'" ;;
 esac
 
-if [ -z "$prefix" ]; then
+if [ -z "$prefix" -a "$command" != "list" ]; then
 	die "You must provide the --prefix option."
 fi
 
 case "$command" in
+	list);;
 	add) [ -e "$prefix" ] && 
 		die "prefix '$prefix' already exists." ;;
 	*)   [ -e "$prefix" ] || 
@@ -757,6 +759,21 @@ cmd_push()
 	else
 		die "'$dir' must already exist. Try 'git subtree add'."
 	fi
+}
+
+subtree_list() 
+{
+	git config -f .gittrees -l | grep subtree | grep path | grep -o '=.*' | grep -o '[^=].*' |
+	while read path; do 
+		repository=$(git config -f .gittrees subtree.$path.url)
+		refspec=$(git config -f .gittrees subtree.$path.branch)
+		echo "    $path        (merged from $repository branch $refspec) "
+	done
+}
+
+cmd_list()
+{
+	subtree_list
 }
 
 "cmd_$command" "$@"

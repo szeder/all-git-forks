@@ -571,4 +571,76 @@ test_expect_success 'add another subtree with master branch' '
         check_equal ''"$(last_commit_message)"'' "Add sub2 subtree"
 '
 
+# Lets commit the changes we made to .gittrees file
+test_expect_success 'Commit chages to .gittrees for sub1 and sub2 in repo' '
+        git add .gittrees &&
+        git commit -m "Add .gittrees file"
+'
+# Tests for subtree list
+# Hardcode expected output to a file
+cat >expect <<-\EOF
+    sub1        (merged from ../shared_projects/subtree1 branch master) 
+    sub2        (merged from ../shared_projects/subtree2 branch master) 
+EOF
+
+test_expect_success 'check subtree list gives correct output' '
+        git subtree list>output &&
+        test_cmp expect output
+'
+# Lets commit the changes to parent1 before proceeding
+test_expect_success 'Commit changes to the repository' '
+        git add --all &&
+        git commit -m "Commit expect and output file additions"
+'
+
+# Tests for individual subtree pull using information in .gittrees
+# Go to subtree1 and make a change
+cd ../shared_projects/subtree1
+
+subtree1_change1="Add_line_to_Sub1_File2"
+
+echo $subtree1_change1>>sub1_file2
+
+# Lets commit the changes to subtree1 before proceeding
+test_expect_success 'Commit changes to the subtree1' '
+        git add --all &&
+        git commit -m "Commit change to sub1_file2"
+'
+
+# Switch to develop branch for a future test to push changes to master
+test_expect_success 'Switch to branch develop' '
+        git checkout -b develop
+'
+
+# Back to parent1
+cd ../../parent1
+
+test_expect_success 'check  git subtree pull <prefix> works' '
+        git subtree pull -P sub1 master &&
+        test_cmp sub1/sub1_file1 ../shared_projects/subtree1/sub1_file1 &&
+        test_cmp sub1/sub1_file2 ../shared_projects/subtree1/sub1_file2
+'
+
+# Now lets make local change on subtree and push it to subtree remote
+cd sub1
+
+local_change="Local addition of line to sub1 file 2"
+echo $local_change1>>sub1_file2
+
+# Back to parent1
+cd ..
+
+# Lets commit the changes to parent1 before proceeding
+test_expect_success 'Commit changes to parent repository' '
+        git add --all &&
+        git commit -m "Commit local changes to sub1/sub1 file2"
+'
+
+test_expect_success 'check git subtree push <prefix> works' '
+        git subtree push -P sub1 &&
+        cd ../shared_projects/subtree1 &&
+        git checkout master &&
+        test_cmp ../../parent1/sub1/sub1_file1 sub1_file1 &&
+        test_cmp ../../parent1/sub1/sub1_file2 sub1_file2
+'
 test_done
