@@ -1513,7 +1513,6 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	struct ref_lock *ref_lock;
 	struct commit_list *parents = NULL, **pptr = &parents;
 	struct stat statbuf;
-	int reverse_parents = 0;
 	struct commit *current_head = NULL;
 	struct commit_extra_header *extra = NULL;
 
@@ -1562,6 +1561,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		struct strbuf m = STRBUF_INIT;
 		FILE *fp;
 		int allow_fast_forward = 1;
+		int reverse_parents = 0;
 
 		if (!reflog_msg)
 			reflog_msg = "commit (merge)";

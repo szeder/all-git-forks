@@ -272,7 +272,7 @@ __git_eread ()
 {
 	f="$1"
 	shift
-	test -r "$f" && read "$@" < "$f"
+	test -r "$f" && read "$@" <"$f"
 }
 
 # __git_ps1 accepts 0 or 1 arguments (i.e., format string)
