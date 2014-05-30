@@ -4,6 +4,7 @@
 #include "tag.h"
 #include "dir.h"
 #include "string-list.h"
+#include "tempfile.h"
 
 /*
  * Make sure "ref" is something reasonable to have under ".git/refs/";

@@ -3,6 +3,7 @@
  */
 #include "cache.h"
 #include "sigchain.h"
+#include "tempfile.h"
 
 /*
  * File write-locks as used by Git.
@@ -262,13 +263,6 @@ int lock_temp_file_for_append(struct temp_file *tf, const char *path, int flags)
 		return -1;
 	}
 	return fd;
-}
-
-int close_temp_file(struct temp_file *temp_file)
-{
-	int fd = temp_file->fd;
-	temp_file->fd = -1;
-	return close(fd);
 }
 
 int commit_temp_file(struct temp_file *temp_file)
