@@ -298,7 +298,7 @@ static int do_recursive_merge(struct commit *base, struct commit *next,
 	const char **xopt;
 	static struct temp_file index_lock;
 
-	index_fd = hold_locked_index(&index_lock, 1);
+	index_fd = lock_index_for_update(&index_lock, 1);
 
 	read_cache();
 
@@ -675,7 +675,7 @@ static void prepare_revs(struct replay_opts *opts)
 static void read_and_refresh_cache(struct replay_opts *opts)
 {
 	static struct temp_file index_lock;
-	int index_fd = hold_locked_index(&index_lock, 0);
+	int index_fd = lock_index_for_update(&index_lock, 0);
 	if (read_index_preload(&the_index, NULL) < 0)
 		die(_("git %s: failed to read the index"), action_name(opts));
 	refresh_index(&the_index, REFRESH_QUIET|REFRESH_UNMERGED, NULL, NULL, NULL);

@@ -640,7 +640,7 @@ static int checkout(void)
 	setup_work_tree();
 
 	lock_file = xcalloc(1, sizeof(struct temp_file));
-	fd = hold_locked_index(lock_file, 1);
+	fd = lock_index_for_update(lock_file, 1);
 
 	memset(&opts, 0, sizeof opts);
 	opts.update = 1;

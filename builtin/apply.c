@@ -4231,7 +4231,7 @@ static int apply_patch(int fd, const char *filename, int options)
 
 	update_index = check_index && apply;
 	if (update_index && newfd < 0)
-		newfd = hold_locked_index(&lock_file, 1);
+		newfd = lock_index_for_update(&lock_file, 1);
 
 	if (check_index) {
 		if (read_cache() < 0)

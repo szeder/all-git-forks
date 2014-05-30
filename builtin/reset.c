@@ -351,7 +351,7 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 
 	if (reset_type != SOFT) {
 		struct temp_file *lock = xcalloc(1, sizeof(*lock));
-		int newfd = hold_locked_index(lock, 1);
+		int newfd = lock_index_for_update(lock, 1);
 		if (reset_type == MIXED) {
 			int flags = quiet ? REFRESH_QUIET : REFRESH_IN_PORCELAIN;
 			if (read_from_tree(&pathspec, sha1, intent_to_add))

@@ -208,7 +208,7 @@ static void refresh_index_quietly(void)
 	int fd;
 
 	lock_file = xcalloc(1, sizeof(struct temp_file));
-	fd = hold_locked_index(lock_file, 0);
+	fd = lock_index_for_update(lock_file, 0);
 	if (fd < 0)
 		return;
 	discard_cache();

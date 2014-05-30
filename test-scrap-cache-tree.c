@@ -6,7 +6,7 @@ static struct temp_file index_lock;
 
 int main(int ac, char **av)
 {
-	int fd = hold_locked_index(&index_lock, 1);
+	int fd = lock_index_for_update(&index_lock, 1);
 	if (read_cache() < 0)
 		die("unable to read index file");
 	active_cache_tree = NULL;

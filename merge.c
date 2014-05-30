@@ -72,7 +72,7 @@ int checkout_fast_forward(const unsigned char *head,
 
 	refresh_cache(REFRESH_QUIET);
 
-	fd = hold_locked_index(lock_file, 1);
+	fd = lock_index_for_update(lock_file, 1);
 
 	memset(&trees, 0, sizeof(trees));
 	memset(&opts, 0, sizeof(opts));

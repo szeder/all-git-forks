@@ -555,7 +555,7 @@ extern int lock_temp_file_for_append(struct temp_file *, const char *path, int);
 extern int commit_temp_file(struct temp_file *);
 extern void update_index_if_able(struct index_state *, struct temp_file *);
 
-extern int hold_locked_index(struct temp_file *, int);
+extern int lock_index_for_update(struct temp_file *, int);
 extern int commit_locked_index(struct temp_file *);
 extern void set_alternate_index_output(const char *);
 extern int close_temp_file(struct temp_file *);

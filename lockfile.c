@@ -288,9 +288,9 @@ int commit_temp_file(struct temp_file *temp_file)
 	return 0;
 }
 
-int hold_locked_index(struct temp_file *lk, int die_on_error)
+int lock_index_for_update(struct temp_file *tf, int die_on_error)
 {
-	return lock_temp_file_for_update(lk, get_index_file(),
+	return lock_temp_file_for_update(tf, get_index_file(),
 					 die_on_error
 					 ? LOCK_DIE_ON_ERROR
 					 : 0);

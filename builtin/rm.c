@@ -293,7 +293,7 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 	if (!index_only)
 		setup_work_tree();
 
-	newfd = hold_locked_index(&lock_file, 1);
+	newfd = lock_index_for_update(&lock_file, 1);
 
 	if (read_cache() < 0)
 		die(_("index file corrupt"));

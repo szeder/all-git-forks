@@ -479,7 +479,7 @@ static struct temp_file index_lock;
 static int update_paths(struct string_list *update)
 {
 	int i;
-	int fd = hold_locked_index(&index_lock, 0);
+	int fd = lock_index_for_update(&index_lock, 0);
 	int status = 0;
 
 	if (fd < 0)

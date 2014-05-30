@@ -2003,7 +2003,7 @@ int merge_recursive_generic(struct merge_options *o,
 		}
 	}
 
-	index_fd = hold_locked_index(lock, 1);
+	index_fd = lock_index_for_update(lock, 1);
 	clean = merge_recursive(o, head_commit, next_commit, ca,
 			result);
 	if (active_cache_changed &&

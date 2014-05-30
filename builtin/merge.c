@@ -660,7 +660,7 @@ static int try_merge_strategy(const char *strategy, struct commit_list *common,
 	static struct temp_file lock;
 	int index_fd;
 
-	index_fd = hold_locked_index(&lock, 1);
+	index_fd = lock_index_for_update(&lock, 1);
 	refresh_cache(REFRESH_QUIET);
 	if (active_cache_changed &&
 			(write_cache(index_fd, active_cache, active_nr) ||
@@ -699,7 +699,7 @@ static int try_merge_strategy(const char *strategy, struct commit_list *common,
 		for (j = common; j; j = j->next)
 			commit_list_insert(j->item, &reversed);
 
-		index_fd = hold_locked_index(&lock, 1);
+		index_fd = lock_index_for_update(&lock, 1);
 		clean = merge_recursive(&o, head,
 				remoteheads->item, reversed, &result);
 		if (active_cache_changed &&

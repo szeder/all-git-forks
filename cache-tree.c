@@ -577,7 +577,7 @@ int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 	 */
 	lock_file = xcalloc(1, sizeof(struct temp_file));
 
-	newfd = hold_locked_index(lock_file, 1);
+	newfd = lock_index_for_update(lock_file, 1);
 
 	entries = read_cache();
 	if (entries < 0)

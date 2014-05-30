@@ -471,7 +471,7 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 			read_cache_preload(NULL);
 			refresh_index(&the_index, REFRESH_QUIET|REFRESH_UNMERGED,
 				      NULL, NULL, NULL);
-			fd = hold_locked_index(&index_lock, 0);
+			fd = lock_index_for_update(&index_lock, 0);
 			if (0 <= fd)
 				update_index_if_able(&the_index, &index_lock);
 
