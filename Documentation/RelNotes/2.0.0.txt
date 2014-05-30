@@ -1,14 +1,19 @@
-Git v2.0 Release Notes
-======================
+Git v2.0 릴리즈 노트
+====================
 
-Backward compatibility notes
-----------------------------
+하위 호환성 노트
+----------------
 
 When "git push [$there]" does not say what to push, we have used the
 traditional "matching" semantics so far (all your branches were sent
 to the remote as long as there already are branches of the same name
 over there).  In Git 2.0, the default is now the "simple" semantics,
 which pushes:
+
+"git push [어딘가]" 라는 명령에 무엇을 푸시할 지 지정하지 않으면
+Git은 푸시할 때 전통적 "matching" 방식을 사용해왔다(리모트에 같은
+이름의 브랜치가 있는 모든 브랜치를 푸시함). Git 2.0에서는 "simple"
+방식을 기본으로 사용하며 그 특징은 다음과 같다:
 
  - only the current branch to the branch with the same name, and only
    when the current branch is set to integrate with that remote
@@ -17,10 +22,21 @@ which pushes:
  - only the current branch to the branch with the same name, if you
    are pushing to a remote that is not where you usually fetch from.
 
+ - Fetch 해 온 리모트로 푸시하는 경우 현재 작업중인 브랜치만 같은
+   이름의 브랜치로 푸시한다. 단 현재 브랜치가 해당 리모트 브랜치로
+   합쳐지도록 설정되어 있어야 한다. ????
+
+ - Fetch 해 온 리모트로 푸시하지 않는 경우 현재 작업중인 브랜치만
+   같은 이름의 브랜치로 푸시한다.
+
 You can use the configuration variable "push.default" to change
 this.  If you are an old-timer who wants to keep using the
 "matching" semantics, you can set the variable to "matching", for
 example.  Read the documentation for other possibilities.
+
+이 기능은 "push.default" 라는 설정값으로 정해진다. 기존의 "matching"
+방식을 계속 사용하려면 설정값을 "matching"으로 설정한다. 다른 사용
+가능한 옵션은 Documentation을 참고한다.
 
 When "git add -u" and "git add -A" are run inside a subdirectory
 without specifying which paths to add on the command line, they
@@ -28,6 +44,12 @@ operate on the entire tree for consistency with "git commit -a" and
 other commands (these commands used to operate only on the current
 subdirectory).  Say "git add -u ." or "git add -A ." if you want to
 limit the operation to the current directory.
+
+서브디렉토리에서 "git add -u"나 "git add -A"를 경로 파라미터를 주지 않고
+실행하면 전체 디렉토리를 대상으로 한다. "git commit -a" 같은 명령처럼
+전체 디렉토리를 대상으로 한다는 일관성을 유지하기 위함이다. 서브
+디렉토리 이하만 대상으로 하려면 "git add -u ."나 "git add -A ." 로
+명령을 실행한다.
 
 "git add <path>" is the same as "git add -A <path>" now, so that
 "git add dir/" will notice paths you removed from the directory and
