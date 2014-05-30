@@ -236,11 +236,11 @@ int lock_temp_file_for_update(struct temp_file *tf, const char *path, int flags)
 	return fd;
 }
 
-int hold_lock_file_for_append(struct temp_file *lk, const char *path, int flags)
+int lock_temp_file_for_append(struct temp_file *tf, const char *path, int flags)
 {
 	int fd, orig_fd;
 
-	fd = lock_file(lk, path, flags);
+	fd = lock_file(tf, path, flags);
 	if (fd < 0) {
 		if (flags & LOCK_DIE_ON_ERROR)
 			unable_to_lock_die(path, errno);
@@ -252,13 +252,13 @@ int hold_lock_file_for_append(struct temp_file *lk, const char *path, int flags)
 		if (errno != ENOENT) {
 			if (flags & LOCK_DIE_ON_ERROR)
 				die("cannot open '%s' for copying", path);
-			rollback_temp_file(lk);
+			rollback_temp_file(tf);
 			return error("cannot open '%s' for copying", path);
 		}
 	} else if (copy_fd(orig_fd, fd)) {
 		if (flags & LOCK_DIE_ON_ERROR)
 			exit(128);
-		rollback_temp_file(lk);
+		rollback_temp_file(tf);
 		return -1;
 	}
 	return fd;

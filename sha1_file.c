@@ -400,7 +400,7 @@ void read_info_alternates(const char * relative_base, int depth)
 void add_to_alternates_file(const char *reference)
 {
 	struct temp_file *lock = xcalloc(1, sizeof(struct temp_file));
-	int fd = hold_lock_file_for_append(lock, git_path("objects/info/alternates"), LOCK_DIE_ON_ERROR);
+	int fd = lock_temp_file_for_append(lock, git_path("objects/info/alternates"), LOCK_DIE_ON_ERROR);
 	char *alt = mkpath("%s\n", reference);
 	write_or_die(fd, alt, strlen(alt));
 	if (commit_temp_file(lock))

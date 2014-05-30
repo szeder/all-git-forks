@@ -551,7 +551,7 @@ struct temp_file {
 extern int unable_to_lock_error(const char *path, int err);
 extern NORETURN void unable_to_lock_die(const char *path, int err);
 extern int lock_temp_file_for_update(struct temp_file *, const char *path, int);
-extern int hold_lock_file_for_append(struct temp_file *, const char *path, int);
+extern int lock_temp_file_for_append(struct temp_file *, const char *path, int);
 extern int commit_temp_file(struct temp_file *);
 extern void update_index_if_able(struct index_state *, struct temp_file *);
 
