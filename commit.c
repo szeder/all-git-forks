@@ -1080,14 +1080,42 @@ static int do_sign_commit(struct strbuf *buf, const char *keyid)
 	return 0;
 }
 
-int parse_signed_commit(const unsigned char *sha1,
+/*
+ * Return the contents of the object pointed to by commit, as
+ * if read by read_sha1_file. However, in cases where the commit's
+ * data is already in memory, return that as an optimization.
+ *
+ * The resulting buffer may or may not be freshly allocated,
+ * and should only be freed by free_commit_buffer.
+ */
+static const char *read_commit_buffer(const struct commit *commit,
+				      enum object_type *type,
+				      unsigned long *size)
+{
+	if (commit->buffer) {
+		*type = OBJ_COMMIT;
+		*size = strlen(commit->buffer);
+		return commit->buffer;
+	}
+
+	return read_sha1_file(commit->object.sha1, type, size);
+}
+
+static void free_commit_buffer(const char *buffer, const struct commit *commit)
+{
+	if (buffer != commit->buffer)
+		free((char *)buffer);
+}
+
+int parse_signed_commit(const struct commit *commit,
 			struct strbuf *payload, struct strbuf *signature)
 {
+
 	unsigned long size;
 	enum object_type type;
-	char *buffer = read_sha1_file(sha1, &type, &size);
+	const char *buffer = read_commit_buffer(commit, &type, &size);
 	int in_signature, saw_signature = -1;
-	char *line, *tail;
+	const char *line, *tail;
 
 	if (!buffer || type != OBJ_COMMIT)
 		goto cleanup;
@@ -1098,7 +1126,7 @@ int parse_signed_commit(const unsigned char *sha1,
 	saw_signature = 0;
 	while (line < tail) {
 		const char *sig = NULL;
-		char *next = memchr(line, '\n', tail - line);
+		const char *next = memchr(line, '\n', tail - line);
 
 		next = next ? next + 1 : tail;
 		if (in_signature && line[0] == ' ')
@@ -1120,7 +1148,7 @@ int parse_signed_commit(const unsigned char *sha1,
 		line = next;
 	}
  cleanup:
-	free(buffer);
+	free_commit_buffer(buffer, commit);
 	return saw_signature;
 }
 
@@ -1211,7 +1239,7 @@ void check_commit_signature(const struct commit* commit, struct signature_check 
 
 	sigc->result = 'N';
 
-	if (parse_signed_commit(commit->object.sha1,
+	if (parse_signed_commit(commit,
 				&payload, &signature) <= 0)
 		goto out;
 	status = verify_signed_buffer(payload.buf, payload.len,
@@ -1258,10 +1286,10 @@ struct commit_extra_header *read_commit_extra_headers(struct commit *commit,
 	struct commit_extra_header *extra = NULL;
 	unsigned long size;
 	enum object_type type;
-	char *buffer = read_sha1_file(commit->object.sha1, &type, &size);
+	const char *buffer = read_commit_buffer(commit, &type, &size);
 	if (buffer && type == OBJ_COMMIT)
 		extra = read_commit_extra_header_lines(buffer, size, exclude);
-	free(buffer);
+	free_commit_buffer(buffer, commit);
 	return extra;
 }
 
