@@ -171,17 +171,22 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 		lk->owner = 0;
 		lk->on_list = 1;
 		strbuf_init(&lk->filename, 0);
+		strbuf_init(&lk->destination, 0);
 		lk->next = lock_file_list;
 		lock_file_list = lk;
 	}
 
-	strbuf_addstr(&lk->filename, path);
+	strbuf_addstr(&lk->destination, path);
 	if (!(flags & LOCK_NODEREF))
-		resolve_symlink(&lk->filename);
+		resolve_symlink(&lk->destination);
+
+	strbuf_addbuf(&lk->filename, &lk->destination);
 	strbuf_addstr(&lk->filename, LOCK_SUFFIX);
+
 	lk->fd = open(lk->filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (lk->fd < 0) {
 		strbuf_reset(&lk->filename);
+		strbuf_reset(&lk->destination);
 		return -1;
 	}
 	lk->owner = getpid();
@@ -268,24 +273,18 @@ int close_lock_file(struct lock_file *lk)
 
 int commit_lock_file(struct lock_file *lk)
 {
-	static struct strbuf result_file = STRBUF_INIT;
-	int err;
-
 	if (lk->fd >= 0 && close_lock_file(lk))
 		return -1;
 
 	if (!lk->active)
 		die("BUG: attempt to commit unlocked object");
 
-	/* remove ".lock": */
-	strbuf_add(&result_file, lk->filename.buf,
-		   lk->filename.len - LOCK_SUFFIX_LEN);
-	err = rename(lk->filename.buf, result_file.buf);
-	strbuf_reset(&result_file);
-	if (err)
+	if (rename(lk->filename.buf, lk->destination.buf))
 		return -1;
+
 	lk->active = 0;
 	strbuf_reset(&lk->filename);
+	strbuf_reset(&lk->destination);
 	return 0;
 }
 
@@ -311,6 +310,7 @@ int commit_locked_index(struct lock_file *lk)
 			return -1;
 		lk->active = 0;
 		strbuf_reset(&lk->filename);
+		strbuf_reset(&lk->destination);
 		return 0;
 	}
 	else
@@ -325,5 +325,6 @@ void rollback_lock_file(struct lock_file *lk)
 		unlink_or_warn(lk->filename.buf);
 		lk->active = 0;
 		strbuf_reset(&lk->filename);
+		strbuf_reset(&lk->destination);
 	}
 }

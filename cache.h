@@ -544,6 +544,7 @@ struct lock_file {
 	volatile pid_t owner;
 	char on_list;
 	struct strbuf filename;
+	struct strbuf destination;
 };
 #define LOCK_DIE_ON_ERROR 1
 #define LOCK_NODEREF 2
