@@ -264,16 +264,16 @@ int hold_lock_file_for_append(struct temp_file *lk, const char *path, int flags)
 	return fd;
 }
 
-int close_lock_file(struct temp_file *lk)
+int close_temp_file(struct temp_file *temp_file)
 {
-	int fd = lk->fd;
-	lk->fd = -1;
+	int fd = temp_file->fd;
+	temp_file->fd = -1;
 	return close(fd);
 }
 
 int commit_lock_file(struct temp_file *lk)
 {
-	if (lk->fd >= 0 && close_lock_file(lk))
+	if (lk->fd >= 0 && close_temp_file(lk))
 		return -1;
 
 	if (!lk->active)
@@ -304,7 +304,7 @@ void set_alternate_index_output(const char *name)
 int commit_locked_index(struct temp_file *lk)
 {
 	if (alternate_index_output) {
-		if (lk->fd >= 0 && close_lock_file(lk))
+		if (lk->fd >= 0 && close_temp_file(lk))
 			return -1;
 		if (rename(lk->filename.buf, alternate_index_output))
 			return -1;
@@ -321,7 +321,7 @@ void rollback_lock_file(struct temp_file *lk)
 {
 	if (lk->active) {
 		if (lk->fd >= 0)
-			close_lock_file(lk);
+			close_temp_file(lk);
 		unlink_or_warn(lk->filename.buf);
 		lk->active = 0;
 		strbuf_reset(&lk->filename);

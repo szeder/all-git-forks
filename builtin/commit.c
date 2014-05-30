@@ -326,7 +326,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 		refresh_cache_or_die(refresh_flags);
 
 		if (write_cache(fd, active_cache, active_nr) ||
-		    close_lock_file(&index_lock))
+		    close_temp_file(&index_lock))
 			die(_("unable to create temporary index"));
 
 		old_index_env = getenv(INDEX_ENVIRONMENT);
@@ -365,7 +365,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 		refresh_cache_or_die(refresh_flags);
 		update_main_cache_tree(WRITE_TREE_SILENT);
 		if (write_cache(fd, active_cache, active_nr) ||
-		    close_lock_file(&index_lock))
+		    close_temp_file(&index_lock))
 			die(_("unable to write new_index file"));
 		commit_style = COMMIT_NORMAL;
 		return index_lock.filename.buf;
@@ -436,7 +436,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	add_remove_files(&partial);
 	refresh_cache(REFRESH_QUIET);
 	if (write_cache(fd, active_cache, active_nr) ||
-	    close_lock_file(&index_lock))
+	    close_temp_file(&index_lock))
 		die(_("unable to write new_index file"));
 
 	fd = hold_lock_file_for_update(&false_lock,
@@ -449,7 +449,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	refresh_cache(REFRESH_QUIET);
 
 	if (write_cache(fd, active_cache, active_nr) ||
-	    close_lock_file(&false_lock))
+	    close_temp_file(&false_lock))
 		die(_("unable to write temporary index file"));
 
 	discard_cache();
