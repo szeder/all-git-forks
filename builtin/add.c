@@ -225,7 +225,7 @@ static int edit_patch(int argc, const char **argv, const char *prefix)
 	return 0;
 }
 
-static struct lock_file lock_file;
+static struct temp_file lock_file;
 
 static const char ignore_error[] =
 N_("The following paths are ignored by one of your .gitignore files:\n");

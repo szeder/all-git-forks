@@ -68,7 +68,7 @@ int checkout_fast_forward(const unsigned char *head,
 	struct tree_desc t[MAX_UNPACK_TREES];
 	int i, fd, nr_trees = 0;
 	struct dir_struct dir;
-	struct lock_file *lock_file = xcalloc(1, sizeof(struct lock_file));
+	struct temp_file *lock_file = xcalloc(1, sizeof(struct temp_file));
 
 	refresh_cache(REFRESH_QUIET);
 

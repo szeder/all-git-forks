@@ -4124,7 +4124,7 @@ static int write_out_results(struct patch *list)
 	return errs;
 }
 
-static struct lock_file lock_file;
+static struct temp_file lock_file;
 
 static struct string_list limit_by_name;
 static int has_include;

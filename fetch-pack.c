@@ -23,7 +23,7 @@ static int no_done;
 static int fetch_fsck_objects = -1;
 static int transfer_fsck_objects = -1;
 static int agent_supported;
-static struct lock_file shallow_lock;
+static struct temp_file shallow_lock;
 static const char *alternate_shallow_file;
 
 #define COMPLETE	(1U << 0)

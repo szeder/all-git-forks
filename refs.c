@@ -844,7 +844,7 @@ struct packed_ref_cache {
 	 * is also incremented when the file is locked and decremented
 	 * when it is unlocked.
 	 */
-	struct lock_file *lock;
+	struct temp_file *lock;
 
 	/* The metadata from when this packed-refs cache was read */
 	struct stat_validity validity;
@@ -867,7 +867,7 @@ static struct ref_cache {
 } ref_cache, *submodule_ref_caches;
 
 /* Lock used for the main packed-refs file: */
-static struct lock_file packlock;
+static struct temp_file packlock;
 
 /*
  * Increment the reference count of *packed_refs.
@@ -2080,7 +2080,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 		goto error_return;
 	}
 
-	lock->lk = xcalloc(1, sizeof(struct lock_file));
+	lock->lk = xcalloc(1, sizeof(struct temp_file));
 
 	lflags = 0;
 	if (flags & REF_NODEREF) {

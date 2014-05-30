@@ -2,7 +2,7 @@
 #include "tree.h"
 #include "cache-tree.h"
 
-static struct lock_file index_lock;
+static struct temp_file index_lock;
 
 int main(int ac, char **av)
 {

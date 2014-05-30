@@ -3,7 +3,7 @@
 #include "string-list.h"
 #include "parse-options.h"
 
-static struct lock_file credential_lock;
+static struct temp_file credential_lock;
 
 static void parse_credential_file(const char *fn,
 				  struct credential *c,

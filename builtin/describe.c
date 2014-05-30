@@ -465,7 +465,7 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 
 	if (argc == 0) {
 		if (dirty) {
-			static struct lock_file index_lock;
+			static struct temp_file index_lock;
 			int fd;
 
 			read_cache_preload(NULL);

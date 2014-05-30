@@ -1759,7 +1759,7 @@ static void dump_marks_helper(FILE *f,
 
 static void dump_marks(void)
 {
-	static struct lock_file mark_lock;
+	static struct temp_file mark_lock;
 	int mark_fd;
 	FILE *f;
 

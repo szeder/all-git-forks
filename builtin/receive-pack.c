@@ -432,7 +432,7 @@ static void refuse_unconfigured_deny_delete_current(void)
 static int command_singleton_iterator(void *cb_data, unsigned char sha1[20]);
 static int update_shallow_ref(struct command *cmd, struct shallow_info *si)
 {
-	static struct lock_file shallow_lock;
+	static struct temp_file shallow_lock;
 	struct sha1_array extra = SHA1_ARRAY_INIT;
 	const char *alt_file;
 	uint32_t mask = 1 << (cmd->index % 32);

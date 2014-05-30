@@ -350,7 +350,7 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 		die_if_unmerged_cache(reset_type);
 
 	if (reset_type != SOFT) {
-		struct lock_file *lock = xcalloc(1, sizeof(*lock));
+		struct temp_file *lock = xcalloc(1, sizeof(*lock));
 		int newfd = hold_locked_index(lock, 1);
 		if (reset_type == MIXED) {
 			int flags = quiet ? REFRESH_QUIET : REFRESH_IN_PORCELAIN;

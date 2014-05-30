@@ -79,8 +79,8 @@ N_("If you wish to skip this commit, use:\n"
 
 static const char *use_message_buffer;
 static const char commit_editmsg[] = "COMMIT_EDITMSG";
-static struct lock_file index_lock; /* real index */
-static struct lock_file false_lock; /* used only for partial commits */
+static struct temp_file index_lock; /* real index */
+static struct temp_file false_lock; /* used only for partial commits */
 static enum {
 	COMMIT_AS_IS = 1,
 	COMMIT_NORMAL,

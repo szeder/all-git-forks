@@ -537,8 +537,8 @@ extern int refresh_index(struct index_state *, unsigned int flags, const struct 
 #define LOCK_SUFFIX ".lock"
 #define LOCK_SUFFIX_LEN 5
 
-struct lock_file {
-	struct lock_file *volatile next;
+struct temp_file {
+	struct temp_file *volatile next;
 	volatile sig_atomic_t active;
 	volatile int fd;
 	volatile pid_t owner;
@@ -550,16 +550,16 @@ struct lock_file {
 #define LOCK_NODEREF 2
 extern int unable_to_lock_error(const char *path, int err);
 extern NORETURN void unable_to_lock_die(const char *path, int err);
-extern int hold_lock_file_for_update(struct lock_file *, const char *path, int);
-extern int hold_lock_file_for_append(struct lock_file *, const char *path, int);
-extern int commit_lock_file(struct lock_file *);
-extern void update_index_if_able(struct index_state *, struct lock_file *);
+extern int hold_lock_file_for_update(struct temp_file *, const char *path, int);
+extern int hold_lock_file_for_append(struct temp_file *, const char *path, int);
+extern int commit_lock_file(struct temp_file *);
+extern void update_index_if_able(struct index_state *, struct temp_file *);
 
-extern int hold_locked_index(struct lock_file *, int);
-extern int commit_locked_index(struct lock_file *);
+extern int hold_locked_index(struct temp_file *, int);
+extern int commit_locked_index(struct temp_file *);
 extern void set_alternate_index_output(const char *);
-extern int close_lock_file(struct lock_file *);
-extern void rollback_lock_file(struct lock_file *);
+extern int close_lock_file(struct temp_file *);
+extern void rollback_lock_file(struct temp_file *);
 extern int delete_ref(const char *, const unsigned char *sha1, int delopt);
 
 /* Environment bits from configuration mechanism */

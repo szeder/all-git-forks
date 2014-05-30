@@ -569,13 +569,13 @@ static struct cache_tree *cache_tree_find(struct cache_tree *it, const char *pat
 int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 {
 	int entries, was_valid, newfd;
-	struct lock_file *lock_file;
+	struct temp_file *lock_file;
 
 	/*
 	 * We can't free this memory, it becomes part of a linked list
 	 * parsed atexit()
 	 */
-	lock_file = xcalloc(1, sizeof(struct lock_file));
+	lock_file = xcalloc(1, sizeof(struct temp_file));
 
 	newfd = hold_locked_index(lock_file, 1);
 

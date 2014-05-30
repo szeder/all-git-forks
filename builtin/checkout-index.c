@@ -127,7 +127,7 @@ static const char * const builtin_checkout_index_usage[] = {
 	NULL
 };
 
-static struct lock_file lock_file;
+static struct temp_file lock_file;
 
 static int option_parse_u(const struct option *opt,
 			      const char *arg, int unset)

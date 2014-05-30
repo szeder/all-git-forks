@@ -1987,7 +1987,7 @@ int merge_recursive_generic(struct merge_options *o,
 			    struct commit **result)
 {
 	int clean, index_fd;
-	struct lock_file *lock = xcalloc(1, sizeof(struct lock_file));
+	struct temp_file *lock = xcalloc(1, sizeof(struct temp_file));
 	struct commit *head_commit = get_ref(head, o->branch1);
 	struct commit *next_commit = get_ref(merge, o->branch2);
 	struct commit_list *ca = NULL;

@@ -206,7 +206,7 @@ extern void check_shallow_file_for_update(void);
 extern void set_alternate_shallow_file(const char *path, int override);
 extern int write_shallow_commits(struct strbuf *out, int use_pack_protocol,
 				 const struct sha1_array *extra);
-extern void setup_alternate_shallow(struct lock_file *shallow_lock,
+extern void setup_alternate_shallow(struct temp_file *shallow_lock,
 				    const char **alternate_shallow_file,
 				    const struct sha1_array *extra);
 extern const char *setup_temporary_shallow(const struct sha1_array *extra);

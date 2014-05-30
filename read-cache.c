@@ -1776,7 +1776,7 @@ static int has_racy_timestamp(struct index_state *istate)
 /*
  * Opportunistically update the index but do not complain if we can't
  */
-void update_index_if_able(struct index_state *istate, struct lock_file *lockfile)
+void update_index_if_able(struct index_state *istate, struct temp_file *lockfile)
 {
 	if ((istate->cache_changed || has_racy_timestamp(istate)) &&
 	    !write_index(istate, lockfile->fd))

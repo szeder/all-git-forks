@@ -1520,7 +1520,7 @@ int git_config_set_multivar_in_file(const char *config_filename,
 {
 	int fd = -1, in_fd;
 	int ret;
-	struct lock_file *lock = NULL;
+	struct temp_file *lock = NULL;
 	char *filename_buf = NULL;
 
 	/* parse-key returns negative; flip the sign to feed exit(3) */
@@ -1537,7 +1537,7 @@ int git_config_set_multivar_in_file(const char *config_filename,
 	 * The lock serves a purpose in addition to locking: the new
 	 * contents of .git/config will be written into it.
 	 */
-	lock = xcalloc(sizeof(struct lock_file), 1);
+	lock = xcalloc(sizeof(struct temp_file), 1);
 	fd = hold_lock_file_for_update(lock, config_filename, 0);
 	if (fd < 0) {
 		error("could not lock config file %s: %s", config_filename, strerror(errno));
@@ -1779,7 +1779,7 @@ int git_config_rename_section_in_file(const char *config_filename,
 {
 	int ret = 0, remove = 0;
 	char *filename_buf = NULL;
-	struct lock_file *lock;
+	struct temp_file *lock;
 	int out_fd;
 	char buf[1024];
 	FILE *config_file;
@@ -1792,7 +1792,7 @@ int git_config_rename_section_in_file(const char *config_filename,
 	if (!config_filename)
 		config_filename = filename_buf = git_pathdup("config");
 
-	lock = xcalloc(sizeof(struct lock_file), 1);
+	lock = xcalloc(sizeof(struct temp_file), 1);
 	out_fd = hold_lock_file_for_update(lock, config_filename, 0);
 	if (out_fd < 0) {
 		ret = error("could not lock config file %s", config_filename);

@@ -612,7 +612,7 @@ static int checkout(void)
 {
 	unsigned char sha1[20];
 	char *head;
-	struct lock_file *lock_file;
+	struct temp_file *lock_file;
 	struct unpack_trees_options opts;
 	struct tree *tree;
 	struct tree_desc t;
@@ -639,7 +639,7 @@ static int checkout(void)
 	/* We need to be in the new work tree for the checkout */
 	setup_work_tree();
 
-	lock_file = xcalloc(1, sizeof(struct lock_file));
+	lock_file = xcalloc(1, sizeof(struct temp_file));
 	fd = hold_locked_index(lock_file, 1);
 
 	memset(&opts, 0, sizeof opts);

@@ -69,7 +69,7 @@
  * See Documentation/api-lockfile.txt for more information.
  */
 
-static struct lock_file *volatile lock_file_list;
+static struct temp_file *volatile lock_file_list;
 static const char *alternate_index_output;
 
 static void remove_lock_file(void)
@@ -154,7 +154,7 @@ static void resolve_symlink(struct strbuf *path)
 	strbuf_reset(&link);
 }
 
-static int lock_file(struct lock_file *lk, const char *path, int flags)
+static int lock_file(struct temp_file *lk, const char *path, int flags)
 {
 	if (!lock_file_list) {
 		/* One-time initialization */
@@ -228,7 +228,7 @@ NORETURN void unable_to_lock_die(const char *path, int err)
 	die("%s", unable_to_lock_message(path, err));
 }
 
-int hold_lock_file_for_update(struct lock_file *lk, const char *path, int flags)
+int hold_lock_file_for_update(struct temp_file *lk, const char *path, int flags)
 {
 	int fd = lock_file(lk, path, flags);
 	if (fd < 0 && (flags & LOCK_DIE_ON_ERROR))
@@ -236,7 +236,7 @@ int hold_lock_file_for_update(struct lock_file *lk, const char *path, int flags)
 	return fd;
 }
 
-int hold_lock_file_for_append(struct lock_file *lk, const char *path, int flags)
+int hold_lock_file_for_append(struct temp_file *lk, const char *path, int flags)
 {
 	int fd, orig_fd;
 
@@ -264,14 +264,14 @@ int hold_lock_file_for_append(struct lock_file *lk, const char *path, int flags)
 	return fd;
 }
 
-int close_lock_file(struct lock_file *lk)
+int close_lock_file(struct temp_file *lk)
 {
 	int fd = lk->fd;
 	lk->fd = -1;
 	return close(fd);
 }
 
-int commit_lock_file(struct lock_file *lk)
+int commit_lock_file(struct temp_file *lk)
 {
 	if (lk->fd >= 0 && close_lock_file(lk))
 		return -1;
@@ -288,7 +288,7 @@ int commit_lock_file(struct lock_file *lk)
 	return 0;
 }
 
-int hold_locked_index(struct lock_file *lk, int die_on_error)
+int hold_locked_index(struct temp_file *lk, int die_on_error)
 {
 	return hold_lock_file_for_update(lk, get_index_file(),
 					 die_on_error
@@ -301,7 +301,7 @@ void set_alternate_index_output(const char *name)
 	alternate_index_output = name;
 }
 
-int commit_locked_index(struct lock_file *lk)
+int commit_locked_index(struct temp_file *lk)
 {
 	if (alternate_index_output) {
 		if (lk->fd >= 0 && close_lock_file(lk))
@@ -317,7 +317,7 @@ int commit_locked_index(struct lock_file *lk)
 		return commit_lock_file(lk);
 }
 
-void rollback_lock_file(struct lock_file *lk)
+void rollback_lock_file(struct temp_file *lk)
 {
 	if (lk->active) {
 		if (lk->fd >= 0)

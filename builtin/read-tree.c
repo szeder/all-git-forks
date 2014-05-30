@@ -95,7 +95,7 @@ static int debug_merge(const struct cache_entry * const *stages,
 	return 0;
 }
 
-static struct lock_file lock_file;
+static struct temp_file lock_file;
 
 int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 {

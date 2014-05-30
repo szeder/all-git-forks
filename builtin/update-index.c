@@ -712,7 +712,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	char set_executable_bit = 0;
 	struct refresh_params refresh_args = {0, &has_errors};
 	int lock_error = 0;
-	struct lock_file *lock_file;
+	struct temp_file *lock_file;
 	struct parse_opt_ctx_t ctx;
 	int parseopt_state = PARSE_OPT_UNKNOWN;
 	struct option options[] = {
@@ -803,7 +803,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	git_config(git_default_config, NULL);
 
 	/* We can't free this memory, it becomes part of a linked list parsed atexit() */
-	lock_file = xcalloc(1, sizeof(struct lock_file));
+	lock_file = xcalloc(1, sizeof(struct temp_file));
 
 	newfd = hold_locked_index(lock_file, 0);
 	if (newfd < 0)

@@ -63,7 +63,7 @@ static void read_rr(struct string_list *rr)
 	fclose(in);
 }
 
-static struct lock_file write_lock;
+static struct temp_file write_lock;
 
 static int write_rr(struct string_list *rr, int out_fd)
 {
@@ -474,7 +474,7 @@ out:
 	return ret;
 }
 
-static struct lock_file index_lock;
+static struct temp_file index_lock;
 
 static int update_paths(struct string_list *update)
 {

@@ -657,7 +657,7 @@ static int try_merge_strategy(const char *strategy, struct commit_list *common,
 			      struct commit_list *remoteheads,
 			      struct commit *head, const char *head_arg)
 {
-	static struct lock_file lock;
+	static struct temp_file lock;
 	int index_fd;
 
 	index_fd = hold_locked_index(&lock, 1);

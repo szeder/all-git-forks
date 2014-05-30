@@ -237,7 +237,7 @@ static void print_advice(int show_hint, struct replay_opts *opts)
 
 static void write_message(struct strbuf *msgbuf, const char *filename)
 {
-	static struct lock_file msg_file;
+	static struct temp_file msg_file;
 
 	int msg_fd = hold_lock_file_for_update(&msg_file, filename,
 					       LOCK_DIE_ON_ERROR);
@@ -296,7 +296,7 @@ static int do_recursive_merge(struct commit *base, struct commit *next,
 	struct tree *result, *next_tree, *base_tree, *head_tree;
 	int clean, index_fd;
 	const char **xopt;
-	static struct lock_file index_lock;
+	static struct temp_file index_lock;
 
 	index_fd = hold_locked_index(&index_lock, 1);
 
@@ -674,7 +674,7 @@ static void prepare_revs(struct replay_opts *opts)
 
 static void read_and_refresh_cache(struct replay_opts *opts)
 {
-	static struct lock_file index_lock;
+	static struct temp_file index_lock;
 	int index_fd = hold_locked_index(&index_lock, 0);
 	if (read_index_preload(&the_index, NULL) < 0)
 		die(_("git %s: failed to read the index"), action_name(opts));
@@ -869,7 +869,7 @@ static int create_seq_dir(void)
 static void save_head(const char *head)
 {
 	const char *head_file = git_path(SEQ_HEAD_FILE);
-	static struct lock_file head_lock;
+	static struct temp_file head_lock;
 	struct strbuf buf = STRBUF_INIT;
 	int fd;
 
@@ -950,7 +950,7 @@ fail:
 static void save_todo(struct commit_list *todo_list, struct replay_opts *opts)
 {
 	const char *todo_file = git_path(SEQ_TODO_FILE);
-	static struct lock_file todo_lock;
+	static struct temp_file todo_lock;
 	struct strbuf buf = STRBUF_INIT;
 	int fd;
 

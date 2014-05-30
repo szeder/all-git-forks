@@ -233,7 +233,7 @@ static int is_tag_in_date_range(struct object *tag, struct rev_info *revs)
 int create_bundle(struct bundle_header *header, const char *path,
 		  int argc, const char **argv)
 {
-	static struct lock_file lock;
+	static struct temp_file lock;
 	int bundle_fd = -1;
 	int bundle_to_stdout;
 	struct argv_array argv_boundary = ARGV_ARRAY_INIT;

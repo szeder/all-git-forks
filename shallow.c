@@ -256,7 +256,7 @@ const char *setup_temporary_shallow(const struct sha1_array *extra)
 	return temporary_shallow.buf;
 }
 
-void setup_alternate_shallow(struct lock_file *shallow_lock,
+void setup_alternate_shallow(struct temp_file *shallow_lock,
 			     const char **alternate_shallow_file,
 			     const struct sha1_array *extra)
 {
@@ -301,7 +301,7 @@ void advertise_shallow_grafts(int fd)
  */
 void prune_shallow(int show_only)
 {
-	static struct lock_file shallow_lock;
+	static struct temp_file shallow_lock;
 	struct strbuf sb = STRBUF_INIT;
 	int fd;
 

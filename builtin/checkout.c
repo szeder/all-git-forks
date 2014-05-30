@@ -226,7 +226,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 	struct commit *head;
 	int errs = 0;
 	int newfd;
-	struct lock_file *lock_file;
+	struct temp_file *lock_file;
 
 	if (opts->track != BRANCH_TRACK_UNSPECIFIED)
 		die(_("'%s' cannot be used with updating paths"), "--track");
@@ -254,7 +254,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 		return run_add_interactive(revision, "--patch=checkout",
 					   &opts->pathspec);
 
-	lock_file = xcalloc(1, sizeof(struct lock_file));
+	lock_file = xcalloc(1, sizeof(struct temp_file));
 
 	newfd = hold_locked_index(lock_file, 1);
 	if (read_cache_preload(&opts->pathspec) < 0)
@@ -443,7 +443,7 @@ static int merge_working_tree(const struct checkout_opts *opts,
 			      int *writeout_error)
 {
 	int ret;
-	struct lock_file *lock_file = xcalloc(1, sizeof(struct lock_file));
+	struct temp_file *lock_file = xcalloc(1, sizeof(struct temp_file));
 	int newfd = hold_locked_index(lock_file, 1);
 
 	if (read_cache_preload(NULL) < 0)

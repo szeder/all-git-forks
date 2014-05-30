@@ -58,7 +58,7 @@ static const char *add_slash(const char *path)
 	return path;
 }
 
-static struct lock_file lock_file;
+static struct temp_file lock_file;
 #define SUBMODULE_WITH_GITDIR ((const char *)1)
 
 int cmd_mv(int argc, const char **argv, const char *prefix)

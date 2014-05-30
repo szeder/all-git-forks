@@ -192,7 +192,7 @@ static int need_to_gc(void)
 /* return NULL on success, else hostname running the gc */
 static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 {
-	static struct lock_file lock;
+	static struct temp_file lock;
 	char my_host[128];
 	struct strbuf sb = STRBUF_INIT;
 	struct stat st;
