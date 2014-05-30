@@ -454,7 +454,7 @@ static int update_shallow_ref(struct command *cmd, struct shallow_info *si)
 		return -1;
 	}
 
-	commit_lock_file(&shallow_lock);
+	commit_temp_file(&shallow_lock);
 
 	/*
 	 * Make sure setup_alternate_shallow() for the next ref does

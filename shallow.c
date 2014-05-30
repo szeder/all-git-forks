@@ -317,7 +317,7 @@ void prune_shallow(int show_only)
 		if (write_in_full(fd, sb.buf, sb.len) != sb.len)
 			die_errno("failed to write to %s",
 				  shallow_lock.filename.buf);
-		commit_lock_file(&shallow_lock);
+		commit_temp_file(&shallow_lock);
 	} else {
 		unlink(git_path("shallow"));
 		rollback_lock_file(&shallow_lock);

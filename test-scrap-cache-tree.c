@@ -11,7 +11,7 @@ int main(int ac, char **av)
 		die("unable to read index file");
 	active_cache_tree = NULL;
 	if (write_cache(fd, active_cache, active_nr)
-	    || commit_lock_file(&index_lock))
+	    || commit_temp_file(&index_lock))
 		die("unable to write index file");
 	return 0;
 }

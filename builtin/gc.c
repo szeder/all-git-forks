@@ -244,7 +244,7 @@ static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 		    (uintmax_t) getpid(), my_host);
 	write_in_full(fd, sb.buf, sb.len);
 	strbuf_release(&sb);
-	commit_lock_file(&lock);
+	commit_temp_file(&lock);
 
 	pidfile = git_pathdup("gc.pid");
 	sigchain_push_common(remove_pidfile_on_signal);

@@ -271,20 +271,20 @@ int close_temp_file(struct temp_file *temp_file)
 	return close(fd);
 }
 
-int commit_lock_file(struct temp_file *lk)
+int commit_temp_file(struct temp_file *temp_file)
 {
-	if (lk->fd >= 0 && close_temp_file(lk))
+	if (temp_file->fd >= 0 && close_temp_file(temp_file))
 		return -1;
 
-	if (!lk->active)
+	if (!temp_file->active)
 		die("BUG: attempt to commit unlocked object");
 
-	if (rename(lk->filename.buf, lk->destination.buf))
+	if (rename(temp_file->filename.buf, temp_file->destination.buf))
 		return -1;
 
-	lk->active = 0;
-	strbuf_reset(&lk->filename);
-	strbuf_reset(&lk->destination);
+	temp_file->active = 0;
+	strbuf_reset(&temp_file->filename);
+	strbuf_reset(&temp_file->destination);
 	return 0;
 }
 
@@ -314,7 +314,7 @@ int commit_locked_index(struct temp_file *lk)
 		return 0;
 	}
 	else
-		return commit_lock_file(lk);
+		return commit_temp_file(lk);
 }
 
 void rollback_lock_file(struct temp_file *lk)

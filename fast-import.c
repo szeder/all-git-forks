@@ -1798,7 +1798,7 @@ static void dump_marks(void)
 		return;
 	}
 
-	if (commit_lock_file(&mark_lock)) {
+	if (commit_temp_file(&mark_lock)) {
 		int saved_errno = errno;
 		rollback_lock_file(&mark_lock);
 		failure |= error("Unable to commit marks file %s: %s",

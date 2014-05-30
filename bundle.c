@@ -411,7 +411,7 @@ int create_bundle(struct bundle_header *header, const char *path,
 	if (finish_command(&rls))
 		return error(_("pack-objects died"));
 	if (!bundle_to_stdout) {
-		if (commit_lock_file(&lock))
+		if (commit_temp_file(&lock))
 			die_errno(_("cannot create '%s'"), path);
 	}
 	return 0;

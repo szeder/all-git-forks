@@ -1684,7 +1684,7 @@ int git_config_set_multivar_in_file(const char *config_filename,
 		munmap(contents, contents_sz);
 	}
 
-	if (commit_lock_file(lock) < 0) {
+	if (commit_temp_file(lock) < 0) {
 		error("could not commit config file %s", config_filename);
 		ret = CONFIG_NO_WRITE;
 		goto out_free;
@@ -1853,7 +1853,7 @@ int git_config_rename_section_in_file(const char *config_filename,
 	}
 	fclose(config_file);
 unlock_and_out:
-	if (commit_lock_file(lock) < 0)
+	if (commit_temp_file(lock) < 0)
 		ret = error("could not commit config file %s", config_filename);
 out:
 	free(filename_buf);

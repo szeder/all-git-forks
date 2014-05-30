@@ -244,7 +244,7 @@ static void write_message(struct strbuf *msgbuf, const char *filename)
 	if (write_in_full(msg_fd, msgbuf->buf, msgbuf->len) < 0)
 		die_errno(_("Could not write to %s"), filename);
 	strbuf_release(msgbuf);
-	if (commit_lock_file(&msg_file) < 0)
+	if (commit_temp_file(&msg_file) < 0)
 		die(_("Error wrapping up %s"), filename);
 }
 
@@ -877,7 +877,7 @@ static void save_head(const char *head)
 	strbuf_addf(&buf, "%s\n", head);
 	if (write_in_full(fd, buf.buf, buf.len) < 0)
 		die_errno(_("Could not write to %s"), head_file);
-	if (commit_lock_file(&head_lock) < 0)
+	if (commit_temp_file(&head_lock) < 0)
 		die(_("Error wrapping up %s."), head_file);
 }
 
@@ -961,7 +961,7 @@ static void save_todo(struct commit_list *todo_list, struct replay_opts *opts)
 		strbuf_release(&buf);
 		die_errno(_("Could not write to %s"), todo_file);
 	}
-	if (commit_lock_file(&todo_lock) < 0) {
+	if (commit_temp_file(&todo_lock) < 0) {
 		strbuf_release(&buf);
 		die(_("Error wrapping up %s."), todo_file);
 	}

@@ -403,7 +403,7 @@ void add_to_alternates_file(const char *reference)
 	int fd = hold_lock_file_for_append(lock, git_path("objects/info/alternates"), LOCK_DIE_ON_ERROR);
 	char *alt = mkpath("%s\n", reference);
 	write_or_die(fd, alt, strlen(alt));
-	if (commit_lock_file(lock))
+	if (commit_temp_file(lock))
 		die("could not close alternates file");
 	if (alt_odb_tail)
 		link_alt_odb_entries(alt, strlen(alt), '\n', NULL, 0);

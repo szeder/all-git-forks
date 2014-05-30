@@ -941,7 +941,7 @@ static void update_shallow(struct fetch_pack_args *args,
 			unlink_or_warn(git_path("shallow"));
 			rollback_lock_file(&shallow_lock);
 		} else
-			commit_lock_file(&shallow_lock);
+			commit_temp_file(&shallow_lock);
 		return;
 	}
 
@@ -964,7 +964,7 @@ static void update_shallow(struct fetch_pack_args *args,
 			setup_alternate_shallow(&shallow_lock,
 						&alternate_shallow_file,
 						&extra);
-			commit_lock_file(&shallow_lock);
+			commit_temp_file(&shallow_lock);
 		}
 		sha1_array_clear(&extra);
 		return;
@@ -1001,7 +1001,7 @@ static void update_shallow(struct fetch_pack_args *args,
 		setup_alternate_shallow(&shallow_lock,
 					&alternate_shallow_file,
 					&extra);
-		commit_lock_file(&shallow_lock);
+		commit_temp_file(&shallow_lock);
 		sha1_array_clear(&extra);
 		sha1_array_clear(&ref);
 		return;

@@ -197,10 +197,10 @@ static int commit_index_files(void)
 	case COMMIT_AS_IS:
 		break; /* nothing to do */
 	case COMMIT_NORMAL:
-		err = commit_lock_file(&index_lock);
+		err = commit_temp_file(&index_lock);
 		break;
 	case COMMIT_PARTIAL:
-		err = commit_lock_file(&index_lock);
+		err = commit_temp_file(&index_lock);
 		rollback_lock_file(&false_lock);
 		break;
 	}

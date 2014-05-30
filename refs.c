@@ -2223,7 +2223,7 @@ int commit_packed_refs(void)
 	fd = packed_ref_cache->lock->fd;
 	do_for_each_entry_in_dir(get_packed_ref_dir(packed_ref_cache),
 				 0, write_packed_entry_fn, &fd);
-	if (commit_lock_file(packed_ref_cache->lock))
+	if (commit_temp_file(packed_ref_cache->lock))
 		error = -1;
 	packed_ref_cache->lock = NULL;
 	release_packed_ref_cache(packed_ref_cache);
@@ -2680,7 +2680,7 @@ int close_ref(struct ref_lock *lock)
 
 int commit_ref(struct ref_lock *lock)
 {
-	if (commit_lock_file(lock->lk))
+	if (commit_temp_file(lock->lk))
 		return -1;
 	lock->lock_fd = -1;
 	return 0;
