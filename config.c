@@ -1701,7 +1701,7 @@ int git_config_set_multivar_in_file(const char *config_filename,
 
 out_free:
 	if (lock)
-		rollback_lock_file(lock);
+		rollback_temp_file(lock);
 	free(filename_buf);
 	return ret;
 

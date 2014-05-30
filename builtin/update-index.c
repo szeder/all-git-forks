@@ -898,7 +898,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			die("Unable to write new index file");
 	}
 
-	rollback_lock_file(lock_file);
+	rollback_temp_file(lock_file);
 
 	return has_errors ? 1 : 0;
 }

@@ -1776,7 +1776,7 @@ static void dump_marks(void)
 	f = fdopen(mark_fd, "w");
 	if (!f) {
 		int saved_errno = errno;
-		rollback_lock_file(&mark_lock);
+		rollback_temp_file(&mark_lock);
 		failure |= error("Unable to write marks file %s: %s",
 			export_marks_file, strerror(saved_errno));
 		return;
@@ -1792,7 +1792,7 @@ static void dump_marks(void)
 	dump_marks_helper(f, 0, marks);
 	if (ferror(f) || fclose(f)) {
 		int saved_errno = errno;
-		rollback_lock_file(&mark_lock);
+		rollback_temp_file(&mark_lock);
 		failure |= error("Unable to write marks file %s: %s",
 			export_marks_file, strerror(saved_errno));
 		return;
@@ -1800,7 +1800,7 @@ static void dump_marks(void)
 
 	if (commit_temp_file(&mark_lock)) {
 		int saved_errno = errno;
-		rollback_lock_file(&mark_lock);
+		rollback_temp_file(&mark_lock);
 		failure |= error("Unable to commit marks file %s: %s",
 			export_marks_file, strerror(saved_errno));
 		return;

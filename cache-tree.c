@@ -618,7 +618,7 @@ int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 		hashcpy(sha1, active_cache_tree->sha1);
 
 	if (0 <= newfd)
-		rollback_lock_file(lock_file);
+		rollback_temp_file(lock_file);
 
 	return 0;
 }

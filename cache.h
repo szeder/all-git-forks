@@ -559,7 +559,7 @@ extern int hold_locked_index(struct temp_file *, int);
 extern int commit_locked_index(struct temp_file *);
 extern void set_alternate_index_output(const char *);
 extern int close_temp_file(struct temp_file *);
-extern void rollback_lock_file(struct temp_file *);
+extern void rollback_temp_file(struct temp_file *);
 extern int delete_ref(const char *, const unsigned char *sha1, int delopt);
 
 /* Environment bits from configuration mechanism */

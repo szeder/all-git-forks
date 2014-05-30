@@ -1782,7 +1782,7 @@ void update_index_if_able(struct index_state *istate, struct temp_file *lockfile
 	    !write_index(istate, lockfile->fd))
 		commit_locked_index(lockfile);
 	else
-		rollback_lock_file(lockfile);
+		rollback_temp_file(lockfile);
 }
 
 int write_index(struct index_state *istate, int newfd)

@@ -449,7 +449,7 @@ static int update_shallow_ref(struct command *cmd, struct shallow_info *si)
 	setup_alternate_shallow(&shallow_lock, &alt_file, &extra);
 	if (check_shallow_connected(command_singleton_iterator,
 				    0, cmd, alt_file)) {
-		rollback_lock_file(&shallow_lock);
+		rollback_temp_file(&shallow_lock);
 		sha1_array_clear(&extra);
 		return -1;
 	}

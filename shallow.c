@@ -320,7 +320,7 @@ void prune_shallow(int show_only)
 		commit_temp_file(&shallow_lock);
 	} else {
 		unlink(git_path("shallow"));
-		rollback_lock_file(&shallow_lock);
+		rollback_temp_file(&shallow_lock);
 	}
 	strbuf_release(&sb);
 }

@@ -234,7 +234,7 @@ static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 			fclose(fp);
 		if (should_exit) {
 			if (fd >= 0)
-				rollback_lock_file(&lock);
+				rollback_temp_file(&lock);
 			*ret_pid = pid;
 			return locking_host;
 		}

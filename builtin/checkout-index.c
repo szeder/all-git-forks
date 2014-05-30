@@ -231,7 +231,7 @@ int cmd_checkout_index(int argc, const char **argv, const char *prefix)
 		 * want to update cache.
 		 */
 		if (state.refresh_cache) {
-			rollback_lock_file(&lock_file);
+			rollback_temp_file(&lock_file);
 			newfd = -1;
 		}
 		state.refresh_cache = 0;

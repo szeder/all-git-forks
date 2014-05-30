@@ -2237,7 +2237,7 @@ void rollback_packed_refs(void)
 
 	if (!packed_ref_cache->lock)
 		die("internal error: packed-refs not locked");
-	rollback_lock_file(packed_ref_cache->lock);
+	rollback_temp_file(packed_ref_cache->lock);
 	packed_ref_cache->lock = NULL;
 	release_packed_ref_cache(packed_ref_cache);
 	clear_packed_ref_cache(&ref_cache);
@@ -2690,7 +2690,7 @@ void unlock_ref(struct ref_lock *lock)
 {
 	/* Do not free lock->lk -- atexit() still looks at them */
 	if (lock->lk)
-		rollback_lock_file(lock->lk);
+		rollback_temp_file(lock->lk);
 	free(lock->ref_name);
 	free(lock->orig_ref_name);
 	free(lock);

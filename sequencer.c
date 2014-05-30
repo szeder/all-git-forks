@@ -323,7 +323,7 @@ static int do_recursive_merge(struct commit *base, struct commit *next,
 	     commit_locked_index(&index_lock)))
 		/* TRANSLATORS: %s will be "revert" or "cherry-pick" */
 		die(_("%s: Unable to write new index file"), action_name(opts));
-	rollback_lock_file(&index_lock);
+	rollback_temp_file(&index_lock);
 
 	if (opts->signoff)
 		append_signoff(msgbuf, 0, 0);
@@ -684,7 +684,7 @@ static void read_and_refresh_cache(struct replay_opts *opts)
 		    commit_locked_index(&index_lock))
 			die(_("git %s: failed to refresh the index"), action_name(opts));
 	}
-	rollback_lock_file(&index_lock);
+	rollback_temp_file(&index_lock);
 }
 
 static int format_todo(struct strbuf *buf, struct commit_list *todo_list,

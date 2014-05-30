@@ -78,7 +78,7 @@ static void remove_lock_file(void)
 
 	while (lock_file_list) {
 		if (lock_file_list->owner == me)
-			rollback_lock_file(lock_file_list);
+			rollback_temp_file(lock_file_list);
 		lock_file_list = lock_file_list->next;
 	}
 }
@@ -193,7 +193,7 @@ static int lock_file(struct temp_file *lk, const char *path, int flags)
 	lk->active = 1;
 	if (adjust_shared_perm(lk->filename.buf)) {
 		error("cannot fix permission bits on %s", lk->filename.buf);
-		rollback_lock_file(lk);
+		rollback_temp_file(lk);
 		return -1;
 	}
 	return lk->fd;
@@ -252,13 +252,13 @@ int hold_lock_file_for_append(struct temp_file *lk, const char *path, int flags)
 		if (errno != ENOENT) {
 			if (flags & LOCK_DIE_ON_ERROR)
 				die("cannot open '%s' for copying", path);
-			rollback_lock_file(lk);
+			rollback_temp_file(lk);
 			return error("cannot open '%s' for copying", path);
 		}
 	} else if (copy_fd(orig_fd, fd)) {
 		if (flags & LOCK_DIE_ON_ERROR)
 			exit(128);
-		rollback_lock_file(lk);
+		rollback_temp_file(lk);
 		return -1;
 	}
 	return fd;
@@ -317,14 +317,14 @@ int commit_locked_index(struct temp_file *lk)
 		return commit_temp_file(lk);
 }
 
-void rollback_lock_file(struct temp_file *lk)
+void rollback_temp_file(struct temp_file *temp_file)
 {
-	if (lk->active) {
-		if (lk->fd >= 0)
-			close_temp_file(lk);
-		unlink_or_warn(lk->filename.buf);
-		lk->active = 0;
-		strbuf_reset(&lk->filename);
-		strbuf_reset(&lk->destination);
+	if (temp_file->active) {
+		if (temp_file->fd >= 0)
+			close_temp_file(temp_file);
+		unlink_or_warn(temp_file->filename.buf);
+		temp_file->active = 0;
+		strbuf_reset(&temp_file->filename);
+		strbuf_reset(&temp_file->destination);
 	}
 }

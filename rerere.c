@@ -496,7 +496,7 @@ static int update_paths(struct string_list *update)
 		    commit_locked_index(&index_lock))
 			die("Unable to write new index file");
 	} else if (fd >= 0)
-		rollback_lock_file(&index_lock);
+		rollback_temp_file(&index_lock);
 	return status;
 }
 

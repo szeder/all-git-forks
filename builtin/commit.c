@@ -180,11 +180,11 @@ static void rollback_index_files(void)
 	case COMMIT_AS_IS:
 		break; /* nothing to do */
 	case COMMIT_NORMAL:
-		rollback_lock_file(&index_lock);
+		rollback_temp_file(&index_lock);
 		break;
 	case COMMIT_PARTIAL:
-		rollback_lock_file(&index_lock);
-		rollback_lock_file(&false_lock);
+		rollback_temp_file(&index_lock);
+		rollback_temp_file(&false_lock);
 		break;
 	}
 }
@@ -201,7 +201,7 @@ static int commit_index_files(void)
 		break;
 	case COMMIT_PARTIAL:
 		err = commit_temp_file(&index_lock);
-		rollback_lock_file(&false_lock);
+		rollback_temp_file(&false_lock);
 		break;
 	}
 
@@ -389,7 +389,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 			    commit_locked_index(&index_lock))
 				die(_("unable to write new_index file"));
 		} else {
-			rollback_lock_file(&index_lock);
+			rollback_temp_file(&index_lock);
 		}
 		commit_style = COMMIT_AS_IS;
 		return get_index_file();
