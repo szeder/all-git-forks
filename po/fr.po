@@ -9508,7 +9508,7 @@ msgstr "étiquette '%s' non trouvée."
 #: builtin/tag.c:259
 #, c-format
 msgid "Deleted tag '%s' (was %s)\n"
-msgstr "Étiquette '%s' supprimée (elle était %s)\n"
+msgstr "Étiquette '%s' supprimée (elle était sur %s)\n"
 
 #: builtin/tag.c:271
 #, c-format
