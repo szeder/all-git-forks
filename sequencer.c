@@ -239,7 +239,7 @@ static void write_message(struct strbuf *msgbuf, const char *filename)
 {
 	static struct temp_file msg_file;
 
-	int msg_fd = hold_lock_file_for_update(&msg_file, filename,
+	int msg_fd = lock_temp_file_for_update(&msg_file, filename,
 					       LOCK_DIE_ON_ERROR);
 	if (write_in_full(msg_fd, msgbuf->buf, msgbuf->len) < 0)
 		die_errno(_("Could not write to %s"), filename);
@@ -873,7 +873,7 @@ static void save_head(const char *head)
 	struct strbuf buf = STRBUF_INIT;
 	int fd;
 
-	fd = hold_lock_file_for_update(&head_lock, head_file, LOCK_DIE_ON_ERROR);
+	fd = lock_temp_file_for_update(&head_lock, head_file, LOCK_DIE_ON_ERROR);
 	strbuf_addf(&buf, "%s\n", head);
 	if (write_in_full(fd, buf.buf, buf.len) < 0)
 		die_errno(_("Could not write to %s"), head_file);
@@ -954,7 +954,7 @@ static void save_todo(struct commit_list *todo_list, struct replay_opts *opts)
 	struct strbuf buf = STRBUF_INIT;
 	int fd;
 
-	fd = hold_lock_file_for_update(&todo_lock, todo_file, LOCK_DIE_ON_ERROR);
+	fd = lock_temp_file_for_update(&todo_lock, todo_file, LOCK_DIE_ON_ERROR);
 	if (format_todo(&buf, todo_list, opts) < 0)
 		die(_("Could not format %s."), todo_file);
 	if (write_in_full(fd, buf.buf, buf.len) < 0) {

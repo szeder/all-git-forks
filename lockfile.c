@@ -228,9 +228,9 @@ NORETURN void unable_to_lock_die(const char *path, int err)
 	die("%s", unable_to_lock_message(path, err));
 }
 
-int hold_lock_file_for_update(struct temp_file *lk, const char *path, int flags)
+int lock_temp_file_for_update(struct temp_file *tf, const char *path, int flags)
 {
-	int fd = lock_file(lk, path, flags);
+	int fd = lock_file(tf, path, flags);
 	if (fd < 0 && (flags & LOCK_DIE_ON_ERROR))
 		unable_to_lock_die(path, errno);
 	return fd;
@@ -290,7 +290,7 @@ int commit_temp_file(struct temp_file *temp_file)
 
 int hold_locked_index(struct temp_file *lk, int die_on_error)
 {
-	return hold_lock_file_for_update(lk, get_index_file(),
+	return lock_temp_file_for_update(lk, get_index_file(),
 					 die_on_error
 					 ? LOCK_DIE_ON_ERROR
 					 : 0);

@@ -439,7 +439,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	    close_temp_file(&index_lock))
 		die(_("unable to write new_index file"));
 
-	fd = hold_lock_file_for_update(&false_lock,
+	fd = lock_temp_file_for_update(&false_lock,
 				       git_path("next-index-%"PRIuMAX,
 						(uintmax_t) getpid()),
 				       LOCK_DIE_ON_ERROR);

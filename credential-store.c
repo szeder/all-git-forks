@@ -54,7 +54,7 @@ static void print_line(struct strbuf *buf)
 static void rewrite_credential_file(const char *fn, struct credential *c,
 				    struct strbuf *extra)
 {
-	if (hold_lock_file_for_update(&credential_lock, fn, 0) < 0)
+	if (lock_temp_file_for_update(&credential_lock, fn, 0) < 0)
 		die_errno("unable to get credential storage lock");
 	if (extra)
 		print_line(extra);

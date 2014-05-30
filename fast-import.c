@@ -1766,7 +1766,7 @@ static void dump_marks(void)
 	if (!export_marks_file)
 		return;
 
-	mark_fd = hold_lock_file_for_update(&mark_lock, export_marks_file, 0);
+	mark_fd = lock_temp_file_for_update(&mark_lock, export_marks_file, 0);
 	if (mark_fd < 0) {
 		failure |= error("Unable to write marks file %s: %s",
 			export_marks_file, strerror(errno));

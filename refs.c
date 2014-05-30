@@ -2109,7 +2109,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 		goto error_return;
 	}
 
-	lock->lock_fd = hold_lock_file_for_update(lock->lk, ref_file, lflags);
+	lock->lock_fd = lock_temp_file_for_update(lock->lk, ref_file, lflags);
 	if (lock->lock_fd < 0) {
 		if (errno == ENOENT && --attempts_remaining > 0)
 			/*
@@ -2193,7 +2193,7 @@ int lock_packed_refs(int flags)
 {
 	struct packed_ref_cache *packed_ref_cache;
 
-	if (hold_lock_file_for_update(&packlock, git_path("packed-refs"), flags) < 0)
+	if (lock_temp_file_for_update(&packlock, git_path("packed-refs"), flags) < 0)
 		return -1;
 	/*
 	 * Get the current packed-refs while holding the lock.  If the

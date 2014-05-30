@@ -248,7 +248,7 @@ int create_bundle(struct bundle_header *header, const char *path,
 	if (bundle_to_stdout)
 		bundle_fd = 1;
 	else
-		bundle_fd = hold_lock_file_for_update(&lock, path,
+		bundle_fd = lock_temp_file_for_update(&lock, path,
 						      LOCK_DIE_ON_ERROR);
 
 	/* write signature */
