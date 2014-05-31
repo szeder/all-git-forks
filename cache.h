@@ -7,6 +7,7 @@
 #include "advice.h"
 #include "gettext.h"
 #include "convert.h"
+#include "tempfile.h"
 
 #include SHA1_HEADER
 #ifndef git_SHA_CTX
@@ -536,16 +537,6 @@ extern int refresh_index(struct index_state *, unsigned int flags, const struct 
 /* String appended to a filename to derive the lockfile name: */
 #define LOCK_SUFFIX ".lock"
 #define LOCK_SUFFIX_LEN 5
-
-struct temp_file {
-	struct temp_file *volatile next;
-	volatile sig_atomic_t active;
-	volatile int fd;
-	volatile pid_t owner;
-	char on_list;
-	struct strbuf filename;
-	struct strbuf destination;
-};
 #define LOCK_DIE_ON_ERROR 1
 #define LOCK_NODEREF 2
 extern int unable_to_lock_error(const char *path, int err);
