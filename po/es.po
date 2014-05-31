@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-28 21:28+0200\n"
+"PO-Revision-Date: 2014-05-31 16:45+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -7388,7 +7388,7 @@ msgstr ""
 
 #: builtin/pack-objects.c:2606
 msgid "reuse existing objects"
-msgstr ""
+msgstr "reutiliza objetos existentes"
 
 #: builtin/pack-objects.c:2608
 msgid "use OFS_DELTA objects"
@@ -7464,11 +7464,11 @@ msgstr ""
 
 #: builtin/pack-objects.c:2723
 msgid "Counting objects"
-msgstr ""
+msgstr "Contabilizando objetos"
 
 #: builtin/pack-refs.c:6
 msgid "git pack-refs [options]"
-msgstr ""
+msgstr "git pack-refs [opciones]"
 
 #: builtin/pack-refs.c:14
 msgid "pack everything"
@@ -7480,11 +7480,11 @@ msgstr ""
 
 #: builtin/prune-packed.c:7
 msgid "git prune-packed [-n|--dry-run] [-q|--quiet]"
-msgstr ""
+msgstr "git prune-packed [-n|--dry-run] [-q|--quiet]"
 
 #: builtin/prune-packed.c:49
 msgid "Removing duplicate objects"
-msgstr ""
+msgstr "Eliminando objetos duplicados"
 
 #: builtin/prune.c:12
 msgid "git prune [-n] [-v] [--expire <time>] [--] [<head>...]"
@@ -7624,7 +7624,7 @@ msgstr ""
 
 #: builtin/push.c:299
 msgid "Updates were rejected because the tag already exists in the remote."
-msgstr ""
+msgstr "Las actualizaciones han sido rechazadas porque la etiqueta ya existe en el remoto."
 
 #: builtin/push.c:302
 msgid ""
@@ -7663,7 +7663,7 @@ msgstr ""
 
 #: builtin/push.c:411
 msgid "--all and --tags are incompatible"
-msgstr ""
+msgstr "--all y --tags son incompatibles"
 
 #: builtin/push.c:412
 msgid "--all can't be combined with refspecs"
@@ -7671,7 +7671,7 @@ msgstr ""
 
 #: builtin/push.c:417
 msgid "--mirror and --tags are incompatible"
-msgstr ""
+msgstr "--mirror y --tags son incompatibles"
 
 #: builtin/push.c:418
 msgid "--mirror can't be combined with refspecs"
@@ -7679,11 +7679,11 @@ msgstr ""
 
 #: builtin/push.c:423
 msgid "--all and --mirror are incompatible"
-msgstr ""
+msgstr "--all y --mirror son incompatibles"
 
 #: builtin/push.c:483
 msgid "repository"
-msgstr ""
+msgstr "repositorio"
 
 #: builtin/push.c:484
 msgid "push all refs"
@@ -7703,7 +7703,7 @@ msgstr ""
 
 #: builtin/push.c:491
 msgid "force updates"
-msgstr ""
+msgstr "fuerza actualizaciones"
 
 #: builtin/push.c:493
 msgid "refname>:<expect"
@@ -7747,7 +7747,7 @@ msgstr ""
 
 #: builtin/push.c:518
 msgid "--delete is incompatible with --all, --mirror and --tags"
-msgstr ""
+msgstr "--delete es incompatible con --all, --mirror y --tags"
 
 #: builtin/push.c:520
 msgid "--delete doesn't make sense without any refs"
@@ -7762,19 +7762,19 @@ msgstr ""
 
 #: builtin/read-tree.c:109
 msgid "write resulting index to <file>"
-msgstr ""
+msgstr "escribe el índice resultante al <fichero>"
 
 #: builtin/read-tree.c:112
 msgid "only empty the index"
-msgstr ""
+msgstr "sólo vacía el índice"
 
 #: builtin/read-tree.c:114
 msgid "Merging"
-msgstr ""
+msgstr "Fusión"
 
 #: builtin/read-tree.c:116
 msgid "perform a merge in addition to a read"
-msgstr ""
+msgstr "lleva a cabo una fusión además de una lectura"
 
 #: builtin/read-tree.c:118
 msgid "3-way merge if no file level merging required"
@@ -7782,15 +7782,15 @@ msgstr ""
 
 #: builtin/read-tree.c:120
 msgid "3-way merge in presence of adds and removes"
-msgstr ""
+msgstr "fusión de 3-vías en presencia de añadidos y borrados"
 
 #: builtin/read-tree.c:122
 msgid "same as -m, but discard unmerged entries"
-msgstr ""
+msgstr "igual que -m, pero descarta entradas no fusionadas"
 
 #: builtin/read-tree.c:123
 msgid "<subdirectory>/"
-msgstr ""
+msgstr "<subdirectorio>/"
 
 #: builtin/read-tree.c:124
 msgid "read the tree into the index under <subdirectory>/"
@@ -7798,7 +7798,7 @@ msgstr ""
 
 #: builtin/read-tree.c:127
 msgid "update working tree with merge result"
-msgstr ""
+msgstr "actualiza el árbol de trabajo con el resultado de la fusión"
 
 #: builtin/read-tree.c:129
 msgid "gitignore"
