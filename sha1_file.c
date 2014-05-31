@@ -22,6 +22,7 @@
 #include "bulk-checkin.h"
 #include "streaming.h"
 #include "dir.h"
+#include "tempfile.h"
 
 #ifndef O_NOATIME
 #if defined(__linux__) && (defined(__i386__) || defined(__PPC__))

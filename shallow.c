@@ -9,6 +9,7 @@
 #include "revision.h"
 #include "commit-slab.h"
 #include "sigchain.h"
+#include "tempfile.h"
 
 static int is_shallow = -1;
 static struct stat_validity shallow_stat;

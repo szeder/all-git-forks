@@ -2,6 +2,7 @@
 #include "credential.h"
 #include "string-list.h"
 #include "parse-options.h"
+#include "tempfile.h"
 
 static struct temp_file credential_lock;
 

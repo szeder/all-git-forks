@@ -7,6 +7,7 @@
 #include "ll-merge.h"
 #include "attr.h"
 #include "pathspec.h"
+#include "tempfile.h"
 
 #define RESOLVED 0
 #define PUNTED 1

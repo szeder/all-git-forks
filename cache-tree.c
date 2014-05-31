@@ -2,6 +2,7 @@
 #include "tree.h"
 #include "tree-walk.h"
 #include "cache-tree.h"
+#include "tempfile.h"
 
 #ifndef DEBUG
 #define DEBUG 0

@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "tree.h"
 #include "cache-tree.h"
+#include "tempfile.h"
 
 static struct temp_file index_lock;
 

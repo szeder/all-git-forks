@@ -14,6 +14,7 @@
 #include "merge-recursive.h"
 #include "refs.h"
 #include "argv-array.h"
+#include "tempfile.h"
 
 #define GIT_REFLOG_ACTION "GIT_REFLOG_ACTION"
 

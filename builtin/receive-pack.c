@@ -15,6 +15,7 @@
 #include "connected.h"
 #include "argv-array.h"
 #include "version.h"
+#include "tempfile.h"
 
 static const char receive_pack_usage[] = "git receive-pack <git-dir>";
 

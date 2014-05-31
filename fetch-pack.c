@@ -14,6 +14,7 @@
 #include "version.h"
 #include "prio-queue.h"
 #include "sha1-array.h"
+#include "tempfile.h"
 
 static int transfer_unpack_limit = -1;
 static int fetch_unpack_limit = -1;

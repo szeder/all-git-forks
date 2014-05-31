@@ -265,23 +265,6 @@ int lock_temp_file_for_append(struct temp_file *tf, const char *path, int flags)
 	return fd;
 }
 
-int commit_temp_file(struct temp_file *temp_file)
-{
-	if (temp_file->fd >= 0 && close_temp_file(temp_file))
-		return -1;
-
-	if (!temp_file->active)
-		die("BUG: attempt to commit unlocked object");
-
-	if (rename(temp_file->filename.buf, temp_file->destination.buf))
-		return -1;
-
-	temp_file->active = 0;
-	strbuf_reset(&temp_file->filename);
-	strbuf_reset(&temp_file->destination);
-	return 0;
-}
-
 int lock_index_for_update(struct temp_file *tf, int die_on_error)
 {
 	return lock_temp_file_for_update(tf, get_index_file(),
