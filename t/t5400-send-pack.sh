@@ -129,6 +129,96 @@ test_expect_success 'denyNonFastforwards trumps --force' '
 	test "$victim_orig" = "$victim_head"
 '
 
+test_expect_success 'denyCaseConflictRefs works' '
+	(
+	    cd victim &&
+	    git config receive.denyCaseConflictRefs true &&
+	    git config receive.denyDeletes false
+	) &&
+	git send-pack ./victim HEAD:refs/heads/case/conflict &&
+	orig_ver=$(git rev-parse HEAD) &&
+	test_must_fail git send-pack ./victim HEAD^:refs/heads/Case/Conflict &&
+	# confirm that this had no effect upstream
+	(
+	    cd victim &&
+	    ref=$(git for-each-ref --format="%(refname)" refs/heads/Case/Conflict) &&
+	    echo "$ref" | test_must_fail grep -q Case/Conflict &&
+	    remote_ver=$(git rev-parse case/conflict) &&
+	    test "$orig_ver" = "$remote_ver"
+	) &&
+	git send-pack ./victim HEAD^:refs/heads/notacase/conflict &&
+	test_must_fail git send-pack ./victim :Case/Conflict &&
+	# confirm that this had no effect upstream
+	(
+	    cd victim &&
+	    ref=$(git for-each-ref --format="%(refname)" refs/heads/Case/Conflict) &&
+	    echo "$ref" | test_must_fail grep -q Case/Conflict &&
+	    remote_ver=$(git rev-parse case/conflict) &&
+	    test "$orig_ver" = "$remote_ver"
+	) &&
+	git send-pack ./victim :case/conflict &&
+	# confirm that this took effect upstream
+	(
+	    cd victim &&
+	    test_must_fail git rev-parse case/conflict
+	) &&
+	# check that we can recreate a branch after deleting a
+	# case-conflict of it
+	case_conflict_ver=$(git rev-parse HEAD^) &&
+	git send-pack ./victim HEAD^:refs/heads/Case/Conflict &&
+	(
+	    cd victim &&
+	    ref=$(git for-each-ref --format="%(refname)" refs/heads/case/conflict) &&
+	    echo "$ref" | test_must_fail grep -q case/conflict  &&
+	    remote_ver=$(git rev-parse Case/Conflict) &&
+	    test "$case_conflict_ver" = "$remote_ver"
+	) &&
+	# check subdirectory
+	test_must_fail git send-pack ./victim HEAD:refs/heads/case/conflict/morx &&
+	# confirm that this had no effect upstream
+	(
+	    cd victim &&
+	    ref=$(git for-each-ref --format="%(refname)" refs/heads/case/conflict/morx) &&
+	    echo "$ref" | test_must_fail grep -q case/conflict/morx &&
+	    remote_ver=$(git rev-parse Case/Conflict) &&
+	    test "$case_conflict_ver" = "$remote_ver"
+	) &&
+	#check parent directory
+	test_must_fail git send-pack ./victim HEAD:refs/heads/case/other &&
+	# confirm that this had no effect upstream
+	(
+	    cd victim &&
+	    ref=$(git for-each-ref --format="%(refname)" refs/heads/case/other) &&
+	    echo "$ref" | test_must_fail grep -q case/other &&
+	    remote_ver=$(git rev-parse Case/Conflict) &&
+	    test "$case_conflict_ver" = "$remote_ver"
+	)
+'
+test_expect_success 'denyCaseConflictRefs works in same send-pack case' '
+	(
+	    cd victim &&
+	    git config receive.denyCaseConflictRefs true &&
+	    git config receive.denyDeletes false
+	) &&
+	test_must_fail git send-pack ./victim HEAD:refs/heads/case2 HEAD~:refs/heads/CASE2 &&
+	(
+	    cd victim &&
+	    ref=$(git for-each-ref --format="%(refname)" refs/heads/CASE2) &&
+	    echo "$ref" | test_must_fail grep -q CASE2 &&
+	    remote_ver=$(git rev-parse case2) &&
+	    test "$orig_ver" = "$remote_ver"
+	) &&
+	case_conflict_ver=$(git rev-parse HEAD^) &&
+	git send-pack ./victim :refs/heads/case2 HEAD~:refs/heads/CASE2 &&
+	(
+	    cd victim &&
+	    ref=$(git for-each-ref --format="%(refname)" refs/heads/case2) &&
+	    echo "$ref" | test_must_fail grep -q case2 &&
+	    remote_ver=$(git rev-parse CASE2) &&
+	    test "$case_conflict_ver" = "$remote_ver"
+	)
+'
+
 test_expect_success 'push --all excludes remote-tracking hierarchy' '
 	mkdir parent &&
 	(

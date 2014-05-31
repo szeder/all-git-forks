@@ -31,6 +31,15 @@
 [[def_cache]]cache::
 	Obsolete for: <<def_index,index>>.
 
+[[def_case_conflict]]case conflict::
+	Two entities (e.g. filenames or refs) that differ only in case.
+	These can cause problems on case-insensitive filesystems, and
+	Git has machinery to prevent these problems in various cases.
+	case conflict refs also include the situation where one ref has
+	a path component which is a case conflict of a different ref's path
+	component in the same directory e.g. refs/heads/case/a is a case
+	conflict of refs/heads/CASE/b
+
 [[def_chain]]chain::
 	A list of objects, where each <<def_object,object>> in the list contains
 	a reference to its successor (for example, the successor of a

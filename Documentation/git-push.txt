@@ -323,8 +323,9 @@ remote rejected::
 	of the following safety options in effect:
 	`receive.denyCurrentBranch` (for pushes to the checked out
 	branch), `receive.denyNonFastForwards` (for forced
-	non-fast-forward updates), `receive.denyDeletes` or
-	`receive.denyDeleteCurrent`.  See linkgit:git-config[1].
+	non-fast-forward updates), `receive.denyDeletes`,
+	`receive.denyCaseConflictRefs` or `receive.denyDeleteCurrent`.
+	See linkgit:git-config[1].
 
 remote failure::
 	The remote end did not report the successful update of the ref,

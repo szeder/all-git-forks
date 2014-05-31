@@ -2053,6 +2053,13 @@ receive.unpackLimit::
 	especially on slow filesystems.  If not set, the value of
 	`transfer.unpackLimit` is used instead.
 
+receive.denyCaseConflictRefs::
+	If set to true, git-receive-pack will deny a ref update that
+	creates a ref which has a path component which is the same but
+	for case as an existing ref.  This is useful when clients are
+	on a case-insensitive filesystem, which will cause errors when
+	given refs which differ only in case.
+
 receive.denyDeletes::
 	If set to true, git-receive-pack will deny a ref update that deletes
 	the ref. Use this to prevent such a ref deletion via a push.

@@ -27,6 +27,7 @@ enum deny_action {
 
 static int deny_deletes;
 static int deny_non_fast_forwards;
+static int deny_case_conflict_refs = DENY_UNCONFIGURED;
 static enum deny_action deny_current_branch = DENY_UNCONFIGURED;
 static enum deny_action deny_delete_current = DENY_UNCONFIGURED;
 static int receive_fsck_objects = -1;
@@ -68,6 +69,11 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 
 	if (status)
 		return status;
+
+	if (strcmp(var, "receive.denycaseconflictrefs") == 0) {
+		deny_case_conflict_refs = parse_deny_action(var, value);
+		return 0;
+	}
 
 	if (strcmp(var, "receive.denydeletes") == 0) {
 		deny_deletes = git_config_bool(var, value);
@@ -468,6 +474,143 @@ static int update_shallow_ref(struct command *cmd, struct shallow_info *si)
 	return 0;
 }
 
+/*
+ * This contains not just refs, but ref prefixes -- i.e. not just
+ * refs/heads/foo/bar, but refs, refs/heads, and refs/heads/foo
+ */
+struct ref_cache_entry {
+	struct hashmap_entry ent;
+	unsigned int count; /* count of refs having this as a component */
+	char ref[FLEX_ARRAY];
+};
+
+static struct hashmap *ref_case_conflict_cache;
+
+static int ref_cache_entry_cmp(const struct ref_cache_entry *e1,
+			       const struct ref_cache_entry *e2, const char *ref)
+{
+	return strcasecmp(e1->ref, ref ? ref : e2->ref);
+}
+
+static void ensure_ref_case_conflict_cache(void);
+
+/*
+ * Insert a ref into the ref cache, as well as all of its ancestor
+ * directory names -- so if we insert refs/heads/something/other,
+ * refs, refs/heads, refs/heads/something/other will be included.
+ */
+static int ref_cache_insert(const char *refname, struct hashmap *map)
+{
+	int total_len = 0, comp_len;
+
+	ensure_ref_case_conflict_cache();
+	while ((comp_len = check_refname_component(refname + total_len, 0)) >= 0) {
+		struct ref_cache_entry *old;
+		struct ref_cache_entry *entry = xmalloc(sizeof(*entry) + total_len + comp_len + 1);
+		total_len += comp_len;
+		memcpy(entry->ref, refname, total_len);
+		entry->ref[total_len] = 0;
+		entry->count = 1;
+		hashmap_entry_init(entry, memihash(entry->ref, total_len));
+		old = hashmap_get(map, entry, entry->ref);
+		if (old) {
+			old->count ++;
+			free(entry);
+		} else
+			hashmap_add(map, entry);
+		total_len ++;
+	}
+}
+
+/*
+ * Remove a ref from the ref cache, as well as any of its ancestor
+ * directory names that no longer contain any refs.
+ */
+static int ref_cache_delete(const char *refname, struct hashmap *map)
+{
+	int total_len = 0, comp_len;
+
+	struct ref_cache_entry *entry = xmalloc(sizeof(*entry) + strlen(refname));
+
+	ensure_ref_case_conflict_cache();
+	while ((comp_len = check_refname_component(refname + total_len, 0)) >= 0) {
+		struct ref_cache_entry *old;
+		total_len += comp_len;
+		memcpy(entry->ref, refname, total_len);
+		entry->ref[total_len] = 0;
+		hashmap_entry_init(entry, memihash(entry->ref, total_len));
+		old = hashmap_get(map, entry, entry->ref);
+		if (old) {
+			old->count --;
+			if (old->count == 0) {
+				hashmap_remove(map, old, old->ref);
+				free(old);
+			}
+		} else {
+			warn("Ref cache coherency failure: %s from %s", entry->ref, refname);
+			break;
+		}
+		total_len ++;
+	}
+	free(entry);
+}
+
+
+static int ref_cache_insert_cb(const char *refname, const unsigned char *sha1,
+			       int flags, void *cb_data)
+{
+	ref_cache_insert(refname, cb_data);
+}
+
+static void ensure_ref_case_conflict_cache(void)
+{
+	if (ref_case_conflict_cache)
+		return;
+	ref_case_conflict_cache = xmalloc(sizeof(*ref_case_conflict_cache));
+	hashmap_init(ref_case_conflict_cache,
+		     (hashmap_cmp_fn)ref_cache_entry_cmp, 1000);
+
+	for_each_ref(ref_cache_insert_cb, (void *)ref_case_conflict_cache);
+}
+
+/*
+ * Search the ref cache for a ref that is a case conflict of this
+ * incoming ref; this includes prefix case conflicts so that
+ * refs/heads/case/conflict will conflict with refs/heads/CASE/other
+ */
+static int ref_is_case_conflict(const char *name) {
+	struct ref_cache_entry key;
+	struct ref_cache_entry *existing;
+	int total_len = 0, comp_len;
+	char *name_so_far = strdup(name);
+
+	ensure_ref_case_conflict_cache();
+
+	while ((comp_len = check_refname_component(name + total_len, 0)) >= 0) {
+		total_len += comp_len;
+		name_so_far[total_len] = 0;
+		hashmap_entry_init(&key, memihash(name_so_far, total_len));
+		existing = hashmap_get(ref_case_conflict_cache, &key, name_so_far);
+		if (!existing)
+			return 0;
+		if (memcmp(existing->ref, name_so_far, total_len))
+			return 1;
+		name_so_far[total_len] = '/';
+		total_len ++;
+	}
+
+	free(name_so_far);
+	return 0;
+}
+
+static int ref_is_denied_case_conflict(const char *name)
+{
+	if (deny_case_conflict_refs <= DENY_IGNORE)
+		return 0;
+
+	return ref_is_case_conflict(name);
+}
+
 static const char *update(struct command *cmd, struct shallow_info *si)
 {
 	const char *name = cmd->ref_name;
@@ -481,6 +624,17 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 	if (!starts_with(name, "refs/") || check_refname_format(name + 5, 0)) {
 		rp_error("refusing to create funny ref '%s' remotely", name);
 		return "funny refname";
+	}
+
+	if (ref_is_denied_case_conflict(name)) {
+		switch (deny_case_conflict_refs) {
+		case DENY_WARN:
+			rp_warning("creating ref '%s': upper/lower case conflict exists", name);
+			break;
+		case DENY_REFUSE:
+			rp_error("refusing to create ref '%s': upper/lower case conflict exists", name);
+			return "funny refname";
+		}
 	}
 
 	strbuf_addf(&namespaced_name_buf, "%s%s", get_git_namespace(), name);
@@ -573,6 +727,8 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 			rp_error("failed to delete %s", name);
 			return "failed to delete";
 		}
+		if (deny_case_conflict_refs > DENY_IGNORE)
+			ref_cache_delete(name, ref_case_conflict_cache);
 		return NULL; /* good */
 	}
 	else {
@@ -589,6 +745,8 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 		if (write_ref_sha1(lock, new_sha1, "push")) {
 			return "failed to write"; /* error() already called */
 		}
+		if (deny_case_conflict_refs > DENY_IGNORE)
+			ref_cache_insert(name, ref_case_conflict_cache);
 		return NULL; /* good */
 	}
 }
@@ -1171,6 +1329,8 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 		die("'%s' does not appear to be a git repository", dir);
 
 	git_config(receive_pack_config, NULL);
+	if (deny_case_conflict_refs == DENY_UNCONFIGURED)
+		deny_case_conflict_refs = ignore_case ? DENY_REFUSE : DENY_IGNORE;
 
 	if (0 <= transfer_unpack_limit)
 		unpack_limit = transfer_unpack_limit;

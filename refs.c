@@ -29,12 +29,7 @@ static inline int bad_ref_char(int ch)
 	return 0;
 }
 
-/*
- * Try to read one refname component from the front of refname.  Return
- * the length of the component found, or -1 if the component is not
- * legal.
- */
-static int check_refname_component(const char *refname, int flags)
+int check_refname_component(const char *refname, int flags)
 {
 	const char *cp;
 	char last = '\0';

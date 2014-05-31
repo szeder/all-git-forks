@@ -200,6 +200,12 @@ extern int for_each_reflog(each_ref_fn, void *);
  * "." or "..").
  */
 extern int check_refname_format(const char *refname, int flags);
+/*
+ * Try to read one refname component from the front of refname.  Return
+ * the length of the component found, or -1 if the component is not
+ * legal.
+ */
+extern int check_refname_component(const char *refname, int flags);
 
 extern const char *prettify_refname(const char *refname);
 extern char *shorten_unambiguous_ref(const char *refname, int strict);
