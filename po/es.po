@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-05-31 16:45+0200\n"
+"PO-Revision-Date: 2014-06-01 21:43+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -7806,15 +7806,15 @@ msgstr ""
 
 #: builtin/read-tree.c:130
 msgid "allow explicitly ignored files to be overwritten"
-msgstr ""
+msgstr "permite que los ficheros ignorados explícitamente sean sobrescritos"
 
 #: builtin/read-tree.c:133
 msgid "don't check the working tree after merging"
-msgstr ""
+msgstr "no comprueba al árbol de trabajo tras la fusión"
 
 #: builtin/read-tree.c:134
 msgid "don't update the index or the work tree"
-msgstr ""
+msgstr "no actualiza el índice ni el árbol de trabajo"
 
 #: builtin/read-tree.c:136
 msgid "skip applying sparse checkout filter"
@@ -7832,11 +7832,11 @@ msgstr ""
 #: builtin/reflog.c:615 builtin/reflog.c:620
 #, c-format
 msgid "'%s' is not a valid timestamp"
-msgstr ""
+msgstr "'%s' no es una fecha-hora válida"
 
 #: builtin/remote.c:12
 msgid "git remote [-v | --verbose]"
-msgstr ""
+msgstr "git remote [-v | --verbose]"
 
 #: builtin/remote.c:13
 msgid ""
@@ -7846,83 +7846,85 @@ msgstr ""
 
 #: builtin/remote.c:14 builtin/remote.c:33
 msgid "git remote rename <old> <new>"
-msgstr ""
+msgstr "git remote rename <actual> <nuevo>"
 
 #: builtin/remote.c:15 builtin/remote.c:38
 msgid "git remote remove <name>"
-msgstr ""
+msgstr "git remote remove <nombre>"
 
 #: builtin/remote.c:16
 msgid "git remote set-head <name> (-a | --auto | -d | --delete |<branch>)"
-msgstr ""
+msgstr "git remote set-head <nombre> (-a | --auto | -d | --delete |<rama>)"
 
 #: builtin/remote.c:17
 msgid "git remote [-v | --verbose] show [-n] <name>"
-msgstr ""
+msgstr "git remote [-v | --verbose] show [-n] <nombre>"
 
 #: builtin/remote.c:18
 msgid "git remote prune [-n | --dry-run] <name>"
-msgstr ""
+msgstr "git remote prune [-n | --dry-run] <nombre>"
 
 #: builtin/remote.c:19
 msgid ""
 "git remote [-v | --verbose] update [-p | --prune] [(<group> | <remote>)...]"
-msgstr ""
+msgstr "git remote [-v | --verbose] update [-p | --prune] [(<grupo> | <remoto>)...]"
 
 #: builtin/remote.c:20
 msgid "git remote set-branches [--add] <name> <branch>..."
-msgstr ""
+msgstr "git remote set-branches [--add] <nombre> <rama>..."
 
 #: builtin/remote.c:21 builtin/remote.c:69
 msgid "git remote set-url [--push] <name> <newurl> [<oldurl>]"
-msgstr ""
+msgstr "git remote set-url [--push] <nombre> <url-nueva> [<url-actual>]"
 
 #: builtin/remote.c:22 builtin/remote.c:70
 msgid "git remote set-url --add <name> <newurl>"
-msgstr ""
+msgstr "git remote set-url --add <nombre> <url-nueva>"
 
 #: builtin/remote.c:23 builtin/remote.c:71
 msgid "git remote set-url --delete <name> <url>"
-msgstr ""
+msgstr "git remote set-url --delete <nombre> <url>"
 
 #: builtin/remote.c:28
 msgid "git remote add [<options>] <name> <url>"
-msgstr ""
+msgstr "git remote add [<opciones>] <nombre> <url>"
 
 #: builtin/remote.c:43
 msgid "git remote set-head <name> (-a | --auto | -d | --delete | <branch>)"
-msgstr ""
+msgstr "git remote set-head <nombre> (-a | --auto | -d | --delete | <rama>)"
 
 #: builtin/remote.c:48
 msgid "git remote set-branches <name> <branch>..."
-msgstr ""
+msgstr "git remote set-branches <nombre> <rama>..."
 
 #: builtin/remote.c:49
 msgid "git remote set-branches --add <name> <branch>..."
-msgstr ""
+msgstr "git remote set-branches --add <nombre> <rama>..."
 
 #: builtin/remote.c:54
 msgid "git remote show [<options>] <name>"
-msgstr ""
+msgstr "git remote show [<opciones>] <nombre>"
 
 #: builtin/remote.c:59
 msgid "git remote prune [<options>] <name>"
-msgstr ""
+msgstr "git remote prune [<opciones>] <nombre>"
 
 #: builtin/remote.c:64
 msgid "git remote update [<options>] [<group> | <remote>]..."
-msgstr ""
+msgstr "git remote update [<opciones>] [<grupo> | <remoto>]..."
 
 #: builtin/remote.c:88
 #, c-format
 msgid "Updating %s"
-msgstr ""
+msgstr "Actualizando %s"
 
 #: builtin/remote.c:120
 msgid ""
 "--mirror is dangerous and deprecated; please\n"
 "\t use --mirror=fetch or --mirror=push instead"
 msgstr ""
+"--mirror es peligroso y está depreciado; por favor\n"
+"\t use --mirror=fetch o --mirror=push en su lugar"
 
 #: builtin/remote.c:137
 #, c-format
@@ -7968,12 +7970,12 @@ msgstr ""
 #: builtin/remote.c:185 builtin/remote.c:641
 #, c-format
 msgid "remote %s already exists."
-msgstr ""
+msgstr "el remoto %s ya existe."
 
 #: builtin/remote.c:189 builtin/remote.c:645
 #, c-format
 msgid "'%s' is not a valid remote name"
-msgstr ""
+msgstr "'%s' no es un nombre válido de remoto"
 
 #: builtin/remote.c:233
 #, c-format
@@ -8006,7 +8008,7 @@ msgstr ""
 #: builtin/remote.c:634 builtin/remote.c:787 builtin/remote.c:885
 #, c-format
 msgid "No such remote: %s"
-msgstr ""
+msgstr "No existe el remoto: %s"
 
 #: builtin/remote.c:651
 #, c-format
@@ -8039,17 +8041,17 @@ msgstr ""
 #: builtin/remote.c:711
 #, c-format
 msgid "deleting '%s' failed"
-msgstr ""
+msgstr "no he podido borrar '%s'"
 
 #: builtin/remote.c:745
 #, c-format
 msgid "creating '%s' failed"
-msgstr ""
+msgstr "no podido crear '%s'"
 
 #: builtin/remote.c:759
 #, c-format
 msgid "Could not remove branch %s"
-msgstr ""
+msgstr "No he podido eliminar la rama %s"
 
 #: builtin/remote.c:829
 msgid ""
@@ -8059,7 +8061,11 @@ msgid_plural ""
 "Note: Some branches outside the refs/remotes/ hierarchy were not removed;\n"
 "to delete them, use:"
 msgstr[0] ""
+"Nota: No ha sido eliminada una rama externa a la jerarquía refs/remotes/;\n"
+"para borrarla use:"
 msgstr[1] ""
+"Nota: No han sido eliminadas unas ramas externas a la jerarquía refs/remotes/;\n"
+"para borrarlas use:"
 
 #: builtin/remote.c:938
 #, c-format
