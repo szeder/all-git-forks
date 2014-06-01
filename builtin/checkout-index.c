@@ -9,6 +9,7 @@
 #include "quote.h"
 #include "cache-tree.h"
 #include "parse-options.h"
+#include "tempfile.h"
 
 #define CHECKOUT_ALL 4
 static int line_termination = '\n';

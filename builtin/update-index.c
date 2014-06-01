@@ -13,6 +13,7 @@
 #include "parse-options.h"
 #include "pathspec.h"
 #include "dir.h"
+#include "tempfile.h"
 
 /*
  * Default to not allowing changes to the list of files. The

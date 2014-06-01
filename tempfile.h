@@ -3,6 +3,7 @@
 
 #include "cache.h"
 
+extern void rollback_temp_file(struct temp_file *);
 extern int commit_temp_file(struct temp_file *);
 extern int close_temp_file(struct temp_file *);
 
