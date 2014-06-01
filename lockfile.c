@@ -72,6 +72,29 @@
 
 static const char *alternate_index_output;
 
+static int lock_file(struct temp_file *tf, const char *path, int flags)
+{
+	int fd, tflags;
+
+	/* Convert lockfile flags to tempfile flags */
+	tflags = 0;
+	if (flags & LOCK_NODEREF)
+		tflags |= TEMP_NODEREF;
+
+	/*
+	 * Append .lock to the tempfile path.
+	 * Its destination is the path itself (without the .lock suffix).
+	 */
+	struct strbuf lock_path = STRBUF_INIT;
+	strbuf_addf(&lock_path, "%s%s", path, LOCK_SUFFIX);
+	fd = temp_file(tf, lock_path.buf, path, tflags);
+	strbuf_reset(&lock_path);
+
+	if (fd < 0 && (flags & LOCK_DIE_ON_ERROR))
+		unable_to_lock_die(path, errno);
+	return fd;
+}
+
 static char *unable_to_lock_message(const char *path, int err)
 {
 	struct strbuf buf = STRBUF_INIT;
@@ -103,22 +126,16 @@ NORETURN void unable_to_lock_die(const char *path, int err)
 
 int lock_temp_file_for_update(struct temp_file *tf, const char *path, int flags)
 {
-	int fd = temp_file(tf, path, flags);
-	if (fd < 0 && (flags & LOCK_DIE_ON_ERROR))
-		unable_to_lock_die(path, errno);
-	return fd;
+	return lock_file(tf, path, flags);
 }
 
 int lock_temp_file_for_append(struct temp_file *tf, const char *path, int flags)
 {
 	int fd, orig_fd;
 
-	fd = temp_file(tf, path, flags);
-	if (fd < 0) {
-		if (flags & LOCK_DIE_ON_ERROR)
-			unable_to_lock_die(path, errno);
+	fd = lock_file(tf, path, flags);
+	if (fd < 0)
 		return fd;
-	}
 
 	orig_fd = open(path, O_RDONLY);
 	if (orig_fd < 0) {

@@ -86,7 +86,7 @@ static void resolve_symlink(struct strbuf *path)
 	strbuf_reset(&link);
 }
 
-int temp_file(struct temp_file *tf, const char *path, int flags)
+int temp_file(struct temp_file *tf, const char *path, const char *dest, int flags)
 {
 	if (!temp_file_list) {
 		/* One-time initialization */
@@ -108,12 +108,10 @@ int temp_file(struct temp_file *tf, const char *path, int flags)
 		temp_file_list = tf;
 	}
 
-	strbuf_addstr(&tf->destination, path);
-	if (!(flags & LOCK_NODEREF))
+	strbuf_addstr(&tf->filename, path);
+	strbuf_addstr(&tf->destination, dest);
+	if (!(flags & TEMP_NODEREF))
 		resolve_symlink(&tf->destination);
-
-	strbuf_addbuf(&tf->filename, &tf->destination);
-	strbuf_addstr(&tf->filename, LOCK_SUFFIX);
 
 	tf->fd = open(tf->filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (tf->fd < 0) {
