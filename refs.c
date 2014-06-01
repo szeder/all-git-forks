@@ -8,60 +8,26 @@
 /*
  * How to handle various characters in refnames:
  * 0: An acceptable character for refs
- * 1: End-of-component
- * 2: ., look for a preceding . to reject .. in refs
- * 3: {, look for a preceding @ to reject @{ in refs
- * 4: A bad character: ASCII control characters, "~", "^", ":" or SP
+ * 1: \0: End-of-component and string
+ * 2: /: End-of-component
+ * 3: ., look for a preceding . to reject .. in refs
+ * 4: {, look for a preceding @ to reject @{ in refs
+ * 5: *, usually a bad character except, once as a wildcard
+ * 6: A bad character except * (see check_refname_component below)
  */
 static unsigned char refname_disposition[256] = {
-	1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-	4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-	4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 4,
+	1, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+	6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+	6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 3, 2,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 6,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 4, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 6, 0, 6, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 4, 4
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 6, 6
 };
 
-/*
- * Try to read one refname component from the front of refname.
- * Return the length of the component found, or -1 if the component is
- * not legal.  It is legal if it is something reasonable to have under
- * ".git/refs/"; We do not like it if:
- *
- * - any path component of it begins with ".", or
- * - it has double dots "..", or
- * - it has ASCII control character, "~", "^", ":" or SP, anywhere, or
- * - it ends with a "/".
- * - it ends with ".lock"
- * - it contains a "\" (backslash)
- */
-static int check_refname_component(const char *refname, int flags)
+static int check_refname_component_trailer(const char *cp, const char *refname, int flags)
 {
-	const char *cp;
-	char last = '\0';
-
-	for (cp = refname; ; cp++) {
-		int ch = *cp & 255;
-		unsigned char disp = refname_disposition[ch];
-		switch(disp) {
-		case 1:
-			goto out;
-		case 2:
-			if (last == '.')
-				return -1; /* Refname contains "..". */
-			break;
-		case 3:
-			if (last == '@')
-				return -1; /* Refname contains "@{". */
-			break;
-		case 4:
-			return -1;
-		}
-		last = ch;
-	}
-out:
 	if (cp == refname)
 		return 0; /* Component has zero length. */
 	if (refname[0] == '.') {
@@ -79,14 +45,55 @@ out:
 	return cp - refname;
 }
 
-int check_refname_format(const char *refname, int flags)
+/*
+ * Try to read one refname component from the front of refname.
+ * Return the length of the component found, or -1 if the component is
+ * not legal.  It is legal if it is something reasonable to have under
+ * ".git/refs/"; We do not like it if:
+ *
+ * - any path component of it begins with ".", or
+ * - it has double dots "..", or
+ * - it has ASCII control character, "~", "^", ":" or SP, anywhere, or
+ * - it has pattern-matching notation "*", "?", "[", anywhere, or
+ * - it ends with a "/", or
+ * - it ends with ".lock", or
+ * - it contains a "\" (backslash)
+ */
+static int check_refname_component(const char *refname, int flags)
+{
+	const char *cp;
+	char last = '\0';
+
+	for (cp = refname; ; cp++) {
+		int ch = *cp & 255;
+		unsigned char disp = refname_disposition[ch];
+		switch(disp) {
+		case 1: /* fall-through */
+		case 2:
+			return check_refname_component_trailer(cp, refname, flags);
+		case 3:
+			if (last == '.')
+				return -1; /* Refname contains "..". */
+			break;
+		case 4:
+			if (last == '@')
+				return -1; /* Refname contains "@{". */
+			break;
+		case 5: /* fall-through */
+		case 6:
+			return -1;
+		}
+		last = ch;
+	}
+}
+
+static int check_refname_format_bytewise (const char *refname, int flags)
 {
 	int component_len, component_count = 0;
 
 	if (!strcmp(refname, "@"))
 		/* Refname is a single character '@'. */
 		return -1;
-
 	while (1) {
 		/* We are at the start of a path component. */
 		component_len = check_refname_component(refname, flags);
@@ -114,6 +121,175 @@ int check_refname_format(const char *refname, int flags)
 		return -1; /* Refname has only one component. */
 	return 0;
 }
+
+#if defined(__GNUC__) && defined(__x86_64__)
+#define SSE_VECTOR_BYTES 16
+
+/* Vectorized version of check_refname_format. */
+int check_refname_format(const char *refname, int flags)
+{
+	const char *cp = refname;
+
+	const __m128i dot = _mm_set1_epi8 ('.');
+	const __m128i at = _mm_set1_epi8 ('@');
+	const __m128i curly = _mm_set1_epi8 ('{');
+	const __m128i slash = _mm_set1_epi8 ('/');
+	const __m128i zero = _mm_set1_epi8 ('\000');
+
+	/* below '*', all characters are forbidden or rare */
+	const __m128i star_ub = _mm_set1_epi8 ('*' + 1);
+
+	const __m128i colon = _mm_set1_epi8 (':');
+	const __m128i question = _mm_set1_epi8 ('?');
+
+	/* '['..'^' contains 4 characters: 3 forbidden and 1 rare */
+	const __m128i bracket_lb = _mm_set1_epi8 ('[' - 1);
+	const __m128i caret_ub = _mm_set1_epi8 ('^' + 1);
+
+	/* '~' and above are forbidden */
+	const __m128i tilde_lb = _mm_set1_epi8 ('~' - 1);
+
+	if (refname[0] == 0 || refname[0] == '/') {
+		/* entirely empty ref or initial ref component */
+		return -1;
+	}
+
+	/* Initial ref component of '.'; below we look for /. so we'll
+	 * miss this. */
+	if (refname[0] == '.') {
+		if (refname[1] == '/' || refname[1] == '\0')
+			return -1;
+		if (!(flags & REFNAME_DOT_COMPONENT))
+			return -1;
+	}
+	while(1) {
+		__m128i tmp, tmp1, result;
+		uint64_t mask;
+
+		if ((uintptr_t) cp % PAGE_SIZE > PAGE_SIZE - SSE_VECTOR_BYTES  - 1)
+			/* End-of-page; fall back to slow method for
+			 * this entire ref. */
+			return check_refname_format_bytewise(refname, flags);
+
+		tmp = _mm_loadu_si128((__m128i *)cp);
+		tmp1 = _mm_loadu_si128((__m128i *)(cp + 1));
+
+		/*
+		 * This range (note the lt) contains some
+		 * permissible-but-rare characters (including all
+		 * characters >= 128), which we handle later.  It also
+		 * includes \000.
+		 */
+		result = _mm_cmplt_epi8(tmp, star_ub);
+
+		result = _mm_or_si128(result, _mm_cmpeq_epi8(tmp, question));
+		result = _mm_or_si128(result, _mm_cmpeq_epi8(tmp, colon));
+
+		/* This range contains the permissible ] as bycatch */
+		result = _mm_or_si128(result, _mm_and_si128 (
+					      _mm_cmpgt_epi8(tmp, bracket_lb),
+					      _mm_cmplt_epi8(tmp, caret_ub)));
+
+		result = _mm_or_si128(result, _mm_cmpgt_epi8(tmp, tilde_lb));
+
+		/* .. */
+		result = _mm_or_si128(result, _mm_and_si128 (
+					      _mm_cmpeq_epi8(tmp, dot),
+					      _mm_cmpeq_epi8(tmp1, dot)));
+		/* @{ */
+		result = _mm_or_si128(result, _mm_and_si128 (
+					      _mm_cmpeq_epi8(tmp, at),
+					      _mm_cmpeq_epi8(tmp1, curly)));
+		/* // */
+		result = _mm_or_si128(result, _mm_and_si128 (
+					      _mm_cmpeq_epi8(tmp, slash),
+					      _mm_cmpeq_epi8(tmp1, slash)));
+		/* trailing / */
+		result = _mm_or_si128(result, _mm_and_si128 (
+					      _mm_cmpeq_epi8(tmp, slash),
+					      _mm_cmpeq_epi8(tmp1, zero)));
+		/*
+		 * Even though /. is not necessarily an error, we flag
+		 * it anyway. If we find it, we'll check if it's valid
+		 * and if so we'll advance just past it.
+		 */
+		result = _mm_or_si128(result, _mm_and_si128 (
+					      _mm_cmpeq_epi8(tmp, slash),
+					      _mm_cmpeq_epi8(tmp1, dot)));
+
+		mask = _mm_movemask_epi8(result);
+		if (mask) {
+			/* We've found either end-of-string, or some
+			   probably-bad character or substring. */
+			int i = __builtin_ctz(mask);
+			switch (refname_disposition[cp[i] & 255]) {
+			case 0:
+				/*
+				 * bycatch: a good character that's in
+				 * one of the ranges of mostly-forbidden
+				 * characters
+				 */
+				cp += i + 1;
+				continue;
+			case 1:
+				cp += i;
+				goto success;
+			case 2:
+				/*
+				 * Even if leading dots are allowed, don't
+				 * allow "." as a component (".." is
+				 * prevented by case 3 below).
+				 */
+				if (cp[i + 1] == '.') {
+					if (cp[i + 2] == '\0')
+						return -1;
+					if (flags & REFNAME_DOT_COMPONENT) {
+						/* skip to just after the /. */
+						cp += i + 2;
+						continue;
+					}
+					return -1;
+				} else if (cp[i + 1] == '/' || cp[i + 1] == '\0')
+					return -1;
+				break;
+			case 3:
+				if (cp[i + 1] == '.' || cp[i + 1] == '\0')
+					return -1;
+				break;
+			case 4:
+				if (cp[i + 1] == '{')
+					return -1;
+				break;
+			case 5:
+				if (((cp == refname + i) || cp[i - 1] == '/')
+				    && (cp[i + 1] == '/' || cp[i + 1] == 0))
+					if (flags & REFNAME_REFSPEC_PATTERN) {
+						flags &= ~REFNAME_REFSPEC_PATTERN;
+						/* restart after the * */
+						cp += i + 1;
+						continue;
+					}
+				/* fall-through */
+			case 6:
+				return -1;
+			}
+		} else
+			cp += SSE_VECTOR_BYTES;
+	}
+success:
+	if (cp - refname >= 5 && !memcmp(cp - 5, ".lock", 5))
+		return -1; /* Refname ends with ".lock". */
+	return 0;
+}
+
+#else
+
+int check_refname_format (const char *refname, int flags)
+{
+	return check_refname_format_bytewise(refname, flags);
+}
+
+#endif
 
 struct ref_entry;
 

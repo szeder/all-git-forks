@@ -29,6 +29,10 @@ test_refspec push '+:'
 test_refspec fetch ''
 test_refspec fetch ':'
 test_refspec fetch '::'						invalid
+test_refspec fetch '.'						invalid
+test_refspec fetch './frotz'					invalid
+test_refspec fetch 'refs/.'					invalid
+test_refspec push '*//:refs/remotes/frotz/*'			invalid
 
 test_refspec push 'refs/heads/*:refs/remotes/frotz/*'
 test_refspec push 'refs/heads/*:refs/remotes/frotz'		invalid
@@ -71,6 +75,8 @@ test_refspec fetch ':refs/remotes/frotz/HEAD-to-me'
 test_refspec push ':refs/remotes/frotz/delete me'		invalid
 test_refspec fetch ':refs/remotes/frotz/HEAD to me'		invalid
 
+test_refspec fetch ':refs/remotes/frotz/something.lock'		invalid
+
 test_refspec fetch 'refs/heads/*/for-linus:refs/remotes/mine/*-blah' invalid
 test_refspec push 'refs/heads/*/for-linus:refs/remotes/mine/*-blah' invalid
 
@@ -87,5 +93,18 @@ good=$(printf '\303\204')
 test_refspec fetch "refs/heads/${good}"
 bad=$(printf '\011tab')
 test_refspec fetch "refs/heads/${bad}"				invalid
+
+test_refspec fetch 'refs/heads/a-very-long-refname'
+test_refspec fetch 'refs/heads/.a-very-long-refname'		invalid
+test_refspec fetch 'refs/heads/abcdefgh0123..'			invalid
+test_refspec fetch 'refs/heads/abcdefgh01234..'			invalid
+test_refspec fetch 'refs/heads/abcdefgh012345..'		invalid
+test_refspec fetch 'refs/heads/abcdefgh0123456..'		invalid
+test_refspec fetch 'refs/heads/abcdefgh01234567..'		invalid
+test_refspec fetch 'refs/heads/abcdefgh0123.a'
+test_refspec fetch 'refs/heads/abcdefgh01234.a'
+test_refspec fetch 'refs/heads/abcdefgh012345.a'
+test_refspec fetch 'refs/heads/abcdefgh0123456.a'
+test_refspec fetch 'refs/heads/abcdefgh01234567.a'
 
 test_done
