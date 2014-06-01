@@ -14,6 +14,7 @@ struct temp_file {
 	struct strbuf destination;
 };
 
+extern int temp_file(struct temp_file *tf, const char *path, int flags);
 extern void rollback_temp_file(struct temp_file *);
 extern int commit_temp_file(struct temp_file *);
 extern int close_temp_file(struct temp_file *);
