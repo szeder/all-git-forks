@@ -70,23 +70,23 @@
  * See Documentation/api-lockfile.txt for more information.
  */
 
-static struct temp_file *volatile lock_file_list;
+static struct temp_file *volatile temp_file_list;
 static const char *alternate_index_output;
 
-static void remove_lock_file(void)
+static void remove_temp_file(void)
 {
 	pid_t me = getpid();
 
-	while (lock_file_list) {
-		if (lock_file_list->owner == me)
-			rollback_temp_file(lock_file_list);
-		lock_file_list = lock_file_list->next;
+	while (temp_file_list) {
+		if (temp_file_list->owner == me)
+			rollback_temp_file(temp_file_list);
+		temp_file_list = temp_file_list->next;
 	}
 }
 
-static void remove_lock_file_on_signal(int signo)
+static void remove_temp_file_on_signal(int signo)
 {
-	remove_lock_file();
+	remove_temp_file();
 	sigchain_pop(signo);
 	raise(signo);
 }
@@ -155,49 +155,49 @@ static void resolve_symlink(struct strbuf *path)
 	strbuf_reset(&link);
 }
 
-static int lock_file(struct temp_file *lk, const char *path, int flags)
+static int temp_file(struct temp_file *tf, const char *path, int flags)
 {
-	if (!lock_file_list) {
+	if (!temp_file_list) {
 		/* One-time initialization */
-		sigchain_push_common(remove_lock_file_on_signal);
-		atexit(remove_lock_file);
+		sigchain_push_common(remove_temp_file_on_signal);
+		atexit(remove_temp_file);
 	}
 
-	assert(!lk->active);
+	assert(!tf->active);
 
-	if (!lk->on_list) {
-		/* Initialize *lk and add it to lock_file_list: */
-		lk->fd = -1;
-		lk->active = 0;
-		lk->owner = 0;
-		lk->on_list = 1;
-		strbuf_init(&lk->filename, 0);
-		strbuf_init(&lk->destination, 0);
-		lk->next = lock_file_list;
-		lock_file_list = lk;
+	if (!tf->on_list) {
+		/* Initialize *tf and add it to temp_file_list: */
+		tf->fd = -1;
+		tf->active = 0;
+		tf->owner = 0;
+		tf->on_list = 1;
+		strbuf_init(&tf->filename, 0);
+		strbuf_init(&tf->destination, 0);
+		tf->next = temp_file_list;
+		temp_file_list = tf;
 	}
 
-	strbuf_addstr(&lk->destination, path);
+	strbuf_addstr(&tf->destination, path);
 	if (!(flags & LOCK_NODEREF))
-		resolve_symlink(&lk->destination);
+		resolve_symlink(&tf->destination);
 
-	strbuf_addbuf(&lk->filename, &lk->destination);
-	strbuf_addstr(&lk->filename, LOCK_SUFFIX);
+	strbuf_addbuf(&tf->filename, &tf->destination);
+	strbuf_addstr(&tf->filename, LOCK_SUFFIX);
 
-	lk->fd = open(lk->filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
-	if (lk->fd < 0) {
-		strbuf_reset(&lk->filename);
-		strbuf_reset(&lk->destination);
+	tf->fd = open(tf->filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
+	if (tf->fd < 0) {
+		strbuf_reset(&tf->filename);
+		strbuf_reset(&tf->destination);
 		return -1;
 	}
-	lk->owner = getpid();
-	lk->active = 1;
-	if (adjust_shared_perm(lk->filename.buf)) {
-		error("cannot fix permission bits on %s", lk->filename.buf);
-		rollback_temp_file(lk);
+	tf->owner = getpid();
+	tf->active = 1;
+	if (adjust_shared_perm(tf->filename.buf)) {
+		error("cannot fix permission bits on %s", tf->filename.buf);
+		rollback_temp_file(tf);
 		return -1;
 	}
-	return lk->fd;
+	return tf->fd;
 }
 
 static char *unable_to_lock_message(const char *path, int err)
@@ -231,7 +231,7 @@ NORETURN void unable_to_lock_die(const char *path, int err)
 
 int lock_temp_file_for_update(struct temp_file *tf, const char *path, int flags)
 {
-	int fd = lock_file(tf, path, flags);
+	int fd = temp_file(tf, path, flags);
 	if (fd < 0 && (flags & LOCK_DIE_ON_ERROR))
 		unable_to_lock_die(path, errno);
 	return fd;
@@ -241,7 +241,7 @@ int lock_temp_file_for_append(struct temp_file *tf, const char *path, int flags)
 {
 	int fd, orig_fd;
 
-	fd = lock_file(tf, path, flags);
+	fd = temp_file(tf, path, flags);
 	if (fd < 0) {
 		if (flags & LOCK_DIE_ON_ERROR)
 			unable_to_lock_die(path, errno);
