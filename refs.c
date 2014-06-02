@@ -2930,16 +2930,6 @@ int create_symref(const char *ref_target, const char *refs_heads_master,
 	return 0;
 }
 
-static char *ref_msg(const char *line, const char *endp)
-{
-	const char *ep;
-	line += 82;
-	ep = memchr(line, '\n', endp - line);
-	if (!ep)
-		ep = endp;
-	return xmemdupz(line, ep - line);
-}
-
 struct read_ref_at_cb {
 	const char *refname;
 	unsigned long at_time;
@@ -2948,8 +2938,8 @@ struct read_ref_at_cb {
 	unsigned char *sha1;
 	int found_it;
 
-	char osha1[20];
-	char nsha1[20];
+	unsigned char osha1[20];
+	unsigned char nsha1[20];
 	int tz;
 	unsigned long date;
 	char **msg;
