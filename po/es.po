@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-02 19:40+0200\n"
+"PO-Revision-Date: 2014-06-02 21:38+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -8397,7 +8397,7 @@ msgstr ""
 #: builtin/repack.c:371
 #, c-format
 msgid "removing '%s' failed"
-msgstr ""
+msgstr "no he podido eliminar '%s'"
 
 #: builtin/replace.c:17
 msgid "git replace [-f] <object> <replacement>"
@@ -8405,11 +8405,11 @@ msgstr ""
 
 #: builtin/replace.c:18
 msgid "git replace -d <object>..."
-msgstr ""
+msgstr "git replace -d <objeto>..."
 
 #: builtin/replace.c:19
 msgid "git replace [--format=<format>] [-l [<pattern>]]"
-msgstr ""
+msgstr "git replace [--format=<formato>] [-l [<patrón>]]"
 
 #: builtin/replace.c:174
 msgid "list replace refs"
@@ -8425,11 +8425,11 @@ msgstr ""
 
 #: builtin/replace.c:177
 msgid "use this format"
-msgstr ""
+msgstr "usa este formato"
 
 #: builtin/rerere.c:12
 msgid "git rerere [clear | forget path... | status | remaining | diff | gc]"
-msgstr ""
+msgstr "git rerere [clear | forget ruta... | status | remaining | diff | gc]"
 
 #: builtin/rerere.c:57
 msgid "register clean resolutions in index"
@@ -8438,7 +8438,7 @@ msgstr ""
 #: builtin/reset.c:25
 msgid ""
 "git reset [--mixed | --soft | --hard | --merge | --keep] [-q] [<commit>]"
-msgstr ""
+msgstr "git reset [--mixed | --soft | --hard | --merge | --keep] [-q] [<commit>]"
 
 #: builtin/reset.c:26
 msgid "git reset [-q] <tree-ish> [--] <paths>..."
@@ -8493,7 +8493,7 @@ msgstr ""
 
 #: builtin/reset.c:273
 msgid "be quiet, only report errors"
-msgstr ""
+msgstr "es silencioso, sólo informa de errores"
 
 #: builtin/reset.c:275
 msgid "reset HEAD and index"
@@ -8513,7 +8513,7 @@ msgstr ""
 
 #: builtin/reset.c:285
 msgid "record only the fact that removed paths will be added later"
-msgstr ""
+msgstr "sólo registra el hecho de que las rutas eliminadas serán añadidas más tarde"
 
 #: builtin/reset.c:302
 #, c-format
@@ -8532,11 +8532,11 @@ msgstr ""
 
 #: builtin/reset.c:319
 msgid "--patch is incompatible with --{hard,mixed,soft}"
-msgstr ""
+msgstr "--patch es incompatible con --{hard,mixed,soft}"
 
 #: builtin/reset.c:328
 msgid "--mixed with paths is deprecated; use 'git reset -- <paths>' instead."
-msgstr ""
+msgstr "--mixed con rutas está depreciado; use 'git reset -- <rutas>' en su lugar."
 
 #: builtin/reset.c:330
 #, c-format
@@ -8563,11 +8563,11 @@ msgstr ""
 
 #: builtin/reset.c:372
 msgid "Could not write new index file."
-msgstr ""
+msgstr "No he podido escribir el fichero índice nuevo."
 
 #: builtin/rev-parse.c:359
 msgid "git rev-parse --parseopt [options] -- [<args>...]"
-msgstr ""
+msgstr "git rev-parse --parseopt [opciones] -- [<parms>...]"
 
 #: builtin/rev-parse.c:364
 msgid "keep the `--` passed as an arg"
@@ -8589,6 +8589,11 @@ msgid ""
 "\n"
 "Run \"git rev-parse --parseopt -h\" for more information on the first usage."
 msgstr ""
+"git rev-parse --parseopt [opciones] -- [<parms>...]\n"
+"  o: git rev-parse --sq-quote [<parm>...]\n"
+"  o: git rev-parse [opciones] [<parm>...]\n"
+"\n"
+"Ejecute \"git rev-parse --parseopt -h\" para más información sobre el primer uso."
 
 #: builtin/revert.c:22
 msgid "git revert [options] <commit-ish>..."
@@ -8596,7 +8601,7 @@ msgstr ""
 
 #: builtin/revert.c:23
 msgid "git revert <subcommand>"
-msgstr ""
+msgstr "git revert <suborden>"
 
 #: builtin/revert.c:28
 msgid "git cherry-pick [options] <commit-ish>..."
@@ -8604,12 +8609,12 @@ msgstr ""
 
 #: builtin/revert.c:29
 msgid "git cherry-pick <subcommand>"
-msgstr ""
+msgstr "git cherry-pick <suborden>"
 
 #: builtin/revert.c:71
 #, c-format
 msgid "%s: %s cannot be used with %s"
-msgstr ""
+msgstr "%s: no puede usar %s con %s"
 
 #: builtin/revert.c:80
 msgid "end revert or cherry-pick sequence"
@@ -8617,19 +8622,19 @@ msgstr ""
 
 #: builtin/revert.c:81
 msgid "resume revert or cherry-pick sequence"
-msgstr ""
+msgstr "reanuda la secuencia de reversión o de entresaca"
 
 #: builtin/revert.c:82
 msgid "cancel revert or cherry-pick sequence"
-msgstr ""
+msgstr "cancela la secuencia de reversión o de entresaca"
 
 #: builtin/revert.c:83
 msgid "don't automatically commit"
-msgstr ""
+msgstr "no hace commit automáticamente"
 
 #: builtin/revert.c:84
 msgid "edit the commit message"
-msgstr ""
+msgstr "edita el mensaje de commit"
 
 #: builtin/revert.c:87
 msgid "parent number"
@@ -8637,15 +8642,15 @@ msgstr ""
 
 #: builtin/revert.c:89
 msgid "merge strategy"
-msgstr ""
+msgstr "estrategia de fusión"
 
 #: builtin/revert.c:90
 msgid "option"
-msgstr ""
+msgstr "opción"
 
 #: builtin/revert.c:91
 msgid "option for merge strategy"
-msgstr ""
+msgstr "opción para la estrategia de fusión"
 
 #: builtin/revert.c:104
 msgid "append commit name"
