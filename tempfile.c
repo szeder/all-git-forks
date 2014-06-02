@@ -100,6 +100,7 @@ int temp_file(struct temp_file *tf, const char *path, const char *dest, int flag
 		/* Initialize *tf and add it to temp_file_list: */
 		tf->fd = -1;
 		tf->active = 0;
+		tf->keep = flags & TEMP_KEEP ? 1 : 0;
 		tf->owner = 0;
 		tf->on_list = 1;
 		strbuf_init(&tf->filename, 0);
@@ -134,7 +135,8 @@ void rollback_temp_file(struct temp_file *temp_file)
 	if (temp_file->active) {
 		if (temp_file->fd >= 0)
 			close_temp_file(temp_file);
-		unlink_or_warn(temp_file->filename.buf);
+		if (!temp_file->keep)
+			unlink_or_warn(temp_file->filename.buf);
 		temp_file->active = 0;
 		strbuf_reset(&temp_file->filename);
 		strbuf_reset(&temp_file->destination);
