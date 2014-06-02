@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-01 21:43+0200\n"
+"PO-Revision-Date: 2014-06-02 19:40+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -8190,8 +8190,8 @@ msgstr ""
 #, c-format
 msgid "  Remote branch:%s"
 msgid_plural "  Remote branches:%s"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "  Rama remota:%s"
+msgstr[1] "  Ramas remotas:%s"
 
 #: builtin/remote.c:1207 builtin/remote.c:1234
 msgid " (status not queried)"
@@ -8200,8 +8200,8 @@ msgstr ""
 #: builtin/remote.c:1216
 msgid "  Local branch configured for 'git pull':"
 msgid_plural "  Local branches configured for 'git pull':"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "  Rama local configurada para 'git pull':"
+msgstr[1] "  Ramas locales configuradas para 'git pull':"
 
 #: builtin/remote.c:1224
 msgid "  Local refs will be mirrored by 'git push'"
@@ -8224,7 +8224,7 @@ msgstr ""
 
 #: builtin/remote.c:1269
 msgid "Cannot determine remote HEAD"
-msgstr ""
+msgstr "No puedo determinar la CABEZA [HEAD] remota"
 
 #: builtin/remote.c:1271
 msgid "Multiple remote HEAD branches. Please choose one explicitly with:"
@@ -8233,7 +8233,7 @@ msgstr ""
 #: builtin/remote.c:1281
 #, c-format
 msgid "Could not delete %s"
-msgstr ""
+msgstr "No he podido borrar %s"
 
 #: builtin/remote.c:1289
 #, c-format
@@ -8258,17 +8258,17 @@ msgstr ""
 #: builtin/remote.c:1314
 #, c-format
 msgid "Pruning %s"
-msgstr ""
+msgstr "Podando %s"
 
 #: builtin/remote.c:1315
 #, c-format
 msgid "URL: %s"
-msgstr ""
+msgstr "URL: %s"
 
 #: builtin/remote.c:1328
 #, c-format
 msgid " * [would prune] %s"
-msgstr ""
+msgstr " * [podaría] %s"
 
 #: builtin/remote.c:1331
 #, c-format
@@ -8282,15 +8282,15 @@ msgstr ""
 #: builtin/remote.c:1440 builtin/remote.c:1514
 #, c-format
 msgid "No such remote '%s'"
-msgstr ""
+msgstr "No existe el remoto '%s'"
 
 #: builtin/remote.c:1460
 msgid "add branch"
-msgstr ""
+msgstr "añade rama"
 
 #: builtin/remote.c:1467
 msgid "no remote specified"
-msgstr ""
+msgstr "no ha especificado ningún remoto"
 
 #: builtin/remote.c:1489
 msgid "manipulate push URLs"
@@ -8298,15 +8298,15 @@ msgstr ""
 
 #: builtin/remote.c:1491
 msgid "add URL"
-msgstr ""
+msgstr "añade URL"
 
 #: builtin/remote.c:1493
 msgid "delete URLs"
-msgstr ""
+msgstr "borra URLs"
 
 #: builtin/remote.c:1500
 msgid "--add --delete doesn't make sense"
-msgstr ""
+msgstr "--add --delete no tiene sentido"
 
 #: builtin/remote.c:1540
 #, c-format
@@ -8324,7 +8324,7 @@ msgstr ""
 
 #: builtin/remote.c:1564
 msgid "be verbose; must be placed before a subcommand"
-msgstr ""
+msgstr "es verboso; debe escribirse antes de la suborden"
 
 #: builtin/repack.c:16
 msgid "git repack [options]"
@@ -8344,19 +8344,19 @@ msgstr ""
 
 #: builtin/repack.c:163
 msgid "pass --no-reuse-delta to git-pack-objects"
-msgstr ""
+msgstr "pasa --no-reuse-delta a git-pack-objects"
 
 #: builtin/repack.c:165
 msgid "pass --no-reuse-object to git-pack-objects"
-msgstr ""
+msgstr "pasa --no-reuse-object a git-pack-objects"
 
 #: builtin/repack.c:167
 msgid "do not run git-update-server-info"
-msgstr ""
+msgstr "no ejecuta git-update-server-info"
 
 #: builtin/repack.c:170
 msgid "pass --local to git-pack-objects"
-msgstr ""
+msgstr "pasa --local a git-pack-objects"
 
 #: builtin/repack.c:172
 msgid "write bitmap index"
@@ -8376,11 +8376,11 @@ msgstr ""
 
 #: builtin/repack.c:177 builtin/repack.c:181
 msgid "bytes"
-msgstr ""
+msgstr "bytes"
 
 #: builtin/repack.c:178
 msgid "same as the above, but limit memory size instead of entries count"
-msgstr ""
+msgstr "igual que el anterior, pero limita el tamaño de la memoria en lugar del número de entradas"
 
 #: builtin/repack.c:180
 msgid "limits the maximum delta depth"
