@@ -2388,7 +2388,8 @@ install: all
 	$(INSTALL) -m 644 mergetools/* '$(DESTDIR_SQ)$(mergetools_instdir_SQ)'
 	$(INSTALL) -D -m 644 shared/git-completion.bash '$(DESTDIR_SQ)$(bashcompdir_SQ)'/git
 	$(RM) '$(DESTDIR_SQ)$(bashcompdir_SQ)'/gitk && \
-	ln git '$(DESTDIR_SQ)$(bashcompdir_SQ)'/gitk || \
+	test -z "$(NO_INSTALL_HARDLINKS)" && \
+		ln '$(DESTDIR_SQ)$(bashcompdir_SQ)'/git '$(DESTDIR_SQ)$(bashcompdir_SQ)'/gitk || \
 		ln -s git '$(DESTDIR_SQ)$(bashcompdir_SQ)'/gitk || \
 		cp '$(DESTDIR_SQ)$(bashcompdir_SQ)'/git '$(DESTDIR_SQ)$(bashcompdir_SQ)'/gitk
 	$(INSTALL) -D -m 644 shared/git-prompt.sh '$(DESTDIR_SQ)$(sharedir_SQ)'/git-core/git-prompt.sh
