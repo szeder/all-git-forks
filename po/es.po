@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-02 21:38+0200\n"
+"PO-Revision-Date: 2014-06-03 21:52+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -8658,7 +8658,7 @@ msgstr ""
 
 #: builtin/revert.c:105
 msgid "allow fast-forward"
-msgstr ""
+msgstr "permite avance-rápido"
 
 #: builtin/revert.c:106
 msgid "preserve initially empty commits"
@@ -8666,7 +8666,7 @@ msgstr ""
 
 #: builtin/revert.c:107
 msgid "allow commits with empty messages"
-msgstr ""
+msgstr "permite commits con mensajes vacíos"
 
 #: builtin/revert.c:108
 msgid "keep redundant, empty commits"
@@ -8674,19 +8674,19 @@ msgstr ""
 
 #: builtin/revert.c:112
 msgid "program error"
-msgstr ""
+msgstr "error de programa"
 
 #: builtin/revert.c:197
 msgid "revert failed"
-msgstr ""
+msgstr "la reversión ha fallado"
 
 #: builtin/revert.c:212
 msgid "cherry-pick failed"
-msgstr ""
+msgstr "la entresaca ha fallado"
 
 #: builtin/rm.c:17
 msgid "git rm [options] [--] <file>..."
-msgstr ""
+msgstr "git rm [opciones] [--] <fichero>..."
 
 #: builtin/rm.c:65
 msgid ""
@@ -8696,13 +8696,17 @@ msgid_plural ""
 "the following submodules (or one of its nested submodules)\n"
 "use a .git directory:"
 msgstr[0] ""
+"el submódulo siguiente (o uno de sus submódulos anidados)\n"
+"usa un directorio .git:"
 msgstr[1] ""
+"los submódulos siguientes (o uno de sus submódulos anidados)\n"
+"usan un directorio .git:"
 
 #: builtin/rm.c:71
 msgid ""
 "\n"
 "(use 'rm -rf' if you really want to remove it including all of its history)"
-msgstr ""
+msgstr "\n(use 'rm -rf' si realmente quiere eliminarlo incluyendo toda su historia)"
 
 #: builtin/rm.c:231
 msgid ""
@@ -8712,39 +8716,43 @@ msgid_plural ""
 "the following files have staged content different from both the\n"
 "file and the HEAD:"
 msgstr[0] ""
+"el fichero siguiente tiene contenido en el stage que difiere tanto\n"
+"del contenido del fichero como del de la CABEZA [HEAD]:"
 msgstr[1] ""
+"los ficheros siguientes tienen contenido en el stage que difiere tanto\n"
+"del contenido del fichero como del de la CABEZA [HEAD]:"
 
 #: builtin/rm.c:236
 msgid ""
 "\n"
 "(use -f to force removal)"
-msgstr ""
+msgstr "\n(use -f para forzar su eliminación)"
 
 #: builtin/rm.c:240
 msgid "the following file has changes staged in the index:"
 msgid_plural "the following files have changes staged in the index:"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "el fichero siguiente tiene cambios en el índice:"
+msgstr[1] "los ficheros siguientes tienen cambios en el índice:"
 
 #: builtin/rm.c:244 builtin/rm.c:255
 msgid ""
 "\n"
 "(use --cached to keep the file, or -f to force removal)"
-msgstr ""
+msgstr "\n(use --cached para conservar el fichero o -f para forzar su eliminación)"
 
 #: builtin/rm.c:252
 msgid "the following file has local modifications:"
 msgid_plural "the following files have local modifications:"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "el fichero siguiente tiene modificaciones locales:"
+msgstr[1] "los ficheros siguientes tienen modificaciones locales:"
 
 #: builtin/rm.c:270
 msgid "do not list removed files"
-msgstr ""
+msgstr "no lista los ficheros eliminados"
 
 #: builtin/rm.c:271
 msgid "only remove from the index"
-msgstr ""
+msgstr "elimina sólo del índice"
 
 #: builtin/rm.c:272
 msgid "override the up-to-date check"
@@ -8752,7 +8760,7 @@ msgstr ""
 
 #: builtin/rm.c:273
 msgid "allow recursive removal"
-msgstr ""
+msgstr "permite borrado recursivo"
 
 #: builtin/rm.c:275
 msgid "exit with a zero status even if nothing matched"
@@ -8766,7 +8774,7 @@ msgstr ""
 #: builtin/rm.c:375
 #, c-format
 msgid "git rm: unable to remove %s"
-msgstr ""
+msgstr "git rm: no puedo eliminar %s"
 
 #: builtin/shortlog.c:13
 msgid "git shortlog [<options>] [<revision range>] [[--] [<path>...]]"
@@ -8775,19 +8783,19 @@ msgstr ""
 #: builtin/shortlog.c:131
 #, c-format
 msgid "Missing author: %s"
-msgstr ""
+msgstr "Falta el autor: %s"
 
 #: builtin/shortlog.c:230
 msgid "sort output according to the number of commits per author"
-msgstr ""
+msgstr "ordena la salida por el número de commits del autor"
 
 #: builtin/shortlog.c:232
 msgid "Suppress commit descriptions, only provides commit count"
-msgstr ""
+msgstr "Omite la descripción de los commits, muestra sólo el número de commits"
 
 #: builtin/shortlog.c:234
 msgid "Show the email address of each author"
-msgstr ""
+msgstr "Muestra la dirección de email de cada autor"
 
 #: builtin/shortlog.c:235
 msgid "w[,i1[,i2]]"
