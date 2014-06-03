@@ -34,7 +34,7 @@ else
 	test_done
 fi
 
-hg_version=$(python2 -c 'from mercurial import util; print util.version()')
+hg_version=$("$PYTHON_PATH" -c 'from mercurial import util; print util.version()')
 
 case $hg_version in
 3.0*+*)
