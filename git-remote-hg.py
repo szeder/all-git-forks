@@ -430,7 +430,12 @@ def get_repo(url, alias):
             peer = hg.peer(repo.ui, {}, url)
         except:
             die('Repository error')
-        repo.pull(peer, heads=None, force=True)
+
+        if check_version(3, 0):
+            from mercurial import exchange
+            exchange.pull(repo, peer, heads=None, force=True)
+        else:
+            repo.pull(peer, heads=None, force=True)
 
         updatebookmarks(repo, peer)
 
@@ -498,7 +503,7 @@ def export_ref(repo, name, kind, head):
         if 'committer' in extra:
             try:
                 cuser, ctime, ctz = extra['committer'].rsplit(' ', 2)
-                committer = "%s %s %s" % (cuser, ctime, gittz(int(ctz)))
+                committer = "%s %s %s" % (fixup_user(cuser), ctime, gittz(int(ctz)))
             except ValueError:
                 cuser = extra['committer']
                 committer = "%s %d %s" % (fixup_user(cuser), time, gittz(tz))
@@ -803,9 +808,23 @@ def parse_commit(parser):
     def getfilectx(repo, memctx, f):
         of = files[f]
         if 'deleted' in of:
-            raise IOError
+            if check_version(3, 2):
+                return None
+            else:
+                raise IOError
         if 'ctx' in of:
-            return of['ctx']
+            if mode == 'hg':
+                ctx = of['ctx']
+                is_exec = ctx.isexec()
+                is_link = ctx.islink()
+                if check_version(3, 1):
+                    return context.memfilectx(repo, f, ctx.data(),
+                            is_link, is_exec)
+                else:
+                    return context.memfilectx(f, ctx.data(),
+                            is_link, is_exec)
+            else:
+                return of['ctx']
         is_exec = of['mode'] == 'x'
         is_link = of['mode'] == 'l'
         rename = of.get('rename', None)
@@ -1036,7 +1055,9 @@ def push_unsafe(repo, remote, parsed_refs, p_revs):
     if not checkheads(repo, remote, p_revs):
         return None
 
-    if check_version(3, 0):
+    if check_version(3, 2):
+        cg = changegroup.getchangegroup(repo, 'push', heads=list(p_revs), common=common)
+    elif check_version(3, 0):
         cg = changegroup.getbundle(repo, 'push', heads=list(p_revs), common=common)
     else:
         cg = repo.getbundle('push', heads=list(p_revs), common=common)
