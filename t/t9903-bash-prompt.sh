@@ -451,57 +451,97 @@ test_expect_success 'prompt - format string starting with dash' '
 	test_cmp expected "$actual"
 '
 
-run_pcmode_tests () {
-	test_expect_success 'prompt - pc mode' '
-		printf "BEFORE: (\${__git_ps1_branch_name}):AFTER\\nmaster" >expected &&
+pcmode_expected () {
+	case $ps1expansion in
+	on) printf "$1" '${__git_ps1_branch_name}' "$2";;
+	off) printf "$1" "$2" "";;
+	esac >expected
+}
+
+pcmode_actual () {
+	case $ps1expansion in
+	on) printf %s\\n%s "$PS1" "${__git_ps1_branch_name}";;
+	off) printf %s\\n "$PS1";;
+	esac >"$actual"
+}
+
+set_ps1expansion () {
+	case $ps1expansion in
+	on) ps1_expansion_enable;;
+	off) ps1_expansion_disable;;
+	*) error "invalid argument to _run_pcmode_tests: $ps1expansion";;
+	esac
+}
+
+_run_pcmode_tests () {
+	ps1expansion=$1; shift
+
+	# Test whether the shell supports enabling/disabling PS1
+	# expansion by running set_ps1expansion.  If not, quietly skip
+	# this set of tests.
+	#
+	# Even though set_ps1expansion is run here, it must also be
+	# run inside each individual test case because the state of
+	# the shell might be reset in some fashion before executing
+	# the test code.  (Notably, Zsh shell emulation causes the
+	# PROMPT_SUBST option to be reset each time a test is run.)
+	set_ps1expansion || return 0
+
+	test_expect_success "prompt - pc mode (PS1 expansion $ps1expansion)" '
+		set_ps1expansion &&
+		pcmode_expected "BEFORE: (%s):AFTER\\n%s" master &&
 		printf "" >expected_output &&
 		(
 			__git_ps1 "BEFORE:" ":AFTER" >"$actual" &&
 			test_cmp expected_output "$actual" &&
-			printf "%s\\n%s" "$PS1" "${__git_ps1_branch_name}" >"$actual"
+			pcmode_actual
 		) &&
 		test_cmp expected "$actual"
 	'
 
-	pfx="prompt - bash color pc mode"
+	pfx="prompt - bash color pc mode (PS1 expansion $ps1expansion)"
 
 	test_expect_success "$pfx - branch name" '
-		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear}):AFTER\\nmaster" >expected &&
+		set_ps1expansion &&
+		pcmode_expected "BEFORE: (${c_green}%s${c_clear}):AFTER\\n%s" master &&
 		(
 			GIT_PS1_SHOWCOLORHINTS=y &&
 			__git_ps1 "BEFORE:" ":AFTER" >"$actual"
-			printf "%s\\n%s" "$PS1" "${__git_ps1_branch_name}" >"$actual"
+			pcmode_actual
 		) &&
 		test_cmp expected "$actual"
 	'
 
 	test_expect_success "$pfx - detached head" '
-		printf "BEFORE: (${c_red}\${__git_ps1_branch_name}${c_clear}):AFTER\\n(%s...)" $(git log -1 --format="%h" b1^) >expected &&
+		set_ps1expansion &&
+		pcmode_expected "BEFORE: (${c_red}%s${c_clear}):AFTER\\n%s" "($(git log -1 --format="%h" b1^)...)" &&
 		git checkout b1^ &&
 		test_when_finished "git checkout master" &&
 		(
 			GIT_PS1_SHOWCOLORHINTS=y &&
 			__git_ps1 "BEFORE:" ":AFTER" &&
-			printf "%s\\n%s" "$PS1" "${__git_ps1_branch_name}" >"$actual"
+			pcmode_actual
 		) &&
 		test_cmp expected "$actual"
 	'
 
 	test_expect_success "$pfx - dirty status indicator - dirty worktree" '
-		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear} ${c_red}*${c_clear}):AFTER\\nmaster" >expected &&
+		set_ps1expansion &&
+		pcmode_expected "BEFORE: (${c_green}%s${c_clear} ${c_red}*${c_clear}):AFTER\\n%s" master &&
 		echo "dirty" >file &&
 		test_when_finished "git reset --hard" &&
 		(
 			GIT_PS1_SHOWDIRTYSTATE=y &&
 			GIT_PS1_SHOWCOLORHINTS=y &&
 			__git_ps1 "BEFORE:" ":AFTER" &&
-			printf "%s\\n%s" "$PS1" "${__git_ps1_branch_name}" >"$actual"
+			pcmode_actual
 		) &&
 		test_cmp expected "$actual"
 	'
 
 	test_expect_success "$pfx - dirty status indicator - dirty index" '
-		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear} ${c_green}+${c_clear}):AFTER\\nmaster" >expected &&
+		set_ps1expansion &&
+		pcmode_expected "BEFORE: (${c_green}%s${c_clear} ${c_green}+${c_clear}):AFTER\\n%s" master &&
 		echo "dirty" >file &&
 		test_when_finished "git reset --hard" &&
 		git add -u &&
@@ -509,13 +549,14 @@ run_pcmode_tests () {
 			GIT_PS1_SHOWDIRTYSTATE=y &&
 			GIT_PS1_SHOWCOLORHINTS=y &&
 			__git_ps1 "BEFORE:" ":AFTER" &&
-			printf "%s\\n%s" "$PS1" "${__git_ps1_branch_name}" >"$actual"
+			pcmode_actual
 		) &&
 		test_cmp expected "$actual"
 	'
 
 	test_expect_success "$pfx - dirty status indicator - dirty index and worktree" '
-		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear} ${c_red}*${c_green}+${c_clear}):AFTER\\nmaster" >expected &&
+		set_ps1expansion &&
+		pcmode_expected "BEFORE: (${c_green}%s${c_clear} ${c_red}*${c_green}+${c_clear}):AFTER\\n%s" master &&
 		echo "dirty index" >file &&
 		test_when_finished "git reset --hard" &&
 		git add -u &&
@@ -524,25 +565,27 @@ run_pcmode_tests () {
 			GIT_PS1_SHOWCOLORHINTS=y &&
 			GIT_PS1_SHOWDIRTYSTATE=y &&
 			__git_ps1 "BEFORE:" ":AFTER" &&
-			printf "%s\\n%s" "$PS1" "${__git_ps1_branch_name}" >"$actual"
+			pcmode_actual
 		) &&
 		test_cmp expected "$actual"
 	'
 
 	test_expect_success "$pfx - dirty status indicator - before root commit" '
-		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear} ${c_green}#${c_clear}):AFTER\\nmaster" >expected &&
+		set_ps1expansion &&
+		pcmode_expected "BEFORE: (${c_green}%s${c_clear} ${c_green}#${c_clear}):AFTER\\n%s" master &&
 		(
 			GIT_PS1_SHOWDIRTYSTATE=y &&
 			GIT_PS1_SHOWCOLORHINTS=y &&
 			cd otherrepo &&
 			__git_ps1 "BEFORE:" ":AFTER" &&
-			printf "%s\\n%s" "$PS1" "${__git_ps1_branch_name}" >"$actual"
+			pcmode_actual
 		) &&
 		test_cmp expected "$actual"
 	'
 
 	test_expect_success "$pfx - inside .git directory" '
-		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear}):AFTER\\nGIT_DIR!" >expected &&
+		set_ps1expansion &&
+		pcmode_expected "BEFORE: (${c_green}%s${c_clear}):AFTER\\n%s" "GIT_DIR!" &&
 		echo "dirty" >file &&
 		test_when_finished "git reset --hard" &&
 		(
@@ -550,13 +593,14 @@ run_pcmode_tests () {
 			GIT_PS1_SHOWCOLORHINTS=y &&
 			cd .git &&
 			__git_ps1 "BEFORE:" ":AFTER" &&
-			printf "%s\\n%s" "$PS1" "${__git_ps1_branch_name}" >"$actual"
+			pcmode_actual
 		) &&
 		test_cmp expected "$actual"
 	'
 
 	test_expect_success "$pfx - stash status indicator" '
-		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear} ${c_lblue}\$${c_clear}):AFTER\\nmaster" >expected &&
+		set_ps1expansion &&
+		pcmode_expected "BEFORE: (${c_green}%s${c_clear} ${c_lblue}\$${c_clear}):AFTER\\n%s" master &&
 		echo 2 >file &&
 		git stash &&
 		test_when_finished "git stash drop" &&
@@ -564,21 +608,27 @@ run_pcmode_tests () {
 			GIT_PS1_SHOWSTASHSTATE=y &&
 			GIT_PS1_SHOWCOLORHINTS=y &&
 			__git_ps1 "BEFORE:" ":AFTER" &&
-			printf "%s\\n%s" "$PS1" "${__git_ps1_branch_name}" >"$actual"
+			pcmode_actual
 		) &&
 		test_cmp expected "$actual"
 	'
 
 	test_expect_success "$pfx - untracked files status indicator" '
-		printf "BEFORE: (${c_green}\${__git_ps1_branch_name}${c_clear} ${c_red}%%${c_clear}):AFTER\\nmaster" >expected &&
+		set_ps1expansion &&
+		pcmode_expected "BEFORE: (${c_green}%s${c_clear} ${c_red}%%${c_clear}):AFTER\\n%s" master &&
 		(
 			GIT_PS1_SHOWUNTRACKEDFILES=y &&
 			GIT_PS1_SHOWCOLORHINTS=y &&
 			__git_ps1 "BEFORE:" ":AFTER" &&
-			printf "%s\\n%s" "$PS1" "${__git_ps1_branch_name}" >"$actual"
+			pcmode_actual
 		) &&
 		test_cmp expected "$actual"
 	'
+}
+
+run_pcmode_tests () {
+	_run_pcmode_tests on
+	_run_pcmode_tests off
 }
 
 run_pcmode_tests
