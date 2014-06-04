@@ -12,10 +12,11 @@
 #      (non-zero) and ps1_expansion_disable should simply return
 #      non-zero (0)
 #   3. define a function named set_ps1_format_vars that sets the
-#      variables c_red, c_green, c_lblue, and c_clear to the strings
-#      that __git_ps1 uses to add color to the prompt.  The values of
-#      these variables are used in the first argument to the printf
-#      command, so they must be escaped appropriately.
+#      variables percent, c_red, c_green, c_lblue, and c_clear to the
+#      strings that __git_ps1 uses to add percent characters and color
+#      to the prompt.  The values of these variables are used in the
+#      first argument to the printf command, so they must be escaped
+#      appropriately.
 #   4. source this library
 #   5. invoke the run_prompt_tests function
 
@@ -403,7 +404,7 @@ newline'
 	'
 
 	test_expect_success "$pfx - untracked files status indicator - untracked files" '
-		printf " (master %%)" >expected &&
+		printf " (master ${percent})" >expected &&
 		(
 			GIT_PS1_SHOWUNTRACKEDFILES=y &&
 			__git_ps1 >"$actual"
@@ -442,7 +443,7 @@ newline'
 	'
 
 	test_expect_success "$pfx - untracked files status indicator - shell variable set with config enabled" '
-		printf " (master %%)" >expected &&
+		printf " (master ${percent})" >expected &&
 		test_config bash.showUntrackedFiles true &&
 		(
 			GIT_PS1_SHOWUNTRACKEDFILES=y &&
@@ -632,7 +633,7 @@ _run_pcmode_tests () {
 
 	test_expect_success "$pfx - untracked files status indicator" '
 		set_ps1expansion &&
-		pcmode_expected "BEFORE: (${c_green}%s${c_clear} ${c_red}%%${c_clear}):AFTER\\n%s" master &&
+		pcmode_expected "BEFORE: (${c_green}%s${c_clear} ${c_red}${percent}${c_clear}):AFTER\\n%s" master &&
 		(
 			GIT_PS1_SHOWUNTRACKEDFILES=y &&
 			GIT_PS1_SHOWCOLORHINTS=y &&
