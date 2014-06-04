@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-03 21:52+0200\n"
+"PO-Revision-Date: 2014-06-04 21:38+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -8835,7 +8835,7 @@ msgstr ""
 
 #: builtin/show-branch.c:657
 msgid "synonym to more=-1"
-msgstr ""
+msgstr "sinónimo de more=-1"
 
 #: builtin/show-branch.c:658
 msgid "suppress naming strings"
@@ -8843,11 +8843,11 @@ msgstr ""
 
 #: builtin/show-branch.c:660
 msgid "include the current branch"
-msgstr ""
+msgstr "incluye la rama actual"
 
 #: builtin/show-branch.c:662
 msgid "name commits with their object names"
-msgstr ""
+msgstr "nombra los commits con sus nombres de objeto"
 
 #: builtin/show-branch.c:664
 msgid "show possible merge bases"
@@ -8885,7 +8885,7 @@ msgstr ""
 msgid ""
 "git show-ref [-q|--quiet] [--verify] [--head] [-d|--dereference] [-s|--hash"
 "[=<n>]] [--abbrev[=<n>]] [--tags] [--heads] [--] [pattern*] "
-msgstr ""
+msgstr "git show-ref [-q|--quiet] [--verify] [--head] [-d|--dereference] [-s|--hash[=<n>]] [--abbrev[=<n>]] [--tags] [--heads] [--] [patrón*] "
 
 #: builtin/show-ref.c:11
 msgid "git show-ref --exclude-existing[=pattern] < ref-list"
@@ -8917,7 +8917,7 @@ msgstr ""
 
 #: builtin/show-ref.c:183
 msgid "do not print results to stdout (useful with --verify)"
-msgstr ""
+msgstr "no escribe los resultados en la salida estándar (útil con --verify)"
 
 #: builtin/show-ref.c:185
 msgid "show refs from stdin that aren't in local repository"
@@ -8929,7 +8929,7 @@ msgstr ""
 
 #: builtin/symbolic-ref.c:8
 msgid "git symbolic-ref -d [-q] name"
-msgstr ""
+msgstr "git symbolic-ref -d [-q] nombre"
 
 #: builtin/symbolic-ref.c:40
 msgid "suppress error message for non-symbolic (detached) refs"
