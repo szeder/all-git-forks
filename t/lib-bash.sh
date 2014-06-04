@@ -14,6 +14,8 @@ else
 	exit 0
 fi
 
+shellname=Bash
+
 ps1_expansion_enable () { shopt -s promptvars; }
 ps1_expansion_disable () { shopt -u promptvars; }
 
