@@ -146,6 +146,7 @@ void home_config_paths(char **global, char **xdg, char *file)
 	// global=$HOME/.gitconfig
 	// xdg=$XDG_HOME/git/config Лђеп
 	// xdg=$HOME/.config/git/config
+	// test
 	if (!home) {
 		if (global)
 			*global = NULL;
