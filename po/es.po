@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-04 21:38+0200\n"
+"PO-Revision-Date: 2014-06-05 18:39+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -8945,11 +8945,11 @@ msgstr ""
 
 #: builtin/symbolic-ref.c:43 builtin/update-ref.c:255
 msgid "reason"
-msgstr ""
+msgstr "motivo"
 
 #: builtin/symbolic-ref.c:43 builtin/update-ref.c:255
 msgid "reason of the update"
-msgstr ""
+msgstr "motivo de la actualización"
 
 #: builtin/tag.c:22
 msgid ""
@@ -8958,17 +8958,19 @@ msgstr ""
 
 #: builtin/tag.c:23
 msgid "git tag -d <tagname>..."
-msgstr ""
+msgstr "git tag -d <nombre-etiqueta>..."
 
 #: builtin/tag.c:24
 msgid ""
 "git tag -l [-n[<num>]] [--contains <commit>] [--points-at <object>] \n"
 "\t\t[<pattern>...]"
 msgstr ""
+"git tag -l [-n[<num>]] [--contains <commit>] [--points-at <objeto>] \n"
+"\t\t[<patrón>...]"
 
 #: builtin/tag.c:26
 msgid "git tag -v <tagname>..."
-msgstr ""
+msgstr "git tag -v <nombre-etiqueta>..."
 
 #: builtin/tag.c:67
 #, c-format
@@ -8978,22 +8980,22 @@ msgstr ""
 #: builtin/tag.c:239
 #, c-format
 msgid "tag name too long: %.*s..."
-msgstr ""
+msgstr "nombre de etiqueta demasiado largo: %.*s..."
 
 #: builtin/tag.c:244
 #, c-format
 msgid "tag '%s' not found."
-msgstr ""
+msgstr "etiqueta '%s' no encontrada."
 
 #: builtin/tag.c:259
 #, c-format
 msgid "Deleted tag '%s' (was %s)\n"
-msgstr ""
+msgstr "Borrada la etiqueta '%s' (era %s)\n"
 
 #: builtin/tag.c:271
 #, c-format
 msgid "could not verify the tag '%s'"
-msgstr ""
+msgstr "no he podido verificar la etiqueta '%s'"
 
 #: builtin/tag.c:281
 #, c-format
@@ -9002,6 +9004,9 @@ msgid ""
 "Write a tag message\n"
 "Lines starting with '%c' will be ignored.\n"
 msgstr ""
+"\n"
+"Escriba un mensaje de etiqueta\n"
+"Las líneas que empiecen por '%c' serán ignoradas.\n"
 
 #: builtin/tag.c:285
 #, c-format
@@ -9011,10 +9016,13 @@ msgid ""
 "Lines starting with '%c' will be kept; you may remove them yourself if you "
 "want to.\n"
 msgstr ""
+"\n"
+"Escriba un mensaje de etiqueta\n"
+"Las líneas que empiecen por '%c' serán conservadas; puede eliminarlas si lo desea.\n"
 
 #: builtin/tag.c:324
 msgid "unable to sign the tag"
-msgstr ""
+msgstr "no puedo firmar la etiqueta"
 
 #: builtin/tag.c:326
 msgid "unable to write tag file"
@@ -9030,16 +9038,16 @@ msgstr ""
 
 #: builtin/tag.c:400
 msgid "no tag message?"
-msgstr ""
+msgstr "¿sin mensaje de etiqueta?"
 
 #: builtin/tag.c:406
 #, c-format
 msgid "The tag message has been left in %s\n"
-msgstr ""
+msgstr "He guardado el mensaje de etiqueta en %s\n"
 
 #: builtin/tag.c:455
 msgid "switch 'points-at' requires an object"
-msgstr ""
+msgstr "con la opción 'points-at' es obligatorio especificar un objeto"
 
 #: builtin/tag.c:457
 #, c-format
@@ -9053,71 +9061,71 @@ msgstr ""
 
 #: builtin/tag.c:500
 msgid "list tag names"
-msgstr ""
+msgstr "lista el nombre de las etiquetas"
 
 #: builtin/tag.c:502
 msgid "print <n> lines of each tag message"
-msgstr ""
+msgstr "imprime <n> líneas del mensaje de cada etiqueta"
 
 #: builtin/tag.c:504
 msgid "delete tags"
-msgstr ""
+msgstr "borra etiquetas"
 
 #: builtin/tag.c:505
 msgid "verify tags"
-msgstr ""
+msgstr "verifica etiquetas"
 
 #: builtin/tag.c:507
 msgid "Tag creation options"
-msgstr ""
+msgstr "Opciones de creación de etiquetas"
 
 #: builtin/tag.c:509
 msgid "annotated tag, needs a message"
-msgstr ""
+msgstr "etiqueta comentada, necesita un mensaje"
 
 #: builtin/tag.c:511
 msgid "tag message"
-msgstr ""
+msgstr "mensaje de etiqueta"
 
 #: builtin/tag.c:513
 msgid "annotated and GPG-signed tag"
-msgstr ""
+msgstr "etiqueta comentada, y firmada con GPG"
 
 #: builtin/tag.c:517
 msgid "use another key to sign the tag"
-msgstr ""
+msgstr "usa otra clave para firmar la etiqueta"
 
 #: builtin/tag.c:518
 msgid "replace the tag if exists"
-msgstr ""
+msgstr "reemplaza la etiqueta si ya existe"
 
 #: builtin/tag.c:519
 msgid "show tag list in columns"
-msgstr ""
+msgstr "muestra la lista de etiquetas en columnas"
 
 #: builtin/tag.c:521
 msgid "sort tags"
-msgstr ""
+msgstr "ordena etiquetas"
 
 #: builtin/tag.c:525
 msgid "Tag listing options"
-msgstr ""
+msgstr "Opciones de listado de etiquetas"
 
 #: builtin/tag.c:528 builtin/tag.c:534
 msgid "print only tags that contain the commit"
-msgstr ""
+msgstr "imprime sólo las etiquetas que contienen el commit"
 
 #: builtin/tag.c:540
 msgid "print only tags of the object"
-msgstr ""
+msgstr "imprime sólo las etiquetas del objeto"
 
 #: builtin/tag.c:566
 msgid "--column and -n are incompatible"
-msgstr ""
+msgstr "--column y -n son incompatibles"
 
 #: builtin/tag.c:578
 msgid "--sort and -n are incompatible"
-msgstr ""
+msgstr "--sort y -n son incompatibles"
 
 #: builtin/tag.c:585
 msgid "-n option is only allowed with -l."
