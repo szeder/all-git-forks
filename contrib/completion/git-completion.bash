@@ -1225,6 +1225,8 @@ __git_fetch_recurse_submodules="yes on-demand no"
 __git_fetch_options="
 	--quiet --verbose --append --upload-pack --force --keep --depth=
 	--tags --no-tags --all --prune --dry-run --recurse-submodules=
+	--no-recurse-submodules --unshallow --update-shallow --multiple
+	--submodule-prefix= --update-head-ok --progress
 "
 
 _git_fetch ()
