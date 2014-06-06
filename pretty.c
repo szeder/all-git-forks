@@ -1533,6 +1533,7 @@ void format_commit_message(const struct commit *commit,
 	free(context.commit_encoding);
 	logmsg_free(context.message, commit);
 	free(context.signature_check.gpg_output);
+	free(context.signature_check.gpg_status);
 	free(context.signature_check.signer);
 }
 
