@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-05 18:39+0200\n"
+"PO-Revision-Date: 2014-06-06 16:18+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -9129,33 +9129,33 @@ msgstr "--sort y -n son incompatibles"
 
 #: builtin/tag.c:585
 msgid "-n option is only allowed with -l."
-msgstr ""
+msgstr "la opción -n sólo está permitida junto con -l."
 
 #: builtin/tag.c:587
 msgid "--contains option is only allowed with -l."
-msgstr ""
+msgstr "la opción --contains sólo está permitida junto con -l."
 
 #: builtin/tag.c:589
 msgid "--points-at option is only allowed with -l."
-msgstr ""
+msgstr "la opción --points-at sólo está permitida junto con -l."
 
 #: builtin/tag.c:597
 msgid "only one -F or -m option is allowed."
-msgstr ""
+msgstr "sólo se permite una de las opciones -F y -m."
 
 #: builtin/tag.c:617
 msgid "too many params"
-msgstr ""
+msgstr "demasiados parámetros"
 
 #: builtin/tag.c:623
 #, c-format
 msgid "'%s' is not a valid tag name."
-msgstr ""
+msgstr "'%s' no es un nombre válido de etiqueta."
 
 #: builtin/tag.c:628
 #, c-format
 msgid "tag '%s' already exists"
-msgstr ""
+msgstr "la etiqueta '%s' ya existe"
 
 #: builtin/tag.c:646
 #, c-format
@@ -9170,7 +9170,7 @@ msgstr ""
 #: builtin/tag.c:650
 #, c-format
 msgid "Updated tag '%s' (was %s)\n"
-msgstr ""
+msgstr "Actualizada la etiqueta '%s' (era %s)\n"
 
 #: builtin/unpack-objects.c:483
 msgid "Unpacking objects"
@@ -9178,7 +9178,7 @@ msgstr ""
 
 #: builtin/update-index.c:399
 msgid "git update-index [options] [--] [<file>...]"
-msgstr ""
+msgstr "git update-index [opciones] [--] [<fichero>...]"
 
 #: builtin/update-index.c:748
 msgid "continue refresh even when index needs update"
@@ -9190,15 +9190,15 @@ msgstr ""
 
 #: builtin/update-index.c:754
 msgid "do not ignore new files"
-msgstr ""
+msgstr "no ignora ficheros nuevos"
 
 #: builtin/update-index.c:756
 msgid "let files replace directories and vice-versa"
-msgstr ""
+msgstr "permite que ficheros reemplacen directorios y viceversa"
 
 #: builtin/update-index.c:758
 msgid "notice files missing from worktree"
-msgstr ""
+msgstr "tiene en cuenta los ficheros ausentes del árbol de trabajo"
 
 #: builtin/update-index.c:760
 msgid "refresh even if index contains unmerged entries"
@@ -9206,7 +9206,7 @@ msgstr ""
 
 #: builtin/update-index.c:763
 msgid "refresh stat information"
-msgstr ""
+msgstr "refresca la información de estado"
 
 #: builtin/update-index.c:767
 msgid "like --refresh, but ignore assume-unchanged setting"
@@ -9218,15 +9218,15 @@ msgstr ""
 
 #: builtin/update-index.c:772
 msgid "add the specified entry to the index"
-msgstr ""
+msgstr "añade al índice la entrada especificada"
 
 #: builtin/update-index.c:776
 msgid "(+/-)x"
-msgstr ""
+msgstr "(+/-)x"
 
 #: builtin/update-index.c:777
 msgid "override the executable bit of the listed files"
-msgstr ""
+msgstr "sobreescribe la marca de ejecutable de los ficheros especificados"
 
 #: builtin/update-index.c:781
 msgid "mark files as \"not changing\""
@@ -9246,11 +9246,11 @@ msgstr ""
 
 #: builtin/update-index.c:793
 msgid "add to index only; do not add content to object database"
-msgstr ""
+msgstr "sólo añade al índice; no añade contenido a la base de datos de objetos"
 
 #: builtin/update-index.c:795
 msgid "remove named paths even if present in worktree"
-msgstr ""
+msgstr "elimina las rutas especificadas incluso si están presentes en el árbol de trabajo"
 
 #: builtin/update-index.c:797
 msgid "with --stdin: input lines are terminated by null bytes"
@@ -9258,11 +9258,11 @@ msgstr ""
 
 #: builtin/update-index.c:799
 msgid "read list of paths to be updated from standard input"
-msgstr ""
+msgstr "lee la lista de rutas a actualizar de la entrada estándar"
 
 #: builtin/update-index.c:803
 msgid "add entries from standard input to the index"
-msgstr ""
+msgstr "añade al índice las entradas leídas de la entrada estándar"
 
 #: builtin/update-index.c:807
 msgid "repopulate stages #2 and #3 for the listed paths"
@@ -9270,15 +9270,15 @@ msgstr ""
 
 #: builtin/update-index.c:811
 msgid "only update entries that differ from HEAD"
-msgstr ""
+msgstr "sólo actualiza las entradas que difieren de la CABEZA [HEAD]"
 
 #: builtin/update-index.c:815
 msgid "ignore files missing from worktree"
-msgstr ""
+msgstr "ignora los ficheros ausentes del árbol de trabajo"
 
 #: builtin/update-index.c:818
 msgid "report actions to standard output"
-msgstr ""
+msgstr "informa sobre las acciones en la salida estándar"
 
 #: builtin/update-index.c:820
 msgid "(for porcelains) forget saved unresolved conflicts"
@@ -9286,7 +9286,7 @@ msgstr ""
 
 #: builtin/update-index.c:824
 msgid "write index in this format"
-msgstr ""
+msgstr "escribe el índice en este formato"
 
 #: builtin/update-ref.c:9
 msgid "git update-ref [options] -d <refname> [<oldval>]"
@@ -9298,7 +9298,7 @@ msgstr ""
 
 #: builtin/update-ref.c:11
 msgid "git update-ref [options] --stdin [-z]"
-msgstr ""
+msgstr "git update-ref [opciones] --stdin [-z]"
 
 #: builtin/update-ref.c:256
 msgid "delete the reference"
@@ -9314,11 +9314,11 @@ msgstr ""
 
 #: builtin/update-ref.c:260
 msgid "read updates from stdin"
-msgstr ""
+msgstr "lee de la entrada estándar las actualizaciones"
 
 #: builtin/update-server-info.c:6
 msgid "git update-server-info [--force]"
-msgstr ""
+msgstr "git update-server-info [--force]"
 
 #: builtin/update-server-info.c:14
 msgid "update the info files from scratch"
@@ -9330,35 +9330,35 @@ msgstr ""
 
 #: builtin/verify-pack.c:66
 msgid "verbose"
-msgstr ""
+msgstr "verboso"
 
 #: builtin/verify-pack.c:68
 msgid "show statistics only"
-msgstr ""
+msgstr "sólo muestra estadísticas"
 
 #: builtin/verify-tag.c:17
 msgid "git verify-tag [-v|--verbose] <tag>..."
-msgstr ""
+msgstr "git verify-tag [-v|--verbose] <etiqueta>..."
 
 #: builtin/verify-tag.c:73
 msgid "print tag contents"
-msgstr ""
+msgstr "imprime el contenido de la etiqueta"
 
 #: builtin/write-tree.c:13
 msgid "git write-tree [--missing-ok] [--prefix=<prefix>/]"
-msgstr ""
+msgstr "git write-tree [--missing-ok] [--prefix=<prefijo>/]"
 
 #: builtin/write-tree.c:26
 msgid "<prefix>/"
-msgstr ""
+msgstr "<prefijo>/"
 
 #: builtin/write-tree.c:27
 msgid "write tree object for a subdirectory <prefix>"
-msgstr ""
+msgstr "escribe el objeto árbol para el subdirectorio <prefijo>"
 
 #: builtin/write-tree.c:30
 msgid "only useful for debugging"
-msgstr ""
+msgstr "útil sólo para depuración"
 
 #: git.c:17
 msgid ""
