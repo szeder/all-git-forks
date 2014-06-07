@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-06 16:18+0200\n"
+"PO-Revision-Date: 2014-06-07 22:20+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -2328,7 +2328,7 @@ msgstr "además, aplica el parche (úselo con --stat/--summary/--check)"
 
 #: builtin/apply.c:4385
 msgid "attempt three-way merge if a patch does not apply"
-msgstr "intenta fusionar a tres vías si un parche no es aplicable"
+msgstr "intenta fusionar a tres-vías si un parche no es aplicable"
 
 #: builtin/apply.c:4387
 msgid "build a temporary index based on embedded index information"
@@ -9366,26 +9366,29 @@ msgid ""
 "concept guides. See 'git help <command>' or 'git help <concept>'\n"
 "to read about a specific subcommand or concept."
 msgstr ""
+"'git help -a' y 'git help -g' listan las subórdenes disponibles y algunas\n"
+"guías sobre conceptos. Vea 'git help <orden>' o 'git help <concepto>'\n"
+"para leer sobre una suborden o concepto específicos."
 
 #: parse-options.h:143
 msgid "expiry-date"
-msgstr ""
+msgstr "fecha-vencimiento"
 
 #: parse-options.h:158
 msgid "no-op (backward compatibility)"
-msgstr ""
+msgstr "no-op (compatibilidad con versiones anteriores)"
 
 #: parse-options.h:232
 msgid "be more verbose"
-msgstr ""
+msgstr "es más verboso"
 
 #: parse-options.h:234
 msgid "be more quiet"
-msgstr ""
+msgstr "es más silencioso"
 
 #: parse-options.h:240
 msgid "use <n> digits to display SHA-1s"
-msgstr ""
+msgstr "usa <n> dígitos para mostrar SHA-1s"
 
 #: common-cmds.h:8
 msgid "Add file contents to the index"
@@ -9470,11 +9473,11 @@ msgstr "Muestra el estado del árbol de trabajo"
 
 #: common-cmds.h:28
 msgid "Create, list, delete or verify a tag object signed with GPG"
-msgstr ""
+msgstr "Crea, muestra, borra o verifica un objeto etiqueta firmado con GPG"
 
 #: git-am.sh:52
 msgid "You need to set your committer info first"
-msgstr ""
+msgstr "Antes debe establecer la info sobre el autor del commit"
 
 #: git-am.sh:97
 msgid ""
@@ -9498,21 +9501,23 @@ msgstr ""
 
 #: git-am.sh:123
 msgid "Cannot fall back to three-way merge."
-msgstr ""
+msgstr "No puedo recurrir a fusión de tres-vías."
 
 #: git-am.sh:139
 msgid "Repository lacks necessary blobs to fall back on 3-way merge."
-msgstr ""
+msgstr "El repositorio carece de los blobs necesarios para recurrir a fusión de 3-vías."
 
 #: git-am.sh:141
 msgid "Using index info to reconstruct a base tree..."
-msgstr ""
+msgstr "Usando info de índice para reconstruir un árbol base..."
 
 #: git-am.sh:156
 msgid ""
 "Did you hand edit your patch?\n"
 "It does not apply to blobs recorded in its index."
 msgstr ""
+"¿Ha editado el parche manualmente?\n"
+"No es aplicable a blobs registrados en el índice."
 
 #: git-am.sh:165
 msgid "Falling back to patching base and 3-way merge..."
@@ -9520,7 +9525,7 @@ msgstr ""
 
 #: git-am.sh:181
 msgid "Failed to merge in the changes."
-msgstr ""
+msgstr "No he podido hacer la fusión de los cambios."
 
 #: git-am.sh:276
 msgid "Only one StGIT patch series can be applied at once"
@@ -9558,6 +9563,8 @@ msgid ""
 "Stray $dotest directory found.\n"
 "Use \"git am --abort\" to remove it."
 msgstr ""
+"Encontrado el directorio extraviado $dotest.\n"
+"Use \"git am --abort\" para eliminarlo."
 
 #: git-am.sh:535
 msgid "Resolve operation not in progress, we are not resuming."
