@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-07 22:20+0200\n"
+"PO-Revision-Date: 2014-06-08 19:13+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -9573,7 +9573,7 @@ msgstr ""
 #: git-am.sh:601
 #, sh-format
 msgid "Dirty index: cannot apply patches (dirty: $files)"
-msgstr ""
+msgstr "Índice sucio: no puede aplicar parches (sucio: $files)"
 
 #: git-am.sh:705
 #, sh-format
@@ -9582,6 +9582,9 @@ msgid ""
 "If you would prefer to skip this patch, instead run \"$cmdline --skip\".\n"
 "To restore the original branch and stop patching run \"$cmdline --abort\"."
 msgstr ""
+"El parche está vacío. ¿Quizá fue mal dividido?\n"
+"Si prefiere saltarse este parche, ejecute \"$cmdline --skip\".\n"
+"Para restaurar la rama original y detener la aplicación de parches, ejecute \"$cmdline --abort\"."
 
 #: git-am.sh:732
 msgid "Patch does not have a valid e-mail address."
@@ -9605,7 +9608,7 @@ msgstr "Aplicar? [y]sí/[n]o/[e]ditar/[v]er parche/[a]ceptar todo "
 #: git-am.sh:826
 #, sh-format
 msgid "Applying: $FIRSTLINE"
-msgstr ""
+msgstr "Aplicando: $FIRSTLINE"
 
 #: git-am.sh:847
 msgid ""
@@ -9613,12 +9616,17 @@ msgid ""
 "If there is nothing left to stage, chances are that something else\n"
 "already introduced the same changes; you might want to skip this patch."
 msgstr ""
+"Ningún cambio - ¿olvidó usar 'git add'?\n"
+"Si no falta nada por añadir al stage, lo más probable es que algo\n"
+"haya introducido los mismos cambios; quizá quiera saltarse este parche."
 
 #: git-am.sh:855
 msgid ""
 "You still have unmerged paths in your index\n"
 "did you forget to use 'git add'?"
 msgstr ""
+"Todavía tiene rutas sin fusionar en el índice\n"
+"¿Olvidó usar 'git add'?"
 
 #: git-am.sh:871
 msgid "No changes -- Patch already applied."
