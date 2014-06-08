@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-08 19:13+0200\n"
+"PO-Revision-Date: 2014-06-08 23:32+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -9635,7 +9635,7 @@ msgstr "Ningún cambio -- Parche ya aplicado."
 #: git-am.sh:881
 #, sh-format
 msgid "Patch failed at $msgnum $FIRSTLINE"
-msgstr ""
+msgstr "La aplicación del parche ha fallado en $msgnum $FIRSTLINE"
 
 #: git-am.sh:884
 #, sh-format
@@ -9652,7 +9652,7 @@ msgstr ""
 
 #: git-bisect.sh:48
 msgid "You need to start by \"git bisect start\""
-msgstr ""
+msgstr "Tiene que empezar por \"git bisect start\""
 
 #. TRANSLATORS: Make sure to include [Y] and [n] in your
 #. translation. The program will only accept English input
@@ -9710,7 +9710,7 @@ msgstr ""
 
 #: git-bisect.sh:250
 msgid "'git bisect bad' can take only one argument."
-msgstr ""
+msgstr "'git bisect bad' sólo acepta un parámetro."
 
 #: git-bisect.sh:273
 msgid "Warning: bisecting only with a bad commit."
@@ -9738,7 +9738,7 @@ msgstr ""
 
 #: git-bisect.sh:363 git-bisect.sh:490
 msgid "We are not bisecting."
-msgstr ""
+msgstr "No estamos bisecando."
 
 #: git-bisect.sh:370
 #, sh-format
@@ -9763,7 +9763,7 @@ msgstr ""
 
 #: git-bisect.sh:424
 msgid "?? what are you talking about?"
-msgstr "¿¿?? ¿de qué está Ud. hablando?"
+msgstr "¿¿?? ¿de qué está hablando?"
 
 #: git-bisect.sh:436
 #, sh-format
@@ -9776,6 +9776,8 @@ msgid ""
 "bisect run failed:\n"
 "exit code $res from '$command' is < 0 or >= 128"
 msgstr ""
+"error durante la bisección:\n"
+"el código de salida $res de '$command' es < 0 ó >= 128"
 
 #: git-bisect.sh:469
 msgid "bisect run cannot continue any more"
@@ -9810,7 +9812,7 @@ msgstr "Tirar [pull] no es posible porque tiene ficheros sin fusionar."
 
 #: git-pull.sh:247
 msgid "updating an unborn branch with changes added to the index"
-msgstr ""
+msgstr "actualizando una rama nonata con cambios añadidos al índice"
 
 #: git-pull.sh:271
 #, sh-format
@@ -9888,7 +9890,7 @@ msgstr ""
 #: git-rebase.sh:394
 #, sh-format
 msgid "Could not move back to $head_name"
-msgstr ""
+msgstr "No he podido volver a $head_name"
 
 #: git-rebase.sh:413
 #, sh-format
