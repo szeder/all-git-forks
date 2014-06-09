@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-09 13:08+0200\n"
+"PO-Revision-Date: 2014-06-09 20:18+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -143,7 +143,7 @@ msgstr ""
 #: branch.c:84
 #, c-format
 msgid "Branch %s set up to track remote branch %s from %s."
-msgstr ""
+msgstr "Rama %s configurada para seguir a la rama remota %s de %s."
 
 #: branch.c:88
 #, c-format
@@ -153,7 +153,7 @@ msgstr ""
 #: branch.c:89
 #, c-format
 msgid "Branch %s set up to track local branch %s."
-msgstr ""
+msgstr "Rama %s configurada para seguir a la rama local %s."
 
 #: branch.c:94
 #, c-format
@@ -567,7 +567,7 @@ msgstr "no he podido leer la caché"
 #: merge.c:110 builtin/checkout.c:357 builtin/checkout.c:558
 #: builtin/clone.c:661
 msgid "unable to write new index file"
-msgstr ""
+msgstr "no puedo escribir el fichero índice nuevo"
 
 #: merge-recursive.c:190
 #, c-format
@@ -935,6 +935,8 @@ msgid ""
 "index.version set, but the value is invalid.\n"
 "Using version %i"
 msgstr ""
+"Asignado un valor a index.version, pero el valor es inválido.\n"
+"Usando versión %i"
 
 #: read-cache.c:1248
 #, c-format
@@ -942,6 +944,8 @@ msgid ""
 "GIT_INDEX_VERSION set, but the value is invalid.\n"
 "Using version %i"
 msgstr ""
+"Asignado un valor a GIT_INDEX_VERSION, pero el valor es inválido.\n"
+"Usando versión %i"
 
 #: remote.c:758
 #, c-format
@@ -969,7 +973,7 @@ msgstr ""
 
 #: remote.c:1952
 msgid "  (use \"git branch --unset-upstream\" to fixup)\n"
-msgstr ""
+msgstr "  (use \"git branch --unset-upstream\" para corregirlo)\n"
 
 #: remote.c:1955
 #, c-format
@@ -1083,7 +1087,7 @@ msgstr "Haga commit con sus modificaciones o apártelas [stash] para continuar."
 #: sequencer.c:325
 #, c-format
 msgid "%s: Unable to write new index file"
-msgstr ""
+msgstr "%s: No puedo escribir el fichero índice nuevo"
 
 #: sequencer.c:356
 msgid "Could not resolve HEAD commit\n"
@@ -1105,7 +1109,7 @@ msgstr ""
 
 #: sequencer.c:501
 msgid "Your index file is unmerged."
-msgstr ""
+msgstr "Su fichero índide está sin fusionar."
 
 #: sequencer.c:520
 #, c-format
@@ -1115,7 +1119,7 @@ msgstr "El commit %s es una fusión [merge] pero no ha usado la opción -m."
 #: sequencer.c:528
 #, c-format
 msgid "Commit %s does not have parent %d"
-msgstr ""
+msgstr "El commit %s no tiene a %d como padre"
 
 #: sequencer.c:532
 #, c-format
@@ -1159,9 +1163,9 @@ msgid "git %s: failed to refresh the index"
 msgstr "git %s: no he podido actualizar el índice"
 
 #: sequencer.c:743
-#, c-format
+#, c-format, fuzzy
 msgid "Cannot %s during a %s"
-msgstr ""
+msgstr "No puedo ejecutar %s durante la ejecución de %s"
 
 #: sequencer.c:765
 #, c-format
@@ -1230,7 +1234,7 @@ msgstr ""
 
 #: sequencer.c:904
 msgid "cannot abort from a branch yet to be born"
-msgstr ""
+msgstr "no puedo abortar desde una rama aún nonata"
 
 #: sequencer.c:926 builtin/apply.c:4061
 #, c-format
@@ -1439,7 +1443,7 @@ msgstr "  (use \"git checkout -- <fichero>...\" para descartar cambios en el dir
 
 #: wt-status.c:225
 msgid "  (commit or discard the untracked or modified content in submodules)"
-msgstr ""
+msgstr "  (haga commit o deseche el contenido no monitorizado o modificado en submódulos)"
 
 #: wt-status.c:237
 #, c-format
@@ -1452,19 +1456,19 @@ msgstr "ambos borrados:"
 
 #: wt-status.c:254
 msgid "added by us:"
-msgstr ""
+msgstr "añadido por nosotros:"
 
 #: wt-status.c:256
 msgid "deleted by them:"
-msgstr ""
+msgstr "borrado por ellos:"
 
 #: wt-status.c:258
 msgid "added by them:"
-msgstr ""
+msgstr "añadido por ellos:"
 
 #: wt-status.c:260
 msgid "deleted by us:"
-msgstr ""
+msgstr "borrado por nosotros:"
 
 #: wt-status.c:262
 msgid "both added:"
