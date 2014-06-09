@@ -155,6 +155,51 @@ static void loop(const char *pid_file, int idle_in_seconds)
 		; /* do nothing, all is handled by signal handlers already */
 }
 
+#elif defined(GIT_WINDOWS_NATIVE)
+
+static void loop(const char *pid_file, int idle_in_seconds)
+{
+	HWND hwnd;
+	UINT_PTR timer = 0;
+	MSG msg;
+	HINSTANCE hinst = GetModuleHandle(NULL);
+	WNDCLASS wc;
+
+	/*
+	 * Emulate UNIX signals by sending WM_USER+x to a
+	 * window. Register window class and create a new window to
+	 * catch these messages.
+	 */
+	memset(&wc, 0, sizeof(wc));
+	wc.lpfnWndProc	 = DefWindowProc;
+	wc.hInstance	 = hinst;
+	wc.lpszClassName = "git-index-helper";
+	if (!RegisterClass(&wc))
+		die_errno(_("could not register new window class"));
+
+	hwnd = CreateWindow("git-index-helper", pid_file,
+			    0, 0, 0, 1, 1, NULL, NULL, hinst, NULL);
+	if (!hwnd)
+		die_errno(_("could not register new window"));
+
+	refresh(0);
+	while (1) {
+		timer = SetTimer(hwnd, timer, idle_in_seconds * 1000, NULL);
+		if (!timer)
+			die(_("no timer!"));
+		if (!GetMessage(&msg, hwnd, 0, 0) || msg.message == WM_TIMER)
+			break;
+		switch (msg.message) {
+		case WM_USER:
+			refresh(0);
+			break;
+		default:
+			/* just reset the timer */
+			break;
+		}
+	}
+}
+
 #else
 
 static void loop(const char *pid_file, int idle_in_seconds)
@@ -198,6 +243,9 @@ int main(int argc, char **argv)
 	fd = hold_lock_file_for_update(&lock,
 				       git_path("index-helper.pid"),
 				       LOCK_DIE_ON_ERROR);
+#ifdef GIT_WINDOWS_NATIVE
+	strbuf_addstr(&sb, "HWND");
+#endif
 	strbuf_addf(&sb, "%" PRIuMAX, (uintmax_t) getpid());
 	write_in_full(fd, sb.buf, sb.len);
 	commit_lock_file(&lock);

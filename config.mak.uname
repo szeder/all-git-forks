@@ -376,6 +376,7 @@ ifndef DEBUG
 else
 	BASIC_CFLAGS += -Zi -MDd
 endif
+	PROGRAM_OBJS += index-helper.o
 	X = .exe
 endif
 ifeq ($(uname_S),Interix)
@@ -530,6 +531,7 @@ ifneq (,$(wildcard ../THIS_IS_MSYSGIT))
 else
 	NO_CURL = YesPlease
 endif
+	PROGRAM_OBJS += index-helper.o
 endif
 ifeq ($(uname_S),QNX)
 	COMPAT_CFLAGS += -DSA_RESTART=0
