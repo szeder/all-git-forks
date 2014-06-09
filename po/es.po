@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-08 23:32+0200\n"
+"PO-Revision-Date: 2014-06-09 13:08+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -9977,11 +9977,11 @@ msgstr "Ud. no tiene todavía el commit inicial"
 
 #: git-stash.sh:89
 msgid "Cannot save the current index state"
-msgstr ""
+msgstr "No puedo guardar el estado del índice actual"
 
 #: git-stash.sh:123 git-stash.sh:136
 msgid "Cannot save the current worktree state"
-msgstr ""
+msgstr "No puedo guardar el estado del árbol de trabajo actual"
 
 #: git-stash.sh:140
 msgid "No changes selected"
@@ -9989,7 +9989,7 @@ msgstr "Ningún cambio seleccionado"
 
 #: git-stash.sh:143
 msgid "Cannot remove temporary index (can't happen)"
-msgstr ""
+msgstr "No puedo eliminar el índice temporal (no puede ocurrir)"
 
 #: git-stash.sh:156
 msgid "Cannot record working tree state"
@@ -10033,7 +10033,7 @@ msgstr "No puedo guardar el estado actual"
 
 #: git-stash.sh:284
 msgid "Cannot remove worktree changes"
-msgstr ""
+msgstr "No puedo eliminar los cambios del árbol de trabajo"
 
 #: git-stash.sh:383
 msgid "No stash found."
@@ -10077,7 +10077,7 @@ msgstr ""
 
 #: git-stash.sh:491
 msgid "Cannot unstage modified files"
-msgstr ""
+msgstr "No puedo quitar del stage los ficheros modificados"
 
 #: git-stash.sh:506
 msgid "Index was not unstashed."
@@ -10208,7 +10208,7 @@ msgstr "Entrando en '$prefix$displaypath'"
 #: git-submodule.sh:565
 #, sh-format
 msgid "Stopping at '$prefix$displaypath'; script returned non-zero status."
-msgstr ""
+msgstr "Parando en '$prefix$displaypath'; el programa ha devuelto un código distinto de cero."
 
 #: git-submodule.sh:611
 #, sh-format
@@ -10345,7 +10345,7 @@ msgstr ""
 
 #: git-submodule.sh:1049
 msgid "The --cached option cannot be used with the --files option"
-msgstr ""
+msgstr "La opción --cached no puede usarse junto con --files"
 
 #: git-submodule.sh:1097
 #, sh-format
@@ -10355,21 +10355,21 @@ msgstr ""
 #: git-submodule.sh:1117
 #, sh-format
 msgid "  Warn: $display_name doesn't contain commit $sha1_src"
-msgstr ""
+msgstr "  Aviso: $display_name no contiene el commit $sha1_src"
 
 #: git-submodule.sh:1120
 #, sh-format
 msgid "  Warn: $display_name doesn't contain commit $sha1_dst"
-msgstr ""
+msgstr "  Aviso: $display_name no contiene el commit $sha1_dst"
 
 #: git-submodule.sh:1123
 #, sh-format
 msgid "  Warn: $display_name doesn't contain commits $sha1_src and $sha1_dst"
-msgstr ""
+msgstr "  Aviso: $display_name no contiene los commits $sha1_src ni $sha1_dst"
 
 #: git-submodule.sh:1148
 msgid "blob"
-msgstr ""
+msgstr "blob"
 
 #: git-submodule.sh:1262
 #, sh-format
