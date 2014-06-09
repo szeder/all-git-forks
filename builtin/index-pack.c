@@ -774,7 +774,7 @@ static void sha1_object(const void *data, struct object_entry *obj_entry,
 			}
 			if (obj->type == OBJ_COMMIT) {
 				struct commit *commit = (struct commit *) obj;
-				detach_commit_buffer(commit);
+				detach_commit_buffer(commit, NULL);
 			}
 			obj->flags |= FLAG_CHECKED;
 		}
