@@ -1622,6 +1622,7 @@ int peel_ref(const char *refname, unsigned char *sha1)
 struct warn_if_dangling_data {
 	FILE *fp;
 	const char *refname;
+	const struct string_list *refnames;
 	const char *msg_fmt;
 };
 
@@ -1636,8 +1637,12 @@ static int warn_if_dangling_symref(const char *refname, const unsigned char *sha
 		return 0;
 
 	resolves_to = resolve_ref_unsafe(refname, junk, 0, NULL);
-	if (!resolves_to || strcmp(resolves_to, d->refname))
+	if (!resolves_to
+	    || (d->refname
+		? strcmp(resolves_to, d->refname)
+		: !string_list_has_string(d->refnames, resolves_to))) {
 		return 0;
+	}
 
 	fprintf(d->fp, d->msg_fmt, refname);
 	fputc('\n', d->fp);
@@ -1650,6 +1655,18 @@ void warn_dangling_symref(FILE *fp, const char *msg_fmt, const char *refname)
 
 	data.fp = fp;
 	data.refname = refname;
+	data.refnames = NULL;
+	data.msg_fmt = msg_fmt;
+	for_each_rawref(warn_if_dangling_symref, &data);
+}
+
+void warn_dangling_symrefs(FILE *fp, const char *msg_fmt, const struct string_list *refnames)
+{
+	struct warn_if_dangling_data data;
+
+	data.fp = fp;
+	data.refname = NULL;
+	data.refnames = refnames;
 	data.msg_fmt = msg_fmt;
 	for_each_rawref(warn_if_dangling_symref, &data);
 }
@@ -2438,7 +2455,7 @@ static int curate_packed_ref_fn(struct ref_entry *entry, void *cb_data)
 	return 0;
 }
 
-static int repack_without_refs(const char **refnames, int n)
+int repack_without_refs(const char **refnames, int n)
 {
 	struct ref_dir *packed;
 	struct string_list refs_to_delete = STRING_LIST_INIT_DUP;
