@@ -299,20 +299,42 @@ static struct option builtin_author_options[] = {
 
 /********************** Memory ********************************/
 
-/* my_memory_ldiff_used for each round of ldiff
- * freed after a round of ldiff
+/* To reduce the amount of memory allocation and delocation,
+ * a large chunk of memory is allocated each time when more
+ * is needed. These memory are not freed, but reused
+ * after a round of ldiff
  */
-#define LDIFF_MEMORY_LIMIT (1 << 28)
-char my_memory_ldiff[LDIFF_MEMORY_LIMIT];
-int my_memory_ldiff_used = 0;
-void * my_allocate_ldiff(int num, int size){
-    int cur = my_memory_ldiff_used;
-    my_memory_ldiff_used += num *size;
-    if (my_memory_ldiff_used > LDIFF_MEMORY_LIMIT){
-        fprintf(stderr, "Exceed my_memory_ldiff Limit!!\n");
+
+#define LDIFF_MEMORY_UNIT (1 << 20)
+char ** memory_pointers = NULL;
+size_t nr_pointer = 0;
+size_t alloc_pointer = 0;
+size_t cur_pointer = 0;
+int used_memory = 0;
+
+void * my_allocate_ldiff(int num, int size) {
+    int byte_needed = num * size;
+    if (byte_needed > LDIFF_MEMORY_UNIT) {
+        fprintf(stderr, "Require larger memory allocation unit!\n");
 	exit(0);
     }
-    return my_memory_ldiff + cur;
+    if (used_memory + byte_needed >= LDIFF_MEMORY_UNIT) {
+        ++cur_pointer;
+    }
+    if (cur_pointer == nr_pointer) {
+        ALLOC_GROW(memory_pointers, nr_pointer + 1, alloc_pointer);
+	memory_pointers[nr_pointer++] = (char*) malloc(LDIFF_MEMORY_UNIT * sizeof(char));
+	used_memory = 0;
+
+    }
+    int old_posi = used_memory;
+    used_memory += byte_needed;
+    return memory_pointers[cur_pointer] + old_posi;
+}
+
+void my_allocate_reuse() {
+    cur_pointer = 0;
+    used_memory = 0;
 }
 
 /******************************** Global Data Structure ******************************/
@@ -347,8 +369,7 @@ struct commit_hash_entry {
 };
 
 
-/* string_hash_entry is my_memory_ldiff_used for a string hash map
- * Key is the string; Value is the frequency of the string
+/*  Key is the string; Value is the frequency of the string
  */
 struct string_hash_entry {
     // Internal structure used by the hashmap interface;
@@ -1111,7 +1132,7 @@ void line_match_in_hunk(struct hunk_pair* all_pair, int total_pair,
 	if (add_vector[all_pair[i].add]->total * del_vector[all_pair[i].del]->total < 10000) {
 	    dprintf("%d line pairs\n", add_vector[all_pair[i].add]->total * del_vector[all_pair[i].del]->total);
 	    line_score = line_similarity_score(add_vector[all_pair[i].add], del_vector[all_pair[i].del]);
-	    dprintf("IN LOOP %d: %d\n", i,my_memory_ldiff_used);
+	    dprintf("IN LOOP %d: \n", i);
 	    match_in_one_hunk_pair(add_vector[all_pair[i].add], del_vector[all_pair[i].del], line_score, new_diff);
 //	    free(line_score);
 	}
@@ -1259,7 +1280,7 @@ struct line_transfer* parse_diff_result(char *diff_result, size_t len){
     while (*cur_posi) {
         if (!strncmp(cur_posi, "@@ -",4)){	 
 
-	    my_memory_ldiff_used = 0;	  
+	    my_allocate_reuse();	  
 	    char *next_posi;
 	    struct code_hunk_list * added_hunk = (struct code_hunk_list*) my_allocate_ldiff(1, sizeof(struct code_hunk_list));
 	    struct code_hunk_list * deleted_hunk = (struct code_hunk_list*) my_allocate_ldiff(1, sizeof(struct code_hunk_list));   
@@ -1818,8 +1839,8 @@ int * leven_diff(int current, int *belong, int *map, int *length, struct line_in
     int new_length = length[current];
     int old_length = length[current - 1];
 
-    int *new_map = (int*) my_allocate_ldiff(old_length, sizeof(int));    
-    int *f = (int*) my_allocate_ldiff( (new_length+1) * (old_length+1), sizeof(int));
+    int *new_map = (int*) my_allocate_ldiff(old_length , sizeof(int));    
+    int *f = (int*) my_allocate_ldiff( (new_length+1) * (old_length+1) , sizeof(int));
     int i,j;
 
     for (i = 0; i < old_length; ++i) new_map[i] = -1;
@@ -1881,6 +1902,8 @@ int * leven_diff(int current, int *belong, int *map, int *length, struct line_in
     
     #undef CHG 
     #undef MIN
+    free(map);
+    free(f);
     return new_map;
 }
 
@@ -1893,13 +1916,13 @@ int** calculate_weighted_authorship(struct line_info_list ** cil, int total, int
         
         int total_commit = 0;
 	struct line_info_list *p , **list;
-	my_memory_ldiff_used = 0;
+	my_allocate_reuse();
 	for (p = cil[i]; p != NULL; p = p->next) ++total_commit;
 
 
-	list = (struct line_info_list**) my_allocate_ldiff( total_commit, sizeof(struct line_info_list*));
+	list = (struct line_info_list**) my_allocate_ldiff( total_commit , sizeof(struct line_info_list*));
 
-        int *length = (int*) my_allocate_ldiff( total_commit, sizeof(int));
+        int *length = (int*) my_allocate_ldiff( total_commit , sizeof(int));
 	int max_length = 0;
 	for (p = cil[i], j = 0; p != NULL; p = p->next, ++j) {
 	    list[j] = p;
@@ -1908,15 +1931,15 @@ int** calculate_weighted_authorship(struct line_info_list ** cil, int total, int
 	}
 
 	int cur_length = length[total_commit - 1];
-	int *belong = (int*) malloc( cur_length * sizeof(int));
-	int *map = (int*) my_allocate_ldiff( cur_length, sizeof(int));
-	int *fixed = (int*) my_allocate_ldiff( cur_length, sizeof(int));
-
 	if (total_commit < 2){	  
 	    code_share[i]  = NULL;
 	    (*char_authorship)[i] = NULL;
 	    continue;
 	}
+
+	int *belong = (int*) my_allocate_ldiff( cur_length , sizeof(int));
+	int *map = (int*) my_allocate_ldiff(cur_length , sizeof(int));
+	int *fixed = (int*) my_allocate_ldiff( cur_length , sizeof(int));
 
 	for (j = 0; j < cur_length; ++j) {
 	    belong[j] = total_commit - 1;
@@ -1934,6 +1957,12 @@ int** calculate_weighted_authorship(struct line_info_list ** cil, int total, int
 	    ++cnt[belong[j]];
         code_share[i] = cnt;
 	(*char_authorship)[i] = belong;
+	free(list);
+	free(length);
+	free(belong);
+	free(map);
+	free(fixed);
+	free(cnt);
     }
     return code_share;
 }
