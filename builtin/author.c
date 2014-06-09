@@ -299,26 +299,6 @@ static struct option builtin_author_options[] = {
 
 /********************** Memory ********************************/
 
-
-/* never freed;
- * my_memory_ldiff_used for commit info, commit hash
- */
-#define COMMIT_MEMORY_LIMIT (1 << 29)
-char my_memory_commit[COMMIT_MEMORY_LIMIT];
-int my_memory_commit_used = 0;
-
-void * my_allocate_commit(int num, int size){
-    static char* cur = my_memory_commit;
-    char* p = cur;
-    cur += num * size;
-    my_memory_commit_used += num *size;
-    
-    if (my_memory_commit_used > COMMIT_MEMORY_LIMIT){
-        fprintf(stderr, "Exceed my_memory_commit Limit!!\n");
-    }
-    return p;
-}
-
 /* my_memory_ldiff_used for each round of ldiff
  * freed after a round of ldiff
  */
@@ -479,8 +459,16 @@ struct line_transfer {
 
 /****************************** Global Variables ***************************/
 
+// set debug to 1 to enable debugging output
 int debug = 0;
-struct commit* queue[500000];
+
+// The queue for BFS visiting all commits
+// Using the dynamic growing api
+struct commit** queue = NULL;
+size_t nr = 0;
+size_t alloc = 0;
+
+// The head and tail of the above queue
 int head, tail;
 double* (*line_similarity_score) (struct code_hunk_list * , struct code_hunk_list*);
 struct hashmap commit_hashmap;
@@ -491,14 +479,7 @@ void push_int_back(int **vector_ptr,
                    int *total_ptr, 
 		   int *size_ptr, 
 		   int v){
-    if (*total_ptr == *size_ptr) {
-        int new_size = (*size_ptr + 16) * 3 / 2;
-        int *new_memory = (int*) xcalloc(new_size, sizeof(int));
-	memcpy(new_memory, *vector_ptr, *size_ptr * sizeof(int));
-	if (*vector_ptr) free(*vector_ptr);
-	*vector_ptr = new_memory;
-	*size_ptr = new_size;
-    }
+    ALLOC_GROW( *vector_ptr, *total_ptr + 1, *size_ptr);		   
     (*vector_ptr)[*total_ptr] = v;
     ++(*total_ptr);
 }
@@ -509,14 +490,7 @@ void push_chg_back(struct change_pair **vector_ptr,
 		   int v1, 
 		   int v2, 
 		   int is_move){
-    if (*total_ptr == *size_ptr) {
-        int new_size = (*size_ptr + 16) * 3 / 2;
-        struct change_pair *new_memory = (struct change_pair*) xcalloc(new_size, sizeof(struct change_pair));
-	memcpy(new_memory, *vector_ptr, *size_ptr * sizeof(struct change_pair));
-	if (*vector_ptr) free(*vector_ptr);
-	*vector_ptr = new_memory;
-	*size_ptr = new_size;
-    }
+    ALLOC_GROW( *vector_ptr, *total_ptr + 1, *size_ptr);
     (*vector_ptr)[*total_ptr].from = v1;
     (*vector_ptr)[*total_ptr].to = v2;
     (*vector_ptr)[*total_ptr].is_move = is_move;
@@ -529,14 +503,14 @@ void insert_line_info_list(struct line_info_list** info,
 			   int cur_line,
 			   struct commit_hash_entry* c, 
 			   char **lines){
-    struct line_info_list * new_entry = (struct line_info_list*) my_allocate_commit(1, sizeof(struct line_info_list));
+    struct line_info_list * new_entry = (struct line_info_list*) malloc(sizeof(struct line_info_list));
     new_entry->next = info[origin_line];
     new_entry->info = c;
     new_entry->line_number = cur_line;
     new_entry->path = c->cur_path;
     int len = lines[cur_line + 1] - lines[cur_line];
     if (lines[cur_line][len - 1] == '\n') --len;
-    new_entry->code = (char *) my_allocate_commit( len + 1, sizeof(char));
+    new_entry->code = (char *) malloc( (len + 1) * sizeof(char));
     strncpy(new_entry->code, lines[cur_line], len);
     new_entry->code[len] = 0;
     info[origin_line] = new_entry;
@@ -679,7 +653,7 @@ static struct commit_hash_entry* commit_hash_lookup(unsigned char *sha1){
 
 static struct commit_hash_entry* commit_hash_insert(unsigned char *sha1){
     unsigned int hash = memihash(sha1, 20);
-    struct commit_hash_entry *newEntry = (struct commit_hash_entry*)my_allocate_commit(1,sizeof(struct commit_hash_entry));
+    struct commit_hash_entry *newEntry = (struct commit_hash_entry*) malloc(sizeof(struct commit_hash_entry));
     hashmap_entry_init(newEntry, hash);
     memcpy(newEntry->sha1,sha1,20);
     newEntry->cur_path = NULL;
@@ -694,7 +668,7 @@ static struct commit_hash_entry* commit_hash_insert(unsigned char *sha1){
 static int commit_hash_entry_cmp(const struct commit_hash_entry* e1,
                                  const struct commit_hash_entry* e2,
 				 const unsigned char* keydata) {
-    return strcasecmp(e1->sha1, keydata ? keydata : e2->sha1);
+    return memcmp(e1->sha1, keydata ? keydata : e2->sha1, 20);
 }
 static struct string_hash_entry* string_hash_lookup(struct hashmap* hm, char *str, int len){
     unsigned int hash = strhash(str);
@@ -1345,7 +1319,7 @@ struct line_transfer* parse_diff_result(char *diff_result, size_t len){
 
 
 
-/********************************** Visiting Commits Related Functions ***************************************/
+/********************************** Visiting Commits  ***************************************/
 
 void parse_commit_info(struct commit* cur, struct commit_hash_entry* cur_info){
     char buf[1024];
@@ -1359,21 +1333,21 @@ void parse_commit_info(struct commit* cur, struct commit_hash_entry* cur_info){
 	len = end - begin;
     }
 //    printf("CUR commit %s\n%s\nBBBB\n",sha1_to_hex(cur->object.sha1), cur->buffer);
-    cur_info->author_name = (char*) my_allocate_commit( len + 1 ,  sizeof(char) );
+    cur_info->author_name = (char*) malloc( (len + 1) *  sizeof(char) );
     strncpy(cur_info->author_name, begin, len);
     cur_info->author_name[len] = 0;
 
     begin = end + 2;
     end = strstr(begin, ">");
     len = end - begin;
-    cur_info->email = (char*) my_allocate_commit( len + 1, sizeof(char));
+    cur_info->email = (char*) malloc( (len + 1) * sizeof(char));
     strncpy(cur_info->email, begin, len);
     cur_info->email[len] = 0;
 
     end += 2;
     sscanf(end, "%lu %s", &cur_info->author_time, buf);
     len = strlen(buf);
-    cur_info->author_tz = (char*) my_allocate_commit( len + 1, sizeof(char));
+    cur_info->author_tz = (char*) malloc( (len + 1) *sizeof(char));
     strncpy(cur_info->author_tz, buf, len);
     cur_info->author_tz[len] = 0;
 }
@@ -1430,13 +1404,14 @@ int get_total_line_number(struct tree* t, const char* path){
 struct commit_hash_entry* init_start_commit_info(unsigned char *sha1, const char *file_name){
     struct commit_hash_entry * info;
 
-    queue[0] = lookup_commit(sha1);
+    ALLOC_GROW(queue, nr + 1, alloc);
+    queue[nr++] = lookup_commit(sha1);
     parse_commit(queue[0]);
 
     hashmap_init(&commit_hashmap, (hashmap_cmp_fn)commit_hash_entry_cmp, 0);
 
     info = commit_hash_insert(sha1);
-    info->cur_path = (char*) my_allocate_commit(strlen(file_name) + 1, sizeof(char));
+    info->cur_path = (char*) malloc( (strlen(file_name) + 1) * sizeof(char));
     strcpy(info->cur_path, file_name);
     info->total = get_total_line_number(queue[0]->tree, info->cur_path);
     if (info->total == 0) {
@@ -1503,12 +1478,15 @@ void prepare_visit_all_commits(){
 	    info = commit_hash_lookup(prev->object.sha1);
 	    if (info == NULL){
 		info = commit_hash_insert(prev->object.sha1);
+
+		ALLOC_GROW(queue, nr + 1, alloc);
 		queue[tail++] = prev;
+		++nr;
 	    }
 	    ++info->indegree;
 	}
     }
-    dprintf("In BFS, visit %d commits\n", tail);
+    dprintf("In BFS, visit %d commits; the hashmap has %d entry\n", tail, commit_hashmap.size);
 }
 
 void set_diff_option(struct diff_options* opt, char **diff_result, size_t *diff_len) {
@@ -1588,7 +1566,7 @@ void sort_line_transfer(struct line_transfer* line_delta){
 
 void prepare_author_info_structure(struct commit_hash_entry* prev_info, struct commit* prev, const char *paths_array[2]){
     if (prev_info->cur_path == NULL) {
-        prev_info->cur_path = (char*) my_allocate_commit(strlen(paths_array[0]) + 1, sizeof(char));
+        prev_info->cur_path = (char*) malloc((strlen(paths_array[0]) + 1) * sizeof(char));
 	strcpy(prev_info->cur_path, paths_array[0]);	
 	prev_info->total = get_total_line_number(prev->tree, prev_info->cur_path);
 	dprintf("In Commit %s, file %s has %d lines\n", sha1_to_hex(prev->object.sha1), prev_info->cur_path, prev_info->total);
@@ -1723,7 +1701,7 @@ void visit_all_commits(struct line_info_list **final_info) {
 	struct commit_hash_entry * cur_info = commit_hash_lookup(cur->object.sha1);
 
 	if (cur_info == NULL){
-	    printf("ERROR: Cannot find info in hash table for commit %s\n", sha1_to_hex(cur->object.sha1));
+	    printf("ERROR: Cannot find info in hash table for current commit %s\n", sha1_to_hex(cur->object.sha1));
 	    exit(0);
 	}
 
@@ -1761,7 +1739,7 @@ void visit_all_commits(struct line_info_list **final_info) {
 	        queue[tail++] = prev;
 	    }
 	    if (prev_info == NULL){
-	        printf("ERROR: Cannot find info in hash table for commit %s\n", sha1_to_hex(prev->object.sha1));
+	        printf("ERROR: Cannot find info in hash table for previous commit %s\n", sha1_to_hex(prev->object.sha1));
 		exit(0);
 	    }
 
@@ -1909,8 +1887,8 @@ int * leven_diff(int current, int *belong, int *map, int *length, struct line_in
 
 int** calculate_weighted_authorship(struct line_info_list ** cil, int total, int ***char_authorship) {
     int i,j;
-    int ** code_share = (int**) my_allocate_commit( total, sizeof(int*));    
-    *char_authorship = (int**) my_allocate_commit( total, sizeof(int*));
+    int ** code_share = (int**) malloc( total * sizeof(int*));    
+    *char_authorship = (int**) malloc( total * sizeof(int*));
     for (i = up_line; i <= down_line; ++i) {
         
         int total_commit = 0;
@@ -1930,7 +1908,7 @@ int** calculate_weighted_authorship(struct line_info_list ** cil, int total, int
 	}
 
 	int cur_length = length[total_commit - 1];
-	int *belong = (int*) my_allocate_commit( cur_length, sizeof(int));
+	int *belong = (int*) malloc( cur_length * sizeof(int));
 	int *map = (int*) my_allocate_ldiff( cur_length, sizeof(int));
 	int *fixed = (int*) my_allocate_ldiff( cur_length, sizeof(int));
 
@@ -1950,7 +1928,7 @@ int** calculate_weighted_authorship(struct line_info_list ** cil, int total, int
 	    map = leven_diff(j, belong, map, length, list, fixed);	   
 	}
 	
-	int* cnt = (int*) my_allocate_commit( total_commit, sizeof(int));
+	int* cnt = (int*) malloc( total_commit * sizeof(int));
 	for (j = 0; j < total_commit; ++j) cnt[j] = 0;
 	for (j = 0; j < cur_length; ++j)
 	    ++cnt[belong[j]];
@@ -2094,7 +2072,7 @@ void print_author_information(struct line_info_list ** cil, struct commit_hash_e
 	    ++total_commit;
 	}
 
-	struct line_info_list **list = my_allocate_commit(total_commit, sizeof(struct line_info_list));
+	struct line_info_list **list = malloc(total_commit * sizeof(struct line_info_list));
 
 	for (p = cil[i], j = 0; p != NULL; p = p->next, ++j)
 	    list[j] = p;	    
