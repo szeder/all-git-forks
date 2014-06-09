@@ -671,7 +671,8 @@ int notes_merge_commit(struct notes_merge_options *o,
 	DIR *dir;
 	struct dirent *e;
 	struct strbuf path = STRBUF_INIT;
-	char *msg = strstr(partial_commit->buffer, "\n\n");
+	const char *buffer = get_commit_buffer(partial_commit);
+	const char *msg = strstr(buffer, "\n\n");
 	struct strbuf sb_msg = STRBUF_INIT;
 	int baselen;
 
@@ -720,6 +721,7 @@ int notes_merge_commit(struct notes_merge_options *o,
 	}
 
 	strbuf_attach(&sb_msg, msg, strlen(msg), strlen(msg) + 1);
+	unuse_commit_buffer(partial_commit, buffer);
 	create_notes_commit(partial_tree, partial_commit->parents, &sb_msg,
 			    result_sha1);
 	if (o->verbosity >= 4)
