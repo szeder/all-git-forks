@@ -20,7 +20,6 @@ struct commit {
 	unsigned long date;
 	struct commit_list *parents;
 	struct tree *tree;
-	char *buffer;
 };
 
 extern int save_commit_buffer;
@@ -50,6 +49,44 @@ struct commit *lookup_commit_or_die(const unsigned char *sha1, const char *ref_n
 int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long size);
 int parse_commit(struct commit *item);
 void parse_commit_or_die(struct commit *item);
+
+/*
+ * Associate an object buffer with the commit. The ownership of the
+ * memory is handed over to the commit, and must be free()-able.
+ */
+void set_commit_buffer(struct commit *, void *buffer, unsigned long size);
+
+/*
+ * Get any cached object buffer associated with the commit. Returns NULL
+ * if none. The resulting memory should not be freed.
+ */
+const void *get_cached_commit_buffer(const struct commit *, unsigned long *size);
+
+/*
+ * Get the commit's object contents, either from cache or by reading the object
+ * from disk. The resulting memory should not be modified, and must be given
+ * to unuse_commit_buffer when the caller is done.
+ */
+const void *get_commit_buffer(const struct commit *, unsigned long *size);
+
+/*
+ * Tell the commit subsytem that we are done with a particular commit buffer.
+ * The commit and buffer should be the input and return value, respectively,
+ * from an earlier call to get_commit_buffer.  The buffer may or may not be
+ * freed by this call; callers should not access the memory afterwards.
+ */
+void unuse_commit_buffer(const struct commit *, const void *buffer);
+
+/*
+ * Free any cached object buffer associated with the commit.
+ */
+void free_commit_buffer(struct commit *);
+
+/*
+ * Disassociate any cached object buffer from the commit, but do not free it.
+ * The buffer (or NULL, if none) is returned.
+ */
+const void *detach_commit_buffer(struct commit *, unsigned long *sizep);
 
 /* Find beginning and length of commit subject. */
 int find_commit_subject(const char *commit_buffer, const char **subject);
@@ -115,10 +152,9 @@ struct userformat_want {
 
 extern int has_non_ascii(const char *text);
 struct rev_info; /* in revision.h, it circularly uses enum cmit_fmt */
-extern char *logmsg_reencode(const struct commit *commit,
-			     char **commit_encoding,
-			     const char *output_encoding);
-extern void logmsg_free(char *msg, const struct commit *commit);
+extern const char *logmsg_reencode(const struct commit *commit,
+				   char **commit_encoding,
+				   const char *output_encoding);
 extern void get_commit_format(const char *arg, struct rev_info *);
 extern const char *format_subject(struct strbuf *sb, const char *msg,
 				  const char *line_separator);

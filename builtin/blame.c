@@ -1655,7 +1655,7 @@ static void get_commit_info(struct commit *commit,
 {
 	int len;
 	const char *subject, *encoding;
-	char *message;
+	const char *message;
 
 	commit_info_init(ret);
 
@@ -1666,7 +1666,7 @@ static void get_commit_info(struct commit *commit,
 		    &ret->author_time, &ret->author_tz);
 
 	if (!detailed) {
-		logmsg_free(message, commit);
+		unuse_commit_buffer(commit, message);
 		return;
 	}
 
@@ -1680,7 +1680,7 @@ static void get_commit_info(struct commit *commit,
 	else
 		strbuf_addf(&ret->summary, "(%s)", sha1_to_hex(commit->object.sha1));
 
-	logmsg_free(message, commit);
+	unuse_commit_buffer(commit, message);
 }
 
 /*
@@ -2286,7 +2286,7 @@ static struct commit *fake_working_tree_commit(struct diff_options *opt,
 	struct strbuf msg = STRBUF_INIT;
 
 	time(&now);
-	commit = xcalloc(1, sizeof(*commit));
+	commit = alloc_commit_node();
 	commit->object.parsed = 1;
 	commit->date = now;
 	commit->object.type = OBJ_COMMIT;
@@ -2313,7 +2313,7 @@ static struct commit *fake_working_tree_commit(struct diff_options *opt,
 		    ident, ident, path,
 		    (!contents_from ? path :
 		     (!strcmp(contents_from, "-") ? "standard input" : contents_from)));
-	commit->buffer = strbuf_detach(&msg, NULL);
+	set_commit_buffer(commit, msg.buf, msg.len);
 
 	if (!contents_from || strcmp("-", contents_from)) {
 		struct stat st;
