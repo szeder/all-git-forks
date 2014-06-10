@@ -14,7 +14,7 @@ struct shm {
 
 static struct shm shm_index;
 static struct shm shm_base_index;
-static int to_verify = 1;
+static int daemonized, to_verify = 1;
 
 static void release_index_shm(struct shm *is)
 {
@@ -33,6 +33,8 @@ static void cleanup_shm(void)
 
 static void cleanup(void)
 {
+	if (daemonized)
+		return;
 	unlink(git_path("index-helper.pid"));
 	cleanup_shm();
 }
@@ -181,12 +183,13 @@ int main(int argc, char **argv)
 {
 	struct strbuf sb = STRBUF_INIT;
 	const char *prefix;
-	int idle_in_minutes = 10;
+	int idle_in_minutes = 10, detach = 0;
 	struct option options[] = {
 		OPT_INTEGER(0, "exit-after", &idle_in_minutes,
 			    N_("exit if not used after some minutes")),
 		OPT_BOOL(0, "strict", &to_verify,
 			 "verify shared memory after creating"),
+		OPT_BOOL(0, "detach", &detach, "detach the process"),
 		OPT_END()
 	};
 
@@ -200,6 +203,9 @@ int main(int argc, char **argv)
 	if (parse_options(argc, (const char **)argv, prefix,
 			  options, usage_text, 0))
 		die(_("too many arguments"));
+
+	if (detach && daemonize(&daemonized))
+		die_errno("unable to detach");
 
 	atexit(cleanup);
 	sigchain_push_common(cleanup_on_signal);
