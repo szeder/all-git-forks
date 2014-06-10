@@ -37,9 +37,8 @@
 #define OUTPUT_SINGLE_AUTHOR 0x8000
 #define OUTPUT_TOTAL_COUNT 0x10000
 
-#define DIFF_WHITESPACE 0x1
 
-/************************   Parsing Options Code *********************************/
+/************************   parsing command line options *********************************/
 
 static char author_usage[] = "git author [options] [--] <file>";
 
@@ -54,7 +53,6 @@ static char * range_buf = NULL;
 static int abbrev = -1;
 static int output_format = 0;
 static enum date_mode author_date_mode = DATE_ISO8601;
-static int diff_opt = 0;
 double leven_score_threshold = 0.4;
 double range_score_threshold = 0.5;
 int max_iteration = 2;
@@ -226,7 +224,7 @@ void parse_left_argument(int argc, const char **argv, unsigned char* start_commi
     }
     
 }
-/************** standard callback function for git parsing API ***************/
+/************** callback functions for parsing command line arguments ***************/
 
 int author_range_callback(const struct option *opt, const char * arg, int unset){
 
@@ -254,20 +252,14 @@ int author_token_callback(const struct option *opt, const char *arg, int unset){
     return 0;
 }
 
-/*************** The full list of options *********************************/
+/*************** The full list of command line options *********************************/
 
 static struct option builtin_author_options[] = {
-//		OPT_BOOLEAN(0, "incremental", &incremental, "Show blame entries as we find them, incrementally"),
-//		OPT_BOOLEAN('b', NULL, &blank_boundary, "Show blank SHA-1 for boundary commits (Default: off)"),
-//		OPT_BOOLEAN(0, "root", &show_root, "Do not treat root commits as boundaries (Default: off)"),
-//		OPT_BOOLEAN(0, "show-stats", &show_stats, "Show work cost statistics"),
-//		OPT_BIT(0, "score-debug", &output_format, "Show output score for blame entries", OUTPUT_SHOW_SCORE),
 		OPT_BIT('f', "show-path", &output_format, "Show original filename (Default: auto)", OUTPUT_SHOW_PATH),
 		OPT_BIT('n', "show-number", &output_format, "Show original linenumber (Default: off)", OUTPUT_SHOW_NUMBER),
 		OPT_BIT('c', "show-code", &output_format, "Show the corresponding line for each commit (Default: off)", OUTPUT_SHOW_CODE),		
 		OPT_BIT('p', "porcelain", &output_format, "Show in a format designed for machine parsing", OUTPUT_PORCELAIN),
 		OPT_BIT(0, "line-porcelain", &output_format, "Show porcelain format with per-line commit information", OUTPUT_PORCELAIN|OUTPUT_LINE_PORCELAIN),
-//		OPT_BIT('c', NULL, &output_format, "Use the same output mode as git-annotate (Default: off)", OUTPUT_ANNOTATE_COMPAT),
 		OPT_BIT('t', "time-stamp", &output_format, "Show timestamp (Default: off)", OUTPUT_TIMESTAMP),
 		OPT_BIT(0, "raw-stamp", &output_format, "Show raw timestamp (Default: off)", OUTPUT_RAW_TIMESTAMP),
 		OPT_BIT('l', NULL, &output_format, "Show long commit SHA1 (Default: off)", OUTPUT_LONG_SHA1),
@@ -279,14 +271,6 @@ static struct option builtin_author_options[] = {
 		OPT_BIT(0, "one-line", &output_format, "Print all commits in one line", OUTPUT_ONE_LINE),
 		OPT_BIT(0, "single-author", &output_format, "Only print the author with the most contribution",  OUTPUT_SINGLE_AUTHOR), 
 		OPT_BIT(0, "total-count", &output_format, "Print the total number of commits and the total number of author", OUTPUT_TOTAL_COUNT),
-//		OPT_BIT(0, "character-authorship", &output_format, " Print code in character authorship", OUTPUT_CHARACTER_AUTHORSHIP),
-//		OPT_BIT('s', "show-strcuture", &output_format, "Show structural authorship (Default: off)", OUTPUT_STRUCTURE),
-//		OPT_BIT('w', NULL, &diff_opts, "Consider whitespace differences", DIFF_WHITESPACE),
-//		OPT_BIT(0, "minimal", &xdl_opts, "Spend extra cycles to find better match", XDF_NEED_MINIMAL),
-//		OPT_STRING('S', NULL, &revs_file, "file", "Use revisions from <file> instead of calling git-rev-list"),
-//		OPT_STRING(0, "contents", &contents_from, "file", "Use <file>'s contents as the final image"),
-//		{ OPTION_CALLBACK, 'C', NULL, &opt, "score", "Find line copies within and across files", PARSE_OPT_OPTARG, blame_copy_callback },
-//		{ OPTION_CALLBACK, 'M', NULL, &opt, "score", "Find line movements within and across files", PARSE_OPT_OPTARG, blame_move_callback },
 		OPT_CALLBACK('L', "range", &range_buf, "n,m", "Process only line range n,m, counting from 1", author_range_callback),
 		OPT_CALLBACK(0, "line-score", &leven_score_threshold, "score", "Levenshtein distance threshold for matching lines", author_score_callback),
 		OPT_CALLBACK(0, "range-score", &range_score_threshold, "score", "Cosine range score threshold for matching code chunk", author_score_callback),
@@ -297,7 +281,7 @@ static struct option builtin_author_options[] = {
 
 };
 
-/********************** Memory ********************************/
+/********************** Ldiff memory allocation ********************************/
 
 /* To reduce the amount of memory allocation and delocation,
  * a large chunk of memory is allocated each time when more
@@ -305,7 +289,7 @@ static struct option builtin_author_options[] = {
  * after a round of ldiff
  */
 
-#define LDIFF_MEMORY_UNIT (1 << 20)
+#define LDIFF_MEMORY_UNIT (1 << 29)
 char ** memory_pointers = NULL;
 size_t nr_pointer = 0;
 size_t alloc_pointer = 0;
@@ -494,6 +478,7 @@ int head, tail;
 double* (*line_similarity_score) (struct code_hunk_list * , struct code_hunk_list*);
 struct hashmap commit_hashmap;
 int total_line_in_start;
+
 /**************************  Data Structure Related Functions *****************************/
 
 void push_int_back(int **vector_ptr,
@@ -662,7 +647,7 @@ int cmp_change_pair(const void *a, const void *b){
 
 
 
-/***************************** Hash Related Stuff **************************/
+/***************************** Hashmap Related Functions **************************/
 
 static struct commit_hash_entry* commit_hash_lookup(unsigned char *sha1){
     unsigned int hash = memihash(sha1, 20);
@@ -1238,7 +1223,7 @@ struct code_hunk_list * build_new_code_hunk(char* cur_posi, char ** next_positio
     }
     *next_position = next_posi;
 
-    dprintf("%d lines of code in current hunk, start at %d, type %c\n", new_hunk->total, new_hunk->start, *cur_posi);
+    dprintf("%d lines of code in current hunk, type %c\n", new_hunk->total, *cur_posi);
     dprintf("Actually process %d lines of code\n", index);
     
     return new_hunk;
@@ -1523,14 +1508,12 @@ void set_diff_option(struct diff_options* opt, char **diff_result, size_t *diff_
     opt->output_format |= DIFF_FORMAT_PATCH;
     opt->detect_rename = DIFF_DETECT_RENAME;
     DIFF_OPT_SET(opt, FOLLOW_RENAMES);
-    if (!(diff_opt & DIFF_WHITESPACE)) {
-        DIFF_XDL_SET(opt, IGNORE_WHITESPACE_CHANGE);
-    }
+    DIFF_XDL_SET(opt, IGNORE_WHITESPACE_CHANGE);
     DIFF_XDL_SET(opt, IGNORE_WHITESPACE_AT_EOL);
 
     /* Here the best way is to use diff_scoreopt_parse, but it is defined static in diff.c
      * The formula is MAX_SCORE * num / scale
-     * MAX_SCORE is 60000.0 defined in diffcore.h, which shouldn't be included
+     * MAX_SCORE is 60000.0 defined in diffcore.h
      */
     opt->rename_score = 60000 * 80 / 100;
     opt->file = open_memstream(diff_result, diff_len);
@@ -1585,21 +1568,21 @@ void sort_line_transfer(struct line_transfer* line_delta){
     qsort(line_delta->chg_from, line_delta->chg_total, sizeof(int), cmp_int);
 }
 
-void prepare_author_info_structure(struct commit_hash_entry* prev_info, struct commit* prev, const char *paths_array[2]){
+void prepare_author_info_structure(struct commit_hash_entry* prev_info, struct commit* prev, char *path){
     if (prev_info->cur_path == NULL) {
-        prev_info->cur_path = (char*) malloc((strlen(paths_array[0]) + 1) * sizeof(char));
-	strcpy(prev_info->cur_path, paths_array[0]);	
+        prev_info->cur_path = (char*) malloc((strlen(path) + 1) * sizeof(char));
+	strcpy(prev_info->cur_path, path);	
 	prev_info->total = get_total_line_number(prev->tree, prev_info->cur_path);
 	dprintf("In Commit %s, file %s has %d lines\n", sha1_to_hex(prev->object.sha1), prev_info->cur_path, prev_info->total);
 	prev_info->origin = (int*) xcalloc(prev_info->total + 1 + total_line_in_start + 1, sizeof(int));		 		 
 	prev_info->next_line = prev_info->origin + prev_info->total + 1;
     }
     else {	    
-        if (strcmp(prev_info->cur_path, paths_array[0])) {
+        if (strcmp(prev_info->cur_path, path)) {
 	    /* It shouldn't happen that differrent paths lead to different path names.
 	     * If this happens, something should be wrong.
 	     */
-	    printf("ERROR: paths don't match on %s, for %s and %s\n", sha1_to_hex(prev->object.sha1), prev_info->cur_path, paths_array[0]);
+	    printf("ERROR: paths don't match on %s, for %s and %s\n", sha1_to_hex(prev->object.sha1), prev_info->cur_path, path);
 	    exit(0);
 	}
 
@@ -1684,21 +1667,22 @@ void apply_transfer_function(struct line_info_list ** final_info, struct commit_
 	        insert_author_info(final_info, cur->origin[to], to, cur, lines);
 	    }
 	    from = delta->chg[chg_to_index].from;
-	    ++chg_to_index;	    
+	    ++chg_to_index;	  
+	    if (*lines[to] != '\n')
+	        unchanged_line_transfer(to, from, cur, prev);
 	}
 	else {
             move_index_in_old_commit(delta, to, add_index, chg_to_index, &del_index, &chg_from_index);
 	    from = to - add_index - chg_to_index + del_index + chg_from_index;
+	    unchanged_line_transfer(to, from, cur, prev);
 	}
-
-	unchanged_line_transfer(to, from, cur, prev);
     }
 }
 
-void apply_identity_function(const char *paths_array[2], struct commit* prev,
+void apply_identity_function(char *path, struct commit* prev,
                              struct commit_hash_entry* cur_info, struct commit_hash_entry* prev_info){
     
-    prepare_author_info_structure(prev_info, prev, paths_array);
+    prepare_author_info_structure(prev_info, prev, path);
 
     int to, from;
     for (to = 1; to <= cur_info->total; ++to){
@@ -1788,15 +1772,26 @@ void visit_all_commits(struct line_info_list **final_info) {
 		strcpy(path, prev_info->cur_path);
 		dprintf("%s\n", diff_result);
 	    }
-	        
-	    dprintf(" CUR PATH %s PATH AFTER DIFF %s", cur_info->cur_path, paths_array[0]);
+
+	    // Get the path in the prev commit
+	    if (diff_len != 0 && strncmp(diff_result, "diff --git a/", strlen("diff --git a/")) == 0){	       
+	        char *p = diff_result + strlen("diff --git a/");
+		int i = 0;
+		while (*p != ' ') {
+		    path[i] = *p;
+		    ++i;
+		    ++p;
+		}
+		path[i] = 0;
+	    }	        
+	    dprintf(" CUR PATH %s PATH AFTER DIFF %s", cur_info->cur_path, path);
 	    
 	    if (diff_len == 0 || strstr(diff_result, "\nsimilarity index 100%\n") != NULL){
 	        dprintf(" NOTHING CHANGED ");
-		apply_identity_function(paths_array, prev, cur_info, prev_info);
+		apply_identity_function(path, prev, cur_info, prev_info);
 	    }
 	    else {
-	        dprintf(" TANSFER ");
+	        dprintf(" TRANSFER ");
 		struct line_transfer* line_delta = parse_diff_result(diff_result, diff_len);	     
 		sort_line_transfer(line_delta);
 		print_line_transfer(line_delta);
@@ -1805,7 +1800,7 @@ void visit_all_commits(struct line_info_list **final_info) {
 		 * so there is no need to prepare info data strcture for prev commit
 		 */
 		if (strstr(diff_result, "\nnew file mode ") == NULL) {
-		    prepare_author_info_structure(prev_info, prev, paths_array);
+		    prepare_author_info_structure(prev_info, prev, path);
 		}
 
 		apply_transfer_function(final_info, cur_info, prev_info, line_delta, number_of_parents, lines); 
@@ -1902,8 +1897,6 @@ int * leven_diff(int current, int *belong, int *map, int *length, struct line_in
     
     #undef CHG 
     #undef MIN
-    free(map);
-    free(f);
     return new_map;
 }
 
@@ -1916,7 +1909,6 @@ int** calculate_weighted_authorship(struct line_info_list ** cil, int total, int
         
         int total_commit = 0;
 	struct line_info_list *p , **list;
-	my_allocate_reuse();
 	for (p = cil[i]; p != NULL; p = p->next) ++total_commit;
 
 
@@ -1957,12 +1949,6 @@ int** calculate_weighted_authorship(struct line_info_list ** cil, int total, int
 	    ++cnt[belong[j]];
         code_share[i] = cnt;
 	(*char_authorship)[i] = belong;
-	free(list);
-	free(length);
-	free(belong);
-	free(map);
-	free(fixed);
-	free(cnt);
     }
     return code_share;
 }
@@ -2002,6 +1988,7 @@ int duplicate_output(struct line_info_list *line, struct line_info_list * cur){
 }
 
 void print_author_information(struct line_info_list ** cil, struct commit_hash_entry* head_info){
+    my_allocate_reuse();
     int total = head_info->total;
     int length, i, j;
     if (output_format & OUTPUT_LONG_SHA1) 
@@ -2091,7 +2078,8 @@ void print_author_information(struct line_info_list ** cil, struct commit_hash_e
 	    }
 	}
     }
- 
+    
+
     // real output
     for (i = up_line; i <= down_line; ++i) {
 	int total_commit = 0;
@@ -2115,13 +2103,15 @@ void print_author_information(struct line_info_list ** cil, struct commit_hash_e
 	if (output_format & OUTPUT_LINE_SCORE) space += score_max_len + 1;
 	if (output_format & OUTPUT_SHOW_NUMBER) space += line_no_max_len + 1;
         if (output_format & OUTPUT_WEIGHTED) space += summary_max_len + 1;
-	sprintf(output_buf, "%*s:", space - 1,  tmp_buf );
-	printf("%s ", output_buf);
+	printf("%*s:", space, tmp_buf);
 	if (output_format & OUTPUT_SHOW_CODE){
-	    // the -1 is for the \n at end of each line
-	    printf("%.*s", (int)(lines[i + 1] - lines[i] - 1), lines[i]);
+	    char code[1024];
+	    strncpy(code, lines[i], (int)(lines[i+1]-lines[i]-1));
+	    code[lines[i+1]-lines[i]-1] = 0;
+	    printf("%.*s", (int)(lines[i+1]-lines[i]-1), code);
 	}
-	if (!(output_format & OUTPUT_ONE_LINE)) printf("\n");
+	printf("\n");
+
 	int cur_length = 0;
 	if (output_format & OUTPUT_WEIGHTED){
 	    for (p = cil[i]; p != NULL; p = p->next) {	        
@@ -2132,7 +2122,7 @@ void print_author_information(struct line_info_list ** cil, struct commit_hash_e
 	int first = 1;
 	for (j = total_commit - 1; j >= 0; --j) {	    
 	    p = list[j];
-//	    if (duplicate_output(cil[i], p)) continue;
+	    if (duplicate_output(cil[i], p)) continue;
 	    int cur = 0;	    
 	    sprintf(output_buf + cur, "%.*s,", length, sha1_to_hex(p->info->sha1));
 	    cur += length + 1;
@@ -2172,7 +2162,6 @@ void print_author_information(struct line_info_list ** cil, struct commit_hash_e
 	    if (output_format & OUTPUT_WEIGHTED) {
 		if (cur_length == 0){
 		    sprintf(tmp_buf,"%d/%d=NA", 0, 0 );	    
-		    ignore = 1;
 		}    
 	        else if (code_share[i] == NULL)
 		    sprintf(tmp_buf,"%d/%d=%.2lf%%", cur_length, cur_length, 100.0);	    
@@ -2214,26 +2203,30 @@ void print_author_information(struct line_info_list ** cil, struct commit_hash_e
 	    }
 
  	    if (output_format & OUTPUT_SHOW_NUMBER) {
-	        sprintf(output_buf + cur, "%-*d:", line_no_max_len,p->line_number);
-		cur += line_no_max_len + 2;
+	        sprintf(output_buf + cur, "%-*d", line_no_max_len,p->line_number);
+		cur += line_no_max_len + 1;
 		output_buf[cur - 1] = ' ';
 	    }
+
+	    sprintf(output_buf + cur, ":");
+	    cur += 1;
+	    printf("%s", output_buf);
    
 	    if (output_format & OUTPUT_SHOW_CODE) {
-	        if (!(output_format & OUTPUT_WEIGHTED) || char_authorship[i] == NULL) {
-		    sprintf(output_buf + cur, "%s", p->code);
-		}
-		else {
+	        char code[1024];
+		strncpy(code, lines[i], (int)(lines[i+1]-lines[i]-1));
+		code[lines[i+1]-lines[i]-1] = 0;
+
+	        if ((output_format & OUTPUT_WEIGHTED) && char_authorship[i] != NULL) {
 		    int k;
-		    char code[1024];
-		    strncpy(code, lines[i], (int)(lines[i+1]-lines[i]-1));
-		    code[lines[i+1]-lines[i]-1] = 0;
 		    for (k = 0; k < cur_length; ++k)
 		        if (char_authorship[i][k] != j) code[k] = ' ';
-		    sprintf(output_buf + cur, "%s", code);
 		}
+		printf("%.*s", (int)(lines[i+1]-lines[i]-1), code);
+
 	    }
-	    printf("%s\n", output_buf);
+	    printf("\n");
+	    if (cur_length == 0) break;
 	}
 	printf("\n");
     }
@@ -2243,6 +2236,8 @@ void print_author_information(struct line_info_list ** cil, struct commit_hash_e
 }
 
 void print_author_information_one_line(struct line_info_list ** cil, int total){
+    my_allocate_reuse();
+
     int length, i, j;
     if (output_format & OUTPUT_LONG_SHA1) 
         length = 40;
@@ -2269,6 +2264,9 @@ void print_author_information_one_line(struct line_info_list ** cil, int total){
 
         for (p = cil[i],j = 0; p != NULL; p = p->next, ++j) {       
 	    if (duplicate_output(cil[i],p)) continue;
+	    if (output_format & OUTPUT_WEIGHTED) {
+	        if (cur_length != 0 && code_share[i] != NULL && code_share[i][j] == 0) continue;
+	    }
             printf(" (%.*s,", length, sha1_to_hex(p->info->sha1));
             if (output_format & OUTPUT_SHOW_EMAIL)
                 printf("%s", p->info->email);
@@ -2301,6 +2299,7 @@ void print_author_information_one_line(struct line_info_list ** cil, int total){
                 }
             }
             printf(")");
+	    if (cur_length == 0) break;
         }       
         printf("\n");
 
