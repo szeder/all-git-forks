@@ -17,7 +17,7 @@ struct shm {
 
 static struct shm shm_index;
 static struct shm shm_base_index;
-static int to_verify = 1;
+static int daemonized, to_verify = 1;
 
 static void release_index_shm(struct shm *is)
 {
@@ -36,6 +36,8 @@ static void cleanup_shm(void)
 
 static void cleanup(void)
 {
+	if (daemonized)
+		return;
 	unlink(git_path("index-helper.path"));
 	cleanup_shm();
 }
@@ -271,7 +273,7 @@ static void make_socket_path(struct strbuf *path)
 int main(int argc, char **argv)
 {
 	const char *prefix;
-	int idle_in_seconds = 600;
+	int idle_in_seconds = 600, detach = 0;
 	int fd;
 	struct strbuf socket_path = STRBUF_INIT;
 	struct option options[] = {
@@ -279,6 +281,7 @@ int main(int argc, char **argv)
 			    N_("exit if not used after some seconds")),
 		OPT_BOOL(0, "strict", &to_verify,
 			 "verify shared memory after creating"),
+		OPT_BOOL(0, "detach", &detach, "detach the process"),
 		OPT_END()
 	};
 
@@ -308,6 +311,10 @@ int main(int argc, char **argv)
 		die(_("failed to delete old index-helper.path"));
 	if (symlink(socket_path.buf, git_path("index-helper.path")))
 		die(_("failed to symlink socket path into index-helper.path"));
+
+	if (detach && daemonize(&daemonized))
+		die_errno(_("unable to detach"));
+
 	loop(fd, idle_in_seconds);
 
 	return 0;
