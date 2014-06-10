@@ -289,7 +289,7 @@ static struct option builtin_author_options[] = {
  * after a round of ldiff
  */
 
-#define LDIFF_MEMORY_UNIT (1 << 29)
+#define LDIFF_MEMORY_UNIT (1 << 20)
 char ** memory_pointers = NULL;
 size_t nr_pointer = 0;
 size_t alloc_pointer = 0;
@@ -304,11 +304,12 @@ void * my_allocate_ldiff(int num, int size) {
     }
     if (used_memory + byte_needed >= LDIFF_MEMORY_UNIT) {
         ++cur_pointer;
+	used_memory = 0;
+
     }
     if (cur_pointer == nr_pointer) {
         ALLOC_GROW(memory_pointers, nr_pointer + 1, alloc_pointer);
 	memory_pointers[nr_pointer++] = (char*) malloc(LDIFF_MEMORY_UNIT * sizeof(char));
-	used_memory = 0;
 
     }
     int old_posi = used_memory;
@@ -677,15 +678,16 @@ static int commit_hash_entry_cmp(const struct commit_hash_entry* e1,
     return memcmp(e1->sha1, keydata ? keydata : e2->sha1, 20);
 }
 static struct string_hash_entry* string_hash_lookup(struct hashmap* hm, char *str, int len){
-    unsigned int hash = strhash(str);
-    struct hashmap_entry key;
+    unsigned int hash = memhash(str, len);
+    struct string_hash_entry key;
     hashmap_entry_init(&key, hash);
+    key.len = len;
 
     return (struct string_hash_entry*) hashmap_get(hm, &key, str);
 }
 
 static struct string_hash_entry* string_hash_insert(struct hashmap* hm, char *str, int len){
-    unsigned int hash = strhash(str);
+    unsigned int hash = memhash(str, len);
     struct string_hash_entry *newEntry = (struct string_hash_entry*) my_allocate_ldiff(1,sizeof(struct string_hash_entry));
     hashmap_entry_init(newEntry, hash);
     newEntry->len = len;
@@ -701,7 +703,8 @@ static struct string_hash_entry* string_hash_insert(struct hashmap* hm, char *st
 static int string_hash_entry_cmp(const struct string_hash_entry* e1,
                                  const struct string_hash_entry* e2,
 				 const char* keydata) {
-    return strcmp(e1->string, keydata ? keydata : e2->string);
+    if (e1->len != e2->len) return e1->len - e2-> len;				 
+    return strncmp(e1->string, keydata, e1->len);
 }				 
 
 void print_string_hash(struct hashmap *hm, char *msg){
@@ -712,7 +715,7 @@ void print_string_hash(struct hashmap *hm, char *msg){
     hashmap_iter_init(hm, &iter);
 
     while ((ent = (struct string_hash_entry*)hashmap_iter_next(&iter)) != NULL) {
-        dprintf("%s %.0lf\n", ent->string, ent->f);
+        dprintf("%s %.3lf\n", ent->string, ent->f);
     }
 }
 
@@ -1044,7 +1047,12 @@ void count_document_frequency(struct hashmap* df, struct hashmap* terms, struct 
 	vector[i] = hunk;
 	normalize(terms+i);
     }
-
+/*
+    print_string_hash(df, "document frequency");
+    for (hunk = hunk_list->next, i = 0; hunk != NULL; hunk = hunk->next, ++i) {
+        print_string_hash(terms+i, "term frequency");
+    }
+*/
 }
 
 struct hunk_pair* build_hunk_pair_list(struct delta_set *old_diff, 
