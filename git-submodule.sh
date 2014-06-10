@@ -832,7 +832,7 @@ Maybe you want to use 'update --init'?")"
 			continue
 		fi
 
-		if ! test -d "$sm_path"/.git || test -f "$sm_path"/.git
+		if ! test -d "$sm_path"/.git && ! test -f "$sm_path"/.git
 		then
 			module_clone "$sm_path" "$name" "$url" "$reference" "$depth" || exit
 			cloned_modules="$cloned_modules;$name"
@@ -1056,11 +1056,11 @@ cmd_summary() {
 		while read mod_src mod_dst sha1_src sha1_dst status sm_path
 		do
 			# Always show modules deleted or type-changed (blob<->module)
-			case "$status" in
-			([DT])
-				printf '%s\n' "$sm_path" &&
+			if test "$status" = D || test "$status" = T
+			then
+				echo "$sm_path"
 				continue
-			esac
+			fi
 			# Respect the ignore setting for --for-status.
 			if test -n "$for_status"
 			then
