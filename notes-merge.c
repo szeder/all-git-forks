@@ -720,7 +720,15 @@ int notes_merge_commit(struct notes_merge_options *o,
 		strbuf_setlen(&path, baselen);
 	}
 
-	strbuf_attach(&sb_msg, msg, strlen(msg), strlen(msg) + 1);
+	/*
+	 * This is a bit tricky. We should not be attaching msg, which
+	 * is not owned by us and is not even the start of a heap buffer, to a
+	 * strbuf. But the create_notes_commit interface really wants
+	 * a strbuf, even though it will only ever use it as a buf/len pair and
+	 * never modify it. So this is tentatively safe as long as nobody ever
+	 * modifies, detaches, or releases the strbuf.
+	 */
+	strbuf_attach(&sb_msg, (char *)msg, strlen(msg), strlen(msg) + 1);
 	unuse_commit_buffer(partial_commit, buffer);
 	create_notes_commit(partial_tree, partial_commit->parents, &sb_msg,
 			    result_sha1);
