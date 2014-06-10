@@ -2221,20 +2221,22 @@ void print_author_information(struct line_info_list ** cil, struct commit_hash_e
 	    printf("%s", output_buf);
    
 	    if (output_format & OUTPUT_SHOW_CODE) {
-	        char code[1024];
-		strncpy(code, lines[i], (int)(lines[i+1]-lines[i]-1));
-		code[lines[i+1]-lines[i]-1] = 0;
-
-	        if ((output_format & OUTPUT_WEIGHTED) && char_authorship[i] != NULL) {
-		    int k;
-		    for (k = 0; k < cur_length; ++k)
-		        if (char_authorship[i][k] != j) code[k] = ' ';
+	        if (output_format & OUTPUT_WEIGHTED) {
+		    char code[1024];
+		    strncpy(code, lines[i], (int)(lines[i+1]-lines[i]-1));
+		    code[lines[i+1]-lines[i]-1] = 0;
+		    if (char_authorship[i] != NULL) {
+		        int k;
+			for (k = 0; k < cur_length; ++k)
+			    if (char_authorship[i][k] != j && code[k] != '\t') code[k] = ' ';
+		    }
+		    printf("%.*s", (int)(lines[i+1]-lines[i]-1), code);
+		} else {
+		    printf("%s", p->code);
 		}
-		printf("%.*s", (int)(lines[i+1]-lines[i]-1), code);
-
 	    }
 	    printf("\n");
-	    if (cur_length == 0) break;
+	    if ((output_format & OUTPUT_WEIGHTED) && (cur_length == 0)) break;
 	}
 	printf("\n");
     }
