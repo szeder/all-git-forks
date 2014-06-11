@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-11 13:55+0200\n"
+"PO-Revision-Date: 2014-06-11 21:17+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -8078,11 +8078,11 @@ msgstr ""
 
 #: builtin/remote.c:941
 msgid " tracked"
-msgstr ""
+msgstr "seguida"
 
 #: builtin/remote.c:943
 msgid " stale (use 'git remote prune' to remove)"
-msgstr ""
+msgstr " obsoleto (use 'git remote prune' para eliminarlo)"
 
 #: builtin/remote.c:945
 msgid " ???"
@@ -8101,20 +8101,20 @@ msgstr ""
 #: builtin/remote.c:996
 #, c-format
 msgid " merges with remote %s"
-msgstr ""
+msgstr " se fusiona con el remoto %s"
 
 #: builtin/remote.c:997
 msgid "    and with remote"
-msgstr ""
+msgstr "    y con el remoto"
 
 #: builtin/remote.c:999
 #, c-format
 msgid "merges with remote %s"
-msgstr ""
+msgstr "se fusiona con el remoto %s"
 
 #: builtin/remote.c:1000
 msgid "   and with remote"
-msgstr ""
+msgstr "   y con el remoto"
 
 #: builtin/remote.c:1046
 msgid "create"
@@ -8126,7 +8126,7 @@ msgstr ""
 
 #: builtin/remote.c:1053
 msgid "up to date"
-msgstr ""
+msgstr "actualizada"
 
 #: builtin/remote.c:1056
 msgid "fast-forwardable"
@@ -8158,21 +8158,21 @@ msgstr ""
 
 #: builtin/remote.c:1144
 msgid "do not query remotes"
-msgstr ""
+msgstr "no consulta los remotos"
 
 #: builtin/remote.c:1171
 #, c-format
 msgid "* remote %s"
-msgstr ""
+msgstr "* remoto %s"
 
 #: builtin/remote.c:1172
 #, c-format
 msgid "  Fetch URL: %s"
-msgstr ""
+msgstr "  URL para extraer [Fetch]: %s"
 
 #: builtin/remote.c:1173 builtin/remote.c:1318
 msgid "(no URL)"
-msgstr ""
+msgstr "(sin URL)"
 
 #: builtin/remote.c:1182 builtin/remote.c:1184
 #, c-format
