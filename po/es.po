@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-09 20:18+0200\n"
+"PO-Revision-Date: 2014-06-11 13:55+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -1489,31 +1489,31 @@ msgstr "fichero nuevo:"
 
 #: wt-status.c:276
 msgid "copied:"
-msgstr ""
+msgstr "copiado:"
 
 #: wt-status.c:278
 msgid "deleted:"
-msgstr ""
+msgstr "borrado:"
 
 #: wt-status.c:280
 msgid "modified:"
-msgstr ""
+msgstr "modificado:"
 
 #: wt-status.c:282
 msgid "renamed:"
-msgstr ""
+msgstr "renombrado:"
 
 #: wt-status.c:284
 msgid "typechange:"
-msgstr ""
+msgstr "cambio de tipo:"
 
 #: wt-status.c:286
 msgid "unknown:"
-msgstr ""
+msgstr "desconocido:"
 
 #: wt-status.c:288
 msgid "unmerged:"
-msgstr ""
+msgstr "sin fusionar:"
 
 #: wt-status.c:370
 msgid "new commits, "
@@ -1534,7 +1534,7 @@ msgstr ""
 
 #: wt-status.c:765
 msgid "Submodules changed but not updated:"
-msgstr ""
+msgstr "Submódulos modificados pero no actualizados:"
 
 #: wt-status.c:767
 msgid "Submodule changes to be committed:"
@@ -4806,7 +4806,7 @@ msgstr "git fetch --all [<opciones>]"
 
 #: builtin/fetch.c:75
 msgid "fetch from all remotes"
-msgstr ""
+msgstr "extrae de todos los remotos"
 
 #: builtin/fetch.c:77
 msgid "append to .git/FETCH_HEAD instead of overwriting"
@@ -4818,19 +4818,19 @@ msgstr "ruta de la orden \"upload pack\" en el extremo remoto"
 
 #: builtin/fetch.c:80
 msgid "force overwrite of local branch"
-msgstr ""
+msgstr "fuerza la sobreescritura de la rama local"
 
 #: builtin/fetch.c:82
 msgid "fetch from multiple remotes"
-msgstr ""
+msgstr "extrae de múltiples remotos"
 
 #: builtin/fetch.c:84
 msgid "fetch all tags and associated objects"
-msgstr ""
+msgstr "extrae todas las etiquetas y sus objetos asociados"
 
 #: builtin/fetch.c:86
 msgid "do not fetch all tags (--no-tags)"
-msgstr ""
+msgstr "no extrae las etiquetas (--no-tags)"
 
 #: builtin/fetch.c:88
 msgid "prune remote-tracking branches no longer on remote"
@@ -4993,17 +4993,17 @@ msgstr ""
 #: builtin/fetch.c:853
 #, c-format
 msgid "Don't know how to fetch from %s"
-msgstr ""
+msgstr "No sé cómo extraer de %s"
 
 #: builtin/fetch.c:1015
 #, c-format
 msgid "Fetching %s\n"
-msgstr ""
+msgstr "Extrayendo %s\n"
 
 #: builtin/fetch.c:1017 builtin/remote.c:90
 #, c-format
 msgid "Could not fetch %s"
-msgstr ""
+msgstr "No he podido extraer %s"
 
 #: builtin/fetch.c:1035
 msgid ""
@@ -7937,23 +7937,23 @@ msgstr ""
 
 #: builtin/remote.c:153
 msgid "fetch the remote branches"
-msgstr ""
+msgstr "extrae las ramas remotas"
 
 #: builtin/remote.c:155
 msgid "import all tags and associated objects when fetching"
-msgstr ""
+msgstr "importa todas las etiquetas y sus objetos asociados durante la extracción"
 
 #: builtin/remote.c:158
 msgid "or do not fetch any tag at all (--no-tags)"
-msgstr ""
+msgstr "o no extrae ninguna etiqueta (--no-tags)"
 
 #: builtin/remote.c:160
 msgid "branch(es) to track"
-msgstr ""
+msgstr "rama(s) a seguir"
 
 #: builtin/remote.c:161
 msgid "master branch"
-msgstr ""
+msgstr "rama maestra"
 
 #: builtin/remote.c:162
 msgid "push|fetch"
