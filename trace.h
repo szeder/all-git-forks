@@ -12,6 +12,6 @@ extern void trace_repo_setup(const char *prefix);
 extern int trace_want(const char *key);
 __attribute__((format (printf, 2, 3)))
 extern void trace_printf_key(const char *key, const char *format, ...);
-extern void trace_strbuf(const char *key, const struct strbuf *buf);
+extern void trace_strbuf(const char *key, const struct strbuf *data);
 
 #endif /* TRACE_H */

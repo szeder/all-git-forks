@@ -77,17 +77,37 @@ static void do_trace_print(const char *key, const struct strbuf *buf)
 		close(fd);
 }
 
+static int prepare_trace_line(const char *key, struct strbuf *buf)
+{
+	if (!trace_want(key))
+		return 0;
+
+	set_try_to_free_routine(NULL);	/* is never reset */
+
+	/* add line prefix here */
+
+	return 1;
+}
+
+static void print_trace_line(const char *key, struct strbuf *buf)
+{
+	/* append newline if missing */
+	if (buf->len && buf->buf[buf->len - 1] != '\n')
+		strbuf_addch(buf, '\n');
+
+	do_trace_print(key, buf);
+	strbuf_release(buf);
+}
+
 static void trace_vprintf(const char *key, const char *format, va_list ap)
 {
 	struct strbuf buf = STRBUF_INIT;
 
-	if (!trace_want(key))
+	if (!prepare_trace_line(key, &buf))
 		return;
 
-	set_try_to_free_routine(NULL);	/* is never reset */
 	strbuf_vaddf(&buf, format, ap);
-	do_trace_print(key, &buf);
-	strbuf_release(&buf);
+	print_trace_line(key, &buf);
 }
 
 void trace_printf_key(const char *key, const char *format, ...)
@@ -106,9 +126,15 @@ void trace_printf(const char *format, ...)
 	va_end(ap);
 }
 
-void trace_strbuf(const char *key, const struct strbuf *buf)
+void trace_strbuf(const char *key, const struct strbuf *data)
 {
-	do_trace_print(key, buf);
+	struct strbuf buf = STRBUF_INIT;
+
+	if (!prepare_trace_line(key, &buf))
+		return;
+
+	strbuf_addbuf(&buf, data);
+	print_trace_line(key, &buf);
 }
 
 void trace_argv_printf(const char **argv, const char *format, ...)
@@ -116,18 +142,15 @@ void trace_argv_printf(const char **argv, const char *format, ...)
 	struct strbuf buf = STRBUF_INIT;
 	va_list ap;
 
-	if (!trace_want("GIT_TRACE"))
+	if (!prepare_trace_line("GIT_TRACE", &buf))
 		return;
 
-	set_try_to_free_routine(NULL);	/* is never reset */
 	va_start(ap, format);
 	strbuf_vaddf(&buf, format, ap);
 	va_end(ap);
 
 	sq_quote_argv(&buf, argv, 0);
-	strbuf_addch(&buf, '\n');
-	do_trace_print("GIT_TRACE", &buf);
-	strbuf_release(&buf);
+	print_trace_line("GIT_TRACE", &buf);
 }
 
 static const char *quote_crnl(const char *path)
