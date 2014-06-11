@@ -6,6 +6,7 @@
 
 extern void trace_repo_setup(const char *prefix);
 extern int trace_want(const char *key);
+extern uint64_t getnanotime(void);
 
 #ifndef HAVE_VARIADIC_MACROS
 
