@@ -164,6 +164,7 @@ int have_git_dir(void)
 const char *get_git_dir(void)
 {
 	if (!git_dir)
+		// 主要是一些和目录有关的全局变量的建立
 		setup_git_env();
 	return git_dir;
 }

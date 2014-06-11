@@ -176,6 +176,7 @@ void load_command_list(const char *prefix,
 	const char *exec_path = git_exec_path();
 
 	if (exec_path) {
+		// 找到所有可执行文件存入main_cmds中
 		list_commands_in_dir(main_cmds, exec_path, prefix);
 		qsort(main_cmds->names, main_cmds->cnt,
 		      sizeof(*main_cmds->names), cmdname_compare);
@@ -183,6 +184,7 @@ void load_command_list(const char *prefix,
 	}
 
 	if (env_path) {
+		// 对环境变量中的每一个目录中都执行查找可执行文件操作
 		char *paths, *path, *colon;
 		path = paths = xstrdup(env_path);
 		while (1) {
@@ -303,6 +305,7 @@ const char *help_unknown_cmd(const char *cmd)
 
 	git_config(git_unknown_cmd_config, NULL);
 
+	// 找到以git-开头的可执行文件
 	load_command_list("git-", &main_cmds, &other_cmds);
 
 	add_cmd_list(&main_cmds, &aliases);
@@ -321,6 +324,7 @@ const char *help_unknown_cmd(const char *cmd)
 		 * for some reason exec'ing it gave us ENOENT; probably
 		 * it's a bad interpreter in the #! line.
 		 */
+		// 如果存在，则表明有可能是git解析失败，报错，让用户查看该文件是否存在
 		if (!strcmp(candidate, cmd))
 			die(_(bad_interpreter_advice), cmd, cmd);
 

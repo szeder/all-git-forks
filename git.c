@@ -36,12 +36,14 @@ static void commit_pager_choice(void) {
 // 遍历选项，只到以非-开头为止。如果遇到一些查看相关信息的选项，比如--exec-path，直接打印信息后退出。
 // 所以这里的所有命令需要出现在真正的命令之前，比如git -a -b -c xxx -d -e -f，前三个选项都是传给xxx，
 // 而后面三个是传给xxx命令
+// 返回处理完几个参数
 static int handle_options(const char ***argv, int *argc, int *envchanged)
 {
 	const char **orig_argv = *argv;
 
 	while (*argc > 0) {
 		const char *cmd = (*argv)[0];
+		// 表明遇到真正的命令，选项解析完成
 		if (cmd[0] != '-')
 			break;
 
@@ -267,6 +269,7 @@ static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
 			prefix = setup_git_directory();
 		if (p->option & RUN_SETUP_GENTLY) {
 			int nongit_ok;
+			// 上面这个参数有什么用?
 			prefix = setup_git_directory_gently(&nongit_ok);
 		}
 
@@ -282,6 +285,7 @@ static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
 	commit_pager_choice();
 
 	if (!help && p->option & NEED_WORK_TREE)
+		// 这里面做了些什么?
 		setup_work_tree();
 
 	trace_argv_printf(argv, "trace: built-in: git");
@@ -310,6 +314,7 @@ static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
 static void handle_internal_command(int argc, const char **argv)
 {
 	const char *cmd = argv[0];
+	// 非常好的表驱动例子，但是还没有理解最后一个option各自代表什么?
 	static struct cmd_struct commands[] = {
 		{ "add", cmd_add, RUN_SETUP | NEED_WORK_TREE },
 		{ "annotate", cmd_annotate, RUN_SETUP },
@@ -496,6 +501,7 @@ static int run_argv(int *argcp, const char ***argv)
 
 	while (1) {
 		/* See if it's an internal command */
+		// 先当成是internal命令
 		handle_internal_command(*argcp, *argv);
 
 		/* .. then try the external ones */
@@ -514,13 +520,23 @@ static int run_argv(int *argcp, const char ***argv)
 	return done_alias;
 }
 
-
+// 所有exe的入口都在这里，因为不仅git.exe, git-add.exe, git-status.exe等，所有可执行
+// 文件都是一模一样的，可以从makefile1706行发现，git-xxx都是git.exe的硬连接，或者单纯的
+// 拷贝。原因估计是为了有一个统一的入口main吧，所有的buildin命令都由此进入
 int main(int argc, const char **argv)
 {
 	const char *cmd;
 
+	// 这个结构定义位于config.h中，如下:
+	// struct startup_info {
+	//   int have_repository;
+	//   const char *prefix;// 这做何用?
+	// };
+	// 初始化都为0
 	startup_info = &git_startup_info;
 
+	// cmd就是命令本身，比如如果使用: $ c:\test\git-status，那么目录就设置为
+	// c:\test，返回的命令为git-status
 	cmd = git_extract_argv0_path(argv[0]);
 	if (!cmd)
 		cmd = "git-help";
@@ -549,8 +565,10 @@ int main(int argc, const char **argv)
 	}
 
 	/* Look for flags.. */
+	// 到这里便是如此使用的情况: git -x xxx
 	argv++;
 	argc--;
+	// 处理所有命令之前的参数
 	handle_options(&argv, &argc, NULL);
 	if (argc > 0) {
 		// 这里再加判断是由于前面handle_options函数里面在遇到--help和--version时会退出循环，
@@ -560,6 +578,11 @@ int main(int argc, const char **argv)
 			argv[0] += 2;
 	} else {
 		/* The user didn't specify a command; give them help */
+		// 未指定命令，提示:
+		// 1. usage:
+		// 2. common cmd help
+		// 3. more info
+		// 可以运行git显示以上信息
 		commit_pager_choice();
 		printf("usage: %s\n\n", git_usage_string);
 		list_common_cmds_help();
@@ -589,6 +612,8 @@ int main(int argc, const char **argv)
 			exit(1);
 		}
 		if (!done_help) {
+			// 这里会去检查是否可能是拼写错误，并提供可能正确的命令
+			// 检查过一次错误之后，便不再检查
 			cmd = argv[0] = help_unknown_cmd(cmd);
 			done_help = 1;
 		} else

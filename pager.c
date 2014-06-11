@@ -37,6 +37,7 @@ static void wait_for_pager_signal(int signo)
 	raise(signo);
 }
 
+// 从环境变量里面取pager，如果最终未找到，那么便取cat
 const char *git_pager(int stdout_is_tty)
 {
 	const char *pager;
@@ -71,6 +72,7 @@ void setup_pager(void)
 	 * force computing the width of the terminal before we redirect
 	 * the standard output to the pager.
 	 */
+	// 计算命令行的宽度
 	(void) term_columns();
 
 	setenv("GIT_PAGER_IN_USE", "true", 1);

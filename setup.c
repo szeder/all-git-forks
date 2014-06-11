@@ -359,6 +359,7 @@ int is_inside_work_tree(void)
 	return inside_work_tree;
 }
 
+// 只是做了一些全局变量的设置，比如git_dir, git_object, git_graft等，最后一个是啥?
 void setup_work_tree(void)
 {
 	const char *work_tree, *git_dir;
@@ -810,6 +811,7 @@ static const char *setup_git_directory_gently_1(int *nongit_ok)
 	}
 }
 
+// 这个参数到底有什么作用?
 const char *setup_git_directory_gently(int *nongit_ok)
 {
 	const char *prefix;
@@ -821,6 +823,7 @@ const char *setup_git_directory_gently(int *nongit_ok)
 		setenv(GIT_PREFIX_ENVIRONMENT, "", 1);
 
 	if (startup_info) {
+		// 如果nongit_ok为空的话，那么have_repository始终为true
 		startup_info->have_repository = !nongit_ok || !*nongit_ok;
 		startup_info->prefix = prefix;
 	}

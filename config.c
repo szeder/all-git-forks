@@ -1021,6 +1021,7 @@ int git_config_with_options(config_fn_t fn, void *data,
 	 * If we have a specific filename, use it. Otherwise, follow the
 	 * regular lookup sequence.
 	 */
+	// 如果指定了文件名，那么直接用，否则搜索
 	if (filename)
 		return git_config_from_file(fn, filename, data);
 

@@ -87,21 +87,27 @@ const char *git_exec_path(void)
 static void add_path(struct strbuf *out, const char *path)
 {
 	if (path && *path) {
+		// 通过查询第一个字符是否是sep或者第一个是字母，第二个是:来判断
 		if (is_absolute_path(path))
 			strbuf_addstr(out, path);
 		else
+			// 这里需要一个绝对路径
 			strbuf_addstr(out, absolute_path(path));
 
+		// 增加到列表中去后，以:分割开来，像是Linux上面的环境变量
 		strbuf_addch(out, PATH_SEP);
 	}
 }
 
+// 环境变里面加了除原始PATH以外的内容，即与git相关的路径
 void setup_path(void)
 {
 	const char *old_path = getenv("PATH");
 	struct strbuf new_path = STRBUF_INIT;
 
+	// 环境变量的路径
 	add_path(&new_path, git_exec_path());
+	// 可执行文件的路径
 	add_path(&new_path, argv0_path);
 
 	if (old_path)
