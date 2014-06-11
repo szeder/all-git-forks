@@ -153,6 +153,27 @@ void trace_strbuf_fl(const char *file, int line, const char *key,
 	print_trace_line(key, &buf);
 }
 
+static const char *GIT_TRACE_PERFORMANCE = "GIT_TRACE_PERFORMANCE";
+
+static void trace_performance_vfl(const char *file, int line,
+				      uint64_t nanos, const char *format,
+				      va_list ap)
+{
+	struct strbuf buf = STRBUF_INIT;
+
+	if (!prepare_trace_line(file, line, GIT_TRACE_PERFORMANCE, &buf))
+		return;
+
+	strbuf_addf(&buf, "performance: %.9f s", (double) nanos / 1000000000);
+
+	if (format && *format) {
+		strbuf_addstr(&buf, ": ");
+		strbuf_vaddf(&buf, format, ap);
+	}
+
+	print_trace_line(GIT_TRACE_PERFORMANCE, &buf);
+}
+
 #ifndef HAVE_VARIADIC_MACROS
 
 void trace_printf(const char *format, ...)
@@ -184,6 +205,24 @@ void trace_strbuf(const char *key, const struct strbuf *data)
 	trace_strbuf_fl(NULL, 0, key, data);
 }
 
+uint64_t trace_performance(uint64_t nanos, const char *format, ...)
+{
+	va_list ap;
+	va_start(ap, format);
+	trace_performance_vfl(NULL, 0, nanos, format, ap);
+	va_end(ap);
+	return getnanotime();
+}
+
+uint64_t trace_performance_since(uint64_t start, const char *format, ...)
+{
+	va_list ap;
+	va_start(ap, format);
+	trace_performance_vfl(NULL, 0, getnanotime() - start, format, ap);
+	va_end(ap);
+	return getnanotime();
+}
+
 #else
 
 void trace_printf_key_fl(const char *file, int line, const char *key,
@@ -202,6 +241,16 @@ void trace_argv_printf_fl(const char *file, int line, const char **argv,
 	va_start(ap, format);
 	trace_argv_vprintf_fl(file, line, argv, format, ap);
 	va_end(ap);
+}
+
+uint64_t trace_performance_fl(const char *file, int line, uint64_t nanos,
+			      const char *format, ...)
+{
+	va_list ap;
+	va_start(ap, format);
+	trace_performance_vfl(file, line, nanos, format, ap);
+	va_end(ap);
+	return getnanotime();
 }
 
 #endif /* HAVE_VARIADIC_MACROS */
