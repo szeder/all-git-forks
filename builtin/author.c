@@ -289,7 +289,7 @@ static struct option builtin_author_options[] = {
  * after a round of ldiff
  */
 
-#define LDIFF_MEMORY_UNIT (1 << 20)
+#define LDIFF_MEMORY_UNIT (1 << 26)
 char ** memory_pointers = NULL;
 size_t nr_pointer = 0;
 size_t alloc_pointer = 0;
@@ -299,7 +299,7 @@ int used_memory = 0;
 void * my_allocate_ldiff(int num, int size) {
     int byte_needed = num * size;
     if (byte_needed > LDIFF_MEMORY_UNIT) {
-        fprintf(stderr, "Require larger memory allocation unit!\n");
+        fprintf(stderr, "Require larger memory allocation unit %d!\n", byte_needed);
 	exit(0);
     }
     if (used_memory + byte_needed >= LDIFF_MEMORY_UNIT) {
@@ -1742,6 +1742,11 @@ void visit_all_commits(struct line_info_list **final_info) {
 	        if (cur_info->origin[i] != 0)
 		    insert_author_info(final_info, cur_info->origin[i], i, cur_info, lines);
 	}
+
+	int common_added_line_length = -1;
+	int *common_added_lines = NULL;
+
+
 	
 	for (parents = cur->parents; parents != NULL; parents = parents->next){
 	    struct commit* prev = parents->item;
@@ -1761,6 +1766,7 @@ void visit_all_commits(struct line_info_list **final_info) {
 	    dprintf(" %s", sha1_to_hex(prev->object.sha1));
 
 
+            // Set up the parameters to calculate nomral diff between two files
 	    struct diff_options diffopt;
 	    char *diff_result = NULL;
 	    size_t diff_len = 0;
@@ -1797,12 +1803,43 @@ void visit_all_commits(struct line_info_list **final_info) {
 	    if (diff_len == 0 || strstr(diff_result, "\nsimilarity index 100%\n") != NULL){
 	        dprintf(" NOTHING CHANGED ");
 		apply_identity_function(path, prev, cur_info, prev_info);
+		common_added_line_length = 0;
 	    }
 	    else {
 	        dprintf(" TRANSFER ");
 		struct line_transfer* line_delta = parse_diff_result(diff_result, diff_len);	     
 		sort_line_transfer(line_delta);
 		print_line_transfer(line_delta);
+
+		if (number_of_parents > 1 && common_added_line_length != 0) {
+		    if (common_added_line_length == -1) {
+		        common_added_line_length = line_delta->add_total;
+			if (common_added_line_length != 0) {
+			    common_added_lines = (int*) malloc(common_added_line_length * sizeof(int));
+			    int index = 0;
+			    for (; index < common_added_line_length; ++index) common_added_lines[index] = line_delta->add[index];
+			}			    
+		    } else {
+		        int i = 0;
+			while (i < common_added_line_length) {
+			    int found = 0;
+			    int j = 0;
+			    for (; j < line_delta->add_total; ++j)
+			        if (common_added_lines[i] == line_delta->add[j]) {
+				    found = 1;
+				    break;
+				}
+
+			    if (found == 0) {
+			        int tmp = common_added_lines[i];
+				common_added_lines[i] = common_added_lines[common_added_line_length - 1];
+				common_added_lines[common_added_line_length - 1] = tmp;
+				--common_added_line_length;
+			    }  else ++i;
+
+			}
+		    }
+		}
 	
 	        /* if this is a new file, no info will be added the prev commit
 		 * so there is no need to prepare info data strcture for prev commit
@@ -1822,6 +1859,22 @@ void visit_all_commits(struct line_info_list **final_info) {
 	    }
 	   
 	}
+
+        if (number_of_parents > 1 && common_added_line_length >= 1) {
+	    dprintf("\nThis commit has multiple parents and has the following line added in this commit:");
+	    int i = 0;
+	    for (; i < common_added_line_length; ++i) {	        
+	        int to = common_added_lines[i];
+		dprintf(" %d", to);
+	        insert_author_info(final_info, cur_info->origin[to], to, cur_info, lines);
+	    }	   
+	    dprintf("\n");
+	}
+
+	if (common_added_lines != NULL) {
+	    free(common_added_lines);
+	}
+
 	dprintf("\n");
 	if (cur->buffer != NULL)
 	    free(cur->buffer);
