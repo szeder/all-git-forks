@@ -62,6 +62,21 @@ static int get_trace_fd(const char *key, int *need_close)
 static const char err_msg[] = "Could not trace into fd given by "
 	"GIT_TRACE environment variable";
 
+/* Print 'buf' verbatim to trace file designated by env var 'key' */
+static void do_trace_print(const char *key, const struct strbuf *buf)
+{
+	int fd, need_close = 0;
+
+	fd = get_trace_fd(key, &need_close);
+	if (!fd)
+		return;
+
+	write_or_whine_pipe(fd, buf->buf, buf->len, err_msg);
+
+	if (need_close)
+		close(fd);
+}
+
 static void trace_vprintf(const char *key, const char *format, va_list ap)
 {
 	struct strbuf buf = STRBUF_INIT;
@@ -71,7 +86,7 @@ static void trace_vprintf(const char *key, const char *format, va_list ap)
 
 	set_try_to_free_routine(NULL);	/* is never reset */
 	strbuf_vaddf(&buf, format, ap);
-	trace_strbuf(key, &buf);
+	do_trace_print(key, &buf);
 	strbuf_release(&buf);
 }
 
@@ -93,26 +108,15 @@ void trace_printf(const char *format, ...)
 
 void trace_strbuf(const char *key, const struct strbuf *buf)
 {
-	int fd, need_close = 0;
-
-	fd = get_trace_fd(key, &need_close);
-	if (!fd)
-		return;
-
-	write_or_whine_pipe(fd, buf->buf, buf->len, err_msg);
-
-	if (need_close)
-		close(fd);
+	do_trace_print(key, buf);
 }
 
 void trace_argv_printf(const char **argv, const char *format, ...)
 {
 	struct strbuf buf = STRBUF_INIT;
 	va_list ap;
-	int fd, need_close = 0;
 
-	fd = get_trace_fd("GIT_TRACE", &need_close);
-	if (!fd)
+	if (!trace_want("GIT_TRACE"))
 		return;
 
 	set_try_to_free_routine(NULL);	/* is never reset */
@@ -122,11 +126,8 @@ void trace_argv_printf(const char **argv, const char *format, ...)
 
 	sq_quote_argv(&buf, argv, 0);
 	strbuf_addch(&buf, '\n');
-	write_or_whine_pipe(fd, buf.buf, buf.len, err_msg);
+	do_trace_print("GIT_TRACE", &buf);
 	strbuf_release(&buf);
-
-	if (need_close)
-		close(fd);
 }
 
 static const char *quote_crnl(const char *path)
