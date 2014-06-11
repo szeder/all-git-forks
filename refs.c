@@ -2328,7 +2328,7 @@ static int commit_packed_refs(struct strbuf *err)
 		strbuf_addf(err, "error writing packed-refs. %s",
 			    strerror(errno));
 		return -1;
-       }
+	}
 
 	data.fd = packed_ref_cache->lock->fd;
 	data.err = err;
@@ -2482,24 +2482,23 @@ static void prune_refs(struct ref_to_prune *r)
 	}
 }
 
-int pack_refs(unsigned int flags)
+int pack_refs(unsigned int flags, struct strbuf *err)
 {
 	struct pack_refs_cb_data cbdata;
-	struct strbuf err = STRBUF_INIT;
 
 	memset(&cbdata, 0, sizeof(cbdata));
 	cbdata.flags = flags;
 
-	if (lock_packed_refs(&err))
-		die("%s", err.buf);
+	if (lock_packed_refs(err))
+		return -1;
 
 	cbdata.packed_refs = get_packed_refs(&ref_cache);
 
 	do_for_each_entry_in_dir(get_loose_refs(&ref_cache), 0,
 				 pack_if_possible_fn, &cbdata);
 
-	if (commit_packed_refs(&err))
-		die("%s", err.buf);
+	if (commit_packed_refs(err))
+		return -1;
 
 	prune_refs(cbdata.ref_to_prune);
 	return 0;
