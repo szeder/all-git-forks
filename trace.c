@@ -79,12 +79,21 @@ static void do_trace_print(const char *key, const struct strbuf *buf)
 
 static int prepare_trace_line(const char *key, struct strbuf *buf)
 {
+	struct timeval tv;
+	struct tm tm;
+	time_t secs;
+
 	if (!trace_want(key))
 		return 0;
 
 	set_try_to_free_routine(NULL);	/* is never reset */
 
-	/* add line prefix here */
+	/* print current timestamp */
+	gettimeofday(&tv, NULL);
+	secs = tv.tv_sec;
+	localtime_r(&secs, &tm);
+	strbuf_addf(buf, "%02d:%02d:%02d.%06ld ", tm.tm_hour, tm.tm_min,
+		    tm.tm_sec, tv.tv_usec);
 
 	return 1;
 }
