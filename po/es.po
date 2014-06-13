@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-11 21:17+0200\n"
+"PO-Revision-Date: 2014-06-13 13:00+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -8078,11 +8078,11 @@ msgstr ""
 
 #: builtin/remote.c:941
 msgid " tracked"
-msgstr "seguida"
+msgstr " seguida"
 
 #: builtin/remote.c:943
 msgid " stale (use 'git remote prune' to remove)"
-msgstr " obsoleto (use 'git remote prune' para eliminarlo)"
+msgstr " obsoleta (use 'git remote prune' para eliminarla)"
 
 #: builtin/remote.c:945
 msgid " ???"
@@ -8101,20 +8101,20 @@ msgstr ""
 #: builtin/remote.c:996
 #, c-format
 msgid " merges with remote %s"
-msgstr " se fusiona con el remoto %s"
+msgstr " se fusiona con la remota %s"
 
 #: builtin/remote.c:997
 msgid "    and with remote"
-msgstr "    y con el remoto"
+msgstr "    y con la remota"
 
 #: builtin/remote.c:999
 #, c-format
 msgid "merges with remote %s"
-msgstr "se fusiona con el remoto %s"
+msgstr "se fusiona con la remota %s"
 
 #: builtin/remote.c:1000
 msgid "   and with remote"
-msgstr "   y con el remoto"
+msgstr "   y con la remota"
 
 #: builtin/remote.c:1046
 msgid "create"
@@ -8177,18 +8177,18 @@ msgstr "(sin URL)"
 #: builtin/remote.c:1182 builtin/remote.c:1184
 #, c-format
 msgid "  Push  URL: %s"
-msgstr ""
+msgstr "  URL para empujar [Push]:  %s"
 
 #: builtin/remote.c:1186 builtin/remote.c:1188 builtin/remote.c:1190
 #, c-format
 msgid "  HEAD branch: %s"
-msgstr ""
+msgstr "  Rama CABEZA [HEAD]: %s"
 
 #: builtin/remote.c:1192
 #, c-format
 msgid ""
 "  HEAD branch (remote HEAD is ambiguous, may be one of the following):\n"
-msgstr ""
+msgstr "  Rama CABEZA [HEAD] (la CABEZA remota es ambigua, puede ser una de las siguientes):\n"
 
 #: builtin/remote.c:1204
 #, c-format
@@ -8199,7 +8199,7 @@ msgstr[1] "  Ramas remotas:%s"
 
 #: builtin/remote.c:1207 builtin/remote.c:1234
 msgid " (status not queried)"
-msgstr ""
+msgstr " (estado no consultado)"
 
 #: builtin/remote.c:1216
 msgid "  Local branch configured for 'git pull':"
@@ -8220,11 +8220,11 @@ msgstr[1] ""
 
 #: builtin/remote.c:1252
 msgid "set refs/remotes/<name>/HEAD according to remote"
-msgstr ""
+msgstr "da valor a refs/remotes/<nombre>/HEAD de acuerdo al remoto"
 
 #: builtin/remote.c:1254
 msgid "delete refs/remotes/<name>/HEAD"
-msgstr ""
+msgstr "borra refs/remotes/<nombre>/HEAD"
 
 #: builtin/remote.c:1269
 msgid "Cannot determine remote HEAD"
@@ -8277,11 +8277,11 @@ msgstr " * [podaría] %s"
 #: builtin/remote.c:1331
 #, c-format
 msgid " * [pruned] %s"
-msgstr ""
+msgstr " * [podada] %s"
 
 #: builtin/remote.c:1374
 msgid "prune remotes after fetching"
-msgstr ""
+msgstr "poda las remotas después de extraer [fetch]"
 
 #: builtin/remote.c:1440 builtin/remote.c:1514
 #, c-format
@@ -8298,7 +8298,7 @@ msgstr "no ha especificado ningún remoto"
 
 #: builtin/remote.c:1489
 msgid "manipulate push URLs"
-msgstr ""
+msgstr "manipula las URLs a las que empujar [push]"
 
 #: builtin/remote.c:1491
 msgid "add URL"
