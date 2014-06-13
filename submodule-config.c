@@ -393,7 +393,7 @@ free_rev:
 	return submodule;
 }
 
-static void ensure_cache_init()
+static void ensure_cache_init(void)
 {
 	if (is_cache_init)
 		return;
@@ -428,7 +428,7 @@ const struct submodule *submodule_from_path(const unsigned char *commit_sha1,
 	return config_from_path(&cache, commit_sha1, path);
 }
 
-void submodule_free()
+void submodule_free(void)
 {
 	cache_free(&cache);
 	is_cache_init = 0;
