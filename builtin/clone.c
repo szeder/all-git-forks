@@ -39,7 +39,7 @@ static const char * const builtin_clone_usage[] = {
 
 static int option_no_checkout, option_bare, option_mirror, option_single_branch = -1;
 static int option_local = -1, option_no_hardlinks, option_shared, option_recursive;
-static int option_all_branches;
+static int option_one_tracking_branch;
 static char *option_template, *option_depth;
 static char *option_origin = NULL;
 static char *option_branch = NULL;
@@ -63,8 +63,6 @@ static struct option builtin_clone_options[] = {
 	OPT__VERBOSITY(&option_verbosity),
 	OPT_BOOL(0, "progress", &option_progress,
 		 N_("force progress reporting")),
-	OPT_BOOL('a', "all-branches", &option_all_branches,
-		 N_("create local tracking branches of all remote branches")),
 	OPT_BOOL('n', "no-checkout", &option_no_checkout,
 		 N_("don't create a checkout")),
 	OPT_BOOL(0, "bare", &option_bare, N_("create a bare repository")),
@@ -82,6 +80,8 @@ static struct option builtin_clone_options[] = {
 		    N_("initialize submodules in the clone")),
 	OPT_BOOL(0, "recurse-submodules", &option_recursive,
 		    N_("initialize submodules in the clone")),
+	OPT_BOOL(0, "one-tracking-branch", &option_one_tracking_branch,
+		 N_("only create a local tracking branch for HEAD or --branch")),
 	OPT_STRING(0, "template", &option_template, N_("template-directory"),
 		   N_("directory from which templates will be used")),
 	OPT_CALLBACK(0 , "reference", &option_reference, N_("repo"),
@@ -715,7 +715,10 @@ static int make_local_branches(struct ref *local_refs)
 	struct strbuf ref = STRBUF_INIT;
 	struct strbuf new_ref = STRBUF_INIT;
 	struct strbuf branch_name = STRBUF_INIT;
-	if (!option_all_branches)
+	if (option_one_tracking_branch ||
+            option_mirror ||
+            option_bare ||
+            option_single_branch)
 		return 0;
 	for (r = local_refs; r; r = r->next) {
 		if (!r->peer_ref)
@@ -932,13 +935,6 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	if (!option_origin)
 		option_origin = "origin";
-
-	if ((option_all_branches) && (option_mirror))
-		die(_("--mirror and --all-branches are incompatible."));
-	if ((option_all_branches) && (option_bare))
-		die(_("--bare and --all-branches are incompatible."));
-	if ((option_all_branches) && (option_single_branch))
-		die(_("--single_branch and --all-branches are incompatible."));
 
 	repo_name = argv[0];
 
