@@ -10,7 +10,7 @@ SYNOPSIS
 --------
 [verse]
 'git clone' [--template=<template_directory>]
-	  [-l] [-s] [--no-hardlinks] [-q] [-n] [--bare] [--mirror]
+	  [-a] [-l] [-s] [--no-hardlinks] [-q] [-n] [--bare] [--mirror]
 	  [-o <name>] [-b <name>] [-u <upload-pack>] [--reference <repository>]
 	  [--separate-git-dir <git dir>]
 	  [--depth <depth>] [--[no-]single-branch]
@@ -40,6 +40,12 @@ configuration variables.
 
 OPTIONS
 -------
+--all-branches::
+-a::
+	Create local tracking branches for all the branches found on
+	the repository being cloned.  This option does not work with
+	--bare, --mirror, or --single-branch.
+
 --local::
 -l::
 	When the repository to clone from is on a local machine,
