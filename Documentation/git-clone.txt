@@ -12,8 +12,8 @@ SYNOPSIS
 'git clone' [--template=<template_directory>]
 	  [-l] [-s] [--no-hardlinks] [-q] [-n] [--bare] [--mirror]
 	  [-o <name>] [-b <name>] [-u <upload-pack>] [--reference <repository>]
-	  [--separate-git-dir <git dir>]
-	  [--depth <depth>] [--[no-]single-branch]
+	  [--separate-git-dir <git dir>] [--depth <depth>]
+	  [--[no-]single-branch] [--one-tracking-branch]
 	  [--recursive | --recurse-submodules] [--] <repository>
 	  [<directory>]
 
@@ -22,9 +22,10 @@ DESCRIPTION
 
 Clones a repository into a newly created directory, creates
 remote-tracking branches for each branch in the cloned repository
-(visible using `git branch -r`), and creates and checks out an
-initial branch that is forked from the cloned repository's
-currently active branch.
+(visible using `git branch -r`), creates local tracking branches of those
+remote tracking branches (for non-bare repositories), and checks out an
+initial branch that is forked from the cloned repository's currently
+active branch.
 
 After the clone, a plain `git fetch` without arguments will update
 all the remote-tracking branches, and a `git pull` without
@@ -192,6 +193,11 @@ objects from the source repository into a pack in the cloned repository.
 	initial cloning.  If the HEAD at the remote did not point at any
 	branch when `--single-branch` clone was made, no remote-tracking
 	branch is created.
+
+--one-tracking-branch::
+	Creates only one local tracking branch for HEAD (or if --branch is
+	used, then that branch).  This is the default when --bare, --mirror,
+	or --single-branch are used, so this option will have no effect.
 
 --recursive::
 --recurse-submodules::

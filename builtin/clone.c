@@ -39,6 +39,7 @@ static const char * const builtin_clone_usage[] = {
 
 static int option_no_checkout, option_bare, option_mirror, option_single_branch = -1;
 static int option_local = -1, option_no_hardlinks, option_shared, option_recursive;
+static int option_one_tracking_branch;
 static char *option_template, *option_depth;
 static char *option_origin = NULL;
 static char *option_branch = NULL;
@@ -79,6 +80,8 @@ static struct option builtin_clone_options[] = {
 		    N_("initialize submodules in the clone")),
 	OPT_BOOL(0, "recurse-submodules", &option_recursive,
 		    N_("initialize submodules in the clone")),
+	OPT_BOOL(0, "one-tracking-branch", &option_one_tracking_branch,
+		 N_("only create a local tracking branch for HEAD or --branch")),
 	OPT_STRING(0, "template", &option_template, N_("template-directory"),
 		   N_("directory from which templates will be used")),
 	OPT_CALLBACK(0 , "reference", &option_reference, N_("repo"),
@@ -609,6 +612,151 @@ static void update_head(const struct ref *our, const struct ref *remote,
 	}
 }
 
+// Get the type of ref from the string:
+// refs/tags/v1.0 returns = tags/
+// refs/remotes/origin/feature/mybranch = remotes/
+// refs/heads/mybranch = heads/
+static void get_ref_type(struct strbuf * ref, struct strbuf * ref_type)
+{
+	struct strbuf ref1 = STRBUF_INIT;
+	struct strbuf tmpref = STRBUF_INIT;
+	struct strbuf ** ref_list;
+	strbuf_reset(ref_type);
+	strbuf_addstr(&ref1, ref->buf);
+	strbuf_addstr(&tmpref, "refs/");
+	if (ref1.len > tmpref.len)
+		strbuf_remove(&ref1, 0, tmpref.len);
+	strbuf_reset(&tmpref);
+	ref_list = strbuf_split(&ref1, '/');
+	strbuf_addstr(&ref1, ref->buf);
+	strbuf_addstr(ref_type,ref_list[0]->buf);
+	strbuf_list_free(ref_list);
+	strbuf_release(&ref1);
+	strbuf_release(&tmpref);
+}
+
+static int is_remote(struct strbuf * ref)
+{
+	int retval;
+	struct strbuf ref_type = STRBUF_INIT;
+	struct strbuf remotes = STRBUF_INIT;
+	strbuf_addstr(&remotes, "remotes/");
+	get_ref_type(ref, &ref_type);
+	retval = !strbuf_cmp(&ref_type, &remotes);
+	strbuf_release(&ref_type);
+	strbuf_release(&remotes);
+	return retval;
+}
+
+static int is_tag(struct strbuf * ref)
+{
+	int retval;
+	struct strbuf ref_type = STRBUF_INIT;
+	struct strbuf tags = STRBUF_INIT;
+	strbuf_addstr(&tags, "tags/");
+	get_ref_type(ref, &ref_type);
+	retval = !strbuf_cmp(&ref_type, &tags);
+	strbuf_release(&tags);
+	strbuf_release(&ref_type);
+	return retval;
+}
+
+static int is_head(struct strbuf * ref)
+{
+	int retval = 0;
+	struct strbuf ref1 = STRBUF_INIT;
+	struct strbuf tmpref = STRBUF_INIT;
+	strbuf_addstr(&ref1, ref->buf);
+	strbuf_addstr(&tmpref, "HEAD");
+	retval = !strbuf_cmp(&tmpref, &ref1);
+	strbuf_release(&ref1);
+	strbuf_release(&tmpref);
+	return retval;
+}
+
+static void get_branch_name(struct strbuf * ref,
+			    struct strbuf * branch_name)
+{
+	struct strbuf removal = STRBUF_INIT;
+	struct strbuf ref_type = STRBUF_INIT;
+	strbuf_reset(branch_name);
+	strbuf_addstr(branch_name, ref->buf);
+
+	get_ref_type(ref, &ref_type);
+	strbuf_addstr(&removal, "refs/");
+	strbuf_addstr(&removal, ref_type.buf);
+	if (is_remote(ref)) //add the remote name
+	{
+		strbuf_addstr(&removal, option_origin);
+		strbuf_addstr(&removal, "/");
+	}
+	strbuf_remove(branch_name, 0, removal.len);
+	strbuf_release(&ref_type);
+	strbuf_release(&removal);
+}
+
+static int is_current_branch(struct strbuf * ref)
+{
+	struct strbuf head = STRBUF_INIT;
+	int retval;
+	char * head_str;
+	unsigned char sha1[20];
+	head_str = resolve_refdup("HEAD", sha1, 1, NULL);
+	strbuf_addstr(&head, head_str);
+	free(head_str);
+	retval = !strbuf_cmp(ref, &head);
+	strbuf_release(&head);
+	return retval;
+}
+
+static int make_local_branches(struct ref *local_refs)
+{
+	const struct ref *r;
+	struct strbuf ref = STRBUF_INIT;
+	struct strbuf new_ref = STRBUF_INIT;
+	struct strbuf branch_name = STRBUF_INIT;
+	if (option_one_tracking_branch ||
+		option_mirror ||
+		option_bare ||
+		option_single_branch)
+		return 0;
+	for (r = local_refs; r; r = r->next) {
+		if (!r->peer_ref)
+			continue;
+		strbuf_reset(&ref);
+		strbuf_reset(&new_ref);
+		strbuf_addstr(&ref, r->peer_ref->name);
+		if (is_head(&ref))
+		    continue;
+		if (is_tag(&ref))
+		    continue;
+		get_branch_name(&ref, &branch_name);
+
+		// at this point, we have all the branch refs
+		strbuf_addstr(&new_ref, "refs/heads/");
+		strbuf_addstr(&new_ref, branch_name.buf);
+		fprintf(stderr, _("Creating local branch '%s'...\n"),
+			branch_name.buf);
+		int force = 1;
+		int reflog = 1;
+		int quiet = 1;
+		int clobber_head = 1;
+		int track = 1;
+		if (!is_current_branch(&new_ref)) {
+			create_branch(branch_name.buf, branch_name.buf, ref.buf,
+					force, reflog, clobber_head, quiet,
+					track);
+			install_branch_config(0, branch_name.buf, option_origin,
+						new_ref.buf);
+		}
+
+	}
+	strbuf_release(&ref);
+	strbuf_release(&new_ref);
+	strbuf_release(&branch_name);
+	return 0;
+}
+
 static int checkout(void)
 {
 	unsigned char sha1[20];
@@ -995,6 +1143,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	junk_mode = JUNK_LEAVE_REPO;
 	err = checkout();
+	err = make_local_branches(mapped_refs);
 
 	strbuf_release(&reflog_msg);
 	strbuf_release(&branch_top);
@@ -1003,3 +1152,4 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	junk_mode = JUNK_LEAVE_ALL;
 	return err;
 }
+

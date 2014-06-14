@@ -8,7 +8,22 @@ test_expect_success 'setup' '
 	mkdir parent &&
 	(cd parent && git init &&
 	 echo one >file && git add file &&
-	 git commit -m one)
+	 git commit -m one && git branch test1 &&
+         git branch test2)
+
+'
+
+test_expect_success 'clone creates all tracking branches' '
+
+	git clone parent clone-all &&
+	test $(cd clone-all && git branch | wc -l) = 3
+
+'
+
+test_expect_success 'clone with branch only creates one tracking branch' '
+
+	git clone --one-tracking-branch parent clone-single &&
+	test $(cd clone-single && git branch | wc -l) = 1
 
 '
 
