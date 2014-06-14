@@ -8,7 +8,22 @@ test_expect_success 'setup' '
 	mkdir parent &&
 	(cd parent && git init &&
 	 echo one >file && git add file &&
-	 git commit -m one)
+	 git commit -m one && git branch test1 &&
+         git branch test2)
+
+'
+
+test_expect_success 'clone without -a' '
+
+	git clone parent clone-no-a &&
+	test $(cd clone-no-a && git branch | wc -l) = 1
+
+'
+
+test_expect_success 'clone -a' '
+
+	git clone -a parent clone-a &&
+	test $(cd clone-a && git branch | wc -l) = 3
 
 '
 
