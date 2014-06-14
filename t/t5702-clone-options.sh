@@ -13,17 +13,17 @@ test_expect_success 'setup' '
 
 '
 
-test_expect_success 'clone without -a' '
+test_expect_success 'clone creates all tracking branches' '
 
-	git clone parent clone-no-a &&
-	test $(cd clone-no-a && git branch | wc -l) = 1
+	git clone parent clone-all &&
+	test $(cd clone-all && git branch | wc -l) = 3
 
 '
 
-test_expect_success 'clone -a' '
+test_expect_success 'clone with branch only creates one tracking branch' '
 
-	git clone -a parent clone-a &&
-	test $(cd clone-a && git branch | wc -l) = 3
+	git clone --one-tracking-branch parent clone-single &&
+	test $(cd clone-single && git branch | wc -l) = 1
 
 '
 
