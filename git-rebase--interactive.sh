@@ -436,9 +436,7 @@ die_failed_squash() {
 	mv "$squash_msg" "$msg" || exit
 	rm -f "$fixup_msg"
 	cp "$msg" "$GIT_DIR"/MERGE_MSG || exit
-	warn
-	warn "Could not apply $1... $2"
-	die_with_patch $1 ""
+	die_with_patch $1 "Could not apply $1... $2"
 }
 
 flush_rewritten_pending() {
