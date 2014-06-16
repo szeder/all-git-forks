@@ -34,7 +34,7 @@ git_rebase_interactive () {
 	ls -1pR * >>actual &&
 	test_cmp expected actual &&
 	set_fake_editor &&
-	echo "fake-editor.sh" >.git/info/exclude
+	echo "fake-editor.sh" >.git/info/exclude &&
 	git rebase -i "$1"
 }
 
