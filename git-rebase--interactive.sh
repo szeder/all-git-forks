@@ -436,7 +436,7 @@ die_failed_squash() {
 	mv "$squash_msg" "$msg" || exit
 	rm -f "$fixup_msg"
 	cp "$msg" "$GIT_DIR"/MERGE_MSG || exit
-	die_with_patch $1 "Could not apply $1... $2"
+	die_with_patch $1 "$2"
 }
 
 flush_rewritten_pending() {
@@ -541,7 +541,7 @@ do_next () {
 		if ! pick_one -n $sha1
 		then
 			git rev-parse --verify HEAD >"$amend"
-			die_failed_squash $sha1 "$rest"
+			die_failed_squash $sha1 "Could not apply $sha1... $rest"
 		fi
 		case "$(peek_next_command)" in
 		squash|s|fixup|f)
@@ -549,7 +549,7 @@ do_next () {
 			# used in case of trouble.  So use the long version:
 			do_with_author output git commit --amend --no-verify -F "$squash_msg" \
 				${gpg_sign_opt:+"$gpg_sign_opt"} ||
-				die_failed_squash $sha1 "$rest"
+				die_failed_squash $sha1 "Could not apply $sha1... $rest"
 			;;
 		*)
 			# This is the final command of this squash/fixup group
@@ -557,13 +557,13 @@ do_next () {
 			then
 				do_with_author git commit --amend --no-verify -F "$fixup_msg" \
 					${gpg_sign_opt:+"$gpg_sign_opt"} ||
-					die_failed_squash $sha1 "$rest"
+					die_failed_squash $sha1 "Could not apply $sha1... $rest"
 			else
 				cp "$squash_msg" "$GIT_DIR"/SQUASH_MSG || exit
 				rm -f "$GIT_DIR"/MERGE_MSG
 				do_with_author git commit --amend --no-verify -F "$GIT_DIR"/SQUASH_MSG -e \
 					${gpg_sign_opt:+"$gpg_sign_opt"} ||
-					die_failed_squash $sha1 "$rest"
+					die_failed_squash $sha1 "Could not apply $sha1... $rest"
 			fi
 			rm -f "$squash_msg" "$fixup_msg"
 			;;
