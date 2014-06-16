@@ -2232,8 +2232,8 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
  * Write an entry to the packed-refs file for the specified refname.
  * If peeled is non-NULL, write it as the entry's peeled value.
  */
-static void write_packed_entry(int fd, char *refname, unsigned char *sha1,
-			       unsigned char *peeled)
+static int write_packed_entry(int fd, char *refname, unsigned char *sha1,
+			      unsigned char *peeled, struct strbuf *err)
 {
 	char line[PATH_MAX + 100];
 	int len;
@@ -2241,33 +2241,50 @@ static void write_packed_entry(int fd, char *refname, unsigned char *sha1,
 	len = snprintf(line, sizeof(line), "%s %s\n",
 		       sha1_to_hex(sha1), refname);
 	/* this should not happen but just being defensive */
-	if (len > sizeof(line))
-		die("too long a refname '%s'", refname);
-	write_or_die(fd, line, len);
-
+	if (len > sizeof(line)) {
+		strbuf_addf(err, "too long a refname '%s'", refname);
+		return -1;
+	}
+	if (write_in_full(fd, line, len) != len) {
+		strbuf_addf(err, "error writing to packed-refs. %s",
+			    strerror(errno));
+		return -1;
+	}
 	if (peeled) {
 		if (snprintf(line, sizeof(line), "^%s\n",
 			     sha1_to_hex(peeled)) != PEELED_LINE_LENGTH)
 			die("internal error");
-		write_or_die(fd, line, PEELED_LINE_LENGTH);
+		len = PEELED_LINE_LENGTH;
+		if (write_in_full(fd, line, len) != len) {
+			strbuf_addf(err, "error writing to packed-refs. %s",
+				    strerror(errno));
+			return -1;
+		}
 	}
+	return 0;
 }
+
+struct write_packed_data {
+	int fd;
+	struct strbuf *err;
+};
 
 /*
  * An each_ref_entry_fn that writes the entry to a packed-refs file.
  */
 static int write_packed_entry_fn(struct ref_entry *entry, void *cb_data)
 {
-	int *fd = cb_data;
+	struct write_packed_data *data = cb_data;
 	enum peel_status peel_status = peel_entry(entry, 0);
 
-	if (peel_status != PEEL_PEELED && peel_status != PEEL_NON_TAG)
-		error("internal error: %s is not a valid packed reference!",
-		      entry->name);
-	write_packed_entry(*fd, entry->name, entry->u.value.sha1,
-			   peel_status == PEEL_PEELED ?
-			   entry->u.value.peeled : NULL);
-	return 0;
+	if (peel_status != PEEL_PEELED && peel_status != PEEL_NON_TAG) {
+		strbuf_addf(data->err, "internal error: %s is not a "
+			    "valid packed reference!", entry->name);
+		return -1;
+	}
+	return write_packed_entry(data->fd, entry->name, entry->u.value.sha1,
+				  peel_status == PEEL_PEELED ?
+				  entry->u.value.peeled : NULL, data->err);
 }
 
 static int lock_packed_refs(struct strbuf *err)
@@ -2296,30 +2313,34 @@ static int lock_packed_refs(struct strbuf *err)
 
 /*
  * Commit the packed refs changes.
- * On error we must make sure that errno contains a meaningful value.
  */
-static int commit_packed_refs(void)
+static int commit_packed_refs(struct strbuf *err)
 {
 	struct packed_ref_cache *packed_ref_cache =
 		get_packed_ref_cache(&ref_cache);
 	int error = 0;
-	int save_errno = 0;
+	struct write_packed_data data;
 
 	if (!packed_ref_cache->lock)
 		die("internal error: packed-refs not locked");
-	write_or_die(packed_ref_cache->lock->fd,
-		     PACKED_REFS_HEADER, strlen(PACKED_REFS_HEADER));
+	if (write_in_full(packed_ref_cache->lock->fd,
+			  PACKED_REFS_HEADER, strlen(PACKED_REFS_HEADER)) < 0) {
+		strbuf_addf(err, "error writing packed-refs. %s",
+			    strerror(errno));
+		return -1;
+       }
 
+	data.fd = packed_ref_cache->lock->fd;
+	data.err = err;
 	do_for_each_entry_in_dir(get_packed_ref_dir(packed_ref_cache),
-				 0, write_packed_entry_fn,
-				 &packed_ref_cache->lock->fd);
+				 0, write_packed_entry_fn, &data);
 	if (commit_lock_file(packed_ref_cache->lock)) {
-		save_errno = errno;
+		strbuf_addf(err, "unable to overwrite old ref-pack "
+			    "file. %s", strerror(errno));
 		error = -1;
 	}
 	packed_ref_cache->lock = NULL;
 	release_packed_ref_cache(packed_ref_cache);
-	errno = save_errno;
 	return error;
 }
 
@@ -2477,8 +2498,8 @@ int pack_refs(unsigned int flags)
 	do_for_each_entry_in_dir(get_loose_refs(&ref_cache), 0,
 				 pack_if_possible_fn, &cbdata);
 
-	if (commit_packed_refs())
-		die_errno("unable to overwrite old ref-pack file");
+	if (commit_packed_refs(&err))
+		die("%s", err.buf);
 
 	prune_refs(cbdata.ref_to_prune);
 	return 0;
@@ -2549,7 +2570,7 @@ static int repack_without_refs(const char **refnames, int n, struct strbuf *err)
 	struct ref_dir *packed;
 	struct string_list refs_to_delete = STRING_LIST_INIT_DUP;
 	struct string_list_item *ref_to_delete;
-	int i, ret;
+	int i;
 
 	/* Look for a packed ref */
 	for (i = 0; i < n; i++)
@@ -2572,11 +2593,7 @@ static int repack_without_refs(const char **refnames, int n, struct strbuf *err)
 	}
 
 	/* Write what remains */
-	ret = commit_packed_refs();
-	if (ret && err)
-		strbuf_addf(err, "unable to overwrite old ref-pack file: %s",
-			    strerror(errno));
-	return ret;
+	return commit_packed_refs(err);
 }
 
 static int delete_ref_loose(struct ref_lock *lock, int flag, struct strbuf *err)
@@ -3681,9 +3698,7 @@ int transaction_commit(struct ref_transaction *transaction,
 	if (need_repack) {
 		packed = get_packed_refs(&ref_cache);
 		sort_ref_dir(packed);
-		if (commit_packed_refs()){
-			strbuf_addf(err, "unable to overwrite old ref-pack "
-				    "file");
+		if (commit_packed_refs(err)){
 			ret = -1;
 			goto cleanup;
 		}
