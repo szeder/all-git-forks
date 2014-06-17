@@ -1,3 +1,10 @@
+/*
+ *  "git author" buildin command
+ *   
+ *  Copyright (C) 2014 Xiaozhu Meng
+ *
+ *  The c implementation of Ldiff is based on the pearl implmentation from Luigi Cerulo
+ */
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
