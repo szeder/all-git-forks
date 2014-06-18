@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-13 13:00+0200\n"
+"PO-Revision-Date: 2014-06-18 21:53+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -4517,7 +4517,7 @@ msgstr ""
 
 #: builtin/config.c:68
 msgid "rename section: old-name new-name"
-msgstr "renombra sección: nombre-actual nombre-nuevo"
+msgstr "renombra sección: nombre-viejo nombre-nuevo"
 
 #: builtin/config.c:69
 msgid "remove a section: name"
@@ -7850,7 +7850,7 @@ msgstr ""
 
 #: builtin/remote.c:14 builtin/remote.c:33
 msgid "git remote rename <old> <new>"
-msgstr "git remote rename <actual> <nuevo>"
+msgstr "git remote rename <viejo> <nuevo>"
 
 #: builtin/remote.c:15 builtin/remote.c:38
 msgid "git remote remove <name>"
@@ -7879,7 +7879,7 @@ msgstr "git remote set-branches [--add] <nombre> <rama>..."
 
 #: builtin/remote.c:21 builtin/remote.c:69
 msgid "git remote set-url [--push] <name> <newurl> [<oldurl>]"
-msgstr "git remote set-url [--push] <nombre> <url-nueva> [<url-actual>]"
+msgstr "git remote set-url [--push] <nombre> <url-nueva> [<url-vieja>]"
 
 #: builtin/remote.c:22 builtin/remote.c:70
 msgid "git remote set-url --add <name> <newurl>"
@@ -8320,7 +8320,7 @@ msgstr ""
 #: builtin/remote.c:1548
 #, c-format
 msgid "No such URL found: %s"
-msgstr ""
+msgstr "URL no encontrada: %s"
 
 #: builtin/remote.c:1550
 msgid "Will not delete all non-push URLs"
@@ -8332,11 +8332,11 @@ msgstr "es verboso; debe escribirse antes de la suborden"
 
 #: builtin/repack.c:16
 msgid "git repack [options]"
-msgstr ""
+msgstr "git repack [opciones]"
 
 #: builtin/repack.c:156
 msgid "pack everything in a single pack"
-msgstr ""
+msgstr "empaqueta todo en un único paquete"
 
 #: builtin/repack.c:158
 msgid "same as -a, and turn unreachable objects loose"
@@ -8344,7 +8344,7 @@ msgstr ""
 
 #: builtin/repack.c:161
 msgid "remove redundant packs, and run git-prune-packed"
-msgstr ""
+msgstr "elimina paquetes redundantes, y ejecuta git-prune-packed"
 
 #: builtin/repack.c:163
 msgid "pass --no-reuse-delta to git-pack-objects"
@@ -8392,7 +8392,7 @@ msgstr ""
 
 #: builtin/repack.c:182
 msgid "maximum size of each packfile"
-msgstr ""
+msgstr "tamaño máximo de cada fichero-paquete"
 
 #: builtin/repack.c:184
 msgid "repack objects in packs marked with .keep"
@@ -8474,7 +8474,7 @@ msgstr ""
 
 #: builtin/reset.c:73
 msgid "You do not have a valid HEAD."
-msgstr ""
+msgstr "No tiene una CABEZA [HEAD] válida."
 
 #: builtin/reset.c:75
 msgid "Failed to find tree of HEAD."
@@ -8488,7 +8488,7 @@ msgstr ""
 #: builtin/reset.c:99
 #, c-format
 msgid "HEAD is now at %s"
-msgstr ""
+msgstr "Ahora la CABEZA [HEAD] está en %s"
 
 #: builtin/reset.c:182
 #, c-format
@@ -8527,7 +8527,7 @@ msgstr ""
 #: builtin/reset.c:305 builtin/reset.c:313
 #, c-format
 msgid "Could not parse object '%s'."
-msgstr ""
+msgstr "No he podido analizar el objeto '%s'."
 
 #: builtin/reset.c:310
 #, c-format
