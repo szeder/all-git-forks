@@ -11,6 +11,7 @@
 #include "exec_cmd.h"
 #include "streaming.h"
 #include "thread-utils.h"
+#include "tmp-objdir.h"
 
 static const char index_pack_usage[] =
 "git index-pack [-v] [-o <index-file>] [--keep | --keep=<msg>] [--verify] [--strict] (<pack-file> | --stdin [--fix-thin] [<pack-file>])";
@@ -94,6 +95,8 @@ static uint32_t input_crc32;
 static int input_fd, output_fd;
 static const char *curr_pack;
 
+static unsigned long warn_object_size;
+
 #ifndef NO_PTHREADS
 
 static struct thread_local *thread_data;
@@ -120,6 +123,10 @@ static pthread_mutex_t type_cas_mutex;
 #define type_cas_lock()		lock_mutex(&type_cas_mutex)
 #define type_cas_unlock()	unlock_mutex(&type_cas_mutex)
 
+static pthread_mutex_t large_obj_mutex;
+#define large_obj_lock() lock_mutex(&large_obj_mutex)
+#define large_obj_unlock() unlock_mutex(&large_obj_mutex)
+
 static pthread_key_t key;
 
 static inline void lock_mutex(pthread_mutex_t *mutex)
@@ -144,6 +151,8 @@ static void init_thread(void)
 	pthread_mutex_init(&counter_mutex, NULL);
 	pthread_mutex_init(&work_mutex, NULL);
 	pthread_mutex_init(&type_cas_mutex, NULL);
+	if (warn_object_size)
+		pthread_mutex_init(&large_obj_mutex, NULL);
 	if (show_stat)
 		pthread_mutex_init(&deepest_delta_mutex, NULL);
 	pthread_key_create(&key, NULL);
@@ -167,6 +176,8 @@ static void cleanup_thread(void)
 	pthread_mutex_destroy(&counter_mutex);
 	pthread_mutex_destroy(&work_mutex);
 	pthread_mutex_destroy(&type_cas_mutex);
+	if (warn_object_size)
+		pthread_mutex_destroy(&large_obj_mutex);
 	if (show_stat)
 		pthread_mutex_destroy(&deepest_delta_mutex);
 	for (i = 0; i < nr_threads; i++)
@@ -192,8 +203,27 @@ static void cleanup_thread(void)
 #define type_cas_lock()
 #define type_cas_unlock()
 
+#define large_obj_lock()
+#define large_obj_unlock()
+
 #endif
 
+static void warn_large_object(const unsigned char *sha1, unsigned long size)
+{
+	static FILE *logfile = NULL;
+
+	large_obj_lock();
+
+	if (!logfile)
+		logfile = git_is_quarantined() ? fopen_quarantine(".large-objects", "w") : stderr;
+
+	if (logfile == stderr)
+		fprintf(logfile, "large-object: ");
+
+	fprintf(logfile, "%s %"PRIuMAX"\n", sha1_to_hex(sha1), (uintmax_t)size);
+
+	large_obj_unlock();
+}
 
 static int mark_link(struct object *obj, int type, void *data, struct fsck_options *options)
 {
@@ -790,6 +820,9 @@ static void sha1_object(const void *data, struct object_entry *obj_entry,
 	int collision_test_needed = 0;
 
 	assert(data || obj_entry);
+
+	if (warn_object_size && size > warn_object_size)
+		warn_large_object(sha1, size);
 
 	if (startup_info->have_repository) {
 		read_lock();
@@ -1718,6 +1751,8 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 					die(_("bad %s"), arg);
 			} else if (skip_prefix(arg, "--max-input-size=", &arg)) {
 				max_input_size = strtoumax(arg, NULL, 10);
+			} else if (skip_prefix(arg, "--warn-object-size=", &arg)) {
+				warn_object_size = strtoul(arg, NULL, 10);
 			} else
 				usage(index_pack_usage);
 			continue;
