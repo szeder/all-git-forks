@@ -237,8 +237,26 @@ git_sequence_editor () {
 
 pick_one () {
 	ff=--ff
+	extra_args=
+	while test $# -gt 0
+	do
+		case "$1" in
+		-n)
+			ff=
+			extra_args="$extra_args -n"
+			;;
+		-*)
+			warn "pick_one: ignored option -- $1"
+			;;
+		*)
+			break
+			;;
+		esac
+		shift
+	done
+	test $# -ne 1 && die "pick_one: wrong number of arguments"
+	sha1=$1
 
-	case "$1" in -n) sha1=$2; ff= ;; *) sha1=$1 ;; esac
 	case "$force_rebase" in '') ;; ?*) ff= ;; esac
 	output git rev-parse --verify $sha1 || die "Invalid commit name: $sha1"
 
@@ -248,24 +266,35 @@ pick_one () {
 	fi
 
 	test -d "$rewritten" &&
-		pick_one_preserving_merges "$@" && return
+		pick_one_preserving_merges $extra_args $sha1 && return
 	output eval git cherry-pick \
 			${gpg_sign_opt:+$(git rev-parse --sq-quote "$gpg_sign_opt")} \
-			"$strategy_args" $empty_args $ff "$@"
+			"$strategy_args" $empty_args $ff $extra_args $sha1
 }
 
 pick_one_preserving_merges () {
 	fast_forward=t
-	case "$1" in
-	-n)
-		fast_forward=f
-		sha1=$2
-		;;
-	*)
-		sha1=$1
-		;;
-	esac
-	sha1=$(git rev-parse $sha1)
+	no_commit=
+	extra_args=
+	while test $# -gt 0
+	do
+		case "$1" in
+		-n)
+			fast_forward=f
+			extra_args="$extra_args -n"
+			no_commit=y
+			;;
+		-*)
+			warn "pick_one_preserving_merges: ignored option -- $1"
+			;;
+		*)
+			break
+			;;
+		esac
+		shift
+	done
+	test $# -ne 1 && die "pick_one_preserving_merges: wrong number of arguments"
+	sha1=$(git rev-parse $1)
 
 	if test -f "$state_dir"/current-commit
 	then
@@ -335,7 +364,7 @@ pick_one_preserving_merges () {
 	f)
 		first_parent=$(expr "$new_parents" : ' \([^ ]*\)')
 
-		if [ "$1" != "-n" ]
+		if test -z "$no_commit"
 		then
 			# detach HEAD to current parent
 			output git checkout $first_parent 2> /dev/null ||
@@ -344,7 +373,7 @@ pick_one_preserving_merges () {
 
 		case "$new_parents" in
 		' '*' '*)
-			test "a$1" = a-n && die "Refusing to squash a merge: $sha1"
+			test -n "$no_commit" && die "Refusing to squash a merge: $sha1"
 
 			# redo merge
 			author_script_content=$(get_author_ident_from_commit $sha1)
@@ -365,7 +394,7 @@ pick_one_preserving_merges () {
 		*)
 			output eval git cherry-pick \
 				${gpg_sign_opt:+$(git rev-parse --sq-quote "$gpg_sign_opt")} \
-				"$strategy_args" "$@" ||
+				"$strategy_args" $extra_args $sha1 ||
 				die_with_patch $sha1 "Could not pick $sha1"
 			;;
 		esac
