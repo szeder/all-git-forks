@@ -266,6 +266,12 @@ static void display_name(struct commit_name *n)
 		printf("%s", n->path);
 }
 
+static int suffix_string(char *buf, int depth, const unsigned char *sha1)
+{
+	return sprintf(buf, "-%d-g%s", depth, find_unique_abbrev(sha1, abbrev));
+}
+
+/* TODO: use suffix_string */
 static void show_suffix(int depth, const unsigned char *sha1)
 {
 	printf("-%d-g%s", depth, find_unique_abbrev(sha1, abbrev));
