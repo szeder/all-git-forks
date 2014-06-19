@@ -490,7 +490,42 @@ record_in_rewritten() {
 	esac
 }
 
+# Apply the changes introduced by the given commit to the current head.
+#
+# do_pick [--edit] <commit> <title>
+#
+# Wrapper around git-cherry-pick.
+#
+# <title>
+#     The commit message title of <commit>. Used for information
+#     purposes only.
+#
+# <commit>
+#     The commit to cherry-pick.
+#
+# -e, --edit
+#     After picking <commit>, open an editor and let the user edit the
+#     commit message. The editor contents becomes the commit message of
+#     the new head.
 do_pick () {
+	edit=
+	while test $# -gt 0
+	do
+		case "$1" in
+		-e|--edit)
+			edit=y
+			;;
+		-*)
+			warn "do_pick: ignored option -- $1"
+			;;
+		*)
+			break
+			;;
+		esac
+		shift
+	done
+	test $# -ne 2 && die "do_pick: wrong number of arguments"
+
 	if test "$(git rev-parse HEAD)" = "$squash_onto"
 	then
 		# Set the correct commit message and author info on the
@@ -512,6 +547,14 @@ do_pick () {
 		pick_one $1 ||
 			die_with_patch $1 "Could not apply $1... $2"
 	fi
+
+	if test -n "$edit"
+	then
+		git commit --allow-empty --amend --no-post-rewrite -n -q ${gpg_sign_opt:+"$gpg_sign_opt"} || {
+			warn "Could not amend commit after successfully picking $1... $2"
+			exit_with_patch $1 1
+		}
+	fi
 }
 
 do_next () {
@@ -532,14 +575,7 @@ do_next () {
 		comment_for_reflog reword
 
 		mark_action_done
-		do_pick $sha1 "$rest"
-		git commit --amend --no-post-rewrite ${gpg_sign_opt:+"$gpg_sign_opt"} || {
-			warn "Could not amend commit after successfully picking $sha1... $rest"
-			warn "This is most likely due to an empty commit message, or the pre-commit hook"
-			warn "failed. If the pre-commit hook failed, you may need to resolve the issue before"
-			warn "you are able to reword the commit."
-			exit_with_patch $sha1 1
-		}
+		do_pick --edit $sha1 "$rest"
 		record_in_rewritten $sha1
 		;;
 	edit|e)
