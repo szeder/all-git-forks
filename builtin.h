@@ -22,6 +22,9 @@ struct fmt_merge_msg_opts {
 	int shortlog_len;
 };
 
+extern int describe_string(char *buf, struct commit *cmit);
+extern void init_describe_string(void);
+
 extern int fmt_merge_msg(struct strbuf *in, struct strbuf *out,
 			 struct fmt_merge_msg_opts *);
 

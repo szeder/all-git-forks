@@ -431,6 +431,157 @@ static void describe(const char *arg, int last_one)
 		clear_commit_marks(cmit, -1);
 }
 
+void init_describe_string(void)
+{
+	hashmap_init(&names, (hashmap_cmp_fn) commit_name_cmp, 0);
+	for_each_rawref(get_name, NULL);
+	if (!names.size)
+		die(_("No names found, cannot describe anything."));
+}
+
+int describe_string(char *buf, struct commit *cmit)
+{
+	unsigned char sha1[20];
+	struct commit *gave_up_on = NULL;
+	struct commit_list *list;
+	struct commit_name *n;
+	struct possible_tag all_matches[MAX_TAGS];
+	unsigned int match_cnt = 0, annotated_cnt = 0, cur_match;
+	unsigned long seen_commits = 0;
+	unsigned int unannotated_cnt = 0;
+	off_t off = 0;
+
+	/* TODO: disable buffering for debugging */
+	setbuf(stdout, NULL);
+
+	/* TODO: settings, later than with other identify specifiers like %ia %il */
+	debug = 0;
+	all = 0;
+	tags = 0;
+	longformat = 0;
+	first_parent = 0;
+	abbrev = -1;
+	max_candidates = 10;
+	have_util = 1;
+	always = 1;
+
+	n = find_commit_name(cmit->object.sha1);
+	if (n && (tags || all || n->prio == 2)) {
+		/*
+		 * Exact match to an existing ref.
+		 */
+		off += display_name_string(buf+off, n);
+		off += suffix_string(buf+off, 0, n->tag ? n->tag->tagged->sha1 : sha1);
+		if (dirty)
+			off += sprintf(buf+off, "%s", dirty);
+		return off;
+	}
+
+	if (!max_candidates) {
+		/* TODO */
+		die(_("no tag exactly matches '%s'"), sha1_to_hex(cmit->object.sha1));
+	}
+
+	if (!have_util) {
+		struct hashmap_iter iter;
+		struct commit *c;
+		struct commit_name *n = hashmap_iter_first(&names, &iter);
+		for (; n; n = hashmap_iter_next(&iter)) {
+			c = lookup_commit_reference_gently(n->peeled, 1);
+			if (c)
+				c->util = n;
+		}
+		have_util = 1;
+	}
+
+	list = NULL;
+	cmit->object.flags = SEEN;
+	commit_list_insert(cmit, &list);
+	while (list) {
+		struct commit *c = pop_commit(&list);
+		struct commit_list *parents = c->parents;
+		seen_commits++;
+		n = c->util;
+		if (n) {
+			if (!tags && !all && n->prio < 2) {
+				unannotated_cnt++;
+			} else if (match_cnt < max_candidates) {
+				struct possible_tag *t = &all_matches[match_cnt++];
+				t->name = n;
+				t->depth = seen_commits - 1;
+				t->flag_within = 1u << match_cnt;
+				t->found_order = match_cnt;
+				c->object.flags |= t->flag_within;
+				if (n->prio == 2)
+					annotated_cnt++;
+			}
+			else {
+				gave_up_on = c;
+				break;
+			}
+		}
+		for (cur_match = 0; cur_match < match_cnt; cur_match++) {
+			struct possible_tag *t = &all_matches[cur_match];
+			if (!(c->object.flags & t->flag_within))
+				t->depth++;
+		}
+		if (annotated_cnt && !list) {
+			/*  finished search at %s, sha1_to_hex(c->object.sha1) */
+			break;
+		}
+		while (parents) {
+			struct commit *p = parents->item;
+			parse_commit(p);
+			if (!(p->object.flags & SEEN))
+				commit_list_insert_by_date(p, &list);
+			p->object.flags |= c->object.flags;
+			parents = parents->next;
+
+			if (first_parent)
+				break;
+		}
+	}
+
+	if (!match_cnt) {
+		const unsigned char *sha1 = cmit->object.sha1;
+		if (always) {
+			off += sprintf(buf+off, "%s", find_unique_abbrev(sha1, abbrev));
+			if (dirty)
+				off += sprintf(buf+off, "%s", dirty);
+			return off;
+		}
+		if (unannotated_cnt) {
+			/* TODO */
+			die(_("No annotated tags can describe '%s'.\n"
+			    "However, there were unannotated tags: try --tags."),
+			    sha1_to_hex(sha1));
+		} else {
+			/* TODO */
+			die(_("No tags can describe '%s'.\n"
+			    "Try --always, or create some tags."),
+			    sha1_to_hex(sha1));
+		}
+	}
+
+	qsort(all_matches, match_cnt, sizeof(all_matches[0]), compare_pt);
+
+	if (gave_up_on) {
+		commit_list_insert_by_date(gave_up_on, &list);
+		seen_commits--;
+	}
+	seen_commits += finish_depth_computation(&list, &all_matches[0]);
+	free_commit_list(list);
+
+	off += display_name_string(buf+off, all_matches[0].name);
+	off += suffix_string(buf+off, all_matches[0].depth, cmit->object.sha1);
+	if (dirty)
+		off += sprintf(buf+off, "%s", dirty);
+
+	clear_commit_marks(cmit, -1);
+
+	return off;
+}
+
 int cmd_describe(int argc, const char **argv, const char *prefix)
 {
 	int contains = 0;
