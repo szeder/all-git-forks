@@ -1,3 +1,4 @@
+#include "builtin.h"
 #include "cache.h"
 #include "commit.h"
 #include "utf8.h"
@@ -1088,6 +1089,7 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 	struct format_commit_context *c = context;
 	const struct commit *commit = c->commit;
 	const char *msg = c->message;
+	char buf[1024];
 	struct commit_list *p;
 	int h1, h2;
 
@@ -1171,6 +1173,11 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 						     c->pretty_ctx->abbrev));
 		strbuf_addstr(sb, diff_get_color(c->auto_color, DIFF_RESET));
 		c->abbrev_commit_hash.len = sb->len - c->abbrev_commit_hash.off;
+		return 1;
+	case 'i':
+		init_describe_string();
+		describe_string(buf, commit);
+		strbuf_addstr(sb, buf);
 		return 1;
 	case 'T':		/* tree hash */
 		strbuf_addstr(sb, sha1_to_hex(commit->tree->object.sha1));
