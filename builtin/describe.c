@@ -217,6 +217,34 @@ static unsigned long finish_depth_computation(
 	return seen_commits;
 }
 
+static int display_name_string(char *buf, struct commit_name *n)
+{
+	if (n->prio == 2 && !n->tag) {
+		n->tag = lookup_tag(n->sha1);
+		if (!n->tag || parse_tag(n->tag)) {
+			/* annotated tag %s not available"), n->path */
+			return 0;
+		}
+	}
+	if (n->tag && !n->name_checked) {
+		if (!n->tag->tag) {
+			/* annotated tag %s has no embedded name"), n->path */
+			return 0;
+		}
+		if (strcmp(n->tag->tag, all ? n->path + 5 : n->path))
+			warning(_("tag '%s' is really '%s' here"), n->tag->tag, n->path);
+		n->name_checked = 1;
+	}
+
+	if (n->tag)
+		return sprintf(buf, "%s", n->tag->tag);
+	else
+		return sprintf(buf, "%s", n->path);
+
+	return 0;
+}
+
+/* TODO: use display_name_string */
 static void display_name(struct commit_name *n)
 {
 	if (n->prio == 2 && !n->tag) {
