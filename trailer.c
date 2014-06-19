@@ -377,8 +377,7 @@ static int git_trailer_config(const char *conf_key, const char *value, void *cb)
 	enum trailer_info_type type;
 	int i;
 
-	trailer_item = skip_prefix(conf_key, "trailer.");
-	if (!trailer_item)
+	if (!skip_prefix(conf_key, "trailer.", &trailer_item))
 		return 0;
 
 	variable_name = strrchr(trailer_item, '.');
