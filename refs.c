@@ -830,9 +830,9 @@ static int name_conflict_fn(struct ref_entry *entry, void *cb_data)
  * operation). skip contains a list of refs we want to skip checking for
  * conflicts with.
  */
-static int is_refname_available(const char *refname,
-				struct ref_dir *dir,
-				const char **skip, int skipnum)
+static int is_refname_available_dir(const char *refname,
+				    struct ref_dir *dir,
+				    const char **skip, int skipnum)
 {
 	struct name_conflict_cb data;
 	data.refname = refname;
@@ -1236,6 +1236,18 @@ static struct ref_dir *get_loose_refs(struct ref_cache *refs)
 				 create_dir_entry(refs, "refs/", 5, 1));
 	}
 	return get_ref_dir(refs->loose);
+}
+
+int is_refname_available(const char *refname, const char **skip, int skipnum)
+{
+	if (!is_refname_available_dir(refname, get_packed_refs(&ref_cache),
+				      skip, skipnum))
+		return 0;
+
+	if (!is_refname_available_dir(refname, get_loose_refs(&ref_cache),
+				      skip, skipnum))
+		return 0;
+	return 1;
 }
 
 /* We allow "recursive" symbolic refs. Only within reason, though */
@@ -2168,8 +2180,8 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 	 * name is a proper prefix of our refname.
 	 */
 	if (missing &&
-	     !is_refname_available(refname, get_packed_refs(&ref_cache),
-				   skip, skipnum)) {
+	     !is_refname_available_dir(refname, get_packed_refs(&ref_cache),
+				       skip, skipnum)) {
 		last_errno = ENOTDIR;
 		goto error_return;
 	}
@@ -2676,12 +2688,7 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 		return 1;
 	}
 
-	if (!is_refname_available(newrefname, get_packed_refs(&ref_cache),
-				  &oldrefname, 1))
-		return 1;
-
-	if (!is_refname_available(newrefname, get_loose_refs(&ref_cache),
-				  &oldrefname, 1))
+	if (!is_refname_available(newrefname, &oldrefname, 1))
 		return 1;
 
 	log = reflog_exists(oldrefname);

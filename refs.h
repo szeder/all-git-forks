@@ -131,6 +131,12 @@ extern int ref_exists(const char *);
 extern int is_branch(const char *refname);
 
 /*
+ * Check is a particular refname is available for creation. skip contains
+ * a list of refnames to exclude from the refname collission tests.
+ */
+int is_refname_available(const char *refname, const char **skip, int skipnum);
+
+/*
  * If refname is a non-symbolic reference that refers to a tag object,
  * and the tag can be (recursively) dereferenced to a non-tag object,
  * store the SHA1 of the referred-to object to sha1 and return 0.  If
