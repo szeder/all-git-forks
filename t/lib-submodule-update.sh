@@ -146,7 +146,7 @@ reset_work_tree_to () {
 		git checkout -f "$1" &&
 		git status -u -s >actual &&
 		test_must_be_empty actual &&
-		sha1=$(git rev-parse HEAD:sub1 || true) &&
+		sha1=$(git rev-parse --revs-only HEAD:sub1) &&
 		if test -n "$sha1" &&
 		   test $(cd "sub1" && git rev-parse --verify "$sha1^{commit}")
 		then
@@ -181,7 +181,7 @@ test_submodule_content () {
 		echo "Submodule $submodule is not populated"
 		return 1
 	fi &&
-	sha1=$(git rev-parse "$commit:$submodule") &&
+	sha1=$(git rev-parse --verify "$commit:$submodule") &&
 	if test -z "$sha1"
 	then
 		echo "Couldn't retrieve SHA-1 of $submodule for $commit"
