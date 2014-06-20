@@ -81,6 +81,10 @@ static int trace_bare = -1;
 
 static int prepare_trace_line(const char *key, struct strbuf *buf)
 {
+	struct timeval tv;
+	struct tm tm;
+	time_t secs;
+
 	if (!trace_want(key))
 		return 0;
 
@@ -92,7 +96,12 @@ static int prepare_trace_line(const char *key, struct strbuf *buf)
 	if (trace_bare)
 		return 1;
 
-	/* add line prefix here */
+	/* print current timestamp */
+	gettimeofday(&tv, NULL);
+	secs = tv.tv_sec;
+	localtime_r(&secs, &tm);
+	strbuf_addf(buf, "%02d:%02d:%02d.%06ld ", tm.tm_hour, tm.tm_min,
+		    tm.tm_sec, tv.tv_usec);
 
 	return 1;
 }
