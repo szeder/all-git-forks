@@ -155,7 +155,7 @@ move_to_original_branch () {
 	esac
 }
 
-finish_rebase () {
+apply_autostash () {
 	if test -f "$state_dir/autostash"
 	then
 		stash_sha1=$(cat "$state_dir/autostash")
@@ -171,6 +171,10 @@ You can run "git stash pop" or "git stash drop" at any time.
 '
 		fi
 	fi
+}
+
+finish_rebase () {
+	apply_autostash &&
 	git gc --auto &&
 	rm -rf "$state_dir"
 }
@@ -186,6 +190,11 @@ run_specific_rebase () {
 	if test $ret -eq 0
 	then
 		finish_rebase
+	elif test $ret -eq 2 # special exit status for rebase -i
+	then
+		apply_autostash &&
+		rm -rf "$state_dir" &&
+		die "Nothing to do"
 	fi
 	exit $ret
 }
@@ -457,8 +466,8 @@ then
 else
 	if test -z "$onto"
 	then
-		empty_tree=`git hash-object -t tree /dev/null`
-		onto=`git commit-tree $empty_tree </dev/null`
+		empty_tree=$(git hash-object -t tree /dev/null)
+		onto=$(git commit-tree $empty_tree </dev/null)
 		squash_onto="$onto"
 	fi
 	unset upstream_name
@@ -516,10 +525,10 @@ case "$#" in
 	;;
 0)
 	# Do not need to switch branches, we are already on it.
-	if branch_name=`git symbolic-ref -q HEAD`
+	if branch_name=$(git symbolic-ref -q HEAD)
 	then
 		head_name=$branch_name
-		branch_name=`expr "z$branch_name" : 'zrefs/heads/\(.*\)'`
+		branch_name=$(expr "z$branch_name" : 'zrefs/heads/\(.*\)')
 	else
 		head_name="detached HEAD"
 		branch_name=HEAD ;# detached
