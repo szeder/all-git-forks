@@ -238,13 +238,13 @@ git_sequence_editor () {
 
 pick_one () {
 	ff=--ff
-	extra_args=
+	pick_args=
 	while test $# -gt 0
 	do
 		case "$1" in
 		-n)
 			ff=
-			extra_args="$extra_args -n"
+			pick_args="${pick_args:+$pick_args }-n"
 			;;
 		-*)
 			die "pick_one: unrecognized option -- $1"
@@ -267,22 +267,22 @@ pick_one () {
 	fi
 
 	test -d "$rewritten" &&
-		pick_one_preserving_merges $extra_args $sha1 && return
+		pick_one_preserving_merges $pick_args $sha1 && return
 	output eval git cherry-pick \
 			${gpg_sign_opt:+$(git rev-parse --sq-quote "$gpg_sign_opt")} \
-			"$strategy_args" $empty_args $ff $extra_args $sha1
+			"$strategy_args" $empty_args $ff $pick_args $sha1
 }
 
 pick_one_preserving_merges () {
 	fast_forward=t
 	no_commit=
-	extra_args=
+	pick_merge_args=
 	while test $# -gt 0
 	do
 		case "$1" in
 		-n)
 			fast_forward=f
-			extra_args="$extra_args -n"
+			pick_merge_args="${pick_merge_args:+$pick_merge_args }-n"
 			no_commit=y
 			;;
 		-*)
@@ -395,7 +395,7 @@ pick_one_preserving_merges () {
 		*)
 			output eval git cherry-pick \
 				${gpg_sign_opt:+$(git rev-parse --sq-quote "$gpg_sign_opt")} \
-				"$strategy_args" $extra_args $sha1 ||
+				"$strategy_args" $pick_merge_args $sha1 ||
 				die_with_patch $sha1 "Could not pick $sha1"
 			;;
 		esac
