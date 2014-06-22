@@ -247,7 +247,7 @@ pick_one () {
 			extra_args="$extra_args -n"
 			;;
 		-*)
-			warn "pick_one: ignored option -- $1"
+			die "pick_one: unrecognized option -- $1"
 			;;
 		*)
 			break
@@ -286,7 +286,7 @@ pick_one_preserving_merges () {
 			no_commit=y
 			;;
 		-*)
-			warn "pick_one_preserving_merges: ignored option -- $1"
+			die "pick_one_preserving_merges: unrecognized option -- $1"
 			;;
 		*)
 			break
