@@ -554,7 +554,8 @@ do_pick () {
 			rewrite_edit=y
 			;;
 		-*)
-			warn "do_pick: ignored option -- $1"
+			warn "do_pick: unrecognized option -- $1"
+			return 2
 			;;
 		*)
 			break
