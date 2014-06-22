@@ -497,13 +497,10 @@ record_in_rewritten() {
 #
 # Wrapper around git-cherry-pick.
 #
-# <commit>
-#     The commit to cherry-pick.
+# -F <file>, --file <file>
+#     Take the commit message from the given file.
 #
-# -e, --edit
-#     After picking <commit>, open an editor and let the user edit the
-#     commit message. The editor contents becomes the commit message of
-#     the new head.
+#     _This is not a git-cherry-pick option._
 #
 # --amend
 #     After picking <commit>, replace the current head commit with a new
@@ -511,10 +508,13 @@ record_in_rewritten() {
 #
 #     _This is not a git-cherry-pick option._
 #
-# -F <file>, --file <file>
-#     Take the commit message from the given file.
+# -e, --edit
+#     After picking <commit>, open an editor and let the user edit the
+#     commit message. The editor contents becomes the commit message of
+#     the new head.
 #
-#     _This is not a git-cherry-pick option._
+# <commit>
+#     The commit to cherry-pick.
 #
 # The return value is 1 if applying the changes resulted in a conflict
 # and 2 if the specified arguments were incorrect. If the changes could
