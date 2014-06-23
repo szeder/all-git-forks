@@ -483,7 +483,7 @@ record_in_rewritten() {
 # -e, --edit
 #     After picking <commit>, open an editor and let the user edit the
 #     commit message. The editor contents becomes the commit message of
-#     the new head.
+#     the new head. This creates a fresh commit.
 #
 # <commit>
 #     The commit to cherry-pick.
