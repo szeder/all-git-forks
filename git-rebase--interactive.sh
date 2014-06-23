@@ -469,7 +469,8 @@ record_in_rewritten() {
 # Wrapper around git-cherry-pick.
 #
 # -F <file>, --file <file>
-#     Take the commit message from the given file.
+#     Take the commit message from the given file. This creates a fresh
+#     commit.
 #
 #     _This is not a git-cherry-pick option._
 #
