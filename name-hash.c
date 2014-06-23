@@ -233,6 +233,6 @@ void free_name_hash(struct index_state *istate)
 		return;
 	istate->name_hash_initialized = 0;
 
-	hashmap_free(&istate->name_hash, 0);
-	hashmap_free(&istate->dir_hash, 1);
+	hashmap_free(&istate->name_hash, HASHMAP_NO_FREE_ENTRIES);
+	hashmap_free(&istate->dir_hash, HASHMAP_FREE_ENTRIES);
 }
