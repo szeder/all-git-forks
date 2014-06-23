@@ -57,7 +57,7 @@ test_repo () {
 			export GIT_WORK_TREE
 		fi &&
 		rm -f trace &&
-		GIT_TRACE_SETUP="$(pwd)/trace" git symbolic-ref HEAD >/dev/null &&
+		GIT_TRACE_BARE=1 GIT_TRACE_SETUP="$(pwd)/trace" git symbolic-ref HEAD >/dev/null &&
 		grep '^setup: ' trace >result &&
 		test_cmp expected result
 	)
