@@ -213,6 +213,18 @@ free_return:
 	free(buf);
 }
 
+static void print_tag(const char *refname, const unsigned char *sha1,
+		      int lines)
+{
+		if (!lines)
+			printf("%s\n", refname);
+		else {
+			printf("%-15s ", refname);
+			show_tag_lines(sha1, lines);
+			putchar('\n');
+		}
+}
+
 static int show_reference(const char *refname, const unsigned char *sha1,
 			  int flag, void *cb_data)
 {
@@ -232,16 +244,10 @@ static int show_reference(const char *refname, const unsigned char *sha1,
 		if (points_at.nr && !match_points_at(refname, sha1))
 			return 0;
 
-		if (!filter->lines) {
-			if (filter->sort)
-				string_list_append(&filter->tags, refname);
-			else
-				printf("%s\n", refname);
-			return 0;
-		}
-		printf("%-15s ", refname);
-		show_tag_lines(sha1, filter->lines);
-		putchar('\n');
+		if (filter->sort)
+			string_list_append(&filter->tags, refname)->util = hashdup(sha1);
+		else
+			print_tag(refname, sha1, filter->lines);
 	}
 
 	return 0;
@@ -273,12 +279,16 @@ static int list_tags(const char **patterns, int lines,
 			qsort(filter.tags.items, filter.tags.nr,
 			      sizeof(struct string_list_item), sort_by_version);
 		if (sort & REVERSE_SORT)
-			for (i = filter.tags.nr - 1; i >= 0; i--)
-				printf("%s\n", filter.tags.items[i].string);
+			for (i = filter.tags.nr - 1; i >= 0; i--) {
+				struct string_list_item *it = &filter.tags.items[i];
+				print_tag(it->string, it->util, lines);
+			}
 		else
-			for (i = 0; i < filter.tags.nr; i++)
-				printf("%s\n", filter.tags.items[i].string);
-		string_list_clear(&filter.tags, 0);
+			for (i = 0; i < filter.tags.nr; i++) {
+				struct string_list_item *it = &filter.tags.items[i];
+				print_tag(it->string, it->util, lines);
+			}
+		string_list_clear(&filter.tags, 1);
 	}
 	return 0;
 }
@@ -634,8 +644,6 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 			copts.padding = 2;
 			run_column_filter(colopts, &copts);
 		}
-		if (lines != -1 && sort)
-			die(_("--sort and -n are incompatible"));
 		ret = list_tags(argv, lines == -1 ? 0 : lines, with_commit, sort);
 		if (column_active(colopts))
 			stop_column_filter();
