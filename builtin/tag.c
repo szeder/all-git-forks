@@ -225,6 +225,11 @@ static void print_tag(const char *refname, const unsigned char *sha1,
 		}
 }
 
+static int filter_can_stream(struct tag_filter *filter)
+{
+	return !filter->sort;
+}
+
 static int show_reference(const char *refname, const unsigned char *sha1,
 			  int flag, void *cb_data)
 {
@@ -244,7 +249,7 @@ static int show_reference(const char *refname, const unsigned char *sha1,
 		if (points_at.nr && !match_points_at(refname, sha1))
 			return 0;
 
-		if (filter->sort)
+		if (!filter_can_stream(filter))
 			string_list_append(&filter->tags, refname)->util = hashdup(sha1);
 		else
 			print_tag(refname, sha1, filter->lines);
@@ -273,11 +278,11 @@ static int list_tags(const char **patterns, int lines,
 	filter.tags.strdup_strings = 1;
 
 	for_each_tag_ref(show_reference, (void *) &filter);
-	if (sort) {
+	if ((sort & SORT_MASK) == VERCMP_SORT)
+		qsort(filter.tags.items, filter.tags.nr,
+		      sizeof(struct string_list_item), sort_by_version);
+	if (!filter_can_stream(&filter)) {
 		int i;
-		if ((sort & SORT_MASK) == VERCMP_SORT)
-			qsort(filter.tags.items, filter.tags.nr,
-			      sizeof(struct string_list_item), sort_by_version);
 		if (sort & REVERSE_SORT)
 			for (i = filter.tags.nr - 1; i >= 0; i--) {
 				struct string_list_item *it = &filter.tags.items[i];
