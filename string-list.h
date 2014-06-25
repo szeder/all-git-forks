@@ -26,8 +26,13 @@ void string_list_clear(struct string_list *list, int free_util);
 typedef void (*string_list_clear_func_t)(void *p, const char *str);
 void string_list_clear_func(struct string_list *list, string_list_clear_func_t clearfunc);
 
-/* Use this function or the macro below to iterate over each item */
-typedef int (*string_list_each_func_t)(struct string_list_item *, void *);
+/*
+ * Use this function or the macro below to iterate over each item. Each item
+ * is passed as the first argument to an invocation of the callback. The second
+ * argument, "pos", is the numeric position of the first argument within the
+ * list (_not_ an offset from the first item).
+ */
+typedef int (*string_list_each_func_t)(struct string_list_item *, int pos, void *);
 int for_each_string_list(struct string_list *list,
 			 string_list_each_func_t, void *cb_data);
 #define for_each_string_list_item(item,list) \

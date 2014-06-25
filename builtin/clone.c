@@ -227,7 +227,7 @@ static void strip_trailing_slashes(char *dir)
 	*end = '\0';
 }
 
-static int add_one_reference(struct string_list_item *item, void *cb_data)
+static int add_one_reference(struct string_list_item *item, int pos, void *cb_data)
 {
 	char *ref_git;
 	const char *repo;
