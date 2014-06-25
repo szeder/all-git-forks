@@ -1215,14 +1215,11 @@ X-Mailer: git-send-email $gitversion
 			$smtp_server_port ||= 465; # ssmtp
 			require Net::SMTP::SSL;
 			$smtp_domain ||= maildomain();
-			require IO::Socket::SSL;
-			# Net::SMTP::SSL->new() does not forward any SSL options
-			IO::Socket::SSL::set_client_defaults(
-				ssl_verify_params());
 			$smtp ||= Net::SMTP::SSL->new($smtp_server,
 						      Hello => $smtp_domain,
 						      Port => $smtp_server_port,
-						      Debug => $debug_net_smtp);
+						      Debug => $debug_net_smtp,
+						      ssl_verify_params());
 		}
 		else {
 			require Net::SMTP;
