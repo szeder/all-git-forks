@@ -307,4 +307,21 @@ int compare_commits_by_commit_date(const void *a_, const void *b_, void *unused)
 LAST_ARG_MUST_BE_NULL
 extern int run_commit_hook(int editor_is_used, const char *index_file, const char *name, ...);
 
+/*
+ * Calculate which commits in left contain commits in right, and vice versa.
+ *
+ * The left_contains result, if non-NULL, must point to an array of unsigned
+ * char with as many elements as there are items in the "left" commit_list.
+ * When the function completes, the nth char in left_contains will be non-zero
+ * iff the nth commit in the "left" list contains at least one commit from the
+ * "right" list.
+ *
+ * The right_contains result works in the same way, but with left and right
+ * swapped.
+ */
+void commit_contains(const struct commit_list *left,
+		     const struct commit_list *right,
+		     unsigned char *left_contains,
+		     unsigned char *right_contains);
+
 #endif /* COMMIT_H */

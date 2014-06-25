@@ -11,6 +11,7 @@
 #include "commit-slab.h"
 #include "prio-queue.h"
 #include "sha1-lookup.h"
+#include "bitset.h"
 
 static struct commit_extra_header *read_commit_extra_header_lines(const char *buf, size_t len, const char **);
 
@@ -1039,6 +1040,107 @@ struct commit_list *reduce_heads(struct commit_list *heads)
 		tail = &commit_list_insert(array[i], tail)->next;
 	return result;
 }
+
+define_commit_slab(bit_slab, unsigned char);
+
+static int init_contains_bits(const struct commit_list *commits,
+			      struct bit_slab *bits,
+			      struct prio_queue *queue)
+{
+	int i, nr = commit_list_count(commits);
+
+	init_bit_slab_with_stride(bits, bitset_sizeof(nr));
+	for (i = 0; i < nr; i++, commits = commits->next) {
+		struct commit *c = commits->item;
+
+		prio_queue_put(queue, c);
+		bitset_set(bit_slab_at(bits, c), i);
+	}
+
+	return nr;
+}
+
+static int queue_has_nonstale_bits(struct prio_queue *queue, struct bit_slab *stale)
+{
+	int i;
+	for (i = 0; i < queue->nr; i++) {
+		struct commit *commit = queue->array[i];
+		if (!*bit_slab_at(stale, commit))
+			return 1;
+	}
+	return 0;
+}
+
+static void fill_contains_result(unsigned char *result, int nr,
+				 struct bit_slab *bits,
+				 const struct commit_list *other_side)
+{
+	const struct commit_list *c;
+
+	memset(result, 0, nr);
+	for (c = other_side; c; c = c->next) {
+		unsigned char *c_bits = bit_slab_at(bits, c->item);
+		int i;
+
+		for (i = 0; i < nr; i++)
+			result[i] |= bitset_get(c_bits, i);
+	}
+}
+
+void commit_contains(const struct commit_list *left,
+		     const struct commit_list *right,
+		     unsigned char *left_contains,
+		     unsigned char *right_contains)
+{
+	struct prio_queue queue = { compare_commits_by_commit_date };
+	struct bit_slab left_bits, right_bits, stale_bits;
+	int left_nr, right_nr;
+
+	left_nr = init_contains_bits(left, &left_bits, &queue);
+	right_nr = init_contains_bits(right, &right_bits, &queue);
+	init_bit_slab(&stale_bits);
+
+	while (queue_has_nonstale_bits(&queue, &stale_bits)) {
+		struct commit *commit = prio_queue_get(&queue);
+		struct commit_list *parents;
+		unsigned char *c_left, *c_right, *c_stale;
+
+		c_left = bit_slab_at(&left_bits, commit);
+		c_right = bit_slab_at(&right_bits, commit);
+		c_stale = bit_slab_at(&stale_bits, commit);
+
+		if (!bitset_empty(c_left, left_nr) &&
+		    !bitset_empty(c_right, right_nr))
+			*c_stale = 1;
+
+		for (parents = commit->parents; parents; parents = parents->next) {
+			struct commit *p = parents->item;
+			unsigned char *p_left = bit_slab_at(&left_bits, p),
+				      *p_right = bit_slab_at(&right_bits, p);
+
+			if (bitset_equal(c_left, p_left, left_nr) &&
+			    bitset_equal(c_right, p_right, right_nr))
+				continue;
+			if (parse_commit(p))
+				die("unable to parse commit");
+			bitset_or(p_left, c_left, left_nr);
+			bitset_or(p_right, c_right, right_nr);
+			*bit_slab_at(&stale_bits, p) |= *c_stale;
+			prio_queue_put(&queue, p);
+		}
+	}
+
+	if (left_contains)
+		fill_contains_result(left_contains, left_nr, &left_bits, right);
+	if (right_contains)
+		fill_contains_result(right_contains, right_nr, &right_bits, left);
+
+	clear_prio_queue(&queue);
+	clear_bit_slab(&left_bits);
+	clear_bit_slab(&right_bits);
+	clear_bit_slab(&stale_bits);
+}
+
 
 static const char gpg_sig_header[] = "gpgsig";
 static const int gpg_sig_header_len = sizeof(gpg_sig_header) - 1;
