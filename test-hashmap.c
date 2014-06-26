@@ -100,7 +100,7 @@ static void perf_hashmap(unsigned int method, unsigned int rounds)
 				hashmap_add(&map, entries[i]);
 			}
 
-			hashmap_free(&map, 0);
+			hashmap_free(&map, HASHMAP_NO_FREE_ENTRIES);
 		}
 	} else {
 		/* test map lookups */
@@ -121,7 +121,7 @@ static void perf_hashmap(unsigned int method, unsigned int rounds)
 			}
 		}
 
-		hashmap_free(&map, 0);
+		hashmap_free(&map, HASHMAP_NO_FREE_ENTRIES);
 	}
 }
 
@@ -250,6 +250,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	hashmap_free(&map, 1);
+	hashmap_free(&map, HASHMAP_FREE_ENTRIES);
 	return 0;
 }

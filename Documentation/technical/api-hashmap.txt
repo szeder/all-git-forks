@@ -187,7 +187,7 @@ void long2double_init(void)
 
 void long2double_free(void)
 {
-	hashmap_free(&map, 1);
+	hashmap_free(&map, HASHMAP_FREE_ENTRIES);
 }
 
 static struct long2double *find_entry(long key)
