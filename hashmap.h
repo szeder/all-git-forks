@@ -1,6 +1,11 @@
 #ifndef HASHMAP_H
 #define HASHMAP_H
 
+enum hashmap_free_options {
+	HASHMAP_NO_FREE_ENTRIES = 0,
+	HASHMAP_FREE_ENTRIES = 1,
+};
+
 /*
  * Generic implementation of hash-based key-value mappings.
  * See Documentation/technical/api-hashmap.txt.
@@ -39,7 +44,8 @@ struct hashmap_iter {
 
 extern void hashmap_init(struct hashmap *map, hashmap_cmp_fn equals_function,
 		size_t initial_size);
-extern void hashmap_free(struct hashmap *map, int free_entries);
+extern void hashmap_free(struct hashmap *map,
+			 enum hashmap_free_options free_entries);
 
 /* hashmap_entry functions */
 
