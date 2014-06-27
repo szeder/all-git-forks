@@ -457,11 +457,11 @@ int describe_string(char *buf, struct commit *cmit)
 	/* TODO: settings, later than with other identify specifiers like %ia %il */
 	debug = 0;
 	all = 0;
-	tags = 0;
+	tags = 1;
 	longformat = 0;
 	first_parent = 0;
-	abbrev = -1;
-	max_candidates = 10;
+	abbrev = 7;
+	max_candidates = 25;
 	have_util = 0;
 	always = 1;
 
