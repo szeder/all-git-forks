@@ -481,4 +481,19 @@ test_expect_success "fetch new commits when submodule got renamed" '
 	test_cmp expect actual
 '
 
+test_expect_failure "fetch --recurse-submodules clones new submodules" '
+	(
+		cd submodule &&
+		git rev-parse HEAD >../expect
+	) &&
+	git submodule add "$pwd/submodule" submodule2 &&
+	git commit -m "new submodule" &&
+	(
+		cd downstream &&
+		git fetch --recurse-submodules &&
+		test -d .git/modules/submodule2 &&
+		test_cmp ../expect .git/modules/submodule2/HEAD
+	)
+'
+
 test_done
