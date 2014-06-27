@@ -446,16 +446,16 @@ static void show_one_mergetag(struct rev_info *opt,
 
 	payload_size = parse_signature(extra->value, extra->len);
 	status = -1;
-	if (extra->len > payload_size)
+	if (extra->len > payload_size) {
 		if (verify_signed_buffer(extra->value, payload_size,
 					 extra->value + payload_size,
 					 extra->len - payload_size,
-					 &verify_message, NULL)) {
-			if (verify_message.len <= gpg_message_offset)
-				strbuf_addstr(&verify_message, "No signature\n");
-			else
-				status = 0;
-		}
+					 &verify_message, NULL) &&
+		    verify_message.len <= gpg_message_offset)
+			strbuf_addstr(&verify_message, "No signature\n");
+		else
+			status = 0;
+	}
 
 	show_sig_lines(opt, status, verify_message.buf);
 	strbuf_release(&verify_message);
