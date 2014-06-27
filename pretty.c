@@ -1175,6 +1175,7 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 		c->abbrev_commit_hash.len = sb->len - c->abbrev_commit_hash.off;
 		return 1;
 	case 'i':
+		memset(buf, 0, 1024);
 		init_describe_string();
 		describe_string(buf, commit);
 		strbuf_addstr(sb, buf);
