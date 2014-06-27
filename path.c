@@ -134,11 +134,20 @@ void home_config_paths(char **global, char **xdg, char *file)
 {
 	char *xdg_home = getenv("XDG_CONFIG_HOME");
 	char *home = getenv("HOME");
+	const char *homedrive = getenv("HOMEDRIVE");
+	const char *homepath = getenv("HOMEPATH");
 	char *to_free = NULL;
 
-	if (!home) {
+	if (!home && !(homedrive && homepath)) {
 		if (global)
 			*global = NULL;
+	} else if (homedrive && homepath) {
+		if (!xdg_home) {
+			to_free = mkpathdup("%s%s/.config", homedrive, homepath);
+			xdg_home = to_free;
+		}
+		if (global)
+			*global = mkpathdup("%s%s/.gitconfig", homedrive, homepath);
 	} else {
 		if (!xdg_home) {
 			to_free = mkpathdup("%s/.config", home);
@@ -275,9 +284,15 @@ char *expand_user_path(const char *path)
 		size_t username_len = first_slash - username;
 		if (username_len == 0) {
 			const char *home = getenv("HOME");
-			if (!home)
-				goto return_null;
-			strbuf_add(&user_path, home, strlen(home));
+			const char *homedrive = getenv("HOMEDRIVE");
+			const char *homepath = getenv("HOMEPATH");
+			if (!home) {
+				if (!(homedrive && homepath))
+					goto return_null;
+				strbuf_addf(&user_path, "%s%s", homedrive, homepath);
+			}
+			else
+				strbuf_add(&user_path, home, strlen(home));
 		} else {
 			struct passwd *pw = getpw_str(username, username_len);
 			if (!pw)
