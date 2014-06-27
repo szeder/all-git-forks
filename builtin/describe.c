@@ -462,7 +462,7 @@ int describe_string(char *buf, struct commit *cmit)
 	first_parent = 0;
 	abbrev = -1;
 	max_candidates = 10;
-	have_util = 1;
+	have_util = 0;
 	always = 1;
 
 	n = find_commit_name(cmit->object.sha1);
@@ -532,8 +532,7 @@ int describe_string(char *buf, struct commit *cmit)
 		while (parents) {
 			struct commit *p = parents->item;
 			parse_commit(p);
-			if (!(p->object.flags & SEEN))
-				commit_list_insert_by_date(p, &list);
+			commit_list_insert_by_date(p, &list);
 			p->object.flags |= c->object.flags;
 			parents = parents->next;
 
