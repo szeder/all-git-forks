@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-18 21:53+0200\n"
+"PO-Revision-Date: 2014-06-28 15:59+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -8501,19 +8501,19 @@ msgstr "es silencioso, sólo informa de errores"
 
 #: builtin/reset.c:275
 msgid "reset HEAD and index"
-msgstr ""
+msgstr "restaura la CABEZA [HEAD] y el índice"
 
 #: builtin/reset.c:276
 msgid "reset only HEAD"
-msgstr ""
+msgstr "restaura sólo la CABEZA [HEAD]"
 
 #: builtin/reset.c:278 builtin/reset.c:280
 msgid "reset HEAD, index and working tree"
-msgstr ""
+msgstr "restaura la CABEZA [HEAD], el índice y el árbol de trabajo"
 
 #: builtin/reset.c:282
 msgid "reset HEAD but keep local changes"
-msgstr ""
+msgstr "restaura la CABEZA [HEAD] pero conserva los cambios locales"
 
 #: builtin/reset.c:285
 msgid "record only the fact that removed paths will be added later"
@@ -8575,11 +8575,11 @@ msgstr "git rev-parse --parseopt [opciones] -- [<parms>...]"
 
 #: builtin/rev-parse.c:364
 msgid "keep the `--` passed as an arg"
-msgstr ""
+msgstr "conserva el `--` pasado como un parámetro"
 
 #: builtin/rev-parse.c:366
 msgid "stop parsing after the first non-option argument"
-msgstr ""
+msgstr "detiene el análisis tras el primer parámetro que no es una opción"
 
 #: builtin/rev-parse.c:369
 msgid "output in stuck long form"
