@@ -295,27 +295,14 @@ static int edit_and_replace(const char *object_ref, int force)
 	return replace_object_sha1(object_ref, old, "replacement", new, force);
 }
 
-static int create_graft(int argc, const char **argv, int force)
+static void replace_parents(struct strbuf *buf, int argc, const char **argv)
 {
-	unsigned char old[20], new[20];
-	const char *old_ref = argv[0];
-	struct commit *commit;
-	struct strbuf buf = STRBUF_INIT;
 	struct strbuf new_parents = STRBUF_INIT;
 	const char *parent_start, *parent_end;
-	const char *buffer;
-	unsigned long size;
 	int i;
 
-	if (get_sha1(old_ref, old) < 0)
-		die(_("Not a valid object name: '%s'"), old_ref);
-	commit = lookup_commit_or_die(old, old_ref);
-
 	/* find existing parents */
-	buffer = get_commit_buffer(commit, &size);
-	strbuf_add(&buf, buffer, size);
-	unuse_commit_buffer(commit, buffer);
-	parent_start = buf.buf;
+	parent_start = buf->buf;
 	parent_start += 46; /* "tree " + "hex sha1" + "\n" */
 	parent_end = parent_start;
 
@@ -332,13 +319,34 @@ static int create_graft(int argc, const char **argv, int force)
 	}
 
 	/* replace existing parents with new ones */
-	strbuf_splice(&buf, parent_start - buf.buf, parent_end - parent_start,
+	strbuf_splice(buf, parent_start - buf->buf, parent_end - parent_start,
 		      new_parents.buf, new_parents.len);
+
+	strbuf_release(&new_parents);
+}
+
+static int create_graft(int argc, const char **argv, int force)
+{
+	unsigned char old[20], new[20];
+	const char *old_ref = argv[0];
+	struct commit *commit;
+	struct strbuf buf = STRBUF_INIT;
+	const char *buffer;
+	unsigned long size;
+
+	if (get_sha1(old_ref, old) < 0)
+		die(_("Not a valid object name: '%s'"), old_ref);
+	commit = lookup_commit_or_die(old, old_ref);
+
+	buffer = get_commit_buffer(commit, &size);
+	strbuf_add(&buf, buffer, size);
+	unuse_commit_buffer(commit, buffer);
+
+	replace_parents(&buf, argc, argv);
 
 	if (write_sha1_file(buf.buf, buf.len, commit_type, new))
 		die(_("could not write replacement commit for: '%s'"), old_ref);
 
-	strbuf_release(&new_parents);
 	strbuf_release(&buf);
 
 	if (!hashcmp(old, new))
