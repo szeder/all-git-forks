@@ -654,6 +654,10 @@ static int do_fetch_submodule(const char *prefix, const struct submodule *submod
 	git_dir = read_gitfile(submodule_git_dir.buf);
 	if (!git_dir)
 		git_dir = submodule_git_dir.buf;
+	/*
+	 * TODO: search inside .git/modules in case submodule is not in
+	 * the worktree at the moment
+	 */
 	if (is_directory(git_dir)) {
 		int i;
 		struct child_process cp;
@@ -679,6 +683,7 @@ static int do_fetch_submodule(const char *prefix, const struct submodule *submod
 		result = run_command(&cp) ? 1 : 0;
 
 		argv_array_clear(&argv);
+	} else {
 	}
 	strbuf_release(&submodule_path);
 	strbuf_release(&submodule_git_dir);

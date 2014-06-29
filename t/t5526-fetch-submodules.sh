@@ -496,4 +496,7 @@ test_expect_failure "fetch --recurse-submodules clones new submodules" '
 	)
 '
 
+test_expect_failure "fetch --recurse-submodules fetches non-checked out submodules" '
+'
+
 test_done
