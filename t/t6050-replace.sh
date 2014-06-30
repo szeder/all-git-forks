@@ -7,6 +7,7 @@ test_description='Tests replace refs functionality'
 exec </dev/null
 
 . ./test-lib.sh
+. "$TEST_DIRECTORY/lib-gpg.sh"
 
 add_and_commit_file()
 {
@@ -349,6 +350,39 @@ test_expect_success 'replace ref cleanup' '
 	test -n "$(git replace)" &&
 	git replace -d $(git replace) &&
 	test -z "$(git replace)"
+'
+
+test_expect_success '--graft with and without already replaced object' '
+	test $(git log --oneline | wc -l) = 7 &&
+	git replace --graft $HASH5 &&
+	test $(git log --oneline | wc -l) = 3 &&
+	git cat-file -p $HASH5 | test_must_fail grep parent &&
+	test_must_fail git replace --graft $HASH5 $HASH4 $HASH3 &&
+	git replace --force -g $HASH5 $HASH4 $HASH3 &&
+	git cat-file -p $HASH5 | grep "parent $HASH4" &&
+	git cat-file -p $HASH5 | grep "parent $HASH3" &&
+	git replace -d $HASH5
+'
+
+test_expect_success GPG 'set up a signed commit' '
+	echo "line 17" >> hello &&
+	echo "line 18" >> hello &&
+	git add hello &&
+	test_tick &&
+	git commit --quiet -S -m "hello: 2 more lines in a signed commit" &&
+	HASH8=$(git rev-parse --verify HEAD) &&
+	git verify-commit $HASH8
+'
+
+test_expect_success GPG '--graft with a signed commit' '
+	git cat-file commit $HASH8 >orig &&
+	git replace --graft $HASH8 &&
+	git cat-file commit $HASH8 >repl &&
+	test_must_fail grep gpgsig repl &&
+	diff -u orig repl | grep "^-parent $HASH7" &&
+	diff -u orig repl | grep "^-gpgsig -----BEGIN PGP SIGNATURE-----" &&
+	test_must_fail git verify-commit $HASH8 &&
+	git replace -d $HASH8
 '
 
 test_done
