@@ -626,7 +626,7 @@ static int get_fetch_recurse_config(const struct submodule *submodule, int comma
 	if (command_line_option != RECURSE_SUBMODULES_DEFAULT)
 		return command_line_option;
 
-	if (submodule->fetch_recurse != RECURSE_SUBMODULES_NONE)
+	if (submodule && submodule->fetch_recurse != RECURSE_SUBMODULES_NONE)
 		/* local config overrules everything except commandline */
 		return submodule->fetch_recurse;
 
@@ -719,7 +719,7 @@ int fetch_populated_submodules(const struct argv_array *options,
 		default:
 		case RECURSE_SUBMODULES_DEFAULT:
 		case RECURSE_SUBMODULES_ON_DEMAND:
-			if (!unsorted_string_list_lookup(&changed_submodule_names, submodule->name))
+			if (!submodule || !unsorted_string_list_lookup(&changed_submodule_names, submodule->name))
 				continue;
 			default_argv = "on-demand";
 			break;
