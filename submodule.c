@@ -654,10 +654,6 @@ static int do_fetch_submodule(const char *prefix, const char *path,
 	git_dir = read_gitfile(submodule_git_dir.buf);
 	if (!git_dir)
 		git_dir = submodule_git_dir.buf;
-	/*
-	 * TODO: search inside .git/modules in case submodule is not in
-	 * the worktree at the moment
-	 */
 	if (is_directory(git_dir)) {
 		int i;
 		struct child_process cp;
@@ -683,7 +679,6 @@ static int do_fetch_submodule(const char *prefix, const char *path,
 		result = run_command(&cp) ? 1 : 0;
 
 		argv_array_clear(&argv);
-	} else {
 	}
 	strbuf_release(&submodule_path);
 	strbuf_release(&submodule_git_dir);
@@ -733,6 +728,13 @@ int fetch_populated_submodules(const struct argv_array *options,
 		if (do_fetch_submodule(prefix, ce->name, options, default_argv, quiet))
 			result = 1;
 	}
+	/*
+	 * TODO: iterate over changed submodules instead of cache and
+	 * search inside .git/modules in case submodule is not in the
+	 * worktree at the moment. Simplify do_fetch_submodule() so we
+	 * can reuse it to fetch from .git/modules only submodules as
+	 * well.
+	 */
 	string_list_clear(&changed_submodule_names, 1);
 	return result;
 }
