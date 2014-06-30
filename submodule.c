@@ -636,7 +636,7 @@ static int get_fetch_recurse_config(const struct submodule *submodule, int comma
 	return config_fetch_recurse_submodules;
 }
 
-static int do_fetch_submodule(const char *prefix, const struct submodule *submodule,
+static int do_fetch_submodule(const char *prefix, const char *path,
 		const struct argv_array *options, const char *default_argv, int quiet)
 {
 	int result = 0;
@@ -648,9 +648,9 @@ static int do_fetch_submodule(const char *prefix, const struct submodule *submod
 	if (!work_tree)
 		return result;
 
-	strbuf_addf(&submodule_path, "%s/%s", work_tree, submodule->path);
+	strbuf_addf(&submodule_path, "%s/%s", work_tree, path);
 	strbuf_addf(&submodule_git_dir, "%s/.git", submodule_path.buf);
-	strbuf_addf(&submodule_prefix, "%s%s/", prefix, submodule->path);
+	strbuf_addf(&submodule_prefix, "%s%s/", prefix, path);
 	git_dir = read_gitfile(submodule_git_dir.buf);
 	if (!git_dir)
 		git_dir = submodule_git_dir.buf;
@@ -679,7 +679,7 @@ static int do_fetch_submodule(const char *prefix, const struct submodule *submod
 		cp.argv = argv.argv;
 
 		if (!quiet)
-			printf("Fetching submodule %s%s\n", prefix, submodule->path);
+			printf("Fetching submodule %s%s\n", prefix, path);
 		result = run_command(&cp) ? 1 : 0;
 
 		argv_array_clear(&argv);
@@ -730,7 +730,7 @@ int fetch_populated_submodules(const struct argv_array *options,
 			continue;
 		}
 
-		if (do_fetch_submodule(prefix, submodule, options, default_argv, quiet))
+		if (do_fetch_submodule(prefix, ce->name, options, default_argv, quiet))
 			result = 1;
 	}
 	string_list_clear(&changed_submodule_names, 1);
