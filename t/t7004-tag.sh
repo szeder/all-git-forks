@@ -1423,6 +1423,24 @@ EOF
 	test_cmp expect actual
 '
 
+test_expect_success 'sorting works with -n' '
+	cat >msg <<-\EOF &&
+	multiline
+	tag
+	message
+	EOF
+	git tag -F msg foo-long &&
+	git tag -l --sort=-refname -n2 "foo*" >actual &&
+	cat >expect <<-\EOF &&
+	foo1.6          Merge branch '\''master'\'' into stable
+	foo1.3          Merge branch '\''master'\'' into stable
+	foo1.10         Merge branch '\''master'\'' into stable
+	foo-long        multiline
+	    tag
+	EOF
+	test_cmp expect actual
+'
+
 run_with_limited_stack () {
 	(ulimit -s 64 && "$@")
 }

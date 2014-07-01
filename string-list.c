@@ -116,7 +116,7 @@ int for_each_string_list(struct string_list *list,
 {
 	int i, ret = 0;
 	for (i = 0; i < list->nr; i++)
-		if ((ret = fn(&list->items[i], cb_data)))
+		if ((ret = fn(&list->items[i], i, cb_data)))
 			break;
 	return ret;
 }
@@ -126,7 +126,7 @@ void filter_string_list(struct string_list *list, int free_util,
 {
 	int src, dst = 0;
 	for (src = 0; src < list->nr; src++) {
-		if (want(&list->items[src], cb_data)) {
+		if (want(&list->items[src], src, cb_data)) {
 			list->items[dst++] = list->items[src];
 		} else {
 			if (list->strdup_strings)
@@ -138,7 +138,7 @@ void filter_string_list(struct string_list *list, int free_util,
 	list->nr = dst;
 }
 
-static int item_is_not_empty(struct string_list_item *item, void *unused)
+static int item_is_not_empty(struct string_list_item *item, int pos, void *unused)
 {
 	return *item->string != '\0';
 }
