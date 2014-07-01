@@ -81,6 +81,11 @@ If the backend uses a similar \--import-marks file, this allows for
 incremental bidirectional exporting of the repository by keeping the
 marks the same across runs.
 
+--force-seen::
+	Only meaningful with \--import-marks . This prevents the suppression
+	of commits listed the \--import-marks file from being exported again.
+	The allows multiple runs with a guaranteed marks/commit id stability
+
 --fake-missing-tagger::
 	Some old repositories have tags without a tagger.  The
 	fast-import protocol was pretty strict about that, and did not

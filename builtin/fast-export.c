@@ -29,6 +29,7 @@ static enum { ABORT, VERBATIM, WARN, WARN_STRIP, STRIP } signed_tag_mode = ABORT
 static enum { ERROR, DROP, REWRITE } tag_of_filtered_mode = ERROR;
 static int fake_missing_tagger;
 static int use_done_feature;
+static int force_seen;
 static int no_data;
 static int full_tree;
 static struct string_list extra_refs = STRING_LIST_INIT_NODUP;
@@ -324,13 +325,18 @@ static void handle_commit(struct commit *commit, struct rev_info *rev)
 		if (!S_ISGITLINK(diff_queued_diff.queue[i]->two->mode))
 			export_blob(diff_queued_diff.queue[i]->two->sha1);
 
-	mark_next_object(&commit->object);
+	uint32_t mark = get_object_mark(&commit->object);
+	if (! mark) {
+		mark_next_object(&commit->object);
+		mark = last_idnum;
+	}
+
 	if (!is_encoding_utf8(encoding))
 		reencoded = reencode_string(message, "UTF-8", encoding);
 	if (!commit->parents)
 		printf("reset %s\n", (const char*)commit->util);
 	printf("commit %s\nmark :%"PRIu32"\n%.*s\n%.*s\ndata %u\n%s",
-	       (const char *)commit->util, last_idnum,
+	       (const char *)commit->util, mark,
 	       (int)(author_end - author), author,
 	       (int)(committer_end - committer), committer,
 	       (unsigned)(reencoded
@@ -668,7 +674,8 @@ static void import_marks(char *input_file)
 
 		mark_object(object, mark);
 
-		object->flags |= SHOWN;
+		if (! force_seen )
+			object->flags |= SHOWN;
 	}
 	fclose(f);
 }
@@ -713,6 +720,8 @@ int cmd_fast_export(int argc, const char **argv, const char *prefix)
 			 N_("Output full tree for each commit")),
 		OPT_BOOL(0, "use-done-feature", &use_done_feature,
 			     N_("Use the done feature to terminate the stream")),
+		OPT_BOOL(0, "force-seen", &force_seen,
+			     N_("Output commit and blobs even if in an imported marks-file")),
 		OPT_BOOL(0, "no-data", &no_data, N_("Skip output of blob data")),
 		OPT_STRING_LIST(0, "refspec", &refspecs_list, N_("refspec"),
 			     N_("Apply refspec to exported refs")),
