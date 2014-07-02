@@ -624,6 +624,16 @@ do_replay () {
 	while test $# -gt 0
 	do
 		case "$1" in
+		--signoff|--reset-author)
+			case "$command" in
+			pick|reword)
+				;;
+			*)
+				warn "Unsupported option: $1"
+				command=unknown
+				;;
+			esac
+			;;
 		-*)
 			warn "Unknown option: $1"
 			command=unknown
@@ -644,21 +654,24 @@ do_replay () {
 		comment_for_reflog pick
 
 		mark_action_done
-		do_pick $sha1 || die_with_patch $sha1 "Could not apply $sha1... $rest"
+		eval do_pick $opts $sha1 \
+			|| die_with_patch $sha1 "Could not apply $sha1... $rest"
 		record_in_rewritten $sha1
 		;;
 	reword|r)
 		comment_for_reflog reword
 
 		mark_action_done
-		do_pick --edit $sha1 || die_with_patch $sha1 "Could not apply $sha1... $rest"
+		eval do_pick --edit $opts $sha1 \
+			|| die_with_patch $sha1 "Could not apply $sha1... $rest"
 		record_in_rewritten $sha1
 		;;
 	edit|e)
 		comment_for_reflog edit
 
 		mark_action_done
-		do_pick $sha1 || die_with_patch $sha1 "Could not apply $sha1... $rest"
+		eval do_pick $opts $sha1 \
+			|| die_with_patch $sha1 "Could not apply $sha1... $rest"
 		warn "Stopped at $sha1... $rest"
 		exit_with_patch $sha1 0
 		;;
