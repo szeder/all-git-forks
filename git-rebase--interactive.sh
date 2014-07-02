@@ -634,7 +634,6 @@ do_next () {
 					|| die_failed_squash $sha1 "Could not apply $sha1... $rest"
 			else
 				cp "$squash_msg" "$GIT_DIR"/SQUASH_MSG || exit
-				rm -f "$GIT_DIR"/MERGE_MSG
 				do_with_author do_pick --amend -F "$GIT_DIR"/SQUASH_MSG -e $sha1 \
 					|| die_failed_squash $sha1 "Could not apply $sha1... $rest"
 			fi
