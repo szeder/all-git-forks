@@ -464,9 +464,14 @@ record_in_rewritten() {
 
 # Apply the changes introduced by the given commit to the current head.
 #
-# do_pick [--reset-author] [--amend] [--file <file>] [--edit] <commit>
+# do_pick [--signoff] [--reset-author] [--amend] [--file <file>]
+#         [--edit] <commit>
 #
 # Wrapper around git-cherry-pick.
+#
+# -s, --signoff
+#     Insert a Signed-off-by: line using the committer identity at the
+#     end of the commit log message. This creates a fresh commit.
 #
 # --reset-author
 #     Pretend the changes were made for the first time. Declare that the
@@ -509,6 +514,10 @@ do_pick () {
 	while test $# -gt 0
 	do
 		case "$1" in
+		-s|--signoff)
+			rewrite=y
+			rewrite_signoff=y
+			;;
 		--reset-author)
 			rewrite=y
 			rewrite_author=y
@@ -585,6 +594,7 @@ do_pick () {
 	if test -n "$rewrite"
 	then
 		git commit --allow-empty --no-post-rewrite -n --no-edit \
+			   ${rewrite_signoff:+--signoff} \
 			   ${rewrite_amend:+--amend} \
 			   ${rewrite_edit:+--edit} \
 			   ${rewrite_message:+--file "$rewrite_message"} \
