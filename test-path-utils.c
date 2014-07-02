@@ -6,7 +6,7 @@
  * GIT_CEILING_DIRECTORIES.  If the path is unusable for some reason,
  * die with an explanation.
  */
-static int normalize_ceiling_entry(struct string_list_item *item, void *unused)
+static int normalize_ceiling_entry(struct string_list_item *item, int pos, void *unused)
 {
 	const char *ceil = item->string;
 	int len = strlen(ceil);
