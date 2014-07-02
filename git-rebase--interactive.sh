@@ -464,9 +464,15 @@ record_in_rewritten() {
 
 # Apply the changes introduced by the given commit to the current head.
 #
-# do_pick [--edit] <commit>
+# do_pick [--amend] [--edit] <commit>
 #
 # Wrapper around git-cherry-pick.
+#
+# --amend
+#     After picking <commit>, replace the current head commit with a new
+#     commit that also introduces the changes of <commit>.
+#
+#     _This is not a git-cherry-pick option._
 #
 # -e, --edit
 #     After picking <commit>, open an editor and let the user edit the
@@ -488,6 +494,16 @@ do_pick () {
 	while test $# -gt 0
 	do
 		case "$1" in
+		--amend)
+			if test "$(git rev-parse HEAD)" = "$squash_onto" || ! git rev-parse --verify HEAD
+			then
+				warn "do_pick: nothing to amend"
+				return 2
+			fi
+			rewrite=y
+			rewrite_amend=y
+			git rev-parse --verify HEAD >"$amend"
+			;;
 		-e|--edit)
 			rewrite=y
 			rewrite_edit=y
