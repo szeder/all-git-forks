@@ -908,7 +908,8 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 	if (force > 1)
 		rm_flags = 0;
 
-	dir.flags |= DIR_SHOW_OTHER_DIRECTORIES;
+	if (!remove_directories)
+		dir.flags |= DIR_SHOW_OTHER_DIRECTORIES;
 
 	if (read_cache() < 0)
 		die(_("index file corrupt"));
@@ -979,7 +980,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 				printf(dry_run ? _(msg_would_remove) : _(msg_remove), qname);
 			}
 		} else {
-			res = dry_run ? 0 : unlink(abs_path.buf);
+			res = dry_run ? 0 : remove_path(abs_path.buf);
 			if (res) {
 				qname = quote_path_relative(item->string, NULL, &buf);
 				warning(_(msg_warn_remove_failed), qname);

@@ -653,4 +653,12 @@ test_expect_success 'git clean -d respects pathspecs (pathspec is prefix of dir)
 	test_path_is_dir foobar
 '
 
+test_expect_success 'clean -d does not clean ignored files' '
+	mkdir -p foo &&
+	echo content >foo/file &&
+	echo "foo/*" >.gitignore &&
+	git clean -df </dev/tty &&
+	test_path_is_file foo/file
+'
+
 test_done
