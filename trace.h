@@ -5,10 +5,10 @@
 #include "strbuf.h"
 
 struct trace_key {
-	const char const *key;
+	const char *key;
 	int fd;
-	char initialized : 1;
-	char need_close : 1;
+	unsigned int initialized : 1;
+	unsigned int need_close : 1;
 };
 
 #define TRACE_KEY_INIT(name) { "GIT_TRACE_" #name }
