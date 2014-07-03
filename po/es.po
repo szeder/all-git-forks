@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-06-28 15:59+0200\n"
+"PO-Revision-Date: 2014-06-28 22:22+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -8658,7 +8658,7 @@ msgstr "opción para la estrategia de fusión"
 
 #: builtin/revert.c:104
 msgid "append commit name"
-msgstr ""
+msgstr "añade el nombre del commit"
 
 #: builtin/revert.c:105
 msgid "allow fast-forward"
@@ -8666,7 +8666,7 @@ msgstr "permite avance-rápido"
 
 #: builtin/revert.c:106
 msgid "preserve initially empty commits"
-msgstr ""
+msgstr "conserva los commits inicialmente vacíos"
 
 #: builtin/revert.c:107
 msgid "allow commits with empty messages"
@@ -8760,7 +8760,7 @@ msgstr "elimina sólo del índice"
 
 #: builtin/rm.c:272
 msgid "override the up-to-date check"
-msgstr ""
+msgstr "anula la comprobación de actualizado"
 
 #: builtin/rm.c:273
 msgid "allow recursive removal"
@@ -8773,7 +8773,7 @@ msgstr ""
 #: builtin/rm.c:336
 #, c-format
 msgid "not removing '%s' recursively without -r"
-msgstr ""
+msgstr "sin -r no eliminaré '%s' recursivamente"
 
 #: builtin/rm.c:375
 #, c-format
