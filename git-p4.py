@@ -1909,6 +1909,7 @@ class P4Sync(Command, P4UserMap):
                 optparse.make_option("--silent", dest="silent", action="store_true"),
                 optparse.make_option("--detect-labels", dest="detectLabels", action="store_true"),
                 optparse.make_option("--import-labels", dest="importLabels", action="store_true"),
+                optparse.make_option("--update-existing-labels", dest="updateExistingLabels", action="store_true"),
                 optparse.make_option("--import-local", dest="importIntoRemotes", action="store_false",
                                      help="Import into refs/heads/ , not refs/remotes"),
                 optparse.make_option("--max-changes", dest="maxChanges"),
@@ -1933,6 +1934,7 @@ class P4Sync(Command, P4UserMap):
         self.detectBranches = False
         self.detectLabels = False
         self.importLabels = False
+        self.updateExistingLabels = False
         self.changesFile = ""
         self.syncWithOrigin = True
         self.importIntoRemotes = True
@@ -3027,13 +3029,18 @@ class P4Sync(Command, P4UserMap):
 
         if gitConfigBool("git-p4.importLabels"):
             self.importLabels = True
+        if gitConfigBool("git-p4.updateExistingLabels"):
+            self.updateExistingLabels = True
 
         if self.importLabels:
             p4Labels = getP4Labels(self.depotPaths)
             gitTags = getGitTags()
-
-            missingP4Labels = p4Labels - gitTags
-            self.importP4Labels(self.gitStream, missingP4Labels)
+            
+            if self.updateExistingLabels:
+                self.importP4Labels(self.gitStream, p4Labels)
+            else:
+                missingP4Labels = p4Labels - gitTags 
+                self.importP4Labels(self.gitStream, missingP4Labels)
 
         self.gitStream.close()
         if self.importProcess.wait() != 0:
