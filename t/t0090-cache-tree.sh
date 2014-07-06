@@ -21,10 +21,13 @@ test_shallow_cache_tree () {
 	cmp_cache_tree expect
 }
 
+# Test that the cache-tree for a given directory is invalid.
+# If no directory is given, check that the root is invalid
 test_invalid_cache_tree () {
-	echo "invalid                                   (0 subtrees)" >expect &&
-	printf "SHA #(ref)  (%d entries, 0 subtrees)\n" $(git ls-files|wc -l) >>expect &&
-	cmp_cache_tree expect
+	test-dump-cache-tree >actual &&
+	sed -e "s/$_x40/SHA/" -e "s/[0-9]* subtrees//g" <actual >filtered &&
+	expect=$(printf "invalid                                  $1 ()\n") &&
+	fgrep "$expect" filtered
 }
 
 test_no_cache_tree () {
@@ -47,6 +50,25 @@ test_expect_success 'git-add invalidates cache-tree' '
 	echo "I changed this file" >foo &&
 	git add foo &&
 	test_invalid_cache_tree
+'
+
+test_expect_success 'git-add in subdir invalidates cache-tree' '
+	test_when_finished "git reset --hard; git read-tree HEAD" &&
+	mkdir dirx &&
+	echo "I changed this file" >dirx/foo &&
+	git add dirx/foo &&
+	test_invalid_cache_tree
+'
+
+test_expect_success 'git-add in subdir does not invalidate sibling cache-tree' '
+	git tag no-children &&
+	test_when_finished "git reset --hard no-children; git read-tree HEAD" &&
+	mkdir dir1 dir2 &&
+	test_commit dir1/a &&
+	test_commit dir2/b &&
+	echo "I changed this file" >dir1/a &&
+	git add dir1/a &&
+	test_invalid_cache_tree dir1/
 '
 
 test_expect_success 'update-index invalidates cache-tree' '
