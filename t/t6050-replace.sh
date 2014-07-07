@@ -18,6 +18,33 @@ add_and_commit_file()
     git commit --quiet -m "$_file: $_msg"
 }
 
+commit_buffer_contains_parents()
+{
+    git cat-file commit "$1" >payload &&
+    sed -n -e '/^$/q' -e '/^parent /p' <payload >actual &&
+    shift &&
+    : >expected &&
+    for _parent
+    do
+	echo "parent $_parent" >>expected || return 1
+    done &&
+    test_cmp actual expected
+}
+
+commit_has_parents()
+{
+    _parent_number=1
+    _commit="$1"
+    shift &&
+    for _parent
+    do
+	_found=$(git rev-parse --verify $_commit^$_parent_number) || return 1
+	test "$_found" = "$_parent" || return 1
+	_parent_number=$(( $_parent_number + 1 ))
+    done &&
+    test_must_fail git rev-parse --verify $_commit^$_parent_number
+}
+
 HASH1=
 HASH2=
 HASH3=
@@ -349,6 +376,19 @@ test_expect_success 'replace ref cleanup' '
 	test -n "$(git replace)" &&
 	git replace -d $(git replace) &&
 	test -z "$(git replace)"
+'
+
+test_expect_success '--graft with and without already replaced object' '
+	test $(git log --oneline | wc -l) = 7 &&
+	git replace --graft $HASH5 &&
+	test $(git log --oneline | wc -l) = 3 &&
+	commit_buffer_contains_parents $HASH5 &&
+	commit_has_parents $HASH5 &&
+	test_must_fail git replace --graft $HASH5 $HASH4 $HASH3 &&
+	git replace --force -g $HASH5 $HASH4 $HASH3 &&
+	commit_buffer_contains_parents $HASH5 $HASH4 $HASH3 &&
+	commit_has_parents $HASH5 $HASH4 $HASH3 &&
+	git replace -d $HASH5
 '
 
 test_done
