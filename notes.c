@@ -881,6 +881,7 @@ static int string_list_add_note_lines(struct string_list *list,
 }
 
 static int string_list_join_lines_helper(struct string_list_item *item,
+					 int pos,
 					 void *cb_data)
 {
 	struct strbuf *buf = cb_data;
