@@ -3770,9 +3770,17 @@ proc show_line_source {} {
 	if {$currentid eq $nullid} {
 	    if {$pi > 0} {
 		# must be a merge in progress...
+		if {[file exists [file join $gitdir MERGE_HEAD]]} {
+		    set merge_head_file [file join $gitdir MERGE_HEAD]
+		} elseif {[file exists [file join $gitdir CHERRY_PICK_HEAD]]} {
+		    set merge_head_file [file join $gitdir CHERRY_PICK_HEAD]
+		} else {
+		    error_popup [mc "Conflict is not from a merge or cherry-pick"]
+		    return
+		}
 		if {[catch {
 		    # get the last line from .git/MERGE_HEAD
-		    set f [open [file join $gitdir MERGE_HEAD] r]
+		    set f [open $merge_head_file r]
 		    set id [lindex [split [read $f] "\n"] end-1]
 		    close $f
 		} err]} {
