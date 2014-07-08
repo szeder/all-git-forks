@@ -756,6 +756,13 @@ static inline void hashclr(unsigned char *hash)
 	memset(hash, 0, 20);
 }
 
+static inline unsigned char *hashdup(const unsigned char *hash)
+{
+	unsigned char *ret = xmalloc(20);
+	hashcpy(ret, hash);
+	return ret;
+}
+
 #define EMPTY_TREE_SHA1_HEX \
 	"4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 #define EMPTY_TREE_SHA1_BIN_LITERAL \
