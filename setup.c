@@ -586,6 +586,7 @@ static dev_t get_device_or_die(const char *path, const char *prefix, int prefix_
  * subsequent entries.
  */
 static int canonicalize_ceiling_entry(struct string_list_item *item,
+				      int pos,
 				      void *cb_data)
 {
 	int *empty_entry_found = cb_data;
