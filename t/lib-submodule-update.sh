@@ -110,18 +110,23 @@ replace_gitfile_with_git_dir () {
 }
 
 # Test that the .git directory in the submodule is unchanged (except for the
-# core.worktree setting, which we temporarily restore). Call this function
-# before test_submodule_content as the latter might write the index file
-# leading to false positive index differences.
+# core.worktree setting, which appears only in $GIT_DIR/modules/$1/config).
+# Call this function before test_submodule_content as the latter might
+# write the index file leading to false positive index differences.
 test_git_directory_is_unchanged () {
 	(
-		cd "$1" &&
-		git config core.worktree "../../../$1"
+		cd ".git/modules/$1" &&
+		# does core.worktree point at the right place?
+		test "$(git config core.worktree)" = "../../../$1" &&
+		# remove it temporarily before comparing, as
+		# "$1/.git/config" lacks it...
+		git config --unset core.worktree
 	) &&
 	diff -r ".git/modules/$1" "$1/.git" &&
 	(
-		cd "$1" &&
-		GIT_WORK_TREE=. git config --unset core.worktree
+		# ... and then restore.
+		cd ".git/modules/$1" &&
+		git config core.worktree "../../../$1"
 	)
 }
 
