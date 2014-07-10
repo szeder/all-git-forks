@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-07-06 21:31+0200\n"
+"PO-Revision-Date: 2014-07-10 18:44+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -9038,7 +9038,7 @@ msgstr ""
 
 #: builtin/tag.c:364
 msgid "tag header too big."
-msgstr ""
+msgstr "cabecera de etiqueta demasiado grande."
 
 #: builtin/tag.c:400
 msgid "no tag message?"
@@ -9178,7 +9178,7 @@ msgstr "Actualizada la etiqueta '%s' (era %s)\n"
 
 #: builtin/unpack-objects.c:483
 msgid "Unpacking objects"
-msgstr ""
+msgstr "Desempaquetando objetos"
 
 #: builtin/update-index.c:399
 msgid "git update-index [options] [--] [<file>...]"
@@ -9218,7 +9218,7 @@ msgstr ""
 
 #: builtin/update-index.c:771
 msgid "<mode>,<object>,<path>"
-msgstr ""
+msgstr "<modo>,<objeto>,<ruta>"
 
 #: builtin/update-index.c:772
 msgid "add the specified entry to the index"
@@ -9234,19 +9234,19 @@ msgstr "sobreescribe la marca de ejecutable de los ficheros especificados"
 
 #: builtin/update-index.c:781
 msgid "mark files as \"not changing\""
-msgstr ""
+msgstr "marca los ficheros como \"no modificables\""
 
 #: builtin/update-index.c:784
 msgid "clear assumed-unchanged bit"
-msgstr ""
+msgstr "limpia el bit de asume-no-modificado"
 
 #: builtin/update-index.c:787
 msgid "mark files as \"index-only\""
-msgstr ""
+msgstr "marca los ficheros como \"sólo-índice\""
 
 #: builtin/update-index.c:790
 msgid "clear skip-worktree bit"
-msgstr ""
+msgstr "limpia el bit de salta-el-árbol-de-trabajo"
 
 #: builtin/update-index.c:793
 msgid "add to index only; do not add content to object database"
@@ -9258,7 +9258,7 @@ msgstr "elimina las rutas especificadas incluso si están presentes en el árbol d
 
 #: builtin/update-index.c:797
 msgid "with --stdin: input lines are terminated by null bytes"
-msgstr ""
+msgstr "con --stdin: las líneas de entrada terminan con bytes nulos"
 
 #: builtin/update-index.c:799
 msgid "read list of paths to be updated from standard input"
@@ -9286,7 +9286,7 @@ msgstr "informa sobre las acciones en la salida estándar"
 
 #: builtin/update-index.c:820
 msgid "(for porcelains) forget saved unresolved conflicts"
-msgstr ""
+msgstr "(para porcelanas) olvida los conflictos sin resolver guardados"
 
 #: builtin/update-index.c:824
 msgid "write index in this format"
@@ -9314,7 +9314,7 @@ msgstr ""
 
 #: builtin/update-ref.c:259
 msgid "stdin has NUL-terminated arguments"
-msgstr ""
+msgstr "la entrada estándar [stdin] tiene parámetros delimitados por NUL"
 
 #: builtin/update-ref.c:260
 msgid "read updates from stdin"
