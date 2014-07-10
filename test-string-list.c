@@ -35,7 +35,7 @@ static void write_list_compact(const struct string_list *list)
 	}
 }
 
-static int prefix_cb(struct string_list_item *item, void *cb_data)
+static int prefix_cb(struct string_list_item *item, int pos, void *cb_data)
 {
 	const char *prefix = (const char *)cb_data;
 	return starts_with(item->string, prefix);
