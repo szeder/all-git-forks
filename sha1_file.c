@@ -170,7 +170,7 @@ enum scld_error safe_create_leading_directories_const(const char *path)
 	enum scld_error result = safe_create_leading_directories(buf);
 	free(buf);
 	return result;
-}
+	}
 
 static void fill_sha1_path(char *pathbuf, const unsigned char *sha1)
 {
@@ -232,7 +232,7 @@ static char *sha1_get_pack_name(const unsigned char *sha1,
 		*buf++ = hex[val >> 4];
 		*buf++ = hex[val & 0xf];
 	}
-
+	
 	return *base;
 }
 
@@ -241,15 +241,15 @@ char *sha1_pack_name(const unsigned char *sha1)
 	static char *name, *base;
 
 	return sha1_get_pack_name(sha1, &name, &base, "pack");
-}
+	}
 
 char *sha1_pack_index_name(const unsigned char *sha1)
 {
 	static char *name, *base;
 
 	return sha1_get_pack_name(sha1, &name, &base, "idx");
-}
-
+	}
+	
 struct alternate_object_database *alt_odb_list;
 static struct alternate_object_database **alt_odb_tail;
 
@@ -522,12 +522,12 @@ static int check_packed_git_idx(const char *path, struct packed_git *p)
 	if (hdr->idx_signature == htonl(PACK_IDX_SIGNATURE)) {
 		version = ntohl(hdr->idx_version);
 		if (version < 2 || version > 2) {
-			munmap(idx_map, idx_size);
+		munmap(idx_map, idx_size);
 			return error("index file %s is version %"PRIu32
-				     " and is not supported by this binary"
-				     " (try upgrading GIT to a newer version)",
+			" and is not supported by this binary"
+			" (try upgrading GIT to a newer version)",
 				     path, version);
-		}
+	}
 	} else
 		version = 1;
 
@@ -545,17 +545,17 @@ static int check_packed_git_idx(const char *path, struct packed_git *p)
 	}
 
 	if (version == 1) {
-		/*
-		 * Total size:
-		 *  - 256 index entries 4 bytes each
-		 *  - 24-byte entries * nr (20-byte sha1 + 4-byte offset)
-		 *  - 20-byte SHA1 of the packfile
-		 *  - 20-byte SHA1 file checksum
-		 */
-		if (idx_size != 4*256 + nr * 24 + 20 + 20) {
-			munmap(idx_map, idx_size);
+	/*
+	 * Total size:
+	 *  - 256 index entries 4 bytes each
+	 *  - 24-byte entries * nr (20-byte sha1 + 4-byte offset)
+	 *  - 20-byte SHA1 of the packfile
+	 *  - 20-byte SHA1 file checksum
+	 */
+	if (idx_size != 4*256 + nr * 24 + 20 + 20) {
+		munmap(idx_map, idx_size);
 			return error("wrong index v1 file size in %s", path);
-		}
+	}
 	} else if (version == 2) {
 		/*
 		 * Minimum size:
@@ -927,7 +927,7 @@ static int open_packed_git_1(struct packed_git *p)
 	if (p->num_objects != ntohl(hdr.hdr_entries))
 		return error("packfile %s claims to have %"PRIu32" objects"
 			     " while index indicates %"PRIu32" objects",
-			     p->pack_name, ntohl(hdr.hdr_entries),
+			p->pack_name, ntohl(hdr.hdr_entries),
 			     p->num_objects);
 	if (lseek(p->pack_fd, p->pack_size - sizeof(sha1), SEEK_SET) == -1)
 		return error("end of packfile %s is unavailable", p->pack_name);
@@ -964,7 +964,7 @@ static int in_window(struct pack_window *win, off_t offset)
 		&& (offset + 20) <= (win_off + win->len);
 }
 
-unsigned char *use_pack(struct packed_git *p,
+unsigned char* use_pack(struct packed_git *p,
 		struct pack_window **w_cursor,
 		off_t offset,
 		unsigned long *left)
@@ -1451,10 +1451,12 @@ static int open_sha1_file(const unsigned char *sha1)
 		fd = git_open_noatime(alt->base);
 		if (fd >= 0)
 			return fd;
+
 		if (most_interesting_errno == ENOENT)
 			most_interesting_errno = errno;
 	}
 	errno = most_interesting_errno;
+
 	return -1;
 }
 
@@ -1477,7 +1479,7 @@ void *map_sha1_file(const unsigned char *sha1, unsigned long *size)
 			}
 			map = xmmap(NULL, *size, PROT_READ, MAP_PRIVATE, fd, 0);
 		}
-		close(fd);
+	close(fd);
 	}
 	return map;
 }
@@ -1577,7 +1579,7 @@ int parse_sha1_header(const char *hdr, unsigned long *sizep)
 	unsigned long size;
 
 	/*
-	 * The type can be at most ten bytes (including the
+	 * The type can be at most ten bytes (including the 
 	 * terminating '\0' that we add), and is followed by
 	 * a space.
 	 */
@@ -1760,7 +1762,7 @@ int unpack_object_header(struct packed_git *p,
 	if (!used) {
 		type = OBJ_BAD;
 	} else
-		*curpos += used;
+	*curpos += used;
 
 	return type;
 }
@@ -2308,7 +2310,7 @@ const unsigned char *nth_packed_object_sha1(struct packed_git *p,
 		if (open_pack_index(p))
 			return NULL;
 		index = p->index_data;
-	}
+}
 	if (n >= p->num_objects)
 		return NULL;
 	index += 4 * 256;
@@ -2335,7 +2337,7 @@ off_t nth_packed_object_offset(const struct packed_git *p, uint32_t n)
 		index += p->num_objects * 4 + (off & 0x7fffffff) * 8;
 		return (((uint64_t)ntohl(*((uint32_t *)(index + 0)))) << 32) |
 				   ntohl(*((uint32_t *)(index + 4)));
-	}
+}
 }
 
 off_t find_pack_entry_one(const unsigned char *sha1,
@@ -2483,7 +2485,7 @@ static int find_pack_entry(const unsigned char *sha1, struct pack_entry *e)
 	return 0;
 }
 
-struct packed_git *find_sha1_pack(const unsigned char *sha1,
+struct packed_git *find_sha1_pack(const unsigned char *sha1, 
 				  struct packed_git *packs)
 {
 	struct packed_git *p;
@@ -2628,7 +2630,7 @@ static void *read_packed_sha1(const unsigned char *sha1,
 		      sha1_to_hex(sha1), (uintmax_t)e.offset, e.p->pack_name);
 		mark_bad_packed_object(e.p, sha1);
 		data = read_object(sha1, type, size);
-	}
+}
 	return data;
 }
 
@@ -2651,7 +2653,7 @@ int pretend_sha1_file(void *buf, unsigned long len, enum object_type type,
 }
 
 static void *read_object(const unsigned char *sha1, enum object_type *type,
-			 unsigned long *size)
+		     unsigned long *size)
 {
 	unsigned long mapsize;
 	void *map, *buf;
@@ -2795,9 +2797,9 @@ int move_temp_to_file(const char *tmpfile, const char *filename)
 	if (object_creation_mode == OBJECT_CREATION_USES_RENAMES)
 		goto try_rename;
 	else if (link(tmpfile, filename))
-		ret = errno;
+	ret = errno;
 
-	/*
+/*
 	 * Coda hack - coda doesn't like cross-directory links,
 	 * so we fall back to a rename, which will mean that it
 	 * won't be able to check collisions, but that's not a
@@ -2862,13 +2864,13 @@ static inline int directory_size(const char *filename)
 	return s - filename + 1;
 }
 
-/*
+		/*
  * This creates a temporary file in the same directory as the final
  * 'filename'
  *
  * We want to avoid cross-directory filename renames, because those
  * can have problems on various filesystems (FAT, NFS, Coda).
- */
+		 */
 static int create_tmpfile(char *buffer, size_t bufsiz, const char *filename)
 {
 	int fd, dirlen = directory_size(filename);
@@ -2973,7 +2975,7 @@ int write_sha1_file(const void *buf, unsigned long len, const char *type, unsign
 
 	/* Normally if we have it in the pack then we do not bother writing
 	 * it out into .git/objects/??/?{38} file.
-	 */
+ */
 	write_sha1_file_prepare(buf, len, type, sha1, hdr, &hdrlen);
 	if (returnsha1)
 		hashcpy(returnsha1, sha1);
@@ -3001,7 +3003,7 @@ int force_object_loose(const unsigned char *sha1, time_t mtime)
 	free(buf);
 
 	return ret;
-}
+	}
 
 int has_pack_index(const unsigned char *sha1)
 {
@@ -3093,8 +3095,8 @@ static int index_mem(unsigned char *sha1, void *buf, size_t size,
 		ret = hash_sha1_file(buf, size, typename(type), sha1);
 	if (re_allocated)
 		free(buf);
-	return ret;
-}
+		return ret;
+	}
 
 static int index_pipe(unsigned char *sha1, int fd, enum object_type type,
 		      const char *path, unsigned flags)
@@ -3213,8 +3215,8 @@ int index_path(unsigned char *sha1, const char *path, struct stat *st, unsigned 
 int read_pack_header(int fd, struct pack_header *header)
 {
 	if (read_in_full(fd, header, sizeof(*header)) < sizeof(*header))
-		/* "eof before pack header was fully read" */
-		return PH_ERROR_EOF;
+			/* "eof before pack header was fully read" */
+			return PH_ERROR_EOF;
 
 	if (header->hdr_signature != htonl(PACK_SIGNATURE))
 		/* "protocol error (pack signature mismatch detected)" */

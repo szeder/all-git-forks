@@ -1,0 +1,81 @@
+git-split(1)
+=============
+
+NAME
+----
+git-split - Store and retrieve arbitrarily sized data streams
+
+SYNOPSIS
+--------
+[verse]
+'git split' [-f] [-n] [-p] [-v] [<file>...]
+
+DESCRIPTION
+-----------
+
+Use `git split` to efficiently store large amounts of
+unstructured data in a git repository. The output of the `git-split' command
+is a number of packs containing a tree hierarchy of small chunks if input
+data, together with a tree object id written to stdout. Concatenating
+all blobs in the tree recovers the original input.
+
+The concatenation of all chunks in order reconstitutes the original
+import. As duplicate chunks are only stored once, significant space
+savings are possible if the stream has repetitions or if multiple
+copies of similar data are imported.
+
+OPTIONS
+-------
+
+-f::
+	Generate full packs without referencing any objects already stored
+	in the git repository.
+
+-n::
+	Do not actually write the packs.
+
+-p::
+	Print chunk information to stdout while processing.
+	Mostly for debugging.
+
+-v::
+	Print verbose statistics to stderr after generating the packs.
+
+DISCUSSION
+----------
+Breakpoints are created whenever at least 48 bytes have been read and
+a 12-bit hash of the last 48 bytes of data is equal to 0xfff, or when
+16384 bytes have been read, whichever comes first. The used hash consists
+of the lower 12- bits of a 32-bit Rabin polynomial. This results in
+an expected chunk size of about 4 kB.
+
+A sequence of these chunks is then put in a tree object, with each
+chunk listed as blob with mode 100644 and the chunk's relative
+offset to the start of the sequence as path name. The offset is
+given in decimal, using exactly as many digits as needed to represent
+the largest offset in the tree. This ensures the sort order preserves
+the input order of the chunks without arbitrary maximum lengths or
+complex encodings.
+
+Breakpoints are created in trees after a minimum of two entries,
+whenever the 7 least significant bits of the chunk's SHA-1 are
+zero, or if the tree would exceed 16384 bytes otherwise.
+If multiple trees are needed for a stream, these streams are then
+recursively put in a new tree with mode 040000 and offsets
+relative to the start of the stream represented by the tree.
+This process repeats until a single tree entry can represent the
+entire stream.
+
+SEE ALSO
+--------
+linkgit:git-commit-tree[1],
+linkgit:git-stream[1],
+linkgit:git-tag[1],
+
+AUTHOR
+------
+Written by Geert Bosch <bosch@gnat.com>
+
+GIT
+---
+Part of the linkgit:git[1] suite

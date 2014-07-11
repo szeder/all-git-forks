@@ -149,9 +149,11 @@
 /git-show-branch
 /git-show-index
 /git-show-ref
+/git-split
 /git-stage
 /git-stash
 /git-status
+/git-stream
 /git-stripspace
 /git-submodule
 /git-svn

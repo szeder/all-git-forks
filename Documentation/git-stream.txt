@@ -1,0 +1,95 @@
+git-stream(1)
+=============
+
+NAME
+----
+git-stash - Store and retrieve arbitrarily sized data streams
+
+SYNOPSIS
+--------
+[verse]
+'git stream' import [<options>]
+'git stream' export [<stream>]
+'git stream' verify [<stream>]
+
+DESCRIPTION
+-----------
+
+Use `git stream` when you want to efficiently record large amounts of
+unstructured data in a git repository. The import process will split
+the data into a tree hierarchy of small chunks using git-split,
+and directly write this to a number of packs.
+
+The concatenation of all chunks in order reconstitutes the original
+import. As duplicate chunks are only stored once, significant space
+savings are possible if the stream has repetitions or if multiple
+copies of similar data are imported.
+
+As of this point, the interface is decidedly at plumbing level.
+The reason for this is to allow for easy experimentation without
+any preconceived notions of porcelain design limiting the imagination.
+
+OPTIONS
+-------
+
+import:: [<input file>]\*
+
+	Read the listed input files and output the object id for the
+	resulting blob or tree object for each.
+	If no files are present, import from stdin.
+
++
+The `--no-write` option does all processing except for writing.
+This can be used to compute the tree hash for a stream without recording it.
+
+The `--verbose` option outputs stream statistics to stderr.
++
+export:: <tree>|<blob>\*
+
+	Output the concatenation of the contents of all blobs in all arguments.
+
+When used with objects ids created by `git import', this will produce the
+original stream. May be used on other trees as well.
+
+verify:: <tree>\*
+
+	Do some checks to verify that the given tree is a valid stream,
+	and output the total stream length for each tree to stdout.
+
+DISCUSSION
+----------
+
+A stream is represented as a multi-level tree, where the blobs at the
+leaves are chunks of input data.
+
+EXAMPLES
+--------
+
+Importing a disk image and creating a tag for it::
+
+A disk image of a few gigabytes would usually be very hard to
+store in a git repository, because various commands would try
+to load it in memory at once. Additionally, repacking repositories
+would be too slow and it would not be possible to efficiently store
+multiple versions of the same disk image. However, importing as
+a stream can be done efficiently, requiring only space proportional
+to the amount of change for each new version. No repacking is required.
++
+----------------------------------------------------------------
+$ git tag test-vm $(git stream import /dev/cdrom)
+$ git stream export test-vm >test-vm.iso
+----------------------------------------------------------------
+
+SEE ALSO
+--------
+linkgit:git-commit-tree[1],
+linkgit:git-split[1],
+linkgit:git-tag[1],
+
+AUTHOR
+------
+Written by Geert Bosch <bosch@gnat.com>
+
+GIT
+---
+Part of the linkgit:git[1] suite
