@@ -2651,6 +2651,7 @@ proc makewindow {} {
     makemenu $diff_menu {
 	{mc "Show origin of this line" command show_line_source}
 	{mc "Run git gui blame on this line" command {external_blame_diff}}
+	{mc "Show the latest change of selected region" command show_selection_source}
     }
     $diff_menu configure -tearoff 0
 }
@@ -3466,6 +3467,7 @@ proc pop_diff_menu {w X Y x y} {
     global ctext diff_menu flist_menu_file
     global diff_menu_txtpos diff_menu_line
     global diff_menu_filebase
+    global selection_source_data
 
     set diff_menu_txtpos [split [$w index "@$x,$y"] "."]
     set diff_menu_line [lindex $diff_menu_txtpos 0]
@@ -3478,6 +3480,12 @@ proc pop_diff_menu {w X Y x y} {
     if {$f eq {}} return
     set flist_menu_file [lindex $f 0]
     set diff_menu_filebase [lindex $f 1]
+    prepare_show_selection_source
+    if {$selection_source_data ne {}} {
+	$diff_menu entryconf 2 -state normal
+    } else {
+	$diff_menu entryconf 2 -state disabled
+    }
     tk_popup $diff_menu $X $Y
 }
 
@@ -3602,11 +3610,11 @@ proc external_diff {} {
     }
 }
 
-proc find_hunk_blamespec {base line} {
+proc resolve_hunk_lines {base start_diffline end_diffline} {
     global ctext
 
     # Find and parse the hunk header
-    set s_lix [$ctext search -backwards -regexp ^@@ "$line.0 lineend" $base.0]
+    set s_lix [$ctext search -backwards -regexp ^@@ "$start_diffline.0 lineend" $base.0]
     if {$s_lix eq {}} return
 
     set s_line [$ctext get $s_lix "$s_lix + 1 lines"]
@@ -3626,49 +3634,70 @@ proc find_hunk_blamespec {base line} {
     }
 
     # Now scan the lines to determine offset within the hunk
-    set max_parent [expr {[llength $base_lines]-2}]
-    set dline 0
+    set max_parent [expr {[llength $base_lines]-1}]
     set s_lno [lindex [split $s_lix "."] 0]
 
-    # Determine if the line is removed
-    set chunk [$ctext get $line.0 "$line.1 + $max_parent chars"]
-    if {[string match {[-+ ]*} $chunk]} {
-	set removed_idx [string first "-" $chunk]
-	# Choose a parent index
-	if {$removed_idx >= 0} {
-	    set parent $removed_idx
-	} else {
-	    set unchanged_idx [string first " " $chunk]
-	    if {$unchanged_idx >= 0} {
-		set parent $unchanged_idx
-	    } else {
-		# blame the current commit
-		set parent -1
-	    }
-	}
-	# then count other lines that belong to it
-	for {set i $line} {[incr i -1] > $s_lno} {} {
-	    set chunk [$ctext get $i.0 "$i.1 + $max_parent chars"]
-	    # Determine if the line is removed
-	    set removed_idx [string first "-" $chunk]
-	    if {$parent >= 0} {
-		set code [string index $chunk $parent]
-		if {$code eq "-" || ($removed_idx < 0 && $code ne "+")} {
-		    incr dline
-		}
-	    } else {
-		if {$removed_idx < 0} {
-		    incr dline
-		}
-	    }
-	}
-	incr parent
-    } else {
-	set parent 0
+    set commitlines_by_diffline {}
+    array unset commit_lines
+    for {set p 0} {$p <= $max_parent} {incr p} {
+	set commit_lines($p) [expr [lindex $base_lines $p] - 1]
     }
+    for {set diffline [expr $s_lno + 1]} {$diffline <= $end_diffline} {incr diffline} {
+	set chunk [$ctext get $diffline.0 "$diffline.0 + $max_parent chars"]
+	if {$chunk eq {} || [string match "\[\n@\]*" $chunk]} {
+	    # region is larger than hunk
+	    return {}
+	}
+	set is_removed [expr [string first "-" $chunk] >= 0]
+	if {!$is_removed} {
+	    incr commit_lines(0)
+	    set commitlines [list [list 0 $commit_lines(0)]]
+	} else {
+	    set commitlines {}
+	}
+	for {set p 1} {$p <= $max_parent} {incr p} {
+	    switch -- [string index $chunk "$p-1"] {
+		"+" {
+		}
+		"-" {
+		    incr commit_lines($p)
+		    lappend commitlines [list $p $commit_lines($p)]
+		}
+		" " {
+		    if {!$is_removed} {
+			incr commit_lines($p)
+			lappend commitlines [list $p $commit_lines($p)]
+		    }
+		}
+		default {
+		    error_popup "resolve_hunk_lines: unexpected diff line($diffline): $chunk"
+		    break
+		}
+	    }
+	}
+	if {$diffline >= $start_diffline} {
+	    lappend commitlines_by_diffline [list $diffline $commitlines]
+	}
+    }
+    return $commitlines_by_diffline
+}
 
-    incr dline [lindex $base_lines $parent]
-    return [list $parent $dline]
+proc find_hunk_blamespec {base line} {
+    foreach cl_spec [resolve_hunk_lines $base $line $line] {
+	if {[lindex $cl_spec 0] == $line} {
+	    set commitlines [lindex $cl_spec 1]
+	    if {[llength $commitlines] > 0} {
+		if {[llength $commitlines] > 1 && [lindex $commitlines 0 0] eq 0} {
+		    return [lindex $commitlines 1]
+		} else {
+		    return [lindex $commitlines 0]
+		}
+	    } else {
+		error_popup "find_hunk_blamespec: invalid commitlines: $commitlines"
+	    }
+	}
+    }
+    return {}
 }
 
 proc external_blame_diff {} {
@@ -3762,7 +3791,7 @@ proc external_blame {parent_idx {line {}}} {
 }
 
 proc show_line_source {} {
-    global cmitmode currentid parents curview blamestuff blameinst
+    global cmitmode currentid parents curview
     global diff_menu_line diff_menu_filebase flist_menu_file
     global nullid nullid2 gitdir cdup
 
@@ -3818,6 +3847,12 @@ proc show_line_source {} {
 	lappend blameargs $id
     }
     lappend blameargs -- [file join $cdup $flist_menu_file]
+    startblaming $blameargs read_line_source
+}
+
+proc startblaming {blameargs blamecommand} {
+    global blamestuff blameinst
+
     if {[catch {
 	set f [open $blameargs r]
     } err]} {
@@ -3827,26 +3862,27 @@ proc show_line_source {} {
     nowbusy blaming [mc "Searching"]
     fconfigure $f -blocking 0
     set i [reg_instance $f]
-    set blamestuff($i) {}
+    set blamestuff {}
     set blameinst $i
-    filerun $f [list read_line_source $f $i]
+    filerun $f [list blameiocallback $f $i $blamecommand]
 }
 
 proc stopblaming {} {
-    global blameinst
+    global blameinst blamestuff
 
     if {[info exists blameinst]} {
 	stop_instance $blameinst
 	unset blameinst
+	unset blamestuff
 	notbusy blaming
     }
 }
 
-proc read_line_source {fd inst} {
-    global blamestuff curview commfd blameinst nullid nullid2
+proc blameiocallback {fd inst blamecommand} {
+    global blamestuff blameinst commfd
 
     while {[gets $fd line] >= 0} {
-	lappend blamestuff($inst) $line
+	lappend blamestuff $line
     }
     if {![eof $fd]} {
 	return 1
@@ -3857,17 +3893,26 @@ proc read_line_source {fd inst} {
     fconfigure $fd -blocking 1
     if {[catch {close $fd} err]} {
 	error_popup [mc "Error running git blame: %s" $err]
+	unset blamestuff
 	return 0
     }
 
+    $blamecommand
+    unset blamestuff
+    return 0
+}
+
+proc read_line_source {} {
+    global blamestuff curview nullid nullid2
+
     set fname {}
-    set line [split [lindex $blamestuff($inst) 0] " "]
+    set line [split [lindex $blamestuff 0] " "]
     set id [lindex $line 0]
     set lnum [lindex $line 1]
     if {[string length $id] == 40 && [string is xdigit $id] &&
 	[string is digit -strict $lnum]} {
 	# look for "filename" line
-	foreach l $blamestuff($inst) {
+	foreach l $blamestuff {
 	    if {[string match "filename *" $l]} {
 		set fname [string range $l 9 end]
 		break
@@ -3891,6 +3936,136 @@ proc read_line_source {fd inst} {
 	puts "oops couldn't parse git blame output"
     }
     return 0
+}
+
+proc show_selection_source {} {
+    global selection_source_data
+    global blameinst blamestuff
+
+    if {$selection_source_data eq {}} {
+	return
+    }
+
+    foreach var {id fname lnum lnumber} val $selection_source_data { set $var $val }
+    set args [list | git log --pretty=format:%H "-L$lnum,+$lnumber:$fname" -M -n1 $id]
+
+    startblaming $args selsource_read
+}
+
+proc selsource_read {} {
+    global blamestuff
+    global curview
+
+    set id {}
+    set lnum {}
+    set state start
+    foreach l $blamestuff {
+	switch -- $state {
+	    start { if {[regexp {^([0-9a-f]{40})$} $l _ id_match]} {
+			set id $id_match
+			set state diff_header_diff
+		    } else {
+			break
+		    }
+	    }
+	    diff_header_diff { if {[regexp {^diff --git} $l]} { set state diff_header_oldfile } else { break } }
+	    diff_header_oldfile { if {[regexp {^---} $l]} {set state diff_header_newfile} else { break } }
+	    diff_header_newfile {
+		if {[regexp {^\+\+\+ b/(.*)$} $l _ fname_match]} {
+		    set fname $fname_match
+		    set state diff_hunk_header
+		} else {
+		    break
+		}
+	    }
+	    diff_hunk_header {
+		if {[regexp {^@@@*.* \+([0-9]+),[0-9]+ @@@*$} $l _ lnum_matched]} {
+		    set lnum $lnum_matched
+		    break
+		}
+	    }
+	}
+    }
+
+    if {$id eq {}} {
+	error_popup [mc "Parsing output of git log failed"]
+	return 0
+    }
+
+    if {![commitinview $id $curview]} {
+	error_popup [mc "The latest change is in commit %s, \
+			 which is not in this view" [shortids $id]]
+	return 0
+    }
+
+    selectline [rowofcommit $id] 1 [list $fname $lnum] 1
+}
+
+proc prepare_show_selection_source {} {
+    global ctext
+    global selection_source_data
+
+    set selection [$ctext tag ranges sel]
+    if {[llength $selection] != 2} {
+	set selection_source_data {}
+	return
+    }
+    set start_line [lindex [split [lindex $selection 0] "."] 0]
+    set end_index [split [lindex $selection 1] "."]
+    if {[lindex $end_index 1] eq 0} {
+	set end_line [expr [lindex $end_index 0] - 1]
+    } else {
+	set end_line [lindex $end_index 0]
+    }
+    set selection_source_data [prepare_show_region_source $start_line $end_line]
+}
+
+proc prepare_show_region_source {start_line end_line} {
+    global cmitmode
+    global currentid parents curview
+    global nullid
+    if {$start_line > $end_line} {
+	error_popup "Cannot blame region: $start_line > $end_line"
+	return {}
+    }
+    set f [find_ctext_fileinfo $start_line]
+    if {$f eq {}} {
+	return {}
+    }
+    if {$currentid eq $nullid} {
+	return {}
+    }
+    set fname [lindex $f 0]
+    set filebase [lindex $f 1]
+    if {$cmitmode eq "tree"} {
+	set id $currentid
+	set start_lnum [expr $start_line - $filebase]
+	set end_lnum [expr $end_line - $filebase]
+    } else {
+	set id [lindex $parents($curview,$currentid) 0]
+	set start_lnum {}
+	set end_lnum {}
+	foreach cl_spec [resolve_hunk_lines $filebase $start_line $end_line] {
+	    set diffline [lindex $cl_spec 0]
+	    if {$diffline > $end_line} {
+		break
+	    } elseif {$diffline >= $start_line} {
+		foreach branch [lindex $cl_spec 1] {
+		    if {[lindex $branch 0] == 1} {
+			if {$start_lnum eq {}} {
+			    set start_lnum [lindex $branch 1]
+			}
+			set end_lnum [lindex $branch 1]
+		    }
+		}
+	    }
+	}
+    }
+    if {$start_lnum ne {} && $end_lnum ne {}} {
+	return [list $id $fname $start_lnum [expr $end_lnum - $start_lnum + 1]]
+    } else {
+	return {}
+    }
 }
 
 # delete $dir when we see eof on $f (presumably because the child has exited)
