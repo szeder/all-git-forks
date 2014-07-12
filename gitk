@@ -7871,9 +7871,11 @@ proc showinlinediff {ids} {
     add_flist $treediff
 
     $ctext conf -state normal
+    parseblobdiffline_start
     foreach line $difflines {
 	parseblobdiffline $ids $line
     }
+    parseblobdiffline_end $ids
     maybe_scroll_ctext 1
     $ctext conf -state disabled
 }
@@ -8079,6 +8081,7 @@ proc getblobdiffs {ids} {
     fconfigure $bdf -blocking 0 -encoding binary -eofchar {}
     set blobdifffd($ids) $bdf
     initblobdiffvars
+    parseblobdiffline_start
     filerun $bdf [list getblobdiffline $bdf $diffids]
 }
 
@@ -8160,6 +8163,7 @@ proc getblobdiffline {bdf ids} {
     $ctext conf -state normal
     while {[incr nr] <= 1000 && [gets $bdf line] >= 0} {
 	if {$ids != $diffids || $bdf != $blobdifffd($ids)} {
+            parseblobdiffline_end $ids
 	    catch {close $bdf}
 	    return 0
 	}
@@ -8168,13 +8172,67 @@ proc getblobdiffline {bdf ids} {
     $ctext conf -state disabled
     blobdiffmaybeseehere [eof $bdf]
     if {[eof $bdf]} {
+        parseblobdiffline_end $ids
 	catch {close $bdf}
 	return 0
     }
     return [expr {$nr >= 1000? 2: 1}]
 }
 
+proc parseblobdiffline_start {} {
+    hunkfilter_init
+}
+
+proc parseblobdiffline_end {ids} {
+    global hunkfilter_data
+
+    if {[hunkfilter_enabled]} {
+        hunkfilter_flush $ids
+    }
+}
+
 proc parseblobdiffline {ids line} {
+    global hunkfilter_data
+
+    if {[hunkfilter_enabled]} {
+        set line_rest [string range $line 1 end]
+        set operation [string index $line 0]
+        case $operation {
+            {" "} {
+                    if {[string trim $line_rest] eq "" && [llength [dict get $hunkfilter_data pending_lines]] > 0} {
+                        dict lappend hunkfilter_data pending_lines $line
+                    } else {
+                        hunkfilter_resolve_pending
+                        dict lappend hunkfilter_data lines $line
+                        dict incr hunkfilter_data num_pass
+                    }
+                }
+            "+" {
+                    dict lappend hunkfilter_data pending_lines $line
+                    dict set hunkfilter_data pending_new "[dict get $hunkfilter_data pending_new]$line_rest\n"
+                }
+            "-" {
+                    dict lappend hunkfilter_data pending_lines $line
+                    dict set hunkfilter_data pending_old "[dict get $hunkfilter_data pending_old]$line_rest\n"
+                }
+            "\\" { # newline EOF
+                    dict lappend hunkfilter_data pending_lines $line
+                }
+            default {
+                    hunkfilter_flush $ids
+                    hunkfilter_check_start $line
+                }
+        }
+    } else {
+        hunkfilter_check_start $line
+    }
+
+    if {![hunkfilter_enabled]} {
+        real_parseblobdiffline $ids $line
+    }
+}
+
+proc real_parseblobdiffline {ids line} {
     global ctext curdiffstart
     global diffnexthead diffnextnote difffilestart
     global ctext_file_names ctext_file_lines
@@ -8376,6 +8434,105 @@ proc parseblobdiffline {ids line} {
 	    # or something else we don't recognize
 	    $ctext insert end "$line\n" hunksep
 	}
+    }
+}
+
+proc normalize_string {str} {
+    set str [string trim $str]
+    set str [regsub -all {[ \r\n\t]+} $str " "]
+    set str [regsub -all {([\{\}\(\)\[\]\*\+;,\\\/\+\*<>-]) ([a-zA-Z0-9_])} $str {\1\2}]
+    set str [regsub -all {([a-zA-Z0-9_]) ([\{\}\(\)\[\]\*\+;,\\\/\+\*<>-])} $str {\1\2}]
+    set str [regsub -all {([\{\}\(\)\[\],;]) ([\{\}\(\)\[\],;])} $str {\1\2}]
+    set str [regsub -all {([\{\}\(\)\[\],;]) ([\{\}\(\)\[\],;])} $str {\1\2}]
+    return $str
+}
+
+proc hunkfilter_init {} {
+    global hunkfilter_data
+
+    if {[hunkfilter_enabled] \
+        && ([llength [dict get $hunkfilter_data lines]] > 0 || [llength [dict get $hunkfilter_data pending_lines]] > 0)} {
+        puts "Lost hunkfilter data:"
+        foreach d [concat [dict get $hunkfilter_data lines] [dict get $hunkfilter_data pending_lines]] {
+            puts [list l: $d]
+        }
+    }
+    set hunkfilter_data [dict create enabled 0]
+}
+
+proc hunkfilter_resolve_pending {} {
+    global hunkfilter_data
+
+    set lines [dict get $hunkfilter_data pending_lines]
+    if {[llength $lines] == 0} {
+        return
+    }
+    set new [normalize_string [dict get $hunkfilter_data pending_new]]
+    set old [normalize_string [dict get $hunkfilter_data pending_old]]
+    set hunkfilter_data [dict replace $hunkfilter_data pending_lines {} pending_old "" pending_new ""]
+    if {$new ne $old} {
+        foreach line $lines {
+            set operation [string index $line 0]
+            dict lappend hunkfilter_data lines $line
+            case $operation {
+                " " { dict incr hunkfilter_data num_pass }
+                "+" { dict incr hunkfilter_data num_new }
+                "-" { dict incr hunkfilter_data num_old }
+                "\\" { }
+            }
+        }
+    } else {
+        foreach line $lines {
+            set operation [string index $line 0]
+            if {$operation eq " " || $operation eq "-"} { #show older lines to make "Show origin" work
+                dict lappend hunkfilter_data lines [string replace $line 0 0 " "]
+                dict incr hunkfilter_data num_pass
+            }
+        }
+    }
+}
+
+proc hunkfilter_flush {ids} {
+    global hunkfilter_data
+
+    set num_old [dict get $hunkfilter_data num_old]
+    set num_new [dict get $hunkfilter_data num_new]
+    set num_pass [dict get $hunkfilter_data num_pass]
+    if {$num_old > 0 || $num_new > 0} {
+        set firstline [regsub {^(@@ -[0-9]+,)[0-9]+( \+[0-9]+,)[0-9]+( @@)} \
+                                [dict get $hunkfilter_data firstline] \
+                                "\\1[expr $num_pass + $num_old]\\2[expr $num_pass + $num_new]\\3"]
+        foreach cached_line [concat [list $firstline] [dict get $hunkfilter_data lines]] {
+            real_parseblobdiffline $ids $cached_line
+        }
+    }
+
+    set hunkfilter_data [dict create enabled 0]
+}
+
+proc hunkfilter_check_start {line} {
+    global hunkfilter_data
+    global ignorespace worddiff
+
+    if {[string match "@@ *" $line] && $ignorespace && $worddiff eq [mc "Line diff"]} {
+        set hunkfilter_data [dict create enabled 1 \
+                                         firstline $line \
+                                         lines {} \
+                                         num_pass 0 \
+                                         num_old 0 \
+                                         num_new 0 \
+                                         pending_lines {} \
+                                         pending_old "" \
+                                         pending_new ""]
+    }
+}
+
+proc hunkfilter_enabled {} {
+    global hunkfilter_data
+    if {[info exists hunkfilter_data] && [dict get $hunkfilter_data enabled]} {
+        return 1
+    } else {
+        return 0
     }
 }
 
@@ -9205,6 +9362,7 @@ proc diffcommits {a b} {
     set blobdifffd($diffids) $fd
     set diffinhdr 0
     set currdiffsubmod ""
+    parseblobdiffline_start
     filerun $fd [list getblobdiffline $fd $diffids]
 }
 
