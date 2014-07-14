@@ -313,6 +313,11 @@ extern struct commit_extra_header *read_commit_extra_headers(struct commit *, co
 
 extern void free_commit_extra_headers(struct commit_extra_header *extra);
 
+typedef void (*each_mergetag_fn)(struct commit *commit, struct commit_extra_header *extra,
+				 void *cb_data);
+
+extern void for_each_mergetag(each_mergetag_fn fn, struct commit *commit, void *data);
+
 struct merge_remote_desc {
 	struct object *obj; /* the named object, could be a tag */
 	const char *name;
@@ -328,6 +333,8 @@ struct commit *get_merge_parent(const char *name);
 
 extern int parse_signed_commit(const struct commit *commit,
 			       struct strbuf *message, struct strbuf *signature);
+extern int remove_signature(struct strbuf *buf);
+
 extern void print_commit_list(struct commit_list *list,
 			      const char *format_cur,
 			      const char *format_last);
