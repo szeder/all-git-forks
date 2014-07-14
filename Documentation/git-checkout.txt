@@ -396,7 +396,7 @@ $ git log -g -2 HEAD
 ------------
 
 MULTIPLE CHECKOUT MODE
--------------------------------
+----------------------
 Normally a working directory is attached to repository. When "git
 checkout --to" is used, a new working directory is attached to the
 current repository. This new working directory is called "linked
