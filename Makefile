@@ -637,6 +637,7 @@ LIB_H += archive.h
 LIB_H += argv-array.h
 LIB_H += attr.h
 LIB_H += bisect.h
+LIB_H += bitset.h
 LIB_H += blob.h
 LIB_H += branch.h
 LIB_H += builtin.h

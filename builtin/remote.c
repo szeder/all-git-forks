@@ -924,7 +924,7 @@ struct show_info {
 	int any_rebase;
 };
 
-static int add_remote_to_show_info(struct string_list_item *item, void *cb_data)
+static int add_remote_to_show_info(struct string_list_item *item, int pos, void *cb_data)
 {
 	struct show_info *info = cb_data;
 	int n = strlen(item->string);
@@ -934,7 +934,7 @@ static int add_remote_to_show_info(struct string_list_item *item, void *cb_data)
 	return 0;
 }
 
-static int show_remote_info_item(struct string_list_item *item, void *cb_data)
+static int show_remote_info_item(struct string_list_item *item, int pos, void *cb_data)
 {
 	struct show_info *info = cb_data;
 	struct ref_states *states = info->states;
@@ -961,7 +961,7 @@ static int show_remote_info_item(struct string_list_item *item, void *cb_data)
 	return 0;
 }
 
-static int add_local_to_show_info(struct string_list_item *branch_item, void *cb_data)
+static int add_local_to_show_info(struct string_list_item *branch_item, int pos, void *cb_data)
 {
 	struct show_info *show_info = cb_data;
 	struct ref_states *states = show_info->states;
@@ -983,7 +983,7 @@ static int add_local_to_show_info(struct string_list_item *branch_item, void *cb
 	return 0;
 }
 
-static int show_local_info_item(struct string_list_item *item, void *cb_data)
+static int show_local_info_item(struct string_list_item *item, int pos, void *cb_data)
 {
 	struct show_info *show_info = cb_data;
 	struct branch_info *branch_info = item->util;
@@ -1015,7 +1015,7 @@ static int show_local_info_item(struct string_list_item *item, void *cb_data)
 	return 0;
 }
 
-static int add_push_to_show_info(struct string_list_item *push_item, void *cb_data)
+static int add_push_to_show_info(struct string_list_item *push_item, int pos, void *cb_data)
 {
 	struct show_info *show_info = cb_data;
 	struct push_info *push_info = push_item->util;
@@ -1044,7 +1044,7 @@ static int cmp_string_with_push(const void *va, const void *vb)
 	return cmp ? cmp : strcmp(a_push->dest, b_push->dest);
 }
 
-static int show_push_info_item(struct string_list_item *item, void *cb_data)
+static int show_push_info_item(struct string_list_item *item, int pos, void *cb_data)
 {
 	struct show_info *show_info = cb_data;
 	struct push_info *push_info = item->util;
