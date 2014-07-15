@@ -1395,7 +1395,8 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		if (check_head) {
 			unsigned char sha1[20];
 			const char *ref;
-			ref = resolve_ref_unsafe("HEAD", sha1, 1, NULL);
+			ref = resolve_ref_unsafe("HEAD", sha1, NULL,
+						 RESOLVE_REF_READING);
 			if (ref && starts_with(ref, "refs/heads/"))
 				branch_name = xstrdup(ref + strlen("refs/heads/"));
 			else

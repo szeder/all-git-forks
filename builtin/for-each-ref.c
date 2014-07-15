@@ -649,7 +649,8 @@ static void populate_value(struct refinfo *ref)
 
 	if (need_symref && (ref->flag & REF_ISSYMREF) && !ref->symref) {
 		unsigned char unused1[20];
-		ref->symref = resolve_refdup(ref->refname, unused1, 1, NULL);
+		ref->symref = resolve_refdup(ref->refname, unused1,
+					     NULL, RESOLVE_REF_READING);
 		if (!ref->symref)
 			ref->symref = "";
 	}
@@ -707,7 +708,8 @@ static void populate_value(struct refinfo *ref)
 			const char *head;
 			unsigned char sha1[20];
 
-			head = resolve_ref_unsafe("HEAD", sha1, 1, NULL);
+			head = resolve_ref_unsafe("HEAD", sha1,
+						  NULL, RESOLVE_REF_READING);
 			if (!strcmp(ref->refname, head))
 				v->s = "*";
 			else
