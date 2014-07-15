@@ -85,9 +85,9 @@ void set_error_routine(void (*routine)(const char *err, va_list params))
  * to previous error. Should always be paired with a set_error_routine */
 void pop_error_routine(void)
 {
-	assert(error_funcs != &default_error_func);
-
 	struct error_func_list *efl = error_funcs;
+
+	assert(error_funcs != &default_error_func);
 	if (efl->next) {
 		error_funcs = efl->next;
 		free(efl);
