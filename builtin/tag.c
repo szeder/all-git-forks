@@ -32,6 +32,8 @@ static const char * const git_tag_usage[] = {
 #define SORT_MASK       0x7fff
 #define REVERSE_SORT    0x8000
 
+static int tag_sort;
+
 struct tag_filter {
 	const char **patterns;
 	int lines;
@@ -346,9 +348,76 @@ static const char tag_template_nocleanup[] =
 	"Lines starting with '%c' will be kept; you may remove them"
 	" yourself if you want to.\n");
 
+static int parse_sort_string(const char *arg, int *sort)
+{
+	char *value, *separator, *type, *atom;
+	int flags = 0, function = 0, err = 0;
+
+	/* skip the '-' prefix for reverse sort order first */
+	if (skip_prefix(arg, "-", &arg))
+		flags |= REVERSE_SORT;
+
+	/* duplicate string so we can modify it in place */
+	value = xstrdup(arg);
+
+	/* determine the sort function and the sorting atom */
+	separator = strchr(value, ':');
+	if (separator) {
+		/* split the string at the separator with a NULL byte */
+		*separator = '\0';
+		type = value;
+		atom = separator + 1;
+	} else {
+		/* we have no separator, so assume the whole string is the * atom */
+		type = NULL;
+		atom = value;
+	}
+
+	if (type) {
+		if (!strcmp(type, "version") || !strcmp(type, "v"))
+			function = VERCMP_SORT;
+		else {
+			err = error(_("unsupported sort function '%s'"), type);
+			goto abort;
+		}
+
+	} else
+		function = STRCMP_SORT;
+
+	/* for now, only the refname is a valid atom */
+	if (atom && strcmp(atom, "refname")) {
+		err = error(_("unsupported sort specification '%s'"), atom);
+		goto abort;
+	}
+
+	*sort = (flags | function);
+
+abort:
+	free(value);
+	return err;
+}
+
+static void error_bad_sort_config(const char *err, va_list params)
+{
+	vreportf("warning: tag.sort has ", err, params);
+}
+
 static int git_tag_config(const char *var, const char *value, void *cb)
 {
-	int status = git_gpg_config(var, value, cb);
+	int status;
+
+	if (!strcmp(var, "tag.sort")) {
+		if (!value)
+			return config_error_nonbool(var);
+
+		set_error_routine(error_bad_sort_config);
+		parse_sort_string(value, &tag_sort);
+		pop_error_routine();
+
+		return 0;
+	}
+
+	status = git_gpg_config(var, value, cb);
 	if (status)
 		return status;
 	if (starts_with(var, "column."))
@@ -522,51 +591,8 @@ static int parse_opt_points_at(const struct option *opt __attribute__((unused)),
 static int parse_opt_sort(const struct option *opt, const char *arg, int unset)
 {
 	int *sort = opt->value;
-	char *value, *separator, *type, *atom;
-	int flags = 0, function = 0, err = 0;
 
-	/* skip the '-' prefix for reverse sort order first */
-	if (skip_prefix(arg, "-", &arg))
-		flags |= REVERSE_SORT;
-
-	/* duplicate string so we can modify it in place */
-	value = xstrdup(arg);
-
-	/* determine the sort function and the sorting atom */
-	separator = strchr(value, ':');
-	if (separator) {
-		/* split the string at the separator with a NULL byte */
-		*separator = '\0';
-		type = value;
-		atom = separator + 1;
-	} else {
-		/* we have no separator, so assume the whole string is the * atom */
-		type = NULL;
-		atom = value;
-	}
-
-	if (type) {
-		if (!strcmp(type, "version") || !strcmp(type, "v"))
-			function = VERCMP_SORT;
-		else {
-			err = error(_("unsupported sort function '%s'"), type);
-			goto abort;
-		}
-
-	} else
-		function = STRCMP_SORT;
-
-	/* for now, only the refname is a valid atom */
-	if (atom && strcmp(atom, "refname")) {
-		err = error(_("unsupported sort specification '%s'"), atom);
-		goto abort;
-	}
-
-	*sort = (flags | function);
-
-abort:
-	free(value);
-	return err;
+	return parse_sort_string(arg, sort);
 }
 
 int cmd_tag(int argc, const char **argv, const char *prefix)
@@ -579,7 +605,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	struct create_tag_options opt;
 	char *cleanup_arg = NULL;
 	int annotate = 0, force = 0, lines = -1;
-	int cmdmode = 0, sort = 0;
+	int cmdmode = 0;
 	const char *msgfile = NULL, *keyid = NULL;
 	struct msg_arg msg = { 0, STRBUF_INIT };
 	struct commit_list *with_commit = NULL;
@@ -605,7 +631,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 		OPT__FORCE(&force, N_("replace the tag if exists")),
 		OPT_COLUMN(0, "column", &colopts, N_("show tag list in columns")),
 		{
-			OPTION_CALLBACK, 0, "sort", &sort, N_("type"), N_("sort tags"),
+			OPTION_CALLBACK, 0, "sort", &tag_sort, N_("type"), N_("sort tags"),
 			PARSE_OPT_NONEG, parse_opt_sort
 		},
 
@@ -661,9 +687,9 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 			copts.padding = 2;
 			run_column_filter(colopts, &copts);
 		}
-		if (lines != -1 && sort)
+		if (lines != -1 && tag_sort)
 			die(_("--sort and -n are incompatible"));
-		ret = list_tags(argv, lines == -1 ? 0 : lines, with_commit, sort);
+		ret = list_tags(argv, lines == -1 ? 0 : lines, with_commit, tag_sort);
 		if (column_active(colopts))
 			stop_column_filter();
 		return ret;
