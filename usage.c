@@ -57,18 +57,41 @@ static int die_is_recursing_builtin(void)
  * (ugh), so keep things static. */
 static NORETURN_PTR void (*usage_routine)(const char *err, va_list params) = usage_builtin;
 static NORETURN_PTR void (*die_routine)(const char *err, va_list params) = die_builtin;
-static void (*error_routine)(const char *err, va_list params) = error_builtin;
 static void (*warn_routine)(const char *err, va_list params) = warn_builtin;
 static int (*die_is_recursing)(void) = die_is_recursing_builtin;
+
+struct error_func_list {
+	void (*func)(const char *, va_list);
+	struct error_func_list *next;
+};
+static struct error_func_list default_error_func = { error_builtin };
+static struct error_func_list *error_funcs = &default_error_func;
 
 void set_die_routine(NORETURN_PTR void (*routine)(const char *err, va_list params))
 {
 	die_routine = routine;
 }
 
+/* push error routine onto the error function stack */
 void set_error_routine(void (*routine)(const char *err, va_list params))
 {
-	error_routine = routine;
+	struct error_func_list *efl = xmalloc(sizeof(*efl));
+	efl->func = routine;
+	efl->next = error_funcs;
+	error_funcs = efl;
+}
+
+/* pop a single error routine off of the error function stack, thus reverting
+ * to previous error. Should always be paired with a set_error_routine */
+void pop_error_routine(void)
+{
+	struct error_func_list *efl = error_funcs;
+
+	assert(error_funcs != &default_error_func);
+	if (efl->next) {
+		error_funcs = efl->next;
+		free(efl);
+	}
 }
 
 void set_die_is_recursing_routine(int (*routine)(void))
@@ -144,7 +167,7 @@ int error(const char *err, ...)
 	va_list params;
 
 	va_start(params, err);
-	error_routine(err, params);
+	error_funcs->func(err, params);
 	va_end(params);
 	return -1;
 }

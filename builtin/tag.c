@@ -352,31 +352,58 @@ static const char tag_template_nocleanup[] =
  * Parse a sort string, and return 0 if parsed successfully. Will return
  * non-zero when the sort string does not parse into a known type.
  */
-static int parse_sort_string(const char *var, const char *value, int *sort)
+static int parse_sort_string(const char *arg, int *sort)
 {
-	int type = 0, flags = 0;
+	char *value, *separator, *type, *atom;
+	int flags = 0, function = 0, err = 0;
 
-	if (skip_prefix(value, "-", &value))
+	/* skip the '-' prefix for reverse sort order first */
+	if (skip_prefix(arg, "-", &arg))
 		flags |= REVERSE_SORT;
 
-	if (skip_prefix(value, "version:", &value) || skip_prefix(value, "v:", &value))
-		type = VERCMP_SORT;
-	else
-		type = STRCMP_SORT;
+	/* duplicate string so we can modify it in place */
+	value = xstrdup(arg);
 
-	if (strcmp(value, "refname")) {
-		if (!var)
-			return error(_("unsupported sort specification '%s'"), value);
-		else {
-			warning(_("unsupported sort specification '%s' in variable '%s'"),
-				var, value);
-			return -1;
-		}
+	/* determine the sort function and the sorting atom */
+	separator = strchr(value, ':');
+	if (separator) {
+		/* split the string at the separator with a NULL byte */
+		*separator = '\0';
+		type = value;
+		atom = separator + 1;
+	} else {
+		/* we have no separator, so assume the whole string is the * atom */
+		type = NULL;
+		atom = value;
 	}
 
-	*sort = (type | flags);
+	if (type) {
+		if (!strcmp(type, "version") || !strcmp(type, "v"))
+			function = VERCMP_SORT;
+		else {
+			err = error(_("unsupported sort function '%s'"), type);
+			goto abort;
+		}
 
-	return 0;
+	} else
+		function = STRCMP_SORT;
+
+	/* for now, only the refname is a valid atom */
+	if (atom && strcmp(atom, "refname")) {
+		err = error(_("unsupported sort specification '%s'"), atom);
+		goto abort;
+	}
+
+	*sort = (flags | function);
+
+abort:
+	free(value);
+	return err;
+}
+
+static void error_bad_sort_config(const char *err, va_list params)
+{
+	vreportf("warning: tag.sort has ", err, params);
 }
 
 static int git_tag_config(const char *var, const char *value, void *cb)
@@ -386,7 +413,11 @@ static int git_tag_config(const char *var, const char *value, void *cb)
 	if (!strcmp(var, "tag.sort")) {
 		if (!value)
 			return config_error_nonbool(var);
-		parse_sort_string(var, value, &tag_sort);
+
+		set_error_routine(error_bad_sort_config);
+		parse_sort_string(value, &tag_sort);
+		pop_error_routine();
+
 		return 0;
 	}
 
@@ -565,7 +596,7 @@ static int parse_opt_sort(const struct option *opt, const char *arg, int unset)
 {
 	int *sort = opt->value;
 
-	return parse_sort_string(NULL, arg, sort);
+	return parse_sort_string(arg, sort);
 }
 
 int cmd_tag(int argc, const char **argv, const char *prefix)
