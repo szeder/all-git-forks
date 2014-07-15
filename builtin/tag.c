@@ -522,24 +522,51 @@ static int parse_opt_points_at(const struct option *opt __attribute__((unused)),
 static int parse_opt_sort(const struct option *opt, const char *arg, int unset)
 {
 	int *sort = opt->value;
-	int flags = 0;
+	char *value, *separator, *type, *atom;
+	int flags = 0, function = 0, err = 0;
 
-	if (*arg == '-') {
+	/* skip the '-' prefix for reverse sort order first */
+	if (skip_prefix(arg, "-", &arg))
 		flags |= REVERSE_SORT;
-		arg++;
+
+	/* duplicate string so we can modify it in place */
+	value = xstrdup(arg);
+
+	/* determine the sort function and the sorting atom */
+	separator = strchr(value, ':');
+	if (separator) {
+		/* split the string at the separator with a NULL byte */
+		*separator = '\0';
+		type = value;
+		atom = separator + 1;
+	} else {
+		/* we have no separator, so assume the whole string is the * atom */
+		type = NULL;
+		atom = value;
 	}
-	if (starts_with(arg, "version:")) {
-		*sort = VERCMP_SORT;
-		arg += 8;
-	} else if (starts_with(arg, "v:")) {
-		*sort = VERCMP_SORT;
-		arg += 2;
+
+	if (type) {
+		if (!strcmp(type, "version") || !strcmp(type, "v"))
+			function = VERCMP_SORT;
+		else {
+			err = error(_("unsupported sort function '%s'"), type);
+			goto abort;
+		}
+
 	} else
-		*sort = STRCMP_SORT;
-	if (strcmp(arg, "refname"))
-		die(_("unsupported sort specification %s"), arg);
-	*sort |= flags;
-	return 0;
+		function = STRCMP_SORT;
+
+	/* for now, only the refname is a valid atom */
+	if (atom && strcmp(atom, "refname")) {
+		err = error(_("unsupported sort specification '%s'"), atom);
+		goto abort;
+	}
+
+	*sort = (flags | function);
+
+abort:
+	free(value);
+	return err;
 }
 
 int cmd_tag(int argc, const char **argv, const char *prefix)
