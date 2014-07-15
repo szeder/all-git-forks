@@ -128,6 +128,8 @@ int pack_refs(unsigned int flags, struct strbuf *err);
 
 extern int ref_exists(const char *);
 
+extern int is_branch(const char *refname);
+
 /*
  * If refname is a non-symbolic reference that refers to a tag object,
  * and the tag can be (recursively) dereferenced to a non-tag object,
