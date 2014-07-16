@@ -704,11 +704,17 @@ void git_qsort(void *base, size_t nmemb, size_t size,
 #endif
 #endif
 
+#include "strbuf.h"
+
 /*
  * Preserves errno, prints a message, but gives no warning for ENOENT.
  * Always returns the return value of unlink(2).
  */
 int unlink_or_warn(const char *path);
+/*
+ * Like unlink_or_warn but populates a strbuf
+ */
+int unlink_or_msg(const char *file, struct strbuf *err);
 /*
  * Likewise for rmdir(2).
  */
