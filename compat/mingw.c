@@ -1250,7 +1250,7 @@ static int do_putenv(char **env, const char *name, int size, int free_old)
 	return size;
 }
 
-static char *do_getenv(const char *name)
+char *mingw_getenv(const char *name)
 {
 	char *value;
 	int pos = bsearchenv(environ, name, environ_size - 1);
@@ -1258,18 +1258,6 @@ static char *do_getenv(const char *name)
 		return NULL;
 	value = strchr(environ[pos], '=');
 	return value ? &value[1] : NULL;
-}
-
-char *mingw_getenv(const char *name)
-{
-	char *result = do_getenv(name);
-	if (!result && !strcmp(name, "TMPDIR")) {
-		/* on Windows it is TMP and TEMP */
-		result = do_getenv("TMP");
-		if (!result)
-			result = do_getenv("TEMP");
-	}
-	return result;
 }
 
 int mingw_putenv(const char *namevalue)
@@ -2112,6 +2100,17 @@ void mingw_startup()
 
 	/* sort environment for O(log n) getenv / putenv */
 	qsort(environ, i, sizeof(char*), compareenv);
+
+	/* fix Windows specific environment settings */
+
+	/* on Windows it is TMP and TEMP */
+	if (!mingw_getenv("TMPDIR")) {
+		const char *tmp = mingw_getenv("TMP");
+		if (!tmp)
+			tmp = mingw_getenv("TEMP");
+		if (tmp)
+			setenv("TMPDIR", tmp, 1);
+	}
 
 	/* initialize critical section for waitpid pinfo_t list */
 	InitializeCriticalSection(&pinfo_cs);
