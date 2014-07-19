@@ -46,8 +46,8 @@ set_fake_editor () {
 	action=pick
 	for line in $FAKE_LINES; do
 		case $line in
-		squash|fixup|edit|reword)
-			action="$line";;
+		pick*|squash*|fixup*|edit*|reword*)
+			action=$(echo "$line" | sed 's/_/ /g');;
 		exec*)
 			echo "$line" | sed 's/_/ /g' >> "$1";;
 		"#")
@@ -80,6 +80,15 @@ set_cat_todo_editor () {
 	test_set_editor "$(pwd)/fake-editor.sh"
 }
 
+set_fixed_todo_editor () {
+	set_fake_editor
+	write_script fake-editor-wrapper.sh <<-EOF
+	cp "$1" "\$1"
+	"$(pwd)"/fake-editor.sh "\$1"
+	EOF
+	test_set_editor "$(pwd)/fake-editor-wrapper.sh"
+}
+
 # checks that the revisions in "$2" represent a linear range with the
 # subjects in "$1"
 test_linear_range () {
@@ -92,7 +101,7 @@ test_linear_range () {
 
 reset_rebase () {
 	test_might_fail git rebase --abort &&
-	git reset --hard &&
+	git reset --hard $1 &&
 	git clean -f
 }
 
