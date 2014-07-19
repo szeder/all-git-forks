@@ -14,7 +14,6 @@ OPTIONS_SPEC=
 TOOL_MODE=merge
 . git-sh-setup
 . git-mergetool--lib
-require_work_tree
 
 # Returns true if the mode reflects a symlink
 is_symlink () {
@@ -371,6 +370,8 @@ prompt_after_failed_merge () {
 		esac
 	done
 }
+
+require_work_tree
 
 if test -z "$merge_tool"
 then
