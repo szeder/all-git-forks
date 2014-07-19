@@ -320,7 +320,17 @@ guessed_merge_tool=false
 while test $# != 0
 do
 	case "$1" in
-	--tool-help)
+	--tool-help*)
+		case "$#,$1" in
+		1,*=*)
+			TOOL_MODE=$(expr "z$1" : 'z-[^=]*=\(.*\)')
+			;;
+		1,--tool-help)
+			;;
+		*)
+			usage
+			;;
+		esac
 		show_tool_help
 		;;
 	-t|--tool*)
