@@ -251,7 +251,6 @@ pick_one () {
 	test -d "$rewritten" &&
 		pick_one_preserving_merges "$@" && return
 	output eval git cherry-pick --allow-empty-message \
-			${gpg_sign_opt:+$(git rev-parse --sq-quote "$gpg_sign_opt")} \
 			"$strategy_args" $empty_args $ff "$@"
 }
 
@@ -355,8 +354,7 @@ pick_one_preserving_merges () {
 			new_parents=${new_parents# $first_parent}
 			merge_args="--no-log --no-ff"
 			if ! do_with_author output eval \
-			'git merge ${gpg_sign_opt:+"$gpg_sign_opt"} \
-				$merge_args $strategy_args -m "$msg_content" $new_parents'
+			'git merge $merge_args $strategy_args -m "$msg_content" $new_parents'
 			then
 				printf "%s\n" "$msg_content" > "$GIT_DIR"/MERGE_MSG
 				die_with_patch $sha1 "Error redoing merge $sha1"
@@ -365,7 +363,6 @@ pick_one_preserving_merges () {
 			;;
 		*)
 			output eval git cherry-pick --allow-empty-message \
-				${gpg_sign_opt:+$(git rev-parse --sq-quote "$gpg_sign_opt")} \
 				"$strategy_args" "$@" ||
 				die_with_patch $sha1 "Could not pick $sha1"
 			;;
@@ -617,8 +614,7 @@ do_pick () {
 			   ${rewrite_amend:+--amend} \
 			   ${rewrite_edit:+--edit --commit-msg} \
 			   ${rewrite_message:+--file "$rewrite_message"} \
-			   ${rewrite_author:+--reset-author} \
-			   ${gpg_sign_opt:+"$gpg_sign_opt"} || return 3
+			   ${rewrite_author:+--reset-author} || return 3
 	fi
 }
 
@@ -660,7 +656,7 @@ do_replay () {
 		comment_for_reflog pick
 
 		mark_action_done
-		eval do_pick $opts $sha1 \
+		eval do_pick $opts ${gpg_sign_opt:+"$gpg_sign_opt"} $sha1 \
 			|| die_with_patch $sha1 "Could not apply $sha1... $rest"
 		record_in_rewritten $sha1
 		;;
@@ -668,7 +664,7 @@ do_replay () {
 		comment_for_reflog reword
 
 		mark_action_done
-		eval do_pick --edit $opts $sha1 \
+		eval do_pick --edit $opts ${gpg_sign_opt:+"$gpg_sign_opt"} $sha1 \
 			|| die_with_patch $sha1 "Could not apply $sha1... $rest"
 		record_in_rewritten $sha1
 		;;
@@ -676,7 +672,7 @@ do_replay () {
 		comment_for_reflog edit
 
 		mark_action_done
-		eval do_pick $opts $sha1 \
+		eval do_pick $opts ${gpg_sign_opt:+"$gpg_sign_opt"} $sha1 \
 			|| die_with_patch $sha1 "Could not apply $sha1... $rest"
 		warn "Stopped at $sha1... $rest"
 		exit_with_patch $sha1 0
@@ -704,18 +700,21 @@ do_replay () {
 		squash|s|fixup|f)
 			# This is an intermediate commit; its message will only be
 			# used in case of trouble.  So use the long version:
-			do_with_author do_pick --amend -F "$squash_msg" $sha1 \
+			do_with_author do_pick --amend -F "$squash_msg" \
+				${gpg_sign_opt:+"$gpg_sign_opt"} $sha1 \
 				|| die_failed_squash $sha1 "$rest"
 			;;
 		*)
 			# This is the final command of this squash/fixup group
 			if test -f "$fixup_msg"
 			then
-				do_with_author do_pick --amend -F "$fixup_msg" $sha1 \
+				do_with_author do_pick --amend -F "$fixup_msg" \
+					${gpg_sign_opt:+"$gpg_sign_opt"} $sha1 \
 					|| die_failed_squash $sha1 "$rest"
 			else
 				cp "$squash_msg" "$GIT_DIR"/SQUASH_MSG || exit
-				do_with_author do_pick --amend -F "$GIT_DIR"/SQUASH_MSG -e $sha1 \
+				do_with_author do_pick --amend -F "$GIT_DIR"/SQUASH_MSG -e \
+					${gpg_sign_opt:+"$gpg_sign_opt"} $sha1 \
 					|| die_failed_squash $sha1 "$rest"
 			fi
 			rm -f "$squash_msg" "$fixup_msg"
