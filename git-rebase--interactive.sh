@@ -464,10 +464,13 @@ record_in_rewritten() {
 
 # Apply the changes introduced by the given commit to the current head.
 #
-# do_pick [--signoff] [--reset-author] [--amend] [--file <file>]
-#         [--edit] <commit>
+# do_pick [--gpg-sign <keyid>] [--signoff] [--reset-author] [--amend]
+#         [--file <file>] [--edit] <commit>
 #
 # Wrapper around git-cherry-pick.
+#
+# -S[<keyid>], --gpg-sign[=<keyid>]
+#     GPG-sign commit. This creates a fresh commit.
 #
 # -s, --signoff
 #     Insert a Signed-off-by: line using the committer identity at the
@@ -515,6 +518,18 @@ do_pick () {
 	while test $# -gt 0
 	do
 		case "$1" in
+		-S|--gpg-sign)
+			rewrite=y
+			rewrite_gpg=--gpg-sign
+			;;
+		-S*)
+			rewrite=y
+			rewrite_gpg=--gpg-sign=$1
+			;;
+		--gpg-sign=*)
+			rewrite=y
+			rewrite_gpg=$1
+			;;
 		-s|--signoff)
 			rewrite=y
 			rewrite_signoff=y
@@ -597,6 +612,7 @@ do_pick () {
 	then
 		output git commit --allow-empty --no-post-rewrite -n --no-edit \
 			   ${allow_empty_message:+--allow-empty-message} \
+			   ${rewrite_gpg:+"$rewrite_gpg"} \
 			   ${rewrite_signoff:+--signoff} \
 			   ${rewrite_amend:+--amend} \
 			   ${rewrite_edit:+--edit --commit-msg} \
