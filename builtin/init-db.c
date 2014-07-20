@@ -535,10 +535,10 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 		usage(init_db_usage[0]);
 	}
 	if (is_bare_repository_cfg == 1) {
-		static char git_dir[PATH_MAX+1];
-
-		setenv(GIT_DIR_ENVIRONMENT,
-			getcwd(git_dir, sizeof(git_dir)), argc > 0);
+		struct strbuf cwd = STRBUF_INIT;
+		strbuf_getcwd(&cwd);
+		setenv(GIT_DIR_ENVIRONMENT, cwd.buf, argc > 0);
+		strbuf_release(&cwd);
 	}
 
 	if (init_shared_repository != -1)
