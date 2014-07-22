@@ -174,10 +174,11 @@ extern int peel_ref(const char *refname, unsigned char *sha1);
  * Flags controlling transaction_update_sha1(), transaction_create_sha1(), etc.
  * REF_NODEREF: act on the ref directly, instead of dereferencing
  *              symbolic references.
- *
+ * REF_ALLOWBROKEN: allow locking refs that are broken.
  * Flags >= 0x100 are reserved for internal use.
  */
 #define REF_NODEREF	0x01
+#define REF_ALLOWBROKEN 0x02
 
 /** Reads log for the value of ref during at_time. **/
 extern int read_ref_at(const char *refname, unsigned long at_time, int cnt,
