@@ -2125,12 +2125,12 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 	int resolve_flags;
 	int missing = 0;
 	int attempts_remaining = 3;
-	int bad_refname;
+	int bad_ref;
 
 	lock = xcalloc(1, sizeof(struct ref_lock));
 	lock->lock_fd = -1;
 
-	bad_refname = check_refname_format(refname, REFNAME_ALLOW_ONELEVEL);
+	bad_ref = check_refname_format(refname, REFNAME_ALLOW_ONELEVEL);
 
 	resolve_flags = RESOLVE_REF_ALLOW_BAD_NAME;
 	if (mustexist)
@@ -2152,6 +2152,10 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 		}
 		refname = resolve_ref_unsafe(orig_refname, lock->old_sha1,
 					     resolve_flags, &type);
+	}
+	if (!refname && (flags & REF_ALLOWBROKEN) && (type & REF_ISBROKEN)) {
+		bad_ref = 1;
+		refname = orig_refname;
 	}
 	if (type_p)
 	    *type_p = type;
@@ -2215,7 +2219,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 		else
 			unable_to_lock_index_die(ref_file, errno);
 	}
-	if (bad_refname)
+	if (bad_ref)
 		return lock;
 	return old_sha1 ? verify_lock(lock, old_sha1, mustexist) : lock;
 
