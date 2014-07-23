@@ -41,13 +41,15 @@ static const char *real_path_internal(const char *path, int die_on_error)
 	 * here so that we can chdir() back to it at the end of the
 	 * function:
 	 */
-	char cwd[1024] = "";
+	static char cwd[PATH_MAX];
 
 	int buf_index = 1;
 
 	int depth = MAXDEPTH;
 	char *last_elem = NULL;
 	struct stat st;
+
+	*cwd = '\0';
 
 	/* We've already done it */
 	if (path == buf || path == next_buf)
