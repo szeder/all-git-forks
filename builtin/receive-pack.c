@@ -582,20 +582,20 @@ static char *update(struct command *cmd, struct shallow_info *si)
 		    update_shallow_ref(cmd, si))
 			return xstrdup("shallow error");
 
-		transaction = ref_transaction_begin(&err);
+		transaction = transaction_begin(&err);
 		if (!transaction ||
-		    ref_transaction_update(transaction, namespaced_name,
-					   new_sha1, old_sha1, 0, 1, "push",
-					   &err) ||
-		    ref_transaction_commit(transaction, &err)) {
+		    transaction_update_sha1(transaction, namespaced_name,
+					    new_sha1, old_sha1, 0, 1, "push",
+					    &err) ||
+		    transaction_commit(transaction, &err)) {
 			char *str = strbuf_detach(&err, NULL);
-			ref_transaction_free(transaction);
+			transaction_free(transaction);
 
 			rp_error("%s", str);
 			return str;
 		}
 
-		ref_transaction_free(transaction);
+		transaction_free(transaction);
 		strbuf_release(&err);
 		return NULL; /* good */
 	}
