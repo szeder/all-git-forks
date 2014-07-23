@@ -830,8 +830,8 @@ static int switch_branches(const struct checkout_opts *opts,
 	return ret || writeout_error;
 }
 
-static const char *junk_work_tree;
-static const char *junk_git_dir;
+static char *junk_work_tree;
+static char *junk_git_dir;
 static int is_junk;
 static pid_t junk_pid;
 
@@ -900,7 +900,7 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 
 	if (mkdir(sb_repo.buf, 0777))
 		die_errno(_("could not create directory of '%s'"), sb_repo.buf);
-	junk_git_dir = sb_repo.buf;
+	junk_git_dir = xstrdup(sb_repo.buf);
 	is_junk = 1;
 
 	/*
@@ -914,7 +914,7 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 	if (safe_create_leading_directories_const(sb_git.buf))
 		die_errno(_("could not create leading directories of '%s'"),
 			  sb_git.buf);
-	junk_work_tree = path;
+	junk_work_tree = xstrdup(path);
 
 	strbuf_reset(&sb);
 	strbuf_addf(&sb, "%s/gitdir", sb_repo.buf);
@@ -944,8 +944,13 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 	cp.git_cmd = 1;
 	cp.argv = opts->saved_argv;
 	ret = run_command(&cp);
-	if (!ret)
+	if (!ret) {
 		is_junk = 0;
+		free(junk_work_tree);
+		free(junk_git_dir);
+		junk_work_tree = NULL;
+		junk_git_dir = NULL;
+	}
 	strbuf_reset(&sb);
 	strbuf_addf(&sb, "%s/locked", sb_repo.buf);
 	unlink_or_warn(sb.buf);
@@ -1011,31 +1016,52 @@ static const char *unique_tracking_name(const char *name, unsigned char *sha1)
 	return NULL;
 }
 
-static int check_linked_checkout(struct branch_info *new,
-				  const char *name, const char *path)
+static void check_linked_checkout(struct branch_info *new, const char *id)
 {
 	struct strbuf sb = STRBUF_INIT;
+	struct strbuf path = STRBUF_INIT;
+	struct strbuf gitdir = STRBUF_INIT;
 	const char *start, *end;
-	if (strbuf_read_file(&sb, path, 0) < 0 ||
-	    !skip_prefix(sb.buf, "ref:", &start)) {
-		strbuf_release(&sb);
-		return 0;
-	}
 
+	if (id)
+		strbuf_addf(&path, "%s/repos/%s/HEAD", get_git_common_dir(), id);
+	else
+		strbuf_addf(&path, "%s/HEAD", get_git_common_dir());
+
+	if (strbuf_read_file(&sb, path.buf, 0) <= 0 ||
+	    !skip_prefix(sb.buf, "ref:", &start))
+		goto done;
 	while (isspace(*start))
 		start++;
 	end = start;
 	while (*end && !isspace(*end))
 		end++;
-	if (!strncmp(start, new->path, end - start) &&
-	    new->path[end - start] == '\0') {
-		strbuf_release(&sb);
-		new->path = NULL; /* detach */
-		new->checkout = xstrdup(name); /* reason */
-		return 1;
-	}
+	if (strncmp(start, new->path, end - start) ||
+	    new->path[end - start] != '\0')
+		goto done;
+	if (id) {
+		strbuf_reset(&path);
+		strbuf_addf(&path, "%s/repos/%s/gitdir",
+			    get_git_common_dir(), id);
+		if (strbuf_read_file(&gitdir, path.buf, 0) <= 0)
+			goto done;
+		while (gitdir.len && (gitdir.buf[gitdir.len - 1] == '\n' ||
+				      gitdir.buf[gitdir.len - 1] == '\r'))
+			gitdir.buf[--gitdir.len] = '\0';
+	} else
+		strbuf_addstr(&gitdir, get_git_common_dir());
+	if (advice_checkout_to)
+		die(_("%s is already checked out at %s.\n"
+		      "Either use --detach or -b together with --to "
+		      "or switch branch in the the other checkout."),
+		    new->path, gitdir.buf);
+	else
+		die(_("%s is already checked out at %s."),
+		    new->path, gitdir.buf);
+done:
+	strbuf_release(&path);
 	strbuf_release(&sb);
-	return 0;
+	strbuf_release(&gitdir);
 }
 
 static void check_linked_checkouts(struct branch_info *new)
@@ -1050,27 +1076,17 @@ static void check_linked_checkouts(struct branch_info *new)
 		return;
 	}
 
-	strbuf_reset(&path);
-	strbuf_addf(&path, "%s/HEAD", get_git_common_dir());
 	/*
 	 * $GIT_COMMON_DIR/HEAD is practically outside
 	 * $GIT_DIR so resolve_ref_unsafe() won't work (it
 	 * uses git_path). Parse the ref ourselves.
 	 */
-	if (check_linked_checkout(new, "", path.buf)) {
-		strbuf_release(&path);
-		closedir(dir);
-		return;
-	}
+	check_linked_checkout(new, NULL);
 
 	while ((d = readdir(dir)) != NULL) {
 		if (!strcmp(d->d_name, ".") || !strcmp(d->d_name, ".."))
 			continue;
-		strbuf_reset(&path);
-		strbuf_addf(&path, "%s/repos/%s/HEAD",
-			    get_git_common_dir(), d->d_name);
-		if (check_linked_checkout(new, d->d_name, path.buf))
-			break;
+		check_linked_checkout(new, d->d_name);
 	}
 	strbuf_release(&path);
 	closedir(dir);
@@ -1081,7 +1097,8 @@ static int parse_branchname_arg(int argc, const char **argv,
 				struct branch_info *new,
 				struct tree **source_tree,
 				unsigned char rev[20],
-				const char **new_branch)
+				const char **new_branch,
+				int force_detach)
 {
 	int argcount = 0;
 	unsigned char branch_rev[20];
@@ -1203,7 +1220,7 @@ static int parse_branchname_arg(int argc, const char **argv,
 	else
 		new->path = NULL; /* not an existing branch */
 
-	if (new->path) {
+	if (new->path && !force_detach && !*new_branch) {
 		unsigned char sha1[20];
 		int flag;
 		char *head_ref = resolve_refdup("HEAD", sha1, 0, &flag);
@@ -1421,7 +1438,8 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 			!opts.new_branch;
 		int n = parse_branchname_arg(argc, argv, dwim_ok,
 					     &new, &opts.source_tree,
-					     rev, &opts.new_branch);
+					     rev, &opts.new_branch,
+					     opts.force_detach);
 		argv += n;
 		argc -= n;
 	}
