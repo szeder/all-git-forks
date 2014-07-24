@@ -1436,48 +1436,11 @@ static int resolve_gitlink_packed_ref(struct ref_cache *refs,
 	return 0;
 }
 
-static int resolve_gitlink_ref_recursive(struct ref_cache *refs,
-					 const char *refname, unsigned char *sha1,
-					 int recursion)
-{
-	int fd, len;
-	char buffer[128], *p;
-	char *path;
-
-	if (recursion > MAXDEPTH || strlen(refname) > MAXREFLEN)
-		return -1;
-	path = *refs->name
-		? git_path_submodule(refs->name, "%s", refname)
-		: git_path("%s", refname);
-	fd = open(path, O_RDONLY);
-	if (fd < 0)
-		return resolve_gitlink_packed_ref(refs, refname, sha1);
-
-	len = read(fd, buffer, sizeof(buffer)-1);
-	close(fd);
-	if (len < 0)
-		return -1;
-	while (len && isspace(buffer[len-1]))
-		len--;
-	buffer[len] = 0;
-
-	/* Was it a detached head or an old-fashioned symlink? */
-	if (!get_sha1_hex(buffer, sha1))
-		return 0;
-
-	/* Symref? */
-	if (strncmp(buffer, "ref:", 4))
-		return -1;
-	p = buffer + 4;
-	while (isspace(*p))
-		p++;
-
-	return resolve_gitlink_ref_recursive(refs, p, sha1, recursion+1);
-}
-
 int resolve_gitlink_ref(const char *path, const char *refname, unsigned char *sha1)
 {
-	int len = strlen(path), retval;
+	struct strbuf result = STRBUF_INIT;
+	int len = strlen(path), retval = 0;
+	int depth = MAXDEPTH;
 	char *submodule;
 	struct ref_cache *refs;
 
@@ -1489,8 +1452,24 @@ int resolve_gitlink_ref(const char *path, const char *refname, unsigned char *sh
 	refs = get_ref_cache(submodule);
 	free(submodule);
 
-	retval = resolve_gitlink_ref_recursive(refs, refname, sha1, 0);
-	return retval;
+	strbuf_addstr(&result, refname);
+	while (!retval) {
+		if (--depth < 0) {
+			errno = ELOOP;
+			retval = -1;
+			break;
+		}
+		path = *refs->name
+			? git_path_submodule(refs->name, "%s", result.buf)
+			: git_path("%s", result.buf);
+		retval = parse_ref(path, &result, sha1, NULL);
+		if (retval == -2) {
+			retval = resolve_gitlink_packed_ref(refs, result.buf, sha1);
+			retval = retval ? -1 : 1;
+		}
+	}
+	strbuf_release(&result);
+	return retval > 0 ? 0 : -1;
 }
 
 /*
@@ -1539,6 +1518,11 @@ int parse_ref(const char *path, struct strbuf *ref,
 	struct strbuf buffer = STRBUF_INIT;
 	struct stat st;
 	const char *buf;
+
+	if (ref->len > MAXREFLEN) {
+		errno = ENAMETOOLONG;
+		return -1;
+	}
 
 	/*
 	 * We might have to loop back here to avoid a race condition:
