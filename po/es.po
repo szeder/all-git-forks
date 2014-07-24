@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-07-10 18:44+0200\n"
+"PO-Revision-Date: 2014-07-24 19:27+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -9326,11 +9326,11 @@ msgstr "git update-server-info [--force]"
 
 #: builtin/update-server-info.c:14
 msgid "update the info files from scratch"
-msgstr ""
+msgstr "actualiza los ficheros informativos desde cero"
 
 #: builtin/verify-pack.c:56
 msgid "git verify-pack [-v|--verbose] [-s|--stat-only] <pack>..."
-msgstr ""
+msgstr "git verify-pack [-v|--verbose] [-s|--stat-only] <paquete>..."
 
 #: builtin/verify-pack.c:66
 msgid "verbose"
@@ -9449,7 +9449,7 @@ msgstr "Mueve o renombra un fichero, un directorio o un enlace simbólico"
 
 #: common-cmds.h:21
 msgid "Fetch from and integrate with another repository or a local branch"
-msgstr ""
+msgstr "Extrae desde e integra con otro repositorio o rama local"
 
 #: common-cmds.h:22
 msgid "Update remote refs along with associated objects"
@@ -9763,7 +9763,7 @@ msgstr ""
 #: git-bisect.sh:407
 #, sh-format
 msgid "cannot read $file for replaying"
-msgstr ""
+msgstr "no puedo leer $file para ejecutar de nuevo"
 
 #: git-bisect.sh:424
 msgid "?? what are you talking about?"
@@ -9864,7 +9864,7 @@ msgstr ""
 
 #: git-rebase.sh:212
 msgid "It looks like git-am is in progress. Cannot rebase."
-msgstr ""
+msgstr "Parece como si hubiera una orden git-am en curso. No puedo reorganizar."
 
 #: git-rebase.sh:350
 msgid "The --exec option must be used with the --interactive option"
@@ -9877,7 +9877,7 @@ msgstr ""
 
 #: git-rebase.sh:366
 msgid "The --edit-todo action can only be used during interactive rebase."
-msgstr ""
+msgstr "La acción --edit-todo sólo se puede usar en la reorganización interactiva."
 
 #: git-rebase.sh:373
 msgid "Cannot read HEAD"
@@ -9908,6 +9908,14 @@ msgid ""
 "and run me again.  I am stopping in case you still have something\n"
 "valuable there."
 msgstr ""
+"Parece que ya existe un directorio $state_dir_base, y\n"
+"me pregunto si se encuentra en medio de otra reorganización. Si es\n"
+"así, por favor, intente\n"
+"\t$cmd_live_rebase\n"
+"Si no es así, por favor, haga\n"
+"\t$cmd_clear_stale_rebase\n"
+"y, a continuación, ejecúteme de nuevo. Me detengo por si todavía tuviera algo\n"
+"allí que quisiera conservar."
 
 #: git-rebase.sh:464
 #, sh-format
@@ -9945,7 +9953,7 @@ msgstr ""
 
 #: git-rebase.sh:565
 msgid "Please commit or stash them."
-msgstr ""
+msgstr "Por favor, haga commit o apártelos [stash]."
 
 #: git-rebase.sh:585
 #, sh-format
@@ -9955,7 +9963,7 @@ msgstr "La rama actual $branch_name está actualizada."
 #: git-rebase.sh:589
 #, sh-format
 msgid "Current branch $branch_name is up to date, rebase forced."
-msgstr ""
+msgstr "La rama actual $branch_name está actualizada, forzada la reorganización."
 
 #: git-rebase.sh:600
 #, sh-format
