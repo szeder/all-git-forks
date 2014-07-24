@@ -1506,10 +1506,10 @@ static struct ref_entry *get_packed_ref(const char *refname)
  * A loose ref file doesn't exist; check for a packed ref.  The
  * options are forwarded from resolve_safe_unsafe().
  */
-static const char *handle_missing_loose_ref(const char *refname,
-					    unsigned char *sha1,
-					    int reading,
-					    int *flag)
+static int handle_missing_loose_ref(const char *refname,
+				    unsigned char *sha1,
+				    int reading,
+				    int *flag)
 {
 	struct ref_entry *entry;
 
@@ -1522,45 +1522,53 @@ static const char *handle_missing_loose_ref(const char *refname,
 		hashcpy(sha1, entry->u.value.sha1);
 		if (flag)
 			*flag |= REF_ISPACKED;
-		return refname;
+		return 0;
 	}
 	/* The reference is not a packed reference, either. */
 	if (reading) {
-		return NULL;
+		return -1;
 	} else {
 		hashclr(sha1);
-		return refname;
+		return 0;
 	}
 }
 
-/* This function needs to return a meaningful errno on failure */
-const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int reading, int *flag)
+/*
+ * 'result' content will be destroyed. Its value may be undefined if
+ * resolve_ref returns -1.
+ *
+ * This function needs to return a meaningful errno on failure
+ */
+int resolve_ref(const char *refname, struct strbuf *result,
+		unsigned char *sha1, int reading, int *flag)
 {
+	struct strbuf buffer = STRBUF_INIT;
 	int depth = MAXDEPTH;
-	ssize_t len;
-	char buffer[256];
-	static char refname_buffer[256];
+	int ret = -1;
 
 	if (flag)
 		*flag = 0;
 
 	if (check_refname_format(refname, REFNAME_ALLOW_ONELEVEL)) {
 		errno = EINVAL;
-		return NULL;
+		return -1;
 	}
+
+	strbuf_reset(result);
+	strbuf_addstr(result, refname);
 
 	for (;;) {
 		char path[PATH_MAX];
+		const char *ref = result->buf;
 		struct stat st;
-		char *buf;
-		int fd;
+		const char *buf;
 
 		if (--depth < 0) {
 			errno = ELOOP;
-			return NULL;
+			break;
 		}
 
-		git_snpath(path, sizeof(path), "%s", refname);
+		git_snpath(path, sizeof(path), "%s", ref);
 
 		/*
 		 * We might have to loop back here to avoid a race
@@ -1574,27 +1582,25 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int rea
 	stat_ref:
 		if (lstat(path, &st) < 0) {
 			if (errno == ENOENT)
-				return handle_missing_loose_ref(refname, sha1,
-								reading, flag);
-			else
-				return NULL;
+				ret = handle_missing_loose_ref(ref, sha1,
+							       reading, flag);
+			break;
 		}
 
 		/* Follow "normalized" - ie "refs/.." symlinks by hand */
 		if (S_ISLNK(st.st_mode)) {
-			len = readlink(path, buffer, sizeof(buffer)-1);
-			if (len < 0) {
+			/* no need to reset buffer, strbuf_readlink does that */
+			if (strbuf_readlink(&buffer, path, 256) < 0) {
 				if (errno == ENOENT || errno == EINVAL)
 					/* inconsistent with lstat; retry */
 					goto stat_ref;
 				else
-					return NULL;
+					break;
 			}
-			buffer[len] = 0;
-			if (starts_with(buffer, "refs/") &&
-					!check_refname_format(buffer, 0)) {
-				strcpy(refname_buffer, buffer);
-				refname = refname_buffer;
+			if (starts_with(buffer.buf, "refs/") &&
+			    !check_refname_format(buffer.buf, 0)) {
+				strbuf_reset(result);
+				strbuf_addbuf(result, &buffer);
 				if (flag)
 					*flag |= REF_ISSYMREF;
 				continue;
@@ -1604,69 +1610,75 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int rea
 		/* Is it a directory? */
 		if (S_ISDIR(st.st_mode)) {
 			errno = EISDIR;
-			return NULL;
+			break;
 		}
 
 		/*
 		 * Anything else, just open it and try to use it as
 		 * a ref
 		 */
-		fd = open(path, O_RDONLY);
-		if (fd < 0) {
+		strbuf_reset(&buffer);
+		if (strbuf_read_file(&buffer, path, 256) < 0) {
 			if (errno == ENOENT)
 				/* inconsistent with lstat; retry */
 				goto stat_ref;
 			else
-				return NULL;
+				break;
 		}
-		len = read_in_full(fd, buffer, sizeof(buffer)-1);
-		if (len < 0) {
-			int save_errno = errno;
-			close(fd);
-			errno = save_errno;
-			return NULL;
-		}
-		close(fd);
-		while (len && isspace(buffer[len-1]))
-			len--;
-		buffer[len] = '\0';
+		strbuf_rtrim(&buffer);
 
 		/*
 		 * Is it a symbolic ref?
 		 */
-		if (!starts_with(buffer, "ref:")) {
+		if (!skip_prefix(buffer.buf, "ref:", &buf)) {
 			/*
 			 * Please note that FETCH_HEAD has a second
 			 * line containing other data.
 			 */
-			if (get_sha1_hex(buffer, sha1) ||
-			    (buffer[40] != '\0' && !isspace(buffer[40]))) {
+			if (get_sha1_hex(buffer.buf, sha1) ||
+			    (buffer.buf[40] != '\0' && !isspace(buffer.buf[40]))) {
 				if (flag)
 					*flag |= REF_ISBROKEN;
 				errno = EINVAL;
-				return NULL;
-			}
-			return refname;
+			} else
+				ret = 0;
+			break;
 		}
 		if (flag)
 			*flag |= REF_ISSYMREF;
-		buf = buffer + 4;
 		while (isspace(*buf))
 			buf++;
 		if (check_refname_format(buf, REFNAME_ALLOW_ONELEVEL)) {
 			if (flag)
 				*flag |= REF_ISBROKEN;
 			errno = EINVAL;
-			return NULL;
+			break;
 		}
-		refname = strcpy(refname_buffer, buf);
+		strbuf_reset(result);
+		strbuf_addstr(result, buf);
 	}
+	strbuf_release(&buffer);
+	return ret;
+}
+
+const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int reading, int *flag)
+{
+	static struct strbuf buf = STRBUF_INIT;
+	if (!resolve_ref(refname, &buf, sha1, reading, flag))
+		return buf.buf;
+	else
+		return NULL;
 }
 
 char *resolve_refdup(const char *ref, unsigned char *sha1, int reading, int *flag)
 {
-	const char *ret = resolve_ref_unsafe(ref, sha1, reading, flag);
-	return ret ? xstrdup(ret) : NULL;
+	struct strbuf buf = STRBUF_INIT;
+	if (!resolve_ref(ref, &buf, sha1, reading, flag))
+		return strbuf_detach(&buf, NULL);
+	else {
+		strbuf_release(&buf);
+		return NULL;
+	}
 }
 
 /* The argument to filter_refs */
