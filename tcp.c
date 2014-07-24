@@ -70,32 +70,16 @@ void git_locate_host(const char *hostname, char **ip_address,
 }
 
 /*
- * Returns a connected socket() fd, or else die()s.
+ * Returns a connected socket() fd or -1
  */
-static int git_tcp_connect_sock(char *host, int flags)
+static int git_tcp_dns_resolve_connect_sock(const char *host,
+																						const struct host *hosts,
+																						int n,
+																						int flags,
+																						struct strbuf error_message)
 {
-	struct strbuf error_message = STRBUF_INIT;
 	int sockfd = -1, gai = 0;
-	const char *port = NULL;
-	struct host *hosts = NULL;
-	int j, n = 0;
-
-	get_host_and_port(&host, &port);
-	if (!port) {
-		port = STR(DEFAULT_GIT_PORT);
-		n = get_srv(host, &hosts);
-	}
-	if (n < 0)
-		die("Unable to look up %s", host);
-	if (!*port)
-		port = "<none>";
-	if (!n) {
-		hosts = xmalloc(sizeof(*hosts));
-		hosts[0].hostname = xstrdup(host);
-		hosts[0].port = xstrdup(port);
-		n = 1;
-	}
-
+	int j;
 	for (j = 0; j < n; j++) {
 		resolver_result ai;
 		resolved_address i;
@@ -154,19 +138,64 @@ static int git_tcp_connect_sock(char *host, int flags)
 	}
 
 	if (gai || sockfd < 0)
-		die("unable to connect to %s:\n%s", host, error_message.buf);
+		return -1;
 
 	enable_keepalive(sockfd);
 
 	if (flags & CONNECT_VERBOSE)
 		fprintf(stderr, "done.\n");
 
-	for (j = 0; j < n; j++) {
-		free(hosts[j].hostname);
-		free(hosts[j].port);
-	}
+	fprintf(stderr, "%s/%s:%d sockfd=%d\n",
+					__FILE__, __FUNCTION__,__LINE__, sockfd);
+	return sockfd;
+}
+
+
+/*
+ * Returns a connected socket() fd, or else die()s.
+ */
+static int git_tcp_connect_sock(char *host, int flags)
+{
+	struct strbuf error_message = STRBUF_INIT;
+	int sockfd;
+	const char *port = NULL;
+	struct host *hosts = NULL;
+	int n = 1;
+
+	get_host_and_port(&host, &port);
+	if (!port)
+		port = STR(DEFAULT_GIT_PORT);
+ 
+	if (!*port)
+		port = "<none>";
+	hosts = xmalloc(sizeof(*hosts));
+	hosts[0].hostname = xstrdup(host);
+	hosts[0].port = xstrdup(port);
+
+	sockfd = git_tcp_dns_resolve_connect_sock(host, hosts, n, flags, error_message);
+
+	free(hosts[0].hostname);
+	free(hosts[0].port);
 	free(hosts);
+
+	if (sockfd < 0) {
+		n = get_srv(host, &hosts);	
+		if (n > 0) {
+			int j;
+			sockfd = git_tcp_dns_resolve_connect_sock(host, hosts, n, flags, error_message);
+	
+			for (j = 0; j < n; j++) {
+				free(hosts[j].hostname);
+				free(hosts[j].port);
+			}
+			free(hosts);
+		}
+	}
+
 	strbuf_release(&error_message);
+	if (sockfd < 0)
+		die("unable to connect to %s:\n%s", host, error_message.buf);
+
 	return sockfd;
 }
 
