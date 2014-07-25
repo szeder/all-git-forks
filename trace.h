@@ -19,6 +19,7 @@ extern void trace_disable(struct trace_key *key);
 extern uint64_t getnanotime(void);
 extern void trace_command_performance(const char **argv);
 extern void trace_verbatim(struct trace_key *key, const void *buf, unsigned len);
+extern void trace_stats(void);
 
 #ifndef HAVE_VARIADIC_MACROS
 
