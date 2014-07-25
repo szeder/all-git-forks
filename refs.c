@@ -2214,7 +2214,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 			 */
 			goto retry;
 		else
-			unable_to_lock_index_die(ref_file, errno);
+			goto error_return;
 	}
 	if (bad_ref)
 		return lock;
