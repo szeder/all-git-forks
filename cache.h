@@ -1754,5 +1754,6 @@ int versioncmp(const char *s1, const char *s2);
 void sleep_millisec(int millisec);
 
 void report_pack_stats(struct trace_key *key);
+void report_index_stats(struct trace_key *key);
 
 #endif /* CACHE_H */
