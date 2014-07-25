@@ -1004,6 +1004,7 @@ extern int read_ref(const char *refname, unsigned char *sha1);
  */
 extern const char *resolve_ref_unsafe(const char *ref, unsigned char *sha1, int reading, int *flag);
 extern char *resolve_refdup(const char *ref, unsigned char *sha1, int reading, int *flag);
+extern int resolve_ref(const char *refname, struct strbuf *result, unsigned char *sha1, int reading, int *flag);
 
 extern int dwim_ref(const char *str, int len, unsigned char *sha1, char **ref);
 extern int dwim_log(const char *str, int len, unsigned char *sha1, char **ref);
