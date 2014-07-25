@@ -434,14 +434,17 @@ void trace_command_performance(const char **argv)
 }
 
 static struct trace_key trace_pack_stats = TRACE_KEY_INIT(PACK_STATS);
+static struct trace_key trace_index_stats = TRACE_KEY_INIT(INDEX_STATS);
 
 static void print_stats_atexit(void)
 {
 	report_pack_stats(&trace_pack_stats);
+	report_index_stats(&trace_index_stats);
 }
 
 void trace_stats(void)
 {
-	if (trace_want(&trace_pack_stats))
+	if (trace_want(&trace_pack_stats) ||
+	    trace_want(&trace_index_stats))
 		atexit(print_stats_atexit);
 }
