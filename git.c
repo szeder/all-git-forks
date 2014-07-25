@@ -614,6 +614,7 @@ int main(int argc, char **av)
 	git_setup_gettext();
 
 	trace_command_performance(argv);
+	trace_stats();
 
 	/*
 	 * "git-xxxx" is the same as "git xxxx", but we obviously:

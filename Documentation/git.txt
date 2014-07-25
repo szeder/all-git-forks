@@ -959,6 +959,9 @@ Unsetting the variable, or setting it to empty, "0" or
 	time of each Git command.
 	See 'GIT_TRACE' for available trace output options.
 
+'GIT_TRACE_PACK_STATS'::
+	Print various statistics.
+
 'GIT_TRACE_SETUP'::
 	Enables trace messages printing the .git, working tree and current
 	working directory after Git has completed its setup phase.

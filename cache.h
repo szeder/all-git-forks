@@ -1510,4 +1510,6 @@ void stat_validity_update(struct stat_validity *sv, int fd);
 
 int versioncmp(const char *s1, const char *s2);
 
+void report_pack_stats(struct trace_key *key);
+
 #endif /* CACHE_H */

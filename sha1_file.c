@@ -467,6 +467,7 @@ static unsigned int peak_pack_open_windows;
 static unsigned int pack_open_windows;
 static unsigned int pack_open_fds;
 static unsigned int pack_max_fds;
+static unsigned int pack_access_nr;
 static size_t peak_pack_mapped;
 static size_t pack_mapped;
 struct packed_git *packed_git;
@@ -490,6 +491,28 @@ void pack_report(void)
 		pack_mmap_calls,
 		pack_open_windows, peak_pack_open_windows,
 		sz_fmt(pack_mapped), sz_fmt(peak_pack_mapped));
+}
+
+void report_pack_stats(struct trace_key *key)
+{
+	trace_printf_key(key, "\n"
+			 "pack_report: getpagesize()            = %10" SZ_FMT "\n"
+			 "pack_report: core.packedGitWindowSize = %10" SZ_FMT "\n"
+			 "pack_report: core.packedGitLimit      = %10" SZ_FMT "\n"
+			 "pack_report: pack_used_ctr            = %10u\n"
+			 "pack_report: pack_mmap_calls          = %10u\n"
+			 "pack_report: pack_open_windows        = %10u / %10u\n"
+			 "pack_report: pack_mapped              = "
+			 "%10" SZ_FMT " / %10" SZ_FMT "\n"
+			 "pack_report: pack accesss             = %10u\n",
+			 sz_fmt(getpagesize()),
+			 sz_fmt(packed_git_window_size),
+			 sz_fmt(packed_git_limit),
+			 pack_used_ctr,
+			 pack_mmap_calls,
+			 pack_open_windows, peak_pack_open_windows,
+			 sz_fmt(pack_mapped), sz_fmt(peak_pack_mapped),
+			 pack_access_nr);
 }
 
 /*
@@ -2086,6 +2109,7 @@ static void write_pack_access_log(struct packed_git *p, off_t obj_offset)
 	static struct trace_key pack_access = TRACE_KEY_INIT(PACK_ACCESS);
 	trace_printf_key(&pack_access, "%s %"PRIuMAX"\n",
 			 p->pack_name, (uintmax_t)obj_offset);
+	pack_access_nr++;
 }
 
 int do_check_packed_object_crc;

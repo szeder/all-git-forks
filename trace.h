@@ -18,6 +18,7 @@ extern int trace_want(struct trace_key *key);
 extern void trace_disable(struct trace_key *key);
 extern uint64_t getnanotime(void);
 extern void trace_command_performance(const char **argv);
+extern void trace_stats(void);
 
 #ifndef HAVE_VARIADIC_MACROS
 
