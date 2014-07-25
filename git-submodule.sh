@@ -196,7 +196,7 @@ die_if_unmatched ()
 }
 
 gitmodules_config() {
-	git config -f .gitmodules "$@"
+	git config --includes -f .gitmodules "$@"
 }
 
 #

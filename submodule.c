@@ -213,8 +213,10 @@ void gitmodules_config(void)
 				gitmodules_is_modified = 1;
 		}
 
-		if (!gitmodules_is_unmerged)
-			git_config_from_file(submodule_config, gitmodules_path.buf, NULL);
+		if (!gitmodules_is_unmerged) {
+			struct git_config_source source = {.file = gitmodules_path.buf};
+			git_config_with_options(submodule_config, NULL, &source, 1);
+		}
 		strbuf_release(&gitmodules_path);
 	}
 }
