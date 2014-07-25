@@ -3521,14 +3521,18 @@ int transaction_update_reflog(struct ref_transaction *transaction,
 	hashcpy(update->old_sha1, old_sha1);
 	update->reflog_fd = -1;
 	if (email) {
-		struct strbuf buf = STRBUF_INIT;
-		char sign = (tz < 0) ? '-' : '+';
-		int zone = (tz < 0) ? (-tz) : tz;
+		if (flags & REFLOG_EMAIL_IS_COMMITTER)
+			update->committer = xstrdup(email);
+		else {
+			struct strbuf buf = STRBUF_INIT;
+			char sign = (tz < 0) ? '-' : '+';
+			int zone = (tz < 0) ? (-tz) : tz;
 
-		strbuf_addf(&buf, "%s %lu %c%04d", email, timestamp, sign,
-			    zone);
-		update->committer = xstrdup(buf.buf);
-		strbuf_release(&buf);
+			strbuf_addf(&buf, "%s %lu %c%04d", email, timestamp,
+				    sign, zone);
+			update->committer = xstrdup(buf.buf);
+			strbuf_release(&buf);
+		}
 	}
 	if (msg)
 		update->msg = xstrdup(msg);
