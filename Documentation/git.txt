@@ -960,6 +960,7 @@ Unsetting the variable, or setting it to empty, "0" or
 	See 'GIT_TRACE' for available trace output options.
 
 'GIT_TRACE_PACK_STATS'::
+'GIT_TRACE_INDEX_STATS'::
 	Print various statistics.
 
 'GIT_TRACE_SETUP'::

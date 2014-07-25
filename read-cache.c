@@ -48,6 +48,10 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
 struct index_state the_index;
 static const char *alternate_index_output;
 
+static unsigned int nr_read_index;
+static unsigned int nr_read_shm_index;
+static unsigned int nr_write_index;
+
 static void set_index_entry(struct index_state *istate, int nr, struct cache_entry *ce)
 {
 	istate->cache[nr] = ce;
@@ -1568,6 +1572,7 @@ static int try_shm(struct index_state *istate)
 	istate->mmap = new_mmap;
 	istate->mmap_size = new_length;
 	istate->from_shm = 1;
+	nr_read_shm_index++;
 	return 0;
 }
 
@@ -1665,6 +1670,7 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 	}
 	if (!istate->keep_mmap)
 		munmap(mmap, mmap_size);
+	nr_read_index++;
 	return istate->cache_nr;
 
 unmap:
@@ -2150,6 +2156,7 @@ static int do_write_index(struct index_state *istate, int newfd,
 		return -1;
 	istate->timestamp.sec = (unsigned int)st.st_mtime;
 	istate->timestamp.nsec = ST_MTIME_NSEC(st);
+	nr_write_index++;
 	return 0;
 }
 
@@ -2409,4 +2416,13 @@ void stat_validity_update(struct stat_validity *sv, int fd)
 			sv->sd = xcalloc(1, sizeof(struct stat_data));
 		fill_stat_data(sv->sd, &st);
 	}
+}
+
+void report_index_stats(struct trace_key *key)
+{
+	trace_printf_key(key, "\n"
+			 "index stats: file reads        = %10u\n"
+			 "index stats: cache reads       = %10u\n"
+			 "index stats: file writes       = %10u\n",
+			 nr_read_index, nr_read_shm_index, nr_write_index);
 }
