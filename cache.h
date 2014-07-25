@@ -1005,6 +1005,17 @@ extern int read_ref(const char *refname, unsigned char *sha1);
 extern const char *resolve_ref_unsafe(const char *ref, unsigned char *sha1, int reading, int *flag);
 extern char *resolve_refdup(const char *ref, unsigned char *sha1, int reading, int *flag);
 extern int resolve_ref(const char *refname, struct strbuf *result, unsigned char *sha1, int reading, int *flag);
+/*
+ * Given a ref in "ref" and its path, returns
+ *
+ * -2  failed to open with ENOENT, the caller is responsible for
+ *     checking missing loose ref (see resolve_ref for example)
+ * -1  if there's an error, "refname" can no longer be trusted, "flag" may
+ *     be set. errno is valid.
+ *  0  this is a symref, "refname" now contains the linked ref
+ * +1  normal ref, "sha1" is valid
+ */
+extern int parse_ref(const char *path, struct strbuf *refname, unsigned char *sha1, int *flag);
 
 extern int dwim_ref(const char *str, int len, unsigned char *sha1, char **ref);
 extern int dwim_log(const char *str, int len, unsigned char *sha1, char **ref);
