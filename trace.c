@@ -432,3 +432,16 @@ void trace_command_performance(const char **argv)
 	sq_quote_argv(&command_line, argv, 0);
 	command_start_time = getnanotime();
 }
+
+static struct trace_key trace_pack_stats = TRACE_KEY_INIT(PACK_STATS);
+
+static void print_stats_atexit(void)
+{
+	report_pack_stats(&trace_pack_stats);
+}
+
+void trace_stats(void)
+{
+	if (trace_want(&trace_pack_stats))
+		atexit(print_stats_atexit);
+}
