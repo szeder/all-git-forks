@@ -195,6 +195,10 @@ die_if_unmatched ()
 	fi
 }
 
+gitmodules_config() {
+	git config -f .gitmodules "$@"
+}
+
 #
 # Print a submodule configuration setting
 #
@@ -215,7 +219,7 @@ get_submodule_config () {
 	value=$(git config submodule."$name"."$option")
 	if test -z "$value"
 	then
-		value=$(git config -f .gitmodules submodule."$name"."$option")
+		value=$(gitmodules_config submodule."$name"."$option")
 	fi
 	printf '%s' "${value:-$default}"
 }
@@ -231,7 +235,7 @@ module_name()
 	# Do we have "submodule.<something>.path = $1" defined in .gitmodules file?
 	sm_path="$1"
 	re=$(printf '%s\n' "$1" | sed -e 's/[].[^$\\*]/\\&/g')
-	name=$( git config -f .gitmodules --get-regexp '^submodule\..*\.path$' |
+	name=$( gitmodules_config --get-regexp '^submodule\..*\.path$' |
 		sed -n -e 's|^submodule\.\(.*\)\.path '"$re"'$|\1|p' )
 	test -z "$name" &&
 	die "$(eval_gettext "No submodule mapping found in .gitmodules for path '\$sm_path'")"
@@ -488,11 +492,11 @@ Use -f if you really want to add it." >&2
 	git add $force "$sm_path" ||
 	die "$(eval_gettext "Failed to add submodule '\$sm_path'")"
 
-	git config -f .gitmodules submodule."$sm_name".path "$sm_path" &&
-	git config -f .gitmodules submodule."$sm_name".url "$repo" &&
+	gitmodules_config submodule."$sm_name".path "$sm_path" &&
+	gitmodules_config submodule."$sm_name".url "$repo" &&
 	if test -n "$branch"
 	then
-		git config -f .gitmodules submodule."$sm_name".branch "$branch"
+		gitmodules_config submodule."$sm_name".branch "$branch"
 	fi &&
 	git add --force .gitmodules ||
 	die "$(eval_gettext "Failed to register submodule '\$sm_path'")"
@@ -603,7 +607,7 @@ cmd_init()
 		# Copy url setting when it is not set yet
 		if test -z "$(git config "submodule.$name.url")"
 		then
-			url=$(git config -f .gitmodules submodule."$name".url)
+			url=$(gitmodules_config submodule."$name".url)
 			test -z "$url" &&
 			die "$(eval_gettext "No url found for submodule path '\$displaypath' in .gitmodules")"
 
@@ -620,7 +624,7 @@ cmd_init()
 		fi
 
 		# Copy "update" setting when it is not set yet
-		if upd="$(git config -f .gitmodules submodule."$name".update)" &&
+		if upd="$(gitmodules_config submodule."$name".update)" &&
 		   test -n "$upd" &&
 		   test -z "$(git config submodule."$name".update)"
 		then
@@ -1304,7 +1308,7 @@ cmd_sync()
 	do
 		die_if_unmatched "$mode"
 		name=$(module_name "$sm_path")
-		url=$(git config -f .gitmodules --get submodule."$name".url)
+		url=$(gitmodules_config --get submodule."$name".url)
 
 		# Possibly a url relative to parent
 		case "$url" in
