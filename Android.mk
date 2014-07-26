@@ -1,12 +1,28 @@
 git_src := $(call my-dir)
 
-prefix = /system
+gitprefix = /system
 gitexecdir = lib/git-core
-bindir_relative = bin
-infodir = $(prefix)/usr/share/info
+gitmandir = $(gitprefix)/usr/share/man
+gitinfodir = $(gitprefix)/usr/share/info
 template_dir = usr/share/git-core/templates
 
-targetshell = /system/bin/sh
+GIT_SHELL = /system/bin/sh
+GIT_EDITOR = vim
+GIT_PAGER = more
+
+# =============================================================================
+# /system/etc/gitconfig
+# =============================================================================
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := gitconfig
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := ETC
+LOCAL_SRC_FILES := android/gitconfig
+
+include $(BUILD_PREBUILT)
 
 # =============================================================================
 # /system/lib/git-core/*.sh
@@ -45,31 +61,19 @@ SCRIPT_LIB += git-parse-remote
 SCRIPT_LIB += git-rebase--am
 SCRIPT_LIB += git-rebase--interactive
 SCRIPT_LIB += git-rebase--merge
+SCRIPT_LIB += git-sh-setup
 #SCRIPT_LIB += git-sh-i18n
 
 ####################################
 
-LOCAL_MODULE := git-sh-setup
-LOCAL_MODULE_TAGS := eng debug
-LOCAL_MODULE_CLASS := EXECUTABLES
-LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
-LOCAL_SRC_FILES := $(LOCAL_MODULE).sh
-
-# Add /system/bin/sh header to the stripped source script
-$(LOCAL_MODULE):
-	@echo -e ${CL_YLW}"Add missing script header to $@"${CL_RST}
-	@sed -i '1i#!$(targetshell)' $(TARGET_OUT)/$(gitexecdir)/git-sh-setup
-
-include $(BUILD_PREBUILT)
-
 # All other scripts + lib to /system/lib/git-core/
 
-gitshfixup_regex := $(subst /,\/,\#!/bin/sh)/$(subst /,\/,\#!$(targetshell))
+gitshfixup_regex := $(subst /,\/,\#!/bin/sh)/$(subst /,\/,\#!$(GIT_SHELL))
 
 GIT_SCRIPTS := $(SCRIPT_SH)
 $(GIT_SCRIPTS): GIT_BINARY := $(LOCAL_MODULE)
 $(GIT_SCRIPTS): $(LOCAL_INSTALLED_MODULE)
-	@echo -e ${CL_CYN}"Install: $(prefix)/$(gitexecdir)/$@"${CL_RST}
+	@echo -e ${CL_CYN}"Install: $(gitprefix)/$(gitexecdir)/$@"${CL_RST}
 	@mkdir -p $(TARGET_OUT)/$(gitexecdir)
 	$(hide) cp $(git_src)/$@ $(TARGET_OUT)/$(gitexecdir)/$@
 	@sed -i 's/$(gitshfixup_regex)/g' $(TARGET_OUT)/$(gitexecdir)/$@
@@ -81,10 +85,10 @@ ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SCRIPTS)
 GIT_SCRIPT_LIB := $(SCRIPT_LIB)
 $(GIT_SCRIPT_LIB): GIT_BINARY := $(LOCAL_MODULE)
 $(GIT_SCRIPT_LIB): $(LOCAL_INSTALLED_MODULE)
-	@echo -e ${CL_CYN}"Install: $(prefix)/$(gitexecdir)/$@"${CL_RST}
+	@echo -e ${CL_CYN}"Install: $(gitprefix)/$(gitexecdir)/$@"${CL_RST}
 	@mkdir -p $(TARGET_OUT)/$(gitexecdir)
 	$(hide) cp $(git_src)/$@.sh $(TARGET_OUT)/$(gitexecdir)/$@
-	@sed -i '1i#!$(targetshell)' $(TARGET_OUT)/$(gitexecdir)/$@
+	@sed -i '1i#!$(GIT_SHELL)' $(TARGET_OUT)/$(gitexecdir)/$@
 
 ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SCRIPT_LIB)
 
@@ -387,17 +391,20 @@ ETC_GITATTRIBUTES = /etc/gitattributes
 LOCAL_CFLAGS += \
 	-DNO_ICONV -DNO_GETTEXT \
 	-DNO_GECOS_IN_PWENT -DHAVE_DEV_TTY \
-	-DPREFIX=\"$(prefix)\" \
-	-DBINDIR=\"$(bindir)\" \
+	-DPREFIX=\"$(gitprefix)\" \
+	-DBINDIR=\"$(gitbindir)\" \
 	-DGIT_EXEC_PATH=\"$(gitexecdir)\" \
 	-DETC_GITCONFIG=\"$(ETC_GITCONFIG)\" \
 	-DETC_GITATTRIBUTES=\"$(ETC_GITATTRIBUTES)\" \
-	-DGIT_INFO_PATH=\"$(infodir)\" \
 	-DDEFAULT_GIT_TEMPLATE_DIR=\"$(template_dir)\" \
 	-DSHA1_HEADER=\"block-sha1/sha1.h\" \
 	-DGIT_VERSION=\"$(GIT_VERSION)\" \
 	-DGIT_USER_AGENT=\"$(GIT_USER_AGENT)\" \
-	-DGIT_MAN_PATH=\"\" -DGIT_HTML_PATH=\"\" \
+	-DGIT_MAN_PATH=\"$(gitmandir)\" \
+	-DGIT_INFO_PATH=\"$(gitinfodir)\" \
+	-DGIT_HTML_PATH=\"\" \
+	-DDEFAULT_PAGER=\"$(GIT_PAGER)\" \
+	-DDEFAULT_EDITOR=\"$(GIT_EDITOR)\" \
 
 LOCAL_STATIC_LIBRARIES +=
 LOCAL_SHARED_LIBRARIES += libcurl libz libssl libcrypto
@@ -405,7 +412,7 @@ LOCAL_SHARED_LIBRARIES += libcurl libz libssl libcrypto
 LOCAL_MODULE := git
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 LOCAL_MODULE_TAGS := optional
-LOCAL_REQUIRED_MODULES := git-sh-setup
+LOCAL_REQUIRED_MODULES := gitconfig
 include $(BUILD_EXECUTABLE)
 
 
@@ -414,16 +421,16 @@ include $(BUILD_EXECUTABLE)
 GIT_TEMPLATES := $(call find-subdir-files, templates/* )
 GIT_TEMPLATES := $(filter-out templates/Makefile, $(GIT_TEMPLATES))
 
-git_tpl_dir = $(subst /templates,,$(template_dir))
+gittpldir = $(subst /templates,,$(template_dir))
 
 # templates files uses "--" as directory seperators, subst them...
 # todo: fix /bin/sh header
 #
 $(GIT_TEMPLATES): GIT_BINARY := $(LOCAL_MODULE)
 $(GIT_TEMPLATES): $(LOCAL_INSTALLED_MODULE)
-	@echo -e ${CL_CYN}"Install: $(subst --,/,$@) -> $(prefix)/$(git_tpl_dir)/"${CL_RST}
-	@mkdir -p $(shell dirname $(TARGET_OUT)/$(git_tpl_dir)/$(subst --,/,$@))
-	$(hide) cp $(git_src)/$@ $(TARGET_OUT)/$(git_tpl_dir)/$(subst --,/,$@) || echo "ignore $@"
+	@echo -e ${CL_CYN}"Install: $(subst --,/,$@) -> $(gitprefix)/$(gittpldir)/"${CL_RST}
+	@mkdir -p $(shell dirname $(TARGET_OUT)/$(gittpldir)/$(subst --,/,$@))
+	$(hide) cp $(git_src)/$@ $(TARGET_OUT)/$(gittpldir)/$(subst --,/,$@) || echo "ignore $@"
 
 ALL_DEFAULT_INSTALLED_MODULES += $(GIT_TEMPLATES)
 
