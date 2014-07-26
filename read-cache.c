@@ -1173,6 +1173,7 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 		  const struct pathspec *pathspec,
 		  char *seen, const char *header_msg)
 {
+	uint64_t start = getnanotime();
 	int i;
 	int has_errors = 0;
 	int really = (flags & REFRESH_REALLY) != 0;
@@ -1264,6 +1265,7 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 
 		replace_index_entry(istate, i, new);
 	}
+	trace_performance_since(start, "refresh_index");
 	return has_errors;
 }
 
@@ -1820,6 +1822,7 @@ unmap:
 int read_index_from(struct index_state *istate, const char *path)
 {
 	struct split_index *split_index;
+	uint64_t start = getnanotime();
 	int ret;
 
 	/* istate->initialized covers both .git/index and .git/sharedindex.xxx */
@@ -1827,6 +1830,7 @@ int read_index_from(struct index_state *istate, const char *path)
 		return istate->cache_nr;
 
 	ret = do_read_index(istate, path, 0);
+	trace_performance_since(start, "read_index_from %s", path);
 	split_index = istate->split_index;
 	if (!split_index || is_null_sha1(split_index->base_sha1)) {
 		check_ce_order(istate);
@@ -1840,9 +1844,12 @@ int read_index_from(struct index_state *istate, const char *path)
 	split_index->base->keep_mmap = istate->keep_mmap;
 	split_index->base->to_shm    = istate->to_shm;
 	split_index->base->from_shm  = istate->from_shm;
+	start = getnanotime();
 	ret = do_read_index(split_index->base,
 			    git_path("sharedindex.%s",
 				     sha1_to_hex(split_index->base_sha1)), 1);
+	trace_performance_since(start, "read_index_from sharedindex.%s",
+				sha1_to_hex(split_index->base_sha1));
 	if (hashcmp(split_index->base_sha1, split_index->base->sha1))
 		die("broken index, expect %s in %s, got %s",
 		    sha1_to_hex(split_index->base_sha1),
@@ -2179,10 +2186,13 @@ static int has_racy_timestamp(struct index_state *istate)
  */
 void update_index_if_able(struct index_state *istate, struct lock_file *lockfile)
 {
+	uint64_t start = getnanotime();
 	if ((istate->cache_changed || has_racy_timestamp(istate)) &&
 	    verify_index(istate) &&
 	    write_locked_index(istate, lockfile, COMMIT_LOCK))
 		rollback_lock_file(lockfile);
+	trace_performance_since(start, "update_index_if_able %s",
+				get_lock_file_path(lockfile));
 }
 
 static int do_write_index(struct index_state *istate, int newfd,
