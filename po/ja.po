@@ -420,45 +420,46 @@ msgstr[0] "%lu年前"
 #: diffcore-order.c:24
 #, c-format
 msgid "failed to read orderfile '%s'"
-msgstr ""
+msgstr "'%s'のファイルの読み込みに失敗"
 
 #: diffcore-rename.c:517
 msgid "Performing inexact rename detection"
-msgstr ""
+msgstr "名前変更の探知が正確ではない"
 
 #: diff.c:113
 #, c-format
 msgid "  Failed to parse dirstat cut-off percentage '%s'\n"
-msgstr ""
+msgstr "dirstatが切断される確率が '%s'パーセントであるかの解析に失敗しました"
 
 #: diff.c:118
 #, c-format
 msgid "  Unknown dirstat parameter '%s'\n"
-msgstr ""
+msgstr "'%s'という不明なdirstatの変数があります"
 
 #: diff.c:213
 #, c-format
 msgid "Unknown value for 'diff.submodule' config variable: '%s'"
-msgstr ""
+msgstr "'diff.submodule'という構成変数へ送る値: '%s'が不明です"
 
 #: diff.c:263
 #, c-format
 msgid ""
 "Found errors in 'diff.dirstat' config variable:\n"
 "%s"
-msgstr ""
+msgstr "'diff.dirstat'という構成変数にエラーがありました"
+"%s"
 
 #: diff.c:3495
 #, c-format
 msgid ""
 "Failed to parse --dirstat/-X option parameter:\n"
 "%s"
-msgstr ""
+msgstr "%s" "という --dirstat/-X オプション変数の解析に失敗しました"
 
 #: diff.c:3509
 #, c-format
 msgid "Failed to parse --submodule option parameter: '%s'"
-msgstr ""
+msgstr "--submodule オプション変数: '%s'の解析に失敗しました "
 
 #: gpg-interface.c:59 gpg-interface.c:131
 msgid "could not run gpg."
