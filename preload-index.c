@@ -33,6 +33,7 @@ struct thread_data {
 
 static void *preload_thread(void *_data)
 {
+	uint64_t start = getnanotime();
 	int nr;
 	struct thread_data *p = _data;
 	struct index_state *index = p->index;
@@ -64,6 +65,7 @@ static void *preload_thread(void *_data)
 		ce_mark_uptodate(ce);
 	} while (--nr > 0);
 	cache_def_clear(&cache);
+	trace_performance_since(start, "preload_thread");
 	return NULL;
 }
 
@@ -106,8 +108,10 @@ static void preload_index(struct index_state *index,
 int read_index_preload(struct index_state *index,
 		       const struct pathspec *pathspec)
 {
+	uint64_t start = getnanotime();
 	int retval = read_index(index);
 
 	preload_index(index, pathspec);
+	trace_performance_since(start, "read_index_preload");
 	return retval;
 }

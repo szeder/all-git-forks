@@ -617,13 +617,24 @@ static void wt_status_collect_untracked(struct wt_status *s)
 
 void wt_status_collect(struct wt_status *s)
 {
+	uint64_t start = getnanotime();
+
 	wt_status_collect_changes_worktree(s);
+
+	trace_performance_since(start, "wt_status_collect_changes_worktree");
+	start = getnanotime();
 
 	if (s->is_initial)
 		wt_status_collect_changes_initial(s);
 	else
 		wt_status_collect_changes_index(s);
+
+	trace_performance_since(start, "wt_status_collect_changes_index");
+	start = getnanotime();
+
 	wt_status_collect_untracked(s);
+
+	trace_performance_since(start, "wt_status_collect_untracked");
 }
 
 static void wt_status_print_unmerged(struct wt_status *s)
