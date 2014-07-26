@@ -368,28 +368,38 @@ XDIFF_OBJS += xdiff/xmerge.c
 XDIFF_OBJS += xdiff/xpatience.c
 XDIFF_OBJS += xdiff/xhistogram.c
 
-LOCAL_SRC_FILES:= \
-	git.c \
-	block-sha1/sha1.c \
-	$(LIB_OBJS) \
-	$(BUILTIN_OBJS) \
-	$(XDIFF_OBJS) \
 
-# LOCAL_SRC_FILES += src/utf8_mbfuncs.c
+# TODO, other git-<tools>
+PROGRAM_OBJS =
+PROGRAM_OBJS += credential-store.c
+PROGRAM_OBJS += daemon.c
+PROGRAM_OBJS += fast-import.c
+PROGRAM_OBJS += http-backend.c
+PROGRAM_OBJS += imap-send.c
+PROGRAM_OBJS += sh-i18n--envsubst.c
+PROGRAM_OBJS += shell.c
+PROGRAM_OBJS += show-index.c
+PROGRAM_OBJS += upload-pack.c
+PROGRAM_OBJS += remote-testsvn.c
+PROGRAM_OBJS += http-fetch.c
+PROGRAM_OBJS += http-push.c
 
-LOCAL_C_INCLUDES += \
+
+git_INCLUDES := \
 	$(LOCAL_PATH)/android \
 	$(LOCAL_PATH)/compat \
 	$(LOCAL_PATH)/xdiff \
 	external/zlib \
+	external/expat/lib \
 	external/curl/include \
 	external/openssl/include \
 
 ETC_GITCONFIG = /etc/gitconfig
 ETC_GITATTRIBUTES = /etc/gitattributes
 
-LOCAL_CFLAGS += \
+git_CFLAGS += \
 	-DNO_ICONV -DNO_GETTEXT \
+	-UNO_EXPAT -UNO_CURL \
 	-DNO_GECOS_IN_PWENT -DHAVE_DEV_TTY \
 	-DPREFIX=\"$(gitprefix)\" \
 	-DBINDIR=\"$(gitbindir)\" \
@@ -406,13 +416,55 @@ LOCAL_CFLAGS += \
 	-DDEFAULT_PAGER=\"$(GIT_PAGER)\" \
 	-DDEFAULT_EDITOR=\"$(GIT_EDITOR)\" \
 
-LOCAL_STATIC_LIBRARIES +=
-LOCAL_SHARED_LIBRARIES += libcurl libz libssl libcrypto
+###############################################################################
+
+LOCAL_MODULE := git-remote-https
+LOCAL_MODULE_TAGS := optional
+
+LOCAL_CFLAGS := $(git_CFLAGS)
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+LOCAL_SRC_FILES := remote-curl.c http.c http-walker.c \
+	block-sha1/sha1.c \
+	$(LIB_OBJS) \
+	$(XDIFF_OBJS) \
+
+LOCAL_SHARED_LIBRARIES := libcurl libz libssl libcrypto libexpat
+LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
+include $(BUILD_EXECUTABLE)
+
+
+GIT_SYMLINKS := git-remote-http git-remote-ftp git-remote-ftps
+GIT_SYMLINKS := $(addprefix $(TARGET_OUT)/$(gitexecdir)/,$(GIT_SYMLINKS))
+$(GIT_SYMLINKS): GIT_REMOTE_BINARY := $(LOCAL_MODULE)
+$(GIT_SYMLINKS): $(LOCAL_INSTALLED_MODULE)
+	@echo -e ${CL_CYN}"Symlink:"${CL_RST}" $@ -> $(GIT_REMOTE_BINARY)"
+	@mkdir -p $(dir $@)
+	@rm -f $@
+	$(hide) ln -sf $(GIT_REMOTE_BINARY) $@
+
+ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SYMLINKS)
+
+###############################################################################
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES := git.c \
+	block-sha1/sha1.c \
+	$(LIB_OBJS) \
+	$(BUILTIN_OBJS) \
+	$(XDIFF_OBJS) \
 
 LOCAL_MODULE := git
-LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 LOCAL_MODULE_TAGS := optional
-LOCAL_REQUIRED_MODULES := gitconfig
+LOCAL_CFLAGS := $(git_CFLAGS)
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+
+LOCAL_STATIC_LIBRARIES :=
+LOCAL_SHARED_LIBRARIES := libz libcrypto
+LOCAL_REQUIRED_MODULES := gitconfig git-remote-https
+
+LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 include $(BUILD_EXECUTABLE)
 
 
@@ -435,7 +487,7 @@ $(GIT_TEMPLATES): $(LOCAL_INSTALLED_MODULE)
 ALL_DEFAULT_INSTALLED_MODULES += $(GIT_TEMPLATES)
 
 ALL_MODULES.$(LOCAL_MODULE).INSTALLED := \
-	$(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) $(GIT_TEMPLATES)
+	$(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) $(GIT_TEMPLATES) $(GIT_SYMLINKS)
 
 
 #include $(call all-makefiles-under,$(LOCAL_PATH))
