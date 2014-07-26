@@ -1,7 +1,7 @@
 git_src := $(call my-dir)
 
 gitprefix = /system
-gitexecdir = lib/git-core
+gitexecdir = xbin/git-core
 gitmandir = $(gitprefix)/usr/share/man
 gitinfodir = $(gitprefix)/usr/share/info
 template_dir = usr/share/git-core/templates
@@ -369,22 +369,6 @@ XDIFF_OBJS += xdiff/xpatience.c
 XDIFF_OBJS += xdiff/xhistogram.c
 
 
-# TODO, other git-<tools>
-PROGRAM_OBJS =
-PROGRAM_OBJS += credential-store.c
-PROGRAM_OBJS += daemon.c
-PROGRAM_OBJS += fast-import.c
-PROGRAM_OBJS += http-backend.c
-PROGRAM_OBJS += imap-send.c
-PROGRAM_OBJS += sh-i18n--envsubst.c
-PROGRAM_OBJS += shell.c
-PROGRAM_OBJS += show-index.c
-PROGRAM_OBJS += upload-pack.c
-PROGRAM_OBJS += remote-testsvn.c
-PROGRAM_OBJS += http-fetch.c
-PROGRAM_OBJS += http-push.c
-
-
 git_INCLUDES := \
 	$(LOCAL_PATH)/android \
 	$(LOCAL_PATH)/compat \
@@ -416,7 +400,17 @@ git_CFLAGS += \
 	-DDEFAULT_PAGER=\"$(GIT_PAGER)\" \
 	-DDEFAULT_EDITOR=\"$(GIT_EDITOR)\" \
 
+LOCAL_MODULE := libgit_static
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := $(git_CFLAGS)
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+LOCAL_SRC_FILES := $(LIB_OBJS)
+include $(BUILD_STATIC_LIBRARY)
+
 ###############################################################################
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
 
 LOCAL_MODULE := git-remote-https
 LOCAL_MODULE_TAGS := optional
@@ -425,10 +419,10 @@ LOCAL_CFLAGS := $(git_CFLAGS)
 LOCAL_C_INCLUDES := $(git_INCLUDES)
 LOCAL_SRC_FILES := remote-curl.c http.c http-walker.c \
 	block-sha1/sha1.c \
-	$(LIB_OBJS) \
 	$(XDIFF_OBJS) \
 
-LOCAL_SHARED_LIBRARIES := libcurl libz libssl libcrypto libexpat
+LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_SHARED_LIBRARIES := libcurl libz libssl libcrypto
 LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
 include $(BUILD_EXECUTABLE)
 
@@ -445,13 +439,95 @@ $(GIT_SYMLINKS): $(LOCAL_INSTALLED_MODULE)
 ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SYMLINKS)
 
 ###############################################################################
+# Other (optional) git-<tools>
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+LOCAL_MODULE := git-fast-import
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := $(git_CFLAGS)
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+LOCAL_SRC_FILES := fast-import.c block-sha1/sha1.c
+LOCAL_STATIC_LIBRARIES := libgit_static libz
+LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
+include $(BUILD_EXECUTABLE)
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+LOCAL_MODULE := git-http-fetch
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := $(git_CFLAGS) -DCURL_DISABLE_TYPECHECK
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+LOCAL_SRC_FILES := http-fetch.c http.c http-walker.c block-sha1/sha1.c
+LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_SHARED_LIBRARIES := libcurl libz
+LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
+include $(BUILD_EXECUTABLE)
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+LOCAL_MODULE := git-http-push
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := $(git_CFLAGS) -DCURL_DISABLE_TYPECHECK
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+LOCAL_SRC_FILES := http-push.c http.c block-sha1/sha1.c $(XDIFF_OBJS)
+LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_SHARED_LIBRARIES := libcurl libexpat libz
+LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
+include $(BUILD_EXECUTABLE)
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+LOCAL_MODULE := git-shell
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := $(git_CFLAGS)
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+LOCAL_SRC_FILES := shell.c
+LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
+include $(BUILD_EXECUTABLE)
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+LOCAL_MODULE := git-show-index
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := $(git_CFLAGS)
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+LOCAL_SRC_FILES := show-index.c
+LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
+include $(BUILD_EXECUTABLE)
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+LOCAL_MODULE := git-upload-pack
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := $(git_CFLAGS)
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+LOCAL_SRC_FILES := upload-pack.c block-sha1/sha1.c
+LOCAL_STATIC_LIBRARIES := libgit_static libz
+LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
+include $(BUILD_EXECUTABLE)
+
+
+# TODO, other git-<tools>
+PROGRAM_OBJS =
+PROGRAM_OBJS += credential-store.c
+PROGRAM_OBJS += daemon.c
+PROGRAM_OBJS += http-backend.c
+PROGRAM_OBJS += imap-send.c
+PROGRAM_OBJS += sh-i18n--envsubst.c
+PROGRAM_OBJS += remote-testsvn.c
+
+
+###############################################################################
+# main git binary
 
 LOCAL_PATH := $(git_src)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := git.c \
 	block-sha1/sha1.c \
-	$(LIB_OBJS) \
 	$(BUILTIN_OBJS) \
 	$(XDIFF_OBJS) \
 
@@ -460,9 +536,9 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS := $(git_CFLAGS)
 LOCAL_C_INCLUDES := $(git_INCLUDES)
 
-LOCAL_STATIC_LIBRARIES :=
+LOCAL_STATIC_LIBRARIES := libgit_static
 LOCAL_SHARED_LIBRARIES := libz libcrypto
-LOCAL_REQUIRED_MODULES := gitconfig git-remote-https
+LOCAL_REQUIRED_MODULES := libgit_static gitconfig git-remote-https
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 include $(BUILD_EXECUTABLE)
