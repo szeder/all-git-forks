@@ -16,6 +16,12 @@ GIT_PAGER = more
 include $(git_src)/GIT-VERSION-FILE
 GIT_USER_AGENT = git/$(GIT_VERSION)
 
+# Test if libcurl folder is present in repo
+optional_libcurl = libcurl
+ifeq (,$(shell test -e "$(git_src)/../curl" && echo Y))
+    optional_libcurl =
+endif
+
 ###############################################################################
 # /system/etc/gitconfig
 
@@ -65,6 +71,7 @@ SCRIPT_LIB += git-sh-i18n
 
 gitshfixup_regex := $(subst /,\/,\#!/bin/sh)/$(subst /,\/,\#!$(GIT_SHELL))
 
+# Script files need a shell header
 GIT_SCRIPTS := $(SCRIPT_SH)
 $(GIT_SCRIPTS): GIT_BINARY := $(LOCAL_MODULE)
 $(GIT_SCRIPTS): $(LOCAL_INSTALLED_MODULE)
@@ -72,10 +79,9 @@ $(GIT_SCRIPTS): $(LOCAL_INSTALLED_MODULE)
 	@mkdir -p $(TARGET_OUT)/$(gitexecdir)
 	$(hide) cp $(git_src)/$@ $(TARGET_OUT)/$(gitexecdir)/$@
 	@sed -i 's/$(gitshfixup_regex)/g' $(TARGET_OUT)/$(gitexecdir)/$@
+	@sed -i 's/@@PERL@@/perl/g' $(TARGET_OUT)/$(gitexecdir)/$@
 
 ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SCRIPTS)
-
-# other script lib files need a shell header (or not, often included)
 
 GIT_SCRIPT_LIB := $(SCRIPT_LIB)
 $(GIT_SCRIPT_LIB): GIT_BINARY := $(LOCAL_MODULE)
@@ -83,7 +89,8 @@ $(GIT_SCRIPT_LIB): $(LOCAL_INSTALLED_MODULE)
 	@echo -e ${CL_CYN}"Install: $(gitprefix)/$(gitexecdir)/$@"${CL_RST}
 	@mkdir -p $(TARGET_OUT)/$(gitexecdir)
 	$(hide) cp $(git_src)/$@.sh $(TARGET_OUT)/$(gitexecdir)/$@
-	@sed -i '1i#!$(GIT_SHELL)' $(TARGET_OUT)/$(gitexecdir)/$@
+	@sed -i 's/@@DIFF@@/diff/g' $(TARGET_OUT)/$(gitexecdir)/$@
+	@sed -i 's/@@PERL@@/perl/g' $(TARGET_OUT)/$(gitexecdir)/$@
 
 ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SCRIPT_LIB)
 
@@ -370,12 +377,11 @@ git_INCLUDES := \
 	$(LOCAL_PATH)/xdiff \
 	external/zlib \
 	external/expat/lib \
-	external/curl/include \
 	external/openssl/include \
 
-git_CFLAGS += \
+git_CFLAGS := \
 	-DNO_ICONV -DNO_GETTEXT \
-	-UNO_EXPAT -UNO_CURL \
+	-UNO_EXPAT \
 	-DNO_GECOS_IN_PWENT -DHAVE_DEV_TTY \
 	-DPREFIX=\"$(gitprefix)\" \
 	-DBINDIR=\"$(gitbindir)\" \
@@ -392,6 +398,12 @@ git_CFLAGS += \
 	-DDEFAULT_PAGER=\"$(GIT_PAGER)\" \
 	-DDEFAULT_EDITOR=\"$(GIT_EDITOR)\" \
 
+ifeq ($(optional_libcurl),libcurl)
+    git_INCLUDES += external/curl/include
+else
+    git_CFLAGS += -DNO_CURL
+endif
+
 LOCAL_MODULE := libgit_static
 LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS := $(git_CFLAGS)
@@ -402,6 +414,8 @@ include $(BUILD_STATIC_LIBRARY)
 
 ###############################################################################
 # Binary required to clone from http(s) and ftp(s) (git:// doesnt need that)
+
+ifeq ($(optional_libcurl),libcurl)
 
 LOCAL_PATH := $(git_src)
 include $(CLEAR_VARS)
@@ -415,7 +429,7 @@ LOCAL_SRC_FILES := remote-curl.c http.c http-walker.c \
 	$(XDIFF_OBJS) \
 
 LOCAL_STATIC_LIBRARIES := libgit_static
-LOCAL_SHARED_LIBRARIES := libcurl libz libssl
+LOCAL_SHARED_LIBRARIES := libz libssl libcurl
 LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
 include $(BUILD_EXECUTABLE)
 
@@ -431,6 +445,7 @@ $(GIT_SYMLINKS): $(LOCAL_INSTALLED_MODULE)
 
 ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SYMLINKS)
 
+endif
 
 ###############################################################################
 # Other optional git-<tools>
@@ -483,6 +498,8 @@ LOCAL_SHARED_LIBRARIES := libz
 LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
 include $(BUILD_EXECUTABLE)
 
+ifeq ($(optional_libcurl),libcurl)
+
 LOCAL_PATH := $(git_src)
 include $(CLEAR_VARS)
 LOCAL_MODULE := git-http-fetch
@@ -491,7 +508,7 @@ LOCAL_CFLAGS := $(git_CFLAGS) -DCURL_DISABLE_TYPECHECK
 LOCAL_C_INCLUDES := $(git_INCLUDES)
 LOCAL_SRC_FILES := http-fetch.c http.c http-walker.c
 LOCAL_STATIC_LIBRARIES := libgit_static
-LOCAL_SHARED_LIBRARIES := libcurl libz
+LOCAL_SHARED_LIBRARIES := libz libcurl
 LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
 include $(BUILD_EXECUTABLE)
 
@@ -503,9 +520,11 @@ LOCAL_CFLAGS := $(git_CFLAGS) -DCURL_DISABLE_TYPECHECK
 LOCAL_C_INCLUDES := $(git_INCLUDES)
 LOCAL_SRC_FILES := http-push.c http.c $(XDIFF_OBJS)
 LOCAL_STATIC_LIBRARIES := libgit_static
-LOCAL_SHARED_LIBRARIES := libcurl libexpat libz
+LOCAL_SHARED_LIBRARIES := libz libexpat libcurl
 LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
 include $(BUILD_EXECUTABLE)
+
+endif
 
 LOCAL_PATH := $(git_src)
 include $(CLEAR_VARS)
