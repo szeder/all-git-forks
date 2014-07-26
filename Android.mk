@@ -6,6 +6,9 @@ gitmandir = $(gitprefix)/usr/share/man
 gitinfodir = $(gitprefix)/usr/share/info
 template_dir = usr/share/git-core/templates
 
+ETC_GITCONFIG = /etc/gitconfig
+ETC_GITATTRIBUTES = /etc/gitattributes
+
 GIT_SHELL = /system/bin/sh
 GIT_EDITOR = vim
 GIT_PAGER = more
@@ -62,7 +65,7 @@ SCRIPT_LIB += git-rebase--am
 SCRIPT_LIB += git-rebase--interactive
 SCRIPT_LIB += git-rebase--merge
 SCRIPT_LIB += git-sh-setup
-#SCRIPT_LIB += git-sh-i18n
+SCRIPT_LIB += git-sh-i18n
 
 ####################################
 
@@ -260,6 +263,7 @@ LIB_OBJS += xdiff-interface.c
 LIB_OBJS += zlib.c
 
 LIB_OBJS += thread-utils.c
+LIB_OBJS += block-sha1/sha1.c
 
 BUILTIN_OBJS += builtin/add.c
 BUILTIN_OBJS += builtin/annotate.c
@@ -378,9 +382,6 @@ git_INCLUDES := \
 	external/curl/include \
 	external/openssl/include \
 
-ETC_GITCONFIG = /etc/gitconfig
-ETC_GITATTRIBUTES = /etc/gitattributes
-
 git_CFLAGS += \
 	-DNO_ICONV -DNO_GETTEXT \
 	-UNO_EXPAT -UNO_CURL \
@@ -418,11 +419,10 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS := $(git_CFLAGS)
 LOCAL_C_INCLUDES := $(git_INCLUDES)
 LOCAL_SRC_FILES := remote-curl.c http.c http-walker.c \
-	block-sha1/sha1.c \
 	$(XDIFF_OBJS) \
 
 LOCAL_STATIC_LIBRARIES := libgit_static
-LOCAL_SHARED_LIBRARIES := libcurl libz libssl libcrypto
+LOCAL_SHARED_LIBRARIES := libcurl libz libssl
 LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
 include $(BUILD_EXECUTABLE)
 
@@ -441,14 +441,51 @@ ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SYMLINKS)
 ###############################################################################
 # Other (optional) git-<tools>
 
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+LOCAL_MODULE := git-credential-store
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := $(git_CFLAGS)
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+LOCAL_SRC_FILES := credential-store.c
+LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
+include $(BUILD_EXECUTABLE)
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+LOCAL_MODULE := git-daemon
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := $(git_CFLAGS)
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+LOCAL_SRC_FILES := daemon.c
+LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_SHARED_LIBRARIES := libz
+LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
+include $(BUILD_EXECUTABLE)
+
 LOCAL_PATH := $(git_src)
 include $(CLEAR_VARS)
 LOCAL_MODULE := git-fast-import
 LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS := $(git_CFLAGS)
 LOCAL_C_INCLUDES := $(git_INCLUDES)
-LOCAL_SRC_FILES := fast-import.c block-sha1/sha1.c
-LOCAL_STATIC_LIBRARIES := libgit_static libz
+LOCAL_SRC_FILES := fast-import.c
+LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_SHARED_LIBRARIES := libz
+LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
+include $(BUILD_EXECUTABLE)
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+LOCAL_MODULE := git-http-backend
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := $(git_CFLAGS) #-DCURL_DISABLE_TYPECHECK
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+LOCAL_SRC_FILES := http-backend.c
+LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_SHARED_LIBRARIES := libz
 LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
 include $(BUILD_EXECUTABLE)
 
@@ -458,7 +495,7 @@ LOCAL_MODULE := git-http-fetch
 LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS := $(git_CFLAGS) -DCURL_DISABLE_TYPECHECK
 LOCAL_C_INCLUDES := $(git_INCLUDES)
-LOCAL_SRC_FILES := http-fetch.c http.c http-walker.c block-sha1/sha1.c
+LOCAL_SRC_FILES := http-fetch.c http.c http-walker.c
 LOCAL_STATIC_LIBRARIES := libgit_static
 LOCAL_SHARED_LIBRARIES := libcurl libz
 LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
@@ -470,9 +507,35 @@ LOCAL_MODULE := git-http-push
 LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS := $(git_CFLAGS) -DCURL_DISABLE_TYPECHECK
 LOCAL_C_INCLUDES := $(git_INCLUDES)
-LOCAL_SRC_FILES := http-push.c http.c block-sha1/sha1.c $(XDIFF_OBJS)
+LOCAL_SRC_FILES := http-push.c http.c $(XDIFF_OBJS)
 LOCAL_STATIC_LIBRARIES := libgit_static
 LOCAL_SHARED_LIBRARIES := libcurl libexpat libz
+LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
+include $(BUILD_EXECUTABLE)
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+LOCAL_MODULE := git-imap-send
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := $(git_CFLAGS)
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+LOCAL_SRC_FILES := imap-send.c
+LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_SHARED_LIBRARIES := libcrypto libssl libz
+LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
+include $(BUILD_EXECUTABLE)
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+LOCAL_MODULE := git-remote-testsvn
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := $(git_CFLAGS)
+LOCAL_C_INCLUDES := $(git_INCLUDES) $(LOCAL_PATH)/vcs-svn
+LOCAL_SRC_FILES := remote-testsvn.c vcs-svn/svndiff.c vcs-svn/svndump.c \
+	vcs-svn/fast_export.c vcs-svn/line_buffer.c vcs-svn/repo_tree.c \
+	vcs-svn/sliding_window.c
+LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_SHARED_LIBRARIES := libz
 LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
 include $(BUILD_EXECUTABLE)
 
@@ -486,6 +549,7 @@ LOCAL_SRC_FILES := shell.c
 LOCAL_STATIC_LIBRARIES := libgit_static
 LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
 include $(BUILD_EXECUTABLE)
+# note: ~/git-shell-commands folder should be created
 
 LOCAL_PATH := $(git_src)
 include $(CLEAR_VARS)
@@ -504,20 +568,22 @@ LOCAL_MODULE := git-upload-pack
 LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS := $(git_CFLAGS)
 LOCAL_C_INCLUDES := $(git_INCLUDES)
-LOCAL_SRC_FILES := upload-pack.c block-sha1/sha1.c
-LOCAL_STATIC_LIBRARIES := libgit_static libz
+LOCAL_SRC_FILES := upload-pack.c
+LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_SHARED_LIBRARIES := libz
 LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
 include $(BUILD_EXECUTABLE)
 
-
-# TODO, other git-<tools>
-PROGRAM_OBJS =
-PROGRAM_OBJS += credential-store.c
-PROGRAM_OBJS += daemon.c
-PROGRAM_OBJS += http-backend.c
-PROGRAM_OBJS += imap-send.c
-PROGRAM_OBJS += sh-i18n--envsubst.c
-PROGRAM_OBJS += remote-testsvn.c
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+LOCAL_MODULE := git-sh-i18n--envsubst
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := $(git_CFLAGS)
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+LOCAL_SRC_FILES := sh-i18n--envsubst.c
+LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
+include $(BUILD_EXECUTABLE)
 
 
 ###############################################################################
@@ -527,7 +593,6 @@ LOCAL_PATH := $(git_src)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := git.c \
-	block-sha1/sha1.c \
 	$(BUILTIN_OBJS) \
 	$(XDIFF_OBJS) \
 
@@ -537,7 +602,7 @@ LOCAL_CFLAGS := $(git_CFLAGS)
 LOCAL_C_INCLUDES := $(git_INCLUDES)
 
 LOCAL_STATIC_LIBRARIES := libgit_static
-LOCAL_SHARED_LIBRARIES := libz libcrypto
+LOCAL_SHARED_LIBRARIES := libz
 LOCAL_REQUIRED_MODULES := libgit_static gitconfig git-remote-https
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
