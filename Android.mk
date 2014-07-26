@@ -13,9 +13,11 @@ GIT_SHELL = /system/bin/sh
 GIT_EDITOR = vim
 GIT_PAGER = more
 
-# =============================================================================
+include $(git_src)/GIT-VERSION-FILE
+GIT_USER_AGENT = git/$(GIT_VERSION)
+
+###############################################################################
 # /system/etc/gitconfig
-# =============================================================================
 
 LOCAL_PATH := $(git_src)
 include $(CLEAR_VARS)
@@ -27,17 +29,11 @@ LOCAL_SRC_FILES := android/gitconfig
 
 include $(BUILD_PREBUILT)
 
-# =============================================================================
-# /system/lib/git-core/*.sh
-# =============================================================================
+###############################################################################
+# /system/xbin/git-core/*.sh
 
 LOCAL_PATH := $(git_src)
 include $(CLEAR_VARS)
-
-include $(LOCAL_PATH)/GIT-VERSION-FILE
-GIT_USER_AGENT = git/$(GIT_VERSION)
-
-### SCRIPT FILES ###
 
 SCRIPT_SH =
 SCRIPT_LIB =
@@ -67,10 +63,6 @@ SCRIPT_LIB += git-rebase--merge
 SCRIPT_LIB += git-sh-setup
 SCRIPT_LIB += git-sh-i18n
 
-####################################
-
-# All other scripts + lib to /system/lib/git-core/
-
 gitshfixup_regex := $(subst /,\/,\#!/bin/sh)/$(subst /,\/,\#!$(GIT_SHELL))
 
 GIT_SCRIPTS := $(SCRIPT_SH)
@@ -99,9 +91,8 @@ ALL_MODULES.$(LOCAL_MODULE).INSTALLED := \
         $(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) $(GIT_SCRIPTS) $(GIT_SCRIPT_LIB)
 
 
-# =============================================================================
-# /system/xbin/git
-# =============================================================================
+###############################################################################
+# static lib and other common objects to build all binaries
 
 LOCAL_PATH := $(git_src)
 include $(CLEAR_VARS)
@@ -408,7 +399,9 @@ LOCAL_C_INCLUDES := $(git_INCLUDES)
 LOCAL_SRC_FILES := $(LIB_OBJS)
 include $(BUILD_STATIC_LIBRARY)
 
+
 ###############################################################################
+# Binary required to clone from http(s) and ftp(s) (git:// doesnt need that)
 
 LOCAL_PATH := $(git_src)
 include $(CLEAR_VARS)
@@ -438,8 +431,9 @@ $(GIT_SYMLINKS): $(LOCAL_INSTALLED_MODULE)
 
 ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SYMLINKS)
 
+
 ###############################################################################
-# Other (optional) git-<tools>
+# Other optional git-<tools>
 
 
 LOCAL_PATH := $(git_src)
@@ -587,7 +581,7 @@ include $(BUILD_EXECUTABLE)
 
 
 ###############################################################################
-# main git binary
+# Main git binary
 
 LOCAL_PATH := $(git_src)
 include $(CLEAR_VARS)
@@ -608,8 +602,8 @@ LOCAL_REQUIRED_MODULES := libgit_static gitconfig git-remote-https
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 include $(BUILD_EXECUTABLE)
 
-
-### RUNTIME FILES (TEMPLATES) #####################################################################
+###############################################################################
+# Template (folders+files) used on "git init"
 
 GIT_TEMPLATES := $(call find-subdir-files, templates/* )
 GIT_TEMPLATES := $(filter-out templates/Makefile, $(GIT_TEMPLATES))
@@ -623,12 +617,10 @@ $(GIT_TEMPLATES): GIT_BINARY := $(LOCAL_MODULE)
 $(GIT_TEMPLATES): $(LOCAL_INSTALLED_MODULE)
 	@echo -e ${CL_CYN}"Install: $(subst --,/,$@) -> $(gitprefix)/$(gittpldir)/"${CL_RST}
 	@mkdir -p $(shell dirname $(TARGET_OUT)/$(gittpldir)/$(subst --,/,$@))
-	$(hide) cp $(git_src)/$@ $(TARGET_OUT)/$(gittpldir)/$(subst --,/,$@) || echo "ignore $@"
+	$(hide) cp $(git_src)/$@ $(TARGET_OUT)/$(gittpldir)/$(subst --,/,$@) || echo "Ignore folder $@"
 
 ALL_DEFAULT_INSTALLED_MODULES += $(GIT_TEMPLATES)
 
 ALL_MODULES.$(LOCAL_MODULE).INSTALLED := \
 	$(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) $(GIT_TEMPLATES) $(GIT_SYMLINKS)
 
-
-#include $(call all-makefiles-under,$(LOCAL_PATH))
