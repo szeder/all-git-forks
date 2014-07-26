@@ -80,6 +80,8 @@ $(GIT_SCRIPTS): $(LOCAL_INSTALLED_MODULE)
 	$(hide) cp $(git_src)/$@ $(TARGET_OUT)/$(gitexecdir)/$@
 	@sed -i 's/$(gitshfixup_regex)/g' $(TARGET_OUT)/$(gitexecdir)/$@
 	@sed -i 's/@@PERL@@/perl/g' $(TARGET_OUT)/$(gitexecdir)/$@
+	@rm -f $(TARGET_OUT)/$(gitexecdir)/$(subst .sh,,$@)
+	$(hide) ln -sf $@ $(TARGET_OUT)/$(gitexecdir)/$(subst .sh,,$@)
 
 ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SCRIPTS)
 
@@ -96,19 +98,9 @@ $(GIT_SCRIPT_LIB): $(LOCAL_INSTALLED_MODULE)
 
 ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SCRIPT_LIB)
 
-# git pull requires a link to git-pull.sh
-GIT_NOT_BUILTINS := git-pull
-$(GIT_NOT_BUILTINS): GIT_BINARY := $(LOCAL_MODULE)
-$(GIT_NOT_BUILTINS): $(LOCAL_INSTALLED_MODULE)
-	@echo -e ${CL_CYN}"Symlink:"${CL_RST}" $(TARGET_OUT)/$(gitexecdir)/$@ -> $@.sh"
-	@rm -f $(TARGET_OUT)/$(gitexecdir)/$@
-	$(hide) ln -sf $@.sh $(TARGET_OUT)/$(gitexecdir)/$@
-
-ALL_DEFAULT_INSTALLED_MODULES += $(GIT_NOT_BUILTINS)
-
 ALL_MODULES.$(LOCAL_MODULE).INSTALLED := \
 	$(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) \
-	$(GIT_SCRIPTS) $(GIT_SCRIPT_LIB) $(GIT_NOT_BUILTINS)
+	$(GIT_SCRIPTS) $(GIT_SCRIPT_LIB)
 
 
 ###############################################################################
@@ -636,8 +628,11 @@ LOCAL_STATIC_LIBRARIES := libgit_static
 LOCAL_SHARED_LIBRARIES := libz
 LOCAL_REQUIRED_MODULES := libgit_static gitconfig
 
+# required for git am
+LOCAL_ADDITIONAL_DEPENDENCIES := git-sh-i18n--envsubst
+
 ifeq ($(optional_libcurl),libcurl)
-    LOCAL_ADDITIONAL_DEPENDENCIES := git-remote-http
+    LOCAL_ADDITIONAL_DEPENDENCIES += git-remote-http
 endif
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
@@ -645,13 +640,13 @@ include $(BUILD_EXECUTABLE)
 
 BUILT_INS := git-merge
 GIT_SYMLINKS := $(BUILT_INS)
-GIT_SYMLINKS := $(addprefix $(TARGET_OUT_OPTIONAL_EXECUTABLES)/,$(GIT_SYMLINKS))
+GIT_SYMLINKS := $(addprefix $(TARGET_OUT)/$(gitexecdir)/,$(GIT_SYMLINKS))
 $(GIT_SYMLINKS): GIT_BINARY := $(LOCAL_MODULE)
 $(GIT_SYMLINKS): $(LOCAL_INSTALLED_MODULE)
 	@echo -e ${CL_CYN}"Symlink:"${CL_RST}" $@ -> $(GIT_BINARY)"
 	@mkdir -p $(dir $@)
 	@rm -f $@
-	$(hide) ln -sf $(GIT_BINARY) $@
+	$(hide) ln -sf ../$(GIT_BINARY) $@
 
 ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SYMLINKS)
 
