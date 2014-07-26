@@ -448,7 +448,7 @@ int xdl_emit_hunk_hdr(long s1, long c1, long s2, long c2,
 	nb += 3;
 	if (func && funclen) {
 		buf[nb++] = ' ';
-		if (funclen > sizeof(buf) - nb - 1)
+		if ((unsigned long) funclen > sizeof(buf) - nb - 1)
 			funclen = sizeof(buf) - nb - 1;
 		memcpy(buf + nb, func, funclen);
 		nb += funclen;
