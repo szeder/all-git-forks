@@ -75,7 +75,7 @@ gitshfixup_regex := $(subst /,\/,\#!/bin/sh)/$(subst /,\/,\#!$(GIT_SHELL))
 GIT_SCRIPTS := $(SCRIPT_SH)
 $(GIT_SCRIPTS): GIT_BINARY := $(LOCAL_MODULE)
 $(GIT_SCRIPTS): $(LOCAL_INSTALLED_MODULE)
-	@echo -e ${CL_CYN}"Install: $(gitprefix)/$(gitexecdir)/$@"${CL_RST}
+	@echo -e ${CL_CYN}"Install: $(TARGET_OUT)/$(gitexecdir)/$@"${CL_RST}
 	@mkdir -p $(TARGET_OUT)/$(gitexecdir)
 	$(hide) cp $(git_src)/$@ $(TARGET_OUT)/$(gitexecdir)/$@
 	@sed -i 's/$(gitshfixup_regex)/g' $(TARGET_OUT)/$(gitexecdir)/$@
@@ -86,16 +86,29 @@ ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SCRIPTS)
 GIT_SCRIPT_LIB := $(SCRIPT_LIB)
 $(GIT_SCRIPT_LIB): GIT_BINARY := $(LOCAL_MODULE)
 $(GIT_SCRIPT_LIB): $(LOCAL_INSTALLED_MODULE)
-	@echo -e ${CL_CYN}"Install: $(gitprefix)/$(gitexecdir)/$@"${CL_RST}
+	@echo -e ${CL_CYN}"Install: $(TARGET_OUT)/$(gitexecdir)/$@"${CL_RST}
 	@mkdir -p $(TARGET_OUT)/$(gitexecdir)
 	$(hide) cp $(git_src)/$@.sh $(TARGET_OUT)/$(gitexecdir)/$@
 	@sed -i 's/@@DIFF@@/diff/g' $(TARGET_OUT)/$(gitexecdir)/$@
 	@sed -i 's/@@PERL@@/perl/g' $(TARGET_OUT)/$(gitexecdir)/$@
+	@sed -i 's/@@LOCALEDIR@@//g' $(TARGET_OUT)/$(gitexecdir)/$@
+	@sed -i 's/@@[A-Z_]\+@@//g' $(TARGET_OUT)/$(gitexecdir)/$@
 
 ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SCRIPT_LIB)
 
+# git pull requires a link to git-pull.sh
+GIT_NOT_BUILTINS := git-pull
+$(GIT_NOT_BUILTINS): GIT_BINARY := $(LOCAL_MODULE)
+$(GIT_NOT_BUILTINS): $(LOCAL_INSTALLED_MODULE)
+	@echo -e ${CL_CYN}"Symlink:"${CL_RST}" $(TARGET_OUT)/$(gitexecdir)/$@ -> $@.sh"
+	@rm -f $(TARGET_OUT)/$(gitexecdir)/$@
+	$(hide) ln -sf $@.sh $(TARGET_OUT)/$(gitexecdir)/$@
+
+ALL_DEFAULT_INSTALLED_MODULES += $(GIT_NOT_BUILTINS)
+
 ALL_MODULES.$(LOCAL_MODULE).INSTALLED := \
-        $(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) $(GIT_SCRIPTS) $(GIT_SCRIPT_LIB)
+	$(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) \
+	$(GIT_SCRIPTS) $(GIT_SCRIPT_LIB) $(GIT_NOT_BUILTINS)
 
 
 ###############################################################################
@@ -398,6 +411,9 @@ git_CFLAGS := \
 	-DDEFAULT_PAGER=\"$(GIT_PAGER)\" \
 	-DDEFAULT_EDITOR=\"$(GIT_EDITOR)\" \
 
+# Hide some noisy warnings
+git_CFLAGS += -Wno-sign-compare -Wno-missing-field-initializers
+
 ifeq ($(optional_libcurl),libcurl)
     git_INCLUDES += external/curl/include
 else
@@ -411,6 +427,14 @@ LOCAL_C_INCLUDES := $(git_INCLUDES)
 LOCAL_SRC_FILES := $(LIB_OBJS)
 include $(BUILD_STATIC_LIBRARY)
 
+# seems not required...
+#BUILT_INS :=
+#$(LOCAL_MODULE):
+#	make -C $(git_src) common-cmds.h
+#	@cp $(git_src)/common-cmds.h $(git_src)/android/common-cmds.h
+#	cd $(git_src) && ./check-builtins.sh
+#	@cd $(git_src) && git checkout ./GIT-VERSION-FILE
+
 
 ###############################################################################
 # Binary required to clone from http(s) and ftp(s) (git:// doesnt need that)
@@ -420,30 +444,52 @@ ifeq ($(optional_libcurl),libcurl)
 LOCAL_PATH := $(git_src)
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := git-remote-https
+LOCAL_MODULE := git-remote-http
 LOCAL_MODULE_TAGS := optional
 
 LOCAL_CFLAGS := $(git_CFLAGS)
 LOCAL_C_INCLUDES := $(git_INCLUDES)
-LOCAL_SRC_FILES := remote-curl.c http.c http-walker.c \
-	$(XDIFF_OBJS) \
+LOCAL_SRC_FILES := remote-curl.c http.c http-walker.c $(XDIFF_OBJS)
 
 LOCAL_STATIC_LIBRARIES := libgit_static
 LOCAL_SHARED_LIBRARIES := libz libssl libcurl
 LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
 include $(BUILD_EXECUTABLE)
 
-
-GIT_SYMLINKS := git-remote-http git-remote-ftp git-remote-ftps
-GIT_SYMLINKS := $(addprefix $(TARGET_OUT)/$(gitexecdir)/,$(GIT_SYMLINKS))
-$(GIT_SYMLINKS): GIT_REMOTE_BINARY := $(LOCAL_MODULE)
-$(GIT_SYMLINKS): $(LOCAL_INSTALLED_MODULE)
+GIT_R_SYMLINKS := git-remote-https git-remote-ftp git-remote-ftps
+GIT_R_SYMLINKS := $(addprefix $(TARGET_OUT)/$(gitexecdir)/,$(GIT_R_SYMLINKS))
+$(GIT_R_SYMLINKS): GIT_REMOTE_BINARY := $(LOCAL_MODULE)
+$(GIT_R_SYMLINKS): $(LOCAL_INSTALLED_MODULE)
 	@echo -e ${CL_CYN}"Symlink:"${CL_RST}" $@ -> $(GIT_REMOTE_BINARY)"
 	@mkdir -p $(dir $@)
 	@rm -f $@
 	$(hide) ln -sf $(GIT_REMOTE_BINARY) $@
 
-ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SYMLINKS)
+ALL_DEFAULT_INSTALLED_MODULES += $(GIT_R_SYMLINKS)
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+LOCAL_MODULE := git-http-fetch
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := $(git_CFLAGS) -DCURL_DISABLE_TYPECHECK
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+LOCAL_SRC_FILES := http-fetch.c http.c http-walker.c
+LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_SHARED_LIBRARIES := libz libcurl
+LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
+include $(BUILD_EXECUTABLE)
+
+LOCAL_PATH := $(git_src)
+include $(CLEAR_VARS)
+LOCAL_MODULE := git-http-push
+LOCAL_MODULE_TAGS := optional
+LOCAL_CFLAGS := $(git_CFLAGS) -DCURL_DISABLE_TYPECHECK
+LOCAL_C_INCLUDES := $(git_INCLUDES)
+LOCAL_SRC_FILES := http-push.c http.c $(XDIFF_OBJS)
+LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_SHARED_LIBRARIES := libz libexpat libcurl
+LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
+include $(BUILD_EXECUTABLE)
 
 endif
 
@@ -497,34 +543,6 @@ LOCAL_STATIC_LIBRARIES := libgit_static
 LOCAL_SHARED_LIBRARIES := libz
 LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
 include $(BUILD_EXECUTABLE)
-
-ifeq ($(optional_libcurl),libcurl)
-
-LOCAL_PATH := $(git_src)
-include $(CLEAR_VARS)
-LOCAL_MODULE := git-http-fetch
-LOCAL_MODULE_TAGS := optional
-LOCAL_CFLAGS := $(git_CFLAGS) -DCURL_DISABLE_TYPECHECK
-LOCAL_C_INCLUDES := $(git_INCLUDES)
-LOCAL_SRC_FILES := http-fetch.c http.c http-walker.c
-LOCAL_STATIC_LIBRARIES := libgit_static
-LOCAL_SHARED_LIBRARIES := libz libcurl
-LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
-include $(BUILD_EXECUTABLE)
-
-LOCAL_PATH := $(git_src)
-include $(CLEAR_VARS)
-LOCAL_MODULE := git-http-push
-LOCAL_MODULE_TAGS := optional
-LOCAL_CFLAGS := $(git_CFLAGS) -DCURL_DISABLE_TYPECHECK
-LOCAL_C_INCLUDES := $(git_INCLUDES)
-LOCAL_SRC_FILES := http-push.c http.c $(XDIFF_OBJS)
-LOCAL_STATIC_LIBRARIES := libgit_static
-LOCAL_SHARED_LIBRARIES := libz libexpat libcurl
-LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
-include $(BUILD_EXECUTABLE)
-
-endif
 
 LOCAL_PATH := $(git_src)
 include $(CLEAR_VARS)
@@ -616,10 +634,26 @@ LOCAL_C_INCLUDES := $(git_INCLUDES)
 
 LOCAL_STATIC_LIBRARIES := libgit_static
 LOCAL_SHARED_LIBRARIES := libz
-LOCAL_REQUIRED_MODULES := libgit_static gitconfig git-remote-https
+LOCAL_REQUIRED_MODULES := libgit_static gitconfig
+
+ifeq ($(optional_libcurl),libcurl)
+    LOCAL_ADDITIONAL_DEPENDENCIES := git-remote-http
+endif
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 include $(BUILD_EXECUTABLE)
+
+BUILT_INS := git-merge
+GIT_SYMLINKS := $(BUILT_INS)
+GIT_SYMLINKS := $(addprefix $(TARGET_OUT_OPTIONAL_EXECUTABLES)/,$(GIT_SYMLINKS))
+$(GIT_SYMLINKS): GIT_BINARY := $(LOCAL_MODULE)
+$(GIT_SYMLINKS): $(LOCAL_INSTALLED_MODULE)
+	@echo -e ${CL_CYN}"Symlink:"${CL_RST}" $@ -> $(GIT_BINARY)"
+	@mkdir -p $(dir $@)
+	@rm -f $@
+	$(hide) ln -sf $(GIT_BINARY) $@
+
+ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SYMLINKS)
 
 ###############################################################################
 # Template (folders+files) used on "git init"
@@ -634,11 +668,15 @@ gittpldir = $(subst /templates,,$(template_dir))
 #
 $(GIT_TEMPLATES): GIT_BINARY := $(LOCAL_MODULE)
 $(GIT_TEMPLATES): $(LOCAL_INSTALLED_MODULE)
-	@echo -e ${CL_CYN}"Install: $(subst --,/,$@) -> $(gitprefix)/$(gittpldir)/"${CL_RST}
+	@echo -e ${CL_CYN}"Install: $(TARGET_OUT)/$(gittpldir)/$(subst --,/,$@)"${CL_RST}
 	@mkdir -p $(shell dirname $(TARGET_OUT)/$(gittpldir)/$(subst --,/,$@))
 	$(hide) cp $(git_src)/$@ $(TARGET_OUT)/$(gittpldir)/$(subst --,/,$@) || echo "Ignore folder $@"
 
 ALL_DEFAULT_INSTALLED_MODULES += $(GIT_TEMPLATES)
+
+ifeq ($(optional_libcurl),libcurl)
+    GIT_SYMLINKS += $(GIT_R_SYMLINKS)
+endif
 
 ALL_MODULES.$(LOCAL_MODULE).INSTALLED := \
 	$(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) $(GIT_TEMPLATES) $(GIT_SYMLINKS)
