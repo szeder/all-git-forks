@@ -169,14 +169,14 @@ static int replace_object_sha1(const char *object_ref,
 
 	check_ref_valid(object, prev, ref, sizeof(ref), force);
 
-	transaction = ref_transaction_begin(&err);
+	transaction = transaction_begin(&err);
 	if (!transaction ||
-	    ref_transaction_update(transaction, ref, repl, prev,
-				   0, !is_null_sha1(prev), NULL, &err) ||
-	    ref_transaction_commit(transaction, &err))
+	    transaction_update_sha1(transaction, ref, repl, prev,
+				    0, !is_null_sha1(prev), NULL, &err) ||
+	    transaction_commit(transaction, &err))
 		die("%s", err.buf);
 
-	ref_transaction_free(transaction);
+	transaction_free(transaction);
 	return 0;
 }
 
