@@ -506,9 +506,6 @@ do_next () {
 		do_pick $sha1 "$rest"
 		git commit --amend --no-post-rewrite ${gpg_sign_opt:+"$gpg_sign_opt"} || {
 			warn "Could not amend commit after successfully picking $sha1... $rest"
-			warn "This is most likely due to an empty commit message, or the pre-commit hook"
-			warn "failed. If the pre-commit hook failed, you may need to resolve the issue before"
-			warn "you are able to reword the commit."
 			exit_with_patch $sha1 1
 		}
 		record_in_rewritten $sha1
