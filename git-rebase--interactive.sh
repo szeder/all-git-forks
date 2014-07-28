@@ -504,10 +504,19 @@ do_next () {
 
 		mark_action_done
 		do_pick $sha1 "$rest"
-		git commit --allow-empty --amend --no-post-rewrite ${gpg_sign_opt:+"$gpg_sign_opt"} || {
-			warn "Could not amend commit after successfully picking $sha1... $rest"
-			exit_with_patch $sha1 1
-		}
+		# TODO: Work around the fact that git-commit lets us
+		# disable either both the pre-commit and the commit-msg
+		# hook or none. Disable the pre-commit hook because the
+		# tree is left unchanged but run the commit-msg hook
+		# from here because the log message is altered.
+		git commit --allow-empty --amend --no-post-rewrite -n ${gpg_sign_opt:+"$gpg_sign_opt"} &&
+			if test -x "$GIT_DIR"/hooks/commit-msg
+			then
+				"$GIT_DIR"/hooks/commit-msg "$GIT_DIR"/COMMIT_EDITMSG
+			fi || {
+				warn "Could not amend commit after successfully picking $sha1... $rest"
+				exit_with_patch $sha1 1
+			}
 		record_in_rewritten $sha1
 		;;
 	edit|e)
