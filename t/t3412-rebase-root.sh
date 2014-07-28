@@ -289,7 +289,7 @@ test_expect_success 'stop rebase --root on empty root log message' '
 	# do not ff because otherwise neither the patch nor the message
 	# are looked at and checked for emptiness
 	test_when_finished git rebase --abort &&
-	test_must_fail env EDITOR=true git rebase -i --force-rebase --root &&
+	test_must_fail env EDITOR=true git rebase -i --no-ff --root &&
 	echo root-commit >file.expected &&
 	test_cmp file.expected file
 '
@@ -312,7 +312,7 @@ test_expect_success 'stop rebase --root on empty child log message' '
 	# do not ff because otherwise neither the patch nor the message
 	# are looked at and checked for emptiness
 	test_when_finished git rebase --abort &&
-	test_must_fail env EDITOR=true git rebase -i --force-rebase --root &&
+	test_must_fail env EDITOR=true git rebase -i --no-ff --root &&
 	echo child-commit >file.expected &&
 	test_cmp file.expected file
 '
