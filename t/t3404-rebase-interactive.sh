@@ -1085,4 +1085,28 @@ test_expect_success 'short SHA-1 collide' '
 	)
 '
 
+test_expect_success 'rebase commits with empty commit log messages' '
+	git checkout -b no-msg-commit &&
+	test_commit no-msg-commit-1 &&
+	git commit --amend --allow-empty-message -m " " &&
+	test_commit no-msg-commit-2 &&
+	git commit --amend --allow-empty-message -m " " &&
+	EDITOR=true git rebase -i HEAD^ &&
+	EDITOR=true git rebase -i --no-ff HEAD^
+'
+
+test_expect_success 'reword commit with empty commit log message' '
+	git checkout no-msg-commit &&
+	test_when_finished reset_rebase &&
+	set_fake_editor &&
+	test_must_fail env FAKE_LINES="reword 1" git rebase -i HEAD^
+'
+
+test_expect_success 'squash commits with empty commit log messages' '
+	git checkout no-msg-commit &&
+	test_when_finished reset_rebase &&
+	set_fake_editor &&
+	test_must_fail env FAKE_LINES="1 squash 2" git rebase -i HEAD^^
+'
+
 test_done

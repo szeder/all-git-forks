@@ -278,4 +278,23 @@ test_expect_success 'rebase -i -p --root with conflict (second part)' '
 	test_cmp expect-conflict-p out
 '
 
+test_expect_success 'rebase --root with empty root log message' '
+	git checkout --orphan no-msg-root-commit &&
+	test_commit no-msg-root-commit &&
+	git commit --amend -m " " --allow-empty-message &&
+	git rebase --root &&
+	test_path_is_file no-msg-root-commit.t &&
+	git rebase --root --no-ff &&
+	test_path_is_file no-msg-root-commit.t
+'
+
+test_expect_success 'rebase --root with empty child log message' '
+	test_commit no-msg-child-commit &&
+	git commit --amend -m " " --allow-empty-message &&
+	git rebase --root &&
+	test_path_is_file no-msg-child-commit.t &&
+	git rebase --root --no-ff &&
+	test_path_is_file no-msg-child-commit.t
+'
+
 test_done
