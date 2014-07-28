@@ -464,13 +464,19 @@ record_in_rewritten() {
 
 # Apply the changes introduced by the given commit to the current head.
 #
-# do_pick [--amend] [--edit] <commit>
+# do_pick [--amend] [--file <file>] [--edit] <commit>
 #
 # Wrapper around git-cherry-pick.
 #
 # --amend
 #     After picking <commit>, replace the current head commit with a new
 #     commit that also introduces the changes of <commit>.
+#
+#     _This is not a git-cherry-pick option._
+#
+# -F <file>, --file <file>
+#     Take the commit message from the given file. This creates a fresh
+#     commit.
 #
 #     _This is not a git-cherry-pick option._
 #
@@ -492,6 +498,7 @@ do_pick () {
 	rewrite=
 	rewrite_amend=
 	rewrite_edit=
+	rewrite_message=
 	while test $# -gt 0
 	do
 		case "$1" in
@@ -504,6 +511,16 @@ do_pick () {
 			rewrite=y
 			rewrite_amend=y
 			git rev-parse --verify HEAD >"$amend"
+			;;
+		-F|--file)
+			if test $# -eq 0
+			then
+				warn "do_pick: option --file specified but no <file> given"
+				return 2
+			fi
+			rewrite=y
+			rewrite_message=$2
+			shift
 			;;
 		-e|--edit)
 			rewrite=y
@@ -553,6 +570,7 @@ do_pick () {
 			   ${allow_empty_message:+--allow-empty-message} \
 			   ${rewrite_amend:+--amend} \
 			   ${rewrite_edit:+--edit} \
+			   ${rewrite_message:+--file "$rewrite_message"} \
 			   ${gpg_sign_opt:+"$gpg_sign_opt"} || return 3
 	fi
 
