@@ -278,43 +278,23 @@ test_expect_success 'rebase -i -p --root with conflict (second part)' '
 	test_cmp expect-conflict-p out
 '
 
-test_expect_success 'stop rebase --root on empty root log message' '
-	# create a root commit with a non-empty tree so that rebase does
-	# not fail because of an empty commit, and an empty log message
-	echo root-commit >file &&
-	git add file &&
-	tree=$(git write-tree) &&
-	root=$(git commit-tree $tree </dev/null) &&
-	git checkout -b no-message-root-commit $root &&
-	# do not ff because otherwise neither the patch nor the message
-	# are looked at and checked for emptiness
-	test_when_finished git rebase --abort &&
-	test_must_fail env EDITOR=true git rebase -i --no-ff --root &&
-	echo root-commit >file.expected &&
-	test_cmp file.expected file
+test_expect_success 'rebase --root with empty root log message' '
+	git checkout --orphan no-msg-root-commit &&
+	test_commit no-msg-root-commit &&
+	git commit --amend -m " " --allow-empty-message &&
+	git rebase --root &&
+	test_path_is_file no-msg-root-commit.t &&
+	git rebase --root --no-ff &&
+	test_path_is_file no-msg-root-commit.t
 '
 
-test_expect_success 'stop rebase --root on empty child log message' '
-	# create a root commit with a non-empty tree and provide a log
-	# message so that rebase does not fail until the root commit is
-	# successfully replayed
-	echo root-commit >file &&
-	git add file &&
-	tree=$(git write-tree) &&
-	root=$(git commit-tree $tree -m root-commit) &&
-	git checkout -b no-message-child-commit $root &&
-	# create a child commit with a non-empty patch so that rebase
-	# does not fail because of an empty commit, but an empty log
-	# message
-	echo child-commit >file &&
-	git add file &&
-	git commit --allow-empty-message --no-edit &&
-	# do not ff because otherwise neither the patch nor the message
-	# are looked at and checked for emptiness
-	test_when_finished git rebase --abort &&
-	test_must_fail env EDITOR=true git rebase -i --no-ff --root &&
-	echo child-commit >file.expected &&
-	test_cmp file.expected file
+test_expect_success 'rebase --root with empty child log message' '
+	test_commit no-msg-child-commit &&
+	git commit --amend -m " " --allow-empty-message &&
+	git rebase --root &&
+	test_path_is_file no-msg-child-commit.t &&
+	git rebase --root --no-ff &&
+	test_path_is_file no-msg-child-commit.t
 '
 
 test_done
