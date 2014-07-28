@@ -461,7 +461,42 @@ record_in_rewritten() {
 	esac
 }
 
+# Apply the changes introduced by the given commit to the current head.
+#
+# do_pick [--edit] <commit> <title>
+#
+# Wrapper around git-cherry-pick.
+#
+# -e, --edit
+#     After picking <commit>, open an editor and let the user edit the
+#     commit message. The editor contents becomes the commit message of
+#     the new head. This creates a fresh commit.
+#
+# <commit>
+#     The commit to cherry-pick.
+#
+# <title>
+#     The commit message title of <commit>. Used for information
+#     purposes only.
 do_pick () {
+	edit=
+	while test $# -gt 0
+	do
+		case "$1" in
+		-e|--edit)
+			edit=y
+			;;
+		-*)
+			die "do_pick: unrecognized option -- $1"
+			;;
+		*)
+			break
+			;;
+		esac
+		shift
+	done
+	test $# -ne 2 && die "do_pick: wrong number of arguments"
+
 	if test "$(git rev-parse HEAD)" = "$squash_onto"
 	then
 		# Set the correct commit message and author info on the
@@ -482,6 +517,23 @@ do_pick () {
 	else
 		pick_one $1 ||
 			die_with_patch $1 "Could not apply $1... $2"
+	fi
+
+	if test -n "$edit"
+	then
+		# TODO: Work around the fact that git-commit lets us
+		# disable either both the pre-commit and the commit-msg
+		# hook or none. Disable the pre-commit hook because the
+		# tree is left unchanged but run the commit-msg hook
+		# from here because the log message is altered.
+		git commit --allow-empty --amend --no-post-rewrite -n ${gpg_sign_opt:+"$gpg_sign_opt"} &&
+			if test -x "$GIT_DIR"/hooks/commit-msg
+			then
+				"$GIT_DIR"/hooks/commit-msg "$GIT_DIR"/COMMIT_EDITMSG
+			fi || {
+				warn "Could not amend commit after successfully picking $1... $2"
+				exit_with_patch $1 1
+			}
 	fi
 }
 
