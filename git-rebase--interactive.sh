@@ -507,6 +507,7 @@ record_in_rewritten() {
 # greater than 2 is returned. No commit is created in either case and
 # the index is left with the (conflicting) changes in place.
 do_pick () {
+	allow_empty_message=y
 	rewrite=
 	rewrite_amend=
 	rewrite_edit=
@@ -545,6 +546,7 @@ do_pick () {
 		-e|--edit)
 			rewrite=y
 			rewrite_edit=y
+			allow_empty_message=
 			;;
 		-*)
 			warn "do_pick: unrecognized option -- $1"
@@ -594,6 +596,7 @@ do_pick () {
 	if test -n "$rewrite"
 	then
 		git commit --allow-empty --no-post-rewrite -n --no-edit \
+			   ${allow_empty_message:+--allow-empty-message} \
 			   ${rewrite_signoff:+--signoff} \
 			   ${rewrite_amend:+--amend} \
 			   ${rewrite_edit:+--edit} \
