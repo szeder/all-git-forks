@@ -577,6 +577,44 @@ test_expect_success 'rebase a commit violating pre-commit' '
 
 '
 
+test_expect_success 'reword a commit violating pre-commit' '
+	test_when_finished rm -r .git/hooks &&
+	mkdir -p .git/hooks &&
+	PRE_COMMIT=.git/hooks/pre-commit &&
+	cat >"$PRE_COMMIT" <<EOF
+#!/bin/sh
+echo running pre-commit: exit 1
+exit 1
+EOF
+	chmod +x "$PRE_COMMIT" &&
+	test_must_fail test_commit pre-commit-violated &&
+	test_commit --no-verify pre-commit-violated &&
+	test_when_finished reset_rebase &&
+	set_fake_editor &&
+	FAKE_LINES="pick 1" git rebase -i HEAD^ &&
+	FAKE_LINES="pick 1" git rebase -i --no-ff HEAD^ &&
+	FAKE_LINES="reword 1" git rebase -i HEAD^
+'
+
+test_expect_success 'reword a commit violating commit-msg' '
+	test_when_finished rm -r .git/hooks &&
+	mkdir -p .git/hooks &&
+	COMMIT_MSG=.git/hooks/commit-msg &&
+	cat >"$COMMIT_MSG" <<EOF
+#!/bin/sh
+echo running commit-msg: exit 1
+exit 1
+EOF
+	chmod +x "$COMMIT_MSG" &&
+	test_must_fail test_commit commit-msg-violated &&
+	test_commit --no-verify commit-msg-violated &&
+	test_when_finished reset_rebase &&
+	set_fake_editor &&
+	FAKE_LINES="pick 1" git rebase -i HEAD^ &&
+	FAKE_LINES="pick 1" git rebase -i --no-ff HEAD^ &&
+	test_must_fail env FAKE_LINES="reword 1" git rebase -i HEAD^
+'
+
 test_expect_success 'rebase with a file named HEAD in worktree' '
 
 	rm -fr .git/hooks &&

@@ -155,6 +155,7 @@ test_pause () {
 test_commit () {
 	notick= &&
 	signoff= &&
+	noverify= &&
 	while test $# != 0
 	do
 		case "$1" in
@@ -163,6 +164,9 @@ test_commit () {
 			;;
 		--signoff)
 			signoff="$1"
+			;;
+		--no-verify)
+			noverify="$1"
 			;;
 		*)
 			break
@@ -177,7 +181,7 @@ test_commit () {
 	then
 		test_tick
 	fi &&
-	git commit $signoff -m "$1" &&
+	git commit $signoff $noverify -m "$1" &&
 	git tag "${4:-$1}"
 }
 
