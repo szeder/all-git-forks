@@ -685,4 +685,67 @@ test_expect_success 'handle stash specification with spaces' '
 	grep pig file
 '
 
+test_expect_success 'stash list implies --cc' '
+	git stash clear &&
+	git reset --hard &&
+	echo index >file &&
+	git add file &&
+	echo working >file &&
+	git stash &&
+	git stash list -p >actual &&
+	cat >expect <<-\EOF &&
+	stash@{0}: WIP on master: b27a2bc subdir
+
+	diff --cc file
+	index 257cc56,9015a7a..d26b33d
+	--- a/file
+	+++ b/file
+	@@@ -1,1 -1,1 +1,1 @@@
+	- foo
+	 -index
+	++working
+	EOF
+	test_cmp expect actual
+'
+
+test_expect_success 'stash list implies --simplify-combined-diff' '
+	git stash clear &&
+	git reset --hard &&
+	echo working >file &&
+	git stash &&
+	git stash list -p >actual &&
+	cat >expect <<-\EOF &&
+	stash@{0}: WIP on master: b27a2bc subdir
+
+	diff --git a/file b/file
+	index 257cc56..d26b33d 100644
+	--- a/file
+	+++ b/file
+	@@ -1 +1 @@
+	-foo
+	+working
+	EOF
+	test_cmp expect actual
+'
+
+test_expect_success '--no-simplify-combined-diff overrides default' '
+	git stash clear &&
+	git reset --hard &&
+	echo working >file &&
+	git stash &&
+	git stash list -p --no-simplify-combined-diff >actual &&
+	cat >expect <<-\EOF &&
+	stash@{0}: WIP on master: b27a2bc subdir
+
+	diff --cc file
+	index 257cc56,257cc56..d26b33d
+	--- a/file
+	+++ b/file
+	@@@ -1,1 -1,1 +1,1 @@@
+	--foo
+	++working
+	EOF
+	test_cmp expect actual
+'
+
 test_done
