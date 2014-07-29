@@ -22,6 +22,10 @@ ifeq (,$(shell test -e "$(git_src)/../curl" && echo Y))
     optional_libcurl =
 endif
 
+# detect "mm -B" (B on darwin, wB else)
+# I used that to allow the push of runtime files with "mmp -B"
+mm_forced = $(filter B wB, $(MAKEFLAGS))
+
 ###############################################################################
 # /system/etc/gitconfig
 
@@ -35,46 +39,43 @@ LOCAL_SRC_FILES := android/gitconfig
 
 include $(BUILD_PREBUILT)
 
+
 ###############################################################################
 # /system/xbin/git-core/*.sh
 
 LOCAL_PATH := $(git_src)
-include $(CLEAR_VARS)
 
-SCRIPT_SH =
-SCRIPT_LIB =
+GIT_SCRIPTS := \
+  git-am.sh \
+  git-bisect.sh \
+  git-difftool--helper.sh \
+  git-filter-branch.sh \
+  git-merge-octopus.sh \
+  git-merge-one-file.sh \
+  git-merge-resolve.sh \
+  git-mergetool.sh \
+  git-pull.sh \
+  git-quiltimport.sh \
+  git-rebase.sh \
+  git-remote-testgit.sh \
+  git-request-pull.sh \
+  git-stash.sh \
+  git-submodule.sh \
+  git-web--browse.sh \
 
-SCRIPT_SH += git-am.sh
-SCRIPT_SH += git-bisect.sh
-SCRIPT_SH += git-difftool--helper.sh
-SCRIPT_SH += git-filter-branch.sh
-SCRIPT_SH += git-merge-octopus.sh
-SCRIPT_SH += git-merge-one-file.sh
-SCRIPT_SH += git-merge-resolve.sh
-SCRIPT_SH += git-mergetool.sh
-SCRIPT_SH += git-pull.sh
-SCRIPT_SH += git-quiltimport.sh
-SCRIPT_SH += git-rebase.sh
-SCRIPT_SH += git-remote-testgit.sh
-SCRIPT_SH += git-request-pull.sh
-SCRIPT_SH += git-stash.sh
-SCRIPT_SH += git-submodule.sh
-SCRIPT_SH += git-web--browse.sh
-
-SCRIPT_LIB += git-mergetool--lib
-SCRIPT_LIB += git-parse-remote
-SCRIPT_LIB += git-rebase--am
-SCRIPT_LIB += git-rebase--interactive
-SCRIPT_LIB += git-rebase--merge
-SCRIPT_LIB += git-sh-setup
-SCRIPT_LIB += git-sh-i18n
+GIT_SCRIPTS_LIB := \
+  git-mergetool--lib \
+  git-parse-remote \
+  git-rebase--am \
+  git-rebase--interactive \
+  git-rebase--merge \
+  git-sh-setup \
+  git-sh-i18n
 
 gitshfixup_regex := $(subst /,\/,\#!/bin/sh)/$(subst /,\/,\#!$(GIT_SHELL))
 
 # Script files need a shell header
-GIT_SCRIPTS := $(SCRIPT_SH)
-$(GIT_SCRIPTS): GIT_BINARY := $(LOCAL_MODULE)
-$(GIT_SCRIPTS): $(LOCAL_INSTALLED_MODULE)
+$(GIT_SCRIPTS):
 	@echo -e ${CL_CYN}"Install: $(TARGET_OUT)/$(gitexecdir)/$@"${CL_RST}
 	@mkdir -p $(TARGET_OUT)/$(gitexecdir)
 	$(hide) cp $(git_src)/$@ $(TARGET_OUT)/$(gitexecdir)/$@
@@ -83,11 +84,7 @@ $(GIT_SCRIPTS): $(LOCAL_INSTALLED_MODULE)
 	@rm -f $(TARGET_OUT)/$(gitexecdir)/$(subst .sh,,$@)
 	$(hide) ln -sf $@ $(TARGET_OUT)/$(gitexecdir)/$(subst .sh,,$@)
 
-ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SCRIPTS)
-
-GIT_SCRIPT_LIB := $(SCRIPT_LIB)
-$(GIT_SCRIPT_LIB): GIT_BINARY := $(LOCAL_MODULE)
-$(GIT_SCRIPT_LIB): $(LOCAL_INSTALLED_MODULE)
+$(GIT_SCRIPTS_LIB):
 	@echo -e ${CL_CYN}"Install: $(TARGET_OUT)/$(gitexecdir)/$@"${CL_RST}
 	@mkdir -p $(TARGET_OUT)/$(gitexecdir)
 	$(hide) cp $(git_src)/$@.sh $(TARGET_OUT)/$(gitexecdir)/$@
@@ -96,12 +93,11 @@ $(GIT_SCRIPT_LIB): $(LOCAL_INSTALLED_MODULE)
 	@sed -i 's/@@LOCALEDIR@@//g' $(TARGET_OUT)/$(gitexecdir)/$@
 	@sed -i 's/@@[A-Z_]\+@@//g' $(TARGET_OUT)/$(gitexecdir)/$@
 
-ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SCRIPT_LIB)
-
-ALL_MODULES.$(LOCAL_MODULE).INSTALLED := \
-	$(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) \
-	$(GIT_SCRIPTS) $(GIT_SCRIPT_LIB)
-
+# made at the eof...
+#ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SCRIPTS) $(GIT_SCRIPTS_LIB)
+#ALL_MODULES.$(LOCAL_MODULE).INSTALLED := \
+#	$(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) \
+#	$(GIT_SCRIPTS) $(GIT_SCRIPTS_LIB)
 
 ###############################################################################
 # static lib and other common objects to build all binaries
@@ -419,14 +415,6 @@ LOCAL_C_INCLUDES := $(git_INCLUDES)
 LOCAL_SRC_FILES := $(LIB_OBJS)
 include $(BUILD_STATIC_LIBRARY)
 
-# seems not required...
-#BUILT_INS :=
-#$(LOCAL_MODULE):
-#	make -C $(git_src) common-cmds.h
-#	@cp $(git_src)/common-cmds.h $(git_src)/android/common-cmds.h
-#	cd $(git_src) && ./check-builtins.sh
-#	@cd $(git_src) && git checkout ./GIT-VERSION-FILE
-
 
 ###############################################################################
 # Binary required to clone from http(s) and ftp(s) (git:// doesnt need that)
@@ -450,14 +438,11 @@ include $(BUILD_EXECUTABLE)
 
 GIT_R_SYMLINKS := git-remote-https git-remote-ftp git-remote-ftps
 GIT_R_SYMLINKS := $(addprefix $(TARGET_OUT)/$(gitexecdir)/,$(GIT_R_SYMLINKS))
-$(GIT_R_SYMLINKS): GIT_REMOTE_BINARY := $(LOCAL_MODULE)
-$(GIT_R_SYMLINKS): $(LOCAL_INSTALLED_MODULE)
-	@echo -e ${CL_CYN}"Symlink:"${CL_RST}" $@ -> $(GIT_REMOTE_BINARY)"
+$(GIT_R_SYMLINKS): git-remote-http
+	@echo -e ${CL_CYN}"Symlink:"${CL_RST}" $@ -> git-remote-http"
 	@mkdir -p $(dir $@)
 	@rm -f $@
-	$(hide) ln -sf $(GIT_REMOTE_BINARY) $@
-
-ALL_DEFAULT_INSTALLED_MODULES += $(GIT_R_SYMLINKS)
+	$(hide) ln -sf git-remote-http $@
 
 LOCAL_PATH := $(git_src)
 include $(CLEAR_VARS)
@@ -553,10 +538,11 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := git-remote-testsvn
 LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS := $(git_CFLAGS)
-LOCAL_C_INCLUDES := $(git_INCLUDES) $(LOCAL_PATH)/vcs-svn
-LOCAL_SRC_FILES := remote-testsvn.c vcs-svn/svndiff.c vcs-svn/svndump.c \
-	vcs-svn/fast_export.c vcs-svn/line_buffer.c vcs-svn/repo_tree.c \
-	vcs-svn/sliding_window.c
+LOCAL_C_INCLUDES := $(git_INCLUDES) $(git_src)/vcs-svn
+LOCAL_SRC_FILES := remote-testsvn.c \
+  vcs-svn/svndiff.c vcs-svn/svndump.c \
+  vcs-svn/fast_export.c vcs-svn/line_buffer.c \
+  vcs-svn/repo_tree.c vcs-svn/sliding_window.c
 LOCAL_STATIC_LIBRARIES := libgit_static
 LOCAL_SHARED_LIBRARIES := libz
 LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
@@ -629,26 +615,26 @@ LOCAL_SHARED_LIBRARIES := libz
 LOCAL_REQUIRED_MODULES := libgit_static gitconfig
 
 # required for git am
-LOCAL_ADDITIONAL_DEPENDENCIES := git-sh-i18n--envsubst
+LOCAL_REQUIRED_MODULES += git-sh-i18n--envsubst
 
 ifeq ($(optional_libcurl),libcurl)
-    LOCAL_ADDITIONAL_DEPENDENCIES += git-remote-http
+    LOCAL_REQUIRED_MODULES += git-remote-http
 endif
 
 LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 include $(BUILD_EXECUTABLE)
 
-BUILT_INS := git-merge
-GIT_SYMLINKS := $(BUILT_INS)
+# we want the 'git' package ?
+ifeq (git,$(filter git, $(ALL_MODULES)))
+
+GIT_SYMLINKS := git-merge
 GIT_SYMLINKS := $(addprefix $(TARGET_OUT)/$(gitexecdir)/,$(GIT_SYMLINKS))
-$(GIT_SYMLINKS): GIT_BINARY := $(LOCAL_MODULE)
-$(GIT_SYMLINKS): $(LOCAL_INSTALLED_MODULE)
-	@echo -e ${CL_CYN}"Symlink:"${CL_RST}" $@ -> $(GIT_BINARY)"
+$(GIT_SYMLINKS): git
+	@echo -e ${CL_CYN}"Symlink:"${CL_RST}" $@ -> ../git"
 	@mkdir -p $(dir $@)
 	@rm -f $@
-	$(hide) ln -sf ../$(GIT_BINARY) $@
+	$(hide) ln -sf ../git $@
 
-ALL_DEFAULT_INSTALLED_MODULES += $(GIT_SYMLINKS)
 
 ###############################################################################
 # Template (folders+files) used on "git init"
@@ -659,20 +645,35 @@ GIT_TEMPLATES := $(filter-out templates/Makefile, $(GIT_TEMPLATES))
 gittpldir = $(subst /templates,,$(template_dir))
 
 # templates files uses "--" as directory seperators, subst them...
-# todo: fix /bin/sh header
+# branches-- is an empty folder, copy is not required (mkdir do it)
 #
-$(GIT_TEMPLATES): GIT_BINARY := $(LOCAL_MODULE)
-$(GIT_TEMPLATES): $(LOCAL_INSTALLED_MODULE)
+$(GIT_TEMPLATES):
 	@echo -e ${CL_CYN}"Install: $(TARGET_OUT)/$(gittpldir)/$(subst --,/,$@)"${CL_RST}
-	@mkdir -p $(shell dirname $(TARGET_OUT)/$(gittpldir)/$(subst --,/,$@))
-	$(hide) cp $(git_src)/$@ $(TARGET_OUT)/$(gittpldir)/$(subst --,/,$@) || echo "Ignore folder $@"
-
-ALL_DEFAULT_INSTALLED_MODULES += $(GIT_TEMPLATES)
+	@mkdir -p $(dir $(TARGET_OUT)/$(gittpldir)/$(subst --,/,$@))
+	$(hide) $(if $(notdir $(subst --,/,$@)), \
+	 dstfile=$(TARGET_OUT)/$(gittpldir)/$(subst --,/,$@) ; \
+	 cp -R $(git_src)/$@ $$dstfile ; \
+         sed -i 's/$(gitshfixup_regex)/g' $$dstfile ; \
+	,)
 
 ifeq ($(optional_libcurl),libcurl)
     GIT_SYMLINKS += $(GIT_R_SYMLINKS)
 endif
 
+# for brunch
+ALL_DEFAULT_INSTALLED_MODULES += \
+  $(GIT_SCRIPTS) $(GIT_SCRIPTS_LIB) \
+  $(GIT_TEMPLATES) $(GIT_SYMLINKS) \
+
 ALL_MODULES.$(LOCAL_MODULE).INSTALLED := \
-	$(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) $(GIT_TEMPLATES) $(GIT_SYMLINKS)
+  $(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) \
+  $(GIT_SCRIPTS) $(GIT_SCRIPTS_LIB) \
+  $(GIT_TEMPLATES) $(GIT_SYMLINKS) \
+
+ifneq ($(mm_forced),)
+# push on mmp -B
+$(LOCAL_MODULE): $(GIT_SCRIPTS) $(GIT_SCRIPTS_LIB) $(GIT_SYMLINKS) $(GIT_TEMPLATES)
+endif
+
+endif # filter (prevent rules if 'git' module is not selected)
 
