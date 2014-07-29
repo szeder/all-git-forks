@@ -14,4 +14,16 @@ else
 	exit 0
 fi
 
+shellname=Bash
+
+ps1_expansion_enable () { shopt -s promptvars; }
+ps1_expansion_disable () { shopt -u promptvars; }
+set_ps1_format_vars () {
+	percent='%%'
+	c_red='\\[\\e[31m\\]'
+	c_green='\\[\\e[32m\\]'
+	c_lblue='\\[\\e[1;34m\\]'
+	c_clear='\\[\\e[0m\\]'
+}
+
 . ./test-lib.sh
