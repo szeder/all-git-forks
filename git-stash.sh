@@ -304,7 +304,8 @@ list_stash () {
 show_stash () {
 	assert_stash_like "$@"
 
-	git diff ${FLAGS:---stat} $b_commit $w_commit
+	git show --format= --simplify-combined-diff \
+		${FLAGS:---stat} $w_commit
 }
 
 #

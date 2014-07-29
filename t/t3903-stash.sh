@@ -537,6 +537,28 @@ test_expect_success 'stash show -p - no stashes on stack, stash-like argument' '
 	test_cmp expected actual
 '
 
+test_expect_success 'stash show -p will show modified index' '
+	git stash clear &&
+	test_when_finished "git reset --hard HEAD" &&
+	git reset --hard &&
+	echo index >file &&
+	git add file &&
+	echo working >file &&
+	git stash &&
+	cat >expect <<-\EOF &&
+	diff --cc file
+	index 7601807,9015a7a..d26b33d
+	--- a/file
+	+++ b/file
+	@@@ -1,1 -1,1 +1,1 @@@
+	- baz
+	 -index
+	++working
+	EOF
+	git stash show -p >actual &&
+	test_cmp expect actual
+'
+
 test_expect_success 'stash drop - fail early if specified stash is not a stash reference' '
 	git stash clear &&
 	test_when_finished "git reset --hard HEAD && git stash clear" &&
