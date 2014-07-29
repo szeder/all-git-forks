@@ -67,6 +67,29 @@ test_expect_success 'setup' '
 SHELL=
 export SHELL
 
+test_expect_success 'rebase -i --signoff' '
+	cat >expected.log <<EOF &&
+E
+Signed-off-by: $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL>
+
+C
+Signed-off-by: $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL>
+
+D
+Signed-off-by: $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL>
+
+B
+Signed-off-by: $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL>
+
+EOF
+	git checkout -b signoffed-master master &&
+	set_fake_editor &&
+	FAKE_LINES="reword 1 edit 2 squash 3 pick 4" git rebase -i --signoff A &&
+	git rebase --continue &&
+	git log --format=%s%n%b A.. >actual.log &&
+	test_cmp expected.log actual.log
+'
+
 test_expect_success 'rebase --keep-empty' '
 	git checkout -b emptybranch master &&
 	git commit --allow-empty -m "empty" &&

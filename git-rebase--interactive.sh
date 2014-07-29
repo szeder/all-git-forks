@@ -628,7 +628,7 @@ do_replay () {
 		case "$1" in
 		--signoff|--reset-author)
 			case "$command" in
-			pick|reword)
+			pick|reword|edit|squash|fixup)
 				;;
 			*)
 				warn "Unsupported option: $1"
@@ -700,21 +700,21 @@ do_replay () {
 		squash|s|fixup|f)
 			# This is an intermediate commit; its message will only be
 			# used in case of trouble.  So use the long version:
-			do_with_author do_pick --amend -F "$squash_msg" \
-				${gpg_sign_opt:+"$gpg_sign_opt"} $sha1 \
+			eval do_with_author do_pick --amend -F $(git rev-parse --sq-quote "$squash_msg") \
+				$opts ${gpg_sign_opt:+"$gpg_sign_opt"} $sha1 \
 				|| die_failed_squash $sha1 "$rest"
 			;;
 		*)
 			# This is the final command of this squash/fixup group
 			if test -f "$fixup_msg"
 			then
-				do_with_author do_pick --amend -F "$fixup_msg" \
-					${gpg_sign_opt:+"$gpg_sign_opt"} $sha1 \
+				eval do_with_author do_pick --amend -F $(git rev-parse --sq-quote "$fixup_msg") \
+					$opts ${gpg_sign_opt:+"$gpg_sign_opt"} $sha1 \
 					|| die_failed_squash $sha1 "$rest"
 			else
 				cp "$squash_msg" "$GIT_DIR"/SQUASH_MSG || exit
-				do_with_author do_pick --amend -F "$GIT_DIR"/SQUASH_MSG -e \
-					${gpg_sign_opt:+"$gpg_sign_opt"} $sha1 \
+				eval do_with_author do_pick --amend -F $(git rev-parse --sq-quote "$GIT_DIR"/SQUASH_MSG) -e \
+					$opts ${gpg_sign_opt:+"$gpg_sign_opt"} $sha1 \
 					|| die_failed_squash $sha1 "$rest"
 			fi
 			rm -f "$squash_msg" "$fixup_msg"
@@ -797,7 +797,7 @@ do_next () {
 		fi
 		;;
 	*)
-		do_replay $command $args
+		do_replay $command $signoff $args
 		;;
 	esac
 	test -s "$todo" && return
@@ -1038,11 +1038,11 @@ continue)
 			die "You have staged changes in your working tree. If these changes are meant to be
 squashed into the previous commit, run:
 
-  git commit --amend $gpg_sign_opt_quoted
+  git commit --amend $gpg_sign_opt_quoted $signoff
 
 If they are meant to go into a new commit, run:
 
-  git commit $gpg_sign_opt_quoted
+  git commit $gpg_sign_opt_quoted $signoff
 
 In both case, once you're done, continue with:
 
@@ -1059,11 +1059,11 @@ In both case, once you're done, continue with:
 You have uncommitted changes in your working tree. Please, commit them
 first and then run 'git rebase --continue' again."
 			do_with_author git commit --amend --no-verify -F "$msg" -e \
-				${gpg_sign_opt:+"$gpg_sign_opt"} ||
+				${gpg_sign_opt:+"$gpg_sign_opt"} $signoff ||
 				die "Could not commit staged changes."
 		else
 			do_with_author git commit --no-verify -F "$msg" -e \
-				${gpg_sign_opt:+"$gpg_sign_opt"} ||
+				${gpg_sign_opt:+"$gpg_sign_opt"} $signoff ||
 				die "Could not commit staged changes."
 		fi
 	fi
