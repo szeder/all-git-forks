@@ -122,6 +122,7 @@ struct rev_info {
 			ignore_merges:1,
 			combine_merges:1,
 			dense_combined_merges:1,
+			simplify_combined_diff:1,
 			always_show_header:1;
 
 	/* Format info */
