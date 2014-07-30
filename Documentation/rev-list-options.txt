@@ -805,6 +805,14 @@ options may be given. See linkgit:git-diff-files[1] for more options.
 	in that case, the output represents the changes the merge
 	brought _into_ the then-current branch.
 
+--simplify-combined-diff::
+	When showing a combined diff with `-c` or `--cc`, if a given
+	path has identical content in all parents, show only a pairwise
+	diff from that content, rather than a true combined diff. This
+	is easier for humans to read, though it may confuse an automatic
+	parser (as some paths in the output may be combined diffs, and
+	others may not).
+
 -r::
 	Show recursive diffs.
 

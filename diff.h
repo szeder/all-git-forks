@@ -356,4 +356,6 @@ extern int print_stat_summary(FILE *fp, int files,
 			      int insertions, int deletions);
 extern void setup_diff_pager(struct diff_options *);
 
+extern void run_diff(struct diff_filepair *p, struct diff_options *o);
+
 #endif /* DIFF_H */

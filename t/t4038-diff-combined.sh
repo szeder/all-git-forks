@@ -401,4 +401,137 @@ test_expect_success 'combine diff missing delete bug' '
 	compare_diff_patch expected actual
 '
 
+# make a commit with contents "$1" and "$2" in the paths
+# "one" and "two" respectively, and parents $3, $4, etc
+#
+# If the content is of the form "mode:content", then the
+# mode for the given file is set (otherwise it defaults 100644).
+mkcommit() {
+	(
+		GIT_INDEX_FILE=tmp.index &&
+		export GIT_INDEX_FILE &&
+		for path in one two; do
+			case "$1" in
+			*:*)
+				mode=$(echo "$1" | cut -d: -f1)
+				content=$(echo "$1" | cut -d: -f2)
+				;;
+			*)
+				mode=100644
+				content=$1
+			esac
+			blob=$(echo "$content" | git hash-object -w --stdin) &&
+			git update-index --add --cacheinfo $mode,$blob,$path &&
+			shift || exit 1
+		done
+		tree=$(git write-tree) &&
+		parents=$(for p in "$@"; do echo "-p $p"; done) &&
+		git commit-tree $tree $parents </dev/null
+	)
+}
+
+# we create a merge commit where path "one" can be simplified, but
+# path "two" cannot
+test_expect_success 'simplify combined --raw' '
+	side1=$(mkcommit base content1) &&
+	side2=$(mkcommit base content2) &&
+	merge=$(mkcommit new new $side1 $side2) &&
+	cat >expect <<-\EOF &&
+	:100644 100644 df967b9... 3e75765... M	one
+	::100644 100644 100644 ac3e272... 637f034... 3e75765... MM	two
+	EOF
+
+	git diff-tree -c --simplify-combined-diff \
+		--abbrev --format= $merge >actual &&
+	test_cmp expect actual
+'
+
+# we do not use compare_diff_patch here because we want to
+# make sure we get the headers right, too
+test_expect_success 'simplify combined --patch' '
+	side1=$(mkcommit base content1) &&
+	side2=$(mkcommit base content2) &&
+	merge=$(mkcommit new new $side1 $side2) &&
+
+	cat >expect <<-\EOF &&
+	diff --git a/one b/one
+	index df967b9..3e75765 100644
+	--- a/one
+	+++ b/one
+	@@ -1 +1 @@
+	-base
+	+new
+	diff --combined two
+	index ac3e272,637f034..3e75765
+	--- a/two
+	+++ b/two
+	@@@ -1,1 -1,1 +1,1 @@@
+	- content1
+	 -content2
+	++new
+	EOF
+
+	git diff-tree -c --simplify-combined-diff -p \
+		--format= $merge >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'do not simplify unless all parents are identical' '
+	side1=$(mkcommit base content1) &&
+	test_tick &&
+	side2=$(mkcommit base content1) &&
+	side3=$(mkcommit base content3) &&
+	merge=$(mkcommit new new $side1 $side2 $side3) &&
+
+	cat >expect <<-\EOF &&
+	diff --git a/one b/one
+	index df967b9..3e75765 100644
+	--- a/one
+	+++ b/one
+	@@ -1 +1 @@
+	-base
+	+new
+	diff --combined two
+	index ac3e272,ac3e272,27d10cc..3e75765
+	--- a/two
+	+++ b/two
+	@@@@ -1,1 -1,1 -1,1 +1,1 @@@@
+	-- content1
+	  -content3
+	+++new
+	EOF
+
+	git diff-tree -c --simplify-combined-diff -p \
+		--format= $merge >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'do not simplify away mode changes' '
+	side1=$(mkcommit 100644:base 100644:base) &&
+	side2=$(mkcommit 100644:base 100755:base) &&
+	merge=$(mkcommit new new $side1 $side2) &&
+
+	cat >expect <<-\EOF &&
+	diff --git a/one b/one
+	index df967b9..3e75765 100644
+	--- a/one
+	+++ b/one
+	@@ -1 +1 @@
+	-base
+	+new
+	diff --combined two
+	index df967b9,df967b9..3e75765
+	mode 100644,100755..100644
+	--- a/two
+	+++ b/two
+	@@@ -1,1 -1,1 +1,1 @@@
+	--base
+	++new
+	EOF
+
+	git diff-tree -c --simplify-combined-diff -p \
+		--format= $merge >actual &&
+	test_cmp expect actual
+'
+
 test_done

@@ -297,13 +297,22 @@ have_stash () {
 
 list_stash () {
 	have_stash || return 0
+	case " $* " in
+	*' --cc '*)
+		;; # the user knows what she is doing
+	*' -p '* | *' -U'*)
+		set x "--cc" "--simplify-combined-diff" "$@"
+		shift
+		;;
+	esac
 	git log --format="%gd: %gs" -g "$@" $ref_stash --
 }
 
 show_stash () {
 	assert_stash_like "$@"
 
-	git diff ${FLAGS:---stat} $b_commit $w_commit
+	git show --format= --simplify-combined-diff \
+		${FLAGS:---stat} $w_commit
 }
 
 #
