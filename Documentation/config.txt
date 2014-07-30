@@ -2038,6 +2038,11 @@ rebase.autostash::
 	successful rebase might result in non-trivial conflicts.
 	Defaults to false.
 
+receive.atomicpush::
+	By default, git-receive-pack will only use atomic ref transactions
+	if the client negotiates it. When set to true, git-receive-pack
+	will force atomic ref updates for all client pushes.
+
 receive.autogc::
 	By default, git-receive-pack will run "git-gc --auto" after
 	receiving data from git-push and updating refs.  You can stop
