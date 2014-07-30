@@ -297,8 +297,15 @@ have_stash () {
 
 list_stash () {
 	have_stash || return 0
-	git log --format="%gd: %gs" -g --cc --simplify-combined-diff \
-		"$@" $ref_stash --
+	case " $* " in
+	*' --cc '*)
+		;; # the user knows what she is doing
+	*' -p '* | *' -U'*)
+		set x "--cc" "--simplify-combined-diff" "$@"
+		shift
+		;;
+	esac
+	git log --format="%gd: %gs" -g "$@" $ref_stash --
 }
 
 show_stash () {
