@@ -84,6 +84,7 @@ static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 		OPT_BOOL('e', "edit", &opts->edit, N_("edit the commit message")),
 		OPT_NOOP_NOARG('r', NULL),
 		OPT_BOOL('s', "signoff", &opts->signoff, N_("add Signed-off-by:")),
+		OPT_BOOL(0, "reset-author", &opts->renew_authorship, N_("the commit is authored by me now")),
 		OPT_INTEGER('m', "mainline", &opts->mainline, N_("parent number")),
 		OPT_RERERE_AUTOUPDATE(&opts->allow_rerere_auto),
 		OPT_STRING(0, "strategy", &opts->strategy, N_("strategy"), N_("merge strategy")),
@@ -145,6 +146,7 @@ static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 		verify_opt_compatible(me, this_operation,
 				"--no-commit", opts->no_commit,
 				"--signoff", opts->signoff,
+				"--reset-author", opts->renew_authorship,
 				"--mainline", opts->mainline,
 				"--strategy", opts->strategy ? 1 : 0,
 				"--strategy-option", opts->xopts ? 1 : 0,
@@ -156,6 +158,7 @@ static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 	if (opts->allow_ff)
 		verify_opt_compatible(me, "--ff",
 				"--signoff", opts->signoff,
+				"--reset-author", opts->renew_authorship,
 				"--no-commit", opts->no_commit,
 				"-x", opts->record_origin,
 				"--edit", opts->edit,

@@ -29,6 +29,7 @@ struct replay_opts {
 	int record_origin;
 	int no_commit;
 	int signoff;
+	int renew_authorship;
 	int allow_ff;
 	int allow_rerere_auto;
 	int allow_empty;

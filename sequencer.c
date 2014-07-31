@@ -367,6 +367,8 @@ static int run_git_commit(const char *defmsg, struct replay_opts *opts,
 		argv_array_pushf(&array, "-S%s", opts->gpg_sign);
 	if (opts->signoff)
 		argv_array_push(&array, "-s");
+	if (opts->renew_authorship)
+		argv_array_push(&array, "--reset-author");
 	if (!opts->edit) {
 		argv_array_push(&array, "-F");
 		argv_array_push(&array, defmsg);
@@ -769,6 +771,8 @@ static int populate_opts_cb(const char *key, const char *value, void *data)
 		opts->edit = git_config_bool_or_int(key, value, &error_flag);
 	else if (!strcmp(key, "options.signoff"))
 		opts->signoff = git_config_bool_or_int(key, value, &error_flag);
+	else if (!strcmp(key, "options.renew_authorship"))
+		opts->renew_authorship = git_config_bool_or_int(key, value, &error_flag);
 	else if (!strcmp(key, "options.record-origin"))
 		opts->record_origin = git_config_bool_or_int(key, value, &error_flag);
 	else if (!strcmp(key, "options.allow-ff"))
@@ -940,6 +944,8 @@ static void save_opts(struct replay_opts *opts)
 		git_config_set_in_file(opts_file, "options.edit", "true");
 	if (opts->signoff)
 		git_config_set_in_file(opts_file, "options.signoff", "true");
+	if (opts->renew_authorship)
+		git_config_set_in_file(opts_file, "options.renew_authorship", "true");
 	if (opts->record_origin)
 		git_config_set_in_file(opts_file, "options.record-origin", "true");
 	if (opts->allow_ff)
@@ -971,7 +977,8 @@ static int pick_commits(struct commit_list *todo_list, struct replay_opts *opts)
 	setenv(GIT_REFLOG_ACTION, action_name(opts), 0);
 	if (opts->allow_ff)
 		assert(!(opts->signoff || opts->no_commit ||
-				opts->record_origin || opts->edit));
+				opts->record_origin || opts->edit ||
+				opts->renew_authorship));
 	read_and_refresh_cache(opts);
 
 	for (cur = todo_list; cur; cur = cur->next) {

@@ -9,7 +9,7 @@ SYNOPSIS
 --------
 [verse]
 'git cherry-pick' [--edit] [-n] [-m parent-number] [-s] [-x] [--ff]
-		  [-S[<key-id>]] <commit>...
+		  [--reset-author] [-S[<key-id>]] <commit>...
 'git cherry-pick' --continue
 'git cherry-pick' --quit
 'git cherry-pick' --abort
@@ -100,6 +100,11 @@ effect to your index in a row.
 -s::
 --signoff::
 	Add Signed-off-by line at the end of the commit message.
+
+--reset-author::
+	Declare that the authorship of the resulting commit now
+	belongs to the committer. This also renews the author
+	timestamp. See linkgit:git-commit[1].
 
 -S[<key-id>]::
 --gpg-sign[=<key-id>]::
