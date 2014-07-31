@@ -85,52 +85,33 @@ static char *last_path_elm(char *p)
 
 static char *resolve_symlink(const char *in)
 {
-	static char p[PATH_MAX];
-	size_t s = sizeof(p);
+	static struct strbuf p = STRBUF_INIT;
+	struct strbuf link = STRBUF_INIT;
 	int depth = MAXDEPTH;
 
-	if (strlen(in) >= sizeof(p))
-		return NULL;
-	strcpy(p, in);
+	strbuf_reset(&p);
+	strbuf_addstr(&p, in);
 
 	while (depth--) {
-		char link[PATH_MAX];
-		int link_len = readlink(p, link, sizeof(link));
-		if (link_len < 0) {
-			/* not a symlink anymore */
-			return p;
-		}
-		else if (link_len < sizeof(link))
-			/* readlink() never null-terminates */
-			link[link_len] = '\0';
-		else {
-			warning("%s: symlink too long", p);
-			return p;
-		}
+		if (strbuf_readlink(&link, p.buf, 0) < 0)
+			break;	/* not a symlink anymore */
 
-		if (is_absolute_path(link)) {
+		if (is_absolute_path(link.buf)) {
 			/* absolute path simply replaces p */
-			if (link_len < s)
-				strcpy(p, link);
-			else {
-				warning("%s: symlink too long", p);
-				return p;
-			}
+			strbuf_reset(&p);
+			strbuf_addbuf(&p, &link);
 		} else {
 			/*
 			 * link is a relative path, so I must replace the
 			 * last element of p with it.
 			 */
-			char *r = (char *)last_path_elm(p);
-			if (r - p + link_len < s)
-				strcpy(r, link);
-			else {
-				warning("%s: symlink too long", p);
-				return p;
-			}
+			char *r = (char *)last_path_elm(p.buf);
+			strbuf_setlen(&p, r - p.buf);
+			strbuf_addbuf(&p, &link);
 		}
 	}
-	return p;
+	strbuf_release(&link);
+	return p.buf;
 }
 
 
