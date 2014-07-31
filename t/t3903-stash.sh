@@ -537,6 +537,28 @@ test_expect_success 'stash show -p - no stashes on stack, stash-like argument' '
 	test_cmp expected actual
 '
 
+test_expect_success 'stash show -p will show modified index' '
+	git stash clear &&
+	test_when_finished "git reset --hard HEAD" &&
+	git reset --hard &&
+	echo index >file &&
+	git add file &&
+	echo working >file &&
+	git stash &&
+	cat >expect <<-\EOF &&
+	diff --cc file
+	index 7601807,9015a7a..d26b33d
+	--- a/file
+	+++ b/file
+	@@@ -1,1 -1,1 +1,1 @@@
+	- baz
+	 -index
+	++working
+	EOF
+	git stash show -p >actual &&
+	test_cmp expect actual
+'
+
 test_expect_success 'stash drop - fail early if specified stash is not a stash reference' '
 	git stash clear &&
 	test_when_finished "git reset --hard HEAD && git stash clear" &&
@@ -683,6 +705,69 @@ test_expect_success 'handle stash specification with spaces' '
 	git stash &&
 	git stash apply "stash@{$stamp}" &&
 	grep pig file
+'
+
+test_expect_success 'stash list implies --cc' '
+	git stash clear &&
+	git reset --hard &&
+	echo index >file &&
+	git add file &&
+	echo working >file &&
+	git stash &&
+	git stash list -p >actual &&
+	cat >expect <<-\EOF &&
+	stash@{0}: WIP on master: b27a2bc subdir
+
+	diff --cc file
+	index 257cc56,9015a7a..d26b33d
+	--- a/file
+	+++ b/file
+	@@@ -1,1 -1,1 +1,1 @@@
+	- foo
+	 -index
+	++working
+	EOF
+	test_cmp expect actual
+'
+
+test_expect_success 'stash list implies --simplify-combined-diff' '
+	git stash clear &&
+	git reset --hard &&
+	echo working >file &&
+	git stash &&
+	git stash list -p >actual &&
+	cat >expect <<-\EOF &&
+	stash@{0}: WIP on master: b27a2bc subdir
+
+	diff --git a/file b/file
+	index 257cc56..d26b33d 100644
+	--- a/file
+	+++ b/file
+	@@ -1 +1 @@
+	-foo
+	+working
+	EOF
+	test_cmp expect actual
+'
+
+test_expect_success '--no-simplify-combined-diff overrides default' '
+	git stash clear &&
+	git reset --hard &&
+	echo working >file &&
+	git stash &&
+	git stash list -p --no-simplify-combined-diff >actual &&
+	cat >expect <<-\EOF &&
+	stash@{0}: WIP on master: b27a2bc subdir
+
+	diff --cc file
+	index 257cc56,257cc56..d26b33d
+	--- a/file
+	+++ b/file
+	@@@ -1,1 -1,1 +1,1 @@@
+	--foo
+	++working
+	EOF
+	test_cmp expect actual
 '
 
 test_done
