@@ -58,6 +58,7 @@ int check_connected(sha1_iterate_fn fn, void *cb_data,
 	argv_array_push(&rev_list.args, "--not");
 	argv_array_push(&rev_list.args, "--all");
 	argv_array_push(&rev_list.args, "--quiet");
+	argv_array_push(&rev_list.args, "--alternate-refs");
 	if (opt->progress)
 		argv_array_pushf(&rev_list.args, "--progress=%s",
 				 _("Checking connectivity"));

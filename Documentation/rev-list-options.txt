@@ -179,6 +179,13 @@ explicitly.
 	Pretend as if all objects mentioned by reflogs are listed on the
 	command line as `<commit>`.
 
+--alternate-refs::
+	Include all refs from all alternate repositories specified in
+	`objects/info/alternates`, as if `--all` had been given for each
+	alternate. Note that the refname used internally is local to the
+	alternate repository (this usually does not matter, but might be
+	exposed through an option like `--source`).
+
 --ignore-missing::
 	Upon seeing an invalid object name in the input, pretend as if
 	the bad input was not given.
