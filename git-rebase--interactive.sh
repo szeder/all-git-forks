@@ -797,7 +797,7 @@ do_next () {
 		fi
 		;;
 	*)
-		do_replay $command $signoff $args
+		do_replay $command $signoff $resetauthor $args
 		;;
 	esac
 	test -s "$todo" && return
@@ -1038,11 +1038,11 @@ continue)
 			die "You have staged changes in your working tree. If these changes are meant to be
 squashed into the previous commit, run:
 
-  git commit --amend $gpg_sign_opt_quoted $signoff
+  git commit --amend $gpg_sign_opt_quoted $signoff $resetauthor
 
 If they are meant to go into a new commit, run:
 
-  git commit $gpg_sign_opt_quoted $signoff
+  git commit $gpg_sign_opt_quoted $signoff $resetauthor
 
 In both case, once you're done, continue with:
 
@@ -1059,11 +1059,11 @@ In both case, once you're done, continue with:
 You have uncommitted changes in your working tree. Please, commit them
 first and then run 'git rebase --continue' again."
 			do_with_author git commit --amend --no-verify -F "$msg" -e \
-				${gpg_sign_opt:+"$gpg_sign_opt"} $signoff ||
+				${gpg_sign_opt:+"$gpg_sign_opt"} $signoff $resetauthor ||
 				die "Could not commit staged changes."
 		else
 			do_with_author git commit --no-verify -F "$msg" -e \
-				${gpg_sign_opt:+"$gpg_sign_opt"} $signoff ||
+				${gpg_sign_opt:+"$gpg_sign_opt"} $signoff $resetauthor ||
 				die "Could not commit staged changes."
 		fi
 	fi

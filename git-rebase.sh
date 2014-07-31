@@ -38,6 +38,7 @@ whitespace=!       passed to 'git apply'
 ignore-whitespace! passed to 'git apply'
 C=!                passed to 'git apply'
 signoff!           add Signed-off-by line to the commit log messages
+reset-author!      make the commits belong to the committer and renew the author timestamps
 S,gpg-sign?        GPG-sign commits
  Actions:
 continue!          continue
@@ -89,6 +90,7 @@ autosquash=
 keep_empty=
 test "$(git config --bool rebase.autosquash)" = "true" && autosquash=t
 signoff=
+resetauthor=
 gpg_sign_opt=
 
 read_basic_state () {
@@ -113,6 +115,7 @@ read_basic_state () {
 	test -f "$state_dir"/allow_rerere_autoupdate &&
 		allow_rerere_autoupdate="$(cat "$state_dir"/allow_rerere_autoupdate)"
 	test -f "$state_dir"/signoff && signoff=--signoff
+	test -f "$state_dir"/resetauthor && resetauthor=--reset-author
 	test -f "$state_dir"/gpg_sign_opt &&
 		gpg_sign_opt="$(cat "$state_dir"/gpg_sign_opt)"
 }
@@ -129,6 +132,7 @@ write_basic_state () {
 	test -n "$allow_rerere_autoupdate" && echo "$allow_rerere_autoupdate" > \
 		"$state_dir"/allow_rerere_autoupdate
 	test -n "$signoff" && : > "$state_dir"/signoff
+	test -n "$resetauthor" && : > "$state_dir"/resetauthor
 	test -n "$gpg_sign_opt" && echo "$gpg_sign_opt" > "$state_dir"/gpg_sign_opt
 }
 
@@ -344,6 +348,10 @@ do
 		;;
 	--signoff)
 		signoff=--signoff
+		;;
+	--reset-author)
+		resetauthor=--reset-author
+		force_rebase=t
 		;;
 	--gpg-sign)
 		gpg_sign_opt=-S

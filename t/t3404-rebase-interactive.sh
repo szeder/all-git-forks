@@ -90,6 +90,65 @@ EOF
 	test_cmp expected.log actual.log
 '
 
+test_expect_success 'rebase -i --reset-author' '
+	git checkout -b reauthored-master master &&
+	test_tick &&
+	cat >expected.author <<EOF &&
+$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE
+$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE
+$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE
+EOF
+	set_fake_editor &&
+	FAKE_LINES="reword 1 edit 2 squash 3 pick 4" git rebase -i --reset-author A &&
+	git rebase --continue &&
+	git log --date=raw --format="%an <%ae> %ad" A.. >actual.author &&
+	test_cmp expected.author actual.author
+'
+
+test_expect_success 'rebase --merge --reset-author' '
+	git checkout -B reauthored-master master &&
+	test_tick &&
+	cat >expected.author <<EOF &&
+$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE
+$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE
+$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE
+$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE
+EOF
+	git rebase --merge --reset-author A &&
+	git log --date=raw --format="%an <%ae> %ad" A.. >actual.author &&
+	test_cmp expected.author actual.author
+'
+
+test_expect_success 'rebase --reset-author' '
+	git checkout -B reauthored-master master &&
+	test_tick &&
+	cat >expected.author <<EOF &&
+$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE
+$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE
+$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE
+$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE
+EOF
+	git rebase --reset-author A &&
+	git log --date=raw --format="%an <%ae> %ad" A.. >actual.author &&
+	test_cmp expected.author actual.author
+'
+
+# git-rebase is delegates to git-cherry-pick if --keep-empty is
+# specified
+test_expect_success 'rebase --keep-empty --reset-author' '
+	git checkout -B reauthored-master master &&
+	test_tick &&
+	cat >expected.author <<EOF &&
+$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE
+$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE
+$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE
+$GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE
+EOF
+	git rebase --keep-empty --reset-author A &&
+	git log --date=raw --format="%an <%ae> %ad" A.. >actual.author &&
+	test_cmp expected.author actual.author
+'
+
 test_expect_success 'rebase --keep-empty' '
 	git checkout -b emptybranch master &&
 	git commit --allow-empty -m "empty" &&

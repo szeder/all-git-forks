@@ -45,7 +45,7 @@ then
 	# empty commits and even if it didn't the format doesn't really lend
 	# itself well to recording empty patches.  fortunately, cherry-pick
 	# makes this easy
-	git cherry-pick $signoff ${gpg_sign_opt:+"$gpg_sign_opt"} --allow-empty \
+	git cherry-pick $signoff $resetauthor ${gpg_sign_opt:+"$gpg_sign_opt"} --allow-empty \
 		--right-only "$revisions" \
 		${restrict_revision+^$restrict_revision}
 	ret=$?
@@ -83,7 +83,7 @@ else
 	fi
 
 	git am $git_am_opt --rebasing --resolvemsg="$resolvemsg" \
-		$signoff \
+		$signoff $resetauthor \
 		${gpg_sign_opt:+"$gpg_sign_opt"} <"$GIT_DIR/rebased-patches"
 	ret=$?
 

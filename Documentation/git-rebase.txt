@@ -286,6 +286,11 @@ which makes little sense.
 	Add Signed-off-by line by the committer at the end of the commit
 	log messages.
 
+--reset-author::
+	Rewrite the commit authorships to the committer and renew the
+	author timestamps. This will make the commits appear as if
+	newly authored by the committer.
+
 -S[<keyid>]::
 --gpg-sign[=<keyid>]::
 	GPG-sign commits.
