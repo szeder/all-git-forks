@@ -117,13 +117,13 @@ static char *resolve_symlink(const char *in)
 
 static int lock_file(struct lock_file *lk, const char *path, int flags)
 {
-	int len;
+	struct strbuf sb = STRBUF_INIT;
+
 	if (!(flags & LOCK_NODEREF) && !(path = resolve_symlink(path)))
 		return -1;
-	len = strlen(path) + 5; /* .lock */
-	lk->filename = xmallocz(len);
-	strcpy(lk->filename, path);
-	strcat(lk->filename, ".lock");
+	strbuf_add_absolute_path(&sb, path);
+	strbuf_addstr(&sb, ".lock");
+	lk->filename = strbuf_detach(&sb, NULL);
 	lk->fd = open(lk->filename, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (0 <= lk->fd) {
 		if (!lock_file_list) {
