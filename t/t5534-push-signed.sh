@@ -59,7 +59,7 @@ test_expect_success 'talking with a receiver without push certificate support' '
 	! test -f dst/push-cert
 '
 
-test_expect_failure 'push --signed fails with a receiver without push certificate support' '
+test_expect_success 'push --signed fails with a receiver without push certificate support' '
 	prepare_dst &&
 	mkdir -p dst/.git/hooks &&
 	git -C dst config receive.acceptpushcert no &&
@@ -67,7 +67,7 @@ test_expect_failure 'push --signed fails with a receiver without push certificat
 	test_i18ngrep "the receiving end does not support" err
 '
 
-test_expect_failure GPG 'signed push sends push certificate' '
+test_expect_success GPG 'signed push sends push certificate' '
 	prepare_dst &&
 	mkdir -p dst/.git/hooks &&
 	write_script dst/.git/hooks/post-receive <<-\EOF &&
