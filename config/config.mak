@@ -46,5 +46,6 @@ GNU_ROFF = Yes
 MAN_BOLD_LITERAL = Yes
 
 NO_GETTEXT = Nope
+NO_TCLTK = Nope
 
 -include $(Meta)/config/config.mak.local
