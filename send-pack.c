@@ -11,6 +11,7 @@
 #include "transport.h"
 #include "version.h"
 #include "sha1-array.h"
+#include "gpg-interface.h"
 
 static int feed_object(const unsigned char *sha1, int fd, int negative)
 {
@@ -210,6 +211,37 @@ static int ref_update_to_be_sent(const struct ref *ref, const struct send_pack_a
 	}
 }
 
+static void generate_push_cert(struct strbuf *req_buf,
+			       const struct ref *remote_refs,
+			       struct send_pack_args *args)
+{
+	const struct ref *ref;
+	char stamp[60];
+	char *signing_key = xstrdup(get_signing_key());
+	struct strbuf cert = STRBUF_INIT;
+
+	datestamp(stamp, sizeof(stamp));
+	strbuf_addf(&cert, "pushed-at %s\n", stamp);
+	strbuf_addf(&cert, "pushed-by %s\n", signing_key);
+	for (ref = remote_refs; ref; ref = ref->next) {
+		if (!ref_update_to_be_sent(ref, args))
+			continue;
+		strbuf_addf(&cert, "update %s %s %s\n",
+			    sha1_to_hex(ref->old_sha1),
+			    sha1_to_hex(ref->new_sha1),
+			    ref->name);
+	}
+
+	if (sign_buffer(&cert, &cert, signing_key))
+		die(_("failed to sign the push certificate"));
+	free(signing_key);
+
+	/* for now to debug ... */
+	fprintf(stderr, "push cert <<\n%s>> trec hsup\n", cert.buf);
+
+	strbuf_release(&cert);
+}
+
 int send_pack(struct send_pack_args *args,
 	      int fd[], struct child_process *conn,
 	      struct ref *remote_refs,
@@ -244,6 +276,10 @@ int send_pack(struct send_pack_args *args,
 		agent_supported = 1;
 	if (server_supports("no-thin"))
 		args->use_thin_pack = 0;
+	if (args->push_cert && !server_supports("push-cert")) {
+		warning(_("the receiving end does not support --signed push"));
+		args->push_cert = 0;
+	}
 
 	if (!remote_refs) {
 		fprintf(stderr, "No refs in common and none specified; doing nothing.\n"
@@ -262,12 +298,15 @@ int send_pack(struct send_pack_args *args,
 	if (!args->dry_run)
 		advertise_shallow_grafts_buf(&req_buf);
 
+	if (args->push_cert)
+		generate_push_cert(&req_buf, remote_refs, args);
+
 	/*
 	 * Finally, tell the other end!
 	 */
 	new_refs = 0;
 	for (ref = remote_refs; ref; ref = ref->next) {
-		if (!ref_update_to_be_sent(ref))
+		if (!ref_update_to_be_sent(ref, args))
 			continue;
 
 		if (!ref->deletion)
