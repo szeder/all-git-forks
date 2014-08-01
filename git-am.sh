@@ -14,6 +14,7 @@ b,binary*       (historical option -- no-op)
 3,3way          allow fall back on 3way merging if needed
 q,quiet         be quiet
 s,signoff       add a Signed-off-by line to the commit message
+reset-author!   make the commits belong to the committer and renew the author timestamps
 u,utf8          recode into utf8 (default)
 k,keep          pass -k flag to git-mailinfo
 keep-non-patch  pass -b flag to git-mailinfo
@@ -396,6 +397,8 @@ it will be removed. Please do not use it anymore."
 		threeway=t ;;
 	-s|--signoff)
 		sign=t ;;
+	--reset-author)
+		resetauthor=t ;;
 	-u|--utf8)
 		utf8=t ;; # this is now default
 	--no-utf8)
@@ -565,6 +568,7 @@ Use \"git am --abort\" to remove it.")"
 	echo " $git_apply_opt" >"$dotest/apply-opt"
 	echo "$threeway" >"$dotest/threeway"
 	echo "$sign" >"$dotest/sign"
+	echo "$resetauthor" >"$dotest/resetauthor"
 	echo "$utf8" >"$dotest/utf8"
 	echo "$keep" >"$dotest/keep"
 	echo "$scissors" >"$dotest/scissors"
@@ -651,6 +655,10 @@ then
 else
 	SIGNOFF=
 fi
+if test "$(cat "$dotest/resetauthor")" = t
+then
+	resetauthor=t
+fi
 
 last=$(cat "$dotest/last")
 this=$(cat "$dotest/next")
@@ -718,22 +726,25 @@ To restore the original branch and stop patching run \"\$cmdline --abort\"."
 		;;
 	esac
 
-	if test -f "$dotest/author-script"
+	if test -z "$resetauthor"
 	then
-		eval $(cat "$dotest/author-script")
-	else
-		GIT_AUTHOR_NAME="$(sed -n '/^Author/ s/Author: //p' "$dotest/info")"
-		GIT_AUTHOR_EMAIL="$(sed -n '/^Email/ s/Email: //p' "$dotest/info")"
-		GIT_AUTHOR_DATE="$(sed -n '/^Date/ s/Date: //p' "$dotest/info")"
-	fi
+		if test -f "$dotest/author-script"
+		then
+			eval $(cat "$dotest/author-script")
+		else
+			GIT_AUTHOR_NAME="$(sed -n '/^Author/ s/Author: //p' "$dotest/info")"
+			GIT_AUTHOR_EMAIL="$(sed -n '/^Email/ s/Email: //p' "$dotest/info")"
+			GIT_AUTHOR_DATE="$(sed -n '/^Date/ s/Date: //p' "$dotest/info")"
+		fi
 
-	if test -z "$GIT_AUTHOR_EMAIL"
-	then
-		gettextln "Patch does not have a valid e-mail address."
-		stop_here $this
-	fi
+		if test -z "$GIT_AUTHOR_EMAIL"
+		then
+			gettextln "Patch does not have a valid e-mail address."
+			stop_here $this
+		fi
 
-	export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_AUTHOR_DATE
+		export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_AUTHOR_DATE
+	fi
 
 	case "$resume" in
 	'')
