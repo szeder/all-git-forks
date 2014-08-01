@@ -8,7 +8,7 @@ endif
 
 COMPILER ?= gcc
 O = 0
-CC = ccache $(COMPILER)
+CC = $(COMPILER)
 CFLAGS = -g -O$(O)
 CFLAGS += -Wall -Werror
 CFLAGS += -Wno-format-zero-length
