@@ -257,7 +257,8 @@ then
 		error)
 			tput bold; tput setaf 1;; # bold red
 		skip)
-			tput setaf 4;; # blue
+			tput setaf 4 # blue
+			test -n "$quiet" && return;;
 		warn)
 			tput setaf 3;; # brown/yellow
 		pass)
