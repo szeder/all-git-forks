@@ -45,4 +45,6 @@ export GIT_TEST_GIT_DAEMON = Yes
 GNU_ROFF = Yes
 MAN_BOLD_LITERAL = Yes
 
+NO_GETTEXT = Nope
+
 -include $(Meta)/config/config.mak.local
