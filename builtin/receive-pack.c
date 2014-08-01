@@ -46,6 +46,8 @@ static void *head_name_to_free;
 static int sent_capabilities;
 static int shallow_update;
 static const char *alt_shallow_file;
+static struct strbuf push_cert = STRBUF_INIT;
+static unsigned char push_cert_sha1[20];
 
 static enum deny_action parse_deny_action(const char *var, const char *value)
 {
@@ -142,7 +144,7 @@ static void show_ref(const char *path, const unsigned char *sha1)
 	else
 		packet_write(1, "%s %s%c%s%s agent=%s\n",
 			     sha1_to_hex(sha1), path, 0,
-			     " report-status delete-refs side-band-64k quiet",
+			     " report-status delete-refs side-band-64k quiet push-cert",
 			     prefer_ofs_delta ? " ofs-delta" : "",
 			     git_user_agent_sanitized());
 	sent_capabilities = 1;
@@ -252,6 +254,22 @@ static int copy_to_sideband(int in, int out, void *arg)
 	return 0;
 }
 
+static void prepare_push_cert_sha1(struct child_process *proc)
+{
+	static int already_done;
+	struct argv_array env = ARGV_ARRAY_INIT;
+
+	if (!already_done) {
+		already_done = 1;
+		if (write_sha1_file(push_cert.buf, push_cert.len, "blob", push_cert_sha1))
+			hashclr(push_cert_sha1);
+	}
+	if (!is_null_sha1(push_cert_sha1)) {
+		argv_array_pushf(&env, "GIT_PUSH_CERT=%s", sha1_to_hex(push_cert_sha1));
+		proc->env = env.argv;
+	}
+}
+
 typedef int (*feed_fn)(void *, const char **, size_t *);
 static int run_and_feed_hook(const char *hook_name, feed_fn feed, void *feed_state)
 {
@@ -270,6 +288,8 @@ static int run_and_feed_hook(const char *hook_name, feed_fn feed, void *feed_sta
 	proc.argv = argv;
 	proc.in = -1;
 	proc.stdout_to_stderr = 1;
+
+	prepare_push_cert_sha1(&proc);
 
 	if (use_sideband) {
 		memset(&muxer, 0, sizeof(muxer));
@@ -850,6 +870,27 @@ static struct command *read_head_info(struct sha1_array *shallow)
 			if (get_sha1_hex(line + 8, old_sha1))
 				die("protocol error: expected shallow sha, got '%s'", line + 8);
 			sha1_array_append(shallow, old_sha1);
+			continue;
+		}
+
+		if (!strcmp(line, "push-cert")) {
+			int true_flush = 0;
+			char certbuf[1024];
+
+			for (;;) {
+				len = packet_read(0, NULL, NULL,
+						  certbuf, sizeof(certbuf), 0);
+				if (!len) {
+					true_flush = 1;
+					break;
+				}
+				if (!strcmp(certbuf, "push-cert-end\n"))
+					break; /* end of cert */
+				strbuf_addstr(&push_cert, certbuf);
+			}
+
+			if (true_flush)
+				break;
 			continue;
 		}
 
