@@ -492,9 +492,9 @@ static int nfsnprintf(char *buf, int blen, const char *fmt, ...)
 	return ret;
 }
 
-static struct imap_cmd *v_issue_imap_cmd(struct imap_store *ctx,
-					 struct imap_cmd_cb *cb,
-					 const char *fmt, va_list ap)
+static struct imap_cmd *issue_imap_cmd(struct imap_store *ctx,
+				       struct imap_cmd_cb *cb,
+				       const char *fmt, va_list ap)
 {
 	struct imap *imap = ctx->imap;
 	struct imap_cmd *cmd;
@@ -558,20 +558,6 @@ static struct imap_cmd *v_issue_imap_cmd(struct imap_store *ctx,
 }
 
 __attribute__((format (printf, 3, 4)))
-static struct imap_cmd *issue_imap_cmd(struct imap_store *ctx,
-				       struct imap_cmd_cb *cb,
-				       const char *fmt, ...)
-{
-	struct imap_cmd *ret;
-	va_list ap;
-
-	va_start(ap, fmt);
-	ret = v_issue_imap_cmd(ctx, cb, fmt, ap);
-	va_end(ap);
-	return ret;
-}
-
-__attribute__((format (printf, 3, 4)))
 static int imap_exec(struct imap_store *ctx, struct imap_cmd_cb *cb,
 		     const char *fmt, ...)
 {
@@ -579,7 +565,7 @@ static int imap_exec(struct imap_store *ctx, struct imap_cmd_cb *cb,
 	struct imap_cmd *cmdp;
 
 	va_start(ap, fmt);
-	cmdp = v_issue_imap_cmd(ctx, cb, fmt, ap);
+	cmdp = issue_imap_cmd(ctx, cb, fmt, ap);
 	va_end(ap);
 	if (!cmdp)
 		return RESP_BAD;
@@ -595,7 +581,7 @@ static int imap_exec_m(struct imap_store *ctx, struct imap_cmd_cb *cb,
 	struct imap_cmd *cmdp;
 
 	va_start(ap, fmt);
-	cmdp = v_issue_imap_cmd(ctx, cb, fmt, ap);
+	cmdp = issue_imap_cmd(ctx, cb, fmt, ap);
 	va_end(ap);
 	if (!cmdp)
 		return DRV_STORE_BAD;
