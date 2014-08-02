@@ -1,4 +1,10 @@
 
+/*	Name		: get_username
+	Parameters	: nothing
+	Return		: username if exists or NULL if user not configured in global config file.
+				 remember to free returned string with free function in stdlib.h */
+char *get_username();
+
 /*	Name		: can_create_role
 	Parameters	: role name to check
 	Return		: 1 if that role can create new roles or 0 in other case */
