@@ -423,6 +423,11 @@ SPARSE_FLAGS =
 BASIC_CFLAGS = -I.
 BASIC_LDFLAGS =
 
+
+#New gitpro functionalities
+API_PATH = gitpro_api
+CHECK_PATH = gitpro_role_check
+
 # Guard against environment variables
 BUILTIN_OBJS = builtin/task.o builtin/role.o
 BUILT_INS =
@@ -432,8 +437,8 @@ XDIFF_OBJS =
 VCSSVN_OBJS =
 GENERATED_H =
 EXTRA_CPPFLAGS =
-LIB_H =
-LIB_OBJS =
+LIB_H = $(CHECK_PATH)/check_role.h $(API_PATH)/db_constants.h $(API_PATH)/generic_list.h $(API_PATH)/gitpro_data_api.h
+LIB_OBJS = $(CHECK_PATH)/check_role.o $(API_PATH)/generic_list.o $(API_PATH)/gitpro_data_api.o $(API_PATH)/sql_helper.o
 PROGRAM_OBJS =
 PROGRAMS =
 SCRIPT_PERL =
@@ -992,7 +997,7 @@ BUILTIN_OBJS += builtin/verify-tag.o
 BUILTIN_OBJS += builtin/write-tree.o
 
 GITLIBS = $(LIB_FILE) $(XDIFF_LIB)
-EXTLIBS =
+EXTLIBS = -lsqlite3
 
 GIT_USER_AGENT = git/$(GIT_VERSION)
 

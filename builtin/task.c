@@ -1,5 +1,9 @@
 #include <stdio.h>
 #include <string.h>
+#include "builtin.h"
+#include "parse-options.h"
+#include "../gitpro_api/gitpro_data_api.h"
+#include "../gitpro_role_check/check_role.h"
 
 /* Syntax sugar to manage add and remove options of link command */
 #define LINK_ADD 0
@@ -8,6 +12,13 @@
 /* Syntax sugar to manage add and remove options of assign command */
 #define ASSIGN_ADD 2
 #define ASSIGN_REMOVE 3
+
+/* Usage message */
+static const char * const builtin_task_usage[] =
+{
+	"task [COMMING SOON]",
+	NULL
+};
 
 /* Common help functions */
 int strstrlen(const char **a){
@@ -40,24 +51,46 @@ void update_task(const char *taskId,const char *state,const char *priority,const
 void filter_task(const char *taskId, const char *username, const char *state, const char *type,
 				 const char *priority, const char *ini, const char *end, const char *text);
 
+static int tcreate, tlink, tassign, tremove, tupdate, add_opt,rm_opt;
+
 /* Main code of task command */
 int cmd_task(int argc, const char **argv, const char *prefix){
-	if(argc>1){
+
+	static struct option builtin_task_options[] = {
+		OPT_GROUP("Create task"),
+		OPT_BOOL('c',0,&tcreate,N_("creates new task")),
+		OPT_GROUP("Link task"),	
+		OPT_BOOL(0,"link",&tlink,N_("asociates files to a given task")),
+		OPT_GROUP("Assign task"),
+		OPT_BOOL(0,"assign",&tassign,N_("assigns an user or list of users to a given task")),
+		OPT_GROUP("Link and Assign options"),
+		OPT_BOOL(0,"add",&add_opt,N_("option to add files or users to a given task")),
+		OPT_BOOL(0,"rm",&rm_opt,N_("option to remove files or usert to a given task")),
+		OPT_GROUP("Remove task"),		
+		OPT_BOOL('r',0,&tremove,N_("removes the task with given task")),
+		OPT_GROUP("Update task"),		
+		OPT_BOOL('u',0,&tupdate,N_("updates task data")),
+		OPT_END()
+	};
+
+	argc = parse_options(argc, argv, prefix, builtin_task_options, builtin_task_usage, 0);
+
+	
 		/* Create option */
-		if(strcmp(argv[1],"-c")==0){
-			if(argc==9){
-				create_task(argv[2],argv[3],argv[4],argv[5],argv[6],argv[7],argv[8]);
+		if(tcreate){
+			if(argc==7){
+				create_task(argv[0],argv[1],argv[2],argv[3],argv[4],argv[5],argv[6]);
 			}else{
 				printf("Format: -c name description type priority estimated_time init_date end_date\n");
 			}
 		/* Link option */
-		}else if(strcmp(argv[1],"link")==0){
-			if(argc>=5){
-				const char **filesAndFolders = &argv[4];		
-				if(strcmp(argv[2],"-add")==0){
-					link_task(LINK_ADD,argv[3],filesAndFolders);
-				}else if(strcmp(argv[2],"-rm")==0){
-					link_task(LINK_REMOVE,argv[3],filesAndFolders);
+		}else if(tlink){
+			if(argc>=2){
+				const char **filesAndFolders = &argv[1];
+				if(add_opt){
+					link_task(LINK_ADD,argv[0],filesAndFolders);
+				}else if(rm_opt){
+					link_task(LINK_REMOVE,argv[0],filesAndFolders);
 				}else{
 					printf("Format: link [-add | -rm] task_id [files_or_folders]\n");
 				}
@@ -65,13 +98,13 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 				printf("Format: link [-add | -rm] task_id [file_or_folder_1 ... file_or_folder_n]\n");
 			}
 		/* Assign option */
-		}else if(strcmp(argv[1],"assign")==0){
-			if(argc>=5){
-				const char **users = &argv[4];		
-				if(strcmp(argv[2],"-add")==0){
-					assign_task(ASSIGN_ADD,argv[3],users);
-				}else if(strcmp(argv[2],"-rm")==0){
-					assign_task(ASSIGN_REMOVE,argv[3],users);
+		}else if(tassign){
+			if(argc>=2){
+				const char **users = &argv[1];		
+				if(add_opt){
+					assign_task(ASSIGN_ADD,argv[0],users);
+				}else if(rm_opt){
+					assign_task(ASSIGN_REMOVE,argv[0],users);
 				}else{
 					printf("Format: assign [-add | -rm] task_id [user_1 ... user_n]\n");
 				}
@@ -79,16 +112,16 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 				printf("Format: assign [-add | -rm] task_id [user_1 ... user_n]\n");
 			}
 		/* Remove option */
-		}else if(strcmp(argv[1],"-r")==0){
-			if(argc==3){
-				remove_task(argv[2]);
+		}else if(tremove){
+			if(argc==1){
+				remove_task(argv[0]);
 			}else{
 				printf("Format: -r task_id\n");
 			}
 		/* Update option */
-		}else if(strcmp(argv[1],"-u")==0){
-			if(argc>=5){
-				const char **updateParams = &argv[3];
+		}else if(tupdate){
+			if(argc>=3){
+				const char **updateParams = &argv[1];
 				int paramNumber = strstrlen(updateParams)/2;
 				const char *state = NULL; 
 				const char *priority = NULL; 
@@ -114,12 +147,14 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 					}
 					pos=pos+2;
 				}
-				update_task(argv[2],state,priority,estime,ini,end,note);
+				update_task(argv[0],state,priority,estime,ini,end,note);
 			}else{
 				printf("Format: -u task_id [-state s | -priority p | -estime t | -ini i | -end e | -addNote n]\n");
 			}
 		/* Search option */
-		}else{
+		}
+		/*
+		else{
 			if(argc>=3){
 				const char **filterParams = &argv[1];
 				int paramNumber = strstrlen(filterParams)/2;
@@ -159,10 +194,9 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 				printf("Format: --id task_id | --user u | --state s | --type t | --priority p | -- ini i | --end e | --contain_text ct\n");
 			}
 		}
-	}else{
-		printf("Incorrect command format\n");
-		return 0;
-	}
+
+		*/
+
 	return 1;
 }
 

@@ -1,6 +1,8 @@
 #include <string.h>
 #include "builtin.h"
 #include "parse-options.h"
+#include "../gitpro_role_check/check_role.h"
+#include "../gitpro_api/gitpro_data_api.h"
 
 #define OUT stdout
 #define ERR stderr
@@ -19,9 +21,14 @@ void delete_role();
 static int crole, rrole, urole, drole;
 
 int cmd_role (int argc, const char **argv, const char *prefix){
+	static char *p1 = NULL;
+	static char *p2 = NULL;
+	
 
 	static struct option builtin_role_options[] = {
 		OPT_GROUP("Role options"),
+		OPT_STRING('a',"assign",&p1,"no se",N_("prueba de argumento de la forma -n arg o --n arg")),
+		OPT_STRING('b',0,&p2,"no se",N_("prueba de argumento de la forma -n arg o --n arg")),		
 		OPT_BOOL('c',0,&crole,N_("creates new role")),
 		OPT_BOOL('r',0,&rrole,N_("show roles")),
 		OPT_BOOL('u',0,&urole,N_("update given role")),		
@@ -30,6 +37,8 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 	};
 
 	argc = parse_options(argc, argv, prefix, builtin_role_options, builtin_role_usage, 0);
+
+	
 
 	if(crole + rrole + urole + drole > 1){
 		fputs(_("Only one option at time\n"),ERR);
@@ -41,11 +50,15 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 		update_role();
 	}else if(drole){
 		delete_role();
+	}else if(p1!=NULL || p2!=NULL){
+		printf("p1 = %s\n",p1);
+		printf("p2 = %s\n",p2);
 	}else{
 		fputs(_("No action defined\n"),ERR);
 		usage_with_options(builtin_role_usage,builtin_role_options);
 		return 0;	
 	}
+	
 	return 1;	
 }
 
