@@ -43,7 +43,7 @@ OPTIONS
 -q::
 --quiet::
 
-Only print error and warning messages, all other output will be suppressed.
+Only print error and warning messages; all other output will be suppressed.
 
 --bare::
 
@@ -97,7 +97,7 @@ is given:
    create a repo that is readable and writable to the current user and group,
    but inaccessible to others.
 
-By default, the configuration flag receive.denyNonFastForwards is enabled
+By default, the configuration flag 'receive.denyNonFastForwards' is enabled
 in shared repositories, so that you cannot force a non fast-forwarding push
 into it.
 
@@ -113,7 +113,7 @@ TEMPLATE DIRECTORY
 The template directory contains files and directories that will be copied to
 the `$GIT_DIR` after it is created.
 
-The template directory used will (in order):
+The template directory used will be (in order):
 
  - The argument given with the `--template` option.
 
