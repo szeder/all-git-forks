@@ -312,6 +312,7 @@ fi
 
 test_failure=0
 test_count=0
+run_count=0
 test_fixed=0
 test_broken=0
 test_success=0
@@ -525,6 +526,7 @@ test_eval_ () {
 }
 
 test_run_ () {
+	test_count=$(($test_count+1))
 	test_cleanup=:
 	expecting_failure=$2
 	setup_malloc_check
@@ -546,7 +548,7 @@ test_run_ () {
 }
 
 test_start_ () {
-	test_count=$(($test_count+1))
+	run_count=$(($run_count+1))
 	maybe_setup_verbose
 	maybe_setup_valgrind
 }
@@ -612,7 +614,7 @@ test_done () {
 		test_results_path="$test_results_dir/${base%.sh}-$$.counts"
 
 		cat >>"$test_results_path" <<-EOF
-		total $test_count
+		total $run_count
 		success $test_success
 		fixed $test_fixed
 		broken $test_broken
@@ -652,7 +654,7 @@ test_done () {
 			then
 				say_color pass "# passed all $msg"
 			fi
-			say "1..$test_count$skip_all"
+			say "1..$run_count$skip_all"
 		fi
 
 		test -d "$remove_trash" &&
@@ -667,7 +669,7 @@ test_done () {
 		if test $test_external_has_tap -eq 0
 		then
 			say_color error "# failed $test_failure among $msg"
-			say "1..$test_count"
+			say "1..$run_count"
 		fi
 
 		exit 1 ;;
