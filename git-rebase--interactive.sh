@@ -595,7 +595,7 @@ do_pick () {
 
 	if test -n "$rewrite"
 	then
-		git commit --allow-empty --no-post-rewrite -n --no-edit \
+		output git commit --allow-empty --no-post-rewrite -n --no-edit \
 			   ${allow_empty_message:+--allow-empty-message} \
 			   ${rewrite_signoff:+--signoff} \
 			   ${rewrite_amend:+--amend} \
