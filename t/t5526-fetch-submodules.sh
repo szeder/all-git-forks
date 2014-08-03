@@ -163,7 +163,7 @@ test_expect_success "recurseSubmodules=true propagates into submodules" '
 	add_upstream_commit &&
 	(
 		cd downstream &&
-		git config fetch.recurseSubmodules true
+		git config fetch.recurseSubmodules true &&
 		git fetch >../actual.out 2>../actual.err
 	) &&
 	test_i18ncmp expect.out actual.out &&
@@ -188,7 +188,7 @@ test_expect_success "--no-recurse-submodules overrides config setting" '
 	add_upstream_commit &&
 	(
 		cd downstream &&
-		git config fetch.recurseSubmodules true
+		git config fetch.recurseSubmodules true &&
 		git fetch --no-recurse-submodules >../actual.out 2>../actual.err
 	) &&
 	! test -s actual.out &&
@@ -202,7 +202,7 @@ test_expect_success "Recursion doesn't happen when no new commits are fetched in
 			cd submodule &&
 			git config --unset fetch.recurseSubmodules
 		) &&
-		git config --unset fetch.recurseSubmodules
+		git config --unset fetch.recurseSubmodules &&
 		git fetch >../actual.out 2>../actual.err
 	) &&
 	! test -s actual.out &&
@@ -216,7 +216,7 @@ test_expect_success "Recursion stops when no new submodule commits are fetched" 
 	head2=$(git rev-parse --short HEAD) &&
 	echo "Fetching submodule submodule" > expect.out.sub &&
 	echo "From $pwd/." > expect.err.sub &&
-	echo "   $head1..$head2  master     -> origin/master" >> expect.err.sub
+	echo "   $head1..$head2  master     -> origin/master" >> expect.err.sub &&
 	head -2 expect.err >> expect.err.sub &&
 	(
 		cd downstream &&
@@ -283,7 +283,7 @@ test_expect_success "Recursion picks up all submodules when necessary" '
 		) &&
 		head1=$(git rev-parse --short HEAD^) &&
 		git add subdir/deepsubmodule &&
-		git commit -m "new deepsubmodule"
+		git commit -m "new deepsubmodule" &&
 		head2=$(git rev-parse --short HEAD) &&
 		echo "From $pwd/submodule" > ../expect.err.sub &&
 		echo "   $head1..$head2  master     -> origin/master" >> ../expect.err.sub
@@ -315,7 +315,7 @@ test_expect_success "'--recurse-submodules=on-demand' doesn't recurse when no ne
 		) &&
 		head1=$(git rev-parse --short HEAD^) &&
 		git add subdir/deepsubmodule &&
-		git commit -m "new deepsubmodule"
+		git commit -m "new deepsubmodule" &&
 		head2=$(git rev-parse --short HEAD) &&
 		echo "From $pwd/submodule" > ../expect.err.sub &&
 		echo "   $head1..$head2  master     -> origin/master" >> ../expect.err.sub
@@ -337,7 +337,7 @@ test_expect_success "'--recurse-submodules=on-demand' recurses as deep as necess
 	head2=$(git rev-parse --short HEAD) &&
 	tail -2 expect.err > expect.err.deepsub &&
 	echo "From $pwd/." > expect.err &&
-	echo "   $head1..$head2  master     -> origin/master" >> expect.err
+	echo "   $head1..$head2  master     -> origin/master" >> expect.err &&
 	cat expect.err.sub >> expect.err &&
 	cat expect.err.deepsub >> expect.err &&
 	(
@@ -387,7 +387,7 @@ test_expect_success "'fetch.recurseSubmodules=on-demand' overrides global config
 	git commit -m "new submodule" &&
 	head2=$(git rev-parse --short HEAD) &&
 	echo "From $pwd/." > expect.err.2 &&
-	echo "   $head1..$head2  master     -> origin/master" >> expect.err.2
+	echo "   $head1..$head2  master     -> origin/master" >> expect.err.2 &&
 	head -2 expect.err >> expect.err.2 &&
 	(
 		cd downstream &&
@@ -415,7 +415,7 @@ test_expect_success "'submodule.<sub>.fetchRecurseSubmodules=on-demand' override
 	git commit -m "new submodule" &&
 	head2=$(git rev-parse --short HEAD) &&
 	echo "From $pwd/." > expect.err.2 &&
-	echo "   $head1..$head2  master     -> origin/master" >> expect.err.2
+	echo "   $head1..$head2  master     -> origin/master" >> expect.err.2 &&
 	head -2 expect.err >> expect.err.2 &&
 	(
 		cd downstream &&
