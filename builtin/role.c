@@ -9,7 +9,7 @@
 
 static const char * const builtin_role_usage[] =
 {
-	"role [-c | -r | -u | -d]",
+	"role [-c | -r | -u | -d | -a]\n\t-c -n role_name -p 10_bit_array\n\t-r -n role_name\n\t-u -n role_name -p 10_bit_array\n\t-d -n role_name\n\t-a -n role_name -t --add=\"u1 u2 ... uN\" --rm=\"u1 u2 ... uN\"",
 	NULL
 };
 
@@ -17,28 +17,38 @@ void create_role();
 void read_role();
 void update_role();
 void delete_role();
+void assign_role();
 
-static int crole, rrole, urole, drole;
+static int crole, urole, drole, rrole, arole,user;
+static char *role_name = NULL;
+static char *perms = NULL;
+static char *add = NULL;
+static char *rm = NULL;
 
 int cmd_role (int argc, const char **argv, const char *prefix){
-	static char *p1 = NULL;
-	static char *p2 = NULL;
 	
-
 	static struct option builtin_role_options[] = {
 		OPT_GROUP("Role options"),
-		OPT_STRING('a',"assign",&p1,"no se",N_("prueba de argumento de la forma -n arg o --n arg")),
-		OPT_STRING('b',0,&p2,"no se",N_("prueba de argumento de la forma -n arg o --n arg")),		
-		OPT_BOOL('c',0,&crole,N_("creates new role")),
-		OPT_BOOL('r',0,&rrole,N_("show roles")),
-		OPT_BOOL('u',0,&urole,N_("update given role")),		
-		OPT_BOOL('d',0,&drole,N_("remove given role")),
+		OPT_BOOL('r',"read",&rrole,N_("check role permissions")),		
+		OPT_BOOL('c',"create",&crole,N_("creates new role")),
+		OPT_BOOL('u',"update",&urole,N_("update given role")),		
+		OPT_BOOL('d',"delete",&drole,N_("remove given role")),
+		OPT_BOOL('a',"assign",&arole,N_("assign role to user")),
+		OPT_BOOL('t',"user",&user,N_("specifies user name to assign role")),
+		OPT_GROUP("Role params"),
+		OPT_STRING('n',"name",&role_name,"role name",N_("specifies role name")),
+		OPT_STRING('p',"perms",&perms,"permissions",N_("specifies permissions in 10 array bit format")),
+		OPT_STRING(0,"add",&add,"user1, user2 ... userN",N_("specifies user name to add role assignation")),
+		OPT_STRING(0,"rm",&rm,"user1, user2 ... userN",N_("specifies user name to remove role assignation")),
+		//Permissions array bit info
+		OPT_GROUP("Array bit format example: 10101010101"),
+		OPT_GROUP("Array bit meaning"),
+		OPT_GROUP("\tbits meaning from left to right\n\t create role\n\t remove role\n\t update role\n\t assign role\n\t create task\n\t read task\n\t update task\n\t delete task\n\t assign task\n\t link files"),
 		OPT_END()
 	};
 
+	/* [2.6] Receive data process */
 	argc = parse_options(argc, argv, prefix, builtin_role_options, builtin_role_usage, 0);
-
-	
 
 	if(crole + rrole + urole + drole > 1){
 		fputs(_("Only one option at time\n"),ERR);
@@ -50,9 +60,8 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 		update_role();
 	}else if(drole){
 		delete_role();
-	}else if(p1!=NULL || p2!=NULL){
-		printf("p1 = %s\n",p1);
-		printf("p2 = %s\n",p2);
+	}else if(arole && user){
+		assign_role();
 	}else{
 		fputs(_("No action defined\n"),ERR);
 		usage_with_options(builtin_role_usage,builtin_role_options);
@@ -65,16 +74,35 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 
 void create_role(){
 	fputs(_("Create role option\n"),OUT);
+	if(role_name!=NULL && perms!=NULL){
+		printf("%s\n%s\n",role_name,perms);
+	}
 }
 
 void read_role(){
 	fputs(_("Read role option\n"),OUT);
+	if(role_name!=NULL && perms==NULL){
+		printf("%s\n",role_name);
+	}
 }
 
 void update_role(){
 	fputs(_("Update role option\n"),OUT);
+	if(role_name!=NULL && perms!=NULL){
+		printf("%s\n%s\n",role_name,perms);
+	}
 }
 
 void delete_role(){
 	fputs(_("Delete role option\n"),OUT);
+	if(role_name!=NULL && perms==NULL){
+		printf("%s\n",role_name);
+	}
+}
+
+void assign_role(){
+	fputs(_("Assign role option\n"),OUT);
+	if(role_name!=NULL && (add!=NULL || rm!=NULL)){
+		printf("%s\n%s\n%s\n",role_name,add,rm);
+	}
 }
