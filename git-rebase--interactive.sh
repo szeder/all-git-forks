@@ -599,23 +599,10 @@ do_pick () {
 			   ${allow_empty_message:+--allow-empty-message} \
 			   ${rewrite_signoff:+--signoff} \
 			   ${rewrite_amend:+--amend} \
-			   ${rewrite_edit:+--edit} \
+			   ${rewrite_edit:+--edit --commit-msg} \
 			   ${rewrite_message:+--file "$rewrite_message"} \
 			   ${rewrite_author:+--reset-author} \
 			   ${gpg_sign_opt:+"$gpg_sign_opt"} || return 3
-	fi
-
-	# TODO: Work around the fact that git-commit lets us
-	# disable either both the pre-commit and the commit-msg
-	# hook or none. Disable the pre-commit hook because the
-	# tree is left unchanged but run the commit-msg hook
-	# from here because the log message is altered.
-	if test -n "$rewrite_edit"
-	then
-		if test -x "$GIT_DIR"/hooks/commit-msg
-		then
-			"$GIT_DIR"/hooks/commit-msg "$GIT_DIR"/COMMIT_EDITMSG
-		fi || return 3
 	fi
 }
 
