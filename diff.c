@@ -3090,7 +3090,7 @@ static void strip_prefix(int prefix_length, const char **namep, const char **oth
 	}
 }
 
-static void run_diff(struct diff_filepair *p, struct diff_options *o)
+void run_diff(struct diff_filepair *p, struct diff_options *o)
 {
 	const char *pgm = external_diff();
 	struct strbuf msg;

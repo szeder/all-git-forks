@@ -955,6 +955,38 @@ static void show_combined_header(struct combine_diff_path *elem,
 				 line_prefix, c_meta, c_reset);
 }
 
+static int simplify_parents(struct combine_diff_path *p, int nr)
+{
+	int i;
+	for (i = 1; i < nr; i++)
+		if (p->parent[i].mode != p->parent[i-1].mode ||
+		    hashcmp(p->parent[i].sha1, p->parent[i-1].sha1))
+			return nr;
+	return 1;
+}
+
+static void show_single_parent_patch(struct combine_diff_path *elem,
+				     int working_tree_file,
+				     struct rev_info *rev)
+{
+	struct diff_filepair pair;
+
+	memset(&pair, 0, sizeof(pair));
+	pair.one = alloc_filespec(elem->path);
+	pair.two = alloc_filespec(elem->path);
+	pair.status = elem->parent[0].status;
+
+	fill_filespec(pair.one, elem->parent[0].sha1, 1, elem->parent[0].mode);
+	if (working_tree_file)
+		fill_filespec(pair.two, null_sha1, 0, elem->mode);
+	else
+		fill_filespec(pair.two, elem->sha1, 1, elem->mode);
+
+	run_diff(&pair, &rev->diffopt);
+	free_filespec(pair.one);
+	free_filespec(pair.two);
+}
+
 static void show_patch_diff(struct combine_diff_path *elem, int num_parent,
 			    int dense, int working_tree_file,
 			    struct rev_info *rev)
@@ -971,6 +1003,13 @@ static void show_patch_diff(struct combine_diff_path *elem, int num_parent,
 	struct userdiff_driver *textconv = NULL;
 	int is_binary;
 	const char *line_prefix = diff_line_prefix(opt);
+
+	if (rev->simplify_combined_diff)
+		num_parent = simplify_parents(elem, num_parent);
+	if (num_parent == 1) {
+		show_single_parent_patch(elem, working_tree_file, rev);
+		return;
+	}
 
 	context = opt->context;
 	userdiff = userdiff_find_by_path(elem->path);
@@ -1181,6 +1220,8 @@ static void show_raw_diff(struct combine_diff_path *p, int num_parent, struct re
 	if (rev->loginfo && !rev->no_commit_id)
 		show_log(rev);
 
+	if (rev->simplify_combined_diff)
+		num_parent = simplify_parents(p, num_parent);
 
 	if (opt->output_format & DIFF_FORMAT_RAW) {
 		printf("%s", line_prefix);
@@ -1247,11 +1288,15 @@ static void free_combined_pair(struct diff_filepair *pair)
  * but currently nobody uses it, so this should suffice for now.
  */
 static struct diff_filepair *combined_pair(struct combine_diff_path *p,
-					   int num_parent)
+					   int num_parent,
+					   struct rev_info *rev)
 {
 	int i;
 	struct diff_filepair *pair;
 	struct diff_filespec *pool;
+
+	if (rev->simplify_combined_diff)
+		num_parent = simplify_parents(p, num_parent);
 
 	pair = xmalloc(sizeof(*pair));
 	pool = xcalloc(num_parent + 1, sizeof(struct diff_filespec));
@@ -1277,7 +1322,8 @@ static struct diff_filepair *combined_pair(struct combine_diff_path *p,
 static void handle_combined_callback(struct diff_options *opt,
 				     struct combine_diff_path *paths,
 				     int num_parent,
-				     int num_paths)
+				     int num_paths,
+				     struct rev_info *rev)
 {
 	struct combine_diff_path *p;
 	struct diff_queue_struct q;
@@ -1287,7 +1333,8 @@ static void handle_combined_callback(struct diff_options *opt,
 	q.alloc = num_paths;
 	q.nr = num_paths;
 	for (i = 0, p = paths; p; p = p->next)
-		q.queue[i++] = combined_pair(p, num_parent);
+		q.queue[i++] = combined_pair(p, num_parent, rev);
+
 	opt->format_callback(&q, opt, opt->format_callback_data);
 	for (i = 0; i < num_paths; i++)
 		free_combined_pair(q.queue[i]);
@@ -1397,7 +1444,8 @@ void diff_tree_combined(const unsigned char *sha1,
 		show_log(rev);
 
 		if (rev->verbose_header && opt->output_format &&
-		    opt->output_format != DIFF_FORMAT_NO_OUTPUT)
+		    opt->output_format != DIFF_FORMAT_NO_OUTPUT &&
+		    !commit_format_is_empty(rev->commit_format))
 			printf("%s%c", diff_line_prefix(opt),
 			       opt->line_termination);
 	}
@@ -1498,7 +1546,8 @@ void diff_tree_combined(const unsigned char *sha1,
 			 (DIFF_FORMAT_NUMSTAT|DIFF_FORMAT_DIFFSTAT))
 			needsep = 1;
 		else if (opt->output_format & DIFF_FORMAT_CALLBACK)
-			handle_combined_callback(opt, paths, num_parent, num_paths);
+			handle_combined_callback(opt, paths, num_parent,
+						 num_paths, rev);
 
 		if (opt->output_format & DIFF_FORMAT_PATCH) {
 			if (needsep)
