@@ -524,7 +524,7 @@ do_pick () {
 			rewrite_author=y
 			;;
 		--amend)
-			if test "$(git rev-parse HEAD)" = "$squash_onto" || ! git rev-parse --verify HEAD
+			if test "$(git rev-parse HEAD)" = "$squash_onto" || ! git rev-parse -q --verify HEAD >/dev/null
 			then
 				warn "do_pick: nothing to amend"
 				return 2
