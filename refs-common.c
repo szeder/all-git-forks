@@ -3,6 +3,15 @@
 #include "refs.h"
 #include "string-list.h"
 
+const char *prettify_refname(const char *name)
+{
+	return name + (
+		starts_with(name, "refs/heads/") ? 11 :
+		starts_with(name, "refs/tags/") ? 10 :
+		starts_with(name, "refs/remotes/") ? 13 :
+		0);
+}
+
 int names_conflict(const char *refname1, const char *refname2)
 {
 	for (; *refname1 && *refname1 == *refname2; refname1++, refname2++)
