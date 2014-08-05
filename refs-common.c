@@ -565,3 +565,9 @@ int ref_exists(const char *refname)
 	unsigned char sha1[20];
 	return !!resolve_ref_unsafe(refname, sha1, RESOLVE_REF_READING, NULL);
 }
+
+char *resolve_refdup(const char *ref, unsigned char *sha1, int flags, int *ref_flag)
+{
+	const char *ret = resolve_ref_unsafe(ref, sha1, flags, ref_flag);
+	return ret ? xstrdup(ret) : NULL;
+}

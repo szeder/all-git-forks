@@ -1501,12 +1501,6 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int fla
 	}
 }
 
-char *resolve_refdup(const char *ref, unsigned char *sha1, int flags, int *ref_flag)
-{
-	const char *ret = resolve_ref_unsafe(ref, sha1, flags, ref_flag);
-	return ret ? xstrdup(ret) : NULL;
-}
-
 /* The argument to filter_refs */
 struct ref_filter {
 	const char *pattern;
