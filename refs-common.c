@@ -757,3 +757,35 @@ void transaction_free(struct ref_transaction *transaction)
 {
 	return refs->transaction_free(transaction);
 }
+
+int for_each_reflog_ent_reverse(const char *refname, each_reflog_ent_fn fn,
+				void *cb_data)
+{
+	return refs->for_each_reflog_ent_reverse(refname, fn, cb_data);
+}
+
+int for_each_reflog_ent(const char *refname, each_reflog_ent_fn fn,
+			void *cb_data)
+{
+	return refs->for_each_reflog_ent(refname, fn, cb_data);
+}
+
+int for_each_reflog(each_ref_fn fn, void *cb_data)
+{
+	return refs->for_each_reflog(fn, cb_data);
+}
+
+int reflog_exists(const char *refname)
+{
+	return refs->reflog_exists(refname);
+}
+
+int create_reflog(const char *refname)
+{
+	return refs->create_reflog(refname);
+}
+
+int delete_reflog(const char *refname)
+{
+	return refs->delete_reflog(refname);
+}

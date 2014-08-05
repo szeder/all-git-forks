@@ -373,6 +373,17 @@ typedef int (*transaction_commit_fn)(struct ref_transaction *transaction,
 				       struct strbuf *err);
 typedef void (*transaction_free_fn)(struct ref_transaction *transaction);
 
+typedef int (*for_each_reflog_ent_fn)(const char *refname,
+				      each_reflog_ent_fn fn,
+				      void *cb_data);
+typedef int (*for_each_reflog_ent_reverse_fn)(const char *refname,
+					      each_reflog_ent_fn fn,
+					      void *cb_data);
+typedef int (*for_each_reflog_fn)(each_ref_fn fn, void *cb_data);
+typedef int (*reflog_exists_fn)(const char *refname);
+typedef int (*create_reflog_fn)(const char *refname);
+typedef int (*delete_reflog_fn)(const char *refname);
+
 struct ref_be {
 	transaction_begin_fn transaction_begin;
 	transaction_update_sha1_fn transaction_update_sha1;
@@ -381,6 +392,13 @@ struct ref_be {
 	transaction_update_reflog_fn transaction_update_reflog;
 	transaction_commit_fn transaction_commit;
 	transaction_free_fn transaction_free;
+
+	for_each_reflog_ent_fn for_each_reflog_ent;
+	for_each_reflog_ent_reverse_fn for_each_reflog_ent_reverse;
+	for_each_reflog_fn for_each_reflog;
+	reflog_exists_fn reflog_exists;
+	create_reflog_fn create_reflog;
+	delete_reflog_fn delete_reflog;
 };
 
 extern struct ref_be *refs;

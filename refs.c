@@ -2347,7 +2347,7 @@ static int copy_msg(char *buf, const char *msg)
 }
 
 /* This function must set a meaningful errno on failure */
-int create_reflog(const char *refname)
+static int files_create_reflog(const char *refname)
 {
 	int logfd, oflags = O_APPEND | O_WRONLY;
 	char logfile[PATH_MAX];
@@ -2612,7 +2612,7 @@ int create_symref(const char *ref_target, const char *refs_heads_master,
 	return 0;
 }
 
-int reflog_exists(const char *refname)
+static int files_reflog_exists(const char *refname)
 {
 	struct stat st;
 
@@ -2620,7 +2620,7 @@ int reflog_exists(const char *refname)
 		S_ISREG(st.st_mode);
 }
 
-int delete_reflog(const char *refname)
+static int files_delete_reflog(const char *refname)
 {
 	return remove_path(git_path("logs/%s", refname));
 }
@@ -2664,7 +2664,7 @@ static char *find_beginning_of_line(char *bob, char *scan)
 	return scan;
 }
 
-int for_each_reflog_ent_reverse(const char *refname, each_reflog_ent_fn fn, void *cb_data)
+static int files_for_each_reflog_ent_reverse(const char *refname, each_reflog_ent_fn fn, void *cb_data)
 {
 	struct strbuf sb = STRBUF_INIT;
 	FILE *logfp;
@@ -2741,7 +2741,7 @@ int for_each_reflog_ent_reverse(const char *refname, each_reflog_ent_fn fn, void
 	return ret;
 }
 
-int for_each_reflog_ent(const char *refname, each_reflog_ent_fn fn, void *cb_data)
+static int files_for_each_reflog_ent(const char *refname, each_reflog_ent_fn fn, void *cb_data)
 {
 	FILE *logfp;
 	struct strbuf sb = STRBUF_INIT;
@@ -2802,7 +2802,7 @@ static int do_for_each_reflog(struct strbuf *name, each_ref_fn fn, void *cb_data
 	return retval;
 }
 
-int for_each_reflog(each_ref_fn fn, void *cb_data)
+static int files_for_each_reflog(each_ref_fn fn, void *cb_data)
 {
 	int retval;
 	struct strbuf name;
@@ -3391,6 +3391,13 @@ struct ref_be refs_files = {
 	.transaction_update_reflog	= files_transaction_update_reflog,
 	.transaction_commit		= files_transaction_commit,
 	.transaction_free		= files_transaction_free,
+
+	.for_each_reflog_ent		= files_for_each_reflog_ent,
+	.for_each_reflog_ent_reverse	= files_for_each_reflog_ent_reverse,
+	.for_each_reflog		= files_for_each_reflog,
+	.reflog_exists			= files_reflog_exists,
+	.create_reflog			= files_create_reflog,
+	.delete_reflog			= files_delete_reflog,
 };
 
 struct ref_be *refs = &refs_files;
