@@ -95,7 +95,7 @@ UI, Workflows & Features
 
    Strictly speaking, this is a backward incompatible change and
    users need to explicitly set the variable to 'true' if they want
-   to resurrect the old behaviour.
+   to be prompted to confirm running the tool on each path.
 
  * "git replace" learned the "--edit" subcommand to create a
    replacement by editing an existing object.
