@@ -2076,17 +2076,17 @@ int git_config_set_multivar_in_file(const char *config_filename,
 	if (commit_lock_file(lock) < 0) {
 		error("could not commit config file %s", config_filename);
 		ret = CONFIG_NO_WRITE;
-		goto out_free;
-	}
+	} else
+		ret = 0;
 
 	/*
-	 * lock is committed, so don't try to roll it back below.
-	 * NOTE: Since lockfile.c keeps a linked list of all created
-	 * lock_file structures, it isn't safe to free(lock).  It's
-	 * better to just leave it hanging around.
+	 * lock is committed or rolled back now, so there is no need
+	 * to roll it back below.  NOTE: Since lockfile.c keeps a
+	 * linked list of all created lock_file structures, it isn't
+	 * safe to free(lock).  We have to just leave it hanging
+	 * around.
 	 */
 	lock = NULL;
-	ret = 0;
 
 	/* Invalidate the config cache */
 	git_config_clear();
