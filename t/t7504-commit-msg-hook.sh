@@ -34,20 +34,20 @@ test_expect_success 'with no hook (editor)' '
 
 '
 
-test_expect_success '--no-verify with no hook' '
+test_expect_success '--no-commit-msg with no hook' '
 
 	echo "bar" > file &&
 	git add file &&
-	git commit --no-verify -m "bar"
+	git commit --no-commit-msg -m "bar"
 
 '
 
-test_expect_success '--no-verify with no hook (editor)' '
+test_expect_success '--no-commit-msg with no hook (editor)' '
 
 	echo "more bar" > file &&
 	git add file &&
 	echo "more bar" > FAKE_MSG &&
-	GIT_EDITOR="\"\$FAKE_EDITOR\"" git commit --no-verify
+	GIT_EDITOR="\"\$FAKE_EDITOR\"" git commit --no-commit-msg
 
 '
 
@@ -78,20 +78,20 @@ test_expect_success 'with succeeding hook (editor)' '
 
 '
 
-test_expect_success '--no-verify with succeeding hook' '
+test_expect_success '--no-commit-msg with succeeding hook' '
 
 	echo "even more" >> file &&
 	git add file &&
-	git commit --no-verify -m "even more"
+	git commit --no-commit-msg -m "even more"
 
 '
 
-test_expect_success '--no-verify with succeeding hook (editor)' '
+test_expect_success '--no-commit-msg with succeeding hook (editor)' '
 
 	echo "even more more" >> file &&
 	git add file &&
 	echo "even more more" > FAKE_MSG &&
-	GIT_EDITOR="\"\$FAKE_EDITOR\"" git commit --no-verify
+	GIT_EDITOR="\"\$FAKE_EDITOR\"" git commit --no-commit-msg
 
 '
 
@@ -118,20 +118,20 @@ test_expect_success 'with failing hook (editor)' '
 
 '
 
-test_expect_success '--no-verify with failing hook' '
+test_expect_success '--no-commit-msg with failing hook' '
 
 	echo "stuff" >> file &&
 	git add file &&
-	git commit --no-verify -m "stuff"
+	git commit --no-commit-msg -m "stuff"
 
 '
 
-test_expect_success '--no-verify with failing hook (editor)' '
+test_expect_success '--no-commit-msg with failing hook (editor)' '
 
 	echo "more stuff" >> file &&
 	git add file &&
 	echo "more stuff" > FAKE_MSG &&
-	GIT_EDITOR="\"\$FAKE_EDITOR\"" git commit --no-verify
+	GIT_EDITOR="\"\$FAKE_EDITOR\"" git commit --no-commit-msg
 
 '
 
@@ -153,21 +153,70 @@ test_expect_success POSIXPERM 'with non-executable hook (editor)' '
 
 '
 
-test_expect_success POSIXPERM '--no-verify with non-executable hook' '
+test_expect_success POSIXPERM '--no-commit-msg with non-executable hook' '
 
 	echo "more content" >> file &&
 	git add file &&
-	git commit --no-verify -m "more content"
+	git commit --no-commit-msg -m "more content"
 
 '
 
-test_expect_success POSIXPERM '--no-verify with non-executable hook (editor)' '
+test_expect_success POSIXPERM '--no-commit-msg with non-executable hook (editor)' '
 
 	echo "even more content" >> file &&
 	git add file &&
 	echo "even more content" > FAKE_MSG &&
-	GIT_EDITOR="\"\$FAKE_EDITOR\"" git commit --no-verify
+	GIT_EDITOR="\"\$FAKE_EDITOR\"" git commit --no-commit-msg
 
+'
+
+test_hook_enabled () {
+	git checkout --detach master &&
+	output="running failing commit-msg hook with ${*:-(none)}..." &&
+	>actual.output &&
+	cat >"$HOOK" <<-EOF &&
+	#!/bin/sh
+	echo "$output" >>actual.output
+	exit 1
+	EOF
+	chmod +x "$HOOK" &&
+	echo "$output" >expected.output &&
+	test_must_fail test_commit $* file &&
+	test_cmp expected.output actual.output
+}
+
+test_hook_disabled () {
+	git checkout --detach master &&
+	output="running failing commit-msg hook with ${*:-(none)}..." &&
+	>actual.output &&
+	cat >"$HOOK" <<-EOF &&
+	#!/bin/sh
+	echo "$output" >>actual.output
+	exit 1
+	EOF
+	chmod +x "$HOOK" &&
+	test_commit --notag $* file &&
+	test_must_be_empty actual.output
+}
+
+test_expect_success 'command line options combinations' '
+	test_hook_enabled &&
+	test_hook_enabled --commit-msg &&
+	test_hook_enabled --no-commit-msg --commit-msg &&
+	test_hook_enabled --no-verify --commit-msg &&
+	test_hook_enabled --verify &&
+	test_hook_enabled --no-commit-msg --verify &&
+	test_hook_enabled --no-verify --verify &&
+	test_hook_enabled --verify --no-pre-commit &&
+	test_hook_enabled --verify --pre-commit &&
+	test_hook_disabled --no-commit-msg &&
+	test_hook_disabled --commit-msg --no-commit-msg &&
+	test_hook_disabled --commit-msg --no-verify &&
+	test_hook_disabled --no-verify &&
+	test_hook_disabled --verify --no-commit-msg &&
+	test_hook_disabled --verify --no-verify &&
+	test_hook_disabled --no-verify --no-pre-commit &&
+	test_hook_disabled --no-verify --pre-commit
 '
 
 # now a hook that edits the commit message
@@ -205,7 +254,7 @@ test_expect_success "hook doesn't edit commit message" '
 
 	echo "plus" >> file &&
 	git add file &&
-	git commit --no-verify -m "plus" &&
+	git commit --no-commit-msg -m "plus" &&
 	commit_msg_is "plus"
 
 '
@@ -215,7 +264,7 @@ test_expect_success "hook doesn't edit commit message (editor)" '
 	echo "more plus" >> file &&
 	git add file &&
 	echo "more plus" > FAKE_MSG &&
-	GIT_EDITOR="\"\$FAKE_EDITOR\"" git commit --no-verify &&
+	GIT_EDITOR="\"\$FAKE_EDITOR\"" git commit --no-commit-msg &&
 	commit_msg_is "more plus"
 
 '

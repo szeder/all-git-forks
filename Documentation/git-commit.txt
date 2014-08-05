@@ -158,7 +158,7 @@ OPTIONS
 
 -n::
 --no-verify::
-	This option bypasses the pre-commit and commit-msg hooks.
+	A synonym for `--no-pre-commit --no-commit-msg`.
 	See also linkgit:githooks[5].
 
 --allow-empty::
@@ -237,6 +237,12 @@ but can be used to amend a merge commit.
 You should understand the implications of rewriting history if you
 amend a commit that has already been published.  (See the "RECOVERING
 FROM UPSTREAM REBASE" section in linkgit:git-rebase[1].)
+
+--no-pre-commit::
+	This option bypasses the pre-commit hook.
+
+--no-commit-msg::
+	This option bypasses the commit-msg hook.
 
 --no-post-rewrite::
 	Bypass the post-rewrite hook.

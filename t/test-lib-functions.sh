@@ -154,24 +154,28 @@ test_pause () {
 
 test_commit () {
 	notick= &&
-	signoff= &&
-	noverify= &&
+	notag= &&
+	commit_opts= &&
 	while test $# != 0
 	do
 		case "$1" in
 		--notick)
 			notick=yes
 			;;
-		--signoff)
-			signoff="$1"
+		--notag)
+			notag=yes
 			;;
-		--no-verify)
-			noverify="$1"
+		--)
+			shift &&
+			break
+			;;
+		-*)
+			commit_opts="$commit_opts $1"
 			;;
 		*)
 			break
 			;;
-		esac
+		esac &&
 		shift
 	done &&
 	file=${2:-"$1.t"} &&
@@ -181,8 +185,11 @@ test_commit () {
 	then
 		test_tick
 	fi &&
-	git commit $signoff $noverify -m "$1" &&
-	git tag "${4:-$1}"
+	git commit $commit_opts -m "$1" &&
+	if test -z "$notag"
+	then
+		git tag "${4:-$1}"
+	fi
 }
 
 # Call test_merge with the arguments "<message> <commit>", where <commit>
