@@ -659,6 +659,8 @@ enum object_creation_mode {
 extern enum object_creation_mode object_creation_mode;
 
 extern char *notes_ref_name;
+extern const char *db_repo_name;
+extern const char *db_socket;
 
 extern int grafts_replace_parents;
 

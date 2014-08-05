@@ -7,6 +7,7 @@
 #include "builtin.h"
 #include "exec_cmd.h"
 #include "parse-options.h"
+#include "refs.h"
 
 #ifndef DEFAULT_GIT_TEMPLATE_DIR
 #define DEFAULT_GIT_TEMPLATE_DIR "/usr/share/git-core/templates"
@@ -229,6 +230,11 @@ static int create_default_files(const char *template_path)
 		adjust_shared_perm(git_path("refs/tags"));
 	}
 
+	if (db_repo_name && db_socket) {
+		git_config_set("core.db-repo-name", db_repo_name);
+		git_config_set("core.db-socket", db_socket);
+		init_db_backend();
+	}
 	/*
 	 * Create the default symlink from ".git/HEAD" to the "master"
 	 * branch, if it does not exist yet.
@@ -491,6 +497,10 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 		OPT_BIT('q', "quiet", &flags, N_("be quiet"), INIT_DB_QUIET),
 		OPT_STRING(0, "separate-git-dir", &real_git_dir, N_("gitdir"),
 			   N_("separate git dir from working tree")),
+		OPT_STRING(0, "db-repo-name", &db_repo_name, N_("reponame"),
+			   N_("name of repository in the multi-repo database")),
+		OPT_STRING(0, "db-socket", &db_socket, N_("socket"),
+			   N_("socket to connect to the database")),
 		OPT_END()
 	};
 

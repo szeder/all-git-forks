@@ -14,6 +14,7 @@ SYNOPSIS
 	  [-o <name>] [-b <name>] [-u <upload-pack>] [--reference <repository>]
 	  [--separate-git-dir <git dir>]
 	  [--depth <depth>] [--[no-]single-branch]
+	  [--db-repo-name=<repo> [--db-socket=<database socket>]]
 	  [--recursive | --recurse-submodules] [--] <repository>
 	  [<directory>]
 
@@ -208,6 +209,36 @@ objects from the source repository into a pack in the cloned repository.
 	then make a filesystem-agnostic Git symbolic link to there.
 	The result is Git repository can be separated from working
 	tree.
+
+--db-repo-name=<repo name>::
+This argument specifies the name of this repository when refs are stored in
+a database. This allows multiple git repositories to store their refs in the
+same database as long as all rtepositories are named differently.
+
+--db-socket=<database socket>::
+With this option git will use an external daemon for all refs operations.
+This argument provides the name of the unix domain socket to use for accessing
+the refs daemon.
+
+Git comes with a daemon that uses TDB databases for storing refs : refsd-tdb
+
+
+Example:
+
+- Start the TDB daemon 
+  <create /var/lib/git>
+  $ refsd-tdb /var/lib/git/tdb.socket /var/lib/git /dev/tty
+
+- First repository
+  $ cd <somewhere>
+  $ git init-db --db-repo-name=MyFirstRepo --db-socket=/var/lib/git/tdb.socket
+
+- Second repository
+  $ cd <somewhere else>
+  $ git init-db --db-repo-name=MySecondRepo --db-socket=/var/lib/git/tdb.socket
+
+This will store the refs for both repos in the same database files :
+/var/lib/git/refs.tdb and /var/lib/git/logs.tdb
 
 
 <repository>::

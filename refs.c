@@ -3304,7 +3304,7 @@ cleanup:
 	return ret;
 }
 
-struct ref_be refs_files = {
+struct ref_be refs_be_files = {
 	.transaction_begin		= files_transaction_begin,
 	.transaction_update_sha1	= files_transaction_update_sha1,
 	.transaction_create_sha1	= files_transaction_create_sha1,
@@ -3340,4 +3340,4 @@ struct ref_be refs_files = {
 	.for_each_replace_ref		= files_for_each_replace_ref,
 };
 
-struct ref_be *refs = &refs_files;
+struct ref_be *refs = &refs_be_files;

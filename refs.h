@@ -351,7 +351,16 @@ extern int parse_hide_refs_config(const char *var, const char *value, const char
 extern int ref_is_hidden(const char *);
 
 
-/* refs backends */
+/*
+ * refs backends
+ */
+
+/*
+ * Initialize the DB backend. Function will return if the backend could be
+ * initialized properly or call die() if it fails.
+ */
+void init_db_backend(void);
+
 typedef struct ref_transaction *(*transaction_begin_fn)(struct strbuf *err);
 typedef int (*transaction_update_sha1_fn)(struct ref_transaction *transaction,
 		const char *refname, const unsigned char *new_sha1,

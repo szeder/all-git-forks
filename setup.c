@@ -258,10 +258,6 @@ int is_git_directory(const char *suspect)
 	if (access(path, X_OK))
 		return 0;
 
-	strcpy(path + len, "/HEAD");
-	if (validate_headref(path))
-		return 0;
-
 	return 1;
 }
 

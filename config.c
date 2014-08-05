@@ -9,6 +9,7 @@
 #include "exec_cmd.h"
 #include "strbuf.h"
 #include "quote.h"
+#include "refs.h"
 
 struct config_source {
 	struct config_source *prev;
@@ -961,6 +962,15 @@ static int git_default_mailmap_config(const char *var, const char *value)
 	return 0;
 }
 
+int git_early_backend_config(const char *var, const char *value, void *dummy)
+{
+	if (!strcmp(var, "core.db-repo-name"))
+		db_repo_name = strdup((char *)value);
+	if (!strcmp(var, "core.db-socket"))
+		db_socket = strdup((char *)value);
+	return 0;
+}
+
 int git_default_config(const char *var, const char *value, void *dummy)
 {
 	if (starts_with(var, "core."))
@@ -1155,6 +1165,16 @@ int git_config_early(config_fn_t fn, void *data, const char *repo_config)
 	}
 
 	if (repo_config && !access_or_die(repo_config, R_OK, 0)) {
+		/*
+		 * make sure we ALWAYS read the backend config from the
+		 * core section on startup
+		 */
+		ret += git_config_from_file(git_early_backend_config,
+					    repo_config, data);
+		if (db_repo_name && db_socket) {
+			init_db_backend();
+		}
+
 		ret += git_config_from_file(fn, repo_config, data);
 		found += 1;
 	}
