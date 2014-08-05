@@ -128,6 +128,15 @@ int pack_refs(unsigned int flags, struct strbuf *err);
 
 extern int ref_exists(const char *);
 
+/*
+ * Return true iff refname1 and refname2 conflict with each other.
+ * Two reference names conflict if one of them exactly matches the
+ * leading components of the other; e.g., "foo/bar" conflicts with
+ * both "foo" and with "foo/bar/baz" but not with "foo/bar" or
+ * "foo/barbados".
+ */
+int names_conflict(const char *refname1, const char *refname2);
+
 extern int is_branch(const char *refname);
 
 /*
