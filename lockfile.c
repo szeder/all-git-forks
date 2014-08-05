@@ -315,8 +315,12 @@ int commit_lock_file(struct lock_file *lk)
 	if (!lk->filename[0])
 		die("BUG: attempt to commit unlocked object");
 
-	if (lk->fd >= 0 && close_lock_file(lk))
+	if (lk->fd >= 0 && close_lock_file(lk)) {
+		int save_errno = errno;
+		rollback_lock_file(lk);
+		errno = save_errno;
 		return -1;
+	}
 
 	strcpy(result_file, lk->filename);
 	/* remove ".lock": */
