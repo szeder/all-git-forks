@@ -3,6 +3,11 @@
 #include "refs.h"
 #include "string-list.h"
 
+int is_branch(const char *refname)
+{
+	return !strcmp(refname, "HEAD") || starts_with(refname, "refs/heads/");
+}
+
 int update_ref(const char *action, const char *refname,
 	       const unsigned char *sha1, const unsigned char *oldval,
 	       int flags, struct strbuf *e)
