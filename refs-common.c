@@ -547,3 +547,21 @@ void warn_dangling_symrefs(FILE *fp, const char *msg_fmt, const struct string_li
 	data.msg_fmt = msg_fmt;
 	for_each_rawref(warn_if_dangling_symref, &data);
 }
+
+int read_ref_full(const char *refname, unsigned char *sha1, int flags, int *ref_flag)
+{
+	if (resolve_ref_unsafe(refname, sha1, flags, ref_flag))
+		return 0;
+	return -1;
+}
+
+int read_ref(const char *refname, unsigned char *sha1)
+{
+	return read_ref_full(refname, sha1, RESOLVE_REF_READING, NULL);
+}
+
+int ref_exists(const char *refname)
+{
+	unsigned char sha1[20];
+	return !!resolve_ref_unsafe(refname, sha1, RESOLVE_REF_READING, NULL);
+}
