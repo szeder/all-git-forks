@@ -703,3 +703,57 @@ int check_refname_format(const char *refname, int flags)
 		return -1; /* Refname has only one component. */
 	return 0;
 }
+
+/* backend functions */
+struct ref_transaction *transaction_begin(struct strbuf *err)
+{
+	return refs->transaction_begin(err);
+}
+
+int transaction_update_sha1(struct ref_transaction *transaction,
+			    const char *refname, const unsigned char *new_sha1,
+			    const unsigned char *old_sha1, int flags,
+			    int have_old, const char *msg, struct strbuf *err)
+{
+	return refs->transaction_update_sha1(transaction, refname, new_sha1,
+					     old_sha1, flags, have_old, msg,
+					     err);
+}
+
+int transaction_create_sha1(struct ref_transaction *transaction,
+			    const char *refname, const unsigned char *new_sha1,
+			    int flags, const char *msg, struct strbuf *err)
+{
+	return refs->transaction_create_sha1(transaction, refname, new_sha1,
+					     flags, msg, err);
+}
+int transaction_delete_sha1(struct ref_transaction *transaction,
+			    const char *refname, const unsigned char *old_sha1,
+			    int flags, int have_old, const char *msg,
+			    struct strbuf *err)
+{
+	return refs->transaction_delete_sha1(transaction, refname, old_sha1,
+					     flags, have_old, msg, err);
+}
+
+int transaction_update_reflog(struct ref_transaction *transaction,
+			      const char *refname,
+			      const unsigned char *new_sha1,
+			      const unsigned char *old_sha1,
+			      struct reflog_committer_info *ci,
+			      const char *msg, int flags,
+			      struct strbuf *err)
+{
+	return refs->transaction_update_reflog(transaction, refname, new_sha1,
+					       old_sha1, ci, msg, flags, err);
+}
+
+int transaction_commit(struct ref_transaction *transaction, struct strbuf *err)
+{
+	return refs->transaction_commit(transaction, err);
+}
+
+void transaction_free(struct ref_transaction *transaction)
+{
+	return refs->transaction_free(transaction);
+}

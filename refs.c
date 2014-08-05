@@ -2873,12 +2873,12 @@ struct ref_transaction {
 	enum ref_transaction_state state;
 };
 
-struct ref_transaction *transaction_begin(struct strbuf *err)
+static struct ref_transaction *files_transaction_begin(struct strbuf *err)
 {
 	return xcalloc(1, sizeof(struct ref_transaction));
 }
 
-void transaction_free(struct ref_transaction *transaction)
+static void files_transaction_free(struct ref_transaction *transaction)
 {
 	int i;
 
@@ -2908,13 +2908,13 @@ static struct ref_update *add_update(struct ref_transaction *transaction,
 	return update;
 }
 
-int transaction_update_reflog(struct ref_transaction *transaction,
-			      const char *refname,
-			      const unsigned char *new_sha1,
-			      const unsigned char *old_sha1,
-			      struct reflog_committer_info *ci,
-			      const char *msg, int flags,
-			      struct strbuf *err)
+static int files_transaction_update_reflog(struct ref_transaction *transaction,
+					   const char *refname,
+					   const unsigned char *new_sha1,
+					   const unsigned char *old_sha1,
+					   struct reflog_committer_info *ci,
+					   const char *msg, int flags,
+					   struct strbuf *err)
 {
 	struct ref_update *update;
 	int i;
@@ -2961,12 +2961,13 @@ int transaction_update_reflog(struct ref_transaction *transaction,
 	return 0;
 }
 
-int transaction_update_sha1(struct ref_transaction *transaction,
-			    const char *refname,
-			    const unsigned char *new_sha1,
-			    const unsigned char *old_sha1,
-			    int flags, int have_old, const char *msg,
-			    struct strbuf *err)
+static int files_transaction_update_sha1(struct ref_transaction *transaction,
+					 const char *refname,
+					 const unsigned char *new_sha1,
+					 const unsigned char *old_sha1,
+					 int flags, int have_old,
+					 const char *msg,
+					 struct strbuf *err)
 {
 	struct ref_update *update;
 
@@ -2993,11 +2994,11 @@ int transaction_update_sha1(struct ref_transaction *transaction,
 	return 0;
 }
 
-int transaction_create_sha1(struct ref_transaction *transaction,
-			    const char *refname,
-			    const unsigned char *new_sha1,
-			    int flags, const char *msg,
-			    struct strbuf *err)
+static int files_transaction_create_sha1(struct ref_transaction *transaction,
+					 const char *refname,
+					 const unsigned char *new_sha1,
+					 int flags, const char *msg,
+					 struct strbuf *err)
 {
 	if (transaction->state != REF_TRANSACTION_OPEN)
 		die("BUG: create called for transaction that is not open");
@@ -3009,11 +3010,12 @@ int transaction_create_sha1(struct ref_transaction *transaction,
 				       null_sha1, flags, 1, msg, err);
 }
 
-int transaction_delete_sha1(struct ref_transaction *transaction,
-			    const char *refname,
-			    const unsigned char *old_sha1,
-			    int flags, int have_old, const char *msg,
-			    struct strbuf *err)
+static int files_transaction_delete_sha1(struct ref_transaction *transaction,
+					 const char *refname,
+					 const unsigned char *old_sha1,
+					 int flags, int have_old,
+					 const char *msg,
+					 struct strbuf *err)
 {
 	if (transaction->state != REF_TRANSACTION_OPEN)
 		die("BUG: delete called for transaction that is not open");
@@ -3055,8 +3057,8 @@ static int ref_update_reject_duplicates(struct ref_update **updates, int n,
 	return 0;
 }
 
-int transaction_commit(struct ref_transaction *transaction,
-		       struct strbuf *err)
+static int files_transaction_commit(struct ref_transaction *transaction,
+				    struct strbuf *err)
 {
 	int ret = 0, delnum = 0, i, df_conflict = 0, need_repack = 0;
 	int num_updates = 0;
@@ -3380,3 +3382,15 @@ cleanup:
 		ret = -2;
 	return ret;
 }
+
+struct ref_be refs_files = {
+	.transaction_begin		= files_transaction_begin,
+	.transaction_update_sha1	= files_transaction_update_sha1,
+	.transaction_create_sha1	= files_transaction_create_sha1,
+	.transaction_delete_sha1	= files_transaction_delete_sha1,
+	.transaction_update_reflog	= files_transaction_update_reflog,
+	.transaction_commit		= files_transaction_commit,
+	.transaction_free		= files_transaction_free,
+};
+
+struct ref_be *refs = &refs_files;

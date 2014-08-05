@@ -350,4 +350,39 @@ int update_ref(const char *action, const char *refname,
 extern int parse_hide_refs_config(const char *var, const char *value, const char *);
 extern int ref_is_hidden(const char *);
 
+
+/* refs backends */
+typedef struct ref_transaction *(*transaction_begin_fn)(struct strbuf *err);
+typedef int (*transaction_update_sha1_fn)(struct ref_transaction *transaction,
+		const char *refname, const unsigned char *new_sha1,
+		const unsigned char *old_sha1, int flags, int have_old,
+		const char *msg, struct strbuf *err);
+typedef int (*transaction_create_sha1_fn)(struct ref_transaction *transaction,
+		const char *refname, const unsigned char *new_sha1,
+		int flags, const char *msg, struct strbuf *err);
+typedef int (*transaction_delete_sha1_fn)(struct ref_transaction *transaction,
+		const char *refname, const unsigned char *old_sha1,
+		int flags, int have_old, const char *msg, struct strbuf *err);
+typedef int (*transaction_update_reflog_fn)(
+		struct ref_transaction *transaction,
+		const char *refname, const unsigned char *new_sha1,
+		const unsigned char *old_sha1,
+		struct reflog_committer_info *ci,
+		const char *msg, int flags, struct strbuf *err);
+typedef int (*transaction_commit_fn)(struct ref_transaction *transaction,
+				       struct strbuf *err);
+typedef void (*transaction_free_fn)(struct ref_transaction *transaction);
+
+struct ref_be {
+	transaction_begin_fn transaction_begin;
+	transaction_update_sha1_fn transaction_update_sha1;
+	transaction_create_sha1_fn transaction_create_sha1;
+	transaction_delete_sha1_fn transaction_delete_sha1;
+	transaction_update_reflog_fn transaction_update_reflog;
+	transaction_commit_fn transaction_commit;
+	transaction_free_fn transaction_free;
+};
+
+extern struct ref_be *refs;
+
 #endif /* REFS_H */
