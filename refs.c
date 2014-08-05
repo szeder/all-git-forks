@@ -1626,22 +1626,22 @@ static int files_head_ref_submodule(const char *submodule, each_ref_fn fn, void 
 	return do_head_ref(submodule, fn, cb_data);
 }
 
-int for_each_ref(each_ref_fn fn, void *cb_data)
+static int files_for_each_ref(each_ref_fn fn, void *cb_data)
 {
 	return do_for_each_ref(&ref_cache, "", fn, 0, 0, cb_data);
 }
 
-int for_each_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
+static int files_for_each_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
 	return do_for_each_ref(get_ref_cache(submodule), "", fn, 0, 0, cb_data);
 }
 
-int for_each_ref_in(const char *prefix, each_ref_fn fn, void *cb_data)
+static int files_for_each_ref_in(const char *prefix, each_ref_fn fn, void *cb_data)
 {
 	return do_for_each_ref(&ref_cache, prefix, fn, strlen(prefix), 0, cb_data);
 }
 
-int for_each_ref_in_submodule(const char *submodule, const char *prefix,
+static int files_for_each_ref_in_submodule(const char *submodule, const char *prefix,
 		each_ref_fn fn, void *cb_data)
 {
 	return do_for_each_ref(get_ref_cache(submodule), prefix, fn, strlen(prefix), 0, cb_data);
@@ -1677,7 +1677,7 @@ int for_each_remote_ref_submodule(const char *submodule, each_ref_fn fn, void *c
 	return for_each_ref_in_submodule(submodule, "refs/remotes/", fn, cb_data);
 }
 
-int for_each_replace_ref(each_ref_fn fn, void *cb_data)
+static int files_for_each_replace_ref(each_ref_fn fn, void *cb_data)
 {
 	return do_for_each_ref(&ref_cache, "refs/replace/", fn, 13, 0, cb_data);
 }
@@ -1697,7 +1697,7 @@ static int files_head_ref_namespaced(each_ref_fn fn, void *cb_data)
 	return ret;
 }
 
-int for_each_namespaced_ref(each_ref_fn fn, void *cb_data)
+static int files_for_each_namespaced_ref(each_ref_fn fn, void *cb_data)
 {
 	struct strbuf buf = STRBUF_INIT;
 	int ret;
@@ -1742,7 +1742,7 @@ int for_each_glob_ref(each_ref_fn fn, const char *pattern, void *cb_data)
 	return for_each_glob_ref_in(fn, pattern, NULL, cb_data);
 }
 
-int for_each_rawref(each_ref_fn fn, void *cb_data)
+static int files_for_each_rawref(each_ref_fn fn, void *cb_data)
 {
 	return do_for_each_ref(&ref_cache, "", fn, 0,
 			       DO_FOR_EACH_INCLUDE_BROKEN, cb_data);
@@ -3411,6 +3411,14 @@ struct ref_be refs_files = {
 	.head_ref			= files_head_ref,
 	.head_ref_submodule	       	= files_head_ref_submodule,
 	.head_ref_namespaced		= files_head_ref_namespaced,
+
+	.for_each_ref			= files_for_each_ref,
+	.for_each_ref_submodule	       	= files_for_each_ref_submodule,
+	.for_each_ref_in		= files_for_each_ref_in,
+	.for_each_ref_in_submodule	= files_for_each_ref_in_submodule,
+	.for_each_rawref		= files_for_each_rawref,
+	.for_each_namespaced_ref	= files_for_each_namespaced_ref,
+	.for_each_replace_ref		= files_for_each_replace_ref,
 };
 
 struct ref_be *refs = &refs_files;

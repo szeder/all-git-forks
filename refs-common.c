@@ -837,3 +837,39 @@ int head_ref_namespaced(each_ref_fn fn, void *cb_data)
 {
 	return refs->head_ref_namespaced(fn, cb_data);
 }
+ 
+int for_each_ref(each_ref_fn fn, void *cb_data)
+{
+	return refs->for_each_ref(fn, cb_data);
+}
+
+int for_each_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
+{
+	return refs->for_each_ref_submodule(submodule, fn, cb_data);
+}
+
+int for_each_ref_in(const char *prefix, each_ref_fn fn, void *cb_data)
+{
+	return refs->for_each_ref_in(prefix, fn, cb_data);
+}
+
+int for_each_ref_in_submodule(const char *submodule, const char *prefix,
+			      each_ref_fn fn, void *cb_data)
+{
+	return refs->for_each_ref_in_submodule(submodule, prefix, fn, cb_data);
+}
+
+int for_each_rawref(each_ref_fn fn, void *cb_data)
+{
+	return refs->for_each_rawref(fn, cb_data);
+}
+
+int for_each_namespaced_ref(each_ref_fn fn, void *cb_data)
+{
+	return refs->for_each_namespaced_ref(fn, cb_data);
+}
+
+int for_each_replace_ref(each_ref_fn fn, void *cb_data)
+{
+	return refs->for_each_replace_ref(fn, cb_data);
+}
