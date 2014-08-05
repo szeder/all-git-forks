@@ -10,6 +10,9 @@
 #define GLOBAL_FILE ".gitconfig"
 #define NAME "name"
 
+#define ADMIN_FILEPATH "/etc/.gitadmin"
+#define ADMIN "admin"
+
 /*******************/
 /*PRIVATE FUNCTIONS*/
 /*******************/
@@ -34,6 +37,37 @@ generic_list get_role_result(char *perm,char *role_name){
 /*******************/
 /* PUBLIC FUNCTIONS*/
 /*******************/
+
+int is_admin(char *username){
+	int result = 0;
+	FILE *f = fopen(ADMIN_FILEPATH,"r");
+	if(f!=NULL){
+		int max = 100;
+		char line[max];	
+		char *end = NULL;	
+		end = fgets(line,max,f);
+		while(end!=NULL){
+			char *name = strstr(line,ADMIN);
+			if(name!=NULL){
+				/* Calculate number of characters to skip */
+				int i = strlen(ADMIN);
+				while(name[i]==' ' || name[i]=='='){
+					i++;
+				}
+				if(name!=NULL && !result){
+					name[strlen(name)-1]='\0';
+					/* If given name is equal to name in file then user is an admin */
+					if(strcmp(username,name+i)==0){
+						result = 1;
+					}
+				}
+			}
+			end = fgets(line,max,f);			
+		}
+		fclose(f);
+	}	
+	return result;
+}
 
 /* See specification in check_role.h */
 char *get_role(char *username){
@@ -74,16 +108,23 @@ char *get_username(){
 			end = fgets(line,max,f);
 			while(end!=NULL){
 				char *name = strstr(line,NAME);
-				if(name!=NULL){
-					name[strlen(name)-1]='\0';
-					//Pointer moved 7 pos to skip "name = " in config file
-					result = (char *) malloc(strlen(name+7)+1);					
-					strcpy(result,(name+7));
+				if(name!=NULL && result==NULL){
+					/* Calculate number of characters to skip */						
+					int i = strlen(NAME);
+					while(name[i]==' ' || name[i]=='='){
+						i++;
+					}
+					if(name!=NULL){
+						name[strlen(name)-1]='\0';
+						result = (char *) malloc(strlen(name+i)+1);
+						/* Copy in result name moved 'i' times */	
+						strcpy(result,name+i);
+					}
 				}
 				end = fgets(line,max,f);			
 			}
+			fclose(f);		
 		}
-		fclose(f);
 	}
 	return result;
 }

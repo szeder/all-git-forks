@@ -181,6 +181,7 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 	/* More than one option selected at time */
 	if(tcreate + tlink + tassign + tdelete + tupdate + tread > 1 ){
 		fputs(_("Only one option at time\n"),ERR);
+		return 0;
 	}else {
 
 		/* Check role permissions to do selected action */

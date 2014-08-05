@@ -1,4 +1,10 @@
 
+/* 	Name		: is_admin
+	Parameters	: user name for which will be checked if has administrator privileges (user name had to exists)
+	Return		: 1 if has admin privileges or 0 in other case
+	Notes		: An user only has admin privileges if his name is on /etc/.gitadmin file with the following line: admin=your_name and same name is configured in /root/.gitconfig as name=your_name*/
+int is_admin(char *username);
+
 /*	Name		: get_role
 	Parameters	: user name for which role will be searched (user name had to exists)
 	Return		: role name asigned to given user. remember to free returned string with free function in stdlib.h  */
