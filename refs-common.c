@@ -822,3 +822,18 @@ int resolve_gitlink_ref(const char *path, const char *refname,
 {
 	return refs->resolve_gitlink_ref(path, refname, sha1);
 }
+
+int head_ref(each_ref_fn fn, void *cb_data)
+{
+	return refs->head_ref(fn, cb_data);
+}
+
+int head_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
+{
+	return refs->head_ref_submodule(submodule, fn, cb_data);
+}
+
+int head_ref_namespaced(each_ref_fn fn, void *cb_data)
+{
+	return refs->head_ref_namespaced(fn, cb_data);
+}

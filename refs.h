@@ -397,6 +397,11 @@ typedef int (*create_symref_fn)(const char *ref_target,
 typedef int (*resolve_gitlink_ref_fn)(const char *path, const char *refname,
 				      unsigned char *sha1);
 
+typedef int (*head_ref_fn)(each_ref_fn fn, void *cb_data);
+typedef int (*head_ref_submodule_fn)(const char *submodule, each_ref_fn fn,
+				     void *cb_data);
+typedef int (*head_ref_namespaced_fn)(each_ref_fn fn, void *cb_data);
+
 struct ref_be {
 	transaction_begin_fn transaction_begin;
 	transaction_update_sha1_fn transaction_update_sha1;
@@ -420,6 +425,9 @@ struct ref_be {
 	create_symref_fn create_symref;
 	resolve_gitlink_ref_fn resolve_gitlink_ref;
 
+	head_ref_fn head_ref;
+	head_ref_submodule_fn head_ref_submodule;
+	head_ref_namespaced_fn head_ref_namespaced;
 };
 
 extern struct ref_be *refs;
