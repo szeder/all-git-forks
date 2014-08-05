@@ -1,8 +1,12 @@
 
+/*	Name		: get_role
+	Parameters	: user name for which role will be searched (user name had to exists)
+	Return		: role name asigned to given user. remember to free returned string with free function in stdlib.h  */
+char *get_role(char *username);
+
 /*	Name		: get_username
 	Parameters	: nothing
-	Return		: username if exists or NULL if user not configured in global config file.
-				 remember to free returned string with free function in stdlib.h */
+	Return		: username if exists or NULL if user not configured in global config file. remember to free returned string with free function in stdlib.h */
 char *get_username();
 
 /*	Name		: can_create_role

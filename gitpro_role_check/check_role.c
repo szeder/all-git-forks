@@ -36,6 +36,24 @@ generic_list get_role_result(char *perm,char *role_name){
 /*******************/
 
 /* See specification in check_role.h */
+char *get_role(char *username){
+	char *fields[] = {USER_ROLE,0};
+	char *formatted_name = format_string(username);
+	char *query = construct_query(fields,from(USER_TABLE),
+						where(cond(USER_NAME,"=",formatted_name)),NULL,NULL);
+	generic_list data = exec_query(query);
+	if((*data).user_info!=NULL){
+		char *role = (char *) malloc(strlen((*data).user_info->user_role)+1);
+		strcpy(role,(*data).user_info->user_role);		
+		return role;
+	}
+	free(formatted_name);
+	free(query);
+	dealloc(data);
+	return NULL;
+}
+
+/* See specification in check_role.h */
 char *get_username(){
 	char *home = getenv(HOME);
 	char *result = NULL;
@@ -64,8 +82,6 @@ char *get_username(){
 				}
 				end = fgets(line,max,f);			
 			}
-		}else{
-			fputs("Use git config --global user.name your_name to configure name\n",stderr);
 		}
 		fclose(f);
 	}

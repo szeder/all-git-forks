@@ -16,7 +16,6 @@ char *logic_cond(char *cond1,char *logic,char *cond2){
 	char *result = (char *) malloc(strlen(logic)+size+2+1);
 	strcpy(result,"(");
 	strcat(strcat(strcat(strcat(result,cond1),logic),cond2),")");
-	result[strlen(result)] = '\0';
 	return result;
 }
 
@@ -45,7 +44,6 @@ char *make_scalar(char *exp,char *f){
 	char *scalar = (char *) malloc(strlen(exp)+strlen(f)+2+1);
 	strcpy(scalar,exp);
 	strcat(strcat(strcat(scalar,"("),f),")");
-	scalar[strlen(scalar)]='\0';
 	return scalar;
 }
 
@@ -79,7 +77,6 @@ char *format_string(char *orig){
 	char *rn =(char *) malloc(strlen(orig)+2+1);
 	strcpy(rn,"'");
 	strcat(strcat(rn,orig),"'");
-	rn[strlen(rn)] = '\0';
 	return rn;
 }
 
@@ -114,7 +111,6 @@ char *construct_delete(char *table,char *where){
 		strcat(delete,where);
 		free(where);
 	}
-	delete[strlen(delete)]='\0';
 	return delete;
 }
 
@@ -146,7 +142,6 @@ char *construct_update(char *table,char *asig[],char *where){
 		strcat(update,where);
 		free(where);
 	}
-	update[strlen(update)]='\0';
 	return update;
 }
 
@@ -160,7 +155,6 @@ char *asig(char *field,char *value){
 	char *asignation = (char *) malloc(strlen(simb)+strlen(field)+strlen(value)+1);
 	strcpy(asignation,field);
 	strcat(strcat(asignation,simb),value);
-	asignation[strlen(asignation)]='\0';
 	return asignation;
 }
 
@@ -187,7 +181,6 @@ char *construct_insert(char *table,char *fields[],char *values[]){
 	strcat(strcat(insert,")"),mid);
 	add_commas(insert,num_values,values);	
 	strcat(insert,end);
-	insert[strlen(insert)]='\0';
 	return insert;
 }
 
@@ -232,7 +225,6 @@ char *construct_query(char *fields[],char *from,char *where,char *group_by,char 
 		strcat(query,order_by);
 		free(order_by);
 	}
-	query[strlen(query)] = '\0';
 	return query;
 }
 
@@ -247,7 +239,6 @@ char * from(char *table_name){
 	char *result = (char *) malloc(strlen(from)+size+1);
 	strcpy(result,from);
 	strcat(result,table_name);
-	result[strlen(result)]='\0';
 	return result;
 }
 
@@ -259,7 +250,6 @@ char *where(char *conds){
 	strcpy(result,where);
 	strcat(result,conds);
 	free(conds);
-	result[strlen(result)]='\0';
 	return result;
 }
 
@@ -274,7 +264,6 @@ char *group_by(char *fields[]){
 	char *result = (char *) malloc(strlen(group)+memory_to_alloc(fields)+(num-1)+1);
 	strcpy(result,group);
 	add_commas(result,num,fields);
-	result[strlen(result)] = '\0';
 	return result;
 }
 
@@ -299,7 +288,6 @@ char *order_by(char *fields[],int inverse){
 	if(inverse){
 		strcat(result,type);
 	}
-	result[strlen(result)]='\0';
 	return result;
 }
 
@@ -313,7 +301,6 @@ char *cond(char *field1,char *comp,char *field2){
 	char *result = (char *) malloc(strlen(field1)+strlen(field2)+strlen(field2)+1);
 	strcpy(result,field1);
 	strcat(strcat(result,comp),field2);
-	result[strlen(result)]='\0';
 	return result;
 }
 

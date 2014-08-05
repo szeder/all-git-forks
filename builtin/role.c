@@ -9,7 +9,7 @@
 
 static const char * const builtin_role_usage[] =
 {
-	"role [-c | -r | -u | -d | -a]\n\t-c -n role_name -p 10_bit_array\n\t-r -n role_name\n\t-u -n role_name -p 10_bit_array\n\t-d -n role_name\n\t-a -n role_name -t --add=\"u1 u2 ... uN\" --rm=\"u1 u2 ... uN\"",
+	"role [-c | -r | -u | -d | -a]\n\tSome use examples:\n\t-c -n role_name -p 10_bit_array\n\t-r -n role_name\n\t-u -n role_name -p 10_bit_array\n\t-d -n role_name\n\t-a -n role_name -t --add=\"u1 u2 ... uN\" --rm=\"u1 u2 ... uN\"",
 	NULL
 };
 
@@ -34,11 +34,13 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 		OPT_BOOL('u',"update",&urole,N_("update given role")),		
 		OPT_BOOL('d',"delete",&drole,N_("remove given role")),
 		OPT_BOOL('a',"assign",&arole,N_("assign role to user")),
-		OPT_BOOL('t',"user",&user,N_("specifies user name to assign role")),
+		OPT_BOOL(0,"user",&user,N_("indicates that follows user names to add or remove role assignations")),
 		OPT_GROUP("Role params"),
 		OPT_STRING('n',"name",&role_name,"role name",N_("specifies role name")),
 		OPT_STRING('p',"perms",&perms,"permissions",N_("specifies permissions in 10 array bit format")),
+		//Format: --add="u1,u2...un"
 		OPT_STRING(0,"add",&add,"user1, user2 ... userN",N_("specifies user name to add role assignation")),
+		//Format: --rm="u1,u2...un"
 		OPT_STRING(0,"rm",&rm,"user1, user2 ... userN",N_("specifies user name to remove role assignation")),
 		//Permissions array bit info
 		OPT_GROUP("Array bit format example: 10101010101"),
@@ -47,22 +49,29 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 		OPT_END()
 	};
 
-	/* [2.6] Receive data process */
+/* START [2.6] Receive data process */
 	argc = parse_options(argc, argv, prefix, builtin_role_options, builtin_role_usage, 0);
-
+/* END [2.6] Receive data process */	
+	
 	if(crole + rrole + urole + drole > 1){
 		fputs(_("Only one option at time\n"),ERR);
 	}else if(crole){
+		/* Create role option */
 		create_role();
 	}else if(rrole){
+		/* Read role option */
 		read_role();
 	}else if(urole){
+		/* Update role option */
 		update_role();
 	}else if(drole){
+		/* Delete role option */
 		delete_role();
 	}else if(arole && user){
+		/* Assign role option */
 		assign_role();
 	}else{
+		/* No action defined */
 		fputs(_("No action defined\n"),ERR);
 		usage_with_options(builtin_role_usage,builtin_role_options);
 		return 0;	
@@ -102,7 +111,7 @@ void delete_role(){
 
 void assign_role(){
 	fputs(_("Assign role option\n"),OUT);
-	if(role_name!=NULL && (add!=NULL || rm!=NULL)){
+	if(role_name!=NULL && user && (add!=NULL || rm!=NULL)){
 		printf("%s\n%s\n%s\n",role_name,add,rm);
 	}
 }

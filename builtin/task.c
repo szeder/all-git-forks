@@ -5,301 +5,297 @@
 #include "../gitpro_api/gitpro_data_api.h"
 #include "../gitpro_role_check/check_role.h"
 
-/* Syntax sugar to manage add and remove options of link command */
-#define LINK_ADD 0
-#define LINK_REMOVE 1
+#define OUT stdout
+#define ERR stderr
+#define IN stdin
 
-/* Syntax sugar to manage add and remove options of assign command */
-#define ASSIGN_ADD 2
-#define ASSIGN_REMOVE 3
+#define MAX_BUFFER_SIZE 200
 
 /* Usage message */
 static const char * const builtin_task_usage[] =
 {
-	"task [COMMING SOON]",
+	"task [-c | -r | -u | -d | -a | -l ]\n\tSome use examples:\n\t -c -n name -s state -d description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t\t(only required name, state, priority and type)\n\t -r -i id\n\t -u -n name -s state -d description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t -d -s state\n\t -a -i id --user --add=\"user1 ... userN\" --rm=\"user1 ... userN\"\n\t -l -i id --file --add=\"file1 ... fileN\" --rm=\"file1 ... fileN\"",
 	NULL
 };
 
-/* Common help functions */
-int strstrlen(const char **a){
-	int count=0;
-	while(*a!=NULL){
-		count++;
-		a++;
-	}
-	return count;
-} 
-
 /* Creates a new task */
-void create_task(const char *name,const char *description,const char *type,const char *priority,
-				 const char *estimateTime,const char *initDate,const char *endDate);
+void create_task();
 
 /* Link or unlink a list of files and folders to a given task */ 
-void link_task(int linkOption, const char *taskId,const char **filesAndFolders);
+void link_task();
 
 /* Assign or unassign a list of users to a given task */
-void assign_task(int assignOption, const char *taskId,const char **users);
+void assign_task();
 
 /* Remove an existent task */
-void remove_task(const char *taskId);
+void delete_task();
 
 /* Update different values of a task */
-void update_task(const char *taskId,const char *state,const char *priority,const char *estime,
-				 const char *ini,const char *end,const char *note);
+void update_task();
 
 /* Makes a filtered search of tasks on depending given parameters */
-void filter_task(const char *taskId, const char *username, const char *state, const char *type,
-				 const char *priority, const char *ini, const char *end, const char *text);
+void read_task();
 
-static int tcreate, tlink, tassign, tremove, tupdate, add_opt,rm_opt;
+
+static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread, all;
+static char *add = NULL;
+static char *rm = NULL;
+static char *task_id = NULL;
+static char *task_name = NULL;
+static char *task_state = NULL;
+static char *task_desc = NULL;
+static char *task_notes = NULL;
+static char *task_est_start = NULL;
+static char *task_est_end = NULL;
+static char *task_start = NULL;
+static char *task_end = NULL;
+static char *task_prior = NULL;
+static char *task_type = NULL;
+static char *task_est_time = NULL;
+static char *task_time = NULL;
+
+static char *filter_task_id = NULL;
+static char *filter_task_name = NULL;
+static char *filter_task_state = NULL;
+//static char *filter_task_desc = NULL;
+//static char *filter_task_notes = NULL;
+static char *filter_task_est_start = NULL;
+static char *filter_task_est_end = NULL;
+static char *filter_task_start = NULL;
+static char *filter_task_end = NULL;
+static char *filter_task_prior = NULL;
+static char *filter_task_type = NULL;
+static char *filter_task_est_time = NULL;
+static char *filter_task_time = NULL;
+
+void dealloc_filters(){
+	free(filter_task_id);
+	free(filter_task_name);
+	free(filter_task_state);
+	free(filter_task_est_start);
+	free(filter_task_est_end);
+	free(filter_task_start);
+	free(filter_task_end);
+	free(filter_task_prior);
+	free(filter_task_type);
+	free(filter_task_est_time);
+	free(filter_task_time);
+}
+
+void receive_update_filters(char **id,char **name,char **state,char **est_start,char **est_end,
+					char **start,char **end,char **prior,char **type,char **est_time,
+					char **time){
+	(*id) = (char *) malloc(MAX_BUFFER_SIZE);
+	(*name) = (char *) malloc(MAX_BUFFER_SIZE);
+	(*state) = (char *) malloc(MAX_BUFFER_SIZE);
+	(*est_start) = (char *) malloc(MAX_BUFFER_SIZE);
+	(*est_end) = (char *) malloc(MAX_BUFFER_SIZE);
+	(*start) = (char *) malloc(MAX_BUFFER_SIZE);
+	(*end) = (char *) malloc(MAX_BUFFER_SIZE);
+	(*prior) = (char *) malloc(MAX_BUFFER_SIZE);
+	(*type) = (char *) malloc(MAX_BUFFER_SIZE);
+	(*est_time) = (char *) malloc(MAX_BUFFER_SIZE);
+	(*time) = (char *) malloc(MAX_BUFFER_SIZE);
+		
+	fputs(_("All filters are by equality"),OUT);
+	fputs(_("\ntask id: "),OUT);
+	fgets((*id),MAX_BUFFER_SIZE,IN);
+	fputs(_("task name: "),OUT);
+	fgets((*name),MAX_BUFFER_SIZE,IN);
+	fputs(_("task state: "),OUT);
+	fgets((*state),MAX_BUFFER_SIZE,IN);
+	fputs(_("task estimated start date: "),OUT);
+	fgets((*est_start),MAX_BUFFER_SIZE,IN);
+	fputs(_("task estimated end date: "),OUT);
+	fgets((*end),MAX_BUFFER_SIZE,IN);
+	fputs(_("task real start date: "),OUT);
+	fgets((*start),MAX_BUFFER_SIZE,IN);
+	fputs(_("task real end date: "),OUT);
+	fgets((*end),MAX_BUFFER_SIZE,IN);
+	fputs(_("task priority: "),OUT);
+	fgets((*prior),MAX_BUFFER_SIZE,IN);
+	fputs(_("task type: "),OUT);
+	fgets((*type),MAX_BUFFER_SIZE,IN);
+	fputs(_("task estimated time in minutes: "),OUT);
+	fgets((*est_time),MAX_BUFFER_SIZE,IN);
+	fputs(_("task real time in minutes: "),OUT);
+	fgets((*time),MAX_BUFFER_SIZE,IN);
+}
 
 /* Main code of task command */
 int cmd_task(int argc, const char **argv, const char *prefix){
 
+	/* Options command struct */
 	static struct option builtin_task_options[] = {
-		OPT_GROUP("Create task"),
-		OPT_BOOL('c',0,&tcreate,N_("creates new task")),
-		OPT_GROUP("Link task"),	
-		OPT_BOOL(0,"link",&tlink,N_("asociates files to a given task")),
-		OPT_GROUP("Assign task"),
-		OPT_BOOL(0,"assign",&tassign,N_("assigns an user or list of users to a given task")),
+		OPT_GROUP("Task options"),
+		OPT_BOOL('c',"create",&tcreate,N_("creates new task")),
+		OPT_BOOL('l',"link",&tlink,N_("asociates files to a given task")),
+		OPT_BOOL('a',"assign",&tassign,N_("assigns an user or list of users to a given task")),
+		OPT_BOOL('r',"read",&tread,N_("show tasks that matchs with given parameters")),
+		OPT_BOOL('d',"delete",&tdelete,N_("delete tasks that matchs with given filters")),
+		OPT_BOOL('u',"update",&tupdate,N_("updates task data")),
+		OPT_BOOL(0,"user",&user,N_("indicates that follows user names to add or remove task assignations")),
+		OPT_BOOL(0,"all",&all,N_("reference to all existent tasks")),
+		OPT_BOOL(0,"file",&file,N_("indicates that follows file names to add or remove task asociations")),
 		OPT_GROUP("Link and Assign options"),
-		OPT_BOOL(0,"add",&add_opt,N_("option to add files or users to a given task")),
-		OPT_BOOL(0,"rm",&rm_opt,N_("option to remove files or usert to a given task")),
-		OPT_GROUP("Remove task"),		
-		OPT_BOOL('r',0,&tremove,N_("removes the task with given task")),
-		OPT_GROUP("Update task"),		
-		OPT_BOOL('u',0,&tupdate,N_("updates task data")),
+		OPT_STRING(0,"add",&add,"data1,data2 ... dataN",N_("option to add files or users to a given task")),
+		OPT_STRING(0,"rm",&rm,"data1,data2 ... dataN",N_("option to remove files or usert to a given task")),
+		OPT_GROUP("Task parameters"),
+		OPT_STRING('i',"id",&task_id,"task id",N_("specifies task id")),		
+		OPT_STRING('n',"name",&task_name,"task name",N_("specifies task name")),
+		OPT_STRING('s',"state",&task_state,"task state",N_("specifies task state")),
+		OPT_STRING('d',"desc",&task_desc,"task description",N_("specifies task description")),
+		OPT_STRING(0,"notes",&task_notes,"task notes",N_("specifies task observations")),
+		OPT_STRING(0,"est_start",&task_est_start,"task est start",N_("specifies estimated task start date")),
+		OPT_STRING(0,"est_end",&task_est_end,"task est end",N_("specifies estimated task end date")),
+		OPT_STRING(0,"start",&task_start,"task real start",N_("specifies real task start date")),
+		OPT_STRING(0,"end",&task_end,"task real end",N_("specifies real task end date")),
+		OPT_STRING('p',"prior",&task_prior,"task priority",N_("specifies task priority")),
+		OPT_STRING('t',"type",&task_type,"task type",N_("specifies task type")),
+		OPT_STRING(0,"est_time",&task_est_time,"task est time",N_("specifies estimated task time in minutes")),
+		OPT_STRING(0,"time",&task_time,"task real time",N_("specifies real task time in minutes")),
+		OPT_GROUP("Notes"),
+		OPT_GROUP("\t- When updating tasks indicated data such as notes, estimated time and real time will be added to existent value\n\t- Date format is dd/mm/yyyy\n\t- Times are measured in minutes\n\t- If any filter is set when requested it apply to all existent tasks\n\t- To create a new task parameters name, state, priority and type are mandatory"),
 		OPT_END()
 	};
 
+	/* Check if username is configured */
+	char *uname = get_username();
+	if(uname==NULL){
+		fputs("Use git config --global user.name your_name to configure name and let them know to administrator\n",ERR);
+		return 0;
+	}
+	
+	/* Check if role has been assigned to user */
+	char *urole = get_role(uname);
+	if(urole==NULL){
+		fputs("You haven't been assigned a role.\n",ERR);
+		free(uname);
+		return 0;
+	}
+
+/* START [1.7] Receive data process */
 	argc = parse_options(argc, argv, prefix, builtin_task_options, builtin_task_usage, 0);
 
 	
-		/* Create option */
+	/* More than one option selected at time */
+	if(tcreate + tlink + tassign + tdelete + tupdate + tread > 1 ){
+		fputs(_("Only one option at time\n"),ERR);
+	}else {
+
+		/* Check role permissions to do selected action */
+		if( (tcreate && !can_create_task(urole)) 
+			|| (tread && !can_read_task(urole))
+			|| (tassign && !can_assign_task(urole))
+			|| (tupdate && !can_update_task(urole))
+			|| (tlink && !can_link_files(urole))
+			|| (tdelete && !can_remove_task(urole)) ){
+			fputs("You haven't enought permissions to do this action.\n",ERR);
+			free(uname);
+			free(urole);		
+			return 0;
+		}
+		free(uname);
+		free(urole);
+		
+		/* Receive filter data if delete, update or read tasks is set */
+		if(tdelete || tupdate || tread){
+			receive_update_filters(&filter_task_id,&filter_task_name,&filter_task_state,
+					&filter_task_est_start,&filter_task_est_end,&filter_task_start,
+					&filter_task_end,&filter_task_prior,&filter_task_type,
+					&filter_task_est_time,&filter_task_time);
+		}
+/* END [1.7] Receive data process */
+		
 		if(tcreate){
-			if(argc==7){
-				create_task(argv[0],argv[1],argv[2],argv[3],argv[4],argv[5],argv[6]);
-			}else{
-				printf("Format: -c name description type priority estimated_time init_date end_date\n");
-			}
-		/* Link option */
+			/* Create task option */
+			create_task();
 		}else if(tlink){
-			if(argc>=2){
-				const char **filesAndFolders = &argv[1];
-				if(add_opt){
-					link_task(LINK_ADD,argv[0],filesAndFolders);
-				}else if(rm_opt){
-					link_task(LINK_REMOVE,argv[0],filesAndFolders);
-				}else{
-					printf("Format: link [-add | -rm] task_id [files_or_folders]\n");
-				}
-			}else{
-				printf("Format: link [-add | -rm] task_id [file_or_folder_1 ... file_or_folder_n]\n");
-			}
-		/* Assign option */
+			/* Link task option */
+			link_task();
 		}else if(tassign){
-			if(argc>=2){
-				const char **users = &argv[1];		
-				if(add_opt){
-					assign_task(ASSIGN_ADD,argv[0],users);
-				}else if(rm_opt){
-					assign_task(ASSIGN_REMOVE,argv[0],users);
-				}else{
-					printf("Format: assign [-add | -rm] task_id [user_1 ... user_n]\n");
-				}
-			}else{
-				printf("Format: assign [-add | -rm] task_id [user_1 ... user_n]\n");
-			}
-		/* Remove option */
-		}else if(tremove){
-			if(argc==1){
-				remove_task(argv[0]);
-			}else{
-				printf("Format: -r task_id\n");
-			}
-		/* Update option */
+			/* Assign task option */
+			assign_task();
+		}else if(tdelete){
+			/* Remove task option */
+			delete_task();
 		}else if(tupdate){
-			if(argc>=3){
-				const char **updateParams = &argv[1];
-				int paramNumber = strstrlen(updateParams)/2;
-				const char *state = NULL; 
-				const char *priority = NULL; 
-				const char *estime = NULL; 
-				const char *ini = NULL; 
-				const char *end = NULL;
-				const char *note = NULL;
-				int i=0;
-				int pos=0;
-				for(i=0;i<paramNumber;i++){
-					if(strcmp(updateParams[pos],"-state")==0){
-						state = strdup(updateParams[pos+1]);
-					}else if(strcmp(updateParams[pos],"-priority")==0){					
-						priority = strdup(updateParams[pos+1]);
-					}else if(strcmp(updateParams[pos],"-estime")==0){
-						estime = strdup(updateParams[pos+1]);
-					}else if(strcmp(updateParams[pos],"-ini")==0){
-						ini = strdup(updateParams[pos+1]);
-					}else if(strcmp(updateParams[pos],"-end")==0){
-						end = strdup(updateParams[pos+1]);
-					}else if(strcmp(updateParams[pos],"-addNote")==0){
-						note = strdup(updateParams[pos+1]);
-					}
-					pos=pos+2;
-				}
-				update_task(argv[0],state,priority,estime,ini,end,note);
-			}else{
-				printf("Format: -u task_id [-state s | -priority p | -estime t | -ini i | -end e | -addNote n]\n");
-			}
-		/* Search option */
+			/* Update task option */
+			update_task();
+		}else if(tread){
+			/* Read task option */
+			read_task();
+		}else{
+			/* No action defined */
+			fputs(_("No action defined"),ERR);
+			usage_with_options(builtin_task_usage,builtin_task_options);
+			return 0;
 		}
-		/*
-		else{
-			if(argc>=3){
-				const char **filterParams = &argv[1];
-				int paramNumber = strstrlen(filterParams)/2;
-				printf("paramNumber %d\n",paramNumber);
-				const char *taskId = NULL;
-				const char *username = NULL;
-				const char *state = NULL; 
-				const char *type = NULL;
-				const char *priority = NULL; 
-				const char *ini = NULL; 
-				const char *end = NULL;
-				const char *contained_text = NULL;
-				int i=0;
-				int pos=0;
-				for(i=0;i<paramNumber;i++){
-					if(strcmp(filterParams[pos],"--id")==0){
-						taskId = strdup(filterParams[pos+1]);
-					}else if(strcmp(filterParams[pos],"--user")==0){					
-						username = strdup(filterParams[pos+1]);
-					}else if(strcmp(filterParams[pos],"--state")==0){
-						state = strdup(filterParams[pos+1]);
-					}else if(strcmp(filterParams[pos],"--type")==0){
-						type = strdup(filterParams[pos+1]);
-					}else if(strcmp(filterParams[pos],"--priority")==0){
-						priority = strdup(filterParams[pos+1]);
-					}else if(strcmp(filterParams[pos],"--ini")==0){
-						ini = strdup(filterParams[pos+1]);
-					}else if(strcmp(filterParams[pos],"--end")==0){
-						end = strdup(filterParams[pos+1]);
-					}else if(strcmp(filterParams[pos],"--contain_text")==0){
-						contained_text = strdup(filterParams[pos+1]);
-					}
-					pos=pos+2;
-				}
-				filter_task(taskId,username,state,type,priority,ini,end,contained_text);
-			}else{
-				printf("Format: --id task_id | --user u | --state s | --type t | --priority p | -- ini i | --end e | --contain_text ct\n");
-			}
+		
+		/* Free filter data if delete, update or read tasks was set */
+		if(tdelete || tupdate || tread){
+			dealloc_filters();
 		}
-
-		*/
-
+	}
 	return 1;
 }
 
-void create_task(const char *name,const char *description,const char *type,const char *priority,
-				 const char *estimateTime,const char *initDate,const char *endDate){
-	printf("Creating new task...\n\n");
-	printf("Name           : %s\n",name);
-	printf("Description    : %s\n",description);
-	printf("Type           : %s\n",type);
-	printf("Priority       : %s\n",priority);
-	printf("Estimated Time : %s\n",estimateTime);
-	printf("Init Date      : %s\n",initDate);
-	printf("End Date       : %s\n",endDate);
-	//Initially state is new
-	printf("State          : NEW\n");
-}
-
-void link_task(int linkOption, const char *taskId,const char **filesAndFolders){
-	printf("Managing asociated task files...\n\n");
-	printf("Task Id : %s\n",taskId);
-	if(linkOption==LINK_ADD){
-		printf("Adding files and folders to task...\n");		
-	}else if(linkOption==LINK_REMOVE){
-		printf("Removing files and folders from task...\n");
-	}
-	int i = 0;	
-	int len = strstrlen(filesAndFolders);
-	while(i < len){
-		printf("File %d : %s\n",i,filesAndFolders[i]);
-		i++;	
+void create_task(){
+	fputs(_("Create task option\n"),OUT);
+	if(task_name!=NULL && task_state!=NULL && task_prior!=NULL && task_type!=NULL){
+		printf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",task_name,task_state,
+			task_desc,task_prior,task_type,task_notes,task_est_time,task_time,
+			task_est_start,task_est_end,task_start,task_end);
 	}
 }
 
-void assign_task(int assignOption, const char *taskId,const char **users){
-	printf("Managing assigned task users...\n\n");
-	printf("Task Id : %s\n",taskId);
-	if(assignOption==ASSIGN_ADD){
-		printf("Adding users to task...\n");		
-	}else if(assignOption==ASSIGN_REMOVE){
-		printf("Removing users from task...\n");
-	}
-	int i = 0;	
-	int len = strstrlen(users);
-	while(i < len){
-		printf("User %d : %s\n",i,users[i]);
-		i++;	
+void link_task(){
+	fputs(_("Link files to task option\n"),OUT);
+	if(task_id!=NULL && file && (add!=NULL || rm!=NULL)){
+		printf("%s\n%s\n%s\n",task_id,add,rm);
 	}
 }
 
-void remove_task(const char *taskId){
-	printf("Removing task...\n\n");
-	printf("Task Id : %s\n",taskId);
-}
-
-void update_task(const char *taskId,const char *state,const char *priority,const char *estime,
-				 const char *ini,const char *end,const char *note){
-	printf("Updating task...\n\n");
-	printf("Task Id        : %s\n",taskId);	
-	if(state!=NULL){
-		printf("State          : %s\n",state);
-	}
-	if(priority!=NULL){
-		printf("Priority       : %s\n",priority);
-	}
-	if(estime!=NULL){
-		printf("Estimated Time : %s\n",estime);
-	}
-	if(ini!=NULL){
-		printf("Init Date      : %s\n",ini);
-	}
-	if(end!=NULL){
-		printf("End Date       : %s\n",end);
-	}
-	if(note!=NULL){
-		printf("Note           : %s\n",note);
+void assign_task(){
+	fputs(_("Assign users to task option\n"),OUT);
+	if(task_id!=NULL && user && (add!=NULL || rm!=NULL)){
+		printf("%s\n%s\n%s\n",task_id,add,rm);
 	}
 }
 
-void filter_task(const char *taskId, const char *username, const char *state, const char *type,
-				 const char *priority, const char *ini, const char *end, const char *text){
-	printf("Searching and filtering tasks...\n\n");
-	if(taskId!=NULL){
-		printf("Task Id        : %s\n",taskId);	
-	}	
-	if(username!=NULL){
-		printf("Username       : %s\n",username);	
-	}
-	if(state!=NULL){
-		printf("State          : %s\n",state);
-	}
-	if(type!=NULL){
-		printf("Type           : %s\n",type);
-	}
-	if(priority!=NULL){
-		printf("Priority       : %s\n",priority);
-	}
-	if(ini!=NULL){
-		printf("Init Date      : %s\n",ini);
-	}
-	if(end!=NULL){
-		printf("End Date       : %s\n",end);
-	}
-	if(text!=NULL){
-		printf("Contained Text : %s\n",text);
+void delete_task(){
+	fputs(_("Delete task option\n"),OUT);
+	if(task_id!=NULL && task_name!=NULL && task_state!=NULL && task_desc!=NULL && 
+		task_prior!=NULL && task_type!=NULL && task_notes!=NULL && task_est_time!=NULL && 
+		task_time!=NULL && task_est_start!=NULL && task_est_end!=NULL && task_start!=NULL && 
+		task_end!=NULL){
+		printf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",task_name,task_state,
+			task_desc,task_prior,task_type,task_notes,task_est_time,task_time,
+			task_est_start,task_est_end,task_start,task_end);
 	}
 }
+
+void update_task(){
+	fputs(_("Update task option\n"),OUT);
+	if(task_id!=NULL && task_name!=NULL && task_state!=NULL && task_desc!=NULL && 
+		task_prior!=NULL && task_type!=NULL && task_notes!=NULL && task_est_time!=NULL && 
+		task_time!=NULL && task_est_start!=NULL && task_est_end!=NULL && task_start!=NULL && 
+		task_end!=NULL){
+		printf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",task_id,task_name,task_state,
+			task_desc,task_prior,task_type,task_notes,task_est_time,task_time,
+			task_est_start,task_est_end,task_start,task_end);
+	}
+}
+
+void read_task(){
+	fputs(_("Read tasks option\n"),OUT);
+	if(task_id!=NULL && task_name!=NULL && task_state!=NULL && task_desc!=NULL && 
+		task_prior!=NULL && task_type!=NULL && task_notes!=NULL && task_est_time!=NULL && 
+		task_time!=NULL && task_est_start!=NULL && task_est_end!=NULL && task_start!=NULL && 
+		task_end!=NULL){
+		printf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",task_id,task_name,task_state,
+			task_desc,task_prior,task_type,task_notes,task_est_time,task_time,
+			task_est_start,task_est_end,task_start,task_end);
+	}
+}
+
