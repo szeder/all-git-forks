@@ -225,6 +225,29 @@ With this option git will use an external daemon for all refs operations.
 This argument provides the name of the unix domain socket to use for accessing
 the refs daemon.
 
+Git comes with an example daemon that uses a TDB databases for storing refs :
+refsd-tdb
+
+Example:
+
+- Start the TDB daemon
+  <create /var/lib/git>
+  $ refsd-tdb /var/lib/git/tdb.socket /var/lib/git /dev/tty
+
+- First repository
+  $ cd <somewhere>
+  $ git init-db --refs-backend-type=db --db-repo-name=MyFirstRepo \
+    --db-socket=/var/lib/git/tdb.socket
+
+- Second repository
+  $ cd <somewhere else>
+  $ git init-db --refs-backend-type=db --db-repo-name=MySecondRepo \
+    --db-socket=/var/lib/git/tdb.socket
+
+This will store the refs for both repos in the same database files :
+/var/lib/git/refs.tdb and /var/lib/git/logs.tdb
+
+
 <repository>::
 	The (possibly remote) repository to clone from.  See the
 	<<URLS,URLS>> section below for more information on specifying
