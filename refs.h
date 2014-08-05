@@ -384,6 +384,19 @@ typedef int (*reflog_exists_fn)(const char *refname);
 typedef int (*create_reflog_fn)(const char *refname);
 typedef int (*delete_reflog_fn)(const char *refname);
 
+typedef const char *(*resolve_ref_unsafe_fn)(const char *ref,
+		unsigned char *sha1, int reading, int *flag);
+
+typedef int (*is_refname_available_fn)(const char *refname, const char **skip,
+				       int skipnum);
+typedef int (*pack_refs_fn)(unsigned int flags, struct strbuf *err);
+typedef int (*peel_ref_fn)(const char *refname, unsigned char *sha1);
+typedef int (*create_symref_fn)(const char *ref_target,
+				const char *refs_heads_master,
+				const char *logmsg);
+typedef int (*resolve_gitlink_ref_fn)(const char *path, const char *refname,
+				      unsigned char *sha1);
+
 struct ref_be {
 	transaction_begin_fn transaction_begin;
 	transaction_update_sha1_fn transaction_update_sha1;
@@ -399,6 +412,14 @@ struct ref_be {
 	reflog_exists_fn reflog_exists;
 	create_reflog_fn create_reflog;
 	delete_reflog_fn delete_reflog;
+
+	resolve_ref_unsafe_fn resolve_ref_unsafe;
+	is_refname_available_fn is_refname_available;
+	pack_refs_fn pack_refs;
+	peel_ref_fn peel_ref;
+	create_symref_fn create_symref;
+	resolve_gitlink_ref_fn resolve_gitlink_ref;
+
 };
 
 extern struct ref_be *refs;

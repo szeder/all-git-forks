@@ -789,3 +789,36 @@ int delete_reflog(const char *refname)
 {
 	return refs->delete_reflog(refname);
 }
+
+const char *resolve_ref_unsafe(const char *ref, unsigned char *sha1,
+			       int reading, int *flag)
+{
+	return refs->resolve_ref_unsafe(ref, sha1, reading, flag);
+}
+
+int is_refname_available(const char *refname, const char **skip, int skipnum)
+{
+	return refs->is_refname_available(refname, skip, skipnum);
+}
+
+int pack_refs(unsigned int flags, struct strbuf *err)
+{
+	return refs->pack_refs(flags, err);
+}
+
+int peel_ref(const char *refname, unsigned char *sha1)
+{
+	return refs->peel_ref(refname, sha1);
+}
+
+int create_symref(const char *ref_target, const char *refs_heads_master,
+		  const char *logmsg)
+{
+	return refs->create_symref(ref_target, refs_heads_master, logmsg);
+}
+
+int resolve_gitlink_ref(const char *path, const char *refname,
+			unsigned char *sha1)
+{
+	return refs->resolve_gitlink_ref(path, refname, sha1);
+}

@@ -1114,7 +1114,8 @@ static struct ref_dir *get_loose_refs(struct ref_cache *refs)
 	return get_ref_dir(refs->loose);
 }
 
-int is_refname_available(const char *refname, const char **skip, int skipnum)
+static int files_is_refname_available(const char *refname, const char **skip,
+				      int skipnum)
 {
 	if (!is_refname_available_dir(refname, get_packed_refs(&ref_cache),
 				      skip, skipnum))
@@ -1188,7 +1189,7 @@ static int resolve_gitlink_ref_recursive(struct ref_cache *refs,
 	return resolve_gitlink_ref_recursive(refs, p, sha1, recursion+1);
 }
 
-int resolve_gitlink_ref(const char *path, const char *refname, unsigned char *sha1)
+static int files_resolve_gitlink_ref(const char *path, const char *refname, unsigned char *sha1)
 {
 	int len = strlen(path), retval;
 	char *submodule;
@@ -1247,7 +1248,7 @@ static const char *handle_missing_loose_ref(const char *refname,
 }
 
 /* This function needs to return a meaningful errno on failure */
-const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int flags, int *ref_flag)
+static const char *files_resolve_ref_unsafe(const char *refname, unsigned char *sha1, int flags, int *ref_flag)
 {
 	int depth = MAXDEPTH;
 	ssize_t len;
@@ -1482,7 +1483,7 @@ static enum peel_status peel_entry(struct ref_entry *entry, int repeel)
 	return status;
 }
 
-int peel_ref(const char *refname, unsigned char *sha1)
+static int files_peel_ref(const char *refname, unsigned char *sha1)
 {
 	int flag;
 	unsigned char base[20];
@@ -2176,7 +2177,7 @@ static void prune_refs(struct ref_to_prune *r)
 	}
 }
 
-int pack_refs(unsigned int flags, struct strbuf *err)
+static int files_pack_refs(unsigned int flags, struct strbuf *err)
 {
 	struct pack_refs_cb_data cbdata;
 
@@ -2549,8 +2550,9 @@ static int write_ref_sha1(struct ref_lock *lock,
 	return 0;
 }
 
-int create_symref(const char *ref_target, const char *refs_heads_master,
-		  const char *logmsg)
+static int files_create_symref(const char *ref_target,
+			       const char *refs_heads_master,
+			       const char *logmsg)
 {
 	const char *lockpath;
 	char ref[1000];
@@ -3398,6 +3400,13 @@ struct ref_be refs_files = {
 	.reflog_exists			= files_reflog_exists,
 	.create_reflog			= files_create_reflog,
 	.delete_reflog			= files_delete_reflog,
+
+	.resolve_ref_unsafe		= files_resolve_ref_unsafe,
+	.is_refname_available		= files_is_refname_available,
+	.pack_refs			= files_pack_refs,
+	.peel_ref			= files_peel_ref,
+	.create_symref			= files_create_symref,
+	.resolve_gitlink_ref		= files_resolve_gitlink_ref,
 };
 
 struct ref_be *refs = &refs_files;
