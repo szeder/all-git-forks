@@ -261,6 +261,68 @@ test_expect_success 'retain authorship' '
 	git show HEAD | grep "^Author: Twerp Snog"
 '
 
+test_expect_success 'setup squash/fixup reverted and fixed feature' '
+	git checkout -b reverted-feature master &&
+	test_commit feature &&
+	git revert feature &&
+	git checkout -b fixed-feature reverted-feature &&
+	test_commit featurev2
+'
+
+test_expect_success 'fixup fixed feature (empty interim commit)' '
+	git checkout -b fixup-fixed-feature fixed-feature &&
+	set_fake_editor &&
+	FAKE_LINES="1 fixup 2 fixup 3" git rebase -i master &&
+	git log --oneline master.. >actual &&
+	test_line_count = 1 actual &&
+	git diff --exit-code featurev2
+'
+
+test_expect_success 'squash fixed feature (empty interim commit)' '
+	git checkout -b squash-fixed-feature fixed-feature &&
+	set_fake_editor &&
+	FAKE_LINES="1 squash 2 squash 3" git rebase -i master &&
+	git log --oneline master.. >actual &&
+	test_line_count = 1 actual &&
+	git diff --exit-code featurev2
+'
+
+test_expect_success 'fixup reverted feature (empty final commit)' '
+	git checkout -b fixup-reverted-feature reverted-feature &&
+	set_fake_editor &&
+	FAKE_LINES="1 fixup 2" git rebase -i master &&
+	git reset HEAD^ &&
+	git rebase --continue &&
+	test_cmp_rev master HEAD
+'
+
+test_expect_success 'squash reverted feature (empty final commit)' '
+	git checkout -b squash-reverted-feature reverted-feature &&
+	set_fake_editor &&
+	FAKE_LINES="1 squash 2" git rebase -i master &&
+	git reset HEAD^ &&
+	git rebase --continue &&
+	test_cmp_rev master HEAD
+'
+
+test_expect_success 'fixup reverted feature (empty final commit with --keep-empty)' '
+	git checkout -b fixup-keep-reverted-feature reverted-feature &&
+	set_fake_editor &&
+	FAKE_LINES="1 fixup 2" git rebase -i --keep-empty master &&
+	git log --oneline master.. >actual &&
+	test_line_count = 1 actual &&
+	git diff --exit-code master
+'
+
+test_expect_success 'squash reverted feature (empty final commit with --keep-empty)' '
+	git checkout -b squash-keep-reverted-feature reverted-feature &&
+	set_fake_editor &&
+	FAKE_LINES="1 squash 2" git rebase -i --keep-empty master &&
+	git log --oneline master.. >actual &&
+	test_line_count = 1 actual &&
+	git diff --exit-code master
+'
+
 test_expect_success 'squash' '
 	git reset --hard twerp &&
 	echo B > file7 &&

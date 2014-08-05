@@ -703,6 +703,20 @@ do_replay () {
 					|| die_failed_squash $sha1 "Could not apply $sha1... $rest"
 			fi
 			rm -f "$squash_msg" "$fixup_msg"
+			if test -z "$keep_empty" && is_empty_commit HEAD
+			then
+				echo "$sha1" >"$state_dir"/stopped-sha
+				warn "The squash result is empty and --keep-empty was not specified."
+				warn
+				warn "You can remove the squash commit now with"
+				warn
+				warn "  git reset HEAD^"
+				warn
+				warn "Once you are down, run"
+				warn
+				warn "  git rebase --continue"
+				exit 0
+			fi
 			;;
 		esac
 		record_in_rewritten $sha1
