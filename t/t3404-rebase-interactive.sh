@@ -672,6 +672,13 @@ test_expect_success 'setup failing pre-commit' '
 	test_commit --no-verify pre-commit-violated-2
 '
 
+test_expect_success 'reword a commit violating pre-commit' '
+	git checkout -b reword-violating-pre-commit violating-pre-commit &&
+	test_when_finished reset_rebase &&
+	set_fake_editor &&
+	env FAKE_LINES="reword 1" git rebase -i master
+'
+
 test_expect_success 'squash a commit violating pre-commit' '
 	git checkout -b squash-violating-pre-commit violating-pre-commit &&
 	test_when_finished reset_rebase &&
@@ -713,6 +720,13 @@ test_expect_success 'rebase a commit violating commit-msg' '
 	git checkout -b rebase-violating-commit-msg violating-commit-msg &&
 	set_fake_editor &&
 	FAKE_LINES="1" git rebase -i master
+'
+
+test_expect_success 'reword a commit violating commit-msg' '
+	git checkout -b reword-violating-commit-msg violating-commit-msg &&
+	test_when_finished reset_rebase &&
+	set_fake_editor &&
+	test_must_fail env FAKE_LINES="reword 1" git rebase -i master
 '
 
 test_expect_success 'squash a commit violating commit-msg' '
