@@ -131,9 +131,17 @@ write_basic_state () {
 output () {
 	case "$verbose" in
 	'')
-		output=$("$@" 2>&1 )
+		cat >"$state_dir"/editor.sh <<EOF
+#!/bin/sh
+$(git var GIT_EDITOR) "\$@" >&3
+EOF
+		chmod +x "$state_dir"/editor.sh
+		(
+			export GIT_EDITOR=\""$state_dir"/editor.sh\"
+			"$@" 3>&1 >"$state_dir"/output 2>&1
+		)
 		status=$?
-		test $status != 0 && printf "%s\n" "$output"
+		test $status != 0 && cat "$state_dir"/output
 		return $status
 		;;
 	*)

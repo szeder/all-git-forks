@@ -873,9 +873,8 @@ test_expect_success 'running "git rebase -i --exec git show HEAD"' '
 	(
 		FAKE_LINES="1 exec_git_show_HEAD 2 exec_git_show_HEAD" &&
 		export FAKE_LINES &&
-		git rebase -i HEAD~2 >expect
+		git rebase -i HEAD~2 >expected
 	) &&
-	sed -e "1,9d" expect >expected &&
 	test_cmp expected actual
 '
 
@@ -887,9 +886,8 @@ test_expect_success 'running "git rebase --exec git show HEAD -i"' '
 	(
 		FAKE_LINES="1 exec_git_show_HEAD 2 exec_git_show_HEAD" &&
 		export FAKE_LINES &&
-		git rebase -i HEAD~2 >expect
+		git rebase -i HEAD~2 >expected
 	) &&
-	sed -e "1,9d" expect >expected &&
 	test_cmp expected actual
 '
 
@@ -901,9 +899,8 @@ test_expect_success 'running "git rebase -ix git show HEAD"' '
 	(
 		FAKE_LINES="1 exec_git_show_HEAD 2 exec_git_show_HEAD" &&
 		export FAKE_LINES &&
-		git rebase -i HEAD~2 >expect
+		git rebase -i HEAD~2 >expected
 	) &&
-	sed -e "1,9d" expect >expected &&
 	test_cmp expected actual
 '
 
@@ -915,9 +912,8 @@ test_expect_success 'rebase -ix with several <CMD>' '
 	(
 		FAKE_LINES="1 exec_git_show_HEAD;_pwd 2 exec_git_show_HEAD;_pwd" &&
 		export FAKE_LINES &&
-		git rebase -i HEAD~2 >expect
+		git rebase -i HEAD~2 >expected
 	) &&
-	sed -e "1,9d" expect >expected &&
 	test_cmp expected actual
 '
 
@@ -930,9 +926,8 @@ test_expect_success 'rebase -ix with several instances of --exec' '
 		FAKE_LINES="1 exec_git_show_HEAD exec_pwd 2
 				exec_git_show_HEAD exec_pwd" &&
 		export FAKE_LINES &&
-		git rebase -i HEAD~2 >expect
+		git rebase -i HEAD~2 >expected
 	) &&
-	sed -e "1,11d" expect >expected &&
 	test_cmp expected actual
 '
 
@@ -956,9 +951,8 @@ test_expect_success 'rebase -ix with --autosquash' '
 		git checkout -b autosquash_expected &&
 		FAKE_LINES="1 fixup 3 fixup 4 exec_git_show_HEAD 2 exec_git_show_HEAD" &&
 		export FAKE_LINES &&
-		git rebase -i HEAD~4 >expect
+		git rebase -i HEAD~4 >expected
 	) &&
-	sed -e "1,13d" expect >expected &&
 	test_cmp expected actual
 '
 
