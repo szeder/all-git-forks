@@ -712,7 +712,7 @@ do_replay () {
 				warn
 				warn "  git reset HEAD^"
 				warn
-				warn "Once you are down, run"
+				warn "Once you are done, run"
 				warn
 				warn "  git rebase --continue"
 				exit 0
