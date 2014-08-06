@@ -464,9 +464,17 @@ record_in_rewritten() {
 
 # Apply the changes introduced by the given commit to the current head.
 #
-# do_pick [--amend] [--file <file>] [--edit] <commit>
+# do_pick [--reset-author] [--amend] [--file <file>] [--edit] <commit>
 #
 # Wrapper around git-cherry-pick.
+#
+# --reset-author
+#     Pretend the changes were made for the first time. Declare that the
+#     authorship of the resulting commit now belongs to the committer.
+#     This also renews the author timestamp. This creates a fresh
+#     commit.
+#
+#     _This is not a git-cherry-pick option._
 #
 # --amend
 #     After picking <commit>, replace the current head commit with a new
@@ -502,6 +510,10 @@ do_pick () {
 	while test $# -gt 0
 	do
 		case "$1" in
+		--reset-author)
+			rewrite=y
+			rewrite_author=y
+			;;
 		--amend)
 			if test "$(git rev-parse HEAD)" = "$squash_onto" || ! git rev-parse -q --verify HEAD >/dev/null
 			then
@@ -564,6 +576,14 @@ do_pick () {
 		pick_one ${rewrite:+-n} $1 || return 1
 	fi
 
+	if test -n "$rewrite_author" && test -z "$rewrite_amend"
+	then
+		# keep rewrite flag to create a new commit, rewrite
+		# without --reset-author though because it can only be
+		# used with -C, -c or --amend
+		rewrite_author=
+	fi
+
 	if test -n "$rewrite"
 	then
 		output git commit --allow-empty --no-post-rewrite -n --no-edit \
@@ -571,6 +591,7 @@ do_pick () {
 			   ${rewrite_amend:+--amend} \
 			   ${rewrite_edit:+--edit --commit-msg} \
 			   ${rewrite_message:+--file "$rewrite_message"} \
+			   ${rewrite_author:+--reset-author} \
 			   ${gpg_sign_opt:+"$gpg_sign_opt"} || return 3
 	fi
 }
