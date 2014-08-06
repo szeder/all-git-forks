@@ -575,13 +575,12 @@ do_pick () {
 	fi
 }
 
-do_next () {
-	rm -f "$msg" "$author_script" "$amend" || exit
-	read -r command sha1 rest < "$todo"
+do_replay () {
+	command=$1
+	sha1=$2
+	rest=$3
+
 	case "$command" in
-	"$comment_char"*|''|noop)
-		mark_action_done
-		;;
 	pick|p)
 		comment_for_reflog pick
 
@@ -660,6 +659,28 @@ do_next () {
 		esac
 		record_in_rewritten $sha1
 		;;
+	*)
+		read -r command <"$todo"
+		warn "Unknown command: $command"
+		fixtodo="Please fix this using 'git rebase --edit-todo'."
+		if git rev-parse --verify -q "$sha1" >/dev/null
+		then
+			die_with_patch $sha1 "$fixtodo"
+		else
+			die "$fixtodo"
+		fi
+		;;
+	esac
+}
+
+do_next () {
+	rm -f "$msg" "$author_script" "$amend" || exit
+	read -r command sha1 rest <"$todo"
+
+	case "$command" in
+	"$comment_char"*|''|noop)
+		mark_action_done
+		;;
 	x|"exec")
 		read -r command rest < "$todo"
 		mark_action_done
@@ -699,14 +720,7 @@ do_next () {
 		fi
 		;;
 	*)
-		warn "Unknown command: $command $sha1 $rest"
-		fixtodo="Please fix this using 'git rebase --edit-todo'."
-		if git rev-parse --verify -q "$sha1" >/dev/null
-		then
-			die_with_patch $sha1 "$fixtodo"
-		else
-			die "$fixtodo"
-		fi
+		do_replay $command $sha1 "$rest"
 		;;
 	esac
 	test -s "$todo" && return
