@@ -153,17 +153,23 @@ test_expect_success 'filter shell-escaped filenames' '
 	:
 '
 
-test_expect_success 'required filter success' '
-	git config filter.required.smudge cat &&
-	git config filter.required.clean cat &&
+test_expect_success 'required filter should filter data' '
+	git config filter.required.smudge ./rot13.sh &&
+	git config filter.required.clean ./rot13.sh &&
 	git config filter.required.required true &&
 
 	echo "*.r filter=required" >.gitattributes &&
 
-	echo test >test.r &&
+	cat test.o >test.r &&
 	git add test.r &&
+
 	rm -f test.r &&
-	git checkout -- test.r
+	git checkout -- test.r &&
+	cmp test.o test.r &&
+
+	./rot13.sh <test.o >expected &&
+	git cat-file blob :test.r >actual &&
+	cmp expected actual
 '
 
 test_expect_success 'required filter smudge failure' '
@@ -191,6 +197,57 @@ test_expect_success 'required filter clean failure' '
 '
 
 test -n "$GIT_TEST_LONG" && test_set_prereq EXPENSIVE
+
+# Handle differences in /usr/bin/time.
+#
+#  - Linux: call with '-v'.
+#    output: <spaces><description>:<space><value-in-KBytes>
+#
+#  - Mac: call with '-l'.
+#    output: <spaces><value-in-Bytes><spaces><description>
+#    Strip three digits to get to KB (base 10 is good enough).
+#
+case $(uname -s) in
+Linux)
+	test_set_prereq HAVE_MAX_MEM_USAGE
+	max_mem_usage_KB () {
+	    /usr/bin/time -v "$@" 2>&1 |
+	    grep 'Maximum resident set size' |
+	    cut -d ':' -f 2
+	}
+	;;
+Darwin)
+	test_set_prereq HAVE_MAX_MEM_USAGE
+	max_mem_usage_KB () {
+		/usr/bin/time -l "$@" 2>&1 |
+		grep 'maximum resident set size' |
+		sed -e 's/  */ /' |
+		cut -d ' ' -f 2 |
+		sed -e 's/...$//'
+	}
+	;;
+esac
+
+max_mem_usage_is_lt_KB () {
+	limit=$1
+	shift
+	mem_usage=$(max_mem_usage_KB "$@")
+	if [ $mem_usage -lt $limit ]; then
+		true
+	else
+		printf 'Command used too much memory (expected limit %dKB, actual usage %dKB).\n' \
+			$limit $mem_usage
+		false
+	fi
+}
+
+test_expect_success HAVE_MAX_MEM_USAGE 'filtering large input to small output should use little memory' '
+	git config filter.devnull.clean "cat >/dev/null" &&
+	git config filter.devnull.required true &&
+	for i in $(test_seq 1 30); do printf "%1048576d" 1; done >30MB &&
+	echo "30MB filter=devnull" >.gitattributes &&
+	max_mem_usage_is_lt_KB 15000 git add 30MB
+'
 
 test_expect_success EXPENSIVE 'filter large file' '
 	git config filter.largefile.smudge cat &&
