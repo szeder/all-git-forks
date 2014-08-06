@@ -655,6 +655,84 @@ test_expect_success 'rebase a commit violating pre-commit' '
 
 '
 
+test_expect_success 'setup failing pre-commit' '
+	HOOKDIR="$(git rev-parse --git-dir)"/hooks &&
+	mkdir -p "$HOOKDIR" &&
+	PRE_COMMIT="$HOOKDIR"/pre-commit &&
+	cat >"$PRE_COMMIT" <<-EOF &&
+	#!/bin/sh
+	echo running failing pre-commit...
+	exit 1
+	EOF
+	chmod +x "$PRE_COMMIT" &&
+	git checkout -b violating-pre-commit master &&
+	test_must_fail test_commit pre-commit-violated-1 &&
+	test_commit --no-verify pre-commit-violated-1 &&
+	test_must_fail test_commit pre-commit-violated-2 &&
+	test_commit --no-verify pre-commit-violated-2
+'
+
+test_expect_success 'squash a commit violating pre-commit' '
+	git checkout -b squash-violating-pre-commit violating-pre-commit &&
+	test_when_finished reset_rebase &&
+	set_fake_editor &&
+	env FAKE_LINES="1 squash 2" git rebase -i master
+'
+
+test_expect_success 'fixup a commit violating pre-commit' '
+	git checkout -b fixup-violating-pre-commit violating-pre-commit &&
+	test_when_finished reset_rebase &&
+	set_fake_editor &&
+	env FAKE_LINES="1 fixup 2" git rebase -i master
+'
+
+test_expect_success 'clean up failing pre-commit' '
+	rm "$PRE_COMMIT"
+'
+
+test_expect_success 'setup failing commit-msg' '
+	HOOKDIR="$(git rev-parse --git-dir)"/hooks &&
+	mkdir -p "$HOOKDIR" &&
+	COMMIT_MSG="$HOOKDIR"/commit-msg &&
+	cat >"$COMMIT_MSG" <<-EOF &&
+	#!/bin/sh
+	echo running failing commit-msg...
+	exit 1
+	EOF
+	chmod +x "$COMMIT_MSG" &&
+	git checkout -b violating-commit-msg master &&
+	test_must_fail test_commit commit-msg-violated-1 &&
+	test_commit --no-verify commit-msg-violated-1 &&
+	test_must_fail test_commit commit-msg-violated-2 &&
+	test_commit --no-verify commit-msg-violated-2 &&
+	test_must_fail test_commit commit-msg-violated-3 &&
+	test_commit --no-verify commit-msg-violated-3
+'
+
+test_expect_success 'rebase a commit violating commit-msg' '
+	git checkout -b rebase-violating-commit-msg violating-commit-msg &&
+	set_fake_editor &&
+	FAKE_LINES="1" git rebase -i master
+'
+
+test_expect_success 'squash a commit violating commit-msg' '
+	git checkout -b squash-violating-commit-msg violating-commit-msg &&
+	set_fake_editor &&
+	test_must_fail env FAKE_LINES="1 squash 2 fixup 3" git rebase -i master &&
+	git commit --no-verify --amend &&
+	git rebase --continue
+'
+
+test_expect_success 'fixup a commit violating commit-msg' '
+	git checkout -b fixup-violating-commit-msg violating-commit-msg &&
+	set_fake_editor &&
+	env FAKE_LINES="1 fixup 2" git rebase -i master
+'
+
+test_expect_success 'clean up failing commit-msg' '
+	rm "$COMMIT_MSG"
+'
+
 test_expect_success 'rebase with a file named HEAD in worktree' '
 
 	rm -fr .git/hooks &&
