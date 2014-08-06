@@ -481,12 +481,12 @@ msgstr "一時ファイルの作成ができませんでした '%s': %s"
 #: gpg-interface.c:118
 #, c-format
 msgid "failed writing detached signature to '%s': %s"
-msgstr ""
+msgstr "'%S'にdetached署名を書く事に失敗しました: %s"
 
 #: grep.c:1698
 #, c-format
 msgid "'%s': unable to read %s"
-msgstr ""
+msgstr "'%s': %sを読み込めません"
 
 #: grep.c:1715
 #, c-format
@@ -496,43 +496,43 @@ msgstr "'%s': %s"
 #: grep.c:1726
 #, c-format
 msgid "'%s': short read %s"
-msgstr ""
+msgstr "'%s': short read %s"
 
 #: help.c:209
 #, c-format
 msgid "available git commands in '%s'"
-msgstr ""
+msgstr "'%s'で利用可能なgitコマンド"
 
 #: help.c:216
 msgid "git commands available from elsewhere on your $PATH"
-msgstr ""
+msgstr "あなたの $PATH上のどこかで利用可能なgitコマンド"
 
 #: help.c:232
 msgid "The most commonly used git commands are:"
-msgstr "一般的に最も使用されるgitのコマンドはこれらです:"
+msgstr "最も頻繁に使用されるgitのコマンドはこれらです:"
 
 #: help.c:289
 #, c-format
 msgid ""
 "'%s' appears to be a git command, but we were not\n"
 "able to execute it. Maybe git-%s is broken?"
-msgstr ""
+msgstr "'%s'はgitコマンドのようだが、実行出来ない。git-%sが壊れているから?"
 
 #: help.c:346
 msgid "Uh oh. Your system reports no Git commands at all."
-msgstr ""
+msgstr "おや、あなたのシステムがGitコマンドを一つも報告しない。"
 
 #: help.c:368
 #, c-format
 msgid ""
 "WARNING: You called a Git command named '%s', which does not exist.\n"
 "Continuing under the assumption that you meant '%s'"
-msgstr ""
+msgstr "警告: あなたが実行したGitコマンド '%s'が存在しません。"
 
 #: help.c:373
 #, c-format
 msgid "in %0.1f seconds automatically..."
-msgstr ""
+msgstr "%0.1f 秒で自動的に..."
 
 #: help.c:380
 #, c-format
@@ -555,26 +555,26 @@ msgstr "%s: %s - %s"
 
 #: merge.c:56
 msgid "failed to read the cache"
-msgstr "キャッシュを読めませんでした"
+msgstr "キャッシュを読み込めませんでした"
 
 #: merge.c:110 builtin/checkout.c:357 builtin/checkout.c:558
 #: builtin/clone.c:661
 msgid "unable to write new index file"
-msgstr ""
+msgstr "新しいインデックスファイルを書き込めません"
 
 #: merge-recursive.c:190
 #, c-format
 msgid "(bad commit)\n"
-msgstr ""
+msgstr "(commitの誤り)\n"
 
 #: merge-recursive.c:208
 #, c-format
 msgid "addinfo_cache failed for path '%s'"
-msgstr ""
+msgstr "addinfo_cache は '%s'のpathで失敗しました"
 
 #: merge-recursive.c:271
 msgid "error building trees"
-msgstr ""
+msgstr "ツリーの構築に失敗しました"
 
 #: merge-recursive.c:675
 #, c-format
