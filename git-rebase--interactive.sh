@@ -549,7 +549,7 @@ do_next () {
 		squash|s|fixup|f)
 			# This is an intermediate commit; its message will only be
 			# used in case of trouble.  So use the long version:
-			do_with_author output git commit --allow-empty-message \
+			do_with_author output git commit --allow-empty-message --allow-empty \
 				--amend --no-verify -F "$squash_msg" \
 				${gpg_sign_opt:+"$gpg_sign_opt"} ||
 				die_failed_squash $sha1 "$rest"
@@ -558,18 +558,32 @@ do_next () {
 			# This is the final command of this squash/fixup group
 			if test -f "$fixup_msg"
 			then
-				do_with_author git commit --allow-empty-message \
+				do_with_author git commit --allow-empty-message --allow-empty \
 					--amend --no-verify -F "$fixup_msg" \
 					${gpg_sign_opt:+"$gpg_sign_opt"} ||
 					die_failed_squash $sha1 "$rest"
 			else
 				cp "$squash_msg" "$GIT_DIR"/SQUASH_MSG || exit
 				rm -f "$GIT_DIR"/MERGE_MSG
-				do_with_author git commit --amend --no-verify -F "$GIT_DIR"/SQUASH_MSG -e \
+				do_with_author git commit --allow-empty --amend --no-verify -F "$GIT_DIR"/SQUASH_MSG -e \
 					${gpg_sign_opt:+"$gpg_sign_opt"} ||
 					die_failed_squash $sha1 "$rest"
 			fi
 			rm -f "$squash_msg" "$fixup_msg"
+			if test -z "$keep_empty" && is_empty_commit HEAD
+			then
+				echo "$sha1" >"$state_dir"/stopped-sha
+				warn "The squash result is empty and --keep-empty was not specified."
+				warn
+				warn "You can remove the squash commit now with"
+				warn
+				warn "  git reset HEAD^"
+				warn
+				warn "Once you are down, run"
+				warn
+				warn "  git rebase --continue"
+				exit 0
+			fi
 			;;
 		esac
 		record_in_rewritten $sha1
