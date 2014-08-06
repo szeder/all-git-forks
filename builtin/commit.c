@@ -98,10 +98,25 @@ static char *edit_message, *use_message;
 static char *fixup_message, *squash_message;
 static int all, also, interactive, patch_interactive, only, amend, signoff;
 static int edit_flag = -1; /* unspecified */
-static int quiet, verbose, no_verify, allow_empty, dry_run, renew_authorship;
+static int quiet, verbose, allow_empty, dry_run, renew_authorship;
 static int no_post_rewrite, allow_empty_message;
 static char *untracked_files_arg, *force_date, *ignore_submodule_arg;
 static char *sign_commit;
+
+/*
+ * The verify variable is interpreted as a bitmap of enabled commit
+ * verification hooks according to the legend below.
+ *
+ * By default, the pre-commit and commit-msg hooks are enabled. This
+ * is represented by both the PRE_COMMIT and COMMIT_MSG bits being
+ * set.
+ *
+ * The bitmap is changed through the command line options
+ * --no-verify, --no-pre-commit and --no-commit-msg.
+ */
+#define PRE_COMMIT (1<<0)
+#define COMMIT_MSG (1<<1)
+static int verify = PRE_COMMIT | COMMIT_MSG;
 
 /*
  * The default commit message cleanup mode will remove the lines
@@ -661,7 +676,8 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 	/* This checks and barfs if author is badly specified */
 	determine_author_info(author_ident);
 
-	if (!no_verify && run_commit_hook(use_editor, index_file, "pre-commit", NULL))
+	if (verify & PRE_COMMIT &&
+	    run_commit_hook(use_editor, index_file, "pre-commit", NULL))
 		return 0;
 
 	if (squash_message) {
@@ -962,7 +978,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		}
 	}
 
-	if (!no_verify &&
+	if (verify & COMMIT_MSG &&
 	    run_commit_hook(use_editor, index_file, "commit-msg", git_path(commit_editmsg), NULL)) {
 		return 0;
 	}
@@ -1590,7 +1606,9 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		OPT_BOOL(0, "interactive", &interactive, N_("interactively add files")),
 		OPT_BOOL('p', "patch", &patch_interactive, N_("interactively add changes")),
 		OPT_BOOL('o', "only", &only, N_("commit only specified files")),
-		OPT_BOOL('n', "no-verify", &no_verify, N_("bypass pre-commit hook")),
+		OPT_NEGBIT('n', "no-verify", &verify,
+			   N_("synonym for --no-pre-commit --no-commit-msg"),
+			   PRE_COMMIT | COMMIT_MSG),
 		OPT_BOOL(0, "dry-run", &dry_run, N_("show what would be committed")),
 		OPT_SET_INT(0, "short", &status_format, N_("show status concisely"),
 			    STATUS_FORMAT_SHORT),
@@ -1603,6 +1621,12 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		OPT_BOOL('z', "null", &s.null_termination,
 			 N_("terminate entries with NUL")),
 		OPT_BOOL(0, "amend", &amend, N_("amend previous commit")),
+		OPT_NEGBIT(0, "no-pre-commit", &verify,
+			   N_("bypass pre-commit hook"),
+			   PRE_COMMIT),
+		OPT_NEGBIT(0, "no-commit-msg", &verify,
+			   N_("bypass commit-msg hook"),
+			   COMMIT_MSG),
 		OPT_BOOL(0, "no-post-rewrite", &no_post_rewrite, N_("bypass post-rewrite hook")),
 		{ OPTION_STRING, 'u', "untracked-files", &untracked_files_arg, N_("mode"), N_("show untracked files, optional modes: all, normal, no. (Default: all)"), PARSE_OPT_OPTARG, NULL, (intptr_t)"all" },
 		/* end commit contents options */

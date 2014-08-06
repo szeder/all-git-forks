@@ -12,11 +12,11 @@ test_expect_success 'with no hook' '
 
 '
 
-test_expect_success '--no-verify with no hook' '
+test_expect_success '--no-pre-commit with no hook' '
 
 	echo "bar" > file &&
 	git add file &&
-	git commit --no-verify -m "bar"
+	git commit --no-pre-commit -m "bar"
 
 '
 
@@ -38,11 +38,11 @@ test_expect_success 'with succeeding hook' '
 
 '
 
-test_expect_success '--no-verify with succeeding hook' '
+test_expect_success '--no-pre-commit with succeeding hook' '
 
 	echo "even more" >> file &&
 	git add file &&
-	git commit --no-verify -m "even more"
+	git commit --no-pre-commit -m "even more"
 
 '
 
@@ -60,11 +60,11 @@ test_expect_success 'with failing hook' '
 
 '
 
-test_expect_success '--no-verify with failing hook' '
+test_expect_success '--no-pre-commit with failing hook' '
 
 	echo "stuff" >> file &&
 	git add file &&
-	git commit --no-verify -m "stuff"
+	git commit --no-pre-commit -m "stuff"
 
 '
 
@@ -77,14 +77,63 @@ test_expect_success POSIXPERM 'with non-executable hook' '
 
 '
 
-test_expect_success POSIXPERM '--no-verify with non-executable hook' '
+test_expect_success POSIXPERM '--no-pre-commit with non-executable hook' '
 
 	echo "more content" >> file &&
 	git add file &&
-	git commit --no-verify -m "more content"
+	git commit --no-pre-commit -m "more content"
 
 '
 chmod +x "$HOOK"
+
+test_hook_enabled () {
+	git checkout --detach master &&
+	output="running failing pre-commit hook with ${*:-(none)}..." &&
+	>actual.output &&
+	cat >"$HOOK" <<-EOF &&
+	#!/bin/sh
+	echo "$output" >>actual.output
+	exit 1
+	EOF
+	chmod +x "$HOOK" &&
+	echo "$output" >expected.output &&
+	test_must_fail test_commit $* file &&
+	test_cmp expected.output actual.output
+}
+
+test_hook_disabled () {
+	git checkout --detach master &&
+	output="running failing pre-commit hook with ${*:-(none)}..." &&
+	>actual.output &&
+	cat >"$HOOK" <<-EOF &&
+	#!/bin/sh
+	echo "$output" >>actual.output
+	exit 1
+	EOF
+	chmod +x "$HOOK" &&
+	test_commit --notag $* file &&
+	test_must_be_empty actual.output
+}
+
+test_expect_success 'command line options combinations' '
+	test_hook_enabled &&
+	test_hook_enabled --pre-commit &&
+	test_hook_enabled --no-pre-commit --pre-commit &&
+	test_hook_enabled --no-verify --pre-commit &&
+	test_hook_enabled --verify &&
+	test_hook_enabled --no-pre-commit --verify &&
+	test_hook_enabled --no-verify --verify &&
+	test_hook_enabled --verify --no-commit-msg &&
+	test_hook_enabled --verify --commit-msg &&
+	test_hook_disabled --no-pre-commit &&
+	test_hook_disabled --pre-commit --no-pre-commit &&
+	test_hook_disabled --pre-commit --no-verify &&
+	test_hook_disabled --no-verify &&
+	test_hook_disabled --verify --no-pre-commit &&
+	test_hook_disabled --verify --no-verify &&
+	test_hook_disabled --no-verify --no-commit-msg &&
+	test_hook_disabled --no-verify --commit-msg
+'
 
 # a hook that checks $GIT_PREFIX and succeeds inside the
 # success/ subdirectory only
