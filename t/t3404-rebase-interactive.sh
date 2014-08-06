@@ -75,6 +75,30 @@ test_expect_success 'rebase --keep-empty' '
 	test_line_count = 6 actual
 '
 
+test_expect_success 'rebase --keep-empty (reword)' '
+	git checkout -b reword-emptybranch emptybranch &&
+	set_fake_editor &&
+	FAKE_LINES="1 reword 2" git rebase --keep-empty -i HEAD~2 &&
+	git log --oneline >actual &&
+	test_line_count = 6 actual
+'
+
+test_expect_success 'rebase --keep-empty (fixup)' '
+	git checkout -b fixup-emptybranch emptybranch &&
+	set_fake_editor &&
+	FAKE_LINES="1 fixup 2" git rebase --keep-empty -i HEAD~2 &&
+	git log --oneline >actual &&
+	test_line_count = 5 actual
+'
+
+test_expect_success 'rebase --keep-empty (squash)' '
+	git checkout -b squash-emptybranch emptybranch &&
+	set_fake_editor &&
+	FAKE_LINES="1 squash 2" git rebase --keep-empty -i HEAD~2 &&
+	git log --oneline >actual &&
+	test_line_count = 5 actual
+'
+
 test_expect_success 'rebase -i with the exec command' '
 	git checkout master &&
 	(
