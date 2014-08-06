@@ -712,7 +712,7 @@ do_replay () {
 					|| die_failed_squash $sha1 "Could not apply $sha1... $rest"
 			else
 				cp "$squash_msg" "$GIT_DIR"/SQUASH_MSG || exit
-				do_with_author do_pick --amend -F "$GIT_DIR"/SQUASH_MSG -e $sha1 \
+				do_with_author do_pick --amend --no-pre-commit -F "$GIT_DIR"/SQUASH_MSG -e $sha1 \
 					|| die_failed_squash $sha1 "Could not apply $sha1... $rest"
 			fi
 			rm -f "$squash_msg" "$fixup_msg"
