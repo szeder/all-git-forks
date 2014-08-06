@@ -63,7 +63,8 @@ msgnum="$state_dir"/msgnum
 author_script="$state_dir"/author-script
 
 # When an "edit" rebase command is being processed, the SHA1 of the
-# commit to be edited is recorded in this file.  When "git rebase
+# commit to be edited is recorded in this file.  The same happens when
+# rewriting a commit fails, for instance "reword".  When "git rebase
 # --continue" is executed, if there are any staged changes then they
 # will be amended to the HEAD commit, but only provided the HEAD
 # commit is still the commit to be edited.  When any other rebase
@@ -479,12 +480,17 @@ record_in_rewritten() {
 #     The commit message title of <commit>. Used for information
 #     purposes only.
 do_pick () {
-	edit=
+	allow_empty_message=y
+	rewrite=
+	rewrite_amend=
+	rewrite_edit=
 	while test $# -gt 0
 	do
 		case "$1" in
 		-e|--edit)
-			edit=y
+			rewrite=y
+			rewrite_edit=y
+			allow_empty_message=
 			;;
 		-*)
 			die "do_pick: unrecognized option -- $1"
@@ -499,6 +505,10 @@ do_pick () {
 
 	if test "$(git rev-parse HEAD)" = "$squash_onto"
 	then
+		rewrite=y
+		rewrite_amend=y
+		git rev-parse --verify HEAD >"$amend"
+
 		# Set the correct commit message and author info on the
 		# sentinel root before cherry-picking the original changes
 		# without committing (-n).  Finally, update the sentinel again
@@ -509,22 +519,21 @@ do_pick () {
 		# rebase --continue.
 		git commit --allow-empty --allow-empty-message --amend \
 			   --no-post-rewrite -n -q -C $1 &&
-			pick_one -n $1 &&
-			output git commit --allow-empty --allow-empty-message \
-				   --amend --no-post-rewrite -n --no-edit \
-				   ${gpg_sign_opt:+"$gpg_sign_opt"} ||
+			pick_one -n $1 ||
 			die_with_patch $1 "Could not apply $1... $2"
 	else
-		pick_one $1 ||
+		pick_one ${rewrite:+-n} $1 ||
 			die_with_patch $1 "Could not apply $1... $2"
 	fi
 
-	if test -n "$edit"
+	if test -n "$rewrite"
 	then
-		output git commit --allow-empty --amend --no-post-rewrite --no-pre-commit ${gpg_sign_opt:+"$gpg_sign_opt"} || {
-			warn "Could not amend commit after successfully picking $1... $2"
-			exit_with_patch $1 1
-		}
+		output git commit --allow-empty --no-post-rewrite -n --no-edit \
+			   ${allow_empty_message:+--allow-empty-message} \
+			   ${rewrite_amend:+--amend} \
+			   ${rewrite_edit:+--edit --commit-msg} \
+			   ${gpg_sign_opt:+"$gpg_sign_opt"} ||
+			die_with_patch $1 "Could not rewrite commit after successfully picking $1... $2"
 	fi
 }
 
