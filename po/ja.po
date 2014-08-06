@@ -7983,11 +7983,11 @@ msgstr ""
 
 #: builtin/remote.c:161
 msgid "master branch"
-msgstr ""
+msgstr "masterブランチ"
 
 #: builtin/remote.c:162
 msgid "push|fetch"
-msgstr ""
+msgstr "プッシュ|フェッチ"
 
 #: builtin/remote.c:163
 msgid "set up remote as a mirror to push to or fetch from"
@@ -8004,17 +8004,17 @@ msgstr ""
 #: builtin/remote.c:185 builtin/remote.c:641
 #, c-format
 msgid "remote %s already exists."
-msgstr ""
+msgstr "リモートに%sがすでに存在しています。"
 
 #: builtin/remote.c:189 builtin/remote.c:645
 #, c-format
 msgid "'%s' is not a valid remote name"
-msgstr ""
+msgstr "'%s'はリモートの名前として不適切です。"
 
 #: builtin/remote.c:233
 #, c-format
 msgid "Could not setup master '%s'"
-msgstr ""
+msgstr "masterをセットアップできませんでした '%s'"
 
 #: builtin/remote.c:289
 #, c-format
@@ -8028,31 +8028,31 @@ msgstr ""
 
 #: builtin/remote.c:435 builtin/remote.c:443
 msgid "(matching)"
-msgstr ""
+msgstr "(マッチング)"
 
 #: builtin/remote.c:447
 msgid "(delete)"
-msgstr ""
+msgstr "(デリート)"
 
 #: builtin/remote.c:590 builtin/remote.c:596 builtin/remote.c:602
 #, c-format
 msgid "Could not append '%s' to '%s'"
-msgstr ""
+msgstr "'%s'を'%s'に追加できませんでした。"
 
 #: builtin/remote.c:634 builtin/remote.c:787 builtin/remote.c:885
 #, c-format
 msgid "No such remote: %s"
-msgstr ""
+msgstr "リモートが見つかりません: %s"
 
 #: builtin/remote.c:651
 #, c-format
 msgid "Could not rename config section '%s' to '%s'"
-msgstr ""
+msgstr "コンフィグセクション'%s'を'%s'にリネームできませんでした。"
 
 #: builtin/remote.c:657 builtin/remote.c:794
 #, c-format
 msgid "Could not remove config section '%s'"
-msgstr ""
+msgstr "コンフィグセクション'%s'を削除できません"
 
 #: builtin/remote.c:672
 #, c-format
@@ -8065,27 +8065,27 @@ msgstr ""
 #: builtin/remote.c:678
 #, c-format
 msgid "Could not append '%s'"
-msgstr ""
+msgstr "'%s'を追加できませんでした"
 
 #: builtin/remote.c:689
 #, c-format
 msgid "Could not set '%s'"
-msgstr ""
+msgstr "'%s'をセットできませんでした"
 
 #: builtin/remote.c:711
 #, c-format
 msgid "deleting '%s' failed"
-msgstr ""
+msgstr "'%s'の削除に失敗しました"
 
 #: builtin/remote.c:745
 #, c-format
 msgid "creating '%s' failed"
-msgstr ""
+msgstr "'%s'の作成に失敗しました"
 
 #: builtin/remote.c:759
 #, c-format
 msgid "Could not remove branch %s"
-msgstr ""
+msgstr "ブランチ'%s'を削除できませんでした"
 
 #: builtin/remote.c:829
 msgid ""
@@ -8111,7 +8111,7 @@ msgstr ""
 
 #: builtin/remote.c:945
 msgid " ???"
-msgstr ""
+msgstr " ???"
 
 #: builtin/remote.c:986
 #, c-format
@@ -8121,12 +8121,12 @@ msgstr ""
 #: builtin/remote.c:993
 #, c-format
 msgid "rebases onto remote %s"
-msgstr ""
+msgstr "リモート%sの上へリベースします"
 
 #: builtin/remote.c:996
 #, c-format
 msgid " merges with remote %s"
-msgstr ""
+msgstr " リモート%sとマージします"
 
 #: builtin/remote.c:997
 msgid "    and with remote"
@@ -8135,7 +8135,7 @@ msgstr ""
 #: builtin/remote.c:999
 #, c-format
 msgid "merges with remote %s"
-msgstr ""
+msgstr "リモート%sとマージします"
 
 #: builtin/remote.c:1000
 msgid "   and with remote"
@@ -8143,19 +8143,19 @@ msgstr ""
 
 #: builtin/remote.c:1046
 msgid "create"
-msgstr ""
+msgstr "作成"
 
 #: builtin/remote.c:1049
 msgid "delete"
-msgstr ""
+msgstr "削除"
 
 #: builtin/remote.c:1053
 msgid "up to date"
-msgstr ""
+msgstr "最新"
 
 #: builtin/remote.c:1056
 msgid "fast-forwardable"
-msgstr ""
+msgstr "ファストフォワード可能"
 
 #: builtin/remote.c:1059
 msgid "local out of date"
@@ -8188,26 +8188,26 @@ msgstr ""
 #: builtin/remote.c:1171
 #, c-format
 msgid "* remote %s"
-msgstr ""
+msgstr "* リモート %s"
 
 #: builtin/remote.c:1172
 #, c-format
 msgid "  Fetch URL: %s"
-msgstr ""
+msgstr "  フェッチURL: %s"
 
 #: builtin/remote.c:1173 builtin/remote.c:1318
 msgid "(no URL)"
-msgstr ""
+msgstr "(no URL)"
 
 #: builtin/remote.c:1182 builtin/remote.c:1184
 #, c-format
 msgid "  Push  URL: %s"
-msgstr ""
+msgstr "  プッシュURL: %s"
 
 #: builtin/remote.c:1186 builtin/remote.c:1188 builtin/remote.c:1190
 #, c-format
 msgid "  HEAD branch: %s"
-msgstr ""
+msgstr "  HEADブランチ: %s"
 
 #: builtin/remote.c:1192
 #, c-format
@@ -8219,7 +8219,7 @@ msgstr ""
 #, c-format
 msgid "  Remote branch:%s"
 msgid_plural "  Remote branches:%s"
-msgstr[0] ""
+msgstr[0] "  リモートブランチ:%s"
 
 #: builtin/remote.c:1207 builtin/remote.c:1234
 msgid " (status not queried)"
@@ -8246,30 +8246,30 @@ msgstr ""
 
 #: builtin/remote.c:1254
 msgid "delete refs/remotes/<name>/HEAD"
-msgstr ""
+msgstr "削除 refs/remotes/<名前>/HEAD"
 
 #: builtin/remote.c:1269
 msgid "Cannot determine remote HEAD"
-msgstr ""
+msgstr "リモートのHEADを決定できません"
 
 #: builtin/remote.c:1271
 msgid "Multiple remote HEAD branches. Please choose one explicitly with:"
-msgstr ""
+msgstr "リモートHEADブランチが複数あります。明確に一つを指定してください:"
 
 #: builtin/remote.c:1281
 #, c-format
 msgid "Could not delete %s"
-msgstr ""
+msgstr "%sを削除できませんでした"
 
 #: builtin/remote.c:1289
 #, c-format
 msgid "Not a valid ref: %s"
-msgstr ""
+msgstr "有効なrefではありません: %s"
 
 #: builtin/remote.c:1291
 #, c-format
 msgid "Could not setup %s"
-msgstr ""
+msgstr "%sをセットアップできませんでした"
 
 #: builtin/remote.c:1307
 #, c-format
@@ -8289,7 +8289,7 @@ msgstr ""
 #: builtin/remote.c:1315
 #, c-format
 msgid "URL: %s"
-msgstr ""
+msgstr "URL: %s"
 
 #: builtin/remote.c:1328
 #, c-format
@@ -8303,20 +8303,20 @@ msgstr ""
 
 #: builtin/remote.c:1374
 msgid "prune remotes after fetching"
-msgstr ""
+msgstr "フェッチ後にリモートを枝刈りします"
 
 #: builtin/remote.c:1440 builtin/remote.c:1514
 #, c-format
 msgid "No such remote '%s'"
-msgstr ""
+msgstr "リモートが見つかりません '%s'"
 
 #: builtin/remote.c:1460
 msgid "add branch"
-msgstr ""
+msgstr "ブランチの追加"
 
 #: builtin/remote.c:1467
 msgid "no remote specified"
-msgstr ""
+msgstr "リモートが明示されていません"
 
 #: builtin/remote.c:1489
 msgid "manipulate push URLs"
@@ -8324,20 +8324,20 @@ msgstr ""
 
 #: builtin/remote.c:1491
 msgid "add URL"
-msgstr ""
+msgstr "URLを追加します"
 
 #: builtin/remote.c:1493
 msgid "delete URLs"
-msgstr ""
+msgstr "URLを削除します"
 
 #: builtin/remote.c:1500
 msgid "--add --delete doesn't make sense"
-msgstr ""
+msgstr "--addと--deleteは意味を成しません"
 
 #: builtin/remote.c:1540
 #, c-format
 msgid "Invalid old URL pattern: %s"
-msgstr ""
+msgstr "不正な古いURLパターン: %s"
 
 #: builtin/remote.c:1548
 #, c-format
@@ -8354,7 +8354,7 @@ msgstr ""
 
 #: builtin/repack.c:16
 msgid "git repack [options]"
-msgstr ""
+msgstr "git repack [オプション]"
 
 #: builtin/repack.c:156
 msgid "pack everything in a single pack"
@@ -8465,6 +8465,7 @@ msgstr ""
 msgid ""
 "git reset [--mixed | --soft | --hard | --merge | --keep] [-q] [<commit>]"
 msgstr ""
+"git reset [--mixed | --soft | --hard | --merge | --keep] [-q] [<コミット>]"
 
 #: builtin/reset.c:26
 msgid "git reset [-q] <tree-ish> [--] <paths>..."
@@ -8480,37 +8481,37 @@ msgstr ""
 
 #: builtin/reset.c:33
 msgid "soft"
-msgstr ""
+msgstr "ソフト"
 
 #: builtin/reset.c:33
 msgid "hard"
-msgstr ""
+msgstr "ハード"
 
 #: builtin/reset.c:33
 msgid "merge"
-msgstr ""
+msgstr "マージ"
 
 #: builtin/reset.c:33
 msgid "keep"
-msgstr ""
+msgstr "キープ"
 
 #: builtin/reset.c:73
 msgid "You do not have a valid HEAD."
-msgstr ""
+msgstr "あなたは有効なHEADを持っていません。"
 
 #: builtin/reset.c:75
 msgid "Failed to find tree of HEAD."
-msgstr ""
+msgstr "ツリーのHEADを見つけることに失敗しました。"
 
 #: builtin/reset.c:81
 #, c-format
 msgid "Failed to find tree of %s."
-msgstr ""
+msgstr "ツリーの%sを見つけることに失敗しました。"
 
 #: builtin/reset.c:99
 #, c-format
 msgid "HEAD is now at %s"
-msgstr ""
+msgstr "HEADは今%sにあります"
 
 #: builtin/reset.c:182
 #, c-format
@@ -8523,19 +8524,19 @@ msgstr ""
 
 #: builtin/reset.c:275
 msgid "reset HEAD and index"
-msgstr ""
+msgstr "HEADとインデックスをリセットします"
 
 #: builtin/reset.c:276
 msgid "reset only HEAD"
-msgstr ""
+msgstr "HEADのみをリセットします"
 
 #: builtin/reset.c:278 builtin/reset.c:280
 msgid "reset HEAD, index and working tree"
-msgstr ""
+msgstr "HEADとインデックスと作業ツリーをリセットします"
 
 #: builtin/reset.c:282
 msgid "reset HEAD but keep local changes"
-msgstr ""
+msgstr "HEADをリセットし、ローカルの変更は維持します"
 
 #: builtin/reset.c:285
 msgid "record only the fact that removed paths will be added later"
@@ -8544,17 +8545,17 @@ msgstr ""
 #: builtin/reset.c:302
 #, c-format
 msgid "Failed to resolve '%s' as a valid revision."
-msgstr ""
+msgstr "%sを有効なリビジョンとして解決することに失敗しました。"
 
 #: builtin/reset.c:305 builtin/reset.c:313
 #, c-format
 msgid "Could not parse object '%s'."
-msgstr ""
+msgstr "オブジェクト'%s'をパースできませんでした。"
 
 #: builtin/reset.c:310
 #, c-format
 msgid "Failed to resolve '%s' as a valid tree."
-msgstr ""
+msgstr "'%s'を有効なツリーとして解決できませんでした。"
 
 #: builtin/reset.c:319
 msgid "--patch is incompatible with --{hard,mixed,soft}"
@@ -8590,7 +8591,7 @@ msgstr ""
 
 #: builtin/reset.c:372
 msgid "Could not write new index file."
-msgstr ""
+msgstr "新しいインデックスファイルを書けませんでした。"
 
 #: builtin/rev-parse.c:359
 msgid "git rev-parse --parseopt [options] -- [<args>...]"
@@ -8623,7 +8624,7 @@ msgstr ""
 
 #: builtin/revert.c:23
 msgid "git revert <subcommand>"
-msgstr ""
+msgstr "git revert <サブコマンド>"
 
 #: builtin/revert.c:28
 msgid "git cherry-pick [options] <commit-ish>..."
@@ -8631,48 +8632,48 @@ msgstr ""
 
 #: builtin/revert.c:29
 msgid "git cherry-pick <subcommand>"
-msgstr ""
+msgstr "git cherry-pick <サブコマンド>"
 
 #: builtin/revert.c:71
 #, c-format
 msgid "%s: %s cannot be used with %s"
-msgstr ""
+msgstr "%s: %sを%sとともに使用できません"
 
 #: builtin/revert.c:80
 msgid "end revert or cherry-pick sequence"
-msgstr ""
+msgstr "リバートもしくはチェリーピック処理の終わり"
 
 #: builtin/revert.c:81
 msgid "resume revert or cherry-pick sequence"
-msgstr ""
+msgstr "リバートもしくはチェリーピック処理から復帰します"
 
 #: builtin/revert.c:82
 msgid "cancel revert or cherry-pick sequence"
-msgstr ""
+msgstr "リバートもしくはチェリーピック処理をキャンセルします"
 
 #: builtin/revert.c:83
 msgid "don't automatically commit"
-msgstr ""
+msgstr "自動コミットをしない"
 
 #: builtin/revert.c:84
 msgid "edit the commit message"
-msgstr ""
+msgstr "そのコミットメッセージを編集します"
 
 #: builtin/revert.c:87
 msgid "parent number"
-msgstr ""
+msgstr "親番号"
 
 #: builtin/revert.c:89
 msgid "merge strategy"
-msgstr ""
+msgstr "マージ戦略"
 
 #: builtin/revert.c:90
 msgid "option"
-msgstr ""
+msgstr "オプション"
 
 #: builtin/revert.c:91
 msgid "option for merge strategy"
-msgstr ""
+msgstr "マージ戦略に対するオプション"
 
 #: builtin/revert.c:104
 msgid "append commit name"
@@ -8692,23 +8693,23 @@ msgstr ""
 
 #: builtin/revert.c:108
 msgid "keep redundant, empty commits"
-msgstr ""
+msgstr "冗長な空のコミットを維持します"
 
 #: builtin/revert.c:112
 msgid "program error"
-msgstr ""
+msgstr "プログラムエラー"
 
 #: builtin/revert.c:197
 msgid "revert failed"
-msgstr ""
+msgstr "リバートに失敗しました"
 
 #: builtin/revert.c:212
 msgid "cherry-pick failed"
-msgstr ""
+msgstr "チェリーピックに失敗しました"
 
 #: builtin/rm.c:17
 msgid "git rm [options] [--] <file>..."
-msgstr ""
+msgstr "git rm [オプション] [--] <ファイル>..."
 
 #: builtin/rm.c:65
 msgid ""
@@ -8758,11 +8759,11 @@ msgstr[0] ""
 
 #: builtin/rm.c:270
 msgid "do not list removed files"
-msgstr ""
+msgstr "削除済みファイルを一覧にしません"
 
 #: builtin/rm.c:271
 msgid "only remove from the index"
-msgstr ""
+msgstr "インデックスから削除するだけです"
 
 #: builtin/rm.c:272
 msgid "override the up-to-date check"
@@ -8774,7 +8775,7 @@ msgstr ""
 
 #: builtin/rm.c:275
 msgid "exit with a zero status even if nothing matched"
-msgstr ""
+msgstr "何もマッチしない場合もステータスゼロで終了します"
 
 #: builtin/rm.c:336
 #, c-format
@@ -8784,16 +8785,16 @@ msgstr ""
 #: builtin/rm.c:375
 #, c-format
 msgid "git rm: unable to remove %s"
-msgstr ""
+msgstr "git rm: %sを削除できません"
 
 #: builtin/shortlog.c:13
 msgid "git shortlog [<options>] [<revision range>] [[--] [<path>...]]"
-msgstr ""
+msgstr "git shortlog [<オプション>] [<リビジョンの範囲>] [[--] [<パス>...]]"
 
 #: builtin/shortlog.c:131
 #, c-format
 msgid "Missing author: %s"
-msgstr ""
+msgstr "行方不明の著者: %s"
 
 #: builtin/shortlog.c:230
 msgid "sort output according to the number of commits per author"
@@ -8813,7 +8814,7 @@ msgstr ""
 
 #: builtin/shortlog.c:236
 msgid "Linewrap output"
-msgstr ""
+msgstr "行を折り返して出力"
 
 #: builtin/show-branch.c:9
 msgid ""
@@ -8829,11 +8830,11 @@ msgstr ""
 
 #: builtin/show-branch.c:649
 msgid "show remote-tracking and local branches"
-msgstr ""
+msgstr "リモートのトラッキングしているブランチとローカルのブランチを表示します"
 
 #: builtin/show-branch.c:651
 msgid "show remote-tracking branches"
-msgstr ""
+msgstr "リモートのトラッキングしているブランチを表示します"
 
 #: builtin/show-branch.c:653
 msgid "color '*!+-' corresponding to the branch"
@@ -8853,7 +8854,7 @@ msgstr ""
 
 #: builtin/show-branch.c:660
 msgid "include the current branch"
-msgstr ""
+msgstr "現在のブランチを含みます"
 
 #: builtin/show-branch.c:662
 msgid "name commits with their object names"
@@ -8955,11 +8956,11 @@ msgstr ""
 
 #: builtin/symbolic-ref.c:43 builtin/update-ref.c:255
 msgid "reason"
-msgstr ""
+msgstr "理由"
 
 #: builtin/symbolic-ref.c:43 builtin/update-ref.c:255
 msgid "reason of the update"
-msgstr ""
+msgstr "そのアップデートの理由"
 
 #: builtin/tag.c:22
 msgid ""
@@ -8968,7 +8969,7 @@ msgstr ""
 
 #: builtin/tag.c:23
 msgid "git tag -d <tagname>..."
-msgstr ""
+msgstr "git tag -d <タグ名>..."
 
 #: builtin/tag.c:24
 msgid ""
@@ -8978,7 +8979,7 @@ msgstr ""
 
 #: builtin/tag.c:26
 msgid "git tag -v <tagname>..."
-msgstr ""
+msgstr "git tag -v <タグ名>..."
 
 #: builtin/tag.c:67
 #, c-format
@@ -8988,12 +8989,12 @@ msgstr ""
 #: builtin/tag.c:239
 #, c-format
 msgid "tag name too long: %.*s..."
-msgstr ""
+msgstr "タグ名が長過ぎます: %.*s..."
 
 #: builtin/tag.c:244
 #, c-format
 msgid "tag '%s' not found."
-msgstr ""
+msgstr "タグ'%s'が見つかりません"
 
 #: builtin/tag.c:259
 #, c-format
@@ -9028,11 +9029,11 @@ msgstr ""
 
 #: builtin/tag.c:326
 msgid "unable to write tag file"
-msgstr ""
+msgstr "タグファイルに書けません。"
 
 #: builtin/tag.c:351
 msgid "bad object type."
-msgstr ""
+msgstr "悪いオブジェクトタイプです。"
 
 #: builtin/tag.c:364
 msgid "tag header too big."
@@ -9063,7 +9064,7 @@ msgstr "サポートされていないインデックスバージョン %s"
 
 #: builtin/tag.c:500
 msgid "list tag names"
-msgstr ""
+msgstr "タグ名を一覧にします"
 
 #: builtin/tag.c:502
 msgid "print <n> lines of each tag message"
@@ -9071,7 +9072,7 @@ msgstr ""
 
 #: builtin/tag.c:504
 msgid "delete tags"
-msgstr ""
+msgstr "タグを削除します"
 
 #: builtin/tag.c:505
 msgid "verify tags"
@@ -9087,7 +9088,7 @@ msgstr ""
 
 #: builtin/tag.c:511
 msgid "tag message"
-msgstr ""
+msgstr "タグメッセージ"
 
 #: builtin/tag.c:513
 msgid "annotated and GPG-signed tag"
