@@ -689,18 +689,18 @@ do_replay () {
 			# This is an intermediate commit; its message will only be
 			# used in case of trouble.  So use the long version:
 			do_with_author do_pick --amend -F "$squash_msg" $sha1 \
-				|| die_failed_squash $sha1 "Could not apply $sha1... $rest"
+				|| die_failed_squash $sha1 "$rest"
 			;;
 		*)
 			# This is the final command of this squash/fixup group
 			if test -f "$fixup_msg"
 			then
 				do_with_author do_pick --amend -F "$fixup_msg" $sha1 \
-					|| die_failed_squash $sha1 "Could not apply $sha1... $rest"
+					|| die_failed_squash $sha1 "$rest"
 			else
 				cp "$squash_msg" "$GIT_DIR"/SQUASH_MSG || exit
 				do_with_author do_pick --amend --no-pre-commit -F "$GIT_DIR"/SQUASH_MSG -e $sha1 \
-					|| die_failed_squash $sha1 "Could not apply $sha1... $rest"
+					|| die_failed_squash $sha1 "$rest"
 			fi
 			rm -f "$squash_msg" "$fixup_msg"
 			if test -z "$keep_empty" && is_empty_commit HEAD
