@@ -1085,6 +1085,8 @@ EOF
 	;;
 esac
 
+mkdir -p "$state_dir" || die "Could not create temporary $state_dir"
+
 git var GIT_COMMITTER_IDENT >/dev/null ||
 	die "You need to set your committer info first"
 
@@ -1100,7 +1102,6 @@ then
 fi
 
 orig_head=$(git rev-parse --verify HEAD) || die "No HEAD?"
-mkdir -p "$state_dir" || die "Could not create temporary $state_dir"
 
 : > "$state_dir"/interactive || die "Could not mark as interactive"
 write_basic_state

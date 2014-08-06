@@ -4,6 +4,8 @@ test_description='messages from rebase operation'
 
 . ./test-lib.sh
 
+. "$TEST_DIRECTORY"/lib-rebase.sh
+
 test_expect_success 'setup' '
 	test_commit O fileO &&
 	test_commit X fileX &&
@@ -82,6 +84,22 @@ test_expect_success 'rebase -n overrides config rebase.stat config' '
 test_expect_success 'rebase --onto outputs the invalid ref' '
 	test_must_fail git rebase --onto invalid-ref HEAD HEAD 2>err &&
 	test_i18ngrep "invalid-ref" err
+'
+
+test_expect_success 'commit summary is suppressed in non-verbose mode' '
+	git checkout --detach Y &&
+	cat >expected.out <<-EOF &&
+	Rebasing (1/5)\r
+	Rebasing (2/5)\r
+	Rebasing (3/5)\r
+	Rebasing (4/5)\r
+	Rebasing (5/5)\r
+	EOF
+	set_fake_editor &&
+	FAKE_LINES="reword 1 fixup 2 fixup 3 4 squash 5" \
+	git rebase -i --root >actual.out.tmp &&
+	sed -e "s/\r/\\\\r\n/g" <actual.out.tmp >actual.out &&
+	test_cmp expected.out actual.out
 '
 
 test_done
