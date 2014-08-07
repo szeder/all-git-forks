@@ -2,11 +2,10 @@
 #include "../gitpro_api/gitpro_data_api.h"
 #include "../gitpro_api/db_constants.h"
 
-int *to_int_bit_array(char *bit_array){
-	return NULL;
-}
-
-
+/*	Name		: validate_bit_array
+	Parameters	: bit array
+	Return		: INCORRECT_DATA if bit array is not specified, length doesn't match or
+				 bit array data is different than 0 or 1. DATA_OK if data is valid */ 
 int validate_bit_array(char *bit_array){
 	if(bit_array==NULL){
 		return INCORRECT_DATA;
@@ -24,6 +23,10 @@ int validate_bit_array(char *bit_array){
 	return DATA_OK;
 }
 
+/* 	Name		: validate_duplicate_role_name
+	Parameters	: role name
+	Return		: INCORRECT_DATA if role name not specified, DATA_OK if data is valid or 
+				 DUPLICATE_ROLE if role already exists */
 int validate_duplicate_role_name(char *name){
 	if(name==NULL){
 		return INCORRECT_DATA;
@@ -52,6 +55,10 @@ int validate_duplicate_role_name(char *name){
 	return DATA_OK;
 }
 
+/*	Name		: validate_inexistent_role_name
+	Parameters	: role name
+	Return		: DATA_OK if data is valid, INCORRECT_DATA if name is not specified
+				 or INEXISTENT_ROLE if role name does not exists */
 int validate_inexistent_role_name(char *name){
 	if(name==NULL) return INCORRECT_DATA;
 	char *fields[] = {ROLE_NAME,0};
@@ -76,6 +83,10 @@ int validate_inexistent_role_name(char *name){
 	return INEXISTENT_ROLE;
 }
 
+/*	Name		: validate_read_delete_role
+	Parameters	: role name and bit array
+	Return		: DATA_OK if data is valid, INCORRECT_DATA if bit array have more or less 
+				 permissions or INEXISTENT_ROLE if role name does not exists */
 int validate_read_delete_role(char *name,char *bit_array){
 	if(bit_array!=NULL){
 		return INCORRECT_DATA;
@@ -85,6 +96,9 @@ int validate_read_delete_role(char *name,char *bit_array){
 	return DATA_OK;
 }
 
+/*	Name		: validate_users
+	Parameters	: users to add or remove
+	Return		: DATA_OK if data is valid or INEXISTENT_USER if some user does not exist */
 int validate_users(char *users){
 	if(users==NULL) return DATA_OK;
 	char *aux = strdup(users);
@@ -109,10 +123,12 @@ int validate_users(char *users){
 		free(query);
 		dealloc(data);
 		if(inex){
+			free(aux);
 			return INEXISTENT_USER;
 		}
 		temp = strtok(NULL,",");
 	}
+	free(aux);
 	return DATA_OK;
 }
 
@@ -120,6 +136,7 @@ int validate_users(char *users){
 /* PUBLIC FUNCTIONS*/
 /*******************/
 
+/* See specification in role_validate.h */
 int validate_create_role(char *name,char *bit_array,char *add,char *rm){
 	if(add!=NULL || rm!=NULL){
 		return INCORRECT_DATA;
@@ -135,6 +152,7 @@ int validate_create_role(char *name,char *bit_array,char *add,char *rm){
 	return DATA_OK;
 }
 
+/* See specification in role_validate.h */
 int validate_update_role(char *name,char *bit_array,char *add,char *rm){
 	if(add!=NULL || rm!=NULL){
 		return INCORRECT_DATA;
@@ -146,6 +164,7 @@ int validate_update_role(char *name,char *bit_array,char *add,char *rm){
 	return DATA_OK;
 }
 
+/* See specification in role_validate.h */
 int validate_delete_role(char *name,char *bit_array,char *add,char *rm){
 	if(add!=NULL || rm!=NULL){
 		return INCORRECT_DATA;
@@ -153,6 +172,7 @@ int validate_delete_role(char *name,char *bit_array,char *add,char *rm){
 	return validate_read_delete_role(name,bit_array);
 }
 
+/* See specification in role_validate.h */
 int validate_read_role(char *name,char *bit_array,char *add,char *rm){
 	if(add!=NULL || rm!=NULL){
 		return INCORRECT_DATA;
@@ -160,6 +180,7 @@ int validate_read_role(char *name,char *bit_array,char *add,char *rm){
 	return validate_read_delete_role(name,bit_array);
 }
  
+/* See specification in role_validate.h */
 int validate_assign_role(char *name,char *bit_array,char *add,char *rm){
 	if(bit_array!=NULL){
 		return INCORRECT_DATA;
