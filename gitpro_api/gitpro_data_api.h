@@ -5,6 +5,8 @@
 #include "generic_list.h"
 #include "db_constants.h"
 
+#define null_data "empty" //textual representation of non obtained list data
+
 /* Local lists that will be filled with data */
 role_list roles;
 task_list tasks;
@@ -77,7 +79,7 @@ void show_asocs(asoc_list list);
 /*******************/
 /* Use with db_constants.h
    This functions only construct sql queries to make a faster development. 
-   This functions does not make any data validation so, an string have to be entered like
+   Format functions does not make any data validation so, an string have to be entered like
 	'string' or \"string\" depending on database engine 
    You can try using format_string given in this API. */
 

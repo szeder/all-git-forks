@@ -2,7 +2,7 @@
 #include "builtin.h"
 #include "parse-options.h"
 #include "../gitpro_role_check/check_role.h"
-#include "../gitpro_api/gitpro_data_api.h"
+#include "../gitpro_validate/role_validate.h"
 
 #define OUT stdout
 #define ERR stderr
@@ -95,24 +95,77 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 		}
 		
 		if(rcreate){
+/* START [2.1.1] Validate data process */
+			switch(validate_create_role(role_name,perms,add,rm)){
+				case INCORRECT_DATA:
+					fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+					return 0; 
+				case DUPLICATE_ROLE:
+					fputs(_("Role name specified already exists\n"),ERR);
+					return 0;
+			}
+/* END [2.1.1] Validate data process */
 			/* Create role option */
 			create_role();
 		}else if(rread){
+/* START [2.4.1] Validate data process */
+			switch(validate_read_role(role_name,perms,add,rm)){
+				case INCORRECT_DATA:
+					fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+					return 0;
+				case INEXISTENT_ROLE:
+					fputs(_("Role you're trying to update doesn't exists\n"),ERR);
+					return 0;
+			}
+/* END [2.4.1] Validate data process */
 			/* Read role option */
 			read_role();
 		}else if(rupdate){
+/* START [2.2.1] Validate data process */
+			switch(validate_update_role(role_name,perms,add,rm)){
+				case INCORRECT_DATA:	
+					fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+					return 0;
+				case INEXISTENT_ROLE:
+					fputs(_("Role you're trying to update doesn't exists\n"),ERR);
+					return 0;
+			}
+/* END [2.2.1] Validate data process */
 			/* Update role option */
 			update_role();
 		}else if(rdelete){
+/* START [2.3.1] Validate data process */
+			switch(validate_delete_role(role_name,perms,add,rm)){
+				case INCORRECT_DATA:
+					fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+					return 0;
+				case INEXISTENT_ROLE:
+					fputs(_("Role you're trying to update doesn't exists\n"),ERR);
+					return 0;
+			}
+/* END [2.3.1] Validate data process */
 			/* Delete role option */
 			delete_role();
 		}else if(rassign){
 			if(user){
+/* START [2.5.1] Validate data process */
+				switch(validate_assign_role(role_name,perms,add,rm)){
+					case INCORRECT_DATA:
+						fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+						return 0;
+					case INEXISTENT_ROLE:
+						fputs(_("Role you're trying to update doesn't exists\n"),ERR);
+						return 0;
+					case INEXISTENT_USER:
+						fputs(_("User you're trying to update doesn't exists\n"),ERR);
+						return 0;	
+				}
+/* END [2.5.1] Validate data process */
 				/* Assign role option */
 				assign_role();
 			}else{
 				fputs(_("Wrong format, see usage of assign command\n"),ERR);
-				
+				return 0;
 			}
 		}else{
 			/* No action defined */

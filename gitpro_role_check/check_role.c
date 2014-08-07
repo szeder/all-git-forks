@@ -78,7 +78,10 @@ char *get_role(char *username){
 	generic_list data = exec_query(query);
 	if((*data).user_info!=NULL){
 		char *role = (char *) malloc(strlen((*data).user_info->user_role)+1);
-		strcpy(role,(*data).user_info->user_role);		
+		strcpy(role,(*data).user_info->user_role);
+		free(formatted_name);
+		free(query);
+		dealloc(data);		
 		return role;
 	}
 	free(formatted_name);
@@ -145,7 +148,7 @@ int can_assign_role(char *role_name){
 	generic_list result = get_role_result(ASSIGN_ROLE,role_name);
 	int value = -1; 
 	if((*result).role_info!=NULL){	
-		return (*result).role_info->assign_role;
+		value = (*result).role_info->assign_role;
 	}
 	dealloc(result);	
 	return value;

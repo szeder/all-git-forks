@@ -1,7 +1,6 @@
 #include "gitpro_data_api.h"
 
 static sqlite3 *db_ptr; //pointer to sqlite3 database
-char *null_data = "empty"; //textual representation of non obtained list data
 int int_scalar_data = -1; //int scalar obtained 
 float float_scalar_data = -1; //float scalar obtained
 
