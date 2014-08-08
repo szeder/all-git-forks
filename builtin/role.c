@@ -3,6 +3,7 @@
 #include "parse-options.h"
 #include "../gitpro_role_check/check_role.h"
 #include "../gitpro_validate/role_validate.h"
+#include "../gitpro_functions/role_functions.h"
 
 #define OUT stdout
 #define ERR stderr
@@ -12,12 +13,6 @@ static const char * const builtin_role_usage[] =
 	"role [-c | -r | -u | -d | -a]\n\tSome use examples:\n\t-c -n role_name -p 10_bit_array\n\t-r -n role_name\n\t-u -n role_name -p 10_bit_array\n\t-d -n role_name\n\t-a -n role_name -t --add=\"u1 u2 ... uN\" --rm=\"u1 u2 ... uN\"",
 	NULL
 };
-
-void create_role();
-void read_role();
-void update_role();
-void delete_role();
-void assign_role();
 
 static int rcreate, rupdate, rdelete, rread, rassign,user;
 static char *role_name = NULL;
@@ -105,8 +100,10 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 					return 0;
 			}
 /* END [2.1.1] Validate data process */
-			/* Create role option */
-			create_role();
+/* START [2.1.2] Create role option */
+			create_role(role_name,perms);
+			fputs(_("Role created successfully\n"),OUT);
+/* END [2.1.2] Create role option */
 		}else if(rread){
 /* START [2.4.1] Validate data process */
 			switch(validate_read_role(role_name,perms,add,rm)){
@@ -118,8 +115,9 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 					return 0;
 			}
 /* END [2.4.1] Validate data process */
-			/* Read role option */
-			read_role();
+/* START [2.4.2] Read role option */
+			read_role(role_name);
+/* END [2.4.2] Read role option */
 		}else if(rupdate){
 /* START [2.2.1] Validate data process */
 			switch(validate_update_role(role_name,perms,add,rm)){
@@ -131,8 +129,10 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 					return 0;
 			}
 /* END [2.2.1] Validate data process */
-			/* Update role option */
-			update_role();
+/* START [2.2.2] Update role option */
+			update_role(role_name,perms);
+			fputs(_("Role updated successfully\n"),OUT);
+/* END [2.2.2] Update role option */
 		}else if(rdelete){
 /* START [2.3.1] Validate data process */
 			switch(validate_delete_role(role_name,perms,add,rm)){
@@ -144,8 +144,10 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 					return 0;
 			}
 /* END [2.3.1] Validate data process */
-			/* Delete role option */
-			delete_role();
+/* START [2.3.2] Delete role option */
+			delete_role(role_name);
+			fputs(_("Role deleted successfully\n"),OUT);
+/* END [2.3.2] Delete role option */
 		}else if(rassign){
 			if(user){
 /* START [2.5.1] Validate data process */
@@ -161,8 +163,9 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 						return 0;	
 				}
 /* END [2.5.1] Validate data process */
-				/* Assign role option */
-				assign_role();
+/* START [2.5.2] Assign role option */
+				assign_role(role_name,add,rm);
+/* END [2.5.2] Assign role option */
 			}else{
 				fputs(_("Wrong format, see usage of assign command\n"),ERR);
 				return 0;
@@ -176,40 +179,4 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 	}
 	
 	return 1;	
-}
-
-
-void create_role(){
-	fputs(_("Create role option\n"),OUT);
-	if(role_name!=NULL && perms!=NULL){
-		printf("%s\n%s\n",role_name,perms);
-	}
-}
-
-void read_role(){
-	fputs(_("Read role option\n"),OUT);
-	if(role_name!=NULL && perms==NULL){
-		printf("%s\n",role_name);
-	}
-}
-
-void update_role(){
-	fputs(_("Update role option\n"),OUT);
-	if(role_name!=NULL && perms!=NULL){
-		printf("%s\n%s\n",role_name,perms);
-	}
-}
-
-void delete_role(){
-	fputs(_("Delete role option\n"),OUT);
-	if(role_name!=NULL && perms==NULL){
-		printf("%s\n",role_name);
-	}
-}
-
-void assign_role(){
-	fputs(_("Assign role option\n"),OUT);
-	if(role_name!=NULL && user && (add!=NULL || rm!=NULL)){
-		printf("%s\n%s\n%s\n",role_name,add,rm);
-	}
 }

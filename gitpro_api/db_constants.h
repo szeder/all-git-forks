@@ -1,6 +1,9 @@
 //DB NAME
 #define DB_NAME "gitpro.db"
 
+//PUBLIC ROLE
+#define PUBLIC "PUBLIC"
+
 //SQL ALL
 #define ALL "*"
 

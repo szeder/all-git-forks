@@ -428,6 +428,7 @@ BASIC_LDFLAGS =
 API_PATH = gitpro_api
 CHECK_PATH = gitpro_role_check
 VALIDATE_PATH = gitpro_validate
+FUNCTIONS =	 gitpro_functions
 
 # Guard against environment variables
 BUILTIN_OBJS = builtin/task.o builtin/role.o
@@ -438,8 +439,8 @@ XDIFF_OBJS =
 VCSSVN_OBJS =
 GENERATED_H =
 EXTRA_CPPFLAGS =
-LIB_H = $(CHECK_PATH)/check_role.h $(API_PATH)/db_constants.h $(API_PATH)/generic_list.h $(API_PATH)/gitpro_data_api.h $(VALIDATE_PATH)/role_validate.h
-LIB_OBJS = $(CHECK_PATH)/check_role.o $(API_PATH)/generic_list.o $(API_PATH)/gitpro_data_api.o $(API_PATH)/sql_helper.o $(VALIDATE_PATH)/role_validate.o
+LIB_H = $(CHECK_PATH)/check_role.h $(API_PATH)/db_constants.h $(API_PATH)/generic_list.h $(API_PATH)/gitpro_data_api.h $(VALIDATE_PATH)/role_validate.h $(FUNCTIONS)/role_functions.h
+LIB_OBJS = $(CHECK_PATH)/check_role.o $(API_PATH)/generic_list.o $(API_PATH)/gitpro_data_api.o $(API_PATH)/sql_helper.o $(VALIDATE_PATH)/role_validate.o $(FUNCTIONS)/role_functions.o
 PROGRAM_OBJS =
 PROGRAMS =
 SCRIPT_PERL =
