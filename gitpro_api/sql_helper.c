@@ -19,11 +19,27 @@ char *logic_cond(char *cond1,char *logic,char *cond2){
 	return result;
 }
 
+/*	Name		: arraylen
+	Parameters	: array of elements
+	Return		: length of array */
+int arraylen(char **array){
+	char **aux = array;
+	int i =0;
+	if(aux!=NULL){
+		while(aux[i]!=NULL){
+			i++;
+		}
+	}
+	aux=NULL;
+	return i;
+}
+
+
 /*	Name		: memory_to_alloc
 	Parameters	: array of parameters
 	Returns		: number of necesary bytes to allocate */
 int memory_to_alloc(char *params[]){
-	int num_params = strlen((char *) params)/sizeof(char *);
+	int num_params = arraylen(params);
 	int i=0;
 	int size =0;
 	for(i=0;i<num_params;i++){
@@ -59,6 +75,7 @@ void add_commas(char *orig,int num,char *f[]){
 		}
 	}
 }
+
 
 /*******************/
 /* PUBLIC FUNCTIONS*/
@@ -126,7 +143,7 @@ char *construct_update(char *table,char *asig[],char *where){
 	if(where!=NULL){
 		where_size = strlen(where);	
 	}
-	int num_asig = (strlen((char *) asig)/sizeof(char *));
+	int num_asig = arraylen(asig);
 	/* Allocates memory to 'update ', ' set ', where part if not null, asignations,
 	 	table name and separate asig commas. Finally adds 1 to end string character */
 	char *update = (char *) malloc(strlen(start)+strlen(mid)+size+
@@ -168,8 +185,8 @@ char *construct_insert(char *table,char *fields[],char *values[]){
 	const char *end = ")";
 	int size = memory_to_alloc(fields);
 	size += memory_to_alloc(values);
-	int num_fields = strlen((char *) fields)/sizeof(char *);
-	int num_values = strlen((char *) values)/sizeof(char *);
+	int num_fields = arraylen(fields);
+	int num_values = arraylen(values);
 	/* Allocates memory to 'insert into ', 'values(', ')', 2 parenthesis, length of all fields
 		and all values. In addition, separate commas for fields and values, 
 		length of table name. Finally, one extra space to end string character */
@@ -191,7 +208,7 @@ char *construct_query(char *fields[],char *from,char *where,char *group_by,char 
 	}
 	const char *select="SELECT ";
 	int size = memory_to_alloc(fields);
-	int num_fields = strlen((char *) fields)/sizeof(char *);
+	int num_fields = arraylen(fields);
 	int where_size = 0;
 	int group_size = 0;
 	int order_size = 0;
@@ -259,7 +276,7 @@ char *group_by(char *fields[]){
 		return NULL;
 	}
 	const char *group = " GROUP BY ";
-	int num = strlen((char *) fields)/sizeof(char *);
+	int num = arraylen(fields);
 	/* Allocates memory to ' group by ', fields, separate commas and end string character */
 	char *result = (char *) malloc(strlen(group)+memory_to_alloc(fields)+(num-1)+1);
 	strcpy(result,group);
@@ -274,7 +291,7 @@ char *order_by(char *fields[],int inverse){
 	}
 	const char *order = " ORDER BY ";
 	const char *type = " DESC ";	
-	int num = strlen((char *) fields)/sizeof(char *);
+	int num = arraylen(fields);
 	int type_length = 0;
 	if(inverse){
 		type_length = strlen(type);
