@@ -509,6 +509,7 @@ record_in_rewritten() {
 do_pick () {
 	allow_empty_message=y
 	rewrite=
+	rewrite_reset_author=
 	rewrite_amend=
 	rewrite_edit=
 	rewrite_message=
@@ -521,7 +522,7 @@ do_pick () {
 			;;
 		--reset-author)
 			rewrite=y
-			rewrite_author=y
+			rewrite_reset_author=y
 			;;
 		--amend)
 			if test "$(git rev-parse HEAD)" = "$squash_onto" || ! git rev-parse -q --verify HEAD >/dev/null
@@ -585,12 +586,12 @@ do_pick () {
 		pick_one ${rewrite:+-n} $1 || return 1
 	fi
 
-	if test -n "$rewrite_author" && test -z "$rewrite_amend"
+	if test -n "$rewrite_reset_author" && test -z "$rewrite_amend"
 	then
 		# keep rewrite flag to create a new commit, rewrite
 		# without --reset-author though because it can only be
 		# used with -C, -c or --amend
-		rewrite_author=
+		rewrite_reset_author=
 	fi
 
 	if test -n "$rewrite"
@@ -601,7 +602,7 @@ do_pick () {
 			   ${rewrite_amend:+--amend} \
 			   ${rewrite_edit:+--edit --commit-msg} \
 			   ${rewrite_message:+--file "$rewrite_message"} \
-			   ${rewrite_author:+--reset-author} \
+			   ${rewrite_reset_author:+--reset-author} \
 			   ${gpg_sign_opt:+"$gpg_sign_opt"} || return 3
 	fi
 }
