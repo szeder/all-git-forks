@@ -609,11 +609,20 @@ do_pick () {
 }
 
 do_replay () {
+	malformed=
 	command=$1
 	shift
+	case "$command" in
+	pick|reword|edit|squash|fixup)
+		;;
+	*)
+		read -r command <"$todo"
+		malformed="Unknown command: $command"
+		;;
+	esac
 
 	opts=
-	while test $# -gt 0
+	while test $# -gt 0 && test -z "$malformed"
 	do
 		case "$1" in
 		--signoff|--reset-author)
@@ -627,8 +636,7 @@ do_replay () {
 			esac
 			;;
 		-*)
-			warn "Unknown option: $1"
-			command=unknown
+			malformed="Unknown '$command' option: $1"
 			;;
 		*)
 			break
@@ -640,6 +648,18 @@ do_replay () {
 	sha1=$1
 	shift
 	rest=$*
+
+	if test -n "$malformed"
+	then
+		warn "$malformed"
+		fixtodo="Please fix this using 'git rebase --edit-todo'."
+		if git rev-parse --verify -q "$sha1" >/dev/null
+		then
+			die_with_patch $sha1 "$fixtodo"
+		else
+			die "$fixtodo"
+		fi
+	fi
 
 	case "$command" in
 	pick|p)
@@ -722,17 +742,6 @@ do_replay () {
 			;;
 		esac
 		record_in_rewritten $sha1
-		;;
-	*)
-		read -r command <"$todo"
-		warn "Unknown command: $command"
-		fixtodo="Please fix this using 'git rebase --edit-todo'."
-		if git rev-parse --verify -q "$sha1" >/dev/null
-		then
-			die_with_patch $sha1 "$fixtodo"
-		else
-			die "$fixtodo"
-		fi
 		;;
 	esac
 }
