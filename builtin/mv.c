@@ -172,15 +172,14 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 			bad = _("cannot move directory over file");
 		else if (src_is_dir) {
 			int first = cache_name_pos(src, length), last;
+
 			if (first >= 0)
 				prepare_move_submodule(src, first,
 						       submodule_gitfile + i);
 			else if (index_range_of_same_dir(src, length,
-							 &first, &last) < 1) {
-				modes[i] = WORKING_DIRECTORY;
-				if (last - first < 1)
-					bad = _("source directory is empty");
-			} else { /* last - first >= 1 */
+							 &first, &last) < 1)
+				bad = _("source directory is empty");
+			else { /* last - first >= 1 */
 				int j, dst_len, n;
 
 				modes[i] = WORKING_DIRECTORY;
