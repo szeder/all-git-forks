@@ -509,6 +509,7 @@ record_in_rewritten() {
 do_pick () {
 	allow_empty_message=y
 	rewrite=
+	rewrite_signoff=
 	rewrite_reset_author=
 	rewrite_amend=
 	rewrite_edit=
