@@ -1,0 +1,22 @@
+Insert with sqlite_exec 
+10 times	400 ms
+20 times	350 ms
+30 times	300 ms
+40 times	325 ms
+50 times	340 ms
+60 times	250 ms
+70 times	257 ms
+80 times	237 ms
+90 times	322 ms
+100 times	270 ms
+Insert with sqlite3_prepare + step + finalize
+10 times	300 ms
+20 times	250 ms
+30 times	300 ms
+40 times	425 ms
+50 times	280 ms
+60 times	283 ms
+70 times	342 ms
+80 times	287 ms
+90 times	266 ms
+100 times	350 ms
