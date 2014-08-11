@@ -1795,11 +1795,10 @@ int twoway_merge(const struct cache_entry * const *src,
 			/* all other failures */
 			if (oldtree)
 				return o->gently ? -1 : reject_merge(oldtree, o);
-			if (current)
-				return o->gently ? -1 : reject_merge(current, o);
 			if (newtree)
 				return o->gently ? -1 : reject_merge(newtree, o);
-			return -1;
+			/* current is definitely exists here */
+			return o->gently ? -1 : reject_merge(current, o);
 		}
 	}
 	else if (newtree) {
