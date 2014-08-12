@@ -642,7 +642,7 @@ do_replay () {
 			break
 			;;
 		esac
-		opts="$opts $(git rev-parse --sq-quote "$1")"
+		opts="$opts $1"
 		shift
 	done
 	sha1=$1
@@ -666,7 +666,7 @@ do_replay () {
 		comment_for_reflog pick
 
 		mark_action_done
-		eval do_pick $opts $sha1 \
+		do_pick $opts $sha1 \
 			|| die_with_patch $sha1 "Could not apply $sha1... $rest"
 		record_in_rewritten $sha1
 		;;
@@ -674,7 +674,7 @@ do_replay () {
 		comment_for_reflog reword
 
 		mark_action_done
-		eval do_pick --edit $opts $sha1 \
+		do_pick --edit $opts $sha1 \
 			|| die_with_patch $sha1 "Could not apply $sha1... $rest"
 		record_in_rewritten $sha1
 		;;
@@ -682,7 +682,7 @@ do_replay () {
 		comment_for_reflog edit
 
 		mark_action_done
-		eval do_pick $opts $sha1 \
+		do_pick $opts $sha1 \
 			|| die_with_patch $sha1 "Could not apply $sha1... $rest"
 		warn "Stopped at $sha1... $rest"
 		exit_with_patch $sha1 0
@@ -710,18 +710,18 @@ do_replay () {
 		squash|s|fixup|f)
 			# This is an intermediate commit; its message will only be
 			# used in case of trouble.  So use the long version:
-			do_with_author do_pick --amend -F "$squash_msg" $sha1 \
+			do_with_author do_pick --amend -F "$squash_msg" $opts $sha1 \
 				|| die_failed_squash $sha1 "$rest"
 			;;
 		*)
 			# This is the final command of this squash/fixup group
 			if test -f "$fixup_msg"
 			then
-				do_with_author do_pick --amend -F "$fixup_msg" $sha1 \
+				do_with_author do_pick --amend -F "$fixup_msg" $opts $sha1 \
 					|| die_failed_squash $sha1 "$rest"
 			else
 				cp "$squash_msg" "$GIT_DIR"/SQUASH_MSG || exit
-				do_with_author do_pick --amend -F "$GIT_DIR"/SQUASH_MSG -e $sha1 \
+				do_with_author do_pick --amend -F "$GIT_DIR"/SQUASH_MSG -e $opts $sha1 \
 					|| die_failed_squash $sha1 "$rest"
 			fi
 			rm -f "$squash_msg" "$fixup_msg"
