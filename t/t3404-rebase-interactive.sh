@@ -261,6 +261,16 @@ test_expect_success 'retain authorship' '
 	git show HEAD | grep "^Author: Twerp Snog"
 '
 
+test_expect_success 'retain authorship (reword)' '
+	echo A > file8 &&
+	git add file8 &&
+	test_tick &&
+	GIT_AUTHOR_NAME="Twerp Snog" git commit -m "different author" &&
+	set_fake_editor &&
+	FAKE_LINES="reword 1" git rebase -i --onto master HEAD^ &&
+	git show HEAD | grep "^Author: Twerp Snog"
+'
+
 test_expect_success 'setup squash/fixup reverted and fixed feature' '
 	git checkout -b reverted-feature master &&
 	test_commit feature &&

@@ -597,7 +597,9 @@ do_pick () {
 
 	if test -n "$rewrite"
 	then
-		output git commit --allow-empty --no-post-rewrite -n --no-edit \
+		eval $(get_author_ident_from_commit $1)
+		do_with_author output git commit \
+			   --allow-empty --no-post-rewrite -n --no-edit \
 			   ${allow_empty_message:+--allow-empty-message} \
 			   ${rewrite_signoff:+--signoff} \
 			   ${rewrite_amend:+--amend} \
