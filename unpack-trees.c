@@ -1791,15 +1791,11 @@ int twoway_merge(const struct cache_entry * const *src,
 			/* 20 or 21 */
 			return merged_entry(newtree, current, o);
 		}
-		else {
-			/* all other failures */
-			if (oldtree)
-				return o->gently ? -1 : reject_merge(oldtree, o);
-			if (newtree)
-				return o->gently ? -1 : reject_merge(newtree, o);
-			/* current is definitely exists here */
-			return o->gently ? -1 : reject_merge(current, o);
-		}
+		/* all other failures */
+		else if (o->gently)
+			return -1;
+		else
+			return reject_merge(current, o);
 	}
 	else if (newtree) {
 		if (oldtree && !o->initial_checkout) {
