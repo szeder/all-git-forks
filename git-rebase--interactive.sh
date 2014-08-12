@@ -64,9 +64,9 @@ author_script="$state_dir"/author-script
 
 # When an "edit" rebase command is being processed, the SHA1 of the
 # commit to be edited is recorded in this file.  The same happens when
-# rewriting a commit fails, for instance "reword".  When "git rebase
-# --continue" is executed, if there are any staged changes then they
-# will be amended to the HEAD commit, but only provided the HEAD
+# rewriting a root commit fails, for instance "reword".  When "git
+# rebase --continue" is executed, if there are any staged changes then
+# they will be amended to the HEAD commit, but only provided the HEAD
 # commit is still the commit to be edited.  When any other rebase
 # command is processed, this file is deleted.
 amend="$state_dir"/amend
