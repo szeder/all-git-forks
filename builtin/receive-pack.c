@@ -46,6 +46,7 @@ static void *head_name_to_free;
 static int sent_capabilities;
 static int shallow_update;
 static const char *alt_shallow_file;
+static char *push_cert;
 
 static enum deny_action parse_deny_action(const char *var, const char *value)
 {
@@ -142,7 +143,7 @@ static void show_ref(const char *path, const unsigned char *sha1)
 	else
 		packet_write(1, "%s %s%c%s%s agent=%s\n",
 			     sha1_to_hex(sha1), path, 0,
-			     " report-status delete-refs side-band-64k quiet",
+			     " report-status delete-refs side-band-64k quiet push-cert",
 			     prefer_ofs_delta ? " ofs-delta" : "",
 			     git_user_agent_sanitized());
 	sent_capabilities = 1;
@@ -849,6 +850,17 @@ static void execute_commands(struct command *commands,
 		      "the reported refs above");
 }
 
+static void parse_push_cert_feature(const char *feature_list)
+{
+	const char *value;
+	int len;
+
+	value = parse_feature_value(feature_list, "push-cert", &len);
+	if (!push_cert)
+		return;
+	push_cert = xmemdupz(value, len);
+}
+
 static struct command *read_head_info(struct sha1_array *shallow)
 {
 	struct command *commands = NULL;
@@ -889,6 +901,7 @@ static struct command *read_head_info(struct sha1_array *shallow)
 				use_sideband = LARGE_PACKET_MAX;
 			if (parse_feature_request(feature_list, "quiet"))
 				quiet = 1;
+			parse_push_cert_feature(feature_list);
 		}
 		cmd = xcalloc(1, sizeof(struct command) + len - 80);
 		hashcpy(cmd->old_sha1, old_sha1);
