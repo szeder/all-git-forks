@@ -1259,4 +1259,27 @@ test_expect_success 'fixup commits with empty commit log messages' '
 	env FAKE_LINES="1 fixup 2" git rebase -i master
 '
 
+test_expect_success 'squash commits have authorship of the first commit' '
+	git checkout -b squash-authorship master &&
+	git cat-file commit HEAD~3 | sed -n -e "/^$/q" -e "/^author /p" >expected.author &&
+	test_tick &&
+	set_fake_editor &&
+	FAKE_LINES="1 squash 2 squash 3 fixup 4" git rebase -i HEAD~4 &&
+	git cat-file commit HEAD | sed -n -e "/^$/q" -e "/^author /p" >actual.author &&
+	test_cmp expected.author actual.author
+'
+
+test_expect_success 'squash commits have authorship of the first commit after conflict' '
+	git checkout -b squash-authorship-conflict conflict-branch &&
+	git cat-file commit HEAD~3 | sed -n -e "/^$/q" -e "/^author /p" >expected.author &&
+	test_tick &&
+	set_fake_editor &&
+	test_must_fail env FAKE_LINES="1 squash 2 squash 4 fixup 3" git rebase -i HEAD~4 &&
+	git checkout --ours conflict &&
+	git add conflict &&
+	git rebase --continue &&
+	git cat-file commit HEAD | sed -n -e "/^$/q" -e "/^author /p" >actual.author &&
+	test_cmp expected.author actual.author
+'
+
 test_done

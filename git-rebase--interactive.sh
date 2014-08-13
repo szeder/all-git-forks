@@ -705,25 +705,22 @@ do_replay () {
 
 		mark_action_done
 		update_squash_messages $squash_style $sha1
-		author_script_content=$(get_author_ident_from_commit HEAD)
-		echo "$author_script_content" > "$author_script"
-		eval "$author_script_content"
 		case "$(peek_next_command)" in
 		squash|s|fixup|f)
 			# This is an intermediate commit; its message will only be
 			# used in case of trouble.  So use the long version:
-			do_with_author do_pick --amend -F "$squash_msg" $opts $sha1 \
+			do_pick --amend -F "$squash_msg" $opts $sha1 \
 				|| die_failed_squash $sha1 "$rest"
 			;;
 		*)
 			# This is the final command of this squash/fixup group
 			if test -f "$fixup_msg"
 			then
-				do_with_author do_pick --amend -F "$fixup_msg" $opts $sha1 \
+				do_pick --amend -F "$fixup_msg" $opts $sha1 \
 					|| die_failed_squash $sha1 "$rest"
 			else
 				cp "$squash_msg" "$GIT_DIR"/SQUASH_MSG || exit
-				do_with_author do_pick --amend -F "$GIT_DIR"/SQUASH_MSG -e $opts $sha1 \
+				do_pick --amend -F "$GIT_DIR"/SQUASH_MSG -e $opts $sha1 \
 					|| die_failed_squash $sha1 "$rest"
 			fi
 			rm -f "$squash_msg" "$fixup_msg"
@@ -1030,7 +1027,7 @@ continue)
 	then
 		: Nothing to commit -- skip this
 	else
-		if ! test -f "$author_script"
+		if ! test -f "$author_script" && ! test -f "$amend"
 		then
 			gpg_sign_opt_quoted=${gpg_sign_opt:+$(git rev-parse --sq-quote "$gpg_sign_opt")}
 			die "You have staged changes in your working tree. If these changes are meant to be
@@ -1047,8 +1044,6 @@ In both case, once you're done, continue with:
   git rebase --continue
 "
 		fi
-		. "$author_script" ||
-			die "Error trying to find the author identity to amend commit"
 		if test -f "$amend"
 		then
 			current_head=$(git rev-parse --verify HEAD)
@@ -1056,10 +1051,12 @@ In both case, once you're done, continue with:
 			die "\
 You have uncommitted changes in your working tree. Please, commit them
 first and then run 'git rebase --continue' again."
-			do_with_author git commit --amend --no-verify -F "$msg" -e \
+			git commit --amend --no-verify -F "$msg" -e \
 				${gpg_sign_opt:+"$gpg_sign_opt"} ||
 				die "Could not commit staged changes."
 		else
+			. "$author_script" ||
+				die "Error trying to find the author identity to amend commit"
 			do_with_author git commit --no-verify -F "$msg" -e \
 				${gpg_sign_opt:+"$gpg_sign_opt"} ||
 				die "Could not commit staged changes."
