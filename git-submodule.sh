@@ -278,10 +278,26 @@ module_clone()
 		mkdir -p "$sm_path"
 		rm -f "$gitdir/index"
 	else
+		dbreponame=$(git config core.db-repo-name)
+		if test -n "$dbreponame"
+		then
+			DBREPONAME="--db-repo-name=${dbreponame}_submodule_${name}"
+		fi
+		dbsocket=$(git config core.db-socket)
+		if test -n "$dbsocket"
+		then
+			DBSOCKET="--db-socket=${dbsocket}"
+		fi
+		backendtype=$(git config core.refs-backend-type)
+		if test -n "$backendtype"
+		then
+			BACKENDTYPE="--refs-backend-type=${backendtype}"
+		fi
 		mkdir -p "$gitdir_base"
 		(
 			clear_local_git_env
 			git clone $quiet ${depth:+"$depth"} -n ${reference:+"$reference"} \
+				$DBREPONAME $DBSOCKET $BACKENDTYPE \
 				--separate-git-dir "$gitdir" "$url" "$sm_path"
 		) ||
 		die "$(eval_gettext "Clone of '\$url' into submodule path '\$sm_path' failed")"
