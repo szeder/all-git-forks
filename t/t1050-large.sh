@@ -169,4 +169,11 @@ test_expect_success 'fsck' '
 	test "$n" -gt 1
 '
 
+test_expect_success 'unpack-objects' '
+	P=`ls .git/objects/pack/*.pack` &&
+	git unpack-objects -n -r <$P 2>err
+	test $? = 1 &&
+	grep "error: attempting to allocate .* over limit" err
+'
+
 test_done
