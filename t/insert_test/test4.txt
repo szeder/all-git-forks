@@ -1,0 +1,23 @@
+Inserting first & reorg
+
+(10 elements)	0.700 usec
+
+(100 elements)	0.090 usec
+
+(1000 elements)	0.078 usec
+
+(10000 elements)	0.078 usec
+
+(100000 elements)	0.090 usec
+Inserting last
+
+(10 elements)	0.700 usec
+
+(100 elements)	0.450 usec
+
+(1000 elements)	3.746 usec
+
+(10000 elements)	38.527 usec
+
+(100000 elements)	455.575 usec
+
