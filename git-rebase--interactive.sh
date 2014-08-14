@@ -587,25 +587,21 @@ do_pick () {
 		pick_one ${rewrite:+-n} $1 || return 1
 	fi
 
-	if test -n "$rewrite_reset_author" && test -z "$rewrite_amend"
-	then
-		# keep rewrite flag to create a new commit, rewrite
-		# without --reset-author though because it can only be
-		# used with -C, -c or --amend
-		rewrite_reset_author=
-	fi
-
 	if test -n "$rewrite"
 	then
-		eval $(get_author_ident_from_commit $1)
-		do_with_author output git commit \
+		do_with_author=
+		if test -z "$rewrite_reset_author" && test -z "$rewrite_amend"
+		then
+			eval $(get_author_ident_from_commit $1)
+			do_with_author=do_with_author
+		fi
+		$do_with_author output git commit \
 			   --allow-empty --no-post-rewrite -n --no-edit \
 			   ${allow_empty_message:+--allow-empty-message} \
 			   ${rewrite_signoff:+--signoff} \
-			   ${rewrite_amend:+--amend} \
+			   ${rewrite_amend:+--amend ${rewrite_reset_author:+--reset-author}} \
 			   ${rewrite_edit:+--edit --commit-msg} \
 			   ${rewrite_message:+--file "$rewrite_message"} \
-			   ${rewrite_reset_author:+--reset-author} \
 			   ${gpg_sign_opt:+"$gpg_sign_opt"} || return 3
 	fi
 }
