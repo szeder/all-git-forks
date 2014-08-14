@@ -88,10 +88,50 @@ static void use(int bytes)
 	consumed_bytes += bytes;
 }
 
+static void inflate_and_throw_away(unsigned long size)
+{
+	git_zstream stream;
+	char buf[8192];
+
+	memset(&stream, 0, sizeof(stream));
+	stream.next_out = (unsigned char *)buf;
+	stream.avail_out = sizeof(buf);
+	stream.next_in = fill(1);
+	stream.avail_in = len;
+	git_inflate_init(&stream);
+
+	for (;;) {
+		int ret = git_inflate(&stream, 0);
+		use(len - stream.avail_in);
+		if (stream.total_out == size && ret == Z_STREAM_END)
+			break;
+		if (ret != Z_OK) {
+			error("inflate returned %d", ret);
+			if (!recover)
+				exit(1);
+			has_errors = 1;
+			break;
+		}
+		stream.next_out = (unsigned char *)buf;
+		stream.avail_out = sizeof(buf);
+		stream.next_in = fill(1);
+		stream.avail_in = len;
+	}
+	git_inflate_end(&stream);
+}
+
 static void *get_data(unsigned long size)
 {
 	git_zstream stream;
-	void *buf = xmalloc(size);
+	void *buf = xmalloc_gentle(size);
+
+	if (!buf) {
+		if (!recover)
+			exit(1);
+		has_errors = 1;
+		inflate_and_throw_away(size);
+		return NULL;
+	}
 
 	memset(&stream, 0, sizeof(stream));
 
