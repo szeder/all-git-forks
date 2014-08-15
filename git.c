@@ -611,6 +611,11 @@ int main(int argc, char **av)
 	 */
 	sanitize_stdfds();
 
+	/*
+	 * Make sure we aren't ignoring or blocking SIGPIPE.
+	 */
+	sanitize_signals();
+
 	git_setup_gettext();
 
 	trace_command_performance(argv);
