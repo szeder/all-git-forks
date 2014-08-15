@@ -6,13 +6,19 @@
 
 static struct lock_file *lock_file_list;
 
+static void clear_filename(struct lock_file *lk)
+{
+	free(lk->filename);
+	lk->filename = NULL;
+}
+
 static void remove_lock_file(void)
 {
 	pid_t me = getpid();
 
 	while (lock_file_list) {
 		if (lock_file_list->owner == me &&
-		    lock_file_list->filename[0]) {
+		    lock_file_list->filename) {
 			if (lock_file_list->fd >= 0)
 				close(lock_file_list->fd);
 			unlink_or_warn(lock_file_list->filename);
@@ -76,67 +82,47 @@ static char *last_path_elm(char *p)
  * Always returns p.
  */
 
-static char *resolve_symlink(char *p, size_t s)
+static char *resolve_symlink(const char *in)
 {
+	static struct strbuf p = STRBUF_INIT;
+	struct strbuf link = STRBUF_INIT;
 	int depth = MAXDEPTH;
 
-	while (depth--) {
-		char link[PATH_MAX];
-		int link_len = readlink(p, link, sizeof(link));
-		if (link_len < 0) {
-			/* not a symlink anymore */
-			return p;
-		}
-		else if (link_len < sizeof(link))
-			/* readlink() never null-terminates */
-			link[link_len] = '\0';
-		else {
-			warning("%s: symlink too long", p);
-			return p;
-		}
+	strbuf_reset(&p);
+	strbuf_addstr(&p, in);
 
-		if (is_absolute_path(link)) {
+	while (depth--) {
+		if (strbuf_readlink(&link, p.buf, 0) < 0)
+			break;	/* not a symlink anymore */
+
+		if (is_absolute_path(link.buf)) {
 			/* absolute path simply replaces p */
-			if (link_len < s)
-				strcpy(p, link);
-			else {
-				warning("%s: symlink too long", p);
-				return p;
-			}
+			strbuf_reset(&p);
+			strbuf_addbuf(&p, &link);
 		} else {
 			/*
 			 * link is a relative path, so I must replace the
 			 * last element of p with it.
 			 */
-			char *r = (char *)last_path_elm(p);
-			if (r - p + link_len < s)
-				strcpy(r, link);
-			else {
-				warning("%s: symlink too long", p);
-				return p;
-			}
+			char *r = (char *)last_path_elm(p.buf);
+			strbuf_setlen(&p, r - p.buf);
+			strbuf_addbuf(&p, &link);
 		}
 	}
-	return p;
+	strbuf_release(&link);
+	return p.buf;
 }
 
 /* Make sure errno contains a meaningful value on error */
 static int lock_file(struct lock_file *lk, const char *path, int flags)
 {
-	/*
-	 * subtract 5 from size to make sure there's room for adding
-	 * ".lock" for the lock file name
-	 */
-	static const size_t max_path_len = sizeof(lk->filename) - 5;
+	struct strbuf sb = STRBUF_INIT;
 
-	if (strlen(path) >= max_path_len) {
-		errno = ENAMETOOLONG;
+	if (!(flags & LOCK_NODEREF) && !(path = resolve_symlink(path)))
 		return -1;
-	}
-	strcpy(lk->filename, path);
-	if (!(flags & LOCK_NODEREF))
-		resolve_symlink(lk->filename, max_path_len);
-	strcat(lk->filename, ".lock");
+	strbuf_add_absolute_path(&sb, path);
+	strbuf_addstr(&sb, ".lock");
+	lk->filename = strbuf_detach(&sb, NULL);
 	lk->fd = open(lk->filename, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (0 <= lk->fd) {
 		if (!lock_file_list) {
@@ -158,7 +144,7 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 		}
 	}
 	else
-		lk->filename[0] = 0;
+		clear_filename(lk);
 	return lk->fd;
 }
 
@@ -254,16 +240,17 @@ int reopen_lock_file(struct lock_file *lk)
 
 int commit_lock_file(struct lock_file *lk)
 {
-	char result_file[PATH_MAX];
-	size_t i;
-	if (lk->fd >= 0 && close_lock_file(lk))
+	char *result_file;
+	if ((lk->fd >= 0 && close_lock_file(lk)) || !lk->filename)
 		return -1;
-	strcpy(result_file, lk->filename);
-	i = strlen(result_file) - 5; /* .lock */
-	result_file[i] = 0;
-	if (rename(lk->filename, result_file))
+	result_file = xmemdupz(lk->filename,
+			       strlen(lk->filename) - 5 /* .lock */);
+	if (rename(lk->filename, result_file)) {
+		free(result_file);
 		return -1;
-	lk->filename[0] = 0;
+	}
+	free(result_file);
+	clear_filename(lk);
 	return 0;
 }
 
@@ -277,10 +264,10 @@ int hold_locked_index(struct lock_file *lk, int die_on_error)
 
 void rollback_lock_file(struct lock_file *lk)
 {
-	if (lk->filename[0]) {
+	if (lk->filename) {
 		if (lk->fd >= 0)
 			close(lk->fd);
 		unlink_or_warn(lk->filename);
 	}
-	lk->filename[0] = 0;
+	clear_filename(lk);
 }
