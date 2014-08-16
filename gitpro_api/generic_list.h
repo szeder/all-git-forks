@@ -28,6 +28,10 @@ struct task_node {
 	char *priority; //Priority over other tasks (for example, HIGH)
 	int real_time_min; //Real time until task has finished
 	int est_time_min; //Estimated time to do task. Usually set when created
+	char *est_start_date; //Estimated date to begin task. Usually set when created
+	char *est_end_date; //Estimated date to finish task. Usually set when created
+	char *start_date; //Real start date
+	char *end_date; //Real end date
 	struct task_node *next; //pointer to next task node
 };
 
@@ -59,6 +63,24 @@ struct asig_node {
 	struct asig_node *next; //pointer to next asignation node
 };
 
+/* Data struct of type info representation in database */
+struct type_node {
+	char *type_name; //Name of type
+	struct type_node *next; //pointer to next type node
+};
+
+/* Data struct of state info representation in database */
+struct state_node {
+	char *state_name; //Name of state
+	struct state_node *next; //pointer to next state node
+};
+
+/* Data struct of prior info representation in database */
+struct prior_node {
+	char *prior_name; //Name of priority
+	struct prior_node *next; //pointer to next prior node
+};
+
 /* Specific lists type definitions */
 typedef struct role_node *role_list;
 typedef struct task_node *task_list;
@@ -66,6 +88,9 @@ typedef struct user_node *user_list;
 typedef struct file_node *file_list;
 typedef struct asoc_node *asoc_list;
 typedef struct asig_node *asig_list;
+typedef struct state_node *state_list;
+typedef struct type_node *type_list;
+typedef struct prior_node *prior_list;
 
 /* Data struct returned in query execution with one of each lists */
 struct generic_node {
@@ -75,6 +100,9 @@ struct generic_node {
 	file_list file_info;
 	asoc_list asoc_info;
 	asig_list asig_info;
+	state_list state_info;
+	type_list type_info;
+	prior_list prior_info;
 };
 
 /* Generic list type definition */
@@ -93,7 +121,8 @@ void insert_role(role_list *list,char *name,int create_role,int assign_role,
 	Return		: nothing
 	Used for	: fill task_list that will be in generic list */
 void insert_task(task_list *list,int id,char *name,char *state,char *description,
-				char *notes,char *type,char *priority,int real_time,int est_time);
+				char *notes,char *type,char *priority,int real_time,int est_time,
+				char *est_start_date,char *est_end_date,char *start,char *end);
 
 /* 	Name		: insert_user
 	Parameters	: user_list and all user data to be inserted
@@ -118,6 +147,25 @@ void insert_asoc(asoc_list *list,char *path,int task_id);
 	Return		: nothing
 	Used for	: fill asig_list that will be in generic list */
 void insert_asig(asig_list *list,char *user_name,int task_id);
+
+/* 	Name		: insert_state
+	Parameters	: state_list and all state data to be inserted
+	Return		: nothing
+	Used for	: fill state_list that will be in generic list */
+void insert_state(state_list *list,char *state_name);
+
+/* 	Name		: insert_prior
+	Parameters	: prior_list and all prior data to be inserted
+	Return		: nothing
+	Used for	: fill prior_list that will be in generic list */
+void insert_prior(prior_list *list,char *prior_name);
+
+/* 	Name		: insert_type
+	Parameters	: type_list and all type data to be inserted
+	Return		: nothing
+	Used for	: fill type_list that will be in generic list */
+void insert_type(type_list *list,char *type_name);
+
 
 /* 	Name		: dealloc_roles
 	Parameters	: role_list to be freed
@@ -154,3 +202,21 @@ void dealloc_asocs(asoc_list list);
 	Return		: nothing
 	Used for	: free all allocated memory that store asignation nodes */
 void dealloc_asigs(asig_list list);
+
+/* 	Name		: dealloc_states
+	Parameters	: state_list to be freed
+	Return		: nothing
+	Used for	: free all allocated memory that store state nodes */
+void dealloc_states(state_list list);
+
+/* 	Name		: dealloc_priors
+	Parameters	: prior_list to be freed
+	Return		: nothing
+	Used for	: free all allocated memory that store prior nodes */
+void dealloc_priors(prior_list list);
+
+/* 	Name		: dealloc_types
+	Parameters	: type_list to be freed
+	Return		: nothing
+	Used for	: free all allocated memory that store type nodes */
+void dealloc_types(type_list list);

@@ -1,6 +1,7 @@
 #include <string.h>
 #include "builtin.h"
 #include "parse-options.h"
+#include "../gitpro_validate/v_codes.h"
 #include "../gitpro_role_check/check_role.h"
 #include "../gitpro_validate/role_validate.h"
 #include "../gitpro_functions/role_functions.h"

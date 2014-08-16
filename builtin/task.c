@@ -2,6 +2,8 @@
 #include <string.h>
 #include "builtin.h"
 #include "parse-options.h"
+#include "../gitpro_validate/v_codes.h"
+#include "../gitpro_validate/task_validate.h"
 #include "../gitpro_api/gitpro_data_api.h"
 #include "../gitpro_role_check/check_role.h"
 
@@ -14,7 +16,7 @@
 /* Usage message */
 static const char * const builtin_task_usage[] =
 {
-	"task [-c | -r | -u | -d | -a | -l ]\n\tSome use examples:\n\t -c -n name -s state -d description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t\t(only required name, state, priority and type)\n\t -r -i id\n\t -u -n name -s state -d description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t -d -s state\n\t -a -i id --user --add=\"user1 ... userN\" --rm=\"user1 ... userN\"\n\t -l -i id --file --add=\"file1 ... fileN\" --rm=\"file1 ... fileN\"",
+	"task [-c | -r | -u | -d | -a | -l ]\n\tSome use examples:\n\t -c -n name -s state --desc description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t\t(only required name, state, priority and type)\n\t -r \n\t -u -n name -s state -d description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t -d \n\t -a -i id --user --add=\"user1 ... userN\" --rm=\"user1 ... userN\"\n\t -l -i id --file --add=\"file1 ... fileN\" --rm=\"file1 ... fileN\"",
 	NULL
 };
 
@@ -57,8 +59,6 @@ static char *task_time = NULL;
 static char *filter_task_id = NULL;
 static char *filter_task_name = NULL;
 static char *filter_task_state = NULL;
-//static char *filter_task_desc = NULL;
-//static char *filter_task_notes = NULL;
 static char *filter_task_est_start = NULL;
 static char *filter_task_est_end = NULL;
 static char *filter_task_start = NULL;
@@ -107,7 +107,7 @@ void receive_update_filters(char **id,char **name,char **state,char **est_start,
 	fputs(_("task estimated start date: "),OUT);
 	fgets((*est_start),MAX_BUFFER_SIZE,IN);
 	fputs(_("task estimated end date: "),OUT);
-	fgets((*end),MAX_BUFFER_SIZE,IN);
+	fgets((*est_end),MAX_BUFFER_SIZE,IN);
 	fputs(_("task real start date: "),OUT);
 	fgets((*start),MAX_BUFFER_SIZE,IN);
 	fputs(_("task real end date: "),OUT);
@@ -135,7 +135,6 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 		OPT_BOOL('d',"delete",&tdelete,N_("delete tasks that matchs with given filters")),
 		OPT_BOOL('u',"update",&tupdate,N_("updates task data")),
 		OPT_BOOL(0,"user",&user,N_("indicates that follows user names to add or remove task assignations")),
-		OPT_BOOL(0,"all",&all,N_("reference to all existent tasks")),
 		OPT_BOOL(0,"file",&file,N_("indicates that follows file names to add or remove task asociations")),
 		OPT_GROUP("Link and Assign options"),
 		OPT_STRING(0,"add",&add,"data1,data2 ... dataN",N_("option to add files or users to a given task")),
@@ -144,7 +143,7 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 		OPT_STRING('i',"id",&task_id,"task id",N_("specifies task id")),		
 		OPT_STRING('n',"name",&task_name,"task name",N_("specifies task name")),
 		OPT_STRING('s',"state",&task_state,"task state",N_("specifies task state")),
-		OPT_STRING('d',"desc",&task_desc,"task description",N_("specifies task description")),
+		OPT_STRING(0,"desc",&task_desc,"task description",N_("specifies task description")),
 		OPT_STRING(0,"notes",&task_notes,"task notes",N_("specifies task observations")),
 		OPT_STRING(0,"est_start",&task_est_start,"task est start",N_("specifies estimated task start date")),
 		OPT_STRING(0,"est_end",&task_est_end,"task est end",N_("specifies estimated task end date")),
@@ -209,21 +208,118 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 /* END [1.7] Receive data process */
 		
 		if(tcreate){
+/* START [1.1.1] Validate create data */
+			switch(validate_create_task(task_id,task_name,task_state,task_desc,task_notes,
+					task_est_start,task_est_end,task_start,task_end,task_prior,task_type,
+					task_est_time,task_time,add,rm)){
+				case INCORRECT_DATA:
+					fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+					return 0;
+				case DUPLICATE_TASK:
+					fputs(_("Task specified already exists\n"),ERR);
+					return 0;
+			}
+/* END [1.1.1] Validate create data */
 			/* Create task option */
 			create_task();
 		}else if(tlink){
+/* START [1.5.1] Validate link data */
+			if(file){
+				switch(validate_link_task(task_id,task_name,task_state,task_desc,task_notes,
+						task_est_start,task_est_end,task_start,task_end,task_prior,task_type,
+						task_est_time,task_time,add,rm)){
+					case INCORRECT_DATA:
+						fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+						return 0;
+					case INEXISTENT_FILE_FOLDER:
+						fputs(_("File or Folder you're trying to link doesn't exists\n"),ERR);
+						return 0;
+					case INEXISTENT_TASK:
+						fputs(_("Task you're trying to link doesn't exists\n"),ERR);
+						return 0;	
+				}
+			}else{
+				fputs(_("Specify files with --file [--add | --rm] option.\n"),ERR);
+				return 0;
+			}
+/* END [1.5.1] Validate link data */
 			/* Link task option */
 			link_task();
 		}else if(tassign){
+/* START [1.6.1] Validate assign data */
+			if(user){
+				switch(validate_assign_task(task_id,task_name,task_state,task_desc,task_notes,
+						task_est_start,task_est_end,task_start,task_end,task_prior,task_type,
+						task_est_time,task_time,add,rm)){
+					case INCORRECT_DATA:
+						fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+						return 0;
+					case INEXISTENT_USER:
+						fputs(_("User you're trying to assign doesn't exists\n"),ERR);
+						return 0;
+					case INEXISTENT_TASK:
+						fputs(_("Task you're trying to assign doesn't exists\n"),ERR);
+						return 0;	
+				}
+			}else{
+				fputs(_("Specify users with --user [--add | --rm] option.\n"),ERR);
+				return 0;
+			}
+/* END [1.6.1] Validate assign data */
 			/* Assign task option */
 			assign_task();
 		}else if(tdelete){
+/* START [1.2.1] Validate delete data */
+			if(task_name!=NULL || task_id!=NULL || task_state!=NULL ||
+				task_desc!=NULL || task_notes!=NULL || task_est_start!=NULL ||
+				task_est_end!=NULL || task_start!=NULL || task_end!=NULL ||
+				task_est_time!=NULL || task_time!=NULL) {
+				fputs(_("Don't set filters in command line. They are set  interactively\n"),ERR);
+				return 0;	
+			}
+			switch(validate_delete_task(filter_task_id,filter_task_name,filter_task_state,NULL,NULL,	filter_task_est_start,filter_task_est_end,filter_task_start,filter_task_end,filter_task_prior,filter_task_type,
+filter_task_est_time,filter_task_time,add,rm)){
+				case INCORRECT_DATA:
+					fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+					return 0;
+			}
+/* END [1.2.1] Validate create data */
 			/* Remove task option */
 			delete_task();
 		}else if(tupdate){
+/* START [1.3.1] Validate update data */
+			switch(validate_update_task(0,task_id,task_name,task_state,task_desc,task_notes,
+					task_est_start,task_est_end,task_start,task_end,task_prior,task_type,
+					task_est_time,task_time,add,rm)){
+				case INCORRECT_DATA:
+					fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+					return 0;
+			}
+			switch(validate_update_task(1,filter_task_id,filter_task_name,filter_task_state,NULL,NULL,	filter_task_est_start,filter_task_est_end,filter_task_start,filter_task_end,filter_task_prior,filter_task_type,
+filter_task_est_time,filter_task_time,add,rm)){
+				case INCORRECT_DATA:
+					fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+					return 0;
+			}
+/* END [1.3.1] Validate update data */
 			/* Update task option */
 			update_task();
 		}else if(tread){
+/* START [1.4.1] Validate read data */
+			if(task_name!=NULL || task_id!=NULL || task_state!=NULL ||
+				task_desc!=NULL || task_notes!=NULL || task_est_start!=NULL ||
+				task_est_end!=NULL || task_start!=NULL || task_end!=NULL ||
+				task_est_time!=NULL || task_time!=NULL) {
+					fputs(_("Don't set filters in command line. They are set  interactively\n"),ERR);
+					return 0;	
+			}
+			switch(validate_read_task(filter_task_id,filter_task_name,filter_task_state,NULL,NULL,	filter_task_est_start,filter_task_est_end,filter_task_start,filter_task_end,filter_task_prior,filter_task_type,
+filter_task_est_time,filter_task_time,add,rm)){
+				case INCORRECT_DATA:
+					fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+					return 0;
+			}
+/* END [1.4.1] Validate read data */
 			/* Read task option */
 			read_task();
 		}else{

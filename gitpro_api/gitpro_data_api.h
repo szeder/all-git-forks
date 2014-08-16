@@ -14,6 +14,9 @@ user_list users;
 file_list files;
 asoc_list asocs;
 asig_list asigs;
+state_list states;
+type_list types;
+prior_list priors;
 
 /* Local list that will be returned to abstract from data structure */
 generic_list generic;

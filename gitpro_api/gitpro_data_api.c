@@ -70,8 +70,10 @@ static int query_callback(void *not_used,int ncol,char **col_data, char **col_na
 	cr = ar = ur = rr = lf = rt = at = ut = dt = ct = -1;
 	//Temporal variables to fill task data
 	char *task_name,*state,*desc,*notes,*prior,*type;
+	char *est_start_date,*est_end_date,*start_date,*end_date;
 	int id,real_time,est_time;
 	task_name = state = desc = notes = prior = type = NULL;
+	est_start_date = est_end_date = start_date = end_date = NULL;
 	id = real_time = est_time = -1;
 	//Temporal variables to fill user data
 	char *user_name,*user_role;
@@ -83,6 +85,12 @@ static int query_callback(void *not_used,int ncol,char **col_data, char **col_na
 	char *asoc_path = NULL; int asoc_tid = -1;
 	//Temporal variables to fill asignation data
 	char *asig_user = NULL; int asig_tid = -1;
+	//Temporal variables to fill state data
+	char *state_name=NULL;
+	//Temporal variables to fill prior data
+	char *prior_name=NULL;
+	//Temporal variables to fill type data
+	char *type_name=NULL;
 	//Count variable	
 	int i;	
 	for(i=0;i<ncol;i++){
@@ -143,6 +151,20 @@ static int query_callback(void *not_used,int ncol,char **col_data, char **col_na
 				asig_user = strdup(col_data[i]);
 			}else if(!strcmp(col_name[i],ASIG_TASK_ID)){
 				asig_tid = atoi(col_data[i]);
+			}else if(!strcmp(col_name[i],TYPE_NAME)){
+				type_name = strdup(col_data[i]);
+			}else if(!strcmp(col_name[i],STATE_NAME)){
+				state_name = strdup(col_data[i]);
+			}else if(!strcmp(col_name[i],PRIORITY_NAME)){
+				prior_name = strdup(col_data[i]);
+			}else if(!strcmp(col_name[i],TASK_START_EST)){
+				est_start_date = strdup(col_data[i]);
+			}else if(!strcmp(col_name[i],TASK_END_EST)){
+				est_end_date = strdup(col_data[i]);
+			}else if(!strcmp(col_name[i],TASK_START_REAL)){
+				start_date = strdup(col_data[i]);
+			}else if(!strcmp(col_name[i],TASK_END_REAL)){
+				end_date = strdup(col_data[i]);
 			}
 		}
 	}
@@ -160,7 +182,11 @@ static int query_callback(void *not_used,int ncol,char **col_data, char **col_na
 		if(notes==NULL) notes = strdup(null_data);
 		if(type==NULL) type = strdup(null_data);
 		if(prior==NULL) prior = strdup(null_data);
-		insert_task(&tasks,id,task_name,state,desc,notes,type,prior,real_time,est_time);	
+		if(est_start_date==NULL) est_start_date = strdup(null_data);
+		if(est_end_date==NULL) est_end_date = strdup(null_data);
+		if(start_date==NULL) start_date = strdup(null_data);
+		if(end_date==NULL) end_date = strdup(null_data);
+		insert_task(&tasks,id,task_name,state,desc,notes,type,prior,real_time,est_time,est_start_date,est_end_date,start_date,end_date);	
 	}
 	if(user_name!=NULL || user_role!=NULL){
 		if(user_name==NULL) user_name = strdup(null_data);
@@ -180,11 +206,21 @@ static int query_callback(void *not_used,int ncol,char **col_data, char **col_na
 		if(asig_user==NULL) asig_user = strdup(null_data);
 		insert_asig(&asigs,asig_user,asig_tid);
 	}
+	if(state_name!=NULL){
+		insert_state(&states,state_name);
+	}
+	if(prior_name!=NULL){
+		insert_prior(&priors,prior_name);
+	}
+	if(type_name!=NULL){
+		insert_type(&types,type_name);
+	}
 	//Free all temporal data	
 	free(role_name);free(task_name);free(state);
 	free(desc);free(notes);free(prior);free(type);
 	free(user_name);free(file_name);free(file_path);
-	free(user_role);free(asoc_path);free(asig_user);	
+	free(user_role);free(asoc_path);free(asig_user);
+	free(state_name);free(type_name);free(prior_name);	
 	return 0;
 }
 
@@ -242,6 +278,9 @@ generic_list exec_query(const char *sql){
 	(*generic).file_info = files;
 	(*generic).asoc_info = asocs;
 	(*generic).asig_info = asigs;
+	(*generic).type_info = types;
+	(*generic).state_info = states;
+	(*generic).prior_info = priors;
 	return generic;
 }
 
@@ -253,12 +292,18 @@ void dealloc(generic_list list){
 	dealloc_files((*list).file_info);
 	dealloc_asocs((*list).asoc_info);
 	dealloc_asigs((*list).asig_info);
+	dealloc_priors((*list).prior_info);
+	dealloc_types((*list).type_info);
+	dealloc_states((*list).state_info);
 	roles = NULL;
 	tasks = NULL;
 	users = NULL;
 	asocs = NULL;
 	files = NULL;
 	asigs = NULL;
+	priors = NULL;
+	types = NULL;
+	states = NULL;
 	free(list);
 	generic = NULL;
 }

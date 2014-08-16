@@ -27,12 +27,10 @@ void insert_role(role_list *list,char *name,int create_role,int assign_role,
 
 /* See specification in generic_list.h */
 void insert_task(task_list *list,int id,char *name,char *state,char *description,
-				char *notes,char *type,char *priority,int real_time,int est_time){
+				char *notes,char *type,char *priority,int real_time,int est_time,
+				char *est_start_date,char *est_end_date,char *start,char *end){
 	if((*list)==NULL){
 	 	(*list) = (task_list) malloc(sizeof(struct task_node));
-		//*******************************************************
-		// 	FALTAN LAS FECHAS EN EL STRUCT, INSERTARLAS AQUÍ y cogerlas en el callback
-		//*******************************************************
 		(**list).task_id = id;		
 		(**list).task_name = strdup(name);
 		(**list).state = strdup(state);
@@ -42,10 +40,15 @@ void insert_task(task_list *list,int id,char *name,char *state,char *description
 		(**list).priority = strdup(priority);
 		(**list).real_time_min = real_time;
 		(**list).est_time_min = est_time;
+		(**list).est_start_date = est_start_date;
+		(**list).est_end_date = est_end_date;
+		(**list).start_date = start;
+		(**list).end_date = end;
 		(**list).next = NULL;
 	}else{
 		insert_task(&((*list)->next),id,name,state,description,notes,
-					type,priority,real_time,est_time);
+					type,priority,real_time,est_time,est_start_date,
+					est_end_date,start,end);
 	}
 }
 
@@ -94,6 +97,72 @@ void insert_asig(asig_list *list,char *user_name,int task_id){
 		(**list).next = NULL;
 	}else{
 		insert_asig(&((*list)->next),user_name,task_id);
+	}
+}
+
+/* See specification in generic_list.h */
+void insert_state(state_list *list,char *state_name){
+	if((*list)==NULL){
+	 	(*list) = (state_list) malloc(sizeof(struct state_node));
+		(**list).state_name = strdup(state_name);
+		(**list).next = NULL;
+	}else{
+		insert_state(&((*list)->next),state_name);
+	}
+}
+
+/* See specification in generic_list.h */
+void insert_prior(prior_list *list,char *prior_name){
+	if((*list)==NULL){
+	 	(*list) = (prior_list) malloc(sizeof(struct prior_node));
+		(**list).prior_name = strdup(prior_name);
+		(**list).next = NULL;
+	}else{
+		insert_prior(&((*list)->next),prior_name);
+	}
+}
+
+/* See specification in generic_list.h */
+void insert_type(type_list *list,char *type_name){
+	if((*list)==NULL){
+	 	(*list) = (type_list) malloc(sizeof(struct type_node));
+		(**list).type_name = strdup(type_name);
+		(**list).next = NULL;
+	}else{
+		insert_type(&((*list)->next),type_name);
+	}
+}
+
+/* See specification in generic_list.h */
+void dealloc_states(state_list list){
+	state_list aux;	
+	while(list!=NULL){
+		aux = list;
+		list=(*list).next;
+		free((*aux).state_name);
+		free(aux);
+	}
+}
+
+/* See specification in generic_list.h */
+void dealloc_priors(prior_list list){
+	prior_list aux;	
+	while(list!=NULL){
+		aux = list;
+		list=(*list).next;
+		free((*aux).prior_name);
+		free(aux);
+	}
+}
+
+/* See specification in generic_list.h */
+void dealloc_types(type_list list){
+	type_list aux;	
+	while(list!=NULL){
+		aux = list;
+		list=(*list).next;
+		free((*aux).type_name);
+		free(aux);
 	}
 }
 
