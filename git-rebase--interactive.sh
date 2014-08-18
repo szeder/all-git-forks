@@ -622,9 +622,6 @@ do_next () {
 
 		mark_action_done
 		update_squash_messages $squash_style $sha1
-		author_script_content=$(get_author_ident_from_commit HEAD)
-		echo "$author_script_content" > "$author_script"
-		eval "$author_script_content"
 		if ! pick_one -n $sha1
 		then
 			git rev-parse --verify HEAD >"$amend"
@@ -634,7 +631,7 @@ do_next () {
 		squash|s|fixup|f)
 			# This is an intermediate commit; its message will only be
 			# used in case of trouble.  So use the long version:
-			do_with_author output git commit --allow-empty-message --allow-empty \
+			output git commit --allow-empty-message --allow-empty \
 				--amend --no-verify -F "$squash_msg" \
 				${gpg_sign_opt:+"$gpg_sign_opt"} ||
 				die_failed_squash $sha1 "$rest"
@@ -643,14 +640,14 @@ do_next () {
 			# This is the final command of this squash/fixup group
 			if test -f "$fixup_msg"
 			then
-				do_with_author output git commit --allow-empty-message --allow-empty \
+				output git commit --allow-empty-message --allow-empty \
 					--amend --no-verify -F "$fixup_msg" \
 					${gpg_sign_opt:+"$gpg_sign_opt"} ||
 					die_failed_squash $sha1 "$rest"
 			else
 				cp "$squash_msg" "$GIT_DIR"/SQUASH_MSG || exit
 				rm -f "$GIT_DIR"/MERGE_MSG
-				do_with_author output git commit --allow-empty --amend --no-pre-commit -F "$GIT_DIR"/SQUASH_MSG -e \
+				output git commit --allow-empty --amend --no-pre-commit -F "$GIT_DIR"/SQUASH_MSG -e \
 					${gpg_sign_opt:+"$gpg_sign_opt"} ||
 					die_failed_squash $sha1 "$rest"
 			fi
@@ -939,7 +936,7 @@ continue)
 	then
 		: Nothing to commit -- skip this
 	else
-		if ! test -f "$author_script"
+		if ! test -f "$author_script" && ! test -f "$amend"
 		then
 			gpg_sign_opt_quoted=${gpg_sign_opt:+$(git rev-parse --sq-quote "$gpg_sign_opt")}
 			die "You have staged changes in your working tree. If these changes are meant to be
@@ -956,8 +953,6 @@ In both case, once you're done, continue with:
   git rebase --continue
 "
 		fi
-		. "$author_script" ||
-			die "Error trying to find the author identity to amend commit"
 		if test -f "$amend"
 		then
 			current_head=$(git rev-parse --verify HEAD)
@@ -965,10 +960,12 @@ In both case, once you're done, continue with:
 			die "\
 You have uncommitted changes in your working tree. Please, commit them
 first and then run 'git rebase --continue' again."
-			do_with_author git commit --amend --no-verify -F "$msg" -e \
+			git commit --amend --no-verify -F "$msg" -e \
 				${gpg_sign_opt:+"$gpg_sign_opt"} ||
 				die "Could not commit staged changes."
 		else
+			. "$author_script" ||
+				die "Error trying to find the author identity to amend commit"
 			do_with_author git commit --no-verify -F "$msg" -e \
 				${gpg_sign_opt:+"$gpg_sign_opt"} ||
 				die "Could not commit staged changes."
