@@ -899,7 +899,7 @@ static void execute_commands(struct command *commands,
 		      "the reported refs above");
 }
 
-static struct command **queue_command(struct command **p,
+static struct command **queue_command(struct command **tail,
 				      const char *line,
 				      int linelen)
 {
@@ -922,8 +922,30 @@ static struct command **queue_command(struct command **p,
 	hashcpy(cmd->new_sha1, new_sha1);
 	memcpy(cmd->ref_name, refname, reflen);
 	cmd->ref_name[reflen] = '\0';
-	*p = cmd;
+	*tail = cmd;
 	return &cmd->next;
+}
+
+static void queue_commands_from_cert(struct command **tail,
+				     struct strbuf *push_cert)
+{
+	const char *boc, *eoc;
+
+	if (*tail)
+		die("protocol error: got both push certificate and unsigned commands");
+
+	boc = strstr(push_cert->buf, "\n\n");
+	if (!boc)
+		die("malformed push certificate %.*s", 100, push_cert->buf);
+	else
+		boc += 2;
+	eoc = push_cert->buf + parse_signature(push_cert->buf, push_cert->len);
+
+	while (boc < eoc) {
+		const char *eol = memchr(boc, '\n', eoc - boc);
+		tail = queue_command(tail, boc, eol ? eol - boc : eoc - eol);
+		boc = eol ? eol + 1 : eoc;
+	}
 }
 
 static struct command *read_head_info(struct sha1_array *shallow)
@@ -981,6 +1003,10 @@ static struct command *read_head_info(struct sha1_array *shallow)
 
 		p = queue_command(p, line, linelen);
 	}
+
+	if (push_cert.len)
+		queue_commands_from_cert(p, &push_cert);
+
 	return commands;
 }
 
