@@ -72,9 +72,15 @@ last_head="$state_dir"/last_head
 # file 'amend' is created. When "git rebase --continue" is executed,
 # if there are any staged changes then they will be amended to the
 # HEAD commit, but only provided the HEAD commit is still the commit
-# to be edited or the squash commit. When any other rebase command is
+# to be edited or the squash commit. Similarly, when a Signed-off-by:
+# should be added to a log message or the authorship should be
+# renewed, the files 'signoff' and 'resetauthor' are created
+# respectively, and "git rebase --continue" carries out the changes
+# after conflict resolution. When any other rebase command is
 # processed, these files are deleted.
 amend="$state_dir"/amend
+signoff="$state_dir"/signoff
+resetauthor="$state_dir"/resetauthor
 
 # For the post-rewrite hook, we make a list of rewritten commits and
 # their new sha1s.  The rewritten-pending list keeps the sha1s of
@@ -148,6 +154,10 @@ Commands:
  s, squash = use commit, but meld into previous commit
  f, fixup = like "squash", but discard this commit's log message
  x, exec = run command (the rest of the line) using shell
+
+Options:
+ [pick | reword | edit] --signoff = add a Signed-off-by line
+ [pick | reword | edit] --reset-author = renew authorship
 
 These lines can be re-ordered; they are executed from top to bottom.
 
@@ -528,10 +538,12 @@ do_pick () {
 		-s|--signoff)
 			rewrite=y
 			rewrite_signoff=y
+			>"$signoff"
 			;;
 		--reset-author)
 			rewrite=y
 			rewrite_reset_author=y
+			>"$resetauthor"
 			;;
 		--amend)
 			if test "$(git rev-parse HEAD)" = "$squash_onto" || ! git rev-parse -q --verify HEAD >/dev/null
@@ -630,6 +642,15 @@ do_replay () {
 	while test $# -gt 0 && test -z "$malformed"
 	do
 		case "$1" in
+		--signoff|--reset-author)
+			case "$command" in
+			pick|reword|edit)
+				;;
+			*)
+				malformed="Unsupported '$command' option: $1"
+				;;
+			esac
+			;;
 		-*)
 			malformed="Unknown '$command' option: $1"
 			;;
@@ -739,7 +760,7 @@ do_replay () {
 }
 
 do_next () {
-	rm -f "$msg" "$author_script" "$amend" || exit
+	rm -f "$msg" "$author_script" "$amend" "$signoff" "$resetauthor" || exit
 	git rev-parse --verify HEAD >"$last_head" || exit
 	read -r command args <"$todo"
 
@@ -1043,15 +1064,28 @@ In both case, once you're done, continue with:
 			die "\
 You have uncommitted changes in your working tree. Please, commit them
 first and then run 'git rebase --continue' again."
+		rewrite_reset_author=
+		rewrite_signoff=
+		test -f "$resetauthor" && rewrite_reset_author=y
+		test -f "$signoff" && rewrite_signoff=y
 		if test -f "$amend"
 		then
 			git commit --amend --no-verify -F "$msg" -e \
+				${rewrite_signoff:+--signoff} \
+				${rewrite_reset_author:+--reset-author} \
+				${gpg_sign_opt:+"$gpg_sign_opt"} ||
+				die "Could not commit staged changes."
+		elif test -n "$rewrite_reset_author"
+		then
+			git commit --no-verify -F "$msg" -e \
+				${rewrite_signoff:+--signoff} \
 				${gpg_sign_opt:+"$gpg_sign_opt"} ||
 				die "Could not commit staged changes."
 		else
 			test -r "$author_script" ||
 				die "Error trying to find the author identity to amend commit"
 			do_with_author $(cat "$author_script") git commit --no-verify -F "$msg" -e \
+				${rewrite_signoff:+--signoff} \
 				${gpg_sign_opt:+"$gpg_sign_opt"} ||
 				die "Could not commit staged changes."
 		fi
