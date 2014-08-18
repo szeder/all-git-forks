@@ -1039,4 +1039,42 @@ test_expect_success 'short SHA-1 collide' '
 	)
 '
 
+test_expect_success 'setup commits with empty commit log messages' '
+	git checkout -b empty-log-messages master &&
+	test_commit no-msg-commit-1 &&
+	git commit --amend --allow-empty-message -F - </dev/null &&
+	test_commit no-msg-commit-2 &&
+	git commit --amend --allow-empty-message -F - </dev/null &&
+	test_commit no-msg-commit-3 &&
+	git commit --amend --allow-empty-message -F - </dev/null
+'
+
+test_expect_success 'rebase commits with empty commit log messages' '
+	git checkout -b rebase-empty-log-messages empty-log-messages &&
+	set_fake_editor &&
+	test_expect_code 0 env FAKE_LINES="1" git rebase -i master &&
+	test_expect_code 0 env FAKE_LINES="1" git rebase -i --no-ff master
+'
+
+test_expect_success 'reword commits with empty commit log messages' '
+	git checkout -b reword-empty-log-messages empty-log-messages &&
+	test_when_finished reset_rebase &&
+	set_fake_editor &&
+	test_must_fail env FAKE_LINES="reword 1" git rebase -i master
+'
+
+test_expect_success 'squash commits with empty commit log messages' '
+	git checkout -b squash-empty-log-messages empty-log-messages &&
+	set_fake_editor &&
+	test_must_fail env FAKE_LINES="1 squash 2 fixup 3" git rebase -i master &&
+	git commit --allow-empty-message --amend &&
+	git rebase --continue
+'
+
+test_expect_success 'fixup commits with empty commit log messages' '
+	git checkout -b fixup-empty-log-messages empty-log-messages &&
+	set_fake_editor &&
+	env FAKE_LINES="1 fixup 2" git rebase -i master
+'
+
 test_done
