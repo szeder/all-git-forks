@@ -435,6 +435,18 @@ test_expect_success '--continue tries to commit' '
 	git show HEAD | grep chouette
 '
 
+test_expect_success '--continue does not commit after head is moved' '
+	git reset --hard to-be-rebased@{1} &&
+	test_must_fail git rebase -i --onto new-branch1 HEAD^ &&
+	echo resolved >file1 &&
+	git add file1 &&
+	git commit &&
+	echo dirty >file1 &&
+	test_must_fail git rebase --continue &&
+	git checkout file1 &&
+	git rebase --continue
+'
+
 test_expect_success 'verbose flag is heeded, even after --continue' '
 	git reset --hard master@{1} &&
 	test_tick &&
