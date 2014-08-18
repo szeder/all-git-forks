@@ -508,6 +508,19 @@ rebasing.
 If you just want to edit the commit message for a commit, replace the
 command "pick" with the command "reword".
 
+The commands "pick", "reword" and "edit" understand some well-known
+options. To add a Signed-off-by line at the end of the commit
+message, pass the `--signoff` option. The authorship can be renewed
+by specifying the `--reset-author` option. For instance, before you
+decide to publish a heavily edited commit you might want to reset the
+authorship and add your signature. You can do so on a per line basis:
+
+-------------------------------------------
+pick deadbee The oneline of this commit
+pick --reset-author --signoff fa1afe1 The oneline of the next commit
+...
+-------------------------------------------
+
 If you want to fold two or more commits into one, replace the command
 "pick" for the second and subsequent commits with "squash" or "fixup".
 If the commits had different authors, the folded commit will be
