@@ -700,7 +700,9 @@ test_expect_success 'setup failing pre-commit' '
 	test_must_fail test_commit pre-commit-violated-1 &&
 	test_commit --no-verify pre-commit-violated-1 &&
 	test_must_fail test_commit pre-commit-violated-2 &&
-	test_commit --no-verify pre-commit-violated-2
+	test_commit --no-verify pre-commit-violated-2 &&
+	test_must_fail test_commit pre-commit-violated-3 &&
+	test_commit --no-verify pre-commit-violated-3
 '
 
 test_expect_success 'reword a commit violating pre-commit' '
@@ -710,18 +712,18 @@ test_expect_success 'reword a commit violating pre-commit' '
 	env FAKE_LINES="reword 1" git rebase -i master
 '
 
-test_expect_success 'squash a commit violating pre-commit' '
+test_expect_success 'squash commits violating pre-commit' '
 	git checkout -b squash-violating-pre-commit violating-pre-commit &&
 	test_when_finished reset_rebase &&
 	set_fake_editor &&
-	env FAKE_LINES="1 squash 2" git rebase -i master
+	env FAKE_LINES="1 squash 2 squash 3" git rebase -i master
 '
 
-test_expect_success 'fixup a commit violating pre-commit' '
+test_expect_success 'fixup commits violating pre-commit' '
 	git checkout -b fixup-violating-pre-commit violating-pre-commit &&
 	test_when_finished reset_rebase &&
 	set_fake_editor &&
-	env FAKE_LINES="1 fixup 2" git rebase -i master
+	env FAKE_LINES="1 fixup 2 fixup 3" git rebase -i master
 '
 
 test_expect_success 'clean up failing pre-commit' '
@@ -760,18 +762,18 @@ test_expect_success 'reword a commit violating commit-msg' '
 	test_must_fail env FAKE_LINES="reword 1" git rebase -i master
 '
 
-test_expect_success 'squash a commit violating commit-msg' '
+test_expect_success 'squash commits violating commit-msg' '
 	git checkout -b squash-violating-commit-msg violating-commit-msg &&
 	set_fake_editor &&
-	test_must_fail env FAKE_LINES="1 squash 2 fixup 3" git rebase -i master &&
+	test_must_fail env FAKE_LINES="1 squash 2 squash 3" git rebase -i master &&
 	git commit --no-verify --amend &&
 	git rebase --continue
 '
 
-test_expect_success 'fixup a commit violating commit-msg' '
+test_expect_success 'fixup commits violating commit-msg' '
 	git checkout -b fixup-violating-commit-msg violating-commit-msg &&
 	set_fake_editor &&
-	env FAKE_LINES="1 fixup 2" git rebase -i master
+	env FAKE_LINES="1 fixup 2 fixup 3" git rebase -i master
 '
 
 test_expect_success 'clean up failing commit-msg' '
