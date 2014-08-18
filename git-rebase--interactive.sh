@@ -578,30 +578,71 @@ do_pick () {
 }
 
 do_replay () {
+	malformed=
 	command=$1
-	sha1=$2
-	rest=$3
+	shift
+	case "$command" in
+	pick|reword|edit|squash|fixup)
+		;;
+	*)
+		read -r command <"$todo"
+		malformed="Unknown command: $command"
+		;;
+	esac
+
+	opts=
+	while test $# -gt 0 && test -z "$malformed"
+	do
+		case "$1" in
+		-*)
+			malformed="Unknown '$command' option: $1"
+			;;
+		*)
+			break
+			;;
+		esac
+		opts="$opts $1"
+		shift
+	done
+	sha1=$1
+	shift
+	rest=$*
+
+	if test -n "$malformed"
+	then
+		warn "$malformed"
+		fixtodo="Please fix this using 'git rebase --edit-todo'."
+		if git rev-parse --verify -q "$sha1" >/dev/null
+		then
+			die_with_patch $sha1 "$fixtodo"
+		else
+			die "$fixtodo"
+		fi
+	fi
 
 	case "$command" in
 	pick|p)
 		comment_for_reflog pick
 
 		mark_action_done
-		do_pick $sha1 || die_with_patch $sha1 "Could not apply $sha1... $rest"
+		do_pick $opts $sha1 \
+			|| die_with_patch $sha1 "Could not apply $sha1... $rest"
 		record_in_rewritten $sha1
 		;;
 	reword|r)
 		comment_for_reflog reword
 
 		mark_action_done
-		do_pick --edit $sha1 || die_with_patch $sha1 "Could not apply $sha1... $rest"
+		do_pick --edit $opts $sha1 \
+			|| die_with_patch $sha1 "Could not apply $sha1... $rest"
 		record_in_rewritten $sha1
 		;;
 	edit|e)
 		comment_for_reflog edit
 
 		mark_action_done
-		do_pick $sha1 || die_with_patch $sha1 "Could not apply $sha1... $rest"
+		do_pick $opts $sha1 \
+			|| die_with_patch $sha1 "Could not apply $sha1... $rest"
 		warn "Stopped at $sha1... $rest"
 		exit_with_patch $sha1 0
 		;;
@@ -625,18 +666,18 @@ do_replay () {
 		squash|s|fixup|f)
 			# This is an intermediate commit; its message will only be
 			# used in case of trouble.  So use the long version:
-			do_pick --amend -F "$squash_msg" $sha1 \
+			do_pick --amend -F "$squash_msg" $opts $sha1 \
 				|| die_failed_squash $sha1 "$rest"
 			;;
 		*)
 			# This is the final command of this squash/fixup group
 			if test -f "$fixup_msg"
 			then
-				do_pick --amend -F "$fixup_msg" $sha1 \
+				do_pick --amend -F "$fixup_msg" $opts $sha1 \
 					|| die_failed_squash $sha1 "$rest"
 			else
 				cp "$squash_msg" "$GIT_DIR"/SQUASH_MSG || exit
-				do_pick --amend -F "$GIT_DIR"/SQUASH_MSG -e $sha1 \
+				do_pick --amend -F "$GIT_DIR"/SQUASH_MSG -e $opts $sha1 \
 					|| die_failed_squash $sha1 "$rest"
 			fi
 			rm -f "$squash_msg" "$fixup_msg"
@@ -658,23 +699,12 @@ do_replay () {
 		esac
 		record_in_rewritten $sha1
 		;;
-	*)
-		read -r command <"$todo"
-		warn "Unknown command: $command"
-		fixtodo="Please fix this using 'git rebase --edit-todo'."
-		if git rev-parse --verify -q "$sha1" >/dev/null
-		then
-			die_with_patch $sha1 "$fixtodo"
-		else
-			die "$fixtodo"
-		fi
-		;;
 	esac
 }
 
 do_next () {
 	rm -f "$msg" "$author_script" "$amend" || exit
-	read -r command sha1 rest <"$todo"
+	read -r command args <"$todo"
 
 	case "$command" in
 	"$comment_char"*|''|noop)
@@ -719,7 +749,7 @@ do_next () {
 		fi
 		;;
 	*)
-		do_replay $command $sha1 "$rest"
+		do_replay $command $args
 		;;
 	esac
 	test -s "$todo" && return
@@ -799,19 +829,34 @@ skip_unnecessary_picks () {
 }
 
 transform_todo_ids () {
-	while read -r command rest
+	while read -r command args
 	do
 		case "$command" in
 		"$comment_char"* | exec)
 			# Be careful for oddball commands like 'exec'
 			# that do not have a SHA-1 at the beginning of $rest.
+			newargs=\ $args
 			;;
 		*)
-			sha1=$(git rev-parse --verify --quiet "$@" ${rest%% *}) &&
-			rest="$sha1 ${rest#* }"
+			newargs=
+			sha1=
+			for arg in $args
+			do
+				case "$arg" in
+				-*)
+					newargs="$newargs $arg"
+					;;
+				*)
+					test -z "$sha1" &&
+						sha1=$(git rev-parse --verify --quiet "$@" $arg) &&
+						arg=$sha1
+					newargs="$newargs $arg"
+					;;
+				esac
+			done
 			;;
 		esac
-		printf '%s\n' "$command${rest:+ }$rest"
+		printf '%s\n' "$command$newargs"
 	done <"$todo" >"$todo.new" &&
 	mv -f "$todo.new" "$todo"
 }
