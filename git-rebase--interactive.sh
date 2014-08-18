@@ -511,7 +511,7 @@ do_pick () {
 			   --no-post-rewrite -n -q -C $1 &&
 			pick_one -n $1 &&
 			output git commit --allow-empty --allow-empty-message \
-				   --amend --no-post-rewrite -n -C $1 \
+				   --amend --no-post-rewrite -n --no-edit \
 				   ${gpg_sign_opt:+"$gpg_sign_opt"} ||
 			die_with_patch $1 "Could not apply $1... $2"
 	else
