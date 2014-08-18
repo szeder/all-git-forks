@@ -41,8 +41,8 @@ set_fake_editor () {
 	test -z "$FAKE_LINES" && exit
 	grep -v '^#' < "$1" > "$1".tmp
 	rm -f "$1"
-	echo 'rebase -i script before editing:'
-	cat "$1".tmp
+	echo 'rebase -i script before editing:' >&2
+	cat "$1".tmp >&2
 	action=pick
 	for line in $FAKE_LINES; do
 		case $line in
@@ -59,8 +59,8 @@ set_fake_editor () {
 			action=pick;;
 		esac
 	done
-	echo 'rebase -i script after editing:'
-	cat "$1"
+	echo 'rebase -i script after editing:' >&2
+	cat "$1" >&2
 	EOF
 
 	test_set_editor "$(pwd)/fake-editor.sh"
