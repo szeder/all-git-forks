@@ -67,6 +67,19 @@ test_expect_success 'push --sign fails with a receiver without push certificate 
 	test_i18ngrep "the receiving end does not support" err
 '
 
+test_expect_success GPG 'no certificate for a signed push with no update' '
+	prepare_dst &&
+	mkdir -p dst/.git/hooks &&
+	write_script dst/.git/hooks/post-receive <<-\EOF &&
+	if test -n "${GIT_PUSH_CERT-}"
+	then
+		git cat-file blob $GIT_PUSH_CERT >../push-cert
+	fi
+	EOF
+	git push dst noop &&
+	! test -f dst/push-cert
+'
+
 test_expect_success GPG 'signed push sends push certificate' '
 	prepare_dst &&
 	mkdir -p dst/.git/hooks &&
