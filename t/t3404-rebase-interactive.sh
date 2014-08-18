@@ -83,6 +83,15 @@ test_expect_success 'rebase --keep-empty (reword)' '
 	test_line_count = 6 actual
 '
 
+test_expect_success 'rebase --keep-empty (edit)' '
+	git checkout -b edit-emptybranch emptybranch &&
+	set_fake_editor &&
+	FAKE_LINES="1 edit 2" git rebase --keep-empty -i HEAD~2 &&
+	git rebase --continue &&
+	git log --oneline >actual &&
+	test_line_count = 6 actual
+'
+
 test_expect_success 'rebase --keep-empty (fixup)' '
 	git checkout -b fixup-emptybranch emptybranch &&
 	set_fake_editor &&
