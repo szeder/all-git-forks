@@ -2028,7 +2028,8 @@ static int commit_locked_index(struct lock_file *lk)
 			return -1;
 		if (rename(lk->filename, alternate_index_output))
 			return -1;
-		lk->filename[0] = 0;
+		free(lk->filename);
+		lk->filename = NULL;
 		return 0;
 	} else {
 		return commit_lock_file(lk);
