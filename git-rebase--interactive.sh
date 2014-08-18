@@ -62,13 +62,18 @@ msgnum="$state_dir"/msgnum
 # being rebased.
 author_script="$state_dir"/author-script
 
-# When an "edit" rebase command is being processed, the SHA1 of the
-# commit to be edited is recorded in this file.  The same happens when
-# rewriting a root commit fails, for instance "reword".  When "git
-# rebase --continue" is executed, if there are any staged changes then
-# they will be amended to the HEAD commit, but only provided the HEAD
-# commit is still the commit to be edited.  When any other rebase
-# command is processed, this file is deleted.
+# This file keeps track of the SHA1 of the last replayed commit, the
+# new parent of the next commit being replayed. It is used to make
+# sure that "git rebase --continue" only commits resolved conflicts
+# or "edit" changes automatically.
+last_head="$state_dir"/last_head
+
+# When an "edit" or a "squash" rebase command is being processed, the
+# file 'amend' is created. When "git rebase --continue" is executed,
+# if there are any staged changes then they will be amended to the
+# HEAD commit, but only provided the HEAD commit is still the commit
+# to be edited or the squash commit. When any other rebase command is
+# processed, these files are deleted.
 amend="$state_dir"/amend
 
 # For the post-rewrite hook, we make a list of rewritten commits and
@@ -179,7 +184,8 @@ die_with_patch () {
 exit_with_patch () {
 	echo "$1" > "$state_dir"/stopped-sha
 	make_patch $1
-	git rev-parse --verify HEAD > "$amend"
+	>"$amend"
+	git rev-parse --verify HEAD >"$last_head"
 	gpg_sign_opt_quoted=${gpg_sign_opt:+$(git rev-parse --sq-quote "$gpg_sign_opt")}
 	warn "You can amend the commit now, with"
 	warn
@@ -535,7 +541,7 @@ do_pick () {
 			fi
 			rewrite=y
 			rewrite_amend=y
-			git rev-parse --verify HEAD >"$amend"
+			>"$amend"
 			;;
 		-F|--file)
 			if test $# -eq 0
@@ -572,7 +578,7 @@ do_pick () {
 	then
 		rewrite=y
 		rewrite_amend=y
-		git rev-parse --verify HEAD >"$amend"
+		>"$amend"
 
 		# Set the correct commit message and author info on the
 		# sentinel root before cherry-picking the original changes
@@ -734,6 +740,7 @@ do_replay () {
 
 do_next () {
 	rm -f "$msg" "$author_script" "$amend" || exit
+	git rev-parse --verify HEAD >"$last_head" || exit
 	read -r command args <"$todo"
 
 	case "$command" in
@@ -1031,13 +1038,13 @@ In both case, once you're done, continue with:
   git rebase --continue
 "
 		fi
-		if test -f "$amend"
-		then
-			current_head=$(git rev-parse --verify HEAD)
-			test "$current_head" = $(cat "$amend") ||
+		current_head=$(git rev-parse --verify HEAD)
+		test "$current_head" = $(cat "$last_head") ||
 			die "\
 You have uncommitted changes in your working tree. Please, commit them
 first and then run 'git rebase --continue' again."
+		if test -f "$amend"
+		then
 			git commit --amend --no-verify -F "$msg" -e \
 				${gpg_sign_opt:+"$gpg_sign_opt"} ||
 				die "Could not commit staged changes."
