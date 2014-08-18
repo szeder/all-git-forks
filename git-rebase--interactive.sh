@@ -166,7 +166,7 @@ make_patch () {
 	test -f "$msg" ||
 		commit_message "$1" > "$msg"
 	test -f "$author_script" ||
-		get_author_ident_from_commit "$1" > "$author_script"
+		echo "$1" > "$author_script"
 }
 
 die_with_patch () {
@@ -215,9 +215,13 @@ is_merge_commit()
 }
 
 # Run command with GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL, and
-# GIT_AUTHOR_DATE exported from the current environment.
+# GIT_AUTHOR_DATE assigned the author information extracted from the
+# named commit and exported.
 do_with_author () {
 	(
+		sha1=$1
+		shift
+		eval $(get_author_ident_from_commit $sha1)
 		export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_AUTHOR_DATE
 		"$@"
 	)
@@ -348,13 +352,11 @@ pick_one_preserving_merges () {
 			test "a$1" = a-n && die "Refusing to squash a merge: $sha1"
 
 			# redo merge
-			author_script_content=$(get_author_ident_from_commit $sha1)
-			eval "$author_script_content"
 			msg_content="$(commit_message $sha1)"
 			# No point in merging the first parent, that's HEAD
 			new_parents=${new_parents# $first_parent}
 			merge_args="--no-log --no-ff"
-			if ! do_with_author output eval \
+			if ! do_with_author $sha1 output eval \
 			'git merge ${gpg_sign_opt:+"$gpg_sign_opt"} \
 				$merge_args $strategy_args -m "$msg_content" $new_parents'
 			then
@@ -592,8 +594,7 @@ do_pick () {
 		do_with_author=
 		if test -z "$rewrite_reset_author" && test -z "$rewrite_amend"
 		then
-			eval $(get_author_ident_from_commit $1)
-			do_with_author=do_with_author
+			do_with_author="do_with_author $1"
 		fi
 		$do_with_author output git commit \
 			   --allow-empty --no-post-rewrite -n --no-edit \
@@ -1041,9 +1042,9 @@ first and then run 'git rebase --continue' again."
 				${gpg_sign_opt:+"$gpg_sign_opt"} ||
 				die "Could not commit staged changes."
 		else
-			. "$author_script" ||
+			test -r "$author_script" ||
 				die "Error trying to find the author identity to amend commit"
-			do_with_author git commit --no-verify -F "$msg" -e \
+			do_with_author $(cat "$author_script") git commit --no-verify -F "$msg" -e \
 				${gpg_sign_opt:+"$gpg_sign_opt"} ||
 				die "Could not commit staged changes."
 		fi
