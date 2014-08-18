@@ -464,9 +464,14 @@ record_in_rewritten() {
 
 # Apply the changes introduced by the given commit to the current head.
 #
-# do_pick [--reset-author] [--amend] [--file <file>] [--edit] <commit>
+# do_pick [--signoff] [--reset-author] [--amend] [--file <file>]
+#         [--edit] <commit>
 #
 # Wrapper around git-cherry-pick.
+#
+# -s, --signoff
+#     Insert a Signed-off-by: line using the committer identity at the
+#     end of the commit log message. This creates a fresh commit.
 #
 # --reset-author
 #     Pretend the changes were made for the first time. Declare that the
@@ -504,6 +509,7 @@ record_in_rewritten() {
 do_pick () {
 	allow_empty_message=y
 	rewrite=
+	rewrite_signoff=
 	rewrite_reset_author=
 	rewrite_amend=
 	rewrite_edit=
@@ -511,6 +517,10 @@ do_pick () {
 	while test $# -gt 0
 	do
 		case "$1" in
+		-s|--signoff)
+			rewrite=y
+			rewrite_signoff=y
+			;;
 		--reset-author)
 			rewrite=y
 			rewrite_reset_author=y
@@ -588,6 +598,7 @@ do_pick () {
 		$do_with_author output git commit \
 			   --allow-empty --no-post-rewrite -n --no-edit \
 			   ${allow_empty_message:+--allow-empty-message} \
+			   ${rewrite_signoff:+--signoff} \
 			   ${rewrite_amend:+--amend ${rewrite_reset_author:+--reset-author}} \
 			   ${rewrite_edit:+--edit --commit-msg} \
 			   ${rewrite_message:+--file "$rewrite_message"} \
