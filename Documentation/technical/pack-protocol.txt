@@ -465,7 +465,7 @@ contain all the objects that the server will need to complete the new
 references.
 
 ----
-  update-request    =  *shallow command-list [pack-file]
+  update-request    =  *shallow ( command-list | push-cert ) [pack-file]
 
   shallow           =  PKT-LINE("shallow" SP obj-id)
 
@@ -481,11 +481,29 @@ references.
   old-id            =  obj-id
   new-id            =  obj-id
 
+  push-cert         = PKT-LINE("push-cert" NUL capability-list LF)
+		      PKT-LINE("certificate version 0.1" LF)
+		      PKT-LINE("pusher" ident LF)
+		      PKT-LINE(LF)
+		      *PKT-LINE(command LF)
+		      *PKT-LINE(GPG signature lines LF)
+		      PKT-LINE("push-cert-end" LF)
+
   pack-file         = "PACK" 28*(OCTET)
 ----
 
 If the receiving end does not support delete-refs, the sending end MUST
 NOT ask for delete command.
+
+If the receiving end does not support push-cert, the sending end MUST
+NOT send a push-cert command.
+
+When a push-cert command is sent, command-list MUST NOT be sent; the
+commands recorded in the push certificate is used instead.  The GPG
+signature lines are a detached signature for the contents recorded in
+the push certificate before the signature block begins and are used
+to certify that the commands were given by the pusher, who must be
+the signer.
 
 The pack-file MUST NOT be sent if the only command used is 'delete'.
 
