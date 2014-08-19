@@ -14,7 +14,6 @@ OPTIONS_SPEC=
 TOOL_MODE=merge
 . git-sh-setup
 . git-mergetool--lib
-require_work_tree
 
 # Returns true if the mode reflects a symlink
 is_symlink () {
@@ -321,7 +320,17 @@ guessed_merge_tool=false
 while test $# != 0
 do
 	case "$1" in
-	--tool-help)
+	--tool-help*)
+		case "$#,$1" in
+		1,*=*)
+			TOOL_MODE=$(expr "z$1" : 'z-[^=]*=\(.*\)')
+			;;
+		1,--tool-help)
+			;;
+		*)
+			usage
+			;;
+		esac
 		show_tool_help
 		;;
 	-t|--tool*)
@@ -371,6 +380,8 @@ prompt_after_failed_merge () {
 		esac
 	done
 }
+
+require_work_tree
 
 if test -z "$merge_tool"
 then
