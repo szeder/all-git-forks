@@ -262,7 +262,7 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 	save_commit_buffer = 0;
 
 	if (write_ref) {
-		transaction = ref_transaction_begin(&err);
+		transaction = transaction_begin(&err);
 		if (!transaction) {
 			error("%s", err.buf);
 			goto rollback_and_fail;
@@ -292,26 +292,26 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 			continue;
 		strbuf_reset(&ref_name);
 		strbuf_addf(&ref_name, "refs/%s", write_ref[i]);
-		if (ref_transaction_update(transaction, ref_name.buf,
-					   &sha1[20 * i], NULL, 0, 0,
-					   msg ? msg : "fetch (unknown)",
-					   &err)) {
+		if (transaction_update_sha1(transaction, ref_name.buf,
+					    &sha1[20 * i], NULL, 0, 0,
+					    msg ? msg : "fetch (unknown)",
+					    &err)) {
 			error("%s", err.buf);
 			goto rollback_and_fail;
 		}
 	}
 	if (write_ref) {
-		if (ref_transaction_commit(transaction, &err)) {
+		if (transaction_commit(transaction, &err)) {
 			error("%s", err.buf);
 			goto rollback_and_fail;
 		}
-		ref_transaction_free(transaction);
+		transaction_free(transaction);
 	}
 	free(to_free);
 	return 0;
 
 rollback_and_fail:
-	ref_transaction_free(transaction);
+	transaction_free(transaction);
 	strbuf_release(&err);
 	strbuf_release(&ref_name);
 	free(to_free);
