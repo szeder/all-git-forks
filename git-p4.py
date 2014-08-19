@@ -2193,6 +2193,7 @@ class P4Sync(Command, P4UserMap):
     def streamP4Files(self, files):
         filesForCommit = []
         filesToRead = []
+        filesToRawRead = []
         filesToDelete = []
 
         for f in files:
@@ -2205,12 +2206,21 @@ class P4Sync(Command, P4UserMap):
             filesForCommit.append(f)
             if f['action'] in self.delete_actions:
                 filesToDelete.append(f)
+            elif "utf16" in f['type']:
+                filesToRawRead.append(f)
             else:
                 filesToRead.append(f)
 
         # deleted files...
         for f in filesToDelete:
             self.streamOneP4Deletion(f)
+
+        if len(filesToRawRead) > 0:
+            fileArgs = ['%s#%s' % (f['path'], f['rev']) for f in filesToRawRead]
+            for f in p4CmdList(["-x", "-", "files"],
+                               stdin=fileArgs):
+                if f.has_key('depotFile'):
+                    self.streamOneP4File(f, [])
 
         if len(filesToRead) > 0:
             self.stream_file = {}
