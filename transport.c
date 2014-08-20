@@ -202,7 +202,7 @@ static struct ref *get_refs_via_rsync(struct transport *transport, int for_push)
 {
 	struct strbuf buf = STRBUF_INIT, temp_dir = STRBUF_INIT;
 	struct ref dummy = {NULL}, *tail = &dummy;
-	struct child_process rsync;
+	struct child_process rsync = CHILD_PROCESS_INIT;
 	const char *args[5];
 	int temp_dir_len;
 
@@ -219,7 +219,6 @@ static struct ref *get_refs_via_rsync(struct transport *transport, int for_push)
 	strbuf_addstr(&buf, rsync_url(transport->url));
 	strbuf_addstr(&buf, "/refs");
 
-	memset(&rsync, 0, sizeof(rsync));
 	rsync.argv = args;
 	rsync.stdout_to_stderr = 1;
 	args[0] = "rsync";
@@ -264,9 +263,8 @@ static struct ref *get_refs_via_rsync(struct transport *transport, int for_push)
 static int fetch_objs_via_rsync(struct transport *transport,
 				int nr_objs, struct ref **to_fetch)
 {
-	struct child_process rsync;
+	struct child_process rsync = CHILD_PROCESS_INIT;
 
-	memset(&rsync, 0, sizeof(rsync));
 	rsync.stdout_to_stderr = 1;
 	argv_array_push(&rsync.args, "rsync");
 	argv_array_push(&rsync.args, (transport->verbose > 1) ? "-rv" : "-r");
@@ -326,7 +324,7 @@ static int rsync_transport_push(struct transport *transport,
 {
 	struct strbuf buf = STRBUF_INIT, temp_dir = STRBUF_INIT;
 	int result = 0, i;
-	struct child_process rsync;
+	struct child_process rsync = CHILD_PROCESS_INIT;
 	const char *args[10];
 
 	if (flags & TRANSPORT_PUSH_MIRROR)
@@ -337,7 +335,6 @@ static int rsync_transport_push(struct transport *transport,
 	strbuf_addstr(&buf, rsync_url(transport->url));
 	strbuf_addch(&buf, '/');
 
-	memset(&rsync, 0, sizeof(rsync));
 	rsync.argv = args;
 	rsync.stdout_to_stderr = 1;
 	i = 0;
@@ -1055,7 +1052,7 @@ static int run_pre_push_hook(struct transport *transport,
 {
 	int ret = 0, x;
 	struct ref *r;
-	struct child_process proc;
+	struct child_process proc = CHILD_PROCESS_INIT;
 	struct strbuf buf;
 	const char *argv[4];
 
@@ -1066,7 +1063,6 @@ static int run_pre_push_hook(struct transport *transport,
 	argv[2] = transport->url;
 	argv[3] = NULL;
 
-	memset(&proc, 0, sizeof(proc));
 	proc.argv = argv;
 	proc.in = -1;
 
