@@ -483,10 +483,11 @@ references.
 
   push-cert         = PKT-LINE("push-cert" NUL capability-list LF)
 		      PKT-LINE("certificate version 0.1" LF)
-		      PKT-LINE("pusher" ident LF)
+		      PKT-LINE("pusher" SP ident LF)
+		      PKT-LINE("nonce" SP nonce LF)
 		      PKT-LINE(LF)
 		      *PKT-LINE(command LF)
-		      *PKT-LINE(GPG signature lines LF)
+		      *PKT-LINE(detached GPG signature lines LF)
 		      PKT-LINE("push-cert-end" LF)
 
   pack-file         = "PACK" 28*(OCTET)
