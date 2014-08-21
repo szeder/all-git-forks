@@ -89,6 +89,13 @@ Setting the `mergetool.keepBackup` configuration variable to `false`
 causes `git mergetool` to automatically remove the backup as files
 are successfully merged.
 
+`git mergetool` may also create other temporary files for the
+different versions involved in the merge. By default these files have
+the same filename suffix as the file being merged. This may confuse
+other tools in use during a long merge operation. The user can set
+`mergetool.tmpsuffix` to be used as an extra suffix, which will be
+appened to the temporary filename to lessen that problem.
+
 GIT
 ---
 Part of the linkgit:git[1] suite
