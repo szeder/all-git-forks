@@ -9,10 +9,12 @@ int copy_fd(int ifd, int ofd)
 		if (!len)
 			break;
 		if (len < 0) {
-			int read_error = errno;
+			int save_errno = errno;
 			close(ifd);
-			return error("copy-fd: read returned %s",
-				     strerror(read_error));
+			error("copy-fd: read returned %s",
+			      strerror(save_errno));
+			errno = save_errno;
+			return -1;
 		}
 		while (len) {
 			int written = xwrite(ofd, buf, len);
@@ -22,12 +24,16 @@ int copy_fd(int ifd, int ofd)
 			}
 			else if (!written) {
 				close(ifd);
-				return error("copy-fd: write returned 0");
+				error("copy-fd: write returned 0");
+				errno = EAGAIN;
+				return -1;
 			} else {
-				int write_error = errno;
+				int save_errno = errno;
 				close(ifd);
-				return error("copy-fd: write returned %s",
-					     strerror(write_error));
+				error("copy-fd: write returned %s",
+				      strerror(save_errno));
+				errno = save_errno;
+				return -1;
 			}
 		}
 	}
