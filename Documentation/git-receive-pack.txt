@@ -72,6 +72,13 @@ GIT_PUSH_CERT_STATUS::
 	using the same mnemonic as used in `%G?` format of `git log`
 	family of commands (see linkgit:git-log[1]).
 
+GIT_PUSH_CERT_NONCE::
+	The nonce string the process asked the signer to include
+	in the push certificate.  If this does not match the value
+	recorded on the "nonce" header in the push certificate, it
+	may indicate that the certificate is a valid one that is
+	being replayed from a separate "git push" session.
+
 This hook is called before any refname is updated and before any
 fast-forward checks are performed.
 
@@ -147,6 +154,7 @@ service:
 	if test -n "${GIT_PUSH_CERT-}" && test ${GIT_PUSH_CERT_STATUS} = G
 	then
 		(
+			echo expected nonce is ${GIT_PUSH_NONCE}
 			git cat-file blob ${GIT_PUSH_CERT}
 		) | mail -s "push from $GIT_PUSH_CERT_SIGNER" push-log@mydomain
 	fi
