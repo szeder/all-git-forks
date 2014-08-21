@@ -52,6 +52,7 @@ static int accept_push_cert = 1;
 static struct strbuf push_cert = STRBUF_INIT;
 static unsigned char push_cert_sha1[20];
 static struct signature_check sigcheck;
+static const char *push_cert_nonce;
 
 static enum deny_action parse_deny_action(const char *var, const char *value)
 {
@@ -157,8 +158,8 @@ static void show_ref(const char *path, const unsigned char *sha1)
 			      "report-status delete-refs side-band-64k quiet");
 		if (prefer_ofs_delta)
 			strbuf_addstr(&cap, " ofs-delta");
-		if (accept_push_cert)
-			strbuf_addstr(&cap, " push-cert");
+		if (accept_push_cert && push_cert_nonce)
+			strbuf_addf(&cap, " push-cert=%s", push_cert_nonce);
 		strbuf_addf(&cap, " agent=%s", git_user_agent_sanitized());
 		packet_write(1, "%s %s%c%s\n",
 			     sha1_to_hex(sha1), path, 0, cap.buf);
@@ -305,6 +306,14 @@ static void prepare_push_cert_sha1(struct child_process *proc)
 
 		strbuf_release(&gpg_output);
 		strbuf_release(&gpg_status);
+
+		/*
+		 * NEEDSWORK: "smart http" code path may want to cheat
+		 * to overcome its stateless-ness by computing
+		 * push-cert-nonce for the past N seconds and export
+		 * how fresh/stale the nonce is via an extra environment
+		 * variable, e.g. GIT_PUSH_CERT_NONCE_FRESHNESS.
+		 */
 	}
 	if (!is_null_sha1(push_cert_sha1)) {
 		argv_array_pushf(&env, "GIT_PUSH_CERT=%s", sha1_to_hex(push_cert_sha1));
@@ -313,6 +322,8 @@ static void prepare_push_cert_sha1(struct child_process *proc)
 		argv_array_pushf(&env, "GIT_PUSH_CERT_KEY=%s",
 				 sigcheck.key ? sigcheck.key : "");
 		argv_array_pushf(&env, "GIT_PUSH_CERT_STATUS=%c", sigcheck.result);
+		if (push_cert_nonce)
+			argv_array_pushf(&env, "GIT_PUSH_CERT_NONCE=%s", push_cert_nonce);
 
 		proc->env = env.argv;
 	}
@@ -1245,6 +1256,58 @@ static int delete_only(struct command *commands)
 	return 1;
 }
 
+#define HMAC_BLOCK_SIZE 64
+
+static void hmac_sha1(unsigned char out[20],
+		      const char *key_in, size_t key_len,
+		      const char *text, size_t text_len)
+{
+	unsigned char key[HMAC_BLOCK_SIZE];
+	unsigned char k_ipad[HMAC_BLOCK_SIZE];
+	unsigned char k_opad[HMAC_BLOCK_SIZE];
+	int i;
+	git_SHA_CTX ctx;
+
+	/* RFC 2104 2. (1) */
+	memset(key, '\0', HMAC_BLOCK_SIZE);
+	if (HMAC_BLOCK_SIZE < key_len) {
+		git_SHA1_Init(&ctx);
+		git_SHA1_Update(&ctx, key_in, key_len);
+		git_SHA1_Final(key, &ctx);
+	} else {
+		memcpy(key, key_in, key_len);
+	}
+
+	/* RFC 2104 2. (2) & (5) */
+	for (i = 0; i < sizeof(key); i++) {
+		k_ipad[i] = key[i] ^ 0x36;
+		k_opad[i] = key[i] ^ 0x5c;
+	}
+
+	/* RFC 2104 2. (3) & (4) */
+	git_SHA1_Init(&ctx);
+	git_SHA1_Update(&ctx, k_ipad, sizeof(k_ipad));
+	git_SHA1_Update(&ctx, text, text_len);
+	git_SHA1_Final(out, &ctx);
+
+	/* RFC 2104 2. (6) & (7) */
+	git_SHA1_Init(&ctx);
+	git_SHA1_Update(&ctx, k_opad, sizeof(k_opad));
+	git_SHA1_Update(&ctx, out, sizeof(out));
+	git_SHA1_Final(out, &ctx);
+}
+
+static char *prepare_push_cert_nonce(const char *txt, unsigned long it)
+{
+	struct strbuf buf = STRBUF_INIT;
+	unsigned char sha1[20];
+
+	strbuf_addf(&buf, "%lu", it);
+	hmac_sha1(sha1, buf.buf, buf.len, txt, strlen(txt));
+	strbuf_release(&buf);
+	return xstrdup(sha1_to_hex(sha1));
+}
+
 int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 {
 	int advertise_refs = 0;
@@ -1304,6 +1367,8 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 		die("'%s' does not appear to be a git repository", dir);
 
 	git_config(receive_pack_config, NULL);
+	if (accept_push_cert && !push_cert_nonce)
+		push_cert_nonce = prepare_push_cert_nonce(dir, time(NULL));
 
 	if (0 <= transfer_unpack_limit)
 		unpack_limit = transfer_unpack_limit;
@@ -1348,5 +1413,6 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 		packet_flush(1);
 	sha1_array_clear(&shallow);
 	sha1_array_clear(&ref);
+	free((void *)push_cert_nonce);
 	return 0;
 }
