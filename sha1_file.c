@@ -663,10 +663,25 @@ void release_pack_memory(size_t need)
 		; /* nothing */
 }
 
+static void mmap_limit_check(size_t length)
+{
+	static int limit = -1;
+	if (limit == -1) {
+		const char *env = getenv("GIT_MMAP_LIMIT");
+		limit = env ? atoi(env) * 1024 : 0;
+	}
+	if (limit && length > limit)
+		die("attempting to mmap %"PRIuMAX" over limit %d",
+		    (intmax_t)length, limit);
+}
+
 void *xmmap(void *start, size_t length,
 	int prot, int flags, int fd, off_t offset)
 {
-	void *ret = mmap(start, length, prot, flags, fd, offset);
+	void *ret;
+
+	mmap_limit_check(length);
+	ret = mmap(start, length, prot, flags, fd, offset);
 	if (ret == MAP_FAILED) {
 		if (!length)
 			return NULL;
