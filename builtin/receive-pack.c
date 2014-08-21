@@ -51,6 +51,7 @@ static const char *alt_shallow_file;
 static struct strbuf push_cert = STRBUF_INIT;
 static unsigned char push_cert_sha1[20];
 static struct signature_check sigcheck;
+static const char *push_cert_nonce;
 
 static enum deny_action parse_deny_action(const char *var, const char *value)
 {
@@ -142,15 +143,18 @@ static void show_ref(const char *path, const unsigned char *sha1)
 	if (ref_is_hidden(path))
 		return;
 
-	if (sent_capabilities)
+	if (sent_capabilities) {
 		packet_write(1, "%s %s\n", sha1_to_hex(sha1), path);
-	else
-		packet_write(1, "%s %s%c%s%s agent=%s\n",
+	} else {
+		packet_write(1, "%s %s%c%s%s%s%s agent=%s\n",
 			     sha1_to_hex(sha1), path, 0,
-			     " report-status delete-refs side-band-64k quiet push-cert",
+			     " report-status delete-refs side-band-64k quiet",
 			     prefer_ofs_delta ? " ofs-delta" : "",
+			     push_cert_nonce ? " push-cert=" : "",
+			     push_cert_nonce ? push_cert_nonce : "",
 			     git_user_agent_sanitized());
-	sent_capabilities = 1;
+		sent_capabilities = 1;
+	}
 }
 
 static int show_ref_cb(const char *path, const unsigned char *sha1, int flag, void *unused)
@@ -296,6 +300,8 @@ static void prepare_push_cert_sha1(struct child_process *proc)
 		argv_array_pushf(&env, "GIT_PUSH_CERT_KEY=%s",
 				 sigcheck.key ? sigcheck.key : "");
 		argv_array_pushf(&env, "GIT_PUSH_CERT_STATUS=%c", sigcheck.result);
+		if (push_cert_nonce)
+			argv_array_pushf(&env, "GIT_PUSH_CERT_NONCE=%s", push_cert_nonce);
 
 		proc->env = env.argv;
 	}
@@ -1228,12 +1234,29 @@ static int delete_only(struct command *commands)
 	return 1;
 }
 
+static char *prepare_push_cert_nonce(const char *sitename, const char *dir)
+{
+	struct strbuf buf = STRBUF_INIT;
+	unsigned char sha1[20];
+
+	if (!sitename) {
+		static char hostname_buf[1024];
+		gethostname(hostname_buf, sizeof(hostname_buf));
+		sitename = hostname_buf;
+	}
+	strbuf_addf(&buf, "%s:%s:%lu", sitename, dir, time(NULL));
+	hash_sha1_file(buf.buf, buf.len, "blob", sha1);
+	strbuf_release(&buf);
+	return xstrdup(sha1_to_hex(sha1));
+}
+
 int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 {
 	int advertise_refs = 0;
 	int stateless_rpc = 0;
 	int i;
 	const char *dir = NULL;
+	const char *sitename = NULL;
 	struct command *commands;
 	struct sha1_array shallow = SHA1_ARRAY_INIT;
 	struct sha1_array ref = SHA1_ARRAY_INIT;
@@ -1263,6 +1286,13 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 				fix_thin = 0;
 				continue;
 			}
+			if (skip_prefix(arg, "--sitename=", &sitename)) {
+				continue;
+			}
+			if (skip_prefix(arg, "--push-cert-nonce=", &push_cert_nonce)) {
+				push_cert_nonce = xstrdup(push_cert_nonce);
+				continue;
+			}
 
 			usage(receive_pack_usage);
 		}
@@ -1279,6 +1309,8 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 		die("'%s' does not appear to be a git repository", dir);
 
 	git_config(receive_pack_config, NULL);
+	if (!push_cert_nonce)
+		push_cert_nonce = prepare_push_cert_nonce(sitename, dir);
 
 	if (0 <= transfer_unpack_limit)
 		unpack_limit = transfer_unpack_limit;
@@ -1323,5 +1355,6 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 		packet_flush(1);
 	sha1_array_clear(&shallow);
 	sha1_array_clear(&ref);
+	free((void *)push_cert_nonce);
 	return 0;
 }
