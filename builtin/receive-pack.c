@@ -316,7 +316,7 @@ static int feed_receive_hook(void *state_, const char **bufp, size_t *sizep)
 	}
 	return 0;
 }
-
+/* ‘½•ª‚±‚±‚©‚çhook‚ğÀs run_and_feed_hook*/
 static int run_receive_hook(struct command *commands, const char *hook_name,
 			    int skip_broken)
 {
