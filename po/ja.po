@@ -520,7 +520,7 @@ msgstr "'%s'はgitコマンドのようだが、実行出来ない。git-%sが�
 
 #: help.c:346
 msgid "Uh oh. Your system reports no Git commands at all."
-msgstr "おや、あなたのシステムがGitコマンドを一つも報告しない。"
+msgstr "おや、あなたのシステムがGitコマンドを一つも報告しません。"
 
 #: help.c:368
 #, c-format
@@ -532,7 +532,7 @@ msgstr "警告: あなたが実行したGitコマンド '%s'が存在しませ�
 #: help.c:373
 #, c-format
 msgid "in %0.1f seconds automatically..."
-msgstr "%0.1f 秒で自動的に..."
+msgstr "%0.1f 秒内に自動的に..."
 
 #: help.c:380
 #, c-format
@@ -579,21 +579,21 @@ msgstr "ツリーの構築に失敗しました"
 #: merge-recursive.c:675
 #, c-format
 msgid "failed to create path '%s'%s"
-msgstr ""
+msgstr "'%s'%s 間のpathの構築に失敗しました"
 
 #: merge-recursive.c:686
 #, c-format
 msgid "Removing %s to make room for subdirectory\n"
-msgstr ""
+msgstr "サブディレクトリに場所を作るために %s を削除しました"
 
 #: merge-recursive.c:700 merge-recursive.c:721
 msgid ": perhaps a D/F conflict?"
-msgstr ""
+msgstr ": D/F が コンフリクトを起こしていませんか?"
 
 #: merge-recursive.c:711
 #, c-format
 msgid "refusing to lose untracked file at '%s'"
-msgstr ""
+msgstr "%s で探知できないファイルを失う事を拒否しました"
 
 #: merge-recursive.c:751
 #, c-format
