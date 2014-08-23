@@ -54,6 +54,12 @@ OPTIONS
 	abbreviated object name, use <n> digits, or as many digits
 	as needed to form a unique object name.  An <n> of 0
 	will suppress long format, only showing the closest tag.
+	+
+	+
+	A special case of <n> equals to "\+" (without quotes) will print
+	just a "+" sign instead of the whole suffix. This is useful if you
+	only need to know if the supplied <commit-ish> points to an exact
+	match or if there are commits between the tag found and the <commit-ish>.
 
 --candidates=<n>::
 	Instead of considering only the 10 most recent tags as
