@@ -30,6 +30,7 @@ static int have_util;
 static const char *pattern;
 static int always;
 static const char *dirty;
+static int simple_abbrev = 0;
 
 /* diff-index command arguments to check if working tree is dirty. */
 static const char *diff_index_args[] = {
@@ -378,14 +379,28 @@ static void describe(const char *arg, int last_one)
 	}
 
 	display_name(all_matches[0].name);
-	if (abbrev)
-		show_suffix(all_matches[0].depth, cmit->object.sha1);
+	if (abbrev) {
+		if (simple_abbrev)
+			printf("+");
+		else
+			show_suffix(all_matches[0].depth, cmit->object.sha1);
+	}
 	if (dirty)
 		printf("%s", dirty);
 	printf("\n");
 
 	if (!last_one)
 		clear_commit_marks(cmit, -1);
+}
+
+static int parse_opt_abbrev_for_describe_cb(const struct option *opt, const char *arg, int unset)
+{
+	if (arg && !strncmp(arg, "+", 1)) {
+		simple_abbrev = 1;
+		return 0;
+	}
+
+	return parse_opt_abbrev_cb(opt, arg, unset);
 }
 
 int cmd_describe(int argc, const char **argv, const char *prefix)
@@ -398,7 +413,6 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 		OPT_BOOL(0, "tags",       &tags, N_("use any tag, even unannotated")),
 		OPT_BOOL(0, "long",       &longformat, N_("always use long format")),
 		OPT_BOOL(0, "first-parent", &first_parent, N_("only follow first parent")),
-		OPT__ABBREV(&abbrev),
 		OPT_SET_INT(0, "exact-match", &max_candidates,
 			    N_("only output exact matches"), 0),
 		OPT_INTEGER(0, "candidates", &max_candidates,
@@ -410,6 +424,8 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 		{OPTION_STRING, 0, "dirty",  &dirty, N_("mark"),
 			N_("append <mark> on dirty working tree (default: \"-dirty\")"),
 			PARSE_OPT_OPTARG, NULL, (intptr_t) "-dirty"},
+		{OPTION_CALLBACK, 0, "abbrev", &abbrev, N_("n"), N_("use <n> digits to display SHA-1s"),
+			PARSE_OPT_OPTARG, &parse_opt_abbrev_for_describe_cb, 0},
 		OPT_END(),
 	};
 
@@ -425,8 +441,8 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 
 	save_commit_buffer = 0;
 
-	if (longformat && abbrev == 0)
-		die(_("--long is incompatible with --abbrev=0"));
+	if (longformat && (abbrev == 0 || simple_abbrev))
+		die(_("--long is incompatible with --abbrev=+ or --abbrev=0"));
 
 	if (contains) {
 		struct argv_array args;
