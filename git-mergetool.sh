@@ -213,6 +213,8 @@ checkout_staged_file () {
 }
 
 merge_file () {
+	tmpsuffix=$(git config mergetool.tmpsuffix || true)
+
 	MERGED="$1"
 
 	f=$(git ls-files -u -- "$MERGED")
@@ -228,10 +230,10 @@ merge_file () {
 	fi
 
 	ext="$$$(expr "$MERGED" : '.*\(\.[^/]*\)$')"
-	BACKUP="./$MERGED.BACKUP.$ext"
-	LOCAL="./$MERGED.LOCAL.$ext"
-	REMOTE="./$MERGED.REMOTE.$ext"
-	BASE="./$MERGED.BASE.$ext"
+	BACKUP="./$MERGED.BACKUP.$ext$tmpsuffix"
+	LOCAL="./$MERGED.LOCAL.$ext$tmpsuffix"
+	REMOTE="./$MERGED.REMOTE.$ext$tmpsuffix"
+	BASE="./$MERGED.BASE.$ext$tmpsuffix"
 
 	base_mode=$(git ls-files -u -- "$MERGED" | awk '{if ($3==1) print $1;}')
 	local_mode=$(git ls-files -u -- "$MERGED" | awk '{if ($3==2) print $1;}')
