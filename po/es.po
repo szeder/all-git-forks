@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-07-24 19:27+0200\n"
+"PO-Revision-Date: 2014-08-26 18:55+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -36,7 +36,7 @@ msgstr ""
 
 #: archive.c:10
 msgid "git archive [options] <tree-ish> [<path>...]"
-msgstr ""
+msgstr "git archive [opciones] <pseudo-árbol> [<ruta>...]"
 
 #: archive.c:11
 msgid "git archive --list"
@@ -45,7 +45,7 @@ msgstr "git archive --list"
 #: archive.c:12
 msgid ""
 "git archive --remote <repo> [--exec <cmd>] [options] <tree-ish> [<path>...]"
-msgstr ""
+msgstr "git archive --remote <repo> [--exec <orden>] [opciones] <pseudo-árbol> [<ruta>...]"
 
 #: archive.c:13
 msgid "git archive --remote <repo> [--exec <cmd>] --list"
@@ -4585,7 +4585,7 @@ msgstr ""
 
 #: builtin/describe.c:16
 msgid "git describe [options] <commit-ish>*"
-msgstr ""
+msgstr "git describe [opciones] <pseudo-commit>*"
 
 #: builtin/describe.c:17
 msgid "git describe [options] --dirty"
@@ -4717,7 +4717,7 @@ msgstr ""
 
 #: builtin/describe.c:484
 msgid "--dirty is incompatible with commit-ishes"
-msgstr ""
+msgstr "--dirty es incompatible con pseudo-commits"
 
 #: builtin/diff.c:85
 #, c-format
@@ -6373,11 +6373,11 @@ msgstr "trata como un error que algún <fichero> no esté en el índice"
 
 #: builtin/ls-files.c:502
 msgid "tree-ish"
-msgstr ""
+msgstr "pseudo-árbol"
 
 #: builtin/ls-files.c:503
 msgid "pretend that paths removed since <tree-ish> are still present"
-msgstr ""
+msgstr "hace como si las rutas eliminadas desde <pseudo-árbol> todavía existieran"
 
 #: builtin/ls-files.c:505
 msgid "show debugging data"
@@ -6385,15 +6385,15 @@ msgstr "muestra datos de depuración"
 
 #: builtin/ls-tree.c:28
 msgid "git ls-tree [<options>] <tree-ish> [<path>...]"
-msgstr ""
+msgstr "git ls-tree [<opciones>] <pseudo-árbol> [<ruta>...]"
 
 #: builtin/ls-tree.c:126
 msgid "only show trees"
-msgstr ""
+msgstr "muestra sólo árboles"
 
 #: builtin/ls-tree.c:128
 msgid "recurse into subtrees"
-msgstr ""
+msgstr "recorre los subárboles recursivamente"
 
 #: builtin/ls-tree.c:130
 msgid "show trees when recursing"
@@ -8446,11 +8446,11 @@ msgstr "git reset [--mixed | --soft | --hard | --merge | --keep] [-q] [<commit>]
 
 #: builtin/reset.c:26
 msgid "git reset [-q] <tree-ish> [--] <paths>..."
-msgstr ""
+msgstr "git reset [-q] <pseudo-árbol> [--] <rutas>..."
 
 #: builtin/reset.c:27
 msgid "git reset --patch [<tree-ish>] [--] [<paths>...]"
-msgstr ""
+msgstr "git reset --patch [<pseudo-árbol>] [--] [<rutas>...]"
 
 #: builtin/reset.c:33
 msgid "mixed"
@@ -8601,7 +8601,7 @@ msgstr ""
 
 #: builtin/revert.c:22
 msgid "git revert [options] <commit-ish>..."
-msgstr ""
+msgstr "git revert [opciones] <pseudo-commit>..."
 
 #: builtin/revert.c:23
 msgid "git revert <subcommand>"
@@ -8609,7 +8609,7 @@ msgstr "git revert <suborden>"
 
 #: builtin/revert.c:28
 msgid "git cherry-pick [options] <commit-ish>..."
-msgstr ""
+msgstr "git cherry-pick [opciones] <pseudo-commit>..."
 
 #: builtin/revert.c:29
 msgid "git cherry-pick <subcommand>"
