@@ -1122,6 +1122,17 @@ int git_env_bool(const char *k, int def)
 	return v ? git_config_bool(k, v) : def;
 }
 
+/*
+ * Use default if environment variable is unset or empty string.
+ */
+unsigned long git_env_ulong(const char *k, unsigned long val)
+{
+	const char *v = getenv(k);
+	if (v && !git_parse_ulong(v, &val))
+		die("failed to parse %s", k);
+	return val;
+}
+
 int git_config_system(void)
 {
 	return !git_env_bool("GIT_CONFIG_NOSYSTEM", 0);
