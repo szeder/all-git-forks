@@ -466,15 +466,31 @@ int xmkstemp_mode(char *template, int mode)
 
 static int warn_if_unremovable(const char *op, const char *file, int rc)
 {
-	if (rc < 0) {
-		int err = errno;
-		if (ENOENT != err) {
-			warning("unable to %s %s: %s",
-				op, file, strerror(errno));
-			errno = err;
-		}
-	}
+	int err;
+	if (rc >= 0 || errno == ENOENT)
+		return rc;
+	err = errno;
+	warning("unable to %s %s: %s", op, file, strerror(errno));
+	errno = err;
 	return rc;
+}
+
+int unlink_or_msg(const char *file, struct strbuf *err)
+{
+	if (err) {
+		int rc = unlink(file);
+		int save_errno = errno;
+
+		if (rc < 0 && errno != ENOENT) {
+			strbuf_addf(err, "unable to unlink %s: %s",
+				    file, strerror(errno));
+			errno = save_errno;
+			return -1;
+		}
+		return 0;
+	}
+
+	return unlink_or_warn(file);
 }
 
 int unlink_or_warn(const char *file)
