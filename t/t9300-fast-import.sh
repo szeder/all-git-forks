@@ -3049,7 +3049,7 @@ D ""
 
 INPUT_END
 
-test_expect_failure 'U: filedelete root succeeds' '
+test_expect_success 'U: filedelete root succeeds' '
     git fast-import <input
 '
 

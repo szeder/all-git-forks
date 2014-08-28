@@ -1428,7 +1428,7 @@ static void store_tree(struct tree_entry *root)
 		return;
 
 	if (!root->tree)
-		load_tree(root)
+		load_tree(root);
 	t = root->tree;
 
 	for (i = 0; i < t->entry_count; i++) {
