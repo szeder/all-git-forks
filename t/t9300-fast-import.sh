@@ -3017,4 +3017,48 @@ test_expect_success 'T: empty reset doesnt delete branch' '
 	git rev-parse --verify refs/heads/not-to-delete
 '
 
+###
+### series U (filedelete)
+###
+
+cat >input <<INPUT_END
+commit refs/heads/U
+committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+data <<COMMIT
+test setup
+COMMIT
+M 100644 inline hello.c
+data <<BLOB
+blob 1
+BLOB
+
+INPUT_END
+
+test_expect_success 'U: initialize for U tests' '
+	git fast-import <input
+'
+
+cat >input <<INPUT_END
+commit refs/heads/U
+committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+data <<COMMIT
+must succeed
+COMMIT
+from refs/heads/U^0
+D ""
+
+INPUT_END
+
+test_expect_success 'U: filedelete root succeeds' '
+    git fast-import <input
+'
+
+test_expect_success 'U: validate filedelete result' '
+	cat >expect <<-EOF &&
+	:100644 000000 c18147dc648481eeb65dc5e66628429a64843327 0000000000000000000000000000000000000000 D	hello.c
+	EOF
+	git diff-tree -M -r U^1 U >actual &&
+	compare_diff_raw expect actual
+'
+
 test_done
