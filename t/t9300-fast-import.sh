@@ -3049,17 +3049,15 @@ D ""
 
 INPUT_END
 
-test_expect_success 'U: filedelete root succeeds' '
+test_expect_failure 'U: filedelete root succeeds' '
     git fast-import <input
 '
 
-cat >expect <<EOF
-:100644 000000 c18147dc648481eeb65dc5e66628429a64843327 0000000000000000000000000000000000000000 D	hello.c
-EOF
-
-git diff-tree -M -r U^1 U >actual
-
 test_expect_success 'U: validate filedelete result' '
+	cat >expect <<-EOF &&
+	:100644 000000 c18147dc648481eeb65dc5e66628429a64843327 0000000000000000000000000000000000000000 D	hello.c
+	EOF
+	git diff-tree -M -r U^1 U >actual &&
 	compare_diff_raw expect actual
 '
 
