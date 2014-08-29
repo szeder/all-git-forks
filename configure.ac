@@ -946,6 +946,14 @@ GIT_CHECK_FUNC(setitimer,
 [NO_SETITIMER=YesPlease])
 GIT_CONF_SUBST([NO_SETITIMER])
 #
+# Define NO_TIMER_SETTIME if you don't have timer_settime
+GIT_CHECK_FUNC(timer_settime,
+[NO_TIMER_SETTIME=],
+[AC_SEARCH_LIBS(timer_settime,[rt],
+  [NO_TIMER_SETTIME=],
+  [NO_TIMER_SETTIME=YesPlease])])
+GIT_CONF_SUBST([NO_TIMER_SETTIME])
+#
 # Define NO_STRCASESTR if you don't have strcasestr.
 GIT_CHECK_FUNC(strcasestr,
 [NO_STRCASESTR=],

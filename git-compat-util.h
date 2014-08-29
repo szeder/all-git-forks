@@ -225,7 +225,25 @@ struct itimerspec {
 #endif
 
 #ifdef NO_SETITIMER
-#define setitimer(which,value,ovalue)
+#define setitimer(which,value,ovalue) ((void) (which), (void) (value), (void) (ovalue), errno = ENOSYS, -1)
+#endif
+
+#ifdef NO_TIMER_SETTIME
+#define timer_create(clockid, sevp, timerp) ((void) (clockid), (void) (sevp), (void) (timerp), errno = ENOSYS, -1)
+
+#define timer_delete(timer) do {		\
+	struct itimerval v = {{0,},};		\
+	setitimer(ITIMER_REAL, &v, NULL);	\
+} while (0)
+
+#define timer_settime(timer, flags, value, ovalue) do {				\
+	struct itimerval _ivalue;						\
+	_ivalue.it_interval.tv_sec = value.it_interval.tv_sec;			\
+	_ivalue.it_interval.tv_usec = value.it_interval.tv_nsec / 1000L;	\
+	_ivalue.it_value.tv_sec  value.it_value.tv_sec;				\
+	_ivalue_it_value.tv_usec = value.it_value.tv_nsec / 1000L;		\
+	setitimer(ITIMER_REAL, &_ivalue, NULL);					\
+while (0)
 #endif
 
 #ifndef NO_LIBGEN_H
