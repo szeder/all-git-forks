@@ -77,4 +77,19 @@ test_expect_success 'index-pack can reject packs with duplicates' '
 	test_expect_code 1 git cat-file -e $LO_SHA1
 '
 
+test_expect_success 'duplicated delta base does not trigger assert' '
+	clear_packs &&
+	{
+		A=01d7713666f4de822776c7622c10f1b07de280dc &&
+		B=e68fe8129b546b101aee9510c5328e7f21ca1d18 &&
+		pack_header 3 &&
+		pack_obj $A $B &&
+		pack_obj $B &&
+		pack_obj $B
+	} >dups.pack &&
+	pack_trailer dups.pack &&
+	git index-pack --stdin <dups.pack &&
+	test_must_fail git index-pack --stdin --strict <dups.pack
+'
+
 test_done
