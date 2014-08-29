@@ -776,6 +776,13 @@ AC_CHECK_MEMBER(struct dirent.d_ino,
 [#include <dirent.h>])
 GIT_CONF_SUBST([NO_D_INO_IN_DIRENT])
 #
+# Define NO_STRUCT_SIGEVENT if you don't have struct sigevent.
+AC_CHECK_TYPES([struct sigevent],
+[NO_STRUCT_SIGEVENT=],
+[NO_STRUCT_SIGEVENT=UnfortunatelyYes],
+[#include <signal.h>])
+GIT_CONF_SUBST([NO_STRUCT_SIGEVENT])
+#
 # Define NO_D_TYPE_IN_DIRENT if your platform defines DT_UNKNOWN but lacks
 # d_type in struct dirent (latest Cygwin -- will be fixed soonish).
 AC_CHECK_MEMBER(struct dirent.d_type,

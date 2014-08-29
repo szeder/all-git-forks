@@ -198,6 +198,18 @@ struct timespec {
 };
 #endif
 
+#ifndef SIGEV_SIGNAL
+#define SIGEV_SIGNAL 1 /* dummy */
+#endif
+
+#ifdef NO_STRUCT_SIGEVENT
+struct sigevent /* dummy */
+{
+	int sigev_notify;
+	int sigev_signo;
+};
+#endif
+
 #ifdef NO_STRUCT_ITIMERVAL
 struct itimerval {
 	struct timeval it_interval;

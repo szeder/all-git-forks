@@ -186,6 +186,8 @@ all::
 #
 # Define NO_STRUCT_TIMESPEC if you don't have struct timespec
 #
+# Define NO_STRUCT_SIGEVENT if you don't have struct sigevent
+#
 # Define NO_STRUCT_ITIMERVAL if you don't have struct itimerval
 # This also implies NO_SETITIMER
 #
@@ -1347,6 +1349,9 @@ ifdef NO_TIMER_T
 endif
 ifdef NO_STRUCT_TIMESPEC
 	COMPAT_CFLAGS += -DNO_STRUCT_TIMESPEC
+endif
+ifdef NO_STRUCT_SIGEVENT
+	COMPAT_CFLAGS += -DNO_STRUCT_SIGEVENT
 endif
 ifdef NO_STRUCT_ITIMERVAL
 	COMPAT_CFLAGS += -DNO_STRUCT_ITIMERVAL
