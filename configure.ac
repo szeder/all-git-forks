@@ -762,6 +762,13 @@ AC_CHECK_TYPES([timer_t],
  #include <time.h>])
 GIT_CONF_SUBST([NO_TIMER_T])
 #
+# Define NO_STRUCT_TIMESPEC if you don't have struct timespec.
+AC_CHECK_TYPES([struct timespec],
+[NO_STRUCT_TIMESPEC=],
+[NO_STRUCT_TIMESPEC=UnfortunatelyYes],
+[#include <sys/time.h>])
+GIT_CONF_SUBST([NO_STRUCT_TIMESPEC])
+#
 # Define NO_D_INO_IN_DIRENT if you don't have d_ino in your struct dirent.
 AC_CHECK_MEMBER(struct dirent.d_ino,
 [NO_D_INO_IN_DIRENT=],

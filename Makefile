@@ -184,6 +184,8 @@ all::
 #
 # Define NO_TIMER_T if you don't have timer_t.
 #
+# Define NO_STRUCT_TIMESPEC if you don't have struct timespec
+#
 # Define NO_STRUCT_ITIMERVAL if you don't have struct itimerval
 # This also implies NO_SETITIMER
 #
@@ -1342,6 +1344,9 @@ ifdef OBJECT_CREATION_USES_RENAMES
 endif
 ifdef NO_TIMER_T
 	COMPAT_CFLAGS += -DNO_TIMER_T
+endif
+ifdef NO_STRUCT_TIMESPEC
+	COMPAT_CFLAGS += -DNO_STRUCT_TIMESPEC
 endif
 ifdef NO_STRUCT_ITIMERVAL
 	COMPAT_CFLAGS += -DNO_STRUCT_ITIMERVAL

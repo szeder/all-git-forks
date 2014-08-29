@@ -191,6 +191,13 @@ extern int compat_mkdir_wo_trailing_slash(const char*, mode_t);
 typedef int timer_t;
 #endif
 
+#ifdef NO_STRUCT_TIMESPEC
+struct timespec {
+	time_t tv_sec;
+	long tv_nsec;
+};
+#endif
+
 #ifdef NO_STRUCT_ITIMERVAL
 struct itimerval {
 	struct timeval it_interval;
