@@ -598,22 +598,22 @@ msgstr "%s で探知できないファイルを失う事を拒否しました"
 #: merge-recursive.c:751
 #, c-format
 msgid "cannot read object %s '%s'"
-msgstr "%sオブジェクトを読めません '%s'"
+msgstr "%s オブジェクトを読めません '%s'"
 
 #: merge-recursive.c:753
 #, c-format
 msgid "blob expected for %s '%s'"
-msgstr ""
+msgstr "'%s' は %s と思われるものです"
 
 #: merge-recursive.c:776 builtin/clone.c:317
 #, c-format
 msgid "failed to open '%s'"
-msgstr ""
+msgstr "'%s' を開くことに失敗しました"
 
 #: merge-recursive.c:784
 #, c-format
 msgid "failed to symlink '%s'"
-msgstr ""
+msgstr "'%s'に シンボリックリンクを張ることに失敗しました。"
 
 #: merge-recursive.c:787
 #, c-format
@@ -627,7 +627,7 @@ msgstr "内部マージの実行に失敗しました"
 #: merge-recursive.c:929
 #, c-format
 msgid "Unable to add %s to database"
-msgstr ""
+msgstr "データベースに %s を追加する事に失敗しました"
 
 #: merge-recursive.c:945
 msgid "unsupported object type in the tree"
