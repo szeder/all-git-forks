@@ -187,6 +187,10 @@ typedef unsigned long uintptr_t;
 extern int compat_mkdir_wo_trailing_slash(const char*, mode_t);
 #endif
 
+#ifdef NO_TIMER_T
+typedef int timer_t;
+#endif
+
 #ifdef NO_STRUCT_ITIMERVAL
 struct itimerval {
 	struct timeval it_interval;
