@@ -191,6 +191,8 @@ all::
 # Define NO_STRUCT_ITIMERVAL if you don't have struct itimerval
 # This also implies NO_SETITIMER
 #
+# Define NO_STRUCT_ITIMERSPEC if you don't have struct itimerspec
+#
 # Define NO_FAST_WORKING_DIRECTORY if accessing objects in pack files is
 # generally faster on your platform than accessing the working directory.
 #
@@ -1356,6 +1358,9 @@ endif
 ifdef NO_STRUCT_ITIMERVAL
 	COMPAT_CFLAGS += -DNO_STRUCT_ITIMERVAL
 	NO_SETITIMER = YesPlease
+endif
+ifdef NO_STRUCT_ITIMERSPEC
+	COMPAT_CFLAGS += -DNO_STRUCT_ITIMERSPEC
 endif
 ifdef NO_SETITIMER
 	COMPAT_CFLAGS += -DNO_SETITIMER

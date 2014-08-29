@@ -217,6 +217,13 @@ struct itimerval {
 };
 #endif
 
+#ifdef NO_STRUCT_ITIMERSPEC
+struct itimerspec {
+	struct timespec it_interval;
+	struct timespec it_value;
+};
+#endif
+
 #ifdef NO_SETITIMER
 #define setitimer(which,value,ovalue)
 #endif
