@@ -134,11 +134,11 @@ test_expect_success 'rev-parse --exclude with --branches' '
 '
 
 test_expect_success 'rev-parse --exclude with --all' '
-	compare rev-parse "--exclude=refs/remotes/* --all" "--branches --tags"
+	compare rev-parse "--exclude=refs/remotes/* --all" "HEAD --branches --tags"
 '
 
 test_expect_success 'rev-parse accumulates multiple --exclude' '
-	compare rev-parse "--exclude=refs/remotes/* --exclude=refs/tags/* --all" --branches
+	compare rev-parse "--exclude=refs/remotes/* --exclude=refs/tags/* --all" "HEAD --branches"
 '
 
 test_expect_success 'rev-list --glob=refs/heads/subspace/*' '
