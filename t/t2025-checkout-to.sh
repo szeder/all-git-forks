@@ -17,6 +17,12 @@ test_expect_success 'checkout --to an existing worktree' '
 	test_must_fail git checkout --detach --to existing master
 '
 
+test_expect_success 'checkout --to refuses to checkout locked branch' '
+	test_must_fail git checkout --to zere master &&
+	! test -d zere &&
+	! test -d .git/repos/zere
+'
+
 test_expect_success 'checkout --to a new worktree' '
 	git checkout --to here master &&
 	(
