@@ -642,6 +642,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				continue;
 			}
 			if (!strcmp(arg, "--all")) {
+				head_ref(show_reference, NULL);
 				for_each_ref(show_reference, NULL);
 				continue;
 			}
