@@ -18,7 +18,7 @@
 #include "utf8.h"
 
 static const char cut_line[] =
-"------------------------ >8 ------------------------\n";
+"--------------------------------- >8 ---------------------------------\n";
 
 static char default_wt_status_colors[][COLOR_MAXLEN] = {
 	GIT_COLOR_NORMAL, /* WT_STATUS_HEADER */

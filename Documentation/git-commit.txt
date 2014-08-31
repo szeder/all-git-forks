@@ -189,7 +189,7 @@ verbatim::
 scissors::
 	Same as `whitespace`, except that everything from (and
 	including) the line
-	"`# ------------------------ >8 ------------------------`"
+	"`# --------------------------------- >8 ---------------------------------`"
 	is truncated if the message is to be edited. "`#`" can be
 	customized with core.commentChar.
 default::

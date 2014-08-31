@@ -229,7 +229,7 @@ test_expect_success 'cleanup commit messages (scissors option,-F,-e)' '
 	cat >text <<EOF &&
 
 # to be kept
-# ------------------------ >8 ------------------------
+# --------------------------------- >8 ---------------------------------
 to be removed
 EOF
 	echo "# to be kept" >expect &&
