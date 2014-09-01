@@ -189,6 +189,10 @@ void dealloc_tasks(task_list list){
 		free((*aux).notes);
 		free((*aux).type);
 		free((*aux).priority);
+		free((*aux).est_start_date);
+		free((*aux).est_end_date);
+		free((*aux).start_date);
+		free((*aux).end_date);
 		free(aux);
 	}
 }

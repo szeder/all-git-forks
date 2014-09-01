@@ -6,6 +6,7 @@
 #include "../gitpro_validate/task_validate.h"
 #include "../gitpro_api/gitpro_data_api.h"
 #include "../gitpro_role_check/check_role.h"
+#include "../gitpro_functions/task_functions.h"
 
 #define OUT stdout
 #define ERR stderr
@@ -20,26 +21,7 @@ static const char * const builtin_task_usage[] =
 	NULL
 };
 
-/* Creates a new task */
-void create_task();
-
-/* Link or unlink a list of files and folders to a given task */ 
-void link_task();
-
-/* Assign or unassign a list of users to a given task */
-void assign_task();
-
-/* Remove an existent task */
-void delete_task();
-
-/* Update different values of a task */
-void update_task();
-
-/* Makes a filtered search of tasks on depending given parameters */
-void read_task();
-
-
-static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread, all;
+static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread;
 static char *add = NULL;
 static char *rm = NULL;
 static char *task_id = NULL;
@@ -100,26 +82,27 @@ void receive_update_filters(char **id,char **name,char **state,char **est_start,
 	fputs(_("All filters are by equality"),OUT);
 	fputs(_("\ntask id: "),OUT);
 	fgets((*id),MAX_BUFFER_SIZE,IN);
+	(*id)[strlen((*id))-1]='\0';
 	fputs(_("task name: "),OUT);
-	fgets((*name),MAX_BUFFER_SIZE,IN);
+	fgets((*name),MAX_BUFFER_SIZE,IN);(*name)[strlen((*name))-1]='\0';
 	fputs(_("task state: "),OUT);
-	fgets((*state),MAX_BUFFER_SIZE,IN);
+	fgets((*state),MAX_BUFFER_SIZE,IN);(*state)[strlen((*state))-1]='\0';
 	fputs(_("task estimated start date: "),OUT);
-	fgets((*est_start),MAX_BUFFER_SIZE,IN);
+	fgets((*est_start),MAX_BUFFER_SIZE,IN);(*est_start)[strlen((*est_start))-1]='\0';
 	fputs(_("task estimated end date: "),OUT);
-	fgets((*est_end),MAX_BUFFER_SIZE,IN);
+	fgets((*est_end),MAX_BUFFER_SIZE,IN);(*est_end)[strlen((*est_end))-1]='\0';
 	fputs(_("task real start date: "),OUT);
-	fgets((*start),MAX_BUFFER_SIZE,IN);
+	fgets((*start),MAX_BUFFER_SIZE,IN);(*start)[strlen((*start))-1]='\0';
 	fputs(_("task real end date: "),OUT);
-	fgets((*end),MAX_BUFFER_SIZE,IN);
+	fgets((*end),MAX_BUFFER_SIZE,IN);(*end)[strlen((*end))-1]='\0';
 	fputs(_("task priority: "),OUT);
-	fgets((*prior),MAX_BUFFER_SIZE,IN);
+	fgets((*prior),MAX_BUFFER_SIZE,IN);(*prior)[strlen((*prior))-1]='\0';
 	fputs(_("task type: "),OUT);
-	fgets((*type),MAX_BUFFER_SIZE,IN);
+	fgets((*type),MAX_BUFFER_SIZE,IN);(*type)[strlen((*type))-1]='\0';
 	fputs(_("task estimated time in minutes: "),OUT);
-	fgets((*est_time),MAX_BUFFER_SIZE,IN);
+	fgets((*est_time),MAX_BUFFER_SIZE,IN);(*est_time)[strlen((*est_time))-1]='\0';
 	fputs(_("task real time in minutes: "),OUT);
-	fgets((*time),MAX_BUFFER_SIZE,IN);
+	fgets((*time),MAX_BUFFER_SIZE,IN);(*time)[strlen((*time))-1]='\0';
 }
 
 /* Main code of task command */
@@ -220,8 +203,12 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 					return 0;
 			}
 /* END [1.1.1] Validate create data */
-			/* Create task option */
-			create_task();
+/* START [1.1.2] Create task proccess */
+			create_task(task_name,task_state,task_desc,task_notes,task_est_start,
+				task_est_end,task_start,task_end,task_prior,task_type,task_est_time,
+				task_time);
+			fputs(_("Task created successfully\n"),OUT);
+/* END [1.1.2] Create task proccess */
 		}else if(tlink){
 /* START [1.5.1] Validate link data */
 			if(file){
@@ -243,8 +230,12 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 				return 0;
 			}
 /* END [1.5.1] Validate link data */
-			/* Link task option */
-			link_task();
+/* START [1.5.2] Add file associations */
+			add_link_files(task_id,add);
+/* END [1.5.2] Add file associations */
+/* START [1.5.3] Rm file associations */
+			rm_link_files(task_id,rm);
+/* END [1.5.3] Rm file associations */
 		}else if(tassign){
 /* START [1.6.1] Validate assign data */
 			if(user){
@@ -266,8 +257,13 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 				return 0;
 			}
 /* END [1.6.1] Validate assign data */
-			/* Assign task option */
-			assign_task();
+			printf("** Asignations to task %s modified **\n",task_id);
+/* START [1.6.2] Add assignations proccess */
+			add_assign_task(task_id,add);
+/* END [1.6.2] Add assignations proccess */
+/* START [1.6.3] Rm assignations proccess */
+			rm_assign_task(task_id,rm);
+/* END [1.6.3] Rm assignations proccess */
 		}else if(tdelete){
 /* START [1.2.1] Validate delete data */
 			if(task_name!=NULL || task_id!=NULL || task_state!=NULL ||
@@ -283,9 +279,14 @@ filter_task_est_time,filter_task_time,add,rm)){
 					fputs(_("Incorrect data. Check it all and try again\n"),ERR);
 					return 0;
 			}
-/* END [1.2.1] Validate create data */
-			/* Remove task option */
-			delete_task();
+/* END [1.2.1] Validate delete data */
+/* START [1.2.2] Filter task */
+			char * filter = filter_task(filter_task_id,filter_task_name,filter_task_state,	filter_task_est_start,filter_task_est_end,filter_task_start,filter_task_end,filter_task_prior,filter_task_type,
+filter_task_est_time,filter_task_time);
+/* END [1.2.2] Filter task */
+/* START [1.2.3] Remove task proccess */
+			rm_task(filter);
+/* END [1.2.3] Remove task proccess */
 		}else if(tupdate){
 /* START [1.3.1] Validate update data */
 			switch(validate_update_task(0,task_id,task_name,task_state,task_desc,task_notes,
@@ -302,8 +303,14 @@ filter_task_est_time,filter_task_time,add,rm)){
 					return 0;
 			}
 /* END [1.3.1] Validate update data */
-			/* Update task option */
-			update_task();
+/* START [1.3.2] Filter task */
+			char *filter = filter_task(filter_task_id,filter_task_name,filter_task_state,	filter_task_est_start,filter_task_est_end,filter_task_start,filter_task_end,filter_task_prior,filter_task_type,
+filter_task_est_time,filter_task_time);
+/* END [1.3.2] Filter task */
+/* START [1.3.3] Update task process */
+			update_task(filter,task_name,task_state,task_desc,task_notes,task_est_start,
+				task_est_end,task_start,task_end,task_prior,task_type,task_est_time,task_time);
+/* END [1.3.3] Update task process */
 		}else if(tread){
 /* START [1.4.1] Validate read data */
 			if(task_name!=NULL || task_id!=NULL || task_state!=NULL ||
@@ -320,8 +327,13 @@ filter_task_est_time,filter_task_time,add,rm)){
 					return 0;
 			}
 /* END [1.4.1] Validate read data */
-			/* Read task option */
-			read_task();
+/* START [1.4.2] Filter task */
+			char * filter = filter_task(filter_task_id,filter_task_name,filter_task_state,	filter_task_est_start,filter_task_est_end,filter_task_start,filter_task_end,filter_task_prior,filter_task_type,
+filter_task_est_time,filter_task_time);
+/* END [1.4.2] Filter task */
+/* START [1.4.3] Read task */
+			read_task(filter);
+/* END [1.4.3] Read task */
 		}else{
 			/* No action defined */
 			fputs(_("No action defined"),ERR);
@@ -336,63 +348,3 @@ filter_task_est_time,filter_task_time,add,rm)){
 	}
 	return 1;
 }
-
-void create_task(){
-	fputs(_("Create task option\n"),OUT);
-	if(task_name!=NULL && task_state!=NULL && task_prior!=NULL && task_type!=NULL){
-		printf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",task_name,task_state,
-			task_desc,task_prior,task_type,task_notes,task_est_time,task_time,
-			task_est_start,task_est_end,task_start,task_end);
-	}
-}
-
-void link_task(){
-	fputs(_("Link files to task option\n"),OUT);
-	if(task_id!=NULL && file && (add!=NULL || rm!=NULL)){
-		printf("%s\n%s\n%s\n",task_id,add,rm);
-	}
-}
-
-void assign_task(){
-	fputs(_("Assign users to task option\n"),OUT);
-	if(task_id!=NULL && user && (add!=NULL || rm!=NULL)){
-		printf("%s\n%s\n%s\n",task_id,add,rm);
-	}
-}
-
-void delete_task(){
-	fputs(_("Delete task option\n"),OUT);
-	if(task_id!=NULL && task_name!=NULL && task_state!=NULL && task_desc!=NULL && 
-		task_prior!=NULL && task_type!=NULL && task_notes!=NULL && task_est_time!=NULL && 
-		task_time!=NULL && task_est_start!=NULL && task_est_end!=NULL && task_start!=NULL && 
-		task_end!=NULL){
-		printf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",task_name,task_state,
-			task_desc,task_prior,task_type,task_notes,task_est_time,task_time,
-			task_est_start,task_est_end,task_start,task_end);
-	}
-}
-
-void update_task(){
-	fputs(_("Update task option\n"),OUT);
-	if(task_id!=NULL && task_name!=NULL && task_state!=NULL && task_desc!=NULL && 
-		task_prior!=NULL && task_type!=NULL && task_notes!=NULL && task_est_time!=NULL && 
-		task_time!=NULL && task_est_start!=NULL && task_est_end!=NULL && task_start!=NULL && 
-		task_end!=NULL){
-		printf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",task_id,task_name,task_state,
-			task_desc,task_prior,task_type,task_notes,task_est_time,task_time,
-			task_est_start,task_est_end,task_start,task_end);
-	}
-}
-
-void read_task(){
-	fputs(_("Read tasks option\n"),OUT);
-	if(task_id!=NULL && task_name!=NULL && task_state!=NULL && task_desc!=NULL && 
-		task_prior!=NULL && task_type!=NULL && task_notes!=NULL && task_est_time!=NULL && 
-		task_time!=NULL && task_est_start!=NULL && task_est_end!=NULL && task_start!=NULL && 
-		task_end!=NULL){
-		printf("%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",task_id,task_name,task_state,
-			task_desc,task_prior,task_type,task_notes,task_est_time,task_time,
-			task_est_start,task_est_end,task_start,task_end);
-	}
-}
-

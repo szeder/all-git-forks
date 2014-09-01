@@ -236,6 +236,14 @@ char *_and_(char *cond1,char *cond2);
 	Example		: _or_(cond(...),cond(...)) would return '... OR ...' */
 char *_or_(char *cond1,char *cond2);
 
+/*	Name		: concat
+	Parameters	: strings to apply concat operator
+	Return		: sql string concat
+	Note		: remember to free pointer returned. to use with sqlite3
+	Example		: concat(hi,'bye') would return '(hi || 'bye')'
+	Used for	: add text to description or notes in task */
+char *concat(char *string1, char *string2);
+
 /*	Name		: count
 	Parameters	: chosen field
 	Return		: count expression to use as field in construct query for scalar results (f.e)

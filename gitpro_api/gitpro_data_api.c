@@ -281,6 +281,8 @@ generic_list exec_query(const char *sql){
 	(*generic).type_info = types;
 	(*generic).state_info = states;
 	(*generic).prior_info = priors;
+	roles=NULL;tasks=NULL;users=NULL;files=NULL;asocs=NULL;asigs=NULL;
+	types=NULL;states=NULL;priors=NULL;
 	return generic;
 }
 

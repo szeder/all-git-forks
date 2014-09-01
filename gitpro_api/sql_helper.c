@@ -373,3 +373,19 @@ char *lower(char *field){
 char *upper(char *field){
 	return make_scalar("UPPER",field);
 }
+
+/* See specification in gitpro_data_api.h */
+char *concat(char *string1, char *string2){
+	/* string 1 length + string 2 lenght + end string character + 2 parenthesis + 2 spaces 
+	+ concat operator (||) + coalesce operator, other 2 parenthesis, 1 comma and empty char 
+	(+13)*/
+	char *result = (char *) malloc(strlen(string1)+strlen(string2)+1+2+1+2+13);	
+	strcpy(result,"(");
+	strcat(result,"coalesce(");
+	strcat(result,string1);
+	strcat(result,",'')");
+	strcat(result," || ");
+	strcat(result,string2);
+	strcat(result,")");
+	return result;
+}

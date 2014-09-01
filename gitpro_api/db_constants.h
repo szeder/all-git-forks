@@ -6,6 +6,7 @@
 
 //SQL ALL
 #define ALL "*"
+#define NULL_DB "NULL"
 
 //TABLE NAMES
 #define ROLE_TABLE "GP_ROL"

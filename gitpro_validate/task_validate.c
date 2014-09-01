@@ -218,18 +218,6 @@ int validate_duplicate_task(char *name,char *state,char *type,char *prior){
 	return DATA_OK;
 }
 
-/*	Name		: delete_enter
-	Parameters	: pointer to string where enter char will be deleted
-	Return 		: nothing
-	Used to		: remove '\n' character from read filters */
-void delete_enter(char **param){
-	if(param!=NULL){
-		if((*param)!=NULL){
-			(*param)[strlen((*param))-1]='\0';
-		}
-	}
-}
-
 /*	Name		: validate_filters
 	Parameters	: filters data
 	Return		: DATA_OK or INCORRECT_DATA 
@@ -237,56 +225,36 @@ void delete_enter(char **param){
 int validate_filters(char *id,char *state,char *type,char *prior,char *est_time,char *time,
 					char *est_start,char *est_end,char *start,char *end){
 	int check=0;
-	if(strlen(id)>1){
-		delete_enter(&id);
+	if(strlen(id)>0){
 		check = validate_number(id);
-		if(check!=DATA_OK) return check;
-	}
-	if(strlen(state)>1){
-		delete_enter(&state);
+		if(check!=DATA_OK) return check;}
+	if(strlen(state)>0){
 		check = validate_constant(state,STATE);
-		if(check!=DATA_OK) return check;
-	}
-	if(strlen(type)>1){
-		delete_enter(&type);
+		if(check!=DATA_OK) return check;}
+	if(strlen(type)>0){
 		check = validate_constant(type,TYPE);
-		if(check!=DATA_OK) return check;
-	}
-	if(strlen(prior)>1){
-		delete_enter(&prior);
+		if(check!=DATA_OK) return check;}
+	if(strlen(prior)>0){
 		check = validate_constant(prior,PRIORITY);
-		if(check!=DATA_OK) return check;
-	}
-	if(strlen(est_time)>1){
-		delete_enter(&est_time);
+		if(check!=DATA_OK) return check;}
+	if(strlen(est_time)>0){
 		check = validate_time(est_time);
-		if(check!=DATA_OK) return check;
-	}
-	if(strlen(time)>1){
-		delete_enter(&time);
+		if(check!=DATA_OK) return check;}
+	if(strlen(time)>0){
 		check = validate_time(time);
-		if(check!=DATA_OK) return check;
-	}
-	if(strlen(est_start)>1){
-		delete_enter(&est_start);
+		if(check!=DATA_OK) return check;}
+	if(strlen(est_start)>0){
 		check = validate_date(est_start);
-		if(check!=DATA_OK) return check;
-	}
-	if(strlen(est_end)>1){
-		delete_enter(&est_end);
+		if(check!=DATA_OK) return check;}
+	if(strlen(est_end)>0){
 		check = validate_date(est_end);
-		if(check!=DATA_OK) return check;
-	}
-	if(strlen(start)>1){
-		delete_enter(&start);
+		if(check!=DATA_OK) return check;}
+	if(strlen(start)>0){
 		check = validate_date(start);
-		if(check!=DATA_OK) return check;
-	}
-	if(strlen(end)>1){
-		delete_enter(&end);
+		if(check!=DATA_OK) return check;}
+	if(strlen(end)>0){
 		check = validate_date(end);
-		if(check!=DATA_OK) return check;
-	}
+		if(check!=DATA_OK) return check;}
 	return DATA_OK;
 }
 
@@ -450,7 +418,7 @@ int select_ambig_paths(int number){
 			}
 			char *option = (char *) malloc(NUMBER_SIZE);
 			fgets(option,NUMBER_SIZE,stdin);
-			delete_enter(&option);
+			option[strlen(option)-1]='\0';
 			if(validate_number(option)!=DATA_OK) flag=1;
 			else{
 				int select = atoi(option);
