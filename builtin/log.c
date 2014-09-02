@@ -229,12 +229,13 @@ static void show_early_header(struct rev_info *rev, const char *stage, int nr)
 	printf(_("Final output: %d %s\n"), nr, stage);
 }
 
-static struct itimerval early_output_timer;
+static timer_t early_output_timer;
 
 static void log_show_early(struct rev_info *revs, struct commit_list *list)
 {
 	int i = revs->early_output;
 	int show_header = 1;
+	struct itimerspec value;
 
 	sort_in_topological_order(&list, revs->sort_order);
 	while (list && i) {
@@ -271,9 +272,11 @@ static void log_show_early(struct rev_info *revs, struct commit_list *list)
 	 * trigger every second even if we're blocked on a
 	 * reader!
 	 */
-	early_output_timer.it_value.tv_sec = 0;
-	early_output_timer.it_value.tv_usec = 500000;
-	setitimer(ITIMER_REAL, &early_output_timer, NULL);
+	value.it_value.tv_sec = 0;
+	value.it_value.tv_nsec = 500000L * 1000L;
+	value.it_interval.tv_sec = 0;
+	value.it_interval.tv_nsec = 0;
+	timer_settime(early_output_timer, 0, &value, NULL);
 }
 
 static void early_output(int signal)
@@ -284,6 +287,8 @@ static void early_output(int signal)
 static void setup_early_output(struct rev_info *rev)
 {
 	struct sigaction sa;
+	struct sigevent sev;
+	struct itimerspec value;
 
 	/*
 	 * Set up the signal handler, minimally intrusively:
@@ -305,14 +310,22 @@ static void setup_early_output(struct rev_info *rev)
 	 *
 	 * This is a one-time-only trigger.
 	 */
-	early_output_timer.it_value.tv_sec = 0;
-	early_output_timer.it_value.tv_usec = 100000;
-	setitimer(ITIMER_REAL, &early_output_timer, NULL);
+	memset(&sev, 0, sizeof(sev));
+	sev.sigev_notify = SIGEV_SIGNAL;
+	sev.sigev_signo = SIGALRM;
+	timer_create(CLOCK_MONOTONIC, &sev, &early_output_timer);
+
+	value.it_value.tv_sec = 0;
+	value.it_value.tv_nsec = 100000L * 1000L;
+	value.it_interval.tv_sec = 0;
+	value.it_interval.tv_nsec = 0;
+	timer_settime(early_output_timer, 0, &value, NULL);
 }
 
 static void finish_early_output(struct rev_info *rev)
 {
 	int n = estimate_commit_count(rev, rev->commits);
+	timer_delete(early_output_timer);
 	signal(SIGALRM, SIG_IGN);
 	show_early_header(rev, "done", n);
 }
