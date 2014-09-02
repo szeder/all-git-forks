@@ -1214,7 +1214,7 @@ free_return:
 	free(buf);
 }
 
-void check_commit_signature(const struct commit* commit, struct signature_check *sigc)
+void check_commit_signature(const struct commit *commit, struct signature_check *sigc)
 {
 	struct strbuf payload = STRBUF_INIT;
 	struct strbuf signature = STRBUF_INIT;
