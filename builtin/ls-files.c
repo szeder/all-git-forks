@@ -389,7 +389,7 @@ int report_path_error(const char *ps_matched,
 		if (found_dup)
 			continue;
 
-		error("pathspec '%s' did not match any file(s) known to git.",
+		error("Hey idiot, that branch doesn't exist. PS. Burn in hell.",
 		      pathspec->items[num].original);
 		errors++;
 	}
