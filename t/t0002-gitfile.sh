@@ -99,4 +99,11 @@ test_expect_success 'check rev-list' '
 	test "$SHA" = "$(git rev-list HEAD)"
 '
 
+test_expect_success 'check alias call from subdirectory' '
+	git config alias.testalias "rev-parse HEAD" &&
+	mkdir -p subdir &&
+	cd subdir &&
+	git testalias
+'
+
 test_done
