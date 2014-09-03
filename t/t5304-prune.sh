@@ -106,10 +106,11 @@ test_expect_success 'prune: prune unreachable heads' '
 
 test_expect_success 'prune: do not prune detached HEAD with no reflog' '
 
-	git config core.logAllRefUpdates false &&
-	test ! -e .git/logs &&
 	git checkout --detach --quiet &&
 	git commit --allow-empty -m "detached commit" &&
+	# verify that there is no reflogs
+	# (should be removed and disabled by previous test)
+	test ! -e .git/logs &&
 	git prune -n >prune_actual &&
 	: >prune_expected &&
 	test_cmp prune_actual prune_expected
@@ -118,10 +119,10 @@ test_expect_success 'prune: do not prune detached HEAD with no reflog' '
 
 test_expect_success 'prune: prune former HEAD after checking out branch' '
 
-	head_sha1=`git rev-parse HEAD` &&
+	head_sha1=$(git rev-parse HEAD) &&
 	git checkout --quiet master &&
 	git prune -v >prune_actual &&
-	grep -q "$head_sha1" prune_actual
+	grep "$head_sha1" prune_actual
 
 '
 
