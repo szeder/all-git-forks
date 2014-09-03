@@ -419,7 +419,8 @@ int cmd_update_ref(int argc, const char **argv, const char *prefix)
 	if (no_deref)
 		flags = REF_NODEREF;
 	if (delete)
-		return delete_ref(refname, oldval ? oldsha1 : NULL, flags);
+		return delete_ref(refname, oldval ? oldsha1 : NULL,
+				  flags|REF_BADNAMEOK);
 	else
 		return update_ref(msg, refname, sha1, oldval ? oldsha1 : NULL,
 				  flags, UPDATE_REFS_DIE_ON_ERR);

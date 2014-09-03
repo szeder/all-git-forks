@@ -175,10 +175,12 @@ extern int peel_ref(const char *refname, unsigned char *sha1);
  * ref_transaction_create(), etc.
  * REF_NODEREF: act on the ref directly, instead of dereferencing
  *              symbolic references.
+ * REF_BADNAMEOK: allow locking a ref that has a bad name.
  *
  * Flags >= 0x100 are reserved for internal use.
  */
 #define REF_NODEREF	0x01
+#define REF_BADNAMEOK	0x02
 /*
  * This function sets errno to something meaningful on failure.
  */

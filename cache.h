@@ -979,10 +979,16 @@ extern int read_ref(const char *refname, unsigned char *sha1);
  * NULL.  If more than MAXDEPTH recursive symbolic lookups are needed,
  * give up and return NULL.
  *
- * errno is set to something meaningful on error.
+ * RESOLVE_REF_ALLOW_BAD_NAME disables most of the ref name checking except
+ * for names that are absolute paths or contain ".." components. For both
+ * these cases the function will return NULL and set errno to EINVAL.
+ * If the name is bad then the function will set the REF_ISBROKEN flag and
+ * return the name, if the ref exists, or NULL, if it does not.
+ * When this flag is set, any badly named refs will resolve to nullsha1.
  */
 #define RESOLVE_REF_READING 0x01
 #define RESOLVE_REF_NODEREF 0x02
+#define RESOLVE_REF_ALLOW_BAD_NAME 0x04
 extern const char *resolve_ref_unsafe(const char *ref, unsigned char *sha1, int *flags, int resolve_flags);
 extern char *resolve_refdup(const char *ref, unsigned char *sha1, int *flags, int resolve_flags);
 

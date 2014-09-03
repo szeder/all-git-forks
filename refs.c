@@ -1060,7 +1060,13 @@ static void read_packed_refs(FILE *f, struct ref_dir *dir)
 
 		refname = parse_ref_line(refline, sha1);
 		if (refname) {
-			last = create_ref_entry(refname, sha1, REF_ISPACKED, 1);
+			int flag = REF_ISPACKED;
+
+			if (check_refname_format(refname, REFNAME_ALLOW_ONELEVEL|REFNAME_DOT_COMPONENT)) {
+				flag |= REF_ISBROKEN;
+				hashclr(sha1);
+			}
+			last = create_ref_entry(refname, sha1, flag, 0);
 			if (peeled == PEELED_FULLY ||
 			    (peeled == PEELED_TAGS && starts_with(refname, "refs/tags/")))
 				last->flag |= REF_KNOWS_PEELED;
@@ -1197,8 +1203,14 @@ static void read_loose_refs(const char *dirname, struct ref_dir *dir)
 				hashclr(sha1);
 				flag |= REF_ISBROKEN;
 			}
+			if (check_refname_format(refname.buf,
+						 REFNAME_ALLOW_ONELEVEL|
+						 REFNAME_DOT_COMPONENT)) {
+				hashclr(sha1);
+				flag |= REF_ISBROKEN;
+			}
 			add_entry_to_dir(dir,
-					 create_ref_entry(refname.buf, sha1, flag, 1));
+					 create_ref_entry(refname.buf, sha1, flag, 0));
 		}
 		strbuf_setlen(&refname, dirnamelen);
 	}
@@ -1344,6 +1356,18 @@ static const char *handle_missing_loose_ref(const char *refname,
 	}
 }
 
+static int escapes_cwd(const char *path) {
+	char *buf;
+	int result;
+
+	if (is_absolute_path(path))
+		return 1;
+	buf = xmalloc(strlen(path) + 1);
+	result = normalize_path_copy(buf, path);
+	free(buf);
+	return result;
+}
+
 /* This function needs to return a meaningful errno on failure */
 const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int *flags, int resolve_flags)
 {
@@ -1351,13 +1375,21 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int *fl
 	ssize_t len;
 	char buffer[256];
 	static char refname_buffer[256];
+	int bad_name = 0;
 
 	if (flags)
 		*flags = 0;
 
 	if (check_refname_format(refname, REFNAME_ALLOW_ONELEVEL)) {
-		errno = EINVAL;
-		return NULL;
+		if (!(resolve_flags & RESOLVE_REF_ALLOW_BAD_NAME) ||
+		    escapes_cwd(refname)) {
+			errno = EINVAL;
+			return NULL;
+		}
+		hashclr(sha1);
+		if (flags)
+			*flags |= REF_ISBROKEN;
+		bad_name = 1;
 	}
 	for (;;) {
 		char path[PATH_MAX];
@@ -1461,6 +1493,8 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int *fl
 				errno = EINVAL;
 				return NULL;
 			}
+			if (bad_name)
+				hashclr(sha1);
 			return refname;
 		}
 		if (flags)
@@ -2108,13 +2142,11 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 	int missing = 0;
 	int attempts_remaining = 3;
 
-	if (check_refname_format(refname, REFNAME_ALLOW_ONELEVEL)) {
-		errno = EINVAL;
-		return NULL;
-	}
-
 	lock = xcalloc(1, sizeof(struct ref_lock));
 	lock->lock_fd = -1;
+
+	if (flags & REF_BADNAMEOK)
+		resolve_flags |= RESOLVE_REF_ALLOW_BAD_NAME;
 
 	if (mustexist)
 		resolve_flags |= RESOLVE_REF_READING;
@@ -3472,6 +3504,13 @@ int ref_transaction_update(struct ref_transaction *transaction,
 	if (have_old && !old_sha1)
 		die("BUG: have_old is true but old_sha1 is NULL");
 
+	if (!is_null_sha1(new_sha1) &&
+	    check_refname_format(refname, REFNAME_ALLOW_ONELEVEL)) {
+		strbuf_addf(err, "refusing to update ref with bad name %s",
+			    refname);
+		return -1;
+	}
+
 	update = add_update(transaction, refname);
 	hashcpy(update->new_sha1, new_sha1);
 	update->flags = flags;
@@ -3496,6 +3535,12 @@ int ref_transaction_create(struct ref_transaction *transaction,
 
 	if (!new_sha1 || is_null_sha1(new_sha1))
 		die("BUG: create ref with null new_sha1");
+
+	if (check_refname_format(refname, REFNAME_ALLOW_ONELEVEL)) {
+		strbuf_addf(err, "refusing to create ref with bad name %s",
+			    refname);
+		return -1;
+	}
 
 	update = add_update(transaction, refname);
 
