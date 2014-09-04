@@ -177,6 +177,7 @@ int check_pager_config(const char *cmd)
 	c.cmd = cmd;
 	c.want = -1;
 	c.value = NULL;
+	setup_git_directory();
 	git_config(pager_command_config, &c);
 	if (c.value)
 		pager_program = c.value;

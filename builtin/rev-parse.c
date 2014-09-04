@@ -733,7 +733,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				continue;
 			}
 			if (!strcmp(arg, "--git-dir")) {
-				const char *gitdir = getenv(GIT_DIR_ENVIRONMENT);
+				const char *gitdir = get_git_dir();
 				static char cwd[PATH_MAX];
 				int len;
 				if (gitdir) {
