@@ -847,6 +847,9 @@ static int git_default_core_config(const char *var, const char *value)
 	if (!strcmp(var, "core.askpass"))
 		return git_config_string(&askpass_program, var, value);
 
+	if (!strcmp(var, "core.excludesperdirfilename"))
+		return git_config_string(&excludes_per_dir_filename, var, value);
+
 	if (!strcmp(var, "core.excludesfile"))
 		return git_config_pathname(&excludes_file, var, value);
 

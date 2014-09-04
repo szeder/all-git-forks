@@ -507,6 +507,17 @@ be delta compressed, but larger binary media files won't be.
 +
 Common unit suffixes of 'k', 'm', or 'g' are supported.
 
+core.excludesperdirfilename::
+	By default, Git checks for presence of .gitignore files to read
+	exclude patterns from. This option enables the customization of
+	per-dir exclude patterns filename that is by default called
+	'.gitignore', to arbitrary filename.
++
+This setting is not implicitly distributed when transferring
+changes between repository clones. In order to achieve identical
+behaviour in all repository clones, each repository clone must
+set this option to the same value.
+
 core.excludesfile::
 	In addition to '.gitignore' (per-directory) and
 	'.git/info/exclude', Git looks into this file for patterns

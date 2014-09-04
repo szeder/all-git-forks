@@ -43,6 +43,7 @@ const char *pager_program;
 int pager_use_color = 1;
 const char *editor_program;
 const char *askpass_program;
+const char *excludes_per_dir_filename;
 const char *excludes_file;
 enum auto_crlf auto_crlf = AUTO_CRLF_FALSE;
 int check_replace_refs = 1;

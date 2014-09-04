@@ -1624,7 +1624,12 @@ void setup_standard_excludes(struct dir_struct *dir)
 	const char *path;
 	char *xdg_path;
 
-	dir->exclude_per_dir = ".gitignore";
+	if (excludes_per_dir_filename) {
+		dir->exclude_per_dir = excludes_per_dir_filename;
+	} else {
+		dir->exclude_per_dir = GITIGNORE_FILE;
+	}
+
 	path = git_path("info/exclude");
 	if (!excludes_file) {
 		home_config_paths(NULL, &xdg_path, "ignore");

@@ -392,6 +392,7 @@ static inline enum object_type object_type(unsigned int mode)
 #define NO_REPLACE_OBJECTS_ENVIRONMENT "GIT_NO_REPLACE_OBJECTS"
 #define GITATTRIBUTES_FILE ".gitattributes"
 #define INFOATTRIBUTES_FILE "info/attributes"
+#define GITIGNORE_FILE ".gitignore"
 #define ATTRIBUTE_MACRO_PREFIX "[attr]"
 #define GIT_NOTES_REF_ENVIRONMENT "GIT_NOTES_REF"
 #define GIT_NOTES_DEFAULT_REF "refs/notes/commits"
@@ -1423,6 +1424,7 @@ extern int check_pager_config(const char *cmd);
 
 extern const char *editor_program;
 extern const char *askpass_program;
+extern const char *excludes_per_dir_filename;
 extern const char *excludes_file;
 
 /* base85 */
