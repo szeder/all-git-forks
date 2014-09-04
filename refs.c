@@ -1268,7 +1268,7 @@ static int resolve_gitlink_ref_recursive(struct ref_cache *refs,
 {
 	int fd, len;
 	char buffer[128], *p;
-	char *path;
+	const char *path;
 
 	if (recursion > MAXDEPTH || strlen(refname) > MAXREFLEN)
 		return -1;
@@ -1362,10 +1362,12 @@ static const char *handle_missing_loose_ref(const char *refname,
 /* This function needs to return a meaningful errno on failure */
 const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int flags, int *ref_flag)
 {
+	struct strbuf sb_path = STRBUF_INIT;
 	int depth = MAXDEPTH;
 	ssize_t len;
 	char buffer[256];
 	static char refname_buffer[256];
+	const char *ret;
 
 	if (ref_flag)
 		*ref_flag = 0;
@@ -1376,17 +1378,19 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int fla
 		return NULL;
 	}
 	for (;;) {
-		char path[PATH_MAX];
+		const char *path;
 		struct stat st;
 		char *buf;
 		int fd;
 
 		if (--depth < 0) {
 			errno = ELOOP;
-			return NULL;
+			goto fail;
 		}
 
-		git_snpath(path, sizeof(path), "%s", refname);
+		strbuf_reset(&sb_path);
+		strbuf_git_path(&sb_path, "%s", refname);
+		path = sb_path.buf;
 
 		/*
 		 * We might have to loop back here to avoid a race
@@ -1400,11 +1404,12 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int fla
 	stat_ref:
 		if (lstat(path, &st) < 0) {
 			if (errno == ENOENT)
-				return handle_missing_loose_ref(refname, sha1,
+				ret = handle_missing_loose_ref(refname, sha1,
 						flags & RESOLVE_REF_READING,
 						ref_flag);
 			else
-				return NULL;
+				ret = NULL;
+			goto done;
 		}
 
 		/* Follow "normalized" - ie "refs/.." symlinks by hand */
@@ -1415,7 +1420,7 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int fla
 					/* inconsistent with lstat; retry */
 					goto stat_ref;
 				else
-					return NULL;
+					goto fail;
 			}
 			buffer[len] = 0;
 			if (starts_with(buffer, "refs/") &&
@@ -1431,7 +1436,7 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int fla
 		/* Is it a directory? */
 		if (S_ISDIR(st.st_mode)) {
 			errno = EISDIR;
-			return NULL;
+			goto fail;
 		}
 
 		/*
@@ -1444,14 +1449,15 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int fla
 				/* inconsistent with lstat; retry */
 				goto stat_ref;
 			else
-				return NULL;
+				goto fail;
 		}
+
 		len = read_in_full(fd, buffer, sizeof(buffer)-1);
 		if (len < 0) {
 			int save_errno = errno;
 			close(fd);
 			errno = save_errno;
-			return NULL;
+			goto fail;
 		}
 		close(fd);
 		while (len && isspace(buffer[len-1]))
@@ -1471,9 +1477,10 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int fla
 				if (ref_flag)
 					*ref_flag |= REF_ISBROKEN;
 				errno = EINVAL;
-				return NULL;
+				goto fail;
 			}
-			return refname;
+			ret = refname;
+			goto done;
 		}
 		if (ref_flag)
 			*ref_flag |= REF_ISSYMREF;
@@ -1484,10 +1491,15 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int fla
 			if (ref_flag)
 				*ref_flag |= REF_ISBROKEN;
 			errno = EINVAL;
-			return NULL;
+			goto fail;
 		}
 		refname = strcpy(refname_buffer, buf);
 	}
+fail:
+	ret = NULL;
+done:
+	strbuf_release(&sb_path);
+	return ret;
 }
 
 char *resolve_refdup(const char *ref, unsigned char *sha1, int flags, int *ref_flag)
@@ -2115,7 +2127,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 					    int flags, int *type_p,
 					    const char **skip, int skipnum)
 {
-	char *ref_file;
+	const char *ref_file;
 	const char *orig_refname = refname;
 	struct ref_lock *lock;
 	int last_errno = 0;
@@ -2193,7 +2205,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 		lock->force_write = 1;
 
  retry:
-	switch (safe_create_leading_directories(ref_file)) {
+	switch (safe_create_leading_directories_const(ref_file)) {
 	case SCLD_OK:
 		break; /* success */
 	case SCLD_VANISHED:
@@ -2754,48 +2766,53 @@ static int copy_msg(char *buf, const char *msg)
 int create_reflog(const char *refname)
 {
 	int logfd, oflags = O_APPEND | O_WRONLY;
-	char logfile[PATH_MAX];
+	struct strbuf logfile = STRBUF_INIT;
 
-	git_snpath(logfile, sizeof(logfile), "logs/%s", refname);
-	if (starts_with(refname, "refs/heads/") ||
-	    starts_with(refname, "refs/remotes/") ||
-	    starts_with(refname, "refs/notes/") ||
-	    !strcmp(refname, "HEAD")) {
-		if (safe_create_leading_directories(logfile) < 0) {
+	strbuf_git_path(&logfile, "logs/%s", refname);
+	if (log_all_ref_updates &&
+	    (starts_with(refname, "refs/heads/") ||
+	     starts_with(refname, "refs/remotes/") ||
+	     starts_with(refname, "refs/notes/") ||
+	     !strcmp(refname, "HEAD"))) {
+		if (safe_create_leading_directories(logfile.buf) < 0) {
 			int save_errno = errno;
-			error("unable to create directory for %s", logfile);
+			error("unable to create directory for %s", logfile.buf);
+			strbuf_release(&logfile);
 			errno = save_errno;
 			return -1;
 		}
 		oflags |= O_CREAT;
 	}
 
-	logfd = open(logfile, oflags, 0666);
+	logfd = open(logfile.buf, oflags, 0666);
 	if (logfd < 0) {
 		if (!(oflags & O_CREAT) && errno == ENOENT)
 			return 0;
 
 		if ((oflags & O_CREAT) && errno == EISDIR) {
-			if (remove_empty_directories(logfile)) {
+			if (remove_empty_directories(logfile.buf)) {
 				int save_errno = errno;
 				error("There are still logs under '%s'",
-				      logfile);
+				      logfile.buf);
+				strbuf_release(&logfile);
 				errno = save_errno;
 				return -1;
 			}
-			logfd = open(logfile, oflags, 0666);
+			logfd = open(logfile.buf, oflags, 0666);
 		}
 
 		if (logfd < 0) {
 			int save_errno = errno;
-			error("Unable to append to %s: %s", logfile,
+			error("Unable to append to %s: %s", logfile.buf,
 			      strerror(errno));
+			strbuf_release(&logfile);
 			errno = save_errno;
 			return -1;
 		}
 	}
 
-	adjust_shared_perm(logfile);
+	adjust_shared_perm(logfile.buf);
+	strbuf_release(&logfile);
 	close(logfd);
 	return 0;
 }
@@ -2830,7 +2847,8 @@ static int log_ref_write(const char *refname, const unsigned char *old_sha1,
 			 const unsigned char *new_sha1, const char *msg)
 {
 	int logfd, result = 0, oflags = O_APPEND | O_WRONLY;
-	char log_file[PATH_MAX];
+	struct strbuf logfile = STRBUF_INIT;
+	int status = 0;
 
 	if (log_all_ref_updates < 0)
 		log_all_ref_updates = !is_bare_repository();
@@ -2841,27 +2859,30 @@ static int log_ref_write(const char *refname, const unsigned char *old_sha1,
 	if (result)
 		return result;
 
-	git_snpath(log_file, sizeof(log_file), "logs/%s", refname);
+	strbuf_git_path(&logfile, "logs/%s", refname);
 
-	logfd = open(log_file, oflags);
+	logfd = open(logfile.buf, oflags);
 	if (logfd < 0)
-		return 0;
+		goto fini;
 	result = log_ref_write_fd(logfd, old_sha1, new_sha1,
 				  git_committer_info(0), msg);
 	if (result) {
 		int save_errno = errno;
 		close(logfd);
-		error("Unable to append to %s", log_file);
+		error("Unable to append to %s", logfile.buf);
 		errno = save_errno;
-		return -1;
+		status = -1;
+		goto fini;
 	}
 	if (close(logfd)) {
 		int save_errno = errno;
-		error("Unable to append to %s", log_file);
+		error("Unable to append to %s", logfile.buf);
 		errno = save_errno;
-		return -1;
+		status = -1;
 	}
-	return 0;
+fini:
+	strbuf_release(&logfile);
+	return status;
 }
 
 int is_branch(const char *refname)
