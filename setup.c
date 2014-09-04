@@ -508,10 +508,6 @@ static const char *setup_discovered_git_dir(const char *gitdir,
 
 	/* #0, #1, #5, #8, #9, #12, #13 */
 	set_git_work_tree(".");
-	if (strcmp(gitdir, DEFAULT_GIT_DIR_ENVIRONMENT)) {
-		set_git_dir(gitdir);
-		setenv(GIT_WORK_TREE_ENVIRONMENT, get_git_work_tree(), 1);
-	}
 	inside_git_dir = 0;
 	inside_work_tree = 1;
 	if (offset == len)
