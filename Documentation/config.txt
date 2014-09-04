@@ -1779,6 +1779,11 @@ notes.displayRef::
 	several times.  A warning will be issued for refs that do not
 	exist, but a glob that does not match any refs is silently
 	ignored.
+
+mergetool.tmpsuffix::
+	A string to append the names of the temporary files mergetool
+	creates in the worktree as input to a custom merge tool. The
+	primary use is to avoid confusion in IDEs during merge.
 +
 This setting can be overridden with the `GIT_NOTES_DISPLAY_REF`
 environment variable, which must be a colon separated list of refs or
