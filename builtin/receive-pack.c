@@ -43,6 +43,8 @@ static int prefer_ofs_delta = 1;
 static int auto_update_server_info;
 static int auto_gc = 1;
 static int fix_thin = 1;
+static int stateless_rpc;
+static const char *service_dir;
 static const char *head_name;
 static void *head_name_to_free;
 static int sent_capabilities;
@@ -58,7 +60,9 @@ static const char *NONCE_UNSOLICITED = "UNSOLICITED";
 static const char *NONCE_BAD = "BAD";
 static const char *NONCE_MISSING = "MISSING";
 static const char *NONCE_OK = "OK";
+static const char *NONCE_SLOP = "SLOP";
 static const char *nonce_status;
+static long nonce_stamp_slop;
 
 static enum deny_action parse_deny_action(const char *var, const char *value)
 {
@@ -359,6 +363,8 @@ static const char *find_header(const char *msg, size_t len, const char *key)
 static const char *check_nonce(const char *buf, size_t len)
 {
 	const char *nonce = find_header(buf, len, "nonce");
+	unsigned long stamp, ostamp;
+	char *bohmac, *expect;
 
 	if (!nonce)
 		return NONCE_MISSING;
@@ -368,7 +374,39 @@ static const char *check_nonce(const char *buf, size_t len)
 		return NONCE_OK;
 
 	/* returned nonce MUST match what we gave out earlier */
-	return NONCE_BAD;
+	if (!stateless_rpc)
+		return NONCE_BAD;
+
+	/*
+	 * In stateless mode, we may be receiving a nonce issued
+	 * by another instance of the server that serving the same
+	 * repository, and the timestamps may not match, but the
+	 * nonce-seed and dir should match, so we can recompute
+	 * and report the time slop.
+	 */
+
+	/* nonce is concat(<seconds-since-epoch>, "-", <hmac>) */
+	if (*nonce <= '0' || '9' < *nonce)
+		return NONCE_BAD;
+	stamp = strtoul(nonce, &bohmac, 10);
+	if (bohmac == nonce || bohmac[1] != '-')
+		return NONCE_BAD;
+
+	expect = prepare_push_cert_nonce(service_dir, stamp);
+	if (strcmp(expect, nonce)) {
+		free(expect);
+		return NONCE_BAD;
+	}
+	free(expect);
+
+	/*
+	 * By how many seconds is this nonce stale?  Negative
+	 * value would mean it was issued by another server
+	 * with its clock skewed in the future.
+	 */
+	ostamp = strtoul(push_cert_nonce, NULL, 10);
+	nonce_stamp_slop = (long)ostamp - (long)stamp;
+	return NONCE_SLOP;
 }
 
 static void prepare_push_cert_sha1(struct child_process *proc)
@@ -417,6 +455,9 @@ static void prepare_push_cert_sha1(struct child_process *proc)
 		if (push_cert_nonce) {
 			argv_array_pushf(&env, "GIT_PUSH_CERT_NONCE=%s", push_cert_nonce);
 			argv_array_pushf(&env, "GIT_PUSH_CERT_NONCE_STATUS=%s", nonce_status);
+			if (nonce_status == NONCE_SLOP)
+				argv_array_pushf(&env, "GIT_PUSH_CERT_NONCE_SLOP=%ld",
+						 nonce_stamp_slop);
 		}
 		proc->env = env.argv;
 	}
@@ -1352,9 +1393,7 @@ static int delete_only(struct command *commands)
 int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 {
 	int advertise_refs = 0;
-	int stateless_rpc = 0;
 	int i;
-	const char *dir = NULL;
 	struct command *commands;
 	struct sha1_array shallow = SHA1_ARRAY_INIT;
 	struct sha1_array ref = SHA1_ARRAY_INIT;
@@ -1387,21 +1426,21 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 
 			usage(receive_pack_usage);
 		}
-		if (dir)
+		if (service_dir)
 			usage(receive_pack_usage);
-		dir = arg;
+		service_dir = arg;
 	}
-	if (!dir)
+	if (!service_dir)
 		usage(receive_pack_usage);
 
 	setup_path();
 
-	if (!enter_repo(dir, 0))
-		die("'%s' does not appear to be a git repository", dir);
+	if (!enter_repo(service_dir, 0))
+		die("'%s' does not appear to be a git repository", service_dir);
 
 	git_config(receive_pack_config, NULL);
 	if (cert_nonce_seed)
-		push_cert_nonce = prepare_push_cert_nonce(dir, time(NULL));
+		push_cert_nonce = prepare_push_cert_nonce(service_dir, time(NULL));
 
 	if (0 <= transfer_unpack_limit)
 		unpack_limit = transfer_unpack_limit;
