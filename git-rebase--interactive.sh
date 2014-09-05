@@ -961,7 +961,19 @@ else
 	revisions=$onto...$orig_head
 	shortrevisions=$shorthead
 fi
-git rev-list $merges_option --pretty=oneline --abbrev-commit \
+
+if test -z "$GIT_SEQUENCE_FORMAT"
+then
+	GIT_SEQUENCE_FORMAT="$(git config sequence.format)"
+fi
+if test -n "$GIT_SEQUENCE_FORMAT"
+then
+	if test "$GIT_SEQUENCE_FORMAT" = "${GIT_SEQUENCE_FORMAT#>%h}"
+	then
+		GIT_SEQUENCE_FORMAT=">%h $GIT_SEQUENCE_FORMAT"
+	fi
+fi
+git rev-list $merges_option --pretty="${GIT_SEQUENCE_FORMAT:-oneline}" --abbrev-commit \
 	--abbrev=7 --reverse --left-right --topo-order \
 	$revisions ${restrict_revision+^$restrict_revision} | \
 	sed -n "s/^>//p" |
