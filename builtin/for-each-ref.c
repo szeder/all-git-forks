@@ -853,6 +853,12 @@ static int grab_single_ref(const char *refname, const unsigned char *sha1, int f
 	struct refinfo *ref;
 	int cnt;
 
+	if ((flag & REF_ISBROKEN) &&
+	    check_refname_format(refname, REFNAME_ALLOW_ONELEVEL)) {
+		  warning("ignoring ref with broken name %s", refname);
+		  return 0;
+	}
+
 	if (*cb->grab_pattern) {
 		const char **pattern;
 		int namelen = strlen(refname);
