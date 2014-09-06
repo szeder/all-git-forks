@@ -276,7 +276,7 @@ void rollback_lock_file(struct lock_file *lk)
 		return;
 
 	if (lk->fd >= 0)
-		close(lk->fd);
+		close_lock_file(lk);
 	unlink_or_warn(lk->filename);
 	lk->filename[0] = 0;
 }
