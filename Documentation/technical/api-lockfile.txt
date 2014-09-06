@@ -64,19 +64,22 @@ unable_to_lock_die::
 
 commit_lock_file::
 
-	Take a pointer to the `struct lock_file` initialized
-	with an earlier call to `hold_lock_file_for_update()`,
-	close the file descriptor and rename the lockfile to its
-	final destination.  Returns 0 upon success, a negative
-	value on failure to close(2) or rename(2).  It is a bug to
-	call `commit_lock_file()` for a `lock_file` object that is not
+	Take a pointer to the `struct lock_file` initialized with an
+	earlier call to `hold_lock_file_for_update()`, close the file
+	descriptor and rename the lockfile to its final destination.
+	Return 0 upon success.  On failure, rollback the lock file and
+	return -1, with `errno` set to the value from the failing call
+	to `close(2)` or `rename(2)`.  It is a bug to call
+	`commit_lock_file()` for a `lock_file` object that is not
 	currently locked.
 
 rollback_lock_file::
 
 	Take a pointer to the `struct lock_file` initialized
 	with an earlier call to `hold_lock_file_for_update()`,
-	close the file descriptor and remove the lockfile.
+	close the file descriptor and remove the lockfile.  It is a
+	NOOP to call `rollback_lock_file()` for a `lock_file` object
+	that has already been committed or rolled back.
 
 close_lock_file::
 	Take a pointer to the `struct lock_file` initialized
