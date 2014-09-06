@@ -439,10 +439,10 @@ static void record_df_conflict_files(struct merge_options *o,
 	int i;
 
 	/*
-	 * If we're merging merge-bases, we don't want to bother with
-	 * any working directory changes.
+	 * If we're working in-core only (e.g., merging merge-bases),
+	 * we don't want to bother with any working directory changes.
 	 */
-	if (o->call_depth)
+	if (o->call_depth || o->no_worktree)
 		return;
 
 	/* Ensure D/F conflicts are adjacent in the entries list. */
@@ -612,7 +612,7 @@ static int remove_file(struct merge_options *o, int clean,
 		       const char *path, int no_wd)
 {
 	int update_cache = o->call_depth || clean;
-	int update_working_directory = !o->call_depth && !no_wd;
+	int update_working_directory = !o->call_depth && !o->no_worktree && !no_wd;
 
 	if (update_cache) {
 		if (remove_file_from_cache(path))
@@ -778,7 +778,7 @@ static int update_file_flags(struct merge_options *o,
 {
 	int ret = 0;
 
-	if (o->call_depth)
+	if (o->call_depth || o->no_worktree)
 		update_wd = 0;
 
 	if (update_wd) {
@@ -997,7 +997,8 @@ static int merge_file_1(struct merge_options *o,
 						       one->oid.hash,
 						       a->oid.hash,
 						       b->oid.hash,
-						       !o->call_depth);
+						       !(o->call_depth ||
+							 o->no_worktree));
 		} else if (S_ISLNK(a->mode)) {
 			oidcpy(&result->oid, &a->oid);
 
@@ -1067,7 +1068,7 @@ static int handle_change_delete(struct merge_options *o,
 {
 	char *renamed = NULL;
 	int ret = 0;
-	if (dir_in_way(path, !o->call_depth, 0)) {
+	if (dir_in_way(path, !o->call_depth || o->no_worktree, 0)) {
 		renamed = unique_path(o, path, a_oid ? o->branch1 : o->branch2);
 	}
 
@@ -1197,10 +1198,10 @@ static int handle_file(struct merge_options *o,
 		if (update_file(o, 0, &add->oid, add->mode, add_name))
 			return -1;
 
-		remove_file(o, 0, rename->path, 0);
+		remove_file(o, 0, rename->path, o->call_depth || o->no_worktree);
 		dst_name = unique_path(o, rename->path, cur_branch);
 	} else {
-		if (dir_in_way(rename->path, !o->call_depth, 0)) {
+		if (dir_in_way(rename->path, !(o->call_depth || o->no_worktree), 0)) {
 			dst_name = unique_path(o, rename->path, cur_branch);
 			output(o, 1, _("%s is a directory in %s adding as %s instead"),
 			       rename->path, other_branch, dst_name);
@@ -1492,6 +1493,7 @@ static int process_renames(struct merge_options *o,
 			 * add-source case).
 			 */
 			remove_file(o, 1, ren1_src,
+				    o->call_depth || o->no_worktree ||
 				    renamed_stage == 2 || !was_tracked(ren1_src));
 
 			oidcpy(&src_other.oid,
@@ -1709,7 +1711,7 @@ static int merge_content(struct merge_options *o,
 			 o->branch2 == rename_conflict_info->branch1) ?
 			pair1->two->path : pair1->one->path;
 
-		if (dir_in_way(path, !o->call_depth,
+		if (dir_in_way(path, !(o->call_depth || o->no_worktree),
 			       S_ISGITLINK(pair1->two->mode)))
 			df_conflict_remains = 1;
 	}
@@ -1731,7 +1733,7 @@ static int merge_content(struct merge_options *o,
 		path_renamed_outside_HEAD = !path2 || !strcmp(path, path2);
 		if (!path_renamed_outside_HEAD) {
 			add_cacheinfo(o, mfi.mode, &mfi.oid, path,
-				      0, (!o->call_depth), 0);
+				      0, !(o->call_depth || o->no_worktree), 0);
 			return mfi.clean;
 		}
 	} else
@@ -1868,7 +1870,7 @@ static int process_entry(struct merge_options *o,
 			oid = b_oid;
 			conf = _("directory/file");
 		}
-		if (dir_in_way(path, !o->call_depth,
+		if (dir_in_way(path, !(o->call_depth || o->no_worktree),
 			       S_ISGITLINK(a_mode))) {
 			char *new_path = unique_path(o, path, add_branch);
 			clean_merge = 0;
@@ -1897,7 +1899,8 @@ static int process_entry(struct merge_options *o,
 		 * this entry was deleted altogether. a_mode == 0 means
 		 * we had that path and want to actively remove it.
 		 */
-		remove_file(o, 1, path, !a_mode);
+		remove_file(o, 1, path,
+			    o->call_depth || o->no_worktree || !a_mode);
 	} else
 		die("BUG: fatal merge failure, shouldn't happen.");
 
@@ -1923,7 +1926,8 @@ int merge_trees(struct merge_options *o,
 		return 1;
 	}
 
-	code = git_merge_trees(o->call_depth, common, head, merge);
+	code = git_merge_trees(o->call_depth || o->no_worktree,
+			       common, head, merge);
 
 	if (code != 0) {
 		if (show(o, 4) || o->call_depth)
