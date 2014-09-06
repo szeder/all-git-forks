@@ -16,6 +16,7 @@ struct merge_options {
 	unsigned buffer_output; /* 1: output at end, 2: keep buffered */
 	unsigned renormalize : 1;
 	unsigned no_worktree : 1; /* do not touch worktree */
+	unsigned conflicts_in_index : 1; /* index will contain conflict hunks */
 	long xdl_opts;
 	int verbosity;
 	int detect_rename;
