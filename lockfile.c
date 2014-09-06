@@ -172,9 +172,17 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 		lock_file_list = lk;
 	}
 
-	strbuf_addstr(&lk->filename, path);
-	if (!(flags & LOCK_NODEREF))
-		resolve_symlink(&lk->filename);
+	if (flags & LOCK_NODEREF) {
+		strbuf_add_absolute_path(&lk->filename, path);
+	} else {
+		struct strbuf resolved_path = STRBUF_INIT;
+
+		strbuf_addstr(&resolved_path, path);
+		resolve_symlink(&resolved_path);
+		strbuf_add_absolute_path(&lk->filename, resolved_path.buf);
+		strbuf_release(&resolved_path);
+	}
+
 	strbuf_addstr(&lk->filename, LOCK_SUFFIX);
 	lk->fd = open(lk->filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (lk->fd < 0) {
