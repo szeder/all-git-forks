@@ -1,0 +1,88 @@
+git-author(1)
+============
+
+NAME
+----
+git-author - Extract accurate authorship information for lines of code
+
+SYNOPSIS
+--------
+[verse]
+'git author' [-c] [-f] [-L n,m] [-n] [--one-line] [-W] [--] <file>
+
+
+DESCRIPTION
+-----------
+
+Extract complete development history of a line of code.
+
+Provide two main working modes:
+1. Identify all authors/commits that changed a line of code.
+2. Calculate a weight for each author based on the contribution to a line of
+code
+
+Please see our paper in ICSM 2013 for more technical details
+ftp://ftp.cs.wisc.edu/paradyn/papers/Meng13Authorship.pdf
+
+
+EXAMPLES
+--------------
+Ex 1: Show complete developement history for a line
+$ git author -c -L 2235,2235 fs/ext4/mballoc.c 
+       CURRENT LINE 2235:       meta_group_info[i] = kmem_cache_zalloc(cachep, GFP_KERNEL);             
+85556c9 Wei Yongjun     :       meta_group_info[i] = kmem_cache_zalloc(cachep, GFP_KERNEL);
+fb1813f Curt Wohlgemuth :       meta_group_info[i] = kmem_cache_alloc(cachep, GFP_KERNEL);
+5f21b0e Frederic Bohe   :       meta_group_info[i] = kzalloc(len, GFP_KERNEL);
+c9de560 Alex Tomas      :               meta_group_info[j] = kzalloc(len, GFP_KERNEL);
+
+In this example, git-author shows the complete development history of a line code. 
+we can see "Wei Yongjun" is the last programmer who changed the
+line and "Wei Yongjun" is shown to be blamed for this line by git-blame. 
+However, "Wei Yongjun" only changed the line to call a different function (from "kmem_cache_alloc" to "kmem_cache_zalloc").
+"Wei yongjun" is not responsible for the other part of the line.
+We can see "Curt Wohlgemuth" changed the line to use a different parameter (from "len" to
+"cachep") and "Frederic Bohe" changed the line to use a different array index
+(from "i" to "j").
+
+
+EX 2: Calculate contribution weights for specified line range
+$ git author -W -L 2233,2238 --one-line fs/ext4/mballoc.c 
+
+2233: (c9de560,Alex Tomas,37/43=86.05%) (5f21b0e,Frederic Bohe,6/43=13.95%)
+2234: (c9de560,Alex Tomas,0/0=NA)
+2235: (c9de560,Alex Tomas,43/60=71.67%) (5f21b0e,Frederic Bohe,1/60=1.67%) (fb1813f,Curt Wohlgemuth,15/60=25.00%) (85556c9,Wei Yongjun,1/60=1.67%)
+2236: (c9de560,Alex Tomas,11/34=32.35%) (5f21b0e,Frederic Bohe,1/34=2.94%)
+2237: (c9de560,Alex Tomas,37/53=69.81%) (9d8b9ec,Theodore Ts'o,16/53=30.19%)
+2238: (5f21b0e,Frederic Bohe,23/23=100.00%)
+
+In this example, each author is assigned a weight in terms of the contribution
+it made to a line of code
+
+
+OPTIONS
+-------
+
+-c::
+	Show the corresponding line of code in each commit
+
+-f::
+	Show original filename
+
+-L <start>,<end>::
+	Work with only the given line range.  
+
+-n::
+	Show original line number
+
+--one-line:
+	All information for a line of code is in one line
+
+-W::
+	Calculate contribution weight for each author
+
+
+
+
+BUG REPORT
+--------------
+Please report any bug to xmeng@cs.wisc.edu

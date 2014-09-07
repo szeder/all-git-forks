@@ -1,3 +1,11 @@
+Git-author
+==========
+
+Git-author is a new built-in tool for git to extract accurate line-level authorship information
+
+See more documentation at ./Documentation/git-author.txt
+
+
 ////////////////////////////////////////////////////////////////
 
 	Git - the stupid content tracker
