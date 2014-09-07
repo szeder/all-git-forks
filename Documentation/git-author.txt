@@ -27,7 +27,7 @@ ftp://ftp.cs.wisc.edu/paradyn/papers/Meng13Authorship.pdf
 
 EXAMPLES
 --------------
-Ex 1: Show complete developement history for a line
+Ex 1: Show complete development history for a line
 $ git author -c -L 2235,2235 fs/ext4/mballoc.c 
        CURRENT LINE 2235:       meta_group_info[i] = kmem_cache_zalloc(cachep, GFP_KERNEL);             
 85556c9 Wei Yongjun     :       meta_group_info[i] = kmem_cache_zalloc(cachep, GFP_KERNEL);
@@ -40,8 +40,8 @@ we can see "Wei Yongjun" is the last programmer who changed the
 line and "Wei Yongjun" is shown to be blamed for this line by git-blame. 
 However, "Wei Yongjun" only changed the line to call a different function (from "kmem_cache_alloc" to "kmem_cache_zalloc").
 "Wei yongjun" is not responsible for the other part of the line.
-We can see "Curt Wohlgemuth" changed the line to use a different parameter (from "len" to
-"cachep") and "Frederic Bohe" changed the line to use a different array index
+We can see "Curt Wohlgemuth" changed the line to call a different function (from "kzalloc" to "kmem_cache_alloc") and to 
+use a different parameter (from "len" to "cachep") and "Frederic Bohe" changed the line to use a different array index
 (from "i" to "j").
 
 
