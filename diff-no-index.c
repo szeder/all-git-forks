@@ -89,8 +89,20 @@ static struct diff_filespec *noindex_filespec(const char *name, int mode)
 	return s;
 }
 
+static int path_ok(struct diff_options *o, const char *name, int prefix)
+{
+	if (!name)
+		return 0;
+	name += prefix;
+	if (*name == '/')
+		name++;
+	return match_pathspec(&o->pathspec, name, strlen(name),
+			      0, NULL, 0);
+}
+
 static int queue_diff(struct diff_options *o,
-		      const char *name1, const char *name2)
+		      const char *name1, int prefix1,
+		      const char *name2, int prefix2)
 {
 	int mode1 = 0, mode2 = 0;
 
@@ -157,7 +169,7 @@ static int queue_diff(struct diff_options *o,
 				n2 = buffer2.buf;
 			}
 
-			ret = queue_diff(o, n1, n2);
+			ret = queue_diff(o, n1, prefix1, n2, prefix2);
 		}
 		string_list_clear(&p1, 0);
 		string_list_clear(&p2, 0);
@@ -165,7 +177,7 @@ static int queue_diff(struct diff_options *o,
 		strbuf_release(&buffer2);
 
 		return ret;
-	} else {
+	} else if (path_ok(o, name1, prefix1) || path_ok(o, name2, prefix2)) {
 		struct diff_filespec *d1, *d2;
 
 		if (DIFF_OPT_TST(o, REVERSE_DIFF)) {
@@ -180,13 +192,14 @@ static int queue_diff(struct diff_options *o,
 		diff_queue(&diff_queued_diff, d1, d2);
 		return 0;
 	}
+	return 0;
 }
 
 void diff_no_index(struct rev_info *revs,
 		   int argc, const char **argv,
 		   const char *prefix)
 {
-	int i, prefixlen;
+	int i, j, prefixlen;
 	const char *paths[2];
 
 	diff_setup(&revs->diffopt);
@@ -194,19 +207,23 @@ void diff_no_index(struct rev_info *revs,
 		int j;
 		if (!strcmp(argv[i], "--no-index"))
 			i++;
-		else if (!strcmp(argv[i], "--"))
+		else if (!strcmp(argv[i], "--")) {
 			i++;
-		else {
+			break;
+		} else {
 			j = diff_opt_parse(&revs->diffopt, argv + i, argc - i);
-			if (j <= 0)
+			if (j <= 0) {
+				if (argv[i][0] != '-' || argv[i][1] == '\0')
+					break;
 				die("invalid diff option/value: %s", argv[i]);
+			}
 			i += j;
 		}
 	}
 
 	prefixlen = prefix ? strlen(prefix) : 0;
-	for (i = 0; i < 2; i++) {
-		const char *p = argv[argc - 2 + i];
+	for (j = 0; j < 2 && i < argc; j++, i++) {
+		const char *p = argv[i];
 		if (!strcmp(p, "-"))
 			/*
 			 * stdin should be spelled as "-"; if you have
@@ -215,7 +232,15 @@ void diff_no_index(struct rev_info *revs,
 			p = file_from_standard_input;
 		else if (prefixlen)
 			p = xstrdup(prefix_filename(prefix, prefixlen, p));
-		paths[i] = p;
+		paths[j] = p;
+	}
+	if (j < 2)
+		die("two paths required");
+	if (i < argc) {
+		const char *p = argv[i];
+		if (strcmp(p, "--"))
+			die("two paths required");
+		parse_pathspec(&revs->diffopt.pathspec, 0, 0, "", argv + i + 1);
 	}
 	revs->diffopt.skip_stat_unmatch = 1;
 	if (!revs->diffopt.output_format)
@@ -229,7 +254,9 @@ void diff_no_index(struct rev_info *revs,
 	setup_diff_pager(&revs->diffopt);
 	DIFF_OPT_SET(&revs->diffopt, EXIT_WITH_STATUS);
 
-	if (queue_diff(&revs->diffopt, paths[0], paths[1]))
+	if (queue_diff(&revs->diffopt,
+		       paths[0], strlen(paths[0]),
+		       paths[1], strlen(paths[1])))
 		exit(1);
 	diff_set_mnemonic_prefix(&revs->diffopt, "1/", "2/");
 	diffcore_std(&revs->diffopt);
