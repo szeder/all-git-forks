@@ -465,7 +465,14 @@ fail:
 			   : STORE_REF_ERROR_OTHER;
 }
 
-#define REFCOL_WIDTH  10
+static int REFCOL_WIDTH = 10;
+
+static void adjust_refcol_width(int len)
+{
+	if (REFCOL_WIDTH < len) {
+		REFCOL_WIDTH = len;
+	}
+}
 
 static int update_local_ref(struct ref *ref,
 			    const char *remote,
@@ -476,6 +483,8 @@ static int update_local_ref(struct ref *ref,
 	enum object_type type;
 	struct branch *current_branch = branch_get(NULL);
 	const char *pretty_ref = prettify_refname(ref->name);
+
+	adjust_refcol_width(gettext_width(remote));
 
 	type = sha1_object_info(ref->new_oid.hash, NULL);
 	if (type < 0)
