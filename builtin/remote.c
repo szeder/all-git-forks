@@ -752,6 +752,9 @@ static int remove_branches(struct string_list *branches)
 	const char **branch_names;
 	int i, result = 0;
 
+	if (lock_packed_refs(0))
+		return unable_to_lock_error(git_path("packed-refs"), errno);
+
 	branch_names = xmalloc(branches->nr * sizeof(*branch_names));
 	for (i = 0; i < branches->nr; i++)
 		branch_names[i] = branches->items[i].string;
@@ -1332,9 +1335,14 @@ static int prune_remote(const char *remote, int dry_run)
 		delete_refs = xmalloc(states.stale.nr * sizeof(*delete_refs));
 		for (i = 0; i < states.stale.nr; i++)
 			delete_refs[i] = states.stale.items[i].util;
-		if (!dry_run)
-			result |= repack_without_refs(delete_refs,
-						      states.stale.nr, NULL);
+		if (!dry_run) {
+			if (lock_packed_refs(0))
+				result |= unable_to_lock_error(
+					git_path("packed-refs"), errno);
+			else
+				result |= repack_without_refs(delete_refs,
+							states.stale.nr, NULL);
+		}
 		free(delete_refs);
 	}
 
