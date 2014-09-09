@@ -247,13 +247,13 @@ static int fast_forward_to(const unsigned char *to, const unsigned char *from,
 
 	strbuf_addf(&sb, "%s: fast-forward", action_name(opts));
 
-	transaction = ref_transaction_begin(&err);
+	transaction = transaction_begin(&err);
 	if (!transaction ||
-	    ref_transaction_update(transaction, "HEAD",
-				   to, unborn ? null_sha1 : from,
-				   0, 1, sb.buf, &err) ||
-	    ref_transaction_commit(transaction, &err)) {
-		ref_transaction_free(transaction);
+	    transaction_update_sha1(transaction, "HEAD",
+				    to, unborn ? null_sha1 : from,
+				    0, 1, sb.buf, &err) ||
+	    transaction_commit(transaction, &err)) {
+		transaction_free(transaction);
 		error("%s", err.buf);
 		strbuf_release(&sb);
 		strbuf_release(&err);
@@ -262,7 +262,7 @@ static int fast_forward_to(const unsigned char *to, const unsigned char *from,
 
 	strbuf_release(&sb);
 	strbuf_release(&err);
-	ref_transaction_free(transaction);
+	transaction_free(transaction);
 	return 0;
 }
 
