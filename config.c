@@ -2029,9 +2029,9 @@ int git_config_set_multivar_in_file(const char *config_filename,
 			MAP_PRIVATE, in_fd, 0);
 		close(in_fd);
 
-		if (chmod(lock->filename, st.st_mode & 07777) < 0) {
+		if (chmod(lock->filename.buf, st.st_mode & 07777) < 0) {
 			error("chmod on %s failed: %s",
-				lock->filename, strerror(errno));
+				lock->filename.buf, strerror(errno));
 			ret = CONFIG_NO_WRITE;
 			goto out_free;
 		}
@@ -2088,17 +2088,17 @@ int git_config_set_multivar_in_file(const char *config_filename,
 	if (commit_lock_file(lock) < 0) {
 		error("could not commit config file %s", config_filename);
 		ret = CONFIG_NO_WRITE;
-		goto out_free;
-	}
+	} else
+		ret = 0;
 
 	/*
-	 * lock is committed, so don't try to roll it back below.
-	 * NOTE: Since lockfile.c keeps a linked list of all created
-	 * lock_file structures, it isn't safe to free(lock).  It's
-	 * better to just leave it hanging around.
+	 * lock is committed or rolled back now, so there is no need
+	 * to roll it back below.  NOTE: Since lockfile.c keeps a
+	 * linked list of all created lock_file structures, it isn't
+	 * safe to free(lock).  We have to just leave it hanging
+	 * around.
 	 */
 	lock = NULL;
-	ret = 0;
 
 	/* Invalidate the config cache */
 	git_config_clear();
@@ -2110,7 +2110,7 @@ out_free:
 	return ret;
 
 write_err_out:
-	ret = write_error(lock->filename);
+	ret = write_error(lock->filename.buf);
 	goto out_free;
 
 }
@@ -2211,9 +2211,9 @@ int git_config_rename_section_in_file(const char *config_filename,
 
 	fstat(fileno(config_file), &st);
 
-	if (chmod(lock->filename, st.st_mode & 07777) < 0) {
+	if (chmod(lock->filename.buf, st.st_mode & 07777) < 0) {
 		ret = error("chmod on %s failed: %s",
-				lock->filename, strerror(errno));
+				lock->filename.buf, strerror(errno));
 		goto out;
 	}
 
@@ -2234,7 +2234,7 @@ int git_config_rename_section_in_file(const char *config_filename,
 				}
 				store.baselen = strlen(new_name);
 				if (!store_write_section(out_fd, new_name)) {
-					ret = write_error(lock->filename);
+					ret = write_error(lock->filename.buf);
 					goto out;
 				}
 				/*
@@ -2260,7 +2260,7 @@ int git_config_rename_section_in_file(const char *config_filename,
 			continue;
 		length = strlen(output);
 		if (write_in_full(out_fd, output, length) != length) {
-			ret = write_error(lock->filename);
+			ret = write_error(lock->filename.buf);
 			goto out;
 		}
 	}
