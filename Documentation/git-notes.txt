@@ -264,6 +264,45 @@ prior to the merge, these will also be removed by this notes merge
 strategy.
 
 
+TRANSFERRING NOTES ACROSS REPOSITORIES
+--------------------------------------
+
+Notes are not transferred by default when using the standard
+fetch/push commands, but has be done explicitly. To fetch all notes
+from a particular remote, use
+
+------------
+$ git fetch origin refs/notes/*:refs/notes/*
+------------
+
+`git fetch` can be configured to automatically fetch notes from a
+remote with this command:
+
+------------
+$ git config --add remote.origin.fetch +refs/notes/*:refs/notes/*
+------------
+
+To transfer notes to a remote repository:
+
+------------
+$ git push origin refs/notes/*
+------------
+
+If you don't want to fetch or push all notes stored under
+`refs/notes/`, replace the asterisk with the specific type of notes
+you want to transfer:
+
+------------
+$ git fetch origin refs/notes/commits:refs/notes/commits
+------------
+
+or
+
+------------
+$ git push origin refs/notes/commits
+------------
+
+
 EXAMPLES
 --------
 
