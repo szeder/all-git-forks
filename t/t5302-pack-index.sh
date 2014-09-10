@@ -243,7 +243,7 @@ test_expect_success 'running index-pack in the object store' '
     test -f .git/objects/pack/pack-${pack1}.idx
 '
 
-test_expect_success 'index-pack --strict fails upon invalid tag' '
+test_expect_failure 'index-pack --strict fails upon an invalid tag' '
     sha=$(git rev-parse HEAD) &&
     cat >wrong-tag <<EOF &&
 object $sha
@@ -258,7 +258,7 @@ EOF
     echo remove tag object &&
     thirtyeight=${tag#??} &&
     rm -f .git/objects/${tag%$thirtyeight}/$thirtyeight &&
-    test_must_fail git index-pack --strict tag-test-${pack1}.pack 2> err &&
+    test_must_fail git index-pack --strict tag-test-${pack1}.pack 2>err &&
     grep "invalid .tag. name" err
 '
 

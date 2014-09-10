@@ -248,14 +248,14 @@ static int require_end_of_header(const void *data, unsigned long size,
 		switch (buffer[i]) {
 		case '\0':
 			return error_func(obj, FSCK_ERROR,
-				"invalid message: NUL at offset %d", i);
+				"invalid header: NUL at offset %d", i);
 		case '\n':
 			if (i + 1 < size && buffer[i + 1] == '\n')
 				return 0;
 		}
 	}
 
-	return error_func(obj, FSCK_ERROR, "invalid buffer: missing empty line");
+	return error_func(obj, FSCK_ERROR, "invalid buffer: missing end of header");
 }
 
 static int fsck_ident(const char **ident, struct object *obj, fsck_error error_func)
@@ -426,14 +426,16 @@ static int fsck_tag_buffer(struct tag *tag, const char *data,
 		error_func(&tag->object, FSCK_WARN, "invalid 'tag' name: %s", buffer);
 	buffer = eol + 1;
 
-	if (!skip_prefix(buffer, "tagger ", &buffer)) {
+	if (!skip_prefix(buffer, "tagger ", &buffer))
 		/* early tags do not contain 'tagger' lines; warn only */
-		error_func(&tag->object, FSCK_WARN, "invalid format - expected 'tagger' line");
-	}
-	ret = fsck_ident(&buffer, &tag->object, error_func);
+		error_func(&tag->object, FSCK_WARN,
+			   "invalid format - expected 'tagger' line");
+	else
+		ret = fsck_ident(&buffer, &tag->object, error_func);
 
 done:
 	free(to_free);
+	strbuf_release(&sb);
 	return ret;
 }
 
