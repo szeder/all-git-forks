@@ -225,6 +225,13 @@ This means that you can use `git checkout -p` to selectively discard
 edits from your current working tree. See the ``Interactive Mode''
 section of linkgit:git-add[1] to learn how to operate the `--patch` mode.
 
+--to=<path>::
+	Check out a branch in a separate working directory at
+	`<path>`. A new working directory is linked to the current
+	repository, sharing everything except working directory
+	specific files such as HEAD, index... See "MULTIPLE CHECKOUT
+	MODE" section for more information.
+
 <branch>::
 	Branch to checkout; if it refers to a branch (i.e., a name that,
 	when prepended with "refs/heads/", is a valid ref), then that
@@ -387,6 +394,42 @@ can use either of these commands:
 $ git reflog -2 HEAD # or
 $ git log -g -2 HEAD
 ------------
+
+MULTIPLE CHECKOUT MODE
+----------------------
+Normally a working directory is attached to repository. When "git
+checkout --to" is used, a new working directory is attached to the
+current repository. This new working directory is called "linked
+checkout" as compared to the "main checkout" prepared by "git init" or
+"git clone". A repository has one main checkout and zero or more
+linked checkouts.
+
+Each linked checkout has a private directory in $GIT_DIR/worktrees in
+the main checkout, usually named after the base name of the new
+working directory, optionally with a number added to make it
+unique. For example, the command `git checkout --to ../test-next next`
+running with $GIT_DIR=/path/main may create the directory
+`$GIT_DIR/worktrees/test-next` (or `$GIT_DIR/worktrees/test-next1` if
+`test-next` is already taken).
+
+Within a linked checkout, $GIT_DIR is set to point to this private
+directory (e.g. `/path/main/worktrees/test-next` in the example) and
+$GIT_COMMON_DIR is set to point back to the main checkout's $GIT_DIR
+(e.g. `/path/main`). Setting is done via a .git file located at the
+top directory of the linked checkout.
+
+Path resolution via `git rev-parse --git-path` would use either
+$GIT_DIR or $GIT_COMMON_DIR depending on the path. For example, the
+linked checkout's `$GIT_DIR/HEAD` resolve to
+`/path/main/worktrees/test-next/HEAD` (not `/path/main/HEAD` which is
+the main checkout's HEAD) while `$GIT_DIR/refs/heads/master` would use
+$GIT_COMMON_DIR and resolve to `/path/main/refs/heads/master`, which
+is shared across checkouts.
+
+See linkgit:gitrepository-layout[5] for more information. The rule of
+thumb is do not make any assumption about whether a path belongs to
+$GIT_DIR or $GIT_COMMON_DIR when you need to directly access something
+inside $GIT_DIR. Use `git rev-parse --git-path` to get the final path.
 
 EXAMPLES
 --------
