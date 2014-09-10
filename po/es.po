@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-04-19 12:50+0800\n"
-"PO-Revision-Date: 2014-08-26 18:55+0200\n"
+"PO-Revision-Date: 2014-09-10 21:13+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -54,7 +54,7 @@ msgstr "git archive --remote <repo> [--exec <orden>] --list"
 #: archive.c:243 builtin/add.c:136 builtin/add.c:428 builtin/rm.c:328
 #, c-format
 msgid "pathspec '%s' did not match any files"
-msgstr ""
+msgstr "ningún fichero se ajusta al patrón-de-ruta '%s'"
 
 #: archive.c:328
 msgid "fmt"
@@ -867,13 +867,13 @@ msgstr "-NUM"
 
 #: pathspec.c:133
 msgid "global 'glob' and 'noglob' pathspec settings are incompatible"
-msgstr ""
+msgstr "las especificaciones globales de patrón-de-ruta 'glob' y 'noglob' son incompatibles"
 
 #: pathspec.c:143
 msgid ""
 "global 'literal' pathspec setting is incompatible with all other global "
 "pathspec settings"
-msgstr ""
+msgstr "la especificación global de patrón-de-ruta 'literal' es incompatible con todas las demás especificaciones globales de patrón-de-ruta"
 
 #: pathspec.c:177
 msgid "invalid parameter for pathspec magic 'prefix'"
@@ -897,7 +897,7 @@ msgstr ""
 #: pathspec.c:230
 #, c-format
 msgid "%s: 'literal' and 'glob' are incompatible"
-msgstr ""
+msgstr "%s: 'literal' y 'glob' son incompatibles"
 
 #: pathspec.c:241
 #, c-format
@@ -1810,7 +1810,7 @@ msgstr ""
 
 #: builtin/add.c:21
 msgid "git add [options] [--] <pathspec>..."
-msgstr ""
+msgstr "git add [opciones] [--] <patrón-de-ruta>..."
 
 #: builtin/add.c:64
 #, c-format
@@ -3886,11 +3886,11 @@ msgstr "--command debe ser el primer parámetro"
 
 #: builtin/commit.c:36
 msgid "git commit [options] [--] <pathspec>..."
-msgstr ""
+msgstr "git commit [opciones] [--] <patrón-de-ruta>..."
 
 #: builtin/commit.c:41
 msgid "git status [options] [--] <pathspec>..."
-msgstr ""
+msgstr "git status [opciones] [--] <patrón-de-ruta>..."
 
 #: builtin/commit.c:46
 msgid ""
