@@ -3714,16 +3714,20 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 		struct ref_update *update = updates[i];
 
 		if (update->lock) {
-			if (delete_ref_loose(update->lock, update->type, err))
+			if (delete_ref_loose(update->lock, update->type, err)) {
 				ret = -1;
+				goto cleanup;
+			}
 
 			if (!(update->flags & REF_ISPRUNING))
 				delnames[delnum++] = update->lock->ref_name;
 		}
 	}
 
-	if (repack_without_refs(delnames, delnum, err))
+	if (repack_without_refs(delnames, delnum, err)) {
 		ret = -1;
+		goto cleanup;
+	}
 	for (i = 0; i < delnum; i++)
 		unlink_or_warn(git_path("logs/%s", delnames[i]));
 	clear_loose_ref_cache(&ref_cache);
