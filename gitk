@@ -2774,7 +2774,11 @@ proc doprogupdate {} {
 proc config_variable_change_cb {name name2 op} {
     global config_variable_changed
     if {$op eq "write"} {
-	set config_variable_changed($name) 1
+	if {$name2 eq ""} {
+	    set config_variable_changed($name) 1
+	} else {
+	    set config_variable_changed($name,$name2) 1
+	}
     }
 }
 
@@ -2828,11 +2832,37 @@ proc savestuff {w} {
 	puts $f "set geometry(botwidth) [winfo width .bleft]"
 	puts $f "set geometry(botheight) [winfo height .bleft]"
 
+	array set view_save {}
+	array set views {}
+	foreach view $permviews {
+	    set view_save([lindex $view 0]) 1
+	    set views([lindex $view 0]) $view
+	}
 	puts -nonewline $f "set permviews {"
 	for {set v 0} {$v < $current_nextviewnum} {incr v} {
-	    if {$current_viewperm($v)} {
-		puts $f "{[list $current_viewname($v) $current_viewfiles($v) $current_viewargs($v) $current_viewargscmd($v)]}"
+	    if {$config_variable_changed(viewname,$v) ||
+		$config_variable_changed(viewfiles,$v) ||
+		$config_variable_changed(viewargs,$v) ||
+		$config_variable_changed(viewargscmd,$v) ||
+		$config_variable_changed(viewperm,$v)} {
+		if {$current_viewperm($v)} {
+		    set views($current_viewname($v)) [list $current_viewname($v) $current_viewfiles($v) $current_viewargs($v) $current_viewargscmd($v)]
+		} else {
+		    set view_save($current_viewname($v)) 0
+		}
+		lappend views_modified_names $current_viewname($v)
 	    }
+	}
+	# write old and updated view to their places and append remaining to the end
+	foreach view $permviews {
+	    set view_name [lindex $view 0]
+	    if {$view_save($view_name)} {
+		puts $f "{$views($view_name)}"
+	    }
+	    unset views($view_name)
+	}
+	foreach view_name [array names views] {
+	    puts $f "{$views($view_name)}"
 	}
 	puts $f "}"
 	close $f
@@ -12335,6 +12365,12 @@ if {[info exists permviews]} {
 	set viewperm($n) 1
 	addviewmenu $n
     }
+}
+foreach var {viewname viewfiles viewargs viewargscmd viewperm} {
+    for {set v 0} {$v < $nextviewnum} {incr v} {
+	set config_variable_changed($var,$v) 0
+    }
+    trace add variable $var write config_variable_change_cb
 }
 
 if {[tk windowingsystem] eq "win32"} {
