@@ -174,10 +174,11 @@ static int pager_command_config(const char *var, const char *value, void *data)
 int check_pager_config(const char *cmd)
 {
 	struct pager_config c;
+	int unused_nongit;
 	c.cmd = cmd;
 	c.want = -1;
 	c.value = NULL;
-	setup_git_directory();
+	setup_git_directory_gently(&unused_nongit);
 	git_config(pager_command_config, &c);
 	if (c.value)
 		pager_program = c.value;
