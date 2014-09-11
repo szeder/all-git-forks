@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-08-04 14:48+0800\n"
-"PO-Revision-Date: 2014-09-10 21:47+0200\n"
+"PO-Revision-Date: 2014-09-11 21:03+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -131,6 +131,8 @@ msgid ""
 "Negative patterns are ignored in git attributes\n"
 "Use '\\!' for literal leading exclamation."
 msgstr ""
+"En los atributos git se ignoran los patrones negativos.\n"
+"Use '\\!' como signo de exclamación al comienzo de un literal."
 
 #: branch.c:60
 #, c-format
@@ -165,7 +167,7 @@ msgstr ""
 #: branch.c:95
 #, c-format
 msgid "Branch %s set up to track remote ref %s."
-msgstr ""
+msgstr "Rama %s configurada para seguir a la ref remota %s."
 
 #: branch.c:99
 #, c-format
@@ -175,12 +177,12 @@ msgstr ""
 #: branch.c:100
 #, c-format
 msgid "Branch %s set up to track local ref %s."
-msgstr ""
+msgstr "Rama %s configurada para seguir a la ref local %s."
 
 #: branch.c:133
 #, c-format
 msgid "Not tracking: ambiguous information for ref %s"
-msgstr ""
+msgstr "Seguimiento no configurado: información ambigua para la ref %s"
 
 #: branch.c:178
 #, c-format
@@ -2787,7 +2789,7 @@ msgstr ""
 
 #: builtin/branch.c:502
 msgid " **** invalid ref ****"
-msgstr ""
+msgstr " **** ref inválida ****"
 
 #: builtin/branch.c:594
 #, c-format
@@ -2815,7 +2817,7 @@ msgstr "el objeto '%s' no apunta a un commit"
 
 #: builtin/branch.c:681
 msgid "some refs could not be read"
-msgstr ""
+msgstr "no he podido leer algunas refs"
 
 #: builtin/branch.c:694
 msgid "cannot rename the current branch while not on any."
