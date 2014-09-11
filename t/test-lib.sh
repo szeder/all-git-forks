@@ -520,7 +520,12 @@ maybe_setup_valgrind () {
 test_eval_ () {
 	# This is a separate function because some tests use
 	# "return" to end a test_expect_success block early.
-	eval </dev/null >&3 2>&4 "$*"
+	if command -v test_eval_override >/dev/null 2>&1
+	then
+		test_eval_override "$*"
+	else
+		eval "$*"
+	fi </dev/null >&3 2>&4
 }
 
 test_run_ () {
