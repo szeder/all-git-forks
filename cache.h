@@ -982,6 +982,7 @@ extern int read_ref(const char *refname, unsigned char *sha1);
  * errno is set to something meaningful on error.
  */
 #define RESOLVE_REF_READING 0x01
+#define RESOLVE_REF_NODEREF 0x02
 extern const char *resolve_ref_unsafe(const char *ref, unsigned char *sha1, int *flags, int resolve_flags);
 extern char *resolve_refdup(const char *ref, unsigned char *sha1, int *flags, int resolve_flags);
 

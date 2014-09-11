@@ -1408,6 +1408,10 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int *fl
 				refname = refname_buffer;
 				if (flags)
 					*flags |= REF_ISSYMREF;
+				if (resolve_flags & RESOLVE_REF_NODEREF) {
+					hashclr(sha1);
+					return refname;
+				}
 				continue;
 			}
 		}
@@ -1471,6 +1475,10 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int *fl
 			return NULL;
 		}
 		refname = strcpy(refname_buffer, buf);
+		if (resolve_flags & RESOLVE_REF_NODEREF) {
+			hashclr(sha1);
+			return refname;
+		}
 	}
 }
 
@@ -2110,6 +2118,8 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 
 	if (mustexist)
 		resolve_flags |= RESOLVE_REF_READING;
+	if (flags & REF_NODEREF)
+		resolve_flags |= RESOLVE_REF_NODEREF;
 
 	refname = resolve_ref_unsafe(refname, lock->old_sha1, &type,
 				     resolve_flags);
