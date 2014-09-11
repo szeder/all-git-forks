@@ -2044,6 +2044,12 @@ receive.autogc::
 	receiving data from git-push and updating refs.  You can stop
 	it by setting this variable to false.
 
+receive.certnonceseed::
+	By setting this variable to a string, `git receive-pack`
+	will accept a `git push --signed` and verifies it by using
+	a "nonce" protected by HMAC using this string as a secret
+	key.
+
 receive.fsckObjects::
 	If it is set to true, git-receive-pack will check all received
 	objects. It will abort in the case of a malformed object or a
