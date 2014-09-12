@@ -17,7 +17,7 @@
  *
  *    Usually, if $FILENAME is a symlink, then it is resolved, and the
  *    file ultimately pointed to is the one that is locked and later
- *    replaced.  However, if LOCK_NODEREF is used, then $FILENAME
+ *    replaced.  However, if LOCK_NO_DEREF is used, then $FILENAME
  *    itself is locked and later replaced, even if it is a symlink.
  *
  * 2. Write the new file contents to the lockfile.
@@ -186,7 +186,7 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 	}
 
 	strbuf_add(&lk->filename, path, pathlen);
-	if (!(flags & LOCK_NODEREF))
+	if (!(flags & LOCK_NO_DEREF))
 		resolve_symlink(&lk->filename);
 	strbuf_addstr(&lk->filename, LOCK_SUFFIX);
 	lk->fd = open(lk->filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
