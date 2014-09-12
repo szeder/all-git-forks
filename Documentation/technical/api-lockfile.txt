@@ -52,6 +52,11 @@ hold_lock_file_for_append::
 	lockfile and its write pointer is positioned at the end of the
 	file before returning.
 
+get_locked_file_path::
+
+	Return the path of the file that is locked by the specified
+	lock_file object. The caller must free the memory.
+
 unable_to_lock_error::
 
 	Emit an error describing that there was an error locking the
