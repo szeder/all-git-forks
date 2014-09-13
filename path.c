@@ -141,7 +141,7 @@ void home_config_paths(char **global, char **xdg, char *file)
 	if (!home && !(homedrive && homepath)) {
 		if (global)
 			*global = NULL;
-	} else if (homedrive && homepath) {
+	} else if (!home && homedrive && homepath) {
 		if (!xdg_home) {
 			to_free = mkpathdup("%s%s/.config", homedrive, homepath);
 			xdg_home = to_free;
