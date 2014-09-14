@@ -1502,4 +1502,10 @@ void stat_validity_update(struct stat_validity *sv, int fd);
 
 int versioncmp(const char *s1, const char *s2);
 
+/*
+ * Returns true if the line appears to be an mbox "From" line starting a new
+ * message.
+ */
+int is_from_line(const char *line, int len);
+
 #endif /* CACHE_H */
