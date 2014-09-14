@@ -267,16 +267,10 @@ static void graph_ensure_capacity(struct git_graph *graph, int num_columns)
 		graph->column_capacity *= 2;
 	} while (graph->column_capacity < num_columns);
 
-	graph->columns = xrealloc(graph->columns,
-				  sizeof(struct column) *
-				  graph->column_capacity);
-	graph->new_columns = xrealloc(graph->new_columns,
-				      sizeof(struct column) *
-				      graph->column_capacity);
-	graph->mapping = xrealloc(graph->mapping,
-				  sizeof(int) * 2 * graph->column_capacity);
-	graph->new_mapping = xrealloc(graph->new_mapping,
-				      sizeof(int) * 2 * graph->column_capacity);
+	REALLOCARRAY(graph->columns, graph->column_capacity);
+	REALLOCARRAY(graph->new_columns, graph->column_capacity);
+	REALLOCARRAY(graph->mapping, graph->column_capacity * 2);
+	REALLOCARRAY(graph->new_mapping, graph->column_capacity * 2);
 }
 
 /*
