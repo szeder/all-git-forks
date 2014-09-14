@@ -2771,14 +2771,49 @@ proc doprogupdate {} {
     }
 }
 
-proc config_variable_change_cb {name name2 op} {
-    global config_variable_changed
-    if {$op eq "write"} {
-	if {$name2 eq ""} {
-	    set config_variable_changed($name) 1
+proc config_check_tmp_exists {tries_left} {
+    global config_file_tmp
+
+    if {[file exists $config_file_tmp]} {
+	incr tries_left -1
+	if {$tries_left > 0} {
+	    after 100 [list config_check_tmp_exists $tries_left]
 	} else {
-	    set config_variable_changed($name,$name2) 1
+	    error_popup "Probably there is stale $config_file_tmp file; config saving is going to fail. Check if it is being used by any existing gitk process and remove it otherwise"
 	}
+    }
+}
+
+proc config_resolve_variable {name name2} {
+    set var_name ""
+    set key ""
+    if {$name2 eq ""} {
+	set key $name
+	set var_name $name
+    } else {
+	set key "$name,$name2"
+	set var_name "${name}($name2)"
+    }
+    upvar #0 $var_name var
+    return [list $key $var]
+}
+
+proc config_init_trace {name name2} {
+    global config_variable_changed config_variable_original
+
+    set var_info [config_resolve_variable $name $name2]
+    set config_variable_changed([lindex $var_info 0]) 0
+    set config_variable_original([lindex $var_info 0]) [lindex $var_info 1]
+}
+
+proc config_variable_change_cb {name name2 op} {
+    global config_variable_changed config_variable_original
+
+    set var_info [config_resolve_variable $name $name2]
+    if {$op eq "write" &&
+	([llength [array names config_variable_original -exact [lindex $var_info 0]]] == 0 ||
+	 $config_variable_original([lindex $var_info 0]) ne [lindex $var_info 1])} {
+	set config_variable_changed([lindex $var_info 0]) 1
     }
 }
 
@@ -2797,11 +2832,16 @@ proc savestuff {w} {
 
     if {$stuffsaved} return
     if {![winfo viewable .]} return
+    set remove_tmp 0
     catch {
-	if {[file exists $config_file_tmp]} {
-	    file delete -force $config_file_tmp
+	set try_count 0
+	while {[catch {set f [open $config_file_tmp {WRONLY CREAT EXCL}]}]} {
+	    if {[incr try_count] > 50} {
+		error "Unable to write config file: $config_file_tmp exists"
+	    }
+	    after 100
 	}
-	set f [open $config_file_tmp w]
+	set remove_tmp 1
 	if {$::tcl_platform(platform) eq {windows}} {
 	    file attributes $config_file_tmp -hidden true
 	}
@@ -2834,12 +2874,13 @@ proc savestuff {w} {
 
 	array set view_save {}
 	array set views {}
+	if {![info exists permviews]} { set permviews {} }
 	foreach view $permviews {
 	    set view_save([lindex $view 0]) 1
 	    set views([lindex $view 0]) $view
 	}
 	puts -nonewline $f "set permviews {"
-	for {set v 0} {$v < $current_nextviewnum} {incr v} {
+	for {set v 1} {$v < $current_nextviewnum} {incr v} {
 	    if {$config_variable_changed(viewname,$v) ||
 		$config_variable_changed(viewfiles,$v) ||
 		$config_variable_changed(viewargs,$v) ||
@@ -2867,6 +2908,14 @@ proc savestuff {w} {
 	puts $f "}"
 	close $f
 	file rename -force $config_file_tmp $config_file
+	set remove_tmp 0
+	return ""
+    } err
+    if {$err ne ""} {
+	puts "Error saving config: $err"
+    }
+    if {$remove_tmp} {
+	file delete -force $config_file_tmp
     }
     set stuffsaved 1
 }
@@ -12146,6 +12195,7 @@ catch {
     }
     source $config_file
 }
+config_check_tmp_exists 50
 
 set config_variables {
     mainfont textfont uifont tabstop findmergefiles maxgraphpct maxwidth
@@ -12160,7 +12210,7 @@ set config_variables {
     indexcirclecolor circlecolors linkfgcolor circleoutlinecolor
 }
 foreach var $config_variables {
-    set config_variable_changed($var) 0
+    config_init_trace $var ""
     trace add variable $var write config_variable_change_cb
 }
 
@@ -12367,8 +12417,8 @@ if {[info exists permviews]} {
     }
 }
 foreach var {viewname viewfiles viewargs viewargscmd viewperm} {
-    for {set v 0} {$v < $nextviewnum} {incr v} {
-	set config_variable_changed($var,$v) 0
+    for {set v 1} {$v < $nextviewnum} {incr v} {
+	config_init_trace $var $v
     }
     trace add variable $var write config_variable_change_cb
 }
