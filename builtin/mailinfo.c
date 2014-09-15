@@ -6,6 +6,7 @@
 #include "builtin.h"
 #include "utf8.h"
 #include "strbuf.h"
+#include "mbox.h"
 
 static FILE *cmitmsg, *patchfile, *fin, *fout;
 

@@ -686,6 +686,7 @@ LIB_H += list-objects.h
 LIB_H += ll-merge.h
 LIB_H += log-tree.h
 LIB_H += mailmap.h
+LIB_H += mbox.h
 LIB_H += merge-blobs.h
 LIB_H += merge-recursive.h
 LIB_H += mergesort.h

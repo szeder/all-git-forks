@@ -8,6 +8,7 @@
 #include "builtin.h"
 #include "string-list.h"
 #include "strbuf.h"
+#include "mbox.h"
 
 static const char git_mailsplit_usage[] =
 "git mailsplit [-d<prec>] [-f<n>] [-b] [--keep-cr] -o<directory> [(<mbox>|<Maildir>)...]";
