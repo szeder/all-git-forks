@@ -182,8 +182,22 @@ all::
 #
 # Define NO_SETITIMER if you don't have setitimer()
 #
+# Define NO_TIMER_SETTIME if you don't have timer_settime()
+#
+# Define NO_TIMER_T if you don't have timer_t.
+# This also implies NO_TIMER_SETTIME
+#
+# Define NO_STRUCT_TIMESPEC if you don't have struct timespec
+# This also implies NO_TIMER_SETTIME
+#
+# Define NO_STRUCT_SIGEVENT if you don't have struct sigevent
+# This also implies NO_TIMER_SETTIME
+#
 # Define NO_STRUCT_ITIMERVAL if you don't have struct itimerval
 # This also implies NO_SETITIMER
+#
+# Define NO_STRUCT_ITIMERSPEC if you don't have struct itimerspec
+# This also implies NO_TIMER_SETTIME
 #
 # Define NO_FAST_WORKING_DIRECTORY if accessing objects in pack files is
 # generally faster on your platform than accessing the working directory.
@@ -1215,12 +1229,31 @@ endif
 ifdef OBJECT_CREATION_USES_RENAMES
 	COMPAT_CFLAGS += -DOBJECT_CREATION_MODE=1
 endif
+ifdef NO_TIMER_T
+	COMPAT_CFLAGS += -DNO_TIMER_T
+	NO_TIMER_SETTIME = YesPlease
+endif
+ifdef NO_STRUCT_TIMESPEC
+	COMPAT_CFLAGS += -DNO_STRUCT_TIMESPEC
+	NO_TIMER_SETTIME = YesPlease
+endif
+ifdef NO_STRUCT_SIGEVENT
+	COMPAT_CFLAGS += -DNO_STRUCT_SIGEVENT
+	NO_TIMER_SETTIME = YesPlease
+endif
 ifdef NO_STRUCT_ITIMERVAL
 	COMPAT_CFLAGS += -DNO_STRUCT_ITIMERVAL
 	NO_SETITIMER = YesPlease
 endif
+ifdef NO_STRUCT_ITIMERSPEC
+	COMPAT_CFLAGS += -DNO_STRUCT_ITIMERSPEC
+	NO_TIMER_SETTIME = YesPlease
+endif
 ifdef NO_SETITIMER
 	COMPAT_CFLAGS += -DNO_SETITIMER
+endif
+ifdef NO_TIMER_SETTIME
+	COMPAT_CFLAGS += -DNO_TIMER_SETTIME
 endif
 ifdef NO_PREAD
 	COMPAT_CFLAGS += -DNO_PREAD
@@ -1381,6 +1414,14 @@ endif
 
 ifdef HAVE_CLOCK_GETTIME
 	BASIC_CFLAGS += -DHAVE_CLOCK_GETTIME
+	LINK_WITH_LIBRT = YesPlease
+endif
+
+ifndef NO_TIMER_SETTIME
+	LINK_WITH_LIBRT = YesPlease
+endif
+
+ifdef LINK_WITH_LIBRT
 	EXTLIBS += -lrt
 endif
 
