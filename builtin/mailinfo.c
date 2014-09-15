@@ -6,6 +6,7 @@
 #include "builtin.h"
 #include "utf8.h"
 #include "strbuf.h"
+#include "mbox.h"
 
 static FILE *cmitmsg, *patchfile, *fin, *fout;
 
@@ -329,7 +330,7 @@ static int check_header(const struct strbuf *line,
 
 	/* for inbody stuff */
 	if (starts_with(line->buf, ">From") && isspace(line->buf[5])) {
-		ret = 1; /* Should this return 0? */
+		ret = is_format_patch_separator(line->buf + 1, line->len - 1);
 		goto check_header_out;
 	}
 	if (starts_with(line->buf, "[PATCH]") && isspace(line->buf[7])) {
