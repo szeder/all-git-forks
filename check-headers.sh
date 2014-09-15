@@ -20,6 +20,7 @@ maybe_exit () {
 
 check_header () {
 	header="$1"
+	shift
 	case "$header" in
 	common-cmds.h)
 		# should only be included by help.c, not checked
@@ -38,15 +39,15 @@ check_header () {
 check_headers () {
 	for header in *.h ewah/*.h vcs-svn/*.h xdiff/*.h
 	do
-		check_header "$header"
+		check_header "$header" "$@"
 	done
 }
 
 check_header_usage () {
-	first=$(grep '^#include' "$1" |
-		head -n1 |
-		sed -e 's,#include ",,' -e 's,"$,,')
-
+	first=$(sed -n -e '/^#include/{
+			s/#include ["<]\(.*\)".*/\1/p
+			q
+		}' "$1")
 	case "$first" in
 	cache.h|builtin.h|git-compat-util.h)
 		# happy
