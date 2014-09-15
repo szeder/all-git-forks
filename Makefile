@@ -2457,6 +2457,12 @@ check-docs::
 check-builtins::
 	./check-builtins.sh
 
+### Make sure headers include their dependencies
+#
+check-headers::
+	./check-headers.sh $(CC) $(ALL_CFLAGS) $(EXTRA_CPPFLAGS)
+
+
 ### Test suite coverage testing
 #
 .PHONY: coverage coverage-clean coverage-compile coverage-test coverage-report
