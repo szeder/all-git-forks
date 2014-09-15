@@ -330,7 +330,7 @@ static int check_header(const struct strbuf *line,
 
 	/* for inbody stuff */
 	if (starts_with(line->buf, ">From") && isspace(line->buf[5])) {
-		ret = is_from_line(line->buf + 1, line->len - 1);
+		ret = is_format_patch_separator(line->buf + 1, line->len - 1);
 		goto check_header_out;
 	}
 	if (starts_with(line->buf, "[PATCH]") && isspace(line->buf[7])) {
