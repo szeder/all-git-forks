@@ -135,7 +135,6 @@ static void setup_git_env(void)
 	const char *gitfile;
 	const char *shallow_file;
 
-	git_dir = getenv(GIT_DIR_ENVIRONMENT);
 	if (!git_dir)
 		git_dir = DEFAULT_GIT_DIR_ENVIRONMENT;
 	gitfile = read_gitfile(git_dir);
@@ -265,6 +264,7 @@ char *get_graft_file(void)
 
 int set_git_dir(const char *path)
 {
+	git_dir = xstrdup(path);
 	setup_git_env();
 	return 0;
 }
