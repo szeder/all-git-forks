@@ -175,10 +175,13 @@ int check_pager_config(const char *cmd)
 {
 	struct pager_config c;
 	int unused_nongit;
+	const char *subdir;
 	c.cmd = cmd;
 	c.want = -1;
 	c.value = NULL;
-	setup_git_directory_gently(&unused_nongit);
+	subdir = setup_git_directory_gently(&unused_nongit);
+	if (subdir && chdir(subdir))
+	    die_errno("Cannot change to '%s'", subdir);
 	git_config(pager_command_config, &c);
 	if (c.value)
 		pager_program = c.value;
