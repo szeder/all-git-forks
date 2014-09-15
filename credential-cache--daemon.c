@@ -213,7 +213,8 @@ static void serve_cache(const char *socket_path, int debug)
 	printf("ok\n");
 	fclose(stdout);
 	if (!debug)
-		freopen("/dev/null", "w", stderr);
+		if (!freopen("/dev/null", "w", stderr))
+			die("BUG: cannot discard stderr to /dev/null");
 
 	while (serve_cache_loop(fd))
 		; /* nothing */
