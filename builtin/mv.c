@@ -184,10 +184,10 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 
 				modes[i] = WORKING_DIRECTORY;
 				n = argc + last - first;
-				source = xrealloc(source, n * sizeof(char *));
-				destination = xrealloc(destination, n * sizeof(char *));
-				modes = xrealloc(modes, n * sizeof(enum update_mode));
-				submodule_gitfile = xrealloc(submodule_gitfile, n * sizeof(char *));
+				REALLOCARRAY(source, n);
+				REALLOCARRAY(destination, n);
+				REALLOCARRAY(modes, n);
+				REALLOCARRAY(submodule_gitfile, n);
 
 				dst = add_slash(dst);
 				dst_len = strlen(dst);
