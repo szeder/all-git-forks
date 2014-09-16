@@ -865,14 +865,3 @@ int daemonize(void)
 	return 0;
 #endif
 }
-
-/* un-ignore and un-block SIGPIPE */
-void sanitize_signals(void)
-{
-	sigset_t unblock;
-
-	sigemptyset(&unblock);
-	sigaddset(&unblock, SIGPIPE);
-	sigprocmask(SIG_UNBLOCK, &unblock, NULL);
-	signal(SIGPIPE, SIG_DFL);
-}
