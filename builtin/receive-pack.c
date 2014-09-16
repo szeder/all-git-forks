@@ -17,6 +17,7 @@
 #include "version.h"
 #include "tag.h"
 #include "gpg-interface.h"
+#include "sigchain.h"
 
 static const char receive_pack_usage[] = "git receive-pack <git-dir>";
 
@@ -500,6 +501,8 @@ static int run_and_feed_hook(const char *hook_name, feed_fn feed, void *feed_sta
 		return code;
 	}
 
+	sigchain_push(SIGPIPE, SIG_IGN);
+
 	while (1) {
 		const char *buf;
 		size_t n;
@@ -511,6 +514,9 @@ static int run_and_feed_hook(const char *hook_name, feed_fn feed, void *feed_sta
 	close(proc.in);
 	if (use_sideband)
 		finish_async(&muxer);
+
+	sigchain_pop(SIGPIPE);
+
 	return finish_command(&proc);
 }
 
