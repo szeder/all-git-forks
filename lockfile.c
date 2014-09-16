@@ -312,6 +312,9 @@ int commit_lock_file(struct lock_file *lk)
 {
 	char result_file[PATH_MAX];
 
+	if (!lk->filename[0])
+		die("BUG: attempt to commit unlocked object");
+
 	if (lk->fd >= 0 && close_lock_file(lk))
 		return -1;
 
