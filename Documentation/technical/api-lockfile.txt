@@ -31,11 +31,11 @@ hold_lock_file_for_update::
 	to the file.  The flags parameter is a combination of
 +
 --
-LOCK_NODEREF::
+LOCK_NO_DEREF::
 
 	Usually symbolic links in path are resolved in path and the
 	lockfile is created by adding ".lock" to the resolved path;
-	however, if `LOCK_NODEREF` is set, then the lockfile is
+	however, if `LOCK_NO_DEREF` is set, then the lockfile is
 	created by adding ".lock" to the path argument itself.
 
 LOCK_DIE_ON_ERROR::
