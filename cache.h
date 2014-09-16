@@ -584,7 +584,6 @@ struct lock_file {
 };
 #define LOCK_DIE_ON_ERROR 1
 #define LOCK_NO_DEREF 2
-extern int unable_to_lock_error(const char *path, int err);
 extern void unable_to_lock_message(const char *path, int err,
 				   struct strbuf *buf);
 extern NORETURN void unable_to_lock_die(const char *path, int err);
@@ -976,7 +975,7 @@ extern int get_sha1_hex(const char *hex, unsigned char *sha1);
 
 extern char *sha1_to_hex(const unsigned char *sha1);	/* static buffer result! */
 extern int read_ref_full(const char *refname, unsigned char *sha1,
-			 int reading, int *flags);
+			 int *flags, int resolve_flags);
 extern int read_ref(const char *refname, unsigned char *sha1);
 
 /*
@@ -988,29 +987,37 @@ extern int read_ref(const char *refname, unsigned char *sha1);
  * or the input ref.
  *
  * If the reference cannot be resolved to an object, the behavior
- * depends on the "reading" argument:
+ * depends on the RESOLVE_REF_READING flag:
  *
- * - If reading is set, return NULL.
+ * - If RESOLVE_REF_READING is set, return NULL.
  *
- * - If reading is not set, clear sha1 and return the name of the last
- *   reference name in the chain, which will either be a non-symbolic
+ * - If RESOLVE_REF_READING is not set, clear sha1 and return the name of
+ *   the last reference name in the chain, which will either be a non-symbolic
  *   reference or an undefined reference.  If this is a prelude to
  *   "writing" to the ref, the return value is the name of the ref
  *   that will actually be created or changed.
  *
- * If flag is non-NULL, set the value that it points to the
+ * If flags is non-NULL, set the value that it points to the
  * combination of REF_ISPACKED (if the reference was found among the
- * packed references) and REF_ISSYMREF (if the initial reference was a
- * symbolic reference).
+ * packed references), REF_ISSYMREF (if the initial reference was a
+ * symbolic reference) and REF_ISBROKEN (if the ref is malformed).
  *
  * If ref is not a properly-formatted, normalized reference, return
  * NULL.  If more than MAXDEPTH recursive symbolic lookups are needed,
  * give up and return NULL.
  *
- * errno is set to something meaningful on error.
+ * RESOLVE_REF_ALLOW_BAD_NAME disables most of the ref name checking except
+ * for names that are absolute paths or contain ".." components. For both
+ * these cases the function will return NULL and set errno to EINVAL.
+ * If the name is bad then the function will set the REF_ISBROKEN flag and
+ * return the name, if the ref exists, or NULL, if it does not.
+ * When this flag is set, any badly named refs will resolve to nullsha1.
  */
-extern const char *resolve_ref_unsafe(const char *ref, unsigned char *sha1, int reading, int *flag);
-extern char *resolve_refdup(const char *ref, unsigned char *sha1, int reading, int *flag);
+#define RESOLVE_REF_READING 0x01
+#define RESOLVE_REF_NODEREF 0x02
+#define RESOLVE_REF_ALLOW_BAD_NAME 0x04
+extern const char *resolve_ref_unsafe(const char *ref, unsigned char *sha1, int *flags, int resolve_flags);
+extern char *resolve_refdup(const char *ref, unsigned char *sha1, int *flags, int resolve_flags);
 
 extern int dwim_ref(const char *str, int len, unsigned char *sha1, char **ref);
 extern int dwim_log(const char *str, int len, unsigned char *sha1, char **ref);

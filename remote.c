@@ -508,7 +508,7 @@ static void read_config(void)
 		return;
 	default_remote_name = "origin";
 	current_branch = NULL;
-	head_ref = resolve_ref_unsafe("HEAD", sha1, 0, &flag);
+	head_ref = resolve_ref_unsafe("HEAD", sha1, &flag, 0);
 	if (head_ref && (flag & REF_ISSYMREF) &&
 	    skip_prefix(head_ref, "refs/heads/", &head_ref)) {
 		current_branch = make_branch(head_ref, 0);
@@ -1145,7 +1145,8 @@ static char *guess_ref(const char *name, struct ref *peer)
 	struct strbuf buf = STRBUF_INIT;
 	unsigned char sha1[20];
 
-	const char *r = resolve_ref_unsafe(peer->name, sha1, 1, NULL);
+	const char *r = resolve_ref_unsafe(peer->name, sha1, NULL,
+					   RESOLVE_REF_READING);
 	if (!r)
 		return NULL;
 
@@ -1206,7 +1207,8 @@ static int match_explicit(struct ref *src, struct ref *dst,
 		unsigned char sha1[20];
 		int flag;
 
-		dst_value = resolve_ref_unsafe(matched_src->name, sha1, 1, &flag);
+		dst_value = resolve_ref_unsafe(matched_src->name, sha1, &flag,
+					       RESOLVE_REF_READING);
 		if (!dst_value ||
 		    ((flag & REF_ISSYMREF) &&
 		     !starts_with(dst_value, "refs/heads/")))
@@ -1680,7 +1682,7 @@ static int ignore_symref_update(const char *refname)
 	unsigned char sha1[20];
 	int flag;
 
-	if (!resolve_ref_unsafe(refname, sha1, 0, &flag))
+	if (!resolve_ref_unsafe(refname, sha1, &flag, 0))
 		return 0; /* non-existing refs are OK */
 	return (flag & REF_ISSYMREF);
 }
