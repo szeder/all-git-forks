@@ -198,19 +198,18 @@ void format_decorations_extended(struct strbuf *sb,
 	decoration = lookup_decoration(&name_decoration, &commit->object);
 	if (!decoration)
 		return;
-	strbuf_addstr(sb, color_commit);
-	strbuf_addstr(sb, prefix);
 	while (decoration) {
+		strbuf_addstr(sb, color_commit);
+		strbuf_addstr(sb, prefix);
 		strbuf_addstr(sb, decorate_get_color(use_color, decoration->type));
 		if (decoration->type == DECORATION_REF_TAG)
 			strbuf_addstr(sb, "tag: ");
 		strbuf_addstr(sb, decoration->name);
 		strbuf_addstr(sb, color_reset);
-		strbuf_addstr(sb, color_commit);
-		if (decoration->next)
-			strbuf_addstr(sb, separator);
+		prefix = separator;
 		decoration = decoration->next;
 	}
+	strbuf_addstr(sb, color_commit);
 	strbuf_addstr(sb, suffix);
 	strbuf_addstr(sb, color_reset);
 }

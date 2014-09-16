@@ -452,11 +452,11 @@ EOF
 
 test_expect_success 'clean log decoration' '
 	git log --no-walk --tags --pretty="%H %D" --decorate=full >actual &&
-	cat <<EOF >expected &&
-$head1 tag: refs/tags/tag2
-$head2 tag: refs/tags/message-one
-$old_head1 tag: refs/tags/message-two
-EOF
+	cat >expected <<-EOF &&
+	$head1 tag: refs/tags/tag2
+	$head2 tag: refs/tags/message-one
+	$old_head1 tag: refs/tags/message-two
+	EOF
 	sort actual >actual1 &&
 	test_cmp expected actual1
 '
