@@ -188,15 +188,63 @@ typedef unsigned long uintptr_t;
 extern int compat_mkdir_wo_trailing_slash(const char*, mode_t);
 #endif
 
+#ifdef NO_TIMER_T
+typedef int timer_t;
+#endif
+
+#ifdef NO_STRUCT_TIMESPEC
+struct timespec {
+	time_t tv_sec;
+	long tv_nsec;
+};
+#endif
+
+#ifndef SIGEV_SIGNAL
+#define SIGEV_SIGNAL 1 /* dummy */
+#endif
+
+#ifdef NO_STRUCT_SIGEVENT
+struct sigevent /* dummy */
+{
+	int sigev_notify;
+	int sigev_signo;
+};
+#endif
+
 #ifdef NO_STRUCT_ITIMERVAL
 struct itimerval {
 	struct timeval it_interval;
 	struct timeval it_value;
-}
+};
+#endif
+
+#ifdef NO_STRUCT_ITIMERSPEC
+struct itimerspec {
+	struct timespec it_interval;
+	struct timespec it_value;
+};
 #endif
 
 #ifdef NO_SETITIMER
-#define setitimer(which,value,ovalue)
+#define setitimer(which,value,ovalue) ((void) (which), (void) (value), (void) (ovalue), errno = ENOSYS, -1)
+#endif
+
+#ifdef NO_TIMER_SETTIME
+#define timer_create(clockid, sevp, timerp) ((void) (clockid), (void) (sevp), (void) (timerp), errno = ENOSYS, -1)
+
+#define timer_delete(timer) do {		\
+	struct itimerval v = {{0,},};		\
+	setitimer(ITIMER_REAL, &v, NULL);	\
+} while (0)
+
+#define timer_settime(timer, flags, value, ovalue) do {				\
+	struct itimerval _ivalue;						\
+	_ivalue.it_interval.tv_sec = value.it_interval.tv_sec;			\
+	_ivalue.it_interval.tv_usec = value.it_interval.tv_nsec / 1000L;	\
+	_ivalue.it_value.tv_sec  value.it_value.tv_sec;				\
+	_ivalue_it_value.tv_usec = value.it_value.tv_nsec / 1000L;		\
+	setitimer(ITIMER_REAL, &_ivalue, NULL);					\
+while (0)
 #endif
 
 #ifndef NO_LIBGEN_H
