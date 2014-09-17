@@ -968,10 +968,7 @@ then
 fi
 if test -n "$GIT_SEQUENCE_FORMAT"
 then
-	if test "$GIT_SEQUENCE_FORMAT" = "${GIT_SEQUENCE_FORMAT#>%h}"
-	then
-		GIT_SEQUENCE_FORMAT=">%h $GIT_SEQUENCE_FORMAT"
-	fi
+	GIT_SEQUENCE_FORMAT="%m%h $GIT_SEQUENCE_FORMAT"
 fi
 git rev-list $merges_option --pretty="${GIT_SEQUENCE_FORMAT:-oneline}" --abbrev-commit \
 	--abbrev=7 --reverse --left-right --topo-order \
