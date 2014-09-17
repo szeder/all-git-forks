@@ -1063,4 +1063,21 @@ test_expect_success 'very long name in the index handled sanely' '
 	test $len = 4098
 '
 
+large_git () {
+	for i in $(test_seq 1 100)
+	do
+		git ls-files -s || return
+	done
+}
+
+test_expect_success 'a constipated git dies with SIGPIPE' '
+	OUT=$( ((large_git; echo $? 1>&3) | :) 3>&1 )
+	test "$OUT" -eq 141
+'
+
+test_expect_success 'a constipated git dies with SIGPIPE even if parent ignores it' '
+	OUT=$( ((trap "" PIPE; large_git; echo $? 1>&3) | :) 3>&1 )
+	test "$OUT" -eq 141
+'
+
 test_done
