@@ -2130,7 +2130,11 @@ class P4Sync(Command, P4UserMap):
             
         if type_base == "unicode":
             text = ''.join(contents)
-            contents = [ text.decode('utf-8').encode('cp932') ]
+            contents = [ text.replace("\n", os.linesep).decode('utf-8').encode('cp932') ]
+            
+        if type_base == "text":
+            text = ''.join(contents)
+            contents = [ text.replace("\n", os.linesep) ]
 
         self.gitStream.write("M %s inline %s\n" % (git_mode, relPath))
 
