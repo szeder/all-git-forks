@@ -7971,13 +7971,13 @@ proc getblobdiffline {bdf ids} {
 	}
 	parseblobdiffline $ids $line
     }
-    $ctext conf -state disabled
-    blobdiffmaybeseehere [eof $bdf]
     if {[eof $bdf]} {
         parseblobdiffline_end $ids
 	catch {close $bdf}
 	return 0
     }
+    $ctext conf -state disabled
+    blobdiffmaybeseehere [eof $bdf]
     return [expr {$nr >= 1000? 2: 1}]
 }
 
