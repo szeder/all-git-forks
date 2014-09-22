@@ -18,8 +18,10 @@ on the subcommand:
 
  git bisect help
  git bisect start [--no-checkout] [<bad> [<good>...]] [--] [<paths>...]
- git bisect bad [<rev>]
- git bisect good [<rev>...]
+ git bisect (bad|new) [<rev>]
+ git bisect (good|old) [<rev>...]
+ git bisect new [<rev>]
+ git bisect old [<rev>...]
  git bisect skip [(<rev>|<range>)...]
  git bisect reset [<commit>]
  git bisect visualize
@@ -103,6 +105,31 @@ $ git bisect reset <commit>
 For example, `git bisect reset HEAD` will leave you on the current
 bisection commit and avoid switching commits at all, while `git bisect
 reset bisect/bad` will check out the first bad revision.
+
+
+Alternative terms: bisect new and bisect old
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are not at ease with the terms "bad" and "good", perhaps
+because you are looking for the commit that introduced a fix, you can
+alternatively use "new" and "old" instead.
+But note that you cannot mix "bad" and good" with "new" and "old".
+
+------------------------------------------------
+git bisect new [<rev>]
+------------------------------------------------
+
+Same as "git bisect bad [<rev>]".
+
+------------------------------------------------
+git bisect old [<rev>...]
+------------------------------------------------
+
+Same as "git bisect good [<rev>...]".
+
+You must run `git bisect start` without commits as argument and run
+`git bisect new <rev>`/`git bisect old <rev>...` after to add the
+commits.
 
 Bisect visualize
 ~~~~~~~~~~~~~~~~
@@ -378,6 +405,18 @@ $ git bisect reset                   # quit the bisect session
 In this case, when 'git bisect run' finishes, bisect/bad will refer to a commit that
 has at least one parent whose reachable graph is fully traversable in the sense
 required by 'git pack objects'.
+
+* Look for a fix instead of a regression in the code
++
+------------
+$ git bisect start
+$ git bisect new		# Current version is fixed
+$ git bisect old bugged_version	# bugged_version was the last version
+				# known to be unfixed
+------------
++
+The "new" commits are the fixed ones and the "old" commits are the unfixed ones.
+At the end of the commit session, you will have the first fixed commit.
 
 
 SEE ALSO
