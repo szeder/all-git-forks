@@ -214,8 +214,8 @@ repository is created.
 
 core.ignorecase::
 	If true, this option enables various workarounds to enable
-	Git to work better on filesystems that are not case sensitive,
-	like FAT. For example, if a directory listing finds
+	Git to work better on filesystems that are typically not case sensitive,
+	like HFS or FAT. For example, if a directory listing finds
 	"makefile" when Git expects "Makefile", Git will assume
 	it is really the same file, and continue to remember it as
 	"Makefile".
