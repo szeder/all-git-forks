@@ -133,7 +133,9 @@ static const char *cleanup_arg;
 
 static enum commit_whence whence;
 static int sequencer_in_use;
-static int use_editor = 1, include_status = 1;
+static int use_editor = 1;
+static int include_status = 1;
+static int vebose_commit = 0;
 static int show_ignored_in_status, have_option_m;
 static const char *only_include_assumed;
 static struct strbuf message = STRBUF_INIT;
@@ -1545,6 +1547,10 @@ static int git_commit_config(const char *k, const char *v, void *cb)
 		return git_config_string(&cleanup_arg, k, v);
 	if (!strcmp(k, "commit.gpgsign")) {
 		sign_commit = git_config_bool(k, v) ? "" : NULL;
+		return 0;
+	}
+	if (!strcmp(k, "commit.diff")) {
+		verbose = git_config_bool(k, v);
 		return 0;
 	}
 

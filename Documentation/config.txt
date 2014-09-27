@@ -1013,6 +1013,12 @@ commit.status::
 	commit message template when using an editor to prepare the commit
 	message.  Defaults to true.
 
+commit.diff::
+	A boolean to enable/disable inclusion of a unified diff between the
+	head commit and what would be committed in the commit message
+	template when using an editor to prepare the commit message.
+	Defaults to false.
+
 commit.template::
 	Specify a file to use as the template for new commit messages.
 	"`~/`" is expanded to the value of `$HOME` and "`~user/`" to the

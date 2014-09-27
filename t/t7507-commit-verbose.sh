@@ -26,6 +26,21 @@ test_expect_success 'initial commit shows verbose diff' '
 	git commit --amend -v
 '
 
+test_expect_success 'diff in message with config.diff=true' '
+	git config commit.diff true &&
+	git commit --amend
+'
+
+test_expect_success 'diff in message with config.diff=false and -v' '
+	git config commit.diff false &&
+	git commit --amend -v
+'
+
+test_expect_success 'diff in message with config.diff=true and -v' '
+	git config commit.diff true &&
+	git commit --amend -v
+'
+
 test_expect_success 'second commit' '
 	echo content modified >file &&
 	git add file &&

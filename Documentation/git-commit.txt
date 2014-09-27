@@ -281,8 +281,9 @@ configuration variable documented in linkgit:git-config[1].
 --verbose::
 	Show unified diff between the HEAD commit and what
 	would be committed at the bottom of the commit message
-	template.  Note that this diff output doesn't have its
-	lines prefixed with '#'.
+	template. This behavior can be made the default by setting
+	commit.diff=true. Note that this diff output doesn't have
+	its lines prefixed with '#'.
 
 -q::
 --quiet::
