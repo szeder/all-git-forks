@@ -82,6 +82,7 @@
 #define _ALL_SOURCE 1
 #define _GNU_SOURCE 1
 #define _BSD_SOURCE 1
+#define _DEFAULT_SOURCE 1
 #define _NETBSD_SOURCE 1
 #define _SGI_SOURCE 1
 
@@ -625,6 +626,8 @@ extern int xmkstemp_mode(char *template, int mode);
 extern int odb_mkstemp(char *template, size_t limit, const char *pattern);
 extern int odb_pack_keep(char *name, size_t namesz, const unsigned char *sha1);
 extern char *xgetcwd(void);
+
+#define REALLOC_ARRAY(x, alloc) (x) = xrealloc((x), (alloc) * sizeof(*(x)))
 
 static inline size_t xsize_t(off_t len)
 {

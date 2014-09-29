@@ -482,7 +482,7 @@ extern int daemonize(void);
 				alloc = (nr); \
 			else \
 				alloc = alloc_nr(alloc); \
-			x = xrealloc((x), alloc * sizeof(*(x))); \
+			REALLOC_ARRAY(x, alloc); \
 		} \
 	} while (0)
 
@@ -1039,6 +1039,7 @@ enum date_mode {
 	DATE_SHORT,
 	DATE_LOCAL,
 	DATE_ISO8601,
+	DATE_ISO8601_STRICT,
 	DATE_RFC2822,
 	DATE_RAW
 };
@@ -1046,10 +1047,10 @@ enum date_mode {
 const char *show_date(unsigned long time, int timezone, enum date_mode mode);
 void show_date_relative(unsigned long time, int tz, const struct timeval *now,
 			struct strbuf *timebuf);
-int parse_date(const char *date, char *buf, int bufsize);
+int parse_date(const char *date, struct strbuf *out);
 int parse_date_basic(const char *date, unsigned long *timestamp, int *offset);
 int parse_expiry_date(const char *date, unsigned long *timestamp);
-void datestamp(char *buf, int bufsize);
+void datestamp(struct strbuf *out);
 #define approxidate(s) approxidate_careful((s), NULL)
 unsigned long approxidate_careful(const char *, int *);
 unsigned long approxidate_relative(const char *date, const struct timeval *now);
@@ -1284,6 +1285,8 @@ extern int update_server_info(int);
 #define CONFIG_INVALID_PATTERN 6
 #define CONFIG_GENERIC_ERROR 7
 
+#define CONFIG_REGEX_NONE ((void *)1)
+
 struct git_config_source {
 	unsigned int use_stdin:1;
 	const char *file;
@@ -1427,6 +1430,8 @@ extern const char *git_mailmap_blob;
 
 /* IO helper functions */
 extern void maybe_flush_or_die(FILE *, const char *);
+__attribute__((format (printf, 2, 3)))
+extern void fprintf_or_die(FILE *, const char *fmt, ...);
 extern int copy_fd(int ifd, int ofd);
 extern int copy_file(const char *dst, const char *src, int mode);
 extern int copy_file_with_time(const char *dst, const char *src, int mode);
