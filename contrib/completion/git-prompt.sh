@@ -214,6 +214,13 @@ __git_ps1_show_upstream ()
 		if [[ -n "$count" && -n "$name" ]]; then
 			__git_ps1_upstream_name=$(git rev-parse \
 				--abbrev-ref "$upstream" 2>/dev/null)
+
+			__head=${b##refs/heads/}
+			if [ "$__head" = "${__git_ps1_upstream_name##*/}" ]; then
+				__git_ps1_upstream_name=${__git_ps1_upstream_name/$__head/=}
+			fi
+			unset __head
+
 			if [ $pcmode = yes ] && [ $ps1_expanded = yes ]; then
 				p="$p \${__git_ps1_upstream_name}"
 			else
