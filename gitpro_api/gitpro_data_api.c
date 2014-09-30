@@ -40,20 +40,27 @@ static int nonquery_callback(void *not_used,int a,char **b,char **c){
 	return 0;
 }
 
-/* 	Name		: scalar_query_callback
-	Parameters	: personalized flag data, number of cols, data returned 
+/* 	Name		: int_scalar_query_callback
+	Parameters	: number of cols, data returned 
 				 and col names.
 	Return		: 0
-	Used for	: fill int or float scalar data to be returned in specific function call
-				 (exec_int_scalarquery or exec_float_scalar_query)
+	Used for	: fill int scalar data to be returned in specific function call
+				 (exec_int_scalarquery )
 	Note		: it's executed automatically by each row in result. */
-static int scalar_query_callback(void *flag,int ncol,char **col_data,char **col_name){
-	int integer = *((int *) flag);
-	if(integer){
-		int_scalar_data = atoi(col_data[0]);
-	}else{
-		float_scalar_data = atof(col_data[0]);
-	}	
+static int int_scalar_query_callback(void *notUsed,int ncol,char **col_data,char **col_name){
+	if(col_data[0]!=NULL) int_scalar_data = atoi(col_data[0]);
+	return 0;
+}
+
+/* 	Name		: float_scalar_query_callback
+	Parameters	: number of cols, data returned 
+				 and col names.
+	Return		: 0
+	Used for	: fill float scalar data to be returned in specific function call
+				 ( exec_float_scalar_query)
+	Note		: it's executed automatically by each row in result. */
+static int float_scalar_query_callback(void *notUsed,int ncol,char **col_data,char **col_name){
+	if(col_data[0]!=NULL) float_scalar_data = atof(col_data[0]);	
 	return 0;
 }
 
@@ -231,7 +238,7 @@ static int query_callback(void *not_used,int ncol,char **col_data, char **col_na
 int run_query(const char *sql,int (*callback)(void*,int,char**,char**),void *aux){
 	open_db();
 	char *err_msg = 0;
-	int check = sqlite3_exec(db_ptr,sql,callback,aux,&err_msg);
+	int check = sqlite3_exec(db_ptr,sql,callback,0,&err_msg);
 	close_db();
 	return check;
 }
@@ -252,19 +259,13 @@ int exec_nonquery(const char *sql){
 
 /* See specification in gitpro_data_api.h */
 int exec_int_scalarquery(const char *sql){
-	int *flag = (int *) malloc(sizeof(int));	
-	(*flag) = 1;	
-	run_query(sql,scalar_query_callback,flag);
-	free(flag);
+	run_query(sql,int_scalar_query_callback,0);
 	return int_scalar_data; 
 }
 
 /* See specification in gitpro_data_api.h */
 float exec_float_scalarquery(const char *sql){
-	int *flag = (int *) malloc(sizeof(int));
-	(*flag) = 0;
-	run_query(sql,scalar_query_callback,flag);
-	free(flag);
+	run_query(sql,float_scalar_query_callback,0);
 	return float_scalar_data; 
 }
 
