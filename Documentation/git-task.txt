@@ -1,0 +1,114 @@
+git-task(1)
+===========
+
+NAME
+----
+git-task - Task functionalities to manage team work
+
+
+SYNOPSIS
+--------
+[verse]
+'git task' [ [-c | --create] 
+	   | [-r | --read] 
+	   | [-u | --update] 
+	   | [-d | --delete] 
+	   | [-a | --assign] 
+	   | [-l | --link] ]
+
+Each option accepts arguments. See OPTIONS section for more info about a specific option and arguments.
+
+
+OPTIONS
+-------
+
+[-i | --id] 'task id' : Used to specify task id
+
+[-n | --name] 'name' : Used to specify task name
+
+[-s | --state] 'state' : Used to specify task state
+
+[-p | --prior] 'priority' : Used to specify task priority
+
+[-t | --type] 'type' : used to specify task type
+
+[--desc] 'your task description' : Used to add a description to a task
+
+[--notes] 'your notes to task' : Used to add text as a note to a task
+
+[--est_start] dd/mm/yyyy : Estimated start date of task
+
+[--est_end] dd/mm/yyyy : Estimated end date of task
+
+[--start] dd/mm/yyyy : Real start date of task
+
+[--end] dd/mm/yyyy : Real end date of task
+
+[--est_time] 'time' : Estimated time to do task. Given in hours.
+
+[--time] 'time' : Real time to finish task. Given in hours.
+
+--user [--add | --rm] : Used to assign, deassign users (or both) to/of task.
+
+--file [--add | --rm] : Used to link, unlink (or both) files to/of a task.
+
+
+[Create option]
+Need to specify 'name', 'state', 'priority' and 'type'.
+Creates new task if not exists one that matches with mandatory fields for tasks. It will prevent duplicate tasks.
+
+[Read option]
+Nothing to specify.
+You can filter task with interactive mode included. 
+
+[Update option]
+Need to specify all data to modify (id not allowed).
+In interactive mode included you can specify filters to update one or more tasks at time.
+Make sense that you can update task name and may have logic task duplications (application doesn't control this duplications because it can't know project domain).
+
+[Delete option]
+Nothing to specify.
+You can filter tasks to delete with interative mode included.
+
+[Assign option]
+Need to specify task 'id' to assign or deassign users.
+With --add specify users to assign.
+With --rm specify users to deassign.
+You can assign more than one user to a task, as it is logic.
+
+[Link files option]
+Need to specify task 'id' to link or unlink files.
+With --add specify files to link.
+With --rm specify files to unlink.
+Link files is very easy. Just type file name and it will be searched in your actual directory and subdirectories. If more than one file exists with same name, don't worry about that, you'll be asked to resolve conflict.
+
+NOTES
+-----
+When updating tasks, data such as notes, estimated time and real time will be added to existent value.
+Date format is dd/mm/yyyy (day/month/year)
+Times are measured in hours
+If any filter is set when requested it apply to all existent tasks (only task which match all selected filters will be shown, be carefull if no matching tasks)
+To create a new task you must specify, at least 'name', 'state', 'priority' and 'type'. This fields are mandatory to task creation.
+If not filters set it will apply to all tasks.
+
+
+EXAMPLES
+--------
+
+Create new task example:
+	git task -c -n 'task name' -p 'low' -t 'test' -s 'new'
+
+Read task example:
+	git task -r
+
+Update task example:
+	git task -u -n 'new task name'
+
+Delete task example:
+	git task -d
+
+Assign and deassign users to task example:
+	git task -a -i 1 --user --add="user1,user2" --rm="user3"
+
+Link and unlink files to task example:
+	git task -l -i 1 --file --add="file1,file2" --rm="file3"

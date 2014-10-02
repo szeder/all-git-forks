@@ -1,0 +1,88 @@
+git-role(1)
+===========
+
+NAME
+----
+git-role - Role functionalities to stablish task and role execute permissions
+
+
+SYNOPSIS
+--------
+[verse]
+'git role' [ [-c | --create] 
+  	   | [-r | --read] 
+ 	   | [-u | --update] 
+	   | [-d | --delete] 
+	   | [-a | --assign]]
+
+Each option accepts arguments. See OPTIONS section for more info about a specific option.
+
+
+OPTIONS
+-------
+
+[-n | --name] 'name' : Used to specify role name
+
+[-p | --perms] 'bit array' : Used to specify bit array of permissions.
+	Has 10 bits. Here is order to use it from left to right:
+		create role
+		remove role
+		update role
+		assign role
+		create task
+		read task
+		update task
+		delete task
+		assign task
+		link files
+
+--user [--add | --rm]	: Used to assign, deassign roles (or both) to users.
+
+
+[Create option]
+Need to specify role 'name' and array bit 'permissions'.
+Creates new role if doesn't exist one with same name yet.
+
+[Read option]
+Need to specify role 'name'.
+It will show actions allowed by specified role name.
+
+[Update option]
+Need to specify role 'name' and array bit 'permissions' which will be updated if
+role exists previously.
+
+[Delete option]
+Need to specify role 'name' which will be deleted if already exists.
+
+[Assign option]
+Need to specify role 'name' to assign and users to assign role or remove.
+Asignations made first and deasignations finally (be carefull).
+
+
+NOTES
+-----
+By default exists a PUBLIC role which allows basic operations.
+To do any task or role action it's mandatory that assigned role allow to do that action.
+Git repossitory administrator can do any role action (this is the only exception).
+Make sure you have been configured your git username with following command:
+	'git config --global user.name yourname'
+and let them know to your administrator.
+
+
+EXAMPLES
+--------
+
+Create new role example:
+	git role -c -n 'my role' -p '0101011101'
+
+Read role example:
+	git role -r -n 'my role'
+
+Update role example:
+	git role -u -n 'my role' -p '1100011101'
+
+Delete role example:
+	git role -d -n 'my role'
+
+Assign and deassign role example:
+	git role -a -n 'my role' --user --add="user1,user2" --rm="user3"

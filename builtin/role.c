@@ -11,7 +11,7 @@
 
 static const char * const builtin_role_usage[] =
 {
-	"role [-c | -r | -u | -d | -a]\n\tSome use examples:\n\t-c -n role_name -p 10_bit_array\n\t-r -n role_name\n\t-u -n role_name -p 10_bit_array\n\t-d -n role_name\n\t-a -n role_name -t --add=\"u1 u2 ... uN\" --rm=\"u1 u2 ... uN\"",
+	"role [-c | -r | -u | -d | -a]\n\tSome use examples:\n\t-c -n role_name -p 10_bit_array\n\t-r -n role_name\n\t-u -n role_name -p 10_bit_array\n\t-d -n role_name\n\t-a -n role_name --user --add=\"u1 u2 ... uN\" --rm=\"u1 u2 ... uN\"",
 	NULL
 };
 
