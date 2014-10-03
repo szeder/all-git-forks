@@ -634,6 +634,17 @@ test_cmp_bin() {
 	cmp "$@"
 }
 
+# This is the same as 'test "$1" $3 "$2"' except that it
+# will output a useful message to stderr on failure. If
+# $3 is omitted, defaults to "=".
+test_eq () {
+	if ! test "$1" "${3:-=}" "$2"
+	then
+		echo >&2 "test_eq failed: $1 ${3:-=} $2"
+		false
+	fi
+}
+
 # Check if the file expected to be empty is indeed empty, and barfs
 # otherwise.
 
