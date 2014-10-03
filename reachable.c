@@ -131,6 +131,8 @@ static void walk_commit_list(struct rev_info *revs,
 		}
 		die("unknown pending object %s (%s)", sha1_to_hex(obj->sha1), name);
 	}
+
+	object_array_clear(&revs->pending);
 }
 
 static int add_one_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
