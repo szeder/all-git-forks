@@ -24,6 +24,7 @@ m,merge!           use merging strategies to rebase
 i,interactive!     let the user edit the list of commits to rebase
 x,exec=!           add exec lines after each commit of the editable list
 k,keep-empty	   preserve empty commits during rebase
+A,pick-note?!      append output of arbitrary command after each commit
 f,force-rebase!    force rebase even if branch is up to date
 X,strategy-option=! pass the argument through to the merge strategy
 stat!              display a diffstat of what changed upstream
@@ -88,6 +89,7 @@ autosquash=
 keep_empty=
 test "$(git config --bool rebase.autosquash)" = "true" && autosquash=t
 gpg_sign_opt=
+pick_note_cmd=
 
 read_basic_state () {
 	test -f "$state_dir/head-name" &&
@@ -335,6 +337,12 @@ do
 		;;
 	--gpg-sign=*)
 		gpg_sign_opt="-S${1#--gpg-sign=}"
+		;;
+	--pick-note)
+		pick_note_cmd='{ git diff-tree --stat --summary $SHORT_SHA1 || exit 1; } | sed "s/^/     # /"'
+		;;
+	--pick-note=*)
+		pick_note_cmd="${1#--pick-note=}"
 		;;
 	--)
 		shift

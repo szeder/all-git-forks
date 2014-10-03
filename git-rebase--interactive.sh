@@ -978,6 +978,12 @@ do
 	if test t != "$preserve_merges"
 	then
 		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
+		if test -n "$pick_note_cmd"
+		then
+			SHORT_SHA1=$shortsha1
+			eval "$pick_note_cmd" >>"$todo" ||
+				die_abort "pick note failed: $pick_note_cmd"
+		fi
 	else
 		sha1=$(git rev-parse $shortsha1)
 		if test -z "$rebase_root"
@@ -997,6 +1003,12 @@ do
 		then
 			touch "$rewritten"/$sha1
 			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
+			if test -n "$pick_note_cmd"
+			then
+				SHORT_SHA1=$shortsha1
+				eval "$pick_note_cmd" >>"$todo" ||
+					die_abort "pick note failed: $pick_note_cmd"
+			fi
 		fi
 	fi
 done
