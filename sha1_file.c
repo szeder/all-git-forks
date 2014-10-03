@@ -3216,3 +3216,98 @@ void assert_sha1_type(const unsigned char *sha1, enum object_type expect)
 		die("%s is not a valid '%s' object", sha1_to_hex(sha1),
 		    typename(expect));
 }
+
+static int opendir_error(const char *path)
+{
+	if (errno == ENOENT)
+		return 0;
+	return error("unable to open %s: %s", path, strerror(errno));
+}
+
+static int for_each_file_in_obj_subdir(struct strbuf *path,
+				       const char *prefix,
+				       each_loose_object_fn obj_cb,
+				       each_loose_cruft_fn cruft_cb,
+				       each_loose_subdir_fn subdir_cb,
+				       void *data)
+{
+	size_t baselen = path->len;
+	DIR *dir = opendir(path->buf);
+	struct dirent *de;
+	int r = 0;
+
+	if (!dir)
+		return opendir_error(path->buf);
+
+	while ((de = readdir(dir))) {
+		if (is_dot_or_dotdot(de->d_name))
+			continue;
+
+		strbuf_setlen(path, baselen);
+		strbuf_addf(path, "/%s", de->d_name);
+
+		if (strlen(de->d_name) == 38)  {
+			char hex[41];
+			unsigned char sha1[20];
+
+			memcpy(hex, prefix, 2);
+			memcpy(hex + 2, de->d_name, 38);
+			hex[40] = 0;
+			if (!get_sha1_hex(hex, sha1)) {
+				if (obj_cb) {
+					r = obj_cb(sha1, path->buf, data);
+					if (r)
+						break;
+				}
+				continue;
+			}
+		}
+
+		if (cruft_cb) {
+			r = cruft_cb(de->d_name, path->buf, data);
+			if (r)
+				break;
+		}
+	}
+	if (!r && subdir_cb)
+		r = subdir_cb(de->d_name, path->buf, data);
+	closedir(dir);
+	return r;
+}
+
+int for_each_loose_file_in_objdir(const char *path,
+			    each_loose_object_fn obj_cb,
+			    each_loose_cruft_fn cruft_cb,
+			    each_loose_subdir_fn subdir_cb,
+			    void *data)
+{
+	struct strbuf buf = STRBUF_INIT;
+	size_t baselen;
+	DIR *dir = opendir(path);
+	struct dirent *de;
+	int r = 0;
+
+	if (!dir)
+		return opendir_error(path);
+
+	strbuf_addstr(&buf, path);
+	baselen = buf.len;
+
+	while ((de = readdir(dir))) {
+		if (!isxdigit(de->d_name[0]) ||
+		    !isxdigit(de->d_name[1]) ||
+		    de->d_name[2])
+			continue;
+
+		strbuf_addf(&buf, "/%s", de->d_name);
+		r = for_each_file_in_obj_subdir(&buf, de->d_name, obj_cb,
+						cruft_cb, subdir_cb, data);
+		strbuf_setlen(&buf, baselen);
+		if (r)
+			break;
+	}
+
+	closedir(dir);
+	strbuf_release(&buf);
+	return r;
+}
