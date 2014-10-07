@@ -38,6 +38,7 @@ struct progress {
 	struct throughput *throughput;
 };
 
+static timer_t progress_timer;
 static volatile sig_atomic_t progress_update;
 
 static void progress_interval(int signum)
@@ -48,7 +49,8 @@ static void progress_interval(int signum)
 static void set_progress_signal(void)
 {
 	struct sigaction sa;
-	struct itimerval v;
+	struct sigevent sev;
+	struct itimerspec value;
 
 	progress_update = 0;
 
@@ -58,16 +60,20 @@ static void set_progress_signal(void)
 	sa.sa_flags = SA_RESTART;
 	sigaction(SIGALRM, &sa, NULL);
 
-	v.it_interval.tv_sec = 1;
-	v.it_interval.tv_usec = 0;
-	v.it_value = v.it_interval;
-	setitimer(ITIMER_REAL, &v, NULL);
+	memset(&sev, 0, sizeof(sev));
+	sev.sigev_notify = SIGEV_SIGNAL;
+	sev.sigev_signo = SIGALRM;
+	timer_create(CLOCK_MONOTONIC, &sev, &progress_timer);
+
+	value.it_interval.tv_sec = 1;
+	value.it_interval.tv_nsec = 0;
+	value.it_value = value.it_interval;
+	timer_settime(progress_timer, 0, &value, NULL);
 }
 
 static void clear_progress_signal(void)
 {
-	struct itimerval v = {{0,},};
-	setitimer(ITIMER_REAL, &v, NULL);
+	timer_delete(progress_timer);
 	signal(SIGALRM, SIG_IGN);
 	progress_update = 0;
 }
