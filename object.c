@@ -355,6 +355,12 @@ void add_object_array_with_context(struct object *obj, const char *name, struct 
 		add_object_array_with_mode_context(obj, name, array, S_IFINVALID, context);
 }
 
+static void object_array_release_entry(struct object_array_entry *ent)
+{
+	if (ent->name != object_array_slopbuf)
+		free(ent->name);
+}
+
 void object_array_filter(struct object_array *array,
 			 object_array_each_func_t want, void *cb_data)
 {
@@ -367,11 +373,20 @@ void object_array_filter(struct object_array *array,
 				objects[dst] = objects[src];
 			dst++;
 		} else {
-			if (objects[src].name != object_array_slopbuf)
-				free(objects[src].name);
+			object_array_release_entry(&objects[src]);
 		}
 	}
 	array->nr = dst;
+}
+
+void object_array_clear(struct object_array *array)
+{
+	int i;
+	for (i = 0; i < array->nr; i++)
+		object_array_release_entry(&array->objects[i]);
+	free(array->objects);
+	array->objects = NULL;
+	array->nr = array->alloc = 0;
 }
 
 /*
@@ -400,8 +415,7 @@ void object_array_remove_duplicates(struct object_array *array)
 				objects[array->nr] = objects[src];
 			array->nr++;
 		} else {
-			if (objects[src].name != object_array_slopbuf)
-				free(objects[src].name);
+			object_array_release_entry(&objects[src]);
 		}
 	}
 }
