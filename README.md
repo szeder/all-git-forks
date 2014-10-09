@@ -32,7 +32,7 @@ very reliable and solid, and used by many people. In order to use them in Git
 mainline you might need a bit of tinkering.
 
 With git-fc they are installed by default, and in the right way. Plus there are
-fixes in the remote helper infraestructure so they always work better than in
+fixes in the remote helper infrastructure so they always work better than in
 Git mainline.
 
 ### New 'git update' tool
