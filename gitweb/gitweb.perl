@@ -1718,6 +1718,19 @@ sub project_in_list {
 	return @list && scalar(grep { $_->{'path'} eq $project } @list);
 }
 
+
+# Make a XHTML entity ID from the given string(s).
+# All arguments are concatenated with an "-", spaces are replaced by "-",
+# and other characters are escaped so the name can be used within a XML
+# attribute.
+# Eg. make_xhtml_id("project", "foo.git")   -->  "project-foo.git"
+sub make_xhtml_id {
+	my $id = join("-", @_);
+	$id =~ s/\s/-/g;
+	return esc_attr($id);
+}
+
+
 ## ----------------------------------------------------------------------
 ## HTML aware string manipulation
 
@@ -5681,11 +5694,12 @@ sub git_project_list_rows {
 	my $alternate = 1;
 	for (my $i = $from; $i <= $to; $i++) {
 		my $pr = $projlist->[$i];
+		my $pr_id = make_xhtml_id("project", $pr->{'path'});
 
 		if ($alternate) {
-			print "<tr class=\"dark\">\n";
+			print "<tr id=\"$pr_id\" class=\"dark\">\n";
 		} else {
-			print "<tr class=\"light\">\n";
+			print "<tr id=\"$pr_id\" class=\"light\">\n";
 		}
 		$alternate ^= 1;
 
@@ -5802,7 +5816,8 @@ sub git_project_list_body {
 				if ($check_forks) {
 					print "<td></td>\n";
 				}
-				print "<td class=\"category\" colspan=\"5\">".esc_html($cat)."</td>\n";
+				my $cat_id = make_xhtml_id("category", $cat);
+				print "<td id=\"$cat_id\" class=\"category\" colspan=\"5\">".esc_html($cat)."</td>\n";
 				print "</tr>\n";
 			}
 
