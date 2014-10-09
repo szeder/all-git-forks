@@ -402,6 +402,18 @@ int cmd_version(int argc, const char **argv, const char *prefix)
 	return 0;
 }
 
+int cmd_fkt(int argc, const char **argv, const char *prefix)
+{
+	/*
+	 * Git fkt
+	 */
+	while (1) {
+		printf("GET FUCKED ");
+	}
+
+	return 0;
+}
+
 struct similar_ref_cb {
 	const char *base_ref;
 	struct string_list *similar_refs;

@@ -482,6 +482,7 @@ static struct cmd_struct commands[] = {
 	{ "verify-pack", cmd_verify_pack },
 	{ "verify-tag", cmd_verify_tag, RUN_SETUP },
 	{ "version", cmd_version },
+	{ "fkt", cmd_fkt },
 	{ "whatchanged", cmd_whatchanged, RUN_SETUP },
 	{ "write-tree", cmd_write_tree, RUN_SETUP },
 };
