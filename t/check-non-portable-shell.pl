@@ -16,7 +16,7 @@ sub err {
 
 while (<>) {
 	chomp;
-	/\bsed\s+-i/ and err 'sed -i is not portable';
+	#/\bsed\s+-i/ and err 'sed -i is not portable';
 	/\becho\s+-n/ and err 'echo -n is not portable (please use printf)';
 	/^\s*declare\s+/ and err 'arrays/declare not portable';
 	/^\s*[^#]\s*which\s/ and err 'which is not portable (please use type)';
