@@ -75,6 +75,7 @@
 /git-init
 /git-init-db
 /git-instaweb
+/git-isvn
 /git-log
 /git-ls-files
 /git-ls-remote
@@ -245,3 +246,6 @@
 *.pdb
 /Debug/
 /Release/
+/SVN-TEST*.isvn/
+*/.*.swp
+/.*.swp

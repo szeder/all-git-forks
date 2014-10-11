@@ -623,6 +623,7 @@ export PYTHON_PATH
 LIB_FILE = libgit.a
 XDIFF_LIB = xdiff/lib.a
 VCSSVN_LIB = vcs-svn/lib.a
+ISVN_LIB = isvn/libisvn.a
 
 GENERATED_H += common-cmds.h
 
@@ -825,6 +826,7 @@ BUILTIN_OBJS += builtin/hash-object.o
 BUILTIN_OBJS += builtin/help.o
 BUILTIN_OBJS += builtin/index-pack.o
 BUILTIN_OBJS += builtin/init-db.o
+BUILTIN_OBJS += builtin/isvn.o
 BUILTIN_OBJS += builtin/log.o
 BUILTIN_OBJS += builtin/ls-files.o
 BUILTIN_OBJS += builtin/ls-remote.o
@@ -883,7 +885,7 @@ BUILTIN_OBJS += builtin/verify-pack.o
 BUILTIN_OBJS += builtin/verify-tag.o
 BUILTIN_OBJS += builtin/write-tree.o
 
-GITLIBS = $(LIB_FILE) $(XDIFF_LIB)
+GITLIBS = $(LIB_FILE) $(XDIFF_LIB) $(ISVN_LIB) $(VCSSVN_LIB)
 EXTLIBS =
 
 GIT_USER_AGENT = git/$(GIT_VERSION)
@@ -1510,6 +1512,10 @@ ifdef DEFAULT_HELP_FORMAT
 BASIC_CFLAGS += -DDEFAULT_HELP_FORMAT='"$(DEFAULT_HELP_FORMAT)"'
 endif
 
+BASIC_CFLAGS += -I/usr/include/subversion-1 `apr-1-config --includes`
+EXTLIBS += -lsvn_client-1 -lsvn_ra-1 -lsvn_subr-1 -lsvn_delta-1 \
+		   `apr-1-config --link-ld`
+
 ALL_CFLAGS += $(BASIC_CFLAGS)
 ALL_LDFLAGS += $(BASIC_LDFLAGS)
 
@@ -1786,10 +1792,16 @@ VCSSVN_OBJS += vcs-svn/sliding_window.o
 VCSSVN_OBJS += vcs-svn/git-strbuf.o
 VCSSVN_OBJS += vcs-svn/svndiff.o
 
+ISVN_OBJS += isvn/isvn-brancher.o
+ISVN_OBJS += isvn/isvn-editor.o
+ISVN_OBJS += isvn/isvn-fetcher.o
+ISVN_OBJS += isvn/isvn-revmap.o
+
 TEST_OBJS := $(patsubst test-%$X,test-%.o,$(TEST_PROGRAMS))
 OBJECTS := $(LIB_OBJS) $(BUILTIN_OBJS) $(PROGRAM_OBJS) $(TEST_OBJS) \
 	$(XDIFF_OBJS) \
 	$(VCSSVN_OBJS) \
+	$(ISVN_OBJS) \
 	git.o
 ifndef NO_CURL
 	OBJECTS += http.o http-walker.o remote-curl.o
@@ -1916,6 +1928,9 @@ $(XDIFF_LIB): $(XDIFF_OBJS)
 	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
 
 $(VCSSVN_LIB): $(VCSSVN_OBJS)
+	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
+
+$(ISVN_LIB): $(ISVN_OBJS)
 	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $^
 
 export DEFAULT_EDITOR DEFAULT_PAGER
