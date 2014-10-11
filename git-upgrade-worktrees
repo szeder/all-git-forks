@@ -1,0 +1,71 @@
+#!/usr/bin/env perl
+
+# vim: foldmethod=marker
+
+use strict;
+
+use Carp;
+
+# {{{ utils
+sub read_file($) { my ($path) = @_;
+    open(my $fh, "<", $path) or die "Fail to read gitdir $path: $!";
+    binmode($fh) or die "Fail to read gitdir $path: $!";
+    my $content = "";
+    my $chunk = "";
+    while(do { my $ret = read($fh, $chunk, 10240);
+            if (!defined $ret) {
+                die "Fail to read gitdir $path: $!"; 
+            }
+            $ret > 0; }) {
+        $content .= $chunk;
+    }
+    close($fh);
+    return $content;
+}
+
+sub write_file($$) { my ($path, $content) = @_;
+    open(my $fh, ">", "$path.tmp") or die "Fail to write gitdir $path.tmp: $!";
+    binmode($fh) or die "Fail to write gitdir $path.tmp: $!";
+    print $fh $content or die "Fail to write gitdir $path.tmp: $!";
+    close($fh) or die "Fail to write gitdir $path.tmp: $!";
+    rename("$path.tmp", "$path") or die "Fail to replace $path";
+}
+# }}}
+
+my $arg_dir = $ARGV[0];
+my $GIT_DIR = undef;
+if (-e "$arg_dir/repos") {
+    $GIT_DIR = $arg_dir;
+} elsif (-e "$arg_dir/.git/repos") {
+    $GIT_DIR = "$arg_dir/.git";
+} else {
+    die "Not a master git repository: $arg_dir";
+}
+
+mkdir("$GIT_DIR/worktrees");
+opendir(my $dir, "$GIT_DIR/repos") or die "Fail to open dir: $!";
+foreach my $subdir (readdir($dir)) {
+    if ($subdir eq "." || $subdir eq "..") { next; }
+    my $gitdir_path = "$GIT_DIR/repos/$subdir/gitdir";
+    if (!-e $gitdir_path) {
+        die "No gitdir: $gitdir_path";
+    }
+
+    my $gitdir_content = read_file($gitdir_path);
+
+    if ($gitdir_content =~ /^(.*\.git)\n$/s) {
+        my $tree_gitlink = $1;
+        my $tree_gitlink_content = read_file($tree_gitlink);
+        if ($tree_gitlink_content =~ /^gitdir: (.*\/)repos\/\Q$subdir\E\n$/s) {
+            my $repo_dir_base = $1;
+            write_file($tree_gitlink, "gitdir: $repo_dir_base/worktrees/$subdir\n");
+            rename("$GIT_DIR/repos/$subdir", "$GIT_DIR/worktrees/$subdir") or die "Fail to move $GIT_DIR/repos/$subdir";
+        } else {
+            die "Incorrect gitline $tree_gitlink:\n$tree_gitlink_content\n";
+        }
+    } else {
+        die "Incorrect gitdir $gitdir_path:\n$gitdir_content\n";
+    }
+}
+closedir($dir) or die "Fail to close dir: $!";
+rmdir("$GIT_DIR/repos") or print STDERR "Warning $GIT_DIR/repos is not yet clear"
