@@ -35,10 +35,10 @@ const signed char hexval_table[256] = {
 	 -1, -1, -1, -1, -1, -1, -1, -1,		/* f8-ff */
 };
 
-int get_sha1_hex(const char *hex, unsigned char *sha1)
+int hex_to_bin(const char *hex, unsigned char *bin, size_t bin_sz)
 {
 	int i;
-	for (i = 0; i < 20; i++) {
+	for (i = 0; i < bin_sz; i++) {
 		unsigned int val;
 		/*
 		 * hex[1]=='\0' is caught when val is checked below,
@@ -50,26 +50,38 @@ int get_sha1_hex(const char *hex, unsigned char *sha1)
 		val = (hexval(hex[0]) << 4) | hexval(hex[1]);
 		if (val & ~0xff)
 			return -1;
-		*sha1++ = val;
+		*bin++ = val;
 		hex += 2;
 	}
 	return 0;
+}
+
+int get_sha1_hex(const char *hex, unsigned char *sha1)
+{
+	return hex_to_bin(hex, sha1, 20);
+}
+
+void bin_to_hex_buf(const unsigned char *bin, char *buf, size_t sz)
+{
+	static const char hex[] = "0123456789abcdef";
+	int i;
+
+	for (i = 0; i < sz; i++) {
+		unsigned int val = *bin++;
+		*buf++ = hex[val >> 4];
+		*buf++ = hex[val & 0xf];
+	}
+	*buf = '\0';
 }
 
 char *sha1_to_hex(const unsigned char *sha1)
 {
 	static int bufno;
 	static char hexbuffer[4][50];
-	static const char hex[] = "0123456789abcdef";
-	char *buffer = hexbuffer[3 & ++bufno], *buf = buffer;
-	int i;
 
-	for (i = 0; i < 20; i++) {
-		unsigned int val = *sha1++;
-		*buf++ = hex[val >> 4];
-		*buf++ = hex[val & 0xf];
-	}
-	*buf = '\0';
+	char *buffer = hexbuffer[3 & ++bufno];
+
+	bin_to_hex_buf(sha1, buffer, 20);
 
 	return buffer;
 }

@@ -966,7 +966,10 @@ extern int for_each_abbrev(const char *prefix, each_abbrev_fn, void *);
  * null-terminated string.
  */
 extern int get_sha1_hex(const char *hex, unsigned char *sha1);
+/* S.a. get_sha1_hex, but for arbitrary hex-binary. SIZE IS OF BINARY.*/
+extern int hex_to_bin(const char *hex, unsigned char *bin, size_t bin_sz);
 
+extern void bin_to_hex_buf(const unsigned char *bin, char *buf, size_t sz);
 extern char *sha1_to_hex(const unsigned char *sha1);	/* static buffer result! */
 extern int read_ref_full(const char *refname, unsigned char *sha1,
 			 int reading, int *flags);
