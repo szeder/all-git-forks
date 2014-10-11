@@ -25,6 +25,14 @@ int buffer_fdinit(struct line_buffer *buf, int fd)
 	return 0;
 }
 
+int buffer_meminit(struct line_buffer *buf, /* const */void *dbuf, size_t sz)
+{
+	buf->infile = fmemopen(dbuf, sz, "r");
+	if (!buf->infile)
+		return -1;
+	return 0;
+}
+
 int buffer_tmpfile_init(struct line_buffer *buf)
 {
 	buf->infile = tmpfile();
@@ -36,6 +44,8 @@ int buffer_tmpfile_init(struct line_buffer *buf)
 int buffer_deinit(struct line_buffer *buf)
 {
 	int err;
+	if (buf->infile == NULL)
+		return 0;
 	if (buf->infile == stdin)
 		return ferror(buf->infile);
 	err = ferror(buf->infile);
