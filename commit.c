@@ -36,11 +36,12 @@ struct commit *lookup_commit_reference(const unsigned char *sha1)
 struct commit *lookup_commit_or_die(const unsigned char *sha1, const char *ref_name)
 {
 	struct commit *c = lookup_commit_reference(sha1);
+	char tmpbuf[50];
 	if (!c)
 		die(_("could not parse %s"), ref_name);
 	if (hashcmp(sha1, c->object.sha1)) {
-		warning(_("%s %s is not a commit!"),
-			ref_name, sha1_to_hex(sha1));
+		bin_to_hex_buf(sha1, tmpbuf, 20);
+		warning(_("%s %s is not a commit!"), ref_name, tmpbuf);
 	}
 	return c;
 }
@@ -1507,6 +1508,7 @@ int commit_tree_extended(const char *msg, size_t msg_len,
 	int result;
 	int encoding_is_utf8;
 	struct strbuf buffer;
+	char tmpbuf[50];
 
 	assert_sha1_type(tree, OBJ_TREE);
 
@@ -1517,7 +1519,8 @@ int commit_tree_extended(const char *msg, size_t msg_len,
 	encoding_is_utf8 = is_encoding_utf8(git_commit_encoding);
 
 	strbuf_init(&buffer, 8192); /* should avoid reallocs for the headers */
-	strbuf_addf(&buffer, "tree %s\n", sha1_to_hex(tree));
+	bin_to_hex_buf(tree, tmpbuf, 20);
+	strbuf_addf(&buffer, "tree %s\n", tmpbuf);
 
 	/*
 	 * NOTE! This ordering means that the same exact tree merged with a
@@ -1528,8 +1531,8 @@ int commit_tree_extended(const char *msg, size_t msg_len,
 		struct commit_list *next = parents->next;
 		struct commit *parent = parents->item;
 
-		strbuf_addf(&buffer, "parent %s\n",
-			    sha1_to_hex(parent->object.sha1));
+		bin_to_hex_buf(parent->object.sha1, tmpbuf, 20);
+		strbuf_addf(&buffer, "parent %s\n", tmpbuf);
 		free(parents);
 		parents = next;
 	}
@@ -1613,9 +1616,11 @@ void print_commit_list(struct commit_list *list,
 		       const char *format_cur,
 		       const char *format_last)
 {
+	char tmpbuf[50];
 	for ( ; list; list = list->next) {
 		const char *format = list->next ? format_cur : format_last;
-		printf(format, sha1_to_hex(list->item->object.sha1));
+		bin_to_hex_buf(list->item->object.sha1, tmpbuf, 20);
+		printf(format, tmpbuf);
 	}
 }
 
