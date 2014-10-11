@@ -3,6 +3,7 @@
  */
 #include "cache.h"
 #include "hashmap.h"
+#include "thread-utils.h"
 
 #define FNV32_BASE ((unsigned int) 0x811c9dc5)
 #define FNV32_PRIME ((unsigned int) 0x01000193)
@@ -241,26 +242,35 @@ static int pool_entry_cmp(const struct pool_entry *e1,
 	       (e1->len != e2->len || memcmp(e1->data, keydata, e1->len));
 }
 
+static struct hashmap intern_map;
+static pthread_mutex_t intern_lk = PTHREAD_MUTEX_INITIALIZER;
+
 const void *memintern(const void *data, size_t len)
 {
-	static struct hashmap map;
-	struct pool_entry key, *e;
+	struct pool_entry *e, *newent;
+
+	newent = xmallocz(sizeof(struct pool_entry) + len);
+	hashmap_entry_init(&newent->ent, memhash(data, len));
+	newent->len = len;
+	memcpy(newent->data, data, len);
+
+	pthread_mutex_lock(&intern_lk);
 
 	/* initialize string pool hashmap */
-	if (!map.tablesize)
-		hashmap_init(&map, (hashmap_cmp_fn) pool_entry_cmp, 0);
+	if (!intern_map.tablesize)
+		hashmap_init(&intern_map, (hashmap_cmp_fn) pool_entry_cmp, 0);
 
 	/* lookup interned string in pool */
-	hashmap_entry_init(&key, memhash(data, len));
-	key.len = len;
-	e = hashmap_get(&map, &key, data);
+	e = hashmap_get(&intern_map, newent, data);
 	if (!e) {
-		/* not found: create it */
-		e = xmallocz(sizeof(struct pool_entry) + len);
-		hashmap_entry_init(e, key.ent.hash);
-		e->len = len;
-		memcpy(e->data, data, len);
-		hashmap_add(&map, e);
+		/* not found: add it */
+		hashmap_add(&intern_map, newent);
 	}
+	pthread_mutex_unlock(&intern_lk);
+
+	if (e)
+		free(newent);
+	else
+		e = newent;
 	return e->data;
 }
