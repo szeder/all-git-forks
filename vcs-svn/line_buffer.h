@@ -13,6 +13,7 @@ struct line_buffer {
 
 int buffer_init(struct line_buffer *buf, const char *filename);
 int buffer_fdinit(struct line_buffer *buf, int fd);
+int buffer_fileinit(struct line_buffer *buf, FILE *file);
 int buffer_meminit(struct line_buffer *buf, /*const*/ void *dbuf, size_t sz);
 int buffer_deinit(struct line_buffer *buf);
 

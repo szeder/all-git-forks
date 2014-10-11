@@ -25,6 +25,14 @@ int buffer_fdinit(struct line_buffer *buf, int fd)
 	return 0;
 }
 
+int buffer_fileinit(struct line_buffer *buf, FILE *file)
+{
+	buf->infile = file;
+	if (!buf->infile)
+		return -1;
+	return 0;
+}
+
 int buffer_meminit(struct line_buffer *buf, /* const */void *dbuf, size_t sz)
 {
 	buf->infile = fmemopen(dbuf, sz, "r");
