@@ -21,8 +21,8 @@ static const char *argv_checkout[] = {"checkout", "-q", NULL, "--", NULL};
 static const char *argv_show_branch[] = {"show-branch", NULL, NULL};
 static const char *argv_update_ref[] = {"update-ref", "--no-deref", "BISECT_HEAD", NULL, NULL};
 
-static const char *bisect_bad;
-static const char *bisect_good;
+static const char *name_bad;
+static const char *name_good;
 
 /* Remember to update object flag allocation in object.h */
 #define COUNTED		(1u<<16)
@@ -406,7 +406,7 @@ struct commit_list *find_bisection(struct commit_list *list,
 static int register_ref(const char *refname, const unsigned char *sha1,
 			int flags, void *cb_data)
 {
-	if (!strcmp(refname, bisect_bad)) {
+	if (!strcmp(refname, name_bad)) {
 		current_bad_sha1 = xmalloc(20);
 		hashcpy(current_bad_sha1, sha1);
 	} else if (starts_with(refname, "good-") ||
@@ -638,7 +638,7 @@ static void exit_if_skipped_commits(struct commit_list *tried,
 		return;
 
 	printf("There are only 'skip'ped commits left to test.\n"
-	       "The first %s commit could be any of:\n", bisect_bad);
+	       "The first %s commit could be any of:\n", name_bad);
 	print_commit_list(tried, "%s\n", "%s\n");
 	if (bad)
 		printf("%s\n", sha1_to_hex(bad));
@@ -736,7 +736,7 @@ static void handle_bad_merge_base(void)
 	if (is_expected_rev(current_bad_sha1)) {
 		char *bad_hex = sha1_to_hex(current_bad_sha1);
 		char *good_hex = join_sha1_array_hex(&good_revs, ' ');
-		if (!strcmp(bisect_bad,"bad")) {
+		if (!strcmp(name_bad,"bad")) {
 			fprintf(stderr, "The merge base %s is bad.\n"
 				"This means the bug has been fixed "
 				"between %s and [%s].\n",
@@ -753,8 +753,7 @@ static void handle_bad_merge_base(void)
 	fprintf(stderr, "Some %s revs are not ancestor of the %s rev.\n"
 		"git bisect cannot work properly in this case.\n"
 		"Maybe you mistake %s and %s revs?\n",
-		bisect_good, bisect_bad, bisect_good,
-		bisect_bad);
+		name_good, name_bad, name_good, name_bad);
 	exit(1);
 }
 
@@ -769,7 +768,7 @@ static void handle_skipped_merge_base(const unsigned char *mb)
 		"So we cannot be sure the first %s commit is "
 		"between %s and %s.\n"
 		"We continue anyway.",
-		bad_hex, good_hex, bisect_bad, mb_hex, bad_hex);
+		bad_hex, good_hex, name_bad, mb_hex, bad_hex);
 	free(good_hex);
 }
 
@@ -850,7 +849,7 @@ static void check_good_are_ancestors_of_bad(const char *prefix, int no_checkout)
 	int fd;
 
 	if (!current_bad_sha1)
-		die("a %s revision is needed", bisect_bad);
+		die("a %s revision is needed", name_bad);
 
 	/* Check if file BISECT_ANCESTORS_OK exists. */
 	if (!stat(filename, &st) && S_ISREG(st.st_mode))
@@ -913,13 +912,13 @@ void read_bisect_terms(void)
 	FILE *fp = fopen(filename, "r");
 
 	if (!fp) {
-		bisect_bad = "bad";
-		bisect_good = "good";
+		name_bad = "bad";
+		name_good = "good";
 	} else {
 	strbuf_getline(&str, fp, '\n');
-	bisect_bad = strbuf_detach(&str, NULL);
+	name_bad = strbuf_detach(&str, NULL);
 	strbuf_getline(&str, fp, '\n');
-	bisect_good = strbuf_detach(&str, NULL);
+	name_good = strbuf_detach(&str, NULL);
 	}
 	strbuf_release(&str);
 	fclose(fp);
@@ -963,8 +962,7 @@ int bisect_next_all(const char *prefix, int no_checkout)
 		exit_if_skipped_commits(tried, NULL);
 
 		printf("%s was both %s and %s\n",
-		       sha1_to_hex(current_bad_sha1), bisect_good,
-		       bisect_bad);
+		       sha1_to_hex(current_bad_sha1), name_good, name_bad);
 		exit(1);
 	}
 
@@ -980,7 +978,7 @@ int bisect_next_all(const char *prefix, int no_checkout)
 	if (!hashcmp(bisect_rev, current_bad_sha1)) {
 		exit_if_skipped_commits(tried, current_bad_sha1);
 		printf("%s is the first %s commit\n", bisect_rev_hex,
-			bisect_bad);
+			name_bad);
 		show_diff_tree(prefix, revs.commits->item);
 		/* This means the bisection process succeeded. */
 		exit(10);
@@ -992,8 +990,8 @@ int bisect_next_all(const char *prefix, int no_checkout)
 	       "(roughly %d step%s)\n", nr, (nr == 1 ? "" : "s"),
 	       steps, (steps == 1 ? "" : "s"));
 
-	free((char*)bisect_bad);
-	free((char*)bisect_good);
+	free((char*)name_bad);
+	free((char*)name_good);
 
 	return bisect_checkout(bisect_rev_hex, no_checkout);
 }
