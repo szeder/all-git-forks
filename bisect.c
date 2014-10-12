@@ -915,10 +915,10 @@ void read_bisect_terms(void)
 		name_bad = "bad";
 		name_good = "good";
 	} else {
-	strbuf_getline(&str, fp, '\n');
-	name_bad = strbuf_detach(&str, NULL);
-	strbuf_getline(&str, fp, '\n');
-	name_good = strbuf_detach(&str, NULL);
+		strbuf_getline(&str, fp, '\n');
+		name_bad = strbuf_detach(&str, NULL);
+		strbuf_getline(&str, fp, '\n');
+		name_good = strbuf_detach(&str, NULL);
 	}
 	strbuf_release(&str);
 	fclose(fp);
