@@ -1366,37 +1366,6 @@ static struct ref_entry *get_packed_ref(const char *refname)
 	return find_ref(get_packed_refs(&ref_cache), refname);
 }
 
-/*
- * A loose ref file doesn't exist; check for a packed ref.  The
- * options are forwarded from resolve_safe_unsafe().
- */
-static int handle_missing_loose_ref(const char *refname,
-				    unsigned char *sha1,
-				    int reading,
-				    int *flag)
-{
-	struct ref_entry *entry;
-
-	/*
-	 * The loose reference file does not exist; check for a packed
-	 * reference.
-	 */
-	entry = get_packed_ref(refname);
-	if (entry) {
-		hashcpy(sha1, entry->u.value.sha1);
-		if (flag)
-			*flag |= REF_ISPACKED;
-		return 0;
-	}
-	/* The reference is not a packed reference, either. */
-	if (reading) {
-		return -1;
-	} else {
-		hashclr(sha1);
-		return 0;
-	}
-}
-
 int parse_ref(const char *path, struct strbuf *refname,
 	      unsigned char *sha1, int *flag)
 {
@@ -1505,7 +1474,7 @@ int resolve_ref(const char *refname, struct strbuf *result,
 		unsigned char *sha1, int reading, int *flag)
 {
 	int depth = MAXDEPTH;
-	int ret = 0;
+	int ret;
 
 	if (flag)
 		*flag = 0;
@@ -1518,24 +1487,45 @@ int resolve_ref(const char *refname, struct strbuf *result,
 	strbuf_reset(result);
 	strbuf_addstr(result, refname);
 
-	while (!ret) {
+	do {
 		char path[PATH_MAX];
 
 		if (--depth < 0) {
 			errno = ELOOP;
-			ret = -1;
-			break;
+			return -1;
 		}
 
 		git_snpath(path, sizeof(path), "%s", result->buf);
 		ret = parse_ref(path, result, sha1, flag);
-		if (ret == -2) {
-			ret = handle_missing_loose_ref(result->buf, sha1,
-						       reading, flag);
-			ret = ret ? -1 : 1;
+	} while (!ret);
+
+	if (ret == 1) {
+		return 0;
+	} else if (ret == -2) {
+		/*
+		 * The loose reference file does not exist; check for a packed
+		 * reference.
+		 */
+		struct ref_entry *entry;
+
+		entry = get_packed_ref(result->buf);
+		if (entry) {
+			hashcpy(sha1, entry->u.value.sha1);
+			if (flag)
+				*flag |= REF_ISPACKED;
+			return 0;
 		}
+
+		/* The reference is not a packed reference, either. */
+		if (reading) {
+			return -1;
+		} else {
+			hashclr(sha1);
+			return 0;
+		}
+	} else {
+		return -1;
 	}
-	return ret > 0 ? 0 : -1;
 }
 
 const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int reading, int *flag)
