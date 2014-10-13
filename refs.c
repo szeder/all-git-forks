@@ -1280,25 +1280,6 @@ static struct ref_dir *get_loose_refs(struct ref_cache *refs)
 /* We allow "recursive" symbolic refs. Only within reason, though */
 #define MAXDEPTH 5
 
-/*
- * Called by resolve_gitlink_ref_recursive() after it failed to read
- * from the loose refs in ref_cache refs. Find <refname> in the
- * packed-refs file for the submodule.
- */
-static int resolve_gitlink_packed_ref(struct ref_cache *refs,
-				      const char *refname, unsigned char *sha1)
-{
-	struct ref_entry *ref;
-	struct ref_dir *dir = get_packed_refs(refs);
-
-	ref = find_ref(dir, refname);
-	if (ref == NULL)
-		return -1;
-
-	hashcpy(sha1, ref->u.value.sha1);
-	return 0;
-}
-
 int resolve_gitlink_ref(const char *path, const char *refname, unsigned char *sha1)
 {
 	struct strbuf result = STRBUF_INIT;
@@ -1331,7 +1312,17 @@ int resolve_gitlink_ref(const char *path, const char *refname, unsigned char *sh
 	if (parseval == 1) {
 		ret = 0;
 	} else if (parseval == -2) {
-		ret = resolve_gitlink_packed_ref(refs, result.buf, sha1) ? -1 : 0;
+		/* Loose ref doesn't exist; check for a packed ref */
+		struct ref_entry *entry;
+		struct ref_dir *dir = get_packed_refs(refs);
+
+		entry = find_ref(dir, result.buf);
+		if (entry) {
+			hashcpy(sha1, entry->u.value.sha1);
+			ret = 0;
+		} else {
+			ret = -1;
+		}
 	} else {
 		ret = -1;
 	}
