@@ -388,12 +388,12 @@ squash/fixup series.
 	Append the the output of <command> after each `pick' action. The
 	default command is
 +
-	{ git diff-tree --stat --summary $SHORT_SHA1 || exit 1; } | sed "s/^/# /"'
+	{ git diff-tree --stat --summary $SHORT_SHA1 || exit 1; } |
+		sed "s/^/$COMMENT_CHAR /"'
 +
 which appends the list of files affected by each commit to aid further squash
-and fixup arrangements. The sed substitution at the end of the command
-ensures that the appended text are commented out and indented so as not to
-clutter the rebase instructions.
+and fixup arrangements. The sed substitution ensures that the appended text are
+commented out and indented to avoid cluttering the rebase instructions.
 +
 The <command> argument is always evaluated in the shell context using eval.
 Prior to that, the SHORT_SHA1 environment variable will be set to contain the
