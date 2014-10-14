@@ -825,8 +825,7 @@ add_pick_note () {
 	COMMENT_CHAR=$2
 	todo_file=$3
 	eval "$pick_note_cmd" >>"$todo_file" || {
-		echo "--pick-note failed: $pick_note_cmd" |
-			sed "s/^/$COMMENT_CHAR /" >>"$todo_file"
+		die_abort "--pick-note failed: $pick_note_cmd"
 	}
 }
 

@@ -65,21 +65,22 @@ test_expect_success with-pick-note-long-option '
 
 test_expect_success with-pick-note-invalid-command '
 	test_must_fail git rebase \
-		--pick-note="false" \
-		-i --root >actual
+		-Afalse \
+		-i --root 2>actual.in
+	head -1 <actual.in >actual
 	cat <<-EOF >expected &&
-	Apick b1abfdb first commit
-	Apick aa0039e second commit
-	Apick 916f226 third commit
+	--pick-note failed: false
 	EOF
 	test_cmp expected actual
 '
 
-test_expect_success with-pick-note-invalid-second-one '
+test_expect_success with-pick-note-failed-after-second-pick '
 	test_must_fail git rebase \
-		--pick-note="if test x$SHORT_SHA1 = xaa0039e; then false; fi" \
-		-i --root >actual
+		--pick-note="if test x\$SHORT_SHA1 = xaa0039e; then false; fi" \
+		-i --root 2>actual.in
+	head -1 <actual.in >actual
 	cat <<-EOF >expected &&
+	--pick-note failed: if test x\$SHORT_SHA1 = xaa0039e; then false; fi
 	EOF
 	test_cmp expected actual
 '

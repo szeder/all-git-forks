@@ -339,7 +339,7 @@ do
 		gpg_sign_opt="-S${1#--gpg-sign=}"
 		;;
 	--pick-note)
-		pick_note_cmd='{ git diff-tree --stat --summary $SHORT_SHA1 || exit 1; } | sed "s/^/   $COMMENT_CHAR /"'
+		pick_note_cmd='{ git diff-tree --stat --summary $SHORT_SHA1 || exit 1; } | sed "s/^/    $COMMENT_CHAR/"'
 		;;
 	--pick-note=*)
 		pick_note_cmd="${1#--pick-note=}"
