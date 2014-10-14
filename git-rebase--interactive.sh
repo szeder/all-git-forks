@@ -981,8 +981,9 @@ do
 		if test -n "$pick_note_cmd"
 		then
 			SHORT_SHA1=$shortsha1
+			COMMENT_CHAR=$comment_char
 			eval "$pick_note_cmd" >>"$todo" || {
-				echo "# pick note failed: $pick_note_cmd" | sed "s/^/# /" >>"$todo"
+				echo "# pick note failed: $pick_note_cmd" | sed "s/^/$COMMENT_CHAR /" >>"$todo"
 			}
 		fi
 	else
@@ -1007,8 +1008,9 @@ do
 			if test -n "$pick_note_cmd"
 			then
 				SHORT_SHA1=$shortsha1
+				COMMENT_CHAR=$comment_char
 				eval "$pick_note_cmd" >>"$todo" || {
-					echo "# pick note failed: $pick_note_cmd" | sed "s/^/# /" >>"$todo"
+					echo "# pick note failed: $pick_note_cmd" | sed "s/^/$COMMENT_CHAR /" >>"$todo"
 				}
 			fi
 		fi
