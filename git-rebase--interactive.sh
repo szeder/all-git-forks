@@ -981,8 +981,9 @@ do
 		if test -n "$pick_note_cmd"
 		then
 			SHORT_SHA1=$shortsha1
-			eval "$pick_note_cmd" >>"$todo" ||
-				die_abort "pick note failed: $pick_note_cmd"
+			eval "$pick_note_cmd" >>"$todo" || {
+				echo "# pick note failed: $pick_note_cmd" | sed "s/^/# /" >>"$todo"
+			}
 		fi
 	else
 		sha1=$(git rev-parse $shortsha1)
@@ -1006,8 +1007,9 @@ do
 			if test -n "$pick_note_cmd"
 			then
 				SHORT_SHA1=$shortsha1
-				eval "$pick_note_cmd" >>"$todo" ||
-					die_abort "pick note failed: $pick_note_cmd"
+				eval "$pick_note_cmd" >>"$todo" || {
+					echo "# pick note failed: $pick_note_cmd" | sed "s/^/# /" >>"$todo"
+				}
 			fi
 		fi
 	fi

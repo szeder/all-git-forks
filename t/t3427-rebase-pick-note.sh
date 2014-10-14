@@ -25,7 +25,7 @@ test_expect_success setup '
 
 test_expect_success without-pick-note '
 	test_must_fail git rebase -i --root >actual &&
-	cat >expected  <<-EOF &&
+	cat <<-EOF >expected &&
 	pick b1abfdb first commit
 	pick aa0039e second commit
 	pick 916f226 third commit
@@ -35,9 +35,9 @@ test_expect_success without-pick-note '
 
 test_expect_success with-pick-note-short-option '
 	test_must_fail git rebase \
-		-A "echo shortsha1 must be \$shortsha1" \
+		-A"echo shortsha1 must be \$shortsha1" \
 		-i --root >actual
-	cat >expected  <<-EOF &&
+	cat <<-EOF >expected &&
 	pick b1abfdb first commit
 	shortsha1 must be b1abfdb
 	pick aa0039e second commit
@@ -52,13 +52,34 @@ test_expect_success with-pick-note-long-option '
 	test_must_fail git rebase \
 		--pick-note="echo shortsha1 must be \$shortsha1" \
 		-i --root >actual
-	cat >expected  <<-EOF &&
+	cat <<-EOF >expected &&
 	pick b1abfdb first commit
 	shortsha1 must be b1abfdb
 	pick aa0039e second commit
 	shortsha1 must be aa0039e
 	pick 916f226 third commit
 	shortsha1 must be 916f226
+	EOF
+	test_cmp expected actual
+'
+
+test_expect_success with-pick-note-invalid-command '
+	test_must_fail git rebase \
+		--pick-note="false" \
+		-i --root >actual
+	cat <<-EOF >expected &&
+	Apick b1abfdb first commit
+	Apick aa0039e second commit
+	Apick 916f226 third commit
+	EOF
+	test_cmp expected actual
+'
+
+test_expect_success with-pick-note-invalid-second-one '
+	test_must_fail git rebase \
+		--pick-note="if test x$SHORT_SHA1 = xaa0039e; then false; fi" \
+		-i --root >actual
+	cat <<-EOF >expected &&
 	EOF
 	test_cmp expected actual
 '
