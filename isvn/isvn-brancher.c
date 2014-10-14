@@ -25,12 +25,13 @@
  */
 
 #include <sys/types.h>
-#include <sys/queue.h>
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
+
+#include <pthread.h>
 
 #include <openssl/md5.h>
 
@@ -38,29 +39,14 @@
 #include <svn_client.h>
 #include <svn_pools.h>
 
-#define NO_THE_INDEX_COMPATIBILITY_MACROS
-
-#include "builtin.h"
-#include "cache.h"
-#include "cache-tree.h"
-#include "dir.h"
-#include "parse-options.h"
-#include "pathspec.h"
-#include "refs.h"
-#include "remote.h"
-#include "streaming.h"
-#include "thread-utils.h"
-#include "transport.h"
-#include "tree-walk.h"
-#include "help.h"
+#include "isvn/isvn-git2.h"
+#include "isvn/isvn-internal.h"
 
 #include "vcs-svn/line_buffer.h"
 #include "vcs-svn/sliding_window.h"
 #include "vcs-svn/svndiff.h"
 
-#include "isvn/isvn-internal.h"
-
-#define BR_BUCKET(name) (strhash(name) % NR_WORKERS)
+#define BR_BUCKET(name) (strhash(name) % g_nr_commit_workers)
 
 struct svn_branch {
 	struct hashmap_entry		 br_entry;
@@ -73,25 +59,29 @@ struct svn_bucket {
 	pthread_mutex_t bk_lock;
 	/* Consider LRU or something to limit # */
 	struct hashmap bk_branches;	/* (b) */
-} g_buckets[NR_WORKERS];
+} *g_buckets;
 
-static inline void branch_lock(const char *name)
+static inline void
+branch_lock(const char *name)
 {
 	mtx_lock(&g_buckets[BR_BUCKET(name)].bk_lock);
 }
 
-static inline void branch_unlock(const char *name)
+static inline void
+branch_unlock(const char *name)
 {
 	mtx_unlock(&g_buckets[BR_BUCKET(name)].bk_lock);
 }
 
-static int svn_branch_cmp(const struct svn_branch *b1,
-	const struct svn_branch *b2, const void *dummy __unused)
+static int
+svn_branch_cmp(const struct svn_branch *b1, const struct svn_branch *b2,
+    const void *dummy __unused)
 {
 	return strcmp(b1->br_name, b2->br_name);
 }
 
-struct svn_branch *svn_branch_get(struct hashmap *h, const char *name)
+struct svn_branch *
+svn_branch_get(struct hashmap *h, const char *name)
 {
 	struct svn_branch *b, blookup;
 
@@ -115,7 +105,8 @@ struct svn_branch *svn_branch_get(struct hashmap *h, const char *name)
 	return b;
 }
 
-static void svn_branch_free(struct svn_branch *br)
+static void
+svn_branch_free(struct svn_branch *br)
 {
 	struct branch_rev *rev, *tmp;
 
@@ -134,7 +125,8 @@ static void svn_branch_free(struct svn_branch *br)
 }
 
 /* Move revs from src to dst, keeping dst sorted. */
-static void svn_branch_move_revs(struct svn_branch *dst, struct svn_branch *src)
+static void
+svn_branch_move_revs(struct svn_branch *dst, struct svn_branch *src)
 {
 	TAILQ_HEAD(, branch_rev) tmphd;
 	struct branch_rev *rev, *it;
@@ -173,7 +165,8 @@ static void svn_branch_move_revs(struct svn_branch *dst, struct svn_branch *src)
 	TAILQ_CONCAT(&dst->br_revs, &tmphd, rv_list);
 }
 
-void svn_branch_revs_enqueue_and_free(struct svn_branch *branch)
+void
+svn_branch_revs_enqueue_and_free(struct svn_branch *branch)
 {
 	struct svn_bucket *bk;
 	struct svn_branch *gbranch;
@@ -189,23 +182,37 @@ void svn_branch_revs_enqueue_and_free(struct svn_branch *branch)
 	svn_branch_free(branch);
 }
 
-void svn_branch_hash_init(struct hashmap *hash)
+void
+svn_branch_hash_init(struct hashmap *hash)
 {
 	hashmap_init(hash, (hashmap_cmp_fn)svn_branch_cmp, 0);
 }
 
-void svn_branch_append(struct svn_branch *sb, struct branch_rev *br)
+void
+svn_branch_append(struct svn_branch *sb, struct branch_rev *br)
 {
+	struct branch_rev *last;
+
+	if (!TAILQ_EMPTY(&sb->br_revs)) {
+		last = TAILQ_LAST(&sb->br_revs, revlist);
+		if (last->rv_rev == br->rv_rev) {
+			branch_rev_mergeinto(last, br);
+			return;
+		}
+	}
+
 	TAILQ_INSERT_TAIL(&sb->br_revs, br, rv_list);
 }
 
 static const unsigned char null_md5[16] = { 0 };
-static bool is_null_md5(unsigned char md5[16])
+static bool
+is_null_md5(unsigned char md5[16])
 {
 	return (memcmp(null_md5, md5, 16) == 0);
 }
 
-static void isvn_md5(FILE *preimage, unsigned char md5[16])
+static void
+isvn_md5(FILE *preimage, unsigned char md5[16])
 {
 	char buf[16* 1024];
 	MD5_CTX c;
@@ -224,23 +231,27 @@ static void isvn_md5(FILE *preimage, unsigned char md5[16])
 	rewind(preimage);
 }
 
-static void md5_die(const char *prefix, const char *path,
-	unsigned char exp[16], unsigned char actual[16])
+static void
+md5_die(unsigned rev, const char *prefix, const char *path,
+    unsigned char exp[16], unsigned char actual[16])
 {
 	char mbufe[50], mbufa[50];
 
-	bin_to_hex_buf(exp, mbufe, 16);
-	bin_to_hex_buf(actual, mbufa, 16);
+	md5_tostr(mbufe, exp);
+	md5_tostr(mbufa, actual);
 
 	//die("%s: %s got %s, expected %s!", prefix, path, mbufa, mbufe);
-	printf("%s: %s got %s, expected %s!\n", prefix, path, mbufa, mbufe);
+	printf("%s: %s@r%u got %s, expected %s!\n", prefix, path, rev, mbufa,
+	    mbufe);
 }
 
-void isvn_brancher_init(void)
+void
+isvn_brancher_init(void)
 {
 	unsigned i;
 
-	for (i = 0; i < NR_WORKERS; i++) {
+	g_buckets = xcalloc(g_nr_commit_workers, sizeof(*g_buckets));
+	for (i = 0; i < g_nr_commit_workers; i++) {
 		mtx_init(&g_buckets[i].bk_lock);
 		hashmap_init(&g_buckets[i].bk_branches,
 			(hashmap_cmp_fn)svn_branch_cmp, 0);
@@ -249,7 +260,8 @@ void isvn_brancher_init(void)
 
 /* Wait until a workable branch exists in the bucket, and remove it.  If there
  * is nothing left that can be queued in this bucket, return NULL. */
-static struct svn_branch *get_workable_branch(struct svn_bucket *bk)
+static struct svn_branch *
+get_workable_branch(struct svn_bucket *bk)
 {
 	struct svn_branch *branch, *bb = NULL;
 	struct hashmap_iter iter;
@@ -323,207 +335,270 @@ static struct svn_branch *get_workable_branch(struct svn_bucket *bk)
 	return bb;
 }
 
-struct copyfrom_ctx {
-	unsigned char	(*sha1)[20];
-	const char	 *path;
-	unsigned	  hits;
-};
-
-static int copyfrom_lookup_cb(const unsigned char *sha1, const char *base,
-	int baselen, const char *path, unsigned mode __unused,
-	int stage __unused, void *vctx)
+/* Look up a corresponding tree entry for a (potentially) multi-component path
+ * (e.g. "a/b/c"). If not found in the root directory, 'aux' will hold the tree
+ * that the returned entry points into. The caller is responsible for releasing
+ * '*aux.'
+ *
+ * Returns NULL if there was no error but the entry doesn't exist. */
+static const git_tree_entry *
+isvn_lookup_tree_path_recursive(git_tree **aux, const git_tree *tree,
+    const char *cpath)
 {
-	struct copyfrom_ctx *ctx = vctx;
+	char *path, *s, spath[PATH_MAX];
+	const git_tree_entry *ent;
+	ssize_t path_rem, clen;
+	int rc;
 
-	if (strncmp(ctx->path, base, baselen) != 0) {
-		printf("XXX %s: What are you doing pathspec1? %.*s / %s\n",
-			__func__, baselen, base, ctx->path);
-		return -1;
-	}
-	if (strncmp(ctx->path + baselen, path, strlen(path)) == 0 &&
-		strcmp(ctx->path + baselen, path) != 0) {
-		return READ_TREE_RECURSIVE;
+	path_rem = strlen(cpath);
+	strlcpy(spath, cpath, sizeof(spath));
+	path = spath;
+	*aux = NULL;
+
+	while (true) {
+		s = strchrnul(path, '/');
+		if (*s)
+			*s = '\0';
+
+		clen = s - path;
+		/* INVARIANTS */
+		if (clen == 0)
+			die("bogus path: %s", cpath);
+
+		ent = git_tree_entry_byname(tree, path);
+		if (ent == NULL)
+			break;
+		else if (path_rem <= clen)
+			break;
+
+		path_rem -= clen + 1;
+		path = s + 1;
+
+		if (*aux)
+			git_tree_free(*aux);
+
+		rc = git_tree_lookup(aux, git_tree_owner(tree),
+		    git_tree_entry_id(ent));
+		if (rc < 0)
+			die("git_tree_lookup: %d", rc);
+
+		tree = *aux;
 	}
 
-	ctx->hits++;
-	hashcpy(*ctx->sha1, sha1);
-	return 0;
+	return ent;
 }
 
-static struct object *isvn_lookup_copyfrom(const char *src_path,
-	unsigned src_rev, unsigned char *commit_sha1_out)
+static git_object *
+isvn_lookup_copyfrom(git_repository *repo, const char *src_path,
+    unsigned src_rev, git_oid *commit_sha1_out)
 {
 	const char *path, *src_branch;
-	struct copyfrom_ctx ctx = {};
-	struct pathspec pathspec;
-	unsigned char sha1[20];
-	struct tree *tree;
+	const git_tree_entry *ent;
+	git_commit *comm;
+	git_object *obj;
+	git_tree *tree, *aux;
+	git_oid sha1;
 	int rc;
 
 	path = strip_branch(src_path, &src_branch);
-	hashclr(sha1);
+	sha1 = (git_oid) {};
 
 	isvn_assert_commit(src_branch, src_rev);
 
 	/* We want the latest rev on src_branch <= src_rev. */
-	rc = isvn_revmap_lookup_branchlatest(src_branch, src_rev, sha1);
+	rc = isvn_revmap_lookup_branchlatest(src_branch, src_rev, &sha1);
 	if (rc < 0) {
 		if (option_verbosity >= 2)
 			isvn_dump_revmap();
-		die("%s: No such rev (r%u) for `%s'", __func__,
-			src_rev, src_branch);
+		die("%s: No such rev (r%u) for `%s'", __func__, src_rev,
+		    src_branch);
 	}
 
 	if (commit_sha1_out)
-		hashcpy(commit_sha1_out, sha1);
+		git_oid_cpy(commit_sha1_out, &sha1);
 
-	tree = parse_tree_indirect(sha1);
+	rc = git_commit_lookup(&comm, repo, &sha1);
+	if (rc < 0)
+		die("git_commit_lookup");
+
+	rc = git_commit_tree(&tree, comm);
+	if (rc < 0)
+		die("git_commit_lookup");
+
+	git_commit_free(comm);
 
 	/* Copying the whole tree (branch) at that rev? Easy! */
-	if (strcmp(path, "") == 0)
-		return &tree->object;
+	if (strcmp(path, "") == 0) {
+		rc = git_object_lookup(&obj, repo, git_tree_id(tree),
+		    GIT_OBJ_TREE);
+		if (rc < 0)
+			die("git_object_lookup: %d", rc);
 
-	/* Unclear what PATHSPEC_PREFER_CWD assert in parse_pathspec refers
-	 * to. */
-	parse_pathspec(&pathspec, 0,
-		PATHSPEC_LITERAL_PATH | PATHSPEC_PREFER_CWD, path, NULL);
+		git_tree_free(tree);
+		return obj;
+	}
 
-	ctx.sha1 = &sha1;
-	ctx.path = path;
-	ctx.hits = 0;
-	hashclr(sha1);
+	ent = isvn_lookup_tree_path_recursive(&aux, tree, path);
+	if (ent == NULL)
+		die("git_tree_entry_byname(%s) didn't find. "
+		    "(Was: '%s' in %s@%u)", path, src_path, src_branch,
+		    src_rev);
 
-	rc = read_tree_recursive(tree, NULL, 0, 0, &pathspec,
-		copyfrom_lookup_cb, &ctx);
+	git_oid_cpy(&sha1, git_tree_entry_id(ent));
+	if (git_oid_iszero(&sha1))
+		die("zero sha1 for valid obj?");
+
+	rc = git_object_lookup(&obj, repo, &sha1, GIT_OBJ_ANY);
 	if (rc < 0)
-		die_errno("read_tree_recursive");
+		die("git_object_lookup");
+	if (git_object_type(obj) != GIT_OBJ_BLOB &&
+	    git_object_type(obj) != GIT_OBJ_TREE)
+		die("got unexpected index entry type: %s",
+		    git_object_type2string(git_object_type(obj)));
 
-	/* INVARIANTS */
-	if (ctx.hits != 1)
-		die("Aborting, multiple paths (%u) matched %s?!", ctx.hits,
-			path);
-
-	free_pathspec(&pathspec);
-	if (is_null_sha1(sha1))
-		die("Didn't find '%s' (was: '%s') in %s@%u?", path, src_path,
-			src_branch, src_rev);
-
-	return parse_object(sha1);
+	git_tree_free(aux);
+	git_tree_free(tree);
+	return obj;
 }
 
-static void add_to_cache_internal(struct index_state *idx, struct branch_rev *rev,
-	const char *path, const unsigned char sha1[20], unsigned mode)
+static void
+add_to_cache_internal(git_index *idx, struct branch_rev *rev, const char *path,
+    const git_oid *sha1, unsigned mode, git_time_t rev_time)
 {
-	struct cache_entry *ce;
-	size_t len, sz;
+	git_index_entry ce = {};
+	git_otype otype;
+	git_odb *odb;
+	size_t len;
+	int rc;
 
-	len = strlen(path);
-	sz = cache_entry_size(len);
+	ce.ctime = ce.mtime = (git_index_time) { .seconds = rev_time };
 
-	ce = xcalloc(1, sz);
+	if ((mode & 0777) == 0644)
+		ce.mode = GIT_FILEMODE_BLOB;
+	else if ((mode & 0777) == 0755)
+		ce.mode = GIT_FILEMODE_BLOB_EXECUTABLE;
+	else
+		die("bogus mode %#o", mode);
 
-	hashcpy(ce->sha1, sha1);
-	memcpy(ce->name, path, len);
-	ce->ce_flags = create_ce_flags(0);
-	ce->ce_namelen = len;
-	ce->ce_mode = mode;
-	ce->ce_flags |= CE_VALID;
+	rc = git_repository_odb(&odb, git_index_owner(idx));
+	if (rc < 0)
+		die("git_repository_odb");
+	rc = git_odb_read_header(&len, &otype, odb, sha1);
+	if (rc < 0)
+		die("git_odb_read_header");
 
-	if (add_index_entry(idx, ce,
-		ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE))
-		die("add_index_entry");
+	ce.file_size = len;
+	git_oid_cpy(&ce.id, sha1);
+	ce.path = path;
+
+	ce.flags |= GIT_IDXENTRY_VALID;
+
+	rc = git_index_add(idx, &ce);
+	if (rc < 0)
+		die("git_index_add: %d", rc);
+
+	git_odb_free(odb);
 }
 
-static void add_to_cache(struct index_state *idx, struct branch_rev *rev,
-	struct br_edit *edit)
+static void
+add_to_cache(git_index *idx, struct branch_rev *rev, struct br_edit *edit)
 {
 	const char *path;
 
 	path = strip_branch(edit->e_path, NULL);
-	add_to_cache_internal(idx, rev, path, edit->e_new_sha1,
-		create_ce_mode(0644));
+	add_to_cache_internal(idx, rev, path, &edit->e_new_sha1,
+	    0644/*XXX*/, rev->rv_timestamp);
 }
 
 struct add_tree_ctx {
-	struct index_state	*idx;
+	git_index		*idx;
 	struct branch_rev	*rev;
 	const char		*atpath;
 };
 
-static int add_tree_cb(const unsigned char *sha1, const char *base,
-	int baselen, const char *path, unsigned mode, int stage __unused,
-	void *vctx)
+static int
+add_tree_cb(const char *root, const git_tree_entry *entry, void *vctx)
 {
 	struct add_tree_ctx *ctx = vctx;
-	struct strbuf sb;
+	char *sb;
 
-	if (S_ISDIR(mode))
-		return READ_TREE_RECURSIVE;
-	if (!S_ISREG(mode))
-		die("What mode is this? %.*s%s = %#o", baselen, base, path,
-			mode);
+	if (git_tree_entry_type(entry) == GIT_OBJ_TREE)
+		return 0;
+	else if (git_tree_entry_type(entry) != GIT_OBJ_BLOB)
+		die("What file is this? %s%s = %#o (%d)", root,
+		    git_tree_entry_name(entry), git_tree_entry_filemode(entry),
+		    (int)git_tree_entry_type(entry));
 
-	sb = (struct strbuf) STRBUF_INIT;
-	strbuf_addf(&sb, "%s", ctx->atpath);
-	if (sb.len > 0)
-		strbuf_addch(&sb, '/');
-	strbuf_addf(&sb, "%.*s%s", baselen, base, path);
+	xasprintf(&sb, "%s%s%s%s", ctx->atpath, (*ctx->atpath)? "/" : "",
+	    root, git_tree_entry_name(entry));
 
-	add_to_cache_internal(ctx->idx, ctx->rev, sb.buf, sha1, mode);
+	add_to_cache_internal(ctx->idx, ctx->rev, sb, git_tree_entry_id(entry),
+	    git_tree_entry_filemode(entry), ctx->rev->rv_timestamp);
 
-	strbuf_release(&sb);
+	free(sb);
 	return 0;
 }
 
 /* We want to skip the directory name of 'src_tree' itself, but otherwise add
  * its files, prefixed with 'atpath', to the index. */
-static void add_tree_to_cache(struct index_state *idx, struct branch_rev *rev,
-	struct tree *src_tree, const char *atpath)
+static void
+add_tree_to_cache(git_index *idx, struct branch_rev *rev, git_tree *src_tree,
+    const char *atpath)
 {
 	struct add_tree_ctx ctx = {};
-	struct pathspec pathspec;
 	int rc;
 
 	ctx.idx = idx;
 	ctx.rev = rev;
 	ctx.atpath = atpath;
 
-	parse_pathspec(&pathspec, 0,
-		PATHSPEC_PREFER_CWD | PATHSPEC_MAXDEPTH_VALID, "", NULL);
-	pathspec.max_depth = -1;
-
-	rc = read_tree_recursive(src_tree, NULL, 0, 0, &pathspec, add_tree_cb,
-		&ctx);
+	rc = git_tree_walk(src_tree, GIT_TREEWALK_PRE /* we don't care */,
+	    add_tree_cb, &ctx);
 	if (rc < 0)
 		die_errno("read_tree_recursive");
-
-	free_pathspec(&pathspec);
 }
 
 struct branch_context {
 	const char		*name;
 	const char		*remote;
-	unsigned char		 sha1[20];
 	bool			 new_branch;
 	unsigned		 svn_rev;
-	struct strbuf		 commit_log;
+
+	char			*commit_log;
+	git_oid			 sha1;
+	git_repository		*git_repo;
+
+	git_signature		*last_signature;
 };
 
-static void git_isvn_apply_edit(struct branch_context *ctx,
-	struct branch_rev *rev, struct index_state *idx, struct br_edit *edit)
+static int
+isvn_readinto_blob(char *buf, size_t sz, void *v)
+{
+	int fd = (int)(intptr_t)v;
+	ssize_t rd;
+
+	rd = read(fd, buf, sz);
+	if (rd < 0)
+		return GIT_EUSER;
+	return (int)rd;
+}
+
+static void
+git_isvn_apply_edit(struct branch_context *ctx, struct branch_rev *rev,
+    git_index *index, struct br_edit *edit)
 {
 	struct sliding_view preimage_view;
 	struct line_buffer preimage, delta;
-	unsigned char commitsha1[20];
 	char tmpbuf[PATH_MAX];
 	bool preimage_opened;
-	struct object *from;
-	struct tree *tfrom;
 	const char *path;
-	struct stat sb;
-	FILE *fout, *f;
+	FILE *fout;
 	int rc, fd;
-	unsigned i;
+
+	git_blob *srcblob = NULL;
+	git_object *from = NULL;
+	git_tree *tfrom = NULL;
+	git_oid commitsha1;
 
 	fout = NULL;
 	preimage_opened = false;
@@ -534,40 +609,31 @@ static void git_isvn_apply_edit(struct branch_context *ctx,
 	path = strip_branch(edit->e_path, NULL);
 
 	if ((edit->e_kind & ED_DELETE) != 0) {
-		for (i = 0; i < idx->cache_nr; i++) {
-			if (path_startswith(idx->cache[i]->name, path)) {
-				cache_tree_invalidate_path(idx,
-					idx->cache[i]->name);
-				idx->cache[i]->ce_flags |= CE_REMOVE;
-			}
-		}
-		remove_marked_cache_entries(idx);
+		rc = git_index_remove_directory(index, path, 0);
+		if (rc < 0)
+			die("git_index_remove_directory");
 	}
 
 	switch (edit->e_kind & ED_TYPEMASK) {
 	case ED_MKDIR:
-		for (i = 0; i < idx->cache_nr; i++)
-			if (strcmp(idx->cache[i]->name, path) == 0)
-				idx->cache[i]->ce_flags &= ~CE_REMOVE;
-
 		if (edit->e_copyfrom == NULL)
 			/* nothing to do. */
 			break;
 
-		from = isvn_lookup_copyfrom(edit->e_copyfrom, edit->e_copyrev,
-			commitsha1);
-		tfrom = object_as_type(from, OBJ_TREE, false);
-		if (tfrom == NULL)
-			die("lookup_copyfrom");
+		from = isvn_lookup_copyfrom(ctx->git_repo, edit->e_copyfrom,
+		    edit->e_copyrev, &commitsha1);
+		rc = git_tree_lookup(&tfrom, ctx->git_repo, git_object_id(from));
+		if (rc < 0)
+			die("git_tree_lookup");
 
-		/* If this copydir created a branch, let git know. */
+		/* If this copydir created a branch, let commit know. */
 		if (strcmp(path, "") == 0) {
-			if (!is_null_sha1(rev->rv_parent))
+			if (!git_oid_iszero(&rev->rv_parent))
 				die("copy over?");
-			hashcpy(rev->rv_parent, commitsha1);
+			git_oid_cpy(&rev->rv_parent, &commitsha1);
 		}
 
-		add_tree_to_cache(idx, rev, tfrom, path);
+		add_tree_to_cache(index, rev, tfrom, path);
 		break;
 
 	case ED_NIL:
@@ -575,19 +641,14 @@ static void git_isvn_apply_edit(struct branch_context *ctx,
 		break;
 
 	case ED_ADDFILE:
-		for (i = 0; i < idx->cache_nr; i++)
-			if (strcmp(idx->cache[i]->name, path) == 0)
-				idx->cache[i]->ce_flags &= ~CE_REMOVE;
-
 		if (edit->e_copyfrom) {
-			struct object *from;
+			from = isvn_lookup_copyfrom(ctx->git_repo,
+			    edit->e_copyfrom, edit->e_copyrev, NULL);
+			if (git_object_type(from) != GIT_OBJ_BLOB)
+				die("lookup_copyfrom: %d != BLOB",
+				    git_object_type(from));
 
-			from = isvn_lookup_copyfrom(edit->e_copyfrom,
-				edit->e_copyrev, NULL);
-			if (from->type != OBJ_BLOB)
-				die("lookup_copyfrom: %d != BLOB", from->type);
-
-			hashcpy(edit->e_new_sha1, from->sha1);
+			git_oid_cpy(&edit->e_new_sha1, git_object_id(from));
 		}
 
 		/* An ADD can (and usually? does) have a diff, but if not,
@@ -595,43 +656,67 @@ static void git_isvn_apply_edit(struct branch_context *ctx,
 		if (edit->e_diff == NULL) {
 			if (edit->e_copyfrom == NULL) {
 				/* TODO create if missing */
-				hashcpy(edit->e_new_sha1, EMPTY_BLOB_SHA1_BIN);
+#if 0
+				rc = git_blob_create_frombuffer(&edit->e_new_sha1, index, NULL, 0);
+#endif
 				die("Create empty blob");
 			}
 
 			/* Add the path to the index */
-			add_to_cache(idx, rev, edit);
+			add_to_cache(index, rev, edit);
 			break;
 		}
 
 		if (edit->e_copyfrom) {
-			f = fopen_blob_stream(edit->e_new_sha1, NULL);
-			if (f == NULL)
-				die_errno("fopen_blob_stream2");
-			buffer_fileinit(&preimage, f);
+			rc = git_blob_lookup(&srcblob, ctx->git_repo,
+			    &edit->e_new_sha1);
+			if (rc < 0)
+				die("git_blob_lookup");
+			/* TODO file and git_odb_object_rstream */
+			if (git_blob_rawsize(srcblob) > 0)
+				buffer_meminit(&preimage,
+				    /* fmemopen(3) takes non-const pointer for "w" */
+				    __DECONST(git_blob_rawcontent(srcblob), void *),
+				    git_blob_rawsize(srcblob));
+			else
+				/* Work around fmemopen(3) bug for NULL/0
+				 * buffers: */
+				buffer_fileinit(&preimage, fopen("/dev/null", "r"));
+
 		} else
 			/* preimage = empty. ED_TEXTDELTA will add file to index. */
-			buffer_meminit(&preimage, NULL, 0);
+			/* Work around fmemopen(3) bug for 0-length buffers: */
+			buffer_fileinit(&preimage, fopen("/dev/null", "r"));
 
 		preimage_opened = true;
 
 		/* FALLTHROUGH */
 	case ED_TEXTDELTA:
 		if (!preimage_opened) {
-			struct cache_entry *ce;
+			const git_index_entry *ce;
 
-			ce = index_file_exists(idx, path, strlen(path), false);
+			ce = git_index_get_bypath(index, path, 0);
 			if (ce == NULL)
 				die("%s: Could not find blob (%s) in index to apply patch!",
-					__func__, path);
+				    __func__, path);
 
-			hashcpy(edit->e_old_sha1, ce->sha1);
+			git_oid_cpy(&edit->e_old_sha1, &ce->id);
 
-			f = fopen_blob_stream(edit->e_old_sha1, NULL);
-			if (f == NULL)
-				die_errno("fopen_blob_stream");
+			rc = git_blob_lookup(&srcblob, ctx->git_repo,
+			    &edit->e_old_sha1);
+			if (rc < 0)
+				die("git_blob_lookup");
 
-			buffer_fileinit(&preimage, f);
+			/* TODO file and git_odb_object_rstream */
+			if (git_blob_rawsize(srcblob) > 0)
+				buffer_meminit(&preimage,
+				    /* fmemopen(3) takes non-const pointer for "w" */
+				    __DECONST(git_blob_rawcontent(srcblob), void *),
+				    git_blob_rawsize(srcblob));
+			else
+				/* Work around fmemopen(3) bug for NULL/0
+				 * buffers: */
+				buffer_fileinit(&preimage, fopen("/dev/null", "r"));
 			preimage_opened = true;
 		}
 
@@ -639,14 +724,19 @@ static void git_isvn_apply_edit(struct branch_context *ctx,
 		if (edit->e_diff == NULL)
 			die("Textdelta without diff?? (%s, %s, %s)",
 			    rev->rv_branch, __func__, edit->e_path);
+		if (preimage_opened && preimage.infile == NULL)
+			die_errno("Preimage(%d / %s) failed to open",
+			    edit->e_kind, edit->e_path);
 
 		rc = buffer_meminit(&delta, edit->e_diff, edit->e_difflen);
 		if (rc)
 			die("buffer_meminit");
 
-		fd = git_mkstemp(tmpbuf, sizeof(tmpbuf), "tmpXXXXXXXXXX");
+		/* XXX respect $TMPDIR? */
+		strcpy(tmpbuf, "/tmp/tmpXXXXXX");
+		fd = mkstemp(tmpbuf);
 		if (fd < 0)
-			die("git_mkstemp: %s", strerror(errno));
+			die("mkstemp: %s", strerror(errno));
 
 		/* Preimage MD5 validation */
 		if (!is_null_md5(edit->e_preimage_md5)) {
@@ -654,8 +744,8 @@ static void git_isvn_apply_edit(struct branch_context *ctx,
 
 			isvn_md5(preimage.infile, md5);
 			if (memcmp(md5, edit->e_preimage_md5, 16) != 0)
-				md5_die("MD5 mismatch(preimage)", edit->e_path,
-					edit->e_preimage_md5, md5);
+				md5_die(rev->rv_rev, "MD5 mismatch(preimage)",
+				    edit->e_path, edit->e_preimage_md5, md5);
 		}
 
 		/* Apply the diff and create the new blob! */
@@ -663,7 +753,8 @@ static void git_isvn_apply_edit(struct branch_context *ctx,
 		rc = svndiff0_apply(&delta, edit->e_difflen, &preimage_view,
 			fout);
 		if (rc)
-			die("svndiff0_apply");
+			die_errno("svndiff0_apply: %p %ld", preimage.infile,
+			    ftell(preimage.infile));
 		fflush(fout);
 		rewind(fout);
 
@@ -673,26 +764,27 @@ static void git_isvn_apply_edit(struct branch_context *ctx,
 
 			isvn_md5(fout, md5);
 			if (memcmp(md5, edit->e_postimage_md5, 16) != 0)
-				md5_die("MD5 mismatch(postimage)", edit->e_path,
-					edit->e_postimage_md5, md5);
+				md5_die(rev->rv_rev, "MD5 mismatch(postimage)",
+				    edit->e_path, edit->e_postimage_md5, md5);
 		}
 
-		rc = fstat(fd, &sb);
-		if (rc < 0)
-			die("fstat");
-
-		rc = index_fd(edit->e_new_sha1, fd, &sb, OBJ_BLOB, NULL,
-			HASH_FORMAT_CHECK | HASH_WRITE_OBJECT);
-		if (rc < 0)
-			die("index_fd");
+		rc = git_blob_create_fromchunks(&edit->e_new_sha1,
+		    ctx->git_repo, path, isvn_readinto_blob,
+		    (void*)(intptr_t)fd);
+		if (rc == GIT_EUSER)
+			die("git_blob_create_fromchunks(%s): %s(%d)",
+			    path, strerror(errno), errno);
+		else if (rc < 0)
+			die("git_blob_create_fromchunks: %d", rc);
 
 		fclose(fout);
 		rc = unlink(tmpbuf);
 		if (rc < 0)
-			die("couldn't remove temporary file %s", tmpbuf);
+			die("couldn't remove temporary file %s: %s", tmpbuf,
+			    strerror(errno));
 
 		/* Add the path to the index */
-		add_to_cache(idx, rev, edit);
+		add_to_cache(index, rev, edit);
 		break;
 
 	case ED_PROP:
@@ -703,23 +795,32 @@ static void git_isvn_apply_edit(struct branch_context *ctx,
 		die("%s: What? Bad edit kind: %#x\n", __func__, edit->e_kind);
 	}
 
+	git_blob_free(srcblob);
+	git_object_free(from);
+	git_tree_free(tfrom);
+
 	buffer_deinit(&preimage);
 	buffer_deinit(&delta);
 	strbuf_release(&preimage_view.buf);
 }
 
-static int git_isvn_apply_rev(struct branch_context *ctx,
-	struct branch_rev *rev)
+static int
+git_isvn_apply_rev(struct branch_context *ctx, struct branch_rev *rev)
 {
-	struct strbuf authorish = STRBUF_INIT;
-	char *idx_file, safebranch[PATH_MAX];
-	struct index_state branch_idx = {};
-	struct commit_list *parents;
-
-	struct lock_file *lock;
 	struct br_edit *edit;
-	int lkfd, rc;
-	unsigned i;
+	int rc;
+
+	git_tree *parent_tree, *new_tree;
+	git_reference *parent_ref;
+	git_object *parent_obj;
+	git_oid new_tree_oid;
+	char *rem_br, *at;
+	git_index *index;
+
+	git_commit *parents[2];
+	size_t nparents;
+
+	char tmpbuf[256];
 
 	if (ctx->svn_rev >= rev->rv_rev) {
 		if (option_verbosity >= 0)
@@ -743,133 +844,170 @@ static int git_isvn_apply_rev(struct branch_context *ctx,
 			continue;
 
 		(void) strip_branch(edit->e_copyfrom, &src_branch);
-		if (!isvn_has_commit(src_branch, edit->e_copyrev))
+		if (!isvn_has_commit(edit->e_copyrev))
 			return -EBUSY;
 	}
 
-	/* Create a safeish index-file name for this branch ... */
-	strlcpy(safebranch, rev->rv_branch, sizeof(safebranch));
-	for (i = 0; safebranch[i] != '\0'; i++) {
-		if (safebranch[i] == '/')
-			safebranch[i] = '-';
-	}
-	/* TODO: Re-creating the index from the last commit tree should be
-	 * super cheap. Do this instead of persisting the index for every
-	 * branch. (See: checkout() in cmd_isvn_clone(). */
-	idx_file = git_pathdup(".tmp_index--%s", safebranch);
-
-	/* Create index */
-	lock = xcalloc(1, sizeof(*lock));
-	lkfd = hold_lock_file_for_update(lock, idx_file, 0);
-	if (lkfd < 0)
-		die("%s: lock %s: %s\n", __func__, idx_file, strerror(errno));
-
-	rc = read_index_from(&branch_idx, idx_file);
+	/* TODO: Get libgit2 to create alternative / ephemoral indices. */
+	rc = git_repository_index(&index, ctx->git_repo);
 	if (rc < 0)
-		die("read_index_from");
+		die("git_repository_index");
+
+	rc = git_index_clear(index);
+	if (rc < 0)
+		die("git_index_clear: %d (what?)", rc);
+
+	xasprintf(&rem_br, "refs/remotes/%s", ctx->remote);
+
+	rc = git_branch_lookup(&parent_ref, ctx->git_repo, ctx->remote,
+	    GIT_BRANCH_REMOTE);
+	if (rc < 0 && rc != GIT_ENOTFOUND)
+		die("git_branch_lookup");
+
+	if (rc == 0) {
+		rc = git_reference_peel(&parent_obj, parent_ref, GIT_OBJ_TREE);
+		if (rc < 0)
+			die("git_reference_peel");
+
+		rc = git_tree_lookup(&parent_tree, ctx->git_repo,
+		    git_object_id(parent_obj));
+		if (rc)
+			die("git_tree_lookup");
+
+		rc = git_index_read_tree(index, parent_tree);
+		if (rc < 0)
+			die("git_index_read_tree");
+	} else {
+		parent_ref = NULL;
+		parent_obj = NULL;
+		parent_tree = NULL;
+	}
 
 	/* Apply individual edits */
 	TAILQ_FOREACH(edit, &rev->rv_editorder, e_list)
-		git_isvn_apply_edit(ctx, rev, &branch_idx, edit);
+		git_isvn_apply_edit(ctx, rev, index, edit);
 
-	/* Write index to tree object */
-	if (branch_idx.cache_tree == NULL)
-		branch_idx.cache_tree = cache_tree();
-
-	rc = cache_tree_update(&branch_idx, 0);
+	rc = git_index_write_tree(&new_tree_oid, index);
 	if (rc < 0)
-		die("XXX unmerged index");
+		die("git_index_write_tree");
 
-	rc = write_locked_index(&branch_idx, lock, COMMIT_LOCK);
+	rc = git_tree_lookup(&new_tree, ctx->git_repo, &new_tree_oid);
 	if (rc < 0)
-		die("write_locked_index: %s", idx_file);
-
-	rollback_lock_file(lock);
+		die("git_tree_lookup");
 
 	/* Lookup parent commit and start committing. */
-	parents = NULL;
-	if (!is_null_sha1(ctx->sha1))
-		commit_list_insert(lookup_commit(ctx->sha1), &parents);
-	if (!is_null_sha1(rev->rv_parent))
-		commit_list_insert(lookup_commit(rev->rv_parent), &parents);
+	parents[0] = parents[1] = NULL;
+	nparents = 0;
+	if (!git_oid_iszero(&ctx->sha1)) {
+		rc = git_commit_lookup(&parents[nparents++], ctx->git_repo, &ctx->sha1);
+		if (rc < 0)
+			die("git_lookup_commit");
+	}
+	if (!git_oid_iszero(&rev->rv_parent)) {
+		rc = git_commit_lookup(&parents[nparents++], ctx->git_repo, &rev->rv_parent);
+		if (rc < 0)
+			die("git_lookup_commit");
+	}
 
-	strbuf_reset(&ctx->commit_log);
-	strbuf_addf(&ctx->commit_log, "%s", rev->rv_logmsg);
-	strbuf_complete_line(&ctx->commit_log);
-	strbuf_addch(&ctx->commit_log, '\n');
-	strbuf_addf(&ctx->commit_log, "git-isvn-id: %s/%s@%u\n", g_repos_root,
-		ctx->name, rev->rv_rev);
+	if (ctx->commit_log) {
+		free(ctx->commit_log);
+		ctx->commit_log = NULL;
+	}
+	strlcpy(tmpbuf, rev->rv_logmsg, sizeof(tmpbuf));
+	isvn_complete_line(tmpbuf, sizeof(tmpbuf));
+	xasprintf(&ctx->commit_log, "%s\ngit-isvn-id: %s/%s@%u\n", tmpbuf,
+	    g_repos_root, ctx->name, rev->rv_rev);
 
-	/* XXX better svn user -> git email-style translation */
-	/* Incredibly, date is part of the authorish string! */
-	strbuf_addf(&authorish, "Unknown Person <%s> %lu +0000", rev->rv_author,
-		rev->rv_timestamp);
+	/* reuse buf to strip <foo>@ from (maybe) email: */
+	if (rev->rv_author) {
+		at = strchrnul(rev->rv_author, '@');
+		memcpy(tmpbuf, rev->rv_author, (at - rev->rv_author));
+		tmpbuf[at - rev->rv_author] = '\0';
+
+		if (ctx->last_signature) {
+			git_signature_free(ctx->last_signature);
+			ctx->last_signature = NULL;
+		}
+		rc = git_signature_new(&ctx->last_signature, tmpbuf,
+		    rev->rv_author, rev->rv_timestamp, 0);
+		if (rc < 0)
+			die("git_signature_new");
+	} else {
+		rc = git_signature_new(&ctx->last_signature, "Nobody",
+		    "null@nowhere", rev->rv_timestamp, 0);
+		if (rc < 0)
+			die("git_signature_new");
+	}
 
 	/* Create git commit object on tree, parent commit ! */
-	isvn_g_lock();		/* commit is not thread-safe ... */
-	rc = commit_tree(ctx->commit_log.buf, ctx->commit_log.len,
-		branch_idx.cache_tree->sha1, parents, ctx->sha1,
-		authorish.buf, NULL);
-	isvn_g_unlock();
+	rc = git_commit_create(&ctx->sha1, ctx->git_repo,
+	    rem_br,
+	    ctx->last_signature, ctx->last_signature, NULL, ctx->commit_log,
+	    new_tree, nparents, (const git_commit **)parents);
 	if (rc < 0)
-		die("commit_tree");
+		die("git_commit_create");
 
-	strbuf_release(&authorish);
-
-	char tmpbuf[50];
-	bin_to_hex_buf(ctx->sha1, tmpbuf, 20);
+	char shabuf[50] = {};
+	git_oid_fmt(shabuf, &ctx->sha1);
 	printf("XXX %s: Wrote r%u as commit %s!\n", __func__, rev->rv_rev,
-		tmpbuf);
+		shabuf);
 	/* A real(-ish) revmap! */
-	if (!rev->rv_secondary)
-		isvn_revmap_insert(rev->rv_rev, rev->rv_branch, ctx->sha1);
+	isvn_revmap_insert(rev->rv_rev, rev->rv_branch, &ctx->sha1);
 
-	discard_index(&branch_idx);
-	/* TODO: Reconstruct index from tree... */
-#if 0
-	unlink(idx_file);
-#endif
-	free(idx_file);
+	while (nparents)
+		git_commit_free(parents[nparents--]);
+	git_tree_free(new_tree);
+
+	git_index_free(index);
+	git_tree_free(parent_tree);
+	git_object_free(parent_obj);
+	git_reference_free(parent_ref);
+
+	free(rem_br);
 	return 0;
 }
 
-static int git_isvn_apply_revs(struct svn_branch *sb)
+static int
+git_isvn_apply_revs(struct svn_branch *sb, bool *committed_any)
 {
-	struct strbuf remote_branch = STRBUF_INIT,
-		      reflog_msg = STRBUF_INIT;
-	struct branch_rev *rev, *sr;
-	const char *nl;
-	int rc, flags;
-	bool busy;
-
 	struct branch_context ctx = {};
-	unsigned char old_sha1[20];
+	struct branch_rev *rev, *sr;
+	git_reference *branchref;
+	char *remote_branch;
+	const git_oid *oldp;
+	git_oid old_sha1;
+	bool busy;
+	int rc;
 
 	busy = false;
-	ctx.commit_log = (struct strbuf) STRBUF_INIT;
-	strbuf_addf(&remote_branch, "refs/remotes/%s/%s", option_origin,
-		sb->br_name);
+	ctx.commit_log = NULL;
+	xasprintf(&remote_branch, "%s/%s", option_origin, sb->br_name);
 
-	flags = 0;
-	/* XXX Lock around shitty thread-unsafe ref code */
-	isvn_g_lock();
-	rc = read_ref_full(remote_branch.buf, old_sha1, 1, &flags);
-	isvn_g_unlock();
-	if (flags & REF_ISSYMREF)
-		die("what? branch %s is symbolic?", remote_branch.buf);
-	if (flags & REF_ISBROKEN)
-		die("branch %s is broken", remote_branch.buf);
-	if (rc == 0) {
-		if (is_null_sha1(old_sha1))
+	ctx.git_repo = g_git_repo;
+
+	old_sha1 = (git_oid) {};
+	oldp = NULL;
+
+	rc = git_branch_lookup(&branchref, ctx.git_repo, remote_branch,
+	    GIT_BRANCH_REMOTE);
+	if (rc < 0 && rc != GIT_ENOTFOUND)
+		die("git_branch_lookup(%s): %d", remote_branch, rc);
+
+	if (rc == 0)
+		oldp = git_reference_target(branchref);
+
+	if (oldp) {
+		if (git_oid_iszero(oldp))
 			die("null sha1 ref ???");
-		hashcpy(ctx.sha1, old_sha1);
+		git_oid_cpy(&old_sha1, oldp);
+		git_oid_cpy(&ctx.sha1, oldp);
 
 		/* XXX figure out svn_rev of the branch head. */
 	} else
 		ctx.new_branch = true;
 
 	ctx.name = sb->br_name;
-	ctx.remote = remote_branch.buf;
+	ctx.remote = remote_branch;
 
 	TAILQ_FOREACH_SAFE(rev, &sb->br_revs, rv_list, sr) {
 		rc = git_isvn_apply_rev(&ctx, rev);
@@ -882,39 +1020,19 @@ static int git_isvn_apply_revs(struct svn_branch *sb)
 			break;
 		}
 
+		/* XXX Could batch them up, but be wary that ascending revs on
+		 * a branch aren't neccessarily a contiguous range. */
+		isvn_mark_commitdone(rev->rv_rev, rev->rv_rev);
+		*committed_any = true;
+
 		TAILQ_REMOVE(&sb->br_revs, rev, rv_list);
 		branch_rev_free(rev);
 	}
 
-	/* Nothing was committed? Nothing to ref. */
-	if (ctx.commit_log.len == 0)
-		goto out;
-
-	/* Update branch ref to this sha1 */
-	if (ctx.new_branch)
-		strbuf_addf(&reflog_msg, "commit (initial)");
-	else
-		strbuf_addf(&reflog_msg, "commit");
-
-	/* Format reflog txn message:
-	 * "commit: <first line of last commit>\n" */
-	nl = strchrnul(ctx.commit_log.buf, '\n');
-	strbuf_addf(&reflog_msg, ": ");
-	strbuf_add(&reflog_msg, ctx.commit_log.buf, nl - ctx.commit_log.buf);
-	strbuf_addch(&reflog_msg, '\n');
-
-	/* XXX Lock around shitty thread-unsafe ref code */
-	isvn_g_lock();
-	rc = update_ref(reflog_msg.buf, remote_branch.buf, ctx.sha1,
-		ctx.new_branch? NULL : old_sha1, 0, UPDATE_REFS_DIE_ON_ERR);
-	isvn_g_unlock();
-	if (rc)
-		die("update_ref");
-
-out:
-	strbuf_release(&remote_branch);
-	strbuf_release(&ctx.commit_log);
-	strbuf_release(&reflog_msg);
+	git_signature_free(ctx.last_signature);
+	git_reference_free(branchref);
+	free(remote_branch);
+	free(ctx.commit_log);
 	return (busy? -EBUSY : 0);
 }
 
@@ -922,16 +1040,23 @@ void *isvn_bucket_worker(void *v)
 {
 	unsigned bk_i = (unsigned)(uintptr_t)v;
 	struct svn_bucket *bk = &g_buckets[bk_i];
+	unsigned busies;
+	bool deadlock;
 	int rc;
+
+	deadlock = false;
+	busies = 0;
 
 	while (true) {
 		struct svn_branch *br;
+		bool committed_any;
 
 		br = get_workable_branch(bk);
 		if (br == NULL)
 			break;
 
-		rc = git_isvn_apply_revs(br);
+		committed_any = false;
+		rc = git_isvn_apply_revs(br, &committed_any);
 		if (rc < 0) {
 			/* INVARIANTS */
 			if (rc != -EBUSY)
@@ -943,6 +1068,26 @@ void *isvn_bucket_worker(void *v)
 			svn_branch_revs_enqueue_and_free(br);
 		} else
 			svn_branch_free(br);
+
+		if (committed_any) {
+			busies = 0;
+		} else {
+			busies++;
+
+			mtx_lock(&bk->bk_lock);
+			if (busies >= 2 * bk->bk_branches.hm_size)
+				deadlock = true;
+			mtx_unlock(&bk->bk_lock);
+		}
+
+		if (deadlock) {
+			printf("Branch-worker deadlock detected:\n");
+			isvn_commitdone_dump();
+
+			/* XXX Print each's dependencies, current commitdone,
+			 * ... */
+			die("Aborting.");
+		}
 	}
 
 	return NULL;

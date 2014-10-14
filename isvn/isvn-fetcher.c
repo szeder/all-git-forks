@@ -25,12 +25,14 @@
  */
 
 #include <sys/types.h>
-#include <sys/queue.h>
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <sysexits.h>
+#include <time.h>
 #include <unistd.h>
+
+#include <pthread.h>
 
 #include <svn_client.h>
 #include <svn_cmdline.h>
@@ -43,22 +45,14 @@
 #include <svn_repos.h>
 #include <svn_string.h>
 
-#define NO_THE_INDEX_COMPATIBILITY_MACROS
-
-#include "builtin.h"
-#include "dir.h"
-#include "parse-options.h"
-#include "remote.h"
-#include "thread-utils.h"
-#include "transport.h"
-#include "help.h"
-
+#include "isvn/isvn-git2.h"
 #include "isvn/isvn-internal.h"
 
 /* Callback hell! */
 static svn_delta_editor_t *g_svn_dedit_obj;	/* (u) */
 
-void assert_status_noerr(apr_status_t status, const char *fmt, ...)
+void
+assert_status_noerr(apr_status_t status, const char *fmt, ...)
 {
 	char buf[1024];
 	va_list ap;
@@ -77,7 +71,8 @@ void assert_status_noerr(apr_status_t status, const char *fmt, ...)
 	exit(EX_SOFTWARE);
 }
 
-void assert_noerr(svn_error_t *err, const char *fmt, ...)
+void
+assert_noerr(svn_error_t *err, const char *fmt, ...)
 {
 	char buf[1024];
 	va_list ap;
@@ -93,13 +88,15 @@ void assert_noerr(svn_error_t *err, const char *fmt, ...)
 	exit(EX_SOFTWARE);
 }
 
-static void end_svn_ctx(struct isvn_client_ctx *ctx)
+static void
+end_svn_ctx(struct isvn_client_ctx *ctx)
 {
 	svn_pool_destroy(ctx->svn_pool);
 	free(ctx);
 }
 
-struct isvn_client_ctx *get_svn_ctx(void)
+struct isvn_client_ctx *
+get_svn_ctx(void)
 {
 	struct isvn_client_ctx *ctx;
 	svn_config_t *cfg_servers;
@@ -154,13 +151,15 @@ struct isvn_client_ctx *get_svn_ctx(void)
 	return ctx;
 }
 
-static int edit_cmp(const struct br_edit *e1, const struct br_edit *e2,
+static int
+edit_cmp(const struct br_edit *e1, const struct br_edit *e2,
 	const void *dummy __unused)
 {
 	return strcmp(e1->e_path, e2->e_path);
 }
 
-void branch_edit_free(struct br_edit *edit)
+void
+branch_edit_free(struct br_edit *edit)
 {
 	free(edit->e_path);
 	free(edit->e_copyfrom);
@@ -168,7 +167,8 @@ void branch_edit_free(struct br_edit *edit)
 	free(edit);
 }
 
-void branch_rev_free(struct branch_rev *br)
+void
+branch_rev_free(struct branch_rev *br)
 {
 	struct hashmap_iter iter;
 	struct br_edit *edit;
@@ -185,18 +185,25 @@ void branch_rev_free(struct branch_rev *br)
 		die("%s(r%u): not empty: kind:%d path:%s", __func__,
 			br->rv_rev, TAILQ_FIRST(&br->rv_editorder)->e_kind,
 			TAILQ_FIRST(&br->rv_editorder)->e_path);
+	if (!SLIST_EMPTY(&br->rv_affil))
+		die("%s(r%u): affil list not empty", __func__, br->rv_rev);
+
+	/* Trash the next ptr... */
+	SLIST_NEXT(br, rv_afflink) = (void*)0xdeadc0defdfdfdfd;
 
 	free(br->rv_author);
 	free(br->rv_logmsg);
 	free(br);
 }
 
-static svn_error_t *_isvn_fetch_revend(svn_revnum_t revision, void *cbdata,
-	const svn_delta_editor_t *editor, void *edit_data,
-	apr_hash_t *rev_props, apr_pool_t *pool)
+static svn_error_t *
+_isvn_fetch_revend(svn_revnum_t revision, void *cbdata,
+    const svn_delta_editor_t *editor, void *edit_data, apr_hash_t *rev_props,
+    apr_pool_t *pool)
 {
-	struct branch_rev *br, *nbr;
+	struct branch_rev *br, *abr, *tmp;
 	struct hashmap *br_revs;
+	struct _afl affil_head;
 	struct svn_branch *sb;
 
 	if (option_verbosity > 1)
@@ -205,24 +212,32 @@ static svn_error_t *_isvn_fetch_revend(svn_revnum_t revision, void *cbdata,
 	br_revs = cbdata;
 	br = edit_data;
 
+	/* Move off affil list because _append() may free the rev. */
+	SLIST_INIT(&affil_head);
+	SLIST_SWAP(&affil_head, &br->rv_affil, branch_rev);
+
 	if (!br->rv_only_empty_dirs) {
 		if (br->rv_branch == NULL)
 			die("invariants: non-empty changeset has no branch");
 
-		for (; br; br = nbr) {
-			sb = svn_branch_get(br_revs, br->rv_branch);
-			svn_branch_append(sb, br);
-
-			nbr = br->rv_affil;
-			br->rv_affil = NULL;
-		}
-	} else
+		sb = svn_branch_get(br_revs, br->rv_branch);
+		svn_branch_append(sb, br);
+	} else {
+		isvn_mark_commitdone(br->rv_rev, br->rv_rev);
 		branch_rev_free(br);
+	}
 
+	SLIST_FOREACH_SAFE(abr, &affil_head, rv_afflink, tmp) {
+		SLIST_NEXT(abr, rv_afflink) = NULL;
+
+		sb = svn_branch_get(br_revs, abr->rv_branch);
+		svn_branch_append(sb, abr);
+	}
 	return NULL;
 }
 
-struct branch_rev *new_branch_rev(svn_revnum_t rev)
+struct branch_rev *
+new_branch_rev(svn_revnum_t rev)
 {
 	struct branch_rev *br;
 
@@ -230,13 +245,80 @@ struct branch_rev *new_branch_rev(svn_revnum_t rev)
 	br->rv_rev = rev;
 	hashmap_init(&br->rv_edits, (hashmap_cmp_fn)edit_cmp, 0);
 	TAILQ_INIT(&br->rv_editorder);
+	SLIST_INIT(&br->rv_affil);
 	br->rv_only_empty_dirs = true;
 
 	return br;
 }
 
-static void branch_get_props(struct branch_rev *br, apr_hash_t *props,
-	apr_pool_t *pool)
+void
+branch_rev_mergeinto(struct branch_rev *dst, struct branch_rev *src)
+{
+	struct br_edit *edit, *tmp, *oedit;
+
+	/* INVARIANTS */
+	if (dst->rv_rev != src->rv_rev)
+		die("%s: r%u != r%u", __func__, dst->rv_rev, src->rv_rev);
+	if (strcmp(dst->rv_author, src->rv_author) != 0)
+		die("%s: author %s != %s", __func__, dst->rv_author,
+		    src->rv_author);
+	if (strcmp(dst->rv_logmsg, src->rv_logmsg) != 0)
+		die("%s: log %s != %s", __func__, dst->rv_logmsg,
+		    src->rv_logmsg);
+	if (dst->rv_timestamp != src->rv_timestamp)
+		die("%s: timestamp %jd != %jd", __func__,
+		    (intmax_t)dst->rv_timestamp, (intmax_t)src->rv_timestamp);
+
+	/* Merge potentially useful metadata */
+	if (git_oid_iszero(&dst->rv_parent))
+		git_oid_cpy(&dst->rv_parent, &src->rv_parent);
+
+	if (dst->rv_only_empty_dirs)
+		dst->rv_only_empty_dirs = src->rv_only_empty_dirs;
+
+	/* Move over edits... */
+	TAILQ_FOREACH_SAFE(edit, &src->rv_editorder, e_list, tmp) {
+		hashmap_remove(&src->rv_edits, edit, NULL);
+		TAILQ_REMOVE(&src->rv_editorder, edit, e_list);
+
+		oedit = hashmap_get(&dst->rv_edits, edit, NULL);
+		if (oedit)
+			/* Frees edit. */
+			edit_mergeinto(oedit, edit);
+		else {
+			hashmap_add(&dst->rv_edits, edit);
+			/* XXX HACK HACK HACK. This is a giant hack.
+			 *
+			 * We can't apply diffs to files that havne't been
+			 * copied in to the index yet, so make sure ADDs go
+			 * first in edit order.
+			 *
+			 * A real solution will probably involve dropping this
+			 * many-rev-per-(git branch, svn rev) crap.
+			 *
+			 * (And making fetch slightly smarter.) */
+			if ((edit->e_kind & ED_TYPEMASK) == ED_MKDIR ||
+			    (edit->e_kind & ED_TYPEMASK) == ED_ADDFILE)
+				TAILQ_INSERT_HEAD(&dst->rv_editorder, edit,
+				    e_list);
+			else
+				TAILQ_INSERT_TAIL(&dst->rv_editorder, edit, e_list);
+		}
+	}
+
+	/* INVARIANTS */
+	if (!TAILQ_EMPTY(&src->rv_editorder))
+		die("Did not remove all edits from src?");
+	if (!hashmap_isempty(&src->rv_edits))
+		die("Did not remote all edits from src hash?");
+
+	if (src->rv_secondary)
+		isvn_commitdrain_dec(src->rv_rev);
+	branch_rev_free(src);
+}
+
+static void
+branch_get_props(struct branch_rev *br, apr_hash_t *props, apr_pool_t *pool)
 {
 	struct apr_hash_index_t *hi;
 	svn_string_t *valstr;
@@ -256,15 +338,29 @@ static void branch_get_props(struct branch_rev *br, apr_hash_t *props,
 		else if (KEYEQ("svn:author"))
 			br->rv_author = xstrndup(valstr->data, valstr->len);
 		else if (KEYEQ("svn:date")) {
+			printf("XXX TODO: Parse this date string `%.*s'\n",
+			    (int)valstr->len, (const char *)valstr->data);
+#if 0
+			char datez[256], *r;
+			struct tm tm = {};
+			size_t len;
+
 			/* NUL-terminate */
-			char *datez = xstrndup(valstr->data, valstr->len);
+			len = valstr->len;
+			if (len >= sizeof(datez))
+				len = sizeof(datez) - 1;
+			memcpy(datez, valstr->data, len);
+			datez[len] = '\0';
 
-			if (parse_date_basic(datez, &br->rv_timestamp, NULL) &&
-			    option_verbosity >= 0)
-				fprintf(stderr, "W: invalid timestamp: %s\n",
-				    datez);
+			r = strptime(datez, "XXX", &tm);
+			if ((r == NULL || *r != '\0')) {
+				if (option_verbosity >= 0)
+					fprintf(stderr, "W: invalid timestamp: %s\n",
+					    datez);
+			} else
+				rv->rv_timestamp = tm.
 
-			free(datez);
+#endif
 		} else if (KEYEQ("google:author")) {
 			/* Ignore, duplicate of svn:author. */
 #if 0
@@ -278,9 +374,10 @@ static void branch_get_props(struct branch_rev *br, apr_hash_t *props,
 #undef KEYEQ
 }
 
-static svn_error_t *_isvn_fetch_revstart(svn_revnum_t revision, void *cbdata,
-	const svn_delta_editor_t **editor, void **edit_data,
-	apr_hash_t *rev_props, apr_pool_t *pool)
+static svn_error_t *
+_isvn_fetch_revstart(svn_revnum_t revision, void *cbdata,
+    const svn_delta_editor_t **editor, void **edit_data, apr_hash_t *rev_props,
+    apr_pool_t *pool)
 {
 	struct branch_rev *br;
 
@@ -295,7 +392,8 @@ static svn_error_t *_isvn_fetch_revstart(svn_revnum_t revision, void *cbdata,
 	return NULL;
 }
 
-void *isvn_fetch_worker(void *dummy_i)
+void *
+isvn_fetch_worker(void *dummy_i)
 {
 	struct isvn_client_ctx *client;
 	svn_error_t *err;
@@ -346,7 +444,8 @@ void *isvn_fetch_worker(void *dummy_i)
 	return NULL;
 }
 
-void isvn_fetch_init(void)
+void
+isvn_fetch_init(void)
 {
 	g_svn_dedit_obj = svn_delta_default_editor(g_apr_pool);
 	isvn_editor_inialize_dedit_obj(g_svn_dedit_obj);

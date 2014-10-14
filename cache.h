@@ -1303,11 +1303,14 @@ extern int git_config_from_buf(config_fn_t fn, const char *name,
 			       const char *buf, size_t len, void *data);
 extern void git_config_push_parameter(const char *text);
 extern int git_config_from_parameters(config_fn_t fn, void *data);
+#ifndef NO_GIT_CONFIGS
 extern void git_config(config_fn_t fn, void *);
+#endif
 extern int git_config_with_options(config_fn_t fn, void *,
 				   struct git_config_source *config_source,
 				   int respect_includes);
 extern int git_config_early(config_fn_t fn, void *, const char *repo_config);
+#ifndef NO_GIT_CONFIGS
 extern int git_parse_ulong(const char *, unsigned long *);
 extern int git_config_int(const char *, const char *);
 extern int64_t git_config_int64(const char *, const char *);
@@ -1322,6 +1325,7 @@ extern int git_config_set(const char *, const char *);
 extern int git_config_parse_key(const char *, char **, int *);
 extern int git_config_set_multivar(const char *, const char *, const char *, int);
 extern int git_config_set_multivar_in_file(const char *, const char *, const char *, const char *, int);
+#endif
 extern int git_config_rename_section(const char *, const char *);
 extern int git_config_rename_section_in_file(const char *, const char *, const char *);
 extern const char *git_etc_gitconfig(void);
@@ -1391,6 +1395,7 @@ struct config_set {
 
 extern void git_configset_init(struct config_set *cs);
 extern int git_configset_add_file(struct config_set *cs, const char *filename);
+#ifndef NO_GIT_CONFIGS
 extern int git_configset_get_value(struct config_set *cs, const char *key, const char **value);
 extern const struct string_list *git_configset_get_value_multi(struct config_set *cs, const char *key);
 extern void git_configset_clear(struct config_set *cs);
@@ -1415,6 +1420,7 @@ extern int git_config_get_bool(const char *key, int *dest);
 extern int git_config_get_bool_or_int(const char *key, int *is_bool, int *dest);
 extern int git_config_get_maybe_bool(const char *key, int *dest);
 extern int git_config_get_pathname(const char *key, const char **dest);
+#endif  /* !NO_GIT_CONFIGS */
 
 struct key_value_info {
 	const char *filename;

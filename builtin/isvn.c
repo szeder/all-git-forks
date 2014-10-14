@@ -30,11 +30,16 @@
 
 #include <sys/types.h>
 #include <sys/queue.h>
+#include <sys/stat.h>
 
+#include <dirent.h>
+#include <getopt.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <sysexits.h>
 #include <unistd.h>
+
+#include <pthread.h>
 
 #include <svn_client.h>
 #include <svn_cmdline.h>
@@ -46,27 +51,14 @@
 #include <svn_repos.h>
 #include <svn_string.h>
 
-#define NO_THE_INDEX_COMPATIBILITY_MACROS
-
-#include "builtin.h"
-
-#include "branch.h"
-#include "dir.h"
-#include "help.h"
-#include "parse-options.h"
-#include "remote.h"
-#include "thread-utils.h"
-#include "transport.h"
-#include "tree-walk.h"
-#include "unpack-trees.h"
-
+#include "isvn/isvn-git2.h"
 #include "isvn/isvn-internal.h"
 
-static const char *builtin_isvn_usage[] = {
+static const char *cmd_isvn_usage[] = {
 	"git isvn clone [options] [--] <repo> <dir>",
 	NULL
 };
-static const char *builtin_isvn_clone_usage[] = {
+static const char *isvn_clone_usage[] = {
 	"git isvn clone [options] [--] <repo> <dir>",
 	NULL
 };
@@ -83,6 +75,13 @@ const char *option_tags = "tags";
 const char *option_user, *option_password;
 const char *g_svn_url;
 const char *g_repos_root;
+git_repository *g_git_repo;
+bool option_debugging;
+
+unsigned g_nr_fetch_workers = 1;
+/* XXX Restrict to 1 brancher until libgit2 has multi-index. */
+unsigned g_nr_commit_workers = 1;
+unsigned g_rev_chunk = 25;
 
 apr_pool_t *g_apr_pool;			/* (u) */
 
@@ -94,8 +93,8 @@ apr_pool_t *g_apr_pool;			/* (u) */
 
 static unsigned g_rev_low, g_rev_high;		/* (u) */
 static bool g_locks_initted = false;		/* (u) */
-static pthread_t g_fetch_workers[NR_WORKERS],	/* (u) */
-		 g_branch_workers[NR_WORKERS];	/* (u) */
+static pthread_t *g_fetch_workers,		/* (u) */
+		 *g_branch_workers;		/* (u) */
 
 static pthread_mutex_t g_lock;
 static unsigned g_rev_lo_avail;			/* (g) */
@@ -107,20 +106,28 @@ struct fetchdone_range {
 	unsigned r_lo,	/* key */
 		 r_hi;
 };
-static int fetchdone_range_cmp(const struct fetchdone_range *r1,
+
+static int
+fetchdone_range_cmp(const struct fetchdone_range *r1,
 	const struct fetchdone_range *r2, const void *dummy)
 {
 	return (int)r1->r_lo - (int)r2->r_lo;
 }
+
 static struct hashmap g_fetchdone_hash;		/* (g) */
 
-void isvn_fetcher_getrange(unsigned *revlo, unsigned *revhi, bool *done)
+static unsigned g_rev_commitdone;		/* (g) */
+static struct hashmap g_commitdone_hash;	/* (g) */
+static struct hashmap g_commitdrain_hash;	/* (g) */
+
+void
+isvn_fetcher_getrange(unsigned *revlo, unsigned *revhi, bool *done)
 {
 	*done = false;
 
 	isvn_g_lock();
 	*revlo = g_rev_lo_avail;
-	*revhi = *revlo + REV_CHUNK - 1;
+	*revhi = *revlo + g_rev_chunk - 1;
 
 	if (*revlo > g_rev_high)
 		*done = true;
@@ -131,7 +138,8 @@ void isvn_fetcher_getrange(unsigned *revlo, unsigned *revhi, bool *done)
 	isvn_g_unlock();
 }
 
-void isvn_mark_fetchdone(unsigned revlo, unsigned revhi)
+void
+isvn_mark_fetchdone(unsigned revlo, unsigned revhi)
 {
 	struct fetchdone_range *done, *exist, key;
 
@@ -172,7 +180,8 @@ void isvn_mark_fetchdone(unsigned revlo, unsigned revhi)
 }
 
 /* Blocks until all revs up to 'rev' are fetched. */
-void isvn_wait_fetch(unsigned rev)
+void
+isvn_wait_fetch(unsigned rev)
 {
 	isvn_g_lock();
 	while (rev > g_rev_fetchdone)
@@ -180,7 +189,8 @@ void isvn_wait_fetch(unsigned rev)
 	isvn_g_unlock();
 }
 
-bool isvn_all_fetched(void)
+bool
+isvn_all_fetched(void)
 {
 	bool ret;
 
@@ -191,17 +201,163 @@ bool isvn_all_fetched(void)
 	return ret;
 }
 
-void isvn_g_lock(void)
+void
+_isvn_commitdrain_add(unsigned rev, int incr)
+{
+	struct fetchdone_range *newr, *exist, key;
+
+	key.r_lo = rev;
+	hashmap_entry_init(&key.r_entry, memhash(&key.r_lo, sizeof(key.r_lo)));
+
+	if (incr > 0) {
+		newr = xmalloc(sizeof(*newr));
+		newr->r_lo = rev;
+		newr->r_hi = incr;  /* reused as refcnt */
+		hashmap_entry_init(&newr->r_entry,
+		    memhash(&newr->r_lo, sizeof(newr->r_lo)));
+	} else
+		newr = NULL;
+
+	isvn_g_lock();
+	exist = hashmap_get(&g_commitdrain_hash, &key, NULL);
+
+	if (incr > 0) {
+		if (exist)
+			exist->r_hi += incr;
+		else
+			hashmap_add(&g_commitdrain_hash, newr);
+	} else {
+		int refcnt;
+
+		/* INVARIANTS */
+		if (exist == NULL)
+			die("negative refcnt %d (ne)", incr);
+
+		refcnt = (int)exist->r_hi + incr;
+
+		/* INVARIANTS */
+		if (refcnt < 0)
+			die("negative refcnt %d", refcnt);
+
+		if (refcnt > 0)
+			exist->r_hi = refcnt;
+		else {
+			hashmap_remove(&g_commitdrain_hash, exist, NULL);
+			/* free it below */
+			newr = exist;
+		}
+	}
+	isvn_g_unlock();
+
+	if (exist && newr)
+		free(newr);
+}
+
+void
+isvn_mark_commitdone(unsigned revlo, unsigned revhi)
+{
+	struct fetchdone_range *done, *exist, key;
+	struct fetchdone_range *drainex, drainkey;
+
+	/* In particular, checking for refs in need of draining ... for each
+	 * rev in range. */
+	if (revlo != revhi)
+		die("XXX batched commitdones notimpl.");
+
+	done = xmalloc(sizeof(*done));
+
+	drainkey.r_lo = revlo;
+	hashmap_entry_init(&drainkey.r_entry,
+	    memhash(&drainkey.r_lo, sizeof(drainkey.r_lo)));
+
+	isvn_g_lock();
+
+	/* For revs with multiple branch edits (rare), wait until all commits
+	 * are in before marking done. */
+	drainex = hashmap_get(&g_commitdrain_hash, &drainkey, NULL);
+	if (drainex) {
+		drainex->r_hi--;
+		if (drainex->r_hi == 0) {
+			hashmap_remove(&g_commitdrain_hash, drainex, NULL);
+			free(drainex);
+		} else
+			goto out;
+	}
+
+	if (g_rev_commitdone == revlo - 1) {
+		g_rev_commitdone = revhi;
+
+		while (true) {
+			key.r_lo = revhi + 1;
+			hashmap_entry_init(&key.r_entry,
+				memhash(&key.r_lo, sizeof(key.r_lo)));
+
+			exist = hashmap_remove(&g_commitdone_hash, &key, NULL);
+			if (!exist)
+				break;
+
+			g_rev_commitdone = revhi = exist->r_hi;
+			free(exist);
+		}
+	} else {
+		done->r_lo = revlo;
+		done->r_hi = revhi;
+		hashmap_entry_init(&done->r_entry,
+			memhash(&done->r_lo, sizeof(done->r_lo)));
+		hashmap_add(&g_commitdone_hash, done);
+		done = NULL;
+	}
+
+out:
+	isvn_g_unlock();
+
+	if (done)
+		free(done);
+}
+
+bool
+isvn_has_commit(unsigned rev)
+{
+	bool ret;
+
+	isvn_g_lock();
+	ret = (g_rev_commitdone >= rev);
+	isvn_g_unlock();
+
+	return ret;
+}
+
+void
+isvn_assert_commit(const char *branch, unsigned rev)
+{
+
+	if (!isvn_has_commit(rev))
+		die("%s: %s@%u missing", __func__, branch, rev);
+}
+
+void
+isvn_commitdone_dump(void)
+{
+
+	printf("\tcommitdone: r%u\n", g_rev_commitdone);
+	printf("\tcommits pending: %zu\n", g_commitdone_hash.hm_size);
+	/* XXX */
+}
+
+void
+isvn_g_lock(void)
 {
 	mtx_lock(&g_lock);
 }
 
-void isvn_g_unlock(void)
+void
+isvn_g_unlock(void)
 {
 	mtx_unlock(&g_lock);
 }
 
-static void isvn_globals_init(void)
+static void
+isvn_globals_init(void)
 {
 	mtx_init(&g_lock);
 	cond_init(&g_rev_cond);
@@ -210,13 +366,22 @@ static void isvn_globals_init(void)
 
 	/* Override defaults (noops) w/ our edit CBs */
 	assert_status_noerr(apr_pool_create(&g_apr_pool, NULL),
-		"apr_pool_create");
+	    "apr_pool_create");
 
-	hashmap_init(&g_fetchdone_hash, (hashmap_cmp_fn)fetchdone_range_cmp,
-		0);
+	hashmap_init(&g_fetchdone_hash, (hashmap_cmp_fn)fetchdone_range_cmp, 0);
+	hashmap_init(&g_commitdone_hash, (hashmap_cmp_fn)fetchdone_range_cmp, 0);
+	hashmap_init(&g_commitdrain_hash, (hashmap_cmp_fn)fetchdone_range_cmp, 0);
+
+	g_fetch_workers = xcalloc(g_nr_fetch_workers, sizeof(*g_fetch_workers));
+	g_branch_workers = xcalloc(g_nr_commit_workers, sizeof(*g_branch_workers));
+
+	if (option_verbosity >= 3)
+		printf("Initialized with %u fetchers, %u committers.\n",
+		    g_nr_fetch_workers, g_nr_commit_workers);
 }
 
-static int isvn_fetch(struct isvn_client_ctx *ctx, struct remote *remote)
+static int
+isvn_fetch(struct isvn_client_ctx *ctx)
 {
 	unsigned i;
 	int rc;
@@ -225,12 +390,15 @@ static int isvn_fetch(struct isvn_client_ctx *ctx, struct remote *remote)
 	isvn_revmap_init();
 	isvn_fetch_init();
 	isvn_brancher_init();
+	isvn_git_compat_init();
 
 	assert_noerr(
 		svn_ra_get_repos_root2(ctx->svn_session, &g_repos_root,
 			ctx->svn_pool),
 		"svn_ra_get_repos_root2");
-	printf("XXX root: %s\n", g_repos_root);
+
+	if (option_verbosity >= 2)
+		printf("SVN root is: %s\n", g_repos_root);
 
 	isvn_editor_init();
 
@@ -240,11 +408,11 @@ static int isvn_fetch(struct isvn_client_ctx *ctx, struct remote *remote)
 	else
 		die("low rev ???");  /* Determine. Maybe store as a ?bogus ref */
 
-	g_rev_fetchdone = g_rev_low - 1;
+	g_rev_fetchdone = g_rev_commitdone = g_rev_low - 1;
 	g_rev_high = option_maxrev;
 
 	/* 2. Spawn fetchers. */
-	for (i = 0; i < NR_WORKERS; i++) {
+	for (i = 0; i < g_nr_fetch_workers; i++) {
 		rc = pthread_create(&g_fetch_workers[i], NULL,
 			isvn_fetch_worker, (void *)(uintptr_t)i);
 		if (rc)
@@ -252,7 +420,7 @@ static int isvn_fetch(struct isvn_client_ctx *ctx, struct remote *remote)
 	}
 
 	/* 3. Spawn bucket workers. */
-	for (i = 0; i < NR_WORKERS; i++) {
+	for (i = 0; i < g_nr_commit_workers; i++) {
 		rc = pthread_create(&g_branch_workers[i], NULL,
 			isvn_bucket_worker, (void *)(uintptr_t)i);
 		if (rc)
@@ -260,13 +428,13 @@ static int isvn_fetch(struct isvn_client_ctx *ctx, struct remote *remote)
 	}
 
 	/* 4. Wind it down. */
-	for (i = 0; i < NR_WORKERS; i++) {
+	for (i = 0; i < g_nr_fetch_workers; i++) {
 		rc = pthread_join(g_fetch_workers[i], NULL);
 		if (rc)
 			die("pthread_join: %s(%d)\n", strerror(rc), rc);
 	}
 
-	for (i = 0; i < NR_WORKERS; i++) {
+	for (i = 0; i < g_nr_commit_workers; i++) {
 		rc = pthread_join(g_branch_workers[i], NULL);
 		if (rc)
 			die("pthread_join: %s(%d)\n", strerror(rc), rc);
@@ -277,24 +445,85 @@ static int isvn_fetch(struct isvn_client_ctx *ctx, struct remote *remote)
 
 /* ************************** 'git isvn clone' **************************** */
 
-static struct option builtin_isvn_clone_options[] = {
-	OPT__VERBOSITY(&option_verbosity),
-	OPT_STRING('o', "origin", &option_origin, N_("name"),
-		   N_("use <name> instead of 'origin' to track upstream")),
-	OPT_STRING('b', "branches", &option_branches, N_("branches"),
-		   N_("use <branches>/* for upstream SVN branches")),
-	OPT_STRING('t', "trunk", &option_trunk, N_("trunk"),
-		   N_("use <trunk> as the SVN master branch")),
-	OPT_INTEGER('r', "maxrev", &option_maxrev,
-		   N_("use as the max SVN revision to fetch")),
-	OPT_STRING('u', "username", &option_user, N_("user"),
-		   N_("use <user> for SVN authentication")),
-	OPT_STRING('p', "password", &option_password, N_("password"),
-		   N_("use <password> for SVN authentication")),
-	OPT_END()
+static struct usage_option isvn_clone_options[] = {
+	{ 'v', "verbose", "be more verbose", no_argument, &option_verbosity },
+	{ 'D', "debug", "crash on failure", no_argument, &option_debugging },
+
+	{ 'o', "origin", "use <name> instead of 'origin' to track upstream",
+		required_argument, &option_origin },
+	{ 'b', "branches", "use <branches>/* for upstream SVN branches",
+		required_argument, &option_branches },
+	{ 't', "trunk", "use <trunk> as the SVN master branch",
+		required_argument, &option_trunk },
+	{ 'r', "maxrev", "use as the max SVN revision to fetch",
+		required_argument, &option_maxrev },
+	{ 'u', "username", "use <user> for SVN authentication",
+		required_argument, &option_user },
+	{ 'p', "password", "use <password> for SVN authentication",
+		required_argument, &option_password },
+
+	{ 'R', "rev-chunk", "fetch <N> revisions in a batch",
+		required_argument, &g_rev_chunk },
+	{ 'F', "fetch-workers", "Use <N> threads to fetch from SVN",
+		required_argument, &g_nr_fetch_workers },
+	{ 'C', "commit-workers", "Use <N> threads to commit to Git",
+		required_argument, &g_nr_commit_workers },
+	{ 0 }
 };
 
-static char *guess_dir_name(const char *repo_name)
+static void
+usage_to_getopt_options(const struct usage_option *in, struct option **out,
+    char **sout)
+{
+	struct option *res;
+	unsigned nopts;
+	char *sopt, *s;
+
+	for (nopts = 0; in[nopts].flag; nopts++)
+		/* just counting. */;
+
+	/* Extra for --help, NULL */
+	res = xcalloc(nopts + 2, sizeof(*res));
+
+	/* For each short flag: "f::" = 3, + "h\0" */
+	sopt = xcalloc(1, nopts * 3 + 2);
+
+	s = sopt;
+	for (nopts = 0; in[nopts].flag; nopts++) {
+		res[nopts].name = in[nopts].longname;
+		res[nopts].has_arg = in[nopts].has_arg;
+		res[nopts].flag = NULL;
+		res[nopts].val = in[nopts].flag;
+
+		*s++ = in[nopts].flag;
+		if (in[nopts].has_arg == required_argument)
+			*s++ = ':';
+		else if (in[nopts].has_arg == optional_argument) {
+			*s++ = ':';
+			*s++ = ':';
+		}
+	}
+
+	res[nopts].name = "help";
+	res[nopts].has_arg = no_argument;
+	res[nopts].flag = NULL;
+	res[nopts].val = 'h';
+	*s++ = 'h';
+
+	nopts++;
+	res[nopts].name = NULL;
+	res[nopts].has_arg = 0;
+	res[nopts].flag = NULL;
+	res[nopts].val = 0;
+
+	*s++ = '\0';
+
+	*sout = sopt;
+	*out = res;
+}
+
+static char *
+guess_dir_name(const char *repo_name)
 {
 	const char *lastslash;
 	char *dir;
@@ -312,87 +541,217 @@ static char *guess_dir_name(const char *repo_name)
 	return dir;
 }
 
-static void checkout(void)
+static void
+checkout(git_repository *repo)
 {
-	struct strbuf remotebr = STRBUF_INIT;
-	struct unpack_trees_options opts;
-	struct lock_file *lock_file;
-	unsigned char sha1[20];
-	struct tree_desc t;
-	struct tree *tree;
+	git_reference *master_ref, *remote_ref, *HEAD_ref, *tmpr;
+	git_checkout_options co_opts;
+	const char *remote_br_name;
+	git_commit *remote_commit;
+	git_object *remote_obj;
+	char *remotebr;
 	int rc;
 
-	strbuf_addf(&remotebr, "refs/remotes/%s/%s", option_origin,
-		option_trunk);
+	remotebr = NULL;
+	xasprintf(&remotebr, "refs/remotes/%s/%s", option_origin,
+	    option_trunk);
 
-	create_branch(NULL, "master", remotebr.buf, false, true, false,
-		(option_verbosity < 0), git_branch_track);
-
-	strbuf_release(&remotebr);
-
-	create_symref("HEAD", "refs/heads/master", NULL);
-	install_branch_config((option_verbosity >= 0)? BRANCH_CONFIG_VERBOSE : 0,
-		"master", option_origin, option_trunk);
-
-	setup_work_tree();
-	rc = read_ref("refs/heads/master", sha1);
-	if (rc < 0)
-		die("%s: read_ref: master doesn't exist?", __func__);
-
-	lock_file = xcalloc(1, sizeof(struct lock_file));
-	hold_locked_index(lock_file, 1);
-
-	memset(&opts, 0, sizeof opts);
-	opts.update = 1;
-	opts.merge = 1;
-	opts.fn = oneway_merge;
-	opts.verbose_update = (option_verbosity >= 0);
-	opts.src_index = &the_index;
-	opts.dst_index = &the_index;
-
-	tree = parse_tree_indirect(sha1);
-	parse_tree(tree);
-	init_tree_desc(&t, tree->buffer, tree->size);
-
-	rc = unpack_trees(1, &t, &opts);
-	if (rc < 0)
-		die(_("unable to checkout working tree"));
-
-	rc = write_locked_index(&the_index, lock_file, COMMIT_LOCK);
+	rc = git_reference_lookup(&remote_ref, repo, remotebr);
 	if (rc)
-		die(_("unable to write new index file"));
+		die("git_reference_lookup(%s): %d", remotebr, rc);
+
+	rc = git_branch_name(&remote_br_name, remote_ref);
+	if (rc)
+		die("git_branch_name: %d", rc);
+
+	rc = git_reference_peel(&remote_obj, remote_ref, GIT_OBJ_COMMIT);
+	if (rc)
+		die("git_reference_peel");
+
+	rc = git_commit_lookup(&remote_commit, repo,
+	    git_object_id(remote_obj));
+	if (rc)
+		die("git_commit_lookup");
+
+	rc = git_branch_create(&master_ref, repo, "master", remote_commit,
+	    false, NULL, NULL);
+	if (rc)
+		die("git_branch_create: %d", rc);
+
+	rc = git_reference_symbolic_create(&HEAD_ref, repo, "HEAD",
+	    "refs/heads/master", false, NULL, NULL);
+	if (rc && rc != GIT_EEXISTS)
+		die("git_reference_symbolic_create: %d", rc);
+
+	rc = git_branch_set_upstream(master_ref, remote_br_name);
+	if (rc)
+		/* TODO: '' is not a valid remote name */
+#if 0
+		die("git_branch_set_upstream: %d (%d/%s)", rc,
+		    giterr_last()->klass, giterr_last()->message);
+#else
+		printf("XXXgit_branch_set_upstream: %d (%d/%s)\n", rc,
+		    giterr_last()->klass, giterr_last()->message);
+#endif
+
+	rc = git_reference_lookup(&tmpr, repo, "refs/heads/master");
+	if (rc)
+		die("%s: reference_lookup: master doesn't exist?", __func__);
+	if (git_reference_cmp(tmpr, master_ref) != 0)
+		die("mismatched master");
+
+	co_opts = (git_checkout_options) GIT_CHECKOUT_OPTIONS_INIT;
+	co_opts.checkout_strategy = GIT_CHECKOUT_SAFE_CREATE;
+	rc = git_checkout_head(repo, &co_opts);
+	if (rc)
+		die("git_checkout_head");
+
+	free(remotebr);
+	git_commit_free(remote_commit);
+	git_object_free(remote_obj);
+	git_reference_free(tmpr);
+	git_reference_free(HEAD_ref);
+	git_reference_free(master_ref);
+	git_reference_free(remote_ref);
 }
 
-static int cmd_isvn_clone(int argc, const char **argv, const char *prefix)
+static void __attribute__((noreturn))
+isvn_usage(const char **usages, const struct usage_option *opts,
+    const char *auxmsg)
+{
+	unsigned i;
+
+	if (auxmsg)
+		printf("Error: %s\n", auxmsg);
+
+	printf("Usage:\n");
+	for (; *usages; usages++)
+		printf("\t%s\n", *usages);
+
+	if (opts) {
+		for (i = 0; opts[i].flag; i++)
+			printf("\t-%c, --%s:\t%s\n", opts[i].flag,
+			    opts[i].longname, opts[i].usage);
+	}
+
+	exit(0);
+}
+
+static long
+isvn_opt_parse_long(const char **us, const struct usage_option *lopts,
+    const char *str, const char *failmsg)
+{
+	char *ep;
+	long res;
+
+	errno = 0;
+	res = strtol(str, &ep, 0);
+	if (errno || *ep || res < 0)
+		isvn_usage(us, lopts, failmsg);
+
+	return res;
+}
+
+/* Could be more general (other isvn commands?) but it doesn't have to, yet. */
+static int
+isvn_parse_opts(int ac, char **av, const struct usage_option *lopts,
+    const char **usages)
+{
+	struct option *gopts;
+	char *sopts;
+	int c, idx;
+
+	usage_to_getopt_options(lopts, &gopts, &sopts);
+
+	while ((c = getopt_long(ac, av, sopts, gopts, &idx)) != -1) {
+		switch (c) {
+		case '?':
+		default:
+			isvn_usage(usages, lopts, "Unrecognized or bad option");
+			/* NORETURN */
+
+		case 'h':
+			isvn_usage(usages, lopts, NULL);
+			/* NORETURN */
+
+		case 'v':
+			option_verbosity++;
+			break;
+
+		case 'D':
+			fprintf(stderr, "Developer debugging mode enabled.\n");
+			option_debugging = true;
+			break;
+
+		case 'b':
+		case 'o':
+		case 'p':
+		case 't':
+		case 'u':
+			*(char **)lopts[idx].extra = xstrdup(optarg);
+			break;
+
+		case 'r':
+			option_maxrev = isvn_opt_parse_long(usages, lopts,
+			    optarg, "Bad revision");
+			break;
+
+		case 'C':
+			fprintf(stderr,
+			    "Cannot support >1 commit thread at this time. libgit2 does not support "
+			    "using multiple independent indices (yet).\n");
+			exit(EX_SOFTWARE);
+			/* NORETURN */
+			/* After libgit2 / multiple indices implemented, this
+			 * will be a FALLTHROUGH. */
+		case 'F':
+		case 'R':
+			*(unsigned *)lopts[idx].extra =
+			    (unsigned)isvn_opt_parse_long(usages, lopts,
+				optarg, "Bad quantity");
+			break;
+		}
+	}
+
+	free(gopts);
+	free(sopts);
+
+	memmove(av, &av[optind], (ac - optind + 1) * sizeof(av[0]));
+	return (ac - optind);
+}
+
+static int cmd_isvn_clone(int argc, const char **cargv, const char *prefix)
 {
 	svn_revnum_t latest_rev = SVN_INVALID_REVNUM;
 	struct isvn_client_ctx *first_client;
-	struct strbuf key = STRBUF_INIT;
-	const char *repo_name, *git_dir;
-	struct remote *remote;
-	struct stat stbuf;
+	char *dir, *key, **argv;
+	const char *repo_name;
 	svn_error_t *err;
-	char *dir;
 
-	argc = parse_options(argc, argv, prefix, builtin_isvn_clone_options,
-		builtin_isvn_clone_usage, 0);
+	git_repository_init_options initopts;
+	git_config *config;
+	int rc;
+
+	argv = __DECONST(cargv, char **);
+	argc = isvn_parse_opts(argc, argv, isvn_clone_options,
+	    isvn_clone_usage);
 
 	if (argc < 1)
-		usage_msg_opt(_("You must specify a repository to clone."),
-			builtin_isvn_clone_usage, builtin_isvn_clone_options);
+		isvn_usage(isvn_clone_usage, isvn_clone_options,
+		    "You must specify a repository to clone.");
 	else if (argc < 2)
-		usage_msg_opt(_("You must specify a destination directory."),
-			builtin_isvn_clone_usage, builtin_isvn_clone_options);
+		isvn_usage(isvn_clone_usage, isvn_clone_options,
+		    "You must specify a destination directory.");
 	else if (argc > 2)
-		usage_msg_opt(_("Too many arguments."),
-			builtin_isvn_clone_usage, builtin_isvn_clone_options);
+		isvn_usage(isvn_clone_usage, isvn_clone_options,
+		    "Too many arguments.");
 
 	if (!option_origin)
 		option_origin = "origin";
 	option_cloning = true;
 	if (option_maxrev < 0)
-		usage_msg_opt(_("Maxrev cannot be negative"),
-			builtin_isvn_clone_usage, builtin_isvn_clone_options);
+		isvn_usage(isvn_clone_usage, isvn_clone_options,
+		    "Maxrev cannot be negative");
 
 	repo_name = argv[0];
 	if (argc == 2)
@@ -400,36 +759,25 @@ static int cmd_isvn_clone(int argc, const char **argv, const char *prefix)
 	else
 		dir = guess_dir_name(repo_name);
 
-	if (stat(dir, &stbuf) == 0 && !is_empty_dir(dir)) {
-		die(_("destination path '%s' already exists and is not "
-			"an empty directory."), dir);
-		/* NORETURN */
-	}
+	initopts = (git_repository_init_options) GIT_REPOSITORY_INIT_OPTIONS_INIT;
+	initopts.flags = GIT_REPOSITORY_INIT_MKDIR |
+	    GIT_REPOSITORY_INIT_NO_REINIT |
+	    GIT_REPOSITORY_INIT_MKPATH;
 
-	if (0 <= option_verbosity)
-		fprintf(stderr, _("Cloning into '%s'...\n"), dir);
+	rc = git_repository_init_ext(&g_git_repo, dir, &initopts);
+	if (rc < 0)
+		die("Error creating git repository: %d", rc);
 
-	git_dir = mkpathdup("%s/.git", dir);
-	if (safe_create_leading_directories_const(dir) < 0)
-		die_errno(_("could not create leading directories of '%s'"),
-			dir);
-		/* NORETURN */
-	if (mkdir(dir, 0777) == -1 && errno != EEXIST)
-		die_errno(_("could not create work tree dir '%s'."),
-			dir);
-		/* NORETURN */
-	set_git_work_tree(dir);
-	set_git_dir_init(git_dir, NULL, 0);
+	rc = git_repository_config(&config, g_git_repo);
+	if (rc)
+		die("git_repository_config: %d", rc);
 
-	init_db(NULL, INIT_DB_QUIET);
-	git_config(git_default_config, NULL);
-
-	strbuf_addf(&key, "remote.%s.url", option_origin);
-	git_config_set(key.buf, repo_name);
+	xasprintf(&key, "remote.%s.url", option_origin);
+	rc = git_config_set_string(config, key, repo_name);
+	if (rc)
+		die("git_config_set_string: %d", rc);
 	g_svn_url = xstrdup(repo_name);
-	strbuf_release(&key);
-
-	remote = remote_get(option_origin);
+	free(key);
 
 	/* Initialize APR / libsvn */
 	if (svn_cmdline_init("git-isvn", stderr) != EXIT_SUCCESS)
@@ -443,15 +791,21 @@ static int cmd_isvn_clone(int argc, const char **argv, const char *prefix)
 		first_client->svn_pool);
 	assert_noerr(err, "svn_ra_get_latest_revnum");
 
-	printf("XXX maxrev: %ju\n", (uintmax_t)latest_rev);
+	if (option_verbosity >= 2)
+		printf("Maximum SVN repository revision: %ju\n",
+		    (uintmax_t)latest_rev);
 
 	if (option_maxrev == 0 || option_maxrev > latest_rev)
 		option_maxrev = latest_rev;
 
-	isvn_fetch(first_client, remote);
+	isvn_fetch(first_client);
 
 	/* Branch 'master' from remote trunk and checkout. */
-	checkout();
+	checkout(g_git_repo);
+
+	git_config_free(config);
+	git_repository_free(g_git_repo);
+	g_git_repo = NULL;
 
 	free(dir);
 	return 0;
@@ -468,14 +822,21 @@ static struct {
 
 int cmd_isvn(int argc, const char **argv, const char *prefix)
 {
-	struct option empty[] = { OPT_END() };
 	unsigned i;
+	int rc;
+
+	rc = git_threads_init();
+	if (rc < 0)
+		die("git_threads_init: %d", rc);
+
+	if ((git_libgit2_features() & GIT_FEATURE_THREADS) == 0)
+		die("libgit2: no threads???");
 
 	/* Skip over 'isvn' */
 	argc--;
 	argv++;
 	if (argc == 0)
-		usage_with_options(builtin_isvn_usage, empty);	/* NORETURN */
+		isvn_usage(cmd_isvn_usage, NULL, NULL);	/* NORETURN */
 
 	/* Dispatch subcommands ... */
 	for (i = 0; i < ARRAY_SIZE(isvn_subcommands); i++) {
@@ -486,5 +847,5 @@ int cmd_isvn(int argc, const char **argv, const char *prefix)
 	}
 
 	printf("No such command `%s'\n", argv[0]);
-	usage_with_options(builtin_isvn_usage, empty);	/* NORETURN */
+	isvn_usage(cmd_isvn_usage, NULL, NULL);	/* NORETURN */
 }

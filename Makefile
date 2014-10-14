@@ -348,7 +348,7 @@ GIT-VERSION-FILE: FORCE
 
 CFLAGS = -g -O2 -Wall
 LDFLAGS =
-ALL_CFLAGS = $(CPPFLAGS) $(CFLAGS)
+ALL_CFLAGS = $(CPPFLAGS) $(CFLAGS) -fvisibility=hidden
 ALL_LDFLAGS = $(LDFLAGS)
 STRIP ?= strip
 
@@ -886,7 +886,7 @@ BUILTIN_OBJS += builtin/verify-tag.o
 BUILTIN_OBJS += builtin/write-tree.o
 
 GITLIBS = $(LIB_FILE) $(XDIFF_LIB) $(ISVN_LIB) $(VCSSVN_LIB)
-EXTLIBS =
+EXTLIBS = -lgit2
 
 GIT_USER_AGENT = git/$(GIT_VERSION)
 
@@ -1514,7 +1514,7 @@ endif
 
 BASIC_CFLAGS += -I/usr/include/subversion-1 `apr-1-config --includes`
 EXTLIBS += -lsvn_client-1 -lsvn_ra-1 -lsvn_subr-1 -lsvn_delta-1 \
-		   `apr-1-config --link-ld`
+		   `apr-1-config --link-ld` -lbsd
 
 ALL_CFLAGS += $(BASIC_CFLAGS)
 ALL_LDFLAGS += $(BASIC_LDFLAGS)
@@ -1795,6 +1795,9 @@ VCSSVN_OBJS += vcs-svn/svndiff.o
 ISVN_OBJS += isvn/isvn-brancher.o
 ISVN_OBJS += isvn/isvn-editor.o
 ISVN_OBJS += isvn/isvn-fetcher.o
+ISVN_OBJS += isvn/isvn-git-compat.o
+ISVN_OBJS += isvn/isvn-hashmap.o
+ISVN_OBJS += isvn/isvn-mmh3.o
 ISVN_OBJS += isvn/isvn-revmap.o
 
 TEST_OBJS := $(patsubst test-%$X,test-%.o,$(TEST_PROGRAMS))
