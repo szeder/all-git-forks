@@ -820,6 +820,16 @@ add_exec_commands () {
 	mv "$1.new" "$1"
 }
 
+add_pick_note () {
+	SHORT_SHA1=$1
+	COMMENT_CHAR=$2
+	todo_file=$3
+	eval "$pick_note_cmd" >>"$todo_file" || {
+		echo "--pick-note failed: $pick_note_cmd" |
+			sed "s/^/$COMMENT_CHAR /" >>"$todo_file"
+	}
+}
+
 # The whole contents of this file is run by dot-sourcing it from
 # inside a shell function.  It used to be that "return"s we see
 # below were not inside any function, and expected to return
@@ -980,11 +990,7 @@ do
 		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 		if test -n "$pick_note_cmd"
 		then
-			SHORT_SHA1=$shortsha1
-			COMMENT_CHAR=$comment_char
-			eval "$pick_note_cmd" >>"$todo" || {
-				echo "# pick note failed: $pick_note_cmd" | sed "s/^/$COMMENT_CHAR /" >>"$todo"
-			}
+			add_pick_note "$shortsha1" "$comment_char" "$todo"
 		fi
 	else
 		sha1=$(git rev-parse $shortsha1)
@@ -1007,11 +1013,7 @@ do
 			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 			if test -n "$pick_note_cmd"
 			then
-				SHORT_SHA1=$shortsha1
-				COMMENT_CHAR=$comment_char
-				eval "$pick_note_cmd" >>"$todo" || {
-					echo "# pick note failed: $pick_note_cmd" | sed "s/^/$COMMENT_CHAR /" >>"$todo"
-				}
+				add_pick_note "$shortsha1" "$comment_char" "$todo"
 			fi
 		fi
 	fi
