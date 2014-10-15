@@ -198,9 +198,10 @@ void mark_parents_uninteresting(struct commit *commit)
 	}
 }
 
-static void add_pending_object_with_mode(struct rev_info *revs,
+static void add_pending_object_with_path(struct rev_info *revs,
 					 struct object *obj,
-					 const char *name, unsigned mode)
+					 const char *name, unsigned mode,
+					 const char *path)
 {
 	if (!obj)
 		return;
@@ -220,7 +221,20 @@ static void add_pending_object_with_mode(struct rev_info *revs,
 		if (st)
 			return;
 	}
-	add_object_array_with_mode(obj, name, &revs->pending, mode);
+	add_object_array_with_path(obj, name, &revs->pending, mode, path);
+}
+
+static void add_pending_object_with_mode(struct rev_info *revs,
+					 struct object *obj,
+					 const char *name, unsigned mode)
+{
+	add_pending_object_with_path(revs, obj, name, mode, NULL);
+}
+
+static void add_pending_object_from_entry(struct rev_info *revs,
+					  struct object_array_entry *e)
+{
+	add_pending_object_with_path(revs, e->item, e->name, e->mode, e->path);
 }
 
 void add_pending_object(struct rev_info *revs,
@@ -265,8 +279,10 @@ void add_pending_sha1(struct rev_info *revs, const char *name,
 }
 
 static struct commit *handle_commit(struct rev_info *revs,
-				    struct object *object, const char *name)
+				    struct object_array_entry *entry)
 {
+	struct object *object = entry->item;
+	const char *name = entry->name;
 	unsigned long flags = object->flags;
 
 	/*
@@ -316,7 +332,7 @@ static struct commit *handle_commit(struct rev_info *revs,
 			mark_tree_contents_uninteresting(tree);
 			return NULL;
 		}
-		add_pending_object(revs, object, "");
+		add_pending_object_from_entry(revs, entry);
 		return NULL;
 	}
 
@@ -328,7 +344,7 @@ static struct commit *handle_commit(struct rev_info *revs,
 			return NULL;
 		if (flags & UNINTERESTING)
 			return NULL;
-		add_pending_object(revs, object, "");
+		add_pending_object_from_entry(revs, entry);
 		return NULL;
 	}
 	die("%s is unknown object", name);
@@ -2666,7 +2682,7 @@ int prepare_revision_walk(struct rev_info *revs)
 	revs->pending.objects = NULL;
 	for (i = 0; i < old_pending.nr; i++) {
 		struct object_array_entry *e = old_pending.objects + i;
-		struct commit *commit = handle_commit(revs, e->item, e->name);
+		struct commit *commit = handle_commit(revs, e);
 		if (commit) {
 			if (!(commit->object.flags & SEEN)) {
 				commit->object.flags |= SEEN;
