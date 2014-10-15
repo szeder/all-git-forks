@@ -1499,35 +1499,35 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int rea
 			len--;
 		buffer[len] = '\0';
 
-		/*
-		 * Is it a symbolic ref?
-		 */
-		if (!starts_with(buffer, "ref:")) {
-			/*
-			 * Please note that FETCH_HEAD has a second
-			 * line containing other data.
-			 */
-			if (get_sha1_hex(buffer, sha1) ||
-			    (buffer[40] != '\0' && !isspace(buffer[40]))) {
+		if (starts_with(buffer, "ref:")) {
+			/* It is a symbolic ref */
+			if (flag)
+				*flag |= REF_ISSYMREF;
+			buf = buffer + 4;
+			while (isspace(*buf))
+				buf++;
+			if (check_refname_format(buf, REFNAME_ALLOW_ONELEVEL)) {
 				if (flag)
 					*flag |= REF_ISBROKEN;
 				errno = EINVAL;
 				return NULL;
 			}
-			return refname;
+			refname = strcpy(refname_buffer, buf);
+			continue;
 		}
-		if (flag)
-			*flag |= REF_ISSYMREF;
-		buf = buffer + 4;
-		while (isspace(*buf))
-			buf++;
-		if (check_refname_format(buf, REFNAME_ALLOW_ONELEVEL)) {
+
+		/*
+		 * It must be a normal ref. Please note that
+		 * FETCH_HEAD has a second line containing other data.
+		 */
+		if (get_sha1_hex(buffer, sha1) ||
+		    (buffer[40] != '\0' && !isspace(buffer[40]))) {
 			if (flag)
 				*flag |= REF_ISBROKEN;
 			errno = EINVAL;
 			return NULL;
 		}
-		refname = strcpy(refname_buffer, buf);
+		return refname;
 	}
 }
 
