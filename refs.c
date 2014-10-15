@@ -1305,9 +1305,7 @@ int resolve_gitlink_ref(const char *path, const char *refname, unsigned char *sh
 			ret = -1;
 			goto out;
 		}
-		path = *refs->name
-			? git_path_submodule(refs->name, "%s", result.buf)
-			: git_path("%s", result.buf);
+		path = git_path_submodule(refs->name, "%s", result.buf);
 		parseval = parse_ref(path, &result, sha1, NULL);
 	} while (!parseval);
 
