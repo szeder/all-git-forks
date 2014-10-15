@@ -482,15 +482,18 @@ int strbuf_getwholeline_fd(struct strbuf *sb, int fd, int term)
 
 int strbuf_read_file(struct strbuf *sb, const char *path, size_t hint)
 {
-	int fd, len;
+	int fd, len, saved_errno;
 
 	fd = open(path, O_RDONLY);
 	if (fd < 0)
 		return -1;
 	len = strbuf_read(sb, fd, hint);
+	saved_errno = errno;
 	close(fd);
-	if (len < 0)
+	if (len < 0) {
+		errno = saved_errno;
 		return -1;
+	}
 
 	return len;
 }
