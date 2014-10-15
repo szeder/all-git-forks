@@ -1372,10 +1372,10 @@ static struct ref_entry *get_packed_ref(const char *refname)
  * A loose ref file doesn't exist; check for a packed ref.  The
  * options are forwarded from resolve_safe_unsafe().
  */
-static const char *handle_missing_loose_ref(const char *refname,
-					    unsigned char *sha1,
-					    int reading,
-					    int *flag)
+static int handle_missing_loose_ref(const char *refname,
+				    unsigned char *sha1,
+				    int reading,
+				    int *flag)
 {
 	struct ref_entry *entry;
 
@@ -1388,14 +1388,14 @@ static const char *handle_missing_loose_ref(const char *refname,
 		hashcpy(sha1, entry->u.value.sha1);
 		if (flag)
 			*flag |= REF_ISPACKED;
-		return refname;
+		return 0;
 	}
 	/* The reference is not a packed reference, either. */
 	if (reading) {
-		return NULL;
+		return -1;
 	} else {
 		hashclr(sha1);
-		return refname;
+		return 0;
 	}
 }
 
@@ -1439,10 +1439,12 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int rea
 		 */
 	stat_ref:
 		if (lstat(path, &st) < 0) {
-			if (errno == ENOENT)
-				return handle_missing_loose_ref(refname, sha1,
-								reading, flag);
-			else
+			if (errno == ENOENT) {
+				if (handle_missing_loose_ref(refname, sha1,
+							     reading, flag))
+					return NULL;
+				return refname;
+			} else
 				return NULL;
 		}
 
