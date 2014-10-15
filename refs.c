@@ -1418,7 +1418,7 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int rea
 	for (;;) {
 		char path[PATH_MAX];
 		struct stat st;
-		char *buf;
+		const char *buf;
 		int fd;
 
 		if (--depth < 0) {
@@ -1499,11 +1499,10 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int rea
 			len--;
 		buffer[len] = '\0';
 
-		if (starts_with(buffer, "ref:")) {
+		if (skip_prefix(buffer, "ref:", &buf)) {
 			/* It is a symbolic ref */
 			if (flag)
 				*flag |= REF_ISSYMREF;
-			buf = buffer + 4;
 			while (isspace(*buf))
 				buf++;
 			if (check_refname_format(buf, REFNAME_ALLOW_ONELEVEL)) {
