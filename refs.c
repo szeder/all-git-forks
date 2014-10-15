@@ -1281,7 +1281,6 @@ static struct ref_dir *get_loose_refs(struct ref_cache *refs)
 
 /* We allow "recursive" symbolic refs. Only within reason, though */
 #define MAXDEPTH 5
-#define MAXREFLEN (1024)
 
 /*
  * Called by resolve_gitlink_ref_recursive() after it failed to read
@@ -1310,7 +1309,7 @@ static int resolve_gitlink_ref_recursive(struct ref_cache *refs,
 	char buffer[128], *p;
 	char *path;
 
-	if (recursion > MAXDEPTH || strlen(refname) > MAXREFLEN)
+	if (recursion > MAXDEPTH)
 		return -1;
 	path = *refs->name
 		? git_path_submodule(refs->name, "%s", refname)
