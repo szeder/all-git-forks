@@ -297,6 +297,9 @@ __git_eread ()
 # In this mode you can request colored hints using GIT_PS1_SHOWCOLORHINTS=true
 __git_ps1 ()
 {
+	if [ "$(df -P -T . | tail -n +2 | awk  '{print $2}')" == "fuse.sshfs" ]; then
+		return
+	fi
 	# preserve exit status
 	local exit=$?
 	local pcmode=no
