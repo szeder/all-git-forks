@@ -81,14 +81,16 @@ static int parse_branch_color_slot(const char *var, int ofs)
 
 static int git_branch_config(const char *var, const char *value, void *cb)
 {
+	const char *slot_name;
+
 	if (starts_with(var, "column."))
 		return git_column_config(var, value, "branch", &colopts);
 	if (!strcmp(var, "color.branch")) {
 		branch_use_color = git_config_colorbool(var, value);
 		return 0;
 	}
-	if (starts_with(var, "color.branch.")) {
-		int slot = parse_branch_color_slot(var, 13);
+	if (skip_prefix(var, "color.branch.", &slot_name)) {
+		int slot = parse_branch_color_slot(var, slot_name - var);
 		if (slot < 0)
 			return 0;
 		if (!value)
@@ -280,6 +282,7 @@ struct ref_item {
 	char *dest;
 	unsigned int kind, width;
 	struct commit *commit;
+	int ignore;
 };
 
 struct ref_list {
@@ -294,13 +297,13 @@ static char *resolve_symref(const char *src, const char *prefix)
 {
 	unsigned char sha1[20];
 	int flag;
-	const char *dst, *cp;
+	const char *dst;
 
 	dst = resolve_ref_unsafe(src, sha1, 0, &flag);
 	if (!(dst && (flag & REF_ISSYMREF)))
 		return NULL;
-	if (prefix && (cp = skip_prefix(dst, prefix)))
-		dst = cp;
+	if (prefix)
+		skip_prefix(dst, prefix, &dst);
 	return xstrdup(dst);
 }
 
@@ -334,20 +337,18 @@ static int append_ref(const char *refname, const unsigned char *sha1, int flags,
 	static struct {
 		int kind;
 		const char *prefix;
-		int pfxlen;
 	} ref_kind[] = {
-		{ REF_LOCAL_BRANCH, "refs/heads/", 11 },
-		{ REF_REMOTE_BRANCH, "refs/remotes/", 13 },
+		{ REF_LOCAL_BRANCH, "refs/heads/" },
+		{ REF_REMOTE_BRANCH, "refs/remotes/" },
 	};
 
 	/* Detect kind */
 	for (i = 0; i < ARRAY_SIZE(ref_kind); i++) {
 		prefix = ref_kind[i].prefix;
-		if (strncmp(refname, prefix, ref_kind[i].pfxlen))
-			continue;
-		kind = ref_kind[i].kind;
-		refname += ref_kind[i].pfxlen;
-		break;
+		if (skip_prefix(refname, prefix, &refname)) {
+			kind = ref_kind[i].kind;
+			break;
+		}
 	}
 	if (ARRAY_SIZE(ref_kind) <= i)
 		return 0;
@@ -385,6 +386,7 @@ static int append_ref(const char *refname, const unsigned char *sha1, int flags,
 	newitem->commit = commit;
 	newitem->width = utf8_strwidth(refname);
 	newitem->dest = resolve_symref(orig_refname, prefix);
+	newitem->ignore = 0;
 	/* adjust for "remotes/" */
 	if (newitem->kind == REF_REMOTE_BRANCH &&
 	    ref_list->kinds != REF_REMOTE_BRANCH)
@@ -484,17 +486,6 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 	free(ref);
 }
 
-static int matches_merge_filter(struct commit *commit)
-{
-	int is_merged;
-
-	if (merge_filter == NO_FILTER)
-		return 1;
-
-	is_merged = !!(commit->object.flags & UNINTERESTING);
-	return (is_merged == (merge_filter == SHOW_MERGED));
-}
-
 static void add_verbose_info(struct strbuf *out, struct ref_item *item,
 			     int verbose, int abbrev)
 {
@@ -522,10 +513,9 @@ static void print_ref_item(struct ref_item *item, int maxwidth, int verbose,
 {
 	char c;
 	int color;
-	struct commit *commit = item->commit;
 	struct strbuf out = STRBUF_INIT, name = STRBUF_INIT;
 
-	if (!matches_merge_filter(commit))
+	if (item->ignore)
 		return;
 
 	switch (item->kind) {
@@ -575,7 +565,7 @@ static int calc_maxwidth(struct ref_list *refs)
 {
 	int i, w = 0;
 	for (i = 0; i < refs->index; i++) {
-		if (!matches_merge_filter(refs->list[i].commit))
+		if (refs->list[i].ignore)
 			continue;
 		if (refs->list[i].width > w)
 			w = refs->list[i].width;
@@ -618,6 +608,7 @@ static void show_detached(struct ref_list *ref_list)
 		item.kind = REF_LOCAL_BRANCH;
 		item.dest = NULL;
 		item.commit = head_commit;
+		item.ignore = 0;
 		if (item.width > ref_list->maxwidth)
 			ref_list->maxwidth = item.width;
 		print_ref_item(&item, ref_list->maxwidth, ref_list->verbose, ref_list->abbrev, 1, "");
@@ -653,7 +644,23 @@ static int print_ref_list(int kinds, int detached, int verbose, int abbrev, stru
 		add_pending_object(&ref_list.revs,
 				   (struct object *) filter, "");
 		ref_list.revs.limited = 1;
-		prepare_revision_walk(&ref_list.revs);
+
+		if (prepare_revision_walk(&ref_list.revs))
+			die(_("revision walk setup failed"));
+
+		for (i = 0; i < ref_list.index; i++) {
+			struct ref_item *item = &ref_list.list[i];
+			struct commit *commit = item->commit;
+			int is_merged = !!(commit->object.flags & UNINTERESTING);
+			item->ignore = is_merged != (merge_filter == SHOW_MERGED);
+		}
+
+		for (i = 0; i < ref_list.index; i++) {
+			struct ref_item *item = &ref_list.list[i];
+			clear_commit_marks(item->commit, ALL_REV_FLAGS);
+		}
+		clear_commit_marks(filter, ALL_REV_FLAGS);
+
 		if (verbose)
 			ref_list.maxwidth = calc_maxwidth(&ref_list);
 	}
@@ -865,13 +872,10 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 	head = resolve_refdup("HEAD", head_sha1, 0, NULL);
 	if (!head)
 		die(_("Failed to resolve HEAD as a valid ref."));
-	if (!strcmp(head, "HEAD")) {
+	if (!strcmp(head, "HEAD"))
 		detached = 1;
-	} else {
-		if (!starts_with(head, "refs/heads/"))
-			die(_("HEAD not found below refs/heads!"));
-		head += 11;
-	}
+	else if (!skip_prefix(head, "refs/heads/", &head))
+		die(_("HEAD not found below refs/heads!"));
 	hashcpy(merge_filter_ref, head_sha1);
 
 

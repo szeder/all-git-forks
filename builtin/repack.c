@@ -10,6 +10,7 @@
 
 static int delta_base_offset = 1;
 static int pack_kept_objects = -1;
+static int write_bitmaps;
 static char *packdir, *packtmp;
 
 static const char *const git_repack_usage[] = {
@@ -25,6 +26,11 @@ static int repack_config(const char *var, const char *value, void *cb)
 	}
 	if (!strcmp(var, "repack.packkeptobjects")) {
 		pack_kept_objects = git_config_bool(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "repack.writebitmaps") ||
+	    !strcmp(var, "pack.writebitmaps")) {
+		write_bitmaps = git_config_bool(var, value);
 		return 0;
 	}
 	return git_default_config(var, value, cb);
@@ -77,16 +83,15 @@ static void get_non_kept_pack_filenames(struct string_list *fname_list)
 	DIR *dir;
 	struct dirent *e;
 	char *fname;
-	size_t len;
 
 	if (!(dir = opendir(packdir)))
 		return;
 
 	while ((e = readdir(dir)) != NULL) {
-		if (!ends_with(e->d_name, ".pack"))
+		size_t len;
+		if (!strip_suffix(e->d_name, ".pack", &len))
 			continue;
 
-		len = strlen(e->d_name) - strlen(".pack");
 		fname = xmemdupz(e->d_name, len);
 
 		if (!file_exists(mkpath("%s/%s.keep", packdir, fname)))
@@ -128,7 +133,7 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 		{".idx"},
 		{".bitmap", 1},
 	};
-	struct child_process cmd;
+	struct child_process cmd = CHILD_PROCESS_INIT;
 	struct string_list_item *item;
 	struct argv_array cmd_args = ARGV_ARRAY_INIT;
 	struct string_list names = STRING_LIST_INIT_DUP;
@@ -149,7 +154,6 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 	int no_update_server_info = 0;
 	int quiet = 0;
 	int local = 0;
-	int write_bitmap = -1;
 
 	struct option builtin_repack_options[] = {
 		OPT_BIT('a', NULL, &pack_everything,
@@ -168,7 +172,7 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 		OPT__QUIET(&quiet, N_("be quiet")),
 		OPT_BOOL('l', "local", &local,
 				N_("pass --local to git-pack-objects")),
-		OPT_BOOL('b', "write-bitmap-index", &write_bitmap,
+		OPT_BOOL('b', "write-bitmap-index", &write_bitmaps,
 				N_("write bitmap index")),
 		OPT_STRING(0, "unpack-unreachable", &unpack_unreachable, N_("approxidate"),
 				N_("with -A, do not loosen objects older than this")),
@@ -191,7 +195,7 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 				git_repack_usage, 0);
 
 	if (pack_kept_objects < 0)
-		pack_kept_objects = write_bitmap;
+		pack_kept_objects = write_bitmaps;
 
 	packdir = mkpathdup("%s/pack", get_object_directory());
 	packtmp = mkpathdup("%s/.tmp-%d-pack", packdir, (int)getpid());
@@ -217,9 +221,8 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 		argv_array_pushf(&cmd_args, "--no-reuse-delta");
 	if (no_reuse_object)
 		argv_array_pushf(&cmd_args, "--no-reuse-object");
-	if (write_bitmap >= 0)
-		argv_array_pushf(&cmd_args, "--%swrite-bitmap-index",
-				 write_bitmap ? "" : "no-");
+	if (write_bitmaps)
+		argv_array_push(&cmd_args, "--write-bitmap-index");
 
 	if (pack_everything & ALL_INTO_ONE) {
 		get_non_kept_pack_filenames(&existing_packs);
@@ -247,7 +250,6 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 
 	argv_array_push(&cmd_args, packtmp);
 
-	memset(&cmd, 0, sizeof(cmd));
 	cmd.argv = cmd_args.argv;
 	cmd.git_cmd = 1;
 	cmd.out = -1;
@@ -375,6 +377,7 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 	/* End of pack replacement. */
 
 	if (delete_redundant) {
+		int opts = 0;
 		sort_string_list(&names);
 		for_each_string_list_item(item, &existing_packs) {
 			char *sha1;
@@ -385,25 +388,13 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 			if (!string_list_has_string(&names, sha1))
 				remove_redundant_pack(packdir, item->string);
 		}
-		argv_array_push(&cmd_args, "prune-packed");
-		if (quiet)
-			argv_array_push(&cmd_args, "--quiet");
-
-		memset(&cmd, 0, sizeof(cmd));
-		cmd.argv = cmd_args.argv;
-		cmd.git_cmd = 1;
-		run_command(&cmd);
-		argv_array_clear(&cmd_args);
+		if (!quiet && isatty(2))
+			opts |= PRUNE_PACKED_VERBOSE;
+		prune_packed_objects(opts);
 	}
 
-	if (!no_update_server_info) {
-		argv_array_push(&cmd_args, "update-server-info");
-		memset(&cmd, 0, sizeof(cmd));
-		cmd.argv = cmd_args.argv;
-		cmd.git_cmd = 1;
-		run_command(&cmd);
-		argv_array_clear(&cmd_args);
-	}
+	if (!no_update_server_info)
+		update_server_info(0);
 	remove_temporary_files();
 	string_list_clear(&names, 0);
 	string_list_clear(&rollback, 0);

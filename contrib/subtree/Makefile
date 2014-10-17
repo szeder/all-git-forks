@@ -1,3 +1,6 @@
+# The default target of this Makefile is...
+all::
+
 -include ../../config.mak.autogen
 -include ../../config.mak
 
@@ -18,6 +21,11 @@ RM       ?= rm -f
 ASCIIDOC = asciidoc
 XMLTO    = xmlto
 
+ifndef SHELL_PATH
+	SHELL_PATH = /bin/sh
+endif
+SHELL_PATH_SQ = $(subst ','\'',$(SHELL_PATH))
+
 ASCIIDOC_CONF = ../../Documentation/asciidoc.conf
 MANPAGE_XSL   = ../../Documentation/manpage-normal.xsl
 
@@ -29,10 +37,11 @@ GIT_SUBTREE_XML := git-subtree.xml
 GIT_SUBTREE_TXT := git-subtree.txt
 GIT_SUBTREE_HTML := git-subtree.html
 
-all: $(GIT_SUBTREE)
+all:: $(GIT_SUBTREE)
 
 $(GIT_SUBTREE): $(GIT_SUBTREE_SH)
-	cp $< $@ && chmod +x $@
+	sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' $< >$@
+	chmod +x $@
 
 doc: $(GIT_SUBTREE_DOC) $(GIT_SUBTREE_HTML)
 

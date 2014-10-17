@@ -563,7 +563,7 @@ static int git_show_branch_config(const char *var, const char *value, void *cb)
 			default_arg[default_num++] = "show-branch";
 		} else if (default_alloc <= default_num + 1) {
 			default_alloc = default_alloc * 3 / 2 + 20;
-			default_arg = xrealloc(default_arg, sizeof *default_arg * default_alloc);
+			REALLOC_ARRAY(default_arg, default_alloc);
 		}
 		default_arg[default_num++] = xstrdup(value);
 		default_arg[default_num] = NULL;
@@ -723,6 +723,7 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 		char nth_desc[256];
 		char *ref;
 		int base = 0;
+		unsigned int flags = 0;
 
 		if (ac == 0) {
 			static const char *fake_av[2];
@@ -749,18 +750,18 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 				/* Ah, that is a date spec... */
 				unsigned long at;
 				at = approxidate(reflog_base);
-				read_ref_at(ref, at, -1, sha1, NULL,
+				read_ref_at(ref, flags, at, -1, sha1, NULL,
 					    NULL, NULL, &base);
 			}
 		}
 
 		for (i = 0; i < reflog; i++) {
-			char *logmsg, *m;
+			char *logmsg;
 			const char *msg;
 			unsigned long timestamp;
 			int tz;
 
-			if (read_ref_at(ref, 0, base+i, sha1, &logmsg,
+			if (read_ref_at(ref, flags, 0, base+i, sha1, &logmsg,
 					&timestamp, &tz, NULL)) {
 				reflog = i;
 				break;
@@ -770,15 +771,14 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 				msg = "(none)";
 			else
 				msg++;
-			m = xmalloc(strlen(msg) + 200);
-			sprintf(m, "(%s) %s",
-				show_date(timestamp, tz, 1),
-				msg);
-			reflog_msg[i] = m;
+			reflog_msg[i] = xstrfmt("(%s) %s",
+						show_date(timestamp, tz, 1),
+						msg);
 			free(logmsg);
 			sprintf(nth_desc, "%s@{%d}", *av, base+i);
 			append_ref(nth_desc, sha1, 1);
 		}
+		free(ref);
 	}
 	else if (all_heads + all_remotes)
 		snarf_refs(all_heads, all_remotes);

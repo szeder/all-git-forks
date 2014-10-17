@@ -8,6 +8,12 @@
 # define SHELL_PATH "/bin/sh"
 #endif
 
+void child_process_init(struct child_process *child)
+{
+	memset(child, 0, sizeof(*child));
+	argv_array_init(&child->args);
+}
+
 struct child_to_clean {
 	pid_t pid;
 	struct child_to_clean *next;
@@ -454,7 +460,6 @@ fail_pipe:
 {
 	int fhin = 0, fhout = 1, fherr = 2;
 	const char **sargv = cmd->argv;
-	char **env = environ;
 
 	if (cmd->no_stdin)
 		fhin = open("/dev/null", O_RDWR);
@@ -479,24 +484,19 @@ fail_pipe:
 	else if (cmd->out > 1)
 		fhout = dup(cmd->out);
 
-	if (cmd->env)
-		env = make_augmented_environ(cmd->env);
-
 	if (cmd->git_cmd)
 		cmd->argv = prepare_git_cmd(cmd->argv);
 	else if (cmd->use_shell)
 		cmd->argv = prepare_shell_cmd(cmd->argv);
 
-	cmd->pid = mingw_spawnvpe(cmd->argv[0], cmd->argv, env, cmd->dir,
-				  fhin, fhout, fherr);
+	cmd->pid = mingw_spawnvpe(cmd->argv[0], cmd->argv, (char**) cmd->env,
+			cmd->dir, fhin, fhout, fherr);
 	failed_errno = errno;
 	if (cmd->pid < 0 && (!cmd->silent_exec_failure || errno != ENOENT))
 		error("cannot spawn %s: %s", cmd->argv[0], strerror(errno));
 	if (cmd->clean_on_exit && cmd->pid >= 0)
 		mark_child_for_cleanup(cmd->pid);
 
-	if (cmd->env)
-		free_environ(env);
 	if (cmd->git_cmd)
 		free(cmd->argv);
 
@@ -561,31 +561,21 @@ int run_command(struct child_process *cmd)
 	return finish_command(cmd);
 }
 
-static void prepare_run_command_v_opt(struct child_process *cmd,
-				      const char **argv,
-				      int opt)
-{
-	memset(cmd, 0, sizeof(*cmd));
-	cmd->argv = argv;
-	cmd->no_stdin = opt & RUN_COMMAND_NO_STDIN ? 1 : 0;
-	cmd->git_cmd = opt & RUN_GIT_CMD ? 1 : 0;
-	cmd->stdout_to_stderr = opt & RUN_COMMAND_STDOUT_TO_STDERR ? 1 : 0;
-	cmd->silent_exec_failure = opt & RUN_SILENT_EXEC_FAILURE ? 1 : 0;
-	cmd->use_shell = opt & RUN_USING_SHELL ? 1 : 0;
-	cmd->clean_on_exit = opt & RUN_CLEAN_ON_EXIT ? 1 : 0;
-}
-
 int run_command_v_opt(const char **argv, int opt)
 {
-	struct child_process cmd;
-	prepare_run_command_v_opt(&cmd, argv, opt);
-	return run_command(&cmd);
+	return run_command_v_opt_cd_env(argv, opt, NULL, NULL);
 }
 
 int run_command_v_opt_cd_env(const char **argv, int opt, const char *dir, const char *const *env)
 {
-	struct child_process cmd;
-	prepare_run_command_v_opt(&cmd, argv, opt);
+	struct child_process cmd = CHILD_PROCESS_INIT;
+	cmd.argv = argv;
+	cmd.no_stdin = opt & RUN_COMMAND_NO_STDIN ? 1 : 0;
+	cmd.git_cmd = opt & RUN_GIT_CMD ? 1 : 0;
+	cmd.stdout_to_stderr = opt & RUN_COMMAND_STDOUT_TO_STDERR ? 1 : 0;
+	cmd.silent_exec_failure = opt & RUN_SILENT_EXEC_FAILURE ? 1 : 0;
+	cmd.use_shell = opt & RUN_USING_SHELL ? 1 : 0;
+	cmd.clean_on_exit = opt & RUN_CLEAN_ON_EXIT ? 1 : 0;
 	cmd.dir = dir;
 	cmd.env = env;
 	return run_command(&cmd);
@@ -769,29 +759,21 @@ char *find_hook(const char *name)
 
 int run_hook_ve(const char *const *env, const char *name, va_list args)
 {
-	struct child_process hook;
-	struct argv_array argv = ARGV_ARRAY_INIT;
+	struct child_process hook = CHILD_PROCESS_INIT;
 	const char *p;
-	int ret;
 
 	p = find_hook(name);
 	if (!p)
 		return 0;
 
-	argv_array_push(&argv, p);
-
+	argv_array_push(&hook.args, p);
 	while ((p = va_arg(args, const char *)))
-		argv_array_push(&argv, p);
-
-	memset(&hook, 0, sizeof(hook));
-	hook.argv = argv.argv;
+		argv_array_push(&hook.args, p);
 	hook.env = env;
 	hook.no_stdin = 1;
 	hook.stdout_to_stderr = 1;
 
-	ret = run_command(&hook);
-	argv_array_clear(&argv);
-	return ret;
+	return run_command(&hook);
 }
 
 int run_hook_le(const char *const *env, const char *name, ...)

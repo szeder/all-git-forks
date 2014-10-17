@@ -33,13 +33,20 @@ const char *typename(unsigned int type)
 	return object_type_strings[type];
 }
 
-int type_from_string(const char *str)
+int type_from_string_gently(const char *str, ssize_t len, int gentle)
 {
 	int i;
 
+	if (len < 0)
+		len = strlen(str);
+
 	for (i = 1; i < ARRAY_SIZE(object_type_strings); i++)
-		if (!strcmp(str, object_type_strings[i]))
+		if (!strncmp(str, object_type_strings[i], len))
 			return i;
+
+	if (gentle)
+		return -1;
+
 	die("invalid object type \"%s\"", str);
 }
 
@@ -50,18 +57,7 @@ int type_from_string(const char *str)
  */
 static unsigned int hash_obj(const unsigned char *sha1, unsigned int n)
 {
-	unsigned int hash;
-
-	/*
-	 * Since the sha1 is essentially random, we just take the
-	 * required number of bits directly from the first
-	 * sizeof(unsigned int) bytes of sha1.  First we have to copy
-	 * the bytes into a properly aligned integer.  If we cared
-	 * about getting consistent results across architectures, we
-	 * would have to call ntohl() here, too.
-	 */
-	memcpy(&hash, sha1, sizeof(unsigned int));
-	return hash & (n - 1);
+	return sha1hash(sha1) & (n - 1);
 }
 
 /*
@@ -141,13 +137,12 @@ static void grow_object_hash(void)
 	obj_hash_size = new_hash_size;
 }
 
-void *create_object(const unsigned char *sha1, int type, void *o)
+void *create_object(const unsigned char *sha1, void *o)
 {
 	struct object *obj = o;
 
 	obj->parsed = 0;
 	obj->used = 0;
-	obj->type = type;
 	obj->flags = 0;
 	hashcpy(obj->sha1, sha1);
 
@@ -159,11 +154,30 @@ void *create_object(const unsigned char *sha1, int type, void *o)
 	return obj;
 }
 
+void *object_as_type(struct object *obj, enum object_type type, int quiet)
+{
+	if (obj->type == type)
+		return obj;
+	else if (obj->type == OBJ_NONE) {
+		if (type == OBJ_COMMIT)
+			((struct commit *)obj)->index = alloc_commit_index();
+		obj->type = type;
+		return obj;
+	}
+	else {
+		if (!quiet)
+			error("object %s is a %s, not a %s",
+			      sha1_to_hex(obj->sha1),
+			      typename(obj->type), typename(type));
+		return NULL;
+	}
+}
+
 struct object *lookup_unknown_object(const unsigned char *sha1)
 {
 	struct object *obj = lookup_object(sha1);
 	if (!obj)
-		obj = create_object(sha1, OBJ_NONE, alloc_object_node());
+		obj = create_object(sha1, alloc_object_node());
 	return obj;
 }
 
@@ -197,8 +211,8 @@ struct object *parse_object_buffer(const unsigned char *sha1, enum object_type t
 		if (commit) {
 			if (parse_commit_buffer(commit, buffer, size))
 				return NULL;
-			if (!commit->buffer) {
-				commit->buffer = buffer;
+			if (!get_cached_commit_buffer(commit, NULL)) {
+				set_commit_buffer(commit, buffer, size);
 				*eaten_p = 1;
 			}
 			obj = &commit->object;
@@ -214,8 +228,6 @@ struct object *parse_object_buffer(const unsigned char *sha1, enum object_type t
 		warning("object %s has unknown type id %d", sha1_to_hex(sha1), type);
 		obj = NULL;
 	}
-	if (obj && obj->type == OBJ_NONE)
-		obj->type = type;
 	return obj;
 }
 
@@ -307,7 +319,7 @@ static void add_object_array_with_mode_context(struct object *obj, const char *n
 
 	if (nr >= alloc) {
 		alloc = (alloc + 32) * 2;
-		objects = xrealloc(objects, alloc * sizeof(*objects));
+		REALLOC_ARRAY(objects, alloc);
 		array->alloc = alloc;
 		array->objects = objects;
 	}

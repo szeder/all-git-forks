@@ -138,10 +138,8 @@ static int parse_atom(const char *atom, const char *ep)
 	/* Add it in, including the deref prefix */
 	at = used_atom_cnt;
 	used_atom_cnt++;
-	used_atom = xrealloc(used_atom,
-			     (sizeof *used_atom) * used_atom_cnt);
-	used_atom_type = xrealloc(used_atom_type,
-				  (sizeof(*used_atom_type) * used_atom_cnt));
+	REALLOC_ARRAY(used_atom, used_atom_cnt);
+	REALLOC_ARRAY(used_atom_type, used_atom_cnt);
 	used_atom[at] = xmemdupz(atom, ep - atom);
 	used_atom_type[at] = valid_atom[i].cmp_type;
 	if (*atom == '*')
@@ -193,7 +191,7 @@ static int verify_format(const char *format)
 		at = parse_atom(sp + 2, ep);
 		cp = ep + 1;
 
-		if (!memcmp(used_atom[at], "color:", 6))
+		if (starts_with(used_atom[at], "color:"))
 			need_color_reset_at_eol = !!strcmp(used_atom[at], color_reset);
 	}
 	return 0;
@@ -283,18 +281,6 @@ static void grab_tag_values(struct atom_value *val, int deref, struct object *ob
 	}
 }
 
-static int num_parents(struct commit *commit)
-{
-	struct commit_list *parents;
-	int i;
-
-	for (i = 0, parents = commit->parents;
-	     parents;
-	     parents = parents->next)
-		i++;
-	return i;
-}
-
 /* See grab_values */
 static void grab_commit_values(struct atom_value *val, int deref, struct object *obj, void *buf, unsigned long sz)
 {
@@ -315,12 +301,12 @@ static void grab_commit_values(struct atom_value *val, int deref, struct object 
 		}
 		if (!strcmp(name, "numparent")) {
 			char *s = xmalloc(40);
-			v->ul = num_parents(commit);
+			v->ul = commit_list_count(commit->parents);
 			sprintf(s, "%lu", v->ul);
 			v->s = s;
 		}
 		else if (!strcmp(name, "parent")) {
-			int num = num_parents(commit);
+			int num = commit_list_count(commit->parents);
 			int i;
 			struct commit_list *parents;
 			char *s = xmalloc(41 * num + 1);
@@ -645,7 +631,7 @@ static void populate_value(struct refinfo *ref)
 	unsigned long size;
 	const unsigned char *tagged;
 
-	ref->value = xcalloc(sizeof(struct atom_value), used_atom_cnt);
+	ref->value = xcalloc(used_atom_cnt, sizeof(struct atom_value));
 
 	if (need_symref && (ref->flag & REF_ISSYMREF) && !ref->symref) {
 		unsigned char unused1[20];
@@ -882,8 +868,7 @@ static int grab_single_ref(const char *refname, const unsigned char *sha1, int f
 	ref->flag = flag;
 
 	cnt = cb->grab_cnt;
-	cb->grab_array = xrealloc(cb->grab_array,
-				  sizeof(*cb->grab_array) * (cnt + 1));
+	REALLOC_ARRAY(cb->grab_array, cnt + 1);
 	cb->grab_array[cnt++] = ref;
 	cb->grab_cnt = cnt;
 	return 0;

@@ -118,7 +118,8 @@ static struct child_process *get_helper(struct transport *transport)
 	if (data->helper)
 		return data->helper;
 
-	helper = xcalloc(1, sizeof(*helper));
+	helper = xmalloc(sizeof(*helper));
+	child_process_init(helper);
 	helper->in = -1;
 	helper->out = -1;
 	helper->err = 0;
@@ -153,7 +154,7 @@ static struct child_process *get_helper(struct transport *transport)
 	write_constant(helper->in, "capabilities\n");
 
 	while (1) {
-		const char *capname;
+		const char *capname, *arg;
 		int mandatory = 0;
 		if (recvline(data, &buf))
 			exit(128);
@@ -183,19 +184,19 @@ static struct child_process *get_helper(struct transport *transport)
 			data->export = 1;
 		else if (!strcmp(capname, "check-connectivity"))
 			data->check_connectivity = 1;
-		else if (!data->refspecs && starts_with(capname, "refspec ")) {
+		else if (!data->refspecs && skip_prefix(capname, "refspec ", &arg)) {
 			ALLOC_GROW(refspecs,
 				   refspec_nr + 1,
 				   refspec_alloc);
-			refspecs[refspec_nr++] = xstrdup(capname + strlen("refspec "));
+			refspecs[refspec_nr++] = xstrdup(arg);
 		} else if (!strcmp(capname, "connect")) {
 			data->connect = 1;
 		} else if (!strcmp(capname, "signed-tags")) {
 			data->signed_tags = 1;
-		} else if (starts_with(capname, "export-marks ")) {
-			data->export_marks = xstrdup(capname + strlen("export-marks "));
-		} else if (starts_with(capname, "import-marks")) {
-			data->import_marks = xstrdup(capname + strlen("import-marks "));
+		} else if (skip_prefix(capname, "export-marks ", &arg)) {
+			data->export_marks = xstrdup(arg);
+		} else if (skip_prefix(capname, "import-marks ", &arg)) {
+			data->import_marks = xstrdup(arg);
 		} else if (starts_with(capname, "no-private-update")) {
 			data->no_private_update = 1;
 		} else if (mandatory) {
@@ -259,7 +260,8 @@ static const char *unsupported_options[] = {
 static const char *boolean_options[] = {
 	TRANS_OPT_THIN,
 	TRANS_OPT_KEEP,
-	TRANS_OPT_FOLLOWTAGS
+	TRANS_OPT_FOLLOWTAGS,
+	TRANS_OPT_PUSH_CERT
 	};
 
 static int set_helper_option(struct transport *transport,
@@ -395,7 +397,7 @@ static int get_importer(struct transport *transport, struct child_process *fasti
 	struct child_process *helper = get_helper(transport);
 	struct helper_data *data = transport->data;
 	int cat_blob_fd, code;
-	memset(fastimport, 0, sizeof(*fastimport));
+	child_process_init(fastimport);
 	fastimport->in = helper->out;
 	argv_array_push(&fastimport->args, "fast-import");
 	argv_array_push(&fastimport->args, debug ? "--stats" : "--quiet");
@@ -835,6 +837,9 @@ static int push_refs_with_push(struct transport *transport,
 	if (flags & TRANSPORT_PUSH_DRY_RUN) {
 		if (set_helper_option(transport, "dry-run", "true") != 0)
 			die("helper %s does not support dry-run", data->name);
+	} else if (flags & TRANSPORT_PUSH_CERT) {
+		if (set_helper_option(transport, TRANS_OPT_PUSH_CERT, "true") != 0)
+			die("helper %s does not support --signed", data->name);
 	}
 
 	strbuf_addch(&buf, '\n');
@@ -858,6 +863,9 @@ static int push_refs_with_export(struct transport *transport,
 
 	if (flags & TRANSPORT_PUSH_DRY_RUN) {
 		if (set_helper_option(transport, "dry-run", "true") != 0)
+			die("helper %s does not support dry-run", data->name);
+	} else if (flags & TRANSPORT_PUSH_CERT) {
+		if (set_helper_option(transport, TRANS_OPT_PUSH_CERT, "true") != 0)
 			die("helper %s does not support dry-run", data->name);
 	}
 

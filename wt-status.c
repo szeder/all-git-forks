@@ -574,13 +574,10 @@ static void wt_status_collect_untracked(struct wt_status *s)
 {
 	int i;
 	struct dir_struct dir;
-	struct timeval t_begin;
+	uint64_t t_begin = getnanotime();
 
 	if (!s->show_untracked_files)
 		return;
-
-	if (advice_status_u_option)
-		gettimeofday(&t_begin, NULL);
 
 	memset(&dir, 0, sizeof(dir));
 	if (s->show_untracked_files != SHOW_ALL_UNTRACKED_FILES)
@@ -612,13 +609,8 @@ static void wt_status_collect_untracked(struct wt_status *s)
 	free(dir.ignored);
 	clear_directory(&dir);
 
-	if (advice_status_u_option) {
-		struct timeval t_end;
-		gettimeofday(&t_end, NULL);
-		s->untracked_in_ms =
-			(uint64_t)t_end.tv_sec * 1000 + t_end.tv_usec / 1000 -
-			((uint64_t)t_begin.tv_sec * 1000 + t_begin.tv_usec / 1000);
-	}
+	if (advice_status_u_option)
+		s->untracked_in_ms = (getnanotime() - t_begin) / 1000000;
 }
 
 void wt_status_collect(struct wt_status *s)
@@ -733,38 +725,34 @@ static void wt_status_print_changed(struct wt_status *s)
 
 static void wt_status_print_submodule_summary(struct wt_status *s, int uncommitted)
 {
-	struct child_process sm_summary;
-	char summary_limit[64];
-	char index[PATH_MAX];
-	const char *env[] = { NULL, NULL };
+	struct child_process sm_summary = CHILD_PROCESS_INIT;
+	struct argv_array env = ARGV_ARRAY_INIT;
 	struct argv_array argv = ARGV_ARRAY_INIT;
 	struct strbuf cmd_stdout = STRBUF_INIT;
 	struct strbuf summary = STRBUF_INIT;
 	char *summary_content;
 	size_t len;
 
-	sprintf(summary_limit, "%d", s->submodule_summary);
-	snprintf(index, sizeof(index), "GIT_INDEX_FILE=%s", s->index_file);
+	argv_array_pushf(&env, "GIT_INDEX_FILE=%s", s->index_file);
 
-	env[0] = index;
 	argv_array_push(&argv, "submodule");
 	argv_array_push(&argv, "summary");
 	argv_array_push(&argv, uncommitted ? "--files" : "--cached");
 	argv_array_push(&argv, "--for-status");
 	argv_array_push(&argv, "--summary-limit");
-	argv_array_push(&argv, summary_limit);
+	argv_array_pushf(&argv, "%d", s->submodule_summary);
 	if (!uncommitted)
 		argv_array_push(&argv, s->amend ? "HEAD^" : "HEAD");
 
-	memset(&sm_summary, 0, sizeof(sm_summary));
 	sm_summary.argv = argv.argv;
-	sm_summary.env = env;
+	sm_summary.env = env.argv;
 	sm_summary.git_cmd = 1;
 	sm_summary.no_stdin = 1;
 	fflush(s->fp);
 	sm_summary.out = -1;
 
 	run_command(&sm_summary);
+	argv_array_clear(&env);
 	argv_array_clear(&argv);
 
 	len = strbuf_read(&cmd_stdout, sm_summary.out, 1024);

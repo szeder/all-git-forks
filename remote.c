@@ -42,6 +42,7 @@ struct rewrites {
 static struct remote **remotes;
 static int remotes_alloc;
 static int remotes_nr;
+static struct hashmap remotes_hash;
 
 static struct branch **branches;
 static int branches_alloc;
@@ -136,26 +137,51 @@ static void add_url_alias(struct remote *remote, const char *url)
 	add_pushurl_alias(remote, url);
 }
 
+struct remotes_hash_key {
+	const char *str;
+	int len;
+};
+
+static int remotes_hash_cmp(const struct remote *a, const struct remote *b, const struct remotes_hash_key *key)
+{
+	if (key)
+		return strncmp(a->name, key->str, key->len) || a->name[key->len];
+	else
+		return strcmp(a->name, b->name);
+}
+
+static inline void init_remotes_hash(void)
+{
+	if (!remotes_hash.cmpfn)
+		hashmap_init(&remotes_hash, (hashmap_cmp_fn)remotes_hash_cmp, 0);
+}
+
 static struct remote *make_remote(const char *name, int len)
 {
-	struct remote *ret;
-	int i;
+	struct remote *ret, *replaced;
+	struct remotes_hash_key lookup;
+	struct hashmap_entry lookup_entry;
 
-	for (i = 0; i < remotes_nr; i++) {
-		if (len ? (!strncmp(name, remotes[i]->name, len) &&
-			   !remotes[i]->name[len]) :
-		    !strcmp(name, remotes[i]->name))
-			return remotes[i];
-	}
+	if (!len)
+		len = strlen(name);
+
+	init_remotes_hash();
+	lookup.str = name;
+	lookup.len = len;
+	hashmap_entry_init(&lookup_entry, memhash(name, len));
+
+	if ((ret = hashmap_get(&remotes_hash, &lookup_entry, &lookup)) != NULL)
+		return ret;
 
 	ret = xcalloc(1, sizeof(struct remote));
 	ret->prune = -1;  /* unspecified */
 	ALLOC_GROW(remotes, remotes_nr + 1, remotes_alloc);
 	remotes[remotes_nr++] = ret;
-	if (len)
-		ret->name = xstrndup(name, len);
-	else
-		ret->name = xstrdup(name);
+	ret->name = xstrndup(name, len);
+
+	hashmap_entry_init(ret, lookup_entry.hash);
+	replaced = hashmap_put(&remotes_hash, ret);
+	assert(replaced == NULL);  /* no previous entry overwritten */
 	return ret;
 }
 
@@ -170,7 +196,6 @@ static struct branch *make_branch(const char *name, int len)
 {
 	struct branch *ret;
 	int i;
-	char *refname;
 
 	for (i = 0; i < branches_nr; i++) {
 		if (len ? (!strncmp(name, branches[i]->name, len) &&
@@ -186,10 +211,7 @@ static struct branch *make_branch(const char *name, int len)
 		ret->name = xstrndup(name, len);
 	else
 		ret->name = xstrdup(name);
-	refname = xmalloc(strlen(name) + strlen("refs/heads/") + 1);
-	strcpy(refname, "refs/heads/");
-	strcpy(refname + strlen("refs/heads/"), ret->name);
-	ret->refname = refname;
+	ret->refname = xstrfmt("refs/heads/%s", ret->name);
 
 	return ret;
 }
@@ -488,9 +510,8 @@ static void read_config(void)
 	current_branch = NULL;
 	head_ref = resolve_ref_unsafe("HEAD", sha1, 0, &flag);
 	if (head_ref && (flag & REF_ISSYMREF) &&
-	    starts_with(head_ref, "refs/heads/")) {
-		current_branch =
-			make_branch(head_ref + strlen("refs/heads/"), 0);
+	    skip_prefix(head_ref, "refs/heads/", &head_ref)) {
+		current_branch = make_branch(head_ref, 0);
 	}
 	git_config(handle_config, NULL);
 	if (branch_pushremote_name) {
@@ -722,13 +743,16 @@ struct remote *pushremote_get(const char *name)
 
 int remote_is_configured(const char *name)
 {
-	int i;
+	struct remotes_hash_key lookup;
+	struct hashmap_entry lookup_entry;
 	read_config();
 
-	for (i = 0; i < remotes_nr; i++)
-		if (!strcmp(name, remotes[i]->name))
-			return 1;
-	return 0;
+	init_remotes_hash();
+	lookup.str = name;
+	lookup.len = strlen(name);
+	hashmap_entry_init(&lookup_entry, memhash(name, lookup.len));
+
+	return hashmap_get(&remotes_hash, &lookup_entry, &lookup) != NULL;
 }
 
 int for_each_remote(each_remote_fn fn, void *priv)
@@ -838,21 +862,14 @@ static int match_name_with_pattern(const char *key, const char *name,
 	ret = !strncmp(name, key, klen) && namelen >= klen + ksuffixlen &&
 		!memcmp(name + namelen - ksuffixlen, kstar + 1, ksuffixlen);
 	if (ret && value) {
+		struct strbuf sb = STRBUF_INIT;
 		const char *vstar = strchr(value, '*');
-		size_t vlen;
-		size_t vsuffixlen;
 		if (!vstar)
 			die("Value '%s' of pattern has no '*'", value);
-		vlen = vstar - value;
-		vsuffixlen = strlen(vstar + 1);
-		*result = xmalloc(vlen + vsuffixlen +
-				  strlen(name) -
-				  klen - ksuffixlen + 1);
-		strncpy(*result, value, vlen);
-		strncpy(*result + vlen,
-			name + klen, namelen - klen - ksuffixlen);
-		strcpy(*result + vlen + namelen - klen - ksuffixlen,
-		       vstar + 1);
+		strbuf_add(&sb, value, vstar - value);
+		strbuf_add(&sb, name + klen, namelen - klen - ksuffixlen);
+		strbuf_addstr(&sb, vstar + 1);
+		*result = strbuf_detach(&sb, NULL);
 	}
 	return ret;
 }
@@ -1194,7 +1211,7 @@ static int match_explicit(struct ref *src, struct ref *dst,
 	case 1:
 		break;
 	case 0:
-		if (!memcmp(dst_value, "refs/", 5))
+		if (starts_with(dst_value, "refs/"))
 			matched_dst = make_linked_ref(dst_value, dst_tail);
 		else if (is_null_sha1(matched_src->new_sha1))
 			error("unable to delete '%s': remote ref does not exist",
@@ -1898,7 +1915,8 @@ int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs)
 
 	init_revisions(&revs, NULL);
 	setup_revisions(rev_argc, rev_argv, &revs, NULL);
-	prepare_revision_walk(&revs);
+	if (prepare_revision_walk(&revs))
+		die("revision walk setup failed");
 
 	/* ... and count the commits on each side. */
 	*num_ours = 0;
@@ -1925,7 +1943,7 @@ int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs)
 int format_tracking_info(struct branch *branch, struct strbuf *sb)
 {
 	int ours, theirs;
-	const char *base;
+	char *base;
 	int upstream_is_gone = 0;
 
 	switch (stat_tracking_info(branch, &ours, &theirs)) {
@@ -1941,8 +1959,7 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 		break;
 	}
 
-	base = branch->merge[0]->dst;
-	base = shorten_unambiguous_ref(base, 0);
+	base = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
 	if (upstream_is_gone) {
 		strbuf_addf(sb,
 			_("Your branch is based on '%s', but the upstream is gone.\n"),
@@ -1988,6 +2005,7 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 			strbuf_addf(sb,
 				_("  (use \"git pull\" to merge the remote branch into yours)\n"));
 	}
+	free(base);
 	return 1;
 }
 

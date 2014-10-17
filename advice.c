@@ -61,8 +61,11 @@ void advise(const char *advice, ...)
 
 int git_default_advice_config(const char *var, const char *value)
 {
-	const char *k = skip_prefix(var, "advice.");
+	const char *k;
 	int i;
+
+	if (!skip_prefix(var, "advice.", &k))
+		return 0;
 
 	for (i = 0; i < ARRAY_SIZE(advice_config); i++) {
 		if (strcmp(k, advice_config[i].name))
@@ -83,8 +86,7 @@ int error_resolve_conflict(const char *me)
 		 * other commands doing a merge do.
 		 */
 		advise(_("Fix them up in the work tree, and then use 'git add/rm <file>'\n"
-			 "as appropriate to mark resolution and make a commit, or use\n"
-			 "'git commit -a'."));
+			 "as appropriate to mark resolution and make a commit."));
 	return -1;
 }
 

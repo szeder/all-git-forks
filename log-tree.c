@@ -12,17 +12,7 @@
 #include "sequencer.h"
 #include "line-log.h"
 
-struct decoration name_decoration = { "object names" };
-
-enum decoration_type {
-	DECORATION_NONE = 0,
-	DECORATION_REF_LOCAL,
-	DECORATION_REF_REMOTE,
-	DECORATION_REF_TAG,
-	DECORATION_REF_STASH,
-	DECORATION_REF_HEAD,
-	DECORATION_GRAFTED,
-};
+static struct decoration name_decoration = { "object names" };
 
 static char decoration_colors[][COLOR_MAXLEN] = {
 	GIT_COLOR_RESET,
@@ -84,13 +74,18 @@ int parse_decorate_color_config(const char *var, const int ofs, const char *valu
 #define decorate_get_color_opt(o, ix) \
 	decorate_get_color((o)->use_color, ix)
 
-static void add_name_decoration(enum decoration_type type, const char *name, struct object *obj)
+void add_name_decoration(enum decoration_type type, const char *name, struct object *obj)
 {
 	int nlen = strlen(name);
-	struct name_decoration *res = xmalloc(sizeof(struct name_decoration) + nlen);
+	struct name_decoration *res = xmalloc(sizeof(*res) + nlen + 1);
 	memcpy(res->name, name, nlen + 1);
 	res->type = type;
 	res->next = add_decoration(&name_decoration, obj, res);
+}
+
+const struct name_decoration *get_name_decoration(const struct object *obj)
+{
+	return lookup_decoration(&name_decoration, obj);
 }
 
 static int add_ref_decoration(const char *refname, const unsigned char *sha1, int flags, void *cb_data)
@@ -179,24 +174,25 @@ static void show_children(struct rev_info *opt, struct commit *commit, int abbre
 }
 
 /*
- * The caller makes sure there is no funny color before
- * calling. format_decorations makes sure the same after return.
+ * The caller makes sure there is no funny color before calling.
+ * format_decorations_extended makes sure the same after return.
  */
-void format_decorations(struct strbuf *sb,
+void format_decorations_extended(struct strbuf *sb,
 			const struct commit *commit,
-			int use_color)
+			int use_color,
+			const char *prefix,
+			const char *separator,
+			const char *suffix)
 {
-	const char *prefix;
-	struct name_decoration *decoration;
+	const struct name_decoration *decoration;
 	const char *color_commit =
 		diff_get_color(use_color, DIFF_COMMIT);
 	const char *color_reset =
 		decorate_get_color(use_color, DECORATION_NONE);
 
-	decoration = lookup_decoration(&name_decoration, &commit->object);
+	decoration = get_name_decoration(&commit->object);
 	if (!decoration)
 		return;
-	prefix = " (";
 	while (decoration) {
 		strbuf_addstr(sb, color_commit);
 		strbuf_addstr(sb, prefix);
@@ -205,11 +201,11 @@ void format_decorations(struct strbuf *sb,
 			strbuf_addstr(sb, "tag: ");
 		strbuf_addstr(sb, decoration->name);
 		strbuf_addstr(sb, color_reset);
-		prefix = ", ";
+		prefix = separator;
 		decoration = decoration->next;
 	}
 	strbuf_addstr(sb, color_commit);
-	strbuf_addch(sb, ')');
+	strbuf_addstr(sb, suffix);
 	strbuf_addstr(sb, color_reset);
 }
 
@@ -365,6 +361,7 @@ static void show_sig_lines(struct rev_info *opt, int status, const char *bol)
 		eol = strchrnul(bol, '\n');
 		printf("%s%.*s%s%s", color, (int)(eol - bol), bol, reset,
 		       *eol ? "\n" : "");
+		graph_show_oneline(opt->graph);
 		bol = (*eol) ? (eol + 1) : eol;
 	}
 }
@@ -376,7 +373,7 @@ static void show_signature(struct rev_info *opt, struct commit *commit)
 	struct strbuf gpg_output = STRBUF_INIT;
 	int status;
 
-	if (parse_signed_commit(commit->object.sha1, &payload, &signature) <= 0)
+	if (parse_signed_commit(commit, &payload, &signature) <= 0)
 		goto out;
 
 	status = verify_signed_buffer(payload.buf, payload.len,
@@ -413,10 +410,11 @@ static int is_common_merge(const struct commit *commit)
 		&& !commit->parents->next->next);
 }
 
-static void show_one_mergetag(struct rev_info *opt,
+static void show_one_mergetag(struct commit *commit,
 			      struct commit_extra_header *extra,
-			      struct commit *commit)
+			      void *data)
 {
+	struct rev_info *opt = (struct rev_info *)data;
 	unsigned char sha1[20];
 	struct tag *tag;
 	struct strbuf verify_message;
@@ -446,16 +444,17 @@ static void show_one_mergetag(struct rev_info *opt,
 
 	payload_size = parse_signature(extra->value, extra->len);
 	status = -1;
-	if (extra->len > payload_size)
-		if (verify_signed_buffer(extra->value, payload_size,
-					 extra->value + payload_size,
-					 extra->len - payload_size,
-					 &verify_message, NULL)) {
-			if (verify_message.len <= gpg_message_offset)
-				strbuf_addstr(&verify_message, "No signature\n");
-			else
-				status = 0;
-		}
+	if (extra->len > payload_size) {
+		/* could have a good signature */
+		if (!verify_signed_buffer(extra->value, payload_size,
+					  extra->value + payload_size,
+					  extra->len - payload_size,
+					  &verify_message, NULL))
+			status = 0; /* good */
+		else if (verify_message.len <= gpg_message_offset)
+			strbuf_addstr(&verify_message, "No signature\n");
+		/* otherwise we couldn't verify, which is shown as bad */
+	}
 
 	show_sig_lines(opt, status, verify_message.buf);
 	strbuf_release(&verify_message);
@@ -463,15 +462,7 @@ static void show_one_mergetag(struct rev_info *opt,
 
 static void show_mergetag(struct rev_info *opt, struct commit *commit)
 {
-	struct commit_extra_header *extra, *to_free;
-
-	to_free = read_commit_extra_headers(commit, NULL);
-	for (extra = to_free; extra; extra = extra->next) {
-		if (strcmp(extra->key, "mergetag"))
-			continue; /* not a merge tag */
-		show_one_mergetag(opt, extra, commit);
-	}
-	free_commit_extra_headers(to_free);
+	for_each_mergetag(show_one_mergetag, commit, opt);
 }
 
 void show_log(struct rev_info *opt)
@@ -588,7 +579,7 @@ void show_log(struct rev_info *opt)
 		show_mergetag(opt, commit);
 	}
 
-	if (!commit->buffer)
+	if (!get_cached_commit_buffer(commit, NULL))
 		return;
 
 	if (opt->show_notes) {
@@ -654,7 +645,7 @@ void show_log(struct rev_info *opt)
 		graph_show_commit_msg(opt->graph, &msgbuf);
 	else
 		fwrite(msgbuf.buf, sizeof(char), msgbuf.len, stdout);
-	if (opt->use_terminator) {
+	if (opt->use_terminator && !commit_format_is_empty(opt->commit_format)) {
 		if (!opt->missing_newline)
 			graph_show_padding(opt->graph);
 		putchar(opt->diffopt.line_termination);
@@ -681,7 +672,8 @@ int log_tree_diff_flush(struct rev_info *opt)
 		show_log(opt);
 		if ((opt->diffopt.output_format & ~DIFF_FORMAT_NO_OUTPUT) &&
 		    opt->verbose_header &&
-		    opt->commit_format != CMIT_FMT_ONELINE) {
+		    opt->commit_format != CMIT_FMT_ONELINE &&
+		    !commit_format_is_empty(opt->commit_format)) {
 			/*
 			 * When showing a verbose header (i.e. log message),
 			 * and not in --pretty=oneline format, we would want

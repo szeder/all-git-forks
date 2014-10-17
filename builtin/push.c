@@ -127,11 +127,10 @@ static NORETURN int die_push_simple(struct branch *branch, struct remote *remote
 	 * them the big ugly fully qualified ref.
 	 */
 	const char *advice_maybe = "";
-	const char *short_upstream =
-		skip_prefix(branch->merge[0]->src, "refs/heads/");
+	const char *short_upstream = branch->merge[0]->src;
 
-	if (!short_upstream)
-		short_upstream = branch->merge[0]->src;
+	skip_prefix(short_upstream, "refs/heads/", &short_upstream);
+
 	/*
 	 * Don't show advice for people who explicitly set
 	 * push.default.
@@ -507,6 +506,7 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 		OPT_BIT(0, "no-verify", &flags, N_("bypass pre-push hook"), TRANSPORT_PUSH_NO_HOOK),
 		OPT_BIT(0, "follow-tags", &flags, N_("push missing but relevant tags"),
 			TRANSPORT_PUSH_FOLLOW_TAGS),
+		OPT_BIT(0, "signed", &flags, N_("GPG sign the push"), TRANSPORT_PUSH_CERT),
 		OPT_END()
 	};
 

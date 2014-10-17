@@ -192,14 +192,16 @@ static void set_upstreams(struct transport *transport, struct ref *refs,
 
 static const char *rsync_url(const char *url)
 {
-	return !starts_with(url, "rsync://") ? skip_prefix(url, "rsync:") : url;
+	if (!starts_with(url, "rsync://"))
+		skip_prefix(url, "rsync:", &url);
+	return url;
 }
 
 static struct ref *get_refs_via_rsync(struct transport *transport, int for_push)
 {
 	struct strbuf buf = STRBUF_INIT, temp_dir = STRBUF_INIT;
 	struct ref dummy = {NULL}, *tail = &dummy;
-	struct child_process rsync;
+	struct child_process rsync = CHILD_PROCESS_INIT;
 	const char *args[5];
 	int temp_dir_len;
 
@@ -216,7 +218,6 @@ static struct ref *get_refs_via_rsync(struct transport *transport, int for_push)
 	strbuf_addstr(&buf, rsync_url(transport->url));
 	strbuf_addstr(&buf, "/refs");
 
-	memset(&rsync, 0, sizeof(rsync));
 	rsync.argv = args;
 	rsync.stdout_to_stderr = 1;
 	args[0] = "rsync";
@@ -261,32 +262,19 @@ static struct ref *get_refs_via_rsync(struct transport *transport, int for_push)
 static int fetch_objs_via_rsync(struct transport *transport,
 				int nr_objs, struct ref **to_fetch)
 {
-	struct strbuf buf = STRBUF_INIT;
-	struct child_process rsync;
-	const char *args[8];
-	int result;
+	struct child_process rsync = CHILD_PROCESS_INIT;
 
-	strbuf_addstr(&buf, rsync_url(transport->url));
-	strbuf_addstr(&buf, "/objects/");
-
-	memset(&rsync, 0, sizeof(rsync));
-	rsync.argv = args;
 	rsync.stdout_to_stderr = 1;
-	args[0] = "rsync";
-	args[1] = (transport->verbose > 1) ? "-rv" : "-r";
-	args[2] = "--ignore-existing";
-	args[3] = "--exclude";
-	args[4] = "info";
-	args[5] = buf.buf;
-	args[6] = get_object_directory();
-	args[7] = NULL;
+	argv_array_push(&rsync.args, "rsync");
+	argv_array_push(&rsync.args, (transport->verbose > 1) ? "-rv" : "-r");
+	argv_array_push(&rsync.args, "--ignore-existing");
+	argv_array_push(&rsync.args, "--exclude");
+	argv_array_push(&rsync.args, "info");
+	argv_array_pushf(&rsync.args, "%s/objects/", rsync_url(transport->url));
+	argv_array_push(&rsync.args, get_object_directory());
 
 	/* NEEDSWORK: handle one level of alternates */
-	result = run_command(&rsync);
-
-	strbuf_release(&buf);
-
-	return result;
+	return run_command(&rsync);
 }
 
 static int write_one_ref(const char *name, const unsigned char *sha1,
@@ -337,7 +325,7 @@ static int rsync_transport_push(struct transport *transport,
 {
 	struct strbuf buf = STRBUF_INIT, temp_dir = STRBUF_INIT;
 	int result = 0, i;
-	struct child_process rsync;
+	struct child_process rsync = CHILD_PROCESS_INIT;
 	const char *args[10];
 
 	if (flags & TRANSPORT_PUSH_MIRROR)
@@ -348,7 +336,6 @@ static int rsync_transport_push(struct transport *transport,
 	strbuf_addstr(&buf, rsync_url(transport->url));
 	strbuf_addch(&buf, '/');
 
-	memset(&rsync, 0, sizeof(rsync));
 	rsync.argv = args;
 	rsync.stdout_to_stderr = 1;
 	i = 0;
@@ -489,6 +476,9 @@ static int set_git_option(struct git_transport_options *opts,
 			if (*end)
 				die("transport: invalid depth option '%s'", value);
 		}
+		return 0;
+	} else if (!strcmp(name, TRANS_OPT_PUSH_CERT)) {
+		opts->push_cert = !!value;
 		return 0;
 	}
 	return 1;
@@ -833,6 +823,8 @@ static int git_transport_push(struct transport *transport, struct ref *remote_re
 	args.progress = transport->progress;
 	args.dry_run = !!(flags & TRANSPORT_PUSH_DRY_RUN);
 	args.porcelain = !!(flags & TRANSPORT_PUSH_PORCELAIN);
+	args.push_cert = !!(flags & TRANSPORT_PUSH_CERT);
+	args.url = transport->url;
 
 	ret = send_pack(&args, data->fd, data->conn, remote_refs,
 			&data->extra_have);
@@ -1066,7 +1058,7 @@ static int run_pre_push_hook(struct transport *transport,
 {
 	int ret = 0, x;
 	struct ref *r;
-	struct child_process proc;
+	struct child_process proc = CHILD_PROCESS_INIT;
 	struct strbuf buf;
 	const char *argv[4];
 
@@ -1077,7 +1069,6 @@ static int run_pre_push_hook(struct transport *transport,
 	argv[2] = transport->url;
 	argv[3] = NULL;
 
-	memset(&proc, 0, sizeof(proc));
 	proc.argv = argv;
 	proc.in = -1;
 
@@ -1186,10 +1177,8 @@ int transport_push(struct transport *transport,
 		if ((flags & (TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND |
 			      TRANSPORT_RECURSE_SUBMODULES_CHECK)) && !is_bare_repository()) {
 			struct ref *ref = remote_refs;
-			struct string_list needs_pushing;
+			struct string_list needs_pushing = STRING_LIST_INIT_DUP;
 
-			memset(&needs_pushing, 0, sizeof(struct string_list));
-			needs_pushing.strdup_strings = 1;
 			for (; ref; ref = ref->next)
 				if (!is_null_sha1(ref->new_sha1) &&
 				    find_unpushed_submodules(ref->new_sha1,
@@ -1369,11 +1358,11 @@ static int refs_from_alternate_cb(struct alternate_object_database *e,
 	while (other[len-1] == '/')
 		other[--len] = '\0';
 	if (len < 8 || memcmp(other + len - 8, "/objects", 8))
-		return 0;
+		goto out;
 	/* Is this a git repository with refs? */
 	memcpy(other + len - 8, "/refs", 6);
 	if (!is_directory(other))
-		return 0;
+		goto out;
 	other[len - 8] = '\0';
 	remote = remote_get(other);
 	transport = transport_get(remote, other);
@@ -1382,6 +1371,7 @@ static int refs_from_alternate_cb(struct alternate_object_database *e,
 	     extra = extra->next)
 		cb->fn(extra, cb->data);
 	transport_disconnect(transport);
+out:
 	free(other);
 	return 0;
 }

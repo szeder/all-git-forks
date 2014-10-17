@@ -89,8 +89,7 @@ static void index_commit_for_bitmap(struct commit *commit)
 {
 	if (indexed_commits_nr >= indexed_commits_alloc) {
 		indexed_commits_alloc = (indexed_commits_alloc + 32) * 2;
-		indexed_commits = xrealloc(indexed_commits,
-			indexed_commits_alloc * sizeof(struct commit *));
+		REALLOC_ARRAY(indexed_commits, indexed_commits_alloc);
 	}
 
 	indexed_commits[indexed_commits_nr++] = commit;
@@ -2214,10 +2213,6 @@ static int git_pack_config(const char *k, const char *v, void *cb)
 		cache_max_small_delta_size = git_config_int(k, v);
 		return 0;
 	}
-	if (!strcmp(k, "pack.writebitmaps")) {
-		write_bitmap_index = git_config_bool(k, v);
-		return 0;
-	}
 	if (!strcmp(k, "pack.writebitmaphashcache")) {
 		if (git_config_bool(k, v))
 			write_bitmap_options |= BITMAP_OPT_HASH_CACHE;
@@ -2498,6 +2493,7 @@ static void get_object_list(int ac, const char **av)
 				if (get_sha1_hex(line + 10, sha1))
 					die("not an SHA-1 '%s'", line + 10);
 				register_shallow(sha1);
+				use_bitmap_index = 0;
 				continue;
 			}
 			die("not a rev '%s'", line);

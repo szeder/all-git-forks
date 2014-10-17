@@ -1,3 +1,4 @@
+#include "git-compat-util.h"
 #include "http.h"
 #include "pack.h"
 #include "sideband.h"
@@ -300,6 +301,9 @@ static CURL *get_curl_handle(void)
 {
 	CURL *result = curl_easy_init();
 
+	if (!result)
+		die("curl_easy_init failed");
+
 	if (!curl_ssl_verify) {
 		curl_easy_setopt(result, CURLOPT_SSL_VERIFYPEER, 0);
 		curl_easy_setopt(result, CURLOPT_SSL_VERIFYHOST, 0);
@@ -399,7 +403,8 @@ void http_init(struct remote *remote, const char *url, int proactive_auth)
 	git_config(urlmatch_config_entry, &config);
 	free(normalized_url);
 
-	curl_global_init(CURL_GLOBAL_ALL);
+	if (curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK)
+		die("curl_global_init failed");
 
 	http_proactive_auth = proactive_auth;
 
@@ -417,10 +422,8 @@ void http_init(struct remote *remote, const char *url, int proactive_auth)
 	}
 
 	curlm = curl_multi_init();
-	if (curlm == NULL) {
-		fprintf(stderr, "Error creating curl multi handle.\n");
-		exit(1);
-	}
+	if (!curlm)
+		die("curl_multi_init failed");
 #endif
 
 	if (getenv("GIT_SSL_NO_VERIFY"))
@@ -927,7 +930,7 @@ static int extract_param(const char *raw, const char *name,
 		return -1;
 	raw++;
 
-	while (*raw && !isspace(*raw))
+	while (*raw && !isspace(*raw) && *raw != ';')
 		strbuf_addch(out, *raw++);
 	return 0;
 }
@@ -971,7 +974,7 @@ static void extract_content_type(struct strbuf *raw, struct strbuf *type,
 
 	strbuf_reset(charset);
 	while (*p) {
-		while (isspace(*p))
+		while (isspace(*p) || *p == ';')
 			p++;
 		if (!extract_param(p, "charset", charset))
 			return;
@@ -1087,11 +1090,10 @@ static int update_url_from_redirect(struct strbuf *base,
 	if (!strcmp(asked, got->buf))
 		return 0;
 
-	if (!starts_with(asked, base->buf))
+	if (!skip_prefix(asked, base->buf, &tail))
 		die("BUG: update_url_from_redirect: %s is not a superset of %s",
 		    asked, base->buf);
 
-	tail = asked + base->len;
 	tail_len = strlen(tail);
 
 	if (got->len < tail_len ||
@@ -1333,7 +1335,7 @@ int finish_http_pack_request(struct http_pack_request *preq)
 	struct packed_git **lst;
 	struct packed_git *p = preq->target;
 	char *tmp_idx;
-	struct child_process ip;
+	struct child_process ip = CHILD_PROCESS_INIT;
 	const char *ip_argv[8];
 
 	close_pack_index(p);
@@ -1356,7 +1358,6 @@ int finish_http_pack_request(struct http_pack_request *preq)
 	ip_argv[3] = preq->tmpfile;
 	ip_argv[4] = NULL;
 
-	memset(&ip, 0, sizeof(ip));
 	ip.argv = ip_argv;
 	ip.git_cmd = 1;
 	ip.no_stdin = 1;

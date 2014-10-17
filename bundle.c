@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "lockfile.h"
 #include "bundle.h"
 #include "object.h"
 #include "commit.h"
@@ -209,26 +210,29 @@ static int is_tag_in_date_range(struct object *tag, struct rev_info *revs)
 {
 	unsigned long size;
 	enum object_type type;
-	char *buf, *line, *lineend;
+	char *buf = NULL, *line, *lineend;
 	unsigned long date;
+	int result = 1;
 
 	if (revs->max_age == -1 && revs->min_age == -1)
-		return 1;
+		goto out;
 
 	buf = read_sha1_file(tag->sha1, &type, &size);
 	if (!buf)
-		return 1;
+		goto out;
 	line = memmem(buf, size, "\ntagger ", 8);
 	if (!line++)
-		return 1;
-	lineend = memchr(line, buf + size - line, '\n');
-	line = memchr(line, lineend ? lineend - line : buf + size - line, '>');
+		goto out;
+	lineend = memchr(line, '\n', buf + size - line);
+	line = memchr(line, '>', lineend ? lineend - line : buf + size - line);
 	if (!line++)
-		return 1;
+		goto out;
 	date = strtoul(line, NULL, 10);
-	free(buf);
-	return (revs->max_age == -1 || revs->max_age < date) &&
+	result = (revs->max_age == -1 || revs->max_age < date) &&
 		(revs->min_age == -1 || revs->min_age > date);
+out:
+	free(buf);
+	return result;
 }
 
 int create_bundle(struct bundle_header *header, const char *path,
@@ -237,12 +241,10 @@ int create_bundle(struct bundle_header *header, const char *path,
 	static struct lock_file lock;
 	int bundle_fd = -1;
 	int bundle_to_stdout;
-	struct argv_array argv_boundary = ARGV_ARRAY_INIT;
-	struct argv_array argv_pack = ARGV_ARRAY_INIT;
 	int i, ref_count = 0;
 	struct strbuf buf = STRBUF_INIT;
 	struct rev_info revs;
-	struct child_process rls;
+	struct child_process rls = CHILD_PROCESS_INIT;
 	FILE *rls_fout;
 
 	bundle_to_stdout = !strcmp(path, "-");
@@ -260,14 +262,11 @@ int create_bundle(struct bundle_header *header, const char *path,
 	init_revisions(&revs, NULL);
 
 	/* write prerequisites */
-	argv_array_pushl(&argv_boundary,
+	argv_array_pushl(&rls.args,
 			 "rev-list", "--boundary", "--pretty=oneline",
 			 NULL);
 	for (i = 1; i < argc; i++)
-		argv_array_push(&argv_boundary, argv[i]);
-
-	memset(&rls, 0, sizeof(rls));
-	rls.argv = argv_boundary.argv;
+		argv_array_push(&rls.args, argv[i]);
 	rls.out = -1;
 	rls.git_cmd = 1;
 	if (start_command(&rls))
@@ -382,12 +381,11 @@ int create_bundle(struct bundle_header *header, const char *path,
 	write_or_die(bundle_fd, "\n", 1);
 
 	/* write pack */
-	argv_array_pushl(&argv_pack,
+	memset(&rls, 0, sizeof(rls));
+	argv_array_pushl(&rls.args,
 			 "pack-objects", "--all-progress-implied",
 			 "--stdout", "--thin", "--delta-base-offset",
 			 NULL);
-	memset(&rls, 0, sizeof(rls));
-	rls.argv = argv_pack.argv;
 	rls.in = -1;
 	rls.out = bundle_fd;
 	rls.git_cmd = 1;
@@ -422,14 +420,13 @@ int unbundle(struct bundle_header *header, int bundle_fd, int flags)
 {
 	const char *argv_index_pack[] = {"index-pack",
 					 "--fix-thin", "--stdin", NULL, NULL};
-	struct child_process ip;
+	struct child_process ip = CHILD_PROCESS_INIT;
 
 	if (flags & BUNDLE_VERBOSE)
 		argv_index_pack[3] = "-v";
 
 	if (verify_bundle(header, 0))
 		return -1;
-	memset(&ip, 0, sizeof(ip));
 	ip.argv = argv_index_pack;
 	ip.in = bundle_fd;
 	ip.no_stdout = 1;
