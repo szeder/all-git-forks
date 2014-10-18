@@ -1783,6 +1783,7 @@ XDIFF_OBJS += xdiff/xhistogram.o
 
 VCSSVN_OBJS += vcs-svn/line_buffer.o
 VCSSVN_OBJS += vcs-svn/sliding_window.o
+VCSSVN_OBJS += vcs-svn/git-strbuf.o
 VCSSVN_OBJS += vcs-svn/svndiff.o
 
 TEST_OBJS := $(patsubst test-%$X,test-%.o,$(TEST_PROGRAMS))

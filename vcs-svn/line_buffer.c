@@ -3,9 +3,13 @@
  * See LICENSE for details.
  */
 
-#include "git-compat-util.h"
-#include "line_buffer.h"
-#include "strbuf.h"
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "vcs-svn/line_buffer.h"
+#include "vcs-svn/git-strbuf.h"
 
 #define COPY_BUFFER_LEN 4096
 
@@ -70,10 +74,14 @@ FILE *buffer_tmpfile_rewind(struct line_buffer *buf)
 long buffer_tmpfile_prepare_to_read(struct line_buffer *buf)
 {
 	long pos = ftell(buf->infile);
-	if (pos < 0)
-		return error("ftell error: %s", strerror(errno));
-	if (fseek(buf->infile, 0, SEEK_SET))
-		return error("seek error: %s", strerror(errno));
+	if (pos < 0) {
+		printf("ftell error: %s\n", strerror(errno));
+		return -1;
+	}
+	if (fseek(buf->infile, 0, SEEK_SET)) {
+		printf("seek error: %s\n", strerror(errno));
+		return -1;
+	}
 	return pos;
 }
 

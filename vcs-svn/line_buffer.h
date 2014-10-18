@@ -1,7 +1,7 @@
 #ifndef LINE_BUFFER_H_
 #define LINE_BUFFER_H_
 
-#include "strbuf.h"
+#include "vcs-svn/git-strbuf.h"
 
 #define LINE_BUFFER_LEN 10000
 

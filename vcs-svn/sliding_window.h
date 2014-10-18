@@ -1,7 +1,7 @@
 #ifndef SLIDING_WINDOW_H_
 #define SLIDING_WINDOW_H_
 
-#include "strbuf.h"
+#include "vcs-svn/git-strbuf.h"
 
 struct sliding_view {
 	struct line_buffer *file;

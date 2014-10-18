@@ -3,10 +3,18 @@
  * See LICENSE for details.
  */
 
-#include "git-compat-util.h"
-#include "sliding_window.h"
-#include "line_buffer.h"
-#include "svndiff.h"
+#include <assert.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "vcs-svn/sliding_window.h"
+#include "vcs-svn/line_buffer.h"
+#include "vcs-svn/svndiff.h"
 
 /*
  * svndiff0 applier
@@ -52,6 +60,21 @@ struct window {
 };
 
 #define WINDOW_INIT(w)	{ (w), STRBUF_INIT, STRBUF_INIT, STRBUF_INIT }
+
+/* I give up. */
+static int
+error(const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vprintf(fmt, ap);
+	va_end(ap);
+
+	printf("\n");
+
+	return -1;
+}
 
 static void window_release(struct window *ctx)
 {
@@ -148,7 +171,7 @@ static int read_offset(struct line_buffer *in, off_t *result, off_t *len)
 	uintmax_t val;
 	if (read_int(in, &val, len))
 		return -1;
-	if (val > maximum_signed_value_of_type(off_t))
+	if (val > INT64_MAX)
 		return error("unrepresentable offset in delta: %"PRIuMAX"", val);
 	*result = val;
 	return 0;
@@ -171,7 +194,12 @@ static int copyfrom_source(struct window *ctx, const char **instructions,
 	size_t offset;
 	if (parse_int(instructions, &offset, insns_end))
 		return -1;
+#if 0
 	if (unsigned_add_overflows(offset, nbytes) ||
+	    offset + nbytes > ctx->in->width)
+		return error("invalid delta: copies source data outside view");
+#endif
+	if (offset >= (INT64_MAX/2) || nbytes >= (INT64_MAX/2) ||
 	    offset + nbytes > ctx->in->width)
 		return error("invalid delta: copies source data outside view");
 	strbuf_add(&ctx->out, ctx->in->buf.buf + offset, nbytes);
@@ -194,7 +222,7 @@ static int copyfrom_target(struct window *ctx, const char **instructions,
 static int copyfrom_data(struct window *ctx, size_t *data_pos, size_t nbytes)
 {
 	const size_t pos = *data_pos;
-	if (unsigned_add_overflows(pos, nbytes) ||
+	if (pos >= (INT64_MAX/2) || nbytes >= (INT64_MAX/2) ||
 	    pos + nbytes > ctx->data.len)
 		return error("invalid delta: copies unavailable inline data");
 	strbuf_add(&ctx->out, ctx->data.buf + pos, nbytes);
