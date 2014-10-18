@@ -820,7 +820,8 @@ static struct {
 	{ "clone", cmd_isvn_clone },
 };
 
-int cmd_isvn(int argc, const char **argv, const char *prefix)
+int
+main(int argc, const char **argv)
 {
 	unsigned i;
 	int rc;
@@ -841,7 +842,7 @@ int cmd_isvn(int argc, const char **argv, const char *prefix)
 	/* Dispatch subcommands ... */
 	for (i = 0; i < ARRAY_SIZE(isvn_subcommands); i++) {
 		if (strcmp(argv[0], isvn_subcommands[i].sub_name) == 0) {
-			isvn_subcommands[i].sub_cmd(argc, argv, prefix);
+			isvn_subcommands[i].sub_cmd(argc, argv, NULL);
 			return 0;
 		}
 	}
