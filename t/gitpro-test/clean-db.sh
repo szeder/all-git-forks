@@ -13,7 +13,7 @@ DELETE FROM GP_USUARIO WHERE NOMBRE_ROL_USUARIO='ALL';
 EOF
 
 # Launch clean action
-sqlite3 ../../gitpro.db -batch < task-clean.sql
+sqlite3 ../../.git/gitpro.db -batch < task-clean.sql
 
 rm task-clean.sql
 

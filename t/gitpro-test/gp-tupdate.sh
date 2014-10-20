@@ -23,11 +23,6 @@ values (5,'task 5','REJECTED','my brief desc',null,'30/12/2014','21/12/2014',nul
 .quit
 EOF
 
-cat > "insert-data.sh" << \EOF
-sqlite3 ../../gitpro.db -batch < test-data.sql
-exit 0
-EOF
-
 chmod +x insert-data.sh
 
 ./clean-db.sh
@@ -2418,6 +2413,4 @@ All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u --time 15' 'update117'
-
-rm test-data.sql
-rm insert-data.sh
+./clean-db.sh

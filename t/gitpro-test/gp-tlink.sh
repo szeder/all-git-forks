@@ -42,10 +42,6 @@ file 3 bis
 EOF
 cd ..
 
-cat > "insert-data.sh" << \EOF
-sqlite3 ../../gitpro.db -batch < test-data.sql
-exit 0
-EOF
 
 chmod +x insert-data.sh
 
@@ -304,4 +300,3 @@ EOF
 
 rm -r asoc_test
 rm f1 f2 f3
-rm test-data.sql

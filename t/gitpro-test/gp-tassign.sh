@@ -27,11 +27,6 @@ values (5,'task 5','REJECTED','my brief desc',null,'30/12/2014','21/12/2014',nul
 .quit
 EOF
 
-cat > "insert-data.sh" << \EOF
-sqlite3 ../../gitpro.db -batch < test-data.sql
-exit 0
-EOF
-
 chmod +x insert-data.sh
 
 ### ASSIGN ADD FILES TESTS
