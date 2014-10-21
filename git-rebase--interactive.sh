@@ -358,6 +358,10 @@ pick_one_preserving_merges () {
 				$merge_args $strategy_args -m "$msg_content" $new_parents'
 			then
 				printf "%s\n" "$msg_content" > "$GIT_DIR"/MERGE_MSG
+				for p in ${new_parents[@]}
+				do
+					echo $p>>"$GIT_DIR"/MERGE_HEAD
+				done
 				die_with_patch $sha1 "Error redoing merge $sha1"
 			fi
 			echo "$sha1 $(git rev-parse HEAD^0)" >> "$rewritten_list"
