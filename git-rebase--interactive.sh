@@ -959,16 +959,15 @@ if test -z "$rebase_root"
 	# this is now equivalent to ! -z "$upstream"
 then
 	shortupstream=$(git rev-parse --short $upstream)
-	revisions=$upstream...$orig_head
+	revisions="$orig_head ^$upstream"
 	shortrevisions=$shortupstream..$shorthead
 else
-	revisions=$onto...$orig_head
+	revisions="$orig_head ^$onto"
 	shortrevisions=$shorthead
 fi
 git rev-list $merges_option --pretty=oneline --abbrev-commit \
-	--abbrev=7 --reverse --left-right --topo-order \
-	$revisions ${restrict_revision+^$restrict_revision} | \
-	sed -n "s/^>//p" |
+	--abbrev=7 --reverse --topo-order \
+	$revisions ${restrict_revision+^$restrict_revision} |
 while read -r shortsha1 rest
 do
 
@@ -1010,8 +1009,7 @@ if test t = "$preserve_merges"
 then
 	mkdir "$dropped"
 	# Save all non-cherry-picked changes
-	git rev-list $revisions --left-right --cherry-pick | \
-		sed -n "s/^>//p" > "$state_dir"/not-cherry-picks
+	git rev-list $revisions --cherry-pick > "$state_dir"/not-cherry-picks
 	# Now all commits and note which ones are missing in
 	# not-cherry-picks and hence being dropped
 	git rev-list $revisions |
