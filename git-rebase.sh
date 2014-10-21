@@ -623,11 +623,4 @@ then
 	exit 0
 fi
 
-if test -n "$rebase_root"
-then
-	revisions="$onto..$orig_head"
-else
-	revisions="${restrict_revision-$upstream}..$orig_head"
-fi
-
 run_specific_rebase

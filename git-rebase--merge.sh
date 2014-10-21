@@ -113,6 +113,13 @@ finish_rb_merge () {
 # here, and immediately call it after defining it.
 git_rebase__merge () {
 
+if test -n "$rebase_root"
+then
+	revisions="$onto..$orig_head"
+else
+	revisions="${restrict_revision-$upstream}..$orig_head"
+fi
+
 case "$action" in
 continue)
 	read_state
