@@ -149,7 +149,7 @@ int validate_date(char *date){
 /*	Name		: validate_time
 	Parameters	: time to validate
 	Return		: INCORRECT_DATA if time does not match following pattern: nnnnnnnnnn[.|,]dd
-				 where nnnnnnnnnn is integer part and dd is decimal part or DATA_OK if matches*/
+				 (where nnnnnnnnnn is integer part and dd is decimal part) or DATA_OK if matches*/
 int validate_time(char *time){
 	if(time==NULL) return INCORRECT_DATA;
 	int i,n_int,n_dec,comma,err;
@@ -170,6 +170,7 @@ int validate_time(char *time){
 	}
 	if(err) return INCORRECT_DATA;
 	if(comma>1 || n_dec>2 || n_int>NUMBER_SIZE) return INCORRECT_DATA;
+	if(atoi(time)==0) return INCORRECT_DATA;
 	return DATA_OK;
 }
 

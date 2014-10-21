@@ -11,7 +11,7 @@ echo "testing: git task -a"
 # Insert previous data into tasks to run following test
 cat > "test-data.sql" << \EOF
 INSERT INTO GP_ROL(nombre_rol,crear_rol,asignar_rol,consultar_tarea,asignar_tarea,actualizar_tarea,asociar_archivos,borrar_tarea,crear_tarea,borrar_rol,actualizar_rol) 
-values('ALL',0,0,1,1,1,1,1,1,1,1);
+values('EXAMPLE',0,0,1,1,1,1,1,1,1,1);
 INSERT INTO GP_USUARIO(nombre_usuario,nombre_rol_usuario) values ('user1','ALL');
 INSERT INTO GP_USUARIO(nombre_usuario,nombre_rol_usuario) values ('user2','ALL');
 INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 

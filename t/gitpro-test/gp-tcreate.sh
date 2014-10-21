@@ -192,7 +192,7 @@ EOF
 cat > "$input/create021.in" << \EOF
 EOF
 cat > "$output/create021.out" << \EOF
-Incorrect data. Check it all and try again
+Task created successfully
 EOF
 ./launch-test.sh 'git task -c -n nueva_tarea -s new -t test -p low --start 05/12/0000' 'create021'
 ./clean-db.sh
