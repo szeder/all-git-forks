@@ -1116,9 +1116,12 @@ static void show_line(struct grep_opt *opt, char *bol, char *eol,
 		enum grep_context ctx = GREP_CONTEXT_BODY;
 		int ch = *eol;
 		int eflags = 0;
+		char *match_color = NULL;
 
-		if (sign == ':')
+		if (sign == ':') {
 			line_color = opt->color_selected;
+			match_color = opt->color_match;
+		}
 		else if (sign == '-')
 			line_color = opt->color_context;
 		else if (sign == '=')
@@ -1131,7 +1134,7 @@ static void show_line(struct grep_opt *opt, char *bol, char *eol,
 			output_color(opt, bol, match.rm_so, line_color);
 			output_color(opt, bol + match.rm_so,
 				     match.rm_eo - match.rm_so,
-				     opt->color_match);
+				     match_color);
 			bol += match.rm_eo;
 			rest -= match.rm_eo;
 			eflags = REG_NOTBOL;
