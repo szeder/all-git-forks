@@ -20,7 +20,6 @@ echo '   Starting task creation tests'
 echo '***********************************'
 ./gp-tcreate.sh
 ./clean-db.sh
-exit
 echo '***********************************'
 echo '   Starting task reading tests'
 echo '***********************************'

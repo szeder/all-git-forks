@@ -513,6 +513,7 @@ int validate_rm_files(char *rm){
 int validate_create_task(char *id,char *name,char *state,char *desc,char *notes,
 					char *est_start,char *est_end,char *start,char *end,char *prior,
 					char *type,char *est_time,char *time,char *add,char *rm){
+	if(id!=NULL) return INCORRECT_DATA;
 	if(add!=NULL || rm != NULL) return INCORRECT_DATA;
 	if(name==NULL || state==NULL || prior==NULL || type==NULL) return INCORRECT_DATA;
 	int dup = validate_duplicate_task(name,state,type,prior);

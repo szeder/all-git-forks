@@ -205,3 +205,21 @@ Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -c -n nueva_tarea -s new -t test -p low --start 05/12/-2014' 'create022'
 ./clean-db.sh
+
+# TEST  23 --- create023 --- Tries to create an task with valid estimated dates but start after end
+cat > "$input/create023.in" << \EOF
+EOF
+cat > "$output/create023.out" << \EOF
+Incorrect data. Check it all and try again
+EOF
+./launch-test.sh 'git task -c -n nueva_tarea -s new -t test -p low --est_start 10/03/2014 --est_end 05/03/2014' 'create023'
+./clean-db.sh
+
+# TEST  24 --- create024 --- Tries to create an task with valid real dates but start after end
+cat > "$input/create024.in" << \EOF
+EOF
+cat > "$output/create024.out" << \EOF
+Incorrect data. Check it all and try again
+EOF
+./launch-test.sh 'git task -c -n nueva_tarea -s new -t test -p low --start 10/03/2014 --end 05/03/2014' 'create024'
+./clean-db.sh
