@@ -110,12 +110,16 @@ int validate_date(char *date){
 	while(i<strlen(date)){
 		int ascii = (int) date[i];
 		//47 is '/'
-		if(ascii==47) sep++;
+		if(ascii==47){ 
+			sep++;
+		}
 		//48 is '0' and 57 is '9'
-		if(ascii>47 && ascii<58){
+		else if(ascii>47 && ascii<58){
 			if(!sep) n_day++;
 			if(sep==1) n_month++;
 			if(sep==2) n_year++;
+		}else{
+			return INCORRECT_DATA;
 		}
 		i++;
 	}
