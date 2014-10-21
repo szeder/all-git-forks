@@ -325,6 +325,8 @@ int send_pack(struct send_pack_args *args,
 		args->use_thin_pack = 0;
 	if (server_supports("atomic-push"))
 		atomic_push_supported = 1;
+	if (server_supports("prefer-atomic-push"))
+		args->use_atomic_push = 1;
 	if (args->push_cert) {
 		int len;
 
