@@ -23,6 +23,11 @@ struct aux_file {
 
 struct aux_file add_files[100]; //number of files
 
+int start_end_flag = 0; //to know when fill start data and end data to check consistent on creation
+int year1,year2;
+int month1,month2;
+int day1,day2;
+
 /*******************/
 /*PRIVATE FUNCTIONS*/
 /*******************/
@@ -102,7 +107,8 @@ int validate_number(char *number){
 /*	Name		: validate_date
 	Parameters	: date to validate
 	Return		: INCORRECT_DATA if date does not match following pattern: dd/mm/yyyy or 
-				 day, month or year isn't valid. DATA_OK in other case */
+				 day, month or year isn't valid. DATA_OK in other case 
+				 This function fills day, month and year in global variables to check consistent datas when appropiated */
 int validate_date(char *date){
 	if(date==NULL) return INCORRECT_DATA;
 	int n_day,n_year,n_month,sep,i;
@@ -135,6 +141,15 @@ int validate_date(char *date){
 	aux = &date[6];
 	year = atoi(aux);
 	aux = NULL;
+	if(start_end_flag){
+		day1=day;
+		month1=month;
+		year1=year;
+	}else{
+		day2=day;
+		month2=month;
+		year2=year;
+	}
 	//Check day, month and year ranges
 	if(month==1 || month==3 || month==5 || month==7 || month==8 || month==10 || month==12){
 		if(day>0 && day<32) return DATA_OK;
@@ -149,6 +164,20 @@ int validate_date(char *date){
 	}
 	return INCORRECT_DATA;
 }
+
+/*	Name		: validate_consistent_dates 
+ * Parameters	: days, months and years to validate of each date
+ * Return		: DATA_OK or INCORRECT_DATA */
+ int validate_consistent_dates(int d1,int d2,int m1, int m2,int y1,int y2){
+	 if(y1>y2){
+		 return INCORRECT_DATA;
+	 }else if(m1>m2){
+		return INCORRECT_DATA;
+	 }else if(d1>d2){
+		 return INCORRECT_DATA;
+	 }
+	 return DATA_OK;
+ }
 
 /*	Name		: validate_time
 	Parameters	: time to validate
@@ -533,20 +562,32 @@ int validate_create_task(char *id,char *name,char *state,char *desc,char *notes,
 		check = validate_time(time);
 		if(check!=DATA_OK) return check;
 	}
+	start_end_flag=1;
 	if(est_start!=NULL){
 		check = validate_date(est_start);
 		if(check!=DATA_OK) return check;
 	}
+	start_end_flag=0;
 	if(est_end!=NULL){
 		check = validate_date(est_end);
 		if(check!=DATA_OK) return check;
 	}
+	if(est_start!=NULL && est_end!=NULL){
+		check = validate_consistent_dates(day1,day2,month1,month2,year1,year2);
+		if(check!=DATA_OK) return check;
+	}
+	start_end_flag=1;
 	if(start!=NULL){
 		check = validate_date(start);
 		if(check!=DATA_OK) return check;
 	}
+	start_end_flag=0;
 	if(end!=NULL){
 		check = validate_date(end);
+		if(check!=DATA_OK) return check;
+	}
+	if(start!=NULL && end!=NULL){
+		check = validate_consistent_dates(day1,day2,month1,month2,year1,year2);
 		if(check!=DATA_OK) return check;
 	}
 	return DATA_OK;					
