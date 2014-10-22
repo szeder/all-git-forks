@@ -2,13 +2,16 @@
 #
 # Copyright (c) 2005 Junio C Hamano.
 #
+PS4=' \e[1;31m${BASH_SOURCE}:${LINENO}\e[0m '
+set -x
+echo DEBUG: nick@lastacorn.com
 
 SUBDIRECTORY_OK=Yes
 OPTIONS_KEEPDASHDASH=
 OPTIONS_STUCKLONG=t
 OPTIONS_SPEC="\
-git rebase [-i] [options] [--exec <cmd>] [--onto <newbase>] [<upstream>] [<branch>]
-git rebase [-i] [options] [--exec <cmd>] [--onto <newbase>] --root [<branch>]
+git rebase [-i] [options] [--exec <cmd>] [--onto <newbase>] [<upstream>] [<branch>...]
+git rebase [-i] [options] [--exec <cmd>] [--onto <newbase>] --root [<branch>...]
 git-rebase --continue | --abort | --skip | --edit-todo
 --
  Available options are
@@ -343,7 +346,6 @@ do
 	esac
 	shift
 done
-test $# -gt 2 && usage
 
 if test -n "$cmd" &&
    test "$interactive_rebase" != explicit
@@ -453,7 +455,9 @@ then
 
 		test "$fork_point" = auto && fork_point=t
 		;;
-	*)	upstream_name="$1"
+	*)
+		test $# -gt 1 && test -z "$interactive_rebase" && interactive_rebase=implied
+		upstream_name="$1"
 		if test "$upstream_name" = "-"
 		then
 			upstream_name="@{-1}"
@@ -508,22 +512,6 @@ esac
 # $head_name -- refs/heads/<that-branch> or "detached HEAD"
 switch_to=
 case "$#" in
-1)
-	# Is it "rebase other $branchname" or "rebase other $commit"?
-	branch_name="$1"
-	switch_to="$1"
-
-	if git show-ref --verify --quiet -- "refs/heads/$1" &&
-	   orig_head=$(git rev-parse -q --verify "refs/heads/$1")
-	then
-		head_name="refs/heads/$1"
-	elif orig_head=$(git rev-parse -q --verify "$1")
-	then
-		head_name="detached HEAD"
-	else
-		die "$(eval_gettext "fatal: no such branch: \$branch_name")"
-	fi
-	;;
 0)
 	# Do not need to switch branches, we are already on it.
 	if branch_name=$(git symbolic-ref -q HEAD)
@@ -537,7 +525,23 @@ case "$#" in
 	orig_head=$(git rev-parse --verify HEAD) || exit
 	;;
 *)
-	die "BUG: unexpected number of arguments left to parse"
+	# Is it "rebase other $branchname" or "rebase other $commit"?
+	branch_name="$1"
+	switch_to="$1"
+
+	if [$# -gt 1]
+	then
+		head_name="detached HEAD"
+	elif git show-ref --verify --quiet -- "refs/heads/$1" &&
+	   orig_head=$(git rev-parse -q --verify "refs/heads/$1")
+	then
+		head_name="refs/heads/$1"
+	elif orig_head=$(git rev-parse -q --verify "$1")
+	then
+		head_name="detached HEAD"
+	else
+		die "$(eval_gettext "fatal: no such branch: \$branch_name")"
+	fi
 	;;
 esac
 
