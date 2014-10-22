@@ -932,7 +932,7 @@ mkdir -p "$state_dir" || die "Could not create temporary $state_dir"
 write_basic_state
 if test t = "$preserve_merges"
 then
-	if test -z "$rebase_root"
+	if test -n "$upstream"
 	then
 		mkdir "$rewritten" &&
 		for c in $(git merge-base --all $orig_head $upstream)
@@ -955,12 +955,10 @@ fi
 
 shorthead=$(git rev-parse --short $orig_head)
 shortonto=$(git rev-parse --short $onto)
-if test -z "$rebase_root"
-	# this is now equivalent to ! -z "$upstream"
+if test -n "$upstream" && test "$upstream" != "$onto"
 then
-	shortupstream=$(git rev-parse --short $upstream)
 	revisions="$orig_head ^$upstream"
-	shortrevisions=$shortupstream..$shorthead
+	shortrevisions=$(git rev-parse --short $upstream)..$shorthead
 else
 	revisions="$orig_head ^$onto"
 	shortrevisions=$shorthead
@@ -978,33 +976,12 @@ do
 		comment_out=
 	fi
 
-	if test t != "$preserve_merges"
-	then
-		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
-	else
-		sha1=$(git rev-parse $shortsha1)
-		if test -z "$rebase_root"
-		then
-			preserve=t
-			for p in $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)
-			do
-				if test -f "$rewritten"/$p
-				then
-					preserve=f
-				fi
-			done
-		else
-			preserve=f
-		fi
-		if test f = "$preserve"
-		then
-			touch "$rewritten"/$sha1
-			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
-		fi
-	fi
+	printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
+
 done
 
-# Watch for commits that been dropped by --cherry-pick
+# Look for commits that have been cherry-picked into the rebased commits already that
+# will ultimately would be an empty commit
 if test t = "$preserve_merges"
 then
 	mkdir "$dropped"
@@ -1015,7 +992,7 @@ then
 	git rev-list $revisions |
 	while read rev
 	do
-		if test -f "$rewritten"/$rev && test "$(sane_grep "$rev" "$state_dir"/not-cherry-picks)" = ""
+		if test "$(sane_grep "$rev" "$state_dir"/not-cherry-picks)" = ""
 		then
 			# Use -f2 because if rev-list is telling us this commit is
 			# not worthwhile, we don't want to track its multiple heads,
@@ -1024,7 +1001,6 @@ then
 			git rev-list --parents -1 $rev | cut -d' ' -s -f2 > "$dropped"/$rev
 			short=$(git rev-list -1 --abbrev-commit --abbrev=7 $rev)
 			sane_grep -v "^[a-z][a-z]* $short" <"$todo" > "${todo}2" ; mv "${todo}2" "$todo"
-			rm "$rewritten"/$rev
 		fi
 	done
 fi
