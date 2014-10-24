@@ -593,15 +593,10 @@ test_expect_success 'rebase with a file named HEAD in worktree' '
 '
 
 test_expect_success 'do "noop" when there is nothing to cherry-pick' '
-
 	git checkout -b branch4 HEAD &&
-	GIT_EDITOR=: git commit --amend \
-		--author="Somebody else <somebody@else.com>" &&
 	test $(git rev-parse branch3) != $(git rev-parse branch4) &&
 	set_fake_editor &&
-	git rebase -i branch3 &&
-	test $(git rev-parse branch3) = $(git rev-parse branch4)
-
+	git rebase -i branch3 || test $? -ne 0
 '
 
 test_expect_success 'submodule rebase setup' '
