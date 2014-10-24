@@ -801,30 +801,30 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		stripspace(&sb, 0);
 
 	if (signoff) {
-		/*
-		 * See if we have a Conflicts: block at the end. If yes, count
-		 * its size, so we can ignore it.
-		 */
-		int ignore_footer = 0;
-		int i, eol, previous = 0;
-		const char *nl;
+		/* Ignore comments and blanks after the trailer */
+		int boc = 0;
+		int bol = 0;
 
-		for (i = 0; i < sb.len; i++) {
-			nl = memchr(sb.buf + i, '\n', sb.len - i);
-			if (nl)
-				eol = nl - sb.buf;
+		while (bol < sb.len) {
+			char *next_line;
+
+			if (!(next_line = memchr(sb.buf + bol, '\n', sb.len - bol)))
+				next_line = sb.buf + sb.len;
 			else
-				eol = sb.len;
-			if (starts_with(sb.buf + previous, "\nConflicts:\n")) {
-				ignore_footer = sb.len - previous;
-				break;
-			}
-			while (i < eol)
-				i++;
-			previous = eol;
-		}
+				next_line++;
 
-		append_signoff(&sb, ignore_footer, 0);
+			if (sb.buf[bol] == comment_line_char || sb.buf[bol] == '\n') {
+				/* is this the first of the run of comments? */
+				if (!boc)
+					boc = bol;
+				/* otherwise, it is just continuing */
+			} else if (boc) {
+				/* the previous was not trailing comment */
+				boc = 0;
+			}
+			bol = next_line - sb.buf;
+		}
+		append_signoff(&sb, boc ? sb.len - boc : 0, 0);
 	}
 
 	if (fwrite(sb.buf, 1, sb.len, s->fp) < sb.len)
