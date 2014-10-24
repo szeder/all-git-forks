@@ -351,18 +351,24 @@ test_expect_success 'commit after failed cherry-pick does not add duplicated -s'
 test_expect_success 'commit after failed cherry-pick adds -s at the right place' '
 	pristine_detach initial &&
 	test_must_fail git cherry-pick picked &&
+
 	git commit -a -s &&
-	pwd &&
-	cat <<EOF > expected &&
-picked
 
-Signed-off-by: C O Mitter <committer@example.com>
+	# Do S-o-b and Conflicts appear in the right order?
+	cat <<-\EOF >expect &&
+	Signed-off-by: C O Mitter <committer@example.com>
+	# Conflicts:
+	EOF
+	grep -e "^# Conflicts:" -e '^Signed-off-by' <.git/COMMIT_EDITMSG >actual &&
+	test_cmp expect actual &&
 
-Conflicts:
-	foo
-EOF
+	cat <<-\EOF >expected &&
+	picked
 
-	git show -s --pretty=format:%B > actual &&
+	Signed-off-by: C O Mitter <committer@example.com>
+	EOF
+
+	git show -s --pretty=format:%B >actual &&
 	test_cmp expected actual
 '
 
