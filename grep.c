@@ -109,8 +109,8 @@ int grep_config(const char *var, const char *value, void *cb)
 		int rc = 0;
 		if (!value)
 			return config_error_nonbool(var);
-		rc |= color_parse(value, opt->color_match_context);
-		rc |= color_parse(value, opt->color_match_selected);
+		color_parse(value, var, opt->color_match_context);
+		color_parse(value, var, opt->color_match_selected);
 		return rc;
 	}
 
