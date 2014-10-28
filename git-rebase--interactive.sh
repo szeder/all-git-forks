@@ -616,6 +616,16 @@ do_next () {
 	esac
 	test -s "$todo" && return
 
+	nrm_comment "Rewritten: $rewritten"
+	ls -la "$rewritten"
+	cat "$rewritten_list"
+	for rewrite in $rewrite_branches
+	do
+		rewrite_sha1=$(git rev-parse $rewrite)
+		new_sha1=$(cat "$rewritten"/$rewrite_sha1)
+		nrm_comment "Move $rewrite $rewrite_sha1 ==> $new_sha1"
+	done
+
 	comment_for_reflog finish &&
 	newhead=$(git rev-parse HEAD) &&
 	case $head_name in
@@ -955,6 +965,11 @@ else
 	shortrevisions=$shorthead
 fi
 lastsha1=
+for rewrite in $rewrite_branches_sha1
+do
+	revisions="$revisions $upstream...$rewrite"
+done
+
 git rev-list $merges_option --pretty=oneline --reverse --right-only --topo-order \
 	--cherry-mark $revisions ${restrict_revision+^$restrict_revision} |
 while read -r sha1 rest
@@ -965,17 +980,15 @@ do
 	shortsha1=$(git rev-parse --short=7 $sha1)
 
 	if test -z "$keep_empty" && ( test $cherry_type = '=' || \
-		(  is_empty_commit $shortsha1 && ! is_merge_commit $shortsha1 ) )
+		(  is_empty_commit $sha1 && ! is_merge_commit $sha1 ) )
 	then
 		comment_out="$comment_char "
 	else
 		comment_out=
 	fi
 
-	if test t != "$preserve_merges"
+	if test t = "$preserve_merges"
 	then
-		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
-	else
 		if test -n "$lastsha1"
 		then
 			parents=$(git rev-list -1 --parents $sha1)
@@ -987,6 +1000,7 @@ do
 				;;
 			esac
 		fi
+		lastsha1=$sha1
 
 		if test $cherry_type = '='
 		then

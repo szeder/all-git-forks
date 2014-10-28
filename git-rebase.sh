@@ -98,6 +98,7 @@ autosquash=
 keep_empty=
 test "$(git config --bool rebase.autosquash)" = "true" && autosquash=t
 gpg_sign_opt=
+rewrite_branches=
 
 read_basic_state () {
 	test -f "$state_dir/head-name" &&
@@ -122,6 +123,7 @@ read_basic_state () {
 		allow_rerere_autoupdate="$(cat "$state_dir"/allow_rerere_autoupdate)"
 	test -f "$state_dir"/gpg_sign_opt &&
 		gpg_sign_opt="$(cat "$state_dir"/gpg_sign_opt)"
+	test -f "$state_dir"/rewrite_branches && rewrite_branches="$(cat "$state_dir"/branches)"
 }
 
 write_basic_state () {
@@ -136,6 +138,7 @@ write_basic_state () {
 	test -n "$allow_rerere_autoupdate" && echo "$allow_rerere_autoupdate" > \
 		"$state_dir"/allow_rerere_autoupdate
 	test -n "$gpg_sign_opt" && echo "$gpg_sign_opt" > "$state_dir"/gpg_sign_opt
+	test -n "$rewrite_branches" && echo "$rewrite_branches" > "$state_dir"/rewrite_branches
 }
 
 output () {
@@ -353,7 +356,6 @@ do
 	esac
 	shift
 done
-test $# -gt 2 && usage
 
 if test -n "$cmd" &&
    test "$interactive_rebase" != explicit
@@ -518,7 +520,19 @@ esac
 # $head_name -- refs/heads/<that-branch> or "detached HEAD"
 switch_to=
 case "$#" in
-1)
+0)
+	# Do not need to switch branches, we are already on it.
+	if branch_name=$(git symbolic-ref -q HEAD)
+	then
+		head_name=$branch_name
+		branch_name=$(expr "z$branch_name" : 'zrefs/heads/\(.*\)')
+	else
+		head_name="detached HEAD"
+		branch_name=HEAD ;# detached
+	fi
+	orig_head=$(git rev-parse --verify HEAD) || exit
+	;;
+*)
 	# Is it "rebase other $branchname" or "rebase other $commit"?
 	branch_name="$1"
 	switch_to="$1"
@@ -533,23 +547,26 @@ case "$#" in
 	else
 		die "$(eval_gettext "fatal: no such branch: \$branch_name")"
 	fi
-	;;
-0)
-	# Do not need to switch branches, we are already on it.
-	if branch_name=$(git symbolic-ref -q HEAD)
-	then
-		head_name=$branch_name
-		branch_name=$(expr "z$branch_name" : 'zrefs/heads/\(.*\)')
-	else
-		head_name="detached HEAD"
-		branch_name=HEAD ;# detached
-	fi
-	orig_head=$(git rev-parse --verify HEAD) || exit
-	;;
-*)
-	die "BUG: unexpected number of arguments left to parse"
+	shift
 	;;
 esac
+
+# Check for additional branches that should also be rebased
+# TODO: Having both of these is ugly. Just one list please...
+rewrite_branches_sha1=
+if test $# -gt 0
+then
+	# TODO: Validate these are branches. Won't work with tags, SHA1s, etc.
+	test -z "$interactive_rebase" && interactive_rebase=implied
+	rewrite_branches="$@"
+
+	for rewrite in $rewrite_branches
+	do
+		# If rev-parse doesn't find the branch die
+		rewrite_branches_sha1+=" $(git rev-parse $rewrite)"
+		test $? -ne 0 && exit 1
+	done
+fi
 
 if test "$fork_point" = t
 then
@@ -580,10 +597,11 @@ require_clean_work_tree "rebase" "$(gettext "Please commit or stash them.")"
 
 # Check if we are already based on $onto with linear history,
 # but this should be done only when upstream and onto are the same
-# and if this is not an interactive rebase.
+# and if this is not an explicit interactive rebase.
 mb=$(git merge-base "$onto" "$orig_head")
 if test "$type" != interactive && test "$upstream" = "$onto" &&
 	test "$mb" = "$onto" && test -z "$restrict_revision" &&
+	test -z "$rewrite_branches" &&
 	# linear history?
 	! (git rev-list --parents "$onto".."$orig_head" | sane_grep " .* ") > /dev/null
 then
@@ -602,7 +620,7 @@ then
 fi
 
 # If a hook exists, give it a chance to interrupt
-run_pre_rebase_hook "$upstream_arg" "$@"
+run_pre_rebase_hook "$upstream_arg" "$switch_to" "$rewrite_branches"
 
 if test -n "$diffstat"
 then
