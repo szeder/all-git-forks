@@ -996,24 +996,8 @@ do
 		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 	else
 		sha1=$(git rev-parse $shortsha1)
-		if test -z "$rebase_root"
-		then
-			preserve=t
-			for p in $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)
-			do
-				if test -f "$rewritten"/$p || test -f "$dropped"/$p
-				then
-					preserve=f
-				fi
-			done
-		else
-			preserve=f
-		fi
-		if test f = "$preserve"
-		then
-			touch "$rewritten"/$sha1
-			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
-		fi
+		touch "$rewritten"/$sha1
+		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 	fi
 done
 
