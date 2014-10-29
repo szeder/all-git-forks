@@ -52,8 +52,6 @@ fixup_msg="$state_dir"/message-fixup
 # example.)
 rewritten="$state_dir"/rewritten
 
-dropped="$state_dir"/dropped
-
 end="$state_dir"/end
 msgnum="$state_dir"/msgnum
 
@@ -269,23 +267,6 @@ pick_one_preserving_merges () {
 	esac
 	sha1=$(git rev-parse $sha1) || die "Invalid commit name: $sha1"
 
-	# Record the current-commit(s) rewritten value(s) from the last pass
-	if test -f "$state_dir"/current-commit
-	then
-		if test "$fast_forward" = t
-		then
-			while read current_commit
-			do
-				git rev-parse HEAD > "$rewritten"/$current_commit
-			done <"$state_dir"/current-commit
-			rm "$state_dir"/current-commit ||
-			die "Cannot write current commit's replacement sha1"
-		fi
-	fi
-
-	# Record the pre-cherry-pick SHA1 of the current commit
-	echo $sha1 >> "$state_dir"/current-commit
-
 	# rewrite parents; if none were rewritten, we can fast-forward.
 	new_parents=
 	pend=" $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)"
@@ -302,34 +283,31 @@ pick_one_preserving_merges () {
 		then
 			new_p=$(cat "$rewritten"/$p)
 
+			# If rewrite is empty, this is a dropped commit. Use its (possibly rewritten) parent commit
+			if test -z "$new_p"
+			then
+				replacement="$(git rev-list --parents -1 $p | cut -d' ' -s -f2)"
+				test -z "$replacement" && replacement=root
+				pend=" $replacement$pend"
+				continue
+			fi
+		else
 			# If the todo reordered commits, and our parent is marked for
 			# rewriting, but hasn't been gotten to yet, assume the user meant to
 			# drop it on top of the current HEAD
-			if test -z "$new_p"
-			then
-				new_p=$(git rev-parse HEAD)
-			fi
-
-			test $p != $new_p && fast_forward=f
-			case "$new_parents" in
-			*$new_p*)
-				;; # do nothing; that parent is already there
-			*)
-				new_parents="$new_parents $new_p"
-				;;
-			esac
-		else
-			if test -f "$dropped"/$p
-			then
-				fast_forward=f
-				replacement="$(cat "$dropped"/$p)"
-				test -z "$replacement" && replacement=root
-				pend=" $replacement$pend"
-			else
-				new_parents="$new_parents $p"
-			fi
+			new_p=$(git rev-parse HEAD)
 		fi
+
+		test $p != $new_p && fast_forward=f
+		case "$new_parents" in
+		*$new_p*)
+			;; # do nothing; that parent is already there
+		*)
+			new_parents="$new_parents $new_p"
+			;;
+		esac
 	done
+
 	case $fast_forward in
 	t)
 		output warn "Fast-forward to $sha1"
@@ -453,7 +431,12 @@ die_failed_squash() {
 flush_rewritten_pending() {
 	test -s "$rewritten_pending" || return
 	newsha1="$(git rev-parse HEAD^0)"
-	sed "s/$/ $newsha1/" < "$rewritten_pending" >> "$rewritten_list"
+	while read -r oldsha1
+	do
+		echo "$oldsha1 $newsha1" >> "$rewritten_list"
+		test -d "$rewritten" &&
+			echo $newsha1 >> "$rewritten"/$oldsha1
+	done < "$rewritten_pending"
 	rm -f "$rewritten_pending"
 }
 
@@ -938,7 +921,7 @@ mkdir -p "$state_dir" || die "Could not create temporary $state_dir"
 write_basic_state
 if test t = "$preserve_merges"
 then
-	mkdir "$rewritten" && mkdir "$dropped" || die "Could not init rewritten directory"
+	mkdir "$rewritten" || die "Could not init rewritten directory"
 
 	if test -z "$rebase_root"
 	then
@@ -1008,11 +991,10 @@ do
 		if test $cherry_type = '='
 		then
 			sha1=$(git rev-parse $shortsha1)
-			git rev-list --parents -1 $shortsha1 | cut -d' ' -s -f2 > "$dropped"/$sha1
+			touch "$rewritten"/$sha1
 			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 		else
 			sha1=$(git rev-parse $shortsha1)
-			touch "$rewritten"/$sha1
 			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 		fi
 		lastsha1=$sha1
