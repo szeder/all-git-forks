@@ -3,6 +3,16 @@
 # Copyright (c) 2005 Junio C Hamano.
 #
 
+# DEBUG:
+PS4='+\e[1;31m${BASH_SOURCE}:${LINENO}\e[0m '
+#set -x
+nrm () {
+	echo -e "\e[1;32m$@\e[0m"
+}
+nrm_comment () {
+	echo -e "\e[33m$@\e[0m"
+}
+
 SUBDIRECTORY_OK=Yes
 OPTIONS_KEEPDASHDASH=
 OPTIONS_STUCKLONG=t

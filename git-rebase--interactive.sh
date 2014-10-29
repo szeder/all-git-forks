@@ -1,8 +1,3 @@
-# DEBUG:
-nrm () {
-	echo -e "\e[1;32m$@\e[0m"
-}
-
 # This shell script fragment is sourced by git-rebase to implement
 # its interactive mode.  "git rebase --interactive" makes it easy
 # to fix up commits in the middle of a series and rearrange commits.
@@ -241,6 +236,9 @@ git_sequence_editor () {
 }
 
 pick_one () {
+	test -d "$rewritten" &&
+		pick_one_preserving_merges "$@"; return
+
 	ff=--ff
 
 	case "$1" in -n) sha1=$2; ff= ;; *) sha1=$1 ;; esac
@@ -252,14 +250,13 @@ pick_one () {
 		empty_args="--allow-empty"
 	fi
 
-	test -d "$rewritten" &&
-		pick_one_preserving_merges "$@" && return
 	output eval git cherry-pick \
 			${gpg_sign_opt:+$(git rev-parse --sq-quote "$gpg_sign_opt")} \
 			"$strategy_args" $empty_args $ff "$@"
 }
 
 pick_one_preserving_merges () {
+	nrm "pick_one_preserving_merges $@"
 	fast_forward=t
 	case "$1" in
 	-n)
@@ -270,8 +267,9 @@ pick_one_preserving_merges () {
 		sha1=$1
 		;;
 	esac
-	sha1=$(git rev-parse $sha1)
+	sha1=$(git rev-parse $sha1) || die "Invalid commit name: $sha1"
 
+	# Record the current-commit(s) rewritten value(s) from the last pass
 	if test -f "$state_dir"/current-commit
 	then
 		if test "$fast_forward" = t
@@ -285,6 +283,7 @@ pick_one_preserving_merges () {
 		fi
 	fi
 
+	# Record the pre-cherry-pick SHA1 of the current commit
 	echo $sha1 >> "$state_dir"/current-commit
 
 	# rewrite parents; if none were rewritten, we can fast-forward.
@@ -342,6 +341,7 @@ pick_one_preserving_merges () {
 
 		if [ "$1" != "-n" ]
 		then
+			nrm_comment "Moving HEAD from $(git log --oneline -n1) to $(git log --oneline -n1 $first_parent)"
 			# detach HEAD to current parent
 			output git checkout $first_parent 2> /dev/null ||
 				die "Cannot move HEAD to $first_parent"
@@ -471,6 +471,7 @@ record_in_rewritten() {
 }
 
 do_pick () {
+	nrm "do_pick $@"
 	if test "$(git rev-parse HEAD)" = "$squash_onto"
 	then
 		# Set the correct commit message and author info on the
@@ -970,13 +971,15 @@ else
 	revisions=$onto...$orig_head
 	shortrevisions=$shorthead
 fi
-git rev-list $merges_option --pretty=oneline --abbrev-commit \
-	--abbrev=7 --reverse --right-only --topo-order --cherry-mark \
-	$revisions ${restrict_revision+^$restrict_revision} |
-while read -r shortsha1 rest
+lastsha1=
+git rev-list $merges_option --pretty=oneline --reverse --right-only --topo-order \
+	--cherry-mark $revisions ${restrict_revision+^$restrict_revision} |
+while read -r sha1 rest
 do
-	cherry_type=${shortsha1:0:1}
-	shortsha1=${shortsha1:1}
+	nrm $sha1 $rest
+	cherry_type=${sha1:0:1}
+	sha1=${sha1:1}
+	shortsha1=$(git rev-parse --short=7 $sha1)
 
 	if test -z "$keep_empty" && ( test $cherry_type = '=' || \
 		(  is_empty_commit $shortsha1 && ! is_merge_commit $shortsha1 ) )
@@ -989,15 +992,30 @@ do
 	if test t != "$preserve_merges"
 	then
 		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
-	elif test $cherry_type = '='
-	then
-		sha1=$(git rev-parse $shortsha1)
-		git rev-list --parents -1 $shortsha1 | cut -d' ' -s -f2 > "$dropped"/$sha1
-		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 	else
-		sha1=$(git rev-parse $shortsha1)
-		touch "$rewritten"/$sha1
-		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
+		if test -n "$lastsha1"
+		then
+			parents=$(git rev-list -1 --parents $sha1)
+			case "$parents" in
+			*$lastsha1*)
+				;;
+			*)
+				printf '%s\n' "$comment_char -- $(git rev-list -1 --abbrev-commit --abbrev=7 --pretty=oneline $sha1^)" >>"$todo"
+				;;
+			esac
+		fi
+
+		if test $cherry_type = '='
+		then
+			sha1=$(git rev-parse $shortsha1)
+			git rev-list --parents -1 $shortsha1 | cut -d' ' -s -f2 > "$dropped"/$sha1
+			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
+		else
+			sha1=$(git rev-parse $shortsha1)
+			touch "$rewritten"/$sha1
+			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
+		fi
+		lastsha1=$sha1
 	fi
 done
 
