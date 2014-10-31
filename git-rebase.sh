@@ -98,7 +98,6 @@ autosquash=
 keep_empty=
 test "$(git config --bool rebase.autosquash)" = "true" && autosquash=t
 gpg_sign_opt=
-rewrite_branches=
 
 read_basic_state () {
 	test -f "$state_dir/head-name" &&
@@ -123,7 +122,6 @@ read_basic_state () {
 		allow_rerere_autoupdate="$(cat "$state_dir"/allow_rerere_autoupdate)"
 	test -f "$state_dir"/gpg_sign_opt &&
 		gpg_sign_opt="$(cat "$state_dir"/gpg_sign_opt)"
-	test -f "$state_dir"/rewrite_branches && rewrite_branches="$(cat "$state_dir"/branches)"
 }
 
 write_basic_state () {
@@ -138,7 +136,6 @@ write_basic_state () {
 	test -n "$allow_rerere_autoupdate" && echo "$allow_rerere_autoupdate" > \
 		"$state_dir"/allow_rerere_autoupdate
 	test -n "$gpg_sign_opt" && echo "$gpg_sign_opt" > "$state_dir"/gpg_sign_opt
-	test -n "$rewrite_branches" && echo "$rewrite_branches" > "$state_dir"/rewrite_branches
 }
 
 output () {
@@ -541,31 +538,24 @@ case "$#" in
 	   orig_head=$(git rev-parse -q --verify "refs/heads/$1")
 	then
 		head_name="refs/heads/$1"
-	elif orig_head=$(git rev-parse -q --verify "$1")
-	then
-		head_name="detached HEAD"
 	else
+		orig_head=$(git rev-parse -q --verify "$1") ||
 		die "$(eval_gettext "fatal: no such branch: \$branch_name")"
+		head_name="detached HEAD"
 	fi
 	shift
 	;;
 esac
 
 # Check for additional branches that should also be rebased
-# TODO: Having both of these is ugly. Just one list please...
-rewrite_branches_sha1=
+rewrite_branches=
 if test $# -gt 0
 then
-	# TODO: Validate these are branches. Won't work with tags, SHA1s, etc.
 	test -z "$interactive_rebase" && interactive_rebase=implied
-	rewrite_branches="$@"
-
-	for rewrite in $rewrite_branches
-	do
-		# If rev-parse doesn't find the branch die
-		rewrite_branches_sha1+=" $(git rev-parse $rewrite)"
-		test $? -ne 0 && exit 1
-	done
+	rewrite_branches+="$branch_name $@"
+	branch_name=HEAD ;# detach head when doing multi-branch rebase
+	# TODO(nmayer): This can be updated at the beginning of each op to only show the branches this will affect.
+	head_name="$rewrite_branches"
 fi
 
 if test "$fork_point" = t
@@ -620,7 +610,7 @@ then
 fi
 
 # If a hook exists, give it a chance to interrupt
-run_pre_rebase_hook "$upstream_arg" "$switch_to" "$rewrite_branches"
+run_pre_rebase_hook "$upstream_arg" "$@"
 
 if test -n "$diffstat"
 then
@@ -638,7 +628,7 @@ test "$type" = interactive && run_specific_rebase
 say "$(gettext "First, rewinding head to replay your work on top of it...")"
 
 GIT_REFLOG_ACTION="$GIT_REFLOG_ACTION: checkout $onto_name" \
-	git checkout -q "$onto^0" || die "could not detach HEAD"
+	git checkout -q "$onto" --detach || die "could not detach HEAD"
 git update-ref ORIG_HEAD $orig_head
 
 # If the $onto is a proper descendant of the tip of the branch, then

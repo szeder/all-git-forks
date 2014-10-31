@@ -51,6 +51,7 @@ fixup_msg="$state_dir"/message-fixup
 # unrelated side branches are left alone. (Think "X" in the man page's
 # example.)
 rewritten="$state_dir"/rewritten
+rewrite_branches_file="$state_dir"/rewrite-branches
 
 end="$state_dir"/end
 msgnum="$state_dir"/msgnum
@@ -234,8 +235,11 @@ git_sequence_editor () {
 }
 
 pick_one () {
-	test -d "$rewritten" &&
-		pick_one_preserving_merges "$@"; return
+	if test -n "$preserve_merges"
+	then
+		pick_one_preserving_merges "$@"
+		return
+	fi
 
 	ff=--ff
 
@@ -254,7 +258,6 @@ pick_one () {
 }
 
 pick_one_preserving_merges () {
-	nrm "pick_one_preserving_merges $@"
 	fast_forward=t
 	case "$1" in
 	-n)
@@ -428,14 +431,26 @@ die_failed_squash() {
 	die_with_patch $1 ""
 }
 
+# Keep track of rewritten commits and update the affected branch(es)
 flush_rewritten_pending() {
 	test -s "$rewritten_pending" || return
 	newsha1="$(git rev-parse HEAD^0)"
 	while read -r oldsha1
 	do
 		echo "$oldsha1 $newsha1" >> "$rewritten_list"
-		test -d "$rewritten" &&
-			echo $newsha1 >> "$rewritten"/$oldsha1
+		echo $newsha1 >> "$rewritten"/$oldsha1
+
+		while read rewrite orig_sha1 rewrite_sha1
+		do
+			git merge-base --is-ancestor $oldsha1 $orig_sha1
+			if test $? -eq 0
+			then
+				rewrite_sha1=$newsha1
+				nrm_comment "Update $rewrite $oldsha1 ==> $newsha1"
+			fi
+			echo "$rewrite $orig_sha1 $rewrite_sha1">>"$rewrite_branches_file".new
+		done < "$rewrite_branches_file"
+		test -f "$rewrite_branches_file".new && mv -f "$rewrite_branches_file".new "$rewrite_branches_file"
 	done < "$rewritten_pending"
 	rm -f "$rewritten_pending"
 }
@@ -616,16 +631,6 @@ do_next () {
 	esac
 	test -s "$todo" && return
 
-	nrm_comment "Rewritten: $rewritten"
-	ls -la "$rewritten"
-	cat "$rewritten_list"
-	for rewrite in $rewrite_branches
-	do
-		rewrite_sha1=$(git rev-parse $rewrite)
-		new_sha1=$(cat "$rewritten"/$rewrite_sha1)
-		nrm_comment "Move $rewrite $rewrite_sha1 ==> $new_sha1"
-	done
-
 	comment_for_reflog finish &&
 	newhead=$(git rev-parse HEAD) &&
 	case $head_name in
@@ -637,6 +642,29 @@ do_next () {
 		  HEAD $head_name
 		;;
 	esac && {
+		while read rewrite orig_sha1 rewrite_sha1
+		do
+			rewrite_detail=$(git show-ref $rewrite)
+			if test $? -eq 0
+			then
+				rewrite_detail=$(cut -d' ' -s -f2 <<< $rewrite_detail)
+				case $rewrite_detail in
+				refs/heads/*)
+					message="$GIT_REFLOG_ACTION: $rewrite_detail onto $rewrite_sha1" &&
+					git update-ref -m "$message" $rewrite_detail $rewrite_sha1 $orig_sha1 &&
+					nrm_comment "Move $rewrite_detail to $rewrite_sha1"
+					;;
+				*)
+					nrm_comment "Not a branch: $rewrite_detail to $rewrite_sha1"
+					;;
+				esac
+			else
+				nrm_comment "Not a valid ref: $rewrite to $rewrite_sha1"
+			fi
+
+		done < "$rewrite_branches_file"
+	} &&
+	{
 		test ! -f "$state_dir"/verbose ||
 			git diff-tree --stat $orig_head..HEAD
 	} &&
@@ -926,13 +954,12 @@ fi
 
 orig_head=$(git rev-parse --verify HEAD) || die "No HEAD?"
 mkdir -p "$state_dir" || die "Could not create temporary $state_dir"
+mkdir "$rewritten" || die "Could not init rewritten directory"
 
 : > "$state_dir"/interactive || die "Could not mark as interactive"
 write_basic_state
 if test t = "$preserve_merges"
 then
-	mkdir "$rewritten" || die "Could not init rewritten directory"
-
 	if test -z "$rebase_root"
 	then
 		for c in $(git merge-base --all $orig_head $upstream)
@@ -964,12 +991,26 @@ else
 	revisions=$onto...$orig_head
 	shortrevisions=$shorthead
 fi
-lastsha1=
-for rewrite in $rewrite_branches_sha1
+
+for rewrite in $rewrite_branches
 do
-	revisions="$revisions $upstream...$rewrite"
+	rewrite_sha1="$(git rev-parse $rewrite)"
+	test $? -ne 0 && exit 1
+	revisions="$revisions $upstream...$rewrite_sha1"
+	# If this is a named branch, add it to our rewrite list
+	test 0 -eq 0 &&
+	echo "$rewrite" "$rewrite_sha1" "" >> "$rewrite_branches_file"
+
+	# TODO(nmayer): Unify with parent parsing logic in pick_one_preserving_merges
+	parents="$(git rev-list --parents -1 $rewrite_sha1 | cut -d' ' -s -f2-)"
+	for p in $parents
+	do
+		echo $onto > "$rewritten"/$p ||
+			die "Could not init rewritten commits"
+	done
 done
 
+lastsha1=
 git rev-list $merges_option --pretty=oneline --reverse --right-only --topo-order \
 	--cherry-mark $revisions ${restrict_revision+^$restrict_revision} |
 while read -r sha1 rest
@@ -989,6 +1030,7 @@ do
 
 	if test t = "$preserve_merges"
 	then
+		# If we've switched parents we'll add a note in todo to make it more obvious this isn't linear
 		if test -n "$lastsha1"
 		then
 			parents=$(git rev-list -1 --parents $sha1)
@@ -1001,18 +1043,16 @@ do
 			esac
 		fi
 		lastsha1=$sha1
-
-		if test $cherry_type = '='
-		then
-			sha1=$(git rev-parse $shortsha1)
-			touch "$rewritten"/$sha1
-			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
-		else
-			sha1=$(git rev-parse $shortsha1)
-			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
-		fi
-		lastsha1=$sha1
 	fi
+
+	if test $cherry_type = '='
+	then
+		# We'll want to treat SHA1s that got dropped as a result of a cherry pick as a rewrite. Add a empty
+		# rewrite so we know this is the case and can look up the proper rewrite SHA1 post rebase.
+		sha1=$(git rev-parse $shortsha1)
+		touch "$rewritten"/$sha1
+	fi
+	printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 done
 
 test -s "$todo" || echo noop >> "$todo"
