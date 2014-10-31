@@ -14,6 +14,15 @@ my @removed;
 my @added;
 my $in_hunk;
 
+# Some scripts may not realize that SIGPIPE is being ignored when launching the
+# pager--for instance scripts written in Python.  Setting $SIG{PIPE} = 'DEFAULT'
+# doesn't work in these instances, so we install our own signal handler instead.
+sub pipe_handler {
+    exit(0);
+}
+
+$SIG{PIPE} = \&pipe_handler;
+
 while (<>) {
 	if (!$in_hunk) {
 		print;
