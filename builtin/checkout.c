@@ -585,22 +585,20 @@ static void update_refs_for_switch(const struct checkout_opts *opts,
 {
 	struct strbuf msg = STRBUF_INIT;
 	const char *old_desc, *reflog_msg;
+	struct strbuf err = STRBUF_INIT;
+
 	if (opts->new_branch) {
 		if (opts->new_orphan_branch) {
 			if (opts->new_branch_log && !log_all_ref_updates) {
-				int temp;
-				char log_file[PATH_MAX];
 				char *ref_name = mkpath("refs/heads/%s", opts->new_orphan_branch);
+				struct strbuf err = STRBUF_INIT;
 
-				temp = log_all_ref_updates;
-				log_all_ref_updates = 1;
-				if (log_ref_setup(ref_name, log_file, sizeof(log_file))) {
-					fprintf(stderr, _("Can not do reflog for '%s'\n"),
-					    opts->new_orphan_branch);
-					log_all_ref_updates = temp;
+				if (create_reflog(ref_name, &err)) {
+					fprintf(stderr, _("Can not do reflog for '%s'. %s\n"),
+					opts->new_orphan_branch, err.buf);
+					strbuf_release(&err);
 					return;
 				}
-				log_all_ref_updates = temp;
 			}
 		}
 		else
@@ -628,15 +626,19 @@ static void update_refs_for_switch(const struct checkout_opts *opts,
 	if (!strcmp(new->name, "HEAD") && !new->path && !opts->force_detach) {
 		/* Nothing to do. */
 	} else if (opts->force_detach || !new->path) {	/* No longer on any branch. */
-		update_ref(msg.buf, "HEAD", new->commit->object.sha1, NULL,
-			   REF_NODEREF, UPDATE_REFS_DIE_ON_ERR);
+		if (update_ref(msg.buf, "HEAD", new->commit->object.sha1, NULL,
+			       REF_NODEREF, &err))
+			die("%s", err.buf);
 		if (!opts->quiet) {
 			if (old->path && advice_detached_head)
 				detach_advice(new->name);
 			describe_detached_head(_("HEAD is now at"), new->commit);
 		}
 	} else if (new->path) {	/* Switch branches. */
-		create_symref("HEAD", new->path, msg.buf);
+		if (create_symref("HEAD", new->path, msg.buf, &err)) {
+			error("%s", err.buf);
+			strbuf_release(&err);
+		}
 		if (!opts->quiet) {
 			if (old->path && !strcmp(new->path, old->path)) {
 				if (opts->new_branch_force)
@@ -1022,12 +1024,16 @@ static int parse_branchname_arg(int argc, const char **argv,
 static int switch_unborn_to_new_branch(const struct checkout_opts *opts)
 {
 	int status;
-	struct strbuf branch_ref = STRBUF_INIT;
+	struct strbuf branch_ref = STRBUF_INIT, err = STRBUF_INIT;
 
 	if (!opts->new_branch)
 		die(_("You are on a branch yet to be born"));
 	strbuf_addf(&branch_ref, "refs/heads/%s", opts->new_branch);
-	status = create_symref("HEAD", branch_ref.buf, "checkout -b");
+	status = create_symref("HEAD", branch_ref.buf, "checkout -b", &err);
+	if (status) {
+		error("%s", err.buf);
+		strbuf_release(&err);
+	}
 	strbuf_release(&branch_ref);
 	if (!opts->quiet)
 		fprintf(stderr, _("Switched to a new branch '%s'\n"),
