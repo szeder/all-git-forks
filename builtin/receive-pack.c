@@ -453,7 +453,6 @@ leave:
 static void prepare_push_cert_sha1(struct child_process *proc)
 {
 	static int already_done;
-	struct argv_array env = ARGV_ARRAY_INIT;
 
 	if (!push_cert.len)
 		return;
@@ -487,20 +486,26 @@ static void prepare_push_cert_sha1(struct child_process *proc)
 		nonce_status = check_nonce(push_cert.buf, bogs);
 	}
 	if (!is_null_sha1(push_cert_sha1)) {
-		argv_array_pushf(&env, "GIT_PUSH_CERT=%s", sha1_to_hex(push_cert_sha1));
-		argv_array_pushf(&env, "GIT_PUSH_CERT_SIGNER=%s",
+		argv_array_pushf(&proc->env_array, "GIT_PUSH_CERT=%s",
+				 sha1_to_hex(push_cert_sha1));
+		argv_array_pushf(&proc->env_array, "GIT_PUSH_CERT_SIGNER=%s",
 				 sigcheck.signer ? sigcheck.signer : "");
-		argv_array_pushf(&env, "GIT_PUSH_CERT_KEY=%s",
+		argv_array_pushf(&proc->env_array, "GIT_PUSH_CERT_KEY=%s",
 				 sigcheck.key ? sigcheck.key : "");
-		argv_array_pushf(&env, "GIT_PUSH_CERT_STATUS=%c", sigcheck.result);
+		argv_array_pushf(&proc->env_array, "GIT_PUSH_CERT_STATUS=%c",
+				 sigcheck.result);
 		if (push_cert_nonce) {
-			argv_array_pushf(&env, "GIT_PUSH_CERT_NONCE=%s", push_cert_nonce);
-			argv_array_pushf(&env, "GIT_PUSH_CERT_NONCE_STATUS=%s", nonce_status);
+			argv_array_pushf(&proc->env_array,
+					 "GIT_PUSH_CERT_NONCE=%s",
+					 push_cert_nonce);
+			argv_array_pushf(&proc->env_array,
+					 "GIT_PUSH_CERT_NONCE_STATUS=%s",
+					 nonce_status);
 			if (nonce_status == NONCE_SLOP)
-				argv_array_pushf(&env, "GIT_PUSH_CERT_NONCE_SLOP=%ld",
+				argv_array_pushf(&proc->env_array,
+						 "GIT_PUSH_CERT_NONCE_SLOP=%ld",
 						 nonce_stamp_slop);
 		}
-		proc->env = env.argv;
 	}
 }
 
@@ -842,8 +847,9 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 		transaction = ref_transaction_begin(&err);
 		if (!transaction ||
 		    ref_transaction_update(transaction, namespaced_name,
-					   new_sha1, old_sha1, 0, 1, &err) ||
-		    ref_transaction_commit(transaction, "push", &err)) {
+					   new_sha1, old_sha1, 0, 1, "push",
+					   &err) ||
+		    ref_transaction_commit(transaction, &err)) {
 			ref_transaction_free(transaction);
 
 			rp_error("%s", err.buf);
@@ -908,7 +914,7 @@ static void check_aliased_update(struct command *cmd, struct string_list *list)
 	int flag;
 
 	strbuf_addf(&buf, "%s%s", get_git_namespace(), cmd->ref_name);
-	dst_name = resolve_ref_unsafe(buf.buf, sha1, 0, &flag);
+	dst_name = resolve_ref_unsafe(buf.buf, 0, sha1, &flag);
 	strbuf_release(&buf);
 
 	if (!(flag & REF_ISSYMREF))
@@ -1069,7 +1075,7 @@ static void execute_commands(struct command *commands,
 	check_aliased_updates(commands);
 
 	free(head_name_to_free);
-	head_name = head_name_to_free = resolve_refdup("HEAD", sha1, 0, NULL);
+	head_name = head_name_to_free = resolve_refdup("HEAD", 0, sha1, NULL);
 
 	checked_connectivity = 1;
 	for (cmd = commands; cmd; cmd = cmd->next) {
@@ -1230,7 +1236,6 @@ static const char *pack_lockfile;
 static const char *unpack(int err_fd, struct shallow_info *si)
 {
 	struct pack_header hdr;
-	struct argv_array av = ARGV_ARRAY_INIT;
 	const char *hdr_err;
 	int status;
 	char hdr_arg[38];
@@ -1253,16 +1258,16 @@ static const char *unpack(int err_fd, struct shallow_info *si)
 
 	if (si->nr_ours || si->nr_theirs) {
 		alt_shallow_file = setup_temporary_shallow(si->shallow);
-		argv_array_pushl(&av, "--shallow-file", alt_shallow_file, NULL);
+		argv_array_push(&child.args, "--shallow-file");
+		argv_array_push(&child.args, alt_shallow_file);
 	}
 
 	if (ntohl(hdr.hdr_entries) < unpack_limit) {
-		argv_array_pushl(&av, "unpack-objects", hdr_arg, NULL);
+		argv_array_pushl(&child.args, "unpack-objects", hdr_arg, NULL);
 		if (quiet)
-			argv_array_push(&av, "-q");
+			argv_array_push(&child.args, "-q");
 		if (fsck_objects)
-			argv_array_push(&av, "--strict");
-		child.argv = av.argv;
+			argv_array_push(&child.args, "--strict");
 		child.no_stdout = 1;
 		child.err = err_fd;
 		child.git_cmd = 1;
@@ -1277,13 +1282,12 @@ static const char *unpack(int err_fd, struct shallow_info *si)
 		if (gethostname(keep_arg + s, sizeof(keep_arg) - s))
 			strcpy(keep_arg + s, "localhost");
 
-		argv_array_pushl(&av, "index-pack",
+		argv_array_pushl(&child.args, "index-pack",
 				 "--stdin", hdr_arg, keep_arg, NULL);
 		if (fsck_objects)
-			argv_array_push(&av, "--strict");
+			argv_array_push(&child.args, "--strict");
 		if (fix_thin)
-			argv_array_push(&av, "--fix-thin");
-		child.argv = av.argv;
+			argv_array_push(&child.args, "--fix-thin");
 		child.out = -1;
 		child.err = err_fd;
 		child.git_cmd = 1;
