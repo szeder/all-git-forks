@@ -54,7 +54,7 @@ Fixes since v1.6.5.2
 
  * Release notes spelled the package name with incorrect capitalization.
 
- * "gitweb" did not escape non-ascii characters correctly in the URL.
+ * "gitweb" did not escape non-ASCII characters correctly in the URL.
 
  * "gitweb" showed "patch" link even for merge commits.
 

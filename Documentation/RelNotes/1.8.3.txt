@@ -350,7 +350,7 @@ details).
    of an empty tree.  It is more intuitive to give an empty
    archive back in such a case.
 
- * When "format-patch" quoted a non-ascii string in header files,
+ * When "format-patch" quoted a non-ASCII string in header files,
    it incorrectly applied rfc2047 and chopped a single character in
    the middle of the string.
 

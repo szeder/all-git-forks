@@ -23,7 +23,7 @@ Fixes since v1.8.2
  * An aliased command spawned from a bare repository that does not say
    it is bare with "core.bare = yes" is treated as non-bare by mistake.
 
- * When "format-patch" quoted a non-ascii strings on the header files,
+ * When "format-patch" quoted a non-ASCII strings on the header files,
    it incorrectly applied rfc2047 and chopped a single character in
    the middle of it.
 

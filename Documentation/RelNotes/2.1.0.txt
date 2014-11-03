@@ -146,7 +146,7 @@ Performance, Internal Implementation, etc.
  * The `core.deltabasecachelimit` used to default to 16 MiB , but this
    proved to be too small, and has been bumped to 96 MiB.
 
- * "git blame" has been optimized greatly by reorganising the data
+ * "git blame" has been optimized greatly by reorganizing the data
    structure that is used to keep track of the work to be done.
 
  * "git diff" that compares 3-or-more trees (e.g. parents and the

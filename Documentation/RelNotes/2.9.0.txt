@@ -446,7 +446,7 @@ notes for details).
    configuration variables that take pathname to a single place.
 
  * Correct faulty recommendation to use "git submodule deinit ." when
-   de-initialising all submodules, which would result in a strange
+   de-initializing all submodules, which would result in a strange
    error message in a pathological corner case.
 
  * Many 'linkgit:<git documentation page>' references were broken,
@@ -466,6 +466,7 @@ notes for details).
 
  * Portability enhancement for "rebase -i" to help platforms whose
    shell does not like "for i in <empty>" (which is not POSIX-kosher).
+   (merge 8e98b35 jk/rebase-interactive-eval-fix later to maint).
 
  * On Windows, .git and optionally any files whose name starts with a
    dot are now marked as hidden, with a core.hideDotFiles knob to

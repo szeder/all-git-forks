@@ -289,7 +289,7 @@ notes for details).
 
  * The build procedure did not bother fixing perl and python scripts
    when NO_PERL and NO_PYTHON build-time configuration changed.
-   (merge ca2051d jk/rebuild-perl-scripts-with-no-perl-seting-change later to maint).
+   (merge ca2051d jk/rebuild-perl-scripts-with-no-perl-setting-change later to maint).
 
  * The usage string of "git log" command was marked incorrectly for
    l10n.
