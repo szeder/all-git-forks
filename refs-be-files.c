@@ -1293,7 +1293,8 @@ static int resolve_gitlink_ref_recursive(struct ref_cache *refs,
 	return resolve_gitlink_ref_recursive(refs, p, sha1, recursion+1);
 }
 
-int resolve_gitlink_ref(const char *path, const char *refname, unsigned char *sha1)
+static int files_resolve_gitlink_ref(const char *path, const char *refname,
+				     unsigned char *sha1)
 {
 	int len = strlen(path), retval;
 	char *submodule;
@@ -1353,7 +1354,8 @@ static int resolve_missing_loose_ref(const char *refname,
 }
 
 /* This function needs to return a meaningful errno on failure */
-const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned char *sha1, int *flags)
+static const char *files_resolve_ref_unsafe(const char *refname,
+			int resolve_flags, unsigned char *sha1, int *flags)
 {
 	int depth = MAXDEPTH;
 	ssize_t len;
@@ -1613,7 +1615,7 @@ static enum peel_status peel_entry(struct ref_entry *entry, int repeel)
 	return status;
 }
 
-int peel_ref(const char *refname, unsigned char *sha1)
+static int files_peel_ref(const char *refname, unsigned char *sha1)
 {
 	int flag;
 	unsigned char base[20];
@@ -2198,7 +2200,7 @@ static void prune_refs(struct ref_to_prune *r)
 	}
 }
 
-int pack_refs(unsigned int flags, struct strbuf *err)
+static int files_pack_refs(unsigned int flags, struct strbuf *err)
 {
 	struct pack_refs_cb_data cbdata;
 
@@ -2330,7 +2332,8 @@ static int delete_ref_loose(struct ref_lock *lock, int flag, struct strbuf *err)
 	return 0;
 }
 
-int is_refname_available(const char *newname, struct string_list *skip)
+static int files_is_refname_available(const char *newname,
+				      struct string_list *skip)
 {
 	int ret;
 
@@ -2618,8 +2621,9 @@ static int write_ref_sha1(struct ref_lock *lock,
 	return 0;
 }
 
-int create_symref(const char *ref_target, const char *refs_heads_master,
-		  const char *logmsg, struct strbuf *err)
+static int files_create_symref(const char *ref_target,
+			       const char *refs_heads_master,
+			       const char *logmsg, struct strbuf *err)
 {
 	const char *lockpath;
 	char ref[1000];
@@ -3497,4 +3501,10 @@ struct ref_be refs_be_files = {
 	files_reflog_exists,
 	files_create_reflog,
 	files_delete_reflog,
+	files_resolve_ref_unsafe,
+	files_is_refname_available,
+	files_pack_refs,
+	files_peel_ref,
+	files_create_symref,
+	files_resolve_gitlink_ref,
 };
