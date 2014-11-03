@@ -2725,26 +2725,6 @@ static int delete_ref_loose(struct ref_lock *lock, int flag, struct strbuf *err)
 	return 0;
 }
 
-int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
-{
-	struct transaction *transaction;
-	struct strbuf err = STRBUF_INIT;
-
-	transaction = transaction_begin(&err);
-	if (!transaction ||
-	    transaction_delete_ref(transaction, refname, sha1, delopt,
-				   sha1 && !is_null_sha1(sha1), NULL, &err) ||
-	    transaction_commit(transaction, &err)) {
-		error("%s", err.buf);
-		transaction_free(transaction);
-		strbuf_release(&err);
-		return 1;
-	}
-	transaction_free(transaction);
-	strbuf_release(&err);
-	return 0;
-}
-
 int is_refname_available(const char *newname, struct string_list *skip)
 {
 	int ret;
