@@ -2628,11 +2628,6 @@ static int log_ref_write(const char *refname, const unsigned char *old_sha1,
 	return 0;
 }
 
-int is_branch(const char *refname)
-{
-	return !strcmp(refname, "HEAD") || starts_with(refname, "refs/heads/");
-}
-
 static int write_sha1_update_reflog(struct ref_lock *lock,
 				    const unsigned char *sha1,
 				    const char *logmsg, struct strbuf *err)
