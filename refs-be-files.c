@@ -2743,7 +2743,7 @@ static int write_ref_sha1(struct ref_lock *lock, const unsigned char *sha1,
  * efficient method to read the whole log and later write it back to a
  * different file.
  */
-static int copy_reflog_into_strbuf(const char *refname, struct strbuf *buf)
+int copy_reflog_into_strbuf(const char *refname, struct strbuf *buf)
 {
 	struct stat st;
 	int fd;

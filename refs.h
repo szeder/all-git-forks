@@ -193,6 +193,9 @@ extern int create_reflog(const char *refname, struct strbuf *err);
 /** Delete a reflog */
 extern int delete_reflog(const char *refname);
 
+/** Read the whole log into a strbuf */
+extern int copy_reflog_into_strbuf(const char *refname, struct strbuf *buf);
+
 /* iterate over reflog entries */
 typedef int each_reflog_ent_fn(unsigned char *osha1, unsigned char *nsha1, const char *, unsigned long, int, const char *, void *);
 int for_each_reflog_ent(const char *refname, each_reflog_ent_fn fn, void *cb_data);
