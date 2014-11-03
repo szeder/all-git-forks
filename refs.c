@@ -35,6 +35,11 @@ static unsigned char refname_disposition[256] = {
  * just use the lock taken by the first update.
  */
 #define UPDATE_REFLOG_NOLOCK 0x0200
+/*
+ * This update is used to replace a new or existing reflog with new content
+ * held in update->new_reflog.
+ */
+#define REFLOG_REPLACE 0x0400
 
 /*
  * Try to read one refname component from the front of refname.
@@ -3561,6 +3566,7 @@ struct ref_update {
 	struct lock_file *reflog_lock;
 	char *committer;
 	struct ref_update *orig_update; /* For UPDATE_REFLOG_NOLOCK */
+	struct strbuf new_reflog;
 
 	const char refname[FLEX_ARRAY];
 };
@@ -3607,6 +3613,7 @@ void transaction_free(struct transaction *transaction)
 		return;
 
 	for (i = 0; i < transaction->nr; i++) {
+		strbuf_release(&transaction->updates[i]->new_reflog);
 		free(transaction->updates[i]->msg);
 		free(transaction->updates[i]->committer);
 		free(transaction->updates[i]);
@@ -3622,6 +3629,7 @@ static struct ref_update *add_update(struct transaction *transaction,
 	size_t len = strlen(refname);
 	struct ref_update *update = xcalloc(1, sizeof(*update) + len + 1);
 
+	strbuf_init(&update->new_reflog, 0);
 	strcpy((char *)update->refname, refname);
 	update->update_type = update_type;
 	ALLOC_GROW(transaction->updates, transaction->nr + 1, transaction->alloc);
@@ -3678,6 +3686,24 @@ int transaction_update_reflog(struct transaction *transaction,
 	if (msg)
 		update->msg = xstrdup(msg);
 
+	return 0;
+}
+
+int transaction_replace_reflog(struct transaction *transaction,
+			       const char *refname,
+			       struct strbuf *buf,
+			       struct strbuf *err)
+{
+	struct ref_update *update;
+
+	if (transaction->state != TRANSACTION_OPEN)
+		die("BUG: replace_reflog called for transaction that is "
+		    "not open");
+
+	update = add_update(transaction, refname, UPDATE_LOG);
+	update->flags = REFLOG_REPLACE;
+	strbuf_swap(&update->new_reflog, buf);
+	update->reflog_lock = xcalloc(1, sizeof(struct lock_file));
 	return 0;
 }
 
@@ -4012,7 +4038,7 @@ int transaction_commit(struct transaction *transaction,
 			continue;
 		if (update->reflog_fd == -1)
 			continue;
-		if (update->flags & REFLOG_TRUNCATE)
+		if (update->flags & (REFLOG_TRUNCATE|REFLOG_REPLACE))
 			if (lseek(update->reflog_fd, 0, SEEK_SET) < 0 ||
 				ftruncate(update->reflog_fd, 0)) {
 				error("Could not truncate reflog: %s. %s",
@@ -4030,6 +4056,16 @@ int transaction_commit(struct transaction *transaction,
 			rollback_lock_file(update->reflog_lock);
 			update->reflog_fd = -1;
 		}
+		if (update->flags & REFLOG_REPLACE)
+			if (write_in_full(update->reflog_fd,
+					  update->new_reflog.buf,
+					  update->new_reflog.len) !=
+			    update->new_reflog.len) {
+				error("Could write to reflog: %s. %s",
+				      update->refname, strerror(errno));
+				rollback_lock_file(update->reflog_lock);
+				update->reflog_fd = -1;
+			}
 	}
 
 	/* Commit all reflog files */

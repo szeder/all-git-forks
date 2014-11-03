@@ -354,6 +354,22 @@ int transaction_update_reflog(struct transaction *transaction,
 			      struct strbuf *err);
 
 /*
+ * Replace the reflog with the content of buf.
+ * This function can be used when replacing the whole content of the reflog
+ * during for example a rename operation. For these cases we do not want
+ * to have to spend time processing and marshaling each entry individually
+ * if instead we can just pass one single blob to the transaction system and
+ * say "write this blob, it is the new reflog".
+ *
+ * When successful, this function will take over ownership of buf.
+ * Thus meaning that buf will become cleared from the callers view.
+ */
+int transaction_replace_reflog(struct transaction *transaction,
+			       const char *refname,
+			       struct strbuf *buf,
+			       struct strbuf *err);
+
+/*
  * Commit all of the changes that have been queued in transaction, as
  * atomically as possible.
  *
