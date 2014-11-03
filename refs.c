@@ -2826,6 +2826,37 @@ static int rename_ref_available(const char *oldname, const char *newname)
 static int write_ref_sha1(struct ref_lock *lock, const unsigned char *sha1,
 			  const char *logmsg);
 
+/*
+ * This is an optimized function to read the whole reflog as a blob
+ * into a strbuf. It is used during ref_rename so that we can use an
+ * efficient method to read the whole log and later write it back to a
+ * different file.
+ */
+static int copy_reflog_into_strbuf(const char *refname, struct strbuf *buf)
+{
+	struct stat st;
+	int fd;
+
+	if (lstat(git_path("logs/%s", refname), &st) == -1)
+		return 1;
+	if ((fd = open(git_path("logs/%s", refname), O_RDONLY)) == -1) {
+		error("failed to open reflog %s, %s",
+		      refname, strerror(errno));
+		return 1;
+	}
+	strbuf_init(buf, st.st_size);
+	strbuf_setlen(buf, st.st_size);
+	if (read_in_full(fd, buf->buf, st.st_size) != st.st_size) {
+		close(fd);
+		error("failed to read reflog %s, %s",
+		      refname, strerror(errno));
+		return 1;
+	}
+	close(fd);
+
+	return 0;
+}
+
 int rename_ref(const char *oldrefname, const char *newrefname, const char *logmsg)
 {
 	unsigned char sha1[20], orig_sha1[20];
