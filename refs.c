@@ -5,6 +5,28 @@
 #include "lockfile.h"
 #include "refs.h"
 
+/*
+ * We always have a files backend and it is the default.
+ * This function us used to switch to an alternate backend.
+ */
+struct ref_be *the_refs_backend = &refs_be_files;
+/*
+ * List of all available backends
+ */
+struct ref_be *refs_backends = &refs_be_files;
+
+int set_refs_backend(const char *name)
+{
+	struct ref_be *be;
+
+	for (be = refs_backends; be; be = be->next)
+		if (!strcmp(be->name, name)) {
+			the_refs_backend = be;
+			return 0;
+		}
+	return 1;
+}
+
 int update_ref(const char *action, const char *refname,
 	       const unsigned char *sha1, const unsigned char *oldval,
 	       int flags, struct strbuf *e)
@@ -768,4 +790,67 @@ int head_ref_namespaced(each_ref_fn fn, void *cb_data)
 	strbuf_release(&buf);
 
 	return ret;
+}
+
+
+/* backend functions */
+struct transaction *transaction_begin(struct strbuf *err)
+{
+	return the_refs_backend->transaction_begin(err);
+}
+
+int transaction_update_ref(struct transaction *transaction,
+			   const char *refname, const unsigned char *new_sha1,
+			   const unsigned char *old_sha1, int flags,
+			   int have_old, const char *msg, struct strbuf *err)
+{
+	return the_refs_backend->transaction_update_ref(transaction,
+			refname, new_sha1, old_sha1, flags, have_old, msg, err);
+}
+
+int transaction_create_ref(struct transaction *transaction,
+			   const char *refname, const unsigned char *new_sha1,
+			   int flags, const char *msg, struct strbuf *err)
+{
+	return the_refs_backend->transaction_create_ref(transaction,
+			refname, new_sha1, flags, msg, err);
+}
+int transaction_delete_ref(struct transaction *transaction,
+			   const char *refname, const unsigned char *old_sha1,
+			   int flags, int have_old, const char *msg,
+			   struct strbuf *err)
+{
+	return the_refs_backend->transaction_delete_ref(transaction,
+			refname, old_sha1, flags, have_old, msg, err);
+}
+
+int transaction_update_reflog(struct transaction *transaction,
+			      const char *refname,
+			      const unsigned char *new_sha1,
+			      const unsigned char *old_sha1,
+			      struct reflog_committer_info *ci,
+			      const char *msg, int flags,
+			      struct strbuf *err)
+{
+	return the_refs_backend->transaction_update_reflog(transaction,
+			refname, new_sha1, old_sha1, ci, msg, flags, err);
+}
+
+int transaction_rename_reflog(struct transaction *transaction,
+			       const char *oldrefname,
+			       const char *newrefname,
+			       struct strbuf *err)
+{
+	return the_refs_backend->transaction_rename_reflog(transaction,
+			oldrefname, newrefname, err);
+}
+
+int transaction_commit(struct transaction *transaction, struct strbuf *err)
+{
+	return the_refs_backend->transaction_commit(transaction, err);
+}
+
+void transaction_free(struct transaction *transaction)
+{
+	return the_refs_backend->transaction_free(transaction);
 }

@@ -2950,14 +2950,14 @@ struct transaction {
 	enum transaction_state state;
 };
 
-struct transaction *transaction_begin(struct strbuf *err)
+static struct transaction *files_transaction_begin(struct strbuf *err)
 {
 	assert(err);
 
 	return xcalloc(1, sizeof(struct transaction));
 }
 
-void transaction_free(struct transaction *transaction)
+static void files_transaction_free(struct transaction *transaction)
 {
 	int i;
 
@@ -2989,7 +2989,7 @@ static struct ref_update *add_update(struct transaction *transaction,
 	return update;
 }
 
-int transaction_update_reflog(struct transaction *transaction,
+static int files_transaction_update_reflog(struct transaction *transaction,
 			      const char *refname,
 			      const unsigned char *new_sha1,
 			      const unsigned char *old_sha1,
@@ -3041,7 +3041,7 @@ int transaction_update_reflog(struct transaction *transaction,
 	return 0;
 }
 
-int transaction_rename_reflog(struct transaction *transaction,
+static int files_transaction_rename_reflog(struct transaction *transaction,
 			      const char *oldrefname,
 			      const char *newrefname,
 			      struct strbuf *err)
@@ -3049,7 +3049,7 @@ int transaction_rename_reflog(struct transaction *transaction,
 	struct ref_update *update;
 
 	if (transaction->state != TRANSACTION_OPEN)
-		die("BUG: transaction_replace_reflog called for transaction "
+		die("BUG: transaction_rename_reflog called for transaction "
 		    "that is not open");
 
 	update = add_update(transaction, newrefname, UPDATE_LOG);
@@ -3062,7 +3062,7 @@ int transaction_rename_reflog(struct transaction *transaction,
 	return 0;
 }
 
-int transaction_update_ref(struct transaction *transaction,
+static int files_transaction_update_ref(struct transaction *transaction,
 			   const char *refname,
 			   const unsigned char *new_sha1,
 			   const unsigned char *old_sha1,
@@ -3097,7 +3097,7 @@ int transaction_update_ref(struct transaction *transaction,
 	return 0;
 }
 
-int transaction_create_ref(struct transaction *transaction,
+static int files_transaction_create_ref(struct transaction *transaction,
 			   const char *refname,
 			   const unsigned char *new_sha1,
 			   int flags, const char *msg,
@@ -3107,7 +3107,7 @@ int transaction_create_ref(struct transaction *transaction,
 				      null_sha1, flags, 1, msg, err);
 }
 
-int transaction_delete_ref(struct transaction *transaction,
+static int files_transaction_delete_ref(struct transaction *transaction,
 			   const char *refname,
 			   const unsigned char *old_sha1,
 			   int flags, int have_old, const char *msg,
@@ -3145,8 +3145,8 @@ static int ref_update_reject_duplicates(struct ref_update **updates, int n,
 	return 0;
 }
 
-int transaction_commit(struct transaction *transaction,
-		       struct strbuf *err)
+static int files_transaction_commit(struct transaction *transaction,
+				    struct strbuf *err)
 {
 	int ret = 0, i, need_repack = 0;
 	int num_updates = 0;
@@ -3476,3 +3476,16 @@ cleanup:
 	string_list_clear(&refs_to_delete, 0);
 	return ret;
 }
+
+struct ref_be refs_be_files = {
+	NULL,
+	"files",
+	files_transaction_begin,
+	files_transaction_update_ref,
+	files_transaction_create_ref,
+	files_transaction_delete_ref,
+	files_transaction_update_reflog,
+	files_transaction_rename_reflog,
+	files_transaction_commit,
+	files_transaction_free,
+};
