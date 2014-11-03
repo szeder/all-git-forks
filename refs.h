@@ -156,6 +156,17 @@ extern int is_branch(const char *refname);
 int is_refname_available(const char *newname, struct string_list *skip);
 
 /*
+ * Check if a refname is safe.
+ * For refs that start with "refs/" we consider it safe as long they do
+ * not try to resolve to outside of refs/.
+ *
+ * For all other refs we only consider them safe iff they only contain
+ * upper case characters and '_' (like "HEAD" AND "MERGE_HEAD", and not like
+ * "config").
+ */
+int refname_is_safe(const char *refname);
+
+/*
  * If refname is a non-symbolic reference that refers to a tag object,
  * and the tag can be (recursively) dereferenced to a non-tag object,
  * store the SHA1 of the referred-to object to sha1 and return 0.  If
@@ -370,7 +381,21 @@ extern int parse_hide_refs_config(const char *var, const char *value, const char
 extern int ref_is_hidden(const char *);
 
 
-/* refs backends */
+/*
+ * refs backends
+ */
+
+/*
+ * Read the gitdb configuration data out of the config file
+ */
+struct gitdb_config_data {
+	char *refs_backend_type;
+	char *db_repo_name;
+	char *db_socket;
+};
+int gitdb_config(const char *var, const char *value, void *ptr);
+
+typedef void (*connect_backend_fn)(void);
 typedef struct transaction *(*transaction_begin_fn)(struct strbuf *err);
 typedef int (*transaction_update_ref_fn)(struct transaction *transaction,
 		const char *refname, const unsigned char *new_sha1,
@@ -436,6 +461,7 @@ typedef int (*for_each_replace_ref_fn)(each_ref_fn fn, void *cb_data);
 struct ref_be {
 	struct ref_be *next;
 	const char *name;
+	connect_backend_fn connect_backend;
 	transaction_begin_fn transaction_begin;
 	transaction_update_ref_fn transaction_update_ref;
 	transaction_create_ref_fn transaction_create_ref;
@@ -469,6 +495,8 @@ struct ref_be {
 
 
 extern struct ref_be refs_be_files;
+extern struct ref_be refs_be_db;
 int set_refs_backend(const char *name);
+void register_refs_backend(struct ref_be *be);
 
 #endif /* REFS_H */

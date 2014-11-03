@@ -63,6 +63,9 @@ int merge_log_config = -1;
 int precomposed_unicode = -1; /* see probe_utf8_pathname_composition() */
 struct startup_info *startup_info;
 unsigned long pack_size_limit_cfg;
+const char *db_repo_name;
+const char *db_socket;
+const char *refs_backend_type;
 
 /*
  * The character that begins a commented line in user-editable file

@@ -98,6 +98,12 @@ static struct option builtin_clone_options[] = {
 		   N_("separate git dir from working tree")),
 	OPT_STRING_LIST('c', "config", &option_config, N_("key=value"),
 			N_("set config inside the new repository")),
+	OPT_STRING(0, "db-repo-name", &db_repo_name, N_("reponame"),
+		   N_("name of repository in the multi-repo database")),
+	OPT_STRING(0, "db-socket", &db_socket, N_("socket"),
+		   N_("socket to connect to the database")),
+	OPT_STRING(0, "refs-backend-type", &refs_backend_type,
+		   N_("name"), N_("name of backend type to use")),
 	OPT_END()
 };
 

@@ -10,6 +10,7 @@
 #include "exec_cmd.h"
 #include "strbuf.h"
 #include "quote.h"
+#include "refs.h"
 #include "hashmap.h"
 #include "string-list.h"
 
@@ -1192,6 +1193,24 @@ int git_config_early(config_fn_t fn, void *data, const char *repo_config)
 	}
 
 	if (repo_config && !access_or_die(repo_config, R_OK, 0)) {
+		struct gitdb_config_data gitdb_data = {NULL, NULL, NULL};
+
+		/*
+		 * make sure we always read the backend config from the
+		 * core section on startup
+		 */
+		ret += git_config_from_file(gitdb_config, repo_config,
+					    &gitdb_data);
+
+		if (gitdb_data.db_repo_name && gitdb_data.db_socket &&
+		    gitdb_data.refs_backend_type) {
+			refs_backend_type = gitdb_data.refs_backend_type;
+			db_repo_name = gitdb_data.db_repo_name;
+			db_socket = gitdb_data.db_socket;
+			register_refs_backend(&refs_be_db);
+			set_refs_backend(refs_backend_type);
+		}
+
 		ret += git_config_from_file(fn, repo_config, data);
 		found += 1;
 	}

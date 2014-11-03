@@ -14,6 +14,8 @@ SYNOPSIS
 	  [-o <name>] [-b <name>] [-u <upload-pack>] [--reference <repository>]
 	  [--separate-git-dir <git dir>]
 	  [--depth <depth>] [--[no-]single-branch]
+	  [--refs-backend-type=<name> --db-repo-name=<repo>
+	   --db-socket=<database socket>]
 	  [--recursive | --recurse-submodules] [--] <repository>
 	  [<directory>]
 
@@ -209,6 +211,19 @@ objects from the source repository into a pack in the cloned repository.
 	The result is Git repository can be separated from working
 	tree.
 
+--refs-backend-type=<name>::
+Type of refs backend. Default is to use the original files based backend.
+Set to "db" to activate the tdb database backend.
+
+--db-repo-name=<repo name>::
+This argument specifies the name of this repository when refs are stored in
+a database. This allows multiple git repositories to store their refs in the
+same database as long as all rtepositories are named differently.
+
+--db-socket=<database socket>::
+With this option git will use an external daemon for all refs operations.
+This argument provides the name of the unix domain socket to use for accessing
+the refs daemon.
 
 <repository>::
 	The (possibly remote) repository to clone from.  See the
