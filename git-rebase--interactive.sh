@@ -149,6 +149,7 @@ EOF
 }
 
 make_patch () {
+	nrm "make_patch $@"
 	sha1_and_parents="$(git rev-list --parents -1 "$1")"
 	case "$sha1_and_parents" in
 	?*' '?*' '?*)
@@ -168,6 +169,7 @@ make_patch () {
 }
 
 die_with_patch () {
+	nrm "die_with_patch $@"
 	echo "$1" > "$state_dir"/stopped-sha
 	make_patch "$1"
 	git rerere
@@ -175,6 +177,7 @@ die_with_patch () {
 }
 
 exit_with_patch () {
+	nrm "exit_with_patch $@"
 	echo "$1" > "$state_dir"/stopped-sha
 	make_patch $1
 	git rev-parse --verify HEAD > "$amend"
@@ -240,6 +243,7 @@ pick_one () {
 		pick_one_preserving_merges "$@"
 		return
 	fi
+	nrm "pick_one $@"
 
 	ff=--ff
 
@@ -258,6 +262,7 @@ pick_one () {
 }
 
 pick_one_preserving_merges () {
+	nrm "pick_one_preserving_merges $@"
 	fast_forward=t
 	case "$1" in
 	-n)
@@ -285,16 +290,19 @@ pick_one_preserving_merges () {
 		if test -f "$rewritten"/$p
 		then
 			new_p=$(cat "$rewritten"/$p)
+			nrm_comment "Process parent $p -- $new_p"
 
-			# If rewrite is empty, this is a dropped commit. Use its (possibly rewritten) parent commit
+			# If rewrite is empty, this is a dropped or moved commit. Use its (possibly rewritten) parent commit
 			if test -z "$new_p"
 			then
 				replacement="$(git rev-list --parents -1 $p | cut -d' ' -s -f2)"
 				test -z "$replacement" && replacement=root
 				pend=" $replacement$pend"
+
 				continue
 			fi
 		else
+			nrm_comment "Process parent $p -- HEAD"
 			# If the todo reordered commits, and our parent is marked for
 			# rewriting, but hasn't been gotten to yet, assume the user meant to
 			# drop it on top of the current HEAD
@@ -440,6 +448,7 @@ flush_rewritten_pending() {
 		echo "$oldsha1 $newsha1" >> "$rewritten_list"
 		echo $newsha1 >> "$rewritten"/$oldsha1
 
+		test -f "$rewrite_branches_file" &&
 		while read rewrite orig_sha1 rewrite_sha1
 		do
 			git merge-base --is-ancestor $oldsha1 $orig_sha1
@@ -449,7 +458,7 @@ flush_rewritten_pending() {
 				nrm_comment "Update $rewrite $oldsha1 ==> $newsha1"
 			fi
 			echo "$rewrite $orig_sha1 $rewrite_sha1">>"$rewrite_branches_file".new
-		done < "$rewrite_branches_file"
+		done < "$rewrite_branches_file" &&
 		test -f "$rewrite_branches_file".new && mv -f "$rewrite_branches_file".new "$rewrite_branches_file"
 	done < "$rewritten_pending"
 	rm -f "$rewritten_pending"
@@ -642,6 +651,7 @@ do_next () {
 		  HEAD $head_name
 		;;
 	esac && {
+		test -f "$rewrite_branches_file" &&
 		while read rewrite orig_sha1 rewrite_sha1
 		do
 			rewrite_detail=$(git show-ref $rewrite)
@@ -650,6 +660,7 @@ do_next () {
 				rewrite_detail=$(cut -d' ' -s -f2 <<< $rewrite_detail)
 				case $rewrite_detail in
 				refs/heads/*)
+					# TODO(nmayer): TODO: Check (and warn?) if reference was dropped. $rewrite_sha1==$orig_sha1
 					message="$GIT_REFLOG_ACTION: $rewrite_detail onto $rewrite_sha1" &&
 					git update-ref -m "$message" $rewrite_detail $rewrite_sha1 $orig_sha1 &&
 					nrm_comment "Move $rewrite_detail to $rewrite_sha1"
@@ -956,6 +967,19 @@ orig_head=$(git rev-parse --verify HEAD) || die "No HEAD?"
 mkdir -p "$state_dir" || die "Could not create temporary $state_dir"
 mkdir "$rewritten" || die "Could not init rewritten directory"
 
+shorthead=$(git rev-parse --short $orig_head)
+shortonto=$(git rev-parse --short $onto)
+if test -z "$rebase_root"
+	# this is now equivalent to ! -z "$upstream"
+then
+	shortrevisions=$shortupstream..$shorthead
+else
+	upstrem=$onto
+	shortrevisions=$shorthead
+fi
+revisions=$upstream...$orig_head
+shortupstream=$(git rev-parse --short $upstream)
+
 : > "$state_dir"/interactive || die "Could not mark as interactive"
 write_basic_state
 if test t = "$preserve_merges"
@@ -964,32 +988,15 @@ then
 	then
 		for c in $(git merge-base --all $orig_head $upstream)
 		do
+			nrm_comment "$c ==> $onto"
 			echo $onto > "$rewritten"/$c ||
 				die "Could not init rewritten commits"
 		done
-	else
-		echo $onto > "$rewritten"/root ||
-			die "Could not init rewritten commits"
 	fi
-	# No cherry-pick because our first pass is to determine
-	# parents to rewrite and skipping dropped commits would
-	# prematurely end our probe
+
 	merges_option=
 else
 	merges_option="--no-merges"
-fi
-
-shorthead=$(git rev-parse --short $orig_head)
-shortonto=$(git rev-parse --short $onto)
-if test -z "$rebase_root"
-	# this is now equivalent to ! -z "$upstream"
-then
-	shortupstream=$(git rev-parse --short $upstream)
-	revisions=$upstream...$orig_head
-	shortrevisions=$shortupstream..$shorthead
-else
-	revisions=$onto...$orig_head
-	shortrevisions=$shorthead
 fi
 
 for rewrite in $rewrite_branches
@@ -997,17 +1004,20 @@ do
 	rewrite_sha1="$(git rev-parse $rewrite)"
 	test $? -ne 0 && exit 1
 	revisions="$revisions $upstream...$rewrite_sha1"
-	# If this is a named branch, add it to our rewrite list
-	test 0 -eq 0 &&
+
+	# Keep a list of rewritten branches to move refs on after rebase complete
 	echo "$rewrite" "$rewrite_sha1" "" >> "$rewrite_branches_file"
 
-	# TODO(nmayer): Unify with parent parsing logic in pick_one_preserving_merges
-	parents="$(git rev-list --parents -1 $rewrite_sha1 | cut -d' ' -s -f2-)"
-	for p in $parents
-	do
-		echo $onto > "$rewritten"/$p ||
-			die "Could not init rewritten commits"
-	done
+	# Mark merge-base(s) of rewritten branches to the upstream sha1
+	if test t = "$preserve_merges"
+	then
+		for c in $(git merge-base --all $rewrite_sha1 $upstream)
+		do
+			nrm_comment "$c ==> $onto"
+			echo $onto > "$rewritten"/$c ||
+				die "Could not init rewritten commits"
+		done
+	fi
 done
 
 lastsha1=
@@ -1028,6 +1038,7 @@ do
 		comment_out=
 	fi
 
+	relevant=t
 	if test t = "$preserve_merges"
 	then
 		# If we've switched parents we'll add a note in todo to make it more obvious this isn't linear
@@ -1043,16 +1054,29 @@ do
 			esac
 		fi
 		lastsha1=$sha1
+
+		# Note which commits have been rewritten thus far. If we encounter something whose parents haven't been marked
+		# don't include it in the todo list. It is on a branch that was merged in and doesn't need to be modified
+		relevant=f
+		for p in $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)
+		do
+			if test -f "$rewritten"/$p
+			then
+				relevant=t
+				break
+			fi
+		done
 	fi
 
-	if test $cherry_type = '='
+	if test t = $relevant
 	then
-		# We'll want to treat SHA1s that got dropped as a result of a cherry pick as a rewrite. Add a empty
-		# rewrite so we know this is the case and can look up the proper rewrite SHA1 post rebase.
-		sha1=$(git rev-parse $shortsha1)
+		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 		touch "$rewritten"/$sha1
+	else
+		nrm_comment "Skipping meaningless commit $shortsha1 $rest"
+		# Have the sha1 rewrite to itself to indicate it isn't changing
+		echo $sha1 > "$rewritten"/$sha1
 	fi
-	printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 done
 
 test -s "$todo" || echo noop >> "$todo"
