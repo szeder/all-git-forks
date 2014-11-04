@@ -641,39 +641,43 @@ do_next () {
 	test -s "$todo" && return
 
 	comment_for_reflog finish &&
-	newhead=$(git rev-parse HEAD) &&
-	case $head_name in
-	refs/*)
-		message="$GIT_REFLOG_ACTION: $head_name onto $onto" &&
-		git update-ref -m "$message" $head_name $newhead $orig_head &&
-		git symbolic-ref \
-		  -m "$GIT_REFLOG_ACTION: returning to $head_name" \
-		  HEAD $head_name
-		;;
-	esac && {
-		test -f "$rewrite_branches_file" &&
-		while read rewrite orig_sha1 rewrite_sha1
-		do
-			rewrite_detail=$(git show-ref $rewrite)
-			if test $? -eq 0
-			then
-				rewrite_detail=$(echo "$rewrite_detail" | cut -d' ' -s -f2)
-				case $rewrite_detail in
-				refs/heads/*)
-					# TODO(nmayer): TODO: Check (and warn?) if reference was dropped. $rewrite_sha1==$orig_sha1
-					message="$GIT_REFLOG_ACTION: $rewrite_detail onto $rewrite_sha1" &&
-					git update-ref -m "$message" $rewrite_detail $rewrite_sha1 $orig_sha1 &&
-					nrm_comment "Move $rewrite_detail to $rewrite_sha1"
-					;;
-				*)
-					nrm_comment "Not a branch: $rewrite_detail to $rewrite_sha1"
-					;;
-				esac
-			else
-				nrm_comment "Not a valid ref: $rewrite to $rewrite_sha1"
-			fi
-
-		done < "$rewrite_branches_file"
+	newhead=$(git rev-parse HEAD) && {
+		if test -f "$rewrite_branches_file"
+		then
+			while read rewrite orig_sha1 rewrite_sha1
+			do
+				git show-ref $rewrite | while read current_sha1 rewrite_ref
+				do
+					nrm_comment "Process rewrite $rewrite_ref $current_sha1=$orig_sha1 ==> $rewrite_sha1"
+					case $rewrite_ref in
+					refs/heads/*)
+						if test "$current_sha1" = "$orig_sha1"
+						then
+							nrm_comment "Move $rewrite_ref ==> $orig_sha1 $rewrite_sha1"
+							# TODO(nmayer): TODO: Check (and warn?) if reference was dropped. $rewrite_sha1==$orig_sha1
+							message="$GIT_REFLOG_ACTION: $rewrite_ref onto $rewrite_sha1" &&
+							git update-ref -m "$message" $rewrite_ref $rewrite_sha1 $orig_sha1
+						else
+							nrm_comment "Branch unexpectedly moved during rebase. $current_sha1 != $orig_sha1 ==> $rewrite_sha1"
+						fi
+						;;
+					*)
+						nrm_comment "Not a branch: $rewrite_ref ==> $rewrite_sha1"
+						;;
+					esac
+				done
+			done < "$rewrite_branches_file"
+		else
+			case $head_name in
+			refs/*)
+				message="$GIT_REFLOG_ACTION: $head_name onto $onto" &&
+				git update-ref -m "$message" $head_name $newhead $orig_head &&
+				git symbolic-ref \
+				  -m "$GIT_REFLOG_ACTION: returning to $head_name" \
+				  HEAD $head_name
+				;;
+			esac
+		fi
 	} &&
 	{
 		test ! -f "$state_dir"/verbose ||
