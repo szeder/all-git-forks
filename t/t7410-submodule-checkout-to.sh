@@ -11,24 +11,36 @@ test_expect_success 'setup: make origin' \
 	echo file1 >file1 &&
 	git add file1 &&
 	git commit -m file1 ) &&
+    mkdir -p origin/sub2 && ( cd origin/sub2 && git init &&
+	echo file2 >file2 &&
+	git add file2 &&
+	git commit -m file2 ) &&
     mkdir -p origin/main && ( cd origin/main && git init &&
 	git submodule add ../sub &&
-	git commit -m "add sub" ) &&
-    ( cd origin/sub &&
-	echo file1updated >file1 &&
-	git add file1 &&
-	git commit -m "file1 updated" ) &&
-    ( cd origin/main/sub && git pull ) &&
-    ( cd origin/main &&
-	git add sub &&
-	git commit -m "sub updated" )'
+	git commit -m "add sub" &&
+	git tag main_add_sub &&
+	(cd sub &&
+	    echo file1updated >file1 &&
+	    git commit -m "file1 updated" file1 &&
+	    git push ../../sub HEAD:refs/tags/sub_head ) &&
+	git commit -m "sub updated" sub &&
+	git tag sub_updated &&
+	git submodule deinit sub &&
+	git rm sub &&
+	git submodule add --name sub2 ../sub2 sub &&
+	git commit -m "use sub2" &&
+	(cd sub &&
+	    echo file2updated >file2 &&
+	    git commit -m "file2 updated" file2 &&
+	    git push ../../sub2 HEAD:refs/tags/sub2_head ) &&
+	git commit -m "sub2 updated" sub &&
+	git tag sub2_updated )'
+
+test_expect_success false false
 
 test_expect_success 'setup: clone' \
     'mkdir clone && ( cd clone &&
 	git clone --recursive "$base_path/origin/main")'
-
-rev1_hash_main=$(git --git-dir=origin/main/.git show --pretty=format:%h -q "HEAD~1")
-rev1_hash_sub=$(git --git-dir=origin/sub/.git show --pretty=format:%h -q "HEAD~1")
 
 test_expect_success 'checkout main' \
     'mkdir default_checkout &&
