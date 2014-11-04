@@ -7,10 +7,14 @@
 PS4='+\e[1;31m${BASH_SOURCE}:${LINENO}\e[0m '
 #set -x
 nrm () {
-	echo -e "\e[1;32m$@\e[0m"
+	#echo "$@"
+	#echo -e "\e[1;32m$@\e[0m"
+	return 0
 }
 nrm_comment () {
-	echo -e "\e[33m$@\e[0m"
+	#echo "$@"
+	#echo -e "\e[33m$@\e[0m"
+	return 0
 }
 
 SUBDIRECTORY_OK=Yes

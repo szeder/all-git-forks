@@ -352,7 +352,7 @@ pick_one_preserving_merges () {
 				$merge_args $strategy_args -m "$msg_content" $new_parents'
 			then
 				printf "%s\n" "$msg_content" > "$GIT_DIR"/MERGE_MSG
-				for p in ${new_parents[@]}
+				for p in $new_parents
 				do
 					echo $p>>"$GIT_DIR"/MERGE_HEAD
 				done
@@ -657,7 +657,7 @@ do_next () {
 			rewrite_detail=$(git show-ref $rewrite)
 			if test $? -eq 0
 			then
-				rewrite_detail=$(cut -d' ' -s -f2 <<< $rewrite_detail)
+				rewrite_detail=$(echo "$rewrite_detail" | cut -d' ' -s -f2)
 				case $rewrite_detail in
 				refs/heads/*)
 					# TODO(nmayer): TODO: Check (and warn?) if reference was dropped. $rewrite_sha1==$orig_sha1
@@ -1026,8 +1026,9 @@ git rev-list $merges_option --pretty=oneline --reverse --right-only --topo-order
 while read -r sha1 rest
 do
 	nrm $sha1 $rest
-	cherry_type=${sha1:0:1}
-	sha1=${sha1:1}
+	cherry_type=$(echo "$sha1" | cut -c 1)
+	sha1=$(echo "$sha1" | cut -c 2-)
+
 	shortsha1=$(git rev-parse --short=7 $sha1)
 
 	if test -z "$keep_empty" && ( test $cherry_type = '=' || \
