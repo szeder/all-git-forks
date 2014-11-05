@@ -243,7 +243,6 @@ pick_one () {
 		pick_one_preserving_merges "$@"
 		return
 	fi
-	nrm "pick_one $@"
 
 	ff=--ff
 
@@ -278,19 +277,23 @@ pick_one_preserving_merges () {
 	# rewrite parents; if none were rewritten, we can fast-forward.
 	new_parents=
 	pend=" $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)"
-	if test "$pend" = " "
-	then
-		pend=" root"
-	fi
+
 	while [ "$pend" != "" ]
 	do
 		p=$(expr "$pend" : ' \([^ ]*\)')
 		pend="${pend# $p}"
 
-		if test -f "$rewritten"/$p
+		if test -z "$p"
 		then
+			# No parents
+			if test -n "$rebase_root"
+			then
+				new_p="$onto"
+			fi
+		elif test -f "$rewritten"/$p
+		then
+			# Parent in rewrite list
 			new_p=$(cat "$rewritten"/$p)
-			nrm_comment "Process parent $p -- $new_p"
 
 			# If rewrite is empty, this is a dropped or moved commit. Use its (possibly rewritten) parent commit
 			if test -z "$new_p"
@@ -309,7 +312,7 @@ pick_one_preserving_merges () {
 			new_p=$(git rev-parse HEAD)
 		fi
 
-		test $p != $new_p && fast_forward=f
+		test "$p" != "$new_p" && fast_forward=f
 		case "$new_parents" in
 		*$new_p*)
 			;; # do nothing; that parent is already there
@@ -318,6 +321,7 @@ pick_one_preserving_merges () {
 			;;
 		esac
 	done
+
 
 	case $fast_forward in
 	t)
@@ -708,6 +712,7 @@ do_rest () {
 
 # skip picking commits whose parents are unchanged
 skip_unnecessary_picks () {
+	nrm "skip_unnecessary_picks $@"
 	fd=3
 	while read -r command rest
 	do
@@ -978,7 +983,7 @@ if test -z "$rebase_root"
 then
 	shortrevisions=$shortupstream..$shorthead
 else
-	upstrem=$onto
+	upstream=$onto
 	shortrevisions=$shorthead
 fi
 revisions=$upstream...$orig_head
@@ -1046,31 +1051,37 @@ do
 	relevant=t
 	if test t = "$preserve_merges"
 	then
-		# If we've switched parents we'll add a note in todo to make it more obvious this isn't linear
-		if test -n "$lastsha1"
-		then
-			parents=$(git rev-list -1 --parents $sha1)
-			case "$parents" in
-			*$lastsha1*)
-				;;
-			*)
-				printf '%s\n' "$comment_char -- $(git rev-list -1 --abbrev-commit --abbrev=7 --pretty=oneline $sha1^)" >>"$todo"
-				;;
-			esac
-		fi
-		lastsha1=$sha1
-
 		# Note which commits have been rewritten thus far. If we encounter something whose parents haven't been marked
 		# don't include it in the todo list. It is on a branch that was merged in and doesn't need to be modified
 		relevant=f
+		has_parents=
+		is_descendant=
 		for p in $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)
 		do
+			has_parents=t
 			if test -f "$rewritten"/$p
 			then
 				relevant=t
-				break
+			fi
+
+			if test "$p" = "$lastsha1"
+			then
+				# Note this is a descendant of lastsha1
+				is_descendant=t
 			fi
 		done
+		lastsha1=$sha1
+
+		if test -z "$has_parents" && test -n "$rebase_root"
+		then
+			nrm_comment "Note root"
+			printf '%s\n' "$comment_char -- $(git rev-list -1 --abbrev-commit --abbrev=7 --pretty=oneline $onto)" >>"$todo"
+			relevant=t
+		elif test -z "$is_descendant"
+		then
+			nrm_comment "Note not descendant"
+			printf '%s\n' "$comment_char -- $(git rev-list -1 --abbrev-commit --abbrev=7 --pretty=oneline $sha1^)" >>"$todo"
+		fi
 	fi
 
 	if test t = $relevant
@@ -1118,7 +1129,7 @@ has_action "$todo" ||
 
 expand_todo_ids
 
-test -d "$rewritten" || test -n "$force_rebase" || skip_unnecessary_picks
+test -n "$preserve_merges" || test -n "$force_rebase" || skip_unnecessary_picks
 
 GIT_REFLOG_ACTION="$GIT_REFLOG_ACTION: checkout $onto_name"
 output git checkout $onto || die_abort "could not detach HEAD"

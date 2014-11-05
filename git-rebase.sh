@@ -8,12 +8,12 @@ PS4='+\e[1;31m${BASH_SOURCE}:${LINENO}\e[0m '
 #set -x
 nrm () {
 	#echo "$@"
-	echo -e "\e[1;32m$@\e[0m"
+	#echo -e "\e[1;32m$@\e[0m"
 	return 0
 }
 nrm_comment () {
 	#echo "$@"
-	echo -e "\e[33m$@\e[0m"
+	#echo -e "\e[33m$@\e[0m"
 	return 0
 }
 
@@ -127,6 +127,7 @@ read_basic_state () {
 		allow_rerere_autoupdate="$(cat "$state_dir"/allow_rerere_autoupdate)"
 	test -f "$state_dir"/gpg_sign_opt &&
 		gpg_sign_opt="$(cat "$state_dir"/gpg_sign_opt)"
+	test -f "$state_dir"/rebase_root && rebase_root=t
 }
 
 write_basic_state () {
@@ -142,6 +143,7 @@ write_basic_state () {
 	test -n "$allow_rerere_autoupdate" && echo "$allow_rerere_autoupdate" > \
 		"$state_dir"/allow_rerere_autoupdate
 	test -n "$gpg_sign_opt" && echo "$gpg_sign_opt" > "$state_dir"/gpg_sign_opt
+	test -n "$rebase_root" && : > "$state_dir"/rebase_root
 }
 
 output () {
