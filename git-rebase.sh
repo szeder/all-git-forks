@@ -616,7 +616,7 @@ then
 fi
 
 # If a hook exists, give it a chance to interrupt
-run_pre_rebase_hook "$upstream_arg" "$@"
+run_pre_rebase_hook "$upstream_arg" "$switch_to" "$@"
 
 if test -n "$diffstat"
 then
