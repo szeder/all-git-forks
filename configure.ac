@@ -754,12 +754,41 @@ AC_CHECK_TYPES([struct itimerval],
 [#include <sys/time.h>])
 GIT_CONF_SUBST([NO_STRUCT_ITIMERVAL])
 #
+# Define NO_TIMER_T if you don't have timer_t.
+AC_CHECK_TYPES([timer_t],
+[NO_TIMER_T=],
+[NO_TIMER_T=UnfortunatelyYes],
+[#include <sys/types.h>
+ #include <time.h>])
+GIT_CONF_SUBST([NO_TIMER_T])
+#
+# Define NO_STRUCT_TIMESPEC if you don't have struct timespec.
+AC_CHECK_TYPES([struct timespec],
+[NO_STRUCT_TIMESPEC=],
+[NO_STRUCT_TIMESPEC=UnfortunatelyYes],
+[#include <sys/time.h>])
+GIT_CONF_SUBST([NO_STRUCT_TIMESPEC])
+#
+# Define NO_STRUCT_ITIMERSPEC if you don't have struct itimerspec.
+AC_CHECK_TYPES([struct itimerspec],
+[NO_STRUCT_ITIMERSPEC=],
+[NO_STRUCT_ITIMERSPEC=UnfortunatelyYes],
+[#include <time.h>])
+GIT_CONF_SUBST([NO_STRUCT_ITIMERSPEC])
+#
 # Define NO_D_INO_IN_DIRENT if you don't have d_ino in your struct dirent.
 AC_CHECK_MEMBER(struct dirent.d_ino,
 [NO_D_INO_IN_DIRENT=],
 [NO_D_INO_IN_DIRENT=YesPlease],
 [#include <dirent.h>])
 GIT_CONF_SUBST([NO_D_INO_IN_DIRENT])
+#
+# Define NO_STRUCT_SIGEVENT if you don't have struct sigevent.
+AC_CHECK_TYPES([struct sigevent],
+[NO_STRUCT_SIGEVENT=],
+[NO_STRUCT_SIGEVENT=UnfortunatelyYes],
+[#include <signal.h>])
+GIT_CONF_SUBST([NO_STRUCT_SIGEVENT])
 #
 # Define NO_D_TYPE_IN_DIRENT if your platform defines DT_UNKNOWN but lacks
 # d_type in struct dirent (latest Cygwin -- will be fixed soonish).
@@ -916,6 +945,14 @@ GIT_CHECK_FUNC(setitimer,
 [NO_SETITIMER=],
 [NO_SETITIMER=YesPlease])
 GIT_CONF_SUBST([NO_SETITIMER])
+#
+# Define NO_TIMER_SETTIME if you don't have timer_settime
+GIT_CHECK_FUNC(timer_settime,
+[NO_TIMER_SETTIME=],
+[AC_SEARCH_LIBS(timer_settime,[rt],
+  [NO_TIMER_SETTIME=],
+  [NO_TIMER_SETTIME=YesPlease])])
+GIT_CONF_SUBST([NO_TIMER_SETTIME])
 #
 # Define NO_STRCASESTR if you don't have strcasestr.
 GIT_CHECK_FUNC(strcasestr,
