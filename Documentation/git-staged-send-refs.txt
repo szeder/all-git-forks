@@ -1,0 +1,70 @@
+git-staged-send-refs(1)
+=======================
+
+NAME
+----
+git-staged-send-refs - Send ref updates over Git protocol to (multiple) other repositories
+
+
+SYNOPSIS
+--------
+[verse]
+'git staged-send-refs' [--list] [--unstage [<repository-url>]]
+		[--staged-receive-refs=<git-staged-receive-refs>] [--verbose]
+		[--atomic-push-per-repo] [--atomic-push-all]
+
+DESCRIPTION
+-----------
+This command is part of the supprot for performing atomic pushes/updates
+across multiple repositories on the same server. Repositories are staged
+for updates using the 'git push --staged-push' command and recorded in a
+~/.gitstaging file for each user.
+
+Once one or more remote repositories have been staged for update this command
+is used to push and update all the refs that are staged. By default the command
+will try to update every repository and every ref individually and the command
+will report which repositories/refs was successfully updated and which
+failed to update with the reason for the failure. This behaviour can be changed
+using the --atomic-push-per-repo and --atomic-push-all arguments.
+
+OPTIONS
+-------
+--staged-receive-refs=<git-staged-receive-refs>::
+	Path to the 'git-staged-receive-refs' program on the remote
+	end.  Sometimes useful when pushing to a remote
+	repository over ssh, and you do not have the program in
+	a directory on the default $PATH.
+
+--exec=<git-staged-receive-refs>::
+	Same as \--staged-receive-refs=<git-staged-receive-refs>.
+
+--verbose::
+	Run verbosely.
+
+--list::
+	Show the current content of the staging area. This command will list
+	all repositories that are staged for update and for each repository
+	it will show all the refs that will be updated.
+
+--unstage [<respository-url>]::
+	The unstage command is used to remove a previously staged
+	repository from the staging area. When used without specifying
+	a repository-url then all staged staged repositories will be removed.
+
+--atomic-push-all::
+	If the staging area contains multiple remote repositories, then
+	perform the ref update for all repositories as one single atomic
+	transaction. I.e. only perform the update if it can be applied
+	successfully for all repositories and all refs. If any repository
+	or ref fails then no update will be performed.
+
+--atomic-push-per-repo::
+	If the staging area contains multiple remote repositories, then
+	update each repository independently as a transaction.
+	In this more each individual repostirory will either succeed or fail
+	to update independently of any other repositories.
+
+
+GIT
+---
+Part of the linkgit:git[1] suite

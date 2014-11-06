@@ -6,12 +6,16 @@
 #include "run-command.h"
 #include "remote.h"
 #include "connect.h"
+#include "lockfile.h"
 #include "send-pack.h"
 #include "quote.h"
 #include "transport.h"
 #include "version.h"
 #include "sha1-array.h"
 #include "gpg-interface.h"
+#include "staged-send-refs.h"
+
+static struct lock_file staging_lock;
 
 static int feed_object(const unsigned char *sha1, int fd, int negative)
 {
@@ -105,7 +109,7 @@ static int pack_objects(int fd, struct ref *refs, struct sha1_array *extra, stru
 	return 0;
 }
 
-static int receive_status(int in, struct ref *refs)
+static int receive_status(int in, struct ref *refs, int skip_prefix)
 {
 	struct ref *hint;
 	int ret = 0;
@@ -129,7 +133,7 @@ static int receive_status(int in, struct ref *refs)
 			break;
 		}
 
-		refname = line + 3;
+		refname = line + 3 + skip_prefix;
 		msg = strchr(refname, ' ');
 		if (msg)
 			*msg++ = '\0';
@@ -306,6 +310,9 @@ int send_pack(struct send_pack_args *args, const char *url,
 	int ret, atomic_push_failed = 0;
 	struct async demux;
 	const char *push_cert_nonce = NULL;
+	struct strbuf user_path = STRBUF_INIT;
+	int skip_prefix = 0;
+	struct staged_repo *repo_list = NULL, *repo = NULL;
 
 	/* Does the other end support the reporting? */
 	if (server_supports("report-status"))
@@ -406,11 +413,36 @@ int send_pack(struct send_pack_args *args, const char *url,
 		return -1;
 	}
 
+	if (!args->dry_run && args->use_staged_push) {
+		unsigned char xor_sha1[20];
+		int i;
+
+		assert(url);
+
+		if (lock_staging_file_for_update(&staging_lock)) {
+			fprintf(stderr, "Failed to lock staging file\n");
+			return -1;
+		}
+		repo_list = read_staging_file(&staging_lock);
+		repo = add_staged_repo(&repo_list, url);
+
+		for (ref = remote_refs; ref; ref = ref->next)
+			for (i = 0; i < 20; i++) {
+				xor_sha1[i] ^= ref->new_sha1[i];
+				xor_sha1[i] ^= ref->old_sha1[i];
+			}
+
+		strbuf_addf(&user_path, "refs/hidden/staging/%lu/%s/",
+			    time(NULL), sha1_to_hex(xor_sha1));
+		skip_prefix = user_path.len;
+	}
+
 	/*
 	 * Finally, tell the other end!
 	 */
 	for (ref = remote_refs; ref; ref = ref->next) {
 		char *old_hex, *new_hex;
+		struct strbuf refname = STRBUF_INIT;
 
 		if (args->dry_run || args->push_cert)
 			continue;
@@ -418,19 +450,32 @@ int send_pack(struct send_pack_args *args, const char *url,
 		if (!ref_update_to_be_sent(ref, args, NULL))
 			continue;
 
+		if (args->use_staged_push)
+			strbuf_addf(&refname, "%s", user_path.buf);
+		strbuf_addf(&refname, "%s", ref->name);
+
+		if (args->use_staged_push) {
+			add_staged_ref(repo, ref->name,
+				       ref->old_sha1, ref->new_sha1);
+			add_staged_ref(repo, refname.buf,
+				       ref->new_sha1, null_sha1);
+		}
+
 		old_hex = sha1_to_hex(ref->old_sha1);
 		new_hex = sha1_to_hex(ref->new_sha1);
 		if (!cmds_sent) {
 			packet_buf_write(&req_buf,
 					 "%s %s %s%c%s",
-					 old_hex, new_hex, ref->name, 0,
+					 old_hex, new_hex, refname.buf, 0,
 					 cap_buf.buf);
 			cmds_sent = 1;
 		} else {
 			packet_buf_write(&req_buf, "%s %s %s",
-					 old_hex, new_hex, ref->name);
+					 old_hex, new_hex, refname.buf);
 		}
+		strbuf_release(&refname);
 	}
+	strbuf_release(&user_path);
 
 	if (args->stateless_rpc) {
 		if (!args->dry_run && (cmds_sent || is_repository_shallow())) {
@@ -475,7 +520,7 @@ int send_pack(struct send_pack_args *args, const char *url,
 		packet_flush(out);
 
 	if (status_report && cmds_sent)
-		ret = receive_status(in, remote_refs);
+		ret = receive_status(in, remote_refs, skip_prefix);
 	else
 		ret = 0;
 	if (args->stateless_rpc)
@@ -491,6 +536,14 @@ int send_pack(struct send_pack_args *args, const char *url,
 
 	if (ret < 0)
 		return ret;
+
+	if (!args->dry_run && args->use_staged_push) {
+		if (write_staging_file(&staging_lock, repo_list)) {
+			fprintf(stderr, "Failed to commit staging file\n");
+			return -1;
+		}
+		free_staged_repo_list(repo_list);
+	}
 
 	if (args->porcelain)
 		return 0;

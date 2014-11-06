@@ -467,6 +467,8 @@ static struct cmd_struct commands[] = {
 	{ "show-branch", cmd_show_branch, RUN_SETUP },
 	{ "show-ref", cmd_show_ref, RUN_SETUP },
 	{ "stage", cmd_add, RUN_SETUP | NEED_WORK_TREE },
+	{ "staged-receive-refs", cmd_staged_receive_refs},
+	{ "staged-send-refs", cmd_staged_send_refs, RUN_SETUP},
 	{ "status", cmd_status, RUN_SETUP | NEED_WORK_TREE },
 	{ "stripspace", cmd_stripspace },
 	{ "symbolic-ref", cmd_symbolic_ref, RUN_SETUP },

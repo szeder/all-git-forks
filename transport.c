@@ -834,6 +834,7 @@ static int git_transport_push(struct transport *transport, struct ref *remote_re
 	args.porcelain = !!(flags & TRANSPORT_PUSH_PORCELAIN);
 	args.push_cert = !!(flags & TRANSPORT_PUSH_CERT);
 	args.use_atomic_push = !!(flags & TRANSPORT_ATOMIC_PUSH);
+	args.use_staged_push = !!(flags & TRANSPORT_STAGED_PUSH);
 	args.url = transport->url;
 
 	ret = send_pack(&args, transport->url, data->fd, data->conn,

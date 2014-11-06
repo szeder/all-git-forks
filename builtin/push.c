@@ -520,6 +520,8 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 		OPT_BIT(0, "signed", &flags, N_("GPG sign the push"), TRANSPORT_PUSH_CERT),
 		OPT_BIT(0, "atomic-push", &flags, N_("use atomic push, if available"),
 			TRANSPORT_ATOMIC_PUSH),
+		OPT_BIT(0, "staged-push", &flags, N_("do a staged push"),
+			TRANSPORT_STAGED_PUSH),
 		OPT_END()
 	};
 
