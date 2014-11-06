@@ -31,7 +31,7 @@ q,quiet!           be quiet. implies --no-stat
 autostash!         automatically stash/stash pop before and after
 fork-point         use 'merge-base --fork-point' to refine upstream
 onto=!             rebase onto given branch instead of upstream
-p,preserve-merges! try to recreate merges instead of ignoring them
+p,preserve-merges! try to recreate merges & branches instead of ignoring them
 s,strategy=!       use the given merge strategy
 no-ff!             cherry-pick all commits, even if unchanged
 m,merge!           use merging strategies to rebase

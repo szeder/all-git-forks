@@ -52,11 +52,11 @@ test_commits_equal() {
     done
 }
 
-# a---b---c      ONE
+# a---b---c             ONE
 #          \
-#           g    TWO
+#           g           TWO
 #            \
-#             h  THREE
+#             h         THREE
 #
 test_expect_success 'rebase two linear branches' '
     reset_rebase &&
@@ -68,11 +68,11 @@ test_expect_success 'rebase two linear branches' '
     '
 
 #
-#           c       THREE
+#           c           THREE
 #          /
-# a---b---d         ONE
+# a---b---d             ONE
 #          \
-#           e---f   TWO
+#           e---f       TWO
 #
 test_expect_success 'rebase two forked branches preserving branches' '
     reset_rebase &&
@@ -84,11 +84,11 @@ test_expect_success 'rebase two forked branches preserving branches' '
     '
 
 #
-# a---b---d         ONE
+# a---b---d             ONE
 #          \
-#           e---f   TWO
+#           e---f       TWO
 #                \
-#                 c THREE
+#                 c     THREE
 #
 test_expect_success 'rebase two forked branches TWO THREE' '
     reset_rebase &&
@@ -101,11 +101,11 @@ test_expect_success 'rebase two forked branches TWO THREE' '
     '
 
 #
-# a---b---d         ONE
+# a---b---d             ONE
 #          \
-#           c       THREE
+#           c           THREE
 #            \
-#             e---f TWO
+#             e---f     TWO
 #
 test_expect_success 'rebase two forked branches THREE TWO' '
     reset_rebase &&
@@ -116,5 +116,22 @@ test_expect_success 'rebase two forked branches THREE TWO' '
     test_commits_equal d ONE TWO~3 THREE~1
     '
 
+#
+#           c           TWO
+#          /
+# a---d---b             ONE
+#          \
+#           e---f       THREE
+
+test_expect_success 'swap fork preserving branches' '
+    reset_rebase &&
+    git branch -f ONE d &&
+    git branch -f TWO c &&
+    git branch -f THREE f &&
+    git --no-pager log --oneline --graph --decorate ONE TWO THREE &&
+    set_fake_editor &&
+    FAKE_LINES="2 1 3 4 5" git rebase -i -p a ONE TWO THREE &&
+    git --no-pager log --oneline --graph --decorate ONE TWO THREE
+    '
 
 test_done
