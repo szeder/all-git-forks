@@ -28,13 +28,23 @@ char *resolve_ambig(char *name){
 			int i=0;
 			file_list aux = result->file_info;
 			while(aux!=NULL){
-				printf("%d | %s\n",i,aux->file_path);
 				i++;
 				aux = aux->next;
 			}
+			aux = result->file_info;
+			if (i>1) {
+				printf("Has found more than one path for file or folder '%s'\n",name);
+				printf("Select one [0 - %d] and press ENTER\n",i-1);
+				i = 0;
+				while(aux!=NULL){
+					printf("%d | %s\n",i,aux->file_path);
+					i++;
+					aux = aux->next;
+				}
+			}
 			if(i==1){
 				aux = result->file_info;
-				printf("+ Selected unique file\n");
+				printf("+ Selected file '%s'\n",aux->file_path);
 				file_path = format_string(aux->file_path);
 			}else{
 				char *opt = (char *) malloc(10);
@@ -53,7 +63,7 @@ char *resolve_ambig(char *name){
 						j++;
 					}
 					file_path = format_string(aux->file_path);
-					printf("+ Selected file %s\n",aux->file_path);
+					printf("+ Selected file '%s'\n",aux->file_path);
 				}
 			}
 		}
@@ -421,30 +431,36 @@ void rm_link_files(char *id,char *rm){
 void rm_task(char *filter){
 	char *query = NULL;
 	char *fields[] = {TASK_ID,0};
-	query = construct_query(fields,from(TASK_TABLE),strdup(filter),0,0);
+	if(filter!=NULL){
+		query = construct_query(fields,from(TASK_TABLE),strdup(filter),0,0);
+	}else{
+		query = construct_query(fields,from(TASK_TABLE),0,0,0);
+	}
 	generic_list result = exec_query(query);
 	if(result!=NULL){
 		if(result->task_info!=NULL){
 			task_list aux = result->task_info;
-			printf("- Removing task %d ... \n",aux->task_id);
 			//For each task to remove delete asociations and asignations to task
 			while(aux!=NULL){
+				printf("- Removing asignations and asociations to task %d ... \n",aux->task_id);
 				rm_asociations_task(aux->task_id);
 				rm_asignations_task(aux->task_id);
- 				aux=aux->next;
-
+				printf("- Task %d prepared to be removed\n",aux->task_id);
+				aux=aux->next;
 			}
-			printf("- Task %d prepared to be removed\n",aux->task_id);
 		}
 	}
 	dealloc(result);
 	//Remove all tasks that matched with given filter
 	char *delete = NULL;
-	delete = construct_delete(TASK_TABLE,strdup(filter));
+	if(filter!=NULL){
+		delete = construct_delete(TASK_TABLE,strdup(filter));
+	}else{
+		delete = construct_delete(TASK_TABLE,0);
+	}
 	exec_nonquery(delete);
 	printf("** All selected task removed successfully\n");
 	free(delete);free(filter);free(query);
-	
 }
 
 /* See specification in task_functions.h */

@@ -1,6 +1,4 @@
-0 | /t/gitpro-test/f1
-+ Selected unique file
-+ Asociated file '/t/gitpro-test/f1'
-0 | /t/gitpro-test/f2
-+ Selected unique file
-+ Asociated file '/t/gitpro-test/f2'
++ Selected file '/t/gitpro-test/test_file1'
++ Asociated file '/t/gitpro-test/test_file1'
++ Selected file '/t/gitpro-test/test_file2'
++ Asociated file '/t/gitpro-test/test_file2'

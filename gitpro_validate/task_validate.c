@@ -436,18 +436,21 @@ int rec_search_add_files(struct aux_file add[],int n_files,char *full_path){
 int select_ambig_paths(int number){
 	int i=0;
 	int flag = 0;
+	char home_path[1024];
+	getcwd(home_path,sizeof(home_path));
+	int skip_home_path = strlen(home_path); //Number of characters to be skipped (user home path part to be removed)
 	while(i<number){
 		if(!add_files[i].n_paths){
 			printf("%s does not exists...\n",add_files[i].name);
 			flag=1;
 		}else if(add_files[i].n_paths==1){
-			strcpy(add_files[i].final_path,add_files[i].paths[0]);
+			strcpy(add_files[i].final_path,add_files[i].paths[0]+skip_home_path);
 		}else{
 			printf("Has found more than one path for file or folder '%s'\n",add_files[i].name);
 			printf("Select one [0 - %d] and press ENTER\n",add_files[i].n_paths-1);
 			int j=0;
 			while(j<add_files[i].n_paths){
-				printf("%d | %s\n",j,add_files[i].paths[j]);
+				printf("%d | %s\n",j,add_files[i].paths[j]+skip_home_path);
 				j++;
 			}
 			char *option = (char *) malloc(NUMBER_SIZE);
@@ -460,12 +463,12 @@ int select_ambig_paths(int number){
 					free(option);
 					return INCORRECT_DATA;
 				}
-				strcpy(add_files[i].final_path,add_files[i].paths[select]);
+				strcpy(add_files[i].final_path,add_files[i].paths[select]+skip_home_path);
 			}
 			free(option);
 		}
 		i++;
-	}	
+	}
 	if(flag) return INCORRECT_DATA;
 	else{
 		i=0;

@@ -1,6 +1,6 @@
-Has found more than one path for file or folder 'f3'
+Has found more than one path for file or folder 'test_file3'
 Select one [0 - 1] and press ENTER
-0 | /t/gitpro-test/asoc_test/f3
-1 | /t/gitpro-test/f3
-+ Selected file '/t/gitpro-test/asoc_test/f3'
-+ Asociated file '/t/gitpro-test/f3'
+0 | /t/gitpro-test/asoc_test/test_file3
+1 | /t/gitpro-test/test_file3
++ Selected file '/t/gitpro-test/asoc_test/test_file3'
++ Asociated file '/t/gitpro-test/asoc_test/test_file3'

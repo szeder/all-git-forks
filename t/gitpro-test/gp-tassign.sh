@@ -12,8 +12,8 @@ echo "testing: git task -a"
 cat > "test-data.sql" << \EOF
 INSERT INTO GP_ROL(nombre_rol,crear_rol,asignar_rol,consultar_tarea,asignar_tarea,actualizar_tarea,asociar_archivos,borrar_tarea,crear_tarea,borrar_rol,actualizar_rol) 
 values('EXAMPLE',0,0,1,1,1,1,1,1,1,1);
-INSERT INTO GP_USUARIO(nombre_usuario,nombre_rol_usuario) values ('user1','ALL');
-INSERT INTO GP_USUARIO(nombre_usuario,nombre_rol_usuario) values ('user2','ALL');
+INSERT INTO GP_USUARIO(nombre_usuario,nombre_rol_usuario) values ('user1','EXAMPLE');
+INSERT INTO GP_USUARIO(nombre_usuario,nombre_rol_usuario) values ('user2','EXAMPLE');
 INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
 values (1,'task 1','NEW','my desc','my notes','20/12/2014','21/12/2014',null,null,'HIGH','TEST',12,14);
 INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
@@ -61,7 +61,7 @@ EOF
 cat > "$input/assign003.in" << \EOF
 EOF
 cat > "$output/assign003.out" << \EOF
-Task you're trying to assign doesn't exists
+Task you're trying to assign / deassign doesn't exists
 EOF
 ./launch-test.sh 'git task -a -i 16 --user --add="user1"' 'assign003'
 
@@ -71,7 +71,7 @@ EOF
 cat > "$input/assign004.in" << \EOF
 EOF
 cat > "$output/assign004.out" << \EOF
-Task you're trying to assign doesn't exists
+Task you're trying to assign / deassign doesn't exists
 EOF
 ./launch-test.sh 'git task -a -i 0 --user --add="user1"' 'assign004'
 
@@ -81,7 +81,7 @@ EOF
 cat > "$input/assign005.in" << \EOF
 EOF
 cat > "$output/assign005.out" << \EOF
-Task you're trying to assign doesn't exists
+Task you're trying to assign / deassign doesn't exists
 EOF
 ./launch-test.sh 'git task -a -i -5 --user --add="user1"' 'assign005'
 
@@ -91,7 +91,7 @@ EOF
 cat > "$input/assign006.in" << \EOF
 EOF
 cat > "$output/assign006.out" << \EOF
-User you're trying to assign doesn't exists
+User you're trying to assign / deassign doesn't exists
 EOF
 ./launch-test.sh 'git task -a -i 2 --user --add="inexistent"' 'assign006'
 
@@ -158,7 +158,7 @@ EOF
 cat > "$input/assign010.in" << \EOF
 EOF
 cat > "$output/assign010.out" << \EOF
-Task you're trying to assign doesn't exists
+Task you're trying to assign / deassign doesn't exists
 EOF
 ./launch-test.sh 'git task -a -i 10 --user --rm="user1"' 'assign010'
 
@@ -168,7 +168,7 @@ EOF
 cat > "$input/assign011.in" << \EOF
 EOF
 cat > "$output/assign011.out" << \EOF
-Task you're trying to assign doesn't exists
+Task you're trying to assign / deassign doesn't exists
 EOF
 ./launch-test.sh 'git task -a -i 0 --user --rm="user1"' 'assign011'
 
@@ -178,7 +178,7 @@ EOF
 cat > "$input/assign012.in" << \EOF
 EOF
 cat > "$output/assign012.out" << \EOF
-Task you're trying to assign doesn't exists
+Task you're trying to assign / deassign doesn't exists
 EOF
 ./launch-test.sh 'git task -a -i -3 --user --rm="user1"' 'assign012'
 
@@ -188,7 +188,7 @@ EOF
 cat > "$input/assign013.in" << \EOF
 EOF
 cat > "$output/assign013.out" << \EOF
-User you're trying to assign doesn't exists
+User you're trying to assign / deassign doesn't exists
 EOF
 ./launch-test.sh 'git task -a -i 2 --user --rm="inexistent"' 'assign013'
 

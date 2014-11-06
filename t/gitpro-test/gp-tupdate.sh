@@ -2228,11 +2228,11 @@ cat > "$input/update108.in" << \EOF
 
 
 EOF
-cat > "$output/update107.out" << \EOF
+cat > "$output/update108.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
-./launch-test.sh 'git task -u -d descrip' 'update107'
+./launch-test.sh 'git task -u --desc descrip' 'update108'
 
 # TEST 109 --- update109 --- Update task by notes
 cat > "$input/update109.in" << \EOF

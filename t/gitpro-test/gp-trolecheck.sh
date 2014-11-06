@@ -11,7 +11,7 @@ echo "testing: git task rolecheck"
 cat > "test-data.sql" << \EOF
 INSERT INTO GP_ROL(nombre_rol,crear_rol,asignar_rol,consultar_tarea,asignar_tarea,actualizar_tarea,asociar_archivos,borrar_tarea,crear_tarea,borrar_rol,actualizar_rol) 
 values('NONE',0,0,0,0,0,0,0,0,0,0);
-INSERT INTO GP_USUARIO (nombre_usuario,nombre_rol_usuario) values ('usertest','NONE');
+UPDATE GP_USUARIO SET nombre_rol_usuario='NONE' where nombre_usuario='usertest';
 .quit
 EOF
 ./insert-data.sh

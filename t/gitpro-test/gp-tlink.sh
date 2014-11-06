@@ -23,21 +23,21 @@ values (5,'task 5','REJECTED','my brief desc',null,'30/12/2014','21/12/2014',nul
 .quit
 EOF
 
-cat > "f1" << \EOF
+cat > "test_file1" << \EOF
 file 1
 EOF
 
-cat > "f2" << \EOF
+cat > "test_file2" << \EOF
 file 2
 EOF
 
-cat > "f3" << \EOF
+cat > "test_file3" << \EOF
 file 3
 EOF
 
 mkdir asoc_test
 cd asoc_test
-cat > "f3" << \EOF
+cat > "test_file3" << \EOF
 file 3 bis
 EOF
 cd ..
@@ -53,11 +53,10 @@ chmod +x insert-data.sh
 cat > "$input/link001.in" << \EOF
 EOF
 cat > "$output/link001.out" << \EOF
-0 | /t/gitpro-test/f1
-+ Selected unique file
-+ Asociated file '/t/gitpro-test/f1'
++ Selected file '/t/gitpro-test/test_file1'
++ Asociated file '/t/gitpro-test/test_file1'
 EOF
-./launch-test.sh 'git task -l -i 1 --file --add="f1"' 'link001'
+./launch-test.sh 'git task -l -i 1 --file --add="test_file1"' 'link001'
 
 ./clean-db.sh
 ./insert-data.sh
@@ -67,14 +66,14 @@ cat > "$input/link002.in" << \EOF
 0
 EOF
 cat > "$output/link002.out" << \EOF
-Has found more than one path for file or folder 'f3'
+Has found more than one path for file or folder 'test_file3'
 Select one [0 - 1] and press ENTER
-0 | /t/gitpro-test/asoc_test/f3
-1 | /t/gitpro-test/f3
-+ Selected file '/t/gitpro-test/asoc_test/f3'
-+ Asociated file '/t/gitpro-test/f3'
+0 | /t/gitpro-test/asoc_test/test_file3
+1 | /t/gitpro-test/test_file3
++ Selected file '/t/gitpro-test/asoc_test/test_file3'
++ Asociated file '/t/gitpro-test/asoc_test/test_file3'
 EOF
-./launch-test.sh 'git task -l -i 1 --file --add="f3"' 'link002'
+./launch-test.sh 'git task -l -i 1 --file --add="test_file3"' 'link002'
 
 ./clean-db.sh
 ./insert-data.sh
@@ -82,9 +81,8 @@ EOF
 cat > "$input/link003.in" << \EOF
 EOF
 cat > "$output/link003.out" << \EOF
-0 | /t/gitpro-test/asoc_test
-+ Selected unique file
-+ Asociated file '/t/gitpro-test/asoc_folder'
++ Selected file '/t/gitpro-test/asoc_test'
++ Asociated file '/t/gitpro-test/asoc_test'
 EOF
 ./launch-test.sh 'git task -l -i 1 --file --add="asoc_test"' 'link003'
 
@@ -94,14 +92,12 @@ EOF
 cat > "$input/link004.in" << \EOF
 EOF
 cat > "$output/link004.out" << \EOF
-0 | /t/gitpro-test/f1
-+ Selected unique file
-+ Asociated file '/t/gitpro-test/f1'
-0 | /t/gitpro-test/f2
-+ Selected unique file
-+ Asociated file '/t/gitpro-test/f2'
++ Selected file '/t/gitpro-test/test_file1'
++ Asociated file '/t/gitpro-test/test_file1'
++ Selected file '/t/gitpro-test/test_file2'
++ Asociated file '/t/gitpro-test/test_file2'
 EOF
-./launch-test.sh 'git task -l -i 1 --file --add="f1,f2"' 'link004'
+./launch-test.sh 'git task -l -i 1 --file --add="test_file1,test_file2"' 'link004'
 
 ./clean-db.sh
 ./insert-data.sh
@@ -109,9 +105,9 @@ EOF
 cat > "$input/link005.in" << \EOF
 EOF
 cat > "$output/link005.out" << \EOF
-Task you're trying to link doesn't exists
+Task you're trying to link / unlink doesn't exists
 EOF
-./launch-test.sh 'git task -l -i 15 --file --add="f2"' 'link005'
+./launch-test.sh 'git task -l -i 15 --file --add="test_file2"' 'link005'
 
 ./clean-db.sh
 ./insert-data.sh
@@ -119,9 +115,9 @@ EOF
 cat > "$input/link006.in" << \EOF
 EOF
 cat > "$output/link006.out" << \EOF
-Task you're trying to link doesn't exists
+Task you're trying to link / unlink doesn't exists
 EOF
-./launch-test.sh 'git task -l -i -5 --file --add="f2"' 'link006'
+./launch-test.sh 'git task -l -i -5 --file --add="test_file2"' 'link006'
 
 ./clean-db.sh
 ./insert-data.sh
@@ -129,9 +125,9 @@ EOF
 cat > "$input/link007.in" << \EOF
 EOF
 cat > "$output/link007.out" << \EOF
-Task you're trying to link doesn't exists
+Task you're trying to link / unlink doesn't exists
 EOF
-./launch-test.sh 'git task -l -i 0 --file --add="f2"' 'link007'
+./launch-test.sh 'git task -l -i 0 --file --add="test_file2"' 'link007'
 
 ./clean-db.sh
 ./insert-data.sh
@@ -153,7 +149,7 @@ cat > "$output/link009.out" << \EOF
 inexistent does not exists...
 Incorrect data. Check it all and try again
 EOF
-./launch-test.sh 'git task -l -i 2 --file --add="inexistent,f1"' 'link009'
+./launch-test.sh 'git task -l -i 2 --file --add="inexistent,test_file1"' 'link009'
 
 ./clean-db.sh
 ./insert-data.sh
@@ -164,7 +160,7 @@ cat > "$output/link010.out" << \EOF
 inexistent does not exists...
 Incorrect data. Check it all and try again
 EOF
-./launch-test.sh 'git task -l -i 2 --file --add="f1,inexistent"' 'link010'
+./launch-test.sh 'git task -l -i 2 --file --add="test_file1,inexistent"' 'link010'
 
 ### LINK RM FILES TESTS
 
@@ -198,8 +194,7 @@ EOF
 cat > "$input/link011.in" << \EOF
 EOF
 cat > "$output/link011.out" << \EOF
-0 | ruta1
-+ Selected unique file
++ Selected file 'ruta1'
 - Deasociated file 'ruta1'
 EOF
 ./launch-test.sh 'git task -l -i 1 --file --rm="mytest1"' 'link011'
@@ -228,11 +223,9 @@ EOF
 cat > "$input/link013.in" << \EOF
 EOF
 cat > "$output/link013.out" << \EOF
-0 | ruta2
-+ Selected unique file
++ Selected file 'ruta2'
 - Deasociated file 'ruta2'
-0 | ruta1
-+ Selected unique file
++ Selected file 'ruta1'
 - Deasociated file 'ruta1'
 EOF
 ./launch-test.sh 'git task -l -i 4 --file --rm="mytest2,mytest1"' 'link013'
@@ -243,7 +236,7 @@ EOF
 cat > "$input/link014.in" << \EOF
 EOF
 cat > "$output/link014.out" << \EOF
-Task you're trying to link doesn't exists
+Task you're trying to link / unlink doesn't exists
 EOF
 ./launch-test.sh 'git task -l -i 15 --file --rm="mytest2"' 'link014'
 
@@ -253,7 +246,7 @@ EOF
 cat > "$input/link015.in" << \EOF
 EOF
 cat > "$output/link015.out" << \EOF
-Task you're trying to link doesn't exists
+Task you're trying to link / unlink doesn't exists
 EOF
 ./launch-test.sh 'git task -l -i -5 --file --rm="mytest2"' 'link015'
 
@@ -263,7 +256,7 @@ EOF
 cat > "$input/link016.in" << \EOF
 EOF
 cat > "$output/link016.out" << \EOF
-Task you're trying to link doesn't exists
+Task you're trying to link / unlink doesn't exists
 EOF
 ./launch-test.sh 'git task -l -i 0 --file --rm="mytest2"' 'link016'
 
@@ -273,7 +266,7 @@ EOF
 cat > "$input/link017.in" << \EOF
 EOF
 cat > "$output/link017.out" << \EOF
-File or Folder you're trying to unlink doesn't exists
+File or Folder you're trying to link / unlink doesn't exists
 EOF
 ./launch-test.sh 'git task -l -i 2 --file --rm="inexistent"' 'link017'
 
@@ -283,7 +276,7 @@ EOF
 cat > "$input/link018.in" << \EOF
 EOF
 cat > "$output/link018.out" << \EOF
-File or Folder you're trying to unlink doesn't exists
+File or Folder you're trying to link / unlink doesn't exists
 EOF
 ./launch-test.sh 'git task -l -i 2 --file --rm="inexistent,mytest1"' 'link018'
 
@@ -293,10 +286,10 @@ EOF
 cat > "$input/link019.in" << \EOF
 EOF
 cat > "$output/link019.out" << \EOF
-File or Folder you're trying to unlink doesn't exists
+File or Folder you're trying to link / unlink doesn't exists
 EOF
 ./launch-test.sh 'git task -l -i 2 --file --rm="mytest1,inexistent"' 'link019'
 
 
 rm -r asoc_test
-rm f1 f2 f3
+rm test_file1 test_file2 test_file3
