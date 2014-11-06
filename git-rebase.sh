@@ -443,19 +443,6 @@ then
 	test -z "$interactive_rebase" && interactive_rebase=implied
 fi
 
-if test -n "$interactive_rebase"
-then
-	type=interactive
-	state_dir="$merge_dir"
-elif test -n "$do_merge"
-then
-	type=merge
-	state_dir="$merge_dir"
-else
-	type=am
-	state_dir="$apply_dir"
-fi
-
 if test -z "$rebase_root"
 then
 	case "$#" in
@@ -560,8 +547,7 @@ rewrite_branches=
 if test $# -gt 0
 then
 	test -z "$interactive_rebase" && interactive_rebase=implied
-	rewrite_branches+="$branch_name $@"
-	branch_name=HEAD ;# detach head when doing multi-branch rebase
+	rewrite_branches+="$@"
 	# TODO(nmayer): This can be updated at the beginning of each op to only show the branches this will affect.
 	head_name="$rewrite_branches"
 fi
@@ -574,6 +560,19 @@ then
 	then
 		restrict_revision=$new_upstream
 	fi
+fi
+
+if test -n "$interactive_rebase"
+then
+	type=interactive
+	state_dir="$merge_dir"
+elif test -n "$do_merge"
+then
+	type=merge
+	state_dir="$merge_dir"
+else
+	type=am
+	state_dir="$apply_dir"
 fi
 
 if test "$autostash" = true && ! (require_clean_work_tree) 2>/dev/null

@@ -671,17 +671,16 @@ do_next () {
 					esac
 				done
 			done < "$rewrite_branches_file"
-		else
-			case $head_name in
-			refs/*)
-				message="$GIT_REFLOG_ACTION: $head_name onto $onto" &&
-				git update-ref -m "$message" $head_name $newhead $orig_head &&
-				git symbolic-ref \
-				  -m "$GIT_REFLOG_ACTION: returning to $head_name" \
-				  HEAD $head_name
-				;;
-			esac
 		fi
+
+		# Return to requested named reference
+		case $head_name in
+		refs/*)
+			git symbolic-ref \
+			  -m "$GIT_REFLOG_ACTION: returning to $head_name" \
+			  HEAD $head_name
+			;;
+		esac
 	} &&
 	{
 		test ! -f "$state_dir"/verbose ||
@@ -986,38 +985,29 @@ else
 	upstream=$onto
 	shortrevisions=$shorthead
 fi
-revisions=$upstream...$orig_head
 shortupstream=$(git rev-parse --short $upstream)
 
 : > "$state_dir"/interactive || die "Could not mark as interactive"
 write_basic_state
 if test t = "$preserve_merges"
 then
-	if test -z "$rebase_root"
-	then
-		for c in $(git merge-base --all $orig_head $upstream)
-		do
-			nrm_comment "$c ==> $onto"
-			echo $onto > "$rewritten"/$c ||
-				die "Could not init rewritten commits"
-		done
-	fi
-
 	merges_option=
 else
 	merges_option="--no-merges"
 fi
 
-for rewrite in $rewrite_branches
+lastsha1=
+done_branches=
+for rewrite in $branch_name $rewrite_branches
 do
 	rewrite_sha1="$(git rev-parse $rewrite)"
 	test $? -ne 0 && exit 1
-	revisions="$revisions $upstream...$rewrite_sha1"
 
 	# Keep a list of rewritten branches to move refs on after rebase complete
+	nrm_comment "Mark $rewrite for rewrite"
 	echo "$rewrite" "$rewrite_sha1" "" >> "$rewrite_branches_file"
 
-	# Mark merge-base(s) of rewritten branches to the upstream sha1
+	# Mark merge-base(s) of rewritten branches to the onto sha1
 	if test t = "$preserve_merges"
 	then
 		for c in $(git merge-base --all $rewrite_sha1 $upstream)
@@ -1027,72 +1017,74 @@ do
 				die "Could not init rewritten commits"
 		done
 	fi
-done
 
-lastsha1=
-git rev-list $merges_option --pretty=oneline --reverse --right-only --topo-order \
-	--cherry-mark $revisions ${restrict_revision+^$restrict_revision} |
-while read -r sha1 rest
-do
-	nrm $sha1 $rest
-	cherry_type=$(echo "$sha1" | cut -c 1)
-	sha1=$(echo "$sha1" | cut -c 2-)
+	revisions="$upstream...$rewrite_sha1 $done_branches"
+	done_branches+="^$rewrite_sha1 "
+	nrm_comment "Getting history for $revisions"
+	git rev-list $merges_option --pretty=oneline --reverse --right-only --topo-order \
+		--cherry-mark $revisions ${restrict_revision+^$restrict_revision} |
+	while read -r sha1 rest
+	do
+		nrm $sha1 $rest
+		cherry_type=$(echo "$sha1" | cut -c 1)
+		sha1=$(echo "$sha1" | cut -c 2-)
 
-	shortsha1=$(git rev-parse --short=7 $sha1)
+		shortsha1=$(git rev-parse --short=7 $sha1)
 
-	if test -z "$keep_empty" && ( test $cherry_type = '=' || \
-		(  is_empty_commit $sha1 && ! is_merge_commit $sha1 ) )
-	then
-		comment_out="$comment_char "
-	else
-		comment_out=
-	fi
-
-	relevant=t
-	if test t = "$preserve_merges"
-	then
-		# Note which commits have been rewritten thus far. If we encounter something whose parents haven't been marked
-		# don't include it in the todo list. It is on a branch that was merged in and doesn't need to be modified
-		relevant=f
-		has_parents=
-		is_descendant=
-		for p in $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)
-		do
-			has_parents=t
-			if test -f "$rewritten"/$p
-			then
-				relevant=t
-			fi
-
-			if test "$p" = "$lastsha1"
-			then
-				# Note this is a descendant of lastsha1
-				is_descendant=t
-			fi
-		done
-		lastsha1=$sha1
-
-		if test -z "$has_parents" && test -n "$rebase_root"
+		if test -z "$keep_empty" && ( test $cherry_type = '=' || \
+			(  is_empty_commit $sha1 && ! is_merge_commit $sha1 ) )
 		then
-			nrm_comment "Note root"
-			printf '%s\n' "$comment_char -- $(git rev-list -1 --abbrev-commit --abbrev=7 --pretty=oneline $onto)" >>"$todo"
-			relevant=t
-		elif test -z "$is_descendant"
-		then
-			nrm_comment "Note not descendant"
-			printf '%s\n' "$comment_char -- $(git rev-list -1 --abbrev-commit --abbrev=7 --pretty=oneline $sha1^)" >>"$todo"
+			comment_out="$comment_char "
+		else
+			comment_out=
 		fi
-	fi
 
-	if test t = $relevant
-	then
-		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
-		touch "$rewritten"/$sha1
-	else
-		nrm_comment "Skipping meaningless commit $shortsha1 $rest"
-		# Have the sha1 rewrite to itself to indicate it isn't changing
-		echo $sha1 > "$rewritten"/$sha1
-	fi
+		relevant=t
+		if test t = "$preserve_merges"
+		then
+			# Note which commits have been rewritten thus far. If we encounter something whose parents haven't been marked
+			# don't include it in the todo list. It is on a branch that was merged in and doesn't need to be modified
+			relevant=f
+			has_parents=
+			is_descendant=
+			for p in $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)
+			do
+				has_parents=t
+				if test -f "$rewritten"/$p
+				then
+					relevant=t
+				fi
+
+				if test "$p" = "$lastsha1"
+				then
+					# Note this is a descendant of lastsha1
+					is_descendant=t
+				fi
+			done
+			lastsha1=$sha1
+
+			if test -z "$has_parents" && test -n "$rebase_root"
+			then
+				nrm_comment "Note root"
+				printf '%s\n' "$comment_char -- $(git rev-list -1 --abbrev-commit --abbrev=7 --pretty=oneline $onto)" >>"$todo"
+				relevant=t
+			elif test -z "$is_descendant"
+			then
+				nrm_comment "Note not descendant"
+				printf '%s\n' "$comment_char -- $(git rev-list -1 --abbrev-commit --abbrev=7 --pretty=oneline $sha1^)" >>"$todo"
+			fi
+		fi
+
+		if test t = $relevant
+		then
+			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
+			touch "$rewritten"/$sha1
+		else
+			nrm_comment "Skipping meaningless commit $shortsha1 $rest"
+			# Have the sha1 rewrite to itself to indicate it isn't changing
+			echo $sha1 > "$rewritten"/$sha1
+		fi
+	done
 done
 
 test -s "$todo" || echo noop >> "$todo"
