@@ -1349,7 +1349,9 @@ static void git_imap_config(void)
 	git_config_get_string("imap.authmethod", &server.auth_method);
 }
 
-static int append_msgs_to_imap(struct imap_server_conf *server, struct strbuf* all_msgs, int total) {
+static int append_msgs_to_imap(struct imap_server_conf *server,
+			       struct strbuf* all_msgs, int total)
+{
 	struct strbuf msg = STRBUF_INIT;
 	struct imap_store *ctx = NULL;
 	int ofs = 0;
@@ -1446,17 +1448,19 @@ static int curl_append_msgs_to_imap(struct imap_server_conf *server, struct strb
 	fprintf(stderr, "sending %d message%s\n", total, (total != 1) ? "s" : "");
 	while (1) {
 		unsigned percent = n * 100 / total;
+		int prev_len;
 
 		fprintf(stderr, "%4u%% (%d/%d) done\r", percent, n, total);
 
-		int prev_len = msgbuf.buf.len;
+		prev_len = msgbuf.buf.len;
 		if (!split_msg(all_msgs, &msgbuf.buf, &ofs))
 			break;
 		if (server->use_html)
 			wrap_in_html(&msgbuf.buf);
 		lf_to_crlf(&msgbuf.buf);
 
-		curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)(msgbuf.buf.len-prev_len));
+		curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE,
+				 (curl_off_t)(msgbuf.buf.len-prev_len));
 
 		res = curl_easy_perform(curl);
 
