@@ -27,7 +27,14 @@ line3
 line4
 line5
 EOF
-t_git add file file2
+cat >"$TEST_DIR/file3" <<EOF
+line1
+line2
+line3
+line4
+line5
+EOF
+t_git add file file2 file3
 t_git commit -m 'lines added, file2 added'
 cat >"$TEST_DIR/file2" <<EOF
 line1
@@ -36,6 +43,14 @@ line3 line4
 line5
 EOF
 t_git commit -m '-newline' file2
+cat >"$TEST_DIR/file3" <<EOF
+line1
+line2
+ line3
+line4
+line5
+EOF
+t_git commit -m 'change indent' file3
 
 echo "Run GIT_DIR=$TEST_DIR/.git ./gitk"
 
