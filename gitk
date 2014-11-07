@@ -8297,6 +8297,7 @@ proc hunkfilter_resolve_pending {} {
 proc hunkfilter_flush {ids} {
     global hunkfilter_data
 
+    hunkfilter_resolve_pending
     set num_old [dict get $hunkfilter_data num_old]
     set num_new [dict get $hunkfilter_data num_new]
     set num_pass [dict get $hunkfilter_data num_pass]
