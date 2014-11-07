@@ -274,10 +274,9 @@ pick_one_preserving_merges () {
 	esac
 	sha1=$(git rev-parse $sha1) || die "Invalid commit name: $sha1"
 
-	# rewrite parents; if none were rewritten, we can fast-forward.
+	# Get new parents; if none were rewritten, we can fast-forward.
 	new_parents=
 	pend=" $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)"
-
 	while [ "$pend" != "" ]
 	do
 		p=$(expr "$pend" : ' \([^ ]*\)')
@@ -301,6 +300,12 @@ pick_one_preserving_merges () {
 				replacement="$(git rev-list --parents -1 $p | cut -d' ' -s -f2)"
 				test -z "$replacement" && replacement=root
 				pend=" $replacement$pend"
+				fast_forward=f
+
+				# Note all of the parents of this commit that haven't been rewritten yet that this commit
+				# is now before them
+				nrm_yell "REMOVED OR REORDERED $p BEFORE $sha1"
+				echo "$sha1" > "$rewritten"/reordered-$p
 
 				continue
 			fi
@@ -322,6 +327,26 @@ pick_one_preserving_merges () {
 		esac
 	done
 
+	# If we are marked as rewritten already, it means one of our children has already been picked and
+	# it is now our parent
+	if test -f "$rewritten"/reordered-$sha1
+	then
+		nrm_yell "PROCESSING REORDERED COMMIT $sha1"
+		reordered_child=$(cat "$rewritten"/$(cat "$rewritten"/reordered-$sha1))
+		if test -n "$reordered_child"
+		then
+			nrm_comment "WE HAVE A REORDERED CHILD THAT IS NOW A PARENT"
+			nrm_comment "${new_parents}"
+			new_parents=" ${reordered_child}${new_parents}"
+			fast_forward=f
+			# Update to include only parents that aren't related
+			unique_parents=$(git rev-list $(echo "$new_parents" | sed 's/\>/^!/g') | tr '\n' ' ')
+			nrm_comment "$new_parents ====> $unique_parents"
+			# TODO: This could change the order. Instead loop through new_parents and remove any that aren't
+			# in unique_parents
+			new_parents=" $unique_parents"
+		fi
+	fi
 
 	case $fast_forward in
 	t)
@@ -336,7 +361,7 @@ pick_one_preserving_merges () {
 		then
 			nrm_comment "Moving HEAD from $(git log --oneline -n1) to $(git log --oneline -n1 $first_parent)"
 			# detach HEAD to current parent
-			output git checkout $first_parent 2> /dev/null ||
+			output git checkout "$first_parent" --detach 2> /dev/null ||
 				die "Cannot move HEAD to $first_parent"
 		fi
 
@@ -450,7 +475,7 @@ flush_rewritten_pending() {
 	while read -r oldsha1
 	do
 		echo "$oldsha1 $newsha1" >> "$rewritten_list"
-		echo $newsha1 >> "$rewritten"/$oldsha1
+		echo $newsha1 > "$rewritten"/$oldsha1
 
 		test -f "$rewrite_branches_file" &&
 		while read rewrite orig_sha1 rewrite_sha1
@@ -1004,7 +1029,6 @@ do
 	test $? -ne 0 && exit 1
 
 	# Keep a list of rewritten branches to move refs on after rebase complete
-	nrm_comment "Mark $rewrite for rewrite"
 	echo "$rewrite" "$rewrite_sha1" "" >> "$rewrite_branches_file"
 
 	# Mark merge-base(s) of rewritten branches to the onto sha1
@@ -1012,7 +1036,6 @@ do
 	then
 		for c in $(git merge-base --all $rewrite_sha1 $upstream)
 		do
-			nrm_comment "$c ==> $onto"
 			echo $onto > "$rewritten"/$c ||
 				die "Could not init rewritten commits"
 		done
@@ -1020,7 +1043,7 @@ do
 
 	revisions="$upstream...$rewrite_sha1 $done_branches"
 	done_branches+="^$rewrite_sha1 "
-	nrm_comment "Getting history for $revisions"
+	# TODO: --show-linear-break[=<barrier>] instead of parent lookup for every commit
 	git rev-list $merges_option --pretty=oneline --reverse --right-only --topo-order \
 		--cherry-mark $revisions ${restrict_revision+^$restrict_revision} |
 	while read -r sha1 rest
@@ -1055,7 +1078,7 @@ do
 					relevant=t
 				fi
 
-				if test "$p" = "$lastsha1"
+				if test -z "$lastsha1" || test "$p" = "$lastsha1"
 				then
 					# Note this is a descendant of lastsha1
 					is_descendant=t
@@ -1078,6 +1101,7 @@ do
 		if test t = $relevant
 		then
 			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
+			# Create an empty file to indicate the file is in the todo list but hasn't yet been rewritten
 			touch "$rewritten"/$sha1
 		else
 			nrm_comment "Skipping meaningless commit $shortsha1 $rest"

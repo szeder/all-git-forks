@@ -6,35 +6,39 @@ test_description='basic multi-branch rebase tests'
 
 # TODO: Poke around t3421 and t3410
 
-#
-#       c
+#         e2
+#        /
+#       c---dp
 #      /
 # a---b---d
 #  \   \
 #   \   e---f
 #    \       \
-#     \   h   j---k
+#     \   h   fi--k
 #      \ /   /
 #       g---i
 #
 test_expect_success 'setup' '
-    test_commit a file_0 &&
-    test_commit b file_1 &&
-    test_commit c file_2 &&
+    test_commit a file_a &&
+    test_commit b file_b &&
+    test_commit c file_c &&
+    test_commit dp file_d d &&
+    git checkout c &&
+    test_commit e2 file_e &&
     git checkout b &&
-    test_commit d file_3 &&
+    test_commit d file_d &&
     git checkout b &&
-    test_commit e file_4 &&
-    test_commit f file_5 &&
+    test_commit e file_e &&
+    test_commit f file_f &&
     git checkout a &&
-    test_commit g file_6 &&
-    test_commit h file_7 &&
+    test_commit g file_g &&
+    test_commit h file_h &&
     git checkout g &&
-    test_commit i file_8 &&
+    test_commit i file_i &&
     git checkout f &&
     git merge i &&
-    git tag j &&
-    test_commit k file_9
+    git tag fi &&
+    test_commit k file_k
 '
 
 # Useful for testing. Replace with test_cmp_rev and/or test_linear_range
@@ -116,22 +120,63 @@ test_expect_success 'rebase two forked branches THREE TWO' '
     test_commits_equal d ONE TWO~3 THREE~1
     '
 
-#
-#           c           TWO
-#          /
-# a---d---b             ONE
-#          \
-#           e---f       THREE
 
-test_expect_success 'swap fork preserving branches' '
+#
+# a--(b)--d             ONE
+#  \   \
+#   \   e---f
+#    \       \
+#     \       fi--k     TWO
+#      \     /
+#       g--(i)
+#
+test_expect_success 'remove commits preserving branches' '
     reset_rebase &&
     git branch -f ONE d &&
-    git branch -f TWO c &&
-    git branch -f THREE f &&
-    git --no-pager log --oneline --graph --decorate ONE TWO THREE &&
+    git branch -f TWO k &&
     set_fake_editor &&
-    FAKE_LINES="2 1 3 4 5" git rebase -i -p a ONE TWO THREE &&
-    git --no-pager log --oneline --graph --decorate ONE TWO THREE
+    FAKE_LINES="  2 3 4 5  7 8" git rebase -i -p a ONE TWO &&
+    test_commits_equal a ONE~ TWO~4 TWO~^2~
+    '
+
+#
+# a---d---b             ONE
+#          \
+#           c           TWO (dp gets skipped because d is now an ancestor)
+#            \
+#             e2        THREE
+#
+test_expect_success 'swap commit with multiple children preserving branches' '
+    reset_rebase &&
+    git branch -f ONE d &&
+    git branch -f TWO dp &&
+    git branch -f THREE e2 &&
+    set_fake_editor &&
+    export FAKE_LINES="2 1 3 4 6 5 7 8" &&
+    test_must_fail git rebase -i -p a ONE TWO THREE &&
+    git rebase --skip &&
+    test_commits_equal a ONE~2 TWO~3 THREE~4 &&
+    test_commits_equal ONE TWO~ THREE~2
+    '
+
+test_done
+
+#
+# a---d<->b             ONE
+#  \       \
+#   \       e---f
+#    \           \
+#     \           fi--k TWO
+#      \         /
+#       i<->g----
+#
+test_expect_success 'swap commits preserving branches' '
+    reset_rebase &&
+    git branch -f ONE d &&
+    git branch -f TWO k &&
+    set_fake_editor &&
+    FAKE_LINES="2 1 3 4 6 5 7 8" git rebase -i -p a ONE TWO &&
+    git --no-pager log --oneline --graph --decorate ONE TWO
     '
 
 test_done

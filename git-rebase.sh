@@ -16,6 +16,11 @@ nrm_comment () {
 	#echo -e "\e[33m$@\e[0m"
 	return 0
 }
+nrm_yell () {
+	#echo "$@"
+	#echo -e "\e[1;33m$@\e[0m"
+	return 0
+}
 
 SUBDIRECTORY_OK=Yes
 OPTIONS_KEEPDASHDASH=
@@ -549,7 +554,7 @@ then
 	test -z "$interactive_rebase" && interactive_rebase=implied
 	rewrite_branches+="$@"
 	# TODO(nmayer): This can be updated at the beginning of each op to only show the branches this will affect.
-	head_name="$rewrite_branches"
+	head_name="$branch_name $rewrite_branches"
 fi
 
 if test "$fork_point" = t
