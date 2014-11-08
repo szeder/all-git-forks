@@ -2798,7 +2798,7 @@ proc config_variable_change_cb {name name2 op} {
 
     set var_info [config_resolve_variable $name $name2]
     if {$op eq "write" &&
-	([llength [array names config_variable_original -exact [lindex $var_info 0]]] == 0 ||
+	(![info exists config_variable_original([lindex $var_info 0])] ||
 	 $config_variable_original([lindex $var_info 0]) ne [lindex $var_info 1])} {
 	set config_variable_changed([lindex $var_info 0]) 1
     }
