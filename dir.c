@@ -2227,10 +2227,22 @@ static void write_one_dir(struct strbuf *out, struct untracked_cache_dir *untrac
 			write_one_dir(out, untracked->dirs[i]);
 }
 
+static void get_ident_string(struct strbuf *sb)
+{
+	struct utsname uts;
+
+	if (uname(&uts))
+		die_errno(_("failed to get kernel name and information"));
+	strbuf_addf(sb, "Location %s, system %s %s %s", get_git_work_tree(),
+		    uts.sysname, uts.release, uts.version);
+}
+
 void write_untracked_extension(struct strbuf *out, struct untracked_cache *untracked)
 {
 	struct ondisk_untracked_cache *ouc;
-	int len = 0;
+	struct strbuf sb = STRBUF_INIT;
+	unsigned char varbuf[16];
+	int len = 0, varint_len;
 	if (untracked->exclude_per_dir)
 		len = strlen(untracked->exclude_per_dir);
 	ouc = xmalloc(sizeof(*ouc) + len);
@@ -2240,6 +2252,13 @@ void write_untracked_extension(struct strbuf *out, struct untracked_cache *untra
 	hashcpy(ouc->excludes_file_sha1, untracked->ss_excludes_file.sha1);
 	ouc->dir_flags = htonl(untracked->dir_flags);
 	memcpy(ouc->exclude_per_dir, untracked->exclude_per_dir, len + 1);
+
+	get_ident_string(&sb);
+	varint_len = encode_varint(sb.len + 1, varbuf);
+	strbuf_add(out, varbuf, varint_len);
+	strbuf_add(out, sb.buf, sb.len + 1);
+	strbuf_release(&sb);
+
 	strbuf_add(out, ouc, sizeof(*ouc) + len);
 	if (untracked->root)
 		write_one_dir(out, untracked->root);
@@ -2355,9 +2374,28 @@ static void load_sha1_stat(struct sha1_stat *sha1_stat,
 
 struct untracked_cache *read_untracked_extension(const void *data, unsigned long sz)
 {
-	const struct ondisk_untracked_cache *ouc = data;
+	const struct ondisk_untracked_cache *ouc;
 	struct untracked_cache *uc;
+	const unsigned char *next = data;
+	struct strbuf sb = STRBUF_INIT;
 	int len;
+
+	len = decode_varint(&next);
+	if (sz <= (next - (const unsigned char *)data) + len ||
+	    next[len - 1] != '\0')
+		return NULL;
+
+	get_ident_string(&sb);
+	if (strcmp(sb.buf, (const char *)next)) {
+		warning(_("system identification does not match, untracked cache disabled.\n"
+			  "Stored: %s\nCurrent: %s\n"),
+			next, sb.buf);
+		strbuf_release(&sb);
+		return NULL;
+	}
+	strbuf_release(&sb);
+	ouc = (const struct ondisk_untracked_cache *)(next + len);
+	sz -= (const char *)ouc - (const char *)data;
 
 	if (sz < sizeof(*ouc))
 		return NULL;
@@ -2373,7 +2411,7 @@ struct untracked_cache *read_untracked_extension(const void *data, unsigned long
 	if (sz == len)
 		return uc;
 	if (sz > len &&
-	    read_one_dir(&uc->root, (const unsigned char *)data + len,
+	    read_one_dir(&uc->root, (const unsigned char *)ouc + len,
 			 sz - len) == sz - len)
 		return uc;
 	free_untracked_cache(uc);

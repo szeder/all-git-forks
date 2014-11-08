@@ -125,6 +125,7 @@
 #else
 #include <poll.h>
 #endif
+#include <sys/utsname.h>
 
 #if defined(__MINGW32__)
 /* pull in Windows compatibility stuff */
