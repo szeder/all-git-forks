@@ -2808,6 +2808,7 @@ proc savestuff {w} {
     global stuffsaved
     global config_file config_file_tmp
     global config_variables config_variable_changed
+    global viewchanged
 
     upvar #0 viewname current_viewname
     upvar #0 viewfiles current_viewfiles
@@ -2863,11 +2864,7 @@ proc savestuff {w} {
 	}
 	puts -nonewline $f "set permviews {"
 	for {set v 1} {$v < $current_nextviewnum} {incr v} {
-	    if {$config_variable_changed(viewname,$v) ||
-		$config_variable_changed(viewfiles,$v) ||
-		$config_variable_changed(viewargs,$v) ||
-		$config_variable_changed(viewargscmd,$v) ||
-		$config_variable_changed(viewperm,$v)} {
+	    if {$viewchanged($v)} {
 		if {$current_viewperm($v)} {
 		    set views($current_viewname($v)) [list $current_viewname($v) $current_viewfiles($v) $current_viewargs($v) $current_viewargscmd($v)]
 		} else {
@@ -4327,6 +4324,7 @@ proc newviewok {top n {apply 0}} {
 	incr nextviewnum
 	set viewname($n) $newviewname($n)
 	set viewperm($n) $newviewopts($n,perm)
+	set viewchanged($n) 1
 	set viewfiles($n) $files
 	set viewargs($n) $newargs
 	set viewargscmd($n) $newviewopts($n,cmd)
@@ -4339,6 +4337,7 @@ proc newviewok {top n {apply 0}} {
     } else {
 	# editing an existing view
 	set viewperm($n) $newviewopts($n,perm)
+	set viewchanged($n) 1
 	if {$newviewname($n) ne $viewname($n)} {
 	    set viewname($n) $newviewname($n)
 	    doviewmenu .bar.view 5 [list showview $n] \
@@ -12313,6 +12312,7 @@ set highlight_related [mc "None"]
 set highlight_files {}
 set viewfiles(0) {}
 set viewperm(0) 0
+set viewchanged(0) 0
 set viewargs(0) {}
 set viewargscmd(0) {}
 
@@ -12371,6 +12371,7 @@ if {$cmdline_files ne {} || $revtreeargs ne {} || $revtreeargscmd ne {}} {
     set viewargs(1) $revtreeargs
     set viewargscmd(1) $revtreeargscmd
     set viewperm(1) 0
+    set viewchanged(1) 0
     set vdatemode(1) 0
     addviewmenu 1
     .bar.view entryconf [mca "Edit view..."] -state normal
@@ -12386,6 +12387,7 @@ if {[info exists permviews]} {
 	set viewargs($n) [lindex $v 2]
 	set viewargscmd($n) [lindex $v 3]
 	set viewperm($n) 1
+	set viewchanged($n) 0
 	addviewmenu $n
     }
 }
