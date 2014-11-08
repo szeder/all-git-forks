@@ -2776,36 +2776,22 @@ proc doprogupdate {} {
     }
 }
 
-proc config_resolve_variable {name name2} {
-    set var_name ""
-    set key ""
-    if {$name2 eq ""} {
-	set key $name
-	set var_name $name
-    } else {
-	set key "$name,$name2"
-	set var_name "${name}($name2)"
-    }
-    upvar #0 $var_name var
-    return [list $key $var]
-}
-
-proc config_init_trace {name name2} {
+proc config_init_trace {name} {
     global config_variable_changed config_variable_original
 
-    set var_info [config_resolve_variable $name $name2]
-    set config_variable_changed([lindex $var_info 0]) 0
-    set config_variable_original([lindex $var_info 0]) [lindex $var_info 1]
+    upvar #0 $name var
+    set config_variable_changed($name) 0
+    set config_variable_original($name) $var
 }
 
 proc config_variable_change_cb {name name2 op} {
     global config_variable_changed config_variable_original
 
-    set var_info [config_resolve_variable $name $name2]
+    upvar #0 $name var
     if {$op eq "write" &&
-	(![info exists config_variable_original([lindex $var_info 0])] ||
-	 $config_variable_original([lindex $var_info 0]) ne [lindex $var_info 1])} {
-	set config_variable_changed([lindex $var_info 0]) 1
+	(![info exists config_variable_original($name)] ||
+	 $config_variable_original($name) ne $var)} {
+	set config_variable_changed($name) 1
     }
 }
 
@@ -12196,7 +12182,7 @@ set config_variables {
     indexcirclecolor circlecolors linkfgcolor circleoutlinecolor
 }
 foreach var $config_variables {
-    config_init_trace $var ""
+    config_init_trace $var
     trace add variable $var write config_variable_change_cb
 }
 
@@ -12404,12 +12390,6 @@ if {[info exists permviews]} {
 	set viewchanged($n) 0
 	addviewmenu $n
     }
-}
-foreach var {viewname viewfiles viewargs viewargscmd viewperm} {
-    for {set v 1} {$v < $nextviewnum} {incr v} {
-	config_init_trace $var $v
-    }
-    trace add variable $var write config_variable_change_cb
 }
 
 if {[tk windowingsystem] eq "win32"} {
