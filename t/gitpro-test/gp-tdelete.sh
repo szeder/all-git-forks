@@ -44,7 +44,17 @@ cat > "$input/delete001.in" << \EOF
 EOF
 cat > "$output/delete001.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: ** All selected task removed successfully
+task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: - Removing asignations and asociations to task 1 ...
+- Task 1 prepared to be removed
+- Removing asignations and asociations to task 2 ...
+- Task 2 prepared to be removed
+- Removing asignations and asociations to task 3 ...
+- Task 3 prepared to be removed
+- Removing asignations and asociations to task 4 ...
+- Task 4 prepared to be removed
+- Removing asignations and asociations to task 5 ...
+- Task 5 prepared to be removed
+** All selected task removed successfully
 EOF
 ./launch-test.sh 'git task -d' 'delete001'
 
@@ -93,7 +103,6 @@ All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: - Removing asignations and asociations to task 5 ...
 - Task 5 prepared to be removed
 ** All selected task removed successfully
-
 EOF
 ./launch-test.sh 'git task -d' 'delete003'
 
@@ -2454,6 +2463,18 @@ cat > "$input/delete107.in" << \EOF
 EOF
 cat > "$output/delete107.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: ** All selected task removed successfully
+task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: - Removing asignations and asociations to task 1 ...
++ Selected file 'ruta1'
+- Deasociated file 'ruta1'
+- Task 1 prepared to be removed
+- Removing asignations and asociations to task 2 ...
+- Task 2 prepared to be removed
+- Removing asignations and asociations to task 3 ...
+- Task 3 prepared to be removed
+- Removing asignations and asociations to task 4 ...
+- Task 4 prepared to be removed
+- Removing asignations and asociations to task 5 ...
+- Task 5 prepared to be removed
+** All selected task removed successfully
 EOF
 ./launch-test.sh 'git task -d' 'delete107'

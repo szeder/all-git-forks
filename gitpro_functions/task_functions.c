@@ -442,7 +442,7 @@ void rm_task(char *filter){
 			task_list aux = result->task_info;
 			//For each task to remove delete asociations and asignations to task
 			while(aux!=NULL){
-				printf("- Removing asignations and asociations to task %d ... \n",aux->task_id);
+				printf("- Removing asignations and asociations to task %d ...\n",aux->task_id);
 				rm_asociations_task(aux->task_id);
 				rm_asignations_task(aux->task_id);
 				printf("- Task %d prepared to be removed\n",aux->task_id);
