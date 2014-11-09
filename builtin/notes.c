@@ -399,7 +399,7 @@ static int append_edit(int argc, const char **argv, const char *prefix);
 
 static int add(int argc, const char **argv, const char *prefix)
 {
-	int retval = 0, force = 0;
+	int force = 0;
 	const char *object_ref;
 	struct notes_tree *t;
 	unsigned char object[20], new_note[20];
@@ -441,6 +441,8 @@ static int add(int argc, const char **argv, const char *prefix)
 
 	if (note) {
 		if (!force) {
+			free_note_data(&d);
+			free_notes(t);
 			if (!d.given) {
 				/*
 				 * Redirect to "edit" subcommand.
@@ -450,14 +452,11 @@ static int add(int argc, const char **argv, const char *prefix)
 				 * therefore still in argv[0-1].
 				 */
 				argv[0] = "edit";
-				free_note_data(&d);
-				free_notes(t);
 				return append_edit(argc, argv, prefix);
 			}
-			retval = error(_("Cannot add notes. Found existing notes "
+			return error(_("Cannot add notes. Found existing notes "
 				       "for object %s. Use '-f' to overwrite "
 				       "existing notes"), sha1_to_hex(object));
-			goto out;
 		}
 		fprintf(stderr, _("Overwriting existing notes for object %s\n"),
 			sha1_to_hex(object));
@@ -474,9 +473,8 @@ static int add(int argc, const char **argv, const char *prefix)
 	snprintf(logmsg, sizeof(logmsg), "Notes %s by 'git notes %s'",
 		 is_null_sha1(new_note) ? "removed" : "added", "add");
 	commit_notes(t, logmsg);
-out:
 	free_notes(t);
-	return retval;
+	return 0;
 }
 
 static int copy(int argc, const char **argv, const char *prefix)
