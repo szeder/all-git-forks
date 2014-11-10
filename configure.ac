@@ -970,6 +970,12 @@ GIT_CONF_SUBST([NO_INITGROUPS])
 #
 # Define NO_ICONV if your libc does not properly support iconv.
 
+# Check for watchman client library
+
+AC_CHECK_LIB([watchman], [watchman_connect],
+	[USE_WATCHMAN=YesPlease],
+	[USE_WATCHMAN=])
+GIT_CONF_SUBST([USE_WATCHMAN])
 
 ## Other checks.
 # Define USE_PIC if you need the main git objects to be built with -fPIC

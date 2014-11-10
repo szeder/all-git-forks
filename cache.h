@@ -161,6 +161,8 @@ struct cache_entry {
 #define CE_VALID     (0x8000)
 #define CE_STAGESHIFT 12
 
+#define CE_NO_WATCH  (0x0001)
+
 /*
  * Range 0xFFFF0FFF in ce_flags is divided into
  * two parts: in-memory flags and on-disk ones.
@@ -296,6 +298,7 @@ static inline unsigned int canon_mode(unsigned int mode)
 #define CACHE_TREE_CHANGED	(1 << 5)
 #define SPLIT_INDEX_ORDERED	(1 << 6)
 #define UNTRACKED_CHANGED       (1 << 7)
+#define WATCHMAN_CHANGED	(1 << 8)
 
 struct split_index;
 struct untracked_cache;
@@ -314,6 +317,7 @@ struct index_state {
 	struct hashmap dir_hash;
 	unsigned char sha1[20];
 	struct untracked_cache *untracked;
+	char *last_update;
 };
 
 extern struct index_state the_index;
@@ -637,6 +641,8 @@ extern int check_replace_refs;
 
 extern int fsync_object_files;
 extern int core_preload_index;
+extern int core_use_watchman;
+extern int core_watchman_sync_timeout;
 extern int core_apply_sparse_checkout;
 extern int precomposed_unicode;
 

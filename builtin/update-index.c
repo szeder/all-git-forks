@@ -882,6 +882,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 {
 	int newfd, entries, has_errors = 0, line_termination = '\n';
 	int untracked_cache = -1;
+	int use_watchman = -1;
 	int read_from_stdin = 0;
 	int prefix_length = prefix ? strlen(prefix) : 0;
 	int preferred_index_format = 0;
@@ -977,6 +978,8 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			N_("enable/disable untracked cache")),
 		OPT_SET_INT(0, "force-untracked-cache", &untracked_cache,
 			    N_("enable untracked cache without testing the filesystem"), 2),
+		OPT_BOOL(0, "watchman", &use_watchman,
+			N_("use or not use watchman to reduce refresh cost")),
 		OPT_END()
 	};
 
@@ -1100,6 +1103,14 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	} else if (!untracked_cache && the_index.untracked) {
 		the_index.untracked = NULL;
 		the_index.cache_changed |= UNTRACKED_CHANGED;
+	}
+
+	if (use_watchman > 0) {
+		the_index.last_update    = xstrdup("");
+		the_index.cache_changed |= WATCHMAN_CHANGED;
+	} else if (!use_watchman) {
+		the_index.last_update    = NULL;
+		the_index.cache_changed |= WATCHMAN_CHANGED;
 	}
 
 	if (active_cache_changed) {
