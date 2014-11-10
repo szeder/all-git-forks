@@ -1,3 +1,4 @@
+NO_GETTEXT=1
 # The default target of this Makefile is...
 all::
 
