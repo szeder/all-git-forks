@@ -13,7 +13,8 @@ SYNOPSIS
   	   | [-r | --read] 
  	   | [-u | --update] 
 	   | [-d | --delete] 
-	   | [-a | --assign]]
+	   | [-a | --assign]
+	   | [--myrole] ]
 
 Each option accepts arguments. See OPTIONS section for more info about a specific option.
 
@@ -58,6 +59,8 @@ Need to specify role 'name' which will be deleted if already exists.
 Need to specify role 'name' to assign and users to assign role or remove.
 Asignations made first and deasignations finally (be carefull).
 
+[Check my role option]
+No need parameters. Just 'git role --myrole' to check your role permissions
 
 NOTES
 -----
@@ -86,3 +89,6 @@ Delete role example:
 
 Assign and deassign role example:
 	git role -a -n 'my role' --user --add="user1,user2" --rm="user3"
+	
+Checking your role permissions
+	git role --myrole
