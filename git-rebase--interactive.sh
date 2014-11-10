@@ -327,24 +327,31 @@ pick_one_preserving_merges () {
 		esac
 	done
 
-	# If we are marked as rewritten already, it means one of our children has already been picked and
+	# If we are marked as reordered it means one of our children has already been picked and
 	# it is now our parent
 	if test -f "$rewritten"/reordered-$sha1
 	then
-		nrm_yell "PROCESSING REORDERED COMMIT $sha1"
 		reordered_child=$(cat "$rewritten"/$(cat "$rewritten"/reordered-$sha1))
+		nrm_yell "PROCESSING REORDERED COMMIT $sha1 with new_parents=$new_parents reordered_child=$reordered_child"
 		if test -n "$reordered_child"
 		then
 			nrm_comment "WE HAVE A REORDERED CHILD THAT IS NOW A PARENT"
-			nrm_comment "${new_parents}"
-			new_parents=" ${reordered_child}${new_parents}"
 			fast_forward=f
-			# Update to include only parents that aren't related
-			unique_parents=$(git rev-list $(echo "$new_parents" | sed 's/\>/^!/g') | tr '\n' ' ')
-			nrm_comment "$new_parents ====> $unique_parents"
-			# TODO: This could change the order. Instead loop through new_parents and remove any that aren't
-			# in unique_parents
-			new_parents=" $unique_parents"
+			# Update to include only parents that aren't related, preserving original ordering
+			updated_new_parents=
+			for p in $new_parents
+			do
+				git merge-base --is-ancestor $p $reordered_child
+				if test $? -eq 0
+				then
+					updated_new_parents="$updated_new_parents $reordered_child"
+				else
+					updated_new_parents="$updated_new_parents $p"
+				fi
+			done
+
+			nrm_yell "updated_new_parents=${updated_new_parents=}"
+			new_parents=$updated_new_parents
 		fi
 	fi
 
@@ -365,6 +372,7 @@ pick_one_preserving_merges () {
 				die "Cannot move HEAD to $first_parent"
 		fi
 
+		nrm_comment "Performing pick with new parents \"$new_parents\""
 		case "$new_parents" in
 		' '*' '*)
 			test "a$1" = a-n && die "Refusing to squash a merge: $sha1"
@@ -1042,7 +1050,7 @@ do
 	fi
 
 	revisions="$upstream...$rewrite_sha1 $done_branches"
-	done_branches+="^$rewrite_sha1 "
+	done_branches="$done_branches ^$rewrite_sha1 "
 	# TODO: --show-linear-break[=<barrier>] instead of parent lookup for every commit
 	git rev-list $merges_option --pretty=oneline --reverse --right-only --topo-order \
 		--cherry-mark $revisions ${restrict_revision+^$restrict_revision} |
