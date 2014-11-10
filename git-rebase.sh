@@ -552,7 +552,7 @@ rewrite_branches=
 if test $# -gt 0
 then
 	test -z "$interactive_rebase" && interactive_rebase=implied
-	rewrite_branches+="$@"
+	rewrite_branches="$@"
 	# TODO(nmayer): This can be updated at the beginning of each op to only show the branches this will affect.
 	head_name="$branch_name $rewrite_branches"
 fi
