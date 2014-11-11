@@ -6,21 +6,26 @@ output="test_output"
 ###########################
 # 	ROLE Update TESTS
 ###########################
-echo "testing: git task -u -n nuevo"
+echo "testing: git role -u"
 
-# Insert previous data into tasks to run following tests
+cat > "clean-roles.sql" <<\EOF
+DELETE FROM GP_ROL WHERE NOMBRE_ROL='TEST_A';
+DELETE FROM GP_ROL WHERE NOMBRE_ROL='TEST_B';
+EOF
+
+cat > "delete-roles.sh" << \EOF
+sqlite3 ../../.git/gitpro.db -batch < clean-roles.sql
+exit 0
+EOF
+chmod +x delete-roles.sh
+./delete-roles.sh
+
+rm clean-roles.sql delete-roles.sh
+
+# Insert previous data into roles to run following tests
 cat > "test-data.sql" << \EOF
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (1,'task 1','NEW','my desc','my notes','20/12/2014','21/12/2014',null,null,'HIGH','TEST',12,14);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (2,'task 2','IN PROGRESS',null,'my personal notes',null,'24/12/2014','21/12/2014',null,'VERY LOW','ANALYSIS',12,null);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (3,'task 3','IN PROGRESS',null,null,null,'26/12/2014',null,'28/12/2014','MAJOR','MANAGEMENT',null,18);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (4,'task 4','REJECTED',null,null,null,'27/12/2014',null,null,'URGENT','DEVELOPMENT',29,20);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (5,'task 5','REJECTED','my brief desc',null,'30/12/2014','21/12/2014',null,null,'VERY HIGH','CONFIGURATION',null,null);
-.quit
+INSERT INTO GP_ROL(nombre_rol,crear_rol,asignar_rol) values ('TEST_A',1,1);
+INSERT INTO GP_ROL(nombre_rol) values ('TEST_B');
 EOF
 
 chmod +x insert-data.sh
@@ -28,22 +33,38 @@ chmod +x insert-data.sh
 ./clean-db.sh
 ./insert-data.sh
 
-# TEST 1 --- update001 --- Update role
+./clean-db.sh
+# TEST  1 --- rupdate001 --- Creates a new successfull role
 cat > "$input/rupdate001.in" << \EOF
-
-
-
-
-
-
-
-
-
-
-
 EOF
 cat > "$output/rupdate001.out" << \EOF
-All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+Role updated successfully
 EOF
-./launch-test.sh 'git task -u -n nuevo -n nuevo' 'rupdate001'
+./launch-test.sh 'git role -u -n TEST_A -p 1010101010' 'rupdate001'
+
+./clean-db.sh
+# TEST  2 --- rupdate002 --- Creates a duplicated role
+cat > "$input/rupdate002.in" << \EOF
+EOF
+cat > "$output/rupdate002.out" << \EOF
+Role you're trying to update doesn't exists
+EOF
+./launch-test.sh 'git role -u -n INEXISTENT -p 1010101010' 'rupdate002'
+
+./clean-db.sh
+# TEST  3 --- rupdate003 --- Creates a role with incorrect data
+cat > "$input/rupdate003.in" << \EOF
+EOF
+cat > "$output/rupdate003.out" << \EOF
+Incorrect data. Check it all and try again
+EOF
+./launch-test.sh 'git role -u -n TEST_A -p 1010111010101010' 'rupdate003'
+
+./clean-db.sh
+# TEST  4 --- rupdate004 --- Creates a role with incorrect data (letters in array bit)
+cat > "$input/rupdate004.in" << \EOF
+EOF
+cat > "$output/rupdate004.out" << \EOF
+Incorrect data. Check it all and try again
+EOF
+./launch-test.sh 'git role -u -n TEST_A -p 1101d01010' 'rupdate004'

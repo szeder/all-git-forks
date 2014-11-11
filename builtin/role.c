@@ -49,14 +49,14 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 	/* Check if username is configured */
 	char *uname = get_username();
 	if(uname==NULL){
-		fputs("Use git config --global user.name your_name to configure name and let them know to administrator\n",ERR);
+		fputs("Use git config --global user.name your_name to configure name and let them know to administrator\n",OUT);
 		return 0;
 	}
 	
 	/* Check if role has been assigned to user */
 	char *urole = get_role(uname);
 	if(urole==NULL){
-		fputs("You haven't been assigned a role.\n",ERR);
+		fputs("You haven't been assigned a role.\n",OUT);
 		free(uname);
 		return 0;
 	}
@@ -66,7 +66,7 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 /* END [2.6] Receive data process */	
 	
 	if( (rcreate + rread + rdelete + rupdate + rassign + myrole)  > 1){
-		fputs(_("Only one option at time\n"),ERR);
+		fputs(_("Only one option at time\n"),OUT);
 		return 0;
 	}else{
 
@@ -80,7 +80,7 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 					|| (rassign && !can_assign_role(urole))
 					|| (rupdate && !can_update_role(urole))
 					|| (rdelete && !can_remove_role(urole)) ){
-					fputs("You haven't enought permissions to do this action.\n",ERR);
+					fputs("You haven't enought permissions to do this action.\n",OUT);
 					free(uname);
 					free(urole);		
 					return 0;
@@ -95,10 +95,10 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 /* START [2.1.1] Validate data process */
 			switch(validate_create_role(role_name,perms,add,rm)){
 				case INCORRECT_DATA:
-					fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+					fputs(_("Incorrect data. Check it all and try again\n"),OUT);
 					return 0; 
 				case DUPLICATE_ROLE:
-					fputs(_("Role name specified already exists\n"),ERR);
+					fputs(_("Role name specified already exists\n"),OUT);
 					return 0;
 			}
 /* END [2.1.1] Validate data process */
@@ -110,10 +110,10 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 /* START [2.4.1] Validate data process */
 			switch(validate_read_role(role_name,perms,add,rm)){
 				case INCORRECT_DATA:
-					fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+					fputs(_("Incorrect data. Check it all and try again\n"),OUT);
 					return 0;
 				case INEXISTENT_ROLE:
-					fputs(_("Role you're trying to update doesn't exists\n"),ERR);
+					fputs(_("Role you're trying to read doesn't exists\n"),OUT);
 					return 0;
 			}
 /* END [2.4.1] Validate data process */
@@ -124,10 +124,10 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 /* START [2.2.1] Validate data process */
 			switch(validate_update_role(role_name,perms,add,rm)){
 				case INCORRECT_DATA:	
-					fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+					fputs(_("Incorrect data. Check it all and try again\n"),OUT);
 					return 0;
 				case INEXISTENT_ROLE:
-					fputs(_("Role you're trying to update doesn't exists\n"),ERR);
+					fputs(_("Role you're trying to update doesn't exists\n"),OUT);
 					return 0;
 			}
 /* END [2.2.1] Validate data process */
@@ -139,10 +139,10 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 /* START [2.3.1] Validate data process */
 			switch(validate_delete_role(role_name,perms,add,rm)){
 				case INCORRECT_DATA:
-					fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+					fputs(_("Incorrect data. Check it all and try again\n"),OUT);
 					return 0;
 				case INEXISTENT_ROLE:
-					fputs(_("Role you're trying to update doesn't exists\n"),ERR);
+					fputs(_("Role you're trying to delete doesn't exists\n"),OUT);
 					return 0;
 			}
 /* END [2.3.1] Validate data process */
@@ -155,13 +155,13 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 /* START [2.5.1] Validate data process */
 				switch(validate_assign_role(role_name,perms,add,rm)){
 					case INCORRECT_DATA:
-						fputs(_("Incorrect data. Check it all and try again\n"),ERR);
+						fputs(_("Incorrect data. Check it all and try again\n"),OUT);
 						return 0;
 					case INEXISTENT_ROLE:
-						fputs(_("Role you're trying to update doesn't exists\n"),ERR);
+						fputs(_("Role you're trying to assign doesn't exists\n"),OUT);
 						return 0;
 					case INEXISTENT_USER:
-						fputs(_("User you're trying to update doesn't exists\n"),ERR);
+						fputs(_("User you're trying to assign doesn't exists\n"),OUT);
 						return 0;	
 				}
 /* END [2.5.1] Validate data process */
@@ -169,7 +169,7 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 				assign_role(role_name,add,rm);
 /* END [2.5.2] Assign role option */
 			}else{
-				fputs(_("Wrong format, see usage of assign command\n"),ERR);
+				fputs(_("Wrong format, see usage of assign command\n"),OUT);
 				return 0;
 			}
 		}else if(myrole){

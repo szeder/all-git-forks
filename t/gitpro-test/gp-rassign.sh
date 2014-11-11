@@ -8,38 +8,87 @@ output="test_output"
 ###########################
 echo "testing: git role -a"
 
-# Insert previous data into roles to run following test
+cat > "clean-roles.sql" <<\EOF
+DELETE FROM GP_ROL WHERE NOMBRE_ROL='TEST_A';
+DELETE FROM GP_ROL WHERE NOMBRE_ROL='TEST_B';
+EOF
+
+cat > "delete-roles.sh" << \EOF
+sqlite3 ../../.git/gitpro.db -batch < clean-roles.sql
+exit 0
+EOF
+chmod +x delete-roles.sh
+./delete-roles.sh
+
+rm clean-roles.sql delete-roles.sh
+
+# Insert previous data into roles to run following tests
 cat > "test-data.sql" << \EOF
-INSERT INTO GP_ROL(nombre_rol,crear_rol,asignar_rol,consultar_tarea,asignar_tarea,actualizar_tarea,asociar_archivos,borrar_tarea,crear_tarea,borrar_rol,actualizar_rol) 
-values('EXAMPLE',0,0,1,1,1,1,1,1,1,1);
-INSERT INTO GP_USUARIO(nombre_usuario,nombre_rol_usuario) values ('user1','EXAMPLE');
-INSERT INTO GP_USUARIO(nombre_usuario,nombre_rol_usuario) values ('user2','EXAMPLE');
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (1,'task 1','NEW','my desc','my notes','20/12/2014','21/12/2014',null,null,'HIGH','TEST',12,14);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (2,'task 2','IN PROGRESS',null,'my personal notes',null,'24/12/2014','21/12/2014',null,'VERY LOW','ANALYSIS',12,null);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (3,'task 3','IN PROGRESS',null,null,null,'26/12/2014',null,'28/12/2014','MAJOR','MANAGEMENT',null,18);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (4,'task 4','REJECTED',null,null,null,'27/12/2014',null,null,'URGENT','DEVELOPMENT',29,20);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (5,'task 5','REJECTED','my brief desc',null,'30/12/2014','21/12/2014',null,null,'VERY HIGH','CONFIGURATION',null,null);
-.quit
+INSERT INTO GP_ROL(nombre_rol,crear_rol,asignar_rol) values ('TEST_A',1,1);
+INSERT INTO GP_ROL(nombre_rol) values ('TEST_B');
 EOF
 
 chmod +x insert-data.sh
+
 
 ### ASSIGN ROLE TESTS
 
 ./clean-db.sh
 ./insert-data.sh
-# TEST  1 --- rassign001 --- assigns a new successfull basic task
+# TEST  1 --- rassign001 --- assign a role (incorrect data)
 cat > "$input/rassign001.in" << \EOF
 EOF
 cat > "$output/rassign001.out" << \EOF
-** Asignations to task 1 modified **
-+ Asigned user user1
+Incorrect data. Check it all and try again
 EOF
-./launch-test.sh 'git task -a -i 1 --user --add="user1"' 'rassign001'
+./launch-test.sh 'git role -a --user' 'rassign001'
 
-### DEASSIGN ROLE TESTS
+./clean-db.sh
+./insert-data.sh
+# TEST  2 --- rassign002 --- incorrect data (role)
+cat > "$input/rassign002.in" << \EOF
+EOF
+cat > "$output/rassign002.out" << \EOF
+Role you're trying to assign doesn't exists
+EOF
+./launch-test.sh 'git role -a -n inexistent --user --rm="usertest"' 'rassign002'
+
+./clean-db.sh
+./insert-data.sh
+# TEST  3 --- rassign003 --- incorrect data (user)
+cat > "$input/rassign003.in" << \EOF
+EOF
+cat > "$output/rassign003.out" << \EOF
+User you're trying to assign doesn't exists
+EOF
+./launch-test.sh 'git role -a -n TEST_A --user --rm="inexistent"' 'rassign003'
+
+./clean-db.sh
+./insert-data.sh
+# TEST  4 --- rassign004 --- assign a role (ok)
+cat > "$input/rassign004.in" << \EOF
+EOF
+cat > "$output/rassign004.out" << \EOF
+Role assigned to following users:
++ usertest
+EOF
+./launch-test.sh 'git role -a -n TEST_A --user --add="usertest"' 'rassign004'
+
+./clean-db.sh
+./insert-data.sh
+# TEST  5 --- rassign005 --- deassign a role (ok)
+cat > "$input/rassign005.in" << \EOF
+EOF
+cat > "$output/rassign005.out" << \EOF
+Role deassigned to following users and set to default (PUBLIC):
+- usertest
+EOF
+./launch-test.sh 'git role -a -n TEST_A --user --rm="usertest"' 'rassign005'
+
+# Insert previous data into roles to run following tests
+cat > "test-data.sql" << \EOF
+UPDATE GP_USUARIO SET nombre_rol_usuario='EXAMPLE' WHERE nombre_usuario='usertest';
+EOF
+
+chmod +x insert-data.sh
+./insert-data.sh
