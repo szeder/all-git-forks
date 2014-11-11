@@ -515,6 +515,14 @@ test_path_is_missing () {
 	fi
 }
 
+# Some platforms disagree about wc output format.
+
+SYS_WC=$(which wc)
+
+wc () {
+	$SYS_WC $@ | sed -e 's/^ *//' -e 's/ *$//'
+}
+
 # test_line_count checks that a file has the number of lines it
 # ought to. For example:
 #
