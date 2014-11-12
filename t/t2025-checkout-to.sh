@@ -41,6 +41,22 @@ test_expect_success 'checkout --to a new worktree' '
 	)
 '
 
+main_path=$(pwd)
+test_expect_success 'checkout --to, but with init' '
+	git rev-parse HEAD >expect &&
+	mkdir here2 &&
+	(
+		cd here2 &&
+		env GIT_COMMON_DIR=../.. git init --separate-git-dir="$main_path"/.git/worktrees/here2 &&
+		git checkout --detach master &&
+		test_cmp ../init.t init.t &&
+		test_must_fail git symbolic-ref HEAD &&
+		git rev-parse HEAD >actual &&
+		test_cmp ../expect actual &&
+		git fsck
+	)
+'
+
 test_expect_success 'checkout --to a new worktree from a subdir' '
 	(
 		mkdir sub &&
