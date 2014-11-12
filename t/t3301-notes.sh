@@ -53,7 +53,7 @@ test_expect_success 'create notes' '
 	MSG=b4 git notes add &&
 	test_path_is_missing .git/NOTES_EDITMSG &&
 	git ls-tree -r refs/notes/commits >actual &&
-	test_line_count = 1 actual
+	test_line_count = 1 actual &&
 	test "b4" = "$(git notes show)" &&
 	git show HEAD^ &&
 	test_must_fail git notes show HEAD^
@@ -67,7 +67,7 @@ test_expect_success 'show notes entry with %N' '
 
 test_expect_success 'create reflog entry' '
 	cat <<-EOF >expect &&
-		a1d8fa6 refs/notes/commits@{0}: notes: Notes added by '"'"'git notes add'"'"'
+		a1d8fa6 refs/notes/commits@{0}: notes: Notes added by '\''git notes add'\''
 	EOF
 	git reflog show refs/notes/commits >actual &&
 	test_cmp expect actual
@@ -77,7 +77,7 @@ test_expect_success 'edit existing notes' '
 	MSG=b3 git notes edit &&
 	test_path_is_missing .git/NOTES_EDITMSG &&
 	git ls-tree -r refs/notes/commits >actual &&
-	test_line_count = 1 actual
+	test_line_count = 1 actual &&
 	test "b3" = "$(git notes show)" &&
 	git show HEAD^ &&
 	test_must_fail git notes show HEAD^
@@ -87,7 +87,7 @@ test_expect_success 'cannot "git notes add -m" where notes already exists' '
 	test_must_fail git notes add -m "b2" &&
 	test_path_is_missing .git/NOTES_EDITMSG &&
 	git ls-tree -r refs/notes/commits >actual &&
-	test_line_count = 1 actual
+	test_line_count = 1 actual &&
 	test "b3" = "$(git notes show)" &&
 	git show HEAD^ &&
 	test_must_fail git notes show HEAD^
@@ -97,7 +97,7 @@ test_expect_success 'can overwrite existing note with "git notes add -f -m"' '
 	git notes add -f -m "b1" &&
 	test_path_is_missing .git/NOTES_EDITMSG &&
 	git ls-tree -r refs/notes/commits >actual &&
-	test_line_count = 1 actual
+	test_line_count = 1 actual &&
 	test "b1" = "$(git notes show)" &&
 	git show HEAD^ &&
 	test_must_fail git notes show HEAD^
@@ -107,7 +107,7 @@ test_expect_success 'add w/no options on existing note morphs into edit' '
 	MSG=b2 git notes add &&
 	test_path_is_missing .git/NOTES_EDITMSG &&
 	git ls-tree -r refs/notes/commits >actual &&
-	test_line_count = 1 actual
+	test_line_count = 1 actual &&
 	test "b2" = "$(git notes show)" &&
 	git show HEAD^ &&
 	test_must_fail git notes show HEAD^
@@ -117,7 +117,7 @@ test_expect_success 'can overwrite existing note with "git notes add -f"' '
 	MSG=b1 git notes add -f &&
 	test_path_is_missing .git/NOTES_EDITMSG &&
 	git ls-tree -r refs/notes/commits >actual &&
-	test_line_count = 1 actual
+	test_line_count = 1 actual &&
 	test "b1" = "$(git notes show)" &&
 	git show HEAD^ &&
 	test_must_fail git notes show HEAD^
