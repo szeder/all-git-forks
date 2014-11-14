@@ -434,6 +434,7 @@ MSGFMT = msgfmt
 CURL_CONFIG = curl-config
 PTHREAD_LIBS = -lpthread
 PTHREAD_CFLAGS =
+WATCHMAN_LIBS =
 GCOV = gcov
 
 export TCL_PATH TCLTK_PATH
@@ -1392,6 +1393,7 @@ endif
 ifdef USE_WATCHMAN
 	LIB_H += watchman-support.h
 	LIB_OBJS += watchman-support.o
+	WATCHMAN_LIBS = -lwatchman
 	BASIC_CFLAGS += -DUSE_WATCHMAN
 endif
 
@@ -2004,6 +2006,9 @@ git-http-push$X: http.o http-push.o GIT-LDFLAGS $(GITLIBS)
 git-remote-testsvn$X: remote-testsvn.o GIT-LDFLAGS $(GITLIBS) $(VCSSVN_LIB)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS) \
 	$(VCSSVN_LIB)
+
+git-index-helper$X: index-helper.o GIT-LDFLAGS $(GITLIBS)
+	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS) $(WATCHMAN_LIBS)
 
 $(REMOTE_CURL_ALIASES): $(REMOTE_CURL_PRIMARY)
 	$(QUIET_LNCP)$(RM) $@ && \
