@@ -69,3 +69,8 @@ void show_types();
 	Parameters	: nothing
 	Return		: nothing, prints available task states */
 void show_states();
+
+/*	Name		: show_priorities
+	Parameters	: nothing
+	Return		: nothing, prints available task priorities */
+void show_priorities();

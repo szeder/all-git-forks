@@ -17,11 +17,11 @@
 /* Usage message */
 static const char * const builtin_task_usage[] =
 {
-	N_("task [-c | -r | -u | -d | -a | -l | --show-types | --show-states]\n\tSome use examples:\n\t -c -n name -s state --desc description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t\t(only required name, state, priority and type)\n\t -r \n\t -u -n name -s state -d description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t -d \n\t -a -i id --user --add=\"user1 ... userN\" --rm=\"user1 ... userN\"\n\t -l -i id --file --add=\"file1 ... fileN\" --rm=\"file1 ... fileN\""),
+	N_("task [-c | -r | -u | -d | -a | -l | --show-types | --show-states | --show-priorities]\n\tSome use examples:\n\t -c -n name -s state --desc description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t\t(only required name, state, priority and type)\n\t -r \n\t -u -n name -s state -d description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t -d \n\t -a -i id --user --add=\"user1 ... userN\" --rm=\"user1 ... userN\"\n\t -l -i id --file --add=\"file1 ... fileN\" --rm=\"file1 ... fileN\""),
 	NULL
 };
 
-static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread, showtypes, showstates;
+static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread, showtypes, showstates, showpriorities;
 static char *add = NULL;
 static char *rm = NULL;
 static char *task_id = NULL;
@@ -119,6 +119,7 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 		OPT_BOOL('u',"update",&tupdate,N_("updates task data")),
 		OPT_BOOL(0,"show-types",&showtypes,N_("show available task types")),
 		OPT_BOOL(0,"show-states",&showstates,N_("show available task states")),
+		OPT_BOOL(0,"show-priorities",&showpriorities,N_("show available task priorities")),
 		OPT_BOOL(0,"user",&user,N_("indicates that follows user names to add or remove task assignations")),
 		OPT_BOOL(0,"file",&file,N_("indicates that follows file names to add or remove task asociations")),
 		OPT_GROUP("Link and Assign options"),
@@ -163,7 +164,7 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 
 	
 	/* More than one option selected at time */
-	if(tcreate + tlink + tassign + tdelete + tupdate + tread + showtypes > 1 ){
+	if(tcreate + tlink + tassign + tdelete + tupdate + tread + showtypes + showstates + showpriorities > 1 ){
 		printf(_("Only one option at time\n"),ERR);
 		return 0;
 	}else {
@@ -343,7 +344,11 @@ filter_task_est_time,filter_task_time);
 		}else if(showstates){
 /* START [1.8.2] Show states */
 			show_states();
-/* END [1.8.2] Show states */			
+/* END [1.8.2] Show states */	
+		}else if(showpriorities){
+/* START [1.8.3] Show priorities */
+			show_priorities();
+/* END [1.8.3] Show priorities */	
 		}else{
 			/* No action defined */
 			printf(_("No action defined"),ERR);

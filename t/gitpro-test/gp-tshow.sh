@@ -39,3 +39,23 @@ Available task states:
 > RESOLVED
 EOF
 ./launch-test.sh 'git task --show-states' 'showstates001'
+
+echo "testing: git task --show-priorities"
+
+# TEST  1 --- showpriorities001 --- Show available priorities
+cat > "$input/showpriorities001.in" << \EOF
+EOF
+cat > "$output/showpriorities001.out" << \EOF
+Available task priorities:
+> VERY LOW
+> LOW
+> MINOR
+> MAJOR
+> HIGH
+> VERY HIGH
+> URGENT
+> INMEDIATE
+> CRITICAL
+> BLOCKER
+EOF
+./launch-test.sh 'git task --show-priorities' 'showpriorities001'

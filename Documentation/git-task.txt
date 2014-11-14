@@ -16,7 +16,8 @@ SYNOPSIS
 	   | [-a | --assign] 
 	   | [-l | --link] 
 	   | [--show-types] 
-	   | [--show-states] ]
+	   | [--show-states]
+	   | [--show-priorities] ]
 
 Each option accepts arguments. See OPTIONS section for more info about a specific option and arguments.
 
@@ -89,6 +90,9 @@ No need to specify parameters. Just 'git task --show-types' to see available tas
 
 [Show states]
 No need to specify parameters. Just 'git task --show-states' to see available task states.
+
+[Show priorities]
+No need to specify parameters. Just 'git task --show-priorities' to see available task priorities.
 
 
 NOTES

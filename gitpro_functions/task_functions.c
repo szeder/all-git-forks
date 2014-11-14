@@ -578,3 +578,31 @@ void show_states(){
 	}
 	dealloc(data);
 }
+
+/* See specification in task_functions.h */
+void show_priorities(){
+	char *query = NULL;
+	char *fields[] = {ALL,0};
+	query = construct_query(fields,from(PRIOR_TABLE),NULL,NULL,NULL);
+	//execute query	
+	generic_list data = NULL;
+	data = 	exec_query(query);
+	
+	free(query);
+	//show data
+	if(data == NULL){
+		printf("No available task priorities yet");
+	}else{
+		prior_list info = (*data).prior_info;
+		if(info==NULL){
+			printf("No available task priorities yet");
+		}else{
+			printf("Available task priorities:\n");
+			while(info!=NULL){
+				printf("> %s\n",info->prior_name);
+				info=info->next;
+			}
+		}
+	}
+	dealloc(data);
+}
