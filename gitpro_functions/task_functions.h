@@ -64,3 +64,8 @@ void rm_link_files(char *id,char *rm);
 	Parameters	: nothing
 	Return		: nothing, prints available task types */
 void show_types();
+
+/*	Name		: show_states
+	Parameters	: nothing
+	Return		: nothing, prints available task states */
+void show_states();

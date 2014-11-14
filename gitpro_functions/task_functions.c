@@ -550,3 +550,31 @@ void show_types(){
 	}
 	dealloc(data);
 }
+
+/* See specification in task_functions.h */
+void show_states(){
+	char *query = NULL;
+	char *fields[] = {ALL,0};
+	query = construct_query(fields,from(STATE_TABLE),NULL,NULL,NULL);
+	//execute query	
+	generic_list data = NULL;
+	data = 	exec_query(query);
+	
+	free(query);
+	//show data
+	if(data == NULL){
+		printf("No available task states yet");
+	}else{
+		state_list info = (*data).state_info;
+		if(info==NULL){
+			printf("No available task states yet");
+		}else{
+			printf("Available task states:\n");
+			while(info!=NULL){
+				printf("> %s\n",info->state_name);
+				info=info->next;
+			}
+		}
+	}
+	dealloc(data);
+}

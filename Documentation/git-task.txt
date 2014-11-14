@@ -15,7 +15,8 @@ SYNOPSIS
 	   | [-d | --delete] 
 	   | [-a | --assign] 
 	   | [-l | --link] 
-	   | [--show-types] ]
+	   | [--show-types] 
+	   | [--show-states] ]
 
 Each option accepts arguments. See OPTIONS section for more info about a specific option and arguments.
 
@@ -85,6 +86,10 @@ Link files is very easy. Just type file name and it will be searched in your act
 
 [Show types]
 No need to specify parameters. Just 'git task --show-types' to see available task types.
+
+[Show states]
+No need to specify parameters. Just 'git task --show-states' to see available task states.
+
 
 NOTES
 -----
