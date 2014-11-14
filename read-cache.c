@@ -1567,14 +1567,24 @@ static void do_poke(struct strbuf *sb, int refresh_cache)
 	PostMessage(hwnd, refresh_cache ? WM_USER : WM_USER + 1, 0, 0);
 }
 #else
+static void do_nothing(int sig)
+{
+}
+
 static void do_poke(struct strbuf *sb, int refresh_cache)
 {
-	char	*start = sb->buf;
+	int	 wait  = sb->buf[0] == 'W';
+	char	*start = wait ? sb->buf + 1 : sb->buf;
 	char	*end   = NULL;
 	pid_t	 pid   = strtoul(start, &end, 10);
+	int	 ret;
 	if (!end || end != sb->buf + sb->len)
 		return;
-	kill(pid, refresh_cache ? SIGHUP : SIGUSR1);
+	ret = kill(pid, refresh_cache ? SIGHUP : SIGUSR1);
+	if (!refresh_cache && !ret && wait) {
+		signal(SIGHUP, do_nothing);
+		sleep(1);
+	}
 }
 #endif
 
