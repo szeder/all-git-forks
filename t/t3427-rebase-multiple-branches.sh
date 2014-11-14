@@ -159,8 +159,6 @@ test_expect_success 'swap commit with multiple children preserving branches' '
     test_commits_equal ONE TWO~ THREE~2
     '
 
-test_done
-
 #
 # a---d<->b             ONE
 #  \       \

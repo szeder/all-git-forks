@@ -289,25 +289,30 @@ pick_one_preserving_merges () {
 			then
 				new_p="$onto"
 			fi
-		elif test -f "$rewritten"/$p
+		elif rewritten_exists $p
 		then
 			# Parent in rewrite list
-			new_p=$(cat "$rewritten"/$p)
+			new_p=$(rewritten_lookup $p)
+			nrm_comment "Found rewritten parent $new_p for $p"
 
-			# If rewrite is empty, this is a dropped or moved commit. Use its (possibly rewritten) parent commit
+			# If rewrite is empty, this is a dropped or moved commit. Mark the commits that we would have expected
+			# to have already seen as missing
 			if test -z "$new_p"
 			then
-				replacement="$(git rev-list --parents -1 $p | cut -d' ' -s -f2)"
-				test -z "$replacement" && replacement=root
-				pend=" $replacement$pend"
+				grandparent="$(git rev-list --parents -1 $p | cut -d' ' -s -f2)"
+				test -n "$grandparent" &&
+				pend=" $grandparent$pend"
 				fast_forward=f
 
 				# Note all of the parents of this commit that haven't been rewritten yet that this commit
 				# is now before them
-				nrm_yell "REMOVED OR REORDERED $p BEFORE $sha1"
-				echo "$sha1" > "$rewritten"/reordered-$p
-
+				nrm_yell "REMOVED OR REORDERED. Marking $p as missing $sha1"
+				missing_mark $p $sha1
 				continue
+			elif skipped_exists $p
+			then
+				nrm_yell "PARENT HAS REMOVED OR REORDERED. Marking $sha1 as missing $(skipped_lookup $p)"
+				missing_mark $(skipped_lookup $p) $sha1
 			fi
 		else
 			nrm_comment "Process parent $p -- HEAD"
@@ -329,19 +334,23 @@ pick_one_preserving_merges () {
 
 	# If we are marked as reordered it means one of our children has already been picked and
 	# it is now our parent
-	if test -f "$rewritten"/reordered-$sha1
+	if missing_exists $sha1
 	then
-		reordered_child=$(cat "$rewritten"/$(cat "$rewritten"/reordered-$sha1))
-		nrm_yell "PROCESSING REORDERED COMMIT $sha1 with new_parents=$new_parents reordered_child=$reordered_child"
-		if test -n "$reordered_child"
-		then
-			nrm_comment "WE HAVE A REORDERED CHILD THAT IS NOW A PARENT"
+		while read former_child
+		do
+			reordered_child=$(rewritten_lookup $former_child)
+
+			# Mark our old children as rewritten to this, effectively swapping the commits so all commits following
+			# the swap will now point to the end of the swapped sequence
+			record_in_rewritten "$former_child" 1
+
 			fast_forward=f
 			# Update to include only parents that aren't related, preserving original ordering
 			updated_new_parents=
 			for p in $new_parents
 			do
-				git merge-base --is-ancestor $p $reordered_child
+				nrm_comment "Check ancestry p=$p reordered_child=$reordered_child"
+				git merge-base --is-ancestor "$p" "$reordered_child"
 				if test $? -eq 0
 				then
 					updated_new_parents="$updated_new_parents $reordered_child"
@@ -349,10 +358,8 @@ pick_one_preserving_merges () {
 					updated_new_parents="$updated_new_parents $p"
 				fi
 			done
-
-			nrm_yell "updated_new_parents=${updated_new_parents=}"
-			new_parents=$updated_new_parents
-		fi
+			new_parents="$updated_new_parents"
+		done < $(missing_file $sha1)
 	fi
 
 	case $fast_forward in
@@ -406,6 +413,42 @@ pick_one_preserving_merges () {
 		esac
 		;;
 	esac
+}
+
+rewritten_exists() {
+	test -f "$rewritten"/$1
+}
+
+rewritten_lookup() {
+	cat "$rewritten"/$1
+}
+
+rewritten_mark() {
+	echo $2 > "$rewritten"/$1
+}
+
+missing_exists() {
+	test -f "$rewritten"/reordered-$1
+}
+
+missing_file() {
+	echo "$rewritten"/reordered-$1
+}
+
+skipped_exists() {
+	test -f "$rewritten"/skipped-$1
+}
+
+skipped_lookup() {
+	cat "$rewritten"/skipped-$1
+}
+
+missing_mark() {
+	nrm_comment "missing_mark $1 $2"
+	# $2 has been picked before its parent $1
+	# Mark commits that we saw before the commit we expected to see
+	echo $2 >> "$rewritten"/reordered-$1
+	echo $1 >> "$rewritten"/skipped-$2
 }
 
 nth_string () {
@@ -480,10 +523,11 @@ die_failed_squash() {
 flush_rewritten_pending() {
 	test -s "$rewritten_pending" || return
 	newsha1="$(git rev-parse HEAD^0)"
-	while read -r oldsha1
+	while read -r oldsha1 bookkeeping
 	do
+		nrm_comment "$oldsha1 ======> $newsha1 ($bookkeeping)"
 		echo "$oldsha1 $newsha1" >> "$rewritten_list"
-		echo $newsha1 > "$rewritten"/$oldsha1
+		rewritten_mark $oldsha1 $newsha1
 
 		test -f "$rewrite_branches_file" &&
 		while read rewrite orig_sha1 rewrite_sha1
@@ -503,15 +547,26 @@ flush_rewritten_pending() {
 
 record_in_rewritten() {
 	oldsha1="$(git rev-parse $1)"
-	echo "$oldsha1" >> "$rewritten_pending"
 
-	case "$(peek_next_command)" in
-	squash|s|fixup|f)
-		;;
-	*)
-		flush_rewritten_pending
-		;;
-	esac
+	if test $# -le 1 || test $2 -eq 0
+	then
+		bookkeeping=t
+	else
+		bookkeeping=f
+	fi
+
+	echo "$oldsha1 $bookkeeping" >> "$rewritten_pending"
+
+	if test $bookkeeping = "t"
+	then
+		case "$(peek_next_command)" in
+		squash|s|fixup|f)
+			;;
+		*)
+			flush_rewritten_pending
+			;;
+		esac
+	fi
 }
 
 do_pick () {
@@ -1044,7 +1099,7 @@ do
 	then
 		for c in $(git merge-base --all $rewrite_sha1 $upstream)
 		do
-			echo $onto > "$rewritten"/$c ||
+			rewritten_mark $c $onto ||
 				die "Could not init rewritten commits"
 		done
 	fi
@@ -1081,7 +1136,7 @@ do
 			for p in $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)
 			do
 				has_parents=t
-				if test -f "$rewritten"/$p
+				if rewritten_exists $p
 				then
 					relevant=t
 				fi
@@ -1110,11 +1165,11 @@ do
 		then
 			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 			# Create an empty file to indicate the file is in the todo list but hasn't yet been rewritten
-			touch "$rewritten"/$sha1
+			rewritten_mark $sha1
 		else
 			nrm_comment "Skipping meaningless commit $shortsha1 $rest"
 			# Have the sha1 rewrite to itself to indicate it isn't changing
-			echo $sha1 > "$rewritten"/$sha1
+			rewritten_mark $sha1 $sha1
 		fi
 	done
 done
