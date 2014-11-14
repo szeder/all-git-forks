@@ -43,6 +43,11 @@ echo '   Starting rolecheck task tests'
 echo '***********************************'
 ./gp-trolecheck.sh
 ./clean-db.sh
+echo '***********************************'
+echo 'Starting show types/prior/state tests'
+echo '***********************************'
+./gp-tshow.sh
+./clean-db.sh
 
 echo 'Your username has been changed to run this tests...'
 echo 'Use git config --global to update your username'

@@ -59,3 +59,8 @@ void add_link_files(char *id,char *add);
 	Return		: nothing
 	Used for	: deasociate task from specified files */
 void rm_link_files(char *id,char *rm);
+
+/*	Name		: show_types
+	Parameters	: nothing
+	Return		: nothing, prints available task types */
+void show_types();

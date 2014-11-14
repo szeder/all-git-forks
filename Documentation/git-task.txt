@@ -14,7 +14,8 @@ SYNOPSIS
 	   | [-u | --update] 
 	   | [-d | --delete] 
 	   | [-a | --assign] 
-	   | [-l | --link] ]
+	   | [-l | --link] 
+	   | [--show-types] ]
 
 Each option accepts arguments. See OPTIONS section for more info about a specific option and arguments.
 
@@ -81,6 +82,9 @@ Need to specify task 'id' to link or unlink files.
 With --add specify files to link.
 With --rm specify files to unlink.
 Link files is very easy. Just type file name and it will be searched in your actual directory and subdirectories. If more than one file exists with same name, don't worry about that, you'll be asked to resolve conflict.
+
+[Show types]
+No need to specify parameters. Just 'git task --show-types' to see available task types.
 
 NOTES
 -----

@@ -522,3 +522,31 @@ char *filter_task(char *id,char *name,char *state,
 	if(f_end!=NULL) free(f_end);
 	return where_final;
 }
+
+/* See specification in task_functions.h */
+void show_types(){
+	char *query = NULL;
+	char *fields[] = {ALL,0};
+	query = construct_query(fields,from(TYPE_TABLE),NULL,NULL,NULL);
+	//execute query	
+	generic_list data = NULL;
+	data = 	exec_query(query);
+	
+	free(query);
+	//show data
+	if(data == NULL){
+		printf("No available task types yet");
+	}else{
+		type_list info = (*data).type_info;
+		if(info==NULL){
+			printf("No available task types yet");
+		}else{
+			printf("Available task types:\n");
+			while(info!=NULL){
+				printf("> %s\n",info->type_name);
+				info=info->next;
+			}
+		}
+	}
+	dealloc(data);
+}
