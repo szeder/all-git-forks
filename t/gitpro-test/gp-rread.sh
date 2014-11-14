@@ -76,3 +76,15 @@ EXAMPLE can do following actions:
 + link files to task
 EOF
 ./launch-test.sh 'git role --myrole' 'rread004'
+
+# TEST 5 --- rread005 --- Read valid role (all roles)
+cat > "$input/rread005.in" << \EOF
+EOF
+cat > "$output/rread005.out" << \EOF
+Existent roles:
+> PUBLIC
+> EXAMPLE
+> TEST_A
+> TEST_B
+EOF
+./launch-test.sh 'git role --show-all' 'rread005'

@@ -15,7 +15,7 @@ static const char * const builtin_role_usage[] =
 	NULL
 };
 
-static int rcreate, rupdate, rdelete, rread, rassign,user,myrole;
+static int rcreate, rupdate, rdelete, rread, rassign,user,myrole,showall;
 static char *role_name = NULL;
 static char *perms = NULL;
 static char *add = NULL;
@@ -31,6 +31,7 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 		OPT_BOOL('d',"delete",&rdelete,N_("remove given role")),
 		OPT_BOOL('a',"assign",&rassign,N_("assign role to user")),
 		OPT_BOOL(0,"myrole",&myrole,N_("show your role permissions")),
+		OPT_BOOL(0,"show-all",&showall,N_("show all existent roles")),
 		OPT_BOOL(0,"user",&user,N_("indicates that follows user names to add or remove role assignations")),
 		OPT_GROUP("Role params"),
 		OPT_STRING('n',"name",&role_name,"role name",N_("specifies role name")),
@@ -65,7 +66,7 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 	argc = parse_options(argc, argv, prefix, builtin_role_options, builtin_role_usage, 0);
 /* END [2.6] Receive data process */	
 	
-	if( (rcreate + rread + rdelete + rupdate + rassign + myrole)  > 1){
+	if( (rcreate + rread + rdelete + rupdate + rassign + myrole + showall)  > 1){
 		fputs(_("Only one option at time\n"),OUT);
 		return 0;
 	}else{
@@ -178,6 +179,10 @@ int cmd_role (int argc, const char **argv, const char *prefix){
 			char *urole = get_role(uname);
 			read_role(urole);
 /* END [2.4.2] Read role option (facility case to user assigned role) */
+		}else if(showall){
+/* START [2.4.2] Read role option (case to check all roles) */	
+			show_all();
+/* END [2.4.2] Read role option (case to check all roles) */		
 		}else{
 			/* No action defined */
 			fputs(_("No action defined\n"),ERR);

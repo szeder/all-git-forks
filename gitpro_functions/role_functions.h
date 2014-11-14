@@ -23,3 +23,8 @@ void read_role(char *name);
 	Parameters	: role name and users to add and/or remove
 	Return		: nothing */
 void assign_role(char *name,char *add,char *rm);
+
+/*	Name		: show_roles
+ * 	Parameters	: nothing
+ * 	Return		: nothing, print all valid role names */
+void show_all();

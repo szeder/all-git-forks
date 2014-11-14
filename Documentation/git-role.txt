@@ -14,7 +14,8 @@ SYNOPSIS
  	   | [-u | --update] 
 	   | [-d | --delete] 
 	   | [-a | --assign]
-	   | [--myrole] ]
+	   | [--myrole]
+	   | [--show-all] ]
 
 Each option accepts arguments. See OPTIONS section for more info about a specific option.
 
@@ -62,6 +63,9 @@ Asignations made first and deasignations finally (be carefull).
 [Check my role option]
 No need parameters. Just 'git role --myrole' to check your role permissions
 
+[Show existent roles option]
+No need parameters. Just 'git role --show-all' to check all existent roles
+
 NOTES
 -----
 By default exists a PUBLIC role which allows basic operations.
@@ -92,3 +96,6 @@ Assign and deassign role example:
 	
 Checking your role permissions
 	git role --myrole
+	
+Checking all roles
+	git role --show-all

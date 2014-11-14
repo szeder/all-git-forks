@@ -149,3 +149,29 @@ void assign_role(char *name,char *add,char *rm){
 	free(formatted_role);
 	free(upper_role);
 }
+
+/* See specification in role_functions.h */
+void show_all(){
+	char *query = NULL;
+	char *fields[] = {ALL,0};
+	query = construct_query(fields,from(ROLE_TABLE),
+			NULL,NULL,NULL);
+	generic_list data = NULL;
+	data = exec_query(query);
+	if (data==NULL) {
+		printf("No existent roles yet\n");
+	}else{
+		role_list info = (*data).role_info;
+		if (info==NULL){
+			printf("No existent roles yet\n");
+		}else{
+			printf("Existent roles:\n");
+			while(info!=NULL){
+				printf("> %s\n",info->role_name);
+				info=info->next;
+			}
+			dealloc(data);
+		}
+	}
+	free(query);
+}
