@@ -4,5 +4,4 @@
 struct index_state;
 int check_watchman(struct index_state *index);
 
-
 #endif /* WATCHMAN_SUPPORT_H */

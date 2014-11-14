@@ -5,15 +5,18 @@
 #include "split-index.h"
 #include "shm.h"
 #include "lockfile.h"
+#include "watchman-support.h"
 
 struct shm {
 	unsigned char sha1[20];
 	void *shm;
 	size_t size;
+	pid_t pid;
 };
 
 static struct shm shm_index;
 static struct shm shm_base_index;
+static struct shm shm_watchman;
 static int daemonized, to_verify = 1;
 
 static void free_index_shm(struct shm *is)
@@ -25,10 +28,21 @@ static void free_index_shm(struct shm *is)
 	is->shm = NULL;
 }
 
+static void free_watchman_shm(struct shm *is)
+{
+	if (!is->shm)
+		return;
+	munmap(is->shm, is->size);
+	git_shm_unlink("git-watchman-%s-%" PRIuMAX,
+		       sha1_to_hex(is->sha1), (uintmax_t)is->pid);
+	is->shm = NULL;
+}
+
 static void cleanup_shm(void)
 {
 	free_index_shm(&shm_index);
 	free_index_shm(&shm_base_index);
+	free_watchman_shm(&shm_watchman);
 }
 
 static void cleanup(void)
@@ -120,13 +134,15 @@ static void share_the_index(void)
 	if (the_index.split_index && the_index.split_index->base)
 		share_index(the_index.split_index->base, &shm_base_index);
 	share_index(&the_index, &shm_index);
-	if (to_verify && !verify_shm())
+	if (to_verify && !verify_shm()) {
 		cleanup_shm();
-	discard_index(&the_index);
+		discard_index(&the_index);
+	}
 }
 
 static void refresh(int sig)
 {
+	discard_index(&the_index);
 	the_index.keep_mmap = 1;
 	the_index.to_shm    = 1;
 	if (read_cache() < 0)
@@ -136,7 +152,55 @@ static void refresh(int sig)
 
 #ifdef HAVE_SHM
 
-static void do_nothing(int sig)
+#ifdef USE_WATCHMAN
+static void share_watchman(struct index_state *istate,
+			   struct shm *is, pid_t pid)
+{
+	struct strbuf sb = STRBUF_INIT;
+	void *shm;
+
+	write_watchman_ext(&sb, istate);
+	if (git_shm_map(O_CREAT | O_EXCL | O_RDWR, 0700, sb.len + 20,
+			&shm, PROT_READ | PROT_WRITE, MAP_SHARED,
+			"git-watchman-%s-%" PRIuMAX,
+			sha1_to_hex(istate->sha1), (uintmax_t)pid) == sb.len + 20) {
+		is->size = sb.len + 20;
+		is->shm = shm;
+		is->pid = pid;
+		hashcpy(is->sha1, istate->sha1);
+
+		memcpy(shm, sb.buf, sb.len);
+		hashcpy((unsigned char *)shm + is->size - 20, is->sha1);
+	}
+	strbuf_release(&sb);
+}
+
+static void prepare_with_watchman(pid_t pid)
+{
+	/*
+	 * with the help of watchman, maybe we could detect if
+	 * $GIT_DIR/index is updated..
+	 */
+	if (!verify_index(&the_index))
+		refresh(0);
+
+	if (check_watchman(&the_index))
+		return;
+
+	share_watchman(&the_index, &shm_watchman, pid);
+}
+
+static void prepare_index(int sig, siginfo_t *si, void *context)
+{
+	free_watchman_shm(&shm_watchman);
+	if (the_index.last_update)
+		prepare_with_watchman(si->si_pid);
+	kill(si->si_pid, SIGHUP); /* stop the waiting in poke_daemon() */
+}
+
+#else
+
+static void prepare_index(int sig, siginfo_t *si, void *context)
 {
 	/*
 	 * what we need is the signal received and interrupts
@@ -145,11 +209,21 @@ static void do_nothing(int sig)
 	 */
 }
 
+#endif
+
 static void loop(const char *pid_file, int idle_in_seconds)
 {
+	struct sigaction sa;
+
 	sigchain_pop(SIGHUP);	/* pushed by sigchain_push_common */
 	sigchain_push(SIGHUP, refresh);
-	sigchain_push(SIGUSR1, do_nothing);
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_sigaction = prepare_index;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_SIGINFO;
+	sigaction(SIGUSR1, &sa, NULL);
+
 	refresh(0);
 	while (sleep(idle_in_seconds))
 		; /* do nothing, all is handled by signal handlers already */
@@ -245,6 +319,8 @@ int main(int argc, char **argv)
 				       LOCK_DIE_ON_ERROR);
 #ifdef GIT_WINDOWS_NATIVE
 	strbuf_addstr(&sb, "HWND");
+#elif defined(USE_WATCHMAN)
+	strbuf_addch(&sb, 'W');	/* see poke_daemon() */
 #endif
 	strbuf_addf(&sb, "%" PRIuMAX, (uintmax_t) getpid());
 	write_in_full(fd, sb.buf, sb.len);
