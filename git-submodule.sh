@@ -886,24 +886,24 @@ Maybe you want to use 'update --init'?")"
 			must_die_on_failure=
 			case "$update_module" in
 			checkout)
-				command="git checkout $subforce -q"
+				submodule_command() { git checkout $subforce -q "$@"; }
 				die_msg="$(eval_gettext "Unable to checkout '\$sha1' in submodule path '\$displaypath'")"
 				say_msg="$(eval_gettext "Submodule path '\$displaypath': checked out '\$sha1'")"
 				;;
 			rebase)
-				command="git rebase"
+				submodule_command() { git rebase "$@"; }
 				die_msg="$(eval_gettext "Unable to rebase '\$sha1' in submodule path '\$displaypath'")"
 				say_msg="$(eval_gettext "Submodule path '\$displaypath': rebased into '\$sha1'")"
 				must_die_on_failure=yes
 				;;
 			merge)
-				command="git merge"
+				submodule_command() { git merge "$@"; }
 				die_msg="$(eval_gettext "Unable to merge '\$sha1' in submodule path '\$displaypath'")"
 				say_msg="$(eval_gettext "Submodule path '\$displaypath': merged in '\$sha1'")"
 				must_die_on_failure=yes
 				;;
 			!*)
-				command="${update_module#!}"
+				submodule_command() { ${update_module#!} "$@"; }
 				die_msg="$(eval_gettext "Execution of '\$command \$sha1' failed in submodule  path '\$prefix\$sm_path'")"
 				say_msg="$(eval_gettext "Submodule path '\$prefix\$sm_path': '\$command \$sha1'")"
 				must_die_on_failure=yes
@@ -912,7 +912,7 @@ Maybe you want to use 'update --init'?")"
 				die "$(eval_gettext "Invalid update mode '$update_module' for submodule '$name'")"
 			esac
 
-			if (clear_local_git_env; cd "$sm_path" && $command "$sha1")
+			if (clear_local_git_env; cd "$sm_path" && submodule_command "$sha1")
 			then
 				say "$say_msg"
 			elif test -n "$must_die_on_failure"
