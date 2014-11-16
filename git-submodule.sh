@@ -269,9 +269,8 @@ module_clone()
 	gitdir_base=
 	base_name=$(dirname "$name")
 
-	gitdir=$(git rev-parse --git-dir)
-	gitdir_base="$gitdir/modules/$base_name"
-	gitdir="$gitdir/modules/$name"
+	gitdir_base=$(git rev-parse --git-path "modules/$base_name")
+	gitdir=$(git rev-parse --git-path "modules/$name")
 
 	if test -d "$gitdir"
 	then
@@ -458,12 +457,13 @@ Use -f if you really want to add it." >&2
 		fi
 
 	else
-		if test -d ".git/modules/$sm_name"
+		module_gitdir=$(git rev-parse --git-path "modules/$sm_name")
+		if test -d "$module_gitdir"
 		then
 			if test -z "$force"
 			then
 				echo >&2 "$(eval_gettext "A git directory for '\$sm_name' is found locally with remote(s):")"
-				GIT_DIR=".git/modules/$sm_name" GIT_WORK_TREE=. git remote -v | grep '(fetch)' | sed -e s,^,"  ", -e s,' (fetch)',, >&2
+				GIT_DIR="$module_gitdir" GIT_WORK_TREE=. git remote -v | grep '(fetch)' | sed -e s,^,"  ", -e s,' (fetch)',, >&2
 				echo >&2 "$(eval_gettext "If you want to reuse this local git directory instead of cloning again from")"
 				echo >&2 "  $realrepo"
 				echo >&2 "$(eval_gettext "use the '--force' option. If the local git directory is not the correct repo")"
