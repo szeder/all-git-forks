@@ -254,6 +254,7 @@ module_name()
 #
 module_clone()
 {
+	local sm_path
 	sm_path=$1
 	name=$2
 	url=$3
@@ -832,9 +833,27 @@ Maybe you want to use 'update --init'?")"
 			continue
 		fi
 
+		checkout_to_common_gitdir=
 		if ! test -d "$sm_path"/.git && ! test -f "$sm_path"/.git
 		then
-			module_clone "$sm_path" "$name" "$url" "$reference" "$depth" || exit
+			common_dir=$(git rev-parse --git-common-dir)
+			private_dir=$(git rev-parse --git-dir)
+			if test "$common_dir" != "$private_dir"
+			then
+				checkout_to_common_gitdir=$(git rev-parse --git-path "modules/$name")
+				if ! test -d "$checkout_to_common_gitdir"
+				then
+					tmp_worktree=$(mktemp -d)
+					ls -a "$tmp_worktree"
+					test -n "$tmp_worktree" || die "mktemp failed"
+					module_clone "$tmp_worktree" "$name" "$url" "$reference" "$depth" || exit
+					git --git-dir="$checkout_to_common_gitdir" config --unset core.worktree
+					rm -rf "$tmp_worktree"
+					rm -f "$checkout_to_common_gitdir/index"
+				fi
+			else
+				module_clone "$sm_path" "$name" "$url" "$reference" "$depth" || exit
+			fi
 			cloned_modules="$cloned_modules;$name"
 			subsha1=
 		else
@@ -886,7 +905,12 @@ Maybe you want to use 'update --init'?")"
 			must_die_on_failure=
 			case "$update_module" in
 			checkout)
-				submodule_command() { git checkout $subforce -q "$@"; }
+				if test -n "$checkout_to_common_gitdir"
+				then
+					submodule_command() { git --git-dir="$checkout_to_common_gitdir" checkout --to . $subforce -q "$@"; }
+				else
+					submodule_command() { git checkout $subforce -q "$@"; }
+				fi
 				die_msg="$(eval_gettext "Unable to checkout '\$sha1' in submodule path '\$displaypath'")"
 				say_msg="$(eval_gettext "Submodule path '\$displaypath': checked out '\$sha1'")"
 				;;
