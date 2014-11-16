@@ -83,4 +83,37 @@ test_expect_success 'linked worktree is uptodate after chanages in main' \
 	: >../../expected &&
 	test_cmp ../../expected ../../actual)'
 
+test_expect_success 'init another repository to test adding' \
+    'mkdir -p add_area/repo &&
+    (cd add_area/repo &&
+	git init &&
+	git commit --allow-empty -m main_commit &&
+	git branch b2 &&
+	git checkout --to ../worktree b2)'
+
+test_expect_success 'add sub&history' \
+    '(cd add_area/worktree &&
+	git submodule add ../../origin/sub sub &&
+	(cd sub && git checkout --detach "$rev1_hash_sub") &&
+	git add sub &&
+	git commit -m sub_added &&
+	(cd sub && git checkout --detach origin/master) &&
+	git add sub &&
+	git commit -m sub_changed)'
+
+test_expect_success 'inquire history after adding' \
+    '(cd add_area/worktree &&
+	git diff --submodule b2"^!" | grep "file1 updated")'
+
+test_expect_success 'init submodule in main' \
+    '(cd add_area/repo &&
+	git reset --hard b2~1 &&
+	git submodule update --init)'
+
+test_expect_success 'linked worktree is uptodate after changes in original after adding' \
+    '(cd add_area/worktree &&
+	git status --porcelain >../../actual &&
+	: >../../expected &&
+	test_cmp ../../expected ../../actual)'
+
 test_done
