@@ -59,4 +59,28 @@ test_expect_success 'checkout sub manually' \
 test_expect_success 'can see submodule diffs after manual checkout of linked submodule' \
     '(cd linked_submodule/main && git diff --submodule master"^!" | grep "file1 updated")'
 
+test_expect_success 'clone non-recursively and update to linked superpproject' \
+    'mkdir clone_norec && ( cd clone_norec &&
+	git clone "$base_path/origin/main" &&
+	cd main &&
+	git checkout --to "$base_path/worktree_with_submodule/main" "$rev1_hash_main") &&
+    (cd worktree_with_submodule/main &&
+	git submodule update --init)'
+
+test_expect_success 'can see submodule diffs in worktree with independently updated submodule' \
+    '(cd worktree_with_submodule/main && git diff --submodule master"^!" | grep "file1 updated")'
+
+test_expect_success 'init submodule in main repository back' \
+    '( cd clone_norec/main && git submodule update --init)'
+
+test_expect_success 'can see submodule diffs in main repository which initalized after linked' \
+    '(cd clone_norec/main && git diff --submodule master"^!" | grep "file1 updated")'
+
+test_expect_success 'linked worktree is uptodate after chanages in main' \
+    '(cd clone_norec/main && git checkout --detach master~1 && git submodule update) &&
+    (cd worktree_with_submodule/main &&
+	git status --porcelain >../../actual &&
+	: >../../expected &&
+	test_cmp ../../expected ../../actual)'
+
 test_done
