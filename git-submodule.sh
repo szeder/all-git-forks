@@ -473,16 +473,44 @@ Use -f if you really want to add it." >&2
 				echo "$(eval_gettext "Reactivating local git directory for submodule '\$sm_name'.")"
 			fi
 		fi
-		module_clone "$sm_path" "$sm_name" "$realrepo" "$reference" "$depth" || exit
-		(
-			clear_local_git_env
-			cd "$sm_path" &&
-			# ash fails to wordsplit ${branch:+-b "$branch"...}
-			case "$branch" in
-			'') git checkout -f -q ;;
-			?*) git checkout -f -q -B "$branch" "origin/$branch" ;;
-			esac
-		) || die "$(eval_gettext "Unable to checkout submodule '\$sm_path'")"
+		checkout_to_common_gitdir=
+		common_dir=$(git rev-parse --git-common-dir)
+		private_dir=$(git rev-parse --git-dir)
+		if test "$common_dir" != "$private_dir"
+		then
+			checkout_to_common_gitdir="$module_gitdir"
+			tmp_worktree=$(mktemp -d)
+			ls -a "$tmp_worktree"
+			test -n "$tmp_worktree" || die "mktemp failed"
+			module_clone "$tmp_worktree" "$sm_name" "$realrepo" "$reference" "$depth" &&
+			(
+				clear_local_git_env
+				cd "$tmp_worktree" &&
+				git update-ref --no-deref HEAD HEAD'^0' &&
+				git config --unset core.worktree
+			) || exit
+			rm -rf "$tmp_worktree"
+			rm -f "$checkout_to_common_gitdir/index"
+			(
+				clear_local_git_env
+				# ash fails to wordsplit ${branch:+-b "$branch"...}
+				case "$branch" in
+				'') git --git-dir="$checkout_to_common_gitdir" checkout -f -q --to "$sm_path" origin/HEAD ;;
+				?*) git --git-dir="$checkout_to_common_gitdir" checkout -f -q -B "$branch" --to "$sm_path" "origin/$branch" ;;
+				esac
+			) || die "$(eval_gettext "Unable to checkout submodule '\$sm_path'")"
+		else
+			module_clone "$sm_path" "$sm_name" "$realrepo" "$reference" "$depth" || exit
+			(
+				clear_local_git_env
+				cd "$sm_path" &&
+				# ash fails to wordsplit ${branch:+-b "$branch"...}
+				case "$branch" in
+				'') git checkout -f -q ;;
+				?*) git checkout -f -q -B "$branch" "origin/$branch" ;;
+				esac
+			) || die "$(eval_gettext "Unable to checkout submodule '\$sm_path'")"
+		fi
 	fi
 	git config submodule."$sm_name".url "$realrepo"
 
