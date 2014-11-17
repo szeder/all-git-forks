@@ -630,10 +630,19 @@ static enum protocol parse_connect_url(const char *url_orig, char **ret_host,
 	path = xstrdup(path);
 	*end = '\0';
 
-	*ret_host = xstrdup(host);
+	if (ret_host)
+		*ret_host = xstrdup(host);
 	*ret_path = path;
 	free(url);
 	return protocol;
+}
+
+char *git_path_from_url(const char *url)
+{
+	char *path;
+
+	parse_connect_url(url, NULL, &path);
+	return path;
 }
 
 static struct child_process no_fork = CHILD_PROCESS_INIT;
