@@ -284,7 +284,7 @@ free_return:
 	return update_seen;
 }
 
-int send_pack(struct send_pack_args *args,
+int send_pack(struct send_pack_args *args, const char *url,
 	      int fd[], struct child_process *conn,
 	      struct ref *remote_refs,
 	      struct sha1_array *extra_have)

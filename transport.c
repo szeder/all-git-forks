@@ -836,8 +836,8 @@ static int git_transport_push(struct transport *transport, struct ref *remote_re
 	args.use_atomic_push = !!(flags & TRANSPORT_ATOMIC_PUSH);
 	args.url = transport->url;
 
-	ret = send_pack(&args, data->fd, data->conn, remote_refs,
-			&data->extra_have);
+	ret = send_pack(&args, transport->url, data->fd, data->conn,
+			remote_refs, &data->extra_have);
 
 	close(data->fd[1]);
 	close(data->fd[0]);

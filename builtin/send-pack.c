@@ -289,7 +289,7 @@ int cmd_send_pack(int argc, const char **argv, const char *prefix)
 	set_ref_status_for_push(remote_refs, args.send_mirror,
 		args.force_update);
 
-	ret = send_pack(&args, fd, conn, remote_refs, &extra_have);
+	ret = send_pack(&args, dest, fd, conn, remote_refs, &extra_have);
 
 	if (helper_status)
 		print_helper_status(remote_refs);
