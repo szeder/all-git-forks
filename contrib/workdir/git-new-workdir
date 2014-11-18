@@ -10,6 +10,10 @@ die () {
 	exit 128
 }
 
+failed () {
+	die "unable to create new workdir \"$new_workdir\"!"
+}
+
 if test $# -lt 2 || test $# -gt 3
 then
 	usage "$0 <repository> <new_workdir> [<branch>]"
@@ -48,35 +52,48 @@ then
 		"a complete repository."
 fi
 
-# don't recreate a workdir over an existing repository
-if test -e "$new_workdir"
-then
-	die "destination directory '$new_workdir' already exists."
-fi
-
-# make sure the links use full paths
+# make sure the links in the workdir have full paths to the original repo
 git_dir=$(cd "$git_dir"; pwd)
 
-# create the workdir
-mkdir -p "$new_workdir/.git" || die "unable to create \"$new_workdir\"!"
+# don't recreate a workdir over an existing directory, unless it's empty
+if test -d "$new_workdir"
+then
+	if test $(ls -a1 "$new_workdir/." | wc -l) -ne 2
+	then
+		die "destination directory '$new_workdir' is not empty."
+	fi
+	cleandir="$new_workdir"/.git
+else
+	mkdir -p "$new_workdir" || failed
+	cleandir="$new_workdir"
+fi
+
+cleanup () {
+	rm -rf "$cleandir"
+}
+siglist="0 1 2 15"
+trap cleanup $siglist
+
+# create embedded directories
+for x in logs
+do
+	mkdir -p "$new_workdir/.git/$x" || failed
+done
 
 # create the links to the original repo.  explicitly exclude index, HEAD and
 # logs/HEAD from the list since they are purely related to the current working
 # directory, and should not be shared.
 for x in config refs logs/refs objects info hooks packed-refs remotes rr-cache svn
 do
-	case $x in
-	*/*)
-		mkdir -p "$(dirname "$new_workdir/.git/$x")"
-		;;
-	esac
-	ln -s "$git_dir/$x" "$new_workdir/.git/$x"
+	ln -s "$git_dir/$x" "$new_workdir/.git/$x" || failed
 done
 
-# now setup the workdir
-cd "$new_workdir"
 # copy the HEAD from the original repository as a default branch
-cp "$git_dir/HEAD" .git/HEAD
-# checkout the branch (either the same as HEAD from the original repository, or
-# the one that was asked for)
-git checkout -f $branch
+cp "$git_dir/HEAD" "$new_workdir"/.git/HEAD || failed
+
+# the workdir is set up.  if the checkout fails, the user can fix it.
+trap - $siglist
+
+# checkout the branch (either the same as HEAD from the original repository,
+# or the one that was asked for)
+git --git-dir="$new_workdir"/.git --work-tree="$new_workdir" checkout -f $branch
