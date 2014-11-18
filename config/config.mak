@@ -14,6 +14,7 @@ CFLAGS += -Wall -Werror
 CFLAGS += -Wno-format-zero-length
 CFLAGS += -Wdeclaration-after-statement
 CFLAGS += -Wpointer-arith
+CFLAGS += -Wstrict-prototypes
 ifeq ($(COMPILER), clang)
 CFLAGS += -Qunused-arguments
 CFLAGS += -Wno-parentheses-equality
