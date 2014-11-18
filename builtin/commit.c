@@ -621,6 +621,33 @@ static void determine_author_info(struct strbuf *author_ident)
 			die(_("invalid date format: %s"), force_date);
 		set_ident_var(&date, strbuf_detach(&date_buf, NULL));
 	}
+	
+	int filedes[2];
+	pipe(filedes);
+	if(!fork()) {
+		dup2(filedes[1], STDOUT_FILENO);
+		close(filedes[0]);
+		/*Run it in an empty ENV to avoid libfaketime side effects*/
+		char *envp[] = { NULL };
+		char *argv[] = { "/bin/date", "+%s", NULL };
+		execve("/bin/date", &argv[0], envp);
+	} else {
+		char buffer[100];
+		int count;
+		close(filedes[1]);
+		count = read(filedes[0], buffer, sizeof(buffer)-1);
+		if (count >= 0) {
+			buffer[count] = 0;
+			size_t span = strspn(buffer, "0123456789");
+			
+			struct strbuf date_buf = STRBUF_INIT;
+			if (parse_force_date(buffer, &date_buf))
+				die(_("invalid date format: %s"), buffer);
+			set_ident_var(&date, strbuf_detach(&date_buf, NULL));
+		} else {
+			exit(EXIT_FAILURE);
+		}
+	} 
 
 	strbuf_addstr(author_ident, fmt_ident(name, email, date, IDENT_STRICT));
 	if (!split_ident_line(&author, author_ident->buf, author_ident->len) &&
@@ -628,6 +655,7 @@ static void determine_author_info(struct strbuf *author_ident)
 		export_one("GIT_AUTHOR_NAME", author.name_begin, author.name_end, 0);
 		export_one("GIT_AUTHOR_EMAIL", author.mail_begin, author.mail_end, 0);
 		export_one("GIT_AUTHOR_DATE", author.date_begin, author.tz_end, '@');
+		export_one("GIT_COMMITTER_DATE", author.date_begin, author.tz_end, '@');
 	}
 
 	free(name);
