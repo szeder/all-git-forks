@@ -119,6 +119,4 @@ test_expect_success 'checkout with grafts' '
 	test_cmp expected actual
 '
 
-# test_expect_success 'archive' 'tar czf ../t2025.tar.gz .'
-
 test_done
