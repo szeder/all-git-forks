@@ -6,9 +6,63 @@
 void rm_assign_task(char *id,char *rm);
 void rm_link_files(char *id,char *rm);
 
+#define A "NEW"
+#define B "IN PROGRESS"
+#define C "REJECTED"
+#define D "RESOLVED"
+
+/* A -> B
+ * B -> D
+ * A -> C
+ * B -> C
+ * A -> D */
+
 /*******************/
 /*PRIVATE FUNCTIONS*/
 /*******************/
+
+/*	Name		: check_state_transition
+ *  Parameters	: actual state and transition to
+ *  Return		: 1 if ok or 0 in other case
+ *  Notes		: Transition states are defined in this function and here is 
+ * 		all available states */
+int check_state_transition(char *from,char *to){
+	if(  (!strcmp(from,A) && !strcmp(to,B))
+		|| (!strcmp(from,B) && !strcmp(to,D))
+		|| (!strcmp(from,A) && !strcmp(to,C))
+		|| (!strcmp(from,B) && !strcmp(to,C))
+		|| (!strcmp(from,A) && !strcmp(to,D)) ){
+		return 1;
+	}else{
+		return 0;
+	}
+}
+
+/*	Name		: check_update_transitions
+ * 	Parameters	: Nothing
+ * 	Return		: 1 if ok or 0 in other case 
+ * 	Note		: Check all task state transitions */
+int check_update_transitions(char *state_transition, char *filter ){
+	char *query_fields[] = {TASK_STATE,0};
+	char *query = NULL;
+	query = construct_query(query_fields,from(TASK_TABLE),filter,0,0);
+	generic_list data = exec_query(query);
+	int result = 1;
+	if(data!=NULL){
+		task_list tasks = data->task_info;
+		if(tasks!=NULL){
+			while(tasks!=NULL){
+				result = (check_state_transition(tasks->state,state_transition) && result);
+				tasks=tasks->next;
+			}
+		} 
+		dealloc(data);
+	}
+	if(query!=NULL){
+		free(query);
+	}
+	return result;
+}
 
 /*	Name		: resolve_ambig
 	Parameters	: file name
@@ -219,6 +273,7 @@ void read_task(char *filter){
 void update_task(char *filter,char *name,char *state,char *desc,char *notes,
 					char *est_start,char *est_end,char *start,char *end,char *prior,
 					char *type,char *est_time,char *time){
+						
 	char *update = NULL;
 	char *asig_name = NULL; char *asig_state = NULL; char *asig_desc = NULL; char *asig_notes = NULL;
 	char *asig_est_start  = NULL; char *asig_est_end = NULL; char *asig_start = NULL;
@@ -234,6 +289,14 @@ void update_task(char *filter,char *name,char *state,char *desc,char *notes,
 	char *asignations[13];
 	
 	int i=0;
+	
+	if(state!=NULL){
+		int check = check_update_transitions(state,filter);
+		if (!check){
+			printf("Invalid state transition\n");
+			exit(0);
+		}
+	}
 
 	//Prepare query asignations
 	if(name!=NULL) {
