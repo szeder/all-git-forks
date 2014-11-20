@@ -163,8 +163,16 @@ extern void rollback_packed_refs(void);
  */
 int pack_refs(unsigned int flags);
 
-extern int repack_without_refs(const char **refnames, int n,
-			       struct strbuf *err);
+/*
+ * Remove the refs listed in 'without' from the packed-refs file.
+ * On error, packed-refs will be unchanged, the return value is
+ * nonzero, and a message about the error is written to the 'err'
+ * strbuf.
+ *
+ * The refs in 'without' may have any order.  The err buffer must
+ * not be omitted.
+ */
+extern int repack_without_refs(struct string_list *without, struct strbuf *err);
 
 extern int ref_exists(const char *);
 
