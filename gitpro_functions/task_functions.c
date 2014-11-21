@@ -64,6 +64,65 @@ int check_update_transitions(char *state_transition, char *filter ){
 	return result;
 }
 
+/*	Name 		: print_task_asociations
+ * 	Parameters	: task id
+ * 	Return		: nothing
+ * 	Notes		: prints users asigned to task id given */
+void print_task_asignations(id){
+	char *query = NULL;
+	char *fields[] = {ALL,0};
+	char *f_id = format_number(id);
+	char *where_part = where(cond(ASIG_TASK_ID,"=",f_id));
+	query = construct_query(fields,from(ASIG_TABLE),where_part,NULL,NULL);
+	//execute query	
+	generic_list data = NULL;
+	data = 	exec_query(query);
+	free(query);
+	//show data
+	if((*data).asig_info!=NULL){
+		asig_list aux =  (*data).asig_info;
+		printf("\tAssigned to: ");
+		while(aux!=NULL){
+			printf("%s   ",aux->user_name);
+			aux=aux->next;
+		}
+		aux=NULL;
+	}else{
+		printf("\tNo assigned yet\n");
+	}
+	dealloc(data);
+}
+
+/*	Name 		: print_task_asociations
+ * 	Parameters	: task id
+ * 	Return		: nothing
+ * 	Notes		: prints file asociations to task id given */
+void print_task_asociations(id){
+	char *query = NULL;
+	char *fields[] = {ALL,0};
+	char *f_id = format_number(id);
+	char *where_part = where(cond(ASOC_TASK_ID,"=",f_id));
+	query = construct_query(fields,from(ASOC_TABLE),where_part,NULL,NULL);
+	//execute query	
+	generic_list data = NULL;
+	data = 	exec_query(query);
+	free(f_id);
+	free(query);
+	//show data
+	if((*data).asoc_info!=NULL){
+		asoc_list aux =  (*data).asoc_info;
+		printf("\tAssociated files: \n");
+		while(aux!=NULL){
+			printf("\n  %s\n",aux->file_path);
+			aux=aux->next;
+		}
+		aux=NULL;
+	}else{
+		printf("\tNo associated files yet\n");
+	}
+	dealloc(data);
+}
+
 /*	Name		: resolve_ambig
 	Parameters	: file name
 	Return		: selected file path. if unique it's returned automatically otherwise 
@@ -240,7 +299,7 @@ void create_task(char *name,char *state,char *desc,char *notes,
 }
 
 /* See specification in task_functions.h */
-void read_task(char *filter){
+void read_task(char *filter,int verbose){
 	char *query = NULL;
 	char *fields[] = {ALL,0};
 	char *order[] = {TASK_START_EST,0};
@@ -254,12 +313,16 @@ void read_task(char *filter){
 		task_list aux =  (*data).task_info;
 		printf("Tasks found\n");
 		while(aux!=NULL){
-			printf("%d | Name: %s\tState: %s\tPriority: %s\tType: %s\n",aux->task_id,aux->task_name,aux->state,aux->priority,aux->type);
-			printf("\tStart\tEstimated: %s\tReal: %s\n",aux->est_start_date,aux->start_date);
-			printf("\tEnd  \tEstimated: %s\tReal: %s\n",aux->est_end_date,aux->end_date);
-			printf("\tTime \tEstimated: %d\tReal: %d\n",aux->est_time_min,aux->real_time_min);
-			printf("\tDescription: %s\n",aux->description);
-			printf("\tNotes: %s\n",aux->notes);
+			printf("%d | Name: %s   State: %s   Priority: %s   Type: %s\n",aux->task_id,aux->task_name,aux->state,aux->priority,aux->type);
+			if(verbose){
+				printf("\tStart\tEstimated: %s\tReal: %s\n",aux->est_start_date,aux->start_date);
+				printf("\tEnd  \tEstimated: %s\tReal: %s\n",aux->est_end_date,aux->end_date);
+				printf("\tTime \tEstimated: %d\tReal: %d\n",aux->est_time_min,aux->real_time_min);
+				print_task_asignations(aux->task_id);
+				print_task_asociations(aux->task_id);
+				printf("\tDescription: %s\n",aux->description);
+				printf("\tNotes: %s\n",aux->notes);
+			}
 			aux=aux->next;
 		}
 		aux=NULL;

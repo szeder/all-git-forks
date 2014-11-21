@@ -16,10 +16,10 @@ char *filter_task(char *id,char *name,char *state,
 					char *type,char *est_time,char *time);
 									
 /*	Name		: read_task
-	Parameters	: task filters
+	Parameters	: task filters and verbose (1 ok or 0 to large mode)
 	Return		: nothing
 	Used for	: read tasks that matchs with given filter */
-void read_task(char *filter);
+void read_task(char *filter, int verbose);
 
 /*	Name		: update_task
 	Parameters	: task filters

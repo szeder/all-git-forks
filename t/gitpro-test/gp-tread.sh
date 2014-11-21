@@ -45,36 +45,11 @@ EOF
 cat > "$output/read001.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-5 | Name: task 5	State: REJECTED	Priority: VERY HIGH	Type: CONFIGURATION
-	Start	Estimated: 30/12/2014	Real: empty
-	End  	Estimated: 21/12/2014	Real: empty
-	Time 	Estimated: -1	Real: -1
-	Description: my brief desc
-	Notes: empty
-1 | Name: task 1	State: NEW	Priority: HIGH	Type: TEST
-	Start	Estimated: 20/12/2014	Real: empty
-	End  	Estimated: 21/12/2014	Real: empty
-	Time 	Estimated: 14	Real: 12
-	Description: my desc
-	Notes: my notes
-2 | Name: task 2	State: IN PROGRESS	Priority: VERY LOW	Type: ANALYSIS
-	Start	Estimated: empty	Real: 21/12/2014
-	End  	Estimated: 24/12/2014	Real: empty
-	Time 	Estimated: -1	Real: 12
-	Description: empty
-	Notes: my personal notes
-3 | Name: task 3	State: IN PROGRESS	Priority: MAJOR	Type: MANAGEMENT
-	Start	Estimated: empty	Real: empty
-	End  	Estimated: 26/12/2014	Real: 28/12/2014
-	Time 	Estimated: 18	Real: -1
-	Description: empty
-	Notes: empty
-4 | Name: task 4	State: REJECTED	Priority: URGENT	Type: DEVELOPMENT
-	Start	Estimated: empty	Real: empty
-	End  	Estimated: 27/12/2014	Real: empty
-	Time 	Estimated: 20	Real: 29
-	Description: empty
-	Notes: empty
+5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
+1 | Name: task 1   State: NEW   Priority: HIGH   Type: TEST
+2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
+3 | Name: task 3   State: IN PROGRESS   Priority: MAJOR   Type: MANAGEMENT
+4 | Name: task 4   State: REJECTED   Priority: URGENT   Type: DEVELOPMENT
 EOF
 ./launch-test.sh 'git task -r' 'read001'
 
@@ -95,12 +70,7 @@ EOF
 cat > "$output/read002.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-3 | Name: task 3	State: IN PROGRESS	Priority: MAJOR	Type: MANAGEMENT
-	Start	Estimated: empty	Real: empty
-	End  	Estimated: 26/12/2014	Real: 28/12/2014
-	Time 	Estimated: 18	Real: -1
-	Description: empty
-	Notes: empty
+3 | Name: task 3   State: IN PROGRESS   Priority: MAJOR   Type: MANAGEMENT
 EOF
 ./launch-test.sh 'git task -r' 'read002'
 
@@ -121,12 +91,7 @@ EOF
 cat > "$output/read003.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-5 | Name: task 5	State: REJECTED	Priority: VERY HIGH	Type: CONFIGURATION
-	Start	Estimated: 30/12/2014	Real: empty
-	End  	Estimated: 21/12/2014	Real: empty
-	Time 	Estimated: -1	Real: -1
-	Description: my brief desc
-	Notes: empty
+5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 EOF
 ./launch-test.sh 'git task -r' 'read003'
 
@@ -147,18 +112,8 @@ EOF
 cat > "$output/read004.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-2 | Name: task 2	State: IN PROGRESS	Priority: VERY LOW	Type: ANALYSIS
-	Start	Estimated: empty	Real: 21/12/2014
-	End  	Estimated: 24/12/2014	Real: empty
-	Time 	Estimated: -1	Real: 12
-	Description: empty
-	Notes: my personal notes
-3 | Name: task 3	State: IN PROGRESS	Priority: MAJOR	Type: MANAGEMENT
-	Start	Estimated: empty	Real: empty
-	End  	Estimated: 26/12/2014	Real: 28/12/2014
-	Time 	Estimated: 18	Real: -1
-	Description: empty
-	Notes: empty
+2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
+3 | Name: task 3   State: IN PROGRESS   Priority: MAJOR   Type: MANAGEMENT
 EOF
 ./launch-test.sh 'git task -r' 'read004'
 
@@ -179,20 +134,24 @@ EOF
 cat > "$output/read005.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-2 | Name: task 2	State: IN PROGRESS	Priority: VERY LOW	Type: ANALYSIS
+2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 	Start	Estimated: empty	Real: 21/12/2014
 	End  	Estimated: 24/12/2014	Real: empty
 	Time 	Estimated: -1	Real: 12
+	No assigned yet
+	No associated files yet
 	Description: empty
 	Notes: my personal notes
-3 | Name: task 3	State: IN PROGRESS	Priority: MAJOR	Type: MANAGEMENT
+3 | Name: task 3   State: IN PROGRESS   Priority: MAJOR   Type: MANAGEMENT
 	Start	Estimated: empty	Real: empty
 	End  	Estimated: 26/12/2014	Real: 28/12/2014
 	Time 	Estimated: 18	Real: -1
+	No assigned yet
+	No associated files yet
 	Description: empty
 	Notes: empty
 EOF
-./launch-test.sh 'git task -r' 'read005'
+./launch-test.sh 'git task -r -v' 'read005'
 
 # TEST 6 --- read006 --- Search task by state (multiple task matches) (mayus & minus)
 cat > "$input/read006.in" << \EOF
@@ -211,18 +170,8 @@ EOF
 cat > "$output/read006.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-2 | Name: task 2	State: IN PROGRESS	Priority: VERY LOW	Type: ANALYSIS
-	Start	Estimated: empty	Real: 21/12/2014
-	End  	Estimated: 24/12/2014	Real: empty
-	Time 	Estimated: -1	Real: 12
-	Description: empty
-	Notes: my personal notes
-3 | Name: task 3	State: IN PROGRESS	Priority: MAJOR	Type: MANAGEMENT
-	Start	Estimated: empty	Real: empty
-	End  	Estimated: 26/12/2014	Real: 28/12/2014
-	Time 	Estimated: 18	Real: -1
-	Description: empty
-	Notes: empty
+2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
+3 | Name: task 3   State: IN PROGRESS   Priority: MAJOR   Type: MANAGEMENT
 EOF
 ./launch-test.sh 'git task -r' 'read006'
 
@@ -343,12 +292,7 @@ EOF
 cat > "$output/read012.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-1 | Name: task 1	State: NEW	Priority: HIGH	Type: TEST
-	Start	Estimated: 20/12/2014	Real: empty
-	End  	Estimated: 21/12/2014	Real: empty
-	Time 	Estimated: 14	Real: 12
-	Description: my desc
-	Notes: my notes
+1 | Name: task 1   State: NEW   Priority: HIGH   Type: TEST
 EOF
 ./launch-test.sh 'git task -r' 'read012'
 
@@ -369,12 +313,7 @@ EOF
 cat > "$output/read013.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-1 | Name: task 1	State: NEW	Priority: HIGH	Type: TEST
-	Start	Estimated: 20/12/2014	Real: empty
-	End  	Estimated: 21/12/2014	Real: empty
-	Time 	Estimated: 14	Real: 12
-	Description: my desc
-	Notes: my notes
+1 | Name: task 1   State: NEW   Priority: HIGH   Type: TEST
 EOF
 ./launch-test.sh 'git task -r' 'read013'
 
@@ -395,12 +334,7 @@ EOF
 cat > "$output/read014.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-1 | Name: task 1	State: NEW	Priority: HIGH	Type: TEST
-	Start	Estimated: 20/12/2014	Real: empty
-	End  	Estimated: 21/12/2014	Real: empty
-	Time 	Estimated: 14	Real: 12
-	Description: my desc
-	Notes: my notes
+1 | Name: task 1   State: NEW   Priority: HIGH   Type: TEST
 EOF
 ./launch-test.sh 'git task -r' 'read014'
 
@@ -1250,12 +1184,7 @@ EOF
 cat > "$output/read056.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-5 | Name: task 5	State: REJECTED	Priority: VERY HIGH	Type: CONFIGURATION
-	Start	Estimated: 30/12/2014	Real: empty
-	End  	Estimated: 21/12/2014	Real: empty
-	Time 	Estimated: -1	Real: -1
-	Description: my brief desc
-	Notes: empty
+5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 EOF
 ./launch-test.sh 'git task -r' 'read056'
 
@@ -1276,12 +1205,7 @@ EOF
 cat > "$output/read057.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-2 | Name: task 2	State: IN PROGRESS	Priority: VERY LOW	Type: ANALYSIS
-	Start	Estimated: empty	Real: 21/12/2014
-	End  	Estimated: 24/12/2014	Real: empty
-	Time 	Estimated: -1	Real: 12
-	Description: empty
-	Notes: my personal notes
+2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 EOF
 ./launch-test.sh 'git task -r' 'read057'
 
@@ -1302,12 +1226,7 @@ EOF
 cat > "$output/read058.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-2 | Name: task 2	State: IN PROGRESS	Priority: VERY LOW	Type: ANALYSIS
-	Start	Estimated: empty	Real: 21/12/2014
-	End  	Estimated: 24/12/2014	Real: empty
-	Time 	Estimated: -1	Real: 12
-	Description: empty
-	Notes: my personal notes
+2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 EOF
 ./launch-test.sh 'git task -r' 'read058'
 
@@ -1328,12 +1247,7 @@ EOF
 cat > "$output/read059.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-3 | Name: task 3	State: IN PROGRESS	Priority: MAJOR	Type: MANAGEMENT
-	Start	Estimated: empty	Real: empty
-	End  	Estimated: 26/12/2014	Real: 28/12/2014
-	Time 	Estimated: 18	Real: -1
-	Description: empty
-	Notes: empty
+3 | Name: task 3   State: IN PROGRESS   Priority: MAJOR   Type: MANAGEMENT
 EOF
 ./launch-test.sh 'git task -r' 'read059'
 
@@ -1454,12 +1368,7 @@ EOF
 cat > "$output/read065.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-5 | Name: task 5	State: REJECTED	Priority: VERY HIGH	Type: CONFIGURATION
-	Start	Estimated: 30/12/2014	Real: empty
-	End  	Estimated: 21/12/2014	Real: empty
-	Time 	Estimated: -1	Real: -1
-	Description: my brief desc
-	Notes: empty
+5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 EOF
 ./launch-test.sh 'git task -r' 'read065'
 
@@ -1500,12 +1409,7 @@ EOF
 cat > "$output/read067.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-5 | Name: task 5	State: REJECTED	Priority: VERY HIGH	Type: CONFIGURATION
-	Start	Estimated: 30/12/2014	Real: empty
-	End  	Estimated: 21/12/2014	Real: empty
-	Time 	Estimated: -1	Real: -1
-	Description: my brief desc
-	Notes: empty
+5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 EOF
 ./launch-test.sh 'git task -r' 'read067'
 
@@ -1546,12 +1450,7 @@ EOF
 cat > "$output/read069.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-5 | Name: task 5	State: REJECTED	Priority: VERY HIGH	Type: CONFIGURATION
-	Start	Estimated: 30/12/2014	Real: empty
-	End  	Estimated: 21/12/2014	Real: empty
-	Time 	Estimated: -1	Real: -1
-	Description: my brief desc
-	Notes: empty
+5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 EOF
 ./launch-test.sh 'git task -r' 'read069'
 
@@ -1612,12 +1511,7 @@ EOF
 cat > "$output/read072.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-1 | Name: task 1	State: NEW	Priority: HIGH	Type: TEST
-	Start	Estimated: 20/12/2014	Real: empty
-	End  	Estimated: 21/12/2014	Real: empty
-	Time 	Estimated: 14	Real: 12
-	Description: my desc
-	Notes: my notes
+1 | Name: task 1   State: NEW   Priority: HIGH   Type: TEST
 EOF
 ./launch-test.sh 'git task -r' 'read072'
 
@@ -1658,12 +1552,7 @@ EOF
 cat > "$output/read074.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-1 | Name: task 1	State: NEW	Priority: HIGH	Type: TEST
-	Start	Estimated: 20/12/2014	Real: empty
-	End  	Estimated: 21/12/2014	Real: empty
-	Time 	Estimated: 14	Real: 12
-	Description: my desc
-	Notes: my notes
+1 | Name: task 1   State: NEW   Priority: HIGH   Type: TEST
 EOF
 ./launch-test.sh 'git task -r' 'read074'
 
@@ -1704,12 +1593,7 @@ EOF
 cat > "$output/read076.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-1 | Name: task 1	State: NEW	Priority: HIGH	Type: TEST
-	Start	Estimated: 20/12/2014	Real: empty
-	End  	Estimated: 21/12/2014	Real: empty
-	Time 	Estimated: 14	Real: 12
-	Description: my desc
-	Notes: my notes
+1 | Name: task 1   State: NEW   Priority: HIGH   Type: TEST
 EOF
 ./launch-test.sh 'git task -r' 'read076'
 
@@ -1790,12 +1674,7 @@ EOF
 cat > "$output/read080.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-3 | Name: task 3	State: IN PROGRESS	Priority: MAJOR	Type: MANAGEMENT
-	Start	Estimated: empty	Real: empty
-	End  	Estimated: 26/12/2014	Real: 28/12/2014
-	Time 	Estimated: 18	Real: -1
-	Description: empty
-	Notes: empty
+3 | Name: task 3   State: IN PROGRESS   Priority: MAJOR   Type: MANAGEMENT
 EOF
 ./launch-test.sh 'git task -r' 'read080'
 
@@ -1816,12 +1695,7 @@ EOF
 cat > "$output/read081.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-4 | Name: task 4	State: REJECTED	Priority: URGENT	Type: DEVELOPMENT
-	Start	Estimated: empty	Real: empty
-	End  	Estimated: 27/12/2014	Real: empty
-	Time 	Estimated: 20	Real: 29
-	Description: empty
-	Notes: empty
+4 | Name: task 4   State: REJECTED   Priority: URGENT   Type: DEVELOPMENT
 EOF
 ./launch-test.sh 'git task -r' 'read081'
 
@@ -2109,12 +1983,7 @@ EOF
 cat > "$output/read095.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-2 | Name: task 2	State: IN PROGRESS	Priority: VERY LOW	Type: ANALYSIS
-	Start	Estimated: empty	Real: 21/12/2014
-	End  	Estimated: 24/12/2014	Real: empty
-	Time 	Estimated: -1	Real: 12
-	Description: empty
-	Notes: my personal notes
+2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 EOF
 ./launch-test.sh 'git task -r' 'read095'
 
@@ -2146,18 +2015,8 @@ EOF
 cat > "$output/read096.out" << \EOF
 All filters are by equality
 task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-2 | Name: same name	State: IN PROGRESS	Priority: VERY LOW	Type: ANALYSIS
-	Start	Estimated: empty	Real: 21/12/2014
-	End  	Estimated: 24/12/2014	Real: empty
-	Time 	Estimated: -1	Real: 12
-	Description: empty
-	Notes: my personal notes
-4 | Name: same name	State: REJECTED	Priority: URGENT	Type: DEVELOPMENT
-	Start	Estimated: empty	Real: empty
-	End  	Estimated: 27/12/2014	Real: empty
-	Time 	Estimated: 20	Real: 29
-	Description: empty
-	Notes: empty
+2 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
+4 | Name: same name   State: REJECTED   Priority: URGENT   Type: DEVELOPMENT
 EOF
 ./launch-test.sh 'git task -r' 'read096'
 

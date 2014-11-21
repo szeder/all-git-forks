@@ -17,11 +17,11 @@
 /* Usage message */
 static const char * const builtin_task_usage[] =
 {
-	N_("task [-c | -r | -u | -d | -a | -l | --show-types | --show-states | --show-priorities]\n\tSome use examples:\n\t -c -n name -s state --desc description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t\t(only required name, state, priority and type)\n\t -r \n\t -u -n name -s state -d description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t -d \n\t -a -i id --user --add=\"user1 ... userN\" --rm=\"user1 ... userN\"\n\t -l -i id --file --add=\"file1 ... fileN\" --rm=\"file1 ... fileN\""),
+	N_("task [-c | -r [-v] | -u | -d | -a | -l | --show-types | --show-states | --show-priorities]\n\tSome use examples:\n\t -c -n name -s state --desc description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t\t(only required name, state, priority and type)\n\t -r \n\t -u -n name -s state -d description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t -d \n\t -a -i id --user --add=\"user1 ... userN\" --rm=\"user1 ... userN\"\n\t -l -i id --file --add=\"file1 ... fileN\" --rm=\"file1 ... fileN\""),
 	NULL
 };
 
-static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread, showtypes, showstates, showpriorities;
+static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread, showtypes, showstates, showpriorities, readverbose;
 static char *add = NULL;
 static char *rm = NULL;
 static char *task_id = NULL;
@@ -119,6 +119,7 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 		OPT_BOOL('u',"update",&tupdate,N_("updates task data")),
 		OPT_BOOL(0,"show-types",&showtypes,N_("show available task types")),
 		OPT_BOOL(0,"show-states",&showstates,N_("show available task states")),
+		OPT_BOOL('v',"verbose",&readverbose,N_("display information in verbose mode")),
 		OPT_BOOL(0,"show-priorities",&showpriorities,N_("show available task priorities")),
 		OPT_BOOL(0,"user",&user,N_("indicates that follows user names to add or remove task assignations")),
 		OPT_BOOL(0,"file",&file,N_("indicates that follows file names to add or remove task asociations")),
@@ -335,7 +336,7 @@ filter_task_est_time,filter_task_time,add,rm)){
 filter_task_est_time,filter_task_time);
 /* END [1.4.2] Filter task */
 /* START [1.4.3] Read task */
-			read_task(filter);
+			read_task(filter,readverbose);
 /* END [1.4.3] Read task */
 		}else if(showtypes){
 /* START [1.8.1] Show types */
