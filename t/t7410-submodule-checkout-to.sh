@@ -121,4 +121,76 @@ test_expect_success 'linked worktree is uptodate after changes in original after
 	: >../../expected &&
 	test_cmp ../../expected ../../actual)'
 
+deinit_init()
+{
+    rm -rf deinit_area && \
+    mkdir deinit_area && \
+    ( cd deinit_area && \
+	git clone "$base_path/origin/main" && \
+	cd main && \
+	git checkout --to ../worktree --detach HEAD )
+}
+
+test_expect_success 'deinit main only - init' \
+    'deinit_init &&
+    (cd deinit_area/main && git submodule update --init)'
+
+test_expect_success 'deinit main only - deinit' \
+    '(cd deinit_area/main && git submodule deinit sub)'
+
+test_expect_success 'deinit main only - not checked out' \
+    '(cd deinit_area/main && git diff --submodule master"^!" >../../actual && grep "not checked out" ../../actual)'
+
+test_expect_success 'deinit worktree only - init' \
+    'deinit_init &&
+    (cd deinit_area/worktree && git submodule update --init)'
+
+test_expect_success 'deinit worktree only - deinit' \
+    '(cd deinit_area/worktree && git submodule deinit sub)'
+
+test_expect_success 'deinit worktree only - not checked out' \
+    '(cd deinit_area/worktree && git diff --submodule master"^!" >../../actual && grep "not checked out" ../../actual)'
+
+test_expect_success 'deinit from both worktree then main - init' \
+    'deinit_init &&
+    (cd deinit_area/main && git submodule update --init) &&
+    (cd deinit_area/worktree && git submodule update --init)'
+
+test_expect_success 'deinit from both worktree then main - deinit worktree' \
+    '(cd deinit_area/worktree && git submodule deinit sub)'
+
+test_expect_success 'deinit from both worktree then main - worktree not checked out' \
+    '(cd deinit_area/worktree && git diff --submodule master"^!" >../../actual && grep "not checked out" ../../actual)'
+
+test_expect_success 'deinit from both worktree then main - main checked out' \
+    '(cd deinit_area/main && git diff --submodule master"^!" >../../actual && grep "file1 updated" ../../actual)'
+
+test_expect_success 'deinit from both worktree then main - deinit main' \
+    '(cd deinit_area/main && git submodule deinit sub)'
+
+test_expect_success 'deinit from both worktree then main - both not checked out' \
+    '(cd deinit_area/main && git diff --submodule master"^!" >../../actual && grep "not checked out" ../../actual) &&
+    (cd deinit_area/worktree && git diff --submodule master"^!" >../../actual && grep "not checked out" ../../actual)'
+
+test_expect_success 'deinit from both main then worktree - init' \
+    'deinit_init &&
+    (cd deinit_area/main && git submodule update --init) &&
+    (cd deinit_area/worktree && git submodule update --init)'
+
+test_expect_success 'deinit from both main then worktree - deinit main' \
+    '(cd deinit_area/main && git submodule deinit sub)'
+
+test_expect_success 'deinit from both main then worktree - main not checked out' \
+    '(cd deinit_area/main && git diff --submodule master"^!" >../../actual && grep "not checked out" ../../actual)'
+
+test_expect_success 'deinit from both main then worktree - worktree checked out' \
+    '(cd deinit_area/worktree && git diff --submodule master"^!" >../../actual && grep "file1 updated" ../../actual)'
+
+test_expect_success 'deinit from both main then worktree - deinit worktree' \
+    '(cd deinit_area/worktree && git submodule deinit sub)'
+
+test_expect_success 'deinit from both main then worktree - both not checked out' \
+    '(cd deinit_area/main && git diff --submodule master"^!" >../../actual && grep "not checked out" ../../actual) &&
+    (cd deinit_area/worktree && git diff --submodule master"^!" >../../actual && grep "not checked out" ../../actual)'
+
 test_done
