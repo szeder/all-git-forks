@@ -74,3 +74,8 @@ void show_states();
 	Parameters	: nothing
 	Return		: nothing, prints available task priorities */
 void show_priorities();
+
+/*	Name		: show_pending
+ *  Parameters	: user name to search for pending tasks
+ *  Return		: nothing, prints user pending tasks */
+void show_pending(char *username);

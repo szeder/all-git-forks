@@ -64,6 +64,32 @@ int check_update_transitions(char *state_transition, char *filter ){
 	return result;
 }
 
+/*	Name		: print_if_pending
+ * 	Parameters	: task id
+ *  Return		: nothing, prints task data if are in NEW or IN PROGRESS state */
+void print_if_pending(int id){
+	char *query = NULL;
+	char *fields[] = {TASK_STATE,TASK_NAME,0};
+	char *f_id = format_number(id);
+	char *f_new = format_string(A);
+	char *f_inprog = format_string(B);
+	char *where_part = where(_and_(cond(TASK_ID,"=",f_id),_or_(cond(TASK_STATE,"=",f_new),cond(TASK_STATE,"=",f_inprog))));
+	query = construct_query(fields,from(TASK_TABLE),where_part,NULL,NULL);
+	generic_list data = NULL;
+	data = exec_query(query);
+	if(query!=NULL) free(query);
+	if(data!=NULL){
+		task_list info = (*data).task_info;
+		if(info!=NULL){
+			printf("* %d | %s | %s\n",id,info->state,info->task_name);
+		}
+		dealloc(data);
+	}			
+	if(f_id!=NULL) free(f_id);if(f_new!=NULL) free(f_new); if(f_inprog!=NULL) free(f_inprog);
+	
+}
+
+
 /*	Name 		: print_task_asociations
  * 	Parameters	: task id
  * 	Return		: nothing
@@ -731,4 +757,33 @@ void show_priorities(){
 		}
 	}
 	dealloc(data);
+}
+
+/* See specification in task_functions.h */
+void show_pending(char *username){
+	char *query = NULL;
+	char *fields[] = {ASIG_TASK_ID,0};
+	char *f_name = format_string(username);
+	char *user_filter = where(cond(ASIG_USER_NAME,"=",f_name));
+	query = construct_query(fields,from(ASIG_TABLE),user_filter,NULL,NULL);
+	generic_list data = NULL;
+	data = exec_query(query);
+	if(data!=NULL){
+		asig_list info = (*data).asig_info;
+		if(info!=NULL){
+			printf("These are pending tasks for %s :\n",username);
+			while(info!=NULL){
+				print_if_pending(info->task_id);
+				info=info->next;
+			}
+		}else{
+			printf("You haven't assigned tasks yet...\n");
+		}
+		dealloc(data);
+	}else{
+		printf("You haven't assigned tasks yet...\n");
+	}
+	
+	if(f_name!=NULL) free(f_name);
+	if(query!=NULL) free(query);
 }

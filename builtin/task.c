@@ -21,7 +21,7 @@ static const char * const builtin_task_usage[] =
 	NULL
 };
 
-static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread, showtypes, showstates, showpriorities, readverbose;
+static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread, showtypes, showstates, showpriorities, readverbose, pending;
 static char *add = NULL;
 static char *rm = NULL;
 static char *task_id = NULL;
@@ -119,6 +119,7 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 		OPT_BOOL('u',"update",&tupdate,N_("updates task data")),
 		OPT_BOOL(0,"show-types",&showtypes,N_("show available task types")),
 		OPT_BOOL(0,"show-states",&showstates,N_("show available task states")),
+		OPT_BOOL(0,"pending",&pending,N_("show pending task states for user")),
 		OPT_BOOL('v',"verbose",&readverbose,N_("display information in verbose mode")),
 		OPT_BOOL(0,"show-priorities",&showpriorities,N_("show available task priorities")),
 		OPT_BOOL(0,"user",&user,N_("indicates that follows user names to add or remove task assignations")),
@@ -182,8 +183,7 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 			free(urole);		
 			return 0;
 		}
-		free(uname);
-		free(urole);
+		
 		
 		/* Receive filter data if delete, update or read tasks is set */
 		if(tdelete || tupdate || tread){
@@ -350,6 +350,10 @@ filter_task_est_time,filter_task_time);
 /* START [1.8.3] Show priorities */
 			show_priorities();
 /* END [1.8.3] Show priorities */	
+		}else if(pending){
+/* START [1.9] Show pending tasks */
+			show_pending(uname);
+/* END [1.9] Show pending tasks */
 		}else{
 			/* No action defined */
 			printf(_("No action defined"),ERR);
@@ -361,6 +365,8 @@ filter_task_est_time,filter_task_time);
 		if(tdelete || tupdate || tread){
 			dealloc_filters();
 		}
+		free(uname);
+		free(urole);
 	}
 	return 1;
 }
