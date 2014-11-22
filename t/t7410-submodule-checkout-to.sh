@@ -151,6 +151,9 @@ deinit_checked_out()
     (cd "deinit_area/$1" && git diff --submodule master"^!" >actual && grep -q "file1 updated" actual)
 }
 
+# TODO:
+# 1. check that directories are cleaned and index is removed for main (?)
+# 2. .git/config should be removed only after last owrktree is. Is it visible at all?
 test_expect_success 'deinit main only - create' \
     'deinit_start && deinit_init main && deinit_deinit main'
 
