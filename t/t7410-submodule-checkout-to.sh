@@ -35,8 +35,11 @@ test_expect_success 'checkout main' \
     (cd clone/main &&
 	git checkout --to "$base_path/default_checkout/main" "$rev1_hash_main")'
 
+# TODO: this must never work without --recursive
 test_expect_failure 'can see submodule diffs just after checkout' \
     '(cd default_checkout/main && git diff --submodule master"^!" | grep "file1 updated")'
+
+test_expect_success false false
 
 test_expect_success 'checkout main and initialize independed clones' \
     'mkdir fully_cloned_submodule &&
@@ -44,9 +47,13 @@ test_expect_success 'checkout main and initialize independed clones' \
 	git checkout --to "$base_path/fully_cloned_submodule/main" "$rev1_hash_main") &&
     (cd fully_cloned_submodule/main && git submodule update)'
 
+# TODO: thus must require update --init
 test_expect_success 'can see submodule diffs after independed cloning' \
     '(cd fully_cloned_submodule/main && git diff --submodule master"^!" | grep "file1 updated")'
 
+# TODO: this is not needed to do now regularly, rather being a special case
+# 1. manual checkout should point to somewhere else at all
+# 2. no need to make that gitlink
 test_expect_success 'checkout sub manually' \
     'mkdir linked_submodule &&
     (cd clone/main &&
