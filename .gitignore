@@ -74,6 +74,7 @@
 /git-index-pack
 /git-init
 /git-init-db
+/git-interpret-trailers
 /git-instaweb
 /git-log
 /git-ls-files
@@ -199,6 +200,7 @@
 /test-revision-walking
 /test-run-command
 /test-sha1
+/test-sha1-array
 /test-sigchain
 /test-string-list
 /test-subprocess
