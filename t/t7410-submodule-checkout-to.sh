@@ -173,8 +173,6 @@ test_expect_success 'deinit from both, worktree then main - update' \
     '(cd deinit_area/main && git submodule update) &&
     (cd deinit_area/worktree && git submodule update)'
 
-test_expect_success false '(cd deinit_area/main/sub && git prune --worktrees) && false'
-
 test_expect_success 'deinit from both, worktree then main - check#1' \
     'deinit_not_checked_out worktree && deinit_checked_out main'
 
