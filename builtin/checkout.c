@@ -866,6 +866,7 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 
 	if (!new->commit)
 		die(_("no branch specified"));
+	strbuf_add_absolute_path(&sb_path, opts->new_worktree);
 	if (file_exists(sb_path.buf) && !is_empty_dir(sb_path.buf))
 		die(_("'%s' already exists"), sb_path.buf);
 
