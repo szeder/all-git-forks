@@ -3,13 +3,18 @@
 #include "strbuf.h"
 #include <watchman.h>
 
+struct fs_snapshot {
+	char *clock;
+	int nr;
+	char **entries;
+};
+
 static struct watchman_query *make_query(const char *last_update)
 {
 	struct watchman_query *query = watchman_query();
 	watchman_query_set_fields(query, WATCHMAN_FIELD_NAME |
 					 WATCHMAN_FIELD_EXISTS |
 					 WATCHMAN_FIELD_NEWER);
-	watchman_query_set_empty_on_fresh(query, 1);
 	query->sync_timeout = core_watchman_sync_timeout;
 	if (*last_update)
 		watchman_query_set_since_oclock(query, last_update);
@@ -39,10 +44,22 @@ static struct watchman_query_result* query_watchman(
 	return result;
 }
 
+static int statcmp(const void *a_, const void *b_)
+{
+	const struct watchman_stat *const *a = a_;
+	const struct watchman_stat *const *b = b_;
+	return strcmp((*a)->name, (*b)->name);
+}
+
 static void update_index(struct index_state *istate,
 			 struct watchman_query_result *result)
 {
 	int i;
+	struct watchman_stat **sorted = xmalloc(sizeof(*sorted) * result->nr);
+
+	for (i = 0; i < result->nr; i++)
+		sorted[i] = result->stats + i;
+	qsort(sorted, result->nr, sizeof(*sorted), statcmp);
 
 	if (result->is_fresh_instance) {
 		/* let refresh clear them later */
@@ -68,6 +85,7 @@ static void update_index(struct index_state *istate,
 	}
 
 done:
+	free(sorted);
 	free(istate->last_update);
 	istate->last_update    = xstrdup(result->clock);
 	istate->cache_changed |= WATCHMAN_CHANGED;
