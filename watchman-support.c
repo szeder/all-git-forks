@@ -73,6 +73,25 @@ done:
 	istate->cache_changed |= WATCHMAN_CHANGED;
 }
 
+/*
+ * TODO:
+ *
+ * - save the file list for each clock, keep 2-3 lists until the index
+ *   is written down.
+ *
+ * - Enable 'UNTR' extension with ident string 'watchman' if it's not
+ *   enabled by the user (update-index --untracked-cache can destroy
+ *   and turn this extension to mtime). When 'UNTR' is in watchman
+ *   mode, do not store dir stat.
+ *
+ * - Store the list of added/deleted in 'WAMA' extension. After untr
+ *   cache is populated the first time (ident "fresh watchman"),
+ *   disable the deleted/added optimization (racy). All modified (and
+ *   deleted files) are report to invalidate the cache. Only from the
+ *   second time (ident "watchman") do we apply the trick.
+ *
+ * - Add trailing NUL to untracked cache to avoid strlen() overflow.
+ */
 int check_watchman(struct index_state *istate)
 {
 	struct watchman_error wm_error;
