@@ -316,6 +316,7 @@ struct index_state {
 		 from_shm : 1,
 		 to_shm : 1,
 		 always_verify_trailing_sha1 : 1,
+		 untracked_cache_with_watchman : 1,
 		 initialized : 1;
 	struct hashmap name_hash;
 	struct hashmap dir_hash;
@@ -324,6 +325,8 @@ struct index_state {
 	void *mmap;
 	size_t mmap_size;
 	char *last_update;
+	struct string_list *added;
+	struct string_list *deleted;
 };
 
 extern struct index_state the_index;

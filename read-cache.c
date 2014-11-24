@@ -1392,25 +1392,73 @@ static void mark_no_watchman(size_t pos, void *data)
 	istate->cache[pos]->ce_flags |= CE_NO_WATCH;
 }
 
+static int load_string_list(struct string_list **list_p,
+			    const unsigned char *data,
+			    unsigned long sz)
+{
+	int i, n;
+	const unsigned char *next = data;
+	const unsigned char *end = next + sz;
+	struct string_list *list = *list_p;
+	struct string_list_item *item;
+	if (!sz || end[-1])
+		return -1;
+	n = decode_varint(&next);
+	for (i = 0; i < n && next < end; i++) {
+		if (!list) {
+			list = xcalloc(1, sizeof(*list));
+			list->strdup_strings = 1;
+			*list_p = list;
+		}
+		item = string_list_append(list, (const char *)next);
+		next += strlen(item->string) + 1;
+	}
+	return next < end && i == n ? next - data : -1;
+}
+
 static int read_watchman_ext(struct index_state *istate, const void *data,
 			     unsigned long sz)
 {
 	struct ewah_bitmap *bitmap;
+	const unsigned char *next;
+	const unsigned char *end;
 	int ret, len;
 
+	istate->untracked_cache_with_watchman = 0;
 	if (memchr(data, 0, sz) == NULL)
 		return error("invalid extension");
 	len = strlen(data) + 1;
 	bitmap = ewah_new();
 	ret = ewah_read_mmap(bitmap, (const char *)data + len, sz - len);
-	if (ret != sz - len) {
-		ewah_free(bitmap);
-		return error("fail to parse ewah bitmap");
-	}
 	istate->last_update = xstrdup(data);
 	ewah_each_bit(bitmap, mark_no_watchman, istate);
 	ewah_free(bitmap);
+	if (ret == sz - len)
+		return 0;
+	next = (const unsigned char *)data + len + ret;
+	end = (const unsigned char *)data + sz;
+	ret = load_string_list(&istate->added, next, end - next);
+	if (ret < 0)
+		return error("invalid extension");
+	next += ret;
+	ret = load_string_list(&istate->deleted, next, end - next);
+	if (ret < 0 || next != end || next[0])
+		return error("invalid extension");
 	return 0;
+}
+
+static void save_string_list(struct strbuf *sb, const struct string_list *list)
+{
+	unsigned char intbuf[16];
+	unsigned int intlen;
+	int i;
+
+	intlen = encode_varint(list->nr, intbuf);
+	strbuf_add(sb, intbuf, intlen);
+	for (i = 0; i < list->nr; i++) {
+		strbuf_addstr(sb, list->items[i].string);
+		strbuf_addch(sb, 0);
+	}
 }
 
 void write_watchman_ext(struct strbuf *sb, struct index_state* istate)
@@ -1425,6 +1473,11 @@ void write_watchman_ext(struct strbuf *sb, struct index_state* istate)
 			ewah_set(bitmap, i);
 	ewah_serialize_strbuf(bitmap, sb);
 	ewah_free(bitmap);
+	if (istate->untracked_cache_with_watchman) {
+		save_string_list(sb, istate->added);
+		save_string_list(sb, istate->deleted);
+		strbuf_addch(sb, 0);
+	}
 }
 
 static int read_index_extension(struct index_state *istate,
