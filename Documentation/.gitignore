@@ -1,5 +1,5 @@
 *.xml
-*.html
+*.html.skip
 *.[1-8]
 *.made
 *.texi
