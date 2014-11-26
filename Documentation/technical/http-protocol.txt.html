@@ -14,6 +14,19 @@ div {
 	margin-top: 20px;
 	margin-bottom: 20px;
 }
+
+.lang-en {
+	color: #0000ff;
+}
+
+.lang-zh {
+	color: #ff0000;
+}
+
+.hl {
+	font-weight: bold;
+	font-size: 20px;
+}
 </style>
 </head>
 <body>
@@ -144,14 +157,16 @@ div {
 			the Cache-Control and/or Expires header permits caching. Clients and
 			servers MUST follow RFC 2616 for cache controls.</div>
 
-		<h3>Discovering References</h3>
+		<h3 class='lang-en'>Discovering References</h3>
+		<h3 class='lang-zh'>发现引用</h3>
 		<h3>----------------------</h3>
 
 		<div>All HTTP clients MUST begin either a fetch or a push
 			exchange by discovering the references available on the remote
 			repository.</div>
 
-		<h3>Dumb Clients</h3>
+		<h3 class='lang-en'>Dumb Clients</h3>
+		<h3 class='lang-zh'>弱智客户端</h3>
 		<h3>~~~~~~~~~~~~</h3>
 
 		<div>HTTP clients that only support the "dumb" protocol MUST
@@ -189,19 +204,40 @@ div {
 		 obj-id HTAB refname "^{}" LF
 </pre>
 
-		<h3>Smart Clients</h3>
+		<h3 class='lang-en'>Smart Clients</h3>
+		<h3 class='lang-zh'>智能客户端</h3>
 		<h3>~~~~~~~~~~~~~</h3>
 
-		<div>HTTP clients that support the "smart" protocol (or both the
-			"smart" and "dumb" protocols) MUST discover references by making a
-			parameterized request for the info/refs file of the repository.</div>
-		<div>The request MUST contain exactly one query parameter,
-			`service=$servicename`, where `$servicename` MUST be the service name
-			the client wishes to contact to complete the operation. The request
-			MUST NOT contain additional query parameters.</div>
+		<div>
+			<div class='lang-en'>HTTP clients that support the "smart"
+				protocol (or both the "smart" and "dumb" protocols) MUST discover
+				references by making a parameterized request for the info/refs file
+				of the repository.</div>
+			<div class='lang-zh'>
+				支持“智能”协议（或者同时支持"智能"&"弱智"两种协议）的 HTTP 客户端<span class='hl'>必须</span>通过对仓库的
+				info/refs 文件执行一个参数化的请求来发现引用。
+			</div>
+		</div>
+
+		<div>
+			<div class='lang-en'>The request MUST contain exactly one query
+				parameter, `service=$servicename`, where `$servicename` MUST be the
+				service name the client wishes to contact to complete the operation.
+				The request MUST NOT contain additional query parameters.</div>
+			<div class='lang-zh'>
+				该请求<span class='hl'>必须</span>明确地包含一个查询参数，`service=$servicename`，这里的`$servicename`<span
+					class='hl'>必须</span>是客户端为将要完成的操作而联系的服务名称。这个请求<span class='hl'>绝不能</span>包含多余的查询参数。
+			</div>
+		</div>
+
 		<pre>   C: GET $GIT_URL/info/refs?service=git-upload-pack HTTP/1.0
 </pre>
-		<div>dumb server reply:</div>
+
+		<div>
+			<div class='lang-en'>dumb server reply:</div>
+			<div class='lang-zh'>弱智服务端回复:</div>
+		</div>
+
 		<pre>   S: 200 OK
    S:
    S: 95dcfa3633004da0049d3d0fa03f80589cbcaf31	refs/heads/maint
@@ -209,7 +245,12 @@ div {
    S: 2cb58b79488a98d2721cea644875a8dd0026b115	refs/tags/v1.0
    S: a3c2e2402b99163d1d59756e5f207ae21cccba4c	refs/tags/v1.0^{}
 </pre>
-		<div>smart server reply:</div>
+
+		<div>
+			<div class='lang-en'>smart server reply:</div>
+			<div class='lang-zh'>智能服务端回复:</div>
+		</div>
+
 		<pre>   S: 200 OK
    S: Content-Type: application/x-git-upload-pack-advertisement
    S: Cache-Control: no-cache
@@ -224,8 +265,8 @@ div {
 		<h3>Dumb Server Response</h3>
 		<h3>^^^^^^^^^^^^^^^^^^^^</h3>
 
-		<div> Dumb servers MUST
-			respond with the dumb server reply format.</div>
+		<div>Dumb servers MUST respond with the dumb server reply
+			format.</div>
 		<div>See the prior section under dumb clients for a more
 			detailed description of the dumb server response.</div>
 
