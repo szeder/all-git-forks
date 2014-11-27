@@ -3,11 +3,12 @@
 <head>
 <style type="text/css">
 pre {
-	background: #dddddd;
+	background: #888888;
 }
 
 .page {
 	width: 800px;
+	font-size: 20px;
 }
 
 div {
@@ -25,7 +26,7 @@ div {
 
 .hl {
 	font-weight: bold;
-	font-size: 20px;
+	font-size: 24px;
 }
 </style>
 </head>
@@ -114,7 +115,8 @@ div {
 		<div>Clients and servers SHOULD support SSL, particularly to
 			protect passwords when relying on Basic HTTP authentication.</div>
 
-		<div>Session State -------------</div>
+		<h3>Session State</h3>
+		<h3>-------------</h3>
 
 		<div>The Git over HTTP protocol (much like HTTP itself) is
 			stateless from the perspective of the HTTP server side. All state
@@ -128,7 +130,9 @@ div {
 			processing as described by RFC 2616 (HTTP/1.1). Servers SHOULD ignore
 			any cookies sent by a client.</div>
 
-		<div>General Request Processing --------------------------</div>
+		<h3>General Request Processing</h3>
+		<h3>--------------------------</h3>
+
 		<div>Except where noted, all standard HTTP behavior SHOULD be
 			assumed by both client and server. This includes (but is not
 			necessarily limited to):</div>
@@ -262,7 +266,8 @@ div {
    S: 003fa3c2e2402b99163d1d59756e5f207ae21cccba4c refs/tags/v1.0^{}\n
 </pre>
 
-		<h3>Dumb Server Response</h3>
+		<h3 class='lang-en'>Dumb Server Response</h3>
+		<h3 class='lang-zh'>弱智服务端响应</h3>
 		<h3>^^^^^^^^^^^^^^^^^^^^</h3>
 
 		<div>Dumb servers MUST respond with the dumb server reply
@@ -270,51 +275,116 @@ div {
 		<div>See the prior section under dumb clients for a more
 			detailed description of the dumb server response.</div>
 
-		<h3>Smart Server Response</h3>
+		<h3 class='lang-en'>Smart Server Response</h3>
+		<h3 class='lang-zh'>智能服务端响应</h3>
 		<h3>^^^^^^^^^^^^^^^^^^^^^</h3>
 
-		<div>If the server does not recognize the requested service
-			name, or the requested service name has been disabled by the server
-			administrator, the server MUST respond with the `403 Forbidden` HTTP
-			status code.</div>
+		<div>
+			<div class='lang-en'>If the server does not recognize the
+				requested service name, or the requested service name has been
+				disabled by the server administrator, the server MUST respond with
+				the `403 Forbidden` HTTP status code.</div>
+			<div class='lang-zh'>
+				如果服务端无法识别请求的服务名，或者请求的服务名被服务端管理员所禁用，该服务端 <span class='hl'>必须</span>
+				回复 HTTP 状态“403 Forbidden”。
+			</div>
+		</div>
 
-		<div>Otherwise, smart servers MUST respond with the smart server
-			reply format for the requested service name.</div>
+		<div>
+			<div class='lang-en'>Otherwise, smart servers MUST respond with
+				the smart server reply format for the requested service name.</div>
+			<div class='lang-zh'>
+				否则，智能服务端 <span class='hl'>必须</span> 回复与请求的服务名相对应的智能服务应答格式。
+			</div>
+		</div>
 
-		<div>Cache-Control headers SHOULD be used to disable caching of
-			the returned entity.</div>
+		<div>
+			<div class='lang-en'>Cache-Control headers SHOULD be used to
+				disable caching of the returned entity.</div>
+			<div class='lang-zh'>
+				<span class='hl'>应当</span> 使用 Cache-Control 头部来禁止对返回实体的缓存。
+			</div>
+		</div>
 
-		<div>The Content-Type MUST be
-			`application/x-$servicename-advertisement`. Clients SHOULD fall back
-			to the dumb protocol if another content type is returned. When
-			falling back to the dumb protocol clients SHOULD NOT make an
-			additional request to `$GIT_URL/info/refs`, but instead SHOULD use
-			the response already in hand. Clients MUST NOT continue if they do
-			not support the dumb protocol.</div>
+		<div>
+			<div class='lang-en'>The Content-Type MUST be
+				`application/x-$servicename-advertisement`. Clients SHOULD fall back
+				to the dumb protocol if another content type is returned. When
+				falling back to the dumb protocol clients SHOULD NOT make an
+				additional request to `$GIT_URL/info/refs`, but instead SHOULD use
+				the response already in hand. Clients MUST NOT continue if they do
+				not support the dumb protocol.</div>
+			<div class='lang-zh'>
+				<span class='hl'>必须</span>把 Content-Type
+				设置为‘application/x-$servicename-advertisement’。客戶端如果收到其它类型的内容， <span
+					class='hl'>应当</span> 降格使用弱智协议。当降格为弱智协议后，客户端 <span class='hl'>不应该</span>
+				向 `$GIT_URL/info/refs` 发送带附加参数的请求，但 <span class='hl'>可以</span>
+				用手头上已获得的响应内容来代替。如果他们连弱智协议都不支持，客户端就 <span class='hl'>决不能</span>
+				再进行后续的步骤了。
+			</div>
+		</div>
 
-		<div>Clients MUST validate the status code is either `200 OK` or
-			`304 Not Modified`.</div>
+		<div>
+			<div class='lang-en'>Clients MUST validate the status code is
+				either `200 OK` or `304 Not Modified`.</div>
+			<div class='lang-zh'>
+				客户端 <span class='hl'>必须</span> 验证状态码是`200 OK`还是`304 Not Modified`。
+			</div>
+		</div>
 
-		<div>Clients MUST validate the first five bytes of the response
-			entity matches the regex `^[0-9a-f]{4}#`. If this test fails, clients
-			MUST NOT continue.</div>
+		<div>
+			<div class='lang-en'>Clients MUST validate the first five bytes
+				of the response entity matches the regex `^[0-9a-f]{4}#`. If this
+				test fails, clients MUST NOT continue.</div>
+			<div class='lang-zh'>
+				客户端 <span class='hl'>必须</span>
+				验证响应实体的头五个字节是否符合正则式`^[0-9a-f]{4}#`。如果该测试失败，客户端就 <span class='hl'>决不能</span>
+				再继续了。
+			</div>
+		</div>
 
-		<div>Clients MUST parse the entire response as a sequence of
-			pkt-line records.</div>
+		<div>
+			<div class='lang-en'>Clients MUST parse the entire response as
+				a sequence of pkt-line records.</div>
+			<div class='lang-zh'>
+				客户端 <span class='hl'>必须</span> 把整个响应当做一系列的 pkt-line 记录来解析。
+			</div>
+		</div>
 
-		<div>Clients MUST verify the first pkt-line is `#
-			service=$servicename`. Servers MUST set $servicename to be the
-			request parameter value. Servers SHOULD include an LF at the end of
-			this line. Clients MUST ignore an LF at the end of the line.</div>
+		<div>
+			<div class='lang-en'>Clients MUST verify the first pkt-line is
+				`# service=$servicename`. Servers MUST set $servicename to be the
+				request parameter value. Servers SHOULD include an LF at the end of
+				this line. Clients MUST ignore an LF at the end of the line.</div>
+			<div class='lang-zh'>
+				客户端 <span class='hl'>必须</span> 验证第一个 pkt-line 是不是`#
+				service=$servicename`。服务端 <span class='hl'>必须</span> 把 $servicename
+				设置为请求的参数值。服务端 <span class='hl'>应当</span> 让该行末尾包含一个 LF。客户端 <span
+					class='hl'>必须</span> 忽略行末的这个 LF。
+			</div>
+		</div>
 
-		<div>Servers MUST terminate the response with the magic `0000`
-			end pkt-line marker.</div>
+		<div>
+			<div class='lang-en'>Servers MUST terminate the response with
+				the magic `0000` end pkt-line marker.</div>
+			<div class='lang-zh'>
+				服务端 <span class='hl'>必须</span> 用带魔力结束标记`0000`的 pkt-line 来终结一个响应。
+			</div>
+		</div>
 
-		<div>The returned response is a pkt-line stream describing each
-			ref and its known value. The stream SHOULD be sorted by name
-			according to the C locale ordering. The stream SHOULD include the
-			default ref named `HEAD` as the first ref. The stream MUST include
-			capability declarations behind a NUL on the first ref.</div>
+		<div>
+			<div class='lang-en'>The returned response is a pkt-line stream
+				describing each ref and its known value. The stream SHOULD be sorted
+				by name according to the C locale ordering. The stream SHOULD
+				include the default ref named `HEAD` as the first ref. The stream
+				MUST include capability declarations behind a NUL on the first ref.</div>
+			<div class='lang-zh'>
+				返回的响应是一个描述了每个 ref 及其已知的值的 pkt-line 流。这个流 <span class='hl'>应当</span>
+				按照名称的 C locale 顺序来排序。这个流 <span class='hl'>应当</span> 包含名为`HEAD`的默认
+				ref 来作为第一个 ref。这个流 <span class='hl'>必须</span> 在第一个 ref 的 NUL
+				之前包含兼容性声明。
+			</div>
+		</div>
 
 		<pre>  smart_reply     =  PKT-LINE("# service=$servicename" LF)
 		     ref_list
