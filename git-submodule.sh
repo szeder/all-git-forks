@@ -843,7 +843,8 @@ Maybe you want to use 'update --init'?")"
 			die "$(eval_gettext "Unable to find current revision in submodule path '\$displaypath'")"
 		fi
 
-		if test -n "$remote"
+		# Fetch latest in remote unless branch name in config is '@'
+		if test -n "$remote" -a "$branch" != "@"
 		then
 			if test -z "$nofetch"
 			then
@@ -855,6 +856,12 @@ Maybe you want to use 'update --init'?")"
 			sha1=$(clear_local_git_env; cd "$sm_path" &&
 				git rev-parse --verify "${remote_name}/${branch}") ||
 			die "$(eval_gettext "Unable to find current ${remote_name}/${branch} revision in submodule path '\$sm_path'")"
+		fi
+
+		# Inform that the current sm is pinned and use of '--remote' ignored
+		if test -n "$remote" -a "$branch" = "@"
+		then
+			say "$(eval_gettext "Submodule path '\$displaypath' pinned, remote update ignored")"
 		fi
 
 		if test "$subsha1" != "$sha1" || test -n "$force"

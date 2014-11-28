@@ -295,7 +295,8 @@ OPTIONS
 	The remote branch used defaults to `master`, but the branch name may
 	be overridden by setting the `submodule.<name>.branch` option in
 	either `.gitmodules` or `.git/config` (with `.git/config` taking
-	precedence).
+	precedence). Setting the branch name to the invalid branch name '@'
+	disables this option, i.e. pins the submodule at the recorded SHA-1.
 +
 This works for any of the supported update procedures (`--checkout`,
 `--rebase`, etc.).  The only change is the source of the target SHA-1.
