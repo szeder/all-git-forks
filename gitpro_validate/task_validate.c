@@ -169,13 +169,9 @@ int validate_date(char *date){
  * Parameters	: days, months and years to validate of each date
  * Return		: DATA_OK or INCORRECT_DATA */
  int validate_consistent_dates(int d1,int d2,int m1, int m2,int y1,int y2){
-	 if(y1>y2){
+	 if( (y1>y2) || (y1==y2 && m1>m2) || (y1==y2 && m1==m2 && d1>d2) ){
 		 return INCORRECT_DATA;
-	 }else if(m1>m2){
-		return INCORRECT_DATA;
-	 }else if(d1>d2){
-		 return INCORRECT_DATA;
-	 }
+	}
 	 return DATA_OK;
  }
 
