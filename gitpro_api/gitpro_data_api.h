@@ -301,3 +301,7 @@ char *lower(char *field);
 	Note		: function remember to free pointer with free function in stdlib.h */
 char *upper(char *field);
 
+/*	Name		: contains
+ * 	Parameters	: chosen field and contained text (unformatted) (dont use format_string function)
+ *  Return		: contains expression non case sensitive or null if any parameter is null */
+char *contains(char *field,char *text);

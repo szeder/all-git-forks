@@ -358,7 +358,7 @@ char *min(char *field){
 char *max(char *field){
 	return make_scalar("MAX",field);
 }
-
+char *contains(char *field,char *text);
 /* See specification in gitpro_data_api.h */
 char *sum(char *field){
 	return make_scalar("SUM",field);
@@ -387,5 +387,30 @@ char *concat(char *string1, char *string2){
 	strcat(result," || ");
 	strcat(result,string2);
 	strcat(result,")");
+	return result;
+}
+
+/* See specification in gitpro_data_api.h */
+char *contains(char *field,char *text){
+	if(field==NULL || text==NULL) return NULL;
+	char *u_field = upper(field);
+	/* text + % + % + end string char */
+	char *aux = (char *) malloc(strlen(text)+3);
+	strcpy(aux,"%");
+	strcat(aux,text);
+	strcat(aux,"%");
+	char * f_text = format_string(aux);
+	char *u_text = upper(f_text);
+	/* "(" + u_field + u_text + " like " + end string char + ")" */
+	char *result = (char *) malloc(strlen(u_field)+strlen(u_text)+1+6+1+1);
+	strcpy(result,"(");
+	strcat(result,u_field);
+	strcat(result," like ");
+	strcat(result,u_text);
+	strcat(result,")");
+	printf("contains = %s\n",result);
+	free(aux);
+	free(u_field);
+	free(u_text);
 	return result;
 }

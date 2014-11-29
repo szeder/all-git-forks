@@ -64,7 +64,7 @@ void dealloc_filters(){
 	free(filter_task_time);
 }
 
-void receive_update_filters(char **id,char **name,char **state,char **est_start,char **est_end,
+void receive_filters(char **id,char **name,char **state,char **est_start,char **est_end,
 					char **start,char **end,char **prior,char **type,char **est_time,
 					char **time){
 	(*id) = (char *) malloc(MAX_BUFFER_SIZE);
@@ -187,7 +187,7 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 		
 		/* Receive filter data if delete, update or read tasks is set */
 		if(tdelete || tupdate || tread){
-			receive_update_filters(&filter_task_id,&filter_task_name,&filter_task_state,
+			receive_filters(&filter_task_id,&filter_task_name,&filter_task_state,
 					&filter_task_est_start,&filter_task_est_end,&filter_task_start,
 					&filter_task_end,&filter_task_prior,&filter_task_type,
 					&filter_task_est_time,&filter_task_time);

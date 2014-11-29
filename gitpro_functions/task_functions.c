@@ -620,7 +620,6 @@ char *filter_task(char *id,char *name,char *state,
 					char *est_start,char *est_end,char *start,char *end,char *prior,
 					char *type,char *est_time,char *time){
 	//Format strings
-	char *f_name =NULL; if(strlen(name)>0){ f_name =format_string(name);}
 	char *f_state = NULL; 
 	char *u_state = NULL;
 	if(strlen(state)>0 ) {f_state=format_string(state);u_state = upper(f_state);}
@@ -642,9 +641,9 @@ char *filter_task(char *id,char *name,char *state,
 			else where_part=_and_(where_part,cond(TASK_ID,"=",id)); }
 		if(u_state!=NULL){ if(where_part==NULL) where_part = cond(TASK_STATE,"=",u_state);
 				else where_part=_and_(where_part,cond(TASK_STATE,"=",u_state));} 
-		if(f_name!=NULL){
-			if(where_part==NULL) where_part = cond(TASK_NAME,"=",f_name);
-				else where_part=_and_(where_part,cond(TASK_NAME,"=",f_name)); }
+		if(name!=NULL){
+			if(where_part==NULL) where_part = contains(TASK_NAME,name);
+				else where_part=_and_(where_part,contains(TASK_NAME,name)); }
 		if(f_est_start!=NULL){ if(where_part==NULL) where_part = cond(TASK_START_EST,"=",f_est_start);
 				else where_part=_and_(where_part,cond(TASK_START_EST,"=",f_est_start)); }
 		if(f_est_end!=NULL){ if(where_part==NULL) where_part = cond(TASK_END_EST,"=",f_est_end);
@@ -668,7 +667,7 @@ char *filter_task(char *id,char *name,char *state,
 	//free temporal data
 	if(u_state!=NULL) free(u_state); if(u_prior!=NULL) free(u_prior);
 	if(u_type!=NULL) free(u_type); if(f_prior!=NULL) free(f_prior);
-	if(f_name!=NULL) free(f_name); if(f_state!=NULL) free(f_state);
+	if(f_state!=NULL) free(f_state);
 	if(f_type!=NULL) free(f_type);if(f_est_start!=NULL) free(f_est_start);
 	if(f_est_end!=NULL) free(f_est_end); if(f_start!=NULL) free(f_start);
 	if(f_end!=NULL) free(f_end);

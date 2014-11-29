@@ -10,14 +10,15 @@ SYNOPSIS
 --------
 [verse]
 'git task' [ [-c | --create] 
-	   | [-r | --read] 
+	   | [-r | --read [-v] ] 
 	   | [-u | --update] 
 	   | [-d | --delete] 
 	   | [-a | --assign] 
 	   | [-l | --link] 
 	   | [--show-types] 
 	   | [--show-states]
-	   | [--show-priorities] ]
+	   | [--show-priorities] 
+	   | [--pending] ]
 
 Each option accepts arguments. See OPTIONS section for more info about a specific option and arguments.
 
@@ -63,6 +64,7 @@ Creates new task if not exists one that matches with mandatory fields for tasks.
 [Read option]
 Nothing to specify.
 You can filter task with interactive mode included. 
+Can set '-v' option to see more or less information as desired.
 
 [Update option]
 Need to specify all data to modify (id not allowed).
@@ -94,6 +96,8 @@ No need to specify parameters. Just 'git task --show-states' to see available ta
 [Show priorities]
 No need to specify parameters. Just 'git task --show-priorities' to see available task priorities.
 
+[Check out pending tasks]
+To see your pending assigned tasks just run 'git task --pending' to see it. It will shown in short format.
 
 NOTES
 -----
@@ -125,3 +129,15 @@ Assign and deassign users to task example:
 
 Link and unlink files to task example:
 	git task -l -i 1 --file --add="file1,file2" --rm="file3"
+	
+Checking types:
+	git task --show-types
+	
+Checking states:
+	git task --show-states
+	
+Checking priorities:
+	git task --show-priorities
+	
+Checking your pending tasks:
+	git task --pending
