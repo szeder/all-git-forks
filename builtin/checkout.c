@@ -858,27 +858,29 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 {
 	struct strbuf sb_git = STRBUF_INIT, sb_repo = STRBUF_INIT;
 	struct strbuf sb = STRBUF_INIT;
-	const char *path = opts->new_worktree, *name;
+	struct strbuf sb_path = STRBUF_INIT;
+	const char *name;
 	struct stat st;
 	struct child_process cp;
 	int counter = 0, len, ret;
 
 	if (!new->commit)
 		die(_("no branch specified"));
-	if (file_exists(path) && !is_empty_dir(path))
-		die(_("'%s' already exists"), path);
+	strbuf_add_absolute_path(&sb_path, opts->new_worktree);
+	if (file_exists(sb_path.buf) && !is_empty_dir(sb_path.buf))
+		die(_("'%s' already exists"), sb_path.buf);
 
-	len = strlen(path);
-	while (len && is_dir_sep(path[len - 1]))
+	len = sb_path.len;
+	while (len && is_dir_sep(sb_path.buf[len - 1]))
 		len--;
 
-	for (name = path + len - 1; name > path; name--)
+	for (name = sb_path.buf + len - 1; name > sb_path.buf; name--)
 		if (is_dir_sep(*name)) {
 			name++;
 			break;
 		}
 	strbuf_addstr(&sb_repo,
-		      git_path("worktrees/%.*s", (int)(path + len - name), name));
+		      git_path("worktrees/%.*s", (int)(sb_path.buf + len - name), name));
 	len = sb_repo.len;
 	if (safe_create_leading_directories_const(sb_repo.buf))
 		die_errno(_("could not create leading directories of '%s'"),
@@ -906,11 +908,11 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 	strbuf_addf(&sb, "%s/locked", sb_repo.buf);
 	write_file(sb.buf, 1, "initializing\n");
 
-	strbuf_addf(&sb_git, "%s/.git", path);
+	strbuf_addf(&sb_git, "%s/.git", sb_path.buf);
 	if (safe_create_leading_directories_const(sb_git.buf))
 		die_errno(_("could not create leading directories of '%s'"),
 			  sb_git.buf);
-	junk_work_tree = xstrdup(path);
+	junk_work_tree = xstrdup(sb_path.buf);
 
 	strbuf_reset(&sb);
 	strbuf_addf(&sb, "%s/gitdir", sb_repo.buf);
@@ -931,11 +933,11 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 	write_file(sb.buf, 1, "../..\n");
 
 	if (!opts->quiet)
-		fprintf_ln(stderr, _("Enter %s (identifier %s)"), path, name);
+		fprintf_ln(stderr, _("Enter %s (identifier %s)"), sb_path.buf, name);
 
 	setenv("GIT_CHECKOUT_NEW_WORKTREE", "1", 1);
 	setenv(GIT_DIR_ENVIRONMENT, sb_git.buf, 1);
-	setenv(GIT_WORK_TREE_ENVIRONMENT, path, 1);
+	setenv(GIT_WORK_TREE_ENVIRONMENT, sb_path.buf, 1);
 	memset(&cp, 0, sizeof(cp));
 	cp.git_cmd = 1;
 	cp.argv = opts->saved_argv;
@@ -950,6 +952,7 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 	strbuf_reset(&sb);
 	strbuf_addf(&sb, "%s/locked", sb_repo.buf);
 	unlink_or_warn(sb.buf);
+	strbuf_release(&sb_path);
 	strbuf_release(&sb);
 	strbuf_release(&sb_repo);
 	strbuf_release(&sb_git);
