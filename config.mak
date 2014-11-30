@@ -8,4 +8,4 @@ COMPUTE_HEADER_DEPENDENCIES = yes
 ifeq ($(uname_O),Cygwin)
 	NO_MMAP = YesPlease
 endif
-export GIT_SKIP_TESTS = t9200
+#export GIT_SKIP_TESTS =
