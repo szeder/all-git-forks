@@ -8,8 +8,8 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2014-11-01 07:46+0800\n"
-"PO-Revision-Date: 2014-11-17 13:16-0700\n"
-"Last-Translator: Alex Henrie <alexhenrie24@gmail.com>\n"
+"PO-Revision-Date: 2014-12-02 01:00+0100\n"
+"Last-Translator: Joan Perals Tresserra <j.pertres@gmail.com>\n"
 "Language-Team: Catalan\n"
 "Language: ca\n"
 "MIME-Version: 1.0\n"
@@ -134,50 +134,54 @@ msgstr ""
 #: branch.c:60
 #, c-format
 msgid "Not setting branch %s as its own upstream."
-msgstr "No establint la rama %s com a la seva pròpia font."
+msgstr "No establint la branca %s com a la seva pròpia font."
 
 #: branch.c:83
 #, c-format
 msgid "Branch %s set up to track remote branch %s from %s by rebasing."
 msgstr ""
-"La rama %s està configurada per a seguir la rama remota %s de %s per rebasar."
+"La branca %s està configurada per a seguir la branca remota %s de %s per "
+"rebasar."
 
 #: branch.c:84
 #, c-format
 msgid "Branch %s set up to track remote branch %s from %s."
-msgstr "La rama %s està configurada per a seguir la rama remota %s de %s."
+msgstr "La branca %s està configurada per a seguir la branca remota %s de %s."
 
 #: branch.c:88
 #, c-format
 msgid "Branch %s set up to track local branch %s by rebasing."
-msgstr "La rama %s està configurada per a seguir la rama local %s per rebasar."
+msgstr ""
+"La branca %s està configurada per a seguir la branca local %s per rebasar."
 
 #: branch.c:89
 #, c-format
 msgid "Branch %s set up to track local branch %s."
-msgstr "La rama %s està configurada per a seguir la rama local %s."
+msgstr "La branca %s està configurada per a seguir la branca local %s."
 
 #: branch.c:94
 #, c-format
 msgid "Branch %s set up to track remote ref %s by rebasing."
 msgstr ""
-"La rama %s està configurada per a seguir la referència remota %s per rebasar."
+"La branca %s està configurada per a seguir la referència remota %s per "
+"rebasar."
 
 #: branch.c:95
 #, c-format
 msgid "Branch %s set up to track remote ref %s."
-msgstr "La rama %s està configurada per a seguir la referència remota %s."
+msgstr "La branca %s està configurada per a seguir la referència remota %s."
 
 #: branch.c:99
 #, c-format
 msgid "Branch %s set up to track local ref %s by rebasing."
 msgstr ""
-"La rama %s està configurada per a seguir la referència local %s per rebasar."
+"La branca %s està configurada per a seguir la referència local %s per "
+"rebasar."
 
 #: branch.c:100
 #, c-format
 msgid "Branch %s set up to track local ref %s."
-msgstr "La rama %s està configurada per a seguir la referència local %s."
+msgstr "La branca %s està configurada per a seguir la referència local %s."
 
 #: branch.c:133
 #, c-format
@@ -187,28 +191,28 @@ msgstr "No seguint: informació ambigua per a la referència %s"
 #: branch.c:162
 #, c-format
 msgid "'%s' is not a valid branch name."
-msgstr "'%s' no és un nom de rama vàlid."
+msgstr "'%s' no és un nom de branca vàlid."
 
 #: branch.c:167
 #, c-format
 msgid "A branch named '%s' already exists."
-msgstr "Una rama amb nom '%s' ja existeix."
+msgstr "Una branca amb nom '%s' ja existeix."
 
 #: branch.c:175
 msgid "Cannot force update the current branch."
-msgstr "No es pot actualitzar la rama actual a la força."
+msgstr "No es pot actualitzar la branca actual a la força."
 
 #: branch.c:195
 #, c-format
 msgid "Cannot setup tracking information; starting point '%s' is not a branch."
 msgstr ""
 "No es pot configurar la informació de seguiment; el punt inicial '%s' no és "
-"una rama."
+"una branca."
 
 #: branch.c:197
 #, c-format
 msgid "the requested upstream branch '%s' does not exist"
-msgstr "la rama font demanada '%s' no existeix"
+msgstr "la branca font demanada '%s' no existeix"
 
 #: branch.c:199
 msgid ""
@@ -222,11 +226,11 @@ msgid ""
 "\"git push -u\" to set the upstream config as you push."
 msgstr ""
 "\n"
-"Si planeu basar el teu treball en una rama font que ja\n"
+"Si planeu basar el teu treball en una branca font que ja\n"
 "existeix al remot, pot que necessiteu executar\n"
 "\"git fetch\" per a obtenir-la.\n"
 "\n"
-"Si planeu pujar una rama local nova que seguirà la seva\n"
+"Si planeu pujar una branca local nova que seguirà la seva\n"
 "contrapart remota, pot que voleu usar\n"
 "\"git push -u\" per establir la configuració font mentre\n"
 "pugeu."
@@ -764,7 +768,7 @@ msgid ""
 "\"->\"%s\" in \"%s\"%s"
 msgstr ""
 "CONFLICTE (canvi de nom/canvi de nom): Canvi de nom \"%s\"->\"%s\" en la "
-"rama \"%s\" canvi de nom \"%s\"->\"%s\" en \"%s\"%s"
+"branca \"%s\" canvi de nom \"%s\"->\"%s\" en \"%s\"%s"
 
 #: merge-recursive.c:1179
 msgid " (left unresolved)"
@@ -1074,7 +1078,7 @@ msgstr "Error intern"
 #: remote.c:1968
 #, c-format
 msgid "Your branch is based on '%s', but the upstream is gone.\n"
-msgstr "La teva rama està basada en '%s', però la font no és.\n"
+msgstr "La teva branca està basada en '%s', però la font no és.\n"
 
 #: remote.c:1972
 msgid "  (use \"git branch --unset-upstream\" to fixup)\n"
@@ -1083,14 +1087,14 @@ msgstr "  (useu \"git branch --unset-upstream\" per a arreglar)\n"
 #: remote.c:1975
 #, c-format
 msgid "Your branch is up-to-date with '%s'.\n"
-msgstr "La vostra rama està al dia amb '%s'.\n"
+msgstr "La vostra branca està al dia amb '%s'.\n"
 
 #: remote.c:1979
 #, c-format
 msgid "Your branch is ahead of '%s' by %d commit.\n"
 msgid_plural "Your branch is ahead of '%s' by %d commits.\n"
-msgstr[0] "La vostra rama està davant de '%s' per %d comissions.\n"
-msgstr[1] "La vostra rama està davant de '%s' per %d comissions.\n"
+msgstr[0] "La vostra branca està davant de '%s' per %d comissions.\n"
+msgstr[1] "La vostra branca està davant de '%s' per %d comissions.\n"
 
 #: remote.c:1985
 msgid "  (use \"git push\" to publish your local commits)\n"
@@ -1102,15 +1106,15 @@ msgid "Your branch is behind '%s' by %d commit, and can be fast-forwarded.\n"
 msgid_plural ""
 "Your branch is behind '%s' by %d commits, and can be fast-forwarded.\n"
 msgstr[0] ""
-"La vostra rama està darrere de '%s' per %d comissió, i pot avançar-se "
+"La vostra branca està darrere de '%s' per %d comissió, i pot avançar-se "
 "ràpidament.\n"
 msgstr[1] ""
-"La vostra rama està darrere de '%s' per %d comissions, i pot avançar-se "
+"La vostra branca està darrere de '%s' per %d comissions, i pot avançar-se "
 "ràpidament.\n"
 
 #: remote.c:1996
 msgid "  (use \"git pull\" to update your local branch)\n"
-msgstr " (useu \"git pull\" per a actualitzar la vostra rama local)\n"
+msgstr " (useu \"git pull\" per a actualitzar la vostra branca local)\n"
 
 #: remote.c:1999
 #, c-format
@@ -1121,15 +1125,15 @@ msgid_plural ""
 "Your branch and '%s' have diverged,\n"
 "and have %d and %d different commits each, respectively.\n"
 msgstr[0] ""
-"La vostra rama i '%s' s'han divergit,\n"
+"La vostra branca i '%s' s'han divergit,\n"
 "i tenen %d i %d comissió distinta cada una, respectivament.\n"
 msgstr[1] ""
-"La vostra rama i '%s' s'han divergit,\n"
+"La vostra branca i '%s' s'han divergit,\n"
 "i tenen %d i %d comissions distintes cada una, respectivament.\n"
 
 #: remote.c:2009
 msgid "  (use \"git pull\" to merge the remote branch into yours)\n"
-msgstr "  (useu \"git pull\" per a fusionar la rama remota a la vostra)\n"
+msgstr "  (useu \"git pull\" per a fusionar la branca remota a la vostra)\n"
 
 #: run-command.c:87
 msgid "open /dev/null failed"
@@ -1352,7 +1356,7 @@ msgstr "no es pot resoldre HEAD"
 
 #: sequencer.c:877
 msgid "cannot abort from a branch yet to be born"
-msgstr "no es pot avortar des d'una rama que encara ha de nàixer"
+msgstr "no es pot avortar des d'una branca que encara ha de nàixer"
 
 #: sequencer.c:899 builtin/apply.c:4128
 #, c-format
@@ -1423,22 +1427,23 @@ msgstr ""
 
 #: sha1_name.c:1068
 msgid "HEAD does not point to a branch"
-msgstr "HEAD no assenyala cap rama"
+msgstr "HEAD no assenyala cap branca"
 
 #: sha1_name.c:1071
 #, c-format
 msgid "No such branch: '%s'"
-msgstr "No hi ha tal rama: '%s'"
+msgstr "No hi ha tal branca: '%s'"
 
 #: sha1_name.c:1073
 #, c-format
 msgid "No upstream configured for branch '%s'"
-msgstr "Cap font configurada per a la rama '%s'"
+msgstr "Cap font configurada per a la branca '%s'"
 
 #: sha1_name.c:1077
 #, c-format
 msgid "Upstream branch '%s' not stored as a remote-tracking branch"
-msgstr "La rama font '%s' no s'emmagatzema com a rama que segueixi al remot"
+msgstr ""
+"La branca font '%s' no s'emmagatzema com a branca que segueixi al remot"
 
 #: submodule.c:64 submodule.c:98
 msgid "Cannot change unmerged .gitmodules, resolve merge conflicts first"
@@ -1748,12 +1753,12 @@ msgstr "  (useu \"git am --skip\" per a saltar aquest pedaç)"
 
 #: wt-status.c:963
 msgid "  (use \"git am --abort\" to restore the original branch)"
-msgstr "  (useu \"git am --abort\" per a restaurar la rama original)"
+msgstr "  (useu \"git am --abort\" per a restaurar la branca original)"
 
 #: wt-status.c:1023 wt-status.c:1040
 #, c-format
 msgid "You are currently rebasing branch '%s' on '%s'."
-msgstr "Actualment esteu rebasant la rama '%s' en '%s'."
+msgstr "Actualment esteu rebasant la branca '%s' en '%s'."
 
 #: wt-status.c:1028 wt-status.c:1045
 msgid "You are currently rebasing."
@@ -1770,7 +1775,7 @@ msgstr "  (useu \"git rebase --skip\" per a saltar aquest pedaç)"
 
 #: wt-status.c:1035
 msgid "  (use \"git rebase --abort\" to check out the original branch)"
-msgstr "  (useu \"git rebase --abort\" per a agafar la rama original)"
+msgstr "  (useu \"git rebase --abort\" per a agafar la branca original)"
 
 #: wt-status.c:1048
 msgid "  (all conflicts fixed: run \"git rebase --continue\")"
@@ -1781,7 +1786,8 @@ msgstr "  (tots els conflictes arreglats: executeu \"git rebase --continue\")"
 msgid ""
 "You are currently splitting a commit while rebasing branch '%s' on '%s'."
 msgstr ""
-"Actualment esteu dividint una comissió mentre rebasant la rama '%s' en '%s'."
+"Actualment esteu dividint una comissió mentre rebasant la branca '%s' en "
+"'%s'."
 
 #: wt-status.c:1057
 msgid "You are currently splitting a commit during a rebase."
@@ -1797,7 +1803,7 @@ msgstr ""
 #, c-format
 msgid "You are currently editing a commit while rebasing branch '%s' on '%s'."
 msgstr ""
-"Actualment esteu editant una comissió mentre rebasant la rama '%s' en '%s'."
+"Actualment esteu editant una comissió mentre rebasant la branca '%s' en '%s'."
 
 #: wt-status.c:1069
 msgid "You are currently editing a commit during a rebase."
@@ -1856,7 +1862,7 @@ msgstr ""
 #: wt-status.c:1124
 #, c-format
 msgid "You are currently bisecting, started from branch '%s'."
-msgstr "Actualment esteu bisecant, heu començat des de la rama '%s'."
+msgstr "Actualment esteu bisecant, heu començat des de la branca '%s'."
 
 #: wt-status.c:1128
 msgid "You are currently bisecting."
@@ -1864,11 +1870,11 @@ msgstr "Actualment esteu bisecant."
 
 #: wt-status.c:1131
 msgid "  (use \"git bisect reset\" to get back to the original branch)"
-msgstr "  (useu \"git bisect reset\" per a tornar a la rama original)"
+msgstr "  (useu \"git bisect reset\" per a tornar a la branca original)"
 
 #: wt-status.c:1306
 msgid "On branch "
-msgstr "En la rama "
+msgstr "En la branca "
 
 #: wt-status.c:1313
 msgid "rebase in progress; onto "
@@ -1884,7 +1890,7 @@ msgstr "HEAD separat de"
 
 #: wt-status.c:1325
 msgid "Not currently on any branch."
-msgstr "Actualment no en cap rama."
+msgstr "Actualment no en cap branca."
 
 #: wt-status.c:1342
 msgid "Initial commit"
@@ -1973,7 +1979,7 @@ msgstr "no hi ha res a cometre, directori de treball net\n"
 
 #: wt-status.c:1512
 msgid "HEAD (no branch)"
-msgstr "HEAD (sense rama)"
+msgstr "HEAD (sense branca)"
 
 #: wt-status.c:1518
 msgid "Initial commit on "
@@ -2789,15 +2795,15 @@ msgstr "git branch [opcions] [-r | -a] [--merged | --no-merged]"
 
 #: builtin/branch.c:25
 msgid "git branch [options] [-l] [-f] <branchname> [<start-point>]"
-msgstr "git branch [opcions] [-l] [-f] <nom-de-rama> [<punt-inicial>]"
+msgstr "git branch [opcions] [-l] [-f] <nom-de-branca> [<punt-inicial>]"
 
 #: builtin/branch.c:26
 msgid "git branch [options] [-r] (-d | -D) <branchname>..."
-msgstr "git branch [opcions] [-r] (-d | -D) <nom-de-rama>..."
+msgstr "git branch [opcions] [-r] (-d | -D) <nom-de-branca>..."
 
 #: builtin/branch.c:27
 msgid "git branch [options] (-m | -M) [<oldbranch>] <newbranch>"
-msgstr "git branch [opcions] (-m | -M) [<rama-antiga>] <rama-nova>"
+msgstr "git branch [opcions] (-m | -M) [<branca-antiga>] <branca-nova>"
 
 #: builtin/branch.c:152
 #, c-format
@@ -2805,7 +2811,7 @@ msgid ""
 "deleting branch '%s' that has been merged to\n"
 "         '%s', but not yet merged to HEAD."
 msgstr ""
-"suprimint la rama '%s' que s'ha fusionat a\n"
+"suprimint la branca '%s' que s'ha fusionat a\n"
 "         '%s', però encara no s'ha fusionat\n"
 "         a HEAD."
 
@@ -2815,7 +2821,7 @@ msgid ""
 "not deleting branch '%s' that is not yet merged to\n"
 "         '%s', even though it is merged to HEAD."
 msgstr ""
-"no suprimint la rama '%s' que encara no s'ha\n"
+"no suprimint la branca '%s' que encara no s'ha\n"
 "         fusionat a '%s', encara que està fusionat\n"
 "         a HEAD."
 
@@ -2830,7 +2836,7 @@ msgid ""
 "The branch '%s' is not fully merged.\n"
 "If you are sure you want to delete it, run 'git branch -D %s'."
 msgstr ""
-"La rama '%s' no està totalment fusionada.\n"
+"La branca '%s' no està totalment fusionada.\n"
 "Si esteu segur que la voleu suprimir, executeu 'git branch -D %s'."
 
 #: builtin/branch.c:187
@@ -2848,42 +2854,42 @@ msgstr "No s'ha pogut trobar l'objecte de comissió de HEAD"
 #: builtin/branch.c:229
 #, c-format
 msgid "Cannot delete the branch '%s' which you are currently on."
-msgstr "No es pot suprimir la rama '%s' en que esteu actualment."
+msgstr "No es pot suprimir la branca '%s', en la qual esteu actualment."
 
 #: builtin/branch.c:245
 #, c-format
 msgid "remote branch '%s' not found."
-msgstr "no s'ha trobat la rama remota '%s'."
+msgstr "no s'ha trobat la branca remota '%s'."
 
 #: builtin/branch.c:246
 #, c-format
 msgid "branch '%s' not found."
-msgstr "no s'ha trobat la rama '%s'."
+msgstr "no s'ha trobat la branca '%s'."
 
 #: builtin/branch.c:260
 #, c-format
 msgid "Error deleting remote branch '%s'"
-msgstr "Error en suprimir la rama remota '%s'"
+msgstr "Error en suprimir la branca remota '%s'"
 
 #: builtin/branch.c:261
 #, c-format
 msgid "Error deleting branch '%s'"
-msgstr "Error en suprimir la rama '%s'"
+msgstr "Error en suprimir la branca '%s'"
 
 #: builtin/branch.c:268
 #, c-format
 msgid "Deleted remote branch %s (was %s).\n"
-msgstr "S'ha suprimit la rama remota %s (ha estat %s).\n"
+msgstr "S'ha suprimit la branca remota %s (ha estat %s).\n"
 
 #: builtin/branch.c:269
 #, c-format
 msgid "Deleted branch %s (was %s).\n"
-msgstr "S'ha suprimit la rama %s (ha estat %s).\n"
+msgstr "S'ha suprimit la branca %s (ha estat %s).\n"
 
 #: builtin/branch.c:370
 #, c-format
 msgid "branch '%s' does not point at a commit"
-msgstr "la rama '%s' no assenyala una comissió"
+msgstr "la branca '%s' no assenyala una comissió"
 
 #: builtin/branch.c:459
 #, c-format
@@ -2932,12 +2938,12 @@ msgstr " **** referència invàlida ****"
 #: builtin/branch.c:587
 #, c-format
 msgid "(no branch, rebasing %s)"
-msgstr "(cap rama, rebasant %s)"
+msgstr "(cap branca, rebasant %s)"
 
 #: builtin/branch.c:590
 #, c-format
 msgid "(no branch, bisect started on %s)"
-msgstr "(cap rama, bisecció començada en %s)"
+msgstr "(cap branca, bisecció començada en %s)"
 
 #: builtin/branch.c:593
 #, c-format
@@ -2946,7 +2952,7 @@ msgstr "(separat de %s)"
 
 #: builtin/branch.c:596
 msgid "(no branch)"
-msgstr "(cap rama)"
+msgstr "(cap branca)"
 
 #: builtin/branch.c:643
 #, c-format
@@ -2960,26 +2966,26 @@ msgstr "no s'han pogut llegir algunes referències"
 #: builtin/branch.c:704
 msgid "cannot rename the current branch while not on any."
 msgstr ""
-"no es pot canviar el nom de la rama actual mentre no estant en ninguna."
+"no es pot canviar el nom de la branca actual mentre no estant en ninguna."
 
 #: builtin/branch.c:714
 #, c-format
 msgid "Invalid branch name: '%s'"
-msgstr "Nom de rama invàlid: '%s'"
+msgstr "Nom de branca invàlid: '%s'"
 
 #: builtin/branch.c:729
 msgid "Branch rename failed"
-msgstr "El canvi de nom de rama ha fallat"
+msgstr "El canvi de nom de branca ha fallat"
 
 #: builtin/branch.c:733
 #, c-format
 msgid "Renamed a misnamed branch '%s' away"
-msgstr "S'ha canviat el nom de la rama malanomenada '%s'"
+msgstr "S'ha canviat el nom de la branca malanomenada '%s'"
 
 #: builtin/branch.c:737
 #, c-format
 msgid "Branch renamed to %s, but HEAD is not updated!"
-msgstr "S'ha canviat el nom de la rama a %s, però HEAD no està actualitzat!"
+msgstr "S'ha canviat el nom de la branca a %s, però HEAD no està actualitzat!"
 
 #: builtin/branch.c:744
 msgid "Branch is renamed, but update of config-file failed"
@@ -2995,7 +3001,7 @@ msgstr "nom d'objecte %s malformat"
 #: builtin/branch.c:783
 #, c-format
 msgid "could not write branch description template: %s"
-msgstr "no s'ha pogut escriure la plantilla de descripció de rama: %s"
+msgstr "no s'ha pogut escriure la plantilla de descripció de branca: %s"
 
 #: builtin/branch.c:813
 msgid "Generic options"
@@ -3003,7 +3009,7 @@ msgstr "Opcions genèriques"
 
 #: builtin/branch.c:815
 msgid "show hash and subject, give twice for upstream branch"
-msgstr "mostra el hash i el tema, doneu dos vegades per la rama font"
+msgstr "mostra el hash i el tema, doneu dues vegades per la branca font"
 
 #: builtin/branch.c:816
 msgid "suppress informational messages"
@@ -3023,7 +3029,7 @@ msgstr "usa sortida colorada"
 
 #: builtin/branch.c:824
 msgid "act on remote-tracking branches"
-msgstr "actua en rames amb seguiment remot"
+msgstr "actua en branques amb seguiment remot"
 
 #: builtin/branch.c:827 builtin/branch.c:833 builtin/branch.c:854
 #: builtin/branch.c:860 builtin/commit.c:1622 builtin/commit.c:1623
@@ -3034,7 +3040,7 @@ msgstr "comissió"
 
 #: builtin/branch.c:828 builtin/branch.c:834
 msgid "print only branches that contain the commit"
-msgstr "imprimeix només les rames que continguin la comissió"
+msgstr "imprimeix només les branques que continguin la comissió"
 
 #: builtin/branch.c:840
 msgid "Specific git-branch actions:"
@@ -3042,35 +3048,35 @@ msgstr "Accions de git-branch específiques:"
 
 #: builtin/branch.c:841
 msgid "list both remote-tracking and local branches"
-msgstr "llista ambdós les rames amb seguiment remot i les locals"
+msgstr "llista les branques amb seguiment remot i les locals"
 
 #: builtin/branch.c:843
 msgid "delete fully merged branch"
-msgstr "suprimeix la rama si és completament fusionada"
+msgstr "suprimeix la branca si és completament fusionada"
 
 #: builtin/branch.c:844
 msgid "delete branch (even if not merged)"
-msgstr "suprimeix la rama (encara que no estigui fusionada)"
+msgstr "suprimeix la branca (encara que no estigui fusionada)"
 
 #: builtin/branch.c:845
 msgid "move/rename a branch and its reflog"
-msgstr "mou/canvia de nom una rama i el seu registre de referència"
+msgstr "mou/canvia de nom una branca i el seu registre de referència"
 
 #: builtin/branch.c:846
 msgid "move/rename a branch, even if target exists"
-msgstr "mou/canvia de nom una rama, encara que el destí existeixi"
+msgstr "mou/canvia de nom una branca, encara que el destí existeixi"
 
 #: builtin/branch.c:847
 msgid "list branch names"
-msgstr "llista els noms de rama"
+msgstr "llista els noms de branca"
 
 #: builtin/branch.c:848
 msgid "create the branch's reflog"
-msgstr "crea el registre de referència de la rama"
+msgstr "crea el registre de referència de la branca"
 
 #: builtin/branch.c:850
 msgid "edit the description for the branch"
-msgstr "edita la descripció de la rama"
+msgstr "edita la descripció de la branca"
 
 #: builtin/branch.c:851
 msgid "force creation (when already exists)"
@@ -3078,15 +3084,15 @@ msgstr "força creació (quan ja existeix)"
 
 #: builtin/branch.c:854
 msgid "print only not merged branches"
-msgstr "imprimeix només les rames sense fusionar"
+msgstr "imprimeix només les branques sense fusionar"
 
 #: builtin/branch.c:860
 msgid "print only merged branches"
-msgstr "imprimeix només les rames fusionades"
+msgstr "imprimeix només les branques fusionades"
 
 #: builtin/branch.c:864
 msgid "list branches in columns"
-msgstr "llista les rames en columnes"
+msgstr "llista les branques en columnes"
 
 #: builtin/branch.c:877
 msgid "Failed to resolve HEAD as a valid ref."
@@ -3102,7 +3108,7 @@ msgstr "--column i --verbose són incompatibles"
 
 #: builtin/branch.c:909 builtin/branch.c:948
 msgid "branch name required"
-msgstr "cal el nom de rama"
+msgstr "cal el nom de branca"
 
 #: builtin/branch.c:924
 msgid "Cannot give description to detached HEAD"
@@ -3110,55 +3116,56 @@ msgstr "No es pot donar descripció a un HEAD separat"
 
 #: builtin/branch.c:929
 msgid "cannot edit description of more than one branch"
-msgstr "no es pot editar la descripció de més d'una rama"
+msgstr "no es pot editar la descripció de més d'una branca"
 
 #: builtin/branch.c:936
 #, c-format
 msgid "No commit on branch '%s' yet."
-msgstr "Encara no hi ha comissió en la rama '%s'."
+msgstr "Encara no hi ha comissió en la branca '%s'."
 
 #: builtin/branch.c:939
 #, c-format
 msgid "No branch named '%s'."
-msgstr "No hi ha rama amb nom '%s'."
+msgstr "No hi ha branca amb nom '%s'."
 
 #: builtin/branch.c:954
 msgid "too many branches for a rename operation"
-msgstr "hi ha massa rames per a una operació de canvi de nom"
+msgstr "hi ha massa branques per a una operació de canvi de nom"
 
 #: builtin/branch.c:959
 msgid "too many branches to set new upstream"
-msgstr "hi ha massa rames per a establir una nova font"
+msgstr "hi ha massa branques per a establir una nova font"
 
 #: builtin/branch.c:963
 #, c-format
 msgid ""
 "could not set upstream of HEAD to %s when it does not point to any branch."
 msgstr ""
-"no s'ha pogut establir la font de HEAD com a %s quan no assenyala cap rama."
+"no s'ha pogut establir la font de HEAD com a %s quan no assenyala cap branca."
 
 #: builtin/branch.c:966 builtin/branch.c:988 builtin/branch.c:1009
 #, c-format
 msgid "no such branch '%s'"
-msgstr "no hi ha tal rama '%s'"
+msgstr "no hi ha tal branca '%s'"
 
 #: builtin/branch.c:970
 #, c-format
 msgid "branch '%s' does not exist"
-msgstr "la rama '%s' no existeix"
+msgstr "la branca '%s' no existeix"
 
 #: builtin/branch.c:982
 msgid "too many branches to unset upstream"
-msgstr "hi ha massa rames per a desestablir la font"
+msgstr "hi ha massa branques per a desestablir la font"
 
 #: builtin/branch.c:986
 msgid "could not unset upstream of HEAD when it does not point to any branch."
-msgstr "no s'ha pogut desestablir la font de HEAD quan no assenyala cap rama."
+msgstr ""
+"no s'ha pogut desestablir la font de HEAD quan no assenyala cap branca."
 
 #: builtin/branch.c:992
 #, c-format
 msgid "Branch '%s' has no upstream information"
-msgstr "La rama '%s' no té informació de font"
+msgstr "La branca '%s' no té informació de font"
 
 #: builtin/branch.c:1006
 msgid "it does not make sense to create 'HEAD' manually"
@@ -3166,7 +3173,8 @@ msgstr "no té sentit crear 'HEAD' manualment"
 
 #: builtin/branch.c:1012
 msgid "-a and -r options to 'git branch' do not make sense with a branch name"
-msgstr "les opcions -a i -r a 'git branch' no tenen sentit amb un nom de rama"
+msgstr ""
+"les opcions -a i -r a 'git branch' no tenen sentit amb un nom de branca"
 
 #: builtin/branch.c:1015
 #, c-format
@@ -3376,11 +3384,11 @@ msgstr "copia els fitxers des de l'etapa anomenada"
 
 #: builtin/checkout.c:25
 msgid "git checkout [options] <branch>"
-msgstr "git checkout [opcions] <rama>"
+msgstr "git checkout [opcions] <branca>"
 
 #: builtin/checkout.c:26
 msgid "git checkout [options] [<branch>] -- <file>..."
-msgstr "git checkout [opcions] [<rama>] -- <fitxer>..."
+msgstr "git checkout [opcions] [<branca>] -- <fitxer>..."
 
 #: builtin/checkout.c:114 builtin/checkout.c:147
 #, c-format
@@ -3426,7 +3434,8 @@ msgstr "'%s' no es pot usar amb %s"
 #: builtin/checkout.c:249
 #, c-format
 msgid "Cannot update paths and switch to branch '%s' at the same time."
-msgstr "No es pot actualitzar les rutes i canviar a la rama '%s' a la vegada."
+msgstr ""
+"No es pot actualitzar les rutes i canviar a la branca '%s' a la vegada."
 
 #: builtin/checkout.c:260 builtin/checkout.c:449
 msgid "corrupt index file"
@@ -3453,7 +3462,7 @@ msgstr "HEAD ara està a"
 #: builtin/checkout.c:642
 #, c-format
 msgid "Reset branch '%s'\n"
-msgstr "Restableix la rama '%s'\n"
+msgstr "Restableix la branca '%s'\n"
 
 #: builtin/checkout.c:645
 #, c-format
@@ -3463,17 +3472,17 @@ msgstr "Ja en '%s'\n"
 #: builtin/checkout.c:649
 #, c-format
 msgid "Switched to and reset branch '%s'\n"
-msgstr "S'ha agafat i restablert la rama '%s'\n"
+msgstr "S'ha agafat i restablert la branca '%s'\n"
 
 #: builtin/checkout.c:651 builtin/checkout.c:1032
 #, c-format
 msgid "Switched to a new branch '%s'\n"
-msgstr "S'ha agafat la rama nova '%s'\n"
+msgstr "S'ha agafat la branca nova '%s'\n"
 
 #: builtin/checkout.c:653
 #, c-format
 msgid "Switched to branch '%s'\n"
-msgstr "S'ha agafat la rama '%s'\n"
+msgstr "S'ha agafat la branca '%s'\n"
 
 #: builtin/checkout.c:705
 #, c-format
@@ -3494,12 +3503,12 @@ msgid_plural ""
 "%s\n"
 msgstr[0] ""
 "Avís: esteu deixant %d comissió darrere, no connectada a\n"
-"qualsevulla de les vostres rames:\n"
+"qualsevulla de les vostres branques:\n"
 "\n"
 "%s\n"
 msgstr[1] ""
 "Avís: esteu deixant %d comissions darrere, no connectada a\n"
-"qualsevulla de les vostres rames:\n"
+"qualsevulla de les vostres branques:\n"
 "\n"
 "%s\n"
 
@@ -3512,7 +3521,7 @@ msgid ""
 " git branch new_branch_name %s\n"
 "\n"
 msgstr ""
-"Si els voleu retenir per a crear una rama nova, ara pot ser una hora bona\n"
+"Si els voleu retenir per a crear una branca nova, ara pot ser una hora bona\n"
 "per a fer això amb:\n"
 "\n"
 " git branch new_branch_name %s\n"
@@ -3528,7 +3537,7 @@ msgstr "La posició de HEAD anterior ha estat"
 
 #: builtin/checkout.c:790 builtin/checkout.c:1027
 msgid "You are on a branch yet to be born"
-msgstr "Esteu en una rama que encara ha de nàixer"
+msgstr "Esteu en una branca que encara ha de nàixer"
 
 #: builtin/checkout.c:934
 #, c-format
@@ -3547,12 +3556,12 @@ msgstr "la referéncia no és un arbre: %s"
 
 #: builtin/checkout.c:1041
 msgid "paths cannot be used with switching branches"
-msgstr "les rutes no es poden usar amb canvi de rama"
+msgstr "les rutes no es poden usar amb canvi de branca"
 
 #: builtin/checkout.c:1044 builtin/checkout.c:1048
 #, c-format
 msgid "'%s' cannot be used with switching branches"
-msgstr "'%s' no es pot usar amb canvi de rama"
+msgstr "'%s' no es pot usar amb canvi de branca"
 
 #: builtin/checkout.c:1052 builtin/checkout.c:1055 builtin/checkout.c:1060
 #: builtin/checkout.c:1063
@@ -3563,24 +3572,24 @@ msgstr "'%s' no es pot usar amb '%s'"
 #: builtin/checkout.c:1068
 #, c-format
 msgid "Cannot switch branch to a non-commit '%s'"
-msgstr "No es pot canviar la rama a un no comissió '%s'"
+msgstr "No es pot canviar la branca a una no comissió '%s'"
 
 #: builtin/checkout.c:1090 builtin/checkout.c:1092 builtin/clone.c:89
 #: builtin/remote.c:159 builtin/remote.c:161
 msgid "branch"
-msgstr "rama"
+msgstr "branca"
 
 #: builtin/checkout.c:1091
 msgid "create and checkout a new branch"
-msgstr "crea i agafa una rama nova"
+msgstr "crea i agafa una branca nova"
 
 #: builtin/checkout.c:1093
 msgid "create/reset and checkout a branch"
-msgstr "crea/restableix i agafa una rama"
+msgstr "crea/restableix i agafa una branca"
 
 #: builtin/checkout.c:1094
 msgid "create reflog for new branch"
-msgstr "crea un registre de referència per a la rama nova"
+msgstr "crea un registre de referència per a la branca nova"
 
 #: builtin/checkout.c:1095
 msgid "detach the HEAD at named commit"
@@ -3588,15 +3597,15 @@ msgstr "separa el HEAD a la comissió anomenada"
 
 #: builtin/checkout.c:1096
 msgid "set upstream info for new branch"
-msgstr "estableix la informació de font de la rama nova"
+msgstr "estableix la informació de font de la branca nova"
 
 #: builtin/checkout.c:1098
 msgid "new-branch"
-msgstr "rama-nova"
+msgstr "branca-nova"
 
 #: builtin/checkout.c:1098
 msgid "new unparented branch"
-msgstr "rama nova sense pares"
+msgstr "branca nova sense pares"
 
 #: builtin/checkout.c:1099
 msgid "checkout our version for unmerged files"
@@ -3612,7 +3621,7 @@ msgstr "agafa a la força (descarta qualsevulles modificacions locals)"
 
 #: builtin/checkout.c:1104
 msgid "perform a 3-way merge with the new branch"
-msgstr "realitza una fusió de 3 vies amb la rama nova"
+msgstr "realitza una fusió de 3 vies amb la branca nova"
 
 #: builtin/checkout.c:1105 builtin/merge.c:226
 msgid "update ignored files (default)"
@@ -3632,7 +3641,7 @@ msgstr "no limitis les especificacions de ruta a entrades escasses només"
 
 #: builtin/checkout.c:1112
 msgid "second guess 'git checkout no-such-branch'"
-msgstr "dubta 'git checkout cap-rama-així'"
+msgstr "dubta 'git checkout cap-branca-així'"
 
 #: builtin/checkout.c:1135
 msgid "-b, -B and --orphan are mutually exclusive"
@@ -3640,11 +3649,11 @@ msgstr "-b, -B i --orphan són mutualment exclusius"
 
 #: builtin/checkout.c:1152
 msgid "--track needs a branch name"
-msgstr "--track necessita un nom de rama"
+msgstr "--track necessita un nom de branca"
 
 #: builtin/checkout.c:1157
 msgid "Missing branch name; try -b"
-msgstr "Manca el nom de rama; proveu -b"
+msgstr "Manca el nom de branca; proveu -b"
 
 #: builtin/checkout.c:1194
 msgid "invalid path specification"
@@ -3656,8 +3665,8 @@ msgid ""
 "Cannot update paths and switch to branch '%s' at the same time.\n"
 "Did you intend to checkout '%s' which can not be resolved as commit?"
 msgstr ""
-"No es pot actualitzar rames i canviar a la rama '%s' a la vegada.\n"
-"Volíeu agafar '%s' la qual no es pot resoldre com a comissió?"
+"No es poden actualitzar els camins i canviar a la branca '%s' a la vegada.\n"
+"Volíeu agafar '%s', la qual no es pot resoldre com a comissió?"
 
 #: builtin/checkout.c:1206
 #, c-format
@@ -3911,7 +3920,7 @@ msgstr "usa <nom> en lloc de 'origin' per a seguir la font"
 
 #: builtin/clone.c:90
 msgid "checkout <branch> instead of the remote's HEAD"
-msgstr "agafa <rama> en lloc del HEAD del remot"
+msgstr "agafa <branca> en lloc del HEAD del remot"
 
 #: builtin/clone.c:92
 msgid "path to git-upload-pack on the remote"
@@ -3927,7 +3936,7 @@ msgstr "crea un clon superficial de tal profunditat"
 
 #: builtin/clone.c:96
 msgid "clone only one branch, HEAD or --branch"
-msgstr "clona només una rama, HEAD o --branch"
+msgstr "clona només una branca, HEAD o --branch"
 
 #: builtin/clone.c:97 builtin/init-db.c:494
 msgid "gitdir"
@@ -4008,7 +4017,7 @@ msgstr ""
 #: builtin/clone.c:478
 #, c-format
 msgid "Could not find remote branch %s to clone."
-msgstr "No s'ha pogut trobar la rama remota %s per a clonar."
+msgstr "No s'ha pogut trobar la branca remota %s per a clonar."
 
 #: builtin/clone.c:558
 #, c-format
@@ -4106,7 +4115,7 @@ msgstr "No es sap com clonar %s"
 #: builtin/clone.c:958 builtin/clone.c:966
 #, c-format
 msgid "Remote branch %s not found in upstream %s"
-msgstr "La rama remota %s no es troba en la font %s"
+msgstr "La branca remota %s no es troba en la font %s"
 
 #: builtin/clone.c:969
 msgid "You appear to have cloned an empty repository."
@@ -4519,7 +4528,7 @@ msgstr "mostra l'estat concisament"
 
 #: builtin/commit.c:1366 builtin/commit.c:1646
 msgid "show branch information"
-msgstr "mostra la informació de rama"
+msgstr "mostra la informació de branca"
 
 #: builtin/commit.c:1368 builtin/commit.c:1648 builtin/push.c:500
 msgid "machine-readable output"
@@ -5187,7 +5196,7 @@ msgstr "ruta a que pujar el paquet en el costat remot"
 
 #: builtin/fetch.c:95
 msgid "force overwrite of local branch"
-msgstr "força la sobreescriptura de la rama local"
+msgstr "força la sobreescriptura de la branca local"
 
 #: builtin/fetch.c:97
 msgid "fetch from multiple remotes"
@@ -5203,7 +5212,7 @@ msgstr "no obtingues les etiquetes (--no-tags)"
 
 #: builtin/fetch.c:103
 msgid "prune remote-tracking branches no longer on remote"
-msgstr "poda les rames amb seguiment remot que ja no estiguin en el remot"
+msgstr "poda les branques amb seguiment remot que ja no estiguin en el remot"
 
 #: builtin/fetch.c:104
 msgid "on-demand"
@@ -5269,7 +5278,7 @@ msgstr "[al dia]"
 #: builtin/fetch.c:473
 #, c-format
 msgid "! %-*s %-*s -> %s  (can't fetch in current branch)"
-msgstr "! %-*s %-*s -> %s  (no es pot obtenir en la rama actual)"
+msgstr "! %-*s %-*s -> %s  (no es pot obtenir en la branca actual)"
 
 #: builtin/fetch.c:474 builtin/fetch.c:560
 msgid "[rejected]"
@@ -5289,7 +5298,7 @@ msgstr "[etiqueta nova]"
 
 #: builtin/fetch.c:508
 msgid "[new branch]"
-msgstr "[rama nova]"
+msgstr "[branca nova]"
 
 #: builtin/fetch.c:511
 msgid "[new ref]"
@@ -5336,7 +5345,7 @@ msgid ""
 msgstr ""
 "algunes referències locals no s'han pogut actualitzar;\n"
 " intenteu executar 'git remote prune %s' per a treure\n"
-" qualsevulla rama antiga o conflictiva"
+" qualsevulla branca antiga o conflictiva"
 
 #: builtin/fetch.c:773
 #, c-format
@@ -5359,7 +5368,7 @@ msgstr "(cap)"
 #: builtin/fetch.c:818
 #, c-format
 msgid "Refusing to fetch into current branch %s of non-bare repository"
-msgstr "Refusant obtenir en la rama actual %s d'un dipòsit no nu"
+msgstr "Refusant obtenir en la branca actual %s d'un dipòsit no nu"
 
 #: builtin/fetch.c:837
 #, c-format
@@ -6746,7 +6755,7 @@ msgstr "git cherry [-v] [<font> [<cap> [<límit>]]]"
 msgid ""
 "Could not find a tracked remote branch, please specify <upstream> manually.\n"
 msgstr ""
-"No s'ha pogut trobar una rama remota seguida, si us plau, especifiqueu "
+"No s'ha pogut trobar una branca remota seguida, si us plau, especifiqueu "
 "<font> manualment.\n"
 
 #: builtin/log.c:1651 builtin/log.c:1653 builtin/log.c:1665
@@ -7068,7 +7077,7 @@ msgid ""
 msgstr ""
 "Si us plau, introduïu un missatge de comissió per a explicar per què\n"
 "aquesta fusió és necessari, especialment si fusiona una font\n"
-"actualitzada a una rama temàtica.\n"
+"actualitzada a una branca temàtica.\n"
 "\n"
 "S'ignoraran les línies que comencin amb '%c', i un missatge buit\n"
 "avorta la comissió.\n"
@@ -7096,20 +7105,20 @@ msgstr "'%s' no és una comissió"
 
 #: builtin/merge.c:964
 msgid "No current branch."
-msgstr "Cap rama actual."
+msgstr "Cap branca actual."
 
 #: builtin/merge.c:966
 msgid "No remote for the current branch."
-msgstr "Cap remot per a la rama actual."
+msgstr "Cap remot per a la branca actual."
 
 #: builtin/merge.c:968
 msgid "No default upstream defined for the current branch."
-msgstr "Cap font per defecte definida per a la rama actual."
+msgstr "Cap font per defecte definida per a la branca actual."
 
 #: builtin/merge.c:973
 #, c-format
 msgid "No remote-tracking branch for %s from %s"
-msgstr "Cap rama de seguiment remot per a %s de %s"
+msgstr "Cap branca de seguiment remot per a %s de %s"
 
 #: builtin/merge.c:1129
 msgid "There is no merge to abort (MERGE_HEAD missing)."
@@ -8068,13 +8077,13 @@ msgid ""
 "    git push %s %s\n"
 "%s"
 msgstr ""
-"La rama font de la vostra rama actual no coincideix amb\n"
-"el nom de la vostra rama actual. Per a pujar-la a la rama font\n"
+"La branca font de la vostra branca actual no coincideix amb\n"
+"el nom de la vostra branca actual. Per a pujar-la a la branca font\n"
 "en el remot, useu\n"
 "\n"
 "    git push %s HEAD:%s\n"
 "\n"
-"Per a pujar a la rama de la mateixa nom en el remot, useu\n"
+"Per a pujar a la branca de la mateixa nom en el remot, useu\n"
 "\n"
 "    git push %s %s\n"
 "%s"
@@ -8088,11 +8097,11 @@ msgid ""
 "\n"
 "    git push %s HEAD:<name-of-remote-branch>\n"
 msgstr ""
-"Actualment no esteu en cap rama.\n"
+"Actualment no esteu en cap branca.\n"
 "Per a pujar la història que condueix a l'estat actual\n"
 "(HEAD separat) ara, useu\n"
 "\n"
-"    git push %s HEAD:<nom-de-rama-remota>\n"
+"    git push %s HEAD:<nom-de-branca-remota>\n"
 
 #: builtin/push.c:171
 #, c-format
@@ -8102,15 +8111,15 @@ msgid ""
 "\n"
 "    git push --set-upstream %s %s\n"
 msgstr ""
-"La rama actual %s no té rama font.\n"
-"Per a pujar la rama actual i estableix el remot com a font, useu\n"
+"La branca actual %s no té branca font.\n"
+"Per a pujar la branca actual i estableix el remot com a font, useu\n"
 "\n"
 "    git push --set-upstream %s %s\n"
 
 #: builtin/push.c:179
 #, c-format
 msgid "The current branch %s has multiple upstream branches, refusing to push."
-msgstr "La rama actual %s té múltiples rames fonts, refusant pujar."
+msgstr "La branca actual %s té múltiples branques fonts, refusant pujar."
 
 #: builtin/push.c:182
 #, c-format
@@ -8120,8 +8129,8 @@ msgid ""
 "to update which remote branch."
 msgstr ""
 "Esteu pujant al remot '%s', que no és la font de la vostra\n"
-"rama actual '%s', sense dir-me què pujar per a actualitzar\n"
-"quina rama remota."
+"branca actual '%s', sense dir-me què pujar per a actualitzar\n"
+"quina branca remota."
 
 #: builtin/push.c:205
 msgid ""
@@ -8158,12 +8167,12 @@ msgstr ""
 "\n"
 "  git config --global push.default simple\n"
 "\n"
-"Quan push.default és 'matching', git pujarà les rames locals a les\n"
-"rames remotes que ja existeixen amb el mateix nom.\n"
+"Quan push.default és 'matching', git pujarà les branques locals a les\n"
+"branques remotes que ja existeixen amb el mateix nom.\n"
 "\n"
 "Des del Git 2.0, el Git per defecte té el comportament més\n"
-"conservatiu 'simple', que només puja la rama actual a la rama\n"
-"corresponent que 'git pull' usa per actualitzar la rama actual.\n"
+"conservatiu 'simple', que només puja la branca actual a la branca\n"
+"corresponent que 'git pull' usa per actualitzar la branca actual.\n"
 "\n"
 "Veu 'git help config' i cerqueu 'push.default' per més informació.\n"
 "(s'ha introduït el mode 'simple' en el Git 1.7.11. Useu el mode similar\n"
@@ -8184,7 +8193,7 @@ msgid ""
 "'git pull ...') before pushing again.\n"
 "See the 'Note about fast-forwards' in 'git push --help' for details."
 msgstr ""
-"S'han rebutjat les actualitzacions perquè el punt de la vostra rama\n"
+"S'han rebutjat les actualitzacions perquè el punt de la vostra branca\n"
 "actual està darrere de la seva contrapart remota. Integreu els canvis\n"
 "remots (per exemple, 'git pull ...') abans de pujar de nou.\n"
 "Veu la 'Nota sobre avances ràpids' en 'git push --help' per detalls."
@@ -8196,8 +8205,8 @@ msgid ""
 "(e.g. 'git pull ...') before pushing again.\n"
 "See the 'Note about fast-forwards' in 'git push --help' for details."
 msgstr ""
-"S'han rebutjat les actualitzacions perquè un punt de rama pujada està\n"
-"darrere de la seva contrapart remota. Agafeu aquesta rama i integreu\n"
+"S'han rebutjat les actualitzacions perquè un punt de branca pujada està\n"
+"darrere de la seva contrapart remota. Agafeu aquesta branca i integreu\n"
 "els canvis remots (per exemple, 'git pull ...') abans de pujar de nou.\n"
 "Veu la 'Nota sobre avances ràpids' en 'git push --help' per detalls."
 
@@ -8457,7 +8466,7 @@ msgid ""
 "git remote add [-t <branch>] [-m <master>] [-f] [--tags|--no-tags] [--"
 "mirror=<fetch|push>] <name> <url>"
 msgstr ""
-"git remote add [-t <rama>] [-m <mestre>] [-f] [--tags|--no-tags] [--"
+"git remote add [-t <branca>] [-m <mestre>] [-f] [--tags|--no-tags] [--"
 "mirror=<fetch|push>] <nom> <url>"
 
 #: builtin/remote.c:14 builtin/remote.c:33
@@ -8470,7 +8479,7 @@ msgstr "git remote remove <nom>"
 
 #: builtin/remote.c:16
 msgid "git remote set-head <name> (-a | --auto | -d | --delete |<branch>)"
-msgstr "git remote set-head <nom> (-a | --auto | -d | --delete |<rama>)"
+msgstr "git remote set-head <nom> (-a | --auto | -d | --delete |<branca>)"
 
 #: builtin/remote.c:17
 msgid "git remote [-v | --verbose] show [-n] <name>"
@@ -8488,7 +8497,7 @@ msgstr ""
 
 #: builtin/remote.c:20
 msgid "git remote set-branches [--add] <name> <branch>..."
-msgstr "git remote set-branches [--add] <nom> <rama>..."
+msgstr "git remote set-branches [--add] <nom> <branca>..."
 
 #: builtin/remote.c:21 builtin/remote.c:69
 msgid "git remote set-url [--push] <name> <newurl> [<oldurl>]"
@@ -8508,15 +8517,15 @@ msgstr "git remote add [<opcions>] <nom> <url>"
 
 #: builtin/remote.c:43
 msgid "git remote set-head <name> (-a | --auto | -d | --delete | <branch>)"
-msgstr "git remote set-head <nom> (-a | --auto | -d | --delete | <rama>)"
+msgstr "git remote set-head <nom> (-a | --auto | -d | --delete | <branca>)"
 
 #: builtin/remote.c:48
 msgid "git remote set-branches <name> <branch>..."
-msgstr "git remote set-branches <nom> <rama>..."
+msgstr "git remote set-branches <nom> <branca>..."
 
 #: builtin/remote.c:49
 msgid "git remote set-branches --add <name> <branch>..."
-msgstr "git remote set-branches --add <nom> <rama>..."
+msgstr "git remote set-branches --add <nom> <branca>..."
 
 #: builtin/remote.c:54
 msgid "git remote show [<options>] <name>"
@@ -8550,7 +8559,7 @@ msgstr "paràmetre de reflexió desconegut: %s"
 
 #: builtin/remote.c:153
 msgid "fetch the remote branches"
-msgstr "obtén les rames remotes"
+msgstr "obtén les branques remotes"
 
 #: builtin/remote.c:155
 msgid "import all tags and associated objects when fetching"
@@ -8562,11 +8571,11 @@ msgstr "o no obtinguis cap etiqueta (--no-tags)"
 
 #: builtin/remote.c:160
 msgid "branch(es) to track"
-msgstr "rames a seguir"
+msgstr "branques a seguir"
 
 #: builtin/remote.c:161
 msgid "master branch"
-msgstr "rama mestre"
+msgstr "branca mestre"
 
 #: builtin/remote.c:162
 msgid "push|fetch"
@@ -8578,12 +8587,12 @@ msgstr "estableix el remot com a mirall a que pujar o de que obtenir"
 
 #: builtin/remote.c:175
 msgid "specifying a master branch makes no sense with --mirror"
-msgstr "especificar una rama mestra no té sentit amb --mirror"
+msgstr "especificar una branca mestra no té sentit amb --mirror"
 
 #: builtin/remote.c:177
 msgid "specifying branches to track makes sense only with fetch mirrors"
 msgstr ""
-"especificar les rames a seguir té sentit només amb miralls d'obteniment"
+"especificar les branques a seguir té sentit només amb miralls d'obteniment"
 
 #: builtin/remote.c:185 builtin/remote.c:641
 #, c-format
@@ -8669,7 +8678,7 @@ msgstr "la creació de '%s' ha fallat"
 #: builtin/remote.c:769
 #, c-format
 msgid "Could not remove branch %s"
-msgstr "No s'ha pogut treure la rama %s"
+msgstr "No s'ha pogut treure la branca %s"
 
 #: builtin/remote.c:836
 msgid ""
@@ -8679,10 +8688,11 @@ msgid_plural ""
 "Note: Some branches outside the refs/remotes/ hierarchy were not removed;\n"
 "to delete them, use:"
 msgstr[0] ""
-"Nota: Una rama fora de la jerarquia refs/remotes/ no s'ha tret;\n"
+"Nota: Una branca fora de la jerarquia refs/remotes/ no s'ha tret;\n"
 "per a suprimir-la, useu:"
 msgstr[1] ""
-"Nota: Unes rames fora de la jerarquia refs/remotes/ no s'han tret;\n"
+"Nota: Algunes branques fora de la jerarquia refs/remotes/ no s'han "
+"eliminat;\n"
 "per a suprimir-les, useu:"
 
 #: builtin/remote.c:951
@@ -8705,7 +8715,7 @@ msgstr " ???"
 #: builtin/remote.c:999
 #, c-format
 msgid "invalid branch.%s.merge; cannot rebase onto > 1 branch"
-msgstr "branch.%s.merge invàlid; no es pot rebasar en > 1 rama"
+msgstr "branch.%s.merge invàlid; no es pot rebasar en > 1 branca"
 
 #: builtin/remote.c:1006
 #, c-format
@@ -8796,20 +8806,21 @@ msgstr "  URL de pujada: %s"
 #: builtin/remote.c:1199 builtin/remote.c:1201 builtin/remote.c:1203
 #, c-format
 msgid "  HEAD branch: %s"
-msgstr "  Rama de HEAD: %s"
+msgstr "  Branca de HEAD: %s"
 
 #: builtin/remote.c:1205
 #, c-format
 msgid ""
 "  HEAD branch (remote HEAD is ambiguous, may be one of the following):\n"
-msgstr "  Rama de HEAD (el HEAD remot és ambigu, pot ser un dels següents):\n"
+msgstr ""
+"  Branca de HEAD (el HEAD remot és ambigu, pot ser un dels següents):\n"
 
 #: builtin/remote.c:1217
 #, c-format
 msgid "  Remote branch:%s"
 msgid_plural "  Remote branches:%s"
-msgstr[0] "  Rama remota:%s"
-msgstr[1] "  Rames remotes:%s"
+msgstr[0] "  Branca remota:%s"
+msgstr[1] "  Branques remotes:%s"
 
 #: builtin/remote.c:1220 builtin/remote.c:1247
 msgid " (status not queried)"
@@ -8818,8 +8829,8 @@ msgstr " (estat no consultat)"
 #: builtin/remote.c:1229
 msgid "  Local branch configured for 'git pull':"
 msgid_plural "  Local branches configured for 'git pull':"
-msgstr[0] "  Rama local configurada per a 'git pull':"
-msgstr[1] "  Rames locals configurades per a 'git pull':"
+msgstr[0] "  Branca local configurada per a 'git pull':"
+msgstr[1] "  Branques locals configurades per a 'git pull':"
 
 #: builtin/remote.c:1237
 msgid "  Local refs will be mirrored by 'git push'"
@@ -8847,7 +8858,7 @@ msgstr "No es pot determinar el HEAD remot"
 #: builtin/remote.c:1284
 msgid "Multiple remote HEAD branches. Please choose one explicitly with:"
 msgstr ""
-"Múltiples rames de HEAD remotes. Si us plau, trieu una explícitament amb:"
+"Múltiples branques de HEAD remotes. Si us plau, trieu una explícitament amb:"
 
 #: builtin/remote.c:1294
 #, c-format
@@ -8905,7 +8916,7 @@ msgstr "No hi ha tal remot '%s'"
 
 #: builtin/remote.c:1491
 msgid "add branch"
-msgstr "afegeix rama"
+msgstr "afegeix branca"
 
 #: builtin/remote.c:1498
 msgid "no remote specified"
@@ -9518,15 +9529,15 @@ msgstr "git show-branch (-g|--reflog)[=<n>[,<base>]] [--list] [<referència>]"
 
 #: builtin/show-branch.c:649
 msgid "show remote-tracking and local branches"
-msgstr "mostra les rames amb seguiment remot i les locals"
+msgstr "mostra les branques amb seguiment remot i les locals"
 
 #: builtin/show-branch.c:651
 msgid "show remote-tracking branches"
-msgstr "mostra les rames amb seguiment remot"
+msgstr "mostra les branques amb seguiment remot"
 
 #: builtin/show-branch.c:653
 msgid "color '*!+-' corresponding to the branch"
-msgstr "colora '*!+-' corresponent a la rama"
+msgstr "colora '*!+-' corresponent a la branca"
 
 #: builtin/show-branch.c:655
 msgid "show <n> more commits after the common ancestor"
@@ -9542,7 +9553,7 @@ msgstr "omet l'anomenament de cadenes"
 
 #: builtin/show-branch.c:660
 msgid "include the current branch"
-msgstr "inclou la rama actual"
+msgstr "inclou la branca actual"
 
 #: builtin/show-branch.c:662
 msgid "name commits with their object names"
@@ -9562,7 +9573,7 @@ msgstr "mostra les comissions en ordre topològic"
 
 #: builtin/show-branch.c:671
 msgid "show only commits not on the first branch"
-msgstr "mostra només les comissions que no siguin en la primera rama"
+msgstr "mostra només les comissions que no siguin en la primera branca"
 
 #: builtin/show-branch.c:673
 msgid "show merges reachable from only one tip"
@@ -10107,11 +10118,11 @@ msgstr "Troba per cerca binària el canvi que hagi introduït un defecte"
 
 #: common-cmds.h:10
 msgid "List, create, or delete branches"
-msgstr "Llista, crea o suprimeix rames"
+msgstr "Llista, crea o suprimeix branques"
 
 #: common-cmds.h:11
 msgid "Checkout a branch or paths to the working tree"
-msgstr "Agafa una rama o unes rutes a l'arbre de treball"
+msgstr "Agafa una branca o unes rutes a l'arbre de treball"
 
 #: common-cmds.h:12
 msgid "Clone a repository into a new directory"
@@ -10144,7 +10155,7 @@ msgstr "Mostra els registres de comissió"
 
 #: common-cmds.h:19
 msgid "Join two or more development histories together"
-msgstr "Uneix dos o més històries de desenvolupament"
+msgstr "Uneix dues o més històries de desenvolupament"
 
 #: common-cmds.h:20
 msgid "Move or rename a file, a directory, or a symlink"
@@ -10152,11 +10163,12 @@ msgstr "Mou o canvia de nom un fitxer, directori o enllaç simbòlic"
 
 #: common-cmds.h:21
 msgid "Fetch from and integrate with another repository or a local branch"
-msgstr "Obté de i integra con un altre dipòsit o una rama local"
+msgstr "Obtén de i integra amb un altre dipòsit o una branca local"
 
 #: common-cmds.h:22
 msgid "Update remote refs along with associated objects"
-msgstr "Actualitza les referències remotes juntes amb els objectes associats"
+msgstr ""
+"Actualitza les referències remotes juntament amb els objectes associats"
 
 #: common-cmds.h:23
 msgid "Forward-port local commits to the updated upstream head"
@@ -10229,7 +10241,7 @@ msgid ""
 msgstr ""
 "Quan hàgiu resolt aquest problema, executeu \"$cmdline --continue\".\n"
 "Si preferiu saltar aquest pedaç, executeu \"$cmdline --skip\" en lloc.\n"
-"Per restaurar la rama original i deixar d'apedaçar, executeu \"$cmdline --"
+"Per restaurar la branca original i deixar d'apedaçar, executeu \"$cmdline --"
 "abort\"."
 
 #: git-am.sh:123
@@ -10321,8 +10333,8 @@ msgid ""
 msgstr ""
 "El pedaç és buit. S'ha dividit mal?\n"
 "Si preferiríeu saltar aquest pedaç, executeu en lloc \"$cmdline --skip\".\n"
-"Per a restaurar la rama original i deixar d'empaquetar, executeu \"$cmdline "
-"--abort\"."
+"Per a restaurar la branca original i deixar d'empaquetar, executeu "
+"\"$cmdline --abort\"."
 
 #: git-am.sh:732
 msgid "Patch does not have a valid e-mail address."
@@ -10419,7 +10431,7 @@ msgstr "HEAD dolent - Cal un HEAD"
 msgid ""
 "Checking out '$start_head' failed. Try 'git bisect reset <validbranch>'."
 msgstr ""
-"L'agafament de '$start_head' ha fallat. Proveu 'git bisect reset <rama-"
+"L'agafament de '$start_head' ha fallat. Proveu 'git bisect reset <branca-"
 "vàlida>'."
 
 #: git-bisect.sh:140
@@ -10569,7 +10581,7 @@ msgstr ""
 
 #: git-pull.sh:245
 msgid "updating an unborn branch with changes added to the index"
-msgstr "actualitzant una rama no nascuda amb canvis afegits a l'índex"
+msgstr "actualitzant una branca no nascuda amb canvis afegits a l'índex"
 
 #: git-pull.sh:269
 #, sh-format
@@ -10578,17 +10590,17 @@ msgid ""
 "Warning: fast-forwarding your working tree from\n"
 "Warning: commit $orig_head."
 msgstr ""
-"Avís: l'obteniment ha actualitzat el cap de la rama actual.\n"
+"Avís: l'obteniment ha actualitzat el cap de la branca actual.\n"
 "Avís: avançant ràpidament el vostre arbre de\n"
 "Avís: treball des de la comissió $orig_head."
 
 #: git-pull.sh:294
 msgid "Cannot merge multiple branches into empty head"
-msgstr "No es pot fusionar múltiples rames a un cap buit"
+msgstr "No es pot fusionar múltiples branques a un cap buit"
 
 #: git-pull.sh:298
 msgid "Cannot rebase onto multiple branches"
-msgstr "No es pot rebasar en múltiples rames"
+msgstr "No es pot rebasar en múltiples branques"
 
 #: git-rebase.sh:57
 msgid ""
@@ -10599,7 +10611,7 @@ msgid ""
 msgstr ""
 "Quan hàgiu resolt aquest problema, executeu \"git rebase --continue\".\n"
 "Si preferiu saltar aquest pedaç, executeu \"git rebase --skip\" en lloc.\n"
-"Per a agafar la rama original i deixar de rebasar, executeu \"git rebase --"
+"Per a agafar la branca original i deixar de rebasar, executeu \"git rebase --"
 "abort\"."
 
 #: git-rebase.sh:165
@@ -10702,7 +10714,7 @@ msgstr "No assenyala una comissió vàlida: $onto_name"
 #: git-rebase.sh:524
 #, sh-format
 msgid "fatal: no such branch: $branch_name"
-msgstr "fatal: no hi ha tal rama: $branch_name"
+msgstr "fatal: no hi ha tal branca: $branch_name"
 
 #: git-rebase.sh:557
 msgid "Cannot autostash"
@@ -10720,12 +10732,12 @@ msgstr "Si us plau, cometeu-los o emmagatzemeu-los."
 #: git-rebase.sh:586
 #, sh-format
 msgid "Current branch $branch_name is up to date."
-msgstr "La rama actual $branch_name està al dia."
+msgstr "La branca actual $branch_name està al dia."
 
 #: git-rebase.sh:590
 #, sh-format
 msgid "Current branch $branch_name is up to date, rebase forced."
-msgstr "La rama actual $branch_name està al dia; rebase forçada."
+msgstr "La branca actual $branch_name està al dia; rebase forçada."
 
 #: git-rebase.sh:601
 #, sh-format
@@ -10734,7 +10746,8 @@ msgstr "Canvis de $mb a $onto:"
 
 #: git-rebase.sh:610
 msgid "First, rewinding head to replay your work on top of it..."
-msgstr "Primer, rebobinant el cap per a reproduir el vostre treball encima..."
+msgstr ""
+"Primer, rebobinant el cap per a reproduir el vostre treball al damunt..."
 
 #: git-rebase.sh:620
 #, sh-format
@@ -10869,7 +10882,7 @@ msgstr "${REV}: No s'ha pogut descartar l'entrada de magatzem"
 
 #: git-stash.sh:539
 msgid "No branch name specified"
-msgstr "Cap nom de rama especificat"
+msgstr "Cap nom de branca especificat"
 
 #: git-stash.sh:611
 msgid "(To restore them type \"git stash apply\")"
