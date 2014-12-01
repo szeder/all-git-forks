@@ -3554,7 +3554,7 @@ enum transaction_state {
  * as atomically as possible.  This structure is opaque to callers.
  */
 struct transaction {
-	struct ref_update **updates;
+	struct ref_update **ref_updates;
 	size_t alloc;
 	size_t nr;
 	enum transaction_state state;
@@ -3575,10 +3575,10 @@ void transaction_free(struct transaction *transaction)
 		return;
 
 	for (i = 0; i < transaction->nr; i++) {
-		free(transaction->updates[i]->msg);
-		free(transaction->updates[i]);
+		free(transaction->ref_updates[i]->msg);
+		free(transaction->ref_updates[i]);
 	}
-	free(transaction->updates);
+	free(transaction->ref_updates);
 	free(transaction);
 }
 
@@ -3589,8 +3589,8 @@ static struct ref_update *add_update(struct transaction *transaction,
 	struct ref_update *update = xcalloc(1, sizeof(*update) + len + 1);
 
 	strcpy((char *)update->refname, refname);
-	ALLOC_GROW(transaction->updates, transaction->nr + 1, transaction->alloc);
-	transaction->updates[transaction->nr++] = update;
+	ALLOC_GROW(transaction->ref_updates, transaction->nr + 1, transaction->alloc);
+	transaction->ref_updates[transaction->nr++] = update;
 	return update;
 }
 
@@ -3712,7 +3712,7 @@ int transaction_commit(struct transaction *transaction,
 	int ret = 0, delnum = 0, i;
 	const char **delnames;
 	int n = transaction->nr;
-	struct ref_update **updates = transaction->updates;
+	struct ref_update **updates = transaction->ref_updates;
 
 	assert(err);
 
