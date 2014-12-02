@@ -483,6 +483,8 @@ sub is_valid_prefix {
 	    !($prefix =~ /[\s,]/) && # separators
 	    !($prefix =~ /^-/) &&    # deselection
 	    !($prefix =~ /^\d+/) &&  # selection
+	    !($prefix =~ /^\//) &&   # regexp selection
+	    !($prefix =~ /^-\//) &&  # regexp unselection
 	    ($prefix ne '*') &&      # "all" wildcard
 	    ($prefix ne '?');        # prompt help
 }
@@ -585,6 +587,50 @@ sub list_and_choose {
 			    prompt_help_cmd();
 			next TOPLOOP;
 		}
+		if ($line =~ /^(-)?\/(.+)$/) {
+			# The first capture group ("-") being missing means "choose" is
+			# requested. If the first group exists at all, "unchoose" is
+			# requested.
+			my $choose = !(defined $1);
+
+			# Validate the regular expression and complain if compilation failed.
+			my $re = eval { qr/$2/ };
+			if (!$re) {
+				error_msg "Invalid regular expression:\n  $@\n";
+				next TOPLOOP;
+			}
+
+			my $found = 0;
+			for ($i = 0; $i < @stuff; $i++) {
+				my $val = $stuff[$i];
+				
+				# Figure out the display value for $val.
+				# Some lists passed to list_and_choose contain
+				# items other than strings; in order to match
+				# regexps against them, we need to extract the
+				# displayed string. The logic here is approximately
+				# equivalent to the display logic above.
+
+				my $ref = ref $val;
+				if ($ref eq 'ARRAY') {
+					$val = $val->[0];
+				}
+				elsif ($ref eq 'HASH') {
+					$val = $val->{VALUE};
+				}
+
+				# Match the string value against the regexp,
+				# then act accordingly.
+
+				if ($val =~ $re) {
+					$chosen[$i] = $choose;
+					$found = $found || $choose;
+					last if $choose && $opts->{SINGLETON};
+				}
+			}
+			last if $found && ($opts->{IMMEDIATE});
+			next TOPLOOP;
+		}
 		for my $choice (split(/[\s,]+/, $line)) {
 			my $choose = 1;
 			my ($bottom, $top);
@@ -635,6 +681,7 @@ sub singleton_prompt_help_cmd {
 Prompt help:
 1          - select a numbered item
 foo        - select item based on unique prefix
+/regexp    - select item based on regular expression
            - (empty) select nothing
 EOF
 }
@@ -648,6 +695,8 @@ Prompt help:
 foo        - select item based on unique prefix
 -...       - unselect specified items
 *          - choose all items
+/regexp    - select items based on regular expression
+-/regexp   - unselect items based on regular expression
            - (empty) finish selecting
 EOF
 }
