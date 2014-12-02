@@ -328,6 +328,26 @@ int transaction_delete_ref(struct transaction *transaction,
 			   struct strbuf *err);
 
 /*
+ * Truncate the reflog for the given refname.
+ */
+int transaction_truncate_reflog(struct transaction *transaction,
+				const char *refname,
+				struct strbuf *err);
+
+/*
+ * Append a reflog entry for refname. If msg is NULL no update will be
+ * written to the log.
+ */
+int transaction_update_reflog(struct transaction *transaction,
+			      const char *refname,
+			      const unsigned char *new_sha1,
+			      const unsigned char *old_sha1,
+			      const char *email,
+			      unsigned long timestamp, int tz,
+			      const char *msg,
+			      struct strbuf *err);
+
+/*
  * Commit all of the changes that have been queued in transaction, as
  * atomically as possible.
  *

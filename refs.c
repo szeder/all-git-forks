@@ -3557,6 +3557,12 @@ struct transaction {
 	struct ref_update **ref_updates;
 	size_t alloc;
 	size_t nr;
+
+	/*
+	 * Sorted list of reflogs to be committed,
+	 * the util points to the lock_file.
+	 */
+	struct string_list reflog_updates;
 	enum transaction_state state;
 };
 
@@ -3564,7 +3570,10 @@ struct transaction *transaction_begin(struct strbuf *err)
 {
 	assert(err);
 
-	return xcalloc(1, sizeof(struct transaction));
+	struct transaction *ret = xcalloc(1, sizeof(struct transaction));
+	ret->reflog_updates.strdup_strings = 1;
+
+	return ret;
 }
 
 void transaction_free(struct transaction *transaction)
@@ -3627,6 +3636,127 @@ int transaction_update_ref(struct transaction *transaction,
 	if (msg)
 		update->msg = xstrdup(msg);
 	return 0;
+}
+
+/*
+	 * We cannot handle reflogs the same way we handle refs because of
+	 * naming conflicts in the file system.
+	 *
+	 * If renaming a ref from foo/foo to foo or the other way round,
+	 * we need to be careful as we need the basic foo/ from being a
+	 * directory to be a file or vice versa. When handling the refs
+	 * this can be solved easily by first recording all we want into
+	 * the packed refs file and then deleting all the loose refs. By
+	 * doing it that way, we always have a valid state on disk.
+	 *
+	 * We don't have an equivalent of a packed refs file when dealing
+	 * with reflog updates, but the API for updating the refs turned
+	 * out to be conveniant, so let's introduce an intermediate file
+	 * outside the $GIT_DIR/logs/refs/heads/ directory helping us
+	 * avoiding this naming conflict for the reflogs. The intermediate
+	 * lock file, in which we build up the new reflog will live under
+	 * $GIT_DIR/logs/lock/refs/heads/ so the files
+	 *       $GIT_DIR/logs/lock/refs/heads/foo.lock and
+	 *       $GIT_DIR/logs/lock/refs/heads/foo/foo.lock
+	 * do not collide.
+	 */
+
+
+/* Returns a fd, -1 on error. */
+
+int transaction_truncate_reflog(struct transaction *transaction,
+				const char *refname,
+				struct strbuf *err)
+{
+	struct lock_file *lock;
+	struct string_list_item *item;
+
+	if (transaction->state != TRANSACTION_OPEN)
+		die("BUG: update_reflog called for transaction that is not open");
+
+	item = string_list_insert(&transaction->reflog_updates, refname);
+	if (item->util) {
+		lock = item->util;
+		if (lseek(lock->fd, 0, SEEK_SET) < 0 ||
+			ftruncate(lock->fd, 0)) {
+			strbuf_addf(err, "cannot truncate reflog '%s': %s",
+				    refname, strerror(errno));
+			goto failure;
+		}
+
+	} else {
+		char *path = git_path("logs/locks/%s", refname);
+		item->util = xcalloc(1, sizeof(struct lock_file));
+		lock = item->util;
+		if (safe_create_leading_directories(path)) {
+			strbuf_addf(err, "could not create leading directories of '%s': %s",
+				    path, strerror(errno));
+			goto failure;
+		}
+
+		if (hold_lock_file_for_update(lock, path, 0) < 0) {
+			unable_to_lock_message(path, errno, err);
+			goto failure;
+		}
+		/* The file is empty, no need to truncate. */
+	}
+	return 0;
+failure:
+	transaction->state = TRANSACTION_CLOSED;
+	return -1;
+}
+
+
+int transaction_update_reflog(struct transaction *transaction,
+			      const char *refname,
+			      const unsigned char *new_sha1,
+			      const unsigned char *old_sha1,
+			      const char *email,
+			      unsigned long timestamp, int tz,
+			      const char *msg,
+			      struct strbuf *err)
+{
+	struct lock_file *lock;
+	struct strbuf buf = STRBUF_INIT;
+	struct string_list_item *item;
+
+	if (transaction->state != TRANSACTION_OPEN)
+		die("BUG: update_reflog called for transaction that is not open");
+
+	item = string_list_insert(&transaction->reflog_updates, refname);
+	if (!item->util) {
+		char *path = git_path("logs/locks/%s", refname);
+		item->util = xcalloc(1, sizeof(struct lock_file));
+		lock = item->util;
+		if (safe_create_leading_directories(path)) {
+			strbuf_addf(err, "could not create leading directories of '%s': %s",
+				    path, strerror(errno));
+			goto failure;
+		}
+
+		if (hold_lock_file_for_update(lock, path, 0) < 0) {
+			unable_to_lock_message(path, errno, err);
+			goto failure;
+		}
+	}
+	lock = item->util;
+
+	if (email)
+		strbuf_addf(&buf, "%s %lu %+05d", email, timestamp, tz);
+
+	if (msg &&
+	    log_ref_write_fd(lock->fd, old_sha1, new_sha1, buf.buf, msg)) {
+		strbuf_addf(err, "Could not write to reflog: %s. %s",
+			    refname, strerror(errno));
+		goto failure;
+	}
+	strbuf_release(&buf);
+
+	return 0;
+failure:
+	strbuf_release(&buf);
+	transaction->state = TRANSACTION_CLOSED;
+	return -1;
 }
 
 int transaction_create_ref(struct transaction *transaction,
@@ -3713,13 +3843,14 @@ int transaction_commit(struct transaction *transaction,
 	const char **delnames;
 	int n = transaction->nr;
 	struct ref_update **updates = transaction->ref_updates;
+	struct string_list_item *item;
 
 	assert(err);
 
 	if (transaction->state != TRANSACTION_OPEN)
 		die("BUG: commit called for transaction that is not open");
 
-	if (!n) {
+	if (!n && !transaction->reflog_updates.nr) {
 		transaction->state = TRANSACTION_CLOSED;
 		return 0;
 	}
@@ -3796,6 +3927,13 @@ int transaction_commit(struct transaction *transaction,
 	}
 	for (i = 0; i < delnum; i++)
 		unlink_or_warn(git_path("logs/%s", delnames[i]));
+
+	/* Commit all reflog updates*/
+	for_each_string_list_item(item, &transaction->reflog_updates) {
+		struct lock_file *lock = item->util;
+		commit_lock_file_to(lock, git_path("logs/%s", item->string));
+	}
+
 	clear_loose_ref_cache(&ref_cache);
 
 cleanup:
