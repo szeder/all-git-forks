@@ -495,8 +495,10 @@ static struct ref *wanted_peer_refs(const struct ref *refs,
 static void write_remote_refs(const struct ref *local_refs)
 {
 	const struct ref *r;
+	struct strbuf err = STRBUF_INIT;
 
-	lock_packed_refs(LOCK_DIE_ON_ERROR);
+	if (lock_packed_refs(&err))
+		die("%s", err.buf);
 
 	for (r = local_refs; r; r = r->next) {
 		if (!r->peer_ref)
@@ -506,6 +508,8 @@ static void write_remote_refs(const struct ref *local_refs)
 
 	if (commit_packed_refs())
 		die_errno("unable to overwrite old ref-pack file");
+
+	strbuf_release(&err);
 }
 
 static void write_followtags(const struct ref *refs, const char *msg)

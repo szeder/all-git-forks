@@ -119,12 +119,8 @@ extern int for_each_rawref(each_ref_fn, void *);
 extern void warn_dangling_symref(FILE *fp, const char *msg_fmt, const char *refname);
 extern void warn_dangling_symrefs(FILE *fp, const char *msg_fmt, const struct string_list *refnames);
 
-/*
- * Lock the packed-refs file for writing.  Flags is passed to
- * hold_lock_file_for_update().  Return 0 on success.
- * Errno is set to something meaningful on error.
- */
-extern int lock_packed_refs(int flags);
+/* Lock the packed-refs file for writing.  Returns 0 on success. */
+extern int lock_packed_refs(struct strbuf *err);
 
 /*
  * Add a reference to the in-memory packed reference cache.  This may

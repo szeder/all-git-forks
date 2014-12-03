@@ -2371,13 +2371,15 @@ static int write_packed_entry_fn(struct ref_entry *entry, void *cb_data)
 	return 0;
 }
 
-/* This should return a meaningful errno on failure */
-int lock_packed_refs(int flags)
+int lock_packed_refs(struct strbuf *err)
 {
 	struct packed_ref_cache *packed_ref_cache;
 
-	if (hold_lock_file_for_update(&packlock, git_path("packed-refs"), flags) < 0)
+	if (hold_lock_file_for_update(&packlock, git_path("packed-refs"), 0) < 0) {
+		unable_to_lock_message(git_path("packed-refs"), errno, err);
 		return -1;
+	}
+
 	/*
 	 * Get the current packed-refs while holding the lock.  If the
 	 * packed-refs file has been modified since we last read it,
@@ -2565,11 +2567,13 @@ static void prune_refs(struct ref_to_prune *r)
 int pack_refs(unsigned int flags)
 {
 	struct pack_refs_cb_data cbdata;
+	struct strbuf err = STRBUF_INIT;
 
 	memset(&cbdata, 0, sizeof(cbdata));
 	cbdata.flags = flags;
 
-	lock_packed_refs(LOCK_DIE_ON_ERROR);
+	if (lock_packed_refs(&err))
+		die("%s", err.buf);
 	cbdata.packed_refs = get_packed_refs(&ref_cache);
 
 	do_for_each_entry_in_dir(get_loose_refs(&ref_cache), 0,
@@ -2579,6 +2583,7 @@ int pack_refs(unsigned int flags)
 		die_errno("unable to overwrite old ref-pack file");
 
 	prune_refs(cbdata.ref_to_prune);
+	strbuf_release(&err);
 	return 0;
 }
 
@@ -2657,10 +2662,8 @@ int repack_without_refs(const char **refnames, int n, struct strbuf *err)
 	if (i == n)
 		return 0; /* no refname exists in packed refs */
 
-	if (lock_packed_refs(0)) {
-		unable_to_lock_message(git_path("packed-refs"), errno, err);
+	if (lock_packed_refs(err))
 		return -1;
-	}
 	packed = get_packed_refs(&ref_cache);
 
 	/* Remove refnames from the cache */
