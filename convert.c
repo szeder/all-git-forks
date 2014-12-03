@@ -358,7 +358,11 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	if (params->src) {
 		write_err = (write_in_full(child_process.in, params->src, params->size) < 0);
 	} else {
-		write_err = copy_fd(params->fd, child_process.in);
+		struct strbuf err = STRBUF_INIT;
+		write_err = copy_fd(params->fd, child_process.in, &err);
+		if (write_err)
+			error("copy-fd: %s", err.buf);
+		strbuf_release(&err);
 	}
 
 	if (close(child_process.in))

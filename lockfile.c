@@ -182,6 +182,7 @@ int hold_lock_file_for_update(struct lock_file *lk, const char *path, int flags)
 int hold_lock_file_for_append(struct lock_file *lk, const char *path, int flags)
 {
 	int fd, orig_fd;
+	struct strbuf err = STRBUF_INIT;
 
 	fd = lock_file(lk, path, flags);
 	if (fd < 0) {
@@ -202,9 +203,11 @@ int hold_lock_file_for_append(struct lock_file *lk, const char *path, int flags)
 			errno = save_errno;
 			return -1;
 		}
-	} else if (copy_fd(orig_fd, fd)) {
+	} else if (copy_fd(orig_fd, fd, &err)) {
 		int save_errno = errno;
 
+		error("copy-fd: %s", err.buf);
+		strbuf_release(&err);
 		if (flags & LOCK_DIE_ON_ERROR)
 			exit(128);
 		close(orig_fd);
@@ -214,6 +217,7 @@ int hold_lock_file_for_append(struct lock_file *lk, const char *path, int flags)
 	} else {
 		close(orig_fd);
 	}
+	strbuf_release(&err);
 	return fd;
 }
 

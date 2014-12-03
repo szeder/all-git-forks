@@ -1,19 +1,22 @@
 #include "cache.h"
 
-int copy_fd(int ifd, int ofd)
+int copy_fd(int ifd, int ofd, struct strbuf *err)
 {
+	assert(err);
+
 	while (1) {
 		char buffer[8192];
 		ssize_t len = xread(ifd, buffer, sizeof(buffer));
 		if (!len)
 			break;
 		if (len < 0) {
-			return error("copy-fd: read returned %s",
-				     strerror(errno));
+			strbuf_addf(err, "read returned %s", strerror(errno));
+			return -1;
 		}
-		if (write_in_full(ofd, buffer, len) < 0)
-			return error("copy-fd: write returned %s",
-				     strerror(errno));
+		if (write_in_full(ofd, buffer, len) < 0) {
+			strbuf_addf(err, "write returned %s", strerror(errno));
+			return -1;
+		}
 	}
 	return 0;
 }
@@ -33,7 +36,8 @@ static int copy_times(const char *dst, const char *src)
 
 int copy_file(const char *dst, const char *src, int mode)
 {
-	int fdi, fdo, status;
+	int fdi, fdo;
+	struct strbuf err = STRBUF_INIT;
 
 	mode = (mode & 0111) ? 0777 : 0666;
 	if ((fdi = open(src, O_RDONLY)) < 0)
@@ -42,15 +46,21 @@ int copy_file(const char *dst, const char *src, int mode)
 		close(fdi);
 		return fdo;
 	}
-	status = copy_fd(fdi, fdo);
+	if (copy_fd(fdi, fdo, &err)) {
+		close(fdi);
+		close(fdo);
+		error("copy-fd: %s", err.buf);
+		strbuf_release(&err);
+		return -1;
+	}
+	strbuf_release(&err);
 	close(fdi);
 	if (close(fdo) != 0)
 		return error("%s: close error: %s", dst, strerror(errno));
-
-	if (!status && adjust_shared_perm(dst))
+	if (adjust_shared_perm(dst))
 		return -1;
 
-	return status;
+	return 0;
 }
 
 int copy_file_with_time(const char *dst, const char *src, int mode)
