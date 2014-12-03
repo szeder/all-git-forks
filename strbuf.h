@@ -158,6 +158,10 @@ extern void strbuf_vaddf(struct strbuf *sb, const char *fmt, va_list ap);
 
 extern void strbuf_add_lines(struct strbuf *sb, const char *prefix, const char *buf, size_t size);
 
+/* Like strbuf_addf but insert at the front of sb instead of appending. */
+__attribute__((format (printf,2,3)))
+extern void strbuf_prefixf(struct strbuf *sb, const char *fmt, ...);
+
 /*
  * Append s to sb, with the characters '<', '>', '&' and '"' converted
  * into XML entities.

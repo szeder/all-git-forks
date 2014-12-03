@@ -219,6 +219,22 @@ void strbuf_addf(struct strbuf *sb, const char *fmt, ...)
 	va_end(ap);
 }
 
+void strbuf_prefixf(struct strbuf *sb, const char *fmt, ...)
+{
+	va_list ap;
+	size_t pos, len;
+
+	pos = sb->len;
+
+	va_start(ap, fmt);
+	strbuf_vaddf(sb, fmt, ap);
+	va_end(ap);
+
+	len = sb->len - pos;
+	strbuf_insert(sb, 0, sb->buf + pos, len);
+	strbuf_remove(sb, pos + len, len);
+}
+
 static void add_lines(struct strbuf *out,
 			const char *prefix1,
 			const char *prefix2,
