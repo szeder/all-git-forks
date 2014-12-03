@@ -58,7 +58,7 @@ static void rewrite_credential_file(const char *fn, struct credential *c,
 	struct strbuf err = STRBUF_INIT;
 
 	if (hold_lock_file_for_update(&credential_lock, fn,
-				      LOCK_OUTSIDE_REPOSITORY, &err) < 0);
+				      LOCK_OUTSIDE_REPOSITORY, &err) < 0)
 		die("%s", err.buf);
 	if (extra)
 		print_line(extra);
