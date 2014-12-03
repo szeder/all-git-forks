@@ -2326,7 +2326,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 			 */
 			goto retry;
 		else
-			unable_to_lock_die(ref_file, errno);
+			unable_to_lock_die(ref_file, lflags, errno);
 	}
 	return old_sha1 ? verify_lock(lock, old_sha1, mustexist) : lock;
 
@@ -2376,7 +2376,7 @@ int lock_packed_refs(struct strbuf *err)
 	struct packed_ref_cache *packed_ref_cache;
 
 	if (hold_lock_file_for_update(&packlock, git_path("packed-refs"), 0) < 0) {
-		unable_to_lock_message(git_path("packed-refs"), errno, err);
+		unable_to_lock_message(git_path("packed-refs"), 0, errno, err);
 		return -1;
 	}
 

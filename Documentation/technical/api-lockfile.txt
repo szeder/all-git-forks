@@ -124,6 +124,18 @@ LOCK_NO_DEREF::
 	for backwards-compatibility reasons can be a symbolic link
 	containing the name of the referred-to-reference.
 
+LOCK_OUTSIDE_REPOSITORY:
+
+	When the ".lock" file being created already exists, the error
+	message usually explains that another git process must have
+	crashed in the same Git repository.  If `LOCK_OUTSIDE_REPOSITORY`
+	is set, then the message is replaced with something more
+	appropriate when updating files that are not inside a
+	repository.
++
+For example, this flag should be set when locking a configuration
+file in the user's home directory.
+
 LOCK_DIE_ON_ERROR::
 
 	If a lock is already taken for the file, `die()` with an error
