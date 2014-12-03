@@ -281,6 +281,7 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 	int i;
 	struct pathspec pathspec;
 	char *seen;
+	struct strbuf err = STRBUF_INIT;
 
 	gitmodules_config();
 	git_config(git_default_config, NULL);
@@ -293,7 +294,8 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 	if (!index_only)
 		setup_work_tree();
 
-	hold_locked_index(&lock_file, 1);
+	if (hold_locked_index(&lock_file, &err) < 0)
+		die("%s", err.buf);
 
 	if (read_cache() < 0)
 		die(_("index file corrupt"));
@@ -375,8 +377,10 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 			die(_("git rm: unable to remove %s"), path);
 	}
 
-	if (show_only)
+	if (show_only) {
+		strbuf_release(&err);
 		return 0;
+	}
 
 	/*
 	 * Then, unless we used "--cached", remove the filenames from
@@ -431,5 +435,6 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 			die(_("Unable to write new index file"));
 	}
 
+	strbuf_release(&err);
 	return 0;
 }

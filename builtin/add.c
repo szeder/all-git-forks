@@ -299,6 +299,7 @@ static int add_files(struct dir_struct *dir, int flags)
 int cmd_add(int argc, const char **argv, const char *prefix)
 {
 	int exit_status = 0;
+	struct strbuf err = STRBUF_INIT;
 	struct pathspec pathspec;
 	struct dir_struct dir;
 	int flags;
@@ -315,8 +316,10 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	if (add_interactive)
 		exit(interactive_add(argc - 1, argv + 1, prefix, patch_interactive));
 
-	if (edit_interactive)
-		return(edit_patch(argc, argv, prefix));
+	if (edit_interactive) {
+		strbuf_release(&err);
+		return edit_patch(argc, argv, prefix);
+	}
 	argc--;
 	argv++;
 
@@ -344,7 +347,8 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	add_new_files = !take_worktree_changes && !refresh_only;
 	require_pathspec = !take_worktree_changes;
 
-	hold_locked_index(&lock_file, 1);
+	if (hold_locked_index(&lock_file, &err) < 0)
+		die("%s", err.buf);
 
 	flags = ((verbose ? ADD_CACHE_VERBOSE : 0) |
 		 (show_only ? ADD_CACHE_PRETEND : 0) |
@@ -356,6 +360,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	if (require_pathspec && argc == 0) {
 		fprintf(stderr, _("Nothing specified, nothing added.\n"));
 		fprintf(stderr, _("Maybe you wanted to say 'git add .'?\n"));
+		strbuf_release(&err);
 		return 0;
 	}
 
@@ -446,5 +451,6 @@ finish:
 			die(_("Unable to write new index file"));
 	}
 
+	strbuf_release(&err);
 	return exit_status;
 }

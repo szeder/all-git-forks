@@ -206,16 +206,22 @@ static int builtin_diff_combined(struct rev_info *revs,
 static void refresh_index_quietly(void)
 {
 	struct lock_file *lock_file;
-	int fd;
+	struct strbuf err = STRBUF_INIT;
 
 	lock_file = xcalloc(1, sizeof(struct lock_file));
-	fd = hold_locked_index(lock_file, 0);
-	if (fd < 0)
+	if (hold_locked_index(lock_file, &err) < 0) {
+		/*
+		 * Locking the index failed (e.g., read-only filesystem).
+		 * That's okay.
+		 */
+		strbuf_release(&err);
 		return;
+	}
 	discard_cache();
 	read_cache();
 	refresh_cache(REFRESH_QUIET|REFRESH_UNMERGED);
 	update_index_if_able(&the_index, lock_file);
+	strbuf_release(&err);
 }
 
 static int builtin_diff_files(struct rev_info *revs, int argc, const char **argv)

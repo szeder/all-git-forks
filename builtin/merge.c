@@ -658,12 +658,16 @@ static int try_merge_strategy(const char *strategy, struct commit_list *common,
 			      struct commit *head, const char *head_arg)
 {
 	static struct lock_file lock;
+	struct strbuf err = STRBUF_INIT;
 
-	hold_locked_index(&lock, 1);
+	if (hold_locked_index(&lock, &err) < 0)
+		die("%s", err.buf);
 	refresh_cache(REFRESH_QUIET);
 	if (active_cache_changed &&
-	    write_locked_index(&the_index, &lock, COMMIT_LOCK))
+	    write_locked_index(&the_index, &lock, COMMIT_LOCK)) {
+		strbuf_release(&err);
 		return error(_("Unable to write index."));
+	}
 	rollback_lock_file(&lock);
 
 	if (!strcmp(strategy, "recursive") || !strcmp(strategy, "subtree")) {
@@ -675,6 +679,7 @@ static int try_merge_strategy(const char *strategy, struct commit_list *common,
 
 		if (remoteheads->next) {
 			error(_("Not handling anything other than two heads merge."));
+			strbuf_release(&err);
 			return 2;
 		}
 
@@ -696,15 +701,18 @@ static int try_merge_strategy(const char *strategy, struct commit_list *common,
 		for (j = common; j; j = j->next)
 			commit_list_insert(j->item, &reversed);
 
-		hold_locked_index(&lock, 1);
+		if (hold_locked_index(&lock, &err) < 0)
+			die("%s", err.buf);
 		clean = merge_recursive(&o, head,
 				remoteheads->item, reversed, &result);
 		if (active_cache_changed &&
 		    write_locked_index(&the_index, &lock, COMMIT_LOCK))
 			die (_("unable to write %s"), get_index_file());
 		rollback_lock_file(&lock);
+		strbuf_release(&err);
 		return clean ? 0 : 1;
 	} else {
+		strbuf_release(&err);
 		return try_merge_command(strategy, xopts_nr, xopts,
 						common, head_arg, remoteheads);
 	}

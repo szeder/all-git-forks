@@ -266,6 +266,7 @@ static int reset_refs(const char *rev, const unsigned char *sha1)
 
 int cmd_reset(int argc, const char **argv, const char *prefix)
 {
+	struct strbuf msg = STRBUF_INIT;
 	int reset_type = NONE, update_ref_status = 0, quiet = 0;
 	int patch_mode = 0, unborn;
 	const char *rev;
@@ -320,6 +321,7 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 	if (patch_mode) {
 		if (reset_type != NONE)
 			die(_("--patch is incompatible with --{hard,mixed,soft}"));
+		strbuf_release(&msg);
 		return run_add_interactive(rev, "--patch=reset", &pathspec);
 	}
 
@@ -354,11 +356,14 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 
 	if (reset_type != SOFT) {
 		struct lock_file *lock = xcalloc(1, sizeof(*lock));
-		hold_locked_index(lock, 1);
+		if (hold_locked_index(lock, &msg) < 0)
+			die("%s", msg.buf);
 		if (reset_type == MIXED) {
 			int flags = quiet ? REFRESH_QUIET : REFRESH_IN_PORCELAIN;
-			if (read_from_tree(&pathspec, sha1, intent_to_add))
+			if (read_from_tree(&pathspec, sha1, intent_to_add)) {
+				strbuf_release(&msg);
 				return 1;
+			}
 			if (get_git_work_tree())
 				refresh_index(&the_index, flags, NULL, NULL,
 					      _("Unstaged changes after reset:"));
@@ -385,5 +390,6 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 	if (!pathspec.nr)
 		remove_branch_state();
 
+	strbuf_release(&msg);
 	return update_ref_status;
 }

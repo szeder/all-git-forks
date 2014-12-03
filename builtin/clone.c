@@ -613,6 +613,7 @@ static void update_head(const struct ref *our, const struct ref *remote,
 
 static int checkout(void)
 {
+	struct strbuf msg = STRBUF_INIT;
 	unsigned char sha1[20];
 	char *head;
 	struct lock_file *lock_file;
@@ -628,6 +629,7 @@ static int checkout(void)
 	if (!head) {
 		warning(_("remote HEAD refers to nonexistent ref, "
 			  "unable to checkout.\n"));
+		strbuf_release(&msg);
 		return 0;
 	}
 	if (!strcmp(head, "HEAD")) {
@@ -643,7 +645,8 @@ static int checkout(void)
 	setup_work_tree();
 
 	lock_file = xcalloc(1, sizeof(struct lock_file));
-	hold_locked_index(lock_file, 1);
+	if (hold_locked_index(lock_file, &msg) < 0)
+		die("%s", msg.buf);
 
 	memset(&opts, 0, sizeof opts);
 	opts.update = 1;
@@ -668,6 +671,7 @@ static int checkout(void)
 	if (!err && option_recursive)
 		err = run_command_v_opt(argv_submodule, RUN_GIT_CMD);
 
+	strbuf_release(&msg);
 	return err;
 }
 

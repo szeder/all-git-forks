@@ -276,9 +276,11 @@ static int do_recursive_merge(struct commit *base, struct commit *next,
 	struct tree *result, *next_tree, *base_tree, *head_tree;
 	int clean;
 	const char **xopt;
+	struct strbuf err = STRBUF_INIT;
 	static struct lock_file index_lock;
 
-	hold_locked_index(&index_lock, 1);
+	if (hold_locked_index(&index_lock, &err) < 0)
+		die("%s", err.buf);
 
 	read_cache();
 
@@ -323,6 +325,7 @@ static int do_recursive_merge(struct commit *base, struct commit *next,
 		}
 	}
 
+	strbuf_release(&err);
 	return !clean;
 }
 
@@ -647,7 +650,13 @@ static void prepare_revs(struct replay_opts *opts)
 static void read_and_refresh_cache(struct replay_opts *opts)
 {
 	static struct lock_file index_lock;
-	int index_fd = hold_locked_index(&index_lock, 0);
+	struct strbuf err = STRBUF_INIT;
+	int index_fd;
+
+	index_fd = hold_locked_index(&index_lock, &err);
+	if (index_fd < 0)
+		/* ignore the error */
+		strbuf_reset(&err);
 	if (read_index_preload(&the_index, NULL) < 0)
 		die(_("git %s: failed to read the index"), action_name(opts));
 	refresh_index(&the_index, REFRESH_QUIET|REFRESH_UNMERGED, NULL, NULL, NULL);
@@ -656,6 +665,7 @@ static void read_and_refresh_cache(struct replay_opts *opts)
 			die(_("git %s: failed to refresh the index"), action_name(opts));
 	}
 	rollback_lock_file(&index_lock);
+	strbuf_release(&err);
 }
 
 static int format_todo(struct strbuf *buf, struct commit_list *todo_list,

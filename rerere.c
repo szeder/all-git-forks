@@ -479,9 +479,11 @@ static struct lock_file index_lock;
 
 static void update_paths(struct string_list *update)
 {
+	struct strbuf err = STRBUF_INIT;
 	int i;
 
-	hold_locked_index(&index_lock, 1);
+	if (hold_locked_index(&index_lock, &err) < 0)
+		die("%s", err.buf);
 
 	for (i = 0; i < update->nr; i++) {
 		struct string_list_item *item = &update->items[i];
@@ -494,6 +496,7 @@ static void update_paths(struct string_list *update)
 			die("Unable to write new index file");
 	} else
 		rollback_lock_file(&index_lock);
+	strbuf_release(&err);
 }
 
 static int do_plain_rerere(struct string_list *rr, int fd)

@@ -595,6 +595,7 @@ static struct cache_tree *cache_tree_find(struct cache_tree *it, const char *pat
 int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 {
 	int entries, was_valid, newfd;
+	struct strbuf err = STRBUF_INIT;
 	struct lock_file *lock_file;
 
 	/*
@@ -603,11 +604,15 @@ int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 	 */
 	lock_file = xcalloc(1, sizeof(struct lock_file));
 
-	newfd = hold_locked_index(lock_file, 1);
+	newfd = hold_locked_index(lock_file, &err);
+	if (newfd < 0)
+		die("%s", err.buf);
 
 	entries = read_cache();
-	if (entries < 0)
+	if (entries < 0) {
+		strbuf_release(&err);
 		return WRITE_TREE_UNREADABLE_INDEX;
+	}
 	if (flags & WRITE_TREE_IGNORE_CACHE_TREE)
 		cache_tree_free(&(active_cache_tree));
 
@@ -616,8 +621,10 @@ int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 
 	was_valid = cache_tree_fully_valid(active_cache_tree);
 	if (!was_valid) {
-		if (cache_tree_update(&the_index, flags) < 0)
+		if (cache_tree_update(&the_index, flags) < 0) {
+			strbuf_release(&err);
 			return WRITE_TREE_UNMERGED_INDEX;
+		}
 		if (0 <= newfd) {
 			if (!write_locked_index(&the_index, lock_file, COMMIT_LOCK))
 				newfd = -1;
@@ -633,8 +640,10 @@ int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 	if (prefix) {
 		struct cache_tree *subtree =
 			cache_tree_find(active_cache_tree, prefix);
-		if (!subtree)
+		if (!subtree) {
+			strbuf_release(&err);
 			return WRITE_TREE_PREFIX_ERROR;
+		}
 		hashcpy(sha1, subtree->sha1);
 	}
 	else
@@ -643,6 +652,7 @@ int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 	if (0 <= newfd)
 		rollback_lock_file(lock_file);
 
+	strbuf_release(&err);
 	return 0;
 }
 

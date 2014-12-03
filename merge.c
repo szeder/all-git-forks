@@ -53,11 +53,13 @@ int checkout_fast_forward(const unsigned char *head,
 	struct tree_desc t[MAX_UNPACK_TREES];
 	int i, nr_trees = 0;
 	struct dir_struct dir;
+	struct strbuf err = STRBUF_INIT;
 	struct lock_file *lock_file = xcalloc(1, sizeof(struct lock_file));
 
 	refresh_cache(REFRESH_QUIET);
 
-	hold_locked_index(lock_file, 1);
+	if (hold_locked_index(lock_file, &err) < 0)
+		die("%s", err.buf);
 
 	memset(&trees, 0, sizeof(trees));
 	memset(&opts, 0, sizeof(opts));
@@ -79,18 +81,25 @@ int checkout_fast_forward(const unsigned char *head,
 	setup_unpack_trees_porcelain(&opts, "merge");
 
 	trees[nr_trees] = parse_tree_indirect(head);
-	if (!trees[nr_trees++])
+	if (!trees[nr_trees++]) {
+		strbuf_release(&err);
 		return -1;
+	}
 	trees[nr_trees] = parse_tree_indirect(remote);
-	if (!trees[nr_trees++])
+	if (!trees[nr_trees++]) {
+		strbuf_release(&err);
 		return -1;
+	}
 	for (i = 0; i < nr_trees; i++) {
 		parse_tree(trees[i]);
 		init_tree_desc(t+i, trees[i]->buffer, trees[i]->size);
 	}
-	if (unpack_trees(nr_trees, t, &opts))
+	if (unpack_trees(nr_trees, t, &opts)) {
+		strbuf_release(&err);
 		return -1;
+	}
 	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
 		die(_("unable to write new index file"));
+	strbuf_release(&err);
 	return 0;
 }

@@ -4200,6 +4200,7 @@ static int apply_patch(int fd, const char *filename, int options)
 {
 	size_t offset;
 	struct strbuf buf = STRBUF_INIT; /* owns the patch text */
+	struct strbuf err = STRBUF_INIT;
 	struct patch *list = NULL, **listp = &list;
 	int skipped_patch = 0;
 
@@ -4237,8 +4238,11 @@ static int apply_patch(int fd, const char *filename, int options)
 		apply = 0;
 
 	update_index = check_index && apply;
-	if (update_index && newfd < 0)
-		newfd = hold_locked_index(&lock_file, 1);
+	if (update_index && newfd < 0) {
+		newfd = hold_locked_index(&lock_file, &err);
+		if (newfd < 0)
+			die("%s", err.buf);
+	}
 
 	if (check_index) {
 		if (read_cache() < 0)
@@ -4254,6 +4258,7 @@ static int apply_patch(int fd, const char *filename, int options)
 		if (apply_with_reject)
 			exit(1);
 		/* with --3way, we still need to write the index out */
+		strbuf_release(&err);
 		return 1;
 	}
 
@@ -4272,6 +4277,7 @@ static int apply_patch(int fd, const char *filename, int options)
 	free_patch_list(list);
 	strbuf_release(&buf);
 	string_list_clear(&fn_table, 0);
+	strbuf_release(&err);
 	return 0;
 }
 

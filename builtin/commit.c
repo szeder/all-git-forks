@@ -319,6 +319,7 @@ static void refresh_cache_or_die(int refresh_flags)
 static const char *prepare_index(int argc, const char **argv, const char *prefix,
 				 const struct commit *current_head, int is_status)
 {
+	struct strbuf err = STRBUF_INIT;
 	struct string_list partial;
 	struct pathspec pathspec;
 	int refresh_flags = REFRESH_QUIET;
@@ -334,8 +335,9 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 
 	if (interactive) {
 		char *old_index_env = NULL;
-		hold_locked_index(&index_lock, 1);
 
+		if (hold_locked_index(&index_lock, &err) < 0)
+			die("%s", err.buf);
 		refresh_cache_or_die(refresh_flags);
 
 		if (write_locked_index(&the_index, &index_lock, CLOSE_LOCK))
@@ -363,6 +365,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 			warning(_("Failed to update main cache tree"));
 
 		commit_style = COMMIT_NORMAL;
+		strbuf_release(&err);
 		return index_lock.filename.buf;
 	}
 
@@ -379,13 +382,15 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	 * (B) on failure, rollback the real index.
 	 */
 	if (all || (also && pathspec.nr)) {
-		hold_locked_index(&index_lock, 1);
+		if (hold_locked_index(&index_lock, &err) < 0)
+			die("%s", err.buf);
 		add_files_to_cache(also ? prefix : NULL, &pathspec, 0);
 		refresh_cache_or_die(refresh_flags);
 		update_main_cache_tree(WRITE_TREE_SILENT);
 		if (write_locked_index(&the_index, &index_lock, CLOSE_LOCK))
 			die(_("unable to write new_index file"));
 		commit_style = COMMIT_NORMAL;
+		strbuf_release(&err);
 		return index_lock.filename.buf;
 	}
 
@@ -399,7 +404,8 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	 * We still need to refresh the index here.
 	 */
 	if (!only && !pathspec.nr) {
-		hold_locked_index(&index_lock, 1);
+		if (hold_locked_index(&index_lock, &err) < 0)
+			die("%s", err.buf);
 		refresh_cache_or_die(refresh_flags);
 		if (active_cache_changed
 		    || !cache_tree_fully_valid(active_cache_tree)) {
@@ -414,6 +420,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 			rollback_lock_file(&index_lock);
 		}
 		commit_style = COMMIT_AS_IS;
+		strbuf_release(&err);
 		return get_index_file();
 	}
 
@@ -453,7 +460,8 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	if (read_cache() < 0)
 		die(_("cannot read the index"));
 
-	hold_locked_index(&index_lock, 1);
+	if (hold_locked_index(&index_lock, &err) < 0)
+		die("%s", err.buf);
 	add_remove_files(&partial);
 	refresh_cache(REFRESH_QUIET);
 	update_main_cache_tree(WRITE_TREE_SILENT);
@@ -475,6 +483,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	discard_cache();
 	read_cache_from(false_lock.filename.buf);
 
+	strbuf_release(&err);
 	return false_lock.filename.buf;
 }
 
@@ -1356,8 +1365,8 @@ static int git_status_config(const char *k, const char *v, void *cb)
 int cmd_status(int argc, const char **argv, const char *prefix)
 {
 	static struct wt_status s;
-	int fd;
 	unsigned char sha1[20];
+	struct strbuf err = STRBUF_INIT;
 	static struct option builtin_status_options[] = {
 		OPT__VERBOSE(&verbose, N_("be verbose")),
 		OPT_SET_INT('s', "short", &status_format,
@@ -1405,8 +1414,11 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 	read_cache_preload(&s.pathspec);
 	refresh_index(&the_index, REFRESH_QUIET|REFRESH_UNMERGED, &s.pathspec, NULL, NULL);
 
-	fd = hold_locked_index(&index_lock, 0);
-	if (0 <= fd)
+	/* Refresh the index if possible. */
+	if (hold_locked_index(&index_lock, &err) < 0)
+		/* errors (e.g., read-only filesystem) are fine */
+		strbuf_reset(&err);
+	else
 		update_index_if_able(&the_index, &index_lock);
 
 	s.is_initial = get_sha1(s.reference, sha1) ? 1 : 0;
@@ -1433,6 +1445,7 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 		wt_status_print(&s);
 		break;
 	}
+	strbuf_release(&err);
 	return 0;
 }
 

@@ -746,7 +746,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	int preferred_index_format = 0;
 	char set_executable_bit = 0;
 	struct refresh_params refresh_args = {0, &has_errors};
-	int lock_error = 0;
+	struct strbuf lock_error = STRBUF_INIT;
 	int split_index = -1;
 	struct lock_file *lock_file;
 	struct parse_opt_ctx_t ctx;
@@ -843,9 +843,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	/* We can't free this memory, it becomes part of a linked list parsed atexit() */
 	lock_file = xcalloc(1, sizeof(struct lock_file));
 
-	newfd = hold_locked_index(lock_file, 0);
-	if (newfd < 0)
-		lock_error = errno;
+	newfd = hold_locked_index(lock_file, &lock_error);
 
 	entries = read_cache();
 	if (entries < 0)
@@ -943,13 +941,13 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		if (newfd < 0) {
 			if (refresh_args.flags & REFRESH_QUIET)
 				exit(128);
-			unable_to_lock_die(get_index_file(), 0, lock_error);
+			die("%s", lock_error.buf);
 		}
 		if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
 			die("Unable to write new index file");
 	}
 
 	rollback_lock_file(lock_file);
-
+	strbuf_release(&lock_error);
 	return has_errors ? 1 : 0;
 }

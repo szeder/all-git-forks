@@ -457,19 +457,24 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 
 	if (argc == 0) {
 		if (dirty) {
+			struct strbuf err = STRBUF_INIT;
 			static struct lock_file index_lock;
-			int fd;
 
 			read_cache_preload(NULL);
 			refresh_index(&the_index, REFRESH_QUIET|REFRESH_UNMERGED,
 				      NULL, NULL, NULL);
-			fd = hold_locked_index(&index_lock, 0);
-			if (0 <= fd)
+
+			/* Refresh the index if possible. */
+			if (hold_locked_index(&index_lock, &err) < 0)
+				/* Failure is ok (e.g, read-only filesystem). */
+				strbuf_reset(&err);
+			else
 				update_index_if_able(&the_index, &index_lock);
 
 			if (!cmd_diff_index(ARRAY_SIZE(diff_index_args) - 1,
 					    diff_index_args, prefix))
 				dirty = NULL;
+			strbuf_release(&err);
 		}
 		describe("HEAD", 1);
 	} else if (dirty) {

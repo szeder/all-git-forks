@@ -100,6 +100,7 @@ static struct lock_file lock_file;
 
 int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 {
+	struct strbuf err = STRBUF_INIT;
 	int i, stage = 0;
 	unsigned char sha1[20];
 	struct tree_desc t[MAX_UNPACK_TREES];
@@ -150,7 +151,8 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 	argc = parse_options(argc, argv, unused_prefix, read_tree_options,
 			     read_tree_usage, 0);
 
-	hold_locked_index(&lock_file, 1);
+	if (hold_locked_index(&lock_file, &err) < 0)
+		die("%s", err.buf);
 
 	prefix_set = opts.prefix ? 1 : 0;
 	if (1 < opts.merge + opts.reset + prefix_set)
@@ -228,8 +230,10 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 		parse_tree(tree);
 		init_tree_desc(t+i, tree->buffer, tree->size);
 	}
-	if (unpack_trees(nr_trees, t, &opts))
+	if (unpack_trees(nr_trees, t, &opts)) {
+		strbuf_release(&err);
 		return 128;
+	}
 
 	if (opts.debug_unpack || opts.dry_run)
 		return 0; /* do not write the index out */
@@ -245,5 +249,6 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 
 	if (write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
 		die("unable to write new index file");
+	strbuf_release(&err);
 	return 0;
 }

@@ -218,6 +218,7 @@ static int checkout_merged(int pos, struct checkout *state)
 static int checkout_paths(const struct checkout_opts *opts,
 			  const char *revision)
 {
+	struct strbuf err = STRBUF_INIT;
 	int pos;
 	struct checkout state;
 	static char *ps_matched;
@@ -249,15 +250,20 @@ static int checkout_paths(const struct checkout_opts *opts,
 		die(_("Cannot update paths and switch to branch '%s' at the same time."),
 		    opts->new_branch);
 
-	if (opts->patch_mode)
+	if (opts->patch_mode) {
+		strbuf_release(&err);
 		return run_add_interactive(revision, "--patch=checkout",
 					   &opts->pathspec);
+	}
 
 	lock_file = xcalloc(1, sizeof(struct lock_file));
 
-	hold_locked_index(lock_file, 1);
-	if (read_cache_preload(&opts->pathspec) < 0)
+	if (hold_locked_index(lock_file, &err) < 0)
+		die("%s", err.buf);
+	if (read_cache_preload(&opts->pathspec) < 0) {
+		strbuf_release(&err);
 		return error(_("corrupt index file"));
+	}
 
 	if (opts->source_tree)
 		read_tree_some(opts->source_tree, &opts->pathspec);
@@ -302,6 +308,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 
 	if (report_path_error(ps_matched, &opts->pathspec, opts->prefix)) {
 		free(ps_matched);
+		strbuf_release(&err);
 		return 1;
 	}
 	free(ps_matched);
@@ -329,8 +336,10 @@ static int checkout_paths(const struct checkout_opts *opts,
 			pos = skip_same_name(ce, pos) - 1;
 		}
 	}
-	if (errs)
+	if (errs) {
+		strbuf_release(&err);
 		return 1;
+	}
 
 	/* Now we are committed to check them out */
 	memset(&state, 0, sizeof(state));
@@ -359,6 +368,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 	head = lookup_commit_reference_gently(rev, 1);
 
 	errs |= post_checkout_hook(head, head, 0);
+	strbuf_release(&err);
 	return errs;
 }
 
@@ -442,17 +452,22 @@ static int merge_working_tree(const struct checkout_opts *opts,
 			      int *writeout_error)
 {
 	int ret;
+	struct strbuf err = STRBUF_INIT;
 	struct lock_file *lock_file = xcalloc(1, sizeof(struct lock_file));
 
-	hold_locked_index(lock_file, 1);
-	if (read_cache_preload(NULL) < 0)
-		return error(_("corrupt index file"));
+	if (hold_locked_index(lock_file, &err) < 0)
+		die("%s", err.buf);
+
+	if (read_cache_preload(NULL) < 0) {
+		ret = error(_("corrupt index file"));
+		goto done;
+	}
 
 	resolve_undo_clear();
 	if (opts->force) {
 		ret = reset_tree(new->commit->tree, opts, 1, writeout_error);
 		if (ret)
-			return ret;
+			goto done;
 	} else {
 		struct tree_desc trees[2];
 		struct tree *tree;
@@ -469,7 +484,8 @@ static int merge_working_tree(const struct checkout_opts *opts,
 
 		if (unmerged_cache()) {
 			error(_("you need to resolve your current index first"));
-			return 1;
+			ret = 1;
+			goto done;
 		}
 
 		/* 2-way merge to the new branch */
@@ -501,15 +517,19 @@ static int merge_working_tree(const struct checkout_opts *opts,
 			struct tree *result;
 			struct tree *work;
 			struct merge_options o;
-			if (!opts->merge)
-				return 1;
+			if (!opts->merge) {
+				ret = 1;
+				goto done;
+			}
 
 			/*
 			 * Without old->commit, the below is the same as
 			 * the two-tree unpack we already tried and failed.
 			 */
-			if (!old->commit)
-				return 1;
+			if (!old->commit) {
+				ret = 1;
+				goto done;
+			}
 
 			/* Do more real merge */
 
@@ -539,7 +559,7 @@ static int merge_working_tree(const struct checkout_opts *opts,
 			ret = reset_tree(new->commit->tree, opts, 1,
 					 writeout_error);
 			if (ret)
-				return ret;
+				goto done;
 			o.ancestor = old->name;
 			o.branch1 = new->name;
 			o.branch2 = "local";
@@ -548,7 +568,7 @@ static int merge_working_tree(const struct checkout_opts *opts,
 			ret = reset_tree(new->commit->tree, opts, 0,
 					 writeout_error);
 			if (ret)
-				return ret;
+				goto done;
 		}
 	}
 
@@ -564,7 +584,10 @@ static int merge_working_tree(const struct checkout_opts *opts,
 	if (!opts->force && !opts->quiet)
 		show_local_changes(&new->commit->object, &opts->diff_options);
 
-	return 0;
+	ret = 0;
+done:
+	strbuf_release(&err);
+	return ret;
 }
 
 static void report_tracking(struct branch_info *new)

@@ -116,6 +116,7 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 	enum update_mode { BOTH = 0, WORKING_DIRECTORY, INDEX } *modes;
 	struct stat st;
 	struct string_list src_for_dst = STRING_LIST_INIT_NODUP;
+	struct strbuf err = STRBUF_INIT;
 
 	gitmodules_config();
 	git_config(git_default_config, NULL);
@@ -125,7 +126,8 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 	if (--argc < 1)
 		usage_with_options(builtin_mv_usage, builtin_mv_options);
 
-	hold_locked_index(&lock_file, 1);
+	if (hold_locked_index(&lock_file, &err) < 0)
+		die("%s", err.buf);
 	if (read_cache() < 0)
 		die(_("index file corrupt"));
 
@@ -278,5 +280,6 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 	    write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
 		die(_("Unable to write new index file"));
 
+	strbuf_release(&err);
 	return 0;
 }
