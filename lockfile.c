@@ -170,14 +170,6 @@ void unable_to_lock_message(const char *path, int flags, int err,
 	}
 }
 
-NORETURN void unable_to_lock_die(const char *path, int flags, int err)
-{
-	struct strbuf buf = STRBUF_INIT;
-
-	unable_to_lock_message(path, flags, err, &buf);
-	die("%s", buf.buf);
-}
-
 int hold_lock_file_for_update(struct lock_file *lk, const char *path,
 			      int flags, struct strbuf *err)
 {

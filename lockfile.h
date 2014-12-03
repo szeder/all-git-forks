@@ -73,7 +73,6 @@ struct lock_file {
 
 extern void unable_to_lock_message(const char *path, int, int err,
 				   struct strbuf *buf);
-extern NORETURN void unable_to_lock_die(const char *path, int, int err);
 extern int hold_lock_file_for_update(struct lock_file *, const char *path,
 				     int, struct strbuf *err);
 extern int hold_lock_file_for_append(struct lock_file *, const char *path,
