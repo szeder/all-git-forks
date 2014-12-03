@@ -179,45 +179,36 @@ int hold_lock_file_for_update(struct lock_file *lk, const char *path, int flags)
 	return fd;
 }
 
-int hold_lock_file_for_append(struct lock_file *lk, const char *path, int flags)
+int hold_lock_file_for_append(struct lock_file *lk, const char *path,
+			      int flags, struct strbuf *err)
 {
 	int fd, orig_fd;
-	struct strbuf err = STRBUF_INIT;
+
+	assert(!(flags & LOCK_DIE_ON_ERROR));
+	assert(err && !err->len);
 
 	fd = lock_file(lk, path, flags);
 	if (fd < 0) {
-		if (flags & LOCK_DIE_ON_ERROR)
-			unable_to_lock_die(path, errno);
+		unable_to_lock_message(path, errno, err);
 		return fd;
 	}
 
 	orig_fd = open(path, O_RDONLY);
 	if (orig_fd < 0) {
 		if (errno != ENOENT) {
-			int save_errno = errno;
-
-			if (flags & LOCK_DIE_ON_ERROR)
-				die("cannot open '%s' for copying", path);
+			strbuf_addf(err, "cannot open '%s' for copying: %s",
+				    path, strerror(errno));
 			rollback_lock_file(lk);
-			error("cannot open '%s' for copying", path);
-			errno = save_errno;
 			return -1;
 		}
-	} else if (copy_fd(orig_fd, fd, &err)) {
-		int save_errno = errno;
-
-		error("copy-fd: %s", err.buf);
-		strbuf_release(&err);
-		if (flags & LOCK_DIE_ON_ERROR)
-			exit(128);
+	} else if (copy_fd(orig_fd, fd, err)) {
+		strbuf_prefixf(err, "cannot copy '%s': ", path);
 		close(orig_fd);
 		rollback_lock_file(lk);
-		errno = save_errno;
 		return -1;
 	} else {
 		close(orig_fd);
 	}
-	strbuf_release(&err);
 	return fd;
 }
 
