@@ -1799,9 +1799,14 @@ static void dump_marks(void)
 	if (!export_marks_file)
 		return;
 
-	if (hold_lock_file_for_update(&mark_lock, export_marks_file, 0) < 0) {
-		failure |= error("Unable to write marks file %s: %s",
-			export_marks_file, strerror(errno));
+	if (hold_lock_file_for_update(&mark_lock, export_marks_file,
+				      LOCK_OUTSIDE_REPOSITORY) < 0) {
+		struct strbuf err = STRBUF_INIT;
+
+		unable_to_lock_message(export_marks_file,
+				       LOCK_OUTSIDE_REPOSITORY, errno, &err);
+		failure |= error("%s", err.buf);
+		strbuf_release(&err);
 		return;
 	}
 
