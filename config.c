@@ -1923,6 +1923,7 @@ int git_config_set_multivar_in_file(const char *config_filename,
 	int fd = -1, in_fd;
 	int ret;
 	struct lock_file *lock = NULL;
+	struct strbuf err = STRBUF_INIT;
 	char *filename_buf = NULL;
 
 	/* parse-key returns negative; flip the sign to feed exit(3) */
@@ -1941,14 +1942,9 @@ int git_config_set_multivar_in_file(const char *config_filename,
 	 */
 	lock = xcalloc(1, sizeof(struct lock_file));
 	fd = hold_lock_file_for_update(lock, config_filename,
-				       LOCK_OUTSIDE_REPOSITORY);
+				       LOCK_OUTSIDE_REPOSITORY, &err);
 	if (fd < 0) {
-		struct strbuf err = STRBUF_INIT;
-
-		unable_to_lock_message(config_filename,
-				       LOCK_OUTSIDE_REPOSITORY, errno, &err);
 		error("%s", err.buf);
-		strbuf_release(&err);
 		free(store.key);
 		ret = CONFIG_NO_LOCK;
 		goto out_free;
@@ -2126,6 +2122,7 @@ out_free:
 	if (lock)
 		rollback_lock_file(lock);
 	free(filename_buf);
+	strbuf_release(&err);
 	return ret;
 
 write_err_out:
@@ -2203,6 +2200,7 @@ int git_config_rename_section_in_file(const char *config_filename,
 	int ret = 0, remove = 0;
 	char *filename_buf = NULL;
 	struct lock_file *lock;
+	struct strbuf err = STRBUF_INIT;
 	int out_fd;
 	char buf[1024];
 	FILE *config_file;
@@ -2218,14 +2216,9 @@ int git_config_rename_section_in_file(const char *config_filename,
 
 	lock = xcalloc(1, sizeof(struct lock_file));
 	out_fd = hold_lock_file_for_update(lock, config_filename,
-					   LOCK_OUTSIDE_REPOSITORY);
+					   LOCK_OUTSIDE_REPOSITORY, &err);
 	if (out_fd < 0) {
-		struct strbuf err = STRBUF_INIT;
-
-		unable_to_lock_message(config_filename,
-				       LOCK_OUTSIDE_REPOSITORY, errno, &err);
 		ret = error("%s", err.buf);
-		strbuf_release(&err);
 		goto out;
 	}
 
@@ -2295,6 +2288,7 @@ unlock_and_out:
 		ret = error("could not commit config file %s", config_filename);
 out:
 	free(filename_buf);
+	strbuf_release(&err);
 	return ret;
 }
 

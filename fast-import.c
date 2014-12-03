@@ -1794,21 +1794,19 @@ static void dump_marks_helper(FILE *f,
 static void dump_marks(void)
 {
 	static struct lock_file mark_lock;
+	struct strbuf err = STRBUF_INIT;
 	FILE *f;
 
 	if (!export_marks_file)
 		return;
 
 	if (hold_lock_file_for_update(&mark_lock, export_marks_file,
-				      LOCK_OUTSIDE_REPOSITORY) < 0) {
-		struct strbuf err = STRBUF_INIT;
-
-		unable_to_lock_message(export_marks_file,
-				       LOCK_OUTSIDE_REPOSITORY, errno, &err);
+				      LOCK_OUTSIDE_REPOSITORY, &err) < 0) {
 		failure |= error("%s", err.buf);
 		strbuf_release(&err);
 		return;
 	}
+	strbuf_release(&err);
 
 	f = fdopen_lock_file(&mark_lock, "w");
 	if (!f) {

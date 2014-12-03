@@ -190,6 +190,7 @@ static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 	static struct lock_file lock;
 	char my_host[128];
 	struct strbuf sb = STRBUF_INIT;
+	struct strbuf err = STRBUF_INIT;
 	struct stat st;
 	uintmax_t pid;
 	FILE *fp;
@@ -202,8 +203,9 @@ static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 	if (gethostname(my_host, sizeof(my_host)))
 		strcpy(my_host, "unknown");
 
-	fd = hold_lock_file_for_update(&lock, git_path("gc.pid"),
-				       LOCK_DIE_ON_ERROR);
+	fd = hold_lock_file_for_update(&lock, git_path("gc.pid"), 0, &err);
+	if (fd < 0)
+		die("%s", err.buf);
 	if (!force) {
 		static char locking_host[128];
 		int should_exit;
@@ -231,6 +233,7 @@ static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 			if (fd >= 0)
 				rollback_lock_file(&lock);
 			*ret_pid = pid;
+			strbuf_release(&err);
 			return locking_host;
 		}
 	}
@@ -245,6 +248,7 @@ static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 	sigchain_push_common(remove_pidfile_on_signal);
 	atexit(remove_pidfile);
 
+	strbuf_release(&err);
 	return NULL;
 }
 

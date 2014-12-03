@@ -204,14 +204,17 @@ static void print_advice(int show_hint, struct replay_opts *opts)
 static void write_message(struct strbuf *msgbuf, const char *filename)
 {
 	static struct lock_file msg_file;
+	struct strbuf err = STRBUF_INIT;
 
-	int msg_fd = hold_lock_file_for_update(&msg_file, filename,
-					       LOCK_DIE_ON_ERROR);
+	int msg_fd = hold_lock_file_for_update(&msg_file, filename, 0, &err);
+	if (msg_fd < 0)
+		die("%s", err.buf);
 	if (write_in_full(msg_fd, msgbuf->buf, msgbuf->len) < 0)
 		die_errno(_("Could not write to %s"), filename);
 	strbuf_release(msgbuf);
 	if (commit_lock_file(&msg_file) < 0)
 		die(_("Error wrapping up %s"), filename);
+	strbuf_release(&err);
 }
 
 static struct tree *empty_tree(void)
@@ -854,14 +857,18 @@ static void save_head(const char *head)
 	const char *head_file = git_path(SEQ_HEAD_FILE);
 	static struct lock_file head_lock;
 	struct strbuf buf = STRBUF_INIT;
+	struct strbuf err = STRBUF_INIT;
 	int fd;
 
-	fd = hold_lock_file_for_update(&head_lock, head_file, LOCK_DIE_ON_ERROR);
+	fd = hold_lock_file_for_update(&head_lock, head_file, 0, &err);
+	if (fd < 0)
+		die("%s", err.buf);
 	strbuf_addf(&buf, "%s\n", head);
 	if (write_in_full(fd, buf.buf, buf.len) < 0)
 		die_errno(_("Could not write to %s"), head_file);
 	if (commit_lock_file(&head_lock) < 0)
 		die(_("Error wrapping up %s."), head_file);
+	strbuf_release(&err);
 }
 
 static int reset_for_rollback(const unsigned char *sha1)
@@ -935,9 +942,12 @@ static void save_todo(struct commit_list *todo_list, struct replay_opts *opts)
 	const char *todo_file = git_path(SEQ_TODO_FILE);
 	static struct lock_file todo_lock;
 	struct strbuf buf = STRBUF_INIT;
+	struct strbuf err = STRBUF_INIT;
 	int fd;
 
-	fd = hold_lock_file_for_update(&todo_lock, todo_file, LOCK_DIE_ON_ERROR);
+	fd = hold_lock_file_for_update(&todo_lock, todo_file, 0, &err);
+	if (fd < 0)
+		die("%s", err.buf);
 	if (format_todo(&buf, todo_list, opts) < 0)
 		die(_("Could not format %s."), todo_file);
 	if (write_in_full(fd, buf.buf, buf.len) < 0) {
@@ -949,6 +959,7 @@ static void save_todo(struct commit_list *todo_list, struct replay_opts *opts)
 		die(_("Error wrapping up %s."), todo_file);
 	}
 	strbuf_release(&buf);
+	strbuf_release(&err);
 }
 
 static void save_opts(struct replay_opts *opts)

@@ -468,10 +468,11 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	if (write_locked_index(&the_index, &index_lock, CLOSE_LOCK))
 		die(_("unable to write new_index file"));
 
-	hold_lock_file_for_update(&false_lock,
-				  git_path("next-index-%"PRIuMAX,
-					   (uintmax_t) getpid()),
-				  LOCK_DIE_ON_ERROR);
+	if (hold_lock_file_for_update(&false_lock,
+				      git_path("next-index-%"PRIuMAX,
+					       (uintmax_t) getpid()), 0,
+				      &err) < 0)
+		die("%s", err.buf);
 
 	create_base_index(current_head);
 	add_remove_files(&partial);

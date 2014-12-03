@@ -2229,6 +2229,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 					    const struct string_list *skip,
 					    int flags, int *type_p)
 {
+	struct strbuf err = STRBUF_INIT;
 	char *ref_file;
 	const char *orig_refname = refname;
 	struct ref_lock *lock;
@@ -2316,22 +2317,25 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 		goto error_return;
 	}
 
-	lock->lock_fd = hold_lock_file_for_update(lock->lk, ref_file, lflags);
+	lock->lock_fd = hold_lock_file_for_update(lock->lk, ref_file, lflags, &err);
 	if (lock->lock_fd < 0) {
-		if (errno == ENOENT && --attempts_remaining > 0)
+		if (errno == ENOENT && --attempts_remaining > 0) {
 			/*
 			 * Maybe somebody just deleted one of the
 			 * directories leading to ref_file.  Try
 			 * again:
 			 */
+			strbuf_reset(&err);
 			goto retry;
-		else
-			unable_to_lock_die(ref_file, lflags, errno);
+		}
+		die("%s", err.buf);
 	}
+	strbuf_release(&err);
 	return old_sha1 ? verify_lock(lock, old_sha1, mustexist) : lock;
 
  error_return:
 	unlock_ref(lock);
+	strbuf_release(&err);
 	errno = last_errno;
 	return NULL;
 }
@@ -2375,10 +2379,9 @@ int lock_packed_refs(struct strbuf *err)
 {
 	struct packed_ref_cache *packed_ref_cache;
 
-	if (hold_lock_file_for_update(&packlock, git_path("packed-refs"), 0) < 0) {
-		unable_to_lock_message(git_path("packed-refs"), 0, errno, err);
+	if (hold_lock_file_for_update(&packlock,
+				      git_path("packed-refs"), 0, err) < 0)
 		return -1;
-	}
 
 	/*
 	 * Get the current packed-refs while holding the lock.  If the

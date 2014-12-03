@@ -68,14 +68,14 @@ struct lock_file {
 #define LOCK_SUFFIX ".lock"
 #define LOCK_SUFFIX_LEN 5
 
-#define LOCK_DIE_ON_ERROR 1
-#define LOCK_NO_DEREF 2
-#define LOCK_OUTSIDE_REPOSITORY 4
+#define LOCK_NO_DEREF 1
+#define LOCK_OUTSIDE_REPOSITORY 2
 
 extern void unable_to_lock_message(const char *path, int, int err,
 				   struct strbuf *buf);
 extern NORETURN void unable_to_lock_die(const char *path, int, int err);
-extern int hold_lock_file_for_update(struct lock_file *, const char *path, int);
+extern int hold_lock_file_for_update(struct lock_file *, const char *path,
+				     int, struct strbuf *err);
 extern int hold_lock_file_for_append(struct lock_file *, const char *path,
 				     int, struct strbuf *err);
 extern FILE *fdopen_lock_file(struct lock_file *, const char *mode);

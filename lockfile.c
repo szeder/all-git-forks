@@ -98,8 +98,8 @@ static void resolve_symlink(struct strbuf *path)
 	strbuf_reset(&link);
 }
 
-/* Make sure errno contains a meaningful value on error */
-static int lock_file(struct lock_file *lk, const char *path, int flags)
+static int lock_file(struct lock_file *lk, const char *path,
+		     int flags, struct strbuf *err)
 {
 	size_t pathlen = strlen(path);
 
@@ -134,16 +134,16 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 	strbuf_addstr(&lk->filename, LOCK_SUFFIX);
 	lk->fd = open(lk->filename.buf, O_RDWR | O_CREAT | O_EXCL, 0666);
 	if (lk->fd < 0) {
+		unable_to_lock_message(path, flags, errno, err);
 		strbuf_reset(&lk->filename);
 		return -1;
 	}
 	lk->owner = getpid();
 	lk->active = 1;
 	if (adjust_shared_perm(lk->filename.buf)) {
-		int save_errno = errno;
-		error("cannot fix permission bits on %s", lk->filename.buf);
+		strbuf_addf(err, "cannot fix permission bits on %s",
+			    lk->filename.buf);
 		rollback_lock_file(lk);
-		errno = save_errno;
 		return -1;
 	}
 	return lk->fd;
@@ -178,13 +178,10 @@ NORETURN void unable_to_lock_die(const char *path, int flags, int err)
 	die("%s", buf.buf);
 }
 
-/* This should return a meaningful errno on failure */
-int hold_lock_file_for_update(struct lock_file *lk, const char *path, int flags)
+int hold_lock_file_for_update(struct lock_file *lk, const char *path,
+			      int flags, struct strbuf *err)
 {
-	int fd = lock_file(lk, path, flags);
-	if (fd < 0 && (flags & LOCK_DIE_ON_ERROR))
-		unable_to_lock_die(path, flags, errno);
-	return fd;
+	return lock_file(lk, path, flags, err);
 }
 
 int hold_lock_file_for_append(struct lock_file *lk, const char *path,
@@ -192,14 +189,11 @@ int hold_lock_file_for_append(struct lock_file *lk, const char *path,
 {
 	int fd, orig_fd;
 
-	assert(!(flags & LOCK_DIE_ON_ERROR));
 	assert(err && !err->len);
 
-	fd = lock_file(lk, path, flags);
-	if (fd < 0) {
-		unable_to_lock_message(path, flags, errno, err);
+	fd = lock_file(lk, path, flags, err);
+	if (fd < 0)
 		return fd;
-	}
 
 	orig_fd = open(path, O_RDONLY);
 	if (orig_fd < 0) {

@@ -1370,14 +1370,7 @@ static int read_index_extension(struct index_state *istate,
 
 int hold_locked_index(struct lock_file *lk, struct strbuf *err)
 {
-	const char *path;
-	int fd;
-
-	path = get_index_file();
-	fd = hold_lock_file_for_update(lk, path, 0);
-	if (fd < 0)
-		unable_to_lock_message(path, 0, errno, err);
-	return fd;
+	return hold_lock_file_for_update(lk, get_index_file(), 0, err);
 }
 
 int read_index(struct index_state *istate)

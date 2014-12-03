@@ -55,13 +55,17 @@ static void print_line(struct strbuf *buf)
 static void rewrite_credential_file(const char *fn, struct credential *c,
 				    struct strbuf *extra)
 {
-	hold_lock_file_for_update(&credential_lock, fn,
-				  LOCK_DIE_ON_ERROR | LOCK_OUTSIDE_REPOSITORY);
+	struct strbuf err = STRBUF_INIT;
+
+	if (hold_lock_file_for_update(&credential_lock, fn,
+				      LOCK_OUTSIDE_REPOSITORY, &err) < 0);
+		die("%s", err.buf);
 	if (extra)
 		print_line(extra);
 	parse_credential_file(fn, c, NULL, print_line);
 	if (commit_lock_file(&credential_lock) < 0)
 		die_errno("unable to commit credential store");
+	strbuf_release(&err);
 }
 
 static void store_credential(const char *fn, struct credential *c)

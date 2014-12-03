@@ -259,10 +259,13 @@ void setup_alternate_shallow(struct lock_file *shallow_lock,
 			     const struct sha1_array *extra)
 {
 	struct strbuf sb = STRBUF_INIT;
+	struct strbuf err = STRBUF_INIT;
 	int fd;
 
-	fd = hold_lock_file_for_update(shallow_lock, git_path("shallow"),
-				       LOCK_DIE_ON_ERROR);
+	fd = hold_lock_file_for_update(shallow_lock,
+				       git_path("shallow"), 0, &err);
+	if (fd < 0)
+		die("%s", err.buf);
 	check_shallow_file_for_update();
 	if (write_shallow_commits(&sb, 0, extra)) {
 		if (write_in_full(fd, sb.buf, sb.len) != sb.len)
@@ -276,6 +279,7 @@ void setup_alternate_shallow(struct lock_file *shallow_lock,
 		 */
 		*alternate_shallow_file = "";
 	strbuf_release(&sb);
+	strbuf_release(&err);
 }
 
 static int advertise_shallow_grafts_cb(const struct commit_graft *graft, void *cb)
@@ -301,6 +305,7 @@ void prune_shallow(int show_only)
 {
 	static struct lock_file shallow_lock;
 	struct strbuf sb = STRBUF_INIT;
+	struct strbuf err = STRBUF_INIT;
 	int fd;
 
 	if (show_only) {
@@ -308,8 +313,10 @@ void prune_shallow(int show_only)
 		strbuf_release(&sb);
 		return;
 	}
-	fd = hold_lock_file_for_update(&shallow_lock, git_path("shallow"),
-				       LOCK_DIE_ON_ERROR);
+	fd = hold_lock_file_for_update(&shallow_lock,
+				       git_path("shallow"), 0, &err);
+	if (fd < 0)
+		die("%s", err.buf);
 	check_shallow_file_for_update();
 	if (write_shallow_commits_1(&sb, 0, NULL, SEEN_ONLY)) {
 		if (write_in_full(fd, sb.buf, sb.len) != sb.len)
@@ -321,6 +328,7 @@ void prune_shallow(int show_only)
 		rollback_lock_file(&shallow_lock);
 	}
 	strbuf_release(&sb);
+	strbuf_release(&err);
 }
 
 struct trace_key trace_shallow = TRACE_KEY_INIT(SHALLOW);

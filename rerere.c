@@ -600,6 +600,7 @@ static int is_rerere_enabled(void)
 
 int setup_rerere(struct string_list *merge_rr, int flags)
 {
+	struct strbuf err = STRBUF_INIT;
 	int fd;
 
 	git_rerere_config();
@@ -609,9 +610,11 @@ int setup_rerere(struct string_list *merge_rr, int flags)
 	if (flags & (RERERE_AUTOUPDATE|RERERE_NOAUTOUPDATE))
 		rerere_autoupdate = !!(flags & RERERE_AUTOUPDATE);
 	merge_rr_path = git_pathdup("MERGE_RR");
-	fd = hold_lock_file_for_update(&write_lock, merge_rr_path,
-				       LOCK_DIE_ON_ERROR);
+	fd = hold_lock_file_for_update(&write_lock, merge_rr_path, 0, &err);
+	if (fd < 0)
+		die("%s", err.buf);
 	read_rr(merge_rr);
+	strbuf_release(&err);
 	return fd;
 }
 

@@ -87,21 +87,8 @@ Error handling
 --------------
 
 The `hold_lock_file_*` functions return a file descriptor on success
-or -1 on failure (unless `LOCK_DIE_ON_ERROR` is used; see below). On
-errors, `errno` describes the reason for failure. Errors can be
-reported by passing `errno` to one of the following helper functions:
-
-unable_to_lock_message::
-
-	Append an appropriate error message to a `strbuf`.
-
-unable_to_lock_error::
-
-	Emit an appropriate error message using `error()`.
-
-unable_to_lock_die::
-
-	Emit an appropriate error message and `die()`.
+or -1 on failure.  On errors, a message describing the reason for
+failure is appended to the strbuf specified using the 'err' argument.
 
 Similarly, `commit_lock_file`, `commit_lock_file_to`, and
 `close_lock_file` return 0 on success. On failure they set `errno`
@@ -111,7 +98,7 @@ appropriately, do their best to roll back the lockfile, and return -1.
 Flags
 -----
 
-The following flags can be passed to `hold_lock_file_for_update` or
+The following flag can be passed to `hold_lock_file_for_update` or
 `hold_lock_file_for_append`:
 
 LOCK_NO_DEREF::
@@ -136,22 +123,16 @@ LOCK_OUTSIDE_REPOSITORY:
 For example, this flag should be set when locking a configuration
 file in the user's home directory.
 
-LOCK_DIE_ON_ERROR::
-
-	If a lock is already taken for the file, `die()` with an error
-	message. If this option is not specified, trying to lock a
-	file that is already locked returns -1 to the caller.
-
-
 The functions
 -------------
 
 hold_lock_file_for_update::
 
 	Take a pointer to `struct lock_file`, the path of the file to
-	be locked (e.g. `$GIT_DIR/index`) and a flags argument (see
-	above). Attempt to create a lockfile for the destination and
-	return the file descriptor for writing to the file.
+	be locked (e.g. `$GIT_DIR/index`), a flags argument (see
+	above), and a strbuf for error messages. Attempt to create a
+	lockfile for the destination and return the file descriptor for
+	writing to the file.
 
 hold_lock_file_for_append::
 
