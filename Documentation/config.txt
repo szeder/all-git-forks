@@ -2378,13 +2378,12 @@ status.submodulesummary::
 	submodule summary' command, which shows a similar output but does
 	not honor these settings.
 
-submodule.updateWithoutUrl::
+submodule.updateIgnoringConfigUrl::
 	Defaults to false.
-	If false, `git submodule update` does not update submodules
-	which do not have 'submodule.<name>.url' set.
-	If true, `git submodule update` updates all submodules which
-	have '.git' directory or file, that is, all which are checked-out.
-
+	If false, `git submodule update` relies on url parameter from
+	config - submodule is updated if and only if url is defined for the
+	submodule, cloning it if necessary. If true, submodules is updated
+	if it is already checked out.
 
 submodule.<name>.path::
 submodule.<name>.url::

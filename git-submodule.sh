@@ -789,7 +789,7 @@ cmd_update()
 		cmd_init "--" "$@" || return
 	fi
 
-	config_updateWithoutUrl=$(git config --bool --get submodule.updateWithoutUrl)
+	config_updateIgnoringConfigUrl=$(git config --bool --get submodule.updateIgnoringConfigUrl)
 
 	cloned_modules=
 	module_list "$@" | {
@@ -824,25 +824,38 @@ cmd_update()
 			continue
 		fi
 
-		if test -z "$url"
+		update_only=
+		if test "$config_updateIgnoringConfigUrl" = true
 		then
-			# Only mention uninitialized submodules when its
-			# path have been specified
-			test "$#" != "0" &&
-			say "$(eval_gettext "Submodule path '\$displaypath' not initialized
-Maybe you want to use 'update --init'?")"
-			if ! test "$config_updateWithoutUrl" = "true" || ! test -e "$sm_path"/.git
+			if test -e "$sm_path"/.git
 			then
+				update_only=true
+			else
 				continue
+			fi
+		else
+			if test -z "$url"
+			then
+				# Only mention uninitialized submodules when its
+				# path have been specified
+				test "$#" != "0" &&
+				say "$(eval_gettext "Submodule path '\$displaypath' not initialized
+	Maybe you want to use 'update --init'?")"
+				continue
+			fi
+
+			if ! test -d "$sm_path"/.git && ! test -f "$sm_path"/.git
+			then
+				module_clone "$sm_path" "$name" "$url" "$reference" "$depth" || exit
+				cloned_modules="$cloned_modules;$name"
+				subsha1=
+			else
+				update_only=true
 			fi
 		fi
 
-		if ! test -d "$sm_path"/.git && ! test -f "$sm_path"/.git
+		if test -n "$update_only"
 		then
-			module_clone "$sm_path" "$name" "$url" "$reference" "$depth" || exit
-			cloned_modules="$cloned_modules;$name"
-			subsha1=
-		else
 			subsha1=$(clear_local_git_env; cd "$sm_path" &&
 				git rev-parse --verify HEAD) ||
 			die "$(eval_gettext "Unable to find current revision in submodule path '\$displaypath'")"
