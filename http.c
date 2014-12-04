@@ -68,6 +68,8 @@ static struct curl_slist *no_pragma_header;
 
 static struct active_request_slot *active_queue_head;
 
+static struct strbuf *cached_accept_language;
+
 size_t fread_buffer(char *ptr, size_t eltsize, size_t nmemb, void *buffer_)
 {
 	size_t size = eltsize * nmemb;
@@ -515,6 +517,12 @@ void http_cleanup(void)
 		cert_auth.password = NULL;
 	}
 	ssl_cert_password_required = 0;
+
+	if (cached_accept_language) {
+		strbuf_release(cached_accept_language);
+		free(cached_accept_language);
+		cached_accept_language = NULL;
+	}
 }
 
 struct active_request_slot *get_active_slot(void)
@@ -986,6 +994,146 @@ static void extract_content_type(struct strbuf *raw, struct strbuf *type,
 		strbuf_addstr(charset, "ISO-8859-1");
 }
 
+/*
+ * Guess the user's preferred languages from the value in LANGUAGE environment
+ * variable and LC_MESSAGES locale category.
+ *
+ * The result can be a colon-separated list like "ko:ja:en".
+ */
+static const char *get_preferred_languages(void)
+{
+	const char *retval;
+
+	retval = getenv("LANGUAGE");
+	if (retval && *retval)
+		return retval;
+
+	retval = setlocale(LC_MESSAGES, NULL);
+	if (retval && *retval &&
+		strcmp(retval, "C") &&
+		strcmp(retval, "POSIX"))
+		return retval;
+
+	return NULL;
+}
+
+/*
+ * Get an Accept-Language header which indicates user's preferred languages.
+ *
+ * Examples:
+ *   LANGUAGE= -> ""
+ *   LANGUAGE=ko:en -> "Accept-Language: ko, en; q=0.9, *; q=0.1"
+ *   LANGUAGE=ko_KR.UTF-8:sr@latin -> "Accept-Language: ko-KR, sr; q=0.9, *; q=0.1"
+ *   LANGUAGE=ko LANG=en_US.UTF-8 -> "Accept-Language: ko, *; q=0.1"
+ *   LANGUAGE= LANG=en_US.UTF-8 -> "Accept-Language: en-US, *; q=0.1"
+ *   LANGUAGE= LANG=C -> ""
+ */
+static struct strbuf *get_accept_language(void)
+{
+	const char *lang_begin, *pos;
+	int q, max_q;
+	int num_langs;
+	int decimal_places;
+	int is_codeset_or_modifier = 0;
+	char q_format[32];
+	/*
+	 * MAX_LANGS must not be larger than 1,000. If it is larger than that,
+	 * q-value will be smaller than 0.001, the minimum q-value the HTTP
+	 * specification allows [1].
+	 *
+	 * [1]: http://tools.ietf.org/html/rfc7231#section-5.3.1
+	 */
+	const int MAX_LANGS = 1000;
+	const int MAX_SIZE_OF_HEADER = 4000;
+	int last_size = 0;
+
+	if (cached_accept_language)
+		return cached_accept_language;
+
+	cached_accept_language = xmalloc(sizeof(struct strbuf));
+	strbuf_init(cached_accept_language, 0);
+	lang_begin = get_preferred_languages();
+
+	/* Don't add Accept-Language header if no language is preferred. */
+	if (!lang_begin)
+		return cached_accept_language;
+
+	/* Count number of preferred lang_begin to decide precision of q-factor. */
+	for (num_langs = 1, pos = lang_begin; *pos; pos++)
+		if (*pos == ':')
+			num_langs++;
+
+	/* Decide the precision for q-factor on number of preferred lang_begin. */
+	num_langs += 1; /* for '*' */
+
+	if (MAX_LANGS < num_langs)
+		num_langs = MAX_LANGS;
+
+	for (max_q = 1, decimal_places = 0; max_q < num_langs; max_q *= 10)
+		decimal_places++;
+
+	sprintf(q_format, ";q=0.%%0%dd", decimal_places);
+
+	strbuf_addstr(cached_accept_language, "Accept-Language: ");
+
+	/*
+	 * Convert a list of colon-separated locale values [1][2] to a list of
+	 * comma-separated language tags [3] which can be used as a value of
+	 * Accept-Language header.
+	 *
+	 * [1]: http://pubs.opengroup.org/onlinepubs/007908799/xbd/envvar.html
+	 * [2]: http://www.gnu.org/software/libc/manual/html_node/Using-gettextized-software.html
+	 * [3]: http://tools.ietf.org/html/rfc7231#section-5.3.5
+	 */
+	for (pos = lang_begin, q = max_q; ; pos++) {
+		if (*pos == ':' || !*pos) {
+			/* Ignore if this character is the first one. */
+			if (pos == lang_begin)
+				continue;
+
+			is_codeset_or_modifier = 0;
+
+			/* Put a q-factor only if it is less than 1.0. */
+			if (q < max_q)
+				strbuf_addf(cached_accept_language, q_format, q);
+
+			if (q > 1)
+				q--;
+
+			last_size = cached_accept_language->len;
+
+			/* NULL pos means this is the last language. */
+			if (*pos)
+				strbuf_addstr(cached_accept_language, ", ");
+			else
+				break;
+
+		} else if (is_codeset_or_modifier)
+			continue;
+		else if (*pos == '.' || *pos == '@') /* Remove .codeset and @modifier. */
+			is_codeset_or_modifier = 1;
+		else
+			strbuf_addch(cached_accept_language, *pos == '_' ? '-' : *pos);
+
+		if (cached_accept_language->len > MAX_SIZE_OF_HEADER) {
+			strbuf_remove(cached_accept_language, last_size,
+					cached_accept_language->len - last_size);
+			break;
+		}
+	}
+
+	/* Don't add Accept-Language header if no language is preferred. */
+	if (q >= max_q) {
+		return cached_accept_language;
+	}
+
+	/* Add '*' with minimum q-factor greater than 0.0. */
+	strbuf_addstr(cached_accept_language, ", *");
+	strbuf_addf(cached_accept_language, q_format, 1);
+
+	return cached_accept_language;
+}
+
 /* http_request() targets */
 #define HTTP_REQUEST_STRBUF	0
 #define HTTP_REQUEST_FILE	1
@@ -998,6 +1146,7 @@ static int http_request(const char *url,
 	struct slot_results results;
 	struct curl_slist *headers = NULL;
 	struct strbuf buf = STRBUF_INIT;
+	struct strbuf *accept_language;
 	int ret;
 
 	slot = get_active_slot();
@@ -1022,6 +1171,11 @@ static int http_request(const char *url,
 			curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION,
 					 fwrite_buffer);
 	}
+
+	accept_language = get_accept_language();
+
+	if (accept_language && accept_language->len > 0)
+		headers = curl_slist_append(headers, accept_language->buf);
 
 	strbuf_addstr(&buf, "Pragma:");
 	if (options && options->no_cache)
