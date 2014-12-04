@@ -789,6 +789,8 @@ cmd_update()
 		cmd_init "--" "$@" || return
 	fi
 
+	config_updateWithoutUrl=$(git config --bool --get submodule.updateWithoutUrl)
+
 	cloned_modules=
 	module_list "$@" | {
 	err=
@@ -829,7 +831,10 @@ cmd_update()
 			test "$#" != "0" &&
 			say "$(eval_gettext "Submodule path '\$displaypath' not initialized
 Maybe you want to use 'update --init'?")"
-			continue
+			if ! test "$config_updateWithoutUrl" = "true" || ! test -e "$sm_path"/.git
+			then
+				continue
+			fi
 		fi
 
 		if ! test -d "$sm_path"/.git && ! test -f "$sm_path"/.git
