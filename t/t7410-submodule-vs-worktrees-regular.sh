@@ -63,9 +63,17 @@ test_expect_success 'recursive update works in mixed1' '
 	echo subsub_init >../expected &&
 	test_cmp ../expected sub/subsub/file )'
 
-test_expect_success 'recursive update works in mixed2' '
+test_expect_failure 'recursive update works in mixed2' '
     ( cd super-mixed2 &&
 	git reset --hard super_init && git submodule update --recursive &&
+	echo subsub_init >../expected &&
+	test_cmp ../expected sub/subsub/file )'
+
+test_expect_success 'recursive update works in mixed2 - set updateWithoutUrl' '
+    test_when_finished "( cd super-mixed2/sub && git config --unset-all submodule.updateWithoutUrl )" &&
+    ( cd super-mixed2/sub && git config submodule.updateWithoutUrl true ) &&
+    ( cd super-mixed2 &&
+	git submodule update --recursive &&
 	echo subsub_init >../expected &&
 	test_cmp ../expected sub/subsub/file )'
 
