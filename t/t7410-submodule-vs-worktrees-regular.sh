@@ -48,6 +48,11 @@ test_expect_success 'make linked worktrees' '
 test_expect_success 'inquire norec does not show anything' '
     ( cd super-norec && git diff --submodule HEAD~1 | grep -q "not checked out" )'
 
+test_expect_success 'norec ignores update' '
+    ( cd super-norec &&
+	git reset --hard super_init && git submodule update --recursive &&
+	test_dir_is_empty sub )'
+
 test_expect_success 'inquire rec shows changes' '
     ( cd super-rec && git diff --submodule HEAD~1 | grep -q "sub_update" )'
 
