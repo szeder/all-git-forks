@@ -848,7 +848,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		OPT_BOOL('l', "create-reflog", &reflog, N_("create the branch's reflog")),
 		OPT_BOOL(0, "edit-description", &edit_description,
 			 N_("edit the description for the branch")),
-		OPT__FORCE(&force_create, N_("force creation (when already exists)")),
+		OPT__FORCE(&force_create, N_("force creation, move/rename, deletion")),
 		{
 			OPTION_CALLBACK, 0, "no-merged", &merge_filter_ref,
 			N_("commit"), N_("print only not merged branches"),
@@ -891,7 +891,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 	if (with_commit || merge_filter != NO_FILTER)
 		list = 1;
 
-	if (!!delete + !!rename + !!force_create + !!new_upstream +
+	if (!!delete + !!rename + !!new_upstream +
 	    list + unset_upstream > 1)
 		usage_with_options(builtin_branch_usage, options);
 
@@ -902,6 +902,11 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		if (explicitly_enable_column(colopts))
 			die(_("--column and --verbose are incompatible"));
 		colopts = 0;
+	}
+
+	if (force_create) {
+		delete *= 2;
+		rename *= 2;
 	}
 
 	if (delete) {
