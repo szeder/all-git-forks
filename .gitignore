@@ -208,6 +208,7 @@
 /test-urlmatch-normalization
 /test-wildmatch
 /common-cmds.h
+/glossary.h
 *.tar.gz
 *.dsc
 *.deb
