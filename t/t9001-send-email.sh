@@ -1418,7 +1418,8 @@ do_xmailer_test() {
 		$params \
 		0001-*.patch \
 		2>errors >out
-	test "z$(grep ^X-Mailer: out | wc -l)" = "z$expected"
+	grep ^X-Mailer: out >mailer
+	test_line_count = $expected mailer
 	return $?
 }
 
