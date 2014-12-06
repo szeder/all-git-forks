@@ -290,18 +290,14 @@ sub apply_autoprops {
 
 sub check_attr
 {
-    my ($attr,$path) = @_;
-    if ( open my $fh, '-|', "git", "check-attr", $attr, "--", $path )
-    {
+	my ($attr,$path) = @_;
+	my $fh = command_output_pipe("check-attr", $attr, "--", $path);
+	return undef if (!$fh);
+
 	my $val = <$fh>;
 	close $fh;
 	$val =~ s/^[^:]*:\s*[^:]*:\s*(.*)\s*$/$1/;
 	return $val;
-    }
-    else
-    {
-	return undef;
-    }
 }
 
 sub apply_manualprops {
@@ -321,11 +317,11 @@ sub apply_manualprops {
 			for ($n, $v) {
 				s/^\s+//; s/\s+$//;
 			}
-			# FIXME: clearly I don't know perl and couldn't work out how to evaluate this better
-			if (defined $existing_props->{$n} && $existing_props->{$n} eq $v) {
-				my $needed = 0;
-			} else {
-				$self->change_file_prop($fbat, $n, $v);
+			# FIXME: clearly I don't know perl and couldn't work
+			# out how to evaluate this better
+			my $existing = $existing_props->{$n};
+			if (!defined($existing) || $existing ne $v) {
+			    $self->change_file_prop($fbat, $n, $v);
 			}
 		}
 	}

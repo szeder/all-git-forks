@@ -1391,16 +1391,14 @@ sub cmd_propset {
 	usage(1) if not defined $propval;
 	my $file = basename($path);
 	my $dn = dirname($path);
-	# diff has check_attr locally, so just call direct
-	#my $current_properties = check_attr( "svn-properties", $path );
-	my $current_properties = Git::SVN::Editor::check_attr( "svn-properties", $path );
-	my $new_properties = "";
-	if ($current_properties eq "unset" || $current_properties eq "" || $current_properties eq "set") {
-		$new_properties = "$propname=$propval";
+	my $cur_props = Git::SVN::Editor::check_attr( "svn-properties", $path );
+	my $new_props = "";
+	if ($cur_props eq "unset" || $cur_props eq "" || $cur_props eq "set") {
+		$new_props = "$propname=$propval";
 	} else {
 		# TODO: handle combining properties better
-		my @props = split(/;/, $current_properties);
-		my $replaced_prop = 0;
+		my @props = split(/;/, $cur_props);
+		my $replaced_prop;
 		foreach my $prop (@props) {
 			# Parse 'name=value' syntax and set the property.
 			if ($prop =~ /([^=]+)=(.*)/) {
@@ -1410,18 +1408,19 @@ sub cmd_propset {
 					$v = $propval;
 					$replaced_prop = 1;
 				}
-				if ($new_properties eq "") { $new_properties="$n=$v"; }
-				else { $new_properties="$new_properties;$n=$v"; }
+				if ($new_props eq "") { $new_props="$n=$v"; }
+				else { $new_props="$new_props;$n=$v"; }
 			}
 		}
-		if ($replaced_prop eq 0) {
-			$new_properties = "$new_properties;$propname=$propval";
+		if (!$replaced_prop) {
+			$new_props = "$new_props;$propname=$propval";
 		}
 	}
 	my $attrfile = "$dn/.gitattributes";
 	open my $attrfh, '>>', $attrfile or die "Can't open $attrfile: $!\n";
 	# TODO: don't simply append here if $file already has svn-properties
-	print $attrfh "$file svn-properties=$new_properties\n";
+	print $attrfh "$file svn-properties=$new_props\n" or die "write to $attrfile";
+	close $attrfh or die "close $attrfile";
 }
 
 # cmd_proplist (PATH)
