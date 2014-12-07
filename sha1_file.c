@@ -2819,10 +2819,14 @@ int move_temp_to_file(const char *tmpfile, const char *filename)
 {
 	int ret = 0;
 
+/*
 	if (object_creation_mode == OBJECT_CREATION_USES_RENAMES)
+*/
 		goto try_rename;
+/*
 	else if (link(tmpfile, filename))
 		ret = errno;
+*/
 
 	/*
 	 * Coda hack - coda doesn't like cross-directory links,
