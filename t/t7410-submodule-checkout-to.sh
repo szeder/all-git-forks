@@ -52,9 +52,7 @@ test_expect_success 'checkout sub manually' \
     (cd clone/main &&
 	git checkout --to "$base_path/linked_submodule/main" "$rev1_hash_main") &&
     (cd clone/main/sub &&
-	git checkout --to "$base_path/linked_submodule/main/sub" "$rev1_hash_sub") &&
-    mkdir clone/main/.git/worktrees/main/modules &&
-	echo "gitdir: ../../modules/sub/worktrees/sub" > clone/main/.git/worktrees/main/modules/sub'
+	git checkout --to "$base_path/linked_submodule/main/sub" "$rev1_hash_sub")'
 
 test_expect_success 'can see submodule diffs after manual checkout of linked submodule' \
     '(cd linked_submodule/main && git diff --submodule master"^!" | grep "file1 updated")'
