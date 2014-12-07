@@ -51,8 +51,7 @@ test_expect_success 'inquire norec does not show anything' '
 test_expect_success 'norec ignores update' '
     ( cd super-norec &&
 	test_dir_is_empty sub &&
-	test_config submodule.updateIgnoringConfigUrl true &&
-	git reset --hard super_init && git submodule update --recursive &&
+	git reset --hard super_init && git submodule update --recursive --ignore-config-url &&
 	test_dir_is_empty sub )'
 
 test_expect_success 'inquire rec shows changes' '
@@ -76,11 +75,9 @@ test_expect_failure 'recursive update works in mixed2' '
 	echo subsub_init >../expected &&
 	test_cmp ../expected sub/subsub/file )'
 
-test_expect_success 'recursive update works in mixed2 - set updateIgnoringConfigUrl' '
-    test_when_finished "( cd super-mixed2/sub && git config --unset-all submodule.updateIgnoringConfigUrl )" &&
-    ( cd super-mixed2/sub && git config submodule.updateIgnoringConfigUrl true ) &&
+test_expect_success 'recursive update works in mixed2 with --ignore-config-url' '
     ( cd super-mixed2 &&
-	git submodule update --recursive &&
+	git submodule update --recursive --ignore-config-url &&
 	echo subsub_init >../expected &&
 	test_cmp ../expected sub/subsub/file )'
 
