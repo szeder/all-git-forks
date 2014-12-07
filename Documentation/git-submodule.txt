@@ -330,6 +330,16 @@ the submodule itself.
 	Initialize all submodules for which "git submodule init" has not been
 	called so far before updating.
 
+--ignore-config-url::
+	This option is only valid for the update command.
+	`git submodule update` clones submodules which have
+	`submodule.$name.url` key set in config but
+	no .git girectory or link in working tree, and
+	skips submodules which do not have the config key
+	set. This option disables both of this - only those submodules
+	are updated which are checked-out already regardless
+	of presence of `submodule.$name.update`.
+
 --name::
 	This option is only valid for the add command. It sets the submodule's
 	name to the given string instead of defaulting to its path. The name

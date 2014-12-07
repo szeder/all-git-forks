@@ -36,6 +36,7 @@ update=
 prefix=
 custom_name=
 depth=
+ignore_config_url=
 
 # The function takes at most 2 arguments. The first argument is the
 # URL that navigates to the submodule origin repo. When relative, this URL
@@ -770,6 +771,9 @@ cmd_update()
 		--depth=*)
 			depth=$1
 			;;
+		--ignore-config-url)
+			ignore_config_url=1
+			;;
 		--)
 			shift
 			break
@@ -822,22 +826,38 @@ cmd_update()
 			continue
 		fi
 
-		if test -z "$url"
+		update_only=
+		if test -n "$ignore_config_url"
 		then
-			# Only mention uninitialized submodules when its
-			# path have been specified
-			test "$#" != "0" &&
-			say "$(eval_gettext "Submodule path '\$displaypath' not initialized
-Maybe you want to use 'update --init'?")"
-			continue
+			if test -e "$sm_path"/.git
+			then
+				update_only=true
+			else
+				continue
+			fi
+		else
+			if test -z "$url"
+			then
+				# Only mention uninitialized submodules when its
+				# path have been specified
+				test "$#" != "0" &&
+				say "$(eval_gettext "Submodule path '\$displaypath' not initialized
+	Maybe you want to use 'update --init'?")"
+				continue
+			fi
+
+			if ! test -d "$sm_path"/.git && ! test -f "$sm_path"/.git
+			then
+				module_clone "$sm_path" "$name" "$url" "$reference" "$depth" || exit
+				cloned_modules="$cloned_modules;$name"
+				subsha1=
+			else
+				update_only=true
+			fi
 		fi
 
-		if ! test -d "$sm_path"/.git && ! test -f "$sm_path"/.git
+		if test -n "$update_only"
 		then
-			module_clone "$sm_path" "$name" "$url" "$reference" "$depth" || exit
-			cloned_modules="$cloned_modules;$name"
-			subsha1=
-		else
 			subsha1=$(clear_local_git_env; cd "$sm_path" &&
 				git rev-parse --verify HEAD) ||
 			die "$(eval_gettext "Unable to find current revision in submodule path '\$displaypath'")"
