@@ -1393,7 +1393,7 @@ sub cmd_propset {
 	my $dn = dirname($path);
 	my $cur_props = Git::SVN::Editor::check_attr( "svn-properties", $path );
 	my $new_props = "";
-	if ($cur_props eq "unset" || $cur_props eq "" || $cur_props eq "set") {
+	if (!$cur_props || $cur_props eq "unset" || $cur_props eq "" || $cur_props eq "set") {
 		$new_props = "$propname=$propval";
 	} else {
 		# TODO: handle combining properties better

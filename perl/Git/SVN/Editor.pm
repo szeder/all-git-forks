@@ -296,7 +296,7 @@ sub check_attr
 
 	my $val = <$fh>;
 	close $fh;
-	$val =~ s/^[^:]*:\s*[^:]*:\s*(.*)\s*$/$1/;
+	if ($val) { $val =~ s/^[^:]*:\s*[^:]*:\s*(.*)\s*$/$1/; }
 	return $val;
 }
 
