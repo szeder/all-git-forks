@@ -15,7 +15,6 @@
 #include "revision.h"
 #include "remote.h"
 #include "blob.h"
-#include "cache.h"
 #include "xdiff-interface.h"
 #include "ll-merge.h"
 #include "resolve-undo.h"
@@ -930,8 +929,6 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 	strbuf_reset(&sb);
 	strbuf_addf(&sb, "%s/commondir", sb_repo.buf);
 	write_file(sb.buf, 1, "../..\n");
-
-	git_config_set("submodule.updateIgnoringConfigUrl", "true");
 
 	if (!opts->quiet)
 		fprintf_ln(stderr, _("Enter %s (identifier %s)"), path, name);
