@@ -21,8 +21,13 @@ mkdir import &&
 )
 rm -rf import
 
-test_expect_success 'initialize git svn' 'git svn init "$svnrepo"'
-test_expect_success 'fetch revisions from svn' 'git svn fetch'
+test_expect_success 'initialize git svn' '
+	git svn init "$svnrepo"
+	'
+
+test_expect_success 'fetch revisions from svn' '
+	git svn fetch
+	'
 
 set_props()
 {
