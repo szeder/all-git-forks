@@ -9,11 +9,12 @@ test_description='git svn propset tests'
 
 foo_subdir2="subdir/subdir2/foo_subdir2"
 
-mkdir import
-(cd import
+set -e
+mkdir import &&
+(set -e ; cd import
 	mkdir subdir
 	mkdir subdir/subdir2
-	touch foo		# for 'add props top level'
+	touch foo 		# for 'add props top level'
 	touch subdir/foo_subdir # for 'add props relative'
 	touch "$foo_subdir2"	# for 'add props subdir'
 	svn_cmd import -m 'import for git svn' . "$svnrepo" >/dev/null
@@ -23,49 +24,69 @@ rm -rf import
 test_expect_success 'initialize git svn' 'git svn init "$svnrepo"'
 test_expect_success 'fetch revisions from svn' 'git svn fetch'
 
-# There is a bogus feature about svn propset which means that it will only
-# be taken as a delta for svn dcommit iff the file is also modified.
-# That is fine for now.
+set_props()
+{
+	local subdir="$1"
+	local file="$2"
+	shift;shift;
+	(cd "$subdir" &&
+		while [ $# -gt 0 ] ; do
+			git svn propset "$1" "$2" "$file" || exit 1
+			shift;shift;
+		done &&
+		echo hello >> "$file" &&
+		git commit -m "testing propset" "$file")
+}
+
+confirm_props()
+{
+	local subdir="$1"
+	local file="$2"
+	shift;shift;
+	(set -e ; cd "svn_project/$subdir" &&
+		while [ $# -gt 0 ] ; do
+			test "$(svn propget "$1" "$file")" = "$2" || exit 1
+			shift;shift;
+		done)
+}
+
+
+#The current implementation has a restriction:
+#svn propset will be taken as a delta for svn dcommit only
+#if the file content is also modified
 test_expect_success 'add props top level' '
-	git svn propset svn:keywords "FreeBSD=%H" foo &&
-	echo hello >> foo &&
-	git commit -m "testing propset" foo &&
-	git svn dcommit
+	set_props "." "foo" "svn:keywords" "FreeBSD=%H" &&
+	git svn dcommit &&
 	svn_cmd co "$svnrepo" svn_project &&
-	(cd svn_project && test "`svn propget svn:keywords foo`" = "FreeBSD=%H") &&
+	confirm_props "." "foo" "svn:keywords" "FreeBSD=%H" &&
 	rm -rf svn_project
 	'
 
 test_expect_success 'add multiple props' '
-	git svn propset svn:keywords "FreeBSD=%H" foo &&
-	git svn propset fbsd:nokeywords yes foo &&
-	echo hello >> foo &&
-	git commit -m "testing propset" foo &&
-	git svn dcommit
+	set_props "." "foo" \
+		"svn:keywords" "FreeBSD=%H" fbsd:nokeywords yes &&
+	git svn dcommit &&
 	svn_cmd co "$svnrepo" svn_project &&
-	(cd svn_project && test "`svn propget svn:keywords foo`" = "FreeBSD=%H") &&
-	(cd svn_project && test "`svn propget fbsd:nokeywords foo`" = "yes") &&
-	(cd svn_project && test "`svn proplist -q foo | wc -l`" -eq 2) &&
+	confirm_props "." "foo" \
+		"svn:keywords" "FreeBSD=%H" fbsd:nokeywords yes &&
 	rm -rf svn_project
 	'
 
 test_expect_success 'add props subdir' '
-	git svn propset svn:keywords "FreeBSD=%H" "$foo_subdir2" &&
-	echo hello >> "$foo_subdir2" &&
-	git commit -m "testing propset" "$foo_subdir2" &&
-	git svn dcommit
+	set_props "." "$foo_subdir2" svn:keywords "FreeBSD=%H" &&
+	git svn dcommit &&
 	svn_cmd co "$svnrepo" svn_project &&
-	(cd svn_project && test "`svn propget svn:keywords "$foo_subdir2"`" = "FreeBSD=%H") &&
+	confirm_props "." "$foo_subdir2" "svn:keywords" "FreeBSD=%H" &&
 	rm -rf svn_project
 	'
 
 test_expect_success 'add props relative' '
-	(cd subdir/subdir2 && git svn propset svn:keywords "FreeBSD=%H" ../foo_subdir ) &&
-	echo hello >> subdir/foo_subdir &&
-	git commit -m "testing propset" subdir/foo_subdir &&
-	git svn dcommit
+	set_props "subdir/subdir2" "../foo_subdir" \
+		svn:keywords "FreeBSD=%H" &&
+	git svn dcommit &&
 	svn_cmd co "$svnrepo" svn_project &&
-	(cd svn_project && test "`svn propget svn:keywords subdir/foo_subdir`" = "FreeBSD=%H") &&
+	confirm_props "subdir/subdir2" "../foo_subdir" \
+		svn:keywords "FreeBSD=%H" &&
 	rm -rf svn_project
 	'
 test_done
