@@ -45,7 +45,7 @@ confirm_props()
 	shift;shift;
 	(set -e ; cd "svn_project/$subdir" &&
 		while [ $# -gt 0 ] ; do
-			test "$(svn propget "$1" "$file")" = "$2" || exit 1
+			test "$(svn_cmd propget "$1" "$file")" = "$2" || exit 1
 			shift;shift;
 		done)
 }
