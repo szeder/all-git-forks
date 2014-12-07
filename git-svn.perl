@@ -1392,9 +1392,9 @@ sub cmd_propset {
 	my $file = basename($path);
 	my $dn = dirname($path);
 	my $cur_props = Git::SVN::Editor::check_attr( "svn-properties", $path );
-	my $new_props = "";
+	my @new_props;
 	if (!$cur_props || $cur_props eq "unset" || $cur_props eq "" || $cur_props eq "set") {
-		$new_props = "$propname=$propval";
+		push @new_props, "$propname=$propval";
 	} else {
 		# TODO: handle combining properties better
 		my @props = split(/;/, $cur_props);
@@ -1403,24 +1403,24 @@ sub cmd_propset {
 			# Parse 'name=value' syntax and set the property.
 			if ($prop =~ /([^=]+)=(.*)/) {
 				my ($n,$v) = ($1,$2);
-				if ($n eq $propname)
-				{
+				if ($n eq $propname) {
 					$v = $propval;
 					$replaced_prop = 1;
 				}
-				if ($new_props eq "") { $new_props="$n=$v"; }
-				else { $new_props="$new_props;$n=$v"; }
+				push @new_props, "$n=$v";
 			}
 		}
 		if (!$replaced_prop) {
-			$new_props = "$new_props;$propname=$propval";
+			push @new_props, "$propname=$propval";
 		}
 	}
 	my $attrfile = "$dn/.gitattributes";
 	open my $attrfh, '>>', $attrfile or die "Can't open $attrfile: $!\n";
 	# TODO: don't simply append here if $file already has svn-properties
-	print $attrfh "$file svn-properties=$new_props\n" or die "write to $attrfile";
-	close $attrfh or die "close $attrfile";
+	my $new_props = join(';', @new_props);
+	print $attrfh "$file svn-properties=$new_props\n" or
+		die "write to $attrfile: $!\n";
+	close $attrfh or die "close $attrfile: $!\n";
 }
 
 # cmd_proplist (PATH)

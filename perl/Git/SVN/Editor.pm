@@ -288,8 +288,7 @@ sub apply_autoprops {
 	}
 }
 
-sub check_attr
-{
+sub check_attr {
 	my ($attr,$path) = @_;
 	my $fh = command_output_pipe("check-attr", $attr, "--", $path);
 	return undef if (!$fh);
@@ -306,10 +305,12 @@ sub apply_manualprops {
 	if ($pending_properties eq "") { return; }
 	# Parse the list of properties to set.
 	my @props = split(/;/, $pending_properties);
-	# TODO: get existing properties to compare to - this fails for add so currently not done
+	# TODO: get existing properties to compare to
+	# - this fails for add so currently not done
 	# my $existing_props = ::get_svnprops($file);
 	my $existing_props = {};
-	# TODO: caching svn properties or storing them in .gitattributes would make that faster
+	# TODO: caching svn properties or storing them in .gitattributes
+	# would make that faster
 	foreach my $prop (@props) {
 		# Parse 'name=value' syntax and set the property.
 		if ($prop =~ /([^=]+)=(.*)/) {
@@ -317,8 +318,6 @@ sub apply_manualprops {
 			for ($n, $v) {
 				s/^\s+//; s/\s+$//;
 			}
-			# FIXME: clearly I don't know perl and couldn't work
-			# out how to evaluate this better
 			my $existing = $existing_props->{$n};
 			if (!defined($existing) || $existing ne $v) {
 			    $self->change_file_prop($fbat, $n, $v);
