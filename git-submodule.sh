@@ -36,6 +36,7 @@ update=
 prefix=
 custom_name=
 depth=
+ignore_config_url=
 
 # The function takes at most 2 arguments. The first argument is the
 # URL that navigates to the submodule origin repo. When relative, this URL
@@ -770,6 +771,9 @@ cmd_update()
 		--depth=*)
 			depth=$1
 			;;
+		--ignore-config-url)
+			ignore_config_url=1
+			;;
 		--)
 			shift
 			break
@@ -788,8 +792,6 @@ cmd_update()
 	then
 		cmd_init "--" "$@" || return
 	fi
-
-	config_updateIgnoringConfigUrl=$(git config --bool --get submodule.updateIgnoringConfigUrl)
 
 	cloned_modules=
 	module_list "$@" | {
@@ -825,7 +827,7 @@ cmd_update()
 		fi
 
 		update_only=
-		if test "$config_updateIgnoringConfigUrl" = true
+		if test -n "$ignore_config_url"
 		then
 			if test -e "$sm_path"/.git
 			then
