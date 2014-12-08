@@ -1117,17 +1117,23 @@ int transport_helper_init(struct transport *transport, const char *name)
 /* This should be enough to hold debugging message. */
 #define PBUFFERSIZE 8192
 
+static int transport_debug_enabled(void)
+{
+	static int debug_enabled = -1;
+
+	if (debug_enabled < 0)
+		debug_enabled = getenv("GIT_TRANSLOOP_DEBUG") ? 1 : 0;
+	return debug_enabled;
+}
+
 /* Print bidirectional transfer loop debug message. */
 __attribute__((format (printf, 1, 2)))
 static void transfer_debug(const char *fmt, ...)
 {
 	va_list args;
 	char msgbuf[PBUFFERSIZE];
-	static int debug_enabled = -1;
 
-	if (debug_enabled < 0)
-		debug_enabled = getenv("GIT_TRANSLOOP_DEBUG") ? 1 : 0;
-	if (!debug_enabled)
+	if (!transport_debug_enabled())
 		return;
 
 	va_start(args, fmt);
@@ -1296,6 +1302,10 @@ static int tloop_spawnwait_tasks(struct bidirectional_transfer_state *s)
 	pthread_t ptg_thread;
 	int err;
 	int ret = 0;
+
+	/* initialize static global debug flag as a side effect */
+	transport_debug_enabled();
+
 	err = pthread_create(&gtp_thread, NULL, udt_copy_task_routine,
 		&s->gtp);
 	if (err)
