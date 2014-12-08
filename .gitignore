@@ -64,6 +64,7 @@
 /git-fsck-objects
 /git-gc
 /git-get-tar-commit-id
+/git-glossary
 /git-grep
 /git-hash-object
 /git-help
