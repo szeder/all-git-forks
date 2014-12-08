@@ -309,7 +309,7 @@ static const char *parse_cmd_verify(struct ref_transaction *transaction,
 static const char *parse_cmd_option(struct strbuf *input, const char *next)
 {
 	if (!strncmp(next, "no-deref", 8) && next[8] == line_termination)
-		update_flags |= REF_NODEREF;
+		update_flags |= REF_NO_DEREF;
 	else
 		die("option unknown: %s", next);
 	return next + 8;
@@ -412,7 +412,7 @@ int cmd_update_ref(int argc, const char **argv, const char *prefix)
 		die("%s: not a valid old SHA1", oldval);
 
 	if (no_deref)
-		flags = REF_NODEREF;
+		flags = REF_NO_DEREF;
 	if (delete)
 		return delete_ref(refname, oldval ? oldsha1 : NULL, flags);
 	else

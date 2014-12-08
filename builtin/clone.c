@@ -595,7 +595,7 @@ static void update_head(const struct ref *our, const struct ref *remote,
 		struct commit *c = lookup_commit_reference(our->old_sha1);
 		/* --branch specifies a non-branch (i.e. tags), detach HEAD */
 		update_ref(msg, "HEAD", c->object.sha1,
-			   NULL, REF_NODEREF, UPDATE_REFS_DIE_ON_ERR);
+			   NULL, REF_NO_DEREF, UPDATE_REFS_DIE_ON_ERR);
 	} else if (remote) {
 		/*
 		 * We know remote HEAD points to a non-branch, or
@@ -603,7 +603,7 @@ static void update_head(const struct ref *our, const struct ref *remote,
 		 * Detach HEAD in all these cases.
 		 */
 		update_ref(msg, "HEAD", remote->old_sha1,
-			   NULL, REF_NODEREF, UPDATE_REFS_DIE_ON_ERR);
+			   NULL, REF_NO_DEREF, UPDATE_REFS_DIE_ON_ERR);
 	}
 }
 

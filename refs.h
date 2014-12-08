@@ -181,12 +181,12 @@ extern int peel_ref(const char *refname, unsigned char *sha1);
 
 /*
  * Flags controlling ref_transaction_update(), ref_transaction_create(), etc.
- * REF_NODEREF: act on the ref directly, instead of dereferencing
+ * REF_NO_DEREF: act on the ref directly, instead of dereferencing
  *               symbolic references.
  *
  * Other flags are reserved for internal use.
  */
-#define REF_NODEREF	0x01
+#define REF_NO_DEREF	0x01
 
 /*
  * Setup reflog before using. Set errno to something meaningful on failure.
@@ -259,7 +259,7 @@ struct ref_transaction *ref_transaction_begin(struct strbuf *err);
  * ref_transaction.  In all of them, refname is the name of the
  * reference to be affected.  The functions make internal copies of
  * refname and msg, so the caller retains ownership of these parameters.
- * flags can be REF_NODEREF; it is passed to update_ref_lock().
+ * flags can be REF_NO_DEREF; it is passed to update_ref_lock().
  */
 
 /*

@@ -44,7 +44,7 @@ static unsigned char refname_disposition[256] = {
  * Used as a flag in ref_update::flags when a loose ref is being
  * pruned.
  */
-#define REF_ISPRUNING	0x04
+#define REF_IS_PRUNING	0x04
 
 /*
  * Used as a flag in ref_update::flags when the reference should be
@@ -2288,7 +2288,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 		resolve_flags |= RESOLVE_REF_READING;
 	if (flags & REF_DELETING) {
 		resolve_flags |= RESOLVE_REF_ALLOW_BAD_NAME;
-		if (flags & REF_NODEREF)
+		if (flags & REF_NO_DEREF)
 			resolve_flags |= RESOLVE_REF_NO_RECURSE;
 	}
 
@@ -2332,7 +2332,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 	lock->lk = xcalloc(1, sizeof(struct lock_file));
 
 	lflags = 0;
-	if (flags & REF_NODEREF) {
+	if (flags & REF_NO_DEREF) {
 		refname = orig_refname;
 		lflags |= LOCK_NO_DEREF;
 	}
@@ -2341,7 +2341,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 	ref_file = git_path("%s", refname);
 	if (missing)
 		lock->force_write = 1;
-	if ((flags & REF_NODEREF) && (type & REF_ISSYMREF))
+	if ((flags & REF_NO_DEREF) && (type & REF_ISSYMREF))
 		lock->force_write = 1;
 
  retry:
@@ -2583,7 +2583,7 @@ static void prune_ref(struct ref_to_prune *r)
 	transaction = ref_transaction_begin(&err);
 	if (!transaction ||
 	    ref_transaction_delete(transaction, r->name, r->sha1,
-				   REF_ISPRUNING, NULL, &err) ||
+				   REF_IS_PRUNING, NULL, &err) ||
 	    ref_transaction_commit(transaction, &err)) {
 		ref_transaction_free(transaction);
 		error("%s", err.buf);
@@ -2870,13 +2870,13 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 		return error("unable to move logfile logs/%s to "TMP_RENAMED_LOG": %s",
 			oldrefname, strerror(errno));
 
-	if (delete_ref(oldrefname, orig_sha1, REF_NODEREF)) {
+	if (delete_ref(oldrefname, orig_sha1, REF_NO_DEREF)) {
 		error("unable to delete old %s", oldrefname);
 		goto rollback;
 	}
 
 	if (!read_ref_full(newrefname, RESOLVE_REF_READING, sha1, NULL) &&
-	    delete_ref(newrefname, sha1, REF_NODEREF)) {
+	    delete_ref(newrefname, sha1, REF_NO_DEREF)) {
 		if (errno==EISDIR) {
 			if (remove_empty_directories(git_path("%s", newrefname))) {
 				error("Directory not empty: %s", newrefname);
@@ -3594,7 +3594,7 @@ struct ref_update {
 	 */
 	unsigned char old_sha1[20];
 	/*
-	 * One or more of REF_HAVE_NEW, REF_HAVE_OLD, REF_NODEREF,
+	 * One or more of REF_HAVE_NEW, REF_HAVE_OLD, REF_NO_DEREF,
 	 * REF_DELETING, and REF_IS_PRUNING:
 	 */
 	int flags;
@@ -3869,7 +3869,7 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 				goto cleanup;
 			}
 
-			if (!(flags & REF_ISPRUNING))
+			if (!(flags & REF_IS_PRUNING))
 				string_list_append(&refs_to_delete,
 						   update->lock->ref_name);
 		}

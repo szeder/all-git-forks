@@ -56,7 +56,7 @@ int cmd_symbolic_ref(int argc, const char **argv, const char *prefix)
 		ret = check_symref(argv[0], 1, 0, 0);
 		if (ret)
 			die("Cannot delete %s, not a symbolic ref", argv[0]);
-		return delete_ref(argv[0], NULL, REF_NODEREF);
+		return delete_ref(argv[0], NULL, REF_NO_DEREF);
 	}
 
 	switch (argc) {
