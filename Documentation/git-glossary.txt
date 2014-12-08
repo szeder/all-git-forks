@@ -1,0 +1,48 @@
+git-glossary(1)
+===============
+
+NAME
+----
+git-glossary - List and translate terms from the glossary
+
+SYNOPSIS
+--------
+[verse]
+'git glossary' [-a | --all] <term>...
+
+DESCRIPTION
+-----------
+Look up each term in the glossary and display it along with its
+translation. This works with localised (translated) versions
+of git only. 
+
+OPTIONS
+-------
+<term>...::
+	Term(s) to look up.
++
+If no term is specified, list all terms from the glossary along with its translation.
+
+-a::
+	Look up terms in the message catalogue of all git commands, instead of the glossary.
+	This matches with complete english messages only.
+
+
+DISCUSSION
+----------
+Unless `-a' is used, partial matches in both english and the translated
+entry are shown.
+
+The list of terms is taken from the linkgit:gitglossary[7].
+Currently they are:
+
+include::glossary-content.txt[]
+
+
+SEE ALSO
+--------
+linkgit:gitglossary[7]
+
+GIT
+---
+Part of the linkgit:git[1] suite
