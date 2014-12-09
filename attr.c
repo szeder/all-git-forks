@@ -34,7 +34,7 @@ struct git_attr {
 	int attr_nr;
 	char name[FLEX_ARRAY];
 };
-static int attr_nr;
+static int git_attr_nr;
 
 static struct git_attr_check *check_all_attr;
 static struct git_attr *(git_attr_hash[HASHSIZE]);
@@ -94,10 +94,10 @@ static struct git_attr *git_attr_internal(const char *name, int len)
 	a->name[len] = 0;
 	a->h = hval;
 	a->next = git_attr_hash[pos];
-	a->attr_nr = attr_nr++;
+	a->attr_nr = git_attr_nr++;
 	git_attr_hash[pos] = a;
 
-	REALLOC_ARRAY(check_all_attr, attr_nr);
+	REALLOC_ARRAY(check_all_attr, git_attr_nr);
 	check_all_attr[a->attr_nr].attr = a;
 	check_all_attr[a->attr_nr].value = ATTR__UNKNOWN;
 	return a;
@@ -730,10 +730,10 @@ static void collect_all_attrs(const char *path)
 	}
 
 	prepare_attr_stack(path, dirlen);
-	for (i = 0; i < attr_nr; i++)
+	for (i = 0; i < git_attr_nr; i++)
 		check_all_attr[i].value = ATTR__UNKNOWN;
 
-	rem = attr_nr;
+	rem = git_attr_nr;
 	for (stk = attr_stack; 0 < rem && stk; stk = stk->prev)
 		rem = fill(path, pathlen, basename_offset, stk, rem);
 }
@@ -762,7 +762,7 @@ int git_all_attrs(const char *path, int *num, struct git_attr_check **check)
 
 	/* Count the number of attributes that are set. */
 	count = 0;
-	for (i = 0; i < attr_nr; i++) {
+	for (i = 0; i < git_attr_nr; i++) {
 		const char *value = check_all_attr[i].value;
 		if (value != ATTR__UNSET && value != ATTR__UNKNOWN)
 			++count;
@@ -770,7 +770,7 @@ int git_all_attrs(const char *path, int *num, struct git_attr_check **check)
 	*num = count;
 	*check = xmalloc(sizeof(**check) * count);
 	j = 0;
-	for (i = 0; i < attr_nr; i++) {
+	for (i = 0; i < git_attr_nr; i++) {
 		const char *value = check_all_attr[i].value;
 		if (value != ATTR__UNSET && value != ATTR__UNKNOWN) {
 			(*check)[j].attr = check_all_attr[i].attr;
