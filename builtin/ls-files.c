@@ -19,6 +19,7 @@ static int abbrev;
 static int show_deleted;
 static int show_cached;
 static int show_others;
+static int show_precious;
 static int show_stage;
 static int show_unmerged;
 static int show_resolve_undo;
@@ -466,6 +467,8 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 			N_("show modified files in the output")),
 		OPT_BOOL('o', "others", &show_others,
 			N_("show other files in the output")),
+		OPT_BOOL(0, "precious", &show_precious,
+			N_("show precious files in the output")),
 		OPT_BIT('i', "ignored", &dir.flags,
 			N_("show ignored files in the output"),
 			DIR_SHOW_IGNORED),
@@ -533,6 +536,12 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 		tag_killed = "K ";
 		tag_skip_worktree = "S ";
 		tag_resolve_undo = "U ";
+	}
+	if (show_precious) {
+		dir.flags |= DIR_SHOW_PRECIOUS;
+		if (dir.flags & DIR_SHOW_IGNORED)
+			die(_("--precious and --ignored are incompatible"));
+		show_others = 1;
 	}
 	if (show_modified || show_others || show_deleted || (dir.flags & DIR_SHOW_IGNORED) || show_killed)
 		require_work_tree = 1;

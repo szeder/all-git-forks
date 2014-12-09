@@ -12,6 +12,7 @@
 #include "refs.h"
 #include "wildmatch.h"
 #include "pathspec.h"
+#include "attr.h"
 
 struct path_simplify {
 	int len;
@@ -1200,6 +1201,16 @@ static int get_dtype(struct dirent *de, const char *path, int len)
 	return dtype;
 }
 
+static int is_precious(const char *path)
+{
+	static struct git_attr* precious_attr;
+	struct git_attr_check check;
+	if (!precious_attr)
+		 precious_attr = git_attr("precious");
+	check.attr = precious_attr;
+	return !git_check_attr(path, 1, &check) && ATTR_TRUE(check.value);
+}
+
 static enum path_treatment treat_one_path(struct dir_struct *dir,
 					  struct strbuf *path,
 					  const struct path_simplify *simplify,
@@ -1310,6 +1321,17 @@ static enum path_treatment read_directory_recursive(struct dir_struct *dir,
 	while ((de = readdir(fdir)) != NULL) {
 		/* check how the file or directory should be treated */
 		state = treat_path(dir, de, &path, baselen, simplify);
+
+		/*
+		 * the same effect as cache_file_exists() in
+		 * treat_one_path() but cheaper because we only
+		 * examine attr on untracked files, not every file in
+		 * fdir.
+		 */
+		if (!(dir->flags & DIR_SHOW_PRECIOUS) &&
+		    state == path_untracked && is_precious(path.buf))
+			state = path_none;
+
 		if (state > dir_state)
 			dir_state = state;
 
@@ -1342,8 +1364,11 @@ static enum path_treatment read_directory_recursive(struct dir_struct *dir,
 			break;
 
 		case path_untracked:
-			if (!(dir->flags & DIR_SHOW_IGNORED))
-				dir_add_name(dir, path.buf, path.len);
+			if (dir->flags & DIR_SHOW_IGNORED)
+				continue;
+			if ((dir->flags & DIR_SHOW_PRECIOUS) && !is_precious(path.buf))
+				continue;
+			dir_add_name(dir, path.buf, path.len);
 			break;
 
 		default:

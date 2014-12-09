@@ -901,6 +901,17 @@ If this attribute is not set or has an invalid value, the value of the
 (See linkgit:git-config[1]).
 
 
+Precious untracked files
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+`precious`
+^^^^^^^^^^
+
+If this attribute is set to true on files that are neither tracked nor
+ignored, they are no longer considered untracked. As a result they
+will not show up in `git status` and are not deleted by `git clean`.
+
+
 USING MACRO ATTRIBUTES
 ----------------------
 
