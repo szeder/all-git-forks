@@ -12,6 +12,10 @@ SYNOPSIS
 'git pull' [options] [<repository> [<refspec>...]]
 
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 

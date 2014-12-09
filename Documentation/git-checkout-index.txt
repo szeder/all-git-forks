@@ -15,6 +15,10 @@ SYNOPSIS
 		   [-z] [--stdin]
 		   [--] [<file>...]
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Will copy all files listed from the index to the working directory

@@ -10,6 +10,10 @@ SYNOPSIS
 [verse]
 'git verify-tag' <tag>...
 
+CATEGORY
+--------
+Ancillary interrogator
+
 DESCRIPTION
 -----------
 Validates the gpg signature created by 'git tag'.

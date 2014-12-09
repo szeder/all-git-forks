@@ -11,6 +11,10 @@ SYNOPSIS
 'git for-each-ref' [--count=<count>] [--shell|--perl|--python|--tcl]
 		   [(--sort=<key>)...] [--format=<format>] [<pattern>...]
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 

@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git write-tree' [--missing-ok] [--prefix=<prefix>/]
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Creates a tree object using the current index. The name of the new

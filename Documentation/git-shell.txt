@@ -13,6 +13,10 @@ SYNOPSIS
 'git clone' <user>`@localhost:/path/to/repo.git`
 'ssh' <user>`@localhost`
 
+CATEGORY
+--------
+Commands used internally for synching repositories
+
 DESCRIPTION
 -----------
 

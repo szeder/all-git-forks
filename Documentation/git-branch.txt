@@ -19,6 +19,10 @@ SYNOPSIS
 'git branch' (-d | -D) [-r] <branchname>...
 'git branch' --edit-description [<branchname>]
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 

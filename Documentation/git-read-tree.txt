@@ -15,6 +15,10 @@ SYNOPSIS
 		(--empty | <tree-ish1> [<tree-ish2> [<tree-ish3>]])
 
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Reads the tree information given by <tree-ish> into the index,

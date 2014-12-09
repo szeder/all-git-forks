@@ -13,6 +13,10 @@ SYNOPSIS
 	  [--intent-to-add | -N] [--refresh] [--ignore-errors] [--ignore-missing]
 	  [--] [<pathspec>...]
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 This command updates the index using the current content found in

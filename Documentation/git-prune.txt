@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git prune' [-n] [-v] [--expire <expire>] [--] [<head>...]
 
+CATEGORY
+--------
+Ancillary manipulator
+
 DESCRIPTION
 -----------
 

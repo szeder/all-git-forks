@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 frontend | 'git fast-import' [options]
 
+CATEGORY
+--------
+Ancillary manipulator
+
 DESCRIPTION
 -----------
 This program is usually not what the end user wants to run directly.

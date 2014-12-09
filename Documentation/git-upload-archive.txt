@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git upload-archive' <directory>
 
+CATEGORY
+--------
+Commands used internally for synching repositories
+
 DESCRIPTION
 -----------
 Invoked by 'git archive --remote' and sends a generated archive to the

@@ -28,6 +28,10 @@ SYNOPSIS
 	   [ [--[no-]exclude-standard] [--cached | --no-index | --untracked] | <tree>...]
 	   [--] [<pathspec>...]
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 Look for specified patterns in the tracked files in the work tree, blobs

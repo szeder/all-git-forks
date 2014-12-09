@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git update-server-info' [--force]
 
+CATEGORY
+--------
+Commands used internally for synching repositories
+
 DESCRIPTION
 -----------
 A dumb server that does not do on-the-fly pack generations must

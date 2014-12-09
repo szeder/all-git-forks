@@ -14,6 +14,10 @@ SYNOPSIS
 	[--depth=<n>] [--no-progress]
 	[-v] <repository> [<refs>...]
 
+CATEGORY
+--------
+Commands used internally for synching repositories
+
 DESCRIPTION
 -----------
 Usually you would want to use 'git fetch', which is a

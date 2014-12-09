@@ -15,6 +15,10 @@ SYNOPSIS
 'git p4 submit' [<submit options>] [<master branch name>]
 
 
+CATEGORY
+--------
+Interface to foreign SCM
+
 DESCRIPTION
 -----------
 This command provides a way to interact with p4 repositories

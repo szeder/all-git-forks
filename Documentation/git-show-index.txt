@@ -12,6 +12,10 @@ SYNOPSIS
 'git show-index' < idx-file
 
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Reads given idx file for packed Git archive created with

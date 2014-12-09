@@ -10,6 +10,10 @@ SYNOPSIS
 [verse]
 'git interpret-trailers' [--trim-empty] [(--trailer <token>[(=|:)<value>])...] [<file>...]
 
+CATEGORY
+--------
+Helper command for script writers
+
 DESCRIPTION
 -----------
 Help adding 'trailers' lines, that look similar to RFC 822 e-mail

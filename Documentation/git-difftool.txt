@@ -10,6 +10,10 @@ SYNOPSIS
 [verse]
 'git difftool' [<options>] [<commit> [<commit>]] [--] [<path>...]
 
+CATEGORY
+--------
+Ancillary interrogator
+
 DESCRIPTION
 -----------
 'git difftool' is a Git command that allows you to compare and edit files

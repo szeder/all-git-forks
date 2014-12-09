@@ -16,6 +16,10 @@ SYNOPSIS
 	      [-r <remote>] [-R] [<CVS_module>]
 
 
+CATEGORY
+--------
+Interface to foreign SCM
+
 DESCRIPTION
 -----------
 *WARNING:* `git cvsimport` uses cvsps version 2, which is considered

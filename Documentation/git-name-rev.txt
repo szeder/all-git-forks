@@ -12,6 +12,10 @@ SYNOPSIS
 'git name-rev' [--tags] [--refs=<pattern>]
 	       ( --all | --stdin | <commit-ish>... )
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Finds symbolic names suitable for human digestion for revisions given in any

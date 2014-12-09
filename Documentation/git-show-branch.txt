@@ -15,6 +15,10 @@ SYNOPSIS
 		[(<rev> | <glob>)...]
 'git show-branch' (-g|--reflog)[=<n>[,<base>]] [--list] [<ref>]
 
+CATEGORY
+--------
+Ancillary interrogator
+
 DESCRIPTION
 -----------
 

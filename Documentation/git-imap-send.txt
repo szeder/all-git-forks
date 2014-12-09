@@ -12,6 +12,10 @@ SYNOPSIS
 'git imap-send' [-v] [-q] [--[no-]curl]
 
 
+CATEGORY
+--------
+Interface to foreign SCM
+
 DESCRIPTION
 -----------
 This command uploads a mailbox generated with 'git format-patch'

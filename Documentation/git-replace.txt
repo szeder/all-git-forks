@@ -14,6 +14,10 @@ SYNOPSIS
 'git replace' -d <object>...
 'git replace' [--format=<format>] [-l [<pattern>]]
 
+CATEGORY
+--------
+Ancillary manipulator
+
 DESCRIPTION
 -----------
 Adds a 'replace' reference in `refs/replace/` namespace.

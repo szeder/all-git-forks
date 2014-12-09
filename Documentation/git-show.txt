@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git show' [options] <object>...
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 Shows one or more objects (blobs, trees, tags and commits).

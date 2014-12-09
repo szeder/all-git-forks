@@ -12,6 +12,10 @@ SYNOPSIS
 'git check-attr' [-a | --all | attr...] [--] pathname...
 'git check-attr' --stdin [-z] [-a | --all | attr...] < <list-of-paths>
 
+CATEGORY
+--------
+Helper command for script writers
+
 DESCRIPTION
 -----------
 For every pathname, this command will list if each attribute is 'unspecified',

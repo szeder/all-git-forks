@@ -10,6 +10,10 @@ SYNOPSIS
 [verse]
 'git update-ref' [-m <reason>] (-d <ref> [<oldvalue>] | [--no-deref] <ref> <newvalue> [<oldvalue>] | --stdin [-z])
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Given two arguments, stores the <newvalue> in the <ref>, possibly

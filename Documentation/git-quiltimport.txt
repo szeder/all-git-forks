@@ -12,6 +12,10 @@ SYNOPSIS
 'git quiltimport' [--dry-run | -n] [--author <author>] [--patches <dir>]
 
 
+CATEGORY
+--------
+Interface to foreign SCM
+
 DESCRIPTION
 -----------
 Applies a quilt patchset onto the current Git branch, preserving

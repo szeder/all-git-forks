@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git mv' <options>... <args>...
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 Move or rename a file, directory or symlink.

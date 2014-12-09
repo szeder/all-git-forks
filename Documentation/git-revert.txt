@@ -13,6 +13,10 @@ SYNOPSIS
 'git revert' --quit
 'git revert' --abort
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 

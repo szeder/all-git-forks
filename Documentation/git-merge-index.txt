@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git merge-index' [-o] [-q] <merge-program> (-a | [--] <file>*)
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 This looks up the <file>(s) in the index and, if there are any merge

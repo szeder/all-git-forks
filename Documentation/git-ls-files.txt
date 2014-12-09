@@ -19,6 +19,10 @@ SYNOPSIS
 		[--error-unmatch] [--with-tree=<tree-ish>]
 		[--full-name] [--abbrev] [--] [<file>...]
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 This merges the file listing in the directory cache index with the

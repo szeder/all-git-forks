@@ -14,6 +14,10 @@ SYNOPSIS
 	[--[no-]diff3] <current-file> <base-file> <other-file>
 
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 'git merge-file' incorporates all changes that lead from the `<base-file>`

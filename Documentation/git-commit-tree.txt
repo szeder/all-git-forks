@@ -14,6 +14,10 @@ SYNOPSIS
 		  [(-F <file>)...] <tree>
 
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 This is usually not what an end user wants to run directly.  See

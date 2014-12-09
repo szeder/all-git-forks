@@ -10,6 +10,10 @@ SYNOPSIS
 [verse]
 'git http-backend'
 
+CATEGORY
+--------
+Commands used internally for synching repositories
+
 DESCRIPTION
 -----------
 A simple CGI program to serve the contents of a Git repository to Git

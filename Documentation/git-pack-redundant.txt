@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git pack-redundant' [ --verbose ] [ --alt-odb ] < --all | .pack filename ... >
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 This program computes which packs in your repository

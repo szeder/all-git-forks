@@ -57,6 +57,10 @@ access still needs to be enabled by the `gitcvs.enabled` config option
 unless '--export-all' was given, too.
 
 
+CATEGORY
+--------
+Interface to foreign SCM
+
 DESCRIPTION
 -----------
 

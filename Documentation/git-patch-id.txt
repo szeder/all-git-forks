@@ -10,6 +10,10 @@ SYNOPSIS
 [verse]
 'git patch-id' [--stable | --unstable] < <patch>
 
+CATEGORY
+--------
+Helper command for script writers
+
 DESCRIPTION
 -----------
 A "patch ID" is nothing but a sum of SHA-1 of the file diffs associated with a

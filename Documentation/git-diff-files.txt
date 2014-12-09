@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git diff-files' [-q] [-0|-1|-2|-3|-c|--cc] [<common diff options>] [<path>...]
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Compares the files in the working tree and the index.  When paths

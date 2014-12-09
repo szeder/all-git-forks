@@ -12,6 +12,10 @@ SYNOPSIS
 'git check-ignore' [options] pathname...
 'git check-ignore' [options] --stdin < <list-of-paths>
 
+CATEGORY
+--------
+Helper command for script writers
+
 DESCRIPTION
 -----------
 

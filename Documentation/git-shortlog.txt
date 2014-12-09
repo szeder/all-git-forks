@@ -11,6 +11,10 @@ SYNOPSIS
 git log --pretty=short | 'git shortlog' [<options>]
 'git shortlog' [<options>] [<revision range>] [[\--] <path>...]
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 Summarizes 'git log' output in a format suitable for inclusion

@@ -12,6 +12,10 @@ SYNOPSIS
 [verse]
 'git unpack-file' <blob>
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Creates a file holding the contents of the blob specified by sha1. It

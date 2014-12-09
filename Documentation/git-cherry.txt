@@ -10,6 +10,10 @@ SYNOPSIS
 [verse]
 'git cherry' [-v] [<upstream> [<head> [<limit>]]]
 
+CATEGORY
+--------
+Ancillary interrogator
+
 DESCRIPTION
 -----------
 Determine whether there are commits in `<head>..<upstream>` that are

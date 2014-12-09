@@ -12,6 +12,10 @@ This would configure and start your web server, and run web browser pointing to
 gitweb.
 
 
+CATEGORY
+--------
+Ancillary interrogator
+
 DESCRIPTION
 -----------
 Gitweb provides a web interface to Git repositories.  Its features include:

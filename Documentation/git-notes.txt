@@ -22,6 +22,10 @@ SYNOPSIS
 'git notes' get-ref
 
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 Adds, removes, or reads notes attached to objects, without touching

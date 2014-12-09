@@ -12,6 +12,10 @@ SYNOPSIS
 'git mailinfo' [-k|-b] [-u | --encoding=<encoding> | -n] [--[no-]scissors] <msg> <patch>
 
 
+CATEGORY
+--------
+Helper command for script writers
+
 DESCRIPTION
 -----------
 Reads a single e-mail message from the standard input, and

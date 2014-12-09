@@ -12,6 +12,10 @@ SYNOPSIS
 'git fmt-merge-msg' [-m <message>] [--log[=<n>] | --no-log] <$GIT_DIR/FETCH_HEAD
 'git fmt-merge-msg' [-m <message>] [--log[=<n>] | --no-log] -F <file>
 
+CATEGORY
+--------
+Helper command for script writers
+
 DESCRIPTION
 -----------
 Takes the list of merged objects on stdin and produces a suitable

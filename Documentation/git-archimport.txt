@@ -12,6 +12,10 @@ SYNOPSIS
 'git archimport' [-h] [-v] [-o] [-a] [-f] [-T] [-D depth] [-t tempdir]
                <archive/branch>[:<git-branch>] ...
 
+CATEGORY
+--------
+Interface to foreign SCM
+
 DESCRIPTION
 -----------
 Imports a project from one or more Arch repositories. It will follow branches

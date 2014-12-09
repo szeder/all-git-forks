@@ -13,6 +13,10 @@ SYNOPSIS
 	 [--[no-]full] [--strict] [--verbose] [--lost-found]
 	 [--[no-]dangling] [--[no-]progress] [<object>*]
 
+CATEGORY
+--------
+Ancillary interrogator
+
 DESCRIPTION
 -----------
 Verifies the connectivity and validity of the objects in the database.

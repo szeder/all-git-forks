@@ -10,6 +10,10 @@ SYNOPSIS
 [verse]
 'git relink' [--safe] <dir>... <master_dir>
 
+CATEGORY
+--------
+Ancillary manipulator
+
 DESCRIPTION
 -----------
 This will scan 1 or more object repositories and look for objects in common

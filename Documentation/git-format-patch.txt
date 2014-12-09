@@ -25,6 +25,10 @@ SYNOPSIS
 		   [<common diff options>]
 		   [ <since> | <revision range> ]
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 

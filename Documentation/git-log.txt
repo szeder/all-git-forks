@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git log' [<options>] [<revision range>] [[\--] <path>...]
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 Shows the commit logs.

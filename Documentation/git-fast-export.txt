@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git fast-export [options]' | 'git fast-import'
 
+CATEGORY
+--------
+Ancillary manipulator
+
 DESCRIPTION
 -----------
 This program dumps the given revisions in a form suitable to be piped

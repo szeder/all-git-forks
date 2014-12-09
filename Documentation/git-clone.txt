@@ -17,6 +17,10 @@ SYNOPSIS
 	  [--recursive | --recurse-submodules] [--] <repository>
 	  [<directory>]
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 

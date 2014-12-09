@@ -25,6 +25,10 @@ SYNOPSIS
 'git config' [<file-option>] --get-colorbool name [stdout-is-tty]
 'git config' [<file-option>] -e | --edit
 
+CATEGORY
+--------
+Ancillary manipulator
+
 DESCRIPTION
 -----------
 You can query/set/replace/unset options with this command. The name is

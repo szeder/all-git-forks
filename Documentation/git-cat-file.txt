@@ -12,6 +12,10 @@ SYNOPSIS
 'git cat-file' (-t | -s | -e | -p | <type> | --textconv ) <object>
 'git cat-file' (--batch | --batch-check) < <list-of-objects>
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 In its first form, the command provides the content or the type of an object in

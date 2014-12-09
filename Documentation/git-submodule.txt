@@ -23,6 +23,10 @@ SYNOPSIS
 'git submodule' [--quiet] sync [--recursive] [--] [<path>...]
 
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 Submodules allow foreign repositories to be embedded within

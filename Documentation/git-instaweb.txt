@@ -12,6 +12,10 @@ SYNOPSIS
                [--browser=<browser>]
 'git instaweb' [--start] [--stop] [--restart]
 
+CATEGORY
+--------
+Ancillary interrogator
+
 DESCRIPTION
 -----------
 A simple script to set up `gitweb` and a web server for browsing the local

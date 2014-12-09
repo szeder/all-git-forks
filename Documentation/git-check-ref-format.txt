@@ -13,6 +13,10 @@ SYNOPSIS
        <refname>
 'git check-ref-format' --branch <branchname-shorthand>
 
+CATEGORY
+--------
+Helper command for script writers
+
 DESCRIPTION
 -----------
 Checks if a given 'refname' is acceptable, and exits with a non-zero

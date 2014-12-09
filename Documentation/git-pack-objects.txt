@@ -16,6 +16,10 @@ SYNOPSIS
 	[--keep-true-parents] < object-list
 
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Reads list of objects from the standard input, and writes a packed

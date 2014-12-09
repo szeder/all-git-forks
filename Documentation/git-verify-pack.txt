@@ -12,6 +12,10 @@ SYNOPSIS
 'git verify-pack' [-v|--verbose] [-s|--stat-only] [--] <pack>.idx ...
 
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Reads given idx file for packed Git archive created with the

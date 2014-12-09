@@ -12,6 +12,10 @@ SYNOPSIS
 'git get-tar-commit-id' < <tarfile>
 
 
+CATEGORY
+--------
+Ancillary interrogator
+
 DESCRIPTION
 -----------
 Acts as a filter, extracting the commit ID stored in archives created by

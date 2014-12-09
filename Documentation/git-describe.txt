@@ -12,6 +12,10 @@ SYNOPSIS
 'git describe' [--all] [--tags] [--contains] [--abbrev=<n>] <commit-ish>...
 'git describe' [--all] [--tags] [--contains] [--abbrev=<n>] --dirty[=<mark>]
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 The command finds the most recent tag that is reachable from a

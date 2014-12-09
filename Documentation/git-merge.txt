@@ -15,6 +15,10 @@ SYNOPSIS
 'git merge' <msg> HEAD <commit>...
 'git merge' --abort
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 Incorporates changes from the named commits (since the time their

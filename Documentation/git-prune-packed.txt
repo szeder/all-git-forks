@@ -12,6 +12,10 @@ SYNOPSIS
 'git prune-packed' [-n|--dry-run] [-q|--quiet]
 
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 This program searches the `$GIT_OBJECT_DIRECTORY` for all objects that currently

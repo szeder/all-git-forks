@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git merge-tree' <base-tree> <branch1> <branch2>
 
+CATEGORY
+--------
+Ancillary interrogator
+
 DESCRIPTION
 -----------
 Reads three tree-ish, and output trivial merge results and

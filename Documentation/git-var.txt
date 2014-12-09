@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git var' ( -l | <variable> )
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Prints a Git logical variable.

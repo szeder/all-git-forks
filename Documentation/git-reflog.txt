@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git reflog' <subcommand> <options>
 
+CATEGORY
+--------
+Ancillary manipulator
+
 DESCRIPTION
 -----------
 The command takes various subcommands, and different options

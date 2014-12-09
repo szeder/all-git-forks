@@ -12,6 +12,10 @@ SYNOPSIS
 'git unpack-objects' [-n] [-q] [-r] [--strict] < <pack-file>
 
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Read a packed archive (.pack) from the standard input, expanding

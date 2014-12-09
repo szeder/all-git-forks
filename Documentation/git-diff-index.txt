@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git diff-index' [-m] [--cached] [<common diff options>] <tree-ish> [<path>...]
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Compares the content and mode of the blobs found in a tree object

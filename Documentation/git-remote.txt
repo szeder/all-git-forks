@@ -22,6 +22,10 @@ SYNOPSIS
 'git remote prune' [-n | --dry-run] <name>...
 'git remote' [-v | --verbose] 'update' [-p | --prune] [(<group> | <remote>)...]
 
+CATEGORY
+--------
+Ancillary manipulator
+
 DESCRIPTION
 -----------
 

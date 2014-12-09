@@ -10,6 +10,10 @@ SYNOPSIS
 [verse]
 'git mailsplit' [-b] [-f<nn>] [-d<prec>] [--keep-cr] -o<directory> [--] [(<mbox>|<Maildir>)...]
 
+CATEGORY
+--------
+Helper command for script writers
+
 DESCRIPTION
 -----------
 Splits a mbox file or a Maildir into a list of files: "0001" "0002" ..  in the

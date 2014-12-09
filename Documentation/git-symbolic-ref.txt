@@ -12,6 +12,10 @@ SYNOPSIS
 'git symbolic-ref' [-q] [--short] <name>
 'git symbolic-ref' --delete [-q] <name>
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Given one argument, reads which branch head the given symbolic

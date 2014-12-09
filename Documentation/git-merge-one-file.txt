@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git merge-one-file'
 
+CATEGORY
+--------
+Helper command for script writers
+
 DESCRIPTION
 -----------
 This is the standard helper program to use with 'git merge-index'

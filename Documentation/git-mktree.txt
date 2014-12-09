@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git mktree' [-z] [--missing] [--batch]
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Reads standard input in non-recursive `ls-tree` output format, and creates

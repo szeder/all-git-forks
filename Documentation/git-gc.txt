@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git gc' [--aggressive] [--auto] [--quiet] [--prune=<date> | --no-prune] [--force]
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 Runs a number of housekeeping tasks within the current repository,

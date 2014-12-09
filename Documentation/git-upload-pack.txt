@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git-upload-pack' [--strict] [--timeout=<n>] <directory>
 
+CATEGORY
+--------
+Commands used internally for synching repositories
+
 DESCRIPTION
 -----------
 Invoked by 'git fetch-pack', learns what

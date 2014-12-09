@@ -15,6 +15,10 @@ SYNOPSIS
 'git merge-base' --independent <commit>...
 'git merge-base' --fork-point <ref> [<commit>]
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 

@@ -11,6 +11,10 @@ SYNOPSIS
 'git column' [--command=<name>] [--[raw-]mode=<mode>] [--width=<width>]
 	     [--indent=<string>] [--nl=<string>] [--padding=<n>]
 
+CATEGORY
+--------
+Helper command for script writers
+
 DESCRIPTION
 -----------
 This command formats its input into multiple columns.

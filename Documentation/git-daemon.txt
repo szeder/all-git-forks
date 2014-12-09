@@ -22,6 +22,10 @@ SYNOPSIS
 	      [--user=<user> [--group=<group>]]]
 	     [<directory>...]
 
+CATEGORY
+--------
+Commands used internally for synching repositories
+
 DESCRIPTION
 -----------
 A really simple TCP Git daemon that normally listens on port "DEFAULT_GIT_PORT"

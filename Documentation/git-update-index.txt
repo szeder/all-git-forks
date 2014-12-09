@@ -23,6 +23,10 @@ SYNOPSIS
 	     [--verbose]
 	     [--] [<file>...]
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Modifies the index or directory cache. Each file mentioned is updated

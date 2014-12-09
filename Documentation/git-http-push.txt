@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git http-push' [--all] [--dry-run] [--force] [--verbose] <url> <ref> [<ref>...]
 
+CATEGORY
+--------
+Commands used internally for synching repositories
+
 DESCRIPTION
 -----------
 Sends missing objects to remote repository, and updates the

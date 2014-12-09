@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 '. "$(git --exec-path)/git-parse-remote"'
 
+CATEGORY
+--------
+Commands used internally for synching repositories
+
 DESCRIPTION
 -----------
 This script is included in various scripts to supply

@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git bisect' <subcommand> <options>
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 The command takes various subcommands, and different options depending

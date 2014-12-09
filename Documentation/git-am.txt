@@ -18,6 +18,10 @@ SYNOPSIS
 	 [(<mbox> | <Maildir>)...]
 'git am' (--continue | --skip | --abort)
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 Splits mail messages in a mailbox into commit log message,

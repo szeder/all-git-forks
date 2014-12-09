@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git rev-parse' [ --option ] <args>...
 
+CATEGORY
+--------
+Ancillary interrogator
+
 DESCRIPTION
 -----------
 

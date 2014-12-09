@@ -14,6 +14,10 @@ SYNOPSIS
 	      [--remote=<repo> [--exec=<git-upload-archive>]] <tree-ish>
 	      [<path>...]
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 Creates an archive of the specified format containing the tree

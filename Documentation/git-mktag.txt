@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git mktag' < signature_file
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Reads a tag contents on standard input and creates a tag object

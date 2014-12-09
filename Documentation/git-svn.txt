@@ -10,6 +10,10 @@ SYNOPSIS
 [verse]
 'git svn' <command> [options] [arguments]
 
+CATEGORY
+--------
+Interface to foreign SCM
+
 DESCRIPTION
 -----------
 'git svn' is a simple conduit for changesets between Subversion and Git.

@@ -13,6 +13,10 @@ SYNOPSIS
 	      [-t] [-r] [-c | --cc] [--root] [<common diff options>]
 	      <tree-ish> [<tree-ish>] [<path>...]
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Compares the content and mode of the blobs found via two tree objects.

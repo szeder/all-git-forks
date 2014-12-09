@@ -18,6 +18,10 @@ SYNOPSIS
 	  [--exclude=<path>] [--include=<path>] [--directory=<root>]
 	  [--verbose] [<patch>...]
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Reads the supplied diff output (i.e. "a patch") and applies it to files.

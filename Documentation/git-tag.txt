@@ -17,6 +17,10 @@ SYNOPSIS
 	[<pattern>...]
 'git tag' -v <tagname>...
 
+CATEGORY
+--------
+Main user interface command (porcelain)
+
 DESCRIPTION
 -----------
 

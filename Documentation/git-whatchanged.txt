@@ -11,6 +11,10 @@ SYNOPSIS
 [verse]
 'git whatchanged' <option>...
 
+CATEGORY
+--------
+Ancillary interrogator
+
 DESCRIPTION
 -----------
 

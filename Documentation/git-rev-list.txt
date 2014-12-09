@@ -58,6 +58,10 @@ SYNOPSIS
 	     [ \--use-bitmap-index ]
 	     <commit>... [ \-- <paths>... ]
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 

@@ -12,6 +12,10 @@ SYNOPSIS
 'git stripspace' [-s | --strip-comments] < input
 'git stripspace' [-c | --comment-lines] < input
 
+CATEGORY
+--------
+Helper command for script writers
+
 DESCRIPTION
 -----------
 

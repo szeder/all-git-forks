@@ -12,6 +12,10 @@ SYNOPSIS
 'git check-mailmap' [options] <contact>...
 
 
+CATEGORY
+--------
+Helper command for script writers
+
 DESCRIPTION
 -----------
 

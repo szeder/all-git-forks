@@ -12,6 +12,10 @@ SYNOPSIS
 'git hash-object' [-t <type>] [-w] [--path=<file>|--no-filters] [--stdin] [--] <file>...
 'git hash-object' [-t <type>] [-w] --stdin-paths [--no-filters] < <list-of-paths>
 
+CATEGORY
+--------
+Low level command for script writers (plumbing)
+
 DESCRIPTION
 -----------
 Computes the object ID value for an object with specified type
