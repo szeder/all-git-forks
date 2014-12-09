@@ -751,9 +751,23 @@ static void collect_all_attrs(const char *path)
 
 int git_check_attr(const char *path, int num, struct git_attr_check *check)
 {
-	int i;
+	struct attr_stack *stk;
+	int i, pathlen, rem, dirlen;
+	int basename_offset;
+	struct attr_stack *old_stack = attr_stack;
 
-	collect_all_attrs(path);
+	pathlen = split_path(path, &dirlen, &basename_offset);
+	prepare_attr_stack(path, dirlen);
+
+	if (old_stack == attr_stack && num == 1) {
+	}
+
+	for (i = 0; i < num; i++)
+		check_all_attr[check[i].attr->attr_nr].value = ATTR__UNKNOWN;
+
+	rem = git_attr_nr;
+	for (stk = attr_stack; 0 < rem && stk; stk = stk->prev)
+		rem = fill(path, pathlen, basename_offset, stk, rem);
 
 	for (i = 0; i < num; i++) {
 		const char *value = check_all_attr[check[i].attr->attr_nr].value;
