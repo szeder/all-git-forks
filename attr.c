@@ -705,14 +705,10 @@ static int macroexpand_one(int attr_nr, int rem)
 	return rem;
 }
 
-/*
- * Collect all attributes for path into the array pointed to by
- * check_all_attr.
- */
-static void collect_all_attrs(const char *path)
+static int split_path(const char *path,
+		      int *dirlen_p, int *basename_offset_p)
 {
-	struct attr_stack *stk;
-	int i, pathlen, rem, dirlen;
+	int pathlen, dirlen;
 	const char *cp, *last_slash = NULL;
 	int basename_offset;
 
@@ -728,7 +724,22 @@ static void collect_all_attrs(const char *path)
 		basename_offset = 0;
 		dirlen = 0;
 	}
+	*dirlen_p = dirlen;
+	*basename_offset_p = basename_offset;
+	return pathlen;
+}
 
+/*
+ * Collect all attributes for path into the array pointed to by
+ * check_all_attr.
+ */
+static void collect_all_attrs(const char *path)
+{
+	struct attr_stack *stk;
+	int i, pathlen, rem, dirlen;
+	int basename_offset;
+
+	pathlen = split_path(path, &dirlen, &basename_offset);
 	prepare_attr_stack(path, dirlen);
 	for (i = 0; i < git_attr_nr; i++)
 		check_all_attr[i].value = ATTR__UNKNOWN;
