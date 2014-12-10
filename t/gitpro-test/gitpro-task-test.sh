@@ -22,9 +22,19 @@ echo '***********************************'
 ./gp-tread.sh
 ./clean-db.sh
 echo '***********************************'
+echo 'Starting assist task reading tests'
+echo '***********************************'
+./gp-tread-assist.sh
+./clean-db.sh
+echo '***********************************'
 echo '   Starting task deletion tests'
 echo '***********************************'
 ./gp-tdelete.sh
+./clean-db.sh
+echo '***********************************'
+echo 'Starting assist task delete tests'
+echo '***********************************'
+./gp-tdelete-assist.sh
 ./clean-db.sh
 echo '***********************************'
 echo '   Starting task update tests'

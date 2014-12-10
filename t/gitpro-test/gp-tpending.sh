@@ -10,6 +10,10 @@ echo "testing: git task -a"
 
 # Insert previous data into tasks to run following test
 cat > "test-data.sql" << \EOF
+DELETE FROM GP_ROL WHERE NOMBRE_ROL='EXAMPLE';
+DELETE FROM GP_ASIGNACIONES;
+DELETE FROM GP_USUARIO WHERE NOMBRE_USUARIO='user1';
+DELETE FROM GP_USUARIO WHERE NOMBRE_USUARIO='user2';
 INSERT INTO GP_ROL(nombre_rol,crear_rol,asignar_rol,consultar_tarea,asignar_tarea,actualizar_tarea,asociar_archivos,borrar_tarea,crear_tarea,borrar_rol,actualizar_rol) 
 values('EXAMPLE',0,0,1,1,1,1,1,1,1,1);
 INSERT INTO GP_USUARIO(nombre_usuario,nombre_rol_usuario) values ('user1','EXAMPLE');

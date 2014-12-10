@@ -44,7 +44,7 @@ cat > "$input/update001.in" << \EOF
 EOF
 cat > "$output/update001.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo -n nuevo' 'update001'
 
@@ -65,7 +65,7 @@ cat > "$input/update002.in" << \EOF
 EOF
 cat > "$output/update002.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo -n nuevo' 'update002'
 
@@ -85,7 +85,7 @@ task 5
 EOF
 cat > "$output/update003.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo -n nuevo' 'update003'
 
@@ -105,7 +105,7 @@ in progress
 EOF
 cat > "$output/update004.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo -n nuevo' 'update004'
 
@@ -125,7 +125,7 @@ IN PROGRESS
 EOF
 cat > "$output/update005.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update005'
 
@@ -145,7 +145,7 @@ iN proGrEss
 EOF
 cat > "$output/update006.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update006'
 
@@ -165,7 +165,7 @@ hola
 EOF
 cat > "$output/update007.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update007'
 
@@ -185,7 +185,7 @@ cat > "$input/update008.in" << \EOF
 EOF
 cat > "$output/update008.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update008'
 
@@ -205,7 +205,7 @@ inexistent
 EOF
 cat > "$output/update009.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update009'
 
@@ -225,7 +225,7 @@ cat > "$input/update010.in" << \EOF
 EOF
 cat > "$output/update010.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update010'
 
@@ -245,7 +245,7 @@ task
 EOF
 cat > "$output/update011.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update011'
 
@@ -265,7 +265,7 @@ new
 EOF
 cat > "$output/update012.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update012'
 
@@ -285,7 +285,7 @@ NEW
 EOF
 cat > "$output/update013.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update013'
 
@@ -305,7 +305,7 @@ New
 EOF
 cat > "$output/update014.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update014'
 
@@ -325,7 +325,7 @@ inexistent
 EOF
 cat > "$output/update015.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update015'
 
@@ -345,7 +345,7 @@ date
 EOF
 cat > "$output/update016.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update016'
 
@@ -365,7 +365,7 @@ cat > "$input/update017.in" << \EOF
 EOF
 cat > "$output/update017.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update017'
 
@@ -385,7 +385,7 @@ cat > "$input/update018.in" << \EOF
 EOF
 cat > "$output/update018.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update018'
 
@@ -405,7 +405,7 @@ cat > "$input/update019.in" << \EOF
 EOF
 cat > "$output/update019.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update019'
 
@@ -425,7 +425,7 @@ cat > "$input/update020.in" << \EOF
 EOF
 cat > "$output/update020.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update020'
 
@@ -445,7 +445,7 @@ cat > "$input/update021.in" << \EOF
 EOF
 cat > "$output/update021.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update021'
 
@@ -465,7 +465,7 @@ cat > "$input/update022.in" << \EOF
 EOF
 cat > "$output/update022.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update022'
 
@@ -485,7 +485,7 @@ cat > "$input/update023.in" << \EOF
 EOF
 cat > "$output/update023.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update023'
 
@@ -505,7 +505,7 @@ cat > "$input/update024.in" << \EOF
 EOF
 cat > "$output/update024.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update024'
 
@@ -525,7 +525,7 @@ cat > "$input/update025.in" << \EOF
 EOF
 cat > "$output/update025.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update025'
 
@@ -545,7 +545,7 @@ date
 EOF
 cat > "$output/update026.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update026'
 
@@ -566,7 +566,7 @@ cat > "$input/update027.in" << \EOF
 EOF
 cat > "$output/update027.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update027'
 
@@ -587,7 +587,7 @@ cat > "$input/update028.in" << \EOF
 EOF
 cat > "$output/update028.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update028'
 
@@ -608,7 +608,7 @@ cat > "$input/update029.in" << \EOF
 EOF
 cat > "$output/update029.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update029'
 
@@ -628,7 +628,7 @@ cat > "$input/update030.in" << \EOF
 EOF
 cat > "$output/update030.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update030'
 
@@ -648,7 +648,7 @@ cat > "$input/update031.in" << \EOF
 EOF
 cat > "$output/update031.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update031'
 
@@ -668,7 +668,7 @@ cat > "$input/update032.in" << \EOF
 EOF
 cat > "$output/update032.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update032'
 
@@ -688,7 +688,7 @@ cat > "$input/update033.in" << \EOF
 EOF
 cat > "$output/update033.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update033'
 
@@ -708,7 +708,7 @@ cat > "$input/update034.in" << \EOF
 EOF
 cat > "$output/update034.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update034'
 
@@ -728,7 +728,7 @@ cat > "$input/update035.in" << \EOF
 EOF
 cat > "$output/update035.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update035'
 
@@ -748,7 +748,7 @@ date
 EOF
 cat > "$output/update036.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update036'
 
@@ -769,7 +769,7 @@ cat > "$input/update037.in" << \EOF
 EOF
 cat > "$output/update037.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update037'
 
@@ -790,7 +790,7 @@ cat > "$input/update038.in" << \EOF
 EOF
 cat > "$output/update038.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update038'
 
@@ -811,7 +811,7 @@ cat > "$input/update039.in" << \EOF
 EOF
 cat > "$output/update039.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update039'
 
@@ -831,7 +831,7 @@ cat > "$input/update040.in" << \EOF
 EOF
 cat > "$output/update040.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update040'
 
@@ -851,7 +851,7 @@ cat > "$input/update041.in" << \EOF
 EOF
 cat > "$output/update041.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update041'
 
@@ -871,7 +871,7 @@ cat > "$input/update042.in" << \EOF
 EOF
 cat > "$output/update042.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update042'
 
@@ -891,7 +891,7 @@ cat > "$input/update043.in" << \EOF
 EOF
 cat > "$output/update043.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update043'
 
@@ -911,7 +911,7 @@ cat > "$input/update044.in" << \EOF
 EOF
 cat > "$output/update044.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update044'
 
@@ -931,7 +931,7 @@ cat > "$input/update045.in" << \EOF
 EOF
 cat > "$output/update045.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update045'
 
@@ -951,7 +951,7 @@ date
 EOF
 cat > "$output/update046.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update046'
 
@@ -972,7 +972,7 @@ cat > "$input/update047.in" << \EOF
 EOF
 cat > "$output/update047.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update047'
 
@@ -993,7 +993,7 @@ cat > "$input/update048.in" << \EOF
 EOF
 cat > "$output/update048.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update048'
 
@@ -1014,7 +1014,7 @@ cat > "$input/update049.in" << \EOF
 EOF
 cat > "$output/update049.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update049'
 
@@ -1034,7 +1034,7 @@ cat > "$input/update050.in" << \EOF
 EOF
 cat > "$output/update050.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update050'
 
@@ -1054,7 +1054,7 @@ cat > "$input/update051.in" << \EOF
 EOF
 cat > "$output/update051.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update051'
 
@@ -1074,7 +1074,7 @@ cat > "$input/update052.in" << \EOF
 EOF
 cat > "$output/update052.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update052'
 
@@ -1094,7 +1094,7 @@ cat > "$input/update053.in" << \EOF
 EOF
 cat > "$output/update053.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update053'
 
@@ -1114,7 +1114,7 @@ cat > "$input/update054.in" << \EOF
 EOF
 cat > "$output/update054.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update054'
 
@@ -1134,7 +1134,7 @@ cat > "$input/update055.in" << \EOF
 EOF
 cat > "$output/update055.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update055'
 
@@ -1154,7 +1154,7 @@ cat > "$input/update056.in" << \EOF
 EOF
 cat > "$output/update056.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update056'
 
@@ -1174,7 +1174,7 @@ cat > "$input/update057.in" << \EOF
 EOF
 cat > "$output/update057.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update057'
 
@@ -1194,7 +1194,7 @@ cat > "$input/update058.in" << \EOF
 EOF
 cat > "$output/update058.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update058'
 
@@ -1214,7 +1214,7 @@ cat > "$input/update059.in" << \EOF
 EOF
 cat > "$output/update059.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update059'
 
@@ -1234,7 +1234,7 @@ cat > "$input/update060.in" << \EOF
 EOF
 cat > "$output/update060.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update060'
 
@@ -1254,7 +1254,7 @@ cat > "$input/update061.in" << \EOF
 EOF
 cat > "$output/update061.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update061'
 
@@ -1274,7 +1274,7 @@ cat > "$input/update062.in" << \EOF
 EOF
 cat > "$output/update062.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update062'
 
@@ -1294,7 +1294,7 @@ cat > "$input/update063.in" << \EOF
 EOF
 cat > "$output/update063.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update063'
 
@@ -1314,7 +1314,7 @@ inexistent
 EOF
 cat > "$output/update064.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update064'
 
@@ -1334,7 +1334,7 @@ very high
 EOF
 cat > "$output/update065.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update065'
 
@@ -1354,7 +1354,7 @@ blocker
 EOF
 cat > "$output/update066.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update066'
 
@@ -1374,7 +1374,7 @@ VERY HIGH
 EOF
 cat > "$output/update067.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update067'
 
@@ -1394,7 +1394,7 @@ BLOCKER
 EOF
 cat > "$output/update068.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update068'
 
@@ -1414,7 +1414,7 @@ veRy hIgH
 EOF
 cat > "$output/update069.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update069'
 
@@ -1434,7 +1434,7 @@ blOcKEr
 EOF
 cat > "$output/update070.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update070'
 
@@ -1454,7 +1454,7 @@ inexistent
 EOF
 cat > "$output/update071.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update071'
 
@@ -1474,7 +1474,7 @@ test
 EOF
 cat > "$output/update072.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update072'
 
@@ -1494,7 +1494,7 @@ support
 EOF
 cat > "$output/update073.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update073'
 
@@ -1514,7 +1514,7 @@ TEST
 EOF
 cat > "$output/update074.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update074'
 
@@ -1534,7 +1534,7 @@ SUPPORT
 EOF
 cat > "$output/update075.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update075'
 
@@ -1554,7 +1554,7 @@ tEsT
 EOF
 cat > "$output/update076.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update076'
 
@@ -1574,7 +1574,7 @@ suPPorT
 EOF
 cat > "$output/update077.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update077'
 
@@ -1594,7 +1594,7 @@ invalid
 EOF
 cat > "$output/update078.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update078'
 
@@ -1614,7 +1614,7 @@ invalid
 EOF
 cat > "$output/update079.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update079'
 
@@ -1634,7 +1634,7 @@ cat > "$input/update080.in" << \EOF
 EOF
 cat > "$output/update080.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update080'
 
@@ -1654,7 +1654,7 @@ cat > "$input/update081.in" << \EOF
 EOF
 cat > "$output/update081.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update081'
 
@@ -1674,7 +1674,7 @@ cat > "$input/update082.in" << \EOF
 EOF
 cat > "$output/update082.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update082'
 
@@ -1694,7 +1694,7 @@ cat > "$input/update083.in" << \EOF
 EOF
 cat > "$output/update083.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update083'
 
@@ -1714,7 +1714,7 @@ cat > "$input/update084.in" << \EOF
 EOF
 cat > "$output/update084.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update084'
 
@@ -1734,7 +1734,7 @@ cat > "$input/update085.in" << \EOF
 EOF
 cat > "$output/update085.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update085'
 
@@ -1754,7 +1754,7 @@ cat > "$input/update086.in" << \EOF
 EOF
 cat > "$output/update086.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update086'
 
@@ -1774,7 +1774,7 @@ cat > "$input/update087.in" << \EOF
 EOF
 cat > "$output/update087.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update087'
 
@@ -1794,7 +1794,7 @@ cat > "$input/update088.in" << \EOF
 EOF
 cat > "$output/update088.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update088'
 
@@ -1814,7 +1814,7 @@ cat > "$input/update089.in" << \EOF
 EOF
 cat > "$output/update089.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update089'
 
@@ -1834,7 +1834,7 @@ cat > "$input/update090.in" << \EOF
 EOF
 cat > "$output/update090.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update090'
 
@@ -1854,7 +1854,7 @@ cat > "$input/update091.in" << \EOF
 EOF
 cat > "$output/update091.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update091'
 
@@ -1874,7 +1874,7 @@ resolved
 EOF
 cat > "$output/update092.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update092'
 
@@ -1894,7 +1894,7 @@ RESOLVED
 EOF
 cat > "$output/update093.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update093'
 
@@ -1914,7 +1914,7 @@ ResOlVEd
 EOF
 cat > "$output/update094.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update094'
 
@@ -1941,7 +1941,7 @@ cat > "$input/update095.in" << \EOF
 EOF
 cat > "$output/update095.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update095'
 
@@ -1972,7 +1972,7 @@ same name
 EOF
 cat > "$output/update096.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update096'
 
@@ -1994,7 +1994,7 @@ cat > "$input/update097.in" << \EOF
 EOF
 cat > "$output/update097.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update097'
 
@@ -2014,7 +2014,7 @@ new
 EOF
 cat > "$output/update098.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update098'
 
@@ -2034,7 +2034,7 @@ NEW
 EOF
 cat > "$output/update099.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update099'
 
@@ -2054,7 +2054,7 @@ nEW
 EOF
 cat > "$output/update100.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update100'
 
@@ -2074,7 +2074,7 @@ high
 EOF
 cat > "$output/update101.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update101'
 
@@ -2094,7 +2094,7 @@ HIGH
 EOF
 cat > "$output/update102.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update102'
 
@@ -2114,7 +2114,7 @@ hIgH
 EOF
 cat > "$output/update103.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update103'
 
@@ -2134,7 +2134,7 @@ tEsT
 EOF
 cat > "$output/update104.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update104'
 
@@ -2154,7 +2154,7 @@ TEST
 EOF
 cat > "$output/update105.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update105'
 
@@ -2174,7 +2174,7 @@ test
 EOF
 cat > "$output/update106.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -n nuevo' 'update106'
 
@@ -2210,7 +2210,7 @@ cat > "$input/update107.in" << \EOF
 EOF
 cat > "$output/update107.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Invalid state transition
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Invalid state transition
 EOF
 ./launch-test.sh 'git task -u -s new' 'update107'
 
@@ -2230,7 +2230,7 @@ cat > "$input/update108.in" << \EOF
 EOF
 cat > "$output/update108.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u --desc descrip' 'update108'
 
@@ -2250,7 +2250,7 @@ cat > "$input/update109.in" << \EOF
 EOF
 cat > "$output/update109.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u --notes mynotes' 'update109'
 
@@ -2270,7 +2270,7 @@ cat > "$input/update110.in" << \EOF
 EOF
 cat > "$output/update110.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u --est_start 10/10/2015' 'update110'
 
@@ -2290,7 +2290,7 @@ cat > "$input/update111.in" << \EOF
 EOF
 cat > "$output/update111.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u --est_end 10/10/2015' 'update111'
 
@@ -2310,7 +2310,7 @@ cat > "$input/update112.in" << \EOF
 EOF
 cat > "$output/update112.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u --start 10/10/2015' 'update112'
 
@@ -2330,7 +2330,7 @@ cat > "$input/update113.in" << \EOF
 EOF
 cat > "$output/update113.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u --end 10/10/2015' 'update113'
 
@@ -2350,7 +2350,7 @@ cat > "$input/update114.in" << \EOF
 EOF
 cat > "$output/update114.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -p high' 'update114'
 
@@ -2370,7 +2370,7 @@ cat > "$input/update115.in" << \EOF
 EOF
 cat > "$output/update115.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u -t test' 'update115'
 
@@ -2390,7 +2390,7 @@ cat > "$input/update116.in" << \EOF
 EOF
 cat > "$output/update116.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u --est_time 4' 'update116'
 
@@ -2410,7 +2410,7 @@ cat > "$input/update117.in" << \EOF
 EOF
 cat > "$output/update117.out" << \EOF
 All filters are by equality
-task id: task name: task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
+task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: + Tasks updated successfully
 EOF
 ./launch-test.sh 'git task -u --time 15' 'update117'
 ./clean-db.sh

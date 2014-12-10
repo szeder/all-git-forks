@@ -21,7 +21,7 @@ static const char * const builtin_task_usage[] =
 	NULL
 };
 
-static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread, showtypes, showstates, showpriorities, readverbose, pending;
+static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread, showtypes, showstates, showpriorities, readverbose, pending, assist;
 static char *add = NULL;
 static char *rm = NULL;
 static char *task_id = NULL;
@@ -50,6 +50,10 @@ static char *filter_task_type = NULL;
 static char *filter_task_est_time = NULL;
 static char *filter_task_time = NULL;
 
+void alloc_filters(char **filter){
+	(*filter) = (char *) malloc(MAX_BUFFER_SIZE);(*filter)[0]='\0';
+}
+
 void dealloc_filters(){
 	free(filter_task_id);
 	free(filter_task_name);
@@ -66,42 +70,30 @@ void dealloc_filters(){
 
 void receive_filters(char **id,char **name,char **state,char **est_start,char **est_end,
 					char **start,char **end,char **prior,char **type,char **est_time,
-					char **time){
-	(*id) = (char *) malloc(MAX_BUFFER_SIZE);
-	(*name) = (char *) malloc(MAX_BUFFER_SIZE);
-	(*state) = (char *) malloc(MAX_BUFFER_SIZE);
-	(*est_start) = (char *) malloc(MAX_BUFFER_SIZE);
-	(*est_end) = (char *) malloc(MAX_BUFFER_SIZE);
-	(*start) = (char *) malloc(MAX_BUFFER_SIZE);
-	(*end) = (char *) malloc(MAX_BUFFER_SIZE);
-	(*prior) = (char *) malloc(MAX_BUFFER_SIZE);
-	(*type) = (char *) malloc(MAX_BUFFER_SIZE);
-	(*est_time) = (char *) malloc(MAX_BUFFER_SIZE);
-	(*time) = (char *) malloc(MAX_BUFFER_SIZE);
-		
-	printf(_("All filters are by equality"),OUT);
-	printf(_("\ntask id: "),OUT);
+					char **time){	
+	printf("All filters are by equality");
+	printf("\ntask id: ");
 	fgets((*id),MAX_BUFFER_SIZE,IN);
 	(*id)[strlen((*id))-1]='\0';
-	printf(_("task name: "),OUT);
+	printf("task name (contained text): ");
 	fgets((*name),MAX_BUFFER_SIZE,IN);(*name)[strlen((*name))-1]='\0';
-	printf(_("task state: "),OUT);
+	printf("task state: ");
 	fgets((*state),MAX_BUFFER_SIZE,IN);(*state)[strlen((*state))-1]='\0';
-	printf(_("task estimated start date: "),OUT);
+	printf("task estimated start date: ");
 	fgets((*est_start),MAX_BUFFER_SIZE,IN);(*est_start)[strlen((*est_start))-1]='\0';
-	printf(_("task estimated end date: "),OUT);
+	printf("task estimated end date: ");
 	fgets((*est_end),MAX_BUFFER_SIZE,IN);(*est_end)[strlen((*est_end))-1]='\0';
-	printf(_("task real start date: "),OUT);
+	printf("task real start date: ");
 	fgets((*start),MAX_BUFFER_SIZE,IN);(*start)[strlen((*start))-1]='\0';
-	printf(_("task real end date: "),OUT);
+	printf("task real end date: ");
 	fgets((*end),MAX_BUFFER_SIZE,IN);(*end)[strlen((*end))-1]='\0';
-	printf(_("task priority: "),OUT);
+	printf("task priority: ");
 	fgets((*prior),MAX_BUFFER_SIZE,IN);(*prior)[strlen((*prior))-1]='\0';
-	printf(_("task type: "),OUT);
+	printf("task type: ");
 	fgets((*type),MAX_BUFFER_SIZE,IN);(*type)[strlen((*type))-1]='\0';
-	printf(_("task estimated time: "),OUT);
+	printf("task estimated time: ");
 	fgets((*est_time),MAX_BUFFER_SIZE,IN);(*est_time)[strlen((*est_time))-1]='\0';
-	printf(_("task real time: "),OUT);
+	printf("task real time: ");
 	fgets((*time),MAX_BUFFER_SIZE,IN);(*time)[strlen((*time))-1]='\0';
 }
 
@@ -127,6 +119,7 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 		OPT_GROUP("Link and Assign options"),
 		OPT_STRING(0,"add",&add,"data1,data2 ... dataN",N_("option to add files or users to a given task")),
 		OPT_STRING(0,"rm",&rm,"data1,data2 ... dataN",N_("option to remove files or usert to a given task")),
+		OPT_BOOL(0,"assist",&assist,N_("introduce filters in interactive mode")),
 		OPT_GROUP("Task parameters"),
 		OPT_STRING('i',"id",&task_id,"task id",N_("specifies task id")),		
 		OPT_STRING('n',"name",&task_name,"task name",N_("specifies task name")),
@@ -149,25 +142,24 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 	/* Check if username is configured */
 	char *uname = get_username();
 	if(uname==NULL){
-		printf("Use git config --global user.name your_name to configure name and let them know to administrator\n",ERR);
+		printf("Use git config --global user.name your_name to configure name and let them know to administrator\n");
 		return 0;
 	}
 	
 	/* Check if role has been assigned to user */
 	char *urole = get_role(uname);
 	if(urole==NULL){
-		printf("You haven't been assigned a role.\n",ERR);
+		printf("You haven't been assigned a role.\n");
 		free(uname);
 		return 0;
 	}
 
 /* START [1.7] Receive data process */
 	argc = parse_options(argc, argv, prefix, builtin_task_options, builtin_task_usage, 0);
-
 	
 	/* More than one option selected at time */
 	if(tcreate + tlink + tassign + tdelete + tupdate + tread + showtypes + showstates + showpriorities > 1 ){
-		printf(_("Only one option at time\n"),ERR);
+		printf("Only one option at time\n");
 		return 0;
 	}else {
 
@@ -178,7 +170,7 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 			|| (tupdate && !can_update_task(urole))
 			|| (tlink && !can_link_files(urole))
 			|| (tdelete && !can_remove_task(urole)) ){
-			printf("You haven't enought permissions to do this action.\n",ERR);
+			printf("You haven't enought permissions to do this action.\n");
 			free(uname);
 			free(urole);		
 			return 0;
@@ -186,12 +178,63 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 		
 		
 		/* Receive filter data if delete, update or read tasks is set */
-		if(tdelete || tupdate || tread){
+		if(tdelete || tread){
+			if(assist){
+				alloc_filters(&filter_task_id);alloc_filters(&filter_task_name);
+				alloc_filters(&filter_task_state);alloc_filters(&filter_task_est_start);
+				alloc_filters(&filter_task_est_end);alloc_filters(&filter_task_start);
+				alloc_filters(&filter_task_end);alloc_filters(&filter_task_prior);alloc_filters(&filter_task_type);
+				alloc_filters(&filter_task_est_time);alloc_filters(&filter_task_time);
+				receive_filters(&filter_task_id,&filter_task_name,&filter_task_state,
+					&filter_task_est_start,&filter_task_est_end,&filter_task_start,
+					&filter_task_end,&filter_task_prior,&filter_task_type,
+					&filter_task_est_time,&filter_task_time);
+			}else{
+				if(task_desc!=NULL){
+					printf("Can't filter by description. Try again.\n");
+					return 0;
+				}
+				if(task_notes!=NULL){
+					printf("Can't filter by notes. Try again.\n");
+					return 0;
+				}
+				if(task_name!=NULL) filter_task_name=strdup(task_name); 
+				else{ alloc_filters(&filter_task_name); }
+				if(task_id!=NULL) filter_task_id=strdup(task_id);
+				else{ alloc_filters(&filter_task_id);}
+				if(task_state!=NULL) filter_task_state=strdup(task_state);
+				else{alloc_filters(&filter_task_state);}
+				if(task_prior!=NULL) filter_task_prior=strdup(task_prior);
+				else{alloc_filters(&filter_task_prior);}
+				if(task_type!=NULL) filter_task_type=strdup(task_type);
+				else{alloc_filters(&filter_task_type);}
+				if(task_est_start!=NULL) filter_task_est_start=strdup(task_est_start);
+				else{alloc_filters(&filter_task_est_start);}
+				if(task_est_end!=NULL) filter_task_est_end=strdup(task_est_end);
+				else{alloc_filters(&filter_task_est_end); }
+				if(task_start!=NULL) filter_task_start=strdup(task_start);
+				else{alloc_filters(&filter_task_start);}
+				if(task_end!=NULL) filter_task_end=strdup(task_end);
+				else{alloc_filters(&filter_task_end);}
+				if(task_est_time!=NULL) filter_task_est_time=strdup(task_est_time);
+				else{alloc_filters(&filter_task_est_time);}
+				if(task_time!=NULL) filter_task_time=strdup(task_time);	
+				else{alloc_filters(&filter_task_time);}				
+			}
+		}
+		
+		if(tupdate){
+			alloc_filters(&filter_task_id);alloc_filters(&filter_task_name);
+				alloc_filters(&filter_task_state);alloc_filters(&filter_task_est_start);
+				alloc_filters(&filter_task_est_end);alloc_filters(&filter_task_start);
+				alloc_filters(&filter_task_end);alloc_filters(&filter_task_prior);alloc_filters(&filter_task_type);
+				alloc_filters(&filter_task_est_time);alloc_filters(&filter_task_time);
 			receive_filters(&filter_task_id,&filter_task_name,&filter_task_state,
 					&filter_task_est_start,&filter_task_est_end,&filter_task_start,
 					&filter_task_end,&filter_task_prior,&filter_task_type,
 					&filter_task_est_time,&filter_task_time);
 		}
+		
 /* END [1.7] Receive data process */
 		
 		if(tcreate){
@@ -200,10 +243,10 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 					task_est_start,task_est_end,task_start,task_end,task_prior,task_type,
 					task_est_time,task_time,add,rm)){
 				case INCORRECT_DATA:
-					printf(_("Incorrect data. Check it all and try again\n"),ERR);
+					printf("Incorrect data. Check it all and try again\n");
 					return 0;
 				case DUPLICATE_TASK:
-					printf(_("Task specified already exists\n"),OUT);
+					printf("Task specified already exists\n");
 					return 0;
 			}
 /* END [1.1.1] Validate create data */
@@ -211,7 +254,7 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 			create_task(task_name,task_state,task_desc,task_notes,task_est_start,
 				task_est_end,task_start,task_end,task_prior,task_type,task_est_time,
 				task_time);
-			printf(_("Task created successfully\n"),OUT);
+			printf("Task created successfully\n");
 /* END [1.1.2] Create task proccess */
 		}else if(tlink){
 /* START [1.5.1] Validate link data */
@@ -220,17 +263,17 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 						task_est_start,task_est_end,task_start,task_end,task_prior,task_type,
 						task_est_time,task_time,add,rm)){
 					case INCORRECT_DATA:
-						printf(_("Incorrect data. Check it all and try again\n"),ERR);
+						printf("Incorrect data. Check it all and try again\n");
 						return 0;
 					case INEXISTENT_FILE_FOLDER:
-						printf(_("File or Folder you're trying to link / unlink doesn't exists\n"),ERR);
+						printf("File or Folder you're trying to link / unlink doesn't exists\n");
 						return 0;
 					case INEXISTENT_TASK:
-						printf(_("Task you're trying to link / unlink doesn't exists\n"),ERR);
+						printf("Task you're trying to link / unlink doesn't exists\n");
 						return 0;	
 				}
 			}else{
-				printf(_("Specify files with --file [--add | --rm] option.\n"),ERR);
+				printf("Specify files with --file [--add | --rm] option.\n");
 				return 0;
 			}
 /* END [1.5.1] Validate link data */
@@ -247,17 +290,17 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 						task_est_start,task_est_end,task_start,task_end,task_prior,task_type,
 						task_est_time,task_time,add,rm)){
 					case INCORRECT_DATA:
-						printf(_("Incorrect data. Check it all and try again\n"),ERR);
+						printf("Incorrect data. Check it all and try again\n");
 						return 0;
 					case INEXISTENT_USER:
-						printf(_("User you're trying to assign / deassign doesn't exists\n"),ERR);
+						printf("User you're trying to assign / deassign doesn't exists\n");
 						return 0;
 					case INEXISTENT_TASK:
-						printf(_("Task you're trying to assign / deassign doesn't exists\n"),ERR);
+						printf("Task you're trying to assign / deassign doesn't exists\n");
 						return 0;	
 				}
 			}else{
-				printf(_("Specify users with --user [--add | --rm] option.\n"),ERR);
+				printf("Specify users with --user [--add | --rm] option.\n");
 				return 0;
 			}
 /* END [1.6.1] Validate assign data */
@@ -270,17 +313,10 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 /* END [1.6.3] Rm assignations proccess */
 		}else if(tdelete){
 /* START [1.2.1] Validate delete data */
-			if(task_name!=NULL || task_id!=NULL || task_state!=NULL ||
-				task_desc!=NULL || task_notes!=NULL || task_est_start!=NULL ||
-				task_est_end!=NULL || task_start!=NULL || task_end!=NULL ||
-				task_est_time!=NULL || task_time!=NULL) {
-				printf(_("Don't set filters in command line. They are set  interactively\n"),ERR);
-				return 0;	
-			}
 			switch(validate_delete_task(filter_task_id,filter_task_name,filter_task_state,NULL,NULL,	filter_task_est_start,filter_task_est_end,filter_task_start,filter_task_end,filter_task_prior,filter_task_type,
 filter_task_est_time,filter_task_time,add,rm)){
 				case INCORRECT_DATA:
-					printf(_("Incorrect data. Check it all and try again\n"),ERR);
+					printf("Incorrect data. Check it all and try again\n");
 					return 0;
 			}
 /* END [1.2.1] Validate delete data */
@@ -297,13 +333,13 @@ filter_task_est_time,filter_task_time);
 					task_est_start,task_est_end,task_start,task_end,task_prior,task_type,
 					task_est_time,task_time,add,rm)){
 				case INCORRECT_DATA:
-					printf(_("Incorrect data. Check it all and try again\n"),ERR);
+					printf("Incorrect data. Check it all and try again\n");
 					return 0;
 			}
 			switch(validate_update_task(1,filter_task_id,filter_task_name,filter_task_state,NULL,NULL,	filter_task_est_start,filter_task_est_end,filter_task_start,filter_task_end,filter_task_prior,filter_task_type,
 filter_task_est_time,filter_task_time,add,rm)){
 				case INCORRECT_DATA:
-					printf(_("Incorrect data. Check it all and try again\n"),ERR);
+					printf("Incorrect data. Check it all and try again\n");
 					return 0;
 			}
 /* END [1.3.1] Validate update data */
@@ -317,17 +353,10 @@ filter_task_est_time,filter_task_time);
 /* END [1.3.3] Update task process */
 		}else if(tread){
 /* START [1.4.1] Validate read data */
-			if(task_name!=NULL || task_id!=NULL || task_state!=NULL ||
-				task_desc!=NULL || task_notes!=NULL || task_est_start!=NULL ||
-				task_est_end!=NULL || task_start!=NULL || task_end!=NULL ||
-				task_est_time!=NULL || task_time!=NULL) {
-					printf(_("Don't set filters in command line. They are set  interactively\n"),ERR);
-					return 0;	
-			}
 			switch(validate_read_task(filter_task_id,filter_task_name,filter_task_state,NULL,NULL,	filter_task_est_start,filter_task_est_end,filter_task_start,filter_task_end,filter_task_prior,filter_task_type,
 filter_task_est_time,filter_task_time,add,rm)){
 				case INCORRECT_DATA:
-					printf(_("Incorrect data. Check it all and try again\n"),ERR);
+					printf("Incorrect data. Check it all and try again\n");
 					return 0;
 			}
 /* END [1.4.1] Validate read data */
@@ -356,15 +385,13 @@ filter_task_est_time,filter_task_time);
 /* END [1.9] Show pending tasks */
 		}else{
 			/* No action defined */
-			printf(_("No action defined"),ERR);
+			printf("No action defined");
 			usage_with_options(builtin_task_usage,builtin_task_options);
 			return 0;
 		}
 		
-		/* Free filter data if delete, update or read tasks was set */
-		if(tdelete || tupdate || tread){
-			dealloc_filters();
-		}
+		//Free data
+		if(assist || tupdate) dealloc_filters();
 		free(uname);
 		free(urole);
 	}

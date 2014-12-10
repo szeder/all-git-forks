@@ -10,6 +10,9 @@ echo "testing: git task -a"
 
 # Insert previous data into tasks to run following test
 cat > "test-data.sql" << \EOF
+DELETE FROM GP_ROL WHERE NOMBRE_ROL = 'EXAMPLE';
+DELETE FROM GP_USUARIO WHERE NOMBRE_USUARIO = 'user1';
+DELETE FROM GP_USUARIO WHERE NOMBRE_USUARIO = 'user2';
 INSERT INTO GP_ROL(nombre_rol,crear_rol,asignar_rol,consultar_tarea,asignar_tarea,actualizar_tarea,asociar_archivos,borrar_tarea,crear_tarea,borrar_rol,actualizar_rol) 
 values('EXAMPLE',0,0,1,1,1,1,1,1,1,1);
 INSERT INTO GP_USUARIO(nombre_usuario,nombre_rol_usuario) values ('user1','EXAMPLE');
@@ -33,6 +36,7 @@ chmod +x insert-data.sh
 
 ./clean-db.sh
 ./insert-data.sh
+
 # TEST  1 --- assign001 --- assigns a new successfull basic task
 cat > "$input/assign001.in" << \EOF
 EOF
@@ -44,7 +48,6 @@ EOF
 
 ./clean-db.sh
 ./insert-data.sh
-
 # TEST  2 --- assign002 --- assigns a new successfull basic task (multiple users)
 cat > "$input/assign002.in" << \EOF
 EOF
@@ -98,10 +101,14 @@ EOF
 #### RM ASSIGN TESTS
 
 cat > "test-data.sql" << \EOF
+DELETE FROM GP_ASIGNACIONES;
+DELETE FROM GP_ROL WHERE NOMBRE_ROL = 'EXAMPLE';
+DELETE FROM GP_USUARIO WHERE NOMBRE_USUARIO = 'user1';
+DELETE FROM GP_USUARIO WHERE NOMBRE_USUARIO = 'user2';
 INSERT INTO GP_ROL(nombre_rol,crear_rol,asignar_rol,consultar_tarea,asignar_tarea,actualizar_tarea,asociar_archivos,borrar_tarea,crear_tarea,borrar_rol,actualizar_rol) 
-values('ALL',0,0,1,1,1,1,1,1,1,1);
-INSERT INTO GP_USUARIO(nombre_usuario,nombre_rol_usuario) values ('user1','ALL');
-INSERT INTO GP_USUARIO(nombre_usuario,nombre_rol_usuario) values ('user2','ALL');
+values('EXAMPLE',0,0,1,1,1,1,1,1,1,1);
+INSERT INTO GP_USUARIO(nombre_usuario,nombre_rol_usuario) values ('user1','EXAMPLE');
+INSERT INTO GP_USUARIO(nombre_usuario,nombre_rol_usuario) values ('user2','EXAMPLE');
 INSERT INTO GP_ASIGNACIONES(nombre_usuario_asig,id_asig) values ('user1',1);
 INSERT INTO GP_ASIGNACIONES(nombre_usuario_asig,id_asig) values ('user2',1);
 INSERT INTO GP_ASIGNACIONES(nombre_usuario_asig,id_asig) values ('user1',3);

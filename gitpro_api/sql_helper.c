@@ -408,7 +408,6 @@ char *contains(char *field,char *text){
 	strcat(result," like ");
 	strcat(result,u_text);
 	strcat(result,")");
-	printf("contains = %s\n",result);
 	free(aux);
 	free(u_field);
 	free(u_text);
