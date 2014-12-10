@@ -185,7 +185,17 @@ overwriting the delimiter characters with NULs and creating new
 string_list_items that point into the original string (the original
 string must therefore not be modified or freed while the `string_list`
 is in use).
-
++
+Examples:
++
+----
+string_list_split(l, "foo:bar:baz", ':', -1) -> ["foo", "bar", "baz"]
+string_list_split(l, "foo:bar:baz", ':', 0) -> ["foo:bar:baz"]
+string_list_split(l, "foo:bar:baz", ':', 1) -> ["foo", "bar:baz"]
+string_list_split(l, "foo:bar:", ':', -1) -> ["foo", "bar", ""]
+string_list_split(l, "", ':', -1) -> [""]
+string_list_split(l, ":", ':', -1) -> ["", ""]
+----
 
 Data structures
 ---------------
