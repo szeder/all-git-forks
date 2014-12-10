@@ -769,6 +769,7 @@ static int verify_dotfile(const char *rest)
 
 int verify_path(const char *path)
 {
+	const char *start;
 	char c;
 
 	if (has_dos_drive_prefix(path))
@@ -777,18 +778,25 @@ int verify_path(const char *path)
 	goto inside;
 	for (;;) {
 		if (!c)
-			return 1;
+			return !protect_ntfs ||
+				!is_ntfs_reserved(start, path - 1 - start);
 		if (is_dir_sep(c)) {
+			if (protect_ntfs && is_ntfs_reserved(start,
+						path - 1 - start))
+				return 0;
 inside:
 			if (protect_hfs && is_hfs_dotgit(path))
 				return 0;
 			if (protect_ntfs && is_ntfs_dotgit(path))
 				return 0;
+			start = path;
 			c = *path++;
 			if ((c == '.' && !verify_dotfile(path)) ||
 			    is_dir_sep(c) || c == '\0')
 				return 0;
 		}
+		if (protect_ntfs && is_ntfs_reserved_character(c))
+			return 0;
 		c = *path++;
 	}
 }
