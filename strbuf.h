@@ -58,56 +58,27 @@ static inline int strbuf_strip_suffix(struct strbuf *sb, const char *suffix)
 		return 0;
 }
 
-/*
- * Split str (of length slen) at the specified terminator character.
- * Return a null-terminated array of pointers to strbuf objects
- * holding the substrings.  The substrings include the terminator,
- * except for the last substring, which might be unterminated if the
- * original string did not end with a terminator.  If max is positive,
- * then split the string into at most max substrings (with the last
- * substring containing everything following the (max-1)th terminator
- * character).
- *
- * For lighter-weight alternatives, see string_list_split() and
- * string_list_split_in_place().
- */
-extern struct strbuf **strbuf_split_buf(const char *, size_t,
+extern struct strbuf **strbuf_split_buf(const char *str, size_t slen,
 					int terminator, int max);
 
-/*
- * Split a NUL-terminated string at the specified terminator
- * character.  See strbuf_split_buf() for more information.
- */
 static inline struct strbuf **strbuf_split_str(const char *str,
 					       int terminator, int max)
 {
 	return strbuf_split_buf(str, strlen(str), terminator, max);
 }
 
-/*
- * Split a strbuf at the specified terminator character.  See
- * strbuf_split_buf() for more information.
- */
 static inline struct strbuf **strbuf_split_max(const struct strbuf *sb,
 						int terminator, int max)
 {
 	return strbuf_split_buf(sb->buf, sb->len, terminator, max);
 }
 
-/*
- * Split a strbuf at the specified terminator character.  See
- * strbuf_split_buf() for more information.
- */
 static inline struct strbuf **strbuf_split(const struct strbuf *sb,
 					   int terminator)
 {
 	return strbuf_split_max(sb, terminator, 0);
 }
 
-/*
- * Free a NULL-terminated list of strbufs (for example, the return
- * values of the strbuf_split*() functions).
- */
 extern void strbuf_list_free(struct strbuf **);
 
 /*----- add data in your buffer -----*/
@@ -158,10 +129,7 @@ extern void strbuf_vaddf(struct strbuf *sb, const char *fmt, va_list ap);
 
 extern void strbuf_add_lines(struct strbuf *sb, const char *prefix, const char *buf, size_t size);
 
-/*
- * Append s to sb, with the characters '<', '>', '&' and '"' converted
- * into XML entities.
- */
+/* append s with <, >, &, and " converted to XML entities */
 extern void strbuf_addstr_xml_quoted(struct strbuf *sb, const char *s);
 
 static inline void strbuf_complete_line(struct strbuf *sb)
@@ -200,10 +168,6 @@ extern int fprintf_ln(FILE *fp, const char *fmt, ...);
 
 char *xstrdup_tolower(const char *);
 
-/*
- * Create a newly allocated string using printf format. You can do this easily
- * with a strbuf, but this provides a shortcut to save a few lines.
- */
 __attribute__((format (printf, 1, 0)))
 char *xstrvfmt(const char *fmt, va_list ap);
 __attribute__((format (printf, 1, 2)))

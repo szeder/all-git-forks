@@ -252,6 +252,11 @@ which can be used by the programmer of the callback as she sees fit.
 	destination. This is useful for literal data to be fed to either
 	strbuf_expand or to the *printf family of functions.
 
+`strbuf_addstr_xml_quoted`::
+
+	Append a string to a strbuf with the characters '<', '>', '&', and
+	'"' converted into XML entities.
+
 `strbuf_humanise_bytes`::
 
 	Append the given byte size as a human-readable string (i.e. 12.23 KiB,
@@ -265,6 +270,13 @@ which can be used by the programmer of the callback as she sees fit.
 
 	Add a formatted string prepended by a comment character and a
 	blank to the buffer.
+
+`xstrfmt`::
+`xstrvfmt`::
+
+	Create a newly allocated string using printf format.  You can do
+	this easily with a strbuf, but this provides a shortcut to save a
+	few lines.
 
 `strbuf_fread`::
 
@@ -336,11 +348,15 @@ same behaviour as well.
 	terminator characters.  Some of these functions take a `max`
 	parameter, which, if positive, limits the output to that
 	number of substrings.
++
+For lighter-weight alternatives, see `string_list_split` and
+`string_list_split_in_place` from the
+link:api-string-list.html[string list API].
 
 `strbuf_list_free`::
 
-	Free a list of strbufs (for example, the return values of the
-	`strbuf_split()` functions).
+	Free a NULL-terminated list of strbufs (for example, the return
+	values of the `strbuf_split()` functions).
 
 `launch_editor`::
 
