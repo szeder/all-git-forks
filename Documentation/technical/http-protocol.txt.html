@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
+
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+
 <style type="text/css">
 pre {
 	background: #888888;
@@ -14,6 +17,12 @@ pre {
 div {
 	margin-top: 20px;
 	margin-bottom: 20px;
+}
+
+h5 {
+	font-weight: bold;
+	font-size: 24px;
+	display: inline;
 }
 
 .lang-en {
@@ -406,14 +415,25 @@ div {
 		     PKT-LINE(obj-id SP name "^{}" LF
 </pre>
 
-		<h3>Smart Service git-upload-pack</h3>
+		<h3 class='lang-en'>Smart Service git-upload-pack</h3>
+		<h3 class='lang-zh'>智能服务 git-upload-pack</h3>
 		<h3>------------------------------</h3>
 
-		<div>This service reads from the repository pointed to by
-			`$GIT_URL`.</div>
+		<div>
+			<div class='lang-en'>This service reads from the repository
+				pointed to by `$GIT_URL`.</div>
+			<div class='lang-zh'>该服务通过`$GIT_URL`从库中读取指针。</div>
+		</div>
 
-		<div>Clients MUST first perform ref discovery with
-			`$GIT_URL/info/refs?service=git-upload-pack`.</div>
+		<div>
+			<div class='lang-en'>Clients MUST first perform ref discovery
+				with `$GIT_URL/info/refs?service=git-upload-pack`.</div>
+			<div class='lang-zh'>
+				客户端
+				<h5>必须</h5>
+				先通过 `$GIT_URL/info/refs?service=git-upload-pack` 执行引用发现过程。
+			</div>
+		</div>
 
 		<pre>   C: POST $GIT_URL/git-upload-pack HTTP/1.0
    C: Content-Type: application/x-git-upload-pack-request
@@ -429,14 +449,47 @@ div {
    S: ....ACK %s, continue
    S: ....NAK
 </pre>
-		<div>Clients MUST NOT reuse or revalidate a cached response.
-			Servers MUST include sufficient Cache-Control headers to prevent
-			caching of the response.</div>
-		<div>Servers SHOULD support all capabilities defined here.</div>
-		<div>Clients MUST send at least one "want" command in the
-			request body. Clients MUST NOT reference an id in a "want" command
-			which did not appear in the response obtained through ref discovery
-			unless the server advertises capability `allow-tip-sha1-in-want`.</div>
+
+		<div>
+			<div class='lang-en'>Clients MUST NOT reuse or revalidate a
+				cached response. Servers MUST include sufficient Cache-Control
+				headers to prevent caching of the response.</div>
+			<div class='lang-zh'>
+				客户端
+				<h5>绝不能</h5>
+				重新使用或验证缓存的响应。服务端
+				<h5>必须</h5>
+				包含一个详尽的 Cache-Control 头用来阻止对响应的缓存。
+			</div>
+		</div>
+
+		<div>
+			<div class='lang-en'>Servers SHOULD support all capabilities
+				defined here.</div>
+			<div class='lang-zh'>
+				服务端
+				<h5>应当</h5>
+				支持这里定义的所有的兼容性。
+			</div>
+		</div>
+
+		<div>
+			<div class='lang-en'>Clients MUST send at least one "want"
+				command in the request body. Clients MUST NOT reference an id in a
+				"want" command which did not appear in the response obtained through
+				ref discovery unless the server advertises capability
+				`allow-tip-sha1-in-want`.</div>
+			<div class='lang-zh'>
+				客户端
+				<h5>必须</h5>
+				在请求体中发送至少一个“want”命令。客户端
+				<h5>绝不能</h5>
+				在“want”命令中引用一个没有出现在通过 ref 发现取得的列表中的
+				id，除非服务端广播了‘allow-tip-sha1-in-want’兼容性。
+			</div>
+		</div>
+
+
 		<pre>  compute_request   =  want_list
 		       have_list
 		       request_end
