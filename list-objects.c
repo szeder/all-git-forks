@@ -151,13 +151,14 @@ void mark_edges_uninteresting(struct rev_info *revs, show_edge_fn show_edge)
 {
 	struct commit_list *list;
 	int i;
+	int shallow = is_repository_shallow();
 
 	for (list = revs->commits; list; list = list->next) {
 		struct commit *commit = list->item;
 
 		if (commit->object.flags & UNINTERESTING) {
 			mark_tree_uninteresting(commit->tree);
-			if (revs->edge_hint && !(commit->object.flags & SHOWN)) {
+			if (shallow && revs->edge_hint && !(commit->object.flags & SHOWN)) {
 				commit->object.flags |= SHOWN;
 				show_edge(commit);
 			}
@@ -165,6 +166,8 @@ void mark_edges_uninteresting(struct rev_info *revs, show_edge_fn show_edge)
 		}
 		mark_edge_parents_uninteresting(commit, revs, show_edge);
 	}
+	if (!shallow)
+		return;
 	if (revs->edge_hint) {
 		for (i = 0; i < revs->cmdline.nr; i++) {
 			struct object *obj = revs->cmdline.rev[i].item;
