@@ -3,6 +3,12 @@
 test_description='test globbing (and noglob) of pathspec limiting'
 . ./test-lib.sh
 
+if test_have_prereq MINGW
+then
+	skip_all='skipping tests incompatible with NTFS'
+	test_done
+fi
+
 test_expect_success 'create commits with glob characters' '
 	test_commit unrelated bar &&
 	test_commit vanilla foo &&

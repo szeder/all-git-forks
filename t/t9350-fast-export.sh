@@ -419,7 +419,7 @@ test_expect_success 'directory becomes symlink'        '
 	(cd result && git show master:foo)
 '
 
-test_expect_success 'fast-export quotes pathnames' '
+test_expect_success !MINGW 'fast-export quotes pathnames' '
 	git init crazy-paths &&
 	(cd crazy-paths &&
 	 blob=`echo foo | git hash-object -w --stdin` &&
