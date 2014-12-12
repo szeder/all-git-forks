@@ -39,6 +39,10 @@ else
 		gpg --homedir "${GNUPGHOME}" </dev/null >/dev/null 2>&1 \
 			--sign -u committer@example.com &&
 		test_set_prereq GPG
+		if echo | gpg --homedir "${GNUPGHOME}" -b --rfc1991 >/dev/null 2>&1
+		then
+			test_set_prereq RFC1991
+		fi
 		;;
 	esac
 fi
