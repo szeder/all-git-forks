@@ -71,12 +71,8 @@ extern char strbuf_slopbuf[];
 #define STRBUF_INIT  { 0, 0, strbuf_slopbuf }
 
 /**
- * Functions
- * ---------
- */
-
-/**
- * * Life Cycle
+ * Life Cycle Functions
+ * --------------------
  */
 
 /**
@@ -120,7 +116,8 @@ static inline void strbuf_swap(struct strbuf *a, struct strbuf *b)
 
 
 /**
- * * Related to the size of the buffer
+ * Functions related to the size of the buffer
+ * -------------------------------------------
  */
 
 /**
@@ -162,7 +159,8 @@ static inline void strbuf_setlen(struct strbuf *sb, size_t len)
 
 
 /**
- * * Related to the contents of the buffer
+ * Functions related to the contents of the buffer
+ * -----------------------------------------------
  */
 
 /**
