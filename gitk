@@ -3955,6 +3955,7 @@ proc selsource_read {} {
 
     set id {}
     set lnum {}
+    set fname {}
     set state start
     foreach l $blamestuff {
 	switch -- $state {
@@ -3995,7 +3996,7 @@ proc selsource_read {} {
 	return 0
     }
 
-    selectline [rowofcommit $id] 1 [list $fname $lnum] 1
+    selectline [rowofcommit $id] 1 [if {$fname ne {} && $lnum ne {}} {list $fname $lnum}] 1
 }
 
 proc prepare_show_selection_source {} {
