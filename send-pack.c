@@ -282,6 +282,30 @@ free_return:
 	return update_seen;
 }
 
+
+static int atomic_push_failure(struct send_pack_args *args,
+			       struct ref *remote_refs,
+			       struct ref *failing_ref)
+{
+	struct ref *ref;
+	/* Mark other refs as failed */
+	for (ref = remote_refs; ref; ref = ref->next) {
+		if (!ref->peer_ref && !args->send_mirror)
+			continue;
+
+		switch (ref->status) {
+		case REF_STATUS_EXPECTING_REPORT:
+			ref->status = REF_STATUS_ATOMIC_PUSH_FAILED;
+			continue;
+		default:
+			; /* do nothing */
+		}
+	}
+	error("atomic push failed for ref %s. "
+	      "status: %d\n", failing_ref->name, failing_ref->status);
+	return -1;
+}
+
 int send_pack(struct send_pack_args *args,
 	      int fd[], struct child_process *conn,
 	      struct ref *remote_refs,
@@ -373,9 +397,21 @@ int send_pack(struct send_pack_args *args,
 	 * the pack data.
 	 */
 	for (ref = remote_refs; ref; ref = ref->next) {
-		if (check_to_send_update(ref, args) < 0)
+		switch (check_to_send_update(ref, args)) {
+		case 0: /* no error */
+			break;
+		case -CHECK_REF_STATUS_REJECTED:
+			/*
+			 * When we know the server would reject a ref update if
+			 * we were to send it and we're trying to send the refs
+			 * atomically, abort the whole operation.
+			 */
+			if (use_atomic)
+				return atomic_push_failure(args, remote_refs, ref);
+			/* Fallthrough for non atomic case. */
+		default:
 			continue;
-
+		}
 		if (!ref->deletion)
 			need_pack_data = 1;
 
