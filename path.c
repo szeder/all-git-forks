@@ -863,3 +863,87 @@ int is_ntfs_dotgit(const char *name)
 			len = -1;
 		}
 }
+
+/*
+ * This function detects characters incompatible with NT paths.
+ */
+int is_ntfs_reserved_character(char c)
+{
+	switch (c) {
+	case '\\':
+	case '<':
+	case '>':
+	case ':':
+	case '"':
+	case '|':
+	case '?':
+	case '*':
+		return 1;
+	}
+
+	if (c >= 0 && c < 32)
+		return 1;
+
+	return 0;
+}
+
+static int conflicts_with_ntfs_short_name(const char *path, size_t len)
+{
+	if (len < 3 || len > 8 + 1 + 3)
+		return 0;
+
+	/* strip extension, if any */
+	if (path[len - 1] == '.')
+		len--;
+	else if (path[len - 2] == '.')
+		len -= 2;
+	else if (path[len - 3] == '.')
+		len -= 3;
+	else if (len > 3 && path[len - 4] == '.')
+		len -= 4;
+
+	/* short names are in 8.3 format */
+	if (len < 3 || len > 8)
+		return 0;
+
+	if (!isdigit(path[len-1]))
+		return 0;
+
+	while (len && isdigit(path[len-1]))
+		len--;
+
+	return len > 0 && path[len-1] == '~';
+}
+
+/*
+ * This function rejects path components
+ * - with trailing ~<N>, i.e. paths conflicting with 8.3 DOS paths
+ * - ending in a dot, a space or a colon,
+ * - that are reserved on Windows (CON, PRN, etc)
+ */
+int is_ntfs_reserved(const char *path, size_t len)
+{
+	if (conflicts_with_ntfs_short_name(path, len))
+		return 1;
+
+	switch (path[len - 1]) {
+		case '.':
+		case ' ':
+		case ':':
+			return 1;
+	}
+
+	if (only_spaces_and_periods(path, len, 3)) {
+		if (!strncasecmp(path, "CON", 3) ||
+				!strncasecmp(path, "PRN", 3) ||
+				!strncasecmp(path, "AUX", 3) ||
+				!strncasecmp(path, "NUL", 3))
+			return 1;
+	}
+	else if (only_spaces_and_periods(path, len, 4) && isdigit(path[3]))
+		if (!strncasecmp(path, "COM", 3) ||
+				!strncasecmp(path, "LPT", 3))
+			return 1;
+
+	return 0;
+}
