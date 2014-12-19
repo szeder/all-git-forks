@@ -197,13 +197,24 @@ static struct stored_bitmap *store_bitmap(struct bitmap_index *index,
 	return stored;
 }
 
+static inline uint32_t read_be32(const unsigned char *buffer, size_t *pos)
+{
+	uint32_t result = get_be32(buffer + *pos);
+	(*pos) += sizeof(result);
+	return result;
+}
+
+static inline uint8_t read_u8(const unsigned char *buffer, size_t *pos)
+{
+	return buffer[(*pos)++];
+}
+
 static int load_bitmap_entries_v1(struct bitmap_index *index)
 {
 	static const size_t MAX_XOR_OFFSET = 160;
 
 	uint32_t i;
 	struct stored_bitmap **recent_bitmaps;
-	struct bitmap_disk_entry *entry;
 
 	recent_bitmaps = xcalloc(MAX_XOR_OFFSET, sizeof(struct stored_bitmap));
 
@@ -214,14 +225,11 @@ static int load_bitmap_entries_v1(struct bitmap_index *index)
 		uint32_t commit_idx_pos;
 		const unsigned char *sha1;
 
-		entry = (struct bitmap_disk_entry *)(index->map + index->map_pos);
-		index->map_pos += sizeof(struct bitmap_disk_entry);
+		commit_idx_pos = read_be32(index->map, &index->map_pos);
+		xor_offset = read_u8(index->map, &index->map_pos);
+		flags = read_u8(index->map, &index->map_pos);
 
-		commit_idx_pos = ntohl(entry->object_pos);
 		sha1 = nth_packed_object_sha1(index->pack, commit_idx_pos);
-
-		xor_offset = (int)entry->xor_offset;
-		flags = (int)entry->flags;
 
 		bitmap = read_bitmap_1(index);
 		if (!bitmap)
@@ -400,10 +408,8 @@ static int ext_index_add_object(struct object *object, const char *name)
 	if (hash_ret > 0) {
 		if (eindex->count >= eindex->alloc) {
 			eindex->alloc = (eindex->alloc + 16) * 3 / 2;
-			eindex->objects = xrealloc(eindex->objects,
-				eindex->alloc * sizeof(struct object *));
-			eindex->hashes = xrealloc(eindex->hashes,
-				eindex->alloc * sizeof(uint32_t));
+			REALLOC_ARRAY(eindex->objects, eindex->alloc);
+			REALLOC_ARRAY(eindex->hashes, eindex->alloc);
 		}
 
 		bitmap_pos = eindex->count;
@@ -727,8 +733,10 @@ int prepare_bitmap_walk(struct rev_info *revs)
 	revs->pending.objects = NULL;
 
 	if (haves) {
+		revs->ignore_missing_links = 1;
 		haves_bitmap = find_objects(revs, haves, NULL);
 		reset_revision_walk();
+		revs->ignore_missing_links = 0;
 
 		if (haves_bitmap == NULL)
 			die("BUG: failed to perform bitmap walk");

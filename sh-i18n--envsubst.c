@@ -208,11 +208,8 @@ string_list_append (string_list_ty *slp, const char *s)
   /* Grow the list.  */
   if (slp->nitems >= slp->nitems_max)
     {
-      size_t nbytes;
-
       slp->nitems_max = slp->nitems_max * 2 + 4;
-      nbytes = slp->nitems_max * sizeof (slp->item[0]);
-      slp->item = (const char **) xrealloc (slp->item, nbytes);
+      REALLOC_ARRAY(slp->item, slp->nitems_max);
     }
 
   /* Add the string to the end of the list.  */
@@ -278,9 +275,7 @@ static string_list_ty variables_set;
 static void
 note_variable (const char *var_ptr, size_t var_len)
 {
-  char *string = xmalloc (var_len + 1);
-  memcpy (string, var_ptr, var_len);
-  string[var_len] = '\0';
+  char *string = xmemdupz (var_ptr, var_len);
 
   string_list_append (&variables_set, string);
 }

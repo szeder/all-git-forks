@@ -272,6 +272,14 @@ AS_HELP_STRING([],           [ARG can be also prefix for libpcre library and hea
 	GIT_CONF_SUBST([LIBPCREDIR])
     fi)
 #
+# Define HAVE_ALLOCA_H if you have working alloca(3) defined in that header.
+AC_FUNC_ALLOCA
+case $ac_cv_working_alloca_h in
+    yes)    HAVE_ALLOCA_H=YesPlease;;
+    *)      HAVE_ALLOCA_H='';;
+esac
+GIT_CONF_SUBST([HAVE_ALLOCA_H])
+#
 # Define NO_CURL if you do not have curl installed.  git-http-pull and
 # git-http-push are not built, and you cannot use http:// and https://
 # transports.
@@ -738,6 +746,14 @@ case $ac_cv_type_socklen_t in
 esac
 GIT_CONF_SUBST([SOCKLEN_T])
 
+#
+# Define NO_STRUCT_ITIMERVAL if you don't have struct itimerval.
+AC_CHECK_TYPES([struct itimerval],
+[NO_STRUCT_ITIMERVAL=],
+[NO_STRUCT_ITIMERVAL=UnfortunatelyYes],
+[#include <sys/time.h>])
+GIT_CONF_SUBST([NO_STRUCT_ITIMERVAL])
+#
 # Define NO_D_INO_IN_DIRENT if you don't have d_ino in your struct dirent.
 AC_CHECK_MEMBER(struct dirent.d_ino,
 [NO_D_INO_IN_DIRENT=],
@@ -894,6 +910,12 @@ AC_CHECK_LIB([iconv], [locale_charset],
        [AC_CHECK_LIB([charset], [locale_charset],
                      [CHARSET_LIB=-lcharset])])
 GIT_CONF_SUBST([CHARSET_LIB])
+#
+# Define NO_SETITIMER if you don't have setitimer.
+GIT_CHECK_FUNC(setitimer,
+[NO_SETITIMER=],
+[NO_SETITIMER=YesPlease])
+GIT_CONF_SUBST([NO_SETITIMER])
 #
 # Define NO_STRCASESTR if you don't have strcasestr.
 GIT_CHECK_FUNC(strcasestr,

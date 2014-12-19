@@ -4,6 +4,7 @@
  * Copyright (C) Linus Torvalds, 2005
  */
 #include "cache.h"
+#include "lockfile.h"
 #include "quote.h"
 #include "cache-tree.h"
 #include "tree-walk.h"
@@ -13,6 +14,7 @@
 #include "parse-options.h"
 #include "pathspec.h"
 #include "dir.h"
+#include "split-index.h"
 
 /*
  * Default to not allowing changes to the list of files. The
@@ -55,8 +57,9 @@ static int mark_ce_flags(const char *path, int flag, int mark)
 			active_cache[pos]->ce_flags |= flag;
 		else
 			active_cache[pos]->ce_flags &= ~flag;
-		cache_tree_invalidate_path(active_cache_tree, path);
-		active_cache_changed = 1;
+		active_cache[pos]->ce_flags |= CE_UPDATE_IN_BASE;
+		cache_tree_invalidate_path(&the_index, path);
+		active_cache_changed |= CE_ENTRY_CHANGED;
 		return 0;
 	}
 	return -1;
@@ -267,8 +270,9 @@ static void chmod_path(int flip, const char *path)
 	default:
 		goto fail;
 	}
-	cache_tree_invalidate_path(active_cache_tree, path);
-	active_cache_changed = 1;
+	cache_tree_invalidate_path(&the_index, path);
+	ce->ce_flags |= CE_UPDATE_IN_BASE;
+	active_cache_changed |= CE_ENTRY_CHANGED;
 	report("chmod %cx '%s'", flip, path);
 	return;
  fail:
@@ -629,14 +633,45 @@ static int resolve_undo_clear_callback(const struct option *opt,
 	return 0;
 }
 
+static int parse_new_style_cacheinfo(const char *arg,
+				     unsigned int *mode,
+				     unsigned char sha1[],
+				     const char **path)
+{
+	unsigned long ul;
+	char *endp;
+
+	if (!arg)
+		return -1;
+
+	errno = 0;
+	ul = strtoul(arg, &endp, 8);
+	if (errno || endp == arg || *endp != ',' || (unsigned int) ul != ul)
+		return -1; /* not a new-style cacheinfo */
+	*mode = ul;
+	endp++;
+	if (get_sha1_hex(endp, sha1) || endp[40] != ',')
+		return -1;
+	*path = endp + 41;
+	return 0;
+}
+
 static int cacheinfo_callback(struct parse_opt_ctx_t *ctx,
 				const struct option *opt, int unset)
 {
 	unsigned char sha1[20];
 	unsigned int mode;
+	const char *path;
 
+	if (!parse_new_style_cacheinfo(ctx->argv[1], &mode, sha1, &path)) {
+		if (add_cacheinfo(mode, sha1, path, 0))
+			die("git update-index: --cacheinfo cannot add %s", path);
+		ctx->argv++;
+		ctx->argc--;
+		return 0;
+	}
 	if (ctx->argc <= 3)
-		return error("option 'cacheinfo' expects three arguments");
+		return error("option 'cacheinfo' expects <mode>,<sha1>,<path>");
 	if (strtoul_ui(*++ctx->argv, 8, &mode) ||
 	    get_sha1_hex(*++ctx->argv, sha1) ||
 	    add_cacheinfo(mode, sha1, *++ctx->argv, 0))
@@ -712,6 +747,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	char set_executable_bit = 0;
 	struct refresh_params refresh_args = {0, &has_errors};
 	int lock_error = 0;
+	int split_index = -1;
 	struct lock_file *lock_file;
 	struct parse_opt_ctx_t ctx;
 	int parseopt_state = PARSE_OPT_UNKNOWN;
@@ -740,9 +776,9 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			PARSE_OPT_NOARG | PARSE_OPT_NONEG,
 			really_refresh_callback},
 		{OPTION_LOWLEVEL_CALLBACK, 0, "cacheinfo", NULL,
-			N_("<mode> <object> <path>"),
+			N_("<mode>,<object>,<path>"),
 			N_("add the specified entry to the index"),
-			PARSE_OPT_NOARG |	/* disallow --cacheinfo=<mode> form */
+			PARSE_OPT_NOARG | /* disallow --cacheinfo=<mode> form */
 			PARSE_OPT_NONEG | PARSE_OPT_LITERAL_ARGHELP,
 			(parse_opt_cb *) cacheinfo_callback},
 		{OPTION_CALLBACK, 0, "chmod", &set_executable_bit, N_("(+/-)x"),
@@ -794,6 +830,8 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			resolve_undo_clear_callback},
 		OPT_INTEGER(0, "index-version", &preferred_index_format,
 			N_("write index in this format")),
+		OPT_BOOL(0, "split-index", &split_index,
+			N_("enable or disable split index")),
 		OPT_END()
 	};
 
@@ -861,7 +899,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			    INDEX_FORMAT_LB, INDEX_FORMAT_UB);
 
 		if (the_index.version != preferred_index_format)
-			active_cache_changed = 1;
+			active_cache_changed |= SOMETHING_CHANGED;
 		the_index.version = preferred_index_format;
 	}
 
@@ -887,14 +925,27 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		strbuf_release(&buf);
 	}
 
+	if (split_index > 0) {
+		init_split_index(&the_index);
+		the_index.cache_changed |= SPLIT_INDEX_ORDERED;
+	} else if (!split_index && the_index.split_index) {
+		/*
+		 * can't discard_split_index(&the_index); because that
+		 * will destroy split_index->base->cache[], which may
+		 * be shared with the_index.cache[]. So yeah we're
+		 * leaking a bit here.
+		 */
+		the_index.split_index = NULL;
+		the_index.cache_changed |= SOMETHING_CHANGED;
+	}
+
 	if (active_cache_changed) {
 		if (newfd < 0) {
 			if (refresh_args.flags & REFRESH_QUIET)
 				exit(128);
-			unable_to_lock_index_die(get_index_file(), lock_error);
+			unable_to_lock_die(get_index_file(), lock_error);
 		}
-		if (write_cache(newfd, active_cache, active_nr) ||
-		    commit_locked_index(lock_file))
+		if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
 			die("Unable to write new index file");
 	}
 

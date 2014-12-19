@@ -11,6 +11,7 @@
 #include "parse-options.h"
 #include "diff.h"
 #include "revision.h"
+#include "split-index.h"
 
 #define DO_REVS		1
 #define DO_NOREV	2
@@ -150,6 +151,7 @@ static void show_rev(int type, const unsigned char *sha1, const char *name)
 				error("refname '%s' is ambiguous", name);
 				break;
 			}
+			free(full);
 		} else {
 			show_with_type(type, name);
 		}
@@ -506,7 +508,9 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 	int has_dashdash = 0;
 	int output_prefix = 0;
 	unsigned char sha1[20];
+	unsigned int flags = 0;
 	const char *name = NULL;
+	struct object_context unused;
 
 	if (argc > 1 && !strcmp("--parseopt", argv[1]))
 		return cmd_parseopt(argc - 1, argv + 1, prefix);
@@ -594,6 +598,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 			}
 			if (!strcmp(arg, "--quiet") || !strcmp(arg, "-q")) {
 				quiet = 1;
+				flags |= GET_SHA1_QUIETLY;
 				continue;
 			}
 			if (!strcmp(arg, "--short") ||
@@ -734,7 +739,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 			}
 			if (!strcmp(arg, "--git-dir")) {
 				const char *gitdir = getenv(GIT_DIR_ENVIRONMENT);
-				static char cwd[PATH_MAX];
+				char *cwd;
 				int len;
 				if (gitdir) {
 					puts(gitdir);
@@ -744,10 +749,10 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 					puts(".git");
 					continue;
 				}
-				if (!getcwd(cwd, PATH_MAX))
-					die_errno("unable to get current working directory");
+				cwd = xgetcwd();
 				len = strlen(cwd);
 				printf("%s%s.git\n", cwd, len && cwd[len-1] != '/' ? "/" : "");
+				free(cwd);
 				continue;
 			}
 			if (!strcmp(arg, "--resolve-git-dir")) {
@@ -773,6 +778,15 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 			if (!strcmp(arg, "--is-bare-repository")) {
 				printf("%s\n", is_bare_repository() ? "true"
 						: "false");
+				continue;
+			}
+			if (!strcmp(arg, "--shared-index-path")) {
+				if (read_cache() < 0)
+					die(_("Could not read the index"));
+				if (the_index.split_index) {
+					const unsigned char *sha1 = the_index.split_index->base_sha1;
+					puts(git_path("sharedindex.%s", sha1_to_hex(sha1)));
+				}
 				continue;
 			}
 			if (starts_with(arg, "--since=")) {
@@ -807,7 +821,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 			name++;
 			type = REVERSED;
 		}
-		if (!get_sha1(name, sha1)) {
+		if (!get_sha1_with_context(name, flags, sha1, &unused)) {
 			if (verify)
 				revs_count++;
 			else

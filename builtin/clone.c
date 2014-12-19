@@ -9,6 +9,7 @@
  */
 
 #include "builtin.h"
+#include "lockfile.h"
 #include "parse-options.h"
 #include "fetch-pack.h"
 #include "refs.h"
@@ -390,7 +391,6 @@ static void clone_local(const char *src_repo, const char *dest_repo)
 
 static const char *junk_work_tree;
 static const char *junk_git_dir;
-static pid_t junk_pid;
 static enum {
 	JUNK_LEAVE_NONE,
 	JUNK_LEAVE_REPO,
@@ -417,8 +417,6 @@ static void remove_junk(void)
 		break;
 	}
 
-	if (getpid() != junk_pid)
-		return;
 	if (junk_git_dir) {
 		strbuf_addstr(&sb, junk_git_dir);
 		remove_dir_recursively(&sb, 0);
@@ -521,7 +519,7 @@ static void write_followtags(const struct ref *refs, const char *msg)
 		if (!has_sha1_file(ref->old_sha1))
 			continue;
 		update_ref(msg, ref->name, ref->old_sha1,
-			   NULL, 0, DIE_ON_ERR);
+			   NULL, 0, UPDATE_REFS_DIE_ON_ERR);
 	}
 }
 
@@ -584,19 +582,20 @@ static void update_remote_refs(const struct ref *refs,
 static void update_head(const struct ref *our, const struct ref *remote,
 			const char *msg)
 {
-	if (our && starts_with(our->name, "refs/heads/")) {
+	const char *head;
+	if (our && skip_prefix(our->name, "refs/heads/", &head)) {
 		/* Local default branch link */
 		create_symref("HEAD", our->name, NULL);
 		if (!option_bare) {
-			const char *head = skip_prefix(our->name, "refs/heads/");
-			update_ref(msg, "HEAD", our->old_sha1, NULL, 0, DIE_ON_ERR);
+			update_ref(msg, "HEAD", our->old_sha1, NULL, 0,
+				   UPDATE_REFS_DIE_ON_ERR);
 			install_branch_config(0, head, option_origin, our->name);
 		}
 	} else if (our) {
 		struct commit *c = lookup_commit_reference(our->old_sha1);
 		/* --branch specifies a non-branch (i.e. tags), detach HEAD */
 		update_ref(msg, "HEAD", c->object.sha1,
-			   NULL, REF_NODEREF, DIE_ON_ERR);
+			   NULL, REF_NODEREF, UPDATE_REFS_DIE_ON_ERR);
 	} else if (remote) {
 		/*
 		 * We know remote HEAD points to a non-branch, or
@@ -604,7 +603,7 @@ static void update_head(const struct ref *our, const struct ref *remote,
 		 * Detach HEAD in all these cases.
 		 */
 		update_ref(msg, "HEAD", remote->old_sha1,
-			   NULL, REF_NODEREF, DIE_ON_ERR);
+			   NULL, REF_NODEREF, UPDATE_REFS_DIE_ON_ERR);
 	}
 }
 
@@ -616,12 +615,12 @@ static int checkout(void)
 	struct unpack_trees_options opts;
 	struct tree *tree;
 	struct tree_desc t;
-	int err = 0, fd;
+	int err = 0;
 
 	if (option_no_checkout)
 		return 0;
 
-	head = resolve_refdup("HEAD", sha1, 1, NULL);
+	head = resolve_refdup("HEAD", RESOLVE_REF_READING, sha1, NULL);
 	if (!head) {
 		warning(_("remote HEAD refers to nonexistent ref, "
 			  "unable to checkout.\n"));
@@ -640,7 +639,7 @@ static int checkout(void)
 	setup_work_tree();
 
 	lock_file = xcalloc(1, sizeof(struct lock_file));
-	fd = hold_locked_index(lock_file, 1);
+	hold_locked_index(lock_file, 1);
 
 	memset(&opts, 0, sizeof opts);
 	opts.update = 1;
@@ -656,8 +655,7 @@ static int checkout(void)
 	if (unpack_trees(1, &t, &opts) < 0)
 		die(_("unable to checkout working tree"));
 
-	if (write_cache(fd, active_cache, active_nr) ||
-	    commit_locked_index(lock_file))
+	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
 		die(_("unable to write new index file"));
 
 	err |= run_hook_le(NULL, "post-checkout", sha1_to_hex(null_sha1),
@@ -685,9 +683,10 @@ static void write_config(struct string_list *config)
 	}
 }
 
-static void write_refspec_config(const char* src_ref_prefix,
-		const struct ref* our_head_points_at,
-		const struct ref* remote_head_points_at, struct strbuf* branch_top)
+static void write_refspec_config(const char *src_ref_prefix,
+		const struct ref *our_head_points_at,
+		const struct ref *remote_head_points_at,
+		struct strbuf *branch_top)
 {
 	struct strbuf key = STRBUF_INIT;
 	struct strbuf value = STRBUF_INIT;
@@ -695,16 +694,19 @@ static void write_refspec_config(const char* src_ref_prefix,
 	if (option_mirror || !option_bare) {
 		if (option_single_branch && !option_mirror) {
 			if (option_branch) {
-				if (strstr(our_head_points_at->name, "refs/tags/"))
+				if (starts_with(our_head_points_at->name, "refs/tags/"))
 					strbuf_addf(&value, "+%s:%s", our_head_points_at->name,
 						our_head_points_at->name);
 				else
 					strbuf_addf(&value, "+%s:%s%s", our_head_points_at->name,
 						branch_top->buf, option_branch);
 			} else if (remote_head_points_at) {
+				const char *head = remote_head_points_at->name;
+				if (!skip_prefix(head, "refs/heads/", &head))
+					die("BUG: remote HEAD points at non-head?");
+
 				strbuf_addf(&value, "+%s:%s%s", remote_head_points_at->name,
-						branch_top->buf,
-						skip_prefix(remote_head_points_at->name, "refs/heads/"));
+						branch_top->buf, head);
 			}
 			/*
 			 * otherwise, the next "git fetch" will
@@ -755,8 +757,6 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	struct refspec *refspec;
 	const char *fetch_pattern;
 
-	junk_pid = getpid();
-
 	packet_trace_identity("clone");
 	argc = parse_options(argc, argv, prefix, builtin_clone_options,
 			     builtin_clone_usage, 0);
@@ -796,18 +796,6 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		die(_("repository '%s' does not exist"), repo_name);
 	else
 		repo = repo_name;
-	is_local = option_local != 0 && path && !is_bundle;
-	if (is_local) {
-		if (option_depth)
-			warning(_("--depth is ignored in local clones; use file:// instead."));
-		if (!access(mkpath("%s/shallow", path), F_OK)) {
-			if (option_local > 0)
-				warning(_("source repository is shallow, ignoring --local"));
-			is_local = 0;
-		}
-	}
-	if (option_local > 0 && !is_local)
-		warning(_("--local is ignored"));
 
 	/* no need to be strict, transport_set_option() will validate it again */
 	if (option_depth && atoi(option_depth) < 1)
@@ -900,6 +888,19 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	remote = remote_get(option_origin);
 	transport = transport_get(remote, remote->url[0]);
+	path = get_repo_path(remote->url[0], &is_bundle);
+	is_local = option_local != 0 && path && !is_bundle;
+	if (is_local) {
+		if (option_depth)
+			warning(_("--depth is ignored in local clones; use file:// instead."));
+		if (!access(mkpath("%s/shallow", path), F_OK)) {
+			if (option_local > 0)
+				warning(_("source repository is shallow, ignoring --local"));
+			is_local = 0;
+		}
+	}
+	if (option_local > 0 && !is_local)
+		warning(_("--local is ignored"));
 	transport->cloning = 1;
 
 	if (!transport->get_refs_list || (!is_local && !transport->fetch))
@@ -1000,5 +1001,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	strbuf_release(&key);
 	strbuf_release(&value);
 	junk_mode = JUNK_LEAVE_ALL;
+
+	free(refspec);
 	return err;
 }

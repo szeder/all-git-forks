@@ -13,8 +13,7 @@
 /*
  * We detect based on the cURL version if multi-transfer is
  * usable in this implementation and define this symbol accordingly.
- * This is not something Makefile should set nor users should pass
- * via CFLAGS.
+ * This shouldn't be set by the Makefile or by the user (e.g. via CFLAGS).
  */
 #undef USE_CURL_MULTI
 
@@ -143,6 +142,13 @@ struct http_get_options {
 
 	/* If non-NULL, returns the content-type of the response. */
 	struct strbuf *content_type;
+
+	/*
+	 * If non-NULL, and content_type above is non-NULL, returns
+	 * the charset parameter from the content-type. If none is
+	 * present, returns an empty string.
+	 */
+	struct strbuf *charset;
 
 	/*
 	 * If non-NULL, returns the URL we ended up at, including any

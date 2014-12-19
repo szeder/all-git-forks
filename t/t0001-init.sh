@@ -12,6 +12,13 @@ check_config () {
 		echo "expected a directory $1, a file $1/config and $1/refs"
 		return 1
 	fi
+
+	if test_have_prereq POSIXPERM && test -x "$1/config"
+	then
+		echo "$1/config is executable?"
+		return 1
+	fi
+
 	bare=$(cd "$1" && git config --bool core.bare)
 	worktree=$(cd "$1" && git config core.worktree) ||
 	worktree=unset
@@ -56,7 +63,7 @@ test_expect_success 'plain through aliased command, outside any git repo' '
 	check_config plain-aliased/.git false unset
 '
 
-test_expect_failure 'plain nested through aliased command' '
+test_expect_success 'plain nested through aliased command' '
 	(
 		git init plain-ancestor-aliased &&
 		cd plain-ancestor-aliased &&
@@ -68,7 +75,7 @@ test_expect_failure 'plain nested through aliased command' '
 	check_config plain-ancestor-aliased/plain-nested/.git false unset
 '
 
-test_expect_failure 'plain nested in bare through aliased command' '
+test_expect_success 'plain nested in bare through aliased command' '
 	(
 		git init --bare bare-ancestor-aliased.git &&
 		cd bare-ancestor-aliased.git &&
@@ -185,14 +192,14 @@ test_expect_success 'init --bare/--shared overrides system/global config' '
 	git init --bare --shared=0666 init-bare-shared-override &&
 	check_config init-bare-shared-override true unset &&
 	test x0666 = \
-	x`git config -f init-bare-shared-override/config core.sharedRepository`
+	x$(git config -f init-bare-shared-override/config core.sharedRepository)
 '
 
 test_expect_success 'init honors global core.sharedRepository' '
 	test_config_global core.sharedRepository 0666 &&
 	git init shared-honor-global &&
 	test x0666 = \
-	x`git config -f shared-honor-global/.git/config core.sharedRepository`
+	x$(git config -f shared-honor-global/.git/config core.sharedRepository)
 '
 
 test_expect_success 'init rejects insanely long --template' '
@@ -285,7 +292,7 @@ test_expect_success 'init prefers command line to GIT_DIR' '
 test_expect_success 'init with separate gitdir' '
 	rm -rf newdir &&
 	git init --separate-git-dir realgitdir newdir &&
-	echo "gitdir: `pwd`/realgitdir" >expected &&
+	echo "gitdir: $(pwd)/realgitdir" >expected &&
 	test_cmp expected newdir/.git &&
 	test_path_is_dir realgitdir/refs
 '
@@ -299,7 +306,7 @@ test_expect_success 're-init to update git link' '
 	cd newdir &&
 	git init --separate-git-dir ../surrealgitdir
 	) &&
-	echo "gitdir: `pwd`/surrealgitdir" >expected &&
+	echo "gitdir: $(pwd)/surrealgitdir" >expected &&
 	test_cmp expected newdir/.git &&
 	test_path_is_dir surrealgitdir/refs &&
 	test_path_is_missing realgitdir/refs
@@ -312,7 +319,7 @@ test_expect_success 're-init to move gitdir' '
 	cd newdir &&
 	git init --separate-git-dir ../realgitdir
 	) &&
-	echo "gitdir: `pwd`/realgitdir" >expected &&
+	echo "gitdir: $(pwd)/realgitdir" >expected &&
 	test_cmp expected newdir/.git &&
 	test_path_is_dir realgitdir/refs
 '
@@ -326,7 +333,7 @@ test_expect_success SYMLINKS 're-init to move gitdir symlink' '
 	ln -s here .git &&
 	git init --separate-git-dir ../realgitdir
 	) &&
-	echo "gitdir: `pwd`/realgitdir" >expected &&
+	echo "gitdir: $(pwd)/realgitdir" >expected &&
 	test_cmp expected newdir/.git &&
 	test_cmp expected newdir/here &&
 	test_path_is_dir realgitdir/refs

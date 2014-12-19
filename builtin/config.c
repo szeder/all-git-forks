@@ -69,8 +69,8 @@ static struct option builtin_config_options[] = {
 	OPT_BIT(0, "remove-section", &actions, N_("remove a section: name"), ACTION_REMOVE_SECTION),
 	OPT_BIT('l', "list", &actions, N_("list all"), ACTION_LIST),
 	OPT_BIT('e', "edit", &actions, N_("open an editor"), ACTION_EDIT),
-	OPT_STRING(0, "get-color", &get_color_slot, N_("slot"), N_("find the color configured: [default]")),
-	OPT_STRING(0, "get-colorbool", &get_colorbool_slot, N_("slot"), N_("find the color setting: [stdout-is-tty]")),
+	OPT_BIT(0, "get-color", &actions, N_("find the color configured: slot [default]"), ACTION_GET_COLOR),
+	OPT_BIT(0, "get-colorbool", &actions, N_("find the color setting: slot [stdout-is-tty]"), ACTION_GET_COLORBOOL),
 	OPT_GROUP(N_("Type")),
 	OPT_BIT(0, "bool", &types, N_("value is \"true\" or \"false\""), TYPE_BOOL),
 	OPT_BIT(0, "int", &types, N_("value is decimal number"), TYPE_INT),
@@ -296,21 +296,25 @@ static int git_get_color_config(const char *var, const char *value, void *cb)
 	if (!strcmp(var, get_color_slot)) {
 		if (!value)
 			config_error_nonbool(var);
-		color_parse(value, var, parsed_color);
+		if (color_parse(value, parsed_color) < 0)
+			return -1;
 		get_color_found = 1;
 	}
 	return 0;
 }
 
-static void get_color(const char *def_color)
+static void get_color(const char *var, const char *def_color)
 {
+	get_color_slot = var;
 	get_color_found = 0;
 	parsed_color[0] = '\0';
 	git_config_with_options(git_get_color_config, NULL,
 				&given_config_source, respect_includes);
 
-	if (!get_color_found && def_color)
-		color_parse(def_color, "command line", parsed_color);
+	if (!get_color_found && def_color) {
+		if (color_parse(def_color, parsed_color) < 0)
+			die(_("unable to parse default color value"));
+	}
 
 	fputs(parsed_color, stdout);
 }
@@ -330,8 +334,9 @@ static int git_get_colorbool_config(const char *var, const char *value,
 	return 0;
 }
 
-static int get_colorbool(int print)
+static int get_colorbool(const char *var, int print)
 {
+	get_colorbool_slot = var;
 	get_colorbool_found = -1;
 	get_diff_color_found = -1;
 	get_color_ui_found = -1;
@@ -395,19 +400,6 @@ static int urlmatch_collect_fn(const char *var, const char *value, void *cb)
 	return 0;
 }
 
-static char *dup_downcase(const char *string)
-{
-	char *result;
-	size_t len, i;
-
-	len = strlen(string);
-	result = xmalloc(len + 1);
-	for (i = 0; i < len; i++)
-		result[i] = tolower(string[i]);
-	result[i] = '\0';
-	return result;
-}
-
 static int get_urlmatch(const char *var, const char *url)
 {
 	char *section_tail;
@@ -422,7 +414,7 @@ static int get_urlmatch(const char *var, const char *url)
 	if (!url_normalize(url, &config.url))
 		die("%s", config.url.err);
 
-	config.section = dup_downcase(var);
+	config.section = xstrdup_tolower(var);
 	section_tail = strchr(config.section, '.');
 	if (section_tail) {
 		*section_tail = '\0';
@@ -456,6 +448,20 @@ static int get_urlmatch(const char *var, const char *url)
 
 	free((void *)config.section);
 	return 0;
+}
+
+static char *default_user_config(void)
+{
+	struct strbuf buf = STRBUF_INIT;
+	strbuf_addf(&buf,
+		    _("# This is Git's per-user configuration file.\n"
+		      "[core]\n"
+		      "# Please adapt and uncomment the following lines:\n"
+		      "#	user = %s\n"
+		      "#	email = %s\n"),
+		    ident_default_name(),
+		    ident_default_email());
+	return strbuf_detach(&buf, NULL);
 }
 
 int cmd_config(int argc, const char **argv, const char *prefix)
@@ -528,12 +534,7 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 		usage_with_options(builtin_config_usage, builtin_config_options);
 	}
 
-	if (get_color_slot)
-	    actions |= ACTION_GET_COLOR;
-	if (get_colorbool_slot)
-	    actions |= ACTION_GET_COLORBOOL;
-
-	if ((get_color_slot || get_colorbool_slot) && types) {
+	if ((actions & (ACTION_GET_COLOR|ACTION_GET_COLORBOOL)) && types) {
 		error("--get-color and variable type are incoherent");
 		usage_with_options(builtin_config_usage, builtin_config_options);
 	}
@@ -564,6 +565,8 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 		}
 	}
 	else if (actions == ACTION_EDIT) {
+		char *config_file;
+
 		check_argc(argc, 0, 0);
 		if (!given_config_source.file && nongit)
 			die("not in a git directory");
@@ -572,9 +575,21 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 		if (given_config_source.blob)
 			die("editing blobs is not supported");
 		git_config(git_default_config, NULL);
-		launch_editor(given_config_source.file ?
-			      given_config_source.file : git_path("config"),
-			      NULL, NULL);
+		config_file = xstrdup(given_config_source.file ?
+				      given_config_source.file : git_path("config"));
+		if (use_global_config) {
+			int fd = open(config_file, O_CREAT | O_EXCL | O_WRONLY, 0666);
+			if (fd) {
+				char *content = default_user_config();
+				write_str_in_full(fd, content);
+				free(content);
+				close(fd);
+			}
+			else if (errno != EEXIST)
+				die_errno(_("cannot create configuration file %s"), config_file);
+		}
+		launch_editor(config_file, NULL, NULL);
+		free(config_file);
 	}
 	else if (actions == ACTION_SET) {
 		int ret;
@@ -599,7 +614,8 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 		check_argc(argc, 2, 2);
 		value = normalize_value(argv[0], argv[1]);
 		return git_config_set_multivar_in_file(given_config_source.file,
-						       argv[0], value, "^$", 0);
+						       argv[0], value,
+						       CONFIG_REGEX_NONE, 0);
 	}
 	else if (actions == ACTION_REPLACE_ALL) {
 		check_write();
@@ -667,12 +683,14 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 			die("No such section!");
 	}
 	else if (actions == ACTION_GET_COLOR) {
-		get_color(argv[0]);
+		check_argc(argc, 1, 2);
+		get_color(argv[0], argv[1]);
 	}
 	else if (actions == ACTION_GET_COLORBOOL) {
-		if (argc == 1)
-			color_stdout_is_tty = git_config_bool("command line", argv[0]);
-		return get_colorbool(argc != 0);
+		check_argc(argc, 1, 2);
+		if (argc == 2)
+			color_stdout_is_tty = git_config_bool("command line", argv[1]);
+		return get_colorbool(argv[0], argc == 2);
 	}
 
 	return 0;
