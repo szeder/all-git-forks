@@ -673,7 +673,7 @@ static ucs_char_t next_hfs_char(const char **in)
 		 * but this is enough to catch anything that will convert
 		 * to ".git"
 		 */
-		return tolower(out);
+		return out;
 	}
 }
 
@@ -681,10 +681,17 @@ int is_hfs_dotgit(const char *path)
 {
 	ucs_char_t c;
 
-	if (next_hfs_char(&path) != '.' ||
-	    next_hfs_char(&path) != 'g' ||
-	    next_hfs_char(&path) != 'i' ||
-	    next_hfs_char(&path) != 't')
+	c = next_hfs_char(&path);
+	if (c != '.')
+		return 0;
+	c = next_hfs_char(&path);
+	if (c != 'g' && c != 'G')
+		return 0;
+	c = next_hfs_char(&path);
+	if (c != 'i' && c != 'I')
+		return 0;
+	c = next_hfs_char(&path);
+	if (c != 't' && c != 'T')
 		return 0;
 	c = next_hfs_char(&path);
 	if (c && !is_dir_sep(c))
