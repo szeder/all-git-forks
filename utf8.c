@@ -630,8 +630,8 @@ int mbs_chrlen(const char **text, size_t *remainder_p, const char *encoding)
 }
 
 /*
- * Pick the next char from the stream, folding as an HFS+ filename comparison
- * would. Note that this is _not_ complete by any means. It's just enough
+ * Pick the next char from the stream, ignoring codepoints an HFS+ would.
+ * Note that this is _not_ complete by any means. It's just enough
  * to make is_hfs_dotgit() work, and should not be used otherwise.
  */
 static ucs_char_t next_hfs_char(const char **in)
@@ -668,11 +668,6 @@ static ucs_char_t next_hfs_char(const char **in)
 			continue;
 		}
 
-		/*
-		 * there's a great deal of other case-folding that occurs,
-		 * but this is enough to catch anything that will convert
-		 * to ".git"
-		 */
 		return out;
 	}
 }
@@ -685,6 +680,12 @@ int is_hfs_dotgit(const char *path)
 	if (c != '.')
 		return 0;
 	c = next_hfs_char(&path);
+
+	/*
+	 * there's a great deal of other case-folding that occurs
+	 * in HFS+, but this is enough to catch anything that will
+	 * convert to ".git"
+	 */
 	if (c != 'g' && c != 'G')
 		return 0;
 	c = next_hfs_char(&path);

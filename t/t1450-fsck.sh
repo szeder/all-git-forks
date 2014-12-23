@@ -284,8 +284,7 @@ test_expect_success 'fsck allows .Ňit' '
 		printf "100644 blob $blob\t.\\305\\207it" >tree &&
 		tree=$(git mktree <tree) &&
 		git fsck 2>err &&
-		cat err &&
-		! test -s err
+		test_line_count = 0 err
 	)
 '
 
