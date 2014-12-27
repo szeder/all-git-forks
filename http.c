@@ -986,6 +986,16 @@ static void extract_content_type(struct strbuf *raw, struct strbuf *type,
 		strbuf_addstr(charset, "ISO-8859-1");
 }
 
+void disable_passwordless_auth(struct active_request_slot *slot)
+{
+#ifdef LIBCURL_CAN_HANDLE_AUTH_ANY
+#define HTTP_AUTH_PASSWORDLESS (CURLAUTH_GSSNEGOTIATE)
+	curl_easy_setopt(slot->curl, CURLOPT_HTTPAUTH,
+			 CURLAUTH_ANY & ~HTTP_AUTH_PASSWORDLESS);
+#endif
+}
+
+
 /* http_request() targets */
 #define HTTP_REQUEST_STRBUF	0
 #define HTTP_REQUEST_FILE	1
@@ -1034,6 +1044,9 @@ static int http_request(const char *url,
 	curl_easy_setopt(slot->curl, CURLOPT_URL, url);
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPHEADER, headers);
 	curl_easy_setopt(slot->curl, CURLOPT_ENCODING, "gzip");
+
+	if (options->no_passwordless_auth)
+		disable_passwordless_auth(slot);
 
 	ret = run_one_slot(slot, &results);
 
@@ -1139,6 +1152,7 @@ static int http_request_reauth(const char *url,
 	}
 
 	credential_fill(&http_auth);
+	options->no_passwordless_auth = 1;
 
 	return http_request(url, result, target, options);
 }

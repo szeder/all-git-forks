@@ -369,6 +369,8 @@ struct rpc_state {
 	struct strbuf result;
 	unsigned gzip_request : 1;
 	unsigned initial_buffer : 1;
+	/* Automatic authentication didn't work, so don't try it again. */
+	unsigned no_passwordless_auth : 1;
 };
 
 static size_t rpc_out(void *ptr, size_t eltsize,
@@ -467,6 +469,9 @@ static int probe_rpc(struct rpc_state *rpc, struct slot_results *results)
 	curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION, fwrite_buffer);
 	curl_easy_setopt(slot->curl, CURLOPT_FILE, &buf);
 
+	if (rpc->no_passwordless_auth)
+		disable_passwordless_auth(slot);
+
 	err = run_slot(slot, results);
 
 	curl_slist_free_all(headers);
@@ -510,8 +515,10 @@ static int post_rpc(struct rpc_state *rpc)
 
 		do {
 			err = probe_rpc(rpc, &results);
-			if (err == HTTP_REAUTH)
+			if (err == HTTP_REAUTH) {
 				credential_fill(&http_auth);
+				rpc->no_passwordless_auth = 1;
+			}
 		} while (err == HTTP_REAUTH);
 		if (err != HTTP_OK)
 			return -1;
@@ -532,6 +539,9 @@ retry:
 	curl_easy_setopt(slot->curl, CURLOPT_POST, 1);
 	curl_easy_setopt(slot->curl, CURLOPT_URL, rpc->service_url);
 	curl_easy_setopt(slot->curl, CURLOPT_ENCODING, "gzip");
+
+	if (rpc->no_passwordless_auth)
+		disable_passwordless_auth(slot);
 
 	if (large_request) {
 		/* The request body is large and the size cannot be predicted.
@@ -617,6 +627,7 @@ retry:
 	err = run_slot(slot, NULL);
 	if (err == HTTP_REAUTH && !large_request) {
 		credential_fill(&http_auth);
+		rpc->no_passwordless_auth = 1;
 		goto retry;
 	}
 	if (err != HTTP_OK)

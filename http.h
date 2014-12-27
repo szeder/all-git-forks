@@ -98,6 +98,8 @@ extern int handle_curl_result(struct slot_results *results);
 int run_one_slot(struct active_request_slot *slot,
 		 struct slot_results *results);
 
+void disable_passwordless_auth(struct active_request_slot *slot);
+
 #ifdef USE_CURL_MULTI
 extern void fill_active_slots(void);
 extern void add_fill_function(void *data, int (*fill)(void *));
@@ -138,7 +140,8 @@ extern char *get_remote_object_url(const char *url, const char *hex,
 /* Options for http_get_*() */
 struct http_get_options {
 	unsigned no_cache:1,
-		 keep_error:1;
+		 keep_error:1,
+		 no_passwordless_auth:1;
 
 	/* If non-NULL, returns the content-type of the response. */
 	struct strbuf *content_type;
