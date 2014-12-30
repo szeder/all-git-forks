@@ -450,12 +450,26 @@ static int probe_rpc(struct rpc_state *rpc, struct slot_results *results)
 	struct active_request_slot *slot;
 	struct curl_slist *headers = NULL;
 	struct strbuf buf = STRBUF_INIT;
+	const char *bearer_token;
 	int err;
 
 	slot = get_active_slot();
 
 	headers = curl_slist_append(headers, rpc->hdr_content_type);
 	headers = curl_slist_append(headers, rpc->hdr_accept);
+
+	if (remote) {
+		strbuf_reset(&buf);
+		strbuf_addstr(&buf, "remote.");
+		strbuf_addstr(&buf, remote->name);
+		strbuf_addstr(&buf, ".bearertoken");
+		if (0 == git_config_get_value(buf.buf, &bearer_token)) {
+			strbuf_reset(&buf);
+			strbuf_addstr(&buf, "Authorization: Bearer ");
+			strbuf_addstr(&buf, bearer_token);
+			headers = curl_slist_append(headers, buf.buf);
+		}
+	}
 
 	curl_easy_setopt(slot->curl, CURLOPT_NOBODY, 0);
 	curl_easy_setopt(slot->curl, CURLOPT_POST, 1);
@@ -483,6 +497,8 @@ static int post_rpc(struct rpc_state *rpc)
 	size_t gzip_size = 0;
 	int err, large_request = 0;
 	int needs_100_continue = 0;
+	struct strbuf buf = STRBUF_INIT;
+	const char *bearer_token;
 
 	/* Try to load the entire request, if we can fit it into the
 	 * allocated buffer space we can use HTTP/1.0 and avoid the
@@ -518,6 +534,19 @@ static int post_rpc(struct rpc_state *rpc)
 
 		if (results.auth_avail & CURLAUTH_GSSNEGOTIATE)
 			needs_100_continue = 1;
+	}
+
+	if (remote) {
+		strbuf_reset(&buf);
+		strbuf_addstr(&buf, "remote.");
+		strbuf_addstr(&buf, remote->name);
+		strbuf_addstr(&buf, ".bearertoken");
+		if (0 == git_config_get_value(buf.buf, &bearer_token)) {
+			strbuf_reset(&buf);
+			strbuf_addstr(&buf, "Authorization: Bearer ");
+			strbuf_addstr(&buf, bearer_token);
+			headers = curl_slist_append(headers, buf.buf);
+		}
 	}
 
 	headers = curl_slist_append(headers, rpc->hdr_content_type);

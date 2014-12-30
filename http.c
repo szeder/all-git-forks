@@ -68,6 +68,8 @@ static struct curl_slist *no_pragma_header;
 
 static struct active_request_slot *active_queue_head;
 
+static const char *bearer_token;
+
 size_t fread_buffer(char *ptr, size_t eltsize, size_t nmemb, void *buffer_)
 {
 	size_t size = eltsize * nmemb;
@@ -389,6 +391,7 @@ void http_init(struct remote *remote, const char *url, int proactive_auth)
 	char *low_speed_limit;
 	char *low_speed_time;
 	char *normalized_url;
+	struct strbuf buf = STRBUF_INIT;
 	struct urlmatch_config config = { STRING_LIST_INIT_DUP };
 
 	config.section = "http";
@@ -410,6 +413,14 @@ void http_init(struct remote *remote, const char *url, int proactive_auth)
 
 	if (remote && remote->http_proxy)
 		curl_http_proxy = xstrdup(remote->http_proxy);
+
+	if (remote) {
+		strbuf_addstr(&buf, "remote.");
+		strbuf_addstr(&buf, remote->name);
+		strbuf_addstr(&buf, ".bearertoken");
+		git_config_get_value(buf.buf, &bearer_token);
+		strbuf_release(&buf);
+	}
 
 	pragma_header = curl_slist_append(pragma_header, "Pragma: no-cache");
 	no_pragma_header = curl_slist_append(no_pragma_header, "Pragma:");
@@ -572,6 +583,7 @@ struct active_request_slot *get_active_slot(void)
 	if (curl_save_cookies)
 		curl_easy_setopt(slot->curl, CURLOPT_COOKIEJAR, curl_cookie_file);
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPHEADER, pragma_header);
+
 	curl_easy_setopt(slot->curl, CURLOPT_ERRORBUFFER, curl_errorstr);
 	curl_easy_setopt(slot->curl, CURLOPT_CUSTOMREQUEST, NULL);
 	curl_easy_setopt(slot->curl, CURLOPT_READFUNCTION, NULL);
@@ -1030,6 +1042,13 @@ static int http_request(const char *url,
 		curl_easy_setopt(slot->curl, CURLOPT_FAILONERROR, 0);
 
 	headers = curl_slist_append(headers, buf.buf);
+
+	if (bearer_token) {
+		strbuf_reset(&buf);
+		strbuf_addstr(&buf, "Authorization: Bearer ");
+		strbuf_addstr(&buf, bearer_token);
+		headers = curl_slist_append(headers, buf.buf);
+	}
 
 	curl_easy_setopt(slot->curl, CURLOPT_URL, url);
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPHEADER, headers);
