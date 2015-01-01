@@ -1478,9 +1478,8 @@ static int resolve_missing_loose_ref(const char *refname,
 const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned char *sha1, int *flags)
 {
 	static struct strbuf refname_buffer = STRBUF_INIT;
+	static struct strbuf buffer = STRBUF_INIT;
 	int depth = MAXDEPTH;
-	ssize_t len;
-	char buffer[256];
 	int bad_name = 0;
 
 	if (flags)
@@ -1585,28 +1584,26 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned 
 			else
 				return NULL;
 		}
-		len = read_in_full(fd, buffer, sizeof(buffer)-1);
-		if (len < 0) {
+		strbuf_reset(&buffer);
+		if (strbuf_read(&buffer, fd, 128) < 0) {
 			int save_errno = errno;
 			close(fd);
 			errno = save_errno;
 			return NULL;
 		}
 		close(fd);
-		while (len && isspace(buffer[len-1]))
-			len--;
-		buffer[len] = '\0';
+		strbuf_rtrim(&buffer);
 
 		/*
 		 * Is it a symbolic ref?
 		 */
-		if (!starts_with(buffer, "ref:")) {
+		if (!starts_with(buffer.buf, "ref:")) {
 			/*
 			 * Please note that FETCH_HEAD has a second
 			 * line containing other data.
 			 */
-			if (get_sha1_hex(buffer, sha1) ||
-			    (buffer[40] != '\0' && !isspace(buffer[40]))) {
+			if (get_sha1_hex(buffer.buf, sha1) ||
+			    (buffer.buf[40] != '\0' && !isspace(buffer.buf[40]))) {
 				if (flags)
 					*flags |= REF_ISBROKEN;
 				errno = EINVAL;
@@ -1621,7 +1618,7 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned 
 		}
 		if (flags)
 			*flags |= REF_ISSYMREF;
-		buf = buffer + 4;
+		buf = buffer.buf + 4;
 		while (isspace(*buf))
 			buf++;
 		strbuf_reset(&refname_buffer);
