@@ -1544,19 +1544,18 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned 
 
 		/* Follow "normalized" - ie "refs/.." symlinks by hand */
 		if (S_ISLNK(st.st_mode)) {
-			ssize_t linklen = readlink(path, buffer, sizeof(buffer)-1);
-			if (linklen < 0) {
+			static struct strbuf link_contents = STRBUF_INIT;
+
+			if (strbuf_readlink(&link_contents, path, 0)) {
 				if (errno == ENOENT || errno == EINVAL)
 					/* inconsistent with lstat; retry */
 					goto stat_ref;
 				else
 					return NULL;
 			}
-			buffer[linklen] = 0;
-			if (starts_with(buffer, "refs/") &&
-					!check_refname_format(buffer, 0)) {
-				strbuf_reset(&refname_buffer);
-				strbuf_add(&refname_buffer, buffer, linklen);
+			if (starts_with(link_contents.buf, "refs/") &&
+					!check_refname_format(link_contents.buf, 0)) {
+				strbuf_swap(&link_contents, &refname_buffer);
 				refname = refname_buffer.buf;
 				if (flags)
 					*flags |= REF_ISSYMREF;
