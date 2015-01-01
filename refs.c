@@ -1527,19 +1527,8 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned 
 		 * try again starting with the lstat().
 		 */
 	stat_ref:
-		if (lstat(path, &st) < 0) {
-			if (errno != ENOENT)
-				return NULL;
-			if (resolve_missing_loose_ref(refname, resolve_flags,
-						      sha1, flags))
-				return NULL;
-			if (bad_name) {
-				hashclr(sha1);
-				if (flags)
-					*flags |= REF_ISBROKEN;
-			}
-			return refname;
-		}
+		if (lstat(path, &st) < 0)
+			goto stat_failed;
 
 		/* Follow "normalized" - ie "refs/.." symlinks by hand */
 		if (S_ISLNK(st.st_mode)) {
@@ -1564,6 +1553,14 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned 
 				}
 				continue;
 			}
+
+			/*
+			 * Fall through and handle it as a normal file
+			 * by reading through the symlink. To do so,
+			 * we need the stat of the actual file.
+			 */
+			if (stat(path, &st) < 0)
+				goto stat_failed;
 		}
 
 		/* Is it a directory? */
@@ -1640,6 +1637,21 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned 
 			bad_name = 1;
 		}
 	}
+
+	/* This point is never reached */
+
+ stat_failed:
+	if (errno != ENOENT)
+		return NULL;
+	if (resolve_missing_loose_ref(refname, resolve_flags,
+				      sha1, flags))
+		return NULL;
+	if (bad_name) {
+		hashclr(sha1);
+		if (flags)
+			*flags |= REF_ISBROKEN;
+	}
+	return refname;
 }
 
 char *resolve_refdup(const char *ref, int resolve_flags, unsigned char *sha1, int *flags)
