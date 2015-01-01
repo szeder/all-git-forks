@@ -1477,10 +1477,10 @@ static int resolve_missing_loose_ref(const char *refname,
 /* This function needs to return a meaningful errno on failure */
 const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned char *sha1, int *flags)
 {
+	static struct strbuf refname_buffer = STRBUF_INIT;
 	int depth = MAXDEPTH;
 	ssize_t len;
 	char buffer[256];
-	static char refname_buffer[256];
 	int bad_name = 0;
 
 	if (flags)
@@ -1555,8 +1555,9 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned 
 			buffer[linklen] = 0;
 			if (starts_with(buffer, "refs/") &&
 					!check_refname_format(buffer, 0)) {
-				strcpy(refname_buffer, buffer);
-				refname = refname_buffer;
+				strbuf_reset(&refname_buffer);
+				strbuf_add(&refname_buffer, buffer, linklen);
+				refname = refname_buffer.buf;
 				if (flags)
 					*flags |= REF_ISSYMREF;
 				if (resolve_flags & RESOLVE_REF_NO_RECURSE) {
@@ -1624,7 +1625,9 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned 
 		buf = buffer + 4;
 		while (isspace(*buf))
 			buf++;
-		refname = strcpy(refname_buffer, buf);
+		strbuf_reset(&refname_buffer);
+		strbuf_addstr(&refname_buffer, buf);
+		refname = refname_buffer.buf;
 		if (resolve_flags & RESOLVE_REF_NO_RECURSE) {
 			hashclr(sha1);
 			return refname;
