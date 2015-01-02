@@ -1564,6 +1564,53 @@ static enum ref_lookup_status read_ref_file(struct ref_lookup *ref_lookup,
 	return REF_LOOKUP_OK;
 }
 
+/*
+ * `path` is thought (modulo races) to be a symlink. Try reading it as
+ * a loose reference. If the file is a symbolic reference, then point
+ * ref_lookup->u.refname at memory within a static internal buffer
+ * that is overwritten each time the function is called. No refname
+ * validity checks are done.
+ */
+static enum ref_lookup_status read_ref_link(struct ref_lookup *ref_lookup,
+					    const char *path)
+{
+	static struct strbuf buffer = STRBUF_INIT;
+	static struct strbuf link_contents = STRBUF_INIT;
+	struct stat st;
+
+	if (strbuf_readlink(&link_contents, path, 0)) {
+		if (errno == ENOENT || errno == EINVAL)
+			/* inconsistent with lstat; retry */
+			return REF_LOOKUP_RETRY;
+		else
+			return REF_LOOKUP_ERROR;
+	}
+	if (starts_with(link_contents.buf, "refs/") &&
+	    !check_refname_format(link_contents.buf, 0)) {
+		strbuf_swap(&link_contents, &buffer);
+		ref_lookup->u.refname = buffer.buf;
+		ref_lookup->flags |= REF_ISSYMREF;
+		return REF_LOOKUP_OK;
+	}
+
+	/*
+	 * The special case treatment, reading the symlink as a
+	 * symbolic ref, didn't work. Handle it as a normal
+	 * file/directory by reading through the symlink. To do so, we
+	 * need the stat of the actual file.
+	 */
+	if (stat(path, &st) < 0)
+		return REF_LOOKUP_ERROR;
+
+	/* Is it a directory? */
+	if (S_ISDIR(st.st_mode)) {
+		errno = EISDIR;
+		return REF_LOOKUP_ERROR;
+	}
+
+	return read_ref_file(ref_lookup, path);
+}
+
 /* This function needs to return a meaningful errno on failure */
 const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
 			       unsigned char *sha1, int *flags)
@@ -1598,6 +1645,7 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
 	for (;;) {
 		char path[PATH_MAX];
 		struct stat st;
+		enum ref_lookup_status status;
 
 		if (--depth < 0) {
 			errno = ELOOP;
@@ -1621,50 +1669,21 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
 
 		/* Follow "normalized" - ie "refs/.." symlinks by hand */
 		if (S_ISLNK(st.st_mode)) {
-			static struct strbuf link_contents = STRBUF_INIT;
-
-			if (strbuf_readlink(&link_contents, path, 0)) {
-				if (errno == ENOENT || errno == EINVAL)
-					/* inconsistent with lstat; retry */
-					goto stat_ref;
-				else
-					return NULL;
-			}
-			if (starts_with(link_contents.buf, "refs/") &&
-					!check_refname_format(link_contents.buf, 0)) {
-				strbuf_swap(&link_contents, &refname_buffer);
-				refname = refname_buffer.buf;
-				if (flags)
-					*flags |= REF_ISSYMREF;
-				if (resolve_flags & RESOLVE_REF_NO_RECURSE) {
-					hashclr(sha1);
-					return refname;
-				}
-				continue;
-			}
-
-			/*
-			 * Fall through and handle it as a normal file
-			 * by reading through the symlink. To do so,
-			 * we need the stat of the actual file.
-			 */
-			if (stat(path, &st) < 0)
-				goto stat_failed;
-		}
-
-		/* Is it a directory? */
-		if (S_ISDIR(st.st_mode)) {
+			status = read_ref_link(&ref_lookup, path);
+		} else if (S_ISDIR(st.st_mode)) {
 			errno = EISDIR;
 			return NULL;
+		} else {
+			status = read_ref_file(&ref_lookup, path);
 		}
 
-		switch (read_ref_file(&ref_lookup, path)) {
-		case REF_LOOKUP_OK:
-			break;
-		case REF_LOOKUP_ERROR:
-			return NULL;
+		switch (status) {
 		case REF_LOOKUP_RETRY:
 			goto stat_ref;
+		case REF_LOOKUP_ERROR:
+			return NULL;
+		case REF_LOOKUP_OK:
+			break;
 		}
 
 		if (flags)
