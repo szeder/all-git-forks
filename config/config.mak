@@ -6,6 +6,12 @@ else
 prefix := $(HOME)/local/git/$(prefix_base)
 endif
 
+ifdef SANITIZE
+COMPILER ?= clang
+CFLAGS += -fsanitize=$(SANITIZE)
+CFLAGS += -fno-omit-frame-pointer
+endif
+
 COMPILER ?= gcc
 O = 0
 CC = $(COMPILER)
