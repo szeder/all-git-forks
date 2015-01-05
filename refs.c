@@ -1500,8 +1500,9 @@ struct ref_lookup {
 
 enum ref_lookup_status {
 	REF_LOOKUP_OK = 0,
-	REF_LOOKUP_ERROR = -1,
-	REF_LOOKUP_RETRY = -2
+	REF_LOOKUP_MISSING = -1,
+	REF_LOOKUP_ERROR = -2,
+	REF_LOOKUP_RETRY = -3
 };
 
 /*
@@ -1522,11 +1523,13 @@ static enum ref_lookup_status read_ref_file(struct ref_lookup *ref_lookup,
 	ref_lookup->flags = 0;
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
-		if (errno == ENOENT)
+		switch (errno) {
+		case ENOENT:
 			/* inconsistent with stat; retry */
-			return REF_LOOKUP_RETRY;
-		else
+			return REF_LOOKUP_MISSING;
+		default:
 			return REF_LOOKUP_ERROR;
+		}
 	}
 	strbuf_reset(&buffer);
 	if (strbuf_read(&buffer, fd, 128) < 0) {
@@ -1579,11 +1582,15 @@ static enum ref_lookup_status read_ref_link(struct ref_lookup *ref_lookup,
 	struct stat st;
 
 	if (strbuf_readlink(&link_contents, path, 0)) {
-		if (errno == ENOENT || errno == EINVAL)
+		switch (errno) {
+		case ENOENT:
+			return REF_LOOKUP_MISSING;
+		case EINVAL:
 			/* inconsistent with lstat; retry */
 			return REF_LOOKUP_RETRY;
-		else
+		default:
 			return REF_LOOKUP_ERROR;
+		}
 	}
 	if (starts_with(link_contents.buf, "refs/") &&
 	    !check_refname_format(link_contents.buf, 0)) {
@@ -1599,8 +1606,14 @@ static enum ref_lookup_status read_ref_link(struct ref_lookup *ref_lookup,
 	 * file/directory by reading through the symlink. To do so, we
 	 * need the stat of the actual file.
 	 */
-	if (stat(path, &st) < 0)
-		return REF_LOOKUP_ERROR;
+	if (stat(path, &st) < 0) {
+		switch (errno) {
+		case ENOENT:
+			return REF_LOOKUP_MISSING;
+		default:
+			return REF_LOOKUP_ERROR;
+		}
+	}
 
 	/* Is it a directory? */
 	if (S_ISDIR(st.st_mode)) {
@@ -1680,6 +1693,8 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
 		switch (status) {
 		case REF_LOOKUP_RETRY:
 			goto stat_ref;
+		case REF_LOOKUP_MISSING:
+			goto stat_failed;
 		case REF_LOOKUP_ERROR:
 			return NULL;
 		case REF_LOOKUP_OK:
