@@ -679,4 +679,60 @@ test_expect_success "add notes to $num_commits commits in each of $num_notes_ref
 
 '
 
+tree4=$(git rev-parse refs/heads/master^{tree})
+blob4=$(git rev-parse refs/heads/master:bar)
+
+test_tick
+cat >input <<INPUT_END
+commit refs/notes/noncommits
+committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+data <<COMMIT
+adding notes to non-commits
+COMMIT
+
+N inline $tree4
+data <<EOF
+note for tree object
+EOF
+
+N inline $blob4
+data <<EOF
+note for blob object
+EOF
+
+INPUT_END
+
+test_expect_success 'add notes to non-commits' "
+
+	git fast-import <input &&
+	echo 'note for tree object' >expect &&
+	git notes --ref noncommits show $tree4 >actual &&
+	test_cmp expect actual &&
+	echo 'note for blob object' >expect &&
+	git notes --ref noncommits show $blob4 >actual &&
+	test_cmp expect actual
+
+"
+
+test_tick
+cat >input <<INPUT_END
+commit refs/notes/nonobjects
+committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+data <<COMMIT
+adding notes to non-objects MUST FAIL
+COMMIT
+
+N inline deadbeefdeadbeefdeadbeefdeadbeefdeadbeef
+data <<EOF
+note for missing object
+EOF
+
+INPUT_END
+
+test_expect_success 'cannot add notes to non-objects' "
+
+	test_must_fail git fast-import <input
+
+"
+
 test_done
