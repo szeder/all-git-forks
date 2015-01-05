@@ -2451,7 +2451,7 @@ static void note_change_n(const char *p, struct branch *b, unsigned char *old_fa
 	static struct strbuf uq = STRBUF_INIT;
 	struct object_entry *oe;
 	struct branch *s;
-	unsigned char sha1[20], commit_sha1[20];
+	unsigned char sha1[20], target_sha1[20];
 	char path[60];
 	uint16_t inline_data = 0;
 	unsigned char new_fanout;
@@ -2489,19 +2489,19 @@ static void note_change_n(const char *p, struct branch *b, unsigned char *old_fa
 			die("Missing space after SHA1: %s", command_buf.buf);
 	}
 
-	/* <commit-ish> */
+	/* <object> */
 	s = lookup_branch(p);
 	if (s) {
 		if (is_null_sha1(s->sha1))
 			die("Can't add a note on empty branch.");
-		hashcpy(commit_sha1, s->sha1);
+		hashcpy(target_sha1, s->sha1);
 	} else if (*p == ':') {
-		uintmax_t commit_mark = parse_mark_ref_eol(p);
-		struct object_entry *commit_oe = find_mark(commit_mark);
-		hashcpy(commit_sha1, commit_oe->idx.sha1);
-	} else if (!get_sha1(p, commit_sha1)) {
-		if (!find_object(commit_sha1)) {
-			if (sha1_object_info(commit_sha1, NULL) < 0)
+		uintmax_t target_mark = parse_mark_ref_eol(p);
+		struct object_entry *target_oe = find_mark(target_mark);
+		hashcpy(target_sha1, target_oe->idx.sha1);
+	} else if (!get_sha1(p, target_sha1)) {
+		if (!find_object(target_sha1)) {
+			if (sha1_object_info(target_sha1, NULL) < 0)
 				die("Not a valid object: %s", p);
 		}
 	} else
@@ -2527,7 +2527,7 @@ static void note_change_n(const char *p, struct branch *b, unsigned char *old_fa
 			    typename(type), command_buf.buf);
 	}
 
-	construct_path_with_fanout(sha1_to_hex(commit_sha1), *old_fanout, path);
+	construct_path_with_fanout(sha1_to_hex(target_sha1), *old_fanout, path);
 	if (tree_content_remove(&b->branch_tree, path, NULL, 0))
 		b->num_notes--;
 
@@ -2536,7 +2536,7 @@ static void note_change_n(const char *p, struct branch *b, unsigned char *old_fa
 
 	b->num_notes++;
 	new_fanout = convert_num_notes_to_fanout(b->num_notes);
-	construct_path_with_fanout(sha1_to_hex(commit_sha1), new_fanout, path);
+	construct_path_with_fanout(sha1_to_hex(target_sha1), new_fanout, path);
 	tree_content_set(&b->branch_tree, path, sha1, S_IFREG | 0644, NULL);
 }
 
