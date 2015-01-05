@@ -1606,12 +1606,7 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned 
 				errno = EINVAL;
 				return NULL;
 			}
-			if (bad_name) {
-				hashclr(sha1);
-				if (flags)
-					*flags |= REF_ISBROKEN;
-			}
-			return refname;
+			goto done;
 		}
 		if (flags)
 			*flags |= REF_ISSYMREF;
@@ -1646,6 +1641,7 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned 
 	if (resolve_missing_loose_ref(refname, resolve_flags,
 				      sha1, flags))
 		return NULL;
+ done:
 	if (bad_name) {
 		hashclr(sha1);
 		if (flags)
