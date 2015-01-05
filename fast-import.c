@@ -2153,15 +2153,14 @@ static uintmax_t do_change_note_fanout(
 		char *fullpath, unsigned int fullpath_len,
 		unsigned char fanout)
 {
-	struct tree_content *t = root->tree;
 	struct tree_entry *e, leaf;
 	unsigned int i, tmp_hex_sha1_len, tmp_fullpath_len;
 	uintmax_t num_notes = 0;
 	unsigned char sha1[20];
 	char realpath[60];
 
-	for (i = 0; t && i < t->entry_count; i++) {
-		e = t->entries[i];
+	for (i = 0; root->tree && i < root->tree->entry_count; i++) {
+		e = root->tree->entries[i];
 		tmp_hex_sha1_len = hex_sha1_len + e->name->str_len;
 		tmp_fullpath_len = fullpath_len;
 
@@ -2217,9 +2216,6 @@ static uintmax_t do_change_note_fanout(
 				hex_sha1, tmp_hex_sha1_len,
 				fullpath, tmp_fullpath_len, fanout);
 		}
-
-		/* The above may have reallocated the current tree_content */
-		t = root->tree;
 	}
 	return num_notes;
 }
