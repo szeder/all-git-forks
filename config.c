@@ -506,9 +506,9 @@ static int git_parse_signed(const char *value, intmax_t *ret, intmax_t max)
 			errno = EINVAL;
 			return 0;
 		}
-		uval = abs(val);
+		uval = labs(val);
 		uval *= factor;
-		if (uval > max || abs(val) > uval) {
+		if (uval > max || labs(val) > uval) {
 			errno = ERANGE;
 			return 0;
 		}
@@ -893,6 +893,16 @@ static int git_default_core_config(const char *var, const char *value)
 
 	if (!strcmp(var, "core.precomposeunicode")) {
 		precomposed_unicode = git_config_bool(var, value);
+		return 0;
+	}
+
+	if (!strcmp(var, "core.protecthfs")) {
+		protect_hfs = git_config_bool(var, value);
+		return 0;
+	}
+
+	if (!strcmp(var, "core.protectntfs")) {
+		protect_ntfs = git_config_bool(var, value);
 		return 0;
 	}
 

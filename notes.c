@@ -902,7 +902,7 @@ int combine_notes_cat_sort_uniq(unsigned char *cur_sha1,
 	if (string_list_add_note_lines(&sort_uniq_list, new_sha1))
 		goto out;
 	string_list_remove_empty_items(&sort_uniq_list, 0);
-	sort_string_list(&sort_uniq_list);
+	string_list_sort(&sort_uniq_list);
 	string_list_remove_duplicates(&sort_uniq_list, 0);
 
 	/* create a new blob object from sort_uniq_list */
@@ -1218,8 +1218,7 @@ static void format_note(struct notes_tree *t, const unsigned char *object_sha1,
 	if (!sha1)
 		return;
 
-	if (!(msg = read_sha1_file(sha1, &type, &msglen)) || !msglen ||
-			type != OBJ_BLOB) {
+	if (!(msg = read_sha1_file(sha1, &type, &msglen)) || type != OBJ_BLOB) {
 		free(msg);
 		return;
 	}
