@@ -2159,6 +2159,9 @@ static uintmax_t do_change_note_fanout(
 	unsigned char sha1[20];
 	char realpath[60];
 
+	if (!root->tree)
+		load_tree(root);
+
 	for (i = 0; root->tree && i < root->tree->entry_count; i++) {
 		e = root->tree->entries[i];
 		tmp_hex_sha1_len = hex_sha1_len + e->name->str_len;
@@ -2210,8 +2213,6 @@ static uintmax_t do_change_note_fanout(
 				leaf.tree);
 		} else if (S_ISDIR(e->versions[1].mode)) {
 			/* This is a subdir that may contain note entries */
-			if (!e->tree)
-				load_tree(e);
 			num_notes += do_change_note_fanout(orig_root, e,
 				hex_sha1, tmp_hex_sha1_len,
 				fullpath, tmp_fullpath_len, fanout);
