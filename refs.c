@@ -1474,13 +1474,104 @@ static int resolve_missing_loose_ref(const char *refname,
 	}
 }
 
+/*
+ * The results of one non-recursive lookup of a reference.
+ */
+struct ref_lookup {
+	/* A combination of REF_ISSYMREF, REF_ISPACKED, and REF_ISBROKEN: */
+	int flags;
+
+	union {
+		/*
+		 * The object pointed to by the reference, iff
+		 * !(flags & REF_ISSYMREF):
+		 */
+		unsigned char sha1[20];
+
+		/*
+		 * The reference referred to, iff (flags &
+		 * REF_ISSYMREF):
+		 */
+		const char *refname;
+	} u;
+};
+
+#define REF_LOOKUP_INIT {0}
+
+enum ref_lookup_status {
+	REF_LOOKUP_OK = 0,
+	REF_LOOKUP_ERROR = -1,
+	REF_LOOKUP_RETRY = -2
+};
+
+/*
+ * `path` is thought (modulo races) to be a plain file. Try reading it
+ * as a loose reference. If the file is a symbolic reference, then
+ * point ref_lookup->u.refname at memory within a static internal
+ * buffer that is overwritten each time the function is called. No
+ * refname validity checks are done. If the function returns anything
+ * besides REF_LOOKUP_OK, then the contents of ref_lookup->u are
+ * undefined.
+ */
+static enum ref_lookup_status read_ref_file(struct ref_lookup *ref_lookup,
+					    const char *path)
+{
+	static struct strbuf buffer = STRBUF_INIT;
+	int fd;
+
+	ref_lookup->flags = 0;
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		if (errno == ENOENT)
+			/* inconsistent with stat; retry */
+			return REF_LOOKUP_RETRY;
+		else
+			return REF_LOOKUP_ERROR;
+	}
+	strbuf_reset(&buffer);
+	if (strbuf_read(&buffer, fd, 128) < 0) {
+		int save_errno = errno;
+		close(fd);
+		errno = save_errno;
+		return REF_LOOKUP_ERROR;
+	}
+	close(fd);
+	strbuf_rtrim(&buffer);
+
+	/*
+	 * Is it a symbolic ref?
+	 */
+	if (starts_with(buffer.buf, "ref:")) {
+		const char *buf;
+
+		ref_lookup->flags |= REF_ISSYMREF;
+		buf = buffer.buf + 4;
+		while (isspace(*buf))
+			buf++;
+		ref_lookup->u.refname = xstrdup(buf);
+	} else {
+		/*
+		 * Please note that FETCH_HEAD has a second line
+		 * containing other data.
+		 */
+		if (get_sha1_hex(buffer.buf, ref_lookup->u.sha1) ||
+		    (buffer.buf[40] != '\0' && !isspace(buffer.buf[40]))) {
+			ref_lookup->flags |= REF_ISBROKEN;
+			errno = EINVAL;
+			return REF_LOOKUP_ERROR;
+		}
+	}
+	return REF_LOOKUP_OK;
+}
+
 /* This function needs to return a meaningful errno on failure */
-const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned char *sha1, int *flags)
+const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
+			       unsigned char *sha1, int *flags)
 {
 	static struct strbuf refname_buffer = STRBUF_INIT;
-	static struct strbuf buffer = STRBUF_INIT;
 	int depth = MAXDEPTH;
 	int bad_name = 0;
+	struct ref_lookup ref_lookup = REF_LOOKUP_INIT;
 
 	if (flags)
 		*flags = 0;
@@ -1507,8 +1598,6 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned 
 	for (;;) {
 		char path[PATH_MAX];
 		struct stat st;
-		char *buf;
-		int fd;
 
 		if (--depth < 0) {
 			errno = ELOOP;
@@ -1569,67 +1658,40 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags, unsigned 
 			return NULL;
 		}
 
-		/*
-		 * Anything else, just open it and try to use it as
-		 * a ref
-		 */
-		fd = open(path, O_RDONLY);
-		if (fd < 0) {
-			if (errno == ENOENT)
-				/* inconsistent with lstat; retry */
-				goto stat_ref;
-			else
-				return NULL;
-		}
-		strbuf_reset(&buffer);
-		if (strbuf_read(&buffer, fd, 128) < 0) {
-			int save_errno = errno;
-			close(fd);
-			errno = save_errno;
+		switch (read_ref_file(&ref_lookup, path)) {
+		case REF_LOOKUP_OK:
+			break;
+		case REF_LOOKUP_ERROR:
 			return NULL;
+		case REF_LOOKUP_RETRY:
+			goto stat_ref;
 		}
-		close(fd);
-		strbuf_rtrim(&buffer);
 
-		/*
-		 * Is it a symbolic ref?
-		 */
-		if (!starts_with(buffer.buf, "ref:")) {
-			/*
-			 * Please note that FETCH_HEAD has a second
-			 * line containing other data.
-			 */
-			if (get_sha1_hex(buffer.buf, sha1) ||
-			    (buffer.buf[40] != '\0' && !isspace(buffer.buf[40]))) {
+		if (flags)
+			*flags |= ref_lookup.flags;
+
+		if (ref_lookup.flags & REF_ISSYMREF) {
+			strbuf_reset(&refname_buffer);
+			strbuf_addstr(&refname_buffer, ref_lookup.u.refname);
+			refname = refname_buffer.buf;
+			if (resolve_flags & RESOLVE_REF_NO_RECURSE) {
+				hashclr(sha1);
+				return refname;
+			}
+			if (check_refname_format(refname, REFNAME_ALLOW_ONELEVEL)) {
 				if (flags)
 					*flags |= REF_ISBROKEN;
-				errno = EINVAL;
-				return NULL;
-			}
-			goto done;
-		}
-		if (flags)
-			*flags |= REF_ISSYMREF;
-		buf = buffer.buf + 4;
-		while (isspace(*buf))
-			buf++;
-		strbuf_reset(&refname_buffer);
-		strbuf_addstr(&refname_buffer, buf);
-		refname = refname_buffer.buf;
-		if (resolve_flags & RESOLVE_REF_NO_RECURSE) {
-			hashclr(sha1);
-			return refname;
-		}
-		if (check_refname_format(buf, REFNAME_ALLOW_ONELEVEL)) {
-			if (flags)
-				*flags |= REF_ISBROKEN;
 
-			if (!(resolve_flags & RESOLVE_REF_ALLOW_BAD_NAME) ||
-			    !refname_is_safe(buf)) {
-				errno = EINVAL;
-				return NULL;
+				if (!(resolve_flags & RESOLVE_REF_ALLOW_BAD_NAME) ||
+				    !refname_is_safe(refname)) {
+					errno = EINVAL;
+					return NULL;
+				}
+				bad_name = 1;
 			}
-			bad_name = 1;
+		} else {
+			hashcpy(sha1, ref_lookup.u.sha1);
+			goto done;
 		}
 	}
 
