@@ -2459,7 +2459,7 @@ struct untracked_cache *read_untracked_extension(const void *data, unsigned long
 	const struct ondisk_untracked_cache *ouc;
 	struct untracked_cache *uc;
 	struct read_data rd;
-	const unsigned char *next = data, *end = data + sz;
+	const unsigned char *next = data, *end = (const unsigned char *)data + sz;
 	struct strbuf sb = STRBUF_INIT;
 	int len;
 
