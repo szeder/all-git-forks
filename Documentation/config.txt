@@ -365,7 +365,7 @@ proxy use, while defaulting to a common proxy for external domains.
 
 core.ignoreStat::
 	If true, Git will avoid using lstat() calls to detect if files have
-	changed. Git will set the "assume-unchanged" bit for those tracked files
+	changed by setting the "assume-unchanged" bit for those tracked files
 	which it has updated identically in both the index and working tree.
 +
 When files are modified outside of Git, the user will need to stage
@@ -375,6 +375,7 @@ Git will not normally detect changes to those files.
 +
 This is useful on systems where lstat() calls are very slow, such as
 CIFS/Microsoft Windows.
++
 False by default.
 
 core.preferSymlinkRefs::
