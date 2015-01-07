@@ -68,6 +68,8 @@ static struct curl_slist *no_pragma_header;
 
 static struct active_request_slot *active_queue_head;
 
+static char *cached_accept_language;
+
 size_t fread_buffer(char *ptr, size_t eltsize, size_t nmemb, void *buffer_)
 {
 	size_t size = eltsize * nmemb;
@@ -515,6 +517,11 @@ void http_cleanup(void)
 		cert_auth.password = NULL;
 	}
 	ssl_cert_password_required = 0;
+
+	if (cached_accept_language) {
+		free(cached_accept_language);
+		cached_accept_language = NULL;
+	}
 }
 
 struct active_request_slot *get_active_slot(void)
@@ -986,6 +993,166 @@ static void extract_content_type(struct strbuf *raw, struct strbuf *type,
 		strbuf_addstr(charset, "ISO-8859-1");
 }
 
+/*
+ * Guess the user's preferred languages from the value in LANGUAGE environment
+ * variable and LC_MESSAGES locale category if NO_GETTEXT is not defined.
+ *
+ * The result can be a colon-separated list like "ko:ja:en".
+ */
+static const char *get_preferred_languages(void)
+{
+	const char *retval;
+
+	retval = getenv("LANGUAGE");
+	if (retval && *retval)
+		return retval;
+
+#ifndef NO_GETTEXT
+	retval = setlocale(LC_MESSAGES, NULL);
+	if (retval && *retval &&
+		strcmp(retval, "C") &&
+		strcmp(retval, "POSIX"))
+		return retval;
+#endif
+
+	return NULL;
+}
+
+static void write_accept_language(struct strbuf *buf)
+{
+	const char *lang_begin, *pos;
+	int q, max_q;
+	int num_langs;
+	int decimal_places;
+	const int CODESET_OR_MODIFIER = 1;
+	const int LANGUAGE_TAG = 2;
+	const int SEPARATOR = 3;
+	int is_q_factor_required = 0;
+	int parse_state = 0;
+	char q_format[32];
+	/*
+	 * MAX_LANGS must not be larger than 1,000. If it is larger than that,
+	 * q-value will be smaller than 0.001, the minimum q-value the HTTP
+	 * specification allows [1].
+	 *
+	 * [1]: http://tools.ietf.org/html/rfc7231#section-5.3.1
+	 */
+	const int MAX_LANGS = 1000;
+	const int MAX_SIZE_OF_HEADER = 4000;
+	const int MAX_SIZE_OF_ASTERISK_ELEMENT = 11; /* for ", *;q=0.001" */
+	int last_size = 0;
+
+	lang_begin = get_preferred_languages();
+
+	/* Don't add Accept-Language header if no language is preferred. */
+	if (!lang_begin)
+		return;
+
+	/* Count number of preferred lang_begin to decide precision of q-factor. */
+	for (num_langs = 1, pos = lang_begin; *pos; pos++)
+		if (*pos == ':')
+			num_langs++;
+
+	/* Decide the precision for q-factor on number of preferred lang_begin. */
+	num_langs += 1; /* for '*' */
+
+	if (MAX_LANGS < num_langs)
+		num_langs = MAX_LANGS;
+
+	for (max_q = 1, decimal_places = 0;
+		max_q < num_langs;
+		decimal_places++, max_q *= 10)
+		;
+
+	sprintf(q_format, ";q=0.%%0%dd", decimal_places);
+
+	q = max_q;
+
+	strbuf_addstr(buf, "Accept-Language: ");
+
+	/*
+	 * Convert a list of colon-separated locale values [1][2] to a list of
+	 * comma-separated language tags [3] which can be used as a value of
+	 * Accept-Language header.
+	 *
+	 * [1]: http://pubs.opengroup.org/onlinepubs/007908799/xbd/envvar.html
+	 * [2]: http://www.gnu.org/software/libc/manual/html_node/Using-gettextized-software.html
+	 * [3]: http://tools.ietf.org/html/rfc7231#section-5.3.5
+	 */
+	for (pos = lang_begin; ; pos++) {
+		if (!*pos || *pos == ':') {
+			if (is_q_factor_required) {
+				/* Put a q-factor only if it is less than 1.0. */
+				if (q < max_q)
+					strbuf_addf(buf, q_format, q);
+
+				if (q > 1)
+					q--;
+
+				last_size = buf->len;
+
+				is_q_factor_required = 0;
+			}
+			parse_state = SEPARATOR;
+		} else if (parse_state == CODESET_OR_MODIFIER)
+			continue;
+		else if (*pos == ' ') /* Ignore whitespace character */
+			continue;
+		else if (*pos == '.' || *pos == '@') /* Remove .codeset and @modifier. */
+			parse_state = CODESET_OR_MODIFIER;
+		else {
+			if (parse_state != LANGUAGE_TAG && q < max_q)
+				strbuf_addstr(buf, ", ");
+			strbuf_addch(buf, *pos == '_' ? '-' : *pos);
+			is_q_factor_required = 1;
+			parse_state = LANGUAGE_TAG;
+		}
+
+		if (buf->len > MAX_SIZE_OF_HEADER - MAX_SIZE_OF_ASTERISK_ELEMENT) {
+			strbuf_remove(buf, last_size, buf->len - last_size);
+			break;
+		}
+
+		if (!*pos)
+			break;
+	}
+
+	/* Don't add Accept-Language header if no language is preferred. */
+	if (q >= max_q) {
+		strbuf_reset(buf);
+		return;
+	}
+
+	/* Add '*' with minimum q-factor greater than 0.0. */
+	strbuf_addstr(buf, ", *");
+	strbuf_addf(buf, q_format, 1);
+}
+
+/*
+ * Get an Accept-Language header which indicates user's preferred languages.
+ *
+ * This function always return non-NULL string as strbuf_detach() does.
+ *
+ * Examples:
+ *   LANGUAGE= -> ""
+ *   LANGUAGE=ko:en -> "Accept-Language: ko, en; q=0.9, *; q=0.1"
+ *   LANGUAGE=ko_KR.UTF-8:sr@latin -> "Accept-Language: ko-KR, sr; q=0.9, *; q=0.1"
+ *   LANGUAGE=ko LANG=en_US.UTF-8 -> "Accept-Language: ko, *; q=0.1"
+ *   LANGUAGE= LANG=en_US.UTF-8 -> "Accept-Language: en-US, *; q=0.1"
+ *   LANGUAGE= LANG=C -> ""
+ */
+static const char *get_accept_language(void)
+{
+	if (!cached_accept_language) {
+		struct strbuf buf = STRBUF_INIT;
+		write_accept_language(&buf);
+		cached_accept_language = strbuf_detach(&buf, NULL);
+		strbuf_release(&buf);
+	}
+
+	return cached_accept_language;
+}
+
 /* http_request() targets */
 #define HTTP_REQUEST_STRBUF	0
 #define HTTP_REQUEST_FILE	1
@@ -998,6 +1165,7 @@ static int http_request(const char *url,
 	struct slot_results results;
 	struct curl_slist *headers = NULL;
 	struct strbuf buf = STRBUF_INIT;
+	const char *accept_language;
 	int ret;
 
 	slot = get_active_slot();
@@ -1022,6 +1190,11 @@ static int http_request(const char *url,
 			curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION,
 					 fwrite_buffer);
 	}
+
+	accept_language = get_accept_language();
+
+	if (strlen(accept_language) > 0)
+		headers = curl_slist_append(headers, accept_language);
 
 	strbuf_addstr(&buf, "Pragma:");
 	if (options && options->no_cache)
