@@ -1622,6 +1622,8 @@ static int chk_hit_marker(struct grep_expr *x)
 
 int grep_source(struct grep_opt *opt, struct grep_source *gs)
 {
+	if(opt->none_match)
+		return !grep_source_1(opt, gs, 0);
 	/*
 	 * we do not have to do the two-pass grep when we do not check
 	 * buffer-wide "all-match".
