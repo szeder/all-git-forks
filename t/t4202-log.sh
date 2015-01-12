@@ -212,6 +212,18 @@ test_expect_success 'log --grep' '
 	test_cmp expect actual
 '
 
+test_expect_success 'log --invert-grep --grep' '
+	echo second >expect &&
+	git log -1 --pretty="tformat:%s" --invert-grep --grep=th --grep=Sec >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'log --invert-grep --grep -i' '
+	echo initial >expect &&
+	git log -1 --pretty="tformat:%s" --invert-grep -i --grep=th --grep=Sec >actual &&
+	test_cmp expect actual
+'
+
 test_expect_success 'log --grep option parsing' '
 	echo second >expect &&
 	git log -1 --pretty="tformat:%s" --grep sec >actual &&
