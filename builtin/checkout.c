@@ -24,8 +24,8 @@
 #include "sigchain.h"
 
 static const char * const checkout_usage[] = {
-	N_("git checkout [options] <branch>"),
-	N_("git checkout [options] [<branch>] -- <file>..."),
+	N_("git checkout [<options>] <branch>"),
+	N_("git checkout [<options>] [<branch>] -- <file>..."),
 	NULL,
 };
 
@@ -764,7 +764,7 @@ static void suggest_reattach(struct commit *commit, struct rev_info *revs)
 			_(
 			"If you want to keep them by creating a new branch, "
 			"this may be a good time\nto do so with:\n\n"
-			" git branch new_branch_name %s\n\n"),
+			" git branch <new-branch-name> %s\n\n"),
 			find_unique_abbrev(commit->object.sha1, DEFAULT_ABBREV));
 }
 
@@ -1359,7 +1359,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		OPT_BOOL(0, "ignore-skip-worktree-bits", &opts.ignore_skipworktree,
 			 N_("do not limit pathspecs to sparse entries only")),
 		OPT_HIDDEN_BOOL(0, "guess", &dwim_new_local_branch,
-				N_("second guess 'git checkout no-such-branch'")),
+				N_("second guess 'git checkout <no-such-branch>'")),
 		OPT_FILENAME(0, "to", &opts.new_worktree,
 			   N_("check a branch out in a separate working directory")),
 		OPT_BOOL(0, "ignore-other-worktrees", &opts.ignore_other_worktrees,

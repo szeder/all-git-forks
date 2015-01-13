@@ -7,11 +7,11 @@
 #include "commit-slab.h"
 
 static const char* show_branch_usage[] = {
-    N_("git show-branch [-a|--all] [-r|--remotes] [--topo-order | --date-order]\n"
+    N_("git show-branch [-a | --all] [-r | --remotes] [--topo-order | --date-order]\n"
        "		       [--current] [--color[=<when>] | --no-color] [--sparse]\n"
        "		       [--more=<n> | --list | --independent | --merge-base]\n"
        "	       [--no-name | --sha1-name] [--topics] [(<rev> | <glob>)...]"),
-    N_("git show-branch (-g|--reflog)[=<n>[,<base>]] [--list] [<ref>]"),
+    N_("git show-branch (-g | --reflog)[=<n>[,<base>]] [--list] [<ref>]"),
     NULL
 };
 
