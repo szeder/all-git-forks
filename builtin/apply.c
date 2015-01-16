@@ -2174,6 +2174,10 @@ static void update_pre_post_images(struct image *preimage,
 	/* Fix the length of the whole thing */
 	postimage->len = new - postimage->buf;
 	postimage->nr -= reduced;
+
+	if (postlen && postlen < (new - postimage->buf))
+		die("BUG: postlen = %d, used = %d",
+		    (int)postlen, (int)(new - postimage->buf));
 }
 
 static int match_fragment(struct image *img,
