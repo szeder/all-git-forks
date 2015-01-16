@@ -999,7 +999,9 @@ test_lazy_prereq NOT_ROOT '
 
 # When the tests are run as root, permission tests will report that
 # things are writable when they shouldn't be.
-test -w / || test_set_prereq SANITY
+test_lazy_prereq SANITY '
+	test_have_prereq POSIXPERM,NOT_ROOT
+'
 
 GIT_UNZIP=${GIT_UNZIP:-unzip}
 test_lazy_prereq UNZIP '
