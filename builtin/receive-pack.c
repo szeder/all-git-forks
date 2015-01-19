@@ -113,6 +113,15 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 		return 0;
 	}
 
+	if (starts_with(var, "receive.fsck.skiplist")) {
+		const char *path = is_absolute_path(value) ?
+			value : git_path("%s", value);
+		if (fsck_severity.len)
+			strbuf_addch(&fsck_severity, ',');
+		strbuf_addf(&fsck_severity, "skiplist=%s", path);
+		return 0;
+	}
+
 	if (starts_with(var, "receive.fsck.")) {
 		if (fsck_severity.len)
 			strbuf_addch(&fsck_severity, ',');
