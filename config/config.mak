@@ -21,12 +21,14 @@ CFLAGS += -Wno-format-zero-length
 CFLAGS += -Wdeclaration-after-statement
 CFLAGS += -Wpointer-arith
 CFLAGS += -Wstrict-prototypes
+CFLAGS += -Wvla
 ifeq ($(COMPILER), clang)
 CFLAGS += -Qunused-arguments
 CFLAGS += -Wno-parentheses-equality
 CFLAGS += -Wtautological-constant-out-of-range-compare
 else
 CFLAGS += -Wold-style-declaration
+CFLAGS += -Wold-style-definition
 endif
 LDFLAGS = -g
 
