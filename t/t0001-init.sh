@@ -268,7 +268,7 @@ test_expect_success 'init notices EEXIST (2)' '
 	test_path_is_file newdir/a
 '
 
-test_expect_success POSIXPERM,SANITY 'init notices EPERM' '
+test_expect_success SANITY 'init notices EPERM' '
 	rm -fr newdir &&
 	mkdir newdir &&
 	chmod -w newdir &&
