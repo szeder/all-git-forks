@@ -36,6 +36,7 @@ static enum deny_action deny_current_branch = DENY_UNCONFIGURED;
 static enum deny_action deny_delete_current = DENY_UNCONFIGURED;
 static int receive_fsck_objects = -1;
 static int transfer_fsck_objects = -1;
+static struct strbuf fsck_severity = STRBUF_INIT;
 static int receive_unpack_limit = -1;
 static int transfer_unpack_limit = -1;
 static int advertise_atomic_push = 1;
@@ -112,6 +113,22 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 
 	if (strcmp(var, "transfer.unpacklimit") == 0) {
 		transfer_unpack_limit = git_config_int(var, value);
+		return 0;
+	}
+
+	if (starts_with(var, "receive.fsck.skiplist")) {
+		const char *path = is_absolute_path(value) ?
+			value : git_path("%s", value);
+		if (fsck_severity.len)
+			strbuf_addch(&fsck_severity, ',');
+		strbuf_addf(&fsck_severity, "skiplist=%s", path);
+		return 0;
+	}
+
+	if (starts_with(var, "receive.fsck.")) {
+		if (fsck_severity.len)
+			strbuf_addch(&fsck_severity, ',');
+		strbuf_addf(&fsck_severity, "%s=%s", var + 13, value);
 		return 0;
 	}
 
@@ -1470,8 +1487,13 @@ static const char *unpack(int err_fd, struct shallow_info *si)
 		argv_array_pushl(&child.args, "unpack-objects", hdr_arg, NULL);
 		if (quiet)
 			argv_array_push(&child.args, "-q");
-		if (fsck_objects)
-			argv_array_push(&child.args, "--strict");
+		if (fsck_objects) {
+			if (fsck_severity.len)
+				argv_array_pushf(&child.args, "--strict=%s",
+					fsck_severity.buf);
+			else
+				argv_array_push(&child.args, "--strict");
+		}
 		child.no_stdout = 1;
 		child.err = err_fd;
 		child.git_cmd = 1;
@@ -1488,8 +1510,13 @@ static const char *unpack(int err_fd, struct shallow_info *si)
 
 		argv_array_pushl(&child.args, "index-pack",
 				 "--stdin", hdr_arg, keep_arg, NULL);
-		if (fsck_objects)
-			argv_array_push(&child.args, "--strict");
+		if (fsck_objects) {
+			if (fsck_severity.len)
+				argv_array_pushf(&child.args, "--strict=%s",
+					fsck_severity.buf);
+			else
+				argv_array_push(&child.args, "--strict");
+		}
 		if (fix_thin)
 			argv_array_push(&child.args, "--fix-thin");
 		child.out = -1;
