@@ -1232,7 +1232,9 @@ filter.<driver>.smudge::
 	object to a worktree file upon checkout.  See
 	linkgit:gitattributes[5] for details.
 
-fsck.*::
+fsck.error::
+fsck.warn::
+fsck.ignore::
 	The `fsck.error`, `fsck.warn` and `fsck.ignore` settings specify
 	comma-separated lists of fsck message IDs which should trigger
 	fsck to error out, to print the message and continue, or to ignore
@@ -2174,25 +2176,26 @@ receive.fsckObjects::
 	Defaults to false. If not set, the value of `transfer.fsckObjects`
 	is used instead.
 
-receive.fsck.*::
+receive.fsck.error::
+receive.fsck.warn::
+receive.fsck.ignore::
 	When `receive.fsckObjects` is set to true, errors can be switched
 	to warnings and vice versa by configuring the `receive.fsck.*`
 	settings. These settings contain comma-separated lists of fsck
 	message IDs. For convenience, fsck prefixes the error/warning with
-	the message ID, e.g. "missing-email: invalid author/committer line
-	- missing email" means that setting `receive.fsck.ignore =
-	missing-email` will hide that issue.
+	the message ID, e.g. "missing-email: invalid
+	author/committer line - missing email" means that setting
+	`receive.fsck.ignore = missing-email` will hide that issue.
 +
---
-	error::
-		a comma-separated list of fsck message IDs that should be
-		trigger fsck to error out.
-	warn::
-		a comma-separated list of fsck message IDs that should be
-		displayed, but fsck should continue to error out.
-	ignore::
-		a comma-separated list of fsck message IDs that should be
-		ignored completely.
+error;;
+	a comma-separated list of fsck message IDs that should be
+	trigger fsck to error out.
+warn;;
+	a comma-separated list of fsck message IDs that should be
+	displayed, but fsck should continue to error out.
+ignore;;
+	a comma-separated list of fsck message IDs that should be
+	ignored completely.
 +
 This feature is intended to support working with legacy repositories
 which would not pass pushing when `receive.fsckObjects = true`, allowing
