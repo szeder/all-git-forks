@@ -6,6 +6,7 @@ upstream=${upstream:-origin}
 cont=
 force=
 noautorerere=
+careful=0
 while test $# -gt 0; do
 case "$1" in
 --continue)
@@ -17,6 +18,9 @@ case "$1" in
 	;;
 -f)
 	force=t
+	;;
+-c|--careful)
+	careful=$(($careful + 1))
 	;;
 *)
 	echo >&2 "unknown option: $1"
@@ -68,6 +72,12 @@ for i in `Meta/topics`; do
 			GIT_EDITOR=true git commit || exit 1
 		else
 			exit 1
+		fi
+	fi
+	if test "$careful" -gt 0; then
+		make -j16 || exit 1
+		if test "$careful" -gt 1; then
+			make test || exit 1
 		fi
 	fi
 done
