@@ -3056,11 +3056,18 @@ int is_branch(const char *refname)
 static int write_sha1_to_lock_file(struct ref_lock *lock,
 				   const unsigned char *sha1)
 {
-	if (fdopen_lock_file(lock->lk, "w") < 0
-	    || fprintf(lock->lk->fp, "%s\n", sha1_to_hex(sha1)) != 41)
+	if (lock->lk->fd == -1) {
+		if (reopen_lock_file(lock->lk) < 0
+		    || fdopen_lock_file(lock->lk, "w") < 0
+		    || fprintf(lock->lk->fp, "%s\n", sha1_to_hex(sha1)) != 41
+		    || close_lock_file(lock->lk) < 0)
+		    return -1;
+	} else {
+		if (fdopen_lock_file(lock->lk, "w") < 0
+		    || fprintf(lock->lk->fp, "%s\n", sha1_to_hex(sha1)) != 41)
 		return -1;
-	else
-		return 0;
+	}
+	return 0;
 }
 
 /*
@@ -3762,6 +3769,8 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 				    update->refname);
 			goto cleanup;
 		}
+		/* Do not keep all lock files open at the same time. */
+		close_lock_file(update->lock->lk);
 	}
 
 	/* Perform updates first so live commits remain referenced */
