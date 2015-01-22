@@ -3053,6 +3053,16 @@ int is_branch(const char *refname)
 	return !strcmp(refname, "HEAD") || starts_with(refname, "refs/heads/");
 }
 
+static int write_sha1_to_lock_file(struct ref_lock *lock,
+				   const unsigned char *sha1)
+{
+	if (fdopen_lock_file(lock->lk, "w") < 0
+	    || fprintf(lock->lk->fp, "%s\n", sha1_to_hex(sha1)) != 41)
+		return -1;
+	else
+		return 0;
+}
+
 /*
  * Write sha1 into the ref specified by the lock. Make sure that errno
  * is sane on error.
@@ -3060,7 +3070,6 @@ int is_branch(const char *refname)
 static int write_ref_sha1(struct ref_lock *lock,
 	const unsigned char *sha1, const char *logmsg)
 {
-	static char term = '\n';
 	struct object *o;
 
 	if (!lock) {
@@ -3086,8 +3095,7 @@ static int write_ref_sha1(struct ref_lock *lock,
 		errno = EINVAL;
 		return -1;
 	}
-	if (write_in_full(lock->lk->fd, sha1_to_hex(sha1), 40) != 40 ||
-	    write_in_full(lock->lk->fd, &term, 1) != 1 ||
+	if (write_sha1_to_lock_file(lock, sha1) ||
 	    close_ref(lock) < 0) {
 		int save_errno = errno;
 		error("Couldn't write %s", lock->lk->filename.buf);
@@ -4043,9 +4051,7 @@ int reflog_expire(const char *refname, const unsigned char *sha1,
 			status |= error("couldn't write %s: %s", log_file,
 					strerror(errno));
 		} else if ((flags & EXPIRE_REFLOGS_UPDATE_REF) &&
-			(write_in_full(lock->lk->fd,
-				sha1_to_hex(cb.last_kept_sha1), 40) != 40 ||
-			 write_str_in_full(lock->lk->fd, "\n") != 1 ||
+			(write_sha1_to_lock_file(lock, cb.last_kept_sha1) ||
 			 close_ref(lock) < 0)) {
 			status |= error("couldn't write %s",
 					lock->lk->filename.buf);
