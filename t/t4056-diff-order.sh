@@ -62,7 +62,7 @@ test_expect_success 'missing orderfile' '
 	test_must_fail git diff -Obogus_file --name-only HEAD^..HEAD
 '
 
-test_expect_success POSIXPERM,SANITY 'unreadable orderfile' '
+test_expect_success SANITY 'unreadable orderfile' '
 	>unreadable_file &&
 	chmod -r unreadable_file &&
 	test_must_fail git diff -Ounreadable_file --name-only HEAD^..HEAD
