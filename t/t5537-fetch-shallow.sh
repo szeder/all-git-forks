@@ -173,7 +173,7 @@ EOF
 	)
 '
 
-test_expect_success POSIXPERM,SANITY 'shallow fetch from a read-only repo' '
+test_expect_success SANITY 'shallow fetch from a read-only repo' '
 	cp -R .git read-only.git &&
 	find read-only.git -print | xargs chmod -w &&
 	test_when_finished "find read-only.git -type d -print | xargs chmod +w" &&
