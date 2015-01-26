@@ -2220,7 +2220,7 @@ void update_index_if_able(struct index_state *istate, struct lock_file *lockfile
 	    verify_index(istate) &&
 	    write_locked_index(istate, lockfile, COMMIT_LOCK))
 		rollback_lock_file(lockfile);
-	trace_performance_since(start, "update_index_if_able %s", lockfile->filename.buf);
+	trace_performance_since(start, "update_index_if_able %s", lockfile->filename);
 }
 
 static int do_write_index(struct index_state *istate, int newfd,
