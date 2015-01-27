@@ -222,27 +222,38 @@ static void write_ce_name(struct strbuf *sb, const struct cache_entry *ce)
 	strbuf_release(&quoted);
 }
 
+static int match_pathspec_with_depth(struct pathspec *ps,
+				     const char *name, int namelen,
+				     int prefix, char *seen, int is_dir,
+				     const int *custom_depth)
+{
+	int saved_depth = ps->max_depth;
+	int result;
+
+	if (custom_depth)
+		ps->max_depth = *custom_depth;
+	result = match_pathspec(ps, name, namelen, prefix, seen, is_dir);
+	if (custom_depth)
+		ps->max_depth = saved_depth;
+	return result;
+}
+
 static void show_ce_entry(const char *tag, const struct cache_entry *ce)
 {
 	static struct strbuf sb = STRBUF_INIT;
-	int len = max_prefix_len, saved_max_depth;
+	int len = max_prefix_len;
+	static const int infinite_depth = -1;
 
 	if (len >= ce_namelen(ce))
 		die("git ls-files: internal error - cache entry not superset of prefix");
 
-	if (show_dirs) {
-		/* ignore depth to catch dirs that contain matched entries */
-		saved_max_depth = pathspec.max_depth;
-		pathspec.max_depth = -1;
-	}
-
-	if (!match_pathspec(&pathspec, ce->name, ce_namelen(ce),
-			    len, ps_matched,
-			    S_ISDIR(ce->ce_mode) || S_ISGITLINK(ce->ce_mode)))
+	if (!match_pathspec_with_depth(&pathspec, ce->name, ce_namelen(ce),
+				       len, ps_matched,
+				       S_ISDIR(ce->ce_mode) || S_ISGITLINK(ce->ce_mode),
+				       show_dirs ? &infinite_depth : NULL))
 		return;
 
 	if (show_dirs) {
-		pathspec.max_depth = saved_max_depth;
 		if (strchr(ce->name, '/') &&
 		    !match_pathspec(&pathspec, ce->name, ce_namelen(ce),
 				    prefix_len, NULL, 1) &&
