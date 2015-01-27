@@ -1050,7 +1050,7 @@ static const char *find_author_by_nickname(const char *name)
 		clear_mailmap(&mailmap);
 		return strbuf_detach(&buf, NULL);
 	}
-	die(_("No existing author found with '%s'"), name);
+	die(_("--author '%s': neither 'Name <email>' nor a match for an existing author"), name);
 }
 
 
