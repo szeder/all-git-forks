@@ -1027,7 +1027,7 @@ static void write_accept_language(struct strbuf *buf)
 	const int MAX_DECIMAL_PLACES = 3;
 	const int MAX_LANGUAGE_TAGS = 1000;
 	const int MAX_ACCEPT_LANGUAGE_HEADER_SIZE = 4000;
-	struct strbuf *language_tags = NULL;
+	char **language_tags = NULL;
 	int num_langs = 0;
 	const char *s = get_preferred_languages();
 	int i;
@@ -1053,9 +1053,7 @@ static void write_accept_language(struct strbuf *buf)
 		if (tag.len) {
 			num_langs++;
 			REALLOC_ARRAY(language_tags, num_langs);
-			strbuf_init(&language_tags[num_langs - 1], 0);
-			strbuf_swap(&tag, &language_tags[num_langs - 1]);
-
+			language_tags[num_langs - 1] = strbuf_detach(&tag, NULL);
 			if (num_langs >= MAX_LANGUAGE_TAGS - 1) /* -1 for '*' */
 				break;
 		}
@@ -1070,13 +1068,12 @@ static void write_accept_language(struct strbuf *buf)
 
 		/* add '*' */
 		REALLOC_ARRAY(language_tags, num_langs + 1);
-		strbuf_init(&language_tags[num_langs], 0);
-		strbuf_addstr(&language_tags[num_langs++], "*");
+		language_tags[num_langs++] = "*"; /* it's OK; this won't be freed */
 
 		/* compute decimal_places */
 		for (max_q = 1, decimal_places = 0;
-				max_q < num_langs && decimal_places <= MAX_DECIMAL_PLACES;
-				decimal_places++, max_q *= 10)
+		     max_q < num_langs && decimal_places <= MAX_DECIMAL_PLACES;
+		     decimal_places++, max_q *= 10)
 			;
 
 		sprintf(q_format, ";q=0.%%0%dd", decimal_places);
@@ -1087,7 +1084,7 @@ static void write_accept_language(struct strbuf *buf)
 			if (i > 0)
 				strbuf_addstr(buf, ", ");
 
-			strbuf_addstr(buf, strbuf_detach(&language_tags[i], NULL));
+			strbuf_addstr(buf, language_tags[i]);
 
 			if (i > 0)
 				strbuf_addf(buf, q_format, max_q - i);
@@ -1101,10 +1098,9 @@ static void write_accept_language(struct strbuf *buf)
 		}
 	}
 
-	/* free language tags */
-	for(i = 0; i < num_langs; i++) {
-		strbuf_release(&language_tags[i]);
-	}
+	/* free language tags -- last one is a static '*' */
+	for(i = 0; i < num_langs - 1; i++)
+		free(language_tags[i]);
 	free(language_tags);
 }
 
