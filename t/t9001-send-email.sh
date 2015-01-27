@@ -242,6 +242,13 @@ test_expect_success $PREREQ 'non-ascii self name is suppressed' "
 		'non_ascii_self_suppressed'
 "
 
+# This name is long enough to force format-patch to split it into multiple
+# encoded-words, assuming it uses UTF-8 with the "Q" encoding.
+test_expect_success $PREREQ 'long non-ascii self name is suppressed' "
+	test_suppress_self_quoted 'Ƒüñníęř €. Nâṁé' 'odd_?=mail@example.com' \
+		'long_non_ascii_self_suppressed'
+"
+
 test_expect_success $PREREQ 'sanitized self name is suppressed' "
 	test_suppress_self_unquoted '\"A U. Thor\"' 'author@example.com' \
 		'self_name_sanitized_suppressed'
@@ -1555,6 +1562,39 @@ test_expect_success $PREREQ 'sendemail.aliasfile=~/.mailrc' '
 		outdir/0001-*.patch \
 		2>errors >out &&
 	grep "^!someone@example\.org!$" commandline1
+'
+
+do_xmailer_test () {
+	expected=$1 params=$2 &&
+	git format-patch -1 &&
+	git send-email \
+		--from="Example <nobody@example.com>" \
+		--to=someone@example.com \
+		--smtp-server="$(pwd)/fake.sendmail" \
+		$params \
+		0001-*.patch \
+		2>errors >out &&
+	{ grep '^X-Mailer:' out || :; } >mailer &&
+	test_line_count = $expected mailer
+}
+
+test_expect_success $PREREQ '--[no-]xmailer without any configuration' '
+	do_xmailer_test 1 "--xmailer" &&
+	do_xmailer_test 0 "--no-xmailer"
+'
+
+test_expect_success $PREREQ '--[no-]xmailer with sendemail.xmailer=true' '
+	test_config sendemail.xmailer true &&
+	do_xmailer_test 1 "" &&
+	do_xmailer_test 0 "--no-xmailer" &&
+	do_xmailer_test 1 "--xmailer"
+'
+
+test_expect_success $PREREQ '--[no-]xmailer with sendemail.xmailer=false' '
+	test_config sendemail.xmailer false &&
+	do_xmailer_test 0 "" &&
+	do_xmailer_test 0 "--no-xmailer" &&
+	do_xmailer_test 1 "--xmailer"
 '
 
 test_done
