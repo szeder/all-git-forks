@@ -98,7 +98,7 @@ test_expect_success 'cannot del file containing .. (index)' '
 	test_path_is_file ../foo
 '
 
-test_expect_failure 'symlink escape via ..' '
+test_expect_success 'symlink escape via ..' '
 	{
 		mkpatch_symlink tmp .. &&
 		mkpatch_add tmp/foo ../foo
@@ -107,7 +107,7 @@ test_expect_failure 'symlink escape via ..' '
 	test_path_is_missing ../foo
 '
 
-test_expect_failure 'symlink escape via .. (index)' '
+test_expect_success 'symlink escape via .. (index)' '
 	{
 		mkpatch_symlink tmp .. &&
 		mkpatch_add tmp/foo ../foo
@@ -116,7 +116,7 @@ test_expect_failure 'symlink escape via .. (index)' '
 	test_path_is_missing ../foo
 '
 
-test_expect_failure 'symlink escape via absolute path' '
+test_expect_success 'symlink escape via absolute path' '
 	{
 		mkpatch_symlink tmp "$(pwd)" &&
 		mkpatch_add tmp/foo ../foo
