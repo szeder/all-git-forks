@@ -51,6 +51,7 @@ static int apply_verbosely;
 static int allow_overlap;
 static int no_add;
 static int threeway;
+static int allow_uplevel;
 static const char *fake_ancestor;
 static int line_termination = '\n';
 static unsigned int p_context = UINT_MAX;
@@ -3572,6 +3573,63 @@ static int check_to_create(const char *new_name, int ok_if_exists)
 	return 0;
 }
 
+static int path_is_beyond_symlink(const char *name_)
+{
+	struct strbuf name = STRBUF_INIT;
+
+	strbuf_addstr(&name, name_);
+	do {
+		struct patch *previous;
+
+		while (--name.len && name.buf[name.len] != '/')
+			; /* scan backwards */
+		if (!name.len)
+			break;
+		name.buf[name.len] = '\0';
+		previous = in_fn_table(name.buf);
+		if (previous) {
+			if (!was_deleted(previous) &&
+			    !to_be_deleted(previous) &&
+			    previous->new_mode &&
+			    S_ISLNK(previous->new_mode))
+				goto symlink_found;
+		} else if (check_index) {
+			int pos = cache_name_pos(name.buf, name.len);
+			if (0 <= pos &&
+			    S_ISLNK(active_cache[pos]->ce_mode))
+				goto symlink_found;
+		} else {
+			struct stat st;
+			if (!lstat(name.buf, &st) && S_ISLNK(st.st_mode))
+				goto symlink_found;
+		}
+	} while (1);
+
+	strbuf_release(&name);
+	return 0;
+symlink_found:
+	strbuf_release(&name);
+	return 1;
+
+}
+
+static void die_on_uplevel_path(struct patch *patch)
+{
+	const char *old_name = NULL;
+	const char *new_name = NULL;
+	if (patch->is_delete)
+		old_name = patch->old_name;
+	else if (!patch->is_new && !patch->is_copy)
+		old_name = patch->old_name;
+	if (!patch->is_delete)
+		new_name = patch->new_name;
+
+	if (old_name && !verify_path(old_name))
+		die(_("invalid path '%s'"), old_name);
+	if (new_name && !verify_path(new_name))
+		die(_("invalid path '%s'"), new_name);
+}
+
 /*
  * Check and apply the patch in-core; leave the result in patch->result
  * for the caller to write it out to the final destination.
@@ -3658,6 +3716,13 @@ static int check_patch(struct patch *patch)
 					patch->old_mode, old_name);
 		}
 	}
+
+	if (!patch->is_delete && path_is_beyond_symlink(patch->new_name))
+		return error(_("affected file '%s' is beyond a symbolic link"),
+			     patch->new_name);
+
+	if (!allow_uplevel)
+		die_on_uplevel_path(patch);
 
 	if (apply_data(patch, &st, ce) < 0)
 		return error(_("%s: patch does not apply"), name);
@@ -4407,6 +4472,8 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 			N_("make sure the patch is applicable to the current index")),
 		OPT_BOOL(0, "cached", &cached,
 			N_("apply a patch without touching the working tree")),
+		OPT_BOOL(0, "allow-uplevel", &allow_uplevel,
+			N_("accept a patch to touch outside the current directory")),
 		OPT_BOOL(0, "apply", &force_apply,
 			N_("also apply the patch (use with --stat/--summary/--check)")),
 		OPT_BOOL('3', "3way", &threeway,
@@ -4479,6 +4546,9 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 			die(_("--cached outside a repository"));
 		check_index = 1;
 	}
+	if (check_index)
+		allow_uplevel = 0;
+
 	for (i = 0; i < argc; i++) {
 		const char *arg = argv[i];
 		int fd;
