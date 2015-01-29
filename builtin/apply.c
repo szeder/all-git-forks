@@ -3483,6 +3483,46 @@ static int check_to_create(const char *new_name, int ok_if_exists)
 	return 0;
 }
 
+static int path_is_beyond_symlink(const char *name_)
+{
+	struct strbuf name = STRBUF_INIT;
+
+	strbuf_addstr(&name, name_);
+	do {
+		struct patch *previous;
+
+		while (--name.len && name.buf[name.len] != '/')
+			; /* scan backwards */
+		if (!name.len)
+			break;
+		name.buf[name.len] = '\0';
+		previous = in_fn_table(name.buf);
+		if (previous) {
+			if (!was_deleted(previous) &&
+			    !to_be_deleted(previous) &&
+			    previous->new_mode &&
+			    S_ISLNK(previous->new_mode))
+				goto symlink_found;
+		} else if (check_index) {
+			int pos = cache_name_pos(name.buf, name.len);
+			if (0 <= pos &&
+			    S_ISLNK(active_cache[pos]->ce_mode))
+				goto symlink_found;
+		} else {
+			struct stat st;
+			if (!lstat(name.buf, &st) && S_ISLNK(st.st_mode))
+				goto symlink_found;
+		}
+	} while (1);
+
+	strbuf_release(&name);
+	return 0;
+symlink_found:
+	strbuf_release(&name);
+	return 1;
+
+}
+
 /*
  * Check and apply the patch in-core; leave the result in patch->result
  * for the caller to write it out to the final destination.
@@ -3569,6 +3609,10 @@ static int check_patch(struct patch *patch)
 					patch->old_mode, old_name);
 		}
 	}
+
+	if (!patch->is_delete && path_is_beyond_symlink(patch->new_name))
+		return error(_("affected file '%s' is beyond a symbolic link"),
+			     patch->new_name);
 
 	if (apply_data(patch, &st, ce) < 0)
 		return error(_("%s: patch does not apply"), name);

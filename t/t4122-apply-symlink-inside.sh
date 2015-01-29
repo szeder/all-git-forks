@@ -52,4 +52,66 @@ test_expect_success 'check result' '
 
 '
 
+test_expect_success SYMLINKS 'do not follow symbolic link (setup)' '
+
+	git reset --hard &&
+	ln -s ../i386/dir arch/x86_64/dir &&
+	git add arch/x86_64/dir &&
+	git diff HEAD >add_symlink.patch &&
+	git reset --hard &&
+
+	mkdir arch/x86_64/dir &&
+	>arch/x86_64/dir/file &&
+	git add arch/x86_64/dir/file &&
+	git diff HEAD >add_file.patch &&
+	git reset --hard &&
+	rm -fr arch/x86_64/dir &&
+
+	cat add_symlink.patch add_file.patch >patch &&
+
+	mkdir arch/i386/dir
+'
+
+test_expect_success SYMLINKS 'do not follow symbolic link (same input)' '
+
+	# same input creates a confusing symbolic link
+	test_must_fail git apply patch 2>error-wt &&
+	test_i18ngrep "beyond a symbolic link" error-wt &&
+	test ! -e arch/x86_64/dir &&
+	test ! -e arch/i386/dir/file &&
+
+	test_must_fail git apply --index patch 2>error-ix &&
+	test_i18ngrep "beyond a symbolic link" error-ix &&
+	test ! -e arch/x86_64/dir &&
+	test ! -e arch/i386/dir/file &&
+	test_must_fail git ls-files --error-unmatch arch/x86_64/dir &&
+	test_must_fail git ls-files --error-unmatch arch/i386/dir &&
+
+	test_must_fail git apply --cached patch 2>error-ct &&
+	test_i18ngrep "beyond a symbolic link" error-ct &&
+	test_must_fail git ls-files --error-unmatch arch/x86_64/dir &&
+	test_must_fail git ls-files --error-unmatch arch/i386/dir
+'
+
+test_expect_success SYMLINKS 'do not follow symbolic link (existing)' '
+
+	# existing symbolic link
+	git reset --hard &&
+	ln -s ../i386/dir arch/x86_64/dir &&
+	git add arch/x86_64/dir &&
+
+	test_must_fail git apply add_file.patch 2>error-wt-file &&
+	test_i18ngrep "beyond a symbolic link" error-wt-file &&
+	test ! -e arch/i386/dir/file &&
+
+	test_must_fail git apply --index add_file.patch 2>error-ix-file &&
+	test_i18ngrep "beyond a symbolic link" error-ix-file &&
+	test ! -e arch/i386/dir/file &&
+	test_must_fail git ls-files --error-unmatch arch/i386/dir &&
+
+	test_must_fail git apply --cached add_file.patch 2>error-ct-file &&
+	test_i18ngrep "beyond a symbolic link" error-ct-file &&
+	test_must_fail git ls-files --error-unmatch arch/i386/dir
+'
+
 test_done
