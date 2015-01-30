@@ -6,6 +6,8 @@ else
 prefix := $(HOME)/local/git/$(prefix_base)
 endif
 
+CFLAGS =
+
 ifdef SANITIZE
 COMPILER ?= clang
 CFLAGS += -fsanitize=$(SANITIZE)
@@ -15,7 +17,7 @@ endif
 COMPILER ?= gcc
 O = 0
 CC = $(COMPILER)
-CFLAGS = -g -O$(O)
+CFLAGS += -g -O$(O)
 CFLAGS += -Wall -Werror
 CFLAGS += -Wno-format-zero-length
 CFLAGS += -Wdeclaration-after-statement
