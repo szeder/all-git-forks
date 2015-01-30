@@ -23,8 +23,6 @@ CFLAGS += -Wpointer-arith
 CFLAGS += -Wstrict-prototypes
 CFLAGS += -Wvla
 ifeq ($(patsubst clang-%,clang,$(COMPILER)), clang)
-CFLAGS += -Qunused-arguments
-CFLAGS += -Wno-parentheses-equality
 CFLAGS += -Wtautological-constant-out-of-range-compare
 else
 CFLAGS += -Wold-style-declaration
