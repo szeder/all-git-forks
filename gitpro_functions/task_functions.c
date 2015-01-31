@@ -1,15 +1,25 @@
 #include "task_functions.h"
 #include "../gitpro_api/gitpro_data_api.h"
 #include "../gitpro_api/db_constants.h"
+#include <time.h>
+#include "../gitpro_validate/v_codes.h"
 
 /* Declarations to use in private functions */
 void rm_assign_task(char *id,char *rm);
 void rm_link_files(char *id,char *rm);
 
+#define LOG_FILENAME "log.tmp"
+
 #define A "NEW"
 #define B "IN PROGRESS"
 #define C "REJECTED"
 #define D "RESOLVED"
+
+// Info to save in temp file for time task logging
+struct info {
+	int tid;
+	time_t init;
+};
 
 /* A -> B
  * B -> D
@@ -374,6 +384,7 @@ void update_task(char *filter,char *name,char *state,char *desc,char *notes,
 	char *u_state,*u_prior,*u_type;
 	
 	char *concatDesc, *concatNotes;
+	char *add_time;
 
 	char *asignations[13];
 	
@@ -439,7 +450,10 @@ void update_task(char *filter,char *name,char *state,char *desc,char *notes,
 		asignations[i]=asig_est_time;i++;}
 	if(time!=NULL) {
 		f_time = format_string(time);
-		asig_time=asig(TASK_REALTIME,f_time); 
+		add_time = (char *) malloc(strlen(TASK_REALTIME)+1+strlen(f_time)+1);
+		strcpy(add_time,TASK_REALTIME);
+		strcat(add_time,"+");strcat(add_time,f_time);
+		asig_time=asig(TASK_REALTIME,add_time); 
 		asignations[i]=asig_time;i++;}
 
 	asignations[i]=0;
@@ -461,7 +475,7 @@ void update_task(char *filter,char *name,char *state,char *desc,char *notes,
 	if(prior!=NULL){free(f_prior);free(u_prior);}
 	if(type!=NULL){free(f_type);free(u_type);}
 	if(est_time!=NULL){free(f_est_time);}
-	if(time!=NULL){free(f_time);}
+	if(time!=NULL){free(f_time);free(add_time);}
 	
 	printf("+ Tasks updated successfully\n");
 }
@@ -785,4 +799,89 @@ void show_pending(char *username){
 	
 	if(f_name!=NULL) free(f_name);
 	if(query!=NULL) free(query);
+}
+
+/* See specification in task_functions.h */
+int select_action(char *id){
+	FILE *temp_file=NULL;
+	//Read record in file
+	struct info *read_log = (struct info *) malloc(sizeof(struct info));
+	temp_file = fopen(LOG_FILENAME,"rb");
+	int result = -1;
+	if(temp_file!=NULL){
+		int r = fread(read_log,sizeof(struct info),1,temp_file);
+		if(r!=0){
+			if(read_log->tid == atoi(id)){
+				//User wants to deactivate task previously activated
+				result = SWITCH_SAME;
+			}else{
+				//User wants to change active working task to other
+				result = SWITCH_OTHER;
+			}
+		}else{
+			//If nothing in file then empty, no task activated
+			result = SWITCH_EMPTY;
+		}
+		fclose(temp_file);
+	}else{
+		//If file doesn't exists then empty, no task activated
+		result = SWITCH_EMPTY;
+	}
+	free(read_log);
+	return result;
+}
+
+/* See specification in task_functions.h */
+void activate_task(char *id){
+	FILE *temp_file=NULL;
+	struct info *write_log = (struct info *) malloc(sizeof(struct info));
+	write_log->tid = atoi(id);
+	write_log->init = time(NULL);
+	temp_file = fopen(LOG_FILENAME,"wb");
+	if(temp_file!=NULL){
+		fwrite(write_log,sizeof(struct info),1,temp_file);
+		fclose(temp_file);
+		printf("Task %s activated...\n",id);
+	}
+	free(write_log);
+}
+
+/* See specification in task_functions.h */
+void deactivate_task(char *username){
+	FILE *temp_file=NULL;
+	//Read record in file
+	struct info *read_log = (struct info *) malloc(sizeof(struct info));
+	temp_file = fopen(LOG_FILENAME,"rb");
+	if(temp_file!=NULL){
+		int r = fread(read_log,sizeof(struct info),1,temp_file);
+			if(r!=0){
+			char *insert = NULL;
+			time_t end = time(NULL);
+			char *f_uname = format_string(username);
+			char *f_tid = format_number(read_log->tid);
+			char *f_init = format_number((int)read_log->init);
+			char *f_end = format_number((int)end);
+			char *field_names[] = {LOG_USER_NAME,LOG_TASK_ID,LOG_START,LOG_END,0};
+			char *field_data[] = {f_uname,f_tid,f_init,f_end,0};
+			insert = construct_insert(LOG_TABLE,field_names,field_data);
+			//Exec query
+			exec_nonquery(insert);
+			char *empty_field = (char *) malloc(1);empty_field[0]='\0';
+			char *filter = filter_task(f_tid,empty_field,empty_field,empty_field,empty_field,
+				empty_field,empty_field,empty_field,empty_field,empty_field,empty_field);
+			float hours =  ((float) end - (float) read_log->init)/3600.0;
+			char *f_hours = format_float(hours);
+			update_task(filter,NULL,NULL,NULL,NULL,
+					NULL,NULL,NULL,NULL,NULL,NULL,NULL,f_hours);
+			//Free temporal data
+			free(f_uname);free(f_tid);free(f_init);free(f_end);free(f_hours);free(empty_field);
+			if(remove(LOG_FILENAME)==0){
+				printf("Task %d deactivated ( %f hours spent )\n",read_log->tid,(hours));
+			}
+		}else{
+			printf("Unexpected error deactivating previously activated task ...\n");
+		}
+		fclose(temp_file);
+	}
+	free(read_log);
 }

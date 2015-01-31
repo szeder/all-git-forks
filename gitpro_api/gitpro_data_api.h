@@ -17,6 +17,7 @@ asig_list asigs;
 state_list states;
 type_list types;
 prior_list priors;
+log_list logs;
 
 /* Local list that will be returned to abstract from data structure */
 generic_list generic;
@@ -75,6 +76,7 @@ void show_users(user_list list);
 void show_files(file_list list);
 void show_asigs(asig_list list);
 void show_asocs(asoc_list list);
+void show_logs(log_list list);
 
 
 /*******************/
@@ -101,6 +103,14 @@ char *format_string(char *orig);
 	Used for	: use numbers in 'sql helper functions'
 	Example		: format_number(39) would return "39" */
 char *format_number(int number);
+
+/* 	Name		: format_float
+	Parameters	: float to convert
+	Return		: string representation of given float. remember to free this pointer
+				 with free function in stdlib.h
+	Used for	: format time in hours in time logs
+	Example		: format_number(39.2) would return "39.2" */
+char *format_float(float number);
 
 /*	Name		: new_task_id
 	Parameters	: nothing

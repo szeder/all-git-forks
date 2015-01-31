@@ -134,6 +134,20 @@ void insert_type(type_list *list,char *type_name){
 }
 
 /* See specification in generic_list.h */
+void insert_log(log_list *list,char *uname,int tid,char *ini,char *end){
+	if((*list)==NULL){
+		(*list) = (log_list) malloc(sizeof(struct log_node));
+		(**list).user_name = strdup(uname);
+		(**list).task_id = tid;
+		(**list).start = strdup(ini);
+		(**list).end = strdup(end);
+		(**list).next = NULL;
+	}else{
+		insert_log(&((*list)->next),uname,tid,ini,end);
+	}
+}
+
+/* See specification in generic_list.h */
 void dealloc_states(state_list list){
 	state_list aux;	
 	while(list!=NULL){
@@ -239,6 +253,19 @@ void dealloc_asigs(asig_list list){
 		aux = list;
 		list=(*list).next;
 		free((*aux).user_name);
+		free(aux);
+	}
+}
+
+/* See specification in generic_list.h */
+void dealloc_logs(log_list list){
+	log_list aux;	
+	while(list!=NULL){
+		aux = list;
+		list=(*list).next;
+		free((*aux).user_name);
+		free((*aux).start);
+		free((*aux).end);
 		free(aux);
 	}
 }

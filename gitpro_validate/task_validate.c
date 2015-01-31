@@ -707,3 +707,12 @@ int validate_link_task(char *id,char *name,char *state,char *desc,char *notes,
 	}
 	return DATA_OK;					
 }
+
+/* See specification in task_validate.h */
+int validate_switch_task(char *id){
+	int check = validate_number(id);
+	if(check!=DATA_OK) return check;
+	check=validate_inexistent_task(id);
+	if(check!=DATA_OK) return check;
+	return DATA_OK;
+}

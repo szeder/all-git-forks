@@ -98,6 +98,11 @@ static int query_callback(void *not_used,int ncol,char **col_data, char **col_na
 	char *prior_name=NULL;
 	//Temporal variables to fill type data
 	char *type_name=NULL;
+	//Temporal variables to fill log data
+	char *log_user=NULL;
+	int log_tid = -1;
+	char *log_start = NULL;
+	char *log_end = NULL;
 	//Count variable	
 	int i;	
 	for(i=0;i<ncol;i++){
@@ -172,6 +177,14 @@ static int query_callback(void *not_used,int ncol,char **col_data, char **col_na
 				start_date = strdup(col_data[i]);
 			}else if(!strcmp(col_name[i],TASK_END_REAL)){
 				end_date = strdup(col_data[i]);
+			}else if(!strcmp(col_name[i],LOG_USER_NAME)){
+				log_user = strdup(col_data[i]);
+			}else if(!strcmp(col_name[i],LOG_TASK_ID)){
+				log_tid = atoi(col_data[i]);
+			}else if(!strcmp(col_name[i],LOG_START)){
+				log_start = strdup(col_data[i]);
+			}else if(!strcmp(col_name[i],LOG_END)){
+				log_end = strdup(col_data[i]);
 			}
 		}
 	}
@@ -222,12 +235,19 @@ static int query_callback(void *not_used,int ncol,char **col_data, char **col_na
 	if(type_name!=NULL){
 		insert_type(&types,type_name);
 	}
+	if(log_user!=NULL || log_tid!=-1 || log_start!=NULL || log_end!=NULL){
+		if(log_user==NULL) log_user=strdup(null_data);
+		if(log_start==NULL) log_start=strdup(null_data);
+		if(log_end==NULL) log_end=strdup(null_data);
+		insert_log(&logs,log_user,log_tid,log_start,log_end);
+	}
 	//Free all temporal data	
 	free(role_name);free(task_name);free(state);
 	free(desc);free(notes);free(prior);free(type);
 	free(user_name);free(file_name);free(file_path);
 	free(user_role);free(asoc_path);free(asig_user);
 	free(state_name);free(type_name);free(prior_name);	
+	free(log_user);free(log_start);free(log_end);
 	return 0;
 }
 
@@ -282,8 +302,9 @@ generic_list exec_query(const char *sql){
 	(*generic).type_info = types;
 	(*generic).state_info = states;
 	(*generic).prior_info = priors;
+	(*generic).log_info = logs;
 	roles=NULL;tasks=NULL;users=NULL;files=NULL;asocs=NULL;asigs=NULL;
-	types=NULL;states=NULL;priors=NULL;
+	types=NULL;states=NULL;priors=NULL;logs = NULL;
 	return generic;
 }
 
@@ -298,6 +319,7 @@ void dealloc(generic_list list){
 	dealloc_priors((*list).prior_info);
 	dealloc_types((*list).type_info);
 	dealloc_states((*list).state_info);
+	dealloc_logs((*list).log_info);
 	roles = NULL;
 	tasks = NULL;
 	users = NULL;
@@ -307,6 +329,7 @@ void dealloc(generic_list list){
 	priors = NULL;
 	types = NULL;
 	states = NULL;
+	logs = NULL;
 	free(list);
 	generic = NULL;
 }
@@ -365,6 +388,15 @@ void show_asigs(asig_list list){
 	printf("ASIGNATION DATA\n");
 	while(list!=NULL){
 		printf("%s %d\n",(*list).user_name,(*list).task_id);
+		list = (*list).next;
+	}
+}
+
+/* See specification in gitpro_data_api.h */
+void show_logs(log_list list){
+	printf("LOG DATA\n");
+	while(list!=NULL){
+		printf("%s %d %s %s\n",(*list).user_name,(*list).task_id,(*list).start,(*list).end);
 		list = (*list).next;
 	}
 }

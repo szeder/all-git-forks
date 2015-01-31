@@ -8,6 +8,9 @@ EOF
 chmod +x init-test-user.sh
 ./init-test-user.sh
 
+mkdir test_input
+mkdir test_output
+
 echo '***********************************'
 echo '   Starting role creation tests'
 echo '***********************************'
@@ -42,3 +45,5 @@ chmod +x end-test-user.sh
 
 rm test-data.sql
 rm insert-data.sh
+rm -rf test_input
+rm -rf test_output

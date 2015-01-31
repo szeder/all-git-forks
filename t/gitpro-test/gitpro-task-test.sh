@@ -57,15 +57,21 @@ echo '***********************************'
 ./gp-tshow.sh
 ./clean-db.sh
 echo '***********************************'
-echo '    Starting show pending tasks'
+echo '  Starting show pending tasks tests'
 echo '***********************************'
 ./gp-tpending.sh
+./clean-db.sh
+echo '***********************************'
+echo '    Starting switch tasks tests'
+echo '***********************************'
+./gp-tswitch.sh
 ./clean-db.sh
 echo '***********************************'
 echo '   Starting rolecheck task tests'
 echo '***********************************'
 ./gp-trolecheck.sh
 ./clean-db.sh
+
 
 echo 'Your username has been changed to run this tests...'
 echo 'Use git config --global to update your username'

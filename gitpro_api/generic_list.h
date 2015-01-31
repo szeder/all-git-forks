@@ -81,6 +81,15 @@ struct prior_node {
 	struct prior_node *next; //pointer to next prior node
 };
 
+/* Data struct of log time info representation in database */
+struct log_node {
+	char *user_name; //User that logs the time
+	int task_id; //Task in which work is logged
+	char *start; //Start time obtained with time function in time.h
+	char *end; //End time obtained with time function in time.h
+	struct log_node *next; //pointer to next log node
+};
+
 /* Specific lists type definitions */
 typedef struct role_node *role_list;
 typedef struct task_node *task_list;
@@ -91,6 +100,7 @@ typedef struct asig_node *asig_list;
 typedef struct state_node *state_list;
 typedef struct type_node *type_list;
 typedef struct prior_node *prior_list;
+typedef struct log_node *log_list;
 
 /* Data struct returned in query execution with one of each lists */
 struct generic_node {
@@ -103,6 +113,7 @@ struct generic_node {
 	state_list state_info;
 	type_list type_info;
 	prior_list prior_info;
+	log_list log_info;
 };
 
 /* Generic list type definition */
@@ -166,6 +177,12 @@ void insert_prior(prior_list *list,char *prior_name);
 	Used for	: fill type_list that will be in generic list */
 void insert_type(type_list *list,char *type_name);
 
+/* 	Name		: insert_log
+	Parameters	: log list and all data to be inserted
+	Return		: nothing
+	Used for	: fill log list that will be in generic list */
+void insert_log(log_list *list,char *uname,int tid,char *ini,char *end);
+
 
 /* 	Name		: dealloc_roles
 	Parameters	: role_list to be freed
@@ -220,3 +237,9 @@ void dealloc_priors(prior_list list);
 	Return		: nothing
 	Used for	: free all allocated memory that store type nodes */
 void dealloc_types(type_list list);
+
+/* 	Name		: dealloc_logs
+	Parameters	: log list to be freed
+	Return		: nothing
+	Used for	: free all allocated memory that store type nodes */
+void dealloc_logs(log_list list);

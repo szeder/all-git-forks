@@ -40,3 +40,8 @@ int validate_assign_task(char *id,char *name,char *state,char *desc,char *notes,
 int validate_link_task(char *id,char *name,char *state,char *desc,char *notes,
 					char *est_start,char *est_end,char *start,char *end,char *prior,
 					char *type,char *est_time,char *time,char *add,char *rm);
+					
+/* Name			: validate_switch_task
+ * Parameters	: task id
+ * Return		: INCORRECT_DATA, INEXISTENT_TASK or DATA_OK */
+int validate_switch_task(char *id);

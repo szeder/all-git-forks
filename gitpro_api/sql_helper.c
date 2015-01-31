@@ -90,6 +90,14 @@ char *format_number(int number){
 }
 
 /* See specification in gitpro_data_api.h */
+char *format_float(float number){
+	//Allocate 12 bytes because it's maximum lenght of an float with decimals. Add 1 to end string char
+	char *converted = (char *) malloc(12+1);
+	sprintf(converted,"%f",number);
+	return converted;
+}
+
+/* See specification in gitpro_data_api.h */
 char *format_string(char *orig){
 	char *rn =(char *) malloc(strlen(orig)+2+1);
 	strcpy(rn,"'");

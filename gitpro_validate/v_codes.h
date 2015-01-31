@@ -6,3 +6,7 @@
 #define DUPLICATE_TASK 5 	//Constant to represent task already exists
 #define INEXISTENT_TASK 6	//Constant to represent task id does not exist
 #define INEXISTENT_FILE_FOLDER 7 //Constant to represent file or folder that not exist
+
+#define SWITCH_EMPTY 8 //Constant to represent there's no an active task by switch command
+#define SWITCH_SAME 9 //Constant to represent that action is a switch on a previous switched task
+#define SWITCH_OTHER 10 //Constant to represent that action is a switch on other task distinct than previous

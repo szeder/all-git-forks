@@ -79,3 +79,18 @@ void show_priorities();
  *  Parameters	: user name to search for pending tasks
  *  Return		: nothing, prints user pending tasks */
 void show_pending(char *username);
+
+/*	Name		: select_action
+ * 	Parameters	: task id
+ *  Return		: SWITCH_EMPTY , SWITCH_SAME or SWITCH_OTHER on depending action to do */
+int select_action(char *id);
+
+/*	Name		: activate_task
+ * 	Parameters	: task id and user name
+ * 	Return		: nothing */
+void activate_task(char *id);
+
+/*	Name		: deactivate_task
+ * 	Parameters	: user name
+ * 	Return 		: nothing */
+void deactivate_task(char *username);

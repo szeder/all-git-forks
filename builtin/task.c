@@ -17,11 +17,12 @@
 /* Usage message */
 static const char * const builtin_task_usage[] =
 {
-	N_("task [-c | -r [-v] | -u | -d | -a | -l | --show-types | --show-states | --show-priorities]\n\tSome use examples:\n\t -c -n name -s state --desc description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t\t(only required name, state, priority and type)\n\t -r \n\t -u -n name -s state -d description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t -d \n\t -a -i id --user --add=\"user1 ... userN\" --rm=\"user1 ... userN\"\n\t -l -i id --file --add=\"file1 ... fileN\" --rm=\"file1 ... fileN\""),
+	N_("task [-c | -r [-v] | -u | -d | -a | -l | --show-types | --show-states | --show-priorities | --switch]\n\tSome use examples:\n\t -c -n name -s state --desc description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t\t(only required name, state, priority and type)\n\t -r \n\t -u -n name -s state -d description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t -d \n\t -a -i id --user --add=\"user1 ... userN\" --rm=\"user1 ... userN\"\n\t -l -i id --file --add=\"file1 ... fileN\" --rm=\"file1 ... fileN\""),
 	NULL
 };
 
 static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread, showtypes, showstates, showpriorities, readverbose, pending, assist;
+static char *switch_id = NULL;
 static char *add = NULL;
 static char *rm = NULL;
 static char *task_id = NULL;
@@ -112,8 +113,9 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 		OPT_BOOL(0,"show-types",&showtypes,N_("show available task types")),
 		OPT_BOOL(0,"show-states",&showstates,N_("show available task states")),
 		OPT_BOOL(0,"pending",&pending,N_("show pending task states for user")),
-		OPT_BOOL('v',"verbose",&readverbose,N_("display information in verbose mode")),
+		OPT_BOOL('v',"verbose",&readverbose,N_("display information in verbose mode to task info")),
 		OPT_BOOL(0,"show-priorities",&showpriorities,N_("show available task priorities")),
+		OPT_STRING(0,"switch",&switch_id,"task id",N_("change active task")),
 		OPT_BOOL(0,"user",&user,N_("indicates that follows user names to add or remove task assignations")),
 		OPT_BOOL(0,"file",&file,N_("indicates that follows file names to add or remove task asociations")),
 		OPT_GROUP("Link and Assign options"),
@@ -157,8 +159,13 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 /* START [1.7] Receive data process */
 	argc = parse_options(argc, argv, prefix, builtin_task_options, builtin_task_usage, 0);
 	
+	int switch_option = 0;
+	if(switch_id!=NULL){
+		switch_option = 1;
+	}
+	
 	/* More than one option selected at time */
-	if(tcreate + tlink + tassign + tdelete + tupdate + tread + showtypes + showstates + showpriorities > 1 ){
+	if(switch_option + tcreate + tlink + tassign + tdelete + tupdate + tread + showtypes + showstates + showpriorities > 1 ){
 		printf("Only one option at time\n");
 		return 0;
 	}else {
@@ -383,12 +390,49 @@ filter_task_est_time,filter_task_time);
 /* START [1.9] Show pending tasks */
 			show_pending(uname);
 /* END [1.9] Show pending tasks */
+		}else if(switch_option){
+/* START [1.10.2] Validate data (switch option) */
+			switch(validate_switch_task(switch_id)){
+				case INCORRECT_DATA:
+					printf("Incorrect data. Check it all and try again\n");
+					return 0;
+				case INEXISTENT_TASK:
+					printf("Task you're trying to activate / deactivate / change doesn't exists\n");
+					return 0;	
+			}
+/* END [1.10.2] Validate data (switch option) */
+
+/* START [1.10.3] Select action (switch option) */
+			int result = select_action(switch_id);
+/* END [1.10.3] Select action (switch option) */
+
+/* START [1.10.4] Activate task (switch option) */
+			if(result==SWITCH_EMPTY){
+				printf("+ Activating task...\n");
+				activate_task(switch_id);
+/* END [1.10.4] Activate task (switch option) */
+
+/* START [1.10.5] Deactivate task (switch option) */
+			}else if(result==SWITCH_SAME){
+				printf("- Deactivate task...\n");
+				deactivate_task(uname);
+/* END [1.10.5] Deactivate task (switch option) */
+
+/* START [1.10.4/5] Activate task and Deactivate task (both options on switch option) */
+			}else if(result==SWITCH_OTHER){
+				printf("Deactivate previous task and activate actual...\n");
+				deactivate_task(uname);
+				activate_task(switch_id);
+			}
+/* END [1.10.4/5] Activate task and Deactivate task (both options on switch option) */
+			
 		}else{
 			/* No action defined */
-			printf("No action defined");
+			printf("No action defined\n");
 			usage_with_options(builtin_task_usage,builtin_task_options);
 			return 0;
 		}
+		
 		
 		//Free data
 		if(assist || tupdate) dealloc_filters();

@@ -18,7 +18,8 @@ SYNOPSIS
 	   | [--show-types] 
 	   | [--show-states]
 	   | [--show-priorities] 
-	   | [--pending] ]
+	   | [--pending]
+	   | [--switch] ]
 
 Each option accepts arguments. See OPTIONS section for more info about a specific option and arguments.
 
@@ -99,6 +100,11 @@ No need to specify parameters. Just 'git task --show-priorities' to see availabl
 [Check out pending tasks]
 To see your pending assigned tasks just run 'git task --pending' to see it. It will shown in short format.
 
+[Change active working task]
+Execute 'git task --switch task_id' to activate task you're working on. If one task is activated already
+it'll be deactivated, logged and new task will be activated. 
+Use same command to deactivate an active task.
+
 NOTES
 -----
 When updating tasks, data such as notes, estimated time and real time will be added to existent value.
@@ -141,3 +147,6 @@ Checking priorities:
 	
 Checking your pending tasks:
 	git task --pending
+	
+Activating task:
+	git task --switch
