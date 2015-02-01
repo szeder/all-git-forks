@@ -1013,7 +1013,19 @@ sub cmd_dcommit {
 				$gs->{inject_parents_dcommit}->{$cmt_rev} =
 				                               $parents->{$d};
 			}
-			$_fetch_all ? $gs->fetch_all : $gs->fetch;
+			#$_fetch_all ? $gs->fetch_all : $gs->fetch;
+			my $retry;
+		    fetch: for ($retry = 0; $retry < 30; ++$retry) {
+				$_fetch_all ? $gs->fetch_all : $gs->fetch;
+				last fetch if ($gs->rev_map_max >= $cmt_rev);
+				# Asynchronous commit push not complete
+				usleep(20000 * ($retry + 1));
+			}
+			if ($retry > 0 && $gs->rev_map_max < $cmt_rev) {
+				fatal "New revision $cmt_rev did not appear",
+				"in repository after $retry retries.";
+			}
+
 			$SVN::Error::handler = $err_handler;
 			$last_rev = $cmt_rev;
 			next if $_no_rebase;
