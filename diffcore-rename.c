@@ -516,6 +516,8 @@ void diffcore_rename(struct diff_options *options)
 			else if (!DIFF_OPT_TST(options, RENAME_EMPTY) &&
 				 is_empty_blob_sha1(p->two->sha1))
 				continue;
+			else if (p->broken_pair && !p->score)
+				continue;
 			else
 				locate_rename_dst(p->two, 1);
 		}
