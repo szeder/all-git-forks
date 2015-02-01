@@ -1019,7 +1019,8 @@ sub cmd_dcommit {
 				$_fetch_all ? $gs->fetch_all : $gs->fetch;
 				last fetch if ($gs->rev_map_max >= $cmt_rev);
 				# Asynchronous commit push not complete
-				usleep(20000 * ($retry + 1));
+				select(undef, undef, undef, 2 * ($retry +1));
+				#usleep(20000 * ($retry + 1));
 			}
 			if ($retry > 0 && $gs->rev_map_max < $cmt_rev) {
 				fatal "New revision $cmt_rev did not appear",
