@@ -1580,20 +1580,20 @@ do_xmailer_test () {
 
 test_expect_success $PREREQ '--[no-]xmailer without any configuration' '
 	do_xmailer_test 1 "--xmailer" &&
-	do_xmailer_test 0 "--no-xmailer"
+	do_xmailer_test 0 "--noxmailer"
 '
 
 test_expect_success $PREREQ '--[no-]xmailer with sendemail.xmailer=true' '
 	test_config sendemail.xmailer true &&
 	do_xmailer_test 1 "" &&
-	do_xmailer_test 0 "--no-xmailer" &&
+	do_xmailer_test 0 "--noxmailer" &&
 	do_xmailer_test 1 "--xmailer"
 '
 
 test_expect_success $PREREQ '--[no-]xmailer with sendemail.xmailer=false' '
 	test_config sendemail.xmailer false &&
 	do_xmailer_test 0 "" &&
-	do_xmailer_test 0 "--no-xmailer" &&
+	do_xmailer_test 0 "--noxmailer" &&
 	do_xmailer_test 1 "--xmailer"
 '
 
