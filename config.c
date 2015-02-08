@@ -68,6 +68,10 @@ static enum config_scope current_parsing_scope;
 
 static int zlib_compression_seen;
 
+static const char *builtin_config =
+	"[alias]\n"
+	"	ls = list-files\n";
+
 /*
  * Default config_set that contains key-value pairs from the usual set of config
  * config files (i.e repo specific .git/config, user wide ~/.gitconfig, XDG
@@ -1304,6 +1308,12 @@ static int do_git_config_sequence(config_fn_t fn, void *data)
 	char *repo_config = git_pathdup("config");
 
 	current_parsing_scope = CONFIG_SCOPE_SYSTEM;
+
+	if (git_config_system())
+		git_config_from_mem(fn, CONFIG_ORIGIN_BLOB, "",
+				    builtin_config, strlen(builtin_config),
+				    data);
+
 	if (git_config_system() && !access_or_die(git_etc_gitconfig(), R_OK, 0))
 		ret += git_config_from_file(fn, git_etc_gitconfig(),
 					    data);
