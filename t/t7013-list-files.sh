@@ -161,7 +161,7 @@ test_expect_success '--classify' '
 	cat >expected <<-\EOF &&
 	dir/
 	file
-	gitlink
+	gitlink&
 	EOF
 	test_cmp expected actual
 	)

@@ -221,6 +221,8 @@ static void append_indicator(struct strbuf *sb, mode_t mode)
 		c = '|';
 	else if (S_ISSOCK(mode))
 		c = '=';
+	else if (S_ISGITLINK(mode))
+		c = '&';
 #ifdef S_ISDOOR
 	else if (S_ISDOOR(mode))
 		c = '>';
