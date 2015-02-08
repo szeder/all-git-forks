@@ -34,6 +34,7 @@ static unsigned int colopts;
 static int max_depth;
 static int show_dirs;
 static int use_color = -1;
+static int show_indicator;
 
 static const char * const ls_usage[] = {
 	N_("git list-files [options] [<pathspec>...]"),
@@ -51,6 +52,8 @@ struct option ls_options[] = {
 	OPT_SET_INT('R', "recursive", &max_depth,
 		    N_("shortcut for --max-depth=-1"), -1),
 	OPT__COLOR(&use_color, N_("show color")),
+	OPT_BOOL('F', "classify", &show_indicator,
+		 N_("append indicator (one of */=>@|) to entries")),
 	OPT_END()
 };
 
@@ -204,6 +207,28 @@ static void cleanup_tags(struct item_list *result)
 	}
 }
 
+static void append_indicator(struct strbuf *sb, mode_t mode)
+{
+	char c = 0;
+	if (S_ISREG(mode)) {
+		if (mode & (S_IXUSR | S_IXGRP | S_IXOTH))
+			c = '*';
+	} else if (S_ISDIR(mode))
+		c = '/';
+	else if (S_ISLNK(mode))
+		c = '@';
+	else if (S_ISFIFO(mode))
+		c = '|';
+	else if (S_ISSOCK(mode))
+		c = '=';
+#ifdef S_ISDOOR
+	else if (S_ISDOOR(mode))
+		c = '>';
+#endif
+	if (c)
+		strbuf_addch(sb, c);
+}
+
 /* this is similar to quote_path_relative() except it does not clear sb */
 static void quote_item(struct strbuf *out, const struct item *item)
 {
@@ -241,6 +266,8 @@ static void display(const struct item_list *result)
 				       get_mode(item), 1);
 			strbuf_release(&sb);
 		}
+		if (show_indicator)
+			append_indicator(&quoted, get_mode(item));
 		if (column_active(colopts))
 			string_list_append(&s, quoted.buf);
 		else
