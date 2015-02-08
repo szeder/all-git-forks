@@ -154,4 +154,17 @@ test_expect_success 'color.ls.*' '
 	)
 '
 
+test_expect_success '--classify' '
+	(
+	cd 2 &&
+	git list-files -F >actual &&
+	cat >expected <<-\EOF &&
+	dir/
+	file
+	gitlink
+	EOF
+	test_cmp expected actual
+	)
+'
+
 test_done
