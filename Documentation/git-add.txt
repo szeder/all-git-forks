@@ -1,22 +1,6 @@
 git-add(1)
 ==========
 
-NAME
-----
-git-add - Add file contents to the index
-
-SYNOPSIS
---------
-[verse]
-'git add' [-n] [-v] [--force | -f] [--interactive | -i] [--patch | -p]
-	  [--edit | -e] [--[no-]all | --[no-]ignore-removal | [--update | -u]]
-	  [--intent-to-add | -N] [--refresh] [--ignore-errors] [--ignore-missing]
-	  [--] [<pathspec>...]
-
-................................................................................
-git-add(1)
-==========
-
 名称
 ----
 git-add - インデックスにファイルの内容を追加する
@@ -29,29 +13,6 @@ git-add - インデックスにファイルの内容を追加する
 	  [--intent-to-add | -N] [--refresh] [--ignore-errors] [--ignore-missing]
 	  [--] [<pathspec>...]
 
-................................................................................
-
-DESCRIPTION
------------
-This command updates the index using the current content found in
-the working tree, to prepare the content staged for the next commit.
-It typically adds the current content of existing paths as a whole,
-but with some options it can also be used to add content with
-only part of the changes made to the working tree files applied, or
-remove paths that do not exist in the working tree anymore.
-
-The "index" holds a snapshot of the content of the working tree, and it
-is this snapshot that is taken as the contents of the next commit.  Thus
-after making any changes to the working directory, and before running
-the commit command, you must use the `add` command to add any new or
-modified files to the index.
-
-This command can be performed multiple times before a commit.  It only
-adds the content of the specified file(s) at the time the add command is
-run; if you want subsequent changes included in the next commit, then
-you must run `git add` again to add the new content to the index.
-
-................................................................................
 解説
 ----
 このコマンドは、 次回のコミットで記録される内容を準備する(ステージする)べく、
@@ -73,22 +34,6 @@ you must run `git add` again to add the new content to the index.
 変更した内容を次のコミットに含めたければ、 その新しい内容をインデックスに
 追加するために `git add` を再度実行する必要があります。
 
-................................................................................
-
-The `git status` command can be used to obtain a summary of which
-files have changes that are staged for the next commit.
-
-The `git add` command will not add ignored files by default.  If any
-ignored files were explicitly specified on the command line, `git add`
-will fail with a list of ignored files.  Ignored files reached by
-directory recursion or filename globbing performed by Git (quote your
-globs before the shell) will be silently ignored.  The 'git add' command can
-be used to add ignored files with the `-f` (force) option.
-
-Please see linkgit:git-commit[1] for alternative ways to add content to a
-commit.
-
-................................................................................
 `git status` コマンドで、次回のコミットに向けてステージされた変更点を持つ
 ファイルの一覧を取得できます。
 
@@ -102,27 +47,6 @@ commit.
 あるコミットに内容を追加する別の方法については linkgit:git-commit[1] を
 見てください。
 
-................................................................................
-
-OPTIONS
--------
-<pathspec>...::
-	Files to add content from.  Fileglobs (e.g. `*.c`) can
-	be given to add all matching files.  Also a
-	leading directory name (e.g. `dir` to add `dir/file1`
-	and `dir/file2`) can be given to add all files in the
-	directory, recursively.
-
--n::
---dry-run::
-	Don't actually add the file(s), just show if they exist and/or will
-	be ignored.
-
--v::
---verbose::
-        Be verbose.
-
-................................................................................
 オプション
 ----------
 <pathspec>...::
@@ -141,20 +65,6 @@ OPTIONS
 --verbose::
 	冗長表示になります。
 
-................................................................................
-
--f::
---force::
-	Allow adding otherwise ignored files.
-
--i::
---interactive::
-	Add modified contents in the working tree interactively to
-	the index. Optional path arguments may be supplied to limit
-	operation to a subset of the working tree. See ``Interactive
-	mode'' for details.
-
-................................................................................
 -f::
 --force::
 	無視ファイルであっても追加します。
@@ -165,20 +75,6 @@ OPTIONS
 	操作をワーキングツリーの一部に限定するためにファイルパスを指定する
 	こともできます。 詳細は ``インタラクティブモード'' を見てください。
 
-................................................................................
-
--p::
---patch::
-	Interactively choose hunks of patch between the index and the
-	work tree and add them to the index. This gives the user a chance
-	to review the difference before adding modified contents to the
-	index.
-+
-This effectively runs `add --interactive`, but bypasses the
-initial command menu and directly jumps to the `patch` subcommand.
-See ``Interactive mode'' for details.
-
-................................................................................
 -p::
 --patch::
 	対話的にワーキングツリーとインデックス間のパッチのハンク
@@ -190,20 +86,6 @@ See ``Interactive mode'' for details.
 サブコマンドに直接ジャンプすることで、効果的に実行します。 詳細は
 ``インタラクティブモード'' を見てください。
 
-................................................................................
-
--e, \--edit::
-	Open the diff vs. the index in an editor and let the user
-	edit it.  After the editor was closed, adjust the hunk headers
-	and apply the patch to the index.
-+
-The intent of this option is to pick and choose lines of the patch to
-apply, or even to modify the contents of lines to be staged. This can be
-quicker and more flexible than using the interactive hunk selector.
-However, it is easy to confuse oneself and create a patch that does not
-apply to the index. See EDITING PATCHES below.
-
-................................................................................
 -e, \--edit::
 	エディタを開いてインデックスに対する差分を編集できます。
 	エディタを終了後はハンクヘッダ(差分の位置情報)を調整し、
@@ -214,20 +96,6 @@ apply to the index. See EDITING PATCHES below.
 素早く、 柔軟に行える可能性があります。 しかし、間違えやすく、インデックスに
 あたらないパッチを作りやすいです。 後述のパッチの編集を参照してください。
 
-................................................................................
-
--u::
---update::
-	Update the index just where it already has an entry matching
-	<pathspec>.  This removes as well as modifies index entries to
-	match the working tree, but adds no new files.
-+
-If no <pathspec> is given, the current version of Git defaults to
-"."; in other words, update all tracked files in the current directory
-and its subdirectories. This default will change in a future version
-of Git, hence the form without <pathspec> should not be used.
-
-................................................................................
 -u::
 --update::
 	<pathspec>にマッチするエントリがすでに存在する場合のみ、 インデックスを
@@ -240,22 +108,6 @@ of Git, hence the form without <pathspec> should not be used.
 バージョンでは変更されるでしょう。 よって、 <pathspec> を指定しない形式は
 使うべきではありません。
 
-................................................................................
-
--A::
---all::
---no-ignore-removal::
-	Update the index not only where the working tree has a file
-	matching <pathspec> but also where the index already has an
-	entry.	This adds, modifies, and removes index entries to
-	match the working tree.
-+
-If no <pathspec> is given, the current version of Git defaults to
-"."; in other words, update all files in the current directory
-and its subdirectories. This default will change in a future version
-of Git, hence the form without <pathspec> should not be used.
-
-................................................................................
 -A::
 --all::
 --no-ignore-removal::
@@ -270,22 +122,6 @@ of Git, hence the form without <pathspec> should not be used.
 変更されるでしょう。 よって、 <pathspec> を指定しない形式は使うべきでは
 ありません。
 
-................................................................................
-
---no-all::
---ignore-removal::
-	Update the index by adding new files that are unknown to the
-	index and files modified in the working tree, but ignore
-	files that have been removed from the working tree.  This
-	option is a no-op when no <pathspec> is used.
-+
-This option is primarily to help the current users of Git, whose
-"git add <pathspec>..." ignores removed files.  In future versions
-of Git, "git add <pathspec>..." will be a synonym to "git add -A
-<pathspec>..." and "git add --ignore-removal <pathspec>..." will behave like
-today's "git add <pathspec>...", ignoring removed files.
-
-................................................................................
 --no-all::
 --ignore-removal::
 	ワーキングツリー上のインデックスが知らないファイルおよび、
@@ -299,28 +135,6 @@ Git では、 "git add <pathspec>..." は "git add -A <pathspec>..." と同一�
 "git add --ignore-removal <pathspec>..." は現在の "git add <pathspec>..." の
 ように、削除されたファイルを無視するようになります。
 
-................................................................................
-
--N::
---intent-to-add::
-	Record only the fact that the path will be added later. An entry
-	for the path is placed in the index with no content. This is
-	useful for, among other things, showing the unstaged content of
-	such files with `git diff` and committing them with `git commit
-	-a`.
-
---refresh::
-	Don't add the file(s), but only refresh their stat()
-	information in the index.
-
---ignore-errors::
-	If some files could not be added because of errors indexing
-	them, do not abort the operation, but continue adding the
-	others. The command shall still exit with non-zero status.
-	The configuration variable `add.ignoreErrors` can be set to
-	true to make this the default behaviour.
-
-................................................................................
 -N::
 --intent-to-add::
 	指定したパスのファイルが、後で add されるということだけを記録します。
@@ -339,20 +153,6 @@ Git では、 "git add <pathspec>..." は "git add -A <pathspec>..." と同一�
 	設定値 `add.ignoreErrors` を true にセットすることで
 	この挙動をデフォルトにできます。
 
-................................................................................
-
---ignore-missing::
-	This option can only be used together with --dry-run. By using
-	this option the user can check if any of the given files would
-	be ignored, no matter if they are already present in the work
-	tree or not.
-
-\--::
-	This option can be used to separate command-line options from
-	the list of files, (useful when filenames might be mistaken
-	for command-line options).
-
-................................................................................
 --ignore-missing::
 	このオプションは --dry-run と一緒にのみ使用できます。
 	このオプションを使うことでユーザは、指定したファイルが
@@ -364,17 +164,6 @@ Git では、 "git add <pathspec>..." は "git add -A <pathspec>..." と同一�
 	コマンドラインで指定するファイルのリストとを分けるために使えます。
 	(ファイル名がコマンドラインオプションに間違えられそうなときに役立ちます)
 
-................................................................................
-
-Configuration
--------------
-
-The optional configuration variable `core.excludesfile` indicates a path to a
-file containing patterns of file names to exclude from git-add, similar to
-$GIT_DIR/info/exclude.  Patterns in the exclude file are used in addition to
-those in info/exclude.  See linkgit:gitignore[5].
-
-................................................................................
 設定
 ----
 
@@ -383,23 +172,6 @@ those in info/exclude.  See linkgit:gitignore[5].
 パターンは、この info/exclude に加えて使われます。 linkgit:gitignore[5] を
 参照してください。
 
-................................................................................
-
-EXAMPLES
---------
-
-* Adds content from all `*.txt` files under `Documentation` directory
-and its subdirectories:
-+
-------------
-$ git add Documentation/\*.txt
-------------
-+
-Note that the asterisk `*` is quoted from the shell in this
-example; this lets the command include the files from
-subdirectories of `Documentation/` directory.
-
-................................................................................
 例
 --
 
@@ -415,25 +187,6 @@ $ git add Documentation/\*.txt
 こうすることで `Documentation/` ディレクトリの、
 サブディレクトリのファイルも含まれます。
 
-................................................................................
-
-* Considers adding content from all git-*.sh scripts:
-+
-------------
-$ git add git-*.sh
-------------
-+
-Because this example lets the shell expand the asterisk (i.e. you are
-listing the files explicitly), it does not consider
-`subdir/git-foo.sh`.
-
-Interactive mode
-----------------
-When the command enters the interactive mode, it shows the
-output of the 'status' subcommand, and then goes into its
-interactive command loop.
-
-................................................................................
 * git-*.sh スクリプトをすべて追加する場合を考えます：
 +
 ------------
@@ -449,26 +202,6 @@ $ git add git-*.sh
 インタラクティブモードに入ると、 'status' サブコマンドの
 出力を表示します。その後、対話コマンドループに進みます。
 
-................................................................................
-
-The command loop shows the list of subcommands available, and
-gives a prompt "What now> ".  In general, when the prompt ends
-with a single '>', you can pick only one of the choices given
-and type return, like this:
-
-------------
-    *** Commands ***
-      1: status       2: update       3: revert       4: add untracked
-      5: patch        6: diff         7: quit         8: help
-    What now> 1
-------------
-
-You also could say `s` or `sta` or `status` above as long as the
-choice is unique.
-
-The main command loop has 6 subcommands (plus help and quit).
-
-................................................................................
 コマンドループでは使用可能なサブコマンドのリストを表示し、
 "What now> " というプロンプトを表示します。
 プロンプトがひとつの '>' で終わっているときは、
@@ -488,33 +221,6 @@ The main command loop has 6 subcommands (plus help and quit).
 メインコマンドループは6個のサブコマンド
 (および help と quit) を持っています。
 
-................................................................................
-
-status::
-
-   This shows the change between HEAD and index (i.e. what will be
-   committed if you say `git commit`), and between index and
-   working tree files (i.e. what you could stage further before
-   `git commit` using `git add`) for each path.  A sample output
-   looks like this:
-+
-------------
-              staged     unstaged path
-     1:       binary      nothing foo.png
-     2:     +403/-35        +1/-1 git-add--interactive.perl
-------------
-+
-It shows that foo.png has differences from HEAD (but that is
-binary so line count cannot be shown) and there is no
-difference between indexed copy and the working tree
-version (if the working tree version were also different,
-'binary' would have been shown in place of 'nothing').  The
-other file, git-add{litdd}interactive.perl, has 403 lines added
-and 35 lines deleted if you commit what is in the index, but
-working tree file has further modifications (one addition and
-one deletion).
-
-................................................................................
 status::
 
    このコマンドは HEAD とインデックスの間の変更
@@ -541,38 +247,6 @@ status::
 ワーキングツリーのファイルにはさらに変更が加えられています
 (1行追加、1行削除)。
 
-................................................................................
-
-update::
-
-   This shows the status information and issues an "Update>>"
-   prompt.  When the prompt ends with double '>>', you can
-   make more than one selection, concatenated with whitespace or
-   comma.  Also you can say ranges.  E.g. "2-5 7,9" to choose
-   2,3,4,5,7,9 from the list.  If the second number in a range is
-   omitted, all remaining patches are taken.  E.g. "7-" to choose
-   7,8,9 from the list.  You can say '*' to choose everything.
-+
-What you chose are then highlighted with '*',
-like this:
-+
-------------
-           staged     unstaged path
-  1:       binary      nothing foo.png
-* 2:     +403/-35        +1/-1 git-add--interactive.perl
-------------
-+
-To remove selection, prefix the input with `-`
-like this:
-+
-------------
-Update>> -2
-------------
-+
-After making the selection, answer with an empty line to stage the
-contents of working tree files for selected paths in the index.
-
-................................................................................
 update::
 
    このコマンドはstatusの情報を表示したあと、 "Update>>" プロンプトを
@@ -600,28 +274,6 @@ Update>> -2
 選択が終わった後は、何も入力せずに Enter だけを入力すれば、 選択したパスの
 ワーキングツリーのファイルの内容が、 インデックスに追加されます。
 
-................................................................................
-
-revert::
-
-  This has a very similar UI to 'update', and the staged
-  information for selected paths are reverted to that of the
-  HEAD version.  Reverting new paths makes them untracked.
-
-add untracked::
-
-  This has a very similar UI to 'update' and
-  'revert', and lets you add untracked paths to the index.
-
-patch::
-
-  This lets you choose one path out of a 'status' like selection.
-  After choosing the path, it presents the diff between the index
-  and the working tree file and asks you if you want to stage
-  the change of each hunk.  You can select one of the following
-  options and type return:
-
-................................................................................
 revert::
 
   これは 'update' とよく似たインターフェースを持っています。 選択したパスの
@@ -640,30 +292,6 @@ patch::
   ステージするかどうか聞いてきます。 以下のオプションのから一つ選択可能して
   リターンキーをタイプします：
 
-................................................................................
-
-       y - stage this hunk
-       n - do not stage this hunk
-       q - quit; do not stage this hunk nor any of the remaining ones
-       a - stage this hunk and all later hunks in the file
-       d - do not stage this hunk nor any of the later hunks in the file
-       g - select a hunk to go to
-       / - search for a hunk matching the given regex
-       j - leave this hunk undecided, see next undecided hunk
-       J - leave this hunk undecided, see next hunk
-       k - leave this hunk undecided, see previous undecided hunk
-       K - leave this hunk undecided, see previous hunk
-       s - split the current hunk into smaller hunks
-       e - manually edit the current hunk
-       ? - print help
-+
-After deciding the fate for all hunks, if there is any hunk
-that was chosen, the index is updated with the selected hunks.
-+
-You can omit having to type return here, by setting the configuration
-variable `interactive.singlekey` to `true`.
-
-................................................................................
        y - このハンクをステージします。
        n - このハンクをステージしません。
        q - 終了します。このハンクおよび以降のハンクはステージしません。
@@ -685,33 +313,10 @@ variable `interactive.singlekey` to `true`.
 設定値 `interactive.singlekey` を `true` に設定することで、ここでのリターンの
 入力を省略できます。
 
-................................................................................
-
-diff::
-
-  This lets you review what will be committed (i.e. between
-  HEAD and index).
-
-................................................................................
 diff::
 
   コミットされる内容(つまり HEAD とインデックスの diff)を表示します
 
-................................................................................
-
-EDITING PATCHES
----------------
-
-Invoking `git add -e` or selecting `e` from the interactive hunk
-selector will open a patch in your editor; after the editor exits, the
-result is applied to the index. You are free to make arbitrary changes
-to the patch, but note that some changes may have confusing results, or
-even result in a patch that cannot be applied.  If you want to abort the
-operation entirely (i.e., stage nothing new in the index), simply delete
-all lines of the patch. The list below describes some common things you
-may see in a patch, and which editing operations make sense on them.
-
-................................................................................
 パッチの編集
 ------------
 
@@ -724,29 +329,6 @@ may see in a patch, and which editing operations make sense on them.
 以下のリストはパッチに共通して見られるであろう内容と、それらに対する
 有効な編集操作についての解説です。
 
-................................................................................
-
---
-added content::
-
-Added content is represented by lines beginning with "{plus}". You can
-prevent staging any addition lines by deleting them.
-
-removed content::
-
-Removed content is represented by lines beginning with "-". You can
-prevent staging their removal by converting the "-" to a " " (space).
-
-modified content::
-
-Modified content is represented by "-" lines (removing the old content)
-followed by "{plus}" lines (adding the replacement content). You can
-prevent staging the modification by converting "-" lines to " ", and
-removing "{plus}" lines. Beware that modifying only half of the pair is
-likely to introduce confusing changes to the index.
---
-
-................................................................................
 --
 追加される内容::
 
@@ -767,18 +349,6 @@ likely to introduce confusing changes to the index.
 ください。
 --
 
-................................................................................
-
-There are also more complex operations that can be performed. But beware
-that because the patch is applied only to the index and not the working
-tree, the working tree will appear to "undo" the change in the index.
-For example, introducing a new line into the index that is in neither
-the HEAD nor the working tree will stage the new line for commit, but
-the line will appear to be reverted in the working tree.
-
-Avoid using these constructs, or do so with extreme caution.
-
-................................................................................
 実行可能な、より複雑な操作がいくつかあります。しかし、パッチはインデックスに
 対してのみ適用され、ワーキングツリーに対しては適用されないので、ワーキング
 ツリーがインデックスに対する変更を "元に戻している(undo)" かのように見える
@@ -788,32 +358,6 @@ Avoid using these constructs, or do so with extreme caution.
 
 こういった構成は避けるか、くれぐれも用心して実行してください。
 
-................................................................................
-
---
-removing untouched content::
-
-Content which does not differ between the index and working tree may be
-shown on context lines, beginning with a " " (space).  You can stage
-context lines for removal by converting the space to a "-". The
-resulting working tree file will appear to re-add the content.
-
-modifying existing content::
-
-One can also modify context lines by staging them for removal (by
-converting " " to "-") and adding a "{plus}" line with the new content.
-Similarly, one can modify "{plus}" lines for existing additions or
-modifications. In all cases, the new modification will appear reverted
-in the working tree.
-
-new content::
-
-You may also add new content that does not exist in the patch; simply
-add new lines, each starting with "{plus}". The addition will appear
-reverted in the working tree.
---
-
-................................................................................
 --
 変更されてない内容の削除::
 
@@ -836,38 +380,12 @@ reverted in the working tree.
 追加します。 その追加はワーキングツリーではリバートされたように見えます。
 --
 
-................................................................................
-
-There are also several operations which should be avoided entirely, as
-they will make the patch impossible to apply:
-
-* adding context (" ") or removal ("-") lines
-* deleting context or removal lines
-* modifying the contents of context or removal lines
-
-................................................................................
 パッチを適用できなくしてしまうので、完全に避けるべき操作もいくつかあります:
 
 * コンテキスト行 (" ") または削除行 ("-") を追加すること
 * コンテキスト行または削除行を削除すること
 * コンテキスト行または削除行の内容を変更すること
 
-................................................................................
-
-SEE ALSO
---------
-linkgit:git-status[1]
-linkgit:git-rm[1]
-linkgit:git-reset[1]
-linkgit:git-mv[1]
-linkgit:git-commit[1]
-linkgit:git-update-index[1]
-
-GIT
----
-Part of the linkgit:git[1] suite
-
-................................................................................
 
 あわせて読みたい
 ----------------
@@ -882,4 +400,3 @@ GIT
 ---
 これは linkgit:git[1] の一部です。
 
-................................................................................
