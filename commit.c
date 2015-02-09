@@ -12,8 +12,6 @@
 #include "prio-queue.h"
 #include "sha1-lookup.h"
 
-static struct commit_extra_header *read_commit_extra_header_lines(const char *buf, size_t len, const char **);
-
 int save_commit_buffer = 1;
 
 const char *commit_type = "commit";
@@ -1284,7 +1282,7 @@ struct commit_extra_header *read_commit_extra_headers(struct commit *commit,
 	struct commit_extra_header *extra = NULL;
 	unsigned long size;
 	const char *buffer = get_commit_buffer(commit, &size);
-	extra = read_commit_extra_header_lines(buffer, size, exclude);
+	extra = read_commit_extra_header_lines(buffer, size, exclude, extra);
 	unuse_commit_buffer(commit, buffer);
 	return extra;
 }
@@ -1326,11 +1324,11 @@ static int excluded_header_field(const char *field, size_t len, const char **exc
 	return 0;
 }
 
-static struct commit_extra_header *read_commit_extra_header_lines(
+struct commit_extra_header *read_commit_extra_header_lines(
 	const char *buffer, size_t size,
-	const char **exclude)
+	const char **exclude, struct commit_extra_header *extra)
 {
-	struct commit_extra_header *extra = NULL, **tail = &extra, *it = NULL;
+	struct commit_extra_header **tail = extra ? &extra->next : &extra, *it = NULL;
 	const char *line, *next, *eof, *eob;
 	struct strbuf buf = STRBUF_INIT;
 

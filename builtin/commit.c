@@ -629,6 +629,38 @@ static int author_date_is_interesting(void)
 	return author_message || force_date;
 }
 
+static int location_is_safe(char *loc)
+{
+	if (loc) {
+		/* FIXME: sanity checks here */
+	}
+
+	return !!loc;
+}
+
+static int determine_location(struct strbuf *location)
+{
+	char *loc;
+
+	if (!amend) {
+		loc = getenv("GIT_AUTHOR_LOCATION");
+		if (location_is_safe(loc)) {
+			strbuf_addstr(location, "author-location ");
+			strbuf_addstr(location, loc);
+			strbuf_addch(location, '\n');
+		}
+	}
+
+	loc = getenv("GIT_COMMITTER_LOCATION");
+	if (location_is_safe(loc)) {
+		strbuf_addstr(location, "committer-location ");
+		strbuf_addstr(location, loc);
+		strbuf_addch(location, '\n');
+	}
+
+	return 1;
+}
+
 static void adjust_comment_line_char(const struct strbuf *sb)
 {
 	char candidates[] = "#;@!$%^&|:";
@@ -1630,6 +1662,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 
 	struct strbuf sb = STRBUF_INIT;
 	struct strbuf author_ident = STRBUF_INIT;
+	struct strbuf location = STRBUF_INIT;
 	const char *index_file, *reflog_msg;
 	char *nl;
 	unsigned char sha1[20];
@@ -1665,6 +1698,11 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	   running hooks, writing the trees, and interacting with the user.  */
 	if (!prepare_to_commit(index_file, prefix,
 			       current_head, &s, &author_ident)) {
+		rollback_index_files();
+		return 1;
+	}
+
+	if (!determine_location(&location)) {
 		rollback_index_files();
 		return 1;
 	}
@@ -1745,12 +1783,18 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	}
 
 	if (amend) {
-		const char *exclude_gpgsig[2] = { "gpgsig", NULL };
-		extra = read_commit_extra_headers(current_head, exclude_gpgsig);
+		const char *exclude[3] = { "gpgsig", "committer-location", NULL };
+		extra = read_commit_extra_headers(current_head, exclude);
 	} else {
 		struct commit_extra_header **tail = &extra;
 		append_merge_tag_headers(parents, &tail);
 	}
+
+	if (location.len > 0) {
+		extra = read_commit_extra_header_lines(location.buf,
+					    location.len, NULL, extra);
+	}
+	strbuf_release(&location);
 
 	if (commit_tree_extended(sb.buf, sb.len, active_cache_tree->sha1,
 			 parents, sha1, author_ident.buf, sign_commit, extra)) {

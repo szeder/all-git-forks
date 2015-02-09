@@ -326,6 +326,7 @@ extern int commit_tree_extended(const char *msg, size_t msg_len,
 				struct commit_extra_header *);
 
 extern struct commit_extra_header *read_commit_extra_headers(struct commit *, const char **);
+extern struct commit_extra_header *read_commit_extra_header_lines(const char *, size_t, const char **, struct commit_extra_header *);
 
 extern void free_commit_extra_headers(struct commit_extra_header *extra);
 
