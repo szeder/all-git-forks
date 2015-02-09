@@ -85,7 +85,8 @@ them.
 
 --updateref::
 	Update the ref with the sha1 of the top reflog entry (i.e.
-	<ref>@\{0\}) after expiring or deleting.
+	<ref>@\{0\}) after expiring or deleting.  (This option is
+	ignored for symbolic references.)
 
 --rewrite::
 	While expiring or deleting, adjust each reflog entry to ensure
