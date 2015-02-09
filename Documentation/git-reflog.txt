@@ -17,9 +17,11 @@ The command takes various subcommands, and different options
 depending on the subcommand:
 
 [verse]
-'git reflog expire' [--dry-run] [--stale-fix] [--verbose]
+'git reflog expire' [--dry-run] [--verbose]
+	[--rewrite] [--updateref] [--stale-fix]
 	[--expire=<time>] [--expire-unreachable=<time>] [--all] <refs>...
-'git reflog delete' ref@\{specifier\}...
+'git reflog delete' [--dry-run] [--verbose]
+	[--rewrite] [--updateref] ref@\{specifier\}...
 'git reflog' ['show'] [log-options] [<ref>]
 
 Reflog is a mechanism to record when the tip of branches are
