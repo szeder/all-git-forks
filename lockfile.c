@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2005, Junio C Hamano
  */
+#define _OPEN_SYS_FILE_EXT 1
 #include "cache.h"
 #include "lockfile.h"
 #include "sigchain.h"
@@ -101,6 +102,9 @@ static void resolve_symlink(struct strbuf *path)
 /* Make sure errno contains a meaningful value on error */
 static int lock_file(struct lock_file *lk, const char *path, int flags)
 {
+#ifdef __MVS__
+	struct stat ifs;
+#endif
 	size_t pathlen = strlen(path);
 
 	if (!lock_file_list) {
@@ -154,6 +158,15 @@ static int lock_file(struct lock_file *lk, const char *path, int flags)
 		errno = save_errno;
 		return -1;
 	}
+#ifdef __MVS__
+	if (lk->fd >= 0 && stat(path, &ifs) == 0) {
+		attrib_t attr;
+		memset(&attr, 0, sizeof(attr));
+		attr.att_filetagchg = 1;
+		attr.att_filetag = ifs.st_tag;
+		__fchattr(lk->fd, &attr, sizeof(attr));
+	}
+#endif
 	return lk->fd;
 }
 

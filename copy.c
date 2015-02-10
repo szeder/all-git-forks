@@ -1,7 +1,18 @@
+#define _OPEN_SYS_FILE_EXT 1
 #include "cache.h"
 
 int copy_fd(int ifd, int ofd)
 {
+#ifdef __MVS__
+	struct stat ifs;
+	if (fstat(ifd, &ifs) == 0) {
+		attrib_t attr;
+		memset(&attr, 0, sizeof(attr));
+		attr.att_filetagchg = 1;
+		attr.att_filetag = ifs.st_tag;
+		__fchattr(ofd, &attr, sizeof(attr));
+	}
+#endif
 	while (1) {
 		char buffer[8192];
 		ssize_t len = xread(ifd, buffer, sizeof(buffer));
