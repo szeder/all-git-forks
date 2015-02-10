@@ -19,6 +19,8 @@ char *system_path(const char *path)
 		return xstrdup(path);
 
 #ifdef RUNTIME_PREFIX
+	prefix = getenv(RUNTIME_PREFIX_ENVIRONMENT);
+	if (prefix == NULL || *prefix == '\0') {
 	assert(argv0_path);
 	assert(is_absolute_path(argv0_path));
 
@@ -30,6 +32,9 @@ char *system_path(const char *path)
 		trace_printf("RUNTIME_PREFIX requested, "
 				"but prefix computation failed.  "
 				"Using static fallback '%s'.\n", prefix);
+	} else {
+		setenv(RUNTIME_PREFIX_ENVIRONMENT, prefix, 1);
+	}
 	}
 #endif
 
