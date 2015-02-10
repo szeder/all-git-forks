@@ -23,7 +23,7 @@ struct object_entry {
 	char real_type;
 };
 
-struct object_entry_extra {
+struct object_stat {
 	unsigned delta_depth;
 	int base_object_no;
 };
@@ -67,7 +67,7 @@ struct delta_entry {
 };
 
 static struct object_entry *objects;
-static struct object_entry_extra *objects_extra;
+static struct object_stat *obj_stat;
 static struct delta_entry *deltas;
 static struct thread_local nothread_data;
 static int nr_objects;
@@ -879,12 +879,12 @@ static void resolve_delta(struct object_entry *delta_obj,
 	if (show_stat) {
 		int i = delta_obj - objects;
 		int j = base->obj - objects;
-		objects_extra[i].delta_depth = objects_extra[j].delta_depth + 1;
+		obj_stat[i].delta_depth = obj_stat[j].delta_depth + 1;
 		deepest_delta_lock();
-		if (deepest_delta < objects_extra[i].delta_depth)
-			deepest_delta = objects_extra[i].delta_depth;
+		if (deepest_delta < obj_stat[i].delta_depth)
+			deepest_delta = obj_stat[i].delta_depth;
 		deepest_delta_unlock();
-		objects_extra[i].base_object_no = j;
+		obj_stat[i].base_object_no = j;
 	}
 	delta_data = get_data_from_pack(delta_obj);
 	base_data = get_base_data(base);
@@ -1505,7 +1505,7 @@ static void show_pack_info(int stat_only)
 		struct object_entry *obj = &objects[i];
 
 		if (is_delta_type(obj->type))
-			chain_histogram[objects_extra[i].delta_depth - 1]++;
+			chain_histogram[obj_stat[i].delta_depth - 1]++;
 		if (stat_only)
 			continue;
 		printf("%s %-6s %lu %lu %"PRIuMAX,
@@ -1514,8 +1514,8 @@ static void show_pack_info(int stat_only)
 		       (unsigned long)(obj[1].idx.offset - obj->idx.offset),
 		       (uintmax_t)obj->idx.offset);
 		if (is_delta_type(obj->type)) {
-			struct object_entry *bobj = &objects[objects_extra[i].base_object_no];
-			printf(" %u %s", objects_extra[i].delta_depth, sha1_to_hex(bobj->idx.sha1));
+			struct object_entry *bobj = &objects[obj_stat[i].base_object_no];
+			printf(" %u %s", obj_stat[i].delta_depth, sha1_to_hex(bobj->idx.sha1));
 		}
 		putchar('\n');
 	}
@@ -1679,7 +1679,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 	parse_pack_header();
 	objects = xcalloc(nr_objects + 1, sizeof(struct object_entry));
 	if (show_stat)
-		objects_extra = xcalloc(nr_objects + 1, sizeof(struct object_entry_extra));
+		obj_stat = xcalloc(nr_objects + 1, sizeof(struct object_stat));
 	deltas = xcalloc(nr_objects, sizeof(struct delta_entry));
 	parse_pack_objects(pack_sha1);
 	resolve_deltas();
