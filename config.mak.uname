@@ -555,3 +555,42 @@ ifeq ($(uname_S),QNX)
 	NO_STRCASESTR = YesPlease
 	NO_STRLCPY = YesPlease
 endif
+ifeq ($(uname_S),OS/390)
+	CC = xlc -qLANGLVL=STDC99
+	CFLAGS = -g -O3
+	PTHREAD_LIBS =
+
+	DEFAULT_EDITOR = ed
+	DEFAULT_PAGER = cat
+	HAVE_DEV_TTY = YesPlease
+	HAVE_STRINGS_H = YesPlease
+	NEEDS_MODE_TRANSLATION = YesPlease
+	NO_CURL = YesPlease
+	NO_GECOS_IN_PWENT = YesPlease
+	NO_GETPAGESIZE = YesPlease
+	NO_GETTEXT = YesPlease
+	NO_MEMMEM = YesPlease
+	NO_MKDTEMP = YesPlease
+	NO_MKSTEMPS = YesPlease
+	NO_NSEC = YesPlease
+	NO_OPENSSL = YesPlease
+	NO_PERL = YesPlease
+	NO_PYTHON = YesPlease
+	NO_STRCASESTR = YesPlease
+	NO_STRLCPY = YesPlease
+	NO_SYS_POLL_H = YesPlease
+	NO_TCLTK = YesPlease
+
+	# Use a different buffer for each environment variable
+	BASIC_CFLAGS += -Dgetenv=__getenv
+
+	# Handle the EBCDIC situation with Enhanced ASCII (up to v1r13)
+	BASIC_CFLAGS += -D_ENHANCED_ASCII_EXT=0x410D0000
+	CC += -qASCII -qXPLINK -qNOCSECT
+	NO_MMAP = YesPlease
+	TAR = _OS390_USTAR=Y tar
+
+	# Fix header conflicts by having -I/usr/include after -I. in CFLAGS
+	CC += -qNOSEARCH
+	BASIC_CFLAGS += -I/usr/include
+endif
