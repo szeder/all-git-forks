@@ -1,0 +1,10 @@
+#!/bin/sh
+# Convert everything (and tag) to IBM-1047 except ".", "..", and ".git".
+find * .[!.g]* ..?* .g[!i]* .gi[!t]* .git?* -type f 2>/dev/null |
+while read -r
+do
+	chtag -p "$REPLY" | grep -q '^- untagged ' || continue
+	iconv -f ISO8859-1 -t IBM-1047 -T "$REPLY" > "$REPLY".cp01047
+	touch -r "$REPLY" "$REPLY".cp01047
+	mv -f "$REPLY".cp01047 "$REPLY"
+done
