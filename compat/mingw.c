@@ -775,16 +775,39 @@ int mingw_stat(const char *file_name, struct stat *buf)
 int mingw_fstat(int fd, struct stat *buf)
 {
 	HANDLE fh = (HANDLE)_get_osfhandle(fd);
+	DWORD avail;
+
 	if (fh == INVALID_HANDLE_VALUE) {
 		errno = EBADF;
 		return -1;
 	}
-	/* direct non-file handles to MS's fstat() */
-	if (GetFileType(fh) != FILE_TYPE_DISK)
-		return _fstati64(fd, buf);
 
-	if (!get_file_info_by_handle(fh, buf))
+	/* initialize stat fields */
+	memset(buf, 0, sizeof(*buf));
+	buf->st_nlink = 1;
+
+	switch (GetFileType(fh) & ~FILE_TYPE_REMOTE) {
+	case FILE_TYPE_DISK:
+		if (!get_file_info_by_handle(fh, buf))
+			break;
+		buf->st_mode = file_attr_to_st_mode(fdata.dwFileAttributes);
+		buf->st_size = fdata.nFileSizeLow |
+			(((off_t)fdata.nFileSizeHigh)<<32);
+		buf->st_atime = filetime_to_time_t(&(fdata.ftLastAccessTime));
+		buf->st_mtime = filetime_to_time_t(&(fdata.ftLastWriteTime));
+		buf->st_ctime = filetime_to_time_t(&(fdata.ftCreationTime));
 		return 0;
+
+	case FILE_TYPE_CHAR:
+		buf->st_mode = _S_IFCHR;
+		return 0;
+
+	case FILE_TYPE_PIPE:
+		buf->st_mode = _S_IFIFO;
+		if (PeekNamedPipe(fh, NULL, 0, NULL, &avail, NULL))
+			buf->st_size = avail;
+		return 0;
+	}
 	errno = EBADF;
 	return -1;
 }
