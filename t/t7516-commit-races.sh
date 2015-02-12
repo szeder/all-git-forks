@@ -12,7 +12,7 @@ test_expect_success 'set up editor' '
 	EOF
 '
 
-test_expect_failure 'race to create orphan commit' '
+test_expect_success 'race to create orphan commit' '
 	test_must_fail env EDITOR=./editor git commit --allow-empty &&
 	git show -s --pretty=format:%s >subject &&
 	grep -q hare subject &&
