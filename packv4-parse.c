@@ -9,8 +9,8 @@
  */
 
 #include "cache.h"
-#include "packv4-parse.h"
 #include "tree-walk.h"
+#include "packv4-parse.h"
 #include "varint.h"
 
 const unsigned char *get_sha1ref(struct packed_git *p,
@@ -695,4 +695,375 @@ unsigned long pv4_unpack_object_header_buffer(const unsigned char *base,
 	*type = val & 0xf;
 	*sizep = val >> 4;
 	return cp - base;
+}
+
+/*
+ * xmalloc() shows up even higher than decode_tree_entry() in perf
+ * report. Try to avoid it.
+ */
+static struct decode_state *free_decode_states;
+
+static struct decode_state* new_decode_state(void)
+{
+	struct decode_state *ds;
+	if (free_decode_states) {
+		ds = free_decode_states;
+		free_decode_states = ds->free;
+	} else
+		ds = xmalloc(sizeof(*ds));
+	ds->free = NULL;
+	return ds;
+}
+
+static void free_decode_state(struct decode_state *ds)
+{
+	assert(ds->free == NULL);
+	ds->free = free_decode_states;
+	free_decode_states = ds;
+}
+
+/*
+ * Input state: preparing
+ * Output state: fallingback
+ * ds->desc is made ready for decode_canonical() to use
+ */
+static inline int prepare_canonical_tree(struct decode_state *ds)
+{
+	void *data;
+	enum object_type type;
+	unsigned long size;
+
+	data = unpack_entry(ds->p, ds->obj_offset, &type, &size);
+	if (!data)
+		return error("fail to unpack entry at offset %"PRIuMAX, ds->obj_offset);
+	if (type != OBJ_TREE) {
+		free(data);
+		return error("entry at offset %"PRIuMAX" is not a tree", ds->obj_offset);
+	}
+
+	if (ds->count == 0)
+		ds->count = 0xffffffff; /* magic number.. */
+	init_tree_desc(&ds->desc, data, size);
+	ds->tree_v2 = data;
+	ds->state = fallingback;
+
+	while (ds->skip--)
+		update_tree_entry(&ds->desc);
+
+	return decode_zero;
+}
+
+/*
+ * Input state: preparing
+ * Output state: decoding or fallingback
+ * Packv4 data section is made ready for decode_entry() to use
+ */
+static inline int prepare_for_decoding(struct decode_state *ds)
+{
+	struct pv4_tree_cache *c;
+	const unsigned char *src;
+	const unsigned char *scp;
+	unsigned int nb_entries;
+	unsigned long avail;
+
+	c = get_tree_offset_cache(ds->p, ds->obj_offset);
+	if (0      <  ds->count && ds->count <= c->nb_entries - ds->skip &&
+	    c->pos <= ds->skip && ds->skip <  c->nb_entries) {
+		ds->state   = decoding;
+		ds->offset  = c->offset;
+		ds->curpos  = c->pos;
+		ds->skip   -= c->pos;
+		ds->src	    = NULL;
+		ds->avail   = 0;
+		ds->nb_entries = c->nb_entries;
+		ds->last_copy_base = c->last_copy_base;
+		return decode_zero;
+	}
+
+	src = use_pack(ds->p, ds->w_curs, ds->obj_offset, &avail);
+	scp = src;
+
+	/* we need to skip over the object header */
+	while (*scp & 128)
+		if (++scp - src >= avail - 20)
+			return error("not enough data at line %d", __LINE__);
+
+	switch (*scp++ & 0xf) {
+	case OBJ_TREE:
+	case OBJ_REF_DELTA:
+	case OBJ_OFS_DELTA:
+		return prepare_canonical_tree(ds);
+	case OBJ_PV4_TREE:
+		break;
+	default:
+		return error("invalid object type %d", scp[-1] & 0xf);
+	}
+
+	assert((scp[-1] & 0xf) == OBJ_PV4_TREE);
+	nb_entries = decode_varint(&scp);
+	if (!ds->count)
+		ds->count = nb_entries;
+	if (!nb_entries || ds->skip > nb_entries ||
+	    ds->count > nb_entries - ds->skip)
+		return error("ds->skip or ds->count is invalid");
+
+	ds->state = decoding;
+	ds->nb_entries = nb_entries;
+	ds->curpos = 0;
+	ds->last_copy_base = 0;
+	ds->offset = ds->obj_offset + (scp - src);
+	ds->avail = avail - (scp - src);
+	ds->src = scp;
+
+	/*
+	 * If this is a partial copy, let's (re)initialize a cache
+	 * entry to speed things up if the remaining of this tree is
+	 * needed in the future.
+	 */
+	if (ds->skip + ds->count < nb_entries) {
+		c->pos = ds->curpos;
+		c->offset = ds->offset;
+		c->nb_entries = ds->nb_entries;
+		c->last_copy_base = ds->last_copy_base;
+	}
+	return decode_zero;
+}
+
+/*
+ * Prepare to decode_tree to copy from another tree. A new
+ * decode_state may be allocated and linked to the current one.
+ */
+static inline int switch_tree(struct decode_state **dsp,
+			      unsigned int copy_start,
+			      const unsigned char *scp)
+{
+	struct decode_state *ds = *dsp;
+	struct decode_state *sub_ds;
+	unsigned int copy_count;
+
+	copy_count = decode_varint(&scp);
+	if (!copy_count)
+		return error("copy_count is zero");
+
+	/*
+	 * The LSB of copy_count is a flag indicating if a third value
+	 * is provided to specify the source object.  This may be
+	 * omitted when it doesn't change, but has to be specified at
+	 * least for the first copy sequence.
+	 */
+	if (copy_count & 1) {
+		unsigned index = decode_varint(&scp);
+		if (!index) {
+			/*
+			 * SHA1 follows. We assume the object is in
+			 * the same pack.
+			 */
+			ds->last_copy_base =
+				find_pack_entry_one(scp, ds->p);
+			scp += 20;
+		} else {
+			/*
+			 * From the SHA1 index we can get the object
+			 * offset directly.
+			 */
+			ds->last_copy_base =
+				nth_packed_object_offset(ds->p, index - 1);
+		}
+	}
+	copy_count >>= 1;
+	if (!copy_count || !ds->last_copy_base)
+		return error("copy_count or copy_objoffset is zero");
+
+	if (ds->skip >= copy_count) {
+		ds->skip   -= copy_count;
+		ds->curpos += copy_count;
+		ds->offset += scp - ds->src;
+		ds->avail  -= scp - ds->src;
+		ds->src     = scp;
+		return decode_zero;
+	}
+
+	copy_count -= ds->skip;
+	copy_start += ds->skip;
+
+	if (copy_count > ds->count) {
+		/*
+		 * We won't consume the whole of this copy sequence
+		 * and the main loop will be exited. Let's manage for
+		 * offset and curpos to remain unchanged to update the
+		 * cache.
+		 */
+		copy_count = ds->count;
+		ds->count = 0;
+	} else {
+		ds->count -= copy_count;
+		ds->curpos += ds->skip + copy_count;
+		ds->skip = 0;
+		ds->offset += scp - ds->src;
+		ds->src     = scp;
+	}
+	ds->avail = 0;	/* force pack window readjustment */
+
+	sub_ds	       = new_decode_state();
+	sub_ds->up     = ds;
+	sub_ds->p      = ds->p;
+	sub_ds->w_curs = ds->w_curs;
+	sub_ds->obj_offset = ds->last_copy_base;
+	sub_ds->skip   = copy_start;
+	sub_ds->count  = copy_count;
+	sub_ds->state  = preparing;
+	/* the rest of sub_ds is initialized in prepare_for_decoding() */
+
+	*dsp = sub_ds;
+	return decode_zero;
+}
+
+/*
+ * Prepare data in (*dsp)->desc.entry.
+ */
+static inline int decode_canonical(struct decode_state **dsp)
+{
+	struct decode_state *ds = *dsp;
+
+	if ((ds->count == 0xffffffff && ds->desc.size == 0) ||
+	     ds->count == 0) {
+		struct decode_state *sub_ds;
+
+		free(ds->tree_v2);
+		if (!ds->up)
+			return decode_done;
+		sub_ds = ds;
+		ds = ds->up;
+		*dsp = ds;
+		free_decode_state(sub_ds);
+		return decode_zero;
+	}
+	if (ds->count != 0xffffffff)
+		ds->count--;
+	update_tree_entry(&ds->desc);
+	return decode_one;
+}
+
+static inline int do_decode_tree_entry(struct decode_state **dsp)
+{
+	struct decode_state *ds = *dsp;
+	const unsigned char *scp;
+	unsigned int what;
+
+	switch (ds->state) {
+	case preparing:
+		return prepare_for_decoding(ds);
+	case fallingback:
+		return decode_canonical(dsp);
+	case decoding:
+		break;
+	default:
+		return error("invalid decode state %d", ds->state);
+	}
+
+	if (ds->count == 0) {
+		struct decode_state *sub_ds;
+		/*
+		 * Update the cache if we didn't run through the
+		 * entire tree.  We have to "get" it again because we
+		 * may have invalidated it when we switched trees.
+		 */
+		struct pv4_tree_cache *c =
+			get_tree_offset_cache(ds->p, ds->obj_offset);
+		if (ds->curpos < c->nb_entries) {
+			c->pos = ds->curpos;
+			c->offset = ds->offset;
+			c->last_copy_base = ds->last_copy_base;
+		}
+
+		if (!ds->up)
+			return decode_done;
+
+		sub_ds = ds;
+		ds = ds->up;
+		*dsp = ds;
+		free_decode_state(sub_ds);
+		return decode_zero;
+	}
+
+	if (ds->avail < 20) {
+		ds->src = use_pack(ds->p, ds->w_curs, ds->offset, &ds->avail);
+		if (ds->avail < 20)
+			return error("truncated pack");
+	}
+
+	scp = ds->src;
+	what = decode_varint(&scp);
+	if (scp == ds->src)
+		return error("failed to decode");
+
+	if (what & 1)
+		return switch_tree(dsp, what >> 1, scp);
+
+	if (ds->skip) {
+		if (*scp) {
+			while (*scp++ & 128)
+				; /* nothing */
+		}
+		else
+			scp += 1 + 20;
+		ds->skip--;
+		ds->curpos++;
+		ds->offset += scp - ds->src;
+		ds->avail  -= scp - ds->src;
+		ds->src     = scp;
+		return decode_zero;
+	}
+
+	assert(ds->skip == 0 && ds->count != 0);
+	ds->path_index = what >> 1;
+	ds->sha1 = get_sha1ref(ds->p, &scp);
+	if (!ds->sha1)
+		return error("invalid tree SHA-1");
+
+	ds->count--;
+	ds->curpos++;
+	ds->offset += scp - ds->src;
+	ds->avail  -= scp - ds->src;
+	ds->src     = scp;
+	return decode_one;
+}
+
+/*
+ * Free all decode_state allocated locally. Return the top
+ * decode_state, which may or may not be free()'d
+ */
+static struct decode_state *free_sub_decode_states(struct decode_state *ds)
+{
+	struct decode_state *ret;
+	if (ds->state == fallingback)
+		free(ds->tree_v2);
+	if (!ds->up)
+		return ds;
+	ret = free_sub_decode_states(ds->up);
+	free(ds);
+	return ret;
+}
+
+/*
+ * 'p', 'w_curs', 'obj_offset', 'skip' and 'count' must be set in
+ * *dsp. count == 0 means get all remaining tree entries.
+ * decode_entry() returns
+ *
+ *  - decode_one: if 'state' is decoding, raw v4 tree entry is in
+ *      sha1_index and path_index. If 'state' is fallingback, v2 tree
+ *      is in desc.entry.
+ *
+ *  - decode_done:   self explanatory
+ *
+ *  - decode_failed: self explanatory
+ */
+int decode_tree_entry(struct decode_state **dsp)
+{
+	int ret;
+	while ((ret = do_decode_tree_entry(dsp)) == decode_zero)
+		;		/* continue */
+	if (ret == decode_failed)
+		*dsp = free_sub_decode_states(*dsp);
+	return ret;
 }

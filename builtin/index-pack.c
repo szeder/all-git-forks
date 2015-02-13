@@ -11,10 +11,10 @@
 #include "exec_cmd.h"
 #include "streaming.h"
 #include "thread-utils.h"
+#include "tree-walk.h"
 #include "packv4-parse.h"
 #include "packv4-create.h"
 #include "varint.h"
-#include "tree-walk.h"
 
 static const char index_pack_usage[] =
 "git index-pack [-v] [-o <index-file>] [--keep | --keep=<msg>] [--verify] [--strict] (<pack-file> | --stdin [--fix-thin] [<pack-file>])";

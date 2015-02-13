@@ -22,4 +22,60 @@ void *pv4_get_commit(struct packed_git *p, struct pack_window **w_curs,
 void *pv4_get_tree(struct packed_git *p, struct pack_window **w_curs,
 		   off_t obj_offset, unsigned long size);
 
+enum decode_result {
+	decode_failed = -1,	/* return value of error() */
+	decode_one,
+	decode_zero,
+	decode_done
+};
+
+enum decoding_state {
+	preparing,
+	decoding,
+	fallingback
+};
+
+struct decode_state {
+	struct decode_state *up;
+	struct decode_state *free;
+
+	/* Input */
+	struct packed_git *p;
+	struct pack_window **w_curs;
+	off_t obj_offset; /* .. of the tree (after obj header) in the pack */
+	unsigned int skip; /* ignore these many first tree entries */
+	unsigned int count; /* number of tree entries to read, 0 = all */
+
+	/* Output */
+	unsigned int path_index;
+	/*
+	 * Can be converted back to index in sha1-table. If the
+	 * pointer is not in sha-1 table, then it's in the current
+	 * pack window and must be copied out because the pack window
+	 * may move at the next decode_tree_entry()
+	 */
+	const unsigned char *sha1;
+
+	int state;
+
+	/* Packv4 data */
+	const unsigned char *src; /* current reading position */
+	unsigned long avail; /* don't read past src[0..avail-1] */
+	/*
+	 * index of the current tree entry, to see if we traversed
+	 * full tree. If we don't, update tree-offset cache in case we
+	 * need to walk this tree again in future.
+	 */
+	unsigned int curpos;
+	unsigned int nb_entries; /* number of entries in this tree */
+	off_t offset;		 /* position of "src" in the pack */
+	off_t last_copy_base;
+
+	/* canonical tree */
+	void *tree_v2;
+	struct tree_desc desc;
+};
+
+int decode_tree_entry(struct decode_state **dsp);
+
 #endif
