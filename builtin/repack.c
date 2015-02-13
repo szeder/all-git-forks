@@ -218,9 +218,9 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 	if (max_pack_size)
 		argv_array_pushf(&cmd.args, "--max-pack-size=%s", max_pack_size);
 	if (no_reuse_delta)
-		argv_array_pushf(&cmd.args, "--no-reuse-delta");
+		argv_array_push(&cmd.args, "--no-reuse-delta");
 	if (no_reuse_object)
-		argv_array_pushf(&cmd.args, "--no-reuse-object");
+		argv_array_push(&cmd.args, "--no-reuse-object");
 	if (write_bitmaps)
 		argv_array_push(&cmd.args, "--write-bitmap-index");
 
