@@ -673,11 +673,70 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 	return 0;
 }
 
+static void *alt_get_tree(struct packed_git *p, struct pack_window **w_curs,
+			  off_t obj_offset, unsigned long size)
+{
+	struct decode_state ds, *dsp;
+	unsigned char *dst, *dcp;
+	int ret;
+
+	dst = xmallocz(size);
+	dcp = dst;
+	memset(&ds, 0, sizeof(ds));
+	ds.p = p;
+	ds.w_curs = w_curs;
+	ds.obj_offset = obj_offset;
+	dsp = &ds;
+	while (1) {
+		ret = decode_tree_entry(&dsp);
+		if (ret == decode_failed)
+			break;
+		if (ret == decode_done) {
+			if (size != 0)
+				break;
+			return dst;
+		}
+		if (dsp->state == fallingback) {
+			const unsigned char *start = dsp->desc.buffer;
+			const unsigned char *end = dsp->desc.entry.sha1 + 20;
+			memcpy(dcp, start, end - start);
+			dcp += end - start;
+			size -= end - start;
+		} else {
+			int len, pathlen;
+			const unsigned char *path;
+			unsigned mode;
+
+			path = get_pathref(dsp->p, dsp->path_index, &pathlen);
+			if (!path)
+				break;
+			mode = (path[0] << 8) | path[1];
+
+			len = tree_entry_prefix(dcp, size, path + 2,
+						pathlen - 2, mode);
+			if (!len || len + 20 > size)
+				break;
+			hashcpy(dcp + len, dsp->sha1);
+			len  += 20;
+			dcp  += len;
+			size -= len;
+		}
+	}
+	free(dst);
+	return NULL;
+}
+
 void *pv4_get_tree(struct packed_git *p, struct pack_window **w_curs,
 		   off_t obj_offset, unsigned long size)
 {
+	static int use_decode_tree_entry = -1;
 	unsigned char *dst, *dcp;
 	int ret;
+
+	if (use_decode_tree_entry > 0 ||
+	    (use_decode_tree_entry == -1 &&
+	     (use_decode_tree_entry = getenv("DECODE_TREE_ENTRY") != NULL)))
+		return alt_get_tree(p, w_curs, obj_offset, size);
 
 	dst = xmallocz(size);
 	dcp = dst;
