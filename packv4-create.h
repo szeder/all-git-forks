@@ -37,7 +37,4 @@ void *pv4_encode_tree(const struct packv4_tables *v4,
 		      void *delta, unsigned long delta_size,
 		      const unsigned char *delta_sha1);
 
-void process_one_pack(struct packv4_tables *v4,
-		      char *src_pack, char *dst_pack);
-
 #endif

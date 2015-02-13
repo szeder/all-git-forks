@@ -379,7 +379,8 @@ static struct packed_git *open_pack(const char *path)
 	return p;
 }
 
-void process_one_pack(struct packv4_tables *v4, char *src_pack, char *dst_pack)
+static void process_one_pack(struct packv4_tables *v4,
+			     char *src_pack, char *dst_pack)
 {
 	struct packed_git *p;
 	struct sha1file *f;
