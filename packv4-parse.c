@@ -396,10 +396,14 @@ struct pv4_tree_cache {
 #define CACHE_SIZE 1024
 static struct pv4_tree_cache pv4_tree_cache[CACHE_SIZE];
 
-static struct pv4_tree_cache *get_tree_offset_cache(struct packed_git *p, off_t base_offset)
+static struct pv4_tree_cache *get_tree_offset_cache(struct packed_git *p,
+						    off_t base_offset,
+						    struct pv4_tree_cache *c)
 {
-	struct pv4_tree_cache *c;
 	unsigned long hash;
+
+	if (c && c->p == p && c->base_offset == base_offset)
+		return c;
 
 	hash = (unsigned long)p + (unsigned long)base_offset;
 	hash += (hash >> 8) + (hash >> 16);
@@ -478,7 +482,7 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 	off_t offset, copy_objoffset;
 	struct pv4_tree_cache *c;
 
-	c = get_tree_offset_cache(p, obj_offset);
+	c = get_tree_offset_cache(p, obj_offset, NULL);
 	if (count && start < c->nb_entries && start >= c->pos &&
 	    count <= c->nb_entries - start) {
 		offset = c->offset;
@@ -659,7 +663,7 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 	 * We have to "get" it again as a recursion into decode_entries()
 	 * could have invalidated what we obtained initially.
 	 */
-	c = get_tree_offset_cache(p, obj_offset);
+	c = get_tree_offset_cache(p, obj_offset, c);
 	if (curpos < c->nb_entries) {
 		c->pos = curpos;
 		c->offset = offset;
@@ -766,7 +770,7 @@ static inline int prepare_for_decoding(struct decode_state *ds)
 	unsigned int nb_entries;
 	unsigned long avail;
 
-	c = get_tree_offset_cache(ds->p, ds->obj_offset);
+	ds->cache = c = get_tree_offset_cache(ds->p, ds->obj_offset, NULL);
 	if (0      <  ds->count && ds->count <= c->nb_entries - ds->skip &&
 	    c->pos <= ds->skip && ds->skip <  c->nb_entries) {
 		ds->state   = decoding;
@@ -969,7 +973,8 @@ static inline int do_decode_tree_entry(struct decode_state **dsp)
 		 * may have invalidated it when we switched trees.
 		 */
 		struct pv4_tree_cache *c =
-			get_tree_offset_cache(ds->p, ds->obj_offset);
+			get_tree_offset_cache(ds->p, ds->obj_offset,
+					      ds->cache);
 		if (ds->curpos < c->nb_entries) {
 			c->pos = ds->curpos;
 			c->offset = ds->offset;

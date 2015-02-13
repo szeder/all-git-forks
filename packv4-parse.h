@@ -35,6 +35,8 @@ enum decoding_state {
 	fallingback
 };
 
+struct pv4_tree_cache;
+
 struct decode_state {
 	struct decode_state *up;
 	struct decode_state *free;
@@ -70,6 +72,7 @@ struct decode_state {
 	unsigned int nb_entries; /* number of entries in this tree */
 	off_t offset;		 /* position of "src" in the pack */
 	off_t last_copy_base;
+	struct pv4_tree_cache *cache;
 
 	/* canonical tree */
 	void *tree_v2;
