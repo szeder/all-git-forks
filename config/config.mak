@@ -12,6 +12,9 @@ ifdef SANITIZE
 COMPILER ?= clang
 CFLAGS += -fsanitize=$(SANITIZE)
 CFLAGS += -fno-omit-frame-pointer
+ifeq ($(SANITIZE),memory)
+CFLAGS += -fsanitize-memory-track-origins
+endif
 endif
 
 COMPILER ?= gcc
