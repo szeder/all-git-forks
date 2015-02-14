@@ -59,6 +59,7 @@ static int progress = 1;
 static int window = 10;
 static unsigned long pack_size_limit;
 static int depth = 50;
+static int tree_depth = 50;
 static int delta_search_threads;
 static int pack_to_stdout;
 static int num_preferred_base;
@@ -1954,7 +1955,7 @@ static void find_deltas(struct object_entry **list, unsigned *list_size,
 		 * objects that depend on the current object into account
 		 * otherwise they would become too deep.
 		 */
-		max_depth = depth;
+		max_depth = entry->type == OBJ_TREE ? tree_depth : depth;
 		if (entry->delta_child) {
 			max_depth -= check_delta_limit(entry, 0);
 			if (max_depth <= 0)
@@ -2367,7 +2368,7 @@ static int git_pack_config(const char *k, const char *v, void *cb)
 		return 0;
 	}
 	if (!strcmp(k, "pack.depth")) {
-		depth = git_config_int(k, v);
+		tree_depth = depth = git_config_int(k, v);
 		return 0;
 	}
 	if (!strcmp(k, "pack.compression")) {
@@ -2875,6 +2876,8 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 			  N_("limit pack window by memory in addition to object limit")),
 		OPT_INTEGER(0, "depth", &depth,
 			    N_("maximum length of delta chain allowed in the resulting pack")),
+		OPT_INTEGER(0, "tree-depth", &tree_depth,
+			    N_("maximum length of tree delta chain allowed in the resulting pack")),
 		OPT_BOOL(0, "reuse-delta", &reuse_delta,
 			 N_("reuse existing deltas")),
 		OPT_BOOL(0, "reuse-object", &reuse_object,
