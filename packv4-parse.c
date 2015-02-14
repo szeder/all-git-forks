@@ -614,7 +614,8 @@ static int decode_entries(struct packed_git *p, struct pack_window **w_curs,
 				}
 			}
 			copy_count >>= 1;
-			if (!copy_count || !copy_objoffset)
+			if (!copy_count || !copy_objoffset ||
+			    copy_objoffset == obj_offset)
 				return -1;
 
 			if (start >= copy_count) {
@@ -934,8 +935,9 @@ static inline int switch_tree(struct decode_state **dsp,
 		}
 	}
 	copy_count >>= 1;
-	if (!copy_count || !ds->last_copy_base)
-		return error("copy_count or copy_objoffset is zero");
+	if (!copy_count || !ds->last_copy_base ||
+	    ds->last_copy_base == ds->obj_offset)
+		return error("copy_count or copy_objoffset is invalid");
 
 	if (ds->skip >= copy_count) {
 		ds->skip   -= copy_count;
