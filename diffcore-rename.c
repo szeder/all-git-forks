@@ -680,35 +680,12 @@ void diffcore_rename(struct diff_options *options)
 			/*
 			 * Deletion
 			 *
-			 * We would output this delete record if:
-			 *
-			 * (1) this is a broken delete and the counterpart
-			 *     broken create remains in the output; or
-			 * (2) this is not a broken delete, and rename_dst
-			 *     does not have a rename/copy to move p->one->path
-			 *     out of existence.
-			 *
-			 * Otherwise, the counterpart broken create
-			 * has been turned into a rename-edit; or
-			 * delete did not have a matching create to
-			 * begin with.
+			 * Did the content go to somewhere?
 			 */
-			if (DIFF_PAIR_BROKEN(p)) {
-				/* broken delete */
-				struct diff_rename_dst *dst =
-					locate_rename_dst(p->one, 0);
-				if (dst && dst->pair)
-					/* counterpart is now rename/copy */
-					pair_to_free = p;
-			}
-			else {
-				if (p->one->rename_used)
-					/* this path remains */
-					pair_to_free = p;
-			}
-
-			if (pair_to_free)
-				;
+			struct diff_rename_src *src =
+				locate_rename_src(p->one, 0);
+			if (src && src->p->one->rename_used)
+				pair_to_free = p;
 			else
 				diff_q(&outq, p);
 		}
