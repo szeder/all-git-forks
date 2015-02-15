@@ -2443,8 +2443,8 @@ off_t nth_packed_object_offset(const struct packed_git *p, uint32_t n)
 	}
 }
 
-off_t find_pack_entry_one(const unsigned char *sha1,
-				  struct packed_git *p)
+unsigned int find_pack_entry_pos_one(const unsigned char *sha1,
+				     struct packed_git *p)
 {
 	const uint32_t *level1_ofs = p->index_data;
 	const unsigned char *index = p->index_data;
@@ -2486,9 +2486,7 @@ off_t find_pack_entry_one(const unsigned char *sha1,
 	if (use_lookup) {
 		int pos = sha1_entry_pos(index, stride, 0,
 					 lo, hi, p->num_objects, sha1);
-		if (pos < 0)
-			return 0;
-		return nth_packed_object_offset(p, pos);
+		return pos < 0 ? 0 : pos + 1;
 	}
 
 	do {
@@ -2499,13 +2497,22 @@ off_t find_pack_entry_one(const unsigned char *sha1,
 			printf("lo %u hi %u rg %u mi %u\n",
 			       lo, hi, hi - lo, mi);
 		if (!cmp)
-			return nth_packed_object_offset(p, mi);
+			return mi + 1;
 		if (cmp > 0)
 			hi = mi;
 		else
 			lo = mi+1;
 	} while (lo < hi);
 	return 0;
+}
+
+off_t find_pack_entry_one(const unsigned char *sha1,
+			  struct packed_git *p)
+{
+	int pos = find_pack_entry_pos_one(sha1, p);
+	if (!pos)
+		return 0;
+	return nth_packed_object_offset(p, pos - 1);
 }
 
 int is_pack_valid(struct packed_git *p)
@@ -2529,11 +2536,10 @@ int is_pack_valid(struct packed_git *p)
 	return !open_packed_git(p);
 }
 
-static int fill_pack_entry(const unsigned char *sha1,
-			   struct pack_entry *e,
-			   struct packed_git *p)
+static unsigned int find_valid_pack_entry_pos(const unsigned char *sha1,
+					      struct packed_git *p)
 {
-	off_t offset;
+	unsigned int pos;
 
 	if (p->num_bad_objects) {
 		unsigned i;
@@ -2542,8 +2548,8 @@ static int fill_pack_entry(const unsigned char *sha1,
 				return 0;
 	}
 
-	offset = find_pack_entry_one(sha1, p);
-	if (!offset)
+	pos = find_pack_entry_pos_one(sha1, p);
+	if (!pos)
 		return 0;
 
 	/*
@@ -2557,37 +2563,49 @@ static int fill_pack_entry(const unsigned char *sha1,
 		warning("packfile %s cannot be accessed", p->pack_name);
 		return 0;
 	}
-	e->offset = offset;
-	e->p = p;
-	hashcpy(e->sha1, sha1);
-	return 1;
+	return pos;
+}
+
+struct packed_git *find_pack_entry_pos(const unsigned char *sha1,
+				       unsigned int *pos)
+{
+	struct packed_git *p;
+
+	prepare_packed_git();
+	if (!packed_git)
+		return NULL;
+
+	if (last_found_pack &&
+	    (*pos = find_valid_pack_entry_pos(sha1, last_found_pack)))
+		return last_found_pack;
+
+	for (p = packed_git; p; p = p->next) {
+		if (p == last_found_pack)
+			continue; /* we already checked this one */
+
+		*pos = find_valid_pack_entry_pos(sha1, p);
+		if (*pos)
+			return last_found_pack = p;
+	}
+	return NULL;
 }
 
 /*
  * Iff a pack file contains the object named by sha1, return true and
  * store its location to e.
  */
-static int find_pack_entry(const unsigned char *sha1, struct pack_entry *e)
+static int find_pack_entry(const unsigned char *sha1,
+			   struct pack_entry *e)
 {
-	struct packed_git *p;
+	unsigned int pos;
+	struct packed_git *p = find_pack_entry_pos(sha1, &pos);
 
-	prepare_packed_git();
-	if (!packed_git)
+	if (!p)
 		return 0;
-
-	if (last_found_pack && fill_pack_entry(sha1, e, last_found_pack))
-		return 1;
-
-	for (p = packed_git; p; p = p->next) {
-		if (p == last_found_pack)
-			continue; /* we already checked this one */
-
-		if (fill_pack_entry(sha1, e, p)) {
-			last_found_pack = p;
-			return 1;
-		}
-	}
-	return 0;
+	e->p = p;
+	e->offset = nth_packed_object_offset(p, pos - 1);
+	hashcpy(e->sha1, sha1);
+	return 1;
 }
 
 struct packed_git *find_sha1_pack(const unsigned char *sha1,
@@ -2596,7 +2614,7 @@ struct packed_git *find_sha1_pack(const unsigned char *sha1,
 	struct packed_git *p;
 
 	for (p = packs; p; p = p->next) {
-		if (find_pack_entry_one(sha1, p))
+		if (find_pack_entry_pos_one(sha1, p))
 			return p;
 	}
 	return NULL;

@@ -1238,6 +1238,13 @@ extern off_t nth_packed_object_offset(const struct packed_git *, uint32_t n);
  * return its offset within the packfile; otherwise, return 0.
  */
 extern off_t find_pack_entry_one(const unsigned char *sha1, struct packed_git *);
+/*
+ * If the object named sha1 is present in the specified packfile,
+ * return its object index within the packfile *PLUS* 1; otherwise,
+ * return 0.
+ */
+extern unsigned int find_pack_entry_pos_one(const unsigned char *sha1, struct packed_git *);
+extern struct packed_git *find_pack_entry_pos(const unsigned char *sha1, unsigned int *pos);
 
 extern int is_pack_valid(struct packed_git *);
 extern void *unpack_entry(struct packed_git *, off_t, enum object_type *, unsigned long *);
