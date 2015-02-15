@@ -648,15 +648,22 @@ void diffcore_rename(struct diff_options *options)
 	 */
 	diff_debug_queue("begin turning a/d into renames", q);
 
+	/*
+	 * Unlike the usual "queue in outq while freeing unneeded
+	 * elements and then swap outq into *q", we just leave the
+	 * entries to be later freed in *q in this loop and then
+	 * clean up after we are done.  This is because we want to
+	 * peek into rename_src, which has pointers into the filepairs
+	 * still in *q.
+	 */
 	DIFF_QUEUE_CLEAR(&outq);
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *p = q->queue[i];
-		struct diff_filepair *pair_to_free = NULL;
 
 		if (DIFF_PAIR_UNMERGED(p)) {
 			diff_q(&outq, p);
-		}
-		else if (!DIFF_FILE_VALID(p->one) && DIFF_FILE_VALID(p->two)) {
+			q->queue[i] = NULL;
+		} else if (!DIFF_FILE_VALID(p->one) && DIFF_FILE_VALID(p->two)) {
 			/*
 			 * Creation
 			 *
@@ -668,59 +675,38 @@ void diffcore_rename(struct diff_options *options)
 				locate_rename_dst(p->two, 0);
 			if (dst && dst->pair) {
 				diff_q(&outq, dst->pair);
-				pair_to_free = p;
-			}
-			else
+			} else {
 				/* no matching rename/copy source, so
 				 * record this as a creation.
 				 */
 				diff_q(&outq, p);
-		}
-		else if (DIFF_FILE_VALID(p->one) && !DIFF_FILE_VALID(p->two)) {
+				q->queue[i] = NULL;
+			}
+		} else if (DIFF_FILE_VALID(p->one) && !DIFF_FILE_VALID(p->two)) {
 			/*
 			 * Deletion
 			 *
-			 * We would output this delete record if:
-			 *
-			 * (1) this is a broken delete and the counterpart
-			 *     broken create remains in the output; or
-			 * (2) this is not a broken delete, and rename_dst
-			 *     does not have a rename/copy to move p->one->path
-			 *     out of existence.
-			 *
-			 * Otherwise, the counterpart broken create
-			 * has been turned into a rename-edit; or
-			 * delete did not have a matching create to
-			 * begin with.
+			 * Did the content go to somewhere?
 			 */
-			if (DIFF_PAIR_BROKEN(p)) {
-				/* broken delete */
-				struct diff_rename_dst *dst =
-					locate_rename_dst(p->one, 0);
-				if (dst && dst->pair)
-					/* counterpart is now rename/copy */
-					pair_to_free = p;
-			}
-			else {
-				if (p->one->rename_used)
-					/* this path remains */
-					pair_to_free = p;
-			}
-
-			if (pair_to_free)
-				;
-			else
+			struct diff_rename_src *src =
+				locate_rename_src(p->one, 0);
+			if (!src || !src->p->one->rename_used) {
 				diff_q(&outq, p);
-		}
-		else if (!diff_unmodified_pair(p))
+				q->queue[i] = NULL;
+			}
+		} else if (!diff_unmodified_pair(p)) {
 			/* all the usual ones need to be kept */
 			diff_q(&outq, p);
-		else
+			q->queue[i] = NULL;
+		} else {
 			/* no need to keep unmodified pairs */
-			pair_to_free = p;
+			;
+		}
+	}
 
-		if (pair_to_free)
-			diff_free_filepair(pair_to_free);
+	for (i = 0; i < q->nr; i++) {
+		if (q->queue[i])
+			diff_free_filepair(q->queue[i]);
 	}
 
 	free(q->queue);
