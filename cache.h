@@ -1186,12 +1186,6 @@ extern struct packed_git {
 } *packed_git;
 extern int num_packs_v4;
 
-struct pack_entry {
-	off_t offset;
-	unsigned char sha1[20];
-	struct packed_git *p;
-};
-
 extern struct packed_git *parse_pack_index(unsigned char *sha1, const char *idx_path);
 
 /* A hook for count-objects to report invalid files in pack directory */

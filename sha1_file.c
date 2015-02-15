@@ -34,6 +34,12 @@
 #endif
 #endif
 
+struct pack_entry {
+	off_t offset;
+	unsigned char sha1[20];
+	struct packed_git *p;
+};
+
 #define SZ_FMT PRIuMAX
 static inline uintmax_t sz_fmt(size_t s) { return s; }
 
