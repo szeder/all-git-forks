@@ -137,6 +137,17 @@ static void grow_object_hash(void)
 	obj_hash_size = new_hash_size;
 }
 
+static void insert_object_v4(const unsigned char *sha1, struct object *obj)
+{
+	unsigned int pos;
+	struct packed_git *p = find_pack_entry_pos(sha1, &pos);
+	if (!p || p->version < 4)
+		return;
+	if (!p->obj_hash)
+		p->obj_hash = xcalloc(p->num_objects, sizeof(*p->obj_hash));
+	p->obj_hash[pos - 1] = obj;
+}
+
 void *create_object(const unsigned char *sha1, void *o)
 {
 	struct object *obj = o;
@@ -149,6 +160,8 @@ void *create_object(const unsigned char *sha1, void *o)
 	if (obj_hash_size - 1 <= nr_objs * 2)
 		grow_object_hash();
 
+	if (num_packs_v4)
+		insert_object_v4(sha1, obj);
 	insert_obj_hash(obj, obj_hash, obj_hash_size);
 	nr_objs++;
 	return obj;

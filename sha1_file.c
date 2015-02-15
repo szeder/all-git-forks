@@ -910,6 +910,7 @@ void free_pack_by_name(const char *pack_name)
 			free(p->bad_object_sha1);
 			pv4_free_dict(p->ident_dict);
 			pv4_free_dict(p->path_dict);
+			free(p->obj_hash);
 			*pp = p->next;
 			if (last_found_pack == p)
 				last_found_pack = NULL;

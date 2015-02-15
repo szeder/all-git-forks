@@ -1175,6 +1175,7 @@ extern struct packed_git {
 	struct packv4_dict *ident_dict;
 	off_t ident_dict_end;
 	struct packv4_dict *path_dict;
+	struct object **obj_hash;
 	time_t mtime;
 	int pack_fd;
 	unsigned pack_local:1,
