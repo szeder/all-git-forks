@@ -98,8 +98,9 @@ Git pack format
 
    The SHA-1 table in thin packs must include the omitted objects as well.
 
-   This table can be referred to using "SHA-1 reference encoding": the
-   index, in variable length encoding, to this table.
+   This table can be referred to using "SHA-1 reference encoding": a
+   number, in variable length encoding, minus one is the index to this
+   table. If this number is zero, a 20-byte SHA-1 follows.
 
  - Ident table: the uncompressed length in variable encoding,
    followed by zlib-compressed dictionary. Each entry consists of
@@ -146,18 +147,20 @@ Git pack format
 
   - A number of entries, each can be in either forms
 
-    - INT(path_index << 1)        INT(sha1_index)
+    - INT(path_index << 1)        SHA1REF(entry)
 
     - INT((entry_start << 1) | 1) INT(entry_count << 1)
 
-    - INT((entry_start << 1) | 1) INT((entry_count << 1) | 1) INT(base_sha1_index)
+    - INT((entry_start << 1) | 1) INT((entry_count << 1) | 1) SHA1REF(base)
 
     INT() denotes a number in variable length encoding. path_index is
-    the index to the tree path table. sha1_index is the index to the
-    SHA-1 table. entry_start is the first tree entry to copy
-    from. entry_count is the number of tree entries to
-    copy. base_sha1_index is the index to SHA-1 table of the base tree
-    to copy from.
+    the index to the tree path table. entry_start is the first tree
+    entry to copy from. entry_count is the number of tree entries to
+    copy.
+
+    SHA1REF() denotes an SHA-1 in SHA-1 reference encoding. "entry" is
+    the SHA-1 of the tree entry. "base" is SHA-1 of the base tree
+    where entries are copied from.
 
     The LSB of the first number indicates whether it's a plain tree
     entry (LSB not set), or an instruction to copy tree entries from
