@@ -1184,6 +1184,7 @@ extern struct packed_git {
 	/* something like ".git/objects/pack/xxxxx.pack" */
 	char pack_name[FLEX_ARRAY]; /* more */
 } *packed_git;
+extern int num_packs_v4;
 
 struct pack_entry {
 	off_t offset;

@@ -60,6 +60,7 @@ static struct cached_object empty_tree = {
 	0
 };
 
+int num_packs_v4;
 /*
  * A pointer to the last packed_git in which an object was found.
  * When an object is sought, we look in this packfile first, because
@@ -1015,6 +1016,8 @@ static int open_packed_git_1(struct packed_git *p)
 			" supported (try upgrading GIT to a newer version)",
 			p->pack_name, ntohl(hdr.hdr_version));
 	p->version = ntohl(hdr.hdr_version);
+	if (p->version >= 4)
+		num_packs_v4++;
 
 	/* Verify the pack matches its index. */
 	if (p->num_objects != ntohl(hdr.hdr_entries))
