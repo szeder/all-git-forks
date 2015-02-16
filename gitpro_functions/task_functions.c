@@ -885,3 +885,192 @@ void deactivate_task(char *username){
 	}
 	free(read_log);
 }
+
+/* See specification in task_functions.h */
+void show_stats(){
+	
+	char *query = NULL;
+	char *c = count(TASK_ID);
+	char *fields[] = {c,0};
+	
+	//Obtaining total number of tasks
+	query = construct_query(fields,from(TASK_TABLE),NULL,NULL,NULL);
+	int total = 	exec_int_scalarquery(query);
+	free(query);
+	
+	//Obtaining total number of new tasks
+	query = construct_query(fields,from(TASK_TABLE),where(cond(TASK_STATE,"=","'NEW'")),NULL,NULL);
+	int task_new = exec_int_scalarquery(query);
+	free(query);
+	
+	//Obtaining total number of in progress tasks
+	query = construct_query(fields,from(TASK_TABLE),where(cond(TASK_STATE,"=","'IN PROGRESS'")),NULL,NULL);
+	int task_inprogress = exec_int_scalarquery(query);
+	free(query);
+	
+	//Obtaining total number of resolved tasks
+	query = construct_query(fields,from(TASK_TABLE),where(cond(TASK_STATE,"=","'RESOLVED'")),NULL,NULL);
+	int task_resolved = exec_int_scalarquery(query);
+	free(query);
+	
+	free(c);
+	
+	char *sum_approx = sum(TASK_APROXTIME);
+	char *f_approx[] = {sum_approx,0};
+	
+	char *sum_real = sum(TASK_REALTIME);
+	char *f_real[] = {sum_real,0};
+	
+	char *where_part = where(_or_(_or_(cond(TASK_STATE,"=","'NEW'"),cond(TASK_STATE,"=","'IN PROGRESS'")),cond(TASK_STATE,"=","'RESOLVED'")));
+	
+	//Obtaining total approx time inverted in project (with rejected tasks included)
+	query = construct_query(f_approx,from(TASK_TABLE),NULL,NULL,NULL);
+	float aprox_time_with = exec_float_scalarquery(query);
+	free(query);
+	
+	//Obtaining total real time inverted in project (with rejected tasks included)
+	query = construct_query(f_real,from(TASK_TABLE),NULL,NULL,NULL);
+	float real_time_with = exec_float_scalarquery(query);
+	free(query);
+	
+	//Obtaining total approx time inverted in project (WITHOUT rejected tasks included)
+	query = construct_query(f_approx,from(TASK_TABLE),strdup(where_part),NULL,NULL);
+	float aprox_time = exec_float_scalarquery(query);
+	free(query);
+	
+	//Obtaining total real time inverted in project (WITHOUT rejected tasks included)
+	query = construct_query(f_real,from(TASK_TABLE),strdup(where_part),NULL,NULL);
+	float real_time = exec_float_scalarquery(query);
+	free(query);
+	
+	free(where_part);
+	free(sum_approx);
+	free(sum_real);
+	
+	printf("*****************************************************\n");
+	printf("               Project Statistics\n");
+	printf("*****************************************************\n");
+	printf("Project task completion : %.2f %%\n",( ((float)task_resolved/(float)(task_new+task_inprogress+task_resolved))*100));
+	printf("	Time including rejected tasks\n");
+	printf("		- Estimated time : %.2f hours\n", aprox_time_with );
+	printf("		- Real time      : %.2f hours\n", real_time_with );
+	printf("	Time without rejected tasks\n");
+	printf("		- Total estimated time : %.2f hours\n", aprox_time );
+	printf("		- Total real time      : %.2f hours\n", real_time );
+	printf("Total tasks: %d\n",total);
+	
+	//Number of tasks by state
+	if(total>0){
+		char *s_field[] = {STATE_NAME,0};
+		query = construct_query(s_field,from(STATE_TABLE),NULL,NULL,NULL);
+		generic_list data = NULL;
+		data = exec_query(query);
+		if(data!=NULL){
+			char *t_count = count(TASK_ID);
+			char *f_state[] = {t_count,0};
+			state_list info = (*data).state_info;
+			printf("	Task number by state\n");
+			while(info!=NULL){
+				char *iter_query = construct_query(f_state,from(TASK_TABLE),where(cond(TASK_STATE,"=",format_string(info->state_name))),NULL,NULL);
+				int by_state = exec_int_scalarquery(iter_query);
+				free(iter_query);
+				printf("		%s : %d (%.2f %%)\n",info->state_name,by_state,((float)by_state/(float)total)*100);
+				info = info->next;
+			}
+			free(t_count);
+			dealloc(data);
+		}
+		free(query);
+		
+		char *p_field[] = {PRIORITY_NAME,0};
+		query = construct_query(p_field,from(PRIOR_TABLE),NULL,NULL,NULL);
+		data = exec_query(query);
+		if(data!=NULL){
+			char *t_count = count(TASK_ID);
+			char *f_prior[] = {t_count,0};
+			prior_list info = (*data).prior_info;
+			printf("	Task number by priority\n");
+			while(info!=NULL){
+				char *iter_query = construct_query(f_prior,from(TASK_TABLE),where(cond(TASK_PRIOR,"=",format_string(info->prior_name))),NULL,NULL);
+				int by_prior = exec_int_scalarquery(iter_query);
+				free(iter_query);
+				printf("		%s : %d (%.2f %%)\n",info->prior_name,by_prior,((float)by_prior/(float)total)*100);
+				info = info->next;
+			}
+			free(t_count);
+			dealloc(data);
+		}
+		free(query);
+		
+		char *t_field[] = {TYPE_NAME,0};
+		query = construct_query(t_field,from(TYPE_TABLE),NULL,NULL,NULL);
+		data = exec_query(query);
+		if(data!=NULL){
+			char *t_count = count(TASK_ID);
+			char *f_type[] = {t_count,0};
+			type_list info = (*data).type_info;
+			printf("	Task number by type\n");
+			while(info!=NULL){
+				char *iter_query = construct_query(f_type,from(TASK_TABLE),where(cond(TASK_TYPE,"=",format_string(info->type_name))),NULL,NULL);
+				int by_type = exec_int_scalarquery(iter_query);
+				free(iter_query);
+				printf("		%s : %d (%.2f %%)\n",info->type_name,by_type,((float)by_type/(float)total)*100);
+				info = info->next;
+			}
+			free(t_count);
+			dealloc(data);
+		}
+		free(query);
+		
+		//Number of task assignations by user
+		char *u_field[] = {USER_NAME,0};
+		query = construct_query(u_field,from(USER_TABLE),NULL,NULL,NULL);
+		data = exec_query(query);
+		if(data!=NULL){
+			char *asig_count = count(ASIG_TASK_ID);
+			char *f_asig[] = {asig_count,0};
+			user_list info = (*data).user_info;
+			printf("	Task assignations by user\n");
+			while(info!=NULL){
+				char *iter_query = construct_query(f_asig,from(ASIG_TABLE),where(cond(ASIG_USER_NAME,"=",format_string(info->user_name))),NULL,NULL);
+				int assigned = exec_int_scalarquery(iter_query);
+				free(iter_query);
+				printf("		%s : %d (%.2f %%)\n",info->user_name,assigned,((float)assigned/(float)total)*100);
+				info = info->next;
+			}
+			free(asig_count);
+			dealloc(data);
+		}
+		free(query);
+		
+		//Time spent and logged by user
+		query = construct_query(u_field,from(USER_TABLE),NULL,NULL,NULL);
+		data = exec_query(query);
+		if(data!=NULL){
+			char *l_asig[] = {LOG_START,LOG_END,0};
+			user_list info = (*data).user_info;
+			printf("	Time logged by user\n");
+			while(info!=NULL){
+				char *iter_query = construct_query(l_asig,from(LOG_TABLE),where(cond(LOG_USER_NAME,"=",format_string(info->user_name))),NULL,NULL);
+				generic_list data2 = exec_query(iter_query);
+				float logged_time = 0.0;
+				if(data2!=NULL){
+					log_list logs = (*data2).log_info;
+					while(logs!=NULL){
+						int start = atoi(logs->start);
+						int end = atoi(logs->end);
+						logged_time = logged_time+(((float)end-(float)start)/3600.0);
+						logs = logs->next;
+					} 
+					dealloc(data2);
+				}
+				printf("		%s : %.2f hours\n",info->user_name,logged_time);
+				info = info->next;
+				free(iter_query);
+			}
+			dealloc(data);
+		}
+		free(query);
+		
+	}
+}

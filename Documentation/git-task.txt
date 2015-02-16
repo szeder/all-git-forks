@@ -19,7 +19,8 @@ SYNOPSIS
 	   | [--show-states]
 	   | [--show-priorities] 
 	   | [--pending]
-	   | [--switch] ]
+	   | [--switch] 
+	   | [--stat] ]
 
 Each option accepts arguments. See OPTIONS section for more info about a specific option and arguments.
 
@@ -105,6 +106,10 @@ Execute 'git task --switch task_id' to activate task you're working on. If one t
 it'll be deactivated, logged and new task will be activated. 
 Use same command to deactivate an active task.
 
+[Check project statistics]
+Execute 'git task --stat' to see project statistics like completion percents and other interesting
+data to evaluate project and take decisions about how to continue work.
+
 NOTES
 -----
 When updating tasks, data such as notes, estimated time and real time will be added to existent value.
@@ -150,3 +155,7 @@ Checking your pending tasks:
 	
 Activating task:
 	git task --switch
+	
+Checking stats:
+	git task --stat
+	git task --stat > 'my_stat_file.txt'

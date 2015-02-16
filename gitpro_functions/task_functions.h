@@ -94,3 +94,8 @@ void activate_task(char *id);
  * 	Parameters	: user name
  * 	Return 		: nothing */
 void deactivate_task(char *username);
+
+/*	Name		: show_stats
+ * 	Parameters	: nothing
+ * 	Return		: stats to standard output */
+void show_stats();
