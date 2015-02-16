@@ -23,6 +23,15 @@ static int progress = -1;
 
 static struct push_cas_option cas;
 
+static enum push_default_type {
+	PUSH_DEFAULT_NOTHING = 0,
+	PUSH_DEFAULT_MATCHING,
+	PUSH_DEFAULT_SIMPLE,
+	PUSH_DEFAULT_UPSTREAM,
+	PUSH_DEFAULT_CURRENT,
+	PUSH_DEFAULT_UNSPECIFIED
+} push_default = PUSH_DEFAULT_UNSPECIFIED;
+
 static const char **refspec;
 static int refspec_nr;
 static int refspec_alloc;
@@ -478,6 +487,30 @@ static int git_push_config(const char *k, const char *v, void *cb)
 	status = git_gpg_config(k, v, NULL);
 	if (status)
 		return status;
+
+	if (!strcmp(k, "push.default")) {
+		if (!v)
+			return config_error_nonbool(k);
+		else if (!strcmp(v, "nothing"))
+			push_default = PUSH_DEFAULT_NOTHING;
+		else if (!strcmp(v, "matching"))
+			push_default = PUSH_DEFAULT_MATCHING;
+		else if (!strcmp(v, "simple"))
+			push_default = PUSH_DEFAULT_SIMPLE;
+		else if (!strcmp(v, "upstream"))
+			push_default = PUSH_DEFAULT_UPSTREAM;
+		else if (!strcmp(v, "tracking")) /* deprecated */
+			push_default = PUSH_DEFAULT_UPSTREAM;
+		else if (!strcmp(v, "current"))
+			push_default = PUSH_DEFAULT_CURRENT;
+		else {
+			error("Malformed value for %s: %s", k, v);
+			return error("Must be one of nothing, matching, simple, "
+				     "upstream or current.");
+		}
+		return 0;
+	}
+
 	return git_default_config(k, v, NULL);
 }
 
