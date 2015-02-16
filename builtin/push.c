@@ -482,6 +482,7 @@ static int option_parse_recurse_submodules(const struct option *opt,
 
 static int git_push_config(const char *k, const char *v, void *cb)
 {
+	int *flags = cb;
 	int status;
 
 	status = git_gpg_config(k, v, NULL);
@@ -508,6 +509,14 @@ static int git_push_config(const char *k, const char *v, void *cb)
 			return error("Must be one of nothing, matching, simple, "
 				     "upstream or current.");
 		}
+		return 0;
+	}
+
+	if (!strcmp(k, "push.followtags")) {
+		if (git_config_bool(k, v))
+			*flags |= TRANSPORT_PUSH_FOLLOW_TAGS;
+		else
+			*flags &= ~TRANSPORT_PUSH_FOLLOW_TAGS;
 		return 0;
 	}
 
