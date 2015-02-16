@@ -154,6 +154,7 @@
 /git-stash
 /git-status
 /git-stripspace
+/git-subdir-tool
 /git-submodule
 /git-svn
 /git-symbolic-ref

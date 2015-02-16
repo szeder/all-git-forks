@@ -121,6 +121,7 @@ git-sh-setup                            purehelpers
 git-stash                               mainporcelain
 git-status                              mainporcelain common
 git-stripspace                          purehelpers
+git-subdir-tool                         plumbingmanipulators
 git-submodule                           mainporcelain
 git-svn                                 foreignscminterface
 git-symbolic-ref                        plumbingmanipulators
