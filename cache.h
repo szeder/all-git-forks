@@ -640,18 +640,8 @@ enum rebase_setup_type {
 	AUTOREBASE_ALWAYS
 };
 
-enum push_default_type {
-	PUSH_DEFAULT_NOTHING = 0,
-	PUSH_DEFAULT_MATCHING,
-	PUSH_DEFAULT_SIMPLE,
-	PUSH_DEFAULT_UPSTREAM,
-	PUSH_DEFAULT_CURRENT,
-	PUSH_DEFAULT_UNSPECIFIED
-};
-
 extern enum branch_track git_branch_track;
 extern enum rebase_setup_type autorebase;
-extern enum push_default_type push_default;
 
 enum object_creation_mode {
 	OBJECT_CREATION_USES_HARDLINKS = 0,
