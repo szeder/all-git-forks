@@ -167,6 +167,7 @@ void diffcore_break(int break_score)
 
 	DIFF_QUEUE_CLEAR(&outq);
 
+	diff_debug_queue("begin breaking", q);
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *p = q->queue[i];
 		int score;
@@ -176,8 +177,8 @@ void diffcore_break(int break_score)
 		 * We do not break anything else.
 		 */
 		if (DIFF_FILE_VALID(p->one) && DIFF_FILE_VALID(p->two) &&
-		    object_type(p->one->mode) == OBJ_BLOB &&
-		    object_type(p->two->mode) == OBJ_BLOB &&
+		    S_ISREG(p->one->mode) &&
+		    S_ISREG(p->two->mode) &&
 		    !strcmp(p->one->path, p->two->path)) {
 			if (should_break(p->one, p->two,
 					 break_score, &score)) {
@@ -221,6 +222,7 @@ void diffcore_break(int break_score)
 	free(q->queue);
 	*q = outq;
 
+	diff_debug_queue("end breaking", q);
 	return;
 }
 
@@ -267,6 +269,7 @@ void diffcore_merge_broken(void)
 
 	DIFF_QUEUE_CLEAR(&outq);
 
+	diff_debug_queue("begin merge broken", q);
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *p = q->queue[i];
 		if (!p)
@@ -299,6 +302,7 @@ void diffcore_merge_broken(void)
 	}
 	free(q->queue);
 	*q = outq;
+	diff_debug_queue("end merge broken", q);
 
 	return;
 }
