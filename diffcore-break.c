@@ -177,8 +177,8 @@ void diffcore_break(int break_score)
 		 * We do not break anything else.
 		 */
 		if (DIFF_FILE_VALID(p->one) && DIFF_FILE_VALID(p->two) &&
-		    object_type(p->one->mode) == OBJ_BLOB &&
-		    object_type(p->two->mode) == OBJ_BLOB &&
+		    S_ISREG(p->one->mode) &&
+		    S_ISREG(p->two->mode) &&
 		    !strcmp(p->one->path, p->two->path)) {
 			if (should_break(p->one, p->two,
 					 break_score, &score)) {

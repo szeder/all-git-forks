@@ -14,7 +14,15 @@ original file1 and creation of completely rewritten file1.  The latter
 two are then merged back into a single "complete rewrite".
 
 Further, with -B and -M together, these three modifications should
-turn into rename-edit of file0 into file1.
+turn into rename-edit of file0 into file1 and deletion of file1.
+Note that the latter deletion is essential for reasons.  Because
+file1 exists in the old tree and disappears from the new tree, we
+cannot just say "a rename creates file1 and its contents comes from
+file0", as such a patch requires that the target tree lacks file1.
+Also taking the same diff in the reverse should say that file0 is
+created by copying file1 and file1 is rewritten, which is more
+consistent with the reverse of "file1 is created by renaming file0
+and the original file1 is deleted".
 
 Starting from the same two files in the tree, we swap file0 and file1.
 With -B, this should be detected as two complete rewrites.
@@ -49,6 +57,7 @@ test_expect_success 'run diff with -B (#1)' '
 test_expect_success 'run diff with -B and -M (#2)' '
 	git diff-index -B -M reference >current &&
 	cat >expect <<-\EOF &&
+	:100644 000000 6ff87c4664981e4397625791c8ea3bbb5f2279a3 0000000000000000000000000000000000000000 D#	file1
 	:100644 100644 548142c327a6790ff8821d67c2ee1eff7a656b52 2fbedd0b5d4b8126e4750c3bee305e8ff79f80ec R100	file0	file1
 	EOF
 	compare_diff_raw expect current
@@ -97,7 +106,7 @@ test_expect_success 'run diff with -B (#5)' '
 	compare_diff_raw expect current
 '
 
-test_expect_success 'run diff with -B -M (#6)' '
+test_expect_failure 'run diff with -B -M (#6)' '
 	git diff-index -B -M reference >current &&
 
 	# file0 changed from regular to symlink.  file1 is the same as the preimage
@@ -145,6 +154,7 @@ test_expect_success 'run diff with -B (#8)' '
 test_expect_success 'run diff with -B -C (#9)' '
 	git diff-index -B -C reference >current &&
 	cat >expect <<-\EOF &&
+	:100644 000000 6ff87c4664981e4397625791c8ea3bbb5f2279a3 0000000000000000000000000000000000000000 D#	file1
 	:100644 100644 548142c327a6790ff8821d67c2ee1eff7a656b52 2fbedd0b5d4b8126e4750c3bee305e8ff79f80ec C095	file0	file1
 	:100644 100644 548142c327a6790ff8821d67c2ee1eff7a656b52 69a939f651686f56322566e2fd76715947a24162 R095	file0	file2
 	EOF
