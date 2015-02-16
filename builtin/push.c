@@ -23,6 +23,15 @@ static int progress = -1;
 
 static struct push_cas_option cas;
 
+static enum push_default_type {
+	PUSH_DEFAULT_NOTHING = 0,
+	PUSH_DEFAULT_MATCHING,
+	PUSH_DEFAULT_SIMPLE,
+	PUSH_DEFAULT_UPSTREAM,
+	PUSH_DEFAULT_CURRENT,
+	PUSH_DEFAULT_UNSPECIFIED
+} push_default = PUSH_DEFAULT_UNSPECIFIED;
+
 static const char **refspec;
 static int refspec_nr;
 static int refspec_alloc;
@@ -473,13 +482,45 @@ static int option_parse_recurse_submodules(const struct option *opt,
 
 static int git_push_config(const char *k, const char *v, void *cb)
 {
-	struct wt_status *s = cb;
+	int *flags = cb;
 	int status;
 
 	status = git_gpg_config(k, v, NULL);
 	if (status)
 		return status;
-	return git_default_config(k, v, s);
+
+	if (!strcmp(k, "push.default")) {
+		if (!v)
+			return config_error_nonbool(k);
+		else if (!strcmp(v, "nothing"))
+			push_default = PUSH_DEFAULT_NOTHING;
+		else if (!strcmp(v, "matching"))
+			push_default = PUSH_DEFAULT_MATCHING;
+		else if (!strcmp(v, "simple"))
+			push_default = PUSH_DEFAULT_SIMPLE;
+		else if (!strcmp(v, "upstream"))
+			push_default = PUSH_DEFAULT_UPSTREAM;
+		else if (!strcmp(v, "tracking")) /* deprecated */
+			push_default = PUSH_DEFAULT_UPSTREAM;
+		else if (!strcmp(v, "current"))
+			push_default = PUSH_DEFAULT_CURRENT;
+		else {
+			error("Malformed value for %s: %s", k, v);
+			return error("Must be one of nothing, matching, simple, "
+				     "upstream or current.");
+		}
+		return 0;
+	}
+
+	if (!strcmp(k, "push.followtags")) {
+		if (git_config_bool(k, v))
+			*flags |= TRANSPORT_PUSH_FOLLOW_TAGS;
+		else
+			*flags &= ~TRANSPORT_PUSH_FOLLOW_TAGS;
+		return 0;
+	}
+
+	return git_default_config(k, v, NULL);
 }
 
 int cmd_push(int argc, const char **argv, const char *prefix)
@@ -487,7 +528,6 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 	int flags = 0;
 	int tags = 0;
 	int rc;
-	int atomic = 0;
 	const char *repo = NULL;	/* default repository */
 	struct option options[] = {
 		OPT__VERBOSITY(&verbosity),
@@ -519,12 +559,12 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 		OPT_BIT(0, "follow-tags", &flags, N_("push missing but relevant tags"),
 			TRANSPORT_PUSH_FOLLOW_TAGS),
 		OPT_BIT(0, "signed", &flags, N_("GPG sign the push"), TRANSPORT_PUSH_CERT),
-		OPT_BOOL(0, "atomic", &atomic, N_("request atomic transaction on remote side")),
+		OPT_BIT(0, "atomic", &flags, N_("request atomic transaction on remote side"), TRANSPORT_PUSH_ATOMIC),
 		OPT_END()
 	};
 
 	packet_trace_identity("push");
-	git_config(git_push_config, NULL);
+	git_config(git_push_config, &flags);
 	argc = parse_options(argc, argv, prefix, options, push_usage, 0);
 
 	if (deleterefs && (tags || (flags & (TRANSPORT_PUSH_ALL | TRANSPORT_PUSH_MIRROR))))
@@ -534,9 +574,6 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 
 	if (tags)
 		add_refspec("refs/tags/*");
-
-	if (atomic)
-		flags |= TRANSPORT_PUSH_ATOMIC;
 
 	if (argc > 0) {
 		repo = argv[0];
