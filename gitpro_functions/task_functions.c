@@ -8,7 +8,7 @@
 void rm_assign_task(char *id,char *rm);
 void rm_link_files(char *id,char *rm);
 
-#define LOG_FILENAME "log.tmp"
+#define LOG_FILENAME ".task_logtime"
 
 #define A "NEW"
 #define B "IN PROGRESS"

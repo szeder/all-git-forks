@@ -428,7 +428,9 @@ filter_task_est_time,filter_task_time);
 /* END [1.10.4/5] Activate task and Deactivate task (both options on switch option) */
 			
 		}else if(stats){
+/* START [1.11.2] Obtain statistic data */
 			show_stats();
+/* END [1.11.2] Obtain statistic data */
 		}else{
 			/* No action defined */
 			printf("No action defined\n");
