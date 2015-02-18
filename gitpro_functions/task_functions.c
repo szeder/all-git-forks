@@ -950,17 +950,18 @@ void show_stats(){
 	printf("*****************************************************\n");
 	printf("               Project Statistics\n");
 	printf("*****************************************************\n");
-	printf("Project task completion : %.2f %%\n",( ((float)task_resolved/(float)(task_new+task_inprogress+task_resolved))*100));
-	printf("	Time including rejected tasks\n");
-	printf("		- Estimated time : %.2f hours\n", aprox_time_with );
-	printf("		- Real time      : %.2f hours\n", real_time_with );
-	printf("	Time without rejected tasks\n");
-	printf("		- Total estimated time : %.2f hours\n", aprox_time );
-	printf("		- Total real time      : %.2f hours\n", real_time );
-	printf("Total tasks: %d\n",total);
-	
 	//Number of tasks by state
 	if(total>0){
+		printf("Project task completion : %.2f %%\n",( ((float)task_resolved/(float)(task_new+task_inprogress+task_resolved))*100));
+		printf("	Time including rejected tasks\n");
+		printf("		- Estimated time : %.2f hours\n", aprox_time_with );
+		printf("		- Real time      : %.2f hours\n", real_time_with );
+		printf("	Time without rejected tasks\n");
+		printf("		- Total estimated time : %.2f hours\n", aprox_time );
+		printf("		- Total real time      : %.2f hours\n", real_time );
+		printf("Total tasks: %d\n",total);
+	
+	
 		char *s_field[] = {STATE_NAME,0};
 		query = construct_query(s_field,from(STATE_TABLE),NULL,NULL,NULL);
 		generic_list data = NULL;
@@ -1072,5 +1073,7 @@ void show_stats(){
 		}
 		free(query);
 		
+	}else{
+		printf("Total tasks: 0\n");
 	}
 }

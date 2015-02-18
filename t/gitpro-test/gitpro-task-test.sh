@@ -67,6 +67,11 @@ echo '***********************************'
 ./gp-tswitch.sh
 ./clean-db.sh
 echo '***********************************'
+echo '    Starting stat tasks tests'
+echo '***********************************'
+./gp-tstat.sh
+./clean-db.sh
+echo '***********************************'
 echo '   Starting rolecheck task tests'
 echo '***********************************'
 ./gp-trolecheck.sh
