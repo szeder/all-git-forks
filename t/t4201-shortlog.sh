@@ -159,7 +159,7 @@ $DSCHO (2):
 
 EOF
 
-test_expect_success !MINGW 'shortlog encoding' '
+test_expect_success !MINGW,ICONV 'shortlog encoding' '
 	git reset --hard "$commit" &&
 	git config --unset i18n.commitencoding &&
 	echo 2 > a1 &&

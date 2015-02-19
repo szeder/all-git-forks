@@ -53,7 +53,7 @@ test_expect_success 'split box with rfc2047 samples' \
 
 for mail in `echo rfc2047/00*`
 do
-	test_expect_success "mailinfo $mail" '
+	test_expect_success ICONV "mailinfo $mail" '
 		git mailinfo -u $mail-msg $mail-patch <$mail >$mail-info &&
 		echo msg &&
 		test_cmp "$TEST_DIRECTORY"/t5100/empty $mail-msg &&

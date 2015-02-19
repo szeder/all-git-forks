@@ -3,6 +3,11 @@
 test_description='test log with i18n features'
 . ./test-lib.sh
 
+if ! test_have_prereq ICONV; then
+	skip_all='skipping i18n tests, iconv not available'
+	test_done
+fi
+
 # two forms of é
 utf8_e=$(printf '\303\251')
 latin1_e=$(printf '\351')

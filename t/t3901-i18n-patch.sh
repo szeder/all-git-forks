@@ -7,6 +7,11 @@ test_description='i18n settings and format-patch | am pipe'
 
 . ./test-lib.sh
 
+if ! test_have_prereq ICONV; then
+	skip_all='skipping i18n tests, iconv not available'
+	test_done
+fi
+
 check_encoding () {
 	# Make sure characters are not corrupted
 	cnt="$1" header="$2" i=1 j=0 bad=0
