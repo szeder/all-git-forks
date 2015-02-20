@@ -253,13 +253,14 @@ static unsigned long write_no_reuse_object(struct sha1file *f, struct object_ent
 	struct git_istream *st = NULL;
 	char *result = "OK";
 
-	if (!usable_delta ||
-	    /*
-	     * Force loading canonical trees and commits. In future we
-	     * may want to read v4 objects directly instead.
-	     */
-	    (pack_version == 4 && (entry->type == OBJ_TREE ||
-				   entry->type == OBJ_COMMIT))) {
+	if (pack_version == 4 && entry->type == OBJ_TREE)
+		usable_delta = entry->delta_data != NULL;
+	else if (!usable_delta ||
+		   /*
+		    * Force loading canonical trees and commits. In future we
+		    * may want to read v4 objects directly instead.
+		    */
+		   (pack_version == 4 && entry->type == OBJ_COMMIT)) {
 		if (entry->type == OBJ_BLOB &&
 		    entry->size > big_file_threshold &&
 		    (st = open_istream(entry->idx.sha1, &type, &size, NULL)) != NULL)
@@ -282,6 +283,8 @@ static unsigned long write_no_reuse_object(struct sha1file *f, struct object_ent
 		entry->delta_data = NULL;
 		type = (allow_ofs_delta && entry->delta->idx.offset) ?
 			OBJ_OFS_DELTA : OBJ_REF_DELTA;
+		if (pack_version == 4 && entry->type == OBJ_TREE)
+			type = OBJ_PV4_TREE;
 	} else {
 		buf = get_delta(entry);
 		size = entry->delta_size;
@@ -300,28 +303,23 @@ static unsigned long write_no_reuse_object(struct sha1file *f, struct object_ent
 			buf = result;
 			type = OBJ_PV4_COMMIT;
 		}
-	} else if (pack_version == 4 && entry->type == OBJ_TREE) {
+	} else if (pack_version == 4 && entry->type == OBJ_TREE && !usable_delta) {
+		printf("?");
+		buf = read_sha1_file(entry->idx.sha1, &type, &size);
+		if (!buf)
+			die(_("unable to read %s"), sha1_to_hex(entry->idx.sha1));
 		datalen = size;
-		if (usable_delta) {
-			unsigned long base_size;
-			char *base_buf;
-			base_buf = read_sha1_file(entry->delta->idx.sha1, &type,
-						  &base_size);
-			if (!base_buf || type != OBJ_TREE)
-				die("unable to read %s",
-				    sha1_to_hex(entry->delta->idx.sha1));
-			result = pv4_encode_tree(&v4, buf, &datalen,
-						 base_buf, base_size,
-						 entry->delta->idx.sha1);
-			free(base_buf);
-		} else
-			result = pv4_encode_tree(&v4, buf, &datalen,
-						 NULL, 0, NULL);
+		result = pv4_encode_tree(&v4, buf, &datalen, NULL, 0, NULL);
 		if (result) {
 			free(buf);
 			buf = result;
 			type = OBJ_PV4_TREE;
 		}
+	} else if (pack_version == 4 && entry->type == OBJ_TREE && usable_delta) {
+		printf("!");
+		datalen = entry->delta_size;
+		buf = entry->delta_data;
+		type = OBJ_PV4_TREE;
 	} else if (entry->z_delta_size)
 		datalen = entry->z_delta_size;
 	else
@@ -1558,7 +1556,8 @@ static void check_object(struct object_entry *entry)
 
 		if (base_ref &&
 		    (base_entry = packlist_find(&to_pack, base_ref, NULL)) &&
-		    (pack_version < 4 || entry->type != OBJ_COMMIT)) {
+		    (pack_version < 4 || (entry->type != OBJ_COMMIT &&
+					  entry->type != OBJ_TREE))) {
 			/*
 			 * If base_ref was set above that means we wish to
 			 * reuse delta data, and we even found that base
@@ -1568,12 +1567,7 @@ static void check_object(struct object_entry *entry)
 			 * never consider reused delta as the base object to
 			 * deltify other objects against, in order to avoid
 			 * circular deltas.
-			 *
-			 * OBJ_TREE is kept in entry->type in v4 so we
-			 * know to when to write OBJ_PV4_TREE.
 			 */
-			if (pack_version < 4 || entry->type != OBJ_TREE)
-				entry->type = entry->in_pack_type;
 			assert(entry->type != OBJ_NONE);
 			entry->delta = base_entry;
 			entry->delta_size = entry->size;
@@ -1686,13 +1680,6 @@ static int type_size_sort(const void *_a, const void *_b)
 		return 1;
 	return a < b ? -1 : (a > b);  /* newest first */
 }
-
-struct unpacked {
-	struct object_entry *entry;
-	void *data;
-	struct delta_index *index;
-	unsigned depth;
-};
 
 static int delta_cacheable(unsigned long src_size, unsigned long trg_size,
 			   unsigned long delta_size)
@@ -1963,6 +1950,24 @@ static void find_deltas(struct object_entry **list, unsigned *list_size,
 		}
 
 		j = window;
+		if (pack_version == 4 && entry->type == OBJ_TREE && entry->size) {
+			struct encode_data ed;
+			cache_lock();
+			read_lock();
+			pv4_encode_tree_start(&ed, &v4, idx, array, window,
+					      max_depth, &mem_usage);
+			read_unlock();
+			cache_unlock();
+			/*
+			 * note, max_delta_cache_size is not followed
+			 * (yet). We could recreate the tree if we keep
+			 * ed.copy_map[] info (with a bit of transformation
+			 * because struct unpacked pointers will no longer
+			 * available).
+			 */
+			pv4_encode_tree_finish(&ed);
+			j = 1;	/* skip the try_delta() loop below */
+		}
 		while (--j > 0) {
 			int ret;
 			uint32_t other_idx = idx + j;
@@ -2012,13 +2017,18 @@ static void find_deltas(struct object_entry **list, unsigned *list_size,
 		 */
 		if (entry->delta && max_depth <= n->depth)
 			continue;
+		if (pack_version == 4 && entry->type == OBJ_TREE &&
+		    entry->delta_data && max_depth <= n->depth)
+			continue;
 
 		/*
 		 * Move the best delta base up in the window, after the
 		 * currently deltified object, to keep it longer.  It will
 		 * be the first base object to be attempted next.
 		 */
-		if (entry->delta) {
+		if (entry->delta &&
+		    /* for v4 trees, the order in window does not matter */
+		    (pack_version < 4 || entry->type == OBJ_BLOB)) {
 			struct unpacked swap = array[best_base];
 			int dist = (window + idx - best_base) % window;
 			int dst = best_base;
@@ -2107,8 +2117,12 @@ static void *threaded_find_deltas(void *arg)
 	struct thread_params *me = arg;
 
 	while (me->remaining) {
-		find_deltas(me->list, &me->remaining,
-			    me->window, me->depth, me->processed);
+		if (pack_version == 4)
+			find_deltas_v4(me->list, &me->remaining,
+				       mw->window, me->depth, me->processed);
+		else
+			find_deltas(me->list, &me->remaining,
+				    me->window, me->depth, me->processed);
 
 		progress_lock();
 		me->working = 0;
@@ -2307,7 +2321,7 @@ static void prepare_pack(int window, int depth)
 	if (!to_pack.nr_objects || !window || !depth)
 		return;
 
-	delta_list = xmalloc(to_pack.nr_objects * sizeof(*delta_list));
+	delta_list = xmalloc((to_pack.nr_objects + 1) * sizeof(*delta_list));
 	nr_deltas = n = 0;
 
 	for (i = 0; i < to_pack.nr_objects; i++) {
@@ -2319,12 +2333,14 @@ static void prepare_pack(int window, int depth)
 			 */
 			continue;
 
-		if (entry->size < 50)
+		if (entry->size < 50 &&
+		    (pack_version < 4 || entry->type != OBJ_TREE))
 			continue;
 
 		if (entry->no_try_delta)
 			continue;
 
+next:
 		if (!entry->preferred_base) {
 			nr_deltas++;
 			if (entry->type < 0)
@@ -2342,6 +2358,7 @@ static void prepare_pack(int window, int depth)
 
 		delta_list[n++] = entry;
 	}
+	delta_list[n] = NULL;
 
 	if (nr_deltas && n > 1) {
 		unsigned nr_done = 0;
@@ -2738,7 +2755,7 @@ static void get_object_list(int ac, const char **av)
 	/* make sure shallows are read */
 	is_repository_shallow();
 
-	while (fgets(line, sizeof(line), stdin) != NULL) {
+	while (0 && fgets(line, sizeof(line), stdin) != NULL) {
 		int len = strlen(line);
 		if (len && line[len - 1] == '\n')
 			line[--len] = 0;
@@ -2954,6 +2971,14 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	if (pack_version < 4 && pack_idx_opts.version >= 3)
 		die(_("pack idx version %d cannot be used with pack version %d"),
 		    pack_idx_opts.version, pack_version);
+
+	/*
+	 * fixme: produce_v4_tree() is not thread safe because it
+	 * calls dict_add_entry() and modifies that table without
+	 * protection.
+	 */
+	if (pack_version == 4)
+		delta_search_threads = 1;
 
 	argv_array_push(&rp, "pack-objects");
 	if (thin) {

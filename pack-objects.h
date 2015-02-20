@@ -27,6 +27,7 @@ struct object_entry {
 	unsigned no_try_delta:1;
 	unsigned tagged:1; /* near the very tip of refs */
 	unsigned filled:1; /* assigned write-order */
+	unsigned v4_base_tree:1; /* no copy sequences */
 };
 
 struct packing_data {
@@ -35,6 +36,13 @@ struct packing_data {
 
 	int32_t *index;
 	uint32_t index_size;
+};
+
+struct unpacked {
+	struct object_entry *entry;
+	void *data;
+	struct delta_index *index;
+	unsigned depth;
 };
 
 struct object_entry *packlist_alloc(struct packing_data *pdata,

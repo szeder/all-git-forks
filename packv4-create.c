@@ -17,6 +17,7 @@
 #include "varint.h"
 #include "packv4-parse.h"
 #include "packv4-create.h"
+#include "pack-objects.h"
 
 
 int min_tree_copy = 1;
@@ -628,6 +629,345 @@ void *pv4_encode_tree(const struct packv4_tables *v4,
 
 	*sizep = out - buffer;
 	return buffer;
+}
+
+struct tree_data {
+	struct unpacked *u;
+	struct tree_desc desc;
+	struct name_entry entry;
+	unsigned int pos;
+	unsigned int copy_start, copy_count, copy_end;
+	unsigned eot;
+};
+
+struct copy_sequence {
+	struct unpacked *u;
+	unsigned int from, to, count;
+};
+
+/*
+ * Prep step before we build v4 tree from window-1 base trees. Load
+ * canonical trees, prepare tree_desc.
+ *
+ * This is executed when read lock is held in pack-objects so it
+ * should be quick. The rest of the process must NOT touch object
+ * database.
+ */
+void pv4_encode_tree_start(struct encode_data *ed,
+			   const struct packv4_tables *v4,
+			   unsigned idx,
+			   struct unpacked *array, unsigned window,
+			   int max_depth, unsigned long *mem_usage)
+{
+	struct tree_data *b;
+	int nr, nr_bases = 0;
+
+	b = xcalloc(window, sizeof(*b));
+	for (nr = 0; nr < window; nr++) {
+		uint32_t other_idx = idx + nr;
+		struct tree_data *bd = b + nr;
+		struct unpacked *m;
+
+		if (other_idx >= window)
+			other_idx -= window;
+		m = array + other_idx;
+		if (!m->entry || m->entry->type != OBJ_TREE)
+			continue;
+
+		if (!m->data) {
+			struct object_entry *e = m->entry;
+			enum object_type type;
+			unsigned long sz;
+
+			m->data = read_sha1_file(e->idx.sha1, &type, &sz);
+			if (!m->data) {
+				if (e->preferred_base) {
+					static int warned = 0;
+					if (!warned++)
+						warning("object %s cannot be read",
+							sha1_to_hex(e->idx.sha1));
+					/*
+					 * Those objects are not included in the
+					 * resulting pack.  Be resilient and ignore
+					 * them if they can't be read, in case the
+					 * pack could be created nevertheless.
+					 */
+					continue;
+				}
+				die("object %s cannot be read", sha1_to_hex(e->idx.sha1));
+			}
+			if (sz != e->size)
+				die("object %s inconsistent object length (%lu vs %lu)",
+				    sha1_to_hex(e->idx.sha1), sz, e->size);
+			//*mem_usage += sz;
+		}
+
+		bd->u = m;
+		nr_bases++;
+	}
+
+	memset(ed, 0, sizeof(*ed));
+	if (nr_bases <= 1 || !b[0].u)
+		return;
+	ed->tree = b;
+	ed->nr = nr;
+	ed->max_depth = max_depth;
+	ed->v4 = v4;
+}
+
+/*
+ * The main tree in canonical form is in ed->b[0]. The rest is base
+ * trees. Look for all possible copy sequences and store them in
+ * ed->seq. Also initialize ed->nb_entries after tree scan. ed->b is
+ * freed after return.
+ */
+static int find_copy_sequences(struct encode_data *ed)
+{
+	struct tree_desc desc;
+	struct name_entry name_entry;
+	int nb_entries;
+	struct copy_sequence *seq = NULL;
+	int seq_nr = 0, seq_alloc = 0, i;
+	struct tree_data *b = ed->tree;
+
+	init_tree_desc(&desc, b[0].u->data, b[0].u->entry->size);
+	for (i = 1; i < ed->nr; i++) {
+		struct tree_data *bd = b + i;
+		if (!bd->u)
+			continue;
+		init_tree_desc(&bd->desc, bd->u->data, bd->u->entry->size);
+		if (!tree_entry(&bd->desc, &bd->entry))
+			bd->eot = 1;
+	}
+
+	/*
+	 * Go through the main tree, find every possible copy sequence
+	 * from any base tree and save them seq[]
+	 */
+	nb_entries = 0;
+	while (desc.size) {
+		/*
+		 * We don't want any zero-padded mode.  We won't be able
+		 * to recreate such an object byte for byte.
+		 */
+		if (*(const char *)desc.buffer == '0')
+			return error("zero-padded mode encountered");
+
+		tree_entry(&desc, &name_entry);
+		nb_entries++;
+
+		for (i = 1; i < ed->nr; i++) {
+			struct tree_data *bd = b + i;
+			int ret;
+
+			if (!bd->u || bd->eot)
+				continue;
+
+			do {  /* advance bd->entry until we match something */
+				ret = compare_tree_entries(&name_entry, &bd->entry);
+				if (ret <= 0 || bd->copy_count != 0)
+					break;
+				bd->pos++;
+				if (!tree_entry(&bd->desc, &bd->entry))
+					bd->eot = 1;
+			} while (!bd->eot);
+
+			if (ret == 0 && name_entry.mode == bd->entry.mode &&
+			    hashcmp(name_entry.sha1, bd->entry.sha1) == 0) {
+				if (!bd->copy_count) {
+					bd->copy_start = bd->pos;
+					bd->copy_end = 0;
+				}
+				bd->copy_count++;
+				bd->pos++;
+				if (!tree_entry(&bd->desc, &bd->entry))
+					bd->eot = 1;
+			} else
+				bd->copy_end = 1;
+
+			if (bd->copy_count && bd->copy_end) {
+				if (bd->copy_count >= min_tree_copy) {
+					ALLOC_GROW(seq, seq_nr + 1, seq_alloc);
+					seq[seq_nr].from  = bd->copy_start;
+					seq[seq_nr].count = bd->copy_count;
+					seq[seq_nr].to    = nb_entries - bd->copy_count;
+					seq[seq_nr].u = bd->u;
+					seq_nr++;
+				}
+				bd->copy_count = 0;
+			}
+		}
+	}
+
+	for (i = 1; i < ed->nr; i++) {
+		struct tree_data *bd = b + i;
+
+		if (!bd->u || !bd->copy_count)
+			continue;
+
+		if (bd->copy_count >= min_tree_copy) {
+			ALLOC_GROW(seq, seq_nr + 1, seq_alloc);
+			seq[seq_nr].from = bd->copy_start;
+			seq[seq_nr].count = bd->copy_count;
+			seq[seq_nr].to = nb_entries - bd->copy_count;
+			seq[seq_nr].u = bd->u;
+			seq_nr++;
+		}
+	}
+	ed->nb_entries = nb_entries;
+	ed->seq = seq;
+	ed->seq_nr = seq_nr;
+	ed->seq_alloc = seq_alloc;
+	return 0;
+}
+
+/*
+ * Basically sorted by copy_count with penalty when copying from a
+ * tree with copy sequences (to favor trees with no copy sequences)
+ *
+ * This is not entirely fair. What we want to avoid is a copy sequence
+ * that leads to another copy sequence. If the base tree has copy
+ * sequences but we do not copy from those ranges, we should not be
+ * punished.
+ */
+static int compare_sequence(const void *a_, const void *b_)
+{
+	const struct copy_sequence *a = a_;
+	const struct copy_sequence *b = b_;
+	return ((int)b->count - b->u->depth * 10) -
+		((int)a->count - a->u->depth * 10);
+}
+
+/*
+ * Greedily pick largest copy sequences and fill in final_seq. Then
+ * try to reuse the remaining copy sequences. Cut them shorter if
+ * needed to fit in.  Calculate depth, which is the deepest of all. If
+ * it's too deep, keep this tree flat, no copy sequences.
+ */
+static int select_copy_sequences(struct encode_data *ed)
+{
+	struct copy_sequence *seq = ed->seq;
+	struct copy_sequence **final_seq;
+	int copy = 0, ent = 0, i, depth;
+
+	qsort(seq, ed->seq_nr, sizeof(*seq), compare_sequence);
+	final_seq = xcalloc(ed->nb_entries, sizeof(*final_seq));
+	depth = ed->tree[0].u->depth;
+	for (i = 0; i < ed->seq_nr; i++) {
+		int j, count = 0;
+		for (j = 0; j < seq[i].count; j++) {
+			if (final_seq[seq[i].to + j]) {
+				if (!count)
+					continue;
+				break;
+			}
+			final_seq[seq[i].to + j] = seq + i;
+			count++;
+		}
+		if (count < min_tree_copy) {
+			while (count--)
+				final_seq[seq[i].to + --j] = NULL;
+			continue;
+		}
+		seq[i].from += j - count;
+		seq[i].to   += j - count;
+		seq[i].count = count;
+		copy++;
+		ent += count;
+		if (seq[i].u->depth + 1 > depth)
+			depth = seq[i].u->depth + 1;
+	}
+	ed->copy_map = final_seq;
+	ed->tree[0].u->depth = depth;
+	return copy;
+}
+
+static int produce_v4_tree(struct encode_data *ed)
+{
+	unsigned char *out, *end, *buffer;
+	unsigned long size = ed->tree[0].u->entry->size;
+	struct tree_desc desc;
+	struct name_entry name_entry;
+	const struct unpacked *last_base;
+	struct copy_sequence **final_seq = ed->copy_map;
+	int i;
+
+	/* Keep buffer large enough. See pv4_encode_tree() for detail. */
+	out = xmalloc(size + 48);
+	end = out + size + 48;
+	buffer = out;
+
+	/* Produce v4 tree */
+	out += encode_varint(ed->nb_entries, out);
+	init_tree_desc(&desc, ed->tree[0].u->data, size);
+	last_base = NULL;
+	for (i = 0; tree_entry(&desc, &name_entry); i++) {
+		int pathlen, index;
+
+		if (i > 0 && final_seq[i] &&
+		    final_seq[i - 1] == final_seq[i])
+			continue; /* part of the last copy sequence */
+
+		if (end - out < 48) {
+			unsigned long sofar = out - buffer;
+			buffer = xrealloc(buffer, (sofar + 48)*2);
+			end = buffer + (sofar + 48)*2;
+			out = buffer + sofar;
+		}
+
+		if (final_seq[i]) { /* generate a copy sequence */
+			unsigned int copy_start = (final_seq[i]->from << 1) | 1;
+			unsigned int copy_count = (final_seq[i]->count << 1);
+			const unsigned char *sha1 = final_seq[i]->u->entry->idx.sha1;
+			if (final_seq[i]->u != last_base) {
+				copy_count |= 1;
+				last_base = final_seq[i]->u;
+			}
+			out += encode_varint(copy_start, out);
+			out += encode_varint(copy_count, out);
+			if (copy_count & 1)
+				out += encode_sha1ref(ed->v4, sha1, out);
+			continue;
+		}
+
+		/* normal tree entry */
+		pathlen = tree_entry_len(&name_entry);
+		index = dict_add_entry(ed->v4->tree_path_table, name_entry.mode,
+				       name_entry.path, pathlen);
+		if (index < 0)
+			return error("missing tree dict entry");
+		out += encode_varint(index << 1, out);
+		out += encode_sha1ref(ed->v4, name_entry.sha1, out);
+	}
+	if (i != ed->nb_entries)
+		die("failed to produce correct number of tree entries");
+
+	ed->tree[0].u->entry->delta_data = buffer;
+	ed->tree[0].u->entry->delta_size = out - buffer;
+	return 0;
+}
+
+/*
+ * This converts a canonical tree object buffer into its
+ * tightly packed representation using the already populated
+ * and sorted tree_path_table dictionary.  The parsing is
+ * strict so to ensure the canonical version may always be
+ * regenerated and produce the same hash.
+ *
+ * Trees in array[] are candidates to copy tree entries from.
+ */
+void pv4_encode_tree_finish(struct encode_data *ed)
+{
+	if (ed->tree &&
+	    !find_copy_sequences(ed) &&
+	    select_copy_sequences(ed) &&
+	    !produce_v4_tree(ed))
+		printf(".");
+	else
+		printf("-");
+	free(ed->tree);
+	free(ed->copy_map);
+	free(ed->seq);
 }
 
 static unsigned long write_dict_table(struct sha1file *f, struct dict_table *t,
