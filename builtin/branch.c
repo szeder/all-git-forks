@@ -589,9 +589,16 @@ static char *get_head_description(void)
 	else if (state.bisect_in_progress)
 		strbuf_addf(&desc, _("(no branch, bisect started on %s)"),
 			    state.branch);
-	else if (state.detached_from)
-		strbuf_addf(&desc, _("(detached from %s)"),
-			    state.detached_from);
+	else if (state.detached_from) {
+		unsigned char sha1[20];
+		if (!get_sha1("HEAD", sha1) &&
+		    !hashcmp(sha1, state.detached_sha1))
+			strbuf_addf(&desc, _("(detached at %s)"),
+				state.detached_from);
+		else
+			strbuf_addf(&desc, _("(detached from %s)"),
+				state.detached_from);
+	}
 	else
 		strbuf_addstr(&desc, _("(no branch)"));
 	free(state.branch);
