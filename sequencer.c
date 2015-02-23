@@ -362,6 +362,7 @@ static int run_git_commit(const char *defmsg, struct replay_opts *opts,
 	argv_array_init(&array);
 	argv_array_push(&array, "commit");
 	argv_array_push(&array, "-n");
+	argv_array_push(&array, "--cleanup=verbatim");
 
 	if (opts->gpg_sign) {
 		gpg_sign = xmalloc(3 + strlen(opts->gpg_sign));
