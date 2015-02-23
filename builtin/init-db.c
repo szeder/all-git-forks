@@ -477,7 +477,7 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 	const char *template_dir = NULL;
 	unsigned int flags = 0;
 	const struct option init_db_options[] = {
-		OPT_STRING(0, "template", &template_dir, N_("template-directory"),
+		OPT_PATH(0, "template", &template_dir, N_("template-directory"),
 				N_("directory from which templates will be used")),
 		OPT_SET_INT(0, "bare", &is_bare_repository_cfg,
 				N_("create a bare repository"), 1),
@@ -486,7 +486,7 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 			N_("specify that the git repository is to be shared amongst several users"),
 			PARSE_OPT_OPTARG | PARSE_OPT_NONEG, shared_callback, 0},
 		OPT_BIT('q', "quiet", &flags, N_("be quiet"), INIT_DB_QUIET),
-		OPT_STRING(0, "separate-git-dir", &real_git_dir, N_("gitdir"),
+		OPT_PATH(0, "separate-git-dir", &real_git_dir, N_("gitdir"),
 			   N_("separate git dir from working tree")),
 		OPT_END()
 	};
