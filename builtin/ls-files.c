@@ -489,7 +489,7 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 		{ OPTION_CALLBACK, 'X', "exclude-from", &dir, N_("file"),
 			N_("exclude patterns are read from <file>"),
 			0, option_parse_exclude_from },
-		OPT_STRING(0, "exclude-per-directory", &dir.exclude_per_dir, N_("file"),
+		OPT_FILENAME(0, "exclude-per-directory", &dir.exclude_per_dir,
 			N_("read additional per-directory exclude patterns in <file>")),
 		{ OPTION_CALLBACK, 0, "exclude-standard", &dir, NULL,
 			N_("add the standard git exclusions"),

@@ -98,7 +98,7 @@ int cmd_hash_object(int argc, const char **argv, const char *prefix)
 		OPT_BOOL( 0 , "stdin-paths", &stdin_paths, N_("read file names from stdin")),
 		OPT_BOOL( 0 , "no-filters", &no_filters, N_("store file as is without filters")),
 		OPT_BOOL( 0, "literally", &literally, N_("just hash any random garbage to create corrupt objects for debugging Git")),
-		OPT_STRING( 0 , "path", &vpath, N_("file"), N_("process file as it were from this path")),
+		OPT_FILENAME( 0 , "path", &vpath, N_("process file as it were from this path")),
 		OPT_END()
 	};
 	int i;
