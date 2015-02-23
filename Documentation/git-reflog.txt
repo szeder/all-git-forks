@@ -17,19 +17,21 @@ The command takes various subcommands, and different options
 depending on the subcommand:
 
 [verse]
-'git reflog expire' [--dry-run] [--stale-fix] [--verbose]
-	[--expire=<time>] [--expire-unreachable=<time>] [--all] <refs>...
-'git reflog delete' ref@\{specifier\}...
 'git reflog' ['show'] [log-options] [<ref>]
+'git reflog expire' [--dry-run] [--verbose]
+	[--rewrite] [--updateref] [--stale-fix]
+	[--expire=<time>] [--expire-unreachable=<time>] [--all] <refs>...
+'git reflog delete' [--dry-run] [--verbose]
+	[--rewrite] [--updateref] ref@\{specifier\}...
 
-Reflog is a mechanism to record when the tip of branches are
-updated.  This command is to manage the information recorded in it.
+Reflog is a mechanism to record when the tips of branches are updated.
+The reflog is useful in various Git commands, to specify the old value
+of a reference. For example, `HEAD@{2}` means "where HEAD used to be
+two moves ago", `master@{one.week.ago}` means "where master used to
+point to one week ago", and so on. See linkgit:gitrevisions[7] for
+more details.
 
-The subcommand "expire" is used to prune older reflog entries.
-Entries older than `expire` time, or entries older than
-`expire-unreachable` time and not reachable from the current
-tip, are removed from the reflog.  This is typically not used
-directly by the end users -- instead, see linkgit:git-gc[1].
+This command manages the information recorded in the reflog.
 
 The subcommand "show" (which is also the default, in the absence of any
 subcommands) will take all the normal log options, and show the log of
@@ -38,11 +40,11 @@ The reflog will cover all recent actions (HEAD reflog records branch switching
 as well).  It is an alias for `git log -g --abbrev-commit --pretty=oneline`;
 see linkgit:git-log[1].
 
-The reflog is useful in various Git commands, to specify the old value
-of a reference. For example, `HEAD@{2}` means "where HEAD used to be
-two moves ago", `master@{one.week.ago}` means "where master used to
-point to one week ago", and so on. See linkgit:gitrevisions[7] for
-more details.
+The subcommand "expire" is used to prune older reflog entries.
+Entries older than `expire` time, or entries older than
+`expire-unreachable` time and not reachable from the current
+tip, are removed from the reflog.  This is typically not used
+directly by the end users -- instead, see linkgit:git-gc[1].
 
 To delete single entries from the reflog, use the subcommand "delete"
 and specify the _exact_ entry (e.g. "`git reflog delete master@{2}`").
@@ -50,19 +52,6 @@ and specify the _exact_ entry (e.g. "`git reflog delete master@{2}`").
 
 OPTIONS
 -------
-
---stale-fix::
-	This revamps the logic -- the definition of "broken commit"
-	becomes: a commit that is not reachable from any of the refs and
-	there is a missing object among the commit, tree, or blob
-	objects reachable from it that is not reachable from any of the
-	refs.
-+
-This computation involves traversing all the reachable objects, i.e. it
-has the same cost as 'git prune'.  Fortunately, once this is run, we
-should not have to ever worry about missing objects, because the current
-prune and pack-objects know about reflogs and protect objects referred by
-them.
 
 --expire=<time>::
 	Entries older than this time are pruned.  Without the
@@ -81,12 +70,23 @@ them.
 	turns off early pruning of unreachable entries (but see
 	--expire).
 
---all::
-	Instead of listing <refs> explicitly, prune all refs.
+--stale-fix::
+	This revamps the logic -- the definition of "broken commit"
+	becomes: a commit that is not reachable from any of the refs and
+	there is a missing object among the commit, tree, or blob
+	objects reachable from it that is not reachable from any of the
+	refs.
++
+This computation involves traversing all the reachable objects, i.e. it
+has the same cost as 'git prune'.  Fortunately, once this is run, we
+should not have to ever worry about missing objects, because the current
+prune and pack-objects know about reflogs and protect objects referred by
+them.
 
 --updateref::
 	Update the ref with the sha1 of the top reflog entry (i.e.
-	<ref>@\{0\}) after expiring or deleting.
+	<ref>@\{0\}) after expiring or deleting.  (This option is
+	ignored for symbolic references.)
 
 --rewrite::
 	While expiring or deleting, adjust each reflog entry to ensure
@@ -95,6 +95,9 @@ them.
 
 --verbose::
 	Print extra information on screen.
+
+--all::
+	Instead of listing <refs> explicitly, prune all refs.
 
 GIT
 ---
