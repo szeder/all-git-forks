@@ -685,12 +685,24 @@ void diffcore_rename(struct diff_options *options)
 		} else if (DIFF_FILE_VALID(p->one) && !DIFF_FILE_VALID(p->two)) {
 			/*
 			 * Deletion
-			 *
-			 * Did the content go to somewhere?
 			 */
 			struct diff_rename_src *src =
 				locate_rename_src(p->one, 0);
-			if (!src || !src->p->one->rename_used) {
+			int keep_deletion = 0;
+
+			if (DIFF_PAIR_BROKEN(p)) {
+				struct diff_rename_dst *dst =
+					locate_rename_dst(p->one, 0);
+				/* If nobody swaps in other contents here... */
+				if (!(dst && dst->pair))
+					keep_deletion = 1;
+			} else {
+				/* It did not go anywhere? Then keep deletion */
+				if (!src || !src->p->one->rename_used)
+					keep_deletion = 1;
+			}
+
+			if (keep_deletion) {
 				diff_q(&outq, p);
 				q->queue[i] = NULL;
 			}
