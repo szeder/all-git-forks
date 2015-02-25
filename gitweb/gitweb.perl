@@ -18,6 +18,7 @@ use Fcntl ':mode';
 use File::Find qw();
 use File::Basename qw(basename);
 use Time::HiRes qw(gettimeofday tv_interval);
+use Text::Markdown 'markdown';
 binmode STDOUT, ':utf8';
 
 if (!defined($CGI::VERSION) || $CGI::VERSION < 4.08) {
@@ -107,8 +108,7 @@ our $home_text = "++GITWEB_HOMETEXT++";
 our $site_footer = "++GITWEB_SITE_FOOTER++";
 
 # URI of stylesheets
-our @stylesheets = ("++GITWEB_CSS++");
-push @stylesheets, "static/github-markdown.css";
+our @stylesheets = ("++GITWEB_CSS++", "static/github-markdown.css");
 
 # URI of a single stylesheet, which can be overridden in GITWEB_CONFIG.
 our $stylesheet = undef;
@@ -6585,26 +6585,22 @@ sub git_summary {
 	# If XSS prevention is on, we don't include README.html.
 	# TODO: Allow a readme in some safe format.
 	if (!$prevent_xss) {
-              if (-s "$projectroot/$project/README.html") {
-		print "<div class=\"title\">readme</div>\n" .
-		      "<div class=\"readme\">\n";
-		insert_file("$projectroot/$project/README.html");
-		print "\n</div>\n"; # class="readme"
-              } else {
-                 # Markdown-style README
-                 $file_name = "README.md";
-                 my $proj_head_hash = git_get_head_hash($project);
-                 my $readme_blob_hash = git_get_hash_by_path($proj_head_hash, "README.md", "blob");
-                 if ($readme_blob_hash) {
-                     print "<div class=\"header\"><a class=\"title\">README.md</a></div>";
-                     my $tmp_file = "/tmp/" . $readme_blob_hash . "-" . time;
-                     system($GIT . " " . git_cmd() . " cat-file blob " . $readme_blob_hash . " > " . $tmp_file);
-                     print "<div class=\"page_body\"><div class=\"markdown-body\">";
-                     print `markdown2 $tmp_file`;
-                     print "</div></div>";
-                     system("rm " . $tmp_file);
-                 }
-              }
+                $file_name = "README.md";
+                my $proj_head_hash = git_get_head_hash($project);
+                my $readme_blob_hash = git_get_hash_by_path($proj_head_hash, "README.md", "blob");
+                if ($readme_blob_hash) {
+	                git_print_header_div($file_name);
+                        print "<div class=\"markdown-body\">";
+                        my $cat_cmd = $GIT . " " . git_cmd() . " cat-file blob " . $readme_blob_hash;
+                        my $readme_contents = `$cat_cmd`;
+                        print markdown($readme_contents);
+                        print "</div>";
+                } elsif (-s "$projectroot/$project/README.html") {
+		        print "<div class=\"title\">readme</div>\n" .
+		              "<div class=\"readme\">\n";
+		        insert_file("$projectroot/$project/README.html");
+		        print "\n</div>\n"; # class="readme"
+                }
 	}
 
 	# we need to request one more than 16 (0..15) to check if
