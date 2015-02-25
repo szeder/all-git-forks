@@ -518,10 +518,20 @@ sub stash_placeholder_list {
 	my $k = "svn-remote.$repo_id.added-placeholder";
 	my $v = eval { command_oneline('config', '--get-all', $k) };
 	command_noisy('config', '--unset-all', $k) if $v;
+
+    return unless values %added_placeholder;
+    my $gitdir = `git rev-parse --show-toplevel`;
+    chomp $gitdir;
+    my $conf = "$gitdir/.git/config";
+    die "$conf does not exist" unless -e $conf;
+    open my $fh, ">>", $conf or die "Can't append to $conf: $!";
 	foreach (values %added_placeholder) {
-		command_noisy('config', '--add', $k, $_);
+        #command_noisy('config', '--add', $k, $_);
+        print $fh "added-placeholder = $_\n";
 	}
+    close $fh;
 }
+
 
 1;
 __END__
