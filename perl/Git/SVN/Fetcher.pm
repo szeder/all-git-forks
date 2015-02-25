@@ -520,16 +520,25 @@ sub stash_placeholder_list {
 	command_noisy('config', '--unset-all', $k) if $v;
 
     return unless values %added_placeholder;
-    my $gitdir = `git rev-parse --show-toplevel`;
+    my $gitdir = `git rev-parse --git-dir`;
     chomp $gitdir;
-    my $conf = "$gitdir/.git/config";
+    my $conf    = "$gitdir/config";
+    my $confnew = "$conf.new";
     die "$conf does not exist" unless -e $conf;
-    open my $fh, ">>", $conf or die "Can't append to $conf: $!";
-	foreach (values %added_placeholder) {
-        #command_noisy('config', '--add', $k, $_);
-        print $fh "added-placeholder = $_\n";
-	}
+    open my $fh, "<", $conf or die "Can't open $conf: $!";
+    open my $fh2, ">", $confnew or die "Can't open $confnew: $!";
+    # rewrite config with added-placeholder options in the svn-remote section:
+    while (<$fh>) {
+        print $fh2 $_;
+        if (/^\s*\Q[svn-remote "$repo_id"]\E/) {
+            foreach my $path (values %added_placeholder) {
+                print $fh2 "added-placeholder = $path\n";
+            }
+        }
+    }
     close $fh;
+    close $fh2;
+    rename($confnew, $conf) or die "can't rename $confnew to $conf: $!";
 }
 
 
