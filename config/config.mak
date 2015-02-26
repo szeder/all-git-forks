@@ -44,7 +44,7 @@ strict = $(or $(rebasing), $(head))
 ifeq ($(strict),)
   CFLAGS += -Wno-error
 endif
-ifeq ($(filter-out, %maint, $(head)),)
+ifeq ($(filter-out %maint, $(head)),)
   CFLAGS += -Wno-unused-value -Wno-strict-prototypes
 endif
 
