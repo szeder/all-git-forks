@@ -172,6 +172,7 @@ static int connect_setup(struct transport *transport, int for_push)
 	data->conn = git_connect(data->fd, transport->url,
 				 for_push ? data->options.receivepack :
 				 data->options.uploadpack,
+				 NULL,
 				 flags);
 
 	return 0;
@@ -536,7 +537,7 @@ static int connect_git(struct transport *transport, const char *name,
 {
 	struct git_transport_data *data = transport->data;
 	data->conn = git_connect(data->fd, transport->url,
-				 executable, 0);
+				 executable, NULL, 0);
 	fd[0] = data->fd[0];
 	fd[1] = data->fd[1];
 	return 0;

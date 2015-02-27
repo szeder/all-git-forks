@@ -670,7 +670,9 @@ static struct child_process no_fork = CHILD_PROCESS_INIT;
  * the connection failed).
  */
 struct child_process *git_connect(int fd[2], const char *url,
-				  const char *prog, int flags)
+				  const char *prog,
+				  const char *service_flags,
+				  int flags)
 {
 	char *hostandport, *path;
 	struct child_process *conn = &no_fork;
@@ -717,10 +719,13 @@ struct child_process *git_connect(int fd[2], const char *url,
 		 * Note: Do not add any other headers here!  Doing so
 		 * will cause older git-daemon servers to crash.
 		 */
-		packet_write(fd[1],
-			     "%s %s%chost=%s%c",
-			     prog, path, 0,
-			     target_host, 0);
+		if (!service_flags)
+			packet_write(fd[1], "%s %s%chost=%s%c",
+				     prog, path, 0, target_host, 0);
+		else
+			packet_write(fd[1], "%s %s%chost=%s%c%s%c",
+				     prog, path, 0, target_host, 0,
+				     service_flags, 0);
 		free(target_host);
 	} else {
 		conn = xmalloc(sizeof(*conn));
@@ -803,7 +808,8 @@ struct child_process *git_connect(int fd[2], const char *url,
 			transport_check_allowed("file");
 		}
 		argv_array_push(&conn->args, cmd.buf);
-
+		if (service_flags)
+			argv_array_push(&conn->args, service_flags);
 		if (start_command(conn))
 			die("unable to fork");
 
