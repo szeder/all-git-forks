@@ -1533,7 +1533,6 @@ static void show_pack_info(int stat_only)
 int cmd_index_pack(int argc, const char **argv, const char *prefix)
 {
 	int i, fix_thin_pack = 0, verify = 0, stat_only = 0;
-	const char *curr_index;
 	const char *index_name = NULL, *pack_name = NULL;
 	const char *keep_name = NULL, *keep_msg = NULL;
 	struct strbuf index_name_buf = STRBUF_INIT,
@@ -1655,7 +1654,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 		if (!index_name)
 			die(_("--verify with no packfile name given"));
 		read_idx_option(&opts, index_name);
-		opts.flags |= WRITE_IDX_VERIFY | WRITE_IDX_STRICT;
+		opts.flags |= WRITE_IDX_STRICT;
 	}
 	if (strict)
 		opts.flags |= WRITE_IDX_STRICT;
@@ -1686,23 +1685,30 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 	idx_objects = xmalloc((nr_objects) * sizeof(struct pack_idx_entry *));
 	for (i = 0; i < nr_objects; i++)
 		idx_objects[i] = &objects[i].idx;
-	curr_index = write_idx_file(index_name, idx_objects, nr_objects, &opts, pack_sha1);
-	free(idx_objects);
 
-	if (!verify)
+	if (verify) {
+		verify_idx_file(index_name, idx_objects, nr_objects,
+					     &opts, pack_sha1);
+		free(idx_objects);
+		close(input_fd);
+	} else {
+		const char *curr_index = write_idx_file(index_name,
+							idx_objects, nr_objects,
+							&opts, pack_sha1);
+		free(idx_objects);
 		final(pack_name, curr_pack,
 		      index_name, curr_index,
 		      keep_name, keep_msg,
 		      pack_sha1);
-	else
-		close(input_fd);
+		if (index_name == NULL)
+			free((void *) curr_index);
+	}
+
 	free(objects);
 	strbuf_release(&index_name_buf);
 	strbuf_release(&keep_name_buf);
 	if (pack_name == NULL)
 		free((void *) curr_pack);
-	if (index_name == NULL)
-		free((void *) curr_index);
 
 	/*
 	 * Let the caller know this pack is not self contained

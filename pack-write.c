@@ -187,11 +187,6 @@ const char *write_idx_file(const char *index_name,
 	struct sha1file *f;
 	int fd;
 
-	if (opts->flags & WRITE_IDX_VERIFY) {
-		verify_idx_file(index_name, objects, nr_objects, opts, sha1);
-		return index_name;
-	}
-
 	if (!index_name) {
 		static char tmp_file[PATH_MAX];
 		fd = odb_mkstemp(tmp_file, sizeof(tmp_file), "pack/tmp_idx_XXXXXX");
