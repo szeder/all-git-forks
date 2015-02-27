@@ -8,6 +8,7 @@
  * are.
  */
 #include "cache.h"
+#include "tempfile.h"
 #include "refs.h"
 #include "fmt-merge-msg.h"
 #include "commit.h"
@@ -242,6 +243,30 @@ int odb_mkstemp(char *template, size_t limit, const char *pattern)
 		 get_object_directory(), pattern);
 	safe_create_leading_directories(template);
 	return xmkstemp_mode(template, mode);
+}
+
+int odb_mks_tempfile(struct tempfile *tempfile, const char *pattern)
+{
+	struct strbuf template = STRBUF_INIT;
+	int fd;
+	/*
+	 * we let the umask do its job, don't try to be more
+	 * restrictive except to remove write permission.
+	 */
+	int mode = 0444;
+
+	strbuf_addf(&template, "%s/%s", get_object_directory(), pattern);
+	fd = mks_tempfile_mode(tempfile, template.buf, mode);
+	if (0 <= fd) {
+		strbuf_release(&template);
+		return fd;
+	}
+
+	/* slow path */
+	safe_create_leading_directories(template.buf);
+	fd = xmks_tempfile_mode(tempfile, template.buf, mode);
+	strbuf_release(&template);
+	return fd;
 }
 
 int odb_pack_keep(char *name, size_t namesz, const unsigned char *sha1)
