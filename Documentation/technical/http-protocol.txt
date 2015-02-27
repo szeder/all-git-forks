@@ -191,10 +191,10 @@ HTTP clients that support the "smart" protocol (or both the
 "smart" and "dumb" protocols) MUST discover references by making
 a parameterized request for the info/refs file of the repository.
 
-The request MUST contain exactly one query parameter,
+The request MAY contain parameters. Supported parameters includes
 `service=$servicename`, where `$servicename` MUST be the service
 name the client wishes to contact to complete the operation.
-The request MUST NOT contain additional query parameters.
+Further parameters are as described in protocol-capabilities.txt
 
    C: GET $GIT_URL/info/refs?service=git-upload-pack HTTP/1.0
 
