@@ -107,6 +107,30 @@ int xmks_tempfile(struct tempfile *tempfile, const char *template)
 	return tempfile->fd;
 }
 
+int mks_tempfile_mode(struct tempfile *tempfile, const char *template, int mode)
+{
+	register_tempfile_object(tempfile, template);
+	strbuf_add_absolute_path(&tempfile->filename, template);
+	tempfile->fd = git_mkstemp_mode(tempfile->filename.buf, mode);
+	if (tempfile->fd < 0) {
+		strbuf_reset(&tempfile->filename);
+		return -1;
+	}
+	tempfile->owner = getpid();
+	tempfile->active = 1;
+	return tempfile->fd;
+}
+
+int xmks_tempfile_mode(struct tempfile *tempfile, const char *template, int mode)
+{
+	register_tempfile_object(tempfile, template);
+	strbuf_add_absolute_path(&tempfile->filename, template);
+	tempfile->fd = xmkstemp_mode(tempfile->filename.buf, mode);
+	tempfile->owner = getpid();
+	tempfile->active = 1;
+	return tempfile->fd;
+}
+
 FILE *fdopen_tempfile(struct tempfile *tempfile, const char *mode)
 {
 	if (!tempfile->active)

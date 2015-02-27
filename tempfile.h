@@ -148,6 +148,9 @@ extern int create_tempfile(struct tempfile *tempfile, const char *path);
 extern int mks_tempfile(struct tempfile *tempfile, const char *template);
 extern int xmks_tempfile(struct tempfile *tempfile, const char *template);
 
+extern int mks_tempfile_mode(struct tempfile *tempfile, const char *template, int mode);
+extern int xmks_tempfile_mode(struct tempfile *tempfile, const char *template, int mode);
+
 /*
  * Associate a stdio stream with the temporary file (which must still
  * be open). Return `NULL` (*without* deleting the file) on error. The
