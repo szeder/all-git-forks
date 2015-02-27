@@ -146,6 +146,7 @@ struct tempfile {
 extern int create_tempfile(struct tempfile *tempfile, const char *path);
 
 extern int mks_tempfile(struct tempfile *tempfile, const char *template);
+extern int xmks_tempfile(struct tempfile *tempfile, const char *template);
 
 /*
  * Associate a stdio stream with the temporary file (which must still

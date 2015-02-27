@@ -97,6 +97,16 @@ int mks_tempfile(struct tempfile *tempfile, const char *template)
 	return tempfile->fd;
 }
 
+int xmks_tempfile(struct tempfile *tempfile, const char *template)
+{
+	register_tempfile_object(tempfile, template);
+	strbuf_add_absolute_path(&tempfile->filename, template);
+	tempfile->fd = xmkstemp(tempfile->filename.buf);
+	tempfile->owner = getpid();
+	tempfile->active = 1;
+	return tempfile->fd;
+}
+
 FILE *fdopen_tempfile(struct tempfile *tempfile, const char *mode)
 {
 	if (!tempfile->active)
