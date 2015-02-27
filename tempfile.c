@@ -82,6 +82,21 @@ int create_tempfile(struct tempfile *tempfile, const char *path)
 	return tempfile->fd;
 }
 
+/* Make sure errno contains a meaningful value on error */
+int mks_tempfile(struct tempfile *tempfile, const char *template)
+{
+	register_tempfile_object(tempfile, template);
+	strbuf_add_absolute_path(&tempfile->filename, template);
+	tempfile->fd = mkstemp(tempfile->filename.buf);
+	if (tempfile->fd < 0) {
+		strbuf_reset(&tempfile->filename);
+		return -1;
+	}
+	tempfile->owner = getpid();
+	tempfile->active = 1;
+	return tempfile->fd;
+}
+
 FILE *fdopen_tempfile(struct tempfile *tempfile, const char *mode)
 {
 	if (!tempfile->active)
