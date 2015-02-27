@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "tempfile.h"
 #include "commit.h"
 #include "tag.h"
 #include "diff.h"
@@ -505,21 +506,22 @@ void bitmap_writer_set_checksum(unsigned char *sha1)
 	hashcpy(writer.pack_checksum, sha1);
 }
 
+static struct tempfile bitmap_tempfile;
+
 void bitmap_writer_finish(struct pack_idx_entry **index,
 			  uint32_t index_nr,
 			  const char *filename,
 			  uint16_t options)
 {
-	static char tmp_file[PATH_MAX];
 	static uint16_t default_version = 1;
 	static uint16_t flags = BITMAP_OPT_FULL_DAG;
 	struct sha1file *f;
 
 	struct bitmap_disk_header header;
 
-	int fd = odb_mkstemp(tmp_file, sizeof(tmp_file), "pack/tmp_bitmap_XXXXXX");
+	int fd = odb_mks_tempfile(&bitmap_tempfile, "pack/tmp_bitmap_XXXXXX");
 
-	f = sha1fd(fd, tmp_file);
+	f = sha1fd(fd, bitmap_tempfile.filename.buf);
 
 	memcpy(header.magic, BITMAP_IDX_SIGNATURE, sizeof(BITMAP_IDX_SIGNATURE));
 	header.version = htons(default_version);
@@ -537,11 +539,16 @@ void bitmap_writer_finish(struct pack_idx_entry **index,
 	if (options & BITMAP_OPT_HASH_CACHE)
 		write_hash_cache(f, index, index_nr);
 
+	/*
+	 * sha1close will close the temporary file. Prevent the
+	 * tempfile cleanup code from trying to close it again:
+	 */
+	bitmap_tempfile.fd = -1;
 	sha1close(f, NULL, CSUM_FSYNC);
 
-	if (adjust_shared_perm(tmp_file))
+	if (adjust_shared_perm(bitmap_tempfile.filename.buf))
 		die_errno("unable to make temporary bitmap file readable");
 
-	if (rename(tmp_file, filename))
+	if (rename_tempfile(&bitmap_tempfile, filename))
 		die_errno("unable to rename temporary bitmap file to '%s'", filename);
 }
