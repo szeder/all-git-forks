@@ -3,6 +3,10 @@ Git Protocol Capabilities
 
 Servers SHOULD support all capabilities defined in this document.
 
+The client MAY ask for capabilities first out of band to the server.
+If so the server MUST NOT advertise any capabilities the client did
+not ask for.
+
 On the very first line of the initial server response of either
 receive-pack and upload-pack the first reference is followed by
 a NUL byte and then a list of space delimited server capabilities.
