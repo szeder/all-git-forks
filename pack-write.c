@@ -161,34 +161,52 @@ static void write_idx(struct sha1file *f, struct pack_idx_entry **objects,
  * the SHA1 hash of sorted object names. The objects array passed in
  * will be sorted by SHA1 on exit.
  */
-const char *write_idx_file(const char *index_name, struct pack_idx_entry **objects,
-			   int nr_objects, const struct pack_idx_option *opts,
+void verify_idx_file(const char *index_name,
+		     struct pack_idx_entry **objects, int nr_objects,
+		     const struct pack_idx_option *opts,
+		     const unsigned char *sha1)
+{
+	struct sha1file *f;
+
+	assert(index_name);
+	f = sha1fd_check(index_name);
+	write_idx(f, objects, nr_objects, opts, sha1);
+	sha1close(f, NULL, CSUM_CLOSE);
+}
+
+/*
+ * On entry *sha1 contains the pack content SHA1 hash, on exit it is
+ * the SHA1 hash of sorted object names. The objects array passed in
+ * will be sorted by SHA1 on exit.
+ */
+const char *write_idx_file(const char *index_name,
+			   struct pack_idx_entry **objects, int nr_objects,
+			   const struct pack_idx_option *opts,
 			   const unsigned char *sha1)
 {
 	struct sha1file *f;
 	int fd;
 
 	if (opts->flags & WRITE_IDX_VERIFY) {
-		assert(index_name);
-		f = sha1fd_check(index_name);
-	} else {
-		if (!index_name) {
-			static char tmp_file[PATH_MAX];
-			fd = odb_mkstemp(tmp_file, sizeof(tmp_file), "pack/tmp_idx_XXXXXX");
-			index_name = xstrdup(tmp_file);
-		} else {
-			unlink(index_name);
-			fd = open(index_name, O_CREAT|O_EXCL|O_WRONLY, 0600);
-		}
-		if (fd < 0)
-			die_errno("unable to create '%s'", index_name);
-		f = sha1fd(fd, index_name);
+		verify_idx_file(index_name, objects, nr_objects, opts, sha1);
+		return index_name;
 	}
+
+	if (!index_name) {
+		static char tmp_file[PATH_MAX];
+		fd = odb_mkstemp(tmp_file, sizeof(tmp_file), "pack/tmp_idx_XXXXXX");
+		index_name = xstrdup(tmp_file);
+	} else {
+		unlink(index_name);
+		fd = open(index_name, O_CREAT|O_EXCL|O_WRONLY, 0600);
+	}
+	if (fd < 0)
+		die_errno("unable to create '%s'", index_name);
+	f = sha1fd(fd, index_name);
 
 	write_idx(f, objects, nr_objects, opts, sha1);
 
-	sha1close(f, NULL, ((opts->flags & WRITE_IDX_VERIFY)
-			    ? CSUM_CLOSE : CSUM_FSYNC));
+	sha1close(f, NULL, CSUM_FSYNC);
 	return index_name;
 }
 
