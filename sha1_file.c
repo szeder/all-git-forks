@@ -2818,39 +2818,44 @@ static void write_sha1_file_prepare(const void *buf, unsigned long len,
  */
 int move_temp_to_file(const char *tmpfile, const char *filename)
 {
-	int save_errno = 0;
+	if (object_creation_mode != OBJECT_CREATION_USES_RENAMES) {
+		if (link(tmpfile, filename)) {
+			if (errno == EEXIST)
+				goto collision;
 
-	if (object_creation_mode == OBJECT_CREATION_USES_RENAMES)
-		goto try_rename;
-	else if (link(tmpfile, filename))
-		save_errno = errno;
-
-	/*
-	 * Coda hack - coda doesn't like cross-directory links,
-	 * so we fall back to a rename, which will mean that it
-	 * won't be able to check collisions, but that's not a
-	 * big deal.
-	 *
-	 * The same holds for FAT formatted media.
-	 *
-	 * When this succeeds, we just return.  We have nothing
-	 * left to unlink.
-	 */
-	if (save_errno && save_errno != EEXIST) {
-	try_rename:
-		if (!rename(tmpfile, filename))
+			/*
+			 * Coda hack - coda doesn't like cross-directory
+			 * links, so we fall through to trying a rename.
+			 * This means that we won't be able to check
+			 * collisions, but that's not a big deal.
+			 *
+			 * The same holds for FAT formatted media.
+			 */
+		} else {
+			unlink_or_warn(tmpfile);
 			goto out;
-		save_errno = errno;
-	}
-	unlink_or_warn(tmpfile);
-	if (save_errno) {
-		if (save_errno != EEXIST) {
-			return error("unable to write sha1 filename %s: %s", filename, strerror(save_errno));
 		}
-		/* FIXME!!! Collision check here ? */
+	}
+
+	if (rename(tmpfile, filename)) {
+		int save_errno = errno;
+
+		if (save_errno == EEXIST)
+			goto collision;
+
+		unlink_or_warn(tmpfile);
+		return error("unable to write sha1 filename %s: %s",
+			     filename, strerror(save_errno));
 	}
 
 out:
+	if (adjust_shared_perm(filename))
+		return error("unable to set permission to '%s'", filename);
+	return 0;
+
+collision:
+	/* FIXME!!! Collision check here ? */
+	unlink_or_warn(tmpfile);
 	if (adjust_shared_perm(filename))
 		return error("unable to set permission to '%s'", filename);
 	return 0;
