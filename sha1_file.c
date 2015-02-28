@@ -2818,12 +2818,12 @@ static void write_sha1_file_prepare(const void *buf, unsigned long len,
  */
 int move_temp_to_file(const char *tmpfile, const char *filename)
 {
-	int ret = 0;
+	int save_errno = 0;
 
 	if (object_creation_mode == OBJECT_CREATION_USES_RENAMES)
 		goto try_rename;
 	else if (link(tmpfile, filename))
-		ret = errno;
+		save_errno = errno;
 
 	/*
 	 * Coda hack - coda doesn't like cross-directory links,
@@ -2836,16 +2836,16 @@ int move_temp_to_file(const char *tmpfile, const char *filename)
 	 * When this succeeds, we just return.  We have nothing
 	 * left to unlink.
 	 */
-	if (ret && ret != EEXIST) {
+	if (save_errno && save_errno != EEXIST) {
 	try_rename:
 		if (!rename(tmpfile, filename))
 			goto out;
-		ret = errno;
+		save_errno = errno;
 	}
 	unlink_or_warn(tmpfile);
-	if (ret) {
-		if (ret != EEXIST) {
-			return error("unable to write sha1 filename %s: %s", filename, strerror(ret));
+	if (save_errno) {
+		if (save_errno != EEXIST) {
+			return error("unable to write sha1 filename %s: %s", filename, strerror(save_errno));
 		}
 		/* FIXME!!! Collision check here ? */
 	}
