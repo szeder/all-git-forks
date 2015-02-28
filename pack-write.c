@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "tempfile.h"
 #include "pack.h"
 #include "csum-file.h"
 
@@ -172,6 +173,31 @@ void verify_idx_file(const char *index_name,
 	f = sha1fd_check(index_name);
 	write_idx(f, objects, nr_objects, opts, sha1);
 	sha1close(f, NULL, CSUM_CLOSE);
+}
+
+/*
+ * Write the index for the specified objects to a suitable temporary
+ * file, which is recorded in tempfile. On entry *sha1 contains the
+ * pack content SHA1 hash, on exit it is the SHA1 hash of sorted
+ * object names. The objects array passed in will be sorted by SHA1 on
+ * exit.
+ */
+void write_idx_tempfile(struct tempfile *tempfile,
+			struct pack_idx_entry **objects, int nr_objects,
+			const struct pack_idx_option *opts,
+			const unsigned char *sha1)
+{
+	struct sha1file *f;
+
+	odb_mks_tempfile(tempfile, "pack/tmp_idx_XXXXXX");
+	f = sha1fd(tempfile->fd, tempfile->filename.buf);
+	write_idx(f, objects, nr_objects, opts, sha1);
+	/*
+	 * sha1close() will close the file, so make sure that the
+	 * tempfile cleanup machinery doesn't try to close it too:
+	 */
+	tempfile->fd = -1;
+	sha1close(f, NULL, CSUM_FSYNC);
 }
 
 /*
