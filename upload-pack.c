@@ -31,7 +31,11 @@ static const char upload_pack_usage[] = "git upload-pack [--strict] [--timeout=<
 
 static unsigned long oldest_have;
 
-static int uploadpack2;
+/**
+ * client capabilities presented as program arguments, dissallow further
+ * capabilities sent by client
+ */
+static int capabilities_first;
 static int multi_ack;
 static int no_done;
 static int use_thin_pack, use_ofs_delta, use_include_tag;
@@ -602,11 +606,14 @@ static void receive_needs(void)
 			die("git upload-pack: protocol error, "
 			    "expected to get sha, not '%s'", line);
 
-		if (first_want) {
-			parse_features(line + 45);
-			first_want = 0;
-		} else if (line[45])
-			die("garbage at the end of 'want' line %s", line + 45);
+		if (!capabilities_first) {
+			if (first_want) {
+				parse_features(line + 45);
+				first_want = 0;
+			} else if (line[45]) {
+				die("garbage at the end of 'want' line %s", line + 45);
+			}
+		}
 
 		o = parse_object(sha1_buf);
 		if (!o)
@@ -867,7 +874,7 @@ int main(int argc, char **argv)
 
 	switch (argc - i) {
 		case 2:
-			uploadpack2 = 1;
+			capabilities_first = 1;
 			parse_features(argv[i + 1]);
 			/* fall through*/
 		case 1:
