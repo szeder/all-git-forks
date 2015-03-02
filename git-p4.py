@@ -1271,8 +1271,8 @@ class P4Submit(Command, P4UserMap):
     def applyCommit(self, id):
         """Apply one commit, return True if it succeeded."""
 
-        print "Applying", read_pipe(["git", "show", "-s",
-                                     "--format=format:%h %s", id])
+        logger.info("Applying", read_pipe(["git", "show", "-s",
+                                     "--format=format:%h %s", id]))
 
         (p4User, gitEmail) = self.p4UserForCommit(id)
 
