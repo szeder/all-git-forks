@@ -291,3 +291,16 @@ should probably be delegated to some hook. Maybe sending all "want"
 lines to the script is enough.. Sending "have" lines is more difficult
 because the server decides when to stop receiving them. That decision
 must be moved to the hook...
+
+lang
+----
+
+The client requests a specific language by sending capability
+"lang=<code>" (or "lang=<code>:<code>..."? smart-http already goes
+this way) back to the server. <code> is what is set in $LANG. The
+server may send human-readable messages in ERR lines and side-band in
+the specified language code. The server may ignore the requested
+language code.
+
+The default language code is unspecified, even though it's usually
+English in ASCII encoding.
