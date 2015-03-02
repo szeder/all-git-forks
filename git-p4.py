@@ -1367,7 +1367,7 @@ class P4Submit(Command, P4UserMap):
         if os.system(tryPatchCmd) != 0:
             fixed_rcs_keywords = False
             patch_succeeded = False
-            print "Unfortunately applying the change \"%s\" failed!" % id
+            logger.error("Unfortunately applying the change \"%s\" failed!" % id)
 
             # Patch failed, maybe it's just RCS keyword woes. Look through
             # the patch to see if that's possible.
@@ -1400,7 +1400,7 @@ class P4Submit(Command, P4UserMap):
                     fixed_rcs_keywords = True
 
             if fixed_rcs_keywords:
-                print "Retrying the patch with RCS keywords cleaned up"
+                logger.info("Retrying the patch with RCS keywords cleaned up")
                 if os.system(tryPatchCmd) == 0:
                     patch_succeeded = True
 
@@ -1521,7 +1521,7 @@ class P4Submit(Command, P4UserMap):
         else:
             # skip this patch
             ret = False
-            print "Submission cancelled, undoing p4 changes."
+            logger.warn("Submission cancelled, undoing p4 changes.")
             for f in editedFiles:
                 p4_revert(f)
             for f in filesToAdd:
