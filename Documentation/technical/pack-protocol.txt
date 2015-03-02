@@ -1,11 +1,11 @@
 Packfile transfer protocols
 ===========================
 
-Git supports transferring data in packfiles over the ssh://, git:// and
+Git supports transferring data in packfiles over the ssh://, git://, http:// and
 file:// transports.  There exist two sets of protocols, one for pushing
 data from a client to a server and another for fetching data from a
 server to a client.  All three transports (ssh, git, file) use the same
-protocol to transfer data.
+protocol to transfer data. http is documented in http-protocol.txt.
 
 The processes invoked in the canonical Git implementation are 'upload-pack'
 on the server side and 'fetch-pack' on the client side for fetching data;
@@ -13,6 +13,12 @@ then 'receive-pack' on the server and 'send-pack' on the client for pushing
 data.  The protocol functions to have a server tell a client what is
 currently on the server, then for the two to negotiate the smallest amount
 of data to send in order to fully update one or the other.
+
+"upload-pack-2" and "receive-pack-2" are the next generation of
+"upload-pack" and "receive-pack" respectively. The first two are
+referred as "version 2" in this document and pack-capabilities.txt
+while the last two are "version 1". Unless stated otherwise, "version 1"
+is implied.
 
 Transports
 ----------
@@ -42,7 +48,8 @@ hostname parameter, terminated by a NUL byte.
 
 --
    git-proto-request = request-command SP pathname NUL [ host-parameter NUL ]
-   request-command   = "git-upload-pack" / "git-receive-pack" /
+   request-command   = "git-upload-pack" / "git-upload-pack-2" /
+		       "git-receive-pack" / "git-receive-pack-2" /
 		       "git-upload-archive"   ; case sensitive
    pathname          = *( %x01-ff ) ; exclude NUL
    host-parameter    = "host=" hostname [ ":" port ]
@@ -66,7 +73,6 @@ gracefully with an error message.
 ----
   error-line     =  PKT-LINE("ERR" SP explanation-text)
 ----
-
 
 SSH Transport
 -------------
@@ -124,9 +130,58 @@ has, the first can 'fetch' from the second.  This operation determines
 what data the server has that the client does not then streams that
 data down to the client in packfile format.
 
+Capability discovery (v2)
+-------------------------
 
-Reference Discovery
--------------------
+In version 1, capability discovery is part of reference discovery and
+cover in reference discovery section.
+
+In versino 2, when the client initially connects, the server
+immediately sends its capabilities to the client. Then the client must
+send the list of server capabilities it wants to use to the server.
+
+   S: 00XXcapabilities multi_ack thin-pack ofs-delta lang\n
+   C: 00XXcapabilities thin-pack ofs-delta lang=en\n
+
+----
+  cap              =  PKT-LINE("capabilities" SP capability-list LF)
+  capability-list  =  capability *(SP capability)
+  capability       =  1*(LC_ALPHA / DIGIT / "-" / "_" / "=")
+  LC_ALPHA         =  %x61-7A
+----
+
+The client MUST NOT ask for capabilities the server did not say it
+supports.
+
+Server MUST diagnose and abort if capabilities it does not understand
+was sent.  Server MUST NOT ignore capabilities that client requested
+and server advertised.  As a consequence of these rules, server MUST
+NOT advertise capabilities it does not understand.
+
+See protocol-capabilities.txt for a list of allowed server and client
+capabilities and descriptions.
+
+XXX: this approach wastes one round trip in smart-http because the
+client would speak first. Perhaps we could allow client speculation.
+It can assume what server caps will be and send commands based on that
+assumption. If it turns out true, we save one round trip. E.g. fast
+path:
+
+   C: You are supposed to send caps A, B. I would respond with cap B.
+      Then I would send "want-refs refs/heads/foo".
+   S: (yes we are sending caps A and B), validate client caps,
+      execute "want-refs" and return ref list
+
+and slow path:
+
+   C: You are supposed to send caps A, B. I would respond with cap B.
+      Then I would send "want-refs refs/heads/foo".
+   S: Send caps A, B and C. ignore the rest from client
+   C: Want caps A and C. Send "want-refs foo"
+   S: return ref foo
+
+Reference Discovery (v1)
+------------------------
 
 When the client initially connects the server will immediately respond
 with a listing of each reference it has (all branches and tags) along
@@ -178,15 +233,68 @@ MUST peel the ref if it's an annotated tag.
   shallow          =  PKT-LINE("shallow" SP obj-id)
 
   capability-list  =  capability *(SP capability)
-  capability       =  1*(LC_ALPHA / DIGIT / "-" / "_")
+  capability       =  1*(LC_ALPHA / DIGIT / "-" / "_" / "=")
   LC_ALPHA         =  %x61-7A
 ----
 
 Server and client MUST use lowercase for obj-id, both MUST treat obj-id
 as case-insensitive.
 
+On the very first line of the initial server response of either
+receive-pack and upload-pack the first reference is followed by
+a NUL byte and then a list of space delimited server capabilities.
+These allow the server to declare what it can and cannot support
+to the client.
+
+Client will then send a space separated list of capabilities it wants
+to be in effect. The client MUST NOT ask for capabilities the server
+did not say it supports.
+
+Server MUST diagnose and abort if capabilities it does not understand
+was sent.  Server MUST NOT ignore capabilities that client requested
+and server advertised.  As a consequence of these rules, server MUST
+NOT advertise capabilities it does not understand.
+
 See protocol-capabilities.txt for a list of allowed server capabilities
 and descriptions.
+
+Reference Discovery (v2)
+------------------------
+
+In version 2, reference discovery is initiated by the client with
+"want-refs" line. The client may skip reference discovery phase
+entirely by not sending "want-refs" (e.g. the client has another way
+to retrieve ref list).
+
+----
+  want-refs  =  PKT-LINE("want-refs" SP mode *argument)
+  mode       =  "all"
+  argument   =  SP arg
+  arg        =  1*(LC_ALPHA / DIGIT / "-" / "_" / "=")
+----
+
+Mode "all" sends all visible refs to the client like in version 1. No
+arguments are accepted in this mode. More modes may be available based
+on capabilities.
+
+----
+  advertised-refs  =  (no-refs / list-of-refs)
+		      *shallow
+		      flush-pkt
+
+  no-refs          =  PKT-LINE(zero-id LF)
+
+  list-of-refs     =  *other-ref
+  other-ref        =  PKT-LINE(other-tip / other-peeled)
+  other-tip        =  obj-id SP refname LF
+  other-peeled     =  obj-id SP refname "^{}" LF
+
+  shallow          =  PKT-LINE("shallow" SP obj-id)
+
+  capability-list  =  capability *(SP capability)
+  capability       =  1*(LC_ALPHA / DIGIT / "-" / "_" / "=")
+  LC_ALPHA         =  %x61-7A
+----
 
 Packfile Negotiation
 --------------------
