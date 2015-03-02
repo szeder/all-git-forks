@@ -89,7 +89,8 @@ Options for `expire` and/or `delete`
 
 --updateref::
 	Update the reference to the value of the top reflog entry (i.e.
-	<ref>@\{0\}) if the previous top entry was pruned.
+	<ref>@\{0\}) if the previous top entry was pruned.  (This
+	option is ignored for symbolic references.)
 
 --rewrite::
 	While expiring or deleting, adjust each reflog entry's "old"
