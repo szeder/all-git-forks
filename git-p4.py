@@ -1283,6 +1283,17 @@ class P4Submit(Command, P4UserMap):
         pureRenameCopy = set()
         filesToChangeExecBit = {}
 
+        # p4 commands are time-consuming, we open all "M" modified files here one time. 
+        modifiedFiles = set()
+        for line in difflines:
+            diff = parseDiffTreeEntry(line)
+            modifier = diff['status']
+            path = diff['src']
+            if modifier == "M":
+                modifiedFiles.add(path)
+        if len(modifiedFiles) > 0:
+            p4_edit(modifiedFiles)
+
         for line in difflines:
             diff = parseDiffTreeEntry(line)
             modifier = diff['status']
