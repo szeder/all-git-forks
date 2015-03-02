@@ -304,3 +304,36 @@ language code.
 
 The default language code is unspecified, even though it's usually
 English in ASCII encoding.
+
+compressed-refs
+---------------
+
+This is applicable to upload-pack-2 and receive-pack-2 only. The
+client expects ref list in reference discovery phase to be sent in
+compressed format:
+
+ - Each PKT-LINE may contain more than one ref
+ - SHA-1 is in binary encoding (i.e. 20 bytes instead of
+   40 bytes as hex string)
+ - ref name is prefix compressed, see index-format.txt version 4.
+ - Ref list ends with flush-pkt
+
+glob-refs
+---------
+
+This is applicable to upload-pack-2 and receive-pack-2 only. In
+reference discovery phase, a new mode "glob" is supported. Where the
+arguments are wildmatch patterns. Negative patterns begin with '!'.
+Only refs matching requested patterns are sent to the client.
+
+stateful-refs
+-------------
+
+This is applicable to upload-pack-2 and receive-pack-2 only. In
+reference discovery phase, a new mode "stateful" is supported. Where
+the first argument is a string representing the ref list that was sent
+by the same server last time. The remaining arguments are glob.
+
+The first ref line that the server sends should carry a new state
+string after ref name. The server may send only updated refs it if
+understands the state string sent by the client.
