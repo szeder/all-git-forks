@@ -337,3 +337,10 @@ by the same server last time. The remaining arguments are glob.
 The first ref line that the server sends should carry a new state
 string after ref name. The server may send only updated refs it if
 understands the state string sent by the client.
+
+stateful-http
+-------------
+
+For smart-http only, the client and the server exchange a token to
+represent current negotiated want/have instead of sending full content
+over network...
