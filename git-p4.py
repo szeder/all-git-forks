@@ -22,6 +22,11 @@ import platform
 import re
 import shutil
 import stat
+import logging
+import coloredlogs
+coloredlogs.install(level=logging.DEBUG, show_hostname=False, show_name=False)
+
+logger = logging.getLogger('git-p4')
 
 try:
     from subprocess import CalledProcessError
@@ -38,7 +43,8 @@ except ImportError:
         def __str__(self):
             return "Command '%s' returned non-zero exit status %d" % (self.cmd, self.returncode)
 
-verbose = False
+verbose = True
+# verbose = False
 
 # Only labels/tags matching this will be imported/exported
 defaultLabelRegexp = r'[a-zA-Z0-9_\-.]+$'
@@ -110,7 +116,7 @@ def die(msg):
 
 def write_pipe(c, stdin):
     if verbose:
-        sys.stderr.write('Writing pipe: %s\n' % str(c))
+        logger.debug('Writing pipe: %s\n' % str(c))
 
     expand = isinstance(c,basestring)
     p = subprocess.Popen(c, stdin=subprocess.PIPE, shell=expand)
@@ -128,7 +134,7 @@ def p4_write_pipe(c, stdin):
 
 def read_pipe(c, ignore_error=False):
     if verbose:
-        sys.stderr.write('Reading pipe: %s\n' % str(c))
+        logger.debug("Reading pipe: %s" % str(c))
 
     expand = isinstance(c,basestring)
     p = subprocess.Popen(c, stdout=subprocess.PIPE, shell=expand)
@@ -145,8 +151,7 @@ def p4_read_pipe(c, ignore_error=False):
 
 def read_pipe_lines(c):
     if verbose:
-        sys.stderr.write('Reading pipe: %s\n' % str(c))
-
+        logger.debug("Reading pipe: %s\n" % str(c))
     expand = isinstance(c, basestring)
     p = subprocess.Popen(c, stdout=subprocess.PIPE, shell=expand)
     pipe = p.stdout
@@ -238,7 +243,10 @@ def p4_delete(f):
     p4_system(["delete", wildcard_encode(f)])
 
 def p4_edit(f):
-    p4_system(["edit", wildcard_encode(f)])
+    if type(f) is list or type(f) is tuple or type(f) is set:
+        p4_system(["edit"] + map(wildcard_encode,f))
+    else:
+        p4_system(["edit", wildcard_encode(f)])
 
 def p4_revert(f):
     p4_system(["revert", wildcard_encode(f)])
@@ -453,7 +461,7 @@ def p4CmdList(cmd, stdin=None, stdin_mode='w+b', cb=None):
 
     cmd = p4_build_cmd(cmd)
     if verbose:
-        sys.stderr.write("Opening pipe: %s\n" % str(cmd))
+        logger.debug("Opening pipe: %s" % str(cmd))
 
     # Use a temporary file to avoid deadlocks without
     # subprocess.communicate(), which would put another copy
@@ -713,8 +721,7 @@ def createOrUpdateBranchesFromOrigin(localRefPrefix = "refs/remotes/p4/", silent
 
         update = False
         if not gitBranchExists(remoteHead):
-            if verbose:
-                print "creating %s" % remoteHead
+            logger.info("Creating %s" % remoteHead)
             update = True
         else:
             settings = extractSettingsGitLog(extractLogMessageFromGitCommit(remoteHead))
@@ -723,13 +730,13 @@ def createOrUpdateBranchesFromOrigin(localRefPrefix = "refs/remotes/p4/", silent
                     originP4Change = int(original['change'])
                     p4Change = int(settings['change'])
                     if originP4Change > p4Change:
-                        print ("%s (%s) is newer than %s (%s). "
+                        logger.info("%s (%s) is newer than %s (%s). "
                                "Updating p4 branch from origin."
                                % (originHead, originP4Change,
                                   remoteHead, p4Change))
                         update = True
                 else:
-                    print ("Ignoring: %s was imported from %s while "
+                    logger.info("Ignoring: %s was imported from %s while "
                            "%s was imported from %s"
                            % (originHead, ','.join(original['depot-paths']),
                               remoteHead, ','.join(settings['depot-paths'])))
@@ -845,6 +852,7 @@ class Command:
         self.usage = "usage: %prog [options]"
         self.needsGit = True
         self.verbose = False
+        self.debug = False
 
 class P4UserMap:
     def __init__(self):
@@ -960,14 +968,14 @@ class P4RollBack(Command):
 
                 if len(p4Cmd("changes -m 1 "  + ' '.join (['%s...@%s' % (p, maxChange)
                                                            for p in depotPaths]))) == 0:
-                    print "Branch %s did not exist at change %s, deleting." % (ref, maxChange)
+                    logger.info("Branch %s did not exist at change %s, deleting." % (ref, maxChange))
                     system("git update-ref -d %s `git rev-parse %s`" % (ref, ref))
                     continue
 
                 while change and int(change) > maxChange:
                     changed = True
                     if self.verbose:
-                        print "%s is at %s ; rewinding towards %s" % (ref, change, maxChange)
+                        logger.debug("%s is at %s ; rewinding towards %s" % (ref, change, maxChange))
                     system("git update-ref %s \"%s^\"" % (ref, ref))
                     log = extractLogMessageFromGitCommit(ref)
                     settings =  extractSettingsGitLog(log)
@@ -977,7 +985,7 @@ class P4RollBack(Command):
                     change = settings['change']
 
                 if changed:
-                    print "%s rewound to %s" % (ref, change)
+                    logger.info("%s rewound to %s" % (ref, change))
 
         return True
 
@@ -1268,31 +1276,36 @@ class P4Submit(Command, P4UserMap):
 
         (p4User, gitEmail) = self.p4UserForCommit(id)
 
-        diff = read_pipe_lines("git diff-tree -r %s \"%s^\" \"%s\"" % (self.diffOpts, id, id))
+        difflines = read_pipe_lines("git diff-tree -r %s \"%s^\" \"%s\"" % (self.diffOpts, id, id))
         filesToAdd = set()
         filesToDelete = set()
         editedFiles = set()
         pureRenameCopy = set()
         filesToChangeExecBit = {}
 
-        for line in diff:
+        for line in difflines:
             diff = parseDiffTreeEntry(line)
             modifier = diff['status']
             path = diff['src']
+
+            # M for modified files
             if modifier == "M":
-                p4_edit(path)
+                # p4_edit(path)
                 if isModeExecChanged(diff['src_mode'], diff['dst_mode']):
                     filesToChangeExecBit[path] = diff['dst_mode']
                 editedFiles.add(path)
+            # A for added files
             elif modifier == "A":
                 filesToAdd.add(path)
                 filesToChangeExecBit[path] = diff['dst_mode']
                 if path in filesToDelete:
                     filesToDelete.remove(path)
+            # D for deleted files
             elif modifier == "D":
                 filesToDelete.add(path)
                 if path in filesToAdd:
                     filesToAdd.remove(path)
+            # C for copied files
             elif modifier == "C":
                 src, dest = diff['src'], diff['dst']
                 p4_integrate(src, dest)
@@ -1309,6 +1322,7 @@ class P4Submit(Command, P4UserMap):
                     os.chmod(dest, stat.S_IWRITE)
                 os.unlink(dest)
                 editedFiles.add(dest)
+            # R for renamed files
             elif modifier == "R":
                 src, dest = diff['src'], diff['dst']
                 if self.p4HasMoveCommand:
@@ -1331,7 +1345,7 @@ class P4Submit(Command, P4UserMap):
                     filesToDelete.add(src)
                 editedFiles.add(dest)
             else:
-                die("unknown modifier %s for %s" % (modifier, path))
+                die("Unknown modifier %s for %s in commit %s" % (modifier, path, id))
 
         diffcmd = "git diff-tree --full-index -p \"%s\"" % (id)
         patchcmd = diffcmd + " | git apply "
@@ -1342,7 +1356,7 @@ class P4Submit(Command, P4UserMap):
         if os.system(tryPatchCmd) != 0:
             fixed_rcs_keywords = False
             patch_succeeded = False
-            print "Unfortunately applying the change failed!"
+            print "Unfortunately applying the change \"%s\" failed!" % id
 
             # Patch failed, maybe it's just RCS keyword woes. Look through
             # the patch to see if that's possible.
@@ -1647,9 +1661,9 @@ class P4Submit(Command, P4UserMap):
 
         chdir(self.clientPath, is_client_path=True)
         if self.dry_run:
-            print "Would synchronize p4 checkout in %s" % self.clientPath
+            logger.info("Would synchronize p4 checkout in %s" % self.clientPath)
         else:
-            print "Synchronizing p4 checkout..."
+            logger.info("Synchronizing p4 checkout...")
             if new_client_dir:
                 # old one was destroyed, and maybe nobody told p4
                 p4_sync("...", "-f")
@@ -1706,7 +1720,7 @@ class P4Submit(Command, P4UserMap):
         # continue to try the rest of the patches, or quit.
         #
         if self.dry_run:
-            print "Would apply"
+            logger.info("Would apply")
         applied = []
         last = len(commits) - 1
         for i, commit in enumerate(commits):
@@ -1720,8 +1734,8 @@ class P4Submit(Command, P4UserMap):
                 applied.append(commit)
             else:
                 if self.prepare_p4_only and i < last:
-                    print "Processing only the first commit due to option" \
-                          " --prepare-p4-only"
+                    logger.info("Processing only the first commit due to option" \
+                          " --prepare-p4-only")
                     break
                 if i < last:
                     quit = False
@@ -1758,7 +1772,7 @@ class P4Submit(Command, P4UserMap):
         elif self.prepare_p4_only:
             pass
         elif len(commits) == len(applied):
-            print "All commits applied!"
+            logger.info("All commits applied!")
 
             sync = P4Sync()
             if self.branch:
@@ -1770,9 +1784,9 @@ class P4Submit(Command, P4UserMap):
 
         else:
             if len(applied) == 0:
-                print "No commits applied."
+                logger.info("No commits applied.")
             else:
-                print "Applied only the commits marked with '*':"
+                logger.warn("Applied only the commits marked with '*':")
                 for c in commits:
                     if c in applied:
                         star = "*"
@@ -1780,7 +1794,7 @@ class P4Submit(Command, P4UserMap):
                         star = " "
                     print star, read_pipe(["git", "show", "-s",
                                            "--format=format:%h %s",  c])
-                print "You will have to do 'git p4 sync' and rebase."
+                logger.warn("You will have to do 'git p4 sync' and rebase.")
 
         if gitConfigBool("git-p4.exportLabels"):
             self.exportLabels = True
@@ -2860,7 +2874,7 @@ class P4Sync(Command, P4UserMap):
                 self.depotPaths = sorted(self.previousDepotPaths)
                 self.changeRange = "@%s,#head" % p4Change
                 if not self.silent and not self.detectBranches:
-                    print "Performing incremental import into %s git branch" % self.branch
+                    logger.info("Performing incremental import into %s git branch" % self.branch)
 
         # accept multiple ref name abbreviations:
         #    refs/foo/bar/branch -> use it exactly
@@ -3009,10 +3023,10 @@ class P4Sync(Command, P4UserMap):
 
             if len(changes) == 0:
                 if not self.silent:
-                    print "No changes to import!"
+                    logger.info("No changes to import!")
             else:
                 if not self.silent and not self.detectBranches:
-                    print "Import destination: %s" % self.branch
+                    logger.info("Import destination: %s" % self.branch)
 
                 self.updatedBranches = set()
 
@@ -3095,7 +3109,7 @@ class P4Rebase(Command):
         # the branchpoint may be p4/foo~3, so strip off the parent
         upstream = re.sub("~[0-9]+$", "", upstream)
 
-        print "Rebasing the current branch onto %s" % upstream
+        logger.info("Rebasing the current branch onto %s" % upstream)
         oldHead = read_pipe("git rev-parse HEAD").strip()
         system("git rebase %s" % upstream)
         system("git diff-tree --stat --summary -M %s HEAD --" % oldHead)
