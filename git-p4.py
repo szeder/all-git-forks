@@ -3123,6 +3123,8 @@ class P4Rebase(Command):
         logger.info("Rebasing the current branch onto %s" % upstream)
         oldHead = read_pipe("git rev-parse HEAD").strip()
         system("git rebase %s" % upstream)
+
+        logger.info("Generating diff summary...")
         system("git diff-tree --stat --summary -M %s HEAD --" % oldHead)
         return True
 
