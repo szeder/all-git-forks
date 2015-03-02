@@ -3,21 +3,6 @@ Git Protocol Capabilities
 
 Servers SHOULD support all capabilities defined in this document.
 
-On the very first line of the initial server response of either
-receive-pack and upload-pack the first reference is followed by
-a NUL byte and then a list of space delimited server capabilities.
-These allow the server to declare what it can and cannot support
-to the client.
-
-Client will then send a space separated list of capabilities it wants
-to be in effect. The client MUST NOT ask for capabilities the server
-did not say it supports.
-
-Server MUST diagnose and abort if capabilities it does not understand
-was sent.  Server MUST NOT ignore capabilities that client requested
-and server advertised.  As a consequence of these rules, server MUST
-NOT advertise capabilities it does not understand.
-
 The 'atomic', 'report-status', 'delete-refs', 'quiet', and 'push-cert'
 capabilities are sent and recognized by the receive-pack (push to server)
 process.
@@ -268,3 +253,10 @@ to accept a signed push certificate, and asks the <nonce> to be
 included in the push certificate.  A send-pack client MUST NOT
 send a push-cert packet unless the receive-pack server advertises
 this capability.
+
+v2
+--
+
+'git-upload-pack' and 'git-receive-pack' may advertise this capability
+if the server supports 'git-upload-pack-2' and 'git-receive-pack-2'
+respectively.
