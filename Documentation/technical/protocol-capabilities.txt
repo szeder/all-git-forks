@@ -260,3 +260,34 @@ v2
 'git-upload-pack' and 'git-receive-pack' may advertise this capability
 if the server supports 'git-upload-pack-2' and 'git-receive-pack-2'
 respectively.
+
+redirect
+--------
+
+This capability is applicable for upload-pack and upload-pack-v2
+only. When the client requests this capability it must specify
+supported transport protocol separated by colon,
+e.g. "redirect=http:ftp:ssh:torrent".
+
+Instead of sending a packfile data to the client, the server may send
+4-byte signature { 'L', 'I', 'N', 'K' } followed by a NUL-terminated
+URLs, each one pointing to a bundle. This fake pack ends with an empty
+string.
+
+The bundle does not have to contain all refs requested by the
+client. Different bundles from different URLs could have different
+content. The client must follow one of the links to get a bundle.
+The server must not send URL in a protocol that the client does not
+support.
+
+FIXME: do we keep current connection alive until the bundle is
+downloaded and get a normal pack, or let the client initiate a new
+connection? Or perhaps if the client fails to get the bundle for
+whatever reason, it could send "NAK" to the server and the server
+sends normal packfile data.
+
+FIXME: how do we implement this exactly? The decision to redirect
+should probably be delegated to some hook. Maybe sending all "want"
+lines to the script is enough.. Sending "have" lines is more difficult
+because the server decides when to stop receiving them. That decision
+must be moved to the hook...
