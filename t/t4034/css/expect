@@ -1,35 +1,36 @@
-t a/t/tmp/test.css b/t/tmp/test.css
-index cc82372..a6f25aa 100644
---- a/t/tmp/test.css
-+++ b/t/tmp/test.css
-@@ -2,7 +2,7 @@ elm1, elm2 {
-prop: first-value;
-prop: value;
-prop: value;
-prop: valuenew-value;
-prop: last-value;
-}
+<BOLD>diff --git a/pre b/post<RESET>
+<BOLD>index 647eed1..4f565d0 100644<RESET>
+<BOLD>--- a/pre<RESET>
+<BOLD>+++ b/post<RESET>
+<CYAN>@@ -2,7 +2,7 @@<RESET> <RESET><MAGENTA>elm1, elm2 {<RESET>
+prop: first-value;<RESET>
+prop: value;<RESET>
+prop: value;<RESET>
+prop: <RED>value<RESET><GREEN>new-value<RESET>;
+prop: last-value;<RESET>
+}<RESET>
 
-@@ -18,7 +18,7 @@ elm3, elm4 {
-prop: first-value;
-prop: value;
-prop: value;
-propnew-prop: value;
-prop: last-value;
-}
+<CYAN>@@ -18,7 +18,7 @@<RESET> <RESET><MAGENTA>elm3, elm4 {<RESET>
+prop: first-value;<RESET>
+prop: value;<RESET>
+prop: value;<RESET>
+<RED>prop<RESET><GREEN>new-prop<RESET>: value;
+prop: last-value;<RESET>
+}<RESET>
 
-@@ -35,7 +35,7 @@ elm6 {
-prop: first-value;
-prop: value;
-prop: value;
-propnew-prop: valuenew-value;
-prop: last-value;
-}
+<CYAN>@@ -35,7 +35,7 @@<RESET> <RESET><MAGENTA>elm6 {<RESET>
+prop: first-value;<RESET>
+prop: value;<RESET>
+prop: value;<RESET>
+<RED>prop<RESET><GREEN>new-prop<RESET>: <RED>value<RESET><GREEN>new-value<RESET>;
+prop: last-value;<RESET>
+}<RESET>
 
-@@ -51,7 +51,7 @@ , #id, elm#id, .num123{
-prop: first-value;
-prop: value;
-prop: value;
-prop: value1px;
-prop: last-value;
-}
+<CYAN>@@ -51,7 +51,7 @@<RESET> <RESET><MAGENTA>, #id, elm#id, .num123{<RESET>
+prop: first-value;<RESET>
+prop: value;<RESET>
+prop: value;<RESET>
+prop: <RED>value<RESET><GREEN>1px<RESET>;
+prop: last-value;<RESET>
+}<RESET>
+
