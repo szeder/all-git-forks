@@ -17,5 +17,6 @@ script:
   - make test
 
 cache:
-  - $HOME/build/git
+  directories:
+    - $HOME/build/git
 
