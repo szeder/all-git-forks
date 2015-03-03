@@ -1,3 +1,13 @@
+body, html {
+  background: #FFFFFF;
+  font-size: 12px;
+  font-size: 12px;
+  font-size: 12px;
+  font-size: 12px;
+  font-size: 12px;
+  color: #FFFFFF;
+}
+
 body,
 html {
   background: #FFFFFF;
@@ -9,7 +19,9 @@ html {
   color: #FFFFFF;
 }
 
-.foo, .bar {
+body,
+html
+{
   background: #FFFFFF;
   font-size: 12px;
   font-size: 12px;
@@ -19,3 +31,12 @@ html {
   color: #FFFFFF;
 }
 
+.class1, a:hover, li:first-child, html:lang(en), #id, .class2{
+  background: #FFFFFF;
+  font-size: 12px;
+  font-size: 12px;
+  font-size: 12px;
+  font-size: 12px;
+  font-size: 12px;
+  color: #FFFFFF;
+}
