@@ -3,10 +3,10 @@ language: c
 sudo: false
 
 before_install:
-  - mkdir -p $HOME/build-git
+  - mkdir -p $HOME/build/git
   - pwd
-  - git archive --format=tar HEAD | tar -C $HOME/build-git -xf -
-  - pushd $HOME/build-git
+  - git archive --format=tar HEAD | tar -C $HOME/build/git -xf -
+  - pushd $HOME/build/git
 
 install:
   - pwd
@@ -17,5 +17,5 @@ script:
   - make test
 
 cache:
-  - $HOME/build-git
+  - $HOME/build/git
 
