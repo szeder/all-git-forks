@@ -9,10 +9,10 @@ before_install:
   - git status
   - |
     git ls-files -z | xargs -P4 -0 -I{} FILE="{}" bash -c "
-      echo \"FILE=$FILE\";
-      TIME=$(git log --pretty=format:%ci -n1 \"$FILE\");
+      echo \"FILE={}\";
+      TIME=$(git log --pretty=format:%ci -n1 \"{}\");
       TIME=$(date +%y%m%d%H%M.%S --date \"$TIME\");
-      touch -t $TIME \"$FILE\"
+      touch -t $TIME \"{}\"
     "
 
 install:
