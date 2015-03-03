@@ -1,44 +1,21 @@
 body,
 html {
-  color: #000000;
   background: #FFFFFF;
   font-size: 12px;
   font-size: 12px;
   font-size: 12px;
   font-size: 12px;
   font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 12px;
-  font-size: 14px;
-  font-size: 12px;
-  font-size: 12px;
+  color: #FFFFFF;
 }
+
+.foo, .bar {
+  background: #FFFFFF;
+  font-size: 12px;
+  font-size: 12px;
+  font-size: 12px;
+  font-size: 12px;
+  font-size: 12px;
+  color: #FFFFFF;
+}
+
