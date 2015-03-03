@@ -3,18 +3,23 @@ language: c
 sudo: false
 
 before_install:
-  - mkdir -p $HOME/build/git
-  - pwd
-  - git archive --format=tar HEAD | tar -C $HOME/build/git -xf -
+  - if [ ! -d $HOME/build/git ]; then git clone ./ $HOME/build/git; fi
   - pushd $HOME/build/git
+  - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard ${TRAVIS_BRANCH}
+  - git status
+  - |
+    for FILE in $(git ls-files); do
+      TIME=$(git log --pretty=format:%ci -n1 $FILE)
+      TIME=$(date +%y%m%d%H%M.%S --date "$TIME")
+      touch -t $TIME $FILE
+    done
 
 install:
-  - pwd
   - make -j4
 
 script:
-  - pwd
-  - make test
+  - cd t/
+  - prove --timer -j8 ./t[0-9]*.sh
 
 cache:
   directories:
