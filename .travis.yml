@@ -6,8 +6,10 @@ before_install:
   - ORIGIN_DIR=`pwd`
   - "[ -d $HOME/build/git/.git ] || git clone ./ $HOME/build/git"
   - pushd $HOME/build/git
+  - git remote -v
   - git remote remove origin || exit 0
   - git remote add origin ${ORIGIN_DIR}
+  - git remote -v
   - git branch -a
   - git status
   - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard ${TRAVIS_BRANCH}
