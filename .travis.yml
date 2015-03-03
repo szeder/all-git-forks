@@ -3,10 +3,10 @@ language: c
 sudo: false
 
 before_install:
-  - mkdir $HOME/build
+  - mkdir -p $HOME/build-git
   - pwd
   - cp `git ls-files` $HOME/build
-  - pushd $HOME/build
+  - pushd $HOME/build-git
 
 install:
   - pwd
@@ -17,5 +17,5 @@ script:
   - make test
 
 cache:
-  - $HOME/build
+  - $HOME/build-git
 
