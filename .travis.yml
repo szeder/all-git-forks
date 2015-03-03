@@ -4,7 +4,7 @@ sudo: false
 
 before_install:
   - ORIGIN_DIR=`pwd`
-  - "[ -d $HOME/build/git/.git ] || git clone ./ $HOME/build/git"
+  - "[ -d $HOME/build/git/.git ] || git clone --depth=50 ./ $HOME/build/git"
   - pushd $HOME/build/git
   - git remote -v
   - git remote remove origin || exit 0
