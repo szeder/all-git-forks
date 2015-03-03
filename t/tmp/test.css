@@ -1,4 +1,20 @@
-elm1, elm2{
+elm1, elm2 {
+	prop: first-value;
+	prop: value;
+	prop: value;
+	prop: value;
+	prop: last-value;
+}
+
+elm, elm {
+	prop: first-value;
+	prop: value;
+	prop: value;
+	prop: value;
+	prop: last-value;
+}
+
+elm3, elm4 {
   prop: first-value;
   prop: value;
   prop: value;
@@ -6,9 +22,7 @@ elm1, elm2{
   prop: last-value;
 }
 
-
-elm1,
-elm2 {
+elm, elm {
   prop: first-value;
   prop: value;
   prop: value;
@@ -16,17 +30,22 @@ elm2 {
   prop: last-value;
 }
 
+elm5,
+elm6 {
+  prop: first-value;
+  prop: value;
+  prop: valuea;
+  prop: value;
+  prop: last-value;
+}
 
-elm1,
-elm2
-{
+elm, elm {
   prop: first-value;
   prop: value;
   prop: value;
   prop: value;
   prop: last-value;
 }
-
 
 .class, elm:hover, elm:first-child, elm:lang(en), #id, elm#id, .num123{
   prop: first-value;
