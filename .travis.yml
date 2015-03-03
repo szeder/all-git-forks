@@ -14,7 +14,8 @@ install:
 
 script:
   - pwd
-  - make test
+  - cd t/
+  - prove --timer -j4 ./t[0-9]*.sh
 
 cache:
   directories:
