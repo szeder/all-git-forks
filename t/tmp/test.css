@@ -1,17 +1,17 @@
 elm1, elm2 {
-	prop: first-value;
-	prop: value;
-	prop: value;
-	prop: value;
-	prop: last-value;
+  prop: first-value;
+  prop: value;
+  prop: value;
+  prop: value;
+  prop: last-value;
 }
 
 elm, elm {
-	prop: first-value;
-	prop: value;
-	prop: value;
-	prop: value;
-	prop: last-value;
+  prop: first-value;
+  prop: value;
+  prop: value;
+  prop: value;
+  prop: last-value;
 }
 
 elm3, elm4 {
