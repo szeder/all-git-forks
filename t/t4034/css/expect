@@ -1,1 +1,35 @@
-dummy
+t a/t/tmp/test.css b/t/tmp/test.css
+index cc82372..a6f25aa 100644
+--- a/t/tmp/test.css
++++ b/t/tmp/test.css
+@@ -2,7 +2,7 @@ elm1, elm2 {
+prop: first-value;
+prop: value;
+prop: value;
+prop: valuenew-value;
+prop: last-value;
+}
+
+@@ -18,7 +18,7 @@ elm3, elm4 {
+prop: first-value;
+prop: value;
+prop: value;
+propnew-prop: value;
+prop: last-value;
+}
+
+@@ -35,7 +35,7 @@ elm6 {
+prop: first-value;
+prop: value;
+prop: value;
+propnew-prop: valuenew-value;
+prop: last-value;
+}
+
+@@ -51,7 +51,7 @@ , #id, elm#id, .num123{
+prop: first-value;
+prop: value;
+prop: value;
+prop: value1px;
+prop: last-value;
+}
