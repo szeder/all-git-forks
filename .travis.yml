@@ -8,11 +8,11 @@ before_install:
   - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard ${TRAVIS_BRANCH}
   - git status
   - |
-    git ls-files -z | xargs -P4 -0 -I$$ bash -c '
-      echo $$;
-      TIME=$(git log --pretty=format:%ci -n1 "$$");
+    git ls-files -z | xargs -P4 -0 -I%% bash -c '
+      echo "%%";
+      TIME=$(git log --pretty=format:%ci -n1 "%%");
       TIME=$(date +%y%m%d%H%M.%S --date "$TIME");
-      touch -t $TIME $$
+      touch -t $TIME %%
     '
 
 install:
