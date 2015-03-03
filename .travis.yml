@@ -9,6 +9,7 @@ before_install:
   - git remote -v
   - git remote remove origin || exit 0
   - git remote add origin ${ORIGIN_DIR}
+  - ls -lha 
   - ls -lha ${ORIGIN_DIR}
   - git remote -v
   - git branch -a
