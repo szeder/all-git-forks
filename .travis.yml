@@ -10,7 +10,7 @@ before_install:
   - |
     git ls-files -z | xargs -P4 -0 -I{} bash -c "
       TIME=$(git log --pretty=format:%ci -n1 '{}');
-      TIME=$(date +%y%m%d%H%M.%S --date '$TIME');
+      TIME=$(date +%y%m%d%H%M.%S --date $TIME);
       touch -t $TIME '{}'
     "
 
