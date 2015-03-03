@@ -1,0 +1,21 @@
+language: c
+
+sudo: false
+
+before_install:
+  - mkdir $HOME/build
+  - pwd
+  - cp `git ls-files` $HOME/build
+  - pushd $HOME/build
+
+install:
+  - pwd
+  - make -j4
+
+script:
+  - pwd
+  - make test
+
+cache:
+  - $HOME/build
+
