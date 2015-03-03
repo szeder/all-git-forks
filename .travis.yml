@@ -7,6 +7,13 @@ before_install:
   - pushd $HOME/build/git
   - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard ${TRAVIS_BRANCH}
   - git ls-files -z | xargs -P4 -0 -I{} touch -t $(date +%y%m%d%H%M.%S --date `git log --pretty=format:%ci -n1 "{}"`) "{}"
+  - |
+    git ls-files -z | while read -d $'\0' file; do
+      file=$(git log --pretty=format:%ci -n1 "$file")
+      file=$(date +%y%m%d%H%M.%S --date $file)
+      echo touch -t $time $file
+      touch -t $time $file
+    done
 
 install:
   - make -j4
