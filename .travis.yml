@@ -5,7 +5,7 @@ sudo: false
 before_install:
   - mkdir -p $HOME/build-git
   - pwd
-  - rsync -avr `git ls-files` $HOME/build-git
+  - rsync -avR `git ls-files` $HOME/build-git
   - pushd $HOME/build-git
 
 install:
