@@ -12,7 +12,11 @@ before_install:
   - git remote -v
   - git branch -a
   - git status
+  - git fetch origin
+  - git branch -a
+  - git status
   - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard ${TRAVIS_BRANCH}
+  - git branch -a
   - git status
   - |
     git ls-files -z | xargs -P4 -0 -I{} bash -c "
