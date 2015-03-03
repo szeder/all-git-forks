@@ -3,7 +3,7 @@ language: c
 sudo: false
 
 before_install:
-  - [ -d $HOME/build/git ] || git clone ./ $HOME/build/git
+  - [[ -d $HOME/build/git ]] || git clone ./ $HOME/build/git
   - pushd $HOME/build/git
   - git fetch origin && git reset --hard origin/${TRAVIS_BRANCH}
 
