@@ -3,17 +3,14 @@ language: c
 sudo: false
 
 before_install:
-  - mkdir -p $HOME/build/git
-  - pwd
-  - git archive --format=tar HEAD | tar --skip-old-files -C $HOME/build/git -xf -
+  - git clone ./ $HOME/build/git
   - pushd $HOME/build/git
+  - git fetch origin && git reset --hard origin/${TRAVIS_BRANCH}
 
 install:
-  - pwd
   - make -j4
 
 script:
-  - pwd
   - cd t/
   - prove --timer -j4 ./t[0-9]*.sh
 
