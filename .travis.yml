@@ -8,9 +8,8 @@ before_install:
   - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard ${TRAVIS_BRANCH}
   - |
     git ls-files -z | while read -r -d '' file; do
-      export file=$file;
-      file=$(git log --pretty=format:%ci -n1 "$file");
-      file=$(date +%y%m%d%H%M.%S --date $file);
+      time=$(git log --pretty=format:%ci -n1 "$file");
+      time=$(date +%y%m%d%H%M.%S --date $file);
       echo touch -t $time $file;
       touch -t $time $file;
     done
