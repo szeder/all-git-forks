@@ -133,6 +133,12 @@ test_expect_success 'status with status.displayCommentPrefix=false' '
 	test_i18ncmp expect output
 '
 
+test_expect_success 'status -v' '
+	git diff --cached >>expect &&
+	git status -v >output &&
+	test_cmp expect output
+'
+
 test_expect_success 'setup fake editor' '
 	cat >.git/editor <<-\EOF &&
 	#! /bin/sh
