@@ -1,0 +1,22 @@
+language: c
+
+sudo: false
+
+before_install:
+  - mkdir -p $HOME/build/git
+  - pwd
+  - git archive --format=tar HEAD | tar -C $HOME/build/git -xf -
+  - pushd $HOME/build/git
+
+install:
+  - pwd
+  - make -j4
+
+script:
+  - pwd
+  - make test
+
+cache:
+  directories:
+    - $HOME/build/git
+
