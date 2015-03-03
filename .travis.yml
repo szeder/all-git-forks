@@ -5,7 +5,7 @@ sudo: false
 before_install:
   - if [ ! -d $HOME/build/git ]; then git clone ./ $HOME/build/git; fi
   - pushd $HOME/build/git
-  - git fetch origin && git reset --hard origin/${TRAVIS_BRANCH}
+  - git fetch origin && git checkout -f origin/${TRAVIS_BRANCH}
 
 install:
   - make -j4
