@@ -37,6 +37,20 @@ communicates with that invoked process over the SSH connection.
 The file:// transport runs the 'upload-pack' or 'receive-pack'
 process locally and communicates with it over a pipe.
 
+Pkt-line format
+---------------
+
+In version 1, a packet line consists of four bytes containing the
+length of the entire line plus four in hexadecimal format. A flush
+consists of four zero bytes.
+
+In version 2, the four-byte header format remains supported but the
+maximum length is 0xFFFE. If the length is 0xFFFF, the actual length
+follows in variable encoding in hexadecimal.
+
+XXX: perhaps go with 2-byte length by default instead, we don't
+usually need pkt-line longer than 256??
+
 Git Transport
 -------------
 
@@ -68,10 +82,12 @@ process on the server side over the Git protocol is this:
      nc -v example.com 9418
 
 If the server refuses the request for some reasons, it could abort
-gracefully with an error message.
+gracefully with an error message, or show a warning but and keep
+moving.
 
 ----
   error-line     =  PKT-LINE("ERR" SP explanation-text)
+  warning-line   =  PKT-LINE("WARN" SP explanation-text)
 ----
 
 SSH Transport
