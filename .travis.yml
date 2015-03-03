@@ -7,14 +7,15 @@ before_install:
   - pushd $HOME/build/git
   - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard ${TRAVIS_BRANCH}
   - |
-    git ls-files -z | while read -r -d '' file; do
-      echo $file;
-      echo sub: $(echo $file);
-      git log --pretty=format:%ci -n1 "$file";
-      time=$(git log --pretty=format:%ci -n1 "$file");
-      time=$(date +%y%m%d%H%M.%S --date $time);
-      echo touch -t $time $file;
-      touch -t $time $file;
+    git ls-files -z | while read -r -d '' FILE; do
+      echo FILE=$FILE;
+      echo SUB =$(echo $file);
+      git log --pretty=format:%ci -n1 "$FILE";
+      TIME1=$(git log --pretty=format:%ci -n1 "$FILE");
+      echo TIME1=$TIME1
+      TIME2=$(date +%y%m%d%H%M.%S --date "$TIME1");
+      echo touch -t $TIME2 $FILE;
+      touch -t $TIME2 $FILE;
     done
 
 install:
