@@ -6,10 +6,7 @@ before_install:
   - "[ -d $HOME/build/git/.git ] || git clone git://github.com/sh19910711/git.git $HOME/build/git"
   - pushd $HOME/build/git
   - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard ${TRAVIS_BRANCH}
-  - |
-    git ls-files -z | xargs -P4 -0 -I{} bash -c "
-      touch -t `date +%y%m%d%H%M.%S --date \"`git log --pretty=format:%ci -n1 \"{}\"`\"` \"{}\"
-    "
+  - git ls-files -z | xargs -P4 -0 -I{} touch -t $(date +%y%m%d%H%M.%S --date "`git log --pretty=format:%ci -n1 \"{}\"`") \"{}\"
 
 install:
   - make -j4
