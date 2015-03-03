@@ -873,7 +873,17 @@ static void wt_status_print_verbose(struct wt_status *s)
 		rev.diffopt.use_color = 0;
 		wt_status_add_cut_line(s->fp);
 	}
+	if (s->verbose > 1) {
+		rev.diffopt.a_prefix = "HEAD=base-commit/";
+		rev.diffopt.b_prefix = "INDEX=staged-for-commit/";
+	} /* else use prefix as per user config */
 	run_diff_index(&rev, 1);
+	if (s->verbose > 1) {
+		setup_work_tree();
+		rev.diffopt.a_prefix = "INDEX=staged-for-commit/";
+		rev.diffopt.b_prefix = "WORKTREE=not-staged-for-commit/";
+		run_diff_files(&rev, 0);
+	}
 }
 
 static void wt_status_print_tracking(struct wt_status *s)

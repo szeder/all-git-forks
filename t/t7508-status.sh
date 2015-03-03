@@ -139,6 +139,49 @@ test_expect_success 'status -v' '
 	test_cmp expect output
 '
 
+cat >expect <<\EOF
+On branch master
+Changes to be committed:
+  (use "git reset HEAD <file>..." to unstage)
+
+	new file:   dir2/added
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+	modified:   dir1/modified
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+
+	dir1/untracked
+	dir2/modified
+	dir2/untracked
+	expect
+	output
+	untracked
+
+diff --git HEAD=base-commit/dir2/added INDEX=staged-for-commit/dir2/added
+new file mode 100644
+index 0000000..00750ed
+--- /dev/null
++++ INDEX=staged-for-commit/dir2/added
+@@ -0,0 +1 @@
++3
+diff --git INDEX=staged-for-commit/dir1/modified WORKTREE=not-staged-for-commit/dir1/modified
+index e69de29..d00491f 100644
+--- INDEX=staged-for-commit/dir1/modified
++++ WORKTREE=not-staged-for-commit/dir1/modified
+@@ -0,0 +1 @@
++1
+EOF
+
+test_expect_success 'status -v -v' '
+	git status -v -v >output &&
+	test_cmp expect output
+'
+
 test_expect_success 'setup fake editor' '
 	cat >.git/editor <<-\EOF &&
 	#! /bin/sh
