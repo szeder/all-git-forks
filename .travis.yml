@@ -5,7 +5,8 @@ sudo: false
 before_install:
   - if [ ! -d $HOME/build/git ]; then git clone ./ $HOME/build/git; fi
   - pushd $HOME/build/git
-  - git fetch origin && git reset --hard origin/${TRAVIS_BRANCH}
+  - git fetch origin && git reset --hard ${TRAVIS_BRANCH}
+  - git status
   - |
     for FILE in $(git ls-files); do
       TIME=$(git log --pretty=format:%ci -n1 $FILE)
