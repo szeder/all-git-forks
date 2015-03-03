@@ -12,7 +12,7 @@ install:
 
 script:
   - cd t/
-  - prove --timer -j4 ./t[0-9]*.sh
+  - prove --timer -j8 ./t[0-9]*.sh
 
 cache:
   directories:
