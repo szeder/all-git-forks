@@ -716,9 +716,39 @@ static void format_symref_info(struct strbuf *buf, struct string_list *symref)
 		strbuf_addf(buf, " symref=%s:%s", item->string, (char *)item->util);
 }
 
-static const char *advertise_capabilities = "multi_ack thin-pack side-band"
+static char *advertise_capabilities = "multi_ack thin-pack side-band"
 		" side-band-64k ofs-delta shallow no-progress"
 		" include-tag multi_ack_detailed";
+
+/* returns the next capability as a null terminated string */
+static int next_capability(char *dst)
+{
+	int len = 0;
+	if (!*advertise_capabilities)
+		return 0;
+
+	while (advertise_capabilities[len] != '\0' &&
+	       advertise_capabilities[len] != ' ')
+		len ++;
+	strncpy(dst, advertise_capabilities, len);
+	dst[len] = '\0';
+
+	advertise_capabilities += len;
+	if (*advertise_capabilities == ' ')
+		advertise_capabilities++;
+
+	return 1;
+}
+
+static void send_capabilities(void)
+{
+	char buf[100];
+
+	while (next_capability(buf))
+		packet_write(1, "capability:%s\n", buf);
+
+	packet_flush(1);
+}
 
 static int send_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
 {
