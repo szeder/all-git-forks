@@ -20,6 +20,7 @@ static struct strbuf url = STRBUF_INIT;
 struct options {
 	int verbosity;
 	unsigned long depth;
+	char *deepen_since;
 	unsigned progress : 1,
 		check_self_contained_and_connected : 1,
 		cloning : 1,
@@ -58,6 +59,10 @@ static int set_option(const char *name, const char *value)
 		if (value == end || *end)
 			return -1;
 		options.depth = v;
+		return 0;
+	}
+	else if (!strcmp(name, "deepen-since")) {
+		options.deepen_since = xstrdup(value);
 		return 0;
 	}
 	else if (!strcmp(name, "followtags")) {
@@ -725,8 +730,8 @@ static int fetch_dumb(int nr_heads, struct ref **to_fetch)
 	int ret, i;
 
 	ALLOC_ARRAY(targets, nr_heads);
-	if (options.depth)
-		die("dumb http transport does not support --depth");
+	if (options.depth || options.deepen_since)
+		die("dumb http transport does not support shallow capabilities");
 	for (i = 0; i < nr_heads; i++)
 		targets[i] = xstrdup(oid_to_hex(&to_fetch[i]->old_oid));
 
@@ -775,6 +780,8 @@ static int fetch_git(struct discovery *heads,
 		argv_array_push(&args, "--no-progress");
 	if (options.depth)
 		argv_array_pushf(&args, "--depth=%lu", options.depth);
+	if (options.deepen_since)
+		argv_array_pushf(&args, "--shallow-since=%s", options.deepen_since);
 	argv_array_push(&args, url.buf);
 
 	for (i = 0; i < nr_heads; i++) {
