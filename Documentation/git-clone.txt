@@ -195,6 +195,9 @@ objects from the source repository into a pack in the cloned repository.
 	you want to have a shallow superproject clone, but full submodules,
 	also pass `--no-shallow-submodules`.
 
+--shallow-since=<date>::
+	Create a shallow clone with a history after the specified time.
+
 --[no-]single-branch::
 	Clone only the history leading to the tip of a single branch,
 	either specified by the `--branch` option or the primary

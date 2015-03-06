@@ -41,7 +41,8 @@ static const char * const builtin_clone_usage[] = {
 static int option_no_checkout, option_bare, option_mirror, option_single_branch = -1;
 static int option_local = -1, option_no_hardlinks, option_shared, option_recursive;
 static int option_shallow_submodules = -1;
-static char *option_template, *option_depth;
+static char *option_template, *option_depth, *option_since;
+static int deepen;
 static char *option_origin = NULL;
 static char *option_branch = NULL;
 static const char *real_git_dir;
@@ -91,6 +92,8 @@ static struct option builtin_clone_options[] = {
 		   N_("path to git-upload-pack on the remote")),
 	OPT_STRING(0, "depth", &option_depth, N_("depth"),
 		    N_("create a shallow clone of that depth")),
+	OPT_STRING(0, "shallow-since", &option_since, N_("time"),
+		    N_("create a shallow clone since a specific time")),
 	OPT_BOOL(0, "single-branch", &option_single_branch,
 		    N_("clone only one branch, HEAD or --branch")),
 	OPT_BOOL(0, "shallow-submodules", &option_shallow_submodules,
@@ -868,8 +871,10 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		usage_msg_opt(_("You must specify a repository to clone."),
 			builtin_clone_usage, builtin_clone_options);
 
+	if (option_depth || option_since)
+		deepen = 1;
 	if (option_single_branch == -1)
-		option_single_branch = option_depth ? 1 : 0;
+		option_single_branch = deepen ? 1 : 0;
 
 	if (option_mirror)
 		option_bare = 1;
@@ -996,6 +1001,8 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (is_local) {
 		if (option_depth)
 			warning(_("--depth is ignored in local clones; use file:// instead."));
+		if (option_since)
+			warning(_("--shallow-since is ignored in local clones; use file:// instead."));
 		if (!access(mkpath("%s/shallow", path), F_OK)) {
 			if (option_local > 0)
 				warning(_("source repository is shallow, ignoring --local"));
@@ -1014,6 +1021,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (option_depth)
 		transport_set_option(transport, TRANS_OPT_DEPTH,
 				     option_depth);
+	if (option_since)
+		transport_set_option(transport, TRANS_OPT_DEEPEN_SINCE,
+				     option_since);
 	if (option_single_branch)
 		transport_set_option(transport, TRANS_OPT_FOLLOWTAGS, "1");
 
@@ -1021,7 +1031,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		transport_set_option(transport, TRANS_OPT_UPLOADPACK,
 				     option_upload_pack);
 
-	if (transport->smart_options && !option_depth)
+	if (transport->smart_options && !deepen)
 		transport->smart_options->check_self_contained_and_connected = 1;
 
 	refs = transport_get_remote_refs(transport);
