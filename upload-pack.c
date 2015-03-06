@@ -746,7 +746,7 @@ static void send_capabilities(void)
 
 	while (next_capability(buf))
 		packet_write(1, "capability:%s\n", buf);
-
+	packet_write(1, "agent:%s\n", git_user_agent_sanitized());
 	packet_flush(1);
 }
 
@@ -824,6 +824,28 @@ static void upload_pack(void)
 	}
 }
 
+static void receive_capabilities(void)
+{
+	int done = 0;
+	while (!done) {
+		char *line = packet_read_line(0, NULL);
+		if (starts_with(line, "capability"))
+			parse_features(line + strlen("capability:"));
+		if (starts_with(line, "agent"))
+			done = 1;
+	}
+}
+
+static void upload_pack_v2(void)
+{
+	send_capabilities();
+	receive_capabilities();
+
+	/* The rest of the protocol stays the same, capabilities advertising
+	   is disabled though. */
+	upload_pack();
+}
+
 static int upload_pack_config(const char *var, const char *value, void *unused)
 {
 	if (!strcmp("uploadpack.allowtipsha1inwant", var))
@@ -839,13 +861,14 @@ static int upload_pack_config(const char *var, const char *value, void *unused)
 int main(int argc, char **argv)
 {
 	char *dir;
+	const char *cmd;
 	int i;
 	int strict = 0;
 
 	git_setup_gettext();
 
 	packet_trace_identity("upload-pack");
-	git_extract_argv0_path(argv[0]);
+	cmd = git_extract_argv0_path(argv[0]);
 	check_replace_refs = 0;
 
 	for (i = 1; i < argc; i++) {
@@ -887,6 +910,9 @@ int main(int argc, char **argv)
 		die("'%s' does not appear to be a git repository", dir);
 
 	git_config(upload_pack_config, NULL);
-	upload_pack();
+	if (!strcmp(cmd, "git-upload-pack-v2"))
+		upload_pack_v2();
+	else
+		upload_pack();
 	return 0;
 }
