@@ -534,7 +534,7 @@ static void parse_host_and_port(char *hostport, char **host,
  * trailing and leading dots, which means that the client cannot escape
  * our base path via ".." traversal.
  */
-static void sanitize_client_strbuf(struct strbuf *out, const char *in)
+static void sanitize_client(struct strbuf *out, const char *in)
 {
 	for (; *in; in++) {
 		if (*in == '/')
@@ -549,12 +549,12 @@ static void sanitize_client_strbuf(struct strbuf *out, const char *in)
 }
 
 /*
- * Like sanitize_client_strbuf, but we also perform any canonicalization
+ * Like sanitize_client, but we also perform any canonicalization
  * to make life easier on the admin.
  */
-static void canonicalize_client_strbuf(struct strbuf *out, const char *in)
+static void canonicalize_client(struct strbuf *out, const char *in)
 {
-	sanitize_client_strbuf(out, in);
+	sanitize_client(out, in);
 	strbuf_tolower(out);
 }
 
@@ -579,10 +579,10 @@ static void parse_host_arg(char *extra_args, int buflen)
 				parse_host_and_port(val, &host, &port);
 				if (port) {
 					strbuf_reset(&tcp_port);
-					sanitize_client_strbuf(&tcp_port, port);
+					sanitize_client(&tcp_port, port);
 				}
 				strbuf_reset(&hostname);
-				canonicalize_client_strbuf(&hostname, host);
+				canonicalize_client(&hostname, host);
 				hostname_lookup_done = 0;
 			}
 
@@ -620,8 +620,8 @@ static void lookup_hostname(void)
 
 			strbuf_reset(&canon_hostname);
 			if (ai->ai_canonname)
-				sanitize_client_strbuf(&canon_hostname,
-						       ai->ai_canonname);
+				sanitize_client(&canon_hostname,
+						ai->ai_canonname);
 			else
 				strbuf_addbuf(&canon_hostname, &ip_address);
 
@@ -645,7 +645,7 @@ static void lookup_hostname(void)
 				  addrbuf, sizeof(addrbuf));
 
 			strbuf_reset(&canon_hostname);
-			sanitize_client_strbuf(&canon_hostname, hent->h_name);
+			sanitize_client(&canon_hostname, hent->h_name);
 			strbuf_reset(&ip_address);
 			strbuf_addstr(&ip_address, addrbuf);
 		}
