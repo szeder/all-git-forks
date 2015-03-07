@@ -118,8 +118,11 @@ static int add_ref_decoration(const char *refname, const unsigned char *sha1, in
 		type = DECORATION_REF_TAG;
 	else if (!strcmp(refname, "refs/stash"))
 		type = DECORATION_REF_STASH;
-	else if (!strcmp(refname, "HEAD"))
+	else if (!strcmp(refname, "HEAD")) {
+		unsigned char junk_sha1[20];
 		type = DECORATION_REF_HEAD;
+		refname = resolve_ref_unsafe("HEAD", 0, junk_sha1, NULL);
+	}
 
 	if (!cb_data || *(int *)cb_data == DECORATE_SHORT_REFS)
 		refname = prettify_refname(refname);
@@ -199,6 +202,9 @@ void format_decorations_extended(struct strbuf *sb,
 		strbuf_addstr(sb, decorate_get_color(use_color, decoration->type));
 		if (decoration->type == DECORATION_REF_TAG)
 			strbuf_addstr(sb, "tag: ");
+		else if (decoration->type == DECORATION_REF_HEAD &&
+			 strcmp(decoration->name, "HEAD"))
+			strbuf_addstr(sb, "HEAD->");
 		strbuf_addstr(sb, decoration->name);
 		strbuf_addstr(sb, color_reset);
 		prefix = separator;
