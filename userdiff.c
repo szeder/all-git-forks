@@ -38,7 +38,7 @@ IPATTERN("fortran",
 PATTERNS("html", "^[ \t]*(<[Hh][1-6][ \t].*>.*)$",
 	 "[^<>= \t]+"),
 PATTERNS("css",
-	 "[-_\.,#: a-zA-Z0-9]+[ ]*[{]",
+	"^.*[{].*$",
 	 "[-_\.,#a-zA-Z0-9]+"),
 PATTERNS("java",
 	 "!^[ \t]*(catch|do|for|if|instanceof|new|return|switch|throw|while)\n"
