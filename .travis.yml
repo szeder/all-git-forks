@@ -3,14 +3,19 @@ language: c
 sudo: false
 
 before_install:
+  - mkdir -p $HOME/build
   - "[ -d $HOME/build/git/.git ] || git clone git://github.com/sh19910711/git.git $HOME/build/git"
   - pushd $HOME/build/git
+  - stat userdiff.c
+  - if [ -f userdiff.o ]; then stat userdiff.o; fi
   - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard ${TRAVIS_BRANCH}
   - |
     git diff-tree -z --no-commit-id --name-only HEAD~ | while read -r -d '' FILE; do
       echo touch $FILE
       touch $FILE
     done
+  - stat userdiff.c
+  - if [ -f userdiff.o ]; then stat userdiff.o; fi
 
 install:
   - make -j4
