@@ -16,8 +16,9 @@ install:
   - make -j4
 
 script:
-  - cd t/
+  - pushd t/
   - prove --timer -j8 ./t[0-9]*.sh
+  - popd
 
 cache:
   directories:
