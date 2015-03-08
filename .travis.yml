@@ -6,8 +6,6 @@ before_install:
   - mkdir -p $HOME/build
   - "[ -d $HOME/build/git/.git ] || git clone git://github.com/sh19910711/git.git $HOME/build/git"
   - pushd $HOME/build/git
-  - stat userdiff.c
-  - if [ -f userdiff.o ]; then stat userdiff.o; fi
   - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard origin/${TRAVIS_BRANCH}
   - |
     git ls-files -z | while read -r -d '' FILE; do
@@ -15,20 +13,16 @@ before_install:
       TIME2=$(date +%y%m%d%H%M.%S --date "$TIME1");
       touch -t $TIME2 $FILE;
     done
-  - git log --all --stat --oneline --graph --decorate
-  - git diff-tree --no-commit-id --name-only HEAD
+  - echo ${TRAVIS_COMMIT_RANGE}
+  - git diff-tree --no-commit-id --name-only ${TRAVIS_COMMIT_RANGE}
   - |
-    git diff-tree -z --no-commit-id --name-only HEAD | while read -r -d '' FILE; do
+    git diff-tree -z --no-commit-id --name-only ${TRAVIS_COMMIT_RANGE} | while read -r -d '' FILE; do
       echo touch $FILE
       touch $FILE
     done
-  - stat userdiff.c
-  - if [ -f userdiff.o ]; then stat userdiff.o; fi
 
 install:
   - make -j4
-  - stat userdiff.c
-  - if [ -f userdiff.o ]; then stat userdiff.o; fi
 
 script:
   - pushd t/
