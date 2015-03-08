@@ -3,22 +3,31 @@ language: c
 sudo: false
 
 before_install:
+  - mkdir -p $HOME/build
   - "[ -d $HOME/build/git/.git ] || git clone git://github.com/sh19910711/git.git $HOME/build/git"
   - pushd $HOME/build/git
-  - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard ${TRAVIS_BRANCH}
+  - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard origin/${TRAVIS_BRANCH}
   - |
     git ls-files -z | while read -r -d '' FILE; do
       TIME1=$(git log --pretty=format:%ci -n1 "$FILE");
       TIME2=$(date +%y%m%d%H%M.%S --date "$TIME1");
       touch -t $TIME2 $FILE;
     done
+  - COMMIT_RANGE=`echo ${TRAVIS_COMMIT_RANGE} | sed -e 's/\.//'`
+  - git diff-tree --no-commit-id --name-only ${COMMIT_RANGE}
+  - |
+    git diff-tree -z --no-commit-id --name-only ${COMMIT_RANGE} | while read -r -d '' FILE; do
+      echo touch $FILE
+      touch $FILE
+    done
 
 install:
   - make -j4
 
 script:
-  - cd t/
+  - pushd t/
   - prove --timer -j8 ./t[0-9]*.sh
+  - popd
 
 cache:
   directories:
