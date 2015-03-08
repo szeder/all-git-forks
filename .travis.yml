@@ -10,7 +10,9 @@ before_install:
     git ls-files -z | while read -r -d '' FILE; do
       TIME1=$(git log --pretty=format:%ci -n1 "$FILE");
       TIME2=$(date +%y%m%d%H%M.%S --date "$TIME1");
+      stat $FILE | grep Modify;
       touch -mt $TIME2 $FILE;
+      stat $FILE | grep Modify;
       echo "touch -at $TIME2 $FILE";
     done
 
