@@ -22,7 +22,7 @@ install:
 
 script:
   - pushd t/
-  - prove --timer -j8 ./t[0-9]*.sh
+  # - prove --timer -j8 ./t[0-9]*.sh
   - popd
 
 cache:
