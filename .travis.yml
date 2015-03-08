@@ -8,6 +8,7 @@ before_install:
   - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard ${TRAVIS_BRANCH}
   - |
     git diff-tree -z --no-commit-id --name-only HEAD~ | while read -r -d '' FILE; do
+      echo touch $FILE
       touch $FILE
     done
 
