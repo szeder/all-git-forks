@@ -2,7 +2,7 @@
 #include "userdiff.h"
 #include "attr.h"
 
-/* dummy5 */
+/* dummy6 */
 static struct userdiff_driver *drivers;
 static int ndrivers;
 static int drivers_alloc;
