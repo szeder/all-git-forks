@@ -10,6 +10,12 @@ before_install:
   - if [ -f userdiff.o ]; then stat userdiff.o; fi
   - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard ${TRAVIS_BRANCH}
   - |
+    git ls-files -z | while read -r -d '' FILE; do
+      TIME1=$(git log --pretty=format:%ci -n1 "$FILE");
+      TIME2=$(date +%y%m%d%H%M.%S --date "$TIME1");
+      touch -t $TIME2 $FILE;
+    done
+  - |
     git diff-tree -z --no-commit-id --name-only HEAD~ | while read -r -d '' FILE; do
       echo touch $FILE
       touch $FILE
