@@ -15,6 +15,7 @@ before_install:
       TIME2=$(date +%y%m%d%H%M.%S --date "$TIME1");
       touch -t $TIME2 $FILE;
     done
+  - git diff-tree --no-commit-id --name-only HEAD
   - |
     git diff-tree -z --no-commit-id --name-only HEAD | while read -r -d '' FILE; do
       echo touch $FILE
