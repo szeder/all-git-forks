@@ -525,6 +525,8 @@ patterns are available:
 
 - `csharp` suitable for source code in the C# language.
 
+- `css` suitable for source code in the CSS documents.
+
 - `fortran` suitable for source code in the Fortran language.
 
 - `html` suitable for HTML/XHTML documents.
