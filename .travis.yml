@@ -8,7 +8,7 @@ before_install:
   - pushd $HOME/build/git
   - stat userdiff.c
   - if [ -f userdiff.o ]; then stat userdiff.o; fi
-  - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard ${TRAVIS_BRANCH}
+  - git fetch origin && git checkout -f ${TRAVIS_BRANCH} && git reset --hard origin/${TRAVIS_BRANCH}
   - |
     git ls-files -z | while read -r -d '' FILE; do
       TIME1=$(git log --pretty=format:%ci -n1 "$FILE");
