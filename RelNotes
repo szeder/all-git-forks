@@ -40,6 +40,9 @@ UI, Workflows & Features
    questioning.  Now it asks for confirmation when the answer looks
    too short to be a valid encoding name.
 
+ * When "git apply --whitespace=fix" fixed whitespace errors in the
+   common context lines, the command reports that it did so.
+
 
 Performance, Internal Implementation, Development Support etc.
 
@@ -81,6 +84,8 @@ Performance, Internal Implementation, Development Support etc.
    (merge 0b868f0 sb/hex-object-name-is-at-most-41-bytes-long later to maint).
    (merge 5d30851 dp/remove-duplicated-header-inclusion later to maint).
 
+ * Simplify the ref transaction API around how "the ref should be
+   pointing at this object" is specified.
 
 
 Also contains various documentation updates and code clean-ups.
@@ -222,3 +227,66 @@ notes for details).
  * "update-index --refresh" used to leak when an entry cannot be
    refreshed for whatever reason.
    (merge bc1c2ca sb/plug-leak-in-make-cache-entry later to maint).
+
+ * The "interpolated-path" option of "git daemon" inserted any string
+   client declared on the "host=" capability request without checking.
+   Sanitize and limit %H and %CH to a saner and a valid DNS name.
+   (merge b485373 jk/daemon-interpolate later to maint).
+
+ * "git daemon" looked up the hostname even when "%CH" and "%IP"
+   interpolations are not requested, which was unnecessary.
+   (merge dc8edc8 rs/daemon-interpolate later to maint).
+
+ * Even though we officially haven't dropped Perl 5.8 support, the
+   Getopt::Long package that came with it does not support "--no-"
+   prefix to negate a boolean option; manually add support to help
+   people with older Getopt::Long package.
+   (merge f471494 km/send-email-getopt-long-workarounds later to maint).
+
+ * "git apply" was not very careful about reading from, removing,
+   updating and creating paths outside the working tree (under
+   --index/--cached) or the current directory (when used as a
+   replacement for GNU patch).
+   (merge e0d201b jc/apply-beyond-symlink later to maint).
+
+ * A breakage to git-svn around v2.2 era that triggers premature
+   closing of FileHandle has been corrected.
+   (merge e426311 ew/svn-maint-fixes later to maint).
+
+ * We did not parse username followed by literal IPv6 address in SSH
+   transport URLs, e.g. ssh://user@[2001:db8::1]:22/repo.git
+   correctly.
+   (merge 3f55cca tb/connect-ipv6-parse-fix later to maint).
+
+ * The configuration variable 'mailinfo.scissors' was hard to
+   discover in the documentation.
+   (merge afb5de7 mm/am-c-doc later to maint).
+
+ * The interaction between "git submodule update" and the
+   submodule.*.update configuration was not clearly documented.
+   (merge 5c31acf ms/submodule-update-config-doc later to maint).
+
+ * "git diff --shortstat --dirstat=changes" showed a dirstat based on
+   lines that was never asked by the end user in addition to the
+   dirstat that the user asked for.
+   (merge ab27389 mk/diff-shortstat-dirstat-fix later to maint).
+
+ * "git remote add" mentioned "--tags" and "--no-tags" and was not
+   clear that fetch from the remote in the future will use the default
+   behaviour when neither is given to override it.
+   (merge aaba0ab mg/doc-remote-tags-or-not later to maint).
+
+ * Description given by "grep -h" for its --exclude-standard option
+   was phrased poorly.
+   (merge 77fdb8a nd/grep-exclude-standard-help-fix later to maint).
+
+ * The borrowed code in kwset API did not follow our usual convention
+   to use "unsigned char" to store values that range from 0-255.
+   (merge 189c860 bw/kwset-use-unsigned later to maint).
+
+ * Code cleanups and documentaiton updates.
+   (merge 2ce63e9 rs/simple-cleanups later to maint).
+   (merge 33baa69 rj/no-xopen-source-for-cygwin later to maint).
+   (merge 817d03e jc/diff-test-updates later to maint).
+   (merge eb32c66 ak/t5516-typofix later to maint).
+   (merge bcd57cb mr/doc-clean-f-f later to maint).
