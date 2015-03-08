@@ -13,7 +13,7 @@ before_install:
       TIME2=$(date +%y%m%d%H%M.%S --date "$TIME1");
       touch -t $TIME2 $FILE;
     done
-  - echo ${TRAVIS_COMMIT_RANGE}
+  - echo ${TRAVIS_COMMIT_RANGE} # TODO
   - git diff-tree --no-commit-id --name-only ${TRAVIS_COMMIT_RANGE}
   - |
     git diff-tree -z --no-commit-id --name-only ${TRAVIS_COMMIT_RANGE} | while read -r -d '' FILE; do
