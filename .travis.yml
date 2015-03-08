@@ -19,6 +19,8 @@ before_install:
 
 install:
   - make -j4
+  - stat userdiff.c
+  - if [ -f userdiff.o ]; then stat userdiff.o; fi
 
 script:
   - pushd t/
