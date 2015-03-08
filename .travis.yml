@@ -16,7 +16,7 @@ before_install:
       touch -t $TIME2 $FILE;
     done
   - |
-    git diff-tree -z --no-commit-id --name-only HEAD~ | while read -r -d '' FILE; do
+    git diff-tree -z --no-commit-id --name-only HEAD | while read -r -d '' FILE; do
       echo touch $FILE
       touch $FILE
     done
