@@ -1,0 +1,35 @@
+<BOLD>diff --git a/pre b/post<RESET>
+<BOLD>index c53f20b..7e64463 100644<RESET>
+<BOLD>--- a/pre<RESET>
+<BOLD>+++ b/post<RESET>
+<CYAN>@@ -2,7 +2,7 @@<RESET> <RESET><MAGENTA>elm1, elm2 {<RESET>
+prop: first-value;<RESET>
+prop: value;<RESET>
+prop: value;<RESET>
+prop: <RED>value<RESET><GREEN>NEW-VALUE<RESET>;
+prop: last-value;<RESET>
+}<RESET>
+
+<CYAN>@@ -10,7 +10,7 @@<RESET> <RESET><MAGENTA>elm3, elm4 {<RESET>
+prop: first-value;<RESET>
+prop: value;<RESET>
+prop: value;<RESET>
+<RED>prop<RESET><GREEN>NEW-PROP<RESET>: value;
+prop: last-value;<RESET>
+}<RESET>
+
+<CYAN>@@ -19,7 +19,7 @@<RESET> <RESET><MAGENTA>elm6 {<RESET>
+prop: first-value;<RESET>
+prop: value;<RESET>
+prop: value;<RESET>
+<RED>prop<RESET><GREEN>NEW-PROP<RESET>: <RED>value<RESET><GREEN>NEW-VALUE<RESET>;
+prop: last-value;<RESET>
+}<RESET>
+
+<CYAN>@@ -27,6 +27,6 @@<RESET> <RESET><MAGENTA>.class, elm:hover, elm:first-child, elm:lang(en), #id, elm#id, .num123{<RESET>
+prop: first-value;<RESET>
+prop: value;<RESET>
+prop: value;<RESET>
+<RED>prop<RESET><GREEN>NUM-PROP<RESET>: <RED>value<RESET><GREEN>999<RESET>;
+prop: last-value;<RESET>
+}<RESET>
