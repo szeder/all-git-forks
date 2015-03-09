@@ -134,7 +134,8 @@ static void throughput_string(struct strbuf *buf, off_t total,
 	strbuf_humanise_bytes(buf, total);
 	strbuf_addstr(buf, " | ");
 	strbuf_humanise_bytes(buf, rate * 1024);
-	strbuf_addstr(buf, "/s");
+	/* TRANSLATORS: per second */
+	strbuf_addstr(buf, _("/s"));
 }
 
 void display_throughput(struct progress *progress, off_t total)
