@@ -17,7 +17,7 @@ static int max_depth;
 static int show_dirs;
 static int use_color = -1;
 static int show_indicator;
-static int show_cached, show_untracked;
+static int show_cached, show_untracked, show_unmerged;
 static int show_ignored;
 
 static const char * const ls_usage[] = {
@@ -33,6 +33,8 @@ struct option ls_options[] = {
 		 N_("show untracked files")),
 	OPT_BOOL('i', "ignored", &show_ignored,
 		 N_("show ignored files")),
+	OPT_BOOL('u', "unmerged", &show_unmerged,
+		 N_("show unmerged files")),
 
 	OPT_GROUP(N_("Other")),
 	OPT_COLUMN('C', "column", &colopts, N_("show files in columns")),
@@ -185,12 +187,46 @@ static void populate_untracked(struct string_list *result,
 	}
 }
 
+static void populate_unmerged(struct string_list *result,
+			      const struct string_list *change)
+{
+	int i;
+
+	for (i = 0; i < change->nr; i++) {
+		const struct string_list_item *item = change->items + i;
+		struct wt_status_change_data *d = item->util;
+		const char *name = item->string;
+		const char *tag;
+		struct stat st;
+
+		switch (d->stagemask) {
+		case 1: tag = "DD"; break; /* both deleted */
+		case 2: tag = "AU"; break; /* added by us */
+		case 3: tag = "UD"; break; /* deleted by them */
+		case 4: tag = "UA"; break; /* added by them */
+		case 5: tag = "DU"; break; /* deleted by us */
+		case 6: tag = "AA"; break; /* both added */
+		case 7: tag = "UU"; break; /* both modified */
+		default: continue;
+		}
+
+		if (lstat(name, &st))
+			/* color_filename() treats this as an orphan file */
+			st.st_mode = 0;
+
+		if (!matched(result, name, st.st_mode))
+			continue;
+
+		add_one(result, name, st.st_mode, tag);
+	}
+}
+
 static void wt_status_populate(struct string_list *result,
 			       struct index_state *istate)
 {
 	struct wt_status ws;
 
-	if (!show_untracked && !show_ignored)
+	if (!show_untracked && !show_ignored && !show_unmerged)
 		return;
 
 	wt_status_prepare(&ws);
@@ -206,6 +242,8 @@ static void wt_status_populate(struct string_list *result,
 		populate_untracked(result, &ws.untracked, "??");
 	if (show_ignored)
 		populate_untracked(result, &ws.ignored, "!!");
+	if (show_unmerged)
+		populate_unmerged(result, &ws.change);
 
 	qsort(result->items, result->nr, sizeof(*result->items), compare_output);
 	string_list_remove_duplicates(result, 0);
@@ -215,7 +253,8 @@ static void cleanup_tags(struct string_list *result)
 {
 	int i, same_1 = 1, same_2 = 1, pos, len;
 
-	if (show_cached + show_untracked + show_ignored > 1)
+	if (show_cached + show_untracked + show_ignored > 1 ||
+	    show_unmerged)
 		return;
 
 	for (i = 1; i < result->nr && (same_1 || same_2); i++) {
@@ -295,7 +334,7 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 
 	argc = parse_options(argc, argv, prefix, ls_options, ls_usage, 0);
 
-	if (!show_cached && !show_untracked && !show_ignored)
+	if (!show_cached && !show_untracked && !show_ignored && !show_unmerged)
 		show_cached = 1;
 
 	if (want_color(use_color))
