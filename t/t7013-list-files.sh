@@ -7,7 +7,41 @@ test_description='list-files'
 test_expect_success 'setup' '
 	mkdir sa sa/sb sc &&
 	touch a b c sa/a sa/sb/b sc/c &&
-	git add .
+	git add a sa/a &&
+	git commit -m initial &&
+	git add . &&
+	echo foo >.git/info/exclude &&
+	touch foo bar sa/foo sa/bar
+'
+
+test_expect_success 'list-files --others' '
+	git list-files --others >actual &&
+	cat >expect <<-\EOF &&
+	?? actual
+	?? bar
+	   sa
+	EOF
+	test_cmp expect actual &&
+	git list-files --others --cached >actual &&
+	cat >expect <<-\EOF &&
+	   a
+	?? actual
+	   b
+	?? bar
+	   c
+	?? expect
+	   sa
+	   sc
+	EOF
+	test_cmp expect actual &&
+	git list-files --others -R >actual &&
+	cat >expect <<-\EOF &&
+	actual
+	bar
+	expect
+	sa/bar
+	EOF
+	test_cmp expect actual
 '
 
 test_expect_success 'list-files -R from index' '
@@ -34,6 +68,8 @@ test_expect_success 'list-files from index' '
 	EOF
 	test_cmp expect actual &&
 	git list-files >actual &&
+	test_cmp expect actual &&
+	git list-files --cached >actual &&
 	test_cmp expect actual
 '
 
