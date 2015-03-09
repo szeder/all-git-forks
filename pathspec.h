@@ -67,6 +67,7 @@ struct pathspec {
  * allowed, then it will automatically set for every pathspec.
  */
 #define PATHSPEC_LITERAL_PATH (1<<8)
+#define PATHSPEC_DEFAULT_GLOB (1<<9) /* :(glob) by default */
 
 extern void parse_pathspec(struct pathspec *pathspec,
 			   unsigned magic_mask,

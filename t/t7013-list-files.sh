@@ -116,10 +116,15 @@ test_expect_success 'column output' '
 '
 
 test_expect_success 'list-files selectively from index' '
-	git list-files -R "*a" >actual &&
+	git list-files -R "**/a" >actual &&
 	cat >expect <<-\EOF &&
 	a
 	sa/a
+	EOF
+	test_cmp expect actual &&
+	git list-files -R "*a" >actual &&
+	cat >expect <<-\EOF &&
+	a
 	EOF
 	test_cmp expect actual
 '
