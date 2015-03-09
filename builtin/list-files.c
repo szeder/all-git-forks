@@ -529,6 +529,7 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 	recursive_pathspec.max_depth = -1;
 	finalize_colopts(&colopts, -1);
 
+	read_cache_preload(&recursive_pathspec);
 	refresh_index(&the_index, REFRESH_QUIET | REFRESH_UNMERGED,
 		      &recursive_pathspec, NULL, NULL);
 
