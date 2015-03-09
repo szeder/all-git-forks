@@ -18,12 +18,16 @@ struct option ls_options[] = {
 	OPT_END()
 };
 
-static void add_one(struct string_list *result, const char *name)
+static void add_one(struct string_list *result, const char *name,
+		    const char *tag)
 {
 	struct strbuf sb = STRBUF_INIT;
 	struct string_list_item *item;
 
 	quote_path_relative(name, prefix_length ? prefix : NULL, &sb);
+	strbuf_insert(&sb, 0, "   ", 3);
+	sb.buf[0] = tag[0];
+	sb.buf[1] = tag[1];
 	item = string_list_append(result, strbuf_detach(&sb, NULL));
 	item->util = (char *)name;
 }
@@ -42,7 +46,38 @@ static void populate_cached_entries(struct string_list *result,
 				    S_ISGITLINK(ce->ce_mode)))
 			continue;
 
-		add_one(result, ce->name);
+		add_one(result, ce->name, "  ");
+	}
+}
+
+static void cleanup_tags(struct string_list *result)
+{
+	int i, same_1 = 1, same_2 = 1, pos, len;
+
+	for (i = 1; i < result->nr && (same_1 || same_2); i++) {
+		const char *s0 = result->items[i - 1].string;
+		const char *s1 = result->items[i].string;
+
+		same_1 = same_1 && s0[0] == s1[0];
+		same_2 = same_2 && s0[1] == s1[1];
+	}
+
+	if (same_1 && same_2) {
+		pos = 0;
+		len = 3;
+	} else if (same_1) {
+		pos = 0;
+		len = 1;
+	} else if (same_2) {
+		pos = 1;
+		len = 1;
+	} else
+		return;
+
+	for (i = 0; i < result->nr; i++) {
+		char *s = result->items[i].string;
+		int length = strlen(s);
+		memmove(s + pos, s + pos + len, length - len + 1);
 	}
 }
 
@@ -93,6 +128,7 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 		      &pathspec, NULL, NULL);
 
 	populate_cached_entries(&result, &the_index);
+	cleanup_tags(&result);
 	display(&result);
 	string_list_clear(&result, 0);
 	return 0;
