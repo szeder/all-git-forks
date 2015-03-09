@@ -1979,7 +1979,7 @@ static void ll_find_deltas(struct object_entry **list, unsigned list_size,
 		return;
 	}
 	if (progress > pack_to_stdout)
-		fprintf(stderr, "Delta compression using up to %d threads.\n",
+		fprintf(stderr, Q_("Delta compression using up to %d thread.\n", "Delta compression using up to %d threads.\n", delta_search_threads),
 				delta_search_threads);
 	p = xcalloc(delta_search_threads, sizeof(*p));
 
@@ -2711,29 +2711,29 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	if (pack_compression_level == -1)
 		pack_compression_level = Z_DEFAULT_COMPRESSION;
 	else if (pack_compression_level < 0 || pack_compression_level > Z_BEST_COMPRESSION)
-		die("bad pack compression level %d", pack_compression_level);
+		die(_("bad pack compression level %d"), pack_compression_level);
 
 	if (!delta_search_threads)	/* --threads=0 means autodetect */
 		delta_search_threads = online_cpus();
 
 #ifdef NO_PTHREADS
 	if (delta_search_threads != 1)
-		warning("no threads support, ignoring --threads");
+		warning(_("no threads support, ignoring --threads"));
 #endif
 	if (!pack_to_stdout && !pack_size_limit)
 		pack_size_limit = pack_size_limit_cfg;
 	if (pack_to_stdout && pack_size_limit)
-		die("--max-pack-size cannot be used to build a pack for transfer.");
+		die(_("--max-pack-size cannot be used to build a pack for transfer."));
 	if (pack_size_limit && pack_size_limit < 1024*1024) {
-		warning("minimum pack size limit is 1 MiB");
+		warning(_("minimum pack size limit is 1 MiB"));
 		pack_size_limit = 1024*1024;
 	}
 
 	if (!pack_to_stdout && thin)
-		die("--thin cannot be used to build an indexable pack.");
+		die(_("--thin cannot be used to build an indexable pack."));
 
 	if (keep_unreachable && unpack_unreachable)
-		die("--keep-unreachable and --unpack-unreachable are incompatible.");
+		die(_("--keep-unreachable and --unpack-unreachable are incompatible."));
 	if (!rev_list_all || !rev_list_reflog || !rev_list_index)
 		unpack_unreachable_expiration = 0;
 
@@ -2767,8 +2767,8 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		prepare_pack(window, depth);
 	write_pack_file();
 	if (progress)
-		fprintf(stderr, "Total %"PRIu32" (delta %"PRIu32"),"
-			" reused %"PRIu32" (delta %"PRIu32")\n",
+		fprintf(stderr, _("Total %"PRIu32" (delta %"PRIu32"),"
+			" reused %"PRIu32" (delta %"PRIu32")\n"),
 			written, written_delta, reused, reused_delta);
 	return 0;
 }
