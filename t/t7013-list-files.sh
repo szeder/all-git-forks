@@ -253,4 +253,66 @@ test_expect_success 'list-files unmerged' '
 	)
 '
 
+test_expect_success 'list-files --added' '
+	git list-files -a >actual &&
+	cat >expected <<-\EOF &&
+	A b
+	A c
+	  sa
+	  sc
+	EOF
+	test_cmp expected actual
+'
+
+test_expect_success 'list-files --modified' '
+	echo modified >>a &&
+	git add a &&
+	git list-files --modified >actual &&
+	cat >expected <<-\EOF &&
+	M a
+	A b
+	A c
+	  sa
+	  sc
+	EOF
+	test_cmp expected actual
+'
+
+test_expect_success 'list-files --deleted' '
+	git rm --cached a &&
+	git list-files --deleted >actual &&
+	cat >expected <<-\EOF &&
+	a
+	EOF
+	test_cmp expected actual
+'
+
+test_expect_success 'list-files --wt-modifed --wt-deleted' '
+	rm b &&
+	git list-files --wt-deleted >actual &&
+	cat >expected <<-\EOF &&
+	b
+	EOF
+	test_cmp expected actual &&
+	echo foo >>c &&
+	git list-files --wt-modified >actual &&
+	cat >expected <<-\EOF &&
+	D b
+	M c
+	EOF
+	test_cmp expected actual
+'
+
+test_expect_success 'list-files --wt-modifed --modified' '
+	git list-files -mM >actual &&
+	cat >expected <<-\EOF &&
+	D  a
+	AD b
+	AM c
+	   sa
+	   sc
+	EOF
+	test_cmp expected actual
+'
+
 test_done
