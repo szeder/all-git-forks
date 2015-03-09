@@ -5,6 +5,7 @@
 #include "dir.h"
 #include "quote.h"
 #include "column.h"
+#include "color.h"
 
 static struct pathspec pathspec;
 static struct pathspec recursive_pathspec;
@@ -13,6 +14,7 @@ static int prefix_length;
 static unsigned int colopts;
 static int max_depth;
 static int show_dirs;
+static int use_color = -1;
 
 static const char * const ls_usage[] = {
 	N_("git list-files [options] [<pathspec>...]"),
@@ -28,16 +30,23 @@ struct option ls_options[] = {
 	  NULL, 1 },
 	OPT_SET_INT('R', "recursive", &max_depth,
 		    N_("shortcut for --max-depth=-1"), -1),
+	OPT__COLOR(&use_color, N_("show color")),
 	OPT_END()
 };
 
-static void add_one(struct string_list *result, const char *name,
+static void add_one(struct string_list *result, const char *name, int mode,
 		    const char *tag)
 {
 	struct strbuf sb = STRBUF_INIT;
 	struct string_list_item *item;
 
 	quote_path_relative(name, prefix_length ? prefix : NULL, &sb);
+	if (want_color(use_color)) {
+		struct strbuf quoted = STRBUF_INIT;
+		strbuf_swap(&sb, &quoted);
+		color_filename(&sb, name, quoted.buf, mode, 1);
+		strbuf_release(&quoted);
+	}
 	strbuf_insert(&sb, 0, "   ", 3);
 	sb.buf[0] = tag[0];
 	sb.buf[1] = tag[1];
@@ -56,7 +65,7 @@ static int add_directory(struct string_list *result,
 		strbuf_setlen(&sb, p - sb.buf);
 		if (!match_pathspec(&pathspec, sb.buf, sb.len, 0, NULL, 1))
 			continue;
-		add_one(result, sb.buf, "  ");
+		add_one(result, sb.buf, S_IFDIR, "  ");
 		/*
 		 * sb.buf is leaked, but because this command is
 		 * short-lived anyway so it does not matter much
@@ -101,7 +110,7 @@ static void populate_cached_entries(struct string_list *result,
 		if (!matched(result, ce->name, ce->ce_mode))
 			continue;
 
-		add_one(result, ce->name, "  ");
+		add_one(result, ce->name, ce->ce_mode, "  ");
 	}
 
 	if (!show_dirs)
@@ -164,7 +173,11 @@ static int ls_config(const char *var, const char *value, void *cb)
 {
 	if (starts_with(var, "column."))
 		return git_column_config(var, value, "listfiles", &colopts);
-	return git_default_config(var, value, cb);
+	if (!strcmp(var, "color.listfiles")) {
+		use_color = git_config_colorbool(var, value);
+		return 0;
+	}
+	return git_color_default_config(var, value, cb);
 }
 
 int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
@@ -186,6 +199,9 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 	git_config(ls_config, NULL);
 
 	argc = parse_options(argc, argv, prefix, ls_options, ls_usage, 0);
+
+	if (want_color(use_color))
+		parse_ls_color();
 
 	parse_pathspec(&pathspec, 0,
 		       PATHSPEC_PREFER_CWD |
