@@ -28,6 +28,7 @@ static const char *prefix;
 static int prefix_length;
 static int show_tag = -1;
 static unsigned int colopts;
+static int max_depth;
 
 static const char * const ls_usage[] = {
 	N_("git list-files [options] [<pathspec>...]"),
@@ -39,6 +40,11 @@ struct option ls_options[] = {
 	OPT_COLUMN('C', "column", &colopts, N_("show files in columns")),
 	OPT_SET_INT('1', NULL, &colopts,
 		    N_("shortcut for --no-column"), COL_PARSEOPT),
+	{ OPTION_INTEGER, 0, "max-depth", &max_depth, N_("depth"),
+	  N_("descend at most <depth> levels"), PARSE_OPT_NONEG,
+	  NULL, 1 },
+	OPT_SET_INT('R', "recursive", &max_depth,
+		    N_("shortcut for --max-depth=-1"), -1),
 	OPT_END()
 };
 
@@ -178,9 +184,10 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 
 	parse_pathspec(&pathspec, 0,
 		       PATHSPEC_PREFER_CWD |
+		       (max_depth != -1 ? PATHSPEC_MAXDEPTH_VALID : 0) |
 		       PATHSPEC_STRIP_SUBMODULE_SLASH_CHEAP,
 		       cmd_prefix, argv);
-	pathspec.max_depth = 0;
+	pathspec.max_depth = max_depth;
 	pathspec.recursive = 1;
 	finalize_colopts(&colopts, -1);
 
