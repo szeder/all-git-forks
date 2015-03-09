@@ -12,17 +12,20 @@ enum item_type {
 struct item {
 	enum item_type type;
 	const char *path;
+	char tag[2];
 	const struct cache_entry *ce;
 };
 
 struct item_list {
 	struct item *items;
 	int nr, alloc;
+	int tag_pos, tag_len;
 };
 
 static struct pathspec pathspec;
 static const char *prefix;
 static int prefix_length;
+static int show_tag = -1;
 
 static const char * const ls_usage[] = {
 	N_("git list-files [options] [<pathspec>...]"),
@@ -30,6 +33,7 @@ static const char * const ls_usage[] = {
 };
 
 struct option ls_options[] = {
+	OPT_BOOL(0, "tag", &show_tag, N_("show tags")),
 	OPT_END()
 };
 
@@ -52,8 +56,59 @@ static void populate_cached_entries(struct item_list *result,
 		item = result->items + result->nr++;
 		item->type = FROM_INDEX;
 		item->path = ce->name;
+		item->tag[0] = ' ';
+		item->tag[1] = ' ';
 		item->ce = ce;
 	}
+}
+
+static void cleanup_tags(struct item_list *result)
+{
+	int i, same_1 = 1, same_2 = 1;
+
+	if (!show_tag) {
+		result->tag_pos = 0;
+		result->tag_len = 0;
+		return;
+	}
+	if (show_tag > 0) {
+		result->tag_pos = 0;
+		result->tag_len = 2;
+		return;
+	}
+
+	for (i = 1; i < result->nr && (same_1 || same_2); i++) {
+		const char *s0 = result->items[i - 1].tag;
+		const char *s1 = result->items[i].tag;
+
+		same_1 = same_1 && s0[0] == s1[0];
+		same_2 = same_2 && s0[1] == s1[1];
+	}
+
+	if (same_1 && same_2) {
+		result->tag_pos = 0;
+		result->tag_len = 0;
+	} else if (same_1) {
+		result->tag_pos = 1;
+		result->tag_len = 1;
+	} else if (same_2) {
+		result->tag_pos = 0;
+		result->tag_len = 1;
+	} else {
+		result->tag_pos = 0;
+		result->tag_len = 2;
+	}
+}
+
+/* this is similar to quote_path_relative() except it does not clear sb */
+static void quote_item(struct strbuf *out, const struct item *item)
+{
+	static struct strbuf sb = STRBUF_INIT;
+	const char *rel;
+
+	strbuf_reset(&sb);
+	rel = relative_path(item->path, prefix, &sb);
+	quote_c_style(rel, out, NULL, 0);
 }
 
 static void display(const struct item_list *result)
@@ -67,7 +122,13 @@ static void display(const struct item_list *result)
 	for (i = 0; i < result->nr; i++) {
 		const struct item *item = result->items + i;
 
-		quote_path_relative(item->path, prefix, &quoted);
+		strbuf_reset(&quoted);
+		if (result->tag_len) {
+			strbuf_add(&quoted, item->tag + result->tag_pos,
+				   result->tag_len);
+			strbuf_addch(&quoted, ' ');
+		}
+		quote_item(&quoted, item);
 		printf("%s\n", quoted.buf);
 	}
 	strbuf_release(&quoted);
@@ -108,6 +169,7 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 
 	memset(&result, 0, sizeof(result));
 	populate_cached_entries(&result, &the_index);
+	cleanup_tags(&result);
 	display(&result);
 	/* free-ing result seems unnecessary */
 	return 0;
