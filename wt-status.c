@@ -126,6 +126,8 @@ void wt_status_prepare(struct wt_status *s)
 	memcpy(s->color_palette, default_wt_status_colors,
 	       sizeof(default_wt_status_colors));
 	s->show_untracked_files = SHOW_NORMAL_UNTRACKED_FILES;
+	s->show_index_changes = 1;
+	s->show_worktree_changes = 1;
 	s->use_color = -1;
 	s->relative_paths = 1;
 	s->branch = resolve_refdup("HEAD", 0, sha1, NULL);
@@ -494,6 +496,9 @@ static void wt_status_collect_changes_worktree(struct wt_status *s)
 {
 	struct rev_info rev;
 
+	if (!s->show_worktree_changes)
+		return;
+
 	init_revisions(&rev, NULL);
 	setup_revisions(0, NULL, &rev, NULL);
 	rev.diffopt.output_format |= DIFF_FORMAT_CALLBACK;
@@ -514,6 +519,9 @@ static void wt_status_collect_changes_index(struct wt_status *s)
 {
 	struct rev_info rev;
 	struct setup_revision_opt opt;
+
+	if (!s->show_index_changes)
+		return;
 
 	init_revisions(&rev, NULL);
 	memset(&opt, 0, sizeof(opt));
