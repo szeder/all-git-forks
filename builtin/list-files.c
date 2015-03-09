@@ -365,6 +365,10 @@ static void wt_status_populate(struct item_list *result,
 	if (show_ignored)
 		ws.show_ignored_files = 1;
 	ws.no_rename = 1;
+	ws.show_index_changes = show_unmerged || show_added ||
+		show_modified || show_deleted;
+	ws.show_worktree_changes = show_unmerged || show_wt_added ||
+		show_wt_modified || show_wt_deleted;
 	ws.relative_paths = 0;
 	ws.use_color = 0;
 	ws.fp = NULL;
@@ -538,6 +542,14 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 	if (!show_cached && !show_untracked && !show_ignored &&
 	    !show_unmerged && !show_changed)
 		show_cached = 1;
+	if (show_unmerged) {
+		int i;
+		for (i = 0; i < the_index.cache_nr; i++)
+			if (ce_stage(the_index.cache[i]))
+				break;
+		if (i == the_index.cache_nr)
+			show_unmerged = 0;
+	}
 
 	if (want_color(use_color))
 		parse_ls_color();
