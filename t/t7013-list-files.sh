@@ -44,6 +44,21 @@ test_expect_success 'list-files --others' '
 	test_cmp expect actual
 '
 
+test_expect_success 'list-files --others' '
+	git list-files --ignored >actual &&
+	cat >expect <<-\EOF &&
+	!! foo
+	   sa
+	EOF
+	test_cmp expect actual &&
+	git list-files --ignored -R >actual &&
+	cat >expect <<-\EOF &&
+	foo
+	sa/foo
+	EOF
+	test_cmp expect actual
+'
+
 test_expect_success 'list-files -R from index' '
 	git list-files -R >actual &&
 	cat >expect <<-\EOF &&

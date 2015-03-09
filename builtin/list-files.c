@@ -39,6 +39,7 @@ static int show_dirs;
 static int use_color = -1;
 static int show_indicator;
 static int show_cached, show_untracked;
+static int show_ignored;
 
 static const char * const ls_usage[] = {
 	N_("git list-files [options] [<pathspec>...]"),
@@ -51,6 +52,8 @@ struct option ls_options[] = {
 		 N_("show cached files (default)")),
 	OPT_BOOL('o', "others", &show_untracked,
 		 N_("show untracked files")),
+	OPT_BOOL('i', "ignored", &show_ignored,
+		 N_("show ignored files")),
 
 	OPT_GROUP(N_("Other")),
 	OPT_BOOL(0, "tag", &show_tag, N_("show tags")),
@@ -202,7 +205,8 @@ static void add_wt_item(struct item_list *result,
 }
 
 static void populate_untracked(struct item_list *result,
-			       const struct string_list *untracked)
+			       const struct string_list *untracked,
+			       const char *tag)
 {
 	int i;
 
@@ -217,7 +221,7 @@ static void populate_untracked(struct item_list *result,
 		if (!matched(result, name, st.st_mode))
 			continue;
 
-		add_wt_item(result, FROM_WORKTREE, name, "??", &st);
+		add_wt_item(result, FROM_WORKTREE, name, tag, &st);
 	}
 }
 
@@ -226,18 +230,22 @@ static void wt_status_populate(struct item_list *result,
 {
 	struct wt_status ws;
 
-	if (!show_untracked)
+	if (!show_untracked && !show_ignored)
 		return;
 
 	wt_status_prepare(&ws);
 	copy_pathspec(&ws.pathspec, &recursive_pathspec);
+	if (show_ignored)
+		ws.show_ignored_files = 1;
 	ws.relative_paths = 0;
 	ws.use_color = 0;
 	ws.fp = NULL;
 	wt_status_collect(&ws);
 
 	if (show_untracked)
-		populate_untracked(result, &ws.untracked);
+		populate_untracked(result, &ws.untracked, "??");
+	if (show_ignored)
+		populate_untracked(result, &ws.ignored, "!!");
 
 	remove_duplicates(result);
 }
@@ -251,7 +259,9 @@ static void cleanup_tags(struct item_list *result)
 		result->tag_len = 0;
 		return;
 	}
-	if (show_tag > 0 || show_cached + show_untracked > 1) {
+
+	if (show_tag > 0 ||
+	    show_cached + show_untracked + show_ignored > 1) {
 		result->tag_pos = 0;
 		result->tag_len = 2;
 		return;
@@ -388,7 +398,7 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 
 	argc = parse_options(argc, argv, prefix, ls_options, ls_usage, 0);
 
-	if (!show_cached && !show_untracked)
+	if (!show_cached && !show_untracked && !show_ignored)
 		show_cached = 1;
 
 	if (want_color(use_color))
