@@ -199,9 +199,9 @@ static void check_safe_crlf(const char *path, enum crlf_action crlf_action,
 		 */
 		if (stats->crlf) {
 			if (checksafe == SAFE_CRLF_WARN)
-				warning("CRLF will be replaced by LF in %s.\nThe file will have its original line endings in your working directory.", path);
+				warning(_("CRLF will be replaced by LF in %s.\nThe file will have its original line endings in your working directory."), path);
 			else /* i.e. SAFE_CRLF_FAIL */
-				die("CRLF would be replaced by LF in %s.", path);
+				die(_("CRLF would be replaced by LF in %s."), path);
 		}
 	} else if (output_eol(crlf_action) == EOL_CRLF) {
 		/*
@@ -210,9 +210,9 @@ static void check_safe_crlf(const char *path, enum crlf_action crlf_action,
 		 */
 		if (stats->lonelf) {
 			if (checksafe == SAFE_CRLF_WARN)
-				warning("LF will be replaced by CRLF in %s.\nThe file will have its original line endings in your working directory.", path);
+				warning(_("LF will be replaced by CRLF in %s.\nThe file will have its original line endings in your working directory."), path);
 			else /* i.e. SAFE_CRLF_FAIL */
-				die("LF would be replaced by CRLF in %s", path);
+				die(_("LF would be replaced by CRLF in %s"), path);
 		}
 	}
 }
