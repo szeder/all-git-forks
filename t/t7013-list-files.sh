@@ -110,4 +110,48 @@ test_expect_success 'list-files from subdir (2)' '
 	)
 '
 
+test_expect_success 'setup 2' '
+	git init 2 &&
+	(
+	cd 2 &&
+	mkdir dir &&
+	touch file dir/file &&
+	git init gitlink &&
+	( cd gitlink && test_commit foo ) &&
+	git add file dir/file gitlink &&
+	git commit -qm1
+	)
+'
+
+test_expect_success 'LS_COLORS env variable' '
+	(
+	cd 2 &&
+	LS_COLORS="rs=0:fi=31:di=32" &&
+	export LS_COLORS &&
+	git list-files --color=always | test_decode_color | \
+		grep -v gitlink >actual &&
+	cat >expected <<-\EOF &&
+	<GREEN>dir<RESET>
+	<RED>file<RESET>
+	EOF
+	test_cmp expected actual
+	)
+'
+
+test_expect_success 'color.ls.*' '
+	(
+	cd 2 &&
+	test_config color.ls.file red &&
+	test_config color.ls.directory green &&
+	test_config color.ls.submodule yellow &&
+	git list-files --color=always | test_decode_color >actual &&
+	cat >expected <<-\EOF &&
+	<GREEN>dir<RESET>
+	<RED>file<RESET>
+	<YELLOW>gitlink<RESET>
+	EOF
+	test_cmp expected actual
+	)
+'
+
 test_done

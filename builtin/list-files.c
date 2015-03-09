@@ -5,6 +5,7 @@
 #include "dir.h"
 #include "quote.h"
 #include "column.h"
+#include "color.h"
 
 enum item_type {
 	FROM_INDEX,
@@ -32,6 +33,7 @@ static int show_tag = -1;
 static unsigned int colopts;
 static int max_depth;
 static int show_dirs;
+static int use_color = -1;
 
 static const char * const ls_usage[] = {
 	N_("git list-files [options] [<pathspec>...]"),
@@ -48,6 +50,7 @@ struct option ls_options[] = {
 	  NULL, 1 },
 	OPT_SET_INT('R', "recursive", &max_depth,
 		    N_("shortcut for --max-depth=-1"), -1),
+	OPT__COLOR(&use_color, N_("show color")),
 	OPT_END()
 };
 
@@ -67,6 +70,17 @@ static void free_item(struct item *item)
 	default:
 		break;
 	}
+}
+
+static mode_t get_mode(const struct item *item)
+{
+	switch (item->type) {
+	case IS_DIR:
+		return S_IFDIR;
+	case FROM_INDEX:
+		return item->ce->ce_mode;
+	}
+	return S_IFREG;
 }
 
 static void remove_duplicates(struct item_list *list)
@@ -220,6 +234,13 @@ static void display(const struct item_list *result)
 			strbuf_addch(&quoted, ' ');
 		}
 		quote_item(&quoted, item);
+		if (want_color(use_color)) {
+			struct strbuf sb = STRBUF_INIT;
+			strbuf_swap(&sb, &quoted);
+			color_filename(&quoted, item->path, sb.buf,
+				       get_mode(item), 1);
+			strbuf_release(&sb);
+		}
 		if (column_active(colopts))
 			string_list_append(&s, quoted.buf);
 		else
@@ -240,7 +261,11 @@ static int ls_config(const char *var, const char *value, void *cb)
 {
 	if (starts_with(var, "column."))
 		return git_column_config(var, value, "listfiles", &colopts);
-	return git_default_config(var, value, cb);
+	if (!strcmp(var, "color.listfiles")) {
+		use_color = git_config_colorbool(var, value);
+		return 0;
+	}
+	return git_color_default_config(var, value, cb);
 }
 
 int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
@@ -260,6 +285,9 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 	git_config(ls_config, NULL);
 
 	argc = parse_options(argc, argv, prefix, ls_options, ls_usage, 0);
+
+	if (want_color(use_color))
+		parse_ls_color();
 
 	parse_pathspec(&pathspec, 0,
 		       PATHSPEC_PREFER_CWD |
