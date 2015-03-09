@@ -218,4 +218,39 @@ test_expect_success '--classify' '
 	)
 '
 
+test_expect_success 'list-files unmerged' '
+	(
+	add_stage() {
+		echo "100644 $1 $2	$3" | git update-index --index-info
+	}
+	git init 3 &&
+	cd 3 &&
+	test_commit 1 &&
+	SHA1=`echo 1 | git hash-object -w --stdin` &&
+	add_stage $SHA1 1 deleted-by-both &&
+	add_stage $SHA1 2 added-by-us &&
+	add_stage $SHA1 1 deleted-by-them &&
+	add_stage $SHA1 2 deleted-by-them &&
+	add_stage $SHA1 3 added-by-them &&
+	add_stage $SHA1 3 deleted-by-us &&
+	add_stage $SHA1 1 deleted-by-us &&
+	add_stage $SHA1 2 added-by-both &&
+	add_stage $SHA1 3 added-by-both &&
+	add_stage $SHA1 1 modified-by-both &&
+	add_stage $SHA1 2 modified-by-both &&
+	add_stage $SHA1 3 modified-by-both &&
+	git list-files -u >actual &&
+	cat >expected <<-\EOF &&
+	AA added-by-both
+	UA added-by-them
+	AU added-by-us
+	DD deleted-by-both
+	UD deleted-by-them
+	DU deleted-by-us
+	UU modified-by-both
+	EOF
+	test_cmp expected actual
+	)
+'
+
 test_done

@@ -11,7 +11,8 @@
 enum item_type {
 	FROM_INDEX,
 	FROM_WORKTREE,
-	IS_DIR
+	IS_DIR,
+	IS_UNMERGED
 };
 
 struct item {
@@ -38,7 +39,7 @@ static int max_depth;
 static int show_dirs;
 static int use_color = -1;
 static int show_indicator;
-static int show_cached, show_untracked;
+static int show_cached, show_untracked, show_unmerged;
 static int show_ignored;
 
 static const char * const ls_usage[] = {
@@ -54,6 +55,8 @@ struct option ls_options[] = {
 		 N_("show untracked files")),
 	OPT_BOOL('i', "ignored", &show_ignored,
 		 N_("show ignored files")),
+	OPT_BOOL('u', "unmerged", &show_unmerged,
+		 N_("show unmerged files")),
 
 	OPT_GROUP(N_("Other")),
 	OPT_BOOL(0, "tag", &show_tag, N_("show tags")),
@@ -97,6 +100,7 @@ static mode_t get_mode(const struct item *item)
 	case FROM_INDEX:
 		return item->ce->ce_mode;
 	case FROM_WORKTREE:
+	case IS_UNMERGED:
 		return item->st.st_mode;
 	}
 	return S_IFREG;
@@ -225,12 +229,46 @@ static void populate_untracked(struct item_list *result,
 	}
 }
 
+static void populate_unmerged(struct item_list *result,
+			      const struct string_list *change)
+{
+	int i;
+
+	for (i = 0; i < change->nr; i++) {
+		const struct string_list_item *it = change->items + i;
+		struct wt_status_change_data *d = it->util;
+		const char *name = it->string;
+		const char *tag;
+		struct stat st;
+
+		switch (d->stagemask) {
+		case 1: tag = "DD"; break; /* both deleted */
+		case 2: tag = "AU"; break; /* added by us */
+		case 3: tag = "UD"; break; /* deleted by them */
+		case 4: tag = "UA"; break; /* added by them */
+		case 5: tag = "DU"; break; /* deleted by us */
+		case 6: tag = "AA"; break; /* both added */
+		case 7: tag = "UU"; break; /* both modified */
+		default: continue;
+		}
+
+		if (lstat(name, &st))
+			/* color_filename() treats this as an orphan file */
+			st.st_mode = 0;
+
+		if (!matched(result, name, st.st_mode))
+			continue;
+
+		add_wt_item(result, IS_UNMERGED, name, tag, &st);
+	}
+}
+
 static void wt_status_populate(struct item_list *result,
 			       struct index_state *istate)
 {
 	struct wt_status ws;
 
-	if (!show_untracked && !show_ignored)
+	if (!show_untracked && !show_ignored && !show_unmerged)
 		return;
 
 	wt_status_prepare(&ws);
@@ -246,6 +284,8 @@ static void wt_status_populate(struct item_list *result,
 		populate_untracked(result, &ws.untracked, "??");
 	if (show_ignored)
 		populate_untracked(result, &ws.ignored, "!!");
+	if (show_unmerged)
+		populate_unmerged(result, &ws.change);
 
 	remove_duplicates(result);
 }
@@ -260,7 +300,7 @@ static void cleanup_tags(struct item_list *result)
 		return;
 	}
 
-	if (show_tag > 0 ||
+	if (show_tag > 0 || show_unmerged ||
 	    show_cached + show_untracked + show_ignored > 1) {
 		result->tag_pos = 0;
 		result->tag_len = 2;
@@ -398,7 +438,7 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 
 	argc = parse_options(argc, argv, prefix, ls_options, ls_usage, 0);
 
-	if (!show_cached && !show_untracked && !show_ignored)
+	if (!show_cached && !show_untracked && !show_ignored && !show_unmerged)
 		show_cached = 1;
 
 	if (want_color(use_color))
