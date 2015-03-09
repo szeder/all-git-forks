@@ -6,6 +6,7 @@
 #include "quote.h"
 #include "column.h"
 #include "color.h"
+#include "wt-status.h"
 
 static struct pathspec pathspec;
 static struct pathspec recursive_pathspec;
@@ -16,6 +17,7 @@ static int max_depth;
 static int show_dirs;
 static int use_color = -1;
 static int show_indicator;
+static int show_cached, show_untracked;
 
 static const char * const ls_usage[] = {
 	N_("git list-files [options] [<pathspec>...]"),
@@ -23,6 +25,13 @@ static const char * const ls_usage[] = {
 };
 
 struct option ls_options[] = {
+	OPT_GROUP(N_("Filter options")),
+	OPT_BOOL('c', "cached", &show_cached,
+		 N_("show cached files (default)")),
+	OPT_BOOL('o', "others", &show_untracked,
+		 N_("show untracked files")),
+
+	OPT_GROUP(N_("Other")),
 	OPT_COLUMN('C', "column", &colopts, N_("show files in columns")),
 	OPT_SET_INT('1', NULL, &colopts,
 		    N_("shortcut for --no-column"), COL_PARSEOPT),
@@ -133,6 +142,9 @@ static void populate_cached_entries(struct string_list *result,
 {
 	int i;
 
+	if (!show_cached)
+		return;
+
 	for (i = 0; i < istate->cache_nr; i++) {
 		const struct cache_entry *ce = istate->cache[i];
 
@@ -148,9 +160,55 @@ static void populate_cached_entries(struct string_list *result,
 	string_list_remove_duplicates(result, 0);
 }
 
+static void populate_untracked(struct string_list *result,
+			       const struct string_list *untracked)
+{
+	int i;
+
+	for (i = 0; i < untracked->nr; i++) {
+		const struct string_list_item *item = untracked->items + i;
+		const char *name = item->string;
+		struct stat st;
+
+		if (lstat(name, &st))
+			/* color_filename() treats this as an orphan file */
+			st.st_mode = 0;
+
+		if (!matched(result, name, st.st_mode))
+			continue;
+
+		add_one(result, name, st.st_mode, "??");
+	}
+}
+
+static void wt_status_populate(struct string_list *result,
+			       struct index_state *istate)
+{
+	struct wt_status ws;
+
+	if (!show_untracked)
+		return;
+
+	wt_status_prepare(&ws);
+	copy_pathspec(&ws.pathspec, &recursive_pathspec);
+	ws.relative_paths = 0;
+	ws.use_color = 0;
+	ws.fp = NULL;
+	wt_status_collect(&ws);
+
+	if (show_untracked)
+		populate_untracked(result, &ws.untracked);
+
+	qsort(result->items, result->nr, sizeof(*result->items), compare_output);
+	string_list_remove_duplicates(result, 0);
+}
+
 static void cleanup_tags(struct string_list *result)
 {
 	int i, same_1 = 1, same_2 = 1, pos, len;
+
+	if (show_cached + show_untracked > 1)
+		return;
 
 	for (i = 1; i < result->nr && (same_1 || same_2); i++) {
 		const char *s0 = result->items[i - 1].string;
@@ -229,6 +287,9 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 
 	argc = parse_options(argc, argv, prefix, ls_options, ls_usage, 0);
 
+	if (!show_cached && !show_untracked)
+		show_cached = 1;
+
 	if (want_color(use_color))
 		parse_ls_color();
 
@@ -248,6 +309,7 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 		      &recursive_pathspec, NULL, NULL);
 
 	populate_cached_entries(&result, &the_index);
+	wt_status_populate(&result, &the_index);
 	cleanup_tags(&result);
 	display(&result);
 	string_list_clear(&result, 0);
