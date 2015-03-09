@@ -7,10 +7,12 @@
 #include "column.h"
 
 static struct pathspec pathspec;
+static struct pathspec recursive_pathspec;
 static const char *prefix;
 static int prefix_length;
 static unsigned int colopts;
 static int max_depth;
+static int show_dirs;
 
 static const char * const ls_usage[] = {
 	N_("git list-files [options] [<pathspec>...]"),
@@ -43,6 +45,51 @@ static void add_one(struct string_list *result, const char *name,
 	item->util = (char *)name;
 }
 
+static int add_directory(struct string_list *result,
+			 const char *name)
+{
+	struct strbuf sb = STRBUF_INIT;
+	const char *p;
+
+	strbuf_add(&sb, name, strlen(name));
+	while (sb.len && (p = strrchr(sb.buf, '/')) != NULL) {
+		strbuf_setlen(&sb, p - sb.buf);
+		if (!match_pathspec(&pathspec, sb.buf, sb.len, 0, NULL, 1))
+			continue;
+		add_one(result, sb.buf, "  ");
+		/*
+		 * sb.buf is leaked, but because this command is
+		 * short-lived anyway so it does not matter much
+		 */
+		return 1;
+	}
+	strbuf_release(&sb);
+	return 0;
+}
+
+static int matched(struct string_list *result, const char *name, int mode)
+{
+	int len = strlen(name);
+
+	if (!match_pathspec(&recursive_pathspec, name, len, 0, NULL,
+			    S_ISDIR(mode) || S_ISGITLINK(mode)))
+		return 0;
+
+	if (show_dirs && strchr(name, '/') &&
+	    !match_pathspec(&pathspec, name, len, 0, NULL, 1) &&
+	    add_directory(result, name))
+		return 0;
+
+	return 1;
+}
+
+static int compare_output(const void *a_, const void *b_)
+{
+	const struct string_list_item *a = a_;
+	const struct string_list_item *b = b_;
+	return strcmp(a->util, b->util);
+}
+
 static void populate_cached_entries(struct string_list *result,
 				    const struct index_state *istate)
 {
@@ -51,14 +98,16 @@ static void populate_cached_entries(struct string_list *result,
 	for (i = 0; i < istate->cache_nr; i++) {
 		const struct cache_entry *ce = istate->cache[i];
 
-		if (!match_pathspec(&pathspec, ce->name, ce_namelen(ce),
-				    0, NULL,
-				    S_ISDIR(ce->ce_mode) ||
-				    S_ISGITLINK(ce->ce_mode)))
+		if (!matched(result, ce->name, ce->ce_mode))
 			continue;
 
 		add_one(result, ce->name, "  ");
 	}
+
+	if (!show_dirs)
+		return;
+	qsort(result->items, result->nr, sizeof(*result->items), compare_output);
+	string_list_remove_duplicates(result, 0);
 }
 
 static void cleanup_tags(struct string_list *result)
@@ -145,10 +194,13 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 		       cmd_prefix, argv);
 	pathspec.max_depth = max_depth;
 	pathspec.recursive = 1;
+	show_dirs = max_depth >= 0;
+	copy_pathspec(&recursive_pathspec, &pathspec);
+	recursive_pathspec.max_depth = -1;
 	finalize_colopts(&colopts, -1);
 
 	refresh_index(&the_index, REFRESH_QUIET | REFRESH_UNMERGED,
-		      &pathspec, NULL, NULL);
+		      &recursive_pathspec, NULL, NULL);
 
 	populate_cached_entries(&result, &the_index);
 	cleanup_tags(&result);
