@@ -6,9 +6,11 @@
 #include "quote.h"
 #include "column.h"
 #include "color.h"
+#include "wt-status.h"
 
 enum item_type {
 	FROM_INDEX,
+	FROM_WORKTREE,
 	IS_DIR
 };
 
@@ -17,6 +19,7 @@ struct item {
 	const char *path;
 	char tag[2];
 	const struct cache_entry *ce;
+	struct stat st;
 };
 
 struct item_list {
@@ -35,6 +38,7 @@ static int max_depth;
 static int show_dirs;
 static int use_color = -1;
 static int show_indicator;
+static int show_cached, show_untracked;
 
 static const char * const ls_usage[] = {
 	N_("git list-files [options] [<pathspec>...]"),
@@ -42,6 +46,13 @@ static const char * const ls_usage[] = {
 };
 
 struct option ls_options[] = {
+	OPT_GROUP(N_("Filter options")),
+	OPT_BOOL('c', "cached", &show_cached,
+		 N_("show cached files (default)")),
+	OPT_BOOL('o', "others", &show_untracked,
+		 N_("show untracked files")),
+
+	OPT_GROUP(N_("Other")),
 	OPT_BOOL(0, "tag", &show_tag, N_("show tags")),
 	OPT_COLUMN('C', "column", &colopts, N_("show files in columns")),
 	OPT_SET_INT('1', NULL, &colopts,
@@ -82,6 +93,8 @@ static mode_t get_mode(const struct item *item)
 		return S_IFDIR;
 	case FROM_INDEX:
 		return item->ce->ce_mode;
+	case FROM_WORKTREE:
+		return item->st.st_mode;
 	}
 	return S_IFREG;
 }
@@ -148,6 +161,9 @@ static void populate_cached_entries(struct item_list *result,
 {
 	int i;
 
+	if (!show_cached)
+		return;
+
 	for (i = 0; i < istate->cache_nr; i++) {
 		const struct cache_entry *ce = istate->cache[i];
 		struct item *item;
@@ -169,6 +185,63 @@ static void populate_cached_entries(struct item_list *result,
 	remove_duplicates(result);
 }
 
+static void add_wt_item(struct item_list *result,
+			enum item_type type,
+			const char *path,
+			const char *tag,
+			const struct stat *st)
+{
+	struct item *item;
+
+	ALLOC_GROW(result->items, result->nr + 1, result->alloc);
+	item = result->items + result->nr++;
+	item->type = type;
+	item->path = path;
+	memcpy(item->tag, tag, sizeof(item->tag));
+	memcpy(&item->st, &st, sizeof(st));
+}
+
+static void populate_untracked(struct item_list *result,
+			       const struct string_list *untracked)
+{
+	int i;
+
+	for (i = 0; i < untracked->nr; i++) {
+		const char *name = untracked->items[i].string;
+		struct stat st;
+
+		if (lstat(name, &st))
+			/* color_filename() treats this as an orphan file */
+			st.st_mode = 0;
+
+		if (!matched(result, name, st.st_mode))
+			continue;
+
+		add_wt_item(result, FROM_WORKTREE, name, "??", &st);
+	}
+}
+
+static void wt_status_populate(struct item_list *result,
+			       struct index_state *istate)
+{
+	struct wt_status ws;
+
+	if (!show_untracked)
+		return;
+
+	wt_status_prepare(&ws);
+	copy_pathspec(&ws.pathspec, &recursive_pathspec);
+	ws.relative_paths = 0;
+	ws.use_color = 0;
+	ws.fp = NULL;
+	wt_status_collect(&ws);
+
+	if (show_untracked)
+		populate_untracked(result, &ws.untracked);
+
+	remove_duplicates(result);
+}
+
 static void cleanup_tags(struct item_list *result)
 {
 	int i, same_1 = 1, same_2 = 1;
@@ -178,7 +251,7 @@ static void cleanup_tags(struct item_list *result)
 		result->tag_len = 0;
 		return;
 	}
-	if (show_tag > 0) {
+	if (show_tag > 0 || show_cached + show_untracked > 1) {
 		result->tag_pos = 0;
 		result->tag_len = 2;
 		return;
@@ -315,6 +388,9 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 
 	argc = parse_options(argc, argv, prefix, ls_options, ls_usage, 0);
 
+	if (!show_cached && !show_untracked)
+		show_cached = 1;
+
 	if (want_color(use_color))
 		parse_ls_color();
 
@@ -335,6 +411,7 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 
 	memset(&result, 0, sizeof(result));
 	populate_cached_entries(&result, &the_index);
+	wt_status_populate(&result, &the_index);
 	cleanup_tags(&result);
 	display(&result);
 	/* free-ing result seems unnecessary */
