@@ -3,6 +3,7 @@
 #include "parse-options.h"
 #include "pathspec.h"
 #include "dir.h"
+#include "quote.h"
 
 enum item_type {
 	FROM_INDEX
@@ -57,13 +58,19 @@ static void populate_cached_entries(struct item_list *result,
 
 static void display(const struct item_list *result)
 {
+	struct strbuf quoted = STRBUF_INIT;
 	int i;
+
+	if (!prefix_length)
+		prefix = NULL;
 
 	for (i = 0; i < result->nr; i++) {
 		const struct item *item = result->items + i;
 
-		printf("%s\n", item->path);
+		quote_path_relative(item->path, prefix, &quoted);
+		printf("%s\n", quoted.buf);
 	}
+	strbuf_release(&quoted);
 }
 
 static int ls_config(const char *var, const char *value, void *cb)
