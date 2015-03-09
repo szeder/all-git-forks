@@ -557,6 +557,7 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 	parse_pathspec(&pathspec, 0,
 		       PATHSPEC_PREFER_CWD |
 		       (max_depth != -1 ? PATHSPEC_MAXDEPTH_VALID : 0) |
+		       PATHSPEC_DEFAULT_GLOB |
 		       PATHSPEC_STRIP_SUBMODULE_SLASH_CHEAP,
 		       cmd_prefix, argv);
 	pathspec.max_depth = max_depth;
