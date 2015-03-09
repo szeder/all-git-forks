@@ -538,9 +538,11 @@ static void wt_status_collect_changes_index(struct wt_status *s)
 	rev.diffopt.output_format |= DIFF_FORMAT_CALLBACK;
 	rev.diffopt.format_callback = wt_status_collect_updated_cb;
 	rev.diffopt.format_callback_data = s;
-	rev.diffopt.detect_rename = 1;
-	rev.diffopt.rename_limit = 200;
-	rev.diffopt.break_opt = 0;
+	if (!s->no_rename) {
+		rev.diffopt.detect_rename = 1;
+		rev.diffopt.rename_limit = 200;
+		rev.diffopt.break_opt = 0;
+	}
 	copy_pathspec(&rev.prune_data, &s->pathspec);
 	run_diff_index(&rev, 1);
 }
