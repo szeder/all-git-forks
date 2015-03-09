@@ -14,6 +14,7 @@
 #include "git-compat-util.h"
 #include "version.h"
 #include "trailer.h"
+#include "commit-metapack.h"
 
 typedef enum { FIELD_STR, FIELD_ULONG, FIELD_TIME } cmp_type;
 
@@ -1171,7 +1172,8 @@ static int in_commit_list(const struct commit_list *want, struct commit *c)
  * Do not recurse to find out, though, but return -1 if inconclusive.
  */
 static enum contains_result contains_test(struct commit *candidate,
-			    const struct commit_list *want)
+			    const struct commit_list *want,
+			    unsigned cutoff)
 {
 	/* was it previously marked as containing a want commit? */
 	if (candidate->object.flags & TMP_MARK)
@@ -1188,6 +1190,9 @@ static enum contains_result contains_test(struct commit *candidate,
 	if (parse_commit(candidate) < 0)
 		return 0;
 
+	if (cutoff && commit_generation(candidate) < cutoff)
+		return 0;
+
 	return -1;
 }
 
@@ -1202,8 +1207,21 @@ static enum contains_result contains_tag_algo(struct commit *candidate,
 		const struct commit_list *want)
 {
 	struct contains_stack contains_stack = { 0, 0, NULL };
-	int result = contains_test(candidate, want);
+	int result;
+	unsigned cutoff = 0;
 
+	if (have_commit_metapacks()) {
+		const struct commit_list *p;
+
+		cutoff = UINT_MAX;
+		for (p = want; p; p = p->next) {
+			unsigned g = commit_generation(p->item);
+			if (g < cutoff)
+				cutoff = g;
+		}
+	}
+
+	result = contains_test(candidate, want, cutoff);
 	if (result != CONTAINS_UNKNOWN)
 		return result;
 
@@ -1221,7 +1239,7 @@ static enum contains_result contains_tag_algo(struct commit *candidate,
 		 * If we just popped the stack, parents->item has been marked,
 		 * therefore contains_test will return a meaningful 0 or 1.
 		 */
-		else switch (contains_test(parents->item, want)) {
+		else switch (contains_test(parents->item, want, cutoff)) {
 		case CONTAINS_YES:
 			commit->object.flags |= TMP_MARK;
 			contains_stack.nr--;
@@ -1235,7 +1253,7 @@ static enum contains_result contains_tag_algo(struct commit *candidate,
 		}
 	}
 	free(contains_stack.contains_stack);
-	return contains_test(candidate, want);
+	return contains_test(candidate, want, cutoff);
 }
 
 static int commit_contains(struct ref_filter *filter, struct commit *commit)
