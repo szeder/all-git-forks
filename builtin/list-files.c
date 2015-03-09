@@ -11,6 +11,7 @@
 enum item_type {
 	FROM_INDEX,
 	FROM_WORKTREE,
+	FROM_DIFF,
 	IS_DIR,
 	IS_UNMERGED
 };
@@ -39,8 +40,10 @@ static int max_depth;
 static int show_dirs;
 static int use_color = -1;
 static int show_indicator;
-static int show_cached, show_untracked, show_unmerged;
+static int show_cached, show_untracked, show_unmerged, show_changed;
 static int show_ignored;
+static int show_added, show_deleted, show_modified;
+static int show_wt_added, show_wt_deleted, show_wt_modified;
 
 static const char * const ls_usage[] = {
 	N_("git list-files [options] [<pathspec>...]"),
@@ -57,6 +60,18 @@ struct option ls_options[] = {
 		 N_("show ignored files")),
 	OPT_BOOL('u', "unmerged", &show_unmerged,
 		 N_("show unmerged files")),
+	OPT_BOOL('a', "added", &show_added,
+		 N_("show added files compared to HEAD")),
+	OPT_BOOL('d', "deleted", &show_deleted,
+		 N_("show deleted files compared to HEAD")),
+	OPT_BOOL('m', "modified", &show_modified,
+		 N_("show modified files compared to HEAD")),
+	OPT_BOOL('A', "wt-added", &show_wt_added,
+		 N_("show added files in worktree")),
+	OPT_BOOL('D', "wt-deleted", &show_wt_deleted,
+		 N_("show deleted files in worktree")),
+	OPT_BOOL('M', "wt-modified", &show_wt_modified,
+		 N_("show modified files on worktree")),
 
 	OPT_GROUP(N_("Other")),
 	OPT_BOOL(0, "tag", &show_tag, N_("show tags")),
@@ -100,6 +115,7 @@ static mode_t get_mode(const struct item *item)
 	case FROM_INDEX:
 		return item->ce->ce_mode;
 	case FROM_WORKTREE:
+	case FROM_DIFF:
 	case IS_UNMERGED:
 		return item->st.st_mode;
 	}
@@ -263,18 +279,59 @@ static void populate_unmerged(struct item_list *result,
 	}
 }
 
+static void populate_changed(struct item_list *result,
+			     const struct string_list *change)
+{
+	int i;
+
+	for (i = 0; i < change->nr; i++) {
+		const struct string_list_item *it = change->items + i;
+		struct wt_status_change_data *d = it->util;
+		const char *name = it->string;
+		struct stat st;
+		char tag[2];
+
+		switch (d->stagemask)
+			continue;
+
+		tag[0] = d->index_status ? d->index_status : ' ';
+		tag[1] = d->worktree_status ? d->worktree_status : ' ';
+
+		if ((show_added       && tag[0] == 'A') ||
+		    (show_deleted     && tag[0] == 'D') ||
+		    (show_modified    && tag[0] != ' ') ||
+		    (show_wt_added    && tag[1] == 'A') ||
+		    (show_wt_deleted  && tag[1] == 'D') ||
+		    (show_wt_modified && tag[1] != ' '))
+			;	/* keep going */
+		else
+			continue;
+
+		if (lstat(name, &st))
+			/* color_filename() treats this as an orphan file */
+			st.st_mode = 0;
+
+		if (!matched(result, name, st.st_mode))
+			continue;
+
+		add_wt_item(result, FROM_DIFF, name, tag, &st);
+	}
+}
+
 static void wt_status_populate(struct item_list *result,
 			       struct index_state *istate)
 {
 	struct wt_status ws;
 
-	if (!show_untracked && !show_ignored && !show_unmerged)
+	if (!show_untracked && !show_ignored &&
+	    !show_unmerged && !show_changed)
 		return;
 
 	wt_status_prepare(&ws);
 	copy_pathspec(&ws.pathspec, &recursive_pathspec);
 	if (show_ignored)
 		ws.show_ignored_files = 1;
+	ws.no_rename = 1;
 	ws.relative_paths = 0;
 	ws.use_color = 0;
 	ws.fp = NULL;
@@ -286,6 +343,8 @@ static void wt_status_populate(struct item_list *result,
 		populate_untracked(result, &ws.ignored, "!!");
 	if (show_unmerged)
 		populate_unmerged(result, &ws.change);
+	if (show_changed)
+		populate_changed(result, &ws.change);
 
 	remove_duplicates(result);
 }
@@ -301,7 +360,9 @@ static void cleanup_tags(struct item_list *result)
 	}
 
 	if (show_tag > 0 || show_unmerged ||
-	    show_cached + show_untracked + show_ignored > 1) {
+	    show_cached + show_untracked + show_ignored +
+	    show_added + show_deleted + show_wt_added + show_wt_deleted +
+	    show_modified + show_wt_modified > 1) {
 		result->tag_pos = 0;
 		result->tag_len = 2;
 		return;
@@ -438,7 +499,11 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 
 	argc = parse_options(argc, argv, prefix, ls_options, ls_usage, 0);
 
-	if (!show_cached && !show_untracked && !show_ignored && !show_unmerged)
+	show_changed =
+		show_added || show_deleted || show_modified ||
+		show_wt_added || show_wt_deleted || show_wt_modified;
+	if (!show_cached && !show_untracked && !show_ignored &&
+	    !show_unmerged && !show_changed)
 		show_cached = 1;
 
 	if (want_color(use_color))
