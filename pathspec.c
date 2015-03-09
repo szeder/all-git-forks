@@ -396,6 +396,10 @@ void parse_pathspec(struct pathspec *pathspec,
 	global.glob    = git_env_bool(GIT_GLOB_PATHSPECS_ENVIRONMENT,    0) != 0;
 	global.noglob  = git_env_bool(GIT_NOGLOB_PATHSPECS_ENVIRONMENT,  0) != 0;
 	global.icase   = git_env_bool(GIT_ICASE_PATHSPECS_ENVIRONMENT,   0) != 0;
+	if ((flags & PATHSPEC_DEFAULT_GLOB) &&
+	    !getenv(GIT_GLOB_PATHSPECS_ENVIRONMENT) &&
+	    !getenv(GIT_NOGLOB_PATHSPECS_ENVIRONMENT))
+		global.glob = 1;
 	if (global.glob && global.noglob)
 		die(_("global 'glob' and 'noglob' pathspec settings are incompatible"));
 
