@@ -7,7 +7,8 @@
 #include "column.h"
 
 enum item_type {
-	FROM_INDEX
+	FROM_INDEX,
+	IS_DIR
 };
 
 struct item {
@@ -24,11 +25,13 @@ struct item_list {
 };
 
 static struct pathspec pathspec;
+static struct pathspec recursive_pathspec;
 static const char *prefix;
 static int prefix_length;
 static int show_tag = -1;
 static unsigned int colopts;
 static int max_depth;
+static int show_dirs;
 
 static const char * const ls_usage[] = {
 	N_("git list-files [options] [<pathspec>...]"),
@@ -48,6 +51,81 @@ struct option ls_options[] = {
 	OPT_END()
 };
 
+static int compare_item(const void *a_, const void *b_)
+{
+	const struct item *a = a_;
+	const struct item *b = b_;
+	return strcmp(a->path, b->path);
+}
+
+static void free_item(struct item *item)
+{
+	switch (item->type) {
+	case IS_DIR:
+		free((char*)item->path);
+		break;
+	default:
+		break;
+	}
+}
+
+static void remove_duplicates(struct item_list *list)
+{
+	int src, dst;
+
+	if (list->nr <= 1)
+		return;
+	qsort(list->items, list->nr, sizeof(*list->items), compare_item);
+	for (src = dst = 1; src < list->nr; src++) {
+		if (!compare_item(list->items + dst - 1, list->items + src))
+			free_item(list->items + src);
+		else
+			list->items[dst++] = list->items[src];
+	}
+	list->nr = dst;
+}
+
+static int add_directory(struct item_list *result,
+			 const char *name)
+{
+	struct strbuf sb = STRBUF_INIT;
+	struct item *item;
+	const char *p;
+
+	strbuf_addstr(&sb, name);
+	while (sb.len && (p = strrchr(sb.buf, '/')) != NULL) {
+		strbuf_setlen(&sb, p - sb.buf);
+		if (!match_pathspec(&pathspec, sb.buf, sb.len, 0, NULL, 1))
+			continue;
+
+		ALLOC_GROW(result->items, result->nr + 1, result->alloc);
+		item = result->items + result->nr++;
+		item->type = IS_DIR;
+		item->path = strbuf_detach(&sb, NULL);
+		item->tag[0] = ' ';
+		item->tag[1] = ' ';
+		return 1;
+	}
+	strbuf_release(&sb);
+	return 0;
+}
+
+static int matched(struct item_list *result, const char *name, int mode)
+{
+	int len = strlen(name);
+
+	if (!match_pathspec(&recursive_pathspec, name, len, 0, NULL,
+			    S_ISDIR(mode) || S_ISGITLINK(mode)))
+		return 0;
+
+	if (show_dirs && strchr(name, '/') &&
+	    !match_pathspec(&pathspec, name, len, 0, NULL, 1) &&
+	    add_directory(result, name))
+		return 0;
+
+	return 1;
+}
+
 static void populate_cached_entries(struct item_list *result,
 				    const struct index_state *istate)
 {
@@ -57,10 +135,7 @@ static void populate_cached_entries(struct item_list *result,
 		const struct cache_entry *ce = istate->cache[i];
 		struct item *item;
 
-		if (!match_pathspec(&pathspec, ce->name, ce_namelen(ce),
-				    0, NULL,
-				    S_ISDIR(ce->ce_mode) ||
-				    S_ISGITLINK(ce->ce_mode)))
+		if (!matched(result, ce->name, ce->ce_mode))
 			continue;
 
 		ALLOC_GROW(result->items, result->nr + 1, result->alloc);
@@ -71,6 +146,10 @@ static void populate_cached_entries(struct item_list *result,
 		item->tag[1] = ' ';
 		item->ce = ce;
 	}
+
+	if (!show_dirs)
+		return;
+	remove_duplicates(result);
 }
 
 static void cleanup_tags(struct item_list *result)
@@ -189,10 +268,13 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 		       cmd_prefix, argv);
 	pathspec.max_depth = max_depth;
 	pathspec.recursive = 1;
+	show_dirs = max_depth >= 0;
+	copy_pathspec(&recursive_pathspec, &pathspec);
+	recursive_pathspec.max_depth = -1;
 	finalize_colopts(&colopts, -1);
 
 	refresh_index(&the_index, REFRESH_QUIET | REFRESH_UNMERGED,
-		      &pathspec, NULL, NULL);
+		      &recursive_pathspec, NULL, NULL);
 
 	memset(&result, 0, sizeof(result));
 	populate_cached_entries(&result, &the_index);
