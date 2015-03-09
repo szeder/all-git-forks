@@ -153,7 +153,10 @@ static int compare_output(const void *a_, const void *b_)
 {
 	const struct string_list_item *a = a_;
 	const struct string_list_item *b = b_;
-	return strcmp(a->util, b->util);
+	int ret = strcmp(a->util, b->util);
+	if (ret)
+		return ret;
+	return strncmp(a->string, b->string, 2);
 }
 
 static void populate_cached_entries(struct string_list *result,
@@ -305,6 +308,34 @@ static void wt_status_populate(struct string_list *result,
 	string_list_remove_duplicates(result, 0);
 }
 
+static void delete_duplicate_cached_entries(struct string_list *result)
+{
+	struct string_list_item *src, *dst;
+
+	if (show_unmerged || !show_cached || !show_changed)
+		return;
+
+	src = dst = result->items;
+	while (src + 1 < result->items + result->nr) {
+		const char *s0 = dst->string;
+		const char *s1 = src[1].string;
+
+		if (s0[0] == ' ' && s0[1] == ' ' &&
+		    !strcmp(s0 + 3, s1 + 3)) {
+			src++;
+		} else {
+			dst++;
+			src++;
+		}
+		if (src != dst)
+			*dst = *src;
+	}
+	if (src != dst)
+		*dst = *src;
+	result->nr = dst - result->items;
+
+}
+
 static void cleanup_tags(struct string_list *result)
 {
 	int i, same_1 = 1, same_2 = 1, pos, len;
@@ -418,6 +449,7 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 
 	populate_cached_entries(&result, &the_index);
 	wt_status_populate(&result, &the_index);
+	delete_duplicate_cached_entries(&result);
 	cleanup_tags(&result);
 	display(&result);
 	string_list_clear(&result, 0);
