@@ -3,6 +3,7 @@
 #include "parse-options.h"
 #include "pathspec.h"
 #include "dir.h"
+#include "quote.h"
 
 static struct pathspec pathspec;
 static const char *prefix;
@@ -22,7 +23,7 @@ static void add_one(struct string_list *result, const char *name)
 	struct strbuf sb = STRBUF_INIT;
 	struct string_list_item *item;
 
-	strbuf_addstr(&sb, name);
+	quote_path_relative(name, prefix_length ? prefix : NULL, &sb);
 	item = string_list_append(result, strbuf_detach(&sb, NULL));
 	item->util = (char *)name;
 }
