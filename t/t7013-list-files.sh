@@ -29,6 +29,8 @@ test_expect_success 'list-files from index' '
 	a
 	b
 	c
+	sa
+	sc
 	EOF
 	test_cmp expect actual &&
 	git list-files >actual &&
@@ -78,6 +80,7 @@ test_expect_success '--max-depth' '
 	b
 	c
 	sa/a
+	sa/sb
 	sc/c
 	EOF
 	test_cmp expected actual
