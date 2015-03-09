@@ -77,6 +77,7 @@
 /git-interpret-trailers
 /git-instaweb
 /git-log
+/git-list-files
 /git-ls-files
 /git-ls-remote
 /git-ls-tree
