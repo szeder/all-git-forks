@@ -146,8 +146,8 @@ static void remove_duplicates(struct item_list *list)
 	list->nr = dst;
 }
 
-static int add_directory(struct item_list *result,
-			 const char *name)
+static const char *add_directory(struct item_list *result,
+				 const char *name)
 {
 	struct strbuf sb = STRBUF_INIT;
 	struct item *item;
@@ -165,24 +165,37 @@ static int add_directory(struct item_list *result,
 		item->path = strbuf_detach(&sb, NULL);
 		item->tag[0] = ' ';
 		item->tag[1] = ' ';
-		return 1;
+		return item->path;
 	}
 	strbuf_release(&sb);
-	return 0;
+	return NULL;
 }
 
-static int matched(struct item_list *result, const char *name, int mode)
+static int matched(struct item_list *result, const char *name, int mode,
+		   const char **last_directory, int *last_dir_len)
 {
 	int len = strlen(name);
+
+	if (*last_dir_len && len > *last_dir_len) {
+		if (!strncasecmp(name, *last_directory, *last_dir_len) &&
+		    name[*last_dir_len] == '/')
+			return 0;
+		*last_dir_len = 0;
+	}
 
 	if (!match_pathspec(&recursive_pathspec, name, len, 0, NULL,
 			    S_ISDIR(mode) || S_ISGITLINK(mode)))
 		return 0;
 
 	if (show_dirs && strchr(name, '/') &&
-	    !match_pathspec(&pathspec, name, len, 0, NULL, 1) &&
-	    add_directory(result, name))
-		return 0;
+	    !match_pathspec(&pathspec, name, len, 0, NULL, 1)) {
+		const char *p = add_directory(result, name);
+		if (p) {
+			*last_directory = p;
+			*last_dir_len = strlen(p);
+			return 0;
+		}
+	}
 
 	return 1;
 }
@@ -190,6 +203,8 @@ static int matched(struct item_list *result, const char *name, int mode)
 static void populate_cached_entries(struct item_list *result,
 				    const struct index_state *istate)
 {
+	const char *last_directory;
+	int last_dir_len = 0;
 	int i;
 
 	if (!show_cached)
@@ -199,7 +214,8 @@ static void populate_cached_entries(struct item_list *result,
 		const struct cache_entry *ce = istate->cache[i];
 		struct item *item;
 
-		if (!matched(result, ce->name, ce->ce_mode))
+		if (!matched(result, ce->name, ce->ce_mode,
+			     &last_directory, &last_dir_len))
 			continue;
 
 		ALLOC_GROW(result->items, result->nr + 1, result->alloc);
@@ -236,6 +252,8 @@ static void populate_untracked(struct item_list *result,
 			       const struct string_list *untracked,
 			       const char *tag)
 {
+	const char *last_directory;
+	int last_dir_len = 0;
 	int i;
 
 	for (i = 0; i < untracked->nr; i++) {
@@ -246,7 +264,8 @@ static void populate_untracked(struct item_list *result,
 			/* color_filename() treats this as an orphan file */
 			st.st_mode = 0;
 
-		if (!matched(result, name, st.st_mode))
+		if (!matched(result, name, st.st_mode,
+			     &last_directory, &last_dir_len))
 			continue;
 
 		add_wt_item(result, FROM_WORKTREE, name, tag, &st);
@@ -256,6 +275,8 @@ static void populate_untracked(struct item_list *result,
 static void populate_unmerged(struct item_list *result,
 			      const struct string_list *change)
 {
+	const char *last_directory;
+	int last_dir_len = 0;
 	int i;
 
 	for (i = 0; i < change->nr; i++) {
@@ -280,7 +301,8 @@ static void populate_unmerged(struct item_list *result,
 			/* color_filename() treats this as an orphan file */
 			st.st_mode = 0;
 
-		if (!matched(result, name, st.st_mode))
+		if (!matched(result, name, st.st_mode,
+			     &last_directory, &last_dir_len))
 			continue;
 
 		add_wt_item(result, IS_UNMERGED, name, tag, &st);
@@ -290,6 +312,8 @@ static void populate_unmerged(struct item_list *result,
 static void populate_changed(struct item_list *result,
 			     const struct string_list *change)
 {
+	const char *last_directory;
+	int last_dir_len = 0;
 	int i;
 
 	for (i = 0; i < change->nr; i++) {
@@ -319,7 +343,8 @@ static void populate_changed(struct item_list *result,
 			/* color_filename() treats this as an orphan file */
 			st.st_mode = 0;
 
-		if (!matched(result, name, st.st_mode))
+		if (!matched(result, name, st.st_mode,
+			     &last_directory, &last_dir_len))
 			continue;
 
 		add_wt_item(result, FROM_DIFF, name, tag, &st);
