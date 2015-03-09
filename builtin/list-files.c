@@ -4,10 +4,12 @@
 #include "pathspec.h"
 #include "dir.h"
 #include "quote.h"
+#include "column.h"
 
 static struct pathspec pathspec;
 static const char *prefix;
 static int prefix_length;
+static unsigned int colopts;
 
 static const char * const ls_usage[] = {
 	N_("git list-files [options] [<pathspec>...]"),
@@ -15,6 +17,9 @@ static const char * const ls_usage[] = {
 };
 
 struct option ls_options[] = {
+	OPT_COLUMN('C', "column", &colopts, N_("show files in columns")),
+	OPT_SET_INT('1', NULL, &colopts,
+		    N_("shortcut for --no-column"), COL_PARSEOPT),
 	OPT_END()
 };
 
@@ -85,6 +90,14 @@ static void display(const struct string_list *result)
 {
 	int i;
 
+	if (column_active(colopts)) {
+		struct column_options copts;
+		memset(&copts, 0, sizeof(copts));
+		copts.padding = 2;
+		print_columns(result, colopts, &copts);
+		return;
+	}
+
 	for (i = 0; i < result->nr; i++) {
 		const struct string_list_item *s = result->items + i;
 
@@ -94,6 +107,8 @@ static void display(const struct string_list *result)
 
 static int ls_config(const char *var, const char *value, void *cb)
 {
+	if (starts_with(var, "column."))
+		return git_column_config(var, value, "listfiles", &colopts);
 	return git_default_config(var, value, cb);
 }
 
@@ -123,6 +138,7 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 		       cmd_prefix, argv);
 	pathspec.max_depth = 0;
 	pathspec.recursive = 1;
+	finalize_colopts(&colopts, -1);
 
 	refresh_index(&the_index, REFRESH_QUIET | REFRESH_UNMERGED,
 		      &pathspec, NULL, NULL);
