@@ -861,6 +861,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 	int i, res;
 	int dry_run = 0, remove_directories = 0, quiet = 0, ignored = 0;
 	int ignored_only = 0, config_set = 0, errors = 0, gone = 1;
+	int option_recursive = 0;
 	int rm_flags = REMOVE_DIR_KEEP_NESTED_GIT;
 	struct strbuf abs_path = STRBUF_INIT;
 	struct dir_struct dir;
@@ -882,6 +883,8 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 		OPT_BOOL('x', NULL, &ignored, N_("remove ignored files, too")),
 		OPT_BOOL('X', NULL, &ignored_only,
 				N_("remove only ignored files")),
+		OPT_BOOL(0, "recurse-submodules", &option_recursive,
+				N_("recursively clean submodules")),
 		OPT_END()
 	};
 
@@ -1001,5 +1004,15 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 	strbuf_release(&buf);
 	string_list_clear(&del_list, 0);
 	string_list_clear(&exclude_list, 0);
+
+	if (option_recursive) {
+		for (i = 0; i < active_nr; i++) {
+        		const struct cache_entry *ce = active_cache[i];
+
+			if (S_ISGITLINK(ce->ce_mode))
+				continue;
+		}
+	}
+
 	return (errors != 0);
 }
