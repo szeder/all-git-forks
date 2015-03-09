@@ -93,7 +93,10 @@ static int compare_item(const void *a_, const void *b_)
 {
 	const struct item *a = a_;
 	const struct item *b = b_;
-	return strcmp(a->path, b->path);
+	int ret = strcmp(a->path, b->path);
+	if (ret)
+		return ret;
+	return strncmp(a->tag, b->tag, 2);
 }
 
 static void free_item(struct item *item)
@@ -132,7 +135,12 @@ static void remove_duplicates(struct item_list *list)
 	for (src = dst = 1; src < list->nr; src++) {
 		if (!compare_item(list->items + dst - 1, list->items + src))
 			free_item(list->items + src);
-		else
+		else if ((list->items[dst - 1].tag[0] == ' ' &&
+			  list->items[dst - 1].tag[1] == ' ' &&
+			  !strcmp(list->items[src].path, list->items[dst - 1].path))) {
+			free_item(list->items + dst - 1);
+			list->items[dst - 1] = list->items[src];
+		} else
 			list->items[dst++] = list->items[src];
 	}
 	list->nr = dst;

@@ -315,4 +315,16 @@ test_expect_success 'list-files --wt-modifed --modified' '
 	test_cmp expected actual
 '
 
+test_expect_success 'list-files -mMc' '
+	git list-files -mMc >actual &&
+	cat >expected <<-\EOF &&
+	D  a
+	AD b
+	AM c
+	   sa
+	   sc
+	EOF
+	test_cmp expected actual
+'
+
 test_done
