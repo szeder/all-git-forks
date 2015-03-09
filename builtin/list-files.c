@@ -65,6 +65,8 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 {
 	struct string_list result = STRING_LIST_INIT_NODUP;
 
+	setenv(GIT_GLOB_PATHSPECS_ENVIRONMENT, "1", 0);
+
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage_with_options(ls_usage, ls_options);
 
