@@ -342,6 +342,7 @@ static int write_bundle_refs(int bundle_fd, struct rev_info *revs)
 		if (e->item->type == OBJ_TAG &&
 				!is_tag_in_date_range(e->item, revs)) {
 			e->item->flags |= UNINTERESTING;
+			free(ref);
 			continue;
 		}
 
