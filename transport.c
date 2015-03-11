@@ -132,7 +132,7 @@ static void insert_packed_refs(const char *packed_refs, struct ref **list)
 			struct ref *next = alloc_ref(buffer + 41);
 			buffer[40] = '\0';
 			if (get_sha1_hex(buffer, next->old_sha1)) {
-				warning ("invalid SHA-1: %s", buffer);
+				warning(_("invalid SHA-1: %s"), buffer);
 				free(next);
 				continue;
 			}
@@ -213,7 +213,7 @@ static struct ref *get_refs_via_rsync(struct transport *transport, int for_push)
 
 	strbuf_addstr(&temp_dir, git_path("rsync-refs-XXXXXX"));
 	if (!mkdtemp(temp_dir.buf))
-		die_errno ("Could not make temporary directory");
+		die_errno(_("Could not make temporary directory"));
 	temp_dir_len = temp_dir.len;
 
 	strbuf_addstr(&buf, rsync_url(transport->url));
@@ -228,7 +228,7 @@ static struct ref *get_refs_via_rsync(struct transport *transport, int for_push)
 	args[4] = NULL;
 
 	if (run_command(&rsync))
-		die ("Could not run rsync to get refs");
+		die(_("Could not run rsync to get refs"));
 
 	strbuf_reset(&buf);
 	strbuf_addstr(&buf, rsync_url(transport->url));
@@ -237,7 +237,7 @@ static struct ref *get_refs_via_rsync(struct transport *transport, int for_push)
 	args[2] = buf.buf;
 
 	if (run_command(&rsync))
-		die ("Could not run rsync to get refs");
+		die(_("Could not run rsync to get refs"));
 
 	/* read the copied refs */
 
@@ -251,8 +251,8 @@ static struct ref *get_refs_via_rsync(struct transport *transport, int for_push)
 	strbuf_setlen(&temp_dir, temp_dir_len);
 
 	if (remove_dir_recursively(&temp_dir, 0))
-		warning ("Error removing temporary directory %s.",
-				temp_dir.buf);
+		warning(_("Error removing temporary directory %s."),
+			temp_dir.buf);
 
 	strbuf_release(&buf);
 	strbuf_release(&temp_dir);
@@ -295,7 +295,7 @@ static int write_one_ref(const char *name, const unsigned char *sha1,
 			!(f = fopen(buf->buf, "w")) ||
 			fprintf(f, "%s\n", sha1_to_hex(sha1)) < 0 ||
 			fclose(f))
-		return error("problems writing temporary file %s", buf->buf);
+		return error(_("problems writing temporary file %s"), buf->buf);
 	strbuf_setlen(buf, len);
 	return 0;
 }
@@ -310,7 +310,7 @@ static int write_refs_to_temp_dir(struct strbuf *temp_dir,
 		char *ref;
 
 		if (dwim_ref(refspec[i], strlen(refspec[i]), sha1, &ref) != 1)
-			return error("Could not get ref %s", refspec[i]);
+			return error(_("Could not get ref %s"), refspec[i]);
 
 		if (write_one_ref(ref, sha1, 0, temp_dir)) {
 			free(ref);
@@ -330,7 +330,7 @@ static int rsync_transport_push(struct transport *transport,
 	const char *args[10];
 
 	if (flags & TRANSPORT_PUSH_MIRROR)
-		return error("rsync transport does not support mirror mode");
+		return error(_("rsync transport does not support mirror mode"));
 
 	/* first push the objects */
 
@@ -354,14 +354,14 @@ static int rsync_transport_push(struct transport *transport,
 	args[i++] = NULL;
 
 	if (run_command(&rsync))
-		return error("Could not push objects to %s",
-				rsync_url(transport->url));
+		return error(_("Could not push objects to %s"),
+			     rsync_url(transport->url));
 
 	/* copy the refs to the temporary directory; they could be packed. */
 
 	strbuf_addstr(&temp_dir, git_path("rsync-refs-XXXXXX"));
 	if (!mkdtemp(temp_dir.buf))
-		die_errno ("Could not make temporary directory");
+		die_errno(_("Could not make temporary directory"));
 	strbuf_addch(&temp_dir, '/');
 
 	if (flags & TRANSPORT_PUSH_ALL) {
@@ -379,12 +379,12 @@ static int rsync_transport_push(struct transport *transport,
 	args[i++] = rsync_url(transport->url);
 	args[i++] = NULL;
 	if (run_command(&rsync))
-		result = error("Could not push to %s",
+		result = error(_("Could not push to %s"),
 				rsync_url(transport->url));
 
 	if (remove_dir_recursively(&temp_dir, 0))
-		warning ("Could not remove temporary directory %s.",
-				temp_dir.buf);
+		warning(_("Could not remove temporary directory %s."),
+			temp_dir.buf);
 
 	strbuf_release(&buf);
 	strbuf_release(&temp_dir);
@@ -410,7 +410,7 @@ static struct ref *get_refs_from_bundle(struct transport *transport, int for_pus
 		close(data->fd);
 	data->fd = read_bundle_header(transport->url, &data->header);
 	if (data->fd < 0)
-		die ("Could not read bundle '%s'.", transport->url);
+		die(_("Could not read bundle '%s'."), transport->url);
 	for (i = 0; i < data->header.references.nr; i++) {
 		struct ref_list_entry *e = data->header.references.list + i;
 		struct ref *ref = alloc_ref(e->name);
@@ -475,7 +475,7 @@ static int set_git_option(struct git_transport_options *opts,
 			char *end;
 			opts->depth = strtol(value, &end, 0);
 			if (*end)
-				die("transport: invalid depth option '%s'", value);
+				die(_("transport: invalid depth option '%s'"), value);
 		}
 		return 0;
 	} else if (!strcmp(name, TRANS_OPT_PUSH_CERT)) {
@@ -606,7 +606,7 @@ void transport_update_tracking_ref(struct remote *remote, struct ref *ref, int v
 
 	if (!remote_find_tracking(remote, &rs)) {
 		if (verbose)
-			fprintf(stderr, "updating local tracking ref '%s'\n", rs.dst);
+			fprintf_ln(stderr, _("updating local tracking ref '%s'"), rs.dst);
 		if (ref->deletion) {
 			delete_ref(rs.dst, NULL, 0);
 		} else
@@ -800,8 +800,8 @@ void transport_verify_remote_names(int nr_heads, const char **heads)
 		remote = remote ? (remote + 1) : local;
 		if (check_refname_format(remote,
 				REFNAME_ALLOW_ONELEVEL|REFNAME_REFSPEC_PATTERN))
-			die("remote part of refspec is not a valid name in %s",
-				heads[i]);
+			die(_("remote part of refspec is not a valid name in %s"),
+			    heads[i]);
 	}
 }
 
@@ -1043,19 +1043,22 @@ static void die_with_unpushed_submodules(struct string_list *needs_pushing)
 {
 	int i;
 
-	fprintf(stderr, "The following submodule paths contain changes that can\n"
-			"not be found on any remote:\n");
+	fprintf_ln(stderr, _("The following submodule paths contain changes that can\n"
+			     "not be found on any remote:"));
 	for (i = 0; i < needs_pushing->nr; i++)
 		printf("  %s\n", needs_pushing->items[i].string);
-	fprintf(stderr, "\nPlease try\n\n"
-			"	git push --recurse-submodules=on-demand\n\n"
-			"or cd to the path and use\n\n"
-			"	git push\n\n"
-			"to push them to a remote.\n\n");
+	fputc('\n', stderr);
+	fprintf_ln(stderr,
+		   _("Please try\n\n"
+		     "	git push --recurse-submodules=on-demand\n\n"
+		     "or cd to the path and use\n\n"
+		     "	git push\n\n"
+		     "to push them to a remote."));
+	fprintf(stderr, "\n\n");
 
 	string_list_clear(needs_pushing, 0);
 
-	die("Aborting.");
+	die(_("Aborting."));
 }
 
 static int run_pre_push_hook(struct transport *transport,
@@ -1124,7 +1127,7 @@ int transport_push(struct transport *transport,
 	if (transport->push) {
 		/* Maybe FIXME. But no important transport uses this case. */
 		if (flags & TRANSPORT_PUSH_SET_UPSTREAM)
-			die("This transport does not support using --set-upstream");
+			die(_("This transport does not support using --set-upstream"));
 
 		return transport->push(transport, refspec_nr, refspec, flags);
 	} else if (transport->push_refs) {
@@ -1176,7 +1179,7 @@ int transport_push(struct transport *transport,
 				if (!is_null_sha1(ref->new_sha1) &&
 				    !push_unpushed_submodules(ref->new_sha1,
 					    transport->remote->name))
-				    die ("Failed to push all needed submodules!");
+				    die(_("Failed to push all needed submodules!"));
 		}
 
 		if ((flags & (TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND |
@@ -1212,7 +1215,7 @@ int transport_push(struct transport *transport,
 		if (porcelain && !push_ret)
 			puts("Done");
 		else if (!quiet && !ret && !transport_refs_pushed(remote_refs))
-			fprintf(stderr, "Everything up-to-date\n");
+			fprintf_ln(stderr, _("Everything up-to-date"));
 
 		return ret;
 	}
@@ -1280,7 +1283,7 @@ int transport_connect(struct transport *transport, const char *name,
 	if (transport->connect)
 		return transport->connect(transport, name, exec, fd);
 	else
-		die("Operation not supported by protocol");
+		die(_("Operation not supported by protocol"));
 }
 
 int transport_disconnect(struct transport *transport)
