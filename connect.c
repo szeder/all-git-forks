@@ -1,5 +1,5 @@
-#include "git-compat-util.h"
 #include "cache.h"
+#include "numparse.h"
 #include "pkt-line.h"
 #include "quote.h"
 #include "refs.h"
@@ -306,8 +306,8 @@ static void get_host_and_port(char **host, const char **port)
 	end = host_end(host, 1);
 	colon = strchr(end, ':');
 	if (colon) {
-		long portnr = strtol(colon + 1, &end, 10);
-		if (end != colon + 1 && *end == '\0' && 0 <= portnr && portnr < 65536) {
+		unsigned int portnr;
+		if (!convert_ui(colon + 1, 10, &portnr) && portnr < 65536) {
 			*colon = 0;
 			*port = colon + 1;
 		}
@@ -422,8 +422,7 @@ static int git_tcp_connect_sock(char *host, int flags)
 	he = gethostbyname(host);
 	if (!he)
 		die("Unable to look up %s (%s)", host, hstrerror(h_errno));
-	nport = strtoul(port, &ep, 10);
-	if ( ep == port || *ep ) {
+	if (git_str_to_ui(port, 10, &nport)) {
 		/* Not numeric */
 		struct servent *se = getservbyname(port,"tcp");
 		if ( !se )
@@ -564,14 +563,13 @@ static struct child_process *git_proxy_connect(int fd[2], char *host)
 
 static char *get_port(char *host)
 {
-	char *end;
 	char *p = strchr(host, ':');
 
 	if (p) {
-		long port = strtol(p + 1, &end, 10);
-		if (end != p + 1 && *end == '\0' && 0 <= port && port < 65536) {
+		unsigned int port;
+		if (!convert_ui(p + 1, 10, &port) && port < 65536) {
 			*p = '\0';
-			return p+1;
+			return p + 1;
 		}
 	}
 
