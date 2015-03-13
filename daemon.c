@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "numparse.h"
 #include "pkt-line.h"
 #include "exec_cmd.h"
 #include "run-command.h"
@@ -1216,13 +1217,10 @@ int main(int argc, char **argv)
 			continue;
 		}
 		if (skip_prefix(arg, "--port=", &v)) {
-			char *end;
-			unsigned long n;
-			n = strtoul(v, &end, 0);
-			if (*v && !*end) {
-				listen_port = n;
-				continue;
-			}
+			if (convert_i(v, 10, &listen_port) ||
+			    listen_port >= 65536)
+				die("invalid port number: %s", v);
+			continue;
 		}
 		if (!strcmp(arg, "--serve")) {
 			serve_mode = 1;
