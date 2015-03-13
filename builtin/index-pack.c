@@ -1578,31 +1578,31 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 				stat_only = 1;
 			} else if (!strcmp(arg, "--keep")) {
 				keep_msg = "";
-			} else if (starts_with(arg, "--keep=")) {
-				keep_msg = arg + 7;
-			} else if (starts_with(arg, "--threads=")) {
+			} else if (skip_prefix(arg, "--keep=", &arg)) {
+				keep_msg = arg;
+			} else if (skip_prefix(arg, "--threads=", &arg)) {
 				char *end;
-				nr_threads = strtoul(arg+10, &end, 0);
-				if (!arg[10] || *end || nr_threads < 0)
+				nr_threads = strtoul(arg, &end, 0);
+				if (!*arg || *end || nr_threads < 0)
 					usage(index_pack_usage);
 #ifdef NO_PTHREADS
 				if (nr_threads != 1)
 					warning(_("no threads support, "
-						  "ignoring %s"), arg);
+						  "ignoring %s"), argv[i]);
 				nr_threads = 1;
 #endif
-			} else if (starts_with(arg, "--pack_header=")) {
+			} else if (skip_prefix(arg, "--pack_header=", &arg)) {
 				struct pack_header *hdr;
 				char *c;
 
 				hdr = (struct pack_header *)input_buffer;
 				hdr->hdr_signature = htonl(PACK_SIGNATURE);
-				hdr->hdr_version = htonl(strtoul(arg + 14, &c, 10));
+				hdr->hdr_version = htonl(strtoul(arg, &c, 10));
 				if (*c != ',')
-					die(_("bad %s"), arg);
+					die(_("bad %s"), argv[i]);
 				hdr->hdr_entries = htonl(strtoul(c + 1, &c, 10));
 				if (*c)
-					die(_("bad %s"), arg);
+					die(_("bad %s"), argv[i]);
 				input_len = sizeof(*hdr);
 			} else if (!strcmp(arg, "-v")) {
 				verbose = 1;
@@ -1610,15 +1610,15 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 				if (index_name || (i+1) >= argc)
 					usage(index_pack_usage);
 				index_name = argv[++i];
-			} else if (starts_with(arg, "--index-version=")) {
+			} else if (skip_prefix(arg, "--index-version=", &arg)) {
 				char *c;
-				opts.version = strtoul(arg + 16, &c, 10);
+				opts.version = strtoul(arg, &c, 10);
 				if (opts.version > 2)
-					die(_("bad %s"), arg);
+					die(_("bad %s"), argv[i]);
 				if (*c == ',')
 					opts.off32_limit = strtoul(c+1, &c, 0);
 				if (*c || opts.off32_limit & 0x80000000)
-					die(_("bad %s"), arg);
+					die(_("bad %s"), argv[i]);
 			} else
 				usage(index_pack_usage);
 			continue;
