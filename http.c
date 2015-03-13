@@ -1,4 +1,5 @@
-#include "git-compat-util.h"
+#include "cache.h"
+#include "numparse.h"
 #include "http.h"
 #include "pack.h"
 #include "sideband.h"
@@ -480,11 +481,11 @@ void http_init(struct remote *remote, const char *url, int proactive_auth)
 	set_from_env(&user_agent, "GIT_HTTP_USER_AGENT");
 
 	low_speed_limit = getenv("GIT_HTTP_LOW_SPEED_LIMIT");
-	if (low_speed_limit != NULL)
-		curl_low_speed_limit = strtol(low_speed_limit, NULL, 10);
+	if (low_speed_limit)
+		convert_l(low_speed_limit, 10, &curl_low_speed_time);
 	low_speed_time = getenv("GIT_HTTP_LOW_SPEED_TIME");
-	if (low_speed_time != NULL)
-		curl_low_speed_time = strtol(low_speed_time, NULL, 10);
+	if (low_speed_time)
+		convert_l(low_speed_time, 10, &curl_low_speed_time);
 
 	if (curl_ssl_verify == -1)
 		curl_ssl_verify = 1;
