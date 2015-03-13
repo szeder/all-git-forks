@@ -6,6 +6,7 @@
  */
 
 #include "cache.h"
+#include "numparse.h"
 #include "builtin.h"
 #include "blob.h"
 #include "commit.h"
@@ -2163,11 +2164,8 @@ static int has_string_in_work_tree(const char *path)
 
 static unsigned parse_score(const char *arg)
 {
-	char *end;
-	unsigned long score = strtoul(arg, &end, 10);
-	if (*end)
-		return 0;
-	return score;
+	unsigned score;
+	return convert_ui(arg, 10, &score) ? 0 : score;
 }
 
 static const char *add_prefix(const char *prefix, const char *path)
