@@ -4,6 +4,7 @@
  * Copyright (C) Linus Torvalds, 2005
  */
 #include "cache.h"
+#include "numparse.h"
 #include "commit.h"
 #include "refs.h"
 #include "quote.h"
@@ -606,8 +607,10 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				filter &= ~(DO_FLAGS|DO_NOREV);
 				verify = 1;
 				abbrev = DEFAULT_ABBREV;
-				if (arg[7] == '=')
-					abbrev = strtoul(arg + 8, NULL, 10);
+				if (arg[7] == '=') {
+					if (convert_i(arg + 8, 10, &abbrev))
+						die("--short requires an integer argument");
+				}
 				if (abbrev < MINIMUM_ABBREV)
 					abbrev = MINIMUM_ABBREV;
 				else if (40 <= abbrev)
