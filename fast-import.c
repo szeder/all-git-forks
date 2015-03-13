@@ -153,6 +153,7 @@ Format of STDIN stream:
 
 #include "builtin.h"
 #include "cache.h"
+#include "numparse.h"
 #include "lockfile.h"
 #include "object.h"
 #include "blob.h"
@@ -3156,10 +3157,11 @@ static void option_date_format(const char *fmt)
 
 static unsigned long ulong_arg(const char *option, const char *arg)
 {
-	char *endptr;
-	unsigned long rv = strtoul(arg, &endptr, 0);
-	if (strchr(arg, '-') || endptr == arg || *endptr)
+	unsigned long rv;
+
+	if (convert_ul(arg, 10, &rv))
 		die("%s: argument must be a non-negative integer", option);
+
 	return rv;
 }
 
