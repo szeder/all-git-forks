@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "numparse.h"
 #include "commit.h"
 #include "refs.h"
 #include "builtin.h"
@@ -749,10 +750,8 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 
 		/* Has the base been specified? */
 		if (reflog_base) {
-			char *ep;
-			base = strtoul(reflog_base, &ep, 10);
-			if (*ep) {
-				/* Ah, that is a date spec... */
+			if (convert_i(reflog_base, 10, &base)) {
+				/* Try as a date spec... */
 				unsigned long at;
 				at = approxidate(reflog_base);
 				read_ref_at(ref, flags, at, -1, sha1, NULL,
