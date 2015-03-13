@@ -1,3 +1,5 @@
+#include "cache.h"
+#include "numparse.h"
 #include "builtin.h"
 #include "delta.h"
 #include "pack.h"
@@ -1581,9 +1583,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 			} else if (skip_prefix(arg, "--keep=", &arg)) {
 				keep_msg = arg;
 			} else if (skip_prefix(arg, "--threads=", &arg)) {
-				char *end;
-				nr_threads = strtoul(arg, &end, 0);
-				if (!*arg || *end || nr_threads < 0)
+				if (convert_i(arg, 10, &nr_threads))
 					usage(index_pack_usage);
 #ifdef NO_PTHREADS
 				if (nr_threads != 1)
