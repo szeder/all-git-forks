@@ -1,3 +1,5 @@
+#include "cache.h"
+#include "numparse.h"
 #include "builtin.h"
 #include "pkt-line.h"
 #include "fetch-pack.h"
@@ -99,7 +101,8 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 			continue;
 		}
 		if (skip_prefix(arg, "--depth=", &arg)) {
-			args.depth = strtol(arg, NULL, 0);
+			if (convert_i(arg, 10 | NUM_SATURATE, &args.depth))
+				die("--depth requires a non-negative integer argument");
 			continue;
 		}
 		if (!strcmp("--no-progress", arg)) {
