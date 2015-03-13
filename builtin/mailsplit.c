@@ -5,6 +5,7 @@
  * so you can process them further from there.
  */
 #include "cache.h"
+#include "numparse.h"
 #include "builtin.h"
 #include "string-list.h"
 #include "strbuf.h"
@@ -242,12 +243,13 @@ int cmd_mailsplit(int argc, const char **argv, const char *prefix)
 			break;
 		/* do flags here */
 		if ( arg[1] == 'd' ) {
-			nr_prec = strtol(arg+2, NULL, 10);
-			if (nr_prec < 3 || 10 <= nr_prec)
+			if (convert_i(arg + 2, 10, &nr_prec) ||
+			    nr_prec < 3 || 10 <= nr_prec)
 				usage(git_mailsplit_usage);
 			continue;
 		} else if ( arg[1] == 'f' ) {
-			nr = strtol(arg+2, NULL, 10);
+			if (convert_i(arg + 2, 10, &nr))
+				usage(git_mailsplit_usage);
 		} else if ( arg[1] == 'h' ) {
 			usage(git_mailsplit_usage);
 		} else if ( arg[1] == 'b' && !arg[2] ) {
