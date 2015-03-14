@@ -20,7 +20,7 @@
 #include "pathspec.h"
 
 static char const * const grep_usage[] = {
-	N_("git grep [options] [-e] <pattern> [<rev>...] [[--] <path>...]"),
+	N_("git grep [<options>] [-e] <pattern> [<rev>...] [[--] <path>...]"),
 	NULL
 };
 
@@ -641,7 +641,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		OPT_BOOL(0, "untracked", &untracked,
 			N_("search in both tracked and untracked files")),
 		OPT_SET_INT(0, "exclude-standard", &opt_exclude,
-			    N_("search also in ignored files"), 1),
+			    N_("ignore files specified via '.gitignore'"), 1),
 		OPT_GROUP(""),
 		OPT_BOOL('v', "invert-match", &opt.invert,
 			N_("show non-matching lines")),

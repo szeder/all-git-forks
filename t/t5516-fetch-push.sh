@@ -238,7 +238,7 @@ test_expect_success 'push with pushInsteadOf' '
 test_expect_success 'push with pushInsteadOf and explicit pushurl (pushInsteadOf should not rewrite)' '
 	mk_empty testrepo &&
 	test_config "url.trash2/.pushInsteadOf" testrepo/ &&
-	test_config "url.trash3/.pusnInsteadOf" trash/wrong &&
+	test_config "url.trash3/.pushInsteadOf" trash/wrong &&
 	test_config remote.r.url trash/wrong &&
 	test_config remote.r.pushurl "testrepo/" &&
 	git push r refs/heads/master:refs/remotes/origin/master &&
@@ -1432,6 +1432,69 @@ test_expect_success 'receive.denyCurrentBranch = updateInstead' '
 		test fifth = "$(cat path3)"
 	)
 
+'
+
+test_expect_success 'updateInstead with push-to-checkout hook' '
+	rm -fr testrepo &&
+	git init testrepo &&
+	(
+		cd testrepo &&
+		git pull .. master &&
+		git reset --hard HEAD^^ &&
+		git tag initial &&
+		git config receive.denyCurrentBranch updateInstead &&
+		write_script .git/hooks/push-to-checkout <<-\EOF
+		echo >&2 updating from $(git rev-parse HEAD)
+		echo >&2 updating to "$1"
+
+		git update-index -q --refresh &&
+		git read-tree -u -m HEAD "$1" || {
+			status=$?
+			echo >&2 read-tree failed
+			exit $status
+		}
+		EOF
+	) &&
+
+	# Try pushing into a pristine
+	git push testrepo master &&
+	(
+		cd testrepo &&
+		git diff --quiet &&
+		git diff HEAD --quiet &&
+		test $(git -C .. rev-parse HEAD) = $(git rev-parse HEAD)
+	) &&
+
+	# Try pushing into a repository with conflicting change
+	(
+		cd testrepo &&
+		git reset --hard initial &&
+		echo conflicting >path2
+	) &&
+	test_must_fail git push testrepo master &&
+	(
+		cd testrepo &&
+		test $(git rev-parse initial) = $(git rev-parse HEAD) &&
+		test conflicting = "$(cat path2)" &&
+		git diff-index --quiet --cached HEAD
+	) &&
+
+	# Try pushing into a repository with unrelated change
+	(
+		cd testrepo &&
+		git reset --hard initial &&
+		echo unrelated >path1 &&
+		echo irrelevant >path5 &&
+		git add path5
+	) &&
+	git push testrepo master &&
+	(
+		cd testrepo &&
+		test "$(cat path1)" = unrelated &&
+		test "$(cat path5)" = irrelevant &&
+		test "$(git diff --name-only --cached HEAD)" = path5 &&
+		test $(git -C .. rev-parse HEAD) = $(git rev-parse HEAD)
+	)
 '
 
 test_done
