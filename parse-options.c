@@ -1,6 +1,6 @@
-#include "git-compat-util.h"
-#include "parse-options.h"
 #include "cache.h"
+#include "numparse.h"
+#include "parse-options.h"
 #include "commit.h"
 #include "color.h"
 #include "utf8.h"
@@ -84,7 +84,7 @@ static int get_value(struct parse_opt_ctx_t *p,
 		     const struct option *all_opts,
 		     int flags)
 {
-	const char *s, *arg;
+	const char *arg;
 	const int unset = flags & OPT_UNSET;
 	int err;
 
@@ -175,8 +175,7 @@ static int get_value(struct parse_opt_ctx_t *p,
 		}
 		if (get_arg(p, opt, flags, &arg))
 			return -1;
-		*(int *)opt->value = strtol(arg, (char **)&s, 10);
-		if (*s)
+		if (convert_i(arg, 10 | NUM_SIGN, (int *)opt->value))
 			return opterror(opt, "expects a numerical value", flags);
 		return 0;
 
