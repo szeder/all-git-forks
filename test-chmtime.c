@@ -28,13 +28,13 @@
  *
  */
 #include "git-compat-util.h"
+#include "numparse.h"
 #include <utime.h>
 
 static const char usage_str[] = "-v|--verbose (+|=|=+|=-|-)<seconds> <file>...";
 
 static int timespec_arg(const char *arg, long int *set_time, int *set_eq)
 {
-	char *test;
 	const char *timespec = arg;
 	if (*timespec == '=') {
 		*set_eq = 1;
@@ -46,8 +46,7 @@ static int timespec_arg(const char *arg, long int *set_time, int *set_eq)
 	} else {
 		*set_eq = 0;
 	}
-	*set_time = strtol(timespec, &test, 10);
-	if (*test) {
+	if (convert_l(timespec, 10 | NUM_SIGN, set_time)) {
 		fprintf(stderr, "Not a base-10 integer: %s\n", arg + 1);
 		return 0;
 	}
