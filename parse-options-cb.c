@@ -1,6 +1,6 @@
-#include "git-compat-util.h"
-#include "parse-options.h"
 #include "cache.h"
+#include "numparse.h"
+#include "parse-options.h"
 #include "commit.h"
 #include "color.h"
 #include "string-list.h"
@@ -14,8 +14,7 @@ int parse_opt_abbrev_cb(const struct option *opt, const char *arg, int unset)
 	if (!arg) {
 		v = unset ? 0 : DEFAULT_ABBREV;
 	} else {
-		v = strtol(arg, (char **)&arg, 10);
-		if (*arg)
+		if (convert_i(arg, 10, &v))
 			return opterror(opt, "expects a numerical value", 0);
 		if (v && v < MINIMUM_ABBREV)
 			v = MINIMUM_ABBREV;
