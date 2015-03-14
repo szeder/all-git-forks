@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "numparse.h"
 #include "remote.h"
 #include "strbuf.h"
 #include "walker.h"
@@ -34,11 +35,8 @@ static struct string_list cas_options = STRING_LIST_INIT_DUP;
 static int set_option(const char *name, const char *value)
 {
 	if (!strcmp(name, "verbosity")) {
-		char *end;
-		int v = strtol(value, &end, 10);
-		if (value == end || *end)
+		if (convert_i(value, 10 | NUM_SIGN, &options.verbosity))
 			return -1;
-		options.verbosity = v;
 		return 0;
 	}
 	else if (!strcmp(name, "progress")) {
@@ -51,11 +49,8 @@ static int set_option(const char *name, const char *value)
 		return 0;
 	}
 	else if (!strcmp(name, "depth")) {
-		char *end;
-		unsigned long v = strtoul(value, &end, 10);
-		if (value == end || *end)
+		if (convert_ul(value, 10, &options.depth))
 			return -1;
-		options.depth = v;
 		return 0;
 	}
 	else if (!strcmp(name, "followtags")) {
