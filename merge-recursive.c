@@ -4,6 +4,7 @@
  * The thieves were Alex Riesen and Johannes Schindelin, in June/July 2006
  */
 #include "cache.h"
+#include "numparse.h"
 #include "advice.h"
 #include "lockfile.h"
 #include "cache-tree.h"
@@ -2036,8 +2037,7 @@ void init_merge_options(struct merge_options *o)
 	o->renormalize = 0;
 	merge_recursive_config(o);
 	if (getenv("GIT_MERGE_VERBOSITY"))
-		o->verbosity =
-			strtol(getenv("GIT_MERGE_VERBOSITY"), NULL, 10);
+		convert_i(getenv("GIT_MERGE_VERBOSITY"), 10 | NUM_SIGN, &o->verbosity);
 	if (o->verbosity >= 5)
 		o->buffer_output = 0;
 	strbuf_init(&o->obuf, 0);
