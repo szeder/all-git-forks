@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "numparse.h"
 #include "dir.h"
 #include "string-list.h"
 
@@ -749,7 +750,6 @@ const char *setup_git_directory_gently(int *nongit_ok)
 int git_config_perm(const char *var, const char *value)
 {
 	int i;
-	char *endptr;
 
 	if (value == NULL)
 		return PERM_GROUP;
@@ -764,11 +764,10 @@ int git_config_perm(const char *var, const char *value)
 		return PERM_EVERYBODY;
 
 	/* Parse octal numbers */
-	i = strtol(value, &endptr, 8);
-
-	/* If not an octal number, maybe true/false? */
-	if (*endptr != 0)
+	if (convert_i(value, 8, &i)) {
+		/* If not an octal number, maybe true/false? */
 		return git_config_bool(var, value) ? PERM_GROUP : PERM_UMASK;
+	}
 
 	/*
 	 * Treat values 0, 1 and 2 as compatibility cases, otherwise it is
