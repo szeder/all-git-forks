@@ -5,6 +5,7 @@
  */
 #define NO_THE_INDEX_COMPATIBILITY_MACROS
 #include "cache.h"
+#include "numparse.h"
 #include "lockfile.h"
 #include "cache-tree.h"
 #include "refs.h"
@@ -1262,7 +1263,6 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
 static unsigned int get_index_format_default(void)
 {
 	char *envversion = getenv("GIT_INDEX_VERSION");
-	char *endp;
 	int value;
 	unsigned int version = INDEX_FORMAT_DEFAULT;
 
@@ -1277,8 +1277,7 @@ static unsigned int get_index_format_default(void)
 		return version;
 	}
 
-	version = strtoul(envversion, &endp, 10);
-	if (*endp ||
+	if (convert_ui(envversion, 10, &version) ||
 	    version < INDEX_FORMAT_LB || INDEX_FORMAT_UB < version) {
 		warning(_("GIT_INDEX_VERSION set, but the value is invalid.\n"
 			  "Using version %i"), INDEX_FORMAT_DEFAULT);
