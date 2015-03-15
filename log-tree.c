@@ -135,6 +135,11 @@ static int add_ref_decoration(const char *refname, const unsigned char *sha1, in
 	return 0;
 }
 
+static int add_ref_decoration_oid(const char *refname, const struct object_id *oid, int flags, void *cb_data)
+{
+	return add_ref_decoration(refname, oid->hash, flags, cb_data);
+}
+
 static int add_graft_decoration(const struct commit_graft *graft, void *cb_data)
 {
 	struct commit *commit = lookup_commit(graft->oid.hash);
@@ -150,7 +155,7 @@ void load_ref_decorations(int flags)
 	if (!loaded) {
 		loaded = 1;
 		for_each_ref(add_ref_decoration, &flags);
-		head_ref(add_ref_decoration, &flags);
+		head_ref(add_ref_decoration_oid, &flags);
 		for_each_commit_graft(add_graft_decoration, NULL);
 	}
 }

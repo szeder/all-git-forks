@@ -88,6 +88,11 @@ match:
 	return 0;
 }
 
+static int show_ref_oid(const char *refname, const struct object_id *oid, int flag, void *cbdata)
+{
+	return show_ref(refname, oid->hash, flag, cbdata);
+}
+
 static int add_existing(const char *refname, const unsigned char *sha1, int flag, void *cbdata)
 {
 	struct string_list *list = (struct string_list *)cbdata;
@@ -225,7 +230,7 @@ int cmd_show_ref(int argc, const char **argv, const char *prefix)
 	}
 
 	if (show_head)
-		head_ref(show_ref, NULL);
+		head_ref(show_ref_oid, NULL);
 	for_each_ref(show_ref, NULL);
 	if (!found_match) {
 		if (verify && !quiet)
