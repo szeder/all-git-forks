@@ -22,19 +22,14 @@ static void update_progress(struct connectivity_progress *cp)
 		display_progress(cp->progress, cp->count);
 }
 
-static int add_one_ref(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+static int add_one_ref(const char *path, const struct object_id *oid, int flag, void *cb_data)
 {
-	struct object *object = parse_object_or_die(sha1, path);
+	struct object *object = parse_object_or_die(oid->hash, path);
 	struct rev_info *revs = (struct rev_info *)cb_data;
 
 	add_pending_object(revs, object, "");
 
 	return 0;
-}
-
-static int add_one_ref_oid(const char *path, const struct object_id *oid, int flag, void *cb_data)
-{
-	return add_one_ref(path, oid->hash, flag, cb_data);
 }
 
 /*
@@ -173,10 +168,10 @@ void mark_reachable_objects(struct rev_info *revs, int mark_reflog,
 	add_index_objects_to_pending(revs, 0);
 
 	/* Add all external refs */
-	for_each_ref(add_one_ref_oid, revs);
+	for_each_ref(add_one_ref, revs);
 
 	/* detached HEAD is not included in the list above */
-	head_ref(add_one_ref_oid, revs);
+	head_ref(add_one_ref, revs);
 
 	/* Add all reflog info */
 	if (mark_reflog)
