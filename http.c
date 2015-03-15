@@ -481,11 +481,13 @@ void http_init(struct remote *remote, const char *url, int proactive_auth)
 	set_from_env(&user_agent, "GIT_HTTP_USER_AGENT");
 
 	low_speed_limit = getenv("GIT_HTTP_LOW_SPEED_LIMIT");
-	if (low_speed_limit)
-		convert_l(low_speed_limit, 10, &curl_low_speed_time);
+	if (low_speed_limit &&
+	    convert_l(low_speed_limit, 10, &curl_low_speed_time))
+		warning("GIT_HTTP_LOW_SPEED_LIMIT invalid; ignored");
 	low_speed_time = getenv("GIT_HTTP_LOW_SPEED_TIME");
-	if (low_speed_time)
-		convert_l(low_speed_time, 10, &curl_low_speed_time);
+	if (low_speed_time &&
+	    convert_l(low_speed_time, 10, &curl_low_speed_time))
+		warning("GIT_HTTP_LOW_SPEED_TIME invalid; ignored");
 
 	if (curl_ssl_verify == -1)
 		curl_ssl_verify = 1;
