@@ -36,13 +36,15 @@ static int timespec_arg(const char *arg, long int *set_time, int *set_eq)
 {
 	char *test;
 	const char *timespec = arg;
-	*set_eq = (*timespec == '=') ? 1 : 0;
-	if (*set_eq) {
+	if (*timespec == '=') {
+		*set_eq = 1;
 		timespec++;
 		if (*timespec == '+') {
 			*set_eq = 2; /* relative "in the future" */
 			timespec++;
 		}
+	} else {
+		*set_eq = 0;
 	}
 	*set_time = strtol(timespec, &test, 10);
 	if (*test) {
