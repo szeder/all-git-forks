@@ -26,10 +26,10 @@ static void show_one(const char *refname, const unsigned char *sha1)
 		printf("%s %s\n", hex, refname);
 }
 
-static int show_ref(const char *refname, const unsigned char *sha1, int flag, void *cbdata)
+static int show_ref(const char *refname, const struct object_id *oid, int flag, void *cbdata)
 {
 	const char *hex;
-	unsigned char peeled[20];
+	struct object_id peeled;
 
 	if (show_head && !strcmp(refname, "HEAD"))
 		goto match;
@@ -69,28 +69,23 @@ match:
 	 * detect and return error if the repository is corrupt and
 	 * ref points at a nonexistent object.
 	 */
-	if (!has_sha1_file(sha1))
+	if (!has_sha1_file(oid->hash))
 		die("git show-ref: bad ref %s (%s)", refname,
-		    sha1_to_hex(sha1));
+		    oid_to_hex(oid));
 
 	if (quiet)
 		return 0;
 
-	show_one(refname, sha1);
+	show_one(refname, oid->hash);
 
 	if (!deref_tags)
 		return 0;
 
-	if (!peel_ref(refname, peeled)) {
-		hex = find_unique_abbrev(peeled, abbrev);
+	if (!peel_ref(refname, peeled.hash)) {
+		hex = find_unique_abbrev(peeled.hash, abbrev);
 		printf("%s %s^{}\n", hex, refname);
 	}
 	return 0;
-}
-
-static int show_ref_oid(const char *refname, const struct object_id *oid, int flag, void *cbdata)
-{
-	return show_ref(refname, oid->hash, flag, cbdata);
 }
 
 static int add_existing(const char *refname, const struct object_id *oid, int flag, void *cbdata)
@@ -230,8 +225,8 @@ int cmd_show_ref(int argc, const char **argv, const char *prefix)
 	}
 
 	if (show_head)
-		head_ref(show_ref_oid, NULL);
-	for_each_ref(show_ref_oid, NULL);
+		head_ref(show_ref, NULL);
+	for_each_ref(show_ref, NULL);
 	if (!found_match) {
 		if (verify && !quiet)
 			die("No match");
