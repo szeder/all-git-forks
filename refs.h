@@ -97,10 +97,10 @@ typedef int each_ref_fn_oid(const char *refname,
  */
 extern int head_ref(each_ref_fn, void *);
 extern int for_each_ref(each_ref_fn, void *);
-extern int for_each_ref_in(const char *, each_ref_fn, void *);
+extern int for_each_ref_in(const char *, each_ref_fn_oid, void *);
 extern int for_each_tag_ref(each_ref_fn_oid, void *);
-extern int for_each_branch_ref(each_ref_fn, void *);
-extern int for_each_remote_ref(each_ref_fn, void *);
+extern int for_each_branch_ref(each_ref_fn_oid, void *);
+extern int for_each_remote_ref(each_ref_fn_oid, void *);
 extern int for_each_replace_ref(each_ref_fn, void *);
 extern int for_each_glob_ref(each_ref_fn, const char *pattern, void *);
 extern int for_each_glob_ref_in(each_ref_fn, const char *pattern, const char* prefix, void *);
