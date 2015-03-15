@@ -32,6 +32,11 @@ static int add_one_ref(const char *path, const unsigned char *sha1, int flag, vo
 	return 0;
 }
 
+static int add_one_ref_oid(const char *path, const struct object_id *oid, int flag, void *cb_data)
+{
+	return add_one_ref(path, oid->hash, flag, cb_data);
+}
+
 /*
  * The traversal will have already marked us as SEEN, so we
  * only need to handle any progress reporting here.
@@ -171,7 +176,7 @@ void mark_reachable_objects(struct rev_info *revs, int mark_reflog,
 	for_each_ref(add_one_ref, revs);
 
 	/* detached HEAD is not included in the list above */
-	head_ref(add_one_ref, revs);
+	head_ref(add_one_ref_oid, revs);
 
 	/* Add all reflog info */
 	if (mark_reflog)
