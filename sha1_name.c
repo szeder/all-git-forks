@@ -832,10 +832,10 @@ static int get_sha1_1(const char *name, int len, unsigned char *sha1, unsigned l
 #define ONELINE_SEEN (1u<<20)
 
 static int handle_one_ref(const char *path,
-		const unsigned char *sha1, int flag, void *cb_data)
+		const struct object_id *oid, int flag, void *cb_data)
 {
 	struct commit_list **list = cb_data;
-	struct object *object = parse_object(sha1);
+	struct object *object = parse_object(oid->hash);
 	if (!object)
 		return 0;
 	if (object->type == OBJ_TAG) {

@@ -93,7 +93,7 @@ static int show_ref_oid(const char *refname, const struct object_id *oid, int fl
 	return show_ref(refname, oid->hash, flag, cbdata);
 }
 
-static int add_existing(const char *refname, const unsigned char *sha1, int flag, void *cbdata)
+static int add_existing(const char *refname, const struct object_id *oid, int flag, void *cbdata)
 {
 	struct string_list *list = (struct string_list *)cbdata;
 	string_list_insert(list, refname);
@@ -231,7 +231,7 @@ int cmd_show_ref(int argc, const char **argv, const char *prefix)
 
 	if (show_head)
 		head_ref(show_ref_oid, NULL);
-	for_each_ref(show_ref, NULL);
+	for_each_ref(show_ref_oid, NULL);
 	if (!found_match) {
 		if (verify && !quiet)
 			die("No match");
