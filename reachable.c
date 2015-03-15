@@ -171,7 +171,7 @@ void mark_reachable_objects(struct rev_info *revs, int mark_reflog,
 	add_index_objects_to_pending(revs, 0);
 
 	/* Add all external refs */
-	for_each_ref(add_one_ref, revs);
+	for_each_ref(add_one_ref_oid, revs);
 
 	/* detached HEAD is not included in the list above */
 	head_ref(add_one_ref_oid, revs);

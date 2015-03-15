@@ -1657,7 +1657,7 @@ char *resolve_refdup(const char *ref, int resolve_flags, unsigned char *sha1, in
 /* The argument to filter_refs */
 struct ref_filter {
 	const char *pattern;
-	each_ref_fn *fn;
+	each_ref_fn_oid *fn;
 	void *cb_data;
 };
 
@@ -1679,13 +1679,13 @@ int ref_exists(const char *refname)
 	return !!resolve_ref_unsafe(refname, RESOLVE_REF_READING, sha1, NULL);
 }
 
-static int filter_refs(const char *refname, const unsigned char *sha1, int flags,
-		       void *data)
+static int filter_refs(const char *refname, const struct object_id *oid,
+			   int flags, void *data)
 {
 	struct ref_filter *filter = (struct ref_filter *)data;
 	if (wildmatch(filter->pattern, refname, 0, NULL))
 		return 0;
-	return filter->fn(refname, sha1, flags, filter->cb_data);
+	return filter->fn(refname, oid, flags, filter->cb_data);
 }
 
 enum peel_status {
@@ -1986,9 +1986,9 @@ int head_ref_submodule(const char *submodule, each_ref_fn_oid fn, void *cb_data)
 	return do_head_ref(submodule, fn, cb_data);
 }
 
-int for_each_ref(each_ref_fn fn, void *cb_data)
+int for_each_ref(each_ref_fn_oid fn, void *cb_data)
 {
-	return do_for_each_ref(&ref_cache, "", fn, 0, 0, cb_data);
+	return do_for_each_ref_oid(&ref_cache, "", fn, 0, 0, cb_data);
 }
 
 int for_each_ref_submodule(const char *submodule, each_ref_fn_oid fn, void *cb_data)
@@ -2067,7 +2067,7 @@ int for_each_namespaced_ref(each_ref_fn fn, void *cb_data)
 	return ret;
 }
 
-int for_each_glob_ref_in(each_ref_fn fn, const char *pattern,
+int for_each_glob_ref_in(each_ref_fn_oid fn, const char *pattern,
 	const char *prefix, void *cb_data)
 {
 	struct strbuf real_pattern = STRBUF_INIT;
@@ -2097,7 +2097,7 @@ int for_each_glob_ref_in(each_ref_fn fn, const char *pattern,
 	return ret;
 }
 
-int for_each_glob_ref(each_ref_fn fn, const char *pattern, void *cb_data)
+int for_each_glob_ref(each_ref_fn_oid fn, const char *pattern, void *cb_data)
 {
 	return for_each_glob_ref_in(fn, pattern, NULL, cb_data);
 }
