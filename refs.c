@@ -696,6 +696,7 @@ struct ref_entry_cb {
 	int trim;
 	int flags;
 	each_ref_fn *fn;
+	each_ref_fn_oid *fn_oid;
 	void *cb_data;
 };
 
@@ -719,8 +720,13 @@ static int do_one_ref(struct ref_entry *entry, void *cb_data)
 	/* Store the old value, in case this is a recursive call: */
 	old_current_ref = current_ref;
 	current_ref = entry;
-	retval = data->fn(entry->name + data->trim, entry->u.value.oid.hash,
-			  entry->flag, data->cb_data);
+	if (data->fn_oid) {
+		retval = data->fn_oid(entry->name + data->trim, &entry->u.value.oid,
+				 entry->flag, data->cb_data);
+	} else {
+		retval = data->fn(entry->name + data->trim, entry->u.value.oid.hash,
+				 entry->flag, data->cb_data);
+	}
 	current_ref = old_current_ref;
 	return retval;
 }
@@ -1932,6 +1938,21 @@ static int do_for_each_ref(struct ref_cache *refs, const char *base,
 	data.trim = trim;
 	data.flags = flags;
 	data.fn = fn;
+	data.fn_oid = NULL;
+	data.cb_data = cb_data;
+
+	return do_for_each_entry(refs, base, do_one_ref, &data);
+}
+
+static int do_for_each_ref_oid(struct ref_cache *refs, const char *base,
+			   each_ref_fn_oid fn, int trim, int flags, void *cb_data)
+{
+	struct ref_entry_cb data;
+	data.base = base;
+	data.trim = trim;
+	data.flags = flags;
+	data.fn = NULL;
+	data.fn_oid = fn;
 	data.cb_data = cb_data;
 
 	return do_for_each_entry(refs, base, do_one_ref, &data);
@@ -1975,6 +1996,11 @@ int for_each_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 	return do_for_each_ref(get_ref_cache(submodule), "", fn, 0, 0, cb_data);
 }
 
+static int for_each_ref_in_oid(const char *prefix, each_ref_fn_oid fn, void *cb_data)
+{
+	return do_for_each_ref_oid(&ref_cache, prefix, fn, strlen(prefix), 0, cb_data);
+}
+
 int for_each_ref_in(const char *prefix, each_ref_fn fn, void *cb_data)
 {
 	return do_for_each_ref(&ref_cache, prefix, fn, strlen(prefix), 0, cb_data);
@@ -1986,9 +2012,9 @@ int for_each_ref_in_submodule(const char *submodule, const char *prefix,
 	return do_for_each_ref(get_ref_cache(submodule), prefix, fn, strlen(prefix), 0, cb_data);
 }
 
-int for_each_tag_ref(each_ref_fn fn, void *cb_data)
+int for_each_tag_ref(each_ref_fn_oid fn, void *cb_data)
 {
-	return for_each_ref_in("refs/tags/", fn, cb_data);
+	return for_each_ref_in_oid("refs/tags/", fn, cb_data);
 }
 
 int for_each_tag_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
