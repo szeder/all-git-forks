@@ -100,7 +100,7 @@ void print_if_pending(int id){
 }
 
 
-/*	Name 		: print_task_asociations
+/*	Name 		: print_task_asignations
  * 	Parameters	: task id
  * 	Return		: nothing
  * 	Notes		: prints users asigned to task id given */

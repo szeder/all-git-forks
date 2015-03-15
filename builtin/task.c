@@ -376,23 +376,23 @@ filter_task_est_time,filter_task_time);
 			read_task(filter,readverbose);
 /* END [1.4.3] Read task */
 		}else if(showtypes){
-/* START [1.8.1] Show types */
+/* START [1.8.1.1] Show types */
 			show_types();
-/* END [1.8.1] Show types */	
+/* END [1.8.1.1] Show types */	
 		}else if(showstates){
-/* START [1.8.2] Show states */
+/* START [1.8.2.1] Show states */
 			show_states();
-/* END [1.8.2] Show states */	
+/* END [1.8.2.1] Show states */	
 		}else if(showpriorities){
-/* START [1.8.3] Show priorities */
+/* START [1.8.3.1] Show priorities */
 			show_priorities();
-/* END [1.8.3] Show priorities */	
+/* END [1.8.3.1] Show priorities */	
 		}else if(pending){
-/* START [1.9] Show pending tasks */
+/* START [1.9.1] Show pending tasks */
 			show_pending(uname);
-/* END [1.9] Show pending tasks */
+/* END [1.9.1] Show pending tasks */
 		}else if(switch_option){
-/* START [1.10.2] Validate data (switch option) */
+/* START [1.10.1] Validate data (switch option) */
 			switch(validate_switch_task(switch_id)){
 				case INCORRECT_DATA:
 					printf("Incorrect data. Check it all and try again\n");
@@ -401,36 +401,36 @@ filter_task_est_time,filter_task_time);
 					printf("Task you're trying to activate / deactivate / change doesn't exists\n");
 					return 0;	
 			}
-/* END [1.10.2] Validate data (switch option) */
+/* END [1.10.1] Validate data (switch option) */
 
-/* START [1.10.3] Select action (switch option) */
+/* START [1.10.2] Select action (switch option) */
 			int result = select_action(switch_id);
-/* END [1.10.3] Select action (switch option) */
+/* END [1.10.2] Select action (switch option) */
 
-/* START [1.10.4] Activate task (switch option) */
+/* START [1.10.3] Activate task (switch option) */
 			if(result==SWITCH_EMPTY){
 				printf("+ Activating task...\n");
 				activate_task(switch_id);
-/* END [1.10.4] Activate task (switch option) */
+/* END [1.10.3] Activate task (switch option) */
 
-/* START [1.10.5] Deactivate task (switch option) */
+/* START [1.10.4] Deactivate task (switch option) */
 			}else if(result==SWITCH_SAME){
 				printf("- Deactivate task...\n");
 				deactivate_task(uname);
-/* END [1.10.5] Deactivate task (switch option) */
+/* END [1.10.4] Deactivate task (switch option) */
 
-/* START [1.10.4/5] Activate task and Deactivate task (both options on switch option) */
+/* START [1.10.3/4] Activate task and Deactivate task (both options on switch option) */
 			}else if(result==SWITCH_OTHER){
 				printf("Deactivate previous task and activate actual...\n");
 				deactivate_task(uname);
 				activate_task(switch_id);
 			}
-/* END [1.10.4/5] Activate task and Deactivate task (both options on switch option) */
+/* END [1.10.3/4] Activate task and Deactivate task (both options on switch option) */
 			
 		}else if(stats){
-/* START [1.11.2] Obtain statistic data */
+/* START [1.11.1] Obtain statistic data */
 			show_stats();
-/* END [1.11.2] Obtain statistic data */
+/* END [1.11.1] Obtain statistic data */
 		}else{
 			/* No action defined */
 			printf("No action defined\n");
