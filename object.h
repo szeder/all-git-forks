@@ -1,6 +1,27 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
+/*
+ * If USES_OBJECT_ID_OBJECT is defined, then struct object contains a
+ * struct object_id instead of unsigned char[20] and all the functions
+ * take a struct object_id * instead of an unsigned char *.
+ *
+ * This is temporary to assist with the conversion and maintain full
+ * bisectability.  There are simply too many files to convert all at
+ * once.  A file need only #define USES_OBJECT_ID_OBJECT before
+ * including any headers and it will get the new version.
+ *
+ * After all files have been converted, this define will be removed
+ * and the other files updated to remove their defines.  Since that's
+ * only a one-line change it's much more reasonable to do that to them
+ * all at once.
+ *
+ * Until all files are converted, the functions that are being converted
+ * are defined inline to call implementation functions that have been
+ * renamed with an _hash suffix.  At the end of the conversion those
+ * functions will then be converted and renamed.
+ */
+
 struct object_list {
 	struct object *item;
 	struct object_list *next;
@@ -49,7 +70,16 @@ struct object {
 	unsigned used : 1;
 	unsigned type : TYPE_BITS;
 	unsigned flags : FLAG_BITS;
+#ifdef USES_OBJECT_ID_OBJECT
+	/*
+	 * Since struct object_id contains only one member and that member
+	 * has an alignment of 1, we can get away with this.  Also this
+	 * #ifdef alternative situation while ugly is only temporary anyway.
+	 */
+	struct object_id oid;
+#else
 	unsigned char sha1[20];
+#endif
 };
 
 extern const char *typename(unsigned int type);
@@ -78,9 +108,31 @@ extern struct object *get_indexed_object(unsigned int);
  * half-initialised objects, the caller is expected to initialize them
  * by calling parse_object() on them.
  */
-struct object *lookup_object(const unsigned char *sha1);
+struct object *lookup_object_hash(const unsigned char *sha1);
+#ifdef USES_OBJECT_ID_OBJECT
+static inline struct object *lookup_object(const struct object_id *oid)
+{
+	return lookup_object_hash(oid->hash);
+}
+#else
+static inline struct object *lookup_object(const unsigned char *sha1)
+{
+	return lookup_object_hash(sha1);
+}
+#endif
 
-extern void *create_object(const unsigned char *sha1, void *obj);
+extern void *create_object_hash(const unsigned char *sha1, void *obj);
+#ifdef USES_OBJECT_ID_OBJECT
+static inline void *create_object(const struct object_id *oid, void *obj)
+{
+	return create_object_hash(oid->hash, obj);
+}
+#else
+static inline void *create_object(const unsigned char *sha1, void *obj)
+{
+	return create_object_hash(sha1, obj);
+}
+#endif
 
 void *object_as_type(struct object *obj, enum object_type type, int quiet);
 
@@ -89,23 +141,67 @@ void *object_as_type(struct object *obj, enum object_type type, int quiet);
  *
  * Returns NULL if the object is missing or corrupt.
  */
-struct object *parse_object(const unsigned char *sha1);
+struct object *parse_object_hash(const unsigned char *sha1);
+#ifdef USES_OBJECT_ID_OBJECT
+static inline struct object *parse_object(const struct object_id *oid)
+{
+	return parse_object_hash(oid->hash);
+}
+#else
+static inline struct object *parse_object(const unsigned char *sha1)
+{
+	return parse_object_hash(sha1);
+}
+#endif
 
 /*
  * Like parse_object, but will die() instead of returning NULL. If the
  * "name" parameter is not NULL, it is included in the error message
  * (otherwise, the sha1 hex is given).
  */
-struct object *parse_object_or_die(const unsigned char *sha1, const char *name);
+struct object *parse_object_or_die_hash(const unsigned char *sha1, const char *name);
+#ifdef USES_OBJECT_ID_OBJECT
+static inline struct object *parse_object_or_die(const struct object_id *oid, const char *name)
+{
+	return parse_object_or_die_hash(oid->hash, name);
+}
+#else
+static inline struct object *parse_object_or_die(const unsigned char *sha1, const char *name)
+{
+	return parse_object_or_die_hash(sha1, name);
+}
+#endif
 
 /* Given the result of read_sha1_file(), returns the object after
  * parsing it.  eaten_p indicates if the object has a borrowed copy
  * of buffer and the caller should not free() it.
  */
-struct object *parse_object_buffer(const unsigned char *sha1, enum object_type type, unsigned long size, void *buffer, int *eaten_p);
+struct object *parse_object_buffer_hash(const unsigned char *sha1, enum object_type type, unsigned long size, void *buffer, int *eaten_p);
+#ifdef USES_OBJECT_ID_OBJECT
+static inline struct object *parse_object_buffer(const struct object_id *oid, enum object_type type, unsigned long size, void *buffer, int *eaten_p)
+{
+	return parse_object_buffer_hash(oid->hash, type, size, buffer, eaten_p);
+}
+#else
+static inline struct object *parse_object_buffer(const unsigned char *sha1, enum object_type type, unsigned long size, void *buffer, int *eaten_p)
+{
+	return parse_object_buffer_hash(sha1, type, size, buffer, eaten_p);
+}
+#endif
 
 /** Returns the object, with potentially excess memory allocated. **/
-struct object *lookup_unknown_object(const unsigned  char *sha1);
+struct object *lookup_unknown_object_hash(const unsigned char *sha1);
+#ifdef USES_OBJECT_ID_OBJECT
+static inline struct object *lookup_unknown_object(const struct object_id *oid)
+{
+	return lookup_unknown_object_hash(oid->hash);
+}
+#else
+static inline struct object *lookup_unknown_object(const unsigned char *sha1)
+{
+	return lookup_unknown_object_hash(sha1);
+}
+#endif
 
 struct object_list *object_list_insert(struct object *item,
 				       struct object_list **list_p);

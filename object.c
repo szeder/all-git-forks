@@ -81,7 +81,7 @@ static void insert_obj_hash(struct object *obj, struct object **hash, unsigned i
  * Look up the record for the given sha1 in the hash map stored in
  * obj_hash.  Return NULL if it was not found.
  */
-struct object *lookup_object(const unsigned char *sha1)
+struct object *lookup_object_hash(const unsigned char *sha1)
 {
 	unsigned int i, first;
 	struct object *obj;
@@ -137,7 +137,7 @@ static void grow_object_hash(void)
 	obj_hash_size = new_hash_size;
 }
 
-void *create_object(const unsigned char *sha1, void *o)
+void *create_object_hash(const unsigned char *sha1, void *o)
 {
 	struct object *obj = o;
 
@@ -173,7 +173,7 @@ void *object_as_type(struct object *obj, enum object_type type, int quiet)
 	}
 }
 
-struct object *lookup_unknown_object(const unsigned char *sha1)
+struct object *lookup_unknown_object_hash(const unsigned char *sha1)
 {
 	struct object *obj = lookup_object(sha1);
 	if (!obj)
@@ -181,7 +181,7 @@ struct object *lookup_unknown_object(const unsigned char *sha1)
 	return obj;
 }
 
-struct object *parse_object_buffer(const unsigned char *sha1, enum object_type type, unsigned long size, void *buffer, int *eaten_p)
+struct object *parse_object_buffer_hash(const unsigned char *sha1, enum object_type type, unsigned long size, void *buffer, int *eaten_p)
 {
 	struct object *obj;
 	*eaten_p = 0;
@@ -231,7 +231,7 @@ struct object *parse_object_buffer(const unsigned char *sha1, enum object_type t
 	return obj;
 }
 
-struct object *parse_object_or_die(const unsigned char *sha1,
+struct object *parse_object_or_die_hash(const unsigned char *sha1,
 				   const char *name)
 {
 	struct object *o = parse_object(sha1);
@@ -241,7 +241,7 @@ struct object *parse_object_or_die(const unsigned char *sha1,
 	die(_("unable to parse object: %s"), name ? name : sha1_to_hex(sha1));
 }
 
-struct object *parse_object(const unsigned char *sha1)
+struct object *parse_object_hash(const unsigned char *sha1)
 {
 	unsigned long size;
 	enum object_type type;
