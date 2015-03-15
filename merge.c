@@ -1,3 +1,5 @@
+#define USES_OBJECT_ID_OBJECT
+
 #include "cache.h"
 #include "lockfile.h"
 #include "commit.h"
@@ -10,7 +12,7 @@
 static const char *merge_argument(struct commit *commit)
 {
 	if (commit)
-		return sha1_to_hex(commit->object.sha1);
+		return oid_to_hex(&commit->object.oid);
 	else
 		return EMPTY_TREE_SHA1_HEX;
 }

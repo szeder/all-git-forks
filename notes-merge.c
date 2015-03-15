@@ -1,3 +1,5 @@
+#define USES_OBJECT_ID_OBJECT
+
 #include "cache.h"
 #include "commit.h"
 #include "refs.h"
@@ -12,7 +14,7 @@
 #include "notes-utils.h"
 
 struct notes_merge_pair {
-	unsigned char obj[20], base[20], local[20], remote[20];
+	struct object_id obj, base, local, remote;
 };
 
 void init_notes_merge_options(struct notes_merge_options *o)
@@ -22,21 +24,21 @@ void init_notes_merge_options(struct notes_merge_options *o)
 	o->verbosity = NOTES_MERGE_VERBOSITY_DEFAULT;
 }
 
-static int path_to_sha1(const char *path, unsigned char *sha1)
+static int path_to_oid(const char *path, struct object_id *oid)
 {
-	char hex_sha1[40];
+	char hex_oid[GIT_SHA1_HEXSZ];
 	int i = 0;
-	while (*path && i < 40) {
+	while (*path && i < GIT_SHA1_HEXSZ) {
 		if (*path != '/')
-			hex_sha1[i++] = *path;
+			hex_oid[i++] = *path;
 		path++;
 	}
-	if (*path || i != 40)
+	if (*path || i != GIT_SHA1_HEXSZ)
 		return -1;
-	return get_sha1_hex(hex_sha1, sha1);
+	return get_oid_hex(hex_oid, oid);
 }
 
-static int verify_notes_filepair(struct diff_filepair *p, unsigned char *sha1)
+static int verify_notes_filepair(struct diff_filepair *p, struct object_id *oid)
 {
 	switch (p->status) {
 	case DIFF_STATUS_MODIFIED:
@@ -54,11 +56,11 @@ static int verify_notes_filepair(struct diff_filepair *p, unsigned char *sha1)
 		return -1;
 	}
 	assert(!strcmp(p->one->path, p->two->path));
-	return path_to_sha1(p->one->path, sha1);
+	return path_to_oid(p->one->path, oid);
 }
 
 static struct notes_merge_pair *find_notes_merge_pair_pos(
-		struct notes_merge_pair *list, int len, unsigned char *obj,
+		struct notes_merge_pair *list, int len, struct object_id *obj,
 		int insert_new, int *occupied)
 {
 	/*
@@ -75,7 +77,7 @@ static struct notes_merge_pair *find_notes_merge_pair_pos(
 	int i = last_index < len ? last_index : len - 1;
 	int prev_cmp = 0, cmp = -1;
 	while (i >= 0 && i < len) {
-		cmp = hashcmp(obj, list[i].obj);
+		cmp = oidcmp(obj, &list[i].obj);
 		if (!cmp) /* obj belongs @ i */
 			break;
 		else if (cmp < 0 && prev_cmp <= 0) /* obj belongs < i */
@@ -108,9 +110,9 @@ static struct notes_merge_pair *find_notes_merge_pair_pos(
 	return list + i;
 }
 
-static unsigned char uninitialized[20] =
+static struct object_id uninitialized = {
 	"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff" \
-	"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff";
+	"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff" };
 
 static struct notes_merge_pair *diff_tree_remote(struct notes_merge_options *o,
 						 const unsigned char *base,
@@ -137,37 +139,37 @@ static struct notes_merge_pair *diff_tree_remote(struct notes_merge_options *o,
 		struct diff_filepair *p = diff_queued_diff.queue[i];
 		struct notes_merge_pair *mp;
 		int occupied;
-		unsigned char obj[20];
+		struct object_id obj;
 
-		if (verify_notes_filepair(p, obj)) {
+		if (verify_notes_filepair(p, &obj)) {
 			trace_printf("\t\tCannot merge entry '%s' (%c): "
 			       "%.7s -> %.7s. Skipping!\n", p->one->path,
 			       p->status, sha1_to_hex(p->one->sha1),
 			       sha1_to_hex(p->two->sha1));
 			continue;
 		}
-		mp = find_notes_merge_pair_pos(changes, len, obj, 1, &occupied);
+		mp = find_notes_merge_pair_pos(changes, len, &obj, 1, &occupied);
 		if (occupied) {
 			/* We've found an addition/deletion pair */
-			assert(!hashcmp(mp->obj, obj));
+			assert(!oidcmp(&mp->obj, &obj));
 			if (is_null_sha1(p->one->sha1)) { /* addition */
-				assert(is_null_sha1(mp->remote));
-				hashcpy(mp->remote, p->two->sha1);
+				assert(is_null_oid(&mp->remote));
+				hashcpy(mp->remote.hash, p->two->sha1);
 			} else if (is_null_sha1(p->two->sha1)) { /* deletion */
-				assert(is_null_sha1(mp->base));
-				hashcpy(mp->base, p->one->sha1);
+				assert(is_null_oid(&mp->base));
+				hashcpy(mp->base.hash, p->one->sha1);
 			} else
 				assert(!"Invalid existing change recorded");
 		} else {
-			hashcpy(mp->obj, obj);
-			hashcpy(mp->base, p->one->sha1);
-			hashcpy(mp->local, uninitialized);
-			hashcpy(mp->remote, p->two->sha1);
+			oidcpy(&mp->obj, &obj);
+			hashcpy(mp->base.hash, p->one->sha1);
+			oidcpy(&mp->local, &uninitialized);
+			hashcpy(mp->remote.hash, p->two->sha1);
 			len++;
 		}
 		trace_printf("\t\tStored remote change for %s: %.7s -> %.7s\n",
-		       sha1_to_hex(mp->obj), sha1_to_hex(mp->base),
-		       sha1_to_hex(mp->remote));
+		       oid_to_hex(&mp->obj), oid_to_hex(&mp->base),
+		       oid_to_hex(&mp->remote));
 	}
 	diff_flush(&opt);
 	free_pathspec(&opt.pathspec);
@@ -198,25 +200,25 @@ static void diff_tree_local(struct notes_merge_options *o,
 		struct diff_filepair *p = diff_queued_diff.queue[i];
 		struct notes_merge_pair *mp;
 		int match;
-		unsigned char obj[20];
+		struct object_id obj;
 
-		if (verify_notes_filepair(p, obj)) {
+		if (verify_notes_filepair(p, &obj)) {
 			trace_printf("\t\tCannot merge entry '%s' (%c): "
 			       "%.7s -> %.7s. Skipping!\n", p->one->path,
 			       p->status, sha1_to_hex(p->one->sha1),
 			       sha1_to_hex(p->two->sha1));
 			continue;
 		}
-		mp = find_notes_merge_pair_pos(changes, len, obj, 0, &match);
+		mp = find_notes_merge_pair_pos(changes, len, &obj, 0, &match);
 		if (!match) {
 			trace_printf("\t\tIgnoring local-only change for %s: "
-			       "%.7s -> %.7s\n", sha1_to_hex(obj),
+			       "%.7s -> %.7s\n", oid_to_hex(&obj),
 			       sha1_to_hex(p->one->sha1),
 			       sha1_to_hex(p->two->sha1));
 			continue;
 		}
 
-		assert(!hashcmp(mp->obj, obj));
+		assert(!oidcmp(&mp->obj, &obj));
 		if (is_null_sha1(p->two->sha1)) { /* deletion */
 			/*
 			 * Either this is a true deletion (1), or it is part
@@ -227,8 +229,8 @@ static void diff_tree_local(struct notes_merge_options *o,
 			 * (3) mp->local is uninitialized; set it to null_sha1
 			 *     (will be overwritten by following addition)
 			 */
-			if (!hashcmp(mp->local, uninitialized))
-				hashclr(mp->local);
+			if (!oidcmp(&mp->local, &uninitialized))
+				hashclr(mp->local.hash);
 		} else if (is_null_sha1(p->one->sha1)) { /* addition */
 			/*
 			 * Either this is a true addition (1), or it is part
@@ -238,22 +240,22 @@ static void diff_tree_local(struct notes_merge_options *o,
 			 * (2) mp->local is uninitialized; set to p->two->sha1
 			 * (3) mp->local is null_sha1;     set to p->two->sha1
 			 */
-			assert(is_null_sha1(mp->local) ||
-			       !hashcmp(mp->local, uninitialized));
-			hashcpy(mp->local, p->two->sha1);
+			assert(is_null_oid(&mp->local) ||
+			       !oidcmp(&mp->local, &uninitialized));
+			hashcpy(mp->local.hash, p->two->sha1);
 		} else { /* modification */
 			/*
 			 * This is a true modification. p->one->sha1 shall
 			 * match mp->base, and mp->local shall be uninitialized.
 			 * Set mp->local to p->two->sha1.
 			 */
-			assert(!hashcmp(p->one->sha1, mp->base));
-			assert(!hashcmp(mp->local, uninitialized));
-			hashcpy(mp->local, p->two->sha1);
+			assert(!hashcmp(p->one->sha1, mp->base.hash));
+			assert(!oidcmp(&mp->local, &uninitialized));
+			hashcpy(mp->local.hash, p->two->sha1);
 		}
 		trace_printf("\t\tStored local change for %s: %.7s -> %.7s\n",
-		       sha1_to_hex(mp->obj), sha1_to_hex(mp->base),
-		       sha1_to_hex(mp->local));
+		       oid_to_hex(&mp->obj), oid_to_hex(&mp->base),
+		       oid_to_hex(&mp->local));
 	}
 	diff_flush(&opt);
 	free_pathspec(&opt.pathspec);
@@ -346,11 +348,11 @@ static int ll_merge_in_worktree(struct notes_merge_options *o,
 	mmfile_t base, local, remote;
 	int status;
 
-	read_mmblob(&base, p->base);
-	read_mmblob(&local, p->local);
-	read_mmblob(&remote, p->remote);
+	read_mmblob(&base, p->base.hash);
+	read_mmblob(&local, p->local.hash);
+	read_mmblob(&remote, p->remote.hash);
 
-	status = ll_merge(&result_buf, sha1_to_hex(p->obj), &base, NULL,
+	status = ll_merge(&result_buf, oid_to_hex(&p->obj), &base, NULL,
 			  &local, o->local_ref, &remote, o->remote_ref, NULL);
 
 	free(base.ptr);
@@ -360,7 +362,7 @@ static int ll_merge_in_worktree(struct notes_merge_options *o,
 	if ((status < 0) || !result_buf.ptr)
 		die("Failed to execute internal merge");
 
-	write_buf_to_worktree(p->obj, result_buf.ptr, result_buf.size);
+	write_buf_to_worktree(p->obj.hash, result_buf.ptr, result_buf.size);
 	free(result_buf.ptr);
 
 	return status;
@@ -375,51 +377,51 @@ static int merge_one_change_manual(struct notes_merge_options *o,
 
 	trace_printf("\t\t\tmerge_one_change_manual(obj = %.7s, base = %.7s, "
 	       "local = %.7s, remote = %.7s)\n",
-	       sha1_to_hex(p->obj), sha1_to_hex(p->base),
-	       sha1_to_hex(p->local), sha1_to_hex(p->remote));
+	       oid_to_hex(&p->obj), oid_to_hex(&p->base),
+	       oid_to_hex(&p->local), oid_to_hex(&p->remote));
 
 	/* add "Conflicts:" section to commit message first time through */
 	if (!o->has_worktree)
 		strbuf_addstr(&(o->commit_msg), "\n\nConflicts:\n");
 
-	strbuf_addf(&(o->commit_msg), "\t%s\n", sha1_to_hex(p->obj));
+	strbuf_addf(&(o->commit_msg), "\t%s\n", oid_to_hex(&p->obj));
 
 	if (o->verbosity >= 2)
-		printf("Auto-merging notes for %s\n", sha1_to_hex(p->obj));
+		printf("Auto-merging notes for %s\n", oid_to_hex(&p->obj));
 	check_notes_merge_worktree(o);
-	if (is_null_sha1(p->local)) {
+	if (is_null_oid(&p->local)) {
 		/* D/F conflict, checkout p->remote */
-		assert(!is_null_sha1(p->remote));
+		assert(!is_null_oid(&p->remote));
 		if (o->verbosity >= 1)
 			printf("CONFLICT (delete/modify): Notes for object %s "
 				"deleted in %s and modified in %s. Version from %s "
 				"left in tree.\n",
-				sha1_to_hex(p->obj), lref, rref, rref);
-		write_note_to_worktree(p->obj, p->remote);
-	} else if (is_null_sha1(p->remote)) {
+				oid_to_hex(&p->obj), lref, rref, rref);
+		write_note_to_worktree(p->obj.hash, p->remote.hash);
+	} else if (is_null_oid(&p->remote)) {
 		/* D/F conflict, checkout p->local */
-		assert(!is_null_sha1(p->local));
+		assert(!is_null_oid(&p->local));
 		if (o->verbosity >= 1)
 			printf("CONFLICT (delete/modify): Notes for object %s "
 				"deleted in %s and modified in %s. Version from %s "
 				"left in tree.\n",
-				sha1_to_hex(p->obj), rref, lref, lref);
-		write_note_to_worktree(p->obj, p->local);
+				oid_to_hex(&p->obj), rref, lref, lref);
+		write_note_to_worktree(p->obj.hash, p->local.hash);
 	} else {
 		/* "regular" conflict, checkout result of ll_merge() */
 		const char *reason = "content";
-		if (is_null_sha1(p->base))
+		if (is_null_oid(&p->base))
 			reason = "add/add";
-		assert(!is_null_sha1(p->local));
-		assert(!is_null_sha1(p->remote));
+		assert(!is_null_oid(&p->local));
+		assert(!is_null_oid(&p->remote));
 		if (o->verbosity >= 1)
 			printf("CONFLICT (%s): Merge conflict in notes for "
-				"object %s\n", reason, sha1_to_hex(p->obj));
+				"object %s\n", reason, oid_to_hex(&p->obj));
 		ll_merge_in_worktree(o, p);
 	}
 
 	trace_printf("\t\t\tremoving from partial merge result\n");
-	remove_note(t, p->obj);
+	remove_note(t, p->obj.hash);
 
 	return 1;
 }
@@ -438,29 +440,29 @@ static int merge_one_change(struct notes_merge_options *o,
 	case NOTES_MERGE_RESOLVE_OURS:
 		if (o->verbosity >= 2)
 			printf("Using local notes for %s\n",
-						sha1_to_hex(p->obj));
+						oid_to_hex(&p->obj));
 		/* nothing to do */
 		return 0;
 	case NOTES_MERGE_RESOLVE_THEIRS:
 		if (o->verbosity >= 2)
 			printf("Using remote notes for %s\n",
-						sha1_to_hex(p->obj));
-		if (add_note(t, p->obj, p->remote, combine_notes_overwrite))
+						oid_to_hex(&p->obj));
+		if (add_note(t, p->obj.hash, p->remote.hash, combine_notes_overwrite))
 			die("BUG: combine_notes_overwrite failed");
 		return 0;
 	case NOTES_MERGE_RESOLVE_UNION:
 		if (o->verbosity >= 2)
 			printf("Concatenating local and remote notes for %s\n",
-							sha1_to_hex(p->obj));
-		if (add_note(t, p->obj, p->remote, combine_notes_concatenate))
+							oid_to_hex(&p->obj));
+		if (add_note(t, p->obj.hash, p->remote.hash, combine_notes_concatenate))
 			die("failed to concatenate notes "
 			    "(combine_notes_concatenate)");
 		return 0;
 	case NOTES_MERGE_RESOLVE_CAT_SORT_UNIQ:
 		if (o->verbosity >= 2)
 			printf("Concatenating unique lines in local and remote "
-				"notes for %s\n", sha1_to_hex(p->obj));
-		if (add_note(t, p->obj, p->remote, combine_notes_cat_sort_uniq))
+				"notes for %s\n", oid_to_hex(&p->obj));
+		if (add_note(t, p->obj.hash, p->remote.hash, combine_notes_cat_sort_uniq))
 			die("failed to concatenate notes "
 			    "(combine_notes_cat_sort_uniq)");
 		return 0;
@@ -478,20 +480,20 @@ static int merge_changes(struct notes_merge_options *o,
 	for (i = 0; i < *num_changes; i++) {
 		struct notes_merge_pair *p = changes + i;
 		trace_printf("\t\t%.7s: %.7s -> %.7s/%.7s\n",
-		       sha1_to_hex(p->obj), sha1_to_hex(p->base),
-		       sha1_to_hex(p->local), sha1_to_hex(p->remote));
+		       oid_to_hex(&p->obj), oid_to_hex(&p->base),
+		       oid_to_hex(&p->local), oid_to_hex(&p->remote));
 
-		if (!hashcmp(p->base, p->remote)) {
+		if (!oidcmp(&p->base, &p->remote)) {
 			/* no remote change; nothing to do */
 			trace_printf("\t\t\tskipping (no remote change)\n");
-		} else if (!hashcmp(p->local, p->remote)) {
+		} else if (!oidcmp(&p->local, &p->remote)) {
 			/* same change in local and remote; nothing to do */
 			trace_printf("\t\t\tskipping (local == remote)\n");
-		} else if (!hashcmp(p->local, uninitialized) ||
-			   !hashcmp(p->local, p->base)) {
+		} else if (!oidcmp(&p->local, &uninitialized) ||
+			   !oidcmp(&p->local, &p->base)) {
 			/* no local change; adopt remote change */
 			trace_printf("\t\t\tno local change, adopted remote\n");
-			if (add_note(t, p->obj, p->remote,
+			if (add_note(t, p->obj.hash, p->remote.hash,
 				     combine_notes_overwrite))
 				die("BUG: combine_notes_overwrite failed");
 		} else {
@@ -535,10 +537,10 @@ int notes_merge(struct notes_merge_options *o,
 		struct notes_tree *local_tree,
 		unsigned char *result_sha1)
 {
-	unsigned char local_sha1[20], remote_sha1[20];
+	struct object_id local_oid, remote_oid;
 	struct commit *local, *remote;
 	struct commit_list *bases = NULL;
-	const unsigned char *base_sha1, *base_tree_sha1;
+	const struct object_id *base_oid, *base_tree_oid;
 	int result = 0;
 
 	assert(o->local_ref && o->remote_ref);
@@ -548,47 +550,47 @@ int notes_merge(struct notes_merge_options *o,
 	trace_printf("notes_merge(o->local_ref = %s, o->remote_ref = %s)\n",
 	       o->local_ref, o->remote_ref);
 
-	/* Dereference o->local_ref into local_sha1 */
-	if (read_ref_full(o->local_ref, 0, local_sha1, NULL))
+	/* Dereference o->local_ref into local_oid */
+	if (read_ref_full(o->local_ref, 0, local_oid.hash, NULL))
 		die("Failed to resolve local notes ref '%s'", o->local_ref);
 	else if (!check_refname_format(o->local_ref, 0) &&
-		is_null_sha1(local_sha1))
-		local = NULL; /* local_sha1 == null_sha1 indicates unborn ref */
-	else if (!(local = lookup_commit_reference(local_sha1)))
+		is_null_oid(&local_oid))
+		local = NULL; /* local_oid == null_oid indicates unborn ref */
+	else if (!(local = lookup_commit_reference(local_oid.hash)))
 		die("Could not parse local commit %s (%s)",
-		    sha1_to_hex(local_sha1), o->local_ref);
-	trace_printf("\tlocal commit: %.7s\n", sha1_to_hex(local_sha1));
+		    oid_to_hex(&local_oid), o->local_ref);
+	trace_printf("\tlocal commit: %.7s\n", oid_to_hex(&local_oid));
 
-	/* Dereference o->remote_ref into remote_sha1 */
-	if (get_sha1(o->remote_ref, remote_sha1)) {
+	/* Dereference o->remote_ref into remote_oid */
+	if (get_sha1(o->remote_ref, remote_oid.hash)) {
 		/*
-		 * Failed to get remote_sha1. If o->remote_ref looks like an
+		 * Failed to get remote_oid. If o->remote_ref looks like an
 		 * unborn ref, perform the merge using an empty notes tree.
 		 */
 		if (!check_refname_format(o->remote_ref, 0)) {
-			hashclr(remote_sha1);
+			hashclr(remote_oid.hash);
 			remote = NULL;
 		} else {
 			die("Failed to resolve remote notes ref '%s'",
 			    o->remote_ref);
 		}
-	} else if (!(remote = lookup_commit_reference(remote_sha1))) {
+	} else if (!(remote = lookup_commit_reference(remote_oid.hash))) {
 		die("Could not parse remote commit %s (%s)",
-		    sha1_to_hex(remote_sha1), o->remote_ref);
+		    oid_to_hex(&remote_oid), o->remote_ref);
 	}
-	trace_printf("\tremote commit: %.7s\n", sha1_to_hex(remote_sha1));
+	trace_printf("\tremote commit: %.7s\n", oid_to_hex(&remote_oid));
 
 	if (!local && !remote)
 		die("Cannot merge empty notes ref (%s) into empty notes ref "
 		    "(%s)", o->remote_ref, o->local_ref);
 	if (!local) {
 		/* result == remote commit */
-		hashcpy(result_sha1, remote_sha1);
+		hashcpy(result_sha1, remote_oid.hash);
 		goto found_result;
 	}
 	if (!remote) {
 		/* result == local commit */
-		hashcpy(result_sha1, local_sha1);
+		hashcpy(result_sha1, local_oid.hash);
 		goto found_result;
 	}
 	assert(local && remote);
@@ -596,48 +598,48 @@ int notes_merge(struct notes_merge_options *o,
 	/* Find merge bases */
 	bases = get_merge_bases(local, remote);
 	if (!bases) {
-		base_sha1 = null_sha1;
-		base_tree_sha1 = EMPTY_TREE_SHA1_BIN;
+		base_oid = (const struct object_id *)(void *)null_sha1;
+		base_tree_oid = (const struct object_id *)(void *)EMPTY_TREE_SHA1_BIN;
 		if (o->verbosity >= 4)
 			printf("No merge base found; doing history-less merge\n");
 	} else if (!bases->next) {
-		base_sha1 = bases->item->object.sha1;
-		base_tree_sha1 = bases->item->tree->object.sha1;
+		base_oid = &bases->item->object.oid;
+		base_tree_oid = &bases->item->tree->object.oid;
 		if (o->verbosity >= 4)
 			printf("One merge base found (%.7s)\n",
-				sha1_to_hex(base_sha1));
+				oid_to_hex(base_oid));
 	} else {
 		/* TODO: How to handle multiple merge-bases? */
-		base_sha1 = bases->item->object.sha1;
-		base_tree_sha1 = bases->item->tree->object.sha1;
+		base_oid = &bases->item->object.oid;
+		base_tree_oid = &bases->item->tree->object.oid;
 		if (o->verbosity >= 3)
 			printf("Multiple merge bases found. Using the first "
-				"(%.7s)\n", sha1_to_hex(base_sha1));
+				"(%.7s)\n", oid_to_hex(base_oid));
 	}
 
 	if (o->verbosity >= 4)
 		printf("Merging remote commit %.7s into local commit %.7s with "
-			"merge-base %.7s\n", sha1_to_hex(remote->object.sha1),
-			sha1_to_hex(local->object.sha1),
-			sha1_to_hex(base_sha1));
+			"merge-base %.7s\n", oid_to_hex(&remote->object.oid),
+			oid_to_hex(&local->object.oid),
+			oid_to_hex(base_oid));
 
-	if (!hashcmp(remote->object.sha1, base_sha1)) {
+	if (!oidcmp(&remote->object.oid, base_oid)) {
 		/* Already merged; result == local commit */
 		if (o->verbosity >= 2)
 			printf("Already up-to-date!\n");
-		hashcpy(result_sha1, local->object.sha1);
+		hashcpy(result_sha1, local->object.oid.hash);
 		goto found_result;
 	}
-	if (!hashcmp(local->object.sha1, base_sha1)) {
+	if (!oidcmp(&local->object.oid, base_oid)) {
 		/* Fast-forward; result == remote commit */
 		if (o->verbosity >= 2)
 			printf("Fast-forward\n");
-		hashcpy(result_sha1, remote->object.sha1);
+		hashcpy(result_sha1, remote->object.oid.hash);
 		goto found_result;
 	}
 
-	result = merge_from_diffs(o, base_tree_sha1, local->tree->object.sha1,
-				  remote->tree->object.sha1, local_tree);
+	result = merge_from_diffs(o, base_tree_oid->hash, local->tree->object.oid.hash,
+				  remote->tree->object.oid.hash, local_tree);
 
 	if (result != 0) { /* non-trivial merge (with or without conflicts) */
 		/* Commit (partial) result */
@@ -693,12 +695,12 @@ int notes_merge_commit(struct notes_merge_options *o,
 	baselen = path.len;
 	while ((e = readdir(dir)) != NULL) {
 		struct stat st;
-		unsigned char obj_sha1[20], blob_sha1[20];
+		struct object_id obj_oid, blob_oid;
 
 		if (is_dot_or_dotdot(e->d_name))
 			continue;
 
-		if (strlen(e->d_name) != 40 || get_sha1_hex(e->d_name, obj_sha1)) {
+		if (strlen(e->d_name) != GIT_SHA1_HEXSZ || get_oid_hex(e->d_name, &obj_oid)) {
 			if (o->verbosity >= 3)
 				printf("Skipping non-SHA1 entry '%s%s'\n",
 					path.buf, e->d_name);
@@ -709,14 +711,14 @@ int notes_merge_commit(struct notes_merge_options *o,
 		/* write file as blob, and add to partial_tree */
 		if (stat(path.buf, &st))
 			die_errno("Failed to stat '%s'", path.buf);
-		if (index_path(blob_sha1, path.buf, &st, HASH_WRITE_OBJECT))
+		if (index_path(blob_oid.hash, path.buf, &st, HASH_WRITE_OBJECT))
 			die("Failed to write blob object from '%s'", path.buf);
-		if (add_note(partial_tree, obj_sha1, blob_sha1, NULL))
+		if (add_note(partial_tree, obj_oid.hash, blob_oid.hash, NULL))
 			die("Failed to add resolved note '%s' to notes tree",
 			    path.buf);
 		if (o->verbosity >= 4)
 			printf("Added resolved note for object %s: %s\n",
-				sha1_to_hex(obj_sha1), sha1_to_hex(blob_sha1));
+				oid_to_hex(&obj_oid), oid_to_hex(&blob_oid));
 		strbuf_setlen(&path, baselen);
 	}
 
