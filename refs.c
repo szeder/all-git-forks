@@ -693,7 +693,7 @@ struct ref_entry_cb {
 	const char *base;
 	int trim;
 	int flags;
-	each_ref_fn_oid *fn;
+	each_ref_fn *fn;
 	void *cb_data;
 };
 
@@ -1669,7 +1669,7 @@ char *resolve_refdup(const char *ref, int resolve_flags, unsigned char *sha1, in
 /* The argument to filter_refs */
 struct ref_filter {
 	const char *pattern;
-	each_ref_fn_oid *fn;
+	each_ref_fn *fn;
 	void *cb_data;
 };
 
@@ -1943,7 +1943,7 @@ static int do_for_each_entry(struct ref_cache *refs, const char *base,
  * 0.
  */
 static int do_for_each_ref(struct ref_cache *refs, const char *base,
-			   each_ref_fn_oid fn, int trim, int flags, void *cb_data)
+			   each_ref_fn fn, int trim, int flags, void *cb_data)
 {
 	struct ref_entry_cb data;
 	data.base = base;
@@ -1960,7 +1960,7 @@ static int do_for_each_ref(struct ref_cache *refs, const char *base,
 	return do_for_each_entry(refs, base, do_one_ref, &data);
 }
 
-static int do_head_ref(const char *submodule, each_ref_fn_oid fn, void *cb_data)
+static int do_head_ref(const char *submodule, each_ref_fn fn, void *cb_data)
 {
 	struct object_id oid;
 	int flag;
@@ -1978,73 +1978,73 @@ static int do_head_ref(const char *submodule, each_ref_fn_oid fn, void *cb_data)
 	return 0;
 }
 
-int head_ref(each_ref_fn_oid fn, void *cb_data)
+int head_ref(each_ref_fn fn, void *cb_data)
 {
 	return do_head_ref(NULL, fn, cb_data);
 }
 
-int head_ref_submodule(const char *submodule, each_ref_fn_oid fn, void *cb_data)
+int head_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
 	return do_head_ref(submodule, fn, cb_data);
 }
 
-int for_each_ref(each_ref_fn_oid fn, void *cb_data)
+int for_each_ref(each_ref_fn fn, void *cb_data)
 {
 	return do_for_each_ref(&ref_cache, "", fn, 0, 0, cb_data);
 }
 
-int for_each_ref_submodule(const char *submodule, each_ref_fn_oid fn, void *cb_data)
+int for_each_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
 	return do_for_each_ref(get_ref_cache(submodule), "", fn, 0, 0, cb_data);
 }
 
-int for_each_ref_in(const char *prefix, each_ref_fn_oid fn, void *cb_data)
+int for_each_ref_in(const char *prefix, each_ref_fn fn, void *cb_data)
 {
 	return do_for_each_ref(&ref_cache, prefix, fn, strlen(prefix), 0, cb_data);
 }
 
 int for_each_ref_in_submodule(const char *submodule, const char *prefix,
-		each_ref_fn_oid fn, void *cb_data)
+		each_ref_fn fn, void *cb_data)
 {
 	return do_for_each_ref(get_ref_cache(submodule), prefix, fn, strlen(prefix), 0, cb_data);
 }
 
-int for_each_tag_ref(each_ref_fn_oid fn, void *cb_data)
+int for_each_tag_ref(each_ref_fn fn, void *cb_data)
 {
 	return for_each_ref_in("refs/tags/", fn, cb_data);
 }
 
-int for_each_tag_ref_submodule(const char *submodule, each_ref_fn_oid fn, void *cb_data)
+int for_each_tag_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
 	return for_each_ref_in_submodule(submodule, "refs/tags/", fn, cb_data);
 }
 
-int for_each_branch_ref(each_ref_fn_oid fn, void *cb_data)
+int for_each_branch_ref(each_ref_fn fn, void *cb_data)
 {
 	return for_each_ref_in("refs/heads/", fn, cb_data);
 }
 
-int for_each_branch_ref_submodule(const char *submodule, each_ref_fn_oid fn, void *cb_data)
+int for_each_branch_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
 	return for_each_ref_in_submodule(submodule, "refs/heads/", fn, cb_data);
 }
 
-int for_each_remote_ref(each_ref_fn_oid fn, void *cb_data)
+int for_each_remote_ref(each_ref_fn fn, void *cb_data)
 {
 	return for_each_ref_in("refs/remotes/", fn, cb_data);
 }
 
-int for_each_remote_ref_submodule(const char *submodule, each_ref_fn_oid fn, void *cb_data)
+int for_each_remote_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
 	return for_each_ref_in_submodule(submodule, "refs/remotes/", fn, cb_data);
 }
 
-int for_each_replace_ref(each_ref_fn_oid fn, void *cb_data)
+int for_each_replace_ref(each_ref_fn fn, void *cb_data)
 {
 	return do_for_each_ref(&ref_cache, "refs/replace/", fn, 13, 0, cb_data);
 }
 
-int head_ref_namespaced(each_ref_fn_oid fn, void *cb_data)
+int head_ref_namespaced(each_ref_fn fn, void *cb_data)
 {
 	struct strbuf buf = STRBUF_INIT;
 	int ret = 0;
@@ -2059,7 +2059,7 @@ int head_ref_namespaced(each_ref_fn_oid fn, void *cb_data)
 	return ret;
 }
 
-int for_each_namespaced_ref(each_ref_fn_oid fn, void *cb_data)
+int for_each_namespaced_ref(each_ref_fn fn, void *cb_data)
 {
 	struct strbuf buf = STRBUF_INIT;
 	int ret;
@@ -2069,7 +2069,7 @@ int for_each_namespaced_ref(each_ref_fn_oid fn, void *cb_data)
 	return ret;
 }
 
-int for_each_glob_ref_in(each_ref_fn_oid fn, const char *pattern,
+int for_each_glob_ref_in(each_ref_fn fn, const char *pattern,
 	const char *prefix, void *cb_data)
 {
 	struct strbuf real_pattern = STRBUF_INIT;
@@ -2099,12 +2099,12 @@ int for_each_glob_ref_in(each_ref_fn_oid fn, const char *pattern,
 	return ret;
 }
 
-int for_each_glob_ref(each_ref_fn_oid fn, const char *pattern, void *cb_data)
+int for_each_glob_ref(each_ref_fn fn, const char *pattern, void *cb_data)
 {
 	return for_each_glob_ref_in(fn, pattern, NULL, cb_data);
 }
 
-int for_each_rawref(each_ref_fn_oid fn, void *cb_data)
+int for_each_rawref(each_ref_fn fn, void *cb_data)
 {
 	return do_for_each_ref(&ref_cache, "", fn, 0,
 			       DO_FOR_EACH_INCLUDE_BROKEN, cb_data);
@@ -3484,7 +3484,7 @@ int for_each_reflog_ent(const char *refname, each_reflog_ent_fn fn, void *cb_dat
  * must be empty or end with '/'.  Name will be used as a scratch
  * space, but its contents will be restored before return.
  */
-static int do_for_each_reflog(struct strbuf *name, each_ref_fn_oid fn, void *cb_data)
+static int do_for_each_reflog(struct strbuf *name, each_ref_fn fn, void *cb_data)
 {
 	DIR *d = opendir(git_path("logs/%s", name->buf));
 	int retval = 0;
@@ -3524,7 +3524,7 @@ static int do_for_each_reflog(struct strbuf *name, each_ref_fn_oid fn, void *cb_
 	return retval;
 }
 
-int for_each_reflog(each_ref_fn_oid fn, void *cb_data)
+int for_each_reflog(each_ref_fn fn, void *cb_data)
 {
 	int retval;
 	struct strbuf name;
