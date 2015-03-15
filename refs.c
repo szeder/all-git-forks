@@ -3491,7 +3491,7 @@ int for_each_reflog_ent(const char *refname, each_reflog_ent_fn fn, void *cb_dat
  * must be empty or end with '/'.  Name will be used as a scratch
  * space, but its contents will be restored before return.
  */
-static int do_for_each_reflog(struct strbuf *name, each_ref_fn fn, void *cb_data)
+static int do_for_each_reflog(struct strbuf *name, each_ref_fn_oid fn, void *cb_data)
 {
 	DIR *d = opendir(git_path("logs/%s", name->buf));
 	int retval = 0;
@@ -3516,11 +3516,11 @@ static int do_for_each_reflog(struct strbuf *name, each_ref_fn fn, void *cb_data
 				strbuf_addch(name, '/');
 				retval = do_for_each_reflog(name, fn, cb_data);
 			} else {
-				unsigned char sha1[20];
-				if (read_ref_full(name->buf, 0, sha1, NULL))
+				struct object_id oid;
+				if (read_ref_full(name->buf, 0, oid.hash, NULL))
 					retval = error("bad ref for %s", name->buf);
 				else
-					retval = fn(name->buf, sha1, 0, cb_data);
+					retval = fn(name->buf, &oid, 0, cb_data);
 			}
 			if (retval)
 				break;
@@ -3531,7 +3531,7 @@ static int do_for_each_reflog(struct strbuf *name, each_ref_fn fn, void *cb_data
 	return retval;
 }
 
-int for_each_reflog(each_ref_fn fn, void *cb_data)
+int for_each_reflog(each_ref_fn_oid fn, void *cb_data)
 {
 	int retval;
 	struct strbuf name;
