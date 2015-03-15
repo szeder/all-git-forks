@@ -203,9 +203,9 @@ static int show_reference_oid(const char *refname, const struct object_id *oid, 
 	return show_reference(refname, oid->hash, flag, cb_data);
 }
 
-static int anti_reference(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
+static int anti_reference(const char *refname, const struct object_id *oid, int flag, void *cb_data)
 {
-	show_rev(REVERSED, sha1, refname);
+	show_rev(REVERSED, oid->hash, refname);
 	return 0;
 }
 
@@ -665,7 +665,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				continue;
 			}
 			if (!strcmp(arg, "--bisect")) {
-				for_each_ref_in("refs/bisect/bad", show_reference, NULL);
+				for_each_ref_in("refs/bisect/bad", show_reference_oid, NULL);
 				for_each_ref_in("refs/bisect/good", anti_reference, NULL);
 				continue;
 			}
@@ -676,7 +676,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				continue;
 			}
 			if (!strcmp(arg, "--branches")) {
-				for_each_branch_ref(show_reference, NULL);
+				for_each_branch_ref(show_reference_oid, NULL);
 				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
@@ -703,7 +703,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				continue;
 			}
 			if (!strcmp(arg, "--remotes")) {
-				for_each_remote_ref(show_reference, NULL);
+				for_each_remote_ref(show_reference_oid, NULL);
 				clear_ref_exclusion(&ref_excludes);
 				continue;
 			}
