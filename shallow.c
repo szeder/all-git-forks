@@ -487,6 +487,13 @@ static int mark_uninteresting(const char *refname,
 	return 0;
 }
 
+static int mark_uninteresting_oid(const char *refname,
+				const struct object_id *oid,
+				int flags, void *cb_data)
+{
+	return mark_uninteresting(refname, oid->hash, flags, cb_data);
+}
+
 static void post_assign_shallow(struct shallow_info *info,
 				struct ref_bitmap *ref_bitmap,
 				int *ref_status);
@@ -542,7 +549,7 @@ void assign_shallow_commits_to_refs(struct shallow_info *info,
 	 * connect to old refs. If not (e.g. force ref updates) it'll
 	 * have to go down to the current shallow commits.
 	 */
-	head_ref(mark_uninteresting, NULL);
+	head_ref(mark_uninteresting_oid, NULL);
 	for_each_ref(mark_uninteresting, NULL);
 
 	/* Mark potential bottoms so we won't go out of bound */
@@ -595,6 +602,12 @@ static int add_ref(const char *refname,
 	return 0;
 }
 
+static int add_ref_oid(const char *refname,
+		   const struct object_id *oid, int flags, void *cb_data)
+{
+	return add_ref(refname, oid->hash, flags, cb_data);
+}
+
 static void update_refstatus(int *ref_status, int nr, uint32_t *bitmap)
 {
 	int i;
@@ -641,7 +654,7 @@ static void post_assign_shallow(struct shallow_info *info,
 	info->nr_theirs = dst;
 
 	memset(&ca, 0, sizeof(ca));
-	head_ref(add_ref, &ca);
+	head_ref(add_ref_oid, &ca);
 	for_each_ref(add_ref, &ca);
 
 	/* Remove unreachable shallow commits from "ours" */
@@ -675,7 +688,7 @@ int delayed_reachability_test(struct shallow_info *si, int c)
 		if (!si->commits) {
 			struct commit_array ca;
 			memset(&ca, 0, sizeof(ca));
-			head_ref(add_ref, &ca);
+			head_ref(add_ref_oid, &ca);
 			for_each_ref(add_ref, &ca);
 			si->commits = ca.commits;
 			si->nr_commits = ca.nr;
