@@ -1,3 +1,5 @@
+#define USES_OBJECT_ID_OBJECT
+
 #include "git-compat-util.h"
 #include "line-range.h"
 #include "cache.h"
@@ -500,12 +502,12 @@ static struct commit *check_single_commit(struct rev_info *revs)
 static void fill_blob_sha1(struct commit *commit, struct diff_filespec *spec)
 {
 	unsigned mode;
-	unsigned char sha1[20];
+	struct object_id oid;
 
-	if (get_tree_entry(commit->object.sha1, spec->path,
-			   sha1, &mode))
+	if (get_tree_entry(commit->object.oid.hash, spec->path,
+			   oid.hash, &mode))
 		die("There is no path %s in the commit", spec->path);
-	fill_filespec(spec, sha1, 1, mode);
+	fill_filespec(spec, oid.hash, 1, mode);
 
 	return;
 }
@@ -824,8 +826,8 @@ static void queue_diffs(struct line_log_data *range,
 	assert(commit);
 
 	DIFF_QUEUE_CLEAR(&diff_queued_diff);
-	diff_tree_sha1(parent ? parent->tree->object.sha1 : NULL,
-			commit->tree->object.sha1, "", opt);
+	diff_tree_sha1(parent ? parent->tree->object.oid.hash : NULL,
+			commit->tree->object.oid.hash, "", opt);
 	if (opt->detect_rename) {
 		filter_diffs_for_paths(range, 1);
 		if (diff_might_be_rename())

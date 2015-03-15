@@ -1,3 +1,5 @@
+#define USES_OBJECT_ID_OBJECT
+
 #include "cache.h"
 #include "object.h"
 #include "blob.h"
@@ -30,7 +32,7 @@ static int fsck_walk_tree(struct tree *tree, fsck_walk_func walk, void *data)
 			result = walk(&lookup_blob(entry.sha1)->object, OBJ_BLOB, data);
 		else {
 			result = error("in tree %s: entry %s has bad mode %.6o",
-					sha1_to_hex(tree->object.sha1), entry.path, entry.mode);
+					oid_to_hex(&tree->object.oid), entry.path, entry.mode);
 		}
 		if (result < 0)
 			return result;
@@ -87,7 +89,7 @@ int fsck_walk(struct object *obj, fsck_walk_func walk, void *data)
 	case OBJ_TAG:
 		return fsck_walk_tag((struct tag *)obj, walk, data);
 	default:
-		error("Unknown object type for %s", sha1_to_hex(obj->sha1));
+		error("Unknown object type for %s", oid_to_hex(&obj->oid));
 		return -1;
 	}
 }
@@ -303,7 +305,7 @@ static int fsck_ident(const char **ident, struct object *obj, fsck_error error_f
 static int fsck_commit_buffer(struct commit *commit, const char *buffer,
 	unsigned long size, fsck_error error_func)
 {
-	unsigned char tree_sha1[20], sha1[20];
+	struct object_id tree_oid, oid;
 	struct commit_graft *graft;
 	unsigned parent_count, parent_line_count = 0;
 	int err;
@@ -313,16 +315,16 @@ static int fsck_commit_buffer(struct commit *commit, const char *buffer,
 
 	if (!skip_prefix(buffer, "tree ", &buffer))
 		return error_func(&commit->object, FSCK_ERROR, "invalid format - expected 'tree' line");
-	if (get_sha1_hex(buffer, tree_sha1) || buffer[40] != '\n')
+	if (get_oid_hex(buffer, &tree_oid) || buffer[GIT_SHA1_HEXSZ] != '\n')
 		return error_func(&commit->object, FSCK_ERROR, "invalid 'tree' line format - bad sha1");
 	buffer += 41;
 	while (skip_prefix(buffer, "parent ", &buffer)) {
-		if (get_sha1_hex(buffer, sha1) || buffer[40] != '\n')
+		if (get_oid_hex(buffer, &oid) || buffer[GIT_SHA1_HEXSZ] != '\n')
 			return error_func(&commit->object, FSCK_ERROR, "invalid 'parent' line format - bad sha1");
 		buffer += 41;
 		parent_line_count++;
 	}
-	graft = lookup_commit_graft(commit->object.sha1);
+	graft = lookup_commit_graft(commit->object.oid.hash);
 	parent_count = commit_list_count(commit->parents);
 	if (graft) {
 		if (graft->nr_parent == -1 && !parent_count)
@@ -344,7 +346,7 @@ static int fsck_commit_buffer(struct commit *commit, const char *buffer,
 	if (err)
 		return err;
 	if (!commit->tree)
-		return error_func(&commit->object, FSCK_ERROR, "could not load commit's tree %s", sha1_to_hex(tree_sha1));
+		return error_func(&commit->object, FSCK_ERROR, "could not load commit's tree %s", oid_to_hex(&tree_oid));
 
 	return 0;
 }
@@ -362,7 +364,7 @@ static int fsck_commit(struct commit *commit, const char *data,
 static int fsck_tag_buffer(struct tag *tag, const char *data,
 	unsigned long size, fsck_error error_func)
 {
-	unsigned char sha1[20];
+	struct object_id oid;
 	int ret = 0;
 	const char *buffer;
 	char *to_free = NULL, *eol;
@@ -374,7 +376,7 @@ static int fsck_tag_buffer(struct tag *tag, const char *data,
 		enum object_type type;
 
 		buffer = to_free =
-			read_sha1_file(tag->object.sha1, &type, &size);
+			read_sha1_file(tag->object.oid.hash, &type, &size);
 		if (!buffer)
 			return error_func(&tag->object, FSCK_ERROR,
 				"cannot read tag object");
@@ -394,7 +396,7 @@ static int fsck_tag_buffer(struct tag *tag, const char *data,
 		ret = error_func(&tag->object, FSCK_ERROR, "invalid format - expected 'object' line");
 		goto done;
 	}
-	if (get_sha1_hex(buffer, sha1) || buffer[40] != '\n') {
+	if (get_oid_hex(buffer, &oid) || buffer[GIT_SHA1_HEXSZ] != '\n') {
 		ret = error_func(&tag->object, FSCK_ERROR, "invalid 'object' line format - bad sha1");
 		goto done;
 	}
@@ -479,7 +481,7 @@ int fsck_error_function(struct object *obj, int type, const char *fmt, ...)
 	va_list ap;
 	struct strbuf sb = STRBUF_INIT;
 
-	strbuf_addf(&sb, "object %s:", sha1_to_hex(obj->sha1));
+	strbuf_addf(&sb, "object %s:", oid_to_hex(&obj->oid));
 
 	va_start(ap, fmt);
 	strbuf_vaddf(&sb, fmt, ap);

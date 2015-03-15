@@ -1,3 +1,5 @@
+#define USES_OBJECT_ID_OBJECT
+
 #include "cache.h"
 #include "refs.h"
 #include "pkt-line.h"
@@ -355,7 +357,7 @@ static int show_text_ref(const char *name, const unsigned char *sha1,
 {
 	const char *name_nons = strip_namespace(name);
 	struct strbuf *buf = cb_data;
-	struct object *o = parse_object(sha1);
+	struct object *o = parse_object_hash(sha1);
 	if (!o)
 		return 0;
 
@@ -364,7 +366,7 @@ static int show_text_ref(const char *name, const unsigned char *sha1,
 		o = deref_tag(o, name, 0);
 		if (!o)
 			return 0;
-		strbuf_addf(buf, "%s\t%s^{}\n", sha1_to_hex(o->sha1),
+		strbuf_addf(buf, "%s\t%s^{}\n", oid_to_hex(&o->oid),
 			    name_nons);
 	}
 	return 0;
@@ -408,10 +410,10 @@ static int show_head_ref(const char *refname, const unsigned char *sha1,
 	struct strbuf *buf = cb_data;
 
 	if (flag & REF_ISSYMREF) {
-		unsigned char unused[20];
+		struct object_id unused;
 		const char *target = resolve_ref_unsafe(refname,
 							RESOLVE_REF_READING,
-							unused, NULL);
+							unused.hash, NULL);
 		const char *target_nons = strip_namespace(target);
 
 		strbuf_addf(buf, "ref: %s\n", target_nons);
@@ -544,14 +546,18 @@ static struct service_cmd {
 	const char *pattern;
 	void (*imp)(char *);
 } services[] = {
+	/*
+	 * In the pattern a %d will be replaced with GIT_SHA1_HEXSZ
+	 * while a %i will be replaced with GIT_SHA1_HEXSZ - 2
+	 */
 	{"GET", "/HEAD$", get_head},
 	{"GET", "/info/refs$", get_info_refs},
 	{"GET", "/objects/info/alternates$", get_text_file},
 	{"GET", "/objects/info/http-alternates$", get_text_file},
 	{"GET", "/objects/info/packs$", get_info_packs},
-	{"GET", "/objects/[0-9a-f]{2}/[0-9a-f]{38}$", get_loose_object},
-	{"GET", "/objects/pack/pack-[0-9a-f]{40}\\.pack$", get_pack_file},
-	{"GET", "/objects/pack/pack-[0-9a-f]{40}\\.idx$", get_idx_file},
+	{"GET", "/objects/[0-9a-f]{2}/[0-9a-f]{%i}$", get_loose_object},
+	{"GET", "/objects/pack/pack-[0-9a-f]{%d}\\.pack$", get_pack_file},
+	{"GET", "/objects/pack/pack-[0-9a-f]{%d}\\.idx$", get_idx_file},
 
 	{"POST", "/git-upload-pack$", service_rpc},
 	{"POST", "/git-receive-pack$", service_rpc}
@@ -577,11 +583,21 @@ int main(int argc, char **argv)
 	dir = getdir();
 
 	for (i = 0; i < ARRAY_SIZE(services); i++) {
+		char pattern[64];
+		const char *patptr, *pct;
 		struct service_cmd *c = &services[i];
 		regex_t re;
 		regmatch_t out[1];
 
-		if (regcomp(&re, c->pattern, REG_EXTENDED))
+		patptr = c->pattern;
+		if ((pct = strchr(patptr, '%'))) {
+			int val = GIT_SHA1_HEXSZ;
+			if (pct[1] == 'i')
+				val -= 2;
+			sprintf(pattern, patptr, val);
+			patptr = pattern;
+		}
+		if (regcomp(&re, patptr, REG_EXTENDED))
 			die("Bogus regex in service table: %s", c->pattern);
 		if (!regexec(&re, dir, 1, out, 0)) {
 			size_t n;
