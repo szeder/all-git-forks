@@ -1,3 +1,5 @@
+#define USES_OBJECT_ID_OBJECT
+
 #include "cache.h"
 #include "lockfile.h"
 #include "tree.h"
@@ -393,10 +395,10 @@ static int update_one(struct cache_tree *it,
 	}
 
 	if (repair) {
-		unsigned char sha1[20];
-		hash_sha1_file(buffer.buf, buffer.len, tree_type, sha1);
-		if (has_sha1_file(sha1))
-			hashcpy(it->sha1, sha1);
+		struct object_id oid;
+		hash_sha1_file(buffer.buf, buffer.len, tree_type, oid.hash);
+		if (has_sha1_file(oid.hash))
+			hashcpy(it->sha1, oid.hash);
 		else
 			to_invalidate = 1;
 	} else if (dryrun)
@@ -652,7 +654,7 @@ static void prime_cache_tree_rec(struct cache_tree *it, struct tree *tree)
 	struct name_entry entry;
 	int cnt;
 
-	hashcpy(it->sha1, tree->object.sha1);
+	hashcpy(it->sha1, tree->object.oid.hash);
 	init_tree_desc(&desc, tree->buffer, tree->size);
 	cnt = 0;
 	while (tree_entry(&desc, &entry)) {

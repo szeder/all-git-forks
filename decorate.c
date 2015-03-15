@@ -2,13 +2,15 @@
  * decorate.c - decorate a git object with some arbitrary
  * data.
  */
+#define USES_OBJECT_ID_OBJECT
+
 #include "cache.h"
 #include "object.h"
 #include "decorate.h"
 
 static unsigned int hash_obj(const struct object *obj, unsigned int n)
 {
-	return sha1hash(obj->sha1) % n;
+	return sha1hash(obj->oid.hash) % n;
 }
 
 static void *insert_decoration(struct decoration *n, const struct object *base, void *decoration)
