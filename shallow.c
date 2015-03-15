@@ -550,7 +550,7 @@ void assign_shallow_commits_to_refs(struct shallow_info *info,
 	 * have to go down to the current shallow commits.
 	 */
 	head_ref(mark_uninteresting_oid, NULL);
-	for_each_ref(mark_uninteresting, NULL);
+	for_each_ref(mark_uninteresting_oid, NULL);
 
 	/* Mark potential bottoms so we won't go out of bound */
 	for (i = 0; i < nr_shallow; i++) {
@@ -655,7 +655,7 @@ static void post_assign_shallow(struct shallow_info *info,
 
 	memset(&ca, 0, sizeof(ca));
 	head_ref(add_ref_oid, &ca);
-	for_each_ref(add_ref, &ca);
+	for_each_ref(add_ref_oid, &ca);
 
 	/* Remove unreachable shallow commits from "ours" */
 	for (i = dst = 0; i < info->nr_ours; i++) {
@@ -689,7 +689,7 @@ int delayed_reachability_test(struct shallow_info *si, int c)
 			struct commit_array ca;
 			memset(&ca, 0, sizeof(ca));
 			head_ref(add_ref_oid, &ca);
-			for_each_ref(add_ref, &ca);
+			for_each_ref(add_ref_oid, &ca);
 			si->commits = ca.commits;
 			si->nr_commits = ca.nr;
 		}
