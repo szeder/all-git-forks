@@ -1702,28 +1702,33 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	}
 
 	if ((argcount = parse_long_opt("max-count", argv, &optarg))) {
-		revs->max_count = atoi(optarg);
+		if (convert_i(optarg, 10, &revs->max_count))
+			return error("--max-count requires a non-negative integer");
 		revs->no_walk = 0;
 		return argcount;
 	} else if ((argcount = parse_long_opt("skip", argv, &optarg))) {
-		revs->skip_count = atoi(optarg);
+		if (convert_i(optarg, 10, &revs->skip_count))
+			return error("--skip requires a non-negative integer");
 		return argcount;
 	} else if ((*arg == '-') && isdigit(arg[1])) {
 		/* accept -<digit>, like traditional "head" */
 		if (convert_i(arg + 1, 10, &revs->max_count))
-			die("'%s': not a non-negative integer", arg + 1);
+			return error("'%s': not a non-negative integer", arg + 1);
 		revs->no_walk = 0;
 	} else if (!strcmp(arg, "-n")) {
 		if (argc <= 1)
 			return error("-n requires an argument");
-		revs->max_count = atoi(argv[1]);
+		if (convert_i(argv[1], 10, &revs->max_count))
+			return error("-n requires a non-negative integer");
 		revs->no_walk = 0;
 		return 2;
 	} else if (skip_prefix(arg, "-n", &arg)) {
-		revs->max_count = atoi(arg);
+		if (convert_i(arg, 10, &revs->max_count))
+			return error("-n requires a non-negative integer");
 		revs->no_walk = 0;
 	} else if ((argcount = parse_long_opt("max-age", argv, &optarg))) {
-		revs->max_age = atoi(optarg);
+		if (convert_ul(optarg, 10, &revs->max_age))
+			return error("--max-age requires a non-negative integer");
 		return argcount;
 	} else if ((argcount = parse_long_opt("since", argv, &optarg))) {
 		revs->max_age = approxidate(optarg);
@@ -1732,7 +1737,8 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->max_age = approxidate(optarg);
 		return argcount;
 	} else if ((argcount = parse_long_opt("min-age", argv, &optarg))) {
-		revs->min_age = atoi(optarg);
+		if (convert_ul(optarg, 10, &revs->min_age))
+			return error("--min-age requires a non-negative integer");
 		return argcount;
 	} else if ((argcount = parse_long_opt("before", argv, &optarg))) {
 		revs->min_age = approxidate(optarg);
@@ -1783,7 +1789,8 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		int count = 100;
 		switch (*arg++) {
 		case '=':
-			count = atoi(arg);
+			if (convert_i(arg, 10, &count))
+				return error("--early-output requires a non-negative integer");
 			/* Fallthrough */
 		case 0:
 			revs->topo_order = 1;
@@ -1805,11 +1812,13 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	} else if (!strcmp(arg, "--no-merges")) {
 		revs->max_parents = 1;
 	} else if (skip_prefix(arg, "--min-parents=", &arg)) {
-		revs->min_parents = atoi(arg);
+		if (convert_i(arg, NUM_SLOPPY, &revs->min_parents))
+			return error("--min-parents requires a non-negative integer");
 	} else if (starts_with(arg, "--no-min-parents")) {
 		revs->min_parents = 0;
 	} else if (skip_prefix(arg, "--max-parents=", &arg)) {
-		revs->max_parents = atoi(arg);
+		if (convert_i(arg, NUM_SLOPPY, &revs->max_parents))
+			return error("--max-parents requires an integer");
 	} else if (starts_with(arg, "--no-max-parents")) {
 		revs->max_parents = -1;
 	} else if (!strcmp(arg, "--boundary")) {
