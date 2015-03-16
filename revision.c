@@ -1,3 +1,5 @@
+#define USES_OBJECT_ID_OBJECT
+
 #include "cache.h"
 #include "tag.h"
 #include "blob.h"
@@ -82,7 +84,7 @@ void show_object_with_name(FILE *out, struct object *obj,
 	leaf.elem = component;
 	leaf.elem_len = strlen(component);
 
-	fprintf(out, "%s ", sha1_to_hex(obj->sha1));
+	fprintf(out, "%s ", oid_to_hex(&obj->oid));
 	show_path_truncated(out, &leaf);
 	fputc('\n', out);
 }
@@ -102,10 +104,10 @@ static void mark_tree_contents_uninteresting(struct tree *tree)
 	struct name_entry entry;
 	struct object *obj = &tree->object;
 
-	if (!has_sha1_file(obj->sha1))
+	if (!has_sha1_file(obj->oid.hash))
 		return;
 	if (parse_tree(tree) < 0)
-		die("bad tree %s", sha1_to_hex(obj->sha1));
+		die("bad tree %s", oid_to_hex(&obj->oid));
 
 	init_tree_desc(&desc, tree->buffer, tree->size);
 	while (tree_entry(&desc, &entry)) {
@@ -163,7 +165,7 @@ void mark_parents_uninteresting(struct commit *commit)
 			 * it is popped next time around, we won't be trying
 			 * to parse it and get an error.
 			 */
-			if (!has_sha1_file(commit->object.sha1))
+			if (!has_sha1_file(commit->object.oid.hash))
 				commit->object.parsed = 1;
 
 			if (commit->object.flags & UNINTERESTING)
@@ -230,11 +232,11 @@ void add_pending_object(struct rev_info *revs,
 
 void add_head_to_pending(struct rev_info *revs)
 {
-	unsigned char sha1[20];
+	struct object_id oid;
 	struct object *obj;
-	if (get_sha1("HEAD", sha1))
+	if (get_sha1("HEAD", oid.hash))
 		return;
-	obj = parse_object(sha1);
+	obj = parse_object(&oid);
 	if (!obj)
 		return;
 	add_pending_object(revs, obj, "HEAD");
@@ -246,7 +248,7 @@ static struct object *get_reference(struct rev_info *revs, const char *name,
 {
 	struct object *object;
 
-	object = parse_object(sha1);
+	object = parse_object_hash(sha1);
 	if (!object) {
 		if (revs->ignore_missing)
 			return object;
@@ -281,11 +283,11 @@ static struct commit *handle_commit(struct rev_info *revs,
 			add_pending_object(revs, object, tag->tag);
 		if (!tag->tagged)
 			die("bad tag");
-		object = parse_object(tag->tagged->sha1);
+		object = parse_object(&tag->tagged->oid);
 		if (!object) {
 			if (flags & UNINTERESTING)
 				return NULL;
-			die("bad object %s", sha1_to_hex(tag->tagged->sha1));
+			die("bad object %s", oid_to_hex(&tag->tagged->oid));
 		}
 		object->flags |= flags;
 		/*
@@ -499,7 +501,7 @@ static int rev_compare_tree(struct rev_info *revs,
 
 	tree_difference = REV_TREE_SAME;
 	DIFF_OPT_CLR(&revs->pruning, HAS_CHANGES);
-	if (diff_tree_sha1(t1->object.sha1, t2->object.sha1, "",
+	if (diff_tree_sha1(t1->object.oid.hash, t2->object.oid.hash, "",
 			   &revs->pruning) < 0)
 		return REV_TREE_DIFFERENT;
 	return tree_difference;
@@ -515,7 +517,7 @@ static int rev_same_tree_as_empty(struct rev_info *revs, struct commit *commit)
 
 	tree_difference = REV_TREE_SAME;
 	DIFF_OPT_CLR(&revs->pruning, HAS_CHANGES);
-	retval = diff_tree_sha1(NULL, t1->object.sha1, "", &revs->pruning);
+	retval = diff_tree_sha1(NULL, t1->object.oid.hash, "", &revs->pruning);
 
 	return retval >= 0 && (tree_difference == REV_TREE_SAME);
 }
@@ -599,7 +601,7 @@ static unsigned update_treesame(struct rev_info *revs, struct commit *commit)
 
 		st = lookup_decoration(&revs->treesame, &commit->object);
 		if (!st)
-			die("update_treesame %s", sha1_to_hex(commit->object.sha1));
+			die("update_treesame %s", oid_to_hex(&commit->object.oid));
 		relevant_parents = 0;
 		relevant_change = irrelevant_change = 0;
 		for (p = commit->parents, n = 0; p; n++, p = p->next) {
@@ -697,8 +699,8 @@ static void try_to_simplify_commit(struct rev_info *revs, struct commit *commit)
 		}
 		if (parse_commit(p) < 0)
 			die("cannot simplify commit %s (because of %s)",
-			    sha1_to_hex(commit->object.sha1),
-			    sha1_to_hex(p->object.sha1));
+			    oid_to_hex(&commit->object.oid),
+			    oid_to_hex(&p->object.oid));
 		switch (rev_compare_tree(revs, p, commit)) {
 		case REV_TREE_SAME:
 			if (!revs->simplify_history || !relevant_commit(p)) {
@@ -730,8 +732,8 @@ static void try_to_simplify_commit(struct rev_info *revs, struct commit *commit)
 				 */
 				if (parse_commit(p) < 0)
 					die("cannot simplify commit %s (invalid %s)",
-					    sha1_to_hex(commit->object.sha1),
-					    sha1_to_hex(p->object.sha1));
+					    oid_to_hex(&commit->object.oid),
+					    oid_to_hex(&p->object.oid));
 				p->parents = NULL;
 			}
 		/* fallthrough */
@@ -743,7 +745,7 @@ static void try_to_simplify_commit(struct rev_info *revs, struct commit *commit)
 				irrelevant_change = 1;
 			continue;
 		}
-		die("bad tree compare for commit %s", sha1_to_hex(commit->object.sha1));
+		die("bad tree compare for commit %s", oid_to_hex(&commit->object.oid));
 	}
 
 	/*
@@ -1177,7 +1179,7 @@ static void add_rev_cmdline_list(struct rev_info *revs,
 {
 	while (commit_list) {
 		struct object *object = &commit_list->item->object;
-		add_rev_cmdline(revs, object, sha1_to_hex(object->sha1),
+		add_rev_cmdline(revs, object, oid_to_hex(&object->oid),
 				whence, flags);
 		commit_list = commit_list->next;
 	}
@@ -1254,7 +1256,7 @@ static void handle_one_reflog_commit(unsigned char *sha1, void *cb_data)
 {
 	struct all_refs_cb *cb = cb_data;
 	if (!is_null_sha1(sha1)) {
-		struct object *o = parse_object(sha1);
+		struct object *o = parse_object_hash(sha1);
 		if (o) {
 			o->flags |= cb->all_flags;
 			/* ??? CMDLINEFLAGS ??? */
@@ -1343,7 +1345,7 @@ void add_index_objects_to_pending(struct rev_info *revs, unsigned flags)
 
 static int add_parents_only(struct rev_info *revs, const char *arg_, int flags)
 {
-	unsigned char sha1[20];
+	struct object_id oid;
 	struct object *it;
 	struct commit *commit;
 	struct commit_list *parents;
@@ -1353,17 +1355,17 @@ static int add_parents_only(struct rev_info *revs, const char *arg_, int flags)
 		flags ^= UNINTERESTING | BOTTOM;
 		arg++;
 	}
-	if (get_sha1_committish(arg, sha1))
+	if (get_sha1_committish(arg, oid.hash))
 		return 0;
 	while (1) {
-		it = get_reference(revs, arg, sha1, 0);
+		it = get_reference(revs, arg, oid.hash, 0);
 		if (!it && revs->ignore_missing)
 			return 0;
 		if (it->type != OBJ_TAG)
 			break;
 		if (!((struct tag*)it)->tagged)
 			return 0;
-		hashcpy(sha1, ((struct tag*)it)->tagged->sha1);
+		oidcpy(&oid, &((struct tag*)it)->tagged->oid);
 	}
 	if (it->type != OBJ_COMMIT)
 		return 0;
@@ -1420,7 +1422,7 @@ static void add_pending_commit_list(struct rev_info *revs,
 	while (commit_list) {
 		struct object *object = &commit_list->item->object;
 		object->flags |= flags;
-		add_pending_object(revs, object, sha1_to_hex(object->sha1));
+		add_pending_object(revs, object, oid_to_hex(&object->oid));
 		commit_list = commit_list->next;
 	}
 }
@@ -1429,16 +1431,16 @@ static void prepare_show_merge(struct rev_info *revs)
 {
 	struct commit_list *bases;
 	struct commit *head, *other;
-	unsigned char sha1[20];
+	struct object_id oid;
 	const char **prune = NULL;
 	int i, prune_num = 1; /* counting terminating NULL */
 
-	if (get_sha1("HEAD", sha1))
+	if (get_sha1("HEAD", oid.hash))
 		die("--merge without HEAD?");
-	head = lookup_commit_or_die(sha1, "HEAD");
-	if (get_sha1("MERGE_HEAD", sha1))
+	head = lookup_commit_or_die(oid.hash, "HEAD");
+	if (get_sha1("MERGE_HEAD", oid.hash))
 		die("--merge without MERGE_HEAD?");
-	other = lookup_commit_or_die(sha1, "MERGE_HEAD");
+	other = lookup_commit_or_die(oid.hash, "MERGE_HEAD");
 	add_pending_object(revs, &head->object, "HEAD");
 	add_pending_object(revs, &other->object, "MERGE_HEAD");
 	bases = get_merge_bases(head, other);
@@ -1474,7 +1476,7 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsi
 	struct object_context oc;
 	char *dotdot;
 	struct object *object;
-	unsigned char sha1[20];
+	struct object_id oid;
 	int local_flags;
 	const char *arg = arg_;
 	int cant_be_filename = revarg_opt & REVARG_CANNOT_BE_FILENAME;
@@ -1484,7 +1486,7 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsi
 
 	dotdot = strstr(arg, "..");
 	if (dotdot) {
-		unsigned char from_sha1[20];
+		struct object_id from_oid;
 		const char *next = dotdot + 2;
 		const char *this = arg;
 		int symmetric = *next == '.';
@@ -1510,8 +1512,8 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsi
 				return -1;
 			}
 		}
-		if (!get_sha1_committish(this, from_sha1) &&
-		    !get_sha1_committish(next, sha1)) {
+		if (!get_sha1_committish(this, from_oid.hash) &&
+		    !get_sha1_committish(next, oid.hash)) {
 			struct object *a_obj, *b_obj;
 
 			if (!cant_be_filename) {
@@ -1519,8 +1521,8 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsi
 				verify_non_filename(revs->prefix, arg);
 			}
 
-			a_obj = parse_object(from_sha1);
-			b_obj = parse_object(sha1);
+			a_obj = parse_object(&from_oid);
+			b_obj = parse_object(&oid);
 			if (!a_obj || !b_obj) {
 			missing:
 				if (revs->ignore_missing)
@@ -1540,10 +1542,10 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsi
 
 				a = (a_obj->type == OBJ_COMMIT
 				     ? (struct commit *)a_obj
-				     : lookup_commit_reference(a_obj->sha1));
+				     : lookup_commit_reference(a_obj->oid.hash));
 				b = (b_obj->type == OBJ_COMMIT
 				     ? (struct commit *)b_obj
-				     : lookup_commit_reference(b_obj->sha1));
+				     : lookup_commit_reference(b_obj->oid.hash));
 				if (!a || !b)
 					goto missing;
 				exclude = get_merge_bases(a, b);
@@ -1592,11 +1594,11 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsi
 	if (revarg_opt & REVARG_COMMITTISH)
 		get_sha1_flags = GET_SHA1_COMMITTISH;
 
-	if (get_sha1_with_context(arg, get_sha1_flags, sha1, &oc))
+	if (get_sha1_with_context(arg, get_sha1_flags, oid.hash, &oc))
 		return revs->ignore_missing ? 0 : -1;
 	if (!cant_be_filename)
 		verify_non_filename(revs->prefix, arg);
-	object = get_reference(revs, arg, sha1, flags ^ local_flags);
+	object = get_reference(revs, arg, oid.hash, flags ^ local_flags);
 	add_rev_cmdline(revs, object, arg_, REV_CMD_REV, flags ^ local_flags);
 	add_pending_object_with_mode(revs, object, arg, oc.mode);
 	return 0;
@@ -1965,8 +1967,8 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->abbrev = strtoul(arg + 9, NULL, 10);
 		if (revs->abbrev < MINIMUM_ABBREV)
 			revs->abbrev = MINIMUM_ABBREV;
-		else if (revs->abbrev > 40)
-			revs->abbrev = 40;
+		else if (revs->abbrev > GIT_SHA1_HEXSZ)
+			revs->abbrev = GIT_SHA1_HEXSZ;
 	} else if (!strcmp(arg, "--abbrev-commit")) {
 		revs->abbrev_commit = 1;
 		revs->abbrev_commit_given = 1;
@@ -2278,12 +2280,12 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 	if (revs->show_merge)
 		prepare_show_merge(revs);
 	if (revs->def && !revs->pending.nr && !got_rev_arg) {
-		unsigned char sha1[20];
+		struct object_id oid;
 		struct object *object;
 		struct object_context oc;
-		if (get_sha1_with_context(revs->def, 0, sha1, &oc))
+		if (get_sha1_with_context(revs->def, 0, oid.hash, &oc))
 			die("bad default revision '%s'", revs->def);
-		object = get_reference(revs, revs->def, sha1, 0);
+		object = get_reference(revs, revs->def, oid.hash, 0);
 		add_pending_object_with_mode(revs, object, revs->def, oc.mode);
 	}
 
@@ -2897,7 +2899,7 @@ static int commit_match(struct commit *commit, struct rev_info *opt)
 	if (opt->show_notes) {
 		if (!buf.len)
 			strbuf_addstr(&buf, message);
-		format_display_notes(commit->object.sha1, &buf, encoding, 1);
+		format_display_notes(commit->object.oid.hash, &buf, encoding, 1);
 	}
 
 	/*
@@ -2927,7 +2929,7 @@ enum commit_action get_commit_action(struct rev_info *revs, struct commit *commi
 {
 	if (commit->object.flags & SHOWN)
 		return commit_ignore;
-	if (revs->unpacked && has_sha1_pack(commit->object.sha1))
+	if (revs->unpacked && has_sha1_pack(commit->object.oid.hash))
 		return commit_ignore;
 	if (revs->show_all)
 		return commit_show;
@@ -2998,7 +3000,7 @@ static void track_linear(struct rev_info *revs, struct commit *commit)
 		struct commit_list *p;
 		for (p = revs->previous_parents; p; p = p->next)
 			if (p->item == NULL || /* first commit */
-			    !hashcmp(p->item->object.sha1, commit->object.sha1))
+			    !oidcmp(&p->item->object.oid, &commit->object.oid))
 				break;
 		revs->linear = p != NULL;
 	}
@@ -3040,7 +3042,7 @@ static struct commit *get_revision_1(struct rev_info *revs)
 			if (add_parents_to_list(revs, commit, &revs->commits, NULL) < 0) {
 				if (!revs->ignore_missing_links)
 					die("Failed to traverse parents of commit %s",
-						sha1_to_hex(commit->object.sha1));
+						oid_to_hex(&commit->object.oid));
 			}
 		}
 
@@ -3049,7 +3051,7 @@ static struct commit *get_revision_1(struct rev_info *revs)
 			continue;
 		case commit_error:
 			die("Failed to simplify parents of commit %s",
-			    sha1_to_hex(commit->object.sha1));
+			    oid_to_hex(&commit->object.oid));
 		default:
 			if (revs->track_linear)
 				track_linear(revs, commit);

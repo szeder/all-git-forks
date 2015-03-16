@@ -1,3 +1,5 @@
+#define USES_OBJECT_ID_OBJECT
+
 #include "cache.h"
 #include "refs.h"
 #include "object.h"
@@ -50,7 +52,7 @@ out:
 static int add_info_ref(const char *path, const unsigned char *sha1, int flag, void *cb_data)
 {
 	FILE *fp = cb_data;
-	struct object *o = parse_object(sha1);
+	struct object *o = parse_object_hash(sha1);
 	if (!o)
 		return -1;
 
@@ -61,7 +63,7 @@ static int add_info_ref(const char *path, const unsigned char *sha1, int flag, v
 		o = deref_tag(o, path, 0);
 		if (o)
 			if (fprintf(fp, "%s	%s^{}\n",
-				sha1_to_hex(o->sha1), path) < 0)
+				oid_to_hex(&o->oid), path) < 0)
 				return -1;
 	}
 	return 0;
@@ -87,7 +89,7 @@ static struct pack_info {
 	int new_num;
 	int nr_alloc;
 	int nr_heads;
-	unsigned char (*head)[20];
+	struct object_id *head;
 } **info;
 static int num_pack;
 static const char *objdir;
