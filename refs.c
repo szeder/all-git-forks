@@ -1,3 +1,5 @@
+#define USES_OBJECT_ID_OBJECT
+
 #include "cache.h"
 #include "lockfile.h"
 #include "refs.h"
@@ -1689,7 +1691,7 @@ enum peel_status {
  */
 static enum peel_status peel_object(const unsigned char *name, unsigned char *sha1)
 {
-	struct object *o = lookup_unknown_object(name);
+	struct object *o = lookup_unknown_object_hash(name);
 
 	if (o->type == OBJ_NONE) {
 		int type = sha1_object_info(name, NULL);
@@ -1704,7 +1706,7 @@ static enum peel_status peel_object(const unsigned char *name, unsigned char *sh
 	if (!o)
 		return PEEL_INVALID;
 
-	hashcpy(sha1, o->sha1);
+	hashcpy(sha1, o->oid.hash);
 	return PEEL_PEELED;
 }
 
@@ -3073,7 +3075,7 @@ static int write_ref_sha1(struct ref_lock *lock,
 		unlock_ref(lock);
 		return 0;
 	}
-	o = parse_object(sha1);
+	o = parse_object_hash(sha1);
 	if (!o) {
 		error("Trying to write ref %s with nonexistent object %s",
 			lock->ref_name, sha1_to_hex(sha1));

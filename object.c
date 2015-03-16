@@ -1,3 +1,5 @@
+#define USES_OBJECT_ID_OBJECT
+
 #include "cache.h"
 #include "object.h"
 #include "blob.h"
@@ -67,7 +69,7 @@ static unsigned int hash_obj(const unsigned char *sha1, unsigned int n)
  */
 static void insert_obj_hash(struct object *obj, struct object **hash, unsigned int size)
 {
-	unsigned int j = hash_obj(obj->sha1, size);
+	unsigned int j = hash_obj(obj->oid.hash, size);
 
 	while (hash[j]) {
 		j++;
@@ -91,7 +93,7 @@ struct object *lookup_object_hash(const unsigned char *sha1)
 
 	first = i = hash_obj(sha1, obj_hash_size);
 	while ((obj = obj_hash[i]) != NULL) {
-		if (!hashcmp(sha1, obj->sha1))
+		if (!hashcmp(sha1, obj->oid.hash))
 			break;
 		i++;
 		if (i == obj_hash_size)
@@ -144,7 +146,7 @@ void *create_object_hash(const unsigned char *sha1, void *o)
 	obj->parsed = 0;
 	obj->used = 0;
 	obj->flags = 0;
-	hashcpy(obj->sha1, sha1);
+	hashcpy(obj->oid.hash, sha1);
 
 	if (obj_hash_size - 1 <= nr_objs * 2)
 		grow_object_hash();
@@ -167,7 +169,7 @@ void *object_as_type(struct object *obj, enum object_type type, int quiet)
 	else {
 		if (!quiet)
 			error("object %s is a %s, not a %s",
-			      sha1_to_hex(obj->sha1),
+			      oid_to_hex(&obj->oid),
 			      typename(obj->type), typename(type));
 		return NULL;
 	}
@@ -175,9 +177,9 @@ void *object_as_type(struct object *obj, enum object_type type, int quiet)
 
 struct object *lookup_unknown_object_hash(const unsigned char *sha1)
 {
-	struct object *obj = lookup_object(sha1);
+	struct object *obj = lookup_object_hash(sha1);
 	if (!obj)
-		obj = create_object(sha1, alloc_object_node());
+		obj = create_object_hash(sha1, alloc_object_node());
 	return obj;
 }
 
@@ -234,7 +236,7 @@ struct object *parse_object_buffer_hash(const unsigned char *sha1, enum object_t
 struct object *parse_object_or_die_hash(const unsigned char *sha1,
 				   const char *name)
 {
-	struct object *o = parse_object(sha1);
+	struct object *o = parse_object_hash(sha1);
 	if (o)
 		return o;
 
@@ -250,7 +252,7 @@ struct object *parse_object_hash(const unsigned char *sha1)
 	void *buffer;
 	struct object *obj;
 
-	obj = lookup_object(sha1);
+	obj = lookup_object_hash(sha1);
 	if (obj && obj->parsed)
 		return obj;
 
@@ -262,7 +264,7 @@ struct object *parse_object_hash(const unsigned char *sha1)
 			return NULL;
 		}
 		parse_blob_buffer(lookup_blob(sha1), NULL, 0);
-		return lookup_object(sha1);
+		return lookup_object_hash(sha1);
 	}
 
 	buffer = read_sha1_file(sha1, &type, &size);
@@ -273,7 +275,7 @@ struct object *parse_object_hash(const unsigned char *sha1)
 			return NULL;
 		}
 
-		obj = parse_object_buffer(sha1, type, size, buffer, &eaten);
+		obj = parse_object_buffer_hash(sha1, type, size, buffer, &eaten);
 		if (!eaten)
 			free(buffer);
 		return obj;

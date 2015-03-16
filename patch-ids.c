@@ -1,3 +1,5 @@
+#define USES_OBJECT_ID_OBJECT
+
 #include "cache.h"
 #include "diff.h"
 #include "commit.h"
@@ -8,10 +10,10 @@ static int commit_patch_id(struct commit *commit, struct diff_options *options,
 		    unsigned char *sha1)
 {
 	if (commit->parents)
-		diff_tree_sha1(commit->parents->item->object.sha1,
-		               commit->object.sha1, "", options);
+		diff_tree_sha1(commit->parents->item->object.oid.hash,
+			       commit->object.oid.hash, "", options);
 	else
-		diff_root_tree_sha1(commit->object.sha1, "", options);
+		diff_root_tree_sha1(commit->object.oid.hash, "", options);
 	diffcore_std(options);
 	return diff_flush_patch_id(options, sha1);
 }
@@ -61,12 +63,12 @@ static struct patch_id *add_commit(struct commit *commit,
 {
 	struct patch_id_bucket *bucket;
 	struct patch_id *ent;
-	unsigned char sha1[20];
+	struct object_id oid;
 	int pos;
 
-	if (commit_patch_id(commit, &ids->diffopts, sha1))
+	if (commit_patch_id(commit, &ids->diffopts, oid.hash))
 		return NULL;
-	pos = patch_pos(ids->table, ids->nr, sha1);
+	pos = patch_pos(ids->table, ids->nr, oid.hash);
 	if (0 <= pos)
 		return ids->table[pos];
 	if (no_add)
@@ -81,7 +83,7 @@ static struct patch_id *add_commit(struct commit *commit,
 		ids->patches = bucket;
 	}
 	ent = &bucket->bucket[bucket->nr++];
-	hashcpy(ent->patch_id, sha1);
+	hashcpy(ent->patch_id, oid.hash);
 
 	ALLOC_GROW(ids->table, ids->nr + 1, ids->alloc);
 	if (pos < ids->nr)

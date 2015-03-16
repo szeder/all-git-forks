@@ -1,3 +1,5 @@
+#define USES_OBJECT_ID_OBJECT
+
 #include "cache.h"
 #include "commit.h"
 #include "tag.h"
@@ -35,7 +37,7 @@ struct bitmap_writer {
 
 	struct progress *progress;
 	int show_progress;
-	unsigned char pack_checksum[20];
+	struct object_id pack_checksum;
 };
 
 static struct bitmap_writer writer;
@@ -136,13 +138,13 @@ static inline void reset_all_seen(void)
 	seen_objects_nr = 0;
 }
 
-static uint32_t find_object_pos(const unsigned char *sha1)
+static uint32_t find_object_pos(const struct object_id *oid)
 {
-	struct object_entry *entry = packlist_find(writer.to_pack, sha1, NULL);
+	struct object_entry *entry = packlist_find(writer.to_pack, oid->hash, NULL);
 
 	if (!entry) {
 		die("Failed to write bitmap index. Packfile doesn't have full closure "
-			"(object %s is missing)", sha1_to_hex(sha1));
+			"(object %s is missing)", oid_to_hex(oid));
 	}
 
 	return entry->in_pack_pos;
@@ -152,7 +154,7 @@ static void show_object(struct object *object, const struct name_path *path,
 			const char *last, void *data)
 {
 	struct bitmap *base = data;
-	bitmap_set(base, find_object_pos(object->sha1));
+	bitmap_set(base, find_object_pos(&object->oid));
 	mark_as_seen(object);
 }
 
@@ -165,12 +167,12 @@ static int
 add_to_include_set(struct bitmap *base, struct commit *commit)
 {
 	khiter_t hash_pos;
-	uint32_t bitmap_pos = find_object_pos(commit->object.sha1);
+	uint32_t bitmap_pos = find_object_pos(&commit->object.oid);
 
 	if (bitmap_get(base, bitmap_pos))
 		return 0;
 
-	hash_pos = kh_get_sha1(writer.bitmaps, commit->object.sha1);
+	hash_pos = kh_get_sha1(writer.bitmaps, commit->object.oid.hash);
 	if (hash_pos < kh_end(writer.bitmaps)) {
 		struct bitmapped_commit *bc = kh_value(writer.bitmaps, hash_pos);
 		bitmap_or_ewah(base, bc->bitmap);
@@ -308,10 +310,10 @@ void bitmap_writer_build(struct packing_data *to_pack)
 		if (i >= reuse_after)
 			stored->flags |= BITMAP_FLAG_REUSE;
 
-		hash_pos = kh_put_sha1(writer.bitmaps, object->sha1, &hash_ret);
+		hash_pos = kh_put_sha1(writer.bitmaps, object->oid.hash, &hash_ret);
 		if (hash_ret == 0)
 			die("Duplicate entry when writing index: %s",
-			    sha1_to_hex(object->sha1));
+			    oid_to_hex(&object->oid));
 
 		kh_value(writer.bitmaps, hash_pos) = stored;
 		display_progress(writer.progress, writer.selected_nr - i);
@@ -366,14 +368,14 @@ void bitmap_writer_reuse_bitmaps(struct packing_data *to_pack)
 	rebuild_existing_bitmaps(to_pack, writer.reused, writer.show_progress);
 }
 
-static struct ewah_bitmap *find_reused_bitmap(const unsigned char *sha1)
+static struct ewah_bitmap *find_reused_bitmap(const struct object_id *oid)
 {
 	khiter_t hash_pos;
 
 	if (!writer.reused)
 		return NULL;
 
-	hash_pos = kh_get_sha1(writer.reused, sha1);
+	hash_pos = kh_get_sha1(writer.reused, oid->hash);
 	if (hash_pos >= kh_end(writer.reused))
 		return NULL;
 
@@ -414,14 +416,14 @@ void bitmap_writer_select_commits(struct commit **indexed_commits,
 
 		if (next == 0) {
 			chosen = indexed_commits[i];
-			reused_bitmap = find_reused_bitmap(chosen->object.sha1);
+			reused_bitmap = find_reused_bitmap(&chosen->object.oid);
 		} else {
 			chosen = indexed_commits[i + next];
 
 			for (j = 0; j <= next; ++j) {
 				struct commit *cm = indexed_commits[i + j];
 
-				reused_bitmap = find_reused_bitmap(cm->object.sha1);
+				reused_bitmap = find_reused_bitmap(&cm->object.oid);
 				if (reused_bitmap || (cm->object.flags & NEEDS_BITMAP) != 0) {
 					chosen = cm;
 					break;
@@ -474,7 +476,7 @@ static void write_selected_commits_v1(struct sha1file *f,
 		struct bitmapped_commit *stored = &writer.selected[i];
 
 		int commit_pos =
-			sha1_pos(stored->commit->object.sha1, index, index_nr, sha1_access);
+			sha1_pos(stored->commit->object.oid.hash, index, index_nr, sha1_access);
 
 		if (commit_pos < 0)
 			die("BUG: trying to write commit not in index");
@@ -502,7 +504,7 @@ static void write_hash_cache(struct sha1file *f,
 
 void bitmap_writer_set_checksum(unsigned char *sha1)
 {
-	hashcpy(writer.pack_checksum, sha1);
+	hashcpy(writer.pack_checksum.hash, sha1);
 }
 
 void bitmap_writer_finish(struct pack_idx_entry **index,
@@ -527,7 +529,7 @@ void bitmap_writer_finish(struct pack_idx_entry **index,
 	header.version = htons(default_version);
 	header.options = htons(flags | options);
 	header.entry_count = htonl(writer.selected_nr);
-	hashcpy(header.checksum, writer.pack_checksum);
+	hashcpy(header.checksum, writer.pack_checksum.hash);
 
 	sha1write(f, &header, sizeof(header));
 	dump_bitmap(f, writer.commits);
