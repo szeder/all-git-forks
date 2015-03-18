@@ -272,7 +272,7 @@ static void create_pack_file(void)
 	die("git upload-pack: %s", abort_msg);
 }
 
-static int got_sha1(char *hex, unsigned char *sha1)
+static int got_sha1(const char *hex, unsigned char *sha1)
 {
 	struct object *o;
 	int we_knew_they_have = 0;
@@ -379,7 +379,7 @@ static int get_common_commits(void)
 	save_commit_buffer = 0;
 
 	for (;;) {
-		char *line = packet_read_line(0, NULL);
+		const char *line = packet_read_line(0, NULL);
 		reset_timeout();
 
 		if (!line) {
@@ -542,7 +542,7 @@ static void receive_needs(void)
 		struct object *o;
 		const char *features;
 		unsigned char sha1_buf[20];
-		char *line = packet_read_line(0, NULL);
+		const char *line = packet_read_line(0, NULL);
 		reset_timeout();
 		if (!line)
 			break;
@@ -806,7 +806,7 @@ int main(int argc, char **argv)
 	check_replace_refs = 0;
 
 	for (i = 1; i < argc; i++) {
-		char *arg = argv[i];
+		const char *arg = argv[i];
 
 		if (arg[0] != '-')
 			break;
