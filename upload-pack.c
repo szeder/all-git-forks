@@ -379,7 +379,7 @@ static int get_common_commits(void)
 	save_commit_buffer = 0;
 
 	for (;;) {
-		const char *line = packet_read_line(0, NULL);
+		const char *line = packet_read_line(0, NULL), *p;
 		reset_timeout();
 
 		if (!line) {
@@ -401,8 +401,8 @@ static int get_common_commits(void)
 			got_other = 0;
 			continue;
 		}
-		if (starts_with(line, "have ")) {
-			switch (got_sha1(line+5, sha1)) {
+		if (skip_prefix(line, "have ", &p)) {
+			switch (got_sha1(p, sha1)) {
 			case -1: /* they have what we do not */
 				got_other = 1;
 				if (multi_ack && ok_to_give_up()) {
@@ -542,15 +542,15 @@ static void receive_needs(void)
 		struct object *o;
 		const char *features;
 		unsigned char sha1_buf[20];
-		const char *line = packet_read_line(0, NULL);
+		const char *line = packet_read_line(0, NULL), *p;
 		reset_timeout();
 		if (!line)
 			break;
 
-		if (starts_with(line, "shallow ")) {
+		if (skip_prefix(line, "shallow ", &p)) {
 			unsigned char sha1[20];
 			struct object *object;
-			if (get_sha1_hex(line + 8, sha1))
+			if (get_sha1_hex(p, sha1))
 				die("invalid shallow line: %s", line);
 			object = parse_object(sha1);
 			if (!object)
@@ -563,19 +563,19 @@ static void receive_needs(void)
 			}
 			continue;
 		}
-		if (starts_with(line, "deepen ")) {
+		if (skip_prefix(line, "deepen ", &p)) {
 			char *end;
-			depth = strtol(line + 7, &end, 0);
-			if (end == line + 7 || depth <= 0)
+			depth = strtol(p, &end, 0);
+			if (end == p || depth <= 0)
 				die("Invalid deepen: %s", line);
 			continue;
 		}
-		if (!starts_with(line, "want ") ||
-		    get_sha1_hex(line+5, sha1_buf))
+		if (!skip_prefix(line, "want ", &p) ||
+		    get_sha1_hex(p, sha1_buf))
 			die("git upload-pack: protocol error, "
 			    "expected to get sha, not '%s'", line);
 
-		features = line + 45;
+		features = p + 40;
 
 		if (parse_feature_request(features, "multi_ack_detailed"))
 			multi_ack = 2;
@@ -822,8 +822,8 @@ int main(int argc, char **argv)
 			strict = 1;
 			continue;
 		}
-		if (starts_with(arg, "--timeout=")) {
-			timeout = atoi(arg+10);
+		if (skip_prefix(arg, "--timeout=", &arg)) {
+			timeout = atoi(arg);
 			daemon_mode = 1;
 			continue;
 		}
