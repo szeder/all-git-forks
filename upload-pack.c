@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "numparse.h"
 #include "refs.h"
 #include "pkt-line.h"
 #include "sideband.h"
@@ -564,9 +565,7 @@ static void receive_needs(void)
 			continue;
 		}
 		if (skip_prefix(line, "deepen ", &p)) {
-			char *end;
-			depth = strtol(p, &end, 0);
-			if (end == p || depth <= 0)
+			if (convert_i(p, 10, &depth))
 				die("Invalid deepen: %s", line);
 			continue;
 		}
