@@ -822,7 +822,8 @@ int main(int argc, char **argv)
 			continue;
 		}
 		if (skip_prefix(arg, "--timeout=", &arg)) {
-			timeout = atoi(arg);
+			if (convert_ui(arg, 10, &timeout))
+				die("--timeout requires a non-negative integer");
 			daemon_mode = 1;
 			continue;
 		}
