@@ -226,10 +226,17 @@ static int delete_branches(int argc, const char **argv, int force, int kinds,
 
 		strbuf_branchname(&bname, argv[i]);
 		if (kinds == REF_LOCAL_BRANCH && !strcmp(head, bname.buf)) {
-			error(_("Cannot delete the branch '%s' "
-			      "which you are currently on."), bname.buf);
-			ret = 1;
-			continue;
+			struct strbuf msg = STRBUF_INIT;
+			if (!force) {
+				error(_("Cannot delete the branch '%s' "
+					"which you are currently on."), bname.buf);
+				ret = 1;
+				continue;
+			}
+			strbuf_addf(&msg, "branch: delete branch %s", head);
+			update_ref(msg.buf, "HEAD", head_sha1, NULL,
+				   REF_NODEREF, UPDATE_REFS_DIE_ON_ERR);
+			strbuf_release(&msg);
 		}
 
 		free(name);
