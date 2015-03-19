@@ -202,6 +202,7 @@ int cmd_prune(int argc, const char **argv, const char *prefix)
 	expire = ULONG_MAX;
 	save_commit_buffer = 0;
 	check_replace_refs = 0;
+	ref_paranoia = 1;
 	init_revisions(&revs, prefix);
 
 	argc = parse_options(argc, argv, prefix, options, prune_usage, 0);
