@@ -8,6 +8,16 @@ translation: $(TRANSLATION_MAN_HTML)
 
 all: translation
 
+.deps.ja_JP:
+	@for i in $(MAN_TXT) ;\
+	do \
+		f="$$(grep '^include::.*txt\[\]' $$i | sed -e 's/^include:://; s/txt\[\]/txt.ja/;')" ;\
+		if test -n "$$f"; then \
+			echo $$(basename $$i .txt).html.ja: $$i.ja $$f ;\
+			echo ;\
+		fi ;\
+	done > $@
+
 # FIXME: Embedded '.ja'
 %.txt.ja : %.txt
 	$(QUIET_GEN)$(RM) $@+ $@ && \
@@ -18,8 +28,10 @@ all: translation
 
 # FIXME: Want to remove embedded '.ja', but '%.html.$(TRANSLATION_SUFFIX)'
 #        doesn't work.
-$(TRANSLATION_MAN_HTML): %.html.ja : %.txt.ja asciidoc.conf
+$(TRANSLATION_MAN_HTML): %.html.ja : %.txt.ja asciidoc.conf .deps.ja_JP
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
 	$(ASCIIDOC) -b xhtml11 -d manpage -f asciidoc.conf \
 		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) -o $@+ $< && \
 	mv $@+ $@
+
+-include .deps.ja_JP
