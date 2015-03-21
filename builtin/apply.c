@@ -2776,6 +2776,7 @@ static int apply_one_fragment(struct image *img, struct fragment *frag,
 		default:
 			if (apply_verbosely)
 				error(_("invalid start of line: '%c'"), first);
+			free(oldlines);
 			return -1;
 		}
 		if (added_blank_line) {
