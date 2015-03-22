@@ -38,6 +38,7 @@ MAN7_TXT += gitworkflows.txt
 MAN_TXT = $(MAN1_TXT) $(MAN5_TXT) $(MAN7_TXT)
 MAN_XML = $(patsubst %.txt,%.xml,$(MAN_TXT))
 MAN_HTML = $(patsubst %.txt,%.html,$(MAN_TXT))
+MAN_PDF = $(patsubst %.txt,%.pdf,$(MAN_TXT))
 
 OBSOLETE_HTML += everyday.html
 OBSOLETE_HTML += git-remote-helpers.html
@@ -223,7 +224,7 @@ man7: $(DOC_MAN7)
 
 info: git.info gitman.info
 
-pdf: user-manual.pdf
+pdf: user-manual.pdf $(MAN_PDF)
 
 install: install-man
 
@@ -248,6 +249,7 @@ install-info: info
 install-pdf: pdf
 	$(INSTALL) -d -m 755 $(DESTDIR)$(pdfdir)
 	$(INSTALL) -m 644 user-manual.pdf $(DESTDIR)$(pdfdir)
+	$(INSTALL) -m 644 $(MAN_PDF) $(DESTDIR)$(pdfdir)
 
 install-html: html
 	'$(SHELL_PATH_SQ)' ./install-webdoc.sh $(DESTDIR)$(htmldir)
@@ -327,6 +329,11 @@ manpage-base-url.xsl: manpage-base-url.xsl.in
 %.1 %.5 %.7 : %.xml manpage-base-url.xsl
 	$(QUIET_XMLTO)$(RM) $@ && \
 	$(XMLTO) -m $(MANPAGE_XSL) $(XMLTO_EXTRA) man $<
+
+%.pdf: %.xml
+	$(QUIET_DBLATEX)$(RM) $@+ $@ && \
+	$(DBLATEX) -o $@+ -p $(ASCIIDOC_DBLATEX_DIR)/asciidoc-dblatex.xsl -s $(ASCIIDOC_DBLATEX_DIR)/asciidoc-dblatex.sty $< && \
+	mv $@+ $@
 
 %.xml : %.txt asciidoc.conf
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
