@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "refs.h"
 #include "utf8.h"
+#include "run-command.h"
 
 int starts_with(const char *str, const char *prefix)
 {
@@ -412,6 +413,22 @@ int strbuf_readlink(struct strbuf *sb, const char *path, size_t hint)
 	if (oldalloc == 0)
 		strbuf_release(sb);
 	return -1;
+}
+
+int strbuf_read_cmd(struct strbuf *sb, struct child_process *cmd, size_t hint)
+{
+	cmd->out = -1;
+	if (start_command(cmd) < 0)
+		return -1;
+
+	if (strbuf_read(sb, cmd->out, hint) < 0) {
+		close(cmd->out);
+		finish_command(cmd); /* throw away exit code */
+		return -1;
+	}
+
+	close(cmd->out);
+	return finish_command(cmd);
 }
 
 int strbuf_getcwd(struct strbuf *sb)

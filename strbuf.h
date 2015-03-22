@@ -1,6 +1,8 @@
 #ifndef STRBUF_H
 #define STRBUF_H
 
+struct child_process;
+
 /**
  * strbuf's are meant to be used with all the usual C string and memory
  * APIs. Given that the length of the buffer is known, it's often better to
@@ -371,6 +373,14 @@ extern int strbuf_read_file(struct strbuf *sb, const char *path, size_t hint);
  * argument can be used to give a hint about the size, to avoid reallocs.
  */
 extern int strbuf_readlink(struct strbuf *sb, const char *path, size_t hint);
+
+/**
+ * Execute the given command, capturing its stdout in the given strbuf.
+ * Returns -1 if starting the command fails or reading fails, and otherwise
+ * returns the exit code of the command. The output collected in the
+ * buffer is kept even if the command returns a non-zero exit.
+ */
+int strbuf_read_cmd(struct strbuf *sb, struct child_process *cmd, size_t hint);
 
 /**
  * Read a line from a FILE *, overwriting the existing contents
