@@ -285,6 +285,13 @@ same behaviour as well.
 	Read the contents of a file, specified by its path. The third argument
 	can be used to give a hint about the file size, to avoid reallocs.
 
+`strbuf_read_cmd`::
+
+	Execute the given command, capturing its stdout in the given strbuf.
+	Returns -1 if starting the command fails or reading fails, and otherwise
+	returns the exit code of the command. The output collected in the
+	buffer is kept even if the command returns a non-zero exit.
+
 `strbuf_readlink`::
 
 	Read the target of a symbolic link, specified by its path.  The third
