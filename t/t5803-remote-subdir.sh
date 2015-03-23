@@ -21,6 +21,7 @@ test_expect_success 'setup repository' '
 	 git add . &&
 	 git commit -m one) &&
 	setup_subdir_remote "noop" "${PWD}/server" ":"
+	setup_subdir_remote "extract_bacon" "${PWD}/server" "bacon:"
 '
 
 test_expect_success 'ls-remote against noop remote' '
@@ -35,6 +36,8 @@ test_expect_success 'ls-remote against misconfigured remote fails' '
 	test_must_fail git ls-remote misconfigured
 '
 
+# Cannot ls-remote against bare URL
+
 test_expect_success 'fetch from noop remote does not rewrite commit' '
 	(cd server &&
 	 git rev-parse --verify master) >expect &&
@@ -42,5 +45,19 @@ test_expect_success 'fetch from noop remote does not rewrite commit' '
 	git rev-parse --verify refs/remotes/noop/master >actual &&
 	test_cmp expect actual
 '
+
+test_expect_success 'fetch from extracting remote extracts subdir -> topdir' '
+	(cd server &&
+	 git rev-parse --verify master:bacon) >expect_tree &&
+	git fetch extract_bacon &&
+	git rev-parse --verify refs/remotes/extract_bacon/master: >actual_tree &&
+	test_cmp expect_tree actual_tree
+'
+
+# fetch from inserting remote
+# fetch from combination remote
+# fetch multiple refs
+# updating fetch leverages existing history
+# tag handling?
 
 test_done
