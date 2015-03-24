@@ -10,7 +10,7 @@ test_description='git svn info'
 # Tested with: svn, version 1.6.[12345689]
 v=`svn_cmd --version | sed -n -e 's/^svn, version \(1\.[0-9]*\.[0-9]*\).*$/\1/p'`
 case $v in
-1.[456].*)
+1.[45678].*)
 	;;
 *)
 	skip_all="skipping svn-info test (SVN version: $v not supported)"

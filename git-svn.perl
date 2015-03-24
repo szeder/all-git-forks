@@ -1580,6 +1580,7 @@ sub cmd_info {
 	}
 
 	# canonicalize_path() will return "" to make libsvn 1.5.x happy,
+	my $rpath = $path;
 	$path = "." if $path eq "";
 
 	my $full_url = canonicalize_url( add_path_to_url( $url, $path ) );
@@ -1591,7 +1592,9 @@ sub cmd_info {
 
 	my $result = "Path: $path_arg\n";
 	$result .= "Name: " . basename($path) . "\n" if $file_type ne "dir";
+	$result .= "Working Copy Root Path: " . $gs->path . "\n" if ::compare_svn_version('1.7.0') >= 0; #TODO
 	$result .= "URL: $full_url\n";
+	$result .= "Relative URL: ^/" . $rpath . "\n" if ::compare_svn_version('1.8.0')>=0;
 
 	eval {
 		my $repos_root = $gs->repos_root;
@@ -1603,8 +1606,10 @@ sub cmd_info {
 	}
 	::_req_svn();
 	$result .= "Repository UUID: $uuid\n" unless $diff_status eq "A" &&
+		::compare_svn_version('1.7.0') < 0 &&
 		(::compare_svn_version('1.5.4') <= 0 || $file_type ne "dir");
-	$result .= "Revision: " . ($diff_status eq "A" ? 0 : $rev) . "\n";
+	$result .= "Revision: " . ($diff_status eq "A" ? 0 : $rev) . "\n" unless
+		$diff_status eq "A" && ::compare_svn_version('1.7.0') >= 0;
 
 	$result .= "Node Kind: " .
 		   ($file_type eq "dir" ? "directory" : "file") . "\n";
@@ -1653,19 +1658,19 @@ sub cmd_info {
 			    command_output_pipe(qw(cat-file blob), "HEAD:$path");
 			if ($file_type eq "link") {
 				my $file_name = <$fh>;
-				$checksum = md5sum("link $file_name");
+				$checksum = md5sha1sum("link $file_name");
 			} else {
-				$checksum = md5sum($fh);
+				$checksum = md5sha1sum($fh);
 			}
 			command_close_pipe($fh, $ctx);
 		} elsif ($file_type eq "link") {
 			my $file_name =
 			    command(qw(cat-file blob), "HEAD:$path");
 			$checksum =
-			    md5sum("link " . $file_name);
+			    md5sha1sum("link " . $file_name);
 		} else {
 			open FILE, "<", $path or die $!;
-			$checksum = md5sum(\*FILE);
+			$checksum = md5sha1sum(\*FILE);
 			close FILE or die $!;
 		}
 		$result .= "Checksum: " . $checksum . "\n";
@@ -2123,6 +2128,29 @@ sub md5sum {
 	my $ref = ref $arg;
 	require Digest::MD5;
 	my $md5 = Digest::MD5->new();
+        if ($ref eq 'GLOB' || $ref eq 'IO::File' || $ref eq 'File::Temp') {
+		$md5->addfile($arg) or croak $!;
+	} elsif ($ref eq 'SCALAR') {
+		$md5->add($$arg) or croak $!;
+	} elsif (!$ref) {
+		$md5->add($arg) or croak $!;
+	} else {
+		fatal "Can't provide MD5 hash for unknown ref type: '", $ref, "'";
+	}
+	return $md5->hexdigest();
+}
+
+sub md5sha1sum {
+	my $arg = shift;
+	my $ref = ref $arg;
+	my $md5;
+	if (::compare_svn_version('1.7.0') < 0)	{
+		require Digest::MD5;
+		$md5 = Digest::MD5->new();
+	} else {
+		require Digest::SHA1;
+		$md5 = Digest::SHA1->new();
+	}
         if ($ref eq 'GLOB' || $ref eq 'IO::File' || $ref eq 'File::Temp') {
 		$md5->addfile($arg) or croak $!;
 	} elsif ($ref eq 'SCALAR') {
