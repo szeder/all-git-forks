@@ -86,6 +86,13 @@ All the 'git commit' hooks are invoked with the environment
 variable `GIT_EDITOR=:` if the command will not bring up an editor
 to modify the commit message.
 
+pre-merge
+~~~~~~~~~
+
+This hook is invoked by 'git merge' when doing an automatic merge
+commit; it is equivalent to 'pre-commit' for a non-automatic commit
+for a merge, and can be bypassed with the `\--no-verify` option. 
+
 prepare-commit-msg
 ~~~~~~~~~~~~~~~~~~
 
