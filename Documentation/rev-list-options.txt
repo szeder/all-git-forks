@@ -193,20 +193,49 @@ if it is part of the log message.
 	Consider the limiting patterns to be fixed strings (don't interpret
 	pattern as a regular expression).
 
+................................................................................
+-F::
+--fixed-strings::
+	制限パターンを固定文字列とみなします (パターンを正規表現として
+	解釈しません) 。
+
+................................................................................
 --perl-regexp::
 	Consider the limiting patterns to be Perl-compatible regular expressions.
 	Requires libpcre to be compiled in.
 
+................................................................................
+--perl-regexp::
+	制限パターンを Perl 互換の正規表現とみなします。
+	libpcre がコンパイルで含まれる必要があります。
+
+................................................................................
 --remove-empty::
 	Stop when a given path disappears from the tree.
 
+................................................................................
+--remove-empty::
+	指定されたファイルパスがツリーから消えたときに停止します。
+
+................................................................................
 --merges::
 	Print only merge commits. This is exactly the same as `--min-parents=2`.
 
+................................................................................
+--merges::
+	マージコミットのみ表示します。 これは `--min-parents=2` と全く同じです。
+
+................................................................................
 --no-merges::
 	Do not print commits with more than one parent. This is
 	exactly the same as `--max-parents=1`.
 
+................................................................................
+--no-merges::
+	複数の親を持つコミットを表示しません。 これは `--max-parents=1` と
+	全く同じです。
+
+................................................................................
 --min-parents=<number>::
 --max-parents=<number>::
 --no-min-parents::
