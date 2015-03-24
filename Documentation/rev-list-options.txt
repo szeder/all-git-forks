@@ -249,6 +249,22 @@ if it is part of the log message.
 again.  Equivalent forms are `--min-parents=0` (any commit has 0 or more
 parents) and `--max-parents=-1` (negative numbers denote no upper limit).
 
+................................................................................
+--min-parents=<number>::
+--max-parents=<number>::
+--no-min-parents::
+--no-max-parents::
+	少なくとも (あるいは多くとも) 指定した親の数を持つコミットのみ
+	表示します。 特に、 `--max-parents=1` は `--no-merges` と同じであり、
+	`--min-parents=2` は `--merges` と同じです。 `--max-parents=0` は
+	全てのルートコミットを指定し、 `--min-parents=3` は全てのオクトパス
+	マージを与えます。
++
+`--no-min-parents` と `--no-max-parents` はこれらの制限を (制限しないように)
+リセットします。 等価な形式は `--min-parents=0` (どんなコミットも 0 または
+それ以上の親を持ちます) と `--max-parents=-1` (負の数は上限なしを表します)
+
+................................................................................
 --first-parent::
 	Follow only the first parent commit upon seeing a merge
 	commit.  This option can give a better overview when
