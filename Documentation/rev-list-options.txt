@@ -262,7 +262,8 @@ parents) and `--max-parents=-1` (negative numbers denote no upper limit).
 +
 `--no-min-parents` と `--no-max-parents` はこれらの制限を (制限しないように)
 リセットします。 等価な形式は `--min-parents=0` (どんなコミットも 0 または
-それ以上の親を持ちます) と `--max-parents=-1` (負の数は上限なしを意味します)
+それ以上の親を持ちます) と `--max-parents=-1` です
+(負の数は上限なしを意味します) 。
 
 ................................................................................
 --first-parent::
