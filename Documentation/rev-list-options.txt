@@ -257,12 +257,12 @@ parents) and `--max-parents=-1` (negative numbers denote no upper limit).
 	少なくとも (あるいは多くとも) 指定した親の数を持つコミットのみ
 	表示します。 特に、 `--max-parents=1` は `--no-merges` と同じであり、
 	`--min-parents=2` は `--merges` と同じです。 `--max-parents=0` は
-	全てのルートコミットを指定し、 `--min-parents=3` は全てのオクトパス
-	マージを与えます。
+	全てのルートコミットを提示し、 `--min-parents=3` は全てのオクトパス
+	マージを提示します。
 +
 `--no-min-parents` と `--no-max-parents` はこれらの制限を (制限しないように)
 リセットします。 等価な形式は `--min-parents=0` (どんなコミットも 0 または
-それ以上の親を持ちます) と `--max-parents=-1` (負の数は上限なしを表します)
+それ以上の親を持ちます) と `--max-parents=-1` (負の数は上限なしを意味します)
 
 ................................................................................
 --first-parent::
@@ -274,14 +274,37 @@ parents) and `--max-parents=-1` (negative numbers denote no upper limit).
 	this option allows you to ignore the individual commits
 	brought in to your history by such a merge.
 
+................................................................................
+--first-parent::
+	マージコミットを見つけると、 ファーストペアレントのみをたどります。
+	このオプションは特定のトピックブランチの進化を見るときに
+	より良い概観を提示することができます。 なぜなら、あるトピックブランチ
+	へのマージは、更新された上流への適合とするためだけに行われる傾向が
+	あり、 このオプションでそういったマージによって歴史に持ち込まれた
+	個別のコミットを無視することができるからです。
+
+................................................................................
 --not::
 	Reverses the meaning of the '{caret}' prefix (or lack thereof)
 	for all following revision specifiers, up to the next `--not`.
 
+................................................................................
+--not::
+	このオプションの後ろ、 次の `--not` が現れるまでのリビジョン指定子
+	すべてについて、 '{キャレット}' プリフィックス (あるいはそれがないこと)
+	の意味を反転させます。
+
+................................................................................
 --all::
 	Pretend as if all the refs in `refs/` are listed on the
 	command line as '<commit>'.
 
+................................................................................
+--all::
+	`refs/` にある参照すべてが '<commit>' としてコマンドライン上に
+	列挙されたかのように振る舞います。
+
+................................................................................
 --branches[=<pattern>]::
 	Pretend as if all the refs in `refs/heads` are listed
 	on the command line as '<commit>'. If '<pattern>' is given, limit
