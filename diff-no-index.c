@@ -182,6 +182,33 @@ static int queue_diff(struct diff_options *o,
 	}
 }
 
+/*
+ * DWIM "diff D F" into "diff D/F F" and "diff F D" into "diff F D/F"
+ */
+static void fixup_paths(const char **path)
+{
+	unsigned int isdir0, isdir1;
+	struct strbuf replacement = STRBUF_INIT;
+
+	if (path[0] == file_from_standard_input ||
+	    path[1] == file_from_standard_input)
+		return;
+	isdir0 = is_directory(path[0]);
+	isdir1 = is_directory(path[1]);
+	if (isdir0 == isdir1)
+		return;
+	if (isdir0) {
+		/* path[0] is a directory and path[1] is not */
+		strbuf_addf(&replacement, "%s/%s", path[0], path[1]);
+		path[0] = strbuf_detach(&replacement, NULL);
+	} else {
+		/* the other way around */
+		strbuf_addf(&replacement, "%s/%s", path[1], path[0]);
+		path[1] = strbuf_detach(&replacement, NULL);
+	}
+	/* Yes, these may leak but we don't care */
+}
+
 void diff_no_index(struct rev_info *revs,
 		   int argc, const char **argv,
 		   const char *prefix)
@@ -217,6 +244,9 @@ void diff_no_index(struct rev_info *revs,
 			p = xstrdup(prefix_filename(prefix, prefixlen, p));
 		paths[i] = p;
 	}
+
+	fixup_paths(paths);
+
 	revs->diffopt.skip_stat_unmatch = 1;
 	if (!revs->diffopt.output_format)
 		revs->diffopt.output_format = DIFF_FORMAT_PATCH;
