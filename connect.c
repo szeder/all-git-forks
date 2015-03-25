@@ -105,8 +105,39 @@ static void annotate_refs_with_symref_info(struct ref *ref)
 	string_list_clear(&symref, 0);
 }
 
+void get_remote_capabilities(int in, char *src_buf, size_t src_len)
+{
+	struct strbuf str = STRBUF_INIT;
+	for (;;) {
+		char *line = packet_read_line(in, scr_buf, src_len);
+		if (!line)
+			break;
+		if (starts_with(line, "capability")) {
+			strbuf_addchar(str, ' ');
+			strbuf_addstr(str, line + strlen("capability:"));
+		}
+	}
+	free(server_capabilities);
+	server_capabilities = strbuf_detach(str);
+
+	strbuf_release(str);
+}
+
+struct ref **request_capabilities(int in, char *src_buf, size_t src_len,
+				     struct ref **list, unsigned int flags,
+				     struct sha1_array *extra_have,
+				     struct sha1_array *shallow_points)
+{
+
+}
+
 /*
- * Read all the refs from the other end
+ * Read all the refs from the other end,
+ * in is a file descriptor input stream
+ * src_buf and src_len may be an alternative way to specify the input.
+ * list is the output of refs
+ * extra_have is a list to store information learned about sha1 the other side has.
+ * shallow_points
  */
 struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 			      struct ref **list, unsigned int flags,

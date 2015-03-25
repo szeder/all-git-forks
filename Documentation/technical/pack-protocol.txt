@@ -294,7 +294,7 @@ on capabilities.
   LC_ALPHA         =  %x61-7A
 ----
 
-Packfile Negotiation
+Packfile Negotiation (v1)
 --------------------
 After reference and capabilities discovery, the client can decide to
 terminate the connection by sending a flush-pkt, telling the server it can

@@ -720,12 +720,18 @@ static char *advertise_capabilities = "multi_ack thin-pack side-band"
 		" side-band-64k ofs-delta shallow no-progress"
 		" include-tag multi_ack_detailed";
 
-/* returns the next capability as a null terminated string */
+/*
+ * Reads the next capability and puts it into dst as a null terminated string.
+ * Returns true if more capabilities can be read.
+ * */
 static int next_capability(char *dst)
 {
 	int len = 0;
-	if (!*advertise_capabilities)
+	if (!*advertise_capabilities) {
+		/* make sure to not advertise capabilities afterwards */
+		advertise_capabilities = NULL;
 		return 0;
+	}
 
 	while (advertise_capabilities[len] != '\0' &&
 	       advertise_capabilities[len] != ' ')
@@ -746,6 +752,7 @@ static void send_capabilities(void)
 
 	while (next_capability(buf))
 		packet_write(1, "capability:%s\n", buf);
+
 	packet_write(1, "agent:%s\n", git_user_agent_sanitized());
 	packet_flush(1);
 }
@@ -826,13 +833,13 @@ static void upload_pack(void)
 
 static void receive_capabilities(void)
 {
-	int done = 0;
-	while (!done) {
+	for (;;) {
 		char *line = packet_read_line(0, NULL);
+		if (!line)
+			break;
 		if (starts_with(line, "capability"))
 			parse_features(line + strlen("capability:"));
-		if (starts_with(line, "agent"))
-			done = 1;
+		// TODO(sbeller): agent parsing would also go here
 	}
 }
 
