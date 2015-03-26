@@ -97,8 +97,27 @@ static int queue_diff(struct diff_options *o,
 	if (get_mode(name1, &mode1) || get_mode(name2, &mode2))
 		return -1;
 
-	if (mode1 && mode2 && S_ISDIR(mode1) != S_ISDIR(mode2))
-		return error("file/directory conflict: %s, %s", name1, name2);
+	if (mode1 && mode2 && S_ISDIR(mode1) != S_ISDIR(mode2)) {
+		struct diff_filespec *d1, *d2;
+
+		if (S_ISDIR(mode1)) {
+			/* 2 is file that is created */
+			d1 = noindex_filespec(NULL, 0);
+			d2 = noindex_filespec(name2, mode2);
+			name2 = NULL;
+			mode2 = 0;
+		} else {
+			/* 1 is file that is deleted */
+			d1 = noindex_filespec(name1, mode1);
+			d2 = noindex_filespec(NULL, 0);
+			name1 = NULL;
+			mode1 = 0;
+		}
+		/* emit that file */
+		diff_queue(&diff_queued_diff, d1, d2);
+
+		/* and then let the entire directory be created or deleted */
+	}
 
 	if (S_ISDIR(mode1) || S_ISDIR(mode2)) {
 		struct strbuf buffer1 = STRBUF_INIT;
@@ -182,6 +201,33 @@ static int queue_diff(struct diff_options *o,
 	}
 }
 
+/*
+ * DWIM "diff D F" into "diff D/F F" and "diff F D" into "diff F D/F"
+ */
+static void fixup_paths(const char **path)
+{
+	unsigned int isdir0, isdir1;
+	struct strbuf replacement = STRBUF_INIT;
+
+	if (path[0] == file_from_standard_input ||
+	    path[1] == file_from_standard_input)
+		return;
+	isdir0 = is_directory(path[0]);
+	isdir1 = is_directory(path[1]);
+	if (isdir0 == isdir1)
+		return;
+	if (isdir0) {
+		/* path[0] is a directory and path[1] is not */
+		strbuf_addf(&replacement, "%s/%s", path[0], path[1]);
+		path[0] = strbuf_detach(&replacement, NULL);
+	} else {
+		/* the other way around */
+		strbuf_addf(&replacement, "%s/%s", path[1], path[0]);
+		path[1] = strbuf_detach(&replacement, NULL);
+	}
+	/* Yes, these may leak but we don't care */
+}
+
 void diff_no_index(struct rev_info *revs,
 		   int argc, const char **argv,
 		   const char *prefix)
@@ -217,6 +263,9 @@ void diff_no_index(struct rev_info *revs,
 			p = xstrdup(prefix_filename(prefix, prefixlen, p));
 		paths[i] = p;
 	}
+
+	fixup_paths(paths);
+
 	revs->diffopt.skip_stat_unmatch = 1;
 	if (!revs->diffopt.output_format)
 		revs->diffopt.output_format = DIFF_FORMAT_PATCH;
