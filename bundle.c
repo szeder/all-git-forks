@@ -105,6 +105,8 @@ int is_bundle(const char *path, int quiet)
 static int list_refs(struct ref_list *r, int argc, const char **argv)
 {
 	int i;
+	
+	//
 
 	for (i = 0; i < r->nr; i++) {
 		if (argc > 1) {
