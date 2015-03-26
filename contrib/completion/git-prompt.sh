@@ -446,7 +446,7 @@ __git_ps1 ()
 				esac 2>/dev/null)" ||
 
 				b="$short_sha..."
-				b="($b)"
+				b="$b"
 			fi
 		fi
 	fi
@@ -499,8 +499,8 @@ __git_ps1 ()
 
 	local z="${GIT_PS1_STATESEPARATOR-" "}"
 
-	# NO color option unless in PROMPT_COMMAND mode
-	if [ $pcmode = yes ] && [ -n "${GIT_PS1_SHOWCOLORHINTS-}" ]; then
+	# NO color option unless SHOWCOLORHINTS is enabled
+	if [ -n "${GIT_PS1_SHOWCOLORHINTS-}" ]; then
 		__git_ps1_colorize_gitstring
 	fi
 
