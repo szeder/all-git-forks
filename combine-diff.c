@@ -32,8 +32,10 @@ static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr,
 		for (i = 0; i < q->nr; i++) {
 			int len;
 			const char *path;
-			if (diff_unmodified_pair(q->queue[i]))
+			if (diff_unmodified_pair(q->queue[i])) {
+				fprintf(stderr, "intersect_paths: drop %d/%d\n", n, num_parent);
 				continue;
+			}
 			path = q->queue[i]->two->path;
 			len = strlen(path);
 			p = xmalloc(combine_diff_path_size(num_parent, len));
@@ -66,12 +68,14 @@ static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr,
 
 		if (cmp < 0) {
 			/* p->path not in q->queue[]; drop it */
+			fprintf(stderr, "intersect_paths: drop %s (%d/%d)\n", p->path, n, num_parent);
 			*tail = p->next;
 			free(p);
 			continue;
 		}
 
 		if (cmp > 0) {
+			fprintf(stderr, "intersect_paths: skip %s (%d/%d)\n", p->path, n, num_parent);
 			/* q->queue[i] not in p->path; skip it */
 			i++;
 			continue;
@@ -1385,12 +1389,18 @@ static struct combine_diff_path *find_paths_multitree(
 	return paths_head.next;
 }
 
+void f1(const unsigned char sha1[20], void *data)
+{
+	fprintf(stderr, "diff_tree_combined: p: %s\n", sha1_to_hex(sha1));
+}
 
 void diff_tree_combined(const unsigned char *sha1,
 			const struct sha1_array *parents,
 			int dense,
 			struct rev_info *rev)
 {
+	fprintf(stderr, "diff_tree_combined: %s\n", sha1_to_hex(sha1));
+	sha1_array_for_each_unique(parents, f1, NULL);
 	struct diff_options *opt = &rev->diffopt;
 	struct diff_options diffopts;
 	struct combine_diff_path *p, *paths;
@@ -1444,6 +1454,7 @@ void diff_tree_combined(const unsigned char *sha1,
 			opt->filter;
 
 
+	fprintf(stderr, "diff_tree_combined: need_generic_pathscan=%d\n", (int)need_generic_pathscan);
 	if (need_generic_pathscan) {
 		/*
 		 * NOTE generic case also handles --stat, as it computes
@@ -1474,8 +1485,10 @@ void diff_tree_combined(const unsigned char *sha1,
 	}
 
 	/* find out number of surviving paths */
-	for (num_paths = 0, p = paths; p; p = p->next)
+	for (num_paths = 0, p = paths; p; p = p->next) {
+		fprintf(stderr, "diff_tree_combined: path %s\n", p->path);
 		num_paths++;
+	}
 
 	/* order paths according to diffcore_order */
 	if (opt->orderfile && num_paths) {
