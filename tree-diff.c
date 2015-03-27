@@ -151,6 +151,7 @@ static struct combine_diff_path *path_appendnew(struct combine_diff_path *last,
 	memcpy(p->path + base->len, path, pathlen);
 	p->path[len] = 0;
 	p->mode = mode;
+	p->change_count = 0;
 	hashcpy(p->oid.hash, sha1 ? sha1 : null_sha1);
 
 	return p;

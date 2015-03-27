@@ -51,6 +51,7 @@ static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr,
 			hashcpy(p->parent[n].oid.hash, q->queue[i]->one->sha1);
 			p->parent[n].mode = q->queue[i]->one->mode;
 			p->parent[n].status = q->queue[i]->status;
+			p->change_count = 0;
 			*tail = p;
 			tail = &p->next;
 		}
