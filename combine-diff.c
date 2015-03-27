@@ -69,7 +69,7 @@ static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr,
 
 		if (cmp < 0) {
 			/* p->path not in q->queue[]; drop it */
-			fprintf(stderr, "intersect_paths: drop %s (%d/%d)\n", p->path, n, num_parent);
+			fprintf(stderr, "intersect_paths: drop %s (%d at %d/%d)\n", p->path, p->change_count, n, num_parent);
 			*tail = p->next;
 			free(p);
 			continue;
