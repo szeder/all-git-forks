@@ -67,13 +67,15 @@ static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr,
 		cmp = ((i >= q->nr)
 		       ? -1 : compare_paths(p, q->queue[i]->two));
 
-		if (cmp < 0) {
+		if (cmp < 0 && (2 - p->change_count > num_parent - n)) {
 			/* p->path not in q->queue[]; drop it */
 			fprintf(stderr, "intersect_paths: drop %s (%d at %d/%d)\n", p->path, p->change_count, n, num_parent);
 			*tail = p->next;
 			free(p);
 			continue;
 		}
+
+		p->change_count++;
 
 		if (cmp > 0) {
 			fprintf(stderr, "intersect_paths: skip %s (%d/%d)\n", p->path, n, num_parent);
@@ -82,9 +84,15 @@ static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr,
 			continue;
 		}
 
-		hashcpy(p->parent[n].oid.hash, q->queue[i]->one->sha1);
-		p->parent[n].mode = q->queue[i]->one->mode;
-		p->parent[n].status = q->queue[i]->status;
+		if (cmp == 0) {
+			hashcpy(p->parent[n].oid.hash, q->queue[i]->one->sha1);
+			p->parent[n].mode = q->queue[i]->one->mode;
+			p->parent[n].status = q->queue[i]->status;
+		} else {
+			hashcpy(p->parent[n].oid.hash, p->oid.hash);
+			p->parent[n].mode = p->mode;
+			p->parent[n].status = DIFF_STATUS_MODIFIED;
+		}
 
 		tail = &p->next;
 		i++;
