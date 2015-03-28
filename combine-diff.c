@@ -25,6 +25,7 @@ static int compare_paths(const struct combine_diff_path *one,
 static void insert_path(struct combine_diff_path **pos, const char* path, int n, int num_parent, struct diff_filepair *queue_item)
 {
 	int len;
+	int parent_idx;
 	struct combine_diff_path *p;
 
 	len = strlen(path);
@@ -41,6 +42,11 @@ static void insert_path(struct combine_diff_path **pos, const char* path, int n,
 	hashcpy(p->parent[n].oid.hash, queue_item->one->sha1);
 	p->parent[n].mode = queue_item->one->mode;
 	p->parent[n].status = queue_item->status;
+	for (parent_idx = 0; parent_idx < n; ++parent_idx) {
+		hashcpy(p->parent[parent_idx].oid.hash, p->oid.hash);
+		p->parent[parent_idx].mode = p->mode;
+		p->parent[parent_idx].status = ' ';
+	}
 	*pos = p;
 }
 
