@@ -209,7 +209,6 @@ struct combine_diff_path {
 	char *path;
 	unsigned int mode;
 	struct object_id oid;
-	int change_count;
 	struct combine_diff_parent {
 		char status;
 		unsigned int mode;
