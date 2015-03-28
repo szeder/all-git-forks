@@ -50,6 +50,19 @@ static void insert_path(struct combine_diff_path **pos, const char* path, int n,
 	*pos = p;
 }
 
+static int changed_parents(struct combine_diff_path *p, int n)
+{
+	int parent_idx;
+	int result = 0;
+
+	for (parent_idx = 0; parent_idx < n; ++parent_idx) {
+		if (p->parent[parent_idx].status != ' ')
+			++result;
+	}
+
+	return result;
+}
+
 static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr, int n, int num_parent)
 {
 	struct diff_queue_struct *q = &diff_queued_diff;
