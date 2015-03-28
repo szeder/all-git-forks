@@ -33,10 +33,11 @@ static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr,
 			int len;
 			const char *path;
 			if (diff_unmodified_pair(q->queue[i])) {
-				fprintf(stderr, "intersect_paths: drop %d/%d\n", n, num_parent);
+				fprintf(stderr, "intersect_paths: not add %d %d/%d\n", i, n, num_parent);
 				continue;
 			}
 			path = q->queue[i]->two->path;
+			fprintf(stderr, "intersect_paths: add %s %d %d/%d\n", path, i, n, num_parent);
 			len = strlen(path);
 			p = xmalloc(combine_diff_path_size(num_parent, len));
 			p->path = (char *) &(p->parent[num_parent]);
@@ -78,7 +79,7 @@ static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr,
 		p->change_count++;
 
 		if (cmp > 0) {
-			fprintf(stderr, "intersect_paths: skip %s (%d/%d)\n", p->path, n, num_parent);
+			fprintf(stderr, "intersect_paths: skip %s (%d/%d)\n", q->queue[i]->two->path, n, num_parent);
 			/* q->queue[i] not in p->path; skip it */
 			i++;
 			continue;
