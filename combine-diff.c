@@ -1408,8 +1408,8 @@ void diff_tree_combined(const unsigned char *sha1,
 			int dense,
 			struct rev_info *rev)
 {
-	fprintf(stderr, "diff_tree_combined: %s\n", sha1_to_hex(sha1));
-	sha1_array_for_each_unique(parents, f1, NULL);
+	// fprintf(stderr, "diff_tree_combined: %s\n", sha1_to_hex(sha1));
+	// sha1_array_for_each_unique(parents, f1, NULL);
 	struct diff_options *opt = &rev->diffopt;
 	struct diff_options diffopts;
 	struct combine_diff_path *p, *paths;
