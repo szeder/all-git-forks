@@ -3,6 +3,7 @@
 test_description='Diff aware of merge base'
 
 . ./test-lib.sh
+. "$TEST_DIRECTORY"/diff-lib.sh
 
 test_expect_success setup '
 	mkdir short &&
@@ -95,6 +96,64 @@ test_expect_success 'diff with mergebase shows fully discarded file from parent 
 test_expect_success 'diff with mergebase shows fully discarded file from parent 1' '
 	git diff --cc merge branch1 branch2 mergebase -- short/win2 >actual &&
 	test -s actual
+'
+
+test_expect_success 'regression test for diff --cc -- short' '
+	cat >expect <<-\EOF &&
+	diff --cc short/base
+	index 8d4717e,ef72a3c,01e79c3..01e79c3
+	--- a/short/base
+	+++ b/short/base
+	@@@@ -1,3 -1,3 -1,3 +1,3 @@@@
+	   1
+	-  2change1
+	 - 2change2
+	++ 2
+	   3
+	diff --cc short/delete
+	index 8d4717e,ef72a3c,01e79c3..2b2f2e1
+	--- a/short/delete
+	+++ b/short/delete
+	@@@@ -1,3 -1,3 -1,3 +1,2 @@@@
+	   1
+	-  2change1
+	 - 2change2
+	  -2
+	   3
+	diff --cc short/merge
+	index 8d4717e,ef72a3c,01e79c3..c5ce1e6
+	--- a/short/merge
+	+++ b/short/merge
+	@@@@ -1,3 -1,3 -1,3 +1,3 @@@@
+	   1
+	-  2change1
+	 - 2change2
+	  -2
+	+++2merged
+	   3
+	diff --cc short/win1
+	index 8d4717e,ef72a3c,01e79c3..8d4717e
+	--- a/short/win1
+	+++ b/short/win1
+	@@@@ -1,3 -1,3 -1,3 +1,3 @@@@
+	   1
+	 - 2change2
+	  -2
+	 ++2change1
+	   3
+	diff --cc short/win2
+	index 8d4717e,ef72a3c,01e79c3..ef72a3c
+	--- a/short/win2
+	+++ b/short/win2
+	@@@@ -1,3 -1,3 -1,3 +1,3 @@@@
+	   1
+	-  2change1
+	  -2
+	+ +2change2
+	   3
+	EOF
+	git diff --cc merge branch1 branch2 mergebase -- short >actual &&
+	compare_diff_patch expect actual
 '
 
 test_done
