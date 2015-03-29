@@ -8,7 +8,7 @@ test_description='Diff aware of merge base'
 test_expect_success setup '
 	mkdir short &&
 	mkdir long &&
-	for fn in win1 win2 merge delete base only1 only2; do
+	for fn in win1 win2 merge delete base only1 only2 only1discard only2discard; do
 		test_seq 3 >short/$fn
 		git add short/$fn &&
 		test_seq 11 >long/$fn &&
@@ -24,9 +24,11 @@ test_expect_success setup '
 			git add $dir/$fn
 		done
 	done &&
-	sed -e "s/^7/7change1/" long/only2 >sed.new &&
-	mv sed.new long/only2 &&
-	git add long/only2 &&
+	for fn in only2 only2discard; do
+	    sed -e "s/^7/7change1/" long/$fn >sed.new &&
+	    mv sed.new long/$fn &&
+	    git add long/$fn
+	done &&
 	git commit -m branch1 &&
 	git branch branch1 &&
 
@@ -38,9 +40,11 @@ test_expect_success setup '
 			git add $dir/$fn
 		done
 	done &&
-	sed -e "s/^11/11change2/" long/only1 >sed.new &&
-	mv sed.new long/only1 &&
-	git add long/only1 &&
+	for fn in only1 only1discard; do
+	    sed -e "s/^11/11change2/" long/$fn >sed.new &&
+	    mv sed.new long/$fn &&
+	    git add long/$fn
+	done &&
 	git commit -m branch2 &&
 	git branch branch2 &&
 
@@ -48,6 +52,10 @@ test_expect_success setup '
 	git checkout mergebase -- . &&
 	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" >long/base &&
 	git add long/base &&
+	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" >long/only1discard &&
+	git add long/only1discard &&
+	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" >long/only2discard &&
+	git add long/only2discard &&
 	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" -e "s/^2/2change1/" >long/win1 &&
 	git add long/win1 &&
 	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" -e "s/^2/2change2/" >long/win2 &&
@@ -62,6 +70,10 @@ test_expect_success setup '
 	git add long/only2 &&
 	test_seq 3 >short/base &&
 	git add short/base &&
+	test_seq 3 >short/only1discard &&
+	git add short/only1discard &&
+	test_seq 3 >short/only2discard &&
+	git add short/only2discard &&
 	test_seq 3 | sed -e "s/^2/2change1/" >short/win1 &&
 	git add short/win1 &&
 	test_seq 3 | sed -e "s/^2/2change2/" >short/win2 &&
