@@ -5,6 +5,14 @@ test_description='combined diff filtering is not affected by preliminary path fi
 . ./test-lib.sh
 . "$TEST_DIRECTORY"/diff-lib.sh
 
+# history is:
+# (mergebase) --> (branch1) --\
+#  |                          V
+#  \ --> (branch2) ----------(merge)
+# there are files in 2 subdirectories, "long" and "short"
+# each file in "long" subdirecty has exactly same history as same file in "short" one,
+# but it has added lines with changes in both branches which merge without conflict
+# so the long files are always selected at path filtering
 test_expect_success setup '
 	mkdir short &&
 	mkdir long &&
@@ -90,6 +98,7 @@ test_expect_success setup '
 	git branch merge
 '
 
+# the difference in short file must be returned if and only if it is shown in long file
 for fn in win1 win2 merge delete base only1 only2 only1discard only2discard; do
 	if git diff --cc merge branch1 branch2 mergebase -- long/$fn | grep -q '^[ +-]\{3\}2\(change[12]|merge\)\?$'
 	then
