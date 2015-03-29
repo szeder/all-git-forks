@@ -124,7 +124,12 @@ static int prune_worktree(const char *id, struct strbuf *reason)
 		return 1;
 	}
 	free(path);
-	return st.st_mtime <= expire;
+	if (st.st_mtime <= expire) {
+		strbuf_addf(reason, _("Removing worktrees/%s: expired"), id);
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 static void prune_worktrees(void)
