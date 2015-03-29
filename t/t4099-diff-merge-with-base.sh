@@ -1,6 +1,6 @@
 #!/bin/sh
 
-test_description='Diff aware of merge base'
+test_description='combined diff filtering is not affected by preliminary path filtering'
 
 . ./test-lib.sh
 . "$TEST_DIRECTORY"/diff-lib.sh
