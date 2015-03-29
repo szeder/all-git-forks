@@ -4,9 +4,20 @@ test_description='prune $GIT_DIR/worktrees'
 
 . ./test-lib.sh
 
+test_expect_success initialize '
+	git commit --allow-empty -m init
+'
+
 test_expect_success 'prune --worktrees on normal repo' '
 	git prune --worktrees &&
 	test_must_fail git prune --worktrees abc
+'
+
+test_expect_failure 'not prune proper checkout' '
+	test_when_finished rm -r .git/worktrees &&
+	git checkout "--to=$PWD/ghi" --detach master &&
+	git prune --worktrees &&
+	test -d .git/worktrees/ghi
 '
 
 test_expect_success 'prune files inside $GIT_DIR/worktrees' '
