@@ -84,19 +84,32 @@ static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr,
 	 * both sorted in the tree order.
 	 */
 	i = 0;
-	while ((p = *tail) != NULL) {
-		cmp = ((i >= q->nr)
-		       ? -1 : compare_paths(p, q->queue[i]->two));
+	while ((p = *tail) != NULL || i < q->nr) {
+		cmp = (i >= q->nr) ? -1
+		      : (p == NULL) ? 1
+		      : compare_paths(p, q->queue[i]->two);
 
 		if (cmp < 0) {
-			/* p->path not in q->queue[]; drop it */
-			*tail = p->next;
-			free(p);
+			/* p->path not in q->queue[] */
+			if (num_parent > 2 && 2 - changed_parents(p, n) <= num_parent - n - 1) {
+				/* still can get 2 changed parents */
+				hashcpy(p->parent[n].oid.hash, p->oid.hash);
+				p->parent[n].mode = p->mode;
+				p->parent[n].status = ' ';
+				tail = &p->next;
+			} else {
+				*tail = p->next;
+				free(p);
+			}
 			continue;
 		}
 
 		if (cmp > 0) {
-			/* q->queue[i] not in p->path; skip it */
+			/* q->queue[i] not in p->path */
+			if (1 <= num_parent - n - 1) {
+				insert_path(tail, q->queue[i]->two->path, n, num_parent, q->queue[i]);
+				tail = &(*tail)->next;
+			}
 			i++;
 			continue;
 		}
