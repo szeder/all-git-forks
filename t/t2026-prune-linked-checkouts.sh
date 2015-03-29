@@ -13,7 +13,7 @@ test_expect_success 'prune --worktrees on normal repo' '
 	test_must_fail git prune --worktrees abc
 '
 
-test_expect_failure 'not prune proper checkout' '
+test_expect_success 'not prune proper checkout' '
 	test_when_finished rm -r .git/worktrees &&
 	git checkout "--to=$PWD/ghi" --detach master &&
 	git prune --worktrees &&
