@@ -69,16 +69,6 @@ static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr,
 	struct combine_diff_path *p, **tail = &curr;
 	int i, cmp;
 
-	if (!n) {
-		for (i = 0; i < q->nr; i++) {
-			if (diff_unmodified_pair(q->queue[i]))
-				continue;
-			insert_path(tail, q->queue[i]->two->path, n, num_parent, q->queue[i]);
-			tail = &(*tail)->next;
-		}
-		return curr;
-	}
-
 	/*
 	 * paths in curr (linked list) and q->queue[] (array) are
 	 * both sorted in the tree order.
