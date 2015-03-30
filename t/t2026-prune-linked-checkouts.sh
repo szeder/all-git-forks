@@ -15,9 +15,17 @@ test_expect_success 'prune --worktrees on normal repo' '
 
 test_expect_success 'not prune proper checkout' '
 	test_when_finished rm -r .git/worktrees &&
-	git checkout "--to=$PWD/ghi" --detach master &&
+	git checkout "--to=$PWD/nop" --detach master &&
 	git prune --worktrees &&
-	test -d .git/worktrees/ghi
+	test -d .git/worktrees/nop
+'
+
+test_expect_success 'not prune removed checkout before expire' '
+	test_when_finished rm -r .git/worktrees &&
+	git checkout "--to=$PWD/qrs" --detach master &&
+	rm -r qrs &&
+	git prune --worktrees --expire "3 weeks ago" &&
+	test -d .git/worktrees/qrs
 '
 
 test_expect_success 'prune files inside $GIT_DIR/worktrees' '
