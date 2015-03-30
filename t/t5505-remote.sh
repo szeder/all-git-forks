@@ -771,6 +771,28 @@ test_expect_success 'rename succeeds with existing remote.<target>.prune' '
 	git -C four.four remote rename origin upstream
 '
 
+test_expect_success 'renaming a remote updates remote.pushDefault' '
+	git clone one four.four &&
+	(
+		cd four.four &&
+		git remote add one git://example.com/one.git &&
+		git remote add two git://example.com/two.git &&
+		git config remote.pushdefault two &&
+
+		# unrelated remote does not touch the value
+		git remote rename one one-new &&
+		echo two >expect &&
+		git config remote.pushdefault >actual &&
+		test_cmp expect actual &&
+
+		# updating referenced remote does
+		git remote rename two two-new &&
+		echo two-new >expect &&
+		git config remote.pushdefault >actual &&
+		test_cmp expect actual
+	)
+'
+
 cat >remotes_origin <<EOF
 URL: $(pwd)/one
 Push: refs/heads/master:refs/heads/upstream
