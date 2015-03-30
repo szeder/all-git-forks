@@ -869,6 +869,17 @@ static int prepare_linked_checkout(const struct checkout_opts *opts,
 	if (file_exists(path) && !is_empty_dir(path))
 		die(_("'%s' already exists"), path);
 
+	if (access_or_die(git_path("info/checkout.worktree"), R_OK, 0)) {
+		struct child_process cp;
+		const char *argv[] = { "init", NULL };
+
+		memset(&cp, 0, sizeof(cp));
+		cp.git_cmd = 1;
+		cp.argv = argv;
+		if (run_command(&cp))
+			die(_("git init failed"));
+	}
+
 	len = strlen(path);
 	while (len && is_dir_sep(path[len - 1]))
 		len--;
