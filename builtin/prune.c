@@ -123,6 +123,8 @@ static int prune_worktree(const char *id, struct strbuf *reason)
 		if (st.st_mtime <= expire) {
 		    strbuf_addf(reason, _("Removing worktrees/%s: gitdir file points to non-existent location"), id);
 		    return 1;
+		} else {
+		    return 0;
 		}
 	}
 	free(path);
