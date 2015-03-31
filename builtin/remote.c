@@ -675,7 +675,9 @@ static int mv(int argc, const char **argv)
 		}
 	}
 
-	if (git_config_set_multivar("remote.pushdefault", "
+#if 0
+	if (git_config_set_multivar("remote.pushdefault", remote.new, 
+#endif
 
 	if (!refspec_updated)
 		return 0;
