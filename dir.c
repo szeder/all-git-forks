@@ -767,6 +767,47 @@ int add_excludes_from_file_to_list(const char *fname, const char *base,
 	return add_excludes(fname, base, baselen, el, check_index, NULL);
 }
 
+void load_config_worktree(struct exclude_list *el, const char *path)
+{
+	struct strbuf sb = STRBUF_INIT;
+	int i, lineno = 1;
+	char *buf, *entry;
+	size_t size;
+
+	if (strbuf_read_file(&sb, path, 128) <= 0) {
+		strbuf_release(&sb);
+		return;
+	}
+	strbuf_addch(&sb, '\n');
+	el->filebuf = buf = strbuf_detach(&sb, &size);
+
+	for (i = 0; i < size; i++)
+		if (buf[i] == '.')
+			buf[i] = '/';
+		else
+			buf[i] = tolower(buf[i]);
+
+	entry = buf;
+	for (i = 0; i < size; i++) {
+		if (buf[i] == '\n') {
+			if (entry != buf + i && entry[0] != '#') {
+				buf[i - (i && buf[i-1] == '\r')] = 0;
+				trim_trailing_spaces(entry);
+				add_exclude(entry, "", 0, el, lineno);
+			}
+			lineno++;
+			entry = buf + i + 1;
+		}
+	}
+
+	/*
+	 * avoid base name matching because it may confusion in
+	 * non-directory context.
+	 */
+	for (i = 0; i < el->nr; i++)
+		el->excludes[i]->flags &= ~EXC_FLAG_NODIR;
+}
+
 struct exclude_list *add_exclude_list(struct dir_struct *dir,
 				      int group_type, const char *src)
 {
