@@ -61,11 +61,10 @@ static void remove_credential(const struct credential *c)
 		e->expiration = 0;
 }
 
-static unsigned long check_expirations(void)
+static unsigned long check_expirations(uint64_t now)
 {
 	static uint64_t wait_for_entry_until;
 	int i = 0;
-	uint64_t now = getnanotime();
 	uint64_t next = (uint64_t)-1;
 
 	/*
@@ -74,7 +73,7 @@ static unsigned long check_expirations(void)
 	 * keeping the daemon around.
 	 */
 	if (!wait_for_entry_until)
-		wait_for_entry_until = now + 30 * 1000000000U;
+		wait_for_entry_until = now + 30 * 1000000000UL;
 
 	while (i < entries_nr) {
 		if (entries[i].expiration <= now) {
@@ -87,7 +86,7 @@ static unsigned long check_expirations(void)
 			 * shows up (e.g., because we just removed a failed
 			 * one, and we will soon get the correct one).
 			 */
-			wait_for_entry_until = now + 30 * 1000000000U;
+			wait_for_entry_until = now + 1000000000UL;
 		}
 		else {
 			if (entries[i].expiration < next)
@@ -103,6 +102,19 @@ static unsigned long check_expirations(void)
 	}
 
 	return next - now;
+}
+
+static unsigned long touch_socket(uint64_t now, const char *socket_path)
+{
+	static uint64_t touch_socket_time;
+
+	if (!touch_socket_time)
+		touch_socket_time = now + (6 * 60 * 60 - 30) * 1000000000UL;
+	if (touch_socket_time <= now) {
+		utime(socket_path, NULL);
+		touch_socket_time = now + (6 * 60 * 60 - 30) * 1000000000UL;
+	}
+	return touch_socket_time - now;
 }
 
 static int read_request(FILE *fh, struct credential *c,
@@ -161,12 +173,16 @@ static void serve_one_client(FILE *in, FILE *out)
 	strbuf_release(&action);
 }
 
-static int serve_cache_loop(int fd)
+static int serve_cache_loop(const char *socket_path, int fd)
 {
 	struct pollfd pfd;
-	unsigned long wakeup;
+	unsigned long wakeup, touch_socket_wakeup;
+	uint64_t now = getnanotime();
 
-	wakeup = check_expirations();
+	wakeup = check_expirations(now);
+	touch_socket_wakeup = touch_socket(now, socket_path);
+	if (touch_socket_wakeup < wakeup)
+		wakeup = touch_socket_wakeup;
 	if (!wakeup)
 		return 0;
 
@@ -218,7 +234,7 @@ static void serve_cache(const char *socket_path, int debug)
 			die_errno("unable to point stderr to /dev/null");
 	}
 
-	while (serve_cache_loop(fd))
+	while (serve_cache_loop(socket_path, fd))
 		; /* nothing */
 
 	close(fd);
