@@ -533,6 +533,15 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 		default:
 			usage_with_options(builtin_config_usage, builtin_config_options);
 		}
+
+	/*
+	 * For set operations, --local could be either $GIT_COMMON_DIR/config
+	 * or $GIT_COMMON_DIR/worktrees/xxx/config.  Let config.c determine
+	 * the path based on config keys.
+	 */
+	if (use_local_config && actions != ACTION_LIST)
+		given_config_source.file = NULL;
+
 	if (omit_values &&
 	    !(actions == ACTION_LIST || actions == ACTION_GET_REGEXP)) {
 		error("--name-only is only applicable to --list or --get-regexp");
