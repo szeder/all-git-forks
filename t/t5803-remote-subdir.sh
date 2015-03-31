@@ -22,6 +22,7 @@ test_expect_success 'setup repository' '
 	 git commit -m one) &&
 	setup_subdir_remote "noop" "${PWD}/server" ":"
 	setup_subdir_remote "extract_bacon" "${PWD}/server" "bacon:"
+	setup_subdir_remote "insert_breakfast" "${PWD}/server" ":breakfast"
 '
 
 test_expect_success 'ls-remote against noop remote' '
@@ -54,8 +55,16 @@ test_expect_success 'fetch from extracting remote extracts subdir -> topdir' '
 	test_cmp expect_tree actual_tree
 '
 
-# fetch from inserting remote
+test_expect_success 'fetch from inserting remote inserts topdir -> subdir' '
+	(cd server &&
+	 git rev-parse --verify master:) >expect_tree &&
+	git fetch insert_breakfast &&
+	git rev-parse --verify refs/remotes/insert_breakfast/master:breakfast/ >actual_tree &&
+	test_cmp expect_tree actual_tree
+'
+
 # fetch from combination remote
+# fetch ref with history - parents should also be rewritten
 # fetch multiple refs
 # updating fetch leverages existing history
 # tag handling?
