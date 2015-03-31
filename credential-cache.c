@@ -105,6 +105,8 @@ int main(int argc, const char **argv)
 	op = argv[0];
 
 	if (!socket_path)
+		socket_path = xdg_runtime_path("git-credential-cache-socket");
+	if (!socket_path)
 		socket_path = expand_user_path("~/.git-credential-cache/socket");
 	if (!socket_path)
 		die("unable to find a suitable socket path; use --socket");

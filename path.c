@@ -934,6 +934,17 @@ char *xdg_config_home(const char *filename)
 	return NULL;
 }
 
+char *xdg_runtime_path(const char *fn)
+{
+	const char *runtime_dir = getenv("XDG_RUNTIME_DIR");
+
+	if (!fn)
+		fn = "";
+	if (!runtime_dir)
+		return NULL;
+	return mkpathdup("%s/%s", runtime_dir, fn);
+}
+
 GIT_PATH_FUNC(git_path_cherry_pick_head, "CHERRY_PICK_HEAD")
 GIT_PATH_FUNC(git_path_revert_head, "REVERT_HEAD")
 GIT_PATH_FUNC(git_path_squash_msg, "SQUASH_MSG")

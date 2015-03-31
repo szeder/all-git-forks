@@ -34,7 +34,7 @@ test_expect_success 'setup XDG_RUNTIME_DIR' '
 helper_test cache
 helper_test_timeout cache --timeout=1
 
-test_expect_failure 'use XDG_RUNTIME_DIR when set' '
+test_expect_success 'use XDG_RUNTIME_DIR when set' '
 	test_path_is_missing "$HOME"/.git-credential-cache/socket &&
 	test -S "$XDG_RUNTIME_DIR"/git-credential-cache-socket
 '
