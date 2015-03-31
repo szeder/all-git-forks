@@ -3,6 +3,7 @@
 #include "unix-socket.h"
 #include "sigchain.h"
 #include "parse-options.h"
+#include "trace.h"
 
 static const char *socket_path;
 
@@ -21,7 +22,7 @@ static void cleanup_socket_on_signal(int sig)
 
 struct credential_cache_entry {
 	struct credential item;
-	unsigned long expiration;
+	uint64_t expiration;
 };
 static struct credential_cache_entry *entries;
 static int entries_nr;
@@ -37,7 +38,7 @@ static void cache_credential(struct credential *c, int timeout)
 	/* take ownership of pointers */
 	memcpy(&e->item, c, sizeof(*c));
 	memset(c, 0, sizeof(*c));
-	e->expiration = time(NULL) + timeout;
+	e->expiration = getnanotime() + timeout * 1000000000U;
 }
 
 static struct credential_cache_entry *lookup_credential(const struct credential *c)
@@ -60,12 +61,12 @@ static void remove_credential(const struct credential *c)
 		e->expiration = 0;
 }
 
-static int check_expirations(void)
+static unsigned long check_expirations(void)
 {
-	static unsigned long wait_for_entry_until;
+	static uint64_t wait_for_entry_until;
 	int i = 0;
-	unsigned long now = time(NULL);
-	unsigned long next = (unsigned long)-1;
+	uint64_t now = getnanotime();
+	uint64_t next = (uint64_t)-1;
 
 	/*
 	 * Initially give the client 30 seconds to actually contact us
@@ -73,7 +74,7 @@ static int check_expirations(void)
 	 * keeping the daemon around.
 	 */
 	if (!wait_for_entry_until)
-		wait_for_entry_until = now + 30;
+		wait_for_entry_until = now + 30 * 1000000000U;
 
 	while (i < entries_nr) {
 		if (entries[i].expiration <= now) {
@@ -86,7 +87,7 @@ static int check_expirations(void)
 			 * shows up (e.g., because we just removed a failed
 			 * one, and we will soon get the correct one).
 			 */
-			wait_for_entry_until = now + 30;
+			wait_for_entry_until = now + 30 * 1000000000U;
 		}
 		else {
 			if (entries[i].expiration < next)
@@ -171,7 +172,7 @@ static int serve_cache_loop(int fd)
 
 	pfd.fd = fd;
 	pfd.events = POLLIN;
-	if (poll(&pfd, 1, 1000 * wakeup) < 0) {
+	if (poll(&pfd, 1, wakeup / 1000000U) < 0) {
 		if (errno != EINTR)
 			die_errno("poll failed");
 		return 1;
