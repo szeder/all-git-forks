@@ -276,6 +276,11 @@ worktrees/<id>/link::
 	file. It is used to detect if the linked repository is
 	manually removed.
 
+worktrees/<id>/config::
+	This file contains worktree-specific configuration
+	variables. See the list of variables in linkgit:git-worktree[1].
+	The same variables in $GIT_COMMON_DIR/config are ignored.
+
 SEE ALSO
 --------
 linkgit:git-init[1],

@@ -37,9 +37,24 @@ struct config_source {
 	long (*do_ftell)(struct config_source *c);
 };
 
+struct config_pattern {
+	unsigned int prefix;
+	unsigned int len;
+	const char *pattern;
+};
+
 static struct config_source *cf;
 
 static int zlib_compression_seen;
+
+static struct config_pattern worktree_v1[] = {
+	{ 0, 0, NULL }
+};
+
+static struct config_pattern *worktree_patterns[] = {
+	NULL,
+	worktree_v1
+};
 
 /*
  * Default config_set that contains key-value pairs from the usual set of config
@@ -87,6 +102,34 @@ static int config_buf_ungetc(int c, struct config_source *conf)
 static long config_buf_ftell(struct config_source *conf)
 {
 	return conf->u.buf.pos;
+}
+
+static int is_config_local(const char *key_)
+{
+	int len;
+	struct config_pattern *cp;
+
+	if (repository_format_worktree_version < 0 ||
+	    repository_format_worktree_version >= ARRAY_SIZE(worktree_patterns))
+		die("unknown config version %d", repository_format_worktree_version);
+
+	cp = worktree_patterns[repository_format_worktree_version];
+	if (!cp)
+		return 0;
+	len = strlen(key_);
+	for (; ; cp++) {
+		if (!cp->pattern)
+			return 0;
+		if (!cp->len)
+			cp->len = strlen(cp->pattern);
+		if (len < cp->len)
+			continue;
+		if (strncmp(key_, cp->pattern, len))
+			continue;
+		if (!cp->prefix && len > cp->len)
+			continue;
+		return 1;
+	}
 }
 
 #define MAX_INCLUDE_DEPTH 10
@@ -1184,7 +1227,36 @@ int git_config_system(void)
 	return !git_env_bool("GIT_CONFIG_NOSYSTEM", 0);
 }
 
-int git_config_early(config_fn_t fn, void *data, const char *repo_config)
+static char *worktree_config_path(void)
+{
+	struct strbuf sb = STRBUF_INIT;
+	strbuf_addf(&sb, "%s/config", get_git_dir());
+	return strbuf_detach(&sb, NULL);
+}
+
+static int config_worktree_filter_in(const char *var,
+				     const char *value, void *data)
+{
+	struct config_include_data *inc = data;
+
+	if (!is_config_local(var))
+		return error("%s in per-worktree config file is ignored", var);
+	return inc->fn(var, value, inc->data);
+}
+
+static int config_worktree_filter_out(const char *var,
+				      const char *value, void *data)
+{
+	struct config_include_data *inc = data;
+
+	if (is_config_local(var))
+		return 0;	/* these are for main worktree only */
+
+	return inc->fn(var, value, inc->data);
+}
+
+int git_config_early(config_fn_t fn, void *data, const char *repo_config,
+		     const char *worktree_config)
 {
 	int ret = 0, found = 0;
 	char *xdg_config = xdg_config_home("config");
@@ -1206,7 +1278,23 @@ int git_config_early(config_fn_t fn, void *data, const char *repo_config)
 		found += 1;
 	}
 
-	if (repo_config && !access_or_die(repo_config, R_OK, 0)) {
+	if (worktree_config) {
+		struct config_include_data inc = CONFIG_INCLUDE_INIT;
+
+		inc.fn = fn;
+		inc.data = data;
+		if (!access_or_die(worktree_config, R_OK, 0)) {
+			ret += git_config_from_file(config_worktree_filter_in,
+						    worktree_config, &inc);
+			found += 1;
+		}
+
+		if (repo_config && !access_or_die(repo_config, R_OK, 0)) {
+			ret += git_config_from_file(config_worktree_filter_out,
+						    repo_config, &inc);
+			found += 1;
+		}
+	} else if (repo_config && !access_or_die(repo_config, R_OK, 0)) {
 		ret += git_config_from_file(fn, repo_config, data);
 		found += 1;
 	}
@@ -1232,6 +1320,7 @@ int git_config_with_options(config_fn_t fn, void *data,
 			    int respect_includes)
 {
 	char *repo_config = NULL;
+	char *worktree_config = NULL;
 	int ret;
 	struct config_include_data inc = CONFIG_INCLUDE_INIT;
 
@@ -1254,9 +1343,11 @@ int git_config_with_options(config_fn_t fn, void *data,
 		return git_config_from_blob_ref(fn, config_source->blob, data);
 
 	repo_config = git_pathdup("config");
-	ret = git_config_early(fn, data, repo_config);
-	if (repo_config)
-		free(repo_config);
+	if (git_common_dir_env)
+		worktree_config = worktree_config_path();
+	ret = git_config_early(fn, data, repo_config, worktree_config);
+	free(repo_config);
+	free(worktree_config);
 	return ret;
 }
 
@@ -1925,6 +2016,23 @@ int git_config_key_is_valid(const char *key)
 	return !git_config_parse_key_1(key, NULL, NULL, 1);
 }
 
+static const char *get_config_filename(const char *config_filename,
+				       const char *key,
+				       char **filename_buf)
+{
+	if (config_filename)
+		return config_filename;
+	if (!git_common_dir_env) {
+		config_filename = *filename_buf = git_pathdup("config");
+		return config_filename;
+	}
+	if (!is_config_local(key))
+		config_filename = *filename_buf = git_pathdup("config");
+	else
+		config_filename = *filename_buf = worktree_config_path();
+	return config_filename;
+}
+
 /*
  * If value==NULL, unset in (remove from) config,
  * if value_regex!=NULL, disregard key/value pairs where value does not match.
@@ -1968,8 +2076,7 @@ int git_config_set_multivar_in_file(const char *config_filename,
 
 	store.multi_replace = multi_replace;
 
-	if (!config_filename)
-		config_filename = filename_buf = git_pathdup("config");
+	config_filename = get_config_filename(config_filename, key, &filename_buf);
 
 	/*
 	 * The lock serves a purpose in addition to locking: the new

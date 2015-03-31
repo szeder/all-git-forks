@@ -8,6 +8,10 @@ is used to store the configuration for that repository, and
 fallback values for the `.git/config` file. The file `/etc/gitconfig`
 can be used to store a system-wide default configuration.
 
+Linked worktrees (see linkgit:git-worktree[1]) also have a
+worktree-specific file config. See linkgit:gitrepository-layout[5] for
+more information.
+
 The configuration variables are used by both the Git plumbing
 and the porcelains. The variables are divided into sections, wherein
 the fully qualified variable name of the variable itself is the last

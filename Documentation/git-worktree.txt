@@ -147,6 +147,17 @@ to `/path/main/.git/worktrees/test-next` then a file named
 `test-next` entry from being pruned.  See
 linkgit:gitrepository-layout[5] for details.
 
+Similar to the file system split in ".git", the repository config file
+is also split. Certain variables, for example core.worktree, are
+per-worktree while the majority of variables are still shared (see
+linkgit:git-config[1] for details). Shared variables and per-working
+tree ones that belong to the main working tree are in .git/config.
+Per-working tree variables for working tree X are in
+$GIT_COMMON_DIR/worktrees/X/config. Even though per-working tree
+variables for the main working tree are in the default config place,
+they are invisible from all linked working trees. The following
+configuration variables are per working directory:
+
 LIST OUTPUT FORMAT
 ------------------
 The worktree list command has two output formats.  The default format shows the
