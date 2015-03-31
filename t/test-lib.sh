@@ -94,6 +94,7 @@ unset VISUAL EMAIL LANGUAGE COLUMNS $("$PERL_PATH" -e '
 	print join("\n", @vars);
 ')
 unset XDG_CONFIG_HOME
+unset XDG_RUNTIME_DIR
 unset GITPERLLIB
 GIT_AUTHOR_EMAIL=author@example.com
 GIT_AUTHOR_NAME='A U Thor'
