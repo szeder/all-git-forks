@@ -8,6 +8,7 @@ have() {
 
 want() {
 	echo compile
+	echo gh
 	Meta/install/versions
 }
 
@@ -22,3 +23,4 @@ while read version; do
 done
 
 ln -sfT $PWD/bin-wrappers/git $HOME/local/bin/git.compile
+ln -sfT $HOME/compile/gh/git/bin-wrappers/git $HOME/local/bin/git.gh
