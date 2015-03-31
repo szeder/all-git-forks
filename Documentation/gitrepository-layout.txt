@@ -212,6 +212,12 @@ info/sparse-checkout::
 	This file stores sparse checkout patterns.
 	See also: linkgit:git-read-tree[1].
 
+info/checkout.worktree:
+	This file stores the configuration variable pattern list where
+	$GIT_DIR/config.worktree is used as storage instead of
+	$GIT_DIR/config. The syntax is the same as .gitignore except
+	that '.' is considered the separator instead of '/'.
+
 remotes::
 	Stores shorthands for URL and default refnames for use
 	when interacting with remote repositories via 'git fetch',
