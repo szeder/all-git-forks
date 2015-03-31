@@ -6,6 +6,7 @@
  *
  */
 #include "cache.h"
+#include "dir.h"
 #include "lockfile.h"
 #include "exec_cmd.h"
 #include "strbuf.h"
@@ -38,6 +39,7 @@ struct config_source {
 };
 
 static struct config_source *cf;
+static struct exclude_list config_local;
 
 static int zlib_compression_seen;
 
@@ -87,6 +89,33 @@ static int config_buf_ungetc(int c, struct config_source *conf)
 static long config_buf_ftell(struct config_source *conf)
 {
 	return conf->u.buf.pos;
+}
+
+static int is_config_local(const char *key_)
+{
+	static struct strbuf key = STRBUF_INIT;
+	static int loaded;
+	int i, dtype;
+
+	if (!loaded) {
+		load_config_worktree(&config_local, git_path("info/config.worktree"));
+		loaded = 1;
+	}
+
+	if (!config_local.nr)
+		return 0;
+
+	strbuf_reset(&key);
+	strbuf_addstr(&key, key_);
+	for (i = 0; i < key.len; i++) {
+		if (key.buf[i] == '.')
+			key.buf[i] = '/';
+		else
+			key.buf[i] = tolower(key.buf[i]);
+	}
+	dtype = DT_REG;
+	return is_excluded_from_list(key.buf, key.len, "", &dtype,
+				     &config_local) > 0;
 }
 
 #define MAX_INCLUDE_DEPTH 10
@@ -1184,7 +1213,29 @@ int git_config_system(void)
 	return !git_env_bool("GIT_CONFIG_NOSYSTEM", 0);
 }
 
-int git_config_early(config_fn_t fn, void *data, const char *repo_config)
+static int config_worktree_filter_in(const char *var,
+				     const char *value, void *data)
+{
+	struct config_include_data *inc = data;
+
+	if (!is_config_local(var))
+		return error("%s in config.worktree is ignored", var);
+	return inc->fn(var, value, inc->data);
+}
+
+static int config_worktree_filter_out(const char *var,
+				      const char *value, void *data)
+{
+	struct config_include_data *inc = data;
+
+	if (is_config_local(var))
+		return 0;	/* these are for main worktree only */
+
+	return inc->fn(var, value, inc->data);
+}
+
+int git_config_early(config_fn_t fn, void *data, const char *repo_config,
+		     const char *worktree_config)
 {
 	int ret = 0, found = 0;
 	char *xdg_config = xdg_config_home("config");
@@ -1206,7 +1257,23 @@ int git_config_early(config_fn_t fn, void *data, const char *repo_config)
 		found += 1;
 	}
 
-	if (repo_config && !access_or_die(repo_config, R_OK, 0)) {
+	if (worktree_config) {
+		struct config_include_data inc = CONFIG_INCLUDE_INIT;
+
+		inc.fn = fn;
+		inc.data = data;
+		if (!access_or_die(worktree_config, R_OK, 0)) {
+			ret += git_config_from_file(config_worktree_filter_in,
+						    worktree_config, &inc);
+			found += 1;
+		}
+
+		if (repo_config && !access_or_die(repo_config, R_OK, 0)) {
+			ret += git_config_from_file(config_worktree_filter_out,
+						    repo_config, &inc);
+			found += 1;
+		}
+	} else if (repo_config && !access_or_die(repo_config, R_OK, 0)) {
 		ret += git_config_from_file(fn, repo_config, data);
 		found += 1;
 	}
@@ -1232,6 +1299,7 @@ int git_config_with_options(config_fn_t fn, void *data,
 			    int respect_includes)
 {
 	char *repo_config = NULL;
+	char *worktree_config = NULL;
 	int ret;
 	struct config_include_data inc = CONFIG_INCLUDE_INIT;
 
@@ -1254,9 +1322,11 @@ int git_config_with_options(config_fn_t fn, void *data,
 		return git_config_from_blob_ref(fn, config_source->blob, data);
 
 	repo_config = git_pathdup("config");
-	ret = git_config_early(fn, data, repo_config);
-	if (repo_config)
-		free(repo_config);
+	if (git_common_dir_env)
+		worktree_config = git_pathdup("config.worktree");
+	ret = git_config_early(fn, data, repo_config, worktree_config);
+	free(repo_config);
+	free(worktree_config);
 	return ret;
 }
 
@@ -1949,6 +2019,23 @@ int git_config_set_multivar_in_file(const char *config_filename,
 
 	store.multi_replace = multi_replace;
 
+	if (git_common_dir_env && is_config_local(key)) {
+		if (!config_filename)
+			config_filename = filename_buf = git_pathdup("config.worktree");
+		/* cheap trick, but should work 90% of time */
+		else if (!ends_with(config_filename, ".worktree"))
+			die("%s can only be stored in %s",
+			    key, git_path("config.worktree"));
+		else {
+			struct strbuf sb = STRBUF_INIT;
+			strbuf_addstr(&sb, real_path(config_filename));
+			if (strcmp_icase(sb.buf,
+					 real_path(git_path("config.worktree"))))
+				die("%s can only be stored in %s",
+				    key, git_path("config.worktree"));
+			strbuf_release(&sb);
+		}
+	}
 	if (!config_filename)
 		config_filename = filename_buf = git_pathdup("config");
 

@@ -550,6 +550,14 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 			usage_with_options(builtin_config_usage, builtin_config_options);
 		}
 
+	/*
+	 * For set operations, --local could be either config or
+	 * config.worktree. Let config.c determine the path based on
+	 * config keys.
+	 */
+	if (use_local_config && actions != ACTION_LIST)
+		given_config_source.file = NULL;
+
 	if (actions == ACTION_LIST) {
 		check_argc(argc, 0, 0);
 		if (git_config_with_options(show_all_config, NULL,
