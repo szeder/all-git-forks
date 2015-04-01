@@ -1,2 +1,8 @@
 core.worktree
 core.bare
+submodule.*.path
+submodule.*.url
+submodule.*.update
+submodule.*.branch
+submodule.*.fetchRecurseSubmodules
+submodule.*.ignore
