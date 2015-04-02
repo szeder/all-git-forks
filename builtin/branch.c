@@ -965,7 +965,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 
 		if (!branch) {
 			if (!argc || !strcmp(argv[0], "HEAD"))
-				die(_("could not set upstream of HEAD to %s when "
+				die(_("could not set upstream of HEAD to %s because "
 				      "it does not point to any branch."),
 				    new_upstream);
 			die(_("no such branch '%s'"), argv[0]);
