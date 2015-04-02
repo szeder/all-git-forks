@@ -234,6 +234,29 @@ static int is_tag_in_date_range(struct object *tag, struct rev_info *revs)
 		(revs->min_age == -1 || revs->min_age > date);
 }
 
+static int write_one_shallow(const struct commit_graft *graft, void *cb_data)
+{
+	const char *middle = " .shallow\n-";
+	int fd = *(int *)cb_data;
+	struct object *o;
+
+	if (graft->nr_parent != -1)
+		return 0;
+	o = lookup_object(graft->sha1);
+	if (!o || o->type != OBJ_COMMIT || !(o->flags & SHOWN))
+		return 0;
+	write_or_die(fd, sha1_to_hex(graft->sha1), 40);
+	write_or_die(fd, middle, strlen(middle));
+	/*
+	 * Old git does not understand and ignore .shallow refs.
+	 * These prerequisites will make sure we can make sure it's
+	 * safe to unbundle. New git just ignore them.
+	 */
+	write_or_die(fd, sha1_to_hex(graft->sha1), 40);
+	write_or_die(fd, "\n", 1);
+	return 0;
+}
+
 int create_bundle(struct bundle_header *header, const char *path,
 		  int argc, const char **argv)
 {
@@ -380,6 +403,9 @@ int create_bundle(struct bundle_header *header, const char *path,
 	}
 	if (!ref_count)
 		die(_("Refusing to create empty bundle."));
+
+	if (is_repository_shallow())
+		for_each_commit_graft(write_one_shallow, &bundle_fd);
 
 	/* end header */
 	write_or_die(bundle_fd, "\n", 1);

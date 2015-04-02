@@ -16,6 +16,8 @@
 #include "string-list.h"
 #include "sha1-array.h"
 
+static int fetch_refs_from_shallow_bundle(void);
+
 /* rsync support */
 
 /*
@@ -407,6 +409,7 @@ static int rsync_transport_push(struct transport *transport,
 struct bundle_transport_data {
 	int fd;
 	struct bundle_header header;
+	struct sha1_array shallow;
 };
 
 static struct ref *get_refs_from_bundle(struct transport *transport, int for_push)
@@ -425,7 +428,13 @@ static struct ref *get_refs_from_bundle(struct transport *transport, int for_pus
 		die ("Could not read bundle '%s'.", transport->url);
 	for (i = 0; i < data->header.references.nr; i++) {
 		struct ref_list_entry *e = data->header.references.list + i;
-		struct ref *ref = alloc_ref(e->name);
+		struct ref *ref;
+
+		if (!strcmp(e->name, ".shallow")) {
+			sha1_array_append(&data->shallow, e->sha1);
+			continue;
+		}
+		ref = alloc_ref(e->name);
 		hashcpy(ref->old_sha1, e->sha1);
 		ref->next = result;
 		result = ref;
@@ -437,6 +446,8 @@ static int fetch_refs_from_bundle(struct transport *transport,
 			       int nr_heads, struct ref **to_fetch)
 {
 	struct bundle_transport_data *data = transport->data;
+	if (data->shallow.nr)
+		return fetch_refs_from_shallow_bundle();
 	return unbundle(&data->header, data->fd,
 			transport->progress ? BUNDLE_VERBOSE : 0);
 }
@@ -572,6 +583,11 @@ static int fetch_refs_via_pack(struct transport *transport,
 
 	free(dest);
 	return (refs ? 0 : -1);
+}
+
+static int fetch_refs_from_shallow_bundle(void)
+{
+	return 0;
 }
 
 static int push_had_errors(struct ref *ref)
