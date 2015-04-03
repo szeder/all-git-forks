@@ -1202,7 +1202,7 @@ static int config_worktree_filter_in(const char *var,
 	struct config_include_data *inc = data;
 
 	if (!is_config_local(var)) {
-		warning("%s in config.worktree is ignored", var);
+		warning("%s in per-worktree config is ignored", var);
 		return 0;
 	}
 	return inc->fn(var, value, inc->data);
@@ -1281,6 +1281,13 @@ int git_config_early(config_fn_t fn, void *data, const char *repo_config,
 	return ret == 0 ? found : ret;
 }
 
+static char *config_worktree_path(void)
+{
+	struct strbuf sb = STRBUF_INIT;
+	strbuf_addf(&sb, "%s/config", get_git_dir());
+	return strbuf_detach(&sb, NULL);
+}
+
 int git_config_with_options(config_fn_t fn, void *data,
 			    struct git_config_source *config_source,
 			    int respect_includes)
@@ -1310,7 +1317,7 @@ int git_config_with_options(config_fn_t fn, void *data,
 
 	repo_config = git_pathdup("config");
 	if (git_common_dir_env)
-		worktree_config = git_pathdup("config.worktree");
+		worktree_config = config_worktree_path();
 	ret = git_config_early(fn, data, repo_config, worktree_config);
 	free(repo_config);
 	free(worktree_config);
@@ -2005,7 +2012,7 @@ int git_config_set_multivar_in_file(const char *config_filename,
 	store.multi_replace = multi_replace;
 
 	if (git_common_dir_env && is_config_local(key) && !config_filename)
-		config_filename = filename_buf = git_pathdup("config.worktree");
+		config_filename = filename_buf = config_worktree_path();
 	if (!config_filename)
 		config_filename = filename_buf = git_pathdup("config");
 

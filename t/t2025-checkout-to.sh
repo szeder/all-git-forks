@@ -135,11 +135,10 @@ test_expect_success 'setting worktree.foo goes to config.worktree' '
 [woRKtree]
 	FOO = bar
 EOF
-	test_cmp expect .git/worktrees/wt.foo/config.worktree &&
+	test_cmp expect .git/worktrees/wt.foo/config &&
 	git --git-dir=wt.foo/.git config woRktree.foo >actual2 &&
 	echo bar >expect2 &&
 	test_cmp expect2 actual2 &&
-	test_path_is_missing .git/config.worktree &&
 	git config WORKTREE.FOO >actual3 &&
 	echo barrrr >expect3 &&
 	test_cmp expect3 actual3
