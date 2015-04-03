@@ -95,12 +95,12 @@ test_expect_success 'diff with mergebase shows discarded change from parent 1 in
 	test -s actual
 '
 
-test_expect_failure 'diff with mergebase shows fully discarded file from parent 2' '
+test_expect_success 'diff with mergebase shows fully discarded file from parent 2' '
 	git diff --cc merge branch1 branch2 mergebase -- short/win1 >actual &&
 	test -s actual
 '
 
-test_expect_failure 'diff with mergebase shows fully discarded file from parent 1' '
+test_expect_success 'diff with mergebase shows fully discarded file from parent 1' '
 	git diff --cc merge branch1 branch2 mergebase -- short/win2 >actual &&
 	test -s actual
 '
