@@ -126,4 +126,32 @@ test_expect_success 'checkout with grafts' '
 	test_cmp expected actual
 '
 
+# test_expect_success 'archive' 'tar czf ../t2025.tar.gz .'
+
+test_expect_success 'setting worktree.foo goes to config.worktree' '
+	echo worKtree.Foo >> .git/info/config.worktree &&
+	git checkout --to wt.foo HEAD &&
+	git config woRKtree.FOO barrrr &&
+	git --git-dir=wt.foo/.git config woRKtree.FOO bar &&
+	cat >expect <<\EOF &&
+[woRKtree]
+	FOO = bar
+EOF
+	test_cmp expect .git/worktrees/wt.foo/config.worktree &&
+	git --git-dir=wt.foo/.git config woRktree.foo >actual2 &&
+	echo bar >expect2 &&
+	test_cmp expect2 actual2 &&
+	test_path_is_missing .git/config.worktree &&
+	git config WORKTREE.FOO >actual3 &&
+	echo barrrr >expect3 &&
+	test_cmp expect3 actual3
+'
+
+test_expect_success 'shared config still goes to config' '
+	git config random.key randomValue &&
+	git --git-dir=wt.foo/.git config random.key >actual &&
+	echo randomValue >expect &&
+	test_cmp expect actual
+'
+
 test_done
