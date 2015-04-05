@@ -828,4 +828,10 @@ struct tm *git_gmtime_r(const time_t *, struct tm *);
 #define gmtime_r git_gmtime_r
 #endif
 
+#ifndef _POSIX_THREAD_SAFE_FUNCTIONS
+#define flockfile(fh)
+#define funlockfile(fh)
+#define getc_unlocked(fh) getc(fh)
+#endif
+
 #endif
