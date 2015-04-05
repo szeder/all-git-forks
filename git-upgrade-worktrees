@@ -33,39 +33,95 @@ sub write_file($$) { my ($path, $content) = @_;
 # }}}
 
 my $arg_dir = $ARGV[0];
-my $GIT_DIR = undef;
-if (-e "$arg_dir/repos") {
-    $GIT_DIR = $arg_dir;
-} elsif (-e "$arg_dir/.git/repos") {
-    $GIT_DIR = "$arg_dir/.git";
+my $GIT_COMMON_DIR = undef;
+if (-d "$arg_dir/objects") {
+    $GIT_COMMON_DIR = $arg_dir;
+} elsif (-d "$arg_dir/.git/objects") {
+    $GIT_COMMON_DIR = "$arg_dir/.git";
 } else {
     die "Not a master git repository: $arg_dir";
 }
 
-mkdir("$GIT_DIR/worktrees");
-opendir(my $dir, "$GIT_DIR/repos") or die "Fail to open dir: $!";
-foreach my $subdir (readdir($dir)) {
-    if ($subdir eq "." || $subdir eq "..") { next; }
-    my $gitdir_path = "$GIT_DIR/repos/$subdir/gitdir";
-    if (!-e $gitdir_path) {
-        die "No gitdir: $gitdir_path";
+sub repos_to_worktrees() {
+    if (-d "$GIT_COMMON_DIR/worktrees") {
+        print STDERR "repos_to_worktrees(): already done\n";
+        return 1;
     }
-
-    my $gitdir_content = read_file($gitdir_path);
-
-    if ($gitdir_content =~ /^(.*\.git)\n$/s) {
-        my $tree_gitlink = $1;
-        my $tree_gitlink_content = read_file($tree_gitlink);
-        if ($tree_gitlink_content =~ /^gitdir: (.*\/)repos\/\Q$subdir\E\n$/s) {
-            my $repo_dir_base = $1;
-            write_file($tree_gitlink, "gitdir: $repo_dir_base/worktrees/$subdir\n");
-            rename("$GIT_DIR/repos/$subdir", "$GIT_DIR/worktrees/$subdir") or die "Fail to move $GIT_DIR/repos/$subdir";
-        } else {
-            die "Incorrect gitline $tree_gitlink:\n$tree_gitlink_content\n";
+    if (! -d "$GIT_COMMON_DIR/repos") {
+        print STDERR "repos_to_worktrees(): no worktrees, nothing to convert\n";
+        return 1;
+    }
+    mkdir("$GIT_COMMON_DIR/worktrees");
+    opendir(my $dir, "$GIT_COMMON_DIR/repos") or die "Fail to open dir: $!";
+    foreach my $subdir (readdir($dir)) {
+        if ($subdir eq "." || $subdir eq "..") { next; }
+        my $gitdir_path = "$GIT_COMMON_DIR/repos/$subdir/gitdir";
+        if (!-e $gitdir_path) {
+            die "No gitdir: $gitdir_path";
         }
-    } else {
-        die "Incorrect gitdir $gitdir_path:\n$gitdir_content\n";
+
+        my $gitdir_content = read_file($gitdir_path);
+
+        if ($gitdir_content =~ /^(.*\.git)\n$/s) {
+            my $tree_gitlink = $1;
+            my $tree_gitlink_content = read_file($tree_gitlink);
+            if ($tree_gitlink_content =~ /^gitdir: (.*\/)repos\/\Q$subdir\E\n$/s) {
+                my $repo_dir_base = $1;
+                write_file($tree_gitlink, "gitdir: $repo_dir_base/worktrees/$subdir\n");
+                rename("$GIT_COMMON_DIR/repos/$subdir", "$GIT_COMMON_DIR/worktrees/$subdir")
+                    or die "Fail to move $GIT_COMMON_DIR/repos/$subdir";
+                print STDERR "repos_to_worktrees(): moved $subdir ($tree_gitlink)\n";
+            } else {
+                die "Incorrect gitline $tree_gitlink:\n$tree_gitlink_content\n";
+            }
+        } else {
+            die "Incorrect gitdir $gitdir_path:\n$gitdir_content\n";
+        }
     }
+    closedir($dir) or die "Fail to close dir: $!";
+    rmdir("$GIT_COMMON_DIR/repos") or print STDERR "Warning $GIT_COMMON_DIR/repos is not yet clear"
 }
-closedir($dir) or die "Fail to close dir: $!";
-rmdir("$GIT_DIR/repos") or print STDERR "Warning $GIT_DIR/repos is not yet clear"
+
+sub init_config_worktree() {
+    if (-f "$GIT_COMMON_DIR/info/config.worktree") {
+        print STDERR "init_config_worktree(): already done\n";
+    }
+    write_file("$GIT_COMMON_DIR/info/config.worktree", <<End);
+core.worktree
+core.base
+submodule.*.path
+submodule.*.url
+submodule.*.update
+submodule.*.branch
+submodule.*.fetchRecurseSubmodules
+submodule.*.ignore
+End
+}
+
+# separated because need fully correct setup; after development there could be other steps between init_config_worktree
+# and this
+sub init_var_core_worktree() {
+    opendir(my $dir, "$GIT_COMMON_DIR/worktrees") or die "Fail to open dir: $!";
+    foreach my $subdir (readdir($dir)) {
+        if ($subdir eq "." || $subdir eq "..") { next; }
+        my $gitdir_path = "$GIT_COMMON_DIR/worktrees/$subdir/gitdir";
+        if (!-e $gitdir_path) {
+            die "No gitdir: $gitdir_path";
+        }
+        my $gitdir_content = read_file($gitdir_path);
+        if ($gitdir_content =~ /^((.*)\/\.git)\n$/s) {
+            my $gitdir = $1;
+            my $worktree = $2;
+            system("git", "--git-dir=$gitdir", "config", "core.worktree", $worktree) == 0
+                or die "git config failed: $?, $!";
+            print STDERR "init_var_core_worktree(): set for $worktree\n";
+        } else {
+            print STDERR "init_var_core_worktree(): skip unparsed $gitdir_content\n";
+        }
+    }
+    closedir($dir) or die "Fail to close dir: $!";
+}
+
+repos_to_worktrees();
+init_config_worktree();
+init_var_core_worktree();
