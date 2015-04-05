@@ -455,6 +455,88 @@ test_expect_success 'nested git work tree' '
 	! test -d bar
 '
 
+test_expect_failure 'nested git (only init) should be kept' '
+	rm -fr foo bar &&
+	mkdir foo bar &&
+	(
+		cd foo &&
+		git init
+	) &&
+	(
+		cd bar &&
+		>goodbye.people
+	) &&
+	git clean -f -d &&
+	test -f foo/.git/HEAD &&
+	! test -d bar
+'
+
+test_expect_failure 'nested git (bare) should be kept' '
+	rm -fr foo bar &&
+	mkdir foo bar &&
+	(
+		cd foo &&
+		git init --bare
+	) &&
+	(
+		cd bar &&
+		>goodbye.people
+	) &&
+	git clean -f -d &&
+	test -f foo/HEAD &&
+	! test -d bar
+'
+
+test_expect_success 'giving path in nested git work tree will remove it' '
+	rm -fr foo &&
+	mkdir foo &&
+	(
+		cd foo &&
+		git init &&
+		mkdir -p bar/baz &&
+		cd bar/baz &&
+		>hello.world
+		git add . &&
+		git commit -a -m nested
+	) &&
+	git clean -f -d foo/bar/baz &&
+	test -f foo/.git/HEAD &&
+	test -d foo/bar/ &&
+	! test -d foo/bar/baz
+'
+
+test_expect_success 'giving path to nested .git will not remove it' '
+	rm -fr foo &&
+	mkdir foo bar &&
+	(
+		cd foo &&
+		git init &&
+		>hello.world
+		git add . &&
+		git commit -a -m nested
+	) &&
+	git clean -f -d foo/.git &&
+	test -f foo/.git/HEAD &&
+	test -d foo/.git/refs &&
+	test -d foo/.git/objects &&
+	test -d bar/
+'
+
+test_expect_success 'giving path to nested .git/ will remove contents' '
+	rm -fr foo bar &&
+	mkdir foo bar &&
+	(
+		cd foo &&
+		git init &&
+		>hello.world
+		git add . &&
+		git commit -a -m nested
+	) &&
+	git clean -f -d foo/.git/ &&
+	test 0 = $(ls -A foo/.git | wc -l) &&
+	test -d foo/.git
+'
+
 test_expect_success 'force removal of nested git work tree' '
 	rm -fr foo bar baz &&
 	mkdir -p foo bar baz/boo &&
