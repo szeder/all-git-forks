@@ -455,7 +455,7 @@ test_expect_success 'nested git work tree' '
 	! test -d bar
 '
 
-test_expect_failure 'nested git (only init) should be kept' '
+test_expect_success 'nested git (only init) should be kept' '
 	rm -fr foo bar &&
 	mkdir foo bar &&
 	(
@@ -471,7 +471,7 @@ test_expect_failure 'nested git (only init) should be kept' '
 	! test -d bar
 '
 
-test_expect_failure 'nested git (bare) should be kept' '
+test_expect_success 'nested git (bare) should be kept' '
 	rm -fr foo bar &&
 	mkdir foo bar &&
 	(
