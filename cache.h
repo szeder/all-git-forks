@@ -835,6 +835,13 @@ char *strip_path_suffix(const char *path, const char *suffix);
 int daemon_avoid_alias(const char *path);
 extern int is_ntfs_dotgit(const char *name);
 
+/**
+ * Returns 1 if the path "escapes" its root (e.g., "foo/../../bar") and 0
+ * otherwise. Note that this is purely textual, and does not care about
+ * symlinks or other aspects of the filesystem.
+ */
+int check_path_escape(const char *path);
+
 /* object replacement */
 #define LOOKUP_REPLACE_OBJECT 1
 extern void *read_sha1_file_extended(const unsigned char *sha1, enum object_type *type, unsigned long *size, unsigned flag);

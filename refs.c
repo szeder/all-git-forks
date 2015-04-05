@@ -285,20 +285,8 @@ static struct ref_dir *get_ref_dir(struct ref_entry *entry)
  */
 static int refname_is_safe(const char *refname)
 {
-	if (starts_with(refname, "refs/")) {
-		char *buf;
-		int result;
-
-		buf = xmalloc(strlen(refname) + 1);
-		/*
-		 * Does the refname try to escape refs/?
-		 * For example: refs/foo/../bar is safe but refs/foo/../../bar
-		 * is not.
-		 */
-		result = !normalize_path_copy(buf, refname + strlen("refs/"));
-		free(buf);
-		return result;
-	}
+	if (skip_prefix(refname, "refs/", &refname))
+		return check_path_escape(refname);
 	while (*refname) {
 		if (!isupper(*refname) && *refname != '_')
 			return 0;

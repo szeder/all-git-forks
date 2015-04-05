@@ -703,6 +703,70 @@ int normalize_path_copy(char *dst, const char *src)
 }
 
 /*
+ * We want to detect a path that "escapes" its root. The general strategy
+ * is to parse components left to right, keeping track of our depth,
+ * which is increased by non-empty components and decreased by ".."
+ * components.
+ */
+int check_path_escape(const char *path)
+{
+	int depth = 0;
+
+	while (*path) {
+		char ch = *path++;
+
+		/*
+		 * We always start our loop at the beginning of a path component. So
+		 * we can skip past any dir separators. This handles leading
+		 * "/", as well as any internal "////".
+		 */
+		if (is_dir_sep(ch))
+			continue;
+
+		/*
+		 * If we start with a dot, we care about the four cases
+		 * (similar to normalize_path_copy above):
+		 *
+		 *  (1)  "."  - does not affect depth; we are done
+		 *  (2)  "./" - does not affect depth; skip
+		 *  (3)  ".." - check depth and finish
+		 *  (4)  "../" - drop depth, check, and keep looking
+		 */
+		if (ch == '.') {
+			ch = *path++;
+
+			if (!ch)
+				return 1; /* case (1) */
+			if (is_dir_sep(ch))
+				continue; /* case (2) */
+			if (ch == '.') {
+				ch = *path++;
+				if (!ch)
+					return depth > 0; /* case (3) */
+				if (is_dir_sep(ch)) {
+					/* case (4) */
+					if (--depth < 0)
+						return 0;
+					continue;
+				}
+				/* otherwise, "..foo"; fall through */
+			}
+			/* otherwise ".foo"; fall through */
+		}
+
+		/*
+		 * We have a real component; inrement the depth and eat the
+		 * rest of the component
+		 */
+		depth++;
+		while (*path && !is_dir_sep(*path))
+			path++;
+	}
+
+	return 1;
+}
+
+/*
  * path = Canonical absolute path
  * prefixes = string_list containing normalized, absolute paths without
  * trailing slashes (except for the root directory, which is denoted by "/").
