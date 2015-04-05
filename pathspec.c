@@ -88,6 +88,13 @@ static void prefix_short_magic(struct strbuf *sb, int prefixlen,
 	strbuf_addf(sb, ",prefix:%d)", prefixlen);
 }
 
+struct global_flags {
+	unsigned literal : 1;
+	unsigned glob : 1;
+	unsigned noglob : 1;
+	unsigned icase : 1;
+};
+
 /*
  * Take an element of a pathspec and check for magic signatures.
  * Append the result to the prefix. Return the magic bitmap.
@@ -105,39 +112,20 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 				unsigned *p_short_magic,
 				const char **raw, unsigned flags,
 				const char *prefix, int prefixlen,
-				const char *elt)
+				const char *elt,
+				const struct global_flags *global)
 {
-	static int literal_global = -1;
-	static int glob_global = -1;
-	static int noglob_global = -1;
-	static int icase_global = -1;
 	unsigned magic = 0, short_magic = 0, global_magic = 0;
 	const char *copyfrom = elt, *long_magic_end = NULL;
 	char *match;
 	int i, pathspec_prefix = -1;
 
-	if (literal_global < 0)
-		literal_global = git_env_bool(GIT_LITERAL_PATHSPECS_ENVIRONMENT, 0);
-	if (literal_global)
+	if (global->literal)
 		global_magic |= PATHSPEC_LITERAL;
-
-	if (glob_global < 0)
-		glob_global = git_env_bool(GIT_GLOB_PATHSPECS_ENVIRONMENT, 0);
-	if (glob_global)
+	if (global->glob)
 		global_magic |= PATHSPEC_GLOB;
-
-	if (noglob_global < 0)
-		noglob_global = git_env_bool(GIT_NOGLOB_PATHSPECS_ENVIRONMENT, 0);
-
-	if (glob_global && noglob_global)
-		die(_("global 'glob' and 'noglob' pathspec settings are incompatible"));
-
-
-	if (icase_global < 0)
-		icase_global = git_env_bool(GIT_ICASE_PATHSPECS_ENVIRONMENT, 0);
-	if (icase_global)
+	if (global->icase)
 		global_magic |= PATHSPEC_ICASE;
-
 	if ((global_magic & PATHSPEC_LITERAL) &&
 	    (global_magic & ~PATHSPEC_LITERAL))
 		die(_("global 'literal' pathspec setting is incompatible "
@@ -146,7 +134,8 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 	if (flags & PATHSPEC_LITERAL_PATH)
 		global_magic = 0;
 
-	if (elt[0] != ':' || literal_global ||
+
+	if (elt[0] != ':' || global->literal ||
 	    (flags & PATHSPEC_LITERAL_PATH)) {
 		; /* nothing to do */
 	} else if (elt[1] == '(') {
@@ -213,7 +202,7 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 	*p_short_magic = short_magic;
 
 	/* --noglob-pathspec adds :(literal) _unless_ :(glob) is specified */
-	if (noglob_global && !(magic & PATHSPEC_GLOB))
+	if (global->noglob && !(magic & PATHSPEC_GLOB))
 		global_magic |= PATHSPEC_LITERAL;
 
 	/* --glob-pathspec is overridden by :(literal) */
@@ -247,7 +236,7 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 	 */
 	if (flags & PATHSPEC_PREFIX_ORIGIN) {
 		struct strbuf sb = STRBUF_INIT;
-		if (prefixlen && !literal_global) {
+		if (prefixlen && !global->literal) {
 			/* Preserve the actual prefix length of each pattern */
 			if (short_magic)
 				prefix_short_magic(&sb, prefixlen, short_magic);
@@ -365,6 +354,7 @@ void parse_pathspec(struct pathspec *pathspec,
 	struct pathspec_item *item;
 	const char *entry = argv ? *argv : NULL;
 	int i, n, prefixlen, nr_exclude = 0;
+	struct global_flags global;
 
 	memset(pathspec, 0, sizeof(*pathspec));
 
@@ -401,6 +391,14 @@ void parse_pathspec(struct pathspec *pathspec,
 		return;
 	}
 
+	memset(&global, 0, sizeof(global));
+	global.literal = git_env_bool(GIT_LITERAL_PATHSPECS_ENVIRONMENT, 0) != 0;
+	global.glob    = git_env_bool(GIT_GLOB_PATHSPECS_ENVIRONMENT,    0) != 0;
+	global.noglob  = git_env_bool(GIT_NOGLOB_PATHSPECS_ENVIRONMENT,  0) != 0;
+	global.icase   = git_env_bool(GIT_ICASE_PATHSPECS_ENVIRONMENT,   0) != 0;
+	if (global.glob && global.noglob)
+		die(_("global 'glob' and 'noglob' pathspec settings are incompatible"));
+
 	n = 0;
 	while (argv[n])
 		n++;
@@ -417,7 +415,8 @@ void parse_pathspec(struct pathspec *pathspec,
 
 		item[i].magic = prefix_pathspec(item + i, &short_magic,
 						argv + i, flags,
-						prefix, prefixlen, entry);
+						prefix, prefixlen, entry,
+						&global);
 		if ((flags & PATHSPEC_LITERAL_PATH) &&
 		    !(magic_mask & PATHSPEC_LITERAL))
 			item[i].magic |= PATHSPEC_LITERAL;
