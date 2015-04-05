@@ -32,6 +32,15 @@ static inline size_t strbuf_avail(const struct strbuf *sb)
 
 extern void strbuf_grow(struct strbuf *, size_t);
 
+/*
+ * An optimized version of strbuf_grow() for a single character.
+ */
+static inline void strbuf_grow_ch(struct strbuf *sb)
+{
+	if (!sb->alloc || sb->alloc - 1 <= sb->len)
+		strbuf_grow(sb, 1);
+}
+
 static inline void strbuf_setlen(struct strbuf *sb, size_t len)
 {
 	if (len > (sb->alloc ? sb->alloc - 1 : 0))
