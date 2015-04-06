@@ -23,6 +23,33 @@ test_expect_success 'list-files from index' '
 	test_cmp expect actual
 '
 
+test_expect_success 'column output' '
+	COLUMNS=20 git list-files --column=always >actual &&
+	cat >expected <<-\EOF &&
+	a        sa/a
+	b        sa/sb/b
+	c        sc/c
+	EOF
+	test_cmp expected actual &&
+	COLUMNS=20 git -c column.listfiles=always list-files >actual &&
+	cat >expected <<-\EOF &&
+	a        sa/a
+	b        sa/sb/b
+	c        sc/c
+	EOF
+	test_cmp expected actual &&
+	COLUMNS=20 git -c column.listfiles=always list-files -1 >actual &&
+	cat >expected <<-\EOF &&
+	a
+	b
+	c
+	sa/a
+	sa/sb/b
+	sc/c
+	EOF
+	test_cmp expected actual
+'
+
 test_expect_success 'list-files selectively from index' '
 	git list-files "*a" >actual &&
 	cat >expect <<-\EOF &&
