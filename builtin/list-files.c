@@ -4,6 +4,7 @@
 #include "pathspec.h"
 #include "dir.h"
 #include "quote.h"
+#include "column.h"
 
 enum item_type {
 	FROM_INDEX
@@ -26,6 +27,7 @@ static struct pathspec pathspec;
 static const char *prefix;
 static int prefix_length;
 static int show_tag = -1;
+static unsigned int colopts;
 
 static const char * const ls_usage[] = {
 	N_("git list-files [options] [<pathspec>...]"),
@@ -34,6 +36,9 @@ static const char * const ls_usage[] = {
 
 struct option ls_options[] = {
 	OPT_BOOL(0, "tag", &show_tag, N_("show tags")),
+	OPT_COLUMN('C', "column", &colopts, N_("show files in columns")),
+	OPT_SET_INT('1', NULL, &colopts,
+		    N_("shortcut for --no-column"), COL_PARSEOPT),
 	OPT_END()
 };
 
@@ -114,6 +119,7 @@ static void quote_item(struct strbuf *out, const struct item *item)
 static void display(const struct item_list *result)
 {
 	struct strbuf quoted = STRBUF_INIT;
+	struct string_list s = STRING_LIST_INIT_DUP;
 	int i;
 
 	if (!prefix_length)
@@ -129,13 +135,26 @@ static void display(const struct item_list *result)
 			strbuf_addch(&quoted, ' ');
 		}
 		quote_item(&quoted, item);
-		printf("%s\n", quoted.buf);
+		if (column_active(colopts))
+			string_list_append(&s, quoted.buf);
+		else
+			printf("%s\n", quoted.buf);
+	}
+
+	if (column_active(colopts)) {
+		struct column_options copts;
+		memset(&copts, 0, sizeof(copts));
+		copts.padding = 2;
+		print_columns(&s, colopts, &copts);
+		string_list_clear(&s, 0);
 	}
 	strbuf_release(&quoted);
 }
 
 static int ls_config(const char *var, const char *value, void *cb)
 {
+	if (starts_with(var, "column."))
+		return git_column_config(var, value, "listfiles", &colopts);
 	return git_default_config(var, value, cb);
 }
 
@@ -163,6 +182,7 @@ int cmd_list_files(int argc, const char **argv, const char *cmd_prefix)
 		       cmd_prefix, argv);
 	pathspec.max_depth = 0;
 	pathspec.recursive = 1;
+	finalize_colopts(&colopts, -1);
 
 	refresh_index(&the_index, REFRESH_QUIET | REFRESH_UNMERGED,
 		      &pathspec, NULL, NULL);
