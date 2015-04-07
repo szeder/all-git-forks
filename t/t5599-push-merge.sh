@@ -11,15 +11,16 @@ test_expect_success 'setup upstream' '
 '
 
 test_expect_success 'setup clone' '
+	git reset --hard init &&
 	git clone .git clone
 	(
 		cd clone &&
-		git reset --hard init &&
 		test_commit commit1_client
 	)
 '
 
 test_expect_success 'push-merge smoke: run' '
+	git reset --hard commit1 &&
 	(
 		cd clone &&
 		git reset --hard commit1_client &&
