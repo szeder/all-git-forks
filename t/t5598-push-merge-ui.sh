@@ -24,7 +24,7 @@ test_expect_success 'advance upstream' '
 commit1_hash=$(git rev-parse commit1)
 
 test_expect_failure 'push-merge smoke: see ref in push-hook' '
-	git reset --hard commit1 &&
+	test_when_finished "rm -v clone/.git/hooks/pre-push" &&
 	(
 		cd clone &&
                 cat >.git/hooks/pre-push <<-"EOF" &&
@@ -37,6 +37,14 @@ EOF
                 chmod +x .git/hooks/pre-push &&
                 export commit1_hash &&
                 git push origin master:master
+	)
+'
+
+test_expect_success 'push forced' '
+	(
+		cd clone &&
+		git push origin +master:master &&
+		git branch -a -v
 	)
 '
 
