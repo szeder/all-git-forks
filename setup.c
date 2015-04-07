@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "dir.h"
 #include "string-list.h"
+#include "pathspec.h"
 
 static int inside_git_dir = -1;
 static int inside_work_tree = -1;
@@ -140,7 +141,9 @@ int check_filename(const char *prefix, const char *arg)
 		if (arg[2] == '\0') /* ":/" is root dir, always exists */
 			return 1;
 		name = arg + 2;
-	} else if (prefix)
+	} else if (valid_magic_pathspec(arg))
+		return 1;
+	else if (prefix)
 		name = prefix_filename(prefix, strlen(prefix), arg);
 	else
 		name = arg;

@@ -75,6 +75,7 @@ extern void parse_pathspec(struct pathspec *pathspec,
 			   const char **args);
 extern void copy_pathspec(struct pathspec *dst, const struct pathspec *src);
 extern void free_pathspec(struct pathspec *);
+extern int valid_magic_pathspec(const char *elt);
 
 static inline int ps_strncmp(const struct pathspec_item *item,
 			     const char *s1, const char *s2, size_t n)

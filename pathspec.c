@@ -529,3 +529,24 @@ void free_pathspec(struct pathspec *pathspec)
 	free(pathspec->items);
 	pathspec->items = NULL;
 }
+
+int valid_magic_pathspec(const char *elt)
+{
+	if (elt[0] != ':')
+		return 0;
+
+	if (elt[1] == '(') {
+		const char *copyfrom, *long_magic_end;
+		unsigned magic = 0;
+		int pathspec_prefix;
+
+		return !parse_longhand(elt, 1, &copyfrom, &long_magic_end,
+				       &magic, &pathspec_prefix) &&
+			magic != 0;
+	} else {
+		const char *copyfrom;
+		unsigned short_magic = 0;
+		return !parse_shorthand(elt, 1, &copyfrom, &short_magic) &&
+			short_magic != 0;
+	}
+}
