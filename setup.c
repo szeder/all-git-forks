@@ -143,6 +143,8 @@ int check_filename(const char *prefix, const char *arg)
 		name = arg + 2;
 	} else if (valid_magic_pathspec(arg))
 		return 1;
+	else if (!no_wildcard(arg))
+		return 1;
 	else if (prefix)
 		name = prefix_filename(prefix, strlen(prefix), arg);
 	else
