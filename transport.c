@@ -1090,6 +1090,7 @@ static int run_pre_push_hook(struct transport *transport,
 
 	for (r = remote_refs; r; r = r->next) {
 		if (!r->peer_ref) continue;
+		fprintf(stderr, "run_pre_push_hook(): %d %s --> %s %s\n", r->status, r->name, r->peer_ref->name, sha1_to_hex(r->old_sha1));
 		if (r->status == REF_STATUS_REJECT_NONFASTFORWARD) continue;
 		if (r->status == REF_STATUS_REJECT_STALE) continue;
 		if (r->status == REF_STATUS_UPTODATE) continue;
