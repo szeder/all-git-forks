@@ -88,7 +88,7 @@ static void prefix_short_magic(struct strbuf *sb, int prefixlen,
 	strbuf_addf(sb, ",prefix:%d)", prefixlen);
 }
 
-static int parse_longhand(const char *elt,
+static int parse_longhand(const char *elt, int gentle,
 			  const char **copyfrom_p,
 			  const char **long_magic_end,
 			  unsigned *magic,
@@ -118,18 +118,27 @@ static int parse_longhand(const char *elt,
 				char *endptr;
 				*pathspec_prefix = strtol(copyfrom + 7,
 							  &endptr, 10);
-				if (endptr - copyfrom != len)
+				if (endptr - copyfrom != len) {
+					if (gentle)
+						return -1;
 					die(_("invalid parameter for pathspec magic 'prefix'"));
+				}
 				/* "i" would be wrong, but it does not matter */
 				break;
 			}
 		}
-		if (ARRAY_SIZE(pathspec_magic) <= i)
+		if (ARRAY_SIZE(pathspec_magic) <= i) {
+			if (gentle)
+				return -1;
 			die(_("Invalid pathspec magic '%.*s' in '%s'"),
 			    (int) len, copyfrom, elt);
+		}
 	}
-	if (*copyfrom != ')')
+	if (*copyfrom != ')') {
+		if (gentle)
+			return -1;
 		die(_("Missing ')' at the end of pathspec magic in '%s'"), elt);
+	}
 	*long_magic_end = copyfrom;
 	copyfrom++;
 
@@ -137,7 +146,7 @@ static int parse_longhand(const char *elt,
 	return 0;
 }
 
-static int parse_shorthand(const char *elt,
+static int parse_shorthand(const char *elt, int gentle,
 			   const char **copyfrom_p,
 			   unsigned *short_magic)
 {
@@ -156,9 +165,12 @@ static int parse_shorthand(const char *elt,
 				*short_magic |= pathspec_magic[i].bit;
 				break;
 			}
-		if (ARRAY_SIZE(pathspec_magic) <= i)
+		if (ARRAY_SIZE(pathspec_magic) <= i) {
+			if (gentle)
+				return -1;
 			die(_("Unimplemented pathspec magic '%c' in '%s'"),
 			    ch, elt);
+		}
 	}
 	if (*copyfrom == ':')
 		copyfrom++;
@@ -228,9 +240,9 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 	    (flags & PATHSPEC_LITERAL_PATH)) {
 		; /* nothing to do */
 	} else if (elt[1] == '(') {
-		parse_longhand(elt, &copyfrom, &long_magic_end, &magic, &pathspec_prefix);
+		parse_longhand(elt, 0, &copyfrom, &long_magic_end, &magic, &pathspec_prefix);
 	} else {
-		parse_shorthand(elt, &copyfrom, &short_magic);
+		parse_shorthand(elt, 0, &copyfrom, &short_magic);
 	}
 
 	magic |= short_magic;
