@@ -117,10 +117,30 @@ ServerName "git svn test"
 ServerRoot "$GIT_DIR"
 DocumentRoot "$GIT_DIR"
 PidFile "$GIT_DIR/httpd.pid"
-LockFile logs/accept.lock
 Listen 127.0.0.1:$SVN_HTTPD_PORT
 LoadModule dav_module $SVN_HTTPD_MODULE_PATH/mod_dav.so
 LoadModule dav_svn_module $SVN_HTTPD_MODULE_PATH/mod_dav_svn.so
+<IfModule !mod_version.c>
+        LoadModule version_module $SVN_HTTPD_MODULE_PATH/mod_version.so
+</IfModule>
+<IfVersion < 2.4>
+LockFile logs/accept.lock
+</IfVersion>
+<IfVersion >= 2.4>
+Mutex default
+<IfModule !mod_prefork_module.c>
+	LoadModule mpm_prefork_module $SVN_HTTPD_MODULE_PATH/mod_mpm_prefork.so
+</IfModule>
+<IfModule !mod_unixd.c>
+        LoadModule unixd_module $SVN_HTTPD_MODULE_PATH/mod_unixd.so
+</IfModule>
+<IfModule !mod_authn_core>
+        LoadModule authn_core_module $SVN_HTTPD_MODULE_PATH/mod_authn_core.so
+</IfModule>
+<IfModule !mod_authz_core>
+        LoadModule authz_core_module $SVN_HTTPD_MODULE_PATH/mod_authz_core.so
+</IfModule>
+</IfVersion>
 <Location /$repo_base_path>
 	DAV svn
 	SVNPath "$rawsvnrepo"
