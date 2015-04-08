@@ -206,6 +206,20 @@ one branch, use a `+` in front of the refspec to push (e.g `git push
 origin +master` to force a push to the `master` branch). See the
 `<refspec>...` section above for details.
 
+--merge=<mode>::
+	Mergin mode.
++
+TODO:
+* check transport_update_tracking_ref() for picking the remote name
+* used only for current branch
+* make sure locking does not get into way
+  * or, rather, retry after failing and not fetch in process?
+  * or try to call transport_fetch_refs just from inside the transport_push()? must be the rightest
+* incompatible with force (maybe per-ref?)
+* global and per-branch config value
+* modes: never,diverged,notFirstParent,notAdjencentFirstParent,always
+* don't forget --no-ff for merge!!!
+
 --repo=<repository>::
 	This option is only relevant if no <repository> argument is
 	passed in the invocation. In this case, 'git push' derives the
