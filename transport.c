@@ -1171,6 +1171,10 @@ static int push_merge(struct transport *transport, struct ref *remote_refs, int 
 		if (remote_find_tracking(transport->remote, &tracking_rs)) continue;
 		fprintf(stderr, "DEBUG push_merge: tracking = %s\n", tracking_rs.dst);
 		free(tracking_rs.dst);
+		/* TODO:
+		 * * implement reading of push.*.merge and push.merge (in remote.c)
+		 * * continue
+		 */
 	}
 	return 0;
 }
