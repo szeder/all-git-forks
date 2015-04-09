@@ -37,8 +37,9 @@ test_expect_success 'push-merge smoke: run' '
 		cd clone &&
 		GIT_EDITOR="echo merge >\"\$1\"" &&
 		export GIT_EDITOR &&
-		test_config "push.refs/remotes/origin/master.merge" always
-		git push origin "$commit1_client_hash":master HEAD:refs/heads/newbranch HEAD:branch2
+		test_config "push.refs/remotes/origin/master.merge" always &&
+		test_config push.default upstream &&
+		git push origin
 	)
 '
 
