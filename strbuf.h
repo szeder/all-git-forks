@@ -152,6 +152,15 @@ static inline void strbuf_setlen(struct strbuf *sb, size_t len)
 	sb->buf[len] = '\0';
 }
 
+/*
+ * An optimized version of strbuf_grow() for a single character.
+ */
+static inline void strbuf_grow_ch(struct strbuf *sb)
+{
+	if (!sb->alloc || sb->alloc - 1 <= sb->len)
+		strbuf_grow(sb, 1);
+}
+
 /**
  * Empty the buffer by setting the size of it to zero.
  */
