@@ -33,12 +33,14 @@ test_expect_success 'commit1 not accessible' '
 test_expect_success 'push-merge smoke: run' '
 	git reset --hard commit1 &&
 	git branch branch2 init &&
+	git branch branch3 master &&
 	(
 		cd clone &&
 		GIT_EDITOR="echo merge >\"\$1\"" &&
 		export GIT_EDITOR &&
 		test_config "push.refs/remotes/origin/master.merge" always &&
 		test_config push.default upstream &&
+		test_config branch.master.merge refs/heads/branch3 &&
 		git push origin
 	)
 '
