@@ -38,6 +38,10 @@ struct rewrites {
 	int rewrite_alloc;
 	int rewrite_nr;
 };
+struct push_merge_spec {
+	const char *tracking_branch_name;
+	enum push_merge_mode mode;
+};
 
 static struct remote **remotes;
 static int remotes_alloc;
@@ -47,11 +51,16 @@ static struct branch **branches;
 static int branches_alloc;
 static int branches_nr;
 
+static struct push_merge_spec *push_merges;
+static int push_merges_alloc;
+static int push_merges_nr;
+
 static struct branch *current_branch;
 static const char *default_remote_name;
 static const char *branch_pushremote_name;
 static const char *pushremote_name;
 static int explicit_default_remote_name;
+static const char *push_merge_default;
 
 static struct rewrites rewrites;
 static struct rewrites rewrites_push;
