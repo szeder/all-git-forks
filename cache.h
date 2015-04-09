@@ -628,9 +628,18 @@ enum push_default_type {
 	PUSH_DEFAULT_UNSPECIFIED
 };
 
+enum push_merge_mode {
+	PUSH_MERGE_NEVER = 0,
+	PUSH_MERGE_DIVERGED,
+	PUSH_MERGE_NOT_FIRSTPARENT,
+	PUSH_MERGE_NOT_ADJANCENT_FIRSTPARENT,
+	PUSH_MERGE_ALWAYS
+};
+
 extern enum branch_track git_branch_track;
 extern enum rebase_setup_type autorebase;
 extern enum push_default_type push_default;
+extern enum push_merge_mode push_merge;
 
 enum object_creation_mode {
 	OBJECT_CREATION_USES_HARDLINKS = 0,

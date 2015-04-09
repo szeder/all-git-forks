@@ -944,6 +944,26 @@ static int git_default_push_config(const char *var, const char *value)
 		}
 		return 0;
 	}
+	if (!strcmp(var, "push.merge")) {
+		if (!value)
+			return config_error_nonbool(var);
+		else if (!strcasecmp(value, "never"))
+			push_merge = PUSH_MERGE_NEVER;
+		else if (!strcasecmp(value, "diverged"))
+			push_merge = PUSH_MERGE_DIVERGED;
+		else if (!strcasecmp(value, "notfirstparent"))
+			push_merge = PUSH_MERGE_NOT_FIRSTPARENT;
+		else if (!strcasecmp(value, "notadjancentfirstparent"))
+			push_merge = PUSH_MERGE_NOT_ADJANCENT_FIRSTPARENT;
+		else if (!strcasecmp(value, "always"))
+			push_merge = PUSH_MERGE_ALWAYS;
+		else {
+			error("Malformed value for %s: %s", var, value);
+			return error("Must be one of never, diverged, notFirstParent, "
+				     "notAdjancentFirstParenr or always.");
+		}
+		return 0;
+	}
 
 	/* Add other config variables here and to Documentation/config.txt. */
 	return 0;
