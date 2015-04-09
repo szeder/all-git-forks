@@ -32,12 +32,13 @@ test_expect_success 'commit1 not accessible' '
 
 test_expect_success 'push-merge smoke: run' '
 	git reset --hard commit1 &&
+	git branch branch2 init &&
 	(
 		cd clone &&
 		GIT_EDITOR="echo merge >\"\$1\"" &&
 		export GIT_EDITOR &&
 		test_config "push.refs/remotes/origin/master.merge" always
-		git push origin master:master
+		git push origin "$commit1_client_hash":master HEAD:refs/heads/newbranch HEAD:branch2
 	)
 '
 
