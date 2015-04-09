@@ -4,14 +4,12 @@ test_description='test push-merge feature'
 
 . ./test-lib.sh
 
-test_expect_success 'setup upstream' '
+test_expect_success 'init upstream' '
 	git config receive.denyCurrentBranch ignore &&
-	test_commit init &&
-	test_commit commit1
+	test_commit init
 '
 
 test_expect_success 'setup clone' '
-	git reset --hard init &&
 	git clone .git clone
 	(
 		cd clone &&
@@ -19,23 +17,30 @@ test_expect_success 'setup clone' '
 	)
 '
 
-test_expect_success 'push-merge smoke: run' '
-	git reset --hard commit1 &&
-	(
-		cd clone &&
-		git reset --hard commit1_client &&
-		GIT_EDITOR="echo merge >\"\$1\"" &&
-		export GIT_EDITOR &&
-		git push-merge diverged origin refs/heads/master refs/remotes/origin/master 3>head_hash &&
-		hash=$(cat head_hash)
-		echo git push origin "$hash":master &&
-		git push origin "$hash":master
-	)
-'
+test_expect_success 'advance upstream' 'test_commit commit1'
 
 init_hash=$(git rev-parse init)
 commit1_hash=$(git rev-parse commit1)
 commit1_client_hash=$( (cd clone && git rev-parse commit1_client) )
+
+test_expect_success 'commit1 not accessible' '
+	(
+		cd clone &&
+		test_must_fail git log "$commit1_hash"
+	)
+'
+
+test_expect_success 'push-merge smoke: run' '
+	git reset --hard commit1 &&
+	(
+		cd clone &&
+		GIT_EDITOR="echo merge >\"\$1\"" &&
+		export GIT_EDITOR &&
+		test_config "push.refs/remotes/origin/master.merge" always
+		git push origin master:master
+	)
+'
+
 head_hash=$(git rev-parse HEAD)
 
 test_expect_success 'push-merge smote: client not advanced' '
