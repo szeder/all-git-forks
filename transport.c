@@ -1122,6 +1122,59 @@ static int run_pre_push_hook(struct transport *transport,
 	return ret;
 }
 
+/* TODO: remove */
+static const char *status_str(int status)
+{
+	switch (status) {
+	case REF_STATUS_NONE: return "NONE";
+	case REF_STATUS_OK: return "OK";
+	case REF_STATUS_REJECT_NONFASTFORWARD: return "REJECT_NONFASTFORWARD";
+	case REF_STATUS_REJECT_ALREADY_EXISTS: return "REJECT_ALREADY_EXISTS";
+	case REF_STATUS_REJECT_NODELETE: return "REJECT_NODELETE";
+	case REF_STATUS_REJECT_FETCH_FIRST: return "REJECT_FETCH_FIRST";
+	case REF_STATUS_REJECT_NEEDS_FORCE: return "REJECT_NEEDS_FORCE";
+	case REF_STATUS_REJECT_STALE: return "REJECT_STALE";
+	case REF_STATUS_REJECT_SHALLOW: return "REJECT_SHALLOW";
+	case REF_STATUS_UPTODATE: return "UPTODATE";
+	case REF_STATUS_REMOTE_REJECT: return "REMOTE_REJECT";
+	case REF_STATUS_EXPECTING_REPORT: return "EXPECTING_REPORT";
+	case REF_STATUS_ATOMIC_PUSH_FAILED: return "ATOMIC_PUSH_FAILED";
+	default: return "unknown status";
+	}
+}
+
+/*
+ * for each ref:
+ * * find the local tracking name
+ * * check the merge option
+ * * run the merge, update new_sha1
+ */
+static int push_merge(struct transport *transport, struct ref *remote_refs, int force_update)
+{
+	struct ref *ref;
+
+	for (ref = remote_refs; ref; ref = ref->next) {
+		struct refspec tracking_rs;
+#if 0
+		fprintf(stderr, "DEBUG push_merge: p=%p, n=%s, %.8s --> %.8s, s=%s\n",
+				ref->peer_ref, ref->name,
+				sha1_to_hex(ref->old_sha1), sha1_to_hex(ref->new_sha1),
+				status_str(ref->status));
+#endif
+		if (!ref->peer_ref) continue;
+		fprintf(stderr, "DEBUG push_merge: n=%s, %.8s --> %.8s, s=%s\n",
+				ref->name,
+				sha1_to_hex(ref->old_sha1), sha1_to_hex(ref->new_sha1),
+				status_str(ref->status));
+		tracking_rs.src = ref->name;
+		tracking_rs.dst = NULL;
+		if (remote_find_tracking(transport->remote, &tracking_rs)) continue;
+		fprintf(stderr, "DEBUG push_merge: tracking = %s\n", tracking_rs.dst);
+		free(tracking_rs.dst);
+	}
+	return 0;
+}
+
 int transport_push(struct transport *transport,
 		   int refspec_nr, const char **refspec, int flags,
 		   unsigned int *reject_reasons)
@@ -1173,6 +1226,12 @@ int transport_push(struct transport *transport,
 		set_ref_status_for_push(remote_refs,
 			flags & TRANSPORT_PUSH_MIRROR,
 			flags & TRANSPORT_PUSH_FORCE);
+
+		if (push_merge(transport, remote_refs,
+			       /* TODO: ooverall merge flag */
+			       flags & TRANSPORT_PUSH_FORCE)) {
+			return -1;
+		}
 
 		if (!(flags & TRANSPORT_PUSH_NO_HOOK))
 			if (run_pre_push_hook(transport, remote_refs))
