@@ -1152,6 +1152,7 @@ static const char *status_str(int status)
 static int run_push_merge(struct transport *transport, struct ref *remote_refs, int force_update)
 {
 	struct ref *ref;
+	struct ref *fetch_refs = 0;
 
 	for (ref = remote_refs; ref; ref = ref->next) {
 		struct refspec tracking_rs;
@@ -1170,12 +1171,34 @@ static int run_push_merge(struct transport *transport, struct ref *remote_refs, 
 		tracking_rs.dst = NULL;
 		if (remote_find_tracking(transport->remote, &tracking_rs)) continue;
 		fprintf(stderr, "DEBUG run_push_merge: tracking = %s\n", tracking_rs.dst);
-		free(tracking_rs.dst);
 		/* TODO:
 		 * * implement reading of push.*.merge and push.merge (in remote.c)
 		 * * continue
 		 */
+		if (push_merge != PUSH_MERGE_NEVER) {
+			struct ref *new_ref;
+
+			new_ref = alloc_ref(ref->name);
+			hashcpy(new_ref->old_sha1, ref->old_sha1);
+			new_ref->fetch_head_status = FETCH_HEAD_IGNORE;
+			new_ref->peer_ref = alloc_ref(tracking_rs.dst);
+			/* TODO: check does it reject non-ff update without old_sha1 */
+			new_ref->peer_ref->fetch_head_status = FETCH_HEAD_IGNORE;
+
+			new_ref->next = fetch_refs;
+			fetch_refs = new_ref;
+		}
+		free(tracking_rs.dst);
 	}
+
+	if (transport_fetch_refs(transport, fetch_refs)) {
+		/* TODO: free fetch_refs */
+		fprintf(stderr, "DEBUG run_push_merge: something wrong\n");
+		return -1;
+	}
+	abort();
+
+	/* TODO: free fetch_refs */
 	return 0;
 }
 
