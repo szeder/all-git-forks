@@ -40,6 +40,7 @@ test_expect_success 'push-merge smoke: run' '
 		export GIT_EDITOR &&
 		test_config "push.refs/remotes/origin/master.merge" always &&
 		test_config push.default upstream &&
+		test_config push.merge always &&
 		test_config branch.master.merge refs/heads/branch3 &&
 		git push origin
 	)
