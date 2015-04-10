@@ -1149,27 +1149,27 @@ static const char *status_str(int status)
  * * check the merge option
  * * run the merge, update new_sha1
  */
-static int push_merge(struct transport *transport, struct ref *remote_refs, int force_update)
+static int run_push_merge(struct transport *transport, struct ref *remote_refs, int force_update)
 {
 	struct ref *ref;
 
 	for (ref = remote_refs; ref; ref = ref->next) {
 		struct refspec tracking_rs;
 #if 0
-		fprintf(stderr, "DEBUG push_merge: p=%p, n=%s, %.8s --> %.8s, s=%s\n",
+		fprintf(stderr, "DEBUG run_push_merge: p=%p, n=%s, %.8s --> %.8s, s=%s\n",
 				ref->peer_ref, ref->name,
 				sha1_to_hex(ref->old_sha1), sha1_to_hex(ref->new_sha1),
 				status_str(ref->status));
 #endif
 		if (!ref->peer_ref) continue;
-		fprintf(stderr, "DEBUG push_merge: n=%s, %.8s --> %.8s, s=%s\n",
+		fprintf(stderr, "DEBUG run_push_merge: n=%s, %.8s --> %.8s, s=%s\n",
 				ref->name,
 				sha1_to_hex(ref->old_sha1), sha1_to_hex(ref->new_sha1),
 				status_str(ref->status));
 		tracking_rs.src = ref->name;
 		tracking_rs.dst = NULL;
 		if (remote_find_tracking(transport->remote, &tracking_rs)) continue;
-		fprintf(stderr, "DEBUG push_merge: tracking = %s\n", tracking_rs.dst);
+		fprintf(stderr, "DEBUG run_push_merge: tracking = %s\n", tracking_rs.dst);
 		free(tracking_rs.dst);
 		/* TODO:
 		 * * implement reading of push.*.merge and push.merge (in remote.c)
@@ -1231,7 +1231,7 @@ int transport_push(struct transport *transport,
 			flags & TRANSPORT_PUSH_MIRROR,
 			flags & TRANSPORT_PUSH_FORCE);
 
-		if (push_merge(transport, remote_refs,
+		if (run_push_merge(transport, remote_refs,
 			       /* TODO: ooverall merge flag */
 			       flags & TRANSPORT_PUSH_FORCE)) {
 			return -1;
