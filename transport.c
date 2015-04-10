@@ -1187,12 +1187,14 @@ static int run_push_merge(struct transport *transport, struct ref *remote_refs, 
 
 			new_ref->next = fetch_refs;
 			fetch_refs = new_ref;
+			fprintf(stderr, "DEBUG run_push_merge: fetch_refs = %p\n", fetch_refs);
 		}
 		free(tracking_rs.dst);
 	}
 
 	if (!fetch_refs) return 0;
 
+	fprintf(stderr, "DEBUG run_push_merge: fetch_refs1 = %p\n", fetch_refs);
 	if (transport_fetch_refs(transport, fetch_refs)) {
 		/* TODO: free fetch_refs */
 		fprintf(stderr, "DEBUG run_push_merge: something wrong\n");
