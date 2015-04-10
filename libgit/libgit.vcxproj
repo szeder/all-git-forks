@@ -1,0 +1,258 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{E07B9989-2BF7-4F21-8918-BE22BA467AC3}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>NotSet</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>12.0.30501.0</_ProjectFileVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>..\.\</OutDir>
+    <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>..\.\</OutDir>
+    <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <AdditionalOptions>-GL -MD  -nologo %(AdditionalOptions)</AdditionalOptions>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>..\.\.;..\.\../zlib;..\.\compat;..\.\compat/fnmatch;..\.\compat/poll;..\.\compat/regex;..\.\compat/vcbuild;..\.\compat/vcbuild/include;..\.\compat/win32;..\.\msvcgit/32bits/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;BINDIR="bin";DEFAULT_HELP_FORMAT="html";ETC_GITATTRIBUTES="etc/gitattributes";ETC_GITCONFIG="etc/gitconfig";GAWK;GIT_EXEC_PATH="libexec/git-core";GIT_LOCALE_PATH="/c/Users/u1465/share/locale";GIT_USER_AGENT="git/1.9.5.msysgit.0.14.g9f94b36.MSVC";GIT_VERSION="1.9.5.msysgit.0.14.g9f94b36.MSVC";HAVE_ALLOCA_H;HAVE_STRING_H;NATIVE_CRLF;NOGDI;NO_CURL;NO_D_INO_IN_DIRENT;NO_FNMATCH;NO_GETTEXT;NO_ICONV;NO_INET_NTOP;NO_INET_PTON;NO_IPV6;NO_LIBGEN_H;NO_MBSUPPORT;NO_MEMMEM;NO_MKDTEMP;NO_MKSTEMPS;NO_NSEC;NO_POLL;NO_POSIX_GOODIES;NO_PREAD;NO_SETENV;NO_STRCASESTR;NO_STRLCPY;NO_STRTOUMAX;NO_ST_BLOCKS_IN_STRUCT_STAT;NO_SYMLINK_HEAD;NO_SYS_POLL_H;NO_THREAD_SAFE_PREAD;OBJECT_CREATION_MODE=1;PREFIX="/c/Users/u1465";PROTECT_NTFS_DEFAULT=1;RUNTIME_PREFIX;SHA1_HEADER="block-sha1/sha1.h";SHELL_PATH="/bin/sh";SNPRINTF_RETURNS_BOGUS;STRIP_EXTENSION=".exe";UNRELIABLE_FSTAT;USE_WILDMATCH;USE_WIN32_MMAP;WIN32;_CONSOLE;_CRT_NONSTDC_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;__USE_MINGW_ACCESS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeader />
+      <ProgramDataBaseFileName>$(IntDir)$(TargetName).pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Lib>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <AdditionalOptions>-GL -MD -Os -nologo %(AdditionalOptions)</AdditionalOptions>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>..\.\.;..\.\../zlib;..\.\compat;..\.\compat/fnmatch;..\.\compat/poll;..\.\compat/regex;..\.\compat/vcbuild;..\.\compat/vcbuild/include;..\.\compat/win32;..\.\msvcgit/32bits/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;BINDIR="bin";DEFAULT_HELP_FORMAT="html";ETC_GITATTRIBUTES="etc/gitattributes";ETC_GITCONFIG="etc/gitconfig";GAWK;GIT_EXEC_PATH="libexec/git-core";GIT_LOCALE_PATH="/c/Users/u1465/share/locale";GIT_USER_AGENT="git/1.9.5.msysgit.0.14.g9f94b36.MSVC";GIT_VERSION="1.9.5.msysgit.0.14.g9f94b36.MSVC";HAVE_ALLOCA_H;HAVE_STRING_H;NATIVE_CRLF;NOGDI;NO_CURL;NO_D_INO_IN_DIRENT;NO_FNMATCH;NO_GETTEXT;NO_ICONV;NO_INET_NTOP;NO_INET_PTON;NO_IPV6;NO_LIBGEN_H;NO_MBSUPPORT;NO_MEMMEM;NO_MKDTEMP;NO_MKSTEMPS;NO_NSEC;NO_POLL;NO_POSIX_GOODIES;NO_PREAD;NO_SETENV;NO_STRCASESTR;NO_STRLCPY;NO_STRTOUMAX;NO_ST_BLOCKS_IN_STRUCT_STAT;NO_SYMLINK_HEAD;NO_SYS_POLL_H;NO_THREAD_SAFE_PREAD;OBJECT_CREATION_MODE=1;PREFIX="/c/Users/u1465";PROTECT_NTFS_DEFAULT=1;RUNTIME_PREFIX;SHA1_HEADER="block-sha1/sha1.h";SHELL_PATH="/bin/sh";SNPRINTF_RETURNS_BOGUS;STRIP_EXTENSION=".exe";UNRELIABLE_FSTAT;USE_WILDMATCH;USE_WIN32_MMAP;WIN32;_CONSOLE;_CRT_NONSTDC_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;__USE_MINGW_ACCESS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader />
+      <ProgramDataBaseFileName>$(IntDir)$(TargetName).pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Lib>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\abspath.c" />
+    <ClCompile Include="..\advice.c" />
+    <ClCompile Include="..\alias.c" />
+    <ClCompile Include="..\alloc.c" />
+    <ClCompile Include="..\archive-tar.c" />
+    <ClCompile Include="..\archive-zip.c" />
+    <ClCompile Include="..\archive.c" />
+    <ClCompile Include="..\argv-array.c" />
+    <ClCompile Include="..\attr.c" />
+    <ClCompile Include="..\base85.c" />
+    <ClCompile Include="..\bisect.c" />
+    <ClCompile Include="..\blob.c" />
+    <ClCompile Include="..\block-sha1\sha1.c" />
+    <ClCompile Include="..\branch.c" />
+    <ClCompile Include="..\bulk-checkin.c" />
+    <ClCompile Include="..\bundle.c" />
+    <ClCompile Include="..\cache-tree.c" />
+    <ClCompile Include="..\color.c" />
+    <ClCompile Include="..\column.c" />
+    <ClCompile Include="..\combine-diff.c" />
+    <ClCompile Include="..\commit.c" />
+    <ClCompile Include="..\compat\basename.c" />
+    <ClCompile Include="..\compat\fnmatch\fnmatch.c" />
+    <ClCompile Include="..\compat\inet_ntop.c" />
+    <ClCompile Include="..\compat\inet_pton.c" />
+    <ClCompile Include="..\compat\memmem.c" />
+    <ClCompile Include="..\compat\mkdtemp.c" />
+    <ClCompile Include="..\compat\msvc.c" />
+    <ClCompile Include="..\compat\obstack.c" />
+    <ClCompile Include="..\compat\poll\poll.c" />
+    <ClCompile Include="..\compat\pread.c" />
+    <ClCompile Include="..\compat\regex\regex.c" />
+    <ClCompile Include="..\compat\setenv.c" />
+    <ClCompile Include="..\compat\snprintf.c" />
+    <ClCompile Include="..\compat\strcasestr.c" />
+    <ClCompile Include="..\compat\strlcpy.c" />
+    <ClCompile Include="..\compat\strtoimax.c" />
+    <ClCompile Include="..\compat\strtoumax.c" />
+    <ClCompile Include="..\compat\terminal.c" />
+    <ClCompile Include="..\compat\win32mmap.c" />
+    <ClCompile Include="..\compat\win32\dirent.c" />
+    <ClCompile Include="..\compat\win32\fscache.c" />
+    <ClCompile Include="..\compat\win32\pthread.c" />
+    <ClCompile Include="..\compat\win32\syslog.c" />
+    <ClCompile Include="..\compat\winansi.c" />
+    <ClCompile Include="..\config.c" />
+    <ClCompile Include="..\connect.c" />
+    <ClCompile Include="..\connected.c" />
+    <ClCompile Include="..\convert.c" />
+    <ClCompile Include="..\copy.c" />
+    <ClCompile Include="..\credential.c" />
+    <ClCompile Include="..\csum-file.c" />
+    <ClCompile Include="..\ctype.c" />
+    <ClCompile Include="..\date.c" />
+    <ClCompile Include="..\decorate.c" />
+    <ClCompile Include="..\diff-delta.c" />
+    <ClCompile Include="..\diff-lib.c" />
+    <ClCompile Include="..\diff-no-index.c" />
+    <ClCompile Include="..\diff.c" />
+    <ClCompile Include="..\diffcore-break.c" />
+    <ClCompile Include="..\diffcore-delta.c" />
+    <ClCompile Include="..\diffcore-order.c" />
+    <ClCompile Include="..\diffcore-pickaxe.c" />
+    <ClCompile Include="..\diffcore-rename.c" />
+    <ClCompile Include="..\dir.c" />
+    <ClCompile Include="..\editor.c" />
+    <ClCompile Include="..\entry.c" />
+    <ClCompile Include="..\environment.c" />
+    <ClCompile Include="..\exec_cmd.c" />
+    <ClCompile Include="..\fetch-pack.c" />
+    <ClCompile Include="..\fsck.c" />
+    <ClCompile Include="..\gettext.c" />
+    <ClCompile Include="..\gpg-interface.c" />
+    <ClCompile Include="..\graph.c" />
+    <ClCompile Include="..\grep.c" />
+    <ClCompile Include="..\hash.c" />
+    <ClCompile Include="..\hashmap.c" />
+    <ClCompile Include="..\help.c" />
+    <ClCompile Include="..\hex.c" />
+    <ClCompile Include="..\ident.c" />
+    <ClCompile Include="..\kwset.c" />
+    <ClCompile Include="..\levenshtein.c" />
+    <ClCompile Include="..\line-log.c" />
+    <ClCompile Include="..\line-range.c" />
+    <ClCompile Include="..\list-objects.c" />
+    <ClCompile Include="..\ll-merge.c" />
+    <ClCompile Include="..\lockfile.c" />
+    <ClCompile Include="..\log-tree.c" />
+    <ClCompile Include="..\mailmap.c" />
+    <ClCompile Include="..\match-trees.c" />
+    <ClCompile Include="..\merge-blobs.c" />
+    <ClCompile Include="..\merge-recursive.c" />
+    <ClCompile Include="..\merge.c" />
+    <ClCompile Include="..\mergesort.c" />
+    <ClCompile Include="..\name-hash.c" />
+    <ClCompile Include="..\notes-cache.c" />
+    <ClCompile Include="..\notes-merge.c" />
+    <ClCompile Include="..\notes-utils.c" />
+    <ClCompile Include="..\notes.c" />
+    <ClCompile Include="..\object.c" />
+    <ClCompile Include="..\pack-check.c" />
+    <ClCompile Include="..\pack-revindex.c" />
+    <ClCompile Include="..\pack-write.c" />
+    <ClCompile Include="..\pager.c" />
+    <ClCompile Include="..\parse-options-cb.c" />
+    <ClCompile Include="..\parse-options.c" />
+    <ClCompile Include="..\patch-delta.c" />
+    <ClCompile Include="..\patch-ids.c" />
+    <ClCompile Include="..\path.c" />
+    <ClCompile Include="..\pathspec.c" />
+    <ClCompile Include="..\pkt-line.c" />
+    <ClCompile Include="..\preload-index.c" />
+    <ClCompile Include="..\pretty.c" />
+    <ClCompile Include="..\prio-queue.c" />
+    <ClCompile Include="..\progress.c" />
+    <ClCompile Include="..\prompt.c" />
+    <ClCompile Include="..\quote.c" />
+    <ClCompile Include="..\reachable.c" />
+    <ClCompile Include="..\read-cache.c" />
+    <ClCompile Include="..\reflog-walk.c" />
+    <ClCompile Include="..\refs.c" />
+    <ClCompile Include="..\remote.c" />
+    <ClCompile Include="..\replace_object.c" />
+    <ClCompile Include="..\rerere.c" />
+    <ClCompile Include="..\resolve-undo.c" />
+    <ClCompile Include="..\revision.c" />
+    <ClCompile Include="..\run-command.c" />
+    <ClCompile Include="..\send-pack.c" />
+    <ClCompile Include="..\sequencer.c" />
+    <ClCompile Include="..\server-info.c" />
+    <ClCompile Include="..\setup.c" />
+    <ClCompile Include="..\sha1-array.c" />
+    <ClCompile Include="..\sha1-lookup.c" />
+    <ClCompile Include="..\sha1_file.c" />
+    <ClCompile Include="..\sha1_name.c" />
+    <ClCompile Include="..\shallow.c" />
+    <ClCompile Include="..\sideband.c" />
+    <ClCompile Include="..\sigchain.c" />
+    <ClCompile Include="..\strbuf.c" />
+    <ClCompile Include="..\streaming.c" />
+    <ClCompile Include="..\string-list.c" />
+    <ClCompile Include="..\submodule.c" />
+    <ClCompile Include="..\symlinks.c" />
+    <ClCompile Include="..\tag.c" />
+    <ClCompile Include="..\thread-utils.c" />
+    <ClCompile Include="..\trace.c" />
+    <ClCompile Include="..\transport-helper.c" />
+    <ClCompile Include="..\transport.c" />
+    <ClCompile Include="..\tree-diff.c" />
+    <ClCompile Include="..\tree-walk.c" />
+    <ClCompile Include="..\tree.c" />
+    <ClCompile Include="..\unpack-trees.c" />
+    <ClCompile Include="..\url.c" />
+    <ClCompile Include="..\urlmatch.c" />
+    <ClCompile Include="..\usage.c" />
+    <ClCompile Include="..\userdiff.c" />
+    <ClCompile Include="..\utf8.c" />
+    <ClCompile Include="..\varint.c" />
+    <ClCompile Include="..\version.c" />
+    <ClCompile Include="..\walker.c" />
+    <ClCompile Include="..\wildmatch.c" />
+    <ClCompile Include="..\wrapper.c" />
+    <ClCompile Include="..\write_or_die.c" />
+    <ClCompile Include="..\ws.c" />
+    <ClCompile Include="..\wt-status.c" />
+    <ClCompile Include="..\xdiff-interface.c" />
+    <ClCompile Include="..\zlib.c" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{9E19DDBE-F5E4-4A26-A2FE-0616E04879B8}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>NotSet</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>12.0.30501.0</_ProjectFileVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>..\.\</OutDir>
+    <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>..\.\</OutDir>
+    <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <AdditionalOptions>-GL -MD  -nologo %(AdditionalOptions)</AdditionalOptions>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <AdditionalIncludeDirectories>..\.\.;..\.\../zlib;..\.\compat;..\.\compat/fnmatch;..\.\compat/poll;..\.\compat/regex;..\.\compat/vcbuild;..\.\compat/vcbuild/include;..\.\compat/win32;..\.\msvcgit/32bits/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;DEFAULT_HELP_FORMAT="html";HAVE_ALLOCA_H;HAVE_STRING_H;NATIVE_CRLF;NOGDI;NO_CURL;NO_D_INO_IN_DIRENT;NO_FNMATCH;NO_GETTEXT;NO_ICONV;NO_INET_NTOP;NO_INET_PTON;NO_IPV6;NO_LIBGEN_H;NO_MEMMEM;NO_MKDTEMP;NO_MKSTEMPS;NO_NSEC;NO_POLL;NO_POSIX_GOODIES;NO_PREAD;NO_SETENV;NO_STRCASESTR;NO_STRLCPY;NO_STRTOUMAX;NO_ST_BLOCKS_IN_STRUCT_STAT;NO_SYMLINK_HEAD;NO_SYS_POLL_H;NO_THREAD_SAFE_PREAD;OBJECT_CREATION_MODE=1;PROTECT_NTFS_DEFAULT=1;RUNTIME_PREFIX;SHA1_HEADER="block-sha1/sha1.h";SHELL_PATH="/bin/sh";SNPRINTF_RETURNS_BOGUS;STRIP_EXTENSION=".exe";UNRELIABLE_FSTAT;USE_WILDMATCH;USE_WIN32_MMAP;WIN32;_CONSOLE;_CRT_NONSTDC_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;__USE_MINGW_ACCESS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PrecompiledHeader />
+      <ProgramDataBaseFileName>$(IntDir)$(TargetName).pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>advapi32.lib;libgit.lib;libgit.lib;shell32.lib;user32.lib;wininet.lib;ws2_32.lib;xdiff_lib.lib;xdiff_lib.lib;zlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>-IGNORE:4049 -IGNORE:4217 -LIBPATH:..\./msvcgit/32bits/lib -LTCG -NOLOGO -SUBSYSTEM:CONSOLE -nologo -LIBPATH:..\. %(AdditionalOptions)</AdditionalOptions>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <AdditionalOptions>-GL -MD -Os -nologo %(AdditionalOptions)</AdditionalOptions>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>..\.\.;..\.\../zlib;..\.\compat;..\.\compat/fnmatch;..\.\compat/poll;..\.\compat/regex;..\.\compat/vcbuild;..\.\compat/vcbuild/include;..\.\compat/win32;..\.\msvcgit/32bits/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;DEFAULT_HELP_FORMAT="html";HAVE_ALLOCA_H;HAVE_STRING_H;NATIVE_CRLF;NOGDI;NO_CURL;NO_D_INO_IN_DIRENT;NO_FNMATCH;NO_GETTEXT;NO_ICONV;NO_INET_NTOP;NO_INET_PTON;NO_IPV6;NO_LIBGEN_H;NO_MEMMEM;NO_MKDTEMP;NO_MKSTEMPS;NO_NSEC;NO_POLL;NO_POSIX_GOODIES;NO_PREAD;NO_SETENV;NO_STRCASESTR;NO_STRLCPY;NO_STRTOUMAX;NO_ST_BLOCKS_IN_STRUCT_STAT;NO_SYMLINK_HEAD;NO_SYS_POLL_H;NO_THREAD_SAFE_PREAD;OBJECT_CREATION_MODE=1;PROTECT_NTFS_DEFAULT=1;RUNTIME_PREFIX;SHA1_HEADER="block-sha1/sha1.h";SHELL_PATH="/bin/sh";SNPRINTF_RETURNS_BOGUS;STRIP_EXTENSION=".exe";UNRELIABLE_FSTAT;USE_WILDMATCH;USE_WIN32_MMAP;WIN32;_CONSOLE;_CRT_NONSTDC_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;__USE_MINGW_ACCESS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader />
+      <ProgramDataBaseFileName>$(IntDir)$(TargetName).pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>advapi32.lib;libgit.lib;libgit.lib;shell32.lib;user32.lib;wininet.lib;ws2_32.lib;xdiff_lib.lib;xdiff_lib.lib;zlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>-IGNORE:4049 -IGNORE:4217 -LIBPATH:..\./msvcgit/32bits/lib -LTCG -NOLOGO -SUBSYSTEM:CONSOLE -nologo -LIBPATH:..\. %(AdditionalOptions)</AdditionalOptions>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <TargetMachine>MachineX86</TargetMachine>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\test-read-cache.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\libgit\libgit.vcxproj">
+      <Project>{e07b9989-2bf7-4f21-8918-be22ba467ac3}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\xdiff_lib\xdiff_lib.vcxproj">
+      <Project>{278ffb51-0296-4a44-a81a-22b87b7c3592}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
