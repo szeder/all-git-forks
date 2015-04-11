@@ -26,8 +26,8 @@ test_expect_success 'push-merge smoke: run' '
 		git reset --hard commit1_client &&
 		GIT_EDITOR="echo merge >\"\$1\"" &&
 		export GIT_EDITOR &&
-		git push-merge diverged origin refs/heads/master refs/remotes/origin/master 3>head_hash &&
-		hash=$(cat head_hash)
+		git push-merge diverged origin refs/heads/master refs/remotes/origin/master &&
+		hash=$(cat .git/PUSH_MERGE_HEAD) &&
 		echo git push origin "$hash":master &&
 		git push origin "$hash":master
 	)
