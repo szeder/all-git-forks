@@ -50,6 +50,6 @@ trap 'rm -rf "$tmpdir"' 0
 GIT_INDEX_FILE="$tmpdir/index"
 
 git read-tree "$remote_local_ref"
-git recursive-merge --index-only $(git merge-base -a "$remote_local_ref" HEAD) -- "$remote_local_ref" HEAD
+git-merge-recursive --index-only $(git merge-base -a "$remote_local_ref" HEAD) -- "$remote_local_ref" HEAD
 new_head=$(git write-tree | git-commit-tree)
 echo "$new_head" >"$push_merge_head_file"
