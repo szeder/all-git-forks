@@ -42,8 +42,8 @@ struct strategy {
 };
 
 static const char * const builtin_merge_usage[] = {
-	N_("git merge [options] [<commit>...]"),
-	N_("git merge [options] <msg> HEAD <commit>"),
+	N_("git merge [<options>] [<commit>...]"),
+	N_("git merge [<options>] <msg> HEAD <commit>"),
 	N_("git merge --abort"),
 	NULL
 };
@@ -894,6 +894,7 @@ static int suggest_conflicts(void)
 
 	append_conflicts_hint(&msgbuf);
 	fputs(msgbuf.buf, fp);
+	strbuf_release(&msgbuf);
 	fclose(fp);
 	rerere(allow_rerere_auto);
 	printf(_("Automatic merge failed; "

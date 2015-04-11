@@ -343,6 +343,22 @@ all::
 # return NULL when it receives a bogus time_t.
 #
 # Define HAVE_CLOCK_GETTIME if your platform has clock_gettime in librt.
+#
+# Define HAVE_CLOCK_MONOTONIC if your platform has CLOCK_MONOTONIC in librt.
+#
+# Define NO_HMAC_CTX_CLEANUP if your OpenSSL is version 0.9.6b or earlier to
+# cleanup the HMAC context with the older HMAC_cleanup function.
+#
+# Define USE_PARENS_AROUND_GETTEXT_N to "yes" if your compiler happily
+# compiles the following initialization:
+#
+#   static const char s[] = ("FOO");
+#
+# and define it to "no" if you need to remove the parentheses () around the
+# constant.  The default is "auto", which means to use parentheses if your
+# compiler is detected to support it.
+#
+# Define HAVE_BSD_SYSCTL if your platform has a BSD-compatible sysctl function.
 
 GIT-VERSION-FILE: FORCE
 	@$(SHELL_PATH) ./GIT-VERSION-GEN
@@ -950,6 +966,14 @@ ifneq (,$(SOCKLEN_T))
 	BASIC_CFLAGS += -Dsocklen_t=$(SOCKLEN_T)
 endif
 
+ifeq (yes,$(USE_PARENS_AROUND_GETTEXT_N))
+	BASIC_CFLAGS += -DUSE_PARENS_AROUND_GETTEXT_N=1
+else
+ifeq (no,$(USE_PARENS_AROUND_GETTEXT_N))
+	BASIC_CFLAGS += -DUSE_PARENS_AROUND_GETTEXT_N=0
+endif
+endif
+
 ifeq ($(uname_S),Darwin)
 	ifndef NO_FINK
 		ifeq ($(shell test -d /sw/lib && echo y),y)
@@ -1030,13 +1054,13 @@ else
 	REMOTE_CURL_NAMES = $(REMOTE_CURL_PRIMARY) $(REMOTE_CURL_ALIASES)
 	PROGRAM_OBJS += http-fetch.o
 	PROGRAMS += $(REMOTE_CURL_NAMES)
-	curl_check := $(shell (echo 070908; curl-config --vernum) 2>/dev/null | sort -r | sed -ne 2p)
+	curl_check := $(shell (echo 070908; curl-config --vernum | sed -e '/^70[BC]/s/^/0/') 2>/dev/null | sort -r | sed -ne 2p)
 	ifeq "$(curl_check)" "070908"
 		ifndef NO_EXPAT
 			PROGRAM_OBJS += http-push.o
 		endif
 	endif
-	curl_check := $(shell (echo 072200; curl-config --vernum) 2>/dev/null | sort -r | sed -ne 2p)
+	curl_check := $(shell (echo 072200; curl-config --vernum | sed -e '/^70[BC]/s/^/0/') 2>/dev/null | sort -r | sed -ne 2p)
 	ifeq "$(curl_check)" "072200"
 		USE_CURL_FOR_IMAP_SEND = YesPlease
 	endif
@@ -1074,6 +1098,9 @@ ifndef NO_OPENSSL
 	endif
 	ifdef NEEDS_CRYPTO_WITH_SSL
 		OPENSSL_LIBSSL += -lcrypto
+	endif
+	ifdef NO_HMAC_CTX_CLEANUP
+		BASIC_CFLAGS += -DNO_HMAC_CTX_CLEANUP
 	endif
 else
 	BASIC_CFLAGS += -DNO_OPENSSL
@@ -1400,6 +1427,14 @@ endif
 ifdef HAVE_CLOCK_GETTIME
 	BASIC_CFLAGS += -DHAVE_CLOCK_GETTIME
 	EXTLIBS += -lrt
+endif
+
+ifdef HAVE_CLOCK_MONOTONIC
+	BASIC_CFLAGS += -DHAVE_CLOCK_MONOTONIC
+endif
+
+ifdef HAVE_BSD_SYSCTL
+	BASIC_CFLAGS += -DHAVE_BSD_SYSCTL
 endif
 
 ifeq ($(TCLTK_PATH),)

@@ -950,7 +950,7 @@ test_expect_success 'rebase --edit-todo can be used to modify todo' '
 	set_fake_editor &&
 	FAKE_LINES="edit 1 2 3" git rebase -i HEAD~3 &&
 	FAKE_LINES="2 1" git rebase --edit-todo &&
-	git rebase --continue
+	git rebase --continue &&
 	test M = $(git cat-file commit HEAD^ | sed -ne \$p) &&
 	test L = $(git cat-file commit HEAD | sed -ne \$p)
 '
@@ -1007,7 +1007,7 @@ test_expect_success 'rebase -i with --strategy and -X' '
 '
 
 test_expect_success 'rebase -i error on commits with \ in message' '
-	current_head=$(git rev-parse HEAD)
+	current_head=$(git rev-parse HEAD) &&
 	test_when_finished "git rebase --abort; git reset --hard $current_head; rm -f error" &&
 	test_commit TO-REMOVE will-conflict old-content &&
 	test_commit "\temp" will-conflict new-content dummy &&
@@ -1037,6 +1037,22 @@ test_expect_success 'short SHA-1 collide' '
 	FAKE_COMMIT_MESSAGE="collide2 ac4f2ee" \
 	FAKE_LINES="reword 1 2" git rebase -i HEAD~2
 	)
+'
+
+test_expect_success 'respect core.abbrev' '
+	git config core.abbrev 12 &&
+	set_cat_todo_editor &&
+	test_must_fail git rebase -i HEAD~4 >todo-list &&
+	test 4 = $(grep -c "pick [0-9a-f]\{12,\}" todo-list)
+'
+
+test_expect_success 'todo count' '
+	write_script dump-raw.sh <<-\EOF &&
+		cat "$1"
+	EOF
+	test_set_editor "$(pwd)/dump-raw.sh" &&
+	git rebase -i HEAD~4 >actual &&
+	grep "^# Rebase ..* onto ..* ([0-9]" actual
 '
 
 test_done

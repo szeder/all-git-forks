@@ -34,8 +34,16 @@ typedef void *SSL;
 #include "http.h"
 #endif
 
+#if defined(USE_CURL_FOR_IMAP_SEND) && defined(NO_OPENSSL)
+/* only available option */
+#define USE_CURL_DEFAULT 1
+#else
+/* strictly opt in */
+#define USE_CURL_DEFAULT 0
+#endif
+
 static int verbosity;
-static int use_curl; /* strictly opt in */
+static int use_curl = USE_CURL_DEFAULT;
 
 static const char * const imap_send_usage[] = { "git imap-send [-v] [-q] [--[no-]curl] < <mbox>", NULL };
 
@@ -1421,8 +1429,8 @@ static CURL *setup_curl(struct imap_server_conf *srvc)
 		strbuf_release(&auth);
 	}
 
-	if (server.use_ssl)
-		curl_easy_setopt(curl, CURLOPT_USE_SSL, (long)CURLUSESSL_ALL);
+	if (!server.use_ssl)
+		curl_easy_setopt(curl, CURLOPT_USE_SSL, (long)CURLUSESSL_TRY);
 
 	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, server.ssl_verify);
 	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, server.ssl_verify);
@@ -1431,7 +1439,7 @@ static CURL *setup_curl(struct imap_server_conf *srvc)
 
 	curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
 
-	if (0 < verbosity)
+	if (0 < verbosity || getenv("GIT_CURL_VERBOSE"))
 		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
 	return curl;
@@ -1504,8 +1512,13 @@ int main(int argc, char **argv)
 
 #ifndef USE_CURL_FOR_IMAP_SEND
 	if (use_curl) {
-		warning("--use-curl not supported in this build");
+		warning("--curl not supported in this build");
 		use_curl = 0;
+	}
+#elif defined(NO_OPENSSL)
+	if (!use_curl) {
+		warning("--no-curl not supported in this build");
+		use_curl = 1;
 	}
 #endif
 

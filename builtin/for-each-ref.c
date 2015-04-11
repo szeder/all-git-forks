@@ -178,11 +178,10 @@ static const char *find_next(const char *cp)
 static int verify_format(const char *format)
 {
 	const char *cp, *sp;
-	static const char color_reset[] = "color:reset";
 
 	need_color_reset_at_eol = 0;
 	for (cp = format; *cp && (sp = find_next(cp)); ) {
-		const char *ep = strchr(sp, ')');
+		const char *color, *ep = strchr(sp, ')');
 		int at;
 
 		if (!ep)
@@ -191,8 +190,8 @@ static int verify_format(const char *format)
 		at = parse_atom(sp + 2, ep);
 		cp = ep + 1;
 
-		if (starts_with(used_atom[at], "color:"))
-			need_color_reset_at_eol = !!strcmp(used_atom[at], color_reset);
+		if (skip_prefix(used_atom[at], "color:", &color))
+			need_color_reset_at_eol = !!strcmp(color, "reset");
 	}
 	return 0;
 }
@@ -717,7 +716,10 @@ static void populate_value(struct refinfo *ref)
 				 starts_with(name, "upstream")) {
 				char buf[40];
 
-				stat_tracking_info(branch, &num_ours, &num_theirs);
+				if (stat_tracking_info(branch, &num_ours,
+						       &num_theirs) != 1)
+					continue;
+
 				if (!num_ours && !num_theirs)
 					v->s = "";
 				else if (!num_ours) {
@@ -735,7 +737,11 @@ static void populate_value(struct refinfo *ref)
 			} else if (!strcmp(formatp, "trackshort") &&
 				   starts_with(name, "upstream")) {
 				assert(branch);
-				stat_tracking_info(branch, &num_ours, &num_theirs);
+
+				if (stat_tracking_info(branch, &num_ours,
+							&num_theirs) != 1)
+					continue;
+
 				if (!num_ours && !num_theirs)
 					v->s = "=";
 				else if (!num_ours)
@@ -1054,7 +1060,7 @@ static int opt_parse_sort(const struct option *opt, const char *arg, int unset)
 }
 
 static char const * const for_each_ref_usage[] = {
-	N_("git for-each-ref [options] [<pattern>]"),
+	N_("git for-each-ref [<options>] [<pattern>]"),
 	NULL
 };
 
