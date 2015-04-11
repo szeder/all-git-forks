@@ -1153,6 +1153,7 @@ static int run_push_merge(struct transport *transport, struct ref *remote_refs, 
 {
 	struct ref *ref;
 	struct ref *fetch_refs = 0;
+	const char* head_path = xstrdup(git_path("PUSH_MERGE_HEAD"));
 
 	for (ref = remote_refs; ref; ref = ref->next) {
 		struct refspec tracking_rs;
@@ -1176,18 +1177,13 @@ static int run_push_merge(struct transport *transport, struct ref *remote_refs, 
 		 * * continue
 		 */
 		if (push_merge != PUSH_MERGE_NEVER) {
-			struct ref *new_ref;
+			struct child_process proc = CHILD_PROCESS_INIT;
 
-			new_ref = alloc_ref(ref->name);
-			hashcpy(new_ref->old_sha1, ref->old_sha1);
-			new_ref->fetch_head_status = FETCH_HEAD_IGNORE;
-			new_ref->peer_ref = alloc_ref(tracking_rs.dst);
-			/* TODO: check does it reject non-ff update without old_sha1 */
-			new_ref->peer_ref->fetch_head_status = FETCH_HEAD_IGNORE;
-
-			new_ref->next = fetch_refs;
-			fetch_refs = new_ref;
-			fprintf(stderr, "DEBUG run_push_merge: fetch_refs = %p\n", fetch_refs);
+			if (unlink_or_warn(head_path)) {
+				/* TODO: free */
+				return -1;
+			}
+			/* TODO: run script */
 		}
 		free(tracking_rs.dst);
 	}
