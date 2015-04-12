@@ -1,5 +1,5 @@
 /*
- * Another stupid program, this one parsing the headers of an
+ * Another program, this one parsing the headers of an
  * email to figure out authorship and subject
  */
 #include "cache.h"

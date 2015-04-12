@@ -2,9 +2,9 @@
 # Tcl ignores the next line -*- tcl -*- \
 exec tclsh "$0" -- "$@"
 
-# This is a really stupid program, which serves as an alternative to
-# msgfmt.  It _only_ translates to Tcl mode, does _not_ validate the
-# input, and does _not_ output any statistics.
+# This program acts as an alternative to msgfmt.  It _only_
+# translates to Tcl mode, does _not_ validate the input,
+# and does _not_ output any statistics.
 
 proc u2a {s} {
 	set res ""

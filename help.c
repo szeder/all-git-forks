@@ -310,7 +310,7 @@ const char *help_unknown_cmd(const char *cmd)
 
 	/* This abuses cmdname->len for levenshtein distance */
 	for (i = 0, n = 0; i < main_cmds.cnt; i++) {
-		int cmp = 0; /* avoid compiler stupidity */
+		int cmp = 0; /* avoid compiler mistakes */
 		const char *candidate = main_cmds.names[i]->name;
 
 		/*

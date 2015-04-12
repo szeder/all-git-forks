@@ -36,7 +36,7 @@ test -z "$(git ls-files -u)" ||
 LF='
 '
 
-all_strategies='recur recursive octopus resolve stupid ours subtree'
+all_strategies='recur recursive octopus resolve ours subtree'
 all_strategies="$all_strategies recursive-ours recursive-theirs"
 not_strategies='base file index tree'
 default_twohead_strategies='recursive'

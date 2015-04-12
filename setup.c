@@ -161,7 +161,7 @@ static void NORETURN die_verify_filename(const char *prefix,
 		    arg);
 	/*
 	 * Saying "'(icase)foo' does not exist in the index" when the
-	 * user gave us ":(icase)foo" is just stupid.  A magic pathspec
+	 * user gave us ":(icase)foo" doesn't make sense.  A magic pathspec
 	 * begins with a colon and is followed by a non-alnum; do not
 	 * let maybe_die_on_misspelt_object_name() even trigger.
 	 */

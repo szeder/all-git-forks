@@ -3,7 +3,7 @@ git(1)
 
 NAME
 ----
-git - the stupid content tracker
+git - the content tracker
 
 
 SYNOPSIS

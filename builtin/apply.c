@@ -2536,8 +2536,7 @@ static int find_pos(struct image *img,
 		try += img->line[i].len;
 
 	/*
-	 * There's probably some smart way to do this, but I'll leave
-	 * that to the smart and beautiful people. I'm simple and stupid.
+	 * There's probably a more elegant way to do this.
 	 */
 	backwards = try;
 	backwards_lno = line;

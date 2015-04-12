@@ -25,7 +25,7 @@ static const char *argv_update_ref[] = {"update-ref", "--no-deref", "BISECT_HEAD
 #define COUNTED		(1u<<16)
 
 /*
- * This is a truly stupid algorithm, but it's only
+ * This is a truly simple algorithm, but it's only
  * used for bisection, and we just don't care enough.
  *
  * We care just barely enough to avoid recursing for

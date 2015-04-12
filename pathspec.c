@@ -98,7 +98,7 @@ static void prefix_short_magic(struct strbuf *sb, int prefixlen,
  * NEEDSWORK: This needs to be rewritten when we start migrating
  * get_pathspec() users to use the "struct pathspec" interface.  For
  * example, a pathspec element may be marked as case-insensitive, but
- * the prefix part must always match literally, and a single stupid
+ * the prefix part must always match literally, and a single simple
  * string cannot express such a case.
  */
 static unsigned prefix_pathspec(struct pathspec_item *item,
