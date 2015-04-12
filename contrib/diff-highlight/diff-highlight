@@ -88,8 +88,8 @@ sub show_hunk {
 	}
 
 	# If we have mismatched numbers of lines on each side, we could try to
-	# be clever and match up similar lines. But for now we are simple and
-	# stupid, and only handle multi-line hunks that remove and add the same
+	# be clever and match up similar lines. But for now we are simple
+	# and only handle multi-line hunks that remove and add the same
 	# number of lines.
 	if (@$a != @$b) {
 		print @$a, @$b;

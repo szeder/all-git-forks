@@ -1,5 +1,5 @@
 /*
- * GIT - the stupid content tracker
+ * GIT - the content tracker
  *
  * Copyright (c) Junio C Hamano, 2006, 2009
  */

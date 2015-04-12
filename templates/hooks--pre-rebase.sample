@@ -116,11 +116,11 @@ $GIT_DIR/config mechanism.
 With this workflow, you would want to know:
 
 (1) ... if a topic branch has ever been merged to "next".  Young
-    topic branches can have stupid mistakes you would rather
-    clean up before publishing, and things that have not been
-    merged into other branches can be easily rebased without
-    affecting other people.  But once it is published, you would
-    not want to rewind it.
+    topic branches can have mistakes you would rather clean up
+    before publishing, and things that have not been merged into
+    other branches can be easily rebased without affecting other
+    people.  But once it is published, you would not want to rewind
+    it.
 
 (2) ... if a topic branch has been fully merged to "master".
     Then you can delete it.  More importantly, you should not

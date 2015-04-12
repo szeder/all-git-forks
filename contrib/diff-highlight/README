@@ -12,7 +12,7 @@ the line structure, and you end up with oddly formatted bits.
 
 Instead, this script post-processes the line-oriented diff, finds pairs
 of lines, and highlights the differing segments.  It's currently very
-simple and stupid about doing these tasks. In particular:
+simple about doing these tasks. In particular:
 
   1. It will only highlight hunks in which the number of removed and
      added lines is the same, and it will pair lines within the hunk by

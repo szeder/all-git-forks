@@ -35,7 +35,7 @@ test_expect_success setup '
 	test_tick && git commit -m "Modified the file identically" &&
 	note C &&
 
-	echo "This is a stupid example" >another-file &&
+	echo "This is a simple example" >another-file &&
 	git add another-file &&
 	test_tick && git commit -m "Add another file" &&
 	note D &&

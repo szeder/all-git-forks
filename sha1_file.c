@@ -1725,7 +1725,8 @@ static off_t get_delta_base(struct packed_git *p,
 	 * as a range that we can look at without walking off the
 	 * end of the mapped window.  Its actually the hash size
 	 * that is assured.  An OFS_DELTA longer than the hash size
-	 * is stupid, as then a REF_DELTA would be smaller to store.
+	 * doesn't make sense, as then a REF_DELTA would be smaller 
+	 * to store.
 	 */
 	if (type == OBJ_OFS_DELTA) {
 		unsigned used = 0;

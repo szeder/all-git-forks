@@ -126,8 +126,8 @@ empty, that's not very useful, so let's start populating it with data.
 Populating a Git repository
 ---------------------------
 
-We'll keep this simple and stupid, so we'll start off with populating a
-few trivial files just to get a feel for it.
+First we'll start off with populating a few trivial files just to get a
+feel for it.
 
 Start off with just creating any random files that you want to maintain
 in your Git repository. We'll start off with a few bad examples, just to

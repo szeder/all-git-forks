@@ -1976,7 +1976,7 @@ static void show_dirstat_by_line(struct diffstat_t *data, struct diff_options *o
 			 * way to normalize binary bytes vs. textual lines.
 			 * The following heuristic assumes that there are 64
 			 * bytes per "line".
-			 * This is stupid and ugly, but very cheap...
+			 * This is simple, but very cheap...
 			 */
 			damage = (damage + 63) / 64;
 		ALLOC_GROW(dir.files, dir.nr + 1, dir.alloc);
