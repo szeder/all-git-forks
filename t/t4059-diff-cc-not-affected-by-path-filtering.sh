@@ -33,6 +33,8 @@ test_expect_success setup '
 		test_seq 11 >long/$fn &&
 		git add long/$fn || return $?
 	done &&
+	test_seq 3 >b1delete &&
+	git add b1delete &&
 	git commit -m mergebase &&
 	git branch mergebase &&
 
@@ -51,6 +53,9 @@ test_expect_success setup '
 	    mv sed.new long/$fn &&
 	    git add long/$fn || return $?
 	done &&
+	git rm b1delete &&
+	test_seq 3 >b1add &&
+	git add b1add &&
 	git commit -m branch1 &&
 	git branch branch1 &&
 
@@ -117,6 +122,16 @@ test_expect_success setup '
 	git add short/mergechange &&
 	git commit -m merge &&
 	git branch merge
+'
+
+test_expect_success "diff --cc does not contain b1delete" '
+	git diff --cc merge branch1 branch2 mergebase -- b1delete >actual &&
+	! test -s actual
+'
+
+test_expect_success "diff --cc does not contain b1add" '
+	git diff --cc merge branch1 branch2 mergebase -- b1add >actual &&
+	! test -s actual
 '
 
 # the difference in short file must be returned if and only if it is shown in long file
