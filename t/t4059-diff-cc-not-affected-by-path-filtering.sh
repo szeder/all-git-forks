@@ -134,6 +134,16 @@ test_expect_success "diff --cc does not contain b1add" '
 	! test -s actual
 '
 
+test_expect_success "diff -c contains b1delete" '
+	git diff -c merge branch1 branch2 mergebase -- b1delete >actual &&
+	test -s actual
+'
+
+test_expect_success "diff -c contains b1add" '
+	git diff -c merge branch1 branch2 mergebase -- b1add >actual &&
+	test -s actual
+'
+
 # the difference in short file must be returned if and only if it is shown in long file
 for fn in win1 win2 merge delete base only1 only2 only1discard only2discard mergechange
 do
