@@ -617,7 +617,7 @@ def gitConfigBool(key):
 def gitConfigList(key):
     if not _gitConfig.has_key(key):
         s = read_pipe(["git", "config", "--get-all", key], ignore_error=True)
-        _gitConfig[key] = s.strip().split(os.linesep)
+        _gitConfig[key] = s.strip().splitlines()
     return _gitConfig[key]
 
 def p4BranchesInGit(branchesAreInRemotes=True):
