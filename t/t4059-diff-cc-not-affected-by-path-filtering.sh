@@ -26,7 +26,7 @@ grep_line2() {
 test_expect_success setup '
 	mkdir short &&
 	mkdir long &&
-	for fn in win1 win2 merge delete base only1 only2 only1discard only2discard
+	for fn in win1 win2 merge delete base only1 only2 only1discard only2discard mergechange
 	do
 		test_seq 3 >short/$fn &&
 		git add short/$fn &&
@@ -45,7 +45,7 @@ test_expect_success setup '
 			git add $dir/$fn || return $?
 		done || return $?
 	done &&
-	for fn in only2 only2discard
+	for fn in only2 only2discard mergechange
 	do
 	    sed -e "s/^7/7change1/" long/$fn >sed.new &&
 	    mv sed.new long/$fn &&
@@ -64,7 +64,7 @@ test_expect_success setup '
 			git add $dir/$fn || return $?
 		done || return $?
 	done &&
-	for fn in only1 only1discard
+	for fn in only1 only1discard mergechange
 	do
 	    sed -e "s/^11/11change2/" long/$fn >sed.new &&
 	    mv sed.new long/$fn &&
@@ -93,6 +93,8 @@ test_expect_success setup '
 	git add long/only1 &&
 	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" -e "s/^2/2change2/" >long/only2 &&
 	git add long/only2 &&
+	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" -e "s/^2/2merged/" >long/mergechange &&
+	git add long/mergechange &&
 	test_seq 3 >short/base &&
 	git add short/base &&
 	test_seq 3 >short/only1discard &&
@@ -111,12 +113,14 @@ test_expect_success setup '
 	git add short/only1 &&
 	test_seq 3 | sed -e "s/^2/2change2/" >short/only2 &&
 	git add short/only2 &&
+	test_seq 3 | sed -e "s/^2/2merged/" >short/mergechange &&
+	git add short/mergechange &&
 	git commit -m merge &&
 	git branch merge
 '
 
 # the difference in short file must be returned if and only if it is shown in long file
-for fn in win1 win2 merge delete base only1 only2 only1discard only2discard
+for fn in win1 win2 merge delete base only1 only2 only1discard only2discard mergechange
 do
 	if git diff --cc merge branch1 branch2 mergebase -- long/$fn | grep_line2
 	then
@@ -132,7 +136,7 @@ do
 	fi
 done
 
-for fn in win1 win2 merge delete base only1 only2 only1discard only2discard
+for fn in win1 win2 merge delete base only1 only2 only1discard only2discard mergechange
 do
 	if git diff -c merge branch1 branch2 mergebase -- long/$fn | grep_line2
 	then
