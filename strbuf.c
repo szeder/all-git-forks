@@ -443,12 +443,14 @@ int strbuf_getwholeline(struct strbuf *sb, FILE *fp, int term)
 		return EOF;
 
 	strbuf_reset(sb);
-	while ((ch = fgetc(fp)) != EOF) {
-		strbuf_grow(sb, 1);
+	flockfile(fp);
+	while ((ch = getc_unlocked(fp)) != EOF) {
+		strbuf_grow_ch(sb);
 		sb->buf[sb->len++] = ch;
 		if (ch == term)
 			break;
 	}
+	funlockfile(fp);
 	if (ch == EOF && sb->len == 0)
 		return EOF;
 
