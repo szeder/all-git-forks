@@ -9,7 +9,7 @@ git-cat-file - Provide content or type and size information for repository objec
 SYNOPSIS
 --------
 [verse]
-'git cat-file' (-t | -s | -e | -p | <type> | --textconv ) <object>
+'git cat-file' (-t [--literally]| -s [--literally]| -e | -p | <type> | --textconv ) <object>
 'git cat-file' (--batch | --batch-check) < <list-of-objects>
 
 DESCRIPTION
@@ -68,6 +68,10 @@ OPTIONS
 	Print object information for each object provided on stdin.  May
 	not be combined with any other options or arguments.  See the
 	section `BATCH OUTPUT` below for details.
+
+--literally::
+	Print information of broken/corrupt objects of unknown type without
+	throwing an error. To be used combined with '-s' or '-t' option.
 
 OUTPUT
 ------
