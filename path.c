@@ -224,34 +224,6 @@ const char *mkpath(const char *fmt, ...)
 	return cleanup_path(pathname->buf);
 }
 
-void home_config_paths(char **global, char **xdg, char *file)
-{
-	char *xdg_home = getenv("XDG_CONFIG_HOME");
-	char *home = getenv("HOME");
-	char *to_free = NULL;
-
-	if (!home) {
-		if (global)
-			*global = NULL;
-	} else {
-		if (!xdg_home) {
-			to_free = mkpathdup("%s/.config", home);
-			xdg_home = to_free;
-		}
-		if (global)
-			*global = mkpathdup("%s/.gitconfig", home);
-	}
-
-	if (xdg) {
-		if (!xdg_home)
-			*xdg = NULL;
-		else
-			*xdg = mkpathdup("%s/git/%s", xdg_home, file);
-	}
-
-	free(to_free);
-}
-
 const char *git_path_submodule(const char *path, const char *fmt, ...)
 {
 	struct strbuf *buf = get_pathname();
@@ -994,4 +966,20 @@ int is_ntfs_dotgit(const char *name)
 			name += len + 1;
 			len = -1;
 		}
+}
+
+char *xdg_config_home(const char *fn)
+{
+	const char *config_home = getenv("XDG_CONFIG_HOME");
+
+	if (!fn)
+		fn = "";
+	if (!config_home || !config_home[0]) {
+		const char *home = getenv("HOME");
+
+		if (!home)
+			return NULL;
+		return mkpathdup("%s/.config/git/%s", home, fn);
+	} else
+		return mkpathdup("%s/git/%s", config_home, fn);
 }
