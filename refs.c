@@ -3041,6 +3041,8 @@ static int write_ref_sha1(struct ref_lock *lock,
 		errno = EINVAL;
 		return -1;
 	}
+	if (lock->lk->fd == -1)
+		reopen_lock_file(lock->lk);
 	if (write_in_full(lock->lk->fd, sha1_to_hex(sha1), 40) != 40 ||
 	    write_in_full(lock->lk->fd, &term, 1) != 1 ||
 	    close_ref(lock) < 0) {
@@ -3719,6 +3721,12 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 {
 	int ret = 0, i;
 	int n = transaction->nr;
+	/*
+	 * We may want to open many files in a large transaction, so come up with
+	 * a reasonable maximum, keep some spares for stdin/out and other open
+	 * files.
+	 */
+	int remaining_fds = get_max_fd_limit() - 8;
 	struct ref_update **updates = transaction->updates;
 	struct string_list refs_to_delete = STRING_LIST_INIT_NODUP;
 	struct string_list_item *ref_to_delete;
@@ -3761,6 +3769,11 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 			strbuf_addf(err, "Cannot lock the ref '%s'.",
 				    update->refname);
 			goto cleanup;
+		}
+		if (remaining_fds > 0) {
+			remaining_fds--;
+		} else {
+			close_lock_file(update->lock->lk);
 		}
 	}
 
