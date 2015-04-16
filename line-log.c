@@ -575,7 +575,8 @@ parse_lines(struct commit *commit, const char *prefix, struct string_list *args)
 
 		name_part = skip_range_arg(item->string);
 		if (!name_part || *name_part != ':' || !name_part[1])
-			die("-L argument '%s' not of the form start,end:file",
+			die("invalid -L argument '%s'.\n"
+			    "It should be of the form start,end:file or :regex:file.",
 			    item->string);
 		range_part = xstrndup(item->string, name_part - item->string);
 		name_part++;
