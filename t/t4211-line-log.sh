@@ -40,14 +40,14 @@ canned_test "-L 24,+1:a.c simple" vanishes-early
 canned_test "-L '/long f/,/^}/:b.c' move-support" move-support-f
 
 test_bad_opts "-L" "switch.*requires a value"
-test_bad_opts "-L b.c" "argument.*not of the form"
-test_bad_opts "-L 1:" "argument.*not of the form"
+test_bad_opts "-L b.c" "argument not .start,end:file"
+test_bad_opts "-L 1:" "argument not .start,end:file"
 test_bad_opts "-L 1:nonexistent" "There is no path"
 test_bad_opts "-L 1:simple" "There is no path"
-test_bad_opts "-L '/foo:b.c'" "argument.*not of the form"
+test_bad_opts "-L '/foo:b.c'" "argument not .start,end:file"
 test_bad_opts "-L 1000:b.c" "has only.*lines"
 test_bad_opts "-L 1,1000:b.c" "has only.*lines"
-test_bad_opts "-L :b.c" "argument.*not of the form"
+test_bad_opts "-L :b.c" "argument not .start,end:file"
 test_bad_opts "-L :foo:b.c" "no match"
 
 test_done
