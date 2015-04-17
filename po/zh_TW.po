@@ -1,5 +1,5 @@
-# Chinese translations for Git package
-# Git 软件包的简体中文翻译.
+# Traditional Chinese translations for Git package
+# Git 軟體件包的繁體中文翻譯
 # Copyright (C) 2012,2013 Jiang Xin <worldhello.net AT gmail.com>
 # This file is distributed under the same license as the Git package.
 # Contributers:
@@ -37,7 +37,7 @@ msgstr ""
 
 #: archive.c:11
 msgid "git archive [options] <tree-ish> [<path>...]"
-msgstr "git archive [选项] <树或提交> [<路径>...]"
+msgstr "git archive [選項] <樹或提交> [<路徑>...]"
 
 #: archive.c:12
 msgid "git archive --list"
@@ -47,11 +47,11 @@ msgstr "git archive --list"
 msgid ""
 "git archive --remote <repo> [--exec <cmd>] [options] <tree-ish> [<path>...]"
 msgstr ""
-"git archive --remote <版本库> [--exec <命令>] [选项] <树或提交> [<路径>...]"
+"git archive --remote <版本倉庫> [--exec <命令>] [選項] <樹或提交> [<路徑>...]"
 
 #: archive.c:14
 msgid "git archive --remote <repo> [--exec <cmd>] --list"
-msgstr "git archive --remote <版本库> [--exec <命令>] --list"
+msgstr "git archive --remote <版本倉庫> [--exec <命令>] --list"
 
 #: archive.c:342 builtin/add.c:137 builtin/add.c:427 builtin/rm.c:328
 #, c-format
