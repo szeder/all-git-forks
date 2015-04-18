@@ -332,38 +332,46 @@ static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
 	return 0;
 }
 
-/*
- * Try to read the location of the git directory from the .git file,
- * return path to git directory if found.
- */
-const char *read_gitfile(const char *path)
+static const char *read_gitfile_gently_or_non_gently(const char *path, int gently)
 {
-	char *buf;
+	int error = 0;
+	char *buf = NULL;
 	char *dir;
 	const char *slash;
 	struct stat st;
 	int fd;
 	ssize_t len;
-
-	if (stat(path, &st))
-		return NULL;
-	if (!S_ISREG(st.st_mode))
-		return NULL;
+	if (stat(path, &st)) {
+		error = 1;
+		goto cleanup_return;
+	}
+	if (!S_ISREG(st.st_mode)) {
+		error = 2;
+		goto cleanup_return;
+	}
 	fd = open(path, O_RDONLY);
-	if (fd < 0)
-		die_errno("Error opening '%s'", path);
+	if (fd < 0) {
+		error = 3;
+		goto cleanup_return;
+	}
 	buf = xmalloc(st.st_size + 1);
 	len = read_in_full(fd, buf, st.st_size);
 	close(fd);
-	if (len != st.st_size)
-		die("Error reading %s", path);
+	if (len != st.st_size) {
+		error = 4;
+		goto cleanup_return;
+	}
 	buf[len] = '\0';
-	if (!starts_with(buf, "gitdir: "))
-		die("Invalid gitfile format: %s", path);
+	if (!starts_with(buf, "gitdir: ")) {
+		error = 5;
+		goto cleanup_return;
+	}
 	while (buf[len - 1] == '\n' || buf[len - 1] == '\r')
 		len--;
-	if (len < 9)
-		die("No path in gitfile: %s", path);
+	if (len < 9) {
+		error = 6;
+		goto cleanup_return;
+	}
 	buf[len] = '\0';
 	dir = buf + 8;
 
@@ -378,12 +386,56 @@ const char *read_gitfile(const char *path)
 		buf = dir;
 	}
 
-	if (!is_git_directory(dir))
-		die("Not a git repository: %s", dir);
+	if (!is_git_directory(dir)) {
+		error = 7;
+		goto cleanup_return;
+	}
 	path = real_path(dir);
 
+cleanup_return:
 	free(buf);
+
+	if (error) {
+		if (gently)
+			return NULL;
+
+		switch (error) {
+		case 1: // failed to stat
+		case 2: // not regular file
+			return NULL;
+		case 3:
+			die_errno("Error opening '%s'", path);
+		case 4:
+			die("Error reading %s", path);
+		case 5:
+			die("Invalid gitfile format: %s", path);
+		case 6:
+			die("No path in gitfile: %s", path);
+		case 7:
+			die("Not a git repository: %s", dir);
+		default:
+			assert(0);
+		}
+	}
+
 	return path;
+}
+
+/*
+ * Try to read the location of the git directory from the .git file,
+ * return path to git directory if found, die on (most) failures.
+ */
+const char *read_gitfile(const char *path)
+{
+	return read_gitfile_gently_or_non_gently(path, 0);
+}
+
+/*
+ * Same as read_gitfile but return NULL on failure.
+ */
+const char *read_gitfile_gently(const char *path)
+{
+	return read_gitfile_gently_or_non_gently(path, 1);
 }
 
 static const char *setup_explicit_git_dir(const char *gitdirenv,
