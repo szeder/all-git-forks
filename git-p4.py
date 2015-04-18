@@ -507,7 +507,9 @@ def p4Where(depotPath):
     output = None
     for entry in outputList:
         if "depotFile" in entry:
-            if entry["depotFile"].find(depotPath) >= 0:
+            # Search for the base client side depot path, as long as it starts with the branch's P4 path.
+            # The base path always ends with "/...".
+            if entry["depotFile"].find(depotPath) == 0 and entry["depotFile"][-4:] == "/...":
                 output = entry
                 break
         elif "data" in entry:

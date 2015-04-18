@@ -512,23 +512,28 @@ test_expect_success 'restart p4d' '
 #
 # 1: //depot/branch1/base/file1
 #    //depot/branch1/base/file2
+#    //depot/branch1/base/dir/sub_file1
 # 2: integrate //depot/branch1/base/... -> //depot/branch2/base/...
 # 3: //depot/branch1/base/file3
 # 4: //depot/branch1/base/file2 (edit)
 # 5: integrate //depot/branch1/base/... -> //depot/branch3/base/...
 #
-# Note: the client view remove the "base" folder from the workspace
+# Note: the client view removes the "base" folder from the workspace
+#       and moves sub_file1 one level up.
 test_expect_success 'add simple p4 branches with common base folder on each branch' '
 	(
 		cd "$cli" &&
 		client_view "//depot/branch1/base/... //client/branch1/..." \
+			    "//depot/branch1/base/dir/sub_file1 //client/branch1/sub_file1" \
 			    "//depot/branch2/base/... //client/branch2/..." \
 			    "//depot/branch3/base/... //client/branch3/..." &&
 		mkdir -p branch1 &&
 		cd branch1 &&
 		echo file1 >file1 &&
 		echo file2 >file2 &&
-		p4 add file1 file2 &&
+		mkdir dir &&
+		echo sub_file1 >sub_file1 &&
+		p4 add file1 file2 sub_file1 &&
 		p4 submit -d "Create branch1" &&
 		p4 integrate //depot/branch1/base/... //depot/branch2/base/... &&
 		p4 submit -d "Integrate branch2 from branch1" &&
@@ -561,16 +566,19 @@ test_expect_success 'git p4 clone simple branches with base folder on server sid
 		test -f file1 &&
 		test -f file2 &&
 		test -f file3 &&
+		test -f sub_file1 &&
 		grep update file2 &&
 		git reset --hard p4/depot/branch2 &&
 		test -f file1 &&
 		test -f file2 &&
 		test ! -f file3 &&
+		test -f sub_file1 &&
 		! grep update file2 &&
 		git reset --hard p4/depot/branch3 &&
 		test -f file1 &&
 		test -f file2 &&
 		test -f file3 &&
+		test -f sub_file1 &&
 		grep update file2 &&
 		cd "$cli" &&
 		cd branch1 &&
