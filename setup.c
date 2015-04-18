@@ -369,10 +369,15 @@ static int check_repo_format(const char *var, const char *value, void *cb)
 static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
 {
 	struct strbuf sb = STRBUF_INIT;
+	struct strbuf sb_wt = STRBUF_INIT;
 	const char *repo_config;
+	const char *worktree_config = NULL;
 	int ret = 0;
 
-	get_common_dir(&sb, gitdir);
+	if (get_common_dir(&sb, gitdir)) {
+		strbuf_addf(&sb_wt, "%s/config.worktree", get_git_dir());
+		worktree_config = sb_wt.buf;
+	}
 	strbuf_addstr(&sb, "/config");
 	repo_config = sb.buf;
 
@@ -385,7 +390,8 @@ static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
 	 * Use a gentler version of git_config() to check if this repo
 	 * is a good one.
 	 */
-	git_config_early(check_repository_format_version, NULL, repo_config, NULL);
+	git_config_early(check_repository_format_version, NULL,
+			 repo_config, worktree_config);
 	if (GIT_REPO_VERSION < repository_format_version) {
 		if (!nongit_ok)
 			die ("Expected git repo version <= %d, found %d",
@@ -397,6 +403,7 @@ static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
 		ret = -1;
 	}
 	strbuf_release(&sb);
+	strbuf_release(&sb_wt);
 	return ret;
 }
 
