@@ -8,6 +8,13 @@ test_description='combined diff filtering is not affected by preliminary path fi
 . ./test-lib.sh
 . "$TEST_DIRECTORY"/diff-lib.sh
 
+grep_line2() {
+	grep -q \
+	     -e '^[ +-][ +-][ +-]2$' \
+	     -e '^[ +-][ +-][ +-]2change[12]$' \
+	     -e '^[ +-][ +-][ +-]2merged$'
+}
+
 # history is:
 # (mergebase) --> (branch1) --\
 #  |                          V
@@ -109,8 +116,9 @@ test_expect_success setup '
 '
 
 # the difference in short file must be returned if and only if it is shown in long file
-for fn in win1 win2 merge delete base only1 only2 only1discard only2discard; do
-	if git diff --cc merge branch1 branch2 mergebase -- long/$fn | grep -q '^[ +-]\{3\}2\(change[12]|merge\)\?$'
+for fn in win1 win2 merge delete base only1 only2 only1discard only2discard
+do
+	if git diff --cc merge branch1 branch2 mergebase -- long/$fn | grep_line2
 	then
 		test_expect_success "diff --cc contains short/$fn" '
 			git diff --cc merge branch1 branch2 mergebase -- short/'"$fn"' >actual &&
@@ -124,8 +132,9 @@ for fn in win1 win2 merge delete base only1 only2 only1discard only2discard; do
 	fi
 done
 
-for fn in win1 win2 merge delete base only1 only2 only1discard only2discard; do
-	if git diff -c merge branch1 branch2 mergebase -- long/$fn | grep -q '^[ +-]\{3\}2\(change[12]|merge\)\?$'
+for fn in win1 win2 merge delete base only1 only2 only1discard only2discard
+do
+	if git diff -c merge branch1 branch2 mergebase -- long/$fn | grep_line2
 	then
 		test_expect_success "diff -c contains short/$fn" '
 			git diff -c merge branch1 branch2 mergebase -- short/'"$fn"' >actual &&
