@@ -124,7 +124,6 @@ static struct combine_diff_path *intersect_paths(
 				p->parent[n].status = ' ';
 				tail = &p->next;
 			}
-			continue;
 		} else if (cmp > 0) {
 			/* q->queue[i] not in p->path */
 			if (!dense || n < num_parent - 1) {
@@ -133,7 +132,6 @@ static struct combine_diff_path *intersect_paths(
 				tail = &(*tail)->next;
 			}
 			i++;
-			continue;
 		} else {
 			if (dense &&
 			    n == num_parent - 1 &&
