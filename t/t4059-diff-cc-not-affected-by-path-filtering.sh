@@ -21,7 +21,8 @@ grep_line2() {
 #  \ --> (branch2) ----------(merge)
 # there are files in 2 subdirectories, "long" and "short"
 # each file in "long" subdirecty has exactly same history as same file in "short" one,
-# but it has added lines with changes in both branches which merge without conflict
+# but it has added lines which always contain changes in both branches
+# and are merged non-trivially after conflict
 # so the long files are always selected at path filtering
 test_expect_success setup '
 	mkdir short &&
@@ -42,14 +43,14 @@ test_expect_success setup '
 	do
 		for dir in short long
 		do
-			sed -e "s/^2/2change1/" -e "s/^7/7change1/" $dir/$fn >sed.new &&
+			sed -e "s/^2/2change1/" -e "s/^11/11change1/" $dir/$fn >sed.new &&
 			mv sed.new $dir/$fn &&
 			git add $dir/$fn || return $?
 		done || return $?
 	done &&
 	for fn in only2 only2discard mergechange
 	do
-	    sed -e "s/^7/7change1/" long/$fn >sed.new &&
+	    sed -e "s/^11/11change1/" long/$fn >sed.new &&
 	    mv sed.new long/$fn &&
 	    git add long/$fn || return $?
 	done &&
@@ -80,25 +81,25 @@ test_expect_success setup '
 
 	test_must_fail git merge branch1 &&
 	git checkout mergebase -- . &&
-	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" >long/base &&
+	test_seq 11 | sed -e "s/^11/11merged/" >long/base &&
 	git add long/base &&
-	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" >long/only1discard &&
+	test_seq 11 | sed -e "s/^11/11merged/" >long/only1discard &&
 	git add long/only1discard &&
-	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" >long/only2discard &&
+	test_seq 11 | sed -e "s/^11/11merged/" >long/only2discard &&
 	git add long/only2discard &&
-	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" -e "s/^2/2change1/" >long/win1 &&
+	test_seq 11 | sed -e "s/^11/11merged/" -e "s/^2/2change1/" >long/win1 &&
 	git add long/win1 &&
-	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" -e "s/^2/2change2/" >long/win2 &&
+	test_seq 11 | sed -e "s/^11/11merged/" -e "s/^2/2change2/" >long/win2 &&
 	git add long/win2 &&
-	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" -e "s/^2/2merged/" >long/merge &&
+	test_seq 11 | sed -e "s/^11/11merged/" -e "s/^2/2merged/" >long/merge &&
 	git add long/merge &&
-	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" -e "/^2/d" >long/delete &&
+	test_seq 11 | sed -e "s/^11/11merged/" -e "/^2/d" >long/delete &&
 	git add long/delete &&
-	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" -e "s/^2/2change1/" >long/only1 &&
+	test_seq 11 | sed -e "s/^11/11merged/" -e "s/^2/2change1/" >long/only1 &&
 	git add long/only1 &&
-	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" -e "s/^2/2change2/" >long/only2 &&
+	test_seq 11 | sed -e "s/^11/11merged/" -e "s/^2/2change2/" >long/only2 &&
 	git add long/only2 &&
-	test_seq 11 | sed -e "s/^7/7change1/" -e "s/^11/11change2/" -e "s/^2/2merged/" >long/mergechange &&
+	test_seq 11 | sed -e "s/^11/11merged/" -e "s/^2/2merged/" >long/mergechange &&
 	git add long/mergechange &&
 	test_seq 3 >short/base &&
 	git add short/base &&
