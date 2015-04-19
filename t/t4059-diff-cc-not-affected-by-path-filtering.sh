@@ -38,7 +38,7 @@ test_expect_success setup '
 	git commit -m mergebase &&
 	git branch mergebase &&
 
-	for fn in win1 win2 merge delete base only1
+	for fn in win1 win2 merge delete base only1 only1discard
 	do
 		for dir in short long
 		do
@@ -60,7 +60,7 @@ test_expect_success setup '
 	git branch branch1 &&
 
 	git reset --hard mergebase &&
-	for fn in win1 win2 merge delete base only2
+	for fn in win1 win2 merge delete base only2 only2discard
 	do
 		for dir in short long
 		do
