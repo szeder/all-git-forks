@@ -22,7 +22,7 @@ static int compare_paths(const struct combine_diff_path *one,
 				 two->path, strlen(two->path), two->mode);
 }
 
-static void insert_path(struct combine_diff_path **pos, const char* path, int n, int num_parent, struct diff_filepair *queue_item)
+static void insert_path(struct combine_diff_path **pos, const char *path, int n, int num_parent, struct diff_filepair *queue_item)
 {
 	int len;
 	int parent_idx;
