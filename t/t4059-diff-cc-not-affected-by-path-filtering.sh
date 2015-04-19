@@ -163,18 +163,25 @@ done
 
 for fn in win1 win2 merge delete base only1 only2 only1discard only2discard mergechange
 do
-	if git diff -c merge branch1 branch2 mergebase -- long/$fn | grep_line2
-	then
-		test_expect_success "diff -c contains short/$fn" '
-			git diff -c merge branch1 branch2 mergebase -- short/'"$fn"' >actual &&
-			test -s actual
-		'
-	else
-		test_expect_success "diff -c does not contain short/$fn" '
-			git diff -c merge branch1 branch2 mergebase -- short/'"$fn"' >actual &&
-			! test -s actual
-		'
-	fi
+	test_expect_success "diff -c contains long/$fn" '
+		git diff -c merge branch1 branch2 mergebase -- long/$fn | grep_line2
+	'
+done
+
+for fn in win1 win2 base only1 only2 only1discard only2discard
+do
+	test_expect_failure "diff -c contains short/$fn" '
+		git diff -c merge branch1 branch2 mergebase -- short/'"$fn"' >actual &&
+		test -s actual
+	'
+done
+
+for fn in merge delete mergechange
+do
+	test_expect_success "diff -c contains short/$fn" '
+		git diff -c merge branch1 branch2 mergebase -- short/'"$fn"' >actual &&
+		test -s actual
+	'
 done
 
 test_done
