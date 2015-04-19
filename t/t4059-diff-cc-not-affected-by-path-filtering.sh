@@ -134,12 +134,12 @@ test_expect_success "diff --cc does not contain b1add" '
 	! test -s actual
 '
 
-test_expect_success "diff -c contains b1delete" '
+test_expect_failure "diff -c contains b1delete" '
 	git diff -c merge branch1 branch2 mergebase -- b1delete >actual &&
 	test -s actual
 '
 
-test_expect_success "diff -c contains b1add" '
+test_expect_failure "diff -c contains b1add" '
 	git diff -c merge branch1 branch2 mergebase -- b1add >actual &&
 	test -s actual
 '
