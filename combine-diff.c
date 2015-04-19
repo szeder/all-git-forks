@@ -110,11 +110,9 @@ static struct combine_diff_path *intersect_paths(
 
 		if (cmp < 0) {
 			/* p->path not in q->queue[] */
-			if (dense &&
-			    n == num_parent - 1 &&
-			    path_not_interesting(p, n, NULL)) {
-				/* only 1 unique different parent
-				   not interesting change */
+			if (!dense ||
+			    (n == num_parent - 1 &&
+			     path_not_interesting(p, n, NULL))) {
 				*tail = p->next;
 				free(p);
 			} else {
@@ -126,7 +124,8 @@ static struct combine_diff_path *intersect_paths(
 			}
 		} else if (cmp > 0) {
 			/* q->queue[i] not in p->path */
-			if (!dense || n < num_parent - 1) {
+			if ((!dense && n == 0) ||
+			    (dense && n < num_parent - 1)) {
 				insert_path(tail, q->queue[i]->two->path,
 					    n, num_parent, q->queue[i]);
 				tail = &(*tail)->next;
