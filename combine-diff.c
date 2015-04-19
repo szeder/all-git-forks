@@ -91,7 +91,7 @@ static int path_not_interesting(struct combine_diff_path *p, int n,
 	return found_same_parent;
 }
 
-static struct combine_diff_path *intersect_paths(
+static struct combine_diff_path *adjust_paths_by_parent(
 	struct combine_diff_path *curr, int n, int num_parent, int dense)
 {
 	struct diff_queue_struct *q = &diff_queued_diff;
@@ -1405,7 +1405,7 @@ static struct combine_diff_path *find_paths_generic(const unsigned char *sha1,
 			opt->output_format = DIFF_FORMAT_NO_OUTPUT;
 		diff_tree_sha1(parents->sha1[i], sha1, "", opt);
 		diffcore_std(opt);
-		paths = intersect_paths(paths, i, num_parent, dense);
+		paths = adjust_paths_by_parent(paths, i, num_parent, dense);
 
 		/* if showing diff, show it in requested order */
 		if (opt->output_format != DIFF_FORMAT_NO_OUTPUT &&
