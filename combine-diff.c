@@ -88,6 +88,8 @@ static int path_not_interesting(struct combine_diff_path *p, int n,
 		} else {
 			found_same_parent = 1;
 		}
+	} else {
+		found_same_parent = 1;
 	}
 
 	return found_same_parent;
