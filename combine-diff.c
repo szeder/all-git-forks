@@ -27,6 +27,7 @@ static void insert_path(struct combine_diff_path **pos, const char *path,
 			struct diff_filepair *queue_item)
 {
 	int len;
+	int parent_idx;
 	struct combine_diff_path *p;
 
 	len = strlen(path);
@@ -43,53 +44,111 @@ static void insert_path(struct combine_diff_path **pos, const char *path,
 	hashcpy(p->parent[n].oid.hash, queue_item->one->sha1);
 	p->parent[n].mode = queue_item->one->mode;
 	p->parent[n].status = queue_item->status;
+	for (parent_idx = 0; parent_idx < n; parent_idx++) {
+		hashcpy(p->parent[parent_idx].oid.hash, p->oid.hash);
+		p->parent[parent_idx].mode = p->mode;
+		p->parent[parent_idx].status = ' ';
+	}
 	*pos = p;
 }
 
-static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr, int n, int num_parent)
+static int path_not_interesting(struct combine_diff_path *p, int n,
+				struct diff_filespec *new_parent)
+{
+	int parent_idx;
+	struct object_id first_parent;
+	int found_first = 0;
+	int found_same_parent = 0;
+
+	for (parent_idx = 0; parent_idx < n; parent_idx++) {
+		if (p->parent[parent_idx].status != ' ') {
+			if (found_first) {
+				if (hashcmp(p->parent[parent_idx].oid.hash, first_parent.hash)) {
+					/* found second different unique parent - non-trivial merge */
+					return 0;
+				}
+			} else {
+				found_first = 1;
+				hashcpy(first_parent.hash,
+					p->parent[parent_idx].oid.hash);
+			}
+		} else {
+			/* the new commit repeats some of parents */
+			found_same_parent = 1;
+		}
+	}
+
+	if (new_parent) {
+		if (hashcmp(p->oid.hash, new_parent->sha1)) {
+			if (!found_same_parent || hashcmp(first_parent.hash, new_parent->sha1)) {
+				return 0;
+			} else {
+				return 1;
+			}
+		} else {
+			found_same_parent = 1;
+		}
+	}
+
+	return found_same_parent;
+}
+
+static struct combine_diff_path *adjust_paths_by_parent(
+	struct combine_diff_path *curr, int n, int num_parent, int dense)
 {
 	struct diff_queue_struct *q = &diff_queued_diff;
 	struct combine_diff_path *p, **tail = &curr;
 	int i, cmp;
-
-	if (!n) {
-		for (i = 0; i < q->nr; i++) {
-			if (diff_unmodified_pair(q->queue[i]))
-				continue;
-			insert_path(tail, q->queue[i]->two->path, n, num_parent, q->queue[i]);
-			tail = &(*tail)->next;
-		}
-		return curr;
-	}
 
 	/*
 	 * paths in curr (linked list) and q->queue[] (array) are
 	 * both sorted in the tree order.
 	 */
 	i = 0;
-	while ((p = *tail) != NULL) {
-		cmp = ((i >= q->nr)
-		       ? -1 : compare_paths(p, q->queue[i]->two));
+	while ((p = *tail) != NULL || i < q->nr) {
+		cmp = (i >= q->nr) ? -1
+		      : (p == NULL) ? 1
+		      : compare_paths(p, q->queue[i]->two);
 
 		if (cmp < 0) {
-			/* p->path not in q->queue[]; drop it */
-			*tail = p->next;
-			free(p);
-			continue;
-		}
-
-		if (cmp > 0) {
-			/* q->queue[i] not in p->path; skip it */
+			/* p->path not in q->queue[] */
+			if (!dense ||
+			    (n == num_parent - 1 &&
+			     path_not_interesting(p, n, NULL))) {
+				*tail = p->next;
+				free(p);
+			} else {
+				/* already has or still can get 2 changed parents */
+				hashcpy(p->parent[n].oid.hash, p->oid.hash);
+				p->parent[n].mode = p->mode;
+				p->parent[n].status = ' ';
+				tail = &p->next;
+			}
+		} else if (cmp > 0) {
+			/* q->queue[i] not in p->path */
+			if ((!dense && n == 0) ||
+			    (dense && n < num_parent - 1)) {
+				insert_path(tail, q->queue[i]->two->path,
+					    n, num_parent, q->queue[i]);
+				tail = &(*tail)->next;
+			}
 			i++;
-			continue;
+		} else {
+			if (dense &&
+			    n == num_parent - 1 &&
+			    path_not_interesting(p, n, q->queue[i]->one)) {
+				*tail = p->next;
+				free(p);
+			} else {
+				hashcpy(p->parent[n].oid.hash, q->queue[i]->one->sha1);
+				p->parent[n].mode = q->queue[i]->one->mode;
+				p->parent[n].status = q->queue[i]->status;
+
+				tail = &p->next;
+			}
+			i++;
 		}
 
-		hashcpy(p->parent[n].oid.hash, q->queue[i]->one->sha1);
-		p->parent[n].mode = q->queue[i]->one->mode;
-		p->parent[n].status = q->queue[i]->status;
-
-		tail = &p->next;
-		i++;
 	}
 	return curr;
 }
@@ -1321,7 +1380,8 @@ static const char *path_path(void *obj)
 
 /* find set of paths that every parent touches */
 static struct combine_diff_path *find_paths_generic(const unsigned char *sha1,
-	const struct sha1_array *parents, struct diff_options *opt)
+	const struct sha1_array *parents, struct diff_options *opt,
+	int dense)
 {
 	struct combine_diff_path *paths = NULL;
 	int i, num_parent = parents->nr;
@@ -1347,7 +1407,7 @@ static struct combine_diff_path *find_paths_generic(const unsigned char *sha1,
 			opt->output_format = DIFF_FORMAT_NO_OUTPUT;
 		diff_tree_sha1(parents->sha1[i], sha1, "", opt);
 		diffcore_std(opt);
-		paths = intersect_paths(paths, i, num_parent);
+		paths = adjust_paths_by_parent(paths, i, num_parent, dense);
 
 		/* if showing diff, show it in requested order */
 		if (opt->output_format != DIFF_FORMAT_NO_OUTPUT &&
@@ -1457,7 +1517,7 @@ void diff_tree_combined(const unsigned char *sha1,
 		 * diff(sha1,parent_i) for all i to do the job, specifically
 		 * for parent0.
 		 */
-		paths = find_paths_generic(sha1, parents, &diffopts);
+		paths = find_paths_generic(sha1, parents, &diffopts, dense);
 	}
 	else {
 		int stat_opt;
