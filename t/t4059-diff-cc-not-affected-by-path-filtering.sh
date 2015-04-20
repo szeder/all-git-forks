@@ -36,6 +36,8 @@ test_expect_success setup '
 	done &&
 	test_seq 3 >b1delete &&
 	git add b1delete &&
+	test_seq 3 >b2delete &&
+	git add b2delete &&
 	git commit -m mergebase &&
 	git branch mergebase &&
 
@@ -76,6 +78,9 @@ test_expect_success setup '
 	    mv sed.new long/$fn &&
 	    git add long/$fn || return $?
 	done &&
+	git rm b2delete &&
+	test_seq 3 >b2add &&
+	git add b2add &&
 	git commit -m branch2 &&
 	git branch branch2 &&
 
@@ -132,6 +137,16 @@ test_expect_success "diff --cc does not contain b1delete" '
 
 test_expect_success "diff --cc does not contain b1add" '
 	git diff --cc merge branch1 branch2 mergebase -- b1add >actual &&
+	! test -s actual
+'
+
+test_expect_success "diff --cc does not contain b2delete" '
+	git diff --cc merge branch1 branch2 mergebase -- b2delete >actual &&
+	! test -s actual
+'
+
+test_expect_success "diff --cc does not contain b2add" '
+	git diff --cc merge branch1 branch2 mergebase -- b2add >actual &&
 	! test -s actual
 '
 
