@@ -130,6 +130,16 @@ test_expect_success setup '
 	git branch merge
 '
 
+test_expect_success "diff --cc with 2 parents does not contain b1delete" '
+	git diff --cc merge branch1 branch2 -- b1delete >actual &&
+	! test -s actual
+'
+
+test_expect_success "diff --cc  with 2 parents does not contain b2delete" '
+	git diff --cc merge branch1 branch2 -- b2delete >actual &&
+	! test -s actual
+'
+
 test_expect_success "diff --cc does not contain b1delete" '
 	git diff --cc merge branch1 branch2 mergebase -- b1delete >actual &&
 	! test -s actual
