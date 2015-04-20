@@ -14,6 +14,7 @@
 #include "pathspec.h"
 #include "varint.h"
 #include "ewah/ewok.h"
+#include "utf8.h"
 
 struct path_simplify {
 	int len;
@@ -741,7 +742,12 @@ static int add_excludes(const char *fname, const char *base, int baselen,
 	}
 
 	el->filebuf = buf;
+
+	if (skip_utf8_bom(&buf, size))
+		size -= buf - el->filebuf;
+
 	entry = buf;
+
 	for (i = 0; i < size; i++) {
 		if (buf[i] == '\n') {
 			if (entry != buf + i && entry[0] != '#') {
