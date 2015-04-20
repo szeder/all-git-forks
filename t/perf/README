@@ -123,7 +123,8 @@ tests, use
 		command2
 	'
 
-	test_perf [--prereq <prereq>] [--cleanup <cleanup>] [--] 'descriptive string' '
+	test_perf [--prereq <prereq>] [--setup <setup>] \
+		  [--cleanup <cleanup>] [--] 'descriptive string' '
 		command1 &&
 		command2
 	'
@@ -140,6 +141,16 @@ execute the exact same test multiple times, e.g:
 
 	test_perf --cleanup 'git reset' 'test performance of git add' '
 		  git add $somefile
+	'
+
+setup is another optional parameter to test_perf, which is executed
+before every run of the performance test.  It can specify actions
+needed to set up a performance test, in order to create an environment
+which is then reset to the original state by the test itself, e.g:
+
+	test_perf --setup 'cp -r 50000_sub_dirs clean_test_dir/50000_sub_dirs_cpy' '
+		'clean many untracked sub dirs' '
+		git clean -q -f -d clean_test_dir
 	'
 
 test_perf spawns a subshell, for lack of better options.  This means

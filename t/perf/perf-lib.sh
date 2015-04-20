@@ -166,6 +166,21 @@ test_perf () {
 		fi
 		for i in $(test_seq 1 $GIT_PERF_REPEAT_COUNT); do
 			say >&3 "running: $test_body"
+			if ! test -z "$setup_action"; then
+				say >&3 "setting up: $setup_action"
+				if test_run_ "$setup_action"
+				then
+					if test -z "$verbose"; then
+						printf " s%s" "$i"
+					else
+						echo "* setting up run $i/$GIT_PERF_REPEAT_COUNT:"
+					fi
+				else
+					test -z $verbose && echo
+					test_failure_ "$@"
+					break
+				fi
+			fi
 			if test_run_perf_ "$test_body"
 			then
 				if test -z "$verbose"; then

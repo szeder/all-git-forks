@@ -353,6 +353,7 @@ test_expect_parse () {
 	shift
 	test_expect_new_style=
 	test_prereq=
+	setup_action=
 	cleanup_action=
 	while case $# in 0) false ;; esac
 	do
@@ -361,6 +362,12 @@ test_expect_parse () {
 			test $# -gt 1 ||
 			error "bug in the test script: --prereq needs a parameter"
 			test_prereq=$2
+			shift
+			;;
+		--setup)
+			test $# -gt 1 ||
+			error "bug in the test script: --setup needs a parameter"
+			setup_action=$2
 			shift
 			;;
 		--cleanup)
