@@ -3041,6 +3041,8 @@ static int write_ref_sha1(struct ref_lock *lock,
 		errno = EINVAL;
 		return -1;
 	}
+	if (lock->lk->fd == -1)
+		reopen_lock_file(lock->lk);
 	if (write_in_full(lock->lk->fd, sha1_to_hex(sha1), 40) != 40 ||
 	    write_in_full(lock->lk->fd, &term, 1) != 1 ||
 	    close_ref(lock) < 0) {
@@ -3718,6 +3720,7 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 			   struct strbuf *err)
 {
 	int ret = 0, i;
+	unsigned int remaining_fds;
 	int n = transaction->nr;
 	struct ref_update **updates = transaction->updates;
 	struct string_list refs_to_delete = STRING_LIST_INIT_NODUP;
@@ -3732,6 +3735,20 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 		transaction->state = REF_TRANSACTION_CLOSED;
 		return 0;
 	}
+
+	/*
+	 * We need to open many files in a large transaction, so come up with
+	 * a reasonable maximum. We still keep some spares for stdin/out and
+	 * other open files. Experiments determined we need more fds when
+	 * running inside our test suite than directly in the shell. It's
+	 * unclear where these fds come from. 32 should be a reasonable large
+	 * number though.
+	 */
+	remaining_fds = get_max_fd_limit();
+	if (remaining_fds > 32)
+		remaining_fds -= 32;
+	else
+		remaining_fds = 0;
 
 	/* Copy, sort, and reject duplicate refs */
 	qsort(updates, n, sizeof(*updates), ref_update_compare);
@@ -3762,6 +3779,10 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 				    update->refname);
 			goto cleanup;
 		}
+		if (remaining_fds > 0)
+			remaining_fds--;
+		else
+			close_lock_file(update->lock->lk);
 	}
 
 	/* Perform updates first so live commits remain referenced */
