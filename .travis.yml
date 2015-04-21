@@ -6,6 +6,7 @@ git:
 sudo: false
 
 before_install:
+  - ls -lha
   - mkdir -p $HOME/build
   - "[ -d $HOME/build/git/.git ] || git clone git://github.com/sh19910711/git.git $HOME/build/git"
   - pushd $HOME/build/git
