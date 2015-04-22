@@ -1,0 +1,106 @@
+Packfile transfer protocols version 2
+=====================================
+
+This document describes an updated protocol to transfer packs over ssh://,
+git:// and file:// links. All three transports (ssh, git, file) use the same
+protocol to transfer data. This document describes the version 2 of the pack
+file protocol, which is incompatible with the previous pack protocol.
+
+The http:// transport is not yet thought about in this phase of the protocol
+design.
+
+As this protocol is introduced rather late in the game, just after Gits 10th
+anniversary, a client SHOULD NOT assume a server speaks protocol version 2
+unless the server advertised protocol in a prior exchange.
+
+General structure
+=================
+
+There are four phases involved in the protocol, which are described below:
+
+1) capability negotiation
+2) goal annoncement
+3) reference advertisement
+4) pack transfer
+
+
+1) Capability negotiation
+-------------------------
+
+In this phase both client and server send their desired capabilities to the
+other side using the following protocol:
+
+---
+list-of-capabilities = *capability flush-pkt
+capability           =  PKT-LINE(1*(LC_ALPHA / DIGIT / "-" / "_"))
+----
+
+The capabilities itself are described in protocol-capabilities.txt
+Sending the capabilities to the other side MAY happen concurrently or
+one after another. There is no order who sends first.
+
+After the exchange has ended each side computes the subset of capabilities between
+both sides and that subset of capabilities will be used for the next phases.
+Because there is no further selection of the capabilities, each side MUST only
+include the desired capabilities (i.e. you should omit "atomic" if you want to
+have a best effort push).
+
+Note for developers:
+The amount of data SHOULD be kept very small. Future extensions to the protocol
+SHOULD only add a capability flag to this phase, adding possible data
+transfers into later phases. This ensures the protocol is extendable over
+time without having to spent to send huge chunks of data in the first phase.
+If both sides agree on a certain feature being used, it is easy to introduce more
+phases at any convenieant point after the phase 1 is finished.
+
+If there are conflicting capabilities (such as side-band, side-band-64k),
+one will take precedence over the other. Defining such precedences is part of
+introducing new capabilities.
+
+Notes on the design rationale:
+I thought about caching the first exchange and only transmit those when
+they change[1], but then I searched for bandwidth delay ratio over time
+and found [2], which shows that the bandwidth is expected to increase a lot
+whereas the latency has a lower bound given by the speed of light. And the
+internet is running near that bound already. So we should rather optimize on the
+worst case number of round trip times instead of saving a few bytes in bandwidth.
+
+[1] similar to http://en.wikipedia.org/wiki/HTTP_ETag
+[2] 10 years old but still proving the point
+    https://www.ll.mit.edu/HPEC/agendas/proc04/invited/patterson_keynote.pdf
+
+2) Goal annoncement
+-------------------
+
+The goal of this phase is for the client to tell the server what
+outcome it expects from this communication, such as pushing or
+pulling data from the server.
+
+---
+list-of-goals    = *goal
+goal             = PKT-LINE(action-line)
+action-line      = action *(SP action-parameter)
+action           = "noop" / "ls-remote" / "fetch" / "push" / "fetch-shallow"
+action-parameter = parameter-key *("=" parameter-value)
+parameter-key    = 1*(LC_ALPHA / DIGIT / "-" / "_")
+---
+
+You MAY specify multiple goals such as fetch and push or fetch-shallow.
+You MAY also specify the same goal multiple times with different parameters.
+You MUST omit goals which are part of other goals, such as ls-remote being part
+of fetch.
+
+The action parameter is dependant on the action itself. For now only fetch and push
+take the parameter "mode", whose only allowed value is "version1".
+
+Note:
+The parameters should follow a key=value pattern, where the value can consist of
+arbitrary characters. Having such a pattern would allow us to easily add a new
+capability for narrow clones (e.g. "fetch-narrow=Documentation/*,.git*,.mailmap"
+to fetch only the Documentation and .gitignore/attributes)
+
+3) Ref advertisement
+--------------------
+3) and 4) are highly dependant on the mode for fetch and push. As currently
+only mode "version1" is supported, the these phases follow the ref advertisement
+in pack protocol version 1 without capabilities on the first line of the refs.
