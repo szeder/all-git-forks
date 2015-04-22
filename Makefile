@@ -138,6 +138,9 @@ all::
 # Define BLK_SHA1 environment variable to make use of the bundled
 # optimized C SHA1 routine.
 #
+# Define BLK_SHA384 environment variable to make use of the bundled
+# optimized C SHA384 routine truncated to 20 bytes.
+#
 # Define PPC_SHA1 environment variable when running make to make use of
 # a bundled SHA1 routine optimized for PowerPC.
 #
@@ -1106,7 +1109,7 @@ ifndef NO_OPENSSL
 	endif
 else
 	BASIC_CFLAGS += -DNO_OPENSSL
-	BLK_SHA1 = 1
+	BLK_SHA384 = 1
 	OPENSSL_LIBSSL =
 endif
 ifdef NO_OPENSSL
@@ -1329,6 +1332,10 @@ ifdef BLK_SHA1
 	SHA1_HEADER = "block-sha1/sha1.h"
 	LIB_OBJS += block-sha1/sha1.o
 else
+ifdef BLK_SHA384
+	SHA1_HEADER = "block-sha384/sha1.h"
+	LIB_OBJS += block-sha384/sha1.o
+else
 ifdef PPC_SHA1
 	SHA1_HEADER = "ppc/sha1.h"
 	LIB_OBJS += ppc/sha1.o ppc/sha1ppc.o
@@ -1339,6 +1346,7 @@ ifdef APPLE_COMMON_CRYPTO
 else
 	SHA1_HEADER = <openssl/sha.h>
 	EXTLIBS += $(LIB_4_CRYPTO)
+endif
 endif
 endif
 endif
