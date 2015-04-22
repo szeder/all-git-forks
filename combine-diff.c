@@ -53,46 +53,41 @@ static void insert_path(struct combine_diff_path **pos, const char *path,
 }
 
 static int path_not_interesting(struct combine_diff_path *p, int n,
-				struct diff_filespec *new_parent)
+				struct diff_filespec *current_parent)
 {
 	int parent_idx;
 	struct object_id first_parent;
-	int found_first = 0;
+	int found_first_parent = 0;
 	int found_same_parent = 0;
 
 	for (parent_idx = 0; parent_idx < n; parent_idx++) {
-		if (p->parent[parent_idx].status != ' ') {
-			if (found_first) {
-				if (hashcmp(p->parent[parent_idx].oid.hash, first_parent.hash)) {
-					/* found second different unique parent - non-trivial merge */
-					return 0;
-				}
-			} else {
-				found_first = 1;
-				hashcpy(first_parent.hash,
-					p->parent[parent_idx].oid.hash);
-			}
-		} else {
+		if (p->parent[parent_idx].status == ' ') {
 			/* the new commit repeats some of parents */
 			found_same_parent = 1;
+			continue;
 		}
-	}
 
-	if (new_parent) {
-		if (hashcmp(p->oid.hash, new_parent->sha1)) {
-			if (!found_same_parent || hashcmp(first_parent.hash, new_parent->sha1)) {
+		if (found_first_parent) {
+			if (hashcmp(p->parent[parent_idx].oid.hash, first_parent.hash)) {
+				/* found second different unique parent - non-trivial merge */
 				return 0;
-			} else {
-				return 1;
 			}
 		} else {
-			found_same_parent = 1;
+			found_first_parent = 1;
+			hashcpy(first_parent.hash, p->parent[parent_idx].oid.hash);
 		}
-	} else {
-		found_same_parent = 1;
 	}
 
-	return found_same_parent;
+	/* current_parent == NULL means there is no change compared to it */
+	if (current_parent && hashcmp(p->oid.hash, current_parent->sha1)) {
+		if (!found_same_parent || hashcmp(first_parent.hash, current_parent->sha1)) {
+			return 0;
+		} else {
+			return 1;
+		}
+	} else {
+		return 1;
+	}
 }
 
 static struct combine_diff_path *adjust_paths_by_parent(
