@@ -2770,8 +2770,10 @@ static int rename_ref_available(const char *oldname, const char *newname)
 	return ret;
 }
 
-static int write_ref_sha1(struct ref_lock *lock, const unsigned char *sha1,
-			  const char *logmsg);
+static int write_ref_to_lockfile(struct ref_lock *lock,
+				 const unsigned char *sha1);
+static int commit_ref_update(struct ref_lock *lock,
+			     const unsigned char *sha1, const char *logmsg);
 
 int rename_ref(const char *oldrefname, const char *newrefname, const char *logmsg)
 {
@@ -2829,7 +2831,8 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 		goto rollback;
 	}
 	hashcpy(lock->old_sha1, orig_sha1);
-	if (write_ref_sha1(lock, orig_sha1, logmsg)) {
+	if (write_ref_to_lockfile(lock, orig_sha1) ||
+	    commit_ref_update(lock, orig_sha1, logmsg)) {
 		error("unable to write current sha1 into %s", newrefname);
 		goto rollback;
 	}
@@ -2845,7 +2848,8 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 
 	flag = log_all_ref_updates;
 	log_all_ref_updates = 0;
-	if (write_ref_sha1(lock, orig_sha1, NULL))
+	if (write_ref_to_lockfile(lock, orig_sha1) ||
+	    commit_ref_update(lock, orig_sha1, NULL))
 		error("unable to write current sha1 into %s", oldrefname);
 	log_all_ref_updates = flag;
 
@@ -3090,21 +3094,6 @@ static int commit_ref_update(struct ref_lock *lock,
 		return -1;
 	}
 	unlock_ref(lock);
-	return 0;
-}
-
-/*
- * Write sha1 as the new value of the reference specified by the
- * (open) lock. On error, roll back the lockfile and set errno
- * appropriately.
- */
-static int write_ref_sha1(struct ref_lock *lock,
-	const unsigned char *sha1, const char *logmsg)
-{
-	if (write_ref_to_lockfile(lock, sha1) ||
-	    commit_ref_update(lock, sha1, logmsg))
-		return -1;
-
 	return 0;
 }
 
@@ -3801,15 +3790,18 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 				 */
 				unlock_ref(update->lock);
 				update->lock = NULL;
-			} else if (write_ref_sha1(update->lock, update->new_sha1,
-						  update->msg)) {
-				update->lock = NULL; /* freed by write_ref_sha1 */
+			} else if (write_ref_to_lockfile(update->lock,
+							 update->new_sha1) ||
+				   commit_ref_update(update->lock,
+						     update->new_sha1,
+						     update->msg)) {
+				update->lock = NULL; /* freed by the above calls */
 				strbuf_addf(err, "Cannot update the ref '%s'.",
 					    update->refname);
 				ret = TRANSACTION_GENERIC_ERROR;
 				goto cleanup;
 			} else {
-				/* freed by write_ref_sha1(): */
+				/* freed by the above calls: */
 				update->lock = NULL;
 			}
 		}
