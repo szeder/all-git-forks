@@ -364,22 +364,26 @@ const char *read_gitfile_gently(const char *path, int *return_error_code)
 		error_code = 3;
 		goto cleanup_return;
 	}
+	if (st.st_size > PATH_MAX * 4) {
+		error_code = 4;
+		goto cleanup_return;
+	}
 	buf = xmalloc(st.st_size + 1);
 	len = read_in_full(fd, buf, st.st_size);
 	close(fd);
 	if (len != st.st_size) {
-		error_code = 4;
+		error_code = 5;
 		goto cleanup_return;
 	}
 	buf[len] = '\0';
 	if (!starts_with(buf, "gitdir: ")) {
-		error_code = 5;
+		error_code = 6;
 		goto cleanup_return;
 	}
 	while (buf[len - 1] == '\n' || buf[len - 1] == '\r')
 		len--;
 	if (len < 9) {
-		error_code = 6;
+		error_code = 7;
 		goto cleanup_return;
 	}
 	buf[len] = '\0';
@@ -397,7 +401,7 @@ const char *read_gitfile_gently(const char *path, int *return_error_code)
 	}
 
 	if (!is_git_directory(dir)) {
-		error_code = 7;
+		error_code = 8;
 		goto cleanup_return;
 	}
 	path = real_path(dir);
@@ -419,12 +423,14 @@ cleanup_return:
 		case 3:
 			die_errno("Error opening '%s'", path);
 		case 4:
-			die("Error reading %s", path);
+			die("Too large to be a .git file: '%s'", path);
 		case 5:
-			die("Invalid gitfile format: %s", path);
+			die("Error reading %s", path);
 		case 6:
-			die("No path in gitfile: %s", path);
+			die("Invalid gitfile format: %s", path);
 		case 7:
+			die("No path in gitfile: %s", path);
+		case 8:
 			die("Not a git repository: %s", dir);
 		default:
 			assert(0);
