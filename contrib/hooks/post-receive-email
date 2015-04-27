@@ -240,7 +240,7 @@ generate_email_header()
 	# Generate header
 	cat <<-EOF
 	To: $recipients
-	Subject: ${emailprefix}$projectdesc $refname_type $short_refname ${change_type}d. $describe
+	Subject: ${emailprefix}$projectdesc: $(git log --pretty=format:"%cn" -1 $describe) ${change_type}d $short_refname $(git log --pretty=format:"%s" -1 $describe) - $describe
 	MIME-Version: 1.0
 	Content-Type: text/plain; charset=utf-8
 	Content-Transfer-Encoding: 8bit
@@ -250,23 +250,13 @@ generate_email_header()
 	X-Git-Newrev: $newrev
 	Auto-Submitted: auto-generated
 
-	This is an automated email from the git hooks/post-receive script. It was
-	generated because a ref change was pushed to the repository containing
-	the project "$projectdesc".
-
 	The $refname_type, $short_refname has been ${change_type}d
 	EOF
 }
 
 generate_email_footer()
 {
-	SPACE=" "
 	cat <<-EOF
-
-
-	hooks/post-receive
-	--${SPACE}
-	$projectdesc
 	EOF
 }
 
@@ -730,7 +720,7 @@ projectdesc=$(sed -ne '1p' "$GIT_DIR/description" 2>/dev/null)
 # a more manageable length if it is
 if expr "$projectdesc" : "Unnamed repository.*$" >/dev/null
 then
-	projectdesc="UNNAMED PROJECT"
+	projectdesc=`basename $(pwd)`
 fi
 
 recipients=$(git config hooks.mailinglist)
