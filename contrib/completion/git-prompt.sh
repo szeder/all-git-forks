@@ -243,6 +243,7 @@ __git_ps1_colorize_gitstring ()
 		local c_red='\[\e[31m\]'
 		local c_green='\[\e[32m\]'
 		local c_lblue='\[\e[1;34m\]'
+		local c_cyan='\[\e[36m\]'
 		local c_clear='\[\e[0m\]'
 	fi
 	local bad_color=$c_red
@@ -268,7 +269,7 @@ __git_ps1_colorize_gitstring ()
 		s="$flags_color$s"
 	fi
 	if [ -n "$u" ]; then
-		u="$bad_color$u"
+		u="$c_cyan$u"
 	fi
 	r="$c_clear$r"
 }
