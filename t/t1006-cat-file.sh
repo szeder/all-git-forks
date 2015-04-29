@@ -47,6 +47,18 @@ $content"
 	test_cmp expect actual
     '
 
+    test_expect_success "Type of $type is correct using --literally" '
+	echo $type >expect &&
+	git cat-file -t --literally $sha1 >actual &&
+	test_cmp expect actual
+    '
+
+    test_expect_success "Size of $type is correct using --literally" '
+	echo $size >expect &&
+	git cat-file -s --literally $sha1 >actual &&
+	test_cmp expect actual
+    '
+
     test -z "$content" ||
     test_expect_success "Content of $type is correct" '
 	maybe_remove_timestamp "$content" $no_ts >expect &&
@@ -294,6 +306,23 @@ test_expect_success '%(deltabase) reports packed delta bases' '
 		grep "$(git rev-parse HEAD:foo)" actual ||
 		grep "$(git rev-parse HEAD:foo-plus)" actual
 	}
+'
+
+bogus_type="bogus"
+bogus_content="bogus"
+bogus_size=$(strlen $bogus_content)
+bogus_sha1=$(printf $bogus_content | git hash-object -t $bogus_type --literally -w --stdin)
+
+test_expect_success "Type of broken object is correct" '
+	echo $bogus_type >expect &&
+	git cat-file -t --literally $bogus_sha1 >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success "Size of broken object is correct" '
+    echo $bogus_size >expect &&
+	git cat-file -s --literally $bogus_sha1 >actual &&
+	test_cmp expect actual
 '
 
 test_done
