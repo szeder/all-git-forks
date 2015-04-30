@@ -1,0 +1,6 @@
+bin/
+metadata/
+*.so
+*.sh
+*.db
+!/gen.sh
