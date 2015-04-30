@@ -1322,6 +1322,22 @@ Truncates and resets the position of the C<FILEHANDLE>.
 
 sub temp_reset {
 	my ($self, $temp_fd) = _maybe_self(@_);
+	my $i = 0;
+	for(; $i < 9; $i++) {
+		try {
+			_temp_reset($temp_fd);
+			return;
+		} catch Error::Simple with {
+			carp "temp_reset failed on ", $temp_fd, ". Will try again.";
+			sleep(10);
+		}
+	}
+	_temp_reset($temp_fd);
+}
+
+
+sub _temp_reset {
+	my ($self, $temp_fd) = _maybe_self(@_);
 
 	truncate $temp_fd, 0
 		or throw Error::Simple("couldn't truncate file");
