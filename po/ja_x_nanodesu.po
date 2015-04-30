@@ -20,30 +20,33 @@ msgstr ""
 #: advice.c:55
 #, c-format
 msgid "hint: %.*s\n"
-msgstr ""
+msgstr "なのです: %.*s\n"
 
 #: advice.c:88
 msgid ""
 "Fix them up in the work tree, and then use 'git add/rm <file>'\n"
 "as appropriate to mark resolution and make a commit."
 msgstr ""
+"コンフリクトを直して、'git add/rm <file>'を実行するのです!\n"
+"衝突とか、気をつけますね……。"
 
 #: archive.c:11
 msgid "git archive [<options>] <tree-ish> [<path>...]"
-msgstr ""
+msgstr "git archive [<オプション>] <ツリーっぽい> [<パス>...]"
 
 #: archive.c:12
 msgid "git archive --list"
-msgstr ""
+msgstr "git archive --list"
 
 #: archive.c:13
 msgid ""
 "git archive --remote <repo> [--exec <cmd>] [<options>] <tree-ish> [<path>...]"
 msgstr ""
+"git archive --remote <リポジトリ> [--exec <コマンド>] [<オプション>] <ツリーっぽい> [<パス>...]"
 
 #: archive.c:14
 msgid "git archive --remote <repo> [--exec <cmd>] --list"
-msgstr ""
+msgstr "git archive --remote <リポジトリ> [--exec <コマンド>] --list"
 
 #: archive.c:342 builtin/add.c:137 builtin/add.c:427 builtin/rm.c:328
 #, c-format
