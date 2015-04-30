@@ -62,8 +62,8 @@
 # if GIT_GNUC_PREREQ(3, 1)
  /* &arr[0] degrades to a pointer: a different type from an array */
 # define BARF_UNLESS_AN_ARRAY(arr)						\
-	BUILD_ASSERT_OR_ZERO(!__builtin_types_compatible_p(typeof(arr), \
-							typeof(&(arr)[0])))
+	BUILD_ASSERT_OR_ZERO(!__builtin_types_compatible_p(__typeof__(arr), \
+							   __typeof__(&(arr)[0])))
 # else
 #  define BARF_UNLESS_AN_ARRAY(arr) 0
 # endif
