@@ -227,6 +227,9 @@ do
 	--valgrind-only=*)
 		valgrind_only=$(expr "z$1" : 'z[^=]*=\(.*\)')
 		shift ;;
+	--kcov)
+		kcov=true
+		shift ;;
 	--tee)
 		shift ;; # was handled already
 	--root=*)
@@ -737,27 +740,27 @@ test_done () {
 	esac
 }
 
+make_symlink () {
+	test -h "$2" &&
+	test "$1" = "$(readlink "$2")" || {
+		# be super paranoid
+		if mkdir "$2".lock
+		then
+			rm -f "$2" &&
+			ln -s "$1" "$2" &&
+			rm -r "$2".lock
+		else
+			while test -d "$2".lock
+			do
+				say "Waiting for lock on $2."
+				sleep 1
+			done
+		fi
+	}
+}
+
 if test -n "$valgrind"
 then
-	make_symlink () {
-		test -h "$2" &&
-		test "$1" = "$(readlink "$2")" || {
-			# be super paranoid
-			if mkdir "$2".lock
-			then
-				rm -f "$2" &&
-				ln -s "$1" "$2" &&
-				rm -r "$2".lock
-			else
-				while test -d "$2".lock
-				do
-					say "Waiting for lock on $2."
-					sleep 1
-				done
-			fi
-		}
-	}
-
 	make_valgrind_symlink () {
 		# handle only executables, unless they are shell libraries that
 		# need to be in the exec-path.
@@ -810,6 +813,54 @@ then
 	GIT_VALGRIND_ENABLED=t
 	test -n "$valgrind_only" && GIT_VALGRIND_ENABLED=
 	export GIT_VALGRIND_ENABLED
+elif test -n "$kcov"
+then
+	make_kcov_symlink() {
+		# handle only executables, unless they are shell libraries that
+		# need to be in the exec-path.
+		test -x "$1" ||
+		test "# " = "$(head -c 2 <"$1")" ||
+		return;
+
+		base=$(basename "$1")
+		symlink_target=$GIT_BUILD_DIR/$base
+		if test -x "$symlink_target" &&
+		   test ! -d "$symlink_target" &&
+		   test "#!/bin/sh" = "$(head -c 9 < "$symlink_target")"
+		then
+			symlink_target=../kcov.sh
+		fi
+		case "$base" in
+		*.sh|*.perl)
+			symlink_target=../unprocessed-script
+		esac
+		# create the link, or replace it if it is out of date
+		make_symlink "$symlink_target" "$GIT_KCOV/bin/$base" || exit
+	}
+
+	# override all git executables in TEST_DIRECTORY/..
+	GIT_KCOV=$TEST_DIRECTORY/kcov
+	mkdir -p "$GIT_KCOV"/bin
+	for file in $GIT_BUILD_DIR/git* $GIT_BUILD_DIR/test-*
+	do
+		make_kcov_symlink $file
+	done
+	# special-case the mergetools loadables
+	make_symlink "$GIT_BUILD_DIR"/mergetools "$GIT_KCOV/bin/mergetools"
+	OLDIFS=$IFS
+	IFS=:
+	for path in $PATH
+	do
+		ls "$path"/git-* 2> /dev/null |
+		while read file
+		do
+			make_kcov_symlink "$file"
+		done
+	done
+	IFS=$OLDIFS
+	PATH=$GIT_KCOV/bin:$PATH
+	GIT_EXEC_PATH=$GIT_KCOV/bin
+	export GIT_KCOV
 elif test -n "$GIT_TEST_INSTALLED"
 then
 	GIT_EXEC_PATH=$($GIT_TEST_INSTALLED/git --exec-path)  ||
