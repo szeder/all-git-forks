@@ -907,8 +907,20 @@ static int is_refname_available(const char *refname,
 		pos = search_ref_dir(dir, refname, slash - refname);
 		if (pos >= 0) {
 			struct ref_entry *entry = dir->entries[pos];
-			if (entry_matches(entry, skip))
+			if (entry_matches(entry, skip)) {
+				/*
+				 * The fact that entry is a ref whose
+				 * name is a prefix of refname means
+				 * that there cannot be any other ref
+				 * whose name starts with that prefix
+				 * (because it would have been a D/F
+				 * conflict with entry). So, since we
+				 * don't care about entry (because it
+				 * is in skip), we can stop looking
+				 * now and return true.
+				 */
 				return 1;
+			}
 			report_refname_conflict(entry, refname);
 			return 0;
 		}
