@@ -2316,7 +2316,8 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 					    const unsigned char *old_sha1,
 					    const struct string_list *extras,
 					    const struct string_list *skip,
-					    unsigned int flags, int *type_p)
+					    unsigned int flags, int *type_p,
+					    struct strbuf *err)
 {
 	char *ref_file;
 	const char *orig_refname = refname;
@@ -2326,7 +2327,8 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 	int mustexist = (old_sha1 && !is_null_sha1(old_sha1));
 	int resolve_flags = 0;
 	int attempts_remaining = 3;
-	struct strbuf err = STRBUF_INIT;
+
+	assert(err);
 
 	lock = xcalloc(1, sizeof(struct ref_lock));
 	lock->lock_fd = -1;
@@ -2350,7 +2352,8 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 		ref_file = git_path("%s", orig_refname);
 		if (remove_empty_directories(ref_file)) {
 			last_errno = errno;
-			error("there are still refs under '%s'", orig_refname);
+			strbuf_addf(err, "there are still refs under '%s'",
+				    orig_refname);
 			goto error_return;
 		}
 		refname = resolve_ref_unsafe(orig_refname, resolve_flags,
@@ -2360,8 +2363,8 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 	    *type_p = type;
 	if (!refname) {
 		last_errno = errno;
-		error("unable to resolve reference %s: %s",
-			orig_refname, strerror(errno));
+		strbuf_addf(err, "unable to resolve reference %s: %s",
+			    orig_refname, strerror(errno));
 		goto error_return;
 	}
 	/*
@@ -2372,8 +2375,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 	 */
 	if (is_null_sha1(lock->old_sha1) &&
 	    verify_refname_available(refname, extras, skip,
-				     get_packed_refs(&ref_cache), &err)) {
-		error("%s", err.buf);
+				     get_packed_refs(&ref_cache), err)) {
 		last_errno = ENOTDIR;
 		goto error_return;
 	}
@@ -2399,7 +2401,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 		/* fall through */
 	default:
 		last_errno = errno;
-		error("unable to create directory for %s", ref_file);
+		strbuf_addf(err, "unable to create directory for %s", ref_file);
 		goto error_return;
 	}
 
@@ -2414,8 +2416,7 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 			 */
 			goto retry;
 		else {
-			unable_to_lock_message(ref_file, errno, &err);
-			error("%s", err.buf);
+			unable_to_lock_message(ref_file, errno, err);
 			goto error_return;
 		}
 	}
@@ -2423,7 +2424,6 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 
  error_return:
 	unlock_ref(lock);
-	strbuf_release(&err);
 	errno = last_errno;
 	return NULL;
 }
@@ -2838,6 +2838,7 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 	struct stat loginfo;
 	int log = !lstat(git_path("logs/%s", oldrefname), &loginfo);
 	const char *symref = NULL;
+	struct strbuf err = STRBUF_INIT;
 
 	if (log && S_ISLNK(loginfo.st_mode))
 		return error("reflog for %s is a symlink", oldrefname);
@@ -2880,8 +2881,10 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 
 	logmoved = log;
 
-	lock = lock_ref_sha1_basic(newrefname, NULL, NULL, NULL, 0, NULL);
+	lock = lock_ref_sha1_basic(newrefname, NULL, NULL, NULL, 0, NULL, &err);
 	if (!lock) {
+		error("%s", err.buf);
+		strbuf_release(&err);
 		error("unable to lock %s for update", newrefname);
 		goto rollback;
 	}
@@ -2896,8 +2899,10 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 	return 0;
 
  rollback:
-	lock = lock_ref_sha1_basic(oldrefname, NULL, NULL, NULL, 0, NULL);
+	lock = lock_ref_sha1_basic(oldrefname, NULL, NULL, NULL, 0, NULL, &err);
 	if (!lock) {
+		error("%s", err.buf);
+		strbuf_release(&err);
 		error("unable to lock %s for rollback", oldrefname);
 		goto rollbacklog;
 	}
@@ -3828,11 +3833,14 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 				 update->old_sha1 : NULL),
 				&affected_refnames, NULL,
 				update->flags,
-				&update->type);
+				&update->type,
+				err);
 		if (!update->lock) {
 			ret = (errno == ENOTDIR)
 				? TRANSACTION_NAME_CONFLICT
 				: TRANSACTION_GENERIC_ERROR;
+			error("%s", err->buf);
+			strbuf_reset(err);
 			strbuf_addf(err, "Cannot lock the ref '%s'.",
 				    update->refname);
 			goto cleanup;
@@ -4117,6 +4125,7 @@ int reflog_expire(const char *refname, const unsigned char *sha1,
 	char *log_file;
 	int status = 0;
 	int type;
+	struct strbuf err = STRBUF_INIT;
 
 	memset(&cb, 0, sizeof(cb));
 	cb.flags = flags;
@@ -4128,9 +4137,12 @@ int reflog_expire(const char *refname, const unsigned char *sha1,
 	 * reference itself, plus we might need to update the
 	 * reference if --updateref was specified:
 	 */
-	lock = lock_ref_sha1_basic(refname, sha1, NULL, NULL, 0, &type);
-	if (!lock)
+	lock = lock_ref_sha1_basic(refname, sha1, NULL, NULL, 0, &type, &err);
+	if (!lock) {
+		error("%s", err.buf);
+		strbuf_release(&err);
 		return error("cannot lock ref '%s'", refname);
+	}
 	if (!reflog_exists(refname)) {
 		unlock_ref(lock);
 		return 0;
