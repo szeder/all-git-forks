@@ -1,0 +1,16 @@
+var data = {files:[
+{"link":"git-rebase/index.html","title":"git-rebase","summary_name":"git-rebase","covered_class":"linePartCov","covered":"54.9","covered_lines":"322","uncovered_lines":"264","total_lines" : "586"},
+{"link":"git-am/index.html","title":"git-am","summary_name":"git-am","covered_class":"linePartCov","covered":"46.9","covered_lines":"353","uncovered_lines":"399","total_lines" : "752"},
+{"link":"git-stash/index.html","title":"git-stash","summary_name":"git-stash","covered_class":"linePartCov","covered":"46.4","covered_lines":"251","uncovered_lines":"290","total_lines" : "541"},
+{"link":"git-merge-one-file/index.html","title":"git-merge-one-file","summary_name":"git-merge-one-file","covered_class":"lineNoCov","covered":"23.3","covered_lines":"52","uncovered_lines":"171","total_lines" : "223"},
+{"link":"git-merge-octopus/index.html","title":"git-merge-octopus","summary_name":"git-merge-octopus","covered_class":"linePartCov","covered":"73.5","covered_lines":"36","uncovered_lines":"13","total_lines" : "49"},
+{"link":"git-pull/index.html","title":"git-pull","summary_name":"git-pull","covered_class":"linePartCov","covered":"45.2","covered_lines":"182","uncovered_lines":"221","total_lines" : "403"},
+{"link":"git-bisect/index.html","title":"git-bisect","summary_name":"git-bisect","covered_class":"linePartCov","covered":"28.9","covered_lines":"146","uncovered_lines":"360","total_lines" : "506"},
+{"link":"git-submodule/index.html","title":"git-submodule","summary_name":"git-submodule","covered_class":"linePartCov","covered":"52.1","covered_lines":"489","uncovered_lines":"450","total_lines" : "939"},
+{"link":"git-filter-branch/index.html","title":"git-filter-branch","summary_name":"git-filter-branch","covered_class":"linePartCov","covered":"40.8","covered_lines":"168","uncovered_lines":"244","total_lines" : "412"},
+{"link":"git-merge-resolve/index.html","title":"git-merge-resolve","summary_name":"git-merge-resolve","covered_class":"lineCov","covered":"90.0","covered_lines":"18","uncovered_lines":"2","total_lines" : "20"},
+{"link":"git-mergetool/index.html","title":"git-mergetool","summary_name":"git-mergetool","covered_class":"linePartCov","covered":"37.8","covered_lines":"210","uncovered_lines":"345","total_lines" : "555"},
+], merged_files:[{"link":"kcov-merged/index.html","title":"[merged]","summary_name":"[merged]","covered_class":"linePartCov","covered":"57.3","covered_lines":"2021","uncovered_lines":"1503","total_lines" : "3524"},
+]};
+var percent_low = 25;var percent_high = 75;
+var header = { "command" : "git-pull", "date" : "2015-05-01 11:33:26", "instrumented" : 4986, "covered" : 2227,};

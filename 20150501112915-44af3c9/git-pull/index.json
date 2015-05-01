@@ -1,0 +1,9 @@
+var data = {files:[
+{"link":"gettext.sh.46a6788.html","title":"gettext.sh","summary_name":"/usr/bin/gettext.sh","covered_class":"lineNoCov","covered":"15.6","covered_lines":"5","uncovered_lines":"27","total_lines" : "32"},
+{"link":"git-sh-i18n.547427fa.html","title":"git-sh-i18n","summary_name":"/home/pyokagan/pyk/git/git-sh-i18n","covered_class":"linePartCov","covered":"40.0","covered_lines":"16","uncovered_lines":"24","total_lines" : "40"},
+{"link":"git-sh-setup.61b2597c.html","title":"git-sh-setup","summary_name":"/home/pyokagan/pyk/git/git-sh-setup","covered_class":"lineNoCov","covered":"24.1","covered_lines":"38","uncovered_lines":"120","total_lines" : "158"},
+{"link":"git-pull.360f32c2.html","title":"git-pull","summary_name":"/home/pyokagan/pyk/git/git-pull","covered_class":"linePartCov","covered":"71.1","covered_lines":"123","uncovered_lines":"50","total_lines" : "173"},
+]};
+var percent_low = 25;var percent_high = 75;
+var header = { "command" : "git-pull", "date" : "2015-05-01 11:33:26", "instrumented" : 403, "covered" : 182,};
+var merged_data = [];
