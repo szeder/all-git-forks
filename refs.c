@@ -893,9 +893,8 @@ static int is_refname_available(const char *refname,
 				struct ref_dir *dir)
 {
 	const char *slash;
-	size_t len;
 	int pos;
-	char *dirname;
+	struct strbuf dirname = STRBUF_INIT;
 
 	for (slash = strchr(refname, '/'); slash; slash = strchr(slash + 1, '/')) {
 		/*
@@ -943,11 +942,10 @@ static int is_refname_available(const char *refname,
 	 * We are at the leaf of our refname; we want to
 	 * make sure there are no directories which match it.
 	 */
-	len = strlen(refname);
-	dirname = xmallocz(len + 1);
-	sprintf(dirname, "%s/", refname);
-	pos = search_ref_dir(dir, dirname, len + 1);
-	free(dirname);
+	strbuf_addstr(&dirname, refname);
+	strbuf_addch(&dirname, '/');
+	pos = search_ref_dir(dir, dirname.buf, dirname.len);
+	strbuf_release(&dirname);
 
 	if (pos >= 0) {
 		/*
