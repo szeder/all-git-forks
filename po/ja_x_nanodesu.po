@@ -51,19 +51,19 @@ msgstr "git archive --remote <リポジトリ> [--exec <コマンド>] --list"
 #: archive.c:342 builtin/add.c:137 builtin/add.c:427 builtin/rm.c:328
 #, c-format
 msgid "pathspec '%s' did not match any files"
-msgstr ""
+msgstr "'%s'というパスが見つからないのです……"
 
 #: archive.c:427
 msgid "fmt"
-msgstr ""
+msgstr "フォーマット"
 
 #: archive.c:427
 msgid "archive format"
-msgstr ""
+msgstr "アーカイブフォーマット"
 
 #: archive.c:428 builtin/log.c:1204
 msgid "prefix"
-msgstr ""
+msgstr "プレフィックス"
 
 #: archive.c:429
 msgid "prepend prefix to each pathname in the archive"
