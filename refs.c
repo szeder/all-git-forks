@@ -3842,13 +3842,14 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 				&update->type,
 				err);
 		if (!update->lock) {
+			const char *reason;
+
 			ret = (errno == ENOTDIR)
 				? TRANSACTION_NAME_CONFLICT
 				: TRANSACTION_GENERIC_ERROR;
-			error("%s", err->buf);
-			strbuf_reset(err);
-			strbuf_addf(err, "Cannot lock the ref '%s'.",
-				    update->refname);
+			reason = strbuf_detach(err, NULL);
+			strbuf_addf(err, "Cannot lock the ref '%s': %s",
+				    update->refname, reason);
 			goto cleanup;
 		}
 		if ((update->flags & REF_HAVE_NEW) &&
