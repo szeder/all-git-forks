@@ -863,12 +863,6 @@ static int nonmatching_ref_fn(struct ref_entry *entry, void *vdata)
 	return 1;
 }
 
-static void report_refname_conflict(struct ref_entry *entry,
-				    const char *refname)
-{
-	error("'%s' exists; cannot create '%s'", entry->name, refname);
-}
-
 /*
  * Return true iff a reference named refname could be created without
  * conflicting with the name of an existing reference in dir.  If
@@ -916,7 +910,7 @@ static int is_refname_available(const char *refname,
 				 */
 				return 1;
 			}
-			report_refname_conflict(entry, refname);
+			error("'%s' exists; cannot create '%s'", entry->name, refname);
 			return 0;
 		}
 
@@ -957,7 +951,7 @@ static int is_refname_available(const char *refname,
 		if (!do_for_each_entry_in_dir(dir, 0, nonmatching_ref_fn, &data))
 			return 1;
 
-		report_refname_conflict(data.found, refname);
+		error("'%s' exists; cannot create '%s'", data.found->name, refname);
 		return 0;
 	}
 
