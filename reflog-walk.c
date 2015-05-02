@@ -159,7 +159,7 @@ int add_reflog_for_walk(struct reflog_walk_info *info,
 		recno = strtoul(at + 2, &ep, 10);
 		if (*ep != '}') {
 			recno = -1;
-			timestamp = approxidate(at + 2);
+			timestamp = (unsigned long __force) approxidate(at + 2);
 			selector = SELECTOR_DATE;
 		}
 		else
@@ -283,7 +283,7 @@ void get_reflog_selector(struct strbuf *sb,
 	if (commit_reflog->selector == SELECTOR_DATE ||
 	    (commit_reflog->selector == SELECTOR_NONE && force_date)) {
 		info = &commit_reflog->reflogs->items[commit_reflog->recno+1];
-		strbuf_addstr(sb, show_date(info->timestamp, info->tz, dmode));
+		strbuf_addstr(sb, show_date((git_time __force) info->timestamp, info->tz, dmode));
 	} else {
 		strbuf_addf(sb, "%d", commit_reflog->reflogs->nr
 			    - 2 - commit_reflog->recno);

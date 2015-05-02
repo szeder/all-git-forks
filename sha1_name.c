@@ -562,7 +562,7 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1,
 		else {
 			int errors = 0;
 			char *tmp = xstrndup(str + at + 2, reflog_len);
-			at_time = approxidate_careful(tmp, &errors);
+			at_time = (unsigned long __force) approxidate_careful(tmp, &errors);
 			free(tmp);
 			if (errors) {
 				free(real_ref);

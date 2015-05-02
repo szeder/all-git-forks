@@ -884,7 +884,7 @@ static void cherry_pick_list(struct commit_list *list, struct rev_info *revs)
 /* How many extra uninteresting commits we want to see.. */
 #define SLOP 5
 
-static int still_interesting(struct commit_list *src, unsigned long date, int slop,
+static int still_interesting(struct commit_list *src, git_time date, int slop,
 			     struct commit **interesting_cache)
 {
 	/*
@@ -1018,7 +1018,7 @@ static void limit_left_right(struct commit_list *list, struct rev_info *revs)
 static int limit_list(struct rev_info *revs)
 {
 	int slop = SLOP;
-	unsigned long date = ~0ul;
+	git_time date = GIT_TIME_MAX;
 	struct commit_list *list = revs->commits;
 	struct commit_list *newlist = NULL;
 	struct commit_list **p = &newlist;
@@ -1039,7 +1039,8 @@ static int limit_list(struct rev_info *revs)
 		if (commit == interesting_cache)
 			interesting_cache = NULL;
 
-		if (revs->max_age != -1 && (commit->date < revs->max_age))
+		if (revs->max_age != GIT_TIME_INVALID &&
+		    commit->date < revs->max_age)
 			obj->flags |= UNINTERESTING;
 		if (add_parents_to_list(revs, commit, &list, NULL) < 0)
 			return -1;
@@ -1055,7 +1056,8 @@ static int limit_list(struct rev_info *revs)
 				*p = list;
 			break;
 		}
-		if (revs->min_age != -1 && (commit->date > revs->min_age))
+		if (revs->min_age != GIT_TIME_INVALID &&
+		    commit->date > revs->min_age)
 			continue;
 		date = commit->date;
 		p = &commit_list_insert(commit, p)->next;
@@ -1339,8 +1341,8 @@ void init_revisions(struct rev_info *revs, const char *prefix)
 	revs->sort_order = REV_SORT_IN_GRAPH_ORDER;
 	revs->dense = 1;
 	revs->prefix = prefix;
-	revs->max_age = -1;
-	revs->min_age = -1;
+	revs->max_age = GIT_TIME_INVALID;
+	revs->min_age = GIT_TIME_INVALID;
 	revs->skip_count = -1;
 	revs->max_count = -1;
 	revs->max_parents = -1;
@@ -1668,7 +1670,7 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->max_count = atoi(arg + 2);
 		revs->no_walk = 0;
 	} else if ((argcount = parse_long_opt("max-age", argv, &optarg))) {
-		revs->max_age = atoi(optarg);
+		revs->max_age = (git_time __force) strtoul(optarg, NULL, 10);
 		return argcount;
 	} else if ((argcount = parse_long_opt("since", argv, &optarg))) {
 		revs->max_age = approxidate(optarg);
@@ -1677,7 +1679,7 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->max_age = approxidate(optarg);
 		return argcount;
 	} else if ((argcount = parse_long_opt("min-age", argv, &optarg))) {
-		revs->min_age = atoi(optarg);
+		revs->min_age = (git_time __force) strtoul(optarg, NULL, 10);
 		return argcount;
 	} else if ((argcount = parse_long_opt("before", argv, &optarg))) {
 		revs->min_age = approxidate(optarg);
@@ -2918,7 +2920,8 @@ enum commit_action get_commit_action(struct rev_info *revs, struct commit *commi
 		return commit_show;
 	if (commit->object.flags & UNINTERESTING)
 		return commit_ignore;
-	if (revs->min_age != -1 && (commit->date > revs->min_age))
+	if (revs->min_age != GIT_TIME_INVALID &&
+	    commit->date > revs->min_age)
 		return commit_ignore;
 	if (revs->min_parents || (revs->max_parents >= 0)) {
 		int n = commit_list_count(commit->parents);
@@ -3070,8 +3073,8 @@ static struct commit *get_revision_1(struct rev_info *revs)
 		 * that we'd otherwise have done in limit_list().
 		 */
 		if (!revs->limited) {
-			if (revs->max_age != -1 &&
-			    (commit->date < revs->max_age))
+			if (revs->max_age != GIT_TIME_INVALID &&
+			    commit->date < revs->max_age)
 				continue;
 			if (add_parents_to_list(revs, commit, &revs->commits, NULL) < 0) {
 				if (!revs->ignore_missing_links)

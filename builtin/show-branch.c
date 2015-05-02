@@ -743,7 +743,7 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 			if (*ep) {
 				/* Ah, that is a date spec... */
 				unsigned long at;
-				at = approxidate(reflog_base);
+				at = (unsigned long __force) approxidate(reflog_base);
 				read_ref_at(ref, flags, at, -1, oid.hash, NULL,
 					    NULL, NULL, &base);
 			}
@@ -767,7 +767,7 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 			else
 				msg++;
 			reflog_msg[i] = xstrfmt("(%s) %s",
-						show_date(timestamp, tz,
+						show_date((git_time __force) timestamp, tz,
 							  DATE_MODE(RELATIVE)),
 						msg);
 			free(logmsg);

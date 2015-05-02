@@ -11,7 +11,7 @@ static void show_relative_dates(const char **argv, struct timeval *now)
 	struct strbuf buf = STRBUF_INIT;
 
 	for (; *argv; argv++) {
-		time_t t = atoi(*argv);
+		git_time t = (git_time __force) strtoul(*argv, NULL, 10);
 		show_date_relative(t, 0, now, &buf);
 		printf("%s -> %s\n", *argv, buf.buf);
 	}
@@ -25,14 +25,14 @@ static void show_dates(const char **argv, const char *format)
 	parse_date_format(format, &mode);
 	for (; *argv; argv++) {
 		char *arg;
-		time_t t;
+		git_time t;
 		int tz;
 
 		/*
 		 * Do not use our normal timestamp parsing here, as the point
 		 * is to test the formatting code in isolation.
 		 */
-		t = strtol(*argv, &arg, 10);
+		t = (git_time __force) strtol(*argv, &arg, 10);
 		while (*arg == ' ')
 			arg++;
 		tz = atoi(arg);
@@ -46,12 +46,12 @@ static void parse_dates(const char **argv, struct timeval *now)
 	struct strbuf result = STRBUF_INIT;
 
 	for (; *argv; argv++) {
-		unsigned long t;
+		git_time t;
 		int tz;
 
 		strbuf_reset(&result);
 		parse_date(*argv, &result);
-		if (sscanf(result.buf, "%lu %d", &t, &tz) == 2)
+		if (sscanf(result.buf, "%lu %d", (unsigned long *__force) &t, &tz) == 2)
 			printf("%s -> %s\n",
 			       *argv, show_date(t, tz, DATE_MODE(ISO8601)));
 		else
@@ -63,7 +63,7 @@ static void parse_dates(const char **argv, struct timeval *now)
 static void parse_approxidate(const char **argv, struct timeval *now)
 {
 	for (; *argv; argv++) {
-		time_t t;
+		git_time t;
 		t = approxidate_relative(*argv, now);
 		printf("%s -> %s\n", *argv, show_date(t, 0, DATE_MODE(ISO8601)));
 	}

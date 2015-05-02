@@ -1041,6 +1041,7 @@ int access_or_die(const char *path, int mode, unsigned flag);
 void warn_on_inaccessible(const char *path);
 
 #ifdef __CHECKER__
+#define __nocast	__attribute__((nocast))
 #define __bitwise	__attribute__((bitwise))
 #define __force		__attribute__((force))
 #else
@@ -1048,14 +1049,9 @@ void warn_on_inaccessible(const char *path);
 #define __force
 #endif
 
-#define git_time_cmp(x, op, y)	(((unsigned long __force) (x)) op ((unsigned long __force) (y)))
-
 typedef unsigned long __bitwise git_time;
 #define GIT_TIME_INVALID	((git_time __force) -1)
 #define GIT_TIME_MAX		((git_time __force) ULONG_MAX)
-
-static inline git_time git_time_sub(git_time t, unsigned long delta)
-{ return (git_time __force) ((unsigned long __force) t - delta); }
 
 static inline git_time git_now(void)
 { return (git_time __force) time(NULL); }

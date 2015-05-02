@@ -181,8 +181,8 @@ struct rev_info {
 	/* special limits */
 	int skip_count;
 	int max_count;
-	unsigned long max_age;
-	unsigned long min_age;
+	git_time max_age;
+	git_time min_age;
 	int min_parents;
 	int max_parents;
 	int (*include_check)(struct commit *, void *);

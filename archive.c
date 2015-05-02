@@ -353,7 +353,7 @@ static void parse_treeish_arg(const char **argv,
 {
 	const char *name = argv[0];
 	const unsigned char *commit_sha1;
-	time_t archive_time;
+	git_time archive_time;
 	struct tree *tree;
 	const struct commit *commit;
 	struct object_id oid;
@@ -378,7 +378,7 @@ static void parse_treeish_arg(const char **argv,
 		archive_time = commit->date;
 	} else {
 		commit_sha1 = NULL;
-		archive_time = time(NULL);
+		archive_time = git_now();
 	}
 
 	tree = parse_tree_indirect(oid.hash);
@@ -400,7 +400,7 @@ static void parse_treeish_arg(const char **argv,
 	ar_args->tree = tree;
 	ar_args->commit_sha1 = commit_sha1;
 	ar_args->commit = commit;
-	ar_args->time = archive_time;
+	ar_args->time = (time_t __force) archive_time;
 }
 
 #define OPT__COMPR(s, v, h, p) \

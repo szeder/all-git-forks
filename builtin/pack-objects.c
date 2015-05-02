@@ -2626,7 +2626,7 @@ static int option_parse_unpack_unreachable(const struct option *opt,
 	else {
 		unpack_unreachable = 1;
 		if (arg)
-			unpack_unreachable_expiration = approxidate(arg);
+			unpack_unreachable_expiration = (unsigned long __force) approxidate(arg);
 	}
 	return 0;
 }

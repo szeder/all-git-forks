@@ -33,7 +33,7 @@ static const char * const upload_pack_usage[] = {
 #define CLIENT_SHALLOW	(1u << 18)
 #define HIDDEN_REF	(1u << 19)
 
-static unsigned long oldest_have;
+static git_time oldest_have = GIT_TIME_INVALID;
 
 static int multi_ack;
 static int no_done;
@@ -301,7 +301,8 @@ static int got_sha1(char *hex, unsigned char *sha1)
 			we_knew_they_have = 1;
 		else
 			o->flags |= THEY_HAVE;
-		if (!oldest_have || (commit->date < oldest_have))
+		if (oldest_have == GIT_TIME_INVALID ||
+		    (commit->date < oldest_have))
 			oldest_have = commit->date;
 		for (parents = commit->parents;
 		     parents;

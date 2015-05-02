@@ -677,7 +677,7 @@ static int cmd_reflog_delete(int argc, const char **argv, const char *prefix)
 			cb.cmd.recno = -recno;
 			for_each_reflog_ent(ref, count_reflog_ent, &cb);
 		} else {
-			cb.cmd.expire_total = approxidate(spec + 2);
+			cb.cmd.expire_total = (unsigned long __force) approxidate(spec + 2);
 			for_each_reflog_ent(ref, count_reflog_ent, &cb);
 			cb.cmd.expire_total = 0;
 		}

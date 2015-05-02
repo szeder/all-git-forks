@@ -1570,13 +1570,13 @@ finish:
 struct commit_info {
 	struct strbuf author;
 	struct strbuf author_mail;
-	unsigned long author_time;
+	git_time author_time;
 	struct strbuf author_tz;
 
 	/* filled only when asked for details */
 	struct strbuf committer;
 	struct strbuf committer_mail;
-	unsigned long committer_time;
+	git_time committer_time;
 	struct strbuf committer_tz;
 
 	struct strbuf summary;
@@ -1587,7 +1587,7 @@ struct commit_info {
  */
 static void get_ac_line(const char *inbuf, const char *what,
 	struct strbuf *name, struct strbuf *mail,
-	unsigned long *time, struct strbuf *tz)
+	git_time *time, struct strbuf *tz)
 {
 	struct ident_split ident;
 	size_t len, maillen, namelen;
@@ -1622,7 +1622,7 @@ static void get_ac_line(const char *inbuf, const char *what,
 	mailbuf = ident.mail_begin;
 
 	if (ident.date_begin && ident.date_end)
-		*time = strtoul(ident.date_begin, NULL, 10);
+		*time = (git_time __force) strtoul(ident.date_begin, NULL, 10);
 	else
 		*time = 0;
 
@@ -1804,7 +1804,8 @@ static void assign_blame(struct scoreboard *sb, int opt)
 		parse_commit(commit);
 		if (reverse ||
 		    (!(commit->object.flags & UNINTERESTING) &&
-		     !(revs->max_age != -1 && commit->date < revs->max_age)))
+		     !(revs->max_age != GIT_TIME_INVALID &&
+		       (commit->date < revs->max_age))))
 			pass_blame(sb, suspect, opt);
 		else {
 			commit->object.flags |= UNINTERESTING;
@@ -1841,14 +1842,14 @@ static void assign_blame(struct scoreboard *sb, int opt)
 	stop_progress(&pi.progress);
 }
 
-static const char *format_time(unsigned long time, const char *tz_str,
+static const char *format_time(git_time time, const char *tz_str,
 			       int show_raw_time)
 {
 	static struct strbuf time_buf = STRBUF_INIT;
 
 	strbuf_reset(&time_buf);
 	if (show_raw_time) {
-		strbuf_addf(&time_buf, "%lu %s", time, tz_str);
+		strbuf_addf(&time_buf, "%lu %s", (unsigned long __force) time, tz_str);
 	}
 	else {
 		const char *time_str;
@@ -2308,17 +2309,15 @@ static struct commit *fake_working_tree_commit(struct diff_options *opt,
 	unsigned char head_sha1[20];
 	struct strbuf buf = STRBUF_INIT;
 	const char *ident;
-	time_t now;
 	int size, len;
 	struct cache_entry *ce;
 	unsigned mode;
 	struct strbuf msg = STRBUF_INIT;
 
 	read_cache();
-	time(&now);
 	commit = alloc_commit_node();
 	commit->object.parsed = 1;
-	commit->date = now;
+	commit->date = git_now();
 	parent_tail = &commit->parents;
 
 	if (!resolve_ref_unsafe("HEAD", RESOLVE_REF_READING, head_sha1, NULL))

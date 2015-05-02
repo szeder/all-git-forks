@@ -511,7 +511,7 @@ static int mark_complete_oid(const char *refname, const struct object_id *oid,
 }
 
 static void mark_recent_complete_commits(struct fetch_pack_args *args,
-					 unsigned long cutoff)
+					 git_time cutoff)
 {
 	while (complete && cutoff <= complete->item->date) {
 		if (args->verbose)
@@ -597,7 +597,7 @@ static int everything_local(struct fetch_pack_args *args,
 {
 	struct ref *ref;
 	int retval;
-	unsigned long cutoff = 0;
+	git_time cutoff = GIT_TIME_INVALID;
 
 	save_commit_buffer = 0;
 
@@ -617,7 +617,8 @@ static int everything_local(struct fetch_pack_args *args,
 		 */
 		if (o->type == OBJ_COMMIT) {
 			struct commit *commit = (struct commit *)o;
-			if (!cutoff || cutoff < commit->date)
+			if (cutoff == GIT_TIME_INVALID ||
+			    cutoff < commit->date)
 				cutoff = commit->date;
 		}
 	}

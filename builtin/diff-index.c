@@ -40,7 +40,9 @@ int cmd_diff_index(int argc, const char **argv, const char *prefix)
 	 * and there is no revision filtering parameters.
 	 */
 	if (rev.pending.nr != 1 ||
-	    rev.max_count != -1 || rev.min_age != -1 || rev.max_age != -1)
+	    rev.max_count != -1 ||
+	    rev.min_age != GIT_TIME_INVALID ||
+	    rev.max_age != GIT_TIME_INVALID)
 		usage(diff_cache_usage);
 	if (!cached) {
 		setup_work_tree();
