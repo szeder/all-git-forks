@@ -174,6 +174,21 @@ test_expect_success 'fail if wildcard spec does not match any refs' "
 	test_i18ngrep 'There are no candidates for merging' out
 "
 
+test_expect_success 'fail if the index has unresolved entries' '
+	git checkout -b third master^ &&
+	test_when_finished "git checkout -f copy && git branch -D third" &&
+	echo file >expected &&
+	test_cmp expected file &&
+	echo modified2 >file &&
+	git commit -a -m modified2 &&
+	test_must_fail git pull . second &&
+	test_must_fail git pull . second 2>out &&
+	test_i18ngrep "Pull is not possible because you have unmerged files" out &&
+	git add file &&
+	test_must_fail git pull . second 2>out &&
+	test_i18ngrep "You have not concluded your merge" out
+'
+
 test_expect_success '--rebase' '
 	git branch to-rebase &&
 	echo modified again > file &&
