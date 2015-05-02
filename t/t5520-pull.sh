@@ -189,6 +189,27 @@ test_expect_success 'fail if the index has unresolved entries' '
 	test_i18ngrep "You have not concluded your merge" out
 '
 
+test_expect_success 'fast-forwards working tree if branch head is updated' '
+	git checkout -b third master^ &&
+	test_when_finished "git checkout -f copy && git branch -D third" &&
+	echo file >expected &&
+	test_cmp expected file &&
+	git pull . second:third 2>out &&
+	test_i18ngrep "fetch updated the current branch head" out &&
+	echo modified >expected &&
+	test_cmp expected file
+'
+
+test_expect_success 'fast-forward fails with conflicting work tree' '
+	git checkout -b third master^ &&
+	test_when_finished "git checkout -f copy && git branch -D third" &&
+	echo file >expected &&
+	test_cmp expected file &&
+	echo conflict >file &&
+	test_must_fail git pull . second:third 2>out &&
+	test_i18ngrep "Cannot fast-forward your working tree" out
+'
+
 test_expect_success '--rebase' '
 	git branch to-rebase &&
 	echo modified again > file &&
