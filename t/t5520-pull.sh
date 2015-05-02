@@ -122,6 +122,58 @@ test_expect_success 'the default remote . should not break explicit pull' '
 	test `cat file` = modified
 '
 
+test_expect_success 'fail if not on a branch' '
+	cp .git/config .git/config.bak &&
+	test_when_finished "cp .git/config.bak .git/config" &&
+	git remote add test_remote . &&
+	git checkout HEAD^{} &&
+	test_when_finished "git checkout -f copy" &&
+	cat >>.git/config <<-\EOF &&
+	[branch ""]
+	remote = test_remote
+	EOF
+	test_must_fail git pull test_remote 2>out &&
+	test_i18ngrep "You are not currently on a branch" out
+'
+
+test_expect_success 'fail if no configuration for current branch' '
+	git remote add test_remote . &&
+	test_when_finished "git remote remove test_remote" &&
+	git checkout -b test copy &&
+	test_when_finished "git checkout -f copy && git branch -D test" &&
+	test_config branch.test.remote test_remote &&
+	test_must_fail git pull 2>out &&
+	test_i18ngrep "There is no tracking information" out
+'
+
+test_expect_success 'fail if upstream branch does not exist' "
+	git checkout -b test copy &&
+	test_when_finished 'git checkout -f copy && git branch -D test' &&
+	test_config branch.test.remote . &&
+	test_config branch.test.merge refs/heads/nonexisting &&
+	test_must_fail git pull 2>out &&
+	test_i18ngrep \"Your configuration specifies to merge with the ref 'nonexisting'\" out
+"
+
+test_expect_success 'fail if no branches specified with non-default remote' '
+	git clone --bare . test_repo &&
+	test_when_finished "rm -rf test_repo" &&
+	git remote add test_remote test_repo &&
+	test_when_finished "git remote remove test_remote" &&
+	git checkout -b test master &&
+	test_when_finished "git checkout -f master && git branch -D test" &&
+	test_config branch.test.remote . &&
+	test_must_fail git pull test_remote 2>out &&
+	test_i18ngrep "you must specify a branch on the command line" out
+'
+
+test_expect_success 'fail if wildcard spec does not match any refs' "
+	git checkout -b test copy &&
+	test_when_finished 'git checkout -f copy && git branch -D test' &&
+	test_must_fail git pull . 'refs/nonexisting1/*:refs/nonexisting2/*' 2>out &&
+	test_i18ngrep 'There are no candidates for merging' out
+"
+
 test_expect_success '--rebase' '
 	git branch to-rebase &&
 	echo modified again > file &&
