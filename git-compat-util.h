@@ -1040,6 +1040,26 @@ int access_or_die(const char *path, int mode, unsigned flag);
 /* Warn on an inaccessible file that ought to be accessible */
 void warn_on_inaccessible(const char *path);
 
+#ifdef __CHECKER__
+#define __bitwise	__attribute__((bitwise))
+#define __force		__attribute__((force))
+#else
+#define __bitwise
+#define __force
+#endif
+
+#define git_time_cmp(x, op, y)	(((unsigned long __force) (x)) op ((unsigned long __force) (y)))
+
+typedef unsigned long __bitwise git_time;
+#define GIT_TIME_INVALID	((git_time __force) -1)
+#define GIT_TIME_MAX		((git_time __force) ULONG_MAX)
+
+static inline git_time git_time_sub(git_time t, unsigned long delta)
+{ return (git_time __force) ((unsigned long __force) t - delta); }
+
+static inline git_time git_now(void)
+{ return (git_time __force) time(NULL); }
+
 #ifdef GMTIME_UNRELIABLE_ERRORS
 struct tm *git_gmtime(const time_t *);
 struct tm *git_gmtime_r(const time_t *, struct tm *);
