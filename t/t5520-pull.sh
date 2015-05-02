@@ -86,6 +86,18 @@ test_expect_success 'pulling into void does not remove new staged files' '
 	)
 '
 
+test_expect_success 'refuse to pull multiple branches into void' '
+	git branch test master &&
+	test_when_finished "git branch -D test" &&
+	git init cloned-multiple-branches &&
+	test_when_finished "rm -rf cloned-multiple-branches" &&
+	(
+		cd cloned-multiple-branches &&
+		test_must_fail git pull .. master test 2>out &&
+		test_i18ngrep "Cannot merge multiple branches into empty head" out
+	)
+'
+
 test_expect_success 'test . as a remote' '
 
 	git branch copy master &&
