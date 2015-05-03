@@ -209,6 +209,41 @@ run_pre_rebase_hook () {
 	fi
 }
 
+error_on_missing_default_upstream () {
+	cmd="$1"
+	op_type="$2"
+	op_prep="$3"
+	example="$4"
+	branch_name=$(git symbolic-ref -q HEAD)
+	# If there's only one remote, use that in the suggestion
+	remote="<remote>"
+	if test $(git remote | wc -l) = 1
+	then
+		remote=$(git remote)
+	fi
+
+	if test -z "$branch_name"
+	then
+		echo "You are not currently on a branch. Please specify which
+branch you want to $op_type $op_prep. See git-${cmd}(1) for details.
+
+    $example
+"
+	else
+		echo "There is no tracking information for the current branch.
+Please specify which branch you want to $op_type $op_prep.
+See git-${cmd}(1) for details
+
+    $example
+
+If you wish to set tracking information for this branch you can do so with:
+
+    git branch --set-upstream-to=$remote/<branch> ${branch_name#refs/heads/}
+"
+	fi
+	exit 1
+}
+
 test -f "$apply_dir"/applying &&
 	die "$(gettext "It looks like git-am is in progress. Cannot rebase.")"
 
@@ -446,7 +481,6 @@ then
 		if ! upstream_name=$(git rev-parse --symbolic-full-name \
 			--verify -q @{upstream} 2>/dev/null)
 		then
-			. git-parse-remote
 			error_on_missing_default_upstream "rebase" "rebase" \
 				"against" "git rebase <branch>"
 		fi
