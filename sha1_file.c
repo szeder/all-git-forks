@@ -1568,7 +1568,6 @@ static int unpack_sha1_header_to_strbuf(git_zstream *stream, unsigned char *map,
 					unsigned long mapsize, void *buffer,
 					unsigned long bufsiz, struct strbuf *header)
 {
-	unsigned char *cp;
 	int status;
 
 	status = unpack_sha1_header(stream, map, mapsize, buffer, bufsiz);
@@ -1579,7 +1578,6 @@ static int unpack_sha1_header_to_strbuf(git_zstream *stream, unsigned char *map,
 	if (memchr(buffer, '\0', stream->next_out - (unsigned char *)buffer))
 		return 0;
 
-	strbuf_add(header, buffer, stream->next_out - (unsigned char *)buffer);
 	do {
 		status = git_inflate(stream, 0);
 		strbuf_add(header, buffer, stream->next_out - (unsigned char *)buffer);
