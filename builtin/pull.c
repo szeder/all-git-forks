@@ -26,7 +26,8 @@ enum pull_mode {
 	PULL_NOT_SET = -1,
 	PULL_MERGE,
 	PULL_REBASE,
-	PULL_PRESERVE_MERGES_REBASE
+	PULL_PRESERVE_MERGES_REBASE,
+	PULL_INTERACTIVE_REBASE
 };
 
 static const char * const builtin_pull_usage[] = {
@@ -85,12 +86,22 @@ static int parse_pull_mode(const char *name, const char* arg,
 		return 0;
 	}
 
+	if (!strcmp(arg, "interactive")) {
+		*option_rebase = PULL_INTERACTIVE_REBASE;
+		return 0;
+	}
+
+	if (!strcmp(arg, "i")) {
+		*option_rebase = PULL_INTERACTIVE_REBASE;
+		return 0;
+	}
+
 	if (!strcmp(arg, "preserve")) {
 		*option_rebase = PULL_PRESERVE_MERGES_REBASE;
 		return 0;
 	}
 
-	error(_("Invalid value for %s, should be 'true', 'false' or 'preserve'."), name);
+	error(_("Invalid value for %s, should be 'true', 'false', 'interactive' or 'preserve'."), name);
 	return -1;
 }
 
@@ -197,7 +208,7 @@ static int option_parse_x(const struct option *opt,
 }
 
 static struct option builtin_pull_options[] = {
-	{ OPTION_CALLBACK, 0, "rebase", NULL, N_("true|false|preserve"),
+	{ OPTION_CALLBACK, 0, "rebase", NULL, N_("true|false|interactive|preserve"),
 		N_("incorporate changes by rebasing rather than merging"),
 		PARSE_OPT_OPTARG, option_parse_rebase },
 	OPT_BOOL(0, "progress", &progress,
@@ -527,6 +538,8 @@ static int run_rebase(const struct string_list merge_head, const char *fork_poin
 
 	if (pull_mode == PULL_PRESERVE_MERGES_REBASE)
 		argv_array_push(&argv, "--preserve-merges");
+	else if (pull_mode == PULL_INTERACTIVE_REBASE)
+		argv_array_push(&argv, "-i");
 
 	for (v = verbosity; v > 0; v--)
 		argv_array_push(&argv, "-v");
