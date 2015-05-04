@@ -63,6 +63,7 @@ pthread_t pthread_self(void)
 
 int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
 {
+	/* TODO: prevent from colliding with autoinit? */
 	InitializeCriticalSection(&mutex->cs);
 	InterlockedExchange(&mutex->autoinit, 0);
 	return 0;
