@@ -26,7 +26,7 @@ typedef struct {
 typedef int pthread_mutexattr_t;
 
 int pthread_mutex_init(pthread_mutex_t *, const pthread_mutexattr_t *);
-#define pthread_mutex_destroy(a) DeleteCriticalSection(&(a)->cs)
+int pthread_mutex_destroy(pthread_mutex_t *);
 int pthread_mutex_lock(pthread_mutex_t *);
 #define pthread_mutex_unlock(a) LeaveCriticalSection(&(a)->cs)
 
