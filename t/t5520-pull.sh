@@ -76,12 +76,16 @@ test_expect_success 'pulling into void does not remove new staged files' '
 	)
 '
 
-test_expect_success 'pulling into void must not create an octopus' '
-	git init cloned-octopus &&
+test_expect_success 'refuse to pull multiple branches into void' '
+	git branch test master &&
+	test_when_finished "git branch -D test" &&
+	git init cloned-multiple-branches &&
+	test_when_finished "rm -rf cloned-multiple-branches" &&
 	(
-		cd cloned-octopus &&
-		test_must_fail git pull .. master master &&
-		! test -f file
+		cd cloned-multiple-branches &&
+		test_must_fail git pull .. master test 2>out &&
+		! test -f file &&
+		test_i18ngrep "Cannot merge multiple branches into empty head" out
 	)
 '
 
@@ -109,6 +113,94 @@ test_expect_success 'the default remote . should not break explicit pull' '
 	test `cat file` = modified
 '
 
+test_expect_success 'fail if not on a branch' '
+	cp .git/config .git/config.bak &&
+	test_when_finished "cp .git/config.bak .git/config" &&
+	git remote add test_remote . &&
+	git checkout HEAD^{} &&
+	test_when_finished "git checkout -f copy" &&
+	cat >>.git/config <<-\EOF &&
+	[branch ""]
+	remote = test_remote
+	EOF
+	test_must_fail git pull test_remote 2>out &&
+	test_i18ngrep "You are not currently on a branch" out
+'
+
+test_expect_success 'fail if no configuration for current branch' '
+	git remote add test_remote . &&
+	test_when_finished "git remote remove test_remote" &&
+	git checkout -b test copy &&
+	test_when_finished "git checkout -f copy && git branch -D test" &&
+	test_config branch.test.remote test_remote &&
+	test_must_fail git pull 2>out &&
+	test_i18ngrep "There is no tracking information" out
+'
+
+test_expect_success 'fail if upstream branch does not exist' "
+	git checkout -b test copy &&
+	test_when_finished 'git checkout -f copy && git branch -D test' &&
+	test_config branch.test.remote . &&
+	test_config branch.test.merge refs/heads/nonexisting &&
+	test_must_fail git pull 2>out &&
+	test_i18ngrep \"Your configuration specifies to merge with the ref 'nonexisting'\" out
+"
+
+test_expect_success 'fail if no branches specified with non-default remote' '
+	git clone --bare . test_repo &&
+	test_when_finished "rm -rf test_repo" &&
+	git remote add test_remote test_repo &&
+	test_when_finished "git remote remove test_remote" &&
+	git checkout -b test master &&
+	test_when_finished "git checkout -f master && git branch -D test" &&
+	test_config branch.test.remote . &&
+	test_must_fail git pull test_remote 2>out &&
+	test_i18ngrep "you must specify a branch on the command line" out
+'
+
+test_expect_success 'fail if wildcard spec does not match any refs' "
+	git checkout -b test copy &&
+	test_when_finished 'git checkout -f copy && git branch -D test' &&
+	test_must_fail git pull . 'refs/nonexisting1/*:refs/nonexisting2/*' 2>out &&
+	test_i18ngrep 'There are no candidates for merging' out
+"
+
+test_expect_success 'fail if the index has unresolved entries' '
+	git checkout -b third master^ &&
+	test_when_finished "git checkout -f copy && git branch -D third" &&
+	echo file >expected &&
+	test_cmp expected file &&
+	echo modified2 >file &&
+	git commit -a -m modified2 &&
+	test_must_fail git pull . second &&
+	test_must_fail git pull . second 2>out &&
+	test_i18ngrep "Pull is not possible because you have unmerged files" out &&
+	git add file &&
+	test_must_fail git pull . second 2>out &&
+	test_i18ngrep "You have not concluded your merge" out
+'
+
+test_expect_success 'fast-forwards working tree if branch head is updated' '
+	git checkout -b third master^ &&
+	test_when_finished "git checkout -f copy && git branch -D third" &&
+	echo file >expected &&
+	test_cmp expected file &&
+	git pull . second:third 2>out &&
+	test_i18ngrep "fetch updated the current branch head" out &&
+	echo modified >expected &&
+	test_cmp expected file
+'
+
+test_expect_success 'fast-forward fails with conflicting work tree' '
+	git checkout -b third master^ &&
+	test_when_finished "git checkout -f copy && git branch -D third" &&
+	echo file >expected &&
+	test_cmp expected file &&
+	echo conflict >file &&
+	test_must_fail git pull . second:third 2>out &&
+	test_i18ngrep "Cannot fast-forward your working tree" out
+'
+
 test_expect_success '--rebase' '
 	git branch to-rebase &&
 	echo modified again > file &&
@@ -122,6 +214,14 @@ test_expect_success '--rebase' '
 	test $(git rev-parse HEAD^) = $(git rev-parse copy) &&
 	test new = $(git show HEAD:file2)
 '
+
+test_expect_success '--rebase fails with multiple branches' '
+	git reset --hard before-rebase &&
+	test_must_fail git pull --rebase . copy master 2>out &&
+	test_when_finished "rm -f out" &&
+	test_i18ngrep "Cannot rebase onto multiple branches" out
+'
+
 test_expect_success 'pull.rebase' '
 	git reset --hard before-rebase &&
 	test_config pull.rebase true &&
@@ -306,6 +406,17 @@ test_expect_success 'pull --rebase works on branch yet to be born' '
 	 git rev-parse HEAD >../actual
 	) &&
 	test_cmp expect actual
+'
+
+test_expect_success 'pull --rebase fails on unborn branch with staged changes' '
+	git init empty_repo2 &&
+	test_when_finished "rm -rf empty_repo2" &&
+	(
+		cd empty_repo2 &&
+		echo staged-file >staged-file &&
+		git add staged-file &&
+		test_must_fail git pull --rebase .. master
+	)
 '
 
 test_expect_success 'setup for detecting upstreamed changes' '
