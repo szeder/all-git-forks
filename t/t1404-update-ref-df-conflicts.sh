@@ -3,7 +3,7 @@
 test_description='Test git update-ref with D/F conflicts'
 . ./test-lib.sh
 
-test_update_rejected() {
+test_update_rejected () {
 	prefix="$1" &&
 	before="$2" &&
 	pack="$3" &&
@@ -27,7 +27,7 @@ Q="'"
 
 test_expect_success 'setup' '
 
-	git commit --allow-empty -m Initial
+	git commit --allow-empty -m Initial &&
 	C=$(git rev-parse HEAD)
 
 '
