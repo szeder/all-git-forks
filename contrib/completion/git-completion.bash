@@ -665,13 +665,8 @@ __git_list_porcelain_commands ()
 		checkout-index)   : plumbing;;
 		commit-tree)      : plumbing;;
 		count-objects)    : infrequent;;
-		credential        : credentials;;
-		credential-cache) : credentials helper;;
-		credential-gnome-keyring) : credentials helper;;
-		credential-netrc) : credentials helper;;
-		credential-osxkeychain) : credentials helper;;
-		credential-store) : credentials helper;;
-		credential-wincred) : credentials helper;;
+		credential)       : credentials;;
+		credential-*)     : credentials helper;;
 		cvsexportcommit)  : export;;
 		cvsimport)        : import;;
 		cvsserver)        : daemon;;
