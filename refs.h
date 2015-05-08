@@ -247,6 +247,29 @@ int verify_refname_available(const char *newname, struct string_list *extra,
 			     struct string_list *skip, struct strbuf *err);
 
 /*
+ * Check if a refname is safe.
+ * For refs that start with "refs/" we consider it safe as long they do
+ * not try to resolve to outside of refs/.
+ *
+ * For all other refs we only consider them safe iff they only contain
+ * upper case characters and '_' (like "HEAD" AND "MERGE_HEAD", and not like
+ * "config").
+ */
+int refname_is_safe(const char *refname);
+
+/*
+ * If refname is a non-symbolic reference that refers to a tag object,
+ * and the tag can be (recursively) dereferenced to a non-tag object,
+ * store the SHA1 of the referred-to object to sha1 and return 0.  If
+ * any of these conditions are not met, return a non-zero value.
+ * Symbolic references are considered unpeelable, even if they
+ * ultimately resolve to a peelable tag.
+ */
+extern int peel_ref(const char *refname, unsigned char *sha1);
+
+extern int create_symref(const char *ref, const char *refs_heads_master, const char *logmsg);
+
+/*
  * Flags controlling ref_transaction_update(), ref_transaction_create(), etc.
  * REF_NODEREF: act on the ref directly, instead of dereferencing
  *              symbolic references.
