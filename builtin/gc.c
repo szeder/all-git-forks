@@ -10,6 +10,8 @@
  * Copyright (c) 2006 Shawn O. Pearce
  */
 
+// some random test text - we should support a purge option, etc...
+
 #include "builtin.h"
 #include "lockfile.h"
 #include "parse-options.h"
