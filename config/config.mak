@@ -63,5 +63,6 @@ MAN_BOLD_LITERAL = Yes
 
 NO_GETTEXT = Nope
 NO_TCLTK = Nope
+XDL_FAST_HASH =
 
 -include $(Meta)/config/config.mak.local
