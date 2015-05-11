@@ -128,6 +128,7 @@ void function_uname(char *uname){
 	write(xmlproject_file,"\t<UID>%s</UID>\n",uid);
 	write(xmlproject_file,"\t<ID>%s</ID>\n",uid);
 	write(xmlproject_file,"\t<Name>%s</Name>\n",uname);
+	free(uid);
 }
 
 void function_urole(char *urole){ /* No es necesario */ }
@@ -157,4 +158,5 @@ void function_atid(char *atid){
 void function_auname(char *auname){
 	char *uid = get_simple_uid(auname);
 	write(xmlproject_file,"\t<ResourceUID>%s</ResourceUID>\n",uid);
+	free(uid);
 }

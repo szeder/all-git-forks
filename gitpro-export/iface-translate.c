@@ -1,7 +1,9 @@
 #include <stdio.h>
+#include <string.h>
 
 /* Implementations */
 
+/* Remember to free returned string */
 char *get_simple_uid(char *uname){
 	int id = 0;
 	char *aux;
@@ -10,7 +12,7 @@ char *get_simple_uid(char *uname){
 	}
 	char strId[25];
 	sprintf(strId,"%d",id);
-	return strId;
+	return strdup(strId);
 }
 
 void write(char *filename,char *txt,char *var){

@@ -1,3 +1,4 @@
+#include <stdlib.h>
 
 void init_doc();
 void end_doc();
