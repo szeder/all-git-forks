@@ -72,6 +72,11 @@ echo '***********************************'
 ./gp-tstat.sh
 ./clean-db.sh
 echo '***********************************'
+echo '    Starting export tasks tests'
+echo '***********************************'
+./gp-texport.sh
+./clean-db.sh
+echo '***********************************'
 echo '   Starting rolecheck task tests'
 echo '***********************************'
 ./gp-trolecheck.sh

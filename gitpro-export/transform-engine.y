@@ -18,6 +18,7 @@ void yyerror(char const *s){
 
 /* Terminales de la gramática */
 %token <cad> FIELD
+
 %token <char *> ID
 %token <char *> NAME
 %token <char *> STATE
@@ -31,6 +32,12 @@ void yyerror(char const *s){
 %token <char *> TYPE
 %token <char *> E_TIME
 %token <char *> R_TIME
+
+%token <char *> UNAME
+%token <char *> UROLE
+
+%token <char *> ATID
+%token <char *> AUNAME
 
 /* No terminal inicial */
 %type <char *> s
@@ -49,15 +56,41 @@ void yyerror(char const *s){
 %type <char *> est_time
 %type <char *> time
 
-%type <char *> t
+%type <char *> uname
+%type <char *> urole
 
+%type <char *> atid
+%type <char *> auname
+
+%type <char *> init_doc
+%type <char *> end_doc
+
+%type <char *> t
+%type <char *> u
+%type <char *> a
+
+%type <char *> ts
+%type <char *> us
+%type <char *> as
+
+%type <char *> init_task_sect
+%type <char *> end_task_sect
 %type <char *> pretask
 %type <char *> posttask
 
-%type <char *> end_task_sect
-%type <char *> start_task_sect
+%type <char *> init_user_sect
+%type <char *> end_user_sect
+%type <char *> preuser
+%type <char *> postuser
 
-%type <char *> tarea
+%type <char *> init_asig_sect
+%type <char *> end_asig_sect
+%type <char *> preasig
+%type <char *> postasig
+
+%type <char *> task
+%type <char *> user
+%type <char *> asig
 
 
 /* Definimos el simbolo inicial */
@@ -65,18 +98,40 @@ void yyerror(char const *s){
 
 %%
 
-s: start_task_sect t end_task_sect
+s: init_doc ts us as end_doc
 
-t: tarea | t tarea 
+init_doc: {
+	init_doc();
+}
 
-tarea: pretask id nombre estado descripcion notas est_ini est_end ini end prioridad tipo est_time time posttask
+end_doc: {
+	end_doc();
+}
+
+ts: /* vacio */ | init_task_sect t end_task_sect
+
+us: /* vacio */ | init_user_sect u end_user_sect
+
+as: /* vacio */ | init_asig_sect a end_asig_sect
+
+t: task | t task 
+
+u: user | u user
+
+a: asig | a asig
+
+task: pretask id nombre estado descripcion notas est_ini est_end ini end prioridad tipo est_time time posttask
+
+user: preuser uname urole postuser
+
+asig: preasig atid auname postasig
+
+init_task_sect: {
+	init_task_section();
+}
 
 end_task_sect: {
 	end_task_section();
-}
-
-start_task_sect: {
-	init_task_section();
 }
 
 pretask: {
@@ -185,6 +240,58 @@ est_time: /* vacio */ {
 
 time: /* vacio */ {
 	function_empty_time();
+}
+
+init_user_sect: {
+	init_user_section();
+}
+
+end_user_sect: {
+	end_user_section();
+}
+
+preuser: {
+	pre_user();
+}
+
+postuser: {
+	post_user();
+}
+
+uname: UNAME FIELD {
+	function_uname($2);
+}
+
+urole: UROLE FIELD {
+	function_urole($2);
+}
+
+urole: {
+	function_empty_urole();
+}
+
+init_asig_sect: {
+	init_user_section();
+}
+
+end_asig_sect: {
+	end_user_section();
+}
+
+preasig: {
+	pre_assignment();
+}
+
+postasig: {
+	post_assignment();
+}
+
+atid: ATID FIELD {
+	function_atid($2);
+}
+
+auname: AUNAME FIELD {
+	function_auname($2);
 }
 
 %%

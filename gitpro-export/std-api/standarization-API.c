@@ -20,6 +20,8 @@ void write(char *txt,char *var){
 }
 
 /* 	Public 	functions 	*/
+
+/* TASK DATA STANDARIZATION */
 void std_id(char *id){
 	write("id\n%s\n",id);
 }
@@ -70,4 +72,23 @@ void std_est_time(char *est_time){
 
 void std_time(char *time){
 	write("time\n%s\n",time);
+}
+
+/* USER DATA STANDARIZATION */
+
+void std_uname(char *uname){
+	write("uname\n%s\n",uname);
+}
+
+void std_urole(char *urole){
+	write("urole\n%s\n",urole);
+}
+
+/* ASIG DATA STANDARIZATION */
+void std_atid(char *atid){
+	write("atid\n%s\n",atid);
+}
+
+void std_auname(char *auname){
+	write("auname\n%s\n",auname);
 }

@@ -3,132 +3,147 @@
 
 #define csv_file "csv-task.csv"
 
-/*	Private functions 	*/
-void write(char *txt,char *var){
-	FILE *f = fopen(csv_file ,"a+");
-	if(f!=NULL){
-		if(var==NULL){
-			fprintf(f,txt);
-		}else{
-			fprintf(f,txt,var);
-		}
-		fclose(f);
-	}	
+void init_doc(){ }
+void end_doc(){ }
+
+void init_task_section(){ }
+void end_task_section(){ }
+
+void pre_task(){ }
+void post_task(){ }
+
+void init_user_section(){ }
+void end_user_section(){ }
+
+void pre_user(){ }
+void post_user(){ }
+
+void function_urole(char *urole){
+	write(csv_file,"%s,",urole);
 }
 
-void init_task_section(){
-	
+void function_empty_urole(){ 
+	write(csv_file,"%s\n","PUBLIC");
 }
 
-void end_task_section(){
+void function_uname(char *uname){
+	write(csv_file,"%s,",uname);
 }
 
-void pre_task(){
+void init_asig_section(){ }
+void end_asig_section(){ }
+
+void pre_assignment(){ }
+void post_assignment(){ }
+
+void function_atid(char *atid){
+	write(csv_file,"%s,",atid);
 }
 
-void post_task(){
+void function_auname(char *auname){
+	write(csv_file,"%s,",auname);
 }
 
 void function_id(char *id){
-	write("%s,",id);
+	write(csv_file,"%s,",id);
 }
 
 void function_name(char *name){
-	write("%s,",name);
+	write(csv_file,"%s,",name);
 }
 
 void function_state(char *state){
-	write("%s,",state);
+	write(csv_file,"%s,",state);
 }
 
 void function_desc(char *desc){
-	write("%s,",desc);
+	write(csv_file,"%s,",desc);
 }
 
 void function_notes(char *notes){
-	write("%s,",notes);
+	write(csv_file,"%s,",notes);
 }
 
 void function_est_date_ini(char *est_ini){
-	write("%s,",est_ini);
+	write(csv_file,"%s,",est_ini);
 }
 
 void function_est_date_end(char *est_end){
-	write("%s,",est_end);
+	write(csv_file,"%s,",est_end);
 }
 
 void function_real_date_ini(char *ini){
-	write("%s,",ini);
+	write(csv_file,"%s,",ini);
 }
 
 void function_real_date_end(char *end){
-	write("%s,",end);
+	write(csv_file,"%s,",end);
 }
 
 void function_priority(char *prior){
-	write("%s,",prior);
+	write(csv_file,"%s,",prior);
 }
 
 void function_type(char *type){
-	write("%s,",type);
+	write(csv_file,"%s,",type);
 }
 
 void function_est_time(char *est_time){
-	write("%s,",est_time);
+	write(csv_file,"%s,",est_time);
 }
 
 void function_time(char *time){
-	write("%s\n",time);
+	write(csv_file,"%s\n",time);
 }
 
 void function_empty_name(){
-	write(",",NULL);
+	write(csv_file,",",NULL);
 }
 
 void function_empty_priority(){
-	write(",",NULL);
+	write(csv_file,",",NULL);
 }
 
 void function_empty_id(){
-	write(",",NULL);
+	write(csv_file,",",NULL);
 }
 
 void function_empty_state(){
-	write(",",NULL);
+	write(csv_file,",",NULL);
 }
 
 void function_empty_desc(){
-	write(",",NULL);
+	write(csv_file,",",NULL);
 }
 
 void function_empty_notes(){
-	write(",",NULL);
+	write(csv_file,",",NULL);
 }
 
 void function_empty_est_date_ini(){
-	write(",",NULL);
+	write(csv_file,",",NULL);
 }
 
 void function_empty_est_date_end(){
-	write(",",NULL);
+	write(csv_file,",",NULL);
 }
 
 void function_empty_real_date_ini(){
-	write(",",NULL);
+	write(csv_file,",",NULL);
 }
 
 void function_empty_real_date_end(){
-	write(",",NULL);
+	write(csv_file,",",NULL);
 }
 
 void function_empty_type(){
-	write(",",NULL);
+	write(csv_file,",",NULL);
 }
 
 void function_empty_est_time(){
-	write(",",NULL);
+	write(csv_file,",",NULL);
 }
 
 void function_empty_time(){
-	write(",",NULL);
+	write(csv_file,",",NULL);
 }

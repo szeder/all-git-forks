@@ -44,7 +44,18 @@ printf "%s input file not exist\n" "$in_file"
 exit;
 fi
 
-./$analyzer < "$in_file"
-./$translator "standard-file"
+./$analyzer < "$in_file" 
+if [ $? -eq 0 ]
+then			
+	./$translator "standard-file"
+	if [ $? -eq 0 ]
+	then 
+		printf "+ Output %s generated\n" "$out_format"
+	else
+		printf "[ERROR] Unexpected error generating %s file\n" "$out_format"
+	fi
+else
+	printf "[ERROR] Unexpected error parsing input file\n"
+fi
 
 rm "standard-file"

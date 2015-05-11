@@ -8,6 +8,13 @@
 #include "../gitpro_role_check/check_role.h"
 #include "../gitpro_functions/task_functions.h"
 
+#define EXPORT_PATH "./gitpro-export/"
+#define EXPORT_DB_SCRIPT "./export-database.sh"
+
+#define EXPORT_SCRIPT "./export.sh "
+#define EXPORT_INPUT_FORMAT "csv "
+#define EXPORT_GP_FILE " gitpro-db.csv"
+
 #define OUT stdout
 #define ERR stderr
 #define IN stdin
@@ -21,8 +28,9 @@ static const char * const builtin_task_usage[] =
 	NULL
 };
 
-static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread, showtypes, showstates, showpriorities, readverbose, pending, assist, stats;
+static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread, showtypes, showstates, showpriorities, readverbose, pending, assist, stats, export;
 static char *switch_id = NULL;
+static char *out_format = NULL;
 static char *add = NULL;
 static char *rm = NULL;
 static char *task_id = NULL;
@@ -123,6 +131,8 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 		OPT_STRING(0,"add",&add,"data1,data2 ... dataN",N_("option to add files or users to a given task")),
 		OPT_STRING(0,"rm",&rm,"data1,data2 ... dataN",N_("option to remove files or usert to a given task")),
 		OPT_BOOL(0,"assist",&assist,N_("introduce filters in interactive mode")),
+		OPT_BOOL(0,"export",&export,N_("export task, assignations and user data to an output format")),
+		OPT_STRING(0,"out",&out_format,"output format",N_("specify output format")),
 		OPT_GROUP("Task parameters"),
 		OPT_STRING('i',"id",&task_id,"task id",N_("specifies task id")),		
 		OPT_STRING('n',"name",&task_name,"task name",N_("specifies task name")),
@@ -166,7 +176,7 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 	}
 	
 	/* More than one option selected at time */
-	if(stats + switch_option + tcreate + tlink + tassign + tdelete + tupdate + tread + showtypes + showstates + showpriorities > 1 ){
+	if(stats + switch_option + tcreate + tlink + tassign + tdelete + tupdate + tread + showtypes + showstates + showpriorities + export > 1 ){
 		printf("Only one option at time\n");
 		return 0;
 	}else {
@@ -431,6 +441,21 @@ filter_task_est_time,filter_task_time);
 /* START [1.11.1] Obtain statistic data */
 			show_stats();
 /* END [1.11.1] Obtain statistic data */
+		}else if(export){
+			if(out_format != NULL){
+				chdir(EXPORT_PATH);
+				char *aux = (char *) malloc(strlen(EXPORT_DB_SCRIPT)+1);
+				strcpy(aux,EXPORT_DB_SCRIPT);
+				system(aux);
+				free(aux);
+				aux = (char *) malloc(strlen(EXPORT_SCRIPT)+1+strlen(EXPORT_INPUT_FORMAT)+1+strlen(out_format)+1+strlen(EXPORT_GP_FILE)+1);
+				strcat(strcat(strcat(strcpy(aux,EXPORT_SCRIPT),EXPORT_INPUT_FORMAT),out_format),EXPORT_GP_FILE);
+				system(aux);
+				free(aux);
+			}else{
+				printf("Output format not specified\n");
+				return 0;
+			}
 		}else{
 			/* No action defined */
 			printf("No action defined\n");

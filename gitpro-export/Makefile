@@ -1,10 +1,10 @@
-NAME = std-to-xml
+NAME = std-to-csv
 
 ANALYZER_PATH = analyzers
 TRANSLATOR_PATH = translators
 
-ANALYZER = xml-analyzer
-TRANSLATOR = xml-translator
+ANALYZER = csv-analyzer
+TRANSLATOR = csv-translator
 
 STD_API = std-api/standarization-API.h std-api/standarization-API.c
 
@@ -24,7 +24,7 @@ dest:
 	flex $(GENERIC_ANALYZER).l
 	bison -o translator.tab.c $(TRANSFORM_ENGINE).y -yd
 	gcc -c lex.yy.c
-	gcc -c $(TRANSLATOR_IFACE).h $(TRANSLATOR_PATH)/$(TRANSLATOR).c
+	gcc -c $(TRANSLATOR_IFACE).h $(TRANSLATOR_IFACE).c $(TRANSLATOR_PATH)/$(TRANSLATOR).c
 	gcc -c translator.tab.c
 	gcc -o $(NAME) *.o -lfl -ly
 
