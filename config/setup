@@ -18,6 +18,13 @@ link() {
 	force_link "$dest" "$2"
 }
 
+include() {
+	dest="$(dots $2)$1"
+	git config -f "$2" include.path | grep -q "$dest" ||
+	git config -f "$2" include.path "$dest"
+}
+
 link $c/exclude .git/info/exclude
 link $c/config.mak config.mak
 link $c/hooks .git/hooks
+include $c/gitconfig .git/config

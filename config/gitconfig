@@ -1,0 +1,15 @@
+[remote "origin"]
+	url = git://github.com/gitster/git.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[remote "github"]
+	url = git@github.com:peff/git.git
+	fetch = +refs/heads/*:refs/remotes/github/*
+[push]
+	default = matching
+[remote]
+	pushDefault = github
+[rerere]
+	enabled = true
+	autoUpdate = true
+[merge]
+	conflictStyle = diff3
