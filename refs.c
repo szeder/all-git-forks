@@ -37,7 +37,7 @@ int update_ref(const char *msg, const char *refname,
 	       const unsigned char *new_sha1, const unsigned char *old_sha1,
 	       unsigned int flags, enum action_on_err onerr)
 {
-	struct ref_transaction *t;
+	void *t;
 	struct strbuf err = STRBUF_INIT;
 
 	t = ref_transaction_begin(&err);
@@ -973,7 +973,6 @@ int ref_transaction_verify(struct ref_transaction *transaction,
 			refname, old_sha1, flags, err);
 }
 
-
 int ref_transaction_commit(struct ref_transaction *transaction, struct strbuf *err)
 {
 	return the_refs_backend->transaction_commit(transaction, err);
@@ -1011,7 +1010,7 @@ int create_symref(const char *ref_target, const char *refs_heads_master,
 		  const char *logmsg)
 {
 	struct strbuf err = STRBUF_INIT;
-	void *transaction = ref_transaction_begin(&err);
+	struct ref_transaction *transaction = ref_transaction_begin(&err);
 	if (!transaction)
 		return -1;
 
