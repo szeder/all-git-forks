@@ -198,6 +198,8 @@ our $prevent_xss = 0;
 # [Default: highlight]
 our $highlight_bin = "++HIGHLIGHT_BIN++";
 
+our $markdown_bin = '/usr/bin/markdown';
+
 # information about snapshot formats that gitweb is capable of serving
 our %known_snapshot_formats = (
 	# name => {
@@ -6621,6 +6623,29 @@ sub git_summary {
 	}
 
 	print "</table>\n";
+
+	# Convert README.md (Markdown file) to HTML and include in output #using external Markdown
+	if (!$prevent_xss) {
+		$file_name = "README.md";
+		my $proj_head_hash = git_get_head_hash($project);
+		my $readme_blob_hash = git_get_hash_by_path($proj_head_hash, "README.md", "blob");
+
+		if ($readme_blob_hash) { # if README.md exists
+			print qq{<div class="title">readme</div>\n};
+			print qq{<div class="readme">\n}; # TODO find/create a better CSS class than page_body
+
+			my $cmd_markdownify = join ' ', git_cmd(), "cat-file blob",
+                                            $readme_blob_hash, "| $markdown_bin |";
+			open my $markedup_fh, $cmd_markdownify
+					or die_error(500, "Open git-cat-file blob '$hash' failed");
+			while (my $markedup = <$markedup_fh>) {
+				print $markedup;
+			}
+			close $markedup_fh;
+
+			print "</div>";
+		}
+	}
 
 	# If XSS prevention is on, we don't include README.html.
 	# TODO: Allow a readme in some safe format.
