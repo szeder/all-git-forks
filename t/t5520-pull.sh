@@ -339,6 +339,7 @@ test_expect_success 'git pull --rebase detects upstreamed changes' '
 test_expect_success 'setup for avoiding reapplying old patches' '
 	(cd dst &&
 	 test_might_fail git rebase --abort &&
+	 git fetch origin &&
 	 git reset --hard origin/master
 	) &&
 	git clone --bare src src-replace.git &&
