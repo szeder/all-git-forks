@@ -243,7 +243,7 @@ static int batch_one_object(const char *obj_name, struct batch_options *opt,
 
 	result = get_sha1_with_context(obj_name, flags, data->sha1, &ctx);
 	if (result != FOUND) {
-		switch(result) {
+		switch (result) {
 		case MISSING_OBJECT:
 			printf("%s missing\n", obj_name);
 			break;
