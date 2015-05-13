@@ -164,6 +164,26 @@ test_expect_success 'fail if upstream branch does not exist' '
 	verbose test "$(cat file)" = file
 '
 
+test_expect_success 'fail if the index has unresolved entries' '
+	git checkout -b third second^ &&
+	test_when_finished "git checkout -f copy && git branch -D third" &&
+	verbose test "$(cat file)" = file &&
+	echo modified2 >file &&
+	git commit -a -m modified2 &&
+	verbose test -z "$(git ls-files -u)" &&
+	test_must_fail git pull . second &&
+	verbose test -n "$(git ls-files -u)" &&
+	cp file expected &&
+	test_must_fail git pull . second 2>err &&
+	test_i18ngrep "you have unmerged files" err &&
+	test_cmp expected file &&
+	git add file &&
+	verbose test -z "$(git ls-files -u)" &&
+	test_must_fail git pull . second 2>err &&
+	test_i18ngrep "have not concluded your merge" err &&
+	test_cmp expected file
+'
+
 test_expect_success '--rebase' '
 	git branch to-rebase &&
 	echo modified again > file &&
