@@ -35,7 +35,7 @@ test_expect_success pull '
 )
 '
 
-test_expect_failure '--log=1 limits shortlog length' '
+test_expect_success '--log=1 limits shortlog length' '
 (
 	cd cloned &&
 	git reset --hard HEAD^ &&
