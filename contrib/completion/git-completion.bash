@@ -1405,7 +1405,7 @@ _git_ls_tree ()
 __git_log_common_options="
 	--not --all
 	--branches --tags --remotes
-	--first-parent --merges --no-merges
+	--first-parent --merges --merges= --no-merges
 	--max-count=
 	--max-age= --since= --after=
 	--min-age= --until= --before=
@@ -1448,6 +1448,10 @@ _git_log ()
 		;;
 	--decorate=*)
 		__gitcomp "full short no" "" "${cur##--decorate=}"
+		return
+		;;
+	--merges=*)
+		__gitcomp "show hide only" "" "${cur##--merges=}"
 		return
 		;;
 	--*)
@@ -1860,6 +1864,10 @@ _git_config ()
 		__gitcomp "$__git_log_date_formats"
 		return
 		;;
+	log.merges)
+		__gitcomp "show hide only"
+		return
+		;;
 	sendemail.aliasesfiletype)
 		__gitcomp "mutt mailrc pine elm gnus"
 		return
@@ -2150,6 +2158,7 @@ _git_config ()
 		interactive.singlekey
 		log.date
 		log.decorate
+		log.merges
 		log.showroot
 		mailmap.file
 		man.
