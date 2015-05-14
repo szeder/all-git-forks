@@ -243,7 +243,7 @@ static int batch_one_object(const char *obj_name, struct batch_options *opt,
 
 	result = get_sha1_with_context(obj_name, flags, data->sha1, &ctx);
 	if (result != FOUND) {
-		switch(result) {
+		switch (result) {
 		case MISSING_OBJECT:
 			printf("%s missing\n", obj_name);
 			break;
@@ -358,7 +358,7 @@ static int batch_objects(struct batch_options *opt)
 
 static const char * const cat_file_usage[] = {
 	N_("git cat-file (-t | -s | -e | -p | <type> | --textconv) <object>"),
-	N_("git cat-file (--batch | --batch-check) < <list-of-objects>"),
+	N_("git cat-file (--batch | --batch-check) [--follow-symlinks] < <list-of-objects>"),
 	NULL
 };
 
@@ -402,15 +402,14 @@ int cmd_cat_file(int argc, const char **argv, const char *prefix)
 		OPT_SET_INT('p', NULL, &opt, N_("pretty-print object's content"), 'p'),
 		OPT_SET_INT(0, "textconv", &opt,
 			    N_("for blob objects, run textconv on object's content"), 'c'),
-		OPT_SET_INT(0, "follow-symlinks", &batch.follow_symlinks,
-			N_("follow in-repo symlinks; report out-of-repo symlinks (requires --batch or --batch-check)"),
-			    1),
 		{ OPTION_CALLBACK, 0, "batch", &batch, "format",
 			N_("show info and content of objects fed from the standard input"),
 			PARSE_OPT_OPTARG, batch_option_callback },
 		{ OPTION_CALLBACK, 0, "batch-check", &batch, "format",
 			N_("show info about objects fed from the standard input"),
 			PARSE_OPT_OPTARG, batch_option_callback },
+		OPT_BOOL(0, "follow-symlinks", &batch.follow_symlinks,
+			 N_("follow in-tree symlinks (used with --batch or --batch-check)")),
 		OPT_END()
 	};
 
