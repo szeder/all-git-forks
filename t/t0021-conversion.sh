@@ -216,4 +216,17 @@ test_expect_success EXPENSIVE 'filter large file' '
 	! test -s err
 '
 
+test_expect_success "filtering empty file should work correctly" '
+	write_script filter-clean.sh <<-EOF &&
+	echo "Extra Head" && cat
+	EOF
+	echo "emptyfile filter=check" >>.gitattributes &&
+	git config filter.check.clean "sh ./filter-clean.sh" &&
+	>emptyfile &&
+	git add emptyfile &&
+	echo "Extra Head" >expect &&
+	git cat-file blob :emptyfile >actual &&
+	test_cmp expect actual
+'
+
 test_done
