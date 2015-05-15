@@ -204,15 +204,17 @@ test_expect_success EXPENSIVE 'filter large file' '
 	! test -s err
 '
 
-test_expect_success "filtering empty file should not produce complaints" '
-	echo "emptyfile filter=cat" >>.gitattributes &&
-	git config filter.cat.clean cat &&
-	git config filter.cat.smudge cat &&
-	git add . &&
-	git commit -m "cat filter for emptyfile" &&
-	> emptyfile &&
-	git add emptyfile 2>err &&
-	! grep -Fiqs "bad file descriptor" err
+test_expect_success "filtering empty file should work correctly" '
+	write_script filter-clean.sh <<-EOF &&
+	echo "Extra Head" && cat
+	EOF
+	echo "emptyfile filter=check" >>.gitattributes &&
+	git config filter.check.clean "sh ./filter-clean.sh" &&
+	>emptyfile &&
+	git add emptyfile &&
+	echo "Extra Head" >expect &&
+	git cat-file blob :emptyfile >actual &&
+	test_cmp expect actual
 '
 
 test_done
