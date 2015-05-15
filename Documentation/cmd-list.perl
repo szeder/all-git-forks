@@ -38,6 +38,10 @@ sub format_one {
 	}
 }
 
+while (<>) {
+	last if /^\[commands\]/;
+}
+
 my %cmds = ();
 for (sort <>) {
 	next if /^#/;

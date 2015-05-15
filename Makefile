@@ -2447,7 +2447,7 @@ check-docs::
 		esac ; \
 		test -f "Documentation/$$v.txt" || \
 		echo "no doc: $$v"; \
-		sed -e '/^#/d' command-list.txt | \
+		sed -e '1,/^\[commands\]/d' -e '/^#/d' <command-list.txt | \
 		grep -q "^$$v[ 	]" || \
 		case "$$v" in \
 		git) ;; \
@@ -2456,6 +2456,7 @@ check-docs::
 	done; \
 	( \
 		sed -e '/^#/d' \
+		    -e '1,/^\[commands\]/d' \
 		    -e 's/[ 	].*//' \
 		    -e 's/^/listed /' command-list.txt; \
 		$(MAKE) -C Documentation print-man1 | \

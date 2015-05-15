@@ -1,5 +1,6 @@
 # List of known git commands.
 # command name                          category [deprecated] [common]
+[commands]
 git-add                                 mainporcelain common
 git-am                                  mainporcelain
 git-annotate                            ancillaryinterrogators
