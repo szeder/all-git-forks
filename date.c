@@ -9,7 +9,7 @@
 /*
  * This is like mktime, but without normalization of tm_wday and tm_yday.
  */
-static time_t tm_to_time_t(const struct tm *tm)
+static int tm_to_time_t(const struct tm *tm, time_t *time)
 {
 	static const int mdays[] = {
 	    0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334
@@ -18,16 +18,16 @@ static time_t tm_to_time_t(const struct tm *tm)
 	int month = tm->tm_mon;
 	int day = tm->tm_mday;
 
-	if (year < 0 || year > 129) /* algo only works for 1970-2099 */
-		return -1;
+	printf("year: %d\n", year);
 	if (month < 0 || month > 11) /* array bounds */
 		return -1;
 	if (month < 2 || (year + 2) % 4)
 		day--;
 	if (tm->tm_hour < 0 || tm->tm_min < 0 || tm->tm_sec < 0)
 		return -1;
-	return (year * 365 + (year + 1) / 4 + mdays[month] + day) * 24*60*60UL +
+	*time = (year * 365 + (year + 1) / 4 + mdays[month] + day) * 24*60*60UL +
 		tm->tm_hour * 60*60 + tm->tm_min * 60 + tm->tm_sec;
+	return 0;
 }
 
 static const char *month_names[] = {
@@ -72,7 +72,9 @@ static int local_tzoffset(unsigned long time)
 
 	t = time;
 	localtime_r(&t, &tm);
-	t_local = tm_to_time_t(&tm);
+	if (tm_to_time_t(&tm, &t_local)) {
+		return 0;
+	}
 
 	if (t_local < t) {
 		eastwest = -1;
@@ -377,7 +379,7 @@ static int is_date(int year, int month, int day, struct tm *now_tm, time_t now, 
 				return 1;
 			r->tm_year = now_tm->tm_year;
 		}
-		else if (year >= 1970 && year < 2100)
+		else if (year >= 1000 && year <= 9999)
 			r->tm_year = year - 1900;
 		else if (year > 70 && year < 100)
 			r->tm_year = year;
@@ -388,7 +390,8 @@ static int is_date(int year, int month, int day, struct tm *now_tm, time_t now, 
 		if (!now_tm)
 			return 1;
 
-		specified = tm_to_time_t(r);
+		if (tm_to_time_t(r, &specified))
+			return 1;
 
 		/* Be it commit time or author time, it does not make
 		 * sense to specify timestamp way into the future.  Make
@@ -705,8 +708,7 @@ int parse_date_basic(const char *date, unsigned long *timestamp, int *offset)
 	}
 
 	/* do not use mktime(), which uses local timezone, here */
-	*timestamp = tm_to_time_t(&tm);
-	if (*timestamp == -1)
+	if (tm_to_time_t(&tm, timestamp))
 		return -1;
 
 	if (*offset == -1) {
@@ -753,8 +755,9 @@ int parse_date(const char *date, struct strbuf *result)
 {
 	unsigned long timestamp;
 	int offset;
-	if (parse_date_basic(date, &timestamp, &offset))
-		return -1;
+	int ret = parse_date_basic(date, &timestamp, &offset);
+	if (ret)
+		return ret;
 	date_string(timestamp, offset, result);
 	return 0;
 }
@@ -787,11 +790,12 @@ enum date_mode parse_date_format(const char *format)
 void datestamp(struct strbuf *out)
 {
 	time_t now;
-	int offset;
+	time_t offset = -1;
 
 	time(&now);
 
-	offset = tm_to_time_t(localtime(&now)) - now;
+	tm_to_time_t(localtime(&now), &offset);
+	offset -= now;
 	offset /= 60;
 
 	date_string(now, offset, out);

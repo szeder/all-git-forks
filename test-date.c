@@ -24,14 +24,19 @@ static void parse_dates(char **argv, struct timeval *now)
 	for (; *argv; argv++) {
 		unsigned long t;
 		int tz;
+		int ret;
 
 		strbuf_reset(&result);
-		parse_date(*argv, &result);
-		if (sscanf(result.buf, "%lu %d", &t, &tz) == 2)
-			printf("%s -> %s\n",
-			       *argv, show_date(t, tz, DATE_ISO8601));
-		else
-			printf("%s -> bad\n", *argv);
+		ret = parse_date(*argv, &result);
+		if (ret < 0) {
+			printf("%s -> bad result %d\n", *argv, ret);
+		} else {
+			if (sscanf(result.buf, "%lu %d", &t, &tz) == 2)
+				printf("%s -> %s\n",
+				       *argv, show_date(t, tz, DATE_ISO8601));
+			else
+				printf("%s -> bad\n", *argv);
+		}
 	}
 	strbuf_release(&result);
 }
