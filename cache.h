@@ -1094,12 +1094,12 @@ enum date_mode {
 	DATE_RAW
 };
 
-const char *show_date(unsigned long time, int timezone, enum date_mode mode);
-void show_date_relative(unsigned long time, int tz, const struct timeval *now,
+const char *show_date(time_t time, int timezone, enum date_mode mode);
+void show_date_relative(time_t time, int tz, const struct timeval *now,
 			struct strbuf *timebuf);
 int parse_date(const char *date, struct strbuf *out);
-int parse_date_basic(const char *date, unsigned long *timestamp, int *offset);
-int parse_expiry_date(const char *date, unsigned long *timestamp);
+int parse_date_basic(const char *date, time_t *timestamp, int *offset);
+int parse_expiry_date(const char *date, time_t *timestamp);
 void datestamp(struct strbuf *out);
 #define approxidate(s) approxidate_careful((s), NULL)
 unsigned long approxidate_careful(const char *, int *);

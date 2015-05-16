@@ -68,7 +68,7 @@ static const char *weekday_names[] = {
 	"Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"
 };
 
-static time_t gm_time_t(unsigned long time, int tz)
+static time_t gm_time_t(time_t time, int tz)
 {
 	int minutes;
 
@@ -83,7 +83,7 @@ static time_t gm_time_t(unsigned long time, int tz)
  * thing, which means that tz -0100 is passed in as the integer -100,
  * even though it means "sixty minutes off"
  */
-static struct tm *time_to_tm(unsigned long time, int tz)
+static struct tm *time_to_tm(time_t time, int tz)
 {
 	time_t t = gm_time_t(time, tz);
 	return gmtime(&t);
@@ -93,7 +93,7 @@ static struct tm *time_to_tm(unsigned long time, int tz)
  * What value of "tz" was in effect back then at "time" in the
  * local timezone?
  */
-static int local_tzoffset(unsigned long time)
+static int local_tzoffset(time_t time)
 {
 	time_t t, t_local;
 	struct tm tm;
@@ -117,7 +117,7 @@ static int local_tzoffset(unsigned long time)
 	return offset * eastwest;
 }
 
-void show_date_relative(unsigned long time, int tz,
+void show_date_relative(time_t time, int tz,
 			       const struct timeval *now,
 			       struct strbuf *timebuf)
 {
@@ -191,7 +191,7 @@ void show_date_relative(unsigned long time, int tz,
 		 (diff + 183) / 365);
 }
 
-const char *show_date(unsigned long time, int tz, enum date_mode mode)
+const char *show_date(time_t time, int tz, enum date_mode mode)
 {
 	struct tm *tm;
 	static struct strbuf timebuf = STRBUF_INIT;
@@ -647,7 +647,7 @@ static int match_tz(const char *date, int *offp)
 	return end - date;
 }
 
-static void date_string(unsigned long date, int offset, struct strbuf *buf)
+static void date_string(time_t date, int offset, struct strbuf *buf)
 {
 	int sign = '+';
 
@@ -662,7 +662,7 @@ static void date_string(unsigned long date, int offset, struct strbuf *buf)
  * Parse a string like "0 +0000" as ancient timestamp near epoch, but
  * only when it appears not as part of any other string.
  */
-static int match_object_header_date(const char *date, unsigned long *timestamp, int *offset)
+static int match_object_header_date(const char *date, time_t *timestamp, int *offset)
 {
 	char *end;
 	unsigned long stamp;
@@ -687,7 +687,7 @@ static int match_object_header_date(const char *date, unsigned long *timestamp, 
 
 /* Gr. strptime is crap for this; it doesn't have a way to require RFC2822
    (i.e. English) day/month names, and it doesn't work correctly with %z. */
-int parse_date_basic(const char *date, unsigned long *timestamp, int *offset)
+int parse_date_basic(const char *date, time_t *timestamp, int *offset)
 {
 	struct tm tm;
 	int tm_gmt;
@@ -758,7 +758,7 @@ int parse_date_basic(const char *date, unsigned long *timestamp, int *offset)
 	return 0; /* success */
 }
 
-int parse_expiry_date(const char *date, unsigned long *timestamp)
+int parse_expiry_date(const char *date, time_t *timestamp)
 {
 	int errors = 0;
 
@@ -782,7 +782,7 @@ int parse_expiry_date(const char *date, unsigned long *timestamp)
 
 int parse_date(const char *date, struct strbuf *result)
 {
-	unsigned long timestamp;
+	time_t timestamp;
 	int offset;
 	int ret = parse_date_basic(date, &timestamp, &offset);
 	if (ret)
@@ -834,7 +834,7 @@ void datestamp(struct strbuf *out)
  * Relative time update (eg "2 days ago").  If we haven't set the time
  * yet, we need to set it from current time.
  */
-static unsigned long update_tm(struct tm *tm, struct tm *now, unsigned long sec)
+static time_t update_tm(struct tm *tm, struct tm *now, unsigned long sec)
 {
 	time_t n;
 
@@ -1103,7 +1103,7 @@ static void pending_number(struct tm *tm, int *num)
 	}
 }
 
-static unsigned long approxidate_str(const char *date,
+static time_t approxidate_str(const char *date,
 				     const struct timeval *tv,
 				     int *error_ret)
 {
@@ -1142,7 +1142,7 @@ static unsigned long approxidate_str(const char *date,
 
 unsigned long approxidate_relative(const char *date, const struct timeval *tv)
 {
-	unsigned long timestamp;
+	time_t timestamp;
 	int offset;
 	int errors = 0;
 
@@ -1154,7 +1154,7 @@ unsigned long approxidate_relative(const char *date, const struct timeval *tv)
 unsigned long approxidate_careful(const char *date, int *error_ret)
 {
 	struct timeval tv;
-	unsigned long timestamp;
+	time_t timestamp;
 	int offset;
 	int dummy = 0;
 	if (!error_ret)
