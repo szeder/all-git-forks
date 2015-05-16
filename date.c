@@ -6,6 +6,27 @@
 
 #include "cache.h"
 
+static int number_of_leap_days(int year)
+{
+	return year / 4 - year / 100 + year / 400;
+}
+
+static int is_leap_year(int year)
+{
+	if (year % 4)
+		return 0;
+	if (year % 100)
+		return 1;
+	if (year % 400)
+		return 0;
+	return 1;
+}
+
+static int is_before_leap_day_of_leap_year(int month, int year)
+{
+	return month < 2 && is_leap_year(year);
+}
+
 /*
  * This is like mktime, but without normalization of tm_wday and tm_yday.
  */
@@ -14,19 +35,37 @@ static int tm_to_time_t(const struct tm *tm, time_t *time)
 	static const int mdays[] = {
 	    0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334
 	};
-	int year = tm->tm_year - 70;
+	int year = tm->tm_year + 1900;
 	int month = tm->tm_mon;
 	int day = tm->tm_mday;
 
-	printf("year: %d\n", year);
+	if (year < 1583)	/* approximate start of gregorian calendar */
+		return -1;
 	if (month < 0 || month > 11) /* array bounds */
 		return -1;
-	if (month < 2 || (year + 2) % 4)
-		day--;
 	if (tm->tm_hour < 0 || tm->tm_min < 0 || tm->tm_sec < 0)
 		return -1;
-	*time = (year * 365 + (year + 1) / 4 + mdays[month] + day) * 24*60*60UL +
-		tm->tm_hour * 60*60 + tm->tm_min * 60 + tm->tm_sec;
+
+	int leap_days_of_time = number_of_leap_days(year);
+	int leap_days_of_epoch = number_of_leap_days(1970);
+	int leap_days_since_epoch = leap_days_of_time - leap_days_of_epoch;
+	int days = (year - 1970) * 365 + leap_days_since_epoch + mdays[month] + day;
+	printf("leap_days_of_time: %d\n", leap_days_of_time);
+	printf("leap_days_of_epoch: %d\n", leap_days_of_epoch);
+	printf("leap_days_since_epoch: %d\n", leap_days_since_epoch);
+	printf("days: %d\n", days);
+	if (is_before_leap_day_of_leap_year(month, year)) {
+		if (days < 0) {
+			printf("korrektur +1");
+			days++;
+		} else {
+			printf("korrektur -1");
+			days--;
+		}
+	}
+
+	printf("days final: %d\n", days);
+	*time = days * 24*60*60L + tm->tm_hour * 60*60 + tm->tm_min * 60 + tm->tm_sec;
 	return 0;
 }
 

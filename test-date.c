@@ -3,6 +3,7 @@
 static const char *usage_msg = "\n"
 "  test-date show [time_t]...\n"
 "  test-date parse [date]...\n"
+"  test-date parse-to-timestamp [date]...\n"
 "  test-date approxidate [date]...\n";
 
 static void show_dates(char **argv, struct timeval *now)
@@ -24,18 +25,31 @@ static void parse_dates(char **argv, struct timeval *now)
 	for (; *argv; argv++) {
 		unsigned long t;
 		int tz;
-		int ret;
 
 		strbuf_reset(&result);
-		ret = parse_date(*argv, &result);
-		if (ret < 0) {
-			printf("%s -> bad result %d\n", *argv, ret);
+		parse_date(*argv, &result);
+		if (sscanf(result.buf, "%lu %d", &t, &tz) == 2)
+			printf("%s -> %s\n",
+			       *argv, show_date(t, tz, DATE_ISO8601));
+		else
+			printf("%s -> bad\n", *argv);
+	}
+	strbuf_release(&result);
+}
+
+static void parse_to_timestamp(char **argv, struct timeval *now)
+{
+	struct strbuf result = STRBUF_INIT;
+
+	for (; *argv; argv++) {
+		unsigned long timestamp;
+		int offset;
+
+		strbuf_reset(&result);
+		if (parse_date_basic(*argv, &timestamp, &offset)) {
+			printf("%s -> bad\n", *argv);
 		} else {
-			if (sscanf(result.buf, "%lu %d", &t, &tz) == 2)
-				printf("%s -> %s\n",
-				       *argv, show_date(t, tz, DATE_ISO8601));
-			else
-				printf("%s -> bad\n", *argv);
+			printf("%s -> %ld %d\n", *argv, timestamp, offset);
 		}
 	}
 	strbuf_release(&result);
@@ -70,6 +84,8 @@ int main(int argc, char **argv)
 		show_dates(argv+1, &now);
 	else if (!strcmp(*argv, "parse"))
 		parse_dates(argv+1, &now);
+	else if (!strcmp(*argv, "parse-to-timestamp"))
+		parse_to_timestamp(argv+1, &now);
 	else if (!strcmp(*argv, "approxidate"))
 		parse_approxidate(argv+1, &now);
 	else

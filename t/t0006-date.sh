@@ -38,6 +38,7 @@ check_parse() {
 check_parse 2008 bad
 check_parse 2008-02 bad
 check_parse 2008-02-14 bad
+check_parse '1582-02-14 20:30:45' bad
 check_parse '2008-02-14 20:30:45' '2008-02-14 20:30:45 +0000'
 check_parse '2008-02-14 20:30:45 -0500' '2008-02-14 20:30:45 -0500'
 check_parse '2008-02-14 20:30:45 -0015' '2008-02-14 20:30:45 -0015'
@@ -85,5 +86,15 @@ check_approxidate '6AM, June 7, 2009' '2009-06-07 06:00:00'
 
 check_approxidate '2008-12-01' '2008-12-01 19:20:00'
 check_approxidate '2009-12-01' '2009-12-01 19:20:00'
+
+check_parse_to_ts() {
+	echo "$1 -> $2" >expect
+	test_expect_${4:-success} "parse date ($1${3:+ TZ=$3})" "
+	TZ=${3:-$TZ} test-date parse-to-timestamp '$1' >actual &&
+	test_cmp expect actual
+	"
+}
+
+check_parse_to_ts '1960-02-14 20:30:45 -0500' '-311725755 -300'
 
 test_done
