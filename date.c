@@ -49,22 +49,12 @@ static int tm_to_time_t(const struct tm *tm, time_t *time)
 	int leap_days_of_time = number_of_leap_days(year);
 	int leap_days_of_epoch = number_of_leap_days(1970);
 	int leap_days_since_epoch = leap_days_of_time - leap_days_of_epoch;
-	int days = (year - 1970) * 365 + leap_days_since_epoch + mdays[month] + day;
-	printf("leap_days_of_time: %d\n", leap_days_of_time);
-	printf("leap_days_of_epoch: %d\n", leap_days_of_epoch);
-	printf("leap_days_since_epoch: %d\n", leap_days_since_epoch);
-	printf("days: %d\n", days);
+	int full_days_in_month = day - 1;
+	int days = (year - 1970) * 365 + leap_days_since_epoch + mdays[month] + full_days_in_month;
 	if (is_before_leap_day_of_leap_year(month, year)) {
-		if (days < 0) {
-			printf("korrektur +1");
-			days++;
-		} else {
-			printf("korrektur -1");
-			days--;
-		}
+		days--;
 	}
 
-	printf("days final: %d\n", days);
 	*time = days * 24*60*60L + tm->tm_hour * 60*60 + tm->tm_min * 60 + tm->tm_sec;
 	return 0;
 }

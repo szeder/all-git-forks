@@ -89,7 +89,7 @@ check_approxidate '2009-12-01' '2009-12-01 19:20:00'
 
 check_parse_to_ts() {
 	echo "$1 -> $2" >expect
-	test_expect_${4:-success} "parse date ($1${3:+ TZ=$3})" "
+	test_expect_${4:-success} "parse date to ts ($1${3:+ TZ=$3})" "
 	TZ=${3:-$TZ} test-date parse-to-timestamp '$1' >actual &&
 	test_cmp expect actual
 	"
