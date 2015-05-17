@@ -44,7 +44,7 @@ static void setup_environment(LPWSTR exepath, int full_path)
 	int len;
 
 	/* Set MSYSTEM */
-	_swprintf_c(msystem, sizeof(msystem),
+	swprintf_s(msystem, sizeof(msystem),
 		L"MINGW%d", (int) sizeof(void *) * 8);
 	SetEnvironmentVariable(L"MSYSTEM", msystem);
 
@@ -137,10 +137,10 @@ static LPWSTR fixup_commandline(LPWSTR exepath, LPWSTR *exep, int *wait,
 	cmd = (LPWSTR)malloc(cmd_size);
 	if (prefix_args) {
 		if (is_git_command)
-			_swprintf_c(cmd, cmd_size, L"\"%s\\%s\" %.*s", exepath, L"git.exe",
+			swprintf_s(cmd, cmd_size, L"\"%s\\%s\" %.*s", exepath, L"git.exe",
 					prefix_args_len, prefix_args);
 		else
-			_swprintf_c(cmd, cmd_size, L"%.*s", prefix_args_len, prefix_args);
+			swprintf_s(cmd, cmd_size, L"%.*s", prefix_args_len, prefix_args);
 
 	}
 	else
@@ -324,7 +324,7 @@ int main(void)
 	LPWSTR working_directory = NULL;
 
 	/* Determine MSys2-based Git path. */
-	_swprintf_c(msystem_bin, sizeof(msystem_bin),
+	swprintf_s(msystem_bin, sizeof(msystem_bin),
 		L"mingw%d\\bin", (int) sizeof(void *) * 8);
 
 	/* get the installation location */
@@ -355,13 +355,13 @@ int main(void)
 		PathAppend(exe, msystem_bin);
 		PathAppend(exe, L"wish.exe");
 		if (_waccess(exe, 0) != -1)
-			_swprintf_c(buffer, BUFSIZE,
+			swprintf_s(buffer, BUFSIZE,
 				L"\"%s\\%.*s\\libexec\\git-core\"",
 				exepath, wcslen(msystem_bin) - 4, msystem_bin);
 		else {
 			wcscpy(exe, exepath);
 			PathAppend(exe, L"mingw\\bin\\wish.exe");
-			_swprintf_c(buffer, BUFSIZE,
+			swprintf_s(buffer, BUFSIZE,
 				L"\"%s\\mingw\\libexec\\git-core\"", exepath);
 		}
 		PathAppend(buffer, L"git-gui");
@@ -408,7 +408,7 @@ int main(void)
 
 		/* set the default exe module */
 		wcscpy(exe, exepath);
-		_swprintf_c(buffer, BUFSIZE, L"\"%s\"", exepath);
+		swprintf_s(buffer, BUFSIZE, L"\"%s\"", exepath);
 		PathAppend(exe, msystem_bin);
 		PathAppend(exe, L"wish.exe");
 		if (_waccess(exe, 0) != -1)
