@@ -95,6 +95,8 @@
 #include <winsock2.h>
 #include <windows.h>
 #define GIT_WINDOWS_NATIVE
+/* windgi defines ERROR which conflicts with git's code; undef it back */
+#undef ERROR
 #endif
 
 #include <unistd.h>
