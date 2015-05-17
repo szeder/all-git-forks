@@ -425,6 +425,7 @@ MSGFMT = msgfmt
 PTHREAD_LIBS = -lpthread
 PTHREAD_CFLAGS =
 GCOV = gcov
+WINDRES = windres
 
 export TCL_PATH TCLTK_PATH
 
