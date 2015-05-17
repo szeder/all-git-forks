@@ -24,6 +24,7 @@ static HANDLE hconsole1, hconsole2;
 
 #ifdef __MINGW32__
 #if !defined(__MINGW64_VERSION_MAJOR) || __MINGW64_VERSION_MAJOR < 5
+#if 0
 typedef struct _CONSOLE_FONT_INFOEX {
 	ULONG cbSize;
 	DWORD nFont;
@@ -32,6 +33,7 @@ typedef struct _CONSOLE_FONT_INFOEX {
 	UINT FontWeight;
 	WCHAR FaceName[LF_FACESIZE];
 } CONSOLE_FONT_INFOEX, *PCONSOLE_FONT_INFOEX;
+#endif
 #endif
 #endif
 

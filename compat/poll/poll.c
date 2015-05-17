@@ -69,6 +69,10 @@
 # define INFTIM (-1)
 #endif
 
+#ifndef QS_ALLINPUT
+# define QS_ALLINPUT 0x04FF
+#endif
+
 /* BeOS does not have MSG_PEEK.  */
 #ifndef MSG_PEEK
 # define MSG_PEEK 0
