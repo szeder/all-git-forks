@@ -1,8 +1,6 @@
 #include "../git-compat-util.h"
 #include "win32.h"
 #include <conio.h>
-typedef void *LPCDLGTEMPLATE;
-typedef void *LPSCROLLINFO;
 #include <shlobj.h>
 #include <wchar.h>
 #include "../strbuf.h"
