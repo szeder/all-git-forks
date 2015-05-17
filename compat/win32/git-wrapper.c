@@ -129,17 +129,18 @@ static LPWSTR fixup_commandline(LPWSTR exepath, LPWSTR *exep, int *wait,
 	int wargc = 0;
 	LPWSTR cmd = NULL, cmdline = NULL;
 	LPWSTR *wargv = NULL, p = NULL;
+	size_t cmd_size;
 
 	cmdline = GetCommandLine();
 	wargv = CommandLineToArgvW(cmdline, &wargc);
-	cmd = (LPWSTR)malloc(sizeof(WCHAR) *
-		(wcslen(cmdline) + prefix_args_len + 1 + MAX_PATH));
+	cmd_size = sizeof(WCHAR) * (wcslen(cmdline) + prefix_args_len + 1 + MAX_PATH);
+	cmd = (LPWSTR)malloc(cmd_size);
 	if (prefix_args) {
 		if (is_git_command)
-			_swprintf(cmd, L"\"%s\\%s\" %.*s", exepath, L"git.exe",
+			swprintf(cmd, cmd_size, L"\"%s\\%s\" %.*s", exepath, L"git.exe",
 					prefix_args_len, prefix_args);
 		else
-			_swprintf(cmd, L"%.*s", prefix_args_len, prefix_args);
+			swprintf(cmd, cmd_size, L"%.*s", prefix_args_len, prefix_args);
 
 	}
 	else
