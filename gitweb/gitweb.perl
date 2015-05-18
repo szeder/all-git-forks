@@ -4253,6 +4253,10 @@ sub git_footer_html {
 			print qq!	var tz_cookie = { name: '$tz_cookie', expires: 14, path: '/' };\n!. # in days
 			      qq!	onloadTZSetup('$jstimezone', tz_cookie, '$datetime_class');\n!;
 		}
+		my $check_feature_wrap_diffs = 1; # so we can config it someday
+		if ($check_feature_wrap_diffs) {  # 
+			print qq!       wrapCheckboxSetup();\n!;
+		}
 		print qq!};\n!.
 		      qq!</script>\n!;
 	}
@@ -7761,12 +7765,31 @@ sub diff_style_nav {
 	@styles =
 		@styles[ map { $_ * 2 } 0..$#styles/2 ];
 
-	return join '',
+	my $html = join '',
 		map { " | ".$_ }
 		map {
 			$_ eq $diff_style ? $styles{$_} :
 			$cgi->a({-href => href(-replay=>1, diff_style => $_)}, $styles{$_})
 		} @styles;
+
+		my $check_feature_wrap_diffs = 1; #so we can config it someday
+		if ($check_feature_wrap_diffs) { 
+			my $checkbox_html = $cgi->checkbox(
+					-name    => 'wrapDiffs', 
+					-id      => 'wrapDiffsCheckbox',
+					-label   => 'wrap',
+					-checked => 0,
+					-onclick => 'toggleWrapping(this)'
+				); 
+			$html =~ s{ 
+				(?<! > ) # only add it when we're *not* between <a> </a> tags, i.e. we're the current page
+				side \s by \s side 
+				(?!  < ) 
+			}{side by side <small>($checkbox_html)</small>)}x;
+
+		}
+
+	return $html;
 }
 
 sub git_commitdiff {

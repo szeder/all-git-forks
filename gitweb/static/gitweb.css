@@ -301,6 +301,11 @@ td.current_head {
 	text-decoration: underline;
 }
 
+.wrapped-diff {
+  word-wrap: break-word;
+}
+
+
 td.category {
 	background-color: #d9d8d1;
 	border-top: 1px solid #000000;
