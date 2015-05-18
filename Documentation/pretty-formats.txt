@@ -81,7 +81,7 @@ displayed in full, regardless of whether --abbrev or
 true parent commits, without taking grafts or history
 simplification into account. Note that this format affects the way
 commits are displayed, but not the way the diff is shown e.g. with
-`git log --raw`. To get unabbreviated commits in a raw diff format,
+`git log --raw`. To get full object names in a raw diff format,
 use `--no-abbrev`.
 
 * 'format:<string>'
