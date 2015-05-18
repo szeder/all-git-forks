@@ -44,7 +44,7 @@ static void setup_environment(LPWSTR exepath, int full_path)
 	int len;
 
 	/* Set MSYSTEM */
-	swprintf(msystem, sizeof(msystem),
+	swprintf_s(msystem, sizeof(msystem),
 		L"MINGW%d", (int) sizeof(void *) * 8);
 	SetEnvironmentVariable(L"MSYSTEM", msystem);
 
@@ -129,17 +129,18 @@ static LPWSTR fixup_commandline(LPWSTR exepath, LPWSTR *exep, int *wait,
 	int wargc = 0;
 	LPWSTR cmd = NULL, cmdline = NULL;
 	LPWSTR *wargv = NULL, p = NULL;
+	size_t cmd_size;
 
 	cmdline = GetCommandLine();
 	wargv = CommandLineToArgvW(cmdline, &wargc);
-	cmd = (LPWSTR)malloc(sizeof(WCHAR) *
-		(wcslen(cmdline) + prefix_args_len + 1 + MAX_PATH));
+	cmd_size = sizeof(WCHAR) * (wcslen(cmdline) + prefix_args_len + 1 + MAX_PATH);
+	cmd = (LPWSTR)malloc(cmd_size);
 	if (prefix_args) {
 		if (is_git_command)
-			_swprintf(cmd, L"\"%s\\%s\" %.*s", exepath, L"git.exe",
+			swprintf_s(cmd, cmd_size, L"\"%s\\%s\" %.*s", exepath, L"git.exe",
 					prefix_args_len, prefix_args);
 		else
-			_swprintf(cmd, L"%.*s", prefix_args_len, prefix_args);
+			swprintf_s(cmd, cmd_size, L"%.*s", prefix_args_len, prefix_args);
 
 	}
 	else
@@ -323,7 +324,7 @@ int main(void)
 	LPWSTR working_directory = NULL;
 
 	/* Determine MSys2-based Git path. */
-	swprintf(msystem_bin, sizeof(msystem_bin),
+	swprintf_s(msystem_bin, sizeof(msystem_bin),
 		L"mingw%d\\bin", (int) sizeof(void *) * 8);
 
 	/* get the installation location */
@@ -354,13 +355,13 @@ int main(void)
 		PathAppend(exe, msystem_bin);
 		PathAppend(exe, L"wish.exe");
 		if (_waccess(exe, 0) != -1)
-			swprintf(buffer, BUFSIZE,
+			swprintf_s(buffer, BUFSIZE,
 				L"\"%s\\%.*s\\libexec\\git-core\"",
 				exepath, wcslen(msystem_bin) - 4, msystem_bin);
 		else {
 			wcscpy(exe, exepath);
 			PathAppend(exe, L"mingw\\bin\\wish.exe");
-			swprintf(buffer, BUFSIZE,
+			swprintf_s(buffer, BUFSIZE,
 				L"\"%s\\mingw\\libexec\\git-core\"", exepath);
 		}
 		PathAppend(buffer, L"git-gui");
@@ -407,7 +408,7 @@ int main(void)
 
 		/* set the default exe module */
 		wcscpy(exe, exepath);
-		swprintf(buffer, BUFSIZE, L"\"%s\"", exepath);
+		swprintf_s(buffer, BUFSIZE, L"\"%s\"", exepath);
 		PathAppend(exe, msystem_bin);
 		PathAppend(exe, L"wish.exe");
 		if (_waccess(exe, 0) != -1)
