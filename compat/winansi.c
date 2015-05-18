@@ -2,7 +2,6 @@
  * Copyright 2008 Peter Harris <git@peter.is-a-geek.org>
  */
 
-#undef NOGDI
 #include "../git-compat-util.h"
 #include <wingdi.h>
 #include <winreg.h>
