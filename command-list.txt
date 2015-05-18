@@ -1,4 +1,5 @@
-# List of known git commands.
+# do not molest the next line
+### command list
 # command name                          category [deprecated] [common]
 git-add                                 mainporcelain common
 git-am                                  mainporcelain
