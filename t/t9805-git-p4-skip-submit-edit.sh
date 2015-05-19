@@ -17,7 +17,6 @@ test_expect_success 'init depot' '
 	)
 '
 
-# this works because P4EDITOR is set to true
 test_expect_success 'no config, unedited, say yes' '
 	git p4 clone --dest="$git" //depot &&
 	test_when_finished cleanup_git &&
@@ -25,6 +24,7 @@ test_expect_success 'no config, unedited, say yes' '
 		cd "$git" &&
 		echo line >>file1 &&
 		git commit -a -m "change 2" &&
+		P4EDITOR="test-chmtime +5" &&
 		echo y | git p4 submit &&
 		p4 changes //depot/... >wc &&
 		test_line_count = 2 wc
