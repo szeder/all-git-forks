@@ -26,7 +26,7 @@ test_expect_failure 'EDITOR has options' '
 		cd "$git" &&
 		echo change >file1 &&
 		git commit -m "change" file1 &&
-		P4EDITOR=": >\"$git/touched\"" git p4 submit &&
+		P4EDITOR=": >\"$git/touched\" && test-chmtime +5" git p4 submit &&
 		test_path_is_file "$git/touched"
 	)
 '
