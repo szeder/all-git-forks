@@ -142,6 +142,7 @@ Commands:
  s, squash = use commit, but meld into previous commit
  f, fixup = like "squash", but discard this commit's log message
  x, exec = run command (the rest of the line) using shell
+ d, drop = remove commit
 
 These lines can be re-ordered; they are executed from top to bottom.
 
@@ -498,6 +499,9 @@ do_next () {
 		mark_action_done
 		do_pick $sha1 "$rest"
 		record_in_rewritten $sha1
+		;;
+	drop|d)
+		mark_action_done
 		;;
 	reword|r)
 		comment_for_reflog reword

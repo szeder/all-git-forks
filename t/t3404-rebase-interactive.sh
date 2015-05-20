@@ -1055,12 +1055,16 @@ test_expect_success 'todo count' '
 	grep "^# Rebase ..* onto ..* ([0-9]" actual
 '
 
-test_expect_success 'drop choice' '
+test_expect_success 'drop' '
 	git checkout master &&
-	git rebase -i HEAD~2 &&
+	test_when_finished "git checkout master" &&
+	git checkout -b dropBranchTest master &&
 	set_fake_editor &&
-	FAKE_LINES="drop 1 drop 2"
-	test C = $(git cat-file commit HEAD | sed -ne \$p)
+	FAKE_LINES="1 drop 2 3 drop 4 5" git rebase -i --root &&
+	test E = $(git cat-file commit HEAD | sed -ne \$p) &&
+	test C = $(git cat-file commit HEAD^ | sed -ne \$p) &&
+	test A = $(git cat-file commit HEAD^^ | sed -ne \$p)
 '
+
 
 test_done
