@@ -1320,31 +1320,29 @@ Truncates and resets the position of the C<FILEHANDLE>.
 
 =cut
 
-sub temp_reset {
-	my ($self, $temp_fd) = _maybe_self(@_);
-	my $i = 0;
-	for(; $i < 9; $i++) {
-		try {
-			_temp_reset($temp_fd);
-			return;
-		} catch Error::Simple with {
-			carp "temp_reset failed on ", $temp_fd, ". Will try again.";
-			sleep(10);
-		}
+sub _attempt_repeatedly {
+	my ($self, $sub) = _maybe_self(@_);
+	my @delay = (5, 10, 20, 40);
+	for (my $tries = 0; $tries <= $#delay; $tries++) {
+		my $error = &{$sub}();
+		return if $error == undef;
+		throw Error::Simple($error) if $tries == $#delay;
+		carp $error . "; Trying again after " . $delay[$tries] . "s.";
+		sleep($delay[$tries]);
 	}
-	_temp_reset($temp_fd);
 }
 
-
-sub _temp_reset {
+sub temp_reset {
 	my ($self, $temp_fd) = _maybe_self(@_);
 
-	truncate $temp_fd, 0
-		or throw Error::Simple("couldn't truncate file");
-	sysseek($temp_fd, 0, SEEK_SET) and seek($temp_fd, 0, SEEK_SET)
-		or throw Error::Simple("couldn't seek to beginning of file");
-	sysseek($temp_fd, 0, SEEK_CUR) == 0 and tell($temp_fd) == 0
-		or throw Error::Simple("expected file position to be reset");
+	_attempt_repeatedly(sub {
+		truncate $temp_fd, 0 or return "couldn't truncate file";
+		sysseek($temp_fd, 0, SEEK_SET) and seek($temp_fd, 0, SEEK_SET)
+			or return "couldn't seek to beginning of file";
+		sysseek($temp_fd, 0, SEEK_CUR) == 0 and tell($temp_fd) == 0
+			or return "expected file position to be reset";
+		return undef;		
+	});
 }
 
 =item temp_path ( NAME )
