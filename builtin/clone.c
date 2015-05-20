@@ -293,16 +293,17 @@ static void copy_alternates(struct strbuf *src, struct strbuf *dst,
 	struct strbuf line = STRBUF_INIT;
 
 	while (strbuf_getline(&line, in, '\n') != EOF) {
-		char *abs_path, abs_buf[PATH_MAX];
+		char *abs_path;
 		if (!line.len || line.buf[0] == '#')
 			continue;
 		if (is_absolute_path(line.buf)) {
 			add_to_alternates_file(line.buf);
 			continue;
 		}
-		abs_path = mkpath("%s/objects/%s", src_repo, line.buf);
-		normalize_path_copy(abs_buf, abs_path);
-		add_to_alternates_file(abs_buf);
+		abs_path = mkpathdup("%s/objects/%s", src_repo, line.buf);
+		normalize_path_copy(abs_path, abs_path);
+		add_to_alternates_file(abs_path);
+		free(abs_path);
 	}
 	strbuf_release(&line);
 	fclose(in);
@@ -842,20 +843,21 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		git_dir = mkpathdup("%s/.git", dir);
 	}
 
+	atexit(remove_junk);
+	sigchain_push_common(remove_junk_on_signal);
+
 	if (!option_bare) {
-		junk_work_tree = work_tree;
 		if (safe_create_leading_directories_const(work_tree) < 0)
 			die_errno(_("could not create leading directories of '%s'"),
 				  work_tree);
 		if (!dest_exists && mkdir(work_tree, 0777))
-			die_errno(_("could not create work tree dir '%s'."),
+			die_errno(_("could not create work tree dir '%s'"),
 				  work_tree);
+		junk_work_tree = work_tree;
 		set_git_work_tree(work_tree);
 	}
-	junk_git_dir = git_dir;
-	atexit(remove_junk);
-	sigchain_push_common(remove_junk_on_signal);
 
+	junk_git_dir = git_dir;
 	if (safe_create_leading_directories_const(git_dir) < 0)
 		die(_("could not create leading directories of '%s'"), git_dir);
 

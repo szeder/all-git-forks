@@ -12,6 +12,7 @@
 #include "refs.h"
 #include "wildmatch.h"
 #include "pathspec.h"
+#include "utf8.h"
 
 struct path_simplify {
 	int len;
@@ -377,6 +378,49 @@ int match_pathspec(const struct pathspec *ps,
 	return negative ? 0 : positive;
 }
 
+int report_path_error(const char *ps_matched,
+		      const struct pathspec *pathspec,
+		      const char *prefix)
+{
+	/*
+	 * Make sure all pathspec matched; otherwise it is an error.
+	 */
+	struct strbuf sb = STRBUF_INIT;
+	int num, errors = 0;
+	for (num = 0; num < pathspec->nr; num++) {
+		int other, found_dup;
+
+		if (ps_matched[num])
+			continue;
+		/*
+		 * The caller might have fed identical pathspec
+		 * twice.  Do not barf on such a mistake.
+		 * FIXME: parse_pathspec should have eliminated
+		 * duplicate pathspec.
+		 */
+		for (found_dup = other = 0;
+		     !found_dup && other < pathspec->nr;
+		     other++) {
+			if (other == num || !ps_matched[other])
+				continue;
+			if (!strcmp(pathspec->items[other].original,
+				    pathspec->items[num].original))
+				/*
+				 * Ok, we have a match already.
+				 */
+				found_dup = 1;
+		}
+		if (found_dup)
+			continue;
+
+		error("pathspec '%s' did not match any file(s) known to git.",
+		      pathspec->items[num].original);
+		errors++;
+	}
+	strbuf_release(&sb);
+	return errors;
+}
+
 /*
  * Return the length of the "simple" part of a path match limiter.
  */
@@ -574,7 +618,12 @@ int add_excludes_from_file_to_list(const char *fname,
 	}
 
 	el->filebuf = buf;
+
+	if (skip_utf8_bom(&buf, size))
+		size -= buf - el->filebuf;
+
 	entry = buf;
+
 	for (i = 0; i < size; i++) {
 		if (buf[i] == '\n') {
 			if (entry != buf + i && entry[0] != '#') {
@@ -1622,18 +1671,19 @@ int remove_dir_recursively(struct strbuf *path, int flag)
 void setup_standard_excludes(struct dir_struct *dir)
 {
 	const char *path;
-	char *xdg_path;
 
 	dir->exclude_per_dir = ".gitignore";
-	path = git_path("info/exclude");
-	if (!excludes_file) {
-		home_config_paths(NULL, &xdg_path, "ignore");
-		excludes_file = xdg_path;
-	}
-	if (!access_or_warn(path, R_OK, 0))
-		add_excludes_from_file(dir, path);
+
+	/* core.excludefile defaulting to $XDG_HOME/git/ignore */
+	if (!excludes_file)
+		excludes_file = xdg_config_home("ignore");
 	if (excludes_file && !access_or_warn(excludes_file, R_OK, 0))
 		add_excludes_from_file(dir, excludes_file);
+
+	/* per repository user preference */
+	path = git_path("info/exclude");
+	if (!access_or_warn(path, R_OK, 0))
+		add_excludes_from_file(dir, path);
 }
 
 int remove_path(const char *name)

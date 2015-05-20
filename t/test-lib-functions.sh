@@ -348,11 +348,18 @@ test_declared_prereq () {
 	return 1
 }
 
+test_verify_prereq () {
+	test -z "$test_prereq" ||
+	expr >/dev/null "$test_prereq" : '[A-Z0-9_,!]*$' ||
+	error "bug in the test script: '$test_prereq' does not look like a prereq"
+}
+
 test_expect_failure () {
 	test_start_
 	test "$#" = 3 && { test_prereq=$1; shift; } || test_prereq=
 	test "$#" = 2 ||
 	error "bug in the test script: not 2 or 3 parameters to test-expect-failure"
+	test_verify_prereq
 	export test_prereq
 	if ! test_skip "$@"
 	then
@@ -372,6 +379,7 @@ test_expect_success () {
 	test "$#" = 3 && { test_prereq=$1; shift; } || test_prereq=
 	test "$#" = 2 ||
 	error "bug in the test script: not 2 or 3 parameters to test-expect-success"
+	test_verify_prereq
 	export test_prereq
 	if ! test_skip "$@"
 	then
@@ -400,6 +408,7 @@ test_external () {
 	error >&5 "bug in the test script: not 3 or 4 parameters to test_external"
 	descr="$1"
 	shift
+	test_verify_prereq
 	export test_prereq
 	if ! test_skip "$descr" "$@"
 	then
@@ -478,7 +487,7 @@ test_external_without_stderr () {
 test_path_is_file () {
 	if ! test -f "$1"
 	then
-		echo "File $1 doesn't exist. $*"
+		echo "File $1 doesn't exist. $2"
 		false
 	fi
 }
@@ -486,7 +495,7 @@ test_path_is_file () {
 test_path_is_dir () {
 	if ! test -d "$1"
 	then
-		echo "Directory $1 doesn't exist. $*"
+		echo "Directory $1 doesn't exist. $2"
 		false
 	fi
 }
@@ -745,7 +754,9 @@ test_ln_s_add () {
 	else
 		printf '%s' "$1" >"$2" &&
 		ln_s_obj=$(git hash-object -w "$2") &&
-		git update-index --add --cacheinfo 120000 $ln_s_obj "$2"
+		git update-index --add --cacheinfo 120000 $ln_s_obj "$2" &&
+		# pick up stat info from the file
+		git update-index "$2"
 	fi
 }
 

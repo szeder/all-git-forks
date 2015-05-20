@@ -157,8 +157,7 @@ struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 			server_capabilities = xstrdup(name + name_len + 1);
 		}
 
-		if (extra_have &&
-		    name_len == 5 && !memcmp(".have", name, 5)) {
+		if (extra_have && !strcmp(name, ".have")) {
 			sha1_array_append(extra_have, old_sha1);
 			continue;
 		}
@@ -274,28 +273,46 @@ static enum protocol get_protocol(const char *name)
 	die("I don't handle protocol '%s'", name);
 }
 
+static char *host_end(char **hoststart, int removebrackets)
+{
+	char *host = *hoststart;
+	char *end;
+	char *start = strstr(host, "@[");
+	if (start)
+		start++; /* Jump over '@' */
+	else
+		start = host;
+	if (start[0] == '[') {
+		end = strchr(start + 1, ']');
+		if (end) {
+			if (removebrackets) {
+				*end = 0;
+				memmove(start, start + 1, end - start);
+				end++;
+			}
+		} else
+			end = host;
+	} else
+		end = host;
+	return end;
+}
+
 #define STR_(s)	# s
 #define STR(s)	STR_(s)
 
 static void get_host_and_port(char **host, const char **port)
 {
 	char *colon, *end;
-
-	if (*host[0] == '[') {
-		end = strchr(*host + 1, ']');
-		if (end) {
-			*end = 0;
-			end++;
-			(*host)++;
-		} else
-			end = *host;
-	} else
-		end = *host;
+	end = host_end(host, 1);
 	colon = strchr(end, ':');
-
 	if (colon) {
-		*colon = 0;
-		*port = colon + 1;
+		long portnr = strtol(colon + 1, &end, 10);
+		if (end != colon + 1 && *end == '\0' && 0 <= portnr && portnr < 65536) {
+			*colon = 0;
+			*port = colon + 1;
+		} else if (!colon[1]) {
+			*colon = 0;
+		}
 	}
 }
 
@@ -547,13 +564,16 @@ static struct child_process *git_proxy_connect(int fd[2], char *host)
 	return proxy;
 }
 
-static const char *get_port_numeric(const char *p)
+static char *get_port(char *host)
 {
 	char *end;
+	char *p = strchr(host, ':');
+
 	if (p) {
 		long port = strtol(p + 1, &end, 10);
 		if (end != p + 1 && *end == '\0' && 0 <= port && port < 65536) {
-			return p;
+			*p = '\0';
+			return p+1;
 		}
 	}
 
@@ -595,14 +615,7 @@ static enum protocol parse_connect_url(const char *url_orig, char **ret_host,
 	 * Don't do destructive transforms as protocol code does
 	 * '[]' unwrapping in get_host_and_port()
 	 */
-	if (host[0] == '[') {
-		end = strchr(host + 1, ']');
-		if (end) {
-			end++;
-		} else
-			end = host;
-	} else
-		end = host;
+	end = host_end(&host, 0);
 
 	if (protocol == PROTO_LOCAL)
 		path = end;
@@ -663,17 +676,27 @@ struct child_process *git_connect(int fd[2], const char *url,
 	signal(SIGCHLD, SIG_DFL);
 
 	protocol = parse_connect_url(url, &hostandport, &path);
-	if (flags & CONNECT_DIAG_URL) {
+	if ((flags & CONNECT_DIAG_URL) && (protocol != PROTO_SSH)) {
 		printf("Diag: url=%s\n", url ? url : "NULL");
 		printf("Diag: protocol=%s\n", prot_name(protocol));
 		printf("Diag: hostandport=%s\n", hostandport ? hostandport : "NULL");
 		printf("Diag: path=%s\n", path ? path : "NULL");
 		conn = NULL;
 	} else if (protocol == PROTO_GIT) {
+		/*
+		 * Set up virtual host information based on where we will
+		 * connect, unless the user has overridden us in
+		 * the environment.
+		 */
+		char *target_host = getenv("GIT_OVERRIDE_VIRTUAL_HOST");
+		if (target_host)
+			target_host = xstrdup(target_host);
+		else
+			target_host = xstrdup(hostandport);
+
 		/* These underlying connection commands die() if they
 		 * cannot connect.
 		 */
-		char *target_host = xstrdup(hostandport);
 		if (git_use_proxy(hostandport))
 			conn = git_proxy_connect(fd, hostandport);
 		else
@@ -701,25 +724,52 @@ struct child_process *git_connect(int fd[2], const char *url,
 		conn->in = conn->out = -1;
 		if (protocol == PROTO_SSH) {
 			const char *ssh;
-			int putty;
+			int putty, tortoiseplink = 0;
 			char *ssh_host = hostandport;
 			const char *port = NULL;
 			get_host_and_port(&ssh_host, &port);
-			port = get_port_numeric(port);
+
+			if (!port)
+				port = get_port(ssh_host);
+
+			if (flags & CONNECT_DIAG_URL) {
+				printf("Diag: url=%s\n", url ? url : "NULL");
+				printf("Diag: protocol=%s\n", prot_name(protocol));
+				printf("Diag: userandhost=%s\n", ssh_host ? ssh_host : "NULL");
+				printf("Diag: port=%s\n", port ? port : "NONE");
+				printf("Diag: path=%s\n", path ? path : "NULL");
+
+				free(hostandport);
+				free(path);
+				free(conn);
+				return NULL;
+			}
 
 			ssh = getenv("GIT_SSH_COMMAND");
 			if (ssh) {
 				conn->use_shell = 1;
 				putty = 0;
 			} else {
+				const char *base;
+				char *ssh_dup;
+
 				ssh = getenv("GIT_SSH");
 				if (!ssh)
 					ssh = "ssh";
-				putty = !!strcasestr(ssh, "plink");
+
+				ssh_dup = xstrdup(ssh);
+				base = basename(ssh_dup);
+
+				tortoiseplink = !strcasecmp(base, "tortoiseplink") ||
+					!strcasecmp(base, "tortoiseplink.exe");
+				putty = !strcasecmp(base, "plink") ||
+					!strcasecmp(base, "plink.exe") || tortoiseplink;
+
+				free(ssh_dup);
 			}
 
 			argv_array_push(&conn->args, ssh);
-			if (putty && !strcasestr(ssh, "tortoiseplink"))
+			if (tortoiseplink)
 				argv_array_push(&conn->args, "-batch");
 			if (port) {
 				/* P is for PuTTY, p is for OpenSSH */

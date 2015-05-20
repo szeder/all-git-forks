@@ -238,7 +238,7 @@ test_expect_success 'push with pushInsteadOf' '
 test_expect_success 'push with pushInsteadOf and explicit pushurl (pushInsteadOf should not rewrite)' '
 	mk_empty testrepo &&
 	test_config "url.trash2/.pushInsteadOf" testrepo/ &&
-	test_config "url.trash3/.pusnInsteadOf" trash/wrong &&
+	test_config "url.trash3/.pushInsteadOf" trash/wrong &&
 	test_config remote.r.url trash/wrong &&
 	test_config remote.r.pushurl "testrepo/" &&
 	git push r refs/heads/master:refs/remotes/origin/master &&
@@ -1107,9 +1107,16 @@ test_expect_success 'fetch exact SHA1' '
 			git config uploadpack.allowtipsha1inwant true
 		) &&
 
-		git fetch -v ../testrepo $the_commit:refs/heads/copy &&
-		result=$(git rev-parse --verify refs/heads/copy) &&
-		test "$the_commit" = "$result"
+		git fetch -v ../testrepo $the_commit:refs/heads/copy master:refs/heads/extra &&
+		cat >expect <<-EOF &&
+		$the_commit
+		$the_first_commit
+		EOF
+		{
+			git rev-parse --verify refs/heads/copy &&
+			git rev-parse --verify refs/heads/extra
+		} >actual &&
+		test_cmp expect actual
 	)
 '
 
@@ -1430,8 +1437,22 @@ test_expect_success 'receive.denyCurrentBranch = updateInstead' '
 		test $(git -C .. rev-parse HEAD^^) = $(git rev-parse HEAD) &&
 		git diff --quiet &&
 		test fifth = "$(cat path3)"
-	)
+	) &&
 
+	# (5) push into void
+	rm -fr void &&
+	git init void &&
+	(
+		cd void &&
+		git config receive.denyCurrentBranch updateInstead
+	) &&
+	git push void master &&
+	(
+		cd void &&
+		test $(git -C .. rev-parse master) = $(git rev-parse HEAD) &&
+		git diff --quiet &&
+		git diff --cached --quiet
+	)
 '
 
 test_expect_success 'updateInstead with push-to-checkout hook' '
@@ -1493,6 +1514,45 @@ test_expect_success 'updateInstead with push-to-checkout hook' '
 		test "$(cat path1)" = unrelated &&
 		test "$(cat path5)" = irrelevant &&
 		test "$(git diff --name-only --cached HEAD)" = path5 &&
+		test $(git -C .. rev-parse HEAD) = $(git rev-parse HEAD)
+	) &&
+
+	# push into void
+	rm -fr void &&
+	git init void &&
+	(
+		cd void &&
+		git config receive.denyCurrentBranch updateInstead &&
+		write_script .git/hooks/push-to-checkout <<-\EOF
+		if git rev-parse --quiet --verify HEAD
+		then
+			has_head=yes
+			echo >&2 updating from $(git rev-parse HEAD)
+		else
+			has_head=no
+			echo >&2 pushing into void
+		fi
+		echo >&2 updating to "$1"
+
+		git update-index -q --refresh &&
+		case "$has_head" in
+		yes)
+			git read-tree -u -m HEAD "$1" ;;
+		no)
+			git read-tree -u -m "$1" ;;
+		esac || {
+			status=$?
+			echo >&2 read-tree failed
+			exit $status
+		}
+		EOF
+	) &&
+
+	git push void master &&
+	(
+		cd void &&
+		git diff --quiet &&
+		git diff --cached --quiet &&
 		test $(git -C .. rev-parse HEAD) = $(git rev-parse HEAD)
 	)
 '
