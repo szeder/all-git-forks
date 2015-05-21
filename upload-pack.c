@@ -37,7 +37,7 @@ static int use_thin_pack, use_ofs_delta, use_include_tag;
 static int no_progress, daemon_mode;
 /* Allow specifying sha1 if it is a ref tip. */
 #define ALLOW_TIP_SHA1	01
-static int allow_unadvertised_object_request;
+static unsigned int allow_unadvertised_object_request;
 static int shallow_nr;
 static struct object_array have_obj;
 static struct object_array want_obj;

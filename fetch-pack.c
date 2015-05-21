@@ -46,7 +46,7 @@ static struct prio_queue rev_list = { compare_commits_by_commit_date };
 static int non_common_revs, multi_ack, use_sideband;
 /* Allow specifying sha1 if it is a ref tip. */
 #define ALLOW_TIP_SHA1	01
-static int allow_unadvertised_object_request;
+static unsigned int allow_unadvertised_object_request;
 
 static void rev_list_push(struct commit *commit, int mark)
 {
