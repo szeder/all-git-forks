@@ -107,26 +107,41 @@ static void annotate_refs_with_symref_info(struct ref *ref)
 
 void get_remote_capabilities(int in, char *src_buf, size_t src_len)
 {
-	struct strbuf str = STRBUF_INIT;
+	struct strbuf capabilities_string = STRBUF_INIT;
 	for (;;) {
-		char *line = packet_read_line(in, scr_buf, src_len);
-		if (!line)
+		int len;
+		char *line = packet_buffer;
+		const char *arg;
+
+		len = packet_read(in, &src_buf, &src_len,
+				  packet_buffer, sizeof(packet_buffer),
+				  PACKET_READ_GENTLE_ON_EOF |
+				  PACKET_READ_CHOMP_NEWLINE);
+		if (len < 0)
+			die_initial_contact(0);
+
+		if (!len)
 			break;
+
+		if (len > 4 && skip_prefix(line, "ERR ", &arg))
+			die("remote error: %s", arg);
+
 		if (starts_with(line, "capability")) {
-			strbuf_addchar(str, ' ');
-			strbuf_addstr(str, line + strlen("capability:"));
+			strbuf_addstr(&capabilities_string, line + strlen("capability:"));
+			strbuf_addch(&capabilities_string, ' ');
 		}
 	}
 	free(server_capabilities);
-	server_capabilities = strbuf_detach(str);
+	server_capabilities = xmalloc(capabilities_string.len + 1);
+	server_capabilities = strbuf_detach(&capabilities_string, NULL);
 
-	strbuf_release(str);
+	strbuf_release(&capabilities_string);
 }
 
 struct ref **request_capabilities(int in, char *src_buf, size_t src_len,
-				     struct ref **list, unsigned int flags,
-				     struct sha1_array *extra_have,
-				     struct sha1_array *shallow_points)
+				  struct ref **list, unsigned int flags,
+				  struct sha1_array *extra_have,
+				  struct sha1_array *shallow_points)
 {
 
 }
