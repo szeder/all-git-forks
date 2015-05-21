@@ -824,6 +824,32 @@ add_exec_commands () {
 	mv "$1.new" "$1"
 }
 
+# Checks if there are two identical commits
+# in the todo list
+check_duplicates () {
+	list_commits=$(git stripspace --strip-comments < "$1")
+	echo "$list_commits" > "$1".check
+	while read -r command sha1 rest < "$1".check
+	do
+		case "$command" in
+		x|"exec")
+			;;
+		*)
+			echo "$sha1" >> "$1".sha1
+			;;
+		esac
+		sed -i '1d' "$1".check
+	done
+	duplicates=$(sort "$1".sha1 | uniq -d)
+	if ! test -z "$duplicates"
+	then
+		warn "Error: there are some dupplicate commits:"
+		warn "$duplicates"
+		die_abort "Duplicating commits"
+		# die "Please fix this using 'git rebase --edit-todo'."
+	fi
+}
+
 # The whole contents of this file is run by dot-sourcing it from
 # inside a shell function.  It used to be that "return"s we see
 # below were not inside any function, and expected to return
@@ -1063,6 +1089,8 @@ git_sequence_editor "$todo" ||
 
 has_action "$todo" ||
 	return 2
+
+check_duplicates "$todo"
 
 expand_todo_ids
 
