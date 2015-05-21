@@ -1137,7 +1137,7 @@ do
 			test_must_fail git fetch --depth=1 ../testrepo/.git $SHA1 &&
 			git --git-dir=../testrepo/.git config uploadpack.allowreachablesha1inwant true &&
 			git fetch --depth=1 ../testrepo/.git $SHA1 &&
-			git cat-file commit $SHA1 >/dev/null
+			git cat-file commit $SHA1
 		)
 	'
 
@@ -1149,15 +1149,15 @@ do
 			git commit --allow-empty -m foo &&
 			git commit --allow-empty -m bar &&
 			git commit --allow-empty -m xyz
-		)
+		) &&
 		SHA1_1=$(git --git-dir=testrepo/.git rev-parse HEAD^^) &&
 		SHA1_2=$(git --git-dir=testrepo/.git rev-parse HEAD^) &&
 		SHA1_3=$(git --git-dir=testrepo/.git rev-parse HEAD) &&
 		(
 			cd testrepo &&
 			git reset --hard $SHA1_2 &&
-			git cat-file commit $SHA1_3 >/dev/null &&
-			git cat-file commit $SHA1_3 >/dev/null
+			git cat-file commit $SHA1_1 &&
+			git cat-file commit $SHA1_3
 		) &&
 		mk_empty shallow &&
 		(
@@ -1166,10 +1166,10 @@ do
 			test_must_fail git fetch ../testrepo/.git $SHA1_1 &&
 			git --git-dir=../testrepo/.git config uploadpack.allowreachablesha1inwant true &&
 			git fetch ../testrepo/.git $SHA1_1 &&
-			git cat-file commit $SHA1_1 >/dev/null &&
-			test_must_fail git cat-file commit $SHA1_2 >/dev/null &&
+			git cat-file commit $SHA1_1 &&
+			test_must_fail git cat-file commit $SHA1_2 &&
 			git fetch ../testrepo/.git $SHA1_2 &&
-			git cat-file commit $SHA1_2 >/dev/null &&
+			git cat-file commit $SHA1_2 &&
 			test_must_fail git fetch ../testrepo/.git $SHA1_3
 		)
 	'
