@@ -324,6 +324,17 @@ extern int commit_tree_extended(const char *msg, size_t msg_len,
 				const char *author, const char *sign_commit,
 				struct commit_extra_header *);
 
+extern int commit_tree_collide(
+	const char *msg,
+	size_t msg_len,
+	const unsigned char *tree,
+	struct commit_list *parents, unsigned char *ret,
+	const char *author,
+	const char *sign_commit,
+	struct commit_extra_header *extra,
+	const unsigned char *sha1,
+	const unsigned char *mask);
+
 extern struct commit_extra_header *read_commit_extra_headers(struct commit *, const char **);
 
 extern void free_commit_extra_headers(struct commit_extra_header *extra);

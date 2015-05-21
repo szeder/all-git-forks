@@ -11,6 +11,7 @@
 #include "commit-slab.h"
 #include "prio-queue.h"
 #include "sha1-lookup.h"
+#include "thread-utils.h"
 
 static struct commit_extra_header *read_commit_extra_header_lines(const char *buf, size_t len, const char **);
 
@@ -1081,6 +1082,159 @@ struct commit_list *reduce_heads(struct commit_list *heads)
 	return result;
 }
 
+static inline int sha1_match_mask(const unsigned char *sha1,
+				  const unsigned char *want,
+				  const unsigned char *mask)
+{
+	int i;
+	for (i = 0; i < 20; i++)
+		if ((want[i] & mask[i]) != (sha1[i] & mask[i]))
+		    return 0;
+	return 1;
+}
+
+static unsigned long find_collision(const unsigned char *want,
+				    const unsigned char *mask,
+				    const git_SHA_CTX *base,
+				    unsigned long start,
+				    unsigned long end)
+{
+	unsigned long lulz;
+
+	for (lulz = start; lulz < end; lulz++) {
+		git_SHA_CTX guess;
+		unsigned char sha1[20];
+
+		memcpy(&guess, base, sizeof(guess));
+		git_SHA1_Update(&guess, &lulz, sizeof(lulz));
+		git_SHA1_Final(sha1, &guess);
+
+		if (sha1_match_mask(sha1, want, mask))
+			return lulz;
+	}
+	return end;
+}
+
+#ifndef NO_PTHREADS
+struct collision_thread_data {
+	const unsigned char *want;
+	const unsigned char *mask;
+	const git_SHA_CTX *base;
+	unsigned long start;
+	unsigned long end;
+
+	pthread_mutex_t *mutex;
+	pthread_cond_t *cond;
+	int *threads_alive;
+	unsigned long *answer;
+};
+
+static void *collision_thread(void *vdata)
+{
+	struct collision_thread_data *d = vdata;
+	unsigned long r;
+
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+	r = find_collision(d->want, d->mask, d->base,
+			   d->start, d->end);
+
+	pthread_mutex_lock(d->mutex);
+
+	(*d->threads_alive)--;
+	if (r != d->end) {
+		*d->answer = r;
+		pthread_cond_signal(d->cond);
+	}
+	else {
+		/* If we failed to find it, and we're the last thread,
+		 * wake up the parent so it can report failure. */
+		if (!*d->threads_alive)
+			pthread_cond_signal(d->cond);
+	}
+
+	pthread_mutex_unlock(d->mutex);
+	return NULL;
+}
+
+static unsigned long find_collision_threaded(int nthreads,
+					     const unsigned char *want,
+					     const unsigned char *mask,
+					     const git_SHA_CTX *base)
+{
+	int i;
+	pthread_t *threads;
+	struct collision_thread_data *data;
+	pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+	pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+	int threads_alive = nthreads;
+	unsigned long ret = ULONG_MAX;
+
+	threads = xmalloc(nthreads * sizeof(*threads));
+	data = xmalloc(nthreads * sizeof(*data));
+
+	pthread_mutex_lock(&mutex);
+
+	for (i = 0; i < nthreads; i++) {
+		data[i].want = want;
+		data[i].mask = mask;
+		data[i].base = base;
+		data[i].start = i * (ULONG_MAX / nthreads);
+		data[i].end = (i+1) * (ULONG_MAX / nthreads);
+		data[i].mutex = &mutex;
+		data[i].cond = &cond;
+		data[i].answer = &ret;
+		data[i].threads_alive = &threads_alive;
+		pthread_create(&threads[i], NULL, collision_thread, &data[i]);
+	}
+
+	pthread_cond_wait(&cond, &mutex);
+
+	for (i = 0; i < nthreads; i++) {
+		pthread_cancel(threads[i]);
+		pthread_join(threads[i], NULL);
+	}
+
+	free(threads);
+	free(data);
+	return ret;
+}
+#endif /* NO_PTHREADS */
+
+
+static void collide_commit(struct strbuf *data,
+			   const unsigned char *want,
+			   const unsigned char *mask)
+{
+	static const char terminator[] = { 0 };
+	char header[32];
+	int header_len;
+	unsigned long lulz;
+	git_SHA_CTX base;
+
+	header_len = snprintf(header, sizeof(header),
+			      "commit %lu",
+			      data->len + 1 + sizeof(lulz)) + 1;
+	git_SHA1_Init(&base);
+	git_SHA1_Update(&base, header, header_len);
+	git_SHA1_Update(&base, data->buf, data->len);
+	git_SHA1_Update(&base, terminator, sizeof(terminator));
+
+#ifdef NO_PTHREADS
+	lulz = find_collision(want, mask, &base, 0, ULONG_MAX);
+#else
+	lulz = find_collision_threaded(online_cpus(), want, mask, &base);
+#endif /* NO_PTHREADS */
+
+	if (lulz != ULONG_MAX) {
+		strbuf_add(data, terminator, sizeof(terminator));
+		strbuf_add(data, &lulz, sizeof(lulz));
+	}
+	else
+		warning("sorry, I couldn't find a collision!");
+}
+
+
 static const char gpg_sig_header[] = "gpgsig";
 static const int gpg_sig_header_len = sizeof(gpg_sig_header) - 1;
 
@@ -1515,12 +1669,35 @@ static const char commit_utf8_warn[] =
 "You may want to amend it after fixing the message, or set the config\n"
 "variable i18n.commitencoding to the encoding your project uses.\n";
 
-int commit_tree_extended(const char *msg, size_t msg_len,
-			 const unsigned char *tree,
-			 struct commit_list *parents, unsigned char *ret,
-			 const char *author, const char *sign_commit,
-			 struct commit_extra_header *extra)
+int commit_tree_extended(
+	const char *msg,
+	size_t msg_len,
+	const unsigned char *tree,
+	struct commit_list *parents,
+	unsigned char *ret,
+	const char *author,
+	const char *sign_commit,
+	struct commit_extra_header *extra)
 {
+
+	return commit_tree_collide(
+		msg, msg_len, tree, parents, ret, author, sign_commit, extra,
+		NULL, NULL);
+}
+
+int commit_tree_collide(
+	const char *msg,
+	size_t msg_len,
+	const unsigned char *tree,
+	struct commit_list *parents,
+	unsigned char *ret,
+	const char *author,
+	const char *sign_commit,
+	struct commit_extra_header *extra,
+	const unsigned char *want,
+	const unsigned char *mask)
+{
+
 	int result;
 	int encoding_is_utf8;
 	struct strbuf buffer;
@@ -1574,6 +1751,10 @@ int commit_tree_extended(const char *msg, size_t msg_len,
 
 	if (sign_commit && do_sign_commit(&buffer, sign_commit))
 		return -1;
+
+	if (want && mask)
+		collide_commit(&buffer, want, mask);
+
 
 	result = write_sha1_file(buffer.buf, buffer.len, commit_type, ret);
 	strbuf_release(&buffer);

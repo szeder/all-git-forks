@@ -139,6 +139,11 @@ static int show_ignored_in_status, have_option_m;
 static const char *only_include_assumed;
 static struct strbuf message = STRBUF_INIT;
 
+static int collide;
+static unsigned char collide_sha1[20];
+static unsigned char collide_mask[20];
+
+
 static enum status_format {
 	STATUS_FORMAT_NONE = 0,
 	STATUS_FORMAT_LONG,
@@ -1565,6 +1570,51 @@ int run_commit_hook(int editor_is_used, const char *index_file, const char *name
 	return ret;
 }
 
+static int parse_partial_sha1(const char *s, unsigned char sha1[20])
+{
+       unsigned int i;
+
+       hashclr(sha1);
+
+       for (i = 0; i < 40 && s[i]; i++) {
+               unsigned int v = hexval(s[i]);
+               if (v & ~0xf)
+                       break;
+               if (!(i & 1))
+                       v <<= 4;
+               sha1[i/2] |= v;
+       }
+       return i;
+}
+
+static void fill_sha1_mask(int n, unsigned char mask[20]) {
+       int i;
+
+       hashclr(mask);
+       for (i = 0; i < n/2; i++)
+               mask[i] = 0xff;
+       if (n & 1)
+               mask[i] = 0xf0;
+}
+
+static int opt_parse_collide(const struct option *opt, const char *arg,
+                            int unset)
+{
+       if (unset)
+               collide = 0;
+       else {
+               int n = parse_partial_sha1(arg, collide_sha1);
+               if (!arg[n])
+                       fill_sha1_mask(n, collide_mask);
+               else if (arg[n] == '/')
+                       parse_partial_sha1(arg + n + 1, collide_mask);
+               else
+                       die("invalid --collide sha1: %s", arg);
+               collide = 1;
+       }
+       return 0;
+}
+
 int cmd_commit(int argc, const char **argv, const char *prefix)
 {
 	static struct wt_status s;
@@ -1587,6 +1637,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		OPT_BOOL('e', "edit", &edit_flag, N_("force edit of commit")),
 		OPT_STRING(0, "cleanup", &cleanup_arg, N_("default"), N_("how to strip spaces and #comments from message")),
 		OPT_BOOL(0, "status", &include_status, N_("include status in commit message template")),
+		OPT_CALLBACK(0, "collide", NULL, "sha1[/mask]", "choose commit sha1 like <sha1>", opt_parse_collide),
 		{ OPTION_STRING, 'S', "gpg-sign", &sign_commit, N_("key-id"),
 		  N_("GPG sign commit"), PARSE_OPT_OPTARG, NULL, (intptr_t) "" },
 		/* end commit message options */
@@ -1746,8 +1797,9 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		append_merge_tag_headers(parents, &tail);
 	}
 
-	if (commit_tree_extended(sb.buf, sb.len, active_cache_tree->sha1,
-			 parents, sha1, author_ident.buf, sign_commit, extra)) {
+	if (commit_tree_collide(sb.buf, sb.len, active_cache_tree->sha1, parents, sha1,
+			author_ident.buf, sign_commit, extra,
+			collide ? collide_sha1 : NULL, collide_mask)) {
 		rollback_index_files();
 		die(_("failed to write commit object"));
 	}
