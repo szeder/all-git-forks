@@ -46,6 +46,7 @@ static const char *recurse_submodules_default;
 static int shown_url = 0;
 static int refmap_alloc, refmap_nr;
 static const char **refmap_array;
+static int transport_version;
 
 static int option_parse_recurse_submodules(const struct option *opt,
 				   const char *arg, int unset)
@@ -121,6 +122,8 @@ static struct option builtin_fetch_options[] = {
 		   N_("default mode for recursion"), PARSE_OPT_HIDDEN },
 	OPT_BOOL(0, "update-shallow", &update_shallow,
 		 N_("accept refs that update .git/shallow")),
+	OPT_INTEGER('y', "transport-version", &transport_version,
+		    N_("specify transport version to be used")),
 	{ OPTION_CALLBACK, 0, "refmap", NULL, N_("refmap"),
 	  N_("specify fetch refmap"), PARSE_OPT_NONEG, parse_refmap_arg },
 	OPT_END()
