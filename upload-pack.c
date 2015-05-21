@@ -836,7 +836,7 @@ static void receive_capabilities(void)
 	}
 }
 
-static void upload_pack_v2(void)
+static void upload_pack_version_2(void)
 {
 	send_capabilities();
 	receive_capabilities();
@@ -911,7 +911,7 @@ int main(int argc, char **argv)
 
 	git_config(upload_pack_config, NULL);
 	if (!strcmp(cmd, "git-upload-pack-v2"))
-		upload_pack_v2();
+		upload_pack_version_2();
 	else
 		upload_pack();
 	return 0;
