@@ -127,6 +127,10 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 			args.update_shallow = 1;
 			continue;
 		}
+		if (!strcmp("--transport-version", arg)) {
+			args.version = strtol(arg + strlen("--transport-version"), NULL, 0);
+			continue;
+		}
 		usage(fetch_pack_usage);
 	}
 
@@ -175,11 +179,18 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 		if (!conn)
 			return args.diag_url ? 0 : 1;
 	}
-	if (v2) {
+
+	switch (args.version) {
+	default:
+	case 2:
 		get_remote_capabilities(fd[0], NULL, 0, &ref, 0, NULL, &shallow);
 		request_capabilities(fd[0], NULL, 0, &ref, 0, NULL, &shallow);
+		break;
+	case 1: /* fall through */
+	case 0:
+		get_remote_heads(fd[0], NULL, 0, &ref, 0, NULL, &shallow);
+		break;
 	}
-	get_remote_heads(fd[0], NULL, 0, &ref, 0, NULL, &shallow);
 
 	ref = fetch_pack(&args, fd, conn, ref, dest, sought, nr_sought,
 			 &shallow, pack_lockfile_ptr);
