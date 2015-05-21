@@ -917,7 +917,7 @@ int main(int argc, char **argv)
 		die("'%s' does not appear to be a git repository", dir);
 
 	git_config(upload_pack_config, NULL);
-	if (!strcmp(cmd, "git-upload-pack-v2"))
+	if (!strcmp(cmd, "git-upload-pack-2"))
 		upload_pack_version_2();
 	else
 		upload_pack();
