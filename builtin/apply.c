@@ -47,7 +47,7 @@ static int check;
 static int apply = 1;
 static int apply_in_reverse;
 static int apply_with_reject;
-static int apply_verbosely;
+static int apply_verbosity;
 static int allow_overlap;
 static int no_add;
 static int threeway;
@@ -2777,7 +2777,7 @@ static int apply_one_fragment(struct image *img, struct fragment *frag,
 			/* Ignore it, we already handled it */
 			break;
 		default:
-			if (apply_verbosely)
+			if (apply_verbosity > 0)
 				error(_("invalid start of line: '%c'"), first);
 			applied_pos = -1;
 			goto out;
@@ -2892,7 +2892,7 @@ static int apply_one_fragment(struct image *img, struct fragment *frag,
 				apply = 0;
 		}
 
-		if (apply_verbosely && applied_pos != pos) {
+		if (apply_verbosity > 0 && applied_pos != pos) {
 			int offset = applied_pos - pos;
 			if (apply_in_reverse)
 				offset = 0 - offset;
@@ -2914,7 +2914,7 @@ static int apply_one_fragment(struct image *img, struct fragment *frag,
 				   leading, trailing, applied_pos+1);
 		update_image(img, applied_pos, &preimage, &postimage);
 	} else {
-		if (apply_verbosely)
+		if (apply_verbosity > 0)
 			error(_("while searching for:\n%.*s"),
 			      (int)(old - oldlines), oldlines);
 	}
@@ -3063,7 +3063,8 @@ static int apply_fragments(struct image *img, struct patch *patch)
 	while (frag) {
 		nth++;
 		if (apply_one_fragment(img, frag, inaccurate_eof, ws_rule, nth)) {
-			error(_("patch failed: %s:%ld"), name, frag->oldpos);
+			if (!(threeway && apply_verbosity < 0))
+				error(_("patch failed: %s:%ld"), name, frag->oldpos);
 			if (!apply_with_reject)
 				return -1;
 			frag->rejected = 1;
@@ -3392,7 +3393,8 @@ static int try_threeway(struct image *image, struct patch *patch,
 		 read_blob_object(&buf, pre_sha1, patch->old_mode))
 		return error("repository lacks the necessary blob to fall back on 3-way merge.");
 
-	fprintf(stderr, "Falling back to three-way merge...\n");
+	if (apply_verbosity >= 0)
+		fprintf(stderr, "Falling back to three-way merge...\n");
 
 	img = strbuf_detach(&buf, &len);
 	prepare_image(&tmp_image, img, len, 1);
@@ -3434,9 +3436,11 @@ static int try_threeway(struct image *image, struct patch *patch,
 			hashcpy(patch->threeway_stage[0].hash, pre_sha1);
 		hashcpy(patch->threeway_stage[1].hash, our_sha1);
 		hashcpy(patch->threeway_stage[2].hash, post_sha1);
-		fprintf(stderr, "Applied patch to '%s' with conflicts.\n", patch->new_name);
+		if (apply_verbosity >= 0)
+			fprintf(stderr, "Applied patch to '%s' with conflicts.\n", patch->new_name);
 	} else {
-		fprintf(stderr, "Applied patch to '%s' cleanly.\n", patch->new_name);
+		if (apply_verbosity >= 0)
+			fprintf(stderr, "Applied patch to '%s' cleanly.\n", patch->new_name);
 	}
 	return 0;
 }
@@ -3811,7 +3815,7 @@ static int check_patch_list(struct patch *patch)
 	prepare_symlink_changes(patch);
 	prepare_fn_table(patch);
 	while (patch) {
-		if (apply_verbosely)
+		if (apply_verbosity > 0)
 			say_patch_name(stderr,
 				       _("Checking patch %s..."), patch);
 		err |= check_patch(patch);
@@ -4257,7 +4261,7 @@ static int write_out_one_reject(struct patch *patch)
 	}
 
 	if (!cnt) {
-		if (apply_verbosely)
+		if (apply_verbosity > 0)
 			say_patch_name(stderr,
 				       _("Applied patch %s cleanly."), patch);
 		return 0;
@@ -4577,7 +4581,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 			N_("leave the rejected hunks in corresponding *.rej files")),
 		OPT_BOOL(0, "allow-overlap", &allow_overlap,
 			N_("allow overlapping hunks")),
-		OPT__VERBOSE(&apply_verbosely, N_("be verbose")),
+		OPT__VERBOSITY(&apply_verbosity),
 		OPT_BIT(0, "inaccurate-eof", &options,
 			N_("tolerate incorrectly detected missing new-line at the end of file"),
 			INACCURATE_EOF),
@@ -4611,7 +4615,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		check_index = 1;
 	}
 	if (apply_with_reject)
-		apply = apply_verbosely = 1;
+		apply = apply_verbosity = 1;
 	if (!force_apply && (diffstat || numstat || summary || check || fake_ancestor))
 		apply = 0;
 	if (check_index && is_not_gitdir)
