@@ -860,46 +860,50 @@ echo "hey"
 # Behaviour determined by .gitconfig
 check_missing_commits () {
 
-	old_todo=$(git stripspace --strip-comments < "$todo".backup)
-	echo "$old_todo" > "$todo".old
-	while read -r command sha1 rest < "$todo".old
-	do
-		case "$command" in
-		x|"exec")
-			;;
-		*)
-			echo "$sha1" >> "$todo".oldsha1
-			;;
-		esac
-		sed -i '1d' "$todo".old
-	done
-
-	new_todo=$(git stripspace --strip-comments < "$todo")
-	echo "$new_todo" > "$todo".new
-	while read -r command sha1 rest < "$todo".new
-	do
-		case "$command" in
-		x|"exec")
-			;;
-		*)
-			echo "$sha1" >> "$todo".newsha1
-			;;
-		esac
-		sed -i '1d' "$todo".new
-	done
-
-	echo "$(sort -u "$todo".oldsha1)" > "$todo".oldsha1
-	echo "$(sort -u "$todo".newsha1)" > "$todo".newsha1
-
-	missing=$(comm -2 -3 "$todo".oldsha1 "$todo".newsha1)
-
-	if ! test -z "$missing"
+	dropCheckLevel=$(git config --get rebase.dropCheckLevel)
+	if test "$dropCheckLevel" = "warn" || test "$dropCheckLevel" = "error"
 	then
-		warn "Warning : some commits may have been dropped accidentally"
-		warn "$missing"
-		warn "To avoid this message, use \"drop\" or squash your commits"
-		warn "You can change the level of warnings (NONE,WARN,ERROR) with git --config rebase.dropCheckLevel"
-		# die "Please fix this using 'git rebase --edit-todo'."
+		old_todo=$(git stripspace --strip-comments < "$todo".backup)
+		echo "$old_todo" > "$todo".old
+		while read -r command sha1 rest < "$todo".old
+		do
+			case "$command" in
+			x|"exec")
+				;;
+			*)
+				echo "$sha1" >> "$todo".oldsha1
+				;;
+			esac
+			sed -i '1d' "$todo".old
+		done
+
+		new_todo=$(git stripspace --strip-comments < "$todo")
+		echo "$new_todo" > "$todo".new
+		while read -r command sha1 rest < "$todo".new
+		do
+			case "$command" in
+			x|"exec")
+				;;
+			*)
+				echo "$sha1" >> "$todo".newsha1
+				;;
+			esac
+			sed -i '1d' "$todo".new
+		done
+
+		echo "$(sort -u "$todo".oldsha1)" > "$todo".oldsha1
+		echo "$(sort -u "$todo".newsha1)" > "$todo".newsha1
+
+		missing=$(comm -2 -3 "$todo".oldsha1 "$todo".newsha1)
+
+		if ! test -z "$missing"
+		then
+			warn "Warning : some commits may have been dropped accidentally"
+			warn "$missing"
+			warn "To avoid this message, use \"drop\" or squash your commits"
+			warn "You can change the level of warnings (NONE,WARN,ERROR) with git --config rebase.dropCheckLevel"
+			# die "Please fix this using 'git rebase --edit-todo'."
+		fi
 	fi
 }
 
