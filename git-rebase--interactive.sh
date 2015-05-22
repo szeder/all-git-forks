@@ -825,7 +825,7 @@ add_exec_commands () {
 }
 
 # Checks if there are two identical commits
-# in the todo list
+# in the todo list.
 check_duplicates () {
 	list_commits=$(git stripspace --strip-comments < "$1")
 	echo "$list_commits" > "$1".check
@@ -850,43 +850,33 @@ check_duplicates () {
 	fi
 }
 
-# Transforms a 
-commit_list_to_sha_list () {
-echo "hey"
+# Print the list of the sha-1 of the commits
+# from a todo list in a file.
+# $1 : todo-file, $2 : outfile
+todo_list_to_sha_list () {
+	todo_list=$(git stripspace --strip-comments < "$1")
+	temp_file=$(mktemp)
+	echo "$todo_list" > "$temp_file"
+	while read -r command sha1 rest < "$temp_file"
+	do
+		case "$command" in
+		x|"exec")
+			;;
+		*)
+			echo "$sha1" >> "$2"
+			;;
+		esac
+		sed -i '1d' "$temp_file"
+	done
+	rm "$temp_file"
 }
 
 # Check if the user dropped some commits by mistake
 # or if there are two identical commits
-# Behaviour determined by .gitconfig
+# Behaviour determined by .gitconfig.
 check_missing_commits () {
-
-	old_todo=$(git stripspace --strip-comments < "$todo".backup)
-	echo "$old_todo" > "$todo".old
-	while read -r command sha1 rest < "$todo".old
-	do
-		case "$command" in
-		x|"exec")
-			;;
-		*)
-			echo "$sha1" >> "$todo".oldsha1
-			;;
-		esac
-		sed -i '1d' "$todo".old
-	done
-
-	new_todo=$(git stripspace --strip-comments < "$todo")
-	echo "$new_todo" > "$todo".new
-	while read -r command sha1 rest < "$todo".new
-	do
-		case "$command" in
-		x|"exec")
-			;;
-		*)
-			echo "$sha1" >> "$todo".newsha1
-			;;
-		esac
-		sed -i '1d' "$todo".new
-	done
+	todo_list_to_sha_list "$todo".backup "$todo".oldsha1
+	todo_list_to_sha_list "$todo" "$todo".newsha1
 
 	echo "$(sort -u "$todo".oldsha1)" > "$todo".oldsha1
 	echo "$(sort -u "$todo".newsha1)" > "$todo".newsha1
@@ -896,6 +886,7 @@ check_missing_commits () {
 	if ! test -z "$missing"
 	then
 		warn "Warning : some commits may have been dropped accidentally"
+		warn "List of the dropped commits:"
 		warn "$missing"
 		warn "To avoid this message, use \"drop\" or squash your commits"
 		warn "You can change the level of warnings (NONE,WARN,ERROR) with git --config rebase.dropCheckLevel"
