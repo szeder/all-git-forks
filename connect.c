@@ -138,12 +138,14 @@ void get_remote_capabilities(int in, char *src_buf, size_t src_len)
 	strbuf_release(&capabilities_string);
 }
 
-struct ref **request_capabilities(int in, char *src_buf, size_t src_len,
-				  struct ref **list, unsigned int flags,
-				  struct sha1_array *extra_have,
-				  struct sha1_array *shallow_points)
+int request_capabilities(int in, char *src_buf, size_t src_len,
+			 struct ref **list, unsigned int flags,
+			 struct sha1_array *extra_have,
+			 struct sha1_array *shallow_points)
 {
-
+	// todo: send our capabilities
+	packet_write(in, "capability:foo");
+	packet_flush(in);
 }
 
 /*
