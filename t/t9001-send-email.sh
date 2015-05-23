@@ -1535,10 +1535,10 @@ test_expect_success $PREREQ 'sendemail.aliasfiletype=mailrc' '
 	grep "^!somebody@example\.org!$" commandline1
 '
 
-test_expect_success $PREREQ 'sendemail.aliasfile=~/.mailrc' '
+test_expect_success $PREREQ 'sendemail.aliasfile=$HOME/.mailrc' '
 	clean_fake_sendmail &&
-	echo "alias sbd  someone@example.org" >~/.mailrc &&
-	git config --replace-all sendemail.aliasesfile "~/.mailrc" &&
+	echo "alias sbd  someone@example.org" >$HOME/.mailrc &&
+	git config --replace-all sendemail.aliasesfile "$HOME/.mailrc" &&
 	git config sendemail.aliasfiletype mailrc &&
 	git send-email \
 		--from="Example <nobody@example.com>" \
@@ -1552,7 +1552,7 @@ test_expect_success $PREREQ 'sendemail.aliasfile=~/.mailrc' '
 test_expect_success $PREREQ 'sendemail.aliasfiletype=sendmail' '
 	clean_fake_sendmail && rm -fr outdir &&
 	git format-patch -1 -o outdir &&
-	cat >>~/.tmp-email-aliases <<-\EOF &&
+	cat >>$HOME/.tmp-email-aliases <<-\EOF &&
 	alice: Alice W Land <awol@example.com>
 	bob: Robert Bobbyton <bob@example.com>
 	# this is a comment
