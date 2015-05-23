@@ -1030,16 +1030,14 @@ struct transport *transport_get(struct remote *remote, const char *url)
 	if (ret->smart_options) {
 		ret->smart_options->thin = 1;
 		ret->smart_options->uploadpack = "git-upload-pack";
-		if (ret->smart_options->transport_version) {
-			char *buf = xmalloc(30); // todo(sbeller): don't leak memory
-			sprintf(buf, "git-upload-pack-%d", ret->smart_options->transport_version);
-			ret->smart_options->uploadpack = buf;
-		}
 		if (remote->uploadpack)
 			ret->smart_options->uploadpack = remote->uploadpack;
 		ret->smart_options->receivepack = "git-receive-pack";
 		if (remote->receivepack)
 			ret->smart_options->receivepack = remote->receivepack;
+		if (remote->transport_version)
+			ret->smart_options->transport_version =
+				remote->transport_version;
 	}
 
 	return ret;
