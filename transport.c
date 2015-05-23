@@ -496,7 +496,8 @@ static int set_git_option(struct git_transport_options *opts,
 static int connect_setup(struct transport *transport, int for_push, int verbose)
 {
 	struct git_transport_data *data = transport->data;
-	char *remote_program, *buf;
+	const char *remote_program;
+	char *buf = 0;
 
 	if (data->conn)
 		return 0;
@@ -516,8 +517,7 @@ static int connect_setup(struct transport *transport, int for_push, int verbose)
 				 remote_program,
 				 verbose ? CONNECT_VERBOSE : 0);
 
-	if (buf)
-		free(buf);
+	free(buf);
 
 	return 0;
 }
