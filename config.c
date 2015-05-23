@@ -1246,6 +1246,15 @@ int git_config_system(void)
 	return !git_env_bool("GIT_CONFIG_NOSYSTEM", 0);
 }
 
+static inline void config_from_file_gently(config_fn_t fn, const char *filename,
+		void *data, unsigned access_flags, int *ret, int *found) {
+	if (!filename || access_or_die(filename, R_OK, access_flags))
+		return;
+
+	*ret += git_config_from_file(fn, filename, data);
+	(*found)++;
+}
+
 static int do_git_config_sequence(config_fn_t fn, void *data)
 {
 	int ret = 0;
@@ -1254,20 +1263,19 @@ static int do_git_config_sequence(config_fn_t fn, void *data)
 	char *repo_config = git_pathdup("config");
 
 	current_parsing_scope = CONFIG_SCOPE_SYSTEM;
-	if (git_config_system() && !access_or_die(git_etc_gitconfig(), R_OK, 0))
-		ret += git_config_from_file(fn, git_etc_gitconfig(),
-					    data);
+	if (git_config_system())
+		config_from_file_gently(fn, git_etc_gitconfig(), data, 0,
+				&ret, &found);
 
 	current_parsing_scope = CONFIG_SCOPE_GLOBAL;
-	if (xdg_config && !access_or_die(xdg_config, R_OK, ACCESS_EACCES_OK))
-		ret += git_config_from_file(fn, xdg_config, data);
+	config_from_file_gently(fn, xdg_config, data, ACCESS_EACCES_OK,
+			&ret, &found);
 
-	if (user_config && !access_or_die(user_config, R_OK, ACCESS_EACCES_OK))
-		ret += git_config_from_file(fn, user_config, data);
+	config_from_file_gently(fn, user_config, data, ACCESS_EACCES_OK,
+			&ret, &found);
 
 	current_parsing_scope = CONFIG_SCOPE_REPO;
-	if (repo_config && !access_or_die(repo_config, R_OK, 0))
-		ret += git_config_from_file(fn, repo_config, data);
+	config_from_file_gently(fn, repo_config, data, 0, &ret, &found);
 
 	current_parsing_scope = CONFIG_SCOPE_CMDLINE;
 	if (git_config_from_parameters(fn, data) < 0)
