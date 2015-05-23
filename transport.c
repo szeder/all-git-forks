@@ -526,12 +526,35 @@ static struct ref *get_refs_via_connect(struct transport *transport, int for_pus
 {
 	struct git_transport_data *data = transport->data;
 	struct ref *refs;
+	int version = 0;
 
+	if (transport->smart_options)
+		version = transport->smart_options->transport_version
 	connect_setup(transport, for_push, 0);
-	get_remote_heads(data->fd[0], NULL, 0, &refs,
-			 for_push ? REF_NORMAL : 0,
-			 &data->extra_have,
-			 &data->shallow);
+	switch (version) {
+		default: /*
+			  * configured a protocol version > 2?
+			  * try 2 as it's the most future proof,
+			  * fall through
+			  */
+		case 2: /* first talk about capabilities, then get the heads */
+			get_remote_capabilities(data->fd[0], NULL, 0, &refs, 0,
+						&data->extra_have, &data->shallow);
+			request_capabilities(data->fd[0], NULL, 0, &refs, 0,
+					     &data->extra_have, &data->shallow);
+			get_remote_heads(data->fd[0], NULL, 0, &refs,
+					 for_push ? REF_NORMAL : 0,
+					 &data->extra_have,
+					 &data->shallow);
+			break;
+		case 1: /* configured version 1, fall through */
+		case 0: /* unconfigured, use first protocol */
+			get_remote_heads(data->fd[0], NULL, 0, &refs,
+					 for_push ? REF_NORMAL : 0,
+					 &data->extra_have,
+					 &data->shallow);
+			break;
+	}
 	data->got_remote_heads = 1;
 
 	return refs;
