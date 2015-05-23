@@ -529,7 +529,7 @@ static struct ref *get_refs_via_connect(struct transport *transport, int for_pus
 	int version = 0;
 
 	if (transport->smart_options)
-		version = transport->smart_options->transport_version
+		version = transport->smart_options->transport_version;
 	connect_setup(transport, for_push, 0);
 	switch (version) {
 		default: /*
