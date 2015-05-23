@@ -143,6 +143,7 @@ int request_capabilities(int in, char *src_buf, size_t src_len,
 			 struct sha1_array *extra_have,
 			 struct sha1_array *shallow_points)
 {
+	fprintf(stderr, "request_capabilities\n");
 	// todo: send our capabilities
 	packet_write(in, "capability:foo");
 	packet_flush(in);
