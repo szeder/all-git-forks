@@ -383,7 +383,42 @@ sendemail.aliasesFile::
 
 sendemail.aliasFileType::
 	Format of the file(s) specified in sendemail.aliasesFile. Must be
-	one of 'mutt', 'mailrc', 'pine', 'elm', or 'gnus'.
+	one of 'sendmail', 'mutt', 'mailrc', 'pine', 'elm', or 'gnus'.
++
+If the format is 'sendmail', then the alias file format is described below.
+Descriptions of the other file formats can be found by searching the
+documentation of the email program of the same name.
++
+The 'sendmail' format is is as follows.  Note that 'git-send-email' currently
+only supports a limited subset of the sendmail format.
++
+	<alias>: <address|alias>[, <address|alias>...]
++
+Aliases are specified one per line, and must start on the first column of the
+line.  Blank lines are ignored.  If the first non whitespace character on a
+line is a `#` symbol, then the whole line is considered a comment, and is
+ignored.
++
+Example of the 'sendmail' format:
++
+	alice: Alice W Land <awol@example.com>
+	bob: Robert Bobbyton <bob@example.com>
+	# this is a comment
+	   # this is also a comment
+	chloe: chloe@example.com
+	abgroup: alice, bob
+	bcgrp: bob, chloe, Other <o@example.com>
++
+Unlike the standard sendmail format, 'git-send-email' currently diverges in the
+following ways.
++
+*	Quoted aliases and quoted addresses are not supported: lines that
+	contain a `"` symbol are ignored.
+*	Line continuations are not supported: any lines that start with
+	whitespace, or end with a `\` symbol are ignored.
+*	Warnings are printed on the standard error output for any explicitly
+	unsupported constructs, and any other lines that are not recognized
+	by the parser.
 
 sendemail.multiEdit::
 	If true (default), a single editor instance will be spawned to edit
