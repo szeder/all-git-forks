@@ -593,6 +593,9 @@ else
 			ifeq ($(ZLIB_PATH),)
 $(error Please specify ZLIB_PATH)
 			endif
+			ifneq ($(WHEEZY_HACKS),)
+				BASIC_CFLAGS += -DSKIP_CONSOLE_FONT_INFOEX
+			endif
 		endif
 	else
 		COMPAT_CFLAGS += -D__USE_MINGW_ANSI_STDIO
