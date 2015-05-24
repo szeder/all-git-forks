@@ -54,6 +54,7 @@ test_expect_success 'preserve users' '
 		git commit --author "Bob <bob@example.com>" -m "a change by bob" file2 &&
 		git config git-p4.skipSubmitEditCheck true &&
 		P4EDITOR="test-chmtime +5" P4USER=alice P4PASSWD=secret &&
+		export P4EDITOR P4USER P4PASSWD &&
 		git p4 commit --preserve-user &&
 		p4_check_commit_author file1 alice &&
 		p4_check_commit_author file2 bob
