@@ -133,7 +133,9 @@ static LPWSTR fixup_commandline(LPWSTR exepath, LPWSTR *exep, int *wait,
 
 	cmdline = GetCommandLine();
 	wargv = CommandLineToArgvW(cmdline, &wargc);
+	fprintf(stderr, "ok9: %d, %d\n", sizeof(wchar_t), sizeof(WCHAR));
 	cmd_size = sizeof(WCHAR) * (wcslen(cmdline) + prefix_args_len + 1 + MAX_PATH);
+	fprintf(stderr, "okA\n");
 	cmd = (LPWSTR)malloc(cmd_size);
 	if (prefix_args) {
 		if (is_git_command)
