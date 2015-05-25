@@ -14,6 +14,10 @@ failed () {
 	die "unable to create new workdir '$new_workdir'!"
 }
 
+iswindows () {
+	[[ -n "$WINDIR" ]];
+}
+
 if test $# -lt 2 || test $# -gt 3
 then
 	usage "$0 <repository> <new_workdir> [<branch>]"
@@ -53,7 +57,12 @@ then
 fi
 
 # make sure the links in the workdir have full paths to the original repo
-git_dir=$(cd "$git_dir" && pwd) || exit 1
+if iswindows
+then
+	git_dir=$(cd "$git_dir"; cmd.exe /c cd) || exit 1
+else
+	git_dir=$(cd "$git_dir" && pwd) || exit 1
+fi
 
 # don't recreate a workdir over an existing directory, unless it's empty
 if test -d "$new_workdir"
@@ -88,7 +97,19 @@ do
 		;;
 	esac
 
-	ln -s "$git_dir/$x" "$new_workdir/.git/$x" || failed
+	if iswindows
+	then
+		if test -d "$git_dir/$x"
+		then
+			# create directory symbolic link
+			isdir="/d"
+		fi
+		# convert path separator to backslash
+		targetPath=$(sed -e 's#^J:##' -e 's#/#\\#g' <<< "$git_dir/$x")
+		cmd.exe /c "mklink $isdir \"$new_workdir/.git/$x\" \"$targetPath\"" || failed
+	else
+		ln -s "$git_dir/$x" "$new_workdir/.git/$x" || failed
+	fi
 done
 
 # commands below this are run in the context of the new workdir
