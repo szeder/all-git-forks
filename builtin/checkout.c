@@ -18,6 +18,7 @@
 #include "xdiff-interface.h"
 #include "ll-merge.h"
 #include "resolve-undo.h"
+#include "submodule-config.h"
 #include "submodule.h"
 #include "argv-array.h"
 #include "sigchain.h"
@@ -1174,9 +1175,6 @@ static int parse_branchname_arg(int argc, const char **argv,
 		has_dash_dash = 1; /* case (3) or (1) */
 	else if (dash_dash_pos >= 2)
 		die(_("only one reference expected, %d given."), dash_dash_pos);
-
-	if (!strcmp(arg, "-"))
-		arg = "@{-1}";
 
 	if (get_sha1_mb(arg, rev)) {
 		/*
