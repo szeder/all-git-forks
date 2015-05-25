@@ -89,11 +89,13 @@ default.   You can use `--no-utf8` to override this.
 	linkgit:git-mailinfo[1]).
 
 -3::
---3way::
+--[no-]3way::
 	When the patch does not apply cleanly, fall back on
 	3-way merge if the patch records the identity of blobs
 	it is supposed to apply to and we have those blobs
-	available locally.
+	available locally.  `am.threeWay` configuration variable
+	can be used to specify the default behaviour.  `--no-3way`
+	is useful to override `am.threeWay`.
 
 --ignore-space-change::
 --ignore-whitespace::

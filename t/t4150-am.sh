@@ -288,6 +288,21 @@ test_expect_success 'am -3 falls back to 3-way merge' '
 	git diff --exit-code lorem
 '
 
+test_expect_success 'am with config am.threeWay falls back to 3-way merge' '
+	setup_temporary_branch lorem2 &&
+	test_config am.threeWay 1 &&
+	git am lorem-move.patch &&
+	test_path_is_missing .git/rebase-apply &&
+	git diff --exit-code lorem
+'
+
+test_expect_success 'am with config am.threeWay overridden by --no-3way' '
+	setup_temporary_branch lorem2 &&
+	test_config am.threeWay 1 &&
+	test_must_fail git am --no-3way lorem-move.patch &&
+	test_path_is_dir .git/rebase-apply
+'
+
 test_expect_success 'am -3 -p0 can read --no-prefix patch' '
 	setup_temporary_branch lorem2 &&
 	git am -3 -p0 lorem-zero.patch &&
