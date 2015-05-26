@@ -487,7 +487,7 @@ do_pick () {
 }
 
 do_next () {
-	rm -f "$msg" "$author_script" "$amend" || exit
+	rm -f "$msg" "$author_script" "$amend" "$state_dir"/stopped-sha || exit
 	read -r command sha1 rest < "$todo"
 	case "$command" in
 	"$comment_char"*|''|noop)
@@ -580,9 +580,6 @@ do_next () {
 		read -r command rest < "$todo"
 		mark_action_done
 		printf 'Executing: %s\n' "$rest"
-		# "exec" command doesn't take a sha1 in the todo-list.
-		# => can't just use $sha1 here.
-		git rev-parse --verify HEAD > "$state_dir"/stopped-sha
 		${SHELL:-@SHELL_PATH@} -c "$rest" # Actual execution
 		status=$?
 		# Run in subshell because require_clean_work_tree can die.
@@ -824,32 +821,6 @@ add_exec_commands () {
 	mv "$1.new" "$1"
 }
 
-# Checks if there are two identical commits
-# in the todo list.
-check_duplicates () {
-	list_commits=$(git stripspace --strip-comments < "$1")
-	echo "$list_commits" > "$1".check
-	while read -r command sha1 rest < "$1".check
-	do
-		case "$command" in
-		x|"exec")
-			;;
-		*)
-			echo "$sha1" >> "$1".sha1
-			;;
-		esac
-		sed -i '1d' "$1".check
-	done
-	duplicates=$(sort "$1".sha1 | uniq -d)
-	if ! test -z "$duplicates"
-	then
-		warn "Error: there are some dupplicate commits:"
-		warn "$duplicates"
-		die_abort "Duplicating commits"
-		# die "Please fix this using 'git rebase --edit-todo'."
-	fi
-}
-
 # Print the list of the sha-1 of the commits
 # from a todo list in a file.
 # $1 : todo-file, $2 : outfile
@@ -872,7 +843,7 @@ todo_list_to_sha_list () {
 }
 
 # Check if the user dropped some commits by mistake
-# or if there are two identical commits
+# or if there are two identical commits.
 # Behaviour determined by .gitconfig.
 check_missing_commits () {
 	dropCheckLevel=$(git config --get rebase.dropCheckLevel)
@@ -884,19 +855,34 @@ check_missing_commits () {
 		todo_list_to_sha_list "$todo".backup "$todo".oldsha1
 		todo_list_to_sha_list "$todo" "$todo".newsha1
 
+		duplicates=$(sort "$todo".newsha1 | uniq -d)
+
 		echo "$(sort -u "$todo".oldsha1)" > "$todo".oldsha1
 		echo "$(sort -u "$todo".newsha1)" > "$todo".newsha1
-
 		missing=$(comm -2 -3 "$todo".oldsha1 "$todo".newsha1)
 
+		# check missing commits
 		if ! test -z "$missing"
 		then
-			warn "Warning : some commits may have been dropped accidentally"
-			warn "List of the dropped commits:"
+			warn "Warning : some commits may have been dropped accidentally."
+			warn "Dropped commits:"
 			warn "$missing"
-			warn "To avoid this message, use \"drop\" or squash your commits"
-			warn "You can change the level of warnings (NONE,WARN,ERROR) with git --config rebase.dropCheckLevel"
-			# die "Please fix this using 'git rebase --edit-todo'."
+			warn "To avoid this message, use \"drop\" to explicitely remove a commit."
+			warn "Use git --config rebase.checkLevel to change the level of warnings (none,warn,error)."
+			warn ""
+
+			if test "$checkLevel" = "error"
+			then
+				die_abort "Rebase aborted due to dropped commits."
+				#die "Please fix this using 'git rebase --edit-todo'."
+			fi
+		fi
+		# check duplicate commits
+		if ! test -z "$duplicates"
+		then
+			warn "Warning : some commits have been used twice:"
+			warn "$duplicates"
+			warn ""
 		fi
 		;;
 	"IGNORE")
@@ -905,6 +891,7 @@ check_missing_commits () {
 		echo "Unrecognized setting "
 		;;	
 	esac
+
 }
 
 # The whole contents of this file is run by dot-sourcing it from
@@ -961,7 +948,10 @@ first and then run 'git rebase --continue' again."
 		fi
 	fi
 
-	record_in_rewritten "$(cat "$state_dir"/stopped-sha)"
+        if test -r "$state_dir"/stopped-sha
+        then
+                record_in_rewritten "$(cat "$state_dir"/stopped-sha)"
+        fi
 
 	require_clean_work_tree "rebase"
 	do_rest
