@@ -7083,8 +7083,10 @@ proc appendrefs {pos ids var} {
     $ctext delete $pos "$pos lineend"
     set tags {}
     foreach id $ids {
-	foreach tag [set $var\($id\)] {
-	    lappend tags [list $tag $id]
+	if {[info exists $var\($id\)]} {
+	    foreach tag [set $var\($id\)] {
+		lappend tags [list $tag $id]
+	    }
 	}
     }
 
