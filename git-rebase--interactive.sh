@@ -847,7 +847,7 @@ todo_list_to_sha_list () {
 # Behaviour determined by .gitconfig.
 check_missing_commits () {
 	dropCheckLevel=$(git config --get rebase.dropCheckLevel)
-	dropCheckLevel=${dropCheckLevel}^^
+	dropCheckLevel=${dropCheckLevel^^}
 	dropCheckLevel=${dropCheckLevel:-"IGNORE"}
 
 	case "$dropCheckLevel" in 
