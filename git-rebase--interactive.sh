@@ -875,7 +875,7 @@ todo_list_to_sha_list () {
 # or if there are two identical commits
 # Behaviour determined by .gitconfig.
 check_missing_commits () {
-	dropCheckLevel=$(git config --get rebase.dropCheckLevel)
+	dropCheckLevel=$(echo "$(git config --get rebase.dropCheckLevel)" | sed 's/.*/\U&/')
 	if test "$dropCheckLevel" = "warn" || test "$dropCheckLevel" = "error"
 	then
 		todo_list_to_sha_list "$todo".backup "$todo".oldsha1
