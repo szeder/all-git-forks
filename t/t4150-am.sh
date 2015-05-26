@@ -272,13 +272,17 @@ test_expect_success 'am --keep-non-patch really keeps the non-patch part' '
 	grep "^\[foo\] third" actual
 '
 
-test_expect_success 'am -3 falls back to 3-way merge' '
+test_expect_success 'setup: am -3' '
 	setup_fixed_branch lorem2 master2 &&
 	sed -n -e "3,\$p" msg >file &&
 	head -n 9 msg >>file &&
 	git add file &&
 	test_tick &&
-	git commit -m "copied stuff" &&
+	git commit -m "copied stuff"
+'
+
+test_expect_success 'am -3 falls back to 3-way merge' '
+	setup_temporary_branch lorem2 &&
 	git am -3 lorem-move.patch &&
 	test_path_is_missing .git/rebase-apply &&
 	git diff --exit-code lorem
@@ -286,11 +290,6 @@ test_expect_success 'am -3 falls back to 3-way merge' '
 
 test_expect_success 'am -3 -p0 can read --no-prefix patch' '
 	setup_temporary_branch lorem2 &&
-	sed -n -e "3,\$p" msg >file &&
-	head -n 9 msg >>file &&
-	git add file &&
-	test_tick &&
-	git commit -m "copied stuff" &&
 	git am -3 -p0 lorem-zero.patch &&
 	test_path_is_missing .git/rebase-apply &&
 	git diff --exit-code lorem
@@ -325,11 +324,6 @@ test_expect_success 'am -3 can rename a file after falling back to 3-way merge' 
 
 test_expect_success 'am -3 -q is quiet' '
 	setup_temporary_branch lorem2 &&
-	sed -n -e "3,\$p" msg >file &&
-	head -n 9 msg >>file &&
-	git add file &&
-	test_tick &&
-	git commit -m "copied stuff" &&
 	git am -3 -q lorem-move.patch >output.out 2>&1 &&
 	! test -s output.out
 '
