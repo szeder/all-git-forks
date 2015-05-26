@@ -487,6 +487,8 @@ sub split_addrs {
 }
 
 my %aliases;
+
+
 my %parse_alias = (
 	# multiline formats can be supported in the future
 	mutt => sub { my $fh = shift; while (<$fh>) {
@@ -515,6 +517,33 @@ my %parse_alias = (
 			       $aliases{$alias} = [ split_addrs($addr) ];
 			  }
 		      } },
+
+	sendmail => sub { my $fh = shift; while (<$fh>) {
+		# ignore comment lines
+		if (/^\s*(?:#.*)?$/) { }
+
+		# warn on lines that contain quotes
+		elsif (/"/) {
+			print STDERR "sendmail alias with quotes is not supported: $_\n";
+			next;
+		}
+
+		# warn on lines that continue
+		elsif (/^\s|\\$/) {
+			print STDERR "sendmail continuation line is not supported: $_\n";
+			next;
+		}
+
+		# recognize lines that look like an alias
+		elsif (/^(\S+)\s*:\s*(.+?)$/) {
+			my ($alias, $addr) = ($1, $2);
+			$aliases{$alias} = [ split_addrs($addr) ];
+		}
+
+		# warn on lines that are not recognized
+		else {
+			print STDERR "sendmail line is not recognized: $_\n";
+		}}},
 
 	gnus => sub { my $fh = shift; while (<$fh>) {
 		if (/\(define-mail-alias\s+"(\S+?)"\s+"(\S+?)"\)/) {
