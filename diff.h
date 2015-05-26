@@ -138,6 +138,7 @@ struct diff_options {
 	int dirstat_permille;
 	int setup;
 	int abbrev;
+	int ws_check_deleted;
 	const char *prefix;
 	int prefix_length;
 	const char *stat_sep;

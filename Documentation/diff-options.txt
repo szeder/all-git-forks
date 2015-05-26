@@ -291,6 +291,13 @@ ifndef::git-format-patch[]
 	initial indent of the line are considered whitespace errors.
 	Exits with non-zero status if problems are found. Not compatible
 	with --exit-code.
+
+--ws-check-deleted::
+--no-ws-check-deleted::
+	Highlight whitespace errors in deleted lines in the color
+	specified by `color.diff.whitespace`, as well as in added
+	lines.
+
 endif::git-format-patch[]
 
 --full-index::

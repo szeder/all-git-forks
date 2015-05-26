@@ -498,6 +498,29 @@ static void emit_add_line(const char *reset,
 	}
 }
 
+static void emit_del_line(const char *reset,
+			  struct emit_callback *ecbdata,
+			  const char *line, int len)
+{
+	const char *set = diff_get_color(ecbdata->color_diff, DIFF_FILE_OLD);
+	const char *ws = NULL;
+
+	if (ecbdata->opt->ws_check_deleted) {
+		ws = diff_get_color(ecbdata->color_diff, DIFF_WHITESPACE);
+		if (!*ws)
+			ws = NULL;
+	}
+
+	if (!ws)
+		emit_line_0(ecbdata->opt, set, reset, '-', line, len);
+	else {
+		/* Emit just the prefix, then the rest. */
+		emit_line_0(ecbdata->opt, set, reset, '-', "", 0);
+		ws_check_emit(line, len, ecbdata->ws_rule,
+			      ecbdata->opt->file, set, reset, ws);
+	}
+}
+
 static void emit_hunk_header(struct emit_callback *ecbdata,
 			     const char *line, int len)
 {
@@ -603,7 +626,6 @@ static void emit_rewrite_lines(struct emit_callback *ecb,
 {
 	const char *endp = NULL;
 	static const char *nneof = " No newline at end of file\n";
-	const char *old = diff_get_color(ecb->color_diff, DIFF_FILE_OLD);
 	const char *reset = diff_get_color(ecb->color_diff, DIFF_RESET);
 
 	while (0 < size) {
@@ -613,8 +635,7 @@ static void emit_rewrite_lines(struct emit_callback *ecb,
 		len = endp ? (endp - data + 1) : size;
 		if (prefix != '+') {
 			ecb->lno_in_preimage++;
-			emit_line_0(ecb->opt, old, reset, '-',
-				    data, len);
+			emit_del_line(reset, ecb, data, len);
 		} else {
 			ecb->lno_in_postimage++;
 			emit_add_line(reset, ecb, data, len);
@@ -1250,17 +1271,25 @@ static void fn_out_consume(void *priv, char *line, unsigned long len)
 		return;
 	}
 
-	if (line[0] != '+') {
-		const char *color =
-			diff_get_color(ecbdata->color_diff,
-				       line[0] == '-' ? DIFF_FILE_OLD : DIFF_PLAIN);
-		ecbdata->lno_in_preimage++;
-		if (line[0] == ' ')
-			ecbdata->lno_in_postimage++;
-		emit_line(ecbdata->opt, color, reset, line, len);
-	} else {
+	switch (line[0]) {
+	case '+':
 		ecbdata->lno_in_postimage++;
 		emit_add_line(reset, ecbdata, line + 1, len - 1);
+		break;
+	case '-':
+		ecbdata->lno_in_preimage++;
+		emit_del_line(reset, ecbdata, line + 1, len - 1);
+		break;
+	case ' ':
+		ecbdata->lno_in_postimage++;
+		/* fallthru */
+	default:
+		/* ' ' and incomplete line */
+		ecbdata->lno_in_preimage++;
+		emit_line(ecbdata->opt,
+			  diff_get_color(ecbdata->color_diff, DIFF_PLAIN),
+			  reset, line, len);
+		break;
 	}
 }
 
@@ -3806,6 +3835,11 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		DIFF_OPT_SET(options, SUBMODULE_LOG);
 	else if (skip_prefix(arg, "--submodule=", &arg))
 		return parse_submodule_opt(options, arg);
+
+	else if (!strcmp(arg, "--ws-check-deleted"))
+		options->ws_check_deleted = 1;
+	else if (!strcmp(arg, "--no-ws-check-deleted"))
+		options->ws_check_deleted = 0;
 
 	/* misc options */
 	else if (!strcmp(arg, "-z"))
