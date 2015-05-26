@@ -115,4 +115,15 @@ test_expect_success 'rebasing submodule that should conflict' '
 	test_cmp expect actual
 '
 
+test_expect_success 'rebasing submodule that should not conflict' '
+	test_might_fail git rebase --abort &&
+	git tag from-rebase &&
+	git checkout HEAD^ &&
+	(cd submodule && git commit --allow-empty -m extra2) &&
+	git add submodule &&
+	test_tick &&
+	git commit -m fifth &&
+	git rebase --onto HEAD from-rebase^ from-rebase
+'
+
 test_done
