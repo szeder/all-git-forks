@@ -1,11 +1,11 @@
 Packfile transfer protocols
 ===========================
 
-Git supports transferring data in packfiles over the ssh://, git:// and
+Git supports transferring data in packfiles over the ssh://, git://, http:// and
 file:// transports.  There exist two sets of protocols, one for pushing
 data from a client to a server and another for fetching data from a
-server to a client.  All three transports (ssh, git, file) use the same
-protocol to transfer data.
+server to a client.  The three transports (ssh, git, file) use the same
+protocol to transfer data. http is documented in http-protocol.txt.
 
 The processes invoked in the canonical Git implementation are 'upload-pack'
 on the server side and 'fetch-pack' on the client side for fetching data;
@@ -13,6 +13,12 @@ then 'receive-pack' on the server and 'send-pack' on the client for pushing
 data.  The protocol functions to have a server tell a client what is
 currently on the server, then for the two to negotiate the smallest amount
 of data to send in order to fully update one or the other.
+
+"upload-pack-2" and "receive-pack-2" are the next generation of
+"upload-pack" and "receive-pack" respectively. The first two are
+referred as "version 2" in this document and pack-capabilities.txt
+while the last two are "version 1". Unless stated otherwise, "version 1"
+is implied.
 
 Transports
 ----------
@@ -42,7 +48,8 @@ hostname parameter, terminated by a NUL byte.
 
 --
    git-proto-request = request-command SP pathname NUL [ host-parameter NUL ]
-   request-command   = "git-upload-pack" / "git-receive-pack" /
+   request-command   = "git-upload-pack" / "git-upload-pack-2" /
+		       "git-receive-pack" / "git-receive-pack-2" /
 		       "git-upload-archive"   ; case sensitive
    pathname          = *( %x01-ff ) ; exclude NUL
    host-parameter    = "host=" hostname [ ":" port ]
@@ -124,6 +131,48 @@ has, the first can 'fetch' from the second.  This operation determines
 what data the server has that the client does not then streams that
 data down to the client in packfile format.
 
+Capability discovery (v2)
+-------------------------
+
+In version 1, capability discovery is part of reference discovery and
+covered in reference discovery section.
+
+In version 2, when the client initially connects, the server
+immediately sends its capabilities to the client followed by a flush.
+Then the client must send the list of server capabilities it wants to
+use to the server.
+
+   S: 00XXcapability:lang\n
+   S: 00XXcapability:thin-pack\n
+   S: 00XXcapability:ofs-delta\n
+   S: 00XXagent:agent=git/2:3.4.5+custom-739-gb850f98\n
+   S: 0000
+
+   C: 00XXcap:thin-pack\n
+   C: 00XXcap:ofs-delta\n
+   C: 00XXcap:lang=en\n
+   C: 00XXagent:agent=git/custom_string\n
+   C: 0000
+
+----
+  capability-list  =  *(capability) [agent LF] flush-pkt
+  capability       =  PKT-LINE("capability:" keyvaluepair LF)
+  agent            =  keyvaluepair LF
+  keyvaluepair     =  1*(LC_ALPHA / DIGIT / "-" / "_" / "=")
+  LC_ALPHA         =  %x61-7A
+----
+
+The client MUST ignore any data on pkt-lines starting with anything
+different than "capability" for future ease of extension.
+
+The client MUST NOT ask for capabilities the server did not say it
+supports. The server MUST diagnose and abort if capabilities it does
+not understand was requested. The server MUST NOT ignore capabilities
+that client requested and server advertised.  As a consequence of these
+rules, server MUST NOT advertise capabilities it does not understand.
+
+See protocol-capabilities.txt for a list of allowed server and client
+capabilities and descriptions.
 
 Reference Discovery
 -------------------
@@ -154,10 +203,14 @@ If HEAD is a valid ref, HEAD MUST appear as the first advertised
 ref.  If HEAD is not a valid ref, HEAD MUST NOT appear in the
 advertisement list at all, but other refs may still appear.
 
-The stream MUST include capability declarations behind a NUL on the
-first ref. The peeled value of a ref (that is "ref^{}") MUST be
-immediately after the ref itself, if presented. A conforming server
-MUST peel the ref if it's an annotated tag.
+In version 1 the stream MUST include capability declarations behind
+a NUL on the first ref. The peeled value of a ref (that is "ref^{}")
+MUST be immediately after the ref itself, if presented. A conforming
+server MUST peel the ref if it's an annotated tag.
+
+In version 2 the capabilities are already negotiated, so the first ref
+MUST NOT be followed by any capability advertisement, but it should be
+treated as any other refs advertising line.
 
 ----
   advertised-refs  =  (no-refs / list-of-refs)
@@ -178,12 +231,27 @@ MUST peel the ref if it's an annotated tag.
   shallow          =  PKT-LINE("shallow" SP obj-id)
 
   capability-list  =  capability *(SP capability)
-  capability       =  1*(LC_ALPHA / DIGIT / "-" / "_")
+  capability       =  1*(LC_ALPHA / DIGIT / "-" / "_" / "=")
   LC_ALPHA         =  %x61-7A
 ----
 
 Server and client MUST use lowercase for obj-id, both MUST treat obj-id
 as case-insensitive.
+
+On the very first line of the initial server response of either
+receive-pack and upload-pack the first reference is followed by
+a NUL byte and then a list of space delimited server capabilities.
+These allow the server to declare what it can and cannot support
+to the client.
+
+Client will then send a space separated list of capabilities it wants
+to be in effect. The client MUST NOT ask for capabilities the server
+did not say it supports.
+
+Server MUST diagnose and abort if capabilities it does not understand
+was sent.  Server MUST NOT ignore capabilities that client requested
+and server advertised.  As a consequence of these rules, server MUST
+NOT advertise capabilities it does not understand.
 
 See protocol-capabilities.txt for a list of allowed server capabilities
 and descriptions.
