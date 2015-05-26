@@ -824,32 +824,6 @@ add_exec_commands () {
 	mv "$1.new" "$1"
 }
 
-# Checks if there are two identical commits
-# in the todo list.
-check_duplicates () {
-	list_commits=$(git stripspace --strip-comments < "$1")
-	echo "$list_commits" > "$1".check
-	while read -r command sha1 rest < "$1".check
-	do
-		case "$command" in
-		x|"exec")
-			;;
-		*)
-			echo "$sha1" >> "$1".sha1
-			;;
-		esac
-		sed -i '1d' "$1".check
-	done
-	duplicates=$(sort "$1".sha1 | uniq -d)
-	if ! test -z "$duplicates"
-	then
-		warn "Error: there are some dupplicate commits:"
-		warn "$duplicates"
-		die_abort "Duplicating commits"
-		# die "Please fix this using 'git rebase --edit-todo'."
-	fi
-}
-
 # Print the list of the sha-1 of the commits
 # from a todo list in a file.
 # $1 : todo-file, $2 : outfile
@@ -872,11 +846,11 @@ todo_list_to_sha_list () {
 }
 
 # Check if the user dropped some commits by mistake
-# or if there are two identical commits
+# or if there are two identical commits.
 # Behaviour determined by .gitconfig.
 check_missing_commits () {
-	dropCheckLevel=$(git config --get rebase.dropCheckLevel)
-	if test "$dropCheckLevel" = "warn" || test "$dropCheckLevel" = "error"
+	checkLevel=$(git config --get rebase.checkLevel)
+	if test "$checkLevel" = "warn" || test "$checkLevel" = "error"
 	then
 		todo_list_to_sha_list "$todo".backup "$todo".oldsha1
 		todo_list_to_sha_list "$todo" "$todo".newsha1
@@ -890,16 +864,16 @@ check_missing_commits () {
 		# check missing commits
 		if ! test -z "$missing"
 		then
-			warn "Warning : some commits may have been dropped accidentally"
+			warn "Warning : some commits may have been dropped accidentally."
 			warn "Dropped commits:"
 			warn "$missing"
-			warn "To avoid this message, use \"drop\" or squash your commits"
-			warn "Use git --config rebase.dropCheckLevel to change the level of warnings (none,warn,error)"
+			warn "To avoid this message, use \"drop\" to explicitely remove a commit."
+			warn "Use git --config rebase.checkLevel to change the level of warnings (none,warn,error)."
 			warn ""
 
-			if test "$dropCheckLevel" = "error"
+			if test "$checkLevel" = "error"
 			then
-				die_abort "Rebase aborted due to dropped commits"
+				die_abort "Rebase aborted due to dropped commits."
 				#die "Please fix this using 'git rebase --edit-todo'."
 			fi
 		fi
