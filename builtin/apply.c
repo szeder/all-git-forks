@@ -20,6 +20,7 @@
 #include "xdiff-interface.h"
 #include "ll-merge.h"
 #include "rerere.h"
+#include "submodule.h"
 
 /*
  *  --check turns on checking that the working tree matches the
@@ -3371,6 +3372,87 @@ static int load_current(struct image *image, struct patch *patch)
 	return 0;
 }
 
+static void parse_gitlink_patch(struct patch *p, unsigned char pre[20], unsigned char post[20])
+{
+	/*
+	 * A usable gitlink patch has only one fragment (hunk) that looks like:
+	 * @@ -1 +1 @@
+	 * -Subproject commit <old sha1>
+	 * +Subproject commit <new sha1>
+	 * or
+	 * @@ -1 +0,0 @@
+	 * -Subproject commit <old sha1>
+	 * for a removal patch.
+	 */
+	struct fragment *hunk = p->fragments;
+	static const char heading1[] = "-Subproject commit ";
+	static const char heading2[] = "+Subproject commit ";
+	const char *preimage = hunk->patch, *postimage;
+
+	if (/* does the patch have only one hunk? */
+	    hunk && !hunk->next &&
+	    /* is its preimage one line? */
+	    hunk->oldpos == 1 && hunk->oldlines == 1 &&
+	    /* does preimage begin with the heading? */
+	    (preimage = memchr(hunk->patch, '\n', hunk->size)) != NULL &&
+	    starts_with(++preimage, heading1) &&
+	    /* does it record full SHA-1? */
+	    !get_sha1_hex(preimage + sizeof(heading1) - 1, pre) &&
+	    preimage[sizeof(heading1) + 40 - 1] == '\n' &&
+	    /* does the abbreviated name on the index line agree with it? */
+	    starts_with(preimage + sizeof(heading1) - 1, p->old_sha1_prefix))
+		; /* it all looks fine */
+	else if (get_sha1_hex(p->old_sha1_prefix, pre) < 0)
+		hashclr(pre);
+
+	if (hunk && !hunk->next &&
+		hunk->newpos == 1 && hunk->newlines == 1 &&
+		(postimage = memchr(preimage, '\n', hunk->size - sizeof(heading1) - 40)) != NULL &&
+		starts_with(++postimage, heading2) &&
+		!get_sha1_hex(postimage + sizeof(heading2) - 1, post) &&
+		postimage[sizeof(heading2) + 40 - 1] == '\n' &&
+		starts_with(postimage + sizeof(heading2) - 1, p->new_sha1_prefix))
+		; /* it all looks fine */
+	else if (get_sha1_hex(p->new_sha1_prefix, post) < 0)
+		hashclr(post);
+}
+
+static int try_threeway_submodule(struct patch *patch, const struct cache_entry *ce)
+{
+	unsigned char pre_sha1[20], post_sha1[20], our_sha1[20], result[20];
+	int status;
+
+	/* we cannot handle deletion conflicts */
+	if (patch->is_new || patch->is_delete)
+		return -1;
+
+	parse_gitlink_patch(patch, pre_sha1, post_sha1);
+
+	hashcpy(our_sha1, ce->sha1);
+
+	if (apply_verbosity >= 0)
+		fprintf(stderr, "Falling back to three-way merge...\n");
+
+	status = merge_submodule(result, patch->new_name, pre_sha1, our_sha1, post_sha1, 0);
+
+	if (!status) {
+		patch->conflicted_threeway = 1;
+		if (patch->is_new)
+			oidclr(&patch->threeway_stage[0]);
+		else
+			hashcpy(patch->threeway_stage[0].hash, pre_sha1);
+		hashcpy(patch->threeway_stage[1].hash, our_sha1);
+		hashcpy(patch->threeway_stage[2].hash, post_sha1);
+		if (apply_verbosity >= 0)
+			fprintf(stderr, "Applied patch to '%s' with conflicts.\n", patch->new_name);
+	} else {
+		if (apply_verbosity >= 0)
+			fprintf(stderr, "Applied patch to '%s' cleanly.\n", patch->new_name);
+	}
+
+	return 0;
+}
+
 static int try_threeway(struct image *image, struct patch *patch,
 			struct stat *st, const struct cache_entry *ce)
 {
@@ -3382,9 +3464,11 @@ static int try_threeway(struct image *image, struct patch *patch,
 	struct image tmp_image;
 
 	/* No point falling back to 3-way merge in these cases */
-	if (patch->is_delete ||
-	    S_ISGITLINK(patch->old_mode) || S_ISGITLINK(patch->new_mode))
+	if (patch->is_delete)
 		return -1;
+
+	if (S_ISGITLINK(patch->old_mode) && S_ISGITLINK(patch->new_mode))
+		return try_threeway_submodule(patch, ce);
 
 	/* Preimage the patch was prepared for */
 	if (patch->is_new)
