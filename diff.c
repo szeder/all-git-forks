@@ -503,8 +503,22 @@ static void emit_del_line(const char *reset,
 			  const char *line, int len)
 {
 	const char *set = diff_get_color(ecbdata->color_diff, DIFF_FILE_OLD);
+	const char *ws = NULL;
 
-	emit_line_0(ecbdata->opt, set, reset, '-', line, len);
+	if (ecbdata->opt->ws_check_deleted) {
+		ws = diff_get_color(ecbdata->color_diff, DIFF_WHITESPACE);
+		if (!*ws)
+			ws = NULL;
+	}
+
+	if (!ws)
+		emit_line_0(ecbdata->opt, set, reset, '-', line, len);
+	else {
+		/* Emit just the prefix, then the rest. */
+		emit_line_0(ecbdata->opt, set, reset, '-', "", 0);
+		ws_check_emit(line, len, ecbdata->ws_rule,
+			      ecbdata->opt->file, set, reset, ws);
+	}
 }
 
 static void emit_hunk_header(struct emit_callback *ecbdata,
@@ -3822,6 +3836,11 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		DIFF_OPT_SET(options, SUBMODULE_LOG);
 	else if (skip_prefix(arg, "--submodule=", &arg))
 		return parse_submodule_opt(options, arg);
+
+	else if (!strcmp(arg, "--ws-check-deleted"))
+		options->ws_check_deleted = 1;
+	else if (!strcmp(arg, "--no-ws-check-deleted"))
+		options->ws_check_deleted = 0;
 
 	/* misc options */
 	else if (!strcmp(arg, "-z"))

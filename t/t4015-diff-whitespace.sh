@@ -838,4 +838,66 @@ test_expect_success 'diff that introduces a line with only tabs' '
 	test_cmp expected current
 '
 
+test_expect_success 'diff that introduces and removes ws breakages' '
+	git reset --hard &&
+	{
+		echo "0. blank-at-eol " &&
+		echo "1. blank-at-eol "
+	} >x &&
+	git commit -a --allow-empty -m preimage &&
+	{
+		echo "0. blank-at-eol " &&
+		echo "1. still-blank-at-eol " &&
+		echo "2. and a new line "
+	} >x &&
+
+	git -c color.diff=always diff |
+	test_decode_color >current &&
+
+	cat >expected <<-\EOF &&
+	<BOLD>diff --git a/x b/x<RESET>
+	<BOLD>index d0233a2..700886e 100644<RESET>
+	<BOLD>--- a/x<RESET>
+	<BOLD>+++ b/x<RESET>
+	<CYAN>@@ -1,2 +1,3 @@<RESET>
+	 0. blank-at-eol <RESET>
+	<RED>-1. blank-at-eol <RESET>
+	<GREEN>+<RESET><GREEN>1. still-blank-at-eol<RESET><BLUE> <RESET>
+	<GREEN>+<RESET><GREEN>2. and a new line<RESET><BLUE> <RESET>
+	EOF
+
+	test_cmp expected current
+'
+
+test_expect_success 'the same with --ws-check-deleted' '
+	git reset --hard &&
+	{
+		echo "0. blank-at-eol " &&
+		echo "1. blank-at-eol "
+	} >x &&
+	git commit -a --allow-empty -m preimage &&
+	{
+		echo "0. blank-at-eol " &&
+		echo "1. still-blank-at-eol " &&
+		echo "2. and a new line "
+	} >x &&
+
+	git -c color.diff=always diff --ws-check-deleted |
+	test_decode_color >current &&
+
+	cat >expected <<-\EOF &&
+	<BOLD>diff --git a/x b/x<RESET>
+	<BOLD>index d0233a2..700886e 100644<RESET>
+	<BOLD>--- a/x<RESET>
+	<BOLD>+++ b/x<RESET>
+	<CYAN>@@ -1,2 +1,3 @@<RESET>
+	 0. blank-at-eol <RESET>
+	<RED>-<RESET><RED>1. blank-at-eol<RESET><BLUE> <RESET>
+	<GREEN>+<RESET><GREEN>1. still-blank-at-eol<RESET><BLUE> <RESET>
+	<GREEN>+<RESET><GREEN>2. and a new line<RESET><BLUE> <RESET>
+	EOF
+
+	test_cmp expected current
+'
+
 test_done
