@@ -875,9 +875,12 @@ todo_list_to_sha_list () {
 # or if there are two identical commits
 # Behaviour determined by .gitconfig.
 check_missing_commits () {
-	dropCheckLevel=$(echo "$(git config --get rebase.dropCheckLevel)" | sed 's/.*/\U&/')
-	if test "$dropCheckLevel" = "warn" || test "$dropCheckLevel" = "error"
-	then
+	dropCheckLevel=$(git config --get rebase.dropCheckLevel)
+	dropCheckLevel=${dropCheckLevel}^^
+	dropCheckLevel=${dropCheckLevel:-"IGNORE"}
+
+	case "$dropCheckLevel" in 
+	"WARN"|"ERROR")
 		todo_list_to_sha_list "$todo".backup "$todo".oldsha1
 		todo_list_to_sha_list "$todo" "$todo".newsha1
 
@@ -895,7 +898,13 @@ check_missing_commits () {
 			warn "You can change the level of warnings (NONE,WARN,ERROR) with git --config rebase.dropCheckLevel"
 			# die "Please fix this using 'git rebase --edit-todo'."
 		fi
-	fi
+		;;
+	"IGNORE")
+		;;
+	*)
+		echo "Unrecognized setting "
+		;;	
+	esac
 }
 
 # The whole contents of this file is run by dot-sourcing it from
