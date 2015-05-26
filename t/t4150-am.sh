@@ -4,6 +4,20 @@ test_description='git am running'
 
 . ./test-lib.sh
 
+setup_temporary_branch () {
+	tmp_name=${2-"temporary"}
+	git reset --hard &&
+	rm -fr .git/rebase-apply &&
+	test_when_finished "git checkout $1 && git branch -D $tmp_name" &&
+	git checkout -b "$tmp_name" "$1"
+}
+
+setup_fixed_branch () {
+	git reset --hard &&
+	rm -fr .git/rebase-apply &&
+	git checkout -b "$1" "$2"
+}
+
 test_expect_success 'setup: messages' '
 	cat >msg <<-\EOF &&
 	second
@@ -143,9 +157,7 @@ test_expect_success setup '
 '
 
 test_expect_success 'am applies patch correctly' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout first &&
+	setup_temporary_branch first &&
 	test_tick &&
 	git am <patch1 &&
 	test_path_is_missing .git/rebase-apply &&
@@ -155,9 +167,7 @@ test_expect_success 'am applies patch correctly' '
 '
 
 test_expect_success 'am applies patch e-mail not in a mbox' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout first &&
+	setup_temporary_branch first &&
 	git am patch1.eml &&
 	test_path_is_missing .git/rebase-apply &&
 	git diff --exit-code second &&
@@ -166,9 +176,7 @@ test_expect_success 'am applies patch e-mail not in a mbox' '
 '
 
 test_expect_success 'am applies patch e-mail not in a mbox with CRLF' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout first &&
+	setup_temporary_branch first &&
 	git am patch1-crlf.eml &&
 	test_path_is_missing .git/rebase-apply &&
 	git diff --exit-code second &&
@@ -177,9 +185,7 @@ test_expect_success 'am applies patch e-mail not in a mbox with CRLF' '
 '
 
 test_expect_success 'am applies patch e-mail with preceding whitespace' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout first &&
+	setup_temporary_branch first &&
 	git am patch1-ws.eml &&
 	test_path_is_missing .git/rebase-apply &&
 	git diff --exit-code second &&
@@ -203,9 +209,7 @@ compare () {
 
 test_expect_success 'am changes committer and keeps author' '
 	test_tick &&
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout first &&
+	setup_temporary_branch first &&
 	git am patch2 &&
 	test_path_is_missing .git/rebase-apply &&
 	test "$(git rev-parse master^^)" = "$(git rev-parse HEAD^^)" &&
@@ -218,9 +222,7 @@ test_expect_success 'am changes committer and keeps author' '
 '
 
 test_expect_success 'am --signoff adds Signed-off-by: line' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout -b master2 first &&
+	setup_fixed_branch master2 first &&
 	git am --signoff <patch2 &&
 	printf "%s\n" "$signoff" >expected &&
 	echo "Signed-off-by: $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL>" >>expected &&
@@ -255,9 +257,7 @@ test_expect_success 'am without --keep removes Re: and [PATCH] stuff' '
 '
 
 test_expect_success 'am --keep really keeps the subject' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout HEAD^ &&
+	setup_temporary_branch master2^ &&
 	git am --keep patch4 &&
 	test_path_is_missing .git/rebase-apply &&
 	git cat-file commit HEAD >actual &&
@@ -265,9 +265,7 @@ test_expect_success 'am --keep really keeps the subject' '
 '
 
 test_expect_success 'am --keep-non-patch really keeps the non-patch part' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout HEAD^ &&
+	setup_temporary_branch master2^ &&
 	git am --keep-non-patch patch4 &&
 	test_path_is_missing .git/rebase-apply &&
 	git cat-file commit HEAD >actual &&
@@ -275,9 +273,7 @@ test_expect_success 'am --keep-non-patch really keeps the non-patch part' '
 '
 
 test_expect_success 'am -3 falls back to 3-way merge' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout -b lorem2 master2 &&
+	setup_fixed_branch lorem2 master2 &&
 	sed -n -e "3,\$p" msg >file &&
 	head -n 9 msg >>file &&
 	git add file &&
@@ -289,9 +285,7 @@ test_expect_success 'am -3 falls back to 3-way merge' '
 '
 
 test_expect_success 'am -3 -p0 can read --no-prefix patch' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout -b lorem3 master2 &&
+	setup_temporary_branch lorem2 &&
 	sed -n -e "3,\$p" msg >file &&
 	head -n 9 msg >>file &&
 	git add file &&
@@ -303,10 +297,8 @@ test_expect_success 'am -3 -p0 can read --no-prefix patch' '
 '
 
 test_expect_success 'am can rename a file' '
+	setup_temporary_branch lorem &&
 	grep "^rename from" rename.patch &&
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout lorem^0 &&
 	git am rename.patch &&
 	test_path_is_missing .git/rebase-apply &&
 	git update-index --refresh &&
@@ -314,10 +306,8 @@ test_expect_success 'am can rename a file' '
 '
 
 test_expect_success 'am -3 can rename a file' '
+	setup_temporary_branch lorem &&
 	grep "^rename from" rename.patch &&
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout lorem^0 &&
 	git am -3 rename.patch &&
 	test_path_is_missing .git/rebase-apply &&
 	git update-index --refresh &&
@@ -325,10 +315,8 @@ test_expect_success 'am -3 can rename a file' '
 '
 
 test_expect_success 'am -3 can rename a file after falling back to 3-way merge' '
+	setup_temporary_branch lorem &&
 	grep "^rename from" rename-add.patch &&
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout lorem^0 &&
 	git am -3 rename-add.patch &&
 	test_path_is_missing .git/rebase-apply &&
 	git update-index --refresh &&
@@ -336,9 +324,7 @@ test_expect_success 'am -3 can rename a file after falling back to 3-way merge' 
 '
 
 test_expect_success 'am -3 -q is quiet' '
-	rm -fr .git/rebase-apply &&
-	git checkout -f lorem2 &&
-	git reset master2 --hard &&
+	setup_temporary_branch lorem2 &&
 	sed -n -e "3,\$p" msg >file &&
 	head -n 9 msg >>file &&
 	git add file &&
@@ -349,11 +335,9 @@ test_expect_success 'am -3 -q is quiet' '
 '
 
 test_expect_success 'am pauses on conflict' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout lorem2^^ &&
+	setup_temporary_branch lorem2^^ &&
 	test_must_fail git am lorem-move.patch &&
-	test -d .git/rebase-apply
+	test_path_is_dir .git/rebase-apply
 '
 
 test_expect_success 'am --skip works' '
@@ -371,12 +355,10 @@ test_expect_success 'am --abort removes a stray directory' '
 '
 
 test_expect_success 'am --resolved works' '
+	setup_temporary_branch lorem2^^ &&
 	echo goodbye >expected &&
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout lorem2^^ &&
 	test_must_fail git am lorem-move.patch &&
-	test -d .git/rebase-apply &&
+	test_path_is_dir .git/rebase-apply &&
 	echo resolved >>file &&
 	git add file &&
 	git am --resolved &&
@@ -385,25 +367,21 @@ test_expect_success 'am --resolved works' '
 '
 
 test_expect_success 'am takes patches from a Pine mailbox' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout first &&
+	setup_temporary_branch first &&
 	cat pine patch1 | git am &&
 	test_path_is_missing .git/rebase-apply &&
 	git diff --exit-code master^..HEAD
 '
 
 test_expect_success 'am fails on mail without patch' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
+	setup_temporary_branch first &&
 	test_must_fail git am <failmail &&
 	git am --abort &&
 	test_path_is_missing .git/rebase-apply
 '
 
 test_expect_success 'am fails on empty patch' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
+	setup_temporary_branch first &&
 	echo "---" >>failmail &&
 	test_must_fail git am <failmail &&
 	git am --skip &&
@@ -411,10 +389,8 @@ test_expect_success 'am fails on empty patch' '
 '
 
 test_expect_success 'am works from stdin in subdirectory' '
+	setup_temporary_branch first &&
 	rm -fr subdir &&
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout first &&
 	(
 		mkdir -p subdir &&
 		cd subdir &&
@@ -424,10 +400,8 @@ test_expect_success 'am works from stdin in subdirectory' '
 '
 
 test_expect_success 'am works from file (relative path given) in subdirectory' '
+	setup_temporary_branch first &&
 	rm -fr subdir &&
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout first &&
 	(
 		mkdir -p subdir &&
 		cd subdir &&
@@ -437,10 +411,8 @@ test_expect_success 'am works from file (relative path given) in subdirectory' '
 '
 
 test_expect_success 'am works from file (absolute path given) in subdirectory' '
+	setup_temporary_branch first &&
 	rm -fr subdir &&
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout first &&
 	P=$(pwd) &&
 	(
 		mkdir -p subdir &&
@@ -451,9 +423,7 @@ test_expect_success 'am works from file (absolute path given) in subdirectory' '
 '
 
 test_expect_success 'am --committer-date-is-author-date' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout first &&
+	setup_temporary_branch first &&
 	test_tick &&
 	git am --committer-date-is-author-date patch1 &&
 	git cat-file commit HEAD | sed -e "/^\$/q" >head1 &&
@@ -463,9 +433,7 @@ test_expect_success 'am --committer-date-is-author-date' '
 '
 
 test_expect_success 'am without --committer-date-is-author-date' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout first &&
+	setup_temporary_branch first &&
 	test_tick &&
 	git am patch1 &&
 	git cat-file commit HEAD | sed -e "/^\$/q" >head1 &&
@@ -479,9 +447,7 @@ test_expect_success 'am without --committer-date-is-author-date' '
 # by test_tick that uses -0700 timezone; if this feature does not
 # work, we will see that instead of +0000.
 test_expect_success 'am --ignore-date' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout first &&
+	setup_temporary_branch first &&
 	test_tick &&
 	git am --ignore-date patch1 &&
 	git cat-file commit HEAD | sed -e "/^\$/q" >head1 &&
@@ -490,9 +456,8 @@ test_expect_success 'am --ignore-date' '
 '
 
 test_expect_success 'am into an unborn branch' '
+	setup_temporary_branch first &&
 	git rev-parse first^{tree} >expected &&
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
 	rm -fr subdir &&
 	mkdir subdir &&
 	git format-patch --numbered-files -o subdir -1 first &&
@@ -509,9 +474,7 @@ test_expect_success 'am into an unborn branch' '
 '
 
 test_expect_success 'am newline in subject' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout first &&
+	setup_temporary_branch first &&
 	test_tick &&
 	sed -e "s/second/second \\\n foo/" patch1 >patchnl &&
 	git am <patchnl >output.out 2>&1 &&
@@ -519,17 +482,14 @@ test_expect_success 'am newline in subject' '
 '
 
 test_expect_success 'am -q is quiet' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout first &&
+	setup_temporary_branch first &&
 	test_tick &&
 	git am -q <patch1 >output.out 2>&1 &&
 	! test -s output.out
 '
 
 test_expect_success 'am empty-file does not infloop' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
+	setup_temporary_branch first &&
 	touch empty-file &&
 	test_tick &&
 	test_must_fail git am empty-file 2>actual &&
@@ -538,9 +498,7 @@ test_expect_success 'am empty-file does not infloop' '
 '
 
 test_expect_success 'am --message-id really adds the message id' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout HEAD^ &&
+	setup_temporary_branch first &&
 	git am --message-id patch1.eml &&
 	test_path_is_missing .git/rebase-apply &&
 	git cat-file commit HEAD | tail -n1 >actual &&
@@ -549,9 +507,7 @@ test_expect_success 'am --message-id really adds the message id' '
 '
 
 test_expect_success 'am --message-id -s signs off after the message id' '
-	rm -fr .git/rebase-apply &&
-	git reset --hard &&
-	git checkout HEAD^ &&
+	setup_temporary_branch first &&
 	git am -s --message-id patch1.eml &&
 	test_path_is_missing .git/rebase-apply &&
 	git cat-file commit HEAD | tail -n2 | head -n1 >actual &&
