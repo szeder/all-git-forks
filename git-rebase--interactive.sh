@@ -871,7 +871,7 @@ check_missing_commits () {
 			warn "Use git --config rebase.checkLevel to change the level of warnings (none,warn,error)."
 			warn ""
 
-			if test "$checkLevel" = "error"
+			if test "$checkLevel" = "ERROR"
 			then
 				die_abort "Rebase aborted due to dropped commits."
 				#die "Please fix this using 'git rebase --edit-todo'."
