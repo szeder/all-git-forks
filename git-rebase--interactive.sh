@@ -881,20 +881,37 @@ check_missing_commits () {
 		todo_list_to_sha_list "$todo".backup "$todo".oldsha1
 		todo_list_to_sha_list "$todo" "$todo".newsha1
 
+		duplicates=$(sort "$todo".newsha1 | uniq -d)
+
 		echo "$(sort -u "$todo".oldsha1)" > "$todo".oldsha1
 		echo "$(sort -u "$todo".newsha1)" > "$todo".newsha1
-
 		missing=$(comm -2 -3 "$todo".oldsha1 "$todo".newsha1)
 
+		# check missing commits
 		if ! test -z "$missing"
 		then
 			warn "Warning : some commits may have been dropped accidentally"
-			warn "List of the dropped commits:"
+			warn "Dropped commits:"
 			warn "$missing"
 			warn "To avoid this message, use \"drop\" or squash your commits"
-			warn "You can change the level of warnings (NONE,WARN,ERROR) with git --config rebase.dropCheckLevel"
-			# die "Please fix this using 'git rebase --edit-todo'."
+			warn "Use git --config rebase.dropCheckLevel to change the level of warnings (none,warn,error)"
+			warn ""
+
+			if test "$dropCheckLevel" = "error"
+			then
+				die_abort "Rebase aborted due to dropped commits"
+				#die "Please fix this using 'git rebase --edit-todo'."
+			fi
 		fi
+
+		# check duplicate commits
+		if ! test -z "$duplicates"
+		then
+			warn "Warning : some commits have been used twice:"
+			warn "$duplicates"
+			warn ""
+		fi
+
 	fi
 }
 
