@@ -42,7 +42,7 @@ static void parse_to_timestamp(char **argv, struct timeval *now)
 	struct strbuf result = STRBUF_INIT;
 
 	for (; *argv; argv++) {
-		unsigned long timestamp;
+		time_t timestamp;
 		int offset;
 
 		strbuf_reset(&result);

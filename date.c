@@ -691,7 +691,7 @@ int parse_date_basic(const char *date, time_t *timestamp, int *offset)
 {
 	struct tm tm;
 	int tm_gmt;
-	unsigned long dummy_timestamp;
+	time_t dummy_timestamp;
 	int dummy_offset;
 
 	if (!timestamp)
@@ -823,7 +823,9 @@ void datestamp(struct strbuf *out)
 
 	time(&now);
 
-	tm_to_time_t(localtime(&now), &offset);
+	int ret = tm_to_time_t(localtime(&now), &offset);
+	if (ret)
+		offset = -1;
 	offset -= now;
 	offset /= 60;
 
