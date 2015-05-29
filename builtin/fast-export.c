@@ -20,6 +20,8 @@
 #include "remote.h"
 #include "blob.h"
 
+#undef ERROR
+
 static const char *fast_export_usage[] = {
 	N_("git fast-export [rev-list-opts]"),
 	NULL
