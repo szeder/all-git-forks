@@ -460,20 +460,6 @@ my ($repoauthor, $repocommitter);
 ($repoauthor) = Git::ident_person(@repo, 'author');
 ($repocommitter) = Git::ident_person(@repo, 'committer');
 
-# Verify the user input
-
-foreach my $entry (@initial_to) {
-	die "Comma in --to entry: $entry'\n" unless $entry !~ m/,/;
-}
-
-foreach my $entry (@initial_cc) {
-	die "Comma in --cc entry: $entry'\n" unless $entry !~ m/,/;
-}
-
-foreach my $entry (@bcclist) {
-	die "Comma in --bcclist entry: $entry'\n" unless $entry !~ m/,/;
-}
-
 sub parse_address_line {
 	if ($have_mail_address) {
 		return map { $_->format } Mail::Address->parse($_[0]);
@@ -1023,8 +1009,13 @@ sub sanitize_address_list {
 	return (map { sanitize_address($_) } @_);
 }
 
+sub split_at_commas {
+	return (map { split /\s*,\s*/, $_ } @_);
+}
+
 sub process_address_list {
-    my @addr_list = expand_aliases(@_);
+    my @addr_list = split_at_commas(@_);
+    @addr_list = expand_aliases(@addr_list);
     @addr_list = sanitize_address_list(@addr_list);
     @addr_list = validate_address_list(@addr_list);
     return @addr_list;
