@@ -427,7 +427,7 @@ test_expect_success 'stdin fails create with no new value' '
 test_expect_success 'stdin fails create with too many arguments' '
 	echo "create $a $m $m" >stdin &&
 	test_must_fail git update-ref --stdin <stdin 2>err &&
-	grep "fatal: create $a: extra input:  $m" err
+	grep "fatal: create $a: extra input: $m" err
 '
 
 test_expect_success 'stdin fails update with no ref' '
@@ -445,7 +445,7 @@ test_expect_success 'stdin fails update with no new value' '
 test_expect_success 'stdin fails update with too many arguments' '
 	echo "update $a $m $m $m" >stdin &&
 	test_must_fail git update-ref --stdin <stdin 2>err &&
-	grep "fatal: update $a: extra input:  $m" err
+	grep "fatal: update $a: extra input: $m" err
 '
 
 test_expect_success 'stdin fails delete with no ref' '
