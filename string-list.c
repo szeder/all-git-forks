@@ -7,6 +7,18 @@ void string_list_init(struct string_list *list, int strdup_strings)
 	list->strdup_strings = strdup_strings;
 }
 
+void from_space_separated_string(struct string_list *list, char *line)
+{
+	char *save_ptr;
+	const char delimiters[] = " \t\n";
+	const char *token = strtok_r(line, delimiters, &save_ptr);
+
+	while (token) {
+		string_list_append(list, xstrdup(token));
+		token = strtok_r(NULL, delimiters, &save_ptr);
+	}
+}
+
 /* if there is no exact match, point to the index where the entry could be
  * inserted */
 static int get_entry_index(const struct string_list *list, const char *string,
