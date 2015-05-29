@@ -533,7 +533,10 @@ static HANDLE swap_osfhnd(int fd, HANDLE new_handle)
 #ifdef DETECT_MSYS_TTY
 
 #include <winternl.h>
-#include <ntstatus.h>
+
+#ifndef NT_SUCCESS
+#define NT_SUCCESS(Status)              (((NTSTATUS)(Status)) >= 0)
+#endif
 
 static void detect_msys_tty(int fd)
 {
