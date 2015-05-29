@@ -13,6 +13,19 @@ ifdef MSVC
 	uname_O := Windows
 endif
 
+ifeq ($(MINGW_TARGET),w32)
+	uname_S := MINGW
+	uname_R := 2.0
+	CROSS_PREFIX = i686-w64-mingw32-
+	MSYSTEM = MINGW32
+endif
+ifeq ($(MINGW_TARGET),w64)
+	uname_S := MINGW
+	uname_R := 2.0
+	CROSS_PREFIX = x86_64-w64-mingw32-
+	MSYSTEM = MINGW64
+endif
+
 # We choose to avoid "if .. else if .. else .. endif endif"
 # because maintaining the nesting to match is a pain.  If
 # we had "elif" things would have been much nicer...
@@ -565,6 +578,22 @@ else
 		NO_CURL =
 		USE_NED_ALLOCATOR = YesPlease
 		NO_PYTHON =
+		ifneq ($(MINGW_TARGET),)
+			NO_OPENSSL = Yes
+			NO_ICONV = Yes
+			NO_CURL = Yes
+			NO_GETTEXT = Yes
+			USE_LIBPCRE =
+			NEEDS_LIBICONV =
+			CC = $(CROSS_PREFIX)gcc
+			WINDRES = $(CROSS_PREFIX)windres
+			RANLIB = $(CROSS_PREFIX)ranlib
+			AR = $(CROSS_PREFIX)ar
+			INSTALL = install
+			ifeq ($(ZLIB_PATH),)
+$(error Please specify ZLIB_PATH)
+			endif
+		endif
 	else
 		COMPAT_CFLAGS += -D__USE_MINGW_ANSI_STDIO
 		NO_CURL = YesPlease
