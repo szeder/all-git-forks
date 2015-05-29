@@ -40,6 +40,14 @@ static const char *parse_arg(const char *next, struct strbuf *arg)
 	return next;
 }
 
+static const char *skip_trailing_space(const char *next)
+{
+	if (line_termination)
+		while (*next && *next != line_termination && isspace(*next))
+			next++;
+	return next;
+}
+
 /*
  * Parse the reference name immediately after "command SP".  If not
  * -z, then handle C-quoting.  Return a pointer to a newly allocated
@@ -196,6 +204,7 @@ static const char *parse_cmd_update(struct ref_transaction *transaction,
 	have_old = !parse_next_sha1(input, &next, old_sha1, "update", refname,
 				    PARSE_SHA1_OLD);
 
+	next = skip_trailing_space(next);
 	if (*next != line_termination)
 		die("update %s: extra input: %s", refname, next);
 
@@ -229,6 +238,7 @@ static const char *parse_cmd_create(struct ref_transaction *transaction,
 	if (is_null_sha1(new_sha1))
 		die("create %s: zero <newvalue>", refname);
 
+	next = skip_trailing_space(next);
 	if (*next != line_termination)
 		die("create %s: extra input: %s", refname, next);
 
