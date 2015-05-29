@@ -1612,4 +1612,34 @@ test_expect_success $PREREQ '--[no-]xmailer with sendemail.xmailer=false' '
 	do_xmailer_test 1 "--xmailer"
 '
 
+test_expect_success $PREREQ 'setup expected-list' '
+	git send-email \
+	--dry-run \
+	--from="Example <from@example.com>" \
+	--to="to1@example.com" \
+	--to="to2@example.com" \
+	--to="to3@example.com" \
+	--cc="cc1@example.com" \
+	--cc="Cc 1 <cc1@example.com>" \
+	--cc="Cc 2 <cc2@example.com>" \
+	--bcc="bcc1@example.com" \
+	--bcc="bcc2@example.com" \
+	0001-add-master.patch |	replace_variable_fields \
+	>expected-list
+'
+
+test_expect_success $PREREQ 'use email list in --cc --to and --bcc' '
+	git send-email \
+	--dry-run \
+	--from="Example <from@example.com>" \
+	--to="to1@example.com, to2@example.com" \
+	--to="to3@example.com" \
+	--cc="cc1@example.com, Cc 1 <cc1@example.com>" \
+	--cc="Cc 2 <cc2@example.com>" \
+	--bcc="bcc1@example.com, bcc2@example.com" \
+	0001-add-master.patch |	replace_variable_fields \
+	 >actual-list &&
+	test_cmp expected-list actual-list
+'
+
 test_done
