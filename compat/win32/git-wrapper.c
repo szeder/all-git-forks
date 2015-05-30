@@ -163,6 +163,10 @@ static LPWSTR fixup_commandline(LPWSTR exepath, LPWSTR *exep, int *wait,
 		}
 		wcscat(cmd, p);
 	}
+
+	if (wargc >= 2 && !wcsicmp(wargv[1], L"gui"))
+		*wait = 0;
+
 	LocalFree(wargv);
 
 	return cmd;
