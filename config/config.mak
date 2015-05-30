@@ -40,7 +40,8 @@ LDFLAGS = -g
 # got fixed).
 head = $(shell git symbolic-ref HEAD 2>/dev/null)
 rebasing = $(shell test -d "`git rev-parse --git-dir`/"rebase-* && echo yes)
-strict = $(or $(rebasing), $(head))
+private = $(shell grep -sq Meta/private "`git rev-parse --git-dir`/continue" && echo yes)
+strict = $(or $(rebasing), $(head), $(private))
 ifeq ($(strict),)
   CFLAGS += -Wno-error
 endif
