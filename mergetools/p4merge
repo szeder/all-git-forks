@@ -24,7 +24,7 @@ merge_cmd () {
 	if ! $base_present
 	then
 		cp -- "$LOCAL" "$BASE"
-		create_virtual_base "$BASE" "$REMOTE"
+		create_virtual_base "${BASE#./}" "${REMOTE#./}"
 	fi
 	"$merge_tool_path" "$BASE" "$REMOTE" "$LOCAL" "$MERGED"
 	check_unchanged
