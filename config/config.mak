@@ -19,7 +19,8 @@ endif
 
 COMPILER ?= gcc
 O = 0
-CC = $(COMPILER)
+CC = ccache $(COMPILER)
+export CCACHE_CPP2=1
 CFLAGS += -g -O$(O)
 CFLAGS += -Wall -Werror
 CFLAGS += -Wno-format-zero-length
