@@ -7,6 +7,7 @@ cont=
 force=
 noautorerere=
 careful=0
+options=
 while test $# -gt 0; do
 case "$1" in
 --continue)
@@ -15,12 +16,14 @@ case "$1" in
 --noautorerere)
 	noautorerere=t
 	merge_config="-c rerere.autoupdate=false"
+	options="$options $1"
 	;;
 -f)
 	force=t
 	;;
 -c|--careful)
 	careful=$(($careful + 1))
+	options="$options $1"
 	;;
 *)
 	echo >&2 "unknown option: $1"
@@ -44,7 +47,7 @@ else
 		  exit 1
 	  }
 	git checkout -q ${force:+-f} $upstream^0 || exit
-	echo "Meta/private --continue ${noautorerere:+--noautorerere}" >"$GIT_DIR/continue"
+	echo "Meta/private --continue $options" >"$GIT_DIR/continue"
 fi
 
 for i in `Meta/topics`; do
