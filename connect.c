@@ -126,8 +126,21 @@ void get_remote_capabilities(int in, char *src_buf, size_t src_len)
 	}
 }
 
-int request_capabilities(int out)
+int request_capabilities(int out, struct transport_options *options)
 {
+	/* todo: Parse from options
+	if (multi_ack == 2)      packet_write(out, "multi_ack_detailed");
+	if (multi_ack == 1)      packet_write(out, " multi_ack");
+	if (no_done)             packet_write(out, " no-done");
+	if (use_sideband == 2)   packet_write(out, " side-band-64k");
+	if (use_sideband == 1)   packet_write(out, " side-band");
+	if (args->use_thin_pack) packet_write(out, " thin-pack");
+	if (args->no_progress)   packet_write(out, " no-progress");
+	if (args->include_tag)   packet_write(out, " include-tag");
+	if (prefer_ofs_delta)    packet_write(out, " ofs-delta");
+	if (agent_supported)     packet_write(out, " agent=%s",
+					    git_user_agent_sanitized());
+	*/
 	packet_flush(out);
 }
 
