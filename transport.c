@@ -531,23 +531,19 @@ static struct ref *get_refs_via_connect(struct transport *transport, int for_pus
 		version = transport->smart_options->transport_version;
 	connect_setup(transport, for_push, 0);
 	switch (version) {
-		case 2: /* first talk about capabilities, then get the heads */
-			get_remote_capabilities(data->fd[0], NULL, 0);
-			request_capabilities(data->fd[1]);
-			get_remote_heads(data->fd[0], NULL, 0, &refs,
-					 for_push ? REF_NORMAL : 0,
-					 &data->extra_have,
-					 &data->shallow);
-			break;
-		case 1:
-			get_remote_heads(data->fd[0], NULL, 0, &refs,
-					 for_push ? REF_NORMAL : 0,
-					 &data->extra_have,
-					 &data->shallow);
-			break;
-		default:
-			die("BUG: Transport version %d not supported", version);
-			break;
+	case 2: /* first talk about capabilities, then get the heads */
+		get_remote_capabilities(data->fd[0], NULL, 0);
+		request_capabilities(data->fd[1]);
+		/* fall through */
+	case 1:
+		get_remote_heads(data->fd[0], NULL, 0, &refs,
+				 for_push ? REF_NORMAL : 0,
+				 &data->extra_have,
+				 &data->shallow);
+		break;
+	default:
+		die("BUG: Transport version %d not supported", version);
+		break;
 	}
 	data->got_remote_heads = 1;
 
