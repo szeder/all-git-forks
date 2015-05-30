@@ -531,7 +531,7 @@ error:
 	}
 }
 
-static void parse_features(const char *features)
+static void parse_features(struct string_list *features)
 {
 	if (parse_feature_request(features, "multi_ack_detailed"))
 		multi_ack = 2;
@@ -563,7 +563,10 @@ static void receive_needs(void)
 	for (;;) {
 		struct object *o;
 		unsigned char sha1_buf[20];
-		char *line = packet_read_line(0, NULL);
+		int pkt_len;
+		struct string_list list = STRING_LIST_INIT_DUP;
+		char *line = packet_read_line(0, &pkt_len);
+
 		reset_timeout();
 		if (!line)
 			break;
@@ -596,7 +599,9 @@ static void receive_needs(void)
 			die("git upload-pack: protocol error, "
 			    "expected to get sha, not '%s'", line);
 
-		parse_features(line + 45);
+		from_space_separated_string(&list, xstrdup(line + 45));
+		parse_features(&list);
+		string_list_clear(&list, 1);
 
 		o = parse_object(sha1_buf);
 		if (!o)
