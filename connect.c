@@ -105,6 +105,32 @@ static void annotate_refs_with_symref_info(struct ref *ref)
 	string_list_clear(&symref, 0);
 }
 
+void get_remote_capabilities(int in, char *src_buf, size_t src_len)
+{
+	string_list_clear(&server_capabilities, 1);
+	for (;;) {
+		int len;
+		char *line = packet_buffer;
+
+		len = packet_read(in, &src_buf, &src_len,
+				  packet_buffer, sizeof(packet_buffer),
+				  PACKET_READ_GENTLE_ON_EOF |
+				  PACKET_READ_CHOMP_NEWLINE);
+		if (len < 0)
+			die_initial_contact(0);
+
+		if (!len)
+			break;
+
+		string_list_append(&server_capabilities, line);
+	}
+}
+
+int request_capabilities(int out)
+{
+	packet_flush(out);
+}
+
 /*
  * Read all the refs from the other end
  */
