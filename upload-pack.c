@@ -716,33 +716,69 @@ static void format_symref_info(struct strbuf *buf, struct string_list *symref)
 		strbuf_addf(buf, " symref=%s:%s", item->string, (char *)item->util);
 }
 
+static int advertise_capabilities = 1;
+const char *all_capabilities[] = {
+	"multi_ack",
+	"thin-pack",
+	"side-band",
+	"side-band-64k",
+	"ofs-delta",
+	"shallow",
+	"no-progress",
+	"include-tag",
+	"multi_ack_detailed",
+	"allow-tip-sha1-in-want",
+	"no-done",
+};
+
+static void send_capabilities(void)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(all_capabilities); i++) {
+		const char *cap = all_capabilities[i];
+		if (!strcmp(cap, "allow-tip-sha1-in-want") && !allow_tip_sha1_in_want)
+			continue;
+		if (!strcmp(cap, "no-done") && !stateless_rpc)
+			continue;
+		packet_write(1,"%s", cap);
+	}
+
+	packet_write(1, "agent=%s\n", git_user_agent_sanitized());
+	packet_flush(1);
+}
+
 static int send_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
 {
-	static const char *capabilities = "multi_ack thin-pack side-band"
-		" side-band-64k ofs-delta shallow no-progress"
-		" include-tag multi_ack_detailed";
+
 	const char *refname_nons = strip_namespace(refname);
 	unsigned char peeled[20];
 
 	if (mark_our_ref(refname, sha1))
 		return 0;
 
-	if (capabilities) {
-		struct strbuf symref_info = STRBUF_INIT;
+	if (advertise_capabilities) {
+		int i;
+		struct strbuf capabilities = STRBUF_INIT;
 
-		format_symref_info(&symref_info, cb_data);
-		packet_write(1, "%s %s%c%s%s%s%s agent=%s\n",
-			     sha1_to_hex(sha1), refname_nons,
-			     0, capabilities,
-			     allow_tip_sha1_in_want ? " allow-tip-sha1-in-want" : "",
-			     stateless_rpc ? " no-done" : "",
-			     symref_info.buf,
-			     git_user_agent_sanitized());
-		strbuf_release(&symref_info);
+		for (i = 0; i < ARRAY_SIZE(all_capabilities); i++) {
+			const char *cap = all_capabilities[i];
+			if (!strcmp(cap, "allow-tip-sha1-in-want") && !allow_tip_sha1_in_want)
+				continue;
+			if (!strcmp(cap, "no-done") && !stateless_rpc)
+				continue;
+			strbuf_addf(&capabilities, " %s", cap);
+		}
+
+		format_symref_info(&capabilities, cb_data);
+		strbuf_addf(&capabilities, " agent=%s", git_user_agent_sanitized());
+
+		packet_write(1, "%s %s%c%s\n", sha1_to_hex(sha1), refname_nons,
+			     0, capabilities.buf);
+		strbuf_release(&capabilities);
+		advertise_capabilities = 0;
 	} else {
 		packet_write(1, "%s %s\n", sha1_to_hex(sha1), refname_nons);
 	}
-	capabilities = NULL;
 	if (!peel_ref(refname, peeled))
 		packet_write(1, "%s %s^{}\n", sha1_to_hex(peeled), refname_nons);
 	return 0;
@@ -792,6 +828,29 @@ static void upload_pack(void)
 	}
 }
 
+static void receive_capabilities(void)
+{
+	struct string_list list = STRING_LIST_INIT_DUP;
+	char *line = packet_read_line(0, NULL);
+	while (line) {
+		string_list_append(&list, line);
+		line = packet_read_line(0, NULL);
+	}
+	parse_features(&list);
+	string_list_clear(&list, 1);
+}
+
+static void upload_pack_version_2(void)
+{
+	send_capabilities();
+	receive_capabilities();
+
+	/* The rest of the protocol stays the same, capabilities advertising
+	   is disabled though. */
+	advertise_capabilities = 0;
+	upload_pack();
+}
+
 static int upload_pack_config(const char *var, const char *value, void *unused)
 {
 	if (!strcmp("uploadpack.allowtipsha1inwant", var))
@@ -807,13 +866,14 @@ static int upload_pack_config(const char *var, const char *value, void *unused)
 int main(int argc, char **argv)
 {
 	char *dir;
+	const char *cmd;
 	int i;
 	int strict = 0;
 
 	git_setup_gettext();
 
 	packet_trace_identity("upload-pack");
-	git_extract_argv0_path(argv[0]);
+	cmd = git_extract_argv0_path(argv[0]);
 	check_replace_refs = 0;
 
 	for (i = 1; i < argc; i++) {
@@ -855,6 +915,10 @@ int main(int argc, char **argv)
 		die("'%s' does not appear to be a git repository", dir);
 
 	git_config(upload_pack_config, NULL);
-	upload_pack();
+
+	if (ends_with(cmd, "-2"))
+		upload_pack_version_2();
+	else
+		upload_pack();
 	return 0;
 }
