@@ -496,14 +496,27 @@ static int set_git_option(struct git_transport_options *opts,
 static int connect_setup(struct transport *transport, int for_push, int verbose)
 {
 	struct git_transport_data *data = transport->data;
+	const char *remote_program;
+	char *to_free = 0;
 
 	if (data->conn)
 		return 0;
 
+	remote_program = (for_push ? data->options.receivepack
+				   : data->options.uploadpack);
+
+	if (transport->smart_options->transport_version >= 2) {
+		to_free = xmalloc(strlen(remote_program) + 12);
+		sprintf(to_free, "%s-%d", remote_program,
+			transport->smart_options->transport_version);
+		remote_program = to_free;
+	}
+
 	data->conn = git_connect(data->fd, transport->url,
-				 for_push ? data->options.receivepack :
-				 data->options.uploadpack,
+				 remote_program,
 				 verbose ? CONNECT_VERBOSE : 0);
+
+	free(to_free);
 
 	return 0;
 }
