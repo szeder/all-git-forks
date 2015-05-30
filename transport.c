@@ -479,6 +479,16 @@ static int set_git_option(struct git_transport_options *opts,
 	} else if (!strcmp(name, TRANS_OPT_PUSH_CERT)) {
 		opts->push_cert = !!value;
 		return 0;
+	} else if (!strcmp(name, TRANS_OPT_TRANSPORTVERSION)) {
+		if (!value)
+			opts->transport_version = DEFAULT_TRANSPORT_VERSION;
+		else {
+			char *end;
+			opts->transport_version = strtol(value, &end, 0);
+			if (*end)
+				die("transport: invalid transport version option '%s'", value);
+		}
+		return 0;
 	}
 	return 1;
 }
@@ -970,6 +980,8 @@ struct transport *transport_get(struct remote *remote, const char *url)
 		ret->connect = connect_git;
 		ret->disconnect = disconnect_git;
 		ret->smart_options = &(data->options);
+		ret->smart_options->transport_version =
+			DEFAULT_TRANSPORT_VERSION;
 
 		data->conn = NULL;
 		data->got_remote_heads = 0;
@@ -988,6 +1000,9 @@ struct transport *transport_get(struct remote *remote, const char *url)
 		ret->smart_options->receivepack = "git-receive-pack";
 		if (remote->receivepack)
 			ret->smart_options->receivepack = remote->receivepack;
+		if (remote->transport_version)
+			ret->smart_options->transport_version =
+				remote->transport_version;
 	}
 
 	return ret;

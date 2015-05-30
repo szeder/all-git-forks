@@ -50,6 +50,8 @@ struct remote {
 	const char *receivepack;
 	const char *uploadpack;
 
+	int transport_version;
+
 	/*
 	 * for curl remotes only
 	 */

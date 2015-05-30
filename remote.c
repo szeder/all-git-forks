@@ -476,6 +476,8 @@ static int handle_config(const char *key, const char *value, void *cb)
 					 key, value);
 	} else if (!strcmp(subkey, ".vcs")) {
 		return git_config_string(&remote->foreign_vcs, key, value);
+	} else if (!strcmp(subkey, ".transportversion")) {
+		remote->transport_version = git_config_int(key, value);
 	}
 	return 0;
 }
