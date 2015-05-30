@@ -127,6 +127,10 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 			args.update_shallow = 1;
 			continue;
 		}
+		if (!skip_prefix(arg, "--transport-version", &arg)) {
+			args.version = strtol(arg, NULL, 0);
+			continue;
+		}
 		usage(fetch_pack_usage);
 	}
 
@@ -175,7 +179,17 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 		if (!conn)
 			return args.diag_url ? 0 : 1;
 	}
-	get_remote_heads(fd[0], NULL, 0, &ref, 0, NULL, &shallow);
+
+	switch (args.version) {
+	case 2:
+		get_remote_capabilities(fd[0], NULL, 0);
+		request_capabilities(fd[1]);
+	case 1: /* fall through */
+		get_remote_heads(fd[0], NULL, 0, &ref, 0, NULL, &shallow);
+		break;
+	default:
+		die("Transport version %d not supported", args.version);
+	}
 
 	ref = fetch_pack(&args, fd, conn, ref, dest, sought, nr_sought,
 			 &shallow, pack_lockfile_ptr);
