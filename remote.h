@@ -10,6 +10,19 @@ enum {
 	REMOTE_BRANCHES
 };
 
+/* todo: discuss if this should be combined with
+ * git_transport_options in transport.h */
+struct transport_options {
+	unsigned multi_ack : 2;
+	unsigned no_done : 1;
+	unsigned use_sideband : 2;
+	unsigned use_thin_pack : 1;
+	unsigned no_progress : 1;
+	unsigned include_tag : 1;
+	unsigned prefer_ofs_delta : 1;
+	unsigned agent_supported : 1;
+};
+
 struct remote {
 	struct hashmap_entry ent;  /* must be first */
 
@@ -148,7 +161,8 @@ void free_refs(struct ref *ref);
 struct sha1_array;
 
 extern void get_remote_capabilities(int in, char *src_buf, size_t src_len);
-extern int request_capabilities(int out);
+extern void select_capabilities(struct fetch_pack_args *args);
+extern int request_capabilities(int out, struct transport_options*);
 extern struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 				     struct ref **list, unsigned int flags,
 				     struct sha1_array *extra_have,

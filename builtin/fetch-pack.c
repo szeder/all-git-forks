@@ -183,6 +183,7 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	switch (args.version) {
 	case 2:
 		get_remote_capabilities(fd[0], NULL, 0);
+		select_capabilities(args);
 		request_capabilities(fd[1]);
 	case 1: /* fall through */
 		get_remote_heads(fd[0], NULL, 0, &ref, 0, NULL, &shallow);

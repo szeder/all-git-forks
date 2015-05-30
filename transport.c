@@ -533,6 +533,7 @@ static struct ref *get_refs_via_connect(struct transport *transport, int for_pus
 	switch (version) {
 	case 2: /* first talk about capabilities, then get the heads */
 		get_remote_capabilities(data->fd[0], NULL, 0);
+		//select_capabilities(args);
 		request_capabilities(data->fd[1]);
 		/* fall through */
 	case 1:

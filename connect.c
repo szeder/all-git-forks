@@ -126,6 +126,11 @@ void get_remote_capabilities(int in, char *src_buf, size_t src_len)
 	}
 }
 
+void select_capabilities(struct fetch_pack_args *args)
+{
+
+}
+
 int request_capabilities(int out, struct transport_options *options)
 {
 	if (options->multi_ack == 2)    packet_write(out, "multi_ack_detailed");
