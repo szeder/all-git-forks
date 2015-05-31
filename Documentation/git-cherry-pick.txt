@@ -9,7 +9,7 @@ SYNOPSIS
 --------
 [verse]
 'git cherry-pick' [--edit] [-n] [-m parent-number] [-s] [-x] [--ff]
-		  [-S[<keyid>]] <commit>...
+		  [-S[<key-id>]] <commit>...
 'git cherry-pick' --continue
 'git cherry-pick' --quit
 'git cherry-pick' --abort
@@ -101,8 +101,8 @@ effect to your index in a row.
 --signoff::
 	Add Signed-off-by line at the end of the commit message.
 
--S[<keyid>]::
---gpg-sign[=<keyid>]::
+-S[<key-id>]::
+--gpg-sign[=<key-id>]::
 	GPG-sign commits.
 
 --ff::
@@ -131,7 +131,8 @@ effect to your index in a row.
 --keep-redundant-commits::
 	If a commit being cherry picked duplicates a commit already in the
 	current history, it will become empty.  By default these
-	redundant commits are ignored.  This option overrides that behavior and
+	redundant commits cause `cherry-pick` to stop so the user can
+	examine the commit. This option overrides that behavior and
 	creates an empty commit object.  Implies `--allow-empty`.
 
 --strategy=<strategy>::

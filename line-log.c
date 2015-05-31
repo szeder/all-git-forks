@@ -237,7 +237,7 @@ static void diff_ranges_release(struct diff_ranges *diff)
 	range_set_release(&diff->target);
 }
 
-void line_log_data_init(struct line_log_data *r)
+static void line_log_data_init(struct line_log_data *r)
 {
 	memset(r, 0, sizeof(struct line_log_data));
 	range_set_init(&r->ranges, 0);
@@ -533,7 +533,7 @@ static void fill_line_ends(struct diff_filespec *spec, long *lines,
 	}
 
 	/* shrink the array to fit the elements */
-	ends = xrealloc(ends, cur * sizeof(*ends));
+	REALLOC_ARRAY(ends, cur);
 	*lines = cur-1;
 	*line_ends = ends;
 }
@@ -575,7 +575,7 @@ parse_lines(struct commit *commit, const char *prefix, struct string_list *args)
 
 		name_part = skip_range_arg(item->string);
 		if (!name_part || *name_part != ':' || !name_part[1])
-			die("-L argument '%s' not of the form start,end:file",
+			die("-L argument not 'start,end:file' or ':funcname:file': %s",
 			    item->string);
 		range_part = xstrndup(item->string, name_part - item->string);
 		name_part++;
@@ -764,17 +764,6 @@ void line_log_init(struct rev_info *rev, const char *prefix, struct string_list 
 			       PATHSPEC_PREFER_FULL, "", paths);
 		free(paths);
 	}
-}
-
-static int count_parents(struct commit *commit)
-{
-	struct commit_list *parents = commit->parents;
-	int count = 0;
-	while (parents) {
-		count++;
-		parents = parents->next;
-	}
-	return count;
 }
 
 static void move_diff_queue(struct diff_queue_struct *dst,
@@ -1110,6 +1099,7 @@ static int process_all_files(struct line_log_data **range_out,
 			rg->pair = diff_filepair_dup(queue->queue[i]);
 			memcpy(&rg->diff, pairdiff, sizeof(struct diff_ranges));
 		}
+		free(pairdiff);
 	}
 
 	return changed;
@@ -1150,7 +1140,10 @@ static int process_ranges_merge_commit(struct rev_info *rev, struct commit *comm
 	struct commit **parents;
 	struct commit_list *p;
 	int i;
-	int nparents = count_parents(commit);
+	int nparents = commit_list_count(commit->parents);
+
+	if (nparents > 1 && rev->first_parent_only)
+		nparents = 1;
 
 	diffqueues = xmalloc(nparents * sizeof(*diffqueues));
 	cand = xmalloc(nparents * sizeof(*cand));
@@ -1174,9 +1167,7 @@ static int process_ranges_merge_commit(struct rev_info *rev, struct commit *comm
 			 */
 			add_line_range(rev, parents[i], cand[i]);
 			clear_commit_line_range(rev, commit);
-			commit->parents = xmalloc(sizeof(struct commit_list));
-			commit->parents->item = parents[i];
-			commit->parents->next = NULL;
+			commit_list_append(parents[i], &commit->parents);
 			free(parents);
 			free(cand);
 			free_diffqueues(nparents, diffqueues);

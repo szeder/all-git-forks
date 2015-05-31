@@ -31,11 +31,23 @@ static int prune_tmp_file(const char *fullpath)
 	return 0;
 }
 
-static int prune_object(const char *fullpath, const unsigned char *sha1)
+static int prune_object(const unsigned char *sha1, const char *fullpath,
+			void *data)
 {
 	struct stat st;
-	if (lstat(fullpath, &st))
-		return error("Could not stat '%s'", fullpath);
+
+	/*
+	 * Do we know about this object?
+	 * It must have been reachable
+	 */
+	if (lookup_object(sha1))
+		return 0;
+
+	if (lstat(fullpath, &st)) {
+		/* report errors, but do not stop pruning */
+		error("Could not stat '%s'", fullpath);
+		return 0;
+	}
 	if (st.st_mtime > expire)
 		return 0;
 	if (show_only || verbose) {
@@ -48,68 +60,109 @@ static int prune_object(const char *fullpath, const unsigned char *sha1)
 	return 0;
 }
 
-static int prune_dir(int i, struct strbuf *path)
+static int prune_cruft(const char *basename, const char *path, void *data)
 {
-	size_t baselen = path->len;
-	DIR *dir = opendir(path->buf);
-	struct dirent *de;
-
-	if (!dir)
-		return 0;
-
-	while ((de = readdir(dir)) != NULL) {
-		char name[100];
-		unsigned char sha1[20];
-
-		if (is_dot_or_dotdot(de->d_name))
-			continue;
-		if (strlen(de->d_name) == 38) {
-			sprintf(name, "%02x", i);
-			memcpy(name+2, de->d_name, 39);
-			if (get_sha1_hex(name, sha1) < 0)
-				break;
-
-			/*
-			 * Do we know about this object?
-			 * It must have been reachable
-			 */
-			if (lookup_object(sha1))
-				continue;
-
-			strbuf_addf(path, "/%s", de->d_name);
-			prune_object(path->buf, sha1);
-			strbuf_setlen(path, baselen);
-			continue;
-		}
-		if (starts_with(de->d_name, "tmp_obj_")) {
-			strbuf_addf(path, "/%s", de->d_name);
-			prune_tmp_file(path->buf);
-			strbuf_setlen(path, baselen);
-			continue;
-		}
-		fprintf(stderr, "bad sha1 file: %s/%s\n", path->buf, de->d_name);
-	}
-	closedir(dir);
-	if (!show_only)
-		rmdir(path->buf);
+	if (starts_with(basename, "tmp_obj_"))
+		prune_tmp_file(path);
+	else
+		fprintf(stderr, "bad sha1 file: %s\n", path);
 	return 0;
 }
 
-static void prune_object_dir(const char *path)
+static int prune_subdir(int nr, const char *path, void *data)
 {
-	struct strbuf buf = STRBUF_INIT;
-	size_t baselen;
-	int i;
+	if (!show_only)
+		rmdir(path);
+	return 0;
+}
 
-	strbuf_addstr(&buf, path);
-	strbuf_addch(&buf, '/');
-	baselen = buf.len;
+static int prune_worktree(const char *id, struct strbuf *reason)
+{
+	struct stat st;
+	char *path;
+	int fd, len;
 
-	for (i = 0; i < 256; i++) {
-		strbuf_addf(&buf, "%02x", i);
-		prune_dir(i, &buf);
-		strbuf_setlen(&buf, baselen);
+	if (!is_directory(git_path("worktrees/%s", id))) {
+		strbuf_addf(reason, _("Removing worktrees/%s: not a valid directory"), id);
+		return 1;
 	}
+	if (file_exists(git_path("worktrees/%s/locked", id)))
+		return 0;
+	if (stat(git_path("worktrees/%s/gitdir", id), &st)) {
+		strbuf_addf(reason, _("Removing worktrees/%s: gitdir file does not exist"), id);
+		return 1;
+	}
+	fd = open(git_path("worktrees/%s/gitdir", id), O_RDONLY);
+	if (fd < 0) {
+		strbuf_addf(reason, _("Removing worktrees/%s: unable to read gitdir file (%s)"),
+			    id, strerror(errno));
+		return 1;
+	}
+	len = st.st_size;
+	path = xmalloc(len + 1);
+	read_in_full(fd, path, len);
+	close(fd);
+	while (len && (path[len - 1] == '\n' || path[len - 1] == '\r'))
+		len--;
+	if (!len) {
+		strbuf_addf(reason, _("Removing worktrees/%s: invalid gitdir file"), id);
+		free(path);
+		return 1;
+	}
+	path[len] = '\0';
+	if (!file_exists(path)) {
+		struct stat st_link;
+		free(path);
+		/*
+		 * the repo is moved manually and has not been
+		 * accessed since?
+		 */
+		if (!stat(git_path("worktrees/%s/link", id), &st_link) &&
+		    st_link.st_nlink > 1)
+			return 0;
+		if (st.st_mtime <= expire) {
+			strbuf_addf(reason, _("Removing worktrees/%s: gitdir file points to non-existent location"), id);
+			return 1;
+		} else {
+			return 0;
+		}
+	}
+	free(path);
+	return 0;
+}
+
+static void prune_worktrees(void)
+{
+	struct strbuf reason = STRBUF_INIT;
+	struct strbuf path = STRBUF_INIT;
+	DIR *dir = opendir(git_path("worktrees"));
+	struct dirent *d;
+	int ret;
+	if (!dir)
+		return;
+	while ((d = readdir(dir)) != NULL) {
+		if (!strcmp(d->d_name, ".") || !strcmp(d->d_name, ".."))
+			continue;
+		strbuf_reset(&reason);
+		if (!prune_worktree(d->d_name, &reason))
+			continue;
+		if (show_only || verbose)
+			printf("%s\n", reason.buf);
+		if (show_only)
+			continue;
+		strbuf_reset(&path);
+		strbuf_addstr(&path, git_path("worktrees/%s", d->d_name));
+		ret = remove_dir_recursively(&path, 0);
+		if (ret < 0 && errno == ENOTDIR)
+			ret = unlink(path.buf);
+		if (ret)
+			error(_("failed to remove: %s"), strerror(errno));
+	}
+	closedir(dir);
+	if (!show_only)
+		rmdir(git_path("worktrees"));
+	strbuf_release(&reason);
+	strbuf_release(&path);
 }
 
 /*
@@ -138,10 +191,12 @@ int cmd_prune(int argc, const char **argv, const char *prefix)
 {
 	struct rev_info revs;
 	struct progress *progress = NULL;
+	int do_prune_worktrees = 0;
 	const struct option options[] = {
 		OPT__DRY_RUN(&show_only, N_("do not remove, show only")),
 		OPT__VERBOSE(&verbose, N_("report pruned objects")),
 		OPT_BOOL(0, "progress", &show_progress, N_("show progress")),
+		OPT_BOOL(0, "worktrees", &do_prune_worktrees, N_("prune .git/worktrees")),
 		OPT_EXPIRY_DATE(0, "expire", &expire,
 				N_("expire objects older than <time>")),
 		OPT_END()
@@ -150,10 +205,19 @@ int cmd_prune(int argc, const char **argv, const char *prefix)
 
 	expire = ULONG_MAX;
 	save_commit_buffer = 0;
-	read_replace_refs = 0;
+	check_replace_refs = 0;
+	ref_paranoia = 1;
 	init_revisions(&revs, prefix);
 
 	argc = parse_options(argc, argv, prefix, options, prune_usage, 0);
+
+	if (do_prune_worktrees) {
+		if (argc)
+			die(_("--worktrees does not take extra arguments"));
+		prune_worktrees();
+		return 0;
+	}
+
 	while (argc--) {
 		unsigned char sha1[20];
 		const char *name = *argv++;
@@ -169,11 +233,12 @@ int cmd_prune(int argc, const char **argv, const char *prefix)
 	if (show_progress == -1)
 		show_progress = isatty(2);
 	if (show_progress)
-		progress = start_progress_delay("Checking connectivity", 0, 0, 2);
+		progress = start_progress_delay(_("Checking connectivity"), 0, 0, 2);
 
-	mark_reachable_objects(&revs, 1, progress);
+	mark_reachable_objects(&revs, 1, expire, progress);
 	stop_progress(&progress);
-	prune_object_dir(get_object_directory());
+	for_each_loose_file_in_objdir(get_object_directory(), prune_object,
+				      prune_cruft, prune_subdir, NULL);
 
 	prune_packed_objects(show_only ? PRUNE_PACKED_DRY_RUN : 0);
 	remove_temporary_files(get_object_directory());

@@ -48,6 +48,9 @@ OPTIONS
 --expire <time>::
 	Only expire loose objects older than <time>.
 
+--worktrees::
+	Prune dead working tree information in $GIT_DIR/worktrees.
+
 <head>...::
 	In addition to objects
 	reachable from any of our references, keep objects
@@ -56,7 +59,7 @@ OPTIONS
 EXAMPLE
 -------
 
-To prune objects not used by your repository nor another that
+To prune objects not used by your repository or another that
 borrows from your repository via its
 `.git/objects/info/alternates`:
 
