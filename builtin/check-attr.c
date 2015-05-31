@@ -8,8 +8,8 @@ static int all_attrs;
 static int cached_attrs;
 static int stdin_paths;
 static const char * const check_attr_usage[] = {
-N_("git check-attr [-a | --all | attr...] [--] pathname..."),
-N_("git check-attr --stdin [-z] [-a | --all | attr...] < <list-of-paths>"),
+N_("git check-attr [-a | --all | <attr>...] [--] <pathname>..."),
+N_("git check-attr --stdin [-z] [-a | --all | <attr>...] < <list-of-paths>"),
 NULL
 };
 
@@ -101,6 +101,9 @@ int cmd_check_attr(int argc, const char **argv, const char *prefix)
 {
 	struct git_attr_check *check;
 	int cnt, i, doubledash, filei;
+
+	if (!is_bare_repository())
+		setup_work_tree();
 
 	git_config(git_default_config, NULL);
 
