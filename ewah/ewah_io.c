@@ -19,6 +19,7 @@
  */
 #include "git-compat-util.h"
 #include "ewok.h"
+#include "strbuf.h"
 
 int ewah_serialize_native(struct ewah_bitmap *self, int fd)
 {
@@ -110,9 +111,21 @@ int ewah_serialize(struct ewah_bitmap *self, int fd)
 	return ewah_serialize_to(self, write_helper, (void *)(intptr_t)fd);
 }
 
-int ewah_read_mmap(struct ewah_bitmap *self, void *map, size_t len)
+static int write_strbuf(void *user_data, const void *data, size_t len)
 {
-	uint8_t *ptr = map;
+	struct strbuf *sb = user_data;
+	strbuf_add(sb, data, len);
+	return len;
+}
+
+int ewah_serialize_strbuf(struct ewah_bitmap *self, struct strbuf *sb)
+{
+	return ewah_serialize_to(self, write_strbuf, sb);
+}
+
+int ewah_read_mmap(struct ewah_bitmap *self, const void *map, size_t len)
+{
+	const uint8_t *ptr = map;
 	size_t i;
 
 	self->bit_size = get_be32(ptr);

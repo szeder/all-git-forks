@@ -119,10 +119,7 @@ test_expect_success C_LOCALE_OUTPUT 'git clean with relative prefix' '
 		git clean -n ../src |
 		sed -n -e "s|^Would remove ||p"
 	) &&
-	test "$would_clean" = ../src/part3.c || {
-		echo "OOps <$would_clean>"
-		false
-	}
+	verbose test "$would_clean" = ../src/part3.c
 '
 
 test_expect_success C_LOCALE_OUTPUT 'git clean with absolute path' '
@@ -134,10 +131,7 @@ test_expect_success C_LOCALE_OUTPUT 'git clean with absolute path' '
 		git clean -n "$(pwd)/../src" |
 		sed -n -e "s|^Would remove ||p"
 	) &&
-	test "$would_clean" = ../src/part3.c || {
-		echo "OOps <$would_clean>"
-		false
-	}
+	verbose test "$would_clean" = ../src/part3.c
 '
 
 test_expect_success 'git clean with out of work tree relative path' '
@@ -426,10 +420,10 @@ test_expect_success SANITY 'removal failure' '
 
 	mkdir foo &&
 	touch foo/bar &&
+	test_when_finished "chmod 755 foo" &&
 	(exec <foo/bar &&
 	 chmod 0 foo &&
-	 test_must_fail git clean -f -d &&
-	 chmod 755 foo)
+	 test_must_fail git clean -f -d)
 '
 
 test_expect_success 'nested git work tree' '
@@ -509,6 +503,22 @@ test_expect_success SANITY 'git clean -d with an unreadable empty directory' '
 	chmod a= foo &&
 	git clean -dfx foo &&
 	! test -d foo
+'
+
+test_expect_success 'git clean -d respects pathspecs (dir is prefix of pathspec)' '
+	mkdir -p foo &&
+	mkdir -p foobar &&
+	git clean -df foobar &&
+	test_path_is_dir foo &&
+	test_path_is_missing foobar
+'
+
+test_expect_success 'git clean -d respects pathspecs (pathspec is prefix of dir)' '
+	mkdir -p foo &&
+	mkdir -p foobar &&
+	git clean -df foo &&
+	test_path_is_missing foo &&
+	test_path_is_dir foobar
 '
 
 test_done
