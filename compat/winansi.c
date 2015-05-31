@@ -23,7 +23,7 @@ static HANDLE hconsole1, hconsole2;
 
 #if !defined(__MINGW64_VERSION_MAJOR) \
     || __MINGW64_VERSION_MAJOR < 2 \
-    || __MINGW64_VERSION_MAJOR == 2 && _WIN32_WINNT < 0x0600 && !defined(SKIP_CONSOLE_FONT_INFOEX)
+    || __MINGW64_VERSION_MAJOR == 2 && _WIN32_WINNT < 0x0600
 typedef struct _CONSOLE_FONT_INFOEX {
 	ULONG cbSize;
 	DWORD nFont;
