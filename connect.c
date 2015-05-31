@@ -126,9 +126,60 @@ void get_remote_capabilities(int in, char *src_buf, size_t src_len)
 	}
 }
 
-void select_capabilities(struct fetch_pack_args *args)
+void select_capabilities(struct fetch_pack_args *args, struct transport_options *options)
 {
+	if (is_repository_shallow() && !server_supports("shallow"))
+		die("Server does not support shallow clients");
+	if (server_supports("multi_ack_detailed")) {
+		if (args->verbose)
+			fprintf(stderr, "Server supports multi_ack_detailed\n");
+		options->multi_ack = 2;
+		if (server_supports("no-done")) {
+			if (args->verbose)
+				fprintf(stderr, "Server supports no-done\n");
+			if (args->stateless_rpc)
+				options->no_done = 1;
+		}
+	}
+	else if (server_supports("multi_ack")) {
+		if (args->verbose)
+			fprintf(stderr, "Server supports multi_ack\n");
+		options->multi_ack = 1;
+	}
+	if (server_supports("side-band-64k")) {
+		if (args->verbose)
+			fprintf(stderr, "Server supports side-band-64k\n");
+		options->use_sideband = 2;
+	}
+	else if (server_supports("side-band")) {
+		if (args->verbose)
+			fprintf(stderr, "Server supports side-band\n");
+		options->use_sideband = 1;
+	}
+	if (server_supports("allow-tip-sha1-in-want")) {
+		if (args->verbose)
+			fprintf(stderr, "Server supports allow-tip-sha1-in-want\n");
+		options->allow_tip_sha1_in_want = 1;
+	}
+	if (!server_supports("thin-pack"))
+		options->use_thin_pack = 0;
+	if (!server_supports("no-progress"))
+		options->no_progress = 0;
+	if (!server_supports("include-tag"))
+		options->include_tag = 0;
+	if (server_supports("ofs-delta")) {
+		if (args->verbose)
+			fprintf(stderr, "Server supports ofs-delta\n");
+		options->prefer_ofs_delta = 1;
+	} else
+		options->prefer_ofs_delta = 0;
 
+	if ((agent_feature = server_feature_value("agent", &agent_len))) {
+		options->agent_supported = 1;
+		if (args->verbose && agent_len)
+			fprintf(stderr, "Server version is %.*s\n",
+				agent_len, agent_feature);
+	}
 }
 
 int request_capabilities(int out, struct transport_options *options)
