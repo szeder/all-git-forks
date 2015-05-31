@@ -106,6 +106,7 @@ setup_env () {
 expect () {
 	cat >"$1/expected" <<-EOF
 	setup: git_dir: $2
+	setup: git_common_dir: $2
 	setup: worktree: $3
 	setup: cwd: $4
 	setup: prefix: $5
@@ -777,9 +778,7 @@ test_expect_success '#30: core.worktree and core.bare conflict (gitfile version)
 	setup_repo 30 "$here/30" gitfile true &&
 	(
 		cd 30 &&
-		GIT_DIR=.git &&
-		export GIT_DIR &&
-		test_must_fail git symbolic-ref HEAD 2>result
+		test_must_fail env GIT_DIR=.git git symbolic-ref HEAD 2>result
 	) &&
 	grep "core.bare and core.worktree" 30/result
 '

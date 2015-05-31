@@ -132,6 +132,16 @@ mark_action_done () {
 	fi
 }
 
+# Put the last action marked done at the beginning of the todo list
+# again. If there has not been an action marked done yet, leave the list of
+# items on the todo list unchanged.
+reschedule_last_action () {
+	tail -n 1 "$done" | cat - "$todo" >"$todo".new
+	sed -e \$d <"$done" >"$done".new
+	mv -f "$todo".new "$todo"
+	mv -f "$done".new "$done"
+}
+
 append_todo_help () {
 	git stripspace --comment-lines >>"$todo" <<\EOF
 
@@ -252,6 +262,12 @@ pick_one () {
 	output eval git cherry-pick \
 			${gpg_sign_opt:+$(git rev-parse --sq-quote "$gpg_sign_opt")} \
 			"$strategy_args" $empty_args $ff "$@"
+
+	# If cherry-pick dies it leaves the to-be-picked commit unrecorded. Reschedule
+	# previous task so this commit is not lost.
+	ret=$?
+	case "$ret" in [01]) ;; *) reschedule_last_action ;; esac
+	return $ret
 }
 
 pick_one_preserving_merges () {
@@ -486,7 +502,7 @@ do_pick () {
 }
 
 do_next () {
-	rm -f "$msg" "$author_script" "$amend" || exit
+	rm -f "$msg" "$author_script" "$amend" "$state_dir"/stopped-sha || exit
 	read -r command sha1 rest < "$todo"
 	case "$command" in
 	"$comment_char"*|''|noop)
@@ -576,9 +592,6 @@ do_next () {
 		read -r command rest < "$todo"
 		mark_action_done
 		printf 'Executing: %s\n' "$rest"
-		# "exec" command doesn't take a sha1 in the todo-list.
-		# => can't just use $sha1 here.
-		git rev-parse --verify HEAD > "$state_dir"/stopped-sha
 		${SHELL:-@SHELL_PATH@} -c "$rest" # Actual execution
 		status=$?
 		# Run in subshell because require_clean_work_tree can die.
@@ -642,9 +655,9 @@ do_next () {
 		git notes copy --for-rewrite=rebase < "$rewritten_list" ||
 		true # we don't care if this copying failed
 	} &&
-	if test -x "$GIT_DIR"/hooks/post-rewrite &&
-		test -s "$rewritten_list"; then
-		"$GIT_DIR"/hooks/post-rewrite rebase < "$rewritten_list"
+	hook="$(git rev-parse --git-path hooks/post-rewrite)"
+	if test -x "$hook" && test -s "$rewritten_list"; then
+		"$hook" rebase < "$rewritten_list"
 		true # we don't care if this hook failed
 	fi &&
 	warn "Successfully rebased and updated $head_name."
@@ -749,7 +762,7 @@ rearrange_squash () {
 					;;
 				esac
 			done
-			echo "$sha1 $action $prefix $rest"
+			printf '%s %s %s %s\n' "$sha1" "$action" "$prefix" "$rest"
 			# if it's a single word, try to resolve to a full sha1 and
 			# emit a second copy. This allows us to match on both message
 			# and on sha1 prefix
@@ -820,6 +833,17 @@ add_exec_commands () {
 	mv "$1.new" "$1"
 }
 
+# The whole contents of this file is run by dot-sourcing it from
+# inside a shell function.  It used to be that "return"s we see
+# below were not inside any function, and expected to return
+# to the function that dot-sourced us.
+#
+# However, FreeBSD /bin/sh misbehaves on such a construct and
+# continues to run the statements that follow such a "return".
+# As a work-around, we introduce an extra layer of a function
+# here, and immediately call it after defining it.
+git_rebase__interactive () {
+
 case "$action" in
 continue)
 	# do we have anything to commit?
@@ -863,7 +887,10 @@ first and then run 'git rebase --continue' again."
 		fi
 	fi
 
-	record_in_rewritten "$(cat "$state_dir"/stopped-sha)"
+	if test -r "$state_dir"/stopped-sha
+	then
+		record_in_rewritten "$(cat "$state_dir"/stopped-sha)"
+	fi
 
 	require_clean_work_tree "rebase"
 	do_rest
@@ -950,14 +977,13 @@ else
 	revisions=$onto...$orig_head
 	shortrevisions=$shorthead
 fi
-git rev-list $merges_option --pretty=oneline --abbrev-commit \
-	--abbrev=7 --reverse --left-right --topo-order \
-	$revisions | \
+git rev-list $merges_option --pretty=oneline --reverse --left-right --topo-order \
+	$revisions ${restrict_revision+^$restrict_revision} | \
 	sed -n "s/^>//p" |
-while read -r shortsha1 rest
+while read -r sha1 rest
 do
 
-	if test -z "$keep_empty" && is_empty_commit $shortsha1 && ! is_merge_commit $shortsha1
+	if test -z "$keep_empty" && is_empty_commit $sha1 && ! is_merge_commit $sha1
 	then
 		comment_out="$comment_char "
 	else
@@ -966,9 +992,8 @@ do
 
 	if test t != "$preserve_merges"
 	then
-		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
+		printf '%s\n' "${comment_out}pick $sha1 $rest" >>"$todo"
 	else
-		sha1=$(git rev-parse $shortsha1)
 		if test -z "$rebase_root"
 		then
 			preserve=t
@@ -985,7 +1010,7 @@ do
 		if test f = "$preserve"
 		then
 			touch "$rewritten"/$sha1
-			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
+			printf '%s\n' "${comment_out}pick $sha1 $rest" >>"$todo"
 		fi
 	fi
 done
@@ -1002,15 +1027,15 @@ then
 	git rev-list $revisions |
 	while read rev
 	do
-		if test -f "$rewritten"/$rev -a "$(sane_grep "$rev" "$state_dir"/not-cherry-picks)" = ""
+		if test -f "$rewritten"/$rev && test "$(sane_grep "$rev" "$state_dir"/not-cherry-picks)" = ""
 		then
 			# Use -f2 because if rev-list is telling us this commit is
 			# not worthwhile, we don't want to track its multiple heads,
 			# just the history of its first-parent for others that will
 			# be rebasing on top of it
 			git rev-list --parents -1 $rev | cut -d' ' -s -f2 > "$dropped"/$rev
-			short=$(git rev-list -1 --abbrev-commit --abbrev=7 $rev)
-			sane_grep -v "^[a-z][a-z]* $short" <"$todo" > "${todo}2" ; mv "${todo}2" "$todo"
+			sha1=$(git rev-list -1 $rev)
+			sane_grep -v "^[a-z][a-z]* $sha1" <"$todo" > "${todo}2" ; mv "${todo}2" "$todo"
 			rm "$rewritten"/$rev
 		fi
 	done
@@ -1020,9 +1045,12 @@ test -s "$todo" || echo noop >> "$todo"
 test -n "$autosquash" && rearrange_squash "$todo"
 test -n "$cmd" && add_exec_commands "$todo"
 
+todocount=$(git stripspace --strip-comments <"$todo" | wc -l)
+todocount=${todocount##* }
+
 cat >>"$todo" <<EOF
 
-$comment_char Rebase $shortrevisions onto $shortonto
+$comment_char Rebase $shortrevisions onto $shortonto ($todocount command(s))
 EOF
 append_todo_help
 git stripspace --comment-lines >>"$todo" <<\EOF
@@ -1038,14 +1066,15 @@ fi
 
 
 has_action "$todo" ||
-	die_abort "Nothing to do"
+	return 2
 
 cp "$todo" "$todo".backup
+collapse_todo_ids
 git_sequence_editor "$todo" ||
 	die_abort "Could not execute editor"
 
 has_action "$todo" ||
-	die_abort "Nothing to do"
+	return 2
 
 expand_todo_ids
 
@@ -1055,3 +1084,7 @@ GIT_REFLOG_ACTION="$GIT_REFLOG_ACTION: checkout $onto_name"
 output git checkout $onto || die_abort "could not detach HEAD"
 git update-ref ORIG_HEAD $orig_head
 do_rest
+
+}
+# ... and then we call the whole thing.
+git_rebase__interactive

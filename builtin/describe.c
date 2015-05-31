@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "lockfile.h"
 #include "commit.h"
 #include "tag.h"
 #include "refs.h"
@@ -13,8 +14,8 @@
 #define MAX_TAGS	(FLAG_BITS - 1)
 
 static const char * const describe_usage[] = {
-	N_("git describe [options] <commit-ish>*"),
-	N_("git describe [options] --dirty"),
+	N_("git describe [<options>] [<commit-ish>...]"),
+	N_("git describe [<options>] --dirty"),
 	NULL
 };
 
@@ -56,18 +57,9 @@ static int commit_name_cmp(const struct commit_name *cn1,
 	return hashcmp(cn1->peeled, peeled ? peeled : cn2->peeled);
 }
 
-static inline unsigned int hash_sha1(const unsigned char *sha1)
-{
-	unsigned int hash;
-	memcpy(&hash, sha1, sizeof(hash));
-	return hash;
-}
-
 static inline struct commit_name *find_commit_name(const unsigned char *peeled)
 {
-	struct commit_name key;
-	hashmap_entry_init(&key, hash_sha1(peeled));
-	return hashmap_get(&names, &key, peeled);
+	return hashmap_get_from_hash(&names, sha1hash(peeled), peeled);
 }
 
 static int replace_name(struct commit_name *e,
@@ -114,7 +106,7 @@ static void add_to_known_names(const char *path,
 		if (!e) {
 			e = xmalloc(sizeof(struct commit_name));
 			hashcpy(e->peeled, peeled);
-			hashmap_entry_init(e, hash_sha1(peeled));
+			hashmap_entry_init(e, sha1hash(peeled));
 			hashmap_add(&names, e);
 			e->path = NULL;
 		}
@@ -127,10 +119,10 @@ static void add_to_known_names(const char *path,
 	}
 }
 
-static int get_name(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+static int get_name(const char *path, const struct object_id *oid, int flag, void *cb_data)
 {
 	int is_tag = starts_with(path, "refs/tags/");
-	unsigned char peeled[20];
+	struct object_id peeled;
 	int is_annotated, prio;
 
 	/* Reject anything outside refs/tags/ unless --all */
@@ -138,14 +130,14 @@ static int get_name(const char *path, const unsigned char *sha1, int flag, void 
 		return 0;
 
 	/* Accept only tags that match the pattern, if given */
-	if (pattern && (!is_tag || fnmatch(pattern, path + 10, 0)))
+	if (pattern && (!is_tag || wildmatch(pattern, path + 10, 0, NULL)))
 		return 0;
 
 	/* Is it annotated? */
-	if (!peel_ref(path, peeled)) {
-		is_annotated = !!hashcmp(sha1, peeled);
+	if (!peel_ref(path, peeled.hash)) {
+		is_annotated = !!oidcmp(oid, &peeled);
 	} else {
-		hashcpy(peeled, sha1);
+		oidcpy(&peeled, oid);
 		is_annotated = 0;
 	}
 
@@ -162,7 +154,7 @@ static int get_name(const char *path, const unsigned char *sha1, int flag, void 
 	else
 		prio = 0;
 
-	add_to_known_names(all ? path + 5 : path + 10, peeled, prio, sha1);
+	add_to_known_names(all ? path + 5 : path + 10, peeled.hash, prio, oid->hash);
 	return 0;
 }
 

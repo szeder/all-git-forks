@@ -45,7 +45,7 @@ test_expect_success HEADER_ONLY_TAR_OK 'tar archive of commit with empty tree' '
 test_expect_success 'tar archive of empty tree is empty' '
 	git archive --format=tar HEAD: >empty.tar &&
 	perl -e "print \"\\0\" x 10240" >10knuls.tar &&
-	test_cmp 10knuls.tar empty.tar
+	test_cmp_bin 10knuls.tar empty.tar
 '
 
 test_expect_success 'tar archive of empty tree with prefix' '
@@ -66,8 +66,10 @@ test_expect_success UNZIP 'zip archive of empty tree is empty' '
 	# handle the empty repo at all, making our later check of its exit code
 	# a no-op). But we cannot do anything reasonable except skip the test
 	# on such platforms anyway, and this is the moral equivalent.
-	"$GIT_UNZIP" "$TEST_DIRECTORY"/t5004/empty.zip
-	expect_code=$?
+	{
+		"$GIT_UNZIP" "$TEST_DIRECTORY"/t5004/empty.zip
+		expect_code=$?
+	} &&
 
 	git archive --format=zip HEAD >empty.zip &&
 	make_dir extract &&

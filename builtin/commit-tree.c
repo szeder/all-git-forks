@@ -66,10 +66,8 @@ int cmd_commit_tree(int argc, const char **argv, const char *prefix)
 			continue;
 		}
 
-		if (!memcmp(arg, "-S", 2)) {
-			sign_commit = arg + 2;
+		if (skip_prefix(arg, "-S", &sign_commit))
 			continue;
-		}
 
 		if (!strcmp(arg, "--no-gpg-sign")) {
 			sign_commit = NULL;
@@ -123,8 +121,8 @@ int cmd_commit_tree(int argc, const char **argv, const char *prefix)
 			die_errno("git commit-tree: failed to read");
 	}
 
-	if (commit_tree(&buffer, tree_sha1, parents, commit_sha1,
-			NULL, sign_commit)) {
+	if (commit_tree(buffer.buf, buffer.len, tree_sha1, parents,
+			commit_sha1, NULL, sign_commit)) {
 		strbuf_release(&buffer);
 		return 1;
 	}
