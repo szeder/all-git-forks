@@ -5,6 +5,19 @@
 #include "run-command.h"
 #include "remote.h"
 
+/* todo: discuss if this should be combined with
+ * git_transport_options below */
+struct transport_options {
+	unsigned multi_ack : 2;
+	unsigned no_done : 1;
+	unsigned use_thin_pack : 1;
+	unsigned no_progress : 1;
+	unsigned include_tag : 1;
+	unsigned prefer_ofs_delta : 1;
+	unsigned agent_supported : 1;
+	unsigned use_sideband;
+};
+
 struct git_transport_options {
 	unsigned thin : 1;
 	unsigned keep : 1;
