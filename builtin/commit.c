@@ -140,8 +140,7 @@ static const char *only_include_assumed;
 static struct strbuf message = STRBUF_INIT;
 
 static enum status_format {
-	STATUS_FORMAT_DEFAULT = 0,
-	STATUS_FORMAT_NONE,
+	STATUS_FORMAT_NONE = 0,
 	STATUS_FORMAT_LONG,
 	STATUS_FORMAT_SHORT,
 	STATUS_FORMAT_PORCELAIN,
@@ -515,7 +514,7 @@ static int run_status(FILE *fp, const char *index_file, const char *prefix, int 
 	case STATUS_FORMAT_UNSPECIFIED:
 		die("BUG: finalize_deferred_config() should have been called");
 		break;
-	case STATUS_FORMAT_DEFAULT:
+	case STATUS_FORMAT_NONE:
 	case STATUS_FORMAT_LONG:
 		wt_status_print(s);
 		break;
@@ -1105,7 +1104,7 @@ static void finalize_deferred_config(struct wt_status *s)
 				   !s->null_termination);
 
 	if (s->null_termination) {
-		if (status_format == STATUS_FORMAT_DEFAULT ||
+		if (status_format == STATUS_FORMAT_NONE ||
 		    status_format == STATUS_FORMAT_UNSPECIFIED)
 			status_format = STATUS_FORMAT_PORCELAIN;
 		else if (status_format == STATUS_FORMAT_LONG)
@@ -1115,7 +1114,7 @@ static void finalize_deferred_config(struct wt_status *s)
 	if (use_deferred_config && status_format == STATUS_FORMAT_UNSPECIFIED)
 		status_format = status_deferred_config.status_format;
 	if (status_format == STATUS_FORMAT_UNSPECIFIED)
-		status_format = STATUS_FORMAT_DEFAULT;
+		status_format = STATUS_FORMAT_NONE;
 
 	if (use_deferred_config && s->show_branch < 0)
 		s->show_branch = status_deferred_config.show_branch;
@@ -1218,7 +1217,7 @@ static int parse_and_validate_options(int argc, const char *argv[],
 	if (all && argc > 0)
 		die(_("Paths with -a does not make sense."));
 
-	if (status_format == STATUS_FORMAT_DEFAULT) {
+	if (status_format == STATUS_FORMAT_NONE) {
 		if (verbose && !include_status) {
 			include_status = 1;
 			status_format = STATUS_FORMAT_NONE;
@@ -1279,7 +1278,7 @@ static int git_status_config(const char *k, const char *v, void *cb)
 		if (git_config_bool(k, v))
 			status_deferred_config.status_format = STATUS_FORMAT_SHORT;
 		else
-			status_deferred_config.status_format = STATUS_FORMAT_DEFAULT;
+			status_deferred_config.status_format = STATUS_FORMAT_NONE;
 		return 0;
 	}
 	if (!strcmp(k, "status.branch")) {
@@ -1399,7 +1398,7 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 	case STATUS_FORMAT_UNSPECIFIED:
 		die("BUG: finalize_deferred_config() should have been called");
 		break;
-	case STATUS_FORMAT_DEFAULT:
+	case STATUS_FORMAT_NONE:
 	case STATUS_FORMAT_LONG:
 		s.verbose = verbose;
 		s.ignore_submodule_arg = ignore_submodule_arg;
@@ -1651,7 +1650,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		usage_with_options(builtin_commit_usage, builtin_commit_options);
 
 	status_init_config(&s, git_commit_config);
-	status_format = STATUS_FORMAT_DEFAULT; /* Ignore status.short */
+	status_format = STATUS_FORMAT_NONE; /* Ignore status.short */
 	s.colopts = 0;
 
 	if (get_sha1("HEAD", sha1))
