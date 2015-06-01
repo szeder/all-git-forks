@@ -11,7 +11,7 @@ empty, entirely (ie. no diff appended). This is because internally the
 git-status machinery is used to provide both the diff and status output,
 but this machinery is skipped due to --no-status.
 
-We introduce a new status_format, STATUS_FORMAT_NONE. Thus, we still
+We introduce a new status_format, STATUS_FORMAT_DIFFONLY. Thus, we still
 call run_status(), but produce nothing in place of the usual git-status
 output. status_format is set only when git-commit is passed i)
 --verbose, and ii) --no-status.
