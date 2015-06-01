@@ -501,10 +501,6 @@ static int run_status(FILE *fp, const char *index_file, const char *prefix, int 
 	wt_status_collect(s);
 
 	switch (status_format) {
-	case STATUS_FORMAT_NONE:
-		wt_status_mark_commitable(s);
-		wt_status_print_verbose(s);
-		break;
 	case STATUS_FORMAT_SHORT:
 		wt_shortstatus_print(s);
 		break;
@@ -1387,8 +1383,6 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 		s.prefix = prefix;
 
 	switch (status_format) {
-	case STATUS_FORMAT_NONE:
-		break;
 	case STATUS_FORMAT_SHORT:
 		wt_shortstatus_print(&s);
 		break;
