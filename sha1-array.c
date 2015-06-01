@@ -33,6 +33,15 @@ int sha1_array_lookup(struct sha1_array *array, const unsigned char *sha1)
 	return sha1_pos(sha1, array->sha1, array->nr, sha1_access);
 }
 
+void sha1_array_remove(struct sha1_array *array, int index) {
+	if (index < array->nr - 1) {
+		hashcpy(array->sha1[index], array->sha1[array->nr - 1]);
+		if (index < array->nr - 2)
+			array->sorted = 0;
+	}
+	array->nr--;
+}
+
 void sha1_array_clear(struct sha1_array *array)
 {
 	free(array->sha1);
