@@ -807,6 +807,12 @@ static void get_patch_ids(struct rev_info *rev, struct patch_ids *ids)
 	o2 = rev->pending.objects[1].item;
 	flags2 = o2->flags;
 
+	o1 = deref_tag(o1, NULL, 0);
+	o2 = deref_tag(o2, NULL, 0);
+
+	if (!o1 || !o2)
+		die(_("Invalid tag."));
+
 	if ((flags1 & UNINTERESTING) == (flags2 & UNINTERESTING))
 		die(_("Not a range."));
 
