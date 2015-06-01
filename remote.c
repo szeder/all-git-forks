@@ -9,6 +9,7 @@
 #include "string-list.h"
 #include "mergesort.h"
 #include "argv-array.h"
+#include "transport.h"
 
 enum map_direction { FROM_SRC, FROM_DST };
 
@@ -164,6 +165,7 @@ static struct remote *make_remote(const char *name, int len)
 		return ret;
 
 	ret = xcalloc(1, sizeof(struct remote));
+	ret->transport_version = DEFAULT_TRANSPORT_VERSION;
 	ret->prune = -1;  /* unspecified */
 	ALLOC_GROW(remotes, remotes_nr + 1, remotes_alloc);
 	remotes[remotes_nr++] = ret;

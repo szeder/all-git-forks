@@ -8,6 +8,7 @@ struct sha1_array;
 
 struct fetch_pack_args {
 	const char *uploadpack;
+	int transport_version;
 	int unpacklimit;
 	int depth;
 	unsigned quiet:1;

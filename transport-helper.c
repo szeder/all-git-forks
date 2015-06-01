@@ -248,6 +248,7 @@ static int disconnect_helper(struct transport *transport)
 }
 
 static const char *unsupported_options[] = {
+	TRANS_OPT_TRANSPORTVERSION,
 	TRANS_OPT_UPLOADPACK,
 	TRANS_OPT_RECEIVEPACK,
 	TRANS_OPT_THIN,
