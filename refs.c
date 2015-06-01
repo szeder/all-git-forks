@@ -1294,6 +1294,13 @@ static void read_loose_refs(const char *dirname, struct ref_dir *dir)
 				hashclr(sha1);
 				flag |= REF_ISBROKEN;
 			}
+
+			if (!(flag & REF_ISBROKEN) && is_null_sha1(sha1)) {
+				/* NULL_SHA1 is never a valid reference value. */
+				hashclr(sha1);
+				flag |= REF_ISBROKEN;
+			}
+
 			if (check_refname_format(refname.buf,
 						 REFNAME_ALLOW_ONELEVEL)) {
 				hashclr(sha1);
