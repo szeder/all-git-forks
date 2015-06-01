@@ -1026,62 +1026,139 @@ static int split_commit_in_progress(struct wt_status *s)
 	return split_in_progress;
 }
 
+void get_two_last_lines(char *filename,int * numlines, char ** lines)
+{
+	*numlines=0;
+	struct strbuf buf = STRBUF_INIT;
+	FILE *fp = fopen(git_path("%s", filename), "r");
+	if (!fp) {
+		strbuf_release(&buf);
+		return;
+	}
+	while (strbuf_getline(&buf, fp, '\n')!=EOF){
+		(*numlines)++;
+		lines[0]=lines[1];
+		lines[1]=strbuf_detach(&buf, NULL);		
+	}
+	fclose(fp);
+}
+
+void get_two_first_lines(char *filename,int * numlines, char ** lines)
+{
+	*numlines=0;
+	struct strbuf buf = STRBUF_INIT;
+	FILE *fp = fopen(git_path("%s", filename), "r");
+	if (!fp) {
+		strbuf_release(&buf);
+		return;
+	}
+	while (strbuf_getline(&buf, fp, '\n')!=EOF){
+		if (*numlines<2){
+			lines[*numlines]=strbuf_detach(&buf, NULL);
+		}
+		(*numlines)++;		
+	}
+	fclose(fp);
+}
+
+void show_rebase_information(struct wt_status *s,
+				    struct wt_status_state *state,
+				    const char *color)
+{
+	int i, begin;
+	if (state->rebase_interactive_in_progress){
+		int numlines =0;
+		char* lines[2];
+		get_two_last_lines("rebase-merge/done", &numlines, lines);
+		
+	//find_unique_abbrev(sha1, DEFAULT_ABBREV);
+		if (numlines==0){
+			status_printf_ln(s,color,"No action done.");
+		}
+		else{
+			status_printf_ln(s,color,"Last command(s) done (%d command(s) done):",
+					 numlines);
+			begin = numlines > 1? 0 : 1;
+			for (i = begin; i < 2; i++){
+				status_printf_ln(s,color,"   %s",lines[i]);
+			}
+			if (numlines>2 && s->hints ){
+			   status_printf_ln(s,color,"  (see more at .git/rebase-merge/done)");
+			}
+		}
+		numlines =0;
+		get_two_first_lines("rebase-merge/git-rebase-todo", &numlines, lines);
+		if (numlines==0){
+			status_printf_ln(s,color,"No action remaining.");
+		}
+		else{
+
+			status_printf_ln(s,color,"Next command(s) to do (%d remaining command(s)):",
+					 numlines);
+			begin = numlines > 1? 0 : 1;
+			for (i = 0; (i < 2 && i < numlines); i++){
+				status_printf_ln(s,color,"   %s",lines[i]);
+			}
+			if (numlines>2 && s->hints ){
+			   status_printf_ln(s,color,"  (see more at .git/rebase-merge/git-rebase-todo)");
+			}
+		}
+	}
+}
+
 static void show_rebase_in_progress(struct wt_status *s,
-				struct wt_status_state *state,
-				const char *color)
+				    struct wt_status_state *state,
+				    const char *color)
 {
 	struct stat st;
-
-	if (has_unmerged(s)) {
-		if (state->branch)
+	
+	show_rebase_information(s,state,color);
+	if (has_unmerged(s) || state->rebase_in_progress || !stat(git_path("MERGE_MSG"), &st)) {
+		if (state->branch) {
 			status_printf_ln(s, color,
 					 _("You are currently rebasing branch '%s' on '%s'."),
 					 state->branch,
 					 state->onto);
-		else
+		} else {
 			status_printf_ln(s, color,
 					 _("You are currently rebasing."));
-		if (s->hints) {
-			status_printf_ln(s, color,
-				_("  (fix conflicts and then run \"git rebase --continue\")"));
-			status_printf_ln(s, color,
-				_("  (use \"git rebase --skip\" to skip this patch)"));
-			status_printf_ln(s, color,
-				_("  (use \"git rebase --abort\" to check out the original branch)"));
 		}
-	} else if (state->rebase_in_progress || !stat(git_path("MERGE_MSG"), &st)) {
-		if (state->branch)
-			status_printf_ln(s, color,
-					 _("You are currently rebasing branch '%s' on '%s'."),
-					 state->branch,
-					 state->onto);
-		else
-			status_printf_ln(s, color,
-					 _("You are currently rebasing."));
-		if (s->hints)
-			status_printf_ln(s, color,
-				_("  (all conflicts fixed: run \"git rebase --continue\")"));
+		if (s->hints) {
+			if (has_unmerged(s)) {
+				status_printf_ln(s, color,
+						 _("  (fix conflicts and then run \"git rebase --continue\")"));
+				status_printf_ln(s, color,
+						 _("  (use \"git rebase --skip\" to skip this patch)"));
+				status_printf_ln(s, color,
+						 _("  (use \"git rebase --abort\" to check out the original branch)"));
+			} else {
+				status_printf_ln(s, color,
+						 _("  (all conflicts fixed: run \"git rebase --continue\")"));
+			}
+		}
 	} else if (split_commit_in_progress(s)) {
-		if (state->branch)
+		if (state->branch) {
 			status_printf_ln(s, color,
 					 _("You are currently splitting a commit while rebasing branch '%s' on '%s'."),
 					 state->branch,
-					 state->onto);
-		else
+					 state->onto);		
+		} else {
 			status_printf_ln(s, color,
 					 _("You are currently splitting a commit during a rebase."));
+		}
 		if (s->hints)
 			status_printf_ln(s, color,
 				_("  (Once your working directory is clean, run \"git rebase --continue\")"));
 	} else {
-		if (state->branch)
+		if (state->branch) {
 			status_printf_ln(s, color,
 					 _("You are currently editing a commit while rebasing branch '%s' on '%s'."),
 					 state->branch,
 					 state->onto);
-		else
+		} else {
 			status_printf_ln(s, color,
 					 _("You are currently editing a commit during a rebase."));
+		}
 		if (s->hints && !s->amend) {
 			status_printf_ln(s, color,
 				_("  (use \"git commit --amend\" to amend the current commit)"));
@@ -1327,7 +1404,11 @@ void wt_status_print(struct wt_status *s)
 		else if (!strcmp(branch_name, "HEAD")) {
 			branch_status_color = color(WT_STATUS_NOBRANCH, s);
 			if (state.rebase_in_progress || state.rebase_interactive_in_progress) {
-				on_what = _("rebase in progress; onto ");
+				if (state.rebase_interactive_in_progress) {
+					on_what = _("interactive rebase in progress; onto ");
+				} else {
+					on_what = _("rebase in progress; onto ");
+				}
 				branch_name = state.onto;
 			} else if (state.detached_from) {
 				branch_name = state.detached_from;
