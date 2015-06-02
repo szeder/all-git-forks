@@ -32,6 +32,28 @@ test_expect_success 'second commit' '
 	git commit -F message
 '
 
+test_expect_success '--verbose appends diff' '
+	cat >expected <<-\EOF &&
+	# ------------------------ >8 ------------------------
+	# Do not touch the line above.
+	# Everything below will be removed.
+	diff --git a/file b/file
+	index d95f3ad..8ffb5df 100644
+	--- a/file
+	+++ b/file
+	@@ -1 +1 @@
+	-content
+	+content modified
+	EOF
+	cat >editor <<-\EOF &&
+	#!/bin/sh
+	awk "/^# -+ >8 -+$/ { p=1 } p" "$1" >actual
+	EOF
+	chmod 755 editor &&
+	EDITOR=./editor git commit --amend -v &&
+	test_cmp expected actual
+'
+
 check_message() {
 	git log -1 --pretty=format:%s%n%n%b >actual &&
 	test_cmp "$1" actual
