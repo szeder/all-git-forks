@@ -1,0 +1,15 @@
+########################################
+git rebase -i HEAD~5
+-> drop
+
+git rebase --edit-todo
+-> drop <not a SHA-1>
+git rebase --continue
+
+-> drop <incorrect SHA-1>
+
+########################################
+git config rebase.missingCommitsCheckLevel error
+git rebase -i HEAD~5
+
+-> remove some lines
