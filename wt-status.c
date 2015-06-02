@@ -1060,6 +1060,7 @@ void get_two_first_lines(char *filename,int * numlines, char ** lines)
 	while (strbuf_getline(&buf, fp, '\n')!=EOF){
 		stripspace(&buf, 1);
 		line = strbuf_detach(&buf, NULL);
+		
 		if (strcmp(line,"")==0){
 			continue;
 		}
@@ -1084,36 +1085,41 @@ void show_rebase_information(struct wt_status *s,
 		int numlines =0;
 		char* lines[2];
 		get_two_last_lines("rebase-merge/done", &numlines, lines);
-	//find_unique_abbrev(sha1, DEFAULT_ABBREV);
 		if (numlines==0){
 			status_printf_ln(s,color,"No command done.");
 		}
 		else{
-			status_printf_ln(s,color,"Last command(s) done (%d command(s) done):",
-					 numlines);
+			status_printf_ln(s,color,
+				"Last command(s) done (%d command(s) done):",
+				numlines);
 			begin = numlines > 1? 0 : 1;
 			for (i = begin; i < 2; i++){
 				status_printf_ln(s,color,"   %s",lines[i]);
 			}
 			if (numlines>2 && s->hints ){
-			   status_printf_ln(s,color,"  (see more at .git/rebase-merge/done)");
+			   status_printf_ln(s,color,
+				"  (see more at .git/rebase-merge/done)");
 			}
 		}
 		numlines =0;
-		get_two_first_lines("rebase-merge/git-rebase-todo", &numlines, lines);
+		get_two_first_lines("rebase-merge/git-rebase-todo",
+					 &numlines, lines);
 		if (numlines==0){
-			status_printf_ln(s,color,"No command remaining.");
+			status_printf_ln(s,color,
+					 "No command remaining.");
 		}
 		else{
 
-			status_printf_ln(s,color,"Next command(s) to do (%d remaining command(s)):",
-					 numlines);
+			status_printf_ln(s,color,
+				"Next command(s) to do (%d remaining command(s)):",
+				numlines);
 			begin = numlines > 1? 0 : 1;
 			for (i = 0; (i < 2 && i < numlines); i++){
 				status_printf(s,color,"   %s",lines[i]);
 			}
-			if (numlines>2 && s->hints ){
-			   status_printf_ln(s,color,"  (see more at .git/rebase-merge/git-rebase-todo)");
+			if (s->hints ){
+			   status_printf_ln(s,color,
+				"  (use git rebase --edit-todo to view and edit)");
 			}
 		}
 	}

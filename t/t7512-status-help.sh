@@ -239,6 +239,7 @@ Last command(s) done (2 command(s) done):
    edit $COMMIT3 three_split
 Next command(s) to do (1 remaining command(s)):
    pick $COMMIT4 four_split
+  (use git rebase --edit-todo to view and edit)
 You are currently splitting a commit while rebasing branch '\''split_commit'\'' on '\''$ONTO'\''.
   (Once your working directory is clean, run "git rebase --continue")
 
@@ -315,6 +316,7 @@ Last command(s) done (2 command(s) done):
    edit $COMMIT3 three_edits
 Next command(s) to do (1 remaining command(s)):
    pick $COMMIT4 four_edits
+  (use git rebase --edit-todo to view and edit)
 You are currently editing a commit while rebasing branch '\''several_edits'\'' on '\''$ONTO'\''.
   (use "git commit --amend" to amend the current commit)
   (use "git rebase --continue" once you are satisfied with your changes)
@@ -345,6 +347,7 @@ Last command(s) done (2 command(s) done):
    edit $COMMIT3 three_edits
 Next command(s) to do (1 remaining command(s)):
    pick $COMMIT4 four_edits
+  (use git rebase --edit-todo to view and edit)
 You are currently splitting a commit while rebasing branch '\''several_edits'\'' on '\''$ONTO'\''.
   (Once your working directory is clean, run "git rebase --continue")
 
@@ -380,6 +383,7 @@ Last command(s) done (2 command(s) done):
    edit $COMMIT3 three_edits
 Next command(s) to do (1 remaining command(s)):
    pick $COMMIT4 four_edits
+  (use git rebase --edit-todo to view and edit)
 You are currently editing a commit while rebasing branch '\''several_edits'\'' on '\''$ONTO'\''.
   (use "git commit --amend" to amend the current commit)
   (use "git rebase --continue" once you are satisfied with your changes)
@@ -410,6 +414,7 @@ Last command(s) done (2 command(s) done):
    edit $COMMIT3 three_edits
 Next command(s) to do (1 remaining command(s)):
    pick $COMMIT4 four_edits
+  (use git rebase --edit-todo to view and edit)
 You are currently editing a commit while rebasing branch '\''several_edits'\'' on '\''$ONTO'\''.
   (use "git commit --amend" to amend the current commit)
   (use "git rebase --continue" once you are satisfied with your changes)
@@ -441,6 +446,7 @@ Last command(s) done (2 command(s) done):
    edit $COMMIT3 three_edits
 Next command(s) to do (1 remaining command(s)):
    pick $COMMIT4 four_edits
+  (use git rebase --edit-todo to view and edit)
 You are currently splitting a commit while rebasing branch '\''several_edits'\'' on '\''$ONTO'\''.
   (Once your working directory is clean, run "git rebase --continue")
 
@@ -477,6 +483,7 @@ Last command(s) done (2 command(s) done):
    edit $COMMIT3 three_edits
 Next command(s) to do (1 remaining command(s)):
    pick $COMMIT4 four_edits
+  (use git rebase --edit-todo to view and edit)
 You are currently editing a commit while rebasing branch '\''several_edits'\'' on '\''$ONTO'\''.
   (use "git commit --amend" to amend the current commit)
   (use "git rebase --continue" once you are satisfied with your changes)
@@ -509,6 +516,7 @@ Last command(s) done (2 command(s) done):
    edit $COMMIT3 three_edits
 Next command(s) to do (1 remaining command(s)):
    pick $COMMIT4 four_edits
+  (use git rebase --edit-todo to view and edit)
 You are currently editing a commit while rebasing branch '\''several_edits'\'' on '\''$ONTO'\''.
   (use "git commit --amend" to amend the current commit)
   (use "git rebase --continue" once you are satisfied with your changes)
@@ -542,6 +550,7 @@ Last command(s) done (2 command(s) done):
    edit $COMMIT3 three_edits
 Next command(s) to do (1 remaining command(s)):
    pick $COMMIT4 four_edits
+  (use git rebase --edit-todo to view and edit)
 You are currently splitting a commit while rebasing branch '\''several_edits'\'' on '\''$ONTO'\''.
   (Once your working directory is clean, run "git rebase --continue")
 
@@ -580,6 +589,7 @@ Last command(s) done (2 command(s) done):
    edit $COMMIT3 three_edits
 Next command(s) to do (1 remaining command(s)):
    pick $COMMIT4 four_edits
+  (use git rebase --edit-todo to view and edit)
 You are currently editing a commit while rebasing branch '\''several_edits'\'' on '\''$ONTO'\''.
   (use "git commit --amend" to amend the current commit)
   (use "git rebase --continue" once you are satisfied with your changes)
@@ -840,6 +850,94 @@ test_expect_success 'status after reverting commit' '
 	git revert --continue &&
 	cat >expected <<\EOF &&
 On branch master
+nothing to commit (use -u to show untracked files)
+EOF
+	git status --untracked-files=no >actual &&
+	test_i18ncmp expected actual
+'
+
+test_expect_success 'prepare for different number of commits rebased' '
+	git reset --hard master &&
+	git checkout -b several_commits &&
+	test_commit one_commit main.txt one &&
+	test_commit two_commit main.txt two &&
+	test_commit three_commit main.txt three &&
+	test_commit four_commit main.txt four 
+'
+
+
+test_expect_success 'status: one command done nothing remaining' '
+	FAKE_LINES=" exec_exit_15" &&
+	export FAKE_LINES &&
+	test_when_finished "git rebase --abort" &&
+	ONTO=$(git rev-parse --short HEAD~3) &&
+	(git rebase -i HEAD~3 || true)&&
+	cat >expected <<EOF &&
+interactive rebase in progress; onto $ONTO
+Last command(s) done (1 command(s) done):
+   exec exit 15
+No command remaining.
+You are currently editing a commit while rebasing branch '\''several_commits'\'' on '\''$ONTO'\''.
+  (use "git commit --amend" to amend the current commit)
+  (use "git rebase --continue" once you are satisfied with your changes)
+
+nothing to commit (use -u to show untracked files)
+EOF
+	git status --untracked-files=no >actual &&
+	test_i18ncmp expected actual
+'
+
+test_expect_success 'status: two commands done, two remainings' '
+	FAKE_LINES="1 exec_exit_15 2 3" &&
+	export FAKE_LINES &&
+	test_when_finished "git rebase --abort" &&
+	ONTO=$(git rev-parse --short HEAD~3) &&
+	COMMIT4=$(git rev-parse HEAD) &&
+	COMMIT3=$(git rev-parse HEAD^) &&
+	COMMIT2=$(git rev-parse HEAD^^) &&
+	(git rebase -i HEAD~3 || true)&&
+	cat >expected <<EOF &&
+interactive rebase in progress; onto $ONTO
+Last command(s) done (2 command(s) done):
+   pick $COMMIT2 two_commit
+   exec exit 15
+Next command(s) to do (2 remaining command(s)):
+   pick $COMMIT3 three_commit
+   pick $COMMIT4 four_commit
+  (use git rebase --edit-todo to view and edit)
+You are currently editing a commit while rebasing branch '\''several_commits'\'' on '\''$ONTO'\''.
+  (use "git commit --amend" to amend the current commit)
+  (use "git rebase --continue" once you are satisfied with your changes)
+
+nothing to commit (use -u to show untracked files)
+EOF
+	git status --untracked-files=no >actual &&
+	test_i18ncmp expected actual
+'
+
+test_expect_success 'status: more than two commands done, two remainings' '
+	FAKE_LINES="1 2 exec_exit_15 3 4" &&
+	export FAKE_LINES &&
+	test_when_finished "git rebase --abort" &&
+	ONTO=$(git rev-parse --short HEAD~4) &&
+	COMMIT4=$(git rev-parse HEAD) &&
+	COMMIT3=$(git rev-parse HEAD^) &&
+	COMMIT2=$(git rev-parse HEAD^^) &&
+	(git rebase -i HEAD~4 || true)&&
+	cat >expected <<EOF &&
+interactive rebase in progress; onto $ONTO
+Last command(s) done (3 command(s) done):
+   pick $COMMIT2 two_commit
+   exec exit 15
+  (see more at .git/rebase-merge/done)
+Next command(s) to do (2 remaining command(s)):
+   pick $COMMIT3 three_commit
+   pick $COMMIT4 four_commit
+  (use git rebase --edit-todo to view and edit)
+You are currently editing a commit while rebasing branch '\''several_commits'\'' on '\''$ONTO'\''.
+  (use "git commit --amend" to amend the current commit)
+  (use "git rebase --continue" once you are satisfied with your changes)
+
 nothing to commit (use -u to show untracked files)
 EOF
 	git status --untracked-files=no >actual &&
