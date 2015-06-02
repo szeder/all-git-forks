@@ -753,7 +753,7 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 			base = strtoul(reflog_base, &ep, 10);
 			if (*ep) {
 				/* Ah, that is a date spec... */
-				unsigned long at;
+				time_t at;
 				at = approxidate(reflog_base);
 				read_ref_at(ref, flags, at, -1, sha1, NULL,
 					    NULL, NULL, &base);
@@ -763,7 +763,7 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 		for (i = 0; i < reflog; i++) {
 			char *logmsg;
 			const char *msg;
-			unsigned long timestamp;
+			time_t timestamp;
 			int tz;
 
 			if (read_ref_at(ref, flags, 0, base+i, sha1, &logmsg,

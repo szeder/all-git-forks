@@ -3193,7 +3193,7 @@ int create_symref(const char *ref_target, const char *refs_heads_master,
 
 struct read_ref_at_cb {
 	const char *refname;
-	unsigned long at_time;
+	time_t at_time;
 	int cnt;
 	int reccnt;
 	unsigned char *sha1;
@@ -3202,15 +3202,15 @@ struct read_ref_at_cb {
 	unsigned char osha1[20];
 	unsigned char nsha1[20];
 	int tz;
-	unsigned long date;
+	time_t date;
 	char **msg;
-	unsigned long *cutoff_time;
+	time_t *cutoff_time;
 	int *cutoff_tz;
 	int *cutoff_cnt;
 };
 
 static int read_ref_at_ent(unsigned char *osha1, unsigned char *nsha1,
-		const char *email, unsigned long timestamp, int tz,
+		const char *email, time_t timestamp, int tz,
 		const char *message, void *cb_data)
 {
 	struct read_ref_at_cb *cb = cb_data;
@@ -3257,7 +3257,7 @@ static int read_ref_at_ent(unsigned char *osha1, unsigned char *nsha1,
 }
 
 static int read_ref_at_ent_oldest(unsigned char *osha1, unsigned char *nsha1,
-				  const char *email, unsigned long timestamp,
+				  const char *email, time_t timestamp,
 				  int tz, const char *message, void *cb_data)
 {
 	struct read_ref_at_cb *cb = cb_data;
@@ -3277,9 +3277,9 @@ static int read_ref_at_ent_oldest(unsigned char *osha1, unsigned char *nsha1,
 	return 1;
 }
 
-int read_ref_at(const char *refname, unsigned int flags, unsigned long at_time, int cnt,
+int read_ref_at(const char *refname, unsigned int flags, time_t at_time, int cnt,
 		unsigned char *sha1, char **msg,
-		unsigned long *cutoff_time, int *cutoff_tz, int *cutoff_cnt)
+		time_t *cutoff_time, int *cutoff_tz, int *cutoff_cnt)
 {
 	struct read_ref_at_cb cb;
 
@@ -3326,7 +3326,7 @@ static int show_one_reflog_ent(struct strbuf *sb, each_reflog_ent_fn fn, void *c
 {
 	unsigned char osha1[20], nsha1[20];
 	char *email_end, *message;
-	unsigned long timestamp;
+	time_t timestamp;
 	int tz;
 
 	/* old SP new SP name <email> SP time TAB msg LF */
@@ -4015,7 +4015,7 @@ struct expire_reflog_cb {
 };
 
 static int expire_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
-			     const char *email, unsigned long timestamp, int tz,
+			     const char *email, time_t timestamp, int tz,
 			     const char *message, void *cb_data)
 {
 	struct expire_reflog_cb *cb = cb_data;
@@ -4032,7 +4032,7 @@ static int expire_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
 			printf("prune %s", message);
 	} else {
 		if (cb->newlog) {
-			fprintf(cb->newlog, "%s %s %s %lu %+05d\t%s",
+			fprintf(cb->newlog, "%s %s %s %ld %+05d\t%s",
 				sha1_to_hex(osha1), sha1_to_hex(nsha1),
 				email, timestamp, tz, message);
 			hashcpy(cb->last_kept_sha1, nsha1);

@@ -14,8 +14,8 @@ static const char reflog_expire_usage[] =
 static const char reflog_delete_usage[] =
 "git reflog delete [--rewrite] [--updateref] [--dry-run | -n] [--verbose] <refs>...";
 
-static unsigned long default_reflog_expire;
-static unsigned long default_reflog_expire_unreachable;
+static time_t default_reflog_expire;
+static time_t default_reflog_expire_unreachable;
 
 struct cmd_reflog_expire_cb {
 	struct rev_info revs;
@@ -32,7 +32,7 @@ struct expire_reflog_policy_cb {
 		UE_HEAD
 	} unreachable_expire_kind;
 	struct commit_list *mark_list;
-	unsigned long mark_limit;
+	time_t mark_limit;
 	struct cmd_reflog_expire_cb cmd;
 	struct commit *tip_commit;
 	struct commit_list *tips;
@@ -218,7 +218,7 @@ static void mark_reachable(struct expire_reflog_policy_cb *cb)
 {
 	struct commit *commit;
 	struct commit_list *pending;
-	unsigned long expire_limit = cb->mark_limit;
+	time_t expire_limit = cb->mark_limit;
 	struct commit_list *leftover = NULL;
 
 	for (pending = cb->mark_list; pending; pending = pending->next)
@@ -286,7 +286,7 @@ static int unreachable(struct expire_reflog_policy_cb *cb, struct commit *commit
  * Return true iff the specified reflog entry should be expired.
  */
 static int should_expire_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
-				    const char *email, unsigned long timestamp, int tz,
+				    const char *email, time_t timestamp, int tz,
 				    const char *message, void *cb_data)
 {
 	struct expire_reflog_policy_cb *cb = cb_data;
@@ -395,8 +395,8 @@ static int collect_reflog(const char *ref, const unsigned char *sha1, int unused
 
 static struct reflog_expire_cfg {
 	struct reflog_expire_cfg *next;
-	unsigned long expire_total;
-	unsigned long expire_unreachable;
+	time_t expire_total;
+	time_t expire_unreachable;
 	size_t len;
 	char pattern[FLEX_ARRAY];
 } *reflog_expire_cfg, **reflog_expire_cfg_tail;
@@ -521,7 +521,7 @@ static void set_reflog_expiry_param(struct cmd_reflog_expire_cb *cb, int slot, c
 static int cmd_reflog_expire(int argc, const char **argv, const char *prefix)
 {
 	struct expire_reflog_policy_cb cb;
-	unsigned long now = time(NULL);
+	time_t now = time(NULL);
 	int i, status, do_all;
 	int explicit_expiry = 0;
 	unsigned int flags = 0;
@@ -622,7 +622,7 @@ static int cmd_reflog_expire(int argc, const char **argv, const char *prefix)
 }
 
 static int count_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
-		const char *email, unsigned long timestamp, int tz,
+		const char *email, time_t timestamp, int tz,
 		const char *message, void *cb_data)
 {
 	struct expire_reflog_policy_cb *cb = cb_data;

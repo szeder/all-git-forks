@@ -1102,8 +1102,8 @@ int parse_date_basic(const char *date, time_t *timestamp, int *offset);
 int parse_expiry_date(const char *date, time_t *timestamp);
 void datestamp(struct strbuf *out);
 #define approxidate(s) approxidate_careful((s), NULL)
-unsigned long approxidate_careful(const char *, int *);
-unsigned long approxidate_relative(const char *date, const struct timeval *now);
+time_t approxidate_careful(const char *, int *);
+time_t approxidate_relative(const char *date, const struct timeval *now);
 enum date_mode parse_date_format(const char *format);
 int date_overflows(unsigned long date);
 

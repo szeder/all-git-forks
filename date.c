@@ -198,7 +198,7 @@ const char *show_date(time_t time, int tz, enum date_mode mode)
 
 	if (mode == DATE_RAW) {
 		strbuf_reset(&timebuf);
-		strbuf_addf(&timebuf, "%lu %+05d", time, tz);
+		strbuf_addf(&timebuf, "%ld %+05d", time, tz);
 		return timebuf.buf;
 	}
 
@@ -655,7 +655,7 @@ static void date_string(time_t date, int offset, struct strbuf *buf)
 		offset = -offset;
 		sign = '-';
 	}
-	strbuf_addf(buf, "%lu %c%02d%02d", date, sign, offset / 60, offset % 60);
+	strbuf_addf(buf, "%ld %c%02d%02d", date, sign, offset / 60, offset % 60);
 }
 
 /*
@@ -768,12 +768,12 @@ int parse_expiry_date(const char *date, time_t *timestamp)
 		/*
 		 * We take over "now" here, which usually translates
 		 * to the current timestamp.  This is because the user
-		 * really means to expire everything she has done in
+		 * really means to expire everything he or she has done in
 		 * the past, and by definition reflogs are the record
 		 * of the past, and there is nothing from the future
 		 * to be kept.
 		 */
-		*timestamp = ULONG_MAX;
+		*timestamp = LONG_MAX;
 	else
 		*timestamp = approxidate_careful(date, &errors);
 
@@ -1142,7 +1142,7 @@ static time_t approxidate_str(const char *date,
 	return update_tm(&tm, &now, 0);
 }
 
-unsigned long approxidate_relative(const char *date, const struct timeval *tv)
+time_t approxidate_relative(const char *date, const struct timeval *tv)
 {
 	time_t timestamp;
 	int offset;
@@ -1153,7 +1153,7 @@ unsigned long approxidate_relative(const char *date, const struct timeval *tv)
 	return approxidate_str(date, tv, &errors);
 }
 
-unsigned long approxidate_careful(const char *date, int *error_ret)
+time_t approxidate_careful(const char *date, int *error_ret)
 {
 	struct timeval tv;
 	time_t timestamp;

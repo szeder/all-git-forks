@@ -73,7 +73,7 @@ static void show_commit(struct commit *commit, void *data)
 	}
 
 	if (info->show_timestamp)
-		printf("%lu ", commit->date);
+		printf("%ld ", commit->date);
 	if (info->header_prefix)
 		fputs(info->header_prefix, stdout);
 
