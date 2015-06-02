@@ -152,6 +152,7 @@ Commands:
  s, squash = use commit, but meld into previous commit
  f, fixup = like "squash", but discard this commit's log message
  x, exec = run command (the rest of the line) using shell
+ d, drop = remove commit
 
 These lines can be re-ordered; they are executed from top to bottom.
 
@@ -506,6 +507,23 @@ do_next () {
 	read -r command sha1 rest < "$todo"
 	case "$command" in
 	"$comment_char"*|''|noop)
+		mark_action_done
+		;;
+	drop|d)
+		if test -z $sha1
+		then
+			warn "Missing SHA-1 in 'drop' command."
+			die "Please fix this using 'git rebase --edit-todo'."
+		fi
+
+		sha1_verif="$(git rev-parse --verify --quiet $sha1^{commit})"
+		if test -z $sha1_verif
+		then
+			warn "'$sha1' is not a SHA-1 or does not represent" \
+				"a commit in 'drop' command."
+			die "Please fix this using 'git rebase --edit-todo'."
+		fi
+
 		mark_action_done
 		;;
 	pick|p)
