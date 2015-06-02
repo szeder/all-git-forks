@@ -20,6 +20,8 @@
 #include "git-compat-util.h"
 #include "ewok.h"
 
+#undef MASK
+#undef BLOCK
 #define MASK(x) ((eword_t)1 << (x % BITS_IN_WORD))
 #define BLOCK(x) (x / BITS_IN_WORD)
 
