@@ -1112,4 +1112,43 @@ test_expect_success 'drop' '
 	test A = $(git cat-file commit HEAD^^ | sed -ne \$p)
 '
 
+test_expect_success 'rebase -i respects rebase.missingCommitsCheckLevel=ignore' '
+	test_config rebase.missingCommitsCheckLevel ignore &&
+	test_when_finished "git checkout master &&
+		git branch -D tmp2" &&
+	git checkout -b tmp2 master &&
+	set_fake_editor &&
+	FAKE_LINES="1 2 3 4" \
+		git rebase -i --root 2>warn.tmp &&
+	test D = $(git cat-file commit HEAD | sed -ne \$p) &&
+	sed -n "1p" warn.tmp >warnl1.tmp &&
+	echo "Successfully rebased and updated refs/heads/tmp2." >l1.tmp &&
+	test_cmp warnl1.tmp l1.tmp
+'
+
+test_expect_success 'rebase -i respects rebase.missingCommitsCheckLevel=warn' '
+	test_config rebase.missingCommitsCheckLevel warn &&
+	test_when_finished "git checkout master &&
+		git branch -D tmp2" &&
+	git checkout -b tmp2 master &&
+	set_fake_editor &&
+	FAKE_LINES="1 2 3 4" \
+		git rebase -i --root 2>warn.tmp &&
+	test D = $(git cat-file commit HEAD | sed -ne \$p) &&
+	sed -n "1p" warn.tmp >warnl1.tmp &&
+	echo "Warning : some commits may have been dropped accidentally." >l1.tmp &&
+	test_cmp warnl1.tmp l1.tmp
+'
+
+test_expect_success 'rebase -i respects rebase.missingCommitsCheckLevel=error' '
+	test_config rebase.missingCommitsCheckLevel error &&
+	test_when_finished "git checkout master &&
+		git branch -D tmp2" &&
+	git checkout -b tmp2 master &&
+	set_fake_editor &&
+	test_must_fail env FAKE_LINES="1 2 3 4" \
+		git rebase -i --root &&
+	test E = $(git cat-file commit HEAD | sed -ne \$p)
+'
+
 test_done
