@@ -1040,40 +1040,53 @@ void get_two_last_lines(char *filename,int * numlines, char ** lines)
 		lines[0]=lines[1];
 		lines[1]=strbuf_detach(&buf, NULL);		
 	}
-	fclose(fp);
+	if (!fclose(fp)) {
+		strbuf_detach(&buf, NULL);
+	} else {
+		strbuf_release(&buf);
+	}
 }
 
 void get_two_first_lines(char *filename,int * numlines, char ** lines)
 {
 	*numlines=0;
 	struct strbuf buf = STRBUF_INIT;
+	char *line;
 	FILE *fp = fopen(git_path("%s", filename), "r");
 	if (!fp) {
 		strbuf_release(&buf);
 		return;
 	}
 	while (strbuf_getline(&buf, fp, '\n')!=EOF){
+		stripspace(&buf, 1);
+		line = strbuf_detach(&buf, NULL);
+		if (strcmp(line,"")==0){
+			continue;
+		}
 		if (*numlines<2){
-			lines[*numlines]=strbuf_detach(&buf, NULL);
+			lines[*numlines] = line;
 		}
 		(*numlines)++;		
 	}
-	fclose(fp);
+	if (!fclose(fp)) {
+		strbuf_detach(&buf, NULL);
+	} else {
+		strbuf_release(&buf);
+	}
 }
 
 void show_rebase_information(struct wt_status *s,
 				    struct wt_status_state *state,
 				    const char *color)
 {
-	int i, begin;
 	if (state->rebase_interactive_in_progress){
+		int i, begin;	
 		int numlines =0;
 		char* lines[2];
 		get_two_last_lines("rebase-merge/done", &numlines, lines);
-		
 	//find_unique_abbrev(sha1, DEFAULT_ABBREV);
 		if (numlines==0){
-			status_printf_ln(s,color,"No action done.");
+			status_printf_ln(s,color,"No command done.");
 		}
 		else{
 			status_printf_ln(s,color,"Last command(s) done (%d command(s) done):",
@@ -1089,7 +1102,7 @@ void show_rebase_information(struct wt_status *s,
 		numlines =0;
 		get_two_first_lines("rebase-merge/git-rebase-todo", &numlines, lines);
 		if (numlines==0){
-			status_printf_ln(s,color,"No action remaining.");
+			status_printf_ln(s,color,"No command remaining.");
 		}
 		else{
 
@@ -1097,7 +1110,7 @@ void show_rebase_information(struct wt_status *s,
 					 numlines);
 			begin = numlines > 1? 0 : 1;
 			for (i = 0; (i < 2 && i < numlines); i++){
-				status_printf_ln(s,color,"   %s",lines[i]);
+				status_printf(s,color,"   %s",lines[i]);
 			}
 			if (numlines>2 && s->hints ){
 			   status_printf_ln(s,color,"  (see more at .git/rebase-merge/git-rebase-todo)");
