@@ -134,3 +134,32 @@ int parse_opt_noop_cb(const struct option *opt, const char *arg, int unset)
 {
 	return 0;
 }
+
+/**
+ * For an option opt, recreates the command-line option in opt->value which
+ * must be an strbuf. This is useful when we need to pass the command-line
+ * option to another command.
+ */
+int parse_opt_pass_strbuf(const struct option *opt, const char *arg, int unset)
+{
+	struct strbuf *sb = opt->value;
+
+	strbuf_reset(sb);
+
+	if (opt->long_name) {
+		strbuf_addstr(sb, unset ? "--no-" : "--");
+		strbuf_addstr(sb, opt->long_name);
+		if (arg) {
+			strbuf_addch(sb, '=');
+			strbuf_addstr(sb, arg);
+		}
+	} else if (opt->short_name && !unset) {
+		strbuf_addch(sb, '-');
+		strbuf_addch(sb, opt->short_name);
+		if (arg)
+			strbuf_addstr(sb, arg);
+	} else
+		return -1;
+
+	return 0;
+}
