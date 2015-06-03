@@ -24,6 +24,16 @@ Splits mail messages in a mailbox into commit log message,
 authorship information and patches, and applies them to the
 current branch.
 
+CONFIGURATION
+-------------
+
+am.keepcr::
+	If true, git-am will call git-mailsplit for patches in mbox format
+	with parameter '--keep-cr'. In this case git-mailsplit will
+	not remove `\r` from lines ending with `\r\n`. Can be overridden
+	by giving '--no-keep-cr' from the command line.
+	See linkgit:git-am[1], linkgit:git-mailsplit[1].
+
 OPTIONS
 -------
 (<mbox>|<Maildir>)...::
@@ -43,11 +53,11 @@ OPTIONS
 --keep-non-patch::
 	Pass `-b` flag to 'git mailinfo' (see linkgit:git-mailinfo[1]).
 
---[no-]keep-cr::
+--keep-cr::
+--no-keep-cr::
 	With `--keep-cr`, call 'git mailsplit' (see linkgit:git-mailsplit[1])
 	with the same option, to prevent it from stripping CR at the end of
-	lines. `am.keepcr` configuration variable can be used to specify the
-	default behaviour.  `--no-keep-cr` is useful to override `am.keepcr`.
+	lines.
 
 -c::
 --scissors::
