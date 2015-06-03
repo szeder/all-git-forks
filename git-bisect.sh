@@ -105,13 +105,7 @@ bisect_start() {
 				break
 			}
 
-			if test -s "$GIT_DIR/BISECT_TERMS"
-			then
-				if $(sed -n 1p "$GIT_DIR/BISECT_TERMS") != 'bad'
-				then
-					die "$(gettext "you are already bisecting in old/new mode")"
-				fi
-			fi
+			# by default, if the user didnt type --fix
 			start_bad_good=1
 
 			case $bad_seen in
@@ -250,6 +244,7 @@ bisect_skip() {
 bisect_state() {
 	bisect_autostart
 	state=$1
+	check_and_set_terms $state
 	case "$#,$state" in
 	0,*)
 		die "$(gettext "Please call 'bisect_state' with at least one argument.")" ;;
@@ -563,7 +558,6 @@ case "$#" in
 *)
 	cmd="$1"
 	get_terms
-	check_and_set_terms "$cmd"
 	shift
 	case "$cmd" in
 	help)
