@@ -20,12 +20,67 @@ static const char * const pull_usage[] = {
 static int opt_verbosity;
 static struct strbuf opt_progress = STRBUF_INIT;
 
+/* Options passed to git-merge */
+static struct strbuf opt_diffstat = STRBUF_INIT;
+static struct strbuf opt_log = STRBUF_INIT;
+static struct strbuf opt_squash = STRBUF_INIT;
+static struct strbuf opt_commit = STRBUF_INIT;
+static struct strbuf opt_edit = STRBUF_INIT;
+static struct strbuf opt_ff = STRBUF_INIT;
+static struct strbuf opt_verify_signatures = STRBUF_INIT;
+static struct argv_array opt_strategies = ARGV_ARRAY_INIT;
+static struct argv_array opt_strategy_opts = ARGV_ARRAY_INIT;
+static struct strbuf opt_gpg_sign = STRBUF_INIT;
+
 static struct option pull_options[] = {
 	/* Shared options */
 	OPT__VERBOSITY(&opt_verbosity),
 	{ OPTION_CALLBACK, 0, "progress", &opt_progress, NULL,
 	  N_("force progress reporting"),
 	  PARSE_OPT_NOARG, parse_opt_pass_strbuf},
+
+	/* Options passed to git-merge */
+	OPT_GROUP(N_("Options related to merging")),
+	{ OPTION_CALLBACK, 'n', NULL, &opt_diffstat, NULL,
+	  N_("do not show a diffstat at the end of the merge"),
+	  PARSE_OPT_NOARG | PARSE_OPT_NONEG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 0, "stat", &opt_diffstat, NULL,
+	  N_("show a diffstat at the end of the merge"),
+	  PARSE_OPT_NOARG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 0, "summary", &opt_diffstat, NULL,
+	  N_("(synonym to --stat)"),
+	  PARSE_OPT_NOARG | PARSE_OPT_HIDDEN, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 0, "log", &opt_log, N_("n"),
+	  N_("add (at most <n>) entries from shortlog to merge commit message"),
+	  PARSE_OPT_OPTARG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 0, "squash", &opt_squash, NULL,
+	  N_("create a single commit instead of doing a merge"),
+	  PARSE_OPT_NOARG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 0, "commit", &opt_commit, NULL,
+	  N_("perform a commit if the merge succeeds (default)"),
+	  PARSE_OPT_NOARG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 0, "edit", &opt_edit, NULL,
+	  N_("edit message before committing"),
+	  PARSE_OPT_NOARG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 0, "ff", &opt_ff, NULL,
+	  N_("allow fast-forward"),
+	  PARSE_OPT_NOARG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 0, "ff-only", &opt_ff, NULL,
+	  N_("abort if fast-forward is not possible"),
+	  PARSE_OPT_NOARG | PARSE_OPT_NONEG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 0, "verify-signatures", &opt_verify_signatures, NULL,
+	  N_("verify that the named commit has a valid GPG signature"),
+	  PARSE_OPT_NOARG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 's', "strategy", &opt_strategies, N_("strategy"),
+	  N_("merge strategy to use"),
+	  0, parse_opt_pass_argv_array },
+	{ OPTION_CALLBACK, 'X', "strategy-option", &opt_strategy_opts,
+	  N_("option=value"),
+	  N_("option for selected merge strategy"),
+	  0, parse_opt_pass_argv_array },
+	{ OPTION_CALLBACK, 'S', "gpg-sign", &opt_gpg_sign, N_("key-id"),
+	  N_("GPG sign commit"),
+	  PARSE_OPT_OPTARG, parse_opt_pass_strbuf },
 
 	OPT_END()
 };
@@ -99,6 +154,26 @@ static int run_merge(void)
 	argv_push_verbosity(&args);
 	if (opt_progress.len)
 		argv_array_push(&args, opt_progress.buf);
+
+	/* Options passed to git-merge */
+	if (opt_diffstat.len)
+		argv_array_push(&args, opt_diffstat.buf);
+	if (opt_log.len)
+		argv_array_push(&args, opt_log.buf);
+	if (opt_squash.len)
+		argv_array_push(&args, opt_squash.buf);
+	if (opt_commit.len)
+		argv_array_push(&args, opt_commit.buf);
+	if (opt_edit.len)
+		argv_array_push(&args, opt_edit.buf);
+	if (opt_ff.len)
+		argv_array_push(&args, opt_ff.buf);
+	if (opt_verify_signatures.len)
+		argv_array_push(&args, opt_verify_signatures.buf);
+	argv_array_pushv(&args, opt_strategies.argv);
+	argv_array_pushv(&args, opt_strategy_opts.argv);
+	if (opt_gpg_sign.len)
+		argv_array_push(&args, opt_gpg_sign.buf);
 
 	argv_array_push(&args, "FETCH_HEAD");
 	ret = run_command_v_opt(args.argv, RUN_GIT_CMD);
