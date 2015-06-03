@@ -820,6 +820,45 @@ static void upload_pack(void)
 	}
 }
 
+#if (TRANSPORT_VERSION == 2)
+static void send_capabilities_version_2(void)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(all_capabilities); i++) {
+		const char *cap = all_capabilities[i];
+		if (!strcmp(cap, "allow-tip-sha1-in-want")
+		    && !(allow_unadvertised_object_request & ALLOW_TIP_SHA1))
+			continue;
+		if (!strcmp(cap, "no-done") && !stateless_rpc)
+			continue;
+		packet_write(1, "%s\n", cap);
+	}
+
+	packet_write(1, "agent=%s\n", git_user_agent_sanitized());
+	packet_flush(1);
+}
+
+static void receive_capabilities_version_2(void)
+{
+	char *line = packet_read_line(0, NULL);
+	while (line) {
+		parse_features(line);
+		line = packet_read_line(0, NULL);
+	}
+}
+
+static void upload_pack_version_2(void)
+{
+	send_capabilities_version_2();
+	receive_capabilities_version_2();
+
+	/* The rest of the protocol stays the same, capabilities advertising
+	   is disabled though. */
+	advertise_capabilities = 0;
+	upload_pack();
+}
+#endif
+
 static int upload_pack_config(const char *var, const char *value, void *unused)
 {
 	if (!strcmp("uploadpack.allowtipsha1inwant", var)) {
@@ -847,8 +886,11 @@ int main(int argc, char **argv)
 	int strict = 0;
 
 	git_setup_gettext();
-
+#if TRANSPORT_VERSION == 2
+	packet_trace_identity("upload-pack-2");
+#else
 	packet_trace_identity("upload-pack");
+#endif
 	git_extract_argv0_path(argv[0]);
 	check_replace_refs = 0;
 
@@ -891,6 +933,11 @@ int main(int argc, char **argv)
 		die("'%s' does not appear to be a git repository", dir);
 
 	git_config(upload_pack_config, NULL);
+
+#if TRANSPORT_VERSION == 2
+	upload_pack_version_2();
+#else
 	upload_pack();
+#endif
 	return 0;
 }
