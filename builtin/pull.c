@@ -167,6 +167,32 @@ static void argv_push_force(struct argv_array *arr)
 }
 
 /**
+ * If pull.ff is "true", sets sb to "--ff". If pull.ff is "false", sets sb to
+ * "--no-ff". If pull.ff is "only", sets sb to "--ff-only". If pull.ff is
+ * set to an invalid value, die with an error.
+ */
+static void config_get_ff(struct strbuf *sb)
+{
+	const char *value;
+
+	if (git_config_get_value("pull.ff", &value))
+		return;
+	switch (git_config_maybe_bool("pull.ff", value)) {
+		case 0:
+			strbuf_addstr(sb, "--no-ff");
+			return;
+		case 1:
+			strbuf_addstr(sb, "--ff");
+			return;
+	}
+	if (!strcmp(value, "only")) {
+		strbuf_addstr(sb, "--ff-only");
+		return;
+	}
+	die(_("Invalid value for pull.ff: %s"), value);
+}
+
+/**
  * Appends merge candidates from FETCH_HEAD that are not marked not-for-merge
  * into merge_heads.
  */
@@ -395,6 +421,9 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 	argc = parse_options(argc, argv, prefix, pull_options, pull_usage, 0);
 
 	parse_repo_refspecs(argc, argv, &repo, &refspecs);
+
+	if (!opt_ff.len)
+		config_get_ff(&opt_ff);
 
 	if (run_fetch(repo, refspecs))
 		return 1;
