@@ -32,6 +32,21 @@ static struct argv_array opt_strategies = ARGV_ARRAY_INIT;
 static struct argv_array opt_strategy_opts = ARGV_ARRAY_INIT;
 static struct strbuf opt_gpg_sign = STRBUF_INIT;
 
+/* Options passed to git-fetch */
+static struct strbuf opt_all = STRBUF_INIT;
+static struct strbuf opt_append = STRBUF_INIT;
+static struct strbuf opt_upload_pack = STRBUF_INIT;
+static int opt_force;
+static struct strbuf opt_tags = STRBUF_INIT;
+static struct strbuf opt_prune = STRBUF_INIT;
+static struct strbuf opt_recurse_submodules = STRBUF_INIT;
+static int opt_dry_run;
+static struct strbuf opt_keep = STRBUF_INIT;
+static struct strbuf opt_depth = STRBUF_INIT;
+static struct strbuf opt_unshallow = STRBUF_INIT;
+static struct strbuf opt_update_shallow = STRBUF_INIT;
+static struct strbuf opt_refmap = STRBUF_INIT;
+
 static struct option pull_options[] = {
 	/* Shared options */
 	OPT__VERBOSITY(&opt_verbosity),
@@ -82,6 +97,46 @@ static struct option pull_options[] = {
 	  N_("GPG sign commit"),
 	  PARSE_OPT_OPTARG, parse_opt_pass_strbuf },
 
+	/* Options passed to git-fetch */
+	OPT_GROUP(N_("Options related to fetching")),
+	{ OPTION_CALLBACK, 0, "all", &opt_all, 0,
+	  N_("fetch from all remotes"),
+	  PARSE_OPT_NOARG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 'a', "append", &opt_append, 0,
+	  N_("append to .git/FETCH_HEAD instead of overwriting"),
+	  PARSE_OPT_NOARG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 0, "upload-pack", &opt_upload_pack, N_("path"),
+	  N_("path to upload pack on remote end"),
+	  0, parse_opt_pass_strbuf },
+	OPT__FORCE(&opt_force, N_("force overwrite of local branch")),
+	{ OPTION_CALLBACK, 't', "tags", &opt_tags, 0,
+	  N_("fetch all tags and associated objects"),
+	  PARSE_OPT_NOARG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 'p', "prune", &opt_prune, 0,
+	  N_("prune remote-tracking branches no longer on remote"),
+	  PARSE_OPT_NOARG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 0, "recurse-submodules", &opt_recurse_submodules,
+	  N_("on-demand"),
+	  N_("control recursive fetching of submodules"),
+	  PARSE_OPT_OPTARG, parse_opt_pass_strbuf },
+	OPT_BOOL(0, "dry-run", &opt_dry_run,
+		N_("dry run")),
+	{ OPTION_CALLBACK, 'k', "keep", &opt_keep, 0,
+	  N_("keep downloaded pack"),
+	  PARSE_OPT_NOARG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 0, "depth", &opt_depth, N_("depth"),
+	  N_("deepen history of shallow clone"),
+	  0, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 0, "unshallow", &opt_unshallow, 0,
+	  N_("convert to a complete repository"),
+	  PARSE_OPT_NONEG | PARSE_OPT_NOARG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 0, "update-shallow", &opt_update_shallow, 0,
+	  N_("accept refs that update .git/shallow"),
+	  PARSE_OPT_NOARG, parse_opt_pass_strbuf },
+	{ OPTION_CALLBACK, 0, "refmap", &opt_refmap, N_("refmap"),
+	  N_("specify fetch refmap"),
+	  PARSE_OPT_NONEG, parse_opt_pass_strbuf },
+
 	OPT_END()
 };
 
@@ -97,6 +152,16 @@ static void argv_push_verbosity(struct argv_array *arr)
 
 	for (verbosity = opt_verbosity; verbosity < 0; verbosity++)
 		argv_array_push(arr, "-q");
+}
+
+/**
+ * Pushes "-f" switches into arr to match the opt_force level.
+ */
+static void argv_push_force(struct argv_array *arr)
+{
+	int force = opt_force;
+	while (force-- > 0)
+		argv_array_push(arr, "-f");
 }
 
 /**
@@ -130,6 +195,33 @@ static int run_fetch(const char *repo, const char **refspecs)
 	argv_push_verbosity(&args);
 	if (opt_progress.len)
 		argv_array_push(&args, opt_progress.buf);
+
+	/* Options passed to git-fetch */
+	if (opt_all.len)
+		argv_array_push(&args, opt_all.buf);
+	if (opt_append.len)
+		argv_array_push(&args, opt_append.buf);
+	if (opt_upload_pack.len)
+		argv_array_push(&args, opt_upload_pack.buf);
+	argv_push_force(&args);
+	if (opt_tags.len)
+		argv_array_push(&args, opt_tags.buf);
+	if (opt_prune.len)
+		argv_array_push(&args, opt_prune.buf);
+	if (opt_recurse_submodules.len)
+		argv_array_push(&args, opt_recurse_submodules.buf);
+	if (opt_dry_run)
+		argv_array_push(&args, "--dry-run");
+	if (opt_keep.len)
+		argv_array_push(&args, opt_keep.buf);
+	if (opt_depth.len)
+		argv_array_push(&args, opt_depth.buf);
+	if (opt_unshallow.len)
+		argv_array_push(&args, opt_unshallow.buf);
+	if (opt_update_shallow.len)
+		argv_array_push(&args, opt_update_shallow.buf);
+	if (opt_refmap.len)
+		argv_array_push(&args, opt_refmap.buf);
 
 	if (repo)
 		argv_array_push(&args, repo);
@@ -198,6 +290,9 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 
 	if (run_fetch(repo, refspecs))
 		return 1;
+
+	if (opt_dry_run)
+		return 0;
 
 	return run_merge();
 }
