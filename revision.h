@@ -228,6 +228,7 @@ extern volatile show_early_output_fn_t show_early_output;
 
 struct setup_revision_opt {
 	const char *def;
+	int def_HEAD_missing;
 	void (*tweak)(struct rev_info *, struct setup_revision_opt *);
 	const char *submodule;
 	int assume_dashdash;

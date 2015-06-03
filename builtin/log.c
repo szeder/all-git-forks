@@ -148,6 +148,11 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 		rev->diffopt.output_format |= DIFF_FORMAT_NO_OUTPUT;
 	argc = setup_revisions(argc, argv, rev, opt);
 
+	if (!rev->pending.nr && !opt->def) {
+		/* NEEDSWORK: use opt->def_HEAD_missing */
+		die("you do not have a commit yet on your branch");
+	}
+
 	/* Any arguments at this point are not recognized */
 	if (argc > 1)
 		die(_("unrecognized argument: %s"), argv[1]);
@@ -404,6 +409,17 @@ static int git_log_config(const char *var, const char *value, void *cb)
 	return git_diff_ui_config(var, value, cb);
 }
 
+static void default_to_head_if_exists(struct setup_revision_opt *opt)
+{
+	unsigned char unused[20];
+	int flags;
+
+	if (resolve_ref_unsafe("HEAD", 0, unused, &flags))
+		opt->def = "HEAD";
+	else
+		opt->def_HEAD_missing = flags;
+}
+
 int cmd_whatchanged(int argc, const char **argv, const char *prefix)
 {
 	struct rev_info rev;
@@ -416,7 +432,7 @@ int cmd_whatchanged(int argc, const char **argv, const char *prefix)
 	rev.diff = 1;
 	rev.simplify_history = 0;
 	memset(&opt, 0, sizeof(opt));
-	opt.def = "HEAD";
+	default_to_head_if_exists(&opt);
 	opt.revarg_opt = REVARG_COMMITTISH;
 	cmd_log_init(argc, argv, prefix, &rev, &opt);
 	if (!rev.diffopt.output_format)
@@ -530,7 +546,7 @@ int cmd_show(int argc, const char **argv, const char *prefix)
 	rev.diffopt.stat_width = -1; 	/* Scale to real terminal size */
 
 	memset(&opt, 0, sizeof(opt));
-	opt.def = "HEAD";
+	default_to_head_if_exists(&opt);
 	opt.tweak = show_rev_tweak_rev;
 	cmd_log_init(argc, argv, prefix, &rev, &opt);
 
@@ -607,7 +623,7 @@ int cmd_log_reflog(int argc, const char **argv, const char *prefix)
 	init_reflog_walk(&rev.reflog_info);
 	rev.verbose_header = 1;
 	memset(&opt, 0, sizeof(opt));
-	opt.def = "HEAD";
+	default_to_head_if_exists(&opt);
 	cmd_log_init_defaults(&rev);
 	rev.abbrev_commit = 1;
 	rev.commit_format = CMIT_FMT_ONELINE;
@@ -629,7 +645,7 @@ int cmd_log(int argc, const char **argv, const char *prefix)
 	init_revisions(&rev, prefix);
 	rev.always_show_header = 1;
 	memset(&opt, 0, sizeof(opt));
-	opt.def = "HEAD";
+	default_to_head_if_exists(&opt);
 	opt.revarg_opt = REVARG_COMMITTISH;
 	cmd_log_init(argc, argv, prefix, &rev, &opt);
 	return cmd_log_walk(&rev);
