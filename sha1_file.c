@@ -818,6 +818,18 @@ static int close_one_pack(void)
 	return 0;
 }
 
+void close_all_pack_files(void)
+{
+	struct packed_git *p = NULL;
+
+	for (p = packed_git; p; p = p->next) {
+		if (p->pack_fd != -1) {
+			close(p->pack_fd);
+			p->pack_fd = -1;
+		}
+	}
+}
+
 void unuse_pack(struct pack_window **w_cursor)
 {
 	struct pack_window *w = *w_cursor;
