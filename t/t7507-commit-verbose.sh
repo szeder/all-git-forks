@@ -52,7 +52,7 @@ test_expect_success '--verbose appends diff' '
 	test_cmp expected actual
 '
 
-test_expect_failure '--verbose --no-status appends diff' '
+test_expect_success '--verbose --no-status appends diff' '
 	git reset --soft HEAD^ &&
 	EDITOR=./editor git commit --verbose --no-status &&
 	test_cmp expected actual
