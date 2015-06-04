@@ -12,9 +12,10 @@ internally the git-status machinery is used to provide both the diff and
 status output, but this machinery is skipped over entirely due to
 --no-status.
 
-We introduce a new status_format, STATUS_FORMAT_DIFFONLY. Thus, we still
-go through the git-status machinery, but produce nothing in place of the
-usual git-status output.
+We introduce a new status_format, STATUS_FORMAT_DIFFONLY, which triggers
+the setting of the commitable flag, and the printing of the diff. This
+is set only by git-commit, and when it detects that --verbose and
+--no-status have been used.
 
 Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 
