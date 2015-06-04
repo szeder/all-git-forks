@@ -816,20 +816,23 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		}
 
 		fprintf(s->fp, "\n");
-		if (cleanup_mode == CLEANUP_ALL)
-			status_printf(s, GIT_COLOR_NORMAL,
-				_("Please enter the commit message for your changes."
-				  " Lines starting\nwith '%c' will be ignored, and an empty"
-				  " message aborts the commit.\n"), comment_line_char);
-		else if (cleanup_mode == CLEANUP_SCISSORS && whence == FROM_COMMIT)
+		if (cleanup_mode == CLEANUP_ALL) {
+			if (advice_commit_msg)
+				status_printf(s, GIT_COLOR_NORMAL,
+					_("Please enter the commit message for your changes."
+					  " Lines starting\nwith '%c' will be ignored, and an empty"
+					  " message aborts the commit.\n"), comment_line_char);
+		} else if (cleanup_mode == CLEANUP_SCISSORS && whence == FROM_COMMIT)
 			wt_status_add_cut_line(s->fp);
-		else /* CLEANUP_SPACE, that is. */
-			status_printf(s, GIT_COLOR_NORMAL,
-				_("Please enter the commit message for your changes."
-				  " Lines starting\n"
-				  "with '%c' will be kept; you may remove them"
-				  " yourself if you want to.\n"
-				  "An empty message aborts the commit.\n"), comment_line_char);
+		else /* CLEANUP_SPACE, that is. */ {
+			if (advice_commit_msg)
+				status_printf(s, GIT_COLOR_NORMAL,
+					_("Please enter the commit message for your changes."
+					  " Lines starting\n"
+					  "with '%c' will be kept; you may remove them"
+					  " yourself if you want to.\n"
+					  "An empty message aborts the commit.\n"), comment_line_char);
+		}
 		if (only_include_assumed)
 			status_printf_ln(s, GIT_COLOR_NORMAL,
 					"%s", only_include_assumed);
