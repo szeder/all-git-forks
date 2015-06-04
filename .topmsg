@@ -14,8 +14,7 @@ status output, but this machinery is skipped over entirely due to
 
 We introduce a new status_format, STATUS_FORMAT_DIFFONLY. Thus, we still
 go through the git-status machinery, but produce nothing in place of the
-usual git-status output. status_format is set only when git-commit is
-passed i) --verbose, and ii) --no-status.
+usual git-status output.
 
 Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
 
