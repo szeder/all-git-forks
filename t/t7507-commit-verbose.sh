@@ -38,19 +38,23 @@ test_expect_success '--verbose appends diff' '
 	# Do not touch the line above.
 	# Everything below will be removed.
 	diff --git a/file b/file
-	index d95f3ad..8ffb5df 100644
+	index 8ffb5df..a673153 100644
 	--- a/file
 	+++ b/file
-	@@ -1 +1 @@
-	-content
-	+content modified
+	@@ -1 +1,2 @@
+	 content modified
+	+modified
 	EOF
 	cat >editor <<-\EOF &&
 	#!/bin/sh
 	awk "/^# -+ >8 -+$/ { p=1 } p" "$1" >actual
+	cp message "$1"
 	EOF
 	chmod 755 editor &&
-	EDITOR=./editor git commit --amend -v &&
+	echo modified >> file &&
+	git add file &&
+	test_tick &&
+	EDITOR=./editor git commit --verbose &&
 	test_cmp expected actual
 '
 
