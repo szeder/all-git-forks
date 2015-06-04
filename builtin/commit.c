@@ -144,6 +144,7 @@ static enum status_format {
 	STATUS_FORMAT_LONG,
 	STATUS_FORMAT_SHORT,
 	STATUS_FORMAT_PORCELAIN,
+	STATUS_FORMAT_DIFFONLY,
 
 	STATUS_FORMAT_UNSPECIFIED
 } status_format = STATUS_FORMAT_UNSPECIFIED;
@@ -509,6 +510,10 @@ static int run_status(FILE *fp, const char *index_file, const char *prefix, int 
 		break;
 	case STATUS_FORMAT_UNSPECIFIED:
 		die("BUG: finalize_deferred_config() should have been called");
+		break;
+	case STATUS_FORMAT_DIFFONLY:
+		wt_status_mark_commitable(s);
+		wt_status_print_verbose(s);
 		break;
 	case STATUS_FORMAT_NONE:
 	case STATUS_FORMAT_LONG:
@@ -1213,7 +1218,12 @@ static int parse_and_validate_options(int argc, const char *argv[],
 	if (all && argc > 0)
 		die(_("Paths with -a does not make sense."));
 
-	if (status_format != STATUS_FORMAT_NONE)
+	if (status_format == STATUS_FORMAT_NONE) {
+		if (verbose && !include_status) {
+			include_status = 1;
+			status_format = STATUS_FORMAT_DIFFONLY;
+		}
+	} else
 		dry_run = 1;
 
 	return argc;

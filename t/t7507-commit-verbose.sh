@@ -26,7 +26,39 @@ test_expect_success 'initial commit shows verbose diff' '
 	git commit --amend -v
 '
 
-test_expect_success 'second commit' '
+test_expect_success '--verbose appends diff' '
+	cat >expected <<-\EOF &&
+	# ------------------------ >8 ------------------------
+	# Do not touch the line above.
+	# Everything below will be removed.
+	diff --git a/file b/file
+	index d95f3ad..94ab063 100644
+	--- a/file
+	+++ b/file
+	@@ -1 +1,2 @@
+	 content
+	+content content
+	EOF
+	cat >editor <<-\EOF &&
+	#!/bin/sh
+	awk "/^# -+ >8 -+$/ { p=1 } p" "$1" >actual
+	echo commit > "$1"
+	EOF
+	chmod 755 editor &&
+	echo content content >> file &&
+	git add file &&
+	test_tick &&
+	EDITOR=./editor git commit --verbose &&
+	test_cmp expected actual
+'
+
+test_expect_success '--verbose --no-status appends diff' '
+	git reset --soft HEAD^ &&
+	EDITOR=./editor git commit --verbose --no-status &&
+	test_cmp expected actual
+'
+
+test_expect_success 'commit' '
 	echo content modified >file &&
 	git add file &&
 	git commit -F message
