@@ -42,7 +42,7 @@ test_expect_success '--verbose appends diff' '
 	cat >editor <<-\EOF &&
 	#!/bin/sh
 	awk "/^# -+ >8 -+$/ { p=1 } p" "$1" >actual
-	cp message "$1"
+	echo commit > "$1"
 	EOF
 	chmod 755 editor &&
 	echo content content >> file &&
