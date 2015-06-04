@@ -58,6 +58,12 @@ test_expect_success '--verbose appends diff' '
 	test_cmp expected actual
 '
 
+test_expect_failure '--verbose --no-status appends diff' '
+	git reset --soft HEAD^ &&
+	EDITOR=./editor git commit --verbose --no-status &&
+	test_cmp expected actual
+'
+
 check_message() {
 	git log -1 --pretty=format:%s%n%n%b >actual &&
 	test_cmp "$1" actual
