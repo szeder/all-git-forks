@@ -1372,9 +1372,9 @@ void wt_status_print(struct wt_status *s)
 		status_printf_ln(s, color(WT_STATUS_HEADER, s), "%s", "");
 	}
 
-	wt_status_mark_commitable(s);
 	wt_status_print_updated(s);
 	wt_status_print_unmerged(s);
+	wt_status_mark_commitable(s);
 	wt_status_print_changed(s);
 	if (s->submodule_summary &&
 	    (!s->ignore_submodule_arg ||
