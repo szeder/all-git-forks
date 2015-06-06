@@ -794,15 +794,9 @@ sub expand_one_alias {
 	return $aliases{$alias} ? expand_aliases(@{$aliases{$alias}}) : $alias;
 }
 
-@initial_to = split_at_commas(@initial_to);
-@initial_to = expand_aliases(@initial_to);
-@initial_to = validate_address_list(sanitize_address_list(@initial_to));
-@initial_cc = split_at_commas(@initial_cc);
-@initial_cc = expand_aliases(@initial_cc);
-@initial_cc = validate_address_list(sanitize_address_list(@initial_cc));
-@bcclist = split_at_commas(@bcclist);
-@bcclist = expand_aliases(@bcclist);
-@bcclist = validate_address_list(sanitize_address_list(@bcclist));
+@initial_to = process_address_list(@initial_to);
+@initial_cc = process_address_list(@initial_cc);
+@bcclist = process_address_list(@bcclist);
 
 if ($thread && !defined $initial_reply_to && $prompting) {
 	$initial_reply_to = ask(
@@ -1017,6 +1011,14 @@ sub sanitize_address_list {
 
 sub split_at_commas {
 	return (map { split /\s*,\s*/, $_ } @_);
+}
+
+sub process_address_list {
+    my @addr_list = split_at_commas(@_);
+    @addr_list = expand_aliases(@addr_list);
+    @addr_list = sanitize_address_list(@addr_list);
+    @addr_list = validate_address_list(@addr_list);
+    return @addr_list;
 }
 
 # Returns the local Fully Qualified Domain Name (FQDN) if available.
@@ -1528,12 +1530,8 @@ foreach my $t (@files) {
 		($confirm =~ /^(?:auto|compose)$/ && $compose && $message_num == 1));
 	$needs_confirm = "inform" if ($needs_confirm && $confirm_unconfigured && @cc);
 
-	@to = split_at_commas(@to);
-	@to = expand_aliases(@to);
-	@to = validate_address_list(sanitize_address_list(@to));
-	@cc = split_at_commas(@cc);
-	@cc = expand_aliases(@cc);
-	@cc = validate_address_list(sanitize_address_list(@cc));
+	@to = process_address_list(@to);
+	@cc = process_address_list(@cc);
 
 	@to = (@initial_to, @to);
 	@cc = (@initial_cc, @cc);
