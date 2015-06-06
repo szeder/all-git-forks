@@ -824,7 +824,8 @@ void close_all_pack_files(void)
 
 	for (p = packed_git; p; p = p->next) {
 		if (p->pack_fd != -1) {
-			close(p->pack_fd);
+			if (close(p->pack_fd) != 0)
+				warning("close(%s) failed: %d", p->pack_name, errno);
 			p->pack_fd = -1;
 		}
 	}
