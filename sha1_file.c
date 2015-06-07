@@ -832,7 +832,7 @@ void close_all_pack_files(void)
 
 	for (p = packed_git; p; p = p->next) {
 		if (close_pack_windows_nodie(p) != )
-		    warning("pack '%s' still has open windows to it", p->pack_name);
+			warning("pack '%s' still has open windows to it", p->pack_name);
 
 		if (p->pack_fd != -1) {
 			if (close(p->pack_fd) != 0)
