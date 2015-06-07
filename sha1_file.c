@@ -1462,9 +1462,9 @@ int git_open_noatime_cloexec(const char *name)
 	static int sha1_file_open_flag = O_NOATIME | O_NOINHERIT;
 #else
 	static int sha1_file_open_flag = O_NOATIME;
+	long fd_flag;
 #endif
 	int fd;
-	long fd_flag;
 
 	for (;;) {
 		fd = open(name, O_RDONLY | sha1_file_open_flag);
