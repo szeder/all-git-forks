@@ -831,7 +831,7 @@ void close_all_pack_files(void)
 	struct packed_git *p = NULL;
 
 	for (p = packed_git; p; p = p->next) {
-		if (close_pack_windows_nodie(p) != )
+		if (close_pack_windows_nodie(p))
 			warning("pack '%s' still has open windows to it", p->pack_name);
 
 		if (p->pack_fd != -1) {
