@@ -1,4 +1,5 @@
 #include "builtin.h"
+#include "cache.h"
 #include "exec_cmd.h"
 #include "help.h"
 #include "run-command.h"
@@ -348,6 +349,7 @@ static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
 	trace_argv_printf(argv, "trace: built-in: git");
 
 	status = p->fn(argc, argv, prefix);
+	close_all_packs();
 	if (status)
 		return status;
 
