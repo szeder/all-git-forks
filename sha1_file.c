@@ -831,15 +831,16 @@ void close_all_pack_files(void)
 	struct packed_git *p = NULL;
 
 	for (p = packed_git; p; p = p->next) {
-		if (p->pack_fd != -1) {
-			close_pack_windows_nodie(p);
+		if (close_pack_windows_nodie(p) != )
+		    warning("pack '%s' still has open windows to it", p->pack_name);
 
+		if (p->pack_fd != -1) {
 			if (close(p->pack_fd) != 0)
 				warning("close(%s) failed: %d", p->pack_name, errno);
 			p->pack_fd = -1;
-
-			close_pack_index(p);
 		}
+
+		close_pack_index(p);
 	}
 }
 
