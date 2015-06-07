@@ -773,20 +773,28 @@ void *xmmap(void *start, size_t length,
 	return ret;
 }
 
-void close_pack_windows(struct packed_git *p)
+static int close_pack_windows_nodie(struct packed_git *p)
 {
 	while (p->windows) {
 		struct pack_window *w = p->windows;
 
 		if (w->inuse_cnt)
-			die("pack '%s' still has open windows to it",
-			    p->pack_name);
+			return 1;
+
 		munmap(w->base, w->len);
 		pack_mapped -= w->len;
 		pack_open_windows--;
 		p->windows = w->next;
 		free(w);
 	}
+
+	return 0;
+}
+
+void close_pack_windows(struct packed_git *p)
+{
+	if (close_pack_windows_nodie(p))
+		die("pack '%s' still has open windows to it", p->pack_name);
 }
 
 /*
@@ -864,6 +872,24 @@ static int close_one_pack(void)
 	}
 
 	return 0;
+}
+
+void close_all_packs(void)
+{
+	struct packed_git *p = NULL;
+
+	for (p = packed_git; p; p = p->next) {
+		if (close_pack_windows_nodie(p))
+			warning("pack '%s' still has open windows to it", p->pack_name);
+
+		if (p->pack_fd != -1) {
+			if (close(p->pack_fd) != 0)
+				warning("close(%s) failed: %d", p->pack_name, errno);
+			p->pack_fd = -1;
+		}
+
+		close_pack_index(p);
+	}
 }
 
 void unuse_pack(struct pack_window **w_cursor)
