@@ -306,7 +306,7 @@ split_patches () {
 			# not starting with Author, From or Date is the
 			# subject, and the body starts with the next nonempty
 			# line not starting with Author, From or Date
-			cat "$stgit" | @@PERL@@ -ne 'BEGIN { $subject = 0 }
+			@@PERL@@ -ne 'BEGIN { $subject = 0 }
 				if ($subject > 1) { print ; }
 				elsif (/^\s+$/) { next ; }
 				elsif (/^Author:/) { s/Author/From/ ; print ;}
@@ -319,7 +319,7 @@ split_patches () {
 					print "Subject: ", $_ ;
 					$subject = 1;
 				}
-			' >"$dotest/$msgnum" || clean_abort
+			' "$stgit" >"$dotest/$msgnum" || clean_abort
 		done
 		echo "$this" > "$dotest/last"
 		this=
@@ -339,7 +339,6 @@ split_patches () {
 			# Since we cannot guarantee that the commit message is in
 			# git-friendly format, we put no Subject: line and just consume
 			# all of the message as the body
-			cat "$hg" |
 			LANG=C LC_ALL=C @@PERL@@ -M'POSIX qw(strftime)' -ne 'BEGIN { $subject = 0 }
 				if ($subject) { print ; }
 				elsif (/^\# User /) { s/\# User/From:/ ; print ; }
@@ -355,7 +354,7 @@ split_patches () {
 					print "\n", $_ ;
 					$subject = 1;
 				}
-			' >"$dotest/$msgnum" || clean_abort
+			' "$hg" >"$dotest/$msgnum" || clean_abort
 		done
 		echo "$this" >"$dotest/last"
 		this=
