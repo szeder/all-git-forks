@@ -1184,4 +1184,44 @@ test_expect_success 'rebase -i respects rebase.missingCommitsCheck = error' '
 	test B = $(git cat-file commit HEAD^ | sed -ne \$p)
 '
 
+cat >expect <<EOF
+Warning: the command isn't recognized in the following line(s):
+ - badcmd $(git rev-list --oneline -1 master~1)
+
+You can fix this with 'git rebase --edit-todo'.
+Or you can abort the rebase with 'git rebase --abort'.
+EOF
+
+test_expect_success 'static check of bad command' '
+	test_rebase_end tmp2 &&
+	set_fake_editor &&
+	test_must_fail env FAKE_LINES="1 2 3 bad 4 5" \
+		git rebase -i --root 2>actual &&
+	test_cmp expect actual &&
+	FAKE_LINES="1 2 3 drop 4 5" git rebase --edit-todo &&
+	git rebase --continue &&
+	test E = $(git cat-file commit HEAD | sed -ne \$p) &&
+	test C = $(git cat-file commit HEAD^ | sed -ne \$p)
+'
+
+cat >expect <<EOF
+Warning: the SHA-1 is missing or isn't a commit in the following line(s):
+ - edit XXXXXXX False commit
+
+You can fix this with 'git rebase --edit-todo'.
+Or you can abort the rebase with 'git rebase --abort'.
+EOF
+
+test_expect_success 'static check of bad SHA-1' '
+	test_config rebase.missingCommitsCheck error &&
+	test_rebase_end tmp2 &&
+	set_fake_editor &&
+	test_must_fail env FAKE_LINES="1 2 edit fakesha 3 4 5 #" \
+		git rebase -i --root 2>actual &&
+	test_cmp expect actual &&
+	FAKE_LINES="1 2 4 5 6" git rebase --edit-todo &&
+	git rebase --continue &&
+	test E = $(git cat-file commit HEAD | sed -ne \$p)
+'
+
 test_done
