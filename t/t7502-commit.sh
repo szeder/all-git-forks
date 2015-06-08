@@ -239,6 +239,31 @@ EOF
 
 '
 
+test_expect_success 'cleanup commit messages (scissors option,-F,-e, scissors line in commit message)' '
+	echo >>negative &&
+	cat >text <<EOF &&
+
+  # to be kept
+
+  # ------------------------ >8 ------------------------
+  # to be kept, too
+# ------------------------ >8 ------------------------
+to be removed
+# ------------------------ >8 ------------------------
+to be removed, too
+EOF
+
+	cat >expect <<EOF &&
+  # to be kept
+
+  # ------------------------ >8 ------------------------
+  # to be kept, too
+EOF
+	git commit --cleanup=scissors -e -F text -a &&
+	git cat-file -p HEAD |sed -e "1,/^\$/d">actual &&
+	test_cmp expect actual
+'
+
 test_expect_success 'cleanup commit messages (strip option,-F)' '
 
 	echo >>negative &&
