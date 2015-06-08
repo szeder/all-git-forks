@@ -297,6 +297,7 @@ split_patches () {
 		;;
 	stgit)
 		this=0
+		test 0 -eq "$#" && set -- -
 		for stgit in "$@"
 		do
 			this=$(expr "$this" + 1)
@@ -305,7 +306,7 @@ split_patches () {
 			# not starting with Author, From or Date is the
 			# subject, and the body starts with the next nonempty
 			# line not starting with Author, From or Date
-			@@PERL@@ -ne 'BEGIN { $subject = 0 }
+			cat "$stgit" | @@PERL@@ -ne 'BEGIN { $subject = 0 }
 				if ($subject > 1) { print ; }
 				elsif (/^\s+$/) { next ; }
 				elsif (/^Author:/) { s/Author/From/ ; print ;}
@@ -318,7 +319,7 @@ split_patches () {
 					print "Subject: ", $_ ;
 					$subject = 1;
 				}
-			' < "$stgit" > "$dotest/$msgnum" || clean_abort
+			' >"$dotest/$msgnum" || clean_abort
 		done
 		echo "$this" > "$dotest/last"
 		this=
