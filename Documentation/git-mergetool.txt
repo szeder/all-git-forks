@@ -79,15 +79,22 @@ success of the resolution after the custom tool has exited.
 	Prompt before each invocation of the merge resolution program
 	to give the user a chance to skip the path.
 
-TEMPORARY FILES
----------------
-`git mergetool` creates `*.orig` backup files while resolving merges.
-These are safe to remove once a file has been merged and its
-`git mergetool` session has completed.
-
+CONFIGURATION OPTIONS
+---------------------
+mergetool.keepBackup::
+	`git mergetool` creates `*.orig` backup files while resolving merges.
+	These are safe to remove once a file has been merged and its
+	`git mergetool` session has completed.
++
 Setting the `mergetool.keepBackup` configuration variable to `false`
 causes `git mergetool` to automatically remove the backup as files
 are successfully merged.
+
+mergetool.automerge::
+	For some mergetools, the current invocation of git mergetool will
+	include an auto-merge flag.  By default the flag is included, however if
+	the git config option `merge.automerge` is set to `false`, then that
+	flag will be omitted.
 
 GIT
 ---

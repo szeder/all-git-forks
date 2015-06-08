@@ -1883,6 +1883,12 @@ mergetool.meld.hasOutput::
 	to `true` tells Git to unconditionally use the `--output` option,
 	and `false` avoids using `--output`.
 
+mergetool.automerge::
+	When invoking a custom merge tool which includes an auto-merge
+	option, Git will include that option by default.  If this variable
+	is set to `false` then the auto-merge option is not used when 
+	invoking the custom merge tool.
+
 mergetool.keepBackup::
 	After performing a merge, the original file with conflict markers
 	can be saved as a file with a `.orig` extension.  If this variable

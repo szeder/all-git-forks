@@ -6,7 +6,9 @@ merge_cmd () {
 	touch "$BACKUP"
 	if $base_present
 	then
-		"$merge_tool_path" -wait -merge -3 -a1 \
+		automerge="-merge"
+		test "$(git config --get --bool mergetool.automerge)" = false && automerge=''
+		"$merge_tool_path" -wait ${automerge} -3 -a1 \
 			"$BASE" "$LOCAL" "$REMOTE" "$MERGED" >/dev/null 2>&1
 	else
 		"$merge_tool_path" -wait -2 \
