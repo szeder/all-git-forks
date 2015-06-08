@@ -780,10 +780,8 @@ def p4ChangesForPaths(depotPaths, changeRange, block_size):
             cmd = ['changes']
             cmd += ["%s...@%d,%d" % (p, changeStart, end)]
 
-            new_changes = []
             for line in p4_read_pipe_lines(cmd):
                 changeNum = int(line.split(" ")[1])
-                new_changes.append(changeNum)
                 changes[changeNum] = True
 
             if end >= changeEnd:
