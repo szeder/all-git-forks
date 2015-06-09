@@ -1081,7 +1081,9 @@ else
 	revisions=$onto...$orig_head
 	shortrevisions=$shorthead
 fi
-git rev-list $merges_option --pretty=oneline --reverse --left-right --topo-order \
+format=$(git config --get rebase.instructionFormat)
+# the 'rev-list .. | sed' requires %m to parse; the instruction requires %H to parse
+git rev-list $merges_option --format="%m%H ${format-%s}" --reverse --left-right --topo-order \
 	$revisions ${restrict_revision+^$restrict_revision} | \
 	sed -n "s/^>//p" |
 while read -r sha1 rest
