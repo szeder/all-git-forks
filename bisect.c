@@ -745,7 +745,10 @@ static void handle_bad_merge_base(void)
 				"between %s and [%s].\n",
 				bad_hex, bad_hex, good_hex);
 		} else {
-			die("BUG: terms %s/%s not managed", name_bad, name_good);
+			fprintf(stderr, "The merge base %s is %s.\n"
+				"This means the first commit marked %s is "
+				"between %s and [%s].\n",
+				bad_hex, name_bad, name_bad, bad_hex, good_hex);
 		}
 		exit(3);
 	}
@@ -900,6 +903,31 @@ static void show_diff_tree(const char *prefix, struct commit *commit)
 }
 
 /*
+ * The terms used for this bisect session are stored in
+ * BISECT_TERMS: it can be bad/good or new/old.
+ * We read them and store them to adapt the messages
+ * accordingly. Default is bad/good.
+ */
+void read_bisect_terms(void)
+{
+	struct strbuf str = STRBUF_INIT;
+	const char *filename = git_path("BISECT_TERMS");
+	FILE *fp = fopen(filename, "r");
+
+	if (!fp) {
+		die("could not read file '%s': %s", filename,
+			strerror(errno));
+	} else {
+		strbuf_getline(&str, fp, '\n');
+		name_bad = strbuf_detach(&str, NULL);
+		strbuf_getline(&str, fp, '\n');
+		name_good = strbuf_detach(&str, NULL);
+	}
+	strbuf_release(&str);
+	fclose(fp);
+}
+
+/*
  * We use the convention that exiting with an exit code 10 means that
  * the bisection process finished successfully.
  * In this case the calling shell script should exit 0.
@@ -915,8 +943,7 @@ int bisect_next_all(const char *prefix, int no_checkout)
 	const unsigned char *bisect_rev;
 	char bisect_rev_hex[GIT_SHA1_HEXSZ + 1];
 
-	name_bad="bad";
-	name_good="good";
+	read_bisect_terms();
 	if (read_bisect_refs())
 		die("reading bisect refs failed");
 
