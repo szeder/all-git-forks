@@ -1013,7 +1013,13 @@ sub sanitize_address_list {
 }
 
 sub split_at_commas {
-	return (map { split /\s*,\s*/, $_ } @_);
+	my $dbquote=qr/"(?:[^\"\\]|\\.)*"/;
+	my $spquote=qr/'(?:[^\'\\]|\\.)*'/;
+	my $noquote=qr/(?:[^\"\'\\,]|\\.)+/;
+
+	my $commasplit = qr/(?:$dbquote|$spquote|$noquote)+/;
+
+	return (map { $_ =~ /($commasplit)/g } @_);
 }
 
 sub process_address_list {
