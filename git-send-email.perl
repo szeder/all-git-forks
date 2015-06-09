@@ -1018,8 +1018,8 @@ sub split_at_commas {
 
 sub process_address_list {
     my @addr_list = split_at_commas(@_);
-    @addr_list = expand_aliases(@addr_list);
     @addr_list = sanitize_address_list(@addr_list);
+    @addr_list = expand_aliases(@addr_list);
     @addr_list = validate_address_list(@addr_list);
     return @addr_list;
 }
