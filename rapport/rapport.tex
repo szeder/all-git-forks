@@ -1,0 +1,278 @@
+\documentclass[a4paper, 12pt]{article}
+
+
+\usepackage[french]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage[usenames,dvipsnames]{xcolor}
+
+
+\setcounter{secnumdepth}{4}
+% TAILLE DES PAGES (A4 serré)
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1ex}
+\setlength{\textwidth}{17cm}
+\setlength{\textheight}{24cm}
+\setlength{\oddsidemargin}{-.7cm}
+\setlength{\evensidemargin}{-.7cm}
+\setlength{\topmargin}{-.5in}
+
+% Commandes de mise en page
+\newcommand{\fichier}[1]{\emph{#1}}
+\newcommand{\nom}[1]{\emph{#1}}
+\newcommand{\Fig}[1]{Fig \ref{#1} p. \pageref{#1}}
+\newcommand{\itemi}{\item[$\bullet$]}
+
+% Commandes de maths
+\newcommand{\fonction}[3]{#1 : #2 \to #3}
+\newcommand{\intr}[2]{\left[ #1 ; #2 \right]}
+\newcommand{\intn}[2]{\left[\![ #1 ; #2 \right]\!]}
+\newcommand{\intro}[2]{\left] #1 ; #2 \right[}
+\newcommand{\intrsod}[2]{\left[ #1 ; #2 \right[}
+\newcommand{\ps}[2]{\langle #1, #2 \rangle}
+\newcommand{\mdelta}[1]{\boldsymbol{\delta_{#1}}}
+%% \newcommand{\mdelta}[1]{\delta_{\textbf{#1}}}
+
+\pagenumbering{arabic}
+\graphicspath{{images/}}
+
+\title{Bilan} 
+\author{Antoine Delaite \and Louis--Alexandre Stuber \and Guillaume Pages \and Rémi Galan-Alphonso \and Rémi Lespinet}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Introdution}
+
+Le projet GL a été un challenge intéressant. Les trois semaines
+ont été intenses, et le groupe a connu une évolution dans
+l'organisation et la communication durant cette période.  C'est
+pouquoi nous avons choisi de présenter le déroulement de notre projet
+sous forme chronologique, en découpant selon nos différents sprints.
+Pour chaque sprint, on détaille son contenu et la façon dont nous nous
+sommes organisés, les ressentis et une approche critique sur nos choix
+en expliquant ce que l'on aurait pu améliorer.
+
+
+\section{Organisation}
+
+\subsection{Présentation de l'équipe}
+
+Dans cette partie, nous commençons par présenter l'équipe et les contraintes
+induits par chacun des membres pour justifier les choix qui ont été pris
+tout au long du projet.
+
+L'une des contrainte majeure est que Guillaume avait cours normalement
+pendant toute la durée du projet, en particulier il n'a pu être
+présent à tous les suivis ni au cours d'explication.  De plus il avait
+2 autres projets à faire pendant la durée du projet GL.
+
+Vicente vient d'une école au Brésil où il n'a pas fait de Théorie des Langages,
+ce qui limite la compréhension du sujet, de plus il ne connaissait pas
+les outils avec lesquels nous avons l'habitude de travailler.
+
+\subsection{Organisation selon les contraintes}
+
+Dès le premier jour, tout le monde était d'accord pour que Vicente s'occupe
+de la parie mathématique. C'était un choix juste car c'est la partie
+avec laquelle il se sentait le plus à l'aise, et qui ne nécessitait pas
+de connaissances particulières en Théorie des Langages ni un grand usage
+du logiciel git, puisque cette partie est très indépendante du reste
+et n'a pas besoin d'être partagée avec tout le monde.
+
+Organisations suivant les contraintes : Comme Guillaume ne pouvait pas
+être là à plein temps, nous avons décidé tous ensemble qu’il tiendrait le rôle
+de support et qu’il ne sera pas sur une partie à part entière pour
+éviter de prendre du retard si jamais il ne peut pas avancer. C’était
+un très bon choix car Guillaume a une très grande capacité de
+compréhension et pouvait vraiment bien comprendre toutes les parties
+du projet. Il a ainsi pu aider tout le reste de l’équipe durant tout
+le projet.
+
+%Pour autant, nous ne sommes pas satisfaits pleinement,
+
+\subsection{Les Sprints}
+
+\subsubsection{HelloWorld}
+
+\paragraph*{Le déroulement :}
+Dans la première semaine, nous voulions démarrer au plus vite le projet,
+nous avons décidé d'une organisation à très court terme, rapidement.
+Cela nous a permis d'avancer assez vite dans un premier temps, mais
+nous avons été rattrapés par ce manque de vision a long terme quand il
+a fallu passer à une autre partie. Il n'y a pas assez de communication
+au sein de l'équipe au sens où il n'y avait pas assez de réunions et on
+travaillait au jour le jour : on ne savait pas quelle tâche on allait
+faire après.
+
+Nous avons décidé de faire toute la partie A en entière y compris les
+objets, \nom{casts} et \nom{instanceof}, car nous avons jugé que la
+tâche était assez répétitive et ne prenait pas longtemps à faire en
+une fois, par rapport au temps que cela aurait pris en y revenant
+et en se remettant dans le bain à chaque fois.
+
+Après coup, nous pensons que c'était un bon choix, car nous n'avons
+par la suite quasiment pas eu besoin de revenir dessus (à part quelques
+petites erreurs). De plus cette partie a été réalisée en pair programming
+ce qui a grandement limité les erreurs.
+
+Nous n'avions en revanche pas commencé la partie B ce qui représente un
+léger retard sur le planning.
+
+\paragraph*{Le suivi :}
+Lors du suivi on a réalisé que notre organisation était très insuffisante.
+A l'aide des deux professeurs d'agilité, nous avons pu nous organiser
+et adapter la méthode agile aux contraintes de notre groupe.
+Par exemple, il était impossible de faire une mêlée matinale tous les 5
+car Guillaume avait cours la majorité des matinées. Nous organisions
+donc une réunion le soir, la majorité du temps lors d'une audioconférence.
+
+\paragraph*{Réaction au suivi :}
+
+Nous avons directement dédié une matinée à l'élaboration d'un paperboard
+en spécifiant les userstories. Même si les userstories étaient un peu
+décalées de la réalité, cela a permis d'avoir une meilleure vision
+du projet, et d'avoir un premier jet de la répartition des tâches
+
+
+\subsubsection{Sans objets (rendu intermédiaire)}
+
+
+\paragraph*{Le déroulement :}
+Dans cette nouvelle organisation, Vicente a continué d'implémenter
+les fonctions de la partie Maths. Nous avons divisé le reste de l'équipe
+en deux : Guillaume et Antoine s'occupaient de la partie B ainsi que des tests
+pour cette partie, Rémi et Xin, quant-à eux, s'occupaient de la partie C.
+Dans chacune des deux équipe, il y avait une personne qui s'occupait plutôt
+de l'implémentation et l'autre du test. Il était préférable que Guillaume
+soit sur les tests, au vu de ses disponibilités. Le reste des tâches
+fut décidé selon les affinités.
+
+L'organisation était bien meilleure, nous avions a la fois une bonne vision
+globale du projet, notamment grâce au planning des tâches, et les réunions
+nous permettaient de nous tenir au courant de l'avancement de chacun.
+Cette meilleure communication générale nous permettait d'échanger plus
+facilement lorsque nous rencontrions des erreurs.
+
+Par exemple, les erreurs trouvées sur la partie A dans la partie B
+remontaient très vite et étaient corrigées très rapidement. De même
+pour les erreurs trouvées sur la partie B grâce à la partie C. Il y
+avait une excellente entente et disponibilité de chacun, Et une
+volonté d'aider, afin que personne ne soit ralenti dans son travail.
+
+Dans l'ensemble, nous étions assez satisfait du rendu pour la partie B
+et les tests.  Pour la Partie C en revanche, la structure de test
+n'était pas encore bien mise en place, et la majorité des fichiers de
+tests écrits n'a pas pu être testé en pratique.
+
+Avec une meilleure organisation en début de semaine, nous aurions pu
+anticiper le problème et faire de l'automatisation des tests une
+priorité.
+
+\paragraph*{Le suivi :}
+Les mauvais résultats de la partie C n'avaient pas été anticipés,
+ceux-ci ont confirmé les lacunes au niveau des tests sur cette partie.
+
+\paragraph*{Réaction au suivi :}
+Pour remédier à la situation, des scripts de tests ont aussitôt été
+créés.
+
+\subsubsection{Avec objets (rendu final)}
+
+\paragraph*{Le déroulement :}
+Dès le départ, nous avons fait une réunion pour actualiser nos
+attentes. Nous avons donc décidé, afin d'avoir une marge pour les
+tests, de ne pas faire les \nom{casts} et \nom{instanceof}.
+
+Lors de cette décision, il a aussi été décidé que Guillaume rejoigne
+Vicente sur la partie Maths, car il y rencontrait des problèmes, et
+que les prévisions faites allaient normalement être respectées.
+
+Le mercredi, Rémi est tombé malade, assez durement, et a du rester au
+lit pendant pratiquement 3 jours. Il s'agissait d'un risque que l'on
+avait envisagé, mais que l'on avait négligé. Le problème fut que
+l'implémentation de la Partie C n'a pas vraiment avancé pendant ce
+temps.  Au vu de la disposition que l'on avait adopté, il était
+difficile pour les autres membres de l'équipe de trouver du temps pour
+se plonger dans cette partie parallèlement aux autres
+activités. Malheureusement, il s'agissait d'une tâche critique, sur
+laquelle nous avions très peu de marge. Nous avons donc décidé de
+sacrifier une partie de la documentation de la partie C.
+
+Cela a tout-de-même mis en évidence qu'au moins une partie du projet
+reposait trop sur un seul membre. Nous aurions pu palier à ce
+problème en utilisant le pair programming, si il y avait eu moins
+de contrainte au niveau de l'équipe.
+
+\section{Bilan}
+
+\subsection{Réactions le jour du rendu}
+
+Nous avons pu arrêter de coder et rendre quelque chose de propre le
+dernier jour, on était effectivement dans les temps par rapport aux
+dernières prévisions.
+
+\subsection{Conclusion}
+
+Globalement, nous sommes satisfaits, le projet s'est très bien passé.
+Nous avons rencontré des difficultés que nous avons essayé de gérer
+du mieux possible. L'ambiance au sein du groupe a toujours été
+au beau fixe. La motivation et l'enthousiasme étaient au rendez
+vous. On note seulement deux moments difficiles : en début de projet et
+lorsque Rémi était malade. Le stress et la fatigue n'étaient pas
+particulièrement présents. Nous n'avons pas de regrets particulier.
+Compte tenu des circonstances, nous pensons que nous n'aurions pas pu
+obtenir un meilleur résultat.
+
+
+\section{Enseignements}
+
+
+
+\begin{itemize}
+\item Organisation : Le projet nous a appris à organiser
+un groupe de 5, c'était pour nous le premier projet de
+cette envergure.
+\item Méthode agile : Le projet nous a initié à la méthode
+agile qui est une nouvelle méthodologie de travail pour nous
+, mêlées, user stories, scrum master...
+\item S'adapter : Le projet nous a appris à nous adapter
+à la diversité des personnalités et des méthodes de
+travail de chacun.
+\item Faire face a l'imprévu : Le projet nous a appris à prendre
+des décisions dans l'urgence.
+\item Etre détendu : le meilleur moyen de surmonter les quelques
+problèmes qu'on a eu était de ne pas stresser.
+\item Impliqué : Il était important de se donner a fond dans le
+projet et d'être concentré.
+\item Autonome : La quantité de travail nous pousse à prendre
+des responsabilités et prendre des choix sur notre partie.
+\item Communication : Le projet nous a appris à présenter ce
+que l'on a fait et avoir une communication presque professionnelle
+à l'intérieur d'un groupe.
+\item Role des tests : Dans ce projet, il faut être très rigoureux
+au niveau des tests, il s'agit d'une étape clé avant de rendre un
+produit final.
+\item Découverte de nouveaux outils : Nous avons découvert l'outil
+maven pour la compilation, cobertura, JUnit pour les tests, antlr
+pour la génération de grammaire, et netbeans comme IDE.
+\item Théorie des langages : Nous avons parfait nos compétentes
+en assembleur, et nous avons une meilleure idée du fonctionnement
+d'un compilateur, qui est un outil que nous utilisons au quotidien.
+\end{itemize}
+
+
+\end{document}
+
+% TODO : parler du scrum master
