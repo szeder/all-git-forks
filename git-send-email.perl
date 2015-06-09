@@ -978,6 +978,9 @@ sub sanitize_address {
 	# remove garbage after email address
 	$recipient =~ s/(.*>).*$/$1/;
 
+	# remove leading and trailing whitespace
+	$recipient =~ s/^\s+|\s+$//g;
+
 	my ($recipient_name, $recipient_addr) = ($recipient =~ /^(.*?)\s*(<.*)/);
 
 	if (not $recipient_name) {
