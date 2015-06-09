@@ -77,6 +77,9 @@ bisect_start() {
 	orig_args=$(git rev-parse --sq-quote "$@")
 	bad_seen=0
 	eval=''
+	# start_bad_good is used to detect if we did a 
+	# 'git bisect start bad_rev good_rev'
+	start_bad_good=0
 	if test "z$(git rev-parse --is-bare-repository)" != zfalse
 	then
 		mode=--no-checkout
@@ -101,6 +104,9 @@ bisect_start() {
 				die "$(eval_gettext "'\$arg' does not appear to be a valid revision")"
 				break
 			}
+
+			start_bad_good=1
+
 			case $bad_seen in
 			0) state='bad' ; bad_seen=1 ;;
 			*) state='good' ;;
@@ -172,6 +178,11 @@ bisect_start() {
 	} &&
 	git rev-parse --sq-quote "$@" >"$GIT_DIR/BISECT_NAMES" &&
 	eval "$eval true" &&
+	if test $start_bad_good -eq 1 && test ! -s "$GIT_DIR/BISECT_TERMS"
+	then
+		echo "$NAME_BAD" >"$GIT_DIR/BISECT_TERMS" &&
+		echo "$NAME_GOOD" >>"$GIT_DIR/BISECT_TERMS"
+	fi &&
 	echo "git bisect start$orig_args" >>"$GIT_DIR/BISECT_LOG" || exit
 	#
 	# Check if we can proceed to the next bisect state.
@@ -232,6 +243,7 @@ bisect_skip() {
 bisect_state() {
 	bisect_autostart
 	state=$1
+	check_and_set_terms $state
 	case "$#,$state" in
 	0,*)
 		die "$(gettext "Please call 'bisect_state' with at least one argument.")" ;;
@@ -291,15 +303,17 @@ bisect_next_check() {
 		: bisect without $NAME_GOOD...
 		;;
 	*)
-
+		bad_syn=$(bisect_voc bad)
+		good_syn=$(bisect_voc good)
 		if test -s "$GIT_DIR/BISECT_START"
 		then
-			gettextln "You need to give me at least one good and one bad revision.
-(You can use \"git bisect bad\" and \"git bisect good\" for that.)" >&2
+
+			eval_gettextln "You need to give me at least one \$bad_syn and one \$good_syn revision.
+(You can use \"git bisect \$bad_syn\" and \"git bisect \$good_syn\" for that.)" >&2
 		else
-			gettextln "You need to start by \"git bisect start\".
-You then need to give me at least one good and one bad revision.
-(You can use \"git bisect bad\" and \"git bisect good\" for that.)" >&2
+			eval_gettextln "You need to start by \"git bisect start\".
+You then need to give me at least one \$good_syn and one \$bad_syn revision.
+(You can use \"git bisect \$bad_syn\" and \"git bisect \$good_syn\" for that.)" >&2
 		fi
 		exit 1 ;;
 	esac
@@ -402,6 +416,7 @@ bisect_clean_state() {
 	rm -f "$GIT_DIR/BISECT_LOG" &&
 	rm -f "$GIT_DIR/BISECT_NAMES" &&
 	rm -f "$GIT_DIR/BISECT_RUN" &&
+	rm -f "$GIT_DIR/BISECT_TERMS" &&
 	# Cleanup head-name if it got left by an old version of git-bisect
 	rm -f "$GIT_DIR/head-name" &&
 	git update-ref -d --no-deref BISECT_HEAD &&
@@ -422,6 +437,8 @@ bisect_replay () {
 			rev="$command"
 			command="$bisect"
 		fi
+		get_terms
+		check_and_set_terms "$command"
 		case "$command" in
 		start)
 			cmd="bisect_start $rev"
@@ -499,11 +516,48 @@ bisect_log () {
 	cat "$GIT_DIR/BISECT_LOG"
 }
 
+get_terms () {
+	if test -s "$GIT_DIR/BISECT_TERMS"
+	then
+		NAME_BAD="$(sed -n 1p "$GIT_DIR/BISECT_TERMS")"
+		NAME_GOOD="$(sed -n 2p "$GIT_DIR/BISECT_TERMS")"
+	fi
+}
+
+check_and_set_terms () {
+	cmd="$1"
+	case "$cmd" in
+	bad|good)
+		if test -s "$GIT_DIR/BISECT_TERMS" -a "$cmd" != "$NAME_BAD" -a "$cmd" != "$NAME_GOOD"
+		then
+			die "$(eval_gettext "Invalid command: you're currently in a \$NAME_BAD/\$NAME_GOOD bisect.")"
+		fi
+		case "$cmd" in
+		bad|good)
+			if test ! -s "$GIT_DIR/BISECT_TERMS"
+			then
+				echo "bad" >"$GIT_DIR/BISECT_TERMS" &&
+				echo "good" >>"$GIT_DIR/BISECT_TERMS"
+			fi
+			NAME_BAD="bad"
+			NAME_GOOD="good" ;;
+		esac ;;
+	esac
+}
+
+bisect_voc () {
+	case "$1" in
+	bad) echo "bad" ;;
+	good) echo "good" ;;
+	esac
+}
+
 case "$#" in
 0)
 	usage ;;
 *)
 	cmd="$1"
+	get_terms
 	shift
 	case "$cmd" in
 	help)
