@@ -249,6 +249,10 @@ def p4_reopen(type, f):
 def p4_move(src, dest):
     p4_system(["move", "-k", wildcard_encode(src), wildcard_encode(dest)])
 
+def p4_last_change():
+    results = p4CmdList(["changes", "-m", "1"])
+    return int(results[0]['change'])
+
 def p4_describe(change):
     """Make sure it returns a valid result by checking for
        the presence of field "time".  Return a dict of the
@@ -746,39 +750,44 @@ def p4ChangesForPaths(depotPaths, changeRange, block_size):
     assert depotPaths
     assert block_size
 
+    # We need the most recent change list number since we can't just
+    # use #head in block mode.
+    lastChange = p4_last_change()
+
     # Parse the change range into start and end
     if changeRange is None or changeRange == '':
-        changeStart = '@1'
-        changeEnd = '#head'
+        changeStart = 1
+        changeEnd = lastChange
     else:
         parts = changeRange.split(',')
         assert len(parts) == 2
-        changeStart = parts[0]
-        changeEnd = parts[1]
+        changeStart = int(parts[0][1:])
+        if parts[1] == '#head':
+            changeEnd = lastChange
+        else:
+            changeEnd = int(parts[1])
 
     # Accumulate change numbers in a dictionary to avoid duplicates
     changes = {}
 
     for p in depotPaths:
         # Retrieve changes a block at a time, to prevent running
-        # into a MaxScanRows error from the server.
-        start = changeStart
-        end = changeEnd
-        get_another_block = True
-        while get_another_block:
-            new_changes = []
+        # into a MaxResults/MaxScanRows error from the server.
+
+        while True:
+            end = min(changeEnd, changeStart + block_size)
+
             cmd = ['changes']
-            cmd += ['-m', str(block_size)]
-            cmd += ["%s...%s,%s" % (p, start, end)]
+            cmd += ["%s...@%d,%d" % (p, changeStart, end)]
+
             for line in p4_read_pipe_lines(cmd):
                 changeNum = int(line.split(" ")[1])
-                new_changes.append(changeNum)
                 changes[changeNum] = True
-            if len(new_changes) == block_size:
-                get_another_block = True
-                end = '@' + str(min(new_changes))
-            else:
-                get_another_block = False
+
+            if end >= changeEnd:
+                break
+
+            changeStart = end + 1
 
     changelist = changes.keys()
     changelist.sort()
