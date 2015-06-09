@@ -21,6 +21,9 @@
 
 volatile show_early_output_fn_t show_early_output;
 
+static const char *name_bad;
+static const char *name_good;
+
 char *path_name(const struct name_path *path, const char *name)
 {
 	const struct name_path *p;
@@ -2073,14 +2076,22 @@ void parse_revision_opt(struct rev_info *revs, struct parse_opt_ctx_t *ctx,
 	ctx->argc -= n;
 }
 
+extern void read_bisect_terms(const char **bad, const char **good);
+
 static int for_each_bad_bisect_ref(const char *submodule, each_ref_fn fn, void *cb_data)
 {
-	return for_each_ref_in_submodule(submodule, "refs/bisect/bad", fn, cb_data);
+	char bisect_refs_path[256];
+	strcpy(bisect_refs_path, "refs/bisect/");
+	strcat(bisect_refs_path, name_bad);
+	return for_each_ref_in_submodule(submodule, bisect_refs_path, fn, cb_data);
 }
 
 static int for_each_good_bisect_ref(const char *submodule, each_ref_fn fn, void *cb_data)
 {
-	return for_each_ref_in_submodule(submodule, "refs/bisect/good", fn, cb_data);
+	char bisect_refs_path[256];
+	strcpy(bisect_refs_path, "refs/bisect/");
+	strcat(bisect_refs_path, name_good);
+	return for_each_ref_in_submodule(submodule, bisect_refs_path, fn, cb_data);
 }
 
 static int handle_revision_pseudo_opt(const char *submodule,
@@ -2109,6 +2120,7 @@ static int handle_revision_pseudo_opt(const char *submodule,
 		handle_refs(submodule, revs, *flags, for_each_branch_ref_submodule);
 		clear_ref_exclusion(&revs->ref_excludes);
 	} else if (!strcmp(arg, "--bisect")) {
+		read_bisect_terms(&name_bad, &name_good);
 		handle_refs(submodule, revs, *flags, for_each_bad_bisect_ref);
 		handle_refs(submodule, revs, *flags ^ (UNINTERESTING | BOTTOM), for_each_good_bisect_ref);
 		revs->bisect = 1;
