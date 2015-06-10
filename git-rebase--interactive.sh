@@ -834,6 +834,100 @@ add_exec_commands () {
 	mv "$1.new" "$1"
 }
 
+# Print the list of the SHA-1 of the commits
+# from stdin to stdout
+todo_list_to_sha_list () {
+	git stripspace --strip-comments |
+	while read -r command sha1 rest
+	do
+		case $command in
+		"$comment_char"*|''|noop|x|"exec")
+			;;
+		*)
+			printf "%s\n" "$sha1"
+			;;
+		esac
+	done
+}
+
+# Use warn for each line of a file
+# $1: file
+warn_file () {
+	while read -r line
+	do
+		warn " - $line"
+	done <"$1"
+}
+
+# Check if the user dropped some commits by mistake
+# Behaviour determined by rebase.missingCommitsCheck.
+check_todo_list () {
+	raiseError=f
+
+	checkLevel=$(git config --get rebase.missingCommitsCheck)
+	checkLevel=${checkLevel:-ignore}
+	# Don't be case sensitive
+	checkLevel=$(echo "$checkLevel" | tr 'A-Z' 'a-z')
+
+	case "$checkLevel" in
+	warn|error)
+		# Get the SHA-1 of the commits
+		todo_list_to_sha_list <"$todo".backup >"$todo".oldsha1
+		todo_list_to_sha_list <"$todo" >"$todo".newsha1
+
+		# Sort the SHA-1 and compare them
+		sort -u "$todo".oldsha1 >"$todo".oldsha1+
+		mv "$todo".oldsha1+ "$todo".oldsha1
+		sort -u "$todo".newsha1 >"$todo".newsha1+
+		mv "$todo".newsha1+ "$todo".newsha1
+		comm -2 -3 "$todo".oldsha1 "$todo".newsha1 >"$todo".miss
+
+		# Warn about missing commits
+		if test -s "$todo".miss
+		then
+			test "$checkLevel" = error && raiseError=t
+
+			# Make the list user-friendly
+			opt="--no-walk=sorted --format=oneline --abbrev-commit --stdin"
+			git rev-list $opt <"$todo".miss >"$todo".miss+
+			mv "$todo".miss+ "$todo".miss
+
+			warn "Warning: some commits may have been dropped" \
+				"accidentally."
+			warn "Dropped commits (newer to older):"
+			warn_file "$todo".miss
+			warn "To avoid this message, use \"drop\" to" \
+				"explicitly remove a commit."
+			warn
+			warn "Use 'git --config rebase.missingCommitsCheck' to change" \
+				"the level of warnings."
+			warn "The possible behaviours are: ignore, warn, error."
+			warn
+		fi
+		;;
+	ignore)
+		;;
+	*)
+		warn "Unrecognized setting $checkLevel for option" \
+			"rebase.missingCommitsCheck. Ignoring."
+		;;
+	esac
+
+	if test $raiseError = t
+	then
+		# Checkout before the first commit of the
+		# rebase: this way git rebase --continue
+		# will work correctly as it expects HEAD to be
+		# placed before the commit of the next action
+		GIT_REFLOG_ACTION="$GIT_REFLOG_ACTION: checkout $onto_name"
+		output git checkout $onto || die_abort "could not detach HEAD"
+		git update-ref ORIG_HEAD $orig_head
+
+		warn "You can fix this with 'git rebase --edit-todo'."
+		die "Or you can abort the rebase with 'git rebase --abort'."
+	fi
+}
+
 # The whole contents of this file is run by dot-sourcing it from
 # inside a shell function.  It used to be that "return"s we see
 # below were not inside any function, and expected to return
@@ -1078,6 +1172,8 @@ has_action "$todo" ||
 	return 2
 
 expand_todo_ids
+
+check_todo_list
 
 test -d "$rewritten" || test -n "$force_rebase" || skip_unnecessary_picks
 
