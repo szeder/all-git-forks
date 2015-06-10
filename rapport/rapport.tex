@@ -1,4 +1,4 @@
-\documentclass[a4paper, 12pt]{scrartcl}
+\documentclass[a4paper, 12pt]{article}
 
 
 \usepackage[utf8]{inputenc}
@@ -44,8 +44,7 @@
 \pagenumbering{arabic}
 \graphicspath{{images/}}
 
-\title{Rapport du projet de spécialité} 
-\subtitle{Contribution au logiciel libre Git} 
+\title{Rapport du projet de spécialité:\\ Contribution au logiciel libre Git} 
 \author{Antoine Delaite \and Louis--Alexandre Stuber \and Guillaume Pages \and Rémi Galan-Alphonso \and Rémi Lespinet}
 \date{}
 
@@ -59,32 +58,62 @@ Le projet de spécialité a été un challenge intéressant. Les quatres semaine
 
 \section{Présentation du logiciel Git}
 
-\subsection{Le logiciel git}
+\subsection{Le logiciel Git}
 
-Git est un logiciel de versionnage très populaire parmi les developpeurs.
+Git est un logiciel de versionnage très populaire parmi les developpeurs. Il permet de gérer le travail de plusieurs personnes en parrallèle sur un même projet, ainsi que d'archiver toutes les modifications, pour les réordonner, les éditer ou les supprimmer par la suite. Git fonctionne grâce à un système de "commit", instantané du répertoire courant, dont 
 
-\subsection{Les contraintes}
+\subsection{Les contraintes de Git}
+
+Git est un logiciel utilisé par des millions de developpeurs (Github, le service web d'hebergement service web d'hébergement et de gestion de développement de logiciels utilisant Git compte 9 millions d'utilisateurs). Par conséquent, les modifications apportées sur ce logiciel peuvent avoir d'importantes répercutions. Ainsi, l'une des priorités des contributeurs est de conserver la rétro-compatibilité. En effet de nombreux projet reposent sur Git, et sont gérés au moins en partie par des scripts automatiques; un défaut de rétro-compatibilité engendrerait donc un gros travail de mise à jour des scripts dans tous ces projets. 
 
 
 \section{Nos contributions}
 
-\subsection{toto}
+\subsection{git am --3Way}
+
+Notre première contribution a été de permettre l'ajout d'une variable de configuration pour une option très courante afin que les utilisateurs ne soient pas obligés de la retaper à chaque fois.
+
+\subsection{git send-email}
+
+Cette contribution a pour but d'autoriser l'utilisation de la commande git send-email en entrant les addresses mails séparées par des virgules (ce qui est le format utilisé par la plupart des client mails). Cette modification permet donc à l'utilisateur de copier-coller une liste d'addresses depuis un mail vers la commande git send-email au lieu de devoir taper "--to:" devant chacune des addresses.
+
+\subsection{git rebase --interactive drop}
+
+La commande git rebase --interactive permet d'éditer l'historique des commits, en les déplaçant les uns par rapport aux autres.
+
+\subsection{git status}
+
+
+
+
+\subsection{git bisect}
+
+
 
 \section{La communauté Git}
 
-\subsection{Junio, Jeff and Matt}
+\subsection{La mailing-list}
 
-\section{La communauté Git}
-
-\subsection{Junio, Jeff and Matt}
 
 \section{Enseignements tirés}
 
 \subsection{Enseignements techniques}
 
-\subsection{Agilité}
+Ce premier contact avec le developpement collaboratif de logiciels libres nous a permis de mieux comprendre les enjeux inhérents à des projets de cet ampleur. 
+Ce projet nous permis de travailler avec une importante base de code existante. La lecture du code, de la documentation, et des API a pris bien plus de temps que coder effectivement. Malgré celà, notre manque d'expérience sur ce projet a engendré de nombreuses erreurs de notre part. 
+
+\subsection{Adaptation des méthodes agiles au logiciel libre}
+
+Sur certains points, ce projet ne se prête absolument pas à sa réalisation avec des méthodes agiles: 
+\begin{itemize}
+\item les méthodes agiles mettent le client, et sa collaboration avec les developpeurs au coeur du processus de développement, alors que git n'a pas de client et la personne chargée de la maintenance du logiciel, la plus à-même de prendre des décisions, vit en décalage horaire avec nous. 
+\item les méthodes agiles favorisent les logiciels qui fonctionnent plutôt qu'une documentation exhaustive.
+\item troisième item.
+\end{itemize}
+
 
 \section{Conclusion}
+
 
 
 \end{document}
