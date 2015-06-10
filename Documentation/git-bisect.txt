@@ -133,6 +133,25 @@ You must run `git bisect start` without commits as argument and run
 `git bisect new <rev>`/`git bisect old <rev>...` after to add the
 commits.
 
+Alternative terms: use your own terms
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If the builtins terms bad/good and new/old do not satisfy you, you can
+set your own terms.
+
+------------------------------------------------
+git bisect terms term1 term2
+------------------------------------------------
+
+This command has to be used before a bisection has started.
+The term1 must be associated with the latest revisions and term2 with the 
+ancestors of term1. 
+
+Only the first bisection following the 'git bisect terms' will use the terms.
+If you mistyped one of the terms you can do again 'git bisect terms term1
+term2'.
+
+
 Bisect visualize
 ~~~~~~~~~~~~~~~~
 
