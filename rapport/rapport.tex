@@ -60,12 +60,16 @@ Le projet de spécialité a été un challenge intéressant. Les quatres semaine
 
 \subsection{Le logiciel Git}
 
-Git est un logiciel de versionnage très populaire parmi les developpeurs. Il permet de gérer le travail de plusieurs personnes en parrallèle sur un même projet, ainsi que d'archiver toutes les modifications, pour les réordonner, les éditer ou les supprimmer par la suite. Git fonctionne grâce à un système de "commit", instantané du répertoire courant, dont 
+Git est un logiciel de versionnage très populaire parmi les developpeurs. Il permet de gérer le travail de plusieurs personnes en parrallèle sur un même projet, ainsi que d'archiver toutes les modifications, pour les réordonner, les éditer ou les supprimmer par la suite.
+Git fonctionne grâce à un système de commit, instantané du répertoire courant, qui permet de sauvegarder des ensembles de modifications indépendamment les uns des autres pour pouvoir par la suite les archiver, les retravailler ou les réordonner.
 
 \subsection{Les contraintes de Git}
 
-Git est un logiciel utilisé par des millions de developpeurs (Github, le service web d'hebergement service web d'hébergement et de gestion de développement de logiciels utilisant Git compte 9 millions d'utilisateurs). Par conséquent, les modifications apportées sur ce logiciel peuvent avoir d'importantes répercutions. Ainsi, l'une des priorités des contributeurs est de conserver la rétro-compatibilité. En effet de nombreux projet reposent sur Git, et sont gérés au moins en partie par des scripts automatiques; un défaut de rétro-compatibilité engendrerait donc un gros travail de mise à jour des scripts dans tous ces projets. 
-De plus, le code écrit doit être d'une qualité irré
+Git est un logiciel utilisé par des millions de developpeurs (Github, le service web d'hebergement service web d'hébergement et de gestion de développement de logiciels utilisant Git compte 9 millions d'utilisateurs).
+Par conséquent, les modifications apportées sur ce logiciel peuvent avoir d'importantes répercutions.
+Ainsi, l'une des priorités des contributeurs est de conserver la rétro-compatibilité.
+En effet de nombreux projet reposent sur Git, et sont gérés au moins en partie par des scripts automatiques; un défaut de rétro-compatibilité engendrerait donc un gros travail de mise à jour des scripts dans tous ces projets. 
+De plus, le code écrit doit être d'une qualité irréprochable afin que les prochains contributeurs soient en mesure de le reprendre facilement.
 
 \section{Nos contributions}
 
@@ -84,7 +88,11 @@ La commande git rebase --interactive permet d'éditer l'historique des commits, 
 \subsection{git status}
 
 La commande git status affiche l'état du working tree (copie de travail).
-Forts de notre expérience sur la commande git rebase -i, nous nous sommes lancés dans l'amélioration du message renvoyé par git status lorsqu'un rebase (rebasage) interactif est en cours. Dans un premier temps, nous souhaitions ajouter une option --status à la commande git rebase afin d'afficher l'état du rebasage en cours.  Cependant, la communauté était contre l'idée de complexifier le logiciel en rajoutant des options, et un consensus a émergé pour modifier simplement la commande git status pour qu'elle ait un comportement dépendant du contexte et que pendant un rebase, elle affiche son état.
+Forts de notre expérience sur la commande git rebase -i, nous nous sommes lancés dans l'amélioration du message renvoyé par git status lorsqu'un rebase (rebasage) interactif est en cours.
+Dans un premier temps, nous souhaitions ajouter une option --status à la commande git rebase afin d'afficher l'état du rebasage en cours. 
+Cependant, la communauté était contre l'idée de complexifier le logiciel en rajoutant des options, et un consensus a émergé pour modifier simplement la commande git status pour qu'elle ait un comportement dépendant du contexte et que pendant un rebase, elle affiche son état.
+
+
 
 
 \subsection{git bisect}
@@ -93,9 +101,13 @@ Forts de notre expérience sur la commande git rebase -i, nous nous sommes lanc�
 
 \section{La communauté Git}
 
-Le developpement de Git est supervisé par Junio C Hamano, qui s'occupe de synchroniser le travail des autres contributeurs. L'immense majorité des contributeurs sont des utilisateurs expérimentés de Git, .
+Le developpement de Git est supervisé par Junio C Hamano, qui s'occupe de synchroniser le travail des autres contributeurs.
+L'immense majorité des contributeurs sont des utilisateurs expérimentés de Git, alors que l'une de nos motivation principale dans ce projet était d'améliorer notre maitrise de Git.
+Dès lors, notre point de vue sur le logiciel est très different de celui des autres contributeur, mais pas ininteressant pour autant: nous connaissons mieux les obstacles rencontrées dans l'apprentissage de Git, et donc imaginer des solutions pour les contourner.
 
-La communauté Git s'organise autour d'une mailing liste, laquelle reçoit les rapports de bug, les propositions de patchs et les revues de code.
+La communauté Git s'organise autour d'une mailing liste, laquelle reçoit les rapports de bug, les propositions de patchs et les revues de code. Ainsi, tout le monde a accès à toutes les informations, et peut donner son avis, ou proposer des modification.
+Ce modèle sans véritable hierarchie est donc très égalitaire, toutefois, il est assez déroutant au début, puisqu'il n'y a pas véritablement de personne qui fasse référence.
+Cela impose que les décisions sont prises par consensus et il faut être capable de savoir quand une idée est rejetée, alors que personne ne prend jamais la responsabilité de le dire explicitement.
 
 \subsection{La mailing-list}
 
@@ -111,7 +123,9 @@ Ce projet nous permis de travailler avec une importante base de code existante. 
 
 \subsection{Adaptation des méthodes agiles au logiciel libre}
 
-La méthode agile consiste à essayer de réduire la partie gestion de projet au minimum, afin de se concentrer sur l'essentiel du travail du développeur: le code. Etant donnée le temps imparti pour le projet, nous avons réalisés trois sprints. Au début de chaque sprint, nous avons défini des objectifs à réaliser, toutefois, notre définition du mot fini a évolué au fur et à mesure du projet afin de s'adapter aux besoins de l'équipe.
+La méthode agile consiste à essayer de réduire la partie gestion de projet au minimum, afin de se concentrer sur l'essentiel du travail du développeur: le code.
+Etant donnée le temps imparti pour le projet, nous avons réalisés trois sprints.
+Au début de chaque sprint, nous avons défini des objectifs à réaliser, toutefois, notre définition du mot fini a évolué au fur et à mesure du projet afin de s'adapter aux besoins de l'équipe.
 
 Sur certains points, notamment l'adaptation, la méthode agile nous a énormément aidé. En effet, il aurait été impossible de prévoir au début du projet les contributions à réaliser. 
 
