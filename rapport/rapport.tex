@@ -77,21 +77,14 @@ Notre première contribution a été de permettre l'ajout d'une variable de conf
 
 Cette contribution a pour but d'autoriser l'utilisation de la commande git send-email en entrant les addresses mails séparées par des virgules (ce qui est le format utilisé par la plupart des client mails). Cette modification permet donc à l'utilisateur de copier-coller une liste d'addresses depuis un mail vers la commande git send-email au lieu de devoir taper "--to:" devant chacune des addresses.
 
-\subsection{git rebase --interactive}
+\subsection{git rebase --interactive drop}
 
-La commande git rebase --interactive permet d'éditer l'historique des commits, en les déplaçant les uns par rapport aux autres, de les fusionner, de les modifier... à partir d'une liste d'actions qui a été modifiée par l'utilisateur.
-
-Cette contribution a ajouté :
-\begin{itemize}
-\item la commande \textit{drop}, qui permet d'enlever des commits explicitement au lieu d'enlever ou de commenter la ligne.
-\item la variable de configuration \textit{rebase.missingCommitCheck} et un test d'intégrité, ce test vérifie qu'aucun commit n'a disparu. Cette variable de configuration permet de réguler le comportement de ce test d'intégrité. Ce test permet d'éviter des pertes d'informations silencieuses (par exemple on a enlevé une ligne par erreur).
-\item des tests d'intégrité statiques, qui permettent de vérifier à l'avance l'intégrité des commandes et des commits de la liste d'actions de l'utilisateur. Ainsi on évite de lever les erreurs à la volée et l'utilisateur peut ainsi corriger ses erreurs avant qu'une seule des actions ne soit effectuée.
-\end{itemize}
+La commande git rebase --interactive permet d'éditer l'historique des commits, en les déplaçant les uns par rapport aux autres.
 
 \subsection{git status}
 
 La commande git status affiche l'état du working tree (copie de travail).
-Fort de notre (petite) expérience sur la commande git rebase -i, nous nous sommes lancés dans l'amélioration du message renvoyé par git status lorsqu'un rebase (rebasage) interactif est en cours. Dans un premier temps, nous souhaitions ajouter une option --status à la commande git rebase afin d'afficher l'état du rebasage en cours.  Cependant, la communauté était contre l'idée de complexifier le logiciel en rajoutant des options, et un consensus a émergé pour modifier simplement la commande git status pour qu'elle ait un comportement dépendant du contexte et que pendant un rebase, elle affiche son état.
+Forts de notre expérience sur la commande git rebase -i, nous nous sommes lancés dans l'amélioration du message renvoyé par git status lorsqu'un rebase (rebasage) interactif est en cours. Dans un premier temps, nous souhaitions ajouter une option --status à la commande git rebase afin d'afficher l'état du rebasage en cours.  Cependant, la communauté était contre l'idée de complexifier le logiciel en rajoutant des options, et un consensus a émergé pour modifier simplement la commande git status pour qu'elle ait un comportement dépendant du contexte et que pendant un rebase, elle affiche son état.
 
 
 \subsection{git bisect}
@@ -100,7 +93,7 @@ Fort de notre (petite) expérience sur la commande git rebase -i, nous nous somm
 
 \section{La communauté Git}
 
-Le developpement de Git est supervisé par Junio C Hamano, qui s'occupe de synchroniser le travail des autres contributeurs. 
+Le developpement de Git est supervisé par Junio C Hamano, qui s'occupe de synchroniser le travail des autres contributeurs. L'immense majorité des contributeurs sont des utilisateurs expérimentés de Git, .
 
 La communauté Git s'organise autour d'une mailing liste, laquelle reçoit les rapports de bug, les propositions de patchs et les revues de code.
 
@@ -118,13 +111,14 @@ Ce projet nous permis de travailler avec une importante base de code existante. 
 
 \subsection{Adaptation des méthodes agiles au logiciel libre}
 
-Sur certains points, 
+La méthode agile consiste à essayer de réduire la partie gestion de projet au minimum, afin de se concentrer sur l'essentiel du travail du développeur: le code. Etant donnée le temps imparti pour le projet, nous avons réalisés trois sprints. Au début de chaque sprint, nous avons défini des objectifs à réaliser, toutefois, notre définition du mot fini a évolué au fur et à mesure du projet afin de s'adapter aux besoins de l'équipe.
+
+Sur certains points, notamment l'adaptation, la méthode agile nous a énormément aidé. En effet, il aurait été impossible de prévoir au début du projet les contributions à réaliser. 
 
 D'un autre coté, certaines caractéristiques de ce projet ne se prêtent absolument pas à sa réalisation avec des méthodes agiles: 
 \begin{itemize}
 \item les méthodes agiles mettent le client, et sa collaboration avec les developpeurs au coeur du processus de développement, alors que git n'a pas de client et la personne chargée de la maintenance du logiciel, la plus à-même de prendre des décisions, vit en décalage horaire avec nous. 
 \item les méthodes agiles favorisent les logiciels qui fonctionnent plutôt qu'une documentation exhaustive. 
-\item troisième item.
 \end{itemize}
 
 
