@@ -1,6 +1,6 @@
 #!/bin/sh
 
-USAGE='[help|start|bad|good|new|old|skip|next|reset|visualize|replay|log|run]'
+USAGE='[help|start|bad|good|new|old|terms|skip|next|reset|visualize|replay|log|run]'
 LONG_USAGE='git bisect help
 	print this long help message.
 git bisect start [--no-checkout] [<bad> [<good>...]] [--] [<pathspec>...]
@@ -11,6 +11,8 @@ git bisect (bad|new) [<rev>]
 git bisect (good|old) [<rev>...]
 	mark <rev>... known-good revisions/
 		revisions before change in a given property.
+git bisect terms term1 term2
+	set up term1 and term2 as bisection terms.
 git bisect skip [(<rev>|<range>)...]
 	mark <rev>... untestable revisions.
 git bisect next
@@ -79,9 +81,16 @@ bisect_start() {
 	orig_args=$(git rev-parse --sq-quote "$@")
 	bad_seen=0
 	eval=''
-	# start_bad_good is used to detect if we did a 
-	# 'git bisect start bad_rev good_rev'
-	start_bad_good=0
+	# terms_defined is used to detect if we did a
+	# 'git bisect start bad_rev good_rev' or if the user
+	# defined his own terms with git bisect terms
+	terms_defined=0
+	if test -s "$GIT_DIR/TERMS_DEFINED"
+	then
+		terms_defined=1
+		get_terms
+		rm -rf "$GIT_DIR/TERMS_DEFINED"
+	fi
 	if test "z$(git rev-parse --is-bare-repository)" != zfalse
 	then
 		mode=--no-checkout
@@ -107,7 +116,7 @@ bisect_start() {
 				break
 			}
 
-			start_bad_good=1
+			terms_defined=1
 
 			case $bad_seen in
 			0) state=$NAME_BAD ; bad_seen=1 ;;
@@ -180,7 +189,7 @@ bisect_start() {
 	} &&
 	git rev-parse --sq-quote "$@" >"$GIT_DIR/BISECT_NAMES" &&
 	eval "$eval true" &&
-	if test $start_bad_good -eq 1 && test ! -s "$GIT_DIR/BISECT_TERMS"
+	if test $terms_defined -eq 1 && test ! -s "$GIT_DIR/BISECT_TERMS"
 	then
 		echo "$NAME_BAD" >"$GIT_DIR/BISECT_TERMS" &&
 		echo "$NAME_GOOD" >>"$GIT_DIR/BISECT_TERMS"
@@ -419,6 +428,7 @@ bisect_clean_state() {
 	rm -f "$GIT_DIR/BISECT_NAMES" &&
 	rm -f "$GIT_DIR/BISECT_RUN" &&
 	rm -f "$GIT_DIR/BISECT_TERMS" &&
+	rm -f "$GIT_DIR/TERMS_DEFINED" &&
 	# Cleanup head-name if it got left by an old version of git-bisect
 	rm -f "$GIT_DIR/head-name" &&
 	git update-ref -d --no-deref BISECT_HEAD &&
@@ -529,7 +539,8 @@ get_terms () {
 check_and_set_terms () {
 	cmd="$1"
 	case "$cmd" in
-	bad|good|new|old)
+	skip) ;;
+	*)
 		if test -s "$GIT_DIR/BISECT_TERMS" && test "$cmd" != "$NAME_BAD" && test "$cmd" != "$NAME_GOOD"
 		then
 			die "$(eval_gettext "Invalid command: you're currently in a \$NAME_BAD/\$NAME_GOOD bisect.")"
@@ -562,6 +573,21 @@ bisect_voc () {
 	esac
 }
 
+bisect_terms () {
+	test $# -eq 2 ||
+	die "You need to give me at least two arguments"
+
+	if ! test -s "$GIT_DIR/BISECT_START"
+	then
+		echo $1 >"$GIT_DIR/BISECT_TERMS" &&
+		echo $2 >>"$GIT_DIR/BISECT_TERMS" &&
+		echo "1" > "$GIT_DIR/TERMS_DEFINED"
+	else
+		die "A bisection has already started, please use "\
+		"'git bisect reset' to restart and change the terms"
+	fi
+}
+
 case "$#" in
 0)
 	usage ;;
@@ -574,7 +600,7 @@ case "$#" in
 		git bisect -h ;;
 	start)
 		bisect_start "$@" ;;
-	bad|good|new|old)
+	bad|good|new|old|$NAME_BAD|$NAME_GOOD)
 		bisect_state "$cmd" "$@" ;;
 	skip)
 		bisect_skip "$@" ;;
@@ -591,6 +617,8 @@ case "$#" in
 		bisect_log ;;
 	run)
 		bisect_run "$@" ;;
+	terms)
+		bisect_terms "$@" ;;
 	*)
 		usage ;;
 	esac
