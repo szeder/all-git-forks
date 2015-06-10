@@ -65,11 +65,11 @@ Git est un logiciel de versionnage très populaire parmi les developpeurs. Il pe
 \subsection{Les contraintes de Git}
 
 Git est un logiciel utilisé par des millions de developpeurs (Github, le service web d'hebergement service web d'hébergement et de gestion de développement de logiciels utilisant Git compte 9 millions d'utilisateurs). Par conséquent, les modifications apportées sur ce logiciel peuvent avoir d'importantes répercutions. Ainsi, l'une des priorités des contributeurs est de conserver la rétro-compatibilité. En effet de nombreux projet reposent sur Git, et sont gérés au moins en partie par des scripts automatiques; un défaut de rétro-compatibilité engendrerait donc un gros travail de mise à jour des scripts dans tous ces projets. 
-
+De plus, le code écrit doit être d'une qualité irré
 
 \section{Nos contributions}
 
-\subsection{git am --3Way}
+\subsection{git am --3way}
 
 Notre première contribution a été de permettre l'ajout d'une variable de configuration pour une option très courante afin que les utilisateurs ne soient pas obligés de la retaper à chaque fois.
 
@@ -83,7 +83,8 @@ La commande git rebase --interactive permet d'éditer l'historique des commits, 
 
 \subsection{git status}
 
-
+La commande git status affiche l'état du working tree (copie de travail).
+Fort de notre (petite) expérience sur la commande git rebase -i, nous nous sommes lancés dans l'amélioration du message renvoyé par git status lorsqu'un rebase (rebasage) interactif est en cours. Dans un premier temps, nous souhaitions ajouter une option --status à la commande git rebase afin d'afficher l'état du rebasage en cours.  Cependant, la communauté était contre l'idée de complexifier le logiciel en rajoutant des options, et un consensus a émergé pour modifier simplement la commande git status pour qu'elle ait un comportement dépendant du contexte et que pendant un rebase, elle affiche son état.
 
 
 \subsection{git bisect}
@@ -92,7 +93,13 @@ La commande git rebase --interactive permet d'éditer l'historique des commits, 
 
 \section{La communauté Git}
 
+Le developpement de Git est supervisé par Junio C Hamano, qui s'occupe de synchroniser le travail des autres contributeurs. 
+
+La communauté Git s'organise autour d'une mailing liste, laquelle reçoit les rapports de bug, les propositions de patchs et les revues de code.
+
 \subsection{La mailing-list}
+
+
 
 
 \section{Enseignements tirés}
@@ -104,10 +111,12 @@ Ce projet nous permis de travailler avec une importante base de code existante. 
 
 \subsection{Adaptation des méthodes agiles au logiciel libre}
 
-Sur certains points, ce projet ne se prête absolument pas à sa réalisation avec des méthodes agiles: 
+Sur certains points, 
+
+D'un autre coté, certaines caractéristiques de ce projet ne se prêtent absolument pas à sa réalisation avec des méthodes agiles: 
 \begin{itemize}
 \item les méthodes agiles mettent le client, et sa collaboration avec les developpeurs au coeur du processus de développement, alors que git n'a pas de client et la personne chargée de la maintenance du logiciel, la plus à-même de prendre des décisions, vit en décalage horaire avec nous. 
-\item les méthodes agiles favorisent les logiciels qui fonctionnent plutôt qu'une documentation exhaustive.
+\item les méthodes agiles favorisent les logiciels qui fonctionnent plutôt qu'une documentation exhaustive. 
 \item troisième item.
 \end{itemize}
 
