@@ -27,7 +27,7 @@ struct atom_value {
 
 struct ref_sort {
 	struct ref_sort *next;
-	int atom; /* index into used_atom array */
+	int atom; /* index into 'struct atom_value *' array */
 	unsigned reverse : 1;
 };
 
