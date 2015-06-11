@@ -26,10 +26,21 @@
 \setlength{\topmargin}{-.5in}
 
 % Commandes de mise en page
+\newcommand{\textremil}[1]{\emph{\color{red} #1}}
+\newcommand{\gitcmd}[1]{\emph{#1}}
+\newcommand{\tech}[1]{\emph{#1}}
 \newcommand{\fichier}[1]{\emph{#1}}
 \newcommand{\nom}[1]{\emph{#1}}
 \newcommand{\Fig}[1]{Fig \ref{#1} p. \pageref{#1}}
 \newcommand{\itemi}{\item[$\bullet$]}
+
+% differentes contributions
+\newenvironment{parremil}{%
+  \color{red}
+}{%
+  \color{white}
+}
+
 
 % Commandes de maths
 \newcommand{\fonction}[3]{#1 : #2 \to #3}
@@ -110,9 +121,10 @@ Cependant, la communauté était contre l'idée de complexifier le logiciel en r
 
 Le developpement de Git est supervisé par Junio C Hamano, qui s'occupe de synchroniser le travail des autres contributeurs.
 L'immense majorité des contributeurs sont des utilisateurs expérimentés de Git, alors que l'une de nos motivation principale dans ce projet était d'améliorer notre maitrise de Git.
-Dès lors, notre point de vue sur le logiciel est très different de celui des autres contributeur, mais pas ininteressant pour autant: nous connaissons mieux les obstacles rencontrées dans l'apprentissage de Git, et donc imaginer des solutions pour les contourner.
+Dès lors, notre point de vue sur le logiciel est très different de celui des autres contributeur, mais pas ininteressant pour autant: nous connaissons mieux les obstacles rencontrées dans l'apprentissage de Git, et donc imaginer des solutions pour les contourner
+\textremil{(qui a un peu été mise à profit lors des différentes discussions au niveau de \gitcmd{git status} lors d'un \tech{rebase interactif} notamment.}
 
-La communauté Git s'organise autour d'une mailing liste, laquelle reçoit les rapports de bug, les propositions de patchs et les revues de code. Ainsi, tout le monde a accès à toutes les informations, et peut donner son avis, ou proposer des modification.
+La communauté Git s'organise autour d'une mailing list, laquelle reçoit les rapports de bug, les propositions de patchs et les revues de code. Ainsi, tout le monde a accès à toutes les informations, et peut donner son avis, ou proposer des modifications.
 Ce modèle sans véritable hierarchie est donc très égalitaire, toutefois, il est assez déroutant au début, puisqu'il n'y a pas véritablement de personne qui fasse référence.
 Cela impose que les décisions sont prises par consensus et il faut être capable de savoir quand une idée est rejetée, alors que personne ne prend jamais la responsabilité de le dire explicitement.
 
@@ -126,7 +138,15 @@ Cela impose que les décisions sont prises par consensus et il faut être capabl
 \subsection{Enseignements techniques}
 
 Ce premier contact avec le developpement collaboratif de logiciels libres nous a permis de mieux comprendre les enjeux inhérents à des projets de cet ampleur. 
-Ce projet nous permis de travailler avec une importante base de code existante. La lecture du code, de la documentation, et des API a pris bien plus de temps que coder effectivement. Malgré celà, notre manque d'expérience sur ce projet a engendré de nombreuses erreurs de notre part. 
+Ce projet nous a permis de travailler avec une importante base de code existante. La lecture du code, de la documentation, et des API a pris bien plus de temps que coder effectivement. Malgré celà, notre manque d'expérience sur ce projet a engendré de nombreuses erreurs de notre part.
+
+\begin{parremil}
+ICI je vais ecrire l'apprentissage de git
+\end{parremil}
+
+\begin{parremil}
+ICI je vais ecrire l'apprentissage de perl
+\end{parremil}
 
 \subsection{Adaptation des méthodes agiles au logiciel libre}
 
