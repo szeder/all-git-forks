@@ -189,6 +189,31 @@ void *xcalloc(size_t nmemb, size_t size)
 # endif
 #endif
 
+/**
+ * xopen() is the same as open(), but it die()s if the open() fails.
+ */
+int xopen(const char *path, int oflag, ...)
+{
+	mode_t mode = 0;
+	va_list ap;
+
+	va_start(ap, oflag);
+	if (oflag & O_CREAT)
+		mode = va_arg(ap, mode_t);
+	va_end(ap);
+
+	assert(path);
+
+	for (;;) {
+		int fd = open(path, oflag, mode);
+		if (fd >= 0)
+			return fd;
+		if (errno == EINTR)
+			continue;
+		die_errno(_("could not open '%s'"), path);
+	}
+}
+
 /*
  * xread() is the same a read(), but it automatically restarts read()
  * operations with a recoverable error (EAGAIN and EINTR). xread()
