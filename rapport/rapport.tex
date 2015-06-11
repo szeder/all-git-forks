@@ -56,7 +56,7 @@
 \graphicspath{{images/}}
 
 \title{Rapport du projet de spécialité:\\ Contribution au logiciel libre Git} 
-\author{Antoine Delaite \and Louis--Alexandre Stuber \and Guillaume Pages \and Rémi Galan-Alphonso \and Rémi Lespinet}
+\author{Antoine Delaite \and Louis-Alexandre Stuber \and Guillaume Pagès \and Rémi Galan Alfonso \and Rémi Lespinet}
 \date{}
 
 \begin{document}
@@ -93,11 +93,11 @@ Notre première contribution a été de permettre l'ajout d'une variable de conf
 
 \subsection{git send-email}
 
-Cette contribution a pour but d'autoriser l'utilisation de la commande git send-email en entrant les addresses mails séparées par des virgules (ce qui est le format utilisé par la plupart des client mails). Cette modification permet donc à l'utilisateur de copier-coller une liste d'addresses depuis un mail vers la commande git send-email au lieu de devoir taper "--to:" devant chacune des addresses.
+Cette contribution a pour but d'autoriser l'utilisation de la commande git send-email en entrant les addresses mails séparées par des virgules (ce qui est le format utilisé par la plupart des client mails). Cette modification permet donc à l'utilisateur de copier-coller une liste d'addresses depuis un mail vers la commande \gitcmd{git send-email} au lieu de devoir taper "--to:" devant chacune des addresses.
 
 \subsection{git rebase --interactive}
 
-La commande git rebase --interactive permet d'éditer l'historique des commits, en les déplaçant les uns par rapport aux autres, de les fusionner, de les modifier... à partir d'une liste d'actions qui a été modifiée par l'utilisateur.
+La commande \gitcmd{git rebase --interactive} permet d'éditer l'historique des commits, en les déplaçant les uns par rapport aux autres, de les fusionner, de les modifier... à partir d'une liste d'actions qui a été modifiée par l'utilisateur.
 
 Cette contribution a ajouté :
 \begin{itemize}
@@ -108,10 +108,10 @@ Cette contribution a ajouté :
 
 \subsection{git status}
 
-La commande git status affiche l'état du working tree (copie de travail).
-Forts de notre expérience sur la commande git rebase -i, nous nous sommes lancés dans l'amélioration du message renvoyé par git status lorsqu'un rebase (rebasage) interactif est en cours.
-Dans un premier temps, nous souhaitions ajouter une option --status à la commande git rebase afin d'afficher l'état du rebasage en cours. 
-Cependant, la communauté était contre l'idée de complexifier le logiciel en rajoutant des options, et un consensus a émergé pour modifier simplement la commande git status pour qu'elle ait un comportement dépendant du contexte et que pendant un rebase, elle affiche son état.
+La commande \gitcmd{git status} affiche l'état du working tree (copie de travail).
+Forts de notre expérience sur la commande \gitcmd{git rebase -i}, nous nous sommes lancés dans l'amélioration du message renvoyé par \gitcmd{git status} lorsqu'un rebase (rebasage) interactif est en cours.
+Dans un premier temps, nous souhaitions ajouter une option \textit{--status} à la commande \gitcmd{git rebase} afin d'afficher l'état du rebasage en cours. 
+Cependant, la communauté était contre l'idée de complexifier le logiciel en rajoutant des options, et un consensus a émergé pour modifier simplement la commande \gitcmd{git status} pour qu'elle ait un comportement dépendant du contexte et que pendant un rebase, elle affiche son état.
 
 \subsection{git bisect}
 
@@ -129,7 +129,7 @@ Dès lors, notre point de vue sur le logiciel est très different de celui des a
 Dès lors, notre point de vue sur le logiciel est très different de celui des autres contributeur, mais pas ininteressant pour autant: nous connaissons mieux les obstacles rencontrées dans l'apprentissage de Git, et donc imaginer des solutions pour les contourner.
 ~\\
 
-La communauté Git s'organise autour d'une mailing liste, laquelle reçoit les rapports de bug, les propositions de patchs et les revues de code. Ainsi, tout le monde a accès à toutes les informations, et peut donner son avis, ou proposer des modification.
+La communauté Git s'organise autour d'une mailing-list, laquelle reçoit les rapports de bug, les propositions de patchs et les revues de code. Ainsi, tout le monde a accès à toutes les informations, et peut donner son avis, ou proposer des modification.
 
 Ce modèle sans véritable hierarchie est donc très égalitaire, toutefois, il est assez déroutant au début, puisqu'il n'y a pas véritablement de personne qui fasse référence.
 
@@ -143,10 +143,10 @@ Ce fonctionnement nous amène donc à prendre en compte les critiques vis à vis
 
 Les principales difficultés ont été :
 \begin{itemize}
-\item S'immerger dans la mailing list : nous avons dû côtoyer d'autres contributeurs de git qui sont bien plus expérimentés que nous aussi bien au niveau de l'utilisation de git que des compétences techniques. Ainsi nous avons dû prendre en compte leurs retours, argumenter avec eux quand leurs retours ne nous convenaient pas...
-\item Se plonger dans le code de git, qui comprend un grand nombre de lignes de code, plusieurs langages (C, Shell, Perl).
+\item S'immerger dans la mailing-list : nous avons dû côtoyer d'autres contributeurs de Git qui sont bien plus expérimentés que nous aussi bien au niveau de l'utilisation de Git que des compétences techniques. Ainsi nous avons dû prendre en compte leurs retours, argumenter avec eux quand leurs retours ne nous convenaient pas...
+\item Se plonger dans le code de Git, qui comprend un grand nombre de lignes de code, plusieurs langages (C, Shell, Perl).
 \item Apprendre le coding-style demandé, savoir faire un code clair et maintenable.
-\item Se plonger dans le code de nos prédécesseurs (élèves en projet de Spécialité des années précédentes sur git)
+\item Se plonger dans le code de nos prédécesseurs (élèves en projet de Spécialité des années précédentes sur Git)
 \end{itemize}
 
 \subsection{Les solutions}
@@ -178,7 +178,7 @@ Sur certains points, notamment l'adaptation, la méthode agile nous a énorméme
 
 D'un autre coté, certaines caractéristiques de ce projet ne se prêtent absolument pas à sa réalisation avec des méthodes agiles:
 \begin{itemize}
-\item les méthodes agiles mettent le client, et sa collaboration avec les developpeurs au coeur du processus de développement, alors que git n'a pas de client et la personne chargée de la maintenance du logiciel, la plus à-même de prendre des décisions, vit en décalage horaire avec nous.
+\item les méthodes agiles mettent le client, et sa collaboration avec les developpeurs au coeur du processus de développement, alors que Git n'a pas de client et la personne chargée de la maintenance du logiciel, la plus à-même de prendre des décisions, vit en décalage horaire avec nous.
 \item les méthodes agiles favorisent les logiciels qui fonctionnent plutôt qu'une documentation exhaustive.
 Or, les contraintes de l'open-source poussent à être perfectionniste à tout moment du projet, puisque la personne reprenant le code ne sera pas forcément celle qui l'a écrit.
 \end{itemize}
