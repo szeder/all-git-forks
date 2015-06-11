@@ -68,6 +68,8 @@ struct am_state {
 
 	/* number of digits in patch filename */
 	int prec;
+
+	int quiet;
 };
 
 /**
@@ -75,6 +77,8 @@ struct am_state {
  */
 static void am_state_init(struct am_state *state)
 {
+	const char *quiet;
+
 	memset(state, 0, sizeof(*state));
 
 	strbuf_init(&state->dir, 0);
@@ -83,6 +87,10 @@ static void am_state_init(struct am_state *state)
 	strbuf_init(&state->author_date, 0);
 	strbuf_init(&state->msg, 0);
 	state->prec = 4;
+
+	quiet = getenv("GIT_QUIET");
+	if (quiet && *quiet)
+		state->quiet = 1;
 }
 
 /**
@@ -103,6 +111,22 @@ static void am_state_release(struct am_state *state)
 static inline const char *am_path(const struct am_state *state, const char *path)
 {
 	return mkpath("%s/%s", state->dir.buf, path);
+}
+
+/**
+ * If state->quiet is false, calls fprintf(fp, fmt, ...), and appends a newline
+ * at the end.
+ */
+static void say(const struct am_state *state, FILE *fp, const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	if (!state->quiet) {
+		vfprintf(fp, fmt, ap);
+		putc('\n', fp);
+	}
+	va_end(ap);
 }
 
 /**
@@ -249,6 +273,9 @@ static void am_load(struct am_state *state)
 		die(_("could not parse author script"));
 
 	read_state_file(&state->msg, am_path(state, "final-commit"), 0, 0);
+
+	read_state_file(&sb, am_path(state, "quiet"), 2, 1);
+	state->quiet = !strcmp(sb.buf, "t");
 
 	strbuf_release(&sb);
 }
@@ -430,6 +457,8 @@ static void am_setup(struct am_state *state, enum patch_format patch_format,
 	write_file(am_path(state, "next"), 1, "%d", state->cur);
 
 	write_file(am_path(state, "last"), 1, "%d", state->last);
+
+	write_file(am_path(state, "quiet"), 1, state->quiet ? "t" : "f");
 
 	if (!get_sha1("HEAD", curr_head)) {
 		write_file(am_path(state, "abort-safety"), 1, "%s", sha1_to_hex(curr_head));
@@ -644,7 +673,7 @@ static void do_commit(const struct am_state *state)
 		commit_list_insert(lookup_commit(parent), &parents);
 	} else {
 		ptr = NULL;
-		fprintf_ln(stderr, _("applying to an empty history"));
+		say(state, stderr, _("applying to an empty history"));
 	}
 
 	author = fmt_ident(state->author_name.buf, state->author_email.buf,
@@ -695,7 +724,7 @@ static void am_run(struct am_state *state)
 		write_author_script(state);
 		write_file(am_path(state, "final-commit"), 1, "%s", state->msg.buf);
 
-		printf_ln(_("Applying: %s"), firstline(state->msg.buf));
+		say(state, stdout, _("Applying: %s"), firstline(state->msg.buf));
 
 		if (run_apply(state) < 0) {
 			int value;
@@ -726,7 +755,7 @@ next:
  */
 static void am_resolve(struct am_state *state)
 {
-	printf_ln(_("Applying: %s"), firstline(state->msg.buf));
+	say(state, stdout, _("Applying: %s"), firstline(state->msg.buf));
 
 	if (!index_has_changes(NULL)) {
 		printf_ln(_("No changes - did you forget to use 'git add'?\n"
@@ -949,6 +978,7 @@ static const char * const am_usage[] = {
 };
 
 static struct option am_options[] = {
+	OPT__QUIET(&state.quiet, N_("be quiet")),
 	OPT_CALLBACK(0, "patch-format", &opt_patch_format, N_("format"),
 		N_("format the patch(es) are in"), parse_opt_patchformat),
 	OPT_CMDMODE(0, "continue", &opt_resume,
