@@ -13,6 +13,7 @@
 #include "cache-tree.h"
 #include "refs.h"
 #include "commit.h"
+#include "lockfile.h"
 
 /**
  * Returns 1 if the file is empty or does not exist, 0 otherwise.
@@ -457,6 +458,20 @@ static const char *msgnum(const struct am_state *state)
 }
 
 /**
+ * Refresh and write index.
+ */
+static void refresh_and_write_cache(void)
+{
+	static struct lock_file lock_file;
+
+	hold_locked_index(&lock_file, 1);
+	refresh_cache(REFRESH_QUIET);
+	if (write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
+		die(_("unable to write index file"));
+	rollback_lock_file(&lock_file);
+}
+
+/**
  * Parses `patch` using git-mailinfo. state->msg will be set to the patch
  * message. state->author_name, state->author_email, state->author_date will be
  * set to the patch author's name, email and date respectively. The patch's
@@ -597,6 +612,8 @@ static void do_commit(const struct am_state *state)
  */
 static void am_run(struct am_state *state)
 {
+	refresh_and_write_cache();
+
 	while (state->cur <= state->last) {
 		const char *patch = am_path(state, msgnum(state));
 
@@ -677,6 +694,9 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 	strbuf_addstr(&state.dir, git_path("rebase-apply"));
 
 	argc = parse_options(argc, argv, prefix, am_options, am_usage, 0);
+
+	if (read_index_preload(&the_index, NULL) < 0)
+		die(_("failed to read the index"));
 
 	if (am_in_progress(&state))
 		am_load(&state);
