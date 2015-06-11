@@ -93,7 +93,25 @@ Notre première contribution a été de permettre l'ajout d'une variable de conf
 
 \subsection{git send-email}
 
-Cette contribution a pour but d'autoriser l'utilisation de la commande git send-email en entrant les addresses mails séparées par des virgules (ce qui est le format utilisé par la plupart des client mails). Cette modification permet donc à l'utilisateur de copier-coller une liste d'addresses depuis un mail vers la commande \gitcmd{git send-email} au lieu de devoir taper "--to:" devant chacune des addresses.
+\begin{parremil}
+Cette contribution a pour but d'
+
+\begin{itemize}
+\item autoriser l'utilisation de la commande git send-email en entrant
+  les adresses mails séparées par des virgules (ce qui est le format
+  utilisé par la plupart des client mails). Cette modification permet
+  donc à l'utilisateur de copier-coller une liste d'adresses depuis un
+  mail vers la commande \gitcmd{git send-email} au lieu de devoir
+  taper plusieurs fois les options \gitcmd{--to:}, \gitcmd{--cc:} et
+  \gitcmd{--bcc:} devant chacune des adresses. 
+\item autoriser les alias dans les \tech{header} des patch ainsi qu'en
+  sortie des scripts spécifiés à l'aide des options \gitcmd{--cc-cmd}
+  et \gitcmd{--to-cmd}. Cela permet de faciliter l'utilisation de la
+  commande dans ces cas ainsi que d'augmenter la cohérence avec
+  les options \gitcmd{--to} et \gitcmd{--cc} de \gitcmd{git format-patch} 
+  qui ne géraient pas les alias.
+\end{itemize}
+\end{parremil}
 
 \subsection{git rebase --interactive}
 
@@ -115,6 +133,11 @@ Cependant, la communauté était contre l'idée de complexifier le logiciel en r
 
 \subsection{git bisect}
 
+Il arrive qu'un commit introduise un bug nouveau, qui ne sera découvert que très longtemps après son introduction. \gitcmd{Git bisect} est un groupe de commandes permettant de trouver le premier commit où le bug est apparu. La commande nécessite de préciser au moins une version antérieure où le bug n'existait pas, et procède ensuite par bissection en déplaçant l'utilisateur dans son historique et lui demandant de tester si le bug y est présent.
+
+Jusque là, l'utilisateur devait marquer les commits par des tags "bad" ou "good", tous les commits précédents l'apparition du bug étant "good", et tous les commits ultérieurs étant "bad". Des utilisateurs s'étaient plaints de la rigidité de ces termes, puisque \gitcmd{git bisect} pourrait tout aussi bien être utilisée pour trouver la première fois où un bug a \emph{disparu}, ou même tout simplement le premier commit où un changement a été effectué (indépendamment de tout jugement) et l'utilisateur devait jusque là utiliser "bad" et "good" en faisant comme si ces tags voulaient dire autre chose.
+
+Notre contribution a consisté à rajouter de nouveaux termes : "old" et "new" qui permettent de gérer ces cas. Il s'agissait, contrairement aux apparences, d'une tâche assez complexe, le code source n'ayant pas du tout été prévu pour un tel changement. Nous avons repris le code d'anciens Ensimag qui avaient essayé puis renoncé à implémenter la fonctionnalité. Les termes "old" et "new" ont finalement pu être implémentés, mais le patch n'est pas passé. Nous pensons malgré tout que cette contribution a aidé la communauté, qui débat actuellement de la généralisation de cette fonctionnalité (pour que l'utilisateur puisse choisir les termes) et qui va peut-être reprendre notre code.
 
 
 \section{La communauté Git}
@@ -169,11 +192,19 @@ C'est sur ce point que l'intégration a une communauté de développeur nous a �
 Au contact de ce milieu, nous avons pu appréhender le fossé qui sépare les projets scolaires ou personnels des logiciel réels, en terme de qualité, d'exigence, mais aussi de reflexion autour de chaque décision.
 
 \begin{parremil}
-ICI je vais ecrire l'apprentissage de git
+Ce projet a aussi été l'occasion de se familiariser avec Git, et de
+découvrir des fonctionnalités avancées par rapport à ce qu'on utilisait
+avant le projet. Ceci nous permettra d'avoir plus d'aisance dans la
+gestion et la maintenance d'un dépot ultérieurement.
 \end{parremil}
 
 \begin{parremil}
-ICI je vais ecrire l'apprentissage de perl
+Nous avons aussi eu l'occasion de modifier du code source écrit en
+\tech{Perl}, un langage que nous ne connaissions pas au début de ce
+projet. Nous avons donc pu apprendre les bases de ce langage, et 
+nous sommes maintenant capables d'écrire et de comprendre des
+programmes dans ce langage.
+
 \end{parremil}
 
 \subsection{Adaptation des méthodes agiles au logiciel Git}
