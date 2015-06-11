@@ -27,7 +27,7 @@
 
 % Commandes de mise en page
 \newcommand{\textremil}[1]{\emph{\color{red} #1}}
-\newcommand{\gitcmd}[1]{\emph{#1}}
+\newcommand{\gitcmd}[1]{\texttt{#1}}
 \newcommand{\tech}[1]{\emph{#1}}
 \newcommand{\fichier}[1]{\emph{#1}}
 \newcommand{\nom}[1]{\emph{#1}}
@@ -119,21 +119,21 @@ La commande \gitcmd{git rebase --interactive} permet d'éditer l'historique des 
 
 Cette contribution a ajouté :
 \begin{itemize}
-\item la commande \textit{drop}, qui permet d'enlever des commits explicitement au lieu d'enlever ou de commenter la ligne.
-\item la variable de configuration \textit{rebase.missingCommitCheck} et un test d'intégrité, ce test vérifie qu'aucun commit n'a disparu. Cette variable de configuration permet de réguler le comportement de ce test d'intégrité. Ce test permet d'éviter des pertes d'informations silencieuses (par exemple on a enlevé une ligne par erreur).
+\item la commande \gitcmd{drop}, qui permet d'enlever des commits explicitement au lieu d'enlever ou de commenter la ligne.
+\item la variable de configuration \gitcmd{rebase.missingCommitCheck} et un test d'intégrité, ce test vérifie qu'aucun commit n'a disparu. Cette variable de configuration permet de réguler le comportement de ce test d'intégrité. Ce test permet d'éviter des pertes d'informations silencieuses (par exemple on a enlevé une ligne par erreur).
 \item des tests d'intégrité statiques, qui permettent de vérifier à l'avance l'intégrité des commandes et des commits de la liste d'actions de l'utilisateur. Ainsi on évite de lever les erreurs à la volée et l'utilisateur peut ainsi corriger ses erreurs avant qu'une seule des actions ne soit effectuée.
 \end{itemize}
 
 \subsection{git status}
 
-La commande \gitcmd{git status} affiche l'état du working tree (copie de travail).
-Forts de notre expérience sur la commande \gitcmd{git rebase -i}, nous nous sommes lancés dans l'amélioration du message renvoyé par \gitcmd{git status} lorsqu'un rebase (rebasage) interactif est en cours.
-Dans un premier temps, nous souhaitions ajouter une option \textit{--status} à la commande \gitcmd{git rebase} afin d'afficher l'état du rebasage en cours. 
+La commande \gitcmd{git status} affiche l'état du \textit{working tree} (copie de travail).
+Forts de notre expérience sur la commande \gitcmd{git rebase -i}, nous nous sommes lancés dans l'amélioration du message renvoyé par \gitcmd{git status} lorsqu'un \textit{rebase} (rebasage) interactif est en cours.
+Dans un premier temps, nous souhaitions ajouter une option \gitcmd{--status} à la commande \gitcmd{git rebase} afin d'afficher l'état du rebasage en cours. 
 Cependant, la communauté était contre l'idée de complexifier le logiciel en rajoutant des options, et un consensus a émergé pour modifier simplement la commande \gitcmd{git status} pour qu'elle ait un comportement dépendant du contexte et que pendant un rebase, elle affiche son état.
 
 \subsection{git bisect}
 
-Il arrive qu'un commit introduise un bug nouveau, qui ne sera découvert que très longtemps après son introduction. \gitcmd{Git bisect} est un groupe de commandes permettant de trouver le premier commit où le bug est apparu. La commande nécessite de préciser au moins une version antérieure où le bug n'existait pas, et procède ensuite par bissection en déplaçant l'utilisateur dans son historique et lui demandant de tester si le bug y est présent.
+Il arrive qu'un commit introduise un bug nouveau, qui ne sera découvert que très longtemps après son introduction. \gitcmd{git bisect} est un groupe de commandes permettant de trouver le premier commit où le bug est apparu. La commande nécessite de préciser au moins une version antérieure où le bug n'existait pas, et procède ensuite par bissection en déplaçant l'utilisateur dans son historique et lui demandant de tester si le bug y est présent.
 
 Jusque là, l'utilisateur devait marquer les commits par des tags "bad" ou "good", tous les commits précédents l'apparition du bug étant "good", et tous les commits ultérieurs étant "bad". Des utilisateurs s'étaient plaints de la rigidité de ces termes, puisque \gitcmd{git bisect} pourrait tout aussi bien être utilisée pour trouver la première fois où un bug a \emph{disparu}, ou même tout simplement le premier commit où un changement a été effectué (indépendamment de tout jugement) et l'utilisateur devait jusque là utiliser "bad" et "good" en faisant comme si ces tags voulaient dire autre chose.
 
@@ -187,21 +187,18 @@ Ce projet nous a permis de travailler avec une importante base de code existante
 C'est sur ce point que l'intégration a une communauté de développeur nous a été très bénéfique, puisque nos erreurs ont été corrigées très régulièrement et nos décisions discutées.
 Au contact de ce milieu, nous avons pu appréhender le fossé qui sépare les projets scolaires ou personnels des logiciel réels, en terme de qualité, d'exigence, mais aussi de reflexion autour de chaque décision.
 
-\begin{parremil}
+
 Ce projet a aussi été l'occasion de se familiariser avec Git, et de
 découvrir des fonctionnalités avancées par rapport à ce qu'on utilisait
 avant le projet. Ceci nous permettra d'avoir plus d'aisance dans la
 gestion et la maintenance d'un dépot ultérieurement.
-\end{parremil}
 
-\begin{parremil}
 Nous avons aussi eu l'occasion de modifier du code source écrit en
 \tech{Perl}, un langage que nous ne connaissions pas au début de ce
 projet. Nous avons donc pu apprendre les bases de ce langage, et 
 nous sommes maintenant capables d'écrire et de comprendre des
 programmes dans ce langage.
 
-\end{parremil}
 
 \subsection{Adaptation des méthodes agiles au logiciel Git}
 
