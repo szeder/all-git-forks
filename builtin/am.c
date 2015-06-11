@@ -70,6 +70,9 @@ struct am_state {
 	int prec;
 
 	int quiet;
+
+	/* override error message when patch failure occurs */
+	const char *resolvemsg;
 };
 
 /**
@@ -629,6 +632,21 @@ static int parse_patch(struct am_state *state, const char *patch)
 	return 0;
 }
 
+/**
+ * Dies with a user-friendly message on how to proceed after resolving the
+ * problem. This message can be overridden with state->resolvemsg.
+ */
+static void NORETURN die_user_resolve(const struct am_state *state)
+{
+	if (state->resolvemsg)
+		printf_ln("%s", state->resolvemsg);
+	else
+		printf_ln(_("When you have resolved this problem, run \"git am --continue\".\n"
+			"If you prefer to skip this patch, run \"git am --skip\" instead.\n"
+			"To restore the original branch and stop patching, run \"git am --abort\"."));
+	exit(128);
+}
+
 /*
  * Applies current patch with git-apply. Returns 0 on success, -1 otherwise.
  */
@@ -736,7 +754,7 @@ static void am_run(struct am_state *state)
 				printf_ln(_("The copy of the patch that failed is found in: %s"),
 						am_path(state, "patch"));
 
-			exit(128);
+			die_user_resolve(state);
 		}
 
 		do_commit(state);
@@ -761,13 +779,13 @@ static void am_resolve(struct am_state *state)
 		printf_ln(_("No changes - did you forget to use 'git add'?\n"
 			"If there is nothing left to stage, chances are that something else\n"
 			"already introduced the same changes; you might want to skip this patch."));
-		exit(128);
+		die_user_resolve(state);
 	}
 
 	if (unmerged_cache()) {
 		printf_ln(_("You still have unmerged paths in your index.\n"
 			"Did you forget to use 'git add'?"));
-		exit(128);
+		die_user_resolve(state);
 	}
 
 	do_commit(state);
@@ -981,6 +999,8 @@ static struct option am_options[] = {
 	OPT__QUIET(&state.quiet, N_("be quiet")),
 	OPT_CALLBACK(0, "patch-format", &opt_patch_format, N_("format"),
 		N_("format the patch(es) are in"), parse_opt_patchformat),
+	OPT_STRING(0, "resolvemsg", &state.resolvemsg, NULL,
+		N_("override error message when patch failure occurs")),
 	OPT_CMDMODE(0, "continue", &opt_resume,
 		N_("continue applying patches after resolving a conflict"),
 		RESUME_RESOLVED),
