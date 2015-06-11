@@ -102,14 +102,18 @@ Cette contribution a pour but d'
   utilisé par la plupart des client mails). Cette modification permet
   donc à l'utilisateur de copier-coller une liste d'adresses depuis un
   mail vers la commande \gitcmd{git send-email} au lieu de devoir
-  taper plusieurs fois les options \gitcmd{--to:}, \gitcmd{--cc:} et
-  \gitcmd{--bcc:} devant chacune des adresses. 
+  taper plusieurs fois les options \gitcmd{--to}, \gitcmd{--cc} et
+  \gitcmd{--bcc} devant chacune des adresses. 
 \item autoriser les alias dans les \tech{header} des patch ainsi qu'en
   sortie des scripts spécifiés à l'aide des options \gitcmd{--cc-cmd}
   et \gitcmd{--to-cmd}. Cela permet de faciliter l'utilisation de la
   commande dans ces cas ainsi que d'augmenter la cohérence avec
   les options \gitcmd{--to} et \gitcmd{--cc} de \gitcmd{git format-patch} 
   qui ne géraient pas les alias.
+\item gérer les arguments comportant des espaces superflux en début et
+  en fin de chaine de façon à produire des emails indépendants de ces
+  espaces. Cette modification permet aussi et surtout d'interpréter
+  les alias comportant de tels espaces. 
 \end{itemize}
 \end{parremil}
 
