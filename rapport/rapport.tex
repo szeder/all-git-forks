@@ -93,7 +93,25 @@ Notre première contribution a été de permettre l'ajout d'une variable de conf
 
 \subsection{git send-email}
 
-Cette contribution a pour but d'autoriser l'utilisation de la commande git send-email en entrant les addresses mails séparées par des virgules (ce qui est le format utilisé par la plupart des client mails). Cette modification permet donc à l'utilisateur de copier-coller une liste d'addresses depuis un mail vers la commande \gitcmd{git send-email} au lieu de devoir taper "--to:" devant chacune des addresses.
+\begin{parremil}
+Cette contribution a pour but d'
+
+\begin{itemize}
+\item autoriser l'utilisation de la commande git send-email en entrant
+  les adresses mails séparées par des virgules (ce qui est le format
+  utilisé par la plupart des client mails). Cette modification permet
+  donc à l'utilisateur de copier-coller une liste d'adresses depuis un
+  mail vers la commande \gitcmd{git send-email} au lieu de devoir
+  taper plusieurs fois les options \gitcmd{--to:}, \gitcmd{--cc:} et
+  \gitcmd{--bcc:} devant chacune des adresses. 
+\item autoriser les alias dans les \tech{header} des patch ainsi qu'en
+  sortie des scripts spécifiés à l'aide des options \gitcmd{--cc-cmd}
+  et \gitcmd{--to-cmd}. Cela permet de faciliter l'utilisation de la
+  commande dans ces cas ainsi que d'augmenter la cohérence avec
+  les options \gitcmd{--to} et \gitcmd{--cc} de \gitcmd{git format-patch} 
+  qui ne géraient pas les alias.
+\end{itemize}
+\end{parremil}
 
 \subsection{git rebase --interactive}
 
@@ -170,11 +188,19 @@ C'est sur ce point que l'intégration a une communauté de développeur nous a �
 Au contact de ce milieu, nous avons pu appréhender le fossé qui sépare les projets scolaires ou personnels des logiciel réels, en terme de qualité, d'exigence, mais aussi de reflexion autour de chaque décision.
 
 \begin{parremil}
-ICI je vais ecrire l'apprentissage de git
+Ce projet a aussi été l'occasion de se familiariser avec Git, et de
+découvrir des fonctionnalités avancées par rapport à ce qu'on utilisait
+avant le projet. Ceci nous permettra d'avoir plus d'aisance dans la
+gestion et la maintenance d'un dépot ultérieurement.
 \end{parremil}
 
 \begin{parremil}
-ICI je vais ecrire l'apprentissage de perl
+Nous avons aussi eu l'occasion de modifier du code source écrit en
+\tech{Perl}, un langage que nous ne connaissions pas au début de ce
+projet. Nous avons donc pu apprendre les bases de ce langage, et 
+nous sommes maintenant capables d'écrire et de comprendre des
+programmes dans ce langage.
+
 \end{parremil}
 
 \subsection{Adaptation des méthodes agiles au logiciel Git}
