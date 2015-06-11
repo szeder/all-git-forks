@@ -120,6 +120,96 @@ static void am_destroy(const struct am_state *state)
 	strbuf_release(&sb);
 }
 
+/*
+ * Returns 1 if the file looks like a piece of email a-la RFC2822, 0 otherwise.
+ * We check this by grabbing all the non-indented lines and seeing if they look
+ * like they begin with valid header field names.
+ */
+static int is_email(const char *filename)
+{
+	struct strbuf sb = STRBUF_INIT;
+	FILE *fp = xfopen(filename, "r");
+	int ret = 1;
+
+	while (!strbuf_getline(&sb, fp, '\n')) {
+		const char *x;
+
+		strbuf_rtrim(&sb);
+
+		if (!sb.len)
+			break; /* End of header */
+
+		/* Ignore indented folded lines */
+		if (*sb.buf == '\t' || *sb.buf == ' ')
+			continue;
+
+		/* It's a header if it matches the regexp "^[!-9;-~]+:" */
+		for (x = sb.buf; *x; x++) {
+			if (('!' <= *x && *x <= '9') || (';' <= *x && *x <= '~'))
+				continue;
+			if (*x == ':' && x != sb.buf)
+				break;
+			ret = 0;
+			goto done;
+		}
+	}
+
+done:
+	fclose(fp);
+	strbuf_release(&sb);
+	return ret;
+}
+
+/**
+ * Attempts to detect the patch_format of the patches contained in `paths`,
+ * returning the PATCH_FORMAT_* enum value. Returns PATCH_FORMAT_UNKNOWN if
+ * detection fails.
+ */
+static int detect_patch_format(struct string_list *paths)
+{
+	enum patch_format ret = PATCH_FORMAT_UNKNOWN;
+	struct strbuf l1 = STRBUF_INIT;
+	struct strbuf l2 = STRBUF_INIT;
+	struct strbuf l3 = STRBUF_INIT;
+	FILE *fp;
+
+	/*
+	 * We default to mbox format if input is from stdin and for directories
+	 */
+	if (!paths->nr || !strcmp(paths->items->string, "-") ||
+	    is_directory(paths->items->string)) {
+		ret = PATCH_FORMAT_MBOX;
+		goto done;
+	}
+
+	/*
+	 * Otherwise, check the first 3 lines of the first patch, starting
+	 * from the first non-blank line, to try to detect its format.
+	 */
+	fp = xfopen(paths->items->string, "r");
+	while (!strbuf_getline(&l1, fp, '\n')) {
+		strbuf_trim(&l1);
+		if (l1.len)
+			break;
+	}
+	strbuf_getline(&l2, fp, '\n');
+	strbuf_trim(&l2);
+	strbuf_getline(&l3, fp, '\n');
+	strbuf_trim(&l3);
+	fclose(fp);
+
+	if (starts_with(l1.buf, "From ") || starts_with(l1.buf, "From: "))
+		ret = PATCH_FORMAT_MBOX;
+	else if (l1.len && l2.len && l3.len && is_email(paths->items->string))
+		ret = PATCH_FORMAT_MBOX;
+
+done:
+	strbuf_release(&l1);
+	strbuf_release(&l2);
+	strbuf_release(&l3);
+	return ret;
+}
+
 /**
  * Splits out individual patches from `paths`, where each path is either a mbox
  * file or a Maildir. Return 0 on success, -1 on failure.
@@ -174,6 +264,14 @@ static int split_patches(struct am_state *state, enum patch_format patch_format,
 static void am_setup(struct am_state *state, enum patch_format patch_format,
 		struct string_list *paths)
 {
+	if (!patch_format)
+		patch_format = detect_patch_format(paths);
+
+	if (!patch_format) {
+		fprintf_ln(stderr, _("Patch format detection failed."));
+		exit(128);
+	}
+
 	if (mkdir(state->dir.buf, 0777) < 0 && errno != EEXIST)
 		die_errno(_("failed to create directory '%s'"), state->dir.buf);
 
