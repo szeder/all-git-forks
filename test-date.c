@@ -4,7 +4,7 @@ static const char *usage_msg = "\n"
 "  test-date show [time_t]...\n"
 "  test-date parse [date]...\n"
 "  test-date parse-to-timestamp [date]...\n"
-"  test-date approxidate [date]...\n";
+"  test-date approxidate_relative [date]...\n";
 
 static void show_dates(char **argv, struct timeval *now)
 {
@@ -23,12 +23,12 @@ static void parse_dates(char **argv, struct timeval *now)
 	struct strbuf result = STRBUF_INIT;
 
 	for (; *argv; argv++) {
-		unsigned long t;
+		time_t t;
 		int tz;
 
 		strbuf_reset(&result);
 		parse_date(*argv, &result);
-		if (sscanf(result.buf, "%lu %d", &t, &tz) == 2)
+		if (sscanf(result.buf, "%ld %d", &t, &tz) == 2)
 			printf("%s -> %s\n",
 			       *argv, show_date(t, tz, DATE_ISO8601));
 		else
@@ -55,12 +55,21 @@ static void parse_to_timestamp(char **argv, struct timeval *now)
 	strbuf_release(&result);
 }
 
-static void parse_approxidate(char **argv, struct timeval *now)
+static void parse_approxidate_relative(char **argv, struct timeval *now)
 {
 	for (; *argv; argv++) {
 		time_t t;
 		t = approxidate_relative(*argv, now);
 		printf("%s -> %s\n", *argv, show_date(t, 0, DATE_ISO8601));
+	}
+}
+
+static void parse_approxidate_careful(char **argv)
+{
+	for (; *argv; argv++) {
+		time_t t;
+		t = approxidate_careful(*argv, NULL);
+		printf("%s -> %s\n", *argv, show_date(t, -700, DATE_ISO8601));
 	}
 }
 
@@ -86,8 +95,10 @@ int main(int argc, char **argv)
 		parse_dates(argv+1, &now);
 	else if (!strcmp(*argv, "parse-to-timestamp"))
 		parse_to_timestamp(argv+1, &now);
-	else if (!strcmp(*argv, "approxidate"))
-		parse_approxidate(argv+1, &now);
+	else if (!strcmp(*argv, "approxidate_relative"))
+		parse_approxidate_relative(argv+1, &now);
+	else if (!strcmp(*argv, "approxidate_careful"))
+		parse_approxidate_careful(argv+1);
 	else
 		usage(usage_msg);
 	return 0;

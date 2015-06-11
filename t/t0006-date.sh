@@ -51,42 +51,52 @@ check_parse '2008-02-14 20:30:45' '2008-02-14 20:30:45 -0500' EST5
 check_parse '1960-02-14 20:30:45 -0500' '1960-02-14 20:30:45 -0500'
 check_parse '1112911993 -0700' '2005-04-07 15:13:13 -0700'
 
-check_approxidate() {
+check_approxidate_relative() {
 	echo "$1 -> $2 +0000" >expect
-	test_expect_${3:-success} "parse approxidate ($1)" "
-	test-date approxidate '$1' >actual &&
+	test_expect_${3:-success} "parse approxidate_relative ($1)" "
+	test-date approxidate_relative '$1' >actual &&
 	test_cmp expect actual
 	"
 }
 
-check_approxidate now '2009-08-30 19:20:00'
-check_approxidate '5 seconds ago' '2009-08-30 19:19:55'
-check_approxidate 5.seconds.ago '2009-08-30 19:19:55'
-check_approxidate 10.minutes.ago '2009-08-30 19:10:00'
-check_approxidate yesterday '2009-08-29 19:20:00'
-check_approxidate 3.days.ago '2009-08-27 19:20:00'
-check_approxidate 3.weeks.ago '2009-08-09 19:20:00'
-check_approxidate 3.months.ago '2009-05-30 19:20:00'
-check_approxidate 2.years.3.months.ago '2007-05-30 19:20:00'
+check_approxidate_relative now '2009-08-30 19:20:00'
+check_approxidate_relative '5 seconds ago' '2009-08-30 19:19:55'
+check_approxidate_relative 5.seconds.ago '2009-08-30 19:19:55'
+check_approxidate_relative 10.minutes.ago '2009-08-30 19:10:00'
+check_approxidate_relative yesterday '2009-08-29 19:20:00'
+check_approxidate_relative 3.days.ago '2009-08-27 19:20:00'
+check_approxidate_relative 3.weeks.ago '2009-08-09 19:20:00'
+check_approxidate_relative 3.months.ago '2009-05-30 19:20:00'
+check_approxidate_relative 2.years.3.months.ago '2007-05-30 19:20:00'
 
-check_approxidate '6am yesterday' '2009-08-29 06:00:00'
-check_approxidate '6pm yesterday' '2009-08-29 18:00:00'
-check_approxidate '3:00' '2009-08-30 03:00:00'
-check_approxidate '15:00' '2009-08-30 15:00:00'
-check_approxidate 'noon today' '2009-08-30 12:00:00'
-check_approxidate 'noon yesterday' '2009-08-29 12:00:00'
+check_approxidate_relative '6am yesterday' '2009-08-29 06:00:00'
+check_approxidate_relative '6pm yesterday' '2009-08-29 18:00:00'
+check_approxidate_relative '3:00' '2009-08-30 03:00:00'
+check_approxidate_relative '15:00' '2009-08-30 15:00:00'
+check_approxidate_relative 'noon today' '2009-08-30 12:00:00'
+check_approxidate_relative 'noon yesterday' '2009-08-29 12:00:00'
 
-check_approxidate 'last tuesday' '2009-08-25 19:20:00'
-check_approxidate 'July 5th' '2009-07-05 19:20:00'
-check_approxidate '06/05/2009' '2009-06-05 19:20:00'
-check_approxidate '06.05.2009' '2009-05-06 19:20:00'
+check_approxidate_relative 'last tuesday' '2009-08-25 19:20:00'
+check_approxidate_relative 'July 5th' '2009-07-05 19:20:00'
+check_approxidate_relative '06/05/2009' '2009-06-05 19:20:00'
+check_approxidate_relative '06.05.2009' '2009-05-06 19:20:00'
 
-check_approxidate 'Jun 6, 5AM' '2009-06-06 05:00:00'
-check_approxidate '5AM Jun 6' '2009-06-06 05:00:00'
-check_approxidate '6AM, June 7, 2009' '2009-06-07 06:00:00'
+check_approxidate_relative 'Jun 6, 5AM' '2009-06-06 05:00:00'
+check_approxidate_relative '5AM Jun 6' '2009-06-06 05:00:00'
+check_approxidate_relative '6AM, June 7, 2009' '2009-06-07 06:00:00'
 
-check_approxidate '2008-12-01' '2008-12-01 19:20:00'
-check_approxidate '2009-12-01' '2009-12-01 19:20:00'
+check_approxidate_relative '2008-12-01' '2008-12-01 19:20:00'
+check_approxidate_relative '2009-12-01' '2009-12-01 19:20:00'
+
+check_approxidate_careful() {
+	echo "$1 -> $2 +0000" >expect
+	test_expect_${3:-success} "parse approxidate_careful ($1)" "
+	test-date approxidate_careful '$1' >actual &&
+	test_cmp expect actual
+	"
+}
+
+check_approxidate_careful '07.04.2005.15:15:00.-0700}' '2005-04-07 22:15:00'
 
 check_parse_to_ts() {
 	echo "$1 -> $2" >expect
