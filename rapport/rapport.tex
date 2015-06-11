@@ -52,15 +52,18 @@
 
 \maketitle
 
-\section{Introdution}
+\section{Introduction}
 
-Le projet de spécialité a été un challenge intéressant. Les quatres semaines ont été intenses, et le groupe a connu une évolution dans l'organisation et la communication durant cette période. 
+Le projet de spécialité a été un challenge intéressant. Les quatres semaines ont été intenses, et le groupe a connu une évolution dans l'organisation et la communication durant cette période.\\
+
+Nous avons décidé de contribuer au logiciel libre Git, afin de découvrir l'envers du décor lors du développement d'un logiciel de grande ampleur, mais aussi pour perfectionner notre utilisation de Git, atout précieux en entreprise.
 
 \section{Présentation du logiciel Git}
 
 \subsection{Le logiciel Git}
 
-Git est un logiciel de versionnage très populaire parmi les developpeurs. Il permet de gérer le travail de plusieurs personnes en parrallèle sur un même projet, ainsi que d'archiver toutes les modifications, pour les réordonner, les éditer ou les supprimmer par la suite.
+Git est un logiciel de versionnage très populaire parmi les developpeurs.
+Il permet de gérer le travail de plusieurs personnes en parrallèle sur un même projet, ainsi que d'archiver toutes les modifications, pour les réordonner, les éditer ou les supprimmer par la suite.
 Git fonctionne grâce à un système de commit, instantané du répertoire courant, qui permet de sauvegarder des ensembles de modifications indépendamment les uns des autres pour pouvoir par la suite les archiver, les retravailler ou les réordonner.
 
 \subsection{Les contraintes de Git}
@@ -99,9 +102,6 @@ Forts de notre expérience sur la commande git rebase -i, nous nous sommes lanc�
 Dans un premier temps, nous souhaitions ajouter une option --status à la commande git rebase afin d'afficher l'état du rebasage en cours. 
 Cependant, la communauté était contre l'idée de complexifier le logiciel en rajoutant des options, et un consensus a émergé pour modifier simplement la commande git status pour qu'elle ait un comportement dépendant du contexte et que pendant un rebase, elle affiche son état.
 
-
-
-
 \subsection{git bisect}
 
 
@@ -118,36 +118,37 @@ Cela impose que les décisions sont prises par consensus et il faut être capabl
 
 \subsection{La mailing-list}
 
-
-
-
 \section{Enseignements tirés}
 
 \subsection{Enseignements techniques}
 
-Ce premier contact avec le developpement collaboratif de logiciels libres nous a permis de mieux comprendre les enjeux inhérents à des projets de cet ampleur. 
-Ce projet nous permis de travailler avec une importante base de code existante. La lecture du code, de la documentation, et des API a pris bien plus de temps que coder effectivement. Malgré celà, notre manque d'expérience sur ce projet a engendré de nombreuses erreurs de notre part. 
+Ce premier contact avec le developpement collaboratif de logiciels libres nous a permis de mieux comprendre les enjeux inhérents à des projets de cet ampleur.
+Ce projet nous permis de travailler avec une importante base de code existante. La lecture du code, de la documentation, et des API a pris bien plus de temps que coder effectivement.
+Malgré celà, notre manque d'expérience sur ce projet a engendré de nombreuses erreurs de notre part.
+C'est sur ce point que l'intégration a une communauté de développeur nous a été très bénéfique, puisque nos erreurs ont été corrigées très régulièrement et nos décisions discutées.
+Au contact de ce milieu, nous avons pu appréhendé le fossé qui sépare les projets scolaires ou personnels des logiciel réels, en terme de qualité, d'exigence, mais aussi de reflexion autour de chaque décision.
 
-\subsection{Adaptation des méthodes agiles au logiciel libre}
+\subsection{Adaptation des méthodes agiles au logiciel Git}
 
 La méthode agile consiste à essayer de réduire la partie gestion de projet au minimum, afin de se concentrer sur l'essentiel du travail du développeur: le code.
 Etant donnée le temps imparti pour le projet, nous avons réalisés trois sprints.
 Au début de chaque sprint, nous avons défini des objectifs à réaliser, toutefois, notre définition du mot fini a évolué au fur et à mesure du projet afin de s'adapter aux besoins de l'équipe.
 
-Sur certains points, notamment l'adaptation, la méthode agile nous a énormément aidé. En effet, il aurait été impossible de prévoir au début du projet les contributions à réaliser. 
+Sur certains points, notamment l'adaptation, la méthode agile nous a énormément aidé. En effet, il aurait été impossible de prévoir au début du projet les contributions à réaliser.
 
-D'un autre coté, certaines caractéristiques de ce projet ne se prêtent absolument pas à sa réalisation avec des méthodes agiles: 
+D'un autre coté, certaines caractéristiques de ce projet ne se prêtent absolument pas à sa réalisation avec des méthodes agiles:
 \begin{itemize}
-\item les méthodes agiles mettent le client, et sa collaboration avec les developpeurs au coeur du processus de développement, alors que git n'a pas de client et la personne chargée de la maintenance du logiciel, la plus à-même de prendre des décisions, vit en décalage horaire avec nous. 
+\item les méthodes agiles mettent le client, et sa collaboration avec les developpeurs au coeur du processus de développement, alors que git n'a pas de client et la personne chargée de la maintenance du logiciel, la plus à-même de prendre des décisions, vit en décalage horaire avec nous.
 \item les méthodes agiles favorisent les logiciels qui fonctionnent plutôt qu'une documentation exhaustive.
 Or, les contraintes de l'open-source poussent à être perfectionniste à tout moment du projet, puisque la personne reprenant le code ne sera pas forcément celle qui l'a écrit.
 \end{itemize}
 
 Enfin, la méthode scrum introduit des rigidités telles que ne plus avoir de tâches en cours au moment de fin de sprint.
 Ces contraintes n'ont pas pu etre respectées étant donné la courte durée des sprints et le temps nécéssaire à l'acceptation d'un patch.
-Pour palier ce problème, nous avons fait évolué notre définition de "fini" au cours du projet: afin de pouvoir finir des stories lors des premiers sprints, nous avons décidé qu'un patch serait fini lorsqu'il est envoyé à la mailing list. 
+Pour palier ce problème, nous avons fait évolué notre définition de "fini" au cours du projet: afin de pouvoir finir des stories lors des premiers sprints, nous avons décidé qu'un patch serait fini lorsqu'il est envoyé à la mailing list.
 
 \section{Conclusion}
+
 
 
 
