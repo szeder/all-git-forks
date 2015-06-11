@@ -18,6 +18,7 @@
 #include "diffcore.h"
 #include "unpack-trees.h"
 #include "branch.h"
+#include "sequencer.h"
 
 /**
  * Returns 1 if the file is empty or does not exist, 0 otherwise.
@@ -73,6 +74,8 @@ struct am_state {
 
 	/* override error message when patch failure occurs */
 	const char *resolvemsg;
+
+	int sign;
 };
 
 /**
@@ -280,6 +283,9 @@ static void am_load(struct am_state *state)
 	read_state_file(&sb, am_path(state, "quiet"), 2, 1);
 	state->quiet = !strcmp(sb.buf, "t");
 
+	read_state_file(&sb, am_path(state, "sign"), 2, 1);
+	state->sign = !strcmp(sb.buf, "t");
+
 	strbuf_release(&sb);
 }
 
@@ -463,6 +469,8 @@ static void am_setup(struct am_state *state, enum patch_format patch_format,
 
 	write_file(am_path(state, "quiet"), 1, state->quiet ? "t" : "f");
 
+	write_file(am_path(state, "sign"), 1, state->sign ? "t" : "f");
+
 	if (!get_sha1("HEAD", curr_head)) {
 		write_file(am_path(state, "abort-safety"), 1, "%s", sha1_to_hex(curr_head));
 		update_ref("am", "ORIG_HEAD", curr_head, NULL, 0, UPDATE_REFS_DIE_ON_ERR);
@@ -628,6 +636,9 @@ static int parse_patch(struct am_state *state, const char *patch)
 	if (strbuf_read_file(&state->msg, am_path(state, "msg"), 0) < 0)
 		die_errno(_("could not read '%s'"), am_path(state, "msg"));
 	stripspace(&state->msg, 0);
+
+	if (state->sign)
+		append_signoff(&state->msg, 0, 0);
 
 	return 0;
 }
@@ -997,6 +1008,8 @@ static const char * const am_usage[] = {
 
 static struct option am_options[] = {
 	OPT__QUIET(&state.quiet, N_("be quiet")),
+	OPT_BOOL('s', "signoff", &state.sign,
+		N_("add a Signed-off-by line to the commit message")),
 	OPT_CALLBACK(0, "patch-format", &opt_patch_format, N_("format"),
 		N_("format the patch(es) are in"), parse_opt_patchformat),
 	OPT_STRING(0, "resolvemsg", &state.resolvemsg, NULL,
