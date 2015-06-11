@@ -8,6 +8,12 @@
 #include "exec_cmd.h"
 #include "parse-options.h"
 #include "dir.h"
+#include "run-command.h"
+
+enum patch_format {
+	PATCH_FORMAT_UNKNOWN = 0,
+	PATCH_FORMAT_MBOX
+};
 
 struct am_state {
 	/* state directory path */
@@ -16,6 +22,9 @@ struct am_state {
 	/* current and last patch numbers, 1-indexed */
 	int cur;
 	int last;
+
+	/* number of digits in patch filename */
+	int prec;
 };
 
 /**
@@ -26,6 +35,7 @@ static void am_state_init(struct am_state *state)
 	memset(state, 0, sizeof(*state));
 
 	strbuf_init(&state->dir, 0);
+	state->prec = 4;
 }
 
 /**
@@ -111,12 +121,66 @@ static void am_destroy(const struct am_state *state)
 }
 
 /**
+ * Splits out individual patches from `paths`, where each path is either a mbox
+ * file or a Maildir. Return 0 on success, -1 on failure.
+ */
+static int split_patches_mbox(struct am_state *state, struct string_list *paths)
+{
+	struct child_process cp = CHILD_PROCESS_INIT;
+	struct string_list_item *item;
+	struct strbuf last = STRBUF_INIT;
+
+	cp.git_cmd = 1;
+	argv_array_push(&cp.args, "mailsplit");
+	argv_array_pushf(&cp.args, "-d%d", state->prec);
+	argv_array_pushf(&cp.args, "-o%s", state->dir.buf);
+	argv_array_push(&cp.args, "-b");
+	argv_array_push(&cp.args, "--");
+
+	for_each_string_list_item(item, paths)
+		argv_array_push(&cp.args, item->string);
+
+	if (capture_command(&cp, &last, 8))
+		return -1;
+
+	state->cur = 1;
+	state->last = strtol(last.buf, NULL, 10);
+
+	return 0;
+}
+
+/**
+ * Splits out individual patches, of patch_format, contained within paths.
+ * These patches will be stored in the state directory, with each patch's
+ * filename being its index, padded to state->prec digits. state->cur will be
+ * set to the index of the first patch, and state->last will be set to the
+ * index of the last patch. Returns 0 on success, -1 on failure.
+ */
+static int split_patches(struct am_state *state, enum patch_format patch_format,
+		struct string_list *paths)
+{
+	switch (patch_format) {
+	case PATCH_FORMAT_MBOX:
+		return split_patches_mbox(state, paths);
+	default:
+		die("BUG: invalid patch_format");
+	}
+	return -1;
+}
+
+/**
  * Setup a new am session for applying patches
  */
-static void am_setup(struct am_state *state)
+static void am_setup(struct am_state *state, enum patch_format patch_format,
+		struct string_list *paths)
 {
 	if (mkdir(state->dir.buf, 0777) < 0 && errno != EEXIST)
 		die_errno(_("failed to create directory '%s'"), state->dir.buf);
+
+	if (split_patches(state, patch_format, paths) < 0) {
+		am_destroy(state);
+		die(_("Failed to split patches."));
+	}
 
 	write_file(am_path(state, "next"), 1, "%d", state->cur);
 
@@ -138,13 +202,33 @@ static void am_next(struct am_state *state)
  */
 static void am_run(struct am_state *state)
 {
-	while (state->cur <= state->last)
+	while (state->cur <= state->last) {
+
+		/* TODO: Patch application not implemented yet */
+
 		am_next(state);
+	}
 
 	am_destroy(state);
 }
 
+/**
+ * parse_options() callback that validates and sets opt->value to the
+ * PATCH_FORMAT_* enum value corresponding to `arg`.
+ */
+static int parse_opt_patchformat(const struct option *opt, const char *arg, int unset)
+{
+	int *opt_value = opt->value;
+
+	if (!strcmp(arg, "mbox"))
+		*opt_value = PATCH_FORMAT_MBOX;
+	else
+		return -1;
+	return 0;
+}
+
 static struct am_state state;
+static int opt_patch_format;
 
 static const char * const am_usage[] = {
 	N_("git am [options] [(<mbox>|<Maildir>)...]"),
@@ -152,6 +236,8 @@ static const char * const am_usage[] = {
 };
 
 static struct option am_options[] = {
+	OPT_CALLBACK(0, "patch-format", &opt_patch_format, N_("format"),
+		N_("format the patch(es) are in"), parse_opt_patchformat),
 	OPT_END()
 };
 
@@ -173,8 +259,21 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 
 	if (am_in_progress(&state))
 		am_load(&state);
-	else
-		am_setup(&state);
+	else {
+		struct string_list paths = STRING_LIST_INIT_DUP;
+		int i;
+
+		for (i = 0; i < argc; i++) {
+			if (is_absolute_path(argv[i]) || !prefix)
+				string_list_append(&paths, argv[i]);
+			else
+				string_list_append(&paths, mkpath("%s/%s", prefix, argv[i]));
+		}
+
+		am_setup(&state, opt_patch_format, &paths);
+
+		string_list_clear(&paths, 0);
+	}
 
 	am_run(&state);
 
