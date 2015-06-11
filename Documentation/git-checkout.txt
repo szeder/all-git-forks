@@ -115,7 +115,42 @@ entries; instead, unmerged entries are ignored.
 --ours::
 --theirs::
 	When checking out paths from the index, check out stage #2
-	('ours') or #3 ('theirs') for unmerged paths.
+	('ours', HEAD) or #3 ('theirs', MERGE_HEAD) for unmerged paths.
+	See linkgit:git-merge[1] for details about stages #2 and #3.
++
+Note that during `git rebase` and `git pull --rebase`, 'theirs' checks out
+the local version, and 'ours' the remote version or the history that is rebased
+against.
++
+The reason ours/theirs appear to be swapped during a rebase is that we
+define the remote history as the canonical history, on top of which our
+private commits are applied on, as opposed to normal merging where the
+local history is the canonical one.
+During merging, we assume the role of the canonical history’s keeper,
+which, in case of a rebase, is the remote history, and our private commits
+look to the keeper as “their” commits which need to be integrated on top
+of “our” work.
++
+Normal merging:
+------------
+local ---------abC                  <-- canonical history
+                 | git checkout --ours
+                 v
+MERGE ---------abC
+                 ^
+                 | git checkout --theirs
+origin/master ---Xyz
+------------
+Rebasing:
+------------
+local -----------Abc
+                 | git checkout --theirs
+                 v
+REBASE --------xyZ
+                 ^
+                 | git checkout --ours
+origin/master -xyZ                    <-- canonical history
+------------
 
 -b <new_branch>::
 	Create a new branch named <new_branch> and start it at
