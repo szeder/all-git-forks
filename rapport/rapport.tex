@@ -89,9 +89,17 @@ De plus, le code écrit doit être d'une qualité irréprochable afin que les pr
 
 \subsection{git am --3way}
 
+La commande \gitcmd{git am} permet d'appliquer des patchs (ensemble de
+modifications) reçu par mail sur son working tree (sa copie de
+travail).
+
 Notre première contribution a été de permettre l'ajout d'une variable de configuration pour une option très courante afin que les utilisateurs ne soient pas obligés de la retaper à chaque fois.
 
 \subsection{git send-email}
+
+La commande \gitcmd{git send-email} permet d'envoyer des patchs par
+email (et potentiellement d'ajouter un message avec) à une ou plusieus
+personnes.
 
 \begin{parremil}
 Cette contribution a pour but d'
@@ -102,14 +110,18 @@ Cette contribution a pour but d'
   utilisé par la plupart des client mails). Cette modification permet
   donc à l'utilisateur de copier-coller une liste d'adresses depuis un
   mail vers la commande \gitcmd{git send-email} au lieu de devoir
-  taper plusieurs fois les options \gitcmd{--to:}, \gitcmd{--cc:} et
-  \gitcmd{--bcc:} devant chacune des adresses. 
+  taper plusieurs fois les options \gitcmd{--to}, \gitcmd{--cc} et
+  \gitcmd{--bcc} devant chacune des adresses. 
 \item autoriser les alias dans les \tech{header} des patch ainsi qu'en
   sortie des scripts spécifiés à l'aide des options \gitcmd{--cc-cmd}
   et \gitcmd{--to-cmd}. Cela permet de faciliter l'utilisation de la
   commande dans ces cas ainsi que d'augmenter la cohérence avec
   les options \gitcmd{--to} et \gitcmd{--cc} de \gitcmd{git format-patch} 
   qui ne géraient pas les alias.
+\item gérer les arguments comportant des espaces superflux en début et
+  en fin de chaine de façon à produire des emails indépendants de ces
+  espaces. Cette modification permet aussi et surtout d'interpréter
+  les alias comportant de tels espaces. 
 \end{itemize}
 \end{parremil}
 
@@ -152,11 +164,15 @@ Dès lors, notre point de vue sur le logiciel est très different de celui des a
 
 La communauté Git s'organise autour d'une mailing-list, laquelle reçoit les rapports de bug, les propositions de patchs et les revues de code. Ainsi, tout le monde a accès à toutes les informations, et peut donner son avis, ou proposer des modification.
 
-Ce modèle sans véritable hierarchie est donc très égalitaire, toutefois, il est assez déroutant au début, puisqu'il n'y a pas véritablement de personne qui fasse référence.
+Ce modèle sans véritable hierarchie est donc très égalitaire, toutefois, il est assez déroutant au début, puisqu'il n'y a pas véritablement de personne qui fasse référence. C'est par exemple très différent d'une relation avec un product owner à qui on doit délivrer un produit. Il y a une réelle idée de collaboration dans les retours lorsque l'on propose un patch, une idée.
 
 Cela impose que les décisions sont prises par consensus et il faut être capable de savoir quand une idée est rejetée, alors que personne ne prend jamais la responsabilité de le dire explicitement.
 
 Ce fonctionnement nous amène donc à prendre en compte les critiques vis à vis de nos contributions, et donc soit d'argumenter pour montrer que celles ci ont un intérêt pour le logiciel soit de se rendre compte que leurs remarques sont fondées et d'accepter de laisser tomber une contribution.
+
+~\\
+
+
 
 \section{Difficultés}
 
