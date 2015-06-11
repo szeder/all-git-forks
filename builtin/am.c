@@ -409,6 +409,8 @@ static int split_patches(struct am_state *state, enum patch_format patch_format,
 static void am_setup(struct am_state *state, enum patch_format patch_format,
 		struct string_list *paths)
 {
+	unsigned char curr_head[20];
+
 	if (!patch_format)
 		patch_format = detect_patch_format(paths);
 
@@ -428,6 +430,14 @@ static void am_setup(struct am_state *state, enum patch_format patch_format,
 	write_file(am_path(state, "next"), 1, "%d", state->cur);
 
 	write_file(am_path(state, "last"), 1, "%d", state->last);
+
+	if (!get_sha1("HEAD", curr_head)) {
+		write_file(am_path(state, "abort-safety"), 1, "%s", sha1_to_hex(curr_head));
+		update_ref("am", "ORIG_HEAD", curr_head, NULL, 0, UPDATE_REFS_DIE_ON_ERR);
+	} else {
+		write_file(am_path(state, "abort-safety"), 1, "%s", "");
+		delete_ref("ORIG_HEAD", NULL, 0);
+	}
 }
 
 /**
@@ -436,6 +446,8 @@ static void am_setup(struct am_state *state, enum patch_format patch_format,
  */
 static void am_next(struct am_state *state)
 {
+	unsigned char head[GIT_SHA1_RAWSZ];
+
 	state->cur++;
 	write_file(am_path(state, "next"), 1, "%d", state->cur);
 
@@ -446,6 +458,11 @@ static void am_next(struct am_state *state)
 
 	strbuf_reset(&state->msg);
 	unlink(am_path(state, "final-commit"));
+
+	if (!get_sha1("HEAD", head))
+		write_file(am_path(state, "abort-safety"), 1, "%s", sha1_to_hex(head));
+	else
+		write_file(am_path(state, "abort-safety"), 1, "%s", "");
 }
 
 /**
@@ -655,10 +672,14 @@ static void am_run(struct am_state *state)
 {
 	struct strbuf sb = STRBUF_INIT;
 
+	unlink(am_path(state, "dirtyindex"));
+
 	refresh_and_write_cache();
 
-	if (index_has_changes(&sb))
+	if (index_has_changes(&sb)) {
+		write_file(am_path(state, "dirtyindex"), 1, "t");
 		die(_("Dirty index: cannot apply patches (dirty: %s)"), sb.buf);
+	}
 
 	strbuf_release(&sb);
 
@@ -834,6 +855,67 @@ static void am_skip(struct am_state *state)
 	am_run(state);
 }
 
+static int safe_to_abort(const struct am_state *state)
+{
+	struct strbuf sb = STRBUF_INIT;
+	unsigned char abort_safety[20], head[20];
+
+	if (file_exists(am_path(state, "dirtyindex")))
+		return 0;
+
+	if (read_state_file(&sb, am_path(state, "abort-safety"), 40, 1) > 0) {
+		if (get_sha1_hex(sb.buf, abort_safety))
+			die(_("could not parse %s"), am_path(state, "abort_safety"));
+	} else
+		hashclr(abort_safety);
+
+	if (get_sha1("HEAD", head))
+		hashclr(head);
+
+	if (!hashcmp(head, abort_safety))
+		return 1;
+
+	error(_("You seem to have moved HEAD since the last 'am' failure.\n"
+		"Not rewinding to ORIG_HEAD"));
+
+	return 0;
+}
+
+/**
+ * Aborts the current am session if it is safe to do so.
+ */
+static void am_abort(struct am_state *state)
+{
+	unsigned char curr_head[20], orig_head[20];
+	int has_curr_head, has_orig_head;
+	const char *curr_branch;
+
+	if (!safe_to_abort(state)) {
+		am_destroy(state);
+		return;
+	}
+
+	curr_branch = resolve_refdup("HEAD", 0, curr_head, NULL);
+	has_curr_head = !is_null_sha1(curr_head);
+	if (!has_curr_head)
+		hashcpy(curr_head, EMPTY_TREE_SHA1_BIN);
+
+	has_orig_head = !get_sha1("ORIG_HEAD", orig_head);
+	if (!has_orig_head)
+		hashcpy(orig_head, EMPTY_TREE_SHA1_BIN);
+
+	clean_index(curr_head, orig_head);
+
+	if (has_orig_head)
+		update_ref("am --abort", "HEAD", orig_head,
+				has_curr_head ? curr_head : NULL, 0,
+				UPDATE_REFS_DIE_ON_ERR);
+	else if (curr_branch)
+		delete_ref(curr_branch, NULL, REF_NODEREF);
+
+	am_destroy(state);
+}
+
 /**
  * parse_options() callback that validates and sets opt->value to the
  * PATCH_FORMAT_* enum value corresponding to `arg`.
@@ -852,7 +934,8 @@ static int parse_opt_patchformat(const struct option *opt, const char *arg, int 
 enum resume_mode {
 	RESUME_FALSE = 0,
 	RESUME_RESOLVED,
-	RESUME_SKIP
+	RESUME_SKIP,
+	RESUME_ABORT
 };
 
 static struct am_state state;
@@ -861,7 +944,7 @@ static enum resume_mode opt_resume;
 
 static const char * const am_usage[] = {
 	N_("git am [options] [(<mbox>|<Maildir>)...]"),
-	N_("git am [options] (--continue | --skip)"),
+	N_("git am [options] (--continue | --skip | --abort)"),
 	NULL
 };
 
@@ -877,6 +960,9 @@ static struct option am_options[] = {
 	OPT_CMDMODE(0, "skip", &opt_resume,
 		N_("skip the current patch"),
 		RESUME_SKIP),
+	OPT_CMDMODE(0, "abort", &opt_resume,
+		N_("restore the original branch and abort the patching operation."),
+		RESUME_ABORT),
 	OPT_END()
 };
 
@@ -926,6 +1012,9 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 		break;
 	case RESUME_SKIP:
 		am_skip(&state);
+		break;
+	case RESUME_ABORT:
+		am_abort(&state);
 		break;
 	default:
 		die("BUG: invalid resume value");
