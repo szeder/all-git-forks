@@ -93,8 +93,25 @@ Notre première contribution a été de permettre l'ajout d'une variable de conf
 
 \subsection{git send-email}
 
-Cette contribution a pour but d'autoriser l'utilisation de la commande git send-email en entrant les addresses mails séparées par des virgules (ce qui est le format utilisé par la plupart des client mails). Cette modification permet donc à l'utilisateur de copier-coller une liste d'addresses depuis un mail vers la commande \gitcmd{git send-email} au lieu de devoir taper "--to:" devant chacune des addresses.
+\begin{parremil}
+Cette contribution a pour but d'
 
+\begin{itemize}
+\item autoriser l'utilisation de la commande git send-email en entrant
+  les adresses mails séparées par des virgules (ce qui est le format
+  utilisé par la plupart des client mails). Cette modification permet
+  donc à l'utilisateur de copier-coller une liste d'adresses depuis un
+  mail vers la commande \gitcmd{git send-email} au lieu de devoir
+  taper plusieurs fois les options \gitcmd{--to:}, \gitcmd{--cc:} et
+  \gitcmd{--bcc:} devant chacune des adresses. 
+\item autoriser les alias dans les \tech{header} des patch ainsi qu'en
+  sortie des scripts spécifiés à l'aide des options \gitcmd{--cc-cmd}
+  et \gitcmd{--to-cmd}. Cela permet de faciliter l'utilisation de la
+  commande dans ces cas ainsi que d'augmenter la cohérence avec
+  les options \gitcmd{--to} et \gitcmd{--cc} de \gitcmd{git format-patch} 
+  qui ne géraient pas les alias.
+\end{itemize}
+\end{parremil}
 
 \subsection{git rebase --interactive}
 
