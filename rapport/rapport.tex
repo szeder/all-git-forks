@@ -26,10 +26,21 @@
 \setlength{\topmargin}{-.5in}
 
 % Commandes de mise en page
+\newcommand{\textremil}[1]{\emph{\color{red} #1}}
+\newcommand{\gitcmd}[1]{\emph{#1}}
+\newcommand{\tech}[1]{\emph{#1}}
 \newcommand{\fichier}[1]{\emph{#1}}
 \newcommand{\nom}[1]{\emph{#1}}
 \newcommand{\Fig}[1]{Fig \ref{#1} p. \pageref{#1}}
 \newcommand{\itemi}{\item[$\bullet$]}
+
+% differentes contributions
+\newenvironment{parremil}{%
+  \color{red}
+}{%
+  \color{white}
+}
+
 
 % Commandes de maths
 \newcommand{\fonction}[3]{#1 : #2 \to #3}
@@ -112,6 +123,9 @@ Le developpement de Git est supervisé par Junio C Hamano, qui s'occupe de synch
 
 L'immense majorité des contributeurs sont des utilisateurs expérimentés de Git, alors que l'une de nos motivation principale dans ce projet était d'améliorer notre maitrise de Git.
 
+Dès lors, notre point de vue sur le logiciel est très different de celui des autres contributeur, mais pas ininteressant pour autant: nous connaissons mieux les obstacles rencontrées dans l'apprentissage de Git, et donc imaginer des solutions pour les contourner
+\textremil{(qui a un peu été mise à profit lors des différentes discussions au niveau de \gitcmd{git status} lors d'un \tech{rebase interactif} notamment.}
+
 Dès lors, notre point de vue sur le logiciel est très different de celui des autres contributeur, mais pas ininteressant pour autant: nous connaissons mieux les obstacles rencontrées dans l'apprentissage de Git, et donc imaginer des solutions pour les contourner.
 ~\\
 
@@ -127,11 +141,18 @@ Ce fonctionnement nous amène donc à prendre en compte les critiques vis à vis
 
 \subsection{Enseignements techniques}
 
-Ce premier contact avec le developpement collaboratif de logiciels libres nous a permis de mieux comprendre les enjeux inhérents à des projets de cet ampleur.
-Ce projet nous permis de travailler avec une importante base de code existante. La lecture du code, de la documentation, et des API a pris bien plus de temps que coder effectivement.
-Malgré celà, notre manque d'expérience sur ce projet a engendré de nombreuses erreurs de notre part.
+Ce premier contact avec le developpement collaboratif de logiciels libres nous a permis de mieux comprendre les enjeux inhérents à des projets de cet ampleur. 
+Ce projet nous a permis de travailler avec une importante base de code existante. La lecture du code, de la documentation, et des API a pris bien plus de temps que coder effectivement. Malgré celà, notre manque d'expérience sur ce projet a engendré de nombreuses erreurs de notre part.
 C'est sur ce point que l'intégration a une communauté de développeur nous a été très bénéfique, puisque nos erreurs ont été corrigées très régulièrement et nos décisions discutées.
 Au contact de ce milieu, nous avons pu appréhendé le fossé qui sépare les projets scolaires ou personnels des logiciel réels, en terme de qualité, d'exigence, mais aussi de reflexion autour de chaque décision.
+
+\begin{parremil}
+ICI je vais ecrire l'apprentissage de git
+\end{parremil}
+
+\begin{parremil}
+ICI je vais ecrire l'apprentissage de perl
+\end{parremil}
 
 \subsection{Adaptation des méthodes agiles au logiciel Git}
 
@@ -163,7 +184,6 @@ weeks.  All the new contributors we acquired recently, including but not limited
       Junio C Hamano
    \end{flushright}
 \end{quote}
-
 
 
 
