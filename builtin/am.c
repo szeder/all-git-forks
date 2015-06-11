@@ -697,6 +697,34 @@ next:
 }
 
 /**
+ * Resume the current am session after patch application failure. The user did
+ * all the hard work, and we do not have to do any patch application. Just
+ * trust and commit what the user has in the index and working tree.
+ */
+static void am_resolve(struct am_state *state)
+{
+	printf_ln(_("Applying: %s"), firstline(state->msg.buf));
+
+	if (!index_has_changes(NULL)) {
+		printf_ln(_("No changes - did you forget to use 'git add'?\n"
+			"If there is nothing left to stage, chances are that something else\n"
+			"already introduced the same changes; you might want to skip this patch."));
+		exit(128);
+	}
+
+	if (unmerged_cache()) {
+		printf_ln(_("You still have unmerged paths in your index.\n"
+			"Did you forget to use 'git add'?"));
+		exit(128);
+	}
+
+	do_commit(state);
+
+	am_next(state);
+	am_run(state);
+}
+
+/**
  * parse_options() callback that validates and sets opt->value to the
  * PATCH_FORMAT_* enum value corresponding to `arg`.
  */
@@ -711,17 +739,30 @@ static int parse_opt_patchformat(const struct option *opt, const char *arg, int 
 	return 0;
 }
 
+enum resume_mode {
+	RESUME_FALSE = 0,
+	RESUME_RESOLVED
+};
+
 static struct am_state state;
 static int opt_patch_format;
+static enum resume_mode opt_resume;
 
 static const char * const am_usage[] = {
 	N_("git am [options] [(<mbox>|<Maildir>)...]"),
+	N_("git am [options] --continue"),
 	NULL
 };
 
 static struct option am_options[] = {
 	OPT_CALLBACK(0, "patch-format", &opt_patch_format, N_("format"),
 		N_("format the patch(es) are in"), parse_opt_patchformat),
+	OPT_CMDMODE(0, "continue", &opt_resume,
+		N_("continue applying patches after resolving a conflict"),
+		RESUME_RESOLVED),
+	OPT_CMDMODE('r', "resolved", &opt_resume,
+		N_("synonyms for --continue"),
+		RESUME_RESOLVED),
 	OPT_END()
 };
 
@@ -762,7 +803,16 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 		string_list_clear(&paths, 0);
 	}
 
-	am_run(&state);
+	switch (opt_resume) {
+	case RESUME_FALSE:
+		am_run(&state);
+		break;
+	case RESUME_RESOLVED:
+		am_resolve(&state);
+		break;
+	default:
+		die("BUG: invalid resume value");
+	}
 
 	am_state_release(&state);
 
