@@ -124,7 +124,7 @@ task: pretask id nombre estado descripcion notas est_ini est_end ini end priorid
 
 user: preuser uname urole postuser
 
-asig: preasig atid auname postasig
+asig: preasig auname atid postasig
 
 init_task_sect: {
 	init_task_section();
@@ -271,11 +271,11 @@ urole: {
 }
 
 init_asig_sect: {
-	init_user_section();
+	init_asig_section();
 }
 
 end_asig_sect: {
-	end_user_section();
+	end_asig_section();
 }
 
 preasig: {

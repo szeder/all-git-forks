@@ -63,7 +63,7 @@ void end_task_section(){
 }
 
 void pre_task(){
-	write(ganttproject_file,"\t\t<task ",NULL);
+	write(ganttproject_file,"\t\t<task",NULL);
 }
 
 void post_task(){
@@ -184,7 +184,7 @@ void end_user_section(){
 }
 
 void pre_user(){
-	write(ganttproject_file,"\t\t<resource ",NULL);
+	write(ganttproject_file,"\t\t<resource",NULL);
 }
 
 void post_user(){
@@ -211,7 +211,7 @@ void end_asig_section(){
 }
 
 void pre_assignment(){
-	write(ganttproject_file,"\t\t<allocation ",NULL);
+	write(ganttproject_file,"\t\t<allocation",NULL);
 }
 
 void post_assignment(){

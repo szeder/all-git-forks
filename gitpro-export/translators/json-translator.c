@@ -68,11 +68,11 @@ void post_assignment(){
 }
 
 void function_atid(char *atid){
-	write(json_file,"\"task-id\":\"%s\", ",atid);
+	write(json_file,"\"task-id\":\"%s\" ",atid);
 }
 
 void function_auname(char *auname){
-	write(json_file,"\"username\":\"%s\"",auname);
+	write(json_file,"\"username\":\"%s\",",auname);
 }
 
 void function_id(char *id){

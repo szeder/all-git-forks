@@ -7,19 +7,23 @@ void init_doc(){ }
 void end_doc(){ }
 
 void init_task_section(){ }
-void end_task_section(){ }
+void end_task_section(){ 
+	write(csv_file,"break\n",NULL);
+}
 
 void pre_task(){ }
 void post_task(){ }
 
 void init_user_section(){ }
-void end_user_section(){ }
+void end_user_section(){
+	write(csv_file,"break\n",NULL); 
+}
 
 void pre_user(){ }
 void post_user(){ }
 
 void function_urole(char *urole){
-	write(csv_file,"%s,",urole);
+	write(csv_file,"%s\n",urole);
 }
 
 void function_empty_urole(){ 
@@ -37,7 +41,7 @@ void pre_assignment(){ }
 void post_assignment(){ }
 
 void function_atid(char *atid){
-	write(csv_file,"%s,",atid);
+	write(csv_file,"%s\n",atid);
 }
 
 void function_auname(char *auname){
@@ -145,5 +149,5 @@ void function_empty_est_time(){
 }
 
 void function_empty_time(){
-	write(csv_file,",",NULL);
+	write(csv_file,",\n",NULL);
 }
