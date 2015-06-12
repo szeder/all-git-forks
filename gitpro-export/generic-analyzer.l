@@ -22,7 +22,7 @@ urole "urole"
 atid "atid"
 auname "auname"
 
-cadena [^\n]
+cadena [^\"\n]
 intro [\n]
 
 %%
@@ -45,7 +45,7 @@ intro [\n]
 {urole}			{ return UROLE; }
 
 {atid}			{ return ATID; }
-{auname}			{ return AUNAME; }
+{auname}		{ return AUNAME; }
 
 {cadena}+		{ yylval.cad = strdup(yytext); return FIELD; }
 

@@ -1,10 +1,16 @@
-NAME = std-to-csv
+#Compile analyzer
+#	$- make std NAME=final_name FORMAT=available_analyzer_format
+#Compile tranlator
+#	$- make dest NAME=final_name FORMAT=available_translate_format
+
+NAME ?= csv-to-std
+FORMAT ?= csv
 
 ANALYZER_PATH = analyzers
 TRANSLATOR_PATH = translators
 
-ANALYZER = csv-analyzer
-TRANSLATOR = csv-translator
+ANALYZER = $(FORMAT)-analyzer
+TRANSLATOR = $(FORMAT)-translator
 
 STD_API = std-api/standarization-API.h std-api/standarization-API.c
 
