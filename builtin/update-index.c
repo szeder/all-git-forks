@@ -5,6 +5,7 @@
  */
 #include "cache.h"
 #include "numparse.h"
+#include "tempfile.h"
 #include "lockfile.h"
 #include "quote.h"
 #include "cache-tree.h"
