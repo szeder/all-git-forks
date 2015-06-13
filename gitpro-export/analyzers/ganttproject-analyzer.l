@@ -85,25 +85,26 @@ char *days_to_hours(char *days){
 }
 
 /* Transform date format from yyyy-mm-dd to dd/mm/yyyy */
-char *transform_date(char *date){
-	char *y = strtok(date,"-");
+char *transform_date(char *mydate){
+	char *aux = (char *) malloc(strlen(mydate)+1);
+	char *y = strtok(mydate,"-");
 	char *m = strtok(NULL,"-");
 	char *d = strtok(NULL,"-");
-	char *aux = (char *) malloc(1000);
-	strcat(strcat(strcat(strcat(strcpy(aux,d),"/"),m),"/"),y);
+	sprintf(aux,"%s/%s/%s",d,m,y);
 	return aux;
 }
 
 /* Calculate end date from start date and duration in days */
-char *calculate_end_date(char *date, char *duration){
+char *calculate_end_date(char *mydate, char *myduration){
+	char *end = (char *) malloc(strlen(mydate)+1);
 	char *year = strtok(date,"-");
 	char *month = strtok(NULL,"-");
 	char *day = strtok(NULL,"-");
-	
+		
 	int y = atoi(year);
 	int m = atoi(month);
 	int d = atoi(day);
-	int days = atoi(duration);
+	int days = atoi(myduration);
 	
 	//Substract 1 cause it ends at laboral day. For example, if 
 	//1 laboral day starts and ends at same day
@@ -143,8 +144,15 @@ char *calculate_end_date(char *date, char *duration){
 		m=m-12;
 	}
 	
-	char *end = (char *) malloc(strlen(date));	
-	sprintf(end,"%d/%d/%d",d,m,y);
+	if(d<10){	
+		sprintf(end,"0%d/%d/%d",d,m,y);
+	}else if(m<10){
+		sprintf(end,"%d/0%d/%d",d,m,y);	
+	}else if(d<10 && m<10){
+		sprintf(end,"0%d/0%d/%d",d,m,y);
+	}else{
+		sprintf(end,"%d/%d/%d",d,m,y);
+	}
 	return end;
 
 }
@@ -178,6 +186,7 @@ void process_task_datetime(){
 		free(auxdate);
 		free(date);
 		free(duration);
+		date=NULL;duration=NULL;
 		free(end);free(start);free(time);
 	}
 }
@@ -195,15 +204,22 @@ cadena [^=<>\"\n]
 (?i:"<task ")				{ data=TASK; inProgress =0; complete=0; }
 (?i:"<customproperty ")		{ inCustomProperty = 1; }
 (?I:"</customproperty>")	{ inCustomProperty = 0; }
-(?i:"/>")					{ process_task_datetime(); 
+(?i:"/>")					{ 
 							  switch(data){
-								case TASK: if(!inCustomProperty){ std_task();} break;
+								case TASK: process_task_datetime();
+										   if(!inCustomProperty){ 
+												std_task(); 
+												inProgress=0;
+												complete=0; } 
+										   break;
 								case USER: std_user();break;
 								case ASIG: std_asig();break;
 							  }
 							  inCustomProperty = 0;
 							}
 (?i:"</task>")				{ process_task_datetime(); 
+							  inProgress=0;
+							  complete=0;
 							  std_task(); }
 
 (?i:"<resources>")			{ data=USER; }
@@ -223,7 +239,7 @@ cadena [^=<>\"\n]
 (?i:"\"type\" value=\"")	{ tvalue = TYPE; }
 (?i:"\"prior\" value=\"")	{ tvalue = PRIOR; }
 (?i:"start=\"")				{ tvalue = DATE;}
-(?i:"complete=\"")			{ inProgress = 0; }
+(?i:"complete=\"")			{ inProgress = 1; }
 (?i:"complete=\"0\"")		{ inProgress = 0; }
 (?i:"duration=\"")			{ tvalue = DURATION; }
 (?i:"complete=\"100\"")		{ complete = 1; }
@@ -234,7 +250,6 @@ cadena [^=<>\"\n]
 {intro}				{ /* vacio */ }
 
 {cadena}+			{ 	
-
 						switch(data){
 							case TASK:
 								switch(tvalue){

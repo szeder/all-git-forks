@@ -1,0 +1,40 @@
+id
+1
+name
+nombre tarea
+state
+nueva
+desc
+mi descripcion
+notes
+pequeña nota
+est-date-ini
+20/10/2010
+est-date-end
+23/10/2010
+real-date-ini
+15/11/2010
+real-date-end
+18/11/2010
+priority
+alta
+type
+desarrollo
+time
+20
+est-time
+15
+id
+2
+name
+otra tarea
+state
+terminada
+uname
+pepe
+urole
+jefe
+auname
+pepe
+atid
+1

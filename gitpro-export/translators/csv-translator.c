@@ -93,11 +93,11 @@ void function_type(char *type){
 }
 
 void function_est_time(char *est_time){
-	write(csv_file,"%s,",est_time);
+	write(csv_file,"%s\n",est_time);
 }
 
 void function_time(char *time){
-	write(csv_file,"%s\n",time);
+	write(csv_file,"%s,",time);
 }
 
 void function_empty_name(){
@@ -145,9 +145,9 @@ void function_empty_type(){
 }
 
 void function_empty_est_time(){
-	write(csv_file,",",NULL);
+	write(csv_file,"\n",NULL);
 }
 
 void function_empty_time(){
-	write(csv_file,",\n",NULL);
+	write(csv_file,",",NULL);
 }

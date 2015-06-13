@@ -108,11 +108,11 @@ end_doc: {
 	end_doc();
 }
 
-ts: /* vacio */ | init_task_sect t end_task_sect
+ts: init_task_sect end_task_sect | init_task_sect t end_task_sect
 
-us: /* vacio */ | init_user_sect u end_user_sect
+us: init_user_sect end_user_sect | init_user_sect u end_user_sect
 
-as: /* vacio */ | init_asig_sect a end_asig_sect
+as: init_asig_sect end_asig_sect | init_asig_sect a end_asig_sect
 
 t: task | t task 
 
@@ -120,7 +120,7 @@ u: user | u user
 
 a: asig | a asig
 
-task: pretask id nombre estado descripcion notas est_ini est_end ini end prioridad tipo est_time time posttask
+task: pretask id nombre estado descripcion notas est_ini est_end ini end prioridad tipo time est_time posttask
 
 user: preuser uname urole postuser
 

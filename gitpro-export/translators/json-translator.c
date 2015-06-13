@@ -11,33 +11,33 @@ void end_doc(){
 }
 
 void init_task_section(){ 
-	write(json_file,"\t\"task\": [\n",NULL); 
+	write(json_file,"\"task\": [\n",NULL); 
 }
 
 void end_task_section(){ 
-	write(json_file,"\t]\n",NULL); 
+	write(json_file,"]\n",NULL); 
 }
 
 void pre_task(){ 
-	write(json_file,"\t\t{",NULL);
+	write(json_file,"\t{",NULL);
 }
 void post_task(){ 
-	write(json_file,"}",NULL);
+	write(json_file,"}\n",NULL);
 }
 
 void init_user_section(){ 
-	write(json_file,"\t\"user\": [\n",NULL);
+	write(json_file,"\"user\": [\n",NULL);
 }
 
 void end_user_section(){
-	write(json_file,"\t]\n",NULL); 
+	write(json_file,"]\n",NULL); 
 }
 
 void pre_user(){ 
-	write(json_file,"\t\t{",NULL);	
+	write(json_file,"\t{",NULL);	
 }
 void post_user(){ 
-	write(json_file,"}",NULL);	
+	write(json_file,"}\n",NULL);	
 }
 
 void function_urole(char *urole){
@@ -53,18 +53,18 @@ void function_uname(char *uname){
 }
 
 void init_asig_section(){
-	write(json_file,"\t\"asig\": [\n",NULL); 
+	write(json_file,"\"asig\": [\n",NULL); 
 }
 
 void end_asig_section(){ 
-	write(json_file,"\t]\n",NULL);
+	write(json_file,"]\n",NULL);
 }
 
 void pre_assignment(){ 
-	write(json_file,"\t\t{",NULL);
+	write(json_file,"\t{",NULL);
 }
 void post_assignment(){ 
-	write(json_file,"}",NULL);
+	write(json_file,"}\n",NULL);
 }
 
 void function_atid(char *atid){

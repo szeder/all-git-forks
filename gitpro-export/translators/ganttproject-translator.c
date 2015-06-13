@@ -25,11 +25,11 @@ char *hours_to_days(char *hours){
 
 /* Transform date format from dd/mm/yyyy to yyyy-mm-dd */
 char *transform_date(char *date){
+	char *aux = (char *) malloc(strlen(date)+1);
 	char *d = strtok(date,"/");
 	char *m = strtok(NULL,"/");
 	char *y = strtok(NULL,"/");
-	char *aux = (char *) malloc(strlen(date));
-	strcat(strcat(strcat(strcat(strcpy(aux,y),"-"),m),"-"),d);
+	sprintf(aux,"%s-%s-%s",y,m,d);
 	return aux;
 }
 
@@ -68,23 +68,41 @@ void pre_task(){
 
 void post_task(){
 	write(ganttproject_file," >\n",NULL);
-	write(ganttproject_file,"\t\t\t<customproperty taskproperty-id=\"prior\" value=\"%s\" />\n",aux_prior);
-	write(ganttproject_file,"\t\t\t<customproperty taskproperty-id=\"type\" value=\"%s\" />\n",aux_type);
-	write(ganttproject_file,"\t\t\t<customproperty taskproperty-id=\"state\" value=\"%s\" />\n",aux_state);
+	if(aux_prior!=NULL){
+		write(ganttproject_file,"\t\t\t<customproperty taskproperty-id=\"prior\" value=\"%s\" />\n",aux_prior);
+		free(aux_prior);
+		aux_prior=NULL;
+	}
+	if(aux_type!=NULL){
+		write(ganttproject_file,"\t\t\t<customproperty taskproperty-id=\"type\" value=\"%s\" />\n",aux_type);
+		free(aux_type);
+		aux_type=NULL;
+	}
+	if(aux_state!=NULL){
+		write(ganttproject_file,"\t\t\t<customproperty taskproperty-id=\"state\" value=\"%s\" />\n",aux_state);
+		free(aux_state);
+		aux_state=NULL;
+	}
 	write(ganttproject_file,"\t\t</task>\n",NULL);
-	if(aux_ini_est!=NULL) free(aux_ini_est);
-	if(aux_ini_real!=NULL) free(aux_ini_real);
-	if(aux_est_time!=NULL) free(aux_est_time);
-	if(aux_type!=NULL) free(aux_type);
-	if(aux_state!=NULL) free(aux_state);
-	if(aux_prior!=NULL) free(aux_prior);
+	if(aux_ini_est!=NULL){ 
+		free(aux_ini_est);
+		aux_ini_est=NULL;
+	}
+	if(aux_ini_real!=NULL){ 
+		free(aux_ini_real);
+		aux_ini_real=NULL;
+	}
+	if(aux_est_time!=NULL){
+		free(aux_est_time);
+		aux_est_time=NULL;
+	}
 	ini_est = 0;
 	ini_real = 0;
 	fin_real = 0;
 }
 
 void function_id(char *id){
-	write(ganttproject_file,"id=\"%s\"",id);
+	write(ganttproject_file," id=\"%s\"",id);
 }
 
 void function_name(char *name){
@@ -101,7 +119,7 @@ void function_notes(char *notes){ }
 
 void function_est_date_ini(char *est_ini){
 	ini_est = 1;
-	aux_ini_est = strdup(transform_date(est_ini));
+	aux_ini_est = transform_date(est_ini);
 }
 
 void function_est_date_end(char *est_end){
@@ -112,7 +130,7 @@ void function_est_date_end(char *est_end){
 
 void function_real_date_ini(char *ini){
 	ini_real = 1;
-	aux_ini_real = strdup(transform_date(ini));
+	aux_ini_real = transform_date(ini);
 }
 
 void function_real_date_end(char *end){
@@ -131,7 +149,9 @@ void function_est_time(char *est_time){
 	if(!ini_real){
 		write(ganttproject_file," start=\"%s\"",aux_ini_est);
 		//Convert hours to days
-		write(ganttproject_file," duration=\"%s\"",hours_to_days(est_time));
+		char *days  = hours_to_days(est_time);
+		write(ganttproject_file," duration=\"%s\"",days);
+		free(days);
 	}else{
 		aux_est_time = strdup(est_time);
 	}
@@ -141,10 +161,14 @@ void function_time(char *time){
 	if(ini_real){
 		write(ganttproject_file," start=\"%s\"",aux_ini_real);
 		if(fin_real){
-			write(ganttproject_file," duration=\"%s\"",hours_to_days(time));
+			char *days = hours_to_days(time);
+			write(ganttproject_file," duration=\"%s\"",days);
 			write(ganttproject_file," complete=\"100\"",NULL);
+			free(days);
 		}else{
-			write(ganttproject_file," duration=\"%s\"",hours_to_days(aux_est_time));
+			char *days = hours_to_days(aux_est_time);
+			write(ganttproject_file," duration=\"%s\"",days);
+			free(days);
 		}
 	}	
 }

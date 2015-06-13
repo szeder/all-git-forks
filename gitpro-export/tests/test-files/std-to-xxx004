@@ -1,0 +1,26 @@
+id
+1
+name
+nombre tarea
+state
+nueva
+est-date-ini
+20/06/2010
+est-date-end
+23/07/2010
+real-date-ini
+15/06/2010
+real-date-end
+18/07/2010
+priority
+alta
+type
+desarrollo
+uname
+pepe
+urole
+jefe
+uname
+juan
+urole
+empleado
