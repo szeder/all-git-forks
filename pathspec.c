@@ -286,9 +286,10 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 				/* strip trailing slash */
 				item->len--;
 				match[item->len] = '\0';
-			} else
-				die (_("Pathspec '%s' is in submodule '%.*s'"),
-				     elt, ce_len, ce->name);
+				break;
+			}
+			die (_("Pathspec '%s' is in submodule '%.*s'"),
+			     elt, ce_len, ce->name);
 		}
 
 	/*
