@@ -6,6 +6,9 @@
 
 #include "cache.h"
 
+static const int YEAR_MIN = 1583;  // Gregorian calendar was introduced in October 1582
+static const int YEAR_MAX = 2999;
+ 
 static int number_of_leap_days(int year)
 {
 	return year / 4 - year / 100 + year / 400;
@@ -39,7 +42,7 @@ static int tm_to_time_t(const struct tm *tm, time_t *time)
 	int month = tm->tm_mon;
 	int day = tm->tm_mday;
 
-	if (year < 1583)	/* approximate start of gregorian calendar */
+	if (year < YEAR_MIN)
 		return -1;
 	if (month < 0 || month > 11) /* array bounds */
 		return -1;
@@ -416,45 +419,143 @@ static int match_alpha(const char *date, struct tm *tm, int *offset)
 	return skip_alpha(date);
 }
 
-static int is_date(int year, int month, int day, struct tm *now_tm, time_t now, struct tm *tm)
+enum DateFormat { INVALID=0, YYYY_MM_DD, YYYY_DD_MM, DD_MM_YYYY, MM_DD_YYYY };
+
+
+
+static int could_be_a_year(int year) {
+	return (YEAR_MIN <= year && year <= YEAR_MAX)
+		|| (70 < year && year <= 99)
+		|| (0 <= year && year < 38);
+}
+
+static int could_be_a_month(int month) {
+	return 0 < month && month < 13;
+}
+
+static int could_be_a_day(int day) {
+	return 0 < day && day < 32;
+}
+
+static int could_be_a_hour(int hour) {
+	/* do we really need <= 24? */
+	return 0 <= hour && hour <= 24;
+}
+
+static int could_be_a_minute(int min) {
+	return 0 <= min && min < 60;
+}
+
+static int could_be_a_second(int sec) {
+	return 0 <= sec && sec <= 60;
+}
+
+static int normalized_month_for_tm(int month) {
+	return month - 1;
+}
+
+static int normalized_year(int year) {
+	if (70 < year && year <= 99)
+		return year + 1900;
+	else if (0 <= year && year < 38)
+		return year + 2000;
+
+	return year;
+}
+
+static int normalized_year_for_tm(int year) {
+	return normalized_year(year) - 1900;
+}
+
+static void fill_date_in_tm(int year, int month, int day, struct tm *tm)
 {
-	if (month > 0 && month < 13 && day > 0 && day < 32) {
-		struct tm check = *tm;
-		struct tm *r = (now_tm ? &check : tm);
-		time_t specified;
+	tm->tm_year = normalized_year_for_tm(year);
+	tm->tm_mon = normalized_month_for_tm(month);
+	tm->tm_mday = day;
+}
 
-		r->tm_mon = month - 1;
-		r->tm_mday = day;
-		if (year == -1) {
-			if (!now_tm)
-				return 1;
-			r->tm_year = now_tm->tm_year;
-		}
-		else if (year >= 1000 && year <= 9999)
-			r->tm_year = year - 1900;
-		else if (year > 70 && year < 100)
-			r->tm_year = year;
-		else if (year < 38)
-			r->tm_year = year + 100;
-		else
+static void fill_time_in_tm(int hour, int min, int sec, struct tm *tm)
+{
+	tm->tm_hour = hour;
+	tm->tm_min = min;
+	tm->tm_sec = sec;
+}
+
+static int init_and_fill_tm(int num1, int num2, int num3, enum DateFormat order, struct tm *tm)
+{
+	int year, month, day;
+	memset(tm, 0, sizeof(*tm));
+	tm->tm_isdst = -1;
+
+	switch (order) {
+		case YYYY_DD_MM:
+			year = num1;
+			day = num2;
+			month = num3;
+			break;
+		case YYYY_MM_DD:
+			year = num1;
+			month = num2;
+			day = num3;
+			break;
+		case DD_MM_YYYY:
+			day = num1;
+			month = num2;
+			year = num3;
+			break;
+		case MM_DD_YYYY:
+			month = num1;
+			day = num2;
+			year = num3;
+			break;
+		default:
 			return 0;
-
-		if (!now_tm)
-			return 1;
-
-		/* Be it commit time or author time, it does not make
-		 * sense to specify timestamp way into the future.  Make
-		 * sure it is not later than ten days from now...
-		 */
-		if (days_between(*now_tm, *r) > 10)
-			return 0;
-		tm->tm_mon = r->tm_mon;
-		tm->tm_mday = r->tm_mday;
-		if (year != -1)
-			tm->tm_year = r->tm_year;
-		return 1;
 	}
-	return 0;
+
+	fill_date_in_tm(year, month, day, tm);
+	return 1;
+}
+
+static enum DateFormat get_date_order(int num1, int num2, int num3, char separator, struct tm *now_tm)
+{
+	struct tm tm_tmp;
+
+	if (num1 > 70) {
+		/* yyyy-mm-dd? */
+		if (could_be_a_month(num2) && could_be_a_day(num3))
+			return YYYY_MM_DD;
+		/* yyyy-dd-mm? */
+		else if (could_be_a_day(num2) && could_be_a_month(num3))
+			return YYYY_DD_MM;
+	}
+
+	/* Our eastern European friends say dd.mm.yy[yy]
+	 * is the norm there, so giving precedence to
+	 * mm/dd/yy[yy] form only when separator is not '.'
+	 */
+	if (separator != '.' &&
+		could_be_a_month(num1) && could_be_a_day(num2) && could_be_a_year(num3)) {
+		init_and_fill_tm(num1, num2, num3, MM_DD_YYYY, &tm_tmp);
+		if (days_between(*now_tm, tm_tmp) <= 10)
+			return MM_DD_YYYY;
+	}
+
+	/* European dd.mm.yy[yy] or funny US dd/mm/yy[yy] */
+	if (could_be_a_day(num1) && could_be_a_month(num2) && could_be_a_year(num3)) {
+		init_and_fill_tm(num1, num2, num3, DD_MM_YYYY, &tm_tmp);
+		if (days_between(*now_tm, tm_tmp) <= 10)
+			return DD_MM_YYYY;
+	}
+
+	/* Funny European mm.dd.yy */
+	if (separator == '.' &&
+		could_be_a_month(num1) && could_be_a_day(num2) && could_be_a_year(num3)) {
+		init_and_fill_tm(num1, num2, num3, MM_DD_YYYY, &tm_tmp);
+		if (days_between(*now_tm, tm_tmp) <= 10)
+			return MM_DD_YYYY;
+	}
+
+	return INVALID;
 }
 
 static int match_multi_number(unsigned long num, char c, const char *date,
@@ -474,10 +575,10 @@ static int match_multi_number(unsigned long num, char c, const char *date,
 	case ':':
 		if (num3 < 0)
 			num3 = 0;
-		if (num < 25 && num2 >= 0 && num2 < 60 && num3 >= 0 && num3 <= 60) {
-			tm->tm_hour = num;
-			tm->tm_min = num2;
-			tm->tm_sec = num3;
+		if (could_be_a_hour(num) &&
+		    could_be_a_minute(num2) &&
+		    could_be_a_second(num3)) {
+			fill_time_in_tm(num, num2, num3, tm);
 			break;
 		}
 		return 0;
@@ -491,29 +592,24 @@ static int match_multi_number(unsigned long num, char c, const char *date,
 		if (gmtime_r(&now, &now_tm))
 			refuse_future = &now_tm;
 
-		if (num > 70) {
-			/* yyyy-mm-dd? */
-			if (is_date(num, num2, num3, NULL, now, tm))
-				break;
-			/* yyyy-dd-mm? */
-			if (is_date(num, num3, num2, NULL, now, tm))
-				break;
+		enum DateFormat format = get_date_order(num, num2, num3, c, refuse_future);
+		switch (format) {
+		case YYYY_MM_DD:
+			fill_date_in_tm(num, num2, num3, tm);
+			break;
+		case YYYY_DD_MM:
+			fill_date_in_tm(num, num3, num2, tm);
+			break;
+		case DD_MM_YYYY:
+			fill_date_in_tm(num3, num2, num, tm);
+			break;
+		case MM_DD_YYYY:
+			fill_date_in_tm(num3, num, num2, tm);
+			break;
+		default:
+			return 0;
 		}
-		/* Our eastern European friends say dd.mm.yy[yy]
-		 * is the norm there, so giving precedence to
-		 * mm/dd/yy[yy] form only when separator is not '.'
-		 */
-		if (c != '.' &&
-		    is_date(num3, num, num2, refuse_future, now, tm))
-			break;
-		/* European dd.mm.yy[yy] or funny US dd/mm/yy[yy] */
-		if (is_date(num3, num2, num, refuse_future, now, tm))
-			break;
-		/* Funny European mm.dd.yy */
-		if (c == '.' &&
-		    is_date(num3, num, num2, refuse_future, now, tm))
-			break;
-		return 0;
+		break;
 	}
 	return end - date;
 }
