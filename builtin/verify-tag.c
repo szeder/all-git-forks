@@ -18,9 +18,12 @@ static const char * const verify_tag_usage[] = {
 		NULL
 };
 
-static int run_gpg_verify(const char *buf, unsigned long size, int verbose)
+static int run_gpg_verify(const char *buf, unsigned long size, int verbose, int raw)
 {
+	struct strbuf status = STRBUF_INIT, human_readable = STRBUF_INIT;
+	const struct strbuf *output = raw ? &status : &human_readable;
 	int len;
+	int ret;
 
 	len = parse_signature(buf, size);
 	if (verbose)
@@ -29,10 +32,15 @@ static int run_gpg_verify(const char *buf, unsigned long size, int verbose)
 	if (size == len)
 		return error("no signature found");
 
-	return verify_signed_buffer(buf, len, buf + len, size - len, NULL, NULL);
+	ret = verify_signed_buffer(buf, len, buf + len, size - len, &human_readable,
+			&status);
+
+	fputs(output->buf, stderr);
+
+	return ret;
 }
 
-static int verify_tag(const char *name, int verbose)
+static int verify_tag(const char *name, int verbose, int raw)
 {
 	enum object_type type;
 	unsigned char sha1[20];
@@ -52,7 +60,7 @@ static int verify_tag(const char *name, int verbose)
 	if (!buf)
 		return error("%s: unable to read file.", name);
 
-	ret = run_gpg_verify(buf, size, verbose);
+	ret = run_gpg_verify(buf, size, verbose, raw);
 
 	free(buf);
 	return ret;
@@ -68,9 +76,10 @@ static int git_verify_tag_config(const char *var, const char *value, void *cb)
 
 int cmd_verify_tag(int argc, const char **argv, const char *prefix)
 {
-	int i = 1, verbose = 0, had_error = 0;
+	int i = 1, verbose = 0, had_error = 0, raw = 0;
 	const struct option verify_tag_options[] = {
 		OPT__VERBOSE(&verbose, N_("print tag contents")),
+		OPT_BOOL(0, "raw", &raw, N_("print raw gpg status output")),
 		OPT_END()
 	};
 
@@ -85,7 +94,7 @@ int cmd_verify_tag(int argc, const char **argv, const char *prefix)
 	 * was received in the process of writing the gpg input: */
 	signal(SIGPIPE, SIG_IGN);
 	while (i < argc)
-		if (verify_tag(argv[i++], verbose))
+		if (verify_tag(argv[i++], verbose, raw))
 			had_error = 1;
 	return had_error;
 }
