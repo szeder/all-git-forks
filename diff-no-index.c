@@ -76,7 +76,7 @@ static int populate_from_stdin(struct diff_filespec *s)
 	return 0;
 }
 
-static struct diff_filespec *noindex_filespec(const char *name, int mode)
+static struct diff_filespec *noindex_filespec(const char *name, int mode, const char *label)
 {
 	struct diff_filespec *s;
 
@@ -86,11 +86,18 @@ static struct diff_filespec *noindex_filespec(const char *name, int mode)
 	fill_filespec(s, null_sha1, 0, mode);
 	if (name == file_from_standard_input)
 		populate_from_stdin(s);
+	if (label) {
+		diff_populate_filespec(s, 0);
+		diff_fill_sha1_info(s);
+		s->sha1_valid = 1;
+		strcpy(s->path, label);
+	}
 	return s;
 }
 
 static int queue_diff(struct diff_options *o,
-		      const char *name1, const char *name2)
+		      const char *name1, const char *name2,
+		      const char *label1, const char *label2)
 {
 	int mode1 = 0, mode2 = 0;
 
@@ -102,14 +109,14 @@ static int queue_diff(struct diff_options *o,
 
 		if (S_ISDIR(mode1)) {
 			/* 2 is file that is created */
-			d1 = noindex_filespec(NULL, 0);
-			d2 = noindex_filespec(name2, mode2);
+			d1 = noindex_filespec(NULL, 0, NULL);
+			d2 = noindex_filespec(name2, mode2, label2);
 			name2 = NULL;
 			mode2 = 0;
 		} else {
 			/* 1 is file that is deleted */
-			d1 = noindex_filespec(name1, mode1);
-			d2 = noindex_filespec(NULL, 0);
+			d1 = noindex_filespec(name1, mode1, label1);
+			d2 = noindex_filespec(NULL, 0, NULL);
 			name1 = NULL;
 			mode1 = 0;
 		}
@@ -176,7 +183,7 @@ static int queue_diff(struct diff_options *o,
 				n2 = buffer2.buf;
 			}
 
-			ret = queue_diff(o, n1, n2);
+			ret = queue_diff(o, n1, n2, NULL, NULL);
 		}
 		string_list_clear(&p1, 0);
 		string_list_clear(&p2, 0);
@@ -192,10 +199,11 @@ static int queue_diff(struct diff_options *o,
 			const char *tmp_c;
 			tmp = mode1; mode1 = mode2; mode2 = tmp;
 			tmp_c = name1; name1 = name2; name2 = tmp_c;
+			tmp_c = label1; label2 = label1; label2 = tmp_c;
 		}
 
-		d1 = noindex_filespec(name1, mode1);
-		d2 = noindex_filespec(name2, mode2);
+		d1 = noindex_filespec(name1, mode1, label1);
+		d2 = noindex_filespec(name2, mode2, label2);
 		diff_queue(&diff_queued_diff, d1, d2);
 		return 0;
 	}
@@ -245,12 +253,23 @@ void diff_no_index(struct rev_info *revs,
 	int i, prefixlen;
 	const char *paths[2];
 	struct strbuf replacement = STRBUF_INIT;
+	const char *labels[2] = { NULL, NULL };
+	int label_counter = 0;
+	const char *label;
 
 	diff_setup(&revs->diffopt);
 	for (i = 1; i < argc - 2; ) {
 		int j;
 		if (!strcmp(argv[i], "--no-index"))
 			i++;
+		if (skip_prefix(argv[i], "-L", &label))
+			if (label_counter < 2) {
+				labels[label_counter] = label;
+				label_counter++;
+				i++;
+			}
+			else
+				die("more than two labels given with option -L");
 		else if (!strcmp(argv[i], "--"))
 			i++;
 		else {
@@ -289,7 +308,8 @@ void diff_no_index(struct rev_info *revs,
 	setup_diff_pager(&revs->diffopt);
 	DIFF_OPT_SET(&revs->diffopt, EXIT_WITH_STATUS);
 
-	if (queue_diff(&revs->diffopt, paths[0], paths[1]))
+	if (queue_diff(&revs->diffopt, paths[0], paths[1], 
+		       labels[0], labels[1]))
 		exit(1);
 	diff_set_mnemonic_prefix(&revs->diffopt, "1/", "2/");
 	diffcore_std(&revs->diffopt);

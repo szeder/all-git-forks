@@ -60,6 +60,7 @@ extern void fill_filespec(struct diff_filespec *, const unsigned char *,
 extern int diff_populate_filespec(struct diff_filespec *, unsigned int);
 extern void diff_free_filespec_data(struct diff_filespec *);
 extern void diff_free_filespec_blob(struct diff_filespec *);
+extern void diff_fill_sha1_info(struct diff_filespec *);
 extern int diff_filespec_is_binary(struct diff_filespec *);
 
 struct diff_filepair {
