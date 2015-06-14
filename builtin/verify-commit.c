@@ -18,7 +18,7 @@ static const char * const verify_commit_usage[] = {
 		NULL
 };
 
-static int run_gpg_verify(const unsigned char *sha1, const char *buf, unsigned long size, int verbose)
+static int run_gpg_verify(const unsigned char *sha1, const char *buf, unsigned long size, int verbose, int raw)
 {
 	struct signature_check signature_check;
 
@@ -30,13 +30,13 @@ static int run_gpg_verify(const unsigned char *sha1, const char *buf, unsigned l
 		fputs(signature_check.payload, stdout);
 
 	if (signature_check.gpg_output)
-		fputs(signature_check.gpg_output, stderr);
+		fputs(raw ? signature_check.gpg_status : signature_check.gpg_output, stderr);
 
 	signature_check_clear(&signature_check);
 	return signature_check.result != 'G';
 }
 
-static int verify_commit(const char *name, int verbose)
+static int verify_commit(const char *name, int verbose, int raw)
 {
 	enum object_type type;
 	unsigned char sha1[20];
@@ -54,7 +54,7 @@ static int verify_commit(const char *name, int verbose)
 		return error("%s: cannot verify a non-commit object of type %s.",
 				name, typename(type));
 
-	ret = run_gpg_verify(sha1, buf, size, verbose);
+	ret = run_gpg_verify(sha1, buf, size, verbose, raw);
 
 	free(buf);
 	return ret;
@@ -70,9 +70,10 @@ static int git_verify_commit_config(const char *var, const char *value, void *cb
 
 int cmd_verify_commit(int argc, const char **argv, const char *prefix)
 {
-	int i = 1, verbose = 0, had_error = 0;
+	int i = 1, verbose = 0, had_error = 0, raw = 0;
 	const struct option verify_commit_options[] = {
 		OPT__VERBOSE(&verbose, N_("print commit contents")),
+		OPT_BOOL(0, "raw", &raw, N_("print raw gpg status output")),
 		OPT_END()
 	};
 
@@ -87,7 +88,7 @@ int cmd_verify_commit(int argc, const char **argv, const char *prefix)
 	 * was received in the process of writing the gpg input: */
 	signal(SIGPIPE, SIG_IGN);
 	while (i < argc)
-		if (verify_commit(argv[i++], verbose))
+		if (verify_commit(argv[i++], verbose, raw))
 			had_error = 1;
 	return had_error;
 }
