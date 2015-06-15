@@ -983,7 +983,7 @@ static void handle_info(void)
 	fprintf(fout, "\n");
 }
 
-static int mailinfo(const struct mailinfo_opts *opts, FILE *in, FILE *out,
+int mailinfo(const struct mailinfo_opts *opts, FILE *in, FILE *out,
 		const char *msg, const char *patch)
 {
 	int peek;
