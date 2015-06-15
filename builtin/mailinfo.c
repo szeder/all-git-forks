@@ -7,11 +7,17 @@
 #include "utf8.h"
 #include "strbuf.h"
 
+struct mailinfo_options {
+	int keep_subject;
+	int keep_non_patch_brackets_in_subject;
+	const char *metainfo_charset;
+	int use_scissors;
+	int use_inbody_headers;
+	int add_message_id;
+};
+
 static FILE *cmitmsg, *patchfile, *fin, *fout;
 
-static int keep_subject;
-static int keep_non_patch_brackets_in_subject;
-static const char *metainfo_charset;
 static struct strbuf line = STRBUF_INIT;
 static struct strbuf name = STRBUF_INIT;
 static struct strbuf email = STRBUF_INIT;
@@ -24,9 +30,6 @@ static enum  {
 static struct strbuf charset = STRBUF_INIT;
 static int patch_lines;
 static struct strbuf **p_hdr_data, **s_hdr_data;
-static int use_scissors;
-static int add_message_id;
-static int use_inbody_headers = 1;
 
 #define MAX_HDR_PARSED 10
 #define MAX_BOUNDARIES 5
@@ -200,9 +203,10 @@ static void handle_content_type(struct strbuf *line)
 	}
 }
 
-static void handle_message_id(const struct strbuf *line)
+static void handle_message_id(const struct mailinfo_options *opts,
+		const struct strbuf *line)
 {
-	if (add_message_id)
+	if (opts->add_message_id)
 		message_id = strdup(line->buf);
 }
 
@@ -222,7 +226,8 @@ static int is_multipart_boundary(const struct strbuf *line)
 		!memcmp(line->buf, (*content_top)->buf, (*content_top)->len));
 }
 
-static void cleanup_subject(struct strbuf *subject)
+static void cleanup_subject(const struct mailinfo_options *opts,
+		struct strbuf *subject)
 {
 	size_t at = 0;
 
@@ -250,7 +255,7 @@ static void cleanup_subject(struct strbuf *subject)
 			if (!pos)
 				break;
 			remove = pos - subject->buf + at + 1;
-			if (!keep_non_patch_brackets_in_subject ||
+			if (!opts->keep_non_patch_brackets_in_subject ||
 			    (7 <= remove &&
 			     memmem(subject->buf + at, remove, "PATCH", 5)))
 				strbuf_remove(subject, at, remove);
@@ -284,7 +289,7 @@ static void cleanup_space(struct strbuf *sb)
 	}
 }
 
-static void decode_header(struct strbuf *line);
+static void decode_header(const struct mailinfo_options *opts, struct strbuf *line);
 static const char *header[MAX_HDR_PARSED] = {
 	"From","Subject","Date",
 };
@@ -312,8 +317,9 @@ static int is_format_patch_separator(const char *line, int len)
 	return !memcmp(SAMPLE + (cp - line), cp, strlen(SAMPLE) - (cp - line));
 }
 
-static int check_header(const struct strbuf *line,
-				struct strbuf *hdr_data[], int overwrite)
+static int check_header(const struct mailinfo_options *opts,
+		const struct strbuf *line, struct strbuf *hdr_data[],
+		int overwrite)
 {
 	int i, ret = 0, len;
 	struct strbuf sb = STRBUF_INIT;
@@ -325,7 +331,7 @@ static int check_header(const struct strbuf *line,
 			 * normalize the meta information to utf8.
 			 */
 			strbuf_add(&sb, line->buf + len + 2, line->len - len - 2);
-			decode_header(&sb);
+			decode_header(opts, &sb);
 			handle_header(&hdr_data[i], &sb);
 			ret = 1;
 			goto check_header_out;
@@ -336,7 +342,7 @@ static int check_header(const struct strbuf *line,
 	if (cmp_header(line, "Content-Type")) {
 		len = strlen("Content-Type: ");
 		strbuf_add(&sb, line->buf + len, line->len - len);
-		decode_header(&sb);
+		decode_header(opts, &sb);
 		strbuf_insert(&sb, 0, "Content-Type: ", len);
 		handle_content_type(&sb);
 		ret = 1;
@@ -345,7 +351,7 @@ static int check_header(const struct strbuf *line,
 	if (cmp_header(line, "Content-Transfer-Encoding")) {
 		len = strlen("Content-Transfer-Encoding: ");
 		strbuf_add(&sb, line->buf + len, line->len - len);
-		decode_header(&sb);
+		decode_header(opts, &sb);
 		handle_content_transfer_encoding(&sb);
 		ret = 1;
 		goto check_header_out;
@@ -353,8 +359,8 @@ static int check_header(const struct strbuf *line,
 	if (cmp_header(line, "Message-Id")) {
 		len = strlen("Message-Id: ");
 		strbuf_add(&sb, line->buf + len, line->len - len);
-		decode_header(&sb);
-		handle_message_id(&sb);
+		decode_header(opts, &sb);
+		handle_message_id(opts, &sb);
 		ret = 1;
 		goto check_header_out;
 	}
@@ -509,23 +515,25 @@ static struct strbuf *decode_b_segment(const struct strbuf *b_seg)
 	return out;
 }
 
-static void convert_to_utf8(struct strbuf *line, const char *charset)
+static void convert_to_utf8(const struct mailinfo_options *opts,
+		struct strbuf *line, const char *charset)
 {
 	char *out;
 
 	if (!charset || !*charset)
 		return;
 
-	if (same_encoding(metainfo_charset, charset))
+	if (same_encoding(opts->metainfo_charset, charset))
 		return;
-	out = reencode_string(line->buf, metainfo_charset, charset);
+	out = reencode_string(line->buf, opts->metainfo_charset, charset);
 	if (!out)
 		die("cannot convert from %s to %s",
-		    charset, metainfo_charset);
+		    charset, opts->metainfo_charset);
 	strbuf_attach(line, out, strlen(out), strlen(out));
 }
 
-static int decode_header_bq(struct strbuf *it)
+static int decode_header_bq(const struct mailinfo_options *opts,
+		struct strbuf *it)
 {
 	char *in, *ep, *cp;
 	struct strbuf outbuf = STRBUF_INIT, *dec;
@@ -590,8 +598,8 @@ static int decode_header_bq(struct strbuf *it)
 			dec = decode_q_segment(&piecebuf, 1);
 			break;
 		}
-		if (metainfo_charset)
-			convert_to_utf8(dec, charset_q.buf);
+		if (opts->metainfo_charset)
+			convert_to_utf8(opts, dec, charset_q.buf);
 
 		strbuf_addbuf(&outbuf, dec);
 		strbuf_release(dec);
@@ -608,15 +616,15 @@ decode_header_bq_out:
 	return rfc2047;
 }
 
-static void decode_header(struct strbuf *it)
+static void decode_header(const struct mailinfo_options *opts, struct strbuf *it)
 {
-	if (decode_header_bq(it))
+	if (decode_header_bq(opts, it))
 		return;
 	/* otherwise "it" is a straight copy of the input.
 	 * This can be binary guck but there is no charset specified.
 	 */
-	if (metainfo_charset)
-		convert_to_utf8(it, "");
+	if (opts->metainfo_charset)
+		convert_to_utf8(opts, it, "");
 }
 
 static void decode_transfer_encoding(struct strbuf *line)
@@ -640,7 +648,7 @@ static void decode_transfer_encoding(struct strbuf *line)
 	free(ret);
 }
 
-static void handle_filter(struct strbuf *line);
+static void handle_filter(const struct mailinfo_options *opts, struct strbuf *line);
 
 static int find_boundary(void)
 {
@@ -651,7 +659,7 @@ static int find_boundary(void)
 	return 0;
 }
 
-static int handle_boundary(void)
+static int handle_boundary(const struct mailinfo_options *opts)
 {
 	struct strbuf newline = STRBUF_INIT;
 
@@ -673,7 +681,7 @@ again:
 					"can't recover\n");
 			exit(1);
 		}
-		handle_filter(&newline);
+		handle_filter(opts, &newline);
 		strbuf_release(&newline);
 
 		/* skip to the next boundary */
@@ -688,7 +696,7 @@ again:
 
 	/* slurp in this section's info */
 	while (read_one_header_line(&line, fin))
-		check_header(&line, p_hdr_data, 0);
+		check_header(opts, &line, p_hdr_data, 0);
 
 	strbuf_release(&newline);
 	/* replenish line */
@@ -785,7 +793,8 @@ static int is_scissors_line(const struct strbuf *line)
 		gap * 2 < perforation);
 }
 
-static int handle_commit_msg(struct strbuf *line)
+static int handle_commit_msg(const struct mailinfo_options *opts,
+		struct strbuf *line)
 {
 	static int still_looking = 1;
 
@@ -797,8 +806,8 @@ static int handle_commit_msg(struct strbuf *line)
 			return 0;
 	}
 
-	if (use_inbody_headers && still_looking) {
-		still_looking = check_header(line, s_hdr_data, 0);
+	if (opts->use_inbody_headers && still_looking) {
+		still_looking = check_header(opts, line, s_hdr_data, 0);
 		if (still_looking)
 			return 0;
 	} else
@@ -808,10 +817,10 @@ static int handle_commit_msg(struct strbuf *line)
 		still_looking = 0;
 
 	/* normalize the log message to UTF-8. */
-	if (metainfo_charset)
-		convert_to_utf8(line, charset.buf);
+	if (opts->metainfo_charset)
+		convert_to_utf8(opts, line, charset.buf);
 
-	if (use_scissors && is_scissors_line(line)) {
+	if (opts->use_scissors && is_scissors_line(line)) {
 		int i;
 		if (fseek(cmitmsg, 0L, SEEK_SET))
 			die_errno("Could not rewind output message file");
@@ -849,14 +858,14 @@ static void handle_patch(const struct strbuf *line)
 	patch_lines++;
 }
 
-static void handle_filter(struct strbuf *line)
+static void handle_filter(const struct mailinfo_options *opts, struct strbuf *line)
 {
 	static int filter = 0;
 
 	/* filter tells us which part we left off on */
 	switch (filter) {
 	case 0:
-		if (!handle_commit_msg(line))
+		if (!handle_commit_msg(opts, line))
 			break;
 		filter++;
 	case 1:
@@ -865,7 +874,7 @@ static void handle_filter(struct strbuf *line)
 	}
 }
 
-static void handle_body(void)
+static void handle_body(const struct mailinfo_options *opts)
 {
 	struct strbuf prev = STRBUF_INIT;
 
@@ -880,10 +889,10 @@ static void handle_body(void)
 		if (*content_top && is_multipart_boundary(&line)) {
 			/* flush any leftover */
 			if (prev.len) {
-				handle_filter(&prev);
+				handle_filter(opts, &prev);
 				strbuf_reset(&prev);
 			}
-			if (!handle_boundary())
+			if (!handle_boundary(opts))
 				goto handle_body_out;
 		}
 
@@ -913,7 +922,7 @@ static void handle_body(void)
 						strbuf_addbuf(&prev, sb);
 						break;
 					}
-				handle_filter(sb);
+				handle_filter(opts, sb);
 			}
 			/*
 			 * The partial chunk is saved in "prev" and will be
@@ -923,7 +932,7 @@ static void handle_body(void)
 			break;
 		}
 		default:
-			handle_filter(&line);
+			handle_filter(opts, &line);
 		}
 
 	} while (!strbuf_getwholeline(&line, fin, '\n'));
@@ -949,7 +958,7 @@ static void output_header_lines(FILE *fout, const char *hdr, const struct strbuf
 	}
 }
 
-static void handle_info(void)
+static void handle_info(const struct mailinfo_options *opts)
 {
 	struct strbuf *hdr;
 	int i;
@@ -964,8 +973,8 @@ static void handle_info(void)
 			continue;
 
 		if (!strcmp(header[i], "Subject")) {
-			if (!keep_subject) {
-				cleanup_subject(hdr);
+			if (!opts->keep_subject) {
+				cleanup_subject(opts, hdr);
 				cleanup_space(hdr);
 			}
 			output_header_lines(fout, "Subject", hdr);
@@ -982,7 +991,8 @@ static void handle_info(void)
 	fprintf(fout, "\n");
 }
 
-static int mailinfo(FILE *in, FILE *out, const char *msg, const char *patch)
+static int mailinfo(const struct mailinfo_options *opts, FILE *in, FILE *out,
+		const char *msg, const char *patch)
 {
 	int peek;
 	fin = in;
@@ -1010,20 +1020,22 @@ static int mailinfo(FILE *in, FILE *out, const char *msg, const char *patch)
 
 	/* process the email header */
 	while (read_one_header_line(&line, fin))
-		check_header(&line, p_hdr_data, 1);
+		check_header(opts, &line, p_hdr_data, 1);
 
-	handle_body();
-	handle_info();
+	handle_body(opts);
+	handle_info(opts);
 
 	return 0;
 }
 
 static int git_mailinfo_config(const char *var, const char *value, void *unused)
 {
+	struct mailinfo_options *opts = unused;
+
 	if (!starts_with(var, "mailinfo."))
 		return git_default_config(var, value, unused);
 	if (!strcmp(var, "mailinfo.scissors")) {
-		use_scissors = git_config_bool(var, value);
+		opts->use_scissors = git_config_bool(var, value);
 		return 0;
 	}
 	/* perhaps others here */
@@ -1035,35 +1047,39 @@ static const char mailinfo_usage[] =
 
 int cmd_mailinfo(int argc, const char **argv, const char *prefix)
 {
+	struct mailinfo_options opts;
 	const char *def_charset;
+
+	memset(&opts, 0, sizeof(opts));
+	opts.use_inbody_headers = 1;
 
 	/* NEEDSWORK: might want to do the optional .git/ directory
 	 * discovery
 	 */
-	git_config(git_mailinfo_config, NULL);
+	git_config(git_mailinfo_config, &opts);
 
 	def_charset = get_commit_output_encoding();
-	metainfo_charset = def_charset;
+	opts.metainfo_charset = def_charset;
 
 	while (1 < argc && argv[1][0] == '-') {
 		if (!strcmp(argv[1], "-k"))
-			keep_subject = 1;
+			opts.keep_subject = 1;
 		else if (!strcmp(argv[1], "-b"))
-			keep_non_patch_brackets_in_subject = 1;
+			opts.keep_non_patch_brackets_in_subject = 1;
 		else if (!strcmp(argv[1], "-m") || !strcmp(argv[1], "--message-id"))
-			add_message_id = 1;
+			opts.add_message_id = 1;
 		else if (!strcmp(argv[1], "-u"))
-			metainfo_charset = def_charset;
+			opts.metainfo_charset = def_charset;
 		else if (!strcmp(argv[1], "-n"))
-			metainfo_charset = NULL;
+			opts.metainfo_charset = NULL;
 		else if (starts_with(argv[1], "--encoding="))
-			metainfo_charset = argv[1] + 11;
+			opts.metainfo_charset = argv[1] + 11;
 		else if (!strcmp(argv[1], "--scissors"))
-			use_scissors = 1;
+			opts.use_scissors = 1;
 		else if (!strcmp(argv[1], "--no-scissors"))
-			use_scissors = 0;
+			opts.use_scissors = 0;
 		else if (!strcmp(argv[1], "--no-inbody-headers"))
-			use_inbody_headers = 0;
+			opts.use_inbody_headers = 0;
 		else
 			usage(mailinfo_usage);
 		argc--; argv++;
@@ -1072,5 +1088,5 @@ int cmd_mailinfo(int argc, const char **argv, const char *prefix)
 	if (argc != 3)
 		usage(mailinfo_usage);
 
-	return !!mailinfo(stdin, stdout, argv[1], argv[2]);
+	return !!mailinfo(&opts, stdin, stdout, argv[1], argv[2]);
 }
