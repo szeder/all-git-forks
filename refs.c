@@ -1105,3 +1105,9 @@ int delete_reflog(const char *refname)
 {
 	return the_refs_backend->delete_reflog(refname);
 }
+
+int initial_ref_transaction_commit(struct ref_transaction *transaction,
+				   struct strbuf *err)
+{
+	return the_refs_backend->initial_transaction_commit(transaction, err);
+}
