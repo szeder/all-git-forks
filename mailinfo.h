@@ -12,4 +12,7 @@ struct mailinfo_opts {
 
 extern void mailinfo_opts_init(struct mailinfo_opts *opts);
 
+extern int mailinfo(const struct mailinfo_opts *opts, FILE *in, FILE *out,
+		const char *msg, const char *patch);
+
 #endif
