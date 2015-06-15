@@ -988,7 +988,7 @@ static void handle_info(void)
 int mailinfo(const struct mailinfo_opts *opts, FILE *in, FILE *out,
 		const char *msg, const char *patch)
 {
-	int peek;
+	int peek, i;
 
 	keep_subject = opts->keep_subject;
 	keep_non_patch_brackets_in_subject = opts->keep_non_patch_brackets_in_subject;
@@ -1026,6 +1026,22 @@ int mailinfo(const struct mailinfo_opts *opts, FILE *in, FILE *out,
 
 	handle_body();
 	handle_info();
+
+	for (i = 0; i < MAX_HDR_PARSED; i++)
+		if (p_hdr_data[i])
+			strbuf_release(p_hdr_data[i]);
+	free(p_hdr_data);
+
+	for (i = 0; i < MAX_HDR_PARSED; i++)
+		if (s_hdr_data[i])
+			strbuf_release(s_hdr_data[i]);
+	free(s_hdr_data);
+
+	if (message_id)
+		free(message_id);
+	message_id = NULL;
+
+	fclose(patchfile);
 
 	return 0;
 }
