@@ -6,6 +6,7 @@
 #include "builtin.h"
 #include "utf8.h"
 #include "strbuf.h"
+#include "mailinfo.h"
 
 static FILE *cmitmsg, *patchfile, *fin, *fout;
 
@@ -982,9 +983,18 @@ static void handle_info(void)
 	fprintf(fout, "\n");
 }
 
-static int mailinfo(FILE *in, FILE *out, const char *msg, const char *patch)
+static int mailinfo(const struct mailinfo_opts *opts, FILE *in, FILE *out,
+		const char *msg, const char *patch)
 {
 	int peek;
+
+	keep_subject = opts->keep_subject;
+	keep_non_patch_brackets_in_subject = opts->keep_non_patch_brackets_in_subject;
+	metainfo_charset = opts->metainfo_charset;
+	use_scissors = opts->use_scissors;
+	use_inbody_headers = opts->use_inbody_headers;
+	add_message_id = opts->add_message_id;
+
 	fin = in;
 	fout = out;
 
@@ -1018,52 +1028,42 @@ static int mailinfo(FILE *in, FILE *out, const char *msg, const char *patch)
 	return 0;
 }
 
-static int git_mailinfo_config(const char *var, const char *value, void *unused)
-{
-	if (!starts_with(var, "mailinfo."))
-		return git_default_config(var, value, unused);
-	if (!strcmp(var, "mailinfo.scissors")) {
-		use_scissors = git_config_bool(var, value);
-		return 0;
-	}
-	/* perhaps others here */
-	return 0;
-}
-
 static const char mailinfo_usage[] =
 	"git mailinfo [-k | -b] [-m | --message-id] [-u | --encoding=<encoding> | -n] [--scissors | --no-scissors] <msg> <patch> < mail >info";
 
 int cmd_mailinfo(int argc, const char **argv, const char *prefix)
 {
+	struct mailinfo_opts opts;
 	const char *def_charset;
 
 	/* NEEDSWORK: might want to do the optional .git/ directory
 	 * discovery
 	 */
-	git_config(git_mailinfo_config, NULL);
+	git_config(git_default_config, NULL);
+
+	mailinfo_opts_init(&opts);
 
 	def_charset = get_commit_output_encoding();
-	metainfo_charset = def_charset;
 
 	while (1 < argc && argv[1][0] == '-') {
 		if (!strcmp(argv[1], "-k"))
-			keep_subject = 1;
+			opts.keep_subject = 1;
 		else if (!strcmp(argv[1], "-b"))
-			keep_non_patch_brackets_in_subject = 1;
+			opts.keep_non_patch_brackets_in_subject = 1;
 		else if (!strcmp(argv[1], "-m") || !strcmp(argv[1], "--message-id"))
-			add_message_id = 1;
+			opts.add_message_id = 1;
 		else if (!strcmp(argv[1], "-u"))
-			metainfo_charset = def_charset;
+			opts.metainfo_charset = def_charset;
 		else if (!strcmp(argv[1], "-n"))
-			metainfo_charset = NULL;
+			opts.metainfo_charset = NULL;
 		else if (starts_with(argv[1], "--encoding="))
-			metainfo_charset = argv[1] + 11;
+			opts.metainfo_charset = argv[1] + 11;
 		else if (!strcmp(argv[1], "--scissors"))
-			use_scissors = 1;
+			opts.use_scissors = 1;
 		else if (!strcmp(argv[1], "--no-scissors"))
-			use_scissors = 0;
+			opts.use_scissors = 0;
 		else if (!strcmp(argv[1], "--no-inbody-headers"))
-			use_inbody_headers = 0;
+			opts.use_inbody_headers = 0;
 		else
 			usage(mailinfo_usage);
 		argc--; argv++;
@@ -1072,5 +1072,5 @@ int cmd_mailinfo(int argc, const char **argv, const char *prefix)
 	if (argc != 3)
 		usage(mailinfo_usage);
 
-	return !!mailinfo(stdin, stdout, argv[1], argv[2]);
+	return !!mailinfo(&opts, stdin, stdout, argv[1], argv[2]);
 }
