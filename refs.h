@@ -357,6 +357,15 @@ extern int rename_ref(const char *oldref, const char *newref, const char *logmsg
 
 extern int create_symref(const char *ref, const char *refs_heads_master, const char *logmsg);
 
+int rename_ref_available(const char *oldname, const char *newname);
+
+/**
+ * Resolve refname in the nested "gitlink" repository that is located
+ * at path.  If the resolution is successful, return 0 and set sha1 to
+ * the name of the object; otherwise, return a non-zero value.
+ */
+extern int resolve_gitlink_ref(const char *path, const char *refname, unsigned char *sha1);
+
 enum action_on_err {
 	UPDATE_REFS_MSG_ON_ERR,
 	UPDATE_REFS_DIE_ON_ERR,
@@ -621,6 +630,7 @@ typedef int (*delete_reflog_fn)(const char *refname);
 
 /* resolution functions */
 typedef void (*ref_transaction_free_fn)(struct ref_transaction *transaction);
+typedef int (*rename_ref_fn)(const char *oldref, const char *newref, const char *logmsg);
 typedef const char *(*resolve_ref_unsafe_fn)(const char *ref,
 					     int resolve_flags,
 					     unsigned char *sha1, int *flags);
@@ -663,6 +673,7 @@ struct ref_be {
 	ref_transaction_commit_fn transaction_commit;
 	ref_transaction_commit_fn initial_transaction_commit;
 	ref_transaction_free_fn transaction_free;
+	rename_ref_fn rename_ref;
 	for_each_reflog_ent_fn for_each_reflog_ent;
 	for_each_reflog_ent_reverse_fn for_each_reflog_ent_reverse;
 	for_each_reflog_fn for_each_reflog;
