@@ -16,6 +16,7 @@
 #include "pathspec.h"
 #include "dir.h"
 #include "split-index.h"
+#include "revision.h"
 
 /*
  * Default to not allowing changes to the list of files. The
@@ -675,7 +676,7 @@ static void read_head_pointers(void)
 {
 	if (read_ref("HEAD", head_sha1))
 		die("No HEAD -- no initial commit yet?");
-	if (read_ref("MERGE_HEAD", merge_head_sha1)) {
+	if (get_sha1_from_file("MERGE_HEAD", merge_head_sha1)) {
 		fprintf(stderr, "Not in the middle of a merge.\n");
 		exit(0);
 	}
