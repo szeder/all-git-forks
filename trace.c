@@ -24,6 +24,7 @@
 
 #include "cache.h"
 #include "quote.h"
+#include "argv-array.h"
 
 /*
  * "Normalize" a key argument by converting NULL to our trace_default,
@@ -462,4 +463,47 @@ void trace_command_performance(const char **argv)
 	strbuf_reset(&command_line);
 	sq_quote_argv(&command_line, argv, 0);
 	command_start_time = getnanotime();
+}
+
+struct trace_config_data {
+	const char *want_cmd;
+	struct argv_array *out;
+};
+
+static int trace_config_cb(const char *var, const char *value, void *vdata)
+{
+	struct trace_config_data *data = vdata;
+	const char *have_cmd, *key;
+	int have_len;
+
+	if (!parse_config_key(var, "trace", &have_cmd, &have_len, &key) &&
+	    have_cmd &&
+	    !strncmp(data->want_cmd, have_cmd, have_len) &&
+	    data->want_cmd[have_len] == '\0') {
+		struct strbuf buf = STRBUF_INIT;
+
+		strbuf_addstr(&buf, "GIT_TRACE_");
+		while (*key)
+			strbuf_addch(&buf, toupper(*key++));
+
+		/*
+		 * Environment always takes precedence over config, so do not
+		 * override existing variables. We cannot rely on setenv()'s
+		 * overwrite flag here, because we may pass the list off to
+		 * a spawn() implementation, which always overwrites.
+		 */
+		if (!getenv(buf.buf))
+			argv_array_pushf(data->out, "%s=%s", buf.buf, value);
+
+		strbuf_release(&buf);
+	}
+	return 0;
+}
+
+void trace_config_for(const char *cmd, struct argv_array *out)
+{
+	struct trace_config_data data;
+	data.want_cmd = cmd;
+	data.out = out;
+	git_config(trace_config_cb, &data);
 }
