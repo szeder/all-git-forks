@@ -16,7 +16,12 @@ int starts_with(const char *str, const char *prefix)
  * buf is non NULL and ->buf is NUL terminated even for a freshly
  * initialized strbuf.
  */
+#ifndef __COVERITY__
 char strbuf_slopbuf[1];
+#else
+/* Stop so many incorrect out-of-boundary warnings from Coverity */
+char strbuf_slopbuf[64];
+#endif
 
 void strbuf_init(struct strbuf *sb, size_t hint)
 {
