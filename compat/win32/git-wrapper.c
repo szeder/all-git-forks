@@ -14,6 +14,15 @@
 #include <stdio.h>
 #include <wchar.h>
 
+/*
+Control Handler Function
+All events are disabled!
+*/
+BOOL WINAPI CtrlHandler( DWORD fdwCtrlType ) 
+{
+  return TRUE;
+}
+
 static WCHAR msystem_bin[64];
 
 static void print_error(LPCWSTR prefix, DWORD error_number)
@@ -547,8 +556,11 @@ int main(void)
 				working_directory, /* use parent's */
 				&si, &pi);
 		if (br) {
-			if (wait)
+			if (wait) {
+				/* The only way to exit this program is the launched command end. */
+				SetConsoleCtrlHandler(CtrlHandler, TRUE);
 				WaitForSingleObject(pi.hProcess, INFINITE);
+			}
 			if (!GetExitCodeProcess(pi.hProcess, (DWORD *)&r))
 				print_error(L"error reading exit code",
 					GetLastError());
