@@ -1102,7 +1102,7 @@ test_expect_success 'rebase -i commits that overwrite untracked files (no ff)' '
 	test $(git cat-file commit HEAD | sed -ne \$p) = I
 '
 
-test_expect_failure 'rebase --continue removes CHERRY_PICK_HEAD' '
+test_expect_success 'rebase --continue removes CHERRY_PICK_HEAD' '
 	git checkout -b commit-to-skip &&
 	for double in X 3 1
 	do
