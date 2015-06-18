@@ -44,6 +44,11 @@ printf "%s input file not exist\n" "$in_file"
 exit;
 fi
 
+printf "* Input file: %s\n" "$in_file"
+printf "* Input format: %s\n" "$in_format"
+
+printf "+ Generating file in %s format\n" "$out_format"
+
 ./$analyzer < "$in_file" 
 if [ $? -eq 0 ]
 then			

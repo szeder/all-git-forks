@@ -10,9 +10,12 @@
 
 #define EXPORT_PATH "./gitpro-export/"
 #define EXPORT_DB_SCRIPT "./export-database.sh"
+#define IMPORT_DB_SCRIPT "./import-database.sh"
+
+#define DEFAULT_FORMAT "csv "
+#define DEFAULT_FILENAME "csv-task.csv "
 
 #define EXPORT_SCRIPT "./export.sh "
-#define EXPORT_INPUT_FORMAT "csv "
 #define EXPORT_GP_FILE " gitpro-db.csv"
 
 #define OUT stdout
@@ -24,13 +27,15 @@
 /* Usage message */
 static const char * const builtin_task_usage[] =
 {
-	N_("task [-c | -r [-v] | -u | -d | -a | -l | --show-types | --show-states | --show-priorities | --switch | --stat]\n\tSome use examples:\n\t -c -n name -s state --desc description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t\t(only required name, state, priority and type)\n\t -r \n\t -u -n name -s state -d description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t -d \n\t -a -i id --user --add=\"user1 ... userN\" --rm=\"user1 ... userN\"\n\t -l -i id --file --add=\"file1 ... fileN\" --rm=\"file1 ... fileN\""),
+	N_("task [-c | -r [-v] | -u | -d | -a | -l | --show-types | --show-states | --show-priorities | --switch | --stat | --export | --import]\n\tSome use examples:\n\t -c -n name -s state --desc description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t\t(only required name, state, priority and type)\n\t -r \n\t -u -n name -s state -d description --notes=\"my observations\" --est_start dd/mm/yyyy --est_end dd/mm/yyyy --start dd/mm/yyyy --end dd/mm/yyyy -p priority -t type --est_time mins --time mins\n\t -d \n\t -a -i id --user --add=\"user1 ... userN\" --rm=\"user1 ... userN\"\n\t -l -i id --file --add=\"file1 ... fileN\" --rm=\"file1 ... fileN\""),
 	NULL
 };
 
-static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread, showtypes, showstates, showpriorities, readverbose, pending, assist, stats, export;
+static int tcreate, tlink, tassign, tdelete, tupdate, user, file, tread, showtypes, showstates, showpriorities, readverbose, pending, assist, stats, export, import;
 static char *switch_id = NULL;
 static char *out_format = NULL;
+static char *in_format = NULL;
+static char *input_file = NULL;
 static char *add = NULL;
 static char *rm = NULL;
 static char *task_id = NULL;
@@ -132,7 +137,10 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 		OPT_STRING(0,"rm",&rm,"data1,data2 ... dataN",N_("option to remove files or usert to a given task")),
 		OPT_BOOL(0,"assist",&assist,N_("introduce filters in interactive mode")),
 		OPT_BOOL(0,"export",&export,N_("export task, assignations and user data to an output format")),
+		OPT_BOOL(0,"import",&import,N_("import task, assignations and user data to gitpro database")),
 		OPT_STRING(0,"out",&out_format,"output format",N_("specify output format")),
+		OPT_STRING(0,"in",&in_format,"input format",N_("specify input format")),
+		OPT_STRING(0,"input-file",&input_file,"input file",N_("specify input file")),
 		OPT_GROUP("Task parameters"),
 		OPT_STRING('i',"id",&task_id,"task id",N_("specifies task id")),		
 		OPT_STRING('n',"name",&task_name,"task name",N_("specifies task name")),
@@ -448,12 +456,32 @@ filter_task_est_time,filter_task_time);
 				strcpy(aux,EXPORT_DB_SCRIPT);
 				system(aux);
 				free(aux);
-				aux = (char *) malloc(strlen(EXPORT_SCRIPT)+1+strlen(EXPORT_INPUT_FORMAT)+1+strlen(out_format)+1+strlen(EXPORT_GP_FILE)+1);
-				strcat(strcat(strcat(strcpy(aux,EXPORT_SCRIPT),EXPORT_INPUT_FORMAT),out_format),EXPORT_GP_FILE);
+				aux = (char *) malloc(strlen(EXPORT_SCRIPT)+1+strlen(DEFAULT_FORMAT)+1+strlen(out_format)+1+strlen(EXPORT_GP_FILE)+1);
+				strcat(strcat(strcat(strcpy(aux,EXPORT_SCRIPT),DEFAULT_FORMAT),out_format),EXPORT_GP_FILE);
 				system(aux);
 				free(aux);
 			}else{
 				printf("Output format not specified\n");
+				return 0;
+			}
+		}else if(import){
+			if(in_format != NULL){
+				if(input_file != NULL){
+					chdir(EXPORT_PATH);
+					char *aux = (char *) malloc(strlen(EXPORT_SCRIPT)+1+strlen(in_format)+1+strlen(DEFAULT_FORMAT)+1+strlen(input_file)+1+1);
+					strcat(strcat(strcat(strcat(strcpy(aux,EXPORT_SCRIPT),in_format)," "),DEFAULT_FORMAT),input_file);
+					system(aux);
+					free(aux);
+					aux = (char *) malloc(strlen(IMPORT_DB_SCRIPT)+1+strlen(DEFAULT_FILENAME)+1);
+					strcat(strcat(strcpy(aux,IMPORT_DB_SCRIPT)," "),DEFAULT_FILENAME);
+					system(aux);
+					free(aux);
+				}else{
+					printf("Input file not specified\n");
+					return 0;
+				}
+			}else{
+				printf("Input format not specified\n");
 				return 0;
 			}
 		}else{
