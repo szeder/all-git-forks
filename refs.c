@@ -2176,13 +2176,35 @@ int for_each_rawref(each_ref_fn fn, void *cb_data)
 			       DO_FOR_EACH_INCLUDE_BROKEN, cb_data);
 }
 
-const char *prettify_refname(const char *name)
+extern enum refname_kind get_refname_kind(const char *refname,
+					 const char **short_refname)
 {
-	return name + (
-		starts_with(name, "refs/heads/") ? 11 :
-		starts_with(name, "refs/tags/") ? 10 :
-		starts_with(name, "refs/remotes/") ? 13 :
-		0);
+	const char *unused;
+
+	if (!short_refname)
+		short_refname = &unused;
+
+	if (skip_prefix(refname, "refs/heads/", short_refname))
+		return REFNAME_KIND_BRANCH;
+	else if (skip_prefix(refname, "refs/tags/", short_refname))
+		return REFNAME_KIND_TAG;
+	else if (skip_prefix(refname, "refs/remotes/", short_refname))
+		return REFNAME_KIND_REMOTE_TRACKING;
+	else {
+		*short_refname = refname;
+		if (!strcmp(refname, "HEAD"))
+			return REFNAME_KIND_HEAD;
+		else
+			return REFNAME_KIND_OTHER;
+	}
+}
+
+const char *prettify_refname(const char *refname)
+{
+	const char *short_refname;
+
+	get_refname_kind(refname, &short_refname);
+	return short_refname;
 }
 
 static const char *ref_rev_parse_rules[] = {

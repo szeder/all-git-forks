@@ -229,6 +229,31 @@ extern int for_each_reflog(each_ref_fn, void *);
  */
 extern int check_refname_format(const char *refname, int flags);
 
+/*
+ * The kinds of references that can be detected by get_refname_kind.
+ * The numerical values of these constants should be kept unchanged so
+ * that they can be used as lookup table values.
+ */
+enum refname_kind {
+	REFNAME_KIND_HEAD = 0,
+	REFNAME_KIND_BRANCH = 1,
+	REFNAME_KIND_TAG = 2,
+	REFNAME_KIND_REMOTE_TRACKING = 3,
+	REFNAME_KIND_OTHER = 4
+};
+
+/*
+ * Return the kind of reference that is referred to by refname (based
+ * only on its name). If short_refname is not NULL, then write to it a
+ * pointer into refname that can be used as its short name. For
+ * example, if refname is "refs/tags/foo/bar", then return
+ * REFNAME_KIND_TAG and set *short_refname to "foo/bar". If refname is
+ * not a recognizable kind, return REFNAME_KIND_OTHER and set
+ * *short_refname to refname.
+ */
+extern enum refname_kind get_refname_kind(const char *refname,
+					  const char **short_refname);
+
 extern const char *prettify_refname(const char *refname);
 extern char *shorten_unambiguous_ref(const char *refname, int strict);
 
