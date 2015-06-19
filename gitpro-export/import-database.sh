@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#This script import data in csv with breaks to separate tasks, users 
+# and assignations into gitpro database
+
 if [ $# -lt 1 ]; then
     printf "Usage: $0 <input file>\n"
     exit 1
@@ -42,7 +45,10 @@ cat > "$sqlite_import_file" << \EOF
 .quit
 EOF
 
-eval "$command < $sqlite_import_file"
+if [ -f "tasks" ]; then
+	eval "$command < $sqlite_import_file"
+	rm "tasks"
+fi
 
 printf "OK\n"
 
@@ -54,7 +60,10 @@ cat > "$sqlite_import_file" << \EOF
 .quit
 EOF
 
-eval "$command < $sqlite_import_file"
+if [ -f "users" ]; then
+	eval "$command < $sqlite_import_file"
+	rm "users"
+fi
 
 printf "OK\n"
 
@@ -66,10 +75,13 @@ cat > "$sqlite_import_file" << \EOF
 .quit
 EOF
 
-eval "$command < $sqlite_import_file"
+if [ -f "asigs" ]; then
+	eval "$command < $sqlite_import_file"
+	rm "asigs"
+fi
 
 printf "OK\n"
 
 printf "+ Data imported to gitpro database\n"
 
-rm "tasks" "users" "asigs" "sqlite-import" "csv-task.csv"
+rm "$sqlite_import_file" "csv-task.csv"

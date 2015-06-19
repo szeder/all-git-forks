@@ -63,4 +63,10 @@ else
 	printf "[ERROR] Unexpected error parsing input file\n"
 fi
 
-rm "standard-file"
+if [ -f "gitpro-db.csv" ]; then
+	rm "gitpro-db.csv"
+fi
+
+if [ -f "standard-file" ]; then
+	rm "standard-file"
+fi

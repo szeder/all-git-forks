@@ -146,7 +146,7 @@ void function_type(char *type){
 }
 
 void function_est_time(char *est_time){
-	if(!ini_real){
+	if(!ini_real && aux_ini_est!=NULL){
 		write(ganttproject_file," start=\"%s\"",aux_ini_est);
 		//Convert hours to days
 		char *days  = hours_to_days(est_time);
@@ -158,7 +158,7 @@ void function_est_time(char *est_time){
 }
 
 void function_time(char *time){
-	if(ini_real){
+	if(ini_real && aux_ini_real!=NULL){
 		write(ganttproject_file," start=\"%s\"",aux_ini_real);
 		if(fin_real){
 			char *days = hours_to_days(time);
@@ -166,9 +166,11 @@ void function_time(char *time){
 			write(ganttproject_file," complete=\"100\"",NULL);
 			free(days);
 		}else{
-			char *days = hours_to_days(aux_est_time);
-			write(ganttproject_file," duration=\"%s\"",days);
-			free(days);
+			if(aux_est_time!=NULL){
+				char *days = hours_to_days(aux_est_time);
+				write(ganttproject_file," duration=\"%s\"",days);
+				free(days);
+			}
 		}
 	}	
 }

@@ -77,6 +77,11 @@ echo '***********************************'
 ./gp-texport.sh
 ./clean-db.sh
 echo '***********************************'
+echo '    Starting import tasks tests'
+echo '***********************************'
+./gp-timport.sh
+./clean-db.sh
+echo '***********************************'
 echo '   Starting rolecheck task tests'
 echo '***********************************'
 ./gp-trolecheck.sh
@@ -85,6 +90,14 @@ echo '***********************************'
 
 echo 'Your username has been changed to run this tests...'
 echo 'Use git config --global to update your username'
+echo 'Do you want to restore now? (y/n) (default=n)'
+
+read OPT
+if [ "$OPT" == "y" ]; then
+	echo 'Type your username: '
+	read NAME
+	eval "git config --global user.name $NAME"
+fi
 
 chmod +x end-test-user.sh
 ./end-test-user.sh
