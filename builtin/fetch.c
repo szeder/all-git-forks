@@ -643,26 +643,24 @@ static int store_updated_refs(const char *raw_url, const char *remote_name,
 				ref->force = rm->peer_ref->force;
 			}
 
-
-			if (!strcmp(rm->name, "HEAD")) {
+			switch (get_refname_kind(rm->name, &what)) {
+			case REFNAME_KIND_HEAD:
 				kind = "";
 				what = "";
-			}
-			else if (starts_with(rm->name, "refs/heads/")) {
+				break;
+			case REFNAME_KIND_BRANCH:
 				kind = "branch";
-				what = rm->name + 11;
-			}
-			else if (starts_with(rm->name, "refs/tags/")) {
+				break;
+			case REFNAME_KIND_TAG:
 				kind = "tag";
-				what = rm->name + 10;
-			}
-			else if (starts_with(rm->name, "refs/remotes/")) {
+				break;
+			case REFNAME_KIND_REMOTE_TRACKING:
 				kind = "remote-tracking branch";
-				what = rm->name + 13;
-			}
-			else {
+				break;
+			default:
 				kind = "";
 				what = rm->name;
+				break;
 			}
 
 			url_len = strlen(url);
