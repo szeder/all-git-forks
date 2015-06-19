@@ -1,0 +1,29 @@
+git-list-all-objects(1)
+=======================
+
+NAME
+----
+git-list-all-objects - List all objects in the repository.
+
+SYNOPSIS
+--------
+[verse]
+'git list-all-objects' [-v|--verbose]
+
+DESCRIPTION
+-----------
+List the ids of all objects in a repository, including any unreachable objects.
+If `--verbose` is specified then the object's type and size is printed out as
+well as its id.
+
+OPTIONS
+-------
+
+-v::
+--verbose::
+	Output in the followin format instead of just printing object ids:
+	<sha1> SP <type> SP <size>
+
+GIT
+---
+Part of the linkgit:git[1] suite
