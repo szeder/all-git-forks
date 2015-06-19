@@ -447,20 +447,21 @@ static void merge_name(const char *remote, struct strbuf *msg)
 		die(_("'%s' does not point to a commit"), remote);
 
 	if (dwim_ref(remote, strlen(remote), branch_head, &found_ref) > 0) {
-		if (starts_with(found_ref, "refs/heads/")) {
+		switch (get_refname_kind(found_ref, NULL)) {
+		case REFNAME_KIND_BRANCH:
 			strbuf_addf(msg, "%s\t\tbranch '%s' of .\n",
 				    sha1_to_hex(branch_head), remote);
 			goto cleanup;
-		}
-		if (starts_with(found_ref, "refs/tags/")) {
+		case REFNAME_KIND_TAG:
 			strbuf_addf(msg, "%s\t\ttag '%s' of .\n",
 				    sha1_to_hex(branch_head), remote);
 			goto cleanup;
-		}
-		if (starts_with(found_ref, "refs/remotes/")) {
+		case REFNAME_KIND_REMOTE_TRACKING:
 			strbuf_addf(msg, "%s\t\tremote-tracking branch '%s' of .\n",
 				    sha1_to_hex(branch_head), remote);
 			goto cleanup;
+		default:
+			break;
 		}
 	}
 
