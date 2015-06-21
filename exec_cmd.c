@@ -100,7 +100,7 @@ const char *system_path(const char *path)
 		}
 	}
 
-	if (path == ETC_GITCONFIG)
+	if (!strcmp(path, ETC_GITCONFIG))
 	{
 		const char* configpath = mkpath("%s\\%s", syspath, path);
 		//if (!access(configpath, F_OK))
