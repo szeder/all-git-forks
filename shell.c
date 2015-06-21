@@ -8,6 +8,45 @@
 #define HELP_COMMAND COMMAND_DIR "/help"
 #define NOLOGIN_COMMAND COMMAND_DIR "/no-interactive-login"
 
+#define BASE_PATH_VARIABLE "GIT_SHELL_BASE_PATH" 
+#define DEFAULT_PATH "/" 
+
+/* http://git.661346.n2.nabble.com/PATCH-shell-add-base-path-and-expansion-support-td6685532.html */
+static const char *adjust_argument_path(const char *arg)
+{
+	struct strbuf path = STRBUF_INIT;
+	const char *env;
+	const char *prefix_variable = NULL;
+	
+	if (arg == NULL || arg[0] != '/') {
+	    prefix_variable = BASE_PATH_VARIABLE;
+	} else if (arg[1] == '/') {
+	    ++arg;
+	} else if (arg[1] == '~' && arg[2] == '/') {
+	    prefix_variable = "HOME";
+	    arg += 2;
+	} else {
+    	prefix_variable = BASE_PATH_VARIABLE;
+	}
+ 
+	if (NULL != prefix_variable) {
+	    env = getenv(prefix_variable);
+	    if (NULL != env) {
+	        strbuf_addstr(&path, env);
+	    }
+	}
+
+	if (NULL != arg) {
+    	strbuf_addstr(&path, arg);
+	}
+	
+	if (NULL == path.buf || path.buf[0] == '\0') {
+    	return DEFAULT_PATH;
+	}
+	
+	return path.buf;
+}
+
 static int do_generic_cmd(const char *me, char *arg)
 {
 	const char *my_argv[4];
@@ -19,7 +58,7 @@ static int do_generic_cmd(const char *me, char *arg)
 		die("bad command");
 
 	my_argv[0] = me + 4;
-	my_argv[1] = arg;
+	my_argv[1] = adjust_argument_path(arg);
 	my_argv[2] = NULL;
 
 	return execv_git_cmd(my_argv);
@@ -30,6 +69,10 @@ static int do_cvs_cmd(const char *me, char *arg)
 	const char *cvsserver_argv[3] = {
 		"cvsserver", "server", NULL
 	};
+
+	const char *base_path;
+	base_path = adjust_argument_path(NULL);
+	setenv("GIT_CVSSERVER_BASE_PATH", base_path, 1);
 
 	if (!arg || strcmp(arg, "server"))
 		die("git-cvsserver only handles server: %s", arg);
