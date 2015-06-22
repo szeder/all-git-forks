@@ -133,6 +133,30 @@ You must run `git bisect start` without commits as argument and run
 `git bisect new <rev>`/`git bisect old <rev>...` after to add the
 commits.
 
+Alternative terms: use your own terms
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If the builtins terms bad/good and new/old do not satisfy you, you can
+set your own terms.
+
+------------------------------------------------
+git bisect terms <term-new> <term-old>
+------------------------------------------------
+
+This command has to be used before a bisection has started. <term-new>
+must be associated with the latest revisions and <term-old> with some
+ancestors of <term-new>. For example, if something was buggy in the
+old part of the history, you know somewhere the bug was fixed, and you
+want to find the exact commit that fixed it, you may want to say `git
+bisect terms broken fixed`; this way, you would mark a commit that
+still has the bug with `broken`, and a newer one after the fix with
+`fixed`.
+
+Only the first bisection following the `git bisect terms` will use the
+terms. If you mistyped one of the terms you can do again `git bisect
+terms <term-new> <term-old>`.
+
+
 Bisect visualize
 ~~~~~~~~~~~~~~~~
 
