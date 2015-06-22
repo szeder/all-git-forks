@@ -1383,7 +1383,11 @@ static int resolve_missing_loose_ref(const char *refname,
 	}
 }
 
-/* This function needs to return a meaningful errno on failure */
+/*
+ * Callers inside this backend need this to return a meaningful errno
+ * on failure; callers outside may not rely on errno as other backends
+ * may behave differently.
+ */
 static const char *resolve_ref_unsafe_1(const char *refname,
 					int resolve_flags,
 					unsigned char *sha1,
@@ -1558,10 +1562,10 @@ static const char *resolve_ref_unsafe_1(const char *refname,
 	}
 }
 
-static const char *files_resolve_ref_unsafe(const char *refname,
-					    int resolve_flags,
-					    unsigned char *sha1,
-					    int *flags)
+const char *files_resolve_ref_unsafe(const char *refname,
+				     int resolve_flags,
+				     unsigned char *sha1,
+				     int *flags)
 {
 	struct strbuf sb_path = STRBUF_INIT;
 	const char *ret = resolve_ref_unsafe_1(refname, resolve_flags,

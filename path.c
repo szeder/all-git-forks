@@ -2,6 +2,7 @@
  * Utilities for paths and pathnames
  */
 #include "cache.h"
+#include "refs.h"
 #include "strbuf.h"
 #include "string-list.h"
 #include "dir.h"
@@ -256,9 +257,36 @@ int validate_headref(const char *path)
 	unsigned char sha1[20];
 	int fd;
 	ssize_t len;
+	struct refdb_config_data refdb_data = {NULL, NULL};
 
-	if (lstat(path, &st) < 0)
-		return -1;
+	if (lstat(path, &st) < 0) {
+		int backend_type_set;
+		struct strbuf config_path = STRBUF_INIT;
+		if (path) {
+			char *pathdup = strdup(path);
+			char *git_dir = dirname(pathdup);
+			strbuf_addf(&config_path, "%s/%s", git_dir, "config");
+			free(pathdup);
+		} else {
+			strbuf_addstr(&config_path, "config");
+		}
+
+		if (git_config_from_file(refdb_config, config_path.buf, &refdb_data)) {
+			strbuf_release(&config_path);
+			return -1;
+		}
+
+		backend_type_set = !!refdb_data.refs_backend_type;
+		free((void *)refdb_data.refs_backend_type);
+		free((void *)refdb_data.refs_base);
+		strbuf_release(&config_path);
+		/*
+		 * Alternate backends are assumed to keep HEAD
+		 * in a valid state, so there's no need to do
+		 * further validation.
+		 */
+		return backend_type_set ? 0 : -1;
+	}
 
 	/* Make sure it is a "refs/.." symlink */
 	if (S_ISLNK(st.st_mode)) {
@@ -426,7 +454,8 @@ const char *enter_repo(const char *path, int strict)
 	else if (chdir(path))
 		return NULL;
 
-	if (access("objects", X_OK) == 0 && access("refs", X_OK) == 0 &&
+	if (access("objects", X_OK) == 0 &&
+	    (access("refs", X_OK) == 0 || access("refdb", X_OK) == 0) &&
 	    validate_headref("HEAD") == 0) {
 		set_git_dir(".");
 		check_repository_format();
