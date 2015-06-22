@@ -429,13 +429,13 @@ __git_ps1 ()
 			# symlink symbolic ref
 			b="$(git symbolic-ref HEAD 2>/dev/null)"
 		else
-			local head=""
-			if ! __git_eread "$g/HEAD" head; then
+			local head="$(git rev-parse HEAD 2>/dev/null)"
+			if [ "$?" != "0" ]; then
 				return $exit
 			fi
+			b=$(git symbolic-ref HEAD 2>/dev/null)
 			# is it a symbolic ref?
-			b="${head#ref: }"
-			if [ "$head" = "$b" ]; then
+			if [ "$?" != "0" ]; then
 				detached=yes
 				b="$(
 				case "${GIT_PS1_DESCRIBE_STYLE-}" in

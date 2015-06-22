@@ -16,6 +16,8 @@ struct ref_be *the_refs_backend = &refs_be_files;
  */
 struct ref_be *refs_backends = &refs_be_files;
 
+const char *refs_backend_type;
+
 /*
  * This function is used to switch to an alternate backend.
  */
