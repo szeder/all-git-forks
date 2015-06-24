@@ -18,8 +18,8 @@ on the subcommand:
 
  git bisect help
  git bisect start [--no-checkout] [<bad> [<good>...]] [--] [<paths>...]
- git bisect bad [<rev>]
- git bisect good [<rev>...]
+ git bisect (bad|new) [<rev>]
+ git bisect (good|old) [<rev>...]
  git bisect skip [(<rev>|<range>)...]
  git bisect reset [<commit>]
  git bisect visualize
@@ -103,6 +103,54 @@ $ git bisect reset <commit>
 For example, `git bisect reset HEAD` will leave you on the current
 bisection commit and avoid switching commits at all, while `git bisect
 reset bisect/bad` will check out the first bad revision.
+
+
+Alternative terms: bisect new and bisect old
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are not at ease with the terms "bad" and "good", perhaps
+because you are looking for the commit that introduced a fix, you can
+alternatively use "new" and "old" instead.
+But note that you cannot mix "bad" and good" with "new" and "old".
+
+------------------------------------------------
+git bisect new [<rev>]
+------------------------------------------------
+
+Marks the commit as new, e.g. "the bug is no longer there", if you are looking
+for a commit that fixed a bug, or "the feature that used to work is now broken
+at this point", if you are looking for a commit that introduced a bug.
+It is the equivalent of "git bisect bad [<rev>]".
+
+------------------------------------------------
+git bisect old [<rev>...]
+------------------------------------------------
+
+Marks the commit as old, as the opposite of 'git bisect new'.
+It is the equivalent of "git bisect good [<rev>...]".
+
+You must run `git bisect start` without commits as argument and run
+`git bisect new <rev>`/`git bisect old <rev>...` after to add the
+commits.
+
+Alternative terms: use your own terms
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If the builtins terms bad/good and new/old do not satisfy you, you can
+set your own terms.
+
+------------------------------------------------
+git bisect terms term1 term2
+------------------------------------------------
+
+This command has to be used before a bisection has started.
+The term1 must be associated with the latest revisions and term2 with the
+ancestors of term1.
+
+Only the first bisection following the 'git bisect terms' will use the terms.
+If you mistyped one of the terms you can do again 'git bisect terms term1
+term2'.
+
 
 Bisect visualize
 ~~~~~~~~~~~~~~~~
@@ -378,6 +426,21 @@ $ git bisect reset                   # quit the bisect session
 In this case, when 'git bisect run' finishes, bisect/bad will refer to a commit that
 has at least one parent whose reachable graph is fully traversable in the sense
 required by 'git pack objects'.
+
+* Look for a fix instead of a regression in the code
++
+------------
+$ git bisect start
+$ git bisect new HEAD    # current commit is marked as new
+$ git bisect old HEAD~10 # the tenth commit from now is marked as old
+------------
++
+Let's consider the last commit has a given property, and that we are looking
+for the commit which introduced this property. For each commit the bisection
+guide us to, we will test if the property is present. If it is we will mark
+the commit as new with 'git bisect new', otherwise we will mark it as old.
+At the end of the bisect session, the result will be the first new commit (e.g
+the first one with the property).
 
 
 SEE ALSO
