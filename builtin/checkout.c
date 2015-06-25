@@ -328,12 +328,15 @@ static int checkout_paths(const struct checkout_opts *opts,
 	if (opts->merge)
 		unmerge_marked_index(&the_index);
 
-	/* Any unmerged paths? */
 	for (pos = 0; pos < active_nr; pos++) {
-		const struct cache_entry *ce = active_cache[pos];
+		struct cache_entry *ce = active_cache[pos];
 		if (ce->ce_flags & CE_MATCHED) {
-			if (!ce_stage(ce))
+			if (!ce_stage(ce)) {
+				if (ce_intent_to_add(ce))
+					ce->ce_flags &= ~CE_MATCHED;
 				continue;
+			}
+			/* Unmerged paths */
 			if (opts->force) {
 				warning(_("path '%s' is unmerged"), ce->name);
 			} else if (opts->writeout_stage) {
