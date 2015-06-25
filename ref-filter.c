@@ -842,6 +842,29 @@ static int match_name_as_path(const char **pattern, const char *refname)
 	return 0;
 }
 
+/*
+ * Given a ref (sha1, refname) see if it points to one of the sha1s
+ * in a sha1_array.
+ */
+static int match_points_at(struct sha1_array *points_at, const unsigned char *sha1,
+			   const char *refname)
+{
+	struct object *obj;
+
+	if (!points_at || !points_at->nr)
+		return 1;
+
+	if (sha1_array_lookup(points_at, sha1) >= 0)
+		return 1;
+
+	obj = parse_object_or_die(sha1, refname);
+	if (obj->type == OBJ_TAG &&
+	    sha1_array_lookup(points_at, ((struct tag *)obj)->tagged->sha1) >= 0)
+		return 1;
+
+	return 0;
+}
+
 /* Allocate space for a new ref_array_item and copy the objectname and flag to it */
 static struct ref_array_item *new_ref_array_item(const char *refname,
 						 const unsigned char *objectname,
@@ -873,6 +896,9 @@ static int ref_filter_handler(const char *refname, const struct object_id *oid, 
 	}
 
 	if (*filter->name_patterns && !match_name_as_path(filter->name_patterns, refname))
+		return 0;
+
+	if (!match_points_at(&filter->points_at, oid->hash, refname))
 		return 0;
 
 	/*
