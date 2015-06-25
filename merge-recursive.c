@@ -658,6 +658,8 @@ static int was_tracked(const char *path)
 
 	if (pos < 0)
 		pos = -1 - pos;
+	else if (ce_intent_to_add(active_cache[pos]))
+		return 0;
 	while (pos < active_nr &&
 	       !strcmp(path, active_cache[pos]->name)) {
 		/*
