@@ -2364,7 +2364,7 @@ static struct commit *fake_working_tree_commit(struct diff_options *opt,
 	len = strlen(path);
 	if (!mode) {
 		int pos = cache_name_pos(path, len);
-		if (0 <= pos)
+		if (0 <= pos && !ce_intent_to_add(active_cache[pos]))
 			mode = active_cache[pos]->ce_mode;
 		else
 			/* Let's not bother reading from HEAD tree */
