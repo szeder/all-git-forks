@@ -32,6 +32,11 @@ test_expect_success 'check result of "add -N"' '
 	test_cmp expect actual
 '
 
+test_expect_success 'extended sha-1 syntax reading i-t-a entry' '
+	test_must_fail git show :file 2>error &&
+	grep "exists on disk, but not in the index" error
+'
+
 test_expect_success 'intent to add is just an ordinary empty blob' '
 	git add -u &&
 	git ls-files -s file >actual &&

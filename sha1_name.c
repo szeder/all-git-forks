@@ -1293,6 +1293,8 @@ static void diagnose_invalid_index_path(int stage,
 	pos = cache_name_pos(filename, namelen);
 	if (pos < 0)
 		pos = -pos - 1;
+	else if (ce_intent_to_add(active_cache[pos]))
+		pos = active_nr;
 	if (pos < active_nr) {
 		ce = active_cache[pos];
 		if (ce_namelen(ce) == namelen &&
@@ -1311,6 +1313,8 @@ static void diagnose_invalid_index_path(int stage,
 	pos = cache_name_pos(fullname, fullnamelen);
 	if (pos < 0)
 		pos = -pos - 1;
+	else if (ce_intent_to_add(active_cache[pos]))
+		pos = active_nr;
 	if (pos < active_nr) {
 		ce = active_cache[pos];
 		if (ce_namelen(ce) == fullnamelen &&
@@ -1407,6 +1411,10 @@ static int get_sha1_with_context_1(const char *name,
 		pos = cache_name_pos(cp, namelen);
 		if (pos < 0)
 			pos = -pos - 1;
+		else if (ce_intent_to_add(active_cache[pos])) {
+			fprintf(stderr, "here?\n");
+			pos = active_nr;
+		}
 		while (pos < active_nr) {
 			ce = active_cache[pos];
 			if (ce_namelen(ce) != namelen ||
