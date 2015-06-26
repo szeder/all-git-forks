@@ -1,6 +1,6 @@
 #!/bin/sh
 
-USAGE='[help|start|bad|good|new|old|skip|next|reset|visualize|replay|log|run]'
+USAGE='[help|start|bad|good|new|old|terms|skip|next|reset|visualize|replay|log|run]'
 LONG_USAGE='git bisect help
 	print this long help message.
 git bisect start [--no-checkout] [<bad> [<good>...]] [--] [<pathspec>...]
@@ -11,6 +11,8 @@ git bisect (bad|new) [<rev>]
 git bisect (good|old) [<rev>...]
 	mark <rev>... known-good revisions/
 		revisions before change in a given property.
+git bisect terms <term-new> <term-old>
+	set up <term-new> and <term-old> as terms (default: bad, good)
 git bisect skip [(<rev>|<range>)...]
 	mark <rev>... untestable revisions.
 git bisect next
@@ -80,6 +82,16 @@ bisect_start() {
 	bad_seen=0
 	eval=''
 	must_write_terms=0
+	must_log_terms=0
+	if test -s "$GIT_DIR/BISECT_TERMS"
+	then
+		# We're going to restart from a clean state and the
+		# file will be deleted. Record the old state in
+		# variables and restore it below.
+		must_write_terms=1
+		must_log_terms=1
+		get_terms
+	fi
 	if test "z$(git rev-parse --is-bare-repository)" != zfalse
 	then
 		mode=--no-checkout
@@ -185,7 +197,12 @@ bisect_start() {
 	eval "$eval true" &&
 	if test $must_write_terms -eq 1
 	then
-		write_terms "$NAME_BAD" "$NAME_GOOD"
+		write_terms "$NAME_BAD" "$NAME_GOOD" &&
+		if test $must_log_terms -eq 1
+		then
+			echo "git bisect terms $NAME_BAD $NAME_GOOD" \
+			    >>"$GIT_DIR/BISECT_LOG"
+		fi
 	fi &&
 	echo "git bisect start$orig_args" >>"$GIT_DIR/BISECT_LOG" || exit
 	#
@@ -387,6 +404,8 @@ bisect_visualize() {
 bisect_reset() {
 	test -s "$GIT_DIR/BISECT_START" || {
 		gettextln "We are not bisecting."
+		# We may still have leftovers like BISECT_TERMS
+		bisect_clean_state
 		return
 	}
 	case "$#" in
@@ -449,6 +468,8 @@ bisect_replay () {
 			eval "$cmd" ;;
 		"$NAME_GOOD"|"$NAME_BAD"|skip)
 			bisect_write "$command" "$rev" ;;
+		terms)
+			bisect_terms $rev ;;
 		*)
 			die "$(gettext "?? what are you talking about?")" ;;
 		esac
@@ -533,13 +554,22 @@ get_terms () {
 write_terms () {
 	NAME_BAD=$1
 	NAME_GOOD=$2
+	check_term_format "$NAME_BAD"
+	check_term_format "$NAME_GOOD"
 	printf '%s\n%s\n' "$NAME_BAD" "$NAME_GOOD" >"$GIT_DIR/BISECT_TERMS"
+}
+
+check_term_format () {
+	term=$1
+	git check-ref-format refs/bisect/"$term" ||
+	die "$(eval_gettext "'\$term' is not a valid term")"
 }
 
 check_and_set_terms () {
 	cmd="$1"
 	case "$cmd" in
-	bad|good|new|old)
+	skip|start|terms) ;;
+	*)
 		if test -s "$GIT_DIR/BISECT_TERMS" && test "$cmd" != "$NAME_BAD" && test "$cmd" != "$NAME_GOOD"
 		then
 			die "$(eval_gettext "Invalid command: you're currently in a \$NAME_BAD/\$NAME_GOOD bisect.")"
@@ -568,6 +598,33 @@ bisect_voc () {
 	esac
 }
 
+bisect_terms () {
+	case "$#" in
+	0)
+		if test -s "$GIT_DIR/BISECT_TERMS"
+		then
+			get_terms
+			gettextln "Your current terms are $NAME_GOOD for the old state
+and $NAME_BAD for the new state."
+		else
+			die "$(gettext "No terms defined.")"
+		fi ;;
+	2)
+		if ! test -s "$GIT_DIR/BISECT_START"
+		then
+			write_terms "$1" "$2"
+			echo "git bisect terms $NAME_BAD $NAME_GOOD" >>"$GIT_DIR/BISECT_LOG" || exit
+		else
+			die "$(gettext "A bisection has already started, and you can't change terms in the middle of it.
+Use 'git bisect terms' to see the current terms.
+Otherwise, to start a new bisection with new terms, please use
+'git bisect reset' and set the terms before the start")"
+		fi ;;
+	*)
+		usage ;;
+	esac
+}
+
 case "$#" in
 0)
 	usage ;;
@@ -580,7 +637,7 @@ case "$#" in
 		git bisect -h ;;
 	start)
 		bisect_start "$@" ;;
-	bad|good|new|old)
+	bad|good|new|old|"$NAME_BAD"|"$NAME_GOOD")
 		bisect_state "$cmd" "$@" ;;
 	skip)
 		bisect_skip "$@" ;;
@@ -597,6 +654,8 @@ case "$#" in
 		bisect_log ;;
 	run)
 		bisect_run "$@" ;;
+	terms)
+		bisect_terms "$@" ;;
 	*)
 		usage ;;
 	esac
