@@ -1,14 +1,16 @@
 #!/bin/sh
 
-USAGE='[help|start|bad|good|skip|next|reset|visualize|replay|log|run]'
+USAGE='[help|start|bad|good|new|old|skip|next|reset|visualize|replay|log|run]'
 LONG_USAGE='git bisect help
 	print this long help message.
 git bisect start [--no-checkout] [<bad> [<good>...]] [--] [<pathspec>...]
 	reset bisect state and start bisection.
-git bisect bad [<rev>]
-	mark <rev> a known-bad revision.
-git bisect good [<rev>...]
-	mark <rev>... known-good revisions.
+git bisect (bad|new) [<rev>]
+	mark <rev> a known-bad revision/
+		a revision after change in a given property.
+git bisect (good|old) [<rev>...]
+	mark <rev>... known-good revisions/
+		revisions before change in a given property.
 git bisect skip [(<rev>|<range>)...]
 	mark <rev>... untestable revisions.
 git bisect next
@@ -290,7 +292,7 @@ bisect_next_check() {
 		false
 		;;
 	t,,"$NAME_GOOD")
-		# have bad but not good.  we could bisect although
+		# have bad (or new) but not good (or old).  we could bisect although
 		# this is less optimum.
 		eval_gettextln "Warning: bisecting only with a \$NAME_BAD commit." >&2
 		if test -t 0
@@ -537,7 +539,7 @@ write_terms () {
 check_and_set_terms () {
 	cmd="$1"
 	case "$cmd" in
-	bad|good)
+	bad|good|new|old)
 		if test -s "$GIT_DIR/BISECT_TERMS" && test "$cmd" != "$NAME_BAD" && test "$cmd" != "$NAME_GOOD"
 		then
 			die "$(eval_gettext "Invalid command: you're currently in a \$NAME_BAD/\$NAME_GOOD bisect.")"
@@ -549,14 +551,20 @@ check_and_set_terms () {
 				write_terms bad good
 			fi
 			;;
+		new|old)
+			if ! test -s "$GIT_DIR/BISECT_TERMS"
+			then
+				write_terms new old
+			fi
+			;;
 		esac ;;
 	esac
 }
 
 bisect_voc () {
 	case "$1" in
-	bad) echo "bad" ;;
-	good) echo "good" ;;
+	bad) echo "bad|new" ;;
+	good) echo "good|old" ;;
 	esac
 }
 
@@ -572,7 +580,7 @@ case "$#" in
 		git bisect -h ;;
 	start)
 		bisect_start "$@" ;;
-	bad|good)
+	bad|good|new|old)
 		bisect_state "$cmd" "$@" ;;
 	skip)
 		bisect_skip "$@" ;;
