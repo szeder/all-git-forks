@@ -148,6 +148,16 @@ static int rerere_file_getline(struct strbuf *sb, struct rerere_io *io_)
 	return strbuf_getwholeline(sb, io->input, '\n');
 }
 
+/*
+ * Require the exact number of conflict marker letters, no more, no
+ * less, followed by SP (if want_sp is set), or any whitespace
+ * (including LF).  The beginning of our version and the end of their
+ * version always are labeled like "<<<<< ours" or ">>>>> theirs",
+ * hence the caller passes want_sp to us.  Note that the version from
+ * the common ancestor in diff3-style output is not always labelled
+ * (e.g. "||||| common" is often seen but "|||||" alone is valid),
+ * so the caller does not say "want_sp" in that case.
+ */
 static int is_cmarker(char *buf, int marker_char, int marker_size, int want_sp)
 {
 	while (marker_size--)
