@@ -175,6 +175,21 @@ static int is_cmarker(char *buf, int marker_char, int marker_size)
 	return isspace(*buf);
 }
 
+/*
+ * Read contents a file with conflicts, normalize the conflicts
+ * by (1) discarding the common ancestor version in diff3-style,
+ * (2) reordering our side and their side so that whichever sorts
+ * alphabetically earlier comes before the other one, while
+ * computing the "conflict hash", which is just an SHA-1 hash of
+ * one side of the conflict, NUL, the other side of the conflict,
+ * and NUL concatenated together.
+ *
+ * Return the number of conflict hunks found.
+ *
+ * NEEDSWORK: the logic and theory of operation behind this conflict
+ * normalization may deserve to be documented somewhere, perhaps in
+ * Documentation/technical/rerere.txt.
+ */
 static int handle_path(unsigned char *sha1, struct rerere_io *io, int marker_size)
 {
 	git_SHA_CTX ctx;
@@ -245,6 +260,10 @@ static int handle_path(unsigned char *sha1, struct rerere_io *io, int marker_siz
 	return hunk_no;
 }
 
+/*
+ * Scan the path for conflicts, do the "handle_path()" thing above, and
+ * return the number of conflict hunks found.
+ */
 static int handle_file(const char *path, unsigned char *sha1, const char *output)
 {
 	int hunk_no = 0;
@@ -531,6 +550,13 @@ static int do_plain_rerere(struct string_list *rr, int fd)
 			unsigned char sha1[20];
 			char *hex;
 			int ret;
+
+			/*
+			 * No conflict is recorded for this path yet;
+			 * ask handle_file() to scan and assign a
+			 * conflict ID.  No need to write anything
+			 * out yet.
+			 */
 			ret = handle_file(path, sha1, NULL);
 			if (ret < 1)
 				continue;
@@ -538,6 +564,12 @@ static int do_plain_rerere(struct string_list *rr, int fd)
 			string_list_insert(rr, path)->util = hex;
 			if (mkdir_in_gitdir(git_path("rr-cache/%s", hex)))
 				continue;
+
+			/*
+			 * Ask handle_file() again to write the
+			 * normalized contents to the "preimage" file
+			 * in the rr-cache.
+			 */
 			handle_file(path, NULL, rerere_path(hex, "preimage"));
 			fprintf(stderr, "Recorded preimage for '%s'\n", path);
 		}
