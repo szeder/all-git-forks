@@ -707,8 +707,8 @@ static void mmap_limit_check(size_t length)
 		    (uintmax_t)length, (uintmax_t)limit);
 }
 
-void *xmmap(void *start, size_t length,
-	int prot, int flags, int fd, off_t offset)
+void *xmmap_gently(void *start, size_t length,
+		  int prot, int flags, int fd, off_t offset)
 {
 	void *ret;
 
@@ -719,9 +719,16 @@ void *xmmap(void *start, size_t length,
 			return NULL;
 		release_pack_memory(length);
 		ret = mmap(start, length, prot, flags, fd, offset);
-		if (ret == MAP_FAILED)
-			die_errno("Out of memory? mmap failed");
 	}
+	return ret;
+}
+
+void *xmmap(void *start, size_t length,
+	int prot, int flags, int fd, off_t offset)
+{
+	void *ret = xmmap_gently(start, length, prot, flags, fd, offset);
+	if (ret == MAP_FAILED)
+		die_errno("mmap failed");
 	return ret;
 }
 
@@ -3161,7 +3168,7 @@ int has_sha1_pack(const unsigned char *sha1)
 	return find_pack_entry(sha1, &e);
 }
 
-int has_sha1_file(const unsigned char *sha1)
+int has_sha1_file_with_flags(const unsigned char *sha1, int flags)
 {
 	struct pack_entry e;
 
@@ -3169,6 +3176,8 @@ int has_sha1_file(const unsigned char *sha1)
 		return 1;
 	if (has_loose_object(sha1))
 		return 1;
+	if (flags & HAS_SHA1_QUICK)
+		return 0;
 	reprepare_packed_git();
 	return find_pack_entry(sha1, &e);
 }
@@ -3286,7 +3295,7 @@ static int index_core(unsigned char *sha1, int fd, size_t size,
 	int ret;
 
 	if (!size) {
-		ret = index_mem(sha1, NULL, size, type, path, flags);
+		ret = index_mem(sha1, "", size, type, path, flags);
 	} else if (size <= SMALL_FILE_SIZE) {
 		char *buf = xmalloc(size);
 		if (size == read_in_full(fd, buf, size))

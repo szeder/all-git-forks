@@ -297,8 +297,11 @@ static inline unsigned int canon_mode(unsigned int mode)
 #define RESOLVE_UNDO_CHANGED	(1 << 4)
 #define CACHE_TREE_CHANGED	(1 << 5)
 #define SPLIT_INDEX_ORDERED	(1 << 6)
+#define UNTRACKED_CHANGED	(1 << 7)
 
 struct split_index;
+struct untracked_cache;
+
 struct index_state {
 	struct cache_entry **cache;
 	unsigned int version;
@@ -312,6 +315,7 @@ struct index_state {
 	struct hashmap name_hash;
 	struct hashmap dir_hash;
 	unsigned char sha1[20];
+	struct untracked_cache *untracked;
 };
 
 extern struct index_state the_index;
@@ -563,6 +567,8 @@ extern void fill_stat_data(struct stat_data *sd, struct stat *st);
  * INODE_CHANGED, and DATA_CHANGED.
  */
 extern int match_stat_data(const struct stat_data *sd, struct stat *st);
+extern int match_stat_data_racy(const struct index_state *istate,
+				const struct stat_data *sd, struct stat *st);
 
 extern void fill_stat_cache_info(struct cache_entry *ce, struct stat *st);
 
@@ -937,8 +943,17 @@ extern int has_sha1_pack(const unsigned char *sha1);
  * Return true iff we have an object named sha1, whether local or in
  * an alternate object database, and whether packed or loose.  This
  * function does not respect replace references.
+ *
+ * If the QUICK flag is set, do not re-check the pack directory
+ * when we cannot find the object (this means we may give a false
+ * negative answer if another process is simultaneously repacking).
  */
-extern int has_sha1_file(const unsigned char *sha1);
+#define HAS_SHA1_QUICK 0x1
+extern int has_sha1_file_with_flags(const unsigned char *sha1, int flags);
+static inline int has_sha1_file(const unsigned char *sha1)
+{
+	return has_sha1_file_with_flags(sha1, 0);
+}
 
 /*
  * Return true iff an alternate object database has a loose object
@@ -965,15 +980,21 @@ struct object_context {
 	unsigned char tree[20];
 	char path[PATH_MAX];
 	unsigned mode;
+	/*
+	 * symlink_path is only used by get_tree_entry_follow_symlinks,
+	 * and only for symlinks that point outside the repository.
+	 */
+	struct strbuf symlink_path;
 };
 
-#define GET_SHA1_QUIETLY        01
-#define GET_SHA1_COMMIT         02
-#define GET_SHA1_COMMITTISH     04
-#define GET_SHA1_TREE          010
-#define GET_SHA1_TREEISH       020
-#define GET_SHA1_BLOB	       040
-#define GET_SHA1_ONLY_TO_DIE 04000
+#define GET_SHA1_QUIETLY           01
+#define GET_SHA1_COMMIT            02
+#define GET_SHA1_COMMITTISH        04
+#define GET_SHA1_TREE             010
+#define GET_SHA1_TREEISH          020
+#define GET_SHA1_BLOB             040
+#define GET_SHA1_FOLLOW_SYMLINKS 0100
+#define GET_SHA1_ONLY_TO_DIE    04000
 
 extern int get_sha1(const char *str, unsigned char *sha1);
 extern int get_sha1_commit(const char *str, unsigned char *sha1);
@@ -1541,9 +1562,13 @@ extern const char *git_mailmap_blob;
 extern void maybe_flush_or_die(FILE *, const char *);
 __attribute__((format (printf, 2, 3)))
 extern void fprintf_or_die(FILE *, const char *fmt, ...);
+
+#define COPY_READ_ERROR (-2)
+#define COPY_WRITE_ERROR (-3)
 extern int copy_fd(int ifd, int ofd);
 extern int copy_file(const char *dst, const char *src, int mode);
 extern int copy_file_with_time(const char *dst, const char *src, int mode);
+
 extern void write_or_die(int fd, const void *buf, size_t count);
 extern int write_or_whine(int fd, const void *buf, size_t count, const char *msg);
 extern int write_or_whine_pipe(int fd, const void *buf, size_t count, const char *msg);
@@ -1682,5 +1707,6 @@ int stat_validity_check(struct stat_validity *sv, const char *path);
 void stat_validity_update(struct stat_validity *sv, int fd);
 
 int versioncmp(const char *s1, const char *s2);
+void sleep_millisec(int millisec);
 
 #endif /* CACHE_H */
