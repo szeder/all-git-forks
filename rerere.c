@@ -149,8 +149,25 @@ static int rerere_file_getline(struct strbuf *sb, struct rerere_io *io_)
 	return strbuf_getwholeline(sb, io->input, '\n');
 }
 
-static int is_cmarker(char *buf, int marker_char, int marker_size, int want_sp)
+/*
+ * Require the exact number of conflict marker letters, no more, no
+ * less, followed by SP or any whitespace
+ * (including LF).
+ */
+static int is_cmarker(char *buf, int marker_char, int marker_size)
 {
+	int want_sp;
+
+	/*
+	 * The beginning of our version and the end of their version
+	 * always are labeled like "<<<<< ours" or ">>>>> theirs",
+	 * hence we set want_sp for them.  Note that the version from
+	 * the common ancestor in diff3-style output is not always
+	 * labelled (e.g. "||||| common" is often seen but "|||||"
+	 * alone is also valid), so we do not set want_sp.
+	 */
+	want_sp = (marker_char == '<') || (marker_char == '>');
+
 	while (marker_size--)
 		if (*buf++ != marker_char)
 			return 0;
@@ -159,6 +176,21 @@ static int is_cmarker(char *buf, int marker_char, int marker_size, int want_sp)
 	return isspace(*buf);
 }
 
+/*
+ * Read contents a file with conflicts, normalize the conflicts
+ * by (1) discarding the common ancestor version in diff3-style,
+ * (2) reordering our side and their side so that whichever sorts
+ * alphabetically earlier comes before the other one, while
+ * computing the "conflict hash", which is just an SHA-1 hash of
+ * one side of the conflict, NUL, the other side of the conflict,
+ * and NUL concatenated together.
+ *
+ * Return the number of conflict hunks found.
+ *
+ * NEEDSWORK: the logic and theory of operation behind this conflict
+ * normalization may deserve to be documented somewhere, perhaps in
+ * Documentation/technical/rerere.txt.
+ */
 static int handle_path(unsigned char *sha1, struct rerere_io *io, int marker_size)
 {
 	git_SHA_CTX ctx;
@@ -173,19 +205,19 @@ static int handle_path(unsigned char *sha1, struct rerere_io *io, int marker_siz
 		git_SHA1_Init(&ctx);
 
 	while (!io->getline(&buf, io)) {
-		if (is_cmarker(buf.buf, '<', marker_size, 1)) {
+		if (is_cmarker(buf.buf, '<', marker_size)) {
 			if (hunk != RR_CONTEXT)
 				goto bad;
 			hunk = RR_SIDE_1;
-		} else if (is_cmarker(buf.buf, '|', marker_size, 0)) {
+		} else if (is_cmarker(buf.buf, '|', marker_size)) {
 			if (hunk != RR_SIDE_1)
 				goto bad;
 			hunk = RR_ORIGINAL;
-		} else if (is_cmarker(buf.buf, '=', marker_size, 0)) {
+		} else if (is_cmarker(buf.buf, '=', marker_size)) {
 			if (hunk != RR_SIDE_1 && hunk != RR_ORIGINAL)
 				goto bad;
 			hunk = RR_SIDE_2;
-		} else if (is_cmarker(buf.buf, '>', marker_size, 1)) {
+		} else if (is_cmarker(buf.buf, '>', marker_size)) {
 			if (hunk != RR_SIDE_2)
 				goto bad;
 			if (strbuf_cmp(&one, &two) > 0)
@@ -229,6 +261,10 @@ static int handle_path(unsigned char *sha1, struct rerere_io *io, int marker_siz
 	return hunk_no;
 }
 
+/*
+ * Scan the path for conflicts, do the "handle_path()" thing above, and
+ * return the number of conflict hunks found.
+ */
 static int handle_file(const char *path, unsigned char *sha1, const char *output)
 {
 	int hunk_no = 0;
@@ -515,6 +551,13 @@ static int do_plain_rerere(struct string_list *rr, int fd)
 			unsigned char sha1[20];
 			char *hex;
 			int ret;
+
+			/*
+			 * No conflict is recorded for this path yet;
+			 * ask handle_file() to scan and assign a
+			 * conflict ID.  No need to write anything
+			 * out yet.
+			 */
 			ret = handle_file(path, sha1, NULL);
 			if (ret < 1)
 				continue;
@@ -522,6 +565,12 @@ static int do_plain_rerere(struct string_list *rr, int fd)
 			string_list_insert(rr, path)->util = hex;
 			if (mkdir_in_gitdir(git_path("rr-cache/%s", hex)))
 				continue;
+
+			/*
+			 * Ask handle_file() again to write the
+			 * normalized contents to the "preimage" file
+			 * in the rr-cache.
+			 */
 			handle_file(path, NULL, rerere_path(hex, "preimage"));
 			fprintf(stderr, "Recorded preimage for '%s'\n", path);
 		}
