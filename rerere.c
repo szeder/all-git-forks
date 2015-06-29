@@ -35,32 +35,27 @@ static int has_rerere_resolution(const char *hex)
 
 static void read_rr(struct string_list *rr)
 {
-	unsigned char sha1[20];
-	char buf[PATH_MAX];
+	struct strbuf buf = STRBUF_INIT;
 	FILE *in = fopen(merge_rr_path, "r");
+
 	if (!in)
 		return;
-	while (fread(buf, 40, 1, in) == 1) {
-		int i;
-		char *name;
-		if (get_sha1_hex(buf, sha1))
+	while (!strbuf_getwholeline(&buf, in, '\0')) {
+		char *path;
+		unsigned char sha1[20];
+
+		/* There has to be the hash, tab, path and then NUL */
+		if (buf.len < 42 || get_sha1_hex(buf.buf, sha1))
 			die("corrupt MERGE_RR");
-		buf[40] = '\0';
-		name = xstrdup(buf);
-		if (fgetc(in) != '\t')
+
+		if (buf.buf[40] != '\t')
 			die("corrupt MERGE_RR");
-		for (i = 0; i < sizeof(buf); i++) {
-			int c = fgetc(in);
-			if (c < 0)
-				die("corrupt MERGE_RR");
-			buf[i] = c;
-			if (c == 0)
-				 break;
-		}
-		if (i == sizeof(buf))
-			die("filename too long");
-		string_list_insert(rr, buf)->util = name;
+		buf.buf[40] = '\0';
+		path = buf.buf + 41;
+
+		string_list_insert(rr, path)->util = xstrdup(buf.buf);
 	}
+	strbuf_release(&buf);
 	fclose(in);
 }
 
@@ -70,16 +65,18 @@ static int write_rr(struct string_list *rr, int out_fd)
 {
 	int i;
 	for (i = 0; i < rr->nr; i++) {
-		const char *path;
-		int length;
+		struct strbuf buf = STRBUF_INIT;
+
+		assert(rr->items[i].util != RERERE_RESOLVED);
 		if (!rr->items[i].util)
 			continue;
-		path = rr->items[i].string;
-		length = strlen(path) + 1;
-		if (write_in_full(out_fd, rr->items[i].util, 40) != 40 ||
-		    write_str_in_full(out_fd, "\t") != 1 ||
-		    write_in_full(out_fd, path, length) != length)
+		strbuf_addf(&buf, "%s\t%s%c",
+			    (char *)rr->items[i].util,
+			    rr->items[i].string, 0);
+		if (write_in_full(out_fd, buf.buf, buf.len) != buf.len)
 			die("unable to write rerere record");
+
+		strbuf_release(&buf);
 	}
 	if (commit_lock_file(&write_lock) != 0)
 		die("unable to write rerere record");
@@ -369,10 +366,8 @@ static int check_one_conflict(int i, int *type)
 	}
 
 	*type = PUNTED;
-	if (ce_stage(e) == 1) {
-		if (active_nr <= ++i)
-			return i + 1;
-	}
+	if (ce_stage(e) == 1)
+		i++;
 
 	/* Only handle regular files with both stages #2 and #3 */
 	if (i + 1 < active_nr) {
@@ -487,6 +482,8 @@ static void update_paths(struct string_list *update)
 		struct string_list_item *item = &update->items[i];
 		if (add_file_to_cache(item->string, 0))
 			exit(128);
+		fprintf(stderr, "Staged '%s' using previous resolution.\n",
+			item->string);
 	}
 
 	if (active_cache_changed) {
@@ -541,16 +538,16 @@ static int do_plain_rerere(struct string_list *rr, int fd)
 		const char *name = (const char *)rr->items[i].util;
 
 		if (has_rerere_resolution(name)) {
-			if (!merge(name, path)) {
-				const char *msg;
-				if (rerere_autoupdate) {
-					string_list_insert(&update, path);
-					msg = "Staged '%s' using previous resolution.\n";
-				} else
-					msg = "Resolved '%s' using previous resolution.\n";
-				fprintf(stderr, msg, path);
-				goto mark_resolved;
-			}
+			if (merge(name, path))
+				continue;
+
+			if (rerere_autoupdate)
+				string_list_insert(&update, path);
+			else
+				fprintf(stderr,
+					"Resolved '%s' using previous resolution.\n",
+					path);
+			goto mark_resolved;
 		}
 
 		/* Let's see if we have resolved it. */
