@@ -23,6 +23,8 @@ depending on the subcommand:
 	[--dry-run] [--verbose] [--all | <refs>...]
 'git reflog delete' [--rewrite] [--updateref]
 	[--dry-run] [--verbose] ref@\{specifier\}...
+'git reflog create' <refs>...
+'git reflog exists' <ref>
 
 Reference logs, or "reflogs", record when the tips of branches and
 other references were updated in the local repository. Reflogs are
@@ -52,6 +54,14 @@ argument must be an _exact_ entry (e.g. "`git reflog delete
 master@{2}`"). This subcommand is also typically not used directly by
 end users.
 
+The "create" subcommand creates a reflog for one or more refs. Most
+refs (those under refs/heads, refs/remotes, and refs/tags) will
+automatically have reflogs created. Other refs will not. This command
+allows manual ref creation.
+
+The "exists" subcommand checks whether a ref has a reflog.  It exists
+with zero status if the reflog exists, and non-zero status if it does
+not.
 
 OPTIONS
 -------
