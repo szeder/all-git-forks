@@ -733,10 +733,11 @@ static int cmd_reflog_create(int argc, const char **argv, const char *prefix)
 		if (safe_create_reflog(argv[i], &err, 1)) {
 			error("could not create reflog %s: %s", argv[i],
 			      err.buf);
+			strbuf_reset(&err);
 			status = 1;
-			strbuf_release(&err);
 		}
 	}
+	strbuf_release(&err);
 	return status;
 }
 
