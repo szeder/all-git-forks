@@ -545,6 +545,10 @@ extern int parse_hide_refs_config(const char *var, const char *value, const char
 
 extern int ref_is_hidden(const char *);
 
+const char *find_descendant_ref(const char *refname,
+				const struct string_list *extras,
+				const struct string_list *skip);
+
 char *format_reflog_entry(const unsigned char *old_sha1,
 			  const unsigned char *new_sha1,
 			  const char *committer, const char *msg,
