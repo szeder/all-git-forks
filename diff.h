@@ -6,6 +6,7 @@
 
 #include "tree-walk.h"
 #include "pathspec.h"
+#include "object.h"
 
 struct rev_info;
 struct diff_options;
@@ -137,6 +138,11 @@ struct diff_options {
 	int dirstat_permille;
 	int setup;
 	int abbrev;
+/* white-space error highlighting */
+#define WSEH_NEW 1
+#define WSEH_CONTEXT 2
+#define WSEH_OLD 4
+	unsigned ws_error_highlight;
 	const char *prefix;
 	int prefix_length;
 	const char *stat_sep;
@@ -175,7 +181,7 @@ struct diff_options {
 
 enum color_diff {
 	DIFF_RESET = 0,
-	DIFF_PLAIN = 1,
+	DIFF_CONTEXT = 1,
 	DIFF_METAINFO = 2,
 	DIFF_FRAGINFO = 3,
 	DIFF_FILE_OLD = 4,
@@ -207,11 +213,11 @@ struct combine_diff_path {
 	struct combine_diff_path *next;
 	char *path;
 	unsigned int mode;
-	unsigned char sha1[20];
+	struct object_id oid;
 	struct combine_diff_parent {
 		char status;
 		unsigned int mode;
-		unsigned char sha1[20];
+		struct object_id oid;
 	} parent[FLEX_ARRAY];
 };
 #define combine_diff_path_size(n, l) \

@@ -59,7 +59,11 @@ struct commit *lookup_commit_reference_by_name(const char *name);
 struct commit *lookup_commit_or_die(const unsigned char *sha1, const char *ref_name);
 
 int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long size);
-int parse_commit(struct commit *item);
+int parse_commit_gently(struct commit *item, int quiet_on_missing);
+static inline int parse_commit(struct commit *item)
+{
+	return parse_commit_gently(item, 0);
+}
 void parse_commit_or_die(struct commit *item);
 
 /*
@@ -226,9 +230,9 @@ enum rev_sort_order {
 void sort_in_topological_order(struct commit_list **, enum rev_sort_order);
 
 struct commit_graft {
-	unsigned char sha1[20];
+	struct object_id oid;
 	int nr_parent; /* < 0 if shallow commit */
-	unsigned char parent[FLEX_ARRAY][20]; /* more */
+	struct object_id parent[FLEX_ARRAY]; /* more */
 };
 typedef int (*each_commit_graft_fn)(const struct commit_graft *, void *);
 
