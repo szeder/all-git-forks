@@ -1046,12 +1046,8 @@ static void abbrev_sha1_in_line(struct strbuf *line)
 		unsigned char sha1[20];
 		const char *abbrev;
 
-		/*
-		 * strbuf_split_max left a space. Trim it and re-add
-		 * it after abbreviation.
-		 */
-		strbuf_trim(split[1]);
-		if (!get_sha1(split[1]->buf, sha1)) {
+		if (!get_sha1_hex(split[1]->buf, sha1) &&
+		    !strcmp(split[1]->buf + 40, " ")) {
 			abbrev = find_unique_abbrev(sha1, DEFAULT_ABBREV);
 			strbuf_reset(split[1]);
 			strbuf_addf(split[1], "%s ", abbrev);
@@ -1068,18 +1064,20 @@ static void abbrev_sha1_in_line(struct strbuf *line)
 static void read_rebase_todolist(const char *fname, struct string_list *lines)
 {
 	struct strbuf line = STRBUF_INIT;
-	FILE *f = fopen(git_path(fname), "r");
+	FILE *f = fopen(git_path("%s", fname), "r");
 
 	if (!f)
-		die_errno("Could not open file %s for reading", git_path(fname));
+		die_errno("Could not open file %s for reading",
+			  git_path("%s", fname));
 	while (!strbuf_getline(&line, f, '\n')) {
-		stripspace(&line, 1);
-		/* Remove trailing \n */
+		if (line.len && line.buf[0] == comment_line_char)
+			continue;
 		strbuf_rtrim(&line);
+		if (!line.len)
+			continue;
 		abbrev_sha1_in_line(&line);
 		string_list_append(lines, line.buf);
 	}
-	string_list_remove_empty_items(lines, 1);
 }
 
 static void show_rebase_information(struct wt_status *s,
