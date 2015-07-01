@@ -536,9 +536,15 @@ int rerere_remaining(struct string_list *merge_rr)
  * resolved) may apply cleanly to the contents stored in "path", i.e.
  * the conflict this time around.
  *
- * Returns 0 for successful replay of recorded resolution, or non-zero
- * for failure.
+ * Returns negative for error, or one of MERGE_RR_* enum.
  */
+enum {
+	MERGE_RR_SUCCESS = 0,
+	MERGE_RR_NO_POSTIMAGE = 1,
+	MERGE_RR_NO_PREIMAGE = 2,
+	MERGE_RR_CONFLICT = 3
+};
+
 static int merge(const char *name, const char *path)
 {
 	int ret;
@@ -546,17 +552,26 @@ static int merge(const char *name, const char *path)
 	mmfile_t cur = {NULL, 0}, base = {NULL, 0}, other = {NULL, 0};
 	mmbuffer_t result = {NULL, 0};
 
+	if (read_mmfile(&other, rerere_path(name, "postimage"))) {
+		ret = MERGE_RR_NO_POSTIMAGE;
+		goto out;
+	}
+
+	if (read_mmfile(&base, rerere_path(name, "preimage"))) {
+		ret = MERGE_RR_NO_PREIMAGE;
+		goto out;
+	}
+
 	/*
 	 * Normalize the conflicts in path and write it out to
 	 * "thisimage" temporary file.
 	 */
 	if (handle_file(path, NULL, rerere_path(name, "thisimage")) < 0) {
-		ret = 1;
+		ret = -1;
 		goto out;
 	}
 
 	if (read_mmfile(&cur, rerere_path(name, "thisimage")) ||
-	    read_mmfile(&base, rerere_path(name, "preimage")) ||
 	    read_mmfile(&other, rerere_path(name, "postimage"))) {
 		ret = 1;
 		goto out;
@@ -567,7 +582,7 @@ static int merge(const char *name, const char *path)
 	 * low-level merge driver settings.
 	 */
 	if (ll_merge(&result, path, &base, NULL, &cur, "", &other, "", NULL)) {
-		ret = 1;
+		ret = MERGE_RR_CONFLICT;
 		goto out;
 	}
 
@@ -590,6 +605,7 @@ static int merge(const char *name, const char *path)
 	if (fclose(f))
 		return error("Writing %s failed: %s", path,
 			     strerror(errno));
+	ret = MERGE_RR_SUCCESS;
 
 out:
 	free(cur.ptr);
@@ -636,11 +652,8 @@ static void do_rerere_one_path(struct string_list_item *rr_item,
 	const char *path = rr_item->string;
 	const char *name = (const char *)rr_item->util;
 
-	/* Is there a recorded resolution we could attempt to apply? */
-	if (has_rerere_resolution(name)) {
-		if (merge(name, path))
-			return; /* failed to replay */
-
+	switch (merge(name, path)) {
+	case MERGE_RR_SUCCESS:
 		if (rerere_autoupdate)
 			string_list_insert(update, path);
 		else
@@ -648,6 +661,19 @@ static void do_rerere_one_path(struct string_list_item *rr_item,
 				"Resolved '%s' using previous resolution.\n",
 				path);
 		goto mark_resolved;
+
+	case MERGE_RR_NO_PREIMAGE:
+		/*
+		 * We are the first to encounter this conflict.  Ask
+		 * handle_file() to write the normalized contents to
+		 * the "preimage" file.
+		 */
+		handle_file(path, NULL, rerere_path(name, "preimage"));
+		fprintf(stderr, "Recorded preimage for '%s'\n", path);
+
+	case MERGE_RR_NO_POSTIMAGE:
+	default:
+		break;
 	}
 
 	/* Let's see if the user has resolved it. */
@@ -693,24 +719,8 @@ static int do_plain_rerere(struct string_list *rr, int fd)
 			hex = xstrdup(sha1_to_hex(sha1));
 			string_list_insert(rr, path)->util = hex;
 
-			/*
-			 * If the directory does not exist, create
-			 * it.  mkdir_in_gitdir() will fail with
-			 * EEXIST if there already is one.
-			 *
-			 * NEEDSWORK: make sure "gc" does not remove
-			 * preimage without removing the directory.
-			 */
-			if (mkdir_in_gitdir(git_path("rr-cache/%s", hex)))
-				continue;
-
-			/*
-			 * We are the first to encounter this
-			 * conflict.  Ask handle_file() to write the
-			 * normalized contents to the "preimage" file.
-			 */
-			handle_file(path, NULL, rerere_path(hex, "preimage"));
-			fprintf(stderr, "Recorded preimage for '%s'\n", path);
+			/* Ensure that the directory exists. */
+			mkdir_in_gitdir(git_path("rr-cache/%s", hex));
 		}
 	}
 
