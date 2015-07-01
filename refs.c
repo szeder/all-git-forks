@@ -2775,13 +2775,6 @@ int pack_refs(unsigned int flags)
 	return 0;
 }
 
-/*
- * Rewrite the packed-refs file, omitting any refs listed in
- * 'refnames'. On error, leave packed-refs unchanged, write an error
- * message to 'err', and return a nonzero value.
- *
- * The refs in 'refnames' needn't be sorted. `err` must not be NULL.
- */
 int repack_without_refs(struct string_list *refnames, struct strbuf *err)
 {
 	struct ref_dir *packed;
