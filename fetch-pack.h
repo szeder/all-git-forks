@@ -29,6 +29,12 @@ struct fetch_pack_args {
 };
 
 /*
+ * In version 2 of the pack protocol we negotiate the capabilities
+ * before the actual transfer of refs and packs.
+ */
+void negotiate_capabilities(int fd[2], struct fetch_pack_args *args);
+
+/*
  * sought represents remote references that should be updated from.
  * On return, the names that were found on the remote will have been
  * marked as such.
