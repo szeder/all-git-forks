@@ -1,0 +1,6 @@
+var data = {files:[
+{"link":"git-merge-octopus.4f5356f0.html","title":"git-merge-octopus","summary_name":"[...]/git/git-merge-octopus","covered_class":"lineCov","covered":"77.6","covered_lines":"38","uncovered_lines":"11","total_lines" : "49"},
+]};
+var percent_low = 25;var percent_high = 75;
+var header = { "command" : "git-merge-octopus", "date" : "2015-07-02 17:40:16", "instrumented" : 49, "covered" : 38,};
+var merged_data = [];

@@ -1,0 +1,66 @@
+<?xml version="1.0" ?>
+<!DOCTYPE coverage SYSTEM 'http://cobertura.sourceforge.net/xml/coverage-03.dtd'>
+<coverage line-rate="0.000" version="1.9" timestamp="1435858816">
+	<sources>
+		<source>/home/pyokagan/pyk/git/git-merge-octopus/</source>
+	</sources>
+	<packages>
+		<package name="git_merge_octopus" line-rate="0.000" branch-rate="1.0" complexity="1.0">
+			<classes>
+				<class name="git_merge_octopus" filename="/home/pyokagan/pyk/git/git-merge-octopus" line-rate="0.776">
+					<lines>
+						<line number="8" hits="0"/>
+						<line number="9" hits="25"/>
+						<line number="11" hits="0"/>
+						<line number="12" hits="0"/>
+						<line number="13" hits="0"/>
+						<line number="17" hits="100"/>
+						<line number="18" hits="165"/>
+						<line number="20" hits="165"/>
+						<line number="22" hits="25"/>
+						<line number="25" hits="25"/>
+						<line number="28" hits="90"/>
+						<line number="31" hits="25"/>
+						<line number="37" hits="50"/>
+						<line number="41" hits="0"/>
+						<line number="47" hits="50"/>
+						<line number="48" hits="50"/>
+						<line number="49" hits="25"/>
+						<line number="50" hits="25"/>
+						<line number="51" hits="90"/>
+						<line number="53" hits="90"/>
+						<line number="58" hits="0"/>
+						<line number="59" hits="0"/>
+						<line number="60" hits="0"/>
+						<line number="63" hits="180"/>
+						<line number="64" hits="90"/>
+						<line number="66" hits="33"/>
+						<line number="67" hits="22"/>
+						<line number="69" hits="180"/>
+						<line number="70" hits="0"/>
+						<line number="72" hits="90"/>
+						<line number="74" hits="0"/>
+						<line number="75" hits="0"/>
+						<line number="79" hits="90"/>
+						<line number="86" hits="8"/>
+						<line number="87" hits="8"/>
+						<line number="88" hits="24"/>
+						<line number="89" hits="8"/>
+						<line number="92" hits="82"/>
+						<line number="94" hits="82"/>
+						<line number="95" hits="82"/>
+						<line number="96" hits="164"/>
+						<line number="97" hits="82"/>
+						<line number="99" hits="7"/>
+						<line number="100" hits="7"/>
+						<line number="101" hits="1"/>
+						<line number="102" hits="14"/>
+						<line number="105" hits="82"/>
+						<line number="106" hits="82"/>
+						<line number="109" hits="25"/>
+					</lines>
+				</class>
+			</classes>
+		</package>
+	</packages>
+</coverage>

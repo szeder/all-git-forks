@@ -1,0 +1,10 @@
+var data = {files:[
+{"link":"git-parse-remote.344e778b.html","title":"git-parse-remote","summary_name":"/home/pyokagan/pyk/git/git-parse-remote","covered_class":"lineNoCov","covered":"9.8","covered_lines":"5","uncovered_lines":"46","total_lines" : "51"},
+{"link":"gettext.sh.46a6788.html","title":"gettext.sh","summary_name":"/usr/bin/gettext.sh","covered_class":"lineNoCov","covered":"15.6","covered_lines":"5","uncovered_lines":"27","total_lines" : "32"},
+{"link":"git-sh-i18n.547427fa.html","title":"git-sh-i18n","summary_name":"/home/pyokagan/pyk/git/git-sh-i18n","covered_class":"linePartCov","covered":"40.0","covered_lines":"16","uncovered_lines":"24","total_lines" : "40"},
+{"link":"git-sh-setup.61b2597c.html","title":"git-sh-setup","summary_name":"/home/pyokagan/pyk/git/git-sh-setup","covered_class":"lineNoCov","covered":"18.4","covered_lines":"29","uncovered_lines":"129","total_lines" : "158"},
+{"link":"git-submodule.26f7a5f6.html","title":"git-submodule","summary_name":"/home/pyokagan/pyk/git/git-submodule","covered_class":"linePartCov","covered":"66.0","covered_lines":"434","uncovered_lines":"224","total_lines" : "658"},
+]};
+var percent_low = 25;var percent_high = 75;
+var header = { "command" : "git-submodule", "date" : "2015-07-02 17:41:34", "instrumented" : 939, "covered" : 489,};
+var merged_data = [];

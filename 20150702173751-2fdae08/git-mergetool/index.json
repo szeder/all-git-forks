@@ -1,0 +1,8 @@
+var data = {files:[
+{"link":"git-mergetool--lib.8216ed6e.html","title":"git-mergetool--lib","summary_name":"[...]/pyk/git/git-mergetool--lib","covered_class":"lineNoCov","covered":"15.9","covered_lines":"24","uncovered_lines":"127","total_lines" : "151"},
+{"link":"git-sh-setup.61b2597c.html","title":"git-sh-setup","summary_name":"[...]/pyk/git/git-sh-setup","covered_class":"lineNoCov","covered":"10.8","covered_lines":"17","uncovered_lines":"141","total_lines" : "158"},
+{"link":"git-mergetool.a1e23069.html","title":"git-mergetool","summary_name":"[...]/pyk/git/git-mergetool","covered_class":"linePartCov","covered":"68.7","covered_lines":"169","uncovered_lines":"77","total_lines" : "246"},
+]};
+var percent_low = 25;var percent_high = 75;
+var header = { "command" : "git-mergetool", "date" : "2015-07-02 17:41:03", "instrumented" : 555, "covered" : 210,};
+var merged_data = [];

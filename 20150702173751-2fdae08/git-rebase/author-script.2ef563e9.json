@@ -1,0 +1,8 @@
+var data = {lines:[
+{"lineNum":"    1","line":"GIT_AUTHOR_NAME=\'A U Thor\'","class":"lineCov","hits":"1","possible_hits":"0",},
+{"lineNum":"    2","line":"GIT_AUTHOR_EMAIL=\'author@example.com\'","class":"lineCov","hits":"1","possible_hits":"0",},
+{"lineNum":"    3","line":"GIT_AUTHOR_DATE=\'@1112912113 -0700\'","class":"lineCov","hits":"1","possible_hits":"0",},
+]};
+var percent_low = 25;var percent_high = 75;
+var header = { "command" : "git-rebase", "date" : "2015-07-02 17:39:24", "instrumented" : 3, "covered" : 3,};
+var merged_data = [];

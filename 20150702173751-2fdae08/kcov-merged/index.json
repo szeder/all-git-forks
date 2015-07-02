@@ -1,0 +1,24 @@
+var data = {files:[
+{"link":"git-mergetool--lib.8216ed6e.html","title":"git-mergetool--lib","summary_name":"/home/pyokagan/pyk/git/git-mergetool--lib","covered_class":"lineNoCov","covered":"15.9","covered_lines":"24","uncovered_lines":"127","total_lines" : "151"},
+{"link":"git-merge-resolve.e7e62875.html","title":"git-merge-resolve","summary_name":"/home/pyokagan/pyk/git/git-merge-resolve","covered_class":"lineCov","covered":"90.0","covered_lines":"18","uncovered_lines":"2","total_lines" : "20"},
+{"link":"git-request-pull.75b4b379.html","title":"git-request-pull","summary_name":"/home/pyokagan/pyk/git/git-request-pull","covered_class":"lineNoCov","covered":"16.1","covered_lines":"15","uncovered_lines":"78","total_lines" : "93"},
+{"link":"git-bisect.85dfe8a8.html","title":"git-bisect","summary_name":"/home/pyokagan/pyk/git/git-bisect","covered_class":"linePartCov","covered":"40.6","covered_lines":"112","uncovered_lines":"164","total_lines" : "276"},
+{"link":"git-merge-octopus.4f5356f0.html","title":"git-merge-octopus","summary_name":"/home/pyokagan/pyk/git/git-merge-octopus","covered_class":"lineCov","covered":"77.6","covered_lines":"38","uncovered_lines":"11","total_lines" : "49"},
+{"link":"git-merge-one-file.74523c0e.html","title":"git-merge-one-file","summary_name":"/home/pyokagan/pyk/git/git-merge-one-file","covered_class":"linePartCov","covered":"43.1","covered_lines":"28","uncovered_lines":"37","total_lines" : "65"},
+{"link":"git-stash.dea92a31.html","title":"git-stash","summary_name":"/home/pyokagan/pyk/git/git-stash","covered_class":"linePartCov","covered":"65.2","covered_lines":"208","uncovered_lines":"111","total_lines" : "319"},
+{"link":"git-sh-setup.61b2597c.html","title":"git-sh-setup","summary_name":"/home/pyokagan/pyk/git/git-sh-setup","covered_class":"linePartCov","covered":"46.8","covered_lines":"74","uncovered_lines":"84","total_lines" : "158"},
+{"link":"git-submodule.26f7a5f6.html","title":"git-submodule","summary_name":"/home/pyokagan/pyk/git/git-submodule","covered_class":"linePartCov","covered":"66.0","covered_lines":"434","uncovered_lines":"224","total_lines" : "658"},
+{"link":"git-rebase--interactive.42c78389.html","title":"git-rebase--interactive","summary_name":"/home/pyokagan/pyk/git/git-rebase--interactive","covered_class":"linePartCov","covered":"71.7","covered_lines":"38","uncovered_lines":"15","total_lines" : "53"},
+{"link":"git-sh-i18n.547427fa.html","title":"git-sh-i18n","summary_name":"/home/pyokagan/pyk/git/git-sh-i18n","covered_class":"linePartCov","covered":"45.0","covered_lines":"18","uncovered_lines":"22","total_lines" : "40"},
+{"link":"git-rebase--am.63a2ff31.html","title":"git-rebase--am","summary_name":"/home/pyokagan/pyk/git/git-rebase--am","covered_class":"linePartCov","covered":"37.5","covered_lines":"9","uncovered_lines":"15","total_lines" : "24"},
+{"link":"git-mergetool.a1e23069.html","title":"git-mergetool","summary_name":"/home/pyokagan/pyk/git/git-mergetool","covered_class":"linePartCov","covered":"68.7","covered_lines":"169","uncovered_lines":"77","total_lines" : "246"},
+{"link":"git-filter-branch.e69d57b9.html","title":"git-filter-branch","summary_name":"/home/pyokagan/pyk/git/git-filter-branch","covered_class":"linePartCov","covered":"53.1","covered_lines":"137","uncovered_lines":"121","total_lines" : "258"},
+{"link":"git-parse-remote.344e778b.html","title":"git-parse-remote","summary_name":"/home/pyokagan/pyk/git/git-parse-remote","covered_class":"linePartCov","covered":"29.4","covered_lines":"15","uncovered_lines":"36","total_lines" : "51"},
+{"link":"git-rebase--merge.31417807.html","title":"git-rebase--merge","summary_name":"/home/pyokagan/pyk/git/git-rebase--merge","covered_class":"linePartCov","covered":"35.6","covered_lines":"32","uncovered_lines":"58","total_lines" : "90"},
+{"link":"gettext.sh.46a6788.html","title":"gettext.sh","summary_name":"/usr/bin/gettext.sh","covered_class":"lineNoCov","covered":"15.6","covered_lines":"5","uncovered_lines":"27","total_lines" : "32"},
+{"link":"git-rebase.8c27adb7.html","title":"git-rebase","summary_name":"/home/pyokagan/pyk/git/git-rebase","covered_class":"linePartCov","covered":"68.3","covered_lines":"243","uncovered_lines":"113","total_lines" : "356"},
+{"link":"git-am.eb79278e.html","title":"git-am","summary_name":"/home/pyokagan/pyk/git/git-am","covered_class":"linePartCov","covered":"67.3","covered_lines":"365","uncovered_lines":"177","total_lines" : "542"},
+]};
+var percent_low = 25;var percent_high = 75;
+var header = { "command" : "git-stash", "date" : "2015-07-02 17:41:50", "instrumented" : 3481, "covered" : 1982,};
+var merged_data = [];

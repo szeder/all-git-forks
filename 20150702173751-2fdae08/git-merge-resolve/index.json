@@ -1,0 +1,6 @@
+var data = {files:[
+{"link":"git-merge-resolve.e7e62875.html","title":"git-merge-resolve","summary_name":"[...]/git/git-merge-resolve","covered_class":"lineCov","covered":"90.0","covered_lines":"18","uncovered_lines":"2","total_lines" : "20"},
+]};
+var percent_low = 25;var percent_high = 75;
+var header = { "command" : "git-merge-resolve", "date" : "2015-07-02 17:40:12", "instrumented" : 20, "covered" : 18,};
+var merged_data = [];

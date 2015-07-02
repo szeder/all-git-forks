@@ -1,0 +1,37 @@
+<?xml version="1.0" ?>
+<!DOCTYPE coverage SYSTEM 'http://cobertura.sourceforge.net/xml/coverage-03.dtd'>
+<coverage line-rate="0.000" version="1.9" timestamp="1435858812">
+	<sources>
+		<source>/home/pyokagan/pyk/git/git-merge-resolve/</source>
+	</sources>
+	<packages>
+		<package name="git_merge_resolve" line-rate="0.000" branch-rate="1.0" complexity="1.0">
+			<classes>
+				<class name="git_merge_resolve" filename="/home/pyokagan/pyk/git/git-merge-resolve" line-rate="0.900">
+					<lines>
+						<line number="9" hits="92"/>
+						<line number="10" hits="93"/>
+						<line number="12" hits="93"/>
+						<line number="14" hits="23"/>
+						<line number="17" hits="23"/>
+						<line number="20" hits="23"/>
+						<line number="23" hits="24"/>
+						<line number="29" hits="23"/>
+						<line number="31" hits="0"/>
+						<line number="35" hits="23"/>
+						<line number="37" hits="0"/>
+						<line number="40" hits="23"/>
+						<line number="41" hits="27"/>
+						<line number="42" hits="19"/>
+						<line number="43" hits="38"/>
+						<line number="45" hits="7"/>
+						<line number="47" hits="12"/>
+						<line number="48" hits="12"/>
+						<line number="50" hits="7"/>
+						<line number="52" hits="5"/>
+					</lines>
+				</class>
+			</classes>
+		</package>
+	</packages>
+</coverage>
