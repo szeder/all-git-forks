@@ -337,6 +337,7 @@ sub handleLinkLine
     foreach (@objfiles) {
         my $sourcefile = $_;
         $sourcefile =~ s/\.o/.c/;
+        next unless exists $compile_options{"${sourcefile}_CFLAGS"};
         push(@sources, $sourcefile);
         push(@cflags, @{$compile_options{"${sourcefile}_CFLAGS"}});
         push(@defines, @{$compile_options{"${sourcefile}_DEFINES"}});
