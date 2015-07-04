@@ -284,7 +284,8 @@ test true = "$rebase" && {
 		then
 			die "$(gettext "updating an unborn branch with changes added to the index")"
 		fi
-	else
+	elif test $(git config --bool --get rebase.autostash || echo false) = false
+	then
 		require_clean_work_tree "pull with rebase" "Please commit or stash them."
 	fi
 	oldremoteref= &&
