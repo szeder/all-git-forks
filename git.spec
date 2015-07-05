@@ -35,11 +35,13 @@
 %global gnome_keyring       1
 %global use_new_rpm_filters 1
 %global use_systemd         1
+%global use_pkgconfig       1
 %else
 %global desktop_vendor_tag  1
 %global gnome_keyring       0
 %global use_new_rpm_filters 0
 %global use_systemd         0
+%global use_pkgconfig       0
 %endif
 
 Name:           git
@@ -86,7 +88,9 @@ BuildRequires:  libgnome-keyring-devel
 BuildRequires:  pcre-devel
 BuildRequires:  openssl-devel
 BuildRequires:  zlib-devel >= 1.2
+%if %{use_pkgconfig}
 BuildRequires:  pkgconfig(bash-completion)
+%endif
 %if %{use_systemd}
 # For macros
 BuildRequires:  systemd
@@ -381,7 +385,7 @@ echo DOCBOOK_SUPPRESS_SP = 1 >> config.mak
 %global __requires_exclude %{?__requires_exclude:%__requires_exclude|}perl\\(Term::ReadKey\\)
 %endif
 %else
-cat << \EOF > %{name}-req
+cat << \EOF > ../%{name}-req
 #!/bin/sh
 %{__perl_requires} $* |\
 sed \
@@ -391,7 +395,7 @@ sed \
     -e '/perl(packed-refs)/d'
 EOF
 
-%global __perl_requires %{_builddir}/%{name}-%{version}/%{name}-req
+%global __perl_requires %{_builddir}/%{name}-req
 chmod +x %{__perl_requires}
 %endif
 
@@ -496,9 +500,14 @@ perl -p \
 %endif
 
 # Setup bash completion
+%if %{use_pkgconfig}
 bashcompdir=$(pkg-config --variable=completionsdir bash-completion)
 install -Dpm 644 contrib/completion/git-completion.bash %{buildroot}$bashcompdir/git
 ln -s git %{buildroot}$bashcompdir/gitk
+%else
+mkdir -p %{buildroot}%{_sysconfdir}/bash_completion.d
+install -pm 644 contrib/completion/git-completion.bash %{buildroot}%{_sysconfdir}/bash_completion.d/git
+%endif
 
 # Install tcsh completion
 mkdir -p %{buildroot}%{_datadir}/git-core/contrib/completion
@@ -578,7 +587,11 @@ rm -rf %{buildroot}
 # exlude is best way here because of troubels with symlinks inside git-core/
 %exclude %{_datadir}/git-core/contrib/hooks/update-paranoid
 %exclude %{_datadir}/git-core/contrib/hooks/setgitperms.perl
+%if %{use_pkgconfig}
 %{_datadir}/bash-completion/
+%else
+%{_sysconfdir}/bash_completion.d
+%endif
 %{_datadir}/git-core/
 
 %files core-doc -f man-doc-files-core
