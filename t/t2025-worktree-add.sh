@@ -145,4 +145,9 @@ test_expect_success '"add -b" with <branch> omitted' '
 	test_cmp_rev HEAD burble
 '
 
+test_expect_success '"add" with <branch> omitted' '
+	git worktree add wiffle/bat &&
+	test_cmp_rev HEAD bat
+'
+
 test_done
