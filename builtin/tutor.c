@@ -23,7 +23,29 @@ int main() {
         else {
                 exit(-1);
         }
-		system("First.sh>>clear"); //add checker 
+        //      system("First.sh>>clear"); //add checker
+		mkdir("./upstream/");
+		mkdir("./origin/");
+		//system("mkdir ./upstream/");
+		//system("mkdir ./origin/");
+		system("git init ./origin/");
+		system("git init ./upstream/");
+		system("git clone ./origin master");
+		system("touch ./upstream/test.txt");
+		//system("cd ./upstream");
+		chdir("./upstream");
+
+		//there must a check for account's default identity for git being already set.
+		system("git add .");
+		system("git commit -m \"Initializing contents of repository\"");
+		chdir("..");
+
+		system("git clone --bare ./origin/ origin.git");
+		system("rm -r ./origin/");
+
+		chdir("./master");
+		system("git remote rm origin");
+		//system("cd ..");
 		printf("Following three repositories are created:\n1. master \n2. origin \n3. upstream");
 		printf("\nRemote is created for origin and upstream...");
         return 0;
