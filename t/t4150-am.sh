@@ -155,7 +155,7 @@ test_expect_success 'am applies patch correctly' '
 '
 
 test_expect_success 'am fails if index is dirty' '
-	test_when_finished "rm -fr dirtyfile" &&
+	test_when_finished "rm -f dirtyfile" &&
 	rm -fr .git/rebase-apply &&
 	git checkout -f first &&
 	echo dirtyfile >dirtyfile &&
