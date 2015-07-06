@@ -378,7 +378,7 @@ static void free_pcre_regexp(struct grep_pat *p)
 }
 #endif /* !USE_LIBPCRE */
 
-static int is_fixed(const char *s, size_t len)
+static int is_fixed(const char *s, size_t len, int ignore_icase)
 {
 	size_t i;
 
@@ -391,6 +391,13 @@ static int is_fixed(const char *s, size_t len)
 	for (i = 0; i < len; i++) {
 		if (is_regex_special(s[i]))
 			return 0;
+		/*
+		 * The builtin substring search can only deal with case
+		 * insensitivity in ascii range. If there is something outside
+		 * of that range, fall back to regcomp.
+		 */
+		if (ignore_icase && (unsigned char)s[i] >= 128)
+			return 0;
 	}
 
 	return 1;
@@ -398,18 +405,19 @@ static int is_fixed(const char *s, size_t len)
 
 static void compile_regexp(struct grep_pat *p, struct grep_opt *opt)
 {
+	int ignore_icase = opt->regflags & REG_ICASE || p->ignore_case;
 	int err;
 
 	p->word_regexp = opt->word_regexp;
 	p->ignore_case = opt->ignore_case;
 
-	if (opt->fixed || is_fixed(p->pattern, p->patternlen))
+	if (opt->fixed || is_fixed(p->pattern, p->patternlen, ignore_icase))
 		p->fixed = 1;
 	else
 		p->fixed = 0;
 
 	if (p->fixed) {
-		if (opt->regflags & REG_ICASE || p->ignore_case)
+		if (ignore_case)
 			p->kws = kwsalloc(tolower_trans_tbl);
 		else
 			p->kws = kwsalloc(NULL);
