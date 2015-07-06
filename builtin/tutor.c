@@ -8,8 +8,8 @@
 //echo \"HEEEEELLLOOO BASH SCRIPT\" \n\
 //"
 
-int main() {
-
+int cmd_tutor(int argc, const char **argv, const char *prefix)
+{
         char begin_end[4];
         char yes1[] = "Yes";
         char yes2[] = "yes";
