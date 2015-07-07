@@ -120,6 +120,8 @@ struct am_state {
 	/* override error message when patch failure occurs */
 	const char *resolvemsg;
 
+	int ignore_date;
+
 	int rebasing;
 };
 
@@ -1254,7 +1256,8 @@ static void do_commit(const struct am_state *state)
 	}
 
 	author = fmt_ident(state->author_name, state->author_email,
-			state->author_date, IDENT_STRICT);
+			state->ignore_date ? NULL : state->author_date,
+			IDENT_STRICT);
 
 	if (commit_tree(state->msg, state->msg_len, tree, parents, commit,
 				author, NULL))
@@ -1674,6 +1677,8 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 		OPT_CMDMODE(0, "abort", &resume,
 			N_("restore the original branch and abort the patching operation."),
 			RESUME_ABORT),
+		OPT_BOOL(0, "ignore-date", &state.ignore_date,
+			N_("use current timestamp for author date")),
 		OPT_HIDDEN_BOOL(0, "rebasing", &state.rebasing,
 			N_("(internal use for git-rebase)")),
 		OPT_END()
