@@ -132,6 +132,7 @@ enum scld_error safe_create_leading_directories(char *path)
 
 		slash_character = *slash;
 		*slash = '\0';
+		DebugWrite2("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX stat() in question follows XXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
 		if (!stat(path, &st)) {
 			/* path exists */
 			if (!S_ISDIR(st.st_mode))
