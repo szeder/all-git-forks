@@ -839,7 +839,6 @@ BOOL SetPrivilege(
 		}
 
 		if (GetLastError() == ERROR_NOT_ALL_ASSIGNED)
-
 		{
 			printf("The token does not have the specified privilege. \n");
 			CloseHandle( hToken );
