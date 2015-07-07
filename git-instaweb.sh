@@ -23,6 +23,7 @@ restart        restart the web server
 SUBDIRECTORY_OK=Yes
 . git-sh-setup
 
+GIT_EXEC_PATH="$(git --exec-path)"
 fqgitdir="$GIT_DIR"
 local="$(git config --bool --get instaweb.local)"
 httpd="$(git config --get instaweb.httpd)"
@@ -39,7 +40,12 @@ conf="$GIT_DIR/gitweb/httpd.conf"
 test -z "$httpd" && httpd='lighttpd -f'
 
 # Default is @@GITWEBDIR@@
-test -z "$root" && root='@@GITWEBDIR@@'
+default_gitwebdir='@@GITWEBDIR@@'
+if [ "`echo $default_gitwebdir | cut -c1`" != "/" ]; then
+	default_gitwebdir="$GIT_EXEC_PATH/../../$default_gitwebdir"
+fi
+
+test -z "$root" && root="$default_gitwebdir"
 
 # any untaken local port will do...
 test -z "$port" && port=1234
@@ -194,7 +200,6 @@ do
 done
 
 mkdir -p "$GIT_DIR/gitweb/tmp"
-GIT_EXEC_PATH="$(git --exec-path)"
 GIT_DIR="$fqgitdir"
 GITWEB_CONFIG="$fqgitdir/gitweb/gitweb_config.perl"
 export GIT_EXEC_PATH GIT_DIR GITWEB_CONFIG

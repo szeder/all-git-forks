@@ -402,6 +402,8 @@ ARFLAGS = rcs
 #   gitexecdir
 #   template_dir
 #   sysconfdir
+#   localedir
+#   gitwebdir
 # can be specified as a relative path some/where/else;
 # this is interpreted as relative to $(prefix) and "git" at
 # runtime figures out where they are based on the path to the executable.
@@ -844,6 +846,7 @@ LIB_OBJS += urlmatch.o
 LIB_OBJS += usage.o
 LIB_OBJS += userdiff.o
 LIB_OBJS += utf8.o
+LIB_OBJS += twitter-util.o
 LIB_OBJS += varint.o
 LIB_OBJS += version.o
 LIB_OBJS += versioncmp.o
@@ -977,6 +980,15 @@ sysconfdir = /etc
 else
 sysconfdir = etc
 endif
+endif
+
+ifdef RUNTIME_PREFIX
+gitexecdir:=$(patsubst $(prefix)/%,%,$(gitexecdir))
+sysconfdir:=$(patsubst $(prefix)/%,%,$(sysconfdir))
+localedir:=$(patsubst $(prefix)/%,%,$(localedir))
+gitwebdir:=$(patsubst $(prefix)/%,%,$(gitwebdir))
+datarootdir:=$(patsubst $(prefix)/%,%,$(datarootdir))
+template_dir:=$(patsubst $(prefix)/%,%,$(template_dir))
 endif
 
 ifndef COMPUTE_HEADER_DEPENDENCIES
@@ -1435,6 +1447,7 @@ ifdef INTERNAL_QSORT
 endif
 ifdef RUNTIME_PREFIX
 	COMPAT_CFLAGS += -DRUNTIME_PREFIX
+	SUBMAKE_FLAGS += RUNTIME_PREFIX=1
 endif
 
 ifdef NO_PTHREADS
@@ -1770,6 +1783,10 @@ version.sp version.s version.o: EXTRA_CPPFLAGS = \
 	'-DGIT_VERSION="$(GIT_VERSION)"' \
 	'-DGIT_USER_AGENT=$(GIT_USER_AGENT_CQ_SQ)'
 
+twitter-util.sp twitter-util.s twitter-util.o: EXTRA_CPPFLAGS = \
+	'-DGIT_VERSION="$(GIT_VERSION)"' \
+	'-DGIT_USER_AGENT=$(GIT_USER_AGENT_CQ_SQ)'
+
 $(BUILT_INS): git$X
 	$(QUIET_BUILT_IN)$(RM) $@ && \
 	ln $< $@ 2>/dev/null || \
@@ -1838,15 +1855,26 @@ perl/perl.mak: GIT-CFLAGS GIT-PREFIX perl/Makefile perl/Makefile.PL
 	$(QUIET_SUBDIR0)perl $(QUIET_SUBDIR1) PERL_PATH='$(PERL_PATH_SQ)' prefix='$(prefix_SQ)' $(@F)
 
 PERL_DEFINES = $(PERL_PATH_SQ):$(PERLLIB_EXTRA_SQ)
+
+INSTLIBDIR_PATH=$(shell env MAKEFLAGS= $(MAKE) -C perl -s --no-print-directory instlibdir)
+
+ifdef RUNTIME_PREFIX
+USE_FINDBIN=use FindBin qw($$RealBin);
+INSTLIBDIR=$(patsubst $(prefix)/%,\$$RealBin/../../%,$(INSTLIBDIR_PATH))
+else
+USE_FINDBIN=
+INSTLIBDIR=$(INSTLIBDIR_PATH)
+endif
+
 $(SCRIPT_PERL_GEN): % : %.perl perl/perl.mak GIT-PERL-DEFINES GIT-VERSION-FILE
 	$(QUIET_GEN)$(RM) $@ $@+ && \
-	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C perl -s --no-print-directory instlibdir` && \
+	INSTLIBDIR=$(INSTLIBDIR) && \
 	INSTLIBDIR_EXTRA='$(PERLLIB_EXTRA_SQ)' && \
 	INSTLIBDIR="$$INSTLIBDIR$${INSTLIBDIR_EXTRA:+:$$INSTLIBDIR_EXTRA}" && \
 	sed -e '1{' \
 	    -e '	s|#!.*perl|#!$(PERL_PATH_SQ)|' \
 	    -e '	h' \
-	    -e '	s=.*=use lib (split(/$(pathsep)/, $$ENV{GITPERLLIB} || "'"$$INSTLIBDIR"'"));=' \
+	    -e '	s=.*=$(USE_FINDBIN) use lib (split(/$(pathsep)/, $$ENV{GITPERLLIB} || "'"$$INSTLIBDIR"'"));=' \
 	    -e '	H' \
 	    -e '	x' \
 	    -e '}' \
@@ -2368,11 +2396,11 @@ ifndef NO_GETTEXT
 endif
 ifndef NO_PERL
 	$(MAKE) -C perl prefix='$(prefix_SQ)' DESTDIR='$(DESTDIR_SQ)' install
-	$(MAKE) -C gitweb install
+	$(MAKE) -C gitweb $(SUBMAKE_FLAGS) install
 endif
 ifndef NO_TCLTK
 	$(MAKE) -C gitk-git install
-	$(MAKE) -C git-gui gitexecdir='$(gitexec_instdir_SQ)' install
+	$(MAKE) -C git-gui $(SUBMAKE_FLAGS) gitexecdir='$(gitexec_instdir_SQ)' install
 endif
 ifneq (,$X)
 	$(foreach p,$(patsubst %$X,%,$(filter %$X,$(ALL_PROGRAMS) $(BUILT_INS) git$X)), test '$(DESTDIR_SQ)$(gitexec_instdir_SQ)/$p' -ef '$(DESTDIR_SQ)$(gitexec_instdir_SQ)/$p$X' || $(RM) '$(DESTDIR_SQ)$(gitexec_instdir_SQ)/$p';)
@@ -2415,7 +2443,7 @@ endif
 .PHONY: install-gitweb install-doc install-man install-html install-info install-pdf
 .PHONY: quick-install-doc quick-install-man quick-install-html
 install-gitweb:
-	$(MAKE) -C gitweb install
+	$(MAKE) -C gitweb $(SUBMAKE_FLAGS) install
 
 install-doc:
 	$(MAKE) -C Documentation install
@@ -2456,7 +2484,7 @@ dist: git.spec git-archive$(X) configure
 	@mkdir -p $(GIT_TARNAME)
 	@cp git.spec configure $(GIT_TARNAME)
 	@echo $(GIT_VERSION) > $(GIT_TARNAME)/version
-	@$(MAKE) -C git-gui TARDIR=../$(GIT_TARNAME)/git-gui dist-version
+	@$(MAKE) -C git-gui $(SUBMAKE_FLAGS) TARDIR=../$(GIT_TARNAME)/git-gui dist-version
 	$(TAR) rf $(GIT_TARNAME).tar \
 		$(GIT_TARNAME)/git.spec \
 		$(GIT_TARNAME)/configure \
@@ -2525,7 +2553,7 @@ endif
 	$(MAKE) -C t/ clean
 ifndef NO_TCLTK
 	$(MAKE) -C gitk-git clean
-	$(MAKE) -C git-gui clean
+	$(MAKE) -C git-gui $(SUBMAKE_FLAGS) clean
 endif
 	$(RM) GIT-VERSION-FILE GIT-CFLAGS GIT-LDFLAGS GIT-BUILD-OPTIONS
 	$(RM) GIT-USER-AGENT GIT-PREFIX

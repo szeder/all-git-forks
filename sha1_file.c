@@ -23,6 +23,11 @@
 #include "bulk-checkin.h"
 #include "streaming.h"
 #include "dir.h"
+#include "sigchain.h"
+
+#ifdef __APPLE__
+#include <sys/sysctl.h> /* for sysctlbyname */
+#endif
 
 #ifndef O_NOATIME
 #if defined(__linux__) && (defined(__i386__) || defined(__PPC__))
@@ -921,14 +926,33 @@ void free_pack_by_name(const char *pack_name)
 	}
 }
 
-static unsigned int get_max_fd_limit(void)
+unsigned int get_max_fd_limit(void)
 {
 #ifdef RLIMIT_NOFILE
 	{
+		unsigned int maxfilesperproc, rlimitmax;
 		struct rlimit lim;
-
-		if (!getrlimit(RLIMIT_NOFILE, &lim))
-			return lim.rlim_cur;
+#ifdef __APPLE__
+		/* macosx getrlimit RLIMIT_NOFILE may report RLIM_INFINITY,
+		 * but the settable maximum is actually limited by this sysctl */
+		uint32_t p;
+		size_t lenp = sizeof(p);
+		if (sysctlbyname("kern.maxfilesperproc", &p, &lenp, NULL, 0)) {
+			die_errno("get_max_fd_limit: sysctlbyname");
+		}
+		maxfilesperproc = p;
+#else
+		maxfilesperproc = 0;
+#endif
+		if (getrlimit(RLIMIT_NOFILE, &lim)) {
+			die_errno("get_max_fd_limit: getrlimit");
+		}
+		rlimitmax = lim.rlim_max;
+		if ( maxfilesperproc && maxfilesperproc<rlimitmax ) {
+			return maxfilesperproc;
+		} else {
+			return rlimitmax;
+		}
 	}
 #endif
 

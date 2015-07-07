@@ -2,6 +2,7 @@
 #include "exec_cmd.h"
 #include "help.h"
 #include "run-command.h"
+#include "twitter-util.h"
 
 const char git_usage_string[] =
 	"git [--version] [--help] [-C <path>] [-c name=value]\n"
@@ -640,6 +641,10 @@ int main(int argc, char **av)
 	cmd = git_extract_argv0_path(argv[0]);
 	if (!cmd)
 		cmd = "git-help";
+
+	setenv_overwrite("GIT_ATTR_NOSYSTEM", "1");
+	set_max_fd();
+	set_git_useragent();
 
 	/*
 	 * Always open file descriptors 0/1/2 to avoid clobbering files

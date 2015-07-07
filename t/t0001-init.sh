@@ -92,6 +92,7 @@ test_expect_success 'No extra GIT_* on alias scripts' '
 	env |
 		sed -n \
 			-e "/^GIT_PREFIX=/d" \
+			-e "/^GIT_USERAGENT=/d" \
 			-e "/^GIT_TEXTDOMAINDIR=/d" \
 			-e "/^GIT_/s/=.*//p" |
 		sort

@@ -133,7 +133,11 @@ libdir_SED = $(subst ','\'',$(subst \,\\,$(gg_libdir_sed_in)))
 exedir     = $(dir $(gitexecdir))share/git-gui/lib
 
 GITGUI_SCRIPT   := $$0
+ifdef RUNTIME_PREFIX
+GITGUI_RELATIVE := 1
+else
 GITGUI_RELATIVE :=
+endif
 GITGUI_MACOSXAPP :=
 
 ifeq ($(uname_O),Cygwin)
@@ -169,6 +173,17 @@ endif
 ifdef GITGUI_MACOSXAPP
 GITGUI_MAIN := git-gui.tcl
 
+ifdef GITGUI_RELATIVE
+exe_to_lib_path=../../share/git-gui/lib
+gitexecdir_TCL="[exec git --exec-path]"
+libdir_REL=$${GIT_GUI_LIB_DIR:-$$(git --exec-path)/$(exe_to_lib_path)}
+libdir_TCL="$$gitexecdir/$(exe_to_lib_path)"
+else
+gitexecdir_TCL={$(gitexecdir_SQ)}
+libdir_REL=$${GIT_GUI_LIB_DIR:-$(libdir_SQ)}
+libdir_TCL={$(libdir_SED)}
+endif
+
 git-gui: GIT-VERSION-FILE GIT-GUI-VARS
 	$(QUIET_GEN)rm -f $@ $@+ && \
 	echo '#!$(SHELL_PATH_SQ)' >$@+ && \
@@ -177,7 +192,7 @@ git-gui: GIT-VERSION-FILE GIT-GUI-VARS
 	echo then >>$@+ && \
 	echo '	'echo \'git-gui version '$(GITGUI_VERSION)'\' >>$@+ && \
 	echo else >>$@+ && \
-	echo '	libdir="$${GIT_GUI_LIB_DIR:-$(libdir_SQ)}"' >>$@+ && \
+	echo '	libdir="$(libdir_REL)"' >>$@+ && \
 	echo '	'exec \"'$$libdir/Git Gui.app/Contents/MacOS/$(subst \,,$(TKEXECUTABLE))'\" \
 		'"$$0" "$$@"' >>$@+ && \
 	echo fi >>$@+ && \
@@ -199,8 +214,8 @@ Git\ Gui.app: GIT-VERSION-FILE GIT-GUI-VARS \
 		-e 's/@@GITGUI_TKEXECUTABLE@@/$(TKEXECUTABLE)/g' \
 		macosx/Info.plist \
 		>'$@'+/Contents/Info.plist && \
-	sed -e 's|@@gitexecdir@@|$(gitexecdir_SQ)|' \
-		-e 's|@@GITGUI_LIBDIR@@|$(libdir_SED)|' \
+	sed -e 's|@@gitexecdir@@|$(gitexecdir_TCL)|' \
+		-e 's|@@GITGUI_LIBDIR@@|$(libdir_TCL)|' \
 		macosx/AppMain.tcl \
 		>'$@'+/Contents/Resources/Scripts/AppMain.tcl && \
 	mv '$@'+ '$@'

@@ -1403,6 +1403,8 @@ extern struct packed_git *add_packed_git(const char *path, size_t path_len, int 
  */
 extern void check_pack_index_ptr(const struct packed_git *p, const void *ptr);
 
+unsigned int get_max_fd_limit(void);
+
 /*
  * Return the SHA-1 of the nth object within the specified packfile.
  * Open the index if it is not already open.  The return value points

@@ -17,6 +17,10 @@ gitwebdir ?= /var/www/cgi-bin
 RM ?= rm -f
 INSTALL ?= install
 
+ifdef RUNTIME_PREFIX
+DESTDIR=$(prefix)/
+endif
+
 # default configuration for gitweb
 GITWEB_CONFIG = gitweb_config.perl
 GITWEB_CONFIG_SYSTEM = /etc/gitweb.conf

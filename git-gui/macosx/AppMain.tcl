@@ -1,8 +1,8 @@
-set gitexecdir {@@gitexecdir@@}
+set gitexecdir @@gitexecdir@@
 if { [info exists ::env(GIT_GUI_LIB_DIR) ] } {
 	set gitguilib $::env(GIT_GUI_LIB_DIR)
 } else {
-	set gitguilib {@@GITGUI_LIBDIR@@}
+	set gitguilib @@GITGUI_LIBDIR@@
 }
 
 set env(PATH) "$gitexecdir:$env(PATH)"
