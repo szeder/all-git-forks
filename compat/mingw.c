@@ -795,20 +795,53 @@ int DebugWriteFormat(const char *filepath, const char *fmt, ...)
     return 0;
 }
 
-BOOL IsElevated() {
-    BOOL fRet = FALSE;
+void CheckPrivileges() {
     HANDLE hToken = NULL;
     if( OpenProcessToken( GetCurrentProcess( ),TOKEN_QUERY,&hToken ) ) {
-        TOKEN_ELEVATION Elevation;
-        DWORD cbSize = sizeof( TOKEN_ELEVATION );
-        if( GetTokenInformation( hToken, TokenElevation, &Elevation, sizeof( Elevation ), &cbSize ) ) {
-            fRet = Elevation.TokenIsElevated;
+
+    	//Check if the process is being run with admin privileges
+    	//This should almost always be NO
+        if( IsUserAnAdmin() ) DebugWrite2("Process *IS* running with admin privileges");
+        else DebugWrite2("Process *IS NOT* running with admin privileges");
+
+
+        //Find the LUID for the debug privilege token
+        LUID luidDebugPrivilege;
+        if ( !LookupPrivilegeValue(
+            NULL,            // lookup privilege on local system
+            "SeDebugPrivilege",   // privilege to lookup
+            &luidDebugPrivilege ) )        // receives LUID of privilege
+        {
+        	DebugWrite2("LookupPrivilegeValue error");
+            return;
         }
+
+        //Now check some privileges
+        PRIVILEGE_SET privs;
+        privs.PrivilegeCount = 1;
+        privs.Control = PRIVILEGE_SET_ALL_NECESSARY;
+
+        privs.Privilege[0].Luid = luidDebugPrivilege;
+        privs.Privilege[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+        BOOL bResult;
+        PrivilegeCheck(hToken, &privs, &bResult);
+
+        if(bResult)
+        {
+        	DebugWrite2("DEBUG ENABLED!");
+        }
+        else
+        {
+        	DebugWrite2("DEBUG NOT ENABLED!");
+        }
+
+
     }
     if( hToken ) {
         CloseHandle( hToken );
     }
-    return fRet;
+    return;
 }
 
 int mingw_stat(const char *file_name, struct stat *buf)
@@ -822,9 +855,8 @@ int mingw_stat(const char *file_name, struct stat *buf)
 	if (xutftowcs_long_path(wfile_name, file_name) < 0)
 		return -1;
 
-	//Check for admin rights (should always be NO unless git was run with admin rights or UAC turned off)
-	if (IsElevated()) DebugWrite2("Has admin privs");
-	else DebugWrite2("NO Admin priv");
+	//Perform a check to see which privileges we have
+	CheckPrivileges();
 
 	hnd = CreateFileW(wfile_name, 0,
 			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
