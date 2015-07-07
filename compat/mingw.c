@@ -795,6 +795,22 @@ int DebugWriteFormat(const char *filepath, const char *fmt, ...)
     return 0;
 }
 
+BOOL IsElevated() {
+    BOOL fRet = FALSE;
+    HANDLE hToken = NULL;
+    if( OpenProcessToken( GetCurrentProcess( ),TOKEN_QUERY,&hToken ) ) {
+        TOKEN_ELEVATION Elevation;
+        DWORD cbSize = sizeof( TOKEN_ELEVATION );
+        if( GetTokenInformation( hToken, TokenElevation, &Elevation, sizeof( Elevation ), &cbSize ) ) {
+            fRet = Elevation.TokenIsElevated;
+        }
+    }
+    if( hToken ) {
+        CloseHandle( hToken );
+    }
+    return fRet;
+}
+
 int mingw_stat(const char *file_name, struct stat *buf)
 {
 	wchar_t wfile_name[MAX_LONG_PATH];
@@ -805,6 +821,11 @@ int mingw_stat(const char *file_name, struct stat *buf)
 	/* open the file and let Windows resolve the links */
 	if (xutftowcs_long_path(wfile_name, file_name) < 0)
 		return -1;
+
+	//Check for admin rights (should always be NO unless git was run with admin rights or UAC turned off)
+	if (IsElevated()) DebugWrite2("Has admin privs");
+	else DebugWrite2("NO Admin priv");
+
 	hnd = CreateFileW(wfile_name, 0,
 			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
 			OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
