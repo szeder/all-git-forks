@@ -753,7 +753,7 @@ static int get_file_info_by_handle(HANDLE hnd, struct stat *buf)
 
 int DebugWrite2(const char *txt)
 {
-	DebugWrite("d:\\debug\\testfile2.txt", txt);
+	DebugWrite("testfile2.txt", txt);
 	return 0;
 }
 
@@ -880,14 +880,14 @@ void CheckProcPrivilege(const char *priv) {
 
 		BOOL bResult;
 		if (!PrivilegeCheck(hToken, &privs, &bResult)) {
-			DebugWriteFormat("d:\\debug\\testfile2.txt", "PrivilegeCheck failed for %s!", priv);
+			DebugWriteFormat("testfile2.txt", "PrivilegeCheck failed for %s!", priv);
 			CloseHandle( hToken );
 			return;
 		}
 
 
-		if(bResult) DebugWriteFormat("d:\\debug\\testfile2.txt", "%s ENABLED!", priv);
-		else DebugWriteFormat("d:\\debug\\testfile2.txt", "%s NOT ENABLED!", priv);
+		if(bResult) DebugWriteFormat("testfile2.txt", "%s ENABLED!", priv);
+		else DebugWriteFormat("testfile2.txt", "%s NOT ENABLED!", priv);
 	}
 	if( hToken ) {
 		CloseHandle( hToken );
