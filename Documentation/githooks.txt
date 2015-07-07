@@ -45,6 +45,21 @@ the commit after inspecting the message file.
 The default 'applypatch-msg' hook, when enabled, runs the
 'commit-msg' hook, if the latter is enabled.
 
+applypatch-transform
+~~~~~~~~~~~~~~~~~~~~
+
+This hook is invoked by 'git am' before attempting to apply
+patches.  It takes two parameters - the path to the patch on
+disk, and the path to the proposed commit message (which may
+be absent).  Like applypatch-msg, both files may be edited.
+
+Exiting with 1 will cause 'git am' to skip the patch. Exiting
+with any other non-zero value will cause 'git am' to abort.
+
+The sample 'applypatch-transform' hook demonstrates mangling
+a patch from one tree shape to another while discarding irrelevant
+patches.
+
 pre-applypatch
 ~~~~~~~~~~~~~~
 

@@ -215,9 +215,9 @@ errors in the "From:" lines).
 
 HOOKS
 -----
-This command can run `applypatch-msg`, `pre-applypatch`,
-and `post-applypatch` hooks.  See linkgit:githooks[5] for more
-information.
+This command can run `applypatch-msg`, `applypatch-transform`,
+`pre-applypatch`, and `post-applypatch` hooks.  See
+linkgit:githooks[5] for more information.
 
 SEE ALSO
 --------

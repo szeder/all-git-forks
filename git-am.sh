@@ -869,6 +869,22 @@ To restore the original branch and stop patching run \"\$cmdline --abort\"."
 
 	case "$resolved" in
 	'')
+		# Attempt to rewrite the patch.
+		hook="$(git rev-parse --git-path hooks/applypatch-transform)"
+		if test -x "$hook"
+		then
+			"$hook" "$dotest/patch" "$dotest/final-commit"
+			status="$?"
+			if test $status -eq 1
+			then
+				go_next
+				continue
+			elif test $status -ne 0
+			then
+				stop_here $this
+			fi
+		fi
+
 		# When we are allowed to fall back to 3-way later, don't give
 		# false errors during the initial attempt.
 		squelch=
