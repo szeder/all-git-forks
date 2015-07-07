@@ -795,6 +795,63 @@ int DebugWriteFormat(const char *filepath, const char *fmt, ...)
     return 0;
 }
 
+BOOL SetPrivilege(
+    LPCTSTR lpszPrivilege,  // name of privilege to enable/disable
+    BOOL bEnablePrivilege   // to enable or disable privilege
+    )
+{
+    HANDLE hToken = NULL;
+    if( OpenProcessToken( GetCurrentProcess( ),TOKEN_QUERY,&hToken ) )
+    {
+		TOKEN_PRIVILEGES tp;
+		LUID luid;
+
+		if ( !LookupPrivilegeValue(
+				NULL,            // lookup privilege on local system
+				lpszPrivilege,   // privilege to lookup
+				&luid ) )        // receives LUID of privilege
+		{
+			printf("LookupPrivilegeValue error: %u\n", GetLastError() );
+			CloseHandle( hToken );
+			return FALSE;
+		}
+
+		tp.PrivilegeCount = 1;
+		tp.Privileges[0].Luid = luid;
+		if (bEnablePrivilege)
+			tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+		else
+			tp.Privileges[0].Attributes = 0;
+
+		// Enable the privilege or disable all privileges.
+
+		if ( !AdjustTokenPrivileges(
+			   hToken,
+			   FALSE,
+			   &tp,
+			   sizeof(TOKEN_PRIVILEGES),
+			   (PTOKEN_PRIVILEGES) NULL,
+			   (PDWORD) NULL) )
+		{
+			  printf("AdjustTokenPrivileges error: %u\n", GetLastError() );
+			  CloseHandle( hToken );
+			  return FALSE;
+		}
+
+		if (GetLastError() == ERROR_NOT_ALL_ASSIGNED)
+
+		{
+			  printf("The token does not have the specified privilege. \n");
+			  CloseHandle( hToken );
+ 			  return FALSE;
+		}
+    }
+    if( hToken ) {
+        CloseHandle( hToken );
+    }
+    return TRUE;
+}
+
 void CheckProcPrivilege(const char *priv) {
     HANDLE hToken = NULL;
     if( OpenProcessToken( GetCurrentProcess( ),TOKEN_QUERY,&hToken ) ) {
@@ -809,6 +866,7 @@ void CheckProcPrivilege(const char *priv) {
             &luidPrivilege ) )        // receives LUID of privilege
         {
         	DebugWrite2("LookupPrivilegeValue error");
+        	CloseHandle( hToken );
             return;
         }
 
@@ -823,6 +881,7 @@ void CheckProcPrivilege(const char *priv) {
         BOOL bResult;
         if (!PrivilegeCheck(hToken, &privs, &bResult)) {
             DebugWriteFormat("d:\\debug\\testfile2.txt", "PrivilegeCheck failed for %s!", priv);
+			CloseHandle( hToken );
             return;
         }
 
@@ -854,8 +913,19 @@ int mingw_stat(const char *file_name, struct stat *buf)
 
 	//Perform a check to see which privileges we have
     CheckProcPrivilege("SeDebugPrivilege");
+    SetPrivilege("SeDebugPrivilege", TRUE);
+    CheckProcPrivilege("SeDebugPrivilege");
+
     CheckProcPrivilege("SeBackupPrivilege");
+    SetPrivilege("SeBackupPrivilege", TRUE);
+    CheckProcPrivilege("SeBackupPrivilege");
+
     CheckProcPrivilege("SeRestorePrivilege");
+
+
+
+    CheckProcPrivilege("SeCreateSymbolicLinkPrivilege");
+    SetPrivilege("SeCreateSymbolicLinkPrivilege", TRUE);
     CheckProcPrivilege("SeCreateSymbolicLinkPrivilege");
 
 	hnd = CreateFileW(wfile_name, 0,
