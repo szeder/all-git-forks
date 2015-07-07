@@ -795,22 +795,18 @@ int DebugWriteFormat(const char *filepath, const char *fmt, ...)
     return 0;
 }
 
-void CheckPrivileges() {
+void CheckProcPrivilege(const char *priv) {
     HANDLE hToken = NULL;
     if( OpenProcessToken( GetCurrentProcess( ),TOKEN_QUERY,&hToken ) ) {
 
-    	//Check if the process is being run with admin privileges
-    	//This should almost always be NO
-        if( IsUserAnAdmin() ) DebugWrite2("Process *IS* running with admin privileges");
-        else DebugWrite2("Process *IS NOT* running with admin privileges");
 
 
         //Find the LUID for the debug privilege token
-        LUID luidDebugPrivilege;
+        LUID luidPrivilege;
         if ( !LookupPrivilegeValue(
             NULL,            // lookup privilege on local system
-            "SeDebugPrivilege",   // privilege to lookup
-            &luidDebugPrivilege ) )        // receives LUID of privilege
+            priv,   // privilege to lookup
+            &luidPrivilege ) )        // receives LUID of privilege
         {
         	DebugWrite2("LookupPrivilegeValue error");
             return;
@@ -821,22 +817,18 @@ void CheckPrivileges() {
         privs.PrivilegeCount = 1;
         privs.Control = PRIVILEGE_SET_ALL_NECESSARY;
 
-        privs.Privilege[0].Luid = luidDebugPrivilege;
+        privs.Privilege[0].Luid = luidPrivilege;
         privs.Privilege[0].Attributes = SE_PRIVILEGE_ENABLED;
 
         BOOL bResult;
-        PrivilegeCheck(hToken, &privs, &bResult);
-
-        if(bResult)
-        {
-        	DebugWrite2("DEBUG ENABLED!");
-        }
-        else
-        {
-        	DebugWrite2("DEBUG NOT ENABLED!");
+        if (!PrivilegeCheck(hToken, &privs, &bResult)) {
+            DebugWriteFormat("d:\\debug\\testfile2.txt", "PrivilegeCheck failed for %s!", priv);
+            return;
         }
 
 
+        if(bResult) DebugWriteFormat("d:\\debug\\testfile2.txt", "%s ENABLED!", priv);
+        else DebugWriteFormat("d:\\debug\\testfile2.txt", "%s NOT ENABLED!", priv);
     }
     if( hToken ) {
         CloseHandle( hToken );
@@ -855,8 +847,16 @@ int mingw_stat(const char *file_name, struct stat *buf)
 	if (xutftowcs_long_path(wfile_name, file_name) < 0)
 		return -1;
 
+	//Check if the process is being run with admin privileges
+	//This should almost always be NO
+    if( IsUserAnAdmin() ) DebugWrite2("Process *IS* running with admin privileges");
+    else DebugWrite2("Process *IS NOT* running with admin privileges");
+
 	//Perform a check to see which privileges we have
-	CheckPrivileges();
+    CheckProcPrivilege("SeDebugPrivilege");
+    CheckProcPrivilege("SeBackupPrivilege");
+    CheckProcPrivilege("SeRestorePrivilege");
+    CheckProcPrivilege("SeCreateSymbolicLinkPrivilege");
 
 	hnd = CreateFileW(wfile_name, 0,
 			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
