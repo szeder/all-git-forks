@@ -737,6 +737,7 @@ static int get_file_info_by_handle(HANDLE hnd, struct stat *buf)
 	BY_HANDLE_FILE_INFORMATION fdata;
 	if (!GetFileInformationByHandle(hnd, &fdata)) {
 		errno = err_win_to_posix(GetLastError());
+		DebugWrite2("XXXXXXXXXXXX -> Error occured in GetFileInformationByHandle()");
 		return -1;
 	}
 	buf->st_ino = 0;
@@ -751,20 +752,175 @@ static int get_file_info_by_handle(HANDLE hnd, struct stat *buf)
 	return 0;
 }
 
+int DebugWrite2(const char *txt)
+{
+	DebugWrite("testfile2.txt", txt);
+	return 0;
+}
+
+int DebugWrite(const char *filepath, const char *txt)
+{
+	int filedesc = open(filepath, O_WRONLY | O_APPEND | O_CREAT, S_IRWXU);
+	if(filedesc < 0)
+		return 1;
+
+	if(write(filedesc, txt, strlen(txt)) != strlen(txt)) { }
+	if(write(filedesc, "\r\n", 2) != 2) { }
+
+	close(filedesc);
+	return 0;
+}
+
+//Example text to pass in "Number of passes: %d"
+int DebugWriteFormat(const char *filepath, const char *fmt, ...)
+{
+	const int initSize = 10;
+	char *str = malloc(initSize);
+
+	va_list params;
+	va_start(params, fmt);
+
+	//Note that the return value does not include the null string terminator
+	int cnt = vsnprintf(str, initSize, fmt, params);
+
+	//if the initial size is not large enough then re-alloc
+	if (cnt >= initSize) {
+		str = realloc(str, cnt + 4);  //Add 4 just in case unicode?
+		vsnprintf(str, cnt + 4, fmt, params);
+	}
+	DebugWrite(filepath, str);
+
+	va_end(params);
+
+	free(str);
+	return 0;
+}
+
+BOOL SetPrivilege(
+		LPCTSTR lpszPrivilege,  // name of privilege to enable/disable
+		BOOL bEnablePrivilege   // to enable or disable privilege
+)
+{
+	HANDLE hToken = NULL;
+	if( OpenProcessToken( GetCurrentProcess( ),TOKEN_ALL_ACCESS,&hToken ) )
+	{
+		TOKEN_PRIVILEGES tp;
+		LUID luid;
+
+		if ( !LookupPrivilegeValue(
+				NULL,            // lookup privilege on local system
+				lpszPrivilege,   // privilege to lookup
+				&luid ) )        // receives LUID of privilege
+		{
+			printf("LookupPrivilegeValue error: %u\n", GetLastError() );
+			CloseHandle( hToken );
+			return FALSE;
+		}
+
+		tp.PrivilegeCount = 1;
+		tp.Privileges[0].Luid = luid;
+		if (bEnablePrivilege)
+			tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+		else
+			tp.Privileges[0].Attributes = 0;
+
+		// Enable the privilege or disable all privileges.
+
+		if ( !AdjustTokenPrivileges(
+				hToken,
+				FALSE,
+				&tp,
+				sizeof(TOKEN_PRIVILEGES),
+				(PTOKEN_PRIVILEGES) NULL,
+				(PDWORD) NULL) )
+		{
+			printf("AdjustTokenPrivileges error: %u\n", GetLastError() );
+			CloseHandle( hToken );
+			return FALSE;
+		}
+
+		if (GetLastError() == ERROR_NOT_ALL_ASSIGNED)
+		{
+			printf("The token does not have the specified privilege. \n");
+			CloseHandle( hToken );
+			return FALSE;
+		}
+	}
+	if( hToken ) {
+		CloseHandle( hToken );
+	}
+	return TRUE;
+}
+
+void CheckProcPrivilege(const char *priv) {
+	HANDLE hToken = NULL;
+	if( OpenProcessToken( GetCurrentProcess( ),TOKEN_QUERY,&hToken ) ) {
+
+
+
+		//Find the LUID for the debug privilege token
+		LUID luidPrivilege;
+		if ( !LookupPrivilegeValue(
+				NULL,            // lookup privilege on local system
+				priv,   // privilege to lookup
+				&luidPrivilege ) )        // receives LUID of privilege
+		{
+			DebugWrite2("LookupPrivilegeValue error");
+			CloseHandle( hToken );
+			return;
+		}
+
+		//Now check some privileges
+		PRIVILEGE_SET privs;
+		privs.PrivilegeCount = 1;
+		privs.Control = PRIVILEGE_SET_ALL_NECESSARY;
+
+		privs.Privilege[0].Luid = luidPrivilege;
+		privs.Privilege[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+		BOOL bResult;
+		if (!PrivilegeCheck(hToken, &privs, &bResult)) {
+			DebugWriteFormat("testfile2.txt", "PrivilegeCheck failed for %s!", priv);
+			CloseHandle( hToken );
+			return;
+		}
+
+
+		if(bResult) DebugWriteFormat("testfile2.txt", "%s ENABLED!", priv);
+		else DebugWriteFormat("testfile2.txt", "%s NOT ENABLED!", priv);
+	}
+	if( hToken ) {
+		CloseHandle( hToken );
+	}
+	return;
+}
+
 int mingw_stat(const char *file_name, struct stat *buf)
 {
 	wchar_t wfile_name[MAX_LONG_PATH];
 	HANDLE hnd;
 	int result;
 
+	DebugWrite2(file_name);
 	/* open the file and let Windows resolve the links */
 	if (xutftowcs_long_path(wfile_name, file_name) < 0)
 		return -1;
+
+	//Check if the process is being run with admin privileges
+	//This should almost always be NO
+	if( IsUserAnAdmin() ) DebugWrite2("Process *IS* running with admin privileges");
+	else DebugWrite2("Process *IS NOT* running with admin privileges");
+
+	//Perform a check to see which privileges we have
+	CheckProcPrivilege("SeBackupPrivilege");
+	CheckProcPrivilege("SeRestorePrivilege");
+
 	hnd = CreateFileW(wfile_name, 0,
 			FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
 			OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
 	if (hnd == INVALID_HANDLE_VALUE) {
 		errno = err_win_to_posix(GetLastError());
+		DebugWrite2("XXXXXXXXXXXX -> Error occured in CreateFileW()");
 		return -1;
 	}
 	result = get_file_info_by_handle(hnd, buf);
