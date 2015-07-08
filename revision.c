@@ -2311,14 +2311,12 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 	if (revs->diffopt.output_format & ~DIFF_FORMAT_NO_OUTPUT)
 		revs->diff = 1;
 
-	/* Pickaxe, diff-filter and rename following need diffs */
-	if (revs->diffopt.pickaxe ||
-	    revs->diffopt.filter ||
-	    DIFF_OPT_TST(&revs->diffopt, FOLLOW_RENAMES))
-		revs->diff = 1;
-
 	if (revs->topo_order)
 		revs->limited = 1;
+
+	if (DIFF_OPT_TST(&revs->diffopt, DEFAULT_FOLLOW_RENAMES) &&
+	    revs->prune_data.nr == 1)
+		DIFF_OPT_SET(&revs->diffopt, FOLLOW_RENAMES);
 
 	if (revs->prune_data.nr) {
 		copy_pathspec(&revs->pruning.pathspec, &revs->prune_data);
@@ -2329,6 +2327,13 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 			copy_pathspec(&revs->diffopt.pathspec,
 				      &revs->prune_data);
 	}
+
+	/* Pickaxe, diff-filter and rename following need diffs */
+	if (revs->diffopt.pickaxe ||
+	    revs->diffopt.filter ||
+	    DIFF_OPT_TST(&revs->diffopt, FOLLOW_RENAMES))
+		revs->diff = 1;
+
 	if (revs->combine_merges)
 		revs->ignore_merges = 0;
 	revs->diffopt.abbrev = revs->abbrev;
