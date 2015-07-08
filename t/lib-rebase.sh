@@ -54,7 +54,7 @@ for line in $FAKE_LINES; do
 	">")
 		echo >> "$1";;
 	*)
-		sed -n "${line}{s/^pick/$action/p; /^ref/p}" < "$1".tmp >> "$1"
+		sed -n "${line}{s/^pick/$action/p"$'\n'"/^ref/p"$'\n'"}" < "$1".tmp >> "$1"
 		action=pick;;
 	esac
 done
