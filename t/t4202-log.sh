@@ -165,7 +165,7 @@ test_expect_success 'git config log.follow does not die with no paths' '
 	git log --
 '
 
-test_expect_success  'git config log.follow is overridden by --no-follow' '
+test_expect_success 'git config log.follow is overridden by --no-follow' '
 	test_config log.follow true &&
 	actual=$(git log --no-follow --pretty="format:%s" ichi) &&
 	expect="third" &&
