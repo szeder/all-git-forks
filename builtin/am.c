@@ -628,16 +628,16 @@ static int parse_mail(struct am_state *state, const char *mail)
 		die_errno(_("could not read '%s'"), am_path(state, "msg"));
 	stripspace(&msg, 0);
 
-	assert(!state->author_name);
+	free(state->author_name);
 	state->author_name = strbuf_detach(&author_name, NULL);
 
-	assert(!state->author_email);
+	free(state->author_email);
 	state->author_email = strbuf_detach(&author_email, NULL);
 
-	assert(!state->author_date);
+	free(state->author_date);
 	state->author_date = strbuf_detach(&author_date, NULL);
 
-	assert(!state->msg);
+	free(state->msg);
 	state->msg = strbuf_detach(&msg, &state->msg_len);
 
 finish:
