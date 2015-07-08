@@ -861,7 +861,7 @@ static void get_commit_info(struct am_state *state, struct commit *commit)
 		die(_("invalid ident line: %s"), sb.buf);
 	}
 
-	assert(!state->author_name);
+	free(state->author_name);
 	if (ident_split.name_begin) {
 		strbuf_add(&sb, ident_split.name_begin,
 			ident_split.name_end - ident_split.name_begin);
@@ -869,7 +869,7 @@ static void get_commit_info(struct am_state *state, struct commit *commit)
 	} else
 		state->author_name = xstrdup("");
 
-	assert(!state->author_email);
+	free(state->author_email);
 	if (ident_split.mail_begin) {
 		strbuf_add(&sb, ident_split.mail_begin,
 			ident_split.mail_end - ident_split.mail_begin);
@@ -879,13 +879,13 @@ static void get_commit_info(struct am_state *state, struct commit *commit)
 
 	author_date = show_ident_date(&ident_split, DATE_NORMAL);
 	strbuf_addstr(&sb, author_date);
-	assert(!state->author_date);
+	free(state->author_date);
 	state->author_date = strbuf_detach(&sb, NULL);
 
-	assert(!state->msg);
 	msg = strstr(buffer, "\n\n");
 	if (!msg)
 		die(_("unable to parse commit %s"), sha1_to_hex(commit->object.sha1));
+	free(state->msg);
 	state->msg = xstrdup(msg + 2);
 	state->msg_len = strlen(state->msg);
 }
