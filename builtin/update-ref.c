@@ -14,6 +14,7 @@ static const char * const git_update_ref_usage[] = {
 
 static char line_termination = '\n';
 static int update_flags;
+int create_reflog;
 static const char *msg;
 
 /*
@@ -198,6 +199,9 @@ static const char *parse_cmd_update(struct ref_transaction *transaction,
 	if (*next != line_termination)
 		die("update %s: extra input: %s", refname, next);
 
+	if (create_reflog && safe_create_reflog(refname, &err, 1))
+		die("failed to create reflog for %s: %s", refname, err.buf);
+
 	if (ref_transaction_update(transaction, refname,
 				   new_sha1, have_old ? old_sha1 : NULL,
 				   update_flags, msg, &err))
@@ -229,6 +233,9 @@ static const char *parse_cmd_create(struct ref_transaction *transaction,
 
 	if (*next != line_termination)
 		die("create %s: extra input: %s", refname, next);
+
+	if (create_reflog && safe_create_reflog(refname, &err, 1))
+		die("failed to create reflog for %s: %s", refname, err.buf);
 
 	if (ref_transaction_create(transaction, refname, new_sha1,
 				   update_flags, msg, &err))
@@ -361,6 +368,7 @@ int cmd_update_ref(int argc, const char **argv, const char *prefix)
 					N_("update <refname> not the one it points to")),
 		OPT_BOOL('z', NULL, &end_null, N_("stdin has NUL-terminated arguments")),
 		OPT_BOOL( 0 , "stdin", &read_stdin, N_("read updates from stdin")),
+		OPT_BOOL( 0 , "create-reflog", &create_reflog, N_("create_reflog")),
 		OPT_END(),
 	};
 
@@ -416,7 +424,12 @@ int cmd_update_ref(int argc, const char **argv, const char *prefix)
 		flags = REF_NODEREF;
 	if (delete)
 		return delete_ref(refname, oldval ? oldsha1 : NULL, flags);
-	else
+	else {
+		struct strbuf err = STRBUF_INIT;
+		if (create_reflog && safe_create_reflog(refname, &err, 1))
+			die("failed to create reflog for %s: %s", refname, err.buf);
+
 		return update_ref(msg, refname, sha1, oldval ? oldsha1 : NULL,
 				  flags, UPDATE_REFS_DIE_ON_ERR);
+	}
 }
