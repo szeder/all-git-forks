@@ -3,6 +3,8 @@
 #include "dir.h"
 #include "parse-options.h"
 #include "argv-array.h"
+#include "branch.h"
+#include "refs.h"
 #include "run-command.h"
 #include "sigchain.h"
 
@@ -187,10 +189,22 @@ static int add_worktree(const char *path, const char *refname,
 	struct stat st;
 	struct child_process cp;
 	int counter = 0, len, ret;
+	struct strbuf symref = STRBUF_INIT;
+	struct commit *commit = NULL;
 	unsigned char rev[20];
 
 	if (file_exists(path) && !is_empty_dir(path))
 		die(_("'%s' already exists"), path);
+
+	if (!opts->detach && !strbuf_check_branch_ref(&symref, refname) &&
+	    ref_exists(symref.buf)) {
+		if (!opts->force)
+			die_if_checked_out(symref.buf);
+	} else {
+		commit = lookup_commit_reference_by_name(refname);
+		if (!commit)
+			die(_("invalid reference: %s"), refname);
+	}
 
 	name = worktree_basename(path, &len);
 	strbuf_addstr(&sb_repo,
@@ -278,6 +292,7 @@ static int add_worktree(const char *path, const char *refname,
 	strbuf_addf(&sb, "%s/locked", sb_repo.buf);
 	unlink_or_warn(sb.buf);
 	strbuf_release(&sb);
+	strbuf_release(&symref);
 	strbuf_release(&sb_repo);
 	strbuf_release(&sb_git);
 	return ret;
