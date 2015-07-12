@@ -22,6 +22,12 @@ static __inline int strcasecmp (const char *s1, const char *s2)
 	return _strnicmp(s1, s2, sisz2 > size1 ? sisz2 : size1);
 }
 
+#ifndef _SIGSET_T_
+#define	_SIGSET_T_
+typedef int	sigset_t;
+#endif
+
+
 #undef ERROR
 
 #include "compat/mingw.h"
