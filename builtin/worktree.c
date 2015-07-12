@@ -196,8 +196,10 @@ static int add_worktree(const char *path, const char *refname,
 	if (file_exists(path) && !is_empty_dir(path))
 		die(_("'%s' already exists"), path);
 
-	if (!opts->detach && !strbuf_check_branch_ref(&symref, refname) &&
-	    ref_exists(symref.buf)) {
+	if (opts->force_new_branch)
+		;
+	else if (!opts->detach && !strbuf_check_branch_ref(&symref, refname) &&
+		 ref_exists(symref.buf)) {
 		if (!opts->force)
 			die_if_checked_out(symref.buf);
 	} else {
