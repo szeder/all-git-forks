@@ -317,10 +317,16 @@ sub handleLinkLine
             $appout = shift @parts;
         } elsif ("$part" eq "-lz") {
             push(@libs, "zlib.lib");
-	} elsif ("$part" eq "-lcrypto") {
+        } elsif ("$part" eq "-lcrypto") {
             push(@libs, "libeay32.lib");
         } elsif ("$part" eq "-lssl") {
             push(@libs, "ssleay32.lib");
+        } elsif ("$part" eq "-lcurl") {
+            push(@libs, "libcurl.lib");
+            push(@libs, "libcurl.exp");
+            push(@libs, "libssh2.lib");
+        } elsif ($part eq 'invalidcontinue.obj') {
+            push(@libs, "invalidcontinue.obj");
         } elsif ($part =~ /^-/) {
             push(@lflags, $part);
         } elsif ($part =~ /\.(a|lib)$/) {
