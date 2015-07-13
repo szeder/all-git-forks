@@ -311,8 +311,8 @@ Each line of options has this format:
 `<opt-spec>`::
 	its format is the short option character, then the long option name
 	separated by a comma. Both parts are not required, though at least one
-	is necessary. `h,help`, `dry-run` and `f` are all three correct
-	`<opt-spec>`.
+	is necessary. May not contain any of the `<flags>` characters.
+	`h,help`, `dry-run` and `f` are all three correct `<opt-spec>`.
 
 `<flags>`::
 	`<flags>` are of `*`, `=`, `?` or `!`.
@@ -331,8 +331,9 @@ Each line of options has this format:
 `<arg-hint>`::
 	`<arg-hint>`, if specified, is used as a name of the argument in the
 	help output, for options that take arguments. `<arg-hint>` is
-	terminated by the first whitespace.  It is customary to use a
-	dash to separate words in a multi-word argument hint.
+	terminated by the first whitespace.  It may contain any of the
+	`<flags>` characters after the first character. It is customary to
+	use a dash to separate words in a multi-word argument hint.
 
 The remainder of the line, after stripping the spaces, is used
 as the help associated to the option.
