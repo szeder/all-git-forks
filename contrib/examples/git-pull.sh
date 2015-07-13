@@ -54,6 +54,10 @@ set_reflog_action "pull${args+ $args}"
 require_work_tree_exists
 cd_to_toplevel
 
+LOCK_FILE="$GIT_DIR/pull.lock"
+
+journal_branch_remote=$(git config "branch.$curr_branch_short.remote")
+journal_id_initial=$(git journal-identity "$journal_branch_remote" 2> /dev/null || echo false)
 
 die_conflict () {
     git diff-index --cached --name-status -r --ignore-submodules HEAD --
@@ -276,6 +280,29 @@ error_on_no_merge_candidates () {
 	exit 1
 }
 
+lock_pull () {
+	ostype=${OSTYPE//[0-9.]/}
+	if [ "darwin" = $ostype ]; then
+		lockfile -1 -r 1 $LOCK_FILE
+		if [ $? -gt 0 ]; then
+			die "Another pull is already being performed."
+		fi
+	else
+		if ! (set -o noclobber; echo "locked" > "$LOCK_FILE" 2> /dev/null); then
+			die "Another pull is already being performed."
+		fi
+	fi
+}
+
+unlock_pull () {
+	if [ -f $LOCK_FILE ]; then
+		rm -f $LOCK_FILE
+	fi
+}
+
+lock_pull
+trap unlock_pull EXIT INT TERM
+
 test true = "$rebase" && {
 	if ! git rev-parse -q --verify HEAD >/dev/null
 	then
@@ -378,4 +405,5 @@ true)
 	eval="$eval FETCH_HEAD"
 	;;
 esac
+unlock_pull
 eval "exec $eval"
