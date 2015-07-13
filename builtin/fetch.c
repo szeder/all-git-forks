@@ -15,6 +15,7 @@
 #include "submodule.h"
 #include "connected.h"
 #include "argv-array.h"
+#include <sys/file.h>
 
 static const char * const builtin_fetch_usage[] = {
 	N_("git fetch [<options>] [<repository> [<refspec>...]]"),
@@ -1161,17 +1162,48 @@ static int fetch_one(struct remote *remote, int argc, const char **argv)
 	int ref_nr = 0;
 	int exit_code;
 	int journal_exit_code;
+	char *fetch_lock_path;
+	int fetch_lock_fd = -1;
+	git_SHA_CTX c;
+	unsigned char sha1[20];
 
 	if (!remote)
 		die(_("No remote repository specified.  Please, specify either a URL or a\n"
 		    "remote name from which new revisions should be fetched."));
+
+	git_SHA1_Init(&c);
+	git_SHA1_Update(&c, remote->name, strlen(remote->name));
+	git_SHA1_Final(sha1, &c);
+
+	fetch_lock_path = git_pathdup("fetch_locks/%s/fetch.lock", sha1_to_hex(sha1));
+	safe_create_leading_directories(fetch_lock_path);
+
+	fetch_lock_fd = open(fetch_lock_path, O_CREAT | O_RDWR, 0644);
+	if (fetch_lock_fd < 0)
+		die_errno("Could not open fetch lock file '%s'", fetch_lock_path);
+	if (flock(fetch_lock_fd, LOCK_EX | LOCK_NB)) {
+		if (errno == EWOULDBLOCK) {
+			fprintf(stderr, "A fetch is already in progress by another process, waiting...\n");
+			if (flock(fetch_lock_fd, LOCK_EX))
+				die_errno("Failed to acquire fetch lock on '%s'", fetch_lock_path);
+			if (flock(fetch_lock_fd, LOCK_UN))
+				die_errno("Failed to unlock fetch lock on '%s'", fetch_lock_path);
+			fprintf(stderr, "Prior fetch complete.\n");
+			// No need to run another fetch here.
+			exit_code = 0;
+			goto done;
+		}
+
+		die_errno("Failed to acquire fetch lock on '%s'", fetch_lock_path);
+	}
 
 	journal_exit_code = do_journal_fetch(remote, argc, argv);
 	if (journal_exit_code == 0) {
 		if (verbosity >= 2) {
 			printf("journal: fetch ok\n");
 		}
-		return journal_exit_code;
+		exit_code = journal_exit_code;
+		goto done;
 	} else if (journal_exit_code == JOURNAL_EXIT_SKIPPED) {
 		if (verbosity >= 1)
 			warning("journal: skipped fetch\n");
@@ -1217,6 +1249,12 @@ static int fetch_one(struct remote *remote, int argc, const char **argv)
 	free_refspec(ref_nr, refspec);
 	transport_disconnect(gtransport);
 	gtransport = NULL;
+
+done:
+	if (flock(fetch_lock_fd, LOCK_UN))
+		warning("Failed to unlock fetch lock on '%s' at end of cmd_fetch", fetch_lock_path);
+	close(fetch_lock_fd);
+	free(fetch_lock_path);
 	return exit_code;
 }
 
