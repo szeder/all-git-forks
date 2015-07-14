@@ -341,7 +341,7 @@ WARNING
 			}
 
 			# LWP automatically redirects GET request
-			$res = $req->get("${url}/index.php");
+			$res = $req->get("${url}index.php");
 			if (!$res->is_success) {
 				$url_after = $res->request()->uri(); # resolve all redirections
 				die "Failed to get homepage @ ${url_after} w/ code ${code}\n";
