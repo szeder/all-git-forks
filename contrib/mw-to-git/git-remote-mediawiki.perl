@@ -1054,15 +1054,22 @@ sub mw_push_file {
 
 		$mediawiki = connect_maybe($mediawiki, $remotename, $url);
 
-		my $result = $mediawiki->edit( {
+		my $query = {
 			action => 'edit',
 			summary => $summary,
 			title => $title,
 			basetimestamp => $basetimestamps{$oldrevid},
 			text => mediawiki_clean($file_content, $page_created),
-				  }, {
+			};
+
+		if($summary =~ /minor/) {
+			$query -> {minor} = 'true';
+		}
+
+		my $result = $mediawiki->edit($query, {
 					  skip_encoding => 1 # Helps with names with accentuated characters
 				  });
+
 		if (!$result) {
 			if ($mediawiki->{error}->{code} == 3) {
 				# edit conflicts, considered as non-fast-forward
