@@ -77,7 +77,7 @@ void status (char a[], char b[])
 int cmd_tutor(int argc, const char **argv, const char *prefix)
 //when i compile it in local it dont work with the above statement..
 {
-        char begin_end[4];
+        char begin_end[3];
 		char read_input[100];
 		char yes_no[4];
         char yes1[] = "Yes";
@@ -100,11 +100,13 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		int T_F = 0;
         printf("Welcome to Git Tutor!!\nGit Tutor is a tutorial that seeks to teach by example \nand supply the information to complete tasks that Git tutor assigns.");
         printf("\nDo you want to continue? Yes or No: ");
-		gets(begin_end);
+		scanf("%s", begin_end);
+		printf("Input: %s \n", begin_end);
         if ((strcmp(yes1, begin_end) == 0)  || (strcmp(begin_end, yes2) == 0)) {
                 printf("You are beginning the tutorial now!\n");
         }
         else {
+				printf("BYEEEEEE\n");
                 exit(-1);
         }
 
@@ -136,9 +138,10 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		//system("cd ..");
 		printf("Following three repositories are created:\n1. master \n2. origin \n3. upstream");
 		
+		//
 		// add origin and upstream 
-		system("git remote add origin ./origin.git")
-		system("git remote add upstream ./upstream")
+		system("git remote add origin ./origin.git");
+		system("git remote add upstream ./upstream");
 		printf("\nRemote is created for origin and upstream...");
 		
 		//fetch
