@@ -1,0 +1,28 @@
+696acf45f9638b014c7132508de26d1a571c8a33
+75d6e552a8f289fb0ee606a7bdfceace6df93bb3
+
+XXX and merge base
+
+$ git branch -d '@{-1}'
+
+       git branch (-m | -M) [<oldbranch>] <newbranch>
+              git branch (-d | -D) [-r] <branchname>...
+
+
+The name of the branch to create or delete. The new branch name
+           must pass all checks defined by git-check-ref-format(1)
+
+git cherry-pick -
+
+git diff
+git log
+git merge
+git rebase -
+git rev-parse
+git show -
+
+
+# failed 3 among remaining 28 test(s)
+1..34
+make[1]: *** [t2013-checkout-submodule.sh] Error 1
+make: *** [test] Error 2

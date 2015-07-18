@@ -2198,6 +2198,10 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 	read_from_stdin = 0;
 	for (left = i = 1; i < argc; i++) {
 		const char *arg = argv[i];
+		printf(":%s", arg);
+		if (strcmp(arg, "-")) {
+			arg = "@{-1}";
+		}
 		if (*arg == '-') {
 			int opts;
 
