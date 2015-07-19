@@ -39,7 +39,7 @@ repository so that they do not get automatically pruned.
 
 If a linked working tree is stored on a portable device or network share
 which is not always mounted, you can prevent its administrative files from
-being pruned by creating a file named 'lock' alongside the other
+being pruned by creating a file named 'locked' alongside the other
 administrative files, optionally containing a plain text reason that
 pruning should be suppressed. See section "DETAILS" for more information.
 
@@ -167,7 +167,7 @@ performed manually, such as:
   warn if the worktree is dirty)
 - `mv` to move or rename a worktree and update its administrative files
 - `list` to list linked working trees
-- `lock` to prevent automatic pruning of administrative files (for instance,
+- `locked` to prevent automatic pruning of administrative files (for instance,
   for a worktree on a portable device)
 
 GIT
