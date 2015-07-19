@@ -1293,7 +1293,7 @@ gc.pruneExpire::
 
 gc.pruneWorktreesExpire::
 	When 'git gc' is run, it will call
-	'prune --worktrees --expire 3.months.ago'.
+	'git worktree prune --expire 3.months.ago'.
 	Override the grace period with this config variable. The value
 	"now" may be used to disable the grace period and prune
 	$GIT_DIR/worktrees immediately.
