@@ -167,8 +167,6 @@ performed manually, such as:
   warn if the worktree is dirty)
 - `mv` to move or rename a worktree and update its administrative files
 - `list` to list linked working trees
-- `locked` to prevent automatic pruning of administrative files (for instance,
-  for a worktree on a portable device)
 
 GIT
 ---
