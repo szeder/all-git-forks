@@ -138,7 +138,7 @@ EXAMPLES
 --------
 You are in the middle of a refactoring session and your boss comes in and
 demands that you fix something immediately. You might typically use
-linkgit:git-stash[1] to store your changes away temporarily, however, your
+linkgit:git-stash[1] to store your changes away temporarily; however, your
 worktree is in such a state of disarray (with new, moved, and removed files,
 and other bits and pieces strewn around) that you don't want to risk
 disturbing any of it. Instead, you create a temporary linked working tree to
