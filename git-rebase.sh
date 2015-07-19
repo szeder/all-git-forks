@@ -279,9 +279,8 @@ do
 		strategy="${1#--strategy=}"
 		do_merge=t
 		;;
-	--rewrite-refs)
-		shift
-		rewrite_refs="$rewrite_refs $1"
+	--rewrite-refs=*)
+		rewrite_refs="$rewrite_refs ${1#--rewrite-refs=}"
 		test -z "$interactive_rebase" && interactive_rebase=implied
 		;;
 	--rewrite-heads)
