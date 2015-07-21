@@ -184,10 +184,26 @@ test_expect_success 'rerere updates postimage timestamp' '
 '
 
 test_expect_success 'rerere clear' '
-	rm $rr/postimage &&
+	cp $rr/preimage .git/pre-saved &&
+	mv $rr/postimage .git/post-saved &&
 	echo "$sha1	a1" | perl -pe "y/\012/\000/" >.git/MERGE_RR &&
 	git rerere clear &&
 	! test -d $rr
+'
+
+test_expect_success 'leftover directory' '
+	git reset --hard &&
+	mkdir -p $rr &&
+	test_must_fail git merge first &&
+	test -f $rr/preimage
+'
+
+test_expect_success 'missing preimage' '
+	git reset --hard &&
+	mkdir -p $rr &&
+	cp .git/post-saved $rr/postimage &&
+	test_must_fail git merge first &&
+	test -f $rr/preimage
 '
 
 test_expect_success 'set up for garbage collection tests' '
@@ -389,6 +405,64 @@ test_expect_success 'rerere --no-no-rerere-autoupdate' '
 test_expect_success 'rerere -h' '
 	test_must_fail git rerere -h >help &&
 	test_i18ngrep [Uu]sage help
+'
+
+concat_insert () {
+	last=$1
+	shift
+	cat early && printf "%s\n" "$@" && cat late "$last"
+}
+
+test_expect_success 'multiple identical conflicts' '
+	git reset --hard &&
+
+	test_seq 1 6 >early &&
+	test_seq 7 7 >late &&
+	# ">late" would make this break.
+	test_seq 11 15 >short &&
+	test_seq 111 120 >long &&
+	concat_insert short >file1 &&
+	concat_insert long >file2 &&
+	git add file1 file2 &&
+	git commit -m base &&
+	git tag base &&
+	git checkout -b six.1 &&
+	concat_insert short 6.1 >file1 &&
+	concat_insert long 6.1 >file2 &&
+	git add file1 file2 &&
+	git commit -m 6.1 &&
+	git checkout -b six.2 HEAD^ &&
+	concat_insert short 6.2 >file1 &&
+	concat_insert long 6.2 >file2 &&
+	git add file1 file2 &&
+	git commit -m 6.2 &&
+
+	test_must_fail git merge six.1 &&
+
+	printf "%s\n" file1 file2 >expect &&
+	git ls-files -u | sed -e "s/^.*	//" | sort -u >actual &&
+	test_cmp expect actual &&
+
+	git rerere status | sort >actual &&
+	test_cmp expect actual &&
+
+	concat_insert short 6.1 6.2 >file1 &&
+
+	git rerere remaining >actual &&
+	test_cmp expect actual &&
+
+	git rerere &&
+	>expect &&
+	git rerere remaining >actual &&
+	test_cmp expect actual &&
+
+	git reset --hard &&
+	test_must_fail git merge six.1 &&
+	git rerere &&
+
+	>expect &&
+	git rerere remaining >actual &&
+	test_cmp expect actual
 '
 
 test_done
