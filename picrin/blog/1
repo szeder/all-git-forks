@@ -1,0 +1,10 @@
+after a couple of hours of hacking on the source code of git:
+ -- I can compile almost feature-complete git (without libcurl which breaks http pulls/pushes, but meh, I don't care) by defining a macro NO_CURL = "YesPlease"
+ -- I know how to change git's version number to an arbitrary string like ilikepancakes by editing GIT-VERSION-FILE, which is .gitignored so my changes don't show up in diff
+ -- Segfault git checkout by passing a hard-coded prefix to a directory in a function checkout_entry in a function checkout_paths in a file builtin/checkout.c
+ -- roughly understand how parse options work in general by reading ./Documentation/technical/api-parse-options.txt
+ -- roughly understand how parsing the paths of files to checkout works, but more reading of parse_branchname_arg in builtin/checkout.c is needed.
+ -- I'm still buffled as to where the --work-tree= command gets applied, probably somewhere outside of checkout entirely. 
+ -- I still need to understand how paths are looped over, and in-outs of checkout_entries.
+
+tags: beginning parse parsing checkout work-tree version compile
