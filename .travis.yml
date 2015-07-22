@@ -3,6 +3,8 @@ before_script:
   - chmod a+x ndk.sh
   - ./ndk.sh
   - export ANDROID_BUILD=yes
+  - chmod a+x android-configure
+  - ./android-configure
   - make configure
   - ./configure
   
