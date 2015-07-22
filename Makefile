@@ -468,8 +468,6 @@ TEST_PROGRAMS_NEED_X =
 unexport CDPATH
 
 ifeq ($(ANDROID_BUILD), yes)
-	TOOLCHAIN=$PWD/android-toolchain
-	PATH=$TOOLCHAIN/bin:$PATH
 	AR=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-ar
 	CC=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-gcc
 	CXX=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++
