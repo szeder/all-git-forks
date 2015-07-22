@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+mkdir -p $TOOLCHAIN
+android-ndk-r10e/build/tools/make-standalone-toolchain.sh \
+    		--toolchain=arm-linux-androideabi-4.8 \
+    		--arch=arm \
+    		--install-dir=$TOOLCHAIN \
+    		--platform=android-21
