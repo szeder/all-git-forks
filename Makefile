@@ -470,7 +470,7 @@ unexport CDPATH
 ifeq ($(ANDROID_BUILD), yes)
 	export TOOLCHAIN=$PWD/android-toolchain
 	mkdir -p $TOOLCHAIN
-	$1/build/tools/make-standalone-toolchain.sh \
+	android-ndk-r10e/build/tools/make-standalone-toolchain.sh \
     		--toolchain=arm-linux-androideabi-4.8 \
     		--arch=arm \
     		--install-dir=$TOOLCHAIN \
