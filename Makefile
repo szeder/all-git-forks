@@ -468,20 +468,14 @@ TEST_PROGRAMS_NEED_X =
 unexport CDPATH
 
 ifeq ($(ANDROID_BUILD), yes)
-	export TOOLCHAIN=$PWD/android-toolchain
-	mkdir -p $TOOLCHAIN
-	android-ndk-r10e/build/tools/make-standalone-toolchain.sh \
-    		--toolchain=arm-linux-androideabi-4.8 \
-    		--arch=arm \
-    		--install-dir=$TOOLCHAIN \
-    		--platform=android-21
-	export PATH=$TOOLCHAIN/bin:$PATH
-	export AR=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-ar
-	export CC=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-gcc
-	export CXX=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++
-	export LINK=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++
-	export CPPFLAGS="-fPIE"
-	export LDFLAGS="-fPIE -pie -L$PREFIX/lib"
+	TOOLCHAIN=$PWD/android-toolchain
+	PATH=$TOOLCHAIN/bin:$PATH
+	AR=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-ar
+	CC=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-gcc
+	CXX=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++
+	LINK=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++
+	CPPFLAGS="-fPIE"
+	LDFLAGS="-fPIE -pie -L$PREFIX/lib"
 endif
 
 SCRIPT_SH += git-am.sh
