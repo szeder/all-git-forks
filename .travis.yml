@@ -10,3 +10,6 @@ before_script:
   
 script: 
   - make
+  - ls
+  - ls out
+  - echo $CC
