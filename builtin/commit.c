@@ -34,12 +34,12 @@
 #include "mailmap.h"
 
 static const char * const builtin_commit_usage[] = {
-	N_("git commit [options] [--] <pathspec>..."),
+	N_("git commit [<options>] [--] <pathspec>..."),
 	NULL
 };
 
 static const char * const builtin_status_usage[] = {
-	N_("git status [options] [--] <pathspec>..."),
+	N_("git status [<options>] [--] <pathspec>..."),
 	NULL
 };
 
@@ -170,7 +170,7 @@ static void determine_whence(struct wt_status *s)
 		whence = FROM_MERGE;
 	else if (file_exists(git_path("CHERRY_PICK_HEAD"))) {
 		whence = FROM_CHERRY_PICK;
-		if (file_exists(git_path("sequencer")))
+		if (file_exists(git_path(SEQ_DIR)))
 			sequencer_in_use = 1;
 	}
 	else
@@ -229,7 +229,7 @@ static int commit_index_files(void)
 static int list_paths(struct string_list *list, const char *with_tree,
 		      const char *prefix, const struct pathspec *pattern)
 {
-	int i;
+	int i, ret;
 	char *m;
 
 	if (!pattern->nr)
@@ -256,7 +256,9 @@ static int list_paths(struct string_list *list, const char *with_tree,
 			item->util = item; /* better a valid pointer than a fake one */
 	}
 
-	return report_path_error(m, pattern, prefix);
+	ret = report_path_error(m, pattern, prefix);
+	free(m);
+	return ret;
 }
 
 static void add_remove_files(struct string_list *list)
@@ -559,20 +561,14 @@ static void set_ident_var(char **buf, char *val)
 	*buf = val;
 }
 
-static char *envdup(const char *var)
-{
-	const char *val = getenv(var);
-	return val ? xstrdup(val) : NULL;
-}
-
 static void determine_author_info(struct strbuf *author_ident)
 {
 	char *name, *email, *date;
 	struct ident_split author;
 
-	name = envdup("GIT_AUTHOR_NAME");
-	email = envdup("GIT_AUTHOR_EMAIL");
-	date = envdup("GIT_AUTHOR_DATE");
+	name = xstrdup_or_null(getenv("GIT_AUTHOR_NAME"));
+	email = xstrdup_or_null(getenv("GIT_AUTHOR_EMAIL"));
+	date = xstrdup_or_null(getenv("GIT_AUTHOR_DATE"));
 
 	if (author_message) {
 		struct ident_split ident;
@@ -1056,7 +1052,7 @@ static const char *find_author_by_nickname(const char *name)
 		clear_mailmap(&mailmap);
 		return strbuf_detach(&buf, NULL);
 	}
-	die(_("No existing author found with '%s'"), name);
+	die(_("--author '%s' is not 'Name <email>' and matches no existing author"), name);
 }
 
 
@@ -1370,12 +1366,13 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 	refresh_index(&the_index, REFRESH_QUIET|REFRESH_UNMERGED, &s.pathspec, NULL, NULL);
 
 	fd = hold_locked_index(&index_lock, 0);
-	if (0 <= fd)
-		update_index_if_able(&the_index, &index_lock);
 
 	s.is_initial = get_sha1(s.reference, sha1) ? 1 : 0;
 	s.ignore_submodule_arg = ignore_submodule_arg;
 	wt_status_collect(&s);
+
+	if (0 <= fd)
+		update_index_if_able(&the_index, &index_lock);
 
 	if (s.relative_paths)
 		s.prefix = prefix;
@@ -1402,12 +1399,10 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 
 static const char *implicit_ident_advice(void)
 {
-	char *user_config = NULL;
-	char *xdg_config = NULL;
-	int config_exists;
+	char *user_config = expand_user_path("~/.gitconfig");
+	char *xdg_config = xdg_config_home("config");
+	int config_exists = file_exists(user_config) || file_exists(xdg_config);
 
-	home_config_paths(&user_config, &xdg_config, "config");
-	config_exists = file_exists(user_config) || file_exists(xdg_config);
 	free(user_config);
 	free(xdg_config);
 
@@ -1772,8 +1767,8 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	if (!transaction ||
 	    ref_transaction_update(transaction, "HEAD", sha1,
 				   current_head
-				   ? current_head->object.sha1 : NULL,
-				   0, !!current_head, sb.buf, &err) ||
+				   ? current_head->object.sha1 : null_sha1,
+				   0, sb.buf, &err) ||
 	    ref_transaction_commit(transaction, &err)) {
 		rollback_index_files();
 		die("%s", err.buf);

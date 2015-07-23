@@ -611,7 +611,6 @@ static char *unique_path(struct merge_options *o, const char *path, const char *
 {
 	struct strbuf newpath = STRBUF_INIT;
 	int suffix = 0;
-	struct stat st;
 	size_t base_len;
 
 	strbuf_addf(&newpath, "%s~", path);
@@ -620,7 +619,7 @@ static char *unique_path(struct merge_options *o, const char *path, const char *
 	base_len = newpath.len;
 	while (string_list_has_string(&o->current_file_set, newpath.buf) ||
 	       string_list_has_string(&o->current_directory_set, newpath.buf) ||
-	       lstat(newpath.buf, &st) == 0) {
+	       file_exists(newpath.buf)) {
 		strbuf_setlen(&newpath, base_len);
 		strbuf_addf(&newpath, "_%d", suffix++);
 	}
@@ -1858,6 +1857,9 @@ int merge_trees(struct merge_options *o,
 		string_list_clear(re_head, 0);
 		string_list_clear(entries, 1);
 
+		free(re_merge);
+		free(re_head);
+		free(entries);
 	}
 	else
 		clean = 1;
@@ -1901,7 +1903,7 @@ int merge_recursive(struct merge_options *o,
 	}
 
 	if (!ca) {
-		ca = get_merge_bases(h1, h2, 1);
+		ca = get_merge_bases(h1, h2);
 		ca = reverse_commit_list(ca);
 	}
 

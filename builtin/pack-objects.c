@@ -125,7 +125,6 @@ static unsigned long do_compress(void **pptr, unsigned long size)
 	void *in, *out;
 	unsigned long maxsize;
 
-	memset(&stream, 0, sizeof(stream));
 	git_deflate_init(&stream, pack_compression_level);
 	maxsize = git_deflate_bound(&stream, size);
 
@@ -153,7 +152,6 @@ static unsigned long write_large_blob_data(struct git_istream *st, struct sha1fi
 	unsigned char obuf[1024 * 16];
 	unsigned long olen = 0;
 
-	memset(&stream, 0, sizeof(stream));
 	git_deflate_init(&stream, pack_compression_level);
 
 	for (;;) {
@@ -542,11 +540,11 @@ static enum write_one_status write_one(struct sha1file *f,
 	return WRITE_ONE_WRITTEN;
 }
 
-static int mark_tagged(const char *path, const unsigned char *sha1, int flag,
+static int mark_tagged(const char *path, const struct object_id *oid, int flag,
 		       void *cb_data)
 {
 	unsigned char peeled[20];
-	struct object_entry *entry = packlist_find(&to_pack, sha1, NULL);
+	struct object_entry *entry = packlist_find(&to_pack, oid->hash, NULL);
 
 	if (entry)
 		entry->tagged = 1;
@@ -963,10 +961,8 @@ static int want_object_in_pack(const unsigned char *sha1,
 		off_t offset = find_pack_entry_one(sha1, p);
 		if (offset) {
 			if (!*found_pack) {
-				if (!is_pack_valid(p)) {
-					warning("packfile %s cannot be accessed", p->pack_name);
+				if (!is_pack_valid(p))
 					continue;
-				}
 				*found_offset = offset;
 				*found_pack = p;
 			}
@@ -2101,14 +2097,14 @@ static void ll_find_deltas(struct object_entry **list, unsigned list_size,
 #define ll_find_deltas(l, s, w, d, p)	find_deltas(l, &s, w, d, p)
 #endif
 
-static int add_ref_tag(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+static int add_ref_tag(const char *path, const struct object_id *oid, int flag, void *cb_data)
 {
-	unsigned char peeled[20];
+	struct object_id peeled;
 
 	if (starts_with(path, "refs/tags/") && /* is a tag? */
-	    !peel_ref(path, peeled)        && /* peelable? */
-	    packlist_find(&to_pack, peeled, NULL))      /* object packed? */
-		add_object_entry(sha1, OBJ_TAG, NULL, 0);
+	    !peel_ref(path, peeled.hash)    && /* peelable? */
+	    packlist_find(&to_pack, peeled.hash, NULL))      /* object packed? */
+		add_object_entry(oid->hash, OBJ_TAG, NULL, 0);
 	return 0;
 }
 
@@ -2613,6 +2609,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 {
 	int use_internal_rev_list = 0;
 	int thin = 0;
+	int shallow = 0;
 	int all_progress_implied = 0;
 	struct argv_array rp = ARGV_ARRAY_INIT;
 	int rev_list_unpacked = 0, rev_list_all = 0, rev_list_reflog = 0;
@@ -2677,6 +2674,8 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		  PARSE_OPT_OPTARG, option_parse_unpack_unreachable },
 		OPT_BOOL(0, "thin", &thin,
 			 N_("create thin packs")),
+		OPT_BOOL(0, "shallow", &shallow,
+			 N_("create packs suitable for shallow fetches")),
 		OPT_BOOL(0, "honor-pack-keep", &ignore_packed_keep,
 			 N_("ignore packs that have companion .keep file")),
 		OPT_INTEGER(0, "compression", &pack_compression_level,
@@ -2711,7 +2710,9 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	argv_array_push(&rp, "pack-objects");
 	if (thin) {
 		use_internal_rev_list = 1;
-		argv_array_push(&rp, "--objects-edge");
+		argv_array_push(&rp, shallow
+				? "--objects-edge-aggressive"
+				: "--objects-edge");
 	} else
 		argv_array_push(&rp, "--objects");
 

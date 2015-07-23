@@ -78,6 +78,7 @@ void setup_pager(void)
 		argv_array_push(&pager_process.env_array, "LESS=FRX");
 	if (!getenv("LV"))
 		argv_array_push(&pager_process.env_array, "LV=-c");
+	argv_array_push(&pager_process.env_array, "GIT_PAGER_IN_USE");
 	if (start_command(&pager_process))
 		return;
 
@@ -133,12 +134,12 @@ int term_columns(void)
 /*
  * How many columns do we need to show this number in decimal?
  */
-int decimal_width(int number)
+int decimal_width(uintmax_t number)
 {
-	int i, width;
+	int width;
 
-	for (width = 1, i = 10; i <= number; width++)
-		i *= 10;
+	for (width = 1; number >= 10; width++)
+		number /= 10;
 	return width;
 }
 

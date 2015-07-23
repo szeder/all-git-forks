@@ -918,7 +918,7 @@ out:
 	return ret;
 }
 
-static int string_list_add_one_ref(const char *refname, const unsigned char *sha1,
+static int string_list_add_one_ref(const char *refname, const struct object_id *oid,
 				   int flag, void *cb)
 {
 	struct string_list *refs = cb;
@@ -1006,7 +1006,7 @@ void init_notes(struct notes_tree *t, const char *notes_ref,
 	t->root = (struct int_node *) xcalloc(1, sizeof(struct int_node));
 	t->first_non_note = NULL;
 	t->prev_non_note = NULL;
-	t->ref = notes_ref ? xstrdup(notes_ref) : NULL;
+	t->ref = xstrdup_or_null(notes_ref);
 	t->combine_notes = combine_notes;
 	t->initialized = 1;
 	t->dirty = 0;

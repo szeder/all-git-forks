@@ -754,6 +754,19 @@ AC_CHECK_TYPES([struct itimerval],
 [#include <sys/time.h>])
 GIT_CONF_SUBST([NO_STRUCT_ITIMERVAL])
 #
+# Define USE_ST_TIMESPEC=YesPlease when stat.st_mtimespec.tv_nsec exists.
+# Define NO_NSEC=YesPlease when neither stat.st_mtim.tv_nsec nor
+# stat.st_mtimespec.tv_nsec exists.
+AC_CHECK_MEMBER([struct stat.st_mtimespec.tv_nsec])
+AC_CHECK_MEMBER([struct stat.st_mtim.tv_nsec])
+if test x$ac_cv_member_struct_stat_st_mtimespec_tv_nsec = xyes; then
+	USE_ST_TIMESPEC=YesPlease
+	GIT_CONF_SUBST([USE_ST_TIMESPEC])
+elif test x$ac_cv_member_struct_stat_st_mtim_tv_nsec != xyes; then
+	NO_NSEC=YesPlease
+	GIT_CONF_SUBST([NO_NSEC])
+fi
+#
 # Define NO_D_INO_IN_DIRENT if you don't have d_ino in your struct dirent.
 AC_CHECK_MEMBER(struct dirent.d_ino,
 [NO_D_INO_IN_DIRENT=],
@@ -934,6 +947,32 @@ AC_CHECK_LIB([iconv], [locale_charset],
                      [CHARSET_LIB=-lcharset])])
 GIT_CONF_SUBST([CHARSET_LIB])
 #
+# Define NO_HMAC_CTX_CLEANUP=YesPlease if HMAC_CTX_cleanup is missing.
+AC_CHECK_LIB([crypto], [HMAC_CTX_cleanup],
+	[], [GIT_CONF_SUBST([NO_HMAC_CTX_CLEANUP], [YesPlease])])
+#
+# Define HAVE_CLOCK_GETTIME=YesPlease if clock_gettime is available.
+GIT_CHECK_FUNC(clock_gettime,
+	[HAVE_CLOCK_GETTIME=YesPlease],
+	[HAVE_CLOCK_GETTIME=])
+GIT_CONF_SUBST([HAVE_CLOCK_GETTIME])
+
+AC_DEFUN([CLOCK_MONOTONIC_SRC], [
+AC_LANG_PROGRAM([[
+#include <time.h>
+clockid_t id = CLOCK_MONOTONIC;
+]])])
+
+#
+# Define HAVE_CLOCK_MONOTONIC=YesPlease if CLOCK_MONOTONIC is available.
+AC_MSG_CHECKING([for CLOCK_MONOTONIC])
+AC_COMPILE_IFELSE([CLOCK_MONOTONIC_SRC],
+	[AC_MSG_RESULT([yes])
+	HAVE_CLOCK_MONOTONIC=YesPlease],
+	[AC_MSG_RESULT([no])
+	HAVE_CLOCK_MONOTONIC=])
+GIT_CONF_SUBST([HAVE_CLOCK_MONOTONIC])
+#
 # Define NO_SETITIMER if you don't have setitimer.
 GIT_CHECK_FUNC(setitimer,
 [NO_SETITIMER=],
@@ -1002,11 +1041,40 @@ GIT_CHECK_FUNC(initgroups,
 [NO_INITGROUPS=YesPlease])
 GIT_CONF_SUBST([NO_INITGROUPS])
 #
+# Define HAVE_GETDELIM if you have getdelim in the C library.
+GIT_CHECK_FUNC(getdelim,
+[HAVE_GETDELIM=YesPlease],
+[HAVE_GETDELIM=])
+GIT_CONF_SUBST([HAVE_GETDELIM])
+#
 #
 # Define NO_MMAP if you want to avoid mmap.
 #
 # Define NO_ICONV if your libc does not properly support iconv.
 
+AC_DEFUN([BSD_SYSCTL_SRC], [
+AC_LANG_PROGRAM([[
+#include <stddef.h>
+#include <sys/types.h>
+#include <sys/sysctl.h>
+]],[[
+int val, mib[2];
+size_t len;
+mib[0] = CTL_HW;
+mib[1] = 1;
+len = sizeof(val);
+return sysctl(mib, 2, &val, &len, NULL, 0) ? 1 : 0;
+]])])
+
+#
+# Define HAVE_BSD_SYSCTL=YesPlease if a BSD-compatible sysctl function is available.
+AC_MSG_CHECKING([for BSD sysctl])
+AC_COMPILE_IFELSE([BSD_SYSCTL_SRC],
+	[AC_MSG_RESULT([yes])
+	HAVE_BSD_SYSCTL=YesPlease],
+	[AC_MSG_RESULT([no])
+	HAVE_BSD_SYSCTL=])
+GIT_CONF_SUBST([HAVE_BSD_SYSCTL])
 
 ## Other checks.
 # Define USE_PIC if you need the main git objects to be built with -fPIC

@@ -301,7 +301,7 @@ static int prepare_submodule_summary(struct rev_info *rev, const char *path,
 	left->object.flags |= SYMMETRIC_LEFT;
 	add_pending_object(rev, &left->object, path);
 	add_pending_object(rev, &right->object, path);
-	merge_bases = get_merge_bases(left, right, 1);
+	merge_bases = get_merge_bases(left, right);
 	if (merge_bases) {
 		if (merge_bases->item == left)
 			*fast_forward = 1;
@@ -422,7 +422,8 @@ void set_config_fetch_recurse_submodules(int value)
 	config_fetch_recurse_submodules = value;
 }
 
-static int has_remote(const char *refname, const unsigned char *sha1, int flags, void *cb_data)
+static int has_remote(const char *refname, const struct object_id *oid,
+		      int flags, void *cb_data)
 {
 	return 1;
 }
@@ -576,12 +577,10 @@ static int is_submodule_commit_present(const char *path, unsigned char sha1[20])
 		cp.env = local_repo_env;
 		cp.git_cmd = 1;
 		cp.no_stdin = 1;
-		cp.out = -1;
 		cp.dir = path;
-		if (!run_command(&cp) && !strbuf_read(&buf, cp.out, 1024))
+		if (!capture_command(&cp, &buf, 1024) && !buf.len)
 			is_present = 1;
 
-		close(cp.out);
 		strbuf_release(&buf);
 	}
 	return is_present;
@@ -618,10 +617,10 @@ static void submodule_collect_changed_cb(struct diff_queue_struct *q,
 	}
 }
 
-static int add_sha1_to_array(const char *ref, const unsigned char *sha1,
+static int add_sha1_to_array(const char *ref, const struct object_id *oid,
 			     int flags, void *data)
 {
-	sha1_array_append(data, sha1);
+	sha1_array_append(data, oid->hash);
 	return 0;
 }
 
@@ -893,7 +892,6 @@ int submodule_uses_gitfile(const char *path)
 
 int ok_to_remove_submodule(const char *path)
 {
-	struct stat st;
 	ssize_t len;
 	struct child_process cp = CHILD_PROCESS_INIT;
 	const char *argv[] = {
@@ -906,7 +904,7 @@ int ok_to_remove_submodule(const char *path)
 	struct strbuf buf = STRBUF_INIT;
 	int ok_to_remove = 1;
 
-	if ((lstat(path, &st) < 0) || is_empty_dir(path))
+	if (!file_exists(path) || is_empty_dir(path))
 		return 1;
 
 	if (!submodule_uses_gitfile(path))
@@ -1102,16 +1100,11 @@ void connect_work_tree_and_git_dir(const char *work_tree, const char *git_dir)
 	struct strbuf file_name = STRBUF_INIT;
 	struct strbuf rel_path = STRBUF_INIT;
 	const char *real_work_tree = xstrdup(real_path(work_tree));
-	FILE *fp;
 
 	/* Update gitfile */
 	strbuf_addf(&file_name, "%s/.git", work_tree);
-	fp = fopen(file_name.buf, "w");
-	if (!fp)
-		die(_("Could not create git link %s"), file_name.buf);
-	fprintf(fp, "gitdir: %s\n", relative_path(git_dir, real_work_tree,
-						  &rel_path));
-	fclose(fp);
+	write_file(file_name.buf, 1, "gitdir: %s\n",
+		   relative_path(git_dir, real_work_tree, &rel_path));
 
 	/* Update core.worktree setting */
 	strbuf_reset(&file_name);

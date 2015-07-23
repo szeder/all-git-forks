@@ -74,6 +74,7 @@ static struct {
 	{ "contents:body" },
 	{ "contents:signature" },
 	{ "upstream" },
+	{ "push" },
 	{ "symref" },
 	{ "flag" },
 	{ "HEAD" },
@@ -178,11 +179,10 @@ static const char *find_next(const char *cp)
 static int verify_format(const char *format)
 {
 	const char *cp, *sp;
-	static const char color_reset[] = "color:reset";
 
 	need_color_reset_at_eol = 0;
 	for (cp = format; *cp && (sp = find_next(cp)); ) {
-		const char *ep = strchr(sp, ')');
+		const char *color, *ep = strchr(sp, ')');
 		int at;
 
 		if (!ep)
@@ -191,8 +191,8 @@ static int verify_format(const char *format)
 		at = parse_atom(sp + 2, ep);
 		cp = ep + 1;
 
-		if (starts_with(used_atom[at], "color:"))
-			need_color_reset_at_eol = !!strcmp(used_atom[at], color_reset);
+		if (skip_prefix(used_atom[at], "color:", &color))
+			need_color_reset_at_eol = !!strcmp(color, "reset");
 	}
 	return 0;
 }
@@ -660,15 +660,26 @@ static void populate_value(struct refinfo *ref)
 		else if (starts_with(name, "symref"))
 			refname = ref->symref ? ref->symref : "";
 		else if (starts_with(name, "upstream")) {
+			const char *branch_name;
 			/* only local branches may have an upstream */
-			if (!starts_with(ref->refname, "refs/heads/"))
+			if (!skip_prefix(ref->refname, "refs/heads/",
+					 &branch_name))
 				continue;
-			branch = branch_get(ref->refname + 11);
+			branch = branch_get(branch_name);
 
-			if (!branch || !branch->merge || !branch->merge[0] ||
-			    !branch->merge[0]->dst)
+			refname = branch_get_upstream(branch, NULL);
+			if (!refname)
 				continue;
-			refname = branch->merge[0]->dst;
+		} else if (starts_with(name, "push")) {
+			const char *branch_name;
+			if (!skip_prefix(ref->refname, "refs/heads/",
+					 &branch_name))
+				continue;
+			branch = branch_get(branch_name);
+
+			refname = branch_get_push(branch, NULL);
+			if (!refname)
+				continue;
 		} else if (starts_with(name, "color:")) {
 			char color[COLOR_MAXLEN] = "";
 
@@ -714,10 +725,14 @@ static void populate_value(struct refinfo *ref)
 				refname = shorten_unambiguous_ref(refname,
 						      warn_ambiguous_refs);
 			else if (!strcmp(formatp, "track") &&
-				 starts_with(name, "upstream")) {
+				 (starts_with(name, "upstream") ||
+				  starts_with(name, "push"))) {
 				char buf[40];
 
-				stat_tracking_info(branch, &num_ours, &num_theirs);
+				if (stat_tracking_info(branch, &num_ours,
+						       &num_theirs, NULL))
+					continue;
+
 				if (!num_ours && !num_theirs)
 					v->s = "";
 				else if (!num_ours) {
@@ -733,9 +748,14 @@ static void populate_value(struct refinfo *ref)
 				}
 				continue;
 			} else if (!strcmp(formatp, "trackshort") &&
-				   starts_with(name, "upstream")) {
+				   (starts_with(name, "upstream") ||
+				    starts_with(name, "push"))) {
 				assert(branch);
-				stat_tracking_info(branch, &num_ours, &num_theirs);
+
+				if (stat_tracking_info(branch, &num_ours,
+							&num_theirs, NULL))
+					continue;
+
 				if (!num_ours && !num_theirs)
 					v->s = "=";
 				else if (!num_ours)
@@ -834,7 +854,8 @@ struct grab_ref_cbdata {
  * A call-back given to for_each_ref().  Filter refs and keep them for
  * later object processing.
  */
-static int grab_single_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
+static int grab_single_ref(const char *refname, const struct object_id *oid,
+			   int flag, void *cb_data)
 {
 	struct grab_ref_cbdata *cb = cb_data;
 	struct refinfo *ref;
@@ -842,6 +863,11 @@ static int grab_single_ref(const char *refname, const unsigned char *sha1, int f
 
 	if (flag & REF_BAD_NAME) {
 		  warning("ignoring ref with broken name %s", refname);
+		  return 0;
+	}
+
+	if (flag & REF_ISBROKEN) {
+		  warning("ignoring broken ref %s", refname);
 		  return 0;
 	}
 
@@ -872,7 +898,7 @@ static int grab_single_ref(const char *refname, const unsigned char *sha1, int f
 	 */
 	ref = xcalloc(1, sizeof(*ref));
 	ref->refname = xstrdup(refname);
-	hashcpy(ref->objectname, sha1);
+	hashcpy(ref->objectname, oid->hash);
 	ref->flag = flag;
 
 	cnt = cb->grab_cnt;
@@ -1054,7 +1080,7 @@ static int opt_parse_sort(const struct option *opt, const char *arg, int unset)
 }
 
 static char const * const for_each_ref_usage[] = {
-	N_("git for-each-ref [options] [<pattern>]"),
+	N_("git for-each-ref [<options>] [<pattern>]"),
 	NULL
 };
 

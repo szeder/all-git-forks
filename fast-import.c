@@ -405,7 +405,7 @@ static void dump_marks_helper(FILE *, uintmax_t, struct mark_set *);
 
 static void write_crash_report(const char *err)
 {
-	char *loc = git_path("fast_import_crash_%"PRIuMAX, (uintmax_t) getpid());
+	const char *loc = git_path("fast_import_crash_%"PRIuMAX, (uintmax_t) getpid());
 	FILE *rpt = fopen(loc, "w");
 	struct branch *b;
 	unsigned long lu;
@@ -947,9 +947,12 @@ static void unkeep_all_packs(void)
 
 static void end_packfile(void)
 {
-	if (!pack_data)
+	static int running;
+
+	if (running || !pack_data)
 		return;
 
+	running = 1;
 	clear_delta_base_cache();
 	if (object_count) {
 		struct packed_git *new_p;
@@ -999,6 +1002,7 @@ static void end_packfile(void)
 	}
 	free(pack_data);
 	pack_data = NULL;
+	running = 0;
 
 	/* We can't carry a delta across packfiles. */
 	strbuf_release(&last_blob.data);
@@ -1058,7 +1062,6 @@ static int store_object(
 	} else
 		delta = NULL;
 
-	memset(&s, 0, sizeof(s));
 	git_deflate_init(&s, pack_compression_level);
 	if (delta) {
 		s.next_in = delta;
@@ -1086,7 +1089,6 @@ static int store_object(
 			free(delta);
 			delta = NULL;
 
-			memset(&s, 0, sizeof(s));
 			git_deflate_init(&s, pack_compression_level);
 			s.next_in = (void *)dat->buf;
 			s.avail_in = dat->len;
@@ -1186,7 +1188,6 @@ static void stream_blob(uintmax_t len, unsigned char *sha1out, uintmax_t mark)
 
 	crc32_begin(pack_file);
 
-	memset(&s, 0, sizeof(s));
 	git_deflate_init(&s, pack_compression_level);
 
 	hdrlen = encode_in_pack_object_header(OBJ_BLOB, len, out_buf);
@@ -1716,7 +1717,7 @@ static int update_branch(struct branch *b)
 	transaction = ref_transaction_begin(&err);
 	if (!transaction ||
 	    ref_transaction_update(transaction, b->name, b->sha1, old_sha1,
-				   0, 1, msg, &err) ||
+				   0, msg, &err) ||
 	    ref_transaction_commit(transaction, &err)) {
 		ref_transaction_free(transaction);
 		error("%s", err.buf);
@@ -1756,8 +1757,8 @@ static void dump_tags(void)
 		strbuf_reset(&ref_name);
 		strbuf_addf(&ref_name, "refs/tags/%s", t->name);
 
-		if (ref_transaction_update(transaction, ref_name.buf, t->sha1,
-					   NULL, 0, 0, msg, &err)) {
+		if (ref_transaction_update(transaction, ref_name.buf,
+					   t->sha1, NULL, 0, msg, &err)) {
 			failure |= error("%s", err.buf);
 			goto cleanup;
 		}
@@ -3112,12 +3113,9 @@ static void parse_progress(void)
 
 static char* make_fast_import_path(const char *path)
 {
-	struct strbuf abs_path = STRBUF_INIT;
-
 	if (!relative_marks_paths || is_absolute_path(path))
 		return xstrdup(path);
-	strbuf_addf(&abs_path, "%s/info/fast-import/%s", get_git_dir(), path);
-	return strbuf_detach(&abs_path, NULL);
+	return xstrdup(git_path("info/fast-import/%s", path));
 }
 
 static void option_import_marks(const char *marks,

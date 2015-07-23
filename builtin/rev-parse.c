@@ -190,17 +190,17 @@ static int show_default(void)
 	return 0;
 }
 
-static int show_reference(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
+static int show_reference(const char *refname, const struct object_id *oid, int flag, void *cb_data)
 {
 	if (ref_excluded(ref_excludes, refname))
 		return 0;
-	show_rev(NORMAL, sha1, refname);
+	show_rev(NORMAL, oid->hash, refname);
 	return 0;
 }
 
-static int anti_reference(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
+static int anti_reference(const char *refname, const struct object_id *oid, int flag, void *cb_data)
 {
-	show_rev(REVERSED, sha1, refname);
+	show_rev(REVERSED, oid->hash, refname);
 	return 0;
 }
 
@@ -279,7 +279,7 @@ static int try_difference(const char *arg)
 			struct commit *a, *b;
 			a = lookup_commit_reference(sha1);
 			b = lookup_commit_reference(end);
-			exclude = get_merge_bases(a, b, 1);
+			exclude = get_merge_bases(a, b);
 			while (exclude) {
 				struct commit_list *n = exclude->next;
 				show_rev(REVERSED,
@@ -358,7 +358,7 @@ static int cmd_parseopt(int argc, const char **argv, const char *prefix)
 {
 	static int keep_dashdash = 0, stop_at_non_option = 0;
 	static char const * const parseopt_usage[] = {
-		N_("git rev-parse --parseopt [options] -- [<args>...]"),
+		N_("git rev-parse --parseopt [<options>] -- [<args>...]"),
 		NULL
 	};
 	static struct option parseopt_opts[] = {
@@ -496,9 +496,9 @@ static void die_no_single_rev(int quiet)
 }
 
 static const char builtin_rev_parse_usage[] =
-N_("git rev-parse --parseopt [options] -- [<args>...]\n"
+N_("git rev-parse --parseopt [<options>] -- [<args>...]\n"
    "   or: git rev-parse --sq-quote [<arg>...]\n"
-   "   or: git rev-parse [options] [<arg>...]\n"
+   "   or: git rev-parse [<options>] [<arg>...]\n"
    "\n"
    "Run \"git rev-parse --parseopt -h\" for more information on the first usage.");
 
@@ -533,6 +533,13 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i];
 
+		if (!strcmp(arg, "--git-path")) {
+			if (!argv[i + 1])
+				die("--git-path requires an argument");
+			puts(git_path("%s", argv[i + 1]));
+			i++;
+			continue;
+		}
 		if (as_is) {
 			if (show_file(arg, output_prefix) && as_is < 2)
 				verify_filename(prefix, arg, 0);
@@ -753,6 +760,10 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				len = strlen(cwd);
 				printf("%s%s.git\n", cwd, len && cwd[len-1] != '/' ? "/" : "");
 				free(cwd);
+				continue;
+			}
+			if (!strcmp(arg, "--git-common-dir")) {
+				puts(get_git_common_dir());
 				continue;
 			}
 			if (!strcmp(arg, "--resolve-git-dir")) {

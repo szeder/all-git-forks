@@ -14,7 +14,7 @@ static int write_bitmaps;
 static char *packdir, *packtmp;
 
 static const char *const git_repack_usage[] = {
-	N_("git repack [options]"),
+	N_("git repack [<options>]"),
 	NULL
 };
 
@@ -228,13 +228,17 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 		get_non_kept_pack_filenames(&existing_packs);
 
 		if (existing_packs.nr && delete_redundant) {
-			if (unpack_unreachable)
+			if (unpack_unreachable) {
 				argv_array_pushf(&cmd.args,
 						"--unpack-unreachable=%s",
 						unpack_unreachable);
-			else if (pack_everything & LOOSEN_UNREACHABLE)
+				argv_array_push(&cmd.env_array, "GIT_REF_PARANOIA=1");
+			} else if (pack_everything & LOOSEN_UNREACHABLE) {
 				argv_array_push(&cmd.args,
 						"--unpack-unreachable");
+			} else {
+				argv_array_push(&cmd.env_array, "GIT_REF_PARANOIA=1");
+			}
 		}
 	} else {
 		argv_array_push(&cmd.args, "--unpacked");
@@ -281,7 +285,8 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 	failed = 0;
 	for_each_string_list_item(item, &names) {
 		for (ext = 0; ext < ARRAY_SIZE(exts); ext++) {
-			char *fname, *fname_old;
+			const char *fname_old;
+			char *fname;
 			fname = mkpathdup("%s/pack-%s%s", packdir,
 						item->string, exts[ext].name);
 			if (!file_exists(fname)) {
@@ -309,7 +314,8 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 	if (failed) {
 		struct string_list rollback_failure = STRING_LIST_INIT_DUP;
 		for_each_string_list_item(item, &rollback) {
-			char *fname, *fname_old;
+			const char *fname_old;
+			char *fname;
 			fname = mkpathdup("%s/%s", packdir, item->string);
 			fname_old = mkpath("%s/old-%s", packdir, item->string);
 			if (rename(fname_old, fname))
@@ -362,7 +368,7 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 	/* Remove the "old-" files */
 	for_each_string_list_item(item, &names) {
 		for (ext = 0; ext < ARRAY_SIZE(exts); ext++) {
-			char *fname;
+			const char *fname;
 			fname = mkpath("%s/old-%s%s",
 					packdir,
 					item->string,

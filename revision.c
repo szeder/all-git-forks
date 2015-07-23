@@ -345,14 +345,24 @@ static struct commit *handle_commit(struct rev_info *revs,
 	die("%s is unknown object", name);
 }
 
-static int everybody_uninteresting(struct commit_list *orig)
+static int everybody_uninteresting(struct commit_list *orig,
+				   struct commit **interesting_cache)
 {
 	struct commit_list *list = orig;
+
+	if (*interesting_cache) {
+		struct commit *commit = *interesting_cache;
+		if (!(commit->object.flags & UNINTERESTING))
+			return 0;
+	}
+
 	while (list) {
 		struct commit *commit = list->item;
 		list = list->next;
 		if (commit->object.flags & UNINTERESTING)
 			continue;
+
+		*interesting_cache = commit;
 		return 0;
 	}
 	return 1;
@@ -807,7 +817,7 @@ static int add_parents_to_list(struct rev_info *revs, struct commit *commit,
 			parent = parent->next;
 			if (p)
 				p->object.flags |= UNINTERESTING;
-			if (parse_commit(p) < 0)
+			if (parse_commit_gently(p, 1) < 0)
 				continue;
 			if (p->parents)
 				mark_parents_uninteresting(p);
@@ -834,7 +844,7 @@ static int add_parents_to_list(struct rev_info *revs, struct commit *commit,
 	for (parent = commit->parents; parent; parent = parent->next) {
 		struct commit *p = parent->item;
 
-		if (parse_commit(p) < 0)
+		if (parse_commit_gently(p, revs->ignore_missing_links) < 0)
 			return -1;
 		if (revs->show_source && !p->util)
 			p->util = commit->util;
@@ -940,7 +950,8 @@ static void cherry_pick_list(struct commit_list *list, struct rev_info *revs)
 /* How many extra uninteresting commits we want to see.. */
 #define SLOP 5
 
-static int still_interesting(struct commit_list *src, unsigned long date, int slop)
+static int still_interesting(struct commit_list *src, unsigned long date, int slop,
+			     struct commit **interesting_cache)
 {
 	/*
 	 * No source list at all? We're definitely done..
@@ -959,7 +970,7 @@ static int still_interesting(struct commit_list *src, unsigned long date, int sl
 	 * Does the source list still have interesting commits in
 	 * it? Definitely not done..
 	 */
-	if (!everybody_uninteresting(src))
+	if (!everybody_uninteresting(src, interesting_cache))
 		return SLOP;
 
 	/* Ok, we're closing in.. */
@@ -1078,6 +1089,7 @@ static int limit_list(struct rev_info *revs)
 	struct commit_list *newlist = NULL;
 	struct commit_list **p = &newlist;
 	struct commit_list *bottom = NULL;
+	struct commit *interesting_cache = NULL;
 
 	if (revs->ancestry_path) {
 		bottom = collect_bottom_commits(list);
@@ -1094,6 +1106,9 @@ static int limit_list(struct rev_info *revs)
 		list = list->next;
 		free(entry);
 
+		if (commit == interesting_cache)
+			interesting_cache = NULL;
+
 		if (revs->max_age != -1 && (commit->date < revs->max_age))
 			obj->flags |= UNINTERESTING;
 		if (add_parents_to_list(revs, commit, &list, NULL) < 0)
@@ -1102,7 +1117,7 @@ static int limit_list(struct rev_info *revs)
 			mark_parents_uninteresting(commit);
 			if (revs->show_all)
 				p = &commit_list_insert(commit, p)->next;
-			slop = still_interesting(list, date, slop);
+			slop = still_interesting(list, date, slop, &interesting_cache);
 			if (slop)
 				continue;
 			/* If showing all, add the whole pending list to the end */
@@ -1203,7 +1218,8 @@ int ref_excluded(struct string_list *ref_excludes, const char *path)
 	return 0;
 }
 
-static int handle_one_ref(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+static int handle_one_ref(const char *path, const struct object_id *oid,
+			  int flag, void *cb_data)
 {
 	struct all_refs_cb *cb = cb_data;
 	struct object *object;
@@ -1211,9 +1227,9 @@ static int handle_one_ref(const char *path, const unsigned char *sha1, int flag,
 	if (ref_excluded(cb->all_revs->ref_excludes, path))
 	    return 0;
 
-	object = get_reference(cb->all_revs, path, sha1, cb->all_flags);
+	object = get_reference(cb->all_revs, path, oid->hash, cb->all_flags);
 	add_rev_cmdline(cb->all_revs, object, path, REV_CMD_REF, cb->all_flags);
-	add_pending_sha1(cb->all_revs, path, sha1, cb->all_flags);
+	add_pending_sha1(cb->all_revs, path, oid->hash, cb->all_flags);
 	return 0;
 }
 
@@ -1277,7 +1293,8 @@ static int handle_one_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
 	return 0;
 }
 
-static int handle_one_reflog(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+static int handle_one_reflog(const char *path, const struct object_id *oid,
+			     int flag, void *cb_data)
 {
 	struct all_refs_cb *cb = cb_data;
 	cb->warned_bad_reflog = 0;
@@ -1289,6 +1306,7 @@ static int handle_one_reflog(const char *path, const unsigned char *sha1, int fl
 void add_reflogs_to_pending(struct rev_info *revs, unsigned flags)
 {
 	struct all_refs_cb cb;
+
 	cb.all_revs = revs;
 	cb.all_flags = flags;
 	for_each_reflog(handle_one_reflog, &cb);
@@ -1441,7 +1459,7 @@ static void prepare_show_merge(struct rev_info *revs)
 	other = lookup_commit_or_die(sha1, "MERGE_HEAD");
 	add_pending_object(revs, &head->object, "HEAD");
 	add_pending_object(revs, &other->object, "MERGE_HEAD");
-	bases = get_merge_bases(head, other, 1);
+	bases = get_merge_bases(head, other);
 	add_rev_cmdline_list(revs, bases, REV_CMD_MERGE_BASE, UNINTERESTING | BOTTOM);
 	add_pending_commit_list(revs, bases, UNINTERESTING | BOTTOM);
 	free_commit_list(bases);
@@ -1546,7 +1564,7 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsi
 				     : lookup_commit_reference(b_obj->sha1));
 				if (!a || !b)
 					goto missing;
-				exclude = get_merge_bases(a, b, 1);
+				exclude = get_merge_bases(a, b);
 				add_rev_cmdline_list(revs, exclude,
 						     REV_CMD_MERGE_BASE,
 						     flags_exclude);
@@ -1853,6 +1871,12 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->tree_objects = 1;
 		revs->blob_objects = 1;
 		revs->edge_hint = 1;
+	} else if (!strcmp(arg, "--objects-edge-aggressive")) {
+		revs->tag_objects = 1;
+		revs->tree_objects = 1;
+		revs->blob_objects = 1;
+		revs->edge_hint = 1;
+		revs->edge_hint_aggressive = 1;
 	} else if (!strcmp(arg, "--verify-objects")) {
 		revs->tag_objects = 1;
 		revs->tree_objects = 1;
@@ -2011,6 +2035,8 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		grep_set_pattern_type_option(GREP_PATTERN_TYPE_PCRE, &revs->grep_filter);
 	} else if (!strcmp(arg, "--all-match")) {
 		revs->grep_filter.all_match = 1;
+	} else if (!strcmp(arg, "--invert-grep")) {
+		revs->invert_grep = 1;
 	} else if ((argcount = parse_long_opt("encoding", argv, &optarg))) {
 		if (strcmp(optarg, "none"))
 			git_log_output_encoding = xstrdup(optarg);
@@ -2331,8 +2357,13 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 
 	if (revs->reflog_info && revs->graph)
 		die("cannot combine --walk-reflogs with --graph");
+	if (revs->no_walk && revs->graph)
+		die("cannot combine --no-walk with --graph");
 	if (!revs->reflog_info && revs->grep_filter.use_reflog_filter)
 		die("cannot use --grep-reflog without --walk-reflogs");
+
+	if (revs->first_parent_only && revs->bisect)
+		die(_("--first-parent is incompatible with --bisect"));
 
 	return left;
 }
@@ -2909,7 +2940,7 @@ static int commit_match(struct commit *commit, struct rev_info *opt)
 				     (char *)message, strlen(message));
 	strbuf_release(&buf);
 	unuse_commit_buffer(commit, message);
-	return retval;
+	return opt->invert_grep ? !retval : retval;
 }
 
 static inline int want_ancestry(const struct rev_info *revs)
@@ -2960,6 +2991,61 @@ enum commit_action get_commit_action(struct rev_info *revs, struct commit *commi
 		}
 	}
 	return commit_show;
+}
+
+define_commit_slab(saved_parents, struct commit_list *);
+
+#define EMPTY_PARENT_LIST ((struct commit_list *)-1)
+
+/*
+ * You may only call save_parents() once per commit (this is checked
+ * for non-root commits).
+ */
+static void save_parents(struct rev_info *revs, struct commit *commit)
+{
+	struct commit_list **pp;
+
+	if (!revs->saved_parents_slab) {
+		revs->saved_parents_slab = xmalloc(sizeof(struct saved_parents));
+		init_saved_parents(revs->saved_parents_slab);
+	}
+
+	pp = saved_parents_at(revs->saved_parents_slab, commit);
+
+	/*
+	 * When walking with reflogs, we may visit the same commit
+	 * several times: once for each appearance in the reflog.
+	 *
+	 * In this case, save_parents() will be called multiple times.
+	 * We want to keep only the first set of parents.  We need to
+	 * store a sentinel value for an empty (i.e., NULL) parent
+	 * list to distinguish it from a not-yet-saved list, however.
+	 */
+	if (*pp)
+		return;
+	if (commit->parents)
+		*pp = copy_commit_list(commit->parents);
+	else
+		*pp = EMPTY_PARENT_LIST;
+}
+
+static void free_saved_parents(struct rev_info *revs)
+{
+	if (revs->saved_parents_slab)
+		clear_saved_parents(revs->saved_parents_slab);
+}
+
+struct commit_list *get_saved_parents(struct rev_info *revs, const struct commit *commit)
+{
+	struct commit_list *parents;
+
+	if (!revs->saved_parents_slab)
+		return commit->parents;
+
+	parents = *saved_parents_at(revs->saved_parents_slab, commit);
+	if (parents == EMPTY_PARENT_LIST)
+		return NULL;
+	return parents;
 }
 
 enum commit_action simplify_commit(struct rev_info *revs, struct commit *commit)
@@ -3260,55 +3346,4 @@ void put_revision_mark(const struct rev_info *revs, const struct commit *commit)
 		return;
 	fputs(mark, stdout);
 	putchar(' ');
-}
-
-define_commit_slab(saved_parents, struct commit_list *);
-
-#define EMPTY_PARENT_LIST ((struct commit_list *)-1)
-
-void save_parents(struct rev_info *revs, struct commit *commit)
-{
-	struct commit_list **pp;
-
-	if (!revs->saved_parents_slab) {
-		revs->saved_parents_slab = xmalloc(sizeof(struct saved_parents));
-		init_saved_parents(revs->saved_parents_slab);
-	}
-
-	pp = saved_parents_at(revs->saved_parents_slab, commit);
-
-	/*
-	 * When walking with reflogs, we may visit the same commit
-	 * several times: once for each appearance in the reflog.
-	 *
-	 * In this case, save_parents() will be called multiple times.
-	 * We want to keep only the first set of parents.  We need to
-	 * store a sentinel value for an empty (i.e., NULL) parent
-	 * list to distinguish it from a not-yet-saved list, however.
-	 */
-	if (*pp)
-		return;
-	if (commit->parents)
-		*pp = copy_commit_list(commit->parents);
-	else
-		*pp = EMPTY_PARENT_LIST;
-}
-
-struct commit_list *get_saved_parents(struct rev_info *revs, const struct commit *commit)
-{
-	struct commit_list *parents;
-
-	if (!revs->saved_parents_slab)
-		return commit->parents;
-
-	parents = *saved_parents_at(revs->saved_parents_slab, commit);
-	if (parents == EMPTY_PARENT_LIST)
-		return NULL;
-	return parents;
-}
-
-void free_saved_parents(struct rev_info *revs)
-{
-	if (revs->saved_parents_slab)
-		clear_saved_parents(revs->saved_parents_slab);
 }

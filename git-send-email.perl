@@ -54,6 +54,7 @@ git send-email [options] <file | directory | rev-list options >
     --[no-]bcc              <str>  * Email Bcc:
     --subject               <str>  * Email "Subject:"
     --in-reply-to           <str>  * Email "In-Reply-To:"
+    --[no-]xmailer                 * Add "X-Mailer:" header (default).
     --[no-]annotate                * Review each patch that will be sent in an editor.
     --compose                      * Open an editor for introduction.
     --compose-encoding      <str>  * Encoding to assume for introduction.
@@ -146,10 +147,15 @@ my $have_mail_address = eval { require Mail::Address; 1 };
 my $smtp;
 my $auth;
 
+# Regexes for RFC 2047 productions.
+my $re_token = qr/[^][()<>@,;:\\"\/?.= \000-\037\177-\377]+/;
+my $re_encoded_text = qr/[^? \000-\037\177-\377]+/;
+my $re_encoded_word = qr/=\?($re_token)\?($re_token)\?($re_encoded_text)\?=/;
+
 # Variables we fill in automatically, or via prompting:
 my (@to,$no_to,@initial_to,@cc,$no_cc,@initial_cc,@bcclist,$no_bcc,@xh,
 	$initial_reply_to,$initial_subject,@files,
-	$author,$sender,$smtp_authpass,$annotate,$compose,$time);
+	$author,$sender,$smtp_authpass,$annotate,$use_xmailer,$compose,$time);
 
 my $envelope_sender;
 
@@ -221,7 +227,8 @@ my %config_bool_settings = (
     "signedoffcc" => [\$signed_off_by_cc, undef],      # Deprecated
     "validate" => [\$validate, 1],
     "multiedit" => [\$multiedit, undef],
-    "annotate" => [\$annotate, undef]
+    "annotate" => [\$annotate, undef],
+    "xmailer" => [\$use_xmailer, 1]
 );
 
 my %config_settings = (
@@ -292,6 +299,7 @@ my $rc = GetOptions("h" => \$help,
 		    "bcc=s" => \@bcclist,
 		    "no-bcc" => \$no_bcc,
 		    "chain-reply-to!" => \$chain_reply_to,
+		    "no-chain-reply-to" => sub {$chain_reply_to = 0},
 		    "smtp-server=s" => \$smtp_server,
 		    "smtp-server-option=s" => \@smtp_server_options,
 		    "smtp-server-port=s" => \$smtp_server_port,
@@ -304,24 +312,34 @@ my $rc = GetOptions("h" => \$help,
 		    "smtp-domain:s" => \$smtp_domain,
 		    "identity=s" => \$identity,
 		    "annotate!" => \$annotate,
+		    "no-annotate" => sub {$annotate = 0},
 		    "compose" => \$compose,
 		    "quiet" => \$quiet,
 		    "cc-cmd=s" => \$cc_cmd,
 		    "suppress-from!" => \$suppress_from,
+		    "no-suppress-from" => sub {$suppress_from = 0},
 		    "suppress-cc=s" => \@suppress_cc,
 		    "signed-off-cc|signed-off-by-cc!" => \$signed_off_by_cc,
+		    "no-signed-off-cc|no-signed-off-by-cc" => sub {$signed_off_by_cc = 0},
 		    "cc-cover|cc-cover!" => \$cover_cc,
+		    "no-cc-cover" => sub {$cover_cc = 0},
 		    "to-cover|to-cover!" => \$cover_to,
+		    "no-to-cover" => sub {$cover_to = 0},
 		    "confirm=s" => \$confirm,
 		    "dry-run" => \$dry_run,
 		    "envelope-sender=s" => \$envelope_sender,
 		    "thread!" => \$thread,
+		    "no-thread" => sub {$thread = 0},
 		    "validate!" => \$validate,
+		    "no-validate" => sub {$validate = 0},
 		    "transfer-encoding=s" => \$target_xfer_encoding,
 		    "format-patch!" => \$format_patch,
+		    "no-format-patch" => sub {$format_patch = 0},
 		    "8bit-encoding=s" => \$auto_8bit_encoding,
 		    "compose-encoding=s" => \$compose_encoding,
 		    "force" => \$force,
+		    "xmailer!" => \$use_xmailer,
+		    "no-xmailer" => sub {$use_xmailer = 0},
 	 );
 
 usage() if $help;
@@ -469,6 +487,37 @@ sub split_addrs {
 }
 
 my %aliases;
+
+sub parse_sendmail_alias {
+	local $_ = shift;
+	if (/"/) {
+		print STDERR "warning: sendmail alias with quotes is not supported: $_\n";
+	} elsif (/:include:/) {
+		print STDERR "warning: `:include:` not supported: $_\n";
+	} elsif (/[\/|]/) {
+		print STDERR "warning: `/file` or `|pipe` redirection not supported: $_\n";
+	} elsif (/^(\S+?)\s*:\s*(.+)$/) {
+		my ($alias, $addr) = ($1, $2);
+		$aliases{$alias} = [ split_addrs($addr) ];
+	} else {
+		print STDERR "warning: sendmail line is not recognized: $_\n";
+	}
+}
+
+sub parse_sendmail_aliases {
+	my $fh = shift;
+	my $s = '';
+	while (<$fh>) {
+		chomp;
+		next if /^\s*$/ || /^\s*#/;
+		$s .= $_, next if $s =~ s/\\$// || s/^\s+//;
+		parse_sendmail_alias($s) if $s;
+		$s = $_;
+	}
+	$s =~ s/\\$//; # silently tolerate stray '\' on last line
+	parse_sendmail_alias($s) if $s;
+}
+
 my %parse_alias = (
 	# multiline formats can be supported in the future
 	mutt => sub { my $fh = shift; while (<$fh>) {
@@ -497,7 +546,7 @@ my %parse_alias = (
 			       $aliases{$alias} = [ split_addrs($addr) ];
 			  }
 		      } },
-
+	sendmail => \&parse_sendmail_aliases,
 	gnus => sub { my $fh = shift; while (<$fh>) {
 		if (/\(define-mail-alias\s+"(\S+?)"\s+"(\S+?)"\)/) {
 			$aliases{$1} = [ $2 ];
@@ -744,6 +793,7 @@ if (!defined $auto_8bit_encoding && scalar %broken_encoding) {
 		print "    $f\n";
 	}
 	$auto_8bit_encoding = ask("Which 8bit encoding should I declare [UTF-8]? ",
+				  valid_re => qr/.{4}/, confirm_only => 1,
 				  default => "UTF-8");
 }
 
@@ -917,15 +967,26 @@ $time = time - scalar $#files;
 
 sub unquote_rfc2047 {
 	local ($_) = @_;
-	my $encoding;
-	s{=\?([^?]+)\?q\?(.*?)\?=}{
-		$encoding = $1;
-		my $e = $2;
-		$e =~ s/_/ /g;
-		$e =~ s/=([0-9A-F]{2})/chr(hex($1))/eg;
-		$e;
+	my $charset;
+	my $sep = qr/[ \t]+/;
+	s{$re_encoded_word(?:$sep$re_encoded_word)*}{
+		my @words = split $sep, $&;
+		foreach (@words) {
+			m/$re_encoded_word/;
+			$charset = $1;
+			my $encoding = $2;
+			my $text = $3;
+			if ($encoding eq 'q' || $encoding eq 'Q') {
+				$_ = $text;
+				s/_/ /g;
+				s/=([0-9A-F]{2})/chr(hex($1))/egi;
+			} else {
+				# other encodings not supported yet
+			}
+		}
+		join '', @words;
 	}eg;
-	return wantarray ? ($_, $encoding) : $_;
+	return wantarray ? ($_, $charset) : $_;
 }
 
 sub quote_rfc2047 {
@@ -938,10 +999,8 @@ sub quote_rfc2047 {
 
 sub is_rfc2047_quoted {
 	my $s = shift;
-	my $token = qr/[^][()<>@,;:"\/?.= \000-\037\177-\377]+/;
-	my $encoded_text = qr/[!->@-~]+/;
 	length($s) <= 75 &&
-	$s =~ m/^(?:"[[:ascii:]]*"|=\?$token\?$token\?$encoded_text\?=)$/o;
+	$s =~ m/^(?:"[[:ascii:]]*"|$re_encoded_word)$/o;
 }
 
 sub subject_needs_rfc2047_quoting {
@@ -1167,8 +1226,10 @@ To: $to${ccline}
 Subject: $subject
 Date: $date
 Message-Id: $message_id
-X-Mailer: git-send-email $gitversion
 ";
+	if ($use_xmailer) {
+		$header .= "X-Mailer: git-send-email $gitversion\n";
+	}
 	if ($reply_to) {
 
 		$header .= "In-Reply-To: $reply_to\n";
